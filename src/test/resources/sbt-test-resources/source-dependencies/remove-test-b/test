@@ -1,0 +1,50 @@
+> compile
+[success]
+
+$ copy-file changes/A2.scala src/main/scala/A.scala
+[success]
+
+> compile
+[error]
+
+$ copy-file changes/B3.scala src/main/scala/B.scala
+[success]
+
+> compile
+[success]
+
+$ delete src/main/scala/B.scala
+[success]
+
+> compile
+[failure]
+
+$ copy-file changes/B3.scala src/main/scala/B.scala
+[success]
+
+> compile
+[success]
+
+$ copy-file changes/B4.scala src/main/scala/B.scala
+[success]
+
+> compile
+[failure]
+
+$ copy-file changes/B3.scala src/main/scala/B.scala
+[success]
+
+> compile
+[success]
+
+$ copy-file changes/B5.scala src/main/scala/B.scala
+[success]
+
+> compile
+[failure]
+
+$ copy-file changes/B3.scala src/main/scala/B.scala
+[success]
+
+> compile
+[success]

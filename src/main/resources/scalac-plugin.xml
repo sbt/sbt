@@ -1,0 +1,4 @@
+<plugin>
+  <name>sbt-analyze</name>
+  <classname>sbt.Analyzer</classname>
+</plugin>

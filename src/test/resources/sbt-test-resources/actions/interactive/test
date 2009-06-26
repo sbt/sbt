@@ -1,0 +1,46 @@
+# This test verifies the behavior of actions declared interactive
+
+# Single project, non-interactive task
+> interactive-test [success]
+$ exists ran [success]
+$ delete ran [success]
+
+# Single project, interactive task
+$ copy-file changes/TestProject2.scala project/build/src/TestProject.scala [success]
+$ reload [success]
+> interactive-test [success]
+$ exists ran [success]
+$ delete ran [success]
+
+# Multi-project, single interactive task on parent project
+$ copy-file changes/TestProject3.scala project/build/src/TestProject.scala [success]
+$ reload [success]
+> interactive-test [success]
+$ exists ran [success]
+$ delete ran [success]
+
+# Multi-project, single interactive task on child project
+$ copy-file changes/TestProject4.scala project/build/src/TestProject.scala [success]
+$ reload [success]
+> interactive-test [failure]
+
+# Multi-project, two interactive tasks with same name, which is allowed because it is defined on parent
+$ copy-file changes/TestProject5.scala project/build/src/TestProject.scala [success]
+$ reload [success]
+> interactive-test [success]
+$ exists "ran" [success]
+$ delete "ran" [success]
+
+# Multi-project, interactive on subproject + non-interactive on parent, which cannot be run from parent
+$ copy-file changes/TestProject6.scala project/build/src/TestProject.scala [success]
+$ reload [success]
+> interactive-test [failure]
+
+# Multi-project, two non-interactive tasks with same name, which is allowed
+$ copy-file changes/TestProject7.scala project/build/src/TestProject.scala [success]
+$ reload [success]
+> interactive-test [success]
+$ exists "ran" [success]
+$ exists "a/ran" [success]
+$ delete "ran" [success]
+$ delete "a/ran" [success]

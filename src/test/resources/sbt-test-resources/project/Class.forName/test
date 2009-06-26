@@ -1,0 +1,19 @@
+# this step builds a test jar for use by the project definition
+> package
+[success]
+
+$ copy-file target/definition-lib-forname-test-1.0.jar project/build/lib/test.jar
+[success]
+
+$ copy-file changes/LibTestProject.scala project/build/src/LibTestProject.scala
+[success]
+
+# the copied project definition depends on the Test module in test.jar and will
+# fail to compile if sbt did not put the jars in project/build/lib/ on the compile classpath
+$ reload
+[success]
+
+# The project definition uses the class in test.jar and will fail here if sbt did not put the
+# jars in project/build/lib on the runtime classpath
+> use-jar
+[success]

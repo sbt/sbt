@@ -1,0 +1,41 @@
+$ copy-file changes/A.scala src/main/scala/A.scala
+[success]
+
+> compile
+[success]
+
+$ copy-file changes/A2.scala src/main/scala/A.scala
+[success]
+
+> compile
+[success]
+
+$ copy-file changes/B.scala src/main/scala/B.scala
+[success]
+
+> compile
+[failure]
+
+$ copy-file changes/A.scala src/main/scala/A.scala
+[success]
+
+> compile
+[success]
+
+$ delete src/main/scala/B.scala
+[success]
+
+$ copy-file changes/A2.scala src/main/scala/A.scala
+[success]
+
+> compile
+[success]
+
+$ copy-file changes/A.scala src/main/scala/A.scala
+[success]
+
+$ copy-file changes/B.scala src/main/scala/B.scala
+[success]
+
+> compile
+[success]

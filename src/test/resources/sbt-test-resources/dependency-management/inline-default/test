@@ -1,0 +1,42 @@
+## run test with useDefaultConfigurations=false
+
+# Download jars.  If successful, httpclient should be downloaded to the 'default' configuration 
+> update
+[success]
+
+# The jar should exist in the 'default' configuration ...
+> check-default
+[success]
+# but not in the 'compile' configuration ...
+> check-compile
+[failure]
+# It should be present on the compile classpath
+> check-classpath
+[success]
+
+# reset test
+> clean-lib
+[success]
+# Indicate to the project definition that we now want useDefaultConfigurations = true
+$ touch useDefaultConfigurations
+[success]
+# Reload for change to take effect
+$ reload
+[success]
+
+## Rerun test with useDefaultConfigurations=true
+
+# Download jars.  If successful,  httpclient should be downloaded to the 'compile' configuration
+> update
+[success]
+
+
+# The jar should not exist in the 'default' configuration ...
+> check-default
+[failure]
+# It should exist in the 'compile' configuration
+> check-compile
+[success]
+# It should be present on the compile classpath
+> check-classpath
+[success]

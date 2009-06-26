@@ -1,0 +1,51 @@
+# verify that the classpaths are correct for when a dependency is in the provided configuration
+$ touch useProvided
+[success]
+$ reload
+[success]
+
+> update
+[success]
+
+> check-run
+[success]
+> check-compile
+[success]
+> check-provided
+[success]
+> check-public
+[success]
+
+> package
+[success]
+
+> check-war
+[success]
+
+# verify that the classpaths are correct for when a dependency is in the compile configuration
+$ delete useProvided
+[success]
+$ reload
+[success]
+
+> update
+[success]
+
+> check-run
+[success]
+> check-compile
+[success]
+> check-provided
+[success]
+> check-public
+[success]
+
+# prepare-webapp is last modified based, so we need to force it to do work
+$ delete target
+[success]
+
+> package
+[success]
+
+> check-war
+[success]

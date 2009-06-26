@@ -1,0 +1,23 @@
+> test
+[success]
+
+$ copy-file changes/BasicTest.scala src/test/scala/BasicTest.scala
+[success]
+
+$ delete src/test/scala/DummyTest.scala
+[success]
+
+> test-compile
+[error]
+
+> update
+[success]
+
+> test
+[success]
+
+$ copy-file changes/FailTest.scala src/test/scala/BasicTest.scala
+[success]
+
+> test
+[failure]

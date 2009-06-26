@@ -1,0 +1,72 @@
+# get ScalaCheck library and copy the main sbt jar to the lib directory
+> update
+[success]
+
+# Copy the source file implementing the framework to the src tree
+$ copy-file changes/ScalaCheck.scala src/main/scala/ScalaCheck.scala
+[success]
+
+# compile and package the framework
+> package
+[success]
+
+# move the test framework jar to the build project and delete the sources and the sbt jar
+# The test framework runs ScalaCheck tests, but swaps success and failure
+# to ensure the custom framework is being used and not sbt's built-in ScalaCheck support
+$ copy-file target/framework-1.0.jar project/build/lib/framework-1.0.jar
+[success]
+$ delete target/framework-1.0.jar
+[success]
+$ delete src/main
+[success]
+$ delete lib
+[success]
+
+# replace the project definition with the one that uses the framework, reload, and update
+# (update moves scalatest.jar to the 'test' configuration)
+$ copy-file changes/TestProject2.scala project/build/src/TestProject.scala
+[success]
+$ reload
+[success]
+> update
+[success]
+
+# Copy a source containing a failing test that the framework should mark as succeeding
+$ copy-file changes/TestSuccess.scala src/test/scala/TestSuccess.scala
+[success]
+> test
+[success]
+
+
+# Copy a source containing a successful test that the framework should mark as failing
+# First, delete the previous test
+$ delete src/test/scala/TestSuccess.scala
+[success]
+$ copy-file changes/TestFailure.scala src/test/scala/TestFailure.scala
+[success]
+> test
+[failure]
+
+
+# replace the project definition with one that tests a child project
+# reload, and update
+$ copy-file changes/TestProject3.scala project/build/src/TestProject.scala
+[success]
+$ reload
+[success]
+> update
+[success]
+
+# remove sources in the parent project
+$ delete src
+[success]
+# Copy a source containing a failing test that the framework should mark as succeeding
+$ copy-file changes/TestSuccess.scala child/src/test/scala/TestSuccess.scala
+[success]
+> test
+[success]
+# Copy a source containing a successful test that the framework should mark as failing
+$ copy-file changes/TestFailure.scala child/src/test/scala/TestFailure.scala
+[success]
+> test
+[failure]

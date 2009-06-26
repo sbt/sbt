@@ -1,0 +1,8 @@
+> compile
+[success]
+
+$ copy-file changes/A2.scala src/main/scala/A.scala
+[success]
+
+> compile
+[failure]

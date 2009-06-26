@@ -1,0 +1,12 @@
+> check-in-test
+[failure]
+> check-in-compile
+[failure]
+
+> update
+[success]
+
+> check-in-test
+[success]
+> check-in-compile
+[failure]

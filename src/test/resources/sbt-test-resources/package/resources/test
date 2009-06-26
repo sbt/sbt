@@ -1,0 +1,36 @@
+#This test verifies two things:
+# 1) That sbt properly puts resources from src/main/resources on the runtime classpath
+# 2) That sbt properly packages resources from src/main/resources into the jar
+
+# This should fail because the Main object is in package jartest and the resource is directly
+# in src/main/resources
+> run
+[failure]
+
+> package
+[success]
+
+# This should fail because sbt should include the resource in the jar but it won't have the right
+# directory structure
+$ exec java -jar "./target/main-resources-test-0.1.jar"
+[failure]
+
+# Give the resource the right directory structure
+$ mkdir src/main/resources/jartest [success]
+$ copy-file src/main/resources/main_resource_test src/main/resources/jartest/main_resource_test [success]
+$ delete src/main/resources/main_resource_test [success]
+
+# This should succeed because sbt should put the resource on the runClasspath
+> run
+[success]
+
+# This is necessary because package bases whether or not to run on last modified times, which don't have
+# high enough resolution to notice the above move of main_resource_test
+> clean [success]
+
+> package
+[success]
+
+# This should succeed because sbt should include the resource in the jar with the right directory structure
+$ exec java -jar "./target/main-resources-test-0.1.jar"
+[success]

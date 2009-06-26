@@ -1,0 +1,3 @@
+<ivysettings>
+	<caches defaultCacheDir="${ivy.settings.dir}/target/cache"/>
+</ivysettings>

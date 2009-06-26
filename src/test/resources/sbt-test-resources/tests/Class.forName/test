@@ -1,0 +1,23 @@
+# Create a jar that contains two classes: Test and OtherTest
+#  Test loads OtherTest using Class.forName
+> package
+[success]
+
+# get the specs jar
+> update
+[success]
+
+# copy to the lib_managed/test directory to simulate
+#  a library on the 'test' configuration
+$ copy-file target/class-forname-1.0.jar lib_managed/test/forname.jar
+[success]
+
+# Remove the classes that created the jar
+$ delete src/main/ target/
+[success]
+
+# Compile and run the test that calls into the jar created above
+#  It won't succeed if something is messed up with class loading
+> test
+[success]
+

@@ -1,0 +1,32 @@
+# load the project definition with transitive dependencies enabled
+# and check that they are not downloaded
+
+$ touch transitive
+[success]
+$ reload
+[success]
+
+> update
+[success]
+
+> check-transitive
+[success]
+> check-intransitive
+[failure]
+
+
+# load the project definition with transitive dependencies disabled
+# and check that they are not downloaded
+
+$ delete transitive
+[success]
+$ reload
+[success]
+
+> update
+[success]
+
+> check-transitive
+[failure]
+> check-intransitive
+[success]

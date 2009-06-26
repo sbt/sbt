@@ -1,0 +1,20 @@
+> update
+[success]
+
+$ copy-file changes/scalacheck-ivy.xml ivy.xml
+[success]
+
+> update
+[failure]
+
+$ absent lib_managed/default/scalacheck-1.5.jar
+[success]
+
+$ copy-file changes/scala-tools-ivysettings.xml ivysettings.xml
+[success]
+
+> update
+[success]
+
+$ exists lib_managed/default/scalacheck-1.5.jar
+[success]

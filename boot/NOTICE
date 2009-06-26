@@ -1,0 +1,35 @@
+Simple Build Tool (sbt)
+Copyright 2009 Mark Harrah
+
+Parts of the Scala library are distributed with sbt:
+Copyright 2002-2008 EPFL, Lausanne
+Licensed under BSD-style license (see licenses/LICENSE_Scala)
+
+JLine is distributed with sbt:
+Copyright (c) 2002-2006, Marc Prud'hommeaux <mwp1@cornell.edu>
+Licensed under BSD-style license (see licenses/LICENSE_JLine)
+
+Apache Ivy, licensed under the Apache License, Version 2.0
+(see licenses/LICENSE_Apache) is distributed with sbt and
+requires the following notice:
+
+This product includes software developed by
+The Apache Software Foundation (http://www.apache.org/).
+
+Portions of Ivy were originally developed by
+Jayasoft SARL (http://www.jayasoft.fr/)
+and are licensed to the Apache Software Foundation under the
+"Software Grant License Agreement"
+
+
+THIS SOFTWARE IS PROVIDED BY THE AUTHORS ``AS IS'' AND ANY EXPRESS OR
+IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES
+OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED.
+IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY DIRECT, INDIRECT,
+INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT
+NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
+DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
+THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+(INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
+THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ 
