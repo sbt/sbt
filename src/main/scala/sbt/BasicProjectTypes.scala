@@ -223,9 +223,9 @@ trait PublishConfiguration extends NotNull
 }
 object ManagedStyle extends Enumeration
 {
-	val Maven, Ivy = Value
+	val Maven, Ivy, Auto = Value
 }
-import ManagedStyle.{Ivy, Maven, Value => ManagedType}
+import ManagedStyle.{Auto, Ivy, Maven, Value => ManagedType}
 trait BasicManagedProject extends ManagedProject with ReflectiveManagedProject with BasicDependencyPaths
 {
 	import BasicManagedProject._
@@ -267,13 +267,14 @@ trait BasicManagedProject extends ManagedProject with ReflectiveManagedProject w
 	def defaultConfiguration: Option[Configuration] = Some(Configurations.DefaultConfiguration(useDefaultConfigurations))
 	def useMavenConfigurations = true // TBD: set to true and deprecate
 	def useDefaultConfigurations = useMavenConfigurations
-	def managedStyle: ManagedType = Maven
+	def managedStyle: ManagedType = Auto
 	protected implicit final val defaultPatterns: RepositoryHelpers.Patterns =
 	{
 		managedStyle match
 		{
 			case Maven => Resolver.mavenStylePatterns
 			case Ivy => Resolver.ivyStylePatterns
+			case Auto => Resolver.defaultPatterns
 		}
 	}
 	/** The options provided to the 'update' action.  This is by default the options in 'baseUpdateOptions'.
@@ -555,6 +556,7 @@ trait ReflectiveArtifacts extends ManagedProject
 		{
 			case Maven =>reflective ++ List(Artifact(artifactID, "pom", "pom"))
 			case Ivy => reflective
+			case Auto => Set.empty
 		}
 	}
 	def reflectiveArtifacts: Set[Artifact] = Set(Reflective.reflectiveMappings[Artifact](this).values.toList: _*)

@@ -27,6 +27,8 @@ protected class InstallPluginProject(info: ProjectInfo, extract: => InstallExtra
 protected class InstallExtractProject(info: ProjectInfo, pluginProject: => InstallPluginProject) extends DefaultProject(info)
 {
 	override def publishLocalAction = publishAction
+	override def deliverAction = publishAction
+	override def deliverLocalAction = publishAction
 	override def publishAction = task {None}
 	override def unmanagedClasspath = super.unmanagedClasspath +++ Path.lazyPathFinder(Path.fromFile(FileUtilities.sbtJar) :: Nil)
 	private lazy val plugin = pluginProject
