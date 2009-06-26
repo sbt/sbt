@@ -14,13 +14,13 @@ class InstallerProject(info: ProjectInfo) extends ParentProject(info)
 protected class InstallPluginProject(info: ProjectInfo, extract: => InstallExtractProject) extends PluginProject(info)
 {
 	private lazy val extractProject = extract
-	override def crossScalaVersions = Set("2.7.2", "2.7.3", "2.7.4", "2.7.5")
 	override def mainResources = super.mainResources +++ extractProject.outputJar +++ extractLocation
 	
 	def extractLocation = (outputPath ##) / "extract.location"
 	lazy val writeProperties = task { FileUtilities.write(extractLocation.asFile, extractProject.outputJar.relativePath, Charset.forName("UTF-8"), log) }
 	override def packageAction = super.packageAction dependsOn(extractProject.proguard, writeProperties)
 	
+	override def deliverProjectDependencies = Nil
 	val publishTo = "Scala Tools Nexus" at "http://nexus.scala-tools.org/content/repositories/releases/"
 	Credentials(Path.fromFile(System.getProperty("user.home")) / ".ivy2" / ".credentials", log)
 }
