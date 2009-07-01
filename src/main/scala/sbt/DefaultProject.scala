@@ -315,8 +315,22 @@ abstract class BasicWebScalaProject extends BasicScalaProject with WebScalaProje
 	def jettyRunClasspath = testClasspath
 	def jettyWebappPath = temporaryWarPath
 	lazy val jettyRun = jettyRunAction
+	lazy val jetty = task { idle() } dependsOn(jettyRun) describedAs(JettyDescription)
 	protected def jettyRunAction =
 		jettyRunTask(jettyWebappPath, jettyContextPath, jettyPort, jettyRunClasspath, "test", scanDirectories.map(_.asFile), scanInterval) dependsOn(prepareWebapp) describedAs(JettyRunDescription)
+	private def idle() =
+	{
+		log.info("Waiting... (press any key to interrupt)")
+		def doWait()
+		{
+			try { Thread.sleep(1000) } catch { case _: InterruptedException => () }
+			if(System.in.available() <= 0)
+				doWait()
+		}
+		doWait()
+		while (System.in.available() > 0) System.in.read()
+		None
+	}
 		
 	/** The directories that should be watched to determine if the web application needs to be reloaded..*/
 	def scanDirectories: Seq[Path] = jettyWebappPath :: Nil
@@ -408,6 +422,8 @@ object BasicWebScalaProject
 		"Stops the Jetty server that was started with the jetty-run action."
 	val JettyRunDescription =
 		"Starts the Jetty server and serves this project as a web application."
+	val JettyDescription =
+		"Starts the Jetty server and serves this project as a web application.  Waits until interrupted, so it is suitable to call this batch-style."
 }
 /** Analyzes the dependencies of a project after compilation.  All methods except `snapshot` return a
 * `PathFinder`.  The underlying calculations are repeated for each call to PathFinder.get. */
