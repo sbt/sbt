@@ -5,7 +5,7 @@ import scala.xml.NodeSeq
 
 /** Support for compiling sbt across multiple versions of Scala.  The scala compiler is run in a
 * separate JVM and no partial compilation is done.*/
-abstract class CrossCompileProject extends BasicScalaProject
+abstract class CrossCompileProject extends BasicScalaProject with MavenStyleScalaPaths
 {
 	/** Used for 2.8.0-SNAPSHOT*/
 	val scalaToolsSnapshots = "Scala Tools Snapshots" at "http://scala-tools.org/repo-snapshots"
