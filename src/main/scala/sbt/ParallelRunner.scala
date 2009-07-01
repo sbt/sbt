@@ -48,6 +48,21 @@ object ParallelRunner
 		new DagScheduler(info, defaultStrategy(info))
 	}
 	private def defaultStrategy[D <: Dag[D]](info: DagInfo[D]) = MaxPathStrategy((d: D) => 1, info)
+	def emptyScheduler[D]: Scheduler[D] =
+		new Scheduler[D]
+		{
+			/** Starts a new run.  The returned object is a new Run, representing a single scheduler run.  All state for the run
+			* is encapsulated in this object.*/
+			def run: Run = new Run
+			{
+				def complete(d: D, result: Option[String]) {}
+				def hasPending = false
+				/**Returns true if this scheduler has no more work to be done, ever.*/
+				def isComplete = true
+				def next(max: Int) = Nil
+				def failures = Nil
+			}
+		}
 }
 /** Requests work from `scheduler` and processes it using `doWork`.  This class limits the amount of work processing at any given time
 * to `workers`.*/
@@ -161,6 +176,9 @@ private trait ScheduleStrategy[D] extends NotNull
 		/** Provides up to `max` units of work.  `max` is always positive and this method is not called
 		* if hasReady is false. The returned list cannot be empty is there is work ready to be run.*/
 		def next(max: Int): List[D]
+		/** If this strategy returns different work from `next` than is provided to `workReady`,
+		* this method must map back to the original work.*/
+		def reverseMap(dep: D): Iterable[D]
 	}
 }
 
@@ -184,12 +202,15 @@ private[sbt] final class DagScheduler[D <: Dag[D]](info: DagInfo[D], strategy: S
 		def next(max: Int) = strategyRun.next(max)
 		def complete(work: D, result: Option[String])
 		{
-			result match
+			for(originalWork <- strategyRun.reverseMap(work))
 			{
-				case None => infoRun.complete(work, strategyRun.workReady)
-				case Some(errorMessage) =>
-					infoRun.clear(work)
-					failures += WorkFailure(work, errorMessage)
+				result match
+				{
+					case None => infoRun.complete(originalWork, strategyRun.workReady)
+					case Some(errorMessage) =>
+						infoRun.clear(originalWork)
+						failures += WorkFailure(originalWork, errorMessage)
+				}
 			}
 		}
 		def isComplete = !strategyRun.hasReady && infoRun.reverseDepsRun.isEmpty
@@ -253,6 +274,7 @@ private class OrderedStrategy[D](ready: TreeSet[D]) extends ScheduleStrategy[D]
 		}
 		def workReady(dep: D) { readyRun += dep }
 		def hasReady = !readyRun.isEmpty
+		def reverseMap(dep: D) = dep :: Nil
 	}
 }
 /** A class that represents state for a DagScheduler and that MaxPathStrategy uses to initialize an OrderedStrategy. */
@@ -456,7 +478,14 @@ private object CompoundScheduler
 private final class FinalWork[D](val compound: D, val doFinally: Scheduler[D]) extends NotNull
 /** This represents nested work.  The work provided by `scheduler` is processed first.  The work provided by `doFinally` is processed
 * after `scheduler` completes regardless of the success of `scheduler`.*/
-final class SubWork[D](val scheduler: Scheduler[D], val doFinally: Scheduler[D]) extends NotNull
+final class SubWork[D] private (val scheduler: Scheduler[D], val doFinally: Scheduler[D]) extends NotNull
+object SubWork
+{
+	def apply[D](scheduler: Scheduler[D], doFinally: Scheduler[D]): SubWork[D] = new SubWork(scheduler, doFinally)
+	def apply[D](scheduler: Scheduler[D]): SubWork[D] = SubWork(scheduler, ParallelRunner.emptyScheduler)
+	def apply[D <: Dag[D]](node: D): SubWork[D] = SubWork(ParallelRunner.dagScheduler(node))
+	def apply[D <: Dag[D]](node: D, doFinally: D): SubWork[D] = SubWork(ParallelRunner.dagScheduler(node), ParallelRunner.dagScheduler(doFinally))
+}
 /** Work that implements this interface provides nested work to be done before this work is processed.*/
 trait CompoundWork[D] extends NotNull
 {

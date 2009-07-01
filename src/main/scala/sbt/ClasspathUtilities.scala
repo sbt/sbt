@@ -14,7 +14,9 @@ private[sbt] object ClasspathUtilities
 	def toClasspath(finder: PathFinder): Array[URL] = toClasspath(finder.get)
 	def toClasspath(paths: Iterable[Path]): Array[URL] = paths.map(_.asURL).toSeq.toArray
 	def toLoader(finder: PathFinder): ClassLoader = toLoader(finder.get)
+	def toLoader(finder: PathFinder, parent: ClassLoader): ClassLoader = toLoader(finder.get, parent)
 	def toLoader(paths: Iterable[Path]): ClassLoader = new URLClassLoader(toClasspath(paths), getClass.getClassLoader)
+	def toLoader(paths: Iterable[Path], parent: ClassLoader): ClassLoader = new URLClassLoader(toClasspath(paths), parent)
 	
 	def isArchive(path: Path): Boolean = isArchive(path.asFile)
 	def isArchive(file: File): Boolean = isArchiveName(file.getName)

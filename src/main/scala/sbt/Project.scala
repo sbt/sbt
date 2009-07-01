@@ -4,6 +4,7 @@
 package sbt
 
 import java.io.File
+import java.net.URLClassLoader
 import scala.collection._
 import FileUtilities._
 import Project._
@@ -289,24 +290,26 @@ object Project
 		loadProject(path.asFile, deps, parent, log)
 	/** Loads the project in the directory given by 'projectDirectory' and with the given dependencies.*/
 	private[sbt] def loadProject(projectDirectory: File, deps: Iterable[Project], parent: Option[Project], log: Logger): LoadResult =
+		loadProject(projectDirectory, deps, parent, getClass.getClassLoader, log)
+	private[sbt] def loadProject(projectDirectory: File, deps: Iterable[Project], parent: Option[Project], additional: ClassLoader, log: Logger): LoadResult =
 	{
 		val info = ProjectInfo(projectDirectory, deps, parent)
 		ProjectInfo.setup(info, log) match
 		{
 			case err: SetupError => new LoadSetupError(err.message)
 			case SetupDeclined => LoadSetupDeclined
-			case AlreadySetup => loadProject(info, None, log)
-			case setup: SetupInfo => loadProject(info, Some(setup), log)
+			case AlreadySetup => loadProject(info, None, additional, log)
+			case setup: SetupInfo => loadProject(info, Some(setup), additional, log)
 		}
 	}
-	private def loadProject(info: ProjectInfo, setupInfo: Option[SetupInfo], log: Logger): LoadResult =
+	private def loadProject(info: ProjectInfo, setupInfo: Option[SetupInfo], additional: ClassLoader, log: Logger): LoadResult =
 	{
 		try
 		{
 			val oldLevel = log.getLevel
 			log.setLevel(Level.Warn)
 			val result =
-				for(builderClass <- getProjectDefinition(info, log).right) yield
+				for(builderClass <- getProjectDefinition(info, additional, log).right) yield
 					initialize(constructProject(info, builderClass), setupInfo, log)
 			log.setLevel(oldLevel)
 			result.fold(new LoadError(_), new LoadSuccess(_))
@@ -367,16 +370,17 @@ object Project
 	}
 	/** Compiles the project definition classes and returns the project definition class name
 	* and the class loader that should be used to load the definition. */
-	private def getProjectDefinition(info: ProjectInfo, buildLog: Logger): Either[String, Class[P] forSome { type P <: Project }] =
+	private def getProjectDefinition(info: ProjectInfo, additional: ClassLoader, buildLog: Logger): Either[String, Class[P] forSome { type P <: Project }] =
 	{
 		val builderProjectPath = info.builderPath / BuilderProjectDirectoryName
 		if(builderProjectPath.asFile.isDirectory)
 		{
 			val pluginProjectPath = info.builderPath / PluginProjectDirectoryName
-			val builderProject = new BuilderProject(ProjectInfo(builderProjectPath.asFile, Nil, None), pluginProjectPath, buildLog)
+			val additionalPaths = additional match { case u: URLClassLoader => u.getURLs.map(url => Path.fromFile(new File(url.toURI))); case _ => Nil }
+			val builderProject = new BuilderProject(ProjectInfo(builderProjectPath.asFile, Nil, None), pluginProjectPath, additionalPaths, buildLog)
 			builderProject.compile.run.toLeft(()).right.flatMap { ignore =>
 				builderProject.projectDefinition.right.map {
-					case Some(definition) => getProjectClass[Project](definition, builderProject.projectClasspath)
+					case Some(definition) => getProjectClass[Project](definition, builderProject.projectClasspath, additional)
 					case None => DefaultBuilderClass
 				}
 			}
@@ -435,9 +439,9 @@ object Project
 		}
 	}
 	import scala.reflect.Manifest
-	private[sbt] def getProjectClass[P <: Project](name: String, classpath: PathFinder)(implicit mf: Manifest[P]): Class[P] =
+	private[sbt] def getProjectClass[P <: Project](name: String, classpath: PathFinder, additional: ClassLoader)(implicit mf: Manifest[P]): Class[P] =
 	{
-		val loader =ClasspathUtilities.toLoader(classpath)
+		val loader =ClasspathUtilities.toLoader(classpath, additional)
 		val builderClass = Class.forName(name, false, loader)
 		val projectClass = mf.erasure
 		require(projectClass.isAssignableFrom(builderClass), "Builder class '" + builderClass + "' does not extend " + projectClass.getName + ".")

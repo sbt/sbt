@@ -26,8 +26,10 @@ object Resources
 	private val LoadErrorPrefix = "Error loading initial project: "
 }
 
-class Resources(val baseDirectory: File)
+class Resources(val baseDirectory: File, additional: ClassLoader)
 {
+	def this(baseDirectory: File) = this(baseDirectory, getClass.getClassLoader)
+	
 	import Resources._
 	// The returned directory is not actually read-only, but it should be treated that way
 	def readOnlyResourceDirectory(group: String, name: String): Either[String, File] =
@@ -85,7 +87,7 @@ class Resources(val baseDirectory: File)
 				}
 				
 				buffered.startRecording()
-				resultToEither(Project.loadProject(dir, Nil, None, buffered)) match
+				resultToEither(Project.loadProject(dir, Nil, None, additional, buffered)) match
 				{
 					case Left(msg) =>
 						reload match

@@ -192,7 +192,7 @@ object Main
 	private def interactive(baseProject: Project): RunCompleteAction =
 	{
 		val projectNames = baseProject.topologicalSort.map(_.name)
-		val prefixes = ContinuousExecutePrefix :: Nil
+		val prefixes = ContinuousExecutePrefix :: CrossBuildPrefix :: Nil
 		val completors = new Completors(ProjectAction, projectNames, interactiveCommands, List(GetAction, SetAction), prefixes)
 		val reader = new JLineReader(baseProject.historyPath, completors, baseProject.log)
 		def updateTaskCompletions(project: Project)
@@ -221,7 +221,10 @@ object Main
 					else if(ReloadAction == trimmed)
 						Reload
 					else if(RebootCommand == trimmed)
+					{
+						System.setProperty(ScalaVersion.LiveKey, "")
 						new Exit(RebootExitCode)
+					}
 					else if(trimmed.startsWith(CrossBuildPrefix))
 					{
 						if(startCrossBuild(currentProject, trimmed.substring(CrossBuildPrefix.length).trim))

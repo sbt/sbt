@@ -106,7 +106,7 @@ private sealed abstract class BasicBuilderProject extends InternalProject with S
 	override final def methods = Map.empty
 }
 /** The project definition used to build project definitions. */
-private final class BuilderProject(val info: ProjectInfo, val pluginPath: Path, override protected val logImpl: Logger) extends BasicBuilderProject
+private final class BuilderProject(val info: ProjectInfo, val pluginPath: Path, additional: Iterable[Path], override protected val logImpl: Logger) extends BasicBuilderProject
 {
 	private lazy val pluginProject =
 	{
@@ -115,11 +115,13 @@ private final class BuilderProject(val info: ProjectInfo, val pluginPath: Path, 
 		else
 			None
 	}
-	override def projectClasspath = super.projectClasspath +++ pluginProject.map(_.pluginClasspath).getOrElse(Path.emptyPathFinder)
+	override def projectClasspath = super.projectClasspath +++
+		pluginProject.map(_.pluginClasspath).getOrElse(Path.emptyPathFinder) +++
+		Path.lazyPathFinder{ additional }
 	def tpe = "project definition"
 
 	override def compileTask = super.compileTask dependsOn(pluginProject.map(_.syncPlugins).toList : _*)
-		
+
 	final class PluginBuilderProject(val info: ProjectInfo) extends BasicBuilderProject
 	{
 		override protected def logImpl = BuilderProject.this.log
@@ -158,7 +160,7 @@ private final class BuilderProject(val info: ProjectInfo, val pluginPath: Path, 
 				case Some(definition) =>
 					logInfo("\nUpdating plugins")
 					val pluginInfo = ProjectInfo(info.projectPath.asFile, Nil, None)
-					val pluginBuilder = Project.constructProject(pluginInfo, Project.getProjectClass[PluginDefinition](definition, projectClasspath))
+					val pluginBuilder = Project.constructProject(pluginInfo, Project.getProjectClass[PluginDefinition](definition, projectClasspath, getClass.getClassLoader))
 					pluginBuilder.projectName() = "Plugin builder"
 					pluginBuilder.projectVersion() = OpaqueVersion("1.0")
 					val result = pluginBuilder.update.run
@@ -203,7 +205,7 @@ class PluginDefinition(val info: ProjectInfo) extends InternalProject with Basic
 class PluginProject(info: ProjectInfo) extends DefaultProject(info)
 {
 	override def unmanagedClasspath = super.unmanagedClasspath +++ Path.lazyPathFinder(Path.fromFile(FileUtilities.sbtJar) :: Nil)
-	override def packageAction = packageSrc
+	override def packageAction = packageSrc dependsOn(test)
 	override def packageSrcJar = jarPath
 	override def useMavenConfigurations = true
 	override def managedStyle = ManagedStyle.Maven

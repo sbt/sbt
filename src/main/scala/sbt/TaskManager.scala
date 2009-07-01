@@ -77,6 +77,7 @@ trait TaskManager{
 			interactive: Boolean, action : => Option[String]) = new CompoundTask(explicitName, description, dependencies, interactive, action, createWork)
 		def work = createWork
 	}
+	def compoundTask(createTask: => Project#Task) = new CompoundTask(SubWork[Project#Task](createTask))
 	
 	private def checkTaskDependencies(dependencyList: List[ManagedTask])
 	{

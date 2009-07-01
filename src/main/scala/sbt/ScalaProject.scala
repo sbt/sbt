@@ -54,7 +54,7 @@ trait SimpleScalaProject extends Project
 			}
 		}
 }
-trait ScalaProject extends SimpleScalaProject with FileTasks
+trait ScalaProject extends SimpleScalaProject with FileTasks with MultiTaskProject
 {
 	import ScalaProject._
 	
@@ -149,7 +149,7 @@ trait ScalaProject extends SimpleScalaProject with FileTasks
 			val endTasks = end.map(toTask).toSeq // tasks that perform test cleanup and are run regardless of success of tests
 			val endTask = task { None } named("test-cleanup") dependsOn(endTasks : _*)
 			val rootTask = task { None } named("test-complete") dependsOn(workTasks.toSeq : _*) // the task that depends on all test subtasks
-			new SubWork[Project#Task](ParallelRunner.dagScheduler(rootTask), ParallelRunner.dagScheduler(endTask))
+			SubWork[Project#Task](rootTask, endTask)
 		}
 		new CompoundTask(work)
 	}
@@ -263,22 +263,9 @@ trait ScalaProject extends SimpleScalaProject with FileTasks
 	private def flatten[T](i: Iterable[Iterable[T]]) = i.flatMap(x => x)
 	
 	protected def testQuickMethod(testAnalysis: CompileAnalysis, options: => Seq[TestOption])(toRun: Seq[TestOption] => Task) =
-		task { tests =>
-			val (exactFilters, testFilters) = tests.toList.map(GlobFilter.apply).partition(_.isInstanceOf[ExactFilter])
-			val includeTests = exactFilters.map(_.asInstanceOf[ExactFilter].matchName)
-			val toCheck = scala.collection.mutable.HashSet(includeTests: _*)
-			toCheck --= testAnalysis.allTests.map(_.testClassName)
-			if(!toCheck.isEmpty && log.atLevel(Level.Warn))
-			{
-				log.warn("Test(s) not found:")
-				toCheck.foreach(test => log.warn("\t" + test))
-			}
-			val includeTestsSet = scala.collection.mutable.HashSet(includeTests: _*)
-			val newOptions =
-				if(includeTests.isEmpty && testFilters.isEmpty) options
-				else TestFilter(test => includeTestsSet.contains(test) || testFilters.exists(_.accept(test))) :: options.toList
-			toRun(newOptions)
-		} completeWith testAnalysis.allTests.map(_.testClassName).toList
+		multiTask(testAnalysis.allTests.map(_.testClassName).toList) { includeFunction =>
+			toRun(TestFilter(includeFunction) :: options.toList)
+		}
 		
 	protected final def maximumErrors[T <: ActionOption](options: Seq[T]) =
 		(for( MaxCompileErrors(maxErrors) <- options) yield maxErrors).firstOption.getOrElse(DefaultMaximumCompileErrors)
@@ -342,4 +329,23 @@ object ScalaProject
 	val TestResourcesProperty = "sbt.test.resources"
 	def optionsAsString(options: Seq[ScalaProject#CompileOption]) = options.map(_.asString).filter(!_.isEmpty)
 	def javaOptionsAsString(options: Seq[ScalaProject#JavaCompileOption]) = options.map(_.asString)
+}
+trait MultiTaskProject extends Project
+{
+	def multiTask(allTests: => List[String])(run: (String => Boolean) => Task) =
+		task { tests =>
+			val (exactFilters, testFilters) = tests.toList.map(GlobFilter.apply).partition(_.isInstanceOf[ExactFilter])
+			val includeTests = exactFilters.map(_.asInstanceOf[ExactFilter].matchName)
+			val toCheck = scala.collection.mutable.HashSet(includeTests: _*)
+			toCheck --= allTests
+			if(!toCheck.isEmpty && log.atLevel(Level.Warn))
+			{
+				log.warn("Test(s) not found:")
+				toCheck.foreach(test => log.warn("\t" + test))
+			}
+			val includeTestsSet = Set(includeTests: _*)
+			val includeFunction = (test: String) => includeTestsSet.contains(test) || testFilters.exists(_.accept(test))
+			run(includeFunction)
+		} completeWith allTests
+	
 }
