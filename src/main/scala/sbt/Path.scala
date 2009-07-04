@@ -264,6 +264,8 @@ sealed abstract class PathFinder extends NotNull
 		addTo(pathSet)
 		wrap.Wrappers.readOnly(pathSet)
 	}
+	final def getFiles: scala.collection.Set[File] = Set( get.map(_.asFile).toSeq : _*)
+	final def getPaths: scala.collection.Set[String] = Set( get.map(_.absolutePath).toSeq : _*)
 	private[sbt] def addTo(pathSet: Set[Path])
 }
 private class BasePathFinder(base: PathFinder) extends PathFinder

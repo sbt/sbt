@@ -53,6 +53,15 @@ trait SimpleScalaProject extends Project
 				pathClean orElse restored
 			}
 		}
+	def execTask(command: => ProcessBuilder): Task =
+		task
+		{
+			val exitValue = command ! log
+			if(exitValue == 0)
+				None
+			else
+				Some("Nonzero exit value: " + exitValue)
+		}
 }
 trait ScalaProject extends SimpleScalaProject with FileTasks with MultiTaskProject
 {
