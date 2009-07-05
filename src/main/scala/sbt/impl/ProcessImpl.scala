@@ -292,7 +292,19 @@ private class PipeSink(pipe: PipedInputStream, currentSink: SyncVar[Option[Outpu
 	}
 }
 
-
+private[sbt] class DummyProcessBuilder(override val toString: String, exitValue : => Int) extends AbstractProcessBuilder
+{
+	override def run(io: ProcessIO): Process = new DummyProcess(exitValue)
+	override def canPipeTo = true
+}
+/** A thin wrapper around a java.lang.Process.  `ioThreads` are the Threads created to do I/O.
+* The implementation of `exitValue` waits until these threads die before returning. */
+private class DummyProcess(action: => Int) extends Process
+{
+	private[this] val exitCode = scala.concurrent.ops.future(action)
+	override def exitValue() = exitCode()
+	override def destroy() {}
+}
 /** Represents a simple command without any redirection or combination. */
 private[sbt] class SimpleProcessBuilder(p: JProcessBuilder) extends AbstractProcessBuilder
 {

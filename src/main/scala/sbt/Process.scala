@@ -17,7 +17,9 @@ object Process
 	implicit def apply(builder: JProcessBuilder): ProcessBuilder = new SimpleProcessBuilder(builder)
 	implicit def apply(file: File): FilePartialBuilder = new FileBuilder(file)
 	implicit def apply(url: URL): URLPartialBuilder = new URLBuilder(url)
-	implicit def apply(command: scala.xml.Elem): ProcessBuilder = apply(command.text)
+	implicit def apply(command: scala.xml.Elem): ProcessBuilder = apply(command.text.trim)
+	def apply(value: Boolean): ProcessBuilder = apply(value.toString, if(value) 0 else 1)
+	def apply(name: String, exitValue: => Int): ProcessBuilder = new DummyProcessBuilder(name, exitValue)
 }
 
 trait URLPartialBuilder extends NotNull

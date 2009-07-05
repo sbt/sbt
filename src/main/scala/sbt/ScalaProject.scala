@@ -53,9 +53,11 @@ trait SimpleScalaProject extends Project
 				pathClean orElse restored
 			}
 		}
-	def execTask(command: => ProcessBuilder): Task =
+	def execTask(buildCommand: => ProcessBuilder): Task =
 		task
 		{
+			val command = buildCommand
+			log.debug("Executing command " + command)
 			val exitValue = command ! log
 			if(exitValue == 0)
 				None
