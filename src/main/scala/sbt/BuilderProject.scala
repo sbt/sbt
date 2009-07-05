@@ -181,7 +181,7 @@ private final class BuilderProject(val info: ProjectInfo, val pluginPath: Path, 
 			managedSourcePath / name.substring(0, name.length - ".jar".length)
 		}
 		def plugins = descendents(managedDependencyPath, jarFilter)
-		def pluginClasspath = plugins +++ pluginCompileConfiguration.outputDirectory
+		def pluginClasspath: PathFinder = plugins +++ pluginCompileConfiguration.outputDirectory
 		
 		lazy val pluginCompileConditional = new BuilderCompileConditional(pluginCompileConfiguration, "plugin")
 		lazy val pluginCompileConfiguration =
@@ -190,7 +190,7 @@ private final class BuilderProject(val info: ProjectInfo, val pluginPath: Path, 
 				def label = "plugin builder"
 				def sources = descendents(managedSourcePath, sourceFilter)
 				def outputDirectory = outputPath / "plugin-classes"
-				def classpath = sbtJarPath
+				def classpath: PathFinder = pluginClasspath +++ sbtJarPath
 				def analysisPath = outputPath / "plugin-analysis"
 			}
 	}
