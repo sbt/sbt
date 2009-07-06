@@ -132,7 +132,9 @@ abstract class BasicScalaProject extends ScalaProject with BasicDependencyProjec
 	/** This returns the unmanaged classpath for only this project for the given configuration.  It by
 	* default includes the main compiled classes for this project and the libraries in this project's
 	* unmanaged library directory (lib) and the managed directory for the specified configuration.  It
-	* also adds the resource directories appropriate to the configuration.*/
+	* also adds the resource directories appropriate to the configuration.
+	* The Provided and Optional configurations are treated specially; they are empty
+	* by default.*/
 	def fullUnmanagedClasspath(config: Configuration) =
 	{
 		config match
@@ -140,6 +142,7 @@ abstract class BasicScalaProject extends ScalaProject with BasicDependencyProjec
 			case CompilerPlugin => unmanagedClasspath
 			case Runtime => runUnmanagedClasspath
 			case Test => testUnmanagedClasspath
+			case Provided | Optional => Path.emptyPathFinder
 			case _ => mainUnmanagedClasspath
 		}
 	}
