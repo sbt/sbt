@@ -58,7 +58,7 @@ trait SimpleScalaProject extends Project
 		{
 			val command = buildCommand
 			log.debug("Executing command " + command)
-			val exitValue = command ! log
+			val exitValue = command.run(log).exitValue() // don't buffer output
 			if(exitValue == 0)
 				None
 			else

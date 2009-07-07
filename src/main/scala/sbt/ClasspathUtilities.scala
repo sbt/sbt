@@ -52,7 +52,7 @@ private[sbt] object ClasspathUtilities
 		{
 			url.getProtocol match
 			{
-				case "file" => new File(url.toURI) :: Nil
+				case "file" => FileUtilities.toFile(url) :: Nil
 				case "jar" =>
 					val path = url.getPath
 					val end = path.indexOf('!')

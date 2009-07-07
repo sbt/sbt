@@ -16,7 +16,7 @@ object Resources
 			throw new Exception("Resource base directory '" + basePath + "' not on classpath.")
 		else
 		{
-			val file = new File(resource.toURI)
+			val file = toFile(resource)
 			if(file.exists)
 				new Resources(file)
 			else

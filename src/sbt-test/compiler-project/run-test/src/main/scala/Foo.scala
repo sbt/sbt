@@ -6,7 +6,7 @@ import scala.tools.nsc.{Interpreter, Settings}
 
 class Foo {
 	val settings = new Settings()
-	settings.classpath.value = new java.io.File(classOf[Holder].getProtectionDomain.getCodeSource.getLocation.toURI).getAbsolutePath
+	settings.classpath.value = FileUtilities.toFile(classOf[Holder].getProtectionDomain.getCodeSource.getLocation).getAbsolutePath
 	val inter = new Interpreter(settings)
 
 	def eval(code: String): Any = {

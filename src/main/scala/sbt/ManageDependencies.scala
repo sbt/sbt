@@ -37,14 +37,17 @@ final class IvyPaths(val projectDirectory: Path, val managedLibDirectory: Path, 
 final class IvyFlags(val validate: Boolean, val addScalaTools: Boolean, val errorIfNoConfiguration: Boolean) extends NotNull
 final class IvyConfiguration(val paths: IvyPaths, val manager: Manager, val flags: IvyFlags, val ivyScala: Option[IvyScala], val log: Logger) extends NotNull
 final class UpdateConfiguration(val outputPattern: String, val synchronize: Boolean, val quiet: Boolean) extends NotNull
+object ScalaArtifacts
+{
+	val Organization = "org.scala-lang"
+	val LibraryID = "scala-library"
+	val CompilerID = "scala-compiler"
+}
 object ManageDependencies
 {
 	val DefaultIvyConfigFilename = "ivysettings.xml"
 	val DefaultIvyFilename = "ivy.xml"
 	val DefaultMavenFilename = "pom.xml"
-	val ScalaOrganization = "org.scala-lang"
-	val ScalaLibraryID = "scala-library"
-	val ScalaCompilerID = "scala-compiler"
 	
 	private def defaultIvyFile(project: Path) = project / DefaultIvyFilename
 	private def defaultIvyConfiguration(project: Path) = project / DefaultIvyConfigFilename
@@ -280,7 +283,7 @@ object ManageDependencies
 		Control.lazyFold(module.getDependencies.toList)
 		{ dep =>
 			val id = dep.getDependencyRevisionId
-			if(id.getOrganisation == ScalaOrganization && id.getRevision != scalaVersion && dep.getModuleConfigurations.exists(configSet.contains))
+			if(id.getOrganisation == ScalaArtifacts.Organization && id.getRevision != scalaVersion && dep.getModuleConfigurations.exists(configSet.contains))
 				Some("Different Scala version specified in dependency ("+ id.getRevision + ") than in project (" + scalaVersion + ").")
 			else
 				None
@@ -307,9 +310,9 @@ object ManageDependencies
 			}
 		}
 		def excludeScalaJar(name: String)
-			{ module.addExcludeRule(excludeRule(ScalaOrganization, name, configurationNames)) }
-		excludeScalaJar(ScalaLibraryID)
-		excludeScalaJar(ScalaCompilerID)
+			{ module.addExcludeRule(excludeRule(ScalaArtifacts.Organization, name, configurationNames)) }
+		excludeScalaJar(ScalaArtifacts.LibraryID)
+		excludeScalaJar(ScalaArtifacts.CompilerID)
 	}
 	private def configureCache(settings: IvySettings)
 	{

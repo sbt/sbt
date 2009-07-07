@@ -57,12 +57,25 @@ trait ProcessBuilder extends NotNull
 	/** Starts the process represented by this builder, blocks until it exits, and returns the exit code.  Standard output and error are
 	* sent to the given Logger.*/
 	def !(log: Logger): Int
+	/** Starts the process represented by this builder, blocks until it exits, and returns the exit code.  Standard output and error are
+	* sent to the console.  The newly started process reads from standard input of the current process if `connectInput` is true.*/
+	def !< : Int
+	/** Starts the process represented by this builder, blocks until it exits, and returns the exit code.  Standard output and error are
+	* sent to the given Logger.  The newly started process reads from standard input of the current process if `connectInput` is true.*/
+	def !<(log: Logger) : Int
 	/** Starts the process represented by this builder.  Standard output and error are sent to the console.*/
 	def run(): Process
 	/** Starts the process represented by this builder.  Standard output and error are sent to the given Logger.*/
 	def run(log: Logger): Process
 	/** Starts the process represented by this builder.  I/O is handled by the given ProcessIO instance.*/
 	def run(io: ProcessIO): Process
+	/** Starts the process represented by this builder.  Standard output and error are sent to the console.
+	* The newly started process reads from standard input of the current process if `connectInput` is true.*/
+	def run(connectInput: Boolean): Process
+	/** Starts the process represented by this builder, blocks until it exits, and returns the exit code.  Standard output and error are
+	* sent to the given Logger.
+	* The newly started process reads from standard input of the current process if `connectInput` is true.*/
+	def run(log: Logger, connectInput: Boolean): Process
 
 	/** Constructs a command that runs this command first and then `other` if this command succeeds.*/
 	def #&& (other: ProcessBuilder): ProcessBuilder

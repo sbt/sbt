@@ -248,13 +248,12 @@ final class BufferedLogger(delegate: Logger) extends Logger
 
 object ConsoleLogger
 {
-	private def os = System.getProperty("os.name")
-	private def isWindows = os.toLowerCase.indexOf("windows") >= 0
-	private def formatExplicitlyDisabled = java.lang.Boolean.getBoolean("sbt.log.noformat")
-	private val formatEnabled = !(formatExplicitlyDisabled || isWindows)
+	private[this] def formatExplicitlyDisabled = java.lang.Boolean.getBoolean("sbt.log.noformat")
+	private[this] def ansiSupported = jline.Terminal.getTerminal.isANSISupported
+	private val formatEnabled = ansiSupported && !formatExplicitlyDisabled
 }
 
-/** A logger that logs to the console.  On non-windows systems, the level labels are
+/** A logger that logs to the console.  On supported systems, the level labels are
 * colored. 
 *
 * This logger is not thread-safe.*/

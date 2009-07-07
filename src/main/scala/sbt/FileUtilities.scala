@@ -7,7 +7,7 @@ import java.io.{Closeable, File, FileInputStream, FileOutputStream, InputStream,
 import java.io.{ByteArrayOutputStream, InputStreamReader, OutputStreamWriter}
 import java.io.{BufferedReader, BufferedWriter, FileReader, FileWriter, Reader, Writer}
 import java.util.zip.{GZIPInputStream, GZIPOutputStream}
-import java.net.URL
+import java.net.{URL, URISyntaxException}
 import java.nio.charset.{Charset, CharsetDecoder, CharsetEncoder}
 import java.nio.channels.FileChannel
 import java.util.jar.{Attributes, JarEntry, JarFile, JarInputStream, JarOutputStream, Manifest}
@@ -787,11 +787,15 @@ object FileUtilities
 		writer.write(line)
 		writer.write(Newline)
 	}
+
+	def toFile(url: URL) =
+		try { new File(url.toURI) }
+		catch { case _: URISyntaxException => new File(url.getPath) }
 	
 	/** The directory in which temporary files are placed.*/
 	val temporaryDirectory = new File(System.getProperty("java.io.tmpdir"))
 	def classLocation(cl: Class[_]): URL = cl.getProtectionDomain.getCodeSource.getLocation
-	def classLocationFile(cl: Class[_]): File = new File(classLocation(cl).toURI)
+	def classLocationFile(cl: Class[_]): File = toFile(classLocation(cl))
 	def classLocation[T](implicit mf: scala.reflect.Manifest[T]): URL = classLocation(mf.erasure)
 	def classLocationFile[T](implicit mf: scala.reflect.Manifest[T]): File = classLocationFile(mf.erasure)
 	

@@ -55,8 +55,10 @@ object Run extends ScalaRun
 				log.info("")
 				Control.trapUnit("Error during session: ", log)
 				{
-					val loop = new InterpreterLoop
-					executeTrapExit(loop.main(settings), log)
+					JLine.withJLine {
+						val loop = new InterpreterLoop
+						executeTrapExit(loop.main(settings), log)
+					}
 				}
 			}
 		}
@@ -128,8 +130,10 @@ object Run extends ScalaRun
 			log.info("")
 			Control.trapUnit("Error during session: ", log)
 			{
-				val loop = new ProjectInterpreterLoop(compilerSettings, project)
-				executeTrapExit(loop.main(interpreterSettings), log)
+				JLine.withJLine {
+					val loop = new ProjectInterpreterLoop(compilerSettings, project)
+					executeTrapExit(loop.main(interpreterSettings), log)
+				}
 			}
 		}}
 	}

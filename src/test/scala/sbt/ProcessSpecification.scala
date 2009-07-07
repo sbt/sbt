@@ -86,6 +86,6 @@ object ProcessSpecification extends Properties("Process I/O")
 		"java -cp " + thisClasspath + " " + command
 	}
 	private def getSource[T](implicit mf: scala.reflect.Manifest[T]): String =
-		(new File(mf.erasure.getProtectionDomain.getCodeSource.getLocation.toURI)).getAbsolutePath
+		(FileUtilities.toFile(mf.erasure.getProtectionDomain.getCodeSource.getLocation)).getAbsolutePath
 }
 private trait SourceTag

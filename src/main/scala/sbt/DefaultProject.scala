@@ -300,8 +300,8 @@ abstract class BasicScalaProject extends ScalaProject with BasicDependencyProjec
 	override def deliverScalaDependencies: Iterable[ModuleID] =
 	{
 		val snapshot = mainDependencies.snapshot
-		mapScalaModule(snapshot.scalaLibrary, ManageDependencies.ScalaLibraryID) ++
-		mapScalaModule(snapshot.scalaCompiler, ManageDependencies.ScalaCompilerID)
+		mapScalaModule(snapshot.scalaLibrary, ScalaArtifacts.LibraryID) ++
+		mapScalaModule(snapshot.scalaCompiler, ScalaArtifacts.CompilerID)
 	}
 	override def watchPaths = mainSources +++ testSources +++ mainResources +++ testResources
 }
@@ -413,7 +413,7 @@ object BasicScalaProject
 	private def mapScalaModule(in: Iterable[_], id: String) =
 	{
 		ScalaVersion.current.toList.flatMap { scalaVersion => 
-			in.map(jar => ModuleID(ManageDependencies.ScalaOrganization, id, scalaVersion))
+			in.map(jar => ModuleID(ScalaArtifacts.Organization, id, scalaVersion))
 		}
 	}
 }
@@ -467,8 +467,8 @@ final class LibraryDependencies(project: Project, conditional: CompileConditiona
 }
 private object LibraryDependencies
 {
-	private def ScalaLibraryPrefix = ManageDependencies.ScalaLibraryID
-	private def ScalaCompilerPrefix = ManageDependencies.ScalaCompilerID
+	private def ScalaLibraryPrefix = ScalaArtifacts.LibraryID
+	private def ScalaCompilerPrefix = ScalaArtifacts.CompilerID
 	private def ScalaJarPrefixes = List(ScalaCompilerPrefix, ScalaLibraryPrefix)
 	private def isScalaJar(file: File) = ClasspathUtilities.isArchive(file) &&  ScalaJarPrefixes.exists(isNamed(file))
 	private def isScalaLibraryJar(file: File) = isNamed(file)(ScalaLibraryPrefix)

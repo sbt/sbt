@@ -4,7 +4,7 @@
 package sbt
 
 import java.lang.{Process => JProcess, ProcessBuilder => JProcessBuilder}
-import java.io.{BufferedReader, Closeable, InputStream, InputStreamReader, IOException, OutputStream}
+import java.io.{BufferedReader, Closeable, InputStream, InputStreamReader, IOException, OutputStream, PrintStream}
 import java.io.{PipedInputStream, PipedOutputStream}
 import java.io.{File, FileInputStream, FileOutputStream}
 import java.net.URL
@@ -25,7 +25,7 @@ private object Spawn
 
 private object BasicIO
 {
-	def apply(log: Logger) = new ProcessIO(ignoreOut, processFully(log, Level.Info), processFully(log, Level.Error))
+	def apply(log: Logger, withIn: Boolean) = new ProcessIO(input(withIn), processFully(log, Level.Info), processFully(log, Level.Error))
 
 	def ignoreOut = (i: OutputStream) => ()
 	val BufferSize = 8192
@@ -34,9 +34,13 @@ private object BasicIO
 	def processFully(processLine: String => Unit)(i: InputStream)
 	{
 		val reader = new BufferedReader(new InputStreamReader(i))
+		processLinesFully(processLine)(reader.readLine)
+	}
+	def processLinesFully(processLine: String => Unit)(readLine: () => String)
+	{
 		def readFully()
 		{
-			val line = reader.readLine()
+			val line = readLine()
 			if(line != null)
 			{
 				processLine(line)
@@ -45,7 +49,16 @@ private object BasicIO
 		}
 		readFully()
 	}
-	def standard: ProcessIO = new ProcessIO(ignoreOut, processFully(System.out.println), processFully(System.err.println))
+	def connectToIn(o: OutputStream)
+	{
+		val printer = new PrintStream(o)
+		try { processFully {x => printer.println(x); printer.flush() }(System.in) }
+		catch { case  _: InterruptedException => () }
+		finally { printer.close() }
+	}
+	def input(connect: Boolean): OutputStream => Unit = if(connect) connectToIn else ignoreOut
+	def standard(connectInput: Boolean): ProcessIO = standard(input(connectInput))
+	def standard(in: OutputStream => Unit): ProcessIO = new ProcessIO(in, processFully(System.out.println), processFully(System.err.println))
 
 	def transferFully(in: InputStream, out: OutputStream)
 	{
@@ -81,15 +94,20 @@ private abstract class AbstractProcessBuilder extends ProcessBuilder
 	def #> (f: File): ProcessBuilder = new PipedProcessBuilder(this, new FileOutput(f, false), false)
 	def #>> (f: File): ProcessBuilder = new PipedProcessBuilder(this, new FileOutput(f, true), true)
 	
-	def run(): Process = run(BasicIO.standard)
-	def run(log: Logger): Process = run(BasicIO(log))
+	def run(): Process = run(false)
+	def run(connectInput: Boolean): Process = run(BasicIO.standard(connectInput))
+	def run(log: Logger): Process = run(log, false)
+	def run(log: Logger, connectInput: Boolean): Process = run(BasicIO(log, connectInput))
 	
-	def ! = run().exitValue()
-	def !(log: Logger) =
+	def ! = run(false).exitValue()
+	def !< = run(true).exitValue()
+	def !(log: Logger) = runBuffered(log, false)
+	def !<(log: Logger) = runBuffered(log, true)
+	private[this] def runBuffered(log: Logger, connectInput: Boolean) =
 	{
 		val log2 = new BufferedLogger(log)
 		log2.startRecording()
-		try { run(log2).exitValue() }
+		try { run(log2, connectInput).exitValue() }
 		finally { log2.playAll(); log2.clearAll() }
 	}
 	def !(io: ProcessIO) = run(io).exitValue()
@@ -320,19 +338,23 @@ private[sbt] class SimpleProcessBuilder(p: JProcessBuilder) extends AbstractProc
 				Spawn(processError(process.getErrorStream)) :: Nil
 			else
 				Nil
-		new SimpleProcess(process, inThread :: outThread :: errorThread)
+		new SimpleProcess(process, inThread, outThread :: errorThread)
 	}
 	override def toString = p.command.toString
 	override def canPipeTo = true
 }
-/** A thin wrapper around a java.lang.Process.  `ioThreads` are the Threads created to do I/O.
-* The implementation of `exitValue` waits until these threads die before returning. */
-private class SimpleProcess(p: JProcess, ioThreads: Iterable[Thread]) extends Process
+/** A thin wrapper around a java.lang.Process.  `outputThreads` are the Threads created to read from the
+* output and error streams of the process.  `inputThread` is the Thread created to write to the input stream of
+* the process.
+* The implementation of `exitValue` interrupts `inputThread` and then waits until all I/O threads die before
+* returning. */
+private class SimpleProcess(p: JProcess, inputThread: Thread, outputThreads: List[Thread]) extends Process
 {
 	override def exitValue() =
 	{
 		p.waitFor() // wait for the process to terminate
-		ioThreads.foreach(_.join()) // this ensures that all output is complete before returning (waitFor does not ensure this)
+		inputThread.interrupt() // we interrupt the input thread to notify it that it can terminate
+		(inputThread :: outputThreads).foreach(_.join()) // this ensures that all output is complete before returning (waitFor does not ensure this)
 		p.exitValue()
 	}
 	override def destroy() = p.destroy()

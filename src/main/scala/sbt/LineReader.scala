@@ -14,21 +14,39 @@ import jline.ConsoleReader
 abstract class JLine extends LineReader
 {
 	protected[this] val reader: ConsoleReader
-	def readLine(prompt: String) =
+	def readLine(prompt: String) = JLine.withJLine { unsynchronizedReadLine(prompt) }
+	private[this] def unsynchronizedReadLine(prompt: String) =
 		reader.readLine(prompt) match
 		{
 			case null => None
 			case x => Some(x.trim)
 		}
 }
+private object JLine
+{
+	def terminal = jline.Terminal.getTerminal
+	def createReader() =
+		terminal.synchronized
+		{
+			val cr = new ConsoleReader
+			terminal.enableEcho()
+			cr.setBellEnabled(false)
+			cr
+		}
+	def withJLine[T](action: => T): T =
+	{
+		val t = terminal
+		t.synchronized
+		{
+			t.disableEcho()
+			try { action }
+			finally { t.enableEcho() }
+		}
+	}
+}
 object SimpleReader extends JLine
 {
-	protected[this] val reader =
-	{
-		val cr = new ConsoleReader
-		cr.setBellEnabled(false)
-		cr
-	}
+	protected[this] val reader = JLine.createReader()
 }
 class JLineReader(historyPath: Option[Path], completors: Completors, log: Logger) extends JLine
 {
