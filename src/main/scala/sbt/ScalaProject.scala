@@ -345,17 +345,25 @@ trait MultiTaskProject extends Project
 {
 	def multiTask(allTests: => List[String])(run: (String => Boolean) => Task) =
 		task { tests =>
-			val (exactFilters, testFilters) = tests.toList.map(GlobFilter.apply).partition(_.isInstanceOf[ExactFilter])
-			val includeTests = exactFilters.map(_.asInstanceOf[ExactFilter].matchName)
-			val toCheck = scala.collection.mutable.HashSet(includeTests: _*)
-			toCheck --= allTests
-			if(!toCheck.isEmpty && log.atLevel(Level.Warn))
+			def filterInclude =
 			{
-				log.warn("Test(s) not found:")
-				toCheck.foreach(test => log.warn("\t" + test))
+				val (exactFilters, testFilters) = tests.toList.map(GlobFilter.apply).partition(_.isInstanceOf[ExactFilter])
+				val includeTests = exactFilters.map(_.asInstanceOf[ExactFilter].matchName)
+				val toCheck = scala.collection.mutable.HashSet(includeTests: _*)
+				toCheck --= allTests
+				if(!toCheck.isEmpty && log.atLevel(Level.Warn))
+				{
+					log.warn("Test(s) not found:")
+					toCheck.foreach(test => log.warn("\t" + test))
+				}
+				val includeTestsSet = Set(includeTests: _*)
+				(test: String) => includeTestsSet.contains(test) || testFilters.exists(_.accept(test))
 			}
-			val includeTestsSet = Set(includeTests: _*)
-			val includeFunction = (test: String) => includeTestsSet.contains(test) || testFilters.exists(_.accept(test))
+			val includeFunction =
+				if(tests.isEmpty)
+					(test: String) => true
+				else
+					filterInclude
 			run(includeFunction)
 		} completeWith allTests
 	
