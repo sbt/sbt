@@ -15,9 +15,11 @@ import scala.concurrent.SyncVar
 /** Runs provided code in a new Thread and returns the Thread instance. */
 private object Spawn
 {
-	def apply(f: => Unit): Thread =
+	def apply(f: => Unit): Thread = apply(f, false)
+	def apply(f: => Unit, daemon: Boolean): Thread =
 	{
 		val thread = new Thread() { override def run() = { f } }
+		thread.setDaemon(daemon)
 		thread.start()
 		thread
 	}
@@ -49,18 +51,16 @@ private object BasicIO
 		}
 		readFully()
 	}
-	def connectToIn(o: OutputStream)
-	{
-		val printer = new PrintStream(o)
-		try { processFully {x => printer.println(x); printer.flush() }(System.in) }
-		catch { case  _: InterruptedException => () }
-		finally { printer.close() }
-	}
+	def connectToIn(o: OutputStream) { transferFully(System.in, o) }
 	def input(connect: Boolean): OutputStream => Unit = if(connect) connectToIn else ignoreOut
 	def standard(connectInput: Boolean): ProcessIO = standard(input(connectInput))
-	def standard(in: OutputStream => Unit): ProcessIO = new ProcessIO(in, processFully(System.out.println), processFully(System.err.println))
+	def standard(in: OutputStream => Unit): ProcessIO = new ProcessIO(in, transferFully(_, System.out), transferFully(_, System.err))
 
-	def transferFully(in: InputStream, out: OutputStream)
+	def transferFully(in: InputStream, out: OutputStream): Unit =
+		try { transferFullyImpl(in, out) }
+		catch { case  _: InterruptedException => () }
+	
+	private[this] def transferFullyImpl(in: InputStream, out: OutputStream)
 	{
 		val continueCount = 1//if(in.isInstanceOf[PipedInputStream]) 1 else 0
 		val buffer = new Array[Byte](BufferSize)
@@ -70,6 +70,7 @@ private object BasicIO
 			if(byteCount >= continueCount)
 			{
 				out.write(buffer, 0, byteCount)
+				out.flush()
 				read
 			}
 		}
@@ -331,7 +332,7 @@ private[sbt] class SimpleProcessBuilder(p: JProcessBuilder) extends AbstractProc
 		val process = p.start() // start the external process
 		import io.{writeInput, processOutput, processError}
 		// spawn threads that process the input, output, and error streams using the functions defined in `io`
-		val inThread = Spawn(writeInput(process.getOutputStream))
+		val inThread = Spawn(writeInput(process.getOutputStream), true)
 		val outThread = Spawn(processOutput(process.getInputStream))
 		val errorThread =
 			if(!p.redirectErrorStream)
@@ -352,12 +353,16 @@ private class SimpleProcess(p: JProcess, inputThread: Thread, outputThreads: Lis
 {
 	override def exitValue() =
 	{
-		p.waitFor() // wait for the process to terminate
-		inputThread.interrupt() // we interrupt the input thread to notify it that it can terminate
-		(inputThread :: outputThreads).foreach(_.join()) // this ensures that all output is complete before returning (waitFor does not ensure this)
+		try { p.waitFor() }// wait for the process to terminate
+		finally { inputThread.interrupt() } // we interrupt the input thread to notify it that it can terminate
+		outputThreads.foreach(_.join()) // this ensures that all output is complete before returning (waitFor does not ensure this)
 		p.exitValue()
 	}
-	override def destroy() = p.destroy()
+	override def destroy() =
+	{
+		try { p.destroy() }
+		finally { inputThread.interrupt() }
+	}
 }
 
 private class FileOutput(file: File, append: Boolean) extends OutputStreamBuilder(new FileOutputStream(file, append), file.getAbsolutePath)
