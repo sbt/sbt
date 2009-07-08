@@ -86,6 +86,7 @@ object Main
 	{
 		val command = "java" :: "-cp" :: loader.getAbsolutePath :: filterEmpty(install.options) ::: "sbt.boot.Boot" :: filterEmpty(install.actions)
 		val builder = new java.lang.ProcessBuilder(command.toArray : _*)
+		builder.directory(project)
 		val exitCode = (Process(builder) !<)
 		if(exitCode == 0)
 			None
