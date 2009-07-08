@@ -86,10 +86,7 @@ object Main
 	{
 		val command = "java" :: "-cp" :: loader.getAbsolutePath :: filterEmpty(install.options) ::: "sbt.boot.Boot" :: filterEmpty(install.actions)
 		val builder = new java.lang.ProcessBuilder(command.toArray : _*)
-		builder.directory(project)
-		//import BasicIO.{processFully, transferFully}
-		//val standardIO = new ProcessIO(transferFully(System.in, _, 0), processFully(System.out.println), processFully(System.err.println))
-		val exitCode = ( Process(builder) ! )//( Process(builder) run standardIO).exitValue()
+		val exitCode = (Process(builder) !<)
 		if(exitCode == 0)
 			None
 		else
