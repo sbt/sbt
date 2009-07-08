@@ -640,7 +640,7 @@ object FileUtilities
 		if(charset.newEncoder.canEncode(content))
 			write(file, charset, append, log) { w =>  w.write(content); None }
 		else
-			Some("String cannot be encoded by default charset.")
+			Some("String cannot be encoded by charset " + charset.name)
 	}
 	
 	/** Opens a <code>Writer</code> on the given file using the default encoding,
