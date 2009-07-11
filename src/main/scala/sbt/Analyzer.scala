@@ -119,9 +119,13 @@ class Analyzer(val global: Global) extends Plugin
 									case ze: ZipArchive#Entry => callback.jarDependency(new File(ze.getArchive.getName), sourcePath)
 									case pf: PlainFile =>
 									{
-										 // ignore dependencies in the output directory: these are handled by source dependencies
-										if(Path.relativize(outputPath, pf.file).isEmpty)
-											callback.classDependency(pf.file, sourcePath)
+										Path.relativize(outputPath, pf.file) match
+										{
+											case None =>  // dependency is a class file outside of the output directory
+												callback.classDependency(pf.file, sourcePath)
+											case Some(relativeToOutput) => // dependency is a product of a source not included in this compilation
+												callback.productDependency(relativeToOutput, sourcePath)
+										}
 									}
 									case _ => ()
 								}
@@ -182,6 +186,14 @@ class Analyzer(val global: Global) extends Plugin
 		val entry = classPath.root.find(name, false)
 		if (entry ne null)
 			Some(entry.classFile)
+		else if(isTopLevelModule(sym))
+		{
+			val linked = sym.linkedClassOfModule
+			if(linked == NoSymbol)
+				None
+			else
+				classFile(linked)
+		}
 		else
 			None
 	}

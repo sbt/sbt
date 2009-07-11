@@ -45,6 +45,12 @@ trait AnalysisCallback extends NotNull
 	/** Called to indicate that the source file <code>sourcePath</code> depends on the class file
 	* <code>classFile</code>.*/
 	def classDependency(classFile: File, sourcePath: Path): Unit
+	/** Called to indicate that the source file <code>sourcePath</code> depends on the class file
+	* <code>classFile</code> that is a product of some source.  This differs from classDependency
+	* because it is really a sourceDependency.  The source corresponding to <code>classFile</code>
+	* was not incuded in the compilation so the plugin doesn't know what the source is though.  It
+	* only knows that the class file came from the output directory.*/
+	def productDependency(classFile: Path, sourcePath: Path): Unit
 	/** Called to indicate that the source file <code>sourcePath</code> produces a class file at
 	* <code>modulePath</code>.*/
 	def generatedClass(sourcePath: Path, modulePath: Path): Unit
@@ -58,36 +64,30 @@ abstract class BasicAnalysisCallback[A <: BasicCompileAnalysis](val basePath: Pa
 {
 	def superclassNotFound(superclassName: String) {}
 	
-	def beginSource(sourcePath: Path)
-	{
+	def beginSource(sourcePath: Path): Unit =
 		analysis.addSource(sourcePath)
-	}
-	def sourceDependency(dependsOnPath: Path, sourcePath: Path)
-	{
+
+	def sourceDependency(dependsOnPath: Path, sourcePath: Path): Unit =
 		analysis.addSourceDependency(dependsOnPath, sourcePath)
-	}
-	def jarDependency(jarFile: File, sourcePath: Path)
-	{
+
+	def jarDependency(jarFile: File, sourcePath: Path): Unit =
 		analysis.addExternalDependency(jarFile, sourcePath)
-	}
-	def classDependency(classFile: File, sourcePath: Path)
-	{
+	
+	def classDependency(classFile: File, sourcePath: Path): Unit =
 		analysis.addExternalDependency(classFile, sourcePath)
-	}
-	def generatedClass(sourcePath: Path, modulePath: Path)
-	{
+		
+	def productDependency(classFile: Path, sourcePath: Path): Unit =
+		analysis.addProductDependency(classFile, sourcePath)
+	
+	def generatedClass(sourcePath: Path, modulePath: Path): Unit =
 		analysis.addProduct(sourcePath, modulePath)
-	}
-	def endSource(sourcePath: Path)
-	{
+	
+	def endSource(sourcePath: Path): Unit =
 		analysis.removeSelfDependency(sourcePath)
-	}
 }
 abstract class BasicCompileAnalysisCallback(basePath: Path, superclassNames: Iterable[String], analysis: CompileAnalysis)
 	extends BasicAnalysisCallback(basePath, superclassNames, analysis)
 {
-	def foundApplication(sourcePath: Path, className: String)
-	{
+	def foundApplication(sourcePath: Path, className: String): Unit =
 		analysis.addApplication(sourcePath, className)
-	}
 }

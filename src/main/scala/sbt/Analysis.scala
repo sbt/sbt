@@ -95,6 +95,11 @@ sealed class BasicAnalysis(analysisPath: Path, projectPath: Path, log: Logger) e
 	
 	def addSourceDependency(on: Path, from: Path) = add(on, from, sourceDependencyMap)
 	def addExternalDependency(on: File, from: Path) = add(on.getAbsoluteFile, from, externalDependencyMap)
+	def addProductDependency(on: Path, from: Path) =
+	{
+		for( (source, _) <- productMap.find(_._2.contains(on)) )
+			addSourceDependency(source, from)
+	}
 	def addProduct(source: Path, file: Path) = add(source, file, productMap)
 	def addSource(source: Path) =
 	{
