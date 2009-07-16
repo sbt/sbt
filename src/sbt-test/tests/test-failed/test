@@ -1,0 +1,26 @@
+> update
+[success]
+
+$ copy-file changes/Fail.scala src/test/scala/TestQuickSuite.scala
+[success]
+
+> test-failed
+[failure]
+
+> test-failed *
+[failure]
+
+> test-failed TestQuickSuite
+[failure]
+
+$ copy-file changes/Success.scala src/test/scala/TestQuickSuite.scala
+[success]
+
+> test-failed
+[success]
+
+> test-failed *
+[success]
+
+> test-failed TestQuickSuite
+[success]
