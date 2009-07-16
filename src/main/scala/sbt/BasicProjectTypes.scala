@@ -537,6 +537,8 @@ object Reflective
 trait ReflectiveLibraryDependencies extends ManagedProject
 {
 	def excludeIDs: Iterable[ModuleID] = projectID :: Nil
+	/** Defines the library dependencies of this project.  By default, this finds vals of type ModuleID defined on the project.
+	* This can be overridden to directly provide dependencies */
 	def libraryDependencies: Set[ModuleID] = reflectiveLibraryDependencies
 	def reflectiveLibraryDependencies : Set[ModuleID] = Set[ModuleID](Reflective.reflectiveMappings[ModuleID](this).values.toList: _*) -- excludeIDs
 }

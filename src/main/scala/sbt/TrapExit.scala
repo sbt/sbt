@@ -29,7 +29,7 @@ object TrapExit
 		* the threads that were created by 'execute'.*/
 		val originalThreads = allThreads
 		val code = new ExitCode
-		val customThreadGroup = new ExitThreadGroup(new ExitHandler(Thread.getDefaultUncaughtExceptionHandler, originalThreads, code))
+		val customThreadGroup = new ExitThreadGroup(new ExitHandler(Thread.getDefaultUncaughtExceptionHandler, originalThreads, code, log))
 		val executionThread = new Thread(customThreadGroup, "run-main") { override def run() { execute } }
 		
 		val originalSecurityManager = System.getSecurityManager
@@ -162,7 +162,7 @@ object TrapExit
 	}
 	/** An uncaught exception handler that delegates to the original uncaught exception handler except when
 	* the cause was a call to System.exit (which generated a SecurityException)*/
-	private final class ExitHandler(originalHandler: Thread.UncaughtExceptionHandler, originalThreads: Set[Thread], codeHolder: ExitCode) extends Thread.UncaughtExceptionHandler
+	private final class ExitHandler(originalHandler: Thread.UncaughtExceptionHandler, originalThreads: Set[Thread], codeHolder: ExitCode, log: Logger) extends Thread.UncaughtExceptionHandler
 	{
 		def uncaughtException(t: Thread, e: Throwable)
 		{
@@ -173,7 +173,9 @@ object TrapExit
 			}
 			catch
 			{
-				case _ => originalHandler.uncaughtException(t, e)
+				case _ =>
+					log.trace(e)
+					originalHandler.uncaughtException(t, e)
 			}
 		}
 	}

@@ -173,15 +173,24 @@ abstract class LazyTestFramework extends TestFramework
 	* tests for this framework.*/
 	protected def testRunnerClassName: String
 	
+	protected def bundledTestRunnerClassName: Option[String] = None
+	
 	/** Creates an instance of the runner given by 'testRunnerClassName'.*/
 	final def testRunner(projectLoader: ClassLoader, listeners: Iterable[TestReportListener], log: Logger): TestRunner =
 	{
-		val runnerClassName = testRunnerClassName
 		val frameworkClasspath = FileUtilities.classLocation(getClass)
 		val sbtURL = FileUtilities.sbtJar.toURI.toURL
-		val lazyLoader = new LazyFrameworkLoader(runnerClassName, Array(frameworkClasspath, sbtURL), projectLoader, getClass.getClassLoader)
-		val runnerClass = Class.forName(runnerClassName, true, lazyLoader).asSubclass(classOf[TestRunner])
-
+		val projectClasspath = projectLoader.asInstanceOf[java.net.URLClassLoader].getURLs
+		val loaderURLs = Array(frameworkClasspath, sbtURL) ++ projectClasspath
+		
+		def load(name: String): Option[Class[_]] =
+		{
+			val lazyLoader = new LazyFrameworkLoader(name, loaderURLs, projectLoader, getClass.getClassLoader)
+			try { Some(Class.forName(name, true, lazyLoader)) }
+			catch { case e: ClassNotFoundException => None }
+		}
+		val c = bundledTestRunnerClassName.flatMap(load).orElse(load(testRunnerClassName))
+		val runnerClass = c.getOrElse(error("Could not find test runner")).asSubclass(classOf[TestRunner])
 		runnerClass.getConstructor(classOf[Logger], classOf[Seq[TestReportListener]], classOf[ClassLoader]).newInstance(log, listeners, projectLoader)
 	}
 }
@@ -196,6 +205,7 @@ object ScalaTestFramework extends LazyTestFramework
 	def testSubClassType = ClassType.Class
 	
 	def testRunnerClassName = "sbt.impl.ScalaTestRunner"
+	override def bundledTestRunnerClassName = Some("org.scalatest.sbt.ScalaTestRunner")
 }
 /** The test framework definition for ScalaCheck.*/
 object ScalaCheckFramework extends LazyTestFramework

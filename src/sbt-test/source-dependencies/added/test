@@ -29,8 +29,6 @@ $ copy-file changes/A3.scala src/main/scala/A.scala
 #   val x: String = B.y
 $ copy-file changes/B2.scala src/main/scala/B.scala
 [success]
-$ pause
-[success]
 > compile
 [failure]
 

@@ -90,7 +90,10 @@ object Run extends ScalaRun
 							(new java.io.File(pathString)).toURI.toURL
 					log.info("Running " + mainClass + " ...")
 					log.debug("  Classpath:" + (classpathURLs ++ extraURLs).mkString("\n\t", "\n\t",""))
-					executeTrapExit( ObjectRunner.run(classpathURLs ++ extraURLs, mainClass, options.toList), log )
+					def execute =
+						try { ObjectRunner.run(classpathURLs ++ extraURLs, mainClass, options.toList) }
+						catch { case e: java.lang.reflect.InvocationTargetException => throw e.getCause }
+					executeTrapExit( execute, log )
 				}
 			}
 		}
