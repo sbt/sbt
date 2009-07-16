@@ -208,7 +208,7 @@ object Main
 		*   (tail recursively) to prompt for the next command. */
 		def loop(currentProject: Project): RunCompleteAction =
 		{
-			updateTaskCompletions(baseProject) // this is done after every command because the completions could change due to the action invoked
+			updateTaskCompletions(currentProject) // this is done after every command because the completions could change due to the action invoked
 			reader.readLine("> ") match
 			{
 				case Some(line) =>
