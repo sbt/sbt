@@ -30,7 +30,13 @@ object TrapExit
 		val originalThreads = allThreads
 		val code = new ExitCode
 		val customThreadGroup = new ExitThreadGroup(new ExitHandler(Thread.getDefaultUncaughtExceptionHandler, originalThreads, code, log))
-		val executionThread = new Thread(customThreadGroup, "run-main") { override def run() { execute } }
+		val executionThread =
+			new Thread(customThreadGroup, "run-main")
+			{
+				override def run(): Unit =
+					try { execute }
+					catch { case e => log.trace(e); System.exit(1) } // an exception in the main thread causes the whole program to terminate
+			}
 		
 		val originalSecurityManager = System.getSecurityManager
 		try
