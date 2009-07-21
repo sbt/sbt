@@ -3,9 +3,15 @@
  */
 package sbt
 
+import java.io.File
+
 object CompileOrder extends Enumeration
 {
 	val Mixed, JavaThenScala, ScalaThenJava = Value
+}
+private object CompilerCore
+{
+	def scalaClasspathForJava = FileUtilities.scalaJars.map(_.getAbsolutePath).mkString(File.pathSeparator)
 }
 sealed abstract class CompilerCore
 {
@@ -16,25 +22,35 @@ sealed abstract class CompilerCore
 	protected def process(args: List[String], log: Logger): Boolean
 	// Returns false if there were errors, true if there were not.
 	protected def processJava(args: List[String], log: Logger): Boolean = true
+	protected def scalaClasspathForJava: String
 	def actionStartMessage(label: String): String
 	def actionNothingToDoMessage: String
 	def actionSuccessfulMessage: String
 	def actionUnsuccessfulMessage: String
+	
+	private def classpathString(rawClasspathString: String, includeScala: Boolean) =
+		if(includeScala)
+			List(rawClasspathString, scalaClasspathForJava).mkString(File.pathSeparator)
+		else
+			rawClasspathString
 
 	final def apply(label: String, sources: Iterable[Path], classpathString: String, outputDirectory: Path, options: Seq[String], log: Logger): Option[String] =
 		apply(label, sources, classpathString, outputDirectory, options, Nil, CompileOrder.Mixed, log)
-	final def apply(label: String, sources: Iterable[Path], classpathString: String, outputDirectory: Path, options: Seq[String], javaOptions: Seq[String], order: CompileOrder.Value, log: Logger): Option[String] =
+	final def apply(label: String, sources: Iterable[Path], rawClasspathString: String, outputDirectory: Path, options: Seq[String], javaOptions: Seq[String], order: CompileOrder.Value, log: Logger): Option[String] =
 	{
 		log.info(actionStartMessage(label))
-		val classpathOption: List[String] =
-			if(classpathString.isEmpty)
+		def classpathOption(includeScala: Boolean): List[String] =
+		{
+			val classpath = classpathString(rawClasspathString, includeScala)
+			if(classpath.isEmpty)
 				Nil
 			else
-				List(ClasspathOptionString, classpathString)
+				List(ClasspathOptionString, classpath)
+		}
 		val outputDir = outputDirectory.asFile
 		FileUtilities.createDirectory(outputDir, log) orElse
 		{
-			val classpathAndOut: List[String] = OutputOptionString :: outputDir.getAbsolutePath :: classpathOption
+			def classpathAndOut(javac: Boolean): List[String] = OutputOptionString :: outputDir.getAbsolutePath :: classpathOption(javac)
 			
 			Control.trapUnit("Compiler error: ", log)
 			{
@@ -47,7 +63,7 @@ sealed abstract class CompilerCore
 				else
 				{
 					def filteredSources(extension: String) = sourceList.filter(_.endsWith(extension))
-					def compile(label: String, sources: List[String], options: Seq[String])(process: (List[String], Logger) => Boolean) =
+					def compile(label: String, sources: List[String], options: Seq[String], includeScala: Boolean)(process: (List[String], Logger) => Boolean) =
 					{
 						if(sources.isEmpty)
 						{
@@ -56,7 +72,7 @@ sealed abstract class CompilerCore
 						}
 						else
 						{
-							val arguments = (options ++ classpathAndOut ++ sources).toList
+							val arguments = (options ++ classpathAndOut(includeScala) ++ sources).toList
 							log.debug(label + " arguments: " + arguments.mkString(" "))
 							process(arguments, log)
 						}
@@ -64,12 +80,12 @@ sealed abstract class CompilerCore
 					def scalaCompile = () =>
 					{
 						val scalaSourceList = if(order == CompileOrder.Mixed) sourceList else filteredSources(".scala")
-						compile("Scala", scalaSourceList, options)(process)
+						compile("Scala", scalaSourceList, options, false)(process)
 					}
 					def javaCompile = () =>
 					{
 						val javaSourceList = filteredSources(".java")
-						compile("Java", javaSourceList, javaOptions)(processJava)
+						compile("Java", javaSourceList, javaOptions, true)(processJava)
 					}
 					
 					val (first, second) = if(order == CompileOrder.JavaThenScala) (javaCompile, scalaCompile) else (scalaCompile, javaCompile)
@@ -100,6 +116,7 @@ final class ForkCompile(config: ForkScalaCompiler) extends CompilerBase
 		Fork.scalac(config.javaHome, config.compileJVMOptions, config.scalaJars, arguments, log) == 0
 	override protected def processJava(args: List[String], log: Logger) =
 		Fork.javac(config.javaHome, args, log) == 0
+	override protected def scalaClasspathForJava = config.scalaJars.mkString(File.pathSeparator)
 }
 object ForkCompile
 {
@@ -152,9 +169,11 @@ final class Compile(maximumErrors: Int) extends CompilerBase
 	}
 	override protected def processJava(args: List[String], log: Logger) =
 		(Process("javac", args) ! log) == 0
+	protected def scalaClasspathForJava = CompilerCore.scalaClasspathForJava
 }
 final class Scaladoc(maximumErrors: Int) extends CompilerCore
 {
+	protected def scalaClasspathForJava = CompilerCore.scalaClasspathForJava
 	protected def process(arguments: List[String], log: Logger) =
 	{
 		import scala.tools.nsc.{doc, CompilerCommand, FatalError, Global, reporters, util}

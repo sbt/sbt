@@ -8,7 +8,11 @@ import FileUtilities._
 
 final case class ProjectInfo(projectDirectory: File, dependencies: Iterable[Project], parent: Option[Project]) extends NotNull
 {
-	val projectPath = new ProjectDirectory(projectDirectory)
+	val projectPath: Path =
+	{
+		val toRoot = parent.flatMap(p => Path.relativize(p.info.projectPath, projectDirectory))
+		new ProjectDirectory(projectDirectory, toRoot)
+	}
 	val builderPath = projectPath / ProjectInfo.MetadataDirectoryName
 	def bootPath = builderPath / Project.BootDirectoryName
 	def builderProjectPath = builderPath / Project.BuilderProjectDirectoryName

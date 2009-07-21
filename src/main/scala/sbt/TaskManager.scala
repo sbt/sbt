@@ -3,6 +3,8 @@
  */
 package sbt
 
+import TaskManager._
+
 trait Described extends NotNull
 {
 	def description: Option[String]
@@ -19,7 +21,8 @@ trait TaskManager{
 	/** Creates a method task that executes the given action when invoked. */
 	def task(action: Array[String] => ManagedTask) = new MethodTask(None, action, Nil)
 	
-	def taskName(t: Task): String
+	def taskName(t: Task): Option[String]
+	final def taskNameString(task: Task): String = taskName(task).getOrElse(UnnamedName)
 	
 	/** A method task is an action that has parameters.  Note that it is not a Task, though,
 	* because it requires arguments to perform its work.  It therefore cannot be a dependency of
@@ -42,7 +45,8 @@ trait TaskManager{
 			this(None, description, dependencies, interactive, action)
 		checkTaskDependencies(dependencies)
 		def manager: ManagerType = TaskManager.this
-		def name = explicitName.getOrElse(taskName(this))
+		def name = explicitName.getOrElse(implicitName)
+		private[sbt] def implicitName = taskNameString(this)
 		def named(name: String) = construct(Some(name), description,dependencies, interactive, action)
 		override def toString = "Task " + name
 		
@@ -77,8 +81,16 @@ trait TaskManager{
 			interactive: Boolean, action : => Option[String]) = new CompoundTask(explicitName, description, dependencies, interactive, action, createWork)
 		def work = createWork
 	}
-	def compoundTask(createTask: => Project#Task) = new CompoundTask(SubWork[Project#Task](createTask))
+	def dynamic(createTask: => Project#Task) = new CompoundTask(SubWork[Project#Task](checkDynamic(createTask)))
 	
+	/** Verifies that the given dynamically created task does not depend on any statically defined tasks.
+	* Returns the task if it is valid.*/
+	private def checkDynamic(task: Project#Task) =
+	{
+		for(t <- task.topologicalSort; staticName <- t.implicitName)
+			error("Dynamic task " + task.name + " depends on static task " + staticName)
+		task
+	}
 	private def checkTaskDependencies(dependencyList: List[ManagedTask])
 	{
 		val nullDependencyIndex = dependencyList.findIndexOf(_ == null)
@@ -86,4 +98,8 @@ trait TaskManager{
 		val interactiveDependencyIndex = dependencyList.findIndexOf(_.interactive)
 		require(interactiveDependencyIndex < 0, "Dependency (at index " + interactiveDependencyIndex + ") is interactive.  Interactive tasks cannot be dependencies.")
 	}
+}
+object TaskManager
+{
+	val UnnamedName = "<anonymous>"
 }

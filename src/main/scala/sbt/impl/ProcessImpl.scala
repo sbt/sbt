@@ -5,7 +5,7 @@ package sbt
 
 import java.lang.{Process => JProcess, ProcessBuilder => JProcessBuilder}
 import java.io.{BufferedReader, Closeable, InputStream, InputStreamReader, IOException, OutputStream, PrintStream}
-import java.io.{PipedInputStream, PipedOutputStream}
+import java.io.{FilterInputStream, FilterOutputStream, PipedInputStream, PipedOutputStream}
 import java.io.{File, FileInputStream, FileOutputStream}
 import java.net.URL
 
@@ -79,7 +79,7 @@ private object BasicIO
 }
 
 
-private abstract class AbstractProcessBuilder extends ProcessBuilder
+private abstract class AbstractProcessBuilder extends ProcessBuilder with SinkPartialBuilder with SourcePartialBuilder
 {
 	def #&&(other: ProcessBuilder): ProcessBuilder = new AndProcessBuilder(this, other)
 	def #||(other: ProcessBuilder): ProcessBuilder = new OrProcessBuilder(this, other)
@@ -90,10 +90,8 @@ private abstract class AbstractProcessBuilder extends ProcessBuilder
 	}
 	def ##(other: ProcessBuilder): ProcessBuilder = new SequenceProcessBuilder(this, other)
 	
-	def #< (f: File): ProcessBuilder = new PipedProcessBuilder(new FileInput(f), this, false)
-	def #< (url: URL): ProcessBuilder = new PipedProcessBuilder(new URLInput(url), this, false)
-	def #> (f: File): ProcessBuilder = new PipedProcessBuilder(this, new FileOutput(f, false), false)
-	def #>> (f: File): ProcessBuilder = new PipedProcessBuilder(this, new FileOutput(f, true), true)
+	protected def toSource = this
+	protected def toSink = this
 	
 	def run(): Process = run(false)
 	def run(connectInput: Boolean): Process = run(BasicIO.standard(connectInput))
@@ -115,23 +113,19 @@ private abstract class AbstractProcessBuilder extends ProcessBuilder
 
 	def canPipeTo = false
 }
-private[sbt] class URLBuilder(url: URL) extends URLPartialBuilder
+
+private[sbt] class URLBuilder(url: URL) extends URLPartialBuilder with SourcePartialBuilder
 {
-	def #>(b: ProcessBuilder): ProcessBuilder = b #< url
-	def #>>(file: File): ProcessBuilder = toFile(file, true)
-	def #>(file: File): ProcessBuilder = toFile(file, false)
-	private def toFile(file: File, append: Boolean) = new PipedProcessBuilder(new URLInput(url), new FileOutput(file, append), false)
+	protected def toSource = new URLInput(url)
 }
-private[sbt] class FileBuilder(base: File) extends FilePartialBuilder
+private[sbt] class FileBuilder(base: File) extends FilePartialBuilder with SinkPartialBuilder with SourcePartialBuilder
 {
-	def #>(b: ProcessBuilder): ProcessBuilder = b #< base
-	def #<(b: ProcessBuilder): ProcessBuilder = b #> base
-	def #<(url: URL): ProcessBuilder = new URLBuilder(url) #> base
-	def #>>(file: File): ProcessBuilder = pipe(base, file, true)
-	def #>(file: File): ProcessBuilder = pipe(base, file, false)
-	def #<(file: File): ProcessBuilder = pipe(file, base, false)
-	def #<<(file: File): ProcessBuilder = pipe(file, base, true)
-	private def pipe(from: File, to: File, append: Boolean) = new PipedProcessBuilder(new FileInput(from), new FileOutput(to, append), false)
+	protected def toSource = new FileInput(base)
+	protected def toSink = new FileOutput(base, false)
+	def #<<(f: File): ProcessBuilder = #<<(new FileInput(f))
+	def #<<(u: URL): ProcessBuilder = #<<(new URLInput(u))
+	def #<<(s: => InputStream): ProcessBuilder = #<<(new InputStreamBuilder(s))
+	def #<<(b: ProcessBuilder): ProcessBuilder = new PipedProcessBuilder(b, new FileOutput(base, true), false)
 }
 
 private abstract class BasicBuilder extends AbstractProcessBuilder
@@ -369,8 +363,15 @@ private class FileOutput(file: File, append: Boolean) extends OutputStreamBuilde
 private class URLInput(url: URL) extends InputStreamBuilder(url.openStream, url.toString)
 private class FileInput(file: File) extends InputStreamBuilder(new FileInputStream(file), file.getAbsolutePath)
 
-private class OutputStreamBuilder(stream: => OutputStream, label: String) extends ThreadProcessBuilder(label, _.writeInput(stream))
-private class InputStreamBuilder(stream: => InputStream, label: String) extends ThreadProcessBuilder(label, _.processOutput(stream))
+import Uncloseable.protect
+private class OutputStreamBuilder(stream: => OutputStream, label: String) extends ThreadProcessBuilder(label, _.writeInput(protect(stream)))
+{
+	def this(stream: => OutputStream) = this(stream, "<output stream>")
+}
+private class InputStreamBuilder(stream: => InputStream, label: String) extends ThreadProcessBuilder(label, _.processOutput(protect(stream)))
+{
+	def this(stream: => InputStream) = this(stream, "<input stream>")
+}
 
 private abstract class ThreadProcessBuilder(override val toString: String, runImpl: ProcessIO => Unit) extends AbstractProcessBuilder
 {
@@ -381,7 +382,7 @@ private abstract class ThreadProcessBuilder(override val toString: String, runIm
 		new ThreadProcess(Spawn {runImpl(io); success.set(true) }, success)
 	}
 }
-private class ThreadProcess(thread: Thread, success: SyncVar[Boolean]) extends Process
+private final class ThreadProcess(thread: Thread, success: SyncVar[Boolean]) extends Process
 {
 	override def exitValue() =
 	{
@@ -389,4 +390,12 @@ private class ThreadProcess(thread: Thread, success: SyncVar[Boolean]) extends P
 		if(success.get) 0 else 1
 	}
 	override def destroy() { thread.interrupt() }
+}
+
+object Uncloseable
+{
+	def apply(in: InputStream): InputStream = new FilterInputStream(in) { override def close() {} }
+	def apply(out: OutputStream): OutputStream = new FilterOutputStream(out) { override def close() {} }
+	def protect(in: InputStream): InputStream = if(in eq System.in) Uncloseable(in) else in
+	def protect(out: OutputStream): OutputStream = if( (out eq System.out) || (out eq System.err)) Uncloseable(out) else out
 }

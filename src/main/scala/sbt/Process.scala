@@ -20,23 +20,51 @@ object Process
 	implicit def apply(command: scala.xml.Elem): ProcessBuilder = apply(command.text.trim)
 	def apply(value: Boolean): ProcessBuilder = apply(value.toString, if(value) 0 else 1)
 	def apply(name: String, exitValue: => Int): ProcessBuilder = new DummyProcessBuilder(name, exitValue)
+	
+	def cat(file: SourcePartialBuilder, files: SourcePartialBuilder*): ProcessBuilder = cat(file :: files.toList)
+	private[this] def cat(files: Seq[SourcePartialBuilder]): ProcessBuilder =
+	{
+		require(!files.isEmpty)
+		files.map(_.cat).reduceLeft(_ #&& _)
+	}
 }
 
-trait URLPartialBuilder extends NotNull
+trait SourcePartialBuilder extends NotNull
 {
-	def #>(b: ProcessBuilder): ProcessBuilder
-	def #>>(b: File): ProcessBuilder
-	def #>(b: File): ProcessBuilder
+	/** Writes the output stream of this process to the given file. */
+	def #> (f: File): ProcessBuilder = toFile(f, false)
+	/** Appends the output stream of this process to the given file. */
+	def #>> (f: File): ProcessBuilder = toFile(f, true)
+	/** Writes the output stream of this process to the given OutputStream. The
+	* argument is call-by-name, so the stream is recreated, written, and closed each
+	* time this process is executed. */
+	def #>(out: => OutputStream): ProcessBuilder = #> (new OutputStreamBuilder(out))
+	def #>(b: ProcessBuilder): ProcessBuilder = new PipedProcessBuilder(toSource, b, false)
+	private def toFile(f: File, append: Boolean) = #> (new FileOutput(f, append))
+	def cat = toSource
+	protected def toSource: ProcessBuilder
 }
-trait FilePartialBuilder extends NotNull
+trait SinkPartialBuilder extends NotNull
 {
-	def #>(b: ProcessBuilder): ProcessBuilder
-	def #<(b: ProcessBuilder): ProcessBuilder
-	def #<(url: URL): ProcessBuilder
-	def #>>(b: File): ProcessBuilder
-	def #>(b: File): ProcessBuilder
-	def #<(file: File): ProcessBuilder
-	def #<<(file: File): ProcessBuilder
+	/** Reads the given file into the input stream of this process. */
+	def #< (f: File): ProcessBuilder = #< (new FileInput(f))
+	/** Reads the given URL into the input stream of this process. */
+	def #< (f: URL): ProcessBuilder = #< (new URLInput(f))
+	/** Reads the given InputStream into the input stream of this process. The
+	* argument is call-by-name, so the stream is recreated, read, and closed each
+	* time this process is executed. */
+	def #<(in: => InputStream): ProcessBuilder = #< (new InputStreamBuilder(in))
+	def #<(b: ProcessBuilder): ProcessBuilder = new PipedProcessBuilder(b, toSink, false)
+	protected def toSink: ProcessBuilder
+}
+
+trait URLPartialBuilder extends SourcePartialBuilder
+trait FilePartialBuilder extends SinkPartialBuilder with SourcePartialBuilder
+{
+	def #<<(f: File): ProcessBuilder
+	def #<<(u: URL): ProcessBuilder
+	def #<<(i: => InputStream): ProcessBuilder
+	def #<<(p: ProcessBuilder): ProcessBuilder
 }
 
 /** Represents a process that is running or has finished running.
@@ -49,7 +77,7 @@ trait Process extends NotNull
 	def destroy(): Unit
 }
 /** Represents a runnable process. */
-trait ProcessBuilder extends NotNull
+trait ProcessBuilder extends SourcePartialBuilder with SinkPartialBuilder
 {
 	/** Starts the process represented by this builder, blocks until it exits, and returns the exit code.  Standard output and error are
 	* sent to the console.*/
@@ -85,14 +113,6 @@ trait ProcessBuilder extends NotNull
 	def #| (other: ProcessBuilder): ProcessBuilder
 	/** Constructs a command that will run this command and then `other`.  The exit code will be the exit code of `other`.*/
 	def ## (other: ProcessBuilder): ProcessBuilder
-	/** Reads the given file into the input stream of this process. */
-	def #< (f: File): ProcessBuilder
-	/** Reads the given URL into the input stream of this process. */
-	def #< (f: URL): ProcessBuilder
-	/** Writes the output stream of this process to the given file. */
-	def #> (f: File): ProcessBuilder
-	/** Appends the output stream of this process to the given file. */
-	def #>> (f: File): ProcessBuilder
 
 	def canPipeTo: Boolean
 }

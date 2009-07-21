@@ -803,6 +803,7 @@ object FileUtilities
 	lazy val sbtJar: File = classLocationFile(getClass)
 	lazy val scalaLibraryJar: File = classLocationFile[scala.ScalaObject]
 	lazy val scalaCompilerJar: File = classLocationFile[scala.tools.nsc.Settings]
+	def scalaJars: Iterable[File] = List(scalaLibraryJar, scalaCompilerJar)
 	
 	/** The producer of randomness for unique name generation.*/
 	private val random = new java.util.Random

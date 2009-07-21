@@ -82,13 +82,16 @@ private[sbt] final class FilePath(file: File) extends Path
 	def projectRelativePathString(separator: String) = relativePathString(separator)
 	private[sbt] def prependTo(s: String) = absolutePath + sep + s
 }
-private[sbt] final class ProjectDirectory(file: File) extends Path
+// toRoot is the path between this and the root project path and is used for toString
+private[sbt] final class ProjectDirectory(file: File, toRoot: Option[Path]) extends Path
 {
+	def this(file: File) = this(file, None)
 	lazy val asFile = absolute(file)
-	override def toString = "."
+	override def toString = foldToRoot(_.toString, ".")
 	def relativePathString(separator: String) = ""
 	def projectRelativePathString(separator: String) = ""
-	private[sbt] def prependTo(s: String) = "." + sep + s
+	private[sbt] def prependTo(s: String) = foldToRoot(_.prependTo(s), "." + sep + s)
+	private[sbt] def foldToRoot[T](f: Path => T, orElse: T) = toRoot.map(f).getOrElse(orElse)
 }
 private[sbt] final class RelativePath(val parentPath: Path, val component: String) extends Path
 {

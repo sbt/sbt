@@ -309,8 +309,8 @@ object ManageDependencies
 				configSet.toArray
 			}
 		}
-		def excludeScalaJar(name: String)
-			{ module.addExcludeRule(excludeRule(ScalaArtifacts.Organization, name, configurationNames)) }
+		def excludeScalaJar(name: String): Unit =
+			module.addExcludeRule(excludeRule(ScalaArtifacts.Organization, name, configurationNames))
 		excludeScalaJar(ScalaArtifacts.LibraryID)
 		excludeScalaJar(ScalaArtifacts.CompilerID)
 	}

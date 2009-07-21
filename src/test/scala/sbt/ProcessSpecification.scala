@@ -13,6 +13,7 @@ object ProcessSpecification extends Properties("Process I/O")
 	specify("Correct exit code", (exitCode: Byte) => checkExit(exitCode))
 	specify("#&& correct", (exitCodes: Array[Byte]) => checkBinary(exitCodes)(_ #&& _)(_ && _))
 	specify("#|| correct", (exitCodes: Array[Byte]) => checkBinary(exitCodes)(_ #|| _)(_ || _))
+	specify("## correct", (exitCodes: Array[Byte]) => checkBinary(exitCodes)(_ ## _)( (x,latest) => latest))
 	specify("Pipe to output file", (data: Array[Byte]) => checkFileOut(data))
 	specify("Pipe to input file", (data: Array[Byte]) => checkFileIn(data))
 	specify("Pipe to process", (data: Array[Byte]) => checkPipe(data))
@@ -28,7 +29,7 @@ object ProcessSpecification extends Properties("Process I/O")
 		}
 	}
 	private def toBoolean(exitCode: Int) = exitCode == 0
-	private def checkExit(code: Byte) =
+	private def checkExit(code: Byte) = 
 	{
 		val exitCode = unsigned(code)
 		(process("sbt.exit " + exitCode) !) == exitCode

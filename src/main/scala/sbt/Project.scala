@@ -46,7 +46,7 @@ trait Project extends TaskManager with Dag[Project] with BasicEnvironment
 	* are different tasks with the same name, only one will be included. */
 	def taskList: String = descriptionList(deepTasks)
 	
-	final def taskName(task: Task) = tasks.find( _._2 eq task ).map(_._1).getOrElse(UnnamedName)
+	final def taskName(task: Task) = tasks.find( _._2 eq task ).map(_._1)
 	/** A description of all available tasks in this project and all dependencies and all
 	* available method tasks in this project, but not of dependencies.  If there
 	* are different tasks or methods with the same name, only one will be included. */
@@ -233,7 +233,12 @@ trait Project extends TaskManager with Dag[Project] with BasicEnvironment
 	protected def disableCrossPaths = crossScalaVersions.isEmpty
 	/** By default, this is empty and cross-building is disabled.  Overriding this to a Set of Scala versions
 	* will enable cross-building against those versions.*/
-	def crossScalaVersions = scala.collection.immutable.Set.empty[String]
+	def crossScalaVersions: immutable.Set[String] =
+		info.parent match
+		{
+			case Some(p) => p.crossScalaVersions
+			case None => immutable.Set.empty[String]
+		}
 	/** A `PathFinder` that determines the files watched when an action is run with a preceeding ~ when this is the current
 	* project.  This project does not need to include the watched paths for projects that this project depends on.*/
 	def watchPaths: PathFinder = Path.emptyPathFinder
@@ -256,7 +261,6 @@ private[sbt] final class LoadSetupError(val message: String) extends LoadResult
 
 object Project
 {
-	val UnnamedName = "<anonymous>"
 	val BootDirectoryName = "boot"
 	val DefaultOutputDirectoryName = "target"
 	val DefaultEnvBackingName = "build.properties"
