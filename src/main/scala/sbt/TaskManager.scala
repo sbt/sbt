@@ -45,8 +45,8 @@ trait TaskManager{
 			this(None, description, dependencies, interactive, action)
 		checkTaskDependencies(dependencies)
 		def manager: ManagerType = TaskManager.this
-		def name = explicitName.getOrElse(implicitName)
-		private[sbt] def implicitName = taskNameString(this)
+		def name = explicitName.getOrElse(taskNameString(this))
+		private[sbt] def implicitName = taskName(this)
 		def named(name: String) = construct(Some(name), description,dependencies, interactive, action)
 		override def toString = "Task " + name
 		
@@ -87,7 +87,7 @@ trait TaskManager{
 	* Returns the task if it is valid.*/
 	private def checkDynamic(task: Project#Task) =
 	{
-		for(t <- task.topologicalSort; staticName <- t.implicitName)
+		for(t <- task.topologicalSort if !(t eq task); staticName <- t.implicitName)
 			error("Dynamic task " + task.name + " depends on static task " + staticName)
 		task
 	}
