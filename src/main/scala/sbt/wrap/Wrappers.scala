@@ -9,6 +9,14 @@ import java.util.{Map => JMap, Set => JSet}
 
 private[sbt] object Wrappers
 {
+	def javaMap[K,V](pairs: (K,V)*) =
+	{
+		val basic = basicMap[K,V]
+		for( (k,v) <- pairs)
+			basic(k) = v
+		basic.underlying
+	}
+	def basicMap[K,V] = new MutableMapWrapper(new java.util.HashMap[K,V])
 	def identityMap[K,V] = new MutableMapWrapper(new java.util.IdentityHashMap[K,V])
 	def weakMap[K,V] = new MutableMapWrapper(new java.util.WeakHashMap[K,V])
 	def toList[K,V](s: java.util.Map[K,V]): List[(K,V)] = toList(s.entrySet).map(e => (e.getKey, e.getValue))

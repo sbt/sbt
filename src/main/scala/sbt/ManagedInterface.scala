@@ -60,6 +60,7 @@ final case class ModuleID(organization: String, name: String, revision: String, 
 	def intransitive() = ModuleID(organization, name, revision, configurations, isChanging, false, explicitArtifacts)
 	def changing() = ModuleID(organization, name, revision, configurations, true, isTransitive, explicitArtifacts)
 	def from(url: String) = artifacts(Artifact(name, new URL(url)))
+	def classifier(c: String) = artifacts(Artifact(name, c))
 	def artifacts(newArtifacts: Artifact*) = ModuleID(organization, name, revision, configurations, isChanging, isTransitive, newArtifacts ++ explicitArtifacts)
 }
 object ModuleID
@@ -319,12 +320,13 @@ final case class Configuration(name: String, description: String, isPublic: Bool
 	override def toString = name
 }
 
-final case class Artifact(name: String, `type`: String, extension: String, configurations: Iterable[Configuration], url: Option[URL]) extends NotNull
+final case class Artifact(name: String, `type`: String, extension: String, classifier: Option[String], configurations: Iterable[Configuration], url: Option[URL]) extends NotNull
 object Artifact
 {
-	def apply(name: String): Artifact = Artifact(name, defaultType, defaultExtension, Nil, None)
-	def apply(name: String, `type`: String, extension: String): Artifact = Artifact(name, `type`, extension, Nil, None)
-	def apply(name: String, url: URL): Artifact =Artifact(name, extract(url, defaultType), extract(url, defaultExtension), Nil, Some(url))
+	def apply(name: String): Artifact = Artifact(name, defaultType, defaultExtension, None, Nil, None)
+	def apply(name: String, classifier: String): Artifact = Artifact(name, defaultType, defaultExtension, Some(classifier), Nil, None)
+	def apply(name: String, `type`: String, extension: String): Artifact = Artifact(name, `type`, extension, None, Nil, None)
+	def apply(name: String, url: URL): Artifact =Artifact(name, extract(url, defaultType), extract(url, defaultExtension), None, Nil, Some(url))
 	val defaultExtension = "jar"
 	val defaultType = "jar"
 	private[this] def extract(url: URL, default: String) =

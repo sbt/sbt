@@ -268,13 +268,16 @@ object ManageDependencies
 			ivy.pushContext()
 			try
 			{
-				moduleDescriptor.right.flatMap(checkModule).right.flatMap { mdAndConf =>
-					doWithIvy(ivy, mdAndConf._1, mdAndConf._2)
+				moduleDescriptor.right.flatMap(checkModule).right.flatMap { case (md, conf) =>
+					addExtraNamespaces(toDefaultModuleDescriptor(md))
+					doWithIvy(ivy, md, conf)
 				}
 			}
 			finally { ivy.popContext() }
 		}
 	}
+	private def addExtraNamespaces(md: DefaultModuleDescriptor): Unit =
+		md.getExtraAttributesNamespaces.asInstanceOf[java.util.Map[String,String]].put("m", "m")
 	/** Checks the immediate dependencies of module for dependencies on scala jars and verifies that the version on the
 	* dependencies matches scalaVersion. */
 	private def checkDependencies(module: ModuleDescriptor, scalaVersion: String, configurations: Iterable[Configuration]): Option[String] =
@@ -488,8 +491,9 @@ object ManageDependencies
 			}
 			for(artifact <- dependency.explicitArtifacts)
 			{
-				import artifact.{name, `type`, extension, url}
-				val ivyArtifact = new DefaultDependencyArtifactDescriptor(dependencyDescriptor, name, `type`, extension, url.getOrElse(null), null)
+				import artifact.{name, classifier, `type`, extension, url}
+				val extraMap = extra(artifact)
+				val ivyArtifact = new DefaultDependencyArtifactDescriptor(dependencyDescriptor, name, `type`, extension, url.getOrElse(null), extraMap)
 				for(conf <- dependencyDescriptor.getModuleConfigurations)
 					dependencyDescriptor.addDependencyArtifact(conf, ivyArtifact)
 			}
@@ -513,6 +517,8 @@ object ManageDependencies
 			configurationStrings.foreach(configuration => moduleID.addArtifact(configuration, ivyArtifact))
 		}
 	}
+	private def extra(artifact: Artifact) =
+		artifact.classifier.map(c => wrap.Wrappers.javaMap("m:classifier" -> c)).getOrElse(null)
 	private def toURL(file: File) = file.toURI.toURL
 	/** Adds the ivy.xml main artifact. */
 	private def addMainArtifact(moduleID: DefaultModuleDescriptor)
@@ -551,7 +557,7 @@ object ManageDependencies
 	}
 	private def toIvyArtifact(moduleID: ModuleDescriptor, a: Artifact, configurations: Iterable[String]): MDArtifact =
 	{
-		val artifact = new MDArtifact(moduleID, a.name, a.`type`, a.extension)
+		val artifact = new MDArtifact(moduleID, a.name, a.`type`, a.extension, null, extra(a))
 		configurations.foreach(artifact.addConfiguration)
 		artifact
 	}
