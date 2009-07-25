@@ -14,12 +14,19 @@ final class ScriptedTests(testResources: Resources) extends NotNull
 	val ScriptFilename = "test"
 	import testResources._
 	
-	def scriptedTest(group: String, name: String, log: Logger): Option[String] =
-		readOnlyResourceDirectory(group, name).fold(err => Some(err), testDirectory => scriptedTest(testDirectory, log))
-	def scriptedTest(testDirectory: File, log: Logger): Option[String] =
+	private def printClass(c: Class[_]) = println(c.getName + " loader=" +c.getClassLoader + " location=" + FileUtilities.classLocationFile(c))
+	
+	def scriptedTest(group: String, name: String, logger: Reflected.Logger): String =
+	{
+		val log = new RemoteLogger(logger)
+		val result = readOnlyResourceDirectory(group, name).fold(err => Some(err), testDirectory => scriptedTest(testDirectory, log))
+		wrapOption(result)
+	}
+	private def scriptedTest(testDirectory: File, log: Logger): Option[String] =
 	{
 		(for(script <- (new TestScriptParser(testDirectory, log)).parse(new File(testDirectory, ScriptFilename)).right;
 			u <- withProject(testDirectory, log)(script).right )
 		yield u).left.toOption
 	}
+	private[this] def wrapOption[T >: Null](s: Option[T]): T = s match { case Some(t) => t; case None => null }
 }
