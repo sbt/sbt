@@ -68,6 +68,7 @@ trait BasicIntegrationTesting extends ScalaIntegrationTesting with IntegrationTe
 	class IntegrationTestCompileConfig extends BaseCompileConfig
 	{
 		def label = integrationTestLabel
+		def sourceRoots = integrationTestScalaSourceRoots
 		def sources = integrationTestSources
 		def outputDirectory = integrationTestCompilePath
 		def classpath = integrationTestClasspath

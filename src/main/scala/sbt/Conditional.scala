@@ -52,7 +52,10 @@ trait Conditional[Source, Product, External] extends NotNull
 		removedSources --= sourcesSnapshot
 		val removedCount = removedSources.size
 		for(removed <- removedSources)
+		{
+			log.debug("Source " + removed + " removed.")
 			analysis.removeDependent(removed)
+		}
 		
 		val unmodified = new HashSet[Source]
 		val modified = new HashSet[Source]
@@ -186,6 +189,7 @@ trait Conditional[Source, Product, External] extends NotNull
 abstract class AbstractCompileConfiguration extends NotNull
 {
 	def label: String
+	def sourceRoots: PathFinder
 	def sources: PathFinder
 	def outputDirectory: Path
 	def classpath: PathFinder
@@ -321,7 +325,9 @@ abstract class AbstractCompileConditional(val config: AbstractCompileConfigurati
 		val id = AnalysisCallback.register(analysisCallback)
 		val allOptions = (("-Xplugin:" + FileUtilities.sbtJar.getAbsolutePath) ::
 			("-P:sbt-analyzer:callback:" + id.toString) :: Nil) ++ options
-		val r = (new Compile(config.maxErrors))(label, dirtySources, classpathString, outputDirectory, allOptions, javaOptions, compileOrder, log)
+		def run = (new Compile(config.maxErrors))(label, dirtySources, classpathString, outputDirectory, allOptions, javaOptions, compileOrder, log)
+		val loader = ClasspathUtilities.toLoader(cp)
+		val r = classfile.Analyze(projectPath, outputDirectory, dirtySources, sourceRoots.get, log)(analysis.allProducts, analysisCallback, loader)(run)
 		AnalysisCallback.unregister(id)
 		if(log.atLevel(Level.Debug))
 		{

@@ -47,6 +47,7 @@ private sealed abstract class BasicBuilderProject extends InternalProject with S
 		new BuilderCompileConfiguration
 		{
 			def label = "builder"
+			def sourceRoots = info.projectPath +++ path(DefaultSourceDirectoryName)
 			def sources = (info.projectPath * sourceFilter) +++ path(DefaultSourceDirectoryName).descendentsExcept(sourceFilter, defaultExcludes)
 			def outputDirectory = compilePath
 			def classpath = projectClasspath
@@ -188,7 +189,8 @@ private final class BuilderProject(val info: ProjectInfo, val pluginPath: Path, 
 			new BuilderCompileConfiguration
 			{
 				def label = "plugin builder"
-				def sources = descendents(managedSourcePath, sourceFilter)
+				def sourceRoots = managedSourcePath
+				def sources = descendents(sourceRoots, sourceFilter)
 				def outputDirectory = outputPath / "plugin-classes"
 				def classpath: PathFinder = pluginClasspath +++ sbtJarPath
 				def analysisPath = outputPath / "plugin-analysis"

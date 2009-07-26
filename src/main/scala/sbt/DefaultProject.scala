@@ -190,6 +190,7 @@ abstract class BasicScalaProject extends ScalaProject with BasicDependencyProjec
 	{
 		def baseCompileOptions = compileOptions
 		def label = mainLabel
+		def sourceRoots = mainSourceRoots
 		def sources = mainSources
 		def outputDirectory = mainCompilePath
 		def classpath = compileClasspath
@@ -201,6 +202,7 @@ abstract class BasicScalaProject extends ScalaProject with BasicDependencyProjec
 	{
 		def baseCompileOptions = testCompileOptions
 		def label = testLabel
+		def sourceRoots = testSourceRoots
 		def sources = testSources
 		def outputDirectory = testCompilePath
 		def classpath = testClasspath

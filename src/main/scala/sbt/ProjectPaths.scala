@@ -19,6 +19,8 @@ trait ScalaPaths extends PackagePaths
 	def mainSources: PathFinder
 	/** A PathFinder that selects all test sources.*/
 	def testSources: PathFinder
+	def mainSourceRoots: PathFinder
+	def testSourceRoots: PathFinder
 	/** A PathFinder that selects all main resources.*/
 	def mainResources: PathFinder
 	/** A PathFinder that selects all test resources. */
@@ -62,8 +64,6 @@ trait ScalaPaths extends PackagePaths
 
 trait BasicScalaPaths extends Project with ScalaPaths
 {
-	def mainSourceRoots: PathFinder
-	def testSourceRoots: PathFinder
 	def mainResourcesPath: PathFinder
 	def testResourcesPath: PathFinder
 	def managedDependencyRootPath: Path
@@ -265,6 +265,7 @@ trait MavenStyleWebstartPaths extends WebstartPaths with MavenStyleScalaPaths
 trait IntegrationTestPaths extends NotNull
 {
 	def integrationTestSources: PathFinder
+	def integrationTestScalaSourceRoots: PathFinder
 	def integrationTestResourcesPath: Path
 
 	def integrationTestCompilePath: Path
@@ -273,8 +274,9 @@ trait IntegrationTestPaths extends NotNull
 trait BasicIntegrationTestPaths extends IntegrationTestPaths
 {
 	def integrationTestScalaSourcePath: Path
-	def integrationTestSources = sources(integrationTestScalaSourcePath)
-	protected def sources(base: Path): PathFinder
+	def integrationTestScalaSourceRoots: PathFinder = integrationTestScalaSourcePath
+	def integrationTestSources = sources(integrationTestScalaSourceRoots)
+	protected def sources(base: PathFinder): PathFinder
 }
 trait MavenStyleIntegrationTestPaths extends BasicIntegrationTestPaths with MavenStyleScalaPaths
 {
