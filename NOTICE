@@ -2,28 +2,31 @@ Simple Build Tool (sbt)
 Copyright 2008, 2009 Steven Blundy, Mark Harrah, David MacIver, Mikko Peltonen
 
 
+Portions based on code by Mike Clark in JDepend
+Copyright 1999-2004 Clarkware Consulting, Inc.
+Licensed under BSD-style license (see licenses/LICENSE_jdepend)
+
 Portions based on code by Pete Kirkham in Nailgun
 Copyright 2004, Martian Software, Inc
-Licensed under the Apache License, Version 2.0
-(see licenses/LICENSE_Apache)
+Licensed under the Apache License, Version 2.0 (see licenses/LICENSE_Apache)
 
 Portions based on code from the Scala compiler
 Copyright 2002-2008 EPFL, Lausanne
 Licensed under BSD-style license (see licenses/LICENSE_Scala)
 
 Portions based on code from specs
-Copyright (c) 2007-2008 Eric Torreborre
+Copyright 2007-2008 Eric Torreborre
 Licensed under MIT license (see licenses/LICENSE_specs)
 
-The following test frameworks are distributed with sbt (in
-the subversion repository):
- specs (see licenses/LICENSE_specs)
- ScalaCheck (see licenses/LICENSE_ScalaCheck)
- ScalaTest (see licenses/LICENSE_Apache)
+Portions based on code from ScalaTest
+Copyright 2001-2008 Artima, Inc.
+Licensed under the Apache License, Version 2.0(see licenses/LICENSE_Apache)
 
-Jetty is distributed with sbt (in the subversion repository) and is
-licensed under the Apache License, Version 2.0 (see
-licenses/LICENSE_Apache).
+Portions based on code from ScalaCheck
+Copyright 2007, Rickard Nilsson
+Licensed under BSD-style license (see licenses/LICENSE_ScalaCheck)
+
+Jetty is licensed under the Apache License, Version 2.0 (see licenses/LICENSE_Apache).
 
 ScalaTest is distributed with sbt (in the subversion repository)
 and requires the following notice:
