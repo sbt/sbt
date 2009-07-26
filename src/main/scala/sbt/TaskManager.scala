@@ -82,7 +82,7 @@ trait TaskManager{
 		def work = createWork
 	}
 	def dynamic(createTask: => Project#Task) = new CompoundTask(SubWork[Project#Task](checkDynamic(createTask)))
-	
+	@deprecated def compoundTask(createTask: => Project#Task) = dynamic(createTask)
 	/** Verifies that the given dynamically created task does not depend on any statically defined tasks.
 	* Returns the task if it is valid.*/
 	private def checkDynamic(task: Project#Task) =

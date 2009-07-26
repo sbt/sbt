@@ -391,19 +391,24 @@ trait BasicManagedProject extends ManagedProject with ReflectiveManagedProject w
 				Nil
 			pathPatterns.map(_.relativePath)
 		}
-		def extraDependencies: Iterable[ModuleID] = Nil//deliverProjectDependencies
+		def extraDependencies: Iterable[ModuleID] = deliverProjectDependencies
 		/**  The configurations to include in the publish/deliver action: specify none for all public configurations. */
 		def configurations: Option[Iterable[Configuration]] = None
 	}
 	
+	private[this] def depMap[T](f: BasicManagedProject => T) =
+		topologicalSort.dropRight(1).flatMap { case m: BasicManagedProject => f(m) :: Nil; case _ => Nil }
+	
 	lazy val update = updateAction
 	lazy val makePom = makePomAction
-	lazy val deliverLocal = deliverLocalAction
-	lazy val publishLocal = publishLocalAction
-	lazy val deliver = deliverAction
-	lazy val publish = publishAction
 	lazy val cleanLib = cleanLibAction
 	lazy val cleanCache = cleanCacheAction
+	// deliver must run after its dependencies' `publish` so that the artifacts produced by the dependencies can be resolved
+	//  (deliver requires a resolve first)
+	lazy val deliverLocal: Task = deliverLocalAction dependsOn(depMap(_.publishLocal) : _*)
+	lazy val publishLocal: Task = publishLocalAction
+	lazy val deliver: Task = deliverAction dependsOn(depMap(_.publish) : _*)
+	lazy val publish: Task = publishAction
 }
 
 object BasicManagedProject

@@ -35,7 +35,6 @@ abstract class Logger extends NotNull
 	def log(level: Level.Value, message: => String): Unit
 	def control(event: ControlEvent.Value, message: => String): Unit
 	
-	/** Use this method to ensure calls. */
 	def logAll(events: Seq[LogEvent]): Unit
 	/** Defined in terms of other methods in Logger and should not be called from them. */
 	final def log(event: LogEvent)

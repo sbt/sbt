@@ -408,7 +408,7 @@ object ManageDependencies
 			Control.trapUnit("Could not deliver: ", ivyConfig.log)
 			{
 				val module = addLateDependencies(ivy, md, default, extraDependencies)
-				resolve(ivy, updateConfig, module) orElse
+				resolve(ivy, updateConfig, module) orElse // todo: set download = false for resolve
 				{
 					val revID = module.getModuleRevisionId
 					val options = DeliverOptions.newInstance(ivy.getSettings).setStatus(status)

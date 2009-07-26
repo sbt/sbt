@@ -9,7 +9,7 @@ import java.util.Collections
 import scala.collection.Set
 import scala.collection.mutable.{HashSet, ListBuffer}
 
-private[sbt] object ClasspathUtilities
+object ClasspathUtilities
 {
 	def toClasspath(finder: PathFinder): Array[URL] = toClasspath(finder.get)
 	def toClasspath(paths: Iterable[Path]): Array[URL] = paths.map(_.asURL).toSeq.toArray
@@ -18,13 +18,16 @@ private[sbt] object ClasspathUtilities
 	def toLoader(paths: Iterable[Path]): ClassLoader = new URLClassLoader(toClasspath(paths), getClass.getClassLoader)
 	def toLoader(paths: Iterable[Path], parent: ClassLoader): ClassLoader = new URLClassLoader(toClasspath(paths), parent)
 	
+	private[sbt] def printSource(c: Class[_]) =
+		println(c.getName + " loader=" +c.getClassLoader + " location=" + FileUtilities.classLocationFile(c))
+	
 	def isArchive(path: Path): Boolean = isArchive(path.asFile)
 	def isArchive(file: File): Boolean = isArchiveName(file.getName)
 	def isArchiveName(fileName: String) = fileName.endsWith(".jar") || fileName.endsWith(".zip")
 	// Partitions the given classpath into (jars, directories)
-	def separate(paths: Iterable[File]): (Iterable[File], Iterable[File]) = paths.partition(isArchive)
+	private[sbt] def separate(paths: Iterable[File]): (Iterable[File], Iterable[File]) = paths.partition(isArchive)
 	// Partitions the given classpath into (jars, directories)
-	def separatePaths(paths: Iterable[Path]) = separate(paths.map(_.asFile.getCanonicalFile))
+	private[sbt] def separatePaths(paths: Iterable[Path]) = separate(paths.map(_.asFile.getCanonicalFile))
 	private[sbt] def buildSearchPaths(classpath: Iterable[Path]): (wrap.Set[File], wrap.Set[File]) =
 	{
 		val (jars, dirs) = separatePaths(classpath)
@@ -40,7 +43,7 @@ private[sbt] object ClasspathUtilities
 	}
 	
 	/** Returns all entries in 'classpath' that correspond to a compiler plugin.*/
-	def compilerPlugins(classpath: Iterable[Path]): Iterable[File] =
+	private[sbt] def compilerPlugins(classpath: Iterable[Path]): Iterable[File] =
 	{
 		val loader = new URLClassLoader(classpath.map(_.asURL).toList.toArray)
 		wrap.Wrappers.toList(loader.getResources("scalac-plugin.xml")).flatMap(asFile)
