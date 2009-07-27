@@ -88,7 +88,12 @@ object Parser
 				constants.flatMap { constant =>
 					constant.tag match
 					{
-						case ConstantClass => slashesToDots(toUTF8(constant.nameIndex)) :: Nil
+						case ConstantClass =>
+							val name = toUTF8(constant.nameIndex)
+							if(name.startsWith("["))
+								descriptorToTypes(Some(name))
+							else
+								slashesToDots(name) :: Nil
 						case _ => Nil
 					}
 				}

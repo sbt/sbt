@@ -51,25 +51,27 @@ object Analyze
 					Control.trapAndLog(log)
 					{
 						val clazz = Class.forName(tpe, false, loader)
-						val file = FileUtilities.classLocationFile(clazz)
-						if(file.isDirectory)
+						for(file <- Control.convertException(FileUtilities.classLocationFile(clazz)).right)
 						{
-							val resolved = resolveClassFile(file, tpe)
-							require(resolved.exists, "Resolved class file " + resolved + " did not exist")
-							val resolvedPath = Path.fromFile(resolved)
-							if(Path.fromFile(file) == outputDirectory)
+							if(file.isDirectory)
 							{
-								productToSource.get(resolvedPath) match
+								val resolved = resolveClassFile(file, tpe)
+								assume(resolved.exists, "Resolved class file " + resolved + " from " + source + " did not exist")
+								val resolvedPath = Path.fromFile(resolved)
+								if(Path.fromFile(file) == outputDirectory)
 								{
-									case Some(dependsOn) => analysis.sourceDependency(dependsOn, source)
-									case None => analysis.productDependency(resolvedPath, source)
+									productToSource.get(resolvedPath) match
+									{
+										case Some(dependsOn) => analysis.sourceDependency(dependsOn, source)
+										case None => analysis.productDependency(resolvedPath, source)
+									}
 								}
+								else
+									analysis.classDependency(resolved, source)
 							}
 							else
-								analysis.classDependency(resolved, source)
+								analysis.jarDependency(file, source)
 						}
-						else
-							analysis.jarDependency(file, source)
 					}
 				}
 				

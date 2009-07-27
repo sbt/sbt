@@ -797,7 +797,7 @@ object FileUtilities
 	def classLocation(cl: Class[_]): URL =
 	{
 		val codeSource = cl.getProtectionDomain.getCodeSource
-		if(codeSource == null) null // TODO: return something nicer, probably the location of rt.jar
+		if(codeSource == null) error("No class location for " + cl)
 		else codeSource.getLocation
 	}
 	def classLocationFile(cl: Class[_]): File = toFile(classLocation(cl))
