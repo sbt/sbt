@@ -6,7 +6,7 @@ package sbt.classfile
 import Constants._
 import java.io.File
 
-trait ClassFile
+private[sbt] trait ClassFile
 {
 	val majorVersion: Int
 	val minorVersion: Int
@@ -24,26 +24,26 @@ trait ClassFile
 	def stringValue(a: AttributeInfo): String
 }
 
-final case class Constant(tag: Byte, nameIndex: Int, typeIndex: Int, value: Option[AnyRef]) extends NotNull
+private[sbt] final case class Constant(tag: Byte, nameIndex: Int, typeIndex: Int, value: Option[AnyRef]) extends NotNull
 {
 	def this(tag: Byte, nameIndex: Int, typeIndex: Int) = this(tag, nameIndex, typeIndex, None)
 	def this(tag: Byte, nameIndex: Int) = this(tag, nameIndex, -1)
 	def this(tag: Byte, value: AnyRef) = this(tag, -1, -1, Some(value))
 	def wide = tag == ConstantLong || tag == ConstantDouble
 }
-final case class FieldOrMethodInfo(accessFlags: Int, name: Option[String], descriptor: Option[String], attributes: RandomAccessSeq[AttributeInfo]) extends NotNull
+private[sbt] final case class FieldOrMethodInfo(accessFlags: Int, name: Option[String], descriptor: Option[String], attributes: RandomAccessSeq[AttributeInfo]) extends NotNull
 {
 	def isStatic = (accessFlags&ACC_STATIC)== ACC_STATIC
 	def isPublic = (accessFlags&ACC_PUBLIC)==ACC_PUBLIC
 	def isMain = isPublic && isStatic && descriptor.filter(_ == "([Ljava/lang/String;)V").isDefined
 }
-final case class AttributeInfo(name: Option[String], value: Array[Byte]) extends NotNull
+private[sbt] final case class AttributeInfo(name: Option[String], value: Array[Byte]) extends NotNull
 {
 	def isNamed(s: String) = name.filter(s == _).isDefined
 	def isSignature = isNamed("Signature")
 	def isSourceFile = isNamed("SourceFile")
 }
-object Constants
+private[sbt] object Constants
 {
 	final val ACC_STATIC = 0x0008
 	final val ACC_PUBLIC = 0x0001

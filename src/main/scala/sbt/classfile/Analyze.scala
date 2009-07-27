@@ -7,7 +7,7 @@ import scala.collection.mutable
 import mutable.{ArrayBuffer, Buffer}
 import java.io.File
 
-object Analyze
+private[sbt] object Analyze
 {
 	def apply[T](basePath: Path, outputDirectory: Path, sources: Iterable[Path], roots: Iterable[Path], log: Logger)
 		(allProducts: => scala.collection.Set[Path], analysis: AnalysisCallback, loader: ClassLoader)

@@ -12,7 +12,7 @@ import java.io.{DataInputStream, File, InputStream}
 
 import Constants._
 
-object Parser
+private[sbt] object Parser
 {
 	def apply(file: File, log: Logger): ClassFile = FileUtilities.readStreamValue(file, log)(parse(file.getCanonicalPath, log)).right.get
 	private def parse(fileName: String, log: Logger)(is: InputStream): Either[String, ClassFile] = Right(parseImpl(fileName, is, log))
