@@ -1,0 +1,17 @@
+$ copy-file changes/Anon.java src/main/java/Anon.java
+[success]
+
+> compile
+[success]
+
+$ exists target/classes/Anon.class target/classes/Anon$1.class
+[success]
+
+$ delete src/main/java/Anon.java
+[success]
+
+> compile
+[success]
+
+$ absent target/classes/Anon.class target/classes/Anon$1.class
+[success]
