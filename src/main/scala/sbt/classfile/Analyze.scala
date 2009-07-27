@@ -32,7 +32,7 @@ object Analyze
 				path <- Path.relativize(outputDirectory, newClass);
 				classFile = Parser(newClass.asFile, log);
 				sourceFile <- classFile.sourceFile;
-				source <- guessSourcePath(sourceSet, roots, classFile.className, log))
+				source <- guessSourcePath(sourceSet, roots, classFile, log))
 			{
 				analysis.beginSource(source)
 				analysis.generatedClass(source, path)
@@ -82,15 +82,19 @@ object Analyze
 		compile orElse Control.convertErrorMessage(log)(analyze()).left.toOption
 	}
 	private def resolveClassFile(file: File, className: String): File = (file /: (className + ".class").split("""\\"""))(new File(_, _))
-	private def guessSourcePath(sources: scala.collection.Set[Path], roots: Iterable[Path], className: String, log: Logger) =
+	private def guessSourcePath(sources: scala.collection.Set[Path], roots: Iterable[Path], classFile: ClassFile, log: Logger) =
 	{
-		val relativeSourceFile = className.replace('.', '/') + ".java"
+		val classNameParts = classFile.className.split("""\.""")
+		val lastIndex = classNameParts.length - 1
+		val (pkg, simpleClassName) = (classNameParts.take(lastIndex), classNameParts(lastIndex))
+		val sourceFileName = classFile.sourceFile.getOrElse(simpleClassName.takeWhile(_ != '$').mkString("", "", ".java"))
+		val relativeSourceFile = (pkg ++ (sourceFileName :: Nil)).mkString("/")
 		val candidates = roots.map(root => Path.fromString(root, relativeSourceFile)).filter(sources.contains).toList
 		candidates match
 		{
-			case Nil => log.warn("Could not determine source for class " + className)
+			case Nil => log.warn("Could not determine source for class " + classFile.className)
 			case head :: Nil => ()
-			case _ =>log.warn("Multiple sources matched for class " + className + ": " + candidates.mkString(", "))
+			case _ =>log.warn("Multiple sources matched for class " + classFile.className + ": " + candidates.mkString(", "))
 		}
 		candidates
 	}

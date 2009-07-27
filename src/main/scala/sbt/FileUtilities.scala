@@ -794,7 +794,12 @@ object FileUtilities
 	
 	/** The directory in which temporary files are placed.*/
 	val temporaryDirectory = new File(System.getProperty("java.io.tmpdir"))
-	def classLocation(cl: Class[_]): URL = cl.getProtectionDomain.getCodeSource.getLocation
+	def classLocation(cl: Class[_]): URL =
+	{
+		val codeSource = cl.getProtectionDomain.getCodeSource
+		if(codeSource == null) null // TODO: return something nicer, probably the location of rt.jar
+		else codeSource.getLocation
+	}
 	def classLocationFile(cl: Class[_]): File = toFile(classLocation(cl))
 	def classLocation[T](implicit mf: scala.reflect.Manifest[T]): URL = classLocation(mf.erasure)
 	def classLocationFile[T](implicit mf: scala.reflect.Manifest[T]): File = classLocationFile(mf.erasure)
