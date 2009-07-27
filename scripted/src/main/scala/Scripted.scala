@@ -37,7 +37,7 @@ final case class ScriptedTest(group: String, name: String) extends NotNull
 trait Scripted extends Project with MultiTaskProject
 {
 	def sbtTests: Path
-	def scriptedTask(dependencies: ManagedTask*) = dynamic(scriptedTests(listTests, dependencies : _*))
+	def scriptedTask(dependencies: ManagedTask*) = dynamic(scriptedTests(listTests)) dependsOn(dependencies : _*)
 	def scriptedMethodTask(dependencies: ManagedTask*) = multiTask(listTests.map(_.toString).toList) { includeFunction =>
 		scriptedTests(listTests.filter(test => includeFunction(test.toString)), dependencies : _*)
 	}
