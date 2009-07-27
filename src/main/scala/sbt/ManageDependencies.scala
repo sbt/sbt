@@ -368,7 +368,7 @@ object ManageDependencies
 		val module = toDefaultModuleDescriptor(md)
 		val parser = new CustomXmlParser.CustomParser(ivy.getSettings)
 		parser.setMd(module)
-		val defaultConf = if(defaultConfiguration.contains("->")) defaultConfiguration else (defaultConfiguration + "->default")
+		val defaultConf = if(defaultConfiguration.contains("->")) defaultConfiguration else (defaultConfiguration + "->default(compile)")
 		parser.setDefaultConf(defaultConf)
 		addDependencies(module, extraDependencies, parser)
 		module

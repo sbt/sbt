@@ -248,9 +248,7 @@ abstract class BasicScalaProject extends ScalaProject with BasicDependencyProjec
 	protected def defaultTestTask(testOptions: => Seq[TestOption]) =
 		testTask(testFrameworks, testClasspath, testCompileConditional.analysis, testOptions).dependsOn(testCompile) describedAs TestDescription
 		
-	override protected def makePomAction = super.makePomAction dependsOn(`package`)
-	override protected def deliverLocalAction = super.deliverLocalAction dependsOn(`package`)
-	override protected def deliverAction = super.deliverAction dependsOn(`package`)
+	override def packageToPublishActions: Seq[ManagedTask] = `package` :: Nil
 	
 	protected def packageAction = packageTask(packagePaths, jarPath, packageOptions).dependsOn(compile) describedAs PackageDescription
 	protected def packageTestAction = packageTask(packageTestPaths, packageTestJar).dependsOn(testCompile) describedAs TestPackageDescription
