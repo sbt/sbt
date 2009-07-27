@@ -46,17 +46,16 @@ object Analyze
 				for(classFile <- classFiles if isTopLevel(classFile);
 					method <- classFile.methods; if method.isMain)
 						analysis.foundApplication(source, classFile.className)
-				def processDependency(tpeSlashed: String)
+				def processDependency(tpe: String)
 				{
-					val tpe = tpeSlashed.replace('/','.')
 					Control.trapAndLog(log)
 					{
 						val clazz = Class.forName(tpe, false, loader)
 						val file = FileUtilities.classLocationFile(clazz)
 						if(file.isDirectory)
 						{
-							val resolved = resolveClassFile(file, tpeSlashed)
-							require(resolved.exists)
+							val resolved = resolveClassFile(file, tpe)
+							require(resolved.exists, "Resolved class file " + resolved + " did not exist")
 							val resolvedPath = Path.fromFile(resolved)
 							if(Path.fromFile(file) == outputDirectory)
 							{
@@ -81,12 +80,13 @@ object Analyze
 		
 		compile orElse Control.convertErrorMessage(log)(analyze()).left.toOption
 	}
-	private def resolveClassFile(file: File, className: String): File = (file /: (className + ".class").split("""\\"""))(new File(_, _))
+	private def resolveClassFile(file: File, className: String): File = (file /: (className.replace('.','/') + ".class").split("/"))(new File(_, _))
 	private def guessSourcePath(sources: scala.collection.Set[Path], roots: Iterable[Path], classFile: ClassFile, log: Logger) =
 	{
 		val classNameParts = classFile.className.split("""\.""")
 		val lastIndex = classNameParts.length - 1
-		val (pkg, simpleClassName) = (classNameParts.take(lastIndex), classNameParts(lastIndex))
+		val pkg = classNameParts.take(lastIndex)
+		val simpleClassName = classNameParts(lastIndex)
 		val sourceFileName = classFile.sourceFile.getOrElse(simpleClassName.takeWhile(_ != '$').mkString("", "", ".java"))
 		val relativeSourceFile = (pkg ++ (sourceFileName :: Nil)).mkString("/")
 		val candidates = roots.map(root => Path.fromString(root, relativeSourceFile)).filter(sources.contains).toList
