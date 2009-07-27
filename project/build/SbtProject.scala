@@ -24,7 +24,7 @@ class SbtProject(info: ProjectInfo) extends ParentProject(info)
 	override def publishLocalAction = noAction
 }
 
-protected class MainProject(val info: ProjectInfo) extends CrossCompileProject with test.ScalaScripted
+protected class MainProject(val info: ProjectInfo) extends CrossCompileProject with test.SbtScripted
 {
 	override def mainSources =
 		if(ScalaVersion.currentString.startsWith("2.8")) // cannot compile against test libraries currently
