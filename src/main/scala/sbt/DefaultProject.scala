@@ -174,8 +174,8 @@ abstract class BasicScalaProject extends ScalaProject with BasicDependencyProjec
 	def mainLabel = "main"
 	def testLabel = "test"
 	
-	def mainCompileConfiguration = new MainCompileConfig
-	def testCompileConfiguration = new TestCompileConfig
+	def mainCompileConfiguration: CompileConfiguration = new MainCompileConfig
+	def testCompileConfiguration: CompileConfiguration = new TestCompileConfig
 	abstract class BaseCompileConfig extends CompileConfiguration
 	{
 		def log = BasicScalaProject.this.log
@@ -195,7 +195,7 @@ abstract class BasicScalaProject extends ScalaProject with BasicDependencyProjec
 		def outputDirectory = mainCompilePath
 		def classpath = compileClasspath
 		def analysisPath = mainAnalysisPath
-		def testDefinitionClassNames = Nil
+		def testDefinitionClassNames: Iterable[String] = Nil
 		def javaOptions = javaOptionsAsString(javaCompileOptions)
 	}
 	class TestCompileConfig extends BaseCompileConfig
@@ -207,7 +207,7 @@ abstract class BasicScalaProject extends ScalaProject with BasicDependencyProjec
 		def outputDirectory = testCompilePath
 		def classpath = testClasspath
 		def analysisPath = testAnalysisPath
-		def testDefinitionClassNames = testFrameworks.map(_.testSuperClassName)
+		def testDefinitionClassNames: Iterable[String] = testFrameworks.map(_.testSuperClassName)
 		def javaOptions = javaOptionsAsString(testJavaCompileOptions)
 	}
 	
