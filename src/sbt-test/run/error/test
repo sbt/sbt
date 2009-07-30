@@ -1,0 +1,15 @@
+$ copy-file changes/RunSuccess.scala src/main/scala/Run.scala
+[success]
+> run
+[success]
+
+$ copy-file changes/RunFailureMain.scala src/main/scala/Run.scala
+[success]
+> run
+[failure]
+
+# an exception in a non-main thread should still be exit code 0
+$ copy-file changes/ThreadRunError.scala src/main/scala/Run.scala
+[success]
+> run
+[success]

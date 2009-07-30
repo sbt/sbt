@@ -77,24 +77,20 @@ object Run extends ScalaRun
 	/** Runs the class 'mainClass' using the given classpath and options using the scala runner.*/
 	def run(mainClass: String, classpath: Iterable[Path], options: Seq[String], log: Logger) =
 	{
-		createSettings(log)
-		{
-			(settings: Settings) =>
+		createSettings(log) { (settings: Settings) =>
+			Control.trapUnit("Error during run: ", log)
 			{
-				Control.trapUnit("Error during run: ", log)
-				{
-					val classpathURLs = classpath.map(_.asURL).toList
-					val bootClasspath = FileUtilities.pathSplit(settings.bootclasspath.value)
-					val extraURLs =
-						for(pathString <- bootClasspath if pathString.length > 0) yield
-							(new java.io.File(pathString)).toURI.toURL
-					log.info("Running " + mainClass + " ...")
-					log.debug("  Classpath:" + (classpathURLs ++ extraURLs).mkString("\n\t", "\n\t",""))
-					def execute =
-						try { ObjectRunner.run(classpathURLs ++ extraURLs, mainClass, options.toList) }
-						catch { case e: java.lang.reflect.InvocationTargetException => throw e.getCause }
-					executeTrapExit( execute, log )
-				}
+				val classpathURLs = classpath.map(_.asURL).toList
+				val bootClasspath = FileUtilities.pathSplit(settings.bootclasspath.value)
+				val extraURLs =
+					for(pathString <- bootClasspath if pathString.length > 0) yield
+						(new java.io.File(pathString)).toURI.toURL
+				log.info("Running " + mainClass + " ...")
+				log.debug("  Classpath:" + (classpathURLs ++ extraURLs).mkString("\n\t", "\n\t",""))
+				def execute =
+					try { ObjectRunner.run(classpathURLs ++ extraURLs, mainClass, options.toList) }
+					catch { case e: java.lang.reflect.InvocationTargetException => throw e.getCause }
+				executeTrapExit( execute, log )
 			}
 		}
 	}
