@@ -211,7 +211,15 @@ private object WebstartScalaProject
 	/** Writes the XML string 'xmlString' to the file 'outputPath' if the hashes are different.*/
 	private def writeXML(xml: Elem, outputPath: Path, log: Logger): Option[String] =
 	{
-		val xmlString = scala.xml.Utility.toXML(xml, false)
+		val xmlString =
+		{
+			import scala.xml.Utility
+			implicit def another28Hack(any: AnyRef): { def toXML(xml: Elem, stripComments: Boolean): String } =
+				new {
+					def toXML(xml: Elem, stripComments: Boolean) = Utility.toXML(xml).toString // this will only be called for 2.8, which defaults to stripComments= false, unlike 2.7
+				}
+			scala.xml.Utility.toXML(xml, false) // 2.8 doesn't have this method anymore, so the above implicit will kick in for 2.8 only
+		}
 		if(!outputPath.exists)
 		{
 			log.debug("JNLP file did not exist, writing inline XML to " + outputPath)
