@@ -46,16 +46,17 @@ object ClasspathUtilities
 	private[sbt] def compilerPlugins(classpath: Iterable[Path]): Iterable[File] =
 	{
 		val loader = new URLClassLoader(classpath.map(_.asURL).toList.toArray)
-		wrap.Wrappers.toList(loader.getResources("scalac-plugin.xml")).flatMap(asFile)
+		wrap.Wrappers.toList(loader.getResources("scalac-plugin.xml")).flatMap(asFile(true))
 	}
 	/** Converts the given URL to a File.  If the URL is for an entry in a jar, the File for the jar is returned. */
-	private[sbt] def asFile(url: URL) =
+	private[sbt] def asFile(url: URL): List[File] = asFile(false)(url)
+	private[sbt] def asFile(jarOnly: Boolean)(url: URL): List[File] =
 	{
 		try
 		{
 			url.getProtocol match
 			{
-				case "file" => FileUtilities.toFile(url) :: Nil
+				case "file" if !jarOnly=> FileUtilities.toFile(url) :: Nil
 				case "jar" =>
 					val path = url.getPath
 					val end = path.indexOf('!')
