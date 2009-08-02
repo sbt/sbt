@@ -15,7 +15,7 @@ abstract class CrossCompileProject extends BasicScalaProject with MavenStyleScal
 	private val version2_7_3 = "2.7.3"
 	private val version2_7_4 = "2.7.4"
 	private val version2_7_5 = "2.7.5"
-	private val version2_8_0 = "2.8.0.r18093-b20090623200909"
+	private val version2_8_0 = "2.8.0-SNAPSHOT"
 	private val base = "base"
 
 	/* The configurations for the versions of Scala.*/
@@ -28,7 +28,7 @@ abstract class CrossCompileProject extends BasicScalaProject with MavenStyleScal
 	// the list of all configurations cross-compile supports
 	private val allConfigurations = conf_2_7_2 :: conf_2_7_3 :: conf_2_7_4 :: conf_2_7_5 :: conf_2_8_0 :: Nil
 	// the list of configurations to actually build against
-	private val buildConfigurations = conf_2_7_2 :: conf_2_7_3 :: conf_2_7_4 :: conf_2_7_5 :: Nil//allConfigurations not currently used because of issues with 2.8.0
+	private val buildConfigurations = allConfigurations//conf_2_7_2 :: conf_2_8_0 :: Nil//conf_2_7_2 :: conf_2_7_3 :: conf_2_7_4 :: conf_2_7_5 :: Nil//allConfigurations not currently used because of issues with 2.8.0
 	// the configuration to use for normal development (when cross-building is not done)
 	private def developmentVersion = buildConfigurations.first
 	
@@ -175,6 +175,12 @@ abstract class CrossCompileProject extends BasicScalaProject with MavenStyleScal
 	private def crossJarName(scalaVersion: Configuration) = sbt(scalaVersion) + "-" + version.toString +  ".jar"
 	// This creates a task that compiles sbt against the given version of scala.  Classes are put in classes-<scalaVersion>.
 	private def compileForScala(version: Configuration)=
+	{
+		def filteredSources =
+			if(version eq conf_2_8_0) // cannot compile against test libraries currently
+				Path.lazyPathFinder { mainSources.get.filter(!_.asFile.getName.endsWith("TestFrameworkImpl.scala")) }
+			else
+				mainSources
 		task
 		{
 			val classes = classesPath(version)
@@ -188,7 +194,7 @@ abstract class CrossCompileProject extends BasicScalaProject with MavenStyleScal
 			
 			// The libraries to compile sbt against
 			val classpath = fullClasspath(version) +++ optionalClasspath(version)
-			val sources: List[String] = pathListStrings(mainSources)
+			val sources: List[String] = pathListStrings(filteredSources)
 			val compilerOptions = List("-cp", concatPaths(classpath), "-d", classes.toString)
 			val compilerArguments: List[String] = compilerOptions ::: sources
 			
@@ -201,6 +207,7 @@ abstract class CrossCompileProject extends BasicScalaProject with MavenStyleScal
 			else
 				Some("Nonzero exit value (" + exitValue + ") when calling scalac " + version + " with options: \n" + compilerOptions.mkString(" "))
 		}
+	}
 	private def concatPaths(p: PathFinder): String = Path.makeString(p.get)
 	private def pathListStrings(p: PathFinder): List[String] = p.get.map(_.absolutePath).toList
 	private def classesPath(scalaVersion: Configuration) = ("target"  / ("classes-" + scalaVersion.toString)) ##

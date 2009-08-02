@@ -26,11 +26,6 @@ class SbtProject(info: ProjectInfo) extends ParentProject(info)
 
 protected class MainProject(val info: ProjectInfo) extends CrossCompileProject with test.SbtScripted
 {
-	override def mainSources =
-		if(ScalaVersion.currentString.startsWith("2.8")) // cannot compile against test libraries currently
-			Path.lazyPathFinder { super.mainSources.get.filter(!_.asFile.getName.endsWith("TestFrameworkImpl.scala")) }
-		else
-			super.mainSources
 	override def defaultJarBaseName = "sbt_" + version.toString
 	/** Additional resources to include in the produced jar.*/
 	def extraResources = descendents(info.projectPath / "licenses", "*") +++ "LICENSE" +++ "NOTICE"
