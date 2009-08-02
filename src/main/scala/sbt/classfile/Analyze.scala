@@ -2,6 +2,7 @@
  * Copyright 2009 Mark Harrah
  */
 package sbt.classfile
+import sbt._
 
 import scala.collection.mutable
 import mutable.{ArrayBuffer, Buffer}

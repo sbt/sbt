@@ -245,14 +245,14 @@ trait BasicEnvironment extends Environment
 		val vals = Environment.reflectiveMappings(this, classOf[Property[_]])
 		for( (name, property: AnyUserProperty) <- vals)
 			propertyMap(name) = property
-		propertyMap.readOnly
+		propertyMap //.readOnly (not currently in 2.8)
 	}
 	private val initialValues: Map[String, String] =
 	{
 		val map = new scala.collection.mutable.HashMap[String, String]
 		for(errorMsg <- impl.MapUtilities.read(map, envBackingPath, log))
 			log.error("Error loading properties from " + environmentLabel + " : " + errorMsg)
-		map.readOnly
+		map //.readOnly (not currently in 2.8)
 	}
 	
 	def propertyNames: Iterable[String] = propertyMap.keys.toList

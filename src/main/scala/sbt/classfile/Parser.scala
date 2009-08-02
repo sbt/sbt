@@ -2,6 +2,7 @@
  * Copyright 2009 Mark Harrah
  */
 package sbt.classfile
+import sbt._
 
 import java.io.{DataInputStream, File, InputStream}
 
