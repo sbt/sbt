@@ -42,7 +42,11 @@ object ReflectUtilities
 			if(method.getParameterTypes.length == 0 && clazz.isAssignableFrom(method.getReturnType))
 			{
 				for(field <- correspondingFields.get(method.getName) if field.getType == method.getReturnType)
-					mappings(method.getName) = method.invoke(self).asInstanceOf[T]
+				{
+					val value = method.invoke(self).asInstanceOf[T]
+					assume(value != null, "val " + method.getName + " was null")
+					mappings(method.getName) = value
+				}
 			}
 		}
 		mappings
