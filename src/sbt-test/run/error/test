@@ -3,6 +3,7 @@ $ copy-file changes/RunSuccess.scala src/main/scala/Run.scala
 > run
 [success]
 
+# an exception in the main thread should be a nonzero exit code
 $ copy-file changes/RunFailureMain.scala src/main/scala/Run.scala
 [success]
 > run
