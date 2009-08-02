@@ -105,9 +105,7 @@ private abstract class AbstractProcessBuilder extends ProcessBuilder with SinkPa
 	private[this] def runBuffered(log: Logger, connectInput: Boolean) =
 	{
 		val log2 = new BufferedLogger(log)
-		log2.startRecording()
-		try { run(log2, connectInput).exitValue() }
-		finally { log2.playAll(); log2.clearAll() }
+		log2.bufferAll {  run(log2, connectInput).exitValue() }
 	}
 	def !(io: ProcessIO) = run(io).exitValue()
 

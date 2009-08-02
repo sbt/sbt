@@ -6,8 +6,9 @@ package sbt
 import java.io.File
 import FileUtilities._
 
-final case class ProjectInfo(projectDirectory: File, dependencies: Iterable[Project], parent: Option[Project]) extends NotNull
+final case class ProjectInfo(projectDirectory: File, dependencies: Iterable[Project], parent: Option[Project])(log: Logger) extends NotNull
 {
+	val logger = new FilterLogger(log)
 	val projectPath: Path =
 	{
 		val toRoot = parent.flatMap(p => Path.relativize(p.info.projectPath, projectDirectory))

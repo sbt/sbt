@@ -143,6 +143,8 @@ trait ScalaProject extends SimpleScalaProject with FileTasks with MultiTaskProje
 			}
 		}
 		
+	def syncPathsTask(sources: PathFinder, destinationDirectory: Path): Task =
+		task { FileUtilities.syncPaths(sources, destinationDirectory, log) }
 	def syncTask(sourceDirectory: Path, destinationDirectory: Path): Task =
 		task { FileUtilities.sync(sourceDirectory, destinationDirectory, log) }
 	def copyTask(sources: PathFinder, destinationDirectory: Path): Task =
@@ -323,14 +325,8 @@ trait WebScalaProject extends ScalaProject
 				}
 			}}}}).left.toOption
 		}
-	def jettyRunTask(warPath: => Path, defaultContextPath: => String, port: Int, classpath: PathFinder, classpathName: String, scanDirectories: Seq[File], scanInterval: Int): Task =
-		task { JettyRun(classpath.get, classpathName, warPath, defaultContextPath, port, scanDirectories, scanInterval, log) }
-	def jettyRunTask(warPath: => Path, defaultContextPath: => String, classpath: PathFinder, classpathName: String, scanDirectories: Seq[File], scanInterval: Int): Task =
-		jettyRunTask(warPath, defaultContextPath, JettyRun.DefaultPort, classpath, classpathName, scanDirectories, scanInterval)
-	def jettyRunTask(warPath: => Path, defaultContextPath: => String, classpath: PathFinder, classpathName: String,
-		jettyConfigurationXML: scala.xml.NodeSeq, jettyConfigurationFiles: Seq[File]): Task =
-			task { JettyRun(classpath.get, classpathName, warPath, defaultContextPath, jettyConfigurationXML, jettyConfigurationFiles, log) }
-	def jettyStopTask = task { JettyRun.stop(); None }
+	def jettyRunTask(jettyRun: JettyRunner) = task { jettyRun() }
+	def jettyStopTask(jettyRun: JettyRunner) = task { jettyRun.stop(); None }
 }
 object ScalaProject
 {

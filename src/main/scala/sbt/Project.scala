@@ -13,7 +13,13 @@ trait Project extends TaskManager with Dag[Project] with BasicEnvironment
 {
 	/** The logger for this project definition. */
 	final val log: Logger = logImpl
-	protected def logImpl: Logger = new BufferedLogger(new ConsoleLogger)
+	protected def logImpl: Logger =
+	{
+		val lg = new BufferedLogger(info.logger)
+		lg.setLevel(defaultLoggingLevel)
+		lg
+	}
+	protected def defaultLoggingLevel = Level.Info
 	
 	trait ActionOption extends NotNull
 	
@@ -166,7 +172,7 @@ trait Project extends TaskManager with Dag[Project] with BasicEnvironment
 	* The construct function is used to obtain the Project instance. Any project/build/ directory for the project
 	* is ignored.  The project is declared to have the dependencies given by deps.*/
 	def project[P <: Project](path: Path, name: String, construct: ProjectInfo => P, deps: Project*): P =
-		initialize(construct(ProjectInfo(path.asFile, deps, Some(this))), Some(new SetupInfo(name, None, None, false)), log)
+		initialize(construct(ProjectInfo(path.asFile, deps, Some(this))(log)), Some(new SetupInfo(name, None, None, false)), log)
 	
 	/** Initializes the project directories when a user has requested that sbt create a new project.*/
 	def initializeDirectories() {}
@@ -186,14 +192,14 @@ trait Project extends TaskManager with Dag[Project] with BasicEnvironment
 	
 	/** The list of directories to which this project writes.  This is used to verify that multiple
 	* projects have not been defined with the same output directories. */
-	def outputDirectories: Iterable[Path] = outputRootPath :: Nil
+	def outputDirectories: Iterable[Path] = outputPath :: Nil
 	def rootProject = Project.rootProject(this)
 	/** The path to the file that provides persistence for properties.*/
 	final def envBackingPath = info.builderPath / Project.DefaultEnvBackingName
 	/** The path to the file that provides persistence for history. */
 	def historyPath: Option[Path] = Some(outputRootPath / ".history")
 	def outputPath = crossPath(outputRootPath)
-	def outputRootPath = outputDirectoryName
+	def outputRootPath: Path = outputDirectoryName
 	def outputDirectoryName = DefaultOutputDirectoryName
 	
 	private def getProject(result: LoadResult, path: Path): Project =
@@ -297,7 +303,7 @@ object Project
 		loadProject(projectDirectory, deps, parent, getClass.getClassLoader, log)
 	private[sbt] def loadProject(projectDirectory: File, deps: Iterable[Project], parent: Option[Project], additional: ClassLoader, log: Logger): LoadResult =
 	{
-		val info = ProjectInfo(projectDirectory, deps, parent)
+		val info = ProjectInfo(projectDirectory, deps, parent)(log)
 		ProjectInfo.setup(info, log) match
 		{
 			case err: SetupError => new LoadSetupError(err.message)
@@ -310,12 +316,9 @@ object Project
 	{
 		try
 		{
-			val oldLevel = log.getLevel
-			log.setLevel(Level.Warn)
 			val result =
 				for(builderClass <- getProjectDefinition(info, additional, log).right) yield
 					initialize(constructProject(info, builderClass), setupInfo, log)
-			log.setLevel(oldLevel)
 			result.fold(new LoadError(_), new LoadSuccess(_))
 		}
 		catch
@@ -381,7 +384,7 @@ object Project
 		{
 			val pluginProjectPath = info.builderPath / PluginProjectDirectoryName
 			val additionalPaths = additional match { case u: URLClassLoader => u.getURLs.map(url => Path.fromFile(FileUtilities.toFile(url))); case _ => Nil }
-			val builderProject = new BuilderProject(ProjectInfo(builderProjectPath.asFile, Nil, None), pluginProjectPath, additionalPaths, buildLog)
+			val builderProject = new BuilderProject(ProjectInfo(builderProjectPath.asFile, Nil, None)(buildLog), pluginProjectPath, additionalPaths, buildLog)
 			builderProject.compile.run.toLeft(()).right.flatMap { ignore =>
 				builderProject.projectDefinition.right.map {
 					case Some(definition) => getProjectClass[Project](definition, builderProject.projectClasspath, additional)

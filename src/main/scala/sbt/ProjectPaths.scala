@@ -26,9 +26,6 @@ trait ScalaPaths extends PackagePaths
 	/** A PathFinder that selects all test resources. */
 	def testResources: PathFinder
 	
-	def mainResourceClasspath: PathFinder
-	def testResourceClasspath: PathFinder
-	
 	def mainCompilePath: Path
 	def testCompilePath: Path
 	def mainAnalysisPath: Path
@@ -36,6 +33,8 @@ trait ScalaPaths extends PackagePaths
 	def mainDocPath: Path
 	def testDocPath: Path
 	def graphPath: Path
+	def mainResourcesOutputPath: Path
+	def testResourcesOutputPath: Path
 
 	/** A PathFinder that selects all the classes compiled from the main sources.*/
 	def mainClasses: PathFinder
@@ -66,6 +65,7 @@ trait BasicScalaPaths extends Project with ScalaPaths
 {
 	def mainResourcesPath: PathFinder
 	def testResourcesPath: PathFinder
+	def managedDependencyPath: Path
 	def managedDependencyRootPath: Path
 	def dependencyPath: Path
 
@@ -82,8 +82,6 @@ trait BasicScalaPaths extends Project with ScalaPaths
 	}
 	def testSources = sources(testSourceRoots)
 	
-	def mainResourceClasspath = mainResourcesPath
-	def testResourceClasspath = testResourcesPath
 	def mainResources = descendents(mainResourcesPath ##, "*")
 	def testResources = descendents(testResourcesPath ##, "*")
 	
@@ -100,7 +98,7 @@ trait BasicScalaPaths extends Project with ScalaPaths
 		info.bootPath +++ info.builderProjectOutputPath +++
 		info.pluginsOutputPath +++ info.pluginsManagedSourcePath +++ info.pluginsManagedDependencyPath
 
-	override def outputDirectories = outputRootPath :: managedDependencyRootPath :: Nil
+	override def outputDirectories = outputPath :: managedDependencyPath :: Nil
 }
 
 @deprecated trait BasicProjectPaths extends MavenStyleScalaPaths
@@ -123,6 +121,8 @@ trait MavenStyleScalaPaths extends BasicScalaPaths with BasicPackagePaths
 	def graphDirectoryName = DefaultGraphDirectoryName
 	def mainAnalysisDirectoryName = DefaultMainAnalysisDirectoryName
 	def testAnalysisDirectoryName = DefaultTestAnalysisDirectoryName
+	def mainResourcesOutputDirectoryName = DefautMainResourcesOutputDirectoryName
+	def testResourcesOutputDirectoryName = DefautTestResourcesOutputDirectoryName
 	
 	def sourcePath = path(sourceDirectoryName)
 	
@@ -132,6 +132,7 @@ trait MavenStyleScalaPaths extends BasicScalaPaths with BasicPackagePaths
 	def mainResourcesPath = mainSourcePath / resourcesDirectoryName
 	def mainDocPath = docPath / mainDirectoryName / apiDirectoryName
 	def mainCompilePath = outputPath / mainCompileDirectoryName
+	def mainResourcesOutputPath = outputPath / mainResourcesOutputDirectoryName
 	def mainAnalysisPath = outputPath / mainAnalysisDirectoryName
 	
 	def testSourcePath = sourcePath / testDirectoryName
@@ -140,6 +141,7 @@ trait MavenStyleScalaPaths extends BasicScalaPaths with BasicPackagePaths
 	def testResourcesPath = testSourcePath / resourcesDirectoryName
 	def testDocPath = docPath / testDirectoryName / apiDirectoryName
 	def testCompilePath = outputPath / testCompileDirectoryName
+	def testResourcesOutputPath = outputPath / testResourcesOutputDirectoryName
 	def testAnalysisPath = outputPath / testAnalysisDirectoryName
 	
 	def docPath = outputPath / docDirectoryName
@@ -183,6 +185,8 @@ object BasicProjectPaths
 	val DefaultGraphDirectoryName = "graph"
 	val DefaultMainAnalysisDirectoryName = "analysis"
 	val DefaultTestAnalysisDirectoryName = "test-analysis"
+	val DefautMainResourcesOutputDirectoryName = "resources"
+	val DefautTestResourcesOutputDirectoryName = "test-resources"
 	
 	val DefaultMainDirectoryName = "main"
 	val DefaultScalaDirectoryName = "scala"

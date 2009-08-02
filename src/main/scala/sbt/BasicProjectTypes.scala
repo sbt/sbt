@@ -232,7 +232,7 @@ trait BasicManagedProject extends ManagedProject with ReflectiveManagedProject w
 	/** The dependency manager that represents inline declarations.  The default manager packages the information
 	* from 'ivyXML', 'projectID', 'repositories', and 'libraryDependencies' and does not typically need to be
 	* be overridden. */
-	def manager = new SimpleManager(ivyXML, true, projectID, repositories, ivyConfigurations, defaultConfiguration, artifacts, libraryDependencies.toList: _*)
+	def manager = new SimpleManager(ivyXML, true, projectID, repositories.toSeq, ivyConfigurations, defaultConfiguration, artifacts, libraryDependencies.toList: _*)
 	
 	/** The pattern for Ivy to use when retrieving dependencies into the local project.  Classpath management
 	* depends on the first directory being [conf] and the extension being [ext].*/
@@ -245,24 +245,18 @@ trait BasicManagedProject extends ManagedProject with ReflectiveManagedProject w
 	override def ivyConfigurations: Iterable[Configuration] =
 	{
 		val reflective = super.ivyConfigurations
+		val extra = extraDefaultConfigurations
 		if(useDefaultConfigurations)
 		{
-			if(reflective.isEmpty && !useIntegrationTestConfiguration)
+			if(reflective.isEmpty && extra.isEmpty)
 				Nil
 			else
-			{
-				val base = Configurations.defaultMavenConfigurations ++ reflective
-				val allConfigurations =
-					if(useIntegrationTestConfiguration)
-						base ++ List(Configurations.IntegrationTest)
-					else
-						base
-				Configurations.removeDuplicates(allConfigurations)
-			}
+				Configurations.removeDuplicates(Configurations.defaultMavenConfigurations ++ reflective ++ extra)
 		}
 		else
-			reflective
+			reflective ++ extraDefaultConfigurations
 	}
+	def extraDefaultConfigurations: List[Configuration] = Nil
 	def useIntegrationTestConfiguration = false
 	def defaultConfiguration: Option[Configuration] = Some(Configurations.DefaultConfiguration(useDefaultConfigurations))
 	def useMavenConfigurations = true // TODO: deprecate after going through a minor version series to verify that this works ok

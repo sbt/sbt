@@ -7,6 +7,7 @@ import BasicProjectPaths._
 
 sealed abstract class InternalProject extends Project
 {
+	override def defaultLoggingLevel = Level.Warn
 	override final def historyPath = None
 	override def tasks: Map[String, Task] = Map.empty
 	override final protected def disableCrossPaths = false
@@ -76,8 +77,9 @@ private sealed abstract class BasicBuilderProject extends InternalProject with S
 			}
 		}
 		protected def analysisCallback: AnalysisCallback =
-			new BasicAnalysisCallback(info.projectPath, List(Project.ProjectClassName), analysis)
+			new BasicAnalysisCallback(info.projectPath, analysis)
 			{
+				def superclassNames = List(Project.ProjectClassName)
 				def foundApplication(sourcePath: Path, className: String)  {}
 				def foundSubclass(sourcePath: Path, subclassName: String, superclassName: String, isModule: Boolean)
 				{
@@ -107,12 +109,12 @@ private sealed abstract class BasicBuilderProject extends InternalProject with S
 	override final def methods = Map.empty
 }
 /** The project definition used to build project definitions. */
-private final class BuilderProject(val info: ProjectInfo, val pluginPath: Path, additional: Iterable[Path], override protected val logImpl: Logger) extends BasicBuilderProject
+private final class BuilderProject(val info: ProjectInfo, val pluginPath: Path, additional: Iterable[Path], rawLogger: Logger) extends BasicBuilderProject
 {
 	private lazy val pluginProject =
 	{
 		if(pluginPath.exists)
-			Some(new PluginBuilderProject(ProjectInfo(pluginPath.asFile, Nil, None)))
+			Some(new PluginBuilderProject(ProjectInfo(pluginPath.asFile, Nil, None)(rawLogger)))
 		else
 			None
 	}
@@ -125,7 +127,6 @@ private final class BuilderProject(val info: ProjectInfo, val pluginPath: Path, 
 
 	final class PluginBuilderProject(val info: ProjectInfo) extends BasicBuilderProject
 	{
-		override protected def logImpl = BuilderProject.this.log
 		val pluginUptodate = propertyOptional[Boolean](false)
 		def tpe = "plugin definition"
 		def managedSourcePath = path(BasicDependencyPaths.DefaultManagedSourceDirectoryName)
@@ -159,8 +160,8 @@ private final class BuilderProject(val info: ProjectInfo, val pluginPath: Path, 
 		{
 			Control.thread(projectDefinition) {
 				case Some(definition) =>
-					logInfo("\nUpdating plugins")
-					val pluginInfo = ProjectInfo(info.projectPath.asFile, Nil, None)
+					logInfo("\nUpdating plugins...")
+					val pluginInfo = ProjectInfo(info.projectPath.asFile, Nil, None)(rawLogger)
 					val pluginBuilder = Project.constructProject(pluginInfo, Project.getProjectClass[PluginDefinition](definition, projectClasspath, getClass.getClassLoader))
 					pluginBuilder.projectName() = "Plugin builder"
 					pluginBuilder.projectVersion() = OpaqueVersion("1.0")
@@ -199,6 +200,7 @@ private final class BuilderProject(val info: ProjectInfo, val pluginPath: Path, 
 }
 class PluginDefinition(val info: ProjectInfo) extends InternalProject with BasicManagedProject
 {
+	override def defaultLoggingLevel = Level.Info
 	override final def outputPattern = "[artifact](-[revision]).[ext]"
 	override final val tasks = Map("update" -> update)
 	override def projectClasspath(config: Configuration) = Path.emptyPathFinder

@@ -56,6 +56,14 @@ trait BasicIntegrationTesting extends ScalaIntegrationTesting with IntegrationTe
 
 	def integrationTestFrameworks = testFrameworks
 	override def useIntegrationTestConfiguration = false
+	abstract override def extraDefaultConfigurations =
+	{
+		val superConfigurations = super.extraDefaultConfigurations
+		if(useIntegrationTestConfiguration)
+			integrationTestConfiguration :: superConfigurations
+		else
+			superConfigurations
+	}
 	abstract override def fullUnmanagedClasspath(config: Configuration) =
 	{
 		val superClasspath = super.fullUnmanagedClasspath(config)

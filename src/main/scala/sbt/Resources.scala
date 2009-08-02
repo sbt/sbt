@@ -79,21 +79,21 @@ class Resources(val baseDirectory: File, additional: ClassLoader)
 			else
 			{
 				val buffered = new BufferedLogger(log)
+				buffered.setLevel(Level.Debug)
+				buffered.enableTrace(true)
 				def error(msg: String) =
 				{
-					buffered.playAll()
-					buffered.stop()
+					buffered.stopAll()
 					Left(msg)
 				}
-				
-				buffered.startRecording()
+				buffered.recordAll()
 				resultToEither(Project.loadProject(dir, Nil, None, additional, buffered)) match
 				{
 					case Left(msg) =>
 						reload match
 						{
 							case ReloadErrorExpected =>
-								buffered.stop()
+								buffered.clearAll()
 								previousProject.toRight("Initial project load failed.")
 							case s: ReloadSuccessExpected => error(s.prefixIfError + msg)
 							case NoReload /* shouldn't happen */=> error(msg)
@@ -103,7 +103,7 @@ class Resources(val baseDirectory: File, additional: ClassLoader)
 						{
 							case ReloadErrorExpected => error("Expected project load failure, but it succeeded.")
 							case _ =>
-								buffered.stop()
+								buffered.clearAll()
 								Right(p)
 						}
 				}
@@ -111,15 +111,13 @@ class Resources(val baseDirectory: File, additional: ClassLoader)
 		loadResult match
 		{
 			case Right(project) =>
-				project.log.enableTrace(log.traceEnabled)
-				project.log.setLevel(log.getLevel)
 				f(project) match
 				{
 					case ContinueResult(newF, newReload) => withProject(log, Some(project), newReload, dir)(newF)
 					case ValueResult(value) => Right(value)
-					case err: ErrorResult => Left(err.message)
+					case err: ErrorResult => error(err.message)
 				}
-			case Left(message) => Left(message)
+			case Left(message) => error(message)
 		}
 	}
 

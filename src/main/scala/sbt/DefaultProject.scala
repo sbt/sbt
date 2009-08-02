@@ -147,13 +147,13 @@ abstract class BasicScalaProject extends ScalaProject with BasicDependencyProjec
 		}
 	}
 	/** The unmanaged base classpath.  By default, the unmanaged classpaths for test and run include this classpath. */
-	protected def mainUnmanagedClasspath = mainCompilePath +++ mainResourceClasspath +++ unmanagedClasspath
+	protected def mainUnmanagedClasspath = mainCompilePath +++ mainResourcesOutputPath +++ unmanagedClasspath
 	/** The unmanaged classpath for the run configuration. By default, it includes the base classpath returned by
 	* `mainUnmanagedClasspath`.*/
 	protected def runUnmanagedClasspath = mainUnmanagedClasspath +++ mainDependencies.scalaCompiler
 	/** The unmanaged classpath for the test configuration.  By default, it includes the run classpath, which includes the base
 	* classpath returned by `mainUnmanagedClasspath`.*/
-	protected def testUnmanagedClasspath = testCompilePath +++ testResourceClasspath  +++ testDependencies.scalaCompiler +++ runUnmanagedClasspath
+	protected def testUnmanagedClasspath = testCompilePath +++ testResourcesOutputPath  +++ testDependencies.scalaCompiler +++ runUnmanagedClasspath
 	
 	/** @deprecated Use `mainDependencies.scalaJars`*/
 	@deprecated protected final def scalaJars: Iterable[File] = mainDependencies.scalaJars.get.map(_.asFile)
@@ -181,9 +181,8 @@ abstract class BasicScalaProject extends ScalaProject with BasicDependencyProjec
 		def log = BasicScalaProject.this.log
 		def projectPath = info.projectPath
 		def baseCompileOptions: Seq[CompileOption]
-		lazy val localBaseOptions = baseCompileOptions
-		def options = optionsAsString(localBaseOptions.filter(!_.isInstanceOf[MaxCompileErrors]))
-		def maxErrors = maximumErrors(localBaseOptions)
+		def options = optionsAsString(baseCompileOptions.filter(!_.isInstanceOf[MaxCompileErrors]))
+		def maxErrors = maximumErrors(baseCompileOptions)
 		def compileOrder = BasicScalaProject.this.compileOrder
 	}
 	class MainCompileConfig extends BaseCompileConfig
@@ -233,9 +232,9 @@ abstract class BasicScalaProject extends ScalaProject with BasicDependencyProjec
 	protected def compileAction = task { doCompile(mainCompileConditional) } describedAs MainCompileDescription
 	protected def testCompileAction = task { doCompile(testCompileConditional) } dependsOn compile describedAs TestCompileDescription
 	protected def cleanAction = cleanTask(outputPath, cleanOptions) describedAs CleanDescription
-	protected def runAction = task { args => runTask(getMainClass(true), runClasspath, args, getRunner) dependsOn(compile) } describedAs RunDescription
+	protected def runAction = task { args => runTask(getMainClass(true), runClasspath, args, getRunner) dependsOn(compile, copyResources) } describedAs RunDescription
 	protected def consoleQuickAction = consoleTask(consoleClasspath, getRunner) describedAs ConsoleQuickDescription
-	protected def consoleAction = consoleTask(consoleClasspath, getRunner).dependsOn(testCompile) describedAs ConsoleDescription
+	protected def consoleAction = consoleTask(consoleClasspath, getRunner).dependsOn(testCompile, copyResources, copyTestResources) describedAs ConsoleDescription
 	protected def docAction = scaladocTask(mainLabel, mainSources, mainDocPath, docClasspath, documentOptions).dependsOn(compile) describedAs DocDescription
 	protected def docTestAction = scaladocTask(testLabel, testSources, testDocPath, docClasspath, documentOptions).dependsOn(testCompile) describedAs TestDocDescription
 	protected def testAction = defaultTestTask(testOptions)
@@ -246,7 +245,7 @@ abstract class BasicScalaProject extends ScalaProject with BasicDependencyProjec
 	protected def defaultTestQuickMethod(failedOnly: Boolean) =
 		testQuickMethod(testCompileConditional.analysis, testOptions)(options => defaultTestTask(quickOptions(failedOnly) ::: options.toList))
 	protected def defaultTestTask(testOptions: => Seq[TestOption]) =
-		testTask(testFrameworks, testClasspath, testCompileConditional.analysis, testOptions).dependsOn(testCompile) describedAs TestDescription
+		testTask(testFrameworks, testClasspath, testCompileConditional.analysis, testOptions).dependsOn(testCompile, copyResources, copyTestResources) describedAs TestDescription
 		
 	override def packageToPublishActions: Seq[ManagedTask] = `package` :: Nil
 	
@@ -262,6 +261,9 @@ abstract class BasicScalaProject extends ScalaProject with BasicDependencyProjec
 	protected def graphAction = graphTask(graphPath, mainCompileConditional.analysis).dependsOn(compile)
 	protected def incrementVersionAction = task { incrementVersionNumber(); None } describedAs IncrementVersionDescription
 	protected def releaseAction = (test && packageAll && incrementVersion) describedAs ReleaseDescription
+	
+	protected def copyResourcesAction = syncPathsTask(mainResources, mainResourcesOutputPath) describedAs CopyResourcesDescription
+	protected def copyTestResourcesAction = syncPathsTask(testResources, testResourcesOutputPath) describedAs CopyTestResourcesDescription
 	
 	lazy val compile = compileAction
 	lazy val testCompile = testCompileAction
@@ -283,6 +285,8 @@ abstract class BasicScalaProject extends ScalaProject with BasicDependencyProjec
 	lazy val graph = graphAction
 	lazy val incrementVersion = incrementVersionAction
 	lazy val release = releaseAction
+	lazy val copyResources = copyResourcesAction
+	lazy val copyTestResources = copyTestResourcesAction
 
 	lazy val testQuick = testQuickAction
 	lazy val testFailed = testFailedAction
@@ -306,21 +310,39 @@ abstract class BasicScalaProject extends ScalaProject with BasicDependencyProjec
 	override def watchPaths = mainSources +++ testSources +++ mainResources +++ testResources
 }
 abstract class BasicWebScalaProject extends BasicScalaProject with WebScalaProject with WebScalaPaths
-{
+{ p =>
 	import BasicWebScalaProject._
 	override def watchPaths = super.watchPaths +++ webappResources
 	
 	lazy val prepareWebapp = prepareWebappAction
 	protected def prepareWebappAction =
-		prepareWebappTask(webappResources, temporaryWarPath, webappClasspath, mainDependencies.scalaJars) dependsOn(compile)
+		prepareWebappTask(webappResources, temporaryWarPath, webappClasspath, mainDependencies.scalaJars) dependsOn(compile, copyResources)
 	
+	private lazy val jettyInstance = new JettyRunner(jettyConfiguration)
+	
+	def jettyConfiguration =
+		new DefaultJettyConfiguration
+		{
+			def classpath = jettyRunClasspath
+			def jettyClasspath = p.jettyClasspath
+			def war = jettyWebappPath
+			def contextPath = jettyContextPath
+			def classpathName = "test"
+			def scanDirectories = p.scanDirectories.map(_.asFile)
+			def scanInterval = p.scanInterval
+			def port = jettyPort
+			def log = p.log
+		}
+	/** This is the classpath used to determine what classes, resources, and jars to put in the war file.*/
 	def webappClasspath = publicClasspath
-	def jettyRunClasspath = testClasspath
+	/** This is the classpath containing Jetty.*/
+	def jettyClasspath = testClasspath --- jettyRunClasspath
+	/** This is the classpath containing the web application.*/
+	def jettyRunClasspath = publicClasspath
 	def jettyWebappPath = temporaryWarPath
 	lazy val jettyRun = jettyRunAction
 	lazy val jetty = task { idle() } dependsOn(jettyRun) describedAs(JettyDescription)
-	protected def jettyRunAction =
-		jettyRunTask(jettyWebappPath, jettyContextPath, jettyPort, jettyRunClasspath, "test", scanDirectories.map(_.asFile), scanInterval) dependsOn(prepareWebapp) describedAs(JettyRunDescription)
+	protected def jettyRunAction = jettyRunTask(jettyInstance) dependsOn(prepareWebapp) describedAs(JettyRunDescription)
 	private def idle() =
 	{
 		log.info("Waiting... (press any key to interrupt)")
@@ -338,13 +360,13 @@ abstract class BasicWebScalaProject extends BasicScalaProject with WebScalaProje
 	/** The directories that should be watched to determine if the web application needs to be reloaded..*/
 	def scanDirectories: Seq[Path] = jettyWebappPath :: Nil
 	/** The time in seconds between scans that check whether the web application should be reloaded.*/
-	def scanInterval: Int = 3
+	def scanInterval: Int = JettyRunner.DefaultScanInterval
 	/** The port that Jetty runs on. */
-	def jettyPort: Int = JettyRun.DefaultPort
+	def jettyPort: Int = JettyRunner.DefaultPort
 
 	lazy val jettyRestart = jettyStop && jettyRun
 	lazy val jettyStop = jettyStopAction
-	protected def jettyStopAction = jettyStopTask describedAs(JettyStopDescription)
+	protected def jettyStopAction = jettyStopTask(jettyInstance) describedAs(JettyStopDescription)
 	
 	/** The clean action for a web project is modified so that it first stops jetty if it is running,
 	* since the webapp directory will be removed by the clean.*/
@@ -403,6 +425,10 @@ object BasicScalaProject
 		"Increments the micro part of the version (the third number) by one. (This is only valid for versions of the form #.#.#-*)"
 	val ReleaseDescription =
 		"Compiles, tests, generates documentation, packages, and increments the version."
+	val CopyResourcesDescription =
+		"Copies resources to the target directory where they can be included on classpaths."
+	val CopyTestResourcesDescription =
+		"Copies test resources to the target directory where they can be included on the test classpath."
 		
 	private def warnMultipleMainClasses(log: Logger) =
 	{

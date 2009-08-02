@@ -6,22 +6,8 @@ package sbt
 trait AutoCompilerPlugins extends BasicScalaProject
 {
 	import Configurations.CompilerPlugin
-	abstract override def ivyConfigurations =
-	{
-		val superConfigurations = super.ivyConfigurations.toList
-		val newConfigurations =
-			if(superConfigurations.isEmpty)
-			{
-				if(useDefaultConfigurations)
-					CompilerPlugin :: Configurations.defaultMavenConfigurations
-				else
-				 	Configurations.Default :: CompilerPlugin :: Nil
-			}
-			else
-				CompilerPlugin :: superConfigurations
-		log.debug("Auto configurations: " + newConfigurations.toList.mkString(", "))
-		Configurations.removeDuplicates(newConfigurations)
-	}
+	abstract override def extraDefaultConfigurations =
+		CompilerPlugin :: super.extraDefaultConfigurations
 	abstract override def compileOptions = compilerPlugins ++ super.compileOptions
 
 	/** A PathFinder that provides the classpath to search for compiler plugins. */

@@ -96,6 +96,34 @@ final class MultiLogger(delegates: List[Logger]) extends BasicLogger
 	private def dispatch(event: LogEvent) { delegates.foreach(_.log(event)) }
 }
 
+/** A filter logger is used to delegate messages but not the logging level to another logger.  This means
+* that messages are logged at the higher of the two levels set by this logger and its delegate.
+* */
+final class FilterLogger(delegate: Logger) extends BasicLogger
+{
+	def trace(t: => Throwable)
+	{
+		if(traceEnabled)
+			delegate.trace(t)
+	}
+	def log(level: Level.Value, message: => String)
+	{
+		if(atLevel(level))
+			delegate.log(level, message)
+	}
+	def success(message: => String)
+	{
+		if(atLevel(Level.Info))
+			delegate.success(message)
+	}
+	def control(event: ControlEvent.Value, message: => String)
+	{
+		if(atLevel(Level.Info))
+			delegate.control(event, message)
+	}
+	def logAll(events: Seq[LogEvent]): Unit = events.foreach(delegate.log)
+}
+
 /** A logger that can buffer the logging done on it by currently executing Thread and
 * then can flush the buffer to the delegate logger provided in the constructor.  Use
 * 'startRecording' to start buffering and then 'play' from to flush the buffer for the
@@ -110,78 +138,67 @@ final class MultiLogger(delegates: List[Logger]) extends BasicLogger
 final class BufferedLogger(delegate: Logger) extends Logger
 {
 	private[this] val buffers = wrap.Wrappers.weakMap[Thread, Buffer[LogEvent]]
-	/* The recording depth part is to enable a weak nesting of recording calls.  When recording is
-	*  nested (recordingDepth >= 2), calls to play/playAll add the buffers for worker Threads to the
-	*  serial buffer (main Thread) and calls to clear/clearAll clear worker Thread buffers only. */
-	private[this] def recording = recordingDepth > 0
-	private[this] var recordingDepth = 0
+	private[this] var recordingAll = false
 	
-	private[this] val mainThread = Thread.currentThread
-	private[this] def getBuffer(key: Thread) = buffers.getOrElseUpdate(key, new ListBuffer[LogEvent])
-	private[this] def buffer = getBuffer(key)
+	private[this] def getOrCreateBuffer = buffers.getOrElseUpdate(key, createBuffer)
+	private[this] def buffer = if(recordingAll) Some(getOrCreateBuffer) else buffers.get(key)
+	private[this] def createBuffer = new ListBuffer[LogEvent]
 	private[this] def key = Thread.currentThread
-	private[this] def serialBuffer = getBuffer(mainThread)
-
-	private[this] def inWorker = Thread.currentThread ne mainThread
 	
-	/** Enables buffering. */
-	def startRecording() { synchronized { recordingDepth += 1 } }
+	@deprecated def startRecording() = recordAll()
+	/** Enables buffering for logging coming from the current Thread. */
+	def record(): Unit = synchronized { buffers(key) = createBuffer }
+	/** Enables buffering for logging coming from all Threads. */
+	def recordAll(): Unit = synchronized{ recordingAll = true }
+	def buffer[T](f: => T): T =
+	{
+		record()
+		try { f }
+		finally { Control.trap(stop()) }
+	}
+	def bufferAll[T](f: => T): T =
+	{
+		recordAll()
+		try { f }
+		finally { Control.trap(stopAll()) }
+	}
+	
 	/** Flushes the buffer to the delegate logger for the current thread.  This method calls logAll on the delegate
 	* so that the messages are written consecutively. The buffer is cleared in the process. */
 	def play(): Unit =
  		synchronized
 		{
-			if(recordingDepth == 1)
+			for(buffer <- buffers.get(key))
 				delegate.logAll(wrap.Wrappers.readOnly(buffer))
-			else if(recordingDepth > 1 && inWorker)
-				serialBuffer ++= buffer
 		}
 	def playAll(): Unit =
 		synchronized
 		{
-			if(recordingDepth == 1)
-			{
-				for(buffer <- buffers.values)
-					delegate.logAll(wrap.Wrappers.readOnly(buffer))
-			}
-			else if(recordingDepth > 1)
-			{
-				for((key, buffer) <- buffers.toList if key ne mainThread)
-					serialBuffer ++= buffer
-			}
+			for(buffer <- buffers.values)
+				delegate.logAll(wrap.Wrappers.readOnly(buffer))
 		}
-	/** Clears buffered events for the current thread.  It does not disable buffering. */
-	def clear(): Unit = synchronized { if(recordingDepth == 1 || inWorker) buffers -= key }
-	/** Clears buffered events for all threads and disables buffering. */
+	/** Clears buffered events for the current thread and disables buffering. */
+	def clear(): Unit = synchronized { buffers -= key }
+	/** Clears buffered events for all threads and disables all buffering. */
+	def clearAll(): Unit = synchronized { buffers.clear(); recordingAll = false }
+	/** Plays buffered events for the current thread and disables buffering. */
 	def stop(): Unit =
 		synchronized
 		{
-			clearAll()
-			if(recordingDepth > 0)
-				recordingDepth -= 1
+			play()
+			clear()
 		}
-	/** Clears buffered events for all threads. */
-	def clearAll(): Unit =
+	def stopAll(): Unit =
 		synchronized
 		{
-			if(recordingDepth <= 1)
-				buffers.clear()
-			else
-			{
-				val serial = serialBuffer
-				buffers.clear()
-				buffers(mainThread) = serial
-			}
+			playAll()
+			clearAll()
 		}
-	def runAndFlush[T](f: => T): T =
-	{
-		try { f }
-		finally { play();  clear() }
-	}
 	
 	def setLevel(newLevel: Level.Value): Unit =
-		synchronized {
-			if(recording) buffer += new SetLevel(newLevel)
+		synchronized
+		{
+			buffer.foreach{_  += new SetLevel(newLevel) }
 			delegate.setLevel(newLevel)
 		}
 	def getLevel = synchronized { delegate.getLevel }
@@ -189,58 +206,39 @@ final class BufferedLogger(delegate: Logger) extends Logger
 	def enableTrace(flag: Boolean): Unit =
 		synchronized
 		{
-			if(recording) buffer += new SetTrace(flag)
+			buffer.foreach{_  += new SetTrace(flag) }
 			delegate.enableTrace(flag)
 		}
 	
 	def trace(t: => Throwable): Unit =
-		synchronized
-		{
-			if(traceEnabled)
-			{
-				if(recording) buffer += new Trace(t)
-				else delegate.trace(t)
-			}
-		}
+		doBufferableIf(traceEnabled, new Trace(t), _.trace(t))
 	def success(message: => String): Unit =
-		synchronized
-		{
-			if(atLevel(Level.Info))
-			{
-				if(recording)
-					buffer += new Success(message)
-				else
-					delegate.success(message)
-			}
-		}
+		doBufferable(Level.Info, new Success(message), _.success(message))
 	def log(level: Level.Value, message: => String): Unit =
-		synchronized
-		{
-			if(atLevel(level))
-			{
-				if(recording)
-					buffer += new Log(level, message)
-				else
-					delegate.log(level, message)
-			}
-		}
+		doBufferable(level, new Log(level, message), _.log(level, message))
 	def logAll(events: Seq[LogEvent]): Unit =
 		synchronized
 		{
-			if(recording)
-				buffer ++= events
-			else
-				delegate.logAll(events)
+			buffer match
+			{
+				case Some(b) => b ++= events
+				case None => delegate.logAll(events)
+			}
 		}
 	def control(event: ControlEvent.Value, message: => String): Unit =
+		doBufferable(Level.Info, new ControlEvent(event, message), _.control(event, message))
+	private def doBufferable(level: Level.Value, appendIfBuffered: => LogEvent, doUnbuffered: Logger => Unit): Unit =
+		doBufferableIf(atLevel(level), appendIfBuffered, doUnbuffered)
+	private def doBufferableIf(condition: => Boolean, appendIfBuffered: => LogEvent, doUnbuffered: Logger => Unit): Unit =
 		synchronized
 		{
-			if(atLevel(Level.Info))
+			if(condition)
 			{
-				if(recording)
-					buffer += new ControlEvent(event, message)
-				else
-					delegate.control(event, message)
+				buffer match
+				{
+					case Some(b) => b += appendIfBuffered
+					case None => doUnbuffered(delegate)
+				}
 			}
 		}
 }

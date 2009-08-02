@@ -2,6 +2,7 @@
  * Copyright 2009  Mark Harrah
  */
  package sbt.impl
+ import sbt._
 
 import scala.collection.{immutable, mutable}
 import scala.collection.Map
@@ -44,11 +45,7 @@ private final class RunTask(root: Task, rootName: String, maximumTasks: Int) ext
 	// it ignores the root task so that the root task may be run with buffering disabled so that the output
 	// occurs without delay.
 	private def runTasksExceptRoot() =
-	{
-		withBuffered(_.startRecording())
-		try { ParallelRunner.run(expandedRoot, expandedTaskName, runIfNotRoot, maximumTasks, (t: Task) => t.manager.log) }
-		finally { withBuffered(_.stop()) }
-	}
+		ParallelRunner.run(expandedRoot, expandedTaskName, runIfNotRoot, maximumTasks, (t: Task) => t.manager.log)
 	private def withBuffered(f: BufferedLogger => Unit)
 	{
 		for(buffered <- bufferedLoggers)
@@ -69,38 +66,29 @@ private final class RunTask(root: Task, rootName: String, maximumTasks: Int) ext
 		val label = if(multiProject) (action.manager.name + " / " + actionName) else actionName
 		def banner(event: ControlEvent.Value, firstSeparator: String, secondSeparator: String) =
 			Control.trap(action.manager.log.control(event, firstSeparator + " " + label + " " + secondSeparator))
-		if(parallel)
+		val buffered = parallel && !isRoot(action)
+		if(buffered)
+			banner(ControlEvent.Start, "\n  ", "...")
+		def doRun() =
 		{
-			try { banner(ControlEvent.Start, "\n  ", "...") }
-			finally { flush(action) }
+			banner(ControlEvent.Header, "\n==", "==")
+			try { action.invoke }
+			catch { case e: Exception => action.manager.log.trace(e); Some(e.toString) }
+			finally { banner(ControlEvent.Finish, "==", "==") }
 		}
-		banner(ControlEvent.Header, "\n==", "==")
-		try { action.invoke }
-		catch { case e: Exception => action.manager.log.trace(e); Some(e.toString) }
-		finally
+		
+		if(buffered)
+			bufferLogging(action, doRun())
+		else
+			doRun()
+	}
+	private def bufferLogging[T](action: Task, f: => T) =
+		bufferedLogger(action.manager) match
 		{
-			banner(ControlEvent.Finish, "==", "==")
-			if(parallel)
-				flush(action)
+			case Some(buffered) => buffered.buffer { f }
+			case None => f
 		}
-	}
-	private def trapFinally(toTrap: => Unit)(runFinally: => Unit)
-	{
-		try { toTrap }
-		catch { case e: Exception => () }
-		finally { try { runFinally } catch { case e: Exception => () } }
-	}
-	private def flush(action: Task)
-	{
-		for(buffered <- bufferedLogger(action.manager))
-			Control.trap(flush(buffered))
-	}
-	private def flush(buffered: BufferedLogger)
-	{
-		buffered.play()
-		buffered.clear()
-	}
-
+	
 	/* Most of the following is for implicitly adding dependencies (see the expand method)*/
 	private val projectDependencyCache = identityMap[Project, Iterable[Project]]
 	private def dependencies(project: Project) = projectDependencyCache.getOrElseUpdate(project, project.topologicalSort.dropRight(1))

@@ -213,12 +213,11 @@ class CompileConditional(override val config: CompileConfiguration) extends Abst
 	protected def constructAnalysis(analysisPath: Path, projectPath: Path, log: Logger) =
 		new CompileAnalysis(analysisPath, projectPath, log)
 	protected def analysisCallback = new CompileAnalysisCallback
-	protected class CompileAnalysisCallback extends BasicCompileAnalysisCallback(projectPath, testDefinitionClassNames, analysis)
+	protected class CompileAnalysisCallback extends BasicCompileAnalysisCallback(projectPath, analysis)
 	{
-		def foundSubclass(sourcePath: Path, subclassName: String, superclassName: String, isModule: Boolean)
-		{
+		def superclassNames = testDefinitionClassNames
+		def foundSubclass(sourcePath: Path, subclassName: String, superclassName: String, isModule: Boolean): Unit =
 			analysis.addTest(sourcePath, TestDefinition(isModule, subclassName, superclassName))
-		}
 	}
 }
 abstract class AbstractCompileConditional(val config: AbstractCompileConfiguration) extends Conditional[Path, Path, File]
