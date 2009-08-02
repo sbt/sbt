@@ -134,30 +134,26 @@ private class TestScriptParser(baseDirectory: File, log: Logger) extends RegexPa
 	private def evaluate(successExpected: Boolean, label: String, project: Project)(body: => Option[String]): Option[String] =
 	{
 		def startRecordingLog() { foreachBufferedLogger(project)(_.startRecording()) }
-		def playLog() { foreachBufferedLogger(project)(_.playAll()) }
-		def stopLog() { foreachBufferedLogger(project)(_.stop()) }
+		def clearLog() { foreachBufferedLogger(project)(_.clearAll()) }
+		def playLog(message: String) =
+		{
+			foreachBufferedLogger(project)(_.playAll())
+			Some(message)
+		}
 		
 		startRecordingLog()
-		val result =
-			body match
+		try
+		{
+			val result = body
+			if(result.isEmpty == successExpected)
+				None
+			else
 			{
-				case None =>
-					if(successExpected) None
-					else
-					{
-						playLog()
-						Some(label + " succeeded (expected failure).")
-					}
-				case Some(failure) =>
-					if(successExpected)
-					{
-						playLog()
-						Some(label + " failed (expected success): " + failure)
-					}
-					else None
+				val mainMessage = result.map("failed (expected success): " + _).getOrElse("succeeded (expected failure).")
+				playLog(label + " " + mainMessage)
 			}
-		stopLog()
-		result
+		}
+		finally { clearLog() }
 	}
 	private def evaluateAction(action: List[String], successExpected: Boolean)(project: Project): Option[String] =
 	{
