@@ -25,7 +25,7 @@ sealed trait SbtManager extends Manager
 {
 	def autodetect: Boolean
 	def module: ModuleID
-	def resolvers: Iterable[Resolver]
+	def resolvers: Seq[Resolver]
 	def dependencies: Iterable[ModuleID]
 	def autodetectUnspecified: Boolean
 	def dependenciesXML: NodeSeq
@@ -34,7 +34,7 @@ sealed trait SbtManager extends Manager
 	def artifacts: Iterable[Artifact]
 }
 final class SimpleManager private[sbt] (val dependenciesXML: NodeSeq, val autodetectUnspecified: Boolean,
-	val module: ModuleID, val resolvers: Iterable[Resolver], explicitConfigurations: Iterable[Configuration],
+	val module: ModuleID, val resolvers: Seq[Resolver], explicitConfigurations: Iterable[Configuration],
 	val defaultConfiguration: Option[Configuration], val artifacts: Iterable[Artifact], val dependencies: ModuleID*) extends SbtManager
 {
 	def autodetect = dependencies.isEmpty && dependenciesXML.isEmpty && artifacts.isEmpty && explicitConfigurations.isEmpty && autodetectUnspecified
