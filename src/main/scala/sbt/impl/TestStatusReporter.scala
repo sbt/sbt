@@ -2,6 +2,7 @@
  * Copyright 2009 Mark Harrah
  */
 package sbt.impl
+import sbt._
 
 import java.io.File
 import scala.collection.mutable.{HashMap, Map}

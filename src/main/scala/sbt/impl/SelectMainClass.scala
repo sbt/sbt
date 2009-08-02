@@ -1,4 +1,8 @@
+/* sbt -- Simple Build Tool
+ * Copyright 2009 Mark Harrah
+ */
 package sbt.impl
+import sbt._
 
 private[sbt] object SelectMainClass
 {

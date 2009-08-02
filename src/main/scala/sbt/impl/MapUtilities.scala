@@ -3,6 +3,7 @@
  */
 
 package sbt.impl
+import sbt._
 
 import java.util.Properties
 import java.io.{File, FileInputStream, FileOutputStream, InputStream, OutputStream}
