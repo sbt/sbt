@@ -544,8 +544,10 @@ object FileUtilities
 	/** Synchronizes the contents of the <code>sourceDirectory</code> directory to the
 	* <code>targetDirectory</code> directory.*/
 	def sync(sourceDirectory: Path, targetDirectory: Path, log: Logger): Option[String] =
+		syncPaths((sourceDirectory ##) ** AllPassFilter, targetDirectory, log)
+	def syncPaths(sources: PathFinder, targetDirectory: Path, log: Logger): Option[String] =
 	{
-		copy(((sourceDirectory ##) ** AllPassFilter).get, targetDirectory, log).right.flatMap
+		copy(sources.get, targetDirectory, log).right.flatMap
 			{ copiedTo => prune(targetDirectory, copiedTo, log).toLeft(()) }.left.toOption
 	}
 	def prune(directory: Path, keepOnly: Iterable[Path], log: Logger): Option[String] =
