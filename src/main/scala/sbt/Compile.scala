@@ -206,11 +206,11 @@ final class Scaladoc(maximumErrors: Int) extends CompilerCore
 }
 
 // The following code is based on scala.tools.nsc.reporters.{AbstractReporter, ConsoleReporter}
-// Copyright 2002-2008 LAMP/EPFL
+// Copyright 2002-2009 LAMP/EPFL
 // Original author: Martin Odersky
 final class LoggerReporter(maximumErrors: Int, log: Logger) extends scala.tools.nsc.reporters.Reporter
 {
-	import scala.tools.nsc.util.{FakePos,Position}
+	import scala.tools.nsc.util.{FakePos,NoPosition,Position}
 	private val positions = new scala.collection.mutable.HashMap[Position, Severity]
 	
 	def error(msg: String) { error(FakePos("scalac"), msg) }
@@ -239,29 +239,36 @@ final class LoggerReporter(maximumErrors: Int, log: Logger) extends scala.tools.
 	
 	private def print(level: Level.Value, posIn: Position, msg: String)
 	{
-		if(posIn == null)
-			log.log(level, msg)
-		else
+		// the implicits keep source compatibility with the changes in 2.8 : Position.{source,line,column} are no longer Options
+		implicit def anyToOption[T <: AnyRef](t: T): Option[T] = Some(t)
+		implicit def intToOption(t: Int): Option[Int] = Some(t)
+		val pos =
+			posIn match
+			{
+				case null | NoPosition => NoPosition
+				case x: FakePos => x
+				case x =>
+					posIn.inUltimateSource(posIn.source.get)
+			}
+		pos match
 		{
-			val pos = posIn.inUltimateSource(posIn.source.getOrElse(null))
-			def message =
-			{
-				val sourcePrefix =
-					pos match
-					{
-						case FakePos(msg) => msg + " "
-						case _ => pos.source.map(_.file.path).getOrElse("")
-					}
+			case NoPosition => log.log(level, msg)
+			case FakePos(fmsg) => log.log(level, fmsg+" "+msg)
+			case _ =>
+				val sourcePrefix = pos.source.map(_.file.path).getOrElse("")
 				val lineNumberString = pos.line.map(line => ":" + line + ":").getOrElse(":") + " "
-				sourcePrefix + lineNumberString + msg
-			}
-			log.log(level, message)
-			if (!pos.line.isEmpty)
-			{
-				log.log(level, pos.lineContent.stripLineEnd) // source line with error/warning
-				for(column <- pos.column if column > 0) // pointer to the column position of the error/warning
-					log.log(level, (" " * (column-1)) + '^')
-			}
+				log.log(level, sourcePrefix + lineNumberString + msg)
+				if (!pos.line.isEmpty)
+				{
+					val lineContent = pos.lineContent.stripLineEnd
+					log.log(level, lineContent) // source line with error/warning
+					for(offset <- pos.offset; src <- pos.source)
+					{
+						val pointer = offset - src.lineToOffset(src.offsetToLine(offset))
+						val pointerSpace = lineContent.take(pointer).map { case '\t' => '\t'; case x => ' ' }
+						log.log(level, pointerSpace.mkString + "^") // pointer to the column position of the error/warning
+					}
+				}
 		}
 	}
 	override def reset =
