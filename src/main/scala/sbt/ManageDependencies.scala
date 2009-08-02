@@ -201,7 +201,7 @@ object ManageDependencies
 					{
 						log.debug("Using inline repositories.")
 						configureDefaults()
-						val extra = if(flags.addScalaTools) ScalaToolsReleases :: resolvers.toList else resolvers
+						val extra = if(flags.addScalaTools) resolvers ++ List(ScalaToolsReleases) else resolvers // user resolvers come before scala-tools
 						addResolvers(ivy.getSettings, extra, log)
 					}
 					if(autodetect)
@@ -528,12 +528,12 @@ object ManageDependencies
 		moduleID.check()
 	}
 	/** Sets the resolvers for 'settings' to 'resolvers'.  This is done by creating a new chain and making it the default. */
-	private def addResolvers(settings: IvySettings, resolvers: Iterable[Resolver], log: Logger)
+	private def addResolvers(settings: IvySettings, resolvers: Seq[Resolver], log: Logger)
 	{
 		val newDefault = new ChainResolver
 		newDefault.setName("redefined-public")
+		newDefault.add(settings.getDefaultResolver) // put local, shared, and public(Maven Central) repositories before user repositories
 		resolvers.foreach(r => newDefault.add(ConvertResolver(r)))
-		newDefault.add(settings.getDefaultResolver)
 		settings.addResolver(newDefault)
 		settings.setDefaultResolver(newDefault.getName)
 		if(log.atLevel(Level.Debug))
