@@ -1,0 +1,11 @@
+> update
+[success]
+
+> jetty-run
+[success]
+
+> check-page
+[success]
+
+> jetty-stop
+[success]
