@@ -80,6 +80,7 @@ private[sbt] sealed abstract class Map[K,V] extends Iterable[(K,V)]
 {
 	def apply(key: K): V
 	def get(key: K): Option[V]
+	def containsKey(key: K): Boolean
 	final def getOrElse[V2 >: V](key: K, default: => V2): V2 =
 		get(key) match
 		{
@@ -98,6 +99,7 @@ private[sbt] sealed abstract class MapWrapper[K,V](val underlying: JMap[K,V]) ex
 		else
 			Some(value)
 	}
+	final def containsKey(key: K) = underlying.containsKey(key)
 	final def toList = Wrappers.toList(underlying)
 	final def values = toList.map(_._2)
 }
@@ -116,5 +118,6 @@ private[sbt] sealed class MutableMapWrapper[K,V](wrapped: JMap[K,V]) extends Map
 	final def update(key: K, value: V) { underlying.put(key, value) }
 	final def +=(pair: (K, V) ) { update(pair._1, pair._2) }
 	final def -=(key: K) { underlying.remove(key) }
+	final def remove(key: K) = underlying.remove(key)
 	final def readOnly: Map[K,V] = this
 }

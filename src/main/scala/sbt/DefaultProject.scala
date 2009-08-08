@@ -292,6 +292,9 @@ abstract class BasicScalaProject extends ScalaProject with BasicDependencyProjec
 	lazy val testFailed = testFailedAction
 	lazy val testOnly = testOnlyAction
 	
+	lazy val javap = javapTask(runClasspath, mainCompileConditional, mainCompilePath)
+	lazy val testJavap = javapTask(testClasspath, testCompileConditional, testCompilePath)
+	
 	def jarsOfProjectDependencies = Path.lazyPathFinder {
 		topologicalSort.dropRight(1) flatMap { p =>
 			p match
@@ -318,7 +321,7 @@ abstract class BasicWebScalaProject extends BasicScalaProject with WebScalaProje
 	protected def prepareWebappAction =
 		prepareWebappTask(webappResources, temporaryWarPath, webappClasspath, mainDependencies.scalaJars) dependsOn(compile, copyResources)
 	
-	private lazy val jettyInstance = new JettyRunner(jettyConfiguration)
+	lazy val jettyInstance = new JettyRunner(jettyConfiguration)
 	
 	def jettyConfiguration =
 		new DefaultJettyConfiguration

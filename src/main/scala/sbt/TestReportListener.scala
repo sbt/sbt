@@ -22,8 +22,6 @@ trait TestsListener extends TestReportListener
   def doInit
 	/** called once, at end. */
   def doComplete(finalResult: Result.Value)
-	/** called once, at end, if the test framework throws an exception. */
-  @deprecated def doComplete(t: Throwable)
 }
 
 abstract class WriterReportListener(val log: Logger) extends TestsListener
@@ -281,7 +279,7 @@ class SpecsOutput(val log: Logger) extends EventOutput[SpecsEvent]
 	}
 }
 
-class LogTestReportListener(val log: Logger) extends TestReportListener
+class LogTestReportListener(val log: Logger) extends TestsListener
 {
 	lazy val scalaCheckOutput: EventOutput[ScalaCheckEvent] = createScalaCheckOutput
 	lazy val scalaTestOutput: EventOutput[ScalaTestEvent] = createScalaTestOutput
@@ -295,6 +293,7 @@ class LogTestReportListener(val log: Logger) extends TestReportListener
 	def testEvent(event: TestEvent)
 	{
 		log.debug("in testEvent:" + event)
+		count(event)
 		event match
 		{
 			case sce: ScalaCheckEvent => scalaCheckOutput.output(sce)
@@ -313,4 +312,28 @@ class LogTestReportListener(val log: Logger) extends TestReportListener
 	{
 		log.debug("in endGroup:" + result)
 	}
+	protected def count(event: TestEvent): Unit =
+	{
+		for(result <- event.result)
+		{
+			totalTests += 1
+			result match
+			{
+				case Result.Error => errors += 1
+				case Result.Failed => failed += 1
+				case Result.Passed => passed += 1
+			}
+		}
+	}
+	protected var totalTests, errors, passed, failed = 0
+	def doInit
+	{
+		totalTests = 0
+		errors = 0
+		passed = 0
+		failed = 0
+	}
+		/** called once, at end. */
+	def doComplete(finalResult: Result.Value): Unit =
+		log.info(<x>Run: {totalTests.toString}, Passed: {passed.toString}, Errors: {errors.toString}, Failed: {failed.toString}</x>.text)
 }

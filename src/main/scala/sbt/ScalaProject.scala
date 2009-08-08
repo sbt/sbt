@@ -8,7 +8,7 @@ import java.io.File
 import java.util.jar.{Attributes, Manifest}
 import scala.collection.mutable.ListBuffer
 
-trait SimpleScalaProject extends Project
+trait SimpleScalaProject extends ExecProject
 {
 	def errorTask(message: String) = task{ Some(message) }
 	
@@ -53,19 +53,8 @@ trait SimpleScalaProject extends Project
 				pathClean orElse restored
 			}
 		}
-	def execTask(buildCommand: => ProcessBuilder): Task =
-		task
-		{
-			val command = buildCommand
-			log.debug("Executing command " + command)
-			val exitValue = command.run(log).exitValue() // don't buffer output
-			if(exitValue == 0)
-				None
-			else
-				Some("Nonzero exit value: " + exitValue)
-		}
 }
-trait ScalaProject extends SimpleScalaProject with FileTasks with MultiTaskProject
+trait ScalaProject extends SimpleScalaProject with FileTasks with MultiTaskProject with Exec
 {
 	import ScalaProject._
 	
@@ -124,6 +113,17 @@ trait ScalaProject extends SimpleScalaProject with FileTasks with MultiTaskProje
 		val Private = Value("private")
 	}
 
+	def javapTask(classpath: PathFinder, conditional: CompileConditional, outputPath: Path) =
+	 task { args =>
+		val cp = classpath +++ Path.fromFile(FileUtilities.scalaLibraryJar) +++ Path.fromFile(FileUtilities.scalaCompilerJar)
+		execOut { Process("javap" :: "-classpath" :: Path.makeString(cp.get) :: args.toList) }
+	} completeWith(classNames(conditional, outputPath))
+	private def classNames(conditional: CompileConditional, outputPath: Path) =
+	{
+		val classes = conditional.analysis.allProducts.flatMap(Path.relativize(outputPath, _))
+		classes.map(_.relativePath.replace(java.io.File.separatorChar, '.').toList.dropRight(".class".length).mkString).toSeq
+	}
+	
 	def consoleTask(classpath : PathFinder): Task = 
 		consoleTask(classpath, Run)
 	def consoleTask(classpath : PathFinder, runner: ScalaRun): Task =
@@ -363,4 +363,32 @@ trait MultiTaskProject extends Project
 			run(includeFunction)
 		} completeWith allTests
 	
+}
+trait ExecProject extends Project
+{
+	def execOut(p: => ProcessBuilder) =
+		task
+		{
+			val exitValue = (p !)
+			if(exitValue == 0)
+				None
+			else
+				Some("Nonzero exit value: " + exitValue)
+		}
+	def execTask(buildCommand: => ProcessBuilder): Task =
+		task
+		{
+			val command = buildCommand
+			log.debug("Executing command " + command)
+			val exitValue = command.run(log).exitValue() // don't buffer output
+			if(exitValue == 0)
+				None
+			else
+				Some("Nonzero exit value: " + exitValue)
+		}
+}
+trait Exec extends SimpleScalaProject
+{
+	lazy val sh = task { args =>  execOut { Process("sh" :: "-c" :: args.mkString(" ") :: Nil) } }
+	lazy val exec = task { args => execOut { Process(args) } }
 }

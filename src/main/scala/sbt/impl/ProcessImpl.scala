@@ -9,7 +9,6 @@ import java.io.{FilterInputStream, FilterOutputStream, PipedInputStream, PipedOu
 import java.io.{File, FileInputStream, FileOutputStream}
 import java.net.URL
 
-import scala.concurrent.ops.future
 import scala.concurrent.SyncVar
 
 /** Runs provided code in a new Thread and returns the Thread instance. */
@@ -22,6 +21,23 @@ private object Spawn
 		thread.setDaemon(daemon)
 		thread.start()
 		thread
+	}
+}
+private object Future
+{
+	def apply[T](f: => T): () => T =
+	{
+		val result = new SyncVar[Either[Throwable, T]]
+		def run: Unit =
+			try { result.set(Right(f)) }
+			catch { case e: Exception => result.set(Left(e)) }
+		Spawn(run)
+		() =>
+			result.get match
+			{
+				case Right(value) => value
+				case Left(exception) => throw exception
+			}
 	}
 }
 
@@ -156,7 +172,7 @@ private abstract class CompoundProcess extends BasicProcess
 		val thread = Spawn(code.set(runAndExitValue()))
 		
 		(
-			future { thread.join(); code.get },
+			Future { thread.join(); code.get },
 			() => thread.interrupt()
 		)
 	}
@@ -312,7 +328,7 @@ private[sbt] class DummyProcessBuilder(override val toString: String, exitValue 
 * The implementation of `exitValue` waits until these threads die before returning. */
 private class DummyProcess(action: => Int) extends Process
 {
-	private[this] val exitCode = scala.concurrent.ops.future(action)
+	private[this] val exitCode = Future(action)
 	override def exitValue() = exitCode()
 	override def destroy() {}
 }
