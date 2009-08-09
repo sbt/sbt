@@ -1,28 +1,31 @@
 /* sbt -- Simple Build Tool
- * Copyright 2008 David MacIver
+ * Copyright 2008, 2009 David MacIver, Mark Harrah
  */
 package sbt;
-
-import scala.collection.mutable;
 
 trait Dag[Node <: Dag[Node]]{
 	self : Node =>
 
 	def dependencies : Iterable[Node]
+	def topologicalSort = Dag.topologicalSort(self)(_.dependencies)
+}
+object Dag
+{
+	import scala.collection.mutable;
 
-	def topologicalSort = {
-		val discovered = new mutable.HashSet[Node];
-		val finished = new wrap.MutableSetWrapper(new java.util.LinkedHashSet[Node])
+	def topologicalSort[T](root: T)(dependencies: T => Iterable[T]) = {
+		val discovered = new mutable.HashSet[T];
+		val finished = new wrap.MutableSetWrapper(new java.util.LinkedHashSet[T])
 
-		def visit(dag : Node){
+		def visit(dag : T){
 			if (!discovered(dag)) {
 				discovered(dag) = true; 
-				dag.dependencies.foreach(visit);
+				dependencies(dag).foreach(visit);
 				finished += dag;
 			}
 		}
 
-		visit(self);
+		visit(root);
 	
 		finished.toList;
 	}

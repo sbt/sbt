@@ -72,7 +72,7 @@ object Main
 				import success.project
 				val doNext: RunCompleteAction =
 					// in interactive mode, fill all undefined properties
-					if(args.length > 0 || fillUndefinedProjectProperties(project.topologicalSort.toList.reverse))
+					if(args.length > 0 || fillUndefinedProjectProperties(project.projectClosure.toList.reverse))
 						startProject(project, args, startTime)
 					else
 						new Exit(NormalExitCode)
@@ -191,7 +191,7 @@ object Main
 	**/
 	private def interactive(baseProject: Project): RunCompleteAction =
 	{
-		val projectNames = baseProject.topologicalSort.map(_.name)
+		val projectNames = baseProject.projectClosure.map(_.name)
 		val prefixes = ContinuousExecutePrefix :: CrossBuildPrefix :: Nil
 		val completors = new Completors(ProjectAction, projectNames, interactiveCommands, List(GetAction, SetAction), prefixes)
 		val reader = new JLineReader(baseProject.historyPath, completors, baseProject.log)
@@ -235,7 +235,7 @@ object Main
 					else if(trimmed.startsWith(ProjectAction + " "))
 					{
 						val projectName = trimmed.substring(ProjectAction.length + 1)
-						baseProject.topologicalSort.find(_.name == projectName) match
+						baseProject.projectClosure.find(_.name == projectName) match
 						{
 							case Some(newProject) =>
 							{
@@ -255,7 +255,7 @@ object Main
 						if(trimmed == HelpAction)
 							displayInteractiveHelp()
 						else if(trimmed == ShowProjectsAction)
-							baseProject.topologicalSort.foreach(listProject)
+							baseProject.projectClosure.foreach(listProject)
 						else if(trimmed.startsWith(SetAction + " "))
 							setProperty(currentProject, trimmed.substring(SetAction.length + 1))
 						else if(trimmed.startsWith(GetAction + " "))
@@ -414,7 +414,7 @@ object Main
 	private def toggleTrace(project: Project)
 	{
 		val newValue = !project.log.traceEnabled
-		project.topologicalSort.foreach(_.log.enableTrace(newValue))
+		project.projectClosure.foreach(_.log.enableTrace(newValue))
 		printTraceEnabled(project)
 	}
 	private def printTraceEnabled(project: Project)
@@ -424,7 +424,7 @@ object Main
 	/** Sets the logging level on the given project.*/
 	private def setLevel(project: Project, level: Level.Value)
 	{
-		project.topologicalSort.foreach(_.log.setLevel(level))
+		project.projectClosure.foreach(_.log.setLevel(level))
 		Console.println("Set log level to " + project.log.getLevel)
 	}
 	/** Prints the elapsed time to the given project's log using the given

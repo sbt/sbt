@@ -520,7 +520,7 @@ trait ReflectiveProject extends ReflectiveModules with ReflectiveTasks with Refl
 /** This Project subclass is used to contain other projects as dependencies.*/
 class ParentProject(val info: ProjectInfo) extends BasicDependencyProject
 {
-	def dependencies = info.dependencies ++ subProjects.values.toList
+	def dependencies: Iterable[Project] = info.dependencies ++ subProjects.values.toList
 	/** The directories to which a project writes are listed here and is used
 	* to check a project and its dependencies for collisions.*/
 	override def outputDirectories = managedDependencyPath :: outputPath :: Nil

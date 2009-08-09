@@ -82,15 +82,7 @@ trait Project extends TaskManager with Dag[Project] with BasicEnvironment
 	* specified for the project and are different from those specified in the project constructor. The
 	* main use within sbt is in ParentProject.*/
 	def subProjects: Map[String, Project] = immutable.Map.empty
-	/** The name of this project and the names of all subprojects/dependencies, transitively.*/
-	def projectNames: Iterable[String] =
-	{
-		val names = new mutable.HashSet[String]
-		names ++= subProjects.keys
-		for(dependentProject <- topologicalSort)
-			names ++= dependentProject.tasks.keys
-		names.toList
-	}
+	def projectClosure: List[Project] = Dag.topologicalSort(this)(p => p.dependencies ++ p.subProjects.values.toList)
 	
 	def call(name: String, parameters: Array[String]): Option[String] =
 	{
@@ -424,7 +416,7 @@ object Project
 	* output directories. */
 	private def checkOutputDirectoriesImpl(project: Project): LoadResult =
 	{
-		val projects = project.topologicalSort
+		val projects = project.projectClosure
 		import scala.collection.mutable.{HashMap, HashSet, Set}
 		val outputDirectories = new HashMap[Path, Set[Project]]
 		for(p <- projects; path <- p.outputDirectories)
