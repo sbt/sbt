@@ -173,7 +173,7 @@ final case class SftpRepository(name: String, connection: SshConnection, pattern
 import Resolver._
 object ScalaToolsReleases extends MavenRepository(ScalaToolsReleasesName, ScalaToolsReleasesRoot)
 object ScalaToolsSnapshots extends MavenRepository(ScalaToolsSnapshotsName, ScalaToolsSnapshotsRoot)
-object DefaultMavenRepository extends MavenRepository("Maven2 Repository", IBiblioResolver.DEFAULT_M2_ROOT)
+object DefaultMavenRepository extends MavenRepository("public", IBiblioResolver.DEFAULT_M2_ROOT)
 object JavaNet1Repository extends Resolver
 {
 	def name = "java.net Maven1 Repository"
@@ -275,6 +275,20 @@ object Resolver
 
 	def defaultPatterns = mavenStylePatterns
 	def mavenStyleBasePattern = "[organisation]/[module]/[revision]/[artifact]-[revision](-[classifier]).[ext]"
+	def localBasePattern = "[organisation]/[module]/[revision]/[type]s/[artifact].[ext]"
+	
+	def userRoot = System.getProperty("user.home")
+	def userMavenRoot = userRoot + "/.m2/repository/"
+	def userIvyRoot = userRoot + "/.ivy2/"
+	
+	def defaultLocal = defaultUserFileRepository("local")
+	def defaultShared = defaultUserFileRepository("shared")
+	def defaultUserFileRepository(id: String) = file(id, new File(userIvyRoot, id))(defaultIvyPatterns)
+	def defaultIvyPatterns =
+	{
+		val pList = List(localBasePattern)
+		Patterns(pList, pList, false)
+	}
 }
 
 object Configurations

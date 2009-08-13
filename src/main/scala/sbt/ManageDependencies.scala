@@ -23,14 +23,12 @@ import core.resolve.ResolveOptions
 import core.retrieve.RetrieveOptions
 import core.settings.IvySettings
 import plugins.matcher.{ExactPatternMatcher, PatternMatcher}
-import plugins.parser.ModuleDescriptorParser
 import plugins.parser.m2.{PomModuleDescriptorParser,PomModuleDescriptorWriter}
 import plugins.parser.xml.XmlModuleDescriptorParser
 import plugins.repository.{BasicResource, Resource}
 import plugins.repository.url.URLResource
-import plugins.resolver.{ChainResolver, DependencyResolver, IBiblioResolver}
-import plugins.resolver.{AbstractPatternsBasedResolver, AbstractSshBasedResolver, FileSystemResolver, SFTPResolver, SshResolver, URLResolver}
-import util.{Message, MessageLogger}
+import plugins.resolver.ChainResolver
+import util.Message
 
 final class IvyScala(val scalaVersion: String, val configurations: Iterable[Configuration], val checkExplicit: Boolean, val filterImplicit: Boolean) extends NotNull
 final class IvyPaths(val projectDirectory: Path, val managedLibDirectory: Path, val cacheDirectory: Option[Path]) extends NotNull
@@ -60,21 +58,25 @@ object ManageDependencies
 	private def withIvyValue[T](config: IvyConfiguration)(doWithIvy: (Ivy, ModuleDescriptor, String) => Either[String, T]) =
 	{
 		import config._
+		log.debug("\nwithIvyValue...\n")
 		val logger = new IvyLogger(log)
+		val originalLogger = Message.getDefaultLogger
 		Message.setDefaultLogger(logger)
-		val ivy = Ivy.newInstance()
-		ivy.getLoggerEngine.pushLogger(logger)
+		log.debug("\nSet default logger...\n")
+		val settings = new IvySettings
+		settings.setBaseDir(paths.projectDirectory.asFile)
+		log.debug("\nCreated settings...\n")
 		
 		/** Parses the given Maven pom 'pomFile'.*/
 		def readPom(pomFile: File) =
 			Control.trap("Could not read pom: ", log)
-				{ Right((PomModuleDescriptorParser.getInstance.parseDescriptor(ivy.getSettings, toURL(pomFile), flags.validate)), "compile") }
+				{ Right((PomModuleDescriptorParser.getInstance.parseDescriptor(settings, toURL(pomFile), flags.validate)), "compile") }
 		/** Parses the given Ivy file 'ivyFile'.*/
 		def readIvyFile(ivyFile: File) =
 			Control.trap("Could not read Ivy file: ", log)
 			{
 				val url = toURL(ivyFile)
-				val parser = new CustomXmlParser.CustomParser(ivy.getSettings)
+				val parser = new CustomXmlParser.CustomParser(settings)
 				parser.setValidate(flags.validate)
 				parser.setSource(url)
 				parser.parse()
@@ -87,7 +89,7 @@ object ManageDependencies
 		def parseDependencies(xml: String, moduleID: DefaultModuleDescriptor, defaultConfiguration: String): Either[String, CustomXmlParser.CustomParser] =
 			Control.trap("Could not read dependencies: ", log)
 			{
-				val parser = new CustomXmlParser.CustomParser(ivy.getSettings)
+				val parser = new CustomXmlParser.CustomParser(settings)
 				parser.setMd(moduleID)
 				parser.setDefaultConf(defaultConfiguration)
 				parser.setValidate(flags.validate)
@@ -98,34 +100,27 @@ object ManageDependencies
 				Right(parser)
 			}
 		/** Configures Ivy using the specified Ivy configuration file.  This method is used when the manager is explicitly requested to be MavenManager or
-		* IvyManager.  If a file is not specified, Ivy is configured with defaults and scala-tools releases is added as a repository.*/
+		* IvyManager.  If a file is not specified, Ivy is configured with defaults.*/
 		def configure(configFile: Option[Path])
 		{
 			configFile match
 			{
-				case Some(path) => ivy.configure(path.asFile)
-				case None =>
-					configureDefaults()
-					scalaTools()
+				case Some(path) => settings.load(path.asFile)
+				case None => configureDefaults(defaultResolvers)
 			}
 		}
-		/** Adds the scala-tools.org releases maven repository to the list of resolvers if configured to do so in IvyFlags.*/
-		def scalaTools()
-		{
-			if(flags.addScalaTools)
-			{
-				log.debug("Added Scala Tools Releases repository.")
-				addResolvers(ivy.getSettings, ScalaToolsReleases :: Nil, log)
-			}
-		}
+		def defaultResolvers: Seq[Resolver] = withDefaultResolvers(Nil)
+		def withDefaultResolvers(user: Seq[Resolver]): Seq[Resolver] =
+			Seq(Resolver.defaultLocal) ++
+			user ++
+			Seq(DefaultMavenRepository) ++
+			(if(flags.addScalaTools) Seq(ScalaToolsReleases) else Nil)
+		
 		/** Configures Ivy using defaults.  This is done when no ivy-settings.xml exists. */
-		def configureDefaults()
+		def configureDefaults(resolvers: Seq[Resolver])
 		{
-			ivy.configureDefault
-			val settings = ivy.getSettings
-			for(dir <- paths.cacheDirectory) settings.setDefaultCache(dir.asFile)
-			settings.setBaseDir(paths.projectDirectory.asFile)
-			configureCache(settings)
+			configureCache(settings, paths.cacheDirectory)
+			setResolvers(settings, resolvers, log)
 		}
 		/** Called to configure Ivy when the configured dependency manager is SbtManager and inline configuration is specified or if the manager
 		* is AutodetectManager.  It will configure Ivy with an 'ivy-settings.xml' file if there is one, or configure the defaults and add scala-tools as
@@ -135,12 +130,9 @@ object ManageDependencies
 			log.debug("Autodetecting configuration.")
 			val defaultIvyConfigFile = defaultIvyConfiguration(paths.projectDirectory).asFile
 			if(defaultIvyConfigFile.canRead)
-				ivy.configure(defaultIvyConfigFile)
+				settings.load(defaultIvyConfigFile)
 			else
-			{
-				configureDefaults()
-				scalaTools()
-			}
+				configureDefaults(defaultResolvers)
 		}
 		/** Called to determine dependencies when the dependency manager is SbtManager and no inline dependencies (Scala or XML) are defined
 		* or if the manager is AutodetectManager.  It will try to read from pom.xml first and then ivy.xml if pom.xml is not found.  If neither is found,
@@ -200,9 +192,7 @@ object ManageDependencies
 					else
 					{
 						log.debug("Using inline repositories.")
-						configureDefaults()
-						val extra = if(flags.addScalaTools) resolvers ++ List(ScalaToolsReleases) else resolvers // user resolvers come before scala-tools
-						addResolvers(ivy.getSettings, extra, log)
+						configureDefaults(withDefaultResolvers(resolvers))
 					}
 					if(autodetect)
 						autodetectDependencies(toID(module))
@@ -265,6 +255,8 @@ object ManageDependencies
 		
 		this.synchronized // Ivy is not thread-safe.  In particular, it uses a static DocumentBuilder, which is not thread-safe
 		{
+			val ivy = Ivy.newInstance(settings)
+			ivy.getLoggerEngine.pushLogger(logger)
 			ivy.pushContext()
 			try
 			{
@@ -273,7 +265,11 @@ object ManageDependencies
 					doWithIvy(ivy, md, conf)
 				}
 			}
-			finally { ivy.popContext() }
+			finally
+			{
+				ivy.popContext()
+				Message.setDefaultLogger(originalLogger)
+			}
 		}
 	}
 	private def addExtraNamespaces(md: DefaultModuleDescriptor): Unit =
@@ -317,16 +313,14 @@ object ManageDependencies
 		excludeScalaJar(ScalaArtifacts.LibraryID)
 		excludeScalaJar(ScalaArtifacts.CompilerID)
 	}
-	private def configureCache(settings: IvySettings)
+	private def configureCache(settings: IvySettings, dir: Option[Path])
 	{
-		settings.getDefaultRepositoryCacheManager match
-		{
-			case manager: DefaultRepositoryCacheManager =>
-				manager.setUseOrigin(true)
-				manager.setChangingMatcher(PatternMatcher.REGEXP);
-				manager.setChangingPattern(".*-SNAPSHOT");
-			case _ => ()
-		}
+		val cacheDir = dir.map(_.asFile).getOrElse(settings.getDefaultRepositoryCacheBasedir())
+		val manager = new DefaultRepositoryCacheManager("default-cache", settings, cacheDir)
+		manager.setUseOrigin(true)
+		manager.setChangingMatcher(PatternMatcher.REGEXP);
+		manager.setChangingPattern(".*-SNAPSHOT");
+		settings.setDefaultRepositoryCacheManager(manager)
 	}
 	/** Creates an ExcludeRule that excludes artifacts with the given module organization and name for
 	* the given configurations. */
@@ -528,17 +522,18 @@ object ManageDependencies
 		moduleID.check()
 	}
 	/** Sets the resolvers for 'settings' to 'resolvers'.  This is done by creating a new chain and making it the default. */
-	private def addResolvers(settings: IvySettings, resolvers: Seq[Resolver], log: Logger)
+	private def setResolvers(settings: IvySettings, resolvers: Seq[Resolver], log: Logger)
 	{
 		val newDefault = new ChainResolver
-		newDefault.setName("redefined-public")
-		newDefault.add(settings.getDefaultResolver) // put local, shared, and public(Maven Central) repositories before user repositories
+		newDefault.setName("sbt-chain")
+		newDefault.setReturnFirst(true)
+		newDefault.setCheckmodified(true)
 		resolvers.foreach(r => newDefault.add(ConvertResolver(r)))
 		settings.addResolver(newDefault)
 		settings.setDefaultResolver(newDefault.getName)
 		if(log.atLevel(Level.Debug))
 		{
-			log.debug("Using extra repositories:")
+			log.debug("Using repositories:")
 			resolvers.foreach(r => log.debug("\t" + r.toString))
 		}
 	}
@@ -595,158 +590,4 @@ object ManageDependencies
 			case dmd: DefaultModuleDescriptor => dmd
 			case _ => error("Unknown ModuleDescriptor type.")
 		}
-}
-
-private object ConvertResolver
-{
-	/** Converts the given sbt resolver into an Ivy resolver..*/
-	def apply(r: Resolver) =
-	{
-		r match
-		{
-			case repo: MavenRepository =>
-			{
-				val resolver = new IBiblioResolver
-				initializeMavenStyle(resolver, repo.name, repo.root)
-				resolver
-			}
-			case JavaNet1Repository =>
-			{
-				// Thanks to Matthias Pfau for posting how to use the Maven 1 repository on java.net with Ivy:
-				// http://www.nabble.com/Using-gradle-Ivy-with-special-maven-repositories-td23775489.html
-				val resolver = new IBiblioResolver { override def convertM2IdForResourceSearch(mrid: ModuleRevisionId) = mrid }
-				initializeMavenStyle(resolver, JavaNet1Repository.name, "http://download.java.net/maven/1/")
-				resolver.setPattern("[organisation]/[ext]s/[module]-[revision](-[classifier]).[ext]")
-				resolver
-			}
-			case repo: SshRepository =>
-			{
-				val resolver = new SshResolver
-				initializeSSHResolver(resolver, repo)
-				repo.publishPermissions.foreach(perm => resolver.setPublishPermissions(perm))
-				resolver
-			}
-			case repo: SftpRepository =>
-			{
-				val resolver = new SFTPResolver
-				initializeSSHResolver(resolver, repo)
-				resolver
-			}
-			case repo: FileRepository =>
-			{
-				val resolver = new FileSystemResolver
-				resolver.setName(repo.name)
-				initializePatterns(resolver, repo.patterns)
-				import repo.configuration.{isLocal, isTransactional}
-				resolver.setLocal(isLocal)
-				isTransactional.foreach(value => resolver.setTransactional(value.toString))
-				resolver
-			}
-			case repo: URLRepository =>
-			{
-				val resolver = new URLResolver
-				resolver.setName(repo.name)
-				initializePatterns(resolver, repo.patterns)
-				resolver
-			}
-		}
-	}
-	private def initializeMavenStyle(resolver: IBiblioResolver, name: String, root: String)
-	{
-		resolver.setName(name)
-		resolver.setM2compatible(true)
-		resolver.setRoot(root)
-	}
-	private def initializeSSHResolver(resolver: AbstractSshBasedResolver, repo: SshBasedRepository)
-	{
-		resolver.setName(repo.name)
-		resolver.setPassfile(null)
-		initializePatterns(resolver, repo.patterns)
-		initializeConnection(resolver, repo.connection)
-	}
-	private def initializeConnection(resolver: AbstractSshBasedResolver, connection: RepositoryHelpers.SshConnection)
-	{
-		import resolver._
-		import connection._
-		hostname.foreach(setHost)
-		port.foreach(setPort)
-		authentication foreach
-			{
-				case RepositoryHelpers.PasswordAuthentication(user, password) =>
-					setUser(user)
-					setUserPassword(password)
-				case RepositoryHelpers.KeyFileAuthentication(file, password) =>
-					setKeyFile(file)
-					setKeyFilePassword(password)
-			}
-	}
-	private def initializePatterns(resolver: AbstractPatternsBasedResolver, patterns: RepositoryHelpers.Patterns)
-	{
-		resolver.setM2compatible(patterns.isMavenCompatible)
-		patterns.ivyPatterns.foreach(resolver.addIvyPattern)
-		patterns.artifactPatterns.foreach(resolver.addArtifactPattern)
-	}
-}
-
-private object DefaultConfigurationMapping extends PomModuleDescriptorWriter.ConfigurationScopeMapping(new java.util.HashMap)
-{
-	override def getScope(confs: Array[String]) =
-	{
-		Configurations.defaultMavenConfigurations.find(conf => confs.contains(conf.name)) match
-		{
-			case Some(conf) => conf.name
-			case None =>
-				if(confs.isEmpty || confs(0) == Configurations.Default.name)
-					null
-				else
-					confs(0)
-		}
-	}
-	override def isOptional(confs: Array[String]) = confs.isEmpty || (confs.length == 1 && confs(0) == Configurations.Optional.name)
-}
-
-/** Interface between Ivy logging and sbt logging. */
-private final class IvyLogger(log: Logger) extends MessageLogger
-{
-	private var progressEnabled = false
-	
-	def log(msg: String, level: Int)
-	{
-		import Message.{MSG_DEBUG, MSG_VERBOSE, MSG_INFO, MSG_WARN, MSG_ERR}
-		level match
-		{
-			case MSG_DEBUG | MSG_VERBOSE => debug(msg)
-			case MSG_INFO => info(msg)
-			case MSG_WARN => warn(msg)
-			case MSG_ERR => error(msg)
-		}
-	}
-	def rawlog(msg: String, level: Int)
-	{
-		log(msg, level)
-	}
-	import Level.{Debug, Info, Warn, Error}
-	def debug(msg: String) = logImpl(msg, Debug)
-	def verbose(msg: String) = debug(msg)
-	def deprecated(msg: String) = warn(msg)
-	def info(msg: String) = logImpl(msg, Info)
-	def rawinfo(msg: String) = info(msg)
-	def warn(msg: String) = logImpl(msg, Warn)
-	def error(msg: String) = logImpl(msg, Error)
-	
-	private def logImpl(msg: String, level: Level.Value) = log.log(level, msg)
-	
-	private def emptyList = java.util.Collections.emptyList[T forSome { type T}]
-	def getProblems = emptyList
-	def getWarns = emptyList
-	def getErrors = emptyList
-
-	def clearProblems = ()
-	def sumupProblems = ()
-	def progress = ()
-	def endProgress = ()
-
-	def endProgress(msg: String) = info(msg)
-	def isShowProgress = false
-	def setShowProgress(progress: Boolean) {}
 }
