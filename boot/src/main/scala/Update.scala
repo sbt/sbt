@@ -5,7 +5,7 @@ package sbt.boot
 
 import java.io.{File, FileWriter, PrintWriter, Writer}
 
-import org.apache.ivy.{core, plugins, util}
+import org.apache.ivy.{core, plugins, util, Ivy}
 import core.LogOptions
 import core.cache.DefaultRepositoryCacheManager
 import core.event.EventManager
@@ -65,6 +65,14 @@ private final class Update(bootDirectory: File, sbtVersion: String, scalaVersion
 	/** Runs update for the specified target (updates either the scala or sbt jars for building the project) */
 	private def update(target: UpdateTarget.Value)
 	{
+		val settings = new IvySettings
+		val ivy = Ivy.newInstance(settings)
+		ivy.pushContext()
+		try { update(target, settings) }
+		finally { ivy.popContext() }
+	}
+	private def update(target: UpdateTarget.Value, settings: IvySettings)
+	{
 		import Configuration.Visibility.PUBLIC
 		// the actual module id here is not that important
 		val moduleID = new DefaultModuleDescriptor(createID(SbtOrg, "boot", "1.0"), "release", null, false)
@@ -76,25 +84,24 @@ private final class Update(bootDirectory: File, sbtVersion: String, scalaVersion
 			case UpdateScala =>
 				addDependency(moduleID, ScalaOrg, CompilerModuleName, scalaVersion, "default")
 				addDependency(moduleID, ScalaOrg, LibraryModuleName, scalaVersion, "default")
-				update(moduleID, target, false)
+				update(settings, moduleID, target, false)
 			case UpdateSbt =>
 				addDependency(moduleID, SbtOrg, SbtModuleName, sbtVersion, scalaVersion)
-				try { update(moduleID, target, false) }
+				try { update(settings, moduleID, target, false) }
 				catch
 				{
 					 // unfortunately, there is not a more specific exception thrown when a configuration does not exist,
 					 // so we always retry after cleaning the ivy file for this version of sbt on in case it is a newer version
 					 // of Scala than when this version of sbt was initially published
 					case e: RuntimeException =>
-						update(moduleID, target, true)
+						update(settings, moduleID, target, true)
 				}
 		}
 	}
 	/** Runs the resolve and retrieve for the given moduleID, which has had its dependencies added already. */
-	private def update(moduleID: DefaultModuleDescriptor,  target: UpdateTarget.Value, cleanExisting: Boolean)
+	private def update(settings: IvySettings, moduleID: DefaultModuleDescriptor,  target: UpdateTarget.Value, cleanExisting: Boolean)
 	{
 		val eventManager = new EventManager
-		val settings = new IvySettings
 		addResolvers(settings, scalaVersion, target)
 		settings.setDefaultConflictManager(settings.getConflictManager(ConflictManagerName))
 		settings.setBaseDir(bootDirectory)
