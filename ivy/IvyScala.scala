@@ -1,0 +1,74 @@
+/* sbt -- Simple Build Tool
+ * Copyright 2008, 2009 Mark Harrah
+ */
+package xsbt
+
+import java.util.Collections
+import scala.collection.mutable.HashSet
+
+import org.apache.ivy.{core, plugins}
+import core.module.descriptor.{DefaultExcludeRule, ExcludeRule}
+import core.module.descriptor.{DefaultModuleDescriptor, ModuleDescriptor}
+import core.module.id.{ArtifactId,ModuleId, ModuleRevisionId}
+import plugins.matcher.ExactPatternMatcher
+
+final class IvyScala(val scalaVersion: String, val configurations: Iterable[Configuration], val checkExplicit: Boolean, val filterImplicit: Boolean) extends NotNull
+private object IvyScala
+{
+	val ScalaOrganization = "org.scala-lang"
+	val ScalaLibraryID = "scala-library"
+	val ScalaCompilerID = "scala-compiler"
+
+	/** Performs checks/adds filters on Scala dependencies (if enabled in IvyScala). */
+	def checkModule(module: DefaultModuleDescriptor, conf: String)(check: IvyScala)
+	{
+		if(check.checkExplicit)
+			checkDependencies(module, check.scalaVersion, check.configurations)
+		if(check.filterImplicit)
+			excludeScalaJars(module, check.configurations)
+	}
+	/** Checks the immediate dependencies of module for dependencies on scala jars and verifies that the version on the
+	* dependencies matches scalaVersion. */
+	private def checkDependencies(module: ModuleDescriptor, scalaVersion: String, configurations: Iterable[Configuration])
+	{
+		val configSet = configurationSet(configurations)
+		for(dep <- module.getDependencies.toList)
+		{
+			val id = dep.getDependencyRevisionId
+			if(id.getOrganisation == ScalaOrganization && id.getRevision != scalaVersion && dep.getModuleConfigurations.exists(configSet.contains))
+				error("Different Scala version specified in dependency ("+ id.getRevision + ") than in project (" + scalaVersion + ").")
+		}
+	}
+	private def configurationSet(configurations: Iterable[Configuration]) = HashSet(configurations.map(_.toString).toSeq : _*)
+	/** Adds exclusions for the scala library and compiler jars so that they are not downloaded.  This is
+	* done because normally these jars are already on the classpath and cannot/should not be overridden.  The version
+	* of Scala to use is done by setting scala.version in the project definition. */
+	private def excludeScalaJars(module: DefaultModuleDescriptor, configurations: Iterable[Configuration])
+	{
+		val configurationNames =
+		{
+			val names = module.getConfigurationsNames
+			if(configurations.isEmpty)
+				names
+			else
+			{
+				val configSet = configurationSet(configurations)
+				configSet.intersect(HashSet(names : _*))
+				configSet.toArray
+			}
+		}
+		def excludeScalaJar(name: String): Unit =
+			module.addExcludeRule(excludeRule(ScalaOrganization, name, configurationNames))
+		excludeScalaJar(ScalaLibraryID)
+		excludeScalaJar(ScalaCompilerID)
+	}
+	/** Creates an ExcludeRule that excludes artifacts with the given module organization and name for
+	* the given configurations. */
+	private def excludeRule(organization: String, name: String, configurationNames: Iterable[String]): ExcludeRule =
+	{
+		val artifact = new ArtifactId(ModuleId.newInstance(organization, name), "*", "*", "*")
+		val rule = new DefaultExcludeRule(artifact, ExactPatternMatcher.INSTANCE, Collections.emptyMap[AnyRef,AnyRef])
+		configurationNames.foreach(rule.addConfiguration)
+		rule
+	}
+}

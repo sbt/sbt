@@ -1,0 +1,32 @@
+Goals/Guidelines for xsbt
+=====
+As usual:
+ - Immutable interfaces
+ - Typesafe
+ - Robust, flexible API
+
+Task engine
+- method tasks will be normal tasks that pull the command line from a CommandLine task
+- possibly have per task logging, including configuration (e.g. 'debug compile')
+- unnamed tasks log to parent task
+- in parallel, optionally one task always logging
+
+- boot interface contains static final int version = N that main xsbt can use to check if it can be loaded by that version (a lower bound check)
+- main xsbt has static final int version = N that boot can use to check if it can load that version (a lower bound check)
+- Have Interfaces subproject that depends on no other project and defines interfaces in package xsbti.  They are written in Java and cannot refer to Scala classes (compileOrder = JavaThenScala).  These interfaces are loaded by the root loader and can be used to pass objects across ClassLoader boundaries.
+- launcher/main interface is not static (no system properties!)
+- simple, well-defined ClassLoaders
+- use Exceptions instead of Option/Either
+- every component gets its own subproject
+- can use any version of compiler/Scala that is source compatible
+ - requires CrossLogger that can interface across ClassLoader boundaries with reflection
+- Logger passed by implicit parameter
+- build using normal cross-build conventions
+- compiler: raw interface (no dependency analysis) or with dependency analysis
+- compiler: can specify scala-library.jar and scala-compiler.jar + version instead of retrieving the ClassLoader
+- minimal dependence on main xsbt logger from subcomponents: use thin interface for subcomponents and implement interface in separate files in main xsbt
+
+Dependency Management
+- drop explicit managers
+- resolvers are completely defined in project definition (use Resolver.withDefaultResolvers)
+- configurations completely defined within project (use ModuleConfiguration.configurations)
