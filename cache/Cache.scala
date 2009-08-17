@@ -9,7 +9,7 @@ trait Cache[I,O]
 }
 trait SBinaryFormats extends CollectionTypes with JavaFormats with NotNull
 {
-	//TODO: add basic types minus FileFormat
+	//TODO: add basic types from SBinary minus FileFormat
 }
 object Cache extends BasicCacheImplicits with SBinaryFormats with HListCacheImplicits
 {
