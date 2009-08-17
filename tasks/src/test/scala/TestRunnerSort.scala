@@ -12,7 +12,7 @@ object TaskRunnerSortTest extends Properties("TaskRunnerSort")
 			("Workers: " + workers) |: ("Array: " + a.toList) |:
 			{
 				def result = TaskRunner( sort(a.toArray), workers)
-				checkResult(result.right.map(_.toList), sorted.toList)
+				checkResult(result.toList, sorted.toList)
 			}
 		}
 	)

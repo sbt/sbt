@@ -41,7 +41,8 @@ object TaskRunnerCircularTest extends Properties("TaskRunner Circular")
 				} named("it_" + i)
 			it
 		}
-		TaskRunner(top, workers).fold(_.exists(_.exception.isInstanceOf[CircularDependency]), x => false)
+		try { TaskRunner(top, workers); false }
+		catch { case TasksFailed(failures) => failures.exists(_.exception.isInstanceOf[CircularDependency]) }
 	}
 	final def checkRootComplete(intermediate: Int, workers: Int) =
 	{

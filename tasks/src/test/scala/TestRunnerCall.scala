@@ -11,7 +11,7 @@ object TaskRunnerCallTest extends Properties("TaskRunner Call")
 			("Workers: " + workers) |: ("i: " + i) |: ("fib(i): " + f) |:
 			{
 				def result = TaskRunner( fibTask(i), workers)
-				("Result: " + result) |: (result == Right(f))
+				checkResult(result, f)
 			}
 		}
 	)
