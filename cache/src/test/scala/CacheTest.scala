@@ -16,6 +16,7 @@ object CacheTest// extends Properties("Cache test")
 		val cTask = (createTask :: cached :: TNil) map { case (file :: len :: HNil) => println("File: " + file + " length: " + len); len :: file :: HNil }
 		val cachedC = Cache(cTask, new File("/tmp/c-cache"))
 
-		TaskRunner(cachedC).left.foreach(_.foreach(f => f.exception.printStackTrace))
+		try { TaskRunner(cachedC) }
+		catch { case TasksFailed(failures) => failures.foreach(_.exception.printStackTrace) }
 	}
 }
