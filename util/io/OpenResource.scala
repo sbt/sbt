@@ -16,21 +16,6 @@ import java.util.zip.{GZIPOutputStream, ZipEntry, ZipFile, ZipInputStream, ZipOu
 import ErrorHandling.translate
 import OpenResource._
 
-object FileUtilities
-{
-	def createDirectory(dir: File): Unit =
-		translate("Could not create directory " + dir + ": ")
-		{
-			if(dir.exists)
-			{
-				if(!dir.isDirectory)
-					error("file exists and is not a directory.")
-			}
-			else if(!dir.mkdirs())
-				error("<unknown error>")
-		}
-}
-
 abstract class OpenResource[Source, T] extends NotNull
 {
 	protected def open(src: Source): T
