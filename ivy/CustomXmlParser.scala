@@ -14,7 +14,7 @@ import plugins.repository.Resource
 import plugins.repository.url.URLResource
 
 /** Subclasses the default Ivy file parser in order to provide access to protected methods.*/
-private object CustomXmlParser extends XmlModuleDescriptorParser with NotNull
+private[xsbt] object CustomXmlParser extends XmlModuleDescriptorParser with NotNull
 {
 	import XmlModuleDescriptorParser.Parser
 	class CustomParser(settings: IvySettings) extends Parser(CustomXmlParser, settings) with NotNull

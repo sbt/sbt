@@ -5,7 +5,7 @@ package xsbt
 
 import org.apache.ivy.util.{Message, MessageLogger}
 
-trait IvyLogger
+trait IvyLogger extends NotNull
 {
 	def info(msg: => String)
 	def debug(msg: => String)

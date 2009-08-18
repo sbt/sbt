@@ -18,6 +18,30 @@ final class UpdateConfiguration(val retrieveDirectory: File, val outputPattern: 
 
 object IvyActions
 {
+	def basicPublishLocal(moduleID: ModuleID, dependencies: Iterable[ModuleID], artifactFiles: Iterable[File], log: IvyLogger)
+	{
+		val artifacts = artifactFiles.map(Artifact.defaultArtifact)
+		val (ivy, local) = basicLocalIvy(log)
+		val module = new ivy.Module(ModuleConfiguration(moduleID, dependencies, artifacts))
+		val srcArtifactPatterns = artifactFiles.map(_.getAbsolutePath)
+		publish(module, local.name, srcArtifactPatterns, None, None)
+	}
+	def basicRetrieveLocal(moduleID: ModuleID, dependencies: Iterable[ModuleID], to: File, log: IvyLogger)
+	{
+		val (ivy, local) = basicLocalIvy(log)
+		val module = new ivy.Module(ModuleConfiguration(moduleID, dependencies, Nil))
+		val up = new UpdateConfiguration(to, defaultOutputPattern, false, true)
+		update(module, up)
+	}
+	def defaultOutputPattern = "[artifact]-[revision](-[classifier]).[ext]"
+	private def basicLocalIvy(log: IvyLogger) =
+	{
+		val local = Resolver.defaultLocal
+		val paths = new IvyPaths(new File("."), None)
+		val conf = new IvyConfiguration(paths, Seq(local), log)
+		(new IvySbt(conf), local)
+	}
+
 	/** Clears the Ivy cache, as configured by 'config'. */
 	def cleanCache(ivy: IvySbt) = ivy.withIvy { _.getSettings.getRepositoryCacheManagers.foreach(_.clean()) }
 	
