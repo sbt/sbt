@@ -18,7 +18,7 @@ class Analyzer(val global: Global) extends Plugin
 	
 	import global._
 	
-	val name = "sbt-analyzer"
+	val name = "xsbt-analyze"
 	val description = "A plugin to find all concrete instances of a given class and extract dependency information."
 	val components = List[PluginComponent](Component)
 	

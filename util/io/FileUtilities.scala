@@ -7,9 +7,12 @@ import OpenResource._
 import ErrorHandling.translate
 
 import java.io.{File, FileInputStream, InputStream, OutputStream}
+import java.net.{URISyntaxException, URL}
+import java.nio.charset.Charset
 import java.util.jar.{Attributes, JarEntry, JarFile, JarInputStream, JarOutputStream, Manifest}
 import java.util.zip.{GZIPOutputStream, ZipEntry, ZipFile, ZipInputStream, ZipOutputStream}
 import scala.collection.mutable.HashSet
+import scala.reflect.{Manifest => SManifest}
 
 object FileUtilities
 {
@@ -21,6 +24,31 @@ object FileUtilities
 	/** The size of the byte or char buffer used in various methods.*/
 	private val BufferSize = 8192
 	private val Newline = System.getProperty("line.separator")
+	
+	def classLocation(cl: Class[_]): URL =
+	{
+		val codeSource = cl.getProtectionDomain.getCodeSource
+		if(codeSource == null) error("No class location for " + cl)
+		else codeSource.getLocation
+	}
+	def classLocationFile(cl: Class[_]): File = toFile(classLocation(cl))
+	def classLocation[T](implicit mf: SManifest[T]): URL = classLocation(mf.erasure)
+	def classLocationFile[T](implicit mf: SManifest[T]): File = classLocationFile(mf.erasure)
+	
+	def toFile(url: URL) =
+		try { new File(url.toURI) }
+		catch { case _: URISyntaxException => new File(url.getPath) }
+	
+	
+	// "base.extension" -> (base, extension)
+	def split(name: String): (String, String) =
+	{
+		val lastDot = name.lastIndexOf('.')
+		if(lastDot >= 0)
+			(name.substring(0, lastDot), name.substring(lastDot+1))
+		else
+			(name, "")
+	}
 	
 	def createDirectory(dir: File): Unit =
 		translate("Could not create directory " + dir + ": ")
@@ -294,4 +322,15 @@ object FileUtilities
 			}
 		}
 	}
+	def defaultCharset = Charset.forName("UTF-8")
+	def write(toFile: File, content: String): Unit = write(toFile, content, defaultCharset)
+	def write(toFile: File, content: String, charset: Charset): Unit = write(toFile, content, charset, false)
+	def write(file: File, content: String, charset: Charset, append: Boolean)
+	{
+		if(charset.newEncoder.canEncode(content))
+			fileWriter(charset, append)(file) { w => w.write(content); None }
+		else
+			error("String cannot be encoded by charset " + charset.name)
+	}
+	
 }

@@ -18,6 +18,8 @@ final class ModuleConfiguration(val module: ModuleID, val dependencies: Iterable
 }
 object ModuleConfiguration
 {
+	def apply(module: ModuleID, dependencies: Iterable[ModuleID], artifacts: Iterable[Artifact]) =
+		new ModuleConfiguration(module, dependencies, NodeSeq.Empty, Nil, None, None, artifacts, false)
 	def configurations(explicitConfigurations: Iterable[Configuration], defaultConfiguration: Option[Configuration]) =
 		if(explicitConfigurations.isEmpty)
 		{

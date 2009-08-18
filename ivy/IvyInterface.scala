@@ -311,14 +311,21 @@ object Artifact
 	def apply(name: String, url: URL): Artifact =Artifact(name, extract(url, defaultType), extract(url, defaultExtension), None, Nil, Some(url))
 	val defaultExtension = "jar"
 	val defaultType = "jar"
-	private[this] def extract(url: URL, default: String) =
+	private[this] def extract(url: URL, default: String): String = extract(url.toString, default)
+	private[this] def extract(name: String, default: String): String =
 	{
-		val s = url.toString
-		val i = s.lastIndexOf('.')
+		val i = name.lastIndexOf('.')
 		if(i >= 0)
-			s.substring(i+1)
+			name.substring(i+1)
 		else
 			default
+	}
+	def defaultArtifact(file: File) =
+	{
+		val name = file.getName
+		val i = name.lastIndexOf('.')
+		val base = if(i >= 0) name.substring(0, i) else name
+		Artifact(name, extract(name, defaultType), extract(name, defaultExtension), None, Nil, Some(file.toURI.toURL))
 	}
 }
 /*
