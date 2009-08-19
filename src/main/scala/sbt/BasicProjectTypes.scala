@@ -78,7 +78,7 @@ trait ManagedProject extends ClasspathProject
 	final case class CacheDirectory(dir: Path) extends ManagedOption
 	final case class CheckScalaVersion(configs: Iterable[Configuration], checkExplicit: Boolean, filterImplicit: Boolean) extends ManagedOption
 	
-	private def withConfigurations(outputPattern: String, managedDependencyPath: Path, options: Seq[ManagedOption])
+	protected def withConfigurations(outputPattern: String, managedDependencyPath: Path, options: Seq[ManagedOption])
 		(doWith: (IvyConfiguration, UpdateConfiguration) => Option[String]) =
 	{
 		var synchronize = false
@@ -117,7 +117,7 @@ trait ManagedProject extends ClasspathProject
 		if(v.isEmpty) None
 		else Some(v)
 	}
-	private def withIvyTask(doTask: => Option[String]) =
+	protected def withIvyTask(doTask: => Option[String]) =
 		task
 		{
 			try { doTask }
@@ -420,6 +420,28 @@ object BasicManagedProject
 		"Deletes the managed library directory."
 	val CleanCacheDescription =
 		"Deletes the cache of artifacts downloaded for automatically managed dependencies."
+}
+
+class DefaultInstallProject(val info: ProjectInfo) extends InstallProject with MavenStyleScalaPaths with BasicDependencyProject
+{
+	def fullUnmanagedClasspath(config: Configuration) = unmanagedClasspath
+	def dependencies = info.dependencies
+}
+trait InstallProject extends BasicManagedProject
+{
+	def installOptions: Seq[ManagedOption] = updateOptions
+	override def filterScalaJars = false
+	override def checkExplicitScalaDependencies = false
+	lazy val install = installTask(updateOptions)
+	def installTask(options: => Seq[ManagedOption]) =
+		withIvyTask
+		{
+			withConfigurations("", managedDependencyPath, options) { (ivyConf, ignore) =>
+				val toResolver = reflectiveRepositories.get("publish-to").getOrElse(error("No repository to publish to was specified"))
+				val fromResolver = reflectiveRepositories.get("retrieve-from").getOrElse(error("No repository to retrieve from was specified"))
+				ManageDependencies.install(ivyConf, fromResolver.name, toResolver.name, true, true)
+			}
+		}
 }
 
 trait BasicDependencyPaths extends ManagedProject

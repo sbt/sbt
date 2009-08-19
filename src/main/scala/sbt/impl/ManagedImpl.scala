@@ -48,12 +48,7 @@ private final class IvyLogger(log: Logger) extends MessageLogger
 	def debug(msg: String) = logImpl(msg, Debug)
 	def verbose(msg: String) = debug(msg)
 	def deprecated(msg: String) = warn(msg)
-	def info(msg: String) =
-	{
-		if(msg contains ":: loading settings :: url =")
-			Thread.dumpStack
-		logImpl(msg, Info)
-	}
+	def info(msg: String) = logImpl(msg, Info)
 	def rawinfo(msg: String) = info(msg)
 	def warn(msg: String) = logImpl(msg, Warn)
 	def error(msg: String) = logImpl(msg, Error)

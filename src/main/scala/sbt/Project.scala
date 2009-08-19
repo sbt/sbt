@@ -375,7 +375,7 @@ object Project
 		if(builderProjectPath.asFile.isDirectory)
 		{
 			val pluginProjectPath = info.builderPath / PluginProjectDirectoryName
-			val additionalPaths = additional match { case u: URLClassLoader => u.getURLs.map(url => Path.fromFile(FileUtilities.toFile(url))); case _ => Nil }
+			val additionalPaths = additional match { case u: URLClassLoader => u.getURLs.map(url => Path.fromFile(FileUtilities.toFile(url))); case _ => Array[Path]() }
 			val builderProject = new BuilderProject(ProjectInfo(builderProjectPath.asFile, Nil, None)(buildLog), pluginProjectPath, additionalPaths, buildLog)
 			builderProject.compile.run.toLeft(()).right.flatMap { ignore =>
 				builderProject.projectDefinition.right.map {

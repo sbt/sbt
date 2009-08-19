@@ -229,6 +229,8 @@ abstract class BasicScalaProject extends ScalaProject with BasicDependencyProjec
 		}
 	}
 	
+	protected def runTask(mainClass: String): MethodTask = task { args => runTask(Some(mainClass), runClasspath, args) dependsOn(compile, copyResources) }
+	
 	protected def compileAction = task { doCompile(mainCompileConditional) } describedAs MainCompileDescription
 	protected def testCompileAction = task { doCompile(testCompileConditional) } dependsOn compile describedAs TestCompileDescription
 	protected def cleanAction = cleanTask(outputPath, cleanOptions) describedAs CleanDescription

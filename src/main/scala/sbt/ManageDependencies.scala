@@ -14,6 +14,7 @@ import org.apache.ivy.{core, plugins, util, Ivy}
 import core.LogOptions
 import core.cache.DefaultRepositoryCacheManager
 import core.deliver.DeliverOptions
+import core.install.InstallOptions
 import core.module.descriptor.{DefaultArtifact, DefaultDependencyArtifactDescriptor, MDArtifact}
 import core.module.descriptor.{DefaultDependencyDescriptor, DefaultModuleDescriptor, DependencyDescriptor, ModuleDescriptor}
 import core.module.descriptor.{DefaultExcludeRule, ExcludeRule}
@@ -396,6 +397,24 @@ object ManageDependencies
 	private def addConfigurations(configurations: Iterable[String], to: { def setConfs(c: Array[String]): AnyRef }): Unit =
 		to.setConfs(configurations.toList.toArray)
 	
+	def install(ivyConfig: IvyConfiguration, from: String, to: String, validate: Boolean, overwrite: Boolean) =
+	{
+		def doInstall(ivy: Ivy, md: ModuleDescriptor, default: String) =
+			Control.trapUnit("Could not install: ", ivyConfig.log)
+			{
+				for(dependency <- md.getDependencies)
+				{
+					ivyConfig.log.info("Installing " + dependency)
+					val options = new InstallOptions
+					options.setOverwrite(overwrite)
+					options.setValidate(validate)
+					options.setTransitive(dependency.isTransitive)
+					ivy.install(dependency.getDependencyRevisionId, from, to, options)
+				}
+				None
+			}
+		withIvy(ivyConfig)(doInstall)
+	}
 	def deliver(ivyConfig: IvyConfiguration, updateConfig: UpdateConfiguration, status: String, deliverIvyPattern: String, extraDependencies: Iterable[ModuleID], configurations: Option[Iterable[Configuration]]) =
 	{
 		def doDeliver(ivy: Ivy, md: ModuleDescriptor, default: String) =

@@ -113,14 +113,14 @@ trait ScalaProject extends SimpleScalaProject with FileTasks with MultiTaskProje
 		val Private = Value("private")
 	}
 
-	def javapTask(classpath: PathFinder, conditional: CompileConditional, outputPath: Path) =
+	def javapTask(classpath: PathFinder, conditional: CompileConditional, compilePath: Path) =
 	 task { args =>
 		val cp = classpath +++ Path.fromFile(FileUtilities.scalaLibraryJar) +++ Path.fromFile(FileUtilities.scalaCompilerJar)
 		execOut { Process("javap" :: "-classpath" :: Path.makeString(cp.get) :: args.toList) }
-	} completeWith(classNames(conditional, outputPath))
-	private def classNames(conditional: CompileConditional, outputPath: Path) =
+	} completeWith(classNames(conditional, compilePath))
+	private def classNames(conditional: CompileConditional, compilePath: Path) =
 	{
-		val classes = conditional.analysis.allProducts.flatMap(Path.relativize(outputPath, _))
+		val classes = conditional.analysis.allProducts.flatMap(Path.relativize(compilePath, _))
 		classes.map(_.relativePath.replace(java.io.File.separatorChar, '.').toList.dropRight(".class".length).mkString).toSeq
 	}
 	
