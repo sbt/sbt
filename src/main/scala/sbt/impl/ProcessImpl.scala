@@ -1,5 +1,5 @@
 /* sbt -- Simple Build Tool
- * Copyright 2009  Mark Harrah
+ * Copyright 2009  Mark Harrah, Vesa Vilhonen
  */
 package sbt
 

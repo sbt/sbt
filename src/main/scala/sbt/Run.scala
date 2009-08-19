@@ -1,5 +1,5 @@
 /* sbt -- Simple Build Tool
- * Copyright 2008, 2009 Mark Harrah
+ * Copyright 2008, 2009  Mark Harrah, Vesa Vilhonen
  */
 package sbt
 
@@ -27,7 +27,10 @@ class ForkRun(config: ForkScalaRun) extends ScalaRun
 	def run(mainClass: String, classpath: Iterable[Path], options: Seq[String], log: Logger): Option[String] =
 	{
 		val scalaOptions = classpathOption(classpath) ::: mainClass :: options.toList
-		val exitCode = Fork.scala(config.javaHome, config.runJVMOptions, config.scalaJars, scalaOptions, config.workingDirectory, log)
+		val exitCode = config.outputStrategy match {
+			case Some(strategy) => Fork.scala(config.javaHome, config.runJVMOptions, config.scalaJars, scalaOptions, config.workingDirectory, strategy)
+			case None => Fork.scala(config.javaHome, config.runJVMOptions, config.scalaJars, scalaOptions, config.workingDirectory, log)
+		}
 		processExitCode(exitCode, "runner")
 	}
 	private def classpathOption(classpath: Iterable[Path]) = "-cp" :: Path.makeString(classpath) :: Nil
