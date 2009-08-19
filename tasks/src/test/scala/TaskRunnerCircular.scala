@@ -8,12 +8,9 @@ object TaskRunnerCircularTest extends Properties("TaskRunner Circular")
 	specify("Catches circular references", (intermediate: Int, workers: Int) =>
 		(workers > 0 && intermediate >= 0) ==> checkCircularReferences(intermediate, workers)
 	)
-	/*specify("Check root complete", (intermediate: Int, workers: Int) =>
-		(workers > 0 && intermediate >= 0) ==> checkRootComplete(intermediate, workers)
-	)*/
-	specify("Allows noncircular references", (intermediate: Int, workers: Int) =>
+	specify("Allows references to completed tasks", forAllNoShrink(Arbitrary.arbitrary[(Int,Int)])(x=>x) { case (intermediate: Int, workers: Int) =>
 		(workers > 0 && intermediate >= 0) ==> allowedReference(intermediate, workers)
-	)
+	})
 	final def allowedReference(intermediate: Int, workers: Int) =
 	{
 		val top = Task(intermediate) named("top")
@@ -24,7 +21,7 @@ object TaskRunnerCircularTest extends Properties("TaskRunner Circular")
 				else
 					iterate(Task(t-1) named (t-1).toString)
 			}
-		try { checkResult(TaskRunner(iterate(top), workers), 0) }
+		try { checkResult(TaskRunner(iterate(top), workers), intermediate) }
 		catch { case e: CircularDependency => ("Unexpected exception: " + e) |: false }
 	}
 	final def checkCircularReferences(intermediate: Int, workers: Int) =
@@ -43,22 +40,5 @@ object TaskRunnerCircularTest extends Properties("TaskRunner Circular")
 		}
 		try { TaskRunner(top, workers); false }
 		catch { case TasksFailed(failures) => failures.exists(_.exception.isInstanceOf[CircularDependency]) }
-	}
-	final def checkRootComplete(intermediate: Int, workers: Int) =
-	{
-		val top = Task(intermediate)
-		def iterate(task: Task[Int]): Task[Int] =
-		{
-			lazy val it: Task[Int] =
-				task bind { t =>
-					if(t <= 0)
-						it
-					else
-						iterate(Task(t-1) named (t-1).toString)
-				} named("it")
-			it
-		}
-		try { TaskRunner(iterate(top), workers); false }
-		catch { case e: CircularDependency => true }
 	}
 }

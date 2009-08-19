@@ -14,6 +14,12 @@ object TaskRunnerForkTest extends Properties("TaskRunner Fork")
 			true
 		}
 	)
+	specify("Fork and reduce 2", (m: Int, workers: Int) =>
+		(workers > 0 && m > 1) ==> {
+			val task = (0 to m) fork {_ * 10} reduce{_ + _}
+			checkResult(TaskRunner(task, workers), 5*(m+1)*m)
+		}
+	)
 	specify("Double join", (a: Int, b: Int, workers: Int) =>
 		(workers > 0) ==> { runDoubleJoin(abs(a),abs(b),workers); true }
 	)

@@ -58,12 +58,12 @@ private final class TaskScheduler[O](root: Task[O], strategy: ScheduleStrategy[W
 		private val strategyRun = strategy.run
 		private val failed = new mutable.HashSet[Task[_]]
 		private val failureReports = new mutable.ArrayBuffer[WorkFailure[Task[_]]]
-		
+
 		{
 			val initialized = addGraph(root, root) // TODO: replace second root with something better? (it is ignored here anyway)
 			assert(initialized)
 		}
-		
+
 		private def addReady[O](m: Task[O])
 		{
 			def add[I](m: ITask[I,O])
@@ -72,7 +72,7 @@ private final class TaskScheduler[O](root: Task[O], strategy: ScheduleStrategy[W
 				strategyRun.workReady(new Work(m, input))
 				listener.runnable(m)
 			}
-			
+
 			assert(!forwardDeps.contains(m), m)
 			assert(reverseDeps.contains(m), m)
 			assert(!completed.contains(m), m)
@@ -172,20 +172,25 @@ private final class TaskScheduler[O](root: Task[O], strategy: ScheduleStrategy[W
 					retire(dependsOnM, None)
 			}
 		}
-		
+
 		private def success[O](task: Task[O], value: Result[O]): Unit =
 			value match
 			{
 				case NewTask(t) =>
-					if(t == task)
+					if(t eq task)
 					{
 						failureReports += WorkFailure(t, CircularDependency(t, task))
 						retire(task, None)
 					}
 					else if(addGraph(t, task))
 					{
-						calls(t) = task
-						listener.calling(task, t)
+						if(completed.contains(t))
+							retire(task, Some(completed(t)))
+						else
+						{
+							calls(t) = task
+							listener.calling(task, t)
+						}
 					}
 					else
 						retire(task, None)

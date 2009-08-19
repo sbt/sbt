@@ -21,7 +21,7 @@ class XSbt(info: ProjectInfo) extends ParentProject(info)
 
 	def utilPath = path("util")
 	def compilePath = path("compile")
-	
+
 	class CommonDependencies(info: ProjectInfo) extends DefaultProject(info)
 	{
 		val sc = "org.scala-tools.testing" % "scalacheck" % "1.5" % "test->default"
@@ -35,7 +35,7 @@ class XSbt(info: ProjectInfo) extends ParentProject(info)
 	{
 		//override def compileOptions = super.compileOptions ++ List(Unchecked,ExplainTypes, CompileOption("-Xlog-implicits"))
 	}
-	class Base(info: ProjectInfo) extends DefaultProject(info) with AssemblyProject
+	class Base(info: ProjectInfo) extends DefaultProject(info)
 	{
 		override def scratch = true
 	}
@@ -53,7 +53,7 @@ class XSbt(info: ProjectInfo) extends ParentProject(info)
 		// these set up the test so that the classes and resources are both in the output resource directory
 		// the main output path is removed so that the plugin (xsbt.Analyzer) is found in the output resource directory so that
 		// the tests can configure that directory as -Xpluginsdir (which requires the scalac-plugin.xml and the classes to be together)
-		override def testCompileAction = super.testCompileAction dependsOn(packageForTest)
+		override def testCompileAction = super.testCompileAction dependsOn(packageForTest, ioSub.testCompile)
 		override def mainResources = super.mainResources +++ "scalac-plugin.xml"
 		override def testClasspath = (super.testClasspath --- super.mainCompilePath) +++ ioSub.testClasspath  +++ testPackagePath
 		def testPackagePath = outputPath / "test.jar"
