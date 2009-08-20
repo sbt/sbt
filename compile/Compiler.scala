@@ -23,7 +23,7 @@ class Compiler(scalaLoader: ClassLoader, val scalaVersion: String, private[xsbt]
 			 // The following import ensures there is a compile error if the class name changes,
 			 //   but it should not be otherwise directly referenced
 			import scala.tools.nsc.Main
-			
+
 			val mainClass = Class.forName("scala.tools.nsc.Main", true, scalaLoader)
 			val main = mainClass.asInstanceOf[{def process(args: Array[String]): Unit }]
 			main.process(arguments.toArray)
@@ -41,7 +41,9 @@ class Compiler(scalaLoader: ClassLoader, val scalaVersion: String, private[xsbt]
 			val interfaceLoader = new URLClassLoader(Array(interfaceJar.toURI.toURL), scalaLoader)
 			val interface = Class.forName("xsbt.CompilerInterface", true, interfaceLoader).newInstance
 			val runnable = interface.asInstanceOf[{ def run(args: Array[String], callback: AnalysisCallback, maximumErrors: Int, log: Logger): Unit }]
-			runnable.run(argsWithPlugin.toArray, callback, maximumErrors, log) // safe to pass across the ClassLoader boundary because the types are defined in Java
+			 // these arguments are safe to pass across the ClassLoader boundary because the types are defined in Java
+			//  so they will be binary compatible across all versions of Scala
+			runnable.run(argsWithPlugin.toArray, callback, maximumErrors, log)
 		}
 		def forceInitialization() {interfaceJar }
 	}
