@@ -6,6 +6,7 @@ import org.apache.ivy.{core, plugins, util, Ivy}
 import core.cache.DefaultRepositoryCacheManager
 import core.LogOptions
 import core.deliver.DeliverOptions
+import core.install.InstallOptions
 import core.module.descriptor.{DefaultArtifact, DefaultDependencyArtifactDescriptor, MDArtifact}
 import core.module.descriptor.{DefaultDependencyDescriptor, DefaultModuleDescriptor, DependencyDescriptor, ModuleDescriptor}
 import core.module.id.{ArtifactId,ModuleId, ModuleRevisionId}
@@ -18,33 +19,24 @@ final class UpdateConfiguration(val retrieveDirectory: File, val outputPattern: 
 
 object IvyActions
 {
-	def basicPublishLocal(moduleID: ModuleID, dependencies: Iterable[ModuleID], artifactFiles: Iterable[File], log: IvyLogger)
+	/** Installs the dependencies of the given 'module' from the resolver named 'from' to the resolver named 'to'.*/
+	def install(module: IvySbt#Module, from: String, to: String)
 	{
-		val artifacts = artifactFiles.map(Artifact.defaultArtifact)
-		val (ivy, local) = basicLocalIvy(log)
-		val module = new ivy.Module(ModuleConfiguration(moduleID, dependencies, artifacts))
-		val srcArtifactPatterns = artifactFiles.map(_.getAbsolutePath)
-		publish(module, local.name, srcArtifactPatterns, None, None)
-	}
-	def basicRetrieveLocal(moduleID: ModuleID, dependencies: Iterable[ModuleID], to: File, log: IvyLogger)
-	{
-		val (ivy, local) = basicLocalIvy(log)
-		val module = new ivy.Module(ModuleConfiguration(moduleID, dependencies, Nil))
-		val up = new UpdateConfiguration(to, defaultOutputPattern, false, true)
-		update(module, up)
-	}
-	def defaultOutputPattern = "[artifact]-[revision](-[classifier]).[ext]"
-	private def basicLocalIvy(log: IvyLogger) =
-	{
-		val local = Resolver.defaultLocal
-		val paths = new IvyPaths(new File("."), None)
-		val conf = new IvyConfiguration(paths, Seq(local), log)
-		(new IvySbt(conf), local)
+		module.withModule { (ivy, md, default) =>
+			for(dependency <- md.getDependencies)
+			{
+				module.logger.info("Installing " + dependency)
+				val options = new InstallOptions
+				options.setValidate(module.moduleConfiguration.validate)
+				options.setTransitive(dependency.isTransitive)
+				ivy.install(dependency.getDependencyRevisionId, from, to, options)
+			}
+		}
 	}
 
 	/** Clears the Ivy cache, as configured by 'config'. */
 	def cleanCache(ivy: IvySbt) = ivy.withIvy { _.getSettings.getRepositoryCacheManagers.foreach(_.clean()) }
-	
+
 	/** Creates a Maven pom from the given Ivy configuration*/
 	def makePom(module: IvySbt#Module, extraDependencies: Iterable[ModuleID], configurations: Option[Iterable[Configuration]], output: File)
 	{
@@ -90,7 +82,7 @@ object IvyActions
 			newModule.addDependency(translated)
 		newModule
 	}
-	
+
 	def deliver(module: IvySbt#Module, status: String, deliverIvyPattern: String, extraDependencies: Iterable[ModuleID], configurations: Option[Iterable[Configuration]], quiet: Boolean)
 	{
 		module.withModule { case (ivy, md, default) =>

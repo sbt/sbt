@@ -73,13 +73,13 @@ final class IvySbt(configuration: IvyConfiguration)
 			try { f(ivy) }
 			finally { ivy.popContext() }
 		}
-		
+
 	final class Module(val moduleConfiguration: ModuleConfiguration) extends NotNull
 	{
 		def logger = configuration.log
 		def withModule[T](f: (Ivy,DefaultModuleDescriptor,String) => T): T =
 			withIvy[T] { ivy => f(ivy, moduleDescriptor, defaultConfig) }
-		
+
 		import moduleConfiguration._
 		private lazy val (moduleDescriptor: DefaultModuleDescriptor, defaultConfig: String) =
 		{
@@ -97,7 +97,7 @@ final class IvySbt(configuration: IvyConfiguration)
 			val moduleID = newConfiguredModuleID
 			val defaultConf = defaultConfiguration getOrElse Configurations.config(ModuleDescriptor.DEFAULT_CONFIGURATION)
 			log.debug("Using inline dependencies specified in Scala" + (if(ivyXML.isEmpty) "." else " and XML."))
-			
+
 			val parser = IvySbt.parseIvyXML(ivy.getSettings, IvySbt.wrapped(module, ivyXML), moduleID, defaultConf.name, validate)
 
 			IvySbt.addArtifacts(moduleID, artifacts)
@@ -112,7 +112,7 @@ final class IvySbt(configuration: IvyConfiguration)
 			configurations.foreach(config => mod.addConfiguration(IvySbt.toIvyConfiguration(config)))
 			mod
 		}
-		
+
 		/** Parses the given Maven pom 'pomFile'.*/
 		private def readPom(pomFile: File) =
 		{
@@ -164,11 +164,11 @@ private object IvySbt
 	val DefaultIvyConfigFilename = "ivysettings.xml"
 	val DefaultIvyFilename = "ivy.xml"
 	val DefaultMavenFilename = "pom.xml"
-	
+
 	private def defaultIvyFile(project: File) = new File(project, DefaultIvyFilename)
 	private def defaultIvyConfiguration(project: File) = new File(project, DefaultIvyConfigFilename)
 	private def defaultPOM(project: File) = new File(project, DefaultMavenFilename)
-	
+
 	/** Sets the resolvers for 'settings' to 'resolvers'.  This is done by creating a new chain and making it the default. */
 	private def setResolvers(settings: IvySettings, resolvers: Seq[Resolver], log: IvyLogger)
 	{
@@ -207,7 +207,7 @@ private object IvySbt
 		moduleID.check()
 	}
 	/** Converts the given sbt module id into an Ivy ModuleRevisionId.*/
-	private def toID(m: ModuleID) =
+	private[xsbt] def toID(m: ModuleID) =
 	{
 		import m._
 		ModuleRevisionId.newInstance(organization, name, revision)
@@ -253,7 +253,7 @@ private object IvySbt
 		parser.parse()
 		parser
 	}
-	
+
 	/** This method is used to add inline dependencies to the provided module. */
 	def addDependencies(moduleID: DefaultModuleDescriptor, dependencies: Iterable[ModuleID], parser: CustomXmlParser.CustomParser)
 	{
