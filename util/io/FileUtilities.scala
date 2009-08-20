@@ -24,7 +24,7 @@ object FileUtilities
 	/** The size of the byte or char buffer used in various methods.*/
 	private val BufferSize = 8192
 	private val Newline = System.getProperty("line.separator")
-	
+
 	def classLocation(cl: Class[_]): URL =
 	{
 		val codeSource = cl.getProtectionDomain.getCodeSource
@@ -34,12 +34,12 @@ object FileUtilities
 	def classLocationFile(cl: Class[_]): File = toFile(classLocation(cl))
 	def classLocation[T](implicit mf: SManifest[T]): URL = classLocation(mf.erasure)
 	def classLocationFile[T](implicit mf: SManifest[T]): File = classLocationFile(mf.erasure)
-	
+
 	def toFile(url: URL) =
 		try { new File(url.toURI) }
 		catch { case _: URISyntaxException => new File(url.getPath) }
-	
-	
+
+
 	// "base.extension" -> (base, extension)
 	def split(name: String): (String, String) =
 	{
@@ -49,18 +49,29 @@ object FileUtilities
 		else
 			(name, "")
 	}
-	
+
+	/** Creates a file at the given location.*/
+	def touch(file: File)
+	{
+		createDirectory(file.getParentFile)
+		val created = translate("Could not create file " + file) { file.createNewFile() }
+		if(created)
+			()
+		else if(file.isDirectory)
+			error("File exists and is a directory.")
+		else if(!file.setLastModified(System.currentTimeMillis))
+			error("Could not update last modified time for file " + file)
+	}
 	def createDirectory(dir: File): Unit =
-		translate("Could not create directory " + dir + ": ")
-		{
-			if(dir.exists)
-			{
-				if(!dir.isDirectory)
-					error("file exists and is not a directory.")
-			}
-			else if(!dir.mkdirs())
-				error("<unknown error>")
-		}
+	{
+		def failBase = "Could not create directory " + dir
+		if(dir.isDirectory || dir.mkdirs())
+			()
+		else if(dir.exists)
+			error(failBase + ": file exists and is not a directory.")
+		else
+			error(failBase)
+	}
 	def unzip(from: File, toDirectory: File): Set[File] = unzip(from, toDirectory, AllPassFilter)
 	def unzip(from: File, toDirectory: File, filter: NameFilter): Set[File] = fileInputStream(from)(in => unzip(in, toDirectory, filter))
 	def unzip(from: InputStream, toDirectory: File, filter: NameFilter): Set[File] =
@@ -105,7 +116,7 @@ object FileUtilities
 		next()
 		Set() ++ set
 	}
-	
+
 	/** Copies all bytes from the given input stream to the given output stream.
 	* Neither stream is closed.*/
 	def transfer(in: InputStream, out: OutputStream): Unit = transferImpl(in, out, false)
@@ -130,7 +141,7 @@ object FileUtilities
 		}
 		finally { if(close) in.close }
 	}
-	
+
 	/** Creates a temporary directory and provides its location to the given function.  The directory
 	* is deleted after the function returns.*/
 	def withTemporaryDirectory[T](action: File => T): T =
@@ -149,16 +160,16 @@ object FileUtilities
 			{
 				val randomName = "sbt_" + java.lang.Integer.toHexString(random.nextInt)
 				val f = new File(temporaryDirectory, randomName)
-				
+
 				try { createDirectory(f); f }
 				catch { case e: Exception => create(tries + 1) }
 			}
 		}
 		create(0)
 	}
-	
-	private[xsbt] def jars(dir: File): Iterable[File] = wrapNull(dir.listFiles(GlobFilter("*.jar")))
-	
+
+	private[xsbt] def jars(dir: File): Iterable[File] = listFiles(dir, GlobFilter("*.jar"))
+
 	def delete(files: Iterable[File]): Unit = files.foreach(delete)
 	def delete(file: File)
 	{
@@ -166,20 +177,24 @@ object FileUtilities
 		{
 			if(file.isDirectory)
 			{
-				delete(wrapNull(file.listFiles))
+				delete(listFiles(file))
 				file.delete
 			}
 			else if(file.exists)
 				file.delete
 		}
 	}
-	private def wrapNull(a: Array[File]): Array[File] =
+	def listFiles(dir: File, filter: FileFilter): Array[File] = wrapNull(dir.listFiles(filter))
+	def listFiles(dir: File): Array[File] = wrapNull(dir.listFiles())
+	private def wrapNull(a: Array[File]) =
+	{
 		if(a == null)
 			new Array[File](0)
 		else
 			a
-			
-			
+	}
+
+
 	/** Creates a jar file.
 	* @param sources The files to include in the jar file.
 	* @param outputJar The file to write the jar to.
@@ -196,7 +211,7 @@ object FileUtilities
 	* @param mapper The mapper that determines the name of a File in the jar. */
 	def zip(sources: Iterable[File], outputZip: File, recursive: Boolean, mapper: PathMapper): Unit =
 		archive(sources, outputZip, None, recursive, mapper)
-	
+
 	private def archive(sources: Iterable[File], outputFile: File, manifest: Option[Manifest], recursive: Boolean, mapper: PathMapper)
 	{
 		if(outputFile.isDirectory)
@@ -219,7 +234,7 @@ object FileUtilities
 			if(sourceFile.isDirectory)
 			{
 				if(recursive)
-					wrapNull(sourceFile.listFiles).foreach(add)
+					listFiles(sourceFile).foreach(add)
 			}
 			else if(sourceFile.exists)
 			{
@@ -235,7 +250,7 @@ object FileUtilities
 		sources.foreach(add)
 		output.closeEntry()
 	}
-	
+
 	private def withZipOutput(file: File, manifest: Option[Manifest])(f: ZipOutputStream => Unit)
 	{
 		fileOutputStream(false)(file) { fileOut =>
@@ -332,5 +347,5 @@ object FileUtilities
 		else
 			error("String cannot be encoded by charset " + charset.name)
 	}
-	
+
 }

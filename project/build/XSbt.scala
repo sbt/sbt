@@ -42,6 +42,9 @@ class XSbt(info: ProjectInfo) extends ParentProject(info)
 	class IvyProject(info: ProjectInfo) extends Base(info)
 	{
 		val ivy = "org.apache.ivy" % "ivy" % "2.0.0"
+		// use IO from tests
+		override def testCompileAction = super.testCompileAction dependsOn(ioSub.testCompile)
+		override def testClasspath = super.testClasspath +++ ioSub.testClasspath
 	}
 	class InterfaceProject(info: ProjectInfo) extends DefaultProject(info)
 	{
