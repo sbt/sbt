@@ -2,6 +2,9 @@ import sbt._
 
 class XSbt(info: ProjectInfo) extends ParentProject(info)
 {
+	val launchInterfaceSub = project(launchPath / "interface", "Launcher Interface", new InterfaceProject(_))
+	val launchSub = project(launchPath, "Launcher", new LaunchProject(_), launchInterfaceSub)
+
 	val commonDeps = project("common", "Dependencies", new CommonDependencies(_))
 	val interfaceSub = project("interface", "Interface", new InterfaceProject(_))
 
@@ -19,9 +22,14 @@ class XSbt(info: ProjectInfo) extends ParentProject(info)
 	val cacheSub = project("cache", "Cache", new CacheProject(_), taskSub, ioSub)
 	val compilerSub = project(compilePath, "Compile", new Base(_), interfaceSub, ivySub, ioSub, compilerInterfaceSub)
 
+	def launchPath = path("launch")
 	def utilPath = path("util")
 	def compilePath = path("compile")
 
+	class LaunchProject(info: ProjectInfo) extends Base(info)
+	{
+		val ivy = "org.apache.ivy" % "ivy" % "2.0.0"
+	}
 	class CommonDependencies(info: ProjectInfo) extends DefaultProject(info)
 	{
 		val sc = "org.scala-tools.testing" % "scalacheck" % "1.5" % "test->default"
