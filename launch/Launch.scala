@@ -11,11 +11,12 @@
 import java.io.{File, FileFilter}
 import java.net.URLClassLoader
 
+import xsbti.boot.{Exit => IExit, Launcher, MainResult, Reboot, SbtConfiguration, SbtMain}
+
 // contains constants and paths
 import BootConfiguration._
 import UpdateTarget.{UpdateScala, UpdateSbt}
 
-import xsbti.boot.{Exit => IExit, Launcher, MainResult, Reboot, SbtConfiguration, SbtMain}
 
 class Launch(projectRootDirectory: File, mainClassName: String) extends Launcher with NotNull
 {
@@ -99,7 +100,7 @@ class Launch(projectRootDirectory: File, mainClassName: String) extends Launcher
 		val scalaLoader = newScalaLoader(scalaDirectory)
 		if(needsUpdate(scalaLoader, TestLoadScalaClasses))
 		{
-			(new Update(baseDirectory, scalaVersion, ""))(UpdateScala)
+			(new Update(baseDirectory, "", scalaVersion))(UpdateScala)
 			val scalaLoader = newScalaLoader(scalaDirectory)
 			failIfMissing(scalaLoader, TestLoadScalaClasses, "Scala " + scalaVersion)
 			scalaLoader
@@ -115,7 +116,7 @@ class Launch(projectRootDirectory: File, mainClassName: String) extends Launcher
 		val sbtLoader = newSbtLoader(sbtDirectory, scalaLoader)
 		if(needsUpdate(sbtLoader, TestLoadSbtClasses))
 		{
-			(new Update(baseDirectory, scalaVersion, sbtVersion))(UpdateSbt)
+			(new Update(baseDirectory, sbtVersion, scalaVersion))(UpdateSbt)
 			val sbtLoader = newSbtLoader(sbtDirectory, scalaLoader)
 			failIfMissing(sbtLoader, TestLoadSbtClasses, "sbt " + sbtVersion)
 			sbtLoader

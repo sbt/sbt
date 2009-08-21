@@ -30,6 +30,7 @@ import UpdateTarget.{UpdateSbt, UpdateScala}
 /** Ensures that the Scala and sbt jars exist for the given versions or else downloads them.*/
 final class Update(bootDirectory: File, sbtVersion: String, scalaVersion: String)
 {
+	require(!scalaVersion.trim.isEmpty, "No Scala version specified")
 	private def logFile = new File(bootDirectory, UpdateLogName)
 	/** A Writer to use to write the full logging information to a file for debugging. **/
 	private lazy val logWriter =
@@ -41,6 +42,8 @@ final class Update(bootDirectory: File, sbtVersion: String, scalaVersion: String
 	/** The main entry point of this class for use by the Update module.  It runs Ivy */
 	def apply(target: UpdateTarget.Value)
 	{
+		if(target == UpdateTarget.UpdateSbt)
+			require(!sbtVersion.isEmpty, "No sbt version specified")
 		Message.setDefaultLogger(new SbtIvyLogger(logWriter))
 		try { update(target) }
 		catch

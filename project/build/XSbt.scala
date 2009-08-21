@@ -2,15 +2,16 @@ import sbt._
 
 class XSbt(info: ProjectInfo) extends ParentProject(info)
 {
-	val launchInterfaceSub = project(launchPath / "interface", "Launcher Interface", new InterfaceProject(_))
+	val testDeps = project("test-dependencies", "Dependencies", new TestDependencies(_))
+	
+	val launchInterfaceSub = project(launchPath / "interface", "Launcher Interface", new InterfaceProject(_), testDeps)
 	val launchSub = project(launchPath, "Launcher", new LaunchProject(_), launchInterfaceSub)
 
-	val commonDeps = project("common", "Dependencies", new CommonDependencies(_))
 	val interfaceSub = project("interface", "Interface", new InterfaceProject(_))
 
 	val controlSub = project(utilPath / "control", "Control", new Base(_))
 	val collectionSub = project(utilPath / "collection", "Collections", new Base(_))
-	val ioSub = project(utilPath / "io", "IO", new Base(_), controlSub, commonDeps)
+	val ioSub = project(utilPath / "io", "IO", new Base(_), controlSub, testDeps)
 	val classpathSub = project(utilPath / "classpath", "Classpath", new Base(_))
 
 	val compilerInterfaceSub = project(compilePath / "interface", "Compiler Interface", new CompilerInterfaceProject(_), interfaceSub)
@@ -18,7 +19,7 @@ class XSbt(info: ProjectInfo) extends ParentProject(info)
 	val ivySub = project("ivy", "Ivy", new IvyProject(_), interfaceSub)
 	val logSub = project(utilPath / "log", "Logging", new Base(_))
 
-	val taskSub = project("tasks", "Tasks", new TaskProject(_), controlSub, collectionSub, commonDeps)
+	val taskSub = project("tasks", "Tasks", new TaskProject(_), controlSub, collectionSub, testDeps)
 	val cacheSub = project("cache", "Cache", new CacheProject(_), taskSub, ioSub)
 	val compilerSub = project(compilePath, "Compile", new Base(_), interfaceSub, ivySub, ioSub, compilerInterfaceSub)
 
@@ -26,11 +27,11 @@ class XSbt(info: ProjectInfo) extends ParentProject(info)
 	def utilPath = path("util")
 	def compilePath = path("compile")
 
-	class LaunchProject(info: ProjectInfo) extends Base(info)
+	class LaunchProject(info: ProjectInfo) extends Base(info) with TestWithIO
 	{
 		val ivy = "org.apache.ivy" % "ivy" % "2.0.0"
 	}
-	class CommonDependencies(info: ProjectInfo) extends DefaultProject(info)
+	class TestDependencies(info: ProjectInfo) extends DefaultProject(info)
 	{
 		val sc = "org.scala-tools.testing" % "scalacheck" % "1.5" % "test->default"
 		val sp = "org.scala-tools.testing" % "specs" % "1.5.0" % "test->default"
@@ -47,12 +48,9 @@ class XSbt(info: ProjectInfo) extends ParentProject(info)
 	{
 		override def scratch = true
 	}
-	class IvyProject(info: ProjectInfo) extends Base(info)
+	class IvyProject(info: ProjectInfo) extends Base(info) with TestWithIO
 	{
 		val ivy = "org.apache.ivy" % "ivy" % "2.0.0"
-		// use IO from tests
-		override def testCompileAction = super.testCompileAction dependsOn(ioSub.testCompile)
-		override def testClasspath = super.testClasspath +++ ioSub.testClasspath
 	}
 	class InterfaceProject(info: ProjectInfo) extends DefaultProject(info)
 	{
@@ -69,6 +67,12 @@ class XSbt(info: ProjectInfo) extends ParentProject(info)
 		override def testClasspath = (super.testClasspath --- super.mainCompilePath) +++ ioSub.testClasspath  +++ testPackagePath
 		def testPackagePath = outputPath / "test.jar"
 		lazy val packageForTest = packageTask(mainClasses +++ mainResources, testPackagePath, packageOptions).dependsOn(compile)
+	}
+	trait TestWithIO extends BasicScalaProject
+	{
+		// use IO from tests
+		override def testCompileAction = super.testCompileAction dependsOn(ioSub.testCompile)
+		override def testClasspath = super.testClasspath +++ ioSub.testClasspath
 	}
 }
 trait SourceProject extends BasicScalaProject
