@@ -156,8 +156,8 @@ trait MavenStyleScalaPaths extends BasicScalaPaths with BasicPackagePaths
 		testResourcesPath ::
 		Nil
 		
-	def mainSourceRoots = mainJavaSourcePath +++ mainScalaSourcePath
-	def testSourceRoots = testJavaSourcePath +++ testScalaSourcePath
+	def mainSourceRoots = (mainJavaSourcePath##) +++ (mainScalaSourcePath##)
+	def testSourceRoots = (testJavaSourcePath##) +++ (testScalaSourcePath##)
 }
 
 trait BasicPackagePaths extends ScalaPaths with PackagePaths

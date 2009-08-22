@@ -256,12 +256,17 @@ trait ScalaProject extends SimpleScalaProject with FileTasks with MultiTaskProje
 			val setup, cleanup = new ListBuffer[() => Option[String]]
 			val testListeners = new ListBuffer[TestReportListener]
 			
-			options.foreach {
-				case TestFilter(include) => testFilters += include
-				case ExcludeTests(exclude) => excludeTestsSet ++= exclude
-				case TestListeners(listeners) => testListeners ++= listeners
-				case TestSetup(setupFunction) => setup += setupFunction
-				case TestCleanup(cleanupFunction) => cleanup += cleanupFunction
+			for(option <- options)
+			{
+				option match
+				{
+					case TestFilter(include) => testFilters += include
+					case ExcludeTests(exclude) => excludeTestsSet ++= exclude
+					case TestListeners(listeners) => testListeners ++= listeners
+					case TestSetup(setupFunction) => setup += setupFunction
+					case TestCleanup(cleanupFunction) => cleanup += cleanupFunction
+				}
+				() // 2.8.0-SNAPSHOT bug in type inference
 			}
 			
 			if(excludeTestsSet.size > 0 && log.atLevel(Level.Debug))
