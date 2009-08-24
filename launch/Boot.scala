@@ -3,7 +3,7 @@
  */
  package xsbt.boot
 
-import BootConfiguration.SbtMainClass
+import BootConfiguration.{SbtMainClass, SbtModuleName}
 import java.io.File
 
 // The entry point to the launcher
@@ -12,7 +12,7 @@ object Boot
 	def main(args: Array[String])
 	{
 		CheckProxy()
-		try { (new Launch(new File("."), SbtMainClass)).boot(args) }
+		try { Launch(args) }
 		catch
 		{
 			case b: BootException => errorAndExit(b)

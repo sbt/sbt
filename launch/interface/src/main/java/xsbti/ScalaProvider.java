@@ -1,4 +1,4 @@
-package xsbti.boot;
+package xsbti;
 
 import java.io.File;
 

@@ -15,10 +15,11 @@ private object BootConfiguration
 
 	// these are the module identifiers to resolve/retrieve
 	val ScalaOrg = "org.scala-lang"
-	val SbtOrg = "sbt"
+	val SbtOrg = "org.scala-tools.sbt"
 	val CompilerModuleName = "scala-compiler"
 	val LibraryModuleName = "scala-library"
-	val SbtModuleName = "simple-build-tool"
+	val SbtModuleName = "xsbt"
+	val MainSbtComponentID = "default"
 
 	/** The Ivy conflict manager to use for updating.*/
 	val ConflictManagerName = "strict"
@@ -38,7 +39,7 @@ private object BootConfiguration
 	* and the project definition*/
 	val IvyPackage = "org.apache.ivy."
 	/** The class name prefix used to hide the sbt launcher classes from sbt and the project definition.
-	* Note that access to xsbti.boot classes are allowed.*/
+	* Note that access to xsbti classes are allowed.*/
 	val SbtBootPackage = "xsbt.boot."
 	/** The loader will check that these classes can be loaded and will assume that their presence indicates
 	* sbt and its dependencies have been downloaded.*/
@@ -69,7 +70,7 @@ private object BootConfiguration
 	/** The Ivy pattern to use for resolving sbt and its dependencies from the Google code project.*/
 	def sbtResolverPattern(scalaVersion: String) = sbtRootBase + "[revision]/[type]s/[artifact].[ext]"
 	/** The name of the directory to retrieve sbt and its dependencies to.*/
-	def sbtDirectoryName(sbtVersion: String) = SbtOrg + "-" + sbtVersion
+	def sbtDirectoryName(sbtVersion: String) = SbtModuleName + "-" + sbtVersion
 	/** The name of the directory in the boot directory to put all jars for the given version of scala in.*/
 	def baseDirectoryName(scalaVersion: String) = "scala-" + scalaVersion
 }

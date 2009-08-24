@@ -11,7 +11,7 @@
 import java.io.{File, FileFilter}
 import java.net.URLClassLoader
 
-import xsbti.boot.{Exit => IExit, Launcher, MainResult, Reboot, SbtConfiguration, SbtMain}
+import xsbti.{Exit => IExit, Launcher, MainResult, Reboot, SbtConfiguration, SbtMain}
 
 // contains constants and paths
 import BootConfiguration._
@@ -20,6 +20,9 @@ import UpdateTarget.{UpdateScala, UpdateSbt}
 
 class Launch(projectRootDirectory: File, mainClassName: String) extends Launcher with NotNull
 {
+	def this(projectRootDirectory: File) = this(projectRootDirectory, SbtMainClass)
+	def this() = this(new File("."))
+
 	import Launch._
 	final def boot(args: Array[String])
 	{
@@ -43,9 +46,20 @@ class Launch(projectRootDirectory: File, mainClassName: String) extends Launcher
 	* this loader from being seen by the loaded sbt/project.*/
 	def load(args: Array[String]): MainResult =
 	{
-		val (definitionScalaVersion, useSbtVersion) = ProjectProperties.forcePrompt(PropertiesFile)//, forcePrompt : _*)
-		val scalaLoader = getScalaLoader(definitionScalaVersion)
-		val sbtLoader = createSbtLoader(useSbtVersion, definitionScalaVersion, scalaLoader)
+		val (scalaVersion, sbtVersion) = ProjectProperties.forcePrompt(PropertiesFile)//, forcePrompt : _*)
+		load(args, sbtVersion, mainClassName, scalaVersion)
+	}
+	def componentLocation(sbtVersion: String, id: String, scalaVersion: String): File = new File(getSbtHome(sbtVersion, scalaVersion), id)
+	def getSbtHome(sbtVersion: String, scalaVersion: String): File =
+	{
+		val baseDirectory = new File(BootDirectory, baseDirectoryName(scalaVersion))
+		new File(baseDirectory, sbtDirectoryName(sbtVersion))
+	}
+	def getScalaHome(scalaVersion: String) = new File(new File(BootDirectory, baseDirectoryName(scalaVersion)), ScalaDirectoryName)
+
+	def load(args: Array[String], useSbtVersion: String, mainClassName: String, definitionScalaVersion: String): MainResult =
+	{
+		val sbtLoader = update(definitionScalaVersion, useSbtVersion)
 		val configuration = new SbtConfiguration
 		{
 			def arguments = args
@@ -53,15 +67,21 @@ class Launch(projectRootDirectory: File, mainClassName: String) extends Launcher
 			def sbtVersion = useSbtVersion
 			def launcher: Launcher = Launch.this
 		}
-		run(sbtLoader, configuration)
+		run(sbtLoader, mainClassName, configuration)
 	 }
-	def run(sbtLoader: ClassLoader, configuration: SbtConfiguration): MainResult =
+	def update(scalaVersion: String, sbtVersion: String): ClassLoader =
+	{
+		val scalaLoader = getScalaLoader(scalaVersion)
+		createSbtLoader(sbtVersion, scalaVersion, scalaLoader)
+	}
+	
+	def run(sbtLoader: ClassLoader, mainClassName: String, configuration: SbtConfiguration): MainResult =
 	{
 		val sbtMain = Class.forName(mainClassName, true, sbtLoader)
 		val main = sbtMain.newInstance.asInstanceOf[SbtMain]
 		main.run(configuration)
 	}
-	
+
 	final val ProjectDirectory = new File(projectRootDirectory, ProjectDirectoryName)
 	final val BootDirectory = new File(ProjectDirectory, BootDirectoryName)
 	final val PropertiesFile = new File(ProjectDirectory, BuildPropertiesName)
@@ -87,12 +107,11 @@ class Launch(projectRootDirectory: File, mainClassName: String) extends Launcher
 				Some(new Exit(1))
 		}
 	}
-	
+
 	private val scalaLoaderCache = new scala.collection.jcl.WeakHashMap[String, ClassLoader]
 	def launcher(directory: File, mainClassName: String): Launcher = new Launch(directory, mainClassName)
 	def getScalaLoader(scalaVersion: String) = scalaLoaderCache.getOrElseUpdate(scalaVersion, createScalaLoader(scalaVersion))
-	def getScalaHome(scalaVersion: String) = new File(new File(BootDirectory, baseDirectoryName(scalaVersion)), ScalaDirectoryName)
-	
+
 	def createScalaLoader(scalaVersion: String): ClassLoader =
 	{
 		val baseDirectory = new File(BootDirectory, baseDirectoryName(scalaVersion))
@@ -108,27 +127,28 @@ class Launch(projectRootDirectory: File, mainClassName: String) extends Launcher
 		else
 			scalaLoader
 	}
-	def createSbtLoader(sbtVersion: String, scalaVersion: String, scalaLoader: ClassLoader): ClassLoader =
+	def createSbtLoader(sbtVersion: String, scalaVersion: String): ClassLoader = createSbtLoader(sbtVersion, scalaVersion, getScalaLoader(scalaVersion))
+	def createSbtLoader(sbtVersion: String, scalaVersion: String, parentLoader: ClassLoader): ClassLoader =
 	{
 		val baseDirectory = new File(BootDirectory, baseDirectoryName(scalaVersion))
-		val sbtDirectory = new File(baseDirectory, sbtDirectoryName(sbtVersion))
-
-		val sbtLoader = newSbtLoader(sbtDirectory, scalaLoader)
+		val mainComponentLocation = componentLocation(sbtVersion, MainSbtComponentID, scalaVersion)
+		val sbtLoader = newSbtLoader(mainComponentLocation, parentLoader)
 		if(needsUpdate(sbtLoader, TestLoadSbtClasses))
 		{
 			(new Update(baseDirectory, sbtVersion, scalaVersion))(UpdateSbt)
-			val sbtLoader = newSbtLoader(sbtDirectory, scalaLoader)
+			val sbtLoader = newSbtLoader(mainComponentLocation, parentLoader)
 			failIfMissing(sbtLoader, TestLoadSbtClasses, "sbt " + sbtVersion)
 			sbtLoader
 		}
 		else
 			sbtLoader
 	}
-	private def newScalaLoader(dir: File) = newLoader(dir, new BootFilteredLoader)
-	private def newSbtLoader(dir: File, scalaLoader: ClassLoader) = newLoader(dir, scalaLoader)
+	private def newScalaLoader(dir: File) = newLoader(dir, new BootFilteredLoader(getClass.getClassLoader))
+	private def newSbtLoader(dir: File, parentLoader: ClassLoader) = newLoader(dir, parentLoader)
 }
 private object Launch
 {
+	def apply(args: Array[String]) = (new Launch).boot(args)
 	def isYes(so: Option[String]) = isValue("y", "yes")(so)
 	def isScratch(so: Option[String]) = isValue("s", "scratch")(so)
 	def isValue(values: String*)(so: Option[String]) =

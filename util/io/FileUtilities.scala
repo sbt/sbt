@@ -7,7 +7,7 @@ import OpenResource._
 import ErrorHandling.translate
 
 import java.io.{File, FileInputStream, InputStream, OutputStream}
-import java.net.{URISyntaxException, URL}
+import java.net.{URI, URISyntaxException, URL}
 import java.nio.charset.Charset
 import java.util.jar.{Attributes, JarEntry, JarFile, JarInputStream, JarOutputStream, Manifest}
 import java.util.zip.{GZIPOutputStream, ZipEntry, ZipFile, ZipInputStream, ZipOutputStream}
@@ -38,6 +38,20 @@ object FileUtilities
 	def toFile(url: URL) =
 		try { new File(url.toURI) }
 		catch { case _: URISyntaxException => new File(url.getPath) }
+		
+	/** Converts the given URL to a File.  If the URL is for an entry in a jar, the File for the jar is returned. */
+	def asFile(url: URL): File =
+	{
+		url.getProtocol match
+		{
+			case "file" => toFile(url)
+			case "jar" =>
+				val path = url.getPath
+				val end = path.indexOf('!')
+				new File(new URI(if(end == -1) path else path.substring(0, end)))
+			case _ => error("Invalid protocol " + url.getProtocol)
+		}
+	}
 
 
 	// "base.extension" -> (base, extension)

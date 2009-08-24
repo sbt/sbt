@@ -19,9 +19,8 @@ Task engine
 - use Exceptions instead of Option/Either
 - every component gets its own subproject
 - can use any version of compiler/Scala that is source compatible
- - requires CrossLogger that can interface across ClassLoader boundaries with reflection
 - Logger passed by implicit parameter
-- build using normal cross-build conventions
+- build xsbt using normal cross-build conventions
 - compiler: raw interface (no dependency analysis) or with dependency analysis
 - compiler: can specify scala-library.jar and scala-compiler.jar + version instead of retrieving the ClassLoader
 - minimal dependence on main xsbt logger from subcomponents: use thin interface for subcomponents and implement interface in separate files in main xsbt
@@ -33,7 +32,7 @@ Dependency Management
 
 
 TODO:
-compiler analysis callback does not check classes against output directory.  This must now be done in callback itself:
+compiler analysis plugin does not check classes against output directory.  This must now be done in the callback itself. The old code was:
 
 		Path.relativize(outputPath, pf.file) match
 		{

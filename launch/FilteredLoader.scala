@@ -7,7 +7,7 @@ import BootConfiguration.{IvyPackage, SbtBootPackage, ScalaPackage}
 
 /** A custom class loader to ensure the main part of sbt doesn't load any Scala or
 * Ivy classes from the jar containing the loader. */
-private[boot] final class BootFilteredLoader extends ClassLoader with NotNull
+private[boot] final class BootFilteredLoader(parent: ClassLoader) extends ClassLoader(parent) with NotNull
 {
 	@throws(classOf[ClassNotFoundException])
 	override final def loadClass(className: String, resolve: Boolean): Class[_] =
@@ -17,4 +17,6 @@ private[boot] final class BootFilteredLoader extends ClassLoader with NotNull
 		else
 			super.loadClass(className, resolve)
 	}
+	override def getResources(name: String) = null
+	override def getResource(name: String) = null
 }

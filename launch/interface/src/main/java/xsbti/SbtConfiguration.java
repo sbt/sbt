@@ -1,4 +1,4 @@
-package xsbti.boot;
+package xsbti;
 
 public interface SbtConfiguration
 {
