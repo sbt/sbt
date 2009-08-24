@@ -120,8 +120,8 @@ trait ScalaProject extends SimpleScalaProject with FileTasks with MultiTaskProje
 	} completeWith(classNames(conditional, compilePath))
 	private def classNames(conditional: CompileConditional, compilePath: Path) =
 	{
-		val classes = conditional.analysis.allProducts.flatMap(Path.relativize(compilePath, _))
-		classes.map(_.relativePath.replace(java.io.File.separatorChar, '.').toList.dropRight(".class".length).mkString).toSeq
+		val classes = conditional.analysis.allProducts.flatMap(path => Path.relativize(compilePath.asFile, path.asFile))
+		classes.map(_.replace(java.io.File.separatorChar, '.').toList.dropRight(".class".length).mkString).toSeq
 	}
 	
 	def consoleTask(classpath : PathFinder): Task = 

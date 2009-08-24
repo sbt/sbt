@@ -254,7 +254,7 @@ trait BasicManagedProject extends ManagedProject with ReflectiveManagedProject w
 				Configurations.removeDuplicates(Configurations.defaultMavenConfigurations ++ reflective ++ extra)
 		}
 		else
-			reflective ++ extraDefaultConfigurations
+			reflective ++ extra
 	}
 	def extraDefaultConfigurations: List[Configuration] = Nil
 	def useIntegrationTestConfiguration = false

@@ -235,7 +235,10 @@ object ManageDependencies
 					val (module, conf) = moduleAndConf
 					val explicitCheck =
 						if(check.checkExplicit)
+						{
+							log.debug("Checking explicit Scala dependencies")
 							checkDependencies(module, check.scalaVersion, check.configurations)
+						}
 						else
 							None
 					explicitCheck match
@@ -243,15 +246,18 @@ object ManageDependencies
 						case None =>
 							if(check.filterImplicit)
 							{
+								log.debug("Filtering transitive Scala dependencies")
 								val asDefault = toDefaultModuleDescriptor(module)
-								excludeScalaJars(asDefault, check.configurations)
+								excludeScalaJars(asDefault, check.configurations, config.log)
 								Right( (asDefault, conf) )
 							}
 							else
 								Right(moduleAndConf)
 						case Some(err) => Left(err)
 					}
-				case None => Right(moduleAndConf)
+				case None =>
+					log.debug("Not checking Scala dependencies")
+					Right(moduleAndConf)
 			}
 		
 		this.synchronized // Ivy is not thread-safe.  In particular, it uses a static DocumentBuilder, which is not thread-safe
@@ -294,7 +300,7 @@ object ManageDependencies
 	/** Adds exclusions for the scala library and compiler jars so that they are not downloaded.  This is
 	* done because normally these jars are already on the classpath and cannot/should not be overridden.  The version
 	* of Scala to use is done by setting scala.version in the project definition. */
-	private def excludeScalaJars(module: DefaultModuleDescriptor, configurations: Iterable[Configuration])
+	private def excludeScalaJars(module: DefaultModuleDescriptor, configurations: Iterable[Configuration], log: Logger)
 	{
 		val configurationNames =
 		{
@@ -310,7 +316,7 @@ object ManageDependencies
 			}
 		}
 		def excludeScalaJar(name: String): Unit =
-			module.addExcludeRule(excludeRule(ScalaArtifacts.Organization, name, configurationNames))
+			module.addExcludeRule(excludeRule(ScalaArtifacts.Organization, name, configurationNames, log))
 		excludeScalaJar(ScalaArtifacts.LibraryID)
 		excludeScalaJar(ScalaArtifacts.CompilerID)
 	}
@@ -325,9 +331,10 @@ object ManageDependencies
 	}
 	/** Creates an ExcludeRule that excludes artifacts with the given module organization and name for
 	* the given configurations. */
-	private def excludeRule(organization: String, name: String, configurationNames: Iterable[String]): ExcludeRule =
+	private def excludeRule(organization: String, name: String, configurationNames: Iterable[String], log: Logger): ExcludeRule =
 	{
 		val artifact = new ArtifactId(ModuleId.newInstance(organization, name), "*", "*", "*")
+		log.debug("Excluding " + artifact + " in " + configurationNames.mkString(", "))
 		val rule = new DefaultExcludeRule(artifact, ExactPatternMatcher.INSTANCE, Collections.emptyMap[AnyRef,AnyRef])
 		configurationNames.foreach(rule.addConfiguration)
 		rule

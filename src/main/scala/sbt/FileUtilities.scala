@@ -148,12 +148,12 @@ object FileUtilities
 				nextEntry.setTime(sourceFile.lastModified)
 				output.putNextEntry(nextEntry)
 				transferAndClose(new FileInputStream(sourceFile), output, log)
+				output.closeEntry()
 			}
 			else
 				log.warn("\tSource " + source + " does not exist.")
 		}
 		sources.foreach(add)
-		output.closeEntry()
 		None
 	}
 	

@@ -214,10 +214,10 @@ trait Project extends TaskManager with Dag[Project] with BasicEnvironment
 	* version of Scala being used to build the project.  ScalaVersion.current and ScalaVersion.cross should be used
 	* to read the version of Scala building the project.  This should only be used to change the version of Scala used
 	* for normal development (not cross-building)*/
-	final val scalaVersion = propertyOptional[String]("")
-	final val sbtVersion = propertyOptional[String]("")
+	final val scalaVersion = propertyOptional[String]("", true)
+	final val sbtVersion = propertyOptional[String]("", true)
 	final val projectInitialize = propertyOptional[Boolean](false)
-	final val projectScratch = propertyOptional[Boolean](false)
+	final val projectScratch = propertyOptional[Boolean](false, true)
 
 	/** If this project is cross-building, returns `base` with an additional path component containing the scala version.
 	* Otherwise, this returns `base`.
