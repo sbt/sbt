@@ -2,6 +2,8 @@ import sbt._
 
 class XSbt(info: ProjectInfo) extends ParentProject(info)
 {
+		/* Subproject declarations*/
+
 	val launchInterfaceSub = project(launchPath / "interface", "Launcher Interface", new InterfaceProject(_))
 	val launchSub = project(launchPath, "Launcher", new LaunchProject(_), launchInterfaceSub)
 
@@ -22,10 +24,16 @@ class XSbt(info: ProjectInfo) extends ParentProject(info)
 	val compilerSub = project(compilePath, "Compile", new CompileProject(_),
 		launchInterfaceSub, interfaceSub, ivySub, ioSub, classpathSub, compileInterfaceSub)
 
+		/* Multi-subproject paths */
+
 	def launchPath = path("launch")
 	def utilPath = path("util")
 	def compilePath = path("compile")
 
+	//run in parallel
+	override def parallelExecution = true
+
+		/* Subproject configurations*/
 	class LaunchProject(info: ProjectInfo) extends Base(info) with TestWithIO with TestDependencies
 	{
 		val ivy = "org.apache.ivy" % "ivy" % "2.0.0"
@@ -45,11 +53,11 @@ class XSbt(info: ProjectInfo) extends ParentProject(info)
 		val ju = "junit" % "junit" % "4.5" % "test->default" // required by specs to compile properly
 	}
 
-	override def parallelExecution = true
 	class IOProject(info: ProjectInfo) extends Base(info) with TestDependencies
 	class TaskProject(info: ProjectInfo) extends Base(info) with TestDependencies
 	class CacheProject(info: ProjectInfo) extends Base(info)
 	{
+		// these compilation options are useful for debugging caches and task composition
 		//override def compileOptions = super.compileOptions ++ List(Unchecked,ExplainTypes, CompileOption("-Xlog-implicits"))
 	}
 	class Base(info: ProjectInfo) extends DefaultProject(info) with ManagedBase
@@ -59,9 +67,10 @@ class XSbt(info: ProjectInfo) extends ParentProject(info)
 	class CompileProject(info: ProjectInfo) extends Base(info)
 	{
 		override def testCompileAction = super.testCompileAction dependsOn(launchSub.testCompile, compileInterfaceSub.`package`, interfaceSub.`package`)
+		 // don't include launch interface in published dependencies because it will be provided by launcher
 		override def deliverProjectDependencies = Set(super.deliverProjectDependencies.toSeq : _*) - launchInterfaceSub.projectID
 		override def testClasspath = super.testClasspath +++ launchSub.testClasspath +++ compileInterfaceSub.jarPath +++ interfaceSub.jarPath
-		override def compileOptions = super.compileOptions ++ Seq(CompileOption("-Xno-varargs-conversion"))
+		override def compileOptions = super.compileOptions ++ Seq(CompileOption("-Xno-varargs-conversion")) //needed for invoking nsc.scala.tools.Main.process(Array[String])
 	}
 	class IvyProject(info: ProjectInfo) extends Base(info) with TestWithIO
 	{
@@ -69,6 +78,7 @@ class XSbt(info: ProjectInfo) extends ParentProject(info)
 	}
 	class InterfaceProject(info: ProjectInfo) extends DefaultProject(info) with ManagedBase
 	{
+		// ensure that interfaces are only Java sources and that they cannot reference Scala classes
 		override def mainSources = descendents(mainSourceRoots, "*.java")
 		override def compileOrder = CompileOrder.JavaThenScala
 	}
@@ -90,14 +100,15 @@ class XSbt(info: ProjectInfo) extends ParentProject(info)
 		override def testClasspath = super.testClasspath +++ ioSub.testClasspath
 	}
 }
+
 trait SourceProject extends BasicScalaProject
 {
-	override final def crossScalaVersions = Set.empty
-	override def packagePaths = mainResources +++ mainSources
+	override final def crossScalaVersions = Set.empty // don't need to cross-build a source package
+	override def packagePaths = mainResources +++ mainSources // the default artifact is a jar of the main sources and resources
 }
 trait ManagedBase extends BasicScalaProject
 {
-	override def deliverScalaDependencies = Nil
+	override def deliverScalaDependencies = Nil //
 	override def crossScalaVersions = Set("2.7.5")
 	override def managedStyle = ManagedStyle.Ivy
 	override def useDefaultConfigurations = false
