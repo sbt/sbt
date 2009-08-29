@@ -3,12 +3,14 @@ package xsbt
 import Task.{mapTask,bindTask, ITask}
 import scala.collection.{mutable,immutable}
 
-sealed abstract class Task[O] extends Identity
+sealed trait Result[O] extends NotNull
+final case class Value[O](t: O) extends Result[O]
+sealed abstract class Task[O] extends Identity with Result[O]
 {
 	type Input
 	def dependencies: TreeHashSet[Task[_]] // IMPORTANT!!  immutable.HashSet is NOT suitable. It has issues with multi-threaded access
 	def map[N](f: O => N): ITask[O,N]
-	def bind[N](f: O => Task[N]): ITask[O,N]
+	def bind[N](f: O => Result[N]): ITask[O,N]
 	def dependsOn(addDependencies: Task[_]*): ITask[Input,O]
 	def named(s: String): ITask[Input,O]
 }
@@ -21,7 +23,7 @@ private final class M[I,O,R <: Result[O]](name: Option[String])
 
 	final def dependsOn(addDependencies: Task[_]*) = new M(name)(dependencies ++ addDependencies)(extract)(compute)
 	final def map[N](f: O => N) = mapTask(this)(_(this))(f)
-	final def bind[N](f: O => Task[N]) = bindTask(this)(_(this))(f)
+	final def bind[N](f: O => Result[N]) = bindTask(this)(_(this))(f)
 	final def named(s: String) =
 		name match
 		{
@@ -42,9 +44,6 @@ private trait Results extends NotNull
 	def contains(task: Task[_]): Boolean
 }
 
-private sealed trait Result[O] extends NotNull
-private final case class NewTask[O](t: Task[O]) extends Result[O]
-private final case class Value[O](t: O) extends Result[O]
 
 object Task
 {
@@ -52,8 +51,8 @@ object Task
 	import Function.tupled
 	def apply[O](o: => O): ITask[Unit,O] =
 		new M[Unit,O,Value[O]]()(r => ())( u => Value(o) )
-	def bindTask[I,O](dependencies: Task[_]*)(extract: Results => I)(compute: I => Task[O]): ITask[I,O] =
-		new M[I,O,NewTask[O]](dependencies : _*)(extract)(in => NewTask(compute(in)))
+	def bindTask[I,O](dependencies: Task[_]*)(extract: Results => I)(compute: I => Result[O]): ITask[I,O] =
+		new M[I,O,Result[O]](dependencies : _*)(extract)(compute)
 	def mapTask[I,O](dependencies: Task[_]*)(extract: Results => I)(compute: I => O): ITask[I,O] =
 		new M[I,O,Value[O]](dependencies : _*)(extract)(in => Value(compute(in)))
 
@@ -123,7 +122,7 @@ object Task
 		def get(results: Results) = HCons(results(head), tail.get(results))
 
 		def map[X](f: HListType => X): ITask[HListType,X] = mapTask(tasks: _*)(get)(f)
-		def bind[X](f: HListType => Task[X]): ITask[HListType,X] = bindTask(tasks: _*)(get)(f)
+		def bind[X](f: HListType => Result[X]): ITask[HListType,X] = bindTask(tasks: _*)(get)(f)
 		def join: ITask[HListType,HListType] = map(identity[HListType])
 	}
 	val TNil = new TNil
@@ -133,13 +132,20 @@ object Task
 	final class Builder2[A,B] private[Task](a: Task[A], b: Task[B]) extends NotNull
 	{
 		def map[X](f: (A,B) => X): ITask[(A,B),X] = mapTask(a,b)(r => (r(a), r(b)))(tupled(f))
-		def bind[X](f: (A,B) => Task[X]): ITask[(A,B),X] = bindTask(a,b)( r => (r(a), r(b)) )(tupled(f))
+		def bind[X](f: (A,B) => Result[X]): ITask[(A,B),X] = bindTask(a,b)( r => (r(a), r(b)) )(tupled(f))
 	}
 
 	implicit def threeToBuilder[A,B,C](t: (Task[A], Task[B], Task[C])): Builder3[A,B,C] = t match { case (a,b,c) => new Builder3(a,b,c) }
 	final class Builder3[A,B,C] private[Task](a: Task[A], b: Task[B], c: Task[C]) extends NotNull
 	{
 		def map[X](f: (A,B,C) => X): ITask[(A,B,C),X] = mapTask(a,b,c)( r =>  (r(a), r(b), r(c)) )(tupled(f))
-		def bind[X](f: (A,B,C) => Task[X]): ITask[(A,B,C),X] = bindTask(a,b,c)( r => (r(a), r(b), r(c)) )(tupled(f))
+		def bind[X](f: (A,B,C) => Result[X]): ITask[(A,B,C),X] = bindTask(a,b,c)( r => (r(a), r(b), r(c)) )(tupled(f))
+	}
+
+	implicit def fourToBuilder[A,B,C,D](t: (Task[A], Task[B], Task[C], Task[D])): Builder4[A,B,C,D] = t match { case (a,b,c,d) => new Builder4(a,b,c,d) }
+	final class Builder4[A,B,C,D] private[Task](a: Task[A], b: Task[B], c: Task[C], d: Task[D]) extends NotNull
+	{
+		def map[X](f: (A,B,C,D) => X): ITask[(A,B,C,D),X] = mapTask(a,b,c,d)( r =>  (r(a), r(b), r(c), r(d)) )(tupled(f))
+		def bind[X](f: (A,B,C,D) => Result[X]): ITask[(A,B,C,D),X] = bindTask(a,b,c,d)( r => (r(a), r(b), r(c),r(d)) )(tupled(f))
 	}
 }

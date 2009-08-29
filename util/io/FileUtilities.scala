@@ -13,6 +13,7 @@ import java.util.jar.{Attributes, JarEntry, JarFile, JarInputStream, JarOutputSt
 import java.util.zip.{GZIPOutputStream, ZipEntry, ZipFile, ZipInputStream, ZipOutputStream}
 import scala.collection.mutable.HashSet
 import scala.reflect.{Manifest => SManifest}
+import Function.tupled
 
 object FileUtilities
 {
@@ -38,7 +39,7 @@ object FileUtilities
 	def toFile(url: URL) =
 		try { new File(url.toURI) }
 		catch { case _: URISyntaxException => new File(url.getPath) }
-		
+
 	/** Converts the given URL to a File.  If the URL is for an entry in a jar, the File for the jar is returned. */
 	def asFile(url: URL): File =
 	{
@@ -52,7 +53,8 @@ object FileUtilities
 			case _ => error("Invalid protocol " + url.getProtocol)
 		}
 	}
-
+	def assertDirectory(file: File) { assert(file.isDirectory, (if(file.exists) "Not a directory: " else "Directory not found: ") + file) }
+	def assertDirectory(file: File*) { file.foreach(assertDirectory) }
 
 	// "base.extension" -> (base, extension)
 	def split(name: String): (String, String) =
@@ -198,7 +200,8 @@ object FileUtilities
 				file.delete
 		}
 	}
-	def listFiles(dir: File, filter: FileFilter): Array[File] = wrapNull(dir.listFiles(filter))
+	def listFiles(filter: java.io.FileFilter)(dir: File): Array[File] = wrapNull(dir.listFiles(filter))
+	def listFiles(dir: File, filter: java.io.FileFilter): Array[File] = wrapNull(dir.listFiles(filter))
 	def listFiles(dir: File): Array[File] = wrapNull(dir.listFiles())
 	private def wrapNull(a: Array[File]) =
 	{
@@ -210,23 +213,18 @@ object FileUtilities
 
 
 	/** Creates a jar file.
-	* @param sources The files to include in the jar file.
+	* @param sources The files to include in the jar file paired with the entry name in the jar.
 	* @param outputJar The file to write the jar to.
-	* @param manifest The manifest for the jar.
-	* @param recursive If true, any directories in <code>sources</code> are recursively processed.
-	* @param mapper The mapper that determines the name of a File in the jar. */
-	def jar(sources: Iterable[File], outputJar: File, manifest: Manifest, recursive: Boolean, mapper: PathMapper): Unit =
-		archive(sources, outputJar, Some(manifest), recursive, mapper)
+	* @param manifest The manifest for the jar.*/
+	def jar(sources: Iterable[(File,String)], outputJar: File, manifest: Manifest): Unit =
+		archive(sources, outputJar, Some(manifest))
 	/** Creates a zip file.
-	* @param sources The files to include in the jar file.
-	* @param outputZip The file to write the zip to.
-	* @param recursive If true, any directories in <code>sources</code> are recursively processed.  Otherwise,
-	* they are not
-	* @param mapper The mapper that determines the name of a File in the jar. */
-	def zip(sources: Iterable[File], outputZip: File, recursive: Boolean, mapper: PathMapper): Unit =
-		archive(sources, outputZip, None, recursive, mapper)
+	* @param sources The files to include in the zip file paired with the entry name in the zip.
+	* @param outputZip The file to write the zip to.*/
+	def zip(sources: Iterable[(File,String)], outputZip: File): Unit =
+		archive(sources, outputZip, None)
 
-	private def archive(sources: Iterable[File], outputFile: File, manifest: Option[Manifest], recursive: Boolean, mapper: PathMapper)
+	private def archive(sources: Iterable[(File,String)], outputFile: File, manifest: Option[Manifest])
 	{
 		if(outputFile.isDirectory)
 			error("Specified output file " + outputFile + " is a directory.")
@@ -237,22 +235,18 @@ object FileUtilities
 			withZipOutput(outputFile, manifest)
 			{ output =>
 				val createEntry: (String => ZipEntry) = if(manifest.isDefined) new JarEntry(_) else new ZipEntry(_)
-				writeZip(sources, output, recursive, mapper)(createEntry)
+				writeZip(sources, output)(createEntry)
 			}
 		}
 	}
-	private def writeZip(sources: Iterable[File], output: ZipOutputStream, recursive: Boolean, mapper: PathMapper)(createEntry: String => ZipEntry)
+	private def writeZip(sources: Iterable[(File,String)], output: ZipOutputStream)(createEntry: String => ZipEntry)
 	{
-		def add(sourceFile: File)
+		def add(sourceFile: File, name: String)
 		{
 			if(sourceFile.isDirectory)
-			{
-				if(recursive)
-					listFiles(sourceFile).foreach(add)
-			}
+				()
 			else if(sourceFile.exists)
 			{
-				val name = mapper(sourceFile)
 				val nextEntry = createEntry(name)
 				nextEntry.setTime(sourceFile.lastModified)
 				output.putNextEntry(nextEntry)
@@ -261,7 +255,7 @@ object FileUtilities
 			else
 				error("Source " + sourceFile + " does not exist.")
 		}
-		sources.foreach(add)
+		sources.foreach(tupled(add))
 		output.closeEntry()
 	}
 
@@ -314,30 +308,20 @@ object FileUtilities
 		else
 			None
 	}
-	def copy(sources: Iterable[File], destinationDirectory: File, mapper: PathMapper) =
+	def copy(sources: Iterable[(File,File)]): Set[File] = Set( sources.map(tupled(copyImpl)).toSeq.toArray : _*)
+	private def copyImpl(from: File, to: File): File =
 	{
-		val targetSet = new scala.collection.mutable.HashSet[File]
-		copyImpl(sources, destinationDirectory) { from =>
-			val to = new File(destinationDirectory, mapper(from))
-			targetSet += to
-			if(!to.exists || from.lastModified > to.lastModified)
+		if(!to.exists || from.lastModified > to.lastModified)
+		{
+			if(from.isDirectory)
+				createDirectory(to)
+			else
 			{
-				if(from.isDirectory)
-					createDirectory(to)
-				else
-				{
-					//log.debug("Copying " + source + " to " + toPath)
-					copyFile(from, to)
-				}
+				createDirectory(to.getParentFile)
+				copyFile(from, to)
 			}
 		}
-		targetSet.readOnly
-	}
-	private def copyImpl(sources: Iterable[File], target: File)(doCopy: File => Unit)
-	{
-		if(!target.isDirectory)
-			createDirectory(target)
-		sources.toList.foreach(doCopy)
+		to
 	}
 	def copyFile(sourceFile: File, targetFile: File)
 	{
@@ -361,5 +345,4 @@ object FileUtilities
 		else
 			error("String cannot be encoded by charset " + charset.name)
 	}
-
 }

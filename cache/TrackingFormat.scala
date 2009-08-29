@@ -2,29 +2,31 @@ package xsbt
 
 import java.io.File
 import scala.collection.mutable.{HashMap, Map, MultiMap, Set}
-import sbinary.{DefaultProtocol, Format, Operations}
+import scala.reflect.Manifest
+import sbinary.{DefaultProtocol, Format}
 import DefaultProtocol._
 import TrackingFormat._
+import CacheIO.{fromFile, toFile}
 import DependencyTracking.{DependencyMap => DMap, newMap}
 
-private class TrackingFormat[T](directory: File, translateProducts: Boolean)(implicit tFormat: Format[T]) extends NotNull
+private class TrackingFormat[T](directory: File, translateProducts: Boolean)(implicit tFormat: Format[T], mf: Manifest[T]) extends NotNull
 {
-
 	val indexFile = new File(directory, "index")
 	val dependencyFile = new File(directory, "dependencies")
 	def read(): DependencyTracking[T] =
 	{
-		val indexMap = Operations.fromFile[Map[Int,T]](indexFile)
+		val indexMap = CacheIO.fromFile[Map[Int,T]](indexFile)
 		val indexedFormat = wrap[T,Int](ignore => error("Read-only"), indexMap.apply)
-		Operations.fromFile(dependencyFile)(trackingFormat(translateProducts)(indexedFormat))
+		val trackFormat = trackingFormat(translateProducts)(indexedFormat)
+		fromFile(trackFormat)(dependencyFile)
 	}
 	def write(tracking: DependencyTracking[T])
 	{
 		val index = new IndexMap[T]
 		val indexedFormat = wrap[T,Int](t => index(t), ignore => error("Write-only"))
-
-		Operations.toFile(tracking)(dependencyFile)(trackingFormat(translateProducts)(indexedFormat))
-		Operations.toFile(index.indices)(indexFile)
+		val trackFormat = trackingFormat(translateProducts)(indexedFormat)
+		toFile(trackFormat)(tracking)(dependencyFile)
+		toFile(index.indices)(indexFile)
 	}
 }
 private object TrackingFormat

@@ -1,12 +1,14 @@
 package xsbt
 
 import java.io.File
-import sbinary.{Format, Operations}
+import CacheIO.{fromFile, toFile}
+import sbinary.Format
+import scala.reflect.Manifest
 
 object DependencyTracking
 {
 	def trackBasic[T, F <: FileInfo](filesTask: Task[Set[File]], style: FilesInfo.Style[F], cacheDirectory: File)
-		(f: (ChangeReport[File], InvalidationReport[File], UpdateTracking[File]) => Task[T]): Task[T] =
+		(f: (ChangeReport[File], InvalidationReport[File], UpdateTracking[File]) => Task[T])(implicit mf: Manifest[F]): Task[T] =
 	{
 		changed(filesTask, style, new File(cacheDirectory, "files")) { sourceChanges =>
 			invalidate(sourceChanges, cacheDirectory) { (report, tracking) =>
@@ -14,9 +16,24 @@ object DependencyTracking
 			}
 		}
 	}
-	def changed[T, F <: FileInfo](filesTask: Task[Set[File]], style: FilesInfo.Style[F], cache: File)(f: ChangeReport[File] => Task[T]): Task[T] =
+	def changed[O,O2](task: Task[O], file: File)(ifChanged: O => O2, ifUnchanged: O => O2)(implicit input: InputCache[O]): Task[O2] { type Input = O } =
+		task map { value =>
+			val cache = OpenResource.fileInputStream(file)(input.uptodate(value))
+			if(cache.uptodate)
+				ifUnchanged(value)
+			else
+			{
+				OpenResource.fileOutputStream(false)(file)(cache.update)
+				ifChanged(value)
+			}
+		}
+	def changed[T, F <: FileInfo](files: Set[File], style: FilesInfo.Style[F], cache: File)
+		(f: ChangeReport[File] => Task[T])(implicit mf: Manifest[F]): Task[T] =
+			changed(Task(files), style, cache)(f)
+	def changed[T, F <: FileInfo](filesTask: Task[Set[File]], style: FilesInfo.Style[F], cache: File)
+		(f: ChangeReport[File] => Task[T])(implicit mf: Manifest[F]): Task[T] =
 		filesTask bind { files =>
-			val lastFilesInfo = Operations.fromFile(cache)(style.format).files
+			val lastFilesInfo = fromFile(style.formats)(cache).files
 			val lastFiles = lastFilesInfo.map(_.file)
 			val currentFiles = files.map(_.getAbsoluteFile)
 			val currentFilesInfo = style(files)
@@ -31,7 +48,7 @@ object DependencyTracking
 			}
 
 			f(report) map { result =>
-				Operations.toFile(currentFilesInfo)(cache)(style.format)
+				toFile(style.formats)(currentFilesInfo)(cache)
 				result
 			}
 		}
@@ -41,10 +58,11 @@ object DependencyTracking
 			report.invalidProducts.foreach(_.delete)
 			f(report, tracking)
 		}
-		invalidate(Task(changes), cacheDirectory, true)(pruneAndF)(sbinary.DefaultProtocol.FileFormat)
+		implicit val format = sbinary.DefaultProtocol.FileFormat
+		invalidate(Task(changes), cacheDirectory, true)(pruneAndF)
 	}
 	def invalidate[T,R](changesTask: Task[ChangeReport[T]], cacheDirectory: File, translateProducts: Boolean)
-		(f: (InvalidationReport[T], UpdateTracking[T]) => Task[R])(implicit format: Format[T]): Task[R] =
+		(f: (InvalidationReport[T], UpdateTracking[T]) => Task[R])(implicit format: Format[T], mf: Manifest[T]): Task[R] =
 	{
 		changesTask bind { changes =>
 			val trackFormat = new TrackingFormat[T](cacheDirectory, translateProducts)

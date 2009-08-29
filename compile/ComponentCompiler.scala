@@ -35,6 +35,7 @@ class ComponentCompiler(scalaVersion: String, compiler: RawCompiler, manager: Co
 	* any resources from the source jars into a final jar.*/
 	private def compileSources(sourceJars: Iterable[File], targetJar: File, id: String)
 	{
+		import Paths._
 		withTemporaryDirectory { dir =>
 			val extractedSources = (Set[File]() /: sourceJars) { (extracted, sourceJar)=> extracted ++ unzip(sourceJar, dir) }
 			val (sourceFiles, resources) = extractedSources.partition(_.getName.endsWith(".scala"))
@@ -42,8 +43,8 @@ class ComponentCompiler(scalaVersion: String, compiler: RawCompiler, manager: Co
 				val xsbtiJars = manager.files(xsbtiID)
 				val arguments = Seq("-d", outputDirectory.getAbsolutePath, "-cp", xsbtiJars.mkString(File.pathSeparator)) ++ sourceFiles.toSeq.map(_.getAbsolutePath)
 				compiler(arguments)
-				copy(resources, outputDirectory, PathMapper.relativeTo(dir))
-				zip(Seq(outputDirectory), targetJar, true, PathMapper.relativeTo(outputDirectory))
+				copy(resources x (FileMapper.rebase(dir, outputDirectory)))
+				zip((outputDirectory ***) x (PathMapper.relativeTo(outputDirectory)), targetJar)
 			}
 		}
 	}

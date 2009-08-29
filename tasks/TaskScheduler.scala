@@ -176,7 +176,7 @@ private final class TaskScheduler[O](root: Task[O], strategy: ScheduleStrategy[W
 		private def success[O](task: Task[O], value: Result[O]): Unit =
 			value match
 			{
-				case NewTask(t) =>
+				case t: Task[O] =>
 					if(t eq task)
 					{
 						failureReports += WorkFailure(t, CircularDependency(t, task))

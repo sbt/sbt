@@ -8,22 +8,27 @@ import java.io.File
 trait PathMapper extends NotNull
 {
 	def apply(file: File): String
+	def apply(files: Set[File]): Iterable[(File,String)] = files.projection.map(f => (f,apply(f)))
 }
-class PMapper(f: File => String) extends PathMapper
+final case class RelativePathMapper(base: File) extends PMapper(file => FileUtilities.relativize(base, file).getOrElse(file.getPath))
+final case object BasicPathMapper extends PMapper(_.getPath)
+final case object FlatPathMapper extends PMapper(_.getName)
+class PMapper(val f: File => String) extends PathMapper
 {
-	def apply(file: File) = f(file)
+	def apply(file: File): String = f(file)
 }
 object PathMapper
 {
-	val basic = new PMapper(_.getPath)
-	def relativeTo(base: File) = new PMapper(file => FileUtilities.relativize(base, file).getOrElse(file.getPath))
-	val flat = new PMapper(_.getName)
-	def apply(f: File => String) = new PMapper(f)
+	val basic: PathMapper = BasicPathMapper
+	def relativeTo(base: File): PathMapper = RelativePathMapper(base)
+	val flat = FlatPathMapper
+	def apply(f: File => String): PathMapper = new PMapper(f)
 }
 
 trait FileMapper extends NotNull
 {
 	def apply(file: File): File
+	def apply(files: Set[File]): Iterable[(File,File)] = files.projection.map(f => (f,apply(f)))
 }
 class FMapper(f: File => File) extends FileMapper
 {
