@@ -60,13 +60,17 @@ object FilesInfo
 {
 	sealed trait Style[F <: FileInfo] extends NotNull
 	{
-		implicit def apply(files: Iterable[File]): FilesInfo[F]
-		implicit val format: Format[FilesInfo[F]]
+		implicit def apply(files: Set[File]): FilesInfo[F]
+		implicit def unapply(info: FilesInfo[F]): Set[File] = info.files.map(_.file)
+		implicit val formats: Format[FilesInfo[F]]
+		import Cache._
+		implicit def infosInputCache: InputCache[Set[File]] = wrapInputCache[Set[File],FilesInfo[F]]
+		implicit def infosOutputCache: OutputCache[Set[File]] = wrapOutputCache[Set[File],FilesInfo[F]]
 	}
 	private final class BasicStyle[F <: FileInfo](fileStyle: FileInfo.Style[F])(implicit infoFormat: Format[F]) extends Style[F]
 	{
-		implicit def apply(files: Iterable[File]) = FilesInfo( (Set() ++ files.map(_.getAbsoluteFile)).map(fileStyle.apply) )
-		implicit val format: Format[FilesInfo[F]] = wrap(_.files, (fs: Set[F]) => new FilesInfo(fs))
+		implicit def apply(files: Set[File]): FilesInfo[F] = FilesInfo( files.map(_.getAbsoluteFile).map(fileStyle.apply) )
+		implicit val formats: Format[FilesInfo[F]] = wrap(_.files, (fs: Set[F]) => new FilesInfo(fs))
 	}
 	lazy val full: Style[HashModifiedFileInfo] = new BasicStyle(FileInfo.full)(FileInfo.full.format)
 	lazy val hash: Style[HashFileInfo] = new BasicStyle(FileInfo.hash)(FileInfo.hash.format)
