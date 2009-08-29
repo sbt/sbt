@@ -15,7 +15,7 @@ abstract class CrossCompileProject extends BasicScalaProject with MavenStyleScal
 	private val version2_7_3 = "2.7.3"
 	private val version2_7_4 = "2.7.4"
 	private val version2_7_5 = "2.7.5"
-	private val version2_8_0 = "2.8.0.r18462-b20090811081019"
+	private val version2_8_0 = "2.8.0-SNAPSHOT"//"2.8.0.r18462-b20090811081019"
 	private val base = "base"
 
 	/* The configurations for the versions of Scala.*/
@@ -28,7 +28,7 @@ abstract class CrossCompileProject extends BasicScalaProject with MavenStyleScal
 	// the list of all configurations cross-compile supports
 	private val allConfigurations = conf_2_7_2 :: conf_2_7_3 :: conf_2_7_4 :: conf_2_7_5 :: conf_2_8_0 :: Nil
 	// the list of configurations to actually build against
-	private val buildConfigurations = allConfigurations//conf_2_7_2 :: conf_2_8_0 :: Nil//conf_2_7_2 :: conf_2_7_3 :: conf_2_7_4 :: conf_2_7_5 :: Nil//allConfigurations not currently used because of issues with 2.8.0
+	private val buildConfigurations = allConfigurations//conf_2_8_0 :: Nil//conf_2_7_2 :: conf_2_7_3 :: conf_2_7_4 :: conf_2_7_5 :: Nil
 	// the configuration to use for normal development (when cross-building is not done)
 	private def developmentVersion = buildConfigurations.first
 	
