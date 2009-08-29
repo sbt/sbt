@@ -114,7 +114,7 @@ private[sbt] object Parser
 			}
 		}
     }
-    private def array[T](size: Int)(f: => T) = Array.fromFunction(i => f)(size)
+    private def array[T](size: Int)(f: => T)(implicit mf: scala.reflect.Manifest[T]) = Array.fromFunction(i => f)(size)
 	private def parseConstantPool(in: DataInputStream) =
 	{
 		val constantPoolSize = in.readUnsignedShort()
