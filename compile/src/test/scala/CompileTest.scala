@@ -45,6 +45,7 @@ object CompileTest extends Specification
 			error("Resource not found: " + resource)
 		prepare(manager, id, FileUtilities.asFile(src))
 	}
+	import Paths._
 	private def prepare(manager: ComponentManager, id: String, file: File): Unit =
-		FileUtilities.copy(Seq(file), manager.location(id), PathMapper.flat)
+		FileUtilities.copy(file x FileMapper.flat(manager.location(id)))
 }
