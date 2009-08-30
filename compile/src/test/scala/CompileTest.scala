@@ -17,12 +17,12 @@ object CompileTest extends Specification
 					val manager = new ComponentManager(launch.getSbtHome(sbtVersion, scalaVersion), log)
 					prepare(manager, ComponentCompiler.compilerInterfaceSrcID, "CompilerInterface.scala")
 					prepare(manager, ComponentCompiler.xsbtiID, classOf[xsbti.AnalysisCallback])
-					testCompileAnalysis(new AnalyzeCompile(scalaVersion,  launch, manager), log)
+					testCompileAnalysis(new AnalyzeCompiler(scalaVersion,  launch, manager), log)
 				}
 			}
 		}
 	}
-	private def testCompileAnalysis(compiler: AnalyzeCompile, log: xsbti.Logger)
+	private def testCompileAnalysis(compiler: AnalyzeCompiler, log: xsbti.Logger)
 	{
 		WithFiles( new File("Test.scala") -> "object Test" ) { sources =>
 			withTemporaryDirectory { temp =>
