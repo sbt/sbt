@@ -22,7 +22,7 @@ object Process
 	def apply(name: String, exitValue: => Int): ProcessBuilder = new DummyProcessBuilder(name, exitValue)
 	
 	def cat(file: SourcePartialBuilder, files: SourcePartialBuilder*): ProcessBuilder = cat(file :: files.toList)
-	private[this] def cat(files: Seq[SourcePartialBuilder]): ProcessBuilder =
+	def cat(files: Seq[SourcePartialBuilder]): ProcessBuilder =
 	{
 		require(!files.isEmpty)
 		files.map(_.cat).reduceLeft(_ #&& _)
