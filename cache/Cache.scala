@@ -2,6 +2,7 @@ package xsbt
 
 import sbinary.{CollectionTypes, Format, JavaFormats, Operations}
 import java.io.File
+import scala.reflect.Manifest
 
 trait Cache[I,O]
 {
