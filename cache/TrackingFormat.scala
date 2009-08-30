@@ -7,7 +7,7 @@ import sbinary.{DefaultProtocol, Format}
 import DefaultProtocol._
 import TrackingFormat._
 import CacheIO.{fromFile, toFile}
-import DependencyTracking.{DependencyMap => DMap, newMap}
+import DependencyTracking.{DependencyMap => DMap, newMap, TagMap}
 
 private class TrackingFormat[T](directory: File, translateProducts: Boolean)(implicit tFormat: Format[T], mf: Manifest[T]) extends NotNull
 {
@@ -42,7 +42,11 @@ private object TrackingFormat
 		}
 	}
 	def trackingFormat[T](translateProducts: Boolean)(implicit tFormat: Format[T]): Format[DependencyTracking[T]] =
-		asProduct3((a: DMap[T],b: DMap[T],c: DMap[T]) => new DefaultTracking(translateProducts)(a,b,c) : DependencyTracking[T])(dt => Some(dt.reverseDependencies, dt.reverseUses, dt.sourceMap))
+	{
+		implicit val arrayFormat = sbinary.Operations.format[Array[Byte]]
+		asProduct4((a: DMap[T],b: DMap[T],c: DMap[T], d:TagMap[T]) => new DefaultTracking(translateProducts)(a,b,c,d) : DependencyTracking[T]
+			)(dt => Some(dt.reverseDependencies, dt.reverseUses, dt.sourceMap, dt.tagMap))
+	}
 }
 
 private final class IndexMap[T] extends NotNull

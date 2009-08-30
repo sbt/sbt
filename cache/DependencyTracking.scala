@@ -5,18 +5,17 @@ import CacheIO.{fromFile, toFile}
 import sbinary.Format
 import scala.reflect.Manifest
 
-object DependencyTracking
+trait Tracked extends NotNull
 {
-	def trackBasic[T, F <: FileInfo](filesTask: Task[Set[File]], style: FilesInfo.Style[F], cacheDirectory: File)
-		(f: (ChangeReport[File], InvalidationReport[File], UpdateTracking[File]) => Task[T])(implicit mf: Manifest[F]): Task[T] =
-	{
-		changed(filesTask, style, new File(cacheDirectory, "files")) { sourceChanges =>
-			invalidate(sourceChanges, cacheDirectory) { (report, tracking) =>
-				f(sourceChanges, report, tracking)
-			}
-		}
-	}
-	def changed[O,O2](task: Task[O], file: File)(ifChanged: O => O2, ifUnchanged: O => O2)(implicit input: InputCache[O]): Task[O2] { type Input = O } =
+	def clear: Task[Unit]
+	def clean: Task[Unit]
+}
+
+class Changed[O](val task: Task[O], val file: File)(implicit input: InputCache[O]) extends Tracked
+{
+	def clean = Task.empty
+	def clear = Clean(file)
+	def apply[O2](ifChanged: O => O2, ifUnchanged: O => O2): Task[O2] { type Input = O } =
 		task map { value =>
 			val cache = OpenResource.fileInputStream(file)(input.uptodate(value))
 			if(cache.uptodate)
@@ -27,14 +26,24 @@ object DependencyTracking
 				ifChanged(value)
 			}
 		}
-	def changed[T, F <: FileInfo](files: Set[File], style: FilesInfo.Style[F], cache: File)
-		(f: ChangeReport[File] => Task[T])(implicit mf: Manifest[F]): Task[T] =
-			changed(Task(files), style, cache)(f)
-	def changed[T, F <: FileInfo](filesTask: Task[Set[File]], style: FilesInfo.Style[F], cache: File)
-		(f: ChangeReport[File] => Task[T])(implicit mf: Manifest[F]): Task[T] =
+}
+class Difference[F <: FileInfo](val filesTask: Task[Set[File]], val style: FilesInfo.Style[F], val cache: File, val shouldClean: Boolean)(implicit mf: Manifest[F]) extends Tracked
+{
+	def this(filesTask: Task[Set[File]], style: FilesInfo.Style[F], cache: File)(implicit mf: Manifest[F]) = this(filesTask, style, cache, false)
+	def this(files: Set[File], style: FilesInfo.Style[F], cache: File, shouldClean: Boolean)(implicit mf: Manifest[F]) = this(Task(files), style, cache)
+	def this(files: Set[File], style: FilesInfo.Style[F], cache: File)(implicit mf: Manifest[F]) = this(Task(files), style, cache, false)
+	
+	val clear = Clean(cache)
+	val clean = if(shouldClean) cleanTask else Task.empty
+	def cleanTask = Clean(Task(raw(cachedFilesInfo)))
+	
+	private def cachedFilesInfo = fromFile(style.formats)(cache).files
+	private def raw(fs: Set[F]): Set[File] = fs.map(_.file)
+	
+	def apply[T](f: ChangeReport[File] => Task[T]): Task[T] =
 		filesTask bind { files =>
-			val lastFilesInfo = fromFile(style.formats)(cache).files
-			val lastFiles = lastFilesInfo.map(_.file)
+			val lastFilesInfo = cachedFilesInfo
+			val lastFiles = raw(lastFilesInfo)
 			val currentFiles = files.map(_.getAbsoluteFile)
 			val currentFilesInfo = style(files)
 
@@ -43,7 +52,7 @@ object DependencyTracking
 				lazy val allInputs = currentFiles
 				lazy val removed = lastFiles -- allInputs
 				lazy val added = allInputs -- lastFiles
-				lazy val modified = (lastFilesInfo -- currentFilesInfo.files).map(_.file)
+				lazy val modified = raw(lastFilesInfo -- currentFilesInfo.files)
 				lazy val unmodified = allInputs -- modified
 			}
 
@@ -52,20 +61,32 @@ object DependencyTracking
 				result
 			}
 		}
-	def invalidate[R](changes: ChangeReport[File], cacheDirectory: File)(f: (InvalidationReport[File], UpdateTracking[File]) => Task[R]): Task[R] =
+}
+object InvalidateFiles
+{
+	def apply(cacheDirectory: File): Invalidate[File] = apply(cacheDirectory, true)
+	def apply(cacheDirectory: File, translateProducts: Boolean): Invalidate[File] =
 	{
-		val pruneAndF = (report: InvalidationReport[File], tracking: UpdateTracking[File]) => {
-			report.invalidProducts.foreach(_.delete)
-			f(report, tracking)
-		}
-		implicit val format = sbinary.DefaultProtocol.FileFormat
-		invalidate(Task(changes), cacheDirectory, true)(pruneAndF)
+		import sbinary.DefaultProtocol.FileFormat
+		new Invalidate[File](cacheDirectory, translateProducts, FileUtilities.delete)
 	}
-	def invalidate[T,R](changesTask: Task[ChangeReport[T]], cacheDirectory: File, translateProducts: Boolean)
-		(f: (InvalidationReport[T], UpdateTracking[T]) => Task[R])(implicit format: Format[T], mf: Manifest[T]): Task[R] =
+}
+class Invalidate[T](val cacheDirectory: File, val translateProducts: Boolean, cleanT: T => Unit)
+	(implicit format: Format[T], mf: Manifest[T]) extends Tracked
+{
+	def this(cacheDirectory: File, translateProducts: Boolean)(implicit format: Format[T], mf: Manifest[T]) =
+		this(cacheDirectory, translateProducts, x => ())
+
+	private val trackFormat = new TrackingFormat[T](cacheDirectory, translateProducts)
+	private def cleanAll(fs: Set[T]) = fs.foreach(cleanT)
+
+	def clear = Clean(cacheDirectory)
+	def clean = Task(cleanAll(trackFormat.read.allProducts))
+	def apply[R](changes: ChangeReport[T])(f: (InvalidationReport[T], UpdateTracking[T]) => Task[R]): Task[R] =
+		apply(Task(changes))(f)
+	def apply[R](changesTask: Task[ChangeReport[T]])(f: (InvalidationReport[T], UpdateTracking[T]) => Task[R]): Task[R] =
 	{
 		changesTask bind { changes =>
-			val trackFormat = new TrackingFormat[T](cacheDirectory, translateProducts)
 			val tracker = trackFormat.read
 			def invalidatedBy(file: T) = tracker.products(file) ++ tracker.sources(file) ++ tracker.usedBy(file) ++ tracker.dependsOn(file)
 
@@ -89,17 +110,36 @@ object DependencyTracking
 				val invalidProducts = Set(invalidatedProducts.toSeq : _*)
 				val valid = changes.unmodified -- invalid
 			}
-
+			cleanAll(report.invalidProducts)
+			
 			f(report, tracker) map { result =>
 				trackFormat.write(tracker)
 				result
 			}
 		}
 	}
-
-	import scala.collection.mutable.{Set, HashMap, MultiMap}
-	private[xsbt] type DependencyMap[T] = HashMap[T, Set[T]] with MultiMap[T, T]
-	private[xsbt] def newMap[T]: DependencyMap[T] = new HashMap[T, Set[T]] with MultiMap[T, T]
+}
+class BasicTracked[F <: FileInfo](filesTask: Task[Set[File]], style: FilesInfo.Style[F], cacheDirectory: File)(implicit mf: Manifest[F]) extends Tracked
+{
+	private val changed = new Difference(filesTask, style, new File(cacheDirectory, "files"))
+	private val invalidation = InvalidateFiles(cacheDirectory)
+	val clean = invalidation.clean
+	val clear = Clean(cacheDirectory)
+	
+	def apply[R](f: (ChangeReport[File], InvalidationReport[File], UpdateTracking[File]) => Task[R]): Task[R] =
+		changed { sourceChanges =>
+			invalidation(sourceChanges) { (report, tracking) =>
+				f(sourceChanges, report, tracking)
+			}
+		}
+}
+private object DependencyTracking
+{
+	import scala.collection.mutable.{Set, HashMap, Map, MultiMap}
+	type DependencyMap[T] = HashMap[T, Set[T]] with MultiMap[T, T]
+	def newMap[T]: DependencyMap[T] = new HashMap[T, Set[T]] with MultiMap[T, T]
+	type TagMap[T] = Map[T, Array[Byte]]
+	def newTagMap[T] = new HashMap[T, Array[Byte]]
 }
 
 trait UpdateTracking[T] extends NotNull
@@ -107,6 +147,14 @@ trait UpdateTracking[T] extends NotNull
 	def dependency(source: T, dependsOn: T): Unit
 	def use(source: T, uses: T): Unit
 	def product(source: T, output: T): Unit
+	def tag(source: T, t: Array[Byte]): Unit
+	def read: ReadTracking[T]
+}
+object Clean
+{
+	def apply(src: Task[Set[File]]): Task[Unit] = src map FileUtilities.delete
+	def apply(srcs: File*): Task[Unit] = Task(FileUtilities.delete(srcs))
+	def apply(srcs: Set[File]): Task[Unit] = Task(FileUtilities.delete(srcs))
 }
 import scala.collection.Set
 trait ReadTracking[T] extends NotNull
@@ -115,9 +163,15 @@ trait ReadTracking[T] extends NotNull
 	def products(file: T): Set[T]
 	def sources(file: T): Set[T]
 	def usedBy(file: T): Set[T]
+	def allProducts: Set[T]
+	def allSources: Set[T]
+	def allUsed: Set[T]
+	def allTags: Seq[(T,Array[Byte])]
 }
-import DependencyTracking.{DependencyMap => DMap, newMap}
-private final class DefaultTracking[T](translateProducts: Boolean)(val reverseDependencies: DMap[T], val reverseUses: DMap[T], val sourceMap: DMap[T]) extends DependencyTracking[T](translateProducts)
+import DependencyTracking.{DependencyMap => DMap, newMap, TagMap}
+private final class DefaultTracking[T](translateProducts: Boolean)
+	(val reverseDependencies: DMap[T], val reverseUses: DMap[T], val sourceMap: DMap[T], val tagMap: TagMap[T])
+	extends DependencyTracking[T](translateProducts)
 {
 	val productMap: DMap[T] = forward(sourceMap) // map from a source to its products.  Keep in sync with sourceMap
 }
@@ -128,11 +182,20 @@ private abstract class DependencyTracking[T](translateProducts: Boolean) extends
 	val reverseUses: DMap[T] // map from a file to the files that use it
 	val sourceMap: DMap[T] // map from a product to its sources.  Keep in sync with productMap
 	val productMap: DMap[T] // map from a source to its products.  Keep in sync with sourceMap
+	val tagMap: TagMap[T]
+
+	def read = this
 
 	final def dependsOn(file: T): Set[T] = get(reverseDependencies, file)
 	final def products(file: T): Set[T] = get(productMap, file)
 	final def sources(file: T): Set[T] = get(sourceMap, file)
 	final def usedBy(file: T): Set[T] = get(reverseUses, file)
+	final def tag(file: T): Array[Byte] = tagMap.getOrElse(file, new Array[Byte](0))
+
+	final def allProducts = Set() ++ sourceMap.keys
+	final def allSources = Set() ++ productMap.keys
+	final def allUsed = Set() ++ reverseUses.keys
+	final def allTags = tagMap.toSeq
 
 	private def get(map: DMap[T], value: T): Set[T] = map.getOrElse(value, Set.empty[T])
 
@@ -151,6 +214,7 @@ private abstract class DependencyTracking[T](translateProducts: Boolean) extends
 		sourceMap.add(product, sourceFile)
 	}
 	final def use(sourceFile: T, usesFile: T) { reverseUses.add(usesFile, sourceFile) }
+	final def tag(sourceFile: T, t: Array[Byte]) { tagMap(sourceFile) = t }
 
 	final def removeAll(files: Iterable[T])
 	{
@@ -162,6 +226,7 @@ private abstract class DependencyTracking[T](translateProducts: Boolean) extends
 		removeAll(forward(reverseDependencies), reverseDependencies)
 		removeAll(productMap, sourceMap)
 		removeAll(forward(reverseUses), reverseUses)
+		tagMap --= files
 	}
 	protected final def forward(map: DMap[T]): DMap[T] =
 	{
