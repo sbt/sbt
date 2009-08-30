@@ -21,9 +21,9 @@ class XSbt(info: ProjectInfo) extends ParentProject(info)
 
 	val taskSub = project(tasksPath, "Tasks", new TaskProject(_), controlSub, collectionSub)
 	val cacheSub = project("cache", "Cache", new CacheProject(_), taskSub, ioSub)
-	val stdTaskSub = project(tasksPath / "standard", "Standard Tasks", new Base(_), taskSub, cacheSub)
 	val compilerSub = project(compilePath, "Compile", new CompileProject(_),
 		launchInterfaceSub, interfaceSub, ivySub, ioSub, classpathSub, compileInterfaceSub)
+	val stdTaskSub = project(tasksPath / "standard", "Standard Tasks", new Base(_), taskSub, cacheSub, compilerSub)
 
 		/* Multi-subproject paths */
 

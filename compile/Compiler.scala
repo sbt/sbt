@@ -29,7 +29,7 @@ class RawCompiler(scalaLoader: ClassLoader)
 	}
 }
 /** Interface to the compiler that uses the dependency analysis plugin.*/
-class AnalyzeCompile(scalaVersion: String, scalaLoader: ClassLoader, manager: ComponentManager) extends NotNull
+class AnalyzeCompiler(scalaVersion: String, scalaLoader: ClassLoader, manager: ComponentManager) extends NotNull
 {
 	def this(scalaVersion: String, provider: xsbti.ScalaProvider, manager: ComponentManager) =
 		this(scalaVersion, provider.getScalaLoader(scalaVersion), manager)

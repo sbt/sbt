@@ -54,7 +54,7 @@ object FileUtilities
 		}
 	}
 	def assertDirectory(file: File) { assert(file.isDirectory, (if(file.exists) "Not a directory: " else "Directory not found: ") + file) }
-	def assertDirectory(file: File*) { file.foreach(assertDirectory) }
+	def assertDirectories(file: File*) { file.foreach(assertDirectory) }
 
 	// "base.extension" -> (base, extension)
 	def split(name: String): (String, String) =

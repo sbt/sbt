@@ -47,6 +47,8 @@ private trait Results extends NotNull
 
 object Task
 {
+	val empty = Task(())
+
 	type ITask[I,O] = Task[O] { type Input = I }
 	import Function.tupled
 	def apply[O](o: => O): ITask[Unit,O] =
