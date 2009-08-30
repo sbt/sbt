@@ -19,7 +19,7 @@ object Format
 {
 	def path(basePath: Path): Format[Path] = new Format[Path]
 	{
-		def toString(path: Path) = path.relativePath
+		def toString(path: Path) = Path.relativize(basePath.asFile, path.asFile).getOrElse(error("Path " + path + " not in " + basePath))
 		def fromString(s: String) = Path.fromString(basePath, s)
 	}
 	implicit val file: Format[File] = new Format[File]
