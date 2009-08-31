@@ -15,4 +15,7 @@ object TaskRunner
 		distributor.run().fold(failures => throw new TasksFailed(failures), identity[T])
 	}
 }
-final case class TasksFailed(failures: List[WorkFailure[Task[_]]]) extends RuntimeException(failures.length + " failed")
+final case class TasksFailed(failures: List[WorkFailure[Task[_]]]) extends RuntimeException(failures.length + " tasks failed")
+{
+	override def toString = failures.mkString(getMessage + "\n", "\n\t", "\n")
+}
