@@ -1,6 +1,6 @@
 package xsbt
 
-import java.io.File
+import java.io.{File,IOException}
 import CacheIO.{fromFile, toFile}
 import sbinary.Format
 import scala.reflect.Manifest
@@ -26,7 +26,9 @@ class Changed[O](val task: Task[O], val cacheFile: File)(implicit input: InputCa
 	def clear = Task.empty
 	def apply[O2](ifChanged: O => O2, ifUnchanged: O => O2): Task[O2] { type Input = O } =
 		task map { value =>
-			val cache = OpenResource.fileInputStream(cacheFile)(input.uptodate(value))
+			val cache =
+				try { OpenResource.fileInputStream(cacheFile)(input.uptodate(value)) }
+				catch { case _: IOException => new ForceResult(input)(value) }
 			if(cache.uptodate)
 				ifUnchanged(value)
 			else
