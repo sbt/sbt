@@ -65,6 +65,7 @@ object Task
 	final class ForkBuilderIterable[A] private[Task](a: Iterable[A]) extends NotNull
 	{
 		def fork[X](f: A => X): Iterable[ITask[Unit,X]] = a.map(x => Task(f(x)))
+		def forkTasks[X](f: A => Task[X]): Iterable[Task[X]] = a.map(x => f(x))
 		def reduce(f: (A,A) => A): Task[A] = fork(x => x) reduce(f)
 	}
 
@@ -73,6 +74,7 @@ object Task
 	{
 		//def mapBind[X](f: O => Task[_,X]): Iterable[Task[O,XO]] = a.map(_.bind(f))
 		def join: Task[Iterable[O]] = join(identity[O])
+		def joinIgnore: Task[Unit] = join.map(i => ())
 		def join[X](f: O => X): Task[Iterable[X]] = mapTask(a.toSeq: _*)( r => a.map(t => r(t)) )(_.map(f))
 		//def bindJoin[X](f: O => Task[_,X]): Task[Iterable[X],Iterable[X]] = mapBind(f).join
 		def reduce(f: (O,O) => O): Task[O] =
