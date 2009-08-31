@@ -18,9 +18,10 @@ object Process
 	implicit def apply(file: File): FilePartialBuilder = new FileBuilder(file)
 	implicit def apply(url: URL): URLPartialBuilder = new URLBuilder(url)
 	implicit def apply(command: scala.xml.Elem): ProcessBuilder = apply(command.text.trim)
+	implicit def applySeq[T](builders: Seq[T])(implicit convert: T => SourcePartialBuilder): Seq[SourcePartialBuilder] = builders.map(convert)
 	def apply(value: Boolean): ProcessBuilder = apply(value.toString, if(value) 0 else 1)
 	def apply(name: String, exitValue: => Int): ProcessBuilder = new DummyProcessBuilder(name, exitValue)
-	
+
 	def cat(file: SourcePartialBuilder, files: SourcePartialBuilder*): ProcessBuilder = cat(file :: files.toList)
 	def cat(files: Seq[SourcePartialBuilder]): ProcessBuilder =
 	{
