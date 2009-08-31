@@ -1,6 +1,6 @@
 package xsbt
 
-import sbinary.{CollectionTypes, Format, JavaFormats, Operations}
+import sbinary.{CollectionTypes, Format, JavaFormats}
 import java.io.File
 import scala.reflect.Manifest
 
@@ -12,7 +12,7 @@ trait SBinaryFormats extends CollectionTypes with JavaFormats with NotNull
 {
 	//TODO: add basic types from SBinary minus FileFormat
 }
-object Cache extends BasicCacheImplicits with SBinaryFormats with HListCacheImplicits with TupleCacheImplicits
+object Cache extends BasicCacheImplicits with SBinaryFormats with HListCacheImplicits
 {
 	def cache[I,O](implicit c: Cache[I,O]): Cache[I,O] = c
 	def outputCache[O](implicit c: OutputCache[O]): OutputCache[O] = c
@@ -56,31 +56,4 @@ trait HListCacheImplicits extends HLists
 	implicit def hConsOutputCache[H,T<:HList](implicit headCache: OutputCache[H], tailCache: OutputCache[T]): OutputCache[HCons[H,T]] =
 		new HConsOutputCache(headCache, tailCache)
 	implicit lazy val hNilOutputCache: OutputCache[HNil] = new HNilOutputCache
-}
-trait TupleCacheImplicits extends HLists
-{
-	import Cache._
-	implicit def tuple2HList[A,B](t: (A,B)): A :: B :: HNil = t._1 :: t._2 :: HNil
-	implicit def hListTuple2[A,B](t: A :: B :: HNil): (A,B) = t match { case a :: b :: HNil => (a,b) }
-
-	implicit def tuple2InputCache[A,B](implicit aCache: InputCache[A], bCache: InputCache[B]): InputCache[(A,B)] =
-		wrapInputCache[(A,B), A :: B :: HNil]
-	implicit def tuple2OutputCache[A,B](implicit aCache: OutputCache[A], bCache: OutputCache[B]): OutputCache[(A,B)] =
-		wrapOutputCache[(A,B), A :: B :: HNil]
-
-	implicit def tuple3HList[A,B,C](t: (A,B,C)): A :: B :: C :: HNil = t._1 :: t._2 :: t._3 :: HNil
-	implicit def hListTuple3[A,B,C](t: A :: B :: C :: HNil): (A,B,C) = t match { case a :: b :: c :: HNil => (a,b,c) }
-
-	implicit def tuple3InputCache[A,B,C](implicit aCache: InputCache[A], bCache: InputCache[B], cCache: InputCache[C]): InputCache[(A,B,C)] =
-		wrapInputCache[(A,B,C), A :: B :: C :: HNil]
-	implicit def tuple3OutputCache[A,B,C](implicit aCache: OutputCache[A], bCache: OutputCache[B], cCache: OutputCache[C]): OutputCache[(A,B,C)] =
-		wrapOutputCache[(A,B,C), A :: B :: C :: HNil]
-
-	implicit def tuple4HList[A,B,C,D](t: (A,B,C,D)): A :: B :: C :: D :: HNil = t._1 :: t._2 :: t._3 :: t._4 :: HNil
-	implicit def hListTuple4[A,B,C,D](t: A :: B :: C :: D :: HNil): (A,B,C,D) = t match { case a :: b :: c :: d:: HNil => (a,b,c,d) }
-
-	implicit def tuple4InputCache[A,B,C,D](implicit aCache: InputCache[A], bCache: InputCache[B], cCache: InputCache[C], dCache: InputCache[D]): InputCache[(A,B,C,D)] =
-		wrapInputCache[(A,B,C,D), A :: B :: C :: D :: HNil]
-	implicit def tuple4OutputCache[A,B,C,D](implicit aCache: OutputCache[A], bCache: OutputCache[B], cCache: OutputCache[C], dCache: OutputCache[D]): OutputCache[(A,B,C,D)] =
-		wrapOutputCache[(A,B,C,D), A :: B :: C :: D :: HNil]
 }
