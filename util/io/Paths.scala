@@ -4,6 +4,7 @@ import java.io.File
 
 object Paths
 {
+	implicit def stringToPath(s: String): Path = new Path(new File(s))
 	implicit def fileToPath(f: File): Path = new Path(f)
 	implicit def pathToFile(p: Path): File = p.asFile
 	implicit def filesToPaths(fs: Set[File]): Paths = new Paths(fs)

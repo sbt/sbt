@@ -58,7 +58,7 @@ object NothingFilter extends NameFilter
 
 object GlobFilter
 {
-	def apply(expression: String): NameFilter =
+	implicit def apply(expression: String): NameFilter =
 	{
 		require(!expression.exists(java.lang.Character.isISOControl), "Control characters not allowed in filter expression.")
 		if(expression == "*")

@@ -43,7 +43,7 @@ trait OpenFile[T] extends OpenResource[File, T]
 		val parent = file.getParentFile
 		if(parent != null)
 			FileUtilities.createDirectory(parent)
-		translate("Error opening " + file + ": ") { openImpl(file) }
+		openImpl(file)
 	}
 }
 object OpenResource
