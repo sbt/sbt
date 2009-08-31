@@ -29,7 +29,7 @@ class ForkRun(config: ForkScalaRun) extends ScalaRun
 		val scalaOptions = classpathOption(classpath) ::: mainClass :: options.toList
 		val exitCode = config.outputStrategy match {
 			case Some(strategy) => Fork.scala(config.javaHome, config.runJVMOptions, config.scalaJars, scalaOptions, config.workingDirectory, strategy)
-			case None => Fork.scala(config.javaHome, config.runJVMOptions, config.scalaJars, scalaOptions, config.workingDirectory, log)
+			case None => Fork.scala(config.javaHome, config.runJVMOptions, config.scalaJars, scalaOptions, config.workingDirectory, LoggedOutput(log))
 		}
 		processExitCode(exitCode, "runner")
 	}
@@ -117,7 +117,7 @@ object Run extends ScalaRun
 		else
 			Some(command.usageMsg)
 	}
-	
+
 	/** Starts a Scala interpreter session with 'project' bound to the value 'current' in the console
 	* and the following two lines executed:
 	*   import sbt._
@@ -139,7 +139,7 @@ object Run extends ScalaRun
 			}
 		}}
 	}
-	/** A custom InterpreterLoop with the purpose of creating an interpreter with Project 'project' bound to the value 'current', 
+	/** A custom InterpreterLoop with the purpose of creating an interpreter with Project 'project' bound to the value 'current',
 	* and the following two lines interpreted:
 	*   import sbt._
 	*   import current._.
@@ -156,7 +156,7 @@ object Run extends ScalaRun
 			val loader = project.getClass.getClassLoader.asInstanceOf[URLClassLoader]
 			compilerSettings.classpath.value = loader.getURLs.flatMap(ClasspathUtilities.asFile).map(_.getAbsolutePath).mkString(File.pathSeparator)
 			project.log.debug("  Compiler classpath: " + compilerSettings.classpath.value)
-			
+
 			in = InteractiveReader.createDefault()
 			interpreter = new Interpreter(settings)
 			{

@@ -28,6 +28,7 @@ trait ForkScalaCompiler extends ForkScala
 sealed abstract class OutputStrategy extends NotNull
 case object StdoutOutput extends OutputStrategy
 case class BufferedOutput(logger: Logger) extends OutputStrategy
+case class LoggedOutput(logger: Logger) extends OutputStrategy
 case class CustomOutput(output: OutputStream) extends OutputStrategy
 
 import java.lang.{ProcessBuilder => JProcessBuilder}
@@ -35,18 +36,18 @@ object Fork
 {
 	private val ScalacMainClass = "scala.tools.nsc.Main"
 	private val ScalaMainClass = "scala.tools.nsc.MainGenericRunner"
-  
+
 	val java = new ForkJava("java")
 	val javac = new ForkJava("javac")
 	val scala = new ForkScala(ScalaMainClass)
 	val scalac = new ForkScala(ScalacMainClass)
-	
+
 	private def javaCommand(javaHome: Option[File], name: String): File =
 	{
 		val home = javaHome.getOrElse(new File(System.getProperty("java.home")))
 		new File(new File(home, "bin"), name)
 	}
-	
+
 	final class ForkJava(commandName: String) extends NotNull
 	{
 		def apply(javaHome: Option[File], options: Seq[String], log: Logger): Int =
@@ -63,11 +64,12 @@ object Fork
 			outputStrategy match {
 				case StdoutOutput => Process(builder) !
 				case BufferedOutput(logger) => Process(builder) ! logger
+				case LoggedOutput(logger) => Process(builder).run(logger).exitValue()
 				case CustomOutput(output) => (Process(builder) #> output).run.exitValue()
 			}
 		}
 	}
-	
+
 	final class ForkScala(mainClassName: String) extends NotNull
 	{
 		def apply(javaHome: Option[File], jvmOptions: Seq[String], scalaJars: Iterable[File], arguments: Seq[String], log: Logger): Int =
