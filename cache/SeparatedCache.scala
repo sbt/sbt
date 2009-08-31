@@ -9,6 +9,11 @@ trait CacheResult
 	def uptodate: Boolean
 	def update(stream: OutputStream): Unit
 }
+class ForceResult[I](inCache: InputCache[I])(in: I) extends CacheResult
+{
+	def uptodate = false
+	def update(stream: OutputStream) = inCache.force(in)(stream)
+}
 trait InputCache[I] extends NotNull
 {
 	def uptodate(in: I)(cacheStream: InputStream): CacheResult
