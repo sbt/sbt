@@ -6,7 +6,7 @@ package xsbt
 import OpenResource._
 import ErrorHandling.translate
 
-import java.io.{File, FileInputStream, InputStream, OutputStream}
+import java.io.{ByteArrayOutputStream, File, FileInputStream, InputStream, OutputStream}
 import java.net.{URI, URISyntaxException, URL}
 import java.nio.charset.Charset
 import java.util.jar.{Attributes, JarEntry, JarFile, JarInputStream, JarOutputStream, Manifest}
@@ -344,5 +344,29 @@ object FileUtilities
 			fileWriter(charset, append)(file) { w => w.write(content); None }
 		else
 			error("String cannot be encoded by charset " + charset.name)
+	}
+	def read(file: File): String = read(file, defaultCharset)
+	def read(file: File, charset: Charset): String =
+	{
+		val out = new ByteArrayOutputStream(file.length.toInt)
+		fileInputStream(file){ in => transfer(in, out) }
+		out.toString(charset.name)
+	}
+	/** doesn't close the InputStream */
+	def read(in: InputStream): String = read(in, defaultCharset)
+	/** doesn't close the InputStream */
+	def read(in: InputStream, charset: Charset): String =
+	{
+		val out = new ByteArrayOutputStream
+		transfer(in, out)
+		out.toString(charset.name)
+	}
+	def readBytes(file: File): Array[Byte] = fileInputStream(file)(readBytes)
+	/** doesn't close the InputStream */
+	def readBytes(in: InputStream): Array[Byte] =
+	{
+		val out = new ByteArrayOutputStream
+		transfer(in, out)
+		out.toByteArray
 	}
 }
