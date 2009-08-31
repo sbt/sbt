@@ -4,7 +4,7 @@ package xsbt
 	import scala.reflect.Manifest
 	import Task._
 
-object Sync
+object SyncDirs
 {
 	def sources(inputDirectory: Task[File], outputDirectory: Task[File]) =
 	{
@@ -14,33 +14,45 @@ object Sync
 			(in ***) x FileMapper.rebase(in, out)
 		}
 	}
-	def apply(inputDirectory: Task[File], outputDirectory: Task[File], cacheFile: File): Sync =
-		apply(sources(inputDirectory, outputDirectory), cacheFile)
-	def apply(inputDirectory: Task[File], outputDirectory: Task[File], style: FilesInfo.Style, cacheFile: File): Sync =
-		apply(sources(inputDirectory, outputDirectory), style, cacheFile)
-	def apply(sources: Task[Iterable[(File,File)]], cacheDirectory: File): Sync =
-		apply(sources, FilesInfo.hash, cacheDirectory)
-	def apply(sources: Task[Iterable[(File,File)]], style: FilesInfo.Style, cacheDirectory: File): Sync =
-		new Sync(sources, style, cacheDirectory)
+	def apply(cacheDirectory: File)(inputDirectory: Task[File], outputDirectory: Task[File]): Sync =
+		Sync(cacheDirectory)(sources(inputDirectory, outputDirectory))
+	def apply(cacheDirectory: File, inputStyle: FilesInfo.Style, outputStyle: FilesInfo.Style)(inputDirectory: Task[File], outputDirectory: Task[File]): Sync =
+		Sync(cacheDirectory, inputStyle, outputStyle)(sources(inputDirectory, outputDirectory))
 }
-class Sync(val sources: Task[Iterable[(File,File)]], val style: FilesInfo.Style, val cacheDirectory: File) extends TrackedTaskDefinition[Set[File]]
+object Sync
 {
-	val tracking = new BasicTracked(sources.map(Set() ++ _.map(_._1)), style, cacheFile("sources"))
-	val tracked = Seq(tracking)
+	def apply(cacheDirectory: File)(sources: Task[Iterable[(File,File)]]): Sync =
+		apply(cacheDirectory, FilesInfo.hash, FilesInfo.lastModified)(sources)
+	def apply(cacheDirectory: File, inputStyle: FilesInfo.Style, outputStyle: FilesInfo.Style)(sources: Task[Iterable[(File,File)]]): Sync =
+		new Sync(cacheDirectory, inputStyle, outputStyle)(sources)
+}
+class Sync(val cacheDirectory: File, val inputStyle: FilesInfo.Style, val outputStyle: FilesInfo.Style)(val sources: Task[Iterable[(File,File)]]) extends TrackedTaskDefinition[Set[File]]
+{
+	private val invalidation = InvalidateFiles(cacheDirectory)
+	private val changedInputs = Difference.inputs(extract(_._1), inputStyle, cacheFile("inputs"))
+	private val changedOutputs = Difference.outputs(extract(_._2), outputStyle, cacheFile("outputs"))
+	private def extract(f: ((File,File)) => File) = sources.map(Set() ++ _.map(f))
+	
+	val tracked = Seq(changedOutputs, changedInputs, invalidation)
 	
 	lazy val task =
 		sources bind { srcs =>
 			val sourcesTargets = srcs.toSeq
-			tracking { (sourceChanges, report, tracking) =>
-				Task
-				{
-					val changed = report.invalid ** sourceChanges.allInputs
-					for((source,target) <- sourcesTargets if changed(source))
-					{
-						FileUtilities.copyFile(source, target)
-						tracking.product(source, target)
+			changedInputs { inputChanges =>
+				changedOutputs { outputChanges =>
+					invalidation(inputChanges +++ outputChanges) { (report, tracking) =>
+						Task
+						{
+							val invalidInputs = report.invalid ** inputChanges.checked
+							val invalidOutputs = report.invalid ** outputChanges.checked
+							for((source,target) <- sourcesTargets if invalidInputs(source) ||invalidOutputs(target) )
+							{
+								FileUtilities.copyFile(source, target)
+								tracking.product(source, target)
+							}
+							Set( outputChanges.checked.toSeq : _*)
+						}
 					}
-					Set( sourcesTargets.map(_._2) : _*)
 				}
 			}
 		}

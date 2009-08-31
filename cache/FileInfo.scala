@@ -68,7 +68,7 @@ object FileInfo
 final case class FilesInfo[F <: FileInfo] private(files: Set[F]) extends NotNull
 object FilesInfo
 {
-	sealed trait Style extends NotNull
+	sealed abstract class Style extends NotNull
 	{
 		val fileStyle: FileInfo.Style
 		type F = fileStyle.F
@@ -77,6 +77,7 @@ object FilesInfo
 		implicit def unapply(info: FilesInfo[F]): Set[File] = info.files.map(_.file)
 		implicit val formats: Format[FilesInfo[F]]
 		val manifest: Manifest[Format[FilesInfo[F]]]
+		def empty: FilesInfo[F] = new FilesInfo(Set.empty)
 		import Cache._
 		implicit def infosInputCache: InputCache[Set[File]] = wrapInputCache[Set[File],FilesInfo[F]]
 		implicit def infosOutputCache: OutputCache[Set[File]] = wrapOutputCache[Set[File],FilesInfo[F]]

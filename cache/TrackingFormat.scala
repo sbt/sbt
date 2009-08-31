@@ -15,10 +15,10 @@ private class TrackingFormat[T](directory: File, translateProducts: Boolean)(imp
 	val dependencyFile = new File(directory, "dependencies")
 	def read(): DependencyTracking[T] =
 	{
-		val indexMap = CacheIO.fromFile[Map[Int,T]](indexFile)
-		val indexedFormat = wrap[T,Int](ignore => error("Read-only"), indexMap.apply)
+		val indexMap = CacheIO.fromFile[Map[Int,T]](indexFile, new HashMap[Int,T])
+		val indexedFormat = wrap[T,Int](ignore => error("Read-only"), i => indexMap.getOrElse(i, error("Index " + i + " not found")))
 		val trackFormat = trackingFormat(translateProducts)(indexedFormat)
-		fromFile(trackFormat)(dependencyFile)
+		fromFile(trackFormat, DefaultTracking[T](translateProducts))(dependencyFile)
 	}
 	def write(tracking: DependencyTracking[T])
 	{
@@ -42,17 +42,15 @@ private object TrackingFormat
 		}
 	}
 	def trackingFormat[T](translateProducts: Boolean)(implicit tFormat: Format[T]): Format[DependencyTracking[T]] =
-	{
-		implicit val arrayFormat = sbinary.Operations.format[Array[Byte]]
 		asProduct4((a: DMap[T],b: DMap[T],c: DMap[T], d:TagMap[T]) => new DefaultTracking(translateProducts)(a,b,c,d) : DependencyTracking[T]
 			)(dt => Some(dt.reverseDependencies, dt.reverseUses, dt.sourceMap, dt.tagMap))
-	}
 }
 
 private final class IndexMap[T] extends NotNull
 {
 	private[this] var lastIndex = 0
 	private[this] val map = new HashMap[T, Int]
-	def indices = map.toArray.map( (_: (T,Int)).swap )
-	def apply(t: T) = map.getOrElseUpdate(t, { lastIndex += 1; lastIndex })
+	private[this] def nextIndex = { lastIndex += 1; lastIndex }
+	def indices = HashMap(map.map( (_: (T,Int)).swap ).toSeq : _*)
+	def apply(t: T) = map.getOrElseUpdate(t, nextIndex)
 }

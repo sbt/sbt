@@ -8,8 +8,8 @@ trait Compile extends TrackedTaskDefinition[CompileReport]
 	val classpath: Task[Set[File]]
 	val options: Task[Seq[String]]
 	
-	val trackedClasspath = new Difference(classpath, FilesInfo.lastModified, cacheFile("classpath"))
-	val trackedSource = new Difference(sources, FilesInfo.hash, cacheFile("sources"))
+	val trackedClasspath = Difference.inputs(classpath, FilesInfo.lastModified, cacheFile("classpath"))
+	val trackedSource = Difference.inputs(sources, FilesInfo.hash, cacheFile("sources"))
 	val trackedOptions =
 	{
 			import Cache._
@@ -51,8 +51,8 @@ class StandardCompile(val sources: Task[Set[File]], val classpath: Task[Set[File
 	override def create = super.create dependsOn(superclassNames, compilerTask) // raise these dependencies to the top for parallelism
 	def compile(sourceChanges: ChangeReport[File], classpathChanges: ChangeReport[File], options: Seq[String], report: InvalidationReport[File], tracking: UpdateTracking[File]): Task[CompileReport] =
 	{
-		val sources = report.invalid ** sourceChanges.allInputs // determine the sources that need recompiling (report.invalid also contains classes and libraries)
-		val classpath = classpathChanges.allInputs
+		val sources = report.invalid ** sourceChanges.checked // determine the sources that need recompiling (report.invalid also contains classes and libraries)
+		val classpath = classpathChanges.checked
 		
 		(compilerTask, superclassNames) map { (compiler, superClasses) =>
 			val callback = new CompileAnalysisCallback(superClasses.toArray, tracking)

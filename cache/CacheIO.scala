@@ -1,19 +1,23 @@
 package xsbt
 
-import java.io.File
+import java.io.{File, FileNotFoundException}
 import sbinary.{DefaultProtocol, Format, Operations}
 import scala.reflect.Manifest
 
 object CacheIO
 {
-	def fromFile[T](format: Format[T])(file: File)(implicit mf: Manifest[Format[T]]): T =
-		fromFile(file)(format, mf)
-	def fromFile[T](file: File)(implicit format: Format[T], mf: Manifest[Format[T]]): T =
-		Operations.fromFile(file)(stampedFormat(format))
+	def fromFile[T](format: Format[T], default: => T)(file: File)(implicit mf: Manifest[Format[T]]): T =
+		fromFile(file, default)(format, mf)
+	def fromFile[T](file: File, default: => T)(implicit format: Format[T], mf: Manifest[Format[T]]): T =
+		try { Operations.fromFile(file)(stampedFormat(format)) }
+		catch { case e: FileNotFoundException => default }
 	def toFile[T](format: Format[T])(value: T)(file: File)(implicit mf: Manifest[Format[T]]): Unit =
 		toFile(value)(file)(format, mf)
 	def toFile[T](value: T)(file: File)(implicit format: Format[T], mf: Manifest[Format[T]]): Unit =
+	{
+		FileUtilities.createDirectory(file.getParentFile)
 		Operations.toFile(value)(file)(stampedFormat(format))
+	}
 	def stampedFormat[T](format: Format[T])(implicit mf: Manifest[Format[T]]): Format[T] =
 	{
 		import DefaultProtocol._
