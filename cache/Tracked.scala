@@ -4,11 +4,14 @@ import java.io.File
 import CacheIO.{fromFile, toFile}
 import sbinary.Format
 import scala.reflect.Manifest
+import Task.{iterableToBuilder, iterableToForkBuilder}
 
 trait Tracked extends NotNull
 {
-	def clear: Task[Unit]
+	/** Cleans outputs.  This operation might require information from the cache, so it should be called first if clear is also called.*/
 	def clean: Task[Unit]
+	/** Clears the cache. If also cleaning, 'clean' should be called first as it might require information from the cache.*/
+	def clear: Task[Unit]
 }
 object Clean
 {
@@ -17,33 +20,38 @@ object Clean
 	def apply(srcs: Set[File]): Task[Unit] = Task(FileUtilities.delete(srcs))
 }
 
-class Changed[O](val task: Task[O], val file: File)(implicit input: InputCache[O]) extends Tracked
+class Changed[O](val task: Task[O], val cacheFile: File)(implicit input: InputCache[O]) extends Tracked
 {
-	def clean = Task.empty
-	def clear = Clean(file)
+	val clean = Clean(cacheFile)
+	def clear = Task.empty
 	def apply[O2](ifChanged: O => O2, ifUnchanged: O => O2): Task[O2] { type Input = O } =
 		task map { value =>
-			val cache = OpenResource.fileInputStream(file)(input.uptodate(value))
+			val cache = OpenResource.fileInputStream(cacheFile)(input.uptodate(value))
 			if(cache.uptodate)
 				ifUnchanged(value)
 			else
 			{
-				OpenResource.fileOutputStream(false)(file)(cache.update)
+				OpenResource.fileOutputStream(false)(cacheFile)(cache.update)
 				ifChanged(value)
 			}
 		}
 }
-class Difference(val filesTask: Task[Set[File]], val style: FilesInfo.Style, val cache: File, val shouldClean: Boolean) extends Tracked
+object Difference
 {
-	def this(filesTask: Task[Set[File]], style: FilesInfo.Style, cache: File) = this(filesTask, style, cache, false)
-	def this(files: Set[File], style: FilesInfo.Style, cache: File, shouldClean: Boolean) = this(Task(files), style, cache)
-	def this(files: Set[File], style: FilesInfo.Style, cache: File) = this(Task(files), style, cache, false)
-	
+	sealed class Constructor private[Difference](defineClean: Boolean, filesAreOutputs: Boolean) extends NotNull
+	{
+		def apply(filesTask: Task[Set[File]], style: FilesInfo.Style, cache: File): Difference = new Difference(filesTask, style, cache, defineClean, filesAreOutputs)
+		def apply(files: Set[File], style: FilesInfo.Style, cache: File): Difference = apply(Task(files), style, cache)
+	}
+	object outputs extends Constructor(true, true)
+	object inputs extends Constructor(false, false)
+}
+class Difference(val filesTask: Task[Set[File]], val style: FilesInfo.Style, val cache: File, val defineClean: Boolean, val filesAreOutputs: Boolean) extends Tracked
+{
+	val clean =  if(defineClean) Clean(Task(raw(cachedFilesInfo))) else Task.empty
 	val clear = Clean(cache)
-	val clean = if(shouldClean) cleanTask else Task.empty
-	def cleanTask = Clean(Task(raw(cachedFilesInfo)))
 	
-	private def cachedFilesInfo = fromFile(style.formats)(cache)(style.manifest).files
+	private def cachedFilesInfo = fromFile(style.formats, style.empty)(cache)(style.manifest).files
 	private def raw(fs: Set[style.F]): Set[File] = fs.map(_.file)
 	
 	def apply[T](f: ChangeReport[File] => Task[T]): Task[T] =
@@ -51,19 +59,20 @@ class Difference(val filesTask: Task[Set[File]], val style: FilesInfo.Style, val
 			val lastFilesInfo = cachedFilesInfo
 			val lastFiles = raw(lastFilesInfo)
 			val currentFiles = files.map(_.getAbsoluteFile)
-			val currentFilesInfo = style(files)
+			val currentFilesInfo = style(currentFiles)
 
 			val report = new ChangeReport[File]
 			{
-				lazy val allInputs = currentFiles
-				lazy val removed = lastFiles -- allInputs
-				lazy val added = allInputs -- lastFiles
-				lazy val modified = raw(lastFilesInfo -- currentFilesInfo.files)
-				lazy val unmodified = allInputs -- modified
+				lazy val checked = currentFiles
+				lazy val removed = lastFiles -- checked // all files that were included previously but not this time.  This is independent of whether the files exist.
+				lazy val added = checked -- lastFiles // all files included now but not previously.  This is independent of whether the files exist.
+				lazy val modified = raw(lastFilesInfo -- currentFilesInfo.files) ++ added
+				lazy val unmodified = checked -- modified
 			}
 
 			f(report) map { result =>
-				toFile(style.formats)(currentFilesInfo)(cache)(style.manifest)
+				val info = if(filesAreOutputs) style(currentFiles) else currentFilesInfo
+				toFile(style.formats)(info)(cache)(style.manifest)
 				result
 			}
 		}
@@ -85,9 +94,10 @@ class Invalidate[T](val cacheDirectory: File, val translateProducts: Boolean, cl
 
 	private val trackFormat = new TrackingFormat[T](cacheDirectory, translateProducts)
 	private def cleanAll(fs: Set[T]) = fs.foreach(cleanT)
-
-	def clear = Clean(cacheDirectory)
-	def clean = Task(cleanAll(trackFormat.read.allProducts))
+	
+	val clean = Task(cleanAll(trackFormat.read.allProducts))
+	val clear = Clean(cacheDirectory)
+	
 	def apply[R](changes: ChangeReport[T])(f: (InvalidationReport[T], UpdateTracking[T]) => Task[R]): Task[R] =
 		apply(Task(changes))(f)
 	def apply[R](changesTask: Task[ChangeReport[T]])(f: (InvalidationReport[T], UpdateTracking[T]) => Task[R]): Task[R] =
@@ -127,10 +137,11 @@ class Invalidate[T](val cacheDirectory: File, val translateProducts: Boolean, cl
 }
 class BasicTracked(filesTask: Task[Set[File]], style: FilesInfo.Style, cacheDirectory: File) extends Tracked
 {
-	private val changed = new Difference(filesTask, style, new File(cacheDirectory, "files"))
-	private val invalidation = InvalidateFiles(cacheDirectory)
-	val clean = invalidation.clean
-	val clear = Clean(cacheDirectory)
+	private val changed = Difference.inputs(filesTask, style, new File(cacheDirectory, "files"))
+	private val invalidation = InvalidateFiles(new File(cacheDirectory, "invalidation"))
+	private def onTracked(f: Tracked => Task[Unit]) = Seq(invalidation, changed).forkTasks(f).joinIgnore
+	val clear = onTracked(_.clear)
+	val clean = onTracked(_.clean)
 	
 	def apply[R](f: (ChangeReport[File], InvalidationReport[File], UpdateTracking[File]) => Task[R]): Task[R] =
 		changed { sourceChanges =>

@@ -29,7 +29,12 @@ trait ReadTracking[T] extends NotNull
 	def allUsed: Set[T]
 	def allTags: Seq[(T,Array[Byte])]
 }
-import DependencyTracking.{DependencyMap => DMap, newMap, TagMap}
+import DependencyTracking.{DependencyMap => DMap, newMap, newTagMap, TagMap}
+private object DefaultTracking
+{
+	def apply[T](translateProducts: Boolean): DependencyTracking[T] =
+		new DefaultTracking(translateProducts)(newMap, newMap, newMap, newTagMap)
+}
 private final class DefaultTracking[T](translateProducts: Boolean)
 	(val reverseDependencies: DMap[T], val reverseUses: DMap[T], val sourceMap: DMap[T], val tagMap: TagMap[T])
 	extends DependencyTracking[T](translateProducts)
