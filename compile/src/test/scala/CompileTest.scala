@@ -10,16 +10,7 @@ object CompileTest extends Specification
 {
 	"Analysis compiler" should {
 		"compile basic sources" in {
-			TestIvyLogger { log =>
-				LoadHelpers.withLaunch { launch =>
-					val scalaVersion = "2.7.2"
-					val sbtVersion = xsbti.Versions.Sbt
-					val manager = new ComponentManager(launch.getSbtHome(sbtVersion, scalaVersion), log)
-					prepare(manager, ComponentCompiler.compilerInterfaceSrcID, "CompilerInterface.scala")
-					prepare(manager, ComponentCompiler.xsbtiID, classOf[xsbti.AnalysisCallback])
-					testCompileAnalysis(new AnalyzeCompiler(scalaVersion,  launch, manager), log)
-				}
-			}
+			WithCompiler( "2.7.2" )(testCompileAnalysis)
 		}
 	}
 	private def testCompileAnalysis(compiler: AnalyzeCompiler, log: xsbti.Logger)
@@ -30,6 +21,23 @@ object CompileTest extends Specification
 				val callback = new xsbti.TestCallback(Array())
 				compiler(arguments, callback, 10, log)
 				(callback.beganSources) must haveTheSameElementsAs(sources)
+			}
+		}
+	}
+}
+object WithCompiler
+{
+	def apply[T](scalaVersion: String)(f: (AnalyzeCompiler, xsbti.Logger) => T): T =
+	{
+		TestIvyLogger { log =>
+			FileUtilities.withTemporaryDirectory { temp =>
+				val launch = new xsbt.boot.Launch(temp)
+				val scalaVersion = "2.7.2"
+				val sbtVersion = xsbti.Versions.Sbt
+				val manager = new ComponentManager(launch.getSbtHome(sbtVersion, scalaVersion), log)
+				prepare(manager, ComponentCompiler.compilerInterfaceSrcID, "CompilerInterface.scala")
+				prepare(manager, ComponentCompiler.xsbtiID, classOf[xsbti.AnalysisCallback])
+				f(new AnalyzeCompiler(scalaVersion,  launch, manager), log)
 			}
 		}
 	}
