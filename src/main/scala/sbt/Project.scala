@@ -240,6 +240,7 @@ trait Project extends TaskManager with Dag[Project] with BasicEnvironment
 	/** A `PathFinder` that determines the files watched when an action is run with a preceeding ~ when this is the current
 	* project.  This project does not need to include the watched paths for projects that this project depends on.*/
 	def watchPaths: PathFinder = Path.emptyPathFinder
+	def terminateWatch(key: Int): Boolean = key == 10
 	
 	protected final override def parentEnvironment = info.parent
 	
