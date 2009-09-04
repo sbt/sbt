@@ -37,7 +37,6 @@ class AnalyzeCompiler(scalaVersion: String, scalaLoader: ClassLoader, manager: C
 	* and used to load the class that actually interfaces with Global.*/
 	def apply(arguments: Seq[String], callback: AnalysisCallback, maximumErrors: Int, log: Logger)
 	{
-		println("Compiling: " + arguments)
 		// this is the instance used to compile the analysis
 		val componentCompiler = new ComponentCompiler(scalaVersion, new RawCompiler(scalaLoader), manager)
 		val interfaceJar = componentCompiler(ComponentCompiler.compilerInterfaceID)
