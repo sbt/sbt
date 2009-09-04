@@ -32,7 +32,6 @@ object WithCompiler
 		TestIvyLogger { log =>
 			FileUtilities.withTemporaryDirectory { temp =>
 				val launch = new xsbt.boot.Launch(temp)
-				val scalaVersion = "2.7.2"
 				val sbtVersion = xsbti.Versions.Sbt
 				val manager = new ComponentManager(launch.getSbtHome(sbtVersion, scalaVersion), log)
 				prepare(manager, ComponentCompiler.compilerInterfaceSrcID, "CompilerInterface.scala")
