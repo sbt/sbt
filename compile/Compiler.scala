@@ -37,17 +37,17 @@ class AnalyzeCompiler(scalaVersion: String, scalaLoader: ClassLoader, manager: C
 	* and used to load the class that actually interfaces with Global.*/
 	def apply(arguments: Seq[String], callback: AnalysisCallback, maximumErrors: Int, log: Logger)
 	{
+		println("Compiling: " + arguments)
 		// this is the instance used to compile the analysis
 		val componentCompiler = new ComponentCompiler(scalaVersion, new RawCompiler(scalaLoader), manager)
 		val interfaceJar = componentCompiler(ComponentCompiler.compilerInterfaceID)
-		val argsWithPlugin = ("-Xplugin:" + interfaceJar.getAbsolutePath) :: arguments.toList
 		val dual = createDualLoader(scalaLoader, getClass.getClassLoader) // this goes to scalaLoader for scala classes and sbtLoader for xsbti classes
 		val interfaceLoader = new URLClassLoader(Array(interfaceJar.toURI.toURL), dual)
 		val interface = Class.forName("xsbt.CompilerInterface", true, interfaceLoader).newInstance
 		val runnable = interface.asInstanceOf[{ def run(args: Array[String], callback: AnalysisCallback, maximumErrors: Int, log: Logger): Unit }]
 			// these arguments are safe to pass across the ClassLoader boundary because the types are defined in Java
 		//  so they will be binary compatible across all versions of Scala
-		runnable.run(argsWithPlugin.toArray, callback, maximumErrors, log)
+		runnable.run(arguments.toArray, callback, maximumErrors, log)
 	}
 	private def createDualLoader(scalaLoader: ClassLoader, sbtLoader: ClassLoader): ClassLoader =
 	{
