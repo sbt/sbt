@@ -24,7 +24,7 @@ class XSbt(info: ProjectInfo) extends ParentProject(info)
 	val trackingSub = project(cachePath / "tracking", "Tracking", new Base(_), cacheSub)
 	val compilerSub = project(compilePath, "Compile", new CompileProject(_),
 		launchInterfaceSub, interfaceSub, ivySub, ioSub, classpathSub, compileInterfaceSub)
-	val stdTaskSub = project(tasksPath / "standard", "Standard Tasks", new Base(_), trackingSub, compilerSub)
+	val stdTaskSub = project(tasksPath / "standard", "Standard Tasks", new StandardTaskProject(_), trackingSub, compilerSub)
 
 		/* Multi-subproject paths */
 
@@ -56,6 +56,10 @@ class XSbt(info: ProjectInfo) extends ParentProject(info)
 		val sp = "org.scala-tools.testing" % "specs" % "1.5.0" % "test->default"
 		val ju = "junit" % "junit" % "4.5" % "test->default" // required by specs to compile properly
 	}
+	class StandardTaskProject(info: ProjectInfo) extends Base(info)
+	{
+		override def testClasspath = super.testClasspath +++ compilerSub.testClasspath
+	}
 
 	class IOProject(info: ProjectInfo) extends Base(info) with TestDependencies
 	class TaskProject(info: ProjectInfo) extends Base(info) with TestDependencies
@@ -67,6 +71,7 @@ class XSbt(info: ProjectInfo) extends ParentProject(info)
 	class Base(info: ProjectInfo) extends DefaultProject(info) with ManagedBase
 	{
 		override def scratch = true
+		override def consoleClasspath = testClasspath
 	}
 	class CompileProject(info: ProjectInfo) extends Base(info)
 	{
@@ -86,17 +91,7 @@ class XSbt(info: ProjectInfo) extends ParentProject(info)
 		override def mainSources = descendents(mainSourceRoots, "*.java")
 		override def compileOrder = CompileOrder.JavaThenScala
 	}
-	class CompilerInterfaceProject(info: ProjectInfo) extends Base(info) with SourceProject
-	{
-		// these set up the test environment so that the classes and resources are both in the output resource directory
-		// the main compile path is removed so that the plugin (xsbt.Analyzer) is found in the output resource directory so that
-		// the tests can configure that directory as -Xpluginsdir (which requires the scalac-plugin.xml and the classes to be together)
-		override def testCompileAction = super.testCompileAction dependsOn(packageForTest, ioSub.testCompile)
-		override def mainResources = super.mainResources +++ "scalac-plugin.xml"
-		override def testClasspath = (super.testClasspath --- super.mainCompilePath) +++ ioSub.testClasspath  +++ testPackagePath
-		def testPackagePath = outputPath / "test.jar"
-		lazy val packageForTest = packageTask(mainClasses +++ mainResources, testPackagePath, packageOptions).dependsOn(compile)
-	}
+	class CompilerInterfaceProject(info: ProjectInfo) extends Base(info) with SourceProject with TestWithIO
 	trait TestWithIO extends BasicScalaProject
 	{
 		// use IO from tests

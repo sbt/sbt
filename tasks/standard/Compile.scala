@@ -24,7 +24,7 @@ trait Compile extends TrackedTaskDefinition[CompileReport]
 				val newOpts = (opts: Seq[String]) => (opts, rawSourceChanges.markAllModified, rawClasspathChanges.markAllModified) // if options changed, mark everything changed
 				val sameOpts = (opts: Seq[String]) => (opts, rawSourceChanges, rawClasspathChanges)
 				trackedOptions(newOpts, sameOpts) bind { // detect changes to options
-					case (options, classpathChanges, sourceChanges) =>
+					case (options, sourceChanges, classpathChanges) =>
 						invalidation( classpathChanges +++ sourceChanges ) { (report, tracking) => // invalidation based on changes
 							compile(sourceChanges, classpathChanges, options, report, tracking)
 						}
@@ -40,26 +40,27 @@ class StandardCompile(val sources: Task[Set[File]], val classpath: Task[Set[File
 	val superclassNames: Task[Set[String]], val compilerTask: Task[AnalyzeCompiler], val cacheDirectory: File, val log: xsbti.Logger) extends Compile
 {
 		import Task._
-		import sbinary.{DefaultProtocol, Format, Operations}
-		import DefaultProtocol._
-		import Operations.{fromByteArray, toByteArray}
 		import scala.collection.mutable.{ArrayBuffer, Buffer, HashMap, HashSet, Map, Set => mSet}
-	
-	private implicit val subclassFormat: Format[DetectedSubclass] =
-		asProduct4(DetectedSubclass.apply)( ds => Some(ds.source, ds.subclassName, ds.superclassName, ds.isModule))
 	
 	override def create = super.create dependsOn(superclassNames, compilerTask) // raise these dependencies to the top for parallelism
 	def compile(sourceChanges: ChangeReport[File], classpathChanges: ChangeReport[File], options: Seq[String], report: InvalidationReport[File], tracking: UpdateTracking[File]): Task[CompileReport] =
 	{
 		val sources = report.invalid ** sourceChanges.checked // determine the sources that need recompiling (report.invalid also contains classes and libraries)
 		val classpath = classpathChanges.checked
-		
+		compile(sources, classpath, options, tracking)
+	}
+	def compile(sources: Set[File], classpath: Set[File], options: Seq[String], tracking: UpdateTracking[File]): Task[CompileReport] =
+	{
 		(compilerTask, superclassNames) map { (compiler, superClasses) =>
-			val callback = new CompileAnalysisCallback(superClasses.toArray, tracking)
-			val arguments = Seq("-cp", abs(classpath).mkString(File.pathSeparator)) ++ options ++ abs(sources).toSeq
-			
-			compiler(arguments, callback, 100, log)
-			
+			if(!sources.isEmpty)
+			{
+				val callback = new CompileAnalysisCallback(superClasses.toArray, tracking)
+				val classpathString = abs(classpath).mkString(File.pathSeparator)
+				val classpathOption = if(classpathString.isEmpty) Seq.empty else Seq("-cp", classpathString)
+				val arguments = classpathOption ++ options ++ abs(sources).toSeq
+				
+				compiler(arguments, callback, 100, log)
+			}
 			val readTracking = tracking.read
 			val applicationSet = new HashSet[String]
 			val subclassMap = new HashMap[String, Buffer[DetectedSubclass]]
@@ -78,14 +79,14 @@ class StandardCompile(val sources: Task[Set[File]], val classpath: Task[Set[File
 	{
 		for((source, tag) <- readTracking.allTags) if(tag.length > 0)
 		{
-			val (applications, subclasses) = fromByteArray[(List[String], List[DetectedSubclass])](tag)
+			val (applications, subclasses) = Tag.fromBytes(tag)
 			allApplications ++= applications
 			subclasses.foreach(subclass => subclassMap.getOrElseUpdate(subclass.superclassName, new ArrayBuffer[DetectedSubclass]) += subclass)
 		}
 	}
 	private final class CompileAnalysisCallback(superClasses: Array[String], tracking: UpdateTracking[File]) extends xsbti.AnalysisCallback
 	{
-		private var applications = List[(File,String)]()
+		private var applications = List[String]()
 		private var subclasses = List[DetectedSubclass]()
 		def superclassNames = superClasses
 		def superclassNotFound(superclassName: String) = error("Superclass not found: " + superclassName)
@@ -94,12 +95,12 @@ class StandardCompile(val sources: Task[Set[File]], val classpath: Task[Set[File
 		{
 			if(!applications.isEmpty || !subclasses.isEmpty)
 			{
-				tracking.tag(source, toByteArray( (applications, subclasses) ) )
+				tracking.tag(source, Tag.toBytes(applications, subclasses) )
 				applications = Nil
 				subclasses = Nil
 			}
 		}
-		def foundApplication(source: File, className: String) { applications ::= ( (source, className) ) }
+		def foundApplication(source: File, className: String) { applications ::= className }
 		def foundSubclass(source: File, subclassName: String, superclassName: String, isModule: Boolean): Unit =
 			subclasses ::= DetectedSubclass(source, subclassName, superclassName, isModule)
 		def sourceDependency(dependsOn: File, source: File) { tracking.dependency(source, dependsOn) }
@@ -109,6 +110,15 @@ class StandardCompile(val sources: Task[Set[File]], val classpath: Task[Set[File
 	}
 }
 
+object Tag
+{
+		import sbinary.{DefaultProtocol, Format, Operations}
+		import DefaultProtocol._
+	private implicit val subclassFormat: Format[DetectedSubclass] =
+		asProduct4(DetectedSubclass.apply)( ds => Some(ds.source, ds.subclassName, ds.superclassName, ds.isModule))
+	def toBytes(applications: List[String], subclasses: List[DetectedSubclass]) = CacheIO.toBytes((applications, subclasses))
+	def fromBytes(bytes: Array[Byte]) = CacheIO.fromBytes( ( List[String](), List[DetectedSubclass]() ) )(bytes)
+}
 trait CompileReport extends NotNull
 {
 	def classes: Set[File]
