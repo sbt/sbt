@@ -10,18 +10,21 @@ object ComponentCompiler
 	val compilerInterfaceID = "compiler-interface"
 	val compilerInterfaceSrcID = compilerInterfaceID + srcExtension
 }
-class ComponentCompiler(scalaVersion: String, compiler: RawCompiler, manager: ComponentManager)
+/** This class provides source components compiled with the provided RawCompiler.
+* The compiled classes are cached using the provided component manager according
+* to the actualVersion field of the RawCompiler.*/
+class ComponentCompiler(compiler: RawCompiler, manager: ComponentManager)
 {
 	import ComponentCompiler._
 	import FileUtilities.{copy, createDirectory, zip, jars, unzip, withTemporaryDirectory}
 	def apply(id: String): File =
 	{
-		val binID = binaryID(id, scalaVersion)
+		val binID = binaryID(id)
 		try { manager.file(binID) }
 		catch { case e: InvalidComponent => compileAndInstall(id, binID) }
 	}
-	private def binaryID(id: String, scalaVersion: String) = id + binSeparator + scalaVersion
-	private def compileAndInstall(id: String, binID: String): File =
+	protected def binaryID(id: String) = id + binSeparator + compiler.scalaInstance.actualVersion
+	protected def compileAndInstall(id: String, binID: String): File =
 	{
 		val srcID = id + srcExtension
 		val binaryDirectory = manager.location(binID)
