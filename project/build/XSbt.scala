@@ -14,10 +14,10 @@ class XSbt(info: ProjectInfo) extends ParentProject(info)
 	val ioSub = project(utilPath / "io", "IO", new IOProject(_), controlSub)
 	val classpathSub = project(utilPath / "classpath", "Classpath", new Base(_))
 
-	val compileInterfaceSub = project(compilePath / "interface", "Compiler Interface Src", new CompilerInterfaceProject(_), interfaceSub)
-
 	val ivySub = project("ivy", "Ivy", new IvyProject(_), interfaceSub)
-	val logSub = project(utilPath / "log", "Logging", new Base(_))
+	val logSub = project(utilPath / "log", "Logging", new Base(_), interfaceSub)
+
+	val compileInterfaceSub = project(compilePath / "interface", "Compiler Interface Src", new CompilerInterfaceProject(_), interfaceSub)
 
 	val taskSub = project(tasksPath, "Tasks", new TaskProject(_), controlSub, collectionSub)
 	val cacheSub = project(cachePath, "Cache", new CacheProject(_), taskSub, ioSub)
@@ -58,7 +58,7 @@ class XSbt(info: ProjectInfo) extends ParentProject(info)
 	}
 	class StandardTaskProject(info: ProjectInfo) extends Base(info)
 	{
-		override def testClasspath = super.testClasspath +++ compilerSub.testClasspath
+		override def testClasspath = super.testClasspath +++ compilerSub.testClasspath --- compilerInterfaceClasspath
 	}
 
 	class IOProject(info: ProjectInfo) extends Base(info) with TestDependencies
@@ -73,31 +73,40 @@ class XSbt(info: ProjectInfo) extends ParentProject(info)
 		override def scratch = true
 		override def consoleClasspath = testClasspath
 	}
-	class CompileProject(info: ProjectInfo) extends Base(info)
+	class CompileProject(info: ProjectInfo) extends Base(info) with TestWithLog
 	{
 		override def testCompileAction = super.testCompileAction dependsOn(launchSub.testCompile, compileInterfaceSub.`package`, interfaceSub.`package`)
 		 // don't include launch interface in published dependencies because it will be provided by launcher
 		override def deliverProjectDependencies = Set(super.deliverProjectDependencies.toSeq : _*) - launchInterfaceSub.projectID
-		override def testClasspath = super.testClasspath +++ launchSub.testClasspath +++ compileInterfaceSub.jarPath +++ interfaceSub.jarPath
+		override def testClasspath = super.testClasspath +++ launchSub.testClasspath +++ compileInterfaceSub.jarPath +++ interfaceSub.jarPath --- compilerInterfaceClasspath
 		override def compileOptions = super.compileOptions ++ Seq(CompileOption("-Xno-varargs-conversion")) //needed for invoking nsc.scala.tools.Main.process(Array[String])
 	}
-	class IvyProject(info: ProjectInfo) extends Base(info) with TestWithIO
+	class IvyProject(info: ProjectInfo) extends Base(info) with TestWithIO with TestWithLog
 	{
 		val ivy = "org.apache.ivy" % "ivy" % "2.0.0"
 	}
-	class InterfaceProject(info: ProjectInfo) extends DefaultProject(info) with ManagedBase
+	class InterfaceProject(info: ProjectInfo) extends DefaultProject(info) with ManagedBase with TestWithLog
 	{
 		// ensure that interfaces are only Java sources and that they cannot reference Scala classes
 		override def mainSources = descendents(mainSourceRoots, "*.java")
 		override def compileOrder = CompileOrder.JavaThenScala
 	}
-	class CompilerInterfaceProject(info: ProjectInfo) extends Base(info) with SourceProject with TestWithIO
+	class CompilerInterfaceProject(info: ProjectInfo) extends Base(info) with SourceProject with TestWithIO with TestWithLog
+	{
+		def xTestClasspath =  projectClasspath(Configurations.Test)
+	}
 	trait TestWithIO extends BasicScalaProject
 	{
 		// use IO from tests
 		override def testCompileAction = super.testCompileAction dependsOn(ioSub.testCompile)
 		override def testClasspath = super.testClasspath +++ ioSub.testClasspath
 	}
+	trait TestWithLog extends BasicScalaProject
+	{
+		override def testCompileAction = super.testCompileAction dependsOn(logSub.compile)
+		override def testClasspath = super.testClasspath +++ logSub.compileClasspath
+	}
+	def compilerInterfaceClasspath = compileInterfaceSub.projectClasspath(Configurations.Test)
 }
 
 trait SourceProject extends BasicScalaProject

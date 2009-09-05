@@ -3,9 +3,16 @@ package xsbt
 import java.net.URL
 import java.util.Enumeration
 
+final class NullLoader extends ClassLoader
+{
+	override final def loadClass(className: String, resolve: Boolean): Class[_] = throw new ClassNotFoundException("No classes can be loaded from the null loader")
+	override def getResource(name: String): URL = null
+	override def getResources(name: String): Enumeration[URL] = null
+}
+
 class DifferentLoaders(message: String, val loaderA: ClassLoader, val loaderB: ClassLoader) extends ClassNotFoundException(message)
 class DualLoader(parentA: ClassLoader, aOnlyClasses: String => Boolean, aOnlyResources: String => Boolean,
-	parentB: ClassLoader, bOnlyClasses: String => Boolean, bOnlyResources: String => Boolean) extends ClassLoader
+	parentB: ClassLoader, bOnlyClasses: String => Boolean, bOnlyResources: String => Boolean) extends ClassLoader(new NullLoader)
 {
 	def this(parentA: ClassLoader, aOnly: String => Boolean, parentB: ClassLoader, bOnly: String => Boolean) =
 		this(parentA, aOnly, aOnly, parentB, bOnly, bOnly)

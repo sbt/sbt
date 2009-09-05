@@ -30,7 +30,7 @@ object SyncTest
 }
 object CompileTest
 {
-	def apply(dir: String, scalaVersion: String, opts: Seq[String], supers: Set[String])
+	def apply(dir: String, scalaVersion: String, options: Seq[String], supers: Set[String])
 	{
 		def test()
 		{
@@ -41,12 +41,12 @@ object CompileTest
 			val classpath = Task( dir / "lib" * "*.jar" )
 			WithCompiler(scalaVersion) { (compiler, log) =>
 				temp { cacheDir => temp { outDir =>
-					val options = Task(opts ++ Seq("-d", outDir.getAbsolutePath) )
-					val compile = new StandardCompile(sources, classpath, options, Task(supers), Task(compiler), cacheDir, log)
-						TaskRunner(compile.task)
-						readLine("Press enter to continue...")
-						TaskRunner(compile.task)
-						readLine("Press enter to continue...")
+					val compile = new StandardCompile(sources, classpath, Task(outDir), Task(options), Task(supers), Task(compiler), cacheDir, log)
+						println("Result: " + TaskRunner(compile.task))
+						println("Result: " + TaskRunner(compile.task))
+						TaskRunner(compile.clean)
+						println("Result: " + TaskRunner(compile.task))
+						println("Result: " + TaskRunner(compile.task))
 				} }
 			}
 		}

@@ -26,6 +26,7 @@ class Launch(projectRootDirectory: File, mainClassName: String) extends Launcher
 	import Launch._
 	final def boot(args: Array[String])
 	{
+		System.setProperty("scala.home", "") // avoid errors from mixing Scala versions in the same JVM
 		checkAndLoad(args) match
 		{
 			case e: Exit => System.exit(e.code)
@@ -74,7 +75,7 @@ class Launch(projectRootDirectory: File, mainClassName: String) extends Launcher
 		val scalaLoader = getScalaLoader(scalaVersion)
 		createSbtLoader(sbtVersion, scalaVersion, scalaLoader)
 	}
-	
+
 	def run(sbtLoader: ClassLoader, mainClassName: String, configuration: SbtConfiguration): MainResult =
 	{
 		val sbtMain = Class.forName(mainClassName, true, sbtLoader)
