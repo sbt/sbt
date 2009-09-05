@@ -13,7 +13,7 @@ object CompileTest extends Specification
 			WithCompiler( "2.7.2" )(testCompileAnalysis)
 		}
 	}
-	private def testCompileAnalysis(compiler: AnalyzeCompiler, log: CompileLogger)
+	private def testCompileAnalysis(compiler: AnalyzingCompiler, log: CompileLogger)
 	{
 		WithFiles( new File("Test.scala") -> "object Test" ) { sources =>
 			withTemporaryDirectory { temp =>
@@ -26,7 +26,7 @@ object CompileTest extends Specification
 }
 object WithCompiler
 {
-	def apply[T](scalaVersion: String)(f: (AnalyzeCompiler, CompileLogger) => T): T =
+	def apply[T](scalaVersion: String)(f: (AnalyzingCompiler, CompileLogger) => T): T =
 	{
 		System.setProperty("scala.home", "") // need to make sure scala.home is unset
 		val log = new TestIvyLogger with CompileLogger
@@ -38,7 +38,7 @@ object WithCompiler
 				val manager = new ComponentManager(launch.getSbtHome(sbtVersion, scalaVersion), log)
 				prepare(manager, ComponentCompiler.compilerInterfaceSrcID, "CompilerInterface.scala")
 				prepare(manager, ComponentCompiler.xsbtiID, classOf[xsbti.AnalysisCallback])
-				f(AnalyzeCompiler(scalaVersion,  launch, manager), log)
+				f(AnalyzingCompiler(scalaVersion,  launch, manager), log)
 			}
 		}
 	}

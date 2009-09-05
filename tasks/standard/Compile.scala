@@ -39,7 +39,7 @@ trait Compile extends TrackedTaskDefinition[CompileReport]
 	protected def getTracked = Seq(trackedClasspath, trackedSource, trackedOptions, invalidation)
 }
 class StandardCompile(val sources: Task[Set[File]], val classpath: Task[Set[File]], val outputDirectory: Task[File], val options: Task[Seq[String]],
-	val superclassNames: Task[Set[String]], val compilerTask: Task[AnalyzeCompiler], val cacheDirectory: File, val log: CompileLogger) extends Compile
+	val superclassNames: Task[Set[String]], val compilerTask: Task[AnalyzingCompiler], val cacheDirectory: File, val log: CompileLogger) extends Compile
 {
 		import Task._
 		import scala.collection.mutable.{ArrayBuffer, Buffer, HashMap, HashSet, Map, Set => mSet}

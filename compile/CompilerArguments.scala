@@ -2,21 +2,33 @@ package xsbt
 
 	import java.io.File
 
-object CompilerArguments
+/** Forms the list of options that is passed to the compiler from the required inputs and other options.
+* The directory containing scala-library.jar and scala-compiler.jar (scalaLibDirectory) is required in
+* order to add these jars to the boot classpath. The 'scala.home' property must be unset because Scala
+* puts jars in that directory on the bootclasspath.  Because we use multiple Scala versions,
+* this would lead to compiling against the wrong library jar.*/
+class CompilerArguments(scalaInstance: ScalaInstance)
 {
-	def apply(scalaLibDirectory: File)(sources: Set[File], classpath: Set[File], outputDirectory: File, options: Seq[String], compilerOnClasspath: Boolean): Seq[String] =
+	def apply(sources: Set[File], classpath: Set[File], outputDirectory: File, options: Seq[String], compilerOnClasspath: Boolean): Seq[String] =
 	{
-		val scalaHome = System.getProperty("scala.home")
-		assert((scalaHome eq null) || scalaHome.isEmpty, "'scala.home' should not be set (was " + scalaHome + ")")
-		def abs(files: Set[File]) = files.map(_.getAbsolutePath)
-		val originalBoot = System.getProperty("sun.boot.class.path", "")
-		val newBootPrefix = if(originalBoot.isEmpty) "" else originalBoot + File.pathSeparator
-		val bootClasspathOption = Seq("-bootclasspath", newBootPrefix + scalaLibraryJar(scalaLibDirectory).getAbsolutePath)
-		val cp2 = classpath ++ (if(compilerOnClasspath) scalaCompilerJar(scalaLibDirectory):: Nil else Nil)
-		val classpathOption = Seq("-cp", abs(cp2).mkString(File.pathSeparator) )
+		checkScalaHomeUnset()
+		val bootClasspathOption = Seq("-bootclasspath", createBootClasspath)
+		val cpWithCompiler = classpath ++ (if(compilerOnClasspath) scalaInstance.compilerJar :: Nil else Nil)
+		val classpathOption = Seq("-cp", abs(cpWithCompiler).mkString(File.pathSeparator) )
 		val outputOption = Seq("-d", outputDirectory.getAbsolutePath)
 		options ++ outputOption ++ bootClasspathOption ++ classpathOption ++ abs(sources)
 	}
-	private def scalaLibraryJar(scalaLibDirectory: File): File = new File(scalaLibDirectory, "scala-library.jar")
-	private def scalaCompilerJar(scalaLibDirectory: File): File = new File(scalaLibDirectory, "scala-compiler.jar")
+	protected def abs(files: Set[File]) = files.map(_.getAbsolutePath)
+	protected def checkScalaHomeUnset()
+	{
+		val scalaHome = System.getProperty("scala.home")
+		assert((scalaHome eq null) || scalaHome.isEmpty, "'scala.home' should not be set (was " + scalaHome + ")")
+	}
+	/** Add the correct Scala library jar to the boot classpath.*/
+	protected def createBootClasspath =
+	{
+		val originalBoot = System.getProperty("sun.boot.class.path", "")
+		val newBootPrefix = if(originalBoot.isEmpty) "" else originalBoot + File.pathSeparator
+		newBootPrefix + scalaInstance.libraryJar.getAbsolutePath
+	}
 }
