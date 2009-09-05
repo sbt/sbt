@@ -41,8 +41,7 @@ class ComponentCompiler(scalaVersion: String, compiler: RawCompiler, manager: Co
 			val (sourceFiles, resources) = extractedSources.partition(_.getName.endsWith(".scala"))
 			withTemporaryDirectory { outputDirectory =>
 				val xsbtiJars = manager.files(xsbtiID)
-				val arguments = Seq("-d", outputDirectory.getAbsolutePath, "-cp", xsbtiJars.mkString(File.pathSeparator)) ++ sourceFiles.toSeq.map(_.getAbsolutePath)
-				compiler(arguments)
+				compiler(Set() ++ sourceFiles, Set() ++ xsbtiJars, outputDirectory, Nil, true)
 				copy(resources x (FileMapper.rebase(dir, outputDirectory)))
 				zip((outputDirectory ***) x (PathMapper.relativeTo(outputDirectory)), targetJar)
 			}
