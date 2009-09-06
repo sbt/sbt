@@ -5,11 +5,9 @@ package xsbt
 	import java.net.URLClassLoader
 
 /** Interface to the Scala compiler that uses the dependency analysis plugin.  This class uses the Scala library and compiler
-*  obtained through the 'scalaLoader' class loader.  This class requires a ComponentManager in order to obtain the
-*  interface code to scalac and the analysis plugin.  Because these call Scala code for a different Scala version, they must
-* be compiled for the version of Scala being used.  It is essential that the provided 'scalaVersion' be a 1:1 mapping to the
-* actual version of Scala being used for compilation (-SNAPSHOT is not acceptable).  Otherwise, binary compatibility
-* issues will ensue!*/
+* provided by scalaInstance.  This class requires a ComponentManager in order to obtain the interface code to scalac and
+* the analysis plugin.  Because these call Scala code for a different Scala version than the one used for this class, they must
+* be compiled for the version of Scala being used.*/
 class AnalyzingCompiler(scalaInstance: ScalaInstance, manager: ComponentManager) extends NotNull
 {
 	def apply(sources: Set[File], classpath: Set[File], outputDirectory: File, options: Seq[String], callback: AnalysisCallback, maximumErrors: Int, log: CompileLogger): Unit =

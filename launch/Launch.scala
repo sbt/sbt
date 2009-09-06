@@ -109,7 +109,8 @@ class Launch(projectRootDirectory: File, mainClassName: String) extends Launcher
 		}
 	}
 
-	private val scalaLoaderCache = new scala.collection.jcl.WeakHashMap[String, ClassLoader]
+	private val scalaLoaderCache = new scala.collection.mutable.HashMap[String, ClassLoader]
+	def clearScalaLoaderCache { scalaLoaderCache.clear() }
 	def launcher(directory: File, mainClassName: String): Launcher = new Launch(directory, mainClassName)
 	def getScalaLoader(scalaVersion: String) = scalaLoaderCache.getOrElseUpdate(scalaVersion, createScalaLoader(scalaVersion))
 
