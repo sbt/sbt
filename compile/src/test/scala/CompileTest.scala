@@ -4,13 +4,15 @@ import java.io.File
 import FileUtilities.withTemporaryDirectory
 import org.specs._
 
-// compile w/ analysis a bit hard to test properly right now:
-//  requires compile project to depend on +publish-local, which is not possible in sbt (addressed in xsbt, but that doesn't help here!)
 object CompileTest extends Specification
 {
 	"Analysis compiler" should {
 		"compile basic sources" in {
 			WithCompiler( "2.7.2" )(testCompileAnalysis)
+			WithCompiler( "2.7.3" )(testCompileAnalysis)
+			WithCompiler( "2.7.4" )(testCompileAnalysis)
+			WithCompiler( "2.7.5" )(testCompileAnalysis)
+			WithCompiler( "2.8.0-SNAPSHOT" )(testCompileAnalysis)
 		}
 	}
 	private def testCompileAnalysis(compiler: AnalyzingCompiler, log: CompileLogger)
@@ -38,7 +40,12 @@ object WithCompiler
 				val manager = new ComponentManager(launch.getSbtHome(sbtVersion, scalaVersion), log)
 				prepare(manager, ComponentCompiler.compilerInterfaceSrcID, "CompilerInterface.scala")
 				prepare(manager, ComponentCompiler.xsbtiID, classOf[xsbti.AnalysisCallback])
-				f(AnalyzingCompiler(scalaVersion,  launch, manager), log)
+				val result = f(AnalyzingCompiler(scalaVersion,  launch, manager), log)
+				launch.clearScalaLoaderCache
+				System.gc()
+				System.gc()
+				System.gc()
+				result
 			}
 		}
 	}

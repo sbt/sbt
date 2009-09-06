@@ -98,13 +98,14 @@ object ApplicationsTest extends Specification
 
 	"Analysis plugin should detect applications" in {
 		WithFiles(sources : _*) { case files @ Seq(main, main2, main3, main4, main5, main6, main7, main8, main9, mainA, mainB, mainC, mainD, mainE) =>
-			CallbackTest(files, Nil) { (callback, file, log) =>
-				val expected = Seq( main -> "Main", main4 -> "Main4", main8 -> "Main8", main9 -> "Main9", mainB -> "MainB",
-					mainE -> "MainE1", mainE -> "MainE2", mainE -> "MainE3", mainE -> "MainE4", mainE -> "MainE5" )
-				(callback.applications) must haveTheSameElementsAs(expected)
-				val loader = new URLClassLoader(Array(file.toURI.toURL), getClass.getClassLoader)
-				for( (_, className) <- expected) testRun(loader, className)
-			}
+			for(scalaVersion <- TestCompile.allVersions)
+				CallbackTest(scalaVersion, files, Nil) { (callback, file, log) =>
+					val expected = Seq( main -> "Main", main4 -> "Main4", main8 -> "Main8", main9 -> "Main9", mainB -> "MainB",
+						mainE -> "MainE1", mainE -> "MainE2", mainE -> "MainE3", mainE -> "MainE4", mainE -> "MainE5" )
+					(callback.applications) must haveTheSameElementsAs(expected)
+					val loader = new URLClassLoader(Array(file.toURI.toURL), getClass.getClassLoader)
+					for( (_, className) <- expected) testRun(loader, className)
+				}
 		}
 	}
 	private def testRun(loader: ClassLoader, className: String)
