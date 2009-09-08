@@ -1,0 +1,21 @@
+> publish-local
+[success]
+
+$ delete project/build/
+[success]
+$ copy-file changes/UseColor.scala project/build/UseColor.scala
+[success]
+$ copy-file changes/blue color
+[success]
+$ copy-file changes/build.properties project/build.properties
+[success]
+$ reload
+[success]
+
+> update
+[failure]
+
+$ copy-file changes/red color
+[success]
+> update
+[success]
