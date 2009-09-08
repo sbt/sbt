@@ -45,7 +45,7 @@ abstract class BasicScalaProject extends ScalaProject with BasicDependencyProjec
 
 	val mainCompileConditional = new CompileConditional(mainCompileConfiguration)
 	val testCompileConditional = new CompileConditional(testCompileConfiguration)
-	
+
 	def compileOrder = CompileOrder.Mixed
 
 	/** The main artifact produced by this project. To redefine the main artifact, override `defaultMainArtifact`
@@ -54,9 +54,9 @@ abstract class BasicScalaProject extends ScalaProject with BasicDependencyProjec
 	/** Defines the default main Artifact assigned to `mainArtifact`.  By default, this is a jar file with name given
 	* by `artifactID`.*/
 	protected def defaultMainArtifact = Artifact(artifactID, "jar", "jar")
-	
+
 	import Project._
-	
+
 	/** The options provided to the 'compile' action to pass to the Scala compiler.*/
 	def compileOptions: Seq[CompileOption] = Deprecation :: Nil
 	/** The options provided to the 'compile' action to pass to the Java compiler. */
@@ -65,7 +65,7 @@ abstract class BasicScalaProject extends ScalaProject with BasicDependencyProjec
 	def testCompileOptions: Seq[CompileOption] = compileOptions
 	/** The options provided to the 'test-compile' action to pass to the Java compiler. */
 	def testJavaCompileOptions: Seq[JavaCompileOption] = javaCompileOptions
-	
+
 	/** The options provided to the 'doc' and 'docTest' actions.*/
 	def documentOptions: Seq[ScaladocOption] =
 		LinkSource ::
@@ -82,11 +82,11 @@ abstract class BasicScalaProject extends ScalaProject with BasicDependencyProjec
 		ClearAnalysis(mainCompileConditional.analysis) ::
 		ClearAnalysis(testCompileConditional.analysis) ::
 		historyPath.map(history => Preserve(history)).toList
-		
+
 	def packageOptions: Seq[PackageOption] =
 		manifestClassPath.map(cp => ManifestAttributes( (Attributes.Name.CLASS_PATH, cp) )).toList :::
 		getMainClass(false).map(MainClass(_)).toList
-	
+
 	private def succeededTestPath = testAnalysisPath / "succeeded-tests"
 	private def quickOptions(failedOnly: Boolean) =
 	{
@@ -94,7 +94,7 @@ abstract class BasicScalaProject extends ScalaProject with BasicDependencyProjec
 		val analysis = testCompileConditional.analysis
 		TestFilter(new impl.TestQuickFilter(analysis, failedOnly, path, log))  :: TestListeners(new impl.TestStatusReporter(path, log) :: Nil) :: Nil
 	}
-	
+
 	protected def includeTest(test: String): Boolean = true
 
 	/** This is called to create the initial directories when a user makes a new project from
@@ -110,7 +110,7 @@ abstract class BasicScalaProject extends ScalaProject with BasicDependencyProjec
 	import Configurations._
 	/** The managed configuration to use when determining the classpath for a Scala interpreter session.*/
 	def consoleConfiguration = Test
-	
+
 	/** A PathFinder that provides the classpath to pass to scaladoc.  It is the same as the compile classpath
 	* by default. */
 	def docClasspath = compileClasspath
@@ -154,7 +154,7 @@ abstract class BasicScalaProject extends ScalaProject with BasicDependencyProjec
 	/** The unmanaged classpath for the test configuration.  By default, it includes the run classpath, which includes the base
 	* classpath returned by `mainUnmanagedClasspath`.*/
 	protected def testUnmanagedClasspath = testCompilePath +++ testResourcesOutputPath  +++ testDependencies.scalaCompiler +++ runUnmanagedClasspath
-	
+
 	/** @deprecated Use `mainDependencies.scalaJars`*/
 	@deprecated protected final def scalaJars: Iterable[File] = mainDependencies.scalaJars.get.map(_.asFile)
 	/** An analysis of the jar dependencies of the main Scala sources.  It is only valid after main source compilation.
@@ -170,10 +170,10 @@ abstract class BasicScalaProject extends ScalaProject with BasicDependencyProjec
 	def testFrameworks: Iterable[TestFramework] = ScalaCheckFramework :: SpecsFramework :: ScalaTestFramework :: Nil
 	/** The list of listeners for testing. */
 	def testListeners: Seq[TestReportListener] = new LogTestReportListener(log) :: Nil
-	
+
 	def mainLabel = "main"
 	def testLabel = "test"
-	
+
 	def mainCompileConfiguration: CompileConfiguration = new MainCompileConfig
 	def testCompileConfiguration: CompileConfiguration = new TestCompileConfig
 	abstract class BaseCompileConfig extends CompileConfiguration
@@ -209,7 +209,7 @@ abstract class BasicScalaProject extends ScalaProject with BasicDependencyProjec
 		def testDefinitionClassNames: Iterable[String] = testFrameworks.map(_.testSuperClassName)
 		def javaOptions = javaOptionsAsString(testJavaCompileOptions)
 	}
-	
+
 	/** Configures forking the compiler and runner.  Use ForkScalaCompiler, ForkScalaRun or mix together.*/
 	def fork: Option[ForkScala] = None
 	private def doCompile(conditional: CompileConditional) =
@@ -228,15 +228,15 @@ abstract class BasicScalaProject extends ScalaProject with BasicDependencyProjec
 			case _ => Run
 		}
 	}
-	
+
 	protected def runTask(mainClass: String): MethodTask = task { args => runTask(Some(mainClass), runClasspath, args) dependsOn(compile, copyResources) }
-	
+
 	protected def compileAction = task { doCompile(mainCompileConditional) } describedAs MainCompileDescription
 	protected def testCompileAction = task { doCompile(testCompileConditional) } dependsOn compile describedAs TestCompileDescription
 	protected def cleanAction = cleanTask(outputPath, cleanOptions) describedAs CleanDescription
 	protected def runAction = task { args => runTask(getMainClass(true), runClasspath, args, getRunner) dependsOn(compile, copyResources) } describedAs RunDescription
-	protected def consoleQuickAction = consoleTask(consoleClasspath, getRunner) describedAs ConsoleQuickDescription
-	protected def consoleAction = consoleTask(consoleClasspath, getRunner).dependsOn(testCompile, copyResources, copyTestResources) describedAs ConsoleDescription
+	protected def consoleQuickAction = consoleTask(consoleClasspath, Run) describedAs ConsoleQuickDescription
+	protected def consoleAction = consoleTask(consoleClasspath, Run).dependsOn(testCompile, copyResources, copyTestResources) describedAs ConsoleDescription
 	protected def docAction = scaladocTask(mainLabel, mainSources, mainDocPath, docClasspath, documentOptions).dependsOn(compile) describedAs DocDescription
 	protected def docTestAction = scaladocTask(testLabel, testSources, testDocPath, docClasspath, documentOptions).dependsOn(testCompile) describedAs TestDocDescription
 	protected def testAction = defaultTestTask(testOptions)
@@ -248,25 +248,25 @@ abstract class BasicScalaProject extends ScalaProject with BasicDependencyProjec
 		testQuickMethod(testCompileConditional.analysis, testOptions)(options => defaultTestTask(quickOptions(failedOnly) ::: options.toList))
 	protected def defaultTestTask(testOptions: => Seq[TestOption]) =
 		testTask(testFrameworks, testClasspath, testCompileConditional.analysis, testOptions).dependsOn(testCompile, copyResources, copyTestResources) describedAs TestDescription
-		
+
 	override def packageToPublishActions: Seq[ManagedTask] = `package` :: Nil
-	
+
 	protected def packageAction = packageTask(packagePaths, jarPath, packageOptions).dependsOn(compile) describedAs PackageDescription
 	protected def packageTestAction = packageTask(packageTestPaths, packageTestJar).dependsOn(testCompile) describedAs TestPackageDescription
 	protected def packageDocsAction = packageTask(mainDocPath ##, packageDocsJar, Recursive).dependsOn(doc) describedAs DocPackageDescription
 	protected def packageSrcAction = packageTask(packageSourcePaths, packageSrcJar) describedAs SourcePackageDescription
 	protected def packageTestSrcAction = packageTask(packageTestSourcePaths, packageTestSrcJar) describedAs TestSourcePackageDescription
 	protected def packageProjectAction = zipTask(packageProjectPaths, packageProjectZip) describedAs ProjectPackageDescription
-	
+
 	protected def docAllAction = (doc && docTest) describedAs DocAllDescription
 	protected def packageAllAction = task { None } dependsOn(`package`, packageTest, packageSrc, packageTestSrc, packageDocs) describedAs PackageAllDescription
 	protected def graphAction = graphTask(graphPath, mainCompileConditional.analysis).dependsOn(compile)
 	protected def incrementVersionAction = task { incrementVersionNumber(); None } describedAs IncrementVersionDescription
 	protected def releaseAction = (test && packageAll && incrementVersion) describedAs ReleaseDescription
-	
+
 	protected def copyResourcesAction = syncPathsTask(mainResources, mainResourcesOutputPath) describedAs CopyResourcesDescription
 	protected def copyTestResourcesAction = syncPathsTask(testResources, testResourcesOutputPath) describedAs CopyTestResourcesDescription
-	
+
 	lazy val compile = compileAction
 	lazy val testCompile = testCompileAction
 	lazy val clean = cleanAction
@@ -293,10 +293,10 @@ abstract class BasicScalaProject extends ScalaProject with BasicDependencyProjec
 	lazy val testQuick = testQuickAction
 	lazy val testFailed = testFailedAction
 	lazy val testOnly = testOnlyAction
-	
+
 	lazy val javap = javapTask(runClasspath, mainCompileConditional, mainCompilePath)
 	lazy val testJavap = javapTask(testClasspath, testCompileConditional, testCompilePath)
-	
+
 	def jarsOfProjectDependencies = Path.lazyPathFinder {
 		topologicalSort.dropRight(1) flatMap { p =>
 			p match
@@ -318,13 +318,13 @@ abstract class BasicWebScalaProject extends BasicScalaProject with WebScalaProje
 { p =>
 	import BasicWebScalaProject._
 	override def watchPaths = super.watchPaths +++ webappResources
-	
+
 	lazy val prepareWebapp = prepareWebappAction
 	protected def prepareWebappAction =
 		prepareWebappTask(webappResources, temporaryWarPath, webappClasspath, mainDependencies.scalaJars) dependsOn(compile, copyResources)
-	
+
 	lazy val jettyInstance = new JettyRunner(jettyConfiguration)
-	
+
 	def jettyConfiguration =
 		new DefaultJettyConfiguration
 		{
@@ -361,7 +361,7 @@ abstract class BasicWebScalaProject extends BasicScalaProject with WebScalaProje
 		while (System.in.available() > 0) System.in.read()
 		None
 	}
-		
+
 	/** The directories that should be watched to determine if the web application needs to be reloaded..*/
 	def scanDirectories: Seq[Path] = jettyWebappPath :: Nil
 	/** The time in seconds between scans that check whether the web application should be reloaded.*/
@@ -372,11 +372,11 @@ abstract class BasicWebScalaProject extends BasicScalaProject with WebScalaProje
 	lazy val jettyRestart = jettyStop && jettyRun
 	lazy val jettyStop = jettyStopAction
 	protected def jettyStopAction = jettyStopTask(jettyInstance) describedAs(JettyStopDescription)
-	
+
 	/** The clean action for a web project is modified so that it first stops jetty if it is running,
 	* since the webapp directory will be removed by the clean.*/
 	override def cleanAction = super.cleanAction dependsOn jettyStop
-	
+
 	/** Redefine the `package` action to make a war file.*/
 	override protected def packageAction = packageTask(descendents(temporaryWarPath ##, "*"), warPath, Nil) dependsOn(prepareWebapp) describedAs PackageWarDescription
 
@@ -434,7 +434,7 @@ object BasicScalaProject
 		"Copies resources to the target directory where they can be included on classpaths."
 	val CopyTestResourcesDescription =
 		"Copies test resources to the target directory where they can be included on the test classpath."
-		
+
 	private def warnMultipleMainClasses(log: Logger) =
 	{
 		log.warn("No Main-Class attribute will be added automatically added:")
@@ -443,7 +443,7 @@ object BasicScalaProject
 	}
 	private def mapScalaModule(in: Iterable[_], id: String) =
 	{
-		ScalaVersion.current.toList.flatMap { scalaVersion => 
+		ScalaVersion.current.toList.flatMap { scalaVersion =>
 			in.map(jar => ModuleID(ScalaArtifacts.Organization, id, scalaVersion))
 		}
 	}
@@ -478,7 +478,7 @@ final class LibraryDependencies(project: Project, conditional: CompileConditiona
 
 	/** Returns an object that has all analyzed dependency information frozen at the time of this method call. */
 	def snapshot = new Dependencies
-	
+
 	private def rootProjectDirectory = project.rootProject.info.projectPath
 
 	final class Dependencies
@@ -504,5 +504,5 @@ private object LibraryDependencies
 	private def isScalaJar(file: File) = ClasspathUtilities.isArchive(file) &&  ScalaJarPrefixes.exists(isNamed(file))
 	private def isScalaLibraryJar(file: File) = isNamed(file)(ScalaLibraryPrefix)
 	private def isNamed(file: File)(name: String) = file.getName.startsWith(name)
-	
+
 }

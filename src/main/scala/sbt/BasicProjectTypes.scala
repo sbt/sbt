@@ -10,7 +10,7 @@ trait ClasspathProject extends Project
 {
 	/** The local classpath for this project.*/
 	def projectClasspath(config: Configuration): PathFinder
-	
+
 	/** Returns the classpath of this project and the classpaths of all dependencies for the
 	* given configuration.  Specifically, this concatentates projectClasspath(config) for all
 	* projects of type ClasspathProject in topologicalSort. */
@@ -77,7 +77,7 @@ trait ManagedProject extends ClasspathProject
 	/** An update option that overrides the default Ivy cache location. */
 	final case class CacheDirectory(dir: Path) extends ManagedOption
 	final case class CheckScalaVersion(configs: Iterable[Configuration], checkExplicit: Boolean, filterImplicit: Boolean) extends ManagedOption
-	
+
 	protected def withConfigurations(outputPattern: String, managedDependencyPath: Path, options: Seq[ManagedOption])
 		(doWith: (IvyConfiguration, UpdateConfiguration) => Option[String]) =
 	{
@@ -132,7 +132,7 @@ trait ManagedProject extends ClasspathProject
 		updateTask(outputPattern, managedDependencyPath, options)
 	def updateTask(outputPattern: String, managedDependencyPath: Path, options: => Seq[ManagedOption]) =
 		withIvyTask(withConfigurations(outputPattern, managedDependencyPath, options)(ManageDependencies.update))
-		
+
 	def publishTask(publishConfiguration: => PublishConfiguration, options: => Seq[ManagedOption]) =
 		withIvyTask
 		{
@@ -154,23 +154,23 @@ trait ManagedProject extends ClasspathProject
 	def makePomTask(output: => Path, extraDependencies: => Iterable[ModuleID], configurations: => Option[Iterable[Configuration]], options: => Seq[ManagedOption]) =
 		withIvyTask(withConfigurations("", managedDependencyPath, options) { (ivyConf, ignore) =>
 			ManageDependencies.makePom(ivyConf, extraDependencies, configurations, output.asFile) })
-		
+
 	def cleanCacheTask(managedDependencyPath: Path, options: => Seq[ManagedOption]) =
 		withIvyTask(withConfigurations("", managedDependencyPath, options) { (ivyConf, ignore) => ManageDependencies.cleanCache(ivyConf) })
-		
+
 	def cleanLibTask(managedDependencyPath: Path) = task { FileUtilities.clean(managedDependencyPath.get, log) }
 
 	/** This is the public ID of the project (used for publishing, for example) */
 	def moduleID: String = normalizedName + appendable(crossScalaVersionString)
 	/** This is the full public ID of the project (used for publishing, for example) */
-	def projectID: ModuleID = ModuleID(organization, moduleID, version.toString)
+	def projectID: ModuleID = ModuleID(organization, moduleID, version.toString).artifacts(artifacts.toSeq : _*)
 
 	/** This is the default name for artifacts (such as jars) without any version string.*/
 	def artifactID = moduleID
 	/** This is the default name for artifacts (such as jars) including the version string.*/
 	def artifactBaseName = artifactID + "-" + version.toString
 	def artifacts: Iterable[Artifact]
-	
+
 	def managedDependencyPath: Path
 	/** The managed classpath for the given configuration.  This can be overridden to add jars from other configurations
 	* so that the Ivy 'extends' mechanism is not required.  That way, the jars are only copied to one configuration.*/
@@ -179,7 +179,7 @@ trait ManagedProject extends ClasspathProject
 	final def configurationClasspath(config: Configuration): PathFinder = descendents(configurationPath(config), "*.jar")
 	/** The base path to which dependencies in configuration 'config' are downloaded.*/
 	def configurationPath(config: Configuration): Path = managedDependencyPath / config.toString
-	
+
 	import StringUtilities.nonEmpty
 	implicit def toGroupID(groupID: String): GroupID =
 	{
@@ -196,7 +196,7 @@ trait ManagedProject extends ClasspathProject
 		require(m.configurations.isEmpty, "Configurations already specified for module " + m)
 		new ModuleIDConfigurable(m)
 	}
-	
+
 	/** Creates a new configuration with the given name.*/
 	def config(name: String) = new Configuration(name)
 }
@@ -232,8 +232,8 @@ trait BasicManagedProject extends ManagedProject with ReflectiveManagedProject w
 	/** The dependency manager that represents inline declarations.  The default manager packages the information
 	* from 'ivyXML', 'projectID', 'repositories', and 'libraryDependencies' and does not typically need to be
 	* be overridden. */
-	def manager = new SimpleManager(ivyXML, true, projectID, repositories.toSeq, ivyConfigurations, defaultConfiguration, artifacts, libraryDependencies.toList: _*)
-	
+	def manager = new SimpleManager(ivyXML, true, projectID, repositories.toSeq, ivyConfigurations, defaultConfiguration, libraryDependencies.toList: _*)
+
 	/** The pattern for Ivy to use when retrieving dependencies into the local project.  Classpath management
 	* depends on the first directory being [conf] and the extension being [ext].*/
 	def outputPattern = "[conf]/[artifact](-[revision]).[ext]"
@@ -261,7 +261,7 @@ trait BasicManagedProject extends ManagedProject with ReflectiveManagedProject w
 	def defaultConfiguration: Option[Configuration] = Some(Configurations.DefaultConfiguration(useDefaultConfigurations))
 	def useMavenConfigurations = true // TODO: deprecate after going through a minor version series to verify that this works ok
 	def useDefaultConfigurations = useMavenConfigurations
-	def managedStyle: ManagedType = 
+	def managedStyle: ManagedType =
 		info.parent match
 		{
 			case Some(m: BasicManagedProject) => m.managedStyle
@@ -283,7 +283,7 @@ trait BasicManagedProject extends ManagedProject with ReflectiveManagedProject w
 	def managerOption: Seq[ManagedOption] =
 	{
 		val m = manager
-		if(m.dependencies.isEmpty && m.resolvers.isEmpty && ivyXML.isEmpty && m.artifacts.isEmpty && m.configurations.isEmpty)
+		if(m.dependencies.isEmpty && m.resolvers.isEmpty && ivyXML.isEmpty && m.module.explicitArtifacts.isEmpty && m.configurations.isEmpty)
 			Nil
 		else
 			LibraryManager(m) :: Nil
@@ -340,27 +340,18 @@ trait BasicManagedProject extends ManagedProject with ReflectiveManagedProject w
 			case _ => baseClasspath
 		}
 	}
-	
+
 	protected def updateAction = updateTask(outputPattern, managedDependencyPath, updateOptions) describedAs UpdateDescription
 	protected def cleanLibAction = cleanLibTask(managedDependencyPath) describedAs CleanLibDescription
 	protected def cleanCacheAction = cleanCacheTask(managedDependencyPath, updateOptions) describedAs CleanCacheDescription
-	
+
 	protected def deliverProjectDependencies: Iterable[ModuleID] =
 	{
 		val interDependencies = new scala.collection.mutable.ListBuffer[ModuleID]
-		dependencies.foreach(dep => dep match { case mp: ManagedProject => interDependencies += projectModuleID(mp); case _ => () })
+		dependencies.foreach(dep => dep match { case mp: ManagedProject => interDependencies += mp.projectID; case _ => () })
 		if(filterScalaJars)
 			interDependencies ++= deliverScalaDependencies
 		interDependencies.readOnly
-	}
-	protected def projectModuleID(mp: ManagedProject) =
-	{
-		val base = mp.projectID
-		val as = mp.artifacts.toSeq.toArray
-		if(as.size == 1)
-			base artifacts(as : _*)
-		else
-			base artifacts(as.filter(_.`type` != "pom") : _*)
 	}
 	protected def deliverScalaDependencies: Iterable[ModuleID] = Nil
 	protected def makePomAction = makePomTask(pomPath, deliverProjectDependencies, None, updateOptions)
@@ -389,7 +380,7 @@ trait BasicManagedProject extends ManagedProject with ReflectiveManagedProject w
 		def this(resolver: Resolver, status: String, publishIvy: Boolean) = this(resolver.name, status, publishIvy)
 		def this(resolverName: String, status: String) = this(resolverName, status, true)
 		def this(resolver: Resolver, status: String) = this(resolver.name, status)
-		
+
 		protected def deliveredPathPattern = outputPath / "[artifact]-[revision].[ext]"
 		def deliveredPattern = deliveredPathPattern.relativePath
 		def srcArtifactPatterns: Iterable[String] =
@@ -404,12 +395,12 @@ trait BasicManagedProject extends ManagedProject with ReflectiveManagedProject w
 		/**  The configurations to include in the publish/deliver action: specify none for all public configurations. */
 		def configurations: Option[Iterable[Configuration]] = None
 	}
-	
+
 	def packageToPublishActions: Seq[ManagedTask] = Nil
-	
+
 	private[this] def depMap[T](f: BasicManagedProject => T) =
 		topologicalSort.dropRight(1).flatMap { case m: BasicManagedProject => f(m) :: Nil; case _ => Nil }
-	
+
 	lazy val update = updateAction
 	lazy val makePom = makePomAction dependsOn(packageToPublishActions : _*)
 	lazy val cleanLib = cleanLibAction

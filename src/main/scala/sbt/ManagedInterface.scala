@@ -34,13 +34,12 @@ sealed trait SbtManager extends Manager
 	def dependenciesXML: NodeSeq
 	def configurations: Iterable[Configuration]
 	def defaultConfiguration: Option[Configuration]
-	def artifacts: Iterable[Artifact]
 }
 final class SimpleManager private[sbt] (val dependenciesXML: NodeSeq, val autodetectUnspecified: Boolean,
 	val module: ModuleID, val resolvers: Seq[Resolver], explicitConfigurations: Iterable[Configuration],
-	val defaultConfiguration: Option[Configuration], val artifacts: Iterable[Artifact], val dependencies: ModuleID*) extends SbtManager
+	val defaultConfiguration: Option[Configuration], val dependencies: ModuleID*) extends SbtManager
 {
-	def autodetect = dependencies.isEmpty && dependenciesXML.isEmpty && artifacts.isEmpty && explicitConfigurations.isEmpty && autodetectUnspecified
+	def autodetect = dependencies.isEmpty && dependenciesXML.isEmpty && module.explicitArtifacts.isEmpty && explicitConfigurations.isEmpty && autodetectUnspecified
 	def configurations =
 		if(explicitConfigurations.isEmpty && !autodetect)
 		{
@@ -121,7 +120,7 @@ sealed abstract class PatternsBasedRepository extends Resolver
 
 	/** The object representing the configured patterns for this repository. */
 	def patterns: Patterns
-	
+
 	/** Enables maven 2 compatibility for this repository. */
 	def mavenStyle() = copy(patterns.mavenStyle())
 	/** Adds the given patterns for resolving/publishing Ivy files.*/
@@ -149,10 +148,10 @@ sealed abstract class SshBasedRepository extends PatternsBasedRepository
 	type RepositoryType <: SshBasedRepository
 	protected def copy(connection: SshConnection): RepositoryType
 	private def copy(authentication: SshAuthentication): RepositoryType = copy(connection.copy(Some(authentication)))
-	
+
 	/** The object representing the configured ssh connection for this repository. */
 	def connection: SshConnection
-	
+
 	/** Configures this to use the specified user name and password when connecting to the remote repository. */
 	def as(user: String, password: String): RepositoryType = copy(new PasswordAuthentication(user, password))
 	/** Configures this to use the specified keyfile and password for the keyfile when connecting to the remote repository. */
@@ -256,7 +255,7 @@ object Resolver
 	}
 	private def baseRepository[T](baseURI: java.net.URI)(construct: Patterns => T)(implicit basePatterns: Patterns): T =
 		construct(resolvePatterns(baseURI.normalize, basePatterns))
-	
+
 	/** If `base` is None, `patterns` is returned unchanged.
 	* Otherwise, the ivy file and artifact patterns in `patterns` are resolved against the given base. */
 	private def resolvePatterns(base: Option[String], patterns: Patterns): Patterns =
@@ -274,7 +273,7 @@ object Resolver
 	}
 	/** Constructs a `URI` with the path component set to `path` and the other components set to null.*/
 	private def pathURI(path: String) = new URI(null, null, path, null)
-	
+
 	def defaultFileConfiguration = FileConfiguration(true, None)
 	def mavenStylePatterns = Patterns(Nil, mavenStyleBasePattern :: Nil, true)
 	def ivyStylePatterns = Patterns(Nil, Nil, false)
@@ -282,11 +281,11 @@ object Resolver
 	def defaultPatterns = mavenStylePatterns
 	def mavenStyleBasePattern = "[organisation]/[module]/[revision]/[artifact]-[revision](-[classifier]).[ext]"
 	def localBasePattern = "[organisation]/[module]/[revision]/[type]s/[artifact].[ext]"
-	
+
 	def userRoot = System.getProperty("user.home")
 	def userMavenRoot = userRoot + "/.m2/repository/"
 	def userIvyRoot = userRoot + "/.ivy2/"
-	
+
 	def defaultLocal = defaultUserFileRepository("local")
 	def defaultShared = defaultUserFileRepository("shared")
 	def defaultUserFileRepository(id: String) = file(id, new File(userIvyRoot, id))(defaultIvyPatterns)
@@ -301,7 +300,7 @@ object Configurations
 {
 	def config(name: String) = new Configuration(name)
 	def defaultMavenConfigurations = Compile :: Runtime :: Test :: Provided :: System :: Optional :: Sources :: Javadoc :: Nil
-	
+
 	lazy val Default = config("default")
 	lazy val Compile = config("compile")
 	lazy val IntegrationTest = config("it") hide
@@ -314,16 +313,16 @@ object Configurations
 	lazy val Optional = config("optional")
 
 	lazy val CompilerPlugin = config("plugin") hide
-	
+
 	private[sbt] val DefaultMavenConfiguration = defaultConfiguration(true)
 	private[sbt] val DefaultIvyConfiguration = defaultConfiguration(false)
 	private[sbt] def DefaultConfiguration(mavenStyle: Boolean) = if(mavenStyle) DefaultMavenConfiguration else DefaultIvyConfiguration
-	private[sbt] def defaultConfiguration(mavenStyle: Boolean) = 
+	private[sbt] def defaultConfiguration(mavenStyle: Boolean) =
 	{
 		val base = if(mavenStyle) Configurations.Compile else Configurations.Default
 		config(base.name + "->default(compile)")
 	}
-	
+
 	private[sbt] def removeDuplicates(configs: Iterable[Configuration]) = Set(scala.collection.mutable.Map(configs.map(config => (config.name, config)).toSeq: _*).values.toList: _*)
 }
 /** Represents an Ivy configuration. */
@@ -383,7 +382,7 @@ object Credentials
 			{
 				val properties = new scala.collection.mutable.HashMap[String, String]
 				def get(keys: List[String]) = keys.flatMap(properties.get).firstOption.toRight(keys.head + " not specified in credentials file: " + path)
-					
+
 					impl.MapUtilities.read(properties, path, log) orElse
 					{
 						List.separate( List(RealmKeys, HostKeys, UserKeys, PasswordKeys).map(get) ) match

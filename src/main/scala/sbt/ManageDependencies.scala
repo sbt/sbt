@@ -47,11 +47,11 @@ object ManageDependencies
 	val DefaultIvyConfigFilename = "ivysettings.xml"
 	val DefaultIvyFilename = "ivy.xml"
 	val DefaultMavenFilename = "pom.xml"
-	
+
 	private def defaultIvyFile(project: Path) = project / DefaultIvyFilename
 	private def defaultIvyConfiguration(project: Path) = project / DefaultIvyConfigFilename
 	private def defaultPOM(project: Path) = project / DefaultMavenFilename
-	
+
 	/** Configures Ivy using the provided configuration 'config' and calls 'doWithIvy'.  This method takes care of setting up and cleaning up Ivy.*/
 	private def withIvy(config: IvyConfiguration)(doWithIvy: (Ivy, ModuleDescriptor, String) => Option[String]) =
 		withIvyValue(config)( (ivy, module, default) => doWithIvy(ivy, module, default).toLeft(()) ).left.toOption
@@ -67,7 +67,7 @@ object ManageDependencies
 		val settings = new IvySettings
 		settings.setBaseDir(paths.projectDirectory.asFile)
 		log.debug("\nCreated settings...\n")
-		
+
 		/** Parses the given Maven pom 'pomFile'.*/
 		def readPom(pomFile: File) =
 			Control.trap("Could not read pom: ", log)
@@ -116,7 +116,7 @@ object ManageDependencies
 			user ++
 			Seq(DefaultMavenRepository) ++
 			(if(flags.addScalaTools) Seq(ScalaToolsReleases) else Nil)
-		
+
 		/** Configures Ivy using defaults.  This is done when no ivy-settings.xml exists. */
 		def configureDefaults(resolvers: Seq[Resolver])
 		{
@@ -155,7 +155,9 @@ object ManageDependencies
 				{
 					val defaultConf = ModuleDescriptor.DEFAULT_CONFIGURATION
 					log.warn("No readable dependency configuration found, using defaults.")
-					val moduleID = DefaultModuleDescriptor.newDefaultInstance(module)
+					val moduleID = new DefaultModuleDescriptor(module, "release", null, false)
+					moduleID.setLastModified(System.currentTimeMillis)
+					moduleID.addConfiguration(toIvyConfiguration(Configurations.Default))
 					addMainArtifact(moduleID)
 					if(defaultArtifact)
 						addDefaultArtifact(defaultConf, moduleID)
@@ -211,7 +213,7 @@ object ManageDependencies
 						log.debug("Using inline dependencies specified in Scala" + (if(dependenciesXML.isEmpty) "." else " and XML."))
 						for(parser <- parseXMLDependencies(wrapped(module, dependenciesXML), moduleID, defaultConf.name).right) yield
 						{
-							addArtifacts(moduleID, artifacts)
+							addArtifacts(moduleID, module.explicitArtifacts)
 							addDependencies(moduleID, dependencies, parser)
 							addMainArtifact(moduleID)
 							(moduleID, parser.getDefaultConf)
@@ -260,7 +262,7 @@ object ManageDependencies
 					log.debug("Not checking Scala dependencies")
 					Right(moduleAndConf)
 			}
-		
+
 		this.synchronized // Ivy is not thread-safe.  In particular, it uses a static DocumentBuilder, which is not thread-safe
 		{
 			val ivy = Ivy.newInstance(settings)
@@ -346,7 +348,7 @@ object ManageDependencies
 		def doClean(ivy: Ivy, module: ModuleDescriptor, default: String) =
 			Control.trapUnit("Could not clean cache: ", config.log)
 				{ ivy.getSettings.getRepositoryCacheManagers.foreach(_.clean()); None }
-		
+
 		withIvy(config)(doClean)
 	}
 	/** Creates a Maven pom from the given Ivy configuration*/
@@ -404,7 +406,7 @@ object ManageDependencies
 	}
 	private def addConfigurations(configurations: Iterable[String], to: { def setConfs(c: Array[String]): AnyRef }): Unit =
 		to.setConfs(configurations.toList.toArray)
-	
+
 	def install(ivyConfig: IvyConfiguration, from: String, to: String, validate: Boolean, overwrite: Boolean) =
 	{
 		def doInstall(ivy: Ivy, md: ModuleDescriptor, default: String) =
@@ -434,7 +436,7 @@ object ManageDependencies
 					val revID = module.getModuleRevisionId
 					val options = DeliverOptions.newInstance(ivy.getSettings).setStatus(status)
 					options.setConfs(getConfigurations(module, configurations))
-					
+
 					ivy.deliver(revID, revID.getRevision, deliverIvyPattern, options)
 					None
 				}
@@ -482,7 +484,7 @@ object ManageDependencies
 				}
 			}
 		}
-		
+
 		withIvy(ivyConfig)(processModule)
 	}
 	private def resolve(ivy: Ivy, updateConfig: UpdateConfiguration, module: ModuleDescriptor) =
