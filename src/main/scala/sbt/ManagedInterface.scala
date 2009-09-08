@@ -12,7 +12,10 @@ import org.apache.ivy.util.url.CredentialsStore
 sealed abstract class Manager extends NotNull
 /** This explicitly requests auto detection as a dependency manager.  It will first check for a 'pom.xml' file and if that does not exist, an 'ivy.xml' file.
 * Ivy is configured using the detected file or uses defaults.*/
-final class AutoDetectManager(val module: ModuleID) extends Manager
+final class AutoDetectManager(val module: ModuleID, val defaultArtifact: Boolean) extends Manager
+{
+	def this(module: ModuleID) = this(module, true)
+}
 /** This explicitly requests that the Maven pom 'pom' be used to determine dependencies.  An Ivy configuration file to use may be specified in
 * 'configuration', since Ivy currently cannot extract Maven repositories from a pom file. Otherwise, defaults are used.*/
 final class MavenManager(val configuration: Option[Path], val pom: Path) extends Manager
@@ -52,16 +55,17 @@ final class SimpleManager private[sbt] (val dependenciesXML: NodeSeq, val autode
 			explicitConfigurations
 }
 
-final case class ModuleID(organization: String, name: String, revision: String, configurations: Option[String], isChanging: Boolean, isTransitive: Boolean, explicitArtifacts: Seq[Artifact]) extends NotNull
+final case class ModuleID(organization: String, name: String, revision: String, configurations: Option[String], isChanging: Boolean, isTransitive: Boolean, explicitArtifacts: Seq[Artifact], extraAttributes: Map[String,String]) extends NotNull
 {
 	override def toString = organization + ":" + name + ":" + revision
 	// () required for chaining
 	def notTransitive() = intransitive()
-	def intransitive() = ModuleID(organization, name, revision, configurations, isChanging, false, explicitArtifacts)
-	def changing() = ModuleID(organization, name, revision, configurations, true, isTransitive, explicitArtifacts)
+	def intransitive() = ModuleID(organization, name, revision, configurations, isChanging, false, explicitArtifacts, extraAttributes)
+	def changing() = ModuleID(organization, name, revision, configurations, true, isTransitive, explicitArtifacts, extraAttributes)
 	def from(url: String) = artifacts(Artifact(name, new URL(url)))
 	def classifier(c: String) = artifacts(Artifact(name, c))
-	def artifacts(newArtifacts: Artifact*) = ModuleID(organization, name, revision, configurations, isChanging, isTransitive, newArtifacts ++ explicitArtifacts)
+	def artifacts(newArtifacts: Artifact*) = ModuleID(organization, name, revision, configurations, isChanging, isTransitive, newArtifacts ++ explicitArtifacts, extraAttributes)
+	def extra(attributes: (String,String)*) = ModuleID(organization, name, revision, configurations, isChanging, isTransitive, explicitArtifacts, extraAttributes ++ attributes)
 }
 object ModuleID
 {
@@ -70,6 +74,8 @@ object ModuleID
 		ModuleID(organization, name, revision, configurations, false, true)
 	def apply(organization: String, name: String, revision: String, configurations: Option[String], isChanging: Boolean, isTransitive: Boolean): ModuleID =
 		ModuleID(organization, name, revision, configurations, isChanging, isTransitive, Nil)
+	def apply(organization: String, name: String, revision: String, configurations: Option[String], isChanging: Boolean, isTransitive: Boolean, explicitArtifacts: Seq[Artifact]): ModuleID =
+		ModuleID(organization, name, revision, configurations, isChanging, isTransitive, explicitArtifacts, Map.empty)
 }
 sealed trait Resolver extends NotNull
 {
@@ -334,13 +340,19 @@ final case class Configuration(name: String, description: String, isPublic: Bool
 	override def toString = name
 }
 
-final case class Artifact(name: String, `type`: String, extension: String, classifier: Option[String], configurations: Iterable[Configuration], url: Option[URL]) extends NotNull
+final case class Artifact(name: String, `type`: String, extension: String, classifier: Option[String], configurations: Iterable[Configuration], url: Option[URL], extraAttributes: Map[String,String]) extends NotNull
+{
+	def extra(attributes: (String,String)*) = Artifact(name, `type`, extension, classifier, configurations, url, extraAttributes ++ attributes)
+}
 object Artifact
 {
 	def apply(name: String): Artifact = Artifact(name, defaultType, defaultExtension, None, Nil, None)
+	def apply(name: String, extra: Map[String,String]): Artifact = Artifact(name, defaultType, defaultExtension, None, Nil, None, extra)
 	def apply(name: String, classifier: String): Artifact = Artifact(name, defaultType, defaultExtension, Some(classifier), Nil, None)
 	def apply(name: String, `type`: String, extension: String): Artifact = Artifact(name, `type`, extension, None, Nil, None)
 	def apply(name: String, url: URL): Artifact =Artifact(name, extract(url, defaultType), extract(url, defaultExtension), None, Nil, Some(url))
+	def apply(name: String, `type`: String, extension: String, classifier: Option[String], configurations: Iterable[Configuration], url: Option[URL]): Artifact =
+		Artifact(name, `type`, extension, classifier, configurations, url, Map.empty)
 	val defaultExtension = "jar"
 	val defaultType = "jar"
 	private[this] def extract(url: URL, default: String) =

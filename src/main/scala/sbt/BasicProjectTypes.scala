@@ -279,13 +279,14 @@ trait BasicManagedProject extends ManagedProject with ReflectiveManagedProject w
 	/** The options provided to the 'update' action.  This is by default the options in 'baseUpdateOptions'.
 	* If 'manager' has any dependencies, resolvers, or inline Ivy XML (which by default happens when inline
 	* dependency management is used), it is passed as the dependency manager.*/
-	def updateOptions: Seq[ManagedOption] =
+	def updateOptions: Seq[ManagedOption] = baseUpdateOptions ++ managerOption
+	def managerOption: Seq[ManagedOption] =
 	{
 		val m = manager
 		if(m.dependencies.isEmpty && m.resolvers.isEmpty && ivyXML.isEmpty && m.artifacts.isEmpty && m.configurations.isEmpty)
-			baseUpdateOptions
+			Nil
 		else
-			LibraryManager(m) :: baseUpdateOptions
+			LibraryManager(m) :: Nil
 	}
 	def deliverOptions: Seq[ManagedOption] = updateOptions.filter { case _: CheckScalaVersion => false; case _ => true }
 	def publishOptions: Seq[ManagedOption] = deliverOptions
@@ -347,10 +348,19 @@ trait BasicManagedProject extends ManagedProject with ReflectiveManagedProject w
 	protected def deliverProjectDependencies: Iterable[ModuleID] =
 	{
 		val interDependencies = new scala.collection.mutable.ListBuffer[ModuleID]
-		dependencies.foreach(dep => dep match { case mp: ManagedProject => interDependencies += mp.projectID; case _ => () })
+		dependencies.foreach(dep => dep match { case mp: ManagedProject => interDependencies += projectModuleID(mp); case _ => () })
 		if(filterScalaJars)
 			interDependencies ++= deliverScalaDependencies
 		interDependencies.readOnly
+	}
+	protected def projectModuleID(mp: ManagedProject) =
+	{
+		val base = mp.projectID
+		val as = mp.artifacts.toSeq.toArray
+		if(as.size == 1)
+			base artifacts(as : _*)
+		else
+			base artifacts(as.filter(_.`type` != "pom") : _*)
 	}
 	protected def deliverScalaDependencies: Iterable[ModuleID] = Nil
 	protected def makePomAction = makePomTask(pomPath, deliverProjectDependencies, None, updateOptions)
@@ -542,6 +552,7 @@ trait ReflectiveProject extends ReflectiveModules with ReflectiveTasks with Refl
 /** This Project subclass is used to contain other projects as dependencies.*/
 class ParentProject(val info: ProjectInfo) extends BasicDependencyProject
 {
+	override def managerOption: Seq[ManagedOption] = LibraryManager(new AutoDetectManager(projectID, false)) :: Nil
 	def dependencies: Iterable[Project] = info.dependencies ++ subProjects.values.toList
 	/** The directories to which a project writes are listed here and is used
 	* to check a project and its dependencies for collisions.*/

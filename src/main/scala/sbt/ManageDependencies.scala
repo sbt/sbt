@@ -138,7 +138,7 @@ object ManageDependencies
 		/** Called to determine dependencies when the dependency manager is SbtManager and no inline dependencies (Scala or XML) are defined
 		* or if the manager is AutodetectManager.  It will try to read from pom.xml first and then ivy.xml if pom.xml is not found.  If neither is found,
 		* Ivy is configured with defaults unless IvyFlags.errorIfNoConfiguration is true, in which case an error is generated.*/
-		def autodetectDependencies(module: ModuleRevisionId) =
+		def autodetectDependencies(module: ModuleRevisionId, defaultArtifact: Boolean) =
 		{
 			log.debug("Autodetecting dependencies.")
 			val defaultPOMFile = defaultPOM(paths.projectDirectory).asFile
@@ -157,7 +157,8 @@ object ManageDependencies
 					log.warn("No readable dependency configuration found, using defaults.")
 					val moduleID = DefaultModuleDescriptor.newDefaultInstance(module)
 					addMainArtifact(moduleID)
-					addDefaultArtifact(defaultConf, moduleID)
+					if(defaultArtifact)
+						addDefaultArtifact(defaultConf, moduleID)
 					Right((moduleID, defaultConf))
 				}
 			}
@@ -183,7 +184,7 @@ object ManageDependencies
 				{
 					log.debug("No dependency manager explicitly specified.")
 					autodetectConfiguration()
-					autodetectDependencies(toID(adm.module))
+					autodetectDependencies(toID(adm.module), adm.defaultArtifact)
 				}
 				case sm: SbtManager =>
 				{
@@ -196,7 +197,7 @@ object ManageDependencies
 						configureDefaults(withDefaultResolvers(resolvers))
 					}
 					if(autodetect)
-						autodetectDependencies(toID(module))
+						autodetectDependencies(toID(module), true)
 					else
 					{
 						val moduleID =
@@ -280,7 +281,7 @@ object ManageDependencies
 		}
 	}
 	private def addExtraNamespaces(md: DefaultModuleDescriptor): Unit =
-		md.getExtraAttributesNamespaces.asInstanceOf[java.util.Map[String,String]].put("m", "m")
+		md.getExtraAttributesNamespaces.asInstanceOf[java.util.Map[String,String]].put("e", "http://ant.apache.org/ivy/extra")
 	/** Checks the immediate dependencies of module for dependencies on scala jars and verifies that the version on the
 	* dependencies matches scalaVersion. */
 	private def checkDependencies(module: ModuleDescriptor, scalaVersion: String, configurations: Iterable[Configuration]): Option[String] =
@@ -538,7 +539,11 @@ object ManageDependencies
 		}
 	}
 	private def extra(artifact: Artifact) =
-		artifact.classifier.map(c => wrap.Wrappers.javaMap("m:classifier" -> c)).getOrElse(null)
+	{
+		val ea = artifact.classifier match { case Some(c) => artifact.extra("e:classifier" -> c); case None => artifact }
+		javaMap(artifact.extraAttributes)
+	}
+	private def javaMap(map: Map[String,String]) = if(map.isEmpty) null else wrap.Wrappers.javaMap(map.toSeq : _*)
 	private def toURL(file: File) = file.toURI.toURL
 	/** Adds the ivy.xml main artifact. */
 	private def addMainArtifact(moduleID: DefaultModuleDescriptor)
@@ -574,7 +579,7 @@ object ManageDependencies
 	private def toID(m: ModuleID) =
 	{
 		import m._
-		ModuleRevisionId.newInstance(organization, name, revision)
+		ModuleRevisionId.newInstance(organization, name, revision, javaMap(extraAttributes))
 	}
 	private def toIvyArtifact(moduleID: ModuleDescriptor, a: Artifact, configurations: Iterable[String]): MDArtifact =
 	{
