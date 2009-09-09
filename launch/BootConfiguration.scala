@@ -41,6 +41,8 @@ private object BootConfiguration
 	/** The class name prefix used to hide the sbt launcher classes from sbt and the project definition.
 	* Note that access to xsbti classes are allowed.*/
 	val SbtBootPackage = "xsbt.boot."
+	/** The prefix for JLine resources.*/
+	val JLinePackagePath = "jline/"
 	/** The loader will check that these classes can be loaded and will assume that their presence indicates
 	* sbt and its dependencies have been downloaded.*/
 	val TestLoadSbtClasses = "xsbt.Main" :: "org.apache.ivy.Ivy" :: Nil
@@ -66,7 +68,7 @@ private object BootConfiguration
 
 	/** The Ivy pattern to use for retrieving sbt and its dependencies.  It is relative to the directory
 	* containing all jars for the requested version of scala. */
-	def sbtRetrievePattern(sbtVersion: String) = sbtDirectoryName(sbtVersion) + "/[conf]/[artifact]-[revision].[ext]"
+	def sbtRetrievePattern(sbtVersion: String) = sbtDirectoryName(sbtVersion) + "(/[component])/[artifact]-[revision].[ext]"
 	/** The Ivy pattern to use for resolving sbt and its dependencies from the Google code project.*/
 	def sbtResolverPattern(scalaVersion: String) = sbtRootBase + "[revision]/[type]s/[artifact].[ext]"
 	/** The name of the directory to retrieve sbt and its dependencies to.*/

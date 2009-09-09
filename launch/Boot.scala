@@ -11,6 +11,7 @@ object Boot
 {
 	def main(args: Array[String])
 	{
+		System.setProperty("scala.home", "") // avoid errors from mixing Scala versions in the same JVM
 		CheckProxy()
 		try { Launch(args) }
 		catch

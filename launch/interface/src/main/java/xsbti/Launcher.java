@@ -13,6 +13,7 @@ public interface Launcher extends ScalaProvider, SbtProvider
 	public ClassLoader update(String scalaVersion, String sbtVersion);
 	public MainResult run(ClassLoader sbtLoader, String mainClassName, SbtConfiguration configuration);
 
+	public File BaseDirectory();
 	public File ProjectDirectory();
 	public File BootDirectory();
 	public File PropertiesFile();

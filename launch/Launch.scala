@@ -9,7 +9,7 @@
 // satisfies requests from the main sbt for different versions of Scala for use in the build.
 
 import java.io.{File, FileFilter}
-import java.net.URLClassLoader
+import java.net.{URL, URLClassLoader}
 
 import xsbti.{Exit => IExit, Launcher, MainResult, Reboot, SbtConfiguration, SbtMain}
 
@@ -18,19 +18,19 @@ import BootConfiguration._
 import UpdateTarget.{UpdateScala, UpdateSbt}
 
 
-class Launch(projectRootDirectory: File, mainClassName: String) extends Launcher with NotNull
+class Launch(val BaseDirectory: File, mainClassName: String) extends Launcher with NotNull
 {
-	def this(projectRootDirectory: File) = this(projectRootDirectory, SbtMainClass)
+	def this(baseDirectory: File) = this(baseDirectory, SbtMainClass)
 	def this() = this(new File("."))
 
 	import Launch._
 	final def boot(args: Array[String])
 	{
-		System.setProperty("scala.home", "") // avoid errors from mixing Scala versions in the same JVM
 		checkAndLoad(args) match
 		{
-			case e: Exit => System.exit(e.code)
+			case e: IExit => System.exit(e.code)
 			case r: Reboot => boot(r.arguments())
+			case x => println("Unknown result (" + x.getClass + "): " + x); System.exit(1)
 		}
 	}
 	def checkAndLoad(args: Array[String]): MainResult =
@@ -67,6 +67,7 @@ class Launch(projectRootDirectory: File, mainClassName: String) extends Launcher
 			def scalaVersion = definitionScalaVersion
 			def sbtVersion = useSbtVersion
 			def launcher: Launcher = Launch.this
+			def baseDirectory = BaseDirectory
 		}
 		run(sbtLoader, mainClassName, configuration)
 	 }
@@ -83,7 +84,7 @@ class Launch(projectRootDirectory: File, mainClassName: String) extends Launcher
 		main.run(configuration)
 	}
 
-	final val ProjectDirectory = new File(projectRootDirectory, ProjectDirectoryName)
+	final val ProjectDirectory = new File(BaseDirectory, ProjectDirectoryName)
 	final val BootDirectory = new File(ProjectDirectory, BootDirectoryName)
 	final val PropertiesFile = new File(ProjectDirectory, BuildPropertiesName)
 
@@ -134,19 +135,21 @@ class Launch(projectRootDirectory: File, mainClassName: String) extends Launcher
 	{
 		val baseDirectory = new File(BootDirectory, baseDirectoryName(scalaVersion))
 		val mainComponentLocation = componentLocation(sbtVersion, MainSbtComponentID, scalaVersion)
-		val sbtLoader = newSbtLoader(mainComponentLocation, parentLoader)
+		val nonComponentLocation = getSbtHome(sbtVersion, scalaVersion)
+		val directories = Seq(mainComponentLocation, nonComponentLocation)
+		val sbtLoader = newSbtLoader(directories, parentLoader)
 		if(needsUpdate(sbtLoader, TestLoadSbtClasses))
 		{
 			(new Update(baseDirectory, sbtVersion, scalaVersion))(UpdateSbt)
-			val sbtLoader = newSbtLoader(mainComponentLocation, parentLoader)
+			val sbtLoader = newSbtLoader(directories, parentLoader)
 			failIfMissing(sbtLoader, TestLoadSbtClasses, "sbt " + sbtVersion)
 			sbtLoader
 		}
 		else
 			sbtLoader
 	}
-	private def newScalaLoader(dir: File) = newLoader(dir, new BootFilteredLoader(getClass.getClassLoader))
-	private def newSbtLoader(dir: File, parentLoader: ClassLoader) = newLoader(dir, parentLoader)
+	private def newScalaLoader(dir: File) = newLoader(Seq(dir), new BootFilteredLoader(getClass.getClassLoader))
+	private def newSbtLoader(directories: Seq[File], parentLoader: ClassLoader) = newLoader(directories, parentLoader)
 }
 private object Launch
 {
@@ -171,8 +174,8 @@ private object Launch
 		}
 		catch { case e: ClassNotFoundException => ifFailure }
 	}
-	private def newLoader(directory: File, parent: ClassLoader) = new URLClassLoader(getJars(directory),  parent)
-	private def getJars(directory: File) = wrapNull(directory.listFiles(JarFilter)).map(_.toURI.toURL)
+	private def newLoader(directories: Seq[File], parent: ClassLoader) = new URLClassLoader(getJars(directories),  parent)
+	private def getJars(directories: Seq[File]): Array[URL] = directories.flatMap(directory => wrapNull(directory.listFiles(JarFilter))).map(_.toURI.toURL).toArray
 	private def wrapNull(a: Array[File]): Array[File] = if(a == null) Array() else a
 }
 private object JarFilter extends FileFilter

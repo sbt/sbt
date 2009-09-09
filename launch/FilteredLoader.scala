@@ -3,7 +3,7 @@
  */
 package xsbt.boot
 
-import BootConfiguration.{IvyPackage, SbtBootPackage, ScalaPackage}
+import BootConfiguration.{IvyPackage, JLinePackagePath, SbtBootPackage, ScalaPackage}
 
 /** A custom class loader to ensure the main part of sbt doesn't load any Scala or
 * Ivy classes from the jar containing the loader. */
@@ -12,11 +12,13 @@ private[boot] final class BootFilteredLoader(parent: ClassLoader) extends ClassL
 	@throws(classOf[ClassNotFoundException])
 	override final def loadClass(className: String, resolve: Boolean): Class[_] =
 	{
+		// note that we allow xsbti.* and jline.*
 		if(className.startsWith(ScalaPackage) || className.startsWith(IvyPackage) || className.startsWith(SbtBootPackage))
 			throw new ClassNotFoundException(className)
 		else
 			super.loadClass(className, resolve)
 	}
-	override def getResources(name: String) = null
-	override def getResource(name: String) = null
+	override def getResources(name: String) = if(includeResource(name)) super.getResources(name) else null
+	override def getResource(name: String) = if(includeResource(name)) super.getResource(name) else null
+	def includeResource(name: String) = name.startsWith(JLinePackagePath)
 }
