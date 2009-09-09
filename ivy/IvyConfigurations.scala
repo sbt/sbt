@@ -9,17 +9,21 @@ import scala.xml.NodeSeq
 final class IvyPaths(val baseDirectory: File, val cacheDirectory: Option[File]) extends NotNull
 final class IvyConfiguration(val paths: IvyPaths, val resolvers: Seq[Resolver], val log: IvyLogger) extends NotNull
 
-final class ModuleConfiguration(val module: ModuleID, val dependencies: Iterable[ModuleID], val ivyXML: NodeSeq,
-	val configurations: Iterable[Configuration], val defaultConfiguration: Option[Configuration], val ivyScala: Option[IvyScala],
-	val artifacts: Iterable[Artifact], val validate: Boolean) extends NotNull
+sealed trait ModuleConfiguration extends NotNull
 {
-	def isUnconfigured = dependencies.isEmpty && ivyXML.isEmpty && configurations.isEmpty &&
-		defaultConfiguration.isEmpty && artifacts.isEmpty
+	def validate: Boolean
+	def ivyScala: Option[IvyScala]
 }
-object ModuleConfiguration
+final class IvyFileConfiguration(val file: File, val ivyScala: Option[IvyScala], val validate: Boolean) extends ModuleConfiguration
+final class PomConfiguration(val file: File, val ivyScala: Option[IvyScala], val validate: Boolean) extends ModuleConfiguration
+final class InlineConfiguration(val module: ModuleID, val dependencies: Iterable[ModuleID], val ivyXML: NodeSeq,
+	val configurations: Iterable[Configuration], val defaultConfiguration: Option[Configuration], val ivyScala: Option[IvyScala],
+	val artifacts: Iterable[Artifact], val validate: Boolean) extends ModuleConfiguration
+final class EmptyConfiguration(val module: ModuleID, val ivyScala: Option[IvyScala], val validate: Boolean) extends ModuleConfiguration
+object InlineConfiguration
 {
 	def apply(module: ModuleID, dependencies: Iterable[ModuleID], artifacts: Iterable[Artifact]) =
-		new ModuleConfiguration(module, dependencies, NodeSeq.Empty, Nil, None, None, artifacts, false)
+		new InlineConfiguration(module, dependencies, NodeSeq.Empty, Nil, None, None, artifacts, false)
 	def configurations(explicitConfigurations: Iterable[Configuration], defaultConfiguration: Option[Configuration]) =
 		if(explicitConfigurations.isEmpty)
 		{
@@ -32,4 +36,25 @@ object ModuleConfiguration
 		}
 		else
 			explicitConfigurations
+}
+object ModuleConfiguration
+{
+	def apply(ivyScala: Option[IvyScala], validate: Boolean, module: => ModuleID)(baseDirectory: File, log: IvyLogger) =
+	{
+		log.debug("Autodetecting dependencies.")
+		val defaultPOMFile = IvySbt.defaultPOM(baseDirectory)
+		if(defaultPOMFile.canRead)
+			new PomConfiguration(defaultPOMFile, ivyScala, validate)
+		else
+		{
+			val defaultIvy = IvySbt.defaultIvyFile(baseDirectory)
+			if(defaultIvy.canRead)
+				new IvyFileConfiguration(defaultIvy, ivyScala, validate)
+			else
+			{
+				log.warn("No dependency configuration found, using defaults.")
+				new EmptyConfiguration(module, ivyScala, validate)
+			}
+		}
+	}
 }

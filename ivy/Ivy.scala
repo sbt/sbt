@@ -80,21 +80,24 @@ final class IvySbt(configuration: IvyConfiguration)
 		def withModule[T](f: (Ivy,DefaultModuleDescriptor,String) => T): T =
 			withIvy[T] { ivy => f(ivy, moduleDescriptor, defaultConfig) }
 
-		import moduleConfiguration._
 		private lazy val (moduleDescriptor: DefaultModuleDescriptor, defaultConfig: String) =
 		{
 			val (baseModule, baseConfiguration) =
-				if(isUnconfigured)
-					autodetectDependencies(IvySbt.toID(module))
-				else
-					configureModule
-			ivyScala.foreach(IvyScala.checkModule(baseModule, baseConfiguration))
-			baseModule.getExtraAttributesNamespaces.asInstanceOf[java.util.Map[String,String]].put("m", "m")
+				moduleConfiguration match
+				{
+					case ic: InlineConfiguration => configureInline(ic)
+					case ec: EmptyConfiguration => configureEmpty(ec.module)
+					case pc: PomConfiguration => readPom(pc.file, pc.validate)
+					case ifc: IvyFileConfiguration => readIvyFile(ifc.file, ifc.validate)
+				}
+			moduleConfiguration.ivyScala.foreach(IvyScala.checkModule(baseModule, baseConfiguration))
+			baseModule.getExtraAttributesNamespaces.asInstanceOf[java.util.Map[String,String]].put("e", "http://ant.apache.org/ivy/extra")
 			(baseModule, baseConfiguration)
 		}
-		private def configureModule =
+		private def configureInline(ic: InlineConfiguration) =
 		{
-			val moduleID = newConfiguredModuleID
+			import ic._
+			val moduleID = newConfiguredModuleID(module, configurations)
 			val defaultConf = defaultConfiguration getOrElse Configurations.config(ModuleDescriptor.DEFAULT_CONFIGURATION)
 			log.debug("Using inline dependencies specified in Scala" + (if(ivyXML.isEmpty) "." else " and XML."))
 
@@ -105,7 +108,7 @@ final class IvySbt(configuration: IvyConfiguration)
 			IvySbt.addMainArtifact(moduleID)
 			(moduleID, parser.getDefaultConf)
 		}
-		private def newConfiguredModuleID =
+		private def newConfiguredModuleID(module: ModuleID, configurations: Iterable[Configuration]) =
 		{
 			val mod = new DefaultModuleDescriptor(IvySbt.toID(module), "release", null, false)
 			mod.setLastModified(System.currentTimeMillis)
@@ -114,13 +117,13 @@ final class IvySbt(configuration: IvyConfiguration)
 		}
 
 		/** Parses the given Maven pom 'pomFile'.*/
-		private def readPom(pomFile: File) =
+		private def readPom(pomFile: File, validate: Boolean) =
 		{
 			val md = PomModuleDescriptorParser.getInstance.parseDescriptor(settings, toURL(pomFile), validate)
 			(IvySbt.toDefaultModuleDescriptor(md), "compile")
 		}
 		/** Parses the given Ivy file 'ivyFile'.*/
-		private def readIvyFile(ivyFile: File) =
+		private def readIvyFile(ivyFile: File, validate: Boolean) =
 		{
 			val url = toURL(ivyFile)
 			val parser = new CustomXmlParser.CustomParser(settings)
@@ -131,30 +134,14 @@ final class IvySbt(configuration: IvyConfiguration)
 			(IvySbt.toDefaultModuleDescriptor(md), parser.getDefaultConf)
 		}
 		private def toURL(file: File) = file.toURI.toURL
-		/** Called to determine dependencies when the dependency manager is SbtManager and no inline dependencies (Scala or XML)
-		* are defined.  It will try to read from pom.xml first and then ivy.xml if pom.xml is not found.  If neither is found,
-		* Ivy is configured with defaults.*/
-		private def autodetectDependencies(module: ModuleRevisionId) =
+		private def configureEmpty(module: ModuleID) =
 		{
-			log.debug("Autodetecting dependencies.")
-			val defaultPOMFile = IvySbt.defaultPOM(paths.baseDirectory)
-			if(defaultPOMFile.canRead)
-				readPom(defaultPOMFile)
-			else
-			{
-				val defaultIvy = IvySbt.defaultIvyFile(paths.baseDirectory)
-				if(defaultIvy.canRead)
-					readIvyFile(defaultIvy)
-				else
-				{
-					val defaultConf = ModuleDescriptor.DEFAULT_CONFIGURATION
-					log.warn("No dependency configuration found, using defaults.")
-					val moduleID = DefaultModuleDescriptor.newDefaultInstance(module)
-					IvySbt.addMainArtifact(moduleID)
-					IvySbt.addDefaultArtifact(defaultConf, moduleID)
-					(moduleID, defaultConf)
-				}
-			}
+			val defaultConf = ModuleDescriptor.DEFAULT_CONFIGURATION
+			val moduleID = new DefaultModuleDescriptor(IvySbt.toID(module), "release", null, false)
+			moduleID.setLastModified(System.currentTimeMillis)
+			moduleID.addConfiguration(IvySbt.toIvyConfiguration(Configurations.Default))
+			IvySbt.addMainArtifact(moduleID)
+			(moduleID, defaultConf)
 		}
 	}
 }
@@ -165,9 +152,9 @@ private object IvySbt
 	val DefaultIvyFilename = "ivy.xml"
 	val DefaultMavenFilename = "pom.xml"
 
-	private def defaultIvyFile(project: File) = new File(project, DefaultIvyFilename)
-	private def defaultIvyConfiguration(project: File) = new File(project, DefaultIvyConfigFilename)
-	private def defaultPOM(project: File) = new File(project, DefaultMavenFilename)
+	def defaultIvyFile(project: File) = new File(project, DefaultIvyFilename)
+	def defaultIvyConfiguration(project: File) = new File(project, DefaultIvyConfigFilename)
+	def defaultPOM(project: File) = new File(project, DefaultMavenFilename)
 
 	/** Sets the resolvers for 'settings' to 'resolvers'.  This is done by creating a new chain and making it the default. */
 	private def setResolvers(settings: IvySettings, resolvers: Seq[Resolver], log: IvyLogger)
@@ -190,7 +177,7 @@ private object IvySbt
 		manager.setChangingPattern(".*-SNAPSHOT");
 		settings.setDefaultRepositoryCacheManager(manager)
 	}
-	private def toIvyConfiguration(configuration: Configuration) =
+	def toIvyConfiguration(configuration: Configuration) =
 	{
 		import org.apache.ivy.core.module.descriptor.{Configuration => IvyConfig}
 		import IvyConfig.Visibility._
@@ -207,10 +194,10 @@ private object IvySbt
 		moduleID.check()
 	}
 	/** Converts the given sbt module id into an Ivy ModuleRevisionId.*/
-	private[xsbt] def toID(m: ModuleID) =
+	def toID(m: ModuleID) =
 	{
 		import m._
-		ModuleRevisionId.newInstance(organization, name, revision)
+		ModuleRevisionId.newInstance(organization, name, revision, javaMap(extraAttributes))
 	}
 	private def toIvyArtifact(moduleID: ModuleDescriptor, a: Artifact, configurations: Iterable[String]): MDArtifact =
 	{
@@ -218,7 +205,19 @@ private object IvySbt
 		configurations.foreach(artifact.addConfiguration)
 		artifact
 	}
-	private def extra(artifact: Artifact) = artifact.classifier.map(c => javaMap("m:classifier" -> c)).getOrElse(null)
+	private def extra(artifact: Artifact) =
+	{
+		val ea = artifact.classifier match { case Some(c) => artifact.extra("e:classifier" -> c); case None => artifact }
+		javaMap(artifact.extraAttributes)
+	}
+	private def javaMap(map: Map[String,String]) =
+		if(map.isEmpty) null
+		else
+		{
+			val wrap = scala.collection.jcl.Map(new java.util.HashMap[String,String])
+			wrap ++= map
+			wrap.underlying
+		}
 
 	private object javaMap
 	{
