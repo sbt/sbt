@@ -1,0 +1,23 @@
+> update
+[failure]
+> clean-lib
+[success]
+$ copy-file changes/ivysettings.xml sub/ivysettings.xml
+[success]
+
+> update
+[success]
+> clean-lib
+[success]
+
+$ delete sub/ivysettings.xml
+[success]
+> update
+[failure]
+> clean-lib
+[success]
+
+$ copy-file changes/ivysettings.xml ivysettings.xml
+[success]
+> update
+[success]
