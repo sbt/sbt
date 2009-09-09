@@ -49,7 +49,7 @@ object ManageDependencies
 	val DefaultMavenFilename = "pom.xml"
 
 	private def defaultIvyFile(project: Path) = project / DefaultIvyFilename
-	private def defaultIvyConfiguration(project: Path) = project / DefaultIvyConfigFilename
+	private def defaultIvyConfiguration(project: File) = new File(project, DefaultIvyConfigFilename)
 	private def defaultPOM(project: Path) = project / DefaultMavenFilename
 
 	/** Configures Ivy using the provided configuration 'config' and calls 'doWithIvy'.  This method takes care of setting up and cleaning up Ivy.*/
@@ -129,10 +129,19 @@ object ManageDependencies
 		def autodetectConfiguration()
 		{
 			log.debug("Autodetecting configuration.")
-			val defaultIvyConfigFile = defaultIvyConfiguration(paths.projectDirectory).asFile
-			if(defaultIvyConfigFile.canRead)
-				settings.load(defaultIvyConfigFile)
-			else
+			def autodetect(dir: File): Boolean =
+				(dir != null) &&
+				{
+					val defaultIvyConfigFile = defaultIvyConfiguration(dir)
+					if(defaultIvyConfigFile.canRead)
+					{
+						settings.load(defaultIvyConfigFile)
+						true
+					}
+					else
+						autodetect(dir.getParentFile)
+				}
+			if(!autodetect(paths.projectDirectory.asFile))
 				configureDefaults(defaultResolvers)
 		}
 		/** Called to determine dependencies when the dependency manager is SbtManager and no inline dependencies (Scala or XML) are defined
