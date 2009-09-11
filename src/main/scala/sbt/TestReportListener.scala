@@ -168,7 +168,7 @@ final case class SpecificationReportEvent(successes: Int, failures: Int, errors:
 {
 	def result = if(errors > 0) Some(Result.Error) else if(failures > 0) Some(Result.Failed) else Some(Result.Passed)
 }
-final case class SystemReportEvent(description: String, verb: String, skippedSus:Option[Throwable], literateDescription: Option[Seq[String]], examples: Seq[ExampleReportEvent]) extends SpecsEvent { def result = None }
+final case class SystemReportEvent(description: String, verb: String, skipped: Seq[Throwable], literateDescription: Option[Seq[String]], examples: Seq[ExampleReportEvent]) extends SpecsEvent { def result = None }
 final case class ExampleReportEvent(description: String, errors: Seq[Throwable], failures: Seq[RuntimeException], skipped: Seq[RuntimeException], subExamples: Seq[ExampleReportEvent]) extends SpecsEvent { def result = None }
 
 trait EventOutput[E <: TestEvent]
@@ -240,7 +240,8 @@ class SpecsOutput(val log: Logger) extends EventOutput[SpecsEvent]
 	}
 	private def reportSystem(sus: SystemReportEvent, padding: String)
 	{
-		log.info(padding + sus.description + " " + sus.verb + sus.skippedSus.map(" (skipped: " + _.getMessage + ")").getOrElse(""))
+		val skipped = if(sus.skipped.isEmpty) "" else sus.skipped.map(_.getMessage).mkString(" (skipped: ", ", ", ")")
+		log.info(padding + sus.description + " " + sus.verb + skipped)
 		for(description <- sus.literateDescription)
 			log.info(padding + description.mkString)
 		reportExamples(sus.examples, padding)

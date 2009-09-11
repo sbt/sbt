@@ -171,8 +171,17 @@ private[sbt] class SpecsRunner(val log: Logger, val listeners: Seq[TestReportLis
 				description.desc.map(_.text)  // LiterateDescription
 			}
 		}
-
-		SystemReportEvent(sus.description, sus.verb, sus.skippedSus, format, reportExamples(sus.examples))
+		// these are for 1.6 compatibility, which removed skippedSus (skipped still exists) and examples (moved to specification)
+		def skipped(sus: Sus) = classOf[Sus].getMethod("skipped").invoke(sus).asInstanceOf[Seq[Throwable]]
+		def examples(sus: Sus) =
+		{
+			try { sus.examples } // we compile against specs 1.4.x, which has examples directly on Sus  so this compiles
+			catch { case _: NoSuchMethodError =>  // It fails at runtime for specs 1.6 because examples is now on BaseSpecification
+				val spec = classOf[Sus].getMethod("specification").invoke(sus)
+				spec.getClass.getMethod("examples").invoke(spec).asInstanceOf[List[Example]]
+			}
+		}
+		SystemReportEvent(sus.description, sus.verb, skipped(sus), format, reportExamples(examples(sus)))
 	}
 	private def reportExamples(examples: Seq[Example]): Seq[ExampleReportEvent] =
 	{
@@ -181,6 +190,11 @@ private[sbt] class SpecsRunner(val log: Logger, val listeners: Seq[TestReportLis
 	}
 	private def reportExample(example: Example): ExampleReportEvent =
 	{
-		ExampleReportEvent(example.description, example.errors, example.failures, example.skipped, reportExamples(example.subExamples))
+		def examples(example: Example) =
+			try { example.subExamples } // we compile against specs 1.4.x, which has subExamples defined on Example, so this compiles
+			catch { case _ : NoSuchMethodError =>  // It fails at runtime for specs 1.6 because examples is the new method
+				classOf[Example].getMethod("examples").invoke(example).asInstanceOf[Seq[Example]]
+			}
+		ExampleReportEvent(example.description, example.errors, example.failures, example.skipped, reportExamples(examples(example)))
 	}
 }
