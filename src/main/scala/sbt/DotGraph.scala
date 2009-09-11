@@ -32,10 +32,10 @@ object DotGraph
 		def generateGraph[Key, Value](fileName: String, graphName: String, graph: Iterable[(Key, scala.collection.Set[Value])],
 			keyToString: Key => String, valueToString: Value => String) =
 		{
-			import scala.collection.mutable.{HashMap, MultiMap, Set}
-			val mappedGraph = new HashMap[String, Set[String]] with MultiMap[String, String]
+			import scala.collection.mutable.{HashMap, HashSet}
+			val mappedGraph = new HashMap[String, HashSet[String]]
 			for( (key, values) <- graph; keyString = keyToString(key); value <- values)
-				mappedGraph.add(keyString, valueToString(value))
+				mappedGraph.getOrElseUpdate(keyString, new HashSet[String]) += valueToString(value)
 
 			FileUtilities.write(new File(outputDir, fileName), log) { (writer: Writer) =>
 			
