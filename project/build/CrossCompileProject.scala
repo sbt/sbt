@@ -15,6 +15,7 @@ abstract class CrossCompileProject extends BasicScalaProject with MavenStyleScal
 	private val version2_7_3 = "2.7.3"
 	private val version2_7_4 = "2.7.4"
 	private val version2_7_5 = "2.7.5"
+	private val version2_7_6 = "2.7.6"
 	private val version2_8_0 = "2.8.0-SNAPSHOT"//"2.8.0.r18462-b20090811081019"
 	private val base = "base"
 
@@ -23,12 +24,13 @@ abstract class CrossCompileProject extends BasicScalaProject with MavenStyleScal
 	private val conf_2_7_3 = config(version2_7_3)
 	private val conf_2_7_4 = config(version2_7_4)
 	private val conf_2_7_5 = config(version2_7_5)
+	private val conf_2_7_6 = config(version2_7_6)
 	private val conf_2_8_0 = config(version2_8_0)
 	private val conf_base = config(base)
 	// the list of all configurations cross-compile supports
-	private val allConfigurations = conf_2_7_2 :: conf_2_7_3 :: conf_2_7_4 :: conf_2_7_5 :: conf_2_8_0 :: Nil
+	private val allConfigurations = conf_2_7_2 :: conf_2_7_3 :: conf_2_7_4 :: conf_2_7_5 :: conf_2_7_6 :: conf_2_8_0 :: Nil
 	// the list of configurations to actually build against
-	private val buildConfigurations = allConfigurations//conf_2_8_0 :: Nil//conf_2_7_2 :: conf_2_7_3 :: conf_2_7_4 :: conf_2_7_5 :: Nil
+	private val buildConfigurations = allConfigurations//conf_2_7_2 :: conf_2_8_0 :: Nil//conf_2_7_2 :: conf_2_7_3 :: conf_2_7_4 :: conf_2_7_5 :: Nil
 	// the configuration to use for normal development (when cross-building is not done)
 	private def developmentVersion = buildConfigurations.first
 	
@@ -65,11 +67,12 @@ abstract class CrossCompileProject extends BasicScalaProject with MavenStyleScal
 			<dependency org="com.jcraft" name="jsch" rev="0.1.31" transitive="false" conf={depConf(conf_base)}/>
 			<dependency org="org.mortbay.jetty" name="jetty" rev="6.1.14" transitive="true" conf={depConf(optional(conf_base))}/>
 
-			<!-- the dependencies that are different dependeding on the version of Scala -->
+			<!-- the dependencies that are different depending on the version of Scala -->
 			{ variableDependencies(conf_2_7_2, /*ScalaTest*/"0.9.3", /*Specs*/"1.4.0", false) }
 			{ variableDependencies(conf_2_7_3, /*ScalaTest*/"0.9.4", /*Specs*/"1.4.3", true) }
 			{ variableDependencies(conf_2_7_4, /*ScalaTest*/"0.9.5", /*Specs*/"1.4.3", true) }
 			{ variableDependencies(conf_2_7_5, /*ScalaTest*/"0.9.5", /*Specs*/"1.4.3", true) }
+			{ variableDependencies(conf_2_7_6, /*ScalaTest*/"0.9.5", /*Specs*/"1.4.3", true) }
 			{ variableDependencies(conf_2_8_0, /*ScalaTest*/"0.9.5", /*Specs*/"1.4.3", true) }
 		</dependencies>)
 
