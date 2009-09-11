@@ -64,7 +64,7 @@ final case class ModuleID(organization: String, name: String, revision: String, 
 	def from(url: String) = artifacts(Artifact(name, new URL(url)))
 	def classifier(c: String) = artifacts(Artifact(name, c))
 	def artifacts(newArtifacts: Artifact*) = ModuleID(organization, name, revision, configurations, isChanging, isTransitive, newArtifacts ++ explicitArtifacts, extraAttributes)
-	def extra(attributes: (String,String)*) = ModuleID(organization, name, revision, configurations, isChanging, isTransitive, explicitArtifacts, extraAttributes ++ attributes)
+	def extra(attributes: (String,String)*) = ModuleID(organization, name, revision, configurations, isChanging, isTransitive, explicitArtifacts, extraAttributes ++ ModuleID.checkE(attributes))
 }
 object ModuleID
 {
@@ -75,6 +75,10 @@ object ModuleID
 		ModuleID(organization, name, revision, configurations, isChanging, isTransitive, Nil)
 	def apply(organization: String, name: String, revision: String, configurations: Option[String], isChanging: Boolean, isTransitive: Boolean, explicitArtifacts: Seq[Artifact]): ModuleID =
 		ModuleID(organization, name, revision, configurations, isChanging, isTransitive, explicitArtifacts, Map.empty)
+
+	def checkE(attributes: Seq[(String, String)]) =
+		for ( (key, value) <- attributes) yield
+			if(key.startsWith("e:")) (key, value) else ("e:" + key, value)
 }
 sealed trait Resolver extends NotNull
 {
