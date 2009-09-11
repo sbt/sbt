@@ -6,7 +6,7 @@ import sbt._
 import java.io.File
 import java.nio.charset.Charset
 
-class InstallerProject(info: ProjectInfo) extends ParentProject(info)
+class InstallerProject(info: ProjectInfo) extends ParentProject(info) with NoPublish
 {
 	lazy val installExtractor: InstallExtractProject = project("extract", "Installer Extractor", new InstallExtractProject(_, installPlugin))
 	lazy val installPlugin: InstallPluginProject = project("plugin", "Installer Plugin", new InstallPluginProject(_, installExtractor), installExtractor)
@@ -24,12 +24,15 @@ protected class InstallPluginProject(info: ProjectInfo, extract: => InstallExtra
 	val publishTo = "Scala Tools Nexus" at "http://nexus.scala-tools.org/content/repositories/releases/"
 	Credentials(Path.fromFile(System.getProperty("user.home")) / ".ivy2" / ".credentials", log)
 }
-protected class InstallExtractProject(info: ProjectInfo, pluginProject: => InstallPluginProject) extends DefaultProject(info)
+trait NoPublish extends BasicManagedProject
 {
 	override def publishLocalAction = publishAction
 	override def deliverAction = publishAction
 	override def deliverLocalAction = publishAction
 	override def publishAction = task {None}
+}
+protected class InstallExtractProject(info: ProjectInfo, pluginProject: => InstallPluginProject) extends DefaultProject(info) with NoPublish
+{
 	override def unmanagedClasspath = super.unmanagedClasspath +++ Path.lazyPathFinder(Path.fromFile(FileUtilities.sbtJar) :: Nil)
 	private lazy val plugin = pluginProject
 	val mainClassName = "sbt.extract.Main"
