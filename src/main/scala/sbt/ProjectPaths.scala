@@ -32,7 +32,8 @@ trait ScalaPaths extends PackagePaths
 	def testAnalysisPath: Path
 	def mainDocPath: Path
 	def testDocPath: Path
-	def graphPath: Path
+	def graphSourcesPath: Path
+	def graphPackagesPath: Path
 	def mainResourcesOutputPath: Path
 	def testResourcesOutputPath: Path
 
@@ -146,6 +147,8 @@ trait MavenStyleScalaPaths extends BasicScalaPaths with BasicPackagePaths
 	
 	def docPath = outputPath / docDirectoryName
 	def graphPath = outputPath / graphDirectoryName
+	def graphPackagesPath = graphPath / "packages"
+	def graphSourcesPath = graphPath / "sources"
 		
 	/** These are the directories that are created when a user makes a new project from sbt.*/
 	protected def directoriesToCreate: List[Path] =

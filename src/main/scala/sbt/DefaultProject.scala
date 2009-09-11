@@ -260,7 +260,8 @@ abstract class BasicScalaProject extends ScalaProject with BasicDependencyProjec
 
 	protected def docAllAction = (doc && docTest) describedAs DocAllDescription
 	protected def packageAllAction = task { None } dependsOn(`package`, packageTest, packageSrc, packageTestSrc, packageDocs) describedAs PackageAllDescription
-	protected def graphAction = graphTask(graphPath, mainCompileConditional.analysis).dependsOn(compile)
+	protected def graphSourcesAction = graphSourcesTask(graphSourcesPath, mainSourceRoots, mainCompileConditional.analysis).dependsOn(compile)
+	protected def graphPackagesAction = graphPackagesTask(graphPackagesPath, mainSourceRoots, mainCompileConditional.analysis).dependsOn(compile)
 	protected def incrementVersionAction = task { incrementVersionNumber(); None } describedAs IncrementVersionDescription
 	protected def releaseAction = (test && packageAll && incrementVersion) describedAs ReleaseDescription
 
@@ -284,7 +285,8 @@ abstract class BasicScalaProject extends ScalaProject with BasicDependencyProjec
 	lazy val packageProject = packageProjectAction
 	lazy val docAll = docAllAction
 	lazy val packageAll = packageAllAction
-	lazy val graph = graphAction
+	lazy val graphSrc = graphSourcesAction
+	lazy val graphPkg = graphPackagesAction
 	lazy val incrementVersion = incrementVersionAction
 	lazy val release = releaseAction
 	lazy val copyResources = copyResourcesAction
