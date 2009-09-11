@@ -51,7 +51,13 @@ object Fork
 	final class ForkJava(commandName: String) extends NotNull
 	{
 		def apply(javaHome: Option[File], options: Seq[String], log: Logger): Int =
-			apply(javaHome, options, None, Map.empty, BufferedOutput(log))
+			apply(javaHome, options, BufferedOutput(log))
+		def apply(javaHome: Option[File], options: Seq[String], outputStrategy: OutputStrategy): Int =
+			apply(javaHome, options, None, outputStrategy)
+		def apply(javaHome: Option[File], options: Seq[String], workingDirectory: Option[File], log: Logger): Int =
+			apply(javaHome, options, workingDirectory, BufferedOutput(log))
+		def apply(javaHome: Option[File], options: Seq[String], workingDirectory: Option[File], outputStrategy: OutputStrategy): Int =
+			apply(javaHome, options, workingDirectory, Map.empty, outputStrategy)
 		def apply(javaHome: Option[File], options: Seq[String], workingDirectory: Option[File], env: Map[String, String], outputStrategy: OutputStrategy): Int =
 		{
 			val executable = javaCommand(javaHome, commandName).getAbsolutePath
