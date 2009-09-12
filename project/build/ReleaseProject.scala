@@ -53,7 +53,6 @@ trait ReleaseProject extends ExecProject
 	def ivyLocalPath = Path.userHome / ".ivy2" / "local" / "sbt" / "simple-build-tool" / version.toString
 	def manualTasks =
 		("Upload launcher jar: " + boot.outputJar.absolutePath) ::
-		"Update and upload documentation" ::
 		"Update, build, check and commit Hello Lift example" ::
 		Nil
 
