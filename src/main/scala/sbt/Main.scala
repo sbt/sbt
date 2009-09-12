@@ -585,7 +585,7 @@ object Main
 	private def compileContinuously(project: Project) = executeContinuously(project, "test-compile")
 	private def executeContinuously(project: Project, action: String)
 	{
-		def shouldTerminate: Boolean = (System.in.available > 0) && project.terminateWatch(System.in.read()) || shouldTerminate
+		def shouldTerminate: Boolean = (System.in.available > 0) && (project.terminateWatch(System.in.read()) || shouldTerminate)
 		if(checkAction(project, action))
 		{
 			SourceModificationWatch.watchUntil(project, ContinuousCompilePollDelaySeconds)(shouldTerminate)
