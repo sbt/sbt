@@ -14,7 +14,8 @@ protected/* removes the ambiguity as to which project is the entry point by maki
 	val proguardConfigurationPath: Path = outputPath / "proguard.pro"
 	lazy val outputJar: Path = rootProject.outputPath / (baseName + "-" + version + ".jar")
 	def rootProjectDirectory = rootProject.info.projectPath
-	
+
+	override lazy val release = task { None }
 	override def mainClass = Some(mainClassName)
 	override def defaultJarBaseName = baseName + "-" + version.toString
 	

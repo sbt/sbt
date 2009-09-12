@@ -5,7 +5,7 @@ import sbt._
 
 import java.io.File
 
-class SbtProject(info: ProjectInfo) extends ParentProject(info)
+class SbtProject(info: ProjectInfo) extends ParentProject(info) with ReleaseProject
 {
 	// Launcher sub project.
 	lazy val boot = project("boot", "Simple Build Tool Loader", new LoaderProject(_))
@@ -33,4 +33,5 @@ protected class MainProject(val info: ProjectInfo) extends CrossCompileProject w
 	override def mainClass = Some("sbt.Main")
 	override def testOptions = ExcludeTests("sbt.ReflectiveSpecification" :: "sbt.ProcessSpecification" :: Nil) :: super.testOptions.toList
 	override def scriptedDependencies = testCompile :: `package` :: Nil
+	override lazy val release = task { None }
 }

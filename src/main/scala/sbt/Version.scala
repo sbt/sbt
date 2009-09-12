@@ -16,6 +16,7 @@ case class BasicVersion(major: Int, minor: Option[Int], micro: Option[Int], extr
 	def incrementMicro = BasicVersion(major, minor orElse Some(0), increment(micro), extra)
 	def incrementMinor = BasicVersion(major, increment(minor), micro, extra)
 	def incrementMajor = BasicVersion(major+1, minor, micro, extra)
+	def withExtra(newExtra: Option[String]) = BasicVersion(major, minor, micro, newExtra)
 	
 	override def toString = major +
 		minor.map(minorI => "." + minorI + micro.map(microI => "." + microI).getOrElse("")).getOrElse("") +
