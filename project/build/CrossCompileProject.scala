@@ -33,15 +33,15 @@ abstract class CrossCompileProject extends BasicScalaProject with MavenStyleScal
 	private val buildConfigurations = allConfigurations//conf_2_7_2 :: conf_2_8_0 :: Nil//conf_2_7_2 :: conf_2_7_3 :: conf_2_7_4 :: conf_2_7_5 :: Nil
 	// the configuration to use for normal development (when cross-building is not done)
 	private def developmentVersion = buildConfigurations.first
-	
+
 	/* Methods to derive the configuration name from the base name 'v'.*/
 	private def optional(v: Configuration) = config("optional-" + v.toString)
 	private def scalac(v: Configuration) = config("scalac-" + v.toString)
 	private def sbt(v: Configuration) = config("sbt_" + v.toString)
 	private def depConf(v: Configuration) = v.toString + "->default"
-	
+
 	// =========== Cross-compilation across scala versions ===========
-	
+
 	// The dependencies that should go in each configuration are:
 	//   base                             Required dependencies that are the same across all scala versions.
 	//   <version>                  Required dependencies to use with Scala <version>
@@ -123,14 +123,14 @@ abstract class CrossCompileProject extends BasicScalaProject with MavenStyleScal
 	}
 	private def scalaDependency(name: String, scalaVersion: Configuration) =
 		<dependency org="org.scala-lang" name={name} rev={scalaVersion.toString} conf={depConf(scalac(scalaVersion))}/>
-	
+
 	/** Creates a comment containing the version of Scala*/
 	private def scalaComment(scalaVersion: Configuration) = scala.xml.Comment("Scala " + scalaVersion)
 	/** Creates a dependency element for a test.  See 'testOrg' for a description of uniformTestOrg.*/
 
 	private def testDependency(name: String, version: String, uniformTestOrg: Boolean, baseConf: Configuration) =
 		<dependency org={testOrg(name, uniformTestOrg)} name={name} rev={version} transitive="false" conf={depConf(optional(baseConf))}/>
-		
+
 	/** Returns the organization for the given test library.  If uniform is true,
 	* the 'org.scala-tools.testing' organization is used.  Otherwise, 'org.' is prefixed to the module name.*/
 	private def testOrg(name: String, uniform: Boolean) =
@@ -140,7 +140,7 @@ abstract class CrossCompileProject extends BasicScalaProject with MavenStyleScal
 	/** Disable filtering Scala jars from dependency management, because we need them and are putting them
 	* in custom configurations and are using them in a separate process than sbt runs in.*/
 	override def filterScalaJars = false
-	
+
 	/** The lib directory is now only for building using the 'build' script.*/
 	override def unmanagedClasspath = path("ignore_lib_directory")
 	/** When cross-compiling, replace mainCompilePath with the classes directory for the version being compiled.*/
@@ -149,10 +149,10 @@ abstract class CrossCompileProject extends BasicScalaProject with MavenStyleScal
 			super.fullUnmanagedClasspath(config)
 		else
 			classesPath(config) +++ mainResourcesPath
-	
+
 	// include the optional-<version> dependencies as well as the ones common across all scala versions
 	def optionalClasspath(version: Configuration) = fullClasspath(optional(version)) +++ super.optionalClasspath
-	
+
 	private val CompilerMainClass = "scala.tools.nsc.Main"
 	// use a publish configuration that publishes the 'base' + all <version> configurations (base is required because
 	//   the <version> configurations extend it)
@@ -194,17 +194,20 @@ abstract class CrossCompileProject extends BasicScalaProject with MavenStyleScal
 			for(err <- setupResult) log.error(err)
 			// the classpath containing the scalac compiler
 			val compilerClasspath = concatPaths(fullClasspath(scalac(version)))
-			
+
 			// The libraries to compile sbt against
 			val classpath = fullClasspath(version) +++ optionalClasspath(version)
 			val sources: List[String] = pathListStrings(filteredSources)
 			val compilerOptions = List("-cp", concatPaths(classpath), "-d", classes.toString)
 			val compilerArguments: List[String] = compilerOptions ::: sources
-			
+
 			// the compiler classpath has to be appended to the boot classpath to work properly
 			val allArguments = "-Xmx512M" :: ("-Xbootclasspath/a:" + compilerClasspath) :: CompilerMainClass :: compilerArguments
 			log.debug("Running external compiler with command: java " + allArguments.mkString(" "))
+			val start = System.currentTimeMillis
 			val exitValue = Process("java", allArguments) ! log
+			val stop = System.currentTimeMillis
+			log.info("Compiled sbt with Scala " + version.name + " in " + ((stop-start)/1000.0) + " s")
 			if(exitValue == 0)
 				None
 			else

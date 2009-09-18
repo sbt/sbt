@@ -75,13 +75,13 @@ trait ReleaseProject extends ExecProject
 
 	lazy val nextVersion =  (incrementVersions && commitProperties) dependsOn(releaseChecks)
 	lazy val incrementVersions = task { incrementVersionNumbers(); None }
-	def incrementVersionNumbers(): Unit = 
+	def incrementVersionNumbers(): Unit =
 		for( v <- projectVersion)
 		{
 			sbtVersion() = v.toString
 			val incremented = v.asInstanceOf[BasicVersion].incrementMicro // BasicVersion checked by releaseChecks
 			import incremented._
-			val newVersion = BasicVersion(major, minor, micro, Some("-SNAPSHOT"))
+			val newVersion = BasicVersion(major, minor, micro, Some("SNAPSHOT"))
 			log.info("Changing version to " + newVersion)
 			projectVersion() = newVersion
 			saveEnvironment
@@ -89,7 +89,7 @@ trait ReleaseProject extends ExecProject
 }
 
 package sbt {
-	object ProcessXML { 
+	object ProcessXML {
 		implicit def elemToPB(command: scala.xml.Elem): ProcessBuilder =
 			impl.CommandParser.parse(command.text.trim).fold(error, Function.tupled(Process.apply))
 	}
