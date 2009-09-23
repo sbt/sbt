@@ -47,7 +47,7 @@ private final class Update(bootDirectory: File, sbtVersion: String, scalaVersion
 		bootDirectory.mkdirs
 		new PrintWriter(new FileWriter(logFile))
 	}
-	
+
 	/** The main entry point of this class for use by the Update module.  It runs Ivy */
 	private def update()
 	{
@@ -179,7 +179,7 @@ private final class Update(bootDirectory: File, sbtVersion: String, scalaVersion
 				newDefault.add(sbtResolver(scalaVersion))
 			case UpdateScala =>
 				newDefault.add(mavenResolver("Scala-Tools Maven2 Repository", "http://scala-tools.org/repo-releases"))
-				newDefault.add(mavenResolver("Scala-Tools Maven2 Snapshots Repository", "http://scala-tools.org/repo-snapshots"))
+				newDefault.add(scalaSnapshots(scalaVersion))
 		}
 		onDefaultRepositoryCacheManager(settings)(_.setUseOrigin(true))
 		settings.addResolver(newDefault)
@@ -209,6 +209,23 @@ private final class Update(bootDirectory: File, sbtVersion: String, scalaVersion
 	{
 		val resolver = defaultMavenResolver(name)
 		resolver.setRoot(root)
+		resolver
+	}
+	private def scalaSnapshots(scalaVersion: String) =
+	{
+		val parts = """(\d+)\.(\d+)\.(\d+)-(.+)""".r.pattern.matcher(scalaVersion)
+		if(parts.matches && parts.group(4) != "SNAPSHOT")
+			snapshots( Seq(parts.group(1), parts.group(2), parts.group(3)).mkString(".") )
+		else
+			mavenResolver("Scala-Tools Maven2 Snapshots Repository", "http://scala-tools.org/repo-snapshots")
+	}
+	private def snapshots(baseVersion: String) =
+	{
+		val resolver = new URLResolver
+		resolver.setName("Scala-Tools Maven2 Snapshots Repository")
+		val base = "http://scala-tools.org/repo-snapshots/"
+		resolver.setM2compatible(true)
+		resolver.addArtifactPattern(base + "[organisation]/[module]/" + baseVersion + "-SNAPSHOT/[artifact]-[revision](-[classifier]).[ext]")
 		resolver
 	}
 	/** Creates a resolver for Maven Central.*/
