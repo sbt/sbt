@@ -1,7 +1,7 @@
 package sbt
 
 import java.io.File
-import org.scalacheck.{Prop, Properties}
+import org.scalacheck.{Arbitrary, Gen, Prop, Properties}
 import Prop._
 
 import Process._
@@ -9,7 +9,9 @@ import Process._
 object ProcessSpecification extends Properties("Process I/O")
 {
 	private val log = new ConsoleLogger
-	
+
+	implicit val exitCodeArb: Arbitrary[Array[Byte]] = Arbitrary(Gen.choose(0, 10) flatMap { size => Gen.resize(size, Arbitrary.arbArray[Byte].arbitrary) })
+
 	specify("Correct exit code", (exitCode: Byte) => checkExit(exitCode))
 	specify("#&& correct", (exitCodes: Array[Byte]) => checkBinary(exitCodes)(_ #&& _)(_ && _))
 	specify("#|| correct", (exitCodes: Array[Byte]) => checkBinary(exitCodes)(_ #|| _)(_ || _))
@@ -29,7 +31,7 @@ object ProcessSpecification extends Properties("Process I/O")
 		}
 	}
 	private def toBoolean(exitCode: Int) = exitCode == 0
-	private def checkExit(code: Byte) = 
+	private def checkExit(code: Byte) =
 	{
 		val exitCode = unsigned(code)
 		(process("sbt.exit " + exitCode) !) == exitCode
@@ -82,7 +84,7 @@ object ProcessSpecification extends Properties("Process I/O")
 	private def process(command: String) =
 	{
 		val ignore = echo // just for the compile dependency so that this test is rerun when TestedProcess.scala changes, not used otherwise
-		
+
 		val thisClasspath = List(getSource[ScalaObject], getSource[sbt.Logger], getSource[sbt.SourceTag]).mkString(File.pathSeparator)
 		"java -cp " + thisClasspath + " " + command
 	}
