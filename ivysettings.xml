@@ -1,3 +1,4 @@
+<!-- to be replace by inline ModuleConfigurations when 0.5.5 is released -->
 <ivysettings>
 	<settings defaultResolver="sbt-chain"/>
 	<include url="${ivy.default.settings.dir}/ivysettings-public.xml"/>

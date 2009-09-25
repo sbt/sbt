@@ -29,6 +29,7 @@ sealed trait SbtManager extends Manager
 	def autodetect: Boolean
 	def module: ModuleID
 	def resolvers: Seq[Resolver]
+	def moduleConfigurations: Seq[ModuleConfiguration]
 	def dependencies: Iterable[ModuleID]
 	def autodetectUnspecified: Boolean
 	def dependenciesXML: NodeSeq
@@ -36,8 +37,9 @@ sealed trait SbtManager extends Manager
 	def defaultConfiguration: Option[Configuration]
 }
 final class SimpleManager private[sbt] (val dependenciesXML: NodeSeq, val autodetectUnspecified: Boolean,
-	val module: ModuleID, val resolvers: Seq[Resolver], explicitConfigurations: Iterable[Configuration],
-	val defaultConfiguration: Option[Configuration], val dependencies: ModuleID*) extends SbtManager
+	val module: ModuleID, val resolvers: Seq[Resolver], val moduleConfigurations: Seq[ModuleConfiguration],
+	explicitConfigurations: Iterable[Configuration],	val defaultConfiguration: Option[Configuration],
+	val dependencies: ModuleID*) extends SbtManager
 {
 	def autodetect = dependencies.isEmpty && dependenciesXML.isEmpty && module.explicitArtifacts.isEmpty && explicitConfigurations.isEmpty && autodetectUnspecified
 	def configurations =
@@ -53,7 +55,12 @@ final class SimpleManager private[sbt] (val dependenciesXML: NodeSeq, val autode
 		else
 			explicitConfigurations
 }
-
+final case class ModuleConfiguration(organization: String, name: String, revision: String, resolver: Resolver) extends NotNull
+object ModuleConfiguration
+{
+	def apply(org: String, resolver: Resolver): ModuleConfiguration = apply(org, "*", "*", resolver)
+	def apply(org: String, name: String, resolver: Resolver): ModuleConfiguration = ModuleConfiguration(org, name, "*", resolver)
+}
 final case class ModuleID(organization: String, name: String, revision: String, configurations: Option[String], isChanging: Boolean, isTransitive: Boolean, explicitArtifacts: Seq[Artifact], extraAttributes: Map[String,String]) extends NotNull
 {
 	override def toString = organization + ":" + name + ":" + revision

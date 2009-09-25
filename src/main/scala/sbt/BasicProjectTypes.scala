@@ -232,7 +232,7 @@ trait BasicManagedProject extends ManagedProject with ReflectiveManagedProject w
 	/** The dependency manager that represents inline declarations.  The default manager packages the information
 	* from 'ivyXML', 'projectID', 'repositories', and 'libraryDependencies' and does not typically need to be
 	* be overridden. */
-	def manager = new SimpleManager(ivyXML, true, projectID, repositories.toSeq, ivyConfigurations, defaultConfiguration, libraryDependencies.toList: _*)
+	def manager = new SimpleManager(ivyXML, true, projectID, repositories.toSeq, moduleConfigurations.toSeq, ivyConfigurations, defaultConfiguration, libraryDependencies.toList: _*)
 
 	/** The pattern for Ivy to use when retrieving dependencies into the local project.  Classpath management
 	* depends on the first directory being [conf] and the extension being [ext].*/
@@ -607,6 +607,17 @@ trait ReflectiveRepositories extends Project
 		}
 	}
 	def reflectiveRepositories: Map[String, Resolver] = Reflective.reflectiveMappings[Resolver](this)
+
+	def moduleConfigurations: Set[ModuleConfiguration] =
+	{
+		val reflective = Set[ModuleConfiguration](reflectiveModuleConfigurations.values.toList: _*)
+		info.parent match
+		{
+			case Some(p: ReflectiveRepositories) => p.moduleConfigurations ++ reflective
+			case None => reflective
+		}
+	}
+	def reflectiveModuleConfigurations: Map[String, ModuleConfiguration] = Reflective.reflectiveMappings[ModuleConfiguration](this)
 }
 
 trait ReflectiveManagedProject extends ReflectiveProject with ReflectiveArtifacts with ReflectiveRepositories with ReflectiveLibraryDependencies with ReflectiveConfigurations

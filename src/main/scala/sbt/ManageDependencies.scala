@@ -11,7 +11,7 @@ import scala.collection.mutable.HashSet
 import Artifact.{defaultExtension, defaultType}
 
 import org.apache.ivy.{core, plugins, util, Ivy}
-import core.LogOptions
+import core.{IvyPatternHelper, LogOptions}
 import core.cache.DefaultRepositoryCacheManager
 import core.deliver.DeliverOptions
 import core.install.InstallOptions
@@ -200,12 +200,13 @@ object ManageDependencies
 				case sm: SbtManager =>
 				{
 					import sm._
-					if(resolvers.isEmpty && autodetectUnspecified)
+					if(resolvers.isEmpty && moduleConfigurations.isEmpty && autodetectUnspecified)
 						autodetectConfiguration()
 					else
 					{
 						log.debug("Using inline repositories.")
 						configureDefaults(withDefaultResolvers(resolvers))
+						setModuleConfigurations(settings, moduleConfigurations)
 					}
 					if(autodetect)
 						autodetectDependencies(toID(module), true)
@@ -562,6 +563,20 @@ object ManageDependencies
 		val artifact = DefaultArtifact.newIvyArtifact(moduleID.getResolvedModuleRevisionId, moduleID.getPublicationDate)
 		moduleID.setModuleArtifact(artifact)
 		moduleID.check()
+	}
+	private def setModuleConfigurations(settings: IvySettings, moduleConfigurations: Seq[ModuleConfiguration])
+	{
+		val existing = settings.getResolverNames
+		for(moduleConf <- moduleConfigurations)
+		{
+			import moduleConf._
+			import IvyPatternHelper._
+			import PatternMatcher._
+			if(!existing.contains(resolver.name))
+				settings.addResolver(ConvertResolver(resolver))
+			val attributes = javaMap(Map(MODULE_KEY -> name, ORGANISATION_KEY -> organization, REVISION_KEY -> revision))
+			settings.addModuleConfiguration(attributes, settings.getMatcher(EXACT_OR_REGEXP), resolver.name, null, null, null)
+		}
 	}
 	/** Sets the resolvers for 'settings' to 'resolvers'.  This is done by creating a new chain and making it the default. */
 	private def setResolvers(settings: IvySettings, resolvers: Seq[Resolver], log: Logger)
