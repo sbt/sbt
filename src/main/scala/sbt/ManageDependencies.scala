@@ -552,7 +552,7 @@ object ManageDependencies
 	private def extra(artifact: Artifact) =
 	{
 		val ea = artifact.classifier match { case Some(c) => artifact.extra("e:classifier" -> c); case None => artifact }
-		javaMap(artifact.extraAttributes)
+		javaMap(ea.extraAttributes)
 	}
 	private def javaMap(map: Map[String,String]) = if(map.isEmpty) null else wrap.Wrappers.javaMap(map.toSeq : _*)
 	private def toURL(file: File) = file.toURI.toURL
