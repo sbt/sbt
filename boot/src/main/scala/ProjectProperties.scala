@@ -48,9 +48,9 @@ private object ProjectProperties
 	/** The default version of the new user project when the user doesn't explicitly specify a version when prompted.*/
 	val DefaultVersion = "1.0"
 	/** The default version of sbt when the user doesn't explicitly specify a version when prompted.*/
-	val DefaultSbtVersion = "0.5.4"
+	val DefaultSbtVersion = DefaultVersions.Sbt //"0.5.4"
 	/** The default version of Scala when the user doesn't explicitly specify a version when prompted.*/
-	val DefaultScalaVersion = "2.7.5"
+	val DefaultScalaVersion = DefaultVersions.Scala//"2.7.5"
 
 	// sets up the project properties for a throwaway project (flattens src and lib to the root project directory)
 	def scratch(file: File)

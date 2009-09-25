@@ -122,6 +122,25 @@ protected/* removes the ambiguity as to which project is the entry point by maki
 	|    public protected *;
 	|}
 	""".stripMargin
+
+	def managedSrc = path("src_managed")
+	def defaultVersionPath = managedSrc / "DefaultVersions.scala"
+	override def mainSourceRoots = super.mainSourceRoots +++ managedSrc
+	override def compileAction = super.compileAction dependsOn(versionProperties)
+	override def cleanAction = cleanTask(outputPath +++ managedSrc, cleanOptions)
+	lazy val versionProperties = task { writeVersionProperties(projectVersion.value.toString, scalaVersion.value.toString)  }
+	def writeVersionProperties(sbtVersion: String, scalaVersion: String) =
+		FileUtilities.write(defaultVersionPath.asFile, defaultVersions(sbtVersion, scalaVersion), log)
+
+	def defaultVersions(sbtVersion: String, scalaVersion: String) =
+"""
+package sbt.boot
+object DefaultVersions
+{
+	val Sbt = "%s"
+	val Scala = "%s"
+}
+""".format(sbtVersion, scalaVersion)
 }
 object LoaderProject
 {
