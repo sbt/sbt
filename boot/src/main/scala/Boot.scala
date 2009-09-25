@@ -27,6 +27,8 @@ object Boot
 	def main(args: Array[String])
 	{
 		System.setProperty("sbt.boot", true.toString)
+		val found = Paths.projectSearch().getCanonicalPath
+		System.setProperty("user.dir", found)
 		checkProxy()
 		try { boot(args) }
 		catch
@@ -132,12 +134,50 @@ object Boot
 	private def isDefined(s: String) = s != null && !s.isEmpty
 }
 
-private class Paths extends NotNull
+object Paths
 {
-	protected final val ProjectDirectory = new File(ProjectDirectoryName)
+	val Only = "only"
+	val RootFirst = "root-first"
+	val Nearest = "nearest"
+	val NoSearch = "none"
+	val SearchPropertyName = "sbt.boot.search"
+	def projectSearch() =
+	{
+		val current = (new File(".")) getCanonicalFile
+		lazy val fromRoot = path(current, Nil).filter(hasProject).map(_.getCanonicalFile)
+		val found: Option[File] =
+			(System.getProperty(SearchPropertyName, NoSearch).trim.toLowerCase match
+			{
+				case RootFirst => fromRoot.headOption
+				case Nearest => fromRoot.reverse.headOption
+				case Only =>
+					if(hasProject(current))
+						Some(current)
+					else
+						fromRoot match
+						{
+							case Nil => Some(current)
+							case head :: Nil => Some(head)
+							case xs =>
+								System.err.println("Search method is 'only' and multiple ancestor directories contain project/build.properties:\n\t" + fromRoot.mkString("\n\t"))
+								System.exit(1)
+						        None
+						}
+				case _ => Some(current)
+			})
+		found.getOrElse(current)
+	}
+	private def hasProject(f: File) = new Paths(f) hasPropertiesFile
+	private def path(f: File, acc: List[File]): List[File] = if(f eq null) acc else path(f.getParentFile, f :: acc)
+}
+private class Paths(baseDirectory: File) extends NotNull
+{
+	def this() = this(new File(".") getCanonicalFile)
+	protected final val ProjectDirectory = new File(baseDirectory, ProjectDirectoryName)
 	protected final val BootDirectory = new File(ProjectDirectory, BootDirectoryName)
 	protected final val PropertiesFile = new File(ProjectDirectory, BuildPropertiesName)
-	
+
+	final def hasPropertiesFile = PropertiesFile.exists
 	final def checkProject()
 	{
 		if(!ProjectDirectory.exists)
