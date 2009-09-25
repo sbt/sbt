@@ -1,0 +1,25 @@
+> update
+[success]
+> clean
+[success]
+
+$ copy-file changes/WrongOrg.scala project/build/Test.scala
+[success]
+$ reload
+[success]
+> update
+[failure]
+
+$ copy-file changes/WrongVersion.scala project/build/Test.scala
+[success]
+$ reload
+[success]
+> update
+[failure]
+
+$ copy-file changes/WrongPattern.scala project/build/Test.scala
+[success]
+$ reload
+[success]
+> update
+[failure]
