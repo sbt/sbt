@@ -7,16 +7,13 @@ import scala.xml.NodeSeq
 * separate JVM and no partial compilation is done.*/
 abstract class CrossCompileProject extends BasicScalaProject with MavenStyleScalaPaths
 {
-	/** Used for 2.8.0-SNAPSHOT*/
-	val scalaToolsSnapshots = "Scala Tools Snapshots" at "http://scala-tools.org/repo-snapshots"
-
 	/* The base configuration names for the versions of Scala*/
 	private val version2_7_2 = "2.7.2"
 	private val version2_7_3 = "2.7.3"
 	private val version2_7_4 = "2.7.4"
 	private val version2_7_5 = "2.7.5"
 	private val version2_7_6 = "2.7.6"
-	private val version2_8_0 = "2.8.0-SNAPSHOT"//"2.8.0.r18462-b20090811081019"
+	private val version2_8_0 = "2.8.0-20090910.003346-+"
 	private val base = "base"
 
 	/* The configurations for the versions of Scala.*/

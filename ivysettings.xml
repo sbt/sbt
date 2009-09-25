@@ -1,0 +1,19 @@
+<ivysettings>
+	<settings defaultResolver="sbt-chain"/>
+	<include url="${ivy.default.settings.dir}/ivysettings-public.xml"/>
+	<include url="${ivy.default.settings.dir}/ivysettings-local.xml"/>
+	<resolvers>
+		<ibiblio name="scala-tools" m2compatible="true" root="http://scala-tools.org/repo-releases/"/>
+		<url name="scala-snapshots" m2compatible="true" >
+			<artifact pattern="http://scala-tools.org/repo-snapshots/[organization]/[module]/2.8.0-SNAPSHOT/[artifact]-[revision].[ext]" />
+		</url>
+		<chain name="sbt-chain" returnFirst="true" checkmodified="true">
+			<resolver ref="local"/>
+			<resolver ref="public"/>
+			<resolver ref="scala-tools"/>
+		</chain>
+	</resolvers>
+	<modules>
+		<module organisation="org.scala-lang" revision="2.8.0-.*" resolver="scala-snapshots"/>
+	</modules>
+</ivysettings> 
