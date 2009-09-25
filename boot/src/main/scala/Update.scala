@@ -211,23 +211,6 @@ private final class Update(bootDirectory: File, sbtVersion: String, scalaVersion
 		resolver.setRoot(root)
 		resolver
 	}
-	private def scalaSnapshots(scalaVersion: String) =
-	{
-		val parts = """(\d+)\.(\d+)\.(\d+)-(.+)""".r.pattern.matcher(scalaVersion)
-		if(parts.matches && parts.group(4) != "SNAPSHOT")
-			snapshots( Seq(parts.group(1), parts.group(2), parts.group(3)).mkString(".") )
-		else
-			mavenResolver("Scala-Tools Maven2 Snapshots Repository", "http://scala-tools.org/repo-snapshots")
-	}
-	private def snapshots(baseVersion: String) =
-	{
-		val resolver = new URLResolver
-		resolver.setName("Scala-Tools Maven2 Snapshots Repository")
-		val base = "http://scala-tools.org/repo-snapshots/"
-		resolver.setM2compatible(true)
-		resolver.addArtifactPattern(base + "[organisation]/[module]/" + baseVersion + "-SNAPSHOT/[artifact]-[revision](-[classifier]).[ext]")
-		resolver
-	}
 	/** Creates a resolver for Maven Central.*/
 	private def mavenMainResolver = defaultMavenResolver("Maven Central")
 	/** Creates a maven-style resolver with the default root.*/
@@ -237,6 +220,24 @@ private final class Update(bootDirectory: File, sbtVersion: String, scalaVersion
 		resolver.setName(name)
 		resolver.setM2compatible(true)
 		resolver
+	}
+	private val SnapshotPattern = """(\d+).(\d+).(\d+)-(\d{8})\.(\d{6})-(\d+|\+)""".r.pattern
+	private def scalaSnapshots(scalaVersion: String) =
+	{
+		val m = SnapshotPattern.matcher(scalaVersion)
+		if(m.matches)
+		{
+			val base = Seq(1,2,3).map(m.group).mkString(".")
+			val pattern = "http://scala-tools.org/repo-snapshots/[organization]/[module]/" + base + "-SNAPSHOT/[artifact]-[revision].[ext]"
+			
+			val resolver = new URLResolver
+			resolver.setName("Scala Tools Snapshots")
+			resolver.setM2compatible(true)
+			resolver.addArtifactPattern(pattern)
+			resolver
+		}
+		else
+			mavenResolver("Scala-Tools Maven2 Snapshots Repository", "http://scala-tools.org/repo-snapshots")
 	}
 	private def localResolver(ivyUserDirectory: String) =
 	{
