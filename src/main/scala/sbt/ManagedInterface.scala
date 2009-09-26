@@ -253,7 +253,10 @@ object Resolver
 		def apply(name: String): FileRepository = FileRepository(name, defaultFileConfiguration, ivyStylePatterns)
 		/** Constructs a file resolver with the given name and base directory. */
 		def apply(name: String, baseDirectory: File)(implicit basePatterns: Patterns): FileRepository =
+		{
+			if(baseDirectory.exists && !baseDirectory.isDirectory) error("Not a directory: " + baseDirectory.getAbsolutePath) else baseDirectory.mkdirs()
 			baseRepository(baseDirectory.toURI)(FileRepository(name, defaultFileConfiguration, _))
+		}
 	}
 	object url
 	{
@@ -328,12 +331,7 @@ object Configurations
 	private[sbt] val DefaultMavenConfiguration = defaultConfiguration(true)
 	private[sbt] val DefaultIvyConfiguration = defaultConfiguration(false)
 	private[sbt] def DefaultConfiguration(mavenStyle: Boolean) = if(mavenStyle) DefaultMavenConfiguration else DefaultIvyConfiguration
-	private[sbt] def defaultConfiguration(mavenStyle: Boolean) =
-	{
-		val base = if(mavenStyle) Configurations.Compile else Configurations.Default
-		config(base.name + "->default(compile)")
-	}
-
+	private[sbt] def defaultConfiguration(mavenStyle: Boolean) = if(mavenStyle) Configurations.Compile else Configurations.Default
 	private[sbt] def removeDuplicates(configs: Iterable[Configuration]) = Set(scala.collection.mutable.Map(configs.map(config => (config.name, config)).toSeq: _*).values.toList: _*)
 }
 /** Represents an Ivy configuration. */

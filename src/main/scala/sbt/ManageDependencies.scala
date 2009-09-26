@@ -383,8 +383,7 @@ object ManageDependencies
 		val module = toDefaultModuleDescriptor(md)
 		val parser = new CustomXmlParser.CustomParser(ivy.getSettings)
 		parser.setMd(module)
-		val defaultConf = if(defaultConfiguration.contains("->")) defaultConfiguration else (defaultConfiguration + "->default(compile)")
-		parser.setDefaultConf(defaultConf)
+		parser.setDefaultConf(defaultConfiguration)
 		addDependencies(module, extraDependencies, parser)
 		module
 	}
@@ -626,6 +625,8 @@ object ManageDependencies
 		import XmlModuleDescriptorParser.Parser
 		class CustomParser(settings: IvySettings) extends Parser(CustomXmlParser, settings) with NotNull
 		{
+			setDefaultConfMapping("*->default(compile)")
+
 			def setSource(url: URL) =
 			{
 				super.setResource(new URLResource(url))
