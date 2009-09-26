@@ -10,7 +10,7 @@ import core.LogOptions
 import core.cache.DefaultRepositoryCacheManager
 import core.event.EventManager
 import core.module.id.ModuleRevisionId
-import core.module.descriptor.{Configuration, DefaultDependencyDescriptor, DefaultModuleDescriptor, ModuleDescriptor}
+import core.module.descriptor.{Configuration => IvyConfiguration, DefaultDependencyDescriptor, DefaultModuleDescriptor, ModuleDescriptor}
 import core.report.ResolveReport
 import core.resolve.{ResolveEngine, ResolveOptions}
 import core.retrieve.{RetrieveEngine, RetrieveOptions}
@@ -21,30 +21,38 @@ import util.{DefaultMessageLogger, Message}
 
 import BootConfiguration._
 
-private object UpdateTarget extends Enumeration
+object UpdateTarget extends Enumeration
 {
-	val UpdateScala, UpdateSbt = Value
+	val UpdateScala = Value("scala")
+	val UpdateApp = Value("app")
 }
-import UpdateTarget.{UpdateSbt, UpdateScala}
+import UpdateTarget.{UpdateApp, UpdateScala}
 
-/** Ensures that the Scala and sbt jars exist for the given versions or else downloads them.*/
-final class Update(bootDirectory: File, sbtVersion: String, scalaVersion: String)
+/** Ensures that the Scala and application jars exist for the given versions or else downloads them.*/
+final class Update(config: LaunchConfiguration)
 {
-	require(!scalaVersion.trim.isEmpty, "No Scala version specified")
+	private val bootDirectory = config.boot.directory
+	bootDirectory.mkdirs
+	private val scalaVersion = config.getScalaVersion
+
 	private def logFile = new File(bootDirectory, UpdateLogName)
-	/** A Writer to use to write the full logging information to a file for debugging. **/
-	private lazy val logWriter =
+	private val logWriter = new PrintWriter(new FileWriter(logFile))
+
+	private lazy val settings =
 	{
-		bootDirectory.mkdirs
-		new PrintWriter(new FileWriter(logFile))
+		val settings = new IvySettings
+		addResolvers(settings)
+		settings.setDefaultConflictManager(settings.getConflictManager(ConflictManagerName))
+		settings.setBaseDir(bootDirectory)
+		settings
 	}
+	private lazy val ivy = Ivy.newInstance(settings)
 
 	/** The main entry point of this class for use by the Update module.  It runs Ivy */
 	def apply(target: UpdateTarget.Value)
 	{
-		if(target == UpdateTarget.UpdateSbt)
-			require(!sbtVersion.isEmpty, "No sbt version specified")
 		Message.setDefaultLogger(new SbtIvyLogger(logWriter))
+		ivy.pushContext()
 		try { update(target) }
 		catch
 		{
@@ -53,56 +61,49 @@ final class Update(bootDirectory: File, sbtVersion: String, scalaVersion: String
 				log(e.toString)
 				println("  (see " + logFile + " for complete log)")
 		}
-		finally { logWriter.close() }
+		finally
+		{
+			logWriter.close()
+			ivy.popContext()
+		}
 	}
-	/** Runs update for the specified target (updates either the scala or sbt jars for building the project) */
+	/** Runs update for the specified target (updates either the scala or appliciation jars for building the project) */
 	private def update(target: UpdateTarget.Value)
 	{
-		val settings = new IvySettings
-		val ivy = Ivy.newInstance(settings)
-		ivy.pushContext()
-		try { update(target, settings) }
-		finally { ivy.popContext() }
-	}
-	private def update(target: UpdateTarget.Value, settings: IvySettings)
-	{
-		import Configuration.Visibility.PUBLIC
+		import IvyConfiguration.Visibility.PUBLIC
 		// the actual module id here is not that important
-		val moduleID = new DefaultModuleDescriptor(createID(SbtOrg, "boot", "1.0"), "release", null, false)
+		val moduleID = new DefaultModuleDescriptor(createID(SbtOrg, "boot-" + target, "1.0"), "release", null, false)
 		moduleID.setLastModified(System.currentTimeMillis)
-		moduleID.addConfiguration(new Configuration(DefaultIvyConfiguration, PUBLIC, "", Array(), true, null))
+		moduleID.addConfiguration(new IvyConfiguration(DefaultIvyConfiguration, PUBLIC, "", Array(), true, null))
 		// add dependencies based on which target needs updating
 		target match
 		{
 			case UpdateScala =>
-				addDependency(moduleID, ScalaOrg, CompilerModuleName, scalaVersion)
-				addDependency(moduleID, ScalaOrg, LibraryModuleName, scalaVersion)
-				update(settings, moduleID, target)
-			case UpdateSbt =>
-				addDependency(moduleID, SbtOrg, SbtModuleName + "_" + scalaVersion, sbtVersion)
-				update(settings, moduleID, target)
+				addDependency(moduleID, ScalaOrg, CompilerModuleName, scalaVersion, "default")
+				addDependency(moduleID, ScalaOrg, LibraryModuleName, scalaVersion, "default")
+			case UpdateApp =>
+				val resolvedName = if(config.app.crossVersioned) config.app.name + "_" + scalaVersion else config.app.name
+				addDependency(moduleID, config.app.groupID, resolvedName, config.app.getVersion, "runtime(default)")
 		}
+		update(moduleID, target)
 	}
 	/** Runs the resolve and retrieve for the given moduleID, which has had its dependencies added already. */
-	private def update(settings: IvySettings, moduleID: DefaultModuleDescriptor,  target: UpdateTarget.Value)
+	private def update(moduleID: DefaultModuleDescriptor,  target: UpdateTarget.Value)
 	{
 		val eventManager = new EventManager
-		addResolvers(settings, scalaVersion, target)
-		settings.setDefaultConflictManager(settings.getConflictManager(ConflictManagerName))
-		settings.setBaseDir(bootDirectory)
-		resolve(settings, eventManager, moduleID)
-		retrieve(settings, eventManager, moduleID, target)
+		resolve(eventManager, moduleID)
+		retrieve(eventManager, moduleID, target)
 	}
 	private def createID(organization: String, name: String, revision: String) =
 		ModuleRevisionId.newInstance(organization, name, revision)
 	/** Adds the given dependency to the default configuration of 'moduleID'. */
-	private def addDependency(moduleID: DefaultModuleDescriptor, organization: String, name: String, revision: String)
+	private def addDependency(moduleID: DefaultModuleDescriptor, organization: String, name: String, revision: String, conf: String)
 	{
 		val dep = new DefaultDependencyDescriptor(moduleID, createID(organization, name, revision), false, false, true)
-		dep.addDependencyConfiguration(DefaultIvyConfiguration, "default")
+		dep.addDependencyConfiguration(DefaultIvyConfiguration, conf)
 		moduleID.addDependency(dep)
 	}
-	private def resolve(settings: IvySettings, eventManager: EventManager, module: ModuleDescriptor)
+	private def resolve(eventManager: EventManager, module: ModuleDescriptor)
 	{
 		val resolveOptions = new ResolveOptions
 		  // this reduces the substantial logging done by Ivy, including the progress dots when downloading artifacts
@@ -127,38 +128,44 @@ final class Update(bootDirectory: File, sbtVersion: String, scalaVersion: String
         }
 	}
 	/** Retrieves resolved dependencies using the given target to determine the location to retrieve to. */
-	private def retrieve(settings: IvySettings, eventManager: EventManager, module: ModuleDescriptor,  target: UpdateTarget.Value)
+	private def retrieve(eventManager: EventManager, module: ModuleDescriptor,  target: UpdateTarget.Value)
 	{
 		val retrieveOptions = new RetrieveOptions
 		val retrieveEngine = new RetrieveEngine(settings, eventManager)
 		val pattern =
 			target match
 			{
-				// see BuildConfiguration
-				case UpdateSbt => sbtRetrievePattern(sbtVersion)
+				// see BootConfiguration
+				case UpdateApp => appRetrievePattern(config.app.toID)
 				case UpdateScala => scalaRetrievePattern
 			}
-		retrieveEngine.retrieve(module.getModuleRevisionId, pattern, retrieveOptions);
+		retrieveEngine.retrieve(module.getModuleRevisionId, baseDirectoryName(scalaVersion) + "/" + pattern, retrieveOptions)
 	}
 	/** Add the scala tools repositories and a URL resolver to download sbt from the Google code project.*/
-	private def addResolvers(settings: IvySettings, scalaVersion: String,  target: UpdateTarget.Value)
+	private def addResolvers(settings: IvySettings)
 	{
 		val newDefault = new ChainResolver
 		newDefault.setName("redefined-public")
-		newDefault.add(localResolver(settings.getDefaultIvyUserDir.getAbsolutePath))
-		newDefault.add(mavenLocal)
-		newDefault.add(mavenMainResolver)
-		target match
-		{
-			case UpdateSbt =>
-				newDefault.add(sbtResolver(scalaVersion))
-			case UpdateScala =>
-				newDefault.add(mavenResolver("Scala-Tools Maven2 Repository", "http://scala-tools.org/repo-releases"))
-				newDefault.add(mavenResolver("Scala-Tools Maven2 Snapshots Repository", "http://scala-tools.org/repo-snapshots"))
-		}
+		if(config.repositories.isEmpty) throw new BootException("No repositories defined.")
+		config.repositories.foreach(repo => newDefault.add(toIvyRepository(settings, repo)))
 		onDefaultRepositoryCacheManager(settings)(_.setUseOrigin(true))
 		settings.addResolver(newDefault)
 		settings.setDefaultResolver(newDefault.getName)
+	}
+	private def toIvyRepository(settings: IvySettings, repo: Repository) =
+	{
+		import Repository.{Ivy, Maven, Predefined}
+		import Predefined._
+		repo match
+		{
+			case Maven(id, url) => mavenResolver(id, url)
+			case Ivy(id, url, pattern) => urlResolver(id, url, pattern)
+			case Predefined(Local) => localResolver(settings.getDefaultIvyUserDir.getAbsolutePath)
+			case Predefined(MavenLocal) => mavenLocal
+			case Predefined(MavenCentral) => mavenMainResolver
+			case Predefined(ScalaToolsReleases) => mavenResolver("Scala-Tools Maven2 Repository", "http://scala-tools.org/repo-releases")
+			case Predefined(ScalaToolsSnapshots) => mavenResolver("Scala-Tools Maven2 Snapshots Repository", "http://scala-tools.org/repo-snapshots")
+		}
 	}
 	private def onDefaultRepositoryCacheManager(settings: IvySettings)(f: DefaultRepositoryCacheManager => Unit)
 	{
@@ -169,13 +176,13 @@ final class Update(bootDirectory: File, sbtVersion: String, scalaVersion: String
 		}
 	}
 	/** Uses the pattern defined in BuildConfiguration to download sbt from Google code.*/
-	private def sbtResolver(scalaVersion: String) =
+	private def urlResolver(id: String, base: String, pattern: String) =
 	{
-		val pattern = sbtResolverPattern(scalaVersion)
 		val resolver = new URLResolver
-		resolver.setName("Sbt Repository")
-		resolver.addIvyPattern(pattern)
-		resolver.addArtifactPattern(pattern)
+		resolver.setName(id)
+		val adjusted = (if(base.endsWith("/")) base else (base + "/") ) + pattern
+		resolver.addIvyPattern(adjusted)
+		resolver.addArtifactPattern(adjusted)
 		resolver
 	}
 	private def mavenLocal = mavenResolver("Maven2 Local", "file://" + System.getProperty("user.home") + "/.m2/repository/")
@@ -199,12 +206,10 @@ final class Update(bootDirectory: File, sbtVersion: String, scalaVersion: String
 	private def localResolver(ivyUserDirectory: String) =
 	{
 		val localIvyRoot = ivyUserDirectory + "/local"
-		val artifactPattern = localIvyRoot + "/" + LocalArtifactPattern
-		val ivyPattern = localIvyRoot + "/" + LocalIvyPattern
 		val resolver = new FileSystemResolver
 		resolver.setName(LocalIvyName)
-		resolver.addIvyPattern(ivyPattern)
-		resolver.addArtifactPattern(artifactPattern)
+		resolver.addIvyPattern(localIvyRoot + "/" + LocalIvyPattern)
+		resolver.addArtifactPattern(localIvyRoot + "/" + LocalArtifactPattern)
 		resolver
 	}
 	/** Logs the given message to a file and to the console. */

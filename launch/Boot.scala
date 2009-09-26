@@ -3,7 +3,6 @@
  */
  package xsbt.boot
 
-import BootConfiguration.{SbtMainClass, SbtModuleName}
 import java.io.File
 
 // The entry point to the launcher

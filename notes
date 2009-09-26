@@ -30,14 +30,14 @@ Dependency Management
 - resolvers are completely defined in project definition (use Resolver.withDefaultResolvers)
 - configurations completely defined within project (use ModuleConfiguration.configurations)
 
-
-TODO:
-compiler analysis plugin does not check classes against output directory.  This must now be done in the callback itself. The old code was:
-
-		Path.relativize(outputPath, pf.file) match
-		{
-			case None =>  // dependency is a class file outside of the output directory
-				callback.classDependency(pf.file, sourcePath)
-			case Some(relativeToOutput) => // dependency is a product of a source not included in this compilation
-				callback.productDependency(relativeToOutput, sourcePath)
-		}
+Launcher
+- generalize to be able to launch any conforming application
+- default configuration file in jar- can be replaced in jar or overridden on command line
+- format:
+ scala.version=versionSpecification
+ main.org=ID
+ main.name=ID
+ main.version=versionSpecification
+ main.components=ID (',' ID)*
+ repo=id ',' url [',' pattern]
+ versionSpecification := ( ('read'|'prompt'|'readOrPrompt') [default] ) |version

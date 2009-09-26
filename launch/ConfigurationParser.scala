@@ -1,0 +1,174 @@
+package xsbt.boot
+
+import scala.util.parsing.combinator.Parsers
+import scala.util.parsing.input.{Reader, StreamReader}
+
+import java.lang.Character.isWhitespace
+import java.io.File
+
+class ConfigurationParser(workingDirectory: File) extends Parsers with NotNull
+{
+	def this() = this(new File("."))
+	import scala.util.parsing.input.CharSequenceReader
+	def apply(s: String): LaunchConfiguration = processResult(configuration(new CharSequenceReader(s, 0)))
+	def apply(source: java.io.Reader): LaunchConfiguration = processResult(configuration(StreamReader(source)))
+
+	def processResult(r: ParseResult[LaunchConfiguration]) =
+		r match
+		{
+			case Success(r, _) => r
+			case _ => throw new BootException(r.toString)
+		}
+
+	// section -> configuration instance  processing
+	lazy val configuration = phrase(sections ^^ processSections)
+	def processSections(sections: SectionMap): LaunchConfiguration =
+	{
+		val (scalaVersion, m1) = processSection(sections, "scala", getScalaVersion)
+		val (app, m2) = processSection(m1, "app", getApplication)
+		val (repositories, m3) = processSection(m2, "repositories", getRepositories)
+		val (boot, m4) = processSection(m3, "boot", getBoot)
+		val (logging, m5) = processSection(m4, "log", getLogging)
+		check(m5, "section")
+		new LaunchConfiguration(scalaVersion, app, repositories, boot, logging)
+	}
+	def getScalaVersion(m: LabelMap) = check("label", getVersion(m))
+	def getVersion(m: LabelMap): (Version, LabelMap) = process(m, "version", processVersion)
+	def processVersion(value: Option[String]): Version = value.map(version).getOrElse(Version.default)
+	def version(value: String): Version =
+	{
+		if(value.isEmpty) error("Version cannot be empty (omit version declaration to use the default version)")
+		val tokens = trim(value.split(",", 2))
+		import Version.{Explicit, Implicit}
+		val defaultVersion = if(tokens.length == 2) Some(tokens(1)) else None
+		Implicit(tokens(0), defaultVersion).fold(err => Explicit(tokens(0)), identity[Implicit])
+	}
+	def processSection[T](sections: Map[String, LabelMap], name: String, f: LabelMap => T) =
+		process[String,LabelMap,T](sections, name, m => f(m withDefaultValue(None)))
+	def process[K,V,T](sections: Map[K,V], name: K, f: V => T): (T, Map[K,V]) = ( f(sections(name)), sections - name)
+	def check(map: Map[String, _], label: String): Unit = if(map.isEmpty) () else { error(map.keys.mkString("Invalid " + label + "(s): ", ",","")) }
+	def check[T](label: String, pair: (T, Map[String, _])): T = { check(pair._2, label); pair._1 }
+	def id(map: Map[String, Option[String]], name: String, default: String): (String, LabelMap) =
+		(map.getOrElse(name, None).getOrElse(default), map - name)
+	def ids(map: Map[String, Option[String]], name: String, default: Seq[String]) =
+	{
+		val result = map(name).map(value => trim(value.split(",")).filter(!_.isEmpty)).getOrElse(default)
+		(result, map - name)
+	}
+	def file(map: LabelMap, name: String, default: File): (File, LabelMap) =
+		(map.getOrElse(name, None).map(p => new File(p)).getOrElse(default), map  - name)
+
+	def getBoot(m: LabelMap): BootSetup =
+	{
+		val (dir, m1) = file(m, "directory", new File(workingDirectory, "project/boot"))
+		val (props, m2) = file(m1, "properties", new File("project/build.properties"))
+		check(m2, "label")
+		BootSetup(dir, props)
+	}
+	def getLogging(m: LabelMap): Logging = check("label", process(m, "level", getLevel))
+	def getLevel(m: Option[String]) = m.map(l => LogLevel(l).fold(error, identity[Logging]) ).getOrElse(Logging(LogLevel.Info))
+
+	def getApplication(m: LabelMap): Application =
+	{
+		val (org, m1) = id(m, "org", "org.scala-tools.sbt")
+		val (name, m2) = id(m1, "name", "sbt")
+		val (rev, m3) = getVersion(m2)
+		val (main, m4) = id(m3, "class", "xsbt.Main")
+		val (components, m5) = ids(m4, "components", Seq("default"))
+		val (crossVersioned, m6) = id(m5, "cross-versioned", "true")
+		check(m6, "label")
+		new Application(org, name, rev, main, components, crossVersioned.toBoolean)
+	}
+	def getRepositories(m: LabelMap): Seq[Repository] =
+	{
+		import Repository.{Ivy, Maven, Predefined}
+		m.toSeq.map {
+			case (key, None) => Predefined(key).fold(err => error(err), x => x)
+			case (key, Some(value)) =>
+				val r = trim(value.split(",",2))
+				val url = r(0)
+				if(url.isEmpty) error("No URL specified for '" + key + "'")
+				if(r.length == 2) Ivy(key, url, r(1)) else Maven(key, url)
+		}
+	}
+	def trim(s: Array[String]) = s.map(_.trim)
+
+	// line parsing
+
+	def sections = lines ^^ processLines
+	type LabelMap = Map[String, Option[String]]
+	// section-name -> label -> value
+	type SectionMap = Map[String, LabelMap]
+	def processLines(lines: List[Line]): SectionMap =
+	{
+		type State = (SectionMap, Option[String])
+		val s: State =
+			( ( (Map.empty withDefaultValue(Map.empty), None): State) /: lines ) {
+				case (x, Comment) => x
+				case ( (map, _), Section(name) ) => (map, Some(name))
+				case ( (_, None), l: Labeled ) => error("Label " + l.label + " is not in a section")
+				case ( (map, s @ Some(section)), l: Labeled ) =>
+					val sMap = map(section)
+					if( sMap.contains(l.label) ) error("Duplicate label '" + l.label + "' in section '" + section + "'")
+					else ( map(section) = (sMap(l.label) = l.value), s )
+			}
+		s._1
+	}
+
+	// character parsing
+	type Elem = Char
+	def lines = (line*)  <~ ws_nl
+		def line: Parser[Line] = (ws_nl ~> (comment | section | labeled | failure("Expected comment, start of section, or section entry")) ~! nl ) ^^ { case m ~ _ => m }
+		def comment = '#' ~! value ^^ { x => Comment }
+		def section = ('[' ~! ws) ~! ID ~! (ws ~! ']' ~! ws) ^^ { case _ ~ i ~ _ => Section(i)}
+		def labeled = ID ~! ws ~! ((':' ~! value ^^ { case _ ~ v => v })?) >> {
+			case k ~ _ ~ Some(v) =>
+				val trimmed = v.trim
+				if(trimmed.isEmpty) failure("Value for '" + k + "' was empty") else success(Labeled(k, Some(v.trim)))
+			case k ~ _ ~ None => success(Labeled(k, None))
+		}
+
+	def ws_nl = string(isWhitespace)
+	lazy val ws = string(c => isWhitespace(c) && !isNewline(c))
+
+	def ID = IDword ~! ((ws ~> IDword)*) ^^ { case (x ~ y) => (x :: y).mkString(" ") }
+	def IDword = elem("Identifier", isIDStart) ~! string(isIDChar) ^^ { case x ~ xs => x + xs }
+	def value = string(c => !isNewline(c))
+
+		def isNewline(c: Char) = c == '\r' || c == '\n'
+		def isIDStart(c: Char) = isIDChar(c) && c != '[' && c != '#'
+		def isIDChar(c: Char) = !isWhitespace(c) && c != ':' && c != ']' && c != CharSequenceReader.EofCh
+
+	case class string(accept: Char => Boolean) extends Parser[String] with NotNull
+	{
+		def apply(in: Reader[Char]) =
+		{
+			val buffer = new StringBuilder
+			def fill(in: Reader[Char]): ParseResult[String] =
+			{
+				if(in.atEnd || !accept(in.first))
+					Success(buffer.toString, in)
+				else
+				{
+					buffer += in.first
+					fill(in.rest)
+				}
+			}
+			fill(in)
+		}
+	}
+	def nl = new Parser[Unit] with NotNull
+	{
+		def apply(in: Reader[Char]) =
+		{
+			if(in.atEnd) Success( (), in)
+			else if(isNewline(in.first)) Success( (), in.rest )
+			else Failure("Expected end of line", in)
+		}
+	}
+}
+
+sealed trait Line extends NotNull
+final case class Labeled(label: String, value: Option[String]) extends Line
+final case class Section(name: String) extends Line
+object Comment extends Line

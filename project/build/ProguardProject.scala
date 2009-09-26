@@ -60,7 +60,7 @@ trait ProguardProject extends BasicScalaProject
 			FileUtilities.clean(outputJar :: Nil, log)
 			val proguardClasspathString = Path.makeString(managedClasspath(toolsConfig).get)
 			val configFile = proguardConfigurationPath.asFile.getAbsolutePath
-			val exitValue = Process("java", List("-Xmx128M", "-cp", proguardClasspathString, "proguard.ProGuard", "@" + configFile)) ! log
+			val exitValue = Process("java", List("-Xmx256M", "-cp", proguardClasspathString, "proguard.ProGuard", "@" + configFile)) ! log
 			if(exitValue == 0) None else Some("Proguard failed with nonzero exit code (" + exitValue + ")")
 		}
 	private def writeProguardConfigurationTask =

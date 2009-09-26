@@ -4,6 +4,10 @@ import java.io.File;
 
 public interface ScalaProvider
 {
-	public ClassLoader getScalaLoader(String scalaVersion);
-	public File getScalaHome(String scalaVersion);
+	public Launcher launcher();
+	public String version();
+
+	public ClassLoader loader();
+	public File[] jars();
+	public AppProvider app(ApplicationID id);
 }

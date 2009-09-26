@@ -109,11 +109,8 @@ class XSbt(info: ProjectInfo) extends ParentProject(info)
 	{
 		val ivy = "org.apache.ivy" % "ivy" % "2.0.0"
 	}
-	class InterfaceProject(info: ProjectInfo) extends DefaultProject(info) with ManagedBase with TestWithLog with Component
+	class InterfaceProject(info: ProjectInfo) extends DefaultProject(info) with ManagedBase with TestWithLog with Component with JavaProject
 	{
-		// ensure that interfaces are only Java sources and that they cannot reference Scala classes
-		override def mainSources = descendents(mainSourceRoots, "*.java")
-		override def compileOrder = CompileOrder.JavaThenScala
 		override def componentID: Option[String] = Some("xsbti")
 	}
 	class LaunchInterfaceProject(info: ProjectInfo) extends  InterfaceProject(info)
@@ -137,7 +134,13 @@ class XSbt(info: ProjectInfo) extends ParentProject(info)
 		override def testClasspath = super.testClasspath +++ logSub.compileClasspath
 	}
 }
-
+trait JavaProject extends BasicScalaProject
+{
+	override final def crossScalaVersions = Set.empty // don't need to cross-build Java sources
+	// ensure that interfaces are only Java sources and that they cannot reference Scala classes
+	override def mainSources = descendents(mainSourceRoots, "*.java")
+	override def compileOrder = CompileOrder.JavaThenScala
+}
 trait SourceProject extends BasicScalaProject
 {
 	override final def crossScalaVersions = Set.empty // don't need to cross-build a source package

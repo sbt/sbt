@@ -36,7 +36,7 @@ object TaskRunnerSortTest extends Properties("TaskRunnerSort")
 			Task(a) bind { a =>
 				val pivot = a(0)
 				val (lt,gte) = a.projection.drop(1).partition(_ < pivot)
-				(sort(lt), sort(gte)) map { (l,g) => l ++ List(pivot) ++ g }
+				(sort(lt), sort(gte)) map { _ ++ List(pivot) ++ _ }
 			}
 		}
 	}
