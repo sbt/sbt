@@ -267,7 +267,7 @@ trait BasicManagedProject extends ManagedProject with ReflectiveManagedProject w
 			case Some(m: BasicManagedProject) => m.managedStyle
 			case _ => Auto
 		}
-	protected implicit final val defaultPatterns: RepositoryHelpers.Patterns =
+	protected implicit final val defaultPatterns: Patterns =
 	{
 		managedStyle match
 		{

@@ -96,14 +96,20 @@ sealed case class MavenRepository(name: String, root: String) extends Resolver
 	override def toString = name + ": " + root
 }
 
+final class Patterns(val ivyPatterns: Seq[String], val artifactPatterns: Seq[String], val isMavenCompatible: Boolean) extends NotNull
+{
+	private[sbt] def mavenStyle(): Patterns = Patterns(ivyPatterns, artifactPatterns, true)
+	private[sbt] def withIvys(patterns: Seq[String]): Patterns = Patterns(patterns ++ ivyPatterns, artifactPatterns, isMavenCompatible)
+	private[sbt] def withArtifacts(patterns: Seq[String]): Patterns = Patterns(ivyPatterns, patterns ++ artifactPatterns, isMavenCompatible)
+}
+object Patterns
+{
+	def apply(artifactPatterns: String*): Patterns = Patterns(true, artifactPatterns : _*)
+	def apply(isMavenCompatible: Boolean, artifactPatterns: String*): Patterns = Patterns(Nil, artifactPatterns, isMavenCompatible)
+	def apply(ivyPatterns: Seq[String], artifactPatterns: Seq[String], isMavenCompatible: Boolean): Patterns = new Patterns(ivyPatterns, artifactPatterns, isMavenCompatible)
+}
 object RepositoryHelpers
 {
-	final case class Patterns(ivyPatterns: Seq[String], artifactPatterns: Seq[String], isMavenCompatible: Boolean) extends NotNull
-	{
-		private[sbt] def mavenStyle(): Patterns = Patterns(ivyPatterns, artifactPatterns, true)
-		private[sbt] def withIvys(patterns: Seq[String]): Patterns = Patterns(patterns ++ ivyPatterns, artifactPatterns, isMavenCompatible)
-		private[sbt] def withArtifacts(patterns: Seq[String]): Patterns = Patterns(ivyPatterns, patterns ++ artifactPatterns, isMavenCompatible)
-	}
 	final case class SshConnection(authentication: Option[SshAuthentication], hostname: Option[String], port: Option[Int]) extends NotNull
 	{
 		def copy(authentication: Option[SshAuthentication]) = SshConnection(authentication, hostname, port)
@@ -119,7 +125,7 @@ object RepositoryHelpers
 	final case class PasswordAuthentication(user: String, password: String) extends SshAuthentication
 	final case class KeyFileAuthentication(keyfile: File, password: String) extends SshAuthentication
 }
-import RepositoryHelpers.{Patterns, SshConnection, FileConfiguration}
+import RepositoryHelpers.{SshConnection, FileConfiguration}
 import RepositoryHelpers.{KeyFileAuthentication, PasswordAuthentication, SshAuthentication}
 
 /** sbt interface to an Ivy repository based on patterns, which is most Ivy repositories.*/
