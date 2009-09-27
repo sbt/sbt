@@ -7,19 +7,20 @@ import java.io.File
 import scala.xml.NodeSeq
 
 final class IvyPaths(val baseDirectory: File, val cacheDirectory: Option[File]) extends NotNull
-final class IvyConfiguration(val paths: IvyPaths, val resolvers: Seq[Resolver], val log: IvyLogger) extends NotNull
+final class IvyConfiguration(val paths: IvyPaths, val resolvers: Seq[Resolver], 
+	val moduleConfigurations: Seq[ModuleConfiguration], val log: IvyLogger) extends NotNull
 
-sealed trait ModuleConfiguration extends NotNull
+sealed trait ModuleSettings extends NotNull
 {
 	def validate: Boolean
 	def ivyScala: Option[IvyScala]
 }
-final class IvyFileConfiguration(val file: File, val ivyScala: Option[IvyScala], val validate: Boolean) extends ModuleConfiguration
-final class PomConfiguration(val file: File, val ivyScala: Option[IvyScala], val validate: Boolean) extends ModuleConfiguration
+final class IvyFileConfiguration(val file: File, val ivyScala: Option[IvyScala], val validate: Boolean) extends ModuleSettings
+final class PomConfiguration(val file: File, val ivyScala: Option[IvyScala], val validate: Boolean) extends ModuleSettings
 final class InlineConfiguration(val module: ModuleID, val dependencies: Iterable[ModuleID], val ivyXML: NodeSeq,
 	val configurations: Iterable[Configuration], val defaultConfiguration: Option[Configuration], val ivyScala: Option[IvyScala],
-	val artifacts: Iterable[Artifact], val validate: Boolean) extends ModuleConfiguration
-final class EmptyConfiguration(val module: ModuleID, val ivyScala: Option[IvyScala], val validate: Boolean) extends ModuleConfiguration
+	val artifacts: Iterable[Artifact], val validate: Boolean) extends ModuleSettings
+final class EmptyConfiguration(val module: ModuleID, val ivyScala: Option[IvyScala], val validate: Boolean) extends ModuleSettings
 object InlineConfiguration
 {
 	def apply(module: ModuleID, dependencies: Iterable[ModuleID], artifacts: Iterable[Artifact]) =
@@ -37,7 +38,7 @@ object InlineConfiguration
 		else
 			explicitConfigurations
 }
-object ModuleConfiguration
+object ModuleSettings
 {
 	def apply(ivyScala: Option[IvyScala], validate: Boolean, module: => ModuleID)(baseDirectory: File, log: IvyLogger) =
 	{

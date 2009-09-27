@@ -27,7 +27,7 @@ object IvyActions
 			{
 				module.logger.info("Installing " + dependency)
 				val options = new InstallOptions
-				options.setValidate(module.moduleConfiguration.validate)
+				options.setValidate(module.moduleSettings.validate)
 				options.setTransitive(dependency.isTransitive)
 				ivy.install(dependency.getDependencyRevisionId, from, to, options)
 			}
@@ -50,10 +50,8 @@ object IvyActions
 	// todo: correct default configuration for extra dependencies
 	private def addLateDependencies(ivy: Ivy, module: DefaultModuleDescriptor, defaultConfiguration: String, extraDependencies: Iterable[ModuleID])
 	{
-		val parser = new CustomXmlParser.CustomParser(ivy.getSettings)
+		val parser = new CustomXmlParser.CustomParser(ivy.getSettings, Some(defaultConfiguration))
 		parser.setMd(module)
-		val defaultConf = if(defaultConfiguration.contains("->")) defaultConfiguration else (defaultConfiguration + "->default(compile)")
-		parser.setDefaultConf(defaultConf)
 		IvySbt.addDependencies(module, extraDependencies, parser)
 	}
 	private def getConfigurations(module: ModuleDescriptor, configurations: Option[Iterable[Configuration]]) =

@@ -40,19 +40,20 @@ object IvyCache
 	/** Clears the cache of the jar for the given ID.*/
 	def clearCachedJar(id: ModuleID, log: IvyLogger)
 	{
-		try { getCachedFile(id, log).delete }
+		try { withCachedJar(id, log)(_.delete) }
 		catch { case e: Exception => log.debug("Error cleaning cached jar: " + e.toString) }
 	}
 	/** Copies the cached jar for the given ID to the directory 'toDirectory'.  If the jar is not in the cache, NotInCache is thrown.*/
 	def retrieveCachedJar(id: ModuleID, toDirectory: File, log: IvyLogger) =
-	{
-		val cachedFile = getCachedFile(id, log)
-		val copyTo = new File(toDirectory, cachedFile.getName)
-		FileUtil.copy(cachedFile, copyTo, null)
-		copyTo
-	}
-	/** Get the location of the cached jar for the given ID in the Ivy cache.  If the jar is not in the cache, NotInCache is thrown.*/
-	def getCachedFile(id: ModuleID, log: IvyLogger): File =
+		withCachedJar(id, log) { cachedFile =>
+			val copyTo = new File(toDirectory, cachedFile.getName)
+			FileUtil.copy(cachedFile, copyTo, null)
+			copyTo
+		}
+
+	/** Get the location of the cached jar for the given ID in the Ivy cache.  If the jar is not in the cache, NotInCache is thrown
+	* TODO: locking.*/
+	def withCachedJar[T](id: ModuleID, log: IvyLogger)(f: File => T): T =
 	{
 		val cachedFile =
 			try
@@ -64,7 +65,7 @@ object IvyCache
 			}
 			catch { case e: Exception => throw new NotInCache(id, e) }
 
-		if(cachedFile.exists) cachedFile else throw new NotInCache(id)
+		if(cachedFile.exists) f(cachedFile) else throw new NotInCache(id)
 	}
 	/** Calls the given function with the default Ivy cache.*/
 	def withDefaultCache[T](log: IvyLogger)(f: DefaultRepositoryCacheManager => T): T =
@@ -82,7 +83,7 @@ object IvyCache
 	{
 		val local = Resolver.defaultLocal
 		val paths = new IvyPaths(new File("."), None)
-		val conf = new IvyConfiguration(paths, Seq(local), log)
+		val conf = new IvyConfiguration(paths, Seq(local), Nil, log)
 		(new IvySbt(conf), local)
 	}
 	/** Creates a default jar artifact based on the given ID.*/
