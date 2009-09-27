@@ -21,12 +21,8 @@ object ScalaInstance
 {
 	val VersionPrefix = "version "
 	/** Creates a ScalaInstance using the given provider to obtain the jars and loader.*/
-	def apply(version: String, provider: xsbti.ScalaProvider) =
-	{
-		val scalaLibDirectory = provider.getScalaHome(version)
-		// these get the locations of the scala jars given the location of the lib/ directory
-		val libraryJar = new File(scalaLibDirectory, "scala-library.jar")
-		val compilerJar = new File(scalaLibDirectory, "scala-compiler.jar")
-		new ScalaInstance(version, provider.getScalaLoader(version), libraryJar, compilerJar)
-	}
+	def apply(version: String, launcher: xsbti.Launcher): ScalaInstance =
+		apply(version, launcher.getScala(version))
+	def apply(version: String, provider: xsbti.ScalaProvider): ScalaInstance =
+		new ScalaInstance(version, provider.loader, provider.libraryJar, provider.compilerJar)
 }

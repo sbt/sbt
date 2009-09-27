@@ -14,34 +14,33 @@ object ComponentManagerTest extends Specification
 		}
 		"throw an exception if 'file' is called for an empty component" in {
 			withManager { manager =>
-				createDirectory(manager.location(TestID))
+				manager.define(TestID, Nil)
 				( manager.file(TestID) ) must throwA[InvalidComponent]
 			}
 		}
 		"return the file for a single-file component" in {
 			withManager { manager =>
-				createFiles(manager, TestID, "a") match { case Seq(x) =>
-					manager.file(TestID).getAbsoluteFile must beEqualTo(x.getAbsoluteFile)
-				}
+				val hash = defineFile(manager, TestID, "a")
+				checksum(manager.file(TestID)) must beEqualTo(hash)
 			}
 		}
 
 		"throw an exception if 'file' is called for multi-file component" in {
 			withManager { manager =>
-				createFiles(manager, TestID, "a", "b")
+				defineFiles(manager, TestID, "a", "b")
 				( manager.file(TestID) ) must throwA[InvalidComponent]
 			}
 		}
 		"return the files for a multi-file component" in {
 			withManager { manager =>
-				val files = createFiles(manager, TestID, "a", "b")
-				manager.files(TestID) must haveTheSameElementsAs(files)
+				val hashes = defineFiles(manager, TestID, "a", "b")
+				checksum(manager.files(TestID)) must haveTheSameElementsAs(hashes)
 			}
 		}
 		"return the files for a single-file component" in {
 			withManager { manager =>
-				val files = createFiles(manager, TestID, "a")
-				manager.files(TestID) must haveTheSameElementsAs(files)
+				val hashes = defineFiles(manager, TestID, "a")
+				checksum(manager.files(TestID)) must haveTheSameElementsAs(hashes)
 			}
 		}
 		"throw an exception if 'files' is called for a non-existing component" in {
@@ -49,47 +48,33 @@ object ComponentManagerTest extends Specification
 		}
 
 		"properly cache a file and then retrieve it to an unresolved component" in {
-			withManager { manager =>
-				val file = createFile(manager, TestID, "a")
-				val hash = checksum(file)
+			withManager { definingManager =>
+				val hash = defineFile(definingManager, TestID, "a")
 				try
 				{
-					manager.cache(TestID)
-					delete(manager.location(TestID))
-					FileUtilities.listFiles(manager.location(TestID)).toList must haveSize(0)
-					checksum(manager.file(TestID)) must beEqualTo(hash)
+					definingManager.cache(TestID)
+					withManager { usingManager =>
+						checksum(usingManager.file(TestID)) must beEqualTo(hash)
+					}
 				}
-				finally { manager.clearCache(TestID) }
-			}
-		}
-
-		"not retrieve to a component already resolved" in {
-			withManager { manager =>
-				val file = createFile(manager, TestID, "a")
-				try
-				{
-					manager.cache(TestID)
-					val idDirectory = manager.location(TestID)
-					delete(idDirectory)
-					createDirectory(idDirectory)
-					manager.file(TestID) must throwA[InvalidComponent]
-				}
-				finally { manager.clearCache(TestID) }
+				finally { definingManager.clearCache(TestID) }
 			}
 		}
 	}
-	private def checksum(file: File) = ChecksumHelper.computeAsString(file, "sha1")
-	private def createFile(manager: ComponentManager, id: String, name: String): File = createFiles(manager, id, name).toList.head
-	private def createFiles(manager: ComponentManager, id: String, names: String*): Seq[File] =
-	{
-		val dir = manager.location(id)
-		createDirectory(dir)
-		names.map { name =>
-			val testFile = new File(dir, name)
-			touch(testFile)
-			testFile
+	private def checksum(files: Iterable[File]): Seq[String] = files.map(checksum).toSeq
+	private def checksum(file: File): String = if(file.exists) ChecksumHelper.computeAsString(file, "sha1") else ""
+	private def defineFile(manager: ComponentManager, id: String, name: String): String = createFile(manager, id, name)(checksum)
+	private def defineFiles(manager: ComponentManager, id: String, names: String*): Seq[String] = createFiles(manager, id, names : _*)(checksum)
+	private def createFile[T](manager: ComponentManager, id: String, name: String)(f: File => T): T = createFiles(manager, id, name)(files => f(files.toList.head))
+	private def createFiles[T](manager: ComponentManager, id: String, names: String*)(f: Seq[File] => T): T =
+		withTemporaryDirectory { dir =>
+			val files = names.map(name => new File(dir, name) )
+			files.foreach(writeRandomContent)
+			manager.define(id, files)
+			f(files)
 		}
-	}
+	private def writeRandomContent(file: File) = FileUtilities.write(file, randomString)
+	private def randomString = "asdf"
 	private def withManager[T](f: ComponentManager => T): T =
-		TestIvyLogger( logger => withTemporaryDirectory { temp =>  f(new ComponentManager(temp, logger)) } )
+		TestIvyLogger( logger => withTemporaryDirectory { temp =>  f(new ComponentManager(new xsbt.boot.ComponentProvider(temp), logger)) } )
 }

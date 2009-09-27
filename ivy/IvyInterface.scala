@@ -19,7 +19,7 @@ final case class ModuleID(organization: String, name: String, revision: String, 
 	def from(url: String) = artifacts(Artifact(name, new URL(url)))
 	def classifier(c: String) = artifacts(Artifact(name, c))
 	def artifacts(newArtifacts: Artifact*) = ModuleID(organization, name, revision, configurations, isChanging, isTransitive, newArtifacts ++ explicitArtifacts, extraAttributes)
-	def extra(attributes: (String,String)*) = ModuleID(organization, name, revision, configurations, isChanging, isTransitive, explicitArtifacts, extraAttributes ++ attributes)
+	def extra(attributes: (String,String)*) = ModuleID(organization, name, revision, configurations, isChanging, isTransitive, explicitArtifacts, extraAttributes ++ ModuleID.checkE(attributes))
 }
 object ModuleID
 {
@@ -30,6 +30,10 @@ object ModuleID
 		ModuleID(organization, name, revision, configurations, isChanging, isTransitive, Nil)
 	def apply(organization: String, name: String, revision: String, configurations: Option[String], isChanging: Boolean, isTransitive: Boolean, explicitArtifacts: Seq[Artifact]): ModuleID =
 		ModuleID(organization, name, revision, configurations, isChanging, isTransitive, explicitArtifacts, Map.empty)
+
+	def checkE(attributes: Seq[(String, String)]) =
+		for ( (key, value) <- attributes) yield
+			if(key.startsWith("e:")) (key, value) else ("e:" + key, value)
 }
 sealed trait Resolver extends NotNull
 {
@@ -40,14 +44,20 @@ sealed case class MavenRepository(name: String, root: String) extends Resolver
 	override def toString = name + ": " + root
 }
 
+final class Patterns(val ivyPatterns: Seq[String], val artifactPatterns: Seq[String], val isMavenCompatible: Boolean) extends NotNull
+{
+	private[xsbt] def mavenStyle(): Patterns = Patterns(ivyPatterns, artifactPatterns, true)
+	private[xsbt] def withIvys(patterns: Seq[String]): Patterns = Patterns(patterns ++ ivyPatterns, artifactPatterns, isMavenCompatible)
+	private[xsbt] def withArtifacts(patterns: Seq[String]): Patterns = Patterns(ivyPatterns, patterns ++ artifactPatterns, isMavenCompatible)
+}
+object Patterns
+{
+	def apply(artifactPatterns: String*): Patterns = Patterns(true, artifactPatterns : _*)
+	def apply(isMavenCompatible: Boolean, artifactPatterns: String*): Patterns = Patterns(Nil, artifactPatterns, isMavenCompatible)
+	def apply(ivyPatterns: Seq[String], artifactPatterns: Seq[String], isMavenCompatible: Boolean): Patterns = new Patterns(ivyPatterns, artifactPatterns, isMavenCompatible)
+}
 object RepositoryHelpers
 {
-	final case class Patterns(ivyPatterns: Seq[String], artifactPatterns: Seq[String], isMavenCompatible: Boolean) extends NotNull
-	{
-		private[xsbt] def mavenStyle(): Patterns = Patterns(ivyPatterns, artifactPatterns, true)
-		private[xsbt] def withIvys(patterns: Seq[String]): Patterns = Patterns(patterns ++ ivyPatterns, artifactPatterns, isMavenCompatible)
-		private[xsbt] def withArtifacts(patterns: Seq[String]): Patterns = Patterns(ivyPatterns, patterns ++ artifactPatterns, isMavenCompatible)
-	}
 	final case class SshConnection(authentication: Option[SshAuthentication], hostname: Option[String], port: Option[Int]) extends NotNull
 	{
 		def copy(authentication: Option[SshAuthentication]) = SshConnection(authentication, hostname, port)
@@ -63,7 +73,7 @@ object RepositoryHelpers
 	final case class PasswordAuthentication(user: String, password: String) extends SshAuthentication
 	final case class KeyFileAuthentication(keyfile: File, password: String) extends SshAuthentication
 }
-import RepositoryHelpers.{Patterns, SshConnection, FileConfiguration}
+import RepositoryHelpers.{SshConnection, FileConfiguration}
 import RepositoryHelpers.{KeyFileAuthentication, PasswordAuthentication, SshAuthentication}
 
 /** sbt interface to an Ivy repository based on patterns, which is most Ivy repositories.*/
@@ -283,12 +293,7 @@ object Configurations
 	private[xsbt] val DefaultMavenConfiguration = defaultConfiguration(true)
 	private[xsbt] val DefaultIvyConfiguration = defaultConfiguration(false)
 	private[xsbt] def DefaultConfiguration(mavenStyle: Boolean) = if(mavenStyle) DefaultMavenConfiguration else DefaultIvyConfiguration
-	private[xsbt] def defaultConfiguration(mavenStyle: Boolean) =
-	{
-		val base = if(mavenStyle) Configurations.Compile else Configurations.Default
-		config(base.name + "->default(compile)")
-	}
-
+	private[xsbt] def defaultConfiguration(mavenStyle: Boolean) = if(mavenStyle) Configurations.Compile else Configurations.Default
 	private[xsbt] def removeDuplicates(configs: Iterable[Configuration]) = Set(scala.collection.mutable.Map(configs.map(config => (config.name, config)).toSeq: _*).values.toList: _*)
 }
 /** Represents an Ivy configuration. */
@@ -336,6 +341,12 @@ object Artifact
 		val base = if(i >= 0) name.substring(0, i) else name
 		Artifact(name, extract(name, defaultType), extract(name, defaultExtension), None, Nil, Some(file.toURI.toURL))
 	}
+}
+final case class ModuleConfiguration(organization: String, name: String, revision: String, resolver: Resolver) extends NotNull
+object ModuleConfiguration
+{
+	def apply(org: String, resolver: Resolver): ModuleConfiguration = apply(org, "*", "*", resolver)
+	def apply(org: String, name: String, resolver: Resolver): ModuleConfiguration = ModuleConfiguration(org, name, "*", resolver)
 }
 /*
 object Credentials

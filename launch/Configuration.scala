@@ -10,12 +10,15 @@ object Configuration
 		args match
 		{
 			case Seq(head, tail @ _*) if head.startsWith("@")=> (configurationFromFile(head.substring(1), baseDirectory), tail)
-			case _ => (configurationOnClasspath, args)
+			case _ =>
+				val propertyConfigured = System.getProperty("sbt.boot.properties")
+				val url = if(propertyConfigured == null) configurationOnClasspath else configurationFromFile(propertyConfigured, baseDirectory)
+				(url , args)
 		}
 	def configurationOnClasspath: URL =
 	{
 		resourcePaths.toStream.map(getClass.getResource).find(_ ne null) getOrElse
-			( throw new BootException(resourcePaths.mkString("Could not finder sbt launch configuration. (Searched classpath for ", ",", ")")) )
+			( multiPartError("Could not finder sbt launch configuration.  Searched classpath for:", resourcePaths))
 	}
 	def configurationFromFile(path: String, baseDirectory: File): URL =
 	{
@@ -25,13 +28,15 @@ object Configuration
 			val exists = try { (new File(resolved)).exists } catch { case _: IllegalArgumentException => false }
 			if(exists) Some(resolved.toURL) else None
 		}
-		resolveAgainst(baseDirectory).toStream.flatMap(resolve).firstOption.getOrElse(throw new BootException("Could not find configuration file '" + path + "'."))
+		val against = resolveAgainst(baseDirectory)
+		against.toStream.flatMap(resolve).firstOption.getOrElse(multiPartError("Could not find configuration file '" + path + "'.  Searched:", against))
 	}
+	def multiPartError[T](firstLine: String, lines: Seq[T]) = throw new BootException( (Seq(firstLine) ++ lines).mkString("\n\t") )
 
-	val ConfigurationFilename = "sbt.boot.properties"
+	val ConfigurationName = "sbt.boot.properties"
 	val JarBasePath = "/sbt/"
-	def userConfigurationPath = "/" + ConfigurationFilename
-	def defaultConfigurationPath = JarBasePath + ConfigurationFilename
+	def userConfigurationPath = "/" + ConfigurationName
+	def defaultConfigurationPath = JarBasePath + ConfigurationName
 	def resourcePaths = Seq(userConfigurationPath, defaultConfigurationPath)
 	def resolveAgainst(baseDirectory: File) = Seq(baseDirectory toURI, new File(System.getProperty("user.home")) toURI, classLocation(getClass).toURI)
 

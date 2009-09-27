@@ -7,7 +7,7 @@ The sbt launcher component is a self-contained jar that boots a Scala applicatio
 The launcher may be configured in the following ways in increasing order of precedence:
  * Replace the /sbt/sbt.launch.config file in the jar
  * Put a configuration file named sbt.launch.config file on the classpath.  Put it in the classpath root without the /sbt prefix.
- * Specify the location of an alternate configuration on the command line.  The alternate configuration option is specified as the first argument to the launcher.  This option is the path to the configuration file preceeded by '@'.  Resolution of a relative path is first attempted against the current working directory, then against the user's home directory, and then against the directory containing the launcher jar.  An error is generated if none of these attempts succeed.
+ * Specify the location of an alternate configuration on the command line.  This can be done by either specifying the location as the system property 'sbt.boot.properties' or as the first argument to the launcher prefixed by '@'.  The system property has lower precedence.  Resolution of a relative path is first attempted against the current working directory, then against the user's home directory, and then against the directory containing the launcher jar.  An error is generated if none of these attempts succeed.
 
 The configuration file is read as UTF-8 encoded and is defined by the following grammer (nl is a newline or end of file):
 

@@ -1,37 +1,50 @@
 package xsbt.boot
 
 import java.io.File
+import java.net.URL
 
 object Launch
 {
-	def apply(arguments: Seq[String]): Unit = apply( (new File("")).getAbsoluteFile, arguments )
-	def apply(currentDirectory: File, arguments: Seq[String])
+	def apply(arguments: Seq[String]): Unit = apply( (new File("")).getAbsoluteFile , arguments )
+	
+	def apply(currentDirectory: File, arguments: Seq[String]): Unit =
+		Configuration.find(arguments, currentDirectory) match { case (configLocation, newArguments) => configured(currentDirectory, configLocation, newArguments) }
+
+	def configured(currentDirectory: File, configLocation: URL, arguments: Seq[String]): Unit =
+		parsed(currentDirectory, Configuration.parse(configLocation, currentDirectory) , arguments)
+		
+	def parsed(currentDirectory: File, parsed: LaunchConfiguration, arguments: Seq[String]): Unit =
+		ResolveVersions(parsed) match { case (resolved, finish) => explicit(currentDirectory, resolved, arguments, finish) }
+		
+	def explicit(currentDirectory: File, explicit: LaunchConfiguration, arguments: Seq[String], setupComplete: () => Unit): Unit =
+		launch( run(new Launch(explicit.boot.directory, explicit.repositories)) ) (
+			RunConfiguration(explicit.getScalaVersion, explicit.app.toID, currentDirectory, arguments, setupComplete) )
+
+	final def run(launcher: xsbti.Launcher)(config: RunConfiguration): xsbti.MainResult =
 	{
-		val (configFile, newArguments) = Configuration.find(arguments, currentDirectory)
-		val parsed = Configuration.parse(configFile, currentDirectory)
-		val (explicit, finish) = ResolveVersions(parsed)
-		val launcher = new Launch(explicit)
-		launch(launcher, explicit.getScalaVersion, explicit.app.toID, currentDirectory, newArguments, finish)
-	}
-	final def launch(launcher: xsbti.Launcher, scalaVersion: String, app: xsbti.ApplicationID, workingDirectory: File, arguments: Seq[String], finish: () => Unit)
-	{
+		import config._
 		val scalaProvider: xsbti.ScalaProvider = launcher.getScala(scalaVersion)
 		val appProvider: xsbti.AppProvider = scalaProvider.app(app)
 		val appConfig: xsbti.AppConfiguration = new AppConfiguration(arguments.toArray, workingDirectory, appProvider)
-
+		
 		val main = appProvider.newMain()
-		finish()
-		main.run(appConfig) match
+		setupComplete()
+		main.run(appConfig)
+	}
+	final def launch(run: RunConfiguration => xsbti.MainResult)(config: RunConfiguration)
+	{
+		run(config) match
 		{
 			case e: xsbti.Exit => System.exit(e.code)
-			case r: xsbti.Reboot => launch(launcher, r.scalaVersion, r.app, r.baseDirectory, r.arguments, () => ())
+			case r: xsbti.Reboot => launch(run)(RunConfiguration(r.scalaVersion, r.app, r.baseDirectory, r.arguments, () => ()))
 			case x => throw new BootException("Invalid main result: " + x + (if(x eq null) "" else " (class: " + x.getClass + ")"))
 		}
 	}
 }
+case class RunConfiguration(scalaVersion: String, app: xsbti.ApplicationID, workingDirectory: File, arguments: Seq[String], setupComplete: () => Unit) extends NotNull
 
 import BootConfiguration.{appDirectoryName, baseDirectoryName, ScalaDirectoryName, TestLoadScalaClasses}
-class Launch(val configuration: LaunchConfiguration) extends xsbti.Launcher
+class Launch(val bootDirectory: File, repositories: Seq[Repository]) extends xsbti.Launcher
 {
 	import scala.collection.mutable.HashMap
 	private val scalaProviders = new HashMap[String, ScalaProvider]
@@ -42,12 +55,15 @@ class Launch(val configuration: LaunchConfiguration) extends xsbti.Launcher
 		def launcher: xsbti.Launcher = Launch.this
 
 		lazy val parentLoader = new BootFilteredLoader(getClass.getClassLoader)
-		lazy val configuration = Launch.this.configuration.withScalaVersion(version)
-		lazy val libDirectory = new File(configuration.boot.directory, baseDirectoryName(version))
+		
+		lazy val configuration = new UpdateConfiguration(bootDirectory, version, repositories)
+		lazy val libDirectory = new File(configuration.bootDirectory, baseDirectoryName(version))
 		lazy val scalaHome = new File(libDirectory, ScalaDirectoryName)
+		def compilerJar = new File(scalaHome, "scala-compiler.jar")
+		def libraryJar = new File(scalaHome, "scala-library.jar")
 		def baseDirectories = Seq(scalaHome)
 		def testLoadClasses = TestLoadScalaClasses
-		def target = UpdateTarget.UpdateScala
+		def target = UpdateScala
 		def failLabel = "Scala " + version
 
 		def app(id: xsbti.ApplicationID): xsbti.AppProvider = new AppProvider(id)
@@ -55,12 +71,12 @@ class Launch(val configuration: LaunchConfiguration) extends xsbti.Launcher
 		class AppProvider(val id: xsbti.ApplicationID) extends xsbti.AppProvider with Provider
 		{
 			def scalaProvider: xsbti.ScalaProvider = ScalaProvider.this
-			lazy val configuration = ScalaProvider.this.configuration.withApp(Application(id))
+			def configuration = ScalaProvider.this.configuration
 			lazy val appHome = new File(libDirectory, appDirectoryName(id, File.separator))
 			def parentLoader = ScalaProvider.this.loader
-			def baseDirectories = id.mainComponents.map(componentLocation) ++ Seq(appHome)
+			def baseDirectories = id.mainComponents.map(components.componentLocation) ++ Seq(appHome)
 			def testLoadClasses = Seq(id.mainClass)
-			def target = UpdateTarget.UpdateApp
+			def target = new UpdateApp(Application(id))
 			def failLabel = id.name + " " + id.version
 
 			lazy val mainClass: Class[T] forSome { type T <: xsbti.AppMain } =
@@ -70,16 +86,20 @@ class Launch(val configuration: LaunchConfiguration) extends xsbti.Launcher
 			}
 			def newMain(): xsbti.AppMain = mainClass.newInstance
 
-			def componentLocation(id: String): File = new File(appHome, id)
-			def component(id: String) = GetJars(componentLocation(id) :: Nil)
-			def defineComponent(id: String, files: Array[File]) =
-			{
-				val location = componentLocation(id)
-				if(location.exists)
-					throw new BootException("Cannot redefine component.  (id: " + id + ", files: " + files.mkString(","))
-				else
-					files.foreach(file => Copy(file, location))
-			}
+			lazy val components = new ComponentProvider(appHome)
 		}
+	}
+}
+class ComponentProvider(baseDirectory: File) extends xsbti.ComponentProvider
+{
+	def componentLocation(id: String): File = new File(baseDirectory, id)
+	def component(id: String) = GetJars.wrapNull(componentLocation(id).listFiles).filter(_.isFile)
+	def defineComponent(id: String, files: Array[File]) =
+	{
+		val location = componentLocation(id)
+		if(location.exists)
+			throw new BootException("Cannot redefine component.  ID: " + id + ", files: " + files.mkString(","))
+		else
+			Copy(files, location)
 	}
 }

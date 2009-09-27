@@ -34,34 +34,23 @@ object WithCompiler
 		val log = new TestIvyLogger with CompileLogger
 		log.setLevel(Level.Debug)
 		log.bufferQuietly {
-			FileUtilities.withTemporaryDirectory { temp =>
-				val launch = new xsbt.boot.Launch(temp)
-				val sbtVersion = xsbti.Versions.Sbt
-				val manager = new ComponentManager(launch.getSbtHome(sbtVersion, scalaVersion), log)
-				prepare(manager, ComponentCompiler.compilerInterfaceSrcID, "CompilerInterface.scala")
-				prepare(manager, ComponentCompiler.xsbtiID, classOf[xsbti.AnalysisCallback])
-				val result = f(AnalyzingCompiler(scalaVersion,  launch, manager), log)
-				launch.clearScalaLoaderCache
-				System.gc()
-				System.gc()
-				System.gc()
-				result
+			boot.LaunchTest.withLauncher { launch =>
+				FileUtilities.withTemporaryDirectory { componentDirectory =>
+					val manager = new ComponentManager(new boot.ComponentProvider(componentDirectory), log)
+					prepare(manager, ComponentCompiler.compilerInterfaceSrcID, "CompilerInterface.scala")
+					prepare(manager, ComponentCompiler.xsbtiID, classOf[xsbti.AnalysisCallback])
+					f(new AnalyzingCompiler(ScalaInstance(scalaVersion, launch), manager), log)
+				}
 			}
 		}
 	}
 	private def prepare(manager: ComponentManager, id: String, resource: Class[_]): Unit =
-	{
-		val src = FileUtilities.classLocationFile(resource)
-		prepare(manager, id, src)
-	}
+		manager.define(id, FileUtilities.classLocationFile(resource) :: Nil)
 	private def prepare(manager: ComponentManager, id: String, resource: String): Unit =
 	{
 		val src = getClass.getClassLoader.getResource(resource)
 		if(src eq null)
 			error("Resource not found: " + resource)
-		prepare(manager, id, FileUtilities.asFile(src))
+		manager.define(id, FileUtilities.asFile(src) :: Nil)
 	}
-	import Paths._
-	private def prepare(manager: ComponentManager, id: String, file: File): Unit =
-		FileUtilities.copy(file x FileMapper.flat(manager.location(id)))
 }

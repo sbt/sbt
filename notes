@@ -11,8 +11,6 @@ Task engine
 - unnamed tasks log to parent task
 - in parallel, optionally one task always logging
 
-- boot interface contains static final int version = N that main xsbt can use to check if it can be loaded by that version (a lower bound check)
-- main xsbt has static final int version = N that boot can use to check if it can load that version (a lower bound check)
 - Have Interfaces subproject that depends on no other project and defines interfaces in package xsbti.  They are written in Java and cannot refer to Scala classes (compileOrder = JavaThenScala).  These interfaces are loaded by the root loader and can be used to pass objects across ClassLoader boundaries.
 - launcher/main interface is not static (no system properties!)
 - simple, well-defined ClassLoaders
@@ -26,18 +24,10 @@ Task engine
 - minimal dependence on main xsbt logger from subcomponents: use thin interface for subcomponents and implement interface in separate files in main xsbt
 
 Dependency Management
-- drop explicit managers
 - resolvers are completely defined in project definition (use Resolver.withDefaultResolvers)
 - configurations completely defined within project (use ModuleConfiguration.configurations)
 
 Launcher
-- generalize to be able to launch any conforming application
-- default configuration file in jar- can be replaced in jar or overridden on command line
-- format:
- scala.version=versionSpecification
- main.org=ID
- main.name=ID
- main.version=versionSpecification
- main.components=ID (',' ID)*
- repo=id ',' url [',' pattern]
- versionSpecification := ( ('read'|'prompt'|'readOrPrompt') [default] ) |version
+- see launch.specification
+- boot interface contains static final int version = N that main xsbt can use to check if it can be loaded by that version (a lower bound check)
+- main xsbt has static final int version = N that boot can use to check if it can load that version (a lower bound check)

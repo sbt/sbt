@@ -91,7 +91,7 @@ private object ConvertResolver
 					setKeyFilePassword(password)
 			}
 	}
-	private def initializePatterns(resolver: AbstractPatternsBasedResolver, patterns: RepositoryHelpers.Patterns)
+	private def initializePatterns(resolver: AbstractPatternsBasedResolver, patterns: Patterns)
 	{
 		resolver.setM2compatible(patterns.isMavenCompatible)
 		patterns.ivyPatterns.foreach(resolver.addIvyPattern)

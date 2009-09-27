@@ -40,7 +40,7 @@ private object BootConfiguration
 	val JLinePackagePath = "jline/"
 	/** The loader will check that these classes can be loaded and will assume that their presence indicates
 	* the Scala compiler and library have been downloaded.*/
-	val TestLoadScalaClasses = "scala.List" :: "scala.tools.nsc.GenericRunnerCommand" :: Nil
+	val TestLoadScalaClasses = "scala.Option" :: "scala.tools.nsc.Global" :: Nil
 
 	val ScalaHomeProperty = "scala.home"
 	val UpdateLogName = "update.log"

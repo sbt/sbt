@@ -14,7 +14,7 @@ class XSbt(info: ProjectInfo) extends ParentProject(info)
 	val ioSub = project(utilPath / "io", "IO", new IOProject(_), controlSub)
 	val classpathSub = project(utilPath / "classpath", "Classpath", new Base(_))
 
-	val ivySub = project("ivy", "Ivy", new IvyProject(_), interfaceSub)
+	val ivySub = project("ivy", "Ivy", new IvyProject(_), interfaceSub, launchInterfaceSub)
 	val logSub = project(utilPath / "log", "Logging", new Base(_), interfaceSub)
 
 	val compileInterfaceSub = project(compilePath / "interface", "Compiler Interface", new CompilerInterfaceProject(_), interfaceSub)
@@ -64,21 +64,22 @@ class XSbt(info: ProjectInfo) extends ParentProject(info)
 		val jline = "jline" % "jline" % "0.9.94"
 		val ivy = "org.apache.ivy" % "ivy" % "2.0.0"
 		def rawJarPath = jarPath
+		override final def crossScalaVersions = Set.empty // don't need to cross-build, since the distributed jar is standalone (proguard)
 		lazy val rawPackage = packageTask(packagePaths +++ launchInterfaceSub.packagePaths, rawJarPath, packageOptions).dependsOn(compile)
 		// to test the retrieving and loading of the main sbt, we package and publish the test classes to the local repository
-		override def defaultMainArtifact = Artifact(idWithVersion)
-		override def projectID = ModuleID(organization, idWithVersion, "test-" + version)
-		override def packageAction = packageTask(packageTestPaths, outputPath / (idWithVersion + "-" + projectID.revision +".jar"), packageOptions).dependsOn(rawTestCompile)
+		override def defaultMainArtifact = Artifact(testID)
+		override def projectID = ModuleID(organization, testID, "test-" + version)
+		override def packageAction = packageTask(packageTestPaths, outputPath / (testID + "-" + projectID.revision +".jar"), packageOptions).dependsOn(rawTestCompile)
 		override def deliverProjectDependencies = Nil
-		def idWithVersion = "xsbt_" + ScalaVersion.currentString
-		lazy val rawTestCompile = super.testCompileAction
+		def testID = "launch-test"
+		override def testClasspath = super.testClasspath +++ interfaceSub.compileClasspath
+		lazy val rawTestCompile = super.testCompileAction dependsOn(interfaceSub.compile)
 		override def testCompileAction = publishLocal dependsOn(rawTestCompile)
 	}
 	trait TestDependencies extends Project
 	{
 		val sc = "org.scala-tools.testing" % "scalacheck" % "1.5" % "test->default"
-		val sp = "org.scala-tools.testing" % "specs" % "1.5.0" % "test->default"
-		val ju = "junit" % "junit" % "4.5" % "test->default" // required by specs to compile properly
+		val sp = "org.scala-tools.testing" % "specs" % "1.6.0" % "test->default"
 	}
 	class StandardTaskProject(info: ProjectInfo) extends Base(info)
 	{
@@ -97,15 +98,15 @@ class XSbt(info: ProjectInfo) extends ParentProject(info)
 		override def scratch = true
 		override def consoleClasspath = testClasspath
 	}
-	class CompileProject(info: ProjectInfo) extends Base(info) with TestWithLog
+	class CompileProject(info: ProjectInfo) extends Base(info) with TestWithLog with TestWithLaunch
 	{
-		override def testCompileAction = super.testCompileAction dependsOn(launchSub.testCompile, compileInterfaceSub.`package`, interfaceSub.`package`)
+		override def testCompileAction = super.testCompileAction dependsOn(compileInterfaceSub.`package`, interfaceSub.`package`)
 		 // don't include launch interface in published dependencies because it will be provided by launcher
 		override def deliverProjectDependencies = Set(super.deliverProjectDependencies.toSeq : _*) - launchInterfaceSub.projectID
-		override def testClasspath = super.testClasspath +++ launchSub.testClasspath +++ compileInterfaceSub.jarPath +++ interfaceSub.jarPath --- compilerInterfaceClasspath
+		override def testClasspath = super.testClasspath +++ compileInterfaceSub.jarPath +++ interfaceSub.jarPath --- compilerInterfaceClasspath
 		override def compileOptions = super.compileOptions ++ Seq(CompileOption("-Xno-varargs-conversion")) //needed for invoking nsc.scala.tools.Main.process(Array[String])
 	}
-	class IvyProject(info: ProjectInfo) extends Base(info) with TestWithIO with TestWithLog
+	class IvyProject(info: ProjectInfo) extends Base(info) with TestWithIO with TestWithLog with TestWithLaunch
 	{
 		val ivy = "org.apache.ivy" % "ivy" % "2.0.0"
 	}
@@ -122,16 +123,25 @@ class XSbt(info: ProjectInfo) extends ParentProject(info)
 		def xTestClasspath =  projectClasspath(Configurations.Test)
 		override def componentID = Some("compiler-interface-src")
 	}
-	trait TestWithIO extends BasicScalaProject
-	{
-		// use IO from tests
-		override def testCompileAction = super.testCompileAction dependsOn(ioSub.testCompile)
-		override def testClasspath = super.testClasspath +++ ioSub.testClasspath
+	trait TestWithIO extends TestWith {
+		override def testWithTestClasspath = super.testWithTestClasspath ++ Seq(ioSub)
 	}
-	trait TestWithLog extends BasicScalaProject
+	trait TestWithLaunch extends TestWith {
+		override def testWithTestClasspath = super.testWithTestClasspath ++ Seq(launchSub)
+	}
+	trait TestWithLog extends TestWith {
+		override def testWithCompileClasspath = super.testWithCompileClasspath ++ Seq(logSub)
+	}
+	trait TestWith extends BasicScalaProject
 	{
-		override def testCompileAction = super.testCompileAction dependsOn(logSub.compile)
-		override def testClasspath = super.testClasspath +++ logSub.compileClasspath
+		def testWithCompileClasspath: Seq[BasicScalaProject] = Nil
+		def testWithTestClasspath: Seq[BasicScalaProject] = Nil
+		override def testCompileAction = super.testCompileAction dependsOn((testWithTestClasspath.map(_.testCompile) ++ testWithCompileClasspath.map(_.compile)) : _*)
+		override def testClasspath = (super.testClasspath /: (testWithTestClasspath.map(_.testClasspath) ++  testWithCompileClasspath.map(_.compileClasspath) ))(_ +++ _)
+	}
+	trait WithLauncherInterface extends BasicScalaProject
+	{
+		override def deliverProjectDependencies = super.deliverProjectDependencies.toList - launchInterfaceSub.projectID
 	}
 }
 trait JavaProject extends BasicScalaProject
@@ -148,7 +158,7 @@ trait SourceProject extends BasicScalaProject
 }
 trait ManagedBase extends BasicScalaProject
 {
-	override def deliverScalaDependencies = Nil //
+	override def deliverScalaDependencies = Nil 
 	override def crossScalaVersions = Set("2.7.5")
 	override def managedStyle = ManagedStyle.Ivy
 	override def useDefaultConfigurations = false

@@ -21,19 +21,17 @@ import util.{DefaultMessageLogger, Message}
 
 import BootConfiguration._
 
-object UpdateTarget extends Enumeration
-{
-	val UpdateScala = Value("scala")
-	val UpdateApp = Value("app")
-}
-import UpdateTarget.{UpdateApp, UpdateScala}
+sealed trait UpdateTarget extends NotNull { def tpe: String }
+final object UpdateScala extends UpdateTarget { def tpe = "scala" }
+final case class UpdateApp(id: Application) extends UpdateTarget { def tpe = "app" }
+
+final class UpdateConfiguration(val bootDirectory: File, val scalaVersion: String, val repositories: Seq[Repository]) extends NotNull
 
 /** Ensures that the Scala and application jars exist for the given versions or else downloads them.*/
-final class Update(config: LaunchConfiguration)
+final class Update(config: UpdateConfiguration)
 {
-	private val bootDirectory = config.boot.directory
+	import config.{bootDirectory, repositories, scalaVersion}
 	bootDirectory.mkdirs
-	private val scalaVersion = config.getScalaVersion
 
 	private def logFile = new File(bootDirectory, UpdateLogName)
 	private val logWriter = new PrintWriter(new FileWriter(logFile))
@@ -49,7 +47,7 @@ final class Update(config: LaunchConfiguration)
 	private lazy val ivy = Ivy.newInstance(settings)
 
 	/** The main entry point of this class for use by the Update module.  It runs Ivy */
-	def apply(target: UpdateTarget.Value)
+	def apply(target: UpdateTarget)
 	{
 		Message.setDefaultLogger(new SbtIvyLogger(logWriter))
 		ivy.pushContext()
@@ -68,11 +66,11 @@ final class Update(config: LaunchConfiguration)
 		}
 	}
 	/** Runs update for the specified target (updates either the scala or appliciation jars for building the project) */
-	private def update(target: UpdateTarget.Value)
+	private def update(target: UpdateTarget)
 	{
 		import IvyConfiguration.Visibility.PUBLIC
 		// the actual module id here is not that important
-		val moduleID = new DefaultModuleDescriptor(createID(SbtOrg, "boot-" + target, "1.0"), "release", null, false)
+		val moduleID = new DefaultModuleDescriptor(createID(SbtOrg, "boot-" + target.tpe, "1.0"), "release", null, false)
 		moduleID.setLastModified(System.currentTimeMillis)
 		moduleID.addConfiguration(new IvyConfiguration(DefaultIvyConfiguration, PUBLIC, "", Array(), true, null))
 		// add dependencies based on which target needs updating
@@ -81,14 +79,14 @@ final class Update(config: LaunchConfiguration)
 			case UpdateScala =>
 				addDependency(moduleID, ScalaOrg, CompilerModuleName, scalaVersion, "default")
 				addDependency(moduleID, ScalaOrg, LibraryModuleName, scalaVersion, "default")
-			case UpdateApp =>
-				val resolvedName = if(config.app.crossVersioned) config.app.name + "_" + scalaVersion else config.app.name
-				addDependency(moduleID, config.app.groupID, resolvedName, config.app.getVersion, "runtime(default)")
+			case UpdateApp(app) =>
+				val resolvedName = if(app.crossVersioned) app.name + "_" + scalaVersion else app.name
+				addDependency(moduleID, app.groupID, resolvedName, app.getVersion, "runtime(default)")
 		}
 		update(moduleID, target)
 	}
 	/** Runs the resolve and retrieve for the given moduleID, which has had its dependencies added already. */
-	private def update(moduleID: DefaultModuleDescriptor,  target: UpdateTarget.Value)
+	private def update(moduleID: DefaultModuleDescriptor,  target: UpdateTarget)
 	{
 		val eventManager = new EventManager
 		resolve(eventManager, moduleID)
@@ -128,16 +126,15 @@ final class Update(config: LaunchConfiguration)
         }
 	}
 	/** Retrieves resolved dependencies using the given target to determine the location to retrieve to. */
-	private def retrieve(eventManager: EventManager, module: ModuleDescriptor,  target: UpdateTarget.Value)
+	private def retrieve(eventManager: EventManager, module: ModuleDescriptor,  target: UpdateTarget)
 	{
 		val retrieveOptions = new RetrieveOptions
 		val retrieveEngine = new RetrieveEngine(settings, eventManager)
 		val pattern =
 			target match
 			{
-				// see BootConfiguration
-				case UpdateApp => appRetrievePattern(config.app.toID)
 				case UpdateScala => scalaRetrievePattern
+				case UpdateApp(app) => appRetrievePattern(app.toID)
 			}
 		retrieveEngine.retrieve(module.getModuleRevisionId, baseDirectoryName(scalaVersion) + "/" + pattern, retrieveOptions)
 	}
@@ -146,8 +143,8 @@ final class Update(config: LaunchConfiguration)
 	{
 		val newDefault = new ChainResolver
 		newDefault.setName("redefined-public")
-		if(config.repositories.isEmpty) throw new BootException("No repositories defined.")
-		config.repositories.foreach(repo => newDefault.add(toIvyRepository(settings, repo)))
+		if(repositories.isEmpty) throw new BootException("No repositories defined.")
+		repositories.foreach(repo => newDefault.add(toIvyRepository(settings, repo)))
 		onDefaultRepositoryCacheManager(settings)(_.setUseOrigin(true))
 		settings.addResolver(newDefault)
 		settings.setDefaultResolver(newDefault.getName)

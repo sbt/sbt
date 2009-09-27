@@ -8,6 +8,7 @@ import Artifact.{defaultExtension, defaultType}
 import java.io.File
 
 import org.apache.ivy.{core, plugins, util, Ivy}
+import core.IvyPatternHelper
 import core.cache.DefaultRepositoryCacheManager
 import core.module.descriptor.{DefaultArtifact, DefaultDependencyArtifactDescriptor, MDArtifact}
 import core.module.descriptor.{DefaultDependencyDescriptor, DefaultModuleDescriptor,  ModuleDescriptor}
@@ -74,7 +75,7 @@ final class IvySbt(configuration: IvyConfiguration)
 			finally { ivy.popContext() }
 		}
 
-	final class Module(val moduleConfiguration: ModuleConfiguration) extends NotNull
+	final class Module(val moduleSettings: ModuleSettings) extends NotNull
 	{
 		def logger = configuration.log
 		def withModule[T](f: (Ivy,DefaultModuleDescriptor,String) => T): T =
@@ -83,14 +84,14 @@ final class IvySbt(configuration: IvyConfiguration)
 		private lazy val (moduleDescriptor: DefaultModuleDescriptor, defaultConfig: String) =
 		{
 			val (baseModule, baseConfiguration) =
-				moduleConfiguration match
+				moduleSettings match
 				{
 					case ic: InlineConfiguration => configureInline(ic)
 					case ec: EmptyConfiguration => configureEmpty(ec.module)
 					case pc: PomConfiguration => readPom(pc.file, pc.validate)
 					case ifc: IvyFileConfiguration => readIvyFile(ifc.file, ifc.validate)
 				}
-			moduleConfiguration.ivyScala.foreach(IvyScala.checkModule(baseModule, baseConfiguration))
+			moduleSettings.ivyScala.foreach(IvyScala.checkModule(baseModule, baseConfiguration))
 			baseModule.getExtraAttributesNamespaces.asInstanceOf[java.util.Map[String,String]].put("e", "http://ant.apache.org/ivy/extra")
 			(baseModule, baseConfiguration)
 		}
@@ -105,6 +106,7 @@ final class IvySbt(configuration: IvyConfiguration)
 
 			IvySbt.addArtifacts(moduleID, artifacts)
 			IvySbt.addDependencies(moduleID, dependencies, parser)
+			IvySbt.setModuleConfigurations(settings, moduleConfigurations)
 			IvySbt.addMainArtifact(moduleID)
 			(moduleID, parser.getDefaultConf)
 		}
@@ -126,7 +128,7 @@ final class IvySbt(configuration: IvyConfiguration)
 		private def readIvyFile(ivyFile: File, validate: Boolean) =
 		{
 			val url = toURL(ivyFile)
-			val parser = new CustomXmlParser.CustomParser(settings)
+			val parser = new CustomXmlParser.CustomParser(settings, None)
 			parser.setValidate(validate)
 			parser.setSource(url)
 			parser.parse()
@@ -167,6 +169,20 @@ private object IvySbt
 		settings.addResolver(newDefault)
 		settings.setDefaultResolver(newDefault.getName)
 		log.debug("Using repositories:\n" + resolvers.mkString("\n\t"))
+	}
+	private def setModuleConfigurations(settings: IvySettings, moduleConfigurations: Seq[ModuleConfiguration])
+	{
+		val existing = settings.getResolverNames
+		for(moduleConf <- moduleConfigurations)
+		{
+			import moduleConf._
+			import IvyPatternHelper._
+			import PatternMatcher._
+			if(!existing.contains(resolver.name))
+				settings.addResolver(ConvertResolver(resolver))
+			val attributes = javaMap(Map(MODULE_KEY -> name, ORGANISATION_KEY -> organization, REVISION_KEY -> revision))
+			settings.addModuleConfiguration(attributes, settings.getMatcher(EXACT_OR_REGEXP), resolver.name, null, null, null)
+		}
 	}
 	private def configureCache(settings: IvySettings, dir: Option[File])
 	{
@@ -244,9 +260,8 @@ private object IvySbt
 	/** Parses the given in-memory Ivy file 'xml', using the existing 'moduleID' and specifying the given 'defaultConfiguration'. */
 	private def parseIvyXML(settings: IvySettings, xml: String, moduleID: DefaultModuleDescriptor, defaultConfiguration: String, validate: Boolean): CustomXmlParser.CustomParser =
 	{
-		val parser = new CustomXmlParser.CustomParser(settings)
+		val parser = new CustomXmlParser.CustomParser(settings, Some(defaultConfiguration))
 		parser.setMd(moduleID)
-		parser.setDefaultConf(defaultConfiguration)
 		parser.setValidate(validate)
 		parser.setInput(xml.getBytes)
 		parser.parse()

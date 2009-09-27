@@ -9,5 +9,7 @@ public interface ScalaProvider
 
 	public ClassLoader loader();
 	public File[] jars();
+	public File libraryJar();
+	public File compilerJar();
 	public AppProvider app(ApplicationID id);
 }

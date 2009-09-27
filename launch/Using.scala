@@ -10,15 +10,12 @@ object Using extends NotNull
 
 object Copy
 {
-	def apply(files: Array[File], to: File)
+	def apply(files: Seq[File], toDirectory: File): Unit =  files.foreach(file => apply(file, toDirectory))
+	def apply(file: File, toDirectory: File)
 	{
-		to.mkdirs()
-		files.foreach(file => apply(file, to))
-	}
-	def apply(file: File, to: File)
-	{
+		toDirectory.mkdirs()
 		Using(new FileInputStream(file)) { in =>
-			Using(new FileOutputStream(new File(to, file.getName))) { out =>
+			Using(new FileOutputStream(new File(toDirectory, file.getName))) { out =>
 				transfer(in, out)
 			}
 		}

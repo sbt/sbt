@@ -17,8 +17,10 @@ import plugins.repository.url.URLResource
 private[xsbt] object CustomXmlParser extends XmlModuleDescriptorParser with NotNull
 {
 	import XmlModuleDescriptorParser.Parser
-	class CustomParser(settings: IvySettings) extends Parser(CustomXmlParser, settings) with NotNull
+	class CustomParser(settings: IvySettings, defaultConfig: Option[String]) extends Parser(CustomXmlParser, settings) with NotNull
 	{
+		defaultConfig.foreach(x => setDefaultConfMapping("*->default(compile)"))
+			
 		def setSource(url: URL) =
 		{
 			super.setResource(new URLResource(url))
@@ -29,7 +31,6 @@ private[xsbt] object CustomXmlParser extends XmlModuleDescriptorParser with NotN
 		override def setResource(res: Resource) {}
 		override def setMd(md: DefaultModuleDescriptor) = super.setMd(md)
 		override def parseDepsConfs(confs: String, dd: DefaultDependencyDescriptor) = super.parseDepsConfs(confs, dd)
-		override def getDefaultConf = super.getDefaultConf
-		override def setDefaultConf(conf: String) = super.setDefaultConf(conf)
+		override def getDefaultConf = defaultConfig.getOrElse(super.getDefaultConf)
 	}
 }

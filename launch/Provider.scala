@@ -5,10 +5,10 @@ import java.net.{URL, URLClassLoader}
 
 trait Provider extends NotNull
 {
-	def configuration: LaunchConfiguration
+	def configuration: UpdateConfiguration
 	def baseDirectories: Seq[File]
 	def testLoadClasses: Seq[String]
-	def target: UpdateTarget.Value
+	def target: UpdateTarget
 	def failLabel: String
 	def parentLoader: ClassLoader
 
