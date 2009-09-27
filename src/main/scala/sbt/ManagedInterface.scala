@@ -260,7 +260,7 @@ object Resolver
 		/** Constructs a file resolver with the given name and base directory. */
 		def apply(name: String, baseDirectory: File)(implicit basePatterns: Patterns): FileRepository =
 		{
-			if(baseDirectory.exists && !baseDirectory.isDirectory) error("Not a directory: " + baseDirectory.getAbsolutePath) else baseDirectory.mkdirs()
+			if(baseDirectory.exists && !baseDirectory.isDirectory) error("Not a directory: " + baseDirectory.getAbsolutePath)
 			baseRepository(baseDirectory.toURI)(FileRepository(name, defaultFileConfiguration, _))
 		}
 	}
@@ -274,7 +274,7 @@ object Resolver
 			baseRepository(baseURL.toURI)(URLRepository(name, _))
 	}
 	private def baseRepository[T](baseURI: java.net.URI)(construct: Patterns => T)(implicit basePatterns: Patterns): T =
-		construct(resolvePatterns(baseURI.normalize, basePatterns))
+		construct(resolvePatterns(normalize(baseURI), basePatterns))
 
 	/** If `base` is None, `patterns` is returned unchanged.
 	* Otherwise, the ivy file and artifact patterns in `patterns` are resolved against the given base. */
@@ -290,6 +290,14 @@ object Resolver
 		def resolve(pattern: String) = base.resolve(pathURI(pattern)).getPath
 		def resolveAll(patterns: Seq[String]) = patterns.map(resolve)
 		Patterns(resolveAll(basePatterns.ivyPatterns), resolveAll(basePatterns.artifactPatterns), basePatterns.isMavenCompatible)
+	}
+	/** Normalizes the given URI, which is assumed to represent a directory, even if that directory does not exist.  This method exists
+	* because URI.normalize does not append a slash if the directory does not exist.*/
+	private def normalize(uri: URI) =
+	{
+		val normalized = uri.normalize
+		val normString = normalized.toString
+		if(normString.endsWith("/")) normalized else new URI(normString + "/")
 	}
 	/** Constructs a `URI` with the path component set to `path` and the other components set to null.*/
 	private def pathURI(path: String) = new URI(null, null, path, null)

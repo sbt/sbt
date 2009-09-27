@@ -623,7 +623,7 @@ object ManageDependencies
 		import XmlModuleDescriptorParser.Parser
 		class CustomParser(settings: IvySettings, defaultConfig: Option[String]) extends Parser(CustomXmlParser, settings) with NotNull
 		{
-			defaultConfig.foreach(x => setDefaultConfMapping("*->default(compile)"))
+			if(defaultConfig.isDefined) setDefaultConfMapping("*->default(compile)")
 
 			def setSource(url: URL) =
 			{
