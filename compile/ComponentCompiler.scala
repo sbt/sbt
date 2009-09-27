@@ -27,12 +27,13 @@ class ComponentCompiler(compiler: RawCompiler, manager: ComponentManager)
 	protected def compileAndInstall(id: String, binID: String): File =
 	{
 		val srcID = id + srcExtension
-		val binaryDirectory = manager.location(binID)
-		createDirectory(binaryDirectory)
-		val targetJar = new File(binaryDirectory, id + ".jar")
-		compileSources(manager.files(srcID), targetJar, id)
-		manager.cache(binID)
-		targetJar
+		withTemporaryDirectory { binaryDirectory =>
+			val targetJar = new File(binaryDirectory, id + ".jar")
+			compileSources(manager.files(srcID), targetJar, id)
+			manager.define(binID, Seq(targetJar))
+			manager.cache(binID)
+		}
+		manager.file(binID)
 	}
 	/** Extract sources from source jars, compile them with the xsbti interfaces on the classpath, and package the compiled classes and
 	* any resources from the source jars into a final jar.*/
