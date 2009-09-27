@@ -1,10 +1,8 @@
 # load the project definition with transitive dependencies enabled
 # and check that they are not downloaded
 
-$ touch transitive
-[success]
-$ reload
-[success]
+$ touch transitive [success]
+$ reload [success]
 
 > update
 [success]
@@ -18,10 +16,9 @@ $ reload
 # load the project definition with transitive dependencies disabled
 # and check that they are not downloaded
 
-$ delete transitive
-[success]
-$ reload
-[success]
+$ delete ivy-cache
+$ delete transitive [success]
+$ reload [success]
 
 > update
 [success]

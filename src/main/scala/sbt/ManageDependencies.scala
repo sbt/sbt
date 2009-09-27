@@ -77,7 +77,7 @@ object ManageDependencies
 			Control.trap("Could not read Ivy file: ", log)
 			{
 				val url = toURL(ivyFile)
-				val parser = new CustomXmlParser.CustomParser(settings)
+				val parser = new CustomXmlParser.CustomParser(settings, None)
 				parser.setValidate(flags.validate)
 				parser.setSource(url)
 				parser.parse()
@@ -90,9 +90,8 @@ object ManageDependencies
 		def parseDependencies(xml: String, moduleID: DefaultModuleDescriptor, defaultConfiguration: String): Either[String, CustomXmlParser.CustomParser] =
 			Control.trap("Could not read dependencies: ", log)
 			{
-				val parser = new CustomXmlParser.CustomParser(settings)
+				val parser = new CustomXmlParser.CustomParser(settings, Some(defaultConfiguration))
 				parser.setMd(moduleID)
-				parser.setDefaultConf(defaultConfiguration)
 				parser.setValidate(flags.validate)
 				val resource = new ByteResource(xml.getBytes)
 				parser.setInput(resource.openStream)
@@ -381,9 +380,8 @@ object ManageDependencies
 	private def addLateDependencies(ivy: Ivy, md: ModuleDescriptor, defaultConfiguration: String, extraDependencies: Iterable[ModuleID]) =
 	{
 		val module = toDefaultModuleDescriptor(md)
-		val parser = new CustomXmlParser.CustomParser(ivy.getSettings)
+		val parser = new CustomXmlParser.CustomParser(ivy.getSettings, Some(defaultConfiguration))
 		parser.setMd(module)
-		parser.setDefaultConf(defaultConfiguration)
 		addDependencies(module, extraDependencies, parser)
 		module
 	}
@@ -623,9 +621,9 @@ object ManageDependencies
 	private object CustomXmlParser extends XmlModuleDescriptorParser with NotNull
 	{
 		import XmlModuleDescriptorParser.Parser
-		class CustomParser(settings: IvySettings) extends Parser(CustomXmlParser, settings) with NotNull
+		class CustomParser(settings: IvySettings, defaultConfig: Option[String]) extends Parser(CustomXmlParser, settings) with NotNull
 		{
-			setDefaultConfMapping("*->default(compile)")
+			defaultConfig.foreach(x => setDefaultConfMapping("*->default(compile)"))
 
 			def setSource(url: URL) =
 			{
@@ -635,9 +633,8 @@ object ManageDependencies
 			/** Overridden because the super implementation overwrites the module descriptor.*/
 			override def setResource(res: Resource) {}
 			override def setMd(md: DefaultModuleDescriptor) = super.setMd(md)
-			override def parseDepsConfs(confs: String, dd: DefaultDependencyDescriptor) = super.parseDepsConfs(confs, dd)
-			override def getDefaultConf = super.getDefaultConf
-			override def setDefaultConf(conf: String) = super.setDefaultConf(conf)
+			override def parseDepsConfs(confs: String, dd: DefaultDependencyDescriptor): Unit = super.parseDepsConfs(confs, dd)
+			override def getDefaultConf = defaultConfig.getOrElse(super.getDefaultConf)
 		}
 	}
 	/** This code converts the given ModuleDescriptor to a DefaultModuleDescriptor by casting or generating an error.

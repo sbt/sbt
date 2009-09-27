@@ -1,27 +1,16 @@
 # publish a jar with Published with managedStyle = ManagedStyle.Maven
 
-$ copy-file changes/Published.scala src/main/scala/Published.scala [success]
+$ copy-file changes/maven/Published.scala src/main/scala/Published.scala [success]
 > publish
 [success]
-
-
-# publish a jar with PublishedIvy with managedStyle = ManagedStyle.Ivy
-
 $ delete src project lib_managed [success]
-$ copy-file changes/ivy.build.properties project/build.properties [success]
-$ copy-file changes/TestPublishIvyStyle.scala project/build/TestPublish.scala [success]
-$ reload [success]
-$ copy-file changes/PublishedIvy.scala src/main/scala/PublishedIvy.scala [success]
-> publish
-[success]
 
 # get and compile against each published jar with managedStyle = ManagedStyle.Maven
 
-$ delete src project/build lib_managed [success]
-$ copy-file changes/TestUse.scala project/build/TestUse.scala [success]
-$ copy-file changes/build.properties project/build.properties [success]
+$ copy-file changes/maven/TestUse.scala project/build/TestUse.scala [success]
+$ copy-file changes/maven/use.build.properties project/build.properties [success]
 $ reload [success]
-$ copy-file changes/Use.scala src/main/scala/Use.scala [success]
+$ copy-file changes/maven/Use.scala src/main/scala/Use.scala [success]
 
 > compile
 [failure]
@@ -30,15 +19,25 @@ $ copy-file changes/Use.scala src/main/scala/Use.scala [success]
 [success]
 > compile
 [success]
+$ delete src project lib_managed repo [success]
 
+
+# publish a jar with PublishedIvy with managedStyle = ManagedStyle.Ivy
+
+$ copy-file changes/ivy/publish.build.properties project/build.properties [success]
+$ copy-file changes/ivy/TestPublish.scala project/build/TestPublish.scala [success]
+$ reload [success]
+$ copy-file changes/ivy/Published.scala src/main/scala/Published.scala [success]
+> publish
+[success]
 
 # get and compile against each published jar with managedStyle = ManagedStyle.Ivy
 
-$ delete src project/build lib_managed [success]
-$ copy-file changes/TestUseIvy.scala project/build/TestUseIvy.scala [success]
-$ copy-file changes/build.properties project/build.properties [success]
+$ delete src project lib_managed [success]
+$ copy-file changes/ivy/TestUse.scala project/build/TestUse.scala [success]
+$ copy-file changes/ivy/use.build.properties project/build.properties [success]
 $ reload [success]
-$ copy-file changes/Use.scala src/main/scala/Use.scala [success]
+$ copy-file changes/ivy/Use.scala src/main/scala/Use.scala [success]
 
 > compile
 [failure]

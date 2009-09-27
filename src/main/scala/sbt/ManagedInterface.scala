@@ -334,6 +334,8 @@ object Configurations
 
 	lazy val CompilerPlugin = config("plugin") hide
 
+	def allPredefined = Default :: IntegrationTest :: CompilerPlugin :: defaultMavenConfigurations
+
 	private[sbt] val DefaultMavenConfiguration = defaultConfiguration(true)
 	private[sbt] val DefaultIvyConfiguration = defaultConfiguration(false)
 	private[sbt] def DefaultConfiguration(mavenStyle: Boolean) = if(mavenStyle) DefaultMavenConfiguration else DefaultIvyConfiguration
