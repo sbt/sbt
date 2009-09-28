@@ -1,4 +1,4 @@
-> publish-local
+> publish
 [success]
 
 $ delete project/build/

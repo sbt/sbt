@@ -304,7 +304,7 @@ object Resolver
 
 	def defaultFileConfiguration = FileConfiguration(true, None)
 	def mavenStylePatterns = Patterns(Nil, mavenStyleBasePattern :: Nil, true)
-	def ivyStylePatterns = Patterns(Nil, Nil, false)
+	def ivyStylePatterns = defaultIvyPatterns//Patterns(Nil, mavenStyleBasePattern :: Nil, false)
 
 	def defaultPatterns = mavenStylePatterns
 	def mavenStyleBasePattern = "[organisation]/[module]/[revision]/[artifact]-[revision](-[classifier]).[ext]"
