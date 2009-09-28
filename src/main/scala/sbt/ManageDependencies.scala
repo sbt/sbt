@@ -340,6 +340,7 @@ object ManageDependencies
 		manager.setChangingMatcher(PatternMatcher.REGEXP);
 		manager.setChangingPattern(".*-SNAPSHOT");
 		settings.setDefaultRepositoryCacheManager(manager)
+		dir.foreach(dir => settings.setDefaultResolutionCacheBasedir(dir.absolutePath))
 	}
 	/** Creates an ExcludeRule that excludes artifacts with the given module organization and name for
 	* the given configurations. */
