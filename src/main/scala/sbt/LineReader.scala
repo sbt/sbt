@@ -52,12 +52,12 @@ class JLineReader(historyPath: Option[Path], completors: Completors, log: Logger
 {
 	import completors._
 	import jline.{ArgumentCompletor, Completor, MultiCompletor, NullCompletor, SimpleCompletor}
-	
+
 	private val generalCompletor = simpleCompletor(generalCommands)
 	private val projectCompletor = simpleArgumentCompletor(projectAction :: Nil, projectNames)
-		
+
 	private val completor = new MultiCompletor()
-	
+
 	protected[this] val reader =
 	{
 		val cr = new ConsoleReader
@@ -74,14 +74,14 @@ class JLineReader(historyPath: Option[Path], completors: Completors, log: Logger
 		cr.addCompletor(completor)
 		cr
 	}
-	
+
 	/** Used for a single argument so that the argument can have spaces in it.*/
 	object SingleArgumentDelimiter extends ArgumentCompletor.AbstractArgumentDelimiter
 	{
 		def isDelimiterChar(buffer: String, pos: Int) =
 			(buffer.charAt(pos) == ' ') && buffer.substring(0, pos).trim.indexOf(' ') == -1
 	}
-	
+
 	private def simpleCompletor(completions: Iterable[String]) = new SimpleCompletor(completions.toList.toArray)
 	private def simpleArgumentCompletor(first: Iterable[String], second: Iterable[String]) =
 		singleArgumentCompletor(simpleCompletor(first), simpleCompletor(second))
@@ -98,11 +98,11 @@ class JLineReader(historyPath: Option[Path], completors: Completors, log: Logger
 		c.setStrict(true)
 		c
 	}
-	
+
 	private def propertyCompletor(propertyNames: Iterable[String]) =
 		simpleArgumentCompletor(propertyActions, propertyNames)
 	private def prefixedCompletor(baseCompletor: Completor) =
-		singleArgumentCompletor(simpleCompletor(prefixes.toList.toArray), baseCompletor)
+		singleArgumentCompletor(simpleCompletor(prefixes.toList.toArray[String]), baseCompletor)
 	def setVariableCompletions(taskNames: Iterable[String], propertyNames: Iterable[String], extra: Iterable[(String, Iterable[String])] )
 	{
 		import scala.collection.immutable.TreeSet

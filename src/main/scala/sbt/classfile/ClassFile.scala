@@ -13,12 +13,12 @@ private[sbt] trait ClassFile
 	val fileName: String
 	val className: String
 	val superClassName: String
-	val interfaceNames: RandomAccessSeq[String]
+	val interfaceNames: Array[String]
 	val accessFlags: Int
-	val constantPool: RandomAccessSeq[Constant]
-	val fields: RandomAccessSeq[FieldOrMethodInfo]
-	val methods: RandomAccessSeq[FieldOrMethodInfo]
-	val attributes: RandomAccessSeq[AttributeInfo]
+	val constantPool: Array[Constant]
+	val fields: Array[FieldOrMethodInfo]
+	val methods: Array[FieldOrMethodInfo]
+	val attributes: Array[AttributeInfo]
 	val sourceFile: Option[String]
 	def types: Set[String]
 	def stringValue(a: AttributeInfo): String

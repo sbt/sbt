@@ -533,7 +533,7 @@ object ManageDependencies
 	}
 	private def addArtifacts(moduleID: DefaultModuleDescriptor, artifacts: Iterable[Artifact])
 	{
-		val allConfigurations = moduleID.getPublicConfigurationsNames
+		val allConfigurations = moduleID.getPublicConfigurationsNames.toSeq
 		for(artifact <- artifacts)
 		{
 			val configurationStrings =

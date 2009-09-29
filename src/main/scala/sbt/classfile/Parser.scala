@@ -23,7 +23,7 @@ private[sbt] object Parser
 		new ClassFile
 		{
 			assume(in.readInt() == JavaMagic, "Invalid class file: " + fileName)
-			
+
 			val fileName = filename
 			val minorVersion: Int = in.readUnsignedShort()
 			val majorVersion: Int = in.readUnsignedShort()
@@ -81,10 +81,10 @@ private[sbt] object Parser
 				fieldsOrMethods.flatMap { fieldOrMethod =>
 					descriptorToTypes(fieldOrMethod.descriptor)
 				}
-			
+
 			private def fieldTypes = getTypes(fields)
 			private def methodTypes = getTypes(methods)
-			
+
 			private def classConstantReferences =
 				constants.flatMap { constant =>
 					constant.tag match
@@ -119,7 +119,7 @@ private[sbt] object Parser
 	{
 		val constantPoolSize = in.readUnsignedShort()
 		val pool = new Array[Constant](constantPoolSize)
-		
+
 		def parse(i: Int): Unit =
 			if(i < constantPoolSize)
 			{
@@ -127,8 +127,8 @@ private[sbt] object Parser
 				pool(i) = constant
 				parse( if(constant.wide) i+2 else i+1 )
 			}
-		
-		parse(1) // to lookup: why 1?
+
+		parse(1)
 		pool
 	}
 
@@ -138,7 +138,7 @@ private[sbt] object Parser
 		tag match
 		{
 			case ConstantClass | ConstantString => new Constant(tag, in.readUnsignedShort())
-			case ConstantField | ConstantMethod | ConstantInterfaceMethod | ConstantNameAndType => 
+			case ConstantField | ConstantMethod | ConstantInterfaceMethod | ConstantNameAndType =>
 				new Constant(tag, in.readUnsignedShort(), in.readUnsignedShort())
 			case ConstantInteger => new Constant(tag, new java.lang.Integer(in.readInt()))
 			case ConstantFloat => new Constant(tag, new java.lang.Float(in.readFloat()))

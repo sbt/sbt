@@ -17,7 +17,7 @@ sealed abstract class CompilerCore
 {
 	val ClasspathOptionString = "-classpath"
 	val OutputOptionString = "-d"
-	
+
 	// Returns false if there were errors, true if there were not.
 	protected def process(args: List[String], log: Logger): Boolean
 	// Returns false if there were errors, true if there were not.
@@ -27,7 +27,7 @@ sealed abstract class CompilerCore
 	def actionNothingToDoMessage: String
 	def actionSuccessfulMessage: String
 	def actionUnsuccessfulMessage: String
-	
+
 	private def classpathString(rawClasspathString: String, includeScala: Boolean) =
 		if(includeScala)
 			List(rawClasspathString, scalaClasspathForJava).mkString(File.pathSeparator)
@@ -51,7 +51,7 @@ sealed abstract class CompilerCore
 		FileUtilities.createDirectory(outputDir, log) orElse
 		{
 			def classpathAndOut(javac: Boolean): List[String] = OutputOptionString :: outputDir.getAbsolutePath :: classpathOption(javac)
-			
+
 			Control.trapUnit("Compiler error: ", log)
 			{
 				val sourceList = sources.map(_.asFile.getAbsolutePath).toList
@@ -87,7 +87,7 @@ sealed abstract class CompilerCore
 						val javaSourceList = filteredSources(".java")
 						compile("Java", javaSourceList, javaOptions, true)(processJava)
 					}
-					
+
 					val (first, second) = if(order == CompileOrder.JavaThenScala) (javaCompile, scalaCompile) else (scalaCompile, javaCompile)
 					if(first() && second())
 					{
@@ -157,7 +157,7 @@ final class Compile(maximumErrors: Int) extends CompilerBase
 		var reporter = new LoggerReporter(maximumErrors, log)
 		val settings = new Settings(reporter.error)
 		val command = new CompilerCommand(arguments, settings, error, false)
-		
+
 		object compiler extends Global(command.settings, reporter)
 		if(!reporter.hasErrors)
 		{
@@ -212,7 +212,7 @@ final class LoggerReporter(maximumErrors: Int, log: Logger) extends scala.tools.
 {
 	import scala.tools.nsc.util.{FakePos,NoPosition,Position}
 	private val positions = new scala.collection.mutable.HashMap[Position, Severity]
-	
+
 	def error(msg: String) { error(FakePos("scalac"), msg) }
 
 	def printSummary()
@@ -222,7 +222,7 @@ final class LoggerReporter(maximumErrors: Int, log: Logger) extends scala.tools.
 		if(ERROR.count > 0)
 			log.error(countElementsAsString(ERROR.count, "error") + " found")
 	}
-	
+
 	def display(pos: Position, msg: String, severity: Severity)
 	{
 		severity.count += 1
@@ -236,7 +236,7 @@ final class LoggerReporter(maximumErrors: Int, log: Logger) extends scala.tools.
 			case WARNING => Level.Warn
 			case INFO => Level.Info
 		}
-	
+
 	private def print(level: Level.Value, posIn: Position, msg: String)
 	{
 		// the implicits keep source compatibility with the changes in 2.8 : Position.{source,line,column} are no longer Options
@@ -265,7 +265,7 @@ final class LoggerReporter(maximumErrors: Int, log: Logger) extends scala.tools.
 					for(offset <- pos.offset; src <- pos.source)
 					{
 						val pointer = offset - src.lineToOffset(src.offsetToLine(offset))
-						val pointerSpace = lineContent.take(pointer).map { case '\t' => '\t'; case x => ' ' }
+						val pointerSpace = (lineContent: Seq[Char]).take(pointer).map { case '\t' => '\t'; case _ => ' ' }
 						log.log(level, pointerSpace.mkString + "^") // pointer to the column position of the error/warning
 					}
 				}
@@ -289,7 +289,7 @@ final class LoggerReporter(maximumErrors: Int, log: Logger) extends scala.tools.
 			case _ => display(pos, msg, severity)
 		}
 	}
-	
+
 	private def testAndLog(pos: Position, severity: Severity): Boolean =
 	{
 		if(pos == null || pos.offset.isEmpty)
