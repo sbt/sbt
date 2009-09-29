@@ -72,6 +72,12 @@ final case class ModuleID(organization: String, name: String, revision: String, 
 	def classifier(c: String) = artifacts(Artifact(name, c))
 	def artifacts(newArtifacts: Artifact*) = ModuleID(organization, name, revision, configurations, isChanging, isTransitive, newArtifacts ++ explicitArtifacts, extraAttributes)
 	def extra(attributes: (String,String)*) = ModuleID(organization, name, revision, configurations, isChanging, isTransitive, explicitArtifacts, extraAttributes ++ ModuleID.checkE(attributes))
+	def sources() = artifacts(Artifact(name, "sources", "jar", "sources"))
+	def javadoc() = artifacts(Artifact(name, "javadoc", "jar", "javadoc"))
+	def withSources() = jarIfEmpty.sources()
+	def withJavadoc() = jarIfEmpty.javadoc()
+	private def jarIfEmpty = if(explicitArtifacts.isEmpty) jar() else this
+	def jar() = artifacts(Artifact(name, "jar", "jar"))
 }
 object ModuleID
 {
@@ -256,51 +262,42 @@ object Resolver
 	{
 		/** Constructs a file resolver with the given name.  The patterns to use must be explicitly specified
 		* using the `ivys` or `artifacts` methods on the constructed resolver object.*/
-		def apply(name: String): FileRepository = FileRepository(name, defaultFileConfiguration, ivyStylePatterns)
+		def apply(name: String): FileRepository = FileRepository(name, defaultFileConfiguration, Patterns(false))
 		/** Constructs a file resolver with the given name and base directory. */
 		def apply(name: String, baseDirectory: File)(implicit basePatterns: Patterns): FileRepository =
 		{
 			if(baseDirectory.exists && !baseDirectory.isDirectory) error("Not a directory: " + baseDirectory.getAbsolutePath)
-			baseRepository(baseDirectory.toURI)(FileRepository(name, defaultFileConfiguration, _))
+			baseRepository(new File(baseDirectory.toURI.normalize) getAbsolutePath)(FileRepository(name, defaultFileConfiguration, _))
 		}
 	}
 	object url
 	{
 		/** Constructs a URL resolver with the given name.  The patterns to use must be explicitly specified
 		* using the `ivys` or `artifacts` methods on the constructed resolver object.*/
-		def apply(name: String): URLRepository = URLRepository(name, ivyStylePatterns)
+		def apply(name: String): URLRepository = URLRepository(name, Patterns(false))
 		/** Constructs a file resolver with the given name and base directory. */
 		def apply(name: String, baseURL: URL)(implicit basePatterns: Patterns): URLRepository =
-			baseRepository(baseURL.toURI)(URLRepository(name, _))
+			baseRepository(baseURL.toURI.normalize.toString)(URLRepository(name, _))
 	}
-	private def baseRepository[T](baseURI: java.net.URI)(construct: Patterns => T)(implicit basePatterns: Patterns): T =
-		construct(resolvePatterns(normalize(baseURI), basePatterns))
+	private def baseRepository[T](base: String)(construct: Patterns => T)(implicit basePatterns: Patterns): T =
+		construct(resolvePatterns(base, basePatterns))
 
 	/** If `base` is None, `patterns` is returned unchanged.
 	* Otherwise, the ivy file and artifact patterns in `patterns` are resolved against the given base. */
 	private def resolvePatterns(base: Option[String], patterns: Patterns): Patterns =
 		base match
 		{
-			case Some(path) => resolvePatterns(pathURI(path), patterns)
+			case Some(path) => resolvePatterns(path, patterns)
 			case None => patterns
 		}
 	/** Resolves the ivy file and artifact patterns in `patterns` against the given base. */
-	private def resolvePatterns(base: URI, basePatterns: Patterns): Patterns =
+	private def resolvePatterns(base: String, basePatterns: Patterns): Patterns =
 	{
-		def resolve(pattern: String) = base.resolve(pathURI(pattern)).getPath
+		val normBase = base.replace('\\', '/')
+		def resolve(pattern: String) = if(normBase.endsWith("/") || pattern.startsWith("/")) normBase +pattern else normBase + "/" + pattern
 		def resolveAll(patterns: Seq[String]) = patterns.map(resolve)
 		Patterns(resolveAll(basePatterns.ivyPatterns), resolveAll(basePatterns.artifactPatterns), basePatterns.isMavenCompatible)
 	}
-	/** Normalizes the given URI, which is assumed to represent a directory, even if that directory does not exist.  This method exists
-	* because URI.normalize does not append a slash if the directory does not exist.*/
-	private def normalize(uri: URI) =
-	{
-		val normalized = uri.normalize
-		val normString = normalized.toString
-		if(normString.endsWith("/")) normalized else new URI(normString + "/")
-	}
-	/** Constructs a `URI` with the path component set to `path` and the other components set to null.*/
-	private def pathURI(path: String) = new URI(null, null, path, null)
 
 	def defaultFileConfiguration = FileConfiguration(true, None)
 	def mavenStylePatterns = Patterns(Nil, mavenStyleBasePattern :: Nil, true)
@@ -308,7 +305,7 @@ object Resolver
 
 	def defaultPatterns = mavenStylePatterns
 	def mavenStyleBasePattern = "[organisation]/[module]/[revision]/[artifact]-[revision](-[classifier]).[ext]"
-	def localBasePattern = "[organisation]/[module]/[revision]/[type]s/[artifact].[ext]"
+	def localBasePattern = "[organisation]/[module]/[revision]/[type]s/[artifact](-[classifier]).[ext]"
 
 	def userRoot = System.getProperty("user.home")
 	def userMavenRoot = userRoot + "/.m2/repository/"
@@ -374,6 +371,7 @@ object Artifact
 	def apply(name: String, extra: Map[String,String]): Artifact = Artifact(name, defaultType, defaultExtension, None, Nil, None, extra)
 	def apply(name: String, classifier: String): Artifact = Artifact(name, defaultType, defaultExtension, Some(classifier), Nil, None)
 	def apply(name: String, `type`: String, extension: String): Artifact = Artifact(name, `type`, extension, None, Nil, None)
+	def apply(name: String, `type`: String, extension: String, classifier: String): Artifact = Artifact(name, `type`, extension, Some(classifier), Nil, None)
 	def apply(name: String, url: URL): Artifact =Artifact(name, extract(url, defaultType), extract(url, defaultExtension), None, Nil, Some(url))
 	def apply(name: String, `type`: String, extension: String, classifier: Option[String], configurations: Iterable[Configuration], url: Option[URL]): Artifact =
 		Artifact(name, `type`, extension, classifier, configurations, url, Map.empty)

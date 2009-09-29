@@ -236,7 +236,7 @@ trait BasicManagedProject extends ManagedProject with ReflectiveManagedProject w
 
 	/** The pattern for Ivy to use when retrieving dependencies into the local project.  Classpath management
 	* depends on the first directory being [conf] and the extension being [ext].*/
-	def outputPattern = "[conf]/[artifact](-[revision]).[ext]"
+	def outputPattern = "[conf]/[artifact](-[revision])(-[classifier]).[ext]"
 	/** Override this to specify the publications, configurations, and/or dependencies sections of an Ivy file.
 	* See http://code.google.com/p/simple-build-tool/wiki/LibraryManagement for details.*/
 	def ivyXML: scala.xml.NodeSeq = scala.xml.NodeSeq.Empty
@@ -381,13 +381,13 @@ trait BasicManagedProject extends ManagedProject with ReflectiveManagedProject w
 		def this(resolverName: String, status: String) = this(resolverName, status, true)
 		def this(resolver: Resolver, status: String) = this(resolver.name, status)
 
-		protected def deliveredPathPattern = outputPath / "[artifact]-[revision].[ext]"
+		protected def deliveredPathPattern = outputPath / "[artifact]-[revision](-[classifier]).[ext]"
 		def deliveredPattern = deliveredPathPattern.relativePath
 		def srcArtifactPatterns: Iterable[String] =
 		{
 			val pathPatterns =
-				(outputPath / "[artifact]-[revision]-[type].[ext]") ::
-				(outputPath / "[artifact]-[revision].[ext]") ::
+				(outputPath / "[artifact]-[revision]-[type](-[classifier]).[ext]") ::
+				(outputPath / "[artifact]-[revision](-[classifier]).[ext]") ::
 				Nil
 			pathPatterns.map(_.relativePath)
 		}
