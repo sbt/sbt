@@ -6,7 +6,7 @@ package sbt
 import scala.collection.immutable.TreeSet
 
 private trait RunCompleteAction extends NotNull
-private class Exit(val code: Int) extends RunCompleteAction
+private case class Exit(code: Int) extends RunCompleteAction
 private object Reload extends RunCompleteAction
 
 /** This class is the entry point for sbt.  If it is given any arguments, it interprets them
@@ -85,7 +85,6 @@ object Main
 			}
 		}
 	}
-	/** Returns true if the project should be reloaded, false if sbt should exit.*/
 	private def startProject(project: Project, args: Array[String], startTime: Long): RunCompleteAction =
 	{
 		project.log.info("Building project " + project.name + " " + project.version.toString + " using " + project.getClass.getName)
@@ -115,16 +114,17 @@ object Main
 					}
 				new Exit(exitCode)
 			case _ =>
-				val exitCode =
-					Control.lazyFold(args.toList)(handleBatchCommand(project)) match
-					{
-						case None => project.log.success("Build completed successfully."); NormalExitCode
-						case Some(errorMessage) =>
-							project.log.error("Error during build" + (if(errorMessage.isEmpty) "." else ": " + errorMessage) )
-							BuildErrorExitCode
-					}
+				val source = args.toList.elements
+				def nextCommand = if(source.hasNext) Right(source.next) else Left(new Exit(NormalExitCode) )
+				val result = loop(project, project, p => nextCommand, false)
+				result match
+				{
+					case Exit(NormalExitCode) => project.log.success("Build completed successfully.")
+					case Exit(_) => project.log.error("Error during build.")
+					case _ => ()
+				}
 				printTime(project, startTime, "build")
-				new Exit(exitCode)
+				result
 		}
 	}
 	private def crossBuildNext(project: Project, cross: CrossBuild) =
@@ -139,7 +139,7 @@ object Main
 			printTime(project, cross.startTime, "cross-build")
 		!complete
 	}
-	
+
 	/** The name of the command that loads a console with access to the current project through the variable 'project'.*/
 	val ProjectConsoleAction = "console-project"
 	/** The name of the command that shows the current project and logging level of that project.*/
@@ -172,7 +172,7 @@ object Main
 	val CrossBuildPrefix = "+"
 	/** Error message for when the user tries to prefix an action with CrossBuildPrefix but the loader is not used.*/
 	val CrossBuildUnsupported = "Cross-building is not supported when the loader is not used."
-	
+
 	/** The number of seconds between polling by the continuous compile command.*/
 	val ContinuousCompilePollDelaySeconds = 1
 
@@ -184,7 +184,7 @@ object Main
 	/** The list of all interactive commands other than logging level.*/
 	private def basicCommands: Iterable[String] = TreeSet(ShowProjectsAction, ShowActions, ShowCurrent, HelpAction,
 		RebootCommand, ReloadAction, TraceCommand, ContinuousCompileCommand, ProjectConsoleAction)
-	
+
 	/** Enters interactive mode for the given root project.  It uses JLine for tab completion and
 	* history.  It returns normally when the user terminates or reloads the interactive session.  That is,
 	* it does not call System.exit to quit.
@@ -200,87 +200,89 @@ object Main
 			val methodCompletions = for( (name, method) <- project.methods) yield (name, method.completions)
 			reader.setVariableCompletions(project.taskNames, project.propertyNames, methodCompletions)
 		}
-		
-		/** Prompts the user for the next command using 'currentProject' as context.
-		* If the command indicates that the user wishes to terminate or reload the session,
-		*   the function returns the appropriate value.
-		* Otherwise, the command is handled and this function is called again
-		*   (tail recursively) to prompt for the next command. */
-		def loop(currentProject: Project): RunCompleteAction =
+
+		def readCommand(currentProject: Project) =
 		{
-			updateTaskCompletions(currentProject) // this is done after every command because the completions could change due to the action invoked
-			reader.readLine("> ") match
+			updateTaskCompletions(currentProject) // this is done before every command because the completions could change due to the action previously invoked
+			reader.readLine("> ").toRight(new Exit(NormalExitCode))
+		}
+
+		loop(baseProject, baseProject, readCommand, true)
+	}
+
+	/** Prompts the user for the next command using 'currentProject' as context.
+	* If the command indicates that the user wishes to terminate or reload the session,
+	*   the function returns the appropriate value.
+	* Otherwise, the command is handled and this function is called again
+	*   (tail recursively) to prompt for the next command. */
+	private def loop(baseProject: Project, currentProject: Project, nextCommand: Project => Either[RunCompleteAction, String], isInteractive: Boolean): RunCompleteAction =
+		nextCommand(currentProject).right.flatMap{ line => process(baseProject, currentProject, line, isInteractive) } match
+		{
+			case Left(complete) => complete
+			case Right(project) => loop(baseProject, project, nextCommand, isInteractive)
+		}
+	private def process(baseProject: Project, currentProject: Project, line: String, isInteractive: Boolean): Either[RunCompleteAction, Project] =
+	{
+		def keepCurrent(success: Boolean) =  if(success) Right(currentProject) else Left(new Exit(BuildErrorExitCode) )
+		def interactiveKeepCurrent(success: Boolean) = keepCurrent(success || isInteractive)
+		def keep(u: Unit) = Right(currentProject)
+
+		val trimmed = line.trim
+		if(trimmed.isEmpty)
+			Right(currentProject)
+		else if(isTerminateAction(trimmed))
+			Left(new Exit(NormalExitCode))
+		else if(ReloadAction == trimmed)
+			Left(Reload)
+		else if(RebootCommand == trimmed)
+		{
+			if(!isInteractive) currentProject.log.warn("'reboot' does not pick up changes to 'scala.version' in batch mode.")
+			System.setProperty(ScalaVersion.LiveKey, "")
+			Left(new Exit(RebootExitCode))
+		}
+		else if(trimmed.startsWith(CrossBuildPrefix))
+		{
+			if(startCrossBuild(currentProject, trimmed.substring(CrossBuildPrefix.length).trim))
+				Left(new Exit(RebootExitCode))
+			else
+				Right(currentProject)
+		}
+		else if(trimmed.startsWith(ProjectAction + " "))
+		{
+			val projectName = trimmed.substring(ProjectAction.length + 1)
+			baseProject.projectClosure.find(_.name == projectName) match
 			{
-				case Some(line) =>
-				{
-					val trimmed = line.trim
-					if(trimmed.isEmpty)
-						loop(currentProject)
-					else if(isTerminateAction(trimmed))
-						new Exit(NormalExitCode)
-					else if(ReloadAction == trimmed)
-						Reload
-					else if(RebootCommand == trimmed)
-					{
-						System.setProperty(ScalaVersion.LiveKey, "")
-						new Exit(RebootExitCode)
-					}
-					else if(trimmed.startsWith(CrossBuildPrefix))
-					{
-						if(startCrossBuild(currentProject, trimmed.substring(CrossBuildPrefix.length).trim))
-							new Exit(RebootExitCode)
-						else
-							loop(currentProject)
-					}
-					else if(trimmed.startsWith(ProjectAction + " "))
-					{
-						val projectName = trimmed.substring(ProjectAction.length + 1)
-						baseProject.projectClosure.find(_.name == projectName) match
-						{
-							case Some(newProject) =>
-							{
-								printProject("Set current project to ", newProject)
-								updateTaskCompletions(newProject)
-								loop(newProject)
-							}
-							case None =>
-							{
-								currentProject.log.error("Invalid project name '" + projectName + "' (type 'projects' to list available projects).")
-								loop(currentProject)
-							}
-						}
-					}
-					else
-					{
-						if(trimmed == HelpAction)
-							displayInteractiveHelp()
-						else if(trimmed == ShowProjectsAction)
-							baseProject.projectClosure.foreach(listProject)
-						else if(trimmed.startsWith(SetAction + " "))
-							setProperty(currentProject, trimmed.substring(SetAction.length + 1))
-						else if(trimmed.startsWith(GetAction + " "))
-							getProperty(currentProject, trimmed.substring(GetAction.length + 1))
-						else if(trimmed == ProjectConsoleAction)
-							showResult(Run.projectConsole(currentProject), currentProject.log)
-						else
-							handleInteractiveCommand(currentProject, trimmed)
-						loop(currentProject)
-					}
-				}
-				case None => new Exit(NormalExitCode)
+				case Some(newProject) =>
+					printProject("Set current project to ", newProject)
+					Right(newProject)
+				case None =>
+					currentProject.log.error("Invalid project name '" + projectName + "' (type 'projects' to list available projects).")
+					keepCurrent(isInteractive)
 			}
 		}
-		
-		loop(baseProject)
+		else if(trimmed == HelpAction)
+			keep(displayHelp(isInteractive))
+		else if(trimmed == ShowProjectsAction)
+			keep(baseProject.projectClosure.foreach(listProject))
+		else if(trimmed.startsWith(SetAction + " "))
+			interactiveKeepCurrent( setProperty(currentProject, trimmed.substring(SetAction.length + 1)) )
+		else if(trimmed.startsWith(GetAction + " "))
+			interactiveKeepCurrent( getProperty(currentProject, trimmed.substring(GetAction.length + 1)) )
+		else if(trimmed == ProjectConsoleAction)
+			interactiveKeepCurrent(showResult(Run.projectConsole(currentProject), currentProject.log))
+		else
+			interactiveKeepCurrent( handleCommand(currentProject, trimmed) )
 	}
 	private def printCmd(name:String, desc:String) = Console.println("\t" + name + ": " + desc)
-	private def displayBatchHelp() = {
-		Console.println("You may execute any project action or method or one of the commands described below.")
-		Console.println("Available Commands:")
-		printCommonCommands()
-	}
-	private def printCommonCommands()
+	val BatchHelpHeader = "You may execute any project action or method or one of the commands described below."
+	val InteractiveHelpHeader = "You may execute any project action or one of the commands described below. Only one action " +
+			"may be executed at a time in interactive mode and is entered by name, as it would be at the command line." +
+			" Also, tab completion is available."
+	private def displayHelp(isInteractive: Boolean)
 	{
+		Console.println(if(isInteractive) InteractiveHelpHeader else BatchHelpHeader)
+		Console.println("Available Commands:")
+
 		printCmd("<action name>", "Executes the project specified action.")
 		printCmd("<method name> <parameter>*", "Executes the project specified method.")
 		printCmd(ContinuousExecutePrefix + " <command>", "Executes the project specified action or method whenever source files change.")
@@ -288,21 +290,13 @@ object Main
 		printCmd(ShowActions, "Shows all available actions.")
 		printCmd(RebootCommand, "Changes to scala.version or sbt.version are processed and the project definition is reloaded.")
 		printCmd(HelpAction, "Displays this help message.")
-	}
-	private def displayInteractiveHelp() = {
-		Console.println("You may execute any project action or one of the commands described below. Only one action " +
-			"may be executed at a time in interactive mode and is entered by name, as it would be at the command line." +
-			" Also, tab completion is available.")
-		Console.println("Available Commands:")
-
-		printCommonCommands()
 		printCmd(ReloadAction, "Reloads sbt, recompiling modified project definitions if necessary.")
 		printCmd(ShowCurrent, "Shows the current project and logging level of that project.")
 		printCmd(Level.levels.mkString(", "), "Set logging for the current project to the specified level.")
 		printCmd(TraceCommand, "Toggles whether logging stack traces is enabled.")
 		printCmd(ProjectAction + " <project name>", "Sets the currently active project.")
 		printCmd(ShowProjectsAction, "Shows all available projects.")
-		printCmd(TerminateActions.elements.mkString(", "), "Terminates the program.")
+		printCmd(TerminateActions.elements.mkString(", "), "Terminates the build.")
 		printCmd(SetAction + " <property> <value>", "Sets the value of the property given as its argument.")
 		printCmd(GetAction + " <property>", "Gets the value of the property given as its argument.")
 		printCmd(ProjectConsoleAction, "Enters the Scala interpreter with the current project bound to the variable 'current' and all members imported.")
@@ -330,21 +324,9 @@ object Main
 			Console.println(CrossBuildUnsupported)
 			false
 		}
-	
-	/** Handles the given command string provided by batch mode execution..*/
-	private def handleBatchCommand(project: Project)(command: String): Option[String] =
-	{
-		command.trim match
-		{
-			case HelpAction => displayBatchHelp(); None
-			case ShowActions => showActions(project); None
-			case CrossBuild(crossBuildAction) => Some(CrossBuildUnsupported)
-			case action => if(handleAction(project, action)) None else Some("")
-		}
-	}
-	
-	/** Handles the given command string provided at the command line.*/
-	private def handleInteractiveCommand(project: Project, command: String)
+
+	/** Handles the given command string provided at the command line.  Returns false if there was an error*/
+	private def handleCommand(project: Project, command: String): Boolean =
 	{
 		command match
 		{
@@ -355,19 +337,18 @@ object Main
 				printProject("Current project is ", project)
 				Console.println("Current log level is " + project.log.getLevel)
 				printTraceEnabled(project)
-			case ShowActions => showActions(project)
-			case TraceCommand => toggleTrace(project)
-			case Level(level) => setLevel(project, level)
+				true
+			case ShowActions => showActions(project); true
+			case TraceCommand => toggleTrace(project); true
+			case Level(level) => setLevel(project, level); true
 			case ContinuousCompileCommand => compileContinuously(project)
-			case action if action.startsWith(ContinuousExecutePrefix) =>
-				executeContinuously(project, action.substring(ContinuousExecutePrefix.length).trim)
+			case action if action.startsWith(ContinuousExecutePrefix) => executeContinuously(project, action.substring(ContinuousExecutePrefix.length).trim)
 			case action => handleAction(project, action)
 		}
 	}
-	private def showActions(project: Project): Unit =
-		Console.println(project.taskAndMethodList)
-	
-	// returns true if it succeeded (needed by noninteractive handleCommand)
+	private def showActions(project: Project): Unit = Console.println(project.taskAndMethodList)
+
+	// returns true if it succeeded
 	private def handleAction(project: Project, action: String): Boolean =
 	{
 		def show(result: Option[String]): Boolean = showResult(result, project.log)
@@ -376,6 +357,7 @@ object Main
 		printTime(project, startTime, "")
 		result
 	}
+	// returns true if it succeeded
 	private def showResult(result: Option[String], log: Logger): Boolean =
 	{
 		result match
@@ -409,7 +391,7 @@ object Main
 					didNotExist("action", name)
 		}
 	}
-	
+
 	/** Toggles whether stack traces are enabled.*/
 	private def toggleTrace(project: Project)
 	{
@@ -492,7 +474,6 @@ object Main
 		projects match
 		{
 			case project :: remaining =>
-			{
 				val uninitialized = project.uninitializedProperties.toList
 				if(uninitialized.isEmpty)
 					fillUndefinedProjectProperties(remaining)
@@ -503,43 +484,42 @@ object Main
 					project.saveEnvironment()
 					result
 				}
-			}
 			case Nil => true
 		}
 	}
 	/** Prints the value of the property with the given name in the given project. */
-	private def getProperty(project: Project, propertyName: String)
+	private def getProperty(project: Project, propertyName: String): Boolean =
 	{
 		if(propertyName.isEmpty)
+		{
 			project.log.error("No property name specified.")
+			false
+		}
 		else
 		{
 			project.getPropertyNamed(propertyName) match
 			{
 				case Some(property) =>
-				{
 					property.resolve match
 					{
-						case u: UndefinedValue => project.log.error("Value of property '" + propertyName + "' is undefined.")
-						case ResolutionException(m, e) => project.log.error(m)
-						case DefinedValue(value, isInherited, isDefault) => Console.println(value.toString)
+						case u: UndefinedValue => project.log.error("Value of property '" + propertyName + "' is undefined."); false
+						case ResolutionException(m, e) => project.log.error(m); false
+						case DefinedValue(value, isInherited, isDefault) => Console.println(value.toString); true
 					}
-				}
 				case None =>
-				{
 					val value = System.getProperty(propertyName)
 					if(value == null)
 						project.log.error("No property named '" + propertyName + "' is defined.")
 					else
 						Console.println(value)
-				}
+					value != null
 			}
 		}
 	}
 	/** Separates the space separated property name/value pair and stores the value in the user-defined property
 	* with the given name in the given project.  If no such property exists, the value is stored in a system
 	* property. */
-	private def setProperty(project: Project, propertyNameAndValue: String)
+	private def setProperty(project: Project, propertyNameAndValue: String): Boolean =
 	{
 		val m = """(\S+)(\s+\S.*)?""".r.pattern.matcher(propertyNameAndValue)
 		if(m.matches())
@@ -550,31 +530,33 @@ object Main
 				val v = m.group(2)
 				if(v == null) "" else v.trim
 			}
+			def notePending(changed: String): Unit = Console.println(" Build will use " + changed + newValue + " after running 'reboot' command or restarting sbt.")
 			project.getPropertyNamed(name) match
 			{
 				case Some(property) =>
 				{
-					val succeeded =
-						try
+					try
+					{
+						property.setStringValue(newValue)
+						property match
 						{
-							property.setStringValue(newValue)
-							val isScalaVersion = property == project.scalaVersion
-							val isSbtVersion = property == project.sbtVersion
-							if(isScalaVersion || isSbtVersion)
-							{
-								val changed = if(isSbtVersion) "sbt " else "Scala "
-								Console.println(" Build will use " + changed + newValue + " after running 'reboot' command or restarting sbt.")
-							}
-							else
-								Console.println(" Set property '" + name + "' = '" + newValue + "'")
+							case project.scalaVersion => notePending("Scala ")
+							case project.sbtVersion => notePending("sbt ")
+							case _ =>  Console.println(" Set property '" + name + "' = '" + newValue + "'")
 						}
-						catch { case e => project.log.error("Error setting property '" + name + "' in " + project.environmentLabel + ": " + e.toString) }
-					project.saveEnvironment()
+						true
+					}
+					catch { case e =>
+						project.log.error("Error setting property '" + name + "' in " + project.environmentLabel + ": " + e.toString)
+						false
+					}
+					finally { project.saveEnvironment().foreach(msg => project.log.error("Error saving environment: " + msg)) }
 				}
 				case None =>
 				{
 					System.setProperty(name, newValue)
 					project.log.info(" Set system property '" + name + "' = '" + newValue + "'")
+					true
 				}
 			}
 		}
@@ -583,10 +565,11 @@ object Main
 	}
 
 	private def compileContinuously(project: Project) = executeContinuously(project, "test-compile")
-	private def executeContinuously(project: Project, action: String)
+	private def executeContinuously(project: Project, action: String) =
 	{
 		def shouldTerminate: Boolean = (System.in.available > 0) && (project.terminateWatch(System.in.read()) || shouldTerminate)
-		if(checkAction(project, action))
+		val actionValid = checkAction(project, action)
+		if(actionValid)
 		{
 			SourceModificationWatch.watchUntil(project, ContinuousCompilePollDelaySeconds)(shouldTerminate)
 			{
@@ -595,12 +578,14 @@ object Main
 			}
 			while (System.in.available() > 0) System.in.read()
 		}
+		actionValid
 	}
 
 	private def isTerminateAction(s: String) = TerminateActions.elements.contains(s.toLowerCase)
-	private def setArgumentError(log: Logger) { log.error("Invalid arguments for 'set': expected property name and new value.") }
-	private def getArgumentError(log: Logger) { log.error("Invalid arguments for 'get': expected property name.") }
-	private def setProjectError(log: Logger) { log.error("Invalid arguments for 'project': expected project name.") }
+	private def setArgumentError(log: Logger) = logError(log)("Invalid arguments for 'set': expected property name and new value.")
+	private def getArgumentError(log: Logger) = logError(log)("Invalid arguments for 'get': expected property name.")
+	private def setProjectError(log: Logger) = logError(log)("Invalid arguments for 'project': expected project name.")
+	private def logError(log: Logger)(s: String) = { log.error(s); false }
 }
 private class CrossBuild(val remainingScalaVersions: Set[String], val command: String, val startTime: Long)
 {
