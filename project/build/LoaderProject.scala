@@ -128,7 +128,7 @@ protected/* removes the ambiguity as to which project is the entry point by maki
 	override def mainSourceRoots = super.mainSourceRoots +++ managedSrc
 	override def compileAction = super.compileAction dependsOn(versionProperties)
 	override def cleanAction = cleanTask(outputPath +++ managedSrc, cleanOptions)
-	lazy val versionProperties = task { writeVersionProperties(projectVersion.value.toString, scalaVersion.value.toString)  }
+	lazy val versionProperties = task { writeVersionProperties(projectVersion.value.toString, "2.7.5") }//scalaVersion.value.toString)  }
 	def writeVersionProperties(sbtVersion: String, scalaVersion: String) =
 		FileUtilities.write(defaultVersionPath.asFile, defaultVersions(sbtVersion, scalaVersion), log)
 
