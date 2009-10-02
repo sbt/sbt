@@ -35,9 +35,4 @@ class AnalyzingCompiler(scalaInstance: ScalaInstance, manager: ComponentManager)
 		new DualLoader(scalaLoader, notXsbtiFilter, x => true, sbtLoader, xsbtiFilter, x => false)
 	}
 	override def toString = "Analyzing compiler (Scala " + scalaInstance.actualVersion + ")"
-}/*
-object AnalyzingCompiler
-{
-	def apply(scalaVersion: String, provider: xsbti.ScalaProvider, manager: ComponentManager): AnalyzingCompiler =
-		new AnalyzingCompiler(ScalaInstance(scalaVersion, provider), manager)
-}*/
+}
