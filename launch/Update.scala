@@ -42,6 +42,7 @@ final class Update(config: UpdateConfiguration)
 		addResolvers(settings)
 		settings.setDefaultConflictManager(settings.getConflictManager(ConflictManagerName))
 		settings.setBaseDir(bootDirectory)
+		settings.setVariable("scala", scalaVersion)
 		settings
 	}
 	private lazy val ivy = Ivy.newInstance(settings)
@@ -81,7 +82,7 @@ final class Update(config: UpdateConfiguration)
 				addDependency(moduleID, ScalaOrg, LibraryModuleName, scalaVersion, "default")
 			case UpdateApp(app) =>
 				val resolvedName = if(app.crossVersioned) app.name + "_" + scalaVersion else app.name
-				addDependency(moduleID, app.groupID, resolvedName, app.getVersion, "runtime(default)")
+				addDependency(moduleID, app.groupID, resolvedName, app.getVersion, "default(compile)")
 		}
 		update(moduleID, target)
 	}
@@ -155,13 +156,13 @@ final class Update(config: UpdateConfiguration)
 		import Predefined._
 		repo match
 		{
-			case Maven(id, url) => mavenResolver(id, url)
-			case Ivy(id, url, pattern) => urlResolver(id, url, pattern)
+			case Maven(id, url) => mavenResolver(id, url.toString)
+			case Ivy(id, url, pattern) => urlResolver(id, url.toString, pattern)
 			case Predefined(Local) => localResolver(settings.getDefaultIvyUserDir.getAbsolutePath)
 			case Predefined(MavenLocal) => mavenLocal
 			case Predefined(MavenCentral) => mavenMainResolver
 			case Predefined(ScalaToolsReleases) => mavenResolver("Scala-Tools Maven2 Repository", "http://scala-tools.org/repo-releases")
-			case Predefined(ScalaToolsSnapshots) => mavenResolver("Scala-Tools Maven2 Snapshots Repository", "http://scala-tools.org/repo-snapshots")
+			case Predefined(ScalaToolsSnapshots) => scalaSnapshots(scalaVersion)
 		}
 	}
 	private def onDefaultRepositoryCacheManager(settings: IvySettings)(f: DefaultRepositoryCacheManager => Unit)
@@ -208,6 +209,24 @@ final class Update(config: UpdateConfiguration)
 		resolver.addIvyPattern(localIvyRoot + "/" + LocalIvyPattern)
 		resolver.addArtifactPattern(localIvyRoot + "/" + LocalArtifactPattern)
 		resolver
+	}
+	private val SnapshotPattern = """(\d+).(\d+).(\d+)-(\d{8})\.(\d{6})-(\d+|\+)""".r.pattern
+	private def scalaSnapshots(scalaVersion: String) =
+	{
+		val m = SnapshotPattern.matcher(scalaVersion)
+		if(m.matches)
+		{
+			val base = Seq(1,2,3).map(m.group).mkString(".")
+			val pattern = "http://scala-tools.org/repo-snapshots/[organization]/[module]/" + base + "-SNAPSHOT/[artifact]-[revision].[ext]"
+
+			val resolver = new URLResolver
+			resolver.setName("Scala Tools Snapshots")
+			resolver.setM2compatible(true)
+			resolver.addArtifactPattern(pattern)
+			resolver
+		}
+		else
+			mavenResolver("Scala-Tools Maven2 Snapshots Repository", "http://scala-tools.org/repo-snapshots")
 	}
 	/** Logs the given message to a file and to the console. */
 	private def log(msg: String) =

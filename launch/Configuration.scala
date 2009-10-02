@@ -5,7 +5,7 @@ import java.net.{URI, URL}
 
 object Configuration
 {
-	def parse(file: URL, baseDirectory: File) = Using( new InputStreamReader(file.openStream, "utf8") )( (new ConfigurationParser(baseDirectory)).apply )
+	def parse(file: URL, baseDirectory: File) = Using( new InputStreamReader(file.openStream, "utf8") )( (new ConfigurationParser).apply )
 	def find(args: Seq[String], baseDirectory: File): (URL, Seq[String]) =
 		args match
 		{

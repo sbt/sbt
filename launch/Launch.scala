@@ -6,27 +6,30 @@ import java.net.URL
 object Launch
 {
 	def apply(arguments: Seq[String]): Unit = apply( (new File("")).getAbsoluteFile , arguments )
-	
+
 	def apply(currentDirectory: File, arguments: Seq[String]): Unit =
 		Configuration.find(arguments, currentDirectory) match { case (configLocation, newArguments) => configured(currentDirectory, configLocation, newArguments) }
 
 	def configured(currentDirectory: File, configLocation: URL, arguments: Seq[String]): Unit =
-		parsed(currentDirectory, Configuration.parse(configLocation, currentDirectory) , arguments)
-		
+	{
+		val config = Configuration.parse(configLocation, currentDirectory)
+		Find(config, currentDirectory) match { case (resolved, baseDirectory) => parsed(baseDirectory, resolved, arguments) }
+	}
+
 	def parsed(currentDirectory: File, parsed: LaunchConfiguration, arguments: Seq[String]): Unit =
 		ResolveVersions(parsed) match { case (resolved, finish) => explicit(currentDirectory, resolved, arguments, finish) }
-		
+
 	def explicit(currentDirectory: File, explicit: LaunchConfiguration, arguments: Seq[String], setupComplete: () => Unit): Unit =
 		launch( run(new Launch(explicit.boot.directory, explicit.repositories)) ) (
 			RunConfiguration(explicit.getScalaVersion, explicit.app.toID, currentDirectory, arguments, setupComplete) )
 
-	final def run(launcher: xsbti.Launcher)(config: RunConfiguration): xsbti.MainResult =
+	def run(launcher: xsbti.Launcher)(config: RunConfiguration): xsbti.MainResult =
 	{
 		import config._
 		val scalaProvider: xsbti.ScalaProvider = launcher.getScala(scalaVersion)
 		val appProvider: xsbti.AppProvider = scalaProvider.app(app)
 		val appConfig: xsbti.AppConfiguration = new AppConfiguration(arguments.toArray, workingDirectory, appProvider)
-		
+
 		val main = appProvider.newMain()
 		setupComplete()
 		main.run(appConfig)
@@ -55,7 +58,7 @@ class Launch(val bootDirectory: File, repositories: Seq[Repository]) extends xsb
 		def launcher: xsbti.Launcher = Launch.this
 
 		lazy val parentLoader = new BootFilteredLoader(getClass.getClassLoader)
-		
+
 		lazy val configuration = new UpdateConfiguration(bootDirectory, version, repositories)
 		lazy val libDirectory = new File(configuration.bootDirectory, baseDirectoryName(version))
 		lazy val scalaHome = new File(libDirectory, ScalaDirectoryName)

@@ -5,10 +5,10 @@ import scala.util.parsing.input.{Reader, StreamReader}
 
 import java.lang.Character.isWhitespace
 import java.io.File
+import java.net.{MalformedURLException, URL}
 
-class ConfigurationParser(workingDirectory: File) extends Parsers with NotNull
+class ConfigurationParser extends Parsers with NotNull
 {
-	def this() = this(new File("."))
 	import scala.util.parsing.input.CharSequenceReader
 	def apply(s: String): LaunchConfiguration = processResult(configuration(new CharSequenceReader(s, 0)))
 	def apply(source: java.io.Reader): LaunchConfiguration = processResult(configuration(StreamReader(source)))
@@ -55,18 +55,27 @@ class ConfigurationParser(workingDirectory: File) extends Parsers with NotNull
 		val result = map(name).map(value => trim(value.split(",")).filter(!_.isEmpty)).getOrElse(default)
 		(result, map - name)
 	}
+	def toFile(path: String): File = new File(path)// if the path is relative, it will be resolve by Launch later
 	def file(map: LabelMap, name: String, default: File): (File, LabelMap) =
-		(map.getOrElse(name, None).map(p => new File(p)).getOrElse(default), map  - name)
+		(map.getOrElse(name, None).map(toFile).getOrElse(default), map  - name)
 
 	def getBoot(m: LabelMap): BootSetup =
 	{
-		val (dir, m1) = file(m, "directory", new File(workingDirectory, "project/boot"))
-		val (props, m2) = file(m1, "properties", new File("project/build.properties"))
-		check(m2, "label")
-		BootSetup(dir, props)
+		val (dir, m1) = file(m, "directory", toFile("project/boot"))
+		val (props, m2) = file(m1, "properties", toFile("project/build.properties"))
+		val (search, m3) = getSearch(m2, props)
+		check(m3, "label")
+		BootSetup(dir, props, search)
 	}
 	def getLogging(m: LabelMap): Logging = check("label", process(m, "level", getLevel))
-	def getLevel(m: Option[String]) = m.map(l => LogLevel(l).fold(error, identity[Logging]) ).getOrElse(Logging(LogLevel.Info))
+	def getLevel(m: Option[String]) = m.map(LogLevel.apply).getOrElse(Logging(LogLevel.Info))
+	def getSearch(m: LabelMap, defaultPath: File): (Search, LabelMap) =
+		ids(m, "search", Nil) match
+		{
+			case (Nil, newM) => (Search.none, newM)
+			case (Seq(tpe), newM) => (Search(tpe, Seq(defaultPath)), newM)
+			case (Seq(tpe, paths @ _ *), newM) => (Search(tpe, paths.map(toFile)), newM)
+		}
 
 	def getApplication(m: LabelMap): Application =
 	{
@@ -83,11 +92,10 @@ class ConfigurationParser(workingDirectory: File) extends Parsers with NotNull
 	{
 		import Repository.{Ivy, Maven, Predefined}
 		m.toSeq.map {
-			case (key, None) => Predefined(key).fold(err => error(err), x => x)
+			case (key, None) => Predefined(key)
 			case (key, Some(value)) =>
 				val r = trim(value.split(",",2))
-				val url = r(0)
-				if(url.isEmpty) error("No URL specified for '" + key + "'")
+				val url = try { new URL(r(0)) } catch { case e: MalformedURLException => error("Invalid URL specified for '" + key + "': " + e.getMessage) }
 				if(r.length == 2) Ivy(key, url, r(1)) else Maven(key, url)
 		}
 	}

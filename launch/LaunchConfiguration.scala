@@ -1,6 +1,7 @@
 package xsbt.boot
 
 import java.io.File
+import java.net.URL
 
 final case class LaunchConfiguration(scalaVersion: Version, app: Application, repositories: Seq[Repository], boot: BootSetup, logging: Logging) extends NotNull
 {
@@ -9,6 +10,7 @@ final case class LaunchConfiguration(scalaVersion: Version, app: Application, re
 	def withApp(app: Application) = LaunchConfiguration(scalaVersion, app, repositories, boot, logging)
 	def withAppVersion(newAppVersion: String) = LaunchConfiguration(scalaVersion, app.withVersion(Version.Explicit(newAppVersion)), repositories, boot, logging)
 	def withVersions(newScalaVersion: String, newAppVersion: String) = LaunchConfiguration(Version.Explicit(newScalaVersion), app.withVersion(Version.Explicit(newAppVersion)), repositories, boot, logging)
+	def map(f: File => File) = LaunchConfiguration(scalaVersion, app, repositories, boot.map(f), logging)
 }
 
 sealed trait Version extends NotNull
@@ -31,9 +33,10 @@ object Version
 	def default = Implicit(Implicit.ReadOrPrompt, None)
 }
 
-trait RichEnum extends Enumeration
+sealed abstract class RichEnum extends Enumeration
 {
-	def fromString(s: String): Either[String, Value] = valueOf(s).toRight("Expected one of " + elements.mkString(","))
+	def fromString(s: String): Either[String, Value] = valueOf(s).toRight("Expected one of " + elements.mkString(",") + " (got: " + s + ")")
+	def toValue(s: String): Value = fromString(s) match { case Left(msg) => error(msg); case Right(t) => t }
 }
 
 final case class Application(groupID: String, name: String, version: Version, main: String, components: Seq[String], crossVersioned: Boolean) extends NotNull
@@ -42,7 +45,7 @@ final case class Application(groupID: String, name: String, version: Version, ma
 	def withVersion(newVersion: Version) = Application(groupID, name, newVersion, main, components, crossVersioned)
 	def toID = AppID(groupID, name, getVersion, main, components.toArray, crossVersioned)
 }
-case class AppID(groupID: String, name: String, version: String, mainClass: String, mainComponents: Array[String], crossVersioned: Boolean) extends xsbti.ApplicationID
+final case class AppID(groupID: String, name: String, version: String, mainClass: String, mainComponents: Array[String], crossVersioned: Boolean) extends xsbti.ApplicationID
 
 object Application
 {
@@ -56,8 +59,8 @@ object Application
 sealed trait Repository extends NotNull
 object Repository
 {
-	final case class Maven(id: String, url: String) extends Repository
-	final case class Ivy(id: String, url: String, pattern: String) extends Repository
+	final case class Maven(id: String, url: URL) extends Repository
+	final case class Ivy(id: String, url: URL, pattern: String) extends Repository
 	final case class Predefined(id: Predefined.Value) extends Repository
 
 	object Predefined extends RichEnum
@@ -66,14 +69,28 @@ object Repository
 		val MavenLocal = Value("maven-local")
 		val MavenCentral = Value("maven-central")
 		val ScalaToolsReleases = Value("scala-tools-releases")
-		val ScalaToolsSnapshots = Value("scala-tools-snapshot")
-		def apply(s: String): Either[String, Predefined] = fromString(s).right.map(t => Predefined(t))
+		val ScalaToolsSnapshots = Value("scala-tools-snapshots")
+		def apply(s: String): Predefined = Predefined(toValue(s))
 	}
 
 	def defaults: Seq[Repository] = Predefined.elements.map(Predefined.apply).toList
 }
 
-final case class BootSetup(directory: File, properties: File) extends NotNull
+final case class Search(tpe: Search.Value, paths: Seq[File]) extends NotNull
+object Search extends RichEnum
+{
+	def none = Search(Current, Nil)
+	val Only = Value("only")
+	val RootFirst = Value("root-first")
+	val Nearest = Value("nearest")
+	val Current = Value("none")
+	def apply(s: String, paths: Seq[File]): Search = Search(toValue(s), paths)
+}
+
+final case class BootSetup(directory: File, properties: File, search: Search) extends NotNull
+{
+	def map(f: File => File) = BootSetup(f(directory), f(properties), search)
+}
 final case class Logging(level: LogLevel.Value) extends NotNull
 object LogLevel extends RichEnum
 {
@@ -81,11 +98,11 @@ object LogLevel extends RichEnum
 	val Info = Value("info")
 	val Warn = Value("warn")
 	val Error = Value("error")
-	def apply(s: String): Either[String, Logging] = fromString(s).right.map(t => Logging(t))
+	def apply(s: String): Logging = Logging(toValue(s))
 }
 
-class AppConfiguration(val arguments: Array[String], val baseDirectory: File, val provider: xsbti.AppProvider) extends xsbti.AppConfiguration
+final class AppConfiguration(val arguments: Array[String], val baseDirectory: File, val provider: xsbti.AppProvider) extends xsbti.AppConfiguration
 // The exception to use when an error occurs at the launcher level (and not a nested exception).
 // This indicates overrides toString because the exception class name is not needed to understand
 // the error message.
-class BootException(override val toString: String) extends RuntimeException
+final class BootException(override val toString: String) extends RuntimeException
