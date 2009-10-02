@@ -15,11 +15,12 @@ configuration ::= scala app repositories boot log
   scala ::= '[' 'scala' ']' nl versionSpecification nl
   app ::= '[' 'app' ']' nl org nl name nl versionSpecification nl components nl class nl cross-versioned nl
   repositories ::= '[' 'repositories' ']' nl (repository nl)*
-  boot ::= '[' 'boot' ']' nl directory nl properties nl
+  boot ::= '[' 'boot' ']' nl directory nl properties nl search nl
   log ::= '[' log ']' nl logLevel nl
 
    directory ::= 'directory' ':' path
    properties ::= 'properties' ':' path
+   search ::= 'search' ':' ('none'|'nearest'|'root-first'|'only') (',' path)*
    logLevel ::= 'log-level' ':' ('debug' | 'info' | 'warn' | 'error')
 
     versionSpecification ::= 'version' ':' ( ( ('read'|'prompt'|'read-or-prompt') [defaultVersion] ) | fixedVersion )
@@ -59,6 +60,7 @@ The default configuration file for sbt looks like:
 [boot]
  directory: project/boot
  properties: project/build.properties
+ search: none
 
 [log]
  level: info
@@ -136,4 +138,4 @@ Then, +publish-local the application to make it available.
 As mentioned above, there are a few options to actually run the application.  The first involves providing a modified jar for download.  The second two require providing a configuration file for download.
 1) Replace the sbt.boot.properties file in the launcher jar and distribute the modified jar.  The user would need to run 'java -jar your-launcher.jar'.
 2) The user downloads the vanilla sbt launcher jar and you provide the sbt.boot.properties file.  The user would need to run 'java -Dsbt.boot.properties=your.boot.properties -jar sbt-launcher.jar'
-3) The user sets up the sbt launcher, including the bash script.  You provide the sbt.boot.properties file and the user runs sbt @your.boot.properties other arguments.
+3) The user sets up the sbt launcher, including the bash script.  You provide the sbt.boot.properties file and the user runs sbt @your.boot.properties <other arguments>.
