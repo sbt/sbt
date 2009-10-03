@@ -14,11 +14,10 @@ object TestCompile
 	def apply[T](scalaVersion: String, sources: Set[File], outputDirectory: File, options: Seq[String], superclassNames: Seq[String])(f: (TestCallback, CompileLogger) => T): T =
 	{
 		val testCallback = new TestCallback(superclassNames.toArray)
-		val result = WithCompiler(scalaVersion) { (compiler, log) =>
+		WithCompiler(scalaVersion) { (compiler, log) =>
 			compiler(sources, Set.empty, outputDirectory, options, testCallback, 5, log)
 			f(testCallback, log)
 		}
-		result
 	}
 	/** Tests running the compiler interface with the analyzer plugin.  The provided function is given a ClassLoader that can
 	* load the compiled classes..*/

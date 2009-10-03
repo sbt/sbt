@@ -23,6 +23,7 @@ class ComponentCompiler(compiler: RawCompiler, manager: ComponentManager)
 		try { manager.file(binID) }
 		catch { case e: InvalidComponent => compileAndInstall(id, binID) }
 	}
+	def clearCache(id: String): Unit = manager.clearCache(binaryID(id))
 	protected def binaryID(id: String) = id + binSeparator + compiler.scalaInstance.actualVersion
 	protected def compileAndInstall(id: String, binID: String): File =
 	{
@@ -45,7 +46,8 @@ class ComponentCompiler(compiler: RawCompiler, manager: ComponentManager)
 			val (sourceFiles, resources) = extractedSources.partition(_.getName.endsWith(".scala"))
 			withTemporaryDirectory { outputDirectory =>
 				val xsbtiJars = manager.files(xsbtiID)
-				compiler(Set() ++ sourceFiles, Set() ++ xsbtiJars, outputDirectory, Nil, true)
+				try { compiler(Set() ++ sourceFiles, Set() ++ xsbtiJars, outputDirectory, Nil, true) }
+				catch { case e: xsbti.CompileFailed => throw new CompileFailed(e.arguments, "Error compiling component '" + id + "'") }
 				copy(resources x (FileMapper.rebase(dir, outputDirectory)))
 				zip((outputDirectory ***) x (PathMapper.relativeTo(outputDirectory)), targetJar)
 			}
