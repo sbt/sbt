@@ -17,6 +17,19 @@ object CheckBasic extends Specification
 			}
 		}
 	}
+	"Scaladoc on basic file should succeed" in {
+		WithFiles(basicName -> basicSource){ files =>
+			for(scalaVersion <- TestCompile.allVersions)
+			{
+				FileUtilities.withTemporaryDirectory { outputDirectory =>
+					WithCompiler(scalaVersion) { (compiler, log) =>
+						compiler.doc(Set() ++ files, Set.empty, outputDirectory, Nil, 5, log)
+					}
+				}
+				true must beTrue // don't know how to just check that previous line completes without exception
+			}
+		}
+	}
 	"Analyzer plugin should send source begin and end" in {
 		WithFiles(basicName -> basicSource) { files =>
 			for(scalaVersion <- TestCompile.allVersions)

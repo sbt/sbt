@@ -14,10 +14,9 @@ class RawCompiler(val scalaInstance: ScalaInstance, log: CompileLogger)
 			// The following imports ensure there is a compile error if the identifiers change,
 			//   but should not be otherwise directly referenced
 			import scala.tools.nsc.Main
-			import scala.tools.nsc.Properties
 
 		val arguments = (new CompilerArguments(scalaInstance))(sources, classpath, outputDirectory, options, compilerOnClasspath)
-		log.debug("Vanilla interface to Scala compiler " + scalaInstance.actualVersion + "  with arguments: " + arguments.mkString("\n\t", "\n\t", ""))
+		log.debug("Plain interface to Scala compiler " + scalaInstance.actualVersion + "  with arguments: " + arguments.mkString("\n\t", "\n\t", ""))
 		val mainClass = Class.forName("scala.tools.nsc.Main", true, scalaInstance.loader)
 		val process = mainClass.getMethod("process", classOf[Array[String]])
 		process.invoke(null, toJavaArray(arguments))
@@ -26,8 +25,10 @@ class RawCompiler(val scalaInstance: ScalaInstance, log: CompileLogger)
 	protected def checkForFailure(mainClass: Class[_], args: Array[String])
 	{
 		val reporter = mainClass.getMethod("reporter").invoke(null)
-		val failed = reporter.asInstanceOf[{ def hasErrors: Boolean }].hasErrors
-		if(failed) throw new xsbti.CompileFailed { val arguments = args; override def toString = "Vanilla compile failed" }
+		// this is commented out because of Scala ticket #2365
+		//val failed = reporter.asInstanceOf[{ def hasErrors: Boolean }].hasErrors
+		val failed = reporter.getClass.getMethod("hasErrors").invoke(reporter).asInstanceOf[Boolean]
+		if(failed) throw new CompileFailed(args, "Plain compile failed")
 	}
 	protected def toJavaArray(arguments: Seq[String]): Array[String] =
 	{
@@ -36,3 +37,4 @@ class RawCompiler(val scalaInstance: ScalaInstance, log: CompileLogger)
 		realArray
 	}
 }
+class CompileFailed(val arguments: Array[String], override val toString: String) extends xsbti.CompileFailed

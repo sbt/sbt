@@ -37,20 +37,26 @@ object WithCompiler
 			boot.LaunchTest.withLauncher { launch =>
 				FileUtilities.withTemporaryDirectory { componentDirectory =>
 					val manager = new ComponentManager(new boot.ComponentProvider(componentDirectory), log)
+					val compiler = new AnalyzingCompiler(ScalaInstance(scalaVersion, launch), manager)
+					compiler.newComponentCompiler(log).clearCache(ComponentCompiler.compilerInterfaceID)
 					prepare(manager, ComponentCompiler.compilerInterfaceSrcID, "CompilerInterface.scala")
 					prepare(manager, ComponentCompiler.xsbtiID, classOf[xsbti.AnalysisCallback])
-					f(new AnalyzingCompiler(ScalaInstance(scalaVersion, launch), manager), log)
+					f(compiler, log)
 				}
 			}
 		}
 	}
-	private def prepare(manager: ComponentManager, id: String, resource: Class[_]): Unit =
-		manager.define(id, FileUtilities.classLocationFile(resource) :: Nil)
-	private def prepare(manager: ComponentManager, id: String, resource: String): Unit =
+	def prepare(manager: ComponentManager, id: String, resource: Class[_]): Unit = define(manager, id, FileUtilities.classLocationFile(resource) :: Nil)
+	def prepare(manager: ComponentManager, id: String, resource: String)
 	{
 		val src = getClass.getClassLoader.getResource(resource)
 		if(src eq null)
 			error("Resource not found: " + resource)
-		manager.define(id, FileUtilities.asFile(src) :: Nil)
+		define(manager, id, FileUtilities.asFile(src) :: Nil)
+	}
+	def define(manager: ComponentManager, id: String, files: List[File])
+	{
+		manager.clearCache(id)
+		manager.define(id, files)
 	}
 }
