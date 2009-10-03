@@ -69,7 +69,7 @@ protected/* removes the ambiguity as to which project is the entry point by maki
 				|    public static void main(java.lang.String[]);
 				|}"""
 			
-			val defaultJar = (outputPath / defaultJarName).asFile.getAbsolutePath
+			val defaultJar = mkpath((outputPath / defaultJarName).asFile)
 			log.debug("proguard configuration using main jar " + defaultJar)
 			val ivyKeepOptions = ivyKeepResolvers.map("-keep public class " + _  + allPublic).mkString("\n")
 			val runtimeClasspath = runClasspath.get.map(_.asFile).toList
@@ -88,19 +88,21 @@ protected/* removes the ambiguity as to which project is the entry point by maki
 			//    include the version of JLine from the compiler.
 			val includeExternalJars = externalJarsNoIvy.filter(jar => !isJarX(jar, "scala-compiler"))
 			// exclude properties files and manifests from scala-library jar
-			val inJars = (defaultJar :: includeExternalJars.map( _ + "(!META-INF/**,!*.properties)")).map("-injars " + _).mkString("\n")
+			val inJars = (defaultJar :: includeExternalJars.map(f => mkpath(f) + "(!META-INF/**,!*.properties)")).map("-injars " + _).mkString("\n")
 			
 			withJar(ivyJars, "Ivy") { ivyJar =>
 				withJar(jlineJars, "JLine") { jlineJar =>
 					val proguardConfiguration =
-						outTemplate.stripMargin.format(libraryJars.mkString(File.pathSeparator),
-							ivyJar.getAbsolutePath, jlineJar.getAbsolutePath,
-							inJars, outputJar.absolutePath, ivyKeepOptions, keepJLine, mainClassName)
+						outTemplate.stripMargin.format(mkpaths(libraryJars),
+							mkpath(ivyJar), mkpath(jlineJar),
+							inJars, mkpath(outputJar.asFile), ivyKeepOptions, keepJLine, mainClassName)
 					log.debug("Proguard configuration written to " + proguardConfigurationPath)
 					FileUtilities.write(proguardConfigurationPath.asFile, proguardConfiguration, log)
 				}
 			}
 		}
+	private def mkpaths(f: Seq[File]) = f.map(mkpath).mkString(File.separator)
+	private def mkpath(f: File) = '\"' + f.getAbsolutePath + '\"'
 	private def withJar(files: List[File], name: String)(f: File => Option[String]): Option[String] =
 		files match
 		{
