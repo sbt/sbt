@@ -18,6 +18,5 @@ class MultiPublishTest(info: ProjectInfo) extends ParentProject(info)
 				ManagedStyle.Maven
 			else
 				ManagedStyle.Auto
-		val publishTo = "Scala Tools Nexus" at (outputPath / "test-repo").absolutePath
 	}
 }
