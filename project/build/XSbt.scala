@@ -109,6 +109,7 @@ class XSbt(info: ProjectInfo) extends ParentProject(info)
 	class IvyProject(info: ProjectInfo) extends Base(info) with TestWithIO with TestWithLog with TestWithLaunch
 	{
 		val ivy = "org.apache.ivy" % "ivy" % "2.0.0"
+		override def deliverProjectDependencies = Set(super.deliverProjectDependencies.toSeq : _*) - launchInterfaceSub.projectID
 	}
 	class InterfaceProject(info: ProjectInfo) extends DefaultProject(info) with ManagedBase with TestWithLog with Component with JavaProject
 	{
@@ -158,8 +159,8 @@ trait SourceProject extends BasicScalaProject
 }
 trait ManagedBase extends BasicScalaProject
 {
-	override def deliverScalaDependencies = Nil 
-	override def crossScalaVersions = Set("2.7.5")
+	override def deliverScalaDependencies = Nil
+	override def crossScalaVersions = Set("2.7.2", "2.7.5")
 	override def managedStyle = ManagedStyle.Ivy
 	override def useDefaultConfigurations = false
 	val defaultConf = Configurations.Default

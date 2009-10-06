@@ -35,7 +35,7 @@ object Version
 
 sealed abstract class RichEnum extends Enumeration
 {
-	def fromString(s: String): Either[String, Value] = valueOf(s).toRight("Expected one of " + elements.mkString(",") + " (got: " + s + ")")
+	def fromString(s: String): Either[String, Value] = elements.find(_.toString == s).toRight("Expected one of " + elements.mkString(",") + " (got: " + s + ")")
 	def toValue(s: String): Value = fromString(s) match { case Left(msg) => error(msg); case Right(t) => t }
 }
 

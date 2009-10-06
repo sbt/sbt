@@ -33,10 +33,8 @@ trait ProguardProject extends BasicScalaProject
 				"-dontwarn",
 				 "-ignorewarnings")
 	def keepClasses: Seq[String] = Nil
-	def mapInJars(inJars: Seq[File]): Seq[String] = inJars.map(_.getAbsolutePath)
-	def mapLibraryJars(libJars: Seq[File]): Seq[String] = libJars.map(_.getAbsolutePath)
 
-	def template(inJars: Seq[String], libraryJars: Seq[String], outJars: String, options: Seq[String], mainClass: Option[String], keepClasses: Seq[String]) =
+	def template(inJars: Seq[File], libraryJars: Seq[File], outJar: File, options: Seq[String], mainClass: Option[String], keepClasses: Seq[String]) =
 	{
 		val keepMain =
 			"""-keep public class %s {
@@ -46,10 +44,10 @@ trait ProguardProject extends BasicScalaProject
 		val lines =
 			options ++
 			keepClasses.map("-keep public class " + _  + " {\n public * ;\n}") ++
-			inJars.map("-injars " + _) ++
-			 Seq("-injars " + rawJarPath.absolutePath,
-			"-outjars " + outJars) ++
-			libraryJars.map("-libraryjars " + _) ++
+			inJars.map(f => "-injars " + mkpath(f)) ++
+			 Seq("-injars " + mkpath(rawJarPath.asFile),
+			"-outjars " + mkpath(outJar)) ++
+			libraryJars.map(f => "-libraryjars " + mkpath(f)) ++
 			 mainClass.map(main => keepMain.stripMargin.format(main)).toList
 		lines.mkString("\n")
 	}
@@ -73,7 +71,7 @@ trait ProguardProject extends BasicScalaProject
 			val (externalJars, libraryJars) = externalDependencies.toList.partition(jar => Path.relativize(rootProjectDirectory, jar).isDefined)
 			log.debug("proguard configuration library jars locations: " + libraryJars.mkString(", "))
 
-			val proguardConfiguration = template(mapInJars(externalJars), mapLibraryJars(libraryJars), outputJar.absolutePath, basicOptions, getMainClass(false), keepClasses)
+			val proguardConfiguration = template(externalJars, libraryJars, outputJar.asFile, basicOptions, getMainClass(false), keepClasses)
 			log.debug("Proguard configuration written to " + proguardConfigurationPath)
 			FileUtilities.write(proguardConfigurationPath.asFile, proguardConfiguration, log)
 		}
