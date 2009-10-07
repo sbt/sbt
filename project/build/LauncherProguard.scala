@@ -23,10 +23,10 @@ trait ProguardLaunch extends ProguardProject
 
 		(withJar(ivyJars.toSeq, "Ivy") + "(!META-INF/**,!fr/**,!**/antlib.xml,!**/*.png)") ::
 		(withJar(jlineJars, "JLine") + "(!META-INF/**)" ) ::
-		otherJars.map( _.getAbsolutePath + "(!META-INF/**,!*.properties)").toList
+		otherJars.map(jar => mkpath(jar) + "(!META-INF/**,!*.properties)").toList
 	}
 
-	private def withJar[T](files: Seq[File], name: String) = files.firstOption.getOrElse(error(name + " not present (try running update)")).getAbsolutePath
+	private def withJar[T](files: Seq[File], name: String) = mkpath(files.firstOption.getOrElse(error(name + " not present (try running update)")))
 	private def isJLineJar(file: File) = isJarX(file, "jline")
 	private def isJarX(file: File, x: String) =
 	{

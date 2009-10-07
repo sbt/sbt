@@ -34,6 +34,9 @@ trait ProguardProject extends BasicScalaProject
 				 "-ignorewarnings")
 	def keepClasses: Seq[String] = Nil
 
+	def mapInJars(inJars: Seq[File]): Seq[String] = inJars.map(f => "-injars " + mkpath(f))
+	def mapLibraryJars(libraryJars: Seq[File]): Seq[String] = libraryJars.map(f => "-libraryjars " + mkpath(f))
+
 	def template(inJars: Seq[File], libraryJars: Seq[File], outJar: File, options: Seq[String], mainClass: Option[String], keepClasses: Seq[String]) =
 	{
 		val keepMain =
@@ -44,14 +47,15 @@ trait ProguardProject extends BasicScalaProject
 		val lines =
 			options ++
 			keepClasses.map("-keep public class " + _  + " {\n public * ;\n}") ++
-			inJars.map(f => "-injars " + mkpath(f)) ++
+			mapInJars(inJars) ++
 			 Seq("-injars " + mkpath(rawJarPath.asFile),
 			"-outjars " + mkpath(outJar)) ++
-			libraryJars.map(f => "-libraryjars " + mkpath(f)) ++
+			mapLibraryJars(libraryJars) ++
 			 mainClass.map(main => keepMain.stripMargin.format(main)).toList
 		lines.mkString("\n")
 	}
 
+	def mkpath(f: File) = '\"' + f.getAbsolutePath + '\"'
 	private def proguardTask =
 		task
 		{
