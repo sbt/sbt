@@ -369,4 +369,10 @@ object FileUtilities
 		transfer(in, out)
 		out.toByteArray
 	}
+
+	/** A pattern used to split a String by path separator characters.*/
+	private val PathSeparatorPattern = java.util.regex.Pattern.compile(File.pathSeparator)
+
+	/** Splits a String around path separator characters. */
+	def pathSplit(s: String) = PathSeparatorPattern.split(s)
 }
