@@ -2,7 +2,7 @@ package xsbt
 
 	import xsbti.{AnalysisCallback, Logger => xLogger}
 	import java.io.File
-	import java.net.URLClassLoader
+	import java.net.{URL, URLClassLoader}
 
 /** Interface to the Scala compiler that uses the dependency analysis plugin.  This class uses the Scala library and compiler
 * provided by scalaInstance.  This class requires a ComponentManager in order to obtain the interface code to scalac and
@@ -16,16 +16,16 @@ class AnalyzingCompiler(scalaInstance: ScalaInstance, manager: ComponentManager)
 		 callback: AnalysisCallback, maximumErrors: Int, log: CompileLogger)
 	{
 		val arguments = (new CompilerArguments(scalaInstance))(sources, classpath, outputDirectory, options, compilerOnClasspath)
-		val interfaceClass = getInterfaceClass("xsbt.CompilerInterface", log)
-		val interface = interfaceClass.newInstance.asInstanceOf[AnyRef]
+		call("xsbt.CompilerInterface", log)(
+			classOf[Array[String]], classOf[AnalysisCallback], classOf[Int], classOf[xLogger] ) (
+			arguments.toArray[String] : Array[String], callback, maximumErrors: java.lang.Integer, log )
 		// this is commented out because of Scala ticket #2365
-		/*val runnable = interface.asInstanceOf[{ def run(args: Array[String], callback: AnalysisCallback, maximumErrors: Int, log: xLogger): Unit }]
+		/*
+		val interface = getInterfaceClass(interface, log).newInstance.asInstanceOf[AnyRef]
+		val runnable = interface.asInstanceOf[{ def run(args: Array[String], callback: AnalysisCallback, maximumErrors: Int, log: xLogger): Unit }]
 			// these arguments are safe to pass across the ClassLoader boundary because the types are defined in Java
 		//  so they will be binary compatible across all versions of Scala
 		runnable.run(arguments.toArray, callback, maximumErrors, log)*/
-
-		val method = interfaceClass.getMethod("run", classOf[Array[String]], classOf[AnalysisCallback], classOf[Int], classOf[xLogger])
-		method.invoke(interface, arguments.toArray[String] : Array[String], callback, maximumErrors: java.lang.Integer, log)
 	}
 	def doc(sources: Set[File], classpath: Set[File], outputDirectory: File, options: Seq[String], maximumErrors: Int, log: CompileLogger): Unit =
 		doc(sources, classpath, outputDirectory, options, false, maximumErrors, log)
@@ -33,10 +33,31 @@ class AnalyzingCompiler(scalaInstance: ScalaInstance, manager: ComponentManager)
 		 maximumErrors: Int, log: CompileLogger): Unit =
 	{
 		val arguments = (new CompilerArguments(scalaInstance))(sources, classpath, outputDirectory, options, compilerOnClasspath)
-		val interfaceClass = getInterfaceClass("xsbt.ScaladocInterface", log)
+		call("xsbt.ScaladocInterface", log) (classOf[Array[String]], classOf[Int], classOf[xLogger]) (arguments.toArray[String] : Array[String], maximumErrors: java.lang.Integer, log)
+	}
+	def run(classpath: Set[File], mainClass: String, options: Seq[String], log: CompileLogger)
+	{
+		val arguments = new CompilerArguments(scalaInstance)
+		val classpathURLs = arguments.finishClasspath(classpath, true).toSeq
+		val bootClasspath = FileUtilities.pathSplit( arguments.createBootClasspath )
+		val extraURLs = bootClasspath.filter(_.length > 0).map(new File(_))
+		val classpathArray = (classpathURLs ++ extraURLs).map(_.toURI.toURL).toArray[URL]
+		call("xsbt.RunInterface", log)(classOf[Array[URL]], classOf[String], classOf[Array[String]], classOf[xLogger]) (
+			classpathArray : Array[URL], mainClass, options.toArray[String] : Array[String], log
+		)
+	}
+	def console(classpath: Set[File], initialCommands: String, log: CompileLogger): Unit =
+	{
+		val classpathString = CompilerArguments.absString(classpath)
+		val bootClasspath = (new CompilerArguments(scalaInstance)).createBootClasspath
+		call("xsbt.ConsoleInterface", log) (classOf[String], classOf[String], classOf[String], classOf[xLogger]) (bootClasspath, classpathString, initialCommands, log)
+	}
+	private def call(interfaceClassName: String, log: CompileLogger)(argTypes: Class[_]*)(args: AnyRef*)
+	{
+		val interfaceClass = getInterfaceClass(interfaceClassName, log)
 		val interface = interfaceClass.newInstance.asInstanceOf[AnyRef]
-		val method = interfaceClass.getMethod("run", classOf[Array[String]], classOf[Int], classOf[xLogger])
-		method.invoke(interface, arguments.toArray[String] : Array[String], maximumErrors: java.lang.Integer, log)
+		val method = interfaceClass.getMethod("run", argTypes : _*)
+		method.invoke(interface, args: _*)
 	}
 	private def getInterfaceClass(name: String, log: CompileLogger) =
 	{
