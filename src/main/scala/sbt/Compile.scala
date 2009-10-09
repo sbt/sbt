@@ -4,102 +4,57 @@
 package sbt
 
 import java.io.File
+import xsbt.{AnalyzingCompiler, CompileFailed, CompilerArguments, ComponentManager, ScalaInstance}
 
 object CompileOrder extends Enumeration
 {
 	val Mixed, JavaThenScala, ScalaThenJava = Value
 }
-private object CompilerCore
-{
-	def scalaClasspathForJava = FileUtilities.scalaJars.map(_.getAbsolutePath).mkString(File.pathSeparator)
-}
+
 sealed abstract class CompilerCore
 {
-	val ClasspathOptionString = "-classpath"
-	val OutputOptionString = "-d"
+	final def apply(label: String, sources: Iterable[Path], classpath: Iterable[Path], outputDirectory: Path, scalaOptions: Seq[String], log: Logger): Option[String] =
+		apply(label, sources, classpath, outputDirectory, scalaOptions, Nil, CompileOrder.Mixed, log)
+	final def apply(label: String, sources: Iterable[Path], classpath: Iterable[Path], outputDirectory: Path, scalaOptions: Seq[String], javaOptions: Seq[String], order: CompileOrder.Value, log: Logger): Option[String] =
+	{
+			def filteredSources(extension: String) = sources.filter(_.asFile.getName.endsWith(extension))
+			def fileSet(sources: Iterable[Path]) = Set() ++ sources.map(_.asFile)
+			def process(label: String, sources: Iterable[_], act: => Unit) =
+				() => if(sources.isEmpty) log.debug("No " + label + " sources.") else act
 
-	// Returns false if there were errors, true if there were not.
-	protected def process(args: List[String], log: Logger): Boolean
-	// Returns false if there were errors, true if there were not.
-	protected def processJava(args: List[String], log: Logger): Boolean = true
-	protected def scalaClasspathForJava: String
-	def actionStartMessage(label: String): String
-	def actionNothingToDoMessage: String
-	def actionSuccessfulMessage: String
-	def actionUnsuccessfulMessage: String
-
-	private def classpathString(rawClasspathString: String, includeScala: Boolean) =
-		if(includeScala)
-			List(rawClasspathString, scalaClasspathForJava).mkString(File.pathSeparator)
-		else
-			rawClasspathString
-
-	final def apply(label: String, sources: Iterable[Path], classpathString: String, outputDirectory: Path, options: Seq[String], log: Logger): Option[String] =
-		apply(label, sources, classpathString, outputDirectory, options, Nil, CompileOrder.Mixed, log)
-	final def apply(label: String, sources: Iterable[Path], rawClasspathString: String, outputDirectory: Path, options: Seq[String], javaOptions: Seq[String], order: CompileOrder.Value, log: Logger): Option[String] =
+		val javaSources = fileSet(filteredSources(".java"))
+		val scalaSources = fileSet( if(order == CompileOrder.Mixed) sources else filteredSources(".scala") )
+		val classpathSet = fileSet(classpath)
+		val scalaCompile = process("Scala", scalaSources, processScala(scalaSources, classpathSet, outputDirectory.asFile, scalaOptions, log) )
+		val javaCompile = process("Java", javaSources, processJava(javaSources, classpathSet, outputDirectory.asFile, javaOptions, log))
+		try { doCompile(label, sources, outputDirectory, order, log)(javaCompile, scalaCompile) }
+		catch { case e: xsbti.CompileFailed => log.trace(e); Some(e.toString) }
+	}
+	protected def doCompile(label: String, sources: Iterable[Path], outputDirectory: Path, order: CompileOrder.Value, log: Logger)(javaCompile: () => Unit, scalaCompile: () => Unit) =
 	{
 		log.info(actionStartMessage(label))
-		def classpathOption(includeScala: Boolean): List[String] =
+		if(sources.isEmpty)
 		{
-			val classpath = classpathString(rawClasspathString, includeScala)
-			if(classpath.isEmpty)
-				Nil
-			else
-				List(ClasspathOptionString, classpath)
+			log.info(actionNothingToDoMessage)
+			None
 		}
-		val outputDir = outputDirectory.asFile
-		FileUtilities.createDirectory(outputDir, log) orElse
+		else
 		{
-			def classpathAndOut(javac: Boolean): List[String] = OutputOptionString :: outputDir.getAbsolutePath :: classpathOption(javac)
-
-			Control.trapUnit("Compiler error: ", log)
+			FileUtilities.createDirectory(outputDirectory.asFile, log) orElse Control.trapUnit("Compiler error: ", log)
 			{
-				val sourceList = sources.map(_.asFile.getAbsolutePath).toList
-				if(sourceList.isEmpty)
-				{
-					log.info(actionNothingToDoMessage)
-					None
-				}
-				else
-				{
-					def filteredSources(extension: String) = sourceList.filter(_.endsWith(extension))
-					def compile(label: String, sources: List[String], options: Seq[String], includeScala: Boolean)(process: (List[String], Logger) => Boolean) =
-					{
-						if(sources.isEmpty)
-						{
-							log.debug("No "+label+" sources to compile.")
-							true
-						}
-						else
-						{
-							val arguments = (options ++ classpathAndOut(includeScala) ++ sources).toList
-							log.debug(label + " arguments: " + arguments.mkString(" "))
-							process(arguments, log)
-						}
-					}
-					def scalaCompile = () =>
-					{
-						val scalaSourceList = if(order == CompileOrder.Mixed) sourceList else filteredSources(".scala")
-						compile("Scala", scalaSourceList, options, false)(process)
-					}
-					def javaCompile = () =>
-					{
-						val javaSourceList = filteredSources(".java")
-						compile("Java", javaSourceList, javaOptions, true)(processJava)
-					}
-
-					val (first, second) = if(order == CompileOrder.JavaThenScala) (javaCompile, scalaCompile) else (scalaCompile, javaCompile)
-					if(first() && second())
-					{
-						log.info(actionSuccessfulMessage)
-						None
-					}
-					else
-						Some(actionUnsuccessfulMessage)
-				}
+				val (first, second) = if(order == CompileOrder.JavaThenScala) (javaCompile, scalaCompile) else (scalaCompile, javaCompile)
+				first()
+				second()
+				log.info(actionSuccessfulMessage)
+				None
 			}
 		}
 	}
+	def actionStartMessage(label: String): String
+	def actionNothingToDoMessage: String
+	def actionSuccessfulMessage: String
+	protected def processScala(sources: Set[File], classpath: Set[File], outputDirectory: File, options: Seq[String], log: Logger): Unit
+	protected def processJava(sources: Set[File], classpath: Set[File], outputDirectory: File, options: Seq[String], log: Logger): Unit
 }
 
 sealed abstract class CompilerBase extends CompilerCore
@@ -107,199 +62,75 @@ sealed abstract class CompilerBase extends CompilerCore
 	def actionStartMessage(label: String) = "Compiling " + label + " sources..."
 	val actionNothingToDoMessage = "Nothing to compile."
 	val actionSuccessfulMessage = "Compilation successful."
-	val actionUnsuccessfulMessage = "Compilation unsuccessful."
-}
-final class ForkCompile(config: ForkScalaCompiler) extends CompilerBase
-{
-	import java.io.File
-	protected def process(arguments: List[String], log: Logger) =
-		Fork.scalac(config.javaHome, config.compileJVMOptions, config.scalaJars, arguments, log) == 0
-	override protected def processJava(args: List[String], log: Logger) =
-		Fork.javac(config.javaHome, args, log) == 0
-	override protected def scalaClasspathForJava = config.scalaJars.mkString(File.pathSeparator)
-}
-object ForkCompile
-{
-	def apply(config: ForkScalaCompiler, conditional: CompileConditional) =
-	{
-		import conditional.config.{compileOrder, classpath, javaOptions, label, log, options, outputDirectory, sources}
-		// recompile only if any sources were modified after any classes or no classes exist
-		val sourcePaths = sources.get
-		val newestSource = (0L /: sourcePaths)(_ max _.lastModified)
-		val products = (outputDirectory  ** GlobFilter("*.class")).get
-		val oldestClass = (java.lang.Long.MAX_VALUE /: products)(_ min _.lastModified)
-		if(products.isEmpty || newestSource > oldestClass)
-		{
-			// full recompile, since we are not doing proper dependency tracking
-			FileUtilities.clean(outputDirectory :: Nil, log)
-			val compiler = new ForkCompile(config)
-			FileUtilities.createDirectory(outputDirectory.asFile, log)
-			compiler(label, sourcePaths, Path.makeString(classpath.get), outputDirectory, options, javaOptions, compileOrder, log)
-		}
-		else
-		{
-			log.info("Compilation up to date.")
-			None
-		}
-	}
 }
 
 // The following code is based on scala.tools.nsc.Main and scala.tools.nsc.ScalaDoc
 // Copyright 2005-2008 LAMP/EPFL
 // Original author: Martin Odersky
 
-final class Compile(maximumErrors: Int) extends CompilerBase
+final class Compile(maximumErrors: Int, compiler: AnalyzingCompiler, analysisCallback: AnalysisCallback, baseDirectory: Path) extends CompilerBase
 {
-	protected def process(arguments: List[String], log: Logger) =
+	protected def processScala(sources: Set[File], classpath: Set[File], outputDirectory: File, options: Seq[String], log: Logger)
 	{
-		import scala.tools.nsc.{CompilerCommand, FatalError, Global, Settings, reporters, util}
-		import util.FakePos
-		var reporter = new LoggerReporter(maximumErrors, log)
-		val settings = new Settings(reporter.error)
-		val command = new CompilerCommand(arguments, settings, error, false)
-
-		object compiler extends Global(command.settings, reporter)
-		if(!reporter.hasErrors)
-		{
-			val run = new compiler.Run
-			run compile command.files
-			reporter.printSummary()
-		}
-		!reporter.hasErrors
+		val callbackInterface = new AnalysisInterface(analysisCallback, baseDirectory, outputDirectory)
+		compiler(Set() ++ sources, Set() ++ classpath, outputDirectory, options, true, callbackInterface, maximumErrors, log)
 	}
-	override protected def processJava(args: List[String], log: Logger) =
-		(Process("javac", args) ! log) == 0
-	protected def scalaClasspathForJava = CompilerCore.scalaClasspathForJava
+	protected def processJava(sources: Set[File], classpath: Set[File], outputDirectory: File, options: Seq[String], log: Logger)
+	{
+		val arguments = (new CompilerArguments(compiler.scalaInstance))(sources, classpath, outputDirectory, options, true)
+		val code = Process("javac", arguments) ! log
+		if( code != 0 ) throw new CompileFailed(arguments.toArray, "javac returned nonzero exit code")
+	}
 }
-final class Scaladoc(maximumErrors: Int) extends CompilerCore
+final class Scaladoc(maximumErrors: Int, compiler: AnalyzingCompiler) extends CompilerCore
 {
-	protected def scalaClasspathForJava = CompilerCore.scalaClasspathForJava
-	protected def process(arguments: List[String], log: Logger) =
-	{
-		import scala.tools.nsc.{doc, CompilerCommand, FatalError, Global, reporters, util}
-		import util.FakePos
-		val reporter = new LoggerReporter(maximumErrors, log)
-		val docSettings: doc.Settings = new doc.Settings(reporter.error)
-		val command = new CompilerCommand(arguments, docSettings, error, false)
-		object compiler extends Global(command.settings, reporter)
-		{
-			override val onlyPresentation = true
-		}
-		if(!reporter.hasErrors)
-		{
-			val run = new compiler.Run
-			run compile command.files
-			val generator = new doc.DefaultDocDriver
-			{
-				lazy val global: compiler.type = compiler
-				lazy val settings = docSettings
-			}
-			generator.process(run.units)
-			reporter.printSummary()
-		}
-		!reporter.hasErrors
-	}
+	protected def processScala(sources: Set[File], classpath: Set[File], outputDirectory: File, options: Seq[String], log: Logger): Unit =
+		compiler.doc(sources, classpath, outputDirectory, options, maximumErrors, log)
+	protected def processJava(sources: Set[File], classpath: Set[File], outputDirectory: File, options: Seq[String], log: Logger) = ()
+
 	def actionStartMessage(label: String) = "Generating API documentation for " + label + " sources..."
 	val actionNothingToDoMessage = "No sources specified."
 	val actionSuccessfulMessage = "API documentation generation successful."
 	def actionUnsuccessfulMessage = "API documentation generation unsuccessful."
 }
-
-// The following code is based on scala.tools.nsc.reporters.{AbstractReporter, ConsoleReporter}
-// Copyright 2002-2009 LAMP/EPFL
-// Original author: Martin Odersky
-final class LoggerReporter(maximumErrors: Int, log: Logger) extends scala.tools.nsc.reporters.Reporter
+final class Console(compiler: AnalyzingCompiler) extends NotNull
 {
-	import scala.tools.nsc.util.{FakePos,NoPosition,Position}
-	private val positions = new scala.collection.mutable.HashMap[Position, Severity]
-
-	def error(msg: String) { error(FakePos("scalac"), msg) }
-
-	def printSummary()
+	/** Starts an interactive scala interpreter session with the given classpath.*/
+	def apply(classpath: Iterable[Path], log: Logger): Option[String] =
+		apply(classpath, "", log)
+	def apply(classpath: Iterable[Path], initialCommands: String, log: Logger): Option[String] =
 	{
-		if(WARNING.count > 0)
-			log.warn(countElementsAsString(WARNING.count, "warning") + " found")
-		if(ERROR.count > 0)
-			log.error(countElementsAsString(ERROR.count, "error") + " found")
+		def console0 = compiler.console(Set() ++ classpath.map(_.asFile), initialCommands, log)
+		JLine.withJLine( Run.executeTrapExit(console0, log) )
 	}
+}
 
-	def display(pos: Position, msg: String, severity: Severity)
+private final class AnalysisInterface(delegate: AnalysisCallback, basePath: Path, outputDirectory: File) extends xsbti.AnalysisCallback with NotNull
+{
+	val outputPath = Path.fromFile(outputDirectory)
+	def superclassNames = delegate.superclassNames.toSeq.toArray[String]
+	def superclassNotFound(superclassName: String) = delegate.superclassNotFound(superclassName)
+	def beginSource(source: File) = delegate.beginSource(srcPath(source))
+	def foundSubclass(source: File, subclassName: String, superclassName: String, isModule: Boolean) =
+		delegate.foundSubclass(srcPath(source), subclassName, superclassName, isModule)
+	def sourceDependency(dependsOn: File, source: File) =
+		delegate.sourceDependency(srcPath(dependsOn), srcPath(source))
+	def jarDependency(jar: File, source: File) = delegate.jarDependency(jar, srcPath(source))
+	def generatedClass(source: File, clazz: File) = delegate.generatedClass(srcPath(source), classPath(clazz))
+	def endSource(source: File) = delegate.endSource(srcPath(source))
+	def foundApplication(source: File, className: String) = delegate.foundApplication(srcPath(source), className)
+	def classDependency(clazz: File, source: File) =
 	{
-		severity.count += 1
-		if(severity != ERROR || maximumErrors < 0 || severity.count <= maximumErrors)
-			print(severityToLevel(severity), pos, msg)
-	}
-	private def severityToLevel(severity: Severity): Level.Value =
-		severity match
+		val sourcePath = srcPath(source)
+		Path.relativize(outputPath, clazz) match
 		{
-			case ERROR => Level.Error
-			case WARNING => Level.Warn
-			case INFO => Level.Info
-		}
-
-	private def print(level: Level.Value, posIn: Position, msg: String)
-	{
-		// the implicits keep source compatibility with the changes in 2.8 : Position.{source,line,column} are no longer Options
-		implicit def anyToOption[T <: AnyRef](t: T): Option[T] = Some(t)
-		implicit def intToOption(t: Int): Option[Int] = Some(t)
-		val pos =
-			posIn match
-			{
-				case null | NoPosition => NoPosition
-				case x: FakePos => x
-				case x =>
-					posIn.inUltimateSource(posIn.source.get)
-			}
-		pos match
-		{
-			case NoPosition => log.log(level, msg)
-			case FakePos(fmsg) => log.log(level, fmsg+" "+msg)
-			case _ =>
-				val sourcePrefix = pos.source.map(_.file.path).getOrElse("")
-				val lineNumberString = pos.line.map(line => ":" + line + ":").getOrElse(":") + " "
-				log.log(level, sourcePrefix + lineNumberString + msg)
-				if (!pos.line.isEmpty)
-				{
-					val lineContent = pos.lineContent.stripLineEnd
-					log.log(level, lineContent) // source line with error/warning
-					for(offset <- pos.offset; src <- pos.source)
-					{
-						val pointer = offset - src.lineToOffset(src.offsetToLine(offset))
-						val pointerSpace = (lineContent: Seq[Char]).take(pointer).map { case '\t' => '\t'; case _ => ' ' }
-						log.log(level, pointerSpace.mkString + "^") // pointer to the column position of the error/warning
-					}
-				}
+			case None =>  // dependency is a class file outside of the output directory
+				delegate.classDependency(clazz, sourcePath)
+			case Some(relativeToOutput) => // dependency is a product of a source not included in this compilation
+				delegate.productDependency(relativeToOutput, sourcePath)
 		}
 	}
-	override def reset =
-	{
-		super.reset
-		positions.clear
-	}
-
-	protected def info0(pos: Position, msg: String, severity: Severity, force: Boolean)
-	{
-		severity match
-		{
-			case WARNING | ERROR =>
-			{
-				if(!testAndLog(pos, severity))
-					display(pos, msg, severity)
-			}
-			case _ => display(pos, msg, severity)
-		}
-	}
-
-	private def testAndLog(pos: Position, severity: Severity): Boolean =
-	{
-		if(pos == null || pos.offset.isEmpty)
-			false
-		else if(positions.get(pos).map(_ >= severity).getOrElse(false))
-			true
-		else
-		{
-			positions(pos) = severity
-			false
-		}
-	}
+	def relativizeOrAbs(base: Path, file: File) = Path.relativize(base, file).getOrElse(Path.fromFile(file))
+	def classPath(file: File) = relativizeOrAbs(outputPath, file)
+	def srcPath(file: File) = relativizeOrAbs(basePath, file)
 }

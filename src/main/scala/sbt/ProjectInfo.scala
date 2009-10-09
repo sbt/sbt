@@ -4,10 +4,16 @@
 package sbt
 
 import java.io.File
+import xsbti.{AppProvider, ScalaProvider}
 import FileUtilities._
 
-final case class ProjectInfo(projectDirectory: File, dependencies: Iterable[Project], parent: Option[Project])(log: Logger) extends NotNull
+// provider is for the build, not the build definition
+final case class ProjectInfo(projectDirectory: File, dependencies: Iterable[Project], parent: Option[Project])
+	(log: Logger, val app: AppProvider, val buildScalaVersion: Option[String]) extends NotNull
 {
+	def definitionScalaVersion = app.scalaProvider.version
+	def launcher = app.scalaProvider.launcher
+
 	val logger = new FilterLogger(log)
 	val projectPath: Path =
 	{
@@ -34,7 +40,7 @@ object ProjectInfo
 {
 	val MetadataDirectoryName = "project"
 	private val DefaultOrganization = "empty"
-	
+
 	def setup(info: ProjectInfo, log: Logger): SetupResult =
 	{
 		val builderDirectory = info.builderPath.asFile
@@ -81,7 +87,7 @@ object ProjectInfo
 	}
 	private def verifyCreateProject(name: String, version: Version, organization: String): Boolean =
 		confirmPrompt("Create new project " + name + " " + version + " with organization " + organization +" ?", true)
-	
+
 	private def confirmPrompt(question: String, defaultYes: Boolean) =
 	{
 		val choices = if(defaultYes) " (Y/n) " else " (y/N) "
@@ -89,7 +95,7 @@ object ProjectInfo
 		val yes = "y" :: "yes" :: (if(defaultYes) List("") else Nil)
 		yes.contains(answer.toLowerCase)
 	}
-	
+
 	private def readVersion(projectDirectory: File, log: Logger): Option[Version] =
 	{
 		val version = trim(SimpleReader.readLine("Version: "))

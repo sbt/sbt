@@ -4,32 +4,34 @@
 package sbt
 
 import java.io.File
+import xsbti.AppProvider
 import FileUtilities._
 
 object Resources
 {
-	def apply(basePath: String) =
+	def apply(basePath: String, provider: AppProvider, buildScalaVersion: Option[String]) =
 	{
 		require(basePath.startsWith("/"))
 		val resource = getClass.getResource(basePath)
 		if(resource == null)
-			throw new Exception("Resource base directory '" + basePath + "' not on classpath.")
+			error("Resource base directory '" + basePath + "' not on classpath.")
 		else
 		{
 			val file = toFile(resource)
 			if(file.exists)
-				new Resources(file)
+				new Resources(file, provider, buildScalaVersion)
 			else
-				throw new Exception("Resource base directory '" + basePath + "' does not exist.")
+				error("Resource base directory '" + basePath + "' does not exist.")
 		}
 	}
 	private val LoadErrorPrefix = "Error loading initial project: "
 }
 
-class Resources(val baseDirectory: File, additional: ClassLoader)
+class Resources(val baseDirectory: File, additional: ClassLoader, app: AppProvider, buildScalaVersion: Option[String])
 {
-	def this(baseDirectory: File) = this(baseDirectory, getClass.getClassLoader)
-	
+	def this(baseDirectory: File, provider: AppProvider, buildScalaVersion: Option[String]) =
+		this(baseDirectory, getClass.getClassLoader, provider, buildScalaVersion)
+
 	import Resources._
 	// The returned directory is not actually read-only, but it should be treated that way
 	def readOnlyResourceDirectory(group: String, name: String): Either[String, File] =
@@ -62,7 +64,7 @@ class Resources(val baseDirectory: File, additional: ClassLoader)
 		}
 		doInTemporaryDirectory(log)(readWrite(readOnly))
 	}
-	
+
 	def withProject[T](projectDirectory: File, log: Logger)(f: Project => WithProjectResult[T]): Either[String, T] =
 		readWriteResourceDirectory(projectDirectory, log)(withProject(log)(f))
 	def withProject[T](group: String, name: String, log: Logger)(f: Project => WithProjectResult[T]): Either[String, T] =
@@ -87,7 +89,7 @@ class Resources(val baseDirectory: File, additional: ClassLoader)
 					Left(msg)
 				}
 				buffered.recordAll()
-				resultToEither(Project.loadProject(dir, Nil, None, additional, buffered)) match
+				resultToEither(Project.loadProject(dir, Nil, None, additional, buffered, app, buildScalaVersion)) match
 				{
 					case Left(msg) =>
 						reload match

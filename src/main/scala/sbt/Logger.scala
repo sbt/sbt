@@ -18,15 +18,16 @@ object ControlEvent extends Enumeration
 	val Start, Header, Finish = Value
 }
 
-abstract class Logger extends NotNull
+abstract class Logger extends xsbt.CompileLogger with xsbt.IvyLogger
 {
 	def getLevel: Level.Value
 	def setLevel(newLevel: Level.Value)
 	def enableTrace(flag: Boolean)
 	def traceEnabled: Boolean
-	
+
 	def atLevel(level: Level.Value) = level.id >= getLevel.id
 	def trace(t: => Throwable): Unit
+	final def verbose(message: => String): Unit = debug(message)
 	final def debug(message: => String): Unit = log(Level.Debug, message)
 	final def info(message: => String): Unit = log(Level.Info, message)
 	final def warn(message: => String): Unit = log(Level.Warn, message)
@@ -34,7 +35,7 @@ abstract class Logger extends NotNull
 	def success(message: => String): Unit
 	def log(level: Level.Value, message: => String): Unit
 	def control(event: ControlEvent.Value, message: => String): Unit
-	
+
 	def logAll(events: Seq[LogEvent]): Unit
 	/** Defined in terms of other methods in Logger and should not be called from them. */
 	final def log(event: LogEvent)
@@ -49,6 +50,14 @@ abstract class Logger extends NotNull
 			case c: ControlEvent => control(c.event, c.msg)
 		}
 	}
+
+	import xsbti.F0
+	def debug(msg: F0[String]): Unit = log(Level.Debug, msg)
+	def warn(msg: F0[String]): Unit = log(Level.Warn, msg)
+	def info(msg: F0[String]): Unit = log(Level.Info, msg)
+	def error(msg: F0[String]): Unit = log(Level.Error, msg)
+	def trace(msg: F0[Throwable]) = trace(msg.apply)
+	def log(level: Level.Value, msg: F0[String]): Unit = log(level, msg.apply)
 }
 
 /** Implements the level-setting methods of Logger.*/
@@ -68,7 +77,7 @@ final class SynchronizedLogger(delegate: Logger) extends Logger
 	def setLevel(newLevel: Level.Value) { synchronized { delegate.setLevel(newLevel) } }
 	def enableTrace(enabled: Boolean) { synchronized { delegate.enableTrace(enabled) } }
 	def traceEnabled: Boolean = { synchronized { delegate.traceEnabled } }
-	
+
 	def trace(t: => Throwable) { synchronized { delegate.trace(t) } }
 	def log(level: Level.Value, message: => String) { synchronized { delegate.log(level, message) } }
 	def success(message: => String) { synchronized { delegate.success(message) } }
@@ -139,12 +148,12 @@ final class BufferedLogger(delegate: Logger) extends Logger
 {
 	private[this] val buffers = wrap.Wrappers.weakMap[Thread, Buffer[LogEvent]]
 	private[this] var recordingAll = false
-	
+
 	private[this] def getOrCreateBuffer = buffers.getOrElseUpdate(key, createBuffer)
 	private[this] def buffer = if(recordingAll) Some(getOrCreateBuffer) else buffers.get(key)
 	private[this] def createBuffer = new ListBuffer[LogEvent]
 	private[this] def key = Thread.currentThread
-	
+
 	@deprecated def startRecording() = recordAll()
 	/** Enables buffering for logging coming from the current Thread. */
 	def record(): Unit = synchronized { buffers(key) = createBuffer }
@@ -162,7 +171,7 @@ final class BufferedLogger(delegate: Logger) extends Logger
 		try { f }
 		finally { Control.trap(stopAll()) }
 	}
-	
+
 	/** Flushes the buffer to the delegate logger for the current thread.  This method calls logAll on the delegate
 	* so that the messages are written consecutively. The buffer is cleared in the process. */
 	def play(): Unit =
@@ -194,7 +203,7 @@ final class BufferedLogger(delegate: Logger) extends Logger
 			playAll()
 			clearAll()
 		}
-	
+
 	def setLevel(newLevel: Level.Value): Unit =
 		synchronized
 		{
@@ -209,7 +218,7 @@ final class BufferedLogger(delegate: Logger) extends Logger
 			buffer.foreach{_  += new SetTrace(flag) }
 			delegate.enableTrace(flag)
 		}
-	
+
 	def trace(t: => Throwable): Unit =
 		doBufferableIf(traceEnabled, new Trace(t), _.trace(t))
 	def success(message: => String): Unit =
@@ -246,18 +255,18 @@ final class BufferedLogger(delegate: Logger) extends Logger
 object ConsoleLogger
 {
 	private val formatEnabled = ansiSupported && !formatExplicitlyDisabled
-	
+
 	private[this] def formatExplicitlyDisabled = java.lang.Boolean.getBoolean("sbt.log.noformat")
 	private[this] def ansiSupported =
 		try { jline.Terminal.getTerminal.isANSISupported }
 		catch { case e: Exception => !isWindows }
-	
+
 	private[this] def os = System.getProperty("os.name")
 	private[this] def isWindows = os.toLowerCase.indexOf("windows") >= 0
 }
 
 /** A logger that logs to the console.  On supported systems, the level labels are
-* colored. 
+* colored.
 *
 * This logger is not thread-safe.*/
 class ConsoleLogger extends BasicLogger
@@ -311,7 +320,7 @@ class ConsoleLogger extends BasicLogger
 				System.out.println()
 			}
 		}
-	
+
 	def logAll(events: Seq[LogEvent]) = System.out.synchronized { events.foreach(log) }
 	def control(event: ControlEvent.Value, message: => String)
 		{ log(labelColor(Level.Info), Level.Info.toString, Console.BLUE, message) }
@@ -329,7 +338,7 @@ object Level extends Enumeration with NotNull
 	* uses this label.  Because the label for levels is defined in this module, the success
 	* label is also defined here. */
 	val SuccessLabel = "success"
-	
+
 	// added because elements was renamed to iterator in 2.8.0 nightly
 	def levels = Debug :: Info :: Warn :: Error :: Nil
 	/** Returns the level with the given name wrapped in Some, or None if no level exists for that name. */

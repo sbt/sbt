@@ -19,10 +19,10 @@ trait Environment
 		def get: Option[T] = resolve.toOption
 		/** Returns full information about this property's current value. */
 		def resolve: PropertyResolution[T]
-		
+
 		def foreach(f: T => Unit): Unit = resolve.foreach(f)
 	}
-	
+
 	/** Creates a system property with the given name and no default value.*/
 	def system[T](propName: String)(implicit format: Format[T]): Property[T]
 	/** Creates a system property with the given name and the given default value to use if no value is explicitly specified.*/
@@ -67,12 +67,12 @@ trait BasicEnvironment extends Environment
 	protected def parentEnvironment: Option[BasicEnvironment] = None
 	/** The identifier used in messages to refer to this environment. */
 	def environmentLabel = envBackingPath.absolutePath
-	
+
 	private[this] var isModified = false
 	private[sbt] def setEnvironmentModified(modified: Boolean) { synchronized { isModified = modified } }
 	private[this] def isEnvironmentModified = synchronized { isModified }
-	
-	
+
+
 	implicit val IntFormat: Format[Int] = new SimpleFormat[Int] { def fromString(s: String) = java.lang.Integer.parseInt(s) }
 	implicit val LongFormat: Format[Long] = new SimpleFormat[Long] { def fromString(s: String) = java.lang.Long.parseLong(s) }
 	implicit val DoubleFormat: Format[Double] = new SimpleFormat[Double] { def fromString(s: String) = java.lang.Double.parseDouble(s) }
@@ -94,8 +94,8 @@ trait BasicEnvironment extends Environment
 			def fromString(s: String) = Version.fromString(s).fold(msg => error(msg), x => x)
 		}
 	implicit val FileFormat = Format.file
-	
-	
+
+
 	/** Implementation of 'Property' for user-defined properties. */
 	private[sbt] class UserProperty[T](lazyDefaultValue: => Option[T], format: Format[T], inheritEnabled: Boolean,
 		inheritFirst: Boolean, private[BasicEnvironment] val manifest: Manifest[T]) extends Property[T]
@@ -126,22 +126,26 @@ trait BasicEnvironment extends Environment
 				case None =>
 					val inherited = inheritedValue
 					 // note that the following means the default value will not be used if an exception occurs inheriting
-					inherited orElse
-					{
-						defaultValue match
-						{
-							case Some(v) => DefinedValue(v, false, true)
-							case None => inherited
-						}
-					}
+					inherited orElse getDefault(inherited)
 			}
 		private def resolveDefaultFirst =
-			(explicitValue() orElse defaultValue) match
+			explicitValue() match
 			{
-				case Some(v) => DefinedValue(v, false, explicitValue().isEmpty)
-				case None => inheritedValue
+				case Some(v) => DefinedValue(v, false, false)
+				case None => getDefault(inheritedValue)
 			}
-		
+		private def getDefault(orElse: => PropertyResolution[T]): PropertyResolution[T] =
+			try
+			{
+				defaultValue match
+				{
+					case Some(v) => DefinedValue(v, false, true)
+					case None => orElse
+				}
+			} catch { case e: Exception =>
+				ResolutionException("Error while evaluating default value for property", Some(e))
+			}
+
 		private def inheritedValue: PropertyResolution[T] =
 		{
 			val propOption = if(inheritEnabled) parentProperty else None
@@ -152,7 +156,7 @@ trait BasicEnvironment extends Environment
 			}
 		}
 		private def parentProperty = for(parent <- parentEnvironment; n <- name; prop <- parent.propertyMap.get(n)) yield prop
-		
+
 		private def tryToInherit[R](prop: BasicEnvironment#UserProperty[R]): PropertyResolution[T] =
 		{
 			if(prop.manifest <:< manifest)
@@ -167,9 +171,9 @@ trait BasicEnvironment extends Environment
 				case DefinedValue(v, isInherited, isDefault) => DefinedValue(v, true, isDefault)
 				case x => x
 			}
-			
+
 		override def toString = nameString + "=" + resolve
-		
+
 		/** Gets the explicitly set value converted to a 'String'.*/
 		private[sbt] def getStringValue: Option[String] = explicitValue().map(format.toString)
 		/** Explicitly sets the value for this property by converting the given string value.*/
@@ -217,12 +221,12 @@ trait BasicEnvironment extends Environment
 		}
 		override def toString = name + "=" + resolve
 	}
-	
+
 	def system[T](propertyName: String)(implicit format: Format[T]): Property[T] =
 		new SystemProperty[T](propertyName, None, format)
 	def systemOptional[T](propertyName: String, defaultValue: => T)(implicit format: Format[T]): Property[T] =
 		new SystemProperty[T](propertyName, Some(defaultValue), format)
-	
+
 	def property[T](implicit manifest: Manifest[T], format: Format[T]): Property[T] =
 		new UserProperty[T](None, format, true, false, manifest)
 	def propertyLocal[T](implicit manifest: Manifest[T], format: Format[T]): Property[T] =
@@ -231,7 +235,7 @@ trait BasicEnvironment extends Environment
 		propertyOptional(defaultValue, false)(manifest, format)
 	def propertyOptional[T](defaultValue: => T, inheritFirst: Boolean)(implicit manifest: Manifest[T], format: Format[T]): Property[T] =
 		new UserProperty[T](Some(defaultValue), format, true, inheritFirst, manifest)
-	
+
 	private type AnyUserProperty = UserProperty[_]
 	/** Maps property name to property.  The map is constructed by reflecting vals defined on this object,
 	* so it should not be referenced during initialization or else subclass properties will be missed.**/
@@ -254,7 +258,7 @@ trait BasicEnvironment extends Environment
 			log.error("Error loading properties from " + environmentLabel + " : " + errorMsg)
 		map //.readOnly (not currently in 2.8)
 	}
-	
+
 	def propertyNames: Iterable[String] = propertyMap.keys.toList
 	def getPropertyNamed(name: String): Option[UserProperty[_]] = propertyMap.get(name)
 	def propertyNamed(name: String): UserProperty[_] = propertyMap(name)

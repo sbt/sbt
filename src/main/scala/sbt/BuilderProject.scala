@@ -22,7 +22,7 @@ private sealed abstract class BasicBuilderProject extends InternalProject with S
 	def dependencyPath = path(DefaultDependencyDirectoryName)
 	def libraries = descendents(dependencyPath, jarFilter)
 	override final def dependencies = Nil
-	
+
 	protected final def logInfo(messages: String*): Unit = atInfo { messages.foreach(message => log.info(message)) }
 	protected final def atInfo(action: => Unit)
 	{
@@ -31,10 +31,10 @@ private sealed abstract class BasicBuilderProject extends InternalProject with S
 		action
 		log.setLevel(oldLevel)
 	}
-	
+
 	def projectClasspath = compilePath +++ libraries +++ sbtJarPath
 	def sbtJarPath = Path.lazyPathFinder { Path.fromFile(FileUtilities.sbtJar) :: Nil }
-		
+
 	abstract class BuilderCompileConfiguration extends AbstractCompileConfiguration
 	{
 		def projectPath = info.projectPath
@@ -54,11 +54,13 @@ private sealed abstract class BasicBuilderProject extends InternalProject with S
 			def classpath = projectClasspath
 			def analysisPath = outputPath / DefaultMainAnalysisDirectoryName
 		}
-		
+
 	def tpe: String
 
-	val definitionCompileConditional = new BuilderCompileConditional(definitionCompileConfiguration, tpe)
-	final class BuilderCompileConditional(config: BuilderCompileConfiguration, tpe: String) extends AbstractCompileConditional(config)
+		import xsbt.{ComponentManager, ScalaInstance}
+
+	val definitionCompileConditional = new BuilderCompileConditional(definitionCompileConfiguration, buildCompiler, tpe)
+	final class BuilderCompileConditional(config: BuilderCompileConfiguration, compiler: xsbt.AnalyzingCompiler, tpe: String) extends AbstractCompileConditional(config, compiler)
 	{
 		type AnalysisType = BuilderCompileAnalysis
 		override protected def constructAnalysis(analysisPath: Path, projectPath: Path, log: Logger) =
@@ -94,12 +96,12 @@ private sealed abstract class BasicBuilderProject extends InternalProject with S
 	protected def definitionChanged() {}
 	lazy val compile = compileTask
 	def compileTask = task { definitionCompileConditional.run }
-	
+
 	def projectDefinition: Either[String, Option[String]] =
 	{
 		definitionCompileConditional.analysis.allProjects.toList match
 		{
-			case Nil => 
+			case Nil =>
 				log.debug("No " + tpe + "s detected using default project.")
 				Right(None)
 			case singleDefinition :: Nil => Right(Some(singleDefinition))
@@ -114,7 +116,7 @@ private final class BuilderProject(val info: ProjectInfo, val pluginPath: Path, 
 	private lazy val pluginProject =
 	{
 		if(pluginPath.exists)
-			Some(new PluginBuilderProject(ProjectInfo(pluginPath.asFile, Nil, None)(rawLogger)))
+			Some(new PluginBuilderProject(ProjectInfo(pluginPath.asFile, Nil, None)(rawLogger, info.app, info.buildScalaVersion)))
 		else
 			None
 	}
@@ -137,13 +139,13 @@ private final class BuilderProject(val info: ProjectInfo, val pluginPath: Path, 
 			pluginUptodate() = flag
 			saveEnvironment()
 		}
-		
+
 		private def pluginTask(f: => Option[String]) = task { if(!pluginUptodate.value) f else None }
-		
+
 		lazy val syncPlugins = pluginTask(sync()) dependsOn(extractSources)
 		lazy val extractSources = pluginTask(extract()) dependsOn(update)
 		lazy val update = pluginTask(loadAndUpdate()) dependsOn(compile)
-		
+
 		private def sync() = pluginCompileConditional.run orElse { setUptodate(true); None }
 		private def extract() =
 		{
@@ -161,7 +163,7 @@ private final class BuilderProject(val info: ProjectInfo, val pluginPath: Path, 
 			Control.thread(projectDefinition) {
 				case Some(definition) =>
 					logInfo("\nUpdating plugins...")
-					val pluginInfo = ProjectInfo(info.projectPath.asFile, Nil, None)(rawLogger)
+					val pluginInfo = ProjectInfo(info.projectPath.asFile, Nil, None)(rawLogger, info.app, info.buildScalaVersion)
 					val pluginBuilder = Project.constructProject(pluginInfo, Project.getProjectClass[PluginDefinition](definition, projectClasspath, getClass.getClassLoader))
 					pluginBuilder.projectName() = "Plugin builder"
 					pluginBuilder.projectVersion() = OpaqueVersion("1.0")
@@ -184,8 +186,8 @@ private final class BuilderProject(val info: ProjectInfo, val pluginPath: Path, 
 		}
 		def plugins = descendents(managedDependencyPath, jarFilter)
 		def pluginClasspath: PathFinder = plugins +++ pluginCompileConfiguration.outputDirectory
-		
-		lazy val pluginCompileConditional = new BuilderCompileConditional(pluginCompileConfiguration, "plugin")
+
+		lazy val pluginCompileConditional = new BuilderCompileConditional(pluginCompileConfiguration, buildCompiler, "plugin")
 		lazy val pluginCompileConfiguration =
 			new BuilderCompileConfiguration
 			{

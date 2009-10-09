@@ -3,29 +3,31 @@
  */
 package sbt
 
+import xsbt.AnalyzingCompiler
+
 trait Conditional[Source, Product, External] extends NotNull
 {
 	type AnalysisType <: TaskAnalysis[Source, Product, External]
 	val analysis: AnalysisType = loadAnalysis
-	
+
 	protected def loadAnalysis: AnalysisType
 	protected def log: Logger
 
 	protected def productType: String
 	protected def productTypePlural: String
-	
+
 	protected def sourcesToProcess: Iterable[Source]
-	
+
 	protected def sourceExists(source: Source): Boolean
 	protected def sourceLastModified(source: Source): Long
-	
+
 	protected def productExists(product: Product): Boolean
 	protected def productLastModified(product: Product): Long
-	
+
 	protected def externalInfo(externals: Iterable[External]): Iterable[(External, ExternalInfo)]
-	
+
 	protected def execute(cAnalysis: ConditionalAnalysis): Option[String]
-	
+
 	final case class ExternalInfo(available: Boolean, lastModified: Long) extends NotNull
 	trait ConditionalAnalysis extends NotNull
 	{
@@ -35,7 +37,7 @@ trait Conditional[Source, Product, External] extends NotNull
 		def invalidatedSourcesCount: Int
 		def removedSourcesCount: Int
 	}
-	
+
 	final def run =
 	{
 		val result = execute(analyze)
@@ -45,7 +47,7 @@ trait Conditional[Source, Product, External] extends NotNull
 	private def analyze =
 	{
 		import scala.collection.mutable.HashSet
-		
+
 		val sourcesSnapshot = sourcesToProcess
 		val removedSources = new HashSet[Source]
 		removedSources ++= analysis.allSources
@@ -56,10 +58,10 @@ trait Conditional[Source, Product, External] extends NotNull
 			log.debug("Source " + removed + " removed.")
 			analysis.removeDependent(removed)
 		}
-		
+
 		val unmodified = new HashSet[Source]
 		val modified = new HashSet[Source]
-		
+
 		for(source <- sourcesSnapshot)
 		{
 			if(isSourceModified(source))
@@ -102,7 +104,7 @@ trait Conditional[Source, Product, External] extends NotNull
 				analysis.removeExternalDependency(external)
 			}
 		}
-		
+
 		val handled = new scala.collection.mutable.HashSet[Source]
 		val transitive = !java.lang.Boolean.getBoolean("sbt.intransitive")
 		def markModified(changed: Iterable[Source]) { for(c <- changed if !handled.contains(c)) markSourceModified(c) }
@@ -119,10 +121,10 @@ trait Conditional[Source, Product, External] extends NotNull
 		markModified(modified.toList)
 		if(transitive)
 			removedSources.foreach(markDependenciesModified)
-		
+
 		for(changed <- removedSources ++ modified)
 			analysis.removeSource(changed)
-		
+
 		new ConditionalAnalysis
 		{
 			def dirtySources = wrap.Wrappers.readOnly(modified)
@@ -138,7 +140,7 @@ trait Conditional[Source, Product, External] extends NotNull
 			}
 		}
 	}
-	
+
 	protected def checkLastModified = true
 	protected def noProductsImpliesModified = true
 	protected def isSourceModified(source: Source) =
@@ -155,7 +157,7 @@ trait Conditional[Source, Product, External] extends NotNull
 				val sourceModificationTime = sourceLastModified(source)
 				def isOutofdate(p: Product) =
 					!productExists(p) || (checkLastModified && productLastModified(p) < sourceModificationTime)
-				
+
 				sourceProducts.find(isOutofdate) match
 				{
 					case Some(modifiedProduct) =>
@@ -206,7 +208,7 @@ abstract class CompileConfiguration extends AbstractCompileConfiguration
 	def testDefinitionClassNames: Iterable[String]
 }
 import java.io.File
-class CompileConditional(override val config: CompileConfiguration) extends AbstractCompileConditional(config)
+class CompileConditional(override val config: CompileConfiguration, compiler: AnalyzingCompiler) extends AbstractCompileConditional(config, compiler)
 {
 	import config._
 	type AnalysisType = CompileAnalysis
@@ -220,7 +222,7 @@ class CompileConditional(override val config: CompileConfiguration) extends Abst
 			analysis.addTest(sourcePath, TestDefinition(isModule, subclassName, superclassName))
 	}
 }
-abstract class AbstractCompileConditional(val config: AbstractCompileConfiguration) extends Conditional[Path, Path, File]
+abstract class AbstractCompileConditional(val config: AbstractCompileConfiguration, val compiler: AnalyzingCompiler) extends Conditional[Path, Path, File]
 {
 	import config._
 	type AnalysisType <: BasicCompileAnalysis
@@ -232,31 +234,32 @@ abstract class AbstractCompileConditional(val config: AbstractCompileConfigurati
 		a
 	}
 	protected def constructAnalysis(analysisPath: Path, projectPath: Path, log: Logger): AnalysisType
-	
+
 	protected def log = config.log
-	
+
 	protected def productType = "class"
 	protected def productTypePlural = "classes"
 	protected def sourcesToProcess = sources.get
-	
+
 	protected def sourceExists(source: Path) = source.asFile.exists
 	protected def sourceLastModified(source: Path) = source.asFile.lastModified
-	
+
 	protected def productExists(product: Path) = product.asFile.exists
 	protected def productLastModified(product: Path) = product.asFile.lastModified
-	
+
+	private def libraryJar = compiler.scalaInstance.libraryJar
 	protected def externalInfo(externals: Iterable[File]) =
 	{
 		val (classpathJars, classpathDirs) = ClasspathUtilities.buildSearchPaths(classpath.get)
 		for(external <- externals) yield
 		{
-			val available = external.exists && ClasspathUtilities.onClasspath(classpathJars, classpathDirs, external)
+			val available = external.exists && (external == libraryJar || ClasspathUtilities.onClasspath(classpathJars, classpathDirs, external) )
 			if(!available)
 				log.debug("External " + external + (if(external.exists) " not on classpath." else " does not exist."))
 			(external, ExternalInfo(available, external.lastModified))
 		}
 	}
-	
+
 	import ChangeDetection.{LastModifiedOnly, HashOnly, HashAndLastModified, HashAndProductsExist}
 	protected def changeDetectionMethod: ChangeDetection.Value = HashAndProductsExist
 	override protected def checkLastModified = changeDetectionMethod != HashAndProductsExist
@@ -271,7 +274,7 @@ abstract class AbstractCompileConditional(val config: AbstractCompileConfigurati
 			case HashOnly => hashModified(source)
 			case LastModifiedOnly => super.isSourceModified(source)
 		}
-	
+
 	import scala.collection.mutable.{Buffer, ListBuffer}
 	private val newHashes: Buffer[(Path, Option[Array[Byte]])] = new ListBuffer
 	private def warnHashError(source: Path, message: String)
@@ -312,22 +315,21 @@ abstract class AbstractCompileConditional(val config: AbstractCompileConfigurati
 		log.info(executeAnalysis.toString)
 		finishHashes()
 		import executeAnalysis.dirtySources
-		
+
 		// the output directory won't show up in the classpath unless it exists, so do this before classpath.get
 		val outputDir = outputDirectory.asFile
 		FileUtilities.createDirectory(outputDir, log)
-		
+
 		val cp = classpath.get
 		if(!dirtySources.isEmpty)
 			checkClasspath(cp)
-		val classpathString = Path.makeString(cp)
-		val id = AnalysisCallback.register(analysisCallback)
-		val allOptions = (("-Xplugin:" + FileUtilities.sbtJar.getAbsolutePath) ::
-			("-P:sbt-analyzer:callback:" + id.toString) :: Nil) ++ options
-		def run = (new Compile(config.maxErrors))(label, dirtySources, classpathString, outputDirectory, allOptions, javaOptions, compileOrder, log)
+		def run =
+		{
+			val compile = new Compile(config.maxErrors, compiler, analysisCallback, projectPath)
+			compile(label, dirtySources, cp, outputDirectory, options, javaOptions, compileOrder, log)
+		}
 		val loader = ClasspathUtilities.toLoader(cp)
 		val r = classfile.Analyze(projectPath, outputDirectory, dirtySources, sourceRoots.get, log)(analysis.allProducts, analysisCallback, loader)(run)
-		AnalysisCallback.unregister(id)
 		if(log.atLevel(Level.Debug))
 		{
 			/** This checks that the plugin accounted for all classes in the output directory.*/
@@ -377,7 +379,7 @@ abstract class AbstractCompileConditional(val config: AbstractCompileConfigurati
 			}
 		}
 	}
-	
+
 	protected def analysisCallback: AnalysisCallback
 }
 object ChangeDetection extends Enumeration

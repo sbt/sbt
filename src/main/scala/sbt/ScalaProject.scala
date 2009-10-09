@@ -11,14 +11,14 @@ import scala.collection.mutable.ListBuffer
 trait SimpleScalaProject extends ExecProject
 {
 	def errorTask(message: String) = task{ Some(message) }
-	
+
 	trait CleanOption extends ActionOption
 	case class ClearAnalysis(analysis: TaskAnalysis[_, _, _]) extends CleanOption
 	case class Preserve(paths: PathFinder) extends CleanOption
-	
+
 	case class CompileOption(val asString: String) extends ActionOption
 	case class JavaCompileOption(val asString: String) extends ActionOption
-	
+
 	val Deprecation = CompileOption("-deprecation")
 	val ExplainTypes = CompileOption("-explaintypes")
 	val Optimize = CompileOption("-optimise")
@@ -33,7 +33,7 @@ trait SimpleScalaProject extends ExecProject
 		val Java1_4 = Value("jvm-1.4")
 		val Msil = Value("msil")
 	}
-	
+
 	def cleanTask(paths: PathFinder, options: CleanOption*): Task =
 		cleanTask(paths, options)
 	def cleanTask(paths: PathFinder, options: => Seq[CleanOption]): Task =
@@ -57,17 +57,17 @@ trait SimpleScalaProject extends ExecProject
 trait ScalaProject extends SimpleScalaProject with FileTasks with MultiTaskProject with Exec
 {
 	import ScalaProject._
-	
+
 	final case class MaxCompileErrors(val value: Int) extends CompileOption("") with ScaladocOption { def asList = Nil }
 	trait PackageOption extends ActionOption
 	trait TestOption extends ActionOption
-	
+
 	case class TestSetup(setup: () => Option[String]) extends TestOption
 	case class TestCleanup(cleanup: () => Option[String]) extends TestOption
 	case class ExcludeTests(tests: Iterable[String]) extends TestOption
 	case class TestListeners(listeners: Iterable[TestReportListener]) extends TestOption
 	case class TestFilter(filterTest: String => Boolean) extends TestOption
-	
+
 	case class JarManifest(m: Manifest) extends PackageOption
 	{
 		assert(m != null)
@@ -80,8 +80,8 @@ trait ScalaProject extends SimpleScalaProject with FileTasks with MultiTaskProje
 		val converted = for( (name,value) <- attributes ) yield (new Attributes.Name(name), value)
 		new ManifestAttributes(converted : _*)
 	}
-	
-	
+
+
 	trait ScaladocOption extends ActionOption
 	{
 		def asList: List[String]
@@ -105,7 +105,7 @@ trait ScalaProject extends SimpleScalaProject with FileTasks with MultiTaskProje
 	def stylesheetFile(path: Path) = CompoundDocOption("-stylesheetfile", path.asFile.getAbsolutePath)
 	def documentTop(topText: String) = CompoundDocOption("-top", topText)
 	def windowTitle(title: String) = CompoundDocOption("-windowtitle", title)
-	
+
 	object Access extends Enumeration
 	{
 		val Public = Value("public")
@@ -123,17 +123,16 @@ trait ScalaProject extends SimpleScalaProject with FileTasks with MultiTaskProje
 		val classes = conditional.analysis.allProducts.flatMap(path => Path.relativize(compilePath.asFile, path.asFile))
 		classes.map(_.replace(java.io.File.separatorChar, '.').toList.dropRight(".class".length).mkString).toSeq
 	}
-	
-	def consoleTask(classpath : PathFinder): Task = 
-		consoleTask(classpath, Run)
-	def consoleTask(classpath : PathFinder, runner: ScalaRun): Task =
-		interactiveTask { runner.console(classpath.get, log) }
 
-	def runTask(mainClass: => Option[String], classpath: PathFinder, options: String*): Task =
+	def consoleTask(classpath: PathFinder): Task = consoleTask(classpath, "")
+	def consoleTask(classpath: PathFinder, initialCommands: => String): Task =
+		interactiveTask {
+			(new Console(buildCompiler))(classpath.get, initialCommands, log)
+		}
+
+	def runTask(mainClass: => Option[String], classpath: PathFinder, options: String*)(implicit runner: ScalaRun): Task =
 		runTask(mainClass, classpath, options)
-	def runTask(mainClass: => Option[String], classpath: PathFinder, options: => Seq[String]): Task =
-		runTask(mainClass, classpath, options, Run)
-	def runTask(mainClass: => Option[String], classpath: PathFinder, options: => Seq[String], runner: ScalaRun): Task =
+	def runTask(mainClass: => Option[String], classpath: PathFinder, options: => Seq[String])(implicit runner: ScalaRun): Task =
 		task
 		{
 			mainClass match
@@ -142,7 +141,7 @@ trait ScalaProject extends SimpleScalaProject with FileTasks with MultiTaskProje
 				case None => Some("No main class specified.")
 			}
 		}
-		
+
 	def syncPathsTask(sources: PathFinder, destinationDirectory: Path): Task =
 		task { FileUtilities.syncPaths(sources, destinationDirectory, log) }
 	def syncTask(sourceDirectory: Path, destinationDirectory: Path): Task =
@@ -177,10 +176,9 @@ trait ScalaProject extends SimpleScalaProject with FileTasks with MultiTaskProje
 	def scaladocTask(label: String, sources: PathFinder, outputDirectory: Path, classpath: PathFinder, options: => Seq[ScaladocOption]): Task =
 		task
 		{
-			val classpathString = Path.makeString(classpath.get)
 			val optionsLocal = options
 			val maxErrors = maximumErrors(optionsLocal)
-			(new Scaladoc(maxErrors))(label, sources.get, classpathString, outputDirectory, optionsLocal.flatMap(_.asList), log)
+			(new Scaladoc(maxErrors, buildCompiler))(label, sources.get, classpath.get, outputDirectory, optionsLocal.flatMap(_.asList), log)
 		}
 
 	def packageTask(sources: PathFinder, outputDirectory: Path, jarName: => String, options: PackageOption*): Task =
@@ -206,7 +204,7 @@ trait ScalaProject extends SimpleScalaProject with FileTasks with MultiTaskProje
 			{
 				option match
 				{
-					case JarManifest(mergeManifest) => 
+					case JarManifest(mergeManifest) =>
 					{
 						mergeAttributes(manifest.getMainAttributes, mergeManifest.getMainAttributes)
 						val entryMap = new MutableMapWrapper(manifest.getEntries)
@@ -258,7 +256,7 @@ trait ScalaProject extends SimpleScalaProject with FileTasks with MultiTaskProje
 			val excludeTestsSet = new HashSet[String]
 			val setup, cleanup = new ListBuffer[() => Option[String]]
 			val testListeners = new ListBuffer[TestReportListener]
-			
+
 			for(option <- options)
 			{
 				option match
@@ -271,7 +269,7 @@ trait ScalaProject extends SimpleScalaProject with FileTasks with MultiTaskProje
 				}
 				() // 2.8.0-SNAPSHOT bug in type inference
 			}
-			
+
 			if(excludeTestsSet.size > 0 && log.atLevel(Level.Debug))
 			{
 				log.debug("Excluding tests: ")
@@ -282,12 +280,12 @@ trait ScalaProject extends SimpleScalaProject with FileTasks with MultiTaskProje
 			TestFramework.testTasks(frameworks, classpath.get, tests, log, testListeners.readOnly, false, setup.readOnly, cleanup.readOnly)
 	}
 	private def flatten[T](i: Iterable[Iterable[T]]) = i.flatMap(x => x)
-	
+
 	protected def testQuickMethod(testAnalysis: CompileAnalysis, options: => Seq[TestOption])(toRun: Seq[TestOption] => Task) =
 		multiTask(testAnalysis.allTests.map(_.testClassName).toList) { includeFunction =>
 			toRun(TestFilter(includeFunction) :: options.toList)
 		}
-		
+
 	protected final def maximumErrors[T <: ActionOption](options: Seq[T]) =
 		(for( MaxCompileErrors(maxErrors) <- options) yield maxErrors).firstOption.getOrElse(DefaultMaximumCompileErrors)
 }
@@ -301,12 +299,12 @@ trait WebScalaProject extends ScalaProject
 			val webInfPath = warPath / "WEB-INF"
 			val webLibDirectory = webInfPath / "lib"
 			val classesTargetDirectory = webInfPath / "classes"
-			
+
 			val (libs, directories) = classpath.get.toList.partition(ClasspathUtilities.isArchive)
 			val classesAndResources = descendents(Path.lazyPathFinder(directories) ##, "*")
 			if(log.atLevel(Level.Debug))
 				directories.foreach(d => log.debug(" Copying the contents of directory " + d + " to " + classesTargetDirectory))
-			
+
 			import FileUtilities.{copy, copyFlat, copyFilesFlat, clean}
 			(copy(webappContents.get, warPath, log).right flatMap { copiedWebapp =>
 			copy(classesAndResources.get, classesTargetDirectory, log).right flatMap { copiedClasses =>
@@ -370,7 +368,7 @@ trait MultiTaskProject extends Project
 					filterInclude
 			run(includeFunction)
 		} completeWith allTests
-	
+
 }
 trait ExecProject extends Project
 {

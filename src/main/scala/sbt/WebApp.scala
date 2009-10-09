@@ -15,7 +15,7 @@ object JettyRunner
 class JettyRunner(configuration: JettyConfiguration) extends ExitHook
 {
 	ExitHooks.register(this)
-	
+
 	def name = "jetty-shutdown"
 	def runBeforeExiting() { stop() }
 	private var running: Option[Stoppable] = None
@@ -37,7 +37,7 @@ class JettyRunner(configuration: JettyConfiguration) extends ExitHook
 			val runner = ModuleUtilities.getObject(implClassName, lazyLoader).asInstanceOf[JettyRun]
 			runner(configuration)
 		}
-		
+
 		if(running.isDefined)
 			Some("This instance of Jetty is already running.")
 		else
@@ -55,7 +55,7 @@ class JettyRunner(configuration: JettyConfiguration) extends ExitHook
 		}
 	}
 	private val implClassName = "sbt.LazyJettyRun"
-	
+
 	private def runError(e: Throwable, messageBase: String, log: Logger) =
 	{
 		log.trace(e)
@@ -78,8 +78,6 @@ sealed trait JettyConfiguration extends NotNull
 	def scanInterval: Int
 	/** The classpath to get Jetty from. */
 	def jettyClasspath: PathFinder
-	/** The classpath containing the classes, jars, and resources for the web application. */
-	def classpath: PathFinder
 	def classpathName: String
 	def log: Logger
 }
@@ -87,6 +85,9 @@ trait DefaultJettyConfiguration extends JettyConfiguration
 {
 	def contextPath: String
 	def port: Int
+	/** The classpath containing the classes, jars, and resources for the web application. */
+	def classpath: PathFinder
+	def parentLoader: ClassLoader
 }
 abstract class CustomJettyConfiguration extends JettyConfiguration
 {
@@ -108,17 +109,17 @@ private object LazyJettyRun extends JettyRun
 	import org.mortbay.log.Log
 	import org.mortbay.util.Scanner
 	import org.mortbay.xml.XmlConfiguration
-	
+
 	import java.lang.ref.{Reference, WeakReference}
-	
+
 	val DefaultMaxIdleTime = 30000
-	
+
 	def apply(configuration: JettyConfiguration): Stoppable =
 	{
 		val oldLog = Log.getLog
 		Log.setLog(new JettyLogger(configuration.log))
 		val server = new Server
-		
+
 		val listener =
 			configuration match
 			{
@@ -126,11 +127,11 @@ private object LazyJettyRun extends JettyRun
 					import c._
 					configureDefaultConnector(server, port)
 					def classpathURLs = classpath.get.map(_.asURL).toSeq
-					def createLoader = new URLClassLoader(classpathURLs.toArray, this.getClass.getClassLoader)
+					def createLoader = new URLClassLoader(classpathURLs.toArray, parentLoader)
 					val webapp = new WebAppContext(war.absolutePath, contextPath)
 					webapp.setClassLoader(createLoader)
 					server.setHandler(webapp)
-					
+
 					Some(new Scanner.BulkListener {
 						def filesChanged(files: java.util.List[_]) {
 							reload(server, webapp.setClassLoader(createLoader), log)
@@ -143,7 +144,7 @@ private object LazyJettyRun extends JettyRun
 						(new XmlConfiguration(file.toURI.toURL)).configure(server)
 					None
 			}
-		
+
 		def configureScanner() =
 		{
 			val scanDirectories = configuration.scanDirectories
@@ -164,7 +165,7 @@ private object LazyJettyRun extends JettyRun
 				Some(new WeakReference(scanner))
 			}
 		}
-		
+
 		try
 		{
 			server.start()
@@ -219,7 +220,7 @@ private object LazyJettyRun extends JettyRun
 	{
 		def isDebugEnabled = delegate.atLevel(Level.Debug)
 		def setDebugEnabled(enabled: Boolean) = delegate.setLevel(if(enabled) Level.Debug else Level.Info)
-	
+
 		def getLogger(name: String) = this
 		def info(msg: String, arg0: AnyRef, arg1: AnyRef) { delegate.info(format(msg, arg0, arg1)) }
 		def debug(msg: String, arg0: AnyRef, arg1: AnyRef) { delegate.debug(format(msg, arg0, arg1)) }

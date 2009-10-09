@@ -43,8 +43,8 @@ abstract class BasicScalaProject extends ScalaProject with BasicDependencyProjec
 	def manifestClassPath: Option[String] = None
 	def dependencies = info.dependencies ++ subProjects.values.toList
 
-	val mainCompileConditional = new CompileConditional(mainCompileConfiguration)
-	val testCompileConditional = new CompileConditional(testCompileConfiguration)
+	val mainCompileConditional = new CompileConditional(mainCompileConfiguration, buildCompiler)
+	val testCompileConditional = new CompileConditional(testCompileConfiguration, buildCompiler)
 
 	def compileOrder = CompileOrder.Mixed
 
@@ -94,6 +94,8 @@ abstract class BasicScalaProject extends ScalaProject with BasicDependencyProjec
 		val analysis = testCompileConditional.analysis
 		TestFilter(new impl.TestQuickFilter(analysis, failedOnly, path, log))  :: TestListeners(new impl.TestStatusReporter(path, log) :: Nil) :: Nil
 	}
+
+	def consoleInit = ""
 
 	protected def includeTest(test: String): Boolean = true
 
@@ -212,31 +214,26 @@ abstract class BasicScalaProject extends ScalaProject with BasicDependencyProjec
 
 	/** Configures forking the compiler and runner.  Use ForkScalaCompiler, ForkScalaRun or mix together.*/
 	def fork: Option[ForkScala] = None
-	private def doCompile(conditional: CompileConditional) =
-	{
-		fork match
-		{
-			case Some(fc: ForkScalaCompiler) => ForkCompile(fc, conditional)
-			case _ => conditional.run
-		}
-	}
-	private def getRunner =
+	private def doCompile(conditional: CompileConditional) = conditional.run
+	implicit def defaultRunner: ScalaRun =
 	{
 		fork match
 		{
 			case Some(fr: ForkScalaRun) => new ForkRun(fr)
-			case _ => Run
+			case _ => new Run(buildCompiler)
 		}
 	}
+
+	def basicConsoleTask = consoleTask(consoleClasspath, consoleInit)
 
 	protected def runTask(mainClass: String): MethodTask = task { args => runTask(Some(mainClass), runClasspath, args) dependsOn(compile, copyResources) }
 
 	protected def compileAction = task { doCompile(mainCompileConditional) } describedAs MainCompileDescription
 	protected def testCompileAction = task { doCompile(testCompileConditional) } dependsOn compile describedAs TestCompileDescription
 	protected def cleanAction = cleanTask(outputPath, cleanOptions) describedAs CleanDescription
-	protected def runAction = task { args => runTask(getMainClass(true), runClasspath, args, getRunner) dependsOn(compile, copyResources) } describedAs RunDescription
-	protected def consoleQuickAction = consoleTask(consoleClasspath, Run) describedAs ConsoleQuickDescription
-	protected def consoleAction = consoleTask(consoleClasspath, Run).dependsOn(testCompile, copyResources, copyTestResources) describedAs ConsoleDescription
+	protected def runAction = task { args => runTask(getMainClass(true), runClasspath, args) dependsOn(compile, copyResources) } describedAs RunDescription
+	protected def consoleQuickAction = basicConsoleTask describedAs ConsoleQuickDescription
+	protected def consoleAction = basicConsoleTask.dependsOn(testCompile, copyResources, copyTestResources) describedAs ConsoleDescription
 	protected def docAction = scaladocTask(mainLabel, mainSources, mainDocPath, docClasspath, documentOptions).dependsOn(compile) describedAs DocDescription
 	protected def docTestAction = scaladocTask(testLabel, testSources, testDocPath, docClasspath, documentOptions).dependsOn(testCompile) describedAs TestDocDescription
 	protected def testAction = defaultTestTask(testOptions)
@@ -315,6 +312,7 @@ abstract class BasicScalaProject extends ScalaProject with BasicDependencyProjec
 		mapScalaModule(snapshot.scalaCompiler, ScalaArtifacts.CompilerID)
 	}
 	override def watchPaths = mainSources +++ testSources +++ mainResources +++ testResources
+	private def mapScalaModule(in: Iterable[_], id: String) = in.map(jar => ModuleID(ScalaArtifacts.Organization, id, buildScalaVersion))
 }
 abstract class BasicWebScalaProject extends BasicScalaProject with WebScalaProject with WebScalaPaths
 { p =>
@@ -327,7 +325,7 @@ abstract class BasicWebScalaProject extends BasicScalaProject with WebScalaProje
 
 	lazy val jettyInstance = new JettyRunner(jettyConfiguration)
 
-	def jettyConfiguration =
+	def jettyConfiguration: JettyConfiguration =
 		new DefaultJettyConfiguration
 		{
 			def classpath = jettyRunClasspath
@@ -335,6 +333,7 @@ abstract class BasicWebScalaProject extends BasicScalaProject with WebScalaProje
 			def war = jettyWebappPath
 			def contextPath = jettyContextPath
 			def classpathName = "test"
+			def parentLoader = buildScalaInstance.loader
 			def scanDirectories = p.scanDirectories.map(_.asFile)
 			def scanInterval = p.scanInterval
 			def port = jettyPort
@@ -442,12 +441,6 @@ object BasicScalaProject
 		log.warn("No Main-Class attribute will be added automatically added:")
 		log.warn("Multiple classes with a main method were detected.  Specify main class explicitly with:")
 		log.warn("     override mainClass = Some(\"className\")")
-	}
-	private def mapScalaModule(in: Iterable[_], id: String) =
-	{
-		ScalaVersion.current.toList.flatMap { scalaVersion =>
-			in.map(jar => ModuleID(ScalaArtifacts.Organization, id, scalaVersion))
-		}
 	}
 }
 object BasicWebScalaProject

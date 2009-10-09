@@ -184,7 +184,7 @@ trait ManagedProject extends ClasspathProject
 	implicit def toGroupID(groupID: String): GroupID =
 	{
 		nonEmpty(groupID, "Group ID")
-		new GroupID(groupID, ScalaVersion.currentString)
+		new GroupID(groupID, buildScalaVersion)
 	}
 	implicit def toRepositoryName(name: String): RepositoryName =
 	{

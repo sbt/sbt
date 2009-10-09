@@ -28,30 +28,30 @@ trait BasicIntegrationTesting extends ScalaIntegrationTesting with IntegrationTe
 	self: BasicScalaProject =>
 
 	import BasicScalaIntegrationTesting._
-	
+
 	lazy val integrationTestCompile = integrationTestCompileAction
 	lazy val integrationTest = integrationTestAction
 
-	val integrationTestCompileConditional = new CompileConditional(integrationTestCompileConfiguration)
+	val integrationTestCompileConditional = new CompileConditional(integrationTestCompileConfiguration, buildCompiler)
 
 	protected def integrationTestAction = integrationTestTask(integrationTestFrameworks, integrationTestClasspath, integrationTestCompileConditional.analysis, integrationTestOptions) dependsOn integrationTestCompile describedAs IntegrationTestCompileDescription
 	protected def integrationTestCompileAction = integrationTestCompileTask() dependsOn compile describedAs IntegrationTestDescription
 
 	protected def integrationTestCompileTask() = task{ integrationTestCompileConditional.run }
 
-	def integrationTestOptions: Seq[TestOption] = 
+	def integrationTestOptions: Seq[TestOption] =
 		TestSetup(() => pretests) ::
 		TestCleanup(() => posttests) ::
 		testOptions.toList
 	def integrationTestCompileOptions = testCompileOptions
 	def javaIntegrationTestCompileOptions: Seq[JavaCompileOption] = testJavaCompileOptions
-	
+
 	def integrationTestConfiguration = if(useIntegrationTestConfiguration) Configurations.IntegrationTest else Configurations.Test
 	def integrationTestClasspath = fullClasspath(integrationTestConfiguration) +++ optionalClasspath
-	
+
 	def integrationTestLabel = "integration-test"
 	def integrationTestCompileConfiguration = new IntegrationTestCompileConfig
-	
+
 	protected def integrationTestDependencies = new LibraryDependencies(this, integrationTestCompileConditional)
 
 	def integrationTestFrameworks = testFrameworks

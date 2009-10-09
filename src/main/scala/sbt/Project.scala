@@ -3,6 +3,8 @@
  */
 package sbt
 
+import xsbti.{AppProvider, ScalaProvider}
+import xsbt.{AnalyzingCompiler, ComponentManager, ScalaInstance}
 import java.io.File
 import java.net.URLClassLoader
 import scala.collection._
@@ -20,9 +22,9 @@ trait Project extends TaskManager with Dag[Project] with BasicEnvironment
 		lg
 	}
 	protected def defaultLoggingLevel = Level.Info
-	
+
 	trait ActionOption extends NotNull
-	
+
 	/** Basic project information. */
 	def info: ProjectInfo
 	/** The project name. */
@@ -33,7 +35,7 @@ trait Project extends TaskManager with Dag[Project] with BasicEnvironment
 	final def organization: String = projectOrganization.value
 	/** True if the project should cater to a quick throwaway project setup.*/
 	def scratch = projectScratch.value
-	
+
 	final type ManagerType = Project
 	final type ManagedTask = Project#Task
 	/** The tasks declared on this project. */
@@ -51,7 +53,7 @@ trait Project extends TaskManager with Dag[Project] with BasicEnvironment
 	/** A description of all available tasks in this project and all dependencies.  If there
 	* are different tasks with the same name, only one will be included. */
 	def taskList: String = descriptionList(deepTasks)
-	
+
 	final def taskName(task: Task) = tasks.find( _._2 eq task ).map(_._1)
 	/** A description of all available tasks in this project and all dependencies and all
 	* available method tasks in this project, but not of dependencies.  If there
@@ -83,7 +85,7 @@ trait Project extends TaskManager with Dag[Project] with BasicEnvironment
 	* main use within sbt is in ParentProject.*/
 	def subProjects: Map[String, Project] = immutable.Map.empty
 	def projectClosure: List[Project] = Dag.topologicalSort(this)(p => p.dependencies ++ p.subProjects.values.toList)
-	
+
 	def call(name: String, parameters: Array[String]): Option[String] =
 	{
 		methods.get(name) match
@@ -98,7 +100,7 @@ trait Project extends TaskManager with Dag[Project] with BasicEnvironment
 			case Nil => None
 			case x => Some(Set(x: _*).mkString("\n"))
 		}
-		
+
 	/** Executes the task with the given name.  This involves executing the task for all
 	* project dependencies (transitive) and then for this project.  Not every dependency
 	* must define a task with the given name.  If this project and all dependencies
@@ -128,7 +130,7 @@ trait Project extends TaskManager with Dag[Project] with BasicEnvironment
 			}
 		}
 	}
-	
+
 	/** Logs the list of projects at the debug level.*/
 	private def showBuildOrder(order: Iterable[Project])
 	{
@@ -136,22 +138,22 @@ trait Project extends TaskManager with Dag[Project] with BasicEnvironment
 		order.foreach(x => log.debug("    " + x.name) )
 		log.debug("")
 	}
-	
+
 	/** Converts a String to a path relative to the project directory of this project. */
 	implicit def path(component: String): Path = info.projectPath / component
 	/** Converts a String to a simple name filter.  * has the special meaning: zero or more of any character */
 	implicit def filter(simplePattern: String): NameFilter = GlobFilter(simplePattern)
-	
+
 	/** Loads the project at the given path and declares the project to have the given
 	* dependencies.  This method will configure the project according to the
 	* project/ directory in the directory denoted by path.*/
-	def project(path: Path, deps: Project*): Project = getProject(Project.loadProject(path, deps, Some(this), log), path)
-	
+	def project(path: Path, deps: Project*): Project = getProject(Project.loadProject(path, deps, Some(this), log, info.app, info.buildScalaVersion), path)
+
 	/** Loads the project at the given path using the given name and inheriting this project's version.
 	* The builder class is the default builder class, sbt.DefaultProject. The loaded project is declared
 	* to have the given dependencies. Any project/build/ directory for the project is ignored.*/
 	def project(path: Path, name: String, deps: Project*): Project = project(path, name, Project.DefaultBuilderClass, deps: _*)
-	
+
 	/** Loads the project at the given path using the given name and inheriting it's version from this project.
 	* The Project implementation used is given by builderClass.  The dependencies are declared to be
 	* deps. Any project/build/ directory for the project is ignored.*/
@@ -164,8 +166,8 @@ trait Project extends TaskManager with Dag[Project] with BasicEnvironment
 	* The construct function is used to obtain the Project instance. Any project/build/ directory for the project
 	* is ignored.  The project is declared to have the dependencies given by deps.*/
 	def project[P <: Project](path: Path, name: String, construct: ProjectInfo => P, deps: Project*): P =
-		initialize(construct(ProjectInfo(path.asFile, deps, Some(this))(log)), Some(new SetupInfo(name, None, None, false)), log)
-	
+		initialize(construct(ProjectInfo(path.asFile, deps, Some(this))(log, info.app, info.buildScalaVersion)), Some(new SetupInfo(name, None, None, false)), log)
+
 	/** Initializes the project directories when a user has requested that sbt create a new project.*/
 	def initializeDirectories() {}
 	/** True if projects should be run in parallel, false if they should run sequentially.
@@ -177,11 +179,11 @@ trait Project extends TaskManager with Dag[Project] with BasicEnvironment
 			case Some(parent) => parent.parallelExecution
 			case None => false
 		}
-	
+
 	/** True if a project and its dependencies should be checked to ensure that their
 	* output directories are not the same, false if they should not be checked. */
 	def shouldCheckOutputDirectories = true
-	
+
 	/** The list of directories to which this project writes.  This is used to verify that multiple
 	* projects have not been defined with the same output directories. */
 	def outputDirectories: Iterable[Path] = outputPath :: Nil
@@ -193,7 +195,7 @@ trait Project extends TaskManager with Dag[Project] with BasicEnvironment
 	def outputPath = crossPath(outputRootPath)
 	def outputRootPath: Path = outputDirectoryName
 	def outputDirectoryName = DefaultOutputDirectoryName
-	
+
 	private def getProject(result: LoadResult, path: Path): Project =
 		result match
 		{
@@ -202,31 +204,50 @@ trait Project extends TaskManager with Dag[Project] with BasicEnvironment
 			case err: LoadError => Predef.error("Error loading project at path " + path + " : " + err.message)
 			case success: LoadSuccess => success.project
 		}
-	
+
 	/** The property for the project's version. */
 	final val projectVersion = property[Version]
 	/** The property for the project's name. */
 	final val projectName = propertyLocalF[String](NonEmptyStringFormat)
 	/** The property for the project's organization.  Defaults to the parent project's organization or the project name if there is no parent. */
 	final val projectOrganization = propertyOptional[String](normalizedName, true)
-	/** The property that defines the version of Scala to build this project with by default.  This property is only
-	* ready by `sbt` on startup and reboot.  When cross-building, this value may be different from the actual
-	* version of Scala being used to build the project.  ScalaVersion.current and ScalaVersion.cross should be used
-	* to read the version of Scala building the project.  This should only be used to change the version of Scala used
-	* for normal development (not cross-building)*/
-	final val scalaVersion = propertyOptional[String]("", true)
-	final val sbtVersion = propertyOptional[String]("", true)
+	/** The property that defines the version of Scala to use with the project definition.  This can be different
+	* from the version of Scala used to build the project (defined initially by buildInitScalaVersion).
+	* This property is only read by `sbt` on startup and reload. It is the definitive source for the version of Scala
+	* that sbt and the project definition are using.*/
+	final val scalaVersion = property[String]
+	final val sbtVersion = property[String]
 	final val projectInitialize = propertyOptional[Boolean](false)
 	final val projectScratch = propertyOptional[Boolean](false, true)
+	/** The property that defines the version of Scala to build this project with by default.  This can be
+	* different from the version of Scala used to build and run the project definition (defined by scalaVersion).
+	* This property is only read by `sbt` on startup and reload.  When cross-building, this value may be different from the actual
+	* version of Scala being used to build the project.  info.scalaVersion is always the definitive source for the current Scala version.
+	* This property should only be used to change the version of Scala used for normal development (not cross-building).*/
+	final val buildInitScalaVersion = propertyOptional[String](scalaVersion.value, true)
+	/** The definitive source for the version of Scala being used to *build* the project.*/
+	def buildScalaVersion = info.buildScalaVersion.getOrElse(buildInitScalaVersion.value)
 
-	/** If this project is cross-building, returns `base` with an additional path component containing the scala version.
-	* Otherwise, this returns `base`.
+	def componentManager = new xsbt.ComponentManager(info.app.components, log)
+	def buildScalaInstance =
+		localScalaInstances.find(_.version == buildScalaVersion) getOrElse
+			xsbt.ScalaInstance(buildScalaVersion, info.launcher)
+	lazy val localScalaInstances: Seq[ScalaInstance] = localScala ++ info.parent.toList.flatMap(_.localScalaInstances)
+	def localScala: Seq[ScalaInstance] = Nil
+	def buildCompiler = new AnalyzingCompiler(buildScalaInstance, componentManager)
+	def defineScala(home: File): ScalaInstance = ScalaInstance(home, info.launcher)
+	def defineScala(version: String, home: File): ScalaInstance = ScalaInstance(version, home, info.launcher)
+
+	/** If this project is cross-building, returns `base` with an additional path component containing the scala version
+	* currently used to build the project.   Otherwise, this returns `base`.
 	* By default, cross-building is enabled when a project is loaded by the loader and crossScalaVersions is not empty.*/
-	def crossPath(base: Path) = ScalaVersion.withCross(disableCrossPaths)(base / ScalaVersion.crossString(_), base)
+	def crossPath(base: Path) = if(disableCrossPaths) base else base / crossString
 	/** If modifying paths for cross-building is enabled, this returns ScalaVersion.currentString.
 	* Otherwise, this returns the empty string. */
-	def crossScalaVersionString: String = if(disableCrossPaths) "" else ScalaVersion.currentString
-	
+	def crossScalaVersionString: String = if(disableCrossPaths) "" else buildScalaVersion
+	private def crossString = "scala_" + buildScalaVersion
+
+
 	/** True if crossPath should be the identity function.*/
 	protected def disableCrossPaths = crossScalaVersions.isEmpty
 	/** By default, this is empty and cross-building is disabled.  Overriding this to a Set of Scala versions
@@ -241,15 +262,15 @@ trait Project extends TaskManager with Dag[Project] with BasicEnvironment
 	* project.  This project does not need to include the watched paths for projects that this project depends on.*/
 	def watchPaths: PathFinder = Path.emptyPathFinder
 	def terminateWatch(key: Int): Boolean = key == 10 || key == 13
-	
+
 	protected final override def parentEnvironment = info.parent
-	
+
 	// .* included because svn doesn't mark .svn hidden
 	def defaultExcludes: FileFilter = (".*"  - ".") || HiddenFileFilter
 	/** Short for parent.descendentsExcept(include, defaultExcludes)*/
 	def descendents(parent: PathFinder, include: FileFilter) = parent.descendentsExcept(include, defaultExcludes)
 	override def toString = "Project " + projectName.get.getOrElse("at " + environmentLabel)
-	
+
 	def normalizedName = StringUtilities.normalize(name)
 }
 private[sbt] sealed trait LoadResult extends NotNull
@@ -265,14 +286,14 @@ object Project
 	val DefaultEnvBackingName = "build.properties"
 	val DefaultBuilderClassName = "sbt.DefaultProject"
 	val DefaultBuilderClass = Class.forName(DefaultBuilderClassName).asSubclass(classOf[Project])
-	
+
 	/** The name of the directory for project definitions.*/
 	val BuilderProjectDirectoryName = "build"
 	/** The name of the directory for plugin definitions.*/
 	val PluginProjectDirectoryName = "plugins"
 	/** The name of the class that all projects must inherit from.*/
 	val ProjectClassName = classOf[Project].getName
-	
+
 	/** The logger that should be used before the root project definition is loaded.*/
 	private[sbt] def bootLogger =
 	{
@@ -283,20 +304,22 @@ object Project
 	}
 
 	private[sbt] def booted = java.lang.Boolean.getBoolean("sbt.boot")
-	
+
+	private[sbt] def loadProject(app: AppProvider): LoadResult = loadProject(app, None)
+	/** Loads the project in the current working directory. */
+	private[sbt] def loadProject(app: AppProvider, buildScalaVersion: Option[String]): LoadResult = loadProject(bootLogger, app, buildScalaVersion)
 	/** Loads the project in the current working directory.*/
-	private[sbt] def loadProject: LoadResult = loadProject(bootLogger)
-	/** Loads the project in the current working directory.*/
-	private[sbt] def loadProject(log: Logger): LoadResult = checkOutputDirectories(loadProject(new File("."), Nil, None, log))
+	private[sbt] def loadProject(log: Logger, app: AppProvider, buildScalaVersion: Option[String]): LoadResult =
+		checkOutputDirectories(loadProject(new File("."), Nil, None, log, app, buildScalaVersion))
 	/** Loads the project in the directory given by 'path' and with the given dependencies.*/
-	private[sbt] def loadProject(path: Path, deps: Iterable[Project], parent: Option[Project], log: Logger): LoadResult =
-		loadProject(path.asFile, deps, parent, log)
+	private[sbt] def loadProject(path: Path, deps: Iterable[Project], parent: Option[Project], log: Logger, app: AppProvider, buildScalaVersion: Option[String]): LoadResult =
+		loadProject(path.asFile, deps, parent, log, app, buildScalaVersion)
 	/** Loads the project in the directory given by 'projectDirectory' and with the given dependencies.*/
-	private[sbt] def loadProject(projectDirectory: File, deps: Iterable[Project], parent: Option[Project], log: Logger): LoadResult =
-		loadProject(projectDirectory, deps, parent, getClass.getClassLoader, log)
-	private[sbt] def loadProject(projectDirectory: File, deps: Iterable[Project], parent: Option[Project], additional: ClassLoader, log: Logger): LoadResult =
+	private[sbt] def loadProject(projectDirectory: File, deps: Iterable[Project], parent: Option[Project], log: Logger, app: AppProvider, buildScalaVersion: Option[String]): LoadResult =
+		loadProject(projectDirectory, deps, parent, getClass.getClassLoader, log, app, buildScalaVersion)
+	private[sbt] def loadProject(projectDirectory: File, deps: Iterable[Project], parent: Option[Project], additional: ClassLoader, log: Logger, app: AppProvider, buildScalaVersion: Option[String]): LoadResult =
 	{
-		val info = ProjectInfo(projectDirectory, deps, parent)(log)
+		val info = ProjectInfo(projectDirectory, deps, parent)(log, app, buildScalaVersion)
 		ProjectInfo.setup(info, log) match
 		{
 			case err: SetupError => new LoadSetupError(err.message)
@@ -377,7 +400,8 @@ object Project
 		{
 			val pluginProjectPath = info.builderPath / PluginProjectDirectoryName
 			val additionalPaths = additional match { case u: URLClassLoader => u.getURLs.map(url => Path.fromFile(FileUtilities.toFile(url))); case _ => Array[Path]() }
-			val builderProject = new BuilderProject(ProjectInfo(builderProjectPath.asFile, Nil, None)(buildLog), pluginProjectPath, additionalPaths, buildLog)
+			val builderInfo = ProjectInfo(builderProjectPath.asFile, Nil, None)(buildLog, info.app, Some(info.definitionScalaVersion))
+			val builderProject = new BuilderProject(builderInfo, pluginProjectPath, additionalPaths, buildLog)
 			builderProject.compile.run.toLeft(()).right.flatMap { ignore =>
 				builderProject.projectDefinition.right.map {
 					case Some(definition) => getProjectClass[Project](definition, builderProject.projectClasspath, additional)
@@ -447,7 +471,7 @@ object Project
 		require(projectClass.isAssignableFrom(builderClass), "Builder class '" + builderClass + "' does not extend " + projectClass.getName + ".")
 		builderClass.asSubclass(projectClass).asInstanceOf[Class[P]]
 	}
-	
+
 	/** Writes the project name and a separator to the project's log at the info level.*/
 	def showProjectHeader(project: Project)
 	{
@@ -456,7 +480,7 @@ object Project
 		project.log.info(projectHeader)
 		project.log.info("=" * projectHeader.length)
 	}
-	
+
 	def rootProject(p: Project): Project =
 		p.info.parent match
 		{

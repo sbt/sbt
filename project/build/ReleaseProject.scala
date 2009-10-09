@@ -1,7 +1,7 @@
 /* sbt -- Simple Build Tool
  * Copyright 2009  Mark Harrah
  */
-import sbt._
+/*import sbt._
 
 import java.io.File
 
@@ -93,4 +93,4 @@ package sbt {
 		implicit def elemToPB(command: scala.xml.Elem): ProcessBuilder =
 			impl.CommandParser.parse(command.text.trim).fold(error, Function.tupled(Process.apply))
 	}
-}
+}*/
