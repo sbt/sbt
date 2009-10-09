@@ -46,8 +46,9 @@ class ComponentCompiler(compiler: RawCompiler, manager: ComponentManager)
 			val (sourceFiles, resources) = extractedSources.partition(_.getName.endsWith(".scala"))
 			withTemporaryDirectory { outputDirectory =>
 				val xsbtiJars = manager.files(xsbtiID)
+				manager.log.info("'" + id + "' not yet compiled for Scala " + compiler.scalaInstance.actualVersion + ". Compiling...")
 				try { compiler(Set() ++ sourceFiles, Set() ++ xsbtiJars, outputDirectory, Nil, true) }
-				catch { case e: xsbti.CompileFailed => throw new CompileFailed(e.arguments, "Error compiling component '" + id + "'") }
+				catch { case e: xsbti.CompileFailed => throw new CompileFailed(e.arguments, "Error compiling sbt component '" + id + "'") }
 				copy(resources x (FileMapper.rebase(dir, outputDirectory)))
 				zip((outputDirectory ***) x (PathMapper.relativeTo(outputDirectory)), targetJar)
 			}

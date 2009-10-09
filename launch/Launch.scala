@@ -53,11 +53,12 @@ class Launch(val bootDirectory: File, repositories: Seq[Repository]) extends xsb
 	private val scalaProviders = new HashMap[String, ScalaProvider]
 	def getScala(version: String): xsbti.ScalaProvider = scalaProviders.getOrElseUpdate(version, new ScalaProvider(version))
 
+	lazy val topLoader = new BootFilteredLoader(getClass.getClassLoader)
+
 	class ScalaProvider(val version: String) extends xsbti.ScalaProvider with Provider
 	{
 		def launcher: xsbti.Launcher = Launch.this
-
-		lazy val parentLoader = new BootFilteredLoader(getClass.getClassLoader)
+		def parentLoader = topLoader
 
 		lazy val configuration = new UpdateConfiguration(bootDirectory, version, repositories)
 		lazy val libDirectory = new File(configuration.bootDirectory, baseDirectoryName(version))

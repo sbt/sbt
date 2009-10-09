@@ -21,9 +21,9 @@ trait ProguardLaunch extends ProguardProject
 
 		log.debug("proguard configuration ivy jar location: " + ivyJars.mkString(", "))
 
-		(withJar(ivyJars.toSeq, "Ivy") + "(!META-INF/**,!fr/**,!**/antlib.xml,!**/*.png)") ::
+		((withJar(ivyJars.toSeq, "Ivy") + "(!META-INF/**,!fr/**,!**/antlib.xml,!**/*.png)") ::
 		(withJar(jlineJars, "JLine") + "(!META-INF/**)" ) ::
-		otherJars.map(jar => mkpath(jar) + "(!META-INF/**,!*.properties)").toList
+		otherJars.map(jar => mkpath(jar) + "(!META-INF/**,!*.properties)").toList) map { "-injars " + _ }
 	}
 
 	private def withJar[T](files: Seq[File], name: String) = mkpath(files.firstOption.getOrElse(error(name + " not present (try running update)")))
