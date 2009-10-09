@@ -8,7 +8,7 @@ package xsbt
 * provided by scalaInstance.  This class requires a ComponentManager in order to obtain the interface code to scalac and
 * the analysis plugin.  Because these call Scala code for a different Scala version than the one used for this class, they must
 * be compiled for the version of Scala being used.*/
-class AnalyzingCompiler(scalaInstance: ScalaInstance, manager: ComponentManager) extends NotNull
+class AnalyzingCompiler(val scalaInstance: ScalaInstance, val manager: ComponentManager) extends NotNull
 {
 	def apply(sources: Set[File], classpath: Set[File], outputDirectory: File, options: Seq[String], callback: AnalysisCallback, maximumErrors: Int, log: CompileLogger): Unit =
 		apply(sources, classpath, outputDirectory, options, false, callback, maximumErrors, log)
@@ -48,8 +48,9 @@ class AnalyzingCompiler(scalaInstance: ScalaInstance, manager: ComponentManager)
 	}
 	def console(classpath: Set[File], initialCommands: String, log: CompileLogger): Unit =
 	{
-		val classpathString = CompilerArguments.absString(classpath)
-		val bootClasspath = (new CompilerArguments(scalaInstance)).createBootClasspath
+		val arguments = new CompilerArguments(scalaInstance)
+		val classpathString = CompilerArguments.absString(arguments.finishClasspath(classpath, true))
+		val bootClasspath = arguments.createBootClasspath
 		call("xsbt.ConsoleInterface", log) (classOf[String], classOf[String], classOf[String], classOf[xLogger]) (bootClasspath, classpathString, initialCommands, log)
 	}
 	private def call(interfaceClassName: String, log: CompileLogger)(argTypes: Class[_]*)(args: AnyRef*)
@@ -57,7 +58,8 @@ class AnalyzingCompiler(scalaInstance: ScalaInstance, manager: ComponentManager)
 		val interfaceClass = getInterfaceClass(interfaceClassName, log)
 		val interface = interfaceClass.newInstance.asInstanceOf[AnyRef]
 		val method = interfaceClass.getMethod("run", argTypes : _*)
-		method.invoke(interface, args: _*)
+		try { method.invoke(interface, args: _*) }
+		catch { case e: java.lang.reflect.InvocationTargetException => throw e.getCause }
 	}
 	private def getInterfaceClass(name: String, log: CompileLogger) =
 	{

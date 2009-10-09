@@ -38,3 +38,6 @@ class RawCompiler(val scalaInstance: ScalaInstance, log: CompileLogger)
 	}
 }
 class CompileFailed(val arguments: Array[String], override val toString: String) extends xsbti.CompileFailed
+{
+	override def fillInStackTrace = this
+}

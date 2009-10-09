@@ -10,12 +10,7 @@ package xsbt
 final class ScalaInstance(val version: String, val loader: ClassLoader, val libraryJar: File, val compilerJar: File) extends NotNull
 {
 	/** Gets the version of Scala in the compiler.properties file from the loader.  This version may be different than that given by 'version'*/
-	lazy val actualVersion =
-	{
-		import ScalaInstance.VersionPrefix
-		val v = Class.forName("scala.tools.nsc.Properties", true, loader).getMethod("versionString").invoke(null).toString
-		if(v.startsWith(VersionPrefix)) v.substring(VersionPrefix.length) else v
-	}
+	lazy val actualVersion = ScalaInstance.actualVersion(loader)(" version " + version)
 }
 object ScalaInstance
 {
@@ -25,4 +20,34 @@ object ScalaInstance
 		apply(version, launcher.getScala(version))
 	def apply(version: String, provider: xsbti.ScalaProvider): ScalaInstance =
 		new ScalaInstance(version, provider.loader, provider.libraryJar, provider.compilerJar)
+
+	def apply(scalaHome: File, launcher: xsbti.Launcher): ScalaInstance =
+		apply(libraryJar(scalaHome), compilerJar(scalaHome), launcher)
+	def apply(version: String, scalaHome: File, launcher: xsbti.Launcher): ScalaInstance =
+		apply(version, libraryJar(scalaHome), compilerJar(scalaHome), launcher)
+	def apply(libraryJar: File, compilerJar: File, launcher: xsbti.Launcher): ScalaInstance =
+	{
+		val loader = scalaLoader(launcher, libraryJar, compilerJar)
+		val version = actualVersion(loader)(" (library jar  " + libraryJar.getAbsolutePath + ")")
+		new ScalaInstance(version, loader, libraryJar, compilerJar)
+	}
+	def apply(version: String, libraryJar: File, compilerJar: File, launcher: xsbti.Launcher): ScalaInstance =
+		new ScalaInstance(version, scalaLoader(launcher, libraryJar, compilerJar), libraryJar, compilerJar)
+
+	private def compilerJar(scalaHome: File) = scalaJar(scalaHome, "scala-compiler.jar")
+	private def libraryJar(scalaHome: File) = scalaJar(scalaHome, "scala-library.jar")
+	def scalaJar(scalaHome: File, name: String)  =  new File(scalaHome, "lib" + File.separator + name)
+
+	/** Gets the version of Scala in the compiler.properties file from the loader.*/
+	private def actualVersion(scalaLoader: ClassLoader)(label: String) =
+	{
+		val v = try { Class.forName("scala.tools.nsc.Properties", true, scalaLoader).getMethod("versionString").invoke(null).toString }
+		catch { case cause: Exception => throw new InvalidScalaInstance("Incompatible Scala instance: " + label, cause) }
+		if(v.startsWith(VersionPrefix)) v.substring(VersionPrefix.length) else v
+	}
+
+	import java.net.{URL, URLClassLoader}
+	private def scalaLoader(launcher: xsbti.Launcher, jars: File*): ClassLoader =
+		new URLClassLoader(jars.map(_.toURI.toURL).toArray[URL], launcher.topLoader)
 }
+class InvalidScalaInstance(message: String, cause: Throwable) extends RuntimeException(message, cause)
