@@ -20,21 +20,18 @@ class ComponentCompiler(compiler: RawCompiler, manager: ComponentManager)
 	def apply(id: String): File =
 	{
 		val binID = binaryID(id)
-		try { manager.file(binID) }
-		catch { case e: InvalidComponent => compileAndInstall(id, binID) }
+		manager.file(binID)( new IfMissing.Define(true, compileAndInstall(id, binID)) )
 	}
 	def clearCache(id: String): Unit = manager.clearCache(binaryID(id))
 	protected def binaryID(id: String) = id + binSeparator + compiler.scalaInstance.actualVersion
-	protected def compileAndInstall(id: String, binID: String): File =
+	protected def compileAndInstall(id: String, binID: String)
 	{
 		val srcID = id + srcExtension
 		withTemporaryDirectory { binaryDirectory =>
 			val targetJar = new File(binaryDirectory, id + ".jar")
-			compileSources(manager.files(srcID), targetJar, id)
+			compileSources(manager.files(srcID)(IfMissing.Fail), targetJar, id)
 			manager.define(binID, Seq(targetJar))
-			manager.cache(binID)
 		}
-		manager.file(binID)
 	}
 	/** Extract sources from source jars, compile them with the xsbti interfaces on the classpath, and package the compiled classes and
 	* any resources from the source jars into a final jar.*/
@@ -45,7 +42,7 @@ class ComponentCompiler(compiler: RawCompiler, manager: ComponentManager)
 			val extractedSources = (Set[File]() /: sourceJars) { (extracted, sourceJar)=> extracted ++ unzip(sourceJar, dir) }
 			val (sourceFiles, resources) = extractedSources.partition(_.getName.endsWith(".scala"))
 			withTemporaryDirectory { outputDirectory =>
-				val xsbtiJars = manager.files(xsbtiID)
+				val xsbtiJars = manager.files(xsbtiID)(IfMissing.Fail)
 				manager.log.info("'" + id + "' not yet compiled for Scala " + compiler.scalaInstance.actualVersion + ". Compiling...")
 				try { compiler(Set() ++ sourceFiles, Set() ++ xsbtiJars, outputDirectory, Nil, true) }
 				catch { case e: xsbti.CompileFailed => throw new CompileFailed(e.arguments, "Error compiling sbt component '" + id + "'") }

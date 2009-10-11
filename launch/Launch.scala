@@ -106,4 +106,9 @@ class ComponentProvider(baseDirectory: File) extends xsbti.ComponentProvider
 		else
 			Copy(files, location)
 	}
+	def lockFile =
+	{
+		baseDirectory.mkdirs()
+		new File(baseDirectory, "sbt.components.lock")
+	}
 }
