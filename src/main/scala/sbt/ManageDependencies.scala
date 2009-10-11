@@ -235,10 +235,15 @@ object ManageDependencies
 		{
 			import module._
 			<ivy-module version="2.0">
-				<info organisation={organization} module={name} revision={revision}/>
+				{ if(hasInfo(dependencies))
+					scala.xml.NodeSeq.Empty
+				else
+					<info organisation={organization} module={name} revision={revision}/>
+				}
 				{dependencies}
 			</ivy-module>
 		}
+		def hasInfo(x: scala.xml.NodeSeq) = !(<g>{x}</g> \ "info").isEmpty
 		/** Performs checks/adds filters on Scala dependencies (if enabled in IvyScala). */
 		def checkModule(moduleAndConf: (ModuleDescriptor, String)): Either[String, (ModuleDescriptor, String)] =
 			ivyScala match
