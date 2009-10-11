@@ -245,15 +245,20 @@ private object IvySbt
 			map
 		}
 	}
-	/** Creates a full ivy file for 'module' using the 'content' XML as the part after the &lt;info&gt;...&lt;/info&gt; section. */
-	private def wrapped(module: ModuleID, content: scala.xml.NodeSeq) =
+	/** Creates a full ivy file for 'module' using the 'dependencies' XML as the part after the &lt;info&gt;...&lt;/info&gt; section. */
+	private def wrapped(module: ModuleID, dependencies: scala.xml.NodeSeq) =
 	{
 		import module._
 		<ivy-module version="2.0">
-			<info organisation={organization} module={name} revision={revision}/>
-			{content}
+			{ if(hasInfo(dependencies))
+				scala.xml.NodeSeq.Empty
+			else
+				<info organisation={organization} module={name} revision={revision}/>
+			}
+			{dependencies}
 		</ivy-module>
 	}
+	private def hasInfo(x: scala.xml.NodeSeq) = !(<g>{x}</g> \ "info").isEmpty
 	/** Parses the given in-memory Ivy file 'xml', using the existing 'moduleID' and specifying the given 'defaultConfiguration'. */
 	private def parseIvyXML(settings: IvySettings, xml: scala.xml.NodeSeq, moduleID: DefaultModuleDescriptor, defaultConfiguration: String, validate: Boolean): CustomXmlParser.CustomParser =
 		parseIvyXML(settings,  xml.toString, moduleID, defaultConfiguration, validate)
