@@ -4,47 +4,48 @@ import java.io.File
 import org.specs._
 import FileUtilities.{createDirectory, delete, touch, withTemporaryDirectory}
 import org.apache.ivy.util.ChecksumHelper
+import IfMissing.Fail
 
 object ComponentManagerTest extends Specification
 {
 	val TestID = "manager-test"
 	"Component manager" should {
 		"throw an exception if 'file' is called for a non-existing component" in {
-			withManager { _.file(TestID) must throwA[InvalidComponent] }
+			withManager { _.file(TestID)(Fail) must throwA[InvalidComponent] }
 		}
 		"throw an exception if 'file' is called for an empty component" in {
 			withManager { manager =>
 				manager.define(TestID, Nil)
-				( manager.file(TestID) ) must throwA[InvalidComponent]
+				( manager.file(TestID)(Fail) ) must throwA[InvalidComponent]
 			}
 		}
 		"return the file for a single-file component" in {
 			withManager { manager =>
 				val hash = defineFile(manager, TestID, "a")
-				checksum(manager.file(TestID)) must beEqualTo(hash)
+				checksum(manager.file(TestID)(Fail)) must beEqualTo(hash)
 			}
 		}
 
 		"throw an exception if 'file' is called for multi-file component" in {
 			withManager { manager =>
 				defineFiles(manager, TestID, "a", "b")
-				( manager.file(TestID) ) must throwA[InvalidComponent]
+				( manager.file(TestID)(Fail) ) must throwA[InvalidComponent]
 			}
 		}
 		"return the files for a multi-file component" in {
 			withManager { manager =>
 				val hashes = defineFiles(manager, TestID, "a", "b")
-				checksum(manager.files(TestID)) must haveTheSameElementsAs(hashes)
+				checksum(manager.files(TestID)(Fail)) must haveTheSameElementsAs(hashes)
 			}
 		}
 		"return the files for a single-file component" in {
 			withManager { manager =>
 				val hashes = defineFiles(manager, TestID, "a")
-				checksum(manager.files(TestID)) must haveTheSameElementsAs(hashes)
+				checksum(manager.files(TestID)(Fail)) must haveTheSameElementsAs(hashes)
 			}
 		}
 		"throw an exception if 'files' is called for a non-existing component" in {
-			withManager {   _.files(TestID) must throwA[InvalidComponent] }
+			withManager {   _.files(TestID)(Fail) must throwA[InvalidComponent] }
 		}
 
 		"properly cache a file and then retrieve it to an unresolved component" in {
@@ -54,7 +55,7 @@ object ComponentManagerTest extends Specification
 				{
 					definingManager.cache(TestID)
 					withManager { usingManager =>
-						checksum(usingManager.file(TestID)) must beEqualTo(hash)
+						checksum(usingManager.file(TestID)(Fail)) must beEqualTo(hash)
 					}
 				}
 				finally { definingManager.clearCache(TestID) }
