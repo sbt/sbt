@@ -77,5 +77,5 @@ object ComponentManagerTest extends Specification
 	private def writeRandomContent(file: File) = FileUtilities.write(file, randomString)
 	private def randomString = "asdf"
 	private def withManager[T](f: ComponentManager => T): T =
-		TestIvyLogger( logger => withTemporaryDirectory { temp =>  f(new ComponentManager(new xsbt.boot.ComponentProvider(temp), logger)) } )
+		TestIvyLogger( logger => withTemporaryDirectory { temp =>  f(new ComponentManager(xsbt.boot.Locks, new xsbt.boot.ComponentProvider(temp), logger)) } )
 }
