@@ -27,7 +27,7 @@ private object NotInCache
 /** Provides methods for working at the level of a single jar file with the default Ivy cache.*/
 object IvyCache
 {
-	def lockFile = new File(System.getProperty("temp.dir"), "sbt.cache.lock")
+	def lockFile = new File(System.getProperty("java.io.tmpdir"), "sbt.cache.lock")
 	/** Caches the given 'file' with the given ID.  It may be retrieved or cleared using this ID.*/
 	def cacheJar(moduleID: ModuleID, file: File, log: IvyLogger)
 	{
