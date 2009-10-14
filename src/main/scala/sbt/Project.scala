@@ -228,7 +228,7 @@ trait Project extends TaskManager with Dag[Project] with BasicEnvironment
 	/** The definitive source for the version of Scala being used to *build* the project.*/
 	def buildScalaVersion = info.buildScalaVersion.getOrElse(buildInitScalaVersion.value)
 
-	def componentManager = new xsbt.ComponentManager(info.app.components, log)
+	def componentManager = new xsbt.ComponentManager(info.launcher.globalLock, info.app.components, log)
 	def buildScalaInstance =
 		localScalaInstances.find(_.version == buildScalaVersion) getOrElse
 			xsbt.ScalaInstance(buildScalaVersion, info.launcher)
