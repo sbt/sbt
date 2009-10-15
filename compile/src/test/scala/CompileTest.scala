@@ -36,7 +36,7 @@ object WithCompiler
 		log.bufferQuietly {
 			boot.LaunchTest.withLauncher { launch =>
 				FileUtilities.withTemporaryDirectory { componentDirectory =>
-					val manager = new ComponentManager(new boot.ComponentProvider(componentDirectory), log)
+					val manager = new ComponentManager(xsbt.boot.Locks, new boot.ComponentProvider(componentDirectory), log)
 					val compiler = new AnalyzingCompiler(ScalaInstance(scalaVersion, launch), manager)
 					compiler.newComponentCompiler(log).clearCache(ComponentCompiler.compilerInterfaceID)
 					prepare(manager, ComponentCompiler.compilerInterfaceSrcID, "CompilerInterface.scala")
