@@ -32,7 +32,7 @@ object ScalaProviderTest extends Specification
 		FileUtilities.withTemporaryDirectory { currentDirectory =>
 			withLauncher { launcher =>
 				Launch.run(launcher)(
-					RunConfiguration(mapScalaVersion(LaunchTest.getScalaVersion), LaunchTest.testApp(mainClassName).toID, currentDirectory, arguments, () => ())
+					RunConfiguration(mapScalaVersion(LaunchTest.getScalaVersion), LaunchTest.testApp(mainClassName).toID, currentDirectory, arguments)
 				)
 			}
 		}
@@ -56,7 +56,7 @@ object LaunchTest
 		FileUtilities.withTemporaryDirectory { bootDirectory =>
 			f(new Launch(bootDirectory, testRepositories))
 		}
-		
+
 	def mapScalaVersion(versionNumber: String) = scalaVersionMap.find(_._2 == versionNumber).getOrElse {
 		error("Scala version number " + versionNumber + " from library.properties has no mapping")}._1
 	val scalaVersionMap = Map("2.7.2" -> "2.7.2") ++ Seq("2.7.3", "2.7.4", "2.7.5").map(v => (v, v + ".final"))
