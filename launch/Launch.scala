@@ -1,9 +1,7 @@
 package xsbt.boot
 
-import java.io.{File, FileOutputStream}
+import java.io.File
 import java.net.URL
-import java.nio.channels.FileChannel
-import java.util.concurrent.Callable
 
 object Launch
 {
@@ -28,11 +26,11 @@ object Launch
 		initialized(currentDirectory, parsed, arguments)
 	}
 	def initialized(currentDirectory: File, parsed: LaunchConfiguration, arguments: Seq[String]): Unit =
-		ResolveVersions(parsed) match { case (resolved, finish) => explicit(currentDirectory, resolved, arguments, finish) }
+		 explicit(currentDirectory, ResolveVersions(parsed), arguments)
 
-	def explicit(currentDirectory: File, explicit: LaunchConfiguration, arguments: Seq[String], setupComplete: () => Unit): Unit =
+	def explicit(currentDirectory: File, explicit: LaunchConfiguration, arguments: Seq[String]): Unit =
 		launch( run(new Launch(explicit.boot.directory, explicit.repositories)) ) (
-			RunConfiguration(explicit.getScalaVersion, explicit.app.toID, currentDirectory, arguments, setupComplete) )
+			RunConfiguration(explicit.getScalaVersion, explicit.app.toID, currentDirectory, arguments) )
 
 	def run(launcher: xsbti.Launcher)(config: RunConfiguration): xsbti.MainResult =
 	{
@@ -41,21 +39,19 @@ object Launch
 		val appProvider: xsbti.AppProvider = scalaProvider.app(app)
 		val appConfig: xsbti.AppConfiguration = new AppConfiguration(arguments.toArray, workingDirectory, appProvider)
 
-		val main = appProvider.newMain()
-		setupComplete()
-		main.run(appConfig)
+		appProvider.newMain().run(appConfig)
 	}
 	final def launch(run: RunConfiguration => xsbti.MainResult)(config: RunConfiguration)
 	{
 		run(config) match
 		{
 			case e: xsbti.Exit => System.exit(e.code)
-			case r: xsbti.Reboot => launch(run)(RunConfiguration(r.scalaVersion, r.app, r.baseDirectory, r.arguments, () => ()))
+			case r: xsbti.Reboot => launch(run)(RunConfiguration(r.scalaVersion, r.app, r.baseDirectory, r.arguments))
 			case x => throw new BootException("Invalid main result: " + x + (if(x eq null) "" else " (class: " + x.getClass + ")"))
 		}
 	}
 }
-case class RunConfiguration(scalaVersion: String, app: xsbti.ApplicationID, workingDirectory: File, arguments: Seq[String], setupComplete: () => Unit) extends NotNull
+case class RunConfiguration(scalaVersion: String, app: xsbti.ApplicationID, workingDirectory: File, arguments: Seq[String]) extends NotNull
 
 import BootConfiguration.{appDirectoryName, baseDirectoryName, ScalaDirectoryName, TestLoadScalaClasses}
 class Launch(val bootDirectory: File, repositories: Seq[Repository]) extends xsbti.Launcher
@@ -127,53 +123,5 @@ object ComponentProvider
 	{
 		baseDirectory.mkdirs()
 		new File(baseDirectory, "sbt.components.lock")
-	}
-}
-// gets a file lock by first getting a JVM-wide lock.
-object Locks extends xsbti.GlobalLock
-{
-	import scala.collection.mutable.HashMap
-	private[this] val locks = new HashMap[File, GlobalLock]
-	def apply[T](file: File, action: Callable[T]) =
-	{
-		val canonFile = file.getCanonicalFile
-		synchronized { locks.getOrElseUpdate(canonFile, new GlobalLock(canonFile)).withLock(action) }
-	}
-
-	private[this] class GlobalLock(file: File)
-	{
-		private[this] var fileLocked = false
-		def withLock[T](run: Callable[T]): T =
-			synchronized
-			{
-				if(fileLocked)
-					run.call
-				else
-				{
-					fileLocked = true
-					try { withFileLock(run) }
-					finally { fileLocked = false }
-				}
-			}
-		private[this] def withFileLock[T](run: Callable[T]): T =
-		{
-			def withChannel(channel: FileChannel) =
-			{
-				val freeLock = channel.tryLock
-				if(freeLock eq null)
-				{
-					println("Waiting for lock on " + file + " to be available...");
-					val lock = channel.lock
-					try { run.call }
-					finally { lock.release() }
-				}
-				else
-				{
-					try { run.call }
-					finally { freeLock.release() }
-				}
-			}
-			Using(new FileOutputStream(file).getChannel)(withChannel)
-		}
 	}
 }

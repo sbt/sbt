@@ -13,7 +13,7 @@ object Initialize
 			case Some(line) =>
 				line.toLowerCase match
 				{
-					case "y" | "yes" => file.createNewFile(); process(file, spec, _.create)
+					case "y" | "yes" => process(file, spec, _.create)
 					case "n" | "no" | "" => throw new BootException("")
 					case "s" => process(file, spec, _.quick)
 				}
@@ -27,6 +27,7 @@ object Initialize
 			Using(new FileInputStream(file))( properties.load )
 		for(property <- appProperties; init <- select(property) if properties.getProperty(property.name) == null)
 			initialize(properties, property.name, init)
+		file.getParentFile.mkdirs()
 		Using(new FileOutputStream(file))( out => properties.save(out, "") )
 	}
 	def initialize(properties: Properties, name: String, init: PropertyInit)

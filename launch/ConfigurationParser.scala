@@ -126,7 +126,7 @@ class ConfigurationParser extends Parsers with NotNull
 			case "set" => SetProperty(requiredArg)
 			case _ => throw new BootException("Unknown action '" + action + "' for property '"  + name + "'")
 		}
-	private lazy val propertyPattern = """(.+)\((.*)\)(?:\[(.*)\])?""".r.pattern
+	private lazy val propertyPattern = """(.+)\((.*)\)(?:\[(.*)\])?""".r.pattern // examples: prompt(Version)[1.0] or set(1.0)
 	def parsePropertyValue[T](name: String, definition: String)(f: (String, String, Option[String]) => T): T =
 	{
 		val m = propertyPattern.matcher(definition)

@@ -5,25 +5,26 @@ The sbt launcher component is a self-contained jar that boots a Scala applicatio
 == Configuration ==
 
 The launcher may be configured in the following ways in increasing order of precedence:
- * Replace the /sbt/sbt.launch.config file in the jar
- * Put a configuration file named sbt.launch.config file on the classpath.  Put it in the classpath root without the /sbt prefix.
+ * Replace the /sbt/sbt.boot.properties file in the jar
+ * Put a configuration file named sbt.boot.properties on the classpath.  Put it in the classpath root without the /sbt prefix.
  * Specify the location of an alternate configuration on the command line.  This can be done by either specifying the location as the system property 'sbt.boot.properties' or as the first argument to the launcher prefixed by '@'.  The system property has lower precedence.  Resolution of a relative path is first attempted against the current working directory, then against the user's home directory, and then against the directory containing the launcher jar.  An error is generated if none of these attempts succeed.
 
 The configuration file is read as UTF-8 encoded and is defined by the following grammer (nl is a newline or end of file):
 
-configuration ::= scala app repositories boot log
+configuration ::= scala app repositories boot log app-properties
   scala ::= '[' 'scala' ']' nl versionSpecification nl
   app ::= '[' 'app' ']' nl org nl name nl versionSpecification nl components nl class nl cross-versioned nl
   repositories ::= '[' 'repositories' ']' nl (repository nl)*
   boot ::= '[' 'boot' ']' nl directory nl properties nl search nl
-  log ::= '[' log ']' nl logLevel nl
+  log ::= '[' 'log' ']' nl logLevel nl
+  app-properties ::= '[' 'app-properties' ']' nl property*
 
    directory ::= 'directory' ':' path
    properties ::= 'properties' ':' path
    search ::= 'search' ':' ('none'|'nearest'|'root-first'|'only') (',' path)*
    logLevel ::= 'log-level' ':' ('debug' | 'info' | 'warn' | 'error')
 
-    versionSpecification ::= 'version' ':' ( ( ('read'|'prompt'|'read-or-prompt') [defaultVersion] ) | fixedVersion )
+    versionSpecification ::= 'version' ':' ( ( 'read' [defaultVersion] ) | fixedVersion )
     defaultVersion ::= text
     fixedVersion ::= text
 
@@ -36,34 +37,48 @@ configuration ::= scala app repositories boot log
     repository ::= ( predefinedRepository | ( label ':' url [',' pattern] ) ) nl
     predefinedRepository ::= 'local' | 'maven-local' | 'maven-central' | 'scala-tools-releases' | 'scala-tools-snapshots'
 
+    property ::= label ':' propertyDefinition (',' propertyDefinition)* nl
+    propertyDefinition ::= ('quick' | 'new' | 'fill') '=' (set | prompt)
+      set ::= 'set' '(' text ')'
+      prompt ::= 'prompt'  '(' text ')' ('[' text ']')?
+
 The default configuration file for sbt looks like:
 
 [scala]
-  version: read-or-prompt, 2.7.5
+  version: read
 
 [app]
   org: org.scala-tools.sbt
-  name: xsbt
-  version: read-or-prompt, 0.7.0_13
-  class: xsbt.Main
-  components: xsbti, default
+  name: sbt
+  version: read
+  class: sbt.xMain
+  components: xsbti
   cross-versioned: true
 
 [repositories]
   local
   maven-local
-  Sbt Repository, http://simple-build-tool.googlecode.com/svn/artifacts/, [revision]/[type]s/[artifact].[ext]
   maven-central
   scala-tools-releases
-  scala-tools-snapshots
 
 [boot]
  directory: project/boot
  properties: project/build.properties
- search: none
+ prompt-create: Project does not exist, create new project?
+ prompt-fill: true
+ quick-option: true
 
 [log]
  level: info
+
+[app-properties]
+ project.name: quick=set(test), new=prompt(Name), fill=prompt(Name)
+ project.version: quick=set(1.0), new=prompt(Version)[1.0], fill=prompt(Version)[1.0]
+ build.init.scala.version: quick=set(2.7.5), new=prompt(Scala version)[2.7.5]
+ scala.version: quick=set(2.7.5), new=set(2.7.5), fill=set(2.7.5)
+ sbt.version: quick=set(0.5.6-SNAPSHOT), new=prompt(sbt version)[0.5.6-SNAPSHOT], fill=prompt(sbt version)[0.5.6-SNAPSHOT]
+ project.scratch: quick=set(true)
+ project.initialize: quick=set(true), new=set(true)
 
 The scala.version property specifies the version of Scala used to run the application.  The app.org, app.name, and app.version properties specify the organization, module ID, and version of the application, respectively.  These are used to resolve and retrieve the application from the repositories listed in [repositories].  If cross-versioned is true, the resolved module is {app.name+'_'+scala.version}
 
@@ -71,7 +86,7 @@ The app.class property specifies the name of the entry point to the application.
 
 == Execution ==
 
-On startup, the launcher searches for its configuration in the order described in the Configuration section and then parses it.  If either the Scala version or the application version are implicit (read, prompt, or read-or-prompt), the launcher determines them in the following manner.  If the implicit is specified to be 'read', the file given by the 'boot.properties' property is read as a Java properties file to obtain the version. The property names are [app.name].version for the application version (where [app.name] is replaced with the value of the app.name property from the boot configuration file) and scala.version for the Scala version.  If the file does not exist, the default value provided is used.  If no default was provided, an error is generated.  If the implicit is 'prompt', the user is prompted for the version to use and is provided a default option if one was specified.  If the implicit is 'read-or-prompt', the file given by 'boot.properties' is read.  If the version is not specified there, the user is prompted and is provided a default option if one was specified.  The file specified by 'boot.properties' is updated with the value specified by the user.
+On startup, the launcher searches for its configuration in the order described in the Configuration section and then parses it.  If either the Scala version or the application version are implicit (specified as 'read'), the launcher determines them in the following manner.  The file given by the 'boot.properties' property is read as a Java properties file to obtain the version. The property names are [app.name].version for the application version (where [app.name] is replaced with the value of the app.name property from the boot configuration file) and scala.version for the Scala version.  If the file does not exist, the default value provided is used.  If no default was provided, an error is generated.
 
 Once the final configuration is resolved, the launcher proceeds to obtain the necessary jars to launch the application.  The 'boot.directory' property is used as a base directory to retrieve jars to.  No locking is done on the directory, so it should not be shared system-wide.  The launcher retrieves the requested version of Scala to [boot.directory]/[scala.version]/lib/.  If this directory already exists, the launcher takes a shortcut for performance and assumes that the jars have already been downloaded.  If the directory does not exists, the launcher uses Apache Ivy to resolve and retrieve the jars.  A similar process occurs for the application itself.  It and its dependencies are retreived to [boot.directory]/[scala.version]/[app.org]/[app.name]/.
 
@@ -136,6 +151,6 @@ Define a configuration file for the launcher.  For the above class, it might loo
 Then, +publish-local the application to make it available.
 
 As mentioned above, there are a few options to actually run the application.  The first involves providing a modified jar for download.  The second two require providing a configuration file for download.
-1) Replace the sbt.boot.properties file in the launcher jar and distribute the modified jar.  The user would need to run 'java -jar your-launcher.jar'.
+1) Replace the /sbt/sbt.boot.properties file in the launcher jar and distribute the modified jar.  The user would need to run 'java -jar your-launcher.jar'.
 2) The user downloads the vanilla sbt launcher jar and you provide the sbt.boot.properties file.  The user would need to run 'java -Dsbt.boot.properties=your.boot.properties -jar sbt-launcher.jar'
 3) The user sets up the sbt launcher, including the bash script.  You provide the sbt.boot.properties file and the user runs sbt @your.boot.properties <other arguments>.
