@@ -17,8 +17,17 @@ object Launch
 		val config = Configuration.parse(configLocation, currentDirectory)
 		Find(config, currentDirectory) match { case (resolved, baseDirectory) => parsed(baseDirectory, resolved, arguments) }
 	}
-
 	def parsed(currentDirectory: File, parsed: LaunchConfiguration, arguments: Seq[String]): Unit =
+	{
+		val propertiesFile = parsed.boot.properties
+		import parsed.boot.{enableQuick, promptCreate, promptFill}
+		if(!promptCreate.isEmpty && !propertiesFile.exists)
+			Initialize.create(propertiesFile, promptCreate, enableQuick, parsed.appProperties)
+		else if(promptFill)
+			Initialize.fill(propertiesFile, parsed.appProperties)
+		initialized(currentDirectory, parsed, arguments)
+	}
+	def initialized(currentDirectory: File, parsed: LaunchConfiguration, arguments: Seq[String]): Unit =
 		ResolveVersions(parsed) match { case (resolved, finish) => explicit(currentDirectory, resolved, arguments, finish) }
 
 	def explicit(currentDirectory: File, explicit: LaunchConfiguration, arguments: Seq[String], setupComplete: () => Unit): Unit =

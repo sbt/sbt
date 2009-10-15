@@ -3,34 +3,32 @@ package xsbt.boot
 import java.io.File
 import java.net.URL
 
-final case class LaunchConfiguration(scalaVersion: Version, app: Application, repositories: Seq[Repository], boot: BootSetup, logging: Logging) extends NotNull
+final case class LaunchConfiguration(scalaVersion: Version, app: Application, repositories: Seq[Repository], boot: BootSetup, logging: Logging, appProperties: Seq[AppProperty]) extends NotNull
 {
 	def getScalaVersion = Version.get(scalaVersion)
-	def withScalaVersion(newScalaVersion: String) = LaunchConfiguration(Version.Explicit(newScalaVersion), app, repositories, boot, logging)
-	def withApp(app: Application) = LaunchConfiguration(scalaVersion, app, repositories, boot, logging)
-	def withAppVersion(newAppVersion: String) = LaunchConfiguration(scalaVersion, app.withVersion(Version.Explicit(newAppVersion)), repositories, boot, logging)
-	def withVersions(newScalaVersion: String, newAppVersion: String) = LaunchConfiguration(Version.Explicit(newScalaVersion), app.withVersion(Version.Explicit(newAppVersion)), repositories, boot, logging)
-	def map(f: File => File) = LaunchConfiguration(scalaVersion, app, repositories, boot.map(f), logging)
+	def withScalaVersion(newScalaVersion: String) = LaunchConfiguration(Version.Explicit(newScalaVersion), app, repositories, boot, logging, appProperties)
+	def withApp(app: Application) = LaunchConfiguration(scalaVersion, app, repositories, boot, logging, appProperties)
+	def withAppVersion(newAppVersion: String) = LaunchConfiguration(scalaVersion, app.withVersion(Version.Explicit(newAppVersion)), repositories, boot, logging, appProperties)
+	def withVersions(newScalaVersion: String, newAppVersion: String) = LaunchConfiguration(Version.Explicit(newScalaVersion), app.withVersion(Version.Explicit(newAppVersion)), repositories, boot, logging, appProperties)
+	def map(f: File => File) = LaunchConfiguration(scalaVersion, app, repositories, boot.map(f), logging, appProperties)
 }
 
 sealed trait Version extends NotNull
 object Version
 {
 	final case class Explicit(value: String) extends Version
-	final case class Implicit(tpe: Implicit.Value, default: Option[String]) extends Version
+	final case class Implicit(default: Option[String]) extends Version
 	{
 		require(default.isEmpty || !default.get.isEmpty, "Default cannot be empty")
 	}
 
-	object Implicit extends RichEnum
+	object Implicit
 	{
-		val Read = Value("read")
-		val Prompt = Value("prompt")
-		val ReadOrPrompt = Value("read-or-prompt")
-		def apply(s: String, default: Option[String]): Either[String, Implicit] = fromString(s).right.map(t =>Implicit(t, default))
+		def apply(s: String, default: Option[String]): Either[String, Implicit] =
+			if(s == "read") Right(Implicit(default)) else Left("Expected 'read', got '" + s +"'")
 	}
 	def get(v: Version) = v  match { case Version.Explicit(v) => v; case _ => throw new BootException("Unresolved version: " + v) }
-	def default = Implicit(Implicit.ReadOrPrompt, None)
+	def default = Implicit(None)
 }
 
 sealed abstract class RichEnum extends Enumeration
@@ -87,10 +85,16 @@ object Search extends RichEnum
 	def apply(s: String, paths: Seq[File]): Search = Search(toValue(s), paths)
 }
 
-final case class BootSetup(directory: File, properties: File, search: Search) extends NotNull
+final case class BootSetup(directory: File, properties: File, search: Search, promptCreate: String, enableQuick: Boolean, promptFill: Boolean) extends NotNull
 {
-	def map(f: File => File) = BootSetup(f(directory), f(properties), search)
+	def map(f: File => File) = BootSetup(f(directory), f(properties), search, promptCreate, enableQuick, promptFill)
 }
+final case class AppProperty(name: String)(val quick: Option[PropertyInit], val create: Option[PropertyInit], val fill: Option[PropertyInit]) extends NotNull
+
+sealed trait PropertyInit extends NotNull
+final case class SetProperty(value: String) extends PropertyInit
+final case class PromptProperty(label: String, default: Option[String]) extends PropertyInit
+
 final case class Logging(level: LogLevel.Value) extends NotNull
 object LogLevel extends RichEnum
 {

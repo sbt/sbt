@@ -78,8 +78,8 @@ class XSbt(info: ProjectInfo) extends ParentProject(info)
 	}
 	trait TestDependencies extends Project
 	{
-		val sc = "org.scala-tools.testing" % "scalacheck" % "1.5" % "test->default"
-		val sp = "org.scala-tools.testing" % "specs" % "1.6.0" % "test->default"
+		val sc = "org.scala-tools.testing" %% "scalacheck" % "1.5" % "test"
+		val sp = "org.scala-tools.testing" % "specs" % "1.6.0" % "test"
 	}
 	class StandardTaskProject(info: ProjectInfo) extends Base(info)
 	{
