@@ -170,24 +170,28 @@ private[sbt] class SpecsRunner(val log: Logger, val listeners: Seq[TestReportLis
 	}
 	private def reportSystem(sus: Sus): SystemReportEvent =
 	{
-		def format =
+			// for source compatibility between specs 1.4.x and 1.5.0:
+			// in specs 1.5.0, description is LiterateDescription
+			// in specs < 1.5.0, description is Elem
+			// LiterateDescription.desc is a Node
+			// Elem.child is a Seq[Node]
+			// each has a map[T](f: Node => T): Seq[T] defined so we use reflection to call the right method
+
+			//description.child.map(_.text) // Elem equivalent
+			//description.desc.map(_.text)  // LiterateDescription
+		def formatDescription(a: AnyRef) =
 		{
-			class ElemDesc(e: Elem) { def desc = e.child }
-			implicit def elemToDesc(e: Elem): ElemDesc = new ElemDesc(e)
-
-			for(description <- sus.literateDescription) yield
-			{
-				// for source compatibility between specs 1.4.x and 1.5.0:
-				// in specs 1.5.0, description is LiterateDescription
-				// in specs < 1.5.0, description is Elem
-				// LiterateDescription.desc is a Node
-				// Elem.child is a Seq[Node]
-				// each has a map[T](f: Node => T): Seq[T] defined so we implicitly convert
-				// an Elem e to an intermediate object that has desc defined to be e.child
-
-				//description.child.map(_.text) // Elem equivalent
-				description.desc.map(_.text)  // LiterateDescription
-			}
+			val toMap = 
+				try { call(a, "desc") }
+				catch { case e: Exception => call(a, "child") }
+			val mapText = (a: AnyRef) => a.getClass.getMethod("text").invoke(a)
+			toMap.getClass.getMethod("map", Class.forName("scala.Function1")).invoke(toMap, mapText).asInstanceOf[Seq[String]]
+		}
+		def call(a: AnyRef, m: String) = a.getClass.getMethod(m).invoke(a)
+		def format: Option[Seq[String]] =
+		{
+			val litD = sus.literateDescription
+			if(litD.isEmpty) None else Some(formatDescription(litD.get))
 		}
 		// these are for 1.6 compatibility, which removed skippedSus (skipped still exists) and examples (moved to specification)
 		def skipped(sus: Sus) = classOf[Sus].getMethod("skipped").invoke(sus).asInstanceOf[Seq[Throwable]]
