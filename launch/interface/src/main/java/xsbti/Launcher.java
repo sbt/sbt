@@ -1,6 +1,5 @@
 package xsbti;
 
-
 public interface Launcher
 {
 	public static final int InterfaceVersion = 1;

@@ -16,6 +16,7 @@ public interface ScalaProvider
 	public File libraryJar();
 	public File compilerJar();
 	/** Creates an application provider that will use 'loader()' as the parent ClassLoader for
-	* the application given by 'id'.*/
+	* the application given by 'id'.  This method will retrieve the application if it has not already
+	* been retrieved.*/
 	public AppProvider app(ApplicationID id);
 }
