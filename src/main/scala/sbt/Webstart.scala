@@ -60,7 +60,7 @@ trait WebstartScalaProject extends ScalaProject
 			import options._
 			FileUtilities.createDirectories(webstartOutputDirectory :: webstartLibDirectory :: Nil, log) // ignore errors
 			verifyOptions(options)
-			
+
 			def relativize(jar: Path) = Path.relativize(webstartOutputDirectory ##, jar) getOrElse
 				error("Jar (" + jar + ") was not in webstart output directory (" + webstartOutputDirectory + ").")
 			def signAndPack(jars: List[Path], targetDirectory: Path): Either[String, List[Path]] =
@@ -91,12 +91,12 @@ trait WebstartScalaProject extends ScalaProject
 					}
 				}
 			}
-		
+
 			import FileUtilities._
-			
+
 			val jars = (webstartLibraries +++ webstartExtraLibraries).get.filter(ClasspathUtilities.isArchive)
 			def process(jars: Iterable[Path]) = for(jar <- jars if jar.asFile.getName.endsWith(".jar")) yield relativize(jar)
-			
+
 			thread(signAndPack(webstartMainJar :: Nil, webstartOutputDirectory)) { mainJars =>
 				thread(signAndPack(jars.toList, webstartLibDirectory)) { libJars =>
 					writeXML(jnlpXML(jarResources(process(mainJars), process(libJars))), jnlpFile, log) orElse
@@ -114,7 +114,7 @@ trait WebstartScalaProject extends ScalaProject
 	/** Creates a default XML element for a JNLP file for the given resource.*/
 	protected def defaultElement(resource: WebstartJarResource): Elem =
 		<jar href={resource.href} main={resource.isMain.toString}/>
-		
+
 }
 private class Jars(val gzippable: List[Path], val nonGzippable: List[Path]) extends NotNull
 {
@@ -165,7 +165,7 @@ private object WebstartScalaProject
 		val signedJar = targetDirectory / jar.asFile.getName
 		val packedJar = packPath(signedJar)
 		import signConfiguration._
-		
+
 		runOption("sign and pack200", List(packedJar, signedJar) from jar, log) {
 			log.debug("Applying pack200 compression and signing " + jar)
 			signAndPack(jar, signedJar, packedJar, alias, options, log) orElse
@@ -214,10 +214,10 @@ private object WebstartScalaProject
 		val xmlString =
 		{
 			import scala.xml.Utility
-			implicit def another28Hack(any: AnyRef): { def toXML(xml: Elem, stripComments: Boolean): String } =
-				new {
-					def toXML(xml: Elem, stripComments: Boolean) = Utility.toXML(xml).toString // this will only be called for 2.8, which defaults to stripComments= false, unlike 2.7
-				}
+			object WithToXML {
+				def toXML(xml: Elem, stripComments: Boolean) = Utility.toXML(xml).toString // this will only be called for 2.8, which defaults to stripComments= false, unlike 2.7
+			}
+			implicit def another28Hack(any: AnyRef) = WithToXML
 			scala.xml.Utility.toXML(xml, false) // 2.8 doesn't have this method anymore, so the above implicit will kick in for 2.8 only
 		}
 		if(!outputPath.exists)
@@ -248,14 +248,14 @@ private object WebstartScalaProject
 		new WebstartJarResource(jar.asFile.getName, jar.relativePathString("/"), isMain)
 	private def jarResources(mainJars: Iterable[Path], libraries: Iterable[Path]): Seq[WebstartJarResource] =
 		mainJars.map(jarResource(true)).toList ::: libraries.map(jarResource(false)).toList
-	
+
 	/** True iff 'directory' is an ancestor (strictly) of 'check'.*/
 	private def isInDirectory(directory: Path, check: Path) = Path.relativize(directory, check).isDefined && directory != check
 	/** Checks the paths in the given options for validity.  See the documentation for WebstartOptions.*/
 	private def verifyOptions(options: WebstartOptions)
 	{
 		import options._
-		require(isInDirectory(webstartOutputDirectory, webstartLibDirectory), 
+		require(isInDirectory(webstartOutputDirectory, webstartLibDirectory),
 			"Webstart dependency directory (" + webstartLibDirectory + ") must be a subdirectory of webstart output directory (" +
 				webstartOutputDirectory + ").")
 		require(isInDirectory(webstartOutputDirectory, jnlpFile), "Webstart JNLP file output location (" + jnlpFile +
@@ -273,13 +273,13 @@ abstract class DefaultWebstartProject(val info: ProjectInfo) extends BasicWebsta
 abstract class BasicWebstartProject extends BasicScalaProject with WebstartScalaProject with WebstartOptions with WebstartPaths
 {
 	def webstartSignConfiguration: Option[SignConfiguration] = None
-	
+
 	def webstartExtraLibraries = mainDependencies.scalaJars
 	def webstartLibraries = publicClasspath +++ jarsOfProjectDependencies
 	def webstartResources = descendents(jnlpResourcesPath ##, AllPassFilter)
 
 	def webstartPack200 = true
 	def webstartGzip = true
-	
+
 	override def packageAction = super.packageAction && webstartTask(this)
 }

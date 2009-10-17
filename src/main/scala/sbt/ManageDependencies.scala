@@ -417,9 +417,6 @@ object ManageDependencies
 			newModule.addDependency(translated)
 		newModule
 	}
-	private def addConfigurations(configurations: Iterable[String], to: { def setConfs(c: Array[String]): AnyRef }): Unit =
-		to.setConfs(configurations.toList.toArray)
-
 	def install(ivyConfig: IvyConfiguration, from: String, to: String, validate: Boolean, overwrite: Boolean) =
 	{
 		def doInstall(ivy: Ivy, md: ModuleDescriptor, default: String) =
