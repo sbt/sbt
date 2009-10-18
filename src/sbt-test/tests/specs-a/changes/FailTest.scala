@@ -27,10 +27,10 @@ object FailTest extends Specification
   }
 }
 
-class ClassNotATest extends Specification
+class ClassCanBeATest extends Specification
 {
 	// would fail if called
   "'hello world' has 11 characters" in {
-     "hello world".size mustEqual 12
+     "hello world".size mustEqual 11
   }
 }

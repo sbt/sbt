@@ -34,7 +34,7 @@ import BasicAnalysis._
 import impl.MapUtilities.{add, all, read, mark, readOnlyIterable, write}
 import scala.collection.mutable.{HashMap, HashSet, ListBuffer, Map, Set}
 
-sealed class BasicAnalysis(analysisPath: Path, projectPath: Path, log: Logger) extends TaskAnalysis[Path, Path, File]
+class BasicAnalysis(analysisPath: Path, projectPath: Path, log: Logger) extends TaskAnalysis[Path, Path, File]
 {
 	private val sourceDependencyMap: Map[Path, Set[Path]] = new HashMap
 	private val productMap: Map[Path, Set[Path]] = new HashMap
@@ -161,7 +161,7 @@ object CompileAnalysis
 }
 import CompileAnalysis._
 import Format._ // get implicits for data types
-sealed class BasicCompileAnalysis protected (analysisPath: Path, projectPath: Path, log: Logger) extends BasicAnalysis(analysisPath, projectPath, log)
+class BasicCompileAnalysis protected (analysisPath: Path, projectPath: Path, log: Logger) extends BasicAnalysis(analysisPath, projectPath, log)
 {
 	/*private */val hashesMap = new HashMap[Path, Array[Byte]]
 	
@@ -196,7 +196,7 @@ private[sbt] final class BuilderCompileAnalysis(analysisPath: Path, projectPath:
 		Backed(projectDefinitionMap, ProjectDefinitionsLabel, ProjectDefinitionsName) ::
 		super.backedMaps
 }
-final class CompileAnalysis(analysisPath: Path, projectPath: Path, log: Logger) extends BasicCompileAnalysis(analysisPath, projectPath, log)
+class CompileAnalysis(analysisPath: Path, projectPath: Path, log: Logger) extends BasicCompileAnalysis(analysisPath, projectPath, log)
 {
 	private val testMap = new HashMap[Path, Set[TestDefinition]]
 	private val applicationsMap = new HashMap[Path, Set[String]]
