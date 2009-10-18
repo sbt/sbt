@@ -1,5 +1,6 @@
 package xsbt.boot
 
+import Pre._
 import java.io.File
 import java.net.URI
 

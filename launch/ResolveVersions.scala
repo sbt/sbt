@@ -1,15 +1,14 @@
 package xsbt.boot
 
+import Pre._
 import java.io.{File, FileInputStream}
 import java.util.Properties
-
-final case class ResolvedVersion(v: String, wasExplicit: Boolean) extends NotNull
 
 object ResolveVersions
 {
 	def apply(conf: LaunchConfiguration): LaunchConfiguration = (new ResolveVersions(conf))()
 	private def trim(s: String) = if(s eq null) None else notEmpty(s.trim)
-	private def notEmpty(s: String) = if(s.isEmpty) None else Some(s)
+	private def notEmpty(s: String) = if(isEmpty(s)) None else Some(s)
 	private def readProperties(propertiesFile: File) =
 	{
 		val properties = new Properties
@@ -40,7 +39,7 @@ final class ResolveVersions(conf: LaunchConfiguration) extends NotNull
 			v match
 			{
 				case e: Version.Explicit => e.value
-				case Version.Implicit(default) => readVersion() orElse default getOrElse noVersionInFile
+				case i: Version.Implicit => readVersion() orElse i.default getOrElse noVersionInFile
 			}
 		}
 		def readVersion() = trim(properties.getProperty(versionProperty))

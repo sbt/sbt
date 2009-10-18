@@ -20,19 +20,19 @@ object ScalaProviderTest extends Specification
 
 	"Launch" should {
 		"Successfully load an application from local repository and run it with correct arguments" in {
-			checkLoad(Array("test"), "xsbt.boot.test.ArgumentTest").asInstanceOf[Exit].code must be(0)
-			checkLoad(Array(), "xsbt.boot.test.ArgumentTest") must throwA[RuntimeException]
+			checkLoad(List("test"), "xsbt.boot.test.ArgumentTest").asInstanceOf[Exit].code must be(0)
+			checkLoad(List(), "xsbt.boot.test.ArgumentTest") must throwA[RuntimeException]
 		}
 		"Successfully load an application from local repository and run it with correct sbt version" in {
-			checkLoad(Array(), "xsbt.boot.test.AppVersionTest").asInstanceOf[Exit].code must be(0)
+			checkLoad(List(), "xsbt.boot.test.AppVersionTest").asInstanceOf[Exit].code must be(0)
 		}
 	}
 
-	private def checkLoad(arguments: Array[String], mainClassName: String): MainResult =
+	private def checkLoad(arguments: List[String], mainClassName: String): MainResult =
 		FileUtilities.withTemporaryDirectory { currentDirectory =>
 			withLauncher { launcher =>
 				Launch.run(launcher)(
-					RunConfiguration(mapScalaVersion(LaunchTest.getScalaVersion), LaunchTest.testApp(mainClassName).toID, currentDirectory, arguments)
+					new RunConfiguration(mapScalaVersion(LaunchTest.getScalaVersion), LaunchTest.testApp(mainClassName).toID, currentDirectory, arguments)
 				)
 			}
 		}
@@ -49,9 +49,9 @@ object ScalaProviderTest extends Specification
 }
 object LaunchTest
 {
-	def testApp(main: String) = Application("org.scala-tools.sbt", "launch-test", Version.Explicit(test.MainTest.Version), main, Nil, false)
+	def testApp(main: String) = Application("org.scala-tools.sbt", "launch-test", new Version.Explicit(test.MainTest.Version), main, Nil, false)
 	import Repository.Predefined._
-	def testRepositories = Seq(Local, ScalaToolsReleases, ScalaToolsSnapshots).map(Repository.Predefined.apply)
+	def testRepositories = List(Local, ScalaToolsReleases, ScalaToolsSnapshots).map(Repository.Predefined.apply)
 	def withLauncher[T](f: xsbti.Launcher => T): T =
 		FileUtilities.withTemporaryDirectory { bootDirectory =>
 			f(new Launch(bootDirectory, testRepositories))
@@ -59,7 +59,7 @@ object LaunchTest
 
 	def mapScalaVersion(versionNumber: String) = scalaVersionMap.find(_._2 == versionNumber).getOrElse {
 		error("Scala version number " + versionNumber + " from library.properties has no mapping")}._1
-	val scalaVersionMap = Map("2.7.2" -> "2.7.2") ++ Seq("2.7.3", "2.7.4", "2.7.5").map(v => (v, v + ".final"))
+	val scalaVersionMap = Map( ("2.7.2", "2.7.2") ) ++ List("2.7.3", "2.7.4", "2.7.5").map(v => (v, v + ".final"))
 	def getScalaVersion: String = getScalaVersion(getClass.getClassLoader)
 	def getScalaVersion(loader: ClassLoader): String =
 	{

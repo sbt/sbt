@@ -1,64 +1,79 @@
 package xsbt.boot
 
+import Pre._
 import java.io.File
 import java.net.URL
 
 object Launch
 {
-	def apply(arguments: Seq[String]): Unit = apply( (new File("")).getAbsoluteFile , arguments )
+	val start = System.currentTimeMillis
+	def time(label: String) = System.out.println(label + " : " + (System.currentTimeMillis - start) / 1000.0 + " s")
+	def apply(arguments: List[String]): Unit = apply( (new File("")).getAbsoluteFile , arguments )
 
-	def apply(currentDirectory: File, arguments: Seq[String]): Unit =
+	def apply(currentDirectory: File, arguments: List[String]): Unit =
 		Configuration.find(arguments, currentDirectory) match { case (configLocation, newArguments) => configured(currentDirectory, configLocation, newArguments) }
 
-	def configured(currentDirectory: File, configLocation: URL, arguments: Seq[String]): Unit =
+	def configured(currentDirectory: File, configLocation: URL, arguments: List[String]): Unit =
 	{
+		time("found boot config")
 		val config = Configuration.parse(configLocation, currentDirectory)
+		time("parsed")
 		Find(config, currentDirectory) match { case (resolved, baseDirectory) => parsed(baseDirectory, resolved, arguments) }
 	}
-	def parsed(currentDirectory: File, parsed: LaunchConfiguration, arguments: Seq[String]): Unit =
+	def parsed(currentDirectory: File, parsed: LaunchConfiguration, arguments: List[String]): Unit =
 	{
+		time("found working directory")
 		val propertiesFile = parsed.boot.properties
 		import parsed.boot.{enableQuick, promptCreate, promptFill}
-		if(!promptCreate.isEmpty && !propertiesFile.exists)
+		if(isNonEmpty(promptCreate) && !propertiesFile.exists)
 			Initialize.create(propertiesFile, promptCreate, enableQuick, parsed.appProperties)
 		else if(promptFill)
 			Initialize.fill(propertiesFile, parsed.appProperties)
+		time("initialized")
 		initialized(currentDirectory, parsed, arguments)
 	}
-	def initialized(currentDirectory: File, parsed: LaunchConfiguration, arguments: Seq[String]): Unit =
-		 explicit(currentDirectory, ResolveVersions(parsed), arguments)
+	def initialized(currentDirectory: File, parsed: LaunchConfiguration, arguments: List[String]): Unit =
+	{
+		val resolved = ResolveVersions(parsed)
+		time("resolved")
+		explicit(currentDirectory, resolved, arguments)
+	}
 
-	def explicit(currentDirectory: File, explicit: LaunchConfiguration, arguments: Seq[String]): Unit =
+	def explicit(currentDirectory: File, explicit: LaunchConfiguration, arguments: List[String]): Unit =
 		launch( run(new Launch(explicit.boot.directory, explicit.repositories)) ) (
-			RunConfiguration(explicit.getScalaVersion, explicit.app.toID, currentDirectory, arguments) )
+			new RunConfiguration(explicit.getScalaVersion, explicit.app.toID, currentDirectory, arguments) )
 
 	def run(launcher: xsbti.Launcher)(config: RunConfiguration): xsbti.MainResult =
 	{
 		import config._
 		val scalaProvider: xsbti.ScalaProvider = launcher.getScala(scalaVersion)
 		val appProvider: xsbti.AppProvider = scalaProvider.app(app)
-		val appConfig: xsbti.AppConfiguration = new AppConfiguration(arguments.toArray, workingDirectory, appProvider)
+		val appConfig: xsbti.AppConfiguration = new AppConfiguration(toArray(arguments), workingDirectory, appProvider)
 
-		appProvider.newMain().run(appConfig)
+		time("pre-load")
+		val main = appProvider.newMain()
+		time("loaded")
+		val result = main.run(appConfig)
+		time("ran")
+		result
 	}
 	final def launch(run: RunConfiguration => xsbti.MainResult)(config: RunConfiguration)
 	{
 		run(config) match
 		{
 			case e: xsbti.Exit => System.exit(e.code)
-			case r: xsbti.Reboot => launch(run)(RunConfiguration(r.scalaVersion, r.app, r.baseDirectory, r.arguments))
+			case r: xsbti.Reboot => launch(run)(new RunConfiguration(r.scalaVersion, r.app, r.baseDirectory, r.arguments.toList))
 			case x => throw new BootException("Invalid main result: " + x + (if(x eq null) "" else " (class: " + x.getClass + ")"))
 		}
 	}
 }
-case class RunConfiguration(scalaVersion: String, app: xsbti.ApplicationID, workingDirectory: File, arguments: Seq[String]) extends NotNull
+final class RunConfiguration(val scalaVersion: String, val app: xsbti.ApplicationID, val workingDirectory: File, val arguments: List[String]) extends NotNull
 
 import BootConfiguration.{appDirectoryName, baseDirectoryName, ScalaDirectoryName, TestLoadScalaClasses}
-class Launch(val bootDirectory: File, repositories: Seq[Repository]) extends xsbti.Launcher
+class Launch(val bootDirectory: File, repositories: List[Repository]) extends xsbti.Launcher
 {
-	import scala.collection.mutable.HashMap
-	private val scalaProviders = new HashMap[String, ScalaProvider]
-	def getScala(version: String): xsbti.ScalaProvider = scalaProviders.getOrElseUpdate(version, new ScalaProvider(version))
+	private val scalaProviders = new Cache[String, ScalaProvider](new ScalaProvider(_))
+	def getScala(version: String): xsbti.ScalaProvider = scalaProviders(version)
 
 	lazy val topLoader = new BootFilteredLoader(getClass.getClassLoader)
 
@@ -74,7 +89,7 @@ class Launch(val bootDirectory: File, repositories: Seq[Repository]) extends xsb
 		lazy val scalaHome = new File(libDirectory, ScalaDirectoryName)
 		def compilerJar = new File(scalaHome, "scala-compiler.jar")
 		def libraryJar = new File(scalaHome, "scala-library.jar")
-		def baseDirectories = Seq(scalaHome)
+		def baseDirectories = List(scalaHome)
 		def testLoadClasses = TestLoadScalaClasses
 		def target = UpdateScala
 		def failLabel = "Scala " + version
@@ -87,8 +102,8 @@ class Launch(val bootDirectory: File, repositories: Seq[Repository]) extends xsb
 			def configuration = ScalaProvider.this.configuration
 			lazy val appHome = new File(libDirectory, appDirectoryName(id, File.separator))
 			def parentLoader = ScalaProvider.this.loader
-			def baseDirectories = id.mainComponents.map(components.componentLocation) ++ Seq(appHome)
-			def testLoadClasses = Seq(id.mainClass)
+			def baseDirectories = appHome :: id.mainComponents.map(components.componentLocation).toList
+			def testLoadClasses = List(id.mainClass)
 			def target = new UpdateApp(Application(id))
 			def failLabel = id.name + " " + id.version
 
@@ -113,7 +128,7 @@ class ComponentProvider(baseDirectory: File) extends xsbti.ComponentProvider
 		if(location.exists)
 			throw new BootException("Cannot redefine component.  ID: " + id + ", files: " + files.mkString(","))
 		else
-			Copy(files, location)
+			Copy(files.toList, location)
 	}
 	def lockFile = ComponentProvider.lockFile(baseDirectory)
 }

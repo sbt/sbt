@@ -3,7 +3,6 @@ import java.io.File
 
 trait ProguardLaunch extends ProguardProject
 {
-	override def basicOptions = super.basicOptions ++ Seq(keepJLine)
 	def outputJar = rootProject.outputPath / ("xsbt-launch-" + version + ".jar")
 	override def keepClasses =
 		"org.apache.ivy.plugins.resolver.URLResolver" ::
@@ -21,10 +20,24 @@ trait ProguardLaunch extends ProguardProject
 
 		log.debug("proguard configuration ivy jar location: " + ivyJars.mkString(", "))
 
-		((withJar(ivyJars.toSeq, "Ivy") + "(!META-INF/**,!fr/**,!**/antlib.xml,!**/*.png)") ::
+		val excludeIvyResourcesString = excludeString(excludeIvyResources)
+		((withJar(ivyJars.toSeq, "Ivy") + excludeIvyResourcesString) ::
 		(withJar(jlineJars, "JLine") + "(!META-INF/**)" ) ::
 		otherJars.map(jar => mkpath(jar) + "(!META-INF/**,!*.properties)").toList) map { "-injars " + _ }
 	}
+
+	private def excludeString(s: List[String]) = s.map("!" + _).mkString("(",",",")")
+	private def excludeIvyResources =
+		"META-INF/**" ::
+		"fr/**" ::
+		"**/antlib.xml" ::
+		"**/*.png" ::
+		"org/apache/ivy/core/settings/ivyconf*.xml" ::
+		"org/apache/ivy/core/settings/ivysettings-*.xml" ::
+		"org/apache/ivy/plugins/resolver/packager/*" ::
+		"**/ivy_vfs.xml" ::
+		"org/apache/ivy/plugins/report/ivy-report-*" ::
+		Nil
 
 	private def withJar[T](files: Seq[File], name: String) = mkpath(files.firstOption.getOrElse(error(name + " not present (try running update)")))
 	private def isJLineJar(file: File) = isJarX(file, "jline")

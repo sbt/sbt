@@ -12,7 +12,7 @@ object Boot
 	{
 		System.clearProperty("scala.home") // avoid errors from mixing Scala versions in the same JVM
 		CheckProxy()
-		try { Launch(args) }
+		try { Launch(args.toList) }
 		catch
 		{
 			case b: BootException => errorAndExit(b)

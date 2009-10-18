@@ -3,6 +3,7 @@
  */
 package xsbt.boot
 
+import Pre._
 import java.net.{MalformedURLException, URL}
 
 object CheckProxy
@@ -33,5 +34,5 @@ object CheckProxy
 	private def copyEnv(envKey: String, sysKey: String) { setProperty(sysKey, System.getenv(envKey)) }
 	private def setProperty(key: String, value: String) { if(value != null) System.setProperty(key, value) }
 	private def isPropertyDefined(k: String) = isDefined(System.getProperty(k))
-	private def isDefined(s: String) = s != null && !s.isEmpty
+	private def isDefined(s: String) = s != null && isNonEmpty(s)
 }

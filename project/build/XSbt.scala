@@ -26,7 +26,6 @@ class XSbt(info: ProjectInfo) extends ParentProject(info)
 		launchInterfaceSub, interfaceSub, ivySub, ioSub, classpathSub, compileInterfaceSub)
 	val stdTaskSub = project(tasksPath / "standard", "Standard Tasks", new StandardTaskProject(_), trackingSub, compilerSub)
 
-	val mainSub = project("main", "Main", new Base(_), stdTaskSub)
 	val distSub = project("dist", "Distribution", new DistProject(_))
 
 		/* Multi-subproject paths */

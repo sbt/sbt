@@ -7,13 +7,9 @@ import java.util.concurrent.Callable
 // gets a file lock by first getting a JVM-wide lock.
 object Locks extends xsbti.GlobalLock
 {
-	import scala.collection.mutable.HashMap
-	private[this] val locks = new HashMap[File, GlobalLock]
+	private[this] val locks = new Cache[File, GlobalLock](new GlobalLock(_))
 	def apply[T](file: File, action: Callable[T]) =
-	{
-		val canonFile = file.getCanonicalFile
-		synchronized { locks.getOrElseUpdate(canonFile, new GlobalLock(canonFile)).withLock(action) }
-	}
+		synchronized { locks(file.getCanonicalFile).withLock(action) }
 
 	private[this] class GlobalLock(file: File)
 	{
@@ -37,7 +33,7 @@ object Locks extends xsbti.GlobalLock
 				val freeLock = channel.tryLock
 				if(freeLock eq null)
 				{
-					println("Waiting for lock on " + file + " to be available...");
+					System.out.println("Waiting for lock on " + file + " to be available...");
 					val lock = channel.lock
 					try { run.call }
 					finally { lock.release() }

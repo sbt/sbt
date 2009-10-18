@@ -10,7 +10,7 @@ object Using extends NotNull
 
 object Copy
 {
-	def apply(files: Seq[File], toDirectory: File): Unit =  files.foreach(file => apply(file, toDirectory))
+	def apply(files: List[File], toDirectory: File): Unit =  files.foreach(file => apply(file, toDirectory))
 	def apply(file: File, toDirectory: File)
 	{
 		toDirectory.mkdirs()

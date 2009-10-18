@@ -1,26 +1,27 @@
 package xsbt.boot
 
+import Pre._
 import java.io.{File, FileInputStream, FileOutputStream}
 import java.util.Properties
 
 object Initialize
 {
-	def create(file: File, promptCreate: String, enableQuick: Boolean, spec: Seq[AppProperty])
+	def create(file: File, promptCreate: String, enableQuick: Boolean, spec: List[AppProperty])
 	{
 		SimpleReader.readLine(promptCreate + " (y/N" + (if(enableQuick) "/s" else "") + ") ") match
 		{
-			case None => throw new BootException("")
+			case None => error("")
 			case Some(line) =>
 				line.toLowerCase match
 				{
 					case "y" | "yes" => process(file, spec, _.create)
-					case "n" | "no" | "" => throw new BootException("")
+					case "n" | "no" | "" => error("")
 					case "s" => process(file, spec, _.quick)
 				}
 		}
 	}
-	def fill(file: File, spec: Seq[AppProperty]): Unit = process(file, spec, _.fill)
-	def process(file: File, appProperties: Seq[AppProperty], select: AppProperty => Option[PropertyInit])
+	def fill(file: File, spec: List[AppProperty]): Unit = process(file, spec, _.fill)
+	def process(file: File, appProperties: List[AppProperty], select: AppProperty => Option[PropertyInit])
 	{
 		val properties = new Properties
 		if(file.exists)
@@ -34,14 +35,14 @@ object Initialize
 	{
 		init match
 		{
-			case SetProperty(value) => properties.setProperty(name, value)
-			case PromptProperty(label, default) =>
-				def noValue = throw new BootException("No value provided for " + label)
-				SimpleReader.readLine(label + default.toList.map(" [" + _ + "]").mkString + ": ") match
+			case set: SetProperty => properties.setProperty(name, set.value)
+			case prompt: PromptProperty =>
+				def noValue = error("No value provided for " + prompt.label)
+				SimpleReader.readLine(prompt.label + prompt.default.toList.map(" [" + _ + "]").mkString + ": ") match
 				{
 					case None => noValue
 					case Some(line) =>
-						val value = if(line.isEmpty) default.getOrElse(noValue) else line
+						val value = if(isEmpty(line)) prompt.default.getOrElse(noValue) else line
 						properties.setProperty(name, value)
 				}
 		}

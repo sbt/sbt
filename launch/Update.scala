@@ -3,7 +3,9 @@
  */
 package xsbt.boot
 
+import Pre._
 import java.io.{File, FileWriter, PrintWriter, Writer}
+import java.util.regex.Pattern
 
 import org.apache.ivy.{core, plugins, util, Ivy}
 import core.LogOptions
@@ -23,9 +25,9 @@ import BootConfiguration._
 
 sealed trait UpdateTarget extends NotNull { def tpe: String }
 final object UpdateScala extends UpdateTarget { def tpe = "scala" }
-final case class UpdateApp(id: Application) extends UpdateTarget { def tpe = "app" }
+final class UpdateApp(val id: Application) extends UpdateTarget { def tpe = "app" }
 
-final class UpdateConfiguration(val bootDirectory: File, val scalaVersion: String, val repositories: Seq[Repository]) extends NotNull
+final class UpdateConfiguration(val bootDirectory: File, val scalaVersion: String, val repositories: List[Repository]) extends NotNull
 
 /** Ensures that the Scala and application jars exist for the given versions or else downloads them.*/
 final class Update(config: UpdateConfiguration)
@@ -58,7 +60,7 @@ final class Update(config: UpdateConfiguration)
 			case e: Exception =>
 				e.printStackTrace(logWriter)
 				log(e.toString)
-				println("  (see " + logFile + " for complete log)")
+				System.out.println("  (see " + logFile + " for complete log)")
 		}
 		finally
 		{
@@ -80,7 +82,8 @@ final class Update(config: UpdateConfiguration)
 			case UpdateScala =>
 				addDependency(moduleID, ScalaOrg, CompilerModuleName, scalaVersion, "default")
 				addDependency(moduleID, ScalaOrg, LibraryModuleName, scalaVersion, "default")
-			case UpdateApp(app) =>
+			case u: UpdateApp =>
+				val app = u.id
 				val resolvedName = if(app.crossVersioned) app.name + "_" + scalaVersion else app.name
 				addDependency(moduleID, app.groupID, resolvedName, app.getVersion, "default(compile)")
 		}
@@ -112,8 +115,10 @@ final class Update(config: UpdateConfiguration)
 		if(resolveReport.hasError)
 		{
 			logExceptions(resolveReport)
-			println(Set(resolveReport.getAllProblemMessages.toArray: _*).mkString(System.getProperty("line.separator")))
-			throw new BootException("Error retrieving required libraries")
+			val seen = new java.util.LinkedHashSet[Any]
+			seen.addAll(resolveReport.getAllProblemMessages)
+			System.out.println(seen.toArray.mkString(System.getProperty("line.separator")))
+			error("Error retrieving required libraries")
 		}
 	}
 	/** Exceptions are logged to the update log file. */
@@ -135,7 +140,7 @@ final class Update(config: UpdateConfiguration)
 			target match
 			{
 				case UpdateScala => scalaRetrievePattern
-				case UpdateApp(app) => appRetrievePattern(app.toID)
+				case u: UpdateApp => appRetrievePattern(u.id.toID)
 			}
 		retrieveEngine.retrieve(module.getModuleRevisionId, baseDirectoryName(scalaVersion) + "/" + pattern, retrieveOptions)
 	}
@@ -144,7 +149,7 @@ final class Update(config: UpdateConfiguration)
 	{
 		val newDefault = new ChainResolver
 		newDefault.setName("redefined-public")
-		if(repositories.isEmpty) throw new BootException("No repositories defined.")
+		if(repositories.isEmpty) error("No repositories defined.")
 		repositories.foreach(repo => newDefault.add(toIvyRepository(settings, repo)))
 		onDefaultRepositoryCacheManager(settings)(_.setUseOrigin(true))
 		settings.addResolver(newDefault)
@@ -210,13 +215,13 @@ final class Update(config: UpdateConfiguration)
 		resolver.addArtifactPattern(localIvyRoot + "/" + LocalArtifactPattern)
 		resolver
 	}
-	private val SnapshotPattern = """(\d+).(\d+).(\d+)-(\d{8})\.(\d{6})-(\d+|\+)""".r.pattern
+	private val SnapshotPattern = Pattern.compile("""(\d+).(\d+).(\d+)-(\d{8})\.(\d{6})-(\d+|\+)""")
 	private def scalaSnapshots(scalaVersion: String) =
 	{
 		val m = SnapshotPattern.matcher(scalaVersion)
 		if(m.matches)
 		{
-			val base = Seq(1,2,3).map(m.group).mkString(".")
+			val base = List(1,2,3).map(m.group).mkString(".")
 			val pattern = "http://scala-tools.org/repo-snapshots/[organization]/[module]/" + base + "-SNAPSHOT/[artifact]-[revision].[ext]"
 
 			val resolver = new URLResolver
@@ -233,7 +238,7 @@ final class Update(config: UpdateConfiguration)
 	{
 		try { logWriter.println(msg) }
 		catch { case e: Exception => System.err.println("Error writing to update log file: " + e.toString) }
-		println(msg)
+		System.out.println(msg)
 	}
 }
 /** A custom logger for Ivy to ignore the messages about not finding classes

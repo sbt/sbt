@@ -36,6 +36,7 @@ trait ProguardProject extends BasicScalaProject
 
 	def mapInJars(inJars: Seq[File]): Seq[String] = inJars.map(f => "-injars " + mkpath(f))
 	def mapLibraryJars(libraryJars: Seq[File]): Seq[String] = libraryJars.map(f => "-libraryjars " + mkpath(f))
+	def mapOutJar(outJar: File) = "-outjars " + mkpath(outJar)
 
 	def template(inJars: Seq[File], libraryJars: Seq[File], outJar: File, options: Seq[String], mainClass: Option[String], keepClasses: Seq[String]) =
 	{
@@ -49,7 +50,7 @@ trait ProguardProject extends BasicScalaProject
 			keepClasses.map("-keep public class " + _  + " {\n public * ;\n}") ++
 			mapInJars(inJars) ++
 			 Seq("-injars " + mkpath(rawJarPath.asFile),
-			"-outjars " + mkpath(outJar)) ++
+			mapOutJar(outJar)) ++
 			mapLibraryJars(libraryJars) ++
 			 mainClass.map(main => keepMain.stripMargin.format(main)).toList
 		lines.mkString("\n")
