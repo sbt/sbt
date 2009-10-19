@@ -7,14 +7,15 @@ import java.io.File
 
 class SbtProject(info: ProjectInfo) extends DefaultProject(info) //with test.SbtScripted
 {
-	/** Additional resources to include in the produced jar.*/
+	/* Additional resources to include in the produced jar.*/
 	def extraResources = descendents(info.projectPath / "licenses", "*") +++ "LICENSE" +++ "NOTICE"
 	override def mainResources = super.mainResources +++ extraResources
-	override def mainClass = Some("sbt.Main")
-	override def testOptions = ExcludeTests("sbt.ReflectiveSpecification" :: "sbt.ProcessSpecification" :: Nil) :: super.testOptions.toList
+
+	override def testOptions = ExcludeTests("sbt.ReflectiveSpecification" :: Nil) :: super.testOptions.toList
 	override def normalizedName = "sbt"
 	//override def scriptedDependencies = testCompile :: `package` :: Nil
 
+	/* For Scala 2.8.0 nightlies, use a special resolver so that we can refer to a specific nightly and not just 2.8.0-SNAPSHOT*/
 	def specificSnapshotRepo =
 		Resolver.url("scala-nightly") artifacts("http://scala-tools.org/repo-snapshots/[organization]/[module]/2.8.0-SNAPSHOT/[artifact]-[revision].[ext]") mavenStyle()
 	val nightlyScala = ModuleConfiguration("org.scala-lang", "*", "2.8.0-.*", specificSnapshotRepo)
@@ -35,7 +36,7 @@ class SbtProject(info: ProjectInfo) extends DefaultProject(info) //with test.Sbt
 	val optional = Configurations.Optional
 	val provided = Configurations.Provided
 
-	/* The base configuration names for the versions of Scala*/
+	/* Versions of Scala to cross-build against. */
 	private val Version2_7_2 = "2.7.2"
 	private val Version2_7_3 = "2.7.3"
 	private val Version2_7_4 = "2.7.4"
@@ -52,8 +53,8 @@ class SbtProject(info: ProjectInfo) extends DefaultProject(info) //with test.Sbt
 	val jetty = "org.mortbay.jetty" % "jetty" % "6.1.14" % "optional"
 
 	// xsbt components
-	val xsbti = "org.scala-tools.sbt" % "launcher-interface" % "0.7.0_13" % "provided"
-	val compiler = "org.scala-tools.sbt" %% "compile" % "0.7.0_13"
+	val xsbti = "org.scala-tools.sbt" % "launcher-interface" % projectVersion.value.toString % "provided"
+	val compiler = "org.scala-tools.sbt" %% "compile" % projectVersion.value.toString
 
 	override def libraryDependencies = super.libraryDependencies ++ getDependencies(scalaVersionString)
 
