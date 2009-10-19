@@ -44,7 +44,12 @@ class ComponentCompiler(compiler: RawCompiler, manager: ComponentManager)
 			withTemporaryDirectory { outputDirectory =>
 				val xsbtiJars = manager.files(xsbtiID)(IfMissing.Fail)
 				manager.log.info("'" + id + "' not yet compiled for Scala " + compiler.scalaInstance.actualVersion + ". Compiling...")
-				try { compiler(Set() ++ sourceFiles, Set() ++ xsbtiJars, outputDirectory, Nil, true) }
+				val start = System.currentTimeMillis
+				try
+				{
+					compiler(Set() ++ sourceFiles, Set() ++ xsbtiJars, outputDirectory, Nil, true)
+					manager.log.info("  Compilation completed in " + (System.currentTimeMillis - start) / 1000.0 + " s")
+				}
 				catch { case e: xsbti.CompileFailed => throw new CompileFailed(e.arguments, "Error compiling sbt component '" + id + "'") }
 				copy(resources x (FileMapper.rebase(dir, outputDirectory)))
 				zip((outputDirectory ***) x (PathMapper.relativeTo(outputDirectory)), targetJar)

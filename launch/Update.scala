@@ -82,10 +82,12 @@ final class Update(config: UpdateConfiguration)
 			case UpdateScala =>
 				addDependency(moduleID, ScalaOrg, CompilerModuleName, scalaVersion, "default")
 				addDependency(moduleID, ScalaOrg, LibraryModuleName, scalaVersion, "default")
+				System.out.println("Getting Scala " + scalaVersion + " ...")
 			case u: UpdateApp =>
 				val app = u.id
 				val resolvedName = if(app.crossVersioned) app.name + "_" + scalaVersion else app.name
 				addDependency(moduleID, app.groupID, resolvedName, app.getVersion, "default(compile)")
+				System.out.println("Getting " + app.groupID + " " + resolvedName + " " + app.getVersion + " ...")
 		}
 		update(moduleID, target)
 	}

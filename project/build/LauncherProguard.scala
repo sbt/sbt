@@ -3,6 +3,7 @@ import java.io.File
 
 trait ProguardLaunch extends ProguardProject
 {
+	override def basicOptions = super.basicOptions ++ Seq(keepJLine)
 	def outputJar = rootProject.outputPath / ("xsbt-launch-" + version + ".jar")
 	override def keepClasses =
 		"org.apache.ivy.plugins.resolver.URLResolver" ::

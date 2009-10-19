@@ -23,6 +23,7 @@ sealed class ListMap[K,V] private(backing: List[(K,V)]) extends Iterable[(K,V)] 
 			override def apply(k: K) = super.get(k).getOrElse(defaultF(k))
 			override def copy(newBacking: List[(K,V)]) = super.copy(newBacking).default(defaultF)
 		}
+	override def toString = backing.mkString("ListMap(",",",")")
 }
 object ListMap
 {

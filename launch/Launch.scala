@@ -6,8 +6,8 @@ import java.net.URL
 
 object Launch
 {
-	val start = System.currentTimeMillis
-	def time(label: String) = System.out.println(label + " : " + (System.currentTimeMillis - start) / 1000.0 + " s")
+	//val start = System.currentTimeMillis
+	def time(label: String) = ()//System.out.println(label + " : " + (System.currentTimeMillis - start) / 1000.0 + " s")
 	def apply(arguments: List[String]): Unit = apply( (new File("")).getAbsoluteFile , arguments )
 
 	def apply(currentDirectory: File, arguments: List[String]): Unit =
