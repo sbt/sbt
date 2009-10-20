@@ -32,16 +32,15 @@ class ConfigurationParser extends NotNull
 		check(m6, "section")
 		new LaunchConfiguration(scalaVersion, app, repositories, boot, logging, properties)
 	}
-	def getScalaVersion(m: LabelMap) = check("label", getVersion(m))
-	def getVersion(m: LabelMap): (Version, LabelMap) = process(m, "version", processVersion)
-	def processVersion(value: Option[String]): Version = value.map(version).getOrElse(Version.default)
-	def version(value: String): Version =
+	def getScalaVersion(m: LabelMap) = check("label", getVersion(m, "Scala version", "scala.version"))
+	def getVersion(m: LabelMap, label: String, defaultName: String): (Version, LabelMap) = process(m, "version", processVersion(label, defaultName))
+	def processVersion(label: String, defaultName: String)(value: Option[String]): Version =
+		value.map(version(label)).getOrElse(new Version.Implicit(defaultName, None))
+	def version(label: String)(value: String): Version =
 	{
-		if(isEmpty(value)) error("Version cannot be empty (omit version declaration to use the default version)")
-		val tokens = trim(value.split(",", 2))
-		import Version.{Explicit, Implicit}
-		val defaultVersion = if(tokens.length == 2) Some(tokens(1)) else None
-		Implicit(tokens(0), defaultVersion)(err => new Explicit(tokens(0)))
+		if(isEmpty(value)) error(label + " cannot be empty (omit version declaration to use the default version)")
+		try { parsePropertyValue(label, value)(Version.Implicit.apply) }
+		catch { case e: BootException =>  new Version.Explicit(value) }
 	}
 	def processSection[T](sections: SectionMap, name: String, f: LabelMap => T) =
 		process[String,LabelMap,T](sections, name, m => f(m default(x => None)))
@@ -90,7 +89,7 @@ class ConfigurationParser extends NotNull
 	{
 		val (org, m1) = id(m, "org", "org.scala-tools.sbt")
 		val (name, m2) = id(m1, "name", "sbt")
-		val (rev, m3) = getVersion(m2)
+		val (rev, m3) = getVersion(m2, name + " version", name + ".version")
 		val (main, m4) = id(m3, "class", "xsbt.Main")
 		val (components, m5) = ids(m4, "components", List("default"))
 		val (crossVersioned, m6) = id(m5, "cross-versioned", "true")

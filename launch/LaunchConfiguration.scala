@@ -18,18 +18,18 @@ sealed trait Version extends NotNull
 object Version
 {
 	final class Explicit(val value: String) extends Version
-	final class Implicit(val default: Option[String]) extends Version
+	final class Implicit(val name: String, val default: Option[String]) extends Version
 	{
+		require(isNonEmpty(name), "Name cannot be empty")
 		require(default.isEmpty || isNonEmpty(default.get), "Default cannot be the empty string")
 	}
 
 	object Implicit
 	{
-		def apply(s: String, default: Option[String])(handleError: String => Version): Version =
-			if(s == "read") new Implicit(default) else handleError("Expected 'read', got '" + s +"'")
+		def apply(s: String, name: String, default: Option[String]): Version =
+			if(s == "read") new Implicit(name, default) else error("Expected 'read', got '" + s +"'")
 	}
 	def get(v: Version) = v  match { case e: Version.Explicit => e.value; case _ => throw new BootException("Unresolved version: " + v) }
-	def default = new Implicit(None)
 }
 
 final case class Application(groupID: String, name: String, version: Version, main: String, components: List[String], crossVersioned: Boolean) extends NotNull

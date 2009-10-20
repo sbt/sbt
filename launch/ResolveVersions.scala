@@ -26,22 +26,19 @@ final class ResolveVersions(conf: LaunchConfiguration) extends NotNull
 	def apply(): LaunchConfiguration =
 	{
 		import conf._
-		val appVersionProperty = app.name.toLowerCase.replaceAll("\\s+",".") + ".version"
-		val scalaVersion = (new Resolve("scala.version", "Scala"))(conf.scalaVersion)
-		val appVersion = (new Resolve(appVersionProperty, app.name))(app.version)
+		val scalaVersion = resolve(conf.scalaVersion)
+		val appVersion = resolve(app.version)
 		withVersions(scalaVersion, appVersion)
 	}
-	private final class Resolve(versionProperty: String, label: String) extends NotNull
+	def resolve(v: Version): String =
 	{
-		def noVersionInFile = throw new BootException("No " + versionProperty + " specified in " + propertiesFile)
-		def apply(v: Version): String =
+		v match
 		{
-			v match
-			{
-				case e: Version.Explicit => e.value
-				case i: Version.Implicit => readVersion() orElse i.default getOrElse noVersionInFile
-			}
+			case e: Version.Explicit => e.value
+			case i: Version.Implicit =>
+				trim(properties.getProperty(i.name)) orElse
+					i.default getOrElse
+					error("No " + i.name + " specified in " + propertiesFile)
 		}
-		def readVersion() = trim(properties.getProperty(versionProperty))
 	}
 }

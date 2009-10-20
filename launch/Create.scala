@@ -26,10 +26,14 @@ object Initialize
 		val properties = new Properties
 		if(file.exists)
 			Using(new FileInputStream(file))( properties.load )
-		for(property <- appProperties; init <- select(property) if properties.getProperty(property.name) == null)
-			initialize(properties, property.name, init)
-		file.getParentFile.mkdirs()
-		Using(new FileOutputStream(file))( out => properties.save(out, "") )
+		val uninitialized =
+			for(property <- appProperties; init <- select(property) if properties.getProperty(property.name) == null) yield
+				initialize(properties, property.name, init)
+		if(!uninitialized.isEmpty)
+		{
+			file.getParentFile.mkdirs()
+			Using(new FileOutputStream(file))( out => properties.save(out, "") )
+		}
 	}
 	def initialize(properties: Properties, name: String, init: PropertyInit)
 	{
