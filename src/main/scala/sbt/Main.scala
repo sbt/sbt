@@ -101,7 +101,7 @@ class xMain extends xsbti.AppMain
 	private def startProject(project: Project, configuration: xsbti.AppConfiguration, remainingArguments: List[String], startTime: Long): xsbti.MainResult =
 	{
 		project.log.info("Building project " + project.name + " " + project.version.toString + " against Scala " + project.buildScalaVersion)
-		project.log.info("   using " + project.getClass.getName + " with sbt " + project.sbtVersion.value + " and Scala " + project.scalaVersion.value)
+		project.log.info("   using " + project.getClass.getName + " with sbt " + project.sbtVersion.value + " and Scala " + project.defScalaVersion.value)
 
 		processArguments(project, initialize(remainingArguments), configuration, startTime) match
 		{
@@ -124,7 +124,7 @@ class xMain extends xsbti.AppMain
 			{
 				case "" :: tail => process(project, tail, isInteractive)
 				case (ExitCommand | QuitCommand) :: _ => Exit(NormalExitCode)
-				case RebootCommand :: tail => Reboot(project.scalaVersion.value, saveProject(tail), configuration)
+				case RebootCommand :: tail => Reboot(project.defScalaVersion.value, saveProject(tail), configuration)
 				case InteractiveCommand :: _ => process(project, prompt(baseProject, project) :: arguments, true)
 				case SpecificBuild(version, action) :: tail =>
 					if(Some(version) != baseProject.info.buildScalaVersion)
@@ -514,7 +514,7 @@ class xMain extends xsbti.AppMain
 						property.setStringValue(newValue)
 						property match
 						{
-							case project.scalaVersion => notePending("Scala ")
+							case project.defScalaVersion | project.buildScalaVersions => notePending("Scala ")
 							case project.sbtVersion => notePending("sbt ")
 							case _ =>  Console.println(" Set property '" + name + "' = '" + newValue + "'")
 						}

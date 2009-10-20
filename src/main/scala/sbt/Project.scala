@@ -212,21 +212,20 @@ trait Project extends TaskManager with Dag[Project] with BasicEnvironment
 	/** The property for the project's organization.  Defaults to the parent project's organization or the project name if there is no parent. */
 	final val projectOrganization = propertyOptional[String](normalizedName, true)
 	/** The property that defines the version of Scala to use with the project definition.  This can be different
-	* from the version of Scala used to build the project (defined initially by buildInitScalaVersion).
+	* from the version of Scala used to build the project (current version used is buildScalaVersion, available are in buildScalaVersions).
 	* This property is only read by `sbt` on startup and reload. It is the definitive source for the version of Scala
 	* that sbt and the project definition are using.*/
-	final val scalaVersion = property[String]
+	final val defScalaVersion = property[String]
 	final val sbtVersion = property[String]
 	final val projectInitialize = propertyOptional[Boolean](false)
 	final val projectScratch = propertyOptional[Boolean](false, true)
-	/** The property that defines the version of Scala to build this project with by default.  This can be
-	* different from the version of Scala used to build and run the project definition (defined by scalaVersion).
-	* This property is only read by `sbt` on startup and reload.  When cross-building, this value may be different from the actual
-	* version of Scala being used to build the project.  info.scalaVersion is always the definitive source for the current Scala version.
-	* This property should only be used to change the version of Scala used for normal development (not cross-building).*/
-	final val buildInitScalaVersion = propertyOptional[String](scalaVersion.value, true)
+	/** The property that defines the versions of Scala to build this project against as a comma separated string.  This can be
+	* different from the version of Scala used to build and run the project definition (defined by defScalaVersion).
+	* This property is only read by `sbt` on startup and reload.  The definitive source for the version of Scala currently
+	* being used is buildScalaVersion.*/
+	final val buildScalaVersions = propertyOptional[String](defScalaVersion.value, true)
 	/** The definitive source for the version of Scala being used to *build* the project.*/
-	def buildScalaVersion = info.buildScalaVersion.getOrElse(buildInitScalaVersion.value)
+	def buildScalaVersion = info.buildScalaVersion.getOrElse(crossScalaVersions.first)
 
 	def componentManager = new xsbt.ComponentManager(info.launcher.globalLock, info.app.components, log)
 	def buildScalaInstance =
@@ -250,13 +249,12 @@ trait Project extends TaskManager with Dag[Project] with BasicEnvironment
 
 	/** True if crossPath should be the identity function.*/
 	protected def disableCrossPaths = crossScalaVersions.isEmpty
-	/** By default, this is empty and cross-building is disabled.  Overriding this to a Set of Scala versions
-	* will enable cross-building against those versions.*/
-	def crossScalaVersions: immutable.Set[String] =
+	/** By default, this is the build.scala.versions property split around commas.  This can be overridden directly if preferred.*/
+	def crossScalaVersions: Seq[String] =
 		info.parent match
 		{
 			case Some(p) => p.crossScalaVersions
-			case None => immutable.Set.empty[String]
+			case None => buildScalaVersions.value.split("""\s*,\s*""").toList.reverse.removeDuplicates.reverse
 		}
 	/** A `PathFinder` that determines the files watched when an action is run with a preceeding ~ when this is the current
 	* project.  This project does not need to include the watched paths for projects that this project depends on.*/

@@ -27,8 +27,7 @@ sealed abstract class CompilerCore
 		val classpathSet = fileSet(classpath)
 		val scalaCompile = process("Scala", scalaSources, processScala(scalaSources, classpathSet, outputDirectory.asFile, scalaOptions, log) )
 		val javaCompile = process("Java", javaSources, processJava(javaSources, classpathSet, outputDirectory.asFile, javaOptions, log))
-		try { doCompile(label, sources, outputDirectory, order, log)(javaCompile, scalaCompile) }
-		catch { case e: xsbti.CompileFailed => log.trace(e); Some(e.toString) }
+		doCompile(label, sources, outputDirectory, order, log)(javaCompile, scalaCompile)
 	}
 	protected def doCompile(label: String, sources: Iterable[Path], outputDirectory: Path, order: CompileOrder.Value, log: Logger)(javaCompile: () => Unit, scalaCompile: () => Unit) =
 	{
@@ -40,14 +39,16 @@ sealed abstract class CompilerCore
 		}
 		else
 		{
-			FileUtilities.createDirectory(outputDirectory.asFile, log) orElse Control.trapUnit("Compiler error: ", log)
-			{
-				val (first, second) = if(order == CompileOrder.JavaThenScala) (javaCompile, scalaCompile) else (scalaCompile, javaCompile)
-				first()
-				second()
-				log.info(actionSuccessfulMessage)
-				None
-			}
+			FileUtilities.createDirectory(outputDirectory.asFile, log) orElse
+				(try
+				{
+					val (first, second) = if(order == CompileOrder.JavaThenScala) (javaCompile, scalaCompile) else (scalaCompile, javaCompile)
+					first()
+					second()
+					log.info(actionSuccessfulMessage)
+					None
+				}
+				catch { case e: xsbti.CompileFailed => Some(e.toString) })
 		}
 	}
 	def actionStartMessage(label: String): String
