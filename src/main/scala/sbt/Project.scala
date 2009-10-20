@@ -28,11 +28,11 @@ trait Project extends TaskManager with Dag[Project] with BasicEnvironment
 	/** Basic project information. */
 	def info: ProjectInfo
 	/** The project name. */
-	final def name: String = projectName.value
+	def name: String = projectName.value
 	/** The project version. */
-	final def version: Version = projectVersion.value
+	def version: Version = projectVersion.value
 	/** The project organization. */
-	final def organization: String = projectOrganization.value
+	def organization: String = projectOrganization.value
 	/** True if the project should cater to a quick throwaway project setup.*/
 	def scratch = projectScratch.value
 
