@@ -101,7 +101,7 @@ trait ManagedProject extends ClasspathProject
 				case ErrorIfNoConfiguration => errorIfNoConfiguration = true
 				case CacheDirectory(dir) => cacheDirectory = Some(dir)
 				case CheckScalaVersion(configs, checkExplicit, filterImplicit) =>
-					checkScalaVersion = getScalaVersion.map(version => new IvyScala(version, configs, checkExplicit, filterImplicit))
+					checkScalaVersion = Some(new IvyScala(buildScalaVersion, configs, checkExplicit, filterImplicit))
 				case _ => log.warn("Ignored unknown managed option " + option)
 			}
 		}
@@ -110,12 +110,6 @@ trait ManagedProject extends ClasspathProject
 		val ivyConfiguration = new IvyConfiguration(ivyPaths, manager, ivyFlags, checkScalaVersion, log)
 		val updateConfiguration = new UpdateConfiguration(outputPattern, synchronize, quiet)
 		doWith(ivyConfiguration, updateConfiguration)
-	}
-	private def getScalaVersion =
-	{
-		val v = scalaVersion.value
-		if(v.isEmpty) None
-		else Some(v)
 	}
 	protected def withIvyTask(doTask: => Option[String]) =
 		task
