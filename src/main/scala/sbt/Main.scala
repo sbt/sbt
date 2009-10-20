@@ -130,7 +130,7 @@ class xMain extends xsbti.AppMain
 					if(Some(version) != baseProject.info.buildScalaVersion)
 						throw new ReloadException(saveProject(action :: tail), Some(version))
 					else
-						process(project, tail, isInteractive)
+						process(project, action :: tail, isInteractive)
 				case CrossBuild(action) :: tail =>
 					if(checkAction(project, action)) process(project, CrossBuild(project, action) ::: tail, isInteractive)
 					else if(isInteractive) process(project, tail, isInteractive)
@@ -169,7 +169,8 @@ class xMain extends xsbti.AppMain
 	}
 	object SpecificBuild
 	{
-		val pattern = """\+\+(\S+)\s*(.*)""".r.pattern
+		import java.util.regex.Pattern.{compile,quote}
+		val pattern = compile(quote(SpecificBuildPrefix) + """(\S+)\s*(.*)""")
 		def unapply(s: String) =
 		{
 			val m = pattern.matcher(s)
@@ -181,7 +182,7 @@ class xMain extends xsbti.AppMain
 	}
 	object CrossBuild
 	{
-		def unapply(s: String) = if(s.startsWith("+") && !s.startsWith("++")) Some(s.substring(1)) else None
+		def unapply(s: String) = if(s.startsWith(CrossBuildPrefix) && !s.startsWith(SpecificBuildPrefix)) Some(s.substring(1)) else None
 		def apply(project: Project, action: String) =
 		{
 			val againstScalaVersions = project.crossScalaVersions
@@ -191,7 +192,9 @@ class xMain extends xsbti.AppMain
 				action :: Nil
 			}
 			else
-				againstScalaVersions.toList.map("++" + _ + " " + action)
+				againstScalaVersions.toList.map(SpecificBuildPrefix + _ + " " + action) ::: // build against all versions
+					(SpecificBuildPrefix + project.buildScalaVersion) :: // reset to the version before the cross-build
+					Nil
 		}
 	}
 	// todo:  project.log.info("No actions specified, interactive session started. Execute 'help' for more information.")
@@ -237,6 +240,10 @@ class xMain extends xsbti.AppMain
 	val ContinuousExecutePrefix = "~"
 	/** The prefix used to identify a request to execute the remaining input across multiple Scala versions.*/
 	val CrossBuildPrefix = "+"
+	/** The prefix used to identify a request to execute the remaining input after the next space against the
+	* Scala version between this prefix and the space (i.e. '++version action' means execute 'action' using
+	* Scala version 'version'. */
+	val SpecificBuildPrefix = "++"
 
 	/** The number of seconds between polling by the continuous compile command.*/
 	val ContinuousCompilePollDelaySeconds = 1
@@ -280,6 +287,7 @@ class xMain extends xsbti.AppMain
 		printCmd("<method name> <parameter>*", "Executes the project specified method.")
 		printCmd(ContinuousExecutePrefix + " <command>", "Executes the project specified action or method whenever source files change.")
 		printCmd(CrossBuildPrefix + " <command>", "Executes the project specified action or method for all versions of Scala defined in crossScalaVersions.")
+		printCmd(SpecificBuildPrefix + "<version> <command>", "Changes the version of Scala building the project and executes the provided command.  <command> is optional.")
 		printCmd(ShowActions, "Shows all available actions.")
 		printCmd(RebootCommand, "Reloads sbt, picking up modifications to sbt.version or scala.version and recompiling modified project definitions.")
 		printCmd(HelpAction, "Displays this help message.")
