@@ -106,8 +106,10 @@ object Run
 	{
 		override def createInterpreter()
 		{
-			val loader = project.getClass.getClassLoader.asInstanceOf[URLClassLoader]
-			compilerSettings.classpath.value = loader.getURLs.flatMap(ClasspathUtilities.asFile).map(_.getAbsolutePath).mkString(File.pathSeparator)
+			def urlClassLoader(c: Class[_]) = c.getClassLoader.asInstanceOf[URLClassLoader]
+			val loader = urlClassLoader(project.getClass)
+			val urls = List(loader, urlClassLoader(classOf[xsbti.Launcher])).flatMap(_.getURLs) // TODO: this is fragile and should be done better
+			compilerSettings.classpath.value = urls.flatMap(ClasspathUtilities.asFile).map(_.getAbsolutePath).mkString(File.pathSeparator)
 			project.log.debug("  Compiler classpath: " + compilerSettings.classpath.value)
 
 			in = InteractiveReader.createDefault()
