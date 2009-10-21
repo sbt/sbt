@@ -312,7 +312,7 @@ abstract class BasicScalaProject extends ScalaProject with BasicDependencyProjec
 		mapScalaModule(snapshot.scalaCompiler, ScalaArtifacts.CompilerID)
 	}
 	override def watchPaths = mainSources +++ testSources +++ mainResources +++ testResources
-	private def mapScalaModule(in: Iterable[_], id: String) = in.map(jar => ModuleID(ScalaArtifacts.Organization, id, buildScalaVersion))
+	private def mapScalaModule(in: Iterable[File], id: String) = in.map(jar => ModuleID(ScalaArtifacts.Organization, id, buildScalaVersion) from(jar.toURI.toURL.toString))
 }
 abstract class BasicWebScalaProject extends BasicScalaProject with WebScalaProject with WebScalaPaths
 { p =>
