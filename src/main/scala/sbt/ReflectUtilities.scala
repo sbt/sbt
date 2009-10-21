@@ -44,7 +44,7 @@ object ReflectUtilities
 				for(field <- correspondingFields.get(method.getName) if field.getType == method.getReturnType)
 				{
 					val value = method.invoke(self).asInstanceOf[T]
-					assume(value != null, "val " + method.getName + " was null")
+					if(value == null) throw new UninitializedVal(method.getName, method.getDeclaringClass.getName)
 					mappings(method.getName) = value
 				}
 			}
@@ -54,3 +54,4 @@ object ReflectUtilities
 	def allVals[T](self: AnyRef)(implicit mt: scala.reflect.Manifest[T]): Map[String, T] =
 		allValsC(self, mt.erasure).asInstanceOf[Map[String,T]]
 }
+final class UninitializedVal(val valName: String, val className: String) extends RuntimeException("val " + valName + " in class " + className + " was null.\nThis is probably an initialization problem and a 'lazy val' should be used.")
