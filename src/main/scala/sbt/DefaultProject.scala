@@ -12,6 +12,7 @@ class DefaultWebProject(val info: ProjectInfo) extends BasicWebScalaProject with
 import BasicScalaProject._
 import ScalaProject.{optionsAsString, javaOptionsAsString}
 import java.io.File
+import java.net.URLClassLoader
 import java.util.jar.Attributes
 
 /** This class defines concrete instances of actions from ScalaProject using overridable paths,
@@ -169,9 +170,13 @@ abstract class BasicScalaProject extends ScalaProject with BasicDependencyProjec
 	/** The list of test frameworks to use for testing.  Note that adding frameworks to this list
 	* for an active project currently requires an explicit 'clean' to properly update the set of tests to
 	* run*/
-	def testFrameworks: Iterable[TestFramework] = ScalaCheckFramework :: SpecsFramework :: ScalaTestFramework :: Nil
+	def testFrameworks: Seq[TestFramework] = 
+	{
+		import TestFrameworks.{ScalaCheck, ScalaTest, Specs}
+		/*ScalaCheckFramework :: SpecsFramework ::*/ ScalaTest :: Nil
+	}
 	/** The list of listeners for testing. */
-	def testListeners: Seq[TestReportListener] = new LogTestReportListener(log) :: Nil
+	def testListeners: Seq[TestReportListener] = TestLogger(log) :: Nil
 
 	def mainLabel = "main"
 	def testLabel = "test"
@@ -186,6 +191,14 @@ abstract class BasicScalaProject extends ScalaProject with BasicDependencyProjec
 		def options = optionsAsString(baseCompileOptions.filter(!_.isInstanceOf[MaxCompileErrors]))
 		def maxErrors = maximumErrors(baseCompileOptions)
 		def compileOrder = BasicScalaProject.this.compileOrder
+		protected def testClassNames(frameworks: Seq[TestFramework]) = 
+		{
+			val loader = new URLClassLoader(classpath.get.map(_.asURL).toSeq.toArray)
+			def getTestNames(framework: TestFramework): Seq[String] =
+				try { framework.create(loader).tests.map(_.superClassName) }
+				catch { case e: ClassNotFoundException => log.debug("Framework implementation '" + framework.implClassName + "' not present."); Nil }
+			frameworks.flatMap(getTestNames)
+		}
 	}
 	class MainCompileConfig extends BaseCompileConfig
 	{
@@ -196,7 +209,7 @@ abstract class BasicScalaProject extends ScalaProject with BasicDependencyProjec
 		def outputDirectory = mainCompilePath
 		def classpath = compileClasspath
 		def analysisPath = mainAnalysisPath
-		def testDefinitionClassNames: Iterable[String] = Nil
+		def testDefinitionClassNames: Seq[String] = Nil
 		def javaOptions = javaOptionsAsString(javaCompileOptions)
 	}
 	class TestCompileConfig extends BaseCompileConfig
@@ -208,7 +221,7 @@ abstract class BasicScalaProject extends ScalaProject with BasicDependencyProjec
 		def outputDirectory = testCompilePath
 		def classpath = testClasspath
 		def analysisPath = testAnalysisPath
-		def testDefinitionClassNames: Iterable[String] = testFrameworks.map(_.testSuperClassName)
+		def testDefinitionClassNames: Seq[String] = testClassNames(testFrameworks)
 		def javaOptions = javaOptionsAsString(testJavaCompileOptions)
 	}
 

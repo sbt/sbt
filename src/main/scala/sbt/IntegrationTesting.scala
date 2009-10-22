@@ -15,7 +15,7 @@ trait IntegrationTesting extends NotNull
 trait ScalaIntegrationTesting extends IntegrationTesting
 { self: ScalaProject =>
 
-	protected def integrationTestTask(frameworks: Iterable[TestFramework], classpath: PathFinder, analysis: CompileAnalysis, options: => Seq[TestOption]) =
+	protected def integrationTestTask(frameworks: Seq[TestFramework], classpath: PathFinder, analysis: CompileAnalysis, options: => Seq[TestOption]) =
 		testTask(frameworks, classpath, analysis, options)
 }
 
@@ -83,7 +83,7 @@ trait BasicIntegrationTesting extends ScalaIntegrationTesting with IntegrationTe
 		def analysisPath = integrationTestAnalysisPath
 		def baseCompileOptions = integrationTestCompileOptions
 		def javaOptions = javaOptionsAsString(javaCompileOptions)
-		def testDefinitionClassNames = integrationTestFrameworks.map(_.testSuperClassName)
+		def testDefinitionClassNames = testClassNames(integrationTestFrameworks)
 	}
 }
 

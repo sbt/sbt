@@ -149,9 +149,9 @@ trait ScalaProject extends SimpleScalaProject with FileTasks with MultiTaskProje
 	def copyTask(sources: PathFinder, destinationDirectory: Path): Task =
 		task { FileUtilities.copy(sources.get, destinationDirectory, log).left.toOption }
 
-	def testTask(frameworks: Iterable[TestFramework], classpath: PathFinder, analysis: CompileAnalysis, options: TestOption*): Task =
+	def testTask(frameworks: Seq[TestFramework], classpath: PathFinder, analysis: CompileAnalysis, options: TestOption*): Task =
 		testTask(frameworks, classpath, analysis, options)
-	def testTask(frameworks: Iterable[TestFramework], classpath: PathFinder, analysis: CompileAnalysis, options: => Seq[TestOption]): Task =
+	def testTask(frameworks: Seq[TestFramework], classpath: PathFinder, analysis: CompileAnalysis, options: => Seq[TestOption]): Task =
 	{
 		def work =
 		{
@@ -249,7 +249,7 @@ trait ScalaProject extends SimpleScalaProject with FileTasks with MultiTaskProje
 		}
 	}
 	protected def incrementImpl(v: BasicVersion): Version = v.incrementMicro
-	protected def testTasks(frameworks: Iterable[TestFramework], classpath: PathFinder, analysis: CompileAnalysis, options: => Seq[TestOption]) = {
+	protected def testTasks(frameworks: Seq[TestFramework], classpath: PathFinder, analysis: CompileAnalysis, options: => Seq[TestOption]) = {
 		import scala.collection.mutable.HashSet
 
 			val testFilters = new ListBuffer[String => Boolean]
@@ -267,7 +267,6 @@ trait ScalaProject extends SimpleScalaProject with FileTasks with MultiTaskProje
 					case TestSetup(setupFunction) => setup += setupFunction
 					case TestCleanup(cleanupFunction) => cleanup += cleanupFunction
 				}
-				() // 2.8.0-SNAPSHOT bug in type inference
 			}
 
 			if(excludeTestsSet.size > 0 && log.atLevel(Level.Debug))
@@ -277,7 +276,7 @@ trait ScalaProject extends SimpleScalaProject with FileTasks with MultiTaskProje
 			}
 			def includeTest(test: TestDefinition) = !excludeTestsSet.contains(test.testClassName) && testFilters.forall(filter => filter(test.testClassName))
 			val tests = HashSet.empty[TestDefinition] ++ analysis.allTests.filter(includeTest)
-			TestFramework.testTasks(frameworks, classpath.get, tests, log, testListeners.readOnly, false, setup.readOnly, cleanup.readOnly)
+			TestFramework.testTasks(frameworks, classpath.get, tests.toSeq, log, testListeners.readOnly, false, setup.readOnly, cleanup.readOnly)
 	}
 	private def flatten[T](i: Iterable[Iterable[T]]) = i.flatMap(x => x)
 

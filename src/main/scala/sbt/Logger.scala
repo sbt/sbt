@@ -24,6 +24,7 @@ abstract class Logger extends xsbt.CompileLogger with xsbt.IvyLogger
 	def setLevel(newLevel: Level.Value)
 	def enableTrace(flag: Boolean)
 	def traceEnabled: Boolean
+	def ansiCodesSupported = false
 
 	def atLevel(level: Level.Value) = level.id >= getLevel.id
 	def trace(t: => Throwable): Unit
@@ -73,6 +74,7 @@ abstract class BasicLogger extends Logger
 
 final class SynchronizedLogger(delegate: Logger) extends Logger
 {
+	override lazy val ansiCodesSupported = delegate.ansiCodesSupported
 	def getLevel = { synchronized { delegate.getLevel } }
 	def setLevel(newLevel: Level.Value) { synchronized { delegate.setLevel(newLevel) } }
 	def enableTrace(enabled: Boolean) { synchronized { delegate.enableTrace(enabled) } }
@@ -87,6 +89,7 @@ final class SynchronizedLogger(delegate: Logger) extends Logger
 
 final class MultiLogger(delegates: List[Logger]) extends BasicLogger
 {
+	override lazy val ansiCodesSupported = delegates.forall(_.ansiCodesSupported)
 	override def setLevel(newLevel: Level.Value)
 	{
 		super.setLevel(newLevel)
@@ -110,6 +113,7 @@ final class MultiLogger(delegates: List[Logger]) extends BasicLogger
 * */
 final class FilterLogger(delegate: Logger) extends BasicLogger
 {
+	override lazy val ansiCodesSupported = delegate.ansiCodesSupported
 	def trace(t: => Throwable)
 	{
 		if(traceEnabled)
@@ -146,6 +150,7 @@ final class FilterLogger(delegate: Logger) extends BasicLogger
 * */
 final class BufferedLogger(delegate: Logger) extends Logger
 {
+	override lazy val ansiCodesSupported = delegate.ansiCodesSupported
 	private[this] val buffers = wrap.Wrappers.weakMap[Thread, Buffer[LogEvent]]
 	private[this] var recordingAll = false
 
@@ -271,7 +276,7 @@ object ConsoleLogger
 * This logger is not thread-safe.*/
 class ConsoleLogger extends BasicLogger
 {
-	import ConsoleLogger.formatEnabled
+	override def ansiCodesSupported = ConsoleLogger.formatEnabled
 	def messageColor(level: Level.Value) = Console.RESET
 	def labelColor(level: Level.Value) =
 		level match
@@ -300,7 +305,7 @@ class ConsoleLogger extends BasicLogger
 	}
 	private def setColor(color: String)
 	{
-		if(formatEnabled)
+		if(ansiCodesSupported)
 			System.out.synchronized { System.out.print(color) }
 	}
 	private def log(labelColor: String, label: String, messageColor: String, message: String): Unit =

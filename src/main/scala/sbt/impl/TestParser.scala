@@ -15,7 +15,7 @@ import scala.util.parsing.combinator._
 
 import TestParser._
 /** Represents a test implemented by 'testClassName' of type 'superClassName'.*/
-final case class TestDefinition(isModule: Boolean, testClassName: String, superClassName: String) extends NotNull
+final case class TestDefinition(isModule: Boolean, testClassName: String, superClassName: String) extends org.scalatools.testing.TestFingerprint with NotNull
 {
 	override def toString =
 		(if(isModule) IsModuleLiteral else "") + testClassName + SubSuperSeparator + superClassName

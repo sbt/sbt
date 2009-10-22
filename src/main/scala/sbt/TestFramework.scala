@@ -3,62 +3,63 @@
  */
 package sbt
 
+	import java.net.URLClassLoader
+	import org.scalatools.testing.{TestFingerprint => Fingerprint, Framework, Runner, Logger=>TLogger}
+
 object Result extends Enumeration
 {
 	val Error, Passed, Failed = Value
 }
-object ClassType extends Enumeration
-{
-	val Module, Class = Value
-}
 
-trait TestFramework extends NotNull
+object TestFrameworks
 {
-	def name: String
-	def testSuperClassName: String
-	def testSubClassType: ClassType.Value
-	
-	def testRunner(classLoader: ClassLoader, listeners: Iterable[TestReportListener], log: Logger): TestRunner
+	val ScalaCheck = new TestFramework("org.scalacheck.FrameworkImpl")
+	val ScalaTest = new TestFramework("org.scalatest.FrameworkImpl")
+	val Specs = new TestFramework("org.specs.FrameworkImpl")
 }
-trait TestRunner extends NotNull
+class TestFramework(val implClassName: String) extends NotNull
 {
-	def run(testClassName: String): Result.Value
+	def create(loader: ClassLoader): Framework =
+		Class.forName(implClassName, true, loader).newInstance.asInstanceOf[Framework]
 }
-
-abstract class BasicTestRunner extends TestRunner
+final class TestRunner(framework: Framework, loader: ClassLoader, listeners: Seq[TestReportListener], log: Logger) extends NotNull
 {
-	protected def log: Logger
-	protected def listeners: Seq[TestReportListener]
-
-	final def run(testClass: String): Result.Value =
+	private[this] val delegate = framework.testRunner(loader, listeners.flatMap(_.contentLogger).toArray)
+	final def run(testDefinition: TestDefinition, args: Seq[String]): Result.Value =
 	{
+		val testClass = testDefinition.testClassName
+		def runTest() =
+		{
+			val results = delegate.run(testClass, testDefinition, args.toArray)
+			val event = TestEvent(results)
+			safeListenersCall(_.testEvent( event ))
+			event.result
+		}
+
 		safeListenersCall(_.startGroup(testClass))
 		try
 		{
-			val result = runTest(testClass)
+			val result = runTest().getOrElse(Result.Passed)
 			safeListenersCall(_.endGroup(testClass, result))
 			result
 		}
 		catch
 		{
 			case e =>
-			{
 				safeListenersCall(_.endGroup(testClass, e))
 				Result.Error
-			}
 		}
 	}
-	def runTest(testClass: String): Result.Value
 
-	protected def fire(event: TestEvent) = safeListenersCall(_.testEvent(event))
-	protected def safeListenersCall(call: (TestReportListener) => Unit) = TestFramework.safeForeach(listeners, log)(call)
+	protected def safeListenersCall(call: (TestReportListener) => Unit): Unit =
+		TestFramework.safeForeach(listeners, log)(call)
 }
 
 final class NamedTestTask(val name: String, action: => Option[String]) extends NotNull { def run() = action }
 object TestFramework
 {
-	def runTests(frameworks: Iterable[TestFramework], classpath: Iterable[Path], tests: Iterable[TestDefinition], log: Logger,
-		listeners: Iterable[TestReportListener]) =
+	def runTests(frameworks: Seq[TestFramework], classpath: Iterable[Path], tests: Seq[TestDefinition], log: Logger,
+		listeners: Seq[TestReportListener]) =
 	{
 		val (start, runTests, end) = testTasks(frameworks, classpath, tests, log, listeners, true, Nil, Nil)
 		def run(tasks: Iterable[NamedTestTask]) = tasks.foreach(_.run())
@@ -72,49 +73,55 @@ object TestFramework
 	private val TestStartName = "test-start"
 	private val TestFinishName = "test-finish"
 	
-	private[sbt] def safeForeach[T](it: Iterable[T], log: Logger)(f: T => Unit): Unit = it.foreach(i => Control.trapAndLog(log){ f(i) } )
-	import scala.collection.{Map, Set}
-	def testTasks(frameworks: Iterable[TestFramework], classpath: Iterable[Path], tests: Iterable[TestDefinition], log: Logger,
-		listeners: Iterable[TestReportListener], endErrorsEnabled: Boolean, setup: Iterable[() => Option[String]],
+	private[sbt] def safeForeach[T](it: Iterable[T], log: Logger)(f: T => Unit): Unit =
+		it.foreach(i => Control.trapAndLog(log){ f(i) } )
+
+		import scala.collection.{Map, Set}
+	
+	def testTasks(frameworks: Seq[TestFramework], classpath: Iterable[Path], tests: Seq[TestDefinition], log: Logger,
+		listeners: Seq[TestReportListener], endErrorsEnabled: Boolean, setup: Iterable[() => Option[String]],
 		cleanup: Iterable[() => Option[String]]): (Iterable[NamedTestTask], Iterable[NamedTestTask], Iterable[NamedTestTask]) =
 	{
-		val mappedTests = testMap(frameworks, tests)
+		val loader = createTestLoader(classpath)
+		val rawFrameworks = frameworks.map(_.create(loader))
+		val mappedTests = testMap(rawFrameworks, tests)
 		if(mappedTests.isEmpty)
 			(new NamedTestTask(TestStartName, None) :: Nil, Nil, new NamedTestTask(TestFinishName, { log.info("No tests to run."); None }) :: Nil )
 		else
-			createTestTasks(classpath, mappedTests, log, listeners, endErrorsEnabled, setup, cleanup)
+			createTestTasks(loader, mappedTests, log, listeners, endErrorsEnabled, setup, cleanup)
 	}
-	private def testMap(frameworks: Iterable[TestFramework], tests: Iterable[TestDefinition]): Map[TestFramework, Set[String]] =
+	private def testMap(frameworks: Seq[Framework], tests: Seq[TestDefinition]): Map[Framework, Set[TestDefinition]] =
 	{
 		import scala.collection.mutable.{HashMap, HashSet, Set}
-		val map = new HashMap[TestFramework, Set[String]]
-		if(!frameworks.isEmpty)
+		val map = new HashMap[Framework, Set[TestDefinition]]
+		def assignTests(): Unit =
 		{
-			for(test <- tests)
+			for(test <- tests if !map.values.exists(_.contains(test)))
 			{
-				def isTestForFramework(framework: TestFramework) =
-					(framework.testSubClassType == ClassType.Module) == test.isModule &&
-					framework.testSuperClassName == test.superClassName
+				def isTestForFramework(framework: Framework) = framework.tests.exists(matches)
+				def matches(fingerprint: Fingerprint) =
+					(fingerprint.isModule == test.isModule) &&
+					fingerprint.superClassName == test.superClassName
 				
 				for(framework <- frameworks.find(isTestForFramework))
-					map.getOrElseUpdate(framework, new HashSet[String]) += test.testClassName
+					map.getOrElseUpdate(framework, new HashSet[TestDefinition]) += test
 			}
 		}
+		if(!frameworks.isEmpty)
+			assignTests()
 		wrap.Wrappers.readOnly(map)
 	}
 	private def createTasks(work: Iterable[() => Option[String]], baseName: String) =
 		work.toList.zipWithIndex.map{ case (work, index) => new NamedTestTask(baseName + " " + (index+1), work()) }
 		
-	private def createTestTasks(classpath: Iterable[Path], tests: Map[TestFramework, Set[String]], log: Logger,
-		listeners: Iterable[TestReportListener], endErrorsEnabled: Boolean, setup: Iterable[() => Option[String]],
+	private def createTestTasks(loader: ClassLoader, tests: Map[Framework, Set[TestDefinition]], log: Logger,
+		listeners: Seq[TestReportListener], endErrorsEnabled: Boolean, setup: Iterable[() => Option[String]],
 		cleanup: Iterable[() => Option[String]]) =
 	{
-		val filterCompilerLoader = new FilteredLoader(getClass.getClassLoader, ScalaCompilerJarPackages)
-		val loader: ClassLoader = new IntermediateLoader(classpath.map(_.asURL).toSeq.toArray, filterCompilerLoader)
 		val testsListeners = listeners.filter(_.isInstanceOf[TestsListener]).map(_.asInstanceOf[TestsListener])
 		def foreachListenerSafe(f: TestsListener => Unit): Unit = safeForeach(testsListeners, log)(f)
 		
-		import Result.{Error,Passed,Failed}
+			import Result.{Error,Passed,Failed}
 		object result
 		{
 			private[this] var value: Result.Value = Passed
@@ -123,17 +130,17 @@ object TestFramework
 		}
 		val startTask = new NamedTestTask(TestStartName, {foreachListenerSafe(_.doInit); None}) :: createTasks(setup, "Test setup")
 		val testTasks =
-			tests flatMap { case (framework, testClassNames) =>
+			tests flatMap { case (framework, testDefinitions) =>
 			
-					val runner = framework.testRunner(loader, listeners, log)
-					for(testClassName <- testClassNames) yield
+					val runner = new TestRunner(framework, loader, listeners, log)
+					for(testDefinition <- testDefinitions) yield
 					{
 						def runTest() =
 						{
 							val oldLoader = Thread.currentThread.getContextClassLoader
 							Thread.currentThread.setContextClassLoader(loader)
 							try {
-								runner.run(testClassName) match
+								runner.run(testDefinition, Nil) match
 								{
 									case Error => result() = Error; Some("ERROR occurred during testing.")
 									case Failed => result() = Failed; Some("Test FAILED")
@@ -144,7 +151,7 @@ object TestFramework
 								Thread.currentThread.setContextClassLoader(oldLoader)
 							}
 						}
-						new NamedTestTask(testClassName, runTest())
+						new NamedTestTask(testDefinition.testClassName, runTest())
 					}
 			}
 		def end() =
@@ -165,67 +172,9 @@ object TestFramework
 		val endTask = new NamedTestTask(TestFinishName, end() ) :: createTasks(cleanup, "Test cleanup")
 		(startTask, testTasks, endTask)
 	}
-}
-
-abstract class LazyTestFramework extends TestFramework
-{
-	/** The class name of the the test runner that executes
-	* tests for this framework.*/
-	protected def testRunnerClassName: String
-	
-	protected def bundledTestRunnerClassName: Option[String] = None
-	
-	/** Creates an instance of the runner given by 'testRunnerClassName'.*/
-	final def testRunner(projectLoader: ClassLoader, listeners: Iterable[TestReportListener], log: Logger): TestRunner =
+	private def createTestLoader(classpath: Iterable[Path]): ClassLoader = 
 	{
-		val frameworkClasspath = FileUtilities.classLocation(getClass)
-		val sbtURL = FileUtilities.sbtJar.toURI.toURL
-		val projectClasspath = projectLoader.asInstanceOf[java.net.URLClassLoader].getURLs
-		val loaderURLs = Array(frameworkClasspath, sbtURL) ++ projectClasspath
-		
-		def load(name: String): Option[Class[_]] =
-		{
-			val lazyLoader = new LazyFrameworkLoader(name, loaderURLs, projectLoader, getClass.getClassLoader)
-			try { Some(Class.forName(name, true, lazyLoader)) }
-			catch { case e: ClassNotFoundException => None }
-		}
-		val c = bundledTestRunnerClassName.flatMap(load).orElse(load(testRunnerClassName))
-		val runnerClass = c.getOrElse(error("Could not find test runner")).asSubclass(classOf[TestRunner])
-		runnerClass.getConstructor(classOf[Logger], classOf[Seq[TestReportListener]], classOf[ClassLoader]).newInstance(log, listeners, projectLoader)
+		val filterCompilerLoader = new FilteredLoader(getClass.getClassLoader, ScalaCompilerJarPackages)
+		new URLClassLoader(classpath.map(_.asURL).toSeq.toArray, filterCompilerLoader)
 	}
-}
-
-/** The test framework definition for ScalaTest.*/
-object ScalaTestFramework extends LazyTestFramework
-{
-	val name = "ScalaTest"
-	val SuiteClassName = "org.scalatest.Suite"
-	
-	def testSuperClassName = SuiteClassName
-	def testSubClassType = ClassType.Class
-	
-	def testRunnerClassName = "sbt.impl.ScalaTestRunner"
-	override def bundledTestRunnerClassName = Some("org.scalatest.sbt.ScalaTestRunner")
-}
-/** The test framework definition for ScalaCheck.*/
-object ScalaCheckFramework extends LazyTestFramework
-{
-	val name = "ScalaCheck"
-	val PropertiesClassName = "org.scalacheck.Properties"
-	
-	def testSuperClassName = PropertiesClassName
-	def testSubClassType = ClassType.Module
-	
-	def testRunnerClassName = "sbt.impl.ScalaCheckRunner"
-}
-/** The test framework definition for specs.*/
-object SpecsFramework extends LazyTestFramework
-{
-	val name = "specs"
-	val SpecificationClassName = "org.specs.Specification"
-	
-	def testSuperClassName = SpecificationClassName
-	def testSubClassType = ClassType.Module
-	
-	def testRunnerClassName = "sbt.impl.SpecsRunner"
 }
