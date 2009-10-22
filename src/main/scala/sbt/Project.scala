@@ -249,12 +249,12 @@ trait Project extends TaskManager with Dag[Project] with BasicEnvironment
 
 	/** True if crossPath should be the identity function.*/
 	protected def disableCrossPaths = crossScalaVersions.isEmpty
-	/** By default, this is the build.scala.versions property split around commas.  This can be overridden directly if preferred.*/
+	/** By default, this is the build.scala.versions property split around whitespace.  This can be overridden directly if preferred.*/
 	def crossScalaVersions: Seq[String] =
 		info.parent match
 		{
 			case Some(p) => p.crossScalaVersions
-			case None => buildScalaVersions.value.split("""\s*,\s*""").toList.reverse.removeDuplicates.reverse
+			case None => buildScalaVersions.value.split("""\s+""").toList.reverse.removeDuplicates.reverse
 		}
 	/** A `PathFinder` that determines the files watched when an action is run with a preceeding ~ when this is the current
 	* project.  This project does not need to include the watched paths for projects that this project depends on.*/
