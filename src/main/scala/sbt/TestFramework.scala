@@ -14,7 +14,7 @@ object Result extends Enumeration
 object TestFrameworks
 {
 	val ScalaCheck = new TestFramework("org.scalacheck.FrameworkImpl")
-	val ScalaTest = new TestFramework("org.scalatest.FrameworkImpl")
+	val ScalaTest = new TestFramework("org.scalatest.tools.ScalaTestFramework")
 	val Specs = new TestFramework("org.specs.FrameworkImpl")
 }
 class TestFramework(val implClassName: String) extends NotNull

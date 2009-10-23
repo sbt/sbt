@@ -61,38 +61,5 @@ class SbtProject(info: ProjectInfo) extends DefaultProject(info) //with test.Sbt
 	override def libraryDependencies = super.libraryDependencies ++ getDependencies(scalaVersionString)
 
 	def getDependencies(scalaVersion: String) =
-		scalaVersion match
-		{
-			case Version2_7_2 => variableDependencies(false, scalaVersion, /*ScalaTest*/"0.9.3", /*Specs*/"1.4.0", false)
-			case Version2_7_3 => variableDependencies(false, scalaVersion, /*ScalaTest*/"0.9.4", /*Specs*/"1.4.3", true)
-			case Version2_7_4 => variableDependencies(false, scalaVersion, /*ScalaTest*/"0.9.5", /*Specs*/"1.4.3", true)
-			case Version2_7_5 => variableDependencies(false, scalaVersion, /*ScalaTest*/"0.9.5", /*Specs*/"1.4.3", true)
-			case Version2_7_6 => variableDependencies(false, scalaVersion, /*ScalaTest*/"0.9.5", /*Specs*/"1.4.3", true)
-			case Version2_8_0 => variableDependencies(true,  scalaVersion, /*ScalaTest*/"0.9.5", /*Specs*/"1.4.3", true)
-			case _ => error("Unsupported Scala version: " + scalaVersion)
-		}
-
-	/** Defines the dependencies for the given version of Scala, ScalaTest, and Specs.  If uniformTestOrg is true,
-	* the 'org.scala-tools.testing' organization is used.  Otherwise, 'org.' is prefixed to the module name. */
-	private def variableDependencies(is28: Boolean, scalaVersion: String, scalaTestVersion: String, specsVersion: String, uniformTestOrg: Boolean) =
-	{
-		( if(is28) Nil else testDependencies(scalaTestVersion, specsVersion, uniformTestOrg)) ++
-			( if(is28) Seq("jline" % "jline" % "0.9.94" intransitive()) else Nil)
-	}
-	private def testDependencies(scalaTestVersion: String, specsVersion: String, uniformTestOrg: Boolean) =
-	{
-		testDependency("scalatest", scalaTestVersion, uniformTestOrg) ::
-		testDependency("specs", specsVersion, uniformTestOrg) ::
-		testDependency("scalacheck", "1.5", false) ::
-		Nil
-	}
-
-	/** Creates a dependency element for a test.  See 'testOrg' for a description of uniformTestOrg.*/
-
-	private def testDependency(name: String, version: String, uniformTestOrg: Boolean) =
-		testOrg(name, uniformTestOrg) % name % version % "optional" intransitive()
-
-	/** Returns the organization for the given test library.  If uniform is true,
-	* the 'org.scala-tools.testing' organization is used.  Otherwise, 'org.' is prefixed to the module name.*/
-	private def testOrg(name: String, uniform: Boolean) = if(uniform) "org.scala-tools.testing" else "org." + name
+		if(scalaVersion == Version2_8_0) Seq("jline" % "jline" % "0.9.94" intransitive()) else Nil
 }
