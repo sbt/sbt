@@ -195,8 +195,7 @@ abstract class BasicScalaProject extends ScalaProject with BasicDependencyProjec
 		{
 			val loader = new URLClassLoader(classpath.get.map(_.asURL).toSeq.toArray, getClass.getClassLoader)
 			def getTestNames(framework: TestFramework): Seq[String] =
-				try { framework.create(loader).tests.map(_.superClassName) }
-				catch { case e: ClassNotFoundException => log.debug("Framework implementation '" + framework.implClassName + "' not present."); Nil }
+				framework.create(loader, log).toList.flatMap(_.tests.map(_.superClassName))
 			frameworks.flatMap(getTestNames)
 		}
 	}

@@ -19,8 +19,11 @@ object TestFrameworks
 }
 class TestFramework(val implClassName: String) extends NotNull
 {
-	def create(loader: ClassLoader): Framework =
-		Class.forName(implClassName, true, loader).newInstance.asInstanceOf[Framework]
+	def create(loader: ClassLoader, log: Logger): Option[Framework] =
+	{
+		try { Some(Class.forName(implClassName, true, loader).newInstance.asInstanceOf[Framework]) }
+		catch { case e: ClassNotFoundException => log.debug("Framework implementation '" + implClassName + "' not present."); None }
+	}
 }
 final class TestRunner(framework: Framework, loader: ClassLoader, listeners: Seq[TestReportListener], log: Logger) extends NotNull
 {
@@ -83,7 +86,7 @@ object TestFramework
 		cleanup: Iterable[() => Option[String]]): (Iterable[NamedTestTask], Iterable[NamedTestTask], Iterable[NamedTestTask]) =
 	{
 		val loader = createTestLoader(classpath)
-		val rawFrameworks = frameworks.map(_.create(loader))
+		val rawFrameworks = frameworks.flatMap(_.create(loader, log))
 		val mappedTests = testMap(rawFrameworks, tests)
 		if(mappedTests.isEmpty)
 			(new NamedTestTask(TestStartName, None) :: Nil, Nil, new NamedTestTask(TestFinishName, { log.info("No tests to run."); None }) :: Nil )
