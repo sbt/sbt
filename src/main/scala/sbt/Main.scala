@@ -119,16 +119,16 @@ class xMain extends xsbti.AppMain
 	{
 		def process(project: Project, arguments: List[String], isInteractive: Boolean): xsbti.MainResult =
 		{
-			def saveProject(newArgs: List[String]) = if(baseProject.name != project.name) (ProjectAction + " " + project.name) :: newArgs else newArgs
+			def rememberCurrent(newArgs: List[String]) = if(baseProject.name != project.name) (ProjectAction + " " + project.name) :: newArgs else newArgs
 			arguments match
 			{
 				case "" :: tail => process(project, tail, isInteractive)
 				case (ExitCommand | QuitCommand) :: _ => Exit(NormalExitCode)
-				case RebootCommand :: tail => Reboot(project.defScalaVersion.value, saveProject(tail), configuration)
+				case RebootCommand :: tail => Reboot(project.defScalaVersion.value, rememberCurrent(tail), configuration)
 				case InteractiveCommand :: _ => process(project, prompt(baseProject, project) :: arguments, true)
 				case SpecificBuild(version, action) :: tail =>
 					if(Some(version) != baseProject.info.buildScalaVersion)
-						throw new ReloadException(saveProject(action :: tail), Some(version))
+						throw new ReloadException(rememberCurrent(action :: tail), Some(version))
 					else
 						process(project, action :: tail, isInteractive)
 				case CrossBuild(action) :: tail =>
@@ -147,7 +147,7 @@ class xMain extends xsbti.AppMain
 				case Nil => project.log.error("Invalid internal sbt state: no arguments"); Exit(ProgramErrorExitCode)
 			}
 		}
-		process(baseProject, arguments, false)
+		process(baseProject, arguments, arguments.lastOption == Some(InteractiveCommand))
 	}
 	object SetProject
 	{
