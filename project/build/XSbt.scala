@@ -57,6 +57,9 @@ class XSbt(info: ProjectInfo) extends ParentProject(info)
 	//run in parallel
 	override def parallelExecution = true
 
+	override def managedStyle = ManagedStyle.Ivy
+	val publishTo = Resolver.file("test-repo", (Path.userHome / ".ivy2" / "test").asFile)
+
 		/* Subproject configurations*/
 	class LaunchProject(info: ProjectInfo) extends Base(info) with TestWithIO with TestDependencies with ProguardLaunch
 	{
