@@ -18,6 +18,7 @@ import core.resolve.{ResolveEngine, ResolveOptions}
 import core.retrieve.{RetrieveEngine, RetrieveOptions}
 import core.sort.SortEngine
 import core.settings.IvySettings
+import plugins.matcher.PatternMatcher
 import plugins.resolver.{ChainResolver, FileSystemResolver, IBiblioResolver, URLResolver}
 import util.{DefaultMessageLogger, Message}
 
@@ -153,9 +154,15 @@ final class Update(config: UpdateConfiguration)
 		newDefault.setName("redefined-public")
 		if(repositories.isEmpty) error("No repositories defined.")
 		repositories.foreach(repo => newDefault.add(toIvyRepository(settings, repo)))
-		onDefaultRepositoryCacheManager(settings)(_.setUseOrigin(true))
+		onDefaultRepositoryCacheManager(settings)(configureCache)
 		settings.addResolver(newDefault)
 		settings.setDefaultResolver(newDefault.getName)
+	}
+	private def configureCache(manager: DefaultRepositoryCacheManager)
+	{
+		manager.setUseOrigin(true)
+		manager.setChangingMatcher(PatternMatcher.REGEXP)
+		manager.setChangingPattern(".*-SNAPSHOT")
 	}
 	private def toIvyRepository(settings: IvySettings, repo: Repository) =
 	{
