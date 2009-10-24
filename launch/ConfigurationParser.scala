@@ -60,7 +60,7 @@ class ConfigurationParser extends NotNull
 		val (b, m) = id(map, name, default.toString)
 		(toBoolean(b), m)
 	}
-	def toFile(path: String): File = new File(path)// if the path is relative, it will be resolve by Launch later
+	def toFile(path: String): File = new File(path.replace('/', File.separatorChar))// if the path is relative, it will be resolve by Launch later
 	def file(map: LabelMap, name: String, default: File): (File, LabelMap) =
 		(getOrNone(map, name).map(toFile).getOrElse(default), map  - name)
 
