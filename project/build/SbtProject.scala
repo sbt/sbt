@@ -20,6 +20,9 @@ class SbtProject(info: ProjectInfo) extends DefaultProject(info) //with test.Sbt
 		Resolver.url("scala-nightly") artifacts("http://scala-tools.org/repo-snapshots/[organization]/[module]/2.8.0-SNAPSHOT/[artifact]-[revision].[ext]") mavenStyle()
 	val nightlyScala = ModuleConfiguration("org.scala-lang", "*", "2.8.0-.*", specificSnapshotRepo)
 
+	override def managedStyle = ManagedStyle.Ivy
+	val publishTo = Resolver.file("test-repo", (Path.userHome / ".ivy2" / "test").asFile)
+
 	override def compileOptions = Nil
 
 	def scalaVersionString = ScalaVersion.current.getOrElse(scalaVersion.value)
