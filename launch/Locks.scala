@@ -8,7 +8,7 @@ import java.util.concurrent.Callable
 object Locks extends xsbti.GlobalLock
 {
 	private[this] val locks = new Cache[File, GlobalLock](new GlobalLock(_))
-	def apply[T](file: File, action: Callable[T]) =
+	def apply[T](file: File, action: Callable[T]): T =
 		synchronized { locks(file.getCanonicalFile).withLock(action) }
 
 	private[this] class GlobalLock(file: File)

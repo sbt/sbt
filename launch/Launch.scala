@@ -72,10 +72,12 @@ final class RunConfiguration(val scalaVersion: String, val app: xsbti.Applicatio
 import BootConfiguration.{appDirectoryName, baseDirectoryName, ScalaDirectoryName, TestLoadScalaClasses}
 class Launch(val bootDirectory: File, repositories: List[Repository]) extends xsbti.Launcher
 {
+	bootDirectory.mkdirs
 	private val scalaProviders = new Cache[String, ScalaProvider](new ScalaProvider(_))
 	def getScala(version: String): xsbti.ScalaProvider = scalaProviders(version)
 
 	lazy val topLoader = new BootFilteredLoader(getClass.getClassLoader)
+	val updateLockFile = new File(bootDirectory, "sbt.boot.lock")
 
 	def globalLock: xsbti.GlobalLock = Locks
 
@@ -93,6 +95,7 @@ class Launch(val bootDirectory: File, repositories: List[Repository]) extends xs
 		def testLoadClasses = TestLoadScalaClasses
 		def target = UpdateScala
 		def failLabel = "Scala " + version
+		def lockFile = updateLockFile
 
 		def app(id: xsbti.ApplicationID): xsbti.AppProvider = new AppProvider(id)
 
@@ -106,6 +109,7 @@ class Launch(val bootDirectory: File, repositories: List[Repository]) extends xs
 			def testLoadClasses = List(id.mainClass)
 			def target = new UpdateApp(Application(id))
 			def failLabel = id.name + " " + id.version
+			def lockFile = updateLockFile
 
 			lazy val mainClass: Class[T] forSome { type T <: xsbti.AppMain } =
 			{
@@ -121,7 +125,7 @@ class Launch(val bootDirectory: File, repositories: List[Repository]) extends xs
 class ComponentProvider(baseDirectory: File) extends xsbti.ComponentProvider
 {
 	def componentLocation(id: String): File = new File(baseDirectory, id)
-	def component(id: String) = GetJars.wrapNull(componentLocation(id).listFiles).filter(_.isFile)
+	def component(id: String) = Provider.wrapNull(componentLocation(id).listFiles).filter(_.isFile)
 	def defineComponent(id: String, files: Array[File]) =
 	{
 		val location = componentLocation(id)
