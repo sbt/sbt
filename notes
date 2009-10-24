@@ -9,7 +9,6 @@ ISSUES
  - Scala issue #2265: cannot use structural types or libraries that use structural types, or OOME: PermGen will occur.  Running/testing user code with structural types might also cause OOME, but is unlikely unless the Scala standard library or compiler uses structural types.
 
 TODO
- - immutable LinkedSet that preserves order of section declarations for repositories and app.properties
  - launcher interface versioning
 
 Task engine
