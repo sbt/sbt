@@ -1,5 +1,7 @@
 import sbt._
 
+import java.io.File
+
 class XSbt(info: ProjectInfo) extends ParentProject(info)
 {
 		/* Subproject declarations*/
@@ -58,7 +60,7 @@ class XSbt(info: ProjectInfo) extends ParentProject(info)
 	override def parallelExecution = true
 
 	override def managedStyle = ManagedStyle.Ivy
-	val publishTo = Resolver.file("test-repo", (Path.userHome / ".ivy2" / "test").asFile)
+	val publishTo = Resolver.file("test-repo", new File("/var/dbwww/repo/"))
 
 		/* Subproject configurations*/
 	class LaunchProject(info: ProjectInfo) extends Base(info) with TestWithIO with TestDependencies with ProguardLaunch
@@ -105,7 +107,7 @@ class XSbt(info: ProjectInfo) extends ParentProject(info)
 		override def testCompileAction = super.testCompileAction dependsOn(compileInterfaceSub.`package`, interfaceSub.`package`)
 		 // don't include launch interface in published dependencies because it will be provided by launcher
 		override def deliverProjectDependencies = Set(super.deliverProjectDependencies.toSeq : _*) - launchInterfaceSub.projectID
-		override def testClasspath = super.testClasspath +++ compileInterfaceSub.jarPath +++ interfaceSub.jarPath --- compilerInterfaceClasspath
+		override def testClasspath = super.testClasspath +++ compileInterfaceSub.jarPath +++ interfaceSub.jarPath --- compilerInterfaceClasspath --- interfaceSub.mainCompilePath
 		override def compileOptions = super.compileOptions ++ Seq(CompileOption("-Xno-varargs-conversion")) //needed for invoking nsc.scala.tools.Main.process(Array[String])
 	}
 	class IvyProject(info: ProjectInfo) extends Base(info) with TestWithIO with TestWithLog with TestWithLaunch
