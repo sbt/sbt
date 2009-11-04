@@ -247,7 +247,7 @@ object FileUtilities
 				()
 			else if(sourceFile.exists)
 			{
-				val nextEntry = createEntry(name)
+				val nextEntry = createEntry(normalizeName(name))
 				nextEntry.setTime(sourceFile.lastModified)
 				output.putNextEntry(nextEntry)
 				transferAndClose(new FileInputStream(sourceFile), output)
@@ -257,6 +257,11 @@ object FileUtilities
 		}
 		sources.foreach(tupled(add))
 		output.closeEntry()
+	}
+	private def normalizeName(name: String) =
+	{
+		val sep = File.separatorChar
+		if(sep == '/') name else name.replace(sep, '/')
 	}
 
 	private def withZipOutput(file: File, manifest: Option[Manifest])(f: ZipOutputStream => Unit)
