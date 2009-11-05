@@ -2,7 +2,7 @@ package xsbt.boot
 
 import Pre._
 import java.io.{File, FileInputStream, InputStreamReader}
-import java.net.{URI, URL}
+import java.net.{MalformedURLException, URI, URL}
 
 object Configuration
 {
@@ -10,7 +10,7 @@ object Configuration
 	def find(args: List[String], baseDirectory: File): (URL, List[String]) =
 		args match
 		{
-			case head :: tail if head.startsWith("@")=> (configurationFromFile(head.substring(1), baseDirectory), tail)
+			case head :: tail if head.startsWith("@")=> (directConfiguration(head.substring(1), baseDirectory), tail)
 			case _ =>
 				val propertyConfigured = System.getProperty("sbt.boot.properties")
 				val url = if(propertyConfigured == null) configurationOnClasspath else configurationFromFile(propertyConfigured, baseDirectory)
@@ -20,6 +20,11 @@ object Configuration
 	{
 		resourcePaths.elements.map(getClass.getResource).find(_ ne null) getOrElse
 			( multiPartError("Could not finder sbt launch configuration.  Searched classpath for:", resourcePaths))
+	}
+	def directConfiguration(path: String, baseDirectory: File): URL =
+	{
+		try { new URL(path) }
+		catch { case _: MalformedURLException => configurationFromFile(path, baseDirectory) }
 	}
 	def configurationFromFile(path: String, baseDirectory: File): URL =
 	{
@@ -40,8 +45,9 @@ object Configuration
 	val JarBasePath = "/sbt/"
 	def userConfigurationPath = "/" + ConfigurationName
 	def defaultConfigurationPath = JarBasePath + ConfigurationName
-	def resourcePaths = List(userConfigurationPath, defaultConfigurationPath)
-	def resolveAgainst(baseDirectory: File) = List(baseDirectory toURI, new File(System.getProperty("user.home")) toURI, classLocation(getClass).toURI)
+	def resourcePaths: List[String] = List(userConfigurationPath, defaultConfigurationPath)
+	def resolveAgainst(baseDirectory: File): List[URI] = List(baseDirectory toURI, new File(System.getProperty("user.home")) toURI,
+		toDirectory(classLocation(getClass).toURI))
 
 	def classLocation(cl: Class[_]): URL =
 	{
@@ -49,4 +55,12 @@ object Configuration
 		if(codeSource == null) error("No class location for " + cl)
 		else codeSource.getLocation
 	}
+	def toDirectory(uri: URI): URI =
+		try
+		{
+			val file = new File(uri)
+			val newFile = if(file.isFile) file.getParentFile else file
+			newFile.toURI
+		}
+		catch { case _: Exception => uri }
 }
