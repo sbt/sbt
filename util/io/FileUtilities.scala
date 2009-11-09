@@ -26,6 +26,8 @@ object FileUtilities
 	private val BufferSize = 8192
 	private val Newline = System.getProperty("line.separator")
 
+	def utf8 = Charset.forName("UTF-8")
+
 	def classLocation(cl: Class[_]): URL =
 	{
 		val codeSource = cl.getProtectionDomain.getCodeSource
@@ -66,6 +68,7 @@ object FileUtilities
 			(name, "")
 	}
 
+	def touch(files: Iterable[File]): Unit = files.foreach(touch)
 	/** Creates a file at the given location.*/
 	def touch(file: File)
 	{
@@ -78,6 +81,8 @@ object FileUtilities
 		else if(!file.setLastModified(System.currentTimeMillis))
 			error("Could not update last modified time for file " + file)
 	}
+	def createDirectories(dirs: Iterable[File]): Unit =
+		dirs.foreach(createDirectory)
 	def createDirectory(dir: File): Unit =
 	{
 		def failBase = "Could not create directory " + dir
@@ -340,7 +345,7 @@ object FileUtilities
 			}
 		}
 	}
-	def defaultCharset = Charset.forName("UTF-8")
+	def defaultCharset = utf8
 	def write(toFile: File, content: String): Unit = write(toFile, content, defaultCharset)
 	def write(toFile: File, content: String, charset: Charset): Unit = write(toFile, content, charset, false)
 	def write(file: File, content: String, charset: Charset, append: Boolean)

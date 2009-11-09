@@ -38,7 +38,7 @@ object FileMapper
 {
 	def basic(newDirectory: File) = new FMapper(file => new File(newDirectory, file.getPath))
 	def rebase(oldBase: File, newBase: File) =
-		new FMapper(file => new File(newBase, FileUtilities.relativize(oldBase, file).getOrElse(error(file + " not a descendent of " + oldBase))))
+		new FMapper(file => if(file == oldBase) newBase else new File(newBase, FileUtilities.relativize(oldBase, file).getOrElse(error(file + " not a descendent of " + oldBase))))
 	def flat(newDirectory: File) = new FMapper(file => new File(newDirectory, file.getName))
 	def apply(f: File => File) = new FMapper(f)
 }

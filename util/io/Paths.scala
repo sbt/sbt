@@ -14,6 +14,7 @@ object Paths
 			case s: Set[File] => filesToPaths(s)
 			case _ => new Paths(Set(fs.toSeq : _*))
 		}
+	def normalize(path: String): String = path.replace('/', File.separatorChar).replace('\\', File.separatorChar)
 }
 
 import Paths._
@@ -39,7 +40,7 @@ final class Path(val asFile: File) extends PathBase
 {
 	def files = Set(asFile)
 	def \(subPath: String) = /(subPath)
-	def /(subPath: String) = new File(asFile, subPath.replace('/', File.separatorChar).replace('\\', File.separatorChar))
+	def /(subPath: String) = new File(asFile, normalize(subPath))
 	def ++(files: Set[File]) = files + asFile
 	def ++(file: File) = Set(file, asFile)
 }

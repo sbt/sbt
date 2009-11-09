@@ -11,25 +11,29 @@ class XSbt(info: ProjectInfo) extends ParentProject(info)
 
 	val interfaceSub = project("interface", "Interface", new InterfaceProject(_))
 
-	val controlSub = project(utilPath / "control", "Control", new Base(_))
-	val collectionSub = project(utilPath / "collection", "Collections", new Base(_))
+	val controlSub = baseProject(utilPath / "control", "Control")
+	val collectionSub = baseProject(utilPath / "collection", "Collections")
 	val ioSub = project(utilPath / "io", "IO", new IOProject(_), controlSub)
-	val classpathSub = project(utilPath / "classpath", "Classpath", new Base(_))
+	val classpathSub = baseProject(utilPath / "classpath", "Classpath")
 
 	val ivySub = project("ivy", "Ivy", new IvyProject(_), interfaceSub, launchInterfaceSub)
-	val logSub = project(utilPath / "log", "Logging", new Base(_), interfaceSub)
+	val logSub = baseProject(utilPath / "log", "Logging", interfaceSub)
+
+	val testSub = baseProject("scripted", "Test", ioSub)
 
 	val compileInterfaceSub = project(compilePath / "interface", "Compiler Interface", new CompilerInterfaceProject(_), interfaceSub)
 
 	val taskSub = project(tasksPath, "Tasks", new TaskProject(_), controlSub, collectionSub)
 	val cacheSub = project(cachePath, "Cache", new CacheProject(_), taskSub, ioSub)
-	val trackingSub = project(cachePath / "tracking", "Tracking", new Base(_), cacheSub)
+	val trackingSub = baseProject(cachePath / "tracking", "Tracking", cacheSub)
 	val compilerSub = project(compilePath, "Compile", new CompileProject(_),
 		launchInterfaceSub, interfaceSub, ivySub, ioSub, classpathSub, compileInterfaceSub)
 	val stdTaskSub = project(tasksPath / "standard", "Standard Tasks", new StandardTaskProject(_), trackingSub, compilerSub)
 
 	val distSub = project("dist", "Distribution", new DistProject(_))
 
+	def baseProject(path: Path, name: String, deps: Project*) = project(path, name, new TestProject(_), deps : _*)
+	
 		/* Multi-subproject paths */
 	def cachePath = path("cache")
 	def tasksPath = path("tasks")
@@ -122,6 +126,10 @@ class XSbt(info: ProjectInfo) extends ParentProject(info)
 	class LaunchInterfaceProject(info: ProjectInfo) extends  InterfaceProject(info)
 	{
 		override def componentID = None
+	}
+	class TestProject(info: ProjectInfo) extends Base(info)
+	{
+		val process = "org.scala-tools.sbt" % "process" % "0.1"
 	}
 	class CompilerInterfaceProject(info: ProjectInfo) extends Base(info) with SourceProject with TestWithIO with TestWithLog
 	{

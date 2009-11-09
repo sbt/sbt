@@ -1,0 +1,42 @@
+Scripted test framework specification:
+
+This framework is intended to be a lightweight interface to a simple scripting syntax.  The framework parses statements of a simple form:
+{{{
+  statement ::= ws* startChar ws* successIndicator ws* word (ws word)* nl
+  ws ::= (' ' | '\t') ('\\' nl )?
+  word ::= [^ \n\r\[\]]+
+  successIndicator ::= '+' | '-'
+  nl = '\n' | '\r' '\n' | '\r' | EOF
+}}}
+Whitespace is used to separate words and may optionally be used between other terminals.  To continue a statement on a new line, use a space followed by a backslash \ where whitespace is allowed.  For example
+Single line comments are supported of the form:
+{{{
+  comment ::= '#' [^ \n\r]* nl
+}}}
+
+The framework uses handlers to interpret statements.  A handler is an instance of the following interface:
+
+{{{
+trait StatementHandler
+{
+	type State
+	def initialState: State
+	def apply(command: String, arguments: List[String], state: State): State
+}
+}}}
+
+The String and List[String] arguments define the command to execute.  State is the state carried throughout the execution of the script.  The type State is defined by the handler and is specific to the handler (no other handlers see the state).
+
+A handler processes the inputs and either returns the new state S to continue testing with or throws an exception to indicate failure.
+
+The test framework is used by creating an instance of ScriptedRunner, which requires a map from characters to handlers.  A script starts a statement with the character associated with a handler to select the handler to interpret the rest of the statement.
+
+{{{
+class ScriptedRunner(handlers: Map[Char, StatementHandler]) extends NotNull
+{
+	// file assumed to be UTF-8
+	def apply(file: File): Option[String] = ...
+	def apply(script: String): Option[String] = ...
+	def apply(reader: Reader): Option[String] = ...
+}
+}}}
