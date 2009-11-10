@@ -55,7 +55,7 @@ class ComponentManager(globalLock: xsbti.GlobalLock, provider: xsbti.ComponentPr
 	/** Retrieve the file for component 'id' from the local repository. */
 	private def update(id: String): Unit = IvyCache.withCachedJar(sbtModuleID(id), log)(jar => define(id, Seq(jar)) )
 
-	private def sbtModuleID(id: String) = ModuleID("org.scala-tools.sbt", id, xsbti.Versions.Sbt)
+	private def sbtModuleID(id: String) = ModuleID("org.scala-tools.sbt", id, ComponentManager.stampedVersion)
 	/** Install the files for component 'id' to the local repository.  This is usually used after writing files to the directory returned by 'location'. */
 	def cache(id: String): Unit = IvyCache.cacheJar(sbtModuleID(id), file(id)(IfMissing.Fail), log)
 	def clearCache(id: String): Unit = lockGlobalCache { IvyCache.clearCachedJar(sbtModuleID(id), log) }
@@ -69,4 +69,15 @@ object IfMissing
 {
 	object Fail extends IfMissing
 	final class Define(val cache: Boolean, define: => Unit) extends IfMissing { def apply() = define }
+}
+object ComponentManager
+{
+	lazy val (version, timestamp) =
+	{
+		val properties = new java.util.Properties
+		val propertiesStream = getClass.getResourceAsStream("/xsbt.version.properties")
+		try { properties.load(propertiesStream) } finally { propertiesStream.close() }
+		(properties.getProperty("version"), properties.getProperty("timestamp"))
+	}
+	lazy val stampedVersion = version + "_" + timestamp
 }
