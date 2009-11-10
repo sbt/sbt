@@ -61,10 +61,10 @@ final class TestRunner(framework: Framework, loader: ClassLoader, listeners: Seq
 final class NamedTestTask(val name: String, action: => Option[String]) extends NotNull { def run() = action }
 object TestFramework
 {
-	def runTests(frameworks: Seq[TestFramework], classpath: Iterable[Path], tests: Seq[TestDefinition], log: Logger,
+	def runTests(frameworks: Seq[TestFramework], classpath: Iterable[Path], scalaLoader: ClassLoader, tests: Seq[TestDefinition], log: Logger,
 		listeners: Seq[TestReportListener]) =
 	{
-		val (start, runTests, end) = testTasks(frameworks, classpath, tests, log, listeners, true, Nil, Nil)
+		val (start, runTests, end) = testTasks(frameworks, classpath, scalaLoader, tests, log, listeners, true, Nil, Nil)
 		def run(tasks: Iterable[NamedTestTask]) = tasks.foreach(_.run())
 		run(start)
 		run(runTests)
@@ -81,11 +81,11 @@ object TestFramework
 
 		import scala.collection.{Map, Set}
 	
-	def testTasks(frameworks: Seq[TestFramework], classpath: Iterable[Path], tests: Seq[TestDefinition], log: Logger,
+	def testTasks(frameworks: Seq[TestFramework], classpath: Iterable[Path], scalaLoader: ClassLoader, tests: Seq[TestDefinition], log: Logger,
 		listeners: Seq[TestReportListener], endErrorsEnabled: Boolean, setup: Iterable[() => Option[String]],
 		cleanup: Iterable[() => Option[String]]): (Iterable[NamedTestTask], Iterable[NamedTestTask], Iterable[NamedTestTask]) =
 	{
-		val loader = createTestLoader(classpath)
+		val loader = createTestLoader(classpath, scalaLoader)
 		val rawFrameworks = frameworks.flatMap(_.create(loader, log))
 		val mappedTests = testMap(rawFrameworks, tests)
 		if(mappedTests.isEmpty)
@@ -175,9 +175,12 @@ object TestFramework
 		val endTask = new NamedTestTask(TestFinishName, end() ) :: createTasks(cleanup, "Test cleanup")
 		(startTask, testTasks, endTask)
 	}
-	private def createTestLoader(classpath: Iterable[Path]): ClassLoader = 
+	def createTestLoader(classpath: Iterable[Path], scalaLoader: ClassLoader): ClassLoader =
 	{
-		val filterCompilerLoader = new FilteredLoader(getClass.getClassLoader, ScalaCompilerJarPackages)
-		new URLClassLoader(classpath.map(_.asURL).toSeq.toArray, filterCompilerLoader)
+		val filterCompilerLoader = new FilteredLoader(scalaLoader, ScalaCompilerJarPackages)
+		val interfaceFilter = (name: String) => name.startsWith("org.scalatools.testing.")
+		val notInterfaceFilter = (name: String) => !interfaceFilter(name)
+		val dual = new xsbt.DualLoader(filterCompilerLoader, notInterfaceFilter, x => true, getClass.getClassLoader, interfaceFilter, x => false)
+		new URLClassLoader(classpath.map(_.asURL).toSeq.toArray, dual)
 	}
 }

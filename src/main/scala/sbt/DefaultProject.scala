@@ -193,7 +193,7 @@ abstract class BasicScalaProject extends ScalaProject with BasicDependencyProjec
 		def compileOrder = BasicScalaProject.this.compileOrder
 		protected def testClassNames(frameworks: Seq[TestFramework]) = 
 		{
-			val loader = new URLClassLoader(classpath.get.map(_.asURL).toSeq.toArray, getClass.getClassLoader)
+			val loader = TestFramework.createTestLoader(classpath.get, buildScalaInstance.loader)
 			def getTestNames(framework: TestFramework): Seq[String] =
 				framework.create(loader, log).toList.flatMap(_.tests.map(_.superClassName))
 			frameworks.flatMap(getTestNames)
