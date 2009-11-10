@@ -398,7 +398,13 @@ class xMain extends xsbti.AppMain
 		val endTime = System.currentTimeMillis()
 		project.log.info("")
 		val ss = if(s.isEmpty) "" else s + " "
-		project.log.info("Total " + ss + "time: " + (endTime - startTime + 500) / 1000 + " s")
+		project.log.info("Total " + ss + "time: " + (endTime - startTime + 500) / 1000 + " s, completed " + nowString)
+	}
+	private def nowString =
+	{
+		import java.text.DateFormat
+		val format = DateFormat.getDateTimeInstance(DateFormat.MEDIUM, DateFormat.SHORT)
+		format.format(new java.util.Date)
 	}
 	/** Provides a partial message describing why the given property is undefined. */
 	private def undefinedMessage(property: Project#UserProperty[_]): String =

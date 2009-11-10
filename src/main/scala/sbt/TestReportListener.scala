@@ -60,6 +60,7 @@ object TestLogger
 			def warn(s: String) = log(Level.Warn, s)
 			def info(s: String) = log(Level.Info, s)
 			def debug(s: String) = log(Level.Debug, s)
+			def trace(t: Throwable) = logger.trace(t)
 			private def log(level: Level.Value, s: String) = logger.log(level, s)
 			def ansiCodesSupported() = logger.ansiCodesSupported
 		}
@@ -72,8 +73,9 @@ class TestLogger(val log: TLogger) extends TestsListener
 	def testEvent(event: TestEvent): Unit = event.detail.foreach(count)
 	def endGroup(name: String, t: Throwable)
 	{
+		// log.trace(t) : need to add a trace method to org.scalatools.testing.Logger
+		try { log.getClass.getMethod("trace", classOf[Throwable]).invoke(log, t) } catch { case e: Exception => () }
 		log.error("Could not run test " + name + ": " + t.toString)
-		//log.trace(t)
 	}
 	def endGroup(name: String, result: Result.Value) {}
 	protected def count(event: TEvent): Unit =
