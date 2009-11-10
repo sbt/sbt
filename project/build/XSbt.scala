@@ -119,11 +119,21 @@ class XSbt(info: ProjectInfo) extends ParentProject(info)
 		val ivy = "org.apache.ivy" % "ivy" % "2.0.0"
 		override def deliverProjectDependencies = Set(super.deliverProjectDependencies.toSeq : _*) - launchInterfaceSub.projectID
 	}
-	class InterfaceProject(info: ProjectInfo) extends DefaultProject(info) with ManagedBase with TestWithLog with Component with JavaProject
+	abstract class BaseInterfaceProject(info: ProjectInfo) extends DefaultProject(info) with ManagedBase with TestWithLog with Component with JavaProject
+	class InterfaceProject(info: ProjectInfo) extends BaseInterfaceProject(info)
 	{
 		override def componentID: Option[String] = Some("xsbti")
+		override def packageAction = super.packageAction dependsOn generateVersions
+		def versionPropertiesPath = mainResourcesPath / "xsbt.version.properties"
+		lazy val generateVersions = task {
+			import java.util.{Date, TimeZone}
+			val formatter = new java.text.SimpleDateFormat("yyyyMMdd'T'HHmmss")
+			formatter.setTimeZone(TimeZone.getTimeZone("GMT"))
+			val timestamp = formatter.format(new Date)
+			FileUtilities.write(versionPropertiesPath.asFile, "version=" + version + "\ntimestamp=" + timestamp, log)
+		}
 	}
-	class LaunchInterfaceProject(info: ProjectInfo) extends  InterfaceProject(info)
+	class LaunchInterfaceProject(info: ProjectInfo) extends  BaseInterfaceProject(info)
 	{
 		override def componentID = None
 	}

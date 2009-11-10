@@ -52,8 +52,7 @@ object IvyCache
 			copyTo
 		}
 
-	/** Get the location of the cached jar for the given ID in the Ivy cache.  If the jar is not in the cache, NotInCache is thrown
-	* TODO: locking.*/
+	/** Get the location of the cached jar for the given ID in the Ivy cache.  If the jar is not in the cache, NotInCache is thrown .*/
 	def withCachedJar[T](id: ModuleID, log: IvyLogger)(f: File => T): T =
 	{
 		val cachedFile =

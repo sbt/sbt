@@ -73,7 +73,7 @@ package test
 {
 	object MainTest
 	{
-		val Version = "test-" + xsbti.Versions.Sbt
+		val Version = "test-" + System.currentTimeMillis
 	}
 	class Exit(val code: Int) extends xsbti.Exit
 	final class MainException(message: String) extends RuntimeException(message)
