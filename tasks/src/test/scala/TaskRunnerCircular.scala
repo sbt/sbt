@@ -2,15 +2,12 @@ import xsbt._
 
 import org.scalacheck._
 import Prop._
+import TaskGen._
 
 object TaskRunnerCircularTest extends Properties("TaskRunner Circular")
 {
-	specify("Catches circular references", (intermediate: Int, workers: Int) =>
-		(workers > 0 && intermediate >= 0) ==> checkCircularReferences(intermediate, workers)
-	)
-	specify("Allows references to completed tasks", forAllNoShrink(Arbitrary.arbitrary[(Int,Int)])(x=>x) { case (intermediate: Int, workers: Int) =>
-		(workers > 0 && intermediate >= 0) ==> allowedReference(intermediate, workers)
-	})
+	property("Catches circular references") = forAll(MaxTasksGen, MaxWorkersGen) { checkCircularReferences _ }
+	property("Allows references to completed tasks") = forAllNoShrink(MaxTasksGen, MaxWorkersGen) { allowedReference _ }
 	final def allowedReference(intermediate: Int, workers: Int) =
 	{
 		val top = Task(intermediate) named("top")

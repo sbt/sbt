@@ -82,7 +82,7 @@ class XSbt(info: ProjectInfo) extends ParentProject(info)
 		def testID = "launch-test"
 		override def testClasspath = super.testClasspath +++ interfaceSub.compileClasspath
 		lazy val rawTestCompile = super.testCompileAction dependsOn(interfaceSub.compile)
-		override def testCompileAction = publishLocal dependsOn(rawTestCompile)
+		override def testCompileAction = publishLocal dependsOn(rawTestCompile, interfaceSub.publishLocal)
 	}
 	trait TestDependencies extends Project
 	{

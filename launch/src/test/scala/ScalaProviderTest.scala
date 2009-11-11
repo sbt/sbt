@@ -24,7 +24,7 @@ object ScalaProviderTest extends Specification
 			checkLoad(List(), "xsbt.boot.test.ArgumentTest") must throwA[RuntimeException]
 		}
 		"Successfully load an application from local repository and run it with correct sbt version" in {
-			checkLoad(List(), "xsbt.boot.test.AppVersionTest").asInstanceOf[Exit].code must be(0)
+			checkLoad(List(AppVersion), "xsbt.boot.test.AppVersionTest").asInstanceOf[Exit].code must be(0)
 		}
 	}
 
@@ -49,7 +49,7 @@ object ScalaProviderTest extends Specification
 }
 object LaunchTest
 {
-	def testApp(main: String) = Application("org.scala-tools.sbt", "launch-test", new Version.Explicit(test.MainTest.Version), main, Nil, false)
+	def testApp(main: String) = Application("org.scala-tools.sbt", "launch-test", new Version.Explicit(AppVersion), main, Nil, false)
 	import Repository.Predefined._
 	def testRepositories = List(Local, ScalaToolsReleases, ScalaToolsSnapshots).map(Repository.Predefined.apply)
 	def withLauncher[T](f: xsbti.Launcher => T): T =
@@ -68,13 +68,16 @@ object LaunchTest
 		properties.load(propertiesStream)
 		properties.getProperty("version.number")
 	}
+	lazy val AppVersion =
+	{
+		val properties = new java.util.Properties
+		val propertiesStream = getClass.getResourceAsStream("/xsbt.version.properties")
+		try { properties.load(propertiesStream) } finally { propertiesStream.close() }
+		 "test-" + properties.getProperty("version")
+	}
 }
 package test
 {
-	object MainTest
-	{
-		val Version = "test-" + System.currentTimeMillis
-	}
 	class Exit(val code: Int) extends xsbti.Exit
 	final class MainException(message: String) extends RuntimeException(message)
 	final class ArgumentTest extends AppMain
@@ -88,9 +91,12 @@ package test
 	class AppVersionTest extends AppMain
 	{
 		def run(configuration: xsbti.AppConfiguration) =
-			if(configuration.provider.id.version == MainTest.Version)
+		{
+			val expected = configuration.arguments.headOption.getOrElse("")
+			if(configuration.provider.id.version == expected)
 				new Exit(0)
 			else
-				throw new MainException("app version was " + configuration.provider.id.version + ", expected: " + MainTest.Version)
+				throw new MainException("app version was " + configuration.provider.id.version + ", expected: " + expected)
+		}
 	}
 }

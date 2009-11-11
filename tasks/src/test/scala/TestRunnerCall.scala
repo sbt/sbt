@@ -2,11 +2,12 @@ import xsbt._
 
 import org.scalacheck._
 import Prop._
+import TaskGen._
 
 object TaskRunnerCallTest extends Properties("TaskRunner Call")
 {
-	specify("calculates fibonacci", (i: Int, workers: Int) =>
-		(workers > 0 && i > 0) ==> {
+	property("calculates fibonacci") = forAll(MaxTasksGen, MaxWorkersGen) { (i: Int, workers: Int) =>
+		(i > 0) ==> {
 			val f = fibDirect(i)
 			("Workers: " + workers) |: ("i: " + i) |: ("fib(i): " + f) |:
 			{
@@ -14,7 +15,7 @@ object TaskRunnerCallTest extends Properties("TaskRunner Call")
 				checkResult(result, f)
 			}
 		}
-	)
+	}
 	final def fibTask(i: Int) =
 	{
 		require(i > 0)

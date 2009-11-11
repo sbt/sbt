@@ -2,20 +2,20 @@ import xsbt._
 
 import org.scalacheck._
 import Prop._
+import TaskGen._
 
 object TaskRunnerSortTest extends Properties("TaskRunnerSort")
 {
-	specify("sort", (a: Array[Int], workers: Int) =>
-		(workers > 0) ==> {
-			val sorted = a.toArray
-			java.util.Arrays.sort(sorted)
-			("Workers: " + workers) |: ("Array: " + a.toList) |:
-			{
-				def result = TaskRunner( sort(a.toArray), workers)
-				checkResult(result.toList, sorted.toList)
-			}
+	property("sort") = forAll(TaskListGen, MaxWorkersGen) { (list: List[Int], workers: Int) =>
+		val a = list.toArray
+		val sorted = a.toArray
+		java.util.Arrays.sort(sorted)
+		("Workers: " + workers) |: ("Array: " + a.toList) |:
+		{
+			def result = TaskRunner( sort(a.toArray), workers)
+			checkResult(result.toList, sorted.toList)
 		}
-	)
+	}
 	final def sortDirect(a: RandomAccessSeq[Int]): RandomAccessSeq[Int] =
 	{
 		if(a.length < 2)
