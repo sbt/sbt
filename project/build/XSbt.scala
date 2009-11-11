@@ -19,7 +19,7 @@ class XSbt(info: ProjectInfo) extends ParentProject(info)
 	val ivySub = project("ivy", "Ivy", new IvyProject(_), interfaceSub, launchInterfaceSub)
 	val logSub = baseProject(utilPath / "log", "Logging", interfaceSub)
 
-	val testSub = baseProject("scripted", "Test", ioSub)
+	val testSub = project("scripted", "Test", new TestProject(_), ioSub)
 
 	val compileInterfaceSub = project(compilePath / "interface", "Compiler Interface", new CompilerInterfaceProject(_), interfaceSub)
 
@@ -32,7 +32,7 @@ class XSbt(info: ProjectInfo) extends ParentProject(info)
 
 	val distSub = project("dist", "Distribution", new DistProject(_))
 
-	def baseProject(path: Path, name: String, deps: Project*) = project(path, name, new TestProject(_), deps : _*)
+	def baseProject(path: Path, name: String, deps: Project*) = project(path, name, new Base(_), deps : _*)
 	
 		/* Multi-subproject paths */
 	def cachePath = path("cache")
