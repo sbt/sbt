@@ -403,7 +403,7 @@ class xMain extends xsbti.AppMain
 	private def nowString =
 	{
 		import java.text.DateFormat
-		val format = DateFormat.getDateTimeInstance(DateFormat.MEDIUM, DateFormat.SHORT)
+		val format = DateFormat.getDateTimeInstance(DateFormat.MEDIUM, DateFormat.MEDIUM)
 		format.format(new java.util.Date)
 	}
 	/** Provides a partial message describing why the given property is undefined. */
