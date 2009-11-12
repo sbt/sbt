@@ -15,11 +15,6 @@ class SbtProject(info: ProjectInfo) extends DefaultProject(info) //with test.Sbt
 	override def normalizedName = "sbt"
 	//override def scriptedDependencies = testCompile :: `package` :: Nil
 
-	/* For Scala 2.8.0 nightlies, use a special resolver so that we can refer to a specific nightly and not just 2.8.0-SNAPSHOT*/
-	def specificSnapshotRepo =
-		Resolver.url("scala-nightly") artifacts("http://scala-tools.org/repo-snapshots/[organization]/[module]/2.8.0-SNAPSHOT/[artifact]-[revision].[ext]") mavenStyle()
-	val nightlyScala = ModuleConfiguration("org.scala-lang", "*", "2.8.0-.*", specificSnapshotRepo)
-
 	override def managedStyle = ManagedStyle.Ivy
 	val publishTo = Resolver.file("test-repo", (Path.userHome / ".ivy2" / "test").asFile)
 
@@ -40,16 +35,12 @@ class SbtProject(info: ProjectInfo) extends DefaultProject(info) //with test.Sbt
 	val provided = Configurations.Provided
 
 	/* Versions of Scala to cross-build against. */
-	private val Version2_7_2 = "2.7.2"
-	private val Version2_7_3 = "2.7.3"
-	private val Version2_7_4 = "2.7.4"
 	private val Version2_7_5 = "2.7.5"
-	private val Version2_7_6 = "2.7.6"
 	private val Version2_8_0 = "2.8.0-20090929.004247-+"
 	// the list of all supported versions
-	private def allVersions = Version2_7_2 :: Version2_7_3 :: Version2_7_4 :: Version2_7_5 :: Version2_7_6 :: Version2_8_0 :: Nil
+	private def allVersions = Version2_7_5 :: Version2_8_0 :: Nil
 
-	override def crossScalaVersions = Set(Version2_7_2, Version2_7_5)//, Version2_8_0)
+	override def crossScalaVersions = Set(Version2_7_5)
 
 	val ivy = "org.apache.ivy" % "ivy" % "2.0.0" intransitive()
 	val jsch = "com.jcraft" % "jsch" % "0.1.31" intransitive()
