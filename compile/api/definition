@@ -1,0 +1,102 @@
+Type
+	SimpleType
+		Projection
+			prefix : SimpleType
+			id : String
+		Singleton
+			path: Path
+		Parameterized
+			baseType : SimpleType
+			typeArguments: SimpleType
+	Annotated
+		baseType : SimpleType
+		annotations : Annotation*
+	Structure
+		parents : Annotated*
+		declarations: Definition*
+	Existential
+		baseType : Type
+		clause: TypeParameter*
+
+Source
+	packages : Package*
+	definitions: Definition*
+
+Package
+	components: String*
+
+Definition
+	access: Access
+	modifiers: Modifiers
+	FieldLike
+		tpe : Type
+		Val
+		Var
+	ParameterizedDefinition
+		typeParameters: TypeParameter*
+		Def
+			valueParameters: ParameterList*
+			returnType: Type
+		ClassLike
+			selfType: Type
+			structure: Structure
+		TypeMember
+			name: String
+			TypeAlias
+				tpe: Type
+			TypeDeclaration
+				upperBound: Type
+				lowerBound: Type
+
+Access
+	Public
+	Qualified
+		qualifier: Qualifier
+		Protected
+		Private
+
+Qualifier
+	Unqualified
+	ThisQualifier
+	IdQualifier
+		value: String
+
+Modifiers
+	isDeferred: Boolean
+	isOverride: Boolean
+	isFinal: Boolean
+	isSealed: Boolean
+	isImplicit: Boolean
+	isLazy: Boolean
+
+ParameterList
+	parameters: MethodParameter*
+	isImplicit: Boolean
+MethodParameter
+	name: String
+	tpe: Type
+	hasDefault: Boolean
+	modifier: ParameterModifier
+
+TypeParameter
+	typeParameters : TypeParameter*
+	variance: Variance
+	upperBound: Type
+	lowerBound: Type
+
+Annotation
+	base: SimpleType
+	arguments: String*
+
+enum Variance : Contravariant, Covariant, Invariant
+enum ParameterModifier : Vararg, Plain, ByName
+
+Path
+	components: PathComponent*
+
+PathComponent
+	Super
+		qualifier: Path
+	This
+	Id
+		id: String
