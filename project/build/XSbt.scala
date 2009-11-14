@@ -18,9 +18,11 @@ class XSbt(info: ProjectInfo) extends ParentProject(info)
 
 	val ivySub = project("ivy", "Ivy", new IvyProject(_), interfaceSub, launchInterfaceSub)
 	val logSub = baseProject(utilPath / "log", "Logging", interfaceSub)
+	val datatypeSub = baseProject("util" /"datatype", "Datatype Generator", ioSub)
 
 	val testSub = project("scripted", "Test", new TestProject(_), ioSub)
 
+	val compileAPISub = project(compilePath / "api", "Source API", new CompilerAPIProject(_), datatypeSub)
 	val compileInterfaceSub = project(compilePath / "interface", "Compiler Interface", new CompilerInterfaceProject(_), interfaceSub)
 
 	val taskSub = project(tasksPath, "Tasks", new TaskProject(_), controlSub, collectionSub)
@@ -140,6 +142,24 @@ class XSbt(info: ProjectInfo) extends ParentProject(info)
 	class TestProject(info: ProjectInfo) extends Base(info)
 	{
 		val process = "org.scala-tools.sbt" % "process" % "0.1"
+	}
+	/** This subproject generates a hierarchy of Java interfaces and Scala implementations according to a basic format.*/
+	class CompilerAPIProject(info: ProjectInfo) extends Base(info)
+	{
+		override def watchPaths = super.watchPaths +++ apiDefinitionPaths
+		override def mainSourceRoots = srcManagedPath
+		def srcManagedPath = ("src_managed" ##)
+		def generatedBasePath = srcManagedPath / "main" / "java"
+		/** Files that define the datatypes.*/
+		def apiDefinitionPaths: PathFinder = "definition"
+		def apiDefinitions = apiDefinitionPaths.get.toList.map(_.absolutePath)
+		/** Delete up the generated sources*/
+		lazy val cleanManagedSrc = cleanTask(srcManagedPath)
+		/** Runs the generator compiled by 'compile', putting the classes in src_managed and processing the definitions 'apiDefinitions'. */
+		lazy val generateSource = generateSourceAction dependsOn(cleanManagedSrc)
+		def generateSourceAction = runTask(datatypeSub.getMainClass(true), datatypeSub.runClasspath, "xsbti.api" :: generatedBasePath.absolutePath :: apiDefinitions)
+		/** compiles the generated sources */
+		override def compileAction = super.compileAction dependsOn(generateSource)
 	}
 	class CompilerInterfaceProject(info: ProjectInfo) extends Base(info) with SourceProject with TestWithIO with TestWithLog
 	{
