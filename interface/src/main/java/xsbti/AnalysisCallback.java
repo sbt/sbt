@@ -34,4 +34,6 @@ public interface AnalysisCallback
 	public void endSource(File sourcePath);
 	/** Called when a module with a public 'main' method with the right signature is found.*/
 	public void foundApplication(File source, String className);
+
+	public void api(File sourceFile, xsbti.api.Source source);
 }
