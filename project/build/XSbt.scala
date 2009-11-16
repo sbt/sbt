@@ -22,14 +22,14 @@ class XSbt(info: ProjectInfo) extends ParentProject(info)
 
 	val testSub = project("scripted", "Test", new TestProject(_), ioSub)
 
-	val compileAPISub = project(compilePath / "api", "Source API", new CompilerAPIProject(_), datatypeSub)
+	val compileAPISub = project(compilePath / "api", "Source API", new CompilerAPIProject(_))
 	val compileInterfaceSub = project(compilePath / "interface", "Compiler Interface", new CompilerInterfaceProject(_), interfaceSub)
 
 	val taskSub = project(tasksPath, "Tasks", new TaskProject(_), controlSub, collectionSub)
 	val cacheSub = project(cachePath, "Cache", new CacheProject(_), taskSub, ioSub)
 	val trackingSub = baseProject(cachePath / "tracking", "Tracking", cacheSub)
 	val compilerSub = project(compilePath, "Compile", new CompileProject(_),
-		launchInterfaceSub, interfaceSub, ivySub, ioSub, classpathSub, compileInterfaceSub)
+		launchInterfaceSub, interfaceSub, ivySub, ioSub, classpathSub, compileInterfaceSub, compileAPISub)
 	val stdTaskSub = project(tasksPath / "standard", "Standard Tasks", new StandardTaskProject(_), trackingSub, compilerSub)
 
 	val distSub = project("dist", "Distribution", new DistProject(_))
@@ -134,6 +134,22 @@ class XSbt(info: ProjectInfo) extends ParentProject(info)
 			val timestamp = formatter.format(new Date)
 			FileUtilities.write(versionPropertiesPath.asFile, "version=" + version + "\ntimestamp=" + timestamp, log)
 		}
+
+		override def watchPaths = super.watchPaths +++ apiDefinitionPaths --- sources(generatedBasePath)
+		override def mainSourceRoots = super.mainSourceRoots +++ (generatedBasePath ##)
+		def srcManagedPath = path("src_managed")
+		def generatedBasePath = srcManagedPath / "main" / "java"
+		/** Files that define the datatypes.*/
+		def apiDefinitionPaths: PathFinder = "definition"
+		def apiDefinitions = apiDefinitionPaths.get.toList.map(_.absolutePath)
+		/** Delete up the generated sources*/
+		lazy val cleanManagedSrc = cleanTask(srcManagedPath)
+		override def cleanAction = super.cleanAction dependsOn(cleanManagedSrc)
+		/** Runs the generator compiled by 'compile', putting the classes in src_managed and processing the definitions 'apiDefinitions'. */
+		lazy val generateSource = generateSourceAction dependsOn(cleanManagedSrc, datatypeSub.compile)
+		def generateSourceAction = runTask(datatypeSub.getMainClass(true), datatypeSub.runClasspath, "xsbti.api" :: generatedBasePath.absolutePath :: apiDefinitions)
+		/** compiles the generated sources */
+		override def compileAction = super.compileAction dependsOn(generateSource)
 	}
 	class LaunchInterfaceProject(info: ProjectInfo) extends  BaseInterfaceProject(info)
 	{
@@ -146,20 +162,6 @@ class XSbt(info: ProjectInfo) extends ParentProject(info)
 	/** This subproject generates a hierarchy of Java interfaces and Scala implementations according to a basic format.*/
 	class CompilerAPIProject(info: ProjectInfo) extends Base(info)
 	{
-		override def watchPaths = super.watchPaths +++ apiDefinitionPaths
-		override def mainSourceRoots = srcManagedPath
-		def srcManagedPath = ("src_managed" ##)
-		def generatedBasePath = srcManagedPath / "main" / "java"
-		/** Files that define the datatypes.*/
-		def apiDefinitionPaths: PathFinder = "definition"
-		def apiDefinitions = apiDefinitionPaths.get.toList.map(_.absolutePath)
-		/** Delete up the generated sources*/
-		lazy val cleanManagedSrc = cleanTask(srcManagedPath)
-		/** Runs the generator compiled by 'compile', putting the classes in src_managed and processing the definitions 'apiDefinitions'. */
-		lazy val generateSource = generateSourceAction dependsOn(cleanManagedSrc)
-		def generateSourceAction = runTask(datatypeSub.getMainClass(true), datatypeSub.runClasspath, "xsbti.api" :: generatedBasePath.absolutePath :: apiDefinitions)
-		/** compiles the generated sources */
-		override def compileAction = super.compileAction dependsOn(generateSource)
 	}
 	class CompilerInterfaceProject(info: ProjectInfo) extends Base(info) with SourceProject with TestWithIO with TestWithLog
 	{

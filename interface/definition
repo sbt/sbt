@@ -3,16 +3,19 @@ Type
 		Projection
 			prefix : SimpleType
 			id : String
+		ParameterRef
+			id: Int
 		Singleton
 			path: Path
+		EmptyType
 		Parameterized
 			baseType : SimpleType
-			typeArguments: SimpleType
+			typeArguments: SimpleType*
 	Annotated
 		baseType : SimpleType
 		annotations : Annotation*
 	Structure
-		parents : Annotated*
+		parents : Type*
 		declarations: Definition*
 	Existential
 		baseType : Type
@@ -23,9 +26,10 @@ Source
 	definitions: Definition*
 
 Package
-	components: String*
+	name: String
 
 Definition
+	name: String
 	access: Access
 	modifiers: Modifiers
 	FieldLike
@@ -38,10 +42,10 @@ Definition
 			valueParameters: ParameterList*
 			returnType: Type
 		ClassLike
+			definitionType: DefinitionType
 			selfType: Type
 			structure: Structure
 		TypeMember
-			name: String
 			TypeAlias
 				tpe: Type
 			TypeDeclaration
@@ -54,6 +58,7 @@ Access
 		qualifier: Qualifier
 		Protected
 		Private
+		Pkg
 
 Qualifier
 	Unqualified
@@ -62,6 +67,7 @@ Qualifier
 		value: String
 
 Modifiers
+	isAbstract: Boolean
 	isDeferred: Boolean
 	isOverride: Boolean
 	isFinal: Boolean
@@ -79,17 +85,19 @@ MethodParameter
 	modifier: ParameterModifier
 
 TypeParameter
+	id: Int
 	typeParameters : TypeParameter*
 	variance: Variance
-	upperBound: Type
 	lowerBound: Type
+	upperBound: Type
 
 Annotation
 	base: SimpleType
 	arguments: String*
 
 enum Variance : Contravariant, Covariant, Invariant
-enum ParameterModifier : Vararg, Plain, ByName
+enum ParameterModifier : Repeated, Plain, ByName
+enum DefinitionType : Trait, ClassDef, Module, PackageModule
 
 Path
 	components: PathComponent*
