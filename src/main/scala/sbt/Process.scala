@@ -3,6 +3,7 @@
  */
 package sbt
 
+import sbt.impl.CommandParser
 import java.lang.{Process => JProcess, ProcessBuilder => JProcessBuilder}
 import java.io.{Closeable, File, IOException}
 import java.io.{BufferedReader, InputStream, InputStreamReader, OutputStream, PipedInputStream, PipedOutputStream}
@@ -11,9 +12,28 @@ import java.net.URL
 /** Methods for constructing simple commands that can then be combined. */
 object Process
 {
-	implicit def apply(command: String): ProcessBuilder = apply(command.split("""\s+""")) // TODO: use CommandParser
-	implicit def apply(command: Seq[String]): ProcessBuilder = apply(new JProcessBuilder(command.toArray : _*))
-	def apply(command: String, arguments: Seq[String]): ProcessBuilder = apply(new JProcessBuilder((command :: arguments.toList).toArray : _*))
+	implicit def apply(command: String): ProcessBuilder = apply(command, None)
+	implicit def apply(command: Seq[String]): ProcessBuilder = apply (command.toArray, None)
+	def apply(command: String, arguments: Seq[String]): ProcessBuilder = apply(command :: arguments.toList, None)
+	/** create ProcessBuilder with working dir set to path and extra environment variables */
+	def apply(command: String, cwd: Path, extraEnv: (String,String)*): ProcessBuilder = apply(command, cwd.asFile, extraEnv : _*)
+	/** create ProcessBuilder with working dir set to File and extra environment variables */
+	def apply(command: String, cwd: File, extraEnv: (String,String)*): ProcessBuilder =
+		apply(command, Some(cwd), extraEnv : _*)
+	/** create ProcessBuilder with working dir optionaly set to File and extra environment variables */
+	def apply(command: String, cwd: Option[File], extraEnv: (String,String)*): ProcessBuilder = {
+		CommandParser.parse(command) match {
+			case Left(errorMsg) => error(errorMsg)
+			case Right((cmd, args)) => apply(cmd :: args, cwd, extraEnv : _*)
+		}
+	}
+	/** create ProcessBuilder with working dir optionaly set to File and extra environment variables */
+	def apply(command: Seq[String], cwd: Option[File], extraEnv: (String,String)*): ProcessBuilder = {
+		val jpb = new JProcessBuilder(command.toArray : _*)
+		cwd.foreach(jpb directory _)
+		extraEnv.foreach { case (k, v) => jpb.environment.put(k, v) }
+		apply(jpb)
+	}
 	implicit def apply(builder: JProcessBuilder): ProcessBuilder = new SimpleProcessBuilder(builder)
 	implicit def apply(file: File): FilePartialBuilder = new FileBuilder(file)
 	implicit def apply(url: URL): URLPartialBuilder = new URLBuilder(url)
