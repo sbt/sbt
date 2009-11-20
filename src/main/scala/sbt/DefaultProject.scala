@@ -452,7 +452,7 @@ object BasicScalaProject
 	{
 		log.warn("No Main-Class attribute will be added automatically added:")
 		log.warn("Multiple classes with a main method were detected.  Specify main class explicitly with:")
-		log.warn("     override mainClass = Some(\"className\")")
+		log.warn("     override def mainClass = Some(\"className\")")
 	}
 }
 object BasicWebScalaProject
