@@ -1,26 +1,3 @@
-Type
-	SimpleType
-		Projection
-			prefix : SimpleType
-			id : String
-		ParameterRef
-			id: Int
-		Singleton
-			path: Path
-		EmptyType
-		Parameterized
-			baseType : SimpleType
-			typeArguments: SimpleType*
-	Annotated
-		baseType : SimpleType
-		annotations : Annotation*
-	Structure
-		parents : Type*
-		declarations: Definition*
-	Existential
-		baseType : Type
-		clause: TypeParameter*
-
 Source
 	packages : Package*
 	definitions: Definition*
@@ -51,6 +28,29 @@ Definition
 			TypeDeclaration
 				upperBound: Type
 				lowerBound: Type
+
+Type
+	SimpleType
+		Projection
+			prefix : SimpleType
+			id : String
+		ParameterRef
+			id: Int
+		Singleton
+			path: Path
+		EmptyType
+		Parameterized
+			baseType : SimpleType
+			typeArguments: SimpleType*
+	Annotated
+		baseType : SimpleType
+		annotations : Annotation*
+	Structure
+		parents : Type*
+		declarations: Definition*
+	Existential
+		baseType : Type
+		clause: TypeParameter*
 
 Access
 	Public
