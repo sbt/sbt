@@ -22,14 +22,13 @@ class XSbt(info: ProjectInfo) extends ParentProject(info)
 
 	val testSub = project("scripted", "Test", new TestProject(_), ioSub)
 
-	val compileAPISub = project(compilePath / "api", "Source API", new CompilerAPIProject(_))
 	val compileInterfaceSub = project(compilePath / "interface", "Compiler Interface", new CompilerInterfaceProject(_), interfaceSub)
 
 	val taskSub = project(tasksPath, "Tasks", new TaskProject(_), controlSub, collectionSub)
 	val cacheSub = project(cachePath, "Cache", new CacheProject(_), taskSub, ioSub)
 	val trackingSub = baseProject(cachePath / "tracking", "Tracking", cacheSub)
 	val compilerSub = project(compilePath, "Compile", new CompileProject(_),
-		launchInterfaceSub, interfaceSub, ivySub, ioSub, classpathSub, compileInterfaceSub, compileAPISub)
+		launchInterfaceSub, interfaceSub, ivySub, ioSub, classpathSub, compileInterfaceSub)
 	val stdTaskSub = project(tasksPath / "standard", "Standard Tasks", new StandardTaskProject(_), trackingSub, compilerSub)
 
 	val distSub = project("dist", "Distribution", new DistProject(_))
@@ -158,10 +157,6 @@ class XSbt(info: ProjectInfo) extends ParentProject(info)
 	class TestProject(info: ProjectInfo) extends Base(info)
 	{
 		val process = "org.scala-tools.sbt" % "process" % "0.1"
-	}
-	/** This subproject generates a hierarchy of Java interfaces and Scala implementations according to a basic format.*/
-	class CompilerAPIProject(info: ProjectInfo) extends Base(info)
-	{
 	}
 	class CompilerInterfaceProject(info: ProjectInfo) extends Base(info) with SourceProject with TestWithIO with TestWithLog
 	{
