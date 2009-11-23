@@ -26,8 +26,8 @@ Definition
 			TypeAlias
 				tpe: Type
 			TypeDeclaration
-				upperBound: Type
 				lowerBound: Type
+				upperBound: Type
 
 Type
 	SimpleType
@@ -48,6 +48,7 @@ Type
 	Structure
 		parents : Type*
 		declarations: Definition*
+		inherited: Definition*
 	Existential
 		baseType : Type
 		clause: TypeParameter*
@@ -74,6 +75,7 @@ Modifiers
 	isSealed: Boolean
 	isImplicit: Boolean
 	isLazy: Boolean
+	isSynthetic: Boolean
 
 ParameterList
 	parameters: MethodParameter*
