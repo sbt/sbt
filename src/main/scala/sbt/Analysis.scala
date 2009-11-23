@@ -164,14 +164,17 @@ import Format._ // get implicits for data types
 class BasicCompileAnalysis protected (analysisPath: Path, projectPath: Path, log: Logger) extends BasicAnalysis(analysisPath, projectPath, log)
 {
 	/*private */val hashesMap = new HashMap[Path, Array[Byte]]
+	val apiMap = new HashMap[Path, xsbti.api.Source]
 	
-	override protected def mapsToClear = hashesMap :: super.mapsToClear
-	override protected def mapsToRemoveSource = hashesMap :: super.mapsToRemoveSource
+	override protected def mapsToClear = apiMap :: hashesMap :: super.mapsToClear
+	override protected def mapsToRemoveSource = apiMap :: hashesMap :: super.mapsToRemoveSource
 	
 	def setHash(source: Path, hash: Array[Byte]) { hashesMap(source) = hash }
 	def clearHash(source: Path) { hashesMap.removeKey(source) }
 	def hash(source: Path) = hashesMap.get(source)
 	def clearHashes() { hashesMap.clear() }
+
+	def setAPI(source: Path, a: xsbti.api.Source) { apiMap(source) = a }
 	
 	def getClasses(sources: PathFinder, outputDirectory: Path): PathFinder =
 		Path.lazyPathFinder

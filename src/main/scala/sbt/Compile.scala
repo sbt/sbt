@@ -134,4 +134,5 @@ private final class AnalysisInterface(delegate: AnalysisCallback, basePath: Path
 	def relativizeOrAbs(base: Path, file: File) = Path.relativize(base, file).getOrElse(Path.fromFile(file))
 	def classPath(file: File) = relativizeOrAbs(outputPath, file)
 	def srcPath(file: File) = relativizeOrAbs(basePath, file)
+	def api(file: File, source: xsbti.api.Source) = delegate.api(srcPath(file), source)
 }

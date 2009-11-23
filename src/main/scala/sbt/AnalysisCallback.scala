@@ -58,6 +58,7 @@ trait AnalysisCallback extends NotNull
 	def endSource(sourcePath: Path): Unit
 	/** Called when a module with a public 'main' method with the right signature is found.*/
 	def foundApplication(sourcePath: Path, className: String): Unit
+	def api(sourcePath: Path, source: xsbti.api.Source): Unit
 }
 abstract class BasicAnalysisCallback[A <: BasicCompileAnalysis](val basePath: Path, protected val analysis: A) extends AnalysisCallback
 {
@@ -84,6 +85,9 @@ abstract class BasicAnalysisCallback[A <: BasicCompileAnalysis](val basePath: Pa
 	
 	def endSource(sourcePath: Path): Unit =
 		analysis.removeSelfDependency(sourcePath)
+
+	def api(sourcePath: Path, source: xsbti.api.Source): Unit =
+		analysis.setAPI(sourcePath, source)
 }
 abstract class BasicCompileAnalysisCallback(basePath: Path, analysis: CompileAnalysis)
 	extends BasicAnalysisCallback(basePath, analysis)
