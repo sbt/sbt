@@ -10,23 +10,28 @@ ISSUES
 
 TODO
  - launcher interface versioning
+ - allow comments in datatype definition file
+ - tests for API extractor
 
 Task engine
 - method tasks will be normal tasks that pull the command line from a CommandLine task
-- possibly have per task logging, including configuration (e.g. 'debug compile')
-- unnamed tasks log to parent task
-- in parallel, optionally one task always logging
+- per task configuration, including logging (e.g. 'task compile log debug')
+- unnamed tasks log to parent task 
+- better control over parallel logging.  Approach undecided. Some possibilities:
+  + optionally one task always logging
+  + log each task to a file
+  + interactive control over logging (might require tasks that use console to be explicit in their dependence on the console)
 
-- Have Interfaces subproject that depends on no other project and defines interfaces in package xsbti.  They are written in Java and cannot refer to Scala classes (compileOrder = JavaThenScala).  These interfaces can be used to pass objects across ClassLoader boundaries.
+- Interfaces subproject that depends on no other project and defines interfaces in package xsbti.  They are written in Java and cannot refer to Scala classes (compileOrder = JavaThenScala).  These interfaces can be used to pass objects across ClassLoader boundaries.
 - launcher/main interface is not static (no system properties should be used past the static entry point)
 - simple, well-defined ClassLoaders
 - use Exceptions instead of Option/Either
 - every component gets its own subproject
 - can use any version of compiler/Scala that is source compatible with the compiler-interface component
-- Logger passed by implicit parameter
 - build xsbt using normal cross-build conventions
 - compiler: raw interface (no dependency analysis, but still in same jvm) or with dependency analysis
 - compiler: can specify scala-library.jar and scala-compiler.jar + version instead of retrieving the ClassLoader
+- compiler: new phase that extracts API defined in sources (classes, their members, and all type information)
 - minimal dependence on main xsbt logger from subcomponents: use thin interface for subcomponents
 
 Dependency Management
