@@ -123,11 +123,11 @@ The following sections briefly describe the contents of the different types.
 
 = API Data Structure =
 
-This section and explains the data structure representing an API.
+This section and explains the data structure representing the API of a source file described in the previous section.
 
-As mentioned in the introduction, the data structure is defined by the 'definition' file in the 'interface' subproject.  The 'datatype' subproject processes this file and generates Java sources in 'src_managed' in the 'interface' subproject.  The listings of the definition are as of November 23, 2009.
+As mentioned in the introduction, the data structure is defined by the 'definition' file in the 'interface' subproject.  Code from the 'datatype' subproject processes this file and generates Java sources in 'src_managed' in the 'interface' subproject.  The explanation includes listings from the definition file.  These listings are current as of November 24, 2009.
 
-The top-level datatype is `Source`.  It represents the API in a single source file.  Packages are listed separately from definitions because a source file can introduce a package without a top-level definition in that package.
+The top-level datatype is `Source`.  It represents the API in a single source file.  Packages are listed separately from definitions for two reasons.  First, packages cannot be inferred from definitions because a source file can introduce a package without a top-level definition in that package.  A reasonable alternative would have been including Definitions in Packages.  However, it is anticipated that the most common operation will be to iterate directly over definitions.
 {{{
 Source
 	packages : Package*
@@ -140,6 +140,7 @@ Package
 	name: String
 }}}
 
+Definitions are represented by straightforward subclasses of a Definition class.  vals and vars are FieldLike subclasses that differ only by their class name.  The remaining definition variants all have type parameters and so they share a common parent that provides this information.  Class definitions are represented by a single class and the variants (traits, objects, ...) are distinguished by the 'definitionType' field.  The 'selfType' field can be an instance of the special Type EmptyType, which indicates that the self type is not different from the normal self type.
 {{{
 Definition
 	name: String
@@ -164,7 +165,10 @@ Definition
 			TypeDeclaration
 				lowerBound: Type
 				upperBound: Type
+}}}
 
+Types are fairly straightforward representations as well.  They are intended to correspond closely to the types defined in the Scala specification.  Note that function, infix, and tuple types translate to parameterized types and type designators translate to type projections.  Compound types and refinements are represented by the Structure class.
+{{{
 Type
 	SimpleType
 		Projection
@@ -188,7 +192,10 @@ Type
 	Existential
 		baseType : Type
 		clause: TypeParameter*
+}}}
 
+There is one point to note about the access hierarchy.  It includes a Pkg class, which represents Java's package private access.  This is only used for Java sources.
+{{{
 Access
 	Public
 	Qualified
@@ -196,13 +203,15 @@ Access
 		Protected
 		Private
 		Pkg
-
 Qualifier
 	Unqualified
 	ThisQualifier
 	IdQualifier
 		value: String
+}}}
 
+Modifiers are straightforward except that abstract is split into abstract and deferred, according to the Scala compiler's internal representation.  Abstract applies to traits and abstract classes, while deferred applies to class members.
+{{{
 Modifiers
 	isAbstract: Boolean
 	isDeferred: Boolean
@@ -212,7 +221,9 @@ Modifiers
 	isImplicit: Boolean
 	isLazy: Boolean
 	isSynthetic: Boolean
+}}}
 
+{{{
 ParameterList
 	parameters: MethodParameter*
 	isImplicit: Boolean
@@ -228,10 +239,14 @@ TypeParameter
 	variance: Variance
 	lowerBound: Type
 	upperBound: Type
+}}}
 
+The representation of annotations does not express the full information that the compiler has about annotations.  The arguments to an annotation are constant expressions.  This could be represented in this data structure, but this is not currently done.  Rather, the arguments are converted to a String in an unspecified manner.
+{{{
 Annotation
 	base: SimpleType
 	arguments: String*
+}}}
 
 enum Variance : Contravariant, Covariant, Invariant
 enum ParameterModifier : Repeated, Plain, ByName
