@@ -9,6 +9,7 @@ Definition
 	name: String
 	access: Access
 	modifiers: Modifiers
+	annotations: Annotation*
 	FieldLike
 		tpe : Type
 		Val
