@@ -380,6 +380,20 @@ object FileUtilities
 		out.toByteArray
 	}
 
+	// Not optimized for large files
+	def readLines(file: File): List[String] = readLines(file, defaultCharset)
+	def readLines(file: File, charset: Charset): List[String] =
+	{
+		fileReader(charset)(file){ in =>
+			def readLine(accum: List[String]): List[String] =
+			{
+				val line = in.readLine()
+				if(line eq null) accum.reverse else readLine(line :: accum)
+			}
+			readLine(Nil)
+		}
+	}
+
 	/** A pattern used to split a String by path separator characters.*/
 	private val PathSeparatorPattern = java.util.regex.Pattern.compile(File.pathSeparator)
 
