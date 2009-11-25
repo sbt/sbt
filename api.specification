@@ -26,6 +26,7 @@ A definition introduces a new named class or a class member.  Class members incl
 
 The API of a definition is
  * The definition's name, which is fully-qualified if it is a class.
+ * The list of annotations on the definition
  * The state of the following modifiers: abstract, override, final, sealed, implicit, lazy, synthetic
  * The access restrictions of the definition, one of:
   * public
@@ -146,6 +147,7 @@ Definition
 	name: String
 	access: Access
 	modifiers: Modifiers
+	annotations: Annotation*
 	FieldLike
 		tpe : Type
 		Val
