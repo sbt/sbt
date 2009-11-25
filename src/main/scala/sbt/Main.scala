@@ -3,6 +3,7 @@
  */
 package sbt
 
+import java.io.File
 import scala.collection.immutable.TreeSet
 
 private case class Exit(code: Int) extends xsbti.Exit
@@ -141,6 +142,13 @@ class xMain extends xsbti.AppMain
 						case Some(newProject) => process(newProject, tail, isInteractive)
 						case None => process(project, if(isInteractive) tail else ExitCommand :: tail, isInteractive)
 					}
+				case action :: tail if action.startsWith(FileCommandsPrefix) =>
+					val file = new File(baseProject.info.projectDirectory, action.substring(FileCommandsPrefix.length).trim)
+					readLines(project, file) match
+					{
+						case Some(lines) => process(project, lines ::: tail , isInteractive)
+						case None => process(project, if(isInteractive) tail else ExitCommand :: tail, isInteractive)
+					}
 				case action :: tail =>
 					val success = processAction(baseProject, project, action, isInteractive)
 					if(success || isInteractive) process(project, tail, isInteractive) else Exit(BuildErrorExitCode)
@@ -197,6 +205,15 @@ class xMain extends xsbti.AppMain
 					Nil
 		}
 	}
+	private def readLines(project: Project, file: File): Option[List[String]] =
+	{
+		try { Some(xsbt.FileUtilities.readLines(file)) }
+		catch { case e: Exception =>
+			project.log.trace(e)
+			project.log.error("Error reading commands from file " + file.getAbsolutePath + ": " + e.toString)
+			None
+		}
+	}
 	// todo:  project.log.info("No actions specified, interactive session started. Execute 'help' for more information.")
 	private def prompt(baseProject: Project, project: Project): String =
 	{
@@ -244,6 +261,8 @@ class xMain extends xsbti.AppMain
 	* Scala version between this prefix and the space (i.e. '++version action' means execute 'action' using
 	* Scala version 'version'. */
 	val SpecificBuildPrefix = "++"
+	/** The prefix used to identify a file to read commands from. */
+	val FileCommandsPrefix = "<"
 
 	/** The number of seconds between polling by the continuous compile command.*/
 	val ContinuousCompilePollDelaySeconds = 1
@@ -270,10 +289,10 @@ class xMain extends xsbti.AppMain
 				else if(action.startsWith(GetAction + " "))
 					getProperty(currentProject, action.substring(GetAction.length + 1))
 				else
-							handleCommand(currentProject, action)
+					handleCommand(currentProject, action)
 		}
 
-	private def printCmd(name:String, desc:String) = Console.println("\t" + name + ": " + desc)
+	private def printCmd(name:String, desc:String) = Console.println("\t" + name + " : " + desc)
 	val BatchHelpHeader = "You may execute any project action or method or one of the commands described below."
 	val InteractiveHelpHeader = "You may execute any project action or one of the commands described below. Only one action " +
 			"may be executed at a time in interactive mode and is entered by name, as it would be at the command line." +
@@ -286,6 +305,7 @@ class xMain extends xsbti.AppMain
 		printCmd("<action name>", "Executes the project specified action.")
 		printCmd("<method name> <parameter>*", "Executes the project specified method.")
 		printCmd(ContinuousExecutePrefix + " <command>", "Executes the project specified action or method whenever source files change.")
+		printCmd(FileCommandsPrefix + " file", "Executes the commands in the given file.  Each command should be on its own line.  Empty lines and lines beginning with '#' are ignored")
 		printCmd(CrossBuildPrefix + " <command>", "Executes the project specified action or method for all versions of Scala defined in crossScalaVersions.")
 		printCmd(SpecificBuildPrefix + "<version> <command>", "Changes the version of Scala building the project and executes the provided command.  <command> is optional.")
 		printCmd(ShowActions, "Shows all available actions.")
