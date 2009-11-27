@@ -4,7 +4,8 @@
 package sbt
 
 	import java.net.URLClassLoader
-	import org.scalatools.testing.{TestFingerprint => Fingerprint, Framework, Runner, Logger=>TLogger}
+	import org.scalatools.testing.{TestFingerprint => Fingerprint, Framework,
+    Runner, Logger=>TLogger, EventHandler, Event}
 
 object Result extends Enumeration
 {
@@ -13,10 +14,11 @@ object Result extends Enumeration
 
 object TestFrameworks
 {
-	val ScalaCheck = new TestFramework("org.scalacheck.FrameworkImpl")
+	val ScalaCheck = new TestFramework("org.scalacheck.ScalaCheckFramework")
 	val ScalaTest = new TestFramework("org.scalatest.tools.ScalaTestFramework")
 	val Specs = new TestFramework("org.specs.FrameworkImpl")
 }
+
 class TestFramework(val implClassName: String) extends NotNull
 {
 	def create(loader: ClassLoader, log: Logger): Option[Framework] =
@@ -25,6 +27,7 @@ class TestFramework(val implClassName: String) extends NotNull
 		catch { case e: ClassNotFoundException => log.debug("Framework implementation '" + implClassName + "' not present."); None }
 	}
 }
+
 final class TestRunner(framework: Framework, loader: ClassLoader, listeners: Seq[TestReportListener], log: Logger) extends NotNull
 {
 	private[this] val delegate = framework.testRunner(loader, listeners.flatMap(_.contentLogger).toArray)
@@ -33,7 +36,10 @@ final class TestRunner(framework: Framework, loader: ClassLoader, listeners: Seq
 		val testClass = testDefinition.testClassName
 		def runTest() =
 		{
-			val results = delegate.run(testClass, testDefinition, args.toArray)
+			// here we get the results! here is where we'd pass in the event listener
+			val results = new scala.collection.mutable.ListBuffer[Event]
+			val handler = new EventHandler { def handle(e:Event){ results += e } }
+			delegate.run(testClass, testDefinition, handler, args.toArray)
 			val event = TestEvent(results)
 			safeListenersCall(_.testEvent( event ))
 			event.result
@@ -59,6 +65,7 @@ final class TestRunner(framework: Framework, loader: ClassLoader, listeners: Seq
 }
 
 final class NamedTestTask(val name: String, action: => Option[String]) extends NotNull { def run() = action }
+
 object TestFramework
 {
 	def runTests(frameworks: Seq[TestFramework], classpath: Iterable[Path], scalaLoader: ClassLoader, tests: Seq[TestDefinition], log: Logger,
