@@ -25,4 +25,5 @@ class TestCallback(val superclassNames: Array[String]) extends AnalysisCallback
 	def generatedClass(source: File, module: File) { products += ((source, module)) }
 	def endSource(source: File) { endedSources += source }
 	def foundApplication(source: File, className: String) { applications += ((source, className)) }
+	def api(source: File, sourceAPI: xsbti.api.Source) = ()
 }
