@@ -125,6 +125,7 @@ final class Distributor[D](scheduler: Scheduler[D], doWork: D => Option[String],
 		}
 		private class Worker(data: D) extends Thread with NotNull
 		{
+			override def interrupt() {}
 			override def run()
 			{
 				val result = Control.trapUnit("", log(data))(doWork(data))
