@@ -59,7 +59,7 @@ object OpenResource
 
 	def resource[Source, T <: Closeable](openF: Source => T): OpenResource[Source,T] =
 		resource(openF, _.close)
-	def resource[Source, T <: Closeable](openF: Source => T, closeF: T => Unit): OpenResource[Source,T] =
+	def resource[Source, T](openF: Source => T, closeF: T => Unit): OpenResource[Source,T] =
 		new OpenResource[Source,T]
 		{
 			def open(s: Source) = openF(s)

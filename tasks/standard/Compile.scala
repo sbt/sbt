@@ -114,6 +114,7 @@ class StandardCompile(val sources: Task[Set[File]], val classpath: Task[Set[File
 		def jarDependency(jar: File, source: File) { tracking.use(source, jar) }
 		def classDependency(clazz: File, source: File) { tracking.dependency(source, clazz) }
 		def generatedClass(source: File, clazz: File) { tracking.product(source, clazz) }
+		def api(source: File, api: xsbti.api.Source) = ()
 	}
 }
 

@@ -13,9 +13,9 @@ class ScriptRunner
 	def apply(statements: List[(StatementHandler, Statement)])
 	{
 		val states = new HashMap[StatementHandler, Any]
-		 def processStatement(handler: StatementHandler, statement: Statement)
-		 {
-			val state = states.getOrElseUpdate(handler, handler.initialState).asInstanceOf[handler.State]
+		def processStatement(handler: StatementHandler, statement: Statement)
+		{
+			val state = states(handler).asInstanceOf[handler.State]
 			val nextState =
 				try { Right( handler(statement.command, statement.arguments, state) ) }
 				catch { case e: Exception => Left(e) }
@@ -23,7 +23,12 @@ class ScriptRunner
 			{
 				case Left(err) =>
 					if(statement.successExpected)
-						throw new TestException(statement, "Command failed", err)
+					{
+						err match {
+							case t: TestFailed => throw new TestException(statement, "Command failed: " + t.getMessage, null)
+							case _ => throw new TestException(statement, "Command failed", err)
+						}
+					}
 					else
 						()
 				case Right(s) =>
@@ -33,7 +38,20 @@ class ScriptRunner
 						throw new TestException(statement, "Command succeeded but failure was expected", null)
 			}
 		}
-		statements.foreach { case (handler, _) => states(handler) = handler.initialState }
-		statements foreach( Function.tupled(processStatement) )
+		val handlers = Set() ++ statements.map(_._1)
+		
+		try
+		{
+			handlers.foreach { handler => states(handler) = handler.initialState }
+			statements foreach( Function.tupled(processStatement) )
+		}
+		finally
+		{
+			for(handler <- handlers; state <- states.get(handler))
+			{
+				try { handler.finish(state.asInstanceOf[handler.State]) }
+				catch { case e: Exception => () }
+			}
+		}
 	}
 }
