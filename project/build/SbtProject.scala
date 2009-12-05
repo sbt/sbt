@@ -4,6 +4,7 @@
 import sbt._
 
 import java.io.File
+import java.net.URL
 
 class SbtProject(info: ProjectInfo) extends DefaultProject(info) with test.SbtScripted
 {
@@ -15,7 +16,8 @@ class SbtProject(info: ProjectInfo) extends DefaultProject(info) with test.SbtSc
 	override def normalizedName = "sbt"
 
 	override def managedStyle = ManagedStyle.Ivy
-	val publishTo = Resolver.file("technically", new File("/var/dbwww/repo/"))
+	//val publishTo = Resolver.file("technically", new File("/var/dbwww/repo/"))
+	val technically = Resolver.url("technically.us", new URL("http://databinder.net/repo/"))(Resolver.ivyStylePatterns)
 
 	override def compileOptions = Nil
 	
