@@ -21,6 +21,8 @@ object PathMapper
 {
 	val basic: PathMapper = BasicPathMapper
 	def relativeTo(base: File): PathMapper = RelativePathMapper(base)
+	def rebase(oldBase: File, newBase: File): PathMapper =
+		new PMapper(file => if(file == oldBase) "." else FileUtilities.relativize(oldBase, file).getOrElse(error(file + " not a descendent of " + oldBase)))
 	val flat = FlatPathMapper
 	def apply(f: File => String): PathMapper = new PMapper(f)
 }
@@ -37,8 +39,11 @@ class FMapper(f: File => File) extends FileMapper
 object FileMapper
 {
 	def basic(newDirectory: File) = new FMapper(file => new File(newDirectory, file.getPath))
-	def rebase(oldBase: File, newBase: File) =
-		new FMapper(file => if(file == oldBase) newBase else new File(newBase, FileUtilities.relativize(oldBase, file).getOrElse(error(file + " not a descendent of " + oldBase))))
+	def rebase(oldBase: File, newBase: File): FileMapper =
+	{
+		val paths = PathMapper.rebase(oldBase, newBase)
+		new FMapper(file => new File(newBase, paths(file)))
+	}
 	def flat(newDirectory: File) = new FMapper(file => new File(newDirectory, file.getName))
 	def apply(f: File => File) = new FMapper(f)
 }
