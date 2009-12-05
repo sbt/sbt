@@ -4,7 +4,7 @@
 package sbt.test
 
 import Scripted._
-import FileUtilities.{classLocation, sbtJar, scalaCompilerJar, scalaLibraryJar, wrapNull}
+import FileUtilities.{sbtJar, scalaCompilerJar, scalaLibraryJar, wrapNull}
 import java.io.File
 import java.net.URLClassLoader
 
@@ -17,18 +17,10 @@ trait ScalaScripted extends BasicScalaProject with Scripted with MavenStyleScala
 	override def testAction = testNoScripted dependsOn(scripted)
 	
 	lazy val scriptedOnly = scriptedMethodTask(scriptedDependencies : _*)
-	
-	override def scriptedClasspath = runClasspath +++ Path.lazyPathFinder { Path.fromFile(sbtJar) :: Nil }
 }
 trait SbtScripted extends ScalaScripted
 {
-	override def scriptedDependencies = testCompile :: `package` :: Nil
-	override def scriptedClasspath = 
-		Path.lazyPathFinder {
-			val ivy = runClasspath.get.filter(_.asFile.getName.startsWith("ivy-")).toList
-			val builtSbtJar = (outputPath / defaultJarName)
-			builtSbtJar :: ivy
-		}
+	override def scriptedDependencies = publishLocal :: Nil
 }
 final case class ScriptedTest(group: String, name: String) extends NotNull
 {
@@ -36,6 +28,11 @@ final case class ScriptedTest(group: String, name: String) extends NotNull
 }
 trait Scripted extends Project with MultiTaskProject
 {
+	def scriptedCompatibility = CompatibilityLevel.Minimal
+	def scriptedDefScala = scalaVersion.value.toString
+	def scriptedSbt = projectVersion.value.toString
+	def scriptedBufferLog = true
+	
 	def sbtTests: Path
 	def scriptedTask(dependencies: ManagedTask*) = dynamic(scriptedTests(listTests)) dependsOn(dependencies : _*)
 	def scriptedMethodTask(dependencies: ManagedTask*) = multiTask(listTests.map(_.toString).toList) { includeFunction =>
@@ -44,41 +41,21 @@ trait Scripted extends Project with MultiTaskProject
 	def listTests = (new ListTests(sbtTests.asFile, include _, log)).listTests
 	def scriptedTests(tests: Seq[ScriptedTest], dependencies: ManagedTask*) =
 	{
-		val localLogger = new LocalLogger(log)
-		lazy val runner =
-		{
-			// load ScriptedTests using a ClassLoader that loads from the project classpath so that the version
-			// of sbt being built is tested, not the one doing the building.
-			val filtered = new FilteredLoader(ClassLoader.getSystemClassLoader, Seq("sbt.", "scala.", "ch.epfl.", "org.apache.", "org.jsch."))
-			val loader = new URLClassLoader(_scriptedClasspath.toArray, filtered)
-			val scriptedClass = Class.forName(ScriptedClassName, true, loader)
-			val scriptedConstructor = scriptedClass.getConstructor(classOf[File], classOf[ClassLoader])
-			val rawRunner = scriptedConstructor.newInstance(sbtTests.asFile, loader)
-			rawRunner.asInstanceOf[{def scriptedTest(group: String, name: String, log: Reflected.Logger): String}]
-		}
+		val runner = new ScriptedTests(sbtTests.asFile, scriptedBufferLog, scriptedSbt, scriptedDefScala, scriptedCompatibility)
 		
 		val startTask = task { None } named("scripted-test-start") dependsOn(dependencies  : _*)
 		def scriptedTest(test: ScriptedTest) =
-			task { unwrapOption(runner.scriptedTest(test.group, test.name, localLogger)) } named test.toString dependsOn(startTask)
+			task { runner.scriptedTest(test.group, test.name, log) } named test.toString dependsOn(startTask)
 		val testTasks = tests.map(scriptedTest)
 		task { None } named("scripted-test-complete") dependsOn(testTasks : _*)
 	}
 	private def unwrapOption[T](s: T): Option[T] = if(s == null) None else Some(s)
-	/** The classpath to use for scripted tests.   This ensures that the version of sbt being built is the one used for testing.*/
-	private def _scriptedClasspath =
-	{
-		val buildClasspath = classLocation[Scripted]
-		val scalaJars = List(scalaLibraryJar, scalaCompilerJar).map(_.toURI.toURL).toList
-		buildClasspath :: scalaJars ::: scriptedClasspath.get.map(_.asURL).toList
-	}
-	def scriptedClasspath: PathFinder = Path.emptyPathFinder
 	
 	def include(test: ScriptedTest) = true
 }
 import scala.collection.mutable
 private[test] object Scripted
 {
-	val ScriptedClassName = "sbt.test.ScriptedTests"
 	val SbtTestDirectoryName = "sbt-test"
 	def list(directory: File, filter: java.io.FileFilter) = wrapNull(directory.listFiles(filter))
 }
@@ -87,7 +64,6 @@ private[test] final class ListTests(baseDirectory: File, accept: ScriptedTest =>
 	def filter = DirectoryFilter -- HiddenFileFilter
 	def listTests: Seq[ScriptedTest] =
 	{
-		System.setProperty("sbt.scala.version", "")
 		list(baseDirectory, filter) flatMap { group =>
 			val groupName = group.getName
 			listTests(group).map(ScriptedTest(groupName, _))

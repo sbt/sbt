@@ -1,11 +1,8 @@
-> update
-[success]
+> +run 1
+> +clean
 
-> run
-[success]
+> +run 2
+> +clean
 
-> clean
-[success]
-
-> test
-[success]
+> +run -1
+> +clean

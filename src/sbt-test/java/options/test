@@ -1,2 +1,7 @@
-> compile
-[failure]
+# need explicit versions here because we want:
+#   fail forall versions
+# and not
+#   fail for any version
+-> ++2.7.7 compile
+-> ++2.8.0-SNAPSHOT compile
+-> ++2.7.2 compile

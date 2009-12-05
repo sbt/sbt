@@ -116,46 +116,115 @@ class xMain extends xsbti.AppMain
 			case r => r
 		}
 	}
+	/** This is the top-level command processing method. */
 	private def processArguments(baseProject: Project, arguments: List[String], configuration: xsbti.AppConfiguration, startTime: Long): xsbti.MainResult =
 	{
-		def process(project: Project, arguments: List[String], isInteractive: Boolean): xsbti.MainResult =
+		type OnFailure = Option[String]
+		def ExitOnFailure = None
+		lazy val interactiveContinue = Some( InteractiveCommand )
+		def remoteContinue(port: Int) = Some( FileCommandsPrefix + "-" + port )
+		
+		// replace in 2.8
+		trait Trampoline
+		class Done(val r: xsbti.MainResult) extends Trampoline
+		class Continue(project: Project, arguments: List[String], failAction: OnFailure) extends Trampoline {
+			def apply() = process(project, arguments, failAction)
+		}
+		def continue(project: Project, arguments: List[String], failAction: OnFailure) = new Continue(project, arguments, failAction)
+		def result(r: xsbti.MainResult) = new Done(r)
+		def run(t: Trampoline): xsbti.MainResult = t match { case d: Done => d.r; case c: Continue => run(c()) }
+
+		def process(project: Project, arguments: List[String], failAction: OnFailure): Trampoline =
 		{
-			def rememberCurrent(newArgs: List[String]) = if(baseProject.name != project.name) (ProjectAction + " " + project.name) :: newArgs else newArgs
+			project.log.debug("commands " + failAction.map("(on failure: " + _ + "): ").mkString + arguments.mkString(", "))
+			def rememberCurrent(newArgs: List[String]) = rememberProject(rememberFail(newArgs))
+			def rememberProject(newArgs: List[String]) = if(baseProject.name != project.name) (ProjectAction + " " + project.name) :: newArgs else newArgs
+			def rememberFail(newArgs: List[String]) = failAction.map(f => (FailureHandlerPrefix + f)).toList :::  newArgs
+			def failed(code: Int) =
+				failAction match
+				{
+					case Some(c) => continue(project, c :: Nil, ExitOnFailure)
+					case None => result( Exit(code) )
+				}
+				
 			arguments match
 			{
-				case "" :: tail => process(project, tail, isInteractive)
-				case (ExitCommand | QuitCommand) :: _ => Exit(NormalExitCode)
-				case RebootCommand :: tail => Reboot(project.defScalaVersion.value, rememberCurrent(tail), configuration)
-				case InteractiveCommand :: _ => process(project, prompt(baseProject, project) :: arguments, true)
+				case "" :: tail => continue(project, tail, failAction)
+				case (ExitCommand | QuitCommand) :: _ => result( Exit(NormalExitCode) )
+				case RebootCommand :: tail => result( Reboot(project.defScalaVersion.value, rememberCurrent(tail), configuration) )
+				case InteractiveCommand :: _ => continue(project, prompt(baseProject, project) :: arguments, interactiveContinue)
 				case SpecificBuild(version, action) :: tail =>
 					if(Some(version) != baseProject.info.buildScalaVersion)
 						throw new ReloadException(rememberCurrent(action :: tail), Some(version))
 					else
-						process(project, action :: tail, isInteractive)
+						continue(project, action :: tail, failAction)
+
 				case CrossBuild(action) :: tail =>
-					if(checkAction(project, action)) process(project, CrossBuild(project, action) ::: tail, isInteractive)
-					else if(isInteractive) process(project, tail, isInteractive)
-					else Exit(UsageErrorExitCode)
+					if(checkAction(project, action))
+						process(project, CrossBuild(project, action) ::: tail, failAction)
+					else
+						failed(UsageErrorExitCode)
+
 				case SetProject(name) :: tail =>
 					SetProject(baseProject, name, project) match
 					{
-						case Some(newProject) => process(newProject, tail, isInteractive)
-						case None => process(project, if(isInteractive) tail else ExitCommand :: tail, isInteractive)
+						case Some(newProject) => continue(newProject, tail, failAction)
+						case None => failed(BuildErrorExitCode)
 					}
+					
 				case action :: tail if action.startsWith(FileCommandsPrefix) =>
-					val file = new File(baseProject.info.projectDirectory, action.substring(FileCommandsPrefix.length).trim)
-					readLines(project, file) match
+					getSource(action.substring(FileCommandsPrefix.length).trim, baseProject.info.projectDirectory) match
 					{
-						case Some(lines) => process(project, lines ::: tail , isInteractive)
-						case None => process(project, if(isInteractive) tail else ExitCommand :: tail, isInteractive)
+						case Left(portAndSuccess) =>
+							val port = Math.abs(portAndSuccess)
+							val previousSuccess = portAndSuccess >= 0
+							readMessage(port, previousSuccess) match
+							{
+								case Some(message) => continue(project, message :: (FileCommandsPrefix + port) :: Nil, remoteContinue(port))
+								case None =>
+									project.log.error("Connection closed.")
+									failed(BuildErrorExitCode)
+							}
+							
+						case Right(file) =>
+							readLines(project, file) match
+							{
+								case Some(lines) => continue(project, lines ::: tail , failAction)
+								case None => failed(UsageErrorExitCode)
+							}
 					}
+					
+				case action :: tail if action.startsWith(FailureHandlerPrefix) =>
+					val errorAction = action.substring(FailureHandlerPrefix.length).trim
+					continue(project, tail, if(errorAction.isEmpty) None else Some(errorAction) )
+					
 				case action :: tail =>
-					val success = processAction(baseProject, project, action, isInteractive)
-					if(success || isInteractive) process(project, tail, isInteractive) else Exit(BuildErrorExitCode)
-				case Nil => project.log.error("Invalid internal sbt state: no arguments"); Exit(ProgramErrorExitCode)
+					val success = processAction(baseProject, project, action, failAction == interactiveContinue)
+					if(success) continue(project, tail, failAction)
+					else failed(BuildErrorExitCode)
+						
+				case Nil =>
+					project.log.error("Invalid internal sbt state: no arguments")
+					result( Exit(ProgramErrorExitCode) )
 			}
 		}
-		process(baseProject, arguments, arguments.lastOption == Some(InteractiveCommand))
+		run(process(baseProject, arguments, ExitOnFailure))
+	}
+	private def isInteractive(failureActions: Option[List[String]]) = failureActions == Some(InteractiveCommand :: Nil)
+	private def getSource(action: String, baseDirectory: File) =
+	{
+		try { Left(action.toInt) }
+		catch { case _: NumberFormatException => Right(new File(baseDirectory, action)) }
+	}
+	private def readMessage(port: Int, previousSuccess: Boolean): Option[String] =
+	{
+		// split into two connections because this first connection ends the previous communication
+		xsbt.IPC.client(port) { _.send(previousSuccess.toString) }
+		//   and this second connection starts the next communication
+		xsbt.IPC.client(port) { ipc =>
+			val message = ipc.receive
+			if(message eq null) None else Some(message)
+		}
 	}
 	object SetProject
 	{
@@ -261,8 +330,10 @@ class xMain extends xsbti.AppMain
 	* Scala version between this prefix and the space (i.e. '++version action' means execute 'action' using
 	* Scala version 'version'. */
 	val SpecificBuildPrefix = "++"
-	/** The prefix used to identify a file to read commands from. */
+	/** The prefix used to identify a file or local port to read commands from. */
 	val FileCommandsPrefix = "<"
+	/** The prefix used to identify the action to run after an error*/
+	val FailureHandlerPrefix = "!"
 
 	/** The number of seconds between polling by the continuous compile command.*/
 	val ContinuousCompilePollDelaySeconds = 1

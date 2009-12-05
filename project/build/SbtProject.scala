@@ -5,7 +5,7 @@ import sbt._
 
 import java.io.File
 
-class SbtProject(info: ProjectInfo) extends DefaultProject(info) //with test.SbtScripted
+class SbtProject(info: ProjectInfo) extends DefaultProject(info) with test.SbtScripted
 {
 	/* Additional resources to include in the produced jar.*/
 	def extraResources = descendents(info.projectPath / "licenses", "*") +++ "LICENSE" +++ "NOTICE"
@@ -13,12 +13,18 @@ class SbtProject(info: ProjectInfo) extends DefaultProject(info) //with test.Sbt
 
 	override def testOptions = ExcludeTests("sbt.ReflectiveSpecification" :: Nil) :: super.testOptions.toList
 	override def normalizedName = "sbt"
-	//override def scriptedDependencies = testCompile :: `package` :: Nil
 
 	override def managedStyle = ManagedStyle.Ivy
 	val publishTo = Resolver.file("test-repo", (Path.userHome / ".ivy2" / "test").asFile)
 
 	override def compileOptions = Nil
+	
+	/**  configuration of scripted testing **/
+	// Set to false to show logging as it happens without buffering, true to buffer until it completes and only show if the task fails.
+	//   The output of scripted tasks executed in parallel will be inteleaved if true.
+	override def scriptedBufferLog = true
+	// Configure which versions of Scala to test against for those tests that do cross building
+	override def scriptedCompatibility = sbt.test.CompatibilityLevel.Full
 
 	def scalaVersionString = ScalaVersion.current.getOrElse(scalaVersion.value)
 	override def mainSources =

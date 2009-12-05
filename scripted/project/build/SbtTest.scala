@@ -6,6 +6,8 @@ import sbt._
 
 class SbtTest(info: ProjectInfo) extends PluginProject(info)
 {
+	val xsbtTest = "org.scala-tools.sbt" %% "test" % version.toString
+	
 	val publishTo = "Scala Tools Nexus" at "http://nexus.scala-tools.org/content/repositories/releases/"
 	Credentials(Path.fromFile(System.getProperty("user.home")) / ".ivy2" / ".credentials", log)
 }

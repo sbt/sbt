@@ -5,59 +5,100 @@
 package sbt.test
 
 import java.io.File
+import java.nio.charset.Charset
 
-final class ScriptedTests(testResources: Resources) extends NotNull
+import xsbt.IPC
+import xsbt.test.{CommentHandler, FileCommands, ScriptRunner, TestScriptParser}
+
+final class ScriptedTests(resourceBaseDirectory: File, bufferLog: Boolean, sbtVersion: String, defScalaVersion: String, level: CompatibilityLevel.Value) extends NotNull
 {
-	def this(resourceBaseDirectory: File, additional: ClassLoader) = this(new Resources(resourceBaseDirectory, additional))
-	def this(resourceBaseDirectory: File) = this(new Resources(resourceBaseDirectory))
+	private val testResources = new Resources(resourceBaseDirectory)
 	
 	val ScriptFilename = "test"
-	import testResources._
 	
-	private def printClass(c: Class[_]) = println(c.getName + " loader=" +c.getClassLoader + " location=" + FileUtilities.classLocationFile(c))
-	
-	def scriptedTest(group: String, name: String, logger: Reflected.Logger): String =
+	def scriptedTest(group: String, name: String, log: Logger): Option[String] =
+		testResources.readWriteResourceDirectory(group, name, log) { testDirectory =>
+			scriptedTest(group + " / " + name, testDirectory, log).toLeft(())
+		}.left.toOption
+	private def scriptedTest(label: String, testDirectory: File, log: Logger): Option[String] =
+		IPC.pullServer( scriptedTest0(label, testDirectory, log) )
+	private def scriptedTest0(label: String, testDirectory: File, log: Logger)(server: IPC.Server): Option[String] =
 	{
-		val log = new RemoteLogger(logger)
-		val result = readOnlyResourceDirectory(group, name).fold(err => Some(err), testDirectory => scriptedTest(testDirectory, log))
-		translateOption(result)
-	}
-	private def scriptedTest(testDirectory: File, log: Logger): Option[String] =
-	{
+		FillProperties(testDirectory, sbtVersion, defScalaVersion, level)
 		val buffered = new BufferedLogger(log)
-		//buffered.startRecording()
-		val filtered = new FilterLogger(buffered)
-		val parsedScript = (new TestScriptParser(testDirectory, filtered)).parse(new File(testDirectory, ScriptFilename))
-		val result = parsedScript.right.flatMap(withProject(testDirectory, filtered))
-		//result.left.foreach(x => buffered.playAll())
-		//buffered.clearAll()
-		result.left.toOption
+		if(bufferLog)
+			buffered.recordAll
+		
+		def createParser() =
+		{
+			val fileHandler = new FileCommands(testDirectory)
+			val sbtHandler = new SbtHandler(testDirectory, buffered, server)
+			new TestScriptParser(Map('$' -> fileHandler, '>' -> sbtHandler, '#' -> CommentHandler))
+		}
+		def runTest() =
+		{
+			val run = new ScriptRunner
+			val parser = createParser()
+			run(parser.parse(new File(testDirectory, ScriptFilename)))
+		}
+
+		try
+		{
+			runTest()
+			buffered.info("+ " + label)
+			None
+		}
+		catch
+		{
+			case e: xsbt.test.TestException =>
+				buffered.playAll()
+				buffered.error("x " + label)
+				if(e.getCause eq null)
+					buffered.error("   " + e.getMessage)
+				else
+					e.printStackTrace
+				Some(e.toString)
+			case e: Exception =>
+				buffered.playAll()
+				buffered.error("x " + label)
+				throw e
+		}
+		finally { buffered.clearAll() }
 	}
-	private[this] def translateOption[T >: Null](s: Option[T]): T = s match { case Some(t) => t; case None => null }
 }
 
-// TODO: remove for sbt 0.5.3
-final class FilterLogger(delegate: Logger) extends BasicLogger
+object CompatibilityLevel extends Enumeration
 {
-	def trace(t: => Throwable)
+	val Full, Basic, Minimal, Minimal27, Minimal28 = Value
+}
+object FillProperties
+{
+	def apply(projectDirectory: File, sbtVersion: String, defScalaVersion: String, level: CompatibilityLevel.Value): Unit =
 	{
-		if(traceEnabled)
-			delegate.trace(t)
+		import xsbt.Paths._
+		fill(projectDirectory / "project" / "build.properties", sbtVersion, defScalaVersion, getVersions(level))
 	}
-	def log(level: Level.Value, message: => String)
+	def fill(properties: File, sbtVersion: String, defScalaVersion: String, buildScalaVersions: String)
 	{
-		if(atLevel(level))
-			delegate.log(level, message)
+		val toAppend = extraProperties(sbtVersion, defScalaVersion, buildScalaVersions)
+		xsbt.OpenResource.fileWriter(Charset.forName("ISO-8859-1"), true)(properties) { _.write(toAppend) }
 	}
-	def success(message: => String)
+	def getVersions(level: CompatibilityLevel.Value) =
 	{
-		if(atLevel(Level.Info))
-			delegate.success(message)
+		import CompatibilityLevel._
+		level match
+		{
+			case Full =>  "2.7.2 2.7.3 2.7.5 2.7.7 2.8.0.Beta1-RC2 2.8.0-SNAPSHOT"
+			case Basic =>  "2.7.7 2.7.2 2.8.0.Beta1-RC2"
+			case Minimal => "2.7.7 2.8.0.Beta1-RC2" 
+			case Minimal27 => "2.7.7"
+			case Minimal28 => "2.8.0.Beta1-RC2"
+		}
 	}
-	def control(event: ControlEvent.Value, message: => String)
-	{
-		if(atLevel(Level.Info))
-			delegate.control(event, message)
-	}
-	def logAll(events: Seq[LogEvent]): Unit = events.foreach(delegate.log)
+	def extraProperties(sbtVersion: String, defScalaVersion: String, buildScalaVersions: String) = 
+<x>
+sbt.version={sbtVersion}
+def.scala.version={defScalaVersion}
+build.scala.versions={buildScalaVersions}
+</x>.text
 }
