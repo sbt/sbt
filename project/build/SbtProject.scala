@@ -15,7 +15,7 @@ class SbtProject(info: ProjectInfo) extends DefaultProject(info) with test.SbtSc
 	override def normalizedName = "sbt"
 
 	override def managedStyle = ManagedStyle.Ivy
-	val publishTo = Resolver.file("test-repo", (Path.userHome / ".ivy2" / "test").asFile)
+	val publishTo = Resolver.file("technically", new File("/var/dbwww/repo/"))
 
 	override def compileOptions = Nil
 	
