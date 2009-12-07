@@ -155,13 +155,24 @@ class xMain extends xsbti.AppMain
 				case InteractiveCommand :: _ => continue(project, prompt(baseProject, project) :: arguments, interactiveContinue)
 				case SpecificBuild(version, action) :: tail =>
 					if(Some(version) != baseProject.info.buildScalaVersion)
-						throw new ReloadException(rememberCurrent(action :: tail), Some(version))
+					{
+						if(checkVersion(baseProject, version))
+							throw new ReloadException(rememberCurrent(action :: tail), Some(version))
+						else
+							failed(UsageErrorExitCode)
+					}
 					else
 						continue(project, action :: tail, failAction)
 
 				case CrossBuild(action) :: tail =>
 					if(checkAction(project, action))
-						process(project, CrossBuild(project, action) ::: tail, failAction)
+					{
+						CrossBuild(project, action) match
+						{
+							case Some(actions) => continue(project, actions ::: tail, failAction)
+							case None => failed(UsageErrorExitCode)
+						}
+					}
 					else
 						failed(UsageErrorExitCode)
 
@@ -257,21 +268,35 @@ class xMain extends xsbti.AppMain
 				None
 		}
 	}
+	def checkVersion(p: Project, version: String) =
+	{
+		try { p.getScalaInstance(version); true }
+		catch { case e: xsbti.RetrieveException => p.log.error(e.getMessage); false }
+	}
 	object CrossBuild
 	{
 		def unapply(s: String) = if(s.startsWith(CrossBuildPrefix) && !s.startsWith(SpecificBuildPrefix)) Some(s.substring(1)) else None
-		def apply(project: Project, action: String) =
+		def apply(project: Project, action: String): Option[List[String]] =
 		{
 			val againstScalaVersions = project.crossScalaVersions
 			if(againstScalaVersions.isEmpty)
 			{
 				Console.println("Project does not declare any Scala versions to cross-build against, building against current version...")
-				action :: Nil
+				Some(action :: Nil)
 			}
 			else
-				againstScalaVersions.toList.map(SpecificBuildPrefix + _ + " " + action) ::: // build against all versions
-					(SpecificBuildPrefix + project.buildScalaVersion) :: // reset to the version before the cross-build
-					Nil
+			{
+				if( !againstScalaVersions.forall(v => checkVersion(project, v)) )
+					None
+				else
+				{
+					val actions = 
+						againstScalaVersions.toList.map(SpecificBuildPrefix + _ + " " + action) ::: // build against all versions
+							(SpecificBuildPrefix + project.buildScalaVersion) :: // reset to the version before the cross-build
+							Nil
+					Some(actions)
+				}
+			}
 		}
 	}
 	private def readLines(project: Project, file: File): Option[List[String]] =
@@ -382,7 +407,7 @@ class xMain extends xsbti.AppMain
 		printCmd(ShowActions, "Shows all available actions.")
 		printCmd(RebootCommand, "Reloads sbt, picking up modifications to sbt.version or scala.version and recompiling modified project definitions.")
 		printCmd(HelpAction, "Displays this help message.")
-		printCmd(ShowCurrent, "Shows the current project and logging level of that project.")
+		printCmd(ShowCurrent, "Shows the current project, Scala version, and logging level.")
 		printCmd(Level.levels.mkString(", "), "Set logging for the current project to the specified level.")
 		printCmd(TraceCommand, "Toggles whether logging stack traces is enabled.")
 		printCmd(ProjectAction + " <project name>", "Sets the currently active project.")
@@ -408,6 +433,7 @@ class xMain extends xsbti.AppMain
 			case ProjectAction => setProjectError(project.log)
 			case ShowCurrent =>
 				printProject("Current project is ", project)
+				Console.println("Current Scala version is " + project.buildScalaVersion)
 				Console.println("Current log level is " + project.log.getLevel)
 				printTraceEnabled(project)
 				true

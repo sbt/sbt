@@ -227,10 +227,24 @@ trait Project extends TaskManager with Dag[Project] with BasicEnvironment
 	/** The definitive source for the version of Scala being used to *build* the project.*/
 	def buildScalaVersion = info.buildScalaVersion.getOrElse(crossScalaVersions.first)
 
+
 	def componentManager = new xsbt.ComponentManager(info.launcher.globalLock, info.app.components, log)
-	def buildScalaInstance =
-		localScalaInstances.find(_.version == buildScalaVersion) getOrElse
-			xsbt.ScalaInstance(buildScalaVersion, info.launcher)
+	def buildScalaInstance = buildScalaInstance0
+	final def buildScalaInstance0: ScalaInstance =
+	{
+		try { getScalaInstance(buildScalaVersion) }
+		catch { case e: xsbti.RetrieveException if info.buildScalaVersion.isEmpty => // only catch the exception if this is the default Scala version
+			log.error(e.getMessage)
+			SimpleReader.readLine("\nProvide a new Scala version or press enter to exit: ") match
+			{
+				case Some(v) if v.length > 0=> buildScalaVersions() = v; saveEnvironment(); buildScalaInstance0
+				case _ => throw e
+			}
+		}
+	}
+	def getScalaInstance(version: String) =
+		localScalaInstances.find(_.version == version) getOrElse
+			xsbt.ScalaInstance(version, info.launcher)
 	lazy val localScalaInstances: Seq[ScalaInstance] = localScala ++ info.parent.toList.flatMap(_.localScalaInstances)
 	def localScala: Seq[ScalaInstance] = Nil
 	def buildCompiler = new AnalyzingCompiler(buildScalaInstance, componentManager)
@@ -348,12 +362,14 @@ object Project
 			case e: Exception => errorLoadingProject(e, log)
 		}
 	}
-	/** Logs the stack trace and returns an error message in Left.*/
 	private def errorLoadingProject(e: Throwable, log: Logger) =
-	{
-		log.trace(e)
-		new LoadError("Error loading project: " + e.toString)
-	}
+		e match
+		{
+			case _: xsbti.RetrieveException => LoadSetupDeclined
+			case _ =>
+				log.trace(e)
+				new LoadError("Error loading project: " + e.toString)
+		}
 	/** Loads the project for the given `info` and represented by an instance of 'builderClass'.*/
 	private[sbt] def constructProject[P <: Project](info: ProjectInfo, builderClass: Class[P]): P =
 		builderClass.getConstructor(classOf[ProjectInfo]).newInstance(info)
