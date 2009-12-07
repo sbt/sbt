@@ -258,7 +258,7 @@ class xMain extends xsbti.AppMain
 	object SpecificBuild
 	{
 		import java.util.regex.Pattern.{compile,quote}
-		val pattern = compile(quote(SpecificBuildPrefix) + """(\S+)\s*(.*)""")
+		val pattern = compile(quote(SpecificBuildPrefix) + """\s*(\S+)\s*(.*)""")
 		def unapply(s: String) =
 		{
 			val m = pattern.matcher(s)
@@ -313,7 +313,8 @@ class xMain extends xsbti.AppMain
 	{
 		val projectNames = baseProject.projectClosure.map(_.name)
 		val prefixes = ContinuousExecutePrefix :: CrossBuildPrefix :: Nil
-		val completors = new Completors(ProjectAction, projectNames, interactiveCommands, List(GetAction, SetAction), prefixes)
+		val scalaVersions = baseProject.crossScalaVersions ++ Seq(baseProject.defScalaVersion.value)
+		val completors = new Completors(ProjectAction, projectNames, interactiveCommands, List(GetAction, SetAction), SpecificBuildPrefix, scalaVersions, prefixes)
 		val reader = new JLineReader(baseProject.historyPath, completors, baseProject.log)
 		val methodCompletions = for( (name, method) <- project.methods) yield (name, method.completions)
 		reader.setVariableCompletions(project.taskNames, project.propertyNames, methodCompletions)
@@ -365,7 +366,7 @@ class xMain extends xsbti.AppMain
 
 	/** The list of all available commands at the interactive prompt in addition to the tasks defined
 	* by a project.*/
-	protected def interactiveCommands: Iterable[String] = basicCommands.toList ++ logLevels.toList
+	protected def interactiveCommands: Iterable[String] = basicCommands.toList ++ logLevels.toList ++ TerminateActions
 	/** The list of logging levels.*/
 	private def logLevels: Iterable[String] = TreeSet.empty[String] ++ Level.levels.map(_.toString)
 	/** The list of all interactive commands other than logging level.*/

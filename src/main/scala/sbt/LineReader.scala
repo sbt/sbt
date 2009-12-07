@@ -9,6 +9,7 @@ trait LineReader extends NotNull
 }
 class Completors(val projectAction: String, val projectNames: Iterable[String],
 	val generalCommands: Iterable[String], val propertyActions: Iterable[String],
+	val specificPrefix: String, val scalaVersions: Iterable[String],
 	val prefixes: Iterable[String]) extends NotNull
 import jline.ConsoleReader
 abstract class JLine extends LineReader
@@ -102,7 +103,12 @@ class JLineReader(historyPath: Option[Path], completors: Completors, log: Logger
 	private def propertyCompletor(propertyNames: Iterable[String]) =
 		simpleArgumentCompletor(propertyActions, propertyNames)
 	private def prefixedCompletor(baseCompletor: Completor) =
-		singleArgumentCompletor(simpleCompletor(prefixes.toList.toArray[String]), baseCompletor)
+		singleArgumentCompletor(simpleCompletor(prefixes), baseCompletor)
+	private def specificCompletor(baseCompletor: Completor) =
+	{
+		val specific = simpleCompletor(specificPrefix :: Nil) // TODO
+		new ArgumentCompletor( Array( specific, simpleCompletor(scalaVersions), baseCompletor ) )
+	}
 	def setVariableCompletions(taskNames: Iterable[String], propertyNames: Iterable[String], extra: Iterable[(String, Iterable[String])] )
 	{
 		import scala.collection.immutable.TreeSet
@@ -110,6 +116,6 @@ class JLineReader(historyPath: Option[Path], completors: Completors, log: Logger
 		val extraCompletors = for( (first, repeat) <- extra) yield repeatedArgumentCompletor(simpleCompletor(first :: Nil), simpleCompletor(repeat))
 		val baseCompletors = generalCompletor :: taskCompletor :: projectCompletor :: propertyCompletor(propertyNames) :: extraCompletors.toList
 		val baseCompletor = new MultiCompletor(baseCompletors.toArray)
-		completor.setCompletors( Array(baseCompletor, prefixedCompletor(baseCompletor)) )
+		completor.setCompletors( Array(baseCompletor, prefixedCompletor(baseCompletor), specificCompletor(baseCompletor)) )
 	}
 }
