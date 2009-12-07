@@ -51,17 +51,18 @@ final class Update(config: UpdateConfiguration)
 	private lazy val ivy = Ivy.newInstance(settings)
 
 	/** The main entry point of this class for use by the Update module.  It runs Ivy */
-	def apply(target: UpdateTarget)
+	def apply(target: UpdateTarget): Boolean =
 	{
 		Message.setDefaultLogger(new SbtIvyLogger(logWriter))
 		ivy.pushContext()
-		try { update(target) }
+		try { update(target); true }
 		catch
 		{
 			case e: Exception =>
 				e.printStackTrace(logWriter)
 				log(e.toString)
 				System.out.println("  (see " + logFile + " for complete log)")
+				false
 		}
 		finally
 		{

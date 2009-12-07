@@ -15,21 +15,32 @@ trait Provider extends NotNull
 	def parentLoader: ClassLoader
 	def lockFile: File
 
+	def retrieveFailed: Nothing = fail("")
+	def retrieveCorrupt(missing: Iterable[String]): Nothing = fail(": missing " + missing.mkString(", "))
+	private def fail(extra: String) =
+		throw new xsbti.RetrieveException(versionString, "Could not retrieve " + failLabel + extra)
+	private def versionString: String = target match { case UpdateScala => configuration.scalaVersion; case a: UpdateApp => Version.get(a.id.version) }
+
 	val (jars, loader) = Locks(lockFile, new initialize)
 	private final class initialize extends Callable[(Array[File], ClassLoader)]
 	{
 		def call =
 		{
 			val (existingJars, existingLoader) = createLoader
-			if(Provider.needsUpdate(existingLoader, testLoadClasses))
-			{
-				( new Update(configuration) )(target)
-				val (newJars, newLoader) = createLoader
-				Provider.failIfMissing(newLoader, testLoadClasses, failLabel)
-				(newJars, newLoader)
-			}
-			else
+			if(Provider.getMissing(existingLoader, testLoadClasses).isEmpty)
 				(existingJars, existingLoader)
+			else
+			{
+				val retrieveSuccess = ( new Update(configuration) )(target)
+				if(retrieveSuccess)
+				{
+					val (newJars, newLoader) = createLoader
+					val missing = Provider.getMissing(newLoader, testLoadClasses)
+					if(missing.isEmpty) (newJars, newLoader) else retrieveCorrupt(missing)
+				}
+				else
+					retrieveFailed
+			}
 		}
 		def createLoader =
 		{
@@ -48,13 +59,9 @@ object Provider
 	{
 		def accept(file: File) = !file.isDirectory && file.getName.endsWith(".jar")
 	}
-	def failIfMissing(loader: ClassLoader, classes: Iterable[String], label: String) =
-		checkTarget(loader, classes, (), missing => error("Could not retrieve " + label + ": missing " + missing.mkString(", ")))
-	def needsUpdate(loader: ClassLoader, classes: Iterable[String]) = checkTarget(loader, classes, false, x => true)
-	def checkTarget[T](loader: ClassLoader, classes: Iterable[String], ifSuccess: => T, ifFailure: Iterable[String] => T): T =
+	def getMissing(loader: ClassLoader, classes: Iterable[String]): Iterable[String] =
 	{
 		def classMissing(c: String) = try { Class.forName(c, false, loader); false } catch { case e: ClassNotFoundException => true }
-		val missing = classes.toList.filter(classMissing)
-		if(missing.isEmpty) ifSuccess else ifFailure(missing)
+		classes.toList.filter(classMissing)
 	}
 }
