@@ -110,6 +110,7 @@ class Launch(val bootDirectory: File, repositories: List[Repository]) extends xs
 			def target = new UpdateApp(Application(id))
 			def failLabel = id.name + " " + id.version
 			def lockFile = updateLockFile
+			def mainClasspath = classpath
 
 			lazy val mainClass: Class[T] forSome { type T <: xsbti.AppMain } =
 			{

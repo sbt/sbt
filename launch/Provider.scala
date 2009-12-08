@@ -15,6 +15,8 @@ trait Provider extends NotNull
 	def parentLoader: ClassLoader
 	def lockFile: File
 
+	def classpath = Provider.getJars(baseDirectories)
+		
 	def retrieveFailed: Nothing = fail("")
 	def retrieveCorrupt(missing: Iterable[String]): Nothing = fail(": missing " + missing.mkString(", "))
 	private def fail(extra: String) =
@@ -44,7 +46,7 @@ trait Provider extends NotNull
 		}
 		def createLoader =
 		{
-			val jars = Provider.getJars(baseDirectories)
+			val jars = classpath
 			(jars, new URLClassLoader(jars.map(_.toURI.toURL), parentLoader) )
 		}
 	}

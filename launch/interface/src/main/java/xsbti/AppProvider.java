@@ -1,5 +1,7 @@
 package xsbti;
 
+import java.io.File;
+
 public interface AppProvider
 {
 	/** Returns the ScalaProvider that this AppProvider will use. */
@@ -13,6 +15,9 @@ public interface AppProvider
 	/** Creates a new instance of the entry point of the application given by 'id'.
 	* It is guaranteed that newMain().getClass() == mainClass()*/
 	public AppMain newMain();
+	
+	/** The classpath from which the main class is loaded, excluding Scala jars.*/
+	public File[] mainClasspath();
 
 	public ComponentProvider components();
 }
