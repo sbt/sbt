@@ -4,7 +4,7 @@
 package sbt.test
 
 import Scripted._
-import FileUtilities.{sbtJar, scalaCompilerJar, scalaLibraryJar, wrapNull}
+import FileUtilities.wrapNull
 import java.io.File
 import java.net.URLClassLoader
 
