@@ -105,9 +105,10 @@ object ReflectiveCreate
 			val sourceFile = source.asFile
 			val outputDirectory = basePath / "target"
 			for(writeOK <- FileUtilities.write(sourceFile, codeString, log).toLeft("").right;
-				compileOK <- (new Compile(100))("reflect", source :: Nil, "", outputDirectory, Nil, log).toLeft("").right)
+				compileOK <- Left("").right)//(new RawCompile(100))("reflect", source :: Nil, "", outputDirectory, Nil, log).toLeft("").right)
 			yield
 			{
+				error("Reintegrate")
 				val loader = new java.net.URLClassLoader(Array(outputDirectory.asURL), getClass.getClassLoader)
 				val c = Class.forName(instantiate.name, true, loader)
 				c.newInstance.asInstanceOf[AnyRef]

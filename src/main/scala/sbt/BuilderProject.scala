@@ -32,8 +32,8 @@ private sealed abstract class BasicBuilderProject extends InternalProject with S
 		log.setLevel(oldLevel)
 	}
 
-	def projectClasspath = compilePath +++ libraries +++ sbtJarPath
-	def sbtJarPath = Path.lazyPathFinder { Path.fromFile(FileUtilities.sbtJar) :: Nil }
+	def projectClasspath = compilePath +++ libraries +++ sbtJars
+	def sbtJars = Path.lazyPathFinder { info.app.mainClasspath.map(Path.fromFile) }
 
 	abstract class BuilderCompileConfiguration extends AbstractCompileConfiguration
 	{
@@ -195,7 +195,7 @@ private final class BuilderProject(val info: ProjectInfo, val pluginPath: Path, 
 				def sourceRoots = managedSourcePath
 				def sources = descendents(sourceRoots, sourceFilter)
 				def outputDirectory = outputPath / "plugin-classes"
-				def classpath: PathFinder = pluginClasspath +++ sbtJarPath
+				def classpath: PathFinder = pluginClasspath +++ sbtJars
 				def analysisPath = outputPath / "plugin-analysis"
 			}
 	}
