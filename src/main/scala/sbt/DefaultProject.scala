@@ -29,10 +29,12 @@ abstract class BasicScalaProject extends ScalaProject with BasicDependencyProjec
 	* `promptIfMultipleChoices` controls the behavior when multiple main classes are detected.
 	* If true, it prompts the user to select which main class to use.  If false, it prints a warning
 	* and returns no main class.*/
-	def getMainClass(promptIfMultipleChoices: Boolean) =
-		mainClass orElse
+	def getMainClass(promptIfMultipleChoices: Boolean): Option[String] =
+		getMainClass(promptIfMultipleChoices, mainCompileConditional, mainClass)
+	def getMainClass(promptIfMultipleChoices: Boolean, compileConditional: CompileConditional, explicit: Option[String]): Option[String] =
+		explicit orElse
 		{
-			val applications = mainCompileConditional.analysis.allApplications.toList
+			val applications = compileConditional.analysis.allApplications.toList
 			impl.SelectMainClass(promptIfMultipleChoices, applications) orElse
 			{
 				if(!promptIfMultipleChoices && !applications.isEmpty)
@@ -40,6 +42,10 @@ abstract class BasicScalaProject extends ScalaProject with BasicDependencyProjec
 				None
 			}
 		}
+	def testMainClass: Option[String] = None
+	def getTestMainClass(promptIfMultipleChoices: Boolean): Option[String] =
+		getMainClass(promptIfMultipleChoices, testCompileConditional, testMainClass)
+
 	/** Specifies the value of the `Class-Path` attribute in the manifest of the main jar. */
 	def manifestClassPath: Option[String] = None
 	def dependencies = info.dependencies ++ subProjects.values.toList
@@ -243,6 +249,7 @@ abstract class BasicScalaProject extends ScalaProject with BasicDependencyProjec
 	protected def compileAction = task { doCompile(mainCompileConditional) } describedAs MainCompileDescription
 	protected def testCompileAction = task { doCompile(testCompileConditional) } dependsOn compile describedAs TestCompileDescription
 	protected def cleanAction = cleanTask(outputPath, cleanOptions) describedAs CleanDescription
+	protected def testRunAction = task { args => runTask(getTestMainClass(true), testClasspath, args) dependsOn(testCompile, copyResources) } describedAs TestRunDescription
 	protected def runAction = task { args => runTask(getMainClass(true), runClasspath, args) dependsOn(compile, copyResources) } describedAs RunDescription
 	protected def consoleQuickAction = basicConsoleTask describedAs ConsoleQuickDescription
 	protected def consoleAction = basicConsoleTask.dependsOn(testCompile, copyResources, copyTestResources) describedAs ConsoleDescription
@@ -286,6 +293,7 @@ abstract class BasicScalaProject extends ScalaProject with BasicDependencyProjec
 	lazy val doc = docAction
 	lazy val docTest = docTestAction
 	lazy val test = testAction
+	lazy val testRun = testRunAction
 	lazy val `package` = packageAction
 	lazy val packageTest = packageTestAction
 	lazy val packageDocs = packageDocsAction
@@ -419,6 +427,8 @@ object BasicScalaProject
 		"Generates API documentation for test Scala source files using scaladoc."
 	val RunDescription =
 		"Runs the main class for the project with the provided arguments."
+	val TestRunDescription =
+		"Runs a test class with a main method with the provided arguments."
 	val ConsoleDescription =
 		"Starts the Scala interpreter with the project classes on the classpath."
 	val ConsoleQuickDescription =
