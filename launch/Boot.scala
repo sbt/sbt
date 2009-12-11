@@ -15,16 +15,16 @@ object Boot
 		try { Launch(args.toList) }
 		catch
 		{
-			case b: BootException => errorAndExit(b)
+			case b: BootException => errorAndExit(b.toString)
 			case e =>
 				e.printStackTrace
-				errorAndExit(e)
+				errorAndExit(Pre.prefixError(e.toString))
 		}
 		System.exit(0)
 	}
-	private def errorAndExit(e: Throwable)
+	private def errorAndExit(msg: String)
 	{
-		System.out.println("Error during sbt execution: " + e.toString)
+		System.out.println(msg)
 		System.exit(1)
 	}
 }
