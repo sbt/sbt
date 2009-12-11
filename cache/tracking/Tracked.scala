@@ -24,7 +24,7 @@ class Changed[O](val task: Task[O], val cacheFile: File)(implicit input: InputCa
 {
 	val clean = Clean(cacheFile)
 	def clear = Task.empty
-	def apply[O2](ifChanged: O => O2, ifUnchanged: O => O2): Task[O2] { type Input = O } =
+	def apply[O2](ifChanged: O => O2, ifUnchanged: O => O2): Task[O2] =
 		task map { value =>
 			val cache =
 				try { OpenResource.fileInputStream(cacheFile)(input.uptodate(value)) }

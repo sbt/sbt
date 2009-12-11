@@ -1,18 +1,18 @@
 package xsbt
 
 import java.io.{InputStream,OutputStream}
-import metascala.HLists.{HCons,HList,HNil}
 
+import HLists._
 class HNilInputCache extends NoInputCache[HNil]
 class HConsInputCache[H,T <: HList](val headCache: InputCache[H], val tailCache: InputCache[T]) extends InputCache[HCons[H,T]]
 {
 	def uptodate(in: HCons[H,T])(cacheStream: InputStream) =
 	{
-		lazy val headResult = headCache.uptodate(in.head)(cacheStream)
-		lazy val tailResult = tailCache.uptodate(in.tail)(cacheStream)
+		val headResult = headCache.uptodate(in.head)(cacheStream)
+		val tailResult = tailCache.uptodate(in.tail)(cacheStream)
 		new CacheResult
 		{
-			lazy val uptodate = headResult.uptodate && tailResult.uptodate
+			val uptodate = headResult.uptodate && tailResult.uptodate
 			def update(outputStream: OutputStream) =
 			{
 				headResult.update(outputStream)
