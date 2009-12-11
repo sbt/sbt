@@ -10,12 +10,12 @@ object Initialize
 	{
 		SimpleReader.readLine(promptCreate + " (y/N" + (if(enableQuick) "/s" else "") + ") ") match
 		{
-			case None => error("")
+			case None => declined("")
 			case Some(line) =>
 				line.toLowerCase match
 				{
 					case "y" | "yes" => process(file, spec, _.create)
-					case "n" | "no" | "" => error("")
+					case "n" | "no" | "" => declined("")
 					case "s" => process(file, spec, _.quick)
 				}
 		}
@@ -41,7 +41,7 @@ object Initialize
 		{
 			case set: SetProperty => properties.setProperty(name, set.value)
 			case prompt: PromptProperty =>
-				def noValue = error("No value provided for " + prompt.label)
+				def noValue = declined("No value provided for " + prompt.label)
 				SimpleReader.readLine(prompt.label + prompt.default.toList.map(" [" + _ + "]").mkString + ": ") match
 				{
 					case None => noValue

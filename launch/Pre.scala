@@ -12,7 +12,9 @@ object Pre
 	def assert(condition: Boolean, msg: => String): Unit = if (!condition) throw new AssertionError(msg)
 	def assert(condition: Boolean): Unit = assert(condition, "Assertion failed")
 	def require(condition: Boolean, msg: => String): Unit = if (!condition) throw new IllegalArgumentException(msg)
-	def error(msg: String): Nothing = throw new BootException(msg)
+	def error(msg: String): Nothing = throw new BootException(prefixError(msg))
+	def declined(msg: String): Nothing = throw new BootException(msg)
+	def prefixError(msg: String): String = "Error during sbt execution: " + msg
 	def toBoolean(s: String) = java.lang.Boolean.parseBoolean(s)
 	def toArray[T](list: List[T]) =
 	{
