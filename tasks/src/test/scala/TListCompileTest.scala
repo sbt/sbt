@@ -1,5 +1,5 @@
-//import metascala.HLists._
-import xsbt.{HLists,Task}
+package xsbt
+
 import HLists._
 import Task._
 

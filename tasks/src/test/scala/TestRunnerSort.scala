@@ -12,7 +12,7 @@ object TaskRunnerSortTest extends Properties("TaskRunnerSort")
 		java.util.Arrays.sort(sorted)
 		("Workers: " + workers) |: ("Array: " + a.toList) |:
 		{
-			def result = TaskRunner( sort(a.toArray), workers)
+			def result = TaskRunner( sort(a.toArray), if(workers > 0) workers else 1)
 			checkResult(result.toList, sorted.toList)
 		}
 	}
@@ -29,8 +29,8 @@ object TaskRunnerSortTest extends Properties("TaskRunnerSort")
 	}
 	final def sort(a: RandomAccessSeq[Int]): Task[RandomAccessSeq[Int]] =
 	{
-		if(a.length < 2)
-			Task(a)
+		if(a.length < 200)
+			Task(sortDirect(a))
 		else
 		{
 			Task(a) bind { a =>

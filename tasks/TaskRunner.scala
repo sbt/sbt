@@ -8,10 +8,10 @@ object TaskRunner
 	def apply[T](node: Task[T], maximumTasks: Int): T =
 	{
 		require(maximumTasks > 0)
-		val compute = new Compute[Work.Job, Result] { def apply[A](w: Work.Job[A]) = w.apply }
-		val strategy = new SimpleStrategy[Work[_,_]]
+		val compute = new Compute[Work, Result] { def apply[A](w: Work[A]) = w.apply }
+		val strategy = new SimpleStrategy[Work[_]]
 		val scheduler = new TaskScheduler(node, strategy, new BasicTaskListener)
-		val distributor = new Distributor[ Either[ List[WorkFailure[Task[_]]], T ] , Work.Job, Result](scheduler, compute, maximumTasks)
+		val distributor = new Distributor[ Either[ List[WorkFailure[Task[_]]], T ] , Work, Result](scheduler, compute, maximumTasks)
 		distributor.run().fold(failures => throw new TasksFailed(failures), identity[T])
 	}
 }

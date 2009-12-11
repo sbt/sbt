@@ -1,14 +1,13 @@
 package xsbt
 
 import scala.collection.{immutable,mutable}
-import Task.ITask
 
 final case class WorkFailure[D](work: D, exception: Throwable) extends NotNull
 {
 	def map[C](f: D => C) = WorkFailure(f(work), exception)
 }
-private final class TaskScheduler[O](root: Task[O], strategy: ScheduleStrategy[Work[_,_]], newListener: => TaskListener)
-	extends Scheduler[ Either[ List[WorkFailure[Task[_]]], O ], Work.Job, Result]
+private final class TaskScheduler[O](root: Task[O], strategy: ScheduleStrategy[Work[_]], newListener: => TaskListener)
+	extends Scheduler[ Either[ List[WorkFailure[Task[_]]], O ], Work, Result]
 {
 	def run = new Run
 	{
@@ -32,7 +31,7 @@ private final class TaskScheduler[O](root: Task[O], strategy: ScheduleStrategy[W
 		}
 		def isComplete = reverseDeps.isEmpty
 		def hasPending = strategyRun.hasReady || !forwardDeps.isEmpty
-		def complete[A](work: Work.Job[A], result: Either[Throwable,Result[A]]): Unit =
+		def complete[A](work: Work[A], result: Either[Throwable,Result[A]]): Unit =
 		{
 			val task = work.source
 			result match
@@ -66,19 +65,14 @@ private final class TaskScheduler[O](root: Task[O], strategy: ScheduleStrategy[W
 
 		private def addReady[O](m: Task[O])
 		{
-			def add[I](m: ITask[I,O])
-			{
-				val input = Task.extract(m, completed)
-				strategyRun.workReady(new Work(m, input))
-				listener.runnable(m)
-			}
-
 			assert(!forwardDeps.contains(m), m)
 			assert(reverseDeps.contains(m), m)
 			assert(!completed.contains(m), m)
 			assert(!calls.isCalling(m), m)
 			assert(m.dependencies.forall(completed.contains), "Could not find result for dependency of ready task " + m)
-			add(m: ITask[_,O])
+			
+			strategyRun.workReady(new Work(m, completed))
+			listener.runnable(m)
 		}
 		// context called node
 		private def addGraph(node: Task[_], context: Task[_]): Boolean =
@@ -230,19 +224,16 @@ private final class CalledByMap extends NotNull
 			caller.asInstanceOf[Task[O]]
 		}
 }
-private final class ResultMap(private val map: mutable.HashMap[Task[_], Any]) extends Results
+import java.util.concurrent.{ConcurrentHashMap => HashMap}
+private final class ResultMap(private val map: HashMap[Task[_], Any]) extends Results
 {
-	def this() = this(new mutable.HashMap)
-	def update[O](task: Task[O], value: O) { map(task) = value }
-	def apply[O](task: Task[O]): O = map(task).asInstanceOf[O]
-	def contains(task: Task[_]) = map.contains(task)
+	def this() = this(new HashMap)
+	def update[O](task: Task[O], value: O) { map.put(task, value) }
+	def apply[O](task: Task[O]): O = map.get(task).asInstanceOf[O]
+	def contains(task: Task[_]) = map.containsKey(task)
 }
 
-private final class Work[I,O](val source: ITask[I,O], input: I) extends Identity with NotNull
+private final class Work[O](val source: Task[O], results: Results) extends Identity with NotNull
 {
-	final def apply = Task.compute(source, input)
-}
-private object Work
-{
-	type Job[A] = Work[_,A]
+	final def apply = Task.compute(source, results)
 }

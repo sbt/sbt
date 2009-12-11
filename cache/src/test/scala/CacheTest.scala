@@ -4,19 +4,25 @@ import java.io.File
 
 object CacheTest// extends Properties("Cache test")
 {
+	val lengthCache = new File("/tmp/length-cache")
+	val cCache = new File("/tmp/c-cache")
+
 	import Task._
 	import Cache._
 	import FileInfo.hash._
-	def checkFormattable(file: File)
+	def test
 	{
 		val createTask = Task { new File("test") }
-		val lengthTask = createTask map { f => println("File length: " + f.length); f.length }
-		val cached = Cache(lengthTask, new File("/tmp/length-cache"))
 
-		val cTask = (createTask :: cached :: TNil) map { case (file :: len :: HNil) => println("File: " + file + " length: " + len); len :: file :: HNil }
-		val cachedC = Cache(cTask, new File("/tmp/c-cache"))
+		val length = (f: File) => { println("File length: " + f.length); f.length }
+		val cachedLength = cached(lengthCache) ( length )
 
-		try { TaskRunner(cachedC) }
+		val lengthTask = createTask map cachedLength
+
+		val c = (file: File, len: Long) => { println("File: " + file + ", length: " + len); len :: file :: HNil }
+		val cTask = (createTask :: lengthTask :: TNil) map cached(cCache) { case (file :: len :: HNil) => c(file, len) }
+
+		try { TaskRunner(cTask) }
 		catch { case TasksFailed(failures) => failures.foreach(_.exception.printStackTrace) }
 	}
 }

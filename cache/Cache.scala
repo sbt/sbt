@@ -23,18 +23,23 @@ object Cache extends BasicCacheImplicits with SBinaryFormats with HListCacheImpl
 	def wrapOutputCache[O,DO](implicit convert: O => DO, reverse: DO => O, base: OutputCache[DO]): OutputCache[O] =
 		new WrappedOutputCache[O,DO](convert, reverse, base)
 
-	/* Note: Task[O] { type Input = I } is written out because ITask[I,O] did not work (type could not be inferred properly) with a task
-	* with an HList input.*/
-	def apply[I,O](task: Task[O] { type Input = I }, file: File)(implicit cache: Cache[I,O]): Task[O] { type Input = I } =
-		task match { case m: M[I,O,_] =>
-			new M[I,O,Result[O]](None)(m.dependencies)(m.extract)(computeWithCache(m, cache, file))
-		}
-	private def computeWithCache[I,O](m: M[I,O,_], cache: Cache[I,O], file: File)(in: I): Result[O] =
-		cache(file)(in) match
-		{
-			case Left(value) => Value(value)
-			case Right(store) => m.map { out => store(out); out }
-		}
+	def apply[I,O](file: File)(f: I => Task[O])(implicit cache: Cache[I,O]): I => Task[O] =
+		in => 
+			cache(file)(in) match
+			{
+				case Left(value) => Task(value)
+				case Right(store) => f(in) map { out => store(out); out }
+			}
+	def cached[I,O](file: File)(f: I => O)(implicit cache: Cache[I,O]): I => O =
+		in =>
+			cache(file)(in) match
+			{
+				case Left(value) => value
+				case Right(store) =>
+					val out = f(in)
+					store(out)
+					out
+			}
 }
 trait BasicCacheImplicits extends NotNull
 {
