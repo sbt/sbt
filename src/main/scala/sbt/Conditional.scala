@@ -374,8 +374,8 @@ abstract class AbstractCompileConditional(val config: AbstractCompileConfigurati
 		{
 			if(jars.size > 1)
 			{
-				log.warn("Possible duplicate classpath locations for jar " + name + ": ")
-				for(jar <- jars) log.warn("\t" + jar.absolutePath)
+				log.debug("Possible duplicate classpath locations for jar " + name + ": ")
+				for(jar <- jars) log.debug("\t" + jar.absolutePath)
 			}
 		}
 	}

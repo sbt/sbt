@@ -20,7 +20,7 @@ class SbtProject(info: ProjectInfo) extends DefaultProject(info) with test.SbtSc
 	val technically = Resolver.url("technically.us", new URL("http://databinder.net/repo/"))(Resolver.ivyStylePatterns)
 
 	override def compileOptions = Nil
-	
+
 	/**  configuration of scripted testing **/
 	// Set to false to show logging as it happens without buffering, true to buffer until it completes and only show if the task fails.
 	//   The output of scripted tasks executed in parallel will be inteleaved if true.
@@ -43,12 +43,12 @@ class SbtProject(info: ProjectInfo) extends DefaultProject(info) with test.SbtSc
 	val provided = Configurations.Provided
 
 	/* Versions of Scala to cross-build against. */
-	private val Version2_7_5 = "2.7.5"
-	private val Version2_8_0 = "2.8.0-20090929.004247-+"
+	private val Version2_7_7 = "2.7.7"
+	private val Version2_8_0 = "2.8.0-SNAPSHOT"
 	// the list of all supported versions
-	private def allVersions = Version2_7_5 :: Version2_8_0 :: Nil
+	private def allVersions = Version2_7_7 :: Version2_8_0 :: Nil
 
-	override def crossScalaVersions = Set(Version2_7_5)
+	override def crossScalaVersions = Set(Version2_7_7)
 
 	//testing
 	val scalacheck = "org.scala-tools.testing" %% "scalacheck" % "1.6"
