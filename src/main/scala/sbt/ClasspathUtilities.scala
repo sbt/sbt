@@ -15,8 +15,18 @@ object ClasspathUtilities
 	def toClasspath(paths: Iterable[Path]): Array[URL] = paths.map(_.asURL).toSeq.toArray
 	def toLoader(finder: PathFinder): ClassLoader = toLoader(finder.get)
 	def toLoader(finder: PathFinder, parent: ClassLoader): ClassLoader = toLoader(finder.get, parent)
-	def toLoader(paths: Iterable[Path]): ClassLoader = new URLClassLoader(toClasspath(paths), getClass.getClassLoader)
+	def toLoader(paths: Iterable[Path]): ClassLoader = new URLClassLoader(toClasspath(paths), rootLoader)
 	def toLoader(paths: Iterable[Path], parent: ClassLoader): ClassLoader = new URLClassLoader(toClasspath(paths), parent)
+	
+	lazy val rootLoader =
+	{
+		def parent(loader: ClassLoader): ClassLoader =
+		{
+			val p = loader.getParent
+			if(p eq null) loader else parent(p)
+		}
+		parent(getClass.getClassLoader)
+	}
 	
 	private[sbt] def printSource(c: Class[_]) =
 		println(c.getName + " loader=" +c.getClassLoader + " location=" + FileUtilities.classLocationFile(c))

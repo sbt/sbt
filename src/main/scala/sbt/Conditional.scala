@@ -310,6 +310,11 @@ abstract class AbstractCompileConditional(val config: AbstractCompileConfigurati
 			}
 		})
 	}
+	private def scalaJars: Iterable[Path] =
+	{
+		val instance = compiler.scalaInstance
+		Seq(instance.libraryJar, instance.compilerJar).map(Path.fromFile)
+	}
 	protected def execute(executeAnalysis: ConditionalAnalysis) =
 	{
 		log.info(executeAnalysis.toString)
@@ -328,7 +333,7 @@ abstract class AbstractCompileConditional(val config: AbstractCompileConfigurati
 			val compile = new Compile(config.maxErrors, compiler, analysisCallback, projectPath)
 			compile(label, dirtySources, cp, outputDirectory, options, javaOptions, compileOrder, log)
 		}
-		val loader = ClasspathUtilities.toLoader(cp)
+		val loader = ClasspathUtilities.toLoader(cp ++ scalaJars)
 		val r = classfile.Analyze(projectPath, outputDirectory, dirtySources, sourceRoots.get, log)(analysis.allProducts, analysisCallback, loader)(run)
 		if(log.atLevel(Level.Debug))
 		{

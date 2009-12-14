@@ -79,6 +79,7 @@ final class Compile(maximumErrors: Int, compiler: AnalyzingCompiler, analysisCal
 	protected def processJava(sources: Set[File], classpath: Set[File], outputDirectory: File, options: Seq[String], log: Logger)
 	{
 		val arguments = (new CompilerArguments(compiler.scalaInstance))(sources, classpath, outputDirectory, options, true)
+		log.debug("Calling 'javac' with arguments:\n\t" + arguments.mkString("\n\t"))
 		val code = Process("javac", arguments) ! log
 		if( code != 0 ) throw new CompileFailed(arguments.toArray, "javac returned nonzero exit code")
 	}

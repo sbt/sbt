@@ -53,7 +53,7 @@ private[sbt] object Analyze
 					{
 						val loaded =
 							try { Some(Class.forName(tpe, false, loader)) }
-							catch { case e: NoClassDefFoundError => log.warn("Problem processing dependencies of source " + source + " : " +e.toString); None }
+							catch { case e => log.warn("Problem processing dependencies of source " + source + " : " +e.toString); None }
 						for(clazz <- loaded; file <- Control.convertException(FileUtilities.classLocationFile(clazz)).right)
 						{
 							if(file.isDirectory)
