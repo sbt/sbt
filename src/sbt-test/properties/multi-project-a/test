@@ -1,5 +1,4 @@
+> project "Sub project A"
+> get sbt.version
 $ absent a/project
-[success]
-
 $ absent b/project
-[success]

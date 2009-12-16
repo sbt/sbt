@@ -1,16 +1,18 @@
 $ copy-file changes/RunSuccess.scala src/main/scala/Run.scala
-[success]
 > run
-[success]
 
 # an exception in the main thread should be a nonzero exit code
 $ copy-file changes/RunFailureMain.scala src/main/scala/Run.scala
-[success]
-> run
-[failure]
+-> run
 
 # an exception in a non-main thread should still be exit code 0
 $ copy-file changes/ThreadRunError.scala src/main/scala/Run.scala
-[success]
 > run
-[success]
+
+# explicitly calling System.exit(0) should succeed
+$ copy-file changes/RunExplicitSuccess.scala src/main/scala/Run.scala
+> run
+
+# explicitly calling System.exit(1) should fail the 'run' task
+$ copy-file changes/RunExplicitFailure.scala src/main/scala/Run.scala
+-> run

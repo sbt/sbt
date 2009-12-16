@@ -1,13 +1,13 @@
-> update [success]
-> check-download [success]
-> deliver-local [success]
-> check-info [success]
+> update
+> check-download
+> deliver-local
+> check-info
 
-> clean [success]
-> clean-lib [success]
-$ touch info [success]
+> clean
+> clean-lib
+$ touch info
 
-> update [success]
-> check-download [success]
-> deliver-local [success]
-> check-info [success]
+> update
+> check-download
+> deliver-local
+> check-info

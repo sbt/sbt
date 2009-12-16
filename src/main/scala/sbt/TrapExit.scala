@@ -29,7 +29,15 @@ object TrapExit
 		* the threads that were created by 'execute'.*/
 		val originalThreads = allThreads
 		val code = new ExitCode
-		def executeMain = try { execute } catch { case x => code.set(1); throw x }
+		def executeMain =
+			try { execute }
+			catch
+			{
+				case e: TrapExitSecurityException => throw e
+				case x =>
+					code.set(1) //exceptions in the main thread cause the exit code to be 1
+					throw x
+			}
 		val customThreadGroup = new ExitThreadGroup(new ExitHandler(Thread.getDefaultUncaughtExceptionHandler, originalThreads, code, log))
 		val executionThread = new Thread(customThreadGroup, "run-main") { override def run() { executeMain } }
 		

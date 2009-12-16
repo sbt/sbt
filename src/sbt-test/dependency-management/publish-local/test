@@ -1,20 +1,16 @@
 > publish-local
-[success]
 
-> clean [success]
-$ touch mavenStyle [success]
-$ reload [success]
+> clean 
+$ touch mavenStyle 
+> reload 
 > publish-local
-[success]
 
-> clean [success]
-$ touch sub/mavenStyle [success]
-$ reload [success]
+> clean 
+$ touch sub/mavenStyle 
+> reload 
 > publish-local
-[success]
 
-> clean [success]
-$ delete mavenStyle [success]
-$ reload [success]
+> clean 
+$ delete mavenStyle 
+> reload 
 > publish-local
-[success]

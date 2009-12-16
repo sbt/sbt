@@ -7,7 +7,7 @@ class InfoTest(info: ProjectInfo) extends DefaultProject(info)
 	
 	override def ivyXML =
 		if(customInfo)
-			(<info organisation="test" module="test" revision="1.0">
+			(<info organisation={organization} module={moduleID} revision="1.0">
 				<license name="Two-clause BSD-style" url="http://github.com/szeiger/scala-query/blob/master/LICENSE.txt" />
 				<description homepage="http://github.com/szeiger/scala-query/">
 					ScalaQuery is a type-safe database query API for Scala.

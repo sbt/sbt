@@ -1,12 +1,7 @@
-> check-in-test
-[failure]
-> check-in-compile
-[failure]
+-> check-in-test
+-> check-in-compile
 
 > update
-[success]
 
 > check-in-test
-[success]
-> check-in-compile
-[failure]
+-> check-in-compile
