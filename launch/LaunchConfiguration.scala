@@ -11,7 +11,7 @@ final case class LaunchConfiguration(scalaVersion: Version, app: Application, re
 	def withApp(app: Application) = LaunchConfiguration(scalaVersion, app, repositories, boot, logging, appProperties)
 	def withAppVersion(newAppVersion: String) = LaunchConfiguration(scalaVersion, app.withVersion(new Version.Explicit(newAppVersion)), repositories, boot, logging, appProperties)
 	def withVersions(newScalaVersion: String, newAppVersion: String) = LaunchConfiguration(new Version.Explicit(newScalaVersion), app.withVersion(new Version.Explicit(newAppVersion)), repositories, boot, logging, appProperties)
-	def map(f: File => File) = LaunchConfiguration(scalaVersion, app, repositories, boot.map(f), logging, appProperties)
+	def map(f: File => File) = LaunchConfiguration(scalaVersion, app.map(f), repositories, boot.map(f), logging, appProperties)
 }
 
 sealed trait Version extends NotNull
@@ -32,20 +32,21 @@ object Version
 	def get(v: Version) = v  match { case e: Version.Explicit => e.value; case _ => throw new BootException("Unresolved version: " + v) }
 }
 
-final case class Application(groupID: String, name: String, version: Version, main: String, components: List[String], crossVersioned: Boolean) extends NotNull
+final case class Application(groupID: String, name: String, version: Version, main: String, components: List[String], crossVersioned: Boolean, classpathExtra: Array[File]) extends NotNull
 {
 	def getVersion = Version.get(version)
-	def withVersion(newVersion: Version) = Application(groupID, name, newVersion, main, components, crossVersioned)
-	def toID = AppID(groupID, name, getVersion, main, toArray(components), crossVersioned)
+	def withVersion(newVersion: Version) = Application(groupID, name, newVersion, main, components, crossVersioned, classpathExtra)
+	def toID = AppID(groupID, name, getVersion, main, toArray(components), crossVersioned, classpathExtra)
+	def map(f: File => File) = Application(groupID, name, version, main, components, crossVersioned, classpathExtra.map(f))
 }
-final case class AppID(groupID: String, name: String, version: String, mainClass: String, mainComponents: Array[String], crossVersioned: Boolean) extends xsbti.ApplicationID
+final case class AppID(groupID: String, name: String, version: String, mainClass: String, mainComponents: Array[String], crossVersioned: Boolean, classpathExtra: Array[File]) extends xsbti.ApplicationID
 
 object Application
 {
 	def apply(id: xsbti.ApplicationID): Application =
 	{
 		import id._
-		Application(groupID, name, new Version.Explicit(version), mainClass, mainComponents.toList, crossVersioned)
+		Application(groupID, name, new Version.Explicit(version), mainClass, mainComponents.toList, crossVersioned, classpathExtra)
 	}
 }
 

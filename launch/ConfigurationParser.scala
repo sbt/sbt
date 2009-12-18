@@ -60,7 +60,8 @@ class ConfigurationParser extends NotNull
 		val (b, m) = id(map, name, default.toString)
 		(toBoolean(b), m)
 	}
-	def toFile(path: String): File = new File(path.replace('/', File.separatorChar))// if the path is relative, it will be resolve by Launch later
+	def toFiles(paths: List[String]): List[File] = paths.map(toFile)
+	def toFile(path: String): File = new File(path.replace('/', File.separatorChar))// if the path is relative, it will be resolved by Launch later
 	def file(map: LabelMap, name: String, default: File): (File, LabelMap) =
 		(getOrNone(map, name).map(toFile).getOrElse(default), map  - name)
 
@@ -82,7 +83,7 @@ class ConfigurationParser extends NotNull
 		{
 			case (Nil, newM) => (Search.none, newM)
 			case (tpe :: Nil, newM) => (Search(tpe, List(defaultPath)), newM)
-			case (tpe :: paths, newM) => (Search(tpe, paths.map(toFile)), newM)
+			case (tpe :: paths, newM) => (Search(tpe, toFiles(paths)), newM)
 		}
 
 	def getApplication(m: LabelMap): Application =
@@ -93,8 +94,10 @@ class ConfigurationParser extends NotNull
 		val (main, m4) = id(m3, "class", "xsbt.Main")
 		val (components, m5) = ids(m4, "components", List("default"))
 		val (crossVersioned, m6) = id(m5, "cross-versioned", "true")
-		check(m6, "label")
-		new Application(org, name, rev, main, components, toBoolean(crossVersioned))
+		val (resources, m7) = ids(m6, "resources", Nil)
+		check(m7, "label")
+		val classpathExtra = toFiles(resources).toArray[File]
+		new Application(org, name, rev, main, components, toBoolean(crossVersioned), classpathExtra)
 	}
 	def getRepositories(m: LabelMap): List[Repository] =
 	{

@@ -16,6 +16,8 @@ object ScalaProviderTest extends Specification
 		"ClassLoader for Scala 2.7.3" in { checkScalaLoader("2.7.3") }
 		"ClassLoader for Scala 2.7.4" in { checkScalaLoader("2.7.4") }
 		"ClassLoader for Scala 2.7.5" in { checkScalaLoader("2.7.5") }
+		"ClassLoader for Scala 2.7.6" in { checkScalaLoader("2.7.6") }
+		"ClassLoader for Scala 2.7.7" in { checkScalaLoader("2.7.7") }
 	}
 
 	"Launch" should {
@@ -26,16 +28,29 @@ object ScalaProviderTest extends Specification
 		"Successfully load an application from local repository and run it with correct sbt version" in {
 			checkLoad(List(AppVersion), "xsbt.boot.test.AppVersionTest").asInstanceOf[Exit].code must be(0)
 		}
+		"Add extra resources to the classpath" in {
+			checkLoad(testResources, "xsbt.boot.test.ExtraTest", createExtra).asInstanceOf[Exit].code must be(0)
+		}
 	}
 
-	private def checkLoad(arguments: List[String], mainClassName: String): MainResult =
+	def checkLoad(arguments: List[String], mainClassName: String): MainResult =
+		checkLoad(arguments, mainClassName, _ => Array[File]())
+	def checkLoad(arguments: List[String], mainClassName: String, extra: File => Array[File]): MainResult =
 		FileUtilities.withTemporaryDirectory { currentDirectory =>
 			withLauncher { launcher =>
 				Launch.run(launcher)(
-					new RunConfiguration(mapScalaVersion(LaunchTest.getScalaVersion), LaunchTest.testApp(mainClassName).toID, currentDirectory, arguments)
+					new RunConfiguration(mapScalaVersion(LaunchTest.getScalaVersion), LaunchTest.testApp(mainClassName, extra(currentDirectory)).toID, currentDirectory, arguments)
 				)
 			}
 		}
+	private def testResources = List("test-resourceA", "a/b/test-resourceB", "sub/test-resource")
+	private def createExtra(currentDirectory: File) =
+	{
+		val resourceDirectory = new File(currentDirectory, "resources")
+		FileUtilities.createDirectory(resourceDirectory)
+		testResources.foreach(resource => FileUtilities.touch(new File(resourceDirectory, resource.replace('/', File.separatorChar))))
+		Array(resourceDirectory)
+	}
 	private def checkScalaLoader(version: String): Unit = withLauncher( checkLauncher(version, scalaVersionMap(version)) )
 	private def checkLauncher(version: String, versionValue: String)(launcher: Launcher): Unit =
 	{
@@ -49,7 +64,8 @@ object ScalaProviderTest extends Specification
 }
 object LaunchTest
 {
-	def testApp(main: String) = Application("org.scala-tools.sbt", "launch-test", new Version.Explicit(AppVersion), main, Nil, false)
+	def testApp(main: String): Application = testApp(main, Array[File]())
+	def testApp(main: String, extra: Array[File]): Application = Application("org.scala-tools.sbt", "launch-test", new Version.Explicit(AppVersion), main, Nil, false, extra)
 	import Repository.Predefined._
 	def testRepositories = List(Local, ScalaToolsReleases, ScalaToolsSnapshots).map(Repository.Predefined.apply)
 	def withLauncher[T](f: xsbti.Launcher => T): T =
@@ -59,7 +75,7 @@ object LaunchTest
 
 	def mapScalaVersion(versionNumber: String) = scalaVersionMap.find(_._2 == versionNumber).getOrElse {
 		error("Scala version number " + versionNumber + " from library.properties has no mapping")}._1
-	val scalaVersionMap = Map( ("2.7.2", "2.7.2") ) ++ List("2.7.3", "2.7.4", "2.7.5").map(v => (v, v + ".final"))
+	val scalaVersionMap = Map( ("2.7.2", "2.7.2") ) ++ List("2.7.3", "2.7.4", "2.7.5", "2.7.6", "2.7.7").map(v => (v, v + ".final"))
 	def getScalaVersion: String = getScalaVersion(getClass.getClassLoader)
 	def getScalaVersion(loader: ClassLoader): String =
 	{
@@ -71,6 +87,7 @@ object LaunchTest
 	lazy val AppVersion =
 	{
 		val properties = new java.util.Properties
+		println(getClass.getResource("/xsbt.version.properties"))
 		val propertiesStream = getClass.getResourceAsStream("/xsbt.version.properties")
 		try { properties.load(propertiesStream) } finally { propertiesStream.close() }
 		 "test-" + properties.getProperty("version")
@@ -97,6 +114,17 @@ package test
 				new Exit(0)
 			else
 				throw new MainException("app version was " + configuration.provider.id.version + ", expected: " + expected)
+		}
+	}
+	class ExtraTest extends AppMain
+	{
+		def run(configuration: xsbti.AppConfiguration) =
+		{
+			configuration.arguments.foreach { arg =>
+				if(getClass.getClassLoader.getResource(arg) eq null)
+					throw new MainException("Could not find '" + arg + "'")
+			}
+			new Exit(0)
 		}
 	}
 }

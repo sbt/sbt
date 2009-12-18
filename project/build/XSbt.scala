@@ -81,7 +81,7 @@ class XSbt(info: ProjectInfo) extends ParentProject(info)
 		override def packageAction = packageTask(packageTestPaths, outputPath / (testID + "-" + projectID.revision +".jar"), packageOptions).dependsOn(rawTestCompile)
 		override def deliverProjectDependencies = Nil
 		def testID = "launch-test"
-		override def testClasspath = super.testClasspath +++ interfaceSub.compileClasspath
+		override def testClasspath = super.testClasspath +++ interfaceSub.compileClasspath +++ interfaceSub.mainResourcesPath
 		lazy val rawTestCompile = super.testCompileAction dependsOn(interfaceSub.compile)
 		override def testCompileAction = publishLocal dependsOn(rawTestCompile, interfaceSub.publishLocal)
 	}
@@ -131,7 +131,9 @@ class XSbt(info: ProjectInfo) extends ParentProject(info)
 			val formatter = new java.text.SimpleDateFormat("yyyyMMdd'T'HHmmss")
 			formatter.setTimeZone(TimeZone.getTimeZone("GMT"))
 			val timestamp = formatter.format(new Date)
-			FileUtilities.write(versionPropertiesPath.asFile, "version=" + version + "\ntimestamp=" + timestamp, log)
+			val content = "version=" + version + "\ntimestamp=" + timestamp
+			log.info("Writing version information to " + versionPropertiesPath + " :\n" + content)
+			FileUtilities.write(versionPropertiesPath.asFile, content, log)
 		}
 
 		override def watchPaths = super.watchPaths +++ apiDefinitionPaths --- sources(generatedBasePath)

@@ -96,6 +96,7 @@ class Launch(val bootDirectory: File, repositories: List[Repository]) extends xs
 		def target = UpdateScala
 		def failLabel = "Scala " + version
 		def lockFile = updateLockFile
+		def extraClasspath = Array[File]()
 
 		def app(id: xsbti.ApplicationID): xsbti.AppProvider = new AppProvider(id)
 
@@ -110,7 +111,8 @@ class Launch(val bootDirectory: File, repositories: List[Repository]) extends xs
 			def target = new UpdateApp(Application(id))
 			def failLabel = id.name + " " + id.version
 			def lockFile = updateLockFile
-			def mainClasspath = classpath
+			def mainClasspath = classpath ++ extraClasspath
+			def extraClasspath = id.classpathExtra
 
 			lazy val mainClass: Class[T] forSome { type T <: xsbti.AppMain } =
 			{
