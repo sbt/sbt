@@ -1,14 +1,7 @@
-> compile
-[success]
+> +compile
 
 $ copy-file changes/1.scala src/main/scala/1.scala
-[success]
-
-> compile
-[error]
+-> +compile
 
 $ delete src/main/scala/1.scala
-[success]
-
-> compile
-[success]
+> +compile

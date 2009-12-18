@@ -33,7 +33,7 @@ class JettyRunner(configuration: JettyConfiguration) extends ExitHook
 			val baseLoader = this.getClass.getClassLoader
 			val classpathURLs = jettyClasspath.get.map(_.asURL).toSeq
 			val loader: ClassLoader = new java.net.URLClassLoader(classpathURLs.toArray, baseLoader)
-			val lazyLoader = new LazyFrameworkLoader(implClassName, Array(FileUtilities.sbtJar.toURI.toURL), loader, baseLoader)
+			val lazyLoader = new LazyFrameworkLoader(implClassName, Array(FileUtilities.classLocation[Stoppable].toURI.toURL), loader, baseLoader)
 			val runner = ModuleUtilities.getObject(implClassName, lazyLoader).asInstanceOf[JettyRun]
 			runner(configuration)
 		}

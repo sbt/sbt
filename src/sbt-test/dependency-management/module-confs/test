@@ -2,13 +2,13 @@
 > clean
 
 $ copy-file changes/WrongOrg.scala project/build/Test.scala
-$ reload
+> reload
 -> update
 
 $ copy-file changes/WrongVersion.scala project/build/Test.scala
-$ reload
+> reload
 -> update
 
 $ copy-file changes/WrongPattern.scala project/build/Test.scala
-$ reload
+> reload
 -> update

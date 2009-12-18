@@ -1,5 +1,6 @@
 import sbt._
 
 class TestQuickProject(info: ProjectInfo) extends DefaultProject(info) {
-    val scalatest = "org.scalatest" % "scalatest" % "0.9.3"
+	val snapshots = ScalaToolsSnapshots
+    val scalatest = "org.scalatest" % "scalatest" % "1.0.1-for-scala-2.8.0.Beta1-RC1-with-test-interfaces-0.2-SNAPSHOT"
 }

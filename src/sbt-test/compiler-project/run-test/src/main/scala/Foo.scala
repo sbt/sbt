@@ -10,6 +10,7 @@ import scala.tools.nsc.{Interpreter, Settings}
 class Foo {
 	val settings = new Settings()
 	settings.classpath.value = location(classOf[Holder])
+	settings.bootclasspath.value = settings.bootclasspath.value + File.pathSeparator + location(classOf[ScalaObject])
 	val inter = new Interpreter(settings)
 
 	def eval(code: String): Any = {

@@ -1,0 +1,10 @@
+$ copy-file changes/TestPlugin.scala src/main/scala/TestPlugin.scala
+> publish
+
+> set project.name use-plugin-test
+$ delete project/build
+$ copy-file changes/Plugins.scala project/plugins/Plugins.scala
+$ copy-file changes/UsePlugin.scala project/build/UsePlugin.scala
+
+> reload
+> check

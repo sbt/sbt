@@ -21,7 +21,7 @@
 $ touch useDefaultConfigurations
 
 # Reload for change to take effect
-$ reload
+> reload
 
 
 ## Rerun test with useDefaultConfigurations=true

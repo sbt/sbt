@@ -3,37 +3,26 @@
 
 # B and A are independent, so both should compile successfully
 $ copy-file changes/A1.scala src/main/scala/A.scala
-[success]
 $ copy-file changes/B1.scala src/main/scala/B.scala
-[success]
-> compile
-[success]
+> +compile
 
 
 # A now depends on B and to check that it was recompiled, we mismatch the types, which should fail
 $ copy-file changes/A2.scala src/main/scala/A.scala
-[success]
-> compile
-[failure]
+-> +compile
 
 
 # We now correct the type so that it compiles successfully and this should introduce a dependency from A to B
 $ copy-file changes/A3.scala src/main/scala/A.scala
-[success]
-> compile
-[success]
+> +compile
 
 
 # If the dependency from A to B was properly introduced, changing the type of B.y to Int should make
 # the following statement in A a compiler error:
 #   val x: String = B.y
 $ copy-file changes/B2.scala src/main/scala/B.scala
-[success]
-> compile
-[failure]
+-> +compile
 
 # verify this was the correct result by doing a clean+compile
->clean
-[success]
-> compile
-[failure]
+> +clean
+-> +compile

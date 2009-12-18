@@ -210,7 +210,9 @@ class PluginDefinition(val info: ProjectInfo) extends InternalProject with Basic
 }
 class PluginProject(info: ProjectInfo) extends DefaultProject(info)
 {
-	override def unmanagedClasspath = super.unmanagedClasspath +++ Path.lazyPathFinder(Path.fromFile(FileUtilities.sbtJar) :: Nil)
+	override def moduleID = normalizedName
+	override def buildScalaVersion = defScalaVersion.value
+	override def unmanagedClasspath = super.unmanagedClasspath +++ Path.lazyPathFinder(info.app.mainClasspath.map(Path.fromFile))
 	override def packageAction = packageSrc dependsOn(test)
 	override def packageSrcJar = jarPath
 	override def useMavenConfigurations = true

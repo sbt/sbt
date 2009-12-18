@@ -11,4 +11,6 @@ class Test(info: ProjectInfo) extends DefaultProject(info)
 
 	val uniqueScala = "org.scala-lang" % "scala-compiler" % "2.8.0-20091017.011744-240"
 	val otherDep = "org.scala-tools.sxr" % "sxr_2.7.5" % "0.2.3"
+	
+	override def checkExplicitScalaDependencies = false
 }

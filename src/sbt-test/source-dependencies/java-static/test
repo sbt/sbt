@@ -9,24 +9,16 @@
 
 # add and compile the Java source
 $ copy-file changes/J1.java src/main/java/J.java
-[success]
-> compile
-[success]
+> +compile
 
 # add and compile the Scala source
 $ copy-file changes/S.scala src/main/scala/S.scala
-[success]
-> compile
-[success]
+> +compile
 
 # change the Java source so that a compile error should occur if S.scala is also recompiled (which will happen if the dependency was properly recorded)
 $ copy-file changes/J2.java src/main/java/J.java
-[success]
-> compile
-[failure]
+-> +compile
 
 # verify it should have failed by doing a full recompilation
-> clean
-[success]
-> compile
-[failure]
+> +clean
+-> +compile

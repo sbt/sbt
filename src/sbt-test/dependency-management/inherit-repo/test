@@ -1,21 +1,21 @@
 # This should fail because the sub project declares a dependency that exists in an extra repository, which we haven't declared
-> update
+-> update
 
 # Copy the project definition with the extra repository declared in the parent and reload
 $ copy-file changes/CorrectProject.scala project/build/src/TestProject.scala
-$ reload
+> reload
 
 # Try updating again, which should work because the repository declared in the parent should be inherited by the child
 > update
 
 # Copy the project definition with the extra repository declared in the child and parent and reload
 $ copy-file changes/CorrectProject2.scala project/build/src/TestProject.scala
-$ reload
+> reload
 
 > update
 
 # Copy the project definition with the extra repository declared in the child and reload
 $ copy-file changes/CorrectProject3.scala project/build/src/TestProject.scala
-$ reload
+> reload
 
 > update

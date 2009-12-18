@@ -2,7 +2,7 @@
 # and check that they are not downloaded
 
 $ touch transitive
-$ reload
+> reload
 
 > update
 

@@ -2,12 +2,14 @@
 
 $ copy-file changes/maven/Published.scala src/main/scala/Published.scala
 > publish
-$ delete src project lib_managed
+
 
 # get and compile against each published jar with managedStyle = ManagedStyle.Maven
 
+> set project.name test-use
+> set project.organization test
+$ delete src project/build lib_managed
 $ copy-file changes/maven/TestUse.scala project/build/TestUse.scala
-$ copy-file changes/maven/use.build.properties project/build.properties
 > reload
 $ copy-file changes/maven/Use.scala src/main/scala/Use.scala
 
@@ -15,12 +17,12 @@ $ copy-file changes/maven/Use.scala src/main/scala/Use.scala
 
 > update
 > compile
-$ delete src project lib_managed repo
 
 
 # publish a jar with PublishedIvy with managedStyle = ManagedStyle.Ivy
-
-$ copy-file changes/ivy/publish.build.properties project/build.properties
+> set project.name test-ivy
+> set project.organization org.example
+$ delete src project/build lib_managed repo
 $ copy-file changes/ivy/TestPublish.scala project/build/TestPublish.scala
 > reload
 $ copy-file changes/ivy/Published.scala src/main/scala/Published.scala
@@ -28,9 +30,10 @@ $ copy-file changes/ivy/Published.scala src/main/scala/Published.scala
 
 # get and compile against each published jar with managedStyle = ManagedStyle.Ivy
 
-$ delete src project lib_managed
+> set project.name test-ivy-use
+> set project.organization test
+$ delete src project/build lib_managed
 $ copy-file changes/ivy/TestUse.scala project/build/TestUse.scala
-$ copy-file changes/ivy/use.build.properties project/build.properties
 > reload
 $ copy-file changes/ivy/Use.scala src/main/scala/Use.scala
 

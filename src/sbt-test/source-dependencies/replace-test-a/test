@@ -1,19 +1,9 @@
 $ copy-file changes/first.scala src/main/scala/A.scala
-[success]
-
-> compile
-[success]
-> check-first
-[success]
-> check-second
-[failure]
+> +compile
+> +check-first
+-> +check-second
 
 $ copy-file changes/second.scala src/main/scala/A.scala
-[success]
-
-> compile
-[success]
-> check-first
-[failure]
-> check-second
-[success]
+> +compile
+-> +check-first
+> +check-second

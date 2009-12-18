@@ -806,8 +806,6 @@ object FileUtilities
 	def classLocation[T](implicit mf: scala.reflect.Manifest[T]): URL = classLocation(mf.erasure)
 	def classLocationFile[T](implicit mf: scala.reflect.Manifest[T]): File = classLocationFile(mf.erasure)
 	
-	/** The location of the jar containing this class.*/
-	lazy val sbtJar: File = classLocationFile(getClass)
 	lazy val scalaLibraryJar: File = classLocationFile[scala.ScalaObject]
 	lazy val scalaCompilerJar: File = classLocationFile[scala.tools.nsc.Settings]
 	def scalaJars: Iterable[File] = List(scalaLibraryJar, scalaCompilerJar)

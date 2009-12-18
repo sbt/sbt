@@ -3,7 +3,7 @@ import sbt._
 class FlatProject(info: ProjectInfo) extends DefaultProject(info)
 {
 	override def useMavenConfigurations = true
-	val sc = "org.scalacheck" % "scalacheck" % "1.5" % "test->default"
+	val sc = "org.scalacheck" % "scalacheck" % "1.5" % "test"
 
 	def sourceFilter =  "*.java" | "*.scala"
 	override def mainSources = descendents(sourcePath ##, sourceFilter)
