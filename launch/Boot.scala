@@ -16,6 +16,7 @@ object Boot
 		catch
 		{
 			case b: BootException => errorAndExit(b.toString)
+			case r: xsbti.RetrieveException =>errorAndExit("Error: " + r.getMessage) 
 			case e =>
 				e.printStackTrace
 				errorAndExit(Pre.prefixError(e.toString))

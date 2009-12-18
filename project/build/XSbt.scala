@@ -62,7 +62,7 @@ class XSbt(info: ProjectInfo) extends ParentProject(info)
 	def compilerInterfaceClasspath = compileInterfaceSub.projectClasspath(Configurations.Test)
 
 	//run in parallel
-	override def parallelExecution = true
+	override def parallelExecution = false
 
 	override def managedStyle = ManagedStyle.Ivy
 	val publishTo = Resolver.file("test-repo", new File("/var/dbwww/repo/"))
@@ -117,7 +117,7 @@ class XSbt(info: ProjectInfo) extends ParentProject(info)
 	}
 	class IvyProject(info: ProjectInfo) extends Base(info) with TestWithIO with TestWithLog with TestWithLaunch
 	{
-		val ivy = "org.apache.ivy" % "ivy" % "2.0.0"
+		val ivy = "org.apache.ivy" % "ivy" % "2.1.0"
 		override def deliverProjectDependencies = Set(super.deliverProjectDependencies.toSeq : _*) - launchInterfaceSub.projectID
 	}
 	abstract class BaseInterfaceProject(info: ProjectInfo) extends DefaultProject(info) with ManagedBase with TestWithLog with Component with JavaProject
