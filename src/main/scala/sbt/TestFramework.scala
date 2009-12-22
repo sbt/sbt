@@ -17,6 +17,7 @@ object TestFrameworks
 	val ScalaCheck = new TestFramework("org.scalacheck.ScalaCheckFramework")
 	val ScalaTest = new TestFramework("org.scalatest.tools.ScalaTestFramework")
 	val Specs = new TestFramework("org.specs.runner.SpecsFramework")
+	val JUnit = new TestFramework("com.novocode.junit.JUnitFramework")
 }
 
 class TestFramework(val implClassName: String) extends NotNull

@@ -178,8 +178,8 @@ abstract class BasicScalaProject extends ScalaProject with BasicDependencyProjec
 	* run*/
 	def testFrameworks: Seq[TestFramework] = 
 	{
-		import TestFrameworks.{ScalaCheck, ScalaTest, Specs}
-		ScalaCheck :: Specs :: ScalaTest :: Nil
+		import TestFrameworks.{JUnit, ScalaCheck, ScalaTest, Specs}
+		ScalaCheck :: Specs :: ScalaTest :: JUnit :: Nil
 	}
 	/** The list of listeners for testing. */
 	def testListeners: Seq[TestReportListener] = TestLogger(log) :: Nil
