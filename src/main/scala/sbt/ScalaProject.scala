@@ -1,5 +1,5 @@
 /* sbt -- Simple Build Tool
- * Copyright 2008, 2009 Mark Harrah, David MacIver
+ * Copyright 2008, 2009 Mark Harrah, David MacIver, Josh Cough
  */
 package sbt
 
@@ -67,6 +67,7 @@ trait ScalaProject extends SimpleScalaProject with FileTasks with MultiTaskProje
 	case class ExcludeTests(tests: Iterable[String]) extends TestOption
 	case class TestListeners(listeners: Iterable[TestReportListener]) extends TestOption
 	case class TestFilter(filterTest: String => Boolean) extends TestOption
+  case class TestFrameworkArgument(arg: String) extends TestOption
 
 	case class JarManifest(m: Manifest) extends PackageOption
 	{
@@ -149,13 +150,14 @@ trait ScalaProject extends SimpleScalaProject with FileTasks with MultiTaskProje
 	def copyTask(sources: PathFinder, destinationDirectory: Path): Task =
 		task { FileUtilities.copy(sources.get, destinationDirectory, log).left.toOption }
 
-	def testTask(frameworks: Seq[TestFramework], classpath: PathFinder, analysis: CompileAnalysis, options: TestOption*): Task =
-		testTask(frameworks, classpath, analysis, options)
-	def testTask(frameworks: Seq[TestFramework], classpath: PathFinder, analysis: CompileAnalysis, options: => Seq[TestOption]): Task =
+	def testTask(frameworks: Seq[TestFramework], classpath: PathFinder, analysis: CompileAnalysis, testArgs: Seq[String], options: TestOption*): Task =
+		testTask(frameworks, classpath, analysis, testArgs, options)
+	def testTask(frameworks: Seq[TestFramework], classpath: PathFinder, analysis: CompileAnalysis,
+               testArgs: Seq[String], options: => Seq[TestOption]): Task =
 	{
 		def work =
 		{
-			val (begin, work, end) = testTasks(frameworks, classpath, analysis, options)
+			val (begin, work, end) = testTasks(frameworks, classpath, analysis, testArgs, options)
 			val beginTasks = begin.map(toTask).toSeq // test setup tasks
 			val workTasks = work.map(w => toTask(w) dependsOn(beginTasks : _*)) // the actual tests
 			val endTasks = end.map(toTask).toSeq // tasks that perform test cleanup and are run regardless of success of tests
@@ -249,7 +251,8 @@ trait ScalaProject extends SimpleScalaProject with FileTasks with MultiTaskProje
 		}
 	}
 	protected def incrementImpl(v: BasicVersion): Version = v.incrementMicro
-	protected def testTasks(frameworks: Seq[TestFramework], classpath: PathFinder, analysis: CompileAnalysis, options: => Seq[TestOption]) = {
+	protected def testTasks(frameworks: Seq[TestFramework], classpath: PathFinder, analysis: CompileAnalysis, testArgs: Seq[String],
+                          options: => Seq[TestOption]) = {
 		import scala.collection.mutable.HashSet
 
 			val testFilters = new ListBuffer[String => Boolean]
@@ -276,18 +279,22 @@ trait ScalaProject extends SimpleScalaProject with FileTasks with MultiTaskProje
 			}
 			def includeTest(test: TestDefinition) = !excludeTestsSet.contains(test.testClassName) && testFilters.forall(filter => filter(test.testClassName))
 			val tests = HashSet.empty[TestDefinition] ++ analysis.allTests.filter(includeTest)
-			TestFramework.testTasks(frameworks, classpath.get, buildScalaInstance.loader, tests.toSeq, log, testListeners.readOnly, false, setup.readOnly, cleanup.readOnly)
+			TestFramework.testTasks(frameworks, classpath.get, buildScalaInstance.loader, tests.toSeq, log, testListeners.readOnly, false, setup.readOnly, cleanup.readOnly, testArgs)
 	}
 	private def flatten[T](i: Iterable[Iterable[T]]) = i.flatMap(x => x)
 
-	protected def testQuickMethod(testAnalysis: CompileAnalysis, options: => Seq[TestOption])(toRun: Seq[TestOption] => Task) =
-		multiTask(testAnalysis.allTests.map(_.testClassName).toList) { includeFunction =>
-			toRun(TestFilter(includeFunction) :: options.toList)
+	protected def testQuickMethod(testAnalysis: CompileAnalysis, options: => Seq[TestOption])(toRun: (Seq[String],Seq[TestOption]) => Task) = {
+    val analysis = testAnalysis.allTests.map(_.testClassName).toList
+		multiTask(analysis) { (args,includeFunction) => {
+			  toRun(args, TestFilter(includeFunction) :: options.toList)
+      }
 		}
+  }
 
 	protected final def maximumErrors[T <: ActionOption](options: Seq[T]) =
 		(for( MaxCompileErrors(maxErrors) <- options) yield maxErrors).firstOption.getOrElse(DefaultMaximumCompileErrors)
 }
+
 trait WebScalaProject extends ScalaProject
 {
 	@deprecated protected def prepareWebappTask(webappContents: PathFinder, warPath: => Path, classpath: PathFinder, extraJars: => Iterable[File]): Task =
@@ -344,14 +351,19 @@ object ScalaProject
 }
 trait MultiTaskProject extends Project
 {
-	def multiTask(allTests: => List[String])(run: (String => Boolean) => Task) =
+	def multiTask(allTests: => List[String])(run: (List[String], (String => Boolean)) => Task): MethodTask = {
+
 		task { tests =>
+
+      val (testNames, separator :: testArgs) = tests.toList.span(! _.startsWith("--"))
+
 			def filterInclude =
 			{
-				val (exactFilters, testFilters) = tests.toList.map(GlobFilter.apply).partition(_.isInstanceOf[ExactFilter])
+				val (exactFilters, testFilters) = testNames.toList.map(GlobFilter.apply).partition(_.isInstanceOf[ExactFilter])
 				val includeTests = exactFilters.map(_.asInstanceOf[ExactFilter].matchName)
 				val toCheck = scala.collection.mutable.HashSet(includeTests: _*)
 				toCheck --= allTests
+
 				if(!toCheck.isEmpty && log.atLevel(Level.Warn))
 				{
 					log.warn("Test(s) not found:")
@@ -361,13 +373,13 @@ trait MultiTaskProject extends Project
 				(test: String) => includeTestsSet.contains(test) || testFilters.exists(_.accept(test))
 			}
 			val includeFunction =
-				if(tests.isEmpty)
+				if(testNames.isEmpty)
 					(test: String) => true
 				else
 					filterInclude
-			run(includeFunction)
+			run(testArgs, includeFunction)
 		} completeWith allTests
-
+  }
 }
 trait ExecProject extends Project
 {

@@ -1,5 +1,5 @@
 /* sbt -- Simple Build Tool
- * Copyright 2008, 2009  Mark Harrah, David MacIver
+ * Copyright 2008, 2009  Mark Harrah, David MacIver, Josh Cough
  */
 package sbt
 
@@ -255,15 +255,17 @@ abstract class BasicScalaProject extends ScalaProject with BasicDependencyProjec
 	protected def consoleAction = basicConsoleTask.dependsOn(testCompile, copyResources, copyTestResources) describedAs ConsoleDescription
 	protected def docAction = scaladocTask(mainLabel, mainSources, mainDocPath, docClasspath, documentOptions).dependsOn(compile) describedAs DocDescription
 	protected def docTestAction = scaladocTask(testLabel, testSources, testDocPath, docClasspath, documentOptions).dependsOn(testCompile) describedAs TestDocDescription
-	protected def testAction = defaultTestTask(testOptions)
-	protected def testOnlyAction = testQuickMethod(testCompileConditional.analysis, testOptions)(options =>
-		defaultTestTask(options)) describedAs(TestOnlyDescription)
-	protected def testQuickAction = defaultTestQuickMethod(false) describedAs(TestQuickDescription)
-	protected def testFailedAction = defaultTestQuickMethod(true) describedAs(TestFailedDescription)
-	protected def defaultTestQuickMethod(failedOnly: Boolean) =
-		testQuickMethod(testCompileConditional.analysis, testOptions)(options => defaultTestTask(quickOptions(failedOnly) ::: options.toList))
-	protected def defaultTestTask(testOptions: => Seq[TestOption]) =
-		testTask(testFrameworks, testClasspath, testCompileConditional.analysis, testOptions).dependsOn(testCompile, copyResources, copyTestResources) describedAs TestDescription
+
+       protected def testAction = defaultTestTask(Nil, testOptions)
+       protected def testOnlyAction = testQuickMethod(testCompileConditional.analysis, testOptions)((testArgs, options) => {
+		   defaultTestTask(testArgs, options)
+       }) describedAs(TestOnlyDescription)
+       protected def testQuickAction = defaultTestQuickMethod(false) describedAs(TestQuickDescription)
+       protected def testFailedAction = defaultTestQuickMethod(true) describedAs(TestFailedDescription)
+       protected def defaultTestQuickMethod(failedOnly: Boolean) =
+         testQuickMethod(testCompileConditional.analysis, testOptions)((args, options) => defaultTestTask(args, quickOptions(failedOnly) ::: options.toList))
+       protected def defaultTestTask(testArgs: Seq[String], testOptions: => Seq[TestOption]) =
+         testTask(testFrameworks, testClasspath, testCompileConditional.analysis, testArgs, testOptions).dependsOn(testCompile, copyResources, copyTestResources) describedAs TestDescription
 
 	override def packageToPublishActions: Seq[ManagedTask] = `package` :: Nil
 

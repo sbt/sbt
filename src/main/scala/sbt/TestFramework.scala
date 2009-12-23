@@ -1,5 +1,5 @@
 /* sbt -- Simple Build Tool
- * Copyright 2008, 2009  Steven Blundy, Mark Harrah
+ * Copyright 2008, 2009  Steven Blundy, Mark Harrah, Josh Cough
  */
 package sbt
 
@@ -69,15 +69,15 @@ final class NamedTestTask(val name: String, action: => Option[String]) extends N
 
 object TestFramework
 {
-	def runTests(frameworks: Seq[TestFramework], classpath: Iterable[Path], scalaLoader: ClassLoader, tests: Seq[TestDefinition], log: Logger,
-		listeners: Seq[TestReportListener]) =
-	{
-		val (start, runTests, end) = testTasks(frameworks, classpath, scalaLoader, tests, log, listeners, true, Nil, Nil)
-		def run(tasks: Iterable[NamedTestTask]) = tasks.foreach(_.run())
-		run(start)
-		run(runTests)
-		run(end)
-	}
+//	def runTests(frameworks: Seq[TestFramework], classpath: Iterable[Path], scalaLoader: ClassLoader,
+//               tests: Seq[TestDefinition], testArgs: Seq[String], log: Logger, listeners: Seq[TestReportListener]) =
+//	{
+//		val (start, runTests, end) = testTasks(frameworks, classpath, scalaLoader, tests, log, listeners, true, Nil, Nil, Nil)
+//		def run(tasks: Iterable[NamedTestTask]) = tasks.foreach(_.run())
+//		run(start)
+//		run(runTests)
+//		run(end)
+//	}
 	
 	private val ScalaCompilerJarPackages = "scala.tools.nsc." :: "jline." :: "ch.epfl.lamp." :: Nil
 
@@ -89,9 +89,16 @@ object TestFramework
 
 		import scala.collection.{Map, Set}
 	
-	def testTasks(frameworks: Seq[TestFramework], classpath: Iterable[Path], scalaLoader: ClassLoader, tests: Seq[TestDefinition], log: Logger,
-		listeners: Seq[TestReportListener], endErrorsEnabled: Boolean, setup: Iterable[() => Option[String]],
-		cleanup: Iterable[() => Option[String]]): (Iterable[NamedTestTask], Iterable[NamedTestTask], Iterable[NamedTestTask]) =
+	def testTasks(frameworks: Seq[TestFramework],
+                classpath: Iterable[Path],
+                scalaLoader: ClassLoader,
+                tests: Seq[TestDefinition],
+                log: Logger,
+		            listeners: Seq[TestReportListener],
+                endErrorsEnabled: Boolean,
+                setup: Iterable[() => Option[String]],
+		            cleanup: Iterable[() => Option[String]],
+                testArgs: Seq[String]): (Iterable[NamedTestTask], Iterable[NamedTestTask], Iterable[NamedTestTask]) =
 	{
 		val loader = createTestLoader(classpath, scalaLoader)
 		val rawFrameworks = frameworks.flatMap(_.create(loader, log))
@@ -99,7 +106,7 @@ object TestFramework
 		if(mappedTests.isEmpty)
 			(new NamedTestTask(TestStartName, None) :: Nil, Nil, new NamedTestTask(TestFinishName, { log.info("No tests to run."); None }) :: Nil )
 		else
-			createTestTasks(loader, mappedTests, log, listeners, endErrorsEnabled, setup, cleanup)
+			createTestTasks(loader, mappedTests, log, listeners, endErrorsEnabled, setup, cleanup, testArgs)
 	}
 	private def testMap(frameworks: Seq[Framework], tests: Seq[TestDefinition]): Map[Framework, Set[TestDefinition]] =
 	{
@@ -127,7 +134,7 @@ object TestFramework
 		
 	private def createTestTasks(loader: ClassLoader, tests: Map[Framework, Set[TestDefinition]], log: Logger,
 		listeners: Seq[TestReportListener], endErrorsEnabled: Boolean, setup: Iterable[() => Option[String]],
-		cleanup: Iterable[() => Option[String]]) =
+		cleanup: Iterable[() => Option[String]], testArgs: Seq[String]) =
 	{
 		val testsListeners = listeners.filter(_.isInstanceOf[TestsListener]).map(_.asInstanceOf[TestsListener])
 		def foreachListenerSafe(f: TestsListener => Unit): Unit = safeForeach(testsListeners, log)(f)
@@ -151,7 +158,7 @@ object TestFramework
 							val oldLoader = Thread.currentThread.getContextClassLoader
 							Thread.currentThread.setContextClassLoader(loader)
 							try {
-								runner.run(testDefinition, Nil) match
+								runner.run(testDefinition, testArgs) match
 								{
 									case Error => result() = Error; Some("ERROR occurred during testing.")
 									case Failed => result() = Failed; Some("Test FAILED")

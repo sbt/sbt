@@ -1,5 +1,5 @@
 /* sbt -- Simple Build Tool
- * Copyright 2009  Steven Blundy, Mark Harrah
+ * Copyright 2009  Steven Blundy, Mark Harrah, Josh Cough
  */
 package sbt
 
@@ -15,8 +15,8 @@ trait IntegrationTesting extends NotNull
 trait ScalaIntegrationTesting extends IntegrationTesting
 { self: ScalaProject =>
 
-	protected def integrationTestTask(frameworks: Seq[TestFramework], classpath: PathFinder, analysis: CompileAnalysis, options: => Seq[TestOption]) =
-		testTask(frameworks, classpath, analysis, options)
+	protected def integrationTestTask(frameworks: Seq[TestFramework], classpath: PathFinder, analysis: CompileAnalysis, testArgs: Seq[String], options: => Seq[TestOption]) =
+		testTask(frameworks, classpath, analysis, testArgs, options)
 }
 
 trait BasicScalaIntegrationTesting extends BasicIntegrationTesting with MavenStyleIntegrationTestPaths
@@ -34,7 +34,7 @@ trait BasicIntegrationTesting extends ScalaIntegrationTesting with IntegrationTe
 
 	val integrationTestCompileConditional = new CompileConditional(integrationTestCompileConfiguration, buildCompiler)
 
-	protected def integrationTestAction = integrationTestTask(integrationTestFrameworks, integrationTestClasspath, integrationTestCompileConditional.analysis, integrationTestOptions) dependsOn integrationTestCompile describedAs IntegrationTestCompileDescription
+	protected def integrationTestAction = integrationTestTask(integrationTestFrameworks, integrationTestClasspath, integrationTestCompileConditional.analysis, Nil, integrationTestOptions) dependsOn integrationTestCompile describedAs IntegrationTestCompileDescription
 	protected def integrationTestCompileAction = integrationTestCompileTask() dependsOn compile describedAs IntegrationTestDescription
 
 	protected def integrationTestCompileTask() = task{ integrationTestCompileConditional.run }
