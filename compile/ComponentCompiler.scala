@@ -9,6 +9,7 @@ object ComponentCompiler
 	val binSeparator = "-bin_"
 	val compilerInterfaceID = "compiler-interface"
 	val compilerInterfaceSrcID = compilerInterfaceID + srcExtension
+	val javaVersion = System.getProperty("java.class.version")
 }
 /** This class provides source components compiled with the provided RawCompiler.
 * The compiled classes are cached using the provided component manager according
@@ -23,7 +24,7 @@ class ComponentCompiler(compiler: RawCompiler, manager: ComponentManager)
 		manager.file(binID)( new IfMissing.Define(true, compileAndInstall(id, binID)) )
 	}
 	def clearCache(id: String): Unit = manager.clearCache(binaryID(id))
-	protected def binaryID(id: String) = id + binSeparator + compiler.scalaInstance.actualVersion
+	protected def binaryID(id: String) = id + binSeparator + compiler.scalaInstance.actualVersion + "__" + javaVersion
 	protected def compileAndInstall(id: String, binID: String)
 	{
 		val srcID = id + srcExtension
