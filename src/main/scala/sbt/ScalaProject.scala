@@ -355,7 +355,8 @@ trait MultiTaskProject extends Project
 
 		task { tests =>
 
-      val (testNames, separator :: testArgs) = tests.toList.span(! _.startsWith("--"))
+			val (testNames, separatorAndArgs) = tests.toList.span(! _.startsWith("--"))
+			val testArgs = separatorAndArgs.drop(1)
 
 			def filterInclude =
 			{
@@ -372,6 +373,7 @@ trait MultiTaskProject extends Project
 				val includeTestsSet = Set(includeTests: _*)
 				(test: String) => includeTestsSet.contains(test) || testFilters.exists(_.accept(test))
 			}
+			
 			val includeFunction =
 				if(testNames.isEmpty)
 					(test: String) => true
