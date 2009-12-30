@@ -232,6 +232,18 @@ abstract class BasicScalaProject extends ScalaProject with BasicDependencyProjec
 
 	/** Configures forking the compiler and runner.  Use ForkScalaCompiler, ForkScalaRun or mix together.*/
 	def fork: Option[ForkScala] = None
+	def forkRun: Option[ForkScala] = forkRun(None, Nil)
+	def forkRun(workingDirectory: File): Option[ForkScala] = forkRun(Some(workingDirectory), Nil)
+	def forkRun(jvmOptions: Seq[String]): Option[ForkScala] = forkRun(None, jvmOptions)
+	def forkRun(workingDirectory0: Option[File], jvmOptions: Seq[String]): Option[ForkScala] =
+	{
+		val si = buildScalaInstance
+		Some(new ForkScalaRun {
+			override def scalaJars = si.libraryJar :: si.compilerJar :: Nil
+			override def workingDirectory: Option[File] = workingDirectory0
+			override def runJVMOptions: Seq[String] = jvmOptions
+		})
+	}
 	private def doCompile(conditional: CompileConditional) = conditional.run
 	implicit def defaultRunner: ScalaRun =
 	{

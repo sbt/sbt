@@ -12,17 +12,12 @@ abstract class ForkJava extends NotNull
 }
 abstract class ForkScala extends ForkJava
 {
-	def scalaJars: Iterable[File] = None
+	def scalaJars: Iterable[File] = Nil
 }
 trait ForkScalaRun extends ForkScala
 {
 	def workingDirectory: Option[File] = None
 	def runJVMOptions: Seq[String] = Nil
-}
-
-trait ForkScalaCompiler extends ForkScala
-{
-	def compileJVMOptions: Seq[String] = Nil
 }
 
 sealed abstract class OutputStrategy extends NotNull
@@ -84,12 +79,8 @@ object Fork
 			apply(javaHome, jvmOptions, scalaJars, arguments, workingDirectory, BufferedOutput(log))
 		def apply(javaHome: Option[File], jvmOptions: Seq[String], scalaJars: Iterable[File], arguments: Seq[String], workingDirectory: Option[File], outputStrategy: OutputStrategy): Int =
 		{
-			val scalaClasspath =
-				if(scalaJars.isEmpty)
-					FileUtilities.scalaLibraryJar :: FileUtilities.scalaCompilerJar :: Nil
-				else
-					scalaJars
-			val scalaClasspathString = "-Xbootclasspath/a:" + scalaClasspath.map(_.getAbsolutePath).mkString(File.pathSeparator)
+			if(scalaJars.isEmpty) error("Scala jars not specified")
+			val scalaClasspathString = "-Xbootclasspath/a:" + scalaJars.map(_.getAbsolutePath).mkString(File.pathSeparator)
 			val mainClass = if(mainClassName.isEmpty) Nil else mainClassName :: Nil
 			val options = jvmOptions ++ (scalaClasspathString :: mainClass ::: arguments.toList)
 			Fork.java(javaHome, options, workingDirectory, Map.empty, outputStrategy)

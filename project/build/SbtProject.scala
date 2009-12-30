@@ -57,7 +57,7 @@ class SbtProject(info: ProjectInfo) extends DefaultProject(info) with test.SbtSc
 	val jsch = "com.jcraft" % "jsch" % "0.1.31" intransitive()
 	val jetty = "org.mortbay.jetty" % "jetty" % "6.1.14" % "optional"
 
-	val testInterface = "org.scala-tools.testing" % "test-interface" % "0.2"
+	val testInterface = "org.scala-tools.testing" % "test-interface" % "0.3"
 
 	// xsbt components
 	val xsbti = "org.scala-tools.sbt" % "launcher-interface" % projectVersion.value.toString % "provided"

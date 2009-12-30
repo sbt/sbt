@@ -88,11 +88,11 @@ object FillProperties
 		import CompatibilityLevel._
 		level match
 		{
-			case Full =>  "2.7.2 2.7.3 2.7.5 2.7.7 2.8.0.Beta1-RC2 2.8.0-SNAPSHOT"
-			case Basic =>  "2.7.7 2.7.2 2.8.0.Beta1-RC2"
-			case Minimal => "2.7.7 2.8.0.Beta1-RC2" 
+			case Full =>  "2.7.2 2.7.3 2.7.5 2.7.7 2.8.0.Beta1-RC6 2.8.0-SNAPSHOT"
+			case Basic =>  "2.7.7 2.7.2 2.8.0.Beta1-RC6"
+			case Minimal => "2.7.7 2.8.0.Beta1-RC6" 
 			case Minimal27 => "2.7.7"
-			case Minimal28 => "2.8.0.Beta1-RC2"
+			case Minimal28 => "2.8.0.Beta1-RC6"
 		}
 	}
 	def extraProperties(sbtVersion: String, defScalaVersion: String, buildScalaVersions: String) = 
