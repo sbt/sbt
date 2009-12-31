@@ -6,13 +6,17 @@ The discovery phase provides a representation of the API in the form of a data s
 
 The file that defines the hierarchy is processed by a small datatype generating subproject called 'datatype'.  This subproject defines a basic syntax for creating an immutable data structure hierarchy in Java.  The output is in Java in order to use the data structure across Scala versions.
 
-Finally, the data structure needs to be persisted.  This is currently unimplemented, but will likely use SBinary.
+Finally, the data structure needs to be persisted.  This is currently implemented with standard Java serialization, but will likely use SBinary for a custom implementation for efficiency.
 
 = API Specification =
 
 This section specifies what the API of a source file is.  Familiarity with the specification for Scala is assumed.  For this specification, let 'classes' include classes, traits, objects, and package objects (2.8+ only).
 
 Loosely, the API consists of the signatures in a source file.  This includes packages and types of classes in a source.  The type of a class includes its fully qualified name, type parameters, base classes, and member signatures.
+
+Equality of APIs is determined by straightforward structural equality except for type parameter definitions and references.
+ * The ID of a type parameter does not affect equality between two type parameters.  The mapping between IDs of equal type parameters is recorded, however.
+ * When comparing two type parameter references, the comparison is deferred until initial equality checking (all other equality checking) is done.  Then, the IDs are compared according to the mapping determined for type parameters in the initial check.
 
 == Top Level Constructs ==
 The top level contributions to the API in a source file are packages and top-level classes.  Packages in Scala can be nested, but how they are nested is not important for the API of a source file.  That only affects scope within that source file [VERIFY].  A top level class is a class that is not enclosed in another class or a method.
@@ -114,7 +118,7 @@ The following sections briefly describe the contents of the different types.
  * The base type, which is a simple type
  
 === Structural ===
- * The base classes, in linearization order.
+ * The base class types, in linearization order.
  * The declared members.  These are definitions, described above.
  * The inherited members.  These are definitions, described above.
  
@@ -270,3 +274,5 @@ PathComponent
 = Data Structure Generator =
 
 = API Data Structure Persistence =
+
+The data structure is persisted by standard Java serialization on Source.  This is done for simplicity and will be changed to use a more efficient encoding.

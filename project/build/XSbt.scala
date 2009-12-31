@@ -10,6 +10,7 @@ class XSbt(info: ProjectInfo) extends ParentProject(info)
 	val launchSub = project(launchPath, "Launcher", new LaunchProject(_), launchInterfaceSub)
 
 	val interfaceSub = project("interface", "Interface", new InterfaceProject(_))
+	val apiSub = baseProject(compilePath / "api", "API", interfaceSub)
 
 	val controlSub = baseProject(utilPath / "control", "Control")
 	val collectionSub = baseProject(utilPath / "collection", "Collections")
