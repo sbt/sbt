@@ -339,16 +339,10 @@ abstract class AbstractCompileConditional(val config: AbstractCompileConfigurati
 		{
 			/** This checks that the plugin accounted for all classes in the output directory.*/
 			val classes = scala.collection.mutable.HashSet(analysis.allProducts.toSeq: _*)
-			var missed = 0
-			for(c <- (outputDirectory ** GlobFilter("*.class")).get)
-			{
-				if(!classes.contains(c))
-				{
-					missed += 1
-					log.debug("Missed class: " + c)
-				}
-			}
-			log.debug("Total missed classes: " + missed)
+			val actualClasses = (outputDirectory ** GlobFilter("*.class")).get
+			val missedClasses = actualClasses.toList.remove(classes.contains)
+			missedClasses.foreach(c => log.debug("Missed class: " + c))
+			log.debug("Total missed classes: " + missedClasses.length)
 		}
 		r
 	}
