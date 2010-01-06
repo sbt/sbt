@@ -1,14 +1,20 @@
+/* sbt -- Simple Build Tool
+ * Copyright 2009, 2010 Mark Harrah
+ */
 package xsbt
 
 	import java.io.File
+	import xsbt.api.{APIFormat, SameAPI}
+	import xsbti.api.Source
 
-trait Compile extends TrackedTaskDefinition[CompileReport]
+trait CompileImpl[R]
 {
-	val sources: Task[Set[File]]
-	val classpath: Task[Set[File]]
-	val outputDirectory: Task[File]
-	val options: Task[Seq[String]]
-
+	def apply(sourceChanges: ChangeReport[File], classpathChanges: ChangeReport[File], outputDirectory: File, options: Seq[String]): Task[R]
+	def tracked: Seq[Tracked]
+}
+final class Compile[R](val cacheDirectory: File, val sources: Task[Set[File]], val classpath: Task[Set[File]],
+	val outputDirectory: Task[File], val options: Task[Seq[String]], compileImpl: CompileImpl[R]) extends TrackedTaskDefinition[R]
+{
 	val trackedClasspath = Difference.inputs(classpath, FilesInfo.lastModified, cacheFile("classpath"))
 	val trackedSource = Difference.inputs(sources, FilesInfo.hash, cacheFile("sources"))
 	val trackedOptions =
@@ -17,121 +23,127 @@ trait Compile extends TrackedTaskDefinition[CompileReport]
 			import Task._
 		new Changed((outputDirectory, options) map ( "-d" :: _.getAbsolutePath :: _.toList), cacheFile("options"))
 	}
-	val invalidation = InvalidateFiles(cacheFile("dependencies/"))
 
-	lazy val task = create
-	def create =
+	val task =
 		trackedClasspath { rawClasspathChanges => // detect changes to the classpath (last modified only)
-			trackedSource { rawSourceChanges =>// detect changes to sources (hash only)
+			trackedSource { rawSourceChanges => // detect changes to sources (hash only)
 				val newOpts = (opts: Seq[String]) => (opts, rawSourceChanges.markAllModified, rawClasspathChanges.markAllModified) // if options changed, mark everything changed
 				val sameOpts = (opts: Seq[String]) => (opts, rawSourceChanges, rawClasspathChanges)
 				trackedOptions(newOpts, sameOpts) bind { // detect changes to options
 					case (options, sourceChanges, classpathChanges) =>
-						invalidation( classpathChanges +++ sourceChanges ) { (report, tracking) => // invalidation based on changes
-							outputDirectory bind { outDir => compile(sourceChanges, classpathChanges, outDir, options, report, tracking) }
+						outputDirectory bind { outDir => 
+							FileUtilities.createDirectory(outDir)
+							compileImpl(sourceChanges, classpathChanges, outDir, options)
 						}
 				}
 			}
-		} dependsOn(sources, options, outputDirectory)// raise these dependencies to the top for parallelism
+		} dependsOn(sources, classpath, options, outputDirectory)// raise these dependencies to the top for parallelism
 
-	def compile(sourceChanges: ChangeReport[File], classpathChanges: ChangeReport[File], outputDirectory: File, options: Seq[String], report: InvalidationReport[File], tracking: UpdateTracking[File]): Task[CompileReport]
-	lazy val tracked = getTracked
-	protected def getTracked = Seq(trackedClasspath, trackedSource, trackedOptions, invalidation)
+	lazy val tracked = Seq(trackedClasspath, trackedSource, trackedOptions) ++ compileImpl.tracked
 }
-class StandardCompile(val sources: Task[Set[File]], val classpath: Task[Set[File]], val outputDirectory: Task[File], val options: Task[Seq[String]],
-	val superclassNames: Task[Set[String]], val compilerTask: Task[AnalyzingCompiler], val cacheDirectory: File, val log: CompileLogger) extends Compile
-{
-		import Task._
-		import scala.collection.mutable.{ArrayBuffer, Buffer, HashMap, HashSet, Map, Set => mSet}
 
-	override def create = super.create dependsOn(superclassNames, compilerTask) // raise these dependencies to the top for parallelism
-	def compile(sourceChanges: ChangeReport[File], classpathChanges: ChangeReport[File], outputDirectory: File,
-		options: Seq[String], report: InvalidationReport[File], tracking: UpdateTracking[File]): Task[CompileReport] =
+object AggressiveCompile
+{
+	def apply(sources: Task[Set[File]], classpath: Task[Set[File]], outputDirectory: Task[File], options: Task[Seq[String]],
+		cacheDirectory: File, compilerTask: Task[AnalyzingCompiler], log: CompileLogger): Compile[Set[File]] =
 	{
-		val sources = report.invalid ** sourceChanges.checked // determine the sources that need recompiling (report.invalid also contains classes and libraries)
-		val classpath = classpathChanges.checked
-		compile(sources, classpath, outputDirectory, options, tracking)
+		val implCache = new File(cacheDirectory, "deps")
+		val baseCache = new File(cacheDirectory, "inputs")
+		val impl = new AggressiveCompile(implCache, compilerTask, log)
+		new Compile(baseCache, sources, classpath, outputDirectory, options, impl)
 	}
-	def compile(sources: Set[File], classpath: Set[File], outputDirectory: File, options: Seq[String], tracking: UpdateTracking[File]): Task[CompileReport] =
-	{
-		(compilerTask, superclassNames) map { (compiler, superClasses) =>
-			if(!sources.isEmpty)
-			{
-				val callback = new CompileAnalysisCallback(superClasses.toArray, tracking)
-				log.debug("Compile task calling compiler " + compiler)
-				compiler(sources, classpath, outputDirectory, options, callback, 100, log)
-			}
-			val readTracking = tracking.read
-			val applicationSet = new HashSet[String]
-			val subclassMap = new HashMap[String, Buffer[DetectedSubclass]]
-			readTags(applicationSet, subclassMap, readTracking)
-			new CompileReport
-			{
-				val superclasses = superClasses
-				def subclasses(superclass: String) = Set() ++ subclassMap.getOrElse(superclass, Nil)
-				val applications = Set() ++ applicationSet
-				val classes = Set() ++ readTracking.allProducts
-				override def toString =
-				{
-					val superStrings = superclasses.map(superC => superC + " >: \n\t\t" + subclasses(superC).mkString("\n\t\t"))
-					val applicationsPart = if(applications.isEmpty) Nil else Seq("Applications") ++ applications
-					val lines = Seq("Compilation Report:", sources.size + " sources", classes.size + " classes") ++ superStrings
-					lines.mkString("\n\t")
+}
+
+class AggressiveCompile(val cacheDirectory: File, val compilerTask: Task[AnalyzingCompiler], val log: CompileLogger) extends CompileImpl[Set[File]]
+{
+	def apply(sourceChanges: ChangeReport[File], classpathChanges: ChangeReport[File], outputDirectory: File, options: Seq[String]): Task[Set[File]] =
+		compilerTask bind { compiler =>
+			tracking { tracker =>
+				Task {
+					log.info("Removed sources: \n\t" + sourceChanges.removed.mkString("\n\t"))
+					log.info("Added sources: \n\t" + sourceChanges.added.mkString("\n\t"))
+					log.info("Modified sources: \n\t" + (sourceChanges.modified -- sourceChanges.added -- sourceChanges.removed).mkString("\n\t"))
+
+					val classpath = classpathChanges.checked
+					val readTracker = tracker.read
+
+					def uptodate(time: Long, files: Iterable[File]) = files.forall(_.lastModified <= time)
+					def isProductOutofdate(product: File) = !product.exists || !uptodate(product.lastModified, readTracker.sources(product))
+					val outofdateProducts = readTracker.allProducts.filter(isProductOutofdate)
+
+					val rawInvalidatedSources = 
+						classpathChanges.modified.flatMap(readTracker.usedBy) ++
+						sourceChanges.removed.flatMap(readTracker.dependsOn) ++
+						sourceChanges.modified ++
+						outofdateProducts.flatMap(readTracker.sources)
+					val invalidatedSources = scc(readTracker, rawInvalidatedSources)
+					val sources = invalidatedSources.filter(_.exists)
+					val previousAPIMap = Map() ++ sources.map { src => (src, APIFormat.read(readTracker.tag(src))) }
+					val invalidatedProducts = outofdateProducts ++ products(readTracker, invalidatedSources)
+
+					val transitiveIfNeeded = InvalidateTransitive(tracker, sources)
+					tracker.removeAll(invalidatedProducts ++ classpathChanges.modified ++ (invalidatedSources -- sources))
+					tracker.pending(sources)
+					FileUtilities.delete(invalidatedProducts)
+
+					log.info("Initially invalidated sources:\n\t" + sources.mkString("\n\t"))
+					if(!sources.isEmpty)
+					{
+						val newAPIMap = doCompile(sources, classpath, outputDirectory, options, tracker, compiler, log)
+						val apiChanged = sources filter { src => !sameAPI(previousAPIMap, newAPIMap, src) }
+						log.info("Sources with API changes:\n\t" + apiChanged.mkString("\n\t"))
+						val finalAPIMap =
+							if(apiChanged.isEmpty || apiChanged.size == sourceChanges.checked.size) newAPIMap
+							else
+							{
+								InvalidateTransitive.clean(tracker, FileUtilities.delete, transitiveIfNeeded)
+								val sources = transitiveIfNeeded.invalid ** sourceChanges.checked
+								log.info("All sources invalidated by API changes:\n\t" + sources.mkString("\n\t"))
+								doCompile(sources, classpath, outputDirectory, options, tracker, compiler, log)
+							}
+						finalAPIMap.foreach { case (src, api) => tracker.tag(src, APIFormat.write(api)) }
+					}
+					Set() ++ tracker.read.allProducts
 				}
 			}
 		}
-	}
-	private def abs(f: Set[File]) = f.map(_.getAbsolutePath)
-	private def readTags(allApplications: mSet[String], subclassMap: Map[String, Buffer[DetectedSubclass]], readTracking: ReadTracking[File])
+	def products(tracker: ReadTracking[File], srcs: Set[File]): Set[File] = srcs.flatMap(tracker.products)
+
+	def doCompile(sources: Set[File], classpath: Set[File], outputDirectory: File, options: Seq[String], tracker: UpdateTracking[File], compiler: AnalyzingCompiler, log: CompileLogger): scala.collection.Map[File, Source] =
 	{
-		for((source, tag) <- readTracking.allTags) if(tag.length > 0)
-		{
-			val (applications, subclasses) = Tag.fromBytes(tag)
-			allApplications ++= applications
-			subclasses.foreach(subclass => subclassMap.getOrElseUpdate(subclass.superclassName, new ArrayBuffer[DetectedSubclass]) += subclass)
-		}
+		val callback = new APIAnalysisCallback(tracker)
+		log.debug("Compiling using compiler " + compiler)
+		compiler(sources, classpath, outputDirectory, options, callback, 100, log)
+		callback.apiMap
 	}
-	private final class CompileAnalysisCallback(superClasses: Array[String], tracking: UpdateTracking[File]) extends xsbti.AnalysisCallback
-	{
-		private var applications = List[String]()
-		private var subclasses = List[DetectedSubclass]()
-		def superclassNames = superClasses
-		def superclassNotFound(superclassName: String) = error("Superclass not found: " + superclassName)
-		def beginSource(source: File) {}
-		def endSource(source: File)
-		{
-			if(!applications.isEmpty || !subclasses.isEmpty)
-			{
-				tracking.tag(source, Tag.toBytes(applications, subclasses) )
-				applications = Nil
-				subclasses = Nil
-			}
-		}
-		def foundApplication(source: File, className: String) { applications ::= className }
-		def foundSubclass(source: File, subclassName: String, superclassName: String, isModule: Boolean): Unit =
-			subclasses ::= DetectedSubclass(source, subclassName, superclassName, isModule)
-		def sourceDependency(dependsOn: File, source: File) { tracking.dependency(source, dependsOn) }
-		def jarDependency(jar: File, source: File) { tracking.use(source, jar) }
-		def classDependency(clazz: File, source: File) { tracking.dependency(source, clazz) }
-		def generatedClass(source: File, clazz: File) { tracking.product(source, clazz) }
-		def api(source: File, api: xsbti.api.Source) = ()
-	}
+
+		import sbinary.DefaultProtocol.FileFormat
+	val tracking = new DependencyTracked(cacheDirectory, true, (files: File) => FileUtilities.delete(files))
+	def tracked = Seq(tracking)
+
+	def sameAPI[T](a: scala.collection.Map[T, Source], b: scala.collection.Map[T, Source], t: T): Boolean = sameAPI(a.get(t), b.get(t))
+	def sameAPI(a: Option[Source], b: Option[Source]): Boolean =
+		if(a.isEmpty) b.isEmpty else (b.isDefined && SameAPI(a.get, b.get))
+
+	// TODO: implement
+	def scc(readTracker: ReadTracking[File], sources: Set[File]) = sources
 }
 
-object Tag
+
+private final class APIAnalysisCallback(tracking: UpdateTracking[File]) extends xsbti.AnalysisCallback
 {
-		import sbinary.{DefaultProtocol, Format, Operations}
-		import DefaultProtocol._
-	private implicit val subclassFormat: Format[DetectedSubclass] =
-		asProduct4(DetectedSubclass.apply)( ds => Some(ds.source, ds.subclassName, ds.superclassName, ds.isModule))
-	def toBytes(applications: List[String], subclasses: List[DetectedSubclass]) = CacheIO.toBytes((applications, subclasses))
-	def fromBytes(bytes: Array[Byte]) = CacheIO.fromBytes( ( List[String](), List[DetectedSubclass]() ) )(bytes)
+	val apiMap = new scala.collection.mutable.HashMap[File, Source]
+
+	def sourceDependency(dependsOn: File, source: File) { tracking.dependency(source, dependsOn) }
+	def jarDependency(jar: File, source: File) { tracking.use(source, jar) }
+	def classDependency(clazz: File, source: File) { tracking.dependency(source, clazz) }
+	def generatedClass(source: File, clazz: File) { tracking.product(source, clazz) }
+	def api(source: File, api: xsbti.api.Source) { apiMap(source) = api }
+
+	def superclassNames = Array()
+	def superclassNotFound(superclassName: String) {}
+	def beginSource(source: File)  {}
+	def endSource(source: File) {}
+	def foundApplication(source: File, className: String) {}
+	def foundSubclass(source: File, subclassName: String, superclassName: String, isModule: Boolean) {}
 }
-trait CompileReport extends NotNull
-{
-	def classes: Set[File]
-	def applications: Set[String]
-	def superclasses: Set[String]
-	def subclasses(superclass: String): Set[DetectedSubclass]
-}
-final case class DetectedSubclass(source: File, subclassName: String, superclassName: String, isModule: Boolean) extends NotNull

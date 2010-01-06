@@ -30,7 +30,9 @@ class XSbt(info: ProjectInfo) extends ParentProject(info)
 	val trackingSub = baseProject(cachePath / "tracking", "Tracking", cacheSub)
 	val compilerSub = project(compilePath, "Compile", new CompileProject(_),
 		launchInterfaceSub, interfaceSub, ivySub, ioSub, classpathSub, compileInterfaceSub)
-	val stdTaskSub = project(tasksPath / "standard", "Standard Tasks", new StandardTaskProject(_), trackingSub, compilerSub)
+	val stdTaskSub = project(tasksPath / "standard", "Standard Tasks", new StandardTaskProject(_), trackingSub, compilerSub, apiSub)
+
+	val altCompilerSub = baseProject("main", "Alternate Compiler Test", stdTaskSub, logSub)
 
 	val distSub = project("dist", "Distribution", new DistProject(_))
 

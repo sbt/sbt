@@ -1,3 +1,6 @@
+/* sbt -- Simple Build Tool
+ * Copyright 2009, 2010 Mark Harrah
+ */
 package xsbt
 
 import java.io.{File,IOException}
@@ -79,60 +82,98 @@ class Difference(val filesTask: Task[Set[File]], val style: FilesInfo.Style, val
 			}
 		}
 }
-object InvalidateFiles
+class DependencyTracked[T](val cacheDirectory: File, val translateProducts: Boolean, cleanT: T => Unit)(implicit format: Format[T], mf: Manifest[T]) extends Tracked
 {
-	def apply(cacheDirectory: File): Invalidate[File] = apply(cacheDirectory, true)
-	def apply(cacheDirectory: File, translateProducts: Boolean): Invalidate[File] =
-	{
-		import sbinary.DefaultProtocol.FileFormat
-		new Invalidate[File](cacheDirectory, translateProducts, FileUtilities.delete)
-	}
-}
-class Invalidate[T](val cacheDirectory: File, val translateProducts: Boolean, cleanT: T => Unit)
-	(implicit format: Format[T], mf: Manifest[T]) extends Tracked
-{
-	def this(cacheDirectory: File, translateProducts: Boolean)(implicit format: Format[T], mf: Manifest[T]) =
-		this(cacheDirectory, translateProducts, x => ())
-
 	private val trackFormat = new TrackingFormat[T](cacheDirectory, translateProducts)
 	private def cleanAll(fs: Set[T]) = fs.foreach(cleanT)
 	
 	val clean = Task(cleanAll(trackFormat.read.allProducts))
 	val clear = Clean(cacheDirectory)
 	
+	def apply[R](f: UpdateTracking[T] => Task[R]): Task[R] =
+	{
+		val tracker = trackFormat.read
+		f(tracker) map { result =>
+			trackFormat.write(tracker)
+			result
+		}
+	}
+}
+object InvalidateFiles
+{
+	def apply(cacheDirectory: File): InvalidateTransitive[File] = apply(cacheDirectory, true)
+	def apply(cacheDirectory: File, translateProducts: Boolean): InvalidateTransitive[File] =
+	{
+		import sbinary.DefaultProtocol.FileFormat
+		new InvalidateTransitive[File](cacheDirectory, translateProducts, FileUtilities.delete)
+	}
+}
+
+object InvalidateTransitive
+{
+	import scala.collection.Set
+	def apply[T](tracker: UpdateTracking[T], files: Set[T]): InvalidationReport[T] =
+	{
+		val readTracker = tracker.read
+		val invalidated = Set() ++ invalidate(readTracker, files)
+		val invalidatedProducts = Set() ++ invalidated.filter(readTracker.isProduct)
+
+		new InvalidationReport[T]
+		{
+			val invalid = invalidated
+			val invalidProducts = invalidatedProducts
+			val valid = Set() ++ files -- invalid
+		}
+	}
+	def andClean[T](tracker: UpdateTracking[T], cleanImpl: Set[T] => Unit, files: Set[T]): InvalidationReport[T] =
+	{
+		val report = apply(tracker, files)
+		clean(tracker, cleanImpl, report)
+		report
+	}
+	def clear[T](tracker: UpdateTracking[T], report: InvalidationReport[T]): Unit =
+		tracker.removeAll(report.invalid)
+	def clean[T](tracker: UpdateTracking[T], cleanImpl: Set[T] => Unit, report: InvalidationReport[T])
+	{
+		clear(tracker, report)
+		cleanImpl(report.invalidProducts)
+	}
+	
+	private def invalidate[T](tracker: ReadTracking[T], files: Iterable[T]): Set[T] =
+	{
+		import scala.collection.mutable.HashSet
+		val invalidated = new HashSet[T]
+		def invalidate0(files: Iterable[T]): Unit =
+			for(file <- files if !invalidated(file))
+			{
+				invalidated += file
+				invalidate0(invalidatedBy(tracker, file))
+			}
+		invalidate0(files)
+		invalidated
+	}
+	private def invalidatedBy[T](tracker: ReadTracking[T], file: T) =
+		tracker.products(file) ++ tracker.sources(file) ++ tracker.usedBy(file) ++ tracker.dependsOn(file)
+		
+}
+class InvalidateTransitive[T](cacheDirectory: File, translateProducts: Boolean, cleanT: T => Unit)
+	(implicit format: Format[T], mf: Manifest[T]) extends Tracked
+{
+	def this(cacheDirectory: File, translateProducts: Boolean)(implicit format: Format[T], mf: Manifest[T]) =
+		this(cacheDirectory, translateProducts, (_: T) => ())
+		
+	private val tracked = new DependencyTracked(cacheDirectory, translateProducts, cleanT)
+	def clean = tracked.clean
+	def clear = tracked.clear
+
 	def apply[R](changes: ChangeReport[T])(f: (InvalidationReport[T], UpdateTracking[T]) => Task[R]): Task[R] =
 		apply(Task(changes))(f)
 	def apply[R](changesTask: Task[ChangeReport[T]])(f: (InvalidationReport[T], UpdateTracking[T]) => Task[R]): Task[R] =
 	{
 		changesTask bind { changes =>
-			val tracker = trackFormat.read
-			def invalidatedBy(file: T) = tracker.products(file) ++ tracker.sources(file) ++ tracker.usedBy(file) ++ tracker.dependsOn(file)
-
-			import scala.collection.mutable.HashSet
-			val invalidated = new HashSet[T]
-			val invalidatedProducts = new HashSet[T]
-			def invalidate(files: Iterable[T]): Unit =
-				for(file <- files if !invalidated(file))
-				{
-					invalidated += file
-					if(!tracker.sources(file).isEmpty) invalidatedProducts += file
-					invalidate(invalidatedBy(file))
-				}
-
-			invalidate(changes.modified)
-			tracker.removeAll(invalidated)
-
-			val report = new InvalidationReport[T]
-			{
-				val invalid = Set(invalidated.toSeq : _*)
-				val invalidProducts = Set(invalidatedProducts.toSeq : _*)
-				val valid = changes.unmodified -- invalid
-			}
-			cleanAll(report.invalidProducts)
-			
-			f(report, tracker) map { result =>
-				trackFormat.write(tracker)
-				result
+			tracked { tracker =>
+				val report = InvalidateTransitive.andClean[T](tracker, _.foreach(cleanT), changes.modified)
+				f(report, tracker)
 			}
 		}
 	}

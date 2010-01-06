@@ -1,3 +1,6 @@
+/* sbt -- Simple Build Tool
+ * Copyright 2009, 2010 Mark Harrah
+ */
 package xsbt
 
 private object DependencyTracking
@@ -16,14 +19,22 @@ trait UpdateTracking[T] extends NotNull
 	def product(source: T, output: T): Unit
 	def tag(source: T, t: Array[Byte]): Unit
 	def read: ReadTracking[T]
+	// removes files from all maps, both keys and values
+	def removeAll(files: Iterable[T]): Unit
+	// removes sources as keys/values in source, product maps and as values in reverseDependencies map
+	def pending(sources: Iterable[T]): Unit
 }
 import scala.collection.Set
 trait ReadTracking[T] extends NotNull
 {
+	def isProduct(file: T): Boolean
+	def isSource(file: T): Boolean
+	def isUsed(file: T): Boolean
 	def dependsOn(file: T): Set[T]
 	def products(file: T): Set[T]
 	def sources(file: T): Set[T]
 	def usedBy(file: T): Set[T]
+	def tag(file: T): Array[Byte]
 	def allProducts: Set[T]
 	def allSources: Set[T]
 	def allUsed: Set[T]
@@ -42,6 +53,7 @@ private final class DefaultTracking[T](translateProducts: Boolean)
 	val productMap: DMap[T] = forward(sourceMap) // map from a source to its products.  Keep in sync with sourceMap
 }
 // if translateProducts is true, dependencies on a product are translated to dependencies on a source
+//   if there is a source recorded as generating that product
 private abstract class DependencyTracking[T](translateProducts: Boolean) extends ReadTracking[T] with UpdateTracking[T]
 {
 	val reverseDependencies: DMap[T] // map from a file to the files that depend on it
@@ -58,11 +70,17 @@ private abstract class DependencyTracking[T](translateProducts: Boolean) extends
 	final def usedBy(file: T): Set[T] = get(reverseUses, file)
 	final def tag(file: T): Array[Byte] = tagMap.getOrElse(file, new Array[Byte](0))
 
+	def isProduct(file: T): Boolean = exists(sourceMap, file)
+	def isSource(file: T): Boolean = exists(productMap, file)
+	def isUsed(file: T): Boolean = exists(reverseUses, file)
+
+
 	final def allProducts = Set() ++ sourceMap.keys
 	final def allSources = Set() ++ productMap.keys
 	final def allUsed = Set() ++ reverseUses.keys
 	final def allTags = tagMap.toSeq
 
+	private def exists(map: DMap[T], value: T): Boolean = map.contains(value)
 	private def get(map: DMap[T], value: T): Set[T] = map.getOrElse(value, Set.empty[T])
 
 	final def dependency(sourceFile: T, dependsOn: T)
@@ -82,17 +100,25 @@ private abstract class DependencyTracking[T](translateProducts: Boolean) extends
 	final def use(sourceFile: T, usesFile: T) { reverseUses.add(usesFile, sourceFile) }
 	final def tag(sourceFile: T, t: Array[Byte]) { tagMap(sourceFile) = t }
 
+	private def removeOneWay(a: DMap[T], files: Iterable[T]): Unit =
+		a.values.foreach { _ --= files }
+	private def remove(a: DMap[T], b: DMap[T], file: T): Unit =
+		for(x <- a.removeKey(file)) b --= x
+	private def removeAll(files: Iterable[T], a: DMap[T], b: DMap[T]): Unit =
+		files.foreach { file => remove(a, b, file); remove(b, a, file) }
 	final def removeAll(files: Iterable[T])
 	{
-		def remove(a: DMap[T], b: DMap[T], file: T): Unit =
-			for(x <- a.removeKey(file)) b --= x
-		def removeAll(a: DMap[T], b: DMap[T]): Unit =
-			files.foreach { file => remove(a, b, file); remove(b, a, file) }
-
-		removeAll(forward(reverseDependencies), reverseDependencies)
-		removeAll(productMap, sourceMap)
-		removeAll(forward(reverseUses), reverseUses)
+		removeAll(files, forward(reverseDependencies), reverseDependencies)
+		removeAll(files, productMap, sourceMap)
+		removeAll(files, forward(reverseUses), reverseUses)
 		tagMap --= files
+	}
+	def pending(sources: Iterable[T])
+	{
+		removeOneWay(reverseDependencies, sources)
+		removeOneWay(reverseUses, sources)
+		removeAll(sources, productMap, sourceMap)
+		tagMap --= sources
 	}
 	protected final def forward(map: DMap[T]): DMap[T] =
 	{
@@ -100,4 +126,12 @@ private abstract class DependencyTracking[T](translateProducts: Boolean) extends
 		for( (key, values) <- map; value <- values) f.add(value, key)
 		f
 	}
+	override def toString = 
+		(graph("Reverse source dependencies", reverseDependencies) ::
+		graph("Sources and products", productMap) ::
+		graph("Reverse uses", reverseUses) ::
+		Nil) mkString "\n"
+	def graph(title: String, map: DMap[T]) =
+		"\"" + title + "\" {\n\t" + graphEntries(map) + "\n}"
+	def graphEntries(map: DMap[T]) = map.map{ case (key, values) => values.map(key + " -> " + _).mkString("\n\t") }.mkString("\n\t")
 }

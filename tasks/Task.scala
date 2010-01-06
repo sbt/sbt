@@ -93,30 +93,26 @@ object Task
 		}
 	}
 
-	implicit def twoToBuilder[A,B](t: (Task[A], Task[B]) ): Builder2[A,B] =
-		t match { case (a,b) => new Builder2(a,b) }
+	implicit def twoToBuilder[A,B](t: (Task[A], Task[B]) ): Builder2[A,B] = new Builder2(t._1,t._2)
 	final class Builder2[A,B] private[Task](a: Task[A], b: Task[B]) extends NotNull
 	{
-		private def extract = (r: Results) => (r(a), r(b))
-		private def compute[T](f: (A,B) => T) = tupled(f) compose extract
+		private def compute[T](f: (A,B) => T) = (r: Results) => f(r(a), r(b))
 		def map[X](f: (A,B) => X): Task[X] = mapTask(a,b)(compute(f))
 		def bind[X](f: (A,B) => Result[X]): Task[X] = bindTask(a,b)(compute(f))
 	}
 
-	implicit def threeToBuilder[A,B,C](t: (Task[A], Task[B], Task[C])): Builder3[A,B,C] = t match { case (a,b,c) => new Builder3(a,b,c) }
+	implicit def threeToBuilder[A,B,C](t: (Task[A], Task[B], Task[C])): Builder3[A,B,C] = new Builder3(t._1,t._2,t._3)
 	final class Builder3[A,B,C] private[Task](a: Task[A], b: Task[B], c: Task[C]) extends NotNull
 	{
-		private def extract = (r: Results) => (r(a), r(b), r(c))
-		private def compute[T](f: (A,B,C) => T) = tupled(f) compose extract
+		private def compute[T](f: (A,B,C) => T) = (r: Results) => f(r(a), r(b), r(c))
 		def map[X](f: (A,B,C) => X): Task[X] = mapTask(a,b,c)(compute(f))
 		def bind[X](f: (A,B,C) => Result[X]): Task[X] = bindTask(a,b,c)(compute(f))
 	}
 
-	implicit def fourToBuilder[A,B,C,D](t: (Task[A], Task[B], Task[C], Task[D])): Builder4[A,B,C,D] = t match { case (a,b,c,d) => new Builder4(a,b,c,d) }
+	implicit def fourToBuilder[A,B,C,D](t: (Task[A], Task[B], Task[C], Task[D])): Builder4[A,B,C,D] = new Builder4(t._1,t._2,t._3,t._4)
 	final class Builder4[A,B,C,D] private[Task](a: Task[A], b: Task[B], c: Task[C], d: Task[D]) extends NotNull
 	{
-		private def extract = (r: Results) => (r(a), r(b), r(c), r(d))
-		private def compute[T](f: (A,B,C,D) => T) = tupled(f) compose extract
+		private def compute[T](f: (A,B,C,D) => T) = (r: Results) => f(r(a), r(b), r(c), r(d))
 		def map[X](f: (A,B,C,D) => X): Task[X] = mapTask(a,b,c,d)( compute(f) )
 		def bind[X](f: (A,B,C,D) => Result[X]): Task[X] = bindTask(a,b,c,d)( compute(f) )
 	}
