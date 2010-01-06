@@ -96,7 +96,10 @@ TypeParameter
 
 Annotation
 	base: SimpleType
-	arguments: String*
+	arguments: AnnotationArgument*
+AnnotationArgument
+	name: String
+	value: String
 
 enum Variance : Contravariant, Covariant, Invariant
 enum ParameterModifier : Repeated, Plain, ByName
