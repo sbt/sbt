@@ -142,8 +142,12 @@ private class SameAPI
 	def sameAnnotations(a: Seq[Annotation], b: Seq[Annotation]): Boolean =
 		sameSeq(a, b)(sameAnnotation)
 	def sameAnnotation(a: Annotation, b: Annotation): Boolean =
-		sameSimpleType(a.base, b.base) &&
-		sameSeq(a.arguments, b.arguments)(defaultEquals)
+		debug(sameSimpleType(a.base, b.base), "Annotation base type differed") &&
+		debug(sameAnnotationArguments(a.arguments, b.arguments), "Annotation arguments differed (" + a + ") and (" + b + ")")
+	def sameAnnotationArguments(a: Seq[AnnotationArgument], b: Seq[AnnotationArgument]): Boolean =
+		argumentMap(a) == argumentMap(b)
+	def argumentMap(a: Seq[AnnotationArgument]): Map[String,String] =
+		Map() ++ a.map(arg => (arg.name, arg.value))
 		
 	def sameDefinitionSpecificAPI(a: Definition, b: Definition): Boolean =
 		(a, b) match
@@ -256,7 +260,7 @@ private class SameAPI
 			case (sa: Singleton, sb: Singleton) => debug(sameSingleton(sa, sb), "Different singleton")
 			case (_: EmptyType, _: EmptyType) => true
 			case (pa: Parameterized, pb: Parameterized) => debug(sameParameterized(pa, pb), "Different parameterized")
-			case _ => debug(false, "Different category of simple type")
+			case _ => debug(false, "Different category of simple type (" + a.getClass.getName + " and " + b.getClass.getName + ") for (" + a + " and " + b + ")")
 		}
 
 	def sameParameterized(a: Parameterized, b: Parameterized): Boolean =
