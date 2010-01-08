@@ -126,6 +126,10 @@ The following sections briefly describe the contents of the different types.
  * The base type
  * The clause, which is a type parameter section, described previously
 
+=== Polymorphic ===
+ * The base type
+ * The type parameter section, described previously
+
 = API Data Structure =
 
 This section and explains the data structure representing the API of a source file described in the previous section.
@@ -187,7 +191,7 @@ Type
 		EmptyType
 		Parameterized
 			baseType : SimpleType
-			typeArguments: SimpleType*
+			typeArguments: Type*
 	Annotated
 		baseType : SimpleType
 		annotations : Annotation*
@@ -196,6 +200,9 @@ Type
 		declarations: Definition*
 		inherited: Definition*
 	Existential
+		baseType : Type
+		clause: TypeParameter*
+	Polymorphic
 		baseType : Type
 		clause: TypeParameter*
 }}}
