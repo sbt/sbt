@@ -42,7 +42,7 @@ Type
 		EmptyType
 		Parameterized
 			baseType : SimpleType
-			typeArguments: SimpleType*
+			typeArguments: Type*
 	Annotated
 		baseType : SimpleType
 		annotations : Annotation*
@@ -53,6 +53,9 @@ Type
 	Existential
 		baseType : Type
 		clause: TypeParameter*
+	Polymorphic
+		baseType: Type
+		parameters: TypeParameter*
 
 Access
 	Public
