@@ -29,6 +29,6 @@ object APIFormat
 			try { objIn.readObject().asInstanceOf[Source] }
 			finally { objIn.close() }
 		}
-		catch { case e: java.io.EOFException => new xsbti.api.Source(Array(), Array())}
+		catch { case _: java.io.EOFException | _: java.io.InvalidClassException => new xsbti.api.Source(Array(), Array())}
 	}
 }
