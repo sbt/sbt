@@ -11,7 +11,13 @@ import scala.collection.{immutable, mutable}
 object SameAPI
 {
 	def apply(a: Source, b: Source) =
-		(new SameAPI).check(a,b)
+	{
+		val start = System.currentTimeMillis
+		val result = (new SameAPI).check(a,b)
+		val end = System.currentTimeMillis
+		println(" API comparison took: " + (end - start) / 1000.0 + " s")
+		result
+	}
 }
 private class SameAPI
 {
@@ -235,11 +241,15 @@ private class SameAPI
 			case (aa: Annotated, ab: Annotated) => debug(sameAnnotatedType(aa, ab), "Different annotated type")
 			case (sa: Structure, sb: Structure) => debug(sameStructure(sa, sb), "Different structure type")
 			case (ea: Existential, eb: Existential) => debug(sameExistentialType(ea, eb), "Different existential type")
+			case (pa: Polymorphic, pb: Polymorphic) => debug(samePolymorphicType(pa, pb), "Different polymorphic type")
 			case _ => false
 		}
 
 	def sameExistentialType(a: Existential, b: Existential): Boolean =
 		sameTypeParameters(a.clause, b.clause) &&
+		sameType(a.baseType, b.baseType)
+	def samePolymorphicType(a: Polymorphic, b: Polymorphic): Boolean =
+		sameTypeParameters(a.parameters, b.parameters) &&
 		sameType(a.baseType, b.baseType)
 	def sameAnnotatedType(a: Annotated, b: Annotated): Boolean =
 		sameSimpleType(a.baseType, b.baseType) &&
@@ -265,7 +275,7 @@ private class SameAPI
 
 	def sameParameterized(a: Parameterized, b: Parameterized): Boolean =
 		sameSimpleType(a.baseType, b.baseType) &&
-		sameSeq(a.typeArguments, b.typeArguments)(sameSimpleType)
+		sameSeq(a.typeArguments, b.typeArguments)(sameType)
 	def sameParameterRef(a: ParameterRef, b: ParameterRef): Boolean =
 		mapID(referencesMap, a.id, b.id)
 	def sameSingleton(a: Singleton, b: Singleton): Boolean =
