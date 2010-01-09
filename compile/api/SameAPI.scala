@@ -21,38 +21,68 @@ object SameAPI
 }
 private class SameAPI
 {
-	def debug(flag: Boolean, msg: => String): Boolean =
+	abstract class Result(val referencesMap: immutable.Map[Int, Int], val parameterMap: immutable.Map[Int, Int]) extends NotNull
 	{
-		if(!flag) println(msg)
+		def &&(o: => Result): Result
+		def value: Boolean
+	}
+	final object False extends Result(Map.empty, Map.empty)
+	{
+		def &&(o: => Result): Result = this
+		def value = false
+	}
+	final class True(references: immutable.Map[Int, Int], parameters: immutable.Map[Int, Int]) extends Result(references, parameters)
+	{
+		def value = true
+		def &&(o: => Result): Result = o match { case False => o; case t: True => newTrue(t) }
+		private def newTrue(t: True): True =
+		{
+			def equalIntersection(a: Map[Int, Int], b: Map[Int, Int]) =
+			{
+				val sameKeys = a.keySet ** b.keySet
+				assume(sameKeys.forall(key => a(key) == b(key)))
+			}
+			equalIntersection(referencesMap, t.referencesMap)
+			equalIntersection(parameterMap, t.parameterMap)
+			new True(referencesMap ++ t.referencesMap, parameterMap ++ t.parameterMap)
+		}
+	}
+	implicit def b2b(b: Boolean): Result = if(b) new True(Map.empty, Map.empty) else False
+
+	def debug(flag: Result, msg: => String): Result =
+	{
+		if(!flag.value) println(msg)
 		flag
 	}
 
-	private val parameterMap = new mutable.HashMap[Int, Int]
-	private val referencesMap = new mutable.HashMap[Int, Int]
+	def printMaps(b: Result) = println(mapStrings(b))
+	def mapStrings(b: Result) =
+	{
+		"parameter map:\n\t" +
+		b.parameterMap.mkString("\n\t") +
+		"\nreference map:\n\t" +
+		b.referencesMap.mkString("\n\t")
+	}
+	def check(a: Source, b: Source): Boolean =
+	{
+		val initialResult =
+			samePackages(a, b) &&
+			debug(sameDefinitions(a, b), "Definitions differed")
+		initialResult.value && 
+		debug(sameReferences(initialResult.referencesMap, initialResult.parameterMap), "References differed: \n" + mapStrings(initialResult)).value
+	}
 
-	private def mapID(map: mutable.Map[Int, Int], key: Int, value: Int): Boolean =
-		equalOrEmpty(map.put(key, value), value)
-	private def equalOrEmpty[T](o: Option[T], nonemptyValue: T): Boolean =
-		o match { case Some(v) => v == nonemptyValue; case None => true }
+	def sameReferences(referencesMap: Map[Int,Int], parameterMap: Map[Int,Int]): Boolean =
+		referencesMap.forall { case (a, b) => parameterMap(a) == b }
 
-	def check(a: Source, b: Source) =
-		samePackages(a, b) &&
-		debug(sameDefinitions(a, b), "Definitions differed") &&
-		debug(sameReferences, "References differed")
-
-	def sameReferences: Boolean =
-		referencesMap.forall(tupled(sameReference))
-	def sameReference(a: Int, b: Int): Boolean =
-		parameterMap(a) == b
-
-	def samePackages(a: Source, b: Source): Boolean =
+	def samePackages(a: Source, b: Source): Result =
 		sameStrings(packages(a), packages(b))
 	def packages(s: Source): Set[String] =
 		Set() ++ s.packages.map(_.name)
 
-	def sameDefinitions(a: Source, b: Source): Boolean =
+	def sameDefinitions(a: Source, b: Source): Result =
 		sameDefinitions(a.definitions, b.definitions)
-	def sameDefinitions(a: Seq[Definition], b: Seq[Definition]): Boolean =
+	def sameDefinitions(a: Seq[Definition], b: Seq[Definition]): Result =
 	{
 		val (avalues, atypes) = separateDefinitions(a)
 		val (bvalues, btypes) = separateDefinitions(b)
@@ -61,23 +91,33 @@ private class SameAPI
 	}
 	def separateDefinitions(s: Seq[Definition]): (Seq[Definition], Seq[Definition]) =
 		s.toArray.partition(isValueDefinition)
-	def sameDefinitions(a: scala.collection.Map[String, List[Definition]], b: scala.collection.Map[String, List[Definition]]): Boolean =
-		debug(sameStrings(a.keySet, b.keySet), "\tDefinition strings differed") && zippedEntries(a,b).forall(tupled(sameNamedDefinitions))
+	def sameDefinitions(a: scala.collection.Map[String, List[Definition]], b: scala.collection.Map[String, List[Definition]]): Result =
+		debug(sameStrings(a.keySet, b.keySet), "\tDefinition strings differed") && forall(zippedEntries(a,b))(tupled(sameNamedDefinitions))
 
-	def sameNamedDefinitions(a: List[Definition], b: List[Definition]): Boolean =
+	def sameNamedDefinitions(a: List[Definition], b: List[Definition]): Result =
 	{
-		def sameDefs(a: List[Definition], b: List[Definition]): Boolean =
+		println("Comparing " + a.size + " defs against " + b.size + " defs")
+		def sameDefs(a: List[Definition], b: List[Definition], v: Result): Result =
+		{
+			println("\t " + a.size + " to " + b.size + "")
 			a match
 			{
-				case xdef :: tail =>
-					b.find(bdef => sameDefinitionContent(xdef, bdef)) match
-					{
-						case Some(bdef) => sameDefs(tail, b - bdef)
-						case None => debug(false, "Definition not in new API: \n" + xdef.name )
-					}
-				case Nil => true
+				case adef :: atail =>
+					def sameDef(seen: List[Definition], remaining: List[Definition]): Result =
+						remaining match
+						{
+							case Nil => debug(false, "Definition different in new API: \n" + adef.name )
+							case bdef :: btail =>
+								val eq = v && sameDefinitionContent(adef, bdef)
+								if(eq.value) printMaps(eq)
+								if(eq.value) sameDefs(atail, seen ::: btail, eq) else sameDef(bdef :: seen, btail)
+						}
+					sameDef(Nil, b)
+				case Nil => v
 			}
-		debug((a.length == b.length), "\t\tLength differed for " + a.headOption.map(_.name).getOrElse("empty")) && sameDefs(a, b)
+		}
+		//if(a.length > 1) println("Comparing\n" + a.mkString("\n\t") + "\nagainst\n" + b.mkString("\n\t") + "\n\n")
+		debug((a.length == b.length), "\t\tLength differed for " + a.headOption.map(_.name).getOrElse("empty")) && sameDefs(a, b, true)
 	}
 
 	def isValueDefinition(d: Definition): Boolean =
@@ -98,14 +138,14 @@ private class SameAPI
 	}
 
 	// doesn't check name
-	def sameDefinitionContent(a: Definition, b: Definition): Boolean =
+	def sameDefinitionContent(a: Definition, b: Definition): Result =
 		//a.name == b.name &&
 		debug(sameAccess(a.access, b.access), "Access differed") &&
 		debug(sameModifiers(a.modifiers, b.modifiers), "Modifiers differed") &&
 		debug(sameAnnotations(a.annotations, b.annotations), "Annotations differed") &&
 		debug(sameDefinitionSpecificAPI(a, b), "Definition-specific differed")
 
-	def sameAccess(a: Access, b: Access): Boolean =
+	def sameAccess(a: Access, b: Access): Result =
 		(a, b) match
 		{
 			case (_: Public, _: Public) => true
@@ -114,9 +154,9 @@ private class SameAPI
 			case (qa: Pkg, qb: Pkg) => sameQualifier(qa, qb)
 			case _ => debug(false, "Different access categories")
 		}
-	def sameQualifier(a: Qualified, b: Qualified): Boolean =
+	def sameQualifier(a: Qualified, b: Qualified): Result =
 		sameQualifier(a.qualifier, b.qualifier)
-	def sameQualifier(a: Qualifier, b: Qualifier): Boolean =
+	def sameQualifier(a: Qualifier, b: Qualifier): Result =
 		(a, b) match
 		{
 			case (_: Unqualified, _: Unqualified) => true
@@ -125,7 +165,7 @@ private class SameAPI
 			case _ => debug(false, "Different qualifier categories: " + a.getClass.getName +  " -- " +b.getClass.getName)
 		}
 
-	def sameModifiers(a: Modifiers, b: Modifiers): Boolean =
+	def sameModifiers(a: Modifiers, b: Modifiers): Result =
 		bitSet(a) == bitSet(b)
 
 	def bitSet(m: Modifiers): immutable.BitSet =
@@ -142,20 +182,20 @@ private class SameAPI
 		setIf(bs, isSynthetic, 7)
 		bs.toImmutable
 	}
-	def setIf(bs: mutable.BitSet, flag: Boolean, i: Int): Unit =
-		if(flag) bs += i
+	def setIf(bs: mutable.BitSet, flag: Result, i: Int): Unit =
+		if(flag.value) bs += i
 
-	def sameAnnotations(a: Seq[Annotation], b: Seq[Annotation]): Boolean =
+	def sameAnnotations(a: Seq[Annotation], b: Seq[Annotation]): Result =
 		sameSeq(a, b)(sameAnnotation)
-	def sameAnnotation(a: Annotation, b: Annotation): Boolean =
+	def sameAnnotation(a: Annotation, b: Annotation): Result =
 		debug(sameSimpleType(a.base, b.base), "Annotation base type differed") &&
 		debug(sameAnnotationArguments(a.arguments, b.arguments), "Annotation arguments differed (" + a + ") and (" + b + ")")
-	def sameAnnotationArguments(a: Seq[AnnotationArgument], b: Seq[AnnotationArgument]): Boolean =
+	def sameAnnotationArguments(a: Seq[AnnotationArgument], b: Seq[AnnotationArgument]): Result =
 		argumentMap(a) == argumentMap(b)
 	def argumentMap(a: Seq[AnnotationArgument]): Map[String,String] =
 		Map() ++ a.map(arg => (arg.name, arg.value))
 		
-	def sameDefinitionSpecificAPI(a: Definition, b: Definition): Boolean =
+	def sameDefinitionSpecificAPI(a: Definition, b: Definition): Result =
 		(a, b) match
 		{
 			case (fa: FieldLike, fb: FieldLike) => sameFieldSpecificAPI(fa, fb)
@@ -163,11 +203,11 @@ private class SameAPI
 			case _ => false
 		}
 
-	def sameParameterizedDefinition(a: ParameterizedDefinition, b: ParameterizedDefinition): Boolean =
+	def sameParameterizedDefinition(a: ParameterizedDefinition, b: ParameterizedDefinition): Result =
 		debug(sameTypeParameters(a.typeParameters, b.typeParameters), "Different type parameters for " + a.name) &&
 		sameParameterizedSpecificAPI(a, b)
 
-	def sameParameterizedSpecificAPI(a: ParameterizedDefinition, b: ParameterizedDefinition): Boolean =
+	def sameParameterizedSpecificAPI(a: ParameterizedDefinition, b: ParameterizedDefinition): Result =
 		(a, b) match
 		{
 			case (da: Def, db: Def) => sameDefSpecificAPI(da, db)
@@ -177,19 +217,19 @@ private class SameAPI
 			case _ => false
 		}
 
-	def sameDefSpecificAPI(a: Def, b: Def): Boolean =
+	def sameDefSpecificAPI(a: Def, b: Def): Result =
 		debug(sameValueParameters(a.valueParameters, b.valueParameters), "Different def value parameters for " + a.name) &&
 		debug(sameType(a.returnType, b.returnType), "Different def return type for " + a.name)
-	def sameAliasSpecificAPI(a: TypeAlias, b: TypeAlias): Boolean =
+	def sameAliasSpecificAPI(a: TypeAlias, b: TypeAlias): Result =
 		debug(sameType(a.tpe, b.tpe), "Different alias type for " + a.name)
-	def sameDeclarationSpecificAPI(a: TypeDeclaration, b: TypeDeclaration): Boolean =
+	def sameDeclarationSpecificAPI(a: TypeDeclaration, b: TypeDeclaration): Result =
 		debug(sameType(a.lowerBound, b.lowerBound), "Different lower bound for declaration " + a.name) &&
 		debug(sameType(a.upperBound, b.upperBound), "Different upper bound for declaration " + a.name)
-	def sameFieldSpecificAPI(a: FieldLike, b: FieldLike): Boolean =
+	def sameFieldSpecificAPI(a: FieldLike, b: FieldLike): Result =
 		debug(sameFieldCategory(a, b), "Different field categories (" + a.name + "=" + a.getClass.getName +  " -- " +a.name + "=" + a.getClass.getName + ")")&&
 		debug(sameType(a.tpe, b.tpe), "Different field type for " + a.name)
 
-	def sameFieldCategory(a: FieldLike, b: FieldLike): Boolean =
+	def sameFieldCategory(a: FieldLike, b: FieldLike): Result =
 		(a,b) match
 		{
 			case (_: Val, _: Val) => true
@@ -197,72 +237,73 @@ private class SameAPI
 			case _=> false
 		}
 
-	def sameClassLikeSpecificAPI(a: ClassLike, b: ClassLike): Boolean =
+	def sameClassLikeSpecificAPI(a: ClassLike, b: ClassLike): Result =
 		sameDefinitionType(a.definitionType, b.definitionType) &&
 		sameType(a.selfType, b.selfType) &&
 		sameStructure(a.structure, b.structure)
 
-	def sameValueParameters(a: Seq[ParameterList], b: Seq[ParameterList]): Boolean =
+	def sameValueParameters(a: Seq[ParameterList], b: Seq[ParameterList]): Result =
 		sameSeq(a, b)(sameParameterList)
 
-	def sameParameterList(a: ParameterList, b: ParameterList): Boolean =
-		(a.isImplicit == b.isImplicit) &&
+	def sameParameterList(a: ParameterList, b: ParameterList): Result =
+		((a.isImplicit == b.isImplicit): Result) &&
 		sameParameters(a.parameters, b.parameters)
-	def sameParameters(a: Seq[MethodParameter], b: Seq[MethodParameter]): Boolean =
+	def sameParameters(a: Seq[MethodParameter], b: Seq[MethodParameter]): Result =
 		sameSeq(a, b)(sameMethodParameter)
-	def sameMethodParameter(a: MethodParameter, b: MethodParameter): Boolean =
-		(a.name == b.name) &&
+	def sameMethodParameter(a: MethodParameter, b: MethodParameter): Result =
+		((a.name == b.name): Result) &&
 		sameType(a.tpe, b.tpe) &&
 		(a.hasDefault == b.hasDefault) &&
 		sameParameterModifier(a.modifier, b.modifier)
 	def sameParameterModifier(a: ParameterModifier, b: ParameterModifier) =
 		a == b
-	def sameDefinitionType(a: DefinitionType, b: DefinitionType): Boolean =
+	def sameDefinitionType(a: DefinitionType, b: DefinitionType): Result =
 		a == b
-	def sameVariance(a: Variance, b: Variance): Boolean =
+	def sameVariance(a: Variance, b: Variance): Result =
 		a == b
 
-	def sameTypeParameters(a: Seq[TypeParameter], b: Seq[TypeParameter]): Boolean =
+	def sameTypeParameters(a: Seq[TypeParameter], b: Seq[TypeParameter]): Result =
 		debug(sameSeq(a, b)(sameTypeParameter), "Different type parameters")
-	def sameTypeParameter(a: TypeParameter, b: TypeParameter): Boolean =
+	def sameTypeParameter(a: TypeParameter, b: TypeParameter): Result =
 		sameTypeParameters(a.typeParameters, b.typeParameters) &&
 		debug(sameVariance(a.variance, b.variance), "Different variance") &&
 		debug(sameType(a.lowerBound, b.lowerBound), "Different lower bound") &&
 		debug(sameType(a.upperBound, b.upperBound), "Different upper bound") &&
 		debug(mapSameParameters(a, b), "Different type parameter bindings")
 
-	def mapSameParameters(a: TypeParameter, b: TypeParameter): Boolean =
-		mapID(parameterMap, a.id, b.id)
+	def mapSameParameters(a: TypeParameter, b: TypeParameter): Result =
+		mapParameters(a.id, b.id)
+	def mapParameters(a: Int, b: Int) = new True(Map.empty, Map( a -> b ))
 
-	def sameType(a: Type, b: Type): Boolean =
+	def sameType(a: Type, b: Type): Result =
 		(a, b) match
 		{
-			case (sa: SimpleType, sb: SimpleType) => debug(sameSimpleType(sa, sb), "Different simple type")
-			case (aa: Annotated, ab: Annotated) => debug(sameAnnotatedType(aa, ab), "Different annotated type")
+			case (sa: SimpleType, sb: SimpleType) => debug(sameSimpleType(sa, sb), "Different simple types: " + sa + " and " + {Thread.dumpStack; sb})
+			case (aa: Annotated, ab: Annotated) => debug(sameAnnotatedType(aa, ab), "Different annotated types")
 			case (sa: Structure, sb: Structure) => debug(sameStructure(sa, sb), "Different structure type")
 			case (ea: Existential, eb: Existential) => debug(sameExistentialType(ea, eb), "Different existential type")
 			case (pa: Polymorphic, pb: Polymorphic) => debug(samePolymorphicType(pa, pb), "Different polymorphic type")
 			case _ => false
 		}
 
-	def sameExistentialType(a: Existential, b: Existential): Boolean =
+	def sameExistentialType(a: Existential, b: Existential): Result =
 		sameTypeParameters(a.clause, b.clause) &&
 		sameType(a.baseType, b.baseType)
-	def samePolymorphicType(a: Polymorphic, b: Polymorphic): Boolean =
+	def samePolymorphicType(a: Polymorphic, b: Polymorphic): Result =
 		sameTypeParameters(a.parameters, b.parameters) &&
 		sameType(a.baseType, b.baseType)
-	def sameAnnotatedType(a: Annotated, b: Annotated): Boolean =
+	def sameAnnotatedType(a: Annotated, b: Annotated): Result =
 		sameSimpleType(a.baseType, b.baseType) &&
 		sameAnnotations(a.annotations, b.annotations)
-	def sameStructure(a: Structure, b: Structure): Boolean =
+	def sameStructure(a: Structure, b: Structure): Result =
 		sameSeq(a.parents, b.parents)(sameType) &&
 		sameMembers(a.declarations, b.declarations) &&
 		sameMembers(a.inherited, b.inherited)
 
-	def sameMembers(a: Seq[Definition], b: Seq[Definition]): Boolean =
+	def sameMembers(a: Seq[Definition], b: Seq[Definition]): Result =
 		sameDefinitions(a, b)
 
-	def sameSimpleType(a: SimpleType, b: SimpleType): Boolean =
+	def sameSimpleType(a: SimpleType, b: SimpleType): Result =
 		(a, b) match
 		{
 			case (pa: Projection, pb: Projection) => debug(sameProjection(pa, pb), "Different projection")
@@ -273,22 +314,23 @@ private class SameAPI
 			case _ => debug(false, "Different category of simple type (" + a.getClass.getName + " and " + b.getClass.getName + ") for (" + a + " and " + b + ")")
 		}
 
-	def sameParameterized(a: Parameterized, b: Parameterized): Boolean =
+	def sameParameterized(a: Parameterized, b: Parameterized): Result =
 		sameSimpleType(a.baseType, b.baseType) &&
 		sameSeq(a.typeArguments, b.typeArguments)(sameType)
-	def sameParameterRef(a: ParameterRef, b: ParameterRef): Boolean =
-		mapID(referencesMap, a.id, b.id)
-	def sameSingleton(a: Singleton, b: Singleton): Boolean =
+	def sameParameterRef(a: ParameterRef, b: ParameterRef): Result =
+		mapReferences(a.id, b.id)
+	def mapReferences(a: Int, b: Int) = new True(Map( a -> b ), Map.empty)
+	def sameSingleton(a: Singleton, b: Singleton): Result =
 		samePath(a.path, b.path)
-	def sameProjection(a: Projection, b: Projection): Boolean =
+	def sameProjection(a: Projection, b: Projection): Result =
 		sameSimpleType(a.prefix, b.prefix) &&
 		(a.id == b.id)
 
-	def samePath(a: Path, b: Path): Boolean =
+	def samePath(a: Path, b: Path): Result =
 		samePathComponents(a.components, b.components)
-	def samePathComponents(a: Seq[PathComponent], b: Seq[PathComponent]): Boolean =
+	def samePathComponents(a: Seq[PathComponent], b: Seq[PathComponent]): Result =
 		sameSeq(a, b)(samePathComponent)
-	def samePathComponent(a: PathComponent, b: PathComponent): Boolean =
+	def samePathComponent(a: PathComponent, b: PathComponent): Result =
 		(a, b) match
 		{
 			case (_: This, _: This) => true
@@ -296,21 +338,25 @@ private class SameAPI
 			case (ia: Id, ib: Id) => samePathId(ia, ib)
 			case _ => false
 		}
-	def samePathSuper(a: Super, b: Super): Boolean =
+	def samePathSuper(a: Super, b: Super): Result =
 		samePath(a.qualifier, b.qualifier)
-	def samePathId(a: Id, b: Id): Boolean =
+	def samePathId(a: Id, b: Id): Result =
 		a.id == b.id
 
 	// precondition: a.keySet == b.keySet
 	protected def zippedEntries[A,B](a: scala.collection.Map[A,B], b: scala.collection.Map[A,B]): Iterable[(B,B)] =
 		for( (key, avalue) <- a) yield (avalue, b(key))
 
-	def sameStrings(a: scala.collection.Set[String], b: scala.collection.Set[String]) =
+	def sameStrings(a: scala.collection.Set[String], b: scala.collection.Set[String]): Result =
 		a == b
-	def sameSeq[T](a: Seq[T], b: Seq[T])(eq: (T,T) => Boolean): Boolean =
+	final def sameSeq[T](a: Seq[T], b: Seq[T])(eq: (T,T) => Result): Result =
 		sameArray(a.toArray, b.toArray)(eq)
-	private def sameArray[T](a: Array[T], b: Array[T])(eq: (T,T) => Boolean): Boolean =
-		(a.length == b.length) && a.zip(b).forall(tupled(eq))
+	final def sameArray[T](a: Array[T], b: Array[T])(eq: (T,T) => Result): Result =
+		((a.length == b.length): Result) && forall(a.zip(b))(tupled(eq))
+	final def forall[T](a: Iterable[T])(f: T => Result): Result = forallList(a.toList, true)(f)
+	final def forallList[T](a: List[T], v: Result)(f: T => Result): Result =
+		if(v.value) ( a match { case Nil => v; case x :: xs => forallList(xs, v && f(x) )(f) } )
+		else v
 
 	def defaultEquals[T <: AnyRef] = (a: T, b: T) => a == b
 }
