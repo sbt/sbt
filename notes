@@ -1,6 +1,7 @@
 DONE
 -fix caching issue for compiler interface
 -fix test ClassLoader
+-implement <file and <port
 
 
 Goals/Guidelines for xsbt
@@ -12,11 +13,13 @@ As usual:
 
 ISSUES
  - Scala issue #2265: cannot use structural types or libraries that use structural types, or OOME: PermGen will occur.  Running/testing user code with structural types might also cause OOME, but is unlikely unless the Scala standard library or compiler uses structural types.
+ - API: changing package name in access qualifier does not work: must be API phase that doesn't correctly extract the ID
 
 TODO
  - launcher interface versioning
  - allow comments in datatype definition file
  - tests for API extractor
+ - have background triggered commands (~sync)
 
 update 0_6_Summary to mention different output directories.
 look at permgen in Josh's ScalaTest
