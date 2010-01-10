@@ -35,7 +35,7 @@ The launcher may be configured in one of the following ways in increasing order 
 The configuration file is line-based, read as UTF-8 encoded, and defined by the following grammer.  `'nl'` is a newline or end of file and `'text'` is plain text without newlines or the surrounding delimiters (such as parentheses or square brackets):
 {{{
 configuration ::= scala app repositories boot log app-properties
-  scala ::= '[' 'scala' ']' nl version nl
+  scala ::= '[' 'scala' ']' nl version nl classifiers nl
   app ::= '[' 'app' ']' nl org nl name nl version nl components nl class nl cross-versioned nl resources nl
   repositories ::= '[' 'repositories' ']' nl (repository nl)*
   boot ::= '[' 'boot' ']' nl directory nl bootProperties nl search nl promptCreate nl promptFill nl quickOption nl
@@ -54,6 +54,8 @@ configuration ::= scala app repositories boot log app-properties
       versionSpecification ::= readProperty | fixedVersion
         readProperty ::= 'read'  '(' propertyName ')'  '[' default ']'
         fixedVersion ::= text
+
+    classifiers ::= 'classifiers' ':' text (',' text)*
 
     org ::= 'org' ':' text
     name ::= 'name' ':' text
@@ -117,7 +119,7 @@ The default configuration file for sbt looks like:
  project.initialize: quick=set(true), new=set(true)
 }}}
 
-The `scala.version` property specifies the version of Scala used to run the application.  The `app.org`, `app.name`, and `app.version` properties specify the organization, module ID, and version of the application, respectively.  These are used to resolve and retrieve the application from the repositories listed in `[repositories]`.  If `app.cross-versioned` is true, the resolved module ID is `{app.name+'_'+scala.version}`.  The paths given in `app.resources` are added to the application's classpath.  If the path is relative, it is resolved against the application's working directory.
+The `scala.version` property specifies the version of Scala used to run the application.  If specified, the `scala.classifiers`property defines classifers such as 'sources' of extra Scala artifacts to retrieve.  The `app.org`, `app.name`, and `app.version` properties specify the organization, module ID, and version of the application, respectively.  These are used to resolve and retrieve the application from the repositories listed in `[repositories]`.  If `app.cross-versioned` is true, the resolved module ID is `{app.name+'_'+scala.version}`.  The paths given in `app.resources` are added to the application's classpath.  If the path is relative, it is resolved against the application's working directory.
 
 Jars are retrieved to the directory given by `boot.directory`.  You can make this an absolute path to be shared by all sbt instances on the machine.  You might see messages like:
 {{{

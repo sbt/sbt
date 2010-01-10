@@ -23,16 +23,22 @@ class ConfigurationParser extends NotNull
 	// section -> configuration instance  processing
 	def processSections(sections: SectionMap): LaunchConfiguration =
 	{
-		val (scalaVersion, m1) = processSection(sections, "scala", getScalaVersion)
+		val ((scalaVersion, scalaClassifiers), m1) = processSection(sections, "scala", getScala)
 		val (app, m2) = processSection(m1, "app", getApplication)
 		val (repositories, m3) = processSection(m2, "repositories", getRepositories)
 		val (boot, m4) = processSection(m3, "boot", getBoot)
 		val (logging, m5) = processSection(m4, "log", getLogging)
 		val (properties, m6) = processSection(m5, "app-properties", getAppProperties)
 		check(m6, "section")
-		new LaunchConfiguration(scalaVersion, app, repositories, boot, logging, properties)
+		new LaunchConfiguration(scalaVersion, scalaClassifiers, app, repositories, boot, logging, properties)
 	}
-	def getScalaVersion(m: LabelMap) = check("label", getVersion(m, "Scala version", "scala.version"))
+	def getScala(m: LabelMap) =
+	{
+		val (scalaVersion, m1) = getVersion(m, "Scala version", "scala.version")
+		val (scalaClassifiers, m2) = ids(m1, "classifiers", Nil)
+		check(m2, "label")
+		(scalaVersion, "" :: scalaClassifiers) // the added "" ensures that the main jars are retrieved
+	}
 	def getVersion(m: LabelMap, label: String, defaultName: String): (Version, LabelMap) = process(m, "version", processVersion(label, defaultName))
 	def processVersion(label: String, defaultName: String)(value: Option[String]): Version =
 		value.map(version(label)).getOrElse(new Version.Implicit(defaultName, None))

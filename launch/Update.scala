@@ -12,7 +12,7 @@ import core.LogOptions
 import core.cache.DefaultRepositoryCacheManager
 import core.event.EventManager
 import core.module.id.ModuleRevisionId
-import core.module.descriptor.{Configuration => IvyConfiguration, DefaultDependencyDescriptor, DefaultModuleDescriptor, ModuleDescriptor}
+import core.module.descriptor.{Configuration => IvyConfiguration, DefaultDependencyArtifactDescriptor, DefaultDependencyDescriptor, DefaultModuleDescriptor, ModuleDescriptor}
 import core.report.ResolveReport
 import core.resolve.{ResolveEngine, ResolveOptions}
 import core.retrieve.{RetrieveEngine, RetrieveOptions}
@@ -25,7 +25,7 @@ import util.{DefaultMessageLogger, Message}
 import BootConfiguration._
 
 sealed trait UpdateTarget extends NotNull { def tpe: String }
-final object UpdateScala extends UpdateTarget { def tpe = "scala" }
+final class UpdateScala(val classifiers: List[String]) extends UpdateTarget { def tpe = "scala" }
 final class UpdateApp(val id: Application) extends UpdateTarget { def tpe = "app" }
 
 final class UpdateConfiguration(val bootDirectory: File, val scalaVersion: String, val repositories: List[Repository]) extends NotNull
@@ -81,14 +81,14 @@ final class Update(config: UpdateConfiguration)
 		// add dependencies based on which target needs updating
 		target match
 		{
-			case UpdateScala =>
-				addDependency(moduleID, ScalaOrg, CompilerModuleName, scalaVersion, "default")
-				addDependency(moduleID, ScalaOrg, LibraryModuleName, scalaVersion, "default")
+			case u: UpdateScala =>
+				addDependency(moduleID, ScalaOrg, CompilerModuleName, scalaVersion, "default", u.classifiers)
+				addDependency(moduleID, ScalaOrg, LibraryModuleName, scalaVersion, "default", u.classifiers)
 				System.out.println("Getting Scala " + scalaVersion + " ...")
 			case u: UpdateApp =>
 				val app = u.id
 				val resolvedName = if(app.crossVersioned) app.name + "_" + scalaVersion else app.name
-				addDependency(moduleID, app.groupID, resolvedName, app.getVersion, "default(compile)")
+				addDependency(moduleID, app.groupID, resolvedName, app.getVersion, "default(compile)", Nil)
 				System.out.println("Getting " + app.groupID + " " + resolvedName + " " + app.getVersion + " ...")
 		}
 		update(moduleID, target)
@@ -103,11 +103,22 @@ final class Update(config: UpdateConfiguration)
 	private def createID(organization: String, name: String, revision: String) =
 		ModuleRevisionId.newInstance(organization, name, revision)
 	/** Adds the given dependency to the default configuration of 'moduleID'. */
-	private def addDependency(moduleID: DefaultModuleDescriptor, organization: String, name: String, revision: String, conf: String)
+	private def addDependency(moduleID: DefaultModuleDescriptor, organization: String, name: String, revision: String, conf: String, classifiers: List[String])
 	{
 		val dep = new DefaultDependencyDescriptor(moduleID, createID(organization, name, revision), false, false, true)
 		dep.addDependencyConfiguration(DefaultIvyConfiguration, conf)
+		for(classifier <- classifiers)
+			addClassifier(dep, name, classifier)
 		moduleID.addDependency(dep)
+	}
+	private def addClassifier(dep: DefaultDependencyDescriptor, name: String, classifier: String)
+	{
+		val extraMap = new java.util.HashMap[String,String]
+		if(!classifier.isEmpty)
+			extraMap.put("e:classifier", classifier)
+		val ivyArtifact = new DefaultDependencyArtifactDescriptor(dep, name, "jar", "jar", null, extraMap)
+		for(conf <- dep.getModuleConfigurations)
+			dep.addDependencyArtifact(conf, ivyArtifact)
 	}
 	private def resolve(eventManager: EventManager, module: ModuleDescriptor)
 	{
@@ -143,7 +154,7 @@ final class Update(config: UpdateConfiguration)
 		val pattern =
 			target match
 			{
-				case UpdateScala => scalaRetrievePattern
+				case _: UpdateScala => scalaRetrievePattern
 				case u: UpdateApp => appRetrievePattern(u.id.toID)
 			}
 		retrieveEngine.retrieve(module.getModuleRevisionId, baseDirectoryName(scalaVersion) + "/" + pattern, retrieveOptions)

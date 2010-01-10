@@ -23,7 +23,7 @@ private object BootConfiguration
 	/** The name of the local Ivy repository, which is used when compiling sbt from source.*/
 	val LocalIvyName = "local"
 	/** The pattern used for the local Ivy repository, which is used when compiling sbt from source.*/
-	val LocalPattern = "[organisation]/[module]/[revision]/[type]s/[artifact].[ext]"
+	val LocalPattern = "[organisation]/[module]/[revision]/[type]s/[artifact](-[classifier]).[ext]"
 	/** The artifact pattern used for the local Ivy repository.*/
 	def LocalArtifactPattern = LocalPattern
 	/** The Ivy pattern used for the local Ivy repository.*/
@@ -51,7 +51,7 @@ private object BootConfiguration
 	val ScalaDirectoryName = "lib"
 	/** The Ivy pattern to use for retrieving the scala compiler and library.  It is relative to the directory
 	* containing all jars for the requested version of scala. */
-	val scalaRetrievePattern = ScalaDirectoryName + "/[artifact].[ext]"
+	val scalaRetrievePattern = ScalaDirectoryName + "/[artifact](-[classifier]).[ext]"
 
 	/** The Ivy pattern to use for retrieving the application and its dependencies.  It is relative to the directory
 	* containing all jars for the requested version of scala. */

@@ -4,14 +4,14 @@ import Pre._
 import java.io.File
 import java.net.URL
 
-final case class LaunchConfiguration(scalaVersion: Version, app: Application, repositories: List[Repository], boot: BootSetup, logging: Logging, appProperties: List[AppProperty]) extends NotNull
+final case class LaunchConfiguration(scalaVersion: Version, scalaClassifiers: List[String], app: Application, repositories: List[Repository], boot: BootSetup, logging: Logging, appProperties: List[AppProperty]) extends NotNull
 {
 	def getScalaVersion = Version.get(scalaVersion)
-	def withScalaVersion(newScalaVersion: String) = LaunchConfiguration(new Version.Explicit(newScalaVersion), app, repositories, boot, logging, appProperties)
-	def withApp(app: Application) = LaunchConfiguration(scalaVersion, app, repositories, boot, logging, appProperties)
-	def withAppVersion(newAppVersion: String) = LaunchConfiguration(scalaVersion, app.withVersion(new Version.Explicit(newAppVersion)), repositories, boot, logging, appProperties)
-	def withVersions(newScalaVersion: String, newAppVersion: String) = LaunchConfiguration(new Version.Explicit(newScalaVersion), app.withVersion(new Version.Explicit(newAppVersion)), repositories, boot, logging, appProperties)
-	def map(f: File => File) = LaunchConfiguration(scalaVersion, app.map(f), repositories, boot.map(f), logging, appProperties)
+	def withScalaVersion(newScalaVersion: String) = LaunchConfiguration(new Version.Explicit(newScalaVersion), scalaClassifiers, app, repositories, boot, logging, appProperties)
+	def withApp(app: Application) = LaunchConfiguration(scalaVersion, scalaClassifiers, app, repositories, boot, logging, appProperties)
+	def withAppVersion(newAppVersion: String) = LaunchConfiguration(scalaVersion, scalaClassifiers, app.withVersion(new Version.Explicit(newAppVersion)), repositories, boot, logging, appProperties)
+	def withVersions(newScalaVersion: String, newAppVersion: String) = LaunchConfiguration(new Version.Explicit(newScalaVersion), scalaClassifiers, app.withVersion(new Version.Explicit(newAppVersion)), repositories, boot, logging, appProperties)
+	def map(f: File => File) = LaunchConfiguration(scalaVersion, scalaClassifiers, app.map(f), repositories, boot.map(f), logging, appProperties)
 }
 
 sealed trait Version extends NotNull

@@ -40,7 +40,7 @@ object Launch
 	}
 
 	def explicit(currentDirectory: File, explicit: LaunchConfiguration, arguments: List[String]): Unit =
-		launch( run(new Launch(explicit.boot.directory, explicit.repositories)) ) (
+		launch( run(new Launch(explicit.boot.directory, explicit.repositories, explicit.scalaClassifiers)) ) (
 			new RunConfiguration(explicit.getScalaVersion, explicit.app.toID, currentDirectory, arguments) )
 
 	def run(launcher: xsbti.Launcher)(config: RunConfiguration): xsbti.MainResult =
@@ -70,7 +70,7 @@ object Launch
 final class RunConfiguration(val scalaVersion: String, val app: xsbti.ApplicationID, val workingDirectory: File, val arguments: List[String]) extends NotNull
 
 import BootConfiguration.{appDirectoryName, baseDirectoryName, ScalaDirectoryName, TestLoadScalaClasses}
-class Launch(val bootDirectory: File, repositories: List[Repository]) extends xsbti.Launcher
+class Launch(val bootDirectory: File, repositories: List[Repository], scalaClassifiers: List[String]) extends xsbti.Launcher
 {
 	bootDirectory.mkdirs
 	private val scalaProviders = new Cache[String, ScalaProvider](new ScalaProvider(_))
@@ -91,9 +91,10 @@ class Launch(val bootDirectory: File, repositories: List[Repository]) extends xs
 		lazy val scalaHome = new File(libDirectory, ScalaDirectoryName)
 		def compilerJar = new File(scalaHome, "scala-compiler.jar")
 		def libraryJar = new File(scalaHome, "scala-library.jar")
+		override def classpath = Array(compilerJar, libraryJar)
 		def baseDirectories = List(scalaHome)
 		def testLoadClasses = TestLoadScalaClasses
-		def target = UpdateScala
+		def target = new UpdateScala(scalaClassifiers)
 		def failLabel = "Scala " + version
 		def lockFile = updateLockFile
 		def extraClasspath = Array[File]()
