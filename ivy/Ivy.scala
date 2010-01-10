@@ -192,6 +192,7 @@ private object IvySbt
 		manager.setChangingMatcher(PatternMatcher.REGEXP);
 		manager.setChangingPattern(".*-SNAPSHOT");
 		settings.setDefaultRepositoryCacheManager(manager)
+		dir.foreach(dir => settings.setDefaultResolutionCacheBasedir(dir.getAbsolutePath))
 	}
 	def toIvyConfiguration(configuration: Configuration) =
 	{
@@ -224,7 +225,7 @@ private object IvySbt
 	private def extra(artifact: Artifact) =
 	{
 		val ea = artifact.classifier match { case Some(c) => artifact.extra("e:classifier" -> c); case None => artifact }
-		javaMap(artifact.extraAttributes)
+		javaMap(ea.extraAttributes)
 	}
 	private def javaMap(map: Map[String,String]) =
 		if(map.isEmpty) null
