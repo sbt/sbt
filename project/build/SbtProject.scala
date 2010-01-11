@@ -41,6 +41,7 @@ class SbtProject(info: ProjectInfo) extends DefaultProject(info) with test.SbtSc
 	val default = Configurations.Default
 	val optional = Configurations.Optional
 	val provided = Configurations.Provided
+	val testConf = Configurations.Test
 
 	/* Versions of Scala to cross-build against. */
 	private val Version2_7_7 = "2.7.7"
@@ -51,7 +52,7 @@ class SbtProject(info: ProjectInfo) extends DefaultProject(info) with test.SbtSc
 	override def crossScalaVersions = Set(Version2_7_7)
 
 	//testing
-	val scalacheck = "org.scala-tools.testing" %% "scalacheck" % "1.6"
+	val scalacheck = "org.scala-tools.testing" %% "scalacheck" % "1.6" % "test"
 
 	val ivy = "org.apache.ivy" % "ivy" % "2.1.0" intransitive()
 	val jsch = "com.jcraft" % "jsch" % "0.1.31" intransitive()
