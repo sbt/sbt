@@ -1,6 +1,7 @@
 package xsbt.boot
 
 import Pre._
+import BootConfiguration.{CompilerModuleName, LibraryModuleName}
 import java.io.File
 import java.net.URL
 
@@ -89,8 +90,8 @@ class Launch(val bootDirectory: File, repositories: List[Repository], scalaClass
 		lazy val configuration = new UpdateConfiguration(bootDirectory, version, repositories)
 		lazy val libDirectory = new File(configuration.bootDirectory, baseDirectoryName(version))
 		lazy val scalaHome = new File(libDirectory, ScalaDirectoryName)
-		def compilerJar = new File(scalaHome, "scala-compiler.jar")
-		def libraryJar = new File(scalaHome, "scala-library.jar")
+		def compilerJar = new File(scalaHome,CompilerModuleName + ".jar")
+		def libraryJar = new File(scalaHome, LibraryModuleName + ".jar")
 		override def classpath = Array(compilerJar, libraryJar)
 		def baseDirectories = List(scalaHome)
 		def testLoadClasses = TestLoadScalaClasses

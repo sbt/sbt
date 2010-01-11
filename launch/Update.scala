@@ -11,14 +11,15 @@ import org.apache.ivy.{core, plugins, util, Ivy}
 import core.LogOptions
 import core.cache.DefaultRepositoryCacheManager
 import core.event.EventManager
-import core.module.id.ModuleRevisionId
+import core.module.id.{ArtifactId, ModuleId, ModuleRevisionId}
 import core.module.descriptor.{Configuration => IvyConfiguration, DefaultDependencyArtifactDescriptor, DefaultDependencyDescriptor, DefaultModuleDescriptor, ModuleDescriptor}
+import core.module.descriptor.{DefaultExcludeRule, ExcludeRule}
 import core.report.ResolveReport
 import core.resolve.{ResolveEngine, ResolveOptions}
 import core.retrieve.{RetrieveEngine, RetrieveOptions}
 import core.sort.SortEngine
 import core.settings.IvySettings
-import plugins.matcher.PatternMatcher
+import plugins.matcher.{ExactPatternMatcher, PatternMatcher}
 import plugins.resolver.{ChainResolver, FileSystemResolver, IBiblioResolver, URLResolver}
 import util.{DefaultMessageLogger, Message}
 
@@ -89,6 +90,7 @@ final class Update(config: UpdateConfiguration)
 				val app = u.id
 				val resolvedName = if(app.crossVersioned) app.name + "_" + scalaVersion else app.name
 				addDependency(moduleID, app.groupID, resolvedName, app.getVersion, "default(compile)", Nil)
+				excludeScala(moduleID)
 				System.out.println("Getting " + app.groupID + " " + resolvedName + " " + app.getVersion + " ...")
 		}
 		update(moduleID, target)
@@ -119,6 +121,19 @@ final class Update(config: UpdateConfiguration)
 		val ivyArtifact = new DefaultDependencyArtifactDescriptor(dep, name, "jar", "jar", null, extraMap)
 		for(conf <- dep.getModuleConfigurations)
 			dep.addDependencyArtifact(conf, ivyArtifact)
+	}
+	private def excludeScala(module: DefaultModuleDescriptor)
+	{
+		def excludeScalaJar(name: String): Unit = module.addExcludeRule(excludeRule(ScalaOrg, name))
+		excludeScalaJar(LibraryModuleName)
+		excludeScalaJar(CompilerModuleName)
+	}
+	private def excludeRule(organization: String, name: String): ExcludeRule =
+	{
+		val artifact = new ArtifactId(ModuleId.newInstance(organization, name), "*", "*", "*")
+		val rule = new DefaultExcludeRule(artifact, ExactPatternMatcher.INSTANCE, java.util.Collections.emptyMap[AnyRef,AnyRef])
+		rule.addConfiguration(DefaultIvyConfiguration)
+		rule
 	}
 	private def resolve(eventManager: EventManager, module: ModuleDescriptor)
 	{
