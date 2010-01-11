@@ -81,6 +81,7 @@ The default configuration file for sbt looks like:
 {{{
 [scala]
   version: read(def.scala.version)
+# classifiers: sources
 
 [app]
   org: org.scala-tools.sbt
@@ -93,7 +94,7 @@ The default configuration file for sbt looks like:
 [repositories]
   local
   maven-local
-  sbt: file:///home/mark/.ivy2/test/, [organization]/[module]/[revision]/[type]s/[artifact](-[classifier]).[ext]
+  sbt-db: http://databinder.net/repo/, [organization]/[module]/[revision]/[type]s/[artifact](-[classifier]).[ext]
   maven-central
   scala-tools-releases
   scala-tools-snapshots
@@ -114,7 +115,7 @@ The default configuration file for sbt looks like:
  project.version: quick=set(1.0), new=prompt(Version)[1.0], fill=prompt(Version)[1.0]
  def.scala.version: quick=set(2.7.7), new=set(2.7.7), fill=set(2.7.7)
  build.scala.versions: quick=set(2.7.7), new=prompt(Scala version)[2.7.7], fill=prompt(Scala version)[2.7.7]
- sbt.version: quick=set(0.6.8), new=prompt(sbt version)[0.6.8], fill=prompt(sbt version)[0.6.8]
+ sbt.version: quick=set(0.6.9), new=prompt(sbt version)[0.6.9], fill=prompt(sbt version)[0.6.9]
  project.scratch: quick=set(true)
  project.initialize: quick=set(true), new=set(true)
 }}}
@@ -208,10 +209,10 @@ Then, `publish-local` or `+publish-local` the application to make it available.
 == Running an Application ==
 
 As mentioned above, there are a few options to actually run the application.  The first involves providing a modified jar for download.  The second two require providing a configuration file for download.
-1) Replace the /sbt/sbt.boot.properties file in the launcher jar and distribute the modified jar.  The user would need a script to run 'java -jar your-launcher.jar arg1 arg2 ...'.
-2) The user downloads the launcher jar and you provide the configuration file.
-  i) The user needs to run 'java -Dsbt.boot.properties=your.boot.properties -jar launcher.jar'.
-  ii) The user already has a script to run the launcher (call it 'launch').  The user needs to run
+ # Replace the /sbt/sbt.boot.properties file in the launcher jar and distribute the modified jar.  The user would need a script to run 'java -jar your-launcher.jar arg1 arg2 ...'.
+ # The user downloads the launcher jar and you provide the configuration file.
+   # The user needs to run 'java -Dsbt.boot.properties=your.boot.properties -jar launcher.jar'.
+   # The user already has a script to run the launcher (call it 'launch').  The user needs to run
 {{{
   launch @your.boot.properties your-arg-1 your-arg-2
 }}}
