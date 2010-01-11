@@ -70,7 +70,7 @@ object LaunchTest
 	def testRepositories = List(Local, ScalaToolsReleases, ScalaToolsSnapshots).map(Repository.Predefined.apply)
 	def withLauncher[T](f: xsbti.Launcher => T): T =
 		FileUtilities.withTemporaryDirectory { bootDirectory =>
-			f(new Launch(bootDirectory, testRepositories))
+			f(new Launch(bootDirectory, testRepositories, Nil))
 		}
 
 	def mapScalaVersion(versionNumber: String) = scalaVersionMap.find(_._2 == versionNumber).getOrElse {

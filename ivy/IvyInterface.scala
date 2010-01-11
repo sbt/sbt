@@ -354,7 +354,7 @@ object ModuleConfiguration
 	def apply(org: String, resolver: Resolver): ModuleConfiguration = apply(org, "*", "*", resolver)
 	def apply(org: String, name: String, resolver: Resolver): ModuleConfiguration = ModuleConfiguration(org, name, "*", resolver)
 }
-
+/*
 object Credentials
 {
 	/** Add the provided credentials to Ivy's credentials cache.*/
@@ -390,4 +390,4 @@ object Credentials
 	private[this] val HostKeys = List("host", "hostname")
 	private[this] val UserKeys = List("user", "user.name", "username")
 	private[this] val PasswordKeys = List("password", "pwd", "pass", "passwd")
-}
+}*/
