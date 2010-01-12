@@ -1,12 +1,12 @@
-> ++2.8.0.Beta1-RC1
+> ++2.8.0.Beta1-RC7
 > update
 
-$ copy-file changes/Fail.scala src/test/scala/TestQuickSuite.scala
+$ copy-file changes/Fail.scala src/test/scala/TestQuick.scala
 -> test-failed
 -> test-failed *
--> test-failed TestQuickSuite
+-> test-failed helloWorldFailure
 
-$ copy-file changes/Success.scala src/test/scala/TestQuickSuite.scala
+$ copy-file changes/Success.scala src/test/scala/TestQuick.scala
 > test-failed
 > test-failed *
-> test-failed TestQuickSuite
+> test-failed helloWorldSuccess

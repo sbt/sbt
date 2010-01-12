@@ -1,7 +1,10 @@
-import org.scalatest._
+import org.specs._
 
-class TestQuickSuite extends FunSuite {
-	test("a test") {
-		throw new IllegalStateException
-	}
+class helloWorldFailure extends Specification {
+  "'hello world' has 11 characters" in {
+     "hello world".size must be equalTo(12)
+  }
+  "'hello world' matches 'h.* w.*'" in {
+     "hello world" must be matching("h.* w.*")
+  }
 }
