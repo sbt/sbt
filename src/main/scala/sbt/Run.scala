@@ -106,16 +106,17 @@ object Run
 	{
 		override def createInterpreter()
 		{
-			def urlClassLoader(c: Class[_]) = c.getClassLoader.asInstanceOf[URLClassLoader]
-			val loader = urlClassLoader(project.getClass)
-			val urls = List(loader, urlClassLoader(classOf[xsbti.Launcher])).flatMap(_.getURLs) // TODO: this is fragile and should be done better
-			compilerSettings.classpath.value = urls.flatMap(ClasspathUtilities.asFile).map(_.getAbsolutePath).mkString(File.pathSeparator)
+			val projectLoader = project.getClass.getClassLoader
+			val launcherJar = FileUtilities.classLocationFile[xsbti.Launcher]
+			val app = project.info.app
+			val classpathFiles = app.mainClasspath ++ app.scalaProvider.jars ++ Array(launcherJar)
+			compilerSettings.classpath.value = classpathFiles.map(_.getAbsolutePath).mkString(File.pathSeparator)
 			project.log.debug("  Compiler classpath: " + compilerSettings.classpath.value)
 
 			in = InteractiveReader.createDefault()
 			interpreter = new Interpreter(settings)
 			{
-				override protected def parentClassLoader = loader
+				override protected def parentClassLoader = projectLoader
 				override protected def newCompiler(settings: Settings, reporter: Reporter) = super.newCompiler(compilerSettings, reporter)
 			}
 			interpreter.setContextClassLoader()
