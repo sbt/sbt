@@ -109,7 +109,8 @@ object Run
 			val projectLoader = project.getClass.getClassLoader
 			val launcherJar = FileUtilities.classLocationFile[xsbti.Launcher]
 			val app = project.info.app
-			val classpathFiles = app.mainClasspath ++ app.scalaProvider.jars ++ Array(launcherJar)
+			val projectJars: Array[File] = projectLoader.asInstanceOf[URLClassLoader].getURLs.flatMap(ClasspathUtilities.asFile).toArray[File]
+			val classpathFiles = app.mainClasspath ++ app.scalaProvider.jars ++ Array(launcherJar) ++ projectJars
 			compilerSettings.classpath.value = classpathFiles.map(_.getAbsolutePath).mkString(File.pathSeparator)
 			project.log.debug("  Compiler classpath: " + compilerSettings.classpath.value)
 

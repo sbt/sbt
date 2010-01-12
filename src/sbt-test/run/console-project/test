@@ -1,1 +1,4 @@
 > console-project
+$ copy-file changes/BlankProject.scala project/build/BlankProject.scala
+> reload
+> console-project
