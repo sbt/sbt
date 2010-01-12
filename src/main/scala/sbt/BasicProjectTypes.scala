@@ -170,7 +170,8 @@ trait ManagedProject extends ClasspathProject
 	* so that the Ivy 'extends' mechanism is not required.  That way, the jars are only copied to one configuration.*/
 	def managedClasspath(config: Configuration): PathFinder = configurationClasspath(config)
 	/** All dependencies in the given configuration. */
-	final def configurationClasspath(config: Configuration): PathFinder = descendents(configurationPath(config), "*.jar")
+	final def configurationClasspath(config: Configuration): PathFinder = descendents(configurationPath(config), classpathFilter)
+	def classpathFilter: FileFilter = "*.jar"
 	/** The base path to which dependencies in configuration 'config' are downloaded.*/
 	def configurationPath(config: Configuration): Path = managedDependencyPath / config.toString
 

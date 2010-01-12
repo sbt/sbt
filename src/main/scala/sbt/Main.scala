@@ -151,7 +151,7 @@ class xMain extends xsbti.AppMain
 			{
 				case "" :: tail => continue(project, tail, failAction)
 				case (ExitCommand | QuitCommand) :: _ => result( Exit(NormalExitCode) )
-				case RebootCommand :: tail => result( Reboot(project.defScalaVersion.value, rememberCurrent(tail), configuration) )
+				case RebootCommand :: tail => throw new xsbti.FullReload(rememberCurrent(tail).toArray)
 				case InteractiveCommand :: _ => continue(project, prompt(baseProject, project) :: arguments, interactiveContinue)
 				case SpecificBuild(version, action) :: tail =>
 					if(Some(version) != baseProject.info.buildScalaVersion)
