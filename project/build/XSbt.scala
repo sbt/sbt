@@ -66,6 +66,7 @@ class XSbt(info: ProjectInfo) extends ParentProject(info)
 
 	//run in parallel
 	override def parallelExecution = false
+	def jlineRev = "0.9.94"
 
 	override def managedStyle = ManagedStyle.Ivy
 	val publishTo = Resolver.file("test-repo", new File("/var/dbwww/repo/"))
@@ -73,7 +74,7 @@ class XSbt(info: ProjectInfo) extends ParentProject(info)
 		/* Subproject configurations*/
 	class LaunchProject(info: ProjectInfo) extends Base(info) with TestWithIO with TestDependencies with ProguardLaunch
 	{
-		val jline = "jline" % "jline" % "0.9.94"
+		val jline = "jline" % "jline" % jlineRev
 		val ivy = "org.apache.ivy" % "ivy" % "2.0.0"
 		def rawJarPath = jarPath
 		override final def crossScalaVersions = Set.empty // don't need to cross-build, since the distributed jar is standalone (proguard)
@@ -166,7 +167,14 @@ class XSbt(info: ProjectInfo) extends ParentProject(info)
 	class CompilerInterfaceProject(info: ProjectInfo) extends Base(info) with SourceProject with TestWithIO with TestWithLog
 	{
 		def xTestClasspath =  projectClasspath(Configurations.Test)
-		override def componentID = Some("compiler-interface-src")
+		def cID = "compiler-interface-src"
+		override def componentID = Some(cID)
+		override def ivyXML =
+			<dependencies>
+				<dependency org="jline" name="jline" rev={jlineRev}>
+					<artifact name="jline" type="jar" e:component={cID}/>
+				</dependency>
+			</dependencies>
 	}
 	trait TestWithIO extends TestWith {
 		override def testWithTestClasspath = super.testWithTestClasspath ++ Seq(ioSub)
