@@ -75,7 +75,6 @@ abstract class BasicScalaProject extends ScalaProject with BasicDependencyProjec
 
 	/** The options provided to the 'doc' and 'docTest' actions.*/
 	def documentOptions: Seq[ScaladocOption] =
-		LinkSource ::
 		documentTitle(name + " " + version + " API") ::
 		windowTitle(name + " " + version + " API") ::
 		Nil
@@ -404,6 +403,7 @@ abstract class BasicWebScalaProject extends BasicScalaProject with WebScalaProje
 	/** The port that Jetty runs on. */
 	def jettyPort: Int = JettyRunner.DefaultPort
 
+	lazy val jettyReload = task { jettyInstance.reload(); None } describedAs(JettyReloadDescription)
 	lazy val jettyRestart = jettyStop && jettyRun
 	lazy val jettyStop = jettyStopAction
 	protected def jettyStopAction = jettyStopTask(jettyInstance) describedAs(JettyStopDescription)
@@ -489,6 +489,8 @@ object BasicWebScalaProject
 		"Starts the Jetty server and serves this project as a web application."
 	val JettyDescription =
 		"Starts the Jetty server and serves this project as a web application.  Waits until interrupted, so it is suitable to call this batch-style."
+	val JettyReloadDescription =
+		"Forces a reload of a web application running in a Jetty server started by 'jetty-run'.  Does nothing if Jetty is not running."
 }
 /** Analyzes the dependencies of a project after compilation.  All methods except `snapshot` return a
 * `PathFinder`.  The underlying calculations are repeated for each call to PathFinder.get. */

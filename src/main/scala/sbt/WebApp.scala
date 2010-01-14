@@ -25,6 +25,7 @@ class JettyRunner(configuration: JettyConfiguration) extends ExitHook
 		running.foreach(_.stop())
 		running = None
 	}
+	def reload() = running.foreach(_.reload())
 	def apply(): Option[String] =
 	{
 		import configuration._
@@ -32,10 +33,17 @@ class JettyRunner(configuration: JettyConfiguration) extends ExitHook
 		{
 			val baseLoader = this.getClass.getClassLoader
 			val classpathURLs = jettyClasspath.get.map(_.asURL).toSeq
-			val loader: ClassLoader = new java.net.URLClassLoader(classpathURLs.toArray, baseLoader)
-			val lazyLoader = new LazyFrameworkLoader(implClassName, Array(FileUtilities.classLocation[Stoppable].toURI.toURL), loader, baseLoader)
+			val jettyParentLoader = configuration match { case d: DefaultJettyConfiguration => d.parentLoader; case _ => ClassLoader.getSystemClassLoader }
+			val jettyLoader: ClassLoader = new java.net.URLClassLoader(classpathURLs.toArray, jettyParentLoader)
+			
+			val jettyFilter = (name: String) => name.startsWith("org.mortbay.")
+			val notJettyFilter = (name: String) => !jettyFilter(name)
+			
+			val dual = new xsbt.DualLoader(baseLoader, notJettyFilter, x => true, jettyLoader, jettyFilter, x => false)
+			
+			val lazyLoader = new LazyFrameworkLoader(implClassName, Array(FileUtilities.classLocation[Stoppable].toURI.toURL), dual, baseLoader)
 			val runner = ModuleUtilities.getObject(implClassName, lazyLoader).asInstanceOf[JettyRun]
-			runner(configuration)
+			runner(configuration, jettyLoader)
 		}
 
 		if(running.isDefined)
@@ -66,10 +74,11 @@ class JettyRunner(configuration: JettyConfiguration) extends ExitHook
 private trait Stoppable
 {
 	def stop(): Unit
+	def reload(): Unit
 }
 private trait JettyRun
 {
-	def apply(configuration: JettyConfiguration): Stoppable
+	def apply(configuration: JettyConfiguration, jettyLoader: ClassLoader): Stoppable
 }
 sealed trait JettyConfiguration extends NotNull
 {
@@ -105,7 +114,7 @@ private object LazyJettyRun extends JettyRun
 {
 	import org.mortbay.jetty.{Handler, Server}
 	import org.mortbay.jetty.nio.SelectChannelConnector
-	import org.mortbay.jetty.webapp.WebAppContext
+	import org.mortbay.jetty.webapp.{WebAppClassLoader, WebAppContext}
 	import org.mortbay.log.Log
 	import org.mortbay.util.Scanner
 	import org.mortbay.xml.XmlConfiguration
@@ -114,7 +123,7 @@ private object LazyJettyRun extends JettyRun
 
 	val DefaultMaxIdleTime = 30000
 
-	def apply(configuration: JettyConfiguration): Stoppable =
+	def apply(configuration: JettyConfiguration, jettyLoader: ClassLoader): Stoppable =
 	{
 		val oldLog = Log.getLog
 		Log.setLog(new JettyLogger(configuration.log))
@@ -127,15 +136,17 @@ private object LazyJettyRun extends JettyRun
 					import c._
 					configureDefaultConnector(server, port)
 					def classpathURLs = classpath.get.map(_.asURL).toSeq
-					def createLoader = new URLClassLoader(classpathURLs.toArray, parentLoader)
 					val webapp = new WebAppContext(war.absolutePath, contextPath)
-					webapp.setClassLoader(createLoader)
+					
+					def createLoader = new WebAppClassLoader(jettyLoader, webapp) { override def getURLs = classpathURLs.toArray }
+					def setLoader() = webapp.setClassLoader(createLoader)
+					
+					setLoader()
 					server.setHandler(webapp)
 
-					Some(new Scanner.BulkListener {
-						def filesChanged(files: java.util.List[_]) {
-							reload(server, webapp.setClassLoader(createLoader), log)
-						}
+					Some(new Scanner.BulkListener with Reload {
+						def reloadApp() = reload(server, setLoader(), log)
+						def filesChanged(files: java.util.List[_]) { reloadApp() }
 					})
 				case c: CustomJettyConfiguration =>
 					for(x <- c.jettyConfigurationXML)
@@ -169,7 +180,7 @@ private object LazyJettyRun extends JettyRun
 		try
 		{
 			server.start()
-			new StopServer(new WeakReference(server), configureScanner(), oldLog)
+			new StopServer(new WeakReference(server), listener.map(new WeakReference(_)), configureScanner(), oldLog)
 		}
 		catch { case e => server.stop(); throw e }
 	}
@@ -180,19 +191,16 @@ private object LazyJettyRun extends JettyRun
 		defaultConnector.setMaxIdleTime(DefaultMaxIdleTime)
 		server.addConnector(defaultConnector)
 	}
-	private class StopServer(serverReference: Reference[Server], scannerReferenceOpt: Option[Reference[Scanner]], oldLog: org.mortbay.log.Logger) extends Stoppable
+	trait Reload { def reloadApp(): Unit }
+	private class StopServer(serverReference: Reference[Server], reloadReference: Option[Reference[Reload]], scannerReferenceOpt: Option[Reference[Scanner]], oldLog: org.mortbay.log.Logger) extends Stoppable
 	{
+		def reload(): Unit = on(reloadReference)(_.reloadApp())
+		private def on[T](refOpt: Option[Reference[T]])(f: T => Unit): Unit = refOpt.foreach(ref => onReferenced(ref.get)(f))
+		private def onReferenced[T](t: T)(f: T => Unit): Unit = if(t == null) () else f(t)
 		def stop()
 		{
-			val server = serverReference.get
-			if(server != null)
-				server.stop()
-			for(scannerReference <- scannerReferenceOpt)
-			{
-				val scanner = scannerReference.get
-				if(scanner != null)
-					scanner.stop()
-			}
+			onReferenced(serverReference.get)(_.stop())
+			on(scannerReferenceOpt)(_.stop())
 			Log.setLog(oldLog)
 		}
 	}

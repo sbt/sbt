@@ -1,0 +1,13 @@
+> ++2.8.0.Beta1-RC6
+> update
+> jetty-run
+> check-page "Hello, Scala!"
+
+$ copy-file changes/MyServlet.scala src/main/scala/test/MyServlet.scala
+
+> prepare-webapp
+> jetty-reload
+> check-page "Hello, Scala 2!"
+
+> jetty-stop
+-> check-page "Hello World 2!"
