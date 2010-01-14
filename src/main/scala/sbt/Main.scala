@@ -29,6 +29,7 @@ object Main
 	val UsageErrorExitCode = 4
 	val BuildErrorExitCode = 5
 	val ProgramErrorExitCode = 6
+	val MaxInt = java.lang.Integer.MAX_VALUE
 }
 
 import Main._
@@ -385,6 +386,8 @@ class xMain extends xsbti.AppMain
 					setProperty(currentProject, action.substring(SetAction.length + 1))
 				else if(action.startsWith(GetAction + " "))
 					getProperty(currentProject, action.substring(GetAction.length + 1))
+				else if(action.startsWith(TraceCommand + " "))
+					setTrace(currentProject, action.substring(TraceCommand.length + 1))
 				else
 					handleCommand(currentProject, action)
 		}
@@ -432,6 +435,7 @@ class xMain extends xsbti.AppMain
 			case GetAction => getArgumentError(project.log)
 			case SetAction => setArgumentError(project.log)
 			case ProjectAction => setProjectError(project.log)
+			case TraceCommand => setTraceError(project.log); true
 			case ShowCurrent =>
 				printProject("Current project is ", project)
 				Console.println("Current Scala version is " + project.buildScalaVersion)
@@ -439,7 +443,6 @@ class xMain extends xsbti.AppMain
 				printTraceEnabled(project)
 				true
 			case ShowActions => showActions(project); true
-			case TraceCommand => toggleTrace(project); true
 			case Level(level) => setLevel(project, level); true
 			case ContinuousCompileCommand => compileContinuously(project)
 			case action if action.startsWith(ContinuousExecutePrefix) => executeContinuously(project, action.substring(ContinuousExecutePrefix.length).trim)
@@ -493,15 +496,21 @@ class xMain extends xsbti.AppMain
 	}
 
 	/** Toggles whether stack traces are enabled.*/
-	private def toggleTrace(project: Project)
+	private def setTrace(project: Project, value: String): Boolean =
 	{
-		val newValue = !project.log.traceEnabled
-		project.projectClosure.foreach(_.log.enableTrace(newValue))
-		printTraceEnabled(project)
+		try
+		{
+			val newValue = if(value == "on") MaxInt else if(value == "off") -1 else if(value == "nosbt") 0 else value.toInt
+			project.projectClosure.foreach(_.log.setTrace(newValue))
+			printTraceEnabled(project)
+			true
+		}
+		catch { case _: NumberFormatException => setTraceError(project.log) }
 	}
 	private def printTraceEnabled(project: Project)
 	{
-		Console.println("Stack traces are " + (if(project.log.traceEnabled) "enabled" else "disabled"))
+		def traceLevel(level: Int) = if(level == 0) " (no stack elements)" else if(level == MaxInt) "" else " (maximum " + level + " stack elements per exception)"
+		Console.println("Stack traces are " + (if(project.log.traceEnabled) "enabled" + traceLevel(project.log.getTrace) else "disabled"))
 	}
 	/** Sets the logging level on the given project.*/
 	private def setLevel(project: Project, level: Level.Value)
@@ -688,6 +697,7 @@ class xMain extends xsbti.AppMain
 	}
 
 	private def isTerminateAction(s: String) = TerminateActions.elements.contains(s.toLowerCase)
+	private def setTraceError(log: Logger) = logError(log)("Invalid arguments for 'trace': expected 'on', 'off', or integer number of stack elements to show per exception.")
 	private def setArgumentError(log: Logger) = logError(log)("Invalid arguments for 'set': expected property name and new value.")
 	private def getArgumentError(log: Logger) = logError(log)("Invalid arguments for 'get': expected property name.")
 	private def setProjectError(log: Logger) = logError(log)("Invalid arguments for 'project': expected project name.")

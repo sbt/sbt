@@ -82,7 +82,6 @@ class Resources(val baseDirectory: File, additional: ClassLoader, app: AppProvid
 			{
 				val buffered = new BufferedLogger(log)
 				buffered.setLevel(Level.Debug)
-				buffered.enableTrace(true)
 				def error(msg: String) =
 				{
 					buffered.stopAll()

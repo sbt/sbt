@@ -311,7 +311,6 @@ object Project
 	{
 		val log = new ConsoleLogger
 		log.setLevel(Level.Debug)
-		log.enableTrace(true)
 		log
 	}
 

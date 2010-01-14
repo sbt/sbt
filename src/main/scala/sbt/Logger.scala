@@ -10,7 +10,7 @@ final class Success(val msg: String) extends LogEvent
 final class Log(val level: Level.Value, val msg: String) extends LogEvent
 final class Trace(val exception: Throwable) extends LogEvent
 final class SetLevel(val newLevel: Level.Value) extends LogEvent
-final class SetTrace(val enabled: Boolean) extends LogEvent
+final class SetTrace(val level: Int) extends LogEvent
 final class ControlEvent(val event: ControlEvent.Value, val msg: String) extends LogEvent
 
 object ControlEvent extends Enumeration
@@ -22,8 +22,9 @@ abstract class Logger extends xsbt.CompileLogger with xsbt.IvyLogger
 {
 	def getLevel: Level.Value
 	def setLevel(newLevel: Level.Value)
-	def enableTrace(flag: Boolean)
-	def traceEnabled: Boolean
+	def setTrace(flag: Int)
+	def getTrace: Int
+	final def traceEnabled = getTrace >= 0
 	def ansiCodesSupported = false
 
 	def atLevel(level: Level.Value) = level.id >= getLevel.id
@@ -47,7 +48,7 @@ abstract class Logger extends xsbt.CompileLogger with xsbt.IvyLogger
 			case l: Log => log(l.level, l.msg)
 			case t: Trace => trace(t.exception)
 			case setL: SetLevel => setLevel(setL.newLevel)
-			case setT: SetTrace => enableTrace(setT.enabled)
+			case setT: SetTrace => setTrace(setT.level)
 			case c: ControlEvent => control(c.event, c.msg)
 		}
 	}
@@ -64,12 +65,12 @@ abstract class Logger extends xsbt.CompileLogger with xsbt.IvyLogger
 /** Implements the level-setting methods of Logger.*/
 abstract class BasicLogger extends Logger
 {
-	private var traceEnabledVar = true
+	private var traceEnabledVar = java.lang.Integer.MAX_VALUE
 	private var level: Level.Value = Level.Info
 	def getLevel = level
 	def setLevel(newLevel: Level.Value) { level = newLevel }
-	def enableTrace(flag: Boolean) { traceEnabledVar = flag }
-	def traceEnabled = traceEnabledVar
+	def setTrace(level: Int) { traceEnabledVar = level }
+	def getTrace = traceEnabledVar
 }
 
 final class SynchronizedLogger(delegate: Logger) extends Logger
@@ -77,8 +78,8 @@ final class SynchronizedLogger(delegate: Logger) extends Logger
 	override lazy val ansiCodesSupported = delegate.ansiCodesSupported
 	def getLevel = { synchronized { delegate.getLevel } }
 	def setLevel(newLevel: Level.Value) { synchronized { delegate.setLevel(newLevel) } }
-	def enableTrace(enabled: Boolean) { synchronized { delegate.enableTrace(enabled) } }
-	def traceEnabled: Boolean = { synchronized { delegate.traceEnabled } }
+	def setTrace(level: Int) { synchronized { delegate.setTrace(level) } }
+	def getTrace: Int = { synchronized { delegate.getTrace } }
 
 	def trace(t: => Throwable) { synchronized { delegate.trace(t) } }
 	def log(level: Level.Value, message: => String) { synchronized { delegate.log(level, message) } }
@@ -95,10 +96,10 @@ final class MultiLogger(delegates: List[Logger]) extends BasicLogger
 		super.setLevel(newLevel)
 		dispatch(new SetLevel(newLevel))
 	}
-	override def enableTrace(enabled: Boolean)
+	override def setTrace(level: Int)
 	{
-		super.enableTrace(enabled)
-		dispatch(new SetTrace(enabled))
+		super.setTrace(level)
+		dispatch(new SetTrace(level))
 	}
 	def trace(t: => Throwable) { dispatch(new Trace(t)) }
 	def log(level: Level.Value, message: => String) { dispatch(new Log(level, message)) }
@@ -119,6 +120,8 @@ final class FilterLogger(delegate: Logger) extends BasicLogger
 		if(traceEnabled)
 			delegate.trace(t)
 	}
+	override def setTrace(level: Int) { delegate.setTrace(level) }
+	override def getTrace = delegate.getTrace 
 	def log(level: Level.Value, message: => String)
 	{
 		if(atLevel(level))
@@ -216,12 +219,12 @@ final class BufferedLogger(delegate: Logger) extends Logger
 			delegate.setLevel(newLevel)
 		}
 	def getLevel = synchronized { delegate.getLevel }
-	def traceEnabled = synchronized { delegate.traceEnabled }
-	def enableTrace(flag: Boolean): Unit =
+	def getTrace = synchronized { delegate.getTrace }
+	def setTrace(level: Int): Unit =
 		synchronized
 		{
-			buffer.foreach{_  += new SetTrace(flag) }
-			delegate.enableTrace(flag)
+			buffer.foreach{_  += new SetTrace(level) }
+			delegate.setTrace(level)
 		}
 
 	def trace(t: => Throwable): Unit =
@@ -295,8 +298,9 @@ class ConsoleLogger extends BasicLogger
 	def trace(t: => Throwable): Unit =
 		System.out.synchronized
 		{
-			if(traceEnabled)
-				t.printStackTrace
+			val traceLevel = getTrace
+			if(traceLevel >= 0)
+				System.out.synchronized { System.out.print(StackTrace.trimmed(t, traceLevel)) }
 		}
 	def log(level: Level.Value, message: => String)
 	{

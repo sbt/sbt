@@ -1,5 +1,5 @@
 /* sbt -- Simple Build Tool
- * Copyright 2008 Mark Harrah
+ * Copyright 2008, 2009, 2010 Mark Harrah
  */
 package sbt
 
@@ -82,9 +82,6 @@ private trait JettyRun
 }
 sealed trait JettyConfiguration extends NotNull
 {
-	def war: Path
-	def scanDirectories: Seq[File]
-	def scanInterval: Int
 	/** The classpath to get Jetty from. */
 	def jettyClasspath: PathFinder
 	def classpathName: String
@@ -92,6 +89,10 @@ sealed trait JettyConfiguration extends NotNull
 }
 trait DefaultJettyConfiguration extends JettyConfiguration
 {
+	def war: Path
+	def scanDirectories: Seq[File]
+	def scanInterval: Int
+
 	def contextPath: String
 	def port: Int
 	/** The classpath containing the classes, jars, and resources for the web application. */
@@ -129,7 +130,27 @@ private object LazyJettyRun extends JettyRun
 		Log.setLog(new JettyLogger(configuration.log))
 		val server = new Server
 
-		val listener =
+		def configureScanner(listener: Scanner.BulkListener, scanDirectories: Seq[File], scanInterval: Int) =
+		{
+			if(scanDirectories.isEmpty)
+				None
+			else
+			{
+				configuration.log.debug("Scanning for changes to: " + scanDirectories.mkString(", "))
+				val scanner = new Scanner
+				val list = new java.util.ArrayList[File]
+				scanDirectories.foreach(x => list.add(x))
+				scanner.setScanDirs(list)
+				scanner.setRecursive(true)
+				scanner.setScanInterval(scanInterval)
+				scanner.setReportExistingFilesOnStartup(false)
+				scanner.addListener(listener)
+				scanner.start()
+				Some(new WeakReference(scanner))
+			}
+		}
+
+		val (listener, scanner) =
 			configuration match
 			{
 				case c: DefaultJettyConfiguration =>
@@ -144,43 +165,23 @@ private object LazyJettyRun extends JettyRun
 					setLoader()
 					server.setHandler(webapp)
 
-					Some(new Scanner.BulkListener with Reload {
+					val listener = new Scanner.BulkListener with Reload {
 						def reloadApp() = reload(server, setLoader(), log)
 						def filesChanged(files: java.util.List[_]) { reloadApp() }
-					})
+					}
+					(Some(listener), configureScanner(listener, c.scanDirectories, c.scanInterval))
 				case c: CustomJettyConfiguration =>
 					for(x <- c.jettyConfigurationXML)
 						(new XmlConfiguration(x.toString)).configure(server)
 					for(file <- c.jettyConfigurationFiles)
 						(new XmlConfiguration(file.toURI.toURL)).configure(server)
-					None
+					(None, None)
 			}
-
-		def configureScanner() =
-		{
-			val scanDirectories = configuration.scanDirectories
-			if(listener.isEmpty || scanDirectories.isEmpty)
-				None
-			else
-			{
-				configuration.log.debug("Scanning for changes to: " + scanDirectories.mkString(", "))
-				val scanner = new Scanner
-				val list = new java.util.ArrayList[File]
-				scanDirectories.foreach(x => list.add(x))
-				scanner.setScanDirs(list)
-				scanner.setRecursive(true)
-				scanner.setScanInterval(configuration.scanInterval)
-				scanner.setReportExistingFilesOnStartup(false)
-				scanner.addListener(listener.get)
-				scanner.start()
-				Some(new WeakReference(scanner))
-			}
-		}
 
 		try
 		{
 			server.start()
-			new StopServer(new WeakReference(server), listener.map(new WeakReference(_)), configureScanner(), oldLog)
+			new StopServer(new WeakReference(server), listener.map(new WeakReference(_)), scanner, oldLog)
 		}
 		catch { case e => server.stop(); throw e }
 	}
