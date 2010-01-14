@@ -1,5 +1,6 @@
 Simple Build Tool (sbt)
-Copyright 2008, 2009 Steven Blundy, Mark Harrah, David MacIver, Mikko Peltonen
+Copyright 2008, 2009, 2010 Steven Blundy, Josh Cough, Nathan Hamblen, Mark Harrah, David MacIver, Mikko Peltonen, Tony Sloane, Vesa Vilhonen
+Licensed under BSD-style license (see LICENSE)
 
 
 Portions based on code by Mike Clark in JDepend
@@ -14,30 +15,12 @@ Portions based on code from the Scala compiler
 Copyright 2002-2008 EPFL, Lausanne
 Licensed under BSD-style license (see licenses/LICENSE_Scala)
 
-Portions based on code from specs
-Copyright 2007-2008 Eric Torreborre
-Licensed under MIT license (see licenses/LICENSE_specs)
-
-Portions based on code from ScalaTest
-Copyright 2001-2008 Artima, Inc.
-Licensed under the Apache License, Version 2.0(see licenses/LICENSE_Apache)
-
-Portions based on code from ScalaCheck
-Copyright 2007, Rickard Nilsson
-Licensed under BSD-style license (see licenses/LICENSE_ScalaCheck)
-
-Jetty is licensed under the Apache License, Version 2.0 (see licenses/LICENSE_Apache).
-
-ScalaTest is distributed with sbt (in the subversion repository)
-and requires the following notice:
-
- This product includes software developed by
-    Artima, Inc. (http://www.artima.com/).
-
+JLine is distributed with the sbt launcher.
+It is licensed under a BSD-style license (see licenses/LICENSE_JLine)
 
 Apache Ivy, licensed under the Apache License, Version 2.0
-(see licenses/LICENSE_Apache) is distributed with sbt and
-requires the following notice:
+(see licenses/LICENSE_Apache) is distributed with the sbt launcher.
+It requires the following notice:
 
 This product includes software developed by
 The Apache Software Foundation (http://www.apache.org/).
