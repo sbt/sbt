@@ -1,5 +1,7 @@
 package xsbt
 
+import sbt.{ComponentManager, TestIvyLogger}
+
 import java.io.File
 import FileUtilities.withTemporaryDirectory
 import org.specs._

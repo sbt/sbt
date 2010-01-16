@@ -74,7 +74,7 @@ class XSbt(info: ProjectInfo) extends ParentProject(info)
 		/* Subproject configurations*/
 	class LaunchProject(info: ProjectInfo) extends Base(info) with TestWithIO with TestDependencies with ProguardLaunch
 	{
-		val jline = "jline" % "jline" % jlineRev
+		val jline = "jline" % "jline" % jlineRev intransitive()
 		val ivy = "org.apache.ivy" % "ivy" % "2.0.0"
 		def rawJarPath = jarPath
 		override final def crossScalaVersions = Set.empty // don't need to cross-build, since the distributed jar is standalone (proguard)
@@ -171,7 +171,7 @@ class XSbt(info: ProjectInfo) extends ParentProject(info)
 		override def componentID = Some(cID)
 		override def ivyXML =
 			<dependencies>
-				<dependency org="jline" name="jline" rev={jlineRev}>
+				<dependency org="jline" name="jline" rev={jlineRev} transitive="false">
 					<artifact name="jline" type="jar" e:component={cID}/>
 				</dependency>
 			</dependencies>

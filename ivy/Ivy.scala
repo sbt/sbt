@@ -1,7 +1,7 @@
 /* sbt -- Simple Build Tool
- * Copyright 2008, 2009 Mark Harrah
+ * Copyright 2008, 2009, 2010 Mark Harrah
  */
-package xsbt
+package sbt
 
 import Artifact.{defaultExtension, defaultType}
 
@@ -21,7 +21,7 @@ import util.Message
 
 final class IvySbt(configuration: IvyConfiguration)
 {
-	import configuration._
+	import configuration.{log, baseDirectory}
 	/** ========== Configuration/Setup ============
 	* This part configures the Ivy instance by first creating the logger interface to ivy, then IvySettings, and then the Ivy instance.
 	* These are lazy so that they are loaded within the right context.  This is important so that no Ivy XML configuration needs to be loaded,
@@ -39,12 +39,15 @@ final class IvySbt(configuration: IvyConfiguration)
 	private lazy val settings =
 	{
 		val is = new IvySettings
-		is.setBaseDir(paths.baseDirectory)
-		IvySbt.configureCache(is, paths.cacheDirectory)
-		if(resolvers.isEmpty)
-			autodetectConfiguration(is)
-		else
-			IvySbt.setResolvers(is, resolvers, log)
+		is.setBaseDir(baseDirectory)
+		configuration match
+		{
+			case e: ExternalIvyConfiguration => is.load(e.file)
+			case i: InlineIvyConfiguration => 
+				IvySbt.configureCache(is, i.paths.cacheDirectory)
+				IvySbt.setResolvers(is, i.resolvers, log)
+				IvySbt.setModuleConfigurations(is, i.moduleConfigurations)
+		}
 		is
 	}
 	private lazy val ivy =
@@ -52,17 +55,6 @@ final class IvySbt(configuration: IvyConfiguration)
 		val i = Ivy.newInstance(settings)
 		i.getLoggerEngine.pushLogger(logger)
 		i
-	}
-	/** Called to configure Ivy when inline resolvers are not specified.
-	* This will configure Ivy with an 'ivy-settings.xml' file if there is one or else use default resolvers.*/
-	private def autodetectConfiguration(settings: IvySettings)
-	{
-		log.debug("Autodetecting configuration.")
-		val defaultIvyConfigFile = IvySbt.defaultIvyConfiguration(paths.baseDirectory)
-		if(defaultIvyConfigFile.canRead)
-			settings.load(defaultIvyConfigFile)
-		else
-			IvySbt.setResolvers(settings, Resolver.withDefaultResolvers(Nil), log)
 	}
 	/** ========== End Configuration/Setup ============*/
 
@@ -104,9 +96,7 @@ final class IvySbt(configuration: IvyConfiguration)
 
 			val parser = IvySbt.parseIvyXML(ivy.getSettings, IvySbt.wrapped(module, ivyXML), moduleID, defaultConf.name, validate)
 
-			IvySbt.addArtifacts(moduleID, artifacts)
 			IvySbt.addDependencies(moduleID, dependencies, parser)
-			IvySbt.setModuleConfigurations(settings, moduleConfigurations)
 			IvySbt.addMainArtifact(moduleID)
 			(moduleID, parser.getDefaultConf)
 		}
@@ -115,6 +105,7 @@ final class IvySbt(configuration: IvyConfiguration)
 			val mod = new DefaultModuleDescriptor(IvySbt.toID(module), "release", null, false)
 			mod.setLastModified(System.currentTimeMillis)
 			configurations.foreach(config => mod.addConfiguration(IvySbt.toIvyConfiguration(config)))
+			IvySbt.addArtifacts(mod, module.explicitArtifacts)
 			mod
 		}
 
@@ -301,7 +292,7 @@ private object IvySbt
 	/** This method is used to add inline artifacts to the provided module. */
 	def addArtifacts(moduleID: DefaultModuleDescriptor, artifacts: Iterable[Artifact])
 	{
-		val allConfigurations = moduleID.getPublicConfigurationsNames
+		lazy val allConfigurations = moduleID.getPublicConfigurationsNames
 		for(artifact <- artifacts)
 		{
 			val configurationStrings =

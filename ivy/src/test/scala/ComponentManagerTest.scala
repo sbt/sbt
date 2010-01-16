@@ -1,4 +1,6 @@
-package xsbt
+package sbt
+
+import xsbt.{BufferedLogger, FileUtilities}
 
 import java.io.File
 import org.specs._

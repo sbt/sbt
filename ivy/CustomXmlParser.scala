@@ -1,7 +1,7 @@
 /* sbt -- Simple Build Tool
  * Copyright 2008, 2009 Mark Harrah
  */
-package xsbt
+package sbt
 
 import java.io.ByteArrayInputStream
 import java.net.URL
@@ -14,7 +14,7 @@ import plugins.repository.Resource
 import plugins.repository.url.URLResource
 
 /** Subclasses the default Ivy file parser in order to provide access to protected methods.*/
-private[xsbt] object CustomXmlParser extends XmlModuleDescriptorParser with NotNull
+private[sbt] object CustomXmlParser extends XmlModuleDescriptorParser with NotNull
 {
 	import XmlModuleDescriptorParser.Parser
 	class CustomParser(settings: IvySettings, defaultConfig: Option[String]) extends Parser(CustomXmlParser, settings) with NotNull

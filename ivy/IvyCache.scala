@@ -1,4 +1,4 @@
-package xsbt
+package sbt
 
 import java.io.File
 import java.net.URL
@@ -83,7 +83,7 @@ object IvyCache
 	{
 		val local = Resolver.defaultLocal
 		val paths = new IvyPaths(new File("."), None)
-		val conf = new IvyConfiguration(paths, Seq(local), Nil, log)
+		val conf = new InlineIvyConfiguration(paths, Seq(local), Nil, log)
 		(new IvySbt(conf), local)
 	}
 	/** Creates a default jar artifact based on the given ID.*/

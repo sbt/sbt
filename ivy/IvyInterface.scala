@@ -1,7 +1,7 @@
 /* sbt -- Simple Build Tool
  * Copyright 2008, 2009 Mark Harrah
  */
-package xsbt
+package sbt
 
 import java.io.File
 import java.net.{URI, URL}
@@ -52,9 +52,9 @@ sealed case class MavenRepository(name: String, root: String) extends Resolver
 
 final class Patterns(val ivyPatterns: Seq[String], val artifactPatterns: Seq[String], val isMavenCompatible: Boolean) extends NotNull
 {
-	private[xsbt] def mavenStyle(): Patterns = Patterns(ivyPatterns, artifactPatterns, true)
-	private[xsbt] def withIvys(patterns: Seq[String]): Patterns = Patterns(patterns ++ ivyPatterns, artifactPatterns, isMavenCompatible)
-	private[xsbt] def withArtifacts(patterns: Seq[String]): Patterns = Patterns(ivyPatterns, patterns ++ artifactPatterns, isMavenCompatible)
+	private[sbt] def mavenStyle(): Patterns = Patterns(ivyPatterns, artifactPatterns, true)
+	private[sbt] def withIvys(patterns: Seq[String]): Patterns = Patterns(patterns ++ ivyPatterns, artifactPatterns, isMavenCompatible)
+	private[sbt] def withArtifacts(patterns: Seq[String]): Patterns = Patterns(ivyPatterns, patterns ++ artifactPatterns, isMavenCompatible)
 }
 object Patterns
 {
@@ -295,11 +295,11 @@ object Configurations
 
 	lazy val CompilerPlugin = config("plugin") hide
 
-	private[xsbt] val DefaultMavenConfiguration = defaultConfiguration(true)
-	private[xsbt] val DefaultIvyConfiguration = defaultConfiguration(false)
-	private[xsbt] def DefaultConfiguration(mavenStyle: Boolean) = if(mavenStyle) DefaultMavenConfiguration else DefaultIvyConfiguration
-	private[xsbt] def defaultConfiguration(mavenStyle: Boolean) = if(mavenStyle) Configurations.Compile else Configurations.Default
-	private[xsbt] def removeDuplicates(configs: Iterable[Configuration]) = Set(scala.collection.mutable.Map(configs.map(config => (config.name, config)).toSeq: _*).values.toList: _*)
+	private[sbt] val DefaultMavenConfiguration = defaultConfiguration(true)
+	private[sbt] val DefaultIvyConfiguration = defaultConfiguration(false)
+	private[sbt] def DefaultConfiguration(mavenStyle: Boolean) = if(mavenStyle) DefaultMavenConfiguration else DefaultIvyConfiguration
+	private[sbt] def defaultConfiguration(mavenStyle: Boolean) = if(mavenStyle) Configurations.Compile else Configurations.Default
+	private[sbt] def removeDuplicates(configs: Iterable[Configuration]) = Set(scala.collection.mutable.Map(configs.map(config => (config.name, config)).toSeq: _*).values.toList: _*)
 }
 /** Represents an Ivy configuration. */
 final case class Configuration(name: String, description: String, isPublic: Boolean, extendsConfigs: List[Configuration], transitive: Boolean) extends NotNull
