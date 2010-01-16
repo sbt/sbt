@@ -53,107 +53,53 @@ trait UnmanagedClasspathProject extends ClasspathProject
 	def fullUnmanagedClasspath(config: Configuration): PathFinder
 }
 
-/** A project that provides automatic dependency management.*/
-trait ManagedProject extends ClasspathProject
+trait IvyTasks extends Project
 {
-	trait ManagedOption extends ActionOption
-	final class ManagedFlagOption extends ManagedOption
-	/** An update option that specifies that unneeded files should be pruned from the managed library directory
-	* after updating. */
-	final val Synchronize = new ManagedFlagOption
-	/** An update option that specifies that Ivy should validate configurations.*/
-	final val Validate = new ManagedFlagOption
-	/** An update option that puts Ivy into a quieter logging mode.*/
-	final val QuietUpdate = new ManagedFlagOption
-	/** An update option that adds the scala-tools.org releases repository to the set of resolvers, unless
-	* no inline repositories are present and an ivysettings.xml file is present.*/
-	final val AddScalaToolsReleases = new ManagedFlagOption
-	/** An update option that specifies that an error should be generated if no inline dependencies, resolvers,
-	* XML file, or Ivy or Maven configuration files are present.*/
-	final val ErrorIfNoConfiguration = new ManagedFlagOption
-	/** An update option that explicitly specifies the dependency manager to use.  This can be used to
-	* override the default precendence. */
-	final case class LibraryManager(m: Manager) extends ManagedOption
-	/** An update option that overrides the default Ivy cache location. */
-	final case class CacheDirectory(dir: Path) extends ManagedOption
-	final case class CheckScalaVersion(configs: Iterable[Configuration], checkExplicit: Boolean, filterImplicit: Boolean) extends ManagedOption
-
-	protected def withConfigurations(outputPattern: String, managedDependencyPath: Path, options: Seq[ManagedOption])
-		(doWith: (IvyConfiguration, UpdateConfiguration) => Option[String]) =
-	{
-		var synchronize = false
-		var validate = false
-		var quiet = false
-		var addScalaTools = false
-		var errorIfNoConfiguration = false
-		var manager: Manager = new AutoDetectManager(projectID)
-		var cacheDirectory: Option[Path] = None
-		var checkScalaVersion: Option[IvyScala] = None
-		for(option <- options)
-		{
-			option match
-			{
-				case Synchronize => synchronize = true
-				case Validate => validate = true
-				case LibraryManager(m) => manager = m
-				case QuietUpdate => quiet = true
-				case AddScalaToolsReleases => addScalaTools = true
-				case ErrorIfNoConfiguration => errorIfNoConfiguration = true
-				case CacheDirectory(dir) => cacheDirectory = Some(dir)
-				case CheckScalaVersion(configs, checkExplicit, filterImplicit) =>
-					checkScalaVersion = Some(new IvyScala(buildScalaVersion, configs, checkExplicit, filterImplicit))
-				case _ => log.warn("Ignored unknown managed option " + option)
-			}
-		}
-		val ivyPaths = new IvyPaths(info.projectPath, managedDependencyPath, cacheDirectory)
-		val ivyFlags = new IvyFlags(validate, addScalaTools, errorIfNoConfiguration)
-		val ivyConfiguration = new IvyConfiguration(ivyPaths, manager, ivyFlags, checkScalaVersion, log)
-		val updateConfiguration = new UpdateConfiguration(outputPattern, synchronize, quiet)
-		doWith(ivyConfiguration, updateConfiguration)
-	}
-	protected def withIvyTask(doTask: => Option[String]) =
+	def ivyTask(action: => Unit) =
 		task
 		{
-			try { doTask }
-			catch
-			{
-				case e: NoClassDefFoundError =>
+			try { action; None }
+			catch {
+				case e: Exception =>
 					log.trace(e)
-					Some("Apache Ivy is required for dependency management (" + e.toString + ")")
+					log.error(e.toString)
+					Some(e.toString)
 			}
 		}
-	def updateTask(outputPattern: String, managedDependencyPath: Path, options: ManagedOption*): Task =
-		updateTask(outputPattern, managedDependencyPath, options)
-	def updateTask(outputPattern: String, managedDependencyPath: Path, options: => Seq[ManagedOption]) =
-		withIvyTask(withConfigurations(outputPattern, managedDependencyPath, options)(ManageDependencies.update))
+	def updateTask(module: => IvySbt#Module, configuration: => UpdateConfiguration) =
+		ivyTask { IvyActions.update(module, configuration) }
 
-	def publishTask(publishConfiguration: => PublishConfiguration, options: => Seq[ManagedOption]) =
-		withIvyTask
+	def publishTask(module: => IvySbt#Module, publishConfiguration: => PublishConfiguration) =
+		ivyTask
 		{
 			val publishConfig = publishConfiguration
 			import publishConfig._
-			withConfigurations("", managedDependencyPath, options) { (ivyConf, ignore) =>
-				val delivered = if(publishIvy) Some(deliveredPattern) else None
-				ManageDependencies.publish(ivyConf, resolverName, srcArtifactPatterns, delivered, configurations) }
+			val deliveredIvy = if(publishIvy) Some(deliveredPattern) else None
+			IvyActions.publish(module, resolverName, srcArtifactPatterns, deliveredIvy, configurations)
 		}
-	def deliverTask(deliverConfiguration: => PublishConfiguration, options: => Seq[ManagedOption]) =
-		withIvyTask
+	def deliverTask(module: => IvySbt#Module, deliverConfiguration: => PublishConfiguration, quiet: Boolean) =
+		ivyTask
 		{
 			val deliverConfig = deliverConfiguration
 			import deliverConfig._
-			withConfigurations("", managedDependencyPath, options) { (ivyConf, updateConf) =>
-				ManageDependencies.deliver(ivyConf, updateConf, status, deliveredPattern, extraDependencies, configurations)
-			}
+			IvyActions.deliver(module, status, deliveredPattern, extraDependencies, configurations, quiet)
 		}
-	def makePomTask(output: => Path, extraDependencies: => Iterable[ModuleID], configurations: => Option[Iterable[Configuration]], options: => Seq[ManagedOption]) =
-		withIvyTask(withConfigurations("", managedDependencyPath, options) { (ivyConf, ignore) =>
-			ManageDependencies.makePom(ivyConf, extraDependencies, configurations, output.asFile) })
+	def makePomTask(module: => IvySbt#Module, output: => Path, extraDependencies: => Iterable[ModuleID], configurations: => Option[Iterable[Configuration]]) =
+		ivyTask { IvyActions.makePom(module, extraDependencies, configurations, output asFile) }
 
-	def cleanCacheTask(managedDependencyPath: Path, options: => Seq[ManagedOption]) =
-		withIvyTask(withConfigurations("", managedDependencyPath, options) { (ivyConf, ignore) => ManageDependencies.cleanCache(ivyConf) })
+	def installTask(module: IvySbt#Module, from: Resolver, to: Resolver) =
+		ivyTask { IvyActions.install(module, from.name, to.name) }
+		
+	def cleanCacheTask(ivySbt: => IvySbt) =
+		ivyTask { IvyActions.cleanCache(ivySbt) }
 
-	def cleanLibTask(managedDependencyPath: Path) = task { FileUtilities.clean(managedDependencyPath.get, log) }
+	def cleanLibTask(managedDependencyPath: Path) = 
+		task { FileUtilities.clean(managedDependencyPath.get, log) }
+}
 
+/** A project that provides automatic dependency management.*/
+trait ManagedProject extends ClasspathProject with IvyTasks
+{
 	/** This is the public ID of the project (used for publishing, for example) */
 	def moduleID: String = normalizedName + appendable(crossScalaVersionString)
 	/** This is the full public ID of the project (used for publishing, for example) */
@@ -224,10 +170,73 @@ import ManagedStyle.{Auto, Ivy, Maven, Value => ManagedType}
 trait BasicManagedProject extends ManagedProject with ReflectiveManagedProject with BasicDependencyPaths
 {
 	import BasicManagedProject._
-	/** The dependency manager that represents inline declarations.  The default manager packages the information
-	* from 'ivyXML', 'projectID', 'repositories', and 'libraryDependencies' and does not typically need to be
-	* be overridden. */
-	def manager = new SimpleManager(ivyXML, true, projectID, repositories.toSeq, moduleConfigurations.toSeq, ivyConfigurations, defaultConfiguration, libraryDependencies.toList: _*)
+
+	def ivyUpdateConfiguration =  new UpdateConfiguration(managedDependencyPath.asFile, outputPattern, true/*sync*/, true/*quiet*/)
+
+	def ivyRepositories: Seq[Resolver] =
+	{
+		val repos = repositories.toSeq
+		if(repos.isEmpty) Nil else Resolver.withDefaultResolvers(repos)
+	}
+	def ivyValidate = true
+	def ivyScala: Option[IvyScala] = Some(new IvyScala(buildScalaVersion, checkScalaInConfigurations, checkExplicitScalaDependencies, filterScalaJars))
+	def ivyCacheDirectory: Option[Path] = None
+	
+	def ivyPaths: IvyPaths = new IvyPaths(info.projectPath.asFile, ivyCacheDirectory.map(_.asFile))
+	def inlineIvyConfiguration = new InlineIvyConfiguration(ivyPaths, ivyRepositories.toSeq, moduleConfigurations.toSeq, log)
+	def ivyConfiguration: IvyConfiguration =
+	{
+		val in = inlineIvyConfiguration
+		def parentIvyConfiguration(default: IvyConfiguration)(p: Project) = p match { case b: BasicManagedProject => b.ivyConfiguration; case _ => default }
+		if(in.resolvers.isEmpty)
+		{
+			 if(in.moduleConfigurations.isEmpty)
+			 {
+				IvyConfiguration(in.paths, in.log) match
+				{
+					case e: ExternalIvyConfiguration => e
+					case i => info.parent map(parentIvyConfiguration(i)) getOrElse(i)
+				}
+			}
+			else
+				new InlineIvyConfiguration(in.paths, Resolver.withDefaultResolvers(Nil), in.moduleConfigurations, in.log)
+		}
+		else
+			in
+	}
+	
+	def moduleSettings: ModuleSettings = defaultModuleSettings
+	def byIvyFile(path: Path): IvyFileConfiguration = new IvyFileConfiguration(path.asFile, ivyScala, ivyValidate)
+	def byPom(path: Path): PomConfiguration = new PomConfiguration(path.asFile, ivyScala, ivyValidate)
+	/** The settings that represent inline declarations.  The default settings combines the information
+	* from 'ivyXML', 'projectID', 'repositories', ivyConfigurations, defaultConfiguration,
+	* ivyScala, and 'libraryDependencies' and does not typically need to be be overridden. */
+	def inlineSettings = new InlineConfiguration(projectID, libraryDependencies, ivyXML, ivyConfigurations, defaultConfiguration, ivyScala, ivyValidate)
+	def defaultModuleSettings: ModuleSettings =
+	{
+		val in = inlineSettings
+		if(in.configurations.isEmpty)
+		{
+			if(in.dependencies.isEmpty && in.ivyXML.isEmpty && in.module.explicitArtifacts.isEmpty && in.configurations.isEmpty)
+				externalSettings
+			else if(useDefaultConfigurations)
+				in withConfigurations ( Configurations.defaultMavenConfigurations )
+			else
+				in
+		}
+		else
+			in
+	}
+	def externalSettings = ModuleSettings(ivyScala, ivyValidate, projectID)(info.projectPath.asFile, log)
+	
+	def ivySbt: IvySbt = new IvySbt(ivyConfiguration)
+	def ivyModule: IvySbt#Module = newIvyModule(moduleSettings)
+	def newIvyModule(moduleSettings: ModuleSettings): IvySbt#Module =
+	{
+		val i = ivySbt
+		new i.Module(moduleSettings)
+	}
+	
 
 	/** The pattern for Ivy to use when retrieving dependencies into the local project.  Classpath management
 	* depends on the first directory being [conf] and the extension being [ext].*/
@@ -235,8 +244,11 @@ trait BasicManagedProject extends ManagedProject with ReflectiveManagedProject w
 	/** Override this to specify the publications, configurations, and/or dependencies sections of an Ivy file.
 	* See http://code.google.com/p/simple-build-tool/wiki/LibraryManagement for details.*/
 	def ivyXML: scala.xml.NodeSeq = scala.xml.NodeSeq.Empty
-	/** The base options passed to the 'update' action. */
-	def baseUpdateOptions = checkScalaVersion :: Validate :: Synchronize :: QuietUpdate :: AddScalaToolsReleases :: Nil
+	def expandedIvyConfigurations =
+	{
+		val confs = ivyConfigurations
+		if(confs.isEmpty) Configurations.defaultMavenConfigurations else confs
+	}
 	override def ivyConfigurations: Iterable[Configuration] =
 	{
 		val reflective = super.ivyConfigurations
@@ -271,20 +283,13 @@ trait BasicManagedProject extends ManagedProject with ReflectiveManagedProject w
 			case Auto => Resolver.defaultPatterns
 		}
 	}
-	/** The options provided to the 'update' action.  This is by default the options in 'baseUpdateOptions'.
-	* If 'manager' has any dependencies, resolvers, or inline Ivy XML (which by default happens when inline
-	* dependency management is used), it is passed as the dependency manager.*/
-	def updateOptions: Seq[ManagedOption] = baseUpdateOptions ++ managerOption
-	def managerOption: Seq[ManagedOption] =
-	{
-		val m = manager
-		if(m.dependencies.isEmpty && m.resolvers.isEmpty && ivyXML.isEmpty && m.module.explicitArtifacts.isEmpty && m.configurations.isEmpty)
-			Nil
-		else
-			LibraryManager(m) :: Nil
-	}
-	def deliverOptions: Seq[ManagedOption] = updateOptions.filter { case _: CheckScalaVersion => false; case _ => true }
-	def publishOptions: Seq[ManagedOption] = deliverOptions
+	
+	def updateModuleSettings = moduleSettings
+	def updateIvyModule = newIvyModule(updateModuleSettings)
+	def deliverModuleSettings = moduleSettings.noScala
+	def deliverIvyModule = newIvyModule(deliverModuleSettings)
+	def publishModuleSettings = deliverModuleSettings
+	def publishIvyModule = newIvyModule(publishModuleSettings)
 	/** True if the 'provided' configuration should be included on the 'compile' classpath.  The default value is true.*/
 	def includeProvidedWithCompile = true
 	/** True if the default implicit extensions should be used when determining classpaths.  The default value is true. */
@@ -304,7 +309,6 @@ trait BasicManagedProject extends ManagedProject with ReflectiveManagedProject w
 		else
 			all
 	}
-	def checkScalaVersion = CheckScalaVersion(checkScalaInConfigurations, checkExplicitScalaDependencies, filterScalaJars)
 	def defaultPublishRepository: Option[Resolver] =
 	{
 		reflectiveRepositories.get("publish-to") orElse
@@ -336,9 +340,9 @@ trait BasicManagedProject extends ManagedProject with ReflectiveManagedProject w
 		}
 	}
 
-	protected def updateAction = updateTask(outputPattern, managedDependencyPath, updateOptions) describedAs UpdateDescription
+	protected def updateAction = updateTask(updateIvyModule, ivyUpdateConfiguration) describedAs UpdateDescription
 	protected def cleanLibAction = cleanLibTask(managedDependencyPath) describedAs CleanLibDescription
-	protected def cleanCacheAction = cleanCacheTask(managedDependencyPath, updateOptions) describedAs CleanCacheDescription
+	protected def cleanCacheAction = cleanCacheTask(ivySbt) describedAs CleanCacheDescription
 
 	protected def deliverProjectDependencies: Iterable[ModuleID] =
 	{
@@ -349,19 +353,19 @@ trait BasicManagedProject extends ManagedProject with ReflectiveManagedProject w
 		interDependencies.readOnly
 	}
 	protected def deliverScalaDependencies: Iterable[ModuleID] = Nil
-	protected def makePomAction = makePomTask(pomPath, deliverProjectDependencies, None, updateOptions)
-	protected def deliverLocalAction = deliverTask(publishLocalConfiguration, deliverOptions)
+	protected def makePomAction = makePomTask(deliverIvyModule, pomPath, deliverProjectDependencies, None)
+	protected def deliverLocalAction = deliverTask(deliverIvyModule, publishLocalConfiguration, true /*quiet*/)
 	protected def publishLocalAction =
 	{
 		val dependencies = deliverLocal :: publishPomDepends
-		publishTask(publishLocalConfiguration, publishOptions) dependsOn(dependencies : _*)
+		publishTask(publishIvyModule, publishLocalConfiguration) dependsOn(dependencies : _*)
 	}
 	protected def publishLocalConfiguration = new DefaultPublishConfiguration("local", "release", true)
-	protected def deliverAction = deliverTask(publishConfiguration, deliverOptions)
+	protected def deliverAction = deliverTask(deliverIvyModule, publishConfiguration, true)
 	protected def publishAction =
 	{
 		val dependencies = deliver :: publishPomDepends
-		publishTask(publishConfiguration, publishOptions) dependsOn(dependencies : _*)
+		publishTask(publishIvyModule, publishConfiguration) dependsOn(dependencies : _*)
 	}
 	private def publishPomDepends = if(managedStyle == Maven) makePom :: Nil else Nil
 	protected def publishConfiguration =
@@ -425,19 +429,12 @@ class DefaultInstallProject(val info: ProjectInfo) extends InstallProject with M
 }
 trait InstallProject extends BasicManagedProject
 {
-	def installOptions: Seq[ManagedOption] = updateOptions
-	override def filterScalaJars = false
-	override def checkExplicitScalaDependencies = false
-	lazy val install = installTask(updateOptions)
-	def installTask(options: => Seq[ManagedOption]) =
-		withIvyTask
-		{
-			withConfigurations("", managedDependencyPath, options) { (ivyConf, ignore) =>
-				val toResolver = reflectiveRepositories.get("publish-to").getOrElse(error("No repository to publish to was specified"))
-				val fromResolver = reflectiveRepositories.get("retrieve-from").getOrElse(error("No repository to retrieve from was specified"))
-				ManageDependencies.install(ivyConf, fromResolver.name, toResolver.name, true, true)
-			}
-		}
+	def installModuleSettings: ModuleSettings = moduleSettings.noScala
+	def installIvyModule: IvySbt#Module = newIvyModule(installModuleSettings)
+	
+	lazy val install = installTask(installIvyModule, fromResolver, toResolver)
+	def toResolver = reflectiveRepositories.get("publish-to").getOrElse(error("No repository to publish to was specified"))
+	def fromResolver = reflectiveRepositories.get("retrieve-from").getOrElse(error("No repository to retrieve from was specified"))
 }
 
 trait BasicDependencyPaths extends ManagedProject
@@ -538,7 +535,7 @@ trait ReflectiveProject extends ReflectiveModules with ReflectiveTasks with Refl
 /** This Project subclass is used to contain other projects as dependencies.*/
 class ParentProject(val info: ProjectInfo) extends BasicDependencyProject
 {
-	override def managerOption: Seq[ManagedOption] = LibraryManager(new AutoDetectManager(projectID, false)) :: Nil
+	override def moduleSettings = externalSettings
 	def dependencies: Iterable[Project] = info.dependencies ++ subProjects.values.toList
 	/** The directories to which a project writes are listed here and is used
 	* to check a project and its dependencies for collisions.*/

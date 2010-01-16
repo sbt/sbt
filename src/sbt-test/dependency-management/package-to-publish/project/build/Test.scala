@@ -2,8 +2,7 @@ import sbt._
 
 class Test(info: ProjectInfo) extends DefaultProject(info)
 {
-	def ivyCacheDirectory = outputPath / "ivy-cache"
-	override def updateOptions =  CacheDirectory(ivyCacheDirectory) :: super.updateOptions.toList
+	override def ivyCacheDirectory = Some(outputPath / "ivy-cache")
 	
   override def managedStyle = ManagedStyle.Maven
 	def testRepoPath = path("test-repo")

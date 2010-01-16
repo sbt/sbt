@@ -4,7 +4,7 @@
 package sbt
 
 import xsbti.{AppProvider, ScalaProvider}
-import xsbt.{AnalyzingCompiler, ComponentManager, ScalaInstance}
+import xsbt.{AnalyzingCompiler, ScalaInstance}
 import java.io.File
 import java.net.URLClassLoader
 import scala.collection._
@@ -228,7 +228,7 @@ trait Project extends TaskManager with Dag[Project] with BasicEnvironment
 	def buildScalaVersion = info.buildScalaVersion.getOrElse(crossScalaVersions.first)
 
 
-	def componentManager = new xsbt.ComponentManager(info.launcher.globalLock, info.app.components, log)
+	def componentManager = new ComponentManager(info.launcher.globalLock, info.app.components, log)
 	def buildScalaInstance = buildScalaInstance0
 	final def buildScalaInstance0: ScalaInstance =
 	{

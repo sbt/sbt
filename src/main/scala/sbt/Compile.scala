@@ -4,7 +4,7 @@
 package sbt
 
 import java.io.File
-import xsbt.{AnalyzingCompiler, CompileFailed, CompilerArguments, ComponentManager, ScalaInstance}
+import xsbt.{AnalyzingCompiler, CompileFailed, CompilerArguments, ScalaInstance}
 
 object CompileOrder extends Enumeration
 {

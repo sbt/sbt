@@ -18,7 +18,7 @@ object ControlEvent extends Enumeration
 	val Start, Header, Finish = Value
 }
 
-abstract class Logger extends xsbt.CompileLogger with xsbt.IvyLogger
+abstract class Logger extends xsbt.CompileLogger with IvyLogger
 {
 	def getLevel: Level.Value
 	def setLevel(newLevel: Level.Value)

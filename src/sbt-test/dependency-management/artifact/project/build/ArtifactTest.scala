@@ -3,8 +3,7 @@ import sbt._
 class ArtifactTest(info: ProjectInfo) extends DefaultProject(info)
 {
 	// use cache specific to this test
-	def ivyCacheDirectory = outputPath / "ivy-cache"
-	override def updateOptions =  CacheDirectory(ivyCacheDirectory) :: super.updateOptions.toList
+	override def ivyCacheDirectory = Some(outputPath / "ivy-cache")
 
 	// define a test repository to publish to
 	override def managedStyle = ManagedStyle.Maven

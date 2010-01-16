@@ -57,7 +57,7 @@ private sealed abstract class BasicBuilderProject extends InternalProject with S
 
 	def tpe: String
 
-		import xsbt.{ComponentManager, ScalaInstance}
+		import xsbt.ScalaInstance
 
 	val definitionCompileConditional = new BuilderCompileConditional(definitionCompileConfiguration, buildCompiler, tpe)
 	final class BuilderCompileConditional(config: BuilderCompileConfiguration, compiler: xsbt.AnalyzingCompiler, tpe: String) extends AbstractCompileConditional(config, compiler)

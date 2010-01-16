@@ -2,8 +2,7 @@ import sbt._
 
 class InfoTest(info: ProjectInfo) extends DefaultProject(info)
 {
-	def ivyCacheDirectory = outputPath / "ivy-cache"
-	override def updateOptions =  CacheDirectory(ivyCacheDirectory) :: super.updateOptions.toList
+	override def ivyCacheDirectory = Some(outputPath / "ivy-cache")
 	
 	override def ivyXML =
 		if(customInfo)
