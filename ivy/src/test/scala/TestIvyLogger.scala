@@ -1,4 +1,6 @@
-package xsbt
+package sbt
+
+import xsbt.{BufferedLogger, ConsoleLogger, Level}
 
 class TestIvyLogger extends BufferedLogger(new ConsoleLogger) with IvyLogger { def verbose(msg: => String) = info(msg) }
 object TestIvyLogger

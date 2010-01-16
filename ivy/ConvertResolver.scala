@@ -1,7 +1,7 @@
 /* sbt -- Simple Build Tool
  * Copyright 2008, 2009 Mark Harrah
  */
-package xsbt
+package sbt
 
 import org.apache.ivy.{core,plugins}
 import core.module.id.ModuleRevisionId

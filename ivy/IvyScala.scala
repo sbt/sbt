@@ -1,7 +1,7 @@
 /* sbt -- Simple Build Tool
- * Copyright 2008, 2009 Mark Harrah
+ * Copyright 2008, 2009, 2010 Mark Harrah
  */
-package xsbt
+package sbt
 
 import java.util.Collections
 import scala.collection.mutable.HashSet
@@ -12,13 +12,18 @@ import core.module.descriptor.{DefaultModuleDescriptor, ModuleDescriptor}
 import core.module.id.{ArtifactId,ModuleId, ModuleRevisionId}
 import plugins.matcher.ExactPatternMatcher
 
+object ScalaArtifacts
+{
+	val Organization = "org.scala-lang"
+	val LibraryID = "scala-library"
+	val CompilerID = "scala-compiler"
+}
+
+import ScalaArtifacts._
+
 final class IvyScala(val scalaVersion: String, val configurations: Iterable[Configuration], val checkExplicit: Boolean, val filterImplicit: Boolean) extends NotNull
 private object IvyScala
 {
-	val ScalaOrganization = "org.scala-lang"
-	val ScalaLibraryID = "scala-library"
-	val ScalaCompilerID = "scala-compiler"
-
 	/** Performs checks/adds filters on Scala dependencies (if enabled in IvyScala). */
 	def checkModule(module: DefaultModuleDescriptor, conf: String)(check: IvyScala)
 	{
@@ -35,7 +40,7 @@ private object IvyScala
 		for(dep <- module.getDependencies.toList)
 		{
 			val id = dep.getDependencyRevisionId
-			if(id.getOrganisation == ScalaOrganization && id.getRevision != scalaVersion && dep.getModuleConfigurations.exists(configSet.contains))
+			if(id.getOrganisation == Organization && id.getRevision != scalaVersion && dep.getModuleConfigurations.exists(configSet.contains))
 				error("Different Scala version specified in dependency ("+ id.getRevision + ") than in project (" + scalaVersion + ").")
 		}
 	}
@@ -58,9 +63,9 @@ private object IvyScala
 			}
 		}
 		def excludeScalaJar(name: String): Unit =
-			module.addExcludeRule(excludeRule(ScalaOrganization, name, configurationNames))
-		excludeScalaJar(ScalaLibraryID)
-		excludeScalaJar(ScalaCompilerID)
+			module.addExcludeRule(excludeRule(Organization, name, configurationNames))
+		excludeScalaJar(LibraryID)
+		excludeScalaJar(CompilerID)
 	}
 	/** Creates an ExcludeRule that excludes artifacts with the given module organization and name for
 	* the given configurations. */

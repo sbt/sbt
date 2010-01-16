@@ -1,4 +1,4 @@
-package xsbt
+package sbt
 
 import java.io.File
 
