@@ -159,7 +159,13 @@ private object LazyJettyRun extends JettyRun
 					def classpathURLs = classpath.get.map(_.asURL).toSeq
 					val webapp = new WebAppContext(war.absolutePath, contextPath)
 					
-					def createLoader = new WebAppClassLoader(jettyLoader, webapp) { override def getURLs = classpathURLs.toArray }
+					def createLoader =
+					{
+						class SbtWebAppLoader extends WebAppClassLoader(jettyLoader, webapp) { override def addURL(u: URL) = super.addURL(u) };
+						val loader = new SbtWebAppLoader
+						classpathURLs.foreach(loader.addURL)
+						loader
+					}
 					def setLoader() = webapp.setClassLoader(createLoader)
 					
 					setLoader()
