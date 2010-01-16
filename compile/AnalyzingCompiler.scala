@@ -1,5 +1,6 @@
 package xsbt
 
+	import sbt.ComponentManager
 	import xsbti.{AnalysisCallback, Logger => xLogger}
 	import java.io.File
 	import java.net.{URL, URLClassLoader}

@@ -1,6 +1,7 @@
 package xsbt
 
 import java.io.File
+import sbt.{ComponentManager, IfMissing}
 
 object ComponentCompiler
 {
