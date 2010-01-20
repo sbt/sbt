@@ -34,7 +34,7 @@ trait PathBase extends NotNull
 final class Paths(val files: Set[File]) extends PathBase
 {
 	def \(subPath: String) = /(subPath)
-	def /(subPath: String): Set[File] = files.flatMap(FileUtilities.listFiles)
+	def /(subPath: String): Set[File] = files.flatMap { file => val f = file / subPath; if(f.exists) Seq(f)  else Seq() }
 }
 final class Path(val asFile: File) extends PathBase
 {
