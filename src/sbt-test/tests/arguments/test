@@ -2,26 +2,28 @@
 > update
 
 # should fail because it should run all tests, some of which are expected to fail (1 and 4)
--> test-only ArgumentTest
+-> test
 
-# should fail because it should run the test tagged 'test1', which should fail
--> test-only ArgumentTest -- -n test1
+$ touch success1
+> test
+$ delete success1
 
-# should succeed because it should only run the test tagged 'test2', which should succeed
-> test-only ArgumentTest -- -n test2
+$ touch failure1
+-> test
+$ delete failure1
 
-# should succeed because it should only run the test tagged 'test3', which should succeed
-> test-only ArgumentTest -- -n test3
+$ touch success2
+> test
+$ delete success2
 
-# should fail because it should run the test tagged 'test4', which should fail
--> test-only ArgumentTest -- -n test4
+$ touch failure2
+-> test
+$ delete failure2
 
-# should succeed because it should only run the tests tagged 'test2' or 'test3', both of which should succeed
-> test-only ArgumentTest -- -n "test2 test3"
+$ touch success3
+> test
+$ delete success3
 
-# these should fail because they run at least one failed test
--> test-only ArgumentTest -- -n "test2 test4"
--> test-only ArgumentTest -- -n "test1 test2 test3"
--> test-only ArgumentTest -- -n "test2 test3 test4"
--> test-only ArgumentTest -- -n "test1 test2 test3 test4"
--> test-only ArgumentTest -- -n "test1 test3"
+$ touch failure3
+-> test
+$ delete failure3
