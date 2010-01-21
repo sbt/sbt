@@ -67,7 +67,14 @@ trait ScalaProject extends SimpleScalaProject with FileTasks with MultiTaskProje
 	case class ExcludeTests(tests: Iterable[String]) extends TestOption
 	case class TestListeners(listeners: Iterable[TestReportListener]) extends TestOption
 	case class TestFilter(filterTest: String => Boolean) extends TestOption
-  case class TestFrameworkArgument(arg: String) extends TestOption
+
+	// args for all frameworks
+	def TestArgument(args: String*): TestArgument = TestArgument(None, args.toList)
+	// args for a particular test framework
+	def TestArgument(tf: TestFramework, args: String*): TestArgument = TestArgument(Some(tf), args.toList)
+
+	// None means apply to all, Some(tf) means apply to a particular framework only.
+	case class TestArgument(framework: Option[TestFramework], args: List[String]) extends TestOption
 
 	case class JarManifest(m: Manifest) extends PackageOption
 	{
@@ -150,14 +157,13 @@ trait ScalaProject extends SimpleScalaProject with FileTasks with MultiTaskProje
 	def copyTask(sources: PathFinder, destinationDirectory: Path): Task =
 		task { FileUtilities.copy(sources.get, destinationDirectory, log).left.toOption }
 
-	def testTask(frameworks: Seq[TestFramework], classpath: PathFinder, analysis: CompileAnalysis, testArgs: Seq[String], options: TestOption*): Task =
-		testTask(frameworks, classpath, analysis, testArgs, options)
-	def testTask(frameworks: Seq[TestFramework], classpath: PathFinder, analysis: CompileAnalysis,
-               testArgs: Seq[String], options: => Seq[TestOption]): Task =
+	def testTask(frameworks: Seq[TestFramework], classpath: PathFinder, analysis: CompileAnalysis, options: TestOption*): Task =
+		testTask(frameworks, classpath, analysis, options)
+	def testTask(frameworks: Seq[TestFramework], classpath: PathFinder, analysis: CompileAnalysis, options: => Seq[TestOption]): Task =
 	{
 		def work =
 		{
-			val (begin, work, end) = testTasks(frameworks, classpath, analysis, testArgs, options)
+			val (begin, work, end) = testTasks(frameworks, classpath, analysis, options)
 			val beginTasks = begin.map(toTask).toSeq // test setup tasks
 			val workTasks = work.map(w => toTask(w) dependsOn(beginTasks : _*)) // the actual tests
 			val endTasks = end.map(toTask).toSeq // tasks that perform test cleanup and are run regardless of success of tests
@@ -251,43 +257,58 @@ trait ScalaProject extends SimpleScalaProject with FileTasks with MultiTaskProje
 		}
 	}
 	protected def incrementImpl(v: BasicVersion): Version = v.incrementMicro
-	protected def testTasks(frameworks: Seq[TestFramework], classpath: PathFinder, analysis: CompileAnalysis, testArgs: Seq[String],
-                          options: => Seq[TestOption]) = {
+	protected def testTasks(frameworks: Seq[TestFramework], classpath: PathFinder, analysis: CompileAnalysis, options: => Seq[TestOption]) =
+	{
 		import scala.collection.mutable.HashSet
+		import scala.collection.mutable.Map
 
-			val testFilters = new ListBuffer[String => Boolean]
-			val excludeTestsSet = new HashSet[String]
-			val setup, cleanup = new ListBuffer[() => Option[String]]
-			val testListeners = new ListBuffer[TestReportListener]
+		val testFilters = new ListBuffer[String => Boolean]
+		val excludeTestsSet = new HashSet[String]
+		val setup, cleanup = new ListBuffer[() => Option[String]]
+		val testListeners = new ListBuffer[TestReportListener]
+		val testArgsByFramework = Map[TestFramework, ListBuffer[String]]()
+		def frameworkArgs(framework: TestFramework): ListBuffer[String] =
+			testArgsByFramework.getOrElseUpdate(framework, new ListBuffer[String])
 
-			for(option <- options)
+		for(option <- options)
+		{
+			option match
 			{
-				option match
-				{
-					case TestFilter(include) => testFilters += include
-					case ExcludeTests(exclude) => excludeTestsSet ++= exclude
-					case TestListeners(listeners) => testListeners ++= listeners
-					case TestSetup(setupFunction) => setup += setupFunction
-					case TestCleanup(cleanupFunction) => cleanup += cleanupFunction
-				}
+				case TestFilter(include) => testFilters += include
+				case ExcludeTests(exclude) => excludeTestsSet ++= exclude
+				case TestListeners(listeners) => testListeners ++= listeners
+				case TestSetup(setupFunction) => setup += setupFunction
+				case TestCleanup(cleanupFunction) => cleanup += cleanupFunction
+				/**
+					* There are two cases here.
+					* The first handles TestArguments in the project file, which
+					* might have a TestFramework specified.
+					* The second handles arguments to be applied to all test frameworks.
+					*   -- arguments from the project file that didnt have a framework specified
+					*   -- command line arguments (ex: test-only someClass -- someArg)
+					*      (currently, command line args must be passed to all frameworks)
+					*/
+				case TestArgument(Some(framework), args) => frameworkArgs(framework) ++= args
+				case TestArgument(None, args) => frameworks.foreach { framework => frameworkArgs(framework) ++= args.toList }
 			}
+		}
 
-			if(excludeTestsSet.size > 0 && log.atLevel(Level.Debug))
-			{
-				log.debug("Excluding tests: ")
-				excludeTestsSet.foreach(test => log.debug("\t" + test))
-			}
-			def includeTest(test: TestDefinition) = !excludeTestsSet.contains(test.testClassName) && testFilters.forall(filter => filter(test.testClassName))
-			val tests = HashSet.empty[TestDefinition] ++ analysis.allTests.filter(includeTest)
-			TestFramework.testTasks(frameworks, classpath.get, buildScalaInstance.loader, tests.toSeq, log, testListeners.readOnly, false, setup.readOnly, cleanup.readOnly, testArgs)
+		if(excludeTestsSet.size > 0 && log.atLevel(Level.Debug))
+		{
+			log.debug("Excluding tests: ")
+			excludeTestsSet.foreach(test => log.debug("\t" + test))
+		}
+		def includeTest(test: TestDefinition) = !excludeTestsSet.contains(test.testClassName) && testFilters.forall(filter => filter(test.testClassName))
+		val tests = HashSet.empty[TestDefinition] ++ analysis.allTests.filter(includeTest)
+		TestFramework.testTasks(frameworks, classpath.get, buildScalaInstance.loader, tests.toSeq, log,
+			testListeners.readOnly, false, setup.readOnly, cleanup.readOnly, testArgsByFramework)
 	}
 	private def flatten[T](i: Iterable[Iterable[T]]) = i.flatMap(x => x)
 
-	protected def testQuickMethod(testAnalysis: CompileAnalysis, options: => Seq[TestOption])(toRun: (Seq[String],Seq[TestOption]) => Task) = {
+	protected def testQuickMethod(testAnalysis: CompileAnalysis, options: => Seq[TestOption])(toRun: (Seq[TestOption]) => Task) = {
     val analysis = testAnalysis.allTests.map(_.testClassName).toList
-		multiTask(analysis) { (args,includeFunction) => {
-			  toRun(args, TestFilter(includeFunction) :: options.toList)
-      }
+		multiTask(analysis) { (args, includeFunction) =>
+			  toRun(TestArgument(args:_*) :: TestFilter(includeFunction) :: options.toList)
 		}
   }
 
@@ -351,7 +372,7 @@ object ScalaProject
 }
 trait MultiTaskProject extends Project
 {
-	def multiTask(allTests: => List[String])(run: (List[String], (String => Boolean)) => Task): MethodTask = {
+	def multiTask(allTests: => List[String])(run: (Seq[String], String => Boolean) => Task): MethodTask = {
 
 		task { tests =>
 

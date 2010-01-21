@@ -34,6 +34,7 @@ final class TestRunner(framework: Framework, loader: ClassLoader, listeners: Seq
 	private[this] val delegate = framework.testRunner(loader, listeners.flatMap(_.contentLogger).toArray)
 	final def run(testDefinition: TestDefinition, args: Seq[String]): Result.Value =
 	{
+		log.debug("Running " + testDefinition + " with arguments " + args.mkString(", "))
 		val testClass = testDefinition.testClassName
 		def runTest() =
 		{
@@ -87,28 +88,34 @@ object TestFramework
 	private[sbt] def safeForeach[T](it: Iterable[T], log: Logger)(f: T => Unit): Unit =
 		it.foreach(i => Control.trapAndLog(log){ f(i) } )
 
-		import scala.collection.{Map, Set}
-	
+		import scala.collection.{immutable, Map, Set}
+
 	def testTasks(frameworks: Seq[TestFramework],
-                classpath: Iterable[Path],
-                scalaLoader: ClassLoader,
-                tests: Seq[TestDefinition],
-                log: Logger,
-		            listeners: Seq[TestReportListener],
-                endErrorsEnabled: Boolean,
-                setup: Iterable[() => Option[String]],
-		            cleanup: Iterable[() => Option[String]],
-                testArgs: Seq[String]): (Iterable[NamedTestTask], Iterable[NamedTestTask], Iterable[NamedTestTask]) =
+		classpath: Iterable[Path],
+		scalaLoader: ClassLoader,
+		tests: Seq[TestDefinition],
+		log: Logger,
+		listeners: Seq[TestReportListener],
+		endErrorsEnabled: Boolean,
+		setup: Iterable[() => Option[String]],
+		cleanup: Iterable[() => Option[String]],
+		testArgsByFramework: Map[TestFramework, Seq[String]]):
+			(Iterable[NamedTestTask], Iterable[NamedTestTask], Iterable[NamedTestTask]) =
 	{
 		val loader = createTestLoader(classpath, scalaLoader)
-		val rawFrameworks = frameworks.flatMap(_.create(loader, log))
-		val mappedTests = testMap(rawFrameworks, tests)
+		val arguments = immutable.Map() ++
+			( for(framework <- frameworks; created <- framework.create(loader, log)) yield
+				(created, testArgsByFramework.getOrElse(framework, Nil)) )
+
+		val mappedTests = testMap(arguments.keys.toList, tests, arguments)
 		if(mappedTests.isEmpty)
 			(new NamedTestTask(TestStartName, None) :: Nil, Nil, new NamedTestTask(TestFinishName, { log.info("No tests to run."); None }) :: Nil )
 		else
-			createTestTasks(loader, mappedTests, log, listeners, endErrorsEnabled, setup, cleanup, testArgs)
+			createTestTasks(loader, mappedTests, log, listeners, endErrorsEnabled, setup, cleanup)
 	}
-	private def testMap(frameworks: Seq[Framework], tests: Seq[TestDefinition]): Map[Framework, Set[TestDefinition]] =
+
+	private def testMap(frameworks: Seq[Framework], tests: Seq[TestDefinition], args: Map[Framework, Seq[String]]):
+		immutable.Map[Framework, (Set[TestDefinition], Seq[String])] =
 	{
 		import scala.collection.mutable.{HashMap, HashSet, Set}
 		val map = new HashMap[Framework, Set[TestDefinition]]
@@ -127,14 +134,14 @@ object TestFramework
 		}
 		if(!frameworks.isEmpty)
 			assignTests()
-		wrap.Wrappers.readOnly(map)
+		(immutable.Map() ++ map) transform { (framework, tests) => (tests, args(framework)) }
 	}
 	private def createTasks(work: Iterable[() => Option[String]], baseName: String) =
 		work.toList.zipWithIndex.map{ case (work, index) => new NamedTestTask(baseName + " " + (index+1), work()) }
 		
-	private def createTestTasks(loader: ClassLoader, tests: Map[Framework, Set[TestDefinition]], log: Logger,
+	private def createTestTasks(loader: ClassLoader, tests: Map[Framework, (Set[TestDefinition], Seq[String])], log: Logger,
 		listeners: Seq[TestReportListener], endErrorsEnabled: Boolean, setup: Iterable[() => Option[String]],
-		cleanup: Iterable[() => Option[String]], testArgs: Seq[String]) =
+		cleanup: Iterable[() => Option[String]]) =
 	{
 		val testsListeners = listeners.filter(_.isInstanceOf[TestsListener]).map(_.asInstanceOf[TestsListener])
 		def foreachListenerSafe(f: TestsListener => Unit): Unit = safeForeach(testsListeners, log)(f)
@@ -148,7 +155,7 @@ object TestFramework
 		}
 		val startTask = new NamedTestTask(TestStartName, {foreachListenerSafe(_.doInit); None}) :: createTasks(setup, "Test setup")
 		val testTasks =
-			tests flatMap { case (framework, testDefinitions) =>
+			tests flatMap { case (framework, (testDefinitions, testArgs)) =>
 			
 					val runner = new TestRunner(framework, loader, listeners, log)
 					for(testDefinition <- testDefinitions) yield

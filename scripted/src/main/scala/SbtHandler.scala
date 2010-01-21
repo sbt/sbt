@@ -11,7 +11,7 @@ final class SbtHandler(directory: File, log: Logger, server: IPC.Server) extends
 	def initialState = newRemote
 	def apply(command: String, arguments: List[String], p: Process): Process =
 	{
-		send((command :: arguments).mkString(" "))
+		send((command :: arguments.map(escape)).mkString(" "))
 		receive(command + " failed")
 		p
 	}
@@ -38,5 +38,9 @@ final class SbtHandler(directory: File, log: Logger, server: IPC.Server) extends
 		catch { case e: java.net.SocketException => error("Remote sbt initialization failed") }
 		p
 	}
+	// if the argument contains spaces, enclose it in quotes, quoting backslashes and quotes
+	def escape(argument: String) =
+		if(argument.contains(" ")) "\"" + argument.replaceAll(q("""\"""), """\\""").replaceAll(q("\""), "\\\"") + "\"" else argument
+	def q(s: String) = java.util.regex.Pattern.quote(s)
 //		Process("java" :: "-classpath" :: classpath.map(_.getAbsolutePath).mkString(File.pathSeparator) :: "xsbt.boot.Boot" :: ( "<" + server.port) :: Nil) run log
 }
