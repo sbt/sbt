@@ -16,6 +16,22 @@ trait Tracked extends NotNull
 	/** Clears the cache. If also cleaning, 'clean' should be called first as it might require information from the cache.*/
 	def clear: Task[Unit]
 }
+class Timestamp(val cacheFile: File) extends Tracked
+{
+	val clean = Clean(cacheFile)
+	def clear = Task.empty
+	def apply[T](f: Long => Task[T]): Task[T] =
+	{
+		val getTimestamp = Task { readTimestamp }
+		getTimestamp bind f map { result =>
+			FileUtilities.write(cacheFile, System.currentTimeMillis.toString)
+			result
+		}
+	}
+	def readTimestamp: Long =
+		try { FileUtilities.read(cacheFile).toLong }
+		catch { case _: NumberFormatException | _: java.io.FileNotFoundException => 0 }
+}
 object Clean
 {
 	def apply(src: Task[Set[File]]): Task[Unit] = src map FileUtilities.delete
