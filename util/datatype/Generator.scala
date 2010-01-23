@@ -3,6 +3,32 @@ package xsbt.api
 import java.io.File
 import xsbt.FileUtilities
 
+import Generator._
+
+abstract class GeneratorBase(val basePkgName: String, val baseDirectory: File) extends NotNull
+{
+	def writeDefinitions(ds: Iterable[Definition]) = Generator.writeDefinitions(ds)(writeDefinition)
+	def writeDefinition(d: Definition) = d match { case e: EnumDef => writeEnum(e); case c: ClassDef => writeClass(c) }
+	def writeEnum(e: EnumDef)
+	{
+		val content =
+			"public enum " + e.name + " {" +
+				e.members.mkString("\n\t", ",\n\t", "\n") +
+			"}"
+		writeSource(e.name, basePkgName, content)
+	}
+	def writeClass(c: ClassDef): Unit
+
+	def writeSource(name: String, pkgName: String, content: String)
+	{
+		import Paths._
+		val file =baseDirectory / packagePath(pkgName) / (name+ ".java")
+		file.getParentFile.mkdirs()
+		FileUtilities.write(file, "package " + pkgName + ";\n\n" + content)
+	}
+	private def packagePath(pkgName: String) = pkgName.replace('.', File.separatorChar)
+}
+
 /** Creates immutable datatype classes in Java from the intermediate Definition representation.
 *
 * A ClassDef is written as a class with an optional parent class.  The class has a single constructor with
@@ -15,30 +41,9 @@ import xsbt.FileUtilities
 *
 *.@param baseDirectory output directory for sources
 * @param pkgName package that classes will be defined in*/
-class Generator(pkgName: String, baseDirectory: File)
+class ImmutableGenerator(pkgName: String, baseDir: File) extends GeneratorBase(pkgName, baseDir)
 {
-	def writeDefinitions(ds: Iterable[Definition]) =
-	{
-		val (_, duplicates) =
-			( (Set[String](), Set[String]()) /: ds.map(_.name)) {
-				case ((nameSet, duplicates), name) =>
-					if(nameSet.contains(name)) (nameSet, duplicates + name) else (nameSet + name, duplicates)
-			}
-		if(duplicates.isEmpty)
-			ds.foreach(writeDefinition)
-		else
-			error("Duplicate names:\n\t" + duplicates.mkString("\n\t"))
-	}
-	def writeDefinition(d: Definition) = d match { case e: EnumDef => write(e); case c: ClassDef => write(c) }
-	def write(e: EnumDef)
-	{
-		val content =
-			"public enum " + e.name + " {" +
-				e.members.mkString("\n\t", ",\n\t", "\n") +
-			"}"
-		writeSource(e.name, content)
-	}
-	def write(c: ClassDef): Unit = writeSource(c.name, classContent(c))
+	def writeClass(c: ClassDef): Unit = writeSource(c.name, basePkgName, classContent(c))
 	def classContent(c: ClassDef): String =
 	{
 		val hasParent = c.parent.isDefined
@@ -53,8 +58,6 @@ class Generator(pkgName: String, baseDirectory: File)
 			val inherited = c.inheritedMembers
 			if(inherited.isEmpty) "" else  "super(" + inherited.map(_.name).mkString(", ") + ");\n\t\t"
 		}
-		val parametersString = if(allMembers.isEmpty) "\"\"" else allMembers.map(m => fieldToString(m.name, m.single)).mkString(" + \", \" + ")
-		val toStringMethod = method("public", "String", "toString", "", "\"" + c.name + "(\" + " + parametersString + "+ \")\"")
 
 		val constructor = "public " + c.name + "("  + parameters.mkString(", ") + ")\n\t" +
 		"{\n\t\t" +
@@ -67,23 +70,82 @@ class Generator(pkgName: String, baseDirectory: File)
 		"{\n\t" +
 			constructor + "\n\t" + 
 			(fields ++ accessors).mkString("\n\t") + "\n\t" +
-			toStringMethod + "\n\t" +
-		"}"
+			toStringMethod(c) + "\n" +
+		"}\n"
 	}
+
+}
+class MutableGenerator(pkgName: String, baseDir: File) extends GeneratorBase(pkgName, baseDir)
+{
+	def writeClass(c: ClassDef): Unit =
+	{
+		writeSource(c.name, basePkgName, interfaceContent(c))
+		writeSource(implName(c.name), basePkgName + ".mutable", implContent(c))
+	}
+	def interfaceContent(c: ClassDef): String =
+	{
+		val normalizedMembers = c.members.map(normalize)
+		val getters = normalizedMembers.map(m => "public " + m.asJavaDeclaration + "();")
+		val setters = normalizedMembers.map(m => "public void " + m.name +  "(" + m.javaType + " newValue);")
+		val extendsPhrase = c.parent.map(_.name).map(" extends " + _).getOrElse("")
+
+		("public interface " + c.name + extendsPhrase + "\n" +
+		"{\n\t" +
+			(setters ++ getters).mkString("\n\t") + "\n" +
+		"}\n")
+	}
+	def implContent(c: ClassDef): String =
+	{
+		val normalizedMembers = c.members.map(normalize)
+		val fields = normalizedMembers.map(m => "private " + m.asJavaDeclaration + ";")
+		val getters = normalizedMembers.map(m => "public final " + m.asJavaDeclaration + "()\n\t{\n\t\treturn " + m.name + ";\n\t}")
+		val setters = normalizedMembers.map(m => "public final void " + m.name + "(" + m.javaType + " newValue)\n\t{\n\t\t" + m.name + " = newValue;\n\t}")
+		val extendsClass = c.parent.map(p => implName(p.name))
+		val serializable = if(c.parent.isDefined) Nil else "java.io.Serializable" :: Nil
+		val implements = c.name :: serializable
+		val extendsPhrase = extendsClass.map(" extends " + _).getOrElse("") + " implements " + implements.mkString(", ")
+
+		("import java.util.Arrays;\n" +
+		"import java.util.List;\n" +
+		"import " + pkgName + ".*;\n\n" +
+		"public class " + implName(c.name) + extendsPhrase + "\n" +
+		"{\n\t" +
+			(fields ++ getters ++ setters).mkString("\n\t") + "\n\t" +
+			toStringMethod(c) + "\n" +
+		"}\n")
+	}
+	
+}
+object Generator
+{
+	def methodSignature(modifiers: String, returnType: String, name: String, parameters: String) =
+		modifiers + " " + returnType + " " + name + "(" + parameters + ")"
 	def method(modifiers: String, returnType: String, name: String, parameters: String, content: String) =
-		modifiers + " " + returnType + " " + name + "(" + parameters + ")\n\t{\n\t\treturn " + content + ";\n\t}"
+		methodSignature(modifiers, returnType, name, parameters) + "\n\t{\n\t\treturn " + content + ";\n\t}"
 	def fieldToString(name: String, single: Boolean) = "\"" + name + ": \" + " + fieldString(name + "()", single)
 	def fieldString(arg: String, single: Boolean) = if(single) arg else "Arrays.toString(" + arg + ")"
 	def normalize(m: MemberDef): MemberDef =
 		m.mapType(tpe => if(primitives(tpe.toLowerCase)) tpe.toLowerCase else tpe)
-
-	def writeSource(name: String, content: String)
-	{
-		import Paths._
-		val file =baseDirectory / packagePath / (name+ ".java")
-		file.getParentFile.mkdirs()
-		FileUtilities.write(file, "package " + pkgName + ";\n\n" + content)
-	}
-	private def packagePath = pkgName.replace('.', File.separatorChar)
 	private val primitives = Set("int", "boolean", "float", "long", "short", "byte", "char", "double")
+
+	def toStringMethod(c: ClassDef): String =
+	{
+		val allMembers = c.allMembers.map(normalize)
+		val parametersString = if(allMembers.isEmpty) "\"\"" else allMembers.map(m => fieldToString(m.name, m.single)).mkString(" + \", \" + ")
+		method("public", "String", "toString", "", "\"" + c.name + "(\" + " + parametersString + "+ \")\"")
+	}
+
+	def writeDefinitions(ds: Iterable[Definition])(writeDefinition: Definition => Unit)
+	{
+		val (_, duplicates) =
+			( (Set[String](), Set[String]()) /: ds.map(_.name)) {
+				case ((nameSet, duplicates), name) =>
+					if(nameSet.contains(name)) (nameSet, duplicates + name) else (nameSet + name, duplicates)
+			}
+		if(duplicates.isEmpty)
+			ds.foreach(writeDefinition)
+		else
+			error("Duplicate names:\n\t" + duplicates.mkString("\n\t"))
+	}
+	def implName(name: String) = name + "0"
 }

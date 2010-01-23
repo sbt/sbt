@@ -1,0 +1,68 @@
+Source
+	packages : Package*
+	definitions: Definition*
+
+Package
+	name: String
+
+Access
+	Public
+	Qualified
+		qualifier: Qualifier
+		Protected
+		Private
+		Pkg
+
+Qualifier
+	Unqualified
+	ThisQualifier
+	IdQualifier
+		value: String
+
+Modifiers
+	isAbstract: Boolean
+	isDeferred: Boolean
+	isOverride: Boolean
+	isFinal: Boolean
+	isSealed: Boolean
+	isImplicit: Boolean
+	isLazy: Boolean
+	isSynthetic: Boolean
+
+ParameterList
+	parameters: MethodParameter*
+	isImplicit: Boolean
+MethodParameter
+	name: String
+	tpe: Type
+	hasDefault: Boolean
+	modifier: ParameterModifier
+
+TypeParameter
+	id: Int
+	annotations: Annotation*
+	typeParameters : TypeParameter*
+	variance: Variance
+	lowerBound: Type
+	upperBound: Type
+
+Annotation
+	base: SimpleType
+	arguments: AnnotationArgument*
+AnnotationArgument
+	name: String
+	value: String
+
+enum Variance : Contravariant, Covariant, Invariant
+enum ParameterModifier : Repeated, Plain, ByName
+enum DefinitionType : Trait, ClassDef, Module, PackageModule
+
+Path
+	components: PathComponent*
+
+PathComponent
+	Super
+		qualifier: Path
+	This
+	Id
+		id: String

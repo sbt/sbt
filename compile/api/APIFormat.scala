@@ -29,6 +29,7 @@ object APIFormat
 			try { objIn.readObject().asInstanceOf[Source] }
 			finally { objIn.close() }
 		}
-		catch { case _: java.io.EOFException | _: java.io.InvalidClassException => new xsbti.api.Source(Array(), Array())}
+		catch { case _: java.io.EOFException | _: java.io.InvalidClassException => emptySource}
 	}
+	def emptySource: Source = new Source(Array(), Array())
 }
