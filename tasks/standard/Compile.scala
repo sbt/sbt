@@ -59,6 +59,7 @@ class AggressiveCompile(val cacheDirectory: File, val compilerTask: Task[Analyzi
 	def apply(sourceChanges: ChangeReport[File], classpathChanges: ChangeReport[File], outputDirectory: File, options: Seq[String]): Task[Set[File]] =
 		compilerTask bind { compiler =>
 			tracking { tracker =>
+			timestamp { tstamp =>
 				Task {
 					log.info("Removed sources: \n\t" + sourceChanges.removed.mkString("\n\t"))
 					log.info("Added sources: \n\t" + sourceChanges.added.mkString("\n\t"))
@@ -68,22 +69,29 @@ class AggressiveCompile(val cacheDirectory: File, val compilerTask: Task[Analyzi
 					val readTracker = tracker.read
 					// directories that are no longer on the classpath, not necessarily removed from the filesystem
 					val removedDirectories = classpathChanges.removed.filter(_.isDirectory)
+					log.info("Directories no longer on classpath:\n\t" + removedDirectories.mkString("\n\t"))
 
-					def uptodate(time: Long, files: Iterable[File]) = files.forall(_.lastModified <= time)
+					def uptodate(time: Long, files: Iterable[File]) = files.forall(_.lastModified < time)
 					def isOutofdate(file: File, related: => Iterable[File]) = !file.exists || !uptodate(file.lastModified, related)
+					def invalidatesUses(file: File) = !file.exists || file.lastModified > tstamp
 					def isProductOutofdate(product: File) = isOutofdate(product, readTracker.sources(product))
 					def inRemovedDirectory(file: File) = removedDirectories.exists(dir => FileUtilities.relativize(dir, file).isDefined)
-					def isUsedOutofdate(file: File) = classpathChanges.modified(file) || inRemovedDirectory(file) || isOutofdate(file, readTracker.usedBy(file))
+					def isUsedOutofdate(file: File) = classpathChanges.modified(file) || inRemovedDirectory(file) || invalidatesUses(file)
 
 					// these are products that no longer exist or are older than the sources that produced them
 					val outofdateProducts = readTracker.allProducts.filter(isProductOutofdate)
+					log.info("Out of date products:\n\t" + outofdateProducts.mkString("\n\t"))
 					// used classes and jars that a) no longer exist b) are no longer on the classpath or c) are newer than the sources that use them
 					val outofdateUses = readTracker.allUsed.filter(isUsedOutofdate)
+					log.info("Out of date binaries:\n\t" + outofdateUses.mkString("\n\t"))
 					
 					val modifiedSources = sourceChanges.modified
 					val invalidatedByClasspath = outofdateUses.flatMap(readTracker.usedBy)
+					log.info("Invalidated by classpath changes:\n\t" + invalidatedByClasspath.mkString("\n\t"))
 					val invalidatedByRemovedSrc = sourceChanges.removed.flatMap(readTracker.dependsOn)
+					log.info("Invalidated by removed sources:\n\t" + invalidatedByRemovedSrc.mkString("\n\t"))
 					val productsOutofdate = outofdateProducts.flatMap(readTracker.sources)
+					log.info("Invalidated by out of date products:\n\t" + productsOutofdate.mkString("\n\t"))
 
 					val rawInvalidatedSources = modifiedSources ++ invalidatedByClasspath ++ invalidatedByRemovedSrc ++ productsOutofdate
 					val invalidatedSources = scc(readTracker, rawInvalidatedSources)
@@ -96,7 +104,7 @@ class AggressiveCompile(val cacheDirectory: File, val compilerTask: Task[Analyzi
 					tracker.pending(sources)
 					FileUtilities.delete(invalidatedProducts)
 
-					log.info("Initially invalidated sources:\n\t" + sources.mkString("\n\t"))
+					log.info("All initially invalidated sources:\n\t" + sources.mkString("\n\t"))
 					if(!sources.isEmpty)
 					{
 						val newAPIMap = doCompile(sources, classpath, outputDirectory, options, tracker, compiler, log)
@@ -115,7 +123,7 @@ class AggressiveCompile(val cacheDirectory: File, val compilerTask: Task[Analyzi
 					}
 					Set() ++ tracker.read.allProducts
 				}
-			}
+			}}
 		}
 	def products(tracker: ReadTracking[File], srcs: Set[File]): Set[File] = srcs.flatMap(tracker.products)
 
@@ -129,7 +137,8 @@ class AggressiveCompile(val cacheDirectory: File, val compilerTask: Task[Analyzi
 
 		import sbinary.DefaultProtocol.FileFormat
 	val tracking = new DependencyTracked(cacheDirectory, true, (files: File) => FileUtilities.delete(files))
-	def tracked = Seq(tracking)
+	val timestamp = new Timestamp(new File(cacheDirectory,"timestamp"))
+	def tracked = Seq(tracking, timestamp)
 
 	def sameAPI[T](a: scala.collection.Map[T, Source], b: scala.collection.Map[T, Source], t: T): Boolean = sameAPI(a.get(t), b.get(t))
 	def sameAPI(a: Option[Source], b: Option[Source]): Boolean =

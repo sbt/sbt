@@ -77,7 +77,6 @@ private class SameAPI(a: Source, b: Source)
 		//println("Comparing \n\t" + show(a) + "\nagainst\n\t" + show(b))
 		def sameDefs(a: List[Definition], b: List[Definition]): Boolean =
 		{
-			println("\t " + a.size + " to " + b.size + "")
 			a match
 			{
 				case adef :: atail =>
