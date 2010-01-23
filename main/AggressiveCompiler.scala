@@ -28,8 +28,8 @@ class AggressiveCompiler extends xsbti.AppMain
 		val classpath = outputDirectory map { _ ++ (cwd **  "*.jar") }
 		val cacheDirectory = cwd / "target" / "cache"
 		val options = Task(args.tail.toSeq)
-		val log = new ConsoleLogger with CompileLogger with IvyLogger { def verbose(msg: => String) = debug(msg) }
-		val componentManager = new ComponentManager(launcher.globalLock, app.components, log)
+		val log = new ConsoleLogger with CompileLogger with sbt.IvyLogger { def verbose(msg: => String) = debug(msg) }
+		val componentManager = new sbt.ComponentManager(launcher.globalLock, app.components, log)
 		val compiler = Task(new AnalyzingCompiler(ScalaInstance(args.head, launcher), componentManager))
 		val compileTask = AggressiveCompile(sources, classpath, outputDirectory, options, cacheDirectory, compiler, log)
 		

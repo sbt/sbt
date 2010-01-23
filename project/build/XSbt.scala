@@ -67,6 +67,7 @@ class XSbt(info: ProjectInfo) extends ParentProject(info)
 	//run in parallel
 	override def parallelExecution = false
 	def jlineRev = "0.9.94"
+	def jlineDep = "jline" % "jline" % jlineRev intransitive()
 
 	override def managedStyle = ManagedStyle.Ivy
 	val publishTo = Resolver.file("test-repo", new File("/var/dbwww/repo/"))
@@ -74,7 +75,7 @@ class XSbt(info: ProjectInfo) extends ParentProject(info)
 		/* Subproject configurations*/
 	class LaunchProject(info: ProjectInfo) extends Base(info) with TestWithIO with TestDependencies with ProguardLaunch
 	{
-		val jline = "jline" % "jline" % jlineRev intransitive()
+		val jline = jlineDep
 		val ivy = "org.apache.ivy" % "ivy" % "2.0.0"
 		def rawJarPath = jarPath
 		override final def crossScalaVersions = Set.empty // don't need to cross-build, since the distributed jar is standalone (proguard)
@@ -146,13 +147,21 @@ class XSbt(info: ProjectInfo) extends ParentProject(info)
 		def generatedBasePath = srcManagedPath / "main" / "java"
 		/** Files that define the datatypes.*/
 		def apiDefinitionPaths: PathFinder = "definition"
-		def apiDefinitions = apiDefinitionPaths.get.toList.map(_.absolutePath)
 		/** Delete up the generated sources*/
 		lazy val cleanManagedSrc = cleanTask(srcManagedPath)
 		override def cleanAction = super.cleanAction dependsOn(cleanManagedSrc)
 		/** Runs the generator compiled by 'compile', putting the classes in src_managed and processing the definitions 'apiDefinitions'. */
 		lazy val generateSource = generateSourceAction dependsOn(cleanManagedSrc, datatypeSub.compile)
-		def generateSourceAction = runTask(datatypeSub.getMainClass(true), datatypeSub.runClasspath, "xsbti.api" :: generatedBasePath.absolutePath :: apiDefinitions)
+		def generateSourceTask(immutable: Boolean, pkg: String, apiDefinitions: PathFinder): Task =
+		{
+			val m = if(immutable) "immutable" else "mutable"
+			generateSourceTask(m :: pkg :: generatedBasePath.absolutePath :: apiDefinitions.get.toList.map(_.absolutePath))
+		}
+		def generateSourceTask(args: List[String]): Task =
+			runTask(datatypeSub.getMainClass(true), datatypeSub.runClasspath, args)
+		def generateSourceAction =
+			//generateSourceTask(false, "xsbti.api", "definition" +++ "type") &&
+			generateSourceTask(true, "xsbti.api", "other" +++ "definition" +++ "type")
 		/** compiles the generated sources */
 		override def compileAction = super.compileAction dependsOn(generateSource)
 	}
@@ -169,6 +178,8 @@ class XSbt(info: ProjectInfo) extends ParentProject(info)
 		def xTestClasspath =  projectClasspath(Configurations.Test)
 		def cID = "compiler-interface-src"
 		override def componentID = Some(cID)
+		// necessary because jline is not distributed with 2.8 and we will get a compile error 
+		//val jline = jlineDep artifacts(Artifact("jline", Map("e:component" -> cID)))
 		override def ivyXML =
 			<dependencies>
 				<dependency org="jline" name="jline" rev={jlineRev} transitive="false">

@@ -1,0 +1,27 @@
+
+Type
+	SimpleType
+		Projection
+			prefix : SimpleType
+			id : String
+		ParameterRef
+			id: Int
+		Singleton
+			path: Path
+		EmptyType
+		Parameterized
+			baseType : SimpleType
+			typeArguments: Type*
+	Annotated
+		baseType : SimpleType
+		annotations : Annotation*
+	Structure
+		parents : Type*
+		declared: Definition*
+		inherited: Definition*
+	Existential
+		baseType : Type
+		clause: TypeParameter*
+	Polymorphic
+		baseType: Type
+		parameters: TypeParameter*

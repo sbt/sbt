@@ -66,16 +66,26 @@ class AggressiveCompile(val cacheDirectory: File, val compilerTask: Task[Analyzi
 
 					val classpath = classpathChanges.checked
 					val readTracker = tracker.read
+					// directories that are no longer on the classpath, not necessarily removed from the filesystem
+					val removedDirectories = classpathChanges.removed.filter(_.isDirectory)
 
 					def uptodate(time: Long, files: Iterable[File]) = files.forall(_.lastModified <= time)
-					def isProductOutofdate(product: File) = !product.exists || !uptodate(product.lastModified, readTracker.sources(product))
-					val outofdateProducts = readTracker.allProducts.filter(isProductOutofdate)
+					def isOutofdate(file: File, related: => Iterable[File]) = !file.exists || !uptodate(file.lastModified, related)
+					def isProductOutofdate(product: File) = isOutofdate(product, readTracker.sources(product))
+					def inRemovedDirectory(file: File) = removedDirectories.exists(dir => FileUtilities.relativize(dir, file).isDefined)
+					def isUsedOutofdate(file: File) = classpathChanges.modified(file) || inRemovedDirectory(file) || isOutofdate(file, readTracker.usedBy(file))
 
-					val rawInvalidatedSources = 
-						classpathChanges.modified.flatMap(readTracker.usedBy) ++
-						sourceChanges.removed.flatMap(readTracker.dependsOn) ++
-						sourceChanges.modified ++
-						outofdateProducts.flatMap(readTracker.sources)
+					// these are products that no longer exist or are older than the sources that produced them
+					val outofdateProducts = readTracker.allProducts.filter(isProductOutofdate)
+					// used classes and jars that a) no longer exist b) are no longer on the classpath or c) are newer than the sources that use them
+					val outofdateUses = readTracker.allUsed.filter(isUsedOutofdate)
+					
+					val modifiedSources = sourceChanges.modified
+					val invalidatedByClasspath = outofdateUses.flatMap(readTracker.usedBy)
+					val invalidatedByRemovedSrc = sourceChanges.removed.flatMap(readTracker.dependsOn)
+					val productsOutofdate = outofdateProducts.flatMap(readTracker.sources)
+
+					val rawInvalidatedSources = modifiedSources ++ invalidatedByClasspath ++ invalidatedByRemovedSrc ++ productsOutofdate
 					val invalidatedSources = scc(readTracker, rawInvalidatedSources)
 					val sources = invalidatedSources.filter(_.exists)
 					val previousAPIMap = Map() ++ sources.map { src => (src, APIFormat.read(readTracker.tag(src))) }

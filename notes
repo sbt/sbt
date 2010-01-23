@@ -12,9 +12,9 @@ As usual:
  - Robust, flexible API
 
 ISSUES
- - Scala issue #2265: cannot use structural types or libraries that use structural types, or OOME: PermGen will occur.  Running/testing user code with structural types might also cause OOME, but is unlikely unless the Scala standard library or compiler uses structural types.
- - API: changing package name in access qualifier does not work: must be API phase that doesn't correctly extract the ID
-
+  - webapp: Jetty 7 + jsp
+ - java sources are not recompiled when jars change: possibly binary dependencies are not recorded?
+ 
 TODO
  - launcher interface versioning
  - allow comments in datatype definition file
@@ -22,8 +22,6 @@ TODO
  - have background triggered commands (~sync)
 
 update 0_6_Summary to mention different output directories.
-look at permgen in Josh's ScalaTest
-TrapExit handles System.exit(0) as nonzero exit code
 
 Task engine
 - method tasks will be normal tasks that pull the command line from a CommandLine task
