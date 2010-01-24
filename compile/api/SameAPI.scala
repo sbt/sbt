@@ -8,6 +8,27 @@ import xsbti.api._
 import Function.tupled
 import scala.collection.{immutable, mutable}
 
+object TopLevel
+{
+	class Changes(val newTypeNames: Set[String], val removedTypeNames: Set[String], val newValueNames: Set[String], val removedValueNames: Set[String])
+	/** Identifies removed and new top-level definitions by name. */
+	def nameChanges(a: Iterable[Source], b: Iterable[Source]): Changes =
+	{
+		def definitions(i: Iterable[Source]) = SameAPI.separateDefinitions(i.toSeq.flatMap( _.definitions ))
+		def names(s: Iterable[Definition]): Set[String] = Set() ++ s.map(_.name)
+		def changes(s: Set[String], t: Set[String]) = (s -- t, t -- s)
+
+		val (avalues, atypes) = definitions(a)
+		val (bvalues, btypes) = definitions(b)
+		
+		val (newTypes, removedTypes) = changes(names(atypes), names(btypes))
+		val (newValues, removedValues) = changes(names(avalues), names(bvalues))
+
+		new Changes(newTypes, removedTypes, newValues, removedValues)
+	}
+}
+
+/** Checks the API of two source files for equality.*/
 object SameAPI
 {
 	def apply(a: Source, b: Source) =
@@ -20,24 +41,54 @@ object SameAPI
 		println("\n=========== API #2 ================")
 		println(ShowAPI.show(b))
 		
-		val result = (new SameAPI(a,b)).check
+		val result = (new SameAPI(a,b, false)).check
 		val end = System.currentTimeMillis
 		println(" API comparison took: " + (end - start) / 1000.0 + " s")
 		result
 	}
+
+	def separateDefinitions(s: Seq[Definition]): (Seq[Definition], Seq[Definition]) =
+		s.toArray.partition(isValueDefinition)
+	def isValueDefinition(d: Definition): Boolean =
+		d match
+		{
+			case _: FieldLike | _: Def=> true
+			case c: ClassLike => isValue(c.definitionType)
+			case _ => false
+		}
+	def isValue(d: DefinitionType): Boolean =
+		d == DefinitionType.Module || d == DefinitionType.PackageModule
+	/** Puts the given definitions in a map according to their names.*/
+	def byName(s: Seq[Definition]): scala.collection.Map[String, List[Definition]] =
+	{
+		val map = new mutable.HashMap[String, List[Definition]]
+		for(d <- s; name = d.name)
+			map(name) = d :: map.getOrElse(name, Nil)
+		map.readOnly
+	}
 }
-private class SameAPI(a: Source, b: Source)
+/** Used to implement API equality.  All comparisons must be done between constructs in source files `a` and `b`.  For example, when doing:
+* `sameDefinitions(as, bs)`, `as` must be definitions from source file `a` and `bs` must be definitions from source file `b`.  This is in order
+* to properly handle type parameters, which must be computed for each source file and then referenced during comparison.
+*
+* If `includePrivate` is true, `private` and `private[this]` members are included in the comparison.  Otherwise, those members are excluded.
+*/
+private class SameAPI(a: Source, b: Source, includePrivate: Boolean)
 {
+	import SameAPI._
+	/** de Bruijn levels for type parameters in source `a`*/
 	private lazy val tagsA = TagTypeVariables(a)
+	/** de Bruijn levels for type parameters in source `a`*/
 	private lazy val tagsB = TagTypeVariables(b)
 	
 	def debug(flag: Boolean, msg: => String): Boolean =
 	{
-		if(!flag) println(msg)
+		//if(!flag) println(msg)
 		flag
 	}
 
-	lazy val check: Boolean =
+	/** Returns true if source `a` has the same API as source `b`.*/
+	def check: Boolean =
 	{
 		samePackages(a, b) &&
 		debug(sameDefinitions(a, b), "Definitions differed")
@@ -49,32 +100,34 @@ private class SameAPI(a: Source, b: Source)
 		Set() ++ s.packages.map(_.name)
 
 	def sameDefinitions(a: Source, b: Source): Boolean =
-		sameDefinitions(a.definitions, b.definitions)
-	def sameDefinitions(a: Seq[Definition], b: Seq[Definition]): Boolean =
+		sameDefinitions(a.definitions, b.definitions, true)
+	def sameDefinitions(a: Seq[Definition], b: Seq[Definition], topLevel: Boolean): Boolean =
 	{
-		val (avalues, atypes) = separateDefinitions(filterDefinitions(a))
-		val (bvalues, btypes) = separateDefinitions(filterDefinitions(b))
+		val (avalues, atypes) = separateDefinitions(filterDefinitions(a, topLevel))
+		val (bvalues, btypes) = separateDefinitions(filterDefinitions(b, topLevel))
 		debug(sameDefinitions(byName(avalues), byName(bvalues)), "Value definitions differed") &&
 		debug(sameDefinitions(byName(atypes), byName(btypes)), "Type definitions differed")
 	}
-	def separateDefinitions(s: Seq[Definition]): (Seq[Definition], Seq[Definition]) =
-		s.toArray.partition(isValueDefinition)
 	def sameDefinitions(a: scala.collection.Map[String, List[Definition]], b: scala.collection.Map[String, List[Definition]]): Boolean =
 		debug(sameStrings(a.keySet, b.keySet), "\tDefinition strings differed") && zippedEntries(a,b).forall(tupled(sameNamedDefinitions))
 
-	def filterDefinitions(d: Seq[Definition]) = d.filter(isNonPrivate)
+	/** Removes definitions that should not be considered for API equality.
+	* All top-level definitions are always considered: 'private' only means package-private.
+	* Other definitions are considered if they are not qualified with 'private[this]' or 'private'.*/
+	def filterDefinitions(d: Seq[Definition], topLevel: Boolean) = if(topLevel || includePrivate) d else d.filter(isNonPrivate)
 	def isNonPrivate(d: Definition): Boolean = isNonPrivate(d.access)
-	def isNonPrivate(a: Access): Boolean =
-		a match
+	/** Returns false if the `access` is `Private` and qualified, true otherwise.*/
+	def isNonPrivate(access: Access): Boolean =
+		access match
 		{
-			case p: Private if p.qualifier.isInstanceOf[IdQualifier] => false
+			case p: Private if !p.qualifier.isInstanceOf[IdQualifier] => false
 			case _ => true
 		}
 
+	/** Checks that the definitions in `a` are the same as those in `b`, ignoring order.
+	* Each list is assumed to have already been checked to have the same names (by `sameDefinitions`, for example).*/
 	def sameNamedDefinitions(a: List[Definition], b: List[Definition]): Boolean =
 	{
-		def show(x: List[Definition]) = x.map(DefaultShowAPI.apply).mkString("{\n\t", "\n\t", "\n}\n")
-		//println("Comparing \n\t" + show(a) + "\nagainst\n\t" + show(b))
 		def sameDefs(a: List[Definition], b: List[Definition]): Boolean =
 		{
 			a match
@@ -92,28 +145,10 @@ private class SameAPI(a: Source, b: Source)
 				case Nil => true
 			}
 		}
-		//if(a.length > 1) println("Comparing\n" + a.mkString("\n\t") + "\nagainst\n" + b.mkString("\n\t") + "\n\n")
 		debug((a.length == b.length), "\t\tLength differed for " + a.headOption.map(_.name).getOrElse("empty")) && sameDefs(a, b)
 	}
 
-	def isValueDefinition(d: Definition): Boolean =
-		d match
-		{
-			case _: FieldLike | _: Def=> true
-			case c: ClassLike => isValue(c.definitionType)
-			case _ => false
-		}
-	def isValue(d: DefinitionType): Boolean =
-		d == DefinitionType.Module || d == DefinitionType.PackageModule
-	def byName(s: Seq[Definition]): scala.collection.Map[String, List[Definition]] =
-	{
-		val map = new mutable.HashMap[String, List[Definition]]
-		for(d <- s; name = d.name)
-			map(name) = d :: map.getOrElse(name, Nil)
-		map.readOnly
-	}
-
-	// doesn't check name
+	/** Checks that the two definitions are the same, other than their name.*/
 	def sameDefinitionContent(a: Definition, b: Definition): Boolean =
 		//a.name == b.name &&
 		debug(sameAccess(a.access, b.access), "Access differed") &&
@@ -276,7 +311,7 @@ private class SameAPI(a: Source, b: Source)
 		sameMembers(a.inherited, b.inherited)
 
 	def sameMembers(a: Seq[Definition], b: Seq[Definition]): Boolean =
-		sameDefinitions(a, b)
+		sameDefinitions(a, b, false)
 
 	def sameSimpleType(a: SimpleType, b: SimpleType): Boolean =
 		(a, b) match

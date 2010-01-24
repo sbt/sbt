@@ -38,7 +38,7 @@ object ShowAPI
 	def concat[A](list: Seq[A], as: Show[A], sep: String): String = mapSeq(list, as).mkString(sep)
 	def commas[A](list: Seq[A], as: Show[A]): String = concat(list, as, ", ")
 	def spaced[A](list: Seq[A], as: Show[A]): String = concat(list, as, " ")
-	def lines[A](list: Seq[A], as: Show[A]): String = mapSeq(list, as).mkString("", "\n", "\n")
+	def lines[A](list: Seq[A], as: Show[A]): String = mapSeq(list, as).mkString("\n")
 	def mapSeq[A](list: Seq[A], as: Show[A]): Seq[String] = list.map(as.show)
 }
 
@@ -55,7 +55,7 @@ trait ShowBase
 		new Show[Variance] { def show(v: Variance) = v match { case Invariant => ""; case Covariant => "+"; case Contravariant => "-" } }
 	
 	implicit def showSource(implicit ps: Show[Package], ds: Show[Definition]): Show[Source] =
-		new Show[Source] { def show(a: Source) = lines(a.packages, ps) + lines(a.definitions, ds) }
+		new Show[Source] { def show(a: Source) = lines(a.packages, ps) + "\n" + lines(a.definitions, ds) }
 
 	implicit def showPackage: Show[Package] =
 		new Show[Package] { def show(pkg: Package) = "package " + pkg.name }
@@ -66,7 +66,7 @@ trait ShowBase
 			def show(a: Access) =
 				a match
 				{
-					case p: Public => "public"
+					case p: Public => ""
 					case q: Qualified => sq.show(q)
 				}
 			}
@@ -147,7 +147,8 @@ trait ShowDefinitions
 	def parameterizedDef(d: ParameterizedDefinition, label: String)(implicit acs: Show[Access], ms: Show[Modifiers], ans: Show[Annotation], tp: Show[Seq[TypeParameter]]): String =
 		definitionBase(d, label)(acs, ms, ans) + tp.show(d.typeParameters)
 	def definitionBase(d: Definition, label: String)(implicit acs: Show[Access], ms: Show[Modifiers], ans: Show[Annotation]): String =
-		spaced(d.annotations, ans) + " " + acs.show(d.access) + " " + ms.show(d.modifiers) + " " + label + " " + d.name
+		space(spaced(d.annotations, ans)) + space(acs.show(d.access)) + space(ms.show(d.modifiers)) + space(label) + d.name
+	def space(s: String) = if(s.isEmpty) s else s + " "
 }
 trait ShowDefinition
 {
@@ -209,7 +210,7 @@ trait ShowTypes
 	implicit def showStructure(implicit t: Show[Type], d: Show[Definition]): Show[Structure] =
 		new Show[Structure] {
 			def show(s: Structure) =
-				concat(s.parents, t, " with ") + "\n{\n\tDeclared:" + lines(s.declared, d) + "\n\tInherited:" + lines(s.inherited, d) + "\n}"
+				concat(s.parents, t, " with ") + "\n{\n  Declared:\n" + lines(s.declared, d) + "\n  Inherited:\n" + lines(s.inherited, d) + "\n}"
 		}
 	implicit def showAnnotated(implicit as: Show[Annotation], t: Show[SimpleType]): Show[Annotated] = 
 		new Show[Annotated] { def show(a: Annotated) = spaced(a.annotations, as) + " " + t.show(a.baseType) }
