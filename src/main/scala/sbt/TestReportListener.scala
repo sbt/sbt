@@ -73,8 +73,7 @@ class TestLogger(val log: TLogger) extends TestsListener
 	def testEvent(event: TestEvent): Unit = event.detail.foreach(count)
 	def endGroup(name: String, t: Throwable)
 	{
-		// log.trace(t) : need to add a trace method to org.scalatools.testing.Logger
-		try { log.getClass.getMethod("trace", classOf[Throwable]).invoke(log, t) } catch { case e: Exception => () }
+		log.trace(t)
 		log.error("Could not run test " + name + ": " + t.toString)
 	}
 	def endGroup(name: String, result: Result.Value) {}

@@ -211,7 +211,24 @@ trait BasicManagedProject extends ManagedProject with ReflectiveManagedProject w
 	/** The settings that represent inline declarations.  The default settings combines the information
 	* from 'ivyXML', 'projectID', 'repositories', ivyConfigurations, defaultConfiguration,
 	* ivyScala, and 'libraryDependencies' and does not typically need to be be overridden. */
-	def inlineSettings = new InlineConfiguration(projectID, libraryDependencies, ivyXML, ivyConfigurations, defaultConfiguration, ivyScala, ivyValidate)
+	def inlineSettings = new InlineConfiguration(projectID, withCompat, ivyXML, ivyConfigurations, defaultConfiguration, ivyScala, ivyValidate)
+	/** Library dependencies with extra dependencies for compatibility*/
+	private def withCompat =
+	{
+		val deps = libraryDependencies
+		deps ++ compatExtra(deps)
+	}
+	/** Determines extra libraries needed for compatibility.  Currently, this is the compatibility test framework. */
+	private def compatExtra(deps: Set[ModuleID]) = if(deps.exists(requiresCompat)) compatTestFramework else Nil
+	/** True if the given dependency requires the compatibility test framework. */
+	private def requiresCompat(m: ModuleID) =
+		(m.name == "scalacheck" && Set("1.5", "1.6").contains(m.revision)) ||
+		(m.name == "specs" && Set("1.6.0", "1.6.1").contains(m.revision)) ||
+		(m.name == "scalatest" && m.revision == "1.0")
+	/** Extra dependencies to add if a dependency on an older test framework (one released before the uniform test interface) is declared.
+	* This is the compatibility test framework by default.*/
+	def compatTestFramework = Set("org.scala-tools.sbt" %% "test-compat" % "0.4.0" % "test")
+	
 	def defaultModuleSettings: ModuleSettings =
 	{
 		val in = inlineSettings

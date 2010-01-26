@@ -18,6 +18,10 @@ object TestFrameworks
 	val ScalaTest = new TestFramework("org.scalatest.tools.ScalaTestFramework")
 	val Specs = new TestFramework("org.specs.runner.SpecsFramework")
 	val JUnit = new TestFramework("com.novocode.junit.JUnitFramework")
+	// These are compatibility frameworks included in the 'test-compat' library
+	val ScalaCheckCompat = new TestFramework("sbt.impl.ScalaCheckFramework")
+	val ScalaTestCompat = new TestFramework("sbt.impl.ScalaTestFramework")
+	val SpecsCompat = new TestFramework("sbt.impl.SpecsFramework")
 }
 
 class TestFramework(val implClassName: String) extends NotNull
