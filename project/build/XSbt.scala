@@ -106,6 +106,7 @@ class XSbt(info: ProjectInfo) extends ParentProject(info)
 	{
 		// these compilation options are useful for debugging caches and task composition
 		//override def compileOptions = super.compileOptions ++ List(Unchecked,ExplainTypes, CompileOption("-Xlog-implicits"))
+		val sbinary = "org.scala-tools.sbinary" %% "sbinary" % "0.3"
 	}
 	class Base(info: ProjectInfo) extends DefaultProject(info) with ManagedBase with Component
 	{
