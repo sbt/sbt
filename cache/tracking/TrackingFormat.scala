@@ -46,7 +46,7 @@ private object TrackingFormat
 	}
 	def trackingFormat[T](translateProducts: Boolean)(implicit tFormat: Format[T]): Format[DependencyTracking[T]] =
 		asProduct4((a: DMap[T],b: DMap[T],c: DMap[T], d:TagMap[T]) => new DefaultTracking(translateProducts)(a,b,c,d) : DependencyTracking[T]
-			)(dt => Some(dt.reverseDependencies, dt.reverseUses, dt.sourceMap, dt.tagMap))
+			)(dt => (dt.reverseDependencies, dt.reverseUses, dt.sourceMap, dt.tagMap))
 }
 
 private final class IndexMap[T] extends NotNull
