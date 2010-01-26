@@ -30,7 +30,7 @@ object SyncTest
 }
 object CompileTest
 {
-	def apply(dir: String, scalaVersion: String, options: Seq[String], supers: Set[String])
+	def apply(dir: String, scalaVersion: String, options: Seq[String])
 	{
 		def test()
 		{
@@ -41,7 +41,7 @@ object CompileTest
 			val classpath = Task( dir / "lib" * "*.jar" )
 			WithCompiler(scalaVersion) { (compiler, log) =>
 				temp { cacheDir => temp { outDir =>
-					val compile = new StandardCompile(sources, classpath, Task(outDir), Task(options), Task(supers), Task(compiler), cacheDir, log)
+						val compile = AggressiveCompile(sources, classpath, Task(outDir), Task(options), cacheDir, Task(compiler), log)
 						println("Result: " + TaskRunner(compile.task))
 						println("Result: " + TaskRunner(compile.task))
 						TaskRunner(compile.clean)

@@ -104,7 +104,7 @@ object Tag
 		import sbinary.{DefaultProtocol, Format, Operations}
 		import DefaultProtocol._
 	private implicit val subclassFormat: Format[DetectedSubclass] =
-		asProduct4(DetectedSubclass.apply)( ds => Some(ds.source, ds.subclassName, ds.superclassName, ds.isModule))
+		asProduct4(DetectedSubclass.apply)( ds => (ds.source, ds.subclassName, ds.superclassName, ds.isModule))
 	def toBytes(applications: List[String], subclasses: List[DetectedSubclass]) = CacheIO.toBytes((applications, subclasses))
 	def fromBytes(bytes: Array[Byte]) = CacheIO.fromBytes( ( List[String](), List[DetectedSubclass]() ) )(bytes)
 }

@@ -21,7 +21,7 @@ import core.sort.SortEngine
 import core.settings.IvySettings
 import plugins.matcher.{ExactPatternMatcher, PatternMatcher}
 import plugins.resolver.{ChainResolver, FileSystemResolver, IBiblioResolver, URLResolver}
-import util.{DefaultMessageLogger, Message}
+import util.{DefaultMessageLogger, Message, MessageLoggerEngine}
 
 import BootConfiguration._
 
@@ -49,7 +49,13 @@ final class Update(config: UpdateConfiguration)
 		settings.setVariable("scala", scalaVersion)
 		settings
 	}
-	private lazy val ivy = Ivy.newInstance(settings)
+	private lazy val ivy =
+	{
+		val ivy = new Ivy() { private val loggerEngine = new SbtMessageLoggerEngine; override def getLoggerEngine = loggerEngine }
+		ivy.setSettings(settings)
+		ivy.bind()
+		ivy
+	}
 
 	/** The main entry point of this class for use by the Update module.  It runs Ivy */
 	def apply(target: UpdateTarget): Boolean =
@@ -277,16 +283,32 @@ final class Update(config: UpdateConfiguration)
 		System.out.println(msg)
 	}
 }
+
+import SbtIvyLogger.{acceptError, acceptMessage}
+
 /** A custom logger for Ivy to ignore the messages about not finding classes
-* intentionally filtered using proguard. */
+* intentionally filtered using proguard and about 'unknown resolver'. */
 private final class SbtIvyLogger(logWriter: PrintWriter) extends DefaultMessageLogger(Message.MSG_INFO) with NotNull
 {
-	private val ignorePrefix = "impossible to define"
 	override def log(msg: String, level: Int)
 	{
 		logWriter.println(msg)
-		if(level <= getLevel && msg != null && !msg.startsWith(ignorePrefix))
+		if(level <= getLevel && acceptMessage(msg))
 			System.out.println(msg)
 	}
 	override def rawlog(msg: String, level: Int) { log(msg, level) }
+	/** This is a hack to filter error messages about 'unknown resolver ...'. */
+	override def error(msg: String) = if(acceptError(msg)) super.error(msg)
+}
+private final class SbtMessageLoggerEngine extends MessageLoggerEngine
+{
+	/** This is a hack to filter error messages about 'unknown resolver ...'. */
+	override def error(msg: String) = if(acceptError(msg)) super.error(msg)
+}
+private object SbtIvyLogger
+{
+	val IgnorePrefix = "impossible to define"
+	val UnknownResolver = "unknown resolver"
+	def acceptError(msg: String) = (msg ne null) && !msg.startsWith(UnknownResolver)
+	def acceptMessage(msg: String) = (msg ne null) && !msg.startsWith(IgnorePrefix)
 }

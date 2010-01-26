@@ -36,7 +36,9 @@ private final class IvyLoggerInterface(logger: IvyLogger) extends MessageLogger
 	def info(msg: String) = logger.info(msg)
 	def rawinfo(msg: String) = info(msg)
 	def warn(msg: String) = logger.warn(msg)
-	def error(msg: String) = logger.error(msg)
+	def error(msg: String) =
+		if(!msg.startsWith("unknown resolver")) // hack to suppress these kinds of messages
+			logger.error(msg)
 	
 	private def emptyList = java.util.Collections.emptyList[T forSome { type T}]
 	def getProblems = emptyList
@@ -51,4 +53,11 @@ private final class IvyLoggerInterface(logger: IvyLogger) extends MessageLogger
 	def endProgress(msg: String) = info(msg)
 	def isShowProgress = false
 	def setShowProgress(progress: Boolean) {}
+}
+
+/** This is a hack to filter error messages about 'unknown resolver ...'. */
+private final class SbtMessageLoggerEngine extends MessageLoggerEngine
+{
+	override def error(msg: String) = if(acceptError(msg)) super.error(msg)
+	def acceptError(msg: String) = (msg ne null) && !msg.startsWith("unknown resolver")
 }
