@@ -6,17 +6,6 @@ package sbt
 import java.io.File
 import scala.collection.immutable.TreeSet
 
-private case class Exit(code: Int) extends xsbti.Exit
-{
-	require(code >= 0)
-}
-private case class Reboot(val scalaVersion: String, argsList: List[String], configuration: xsbti.AppConfiguration) extends xsbti.Reboot
-{
-	def app = configuration.provider.id
-	def arguments = argsList.toArray
-	def baseDirectory = configuration.baseDirectory
-}
-
 /** This class is the entry point for sbt.  If it is given any arguments, it interprets them
 * as actions, executes the corresponding actions, and exits.  If there were no arguments provided,
 * sbt enters interactive mode.*/
@@ -152,7 +141,9 @@ class xMain extends xsbti.AppMain
 			{
 				case "" :: tail => continue(project, tail, failAction)
 				case (ExitCommand | QuitCommand) :: _ => result( Exit(NormalExitCode) )
-				case RebootCommand :: tail => throw new xsbti.FullReload(rememberCurrent(tail).toArray)
+				case RebootCommand :: tail =>
+					val newID = new ApplicationID(configuration.provider.id, baseProject.sbtVersion.value)
+					result( new Reboot(project.defScalaVersion.value, rememberCurrent(tail), newID, configuration.baseDirectory) )
 				case InteractiveCommand :: _ => continue(project, prompt(baseProject, project) :: arguments, interactiveContinue)
 				case SpecificBuild(version, action) :: tail =>
 					if(Some(version) != baseProject.info.buildScalaVersion)
@@ -704,8 +695,4 @@ class xMain extends xsbti.AppMain
 	private def setProjectError(log: Logger) = logError(log)("Invalid arguments for 'project': expected project name.")
 	private def logError(log: Logger)(s: String) = { log.error(s); false }
 
-	private final class ReloadException(val remainingArguments: List[String], val buildScalaVersion: Option[String]) extends RuntimeException
-	{
-		override def fillInStackTrace = this
-	}
 }
