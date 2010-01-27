@@ -25,7 +25,7 @@ class AggressiveCompiler extends xsbti.AppMain
 		val launcher = app.scalaProvider.launcher
 		val sources = Task(cwd ** "*.scala")
 		val outputDirectory = Task(cwd / "target" / "classes")
-		val classpath = outputDirectory map { _ ++ (cwd **  "*.jar") }
+		val classpath = outputDirectory map { _ ++ (cwd * "*.jar") ++(cwd * (-"project")).descendentsExcept( "*.jar", "project" || HiddenFileFilter) }
 		val cacheDirectory = cwd / "target" / "cache"
 		val options = Task(args.tail.toSeq)
 		val log = new ConsoleLogger with CompileLogger with sbt.IvyLogger { def verbose(msg: => String) = debug(msg) }

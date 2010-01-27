@@ -15,8 +15,11 @@ object Initialize
 				line.toLowerCase match
 				{
 					case "y" | "yes" => process(file, spec, _.create)
-					case "n" | "no" | "" => declined("")
 					case "s" => process(file, spec, _.quick)
+					case "n" | "no" | "" => declined("")
+					case x =>
+						System.out.println("  '" + x + "' not understood.")
+						create(file, promptCreate, enableQuick, spec)
 				}
 		}
 	}
