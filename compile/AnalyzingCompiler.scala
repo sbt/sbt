@@ -54,6 +54,7 @@ class AnalyzingCompiler(val scalaInstance: ScalaInstance, val manager: Component
 		val bootClasspath = arguments.createBootClasspath
 		call("xsbt.ConsoleInterface", log) (classOf[String], classOf[String], classOf[String], classOf[xLogger]) (bootClasspath, classpathString, initialCommands, log)
 	}
+	def force(log: CompileLogger): Unit = getInterfaceJar(log)
 	private def call(interfaceClassName: String, log: CompileLogger)(argTypes: Class[_]*)(args: AnyRef*)
 	{
 		val interfaceClass = getInterfaceClass(interfaceClassName, log)
@@ -64,13 +65,17 @@ class AnalyzingCompiler(val scalaInstance: ScalaInstance, val manager: Component
 	}
 	private def getInterfaceClass(name: String, log: CompileLogger) =
 	{
-		// this is the instance used to compile the interface component
-		val componentCompiler = newComponentCompiler(log)
-		log.debug("Getting " + ComponentCompiler.compilerInterfaceID + " from component compiler for Scala " + scalaInstance.version)
-		val interfaceJar = componentCompiler(ComponentCompiler.compilerInterfaceID)
+		val interfaceJar = getInterfaceJar(log)
 		val dual = createDualLoader(scalaInstance.loader, getClass.getClassLoader) // this goes to scalaLoader for scala classes and sbtLoader for xsbti classes
 		val interfaceLoader = new URLClassLoader(Array(interfaceJar.toURI.toURL), dual)
 		Class.forName(name, true, interfaceLoader)
+	}
+	private def getInterfaceJar(log: CompileLogger) =
+	{
+		// this is the instance used to compile the interface component
+		val componentCompiler = newComponentCompiler(log)
+		log.debug("Getting " + ComponentCompiler.compilerInterfaceID + " from component compiler for Scala " + scalaInstance.version)
+		componentCompiler(ComponentCompiler.compilerInterfaceID)
 	}
 	def newComponentCompiler(log: CompileLogger) = new ComponentCompiler(new RawCompiler(scalaInstance, log), manager)
 	protected def createDualLoader(scalaLoader: ClassLoader, sbtLoader: ClassLoader): ClassLoader =
