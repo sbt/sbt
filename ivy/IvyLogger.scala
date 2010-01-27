@@ -3,7 +3,7 @@
  */
 package sbt
 
-import org.apache.ivy.util.{Message, MessageLogger}
+import org.apache.ivy.util.{Message, MessageLogger, MessageLoggerEngine}
 
 trait IvyLogger extends NotNull
 {
