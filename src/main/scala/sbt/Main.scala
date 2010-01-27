@@ -29,8 +29,13 @@ class xMain extends xsbti.AppMain
 	{
 		def run0(remainingArguments: List[String], buildScalaVersion: Option[String]): xsbti.MainResult =
 		{
-			try { run(configuration, remainingArguments, buildScalaVersion) }
-			catch { case re: ReloadException => run0(re.remainingArguments, re.buildScalaVersion) }
+			// done this way because in Scala 2.7.7, tail recursion in catch blocks is not optimized
+			val result = try { Right(run(configuration, remainingArguments, buildScalaVersion)) } catch { case re: ReloadException => Left(re) }
+			result match
+			{
+				case Left(re) => run0(re.remainingArguments, re.buildScalaVersion)
+				case Right(r) => r
+			}
 		}
 		run0(configuration.arguments.map(_.trim).toList, None)
 	}
