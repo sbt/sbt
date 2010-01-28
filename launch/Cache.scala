@@ -2,27 +2,14 @@ package xsbt.boot
 
 import java.lang.ref.{Reference, SoftReference}
 import java.util.HashMap
+import java.lang.ref.{Reference, SoftReference}
 
 final class Cache[K,V](create: K => V) extends NotNull
 {
 	private[this] val delegate = new HashMap[K,Reference[V]]
-	def apply(k: K): V =
-	{
-		val existingRef = delegate.get(k)
-		if(existingRef == null)
-			newEntry(k)
-		else
-		{
-			val existing = existingRef.get
-			if(existing == null)
-			{
-				println("Cache value for '" + k + "' was garbage collected, recreating it...")
-				newEntry(k)
-			}
-			else
-				existing
-		}
-	}
+	def apply(k: K): V = getFromReference(k, delegate.get(k))
+	private[this] def getFromReference(k: K, existingRef: Reference[V]) = if(existingRef eq null) newEntry(k) else get(k, existingRef.get)
+	private[this] def get(k: K, existing: V) = if(existing == null) newEntry(k) else existing
 	private[this] def newEntry(k: K): V =
 	{
 		val v = create(k)

@@ -50,9 +50,9 @@ trait ProguardProject extends BasicScalaProject
 			keepClasses.map("-keep public class " + _  + " {\n public * ;\n}") ++
 			mapInJars(inJars) ++
 			 Seq("-injars " + mkpath(rawJarPath.asFile),
-			mapOutJar(outJar)) ++
+				mapOutJar(outJar)) ++
 			mapLibraryJars(libraryJars) ++
-			 mainClass.map(main => keepMain.stripMargin.format(main)).toList
+			mainClass.map(main => keepMain.stripMargin.format(main)).toList
 		lines.mkString("\n")
 	}
 

@@ -111,9 +111,11 @@ class AggressiveCompile(val cacheDirectory: File, val compilerTask: Task[Analyzi
 						val apiChanged = sources filter { src => !sameAPI(previousAPIMap, newAPIMap, src) }
 						log.info("Sources with API changes:\n\t" + apiChanged.mkString("\n\t"))
 						val finalAPIMap =
-							if(apiChanged.isEmpty || apiChanged.size == sourceChanges.checked.size) newAPIMap
+							// if either nothing changed or everything was recompiled, stop here
+							if(apiChanged.isEmpty || sources.size == sourceChanges.checked.size) newAPIMap
 							else
 							{
+								//val changedNames = TopLevel.nameChanges(newAPIMap.values, previousAPIMap.values)
 								InvalidateTransitive.clean(tracker, FileUtilities.delete, transitiveIfNeeded)
 								val sources = transitiveIfNeeded.invalid ** sourceChanges.checked
 								log.info("All sources invalidated by API changes:\n\t" + sources.mkString("\n\t"))
