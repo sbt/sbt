@@ -10,28 +10,29 @@ final class IvyPaths(val baseDirectory: File, val cacheDirectory: Option[File]) 
 
 sealed trait IvyConfiguration extends NotNull
 {
+	def lock: Option[xsbti.GlobalLock]
 	def baseDirectory: File
 	def log: IvyLogger
 }
 final class InlineIvyConfiguration(val paths: IvyPaths, val resolvers: Seq[Resolver], 
-	val moduleConfigurations: Seq[ModuleConfiguration], val log: IvyLogger) extends IvyConfiguration
+	val moduleConfigurations: Seq[ModuleConfiguration], val lock: Option[xsbti.GlobalLock], val log: IvyLogger) extends IvyConfiguration
 {
 	def baseDirectory = paths.baseDirectory
 }
-final class ExternalIvyConfiguration(val baseDirectory: File, val file: File, val log: IvyLogger) extends IvyConfiguration
+final class ExternalIvyConfiguration(val baseDirectory: File, val file: File, val lock: Option[xsbti.GlobalLock], val log: IvyLogger) extends IvyConfiguration
 
 object IvyConfiguration
 {
 	/** Called to configure Ivy when inline resolvers are not specified.
 	* This will configure Ivy with an 'ivy-settings.xml' file if there is one or else use default resolvers.*/
-	def apply(paths: IvyPaths, log: IvyLogger): IvyConfiguration =
+	def apply(paths: IvyPaths, lock: Option[xsbti.GlobalLock], log: IvyLogger): IvyConfiguration =
 	{
 		log.debug("Autodetecting configuration.")
 		val defaultIvyConfigFile = IvySbt.defaultIvyConfiguration(paths.baseDirectory)
 		if(defaultIvyConfigFile.canRead)
-			new ExternalIvyConfiguration(paths.baseDirectory, defaultIvyConfigFile, log)
+			new ExternalIvyConfiguration(paths.baseDirectory, defaultIvyConfigFile, lock, log)
 		else
-			new InlineIvyConfiguration(paths, Resolver.withDefaultResolvers(Nil), Nil, log)
+			new InlineIvyConfiguration(paths, Resolver.withDefaultResolvers(Nil), Nil, lock, log)
 	}
 }
 

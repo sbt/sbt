@@ -39,7 +39,9 @@ class ComponentManager(globalLock: xsbti.GlobalLock, provider: xsbti.ComponentPr
 
 		lockLocalCache { getOrElse(fromGlobal) }
 	}
+	/** This is used to lock the local cache in project/boot/.  By checking the local cache first, we can avoid grabbing a global lock. */
 	private def lockLocalCache[T](action: => T): T = lock(provider.lockFile)( action )
+	/** This is used to ensure atomic access to components in the global Ivy cache.*/
 	private def lockGlobalCache[T](action: => T): T = lock(IvyCache.lockFile)( action )
 	private def lock[T](file: File)(action: => T): T = globalLock(file, new Callable[T] { def call = action })
 	/** Get the file for component 'id', throwing an exception if no files or multiple files exist for the component. */
@@ -53,12 +55,12 @@ class ComponentManager(globalLock: xsbti.GlobalLock, provider: xsbti.ComponentPr
 
 	def define(id: String, files: Iterable[File]) = lockLocalCache { provider.defineComponent(id, files.toSeq.toArray) }
 	/** Retrieve the file for component 'id' from the local repository. */
-	private def update(id: String): Unit = IvyCache.withCachedJar(sbtModuleID(id), log)(jar => define(id, Seq(jar)) )
+	private def update(id: String): Unit = IvyCache.withCachedJar(sbtModuleID(id), Some(globalLock), log)(jar => define(id, Seq(jar)) )
 
 	private def sbtModuleID(id: String) = ModuleID("org.scala-tools.sbt", id, ComponentManager.stampedVersion)
 	/** Install the files for component 'id' to the local repository.  This is usually used after writing files to the directory returned by 'location'. */
-	def cache(id: String): Unit = IvyCache.cacheJar(sbtModuleID(id), file(id)(IfMissing.Fail), log)
-	def clearCache(id: String): Unit = lockGlobalCache { IvyCache.clearCachedJar(sbtModuleID(id), log) }
+	def cache(id: String): Unit = IvyCache.cacheJar(sbtModuleID(id), file(id)(IfMissing.Fail), Some(globalLock), log)
+	def clearCache(id: String): Unit = lockGlobalCache { IvyCache.clearCachedJar(sbtModuleID(id), Some(globalLock), log) }
 }
 class InvalidComponent(msg: String, cause: Throwable) extends RuntimeException(msg, cause)
 {

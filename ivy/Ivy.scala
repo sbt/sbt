@@ -6,6 +6,7 @@ package sbt
 import Artifact.{defaultExtension, defaultType}
 
 import java.io.File
+import java.util.concurrent.Callable
 
 import org.apache.ivy.{core, plugins, util, Ivy}
 import core.IvyPatternHelper
@@ -29,13 +30,25 @@ final class IvySbt(configuration: IvyConfiguration)
 	*/
 	private lazy val logger = new IvyLoggerInterface(log)
 	private def withDefaultLogger[T](f: => T): T =
-		IvySbt.synchronized // Ivy is not thread-safe.  In particular, it uses a static DocumentBuilder, which is not thread-safe
+	{
+		def action() =
+			IvySbt.synchronized 
+			{
+				val originalLogger = Message.getDefaultLogger
+				Message.setDefaultLogger(logger)
+				try { f }
+				finally { Message.setDefaultLogger(originalLogger) }
+			}
+		// Ivy is not thread-safe nor can the cache be used concurrently.
+		// If provided a GlobalLock, we can use that to ensure safe access to the cache.
+		// Otherwise, we can at least synchronize within the JVM.
+		//   For thread-safety In particular, Ivy uses a static DocumentBuilder, which is not thread-safe.
+		configuration.lock match
 		{
-			val originalLogger = Message.getDefaultLogger
-			Message.setDefaultLogger(logger)
-			try { f }
-			finally { Message.setDefaultLogger(originalLogger) }
+			case Some(lock) => lock(ivyLockFile, new Callable[T] { def call = action() })
+			case None => action()
 		}
+	}
 	private lazy val settings =
 	{
 		val is = new IvySettings
@@ -56,6 +69,8 @@ final class IvySbt(configuration: IvyConfiguration)
 		i.getLoggerEngine.pushLogger(logger)
 		i
 	}
+	// Must be the same file as is used in Update in the launcher
+	private lazy val ivyLockFile = new File(settings.getDefaultIvyUserDir, ".sbt.ivy.lock")
 	/** ========== End Configuration/Setup ============*/
 
 	/** Uses the configured Ivy instance within a safe context.*/
@@ -178,7 +193,15 @@ private object IvySbt
 	private def configureCache(settings: IvySettings, dir: Option[File])
 	{
 		val cacheDir = dir.getOrElse(settings.getDefaultRepositoryCacheBasedir())
-		val manager = new DefaultRepositoryCacheManager("default-cache", settings, cacheDir)
+		val manager = new DefaultRepositoryCacheManager("default-cache", settings, cacheDir) {
+			override def clean() { delete(getBasedir); true }
+			private final def deleteAll(fs: Seq[File]) = if(fs ne null) fs foreach delete
+			private final def delete(f: File)
+			{
+				if(f.isDirectory) deleteAll(f.listFiles)
+				try { f.delete } catch { case _: java.io.IOException =>  }
+			}
+		}
 		manager.setUseOrigin(true)
 		manager.setChangingMatcher(PatternMatcher.REGEXP);
 		manager.setChangingPattern(".*-SNAPSHOT");
