@@ -5,6 +5,7 @@ package xsbt.boot
 
 import Pre._
 import java.io.{File, FileWriter, PrintWriter, Writer}
+import java.util.concurrent.Callable
 import java.util.regex.Pattern
 
 import org.apache.ivy.{core, plugins, util, Ivy}
@@ -56,11 +57,18 @@ final class Update(config: UpdateConfiguration)
 		ivy.bind()
 		ivy
 	}
+	// should be the same file as is used in the Ivy module
+	private lazy val ivyLockFile = new File(settings.getDefaultIvyUserDir, ".sbt.ivy.lock")
 
 	/** The main entry point of this class for use by the Update module.  It runs Ivy */
 	def apply(target: UpdateTarget): Boolean =
 	{
 		Message.setDefaultLogger(new SbtIvyLogger(logWriter))
+		val action = new Callable[Boolean] { def call =  lockedApply(target) }
+		Locks(ivyLockFile, action)
+	}
+	private def lockedApply(target: UpdateTarget) =
+	{
 		ivy.pushContext()
 		try { update(target); true }
 		catch
@@ -309,6 +317,6 @@ private object SbtIvyLogger
 {
 	val IgnorePrefix = "impossible to define"
 	val UnknownResolver = "unknown resolver"
-	def acceptError(msg: String) = (msg ne null) && !msg.startsWith(UnknownResolver)
+	def acceptError(msg: String) = acceptMessage(msg) && !msg.startsWith(UnknownResolver)
 	def acceptMessage(msg: String) = (msg ne null) && !msg.startsWith(IgnorePrefix)
 }

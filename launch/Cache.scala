@@ -2,7 +2,6 @@ package xsbt.boot
 
 import java.lang.ref.{Reference, SoftReference}
 import java.util.HashMap
-import java.lang.ref.{Reference, SoftReference}
 
 final class Cache[K,V](create: K => V) extends NotNull
 {
