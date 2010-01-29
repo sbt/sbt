@@ -2,8 +2,7 @@ import sbt._
 
 class Plugins(info: ProjectInfo) extends PluginDefinition(info)
 {
-	def ivyCacheDirectory = outputPath / "ivy-cache"
-	override def updateOptions =  CacheDirectory(ivyCacheDirectory) :: super.updateOptions.toList
+	override def ivyCacheDirectory = Some(outputPath / "ivy-cache")
 
 	override def managedStyle = ManagedStyle.Ivy
 	def projectRoot = Path.fromFile(info.projectPath.asFile.getParentFile.getParentFile)

@@ -183,7 +183,7 @@ trait BasicManagedProject extends ManagedProject with ReflectiveManagedProject w
 	def ivyCacheDirectory: Option[Path] = None
 	
 	def ivyPaths: IvyPaths = new IvyPaths(info.projectPath.asFile, ivyCacheDirectory.map(_.asFile))
-	def inlineIvyConfiguration = new InlineIvyConfiguration(ivyPaths, ivyRepositories.toSeq, moduleConfigurations.toSeq, log)
+	def inlineIvyConfiguration = new InlineIvyConfiguration(ivyPaths, ivyRepositories.toSeq, moduleConfigurations.toSeq, Some(info.launcher.globalLock), log)
 	def ivyConfiguration: IvyConfiguration =
 	{
 		val in = inlineIvyConfiguration
@@ -192,14 +192,14 @@ trait BasicManagedProject extends ManagedProject with ReflectiveManagedProject w
 		{
 			 if(in.moduleConfigurations.isEmpty)
 			 {
-				IvyConfiguration(in.paths, in.log) match
+				IvyConfiguration(in.paths, in.lock, in.log) match
 				{
 					case e: ExternalIvyConfiguration => e
 					case i => info.parent map(parentIvyConfiguration(i)) getOrElse(i)
 				}
 			}
 			else
-				new InlineIvyConfiguration(in.paths, Resolver.withDefaultResolvers(Nil), in.moduleConfigurations, in.log)
+				new InlineIvyConfiguration(in.paths, Resolver.withDefaultResolvers(Nil), in.moduleConfigurations, in.lock, in.log)
 		}
 		else
 			in
