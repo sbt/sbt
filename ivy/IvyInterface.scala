@@ -167,7 +167,7 @@ object Resolver
 	def withDefaultResolvers(userResolvers: Seq[Resolver], scalaTools: Boolean): Seq[Resolver] =
 		withDefaultResolvers(userResolvers, true, scalaTools)
 	def withDefaultResolvers(userResolvers: Seq[Resolver], mavenCentral: Boolean, scalaTools: Boolean): Seq[Resolver] =
-		Seq(Resolver.defaultLocal) ++
+		Seq(Resolver.defaultLocal(None)) ++
 		userResolvers ++
 		single(DefaultMavenRepository, mavenCentral)++
 		single(ScalaToolsReleases, scalaTools)
@@ -266,10 +266,11 @@ object Resolver
 	def userRoot = System.getProperty("user.home")
 	def userMavenRoot = userRoot + "/.m2/repository/"
 	def userIvyRoot = userRoot + "/.ivy2/"
+	private def userIvyRootFile = new File(userIvyRoot)
 
-	def defaultLocal = defaultUserFileRepository("local")
-	def defaultShared = defaultUserFileRepository("shared")
-	def defaultUserFileRepository(id: String) = file(id, new File(userIvyRoot, id))(defaultIvyPatterns)
+	def defaultLocal(ivyHome: Option[File]) = defaultUserFileRepository(ivyHome, "local")
+	def defaultShared(ivyHome: Option[File]) = defaultUserFileRepository(ivyHome, "shared")
+	def defaultUserFileRepository(ivyHome: Option[File], id: String) = file(id, new File(ivyHome.getOrElse(userIvyRootFile), id))(defaultIvyPatterns)
 	def defaultIvyPatterns =
 	{
 		val pList = List(localBasePattern)

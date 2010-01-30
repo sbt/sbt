@@ -1,6 +1,7 @@
 package sbt
 
 import java.io.File
+import scala.xml.NodeSeq
 
 import org.apache.ivy.{core, plugins, util, Ivy}
 import core.cache.DefaultRepositoryCacheManager
@@ -35,15 +36,18 @@ object IvyActions
 	}
 
 	/** Clears the Ivy cache, as configured by 'config'. */
-	def cleanCache(ivy: IvySbt) = ivy.withIvy { _.getSettings.getRepositoryCacheManagers.foreach(_.clean()) }
+	def cleanCache(ivy: IvySbt) = ivy.withIvy { iv =>
+		iv.getSettings.getResolutionCacheManager.clean()
+		iv.getSettings.getRepositoryCacheManagers.foreach(_.clean())
+	}
 
 	/** Creates a Maven pom from the given Ivy configuration*/
-	def makePom(module: IvySbt#Module, extraDependencies: Iterable[ModuleID], configurations: Option[Iterable[Configuration]], output: File)
+	def makePom(module: IvySbt#Module, extraDependencies: Iterable[ModuleID], configurations: Option[Iterable[Configuration]], extra: NodeSeq, output: File)
 	{
 		module.withModule { (ivy, md, default) =>
 			addLateDependencies(ivy, md, default, extraDependencies)
 			val pomModule = keepConfigurations(md, configurations)
-			PomModuleDescriptorWriter.write(pomModule, DefaultConfigurationMapping, output)
+			(new PomWriter).write(pomModule, extra, output)
 			module.logger.info("Wrote " + output.getAbsolutePath)
 		}
 	}
@@ -132,21 +136,4 @@ object IvyActions
 		if(resolveReport.hasError)
 			error(Set(resolveReport.getAllProblemMessages.toArray: _*).mkString("\n"))
 	}
-}
-
-private object DefaultConfigurationMapping extends PomModuleDescriptorWriter.ConfigurationScopeMapping(new java.util.HashMap)
-{
-	override def getScope(confs: Array[String]) =
-	{
-		Configurations.defaultMavenConfigurations.find(conf => confs.contains(conf.name)) match
-		{
-			case Some(conf) => conf.name
-			case None =>
-				if(confs.isEmpty || confs(0) == Configurations.Default.name)
-					null
-				else
-					confs(0)
-		}
-	}
-	override def isOptional(confs: Array[String]) = confs.isEmpty || (confs.length == 1 && confs(0) == Configurations.Optional.name)
 }

@@ -7,19 +7,29 @@ import java.io.File
 import scala.xml.NodeSeq
 
 final class IvyPaths(val baseDirectory: File, val cacheDirectory: Option[File]) extends NotNull
-
+{
+	def withBase(newBaseDirectory: File) = new IvyPaths(newBaseDirectory, cacheDirectory)
+}
 sealed trait IvyConfiguration extends NotNull
 {
+	type This <: IvyConfiguration
 	def lock: Option[xsbti.GlobalLock]
 	def baseDirectory: File
 	def log: IvyLogger
+	def withBase(newBaseDirectory: File): This
 }
 final class InlineIvyConfiguration(val paths: IvyPaths, val resolvers: Seq[Resolver], 
 	val moduleConfigurations: Seq[ModuleConfiguration], val lock: Option[xsbti.GlobalLock], val log: IvyLogger) extends IvyConfiguration
 {
+	type This = InlineIvyConfiguration
 	def baseDirectory = paths.baseDirectory
+	def withBase(newBase: File) = new InlineIvyConfiguration(paths.withBase(newBase), resolvers, moduleConfigurations, lock, log)
 }
 final class ExternalIvyConfiguration(val baseDirectory: File, val file: File, val lock: Option[xsbti.GlobalLock], val log: IvyLogger) extends IvyConfiguration
+{
+	type This = ExternalIvyConfiguration
+	def withBase(newBase: File) = new ExternalIvyConfiguration(newBase, file, lock, log)
+}
 
 object IvyConfiguration
 {
