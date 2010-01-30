@@ -3,6 +3,7 @@
  */
 package sbt
 
+import scala.xml.NodeSeq
 import StringUtilities.{appendable,nonEmpty}
 
 /** A project that provides a classpath. */
@@ -84,8 +85,8 @@ trait IvyTasks extends Project
 			import deliverConfig._
 			IvyActions.deliver(module, status, deliveredPattern, extraDependencies, configurations, quiet)
 		}
-	def makePomTask(module: => IvySbt#Module, output: => Path, extraDependencies: => Iterable[ModuleID], configurations: => Option[Iterable[Configuration]]) =
-		ivyTask { IvyActions.makePom(module, extraDependencies, configurations, output asFile) }
+	def makePomTask(module: => IvySbt#Module, output: => Path, extraDependencies: => Iterable[ModuleID], pomExtra: => NodeSeq, configurations: => Option[Iterable[Configuration]]) =
+		ivyTask { IvyActions.makePom(module, extraDependencies, configurations, pomExtra, output asFile) }
 
 	def installTask(module: IvySbt#Module, from: Resolver, to: Resolver) =
 		ivyTask { IvyActions.install(module, from.name, to.name) }
@@ -187,7 +188,8 @@ trait BasicManagedProject extends ManagedProject with ReflectiveManagedProject w
 	def ivyConfiguration: IvyConfiguration =
 	{
 		val in = inlineIvyConfiguration
-		def parentIvyConfiguration(default: IvyConfiguration)(p: Project) = p match { case b: BasicManagedProject => b.ivyConfiguration; case _ => default }
+		def adapt(c: IvyConfiguration): IvyConfiguration = c.withBase(in.baseDirectory)
+		def parentIvyConfiguration(default: IvyConfiguration)(p: Project) = p match { case b: BasicManagedProject => adapt(b.ivyConfiguration); case _ => default }
 		if(in.resolvers.isEmpty)
 		{
 			 if(in.moduleConfigurations.isEmpty)
@@ -260,7 +262,8 @@ trait BasicManagedProject extends ManagedProject with ReflectiveManagedProject w
 	def outputPattern = "[conf]/[artifact](-[revision])(-[classifier]).[ext]"
 	/** Override this to specify the publications, configurations, and/or dependencies sections of an Ivy file.
 	* See http://code.google.com/p/simple-build-tool/wiki/LibraryManagement for details.*/
-	def ivyXML: scala.xml.NodeSeq = scala.xml.NodeSeq.Empty
+	def ivyXML: NodeSeq = NodeSeq.Empty
+	def pomExtra: NodeSeq = NodeSeq.Empty
 	def expandedIvyConfigurations =
 	{
 		val confs = ivyConfigurations
@@ -370,7 +373,7 @@ trait BasicManagedProject extends ManagedProject with ReflectiveManagedProject w
 		interDependencies.readOnly
 	}
 	protected def deliverScalaDependencies: Iterable[ModuleID] = Nil
-	protected def makePomAction = makePomTask(deliverIvyModule, pomPath, deliverProjectDependencies, None)
+	protected def makePomAction = makePomTask(deliverIvyModule, pomPath, deliverProjectDependencies, pomExtra, None)
 	protected def deliverLocalAction = deliverTask(deliverIvyModule, publishLocalConfiguration, true /*quiet*/)
 	protected def publishLocalAction =
 	{
@@ -595,7 +598,7 @@ trait ReflectiveArtifacts extends ManagedProject
 		val reflective = reflectiveArtifacts
 		managedStyle match
 		{
-			case Maven =>reflective ++ List(Artifact(artifactID, "pom", "pom"))
+			case Maven => reflective ++ List(Artifact(artifactID, "pom", "pom"))
 			case Ivy => reflective
 			case Auto => Set.empty
 		}
