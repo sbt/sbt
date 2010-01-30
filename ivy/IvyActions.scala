@@ -47,7 +47,7 @@ object IvyActions
 		module.withModule { (ivy, md, default) =>
 			addLateDependencies(ivy, md, default, extraDependencies)
 			val pomModule = keepConfigurations(md, configurations)
-			(new PomWriter).write(pomModule, extra, output)
+			(new MakePom).write(ivy, pomModule, extra, output)
 			module.logger.info("Wrote " + output.getAbsolutePath)
 		}
 	}

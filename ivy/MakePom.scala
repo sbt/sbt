@@ -4,32 +4,41 @@
 package sbt;
 
 import java.io.{BufferedWriter, File, OutputStreamWriter, FileOutputStream}
-import scala.xml.{Node, NodeSeq, XML}
+import scala.xml.{Node, NodeSeq, PrettyPrinter, XML}
 
-import org.apache.ivy.{core, Ivy}
+import org.apache.ivy.{core, plugins, Ivy}
+import core.settings.IvySettings
 import core.module.{descriptor, id}
 import descriptor.{DependencyDescriptor, License, ModuleDescriptor}
 import id.ModuleRevisionId
+import plugins.resolver.{ChainResolver, DependencyResolver, IBiblioResolver}
 
-class PomWriter
+class MakePom
 {
 	def encoding = "UTF-8"
-	def write(module: ModuleDescriptor, extra: NodeSeq, output: File): Unit = write(toPom(module, extra), output)
-	def write(node: Node, output: File)
+	def write(ivy: Ivy, module: ModuleDescriptor, extra: NodeSeq, output: File): Unit = write(toPom(ivy, module, extra), output)
+	def write(node: Node, output: File): Unit = write(toString(node), output)
+	def write(xmlString: String, output: File)
 	{
 		output.getParentFile.mkdirs()
 		val out = new BufferedWriter(new OutputStreamWriter(new FileOutputStream(output), encoding))
-		try { XML.write(out, node, encoding, true, null) }
+		try
+		{
+			out.write("<?xml version='1.0' encoding='" + encoding + "'?>")
+			out.newLine()
+			out.write(xmlString)
+		}
 		finally { out.close() }
 	}
 
-	def toPom(module: ModuleDescriptor, extra: NodeSeq): Node =
+	def toString(node: Node): String = new PrettyPrinter(1000, 4).format(node)
+	def toPom(ivy: Ivy, module: ModuleDescriptor, extra: NodeSeq): Node =
 		(<project xmlns="http://maven.apache.org/POM/4.0.0"  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
 			<modelVersion>4.0.0</modelVersion>
 			{ makeModuleID(module) }
 			{ extra }
 			{ makeDependencies(module) }
-			<!--{ makeRepositories(module.ivy) }-->
+			{ makeRepositories(ivy.getSettings) }
 		</project>)
 
 	def makeModuleID(module: ModuleDescriptor): NodeSeq =
@@ -101,4 +110,36 @@ class PomWriter
 		}
 	}
 	def isOptional(confs: Array[String]) = confs.isEmpty || (confs.length == 1 && confs(0) == Configurations.Optional.name)
+
+
+	def makeRepositories(settings: IvySettings) =
+	{
+		class MavenRepo(name: String, snapshots: Boolean, releases: Boolean)
+		val repositories = resolvers(settings.getDefaultResolver)
+		val mavenRepositories =
+			repositories.flatMap {
+				case m: IBiblioResolver if m.isM2compatible && m.getRoot != IBiblioResolver.DEFAULT_M2_ROOT => m :: Nil
+				case _ => Nil
+			}
+		mavenRepositories.map { repo => mavenRepository(repo.getName, repo.getRoot) }
+	}
+	def flatten(rs: Seq[DependencyResolver]): Seq[DependencyResolver] = if(rs eq null) Nil else rs.flatMap(resolvers)
+	def resolvers(r: DependencyResolver): Seq[DependencyResolver] =
+		r match { case c: ChainResolver => flatten(castResolvers(c.getResolvers)); case _ => r :: Nil }
+
+	// cast the contents of a pre-generics collection
+	private def castResolvers(s: java.util.Collection[_]): Seq[DependencyResolver] =
+		s.toArray.map(_.asInstanceOf[DependencyResolver])
+
+	def toID(name: String) = checkID(name.filter(isValidIDCharacter).mkString, name)
+	def isValidIDCharacter(c: Char) = c.isLetterOrDigit
+	private def checkID(id: String, name: String) = if(id.isEmpty) error("Could not convert '" + name + "' to an ID") else id
+	def mavenRepository(name: String, root: String): Node =
+		mavenRepository(toID(name), name, root)
+	def mavenRepository(id: String, name: String, root: String): Node =
+		<repository>
+			<id>{id}</id>
+			<name>{name}</name>
+			<url>{root}</url>
+		</repository>
 }
