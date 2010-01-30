@@ -193,18 +193,11 @@ private object IvySbt
 	private def configureCache(settings: IvySettings, dir: Option[File])
 	{
 		val cacheDir = dir.getOrElse(settings.getDefaultRepositoryCacheBasedir())
-		val manager = new DefaultRepositoryCacheManager("default-cache", settings, cacheDir) {
-			override def clean() { delete(getBasedir); true }
-			private final def deleteAll(fs: Seq[File]) = if(fs ne null) fs foreach delete
-			private final def delete(f: File)
-			{
-				if(f.isDirectory) deleteAll(f.listFiles)
-				try { f.delete } catch { case _: java.io.IOException =>  }
-			}
-		}
+		val manager = new DefaultRepositoryCacheManager("default-cache", settings, cacheDir)
 		manager.setUseOrigin(true)
 		manager.setChangingMatcher(PatternMatcher.REGEXP);
 		manager.setChangingPattern(".*-SNAPSHOT");
+		settings.addRepositoryCacheManager(manager)
 		settings.setDefaultRepositoryCacheManager(manager)
 		dir.foreach(dir => settings.setDefaultResolutionCacheBasedir(dir.getAbsolutePath))
 	}
