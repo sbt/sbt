@@ -14,6 +14,8 @@ object CompileTest extends Specification
 			WithCompiler( "2.7.3" )(testCompileAnalysis)
 			WithCompiler( "2.7.4" )(testCompileAnalysis)
 			WithCompiler( "2.7.5" )(testCompileAnalysis)
+			WithCompiler( "2.7.7" )(testCompileAnalysis)
+			WithCompiler( "2.8.0.Beta1" )(testCompileAnalysis)
 			WithCompiler( "2.8.0-SNAPSHOT" )(testCompileAnalysis)
 		}
 	}

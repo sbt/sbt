@@ -92,16 +92,22 @@ object ApplicationsTest extends Specification
 			type A[T] = Array[String]
 			def main[T](args: A[T]) {}
 		}
+		""" :: """
+		object MainF1  extends Application { var x = 3; x = 5 }
+		object MainF2  { def main(args: Array[java.lang.String]) {} }
+		trait MainF3 { def main(args: Array[String]) {} }
+		object MainF4 extends MainF3 { }
 		""" ::
 		Nil
 	val sources = for((source, index) <- sourceContent.zipWithIndex) yield  new File("Main" + (index+1) + ".scala") -> source
 
 	"Analysis plugin should detect applications" in {
-		WithFiles(sources : _*) { case files @ Seq(main, main2, main3, main4, main5, main6, main7, main8, main9, mainA, mainB, mainC, mainD, mainE) =>
+		WithFiles(sources : _*) { case files @ Seq(main, main2, main3, main4, main5, main6, main7, main8, main9, mainA, mainB, mainC, mainD, mainE, mainF) =>
 			for(scalaVersion <- TestCompile.allVersions)
 				CallbackTest(scalaVersion, files, Nil) { (callback, file, log) =>
 					val expected = Seq( main -> "Main", main4 -> "Main4", main8 -> "Main8", main9 -> "Main9", mainB -> "MainB",
-						mainE -> "MainE1", mainE -> "MainE2", mainE -> "MainE3", mainE -> "MainE4", mainE -> "MainE5" )
+						mainE -> "MainE1", mainE -> "MainE2", mainE -> "MainE3", mainE -> "MainE4", mainE -> "MainE5",
+						mainF -> "MainF1", mainF -> "MainF2", mainF -> "MainF4")
 					(callback.applications) must haveTheSameElementsAs(expected)
 					val loader = new URLClassLoader(Array(file.toURI.toURL), getClass.getClassLoader)
 					for( (_, className) <- expected) testRun(loader, className)
