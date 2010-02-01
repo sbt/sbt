@@ -221,15 +221,21 @@ trait BasicManagedProject extends ManagedProject with ReflectiveManagedProject w
 		deps ++ compatExtra(deps)
 	}
 	/** Determines extra libraries needed for compatibility.  Currently, this is the compatibility test framework. */
-	private def compatExtra(deps: Set[ModuleID]) = if(deps.exists(requiresCompat)) compatTestFramework else Nil
+	private def compatExtra(deps: Set[ModuleID]) =
+		if(isScala27 && deps.exists(requiresCompat)) { log.debug("Using compatibility implementation of test interface."); compatTestFramework } else Nil
+	private def isScala27 = buildScalaVersion.startsWith("2.7.")
 	/** True if the given dependency requires the compatibility test framework. */
 	private def requiresCompat(m: ModuleID) =
-		(m.name == "scalacheck" && Set("1.5", "1.6").contains(m.revision)) ||
-		(m.name == "specs" && Set("1.6.0", "1.6.1").contains(m.revision)) ||
-		(m.name == "scalatest" && m.revision == "1.0")
+	{
+		def nameMatches(name: String, id: String) = name == id || name.startsWith(id + "_2.7.")
+		
+		(nameMatches(m.name, "scalacheck") && Set("1.5", "1.6").contains(m.revision)) ||
+		(nameMatches(m.name, "specs") && Set("1.6.0", "1.6.1").contains(m.revision)) ||
+		(nameMatches(m.name,  "scalatest") && m.revision == "1.0")
+	}
 	/** Extra dependencies to add if a dependency on an older test framework (one released before the uniform test interface) is declared.
 	* This is the compatibility test framework by default.*/
-	def compatTestFramework = Set("org.scala-tools.sbt" %% "test-compat" % "0.4.0" % "test")
+	def compatTestFramework = Set("org.scala-tools.sbt" %% "test-compat" % "0.4.1" % "test")
 	
 	def defaultModuleSettings: ModuleSettings =
 	{
