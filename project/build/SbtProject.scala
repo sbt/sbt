@@ -28,28 +28,13 @@ class SbtProject(info: ProjectInfo) extends DefaultProject(info) with test.SbtSc
 	// Configure which versions of Scala to test against for those tests that do cross building
 	override def scriptedCompatibility = sbt.test.CompatibilityLevel.Full
 
-	def scalaVersionString = ScalaVersion.current.getOrElse(scalaVersion.value)
-	override def mainSources =
-	{
-		if(scalaVersionString == Version2_8_0)
-				Path.lazyPathFinder( super.mainSources.get.filter( !_.asFile.getName.endsWith("TestFrameworkImpl.scala") ))
-		else
-				super.mainSources
-	}
-
 	override def useDefaultConfigurations = false
 	val default = Configurations.Default
 	val optional = Configurations.Optional
 	val provided = Configurations.Provided
 	val testConf = Configurations.Test
 
-	/* Versions of Scala to cross-build against. */
-	private val Version2_7_7 = "2.7.7"
-	private val Version2_8_0 = "2.8.0-SNAPSHOT"
-	// the list of all supported versions
-	private def allVersions = Version2_7_7 :: Version2_8_0 :: Nil
-
-	override def crossScalaVersions = Set(Version2_7_7)
+	override def crossScalaVersions = Set("2.7.7")
 
 	//testing
 	val scalacheck = "org.scala-tools.testing" %% "scalacheck" % "1.6" % "test"
@@ -57,6 +42,9 @@ class SbtProject(info: ProjectInfo) extends DefaultProject(info) with test.SbtSc
 	val ivy = "org.apache.ivy" % "ivy" % "2.1.0" intransitive()
 	val jsch = "com.jcraft" % "jsch" % "0.1.31" intransitive()
 	val jetty = "org.mortbay.jetty" % "jetty" % "6.1.14" % "optional"
+	
+	val jetty7server = "org.eclipse.jetty" % "jetty-server" % "7.0.1.v20091125" % "optional"
+	val jetty7webapp = "org.eclipse.jetty" % "jetty-webapp" % "7.0.1.v20091125" % "optional"
 
 	val testInterface = "org.scala-tools.testing" % "test-interface" % "0.4"
 
@@ -64,8 +52,19 @@ class SbtProject(info: ProjectInfo) extends DefaultProject(info) with test.SbtSc
 	val xsbti = "org.scala-tools.sbt" % "launcher-interface" % projectVersion.value.toString % "provided"
 	val compiler = "org.scala-tools.sbt" %% "compile" % projectVersion.value.toString
 
-	override def libraryDependencies = super.libraryDependencies ++ getDependencies(scalaVersionString)
-
-	def getDependencies(scalaVersion: String) =
-		if(scalaVersion == Version2_8_0) Seq("jline" % "jline" % "0.9.94" intransitive()) else Nil
+	/* For generating JettyRun for Jetty 6 and 7.  The only difference is the imports, but the file has to be compiled against each set of imports. */
+	override def compileAction = super.compileAction dependsOn (generateJettyRun6, generateJettyRun7)
+	def jettySrcDir = mainScalaSourcePath / "sbt" / "jetty"
+	def jettyTemplate = jettySrcDir / "LazyJettyRun.scala.templ"
+	
+	lazy val generateJettyRun6 = generateJettyRun(jettyTemplate, jettySrcDir / "LazyJettyRun6.scala", "6", jettySrcDir / "jetty6.imports")
+	lazy val generateJettyRun7 = generateJettyRun(jettyTemplate, jettySrcDir / "LazyJettyRun7.scala", "7", jettySrcDir / "jetty7.imports")
+	def generateJettyRun(in: Path, out: Path, version: String, importsPath: Path) =
+		task
+		{
+			(for(template <- FileUtilities.readString(in asFile, log).right; imports <- FileUtilities.readString(importsPath asFile, log).right) yield
+				FileUtilities.write(out asFile, processJettyTemplate(template, version, imports), log).toLeft(()) ).left.toOption
+		}
+	def processJettyTemplate(template: String, version: String, imports: String): String =
+		template.replaceAll("""\Q${jetty.version}\E""", version).replaceAll("""\Q${jetty.imports}\E""", imports)
 }

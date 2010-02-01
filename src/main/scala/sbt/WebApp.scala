@@ -41,8 +41,12 @@ class JettyRunner(configuration: JettyConfiguration) extends ExitHook
 			
 			val dual = new xsbt.DualLoader(baseLoader, notJettyFilter, x => true, jettyLoader, jettyFilter, x => false)
 			
-			val lazyLoader = new LazyFrameworkLoader(implClassName, Array(FileUtilities.classLocation[Stoppable].toURI.toURL), dual, baseLoader)
-			val runner = ModuleUtilities.getObject(implClassName, lazyLoader).asInstanceOf[JettyRun]
+			def createRunner(implClassName: String) =
+			{
+				val lazyLoader = new LazyFrameworkLoader(implClassName, Array(FileUtilities.classLocation[Stoppable].toURI.toURL), dual, baseLoader)
+				ModuleUtilities.getObject(implClassName, lazyLoader).asInstanceOf[JettyRun]
+			}
+			val runner = try { createRunner(implClassName6) } catch { case e: NoClassDefFoundError => createRunner(implClassName7) }
 			runner(configuration, jettyLoader)
 		}
 
@@ -62,7 +66,8 @@ class JettyRunner(configuration: JettyConfiguration) extends ExitHook
 			}
 		}
 	}
-	private val implClassName = "sbt.LazyJettyRun"
+	private val implClassName6 = "sbt.jetty.LazyJettyRun6"
+	private val implClassName7 = "sbt.jetty.LazyJettyRun7"
 
 	private def runError(e: Throwable, messageBase: String, log: Logger) =
 	{
@@ -105,165 +110,41 @@ abstract class CustomJettyConfiguration extends JettyConfiguration
 	def jettyConfigurationXML: NodeSeq = NodeSeq.Empty
 }
 
-/* This class starts Jetty.
-* NOTE: DO NOT actively use this class.  You will see NoClassDefFoundErrors if you fail
-*  to do so.Only use its name in JettyRun for reflective loading.  This allows using
-*  the Jetty libraries provided on the project classpath instead of requiring them to be
-*  available on sbt's classpath at startup.
-*/
-private object LazyJettyRun extends JettyRun
+private class JettyLoggerBase(delegate: Logger)
 {
-	import org.mortbay.jetty.{Handler, Server}
-	import org.mortbay.jetty.nio.SelectChannelConnector
-	import org.mortbay.jetty.webapp.{WebAppClassLoader, WebAppContext}
-	import org.mortbay.log.Log
-	import org.mortbay.util.Scanner
-	import org.mortbay.xml.XmlConfiguration
+	def getName = "JettyLogger"
+	def isDebugEnabled = delegate.atLevel(Level.Debug)
+	def setDebugEnabled(enabled: Boolean) = delegate.setLevel(if(enabled) Level.Debug else Level.Info)
 
-	import java.lang.ref.{Reference, WeakReference}
-
-	val DefaultMaxIdleTime = 30000
-
-	def apply(configuration: JettyConfiguration, jettyLoader: ClassLoader): Stoppable =
+	def info(msg: String) { delegate.info(msg) }
+	def debug(msg: String) { delegate.warn(msg) }
+	def warn(msg: String) { delegate.warn(msg) }
+	def info(msg: String, arg0: AnyRef, arg1: AnyRef) { delegate.info(format(msg, arg0, arg1)) }
+	def debug(msg: String, arg0: AnyRef, arg1: AnyRef) { delegate.debug(format(msg, arg0, arg1)) }
+	def warn(msg: String, arg0: AnyRef, arg1: AnyRef) { delegate.warn(format(msg, arg0, arg1)) }
+	def warn(msg: String, th: Throwable)
 	{
-		val oldLog = Log.getLog
-		Log.setLog(new JettyLogger(configuration.log))
-		val server = new Server
-
-		def configureScanner(listener: Scanner.BulkListener, scanDirectories: Seq[File], scanInterval: Int) =
+		delegate.warn(msg)
+		delegate.trace(th)
+	}
+	def debug(msg: String, th: Throwable)
+	{
+		delegate.debug(msg)
+		delegate.trace(th)
+	}
+	private def format(msg: String, arg0: AnyRef, arg1: AnyRef) =
+	{
+		def toString(arg: AnyRef) = if(arg == null) "" else arg.toString
+		val pieces = msg.split("""\{\}""", 3)
+		if(pieces.length == 1)
+			pieces(0)
+		else
 		{
-			if(scanDirectories.isEmpty)
-				None
+			val base = pieces(0) + toString(arg0) + pieces(1)
+			if(pieces.length == 2)
+				base
 			else
-			{
-				configuration.log.debug("Scanning for changes to: " + scanDirectories.mkString(", "))
-				val scanner = new Scanner
-				val list = new java.util.ArrayList[File]
-				scanDirectories.foreach(x => list.add(x))
-				scanner.setScanDirs(list)
-				scanner.setRecursive(true)
-				scanner.setScanInterval(scanInterval)
-				scanner.setReportExistingFilesOnStartup(false)
-				scanner.addListener(listener)
-				scanner.start()
-				Some(new WeakReference(scanner))
-			}
-		}
-
-		val (listener, scanner) =
-			configuration match
-			{
-				case c: DefaultJettyConfiguration =>
-					import c._
-					configureDefaultConnector(server, port)
-					def classpathURLs = classpath.get.map(_.asURL).toSeq
-					val webapp = new WebAppContext(war.absolutePath, contextPath)
-					
-					def createLoader =
-					{
-						class SbtWebAppLoader extends WebAppClassLoader(jettyLoader, webapp) { override def addURL(u: URL) = super.addURL(u) };
-						val loader = new SbtWebAppLoader
-						classpathURLs.foreach(loader.addURL)
-						loader
-					}
-					def setLoader() = webapp.setClassLoader(createLoader)
-					
-					setLoader()
-					server.setHandler(webapp)
-
-					val listener = new Scanner.BulkListener with Reload {
-						def reloadApp() = reload(server, setLoader(), log)
-						def filesChanged(files: java.util.List[_]) { reloadApp() }
-					}
-					(Some(listener), configureScanner(listener, c.scanDirectories, c.scanInterval))
-				case c: CustomJettyConfiguration =>
-					for(x <- c.jettyConfigurationXML)
-						(new XmlConfiguration(x.toString)).configure(server)
-					for(file <- c.jettyConfigurationFiles)
-						(new XmlConfiguration(file.toURI.toURL)).configure(server)
-					(None, None)
-			}
-
-		try
-		{
-			server.start()
-			new StopServer(new WeakReference(server), listener.map(new WeakReference(_)), scanner, oldLog)
-		}
-		catch { case e => server.stop(); throw e }
-	}
-	private def configureDefaultConnector(server: Server, port: Int)
-	{
-		val defaultConnector = new SelectChannelConnector
-		defaultConnector.setPort(port)
-		defaultConnector.setMaxIdleTime(DefaultMaxIdleTime)
-		server.addConnector(defaultConnector)
-	}
-	trait Reload { def reloadApp(): Unit }
-	private class StopServer(serverReference: Reference[Server], reloadReference: Option[Reference[Reload]], scannerReferenceOpt: Option[Reference[Scanner]], oldLog: org.mortbay.log.Logger) extends Stoppable
-	{
-		def reload(): Unit = on(reloadReference)(_.reloadApp())
-		private def on[T](refOpt: Option[Reference[T]])(f: T => Unit): Unit = refOpt.foreach(ref => onReferenced(ref.get)(f))
-		private def onReferenced[T](t: T)(f: T => Unit): Unit = if(t == null) () else f(t)
-		def stop()
-		{
-			onReferenced(serverReference.get)(_.stop())
-			on(scannerReferenceOpt)(_.stop())
-			Log.setLog(oldLog)
-		}
-	}
-	private def reload(server: Server, reconfigure: => Unit, log: Logger)
-	{
-		log.info("Reloading web application...")
-		val handlers = wrapNull(server.getHandlers, server.getHandler)
-		log.debug("Stopping handlers: " + handlers.mkString(", "))
-		handlers.foreach(_.stop)
-		log.debug("Reconfiguring...")
-		reconfigure
-		log.debug("Restarting handlers: " + handlers.mkString(", "))
-		handlers.foreach(_.start)
-		log.info("Reload complete.")
-	}
-	private def wrapNull(a: Array[Handler], b: Handler) =
-		(a, b) match
-		{
-			case (null, null) => Nil
-			case (null, notB) => notB :: Nil
-			case (notA, null) => notA.toList
-			case (notA, notB) => notB :: notA.toList
-		}
-	private class JettyLogger(delegate: Logger) extends org.mortbay.log.Logger
-	{
-		def isDebugEnabled = delegate.atLevel(Level.Debug)
-		def setDebugEnabled(enabled: Boolean) = delegate.setLevel(if(enabled) Level.Debug else Level.Info)
-
-		def getLogger(name: String) = this
-		def info(msg: String, arg0: AnyRef, arg1: AnyRef) { delegate.info(format(msg, arg0, arg1)) }
-		def debug(msg: String, arg0: AnyRef, arg1: AnyRef) { delegate.debug(format(msg, arg0, arg1)) }
-		def warn(msg: String, arg0: AnyRef, arg1: AnyRef) { delegate.warn(format(msg, arg0, arg1)) }
-		def warn(msg: String, th: Throwable)
-		{
-			delegate.warn(msg)
-			delegate.trace(th)
-		}
-		def debug(msg: String, th: Throwable)
-		{
-			delegate.debug(msg)
-			delegate.trace(th)
-		}
-		private def format(msg: String, arg0: AnyRef, arg1: AnyRef) =
-		{
-			def toString(arg: AnyRef) = if(arg == null) "" else arg.toString
-			val pieces = msg.split("""\{\}""", 3)
-			if(pieces.length == 1)
-				pieces(0)
-			else
-			{
-				val base = pieces(0) + toString(arg0) + pieces(1)
-				if(pieces.length == 2)
-					base
-				else
-					base + toString(arg1) + pieces(2)
-			}
+				base + toString(arg1) + pieces(2)
 		}
 	}
 }
