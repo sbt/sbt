@@ -92,7 +92,7 @@ final class Update(config: UpdateConfiguration)
 		// the actual module id here is not that important
 		val moduleID = new DefaultModuleDescriptor(createID(SbtOrg, "boot-" + target.tpe, "1.0"), "release", null, false)
 		moduleID.setLastModified(System.currentTimeMillis)
-		moduleID.addConfiguration(new IvyConfiguration(DefaultIvyConfiguration, PUBLIC, "", Array(), true, null))
+		moduleID.addConfiguration(new IvyConfiguration(DefaultIvyConfiguration, PUBLIC, "", new Array(0), true, null))
 		// add dependencies based on which target needs updating
 		target match
 		{

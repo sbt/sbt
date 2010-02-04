@@ -16,7 +16,8 @@ trait Provider extends NotNull
 	def parentLoader: ClassLoader
 	def lockFile: File
 
-	def classpath = Provider.getJars(baseDirectories)
+	def classpath: Array[File] = Provider.getJars(baseDirectories)
+	def fullClasspath:Array[File] = concat(classpath, extraClasspath)
 		
 	def retrieveFailed: Nothing = fail("")
 	def retrieveCorrupt(missing: Iterable[String]): Nothing = fail(": missing " + missing.mkString(", "))
@@ -47,8 +48,8 @@ trait Provider extends NotNull
 		}
 		def createLoader =
 		{
-			val fullClasspath = classpath ++ extraClasspath
-			(fullClasspath, new URLClassLoader(Provider.toURLs(fullClasspath), parentLoader) )
+			val full = fullClasspath
+			(full, new URLClassLoader(Provider.toURLs(full), parentLoader) )
 		}
 	}
 }
@@ -56,7 +57,7 @@ trait Provider extends NotNull
 object Provider
 {
 	def getJars(directories: List[File]): Array[File] = toArray(directories.flatMap(directory => wrapNull(directory.listFiles(JarFilter))))
-	def wrapNull(a: Array[File]): Array[File] = if(a == null) Array() else a
+	def wrapNull(a: Array[File]): Array[File] = if(a == null) new Array[File](0) else a
 
 	object JarFilter extends FileFilter
 	{

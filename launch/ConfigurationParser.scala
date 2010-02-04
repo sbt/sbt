@@ -1,5 +1,6 @@
 package xsbt.boot
 
+
 import Pre._
 import java.lang.Character.isWhitespace
 import java.io.{BufferedReader, File, FileInputStream, InputStreamReader, Reader, StringReader}
@@ -102,7 +103,7 @@ class ConfigurationParser extends NotNull
 		val (crossVersioned, m6) = id(m5, "cross-versioned", "true")
 		val (resources, m7) = ids(m6, "resources", Nil)
 		check(m7, "label")
-		val classpathExtra = toFiles(resources).toArray[File]
+		val classpathExtra = toArray(toFiles(resources))
 		new Application(org, name, rev, main, components, toBoolean(crossVersioned), classpathExtra)
 	}
 	def getRepositories(m: LabelMap): List[Repository] =

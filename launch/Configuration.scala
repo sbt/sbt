@@ -35,6 +35,7 @@ object Configuration
 			if(exists) Some(resolved.toURL) else None
 		}
 		val against = resolveAgainst(baseDirectory)
+		// use Iterators so that resolution occurs lazily, for performance
 		val resolving = against.elements.flatMap(e => resolve(e).toList.elements)
 		if(!resolving.hasNext) multiPartError("Could not find configuration file '" + path + "'.  Searched:", against)
 		resolving.next()

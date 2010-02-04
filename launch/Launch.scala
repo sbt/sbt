@@ -92,13 +92,13 @@ class Launch(val bootDirectory: File, repositories: List[Repository], scalaClass
 		lazy val scalaHome = new File(libDirectory, ScalaDirectoryName)
 		def compilerJar = new File(scalaHome,CompilerModuleName + ".jar")
 		def libraryJar = new File(scalaHome, LibraryModuleName + ".jar")
-		override def classpath = Array(compilerJar, libraryJar)
+		override def classpath = array(compilerJar, libraryJar)
 		def baseDirectories = List(scalaHome)
 		def testLoadClasses = TestLoadScalaClasses
 		def target = new UpdateScala(scalaClassifiers)
 		def failLabel = "Scala " + version
 		def lockFile = updateLockFile
-		def extraClasspath = Array[File]()
+		def extraClasspath = array()
 
 		def app(id: xsbti.ApplicationID): xsbti.AppProvider = new AppProvider(id)
 
@@ -113,7 +113,7 @@ class Launch(val bootDirectory: File, repositories: List[Repository], scalaClass
 			def target = new UpdateApp(Application(id))
 			def failLabel = id.name + " " + id.version
 			def lockFile = updateLockFile
-			def mainClasspath = classpath ++ extraClasspath
+			def mainClasspath = fullClasspath
 			def extraClasspath = id.classpathExtra
 
 			lazy val mainClass: Class[T] forSome { type T <: xsbti.AppMain } =

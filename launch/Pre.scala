@@ -28,4 +28,14 @@ object Pre
 		copy(0, list)
 		arr
 	}
+	/* These exist in order to avoid bringing in dependencies on RichInt and ArrayBuffer, among others. */
+	import java.io.File
+	def concat(a: Array[File], b: Array[File]): Array[File] =
+	{
+		val n = new Array[File](a.length + b.length)
+		java.lang.System.arraycopy(a, 0, n, 0, a.length)
+		java.lang.System.arraycopy(b, 0, n, a.length, b.length)
+		n
+	}
+	def array(files: File*): Array[File] = toArray(files.toList)
 }
