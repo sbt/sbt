@@ -43,12 +43,14 @@ trait UnmanagedClasspathProject extends ClasspathProject
 	/** The classpath containing all jars in the unmanaged directory. */
 	def unmanagedClasspath: PathFinder =
 	{
-		val base = descendents(dependencyPath, "*.jar")
+		val base = descendents(dependencyPath, jarFilter)
 		if(scratch)
-			base +++ (info.projectPath * "*.jar")
+			base +++ (info.projectPath * jarFilter)
 		else
 			base
 	}
+	/* Explicitly filter (x)sbt-launch(er)-<version>.jar, since it contains minified versions of various classes.*/
+	private def jarFilter: NameFilter = "*.jar" - "*sbt-launch*.jar"
 	/** The classpath containing all unmanaged classpath elements for the given configuration. This typically includes
 	* at least 'unmanagedClasspath'.*/
 	def fullUnmanagedClasspath(config: Configuration): PathFinder
