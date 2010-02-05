@@ -98,7 +98,6 @@ class xMain extends xsbti.AppMain
 	{
 		project.log.info("Building project " + project.name + " " + project.version.toString + " against Scala " + project.buildScalaVersion)
 		project.log.info("   using " + project.getClass.getName + " with sbt " + project.sbtVersion.value + " and Scala " + project.defScalaVersion.value)
-
 		processArguments(project, initialize(remainingArguments), configuration, startTime) match
 		{
 			case e: xsbti.Exit =>
@@ -308,13 +307,12 @@ class xMain extends xsbti.AppMain
 	// todo:  project.log.info("No actions specified, interactive session started. Execute 'help' for more information.")
 	private def prompt(baseProject: Project, project: Project): String =
 	{
-		val projectNames = baseProject.projectClosure.map(_.name)
+		lazy val projectNames = baseProject.projectClosure.map(_.name)
 		val prefixes = ContinuousExecutePrefix :: CrossBuildPrefix :: Nil
-		val scalaVersions = baseProject.crossScalaVersions ++ Seq(baseProject.defScalaVersion.value)
-		val completors = new Completors(ProjectAction, projectNames, interactiveCommands, List(GetAction, SetAction), SpecificBuildPrefix, scalaVersions, prefixes)
-		val reader = new JLineReader(baseProject.historyPath, completors, baseProject.log)
-		val methodCompletions = for( (name, method) <- project.methods) yield (name, method.completions)
-		reader.setVariableCompletions(project.taskNames, project.propertyNames, methodCompletions)
+		lazy val scalaVersions = baseProject.crossScalaVersions ++ Seq(baseProject.defScalaVersion.value)
+		lazy val methodCompletions = for( (name, method) <- project.methods) yield (name, method.completions)
+		lazy val completors = new Completors(ProjectAction, projectNames, interactiveCommands, List(GetAction, SetAction), SpecificBuildPrefix, scalaVersions, prefixes, project.taskNames, project.propertyNames, methodCompletions)
+		val reader = new LazyJLineReader(baseProject.historyPath, MainCompletor(completors), baseProject.log)
 		reader.readLine("> ").getOrElse(ExitCommand)
 	}
 
