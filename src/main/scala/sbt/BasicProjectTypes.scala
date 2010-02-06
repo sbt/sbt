@@ -243,7 +243,7 @@ trait BasicManagedProject extends ManagedProject with ReflectiveManagedProject w
 		val in = inlineSettings
 		if(in.configurations.isEmpty)
 		{
-			if(in.dependencies.isEmpty && in.ivyXML.isEmpty && in.module.explicitArtifacts.isEmpty && in.configurations.isEmpty)
+			if(in.dependencies.isEmpty && in.ivyXML.isEmpty && (in.module.explicitArtifacts.size <= 1) && in.configurations.isEmpty)
 				externalSettings
 			else if(useDefaultConfigurations)
 				in withConfigurations ( Configurations.defaultMavenConfigurations )
@@ -607,7 +607,7 @@ trait ReflectiveArtifacts extends ManagedProject
 		{
 			case Maven => reflective ++ List(Artifact(artifactID, "pom", "pom"))
 			case Ivy => reflective
-			case Auto => Set.empty
+			case Auto => reflective
 		}
 	}
 	def reflectiveArtifacts: Set[Artifact] = Set(Reflective.reflectiveMappings[Artifact](this).values.toList: _*)
