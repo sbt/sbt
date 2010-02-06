@@ -226,6 +226,7 @@ trait Project extends TaskManager with Dag[Project] with BasicEnvironment
 	final val buildScalaVersions = propertyOptional[String](defScalaVersion.value, true)
 	/** The definitive source for the version of Scala being used to *build* the project.*/
 	def buildScalaVersion = info.buildScalaVersion.getOrElse(crossScalaVersions.first)
+	private[sbt] def isScala27 = buildScalaVersion.startsWith("2.7.")
 
 
 	def componentManager = new ComponentManager(info.launcher.globalLock, info.app.components, log)
@@ -327,24 +328,22 @@ object Project
 		loadProject(path.asFile, deps, parent, log, app, buildScalaVersion)
 	/** Loads the project in the directory given by 'projectDirectory' and with the given dependencies.*/
 	private[sbt] def loadProject(projectDirectory: File, deps: Iterable[Project], parent: Option[Project], log: Logger, app: AppProvider, buildScalaVersion: Option[String]): LoadResult =
-		loadProject(projectDirectory, deps, parent, getClass.getClassLoader, log, app, buildScalaVersion)
-	private[sbt] def loadProject(projectDirectory: File, deps: Iterable[Project], parent: Option[Project], additional: ClassLoader, log: Logger, app: AppProvider, buildScalaVersion: Option[String]): LoadResult =
 	{
 		val info = ProjectInfo(projectDirectory, deps, parent)(log, app, buildScalaVersion)
 		ProjectInfo.setup(info, log) match
 		{
 			case err: SetupError => new LoadSetupError(err.message)
 			case SetupDeclined => LoadSetupDeclined
-			case AlreadySetup => loadProject(info, None, additional, log)
-			case setup: SetupInfo => loadProject(info, Some(setup), additional, log)
+			case AlreadySetup => loadProject(info, None, log)
+			case setup: SetupInfo => loadProject(info, Some(setup), log)
 		}
 	}
-	private def loadProject(info: ProjectInfo, setupInfo: Option[SetupInfo], additional: ClassLoader, log: Logger): LoadResult =
+	private def loadProject(info: ProjectInfo, setupInfo: Option[SetupInfo], log: Logger): LoadResult =
 	{
 		try
 		{
 			val result =
-				for(builderClass <- getProjectDefinition(info, additional, log).right) yield
+				for(builderClass <- getProjectDefinition(info, log).right) yield
 					initialize(constructProject(info, builderClass), setupInfo, log)
 			result.fold(new LoadError(_), new LoadSuccess(_))
 		}
@@ -406,18 +405,18 @@ object Project
 	}
 	/** Compiles the project definition classes and returns the project definition class name
 	* and the class loader that should be used to load the definition. */
-	private def getProjectDefinition(info: ProjectInfo, additional: ClassLoader, buildLog: Logger): Either[String, Class[P] forSome { type P <: Project }] =
+	private def getProjectDefinition(info: ProjectInfo, buildLog: Logger): Either[String, Class[P] forSome { type P <: Project }] =
 	{
 		val builderProjectPath = info.builderPath / BuilderProjectDirectoryName
 		if(builderProjectPath.asFile.isDirectory)
 		{
 			val pluginProjectPath = info.builderPath / PluginProjectDirectoryName
-			val additionalPaths = additional match { case u: URLClassLoader => u.getURLs.map(url => Path.fromFile(FileUtilities.toFile(url))); case _ => Array[Path]() }
+			val additionalPaths = info.sbtClasspath
 			val builderInfo = ProjectInfo(builderProjectPath.asFile, Nil, None)(buildLog, info.app, Some(info.definitionScalaVersion))
 			val builderProject = new BuilderProject(builderInfo, pluginProjectPath, additionalPaths, buildLog)
 			builderProject.compile.run.toLeft(()).right.flatMap { ignore =>
 				builderProject.projectDefinition.right.map {
-					case Some(definition) => getProjectClass[Project](definition, builderProject.projectClasspath, additional)
+					case Some(definition) =>  getProjectClass[Project](definition, builderProject.projectClasspath, getClass.getClassLoader)
 					case None => DefaultBuilderClass
 				}
 			}

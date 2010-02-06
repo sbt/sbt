@@ -50,8 +50,8 @@ abstract class BasicScalaProject extends ScalaProject with BasicDependencyProjec
 	def manifestClassPath: Option[String] = None
 	def dependencies = info.dependencies ++ subProjects.values.toList
 
-	val mainCompileConditional = new CompileConditional(mainCompileConfiguration, buildCompiler)
-	val testCompileConditional = new CompileConditional(testCompileConfiguration, buildCompiler)
+	lazy val mainCompileConditional = new CompileConditional(mainCompileConfiguration, buildCompiler)
+	lazy val testCompileConditional = new CompileConditional(testCompileConfiguration, buildCompiler)
 
 	def compileOrder = CompileOrder.Mixed
 
@@ -76,8 +76,9 @@ abstract class BasicScalaProject extends ScalaProject with BasicDependencyProjec
 	/** The options provided to the 'doc' and 'docTest' actions.*/
 	def documentOptions: Seq[ScaladocOption] =
 		documentTitle(name + " " + version + " API") ::
-		windowTitle(name + " " + version + " API") ::
-		Nil
+		(if(isScala27) only27Options else Nil)
+	private def only27Options =
+		windowTitle(name + " " + version + " API") :: Nil
 	/** The options provided to the 'test' action..*/
 	def testOptions: Seq[TestOption] =
 		TestListeners(testListeners) ::

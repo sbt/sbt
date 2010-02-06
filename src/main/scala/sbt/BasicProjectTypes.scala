@@ -225,7 +225,6 @@ trait BasicManagedProject extends ManagedProject with ReflectiveManagedProject w
 	/** Determines extra libraries needed for compatibility.  Currently, this is the compatibility test framework. */
 	private def compatExtra(deps: Set[ModuleID]) =
 		if(isScala27 && deps.exists(requiresCompat)) { log.debug("Using compatibility implementation of test interface."); compatTestFramework } else Nil
-	private def isScala27 = buildScalaVersion.startsWith("2.7.")
 	/** True if the given dependency requires the compatibility test framework. */
 	private def requiresCompat(m: ModuleID) =
 	{

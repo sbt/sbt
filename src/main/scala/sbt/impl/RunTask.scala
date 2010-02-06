@@ -59,6 +59,8 @@ private final class RunTask(root: Task, rootName: String, maximumTasks: Int) ext
 		else
 			runTask(action, expandedTaskName(action))
 	}
+	private val headerStart = System.getProperty("sbt.start.delimiter", "==")
+	private val headerEnd = System.getProperty("sbt.end.delimiter", "==")
 	private def isRoot(t: Task) = t == expandedRoot
 	/** Will be called in its own thread except for the root task. */
 	private def runTask(action: Task, actionName: String): Option[String] =
@@ -71,10 +73,10 @@ private final class RunTask(root: Task, rootName: String, maximumTasks: Int) ext
 			banner(ControlEvent.Start, "\n  ", "...")
 		def doRun() =
 		{
-			banner(ControlEvent.Header, "\n==", "==")
+			banner(ControlEvent.Header, "\n" + headerStart, headerStart)
 			try { action.invoke }
 			catch { case e: Exception => action.manager.log.trace(e); Some(e.toString) }
-			finally { banner(ControlEvent.Finish, "==", "==") }
+			finally { banner(ControlEvent.Finish, headerEnd, headerEnd) }
 		}
 		
 		if(buffered)
