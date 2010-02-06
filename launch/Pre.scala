@@ -38,4 +38,6 @@ object Pre
 		n
 	}
 	def array(files: File*): Array[File] = toArray(files.toList)
+	/* Saves creating a closure for default if it has already been evaluated*/
+	def orElse[T](opt: Option[T], default: T) = if(opt.isDefined) opt.get else default
 }

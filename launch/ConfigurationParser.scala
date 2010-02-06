@@ -55,12 +55,12 @@ class ConfigurationParser extends NotNull
 	def check(map: ListMap[String, _], label: String): Unit = if(map.isEmpty) () else error(map.keys.mkString("Invalid " + label + "(s): ", ",",""))
 	def check[T](label: String, pair: (T, ListMap[String, _])): T = { check(pair._2, label); pair._1 }
 	def id(map: LabelMap, name: String, default: String): (String, LabelMap) =
-		(getOrNone(map, name).getOrElse(default), map - name)
-	def getOrNone[K,V](map: ListMap[K,Option[V]], k: K) = map.get(k).getOrElse(None)
+		(orElse(getOrNone(map, name), default), map - name)
+	def getOrNone[K,V](map: ListMap[K,Option[V]], k: K) = orElse(map.get(k), None)
 	def ids(map: LabelMap, name: String, default: List[String]) =
 	{
-		val result = map(name).map(value => trim(value.split(",")).filter(isNonEmpty)).getOrElse(default)
-		(result, map - name)
+		val result = map(name).map(value => trim(value.split(",")).filter(isNonEmpty))
+		(orElse(result, default), map - name)
 	}
 	def bool(map: LabelMap, name: String, default: Boolean): (Boolean, LabelMap) =
 	{
@@ -70,7 +70,7 @@ class ConfigurationParser extends NotNull
 	def toFiles(paths: List[String]): List[File] = paths.map(toFile)
 	def toFile(path: String): File = new File(path.replace('/', File.separatorChar))// if the path is relative, it will be resolved by Launch later
 	def file(map: LabelMap, name: String, default: File): (File, LabelMap) =
-		(getOrNone(map, name).map(toFile).getOrElse(default), map  - name)
+		(orElse(getOrNone(map, name).map(toFile), default), map - name)
 
 	def getBoot(m: LabelMap): BootSetup =
 	{

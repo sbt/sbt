@@ -27,7 +27,7 @@ sealed class ListMap[K,V] private(backing: List[(K,V)]) extends Iterable[(K,V)] 
 }
 object ListMap
 {
-	def apply[K,V](pairs: (K,V)*) = (empty[K,V] /: pairs)(_ + _)
+	def apply[K,V](pairs: (K,V)*) = new ListMap[K,V](pairs.toList.removeDuplicates)
 	def empty[K,V] = new ListMap[K,V](Nil)
 	private def remove[K,V](backing: List[(K,V)], k: K) = backing.filter(_._1 != k)
 }

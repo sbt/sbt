@@ -4,7 +4,7 @@ import java.io.{Closeable, File, FileInputStream, FileOutputStream, InputStream,
 
 object Using extends NotNull
 {
-	def apply[R <: Closeable,T](create: => R)(f: R => T): T = withResource(create)(f)
+	def apply[R <: Closeable,T](create: R)(f: R => T): T = withResource(create)(f)
 	def withResource[R <: Closeable,T](r: R)(f: R => T): T = try { f(r) } finally { r.close() }
 }
 
