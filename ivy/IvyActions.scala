@@ -134,6 +134,7 @@ object IvyActions
 			resolveOptions.setLog(LogOptions.LOG_DOWNLOAD_ONLY)
 		val resolveReport = ivy.resolve(module, resolveOptions)
 		if(resolveReport.hasError)
-			error(Set(resolveReport.getAllProblemMessages.toArray: _*).mkString("\n"))
+			throw new ResolveException(resolveReport.getAllProblemMessages.toArray.map(_.toString).toList.removeDuplicates)
 	}
 }
+final class ResolveException(messages: List[String]) extends RuntimeException(messages.mkString("\n"))
