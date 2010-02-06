@@ -48,6 +48,8 @@ class Run(compiler: xsbt.AnalyzingCompiler) extends ScalaRun
 /** This module is an interface to starting the scala interpreter or runner.*/
 object Run
 {
+	def run(mainClass: String, classpath: Iterable[Path], options: Seq[String], log: Logger)(implicit runner: ScalaRun) =
+		runner.run(mainClass, classpath, options, log)
 	/** Executes the given function, trapping calls to System.exit. */
 	private[sbt] def executeTrapExit(f: => Unit, log: Logger): Option[String] =
 	{
