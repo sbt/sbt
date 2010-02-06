@@ -65,7 +65,9 @@ final class IvySbt(configuration: IvyConfiguration)
 	}
 	private lazy val ivy =
 	{
-		val i = Ivy.newInstance(settings)
+		val i = new Ivy() { private val loggerEngine = new SbtMessageLoggerEngine; override def getLoggerEngine = loggerEngine }
+		i.setSettings(settings)
+		i.bind()
 		i.getLoggerEngine.pushLogger(logger)
 		i
 	}
