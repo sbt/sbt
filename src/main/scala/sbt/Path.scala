@@ -146,6 +146,7 @@ object Path
 		{
 			private[sbt] def addTo(pathSet: Set[Path]) = pathSet ++= paths
 		}
+	def finder(files: => Iterable[File]): PathFinder =  lazyPathFinder { fromFiles(files) }
 		
 	/** The separator character of the platform.*/
 	val sep = java.io.File.separatorChar
@@ -223,6 +224,7 @@ object Path
 	}
 	def fromFile(file: String): Path = fromFile(new File(file))
 	def fromFile(file: File): Path = new FilePath(file)
+	def fromFiles(files: Iterable[File]): Iterable[Path] =  files.map(fromFile)
 }
 
 /** A path finder constructs a set of paths.  The set is evaluated by a call to the <code>get</code>

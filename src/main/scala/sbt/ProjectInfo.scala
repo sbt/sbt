@@ -28,6 +28,8 @@ final case class ProjectInfo(projectDirectory: File, dependencies: Iterable[Proj
 	def pluginsOutputPath = pluginsPath / Project.DefaultOutputDirectoryName
 	def pluginsManagedSourcePath = pluginsPath / BasicDependencyPaths.DefaultManagedSourceDirectoryName
 	def pluginsManagedDependencyPath = pluginsPath / BasicDependencyPaths.DefaultManagedDirectoryName
+	
+	def sbtClasspath = Path.finder(app.mainClasspath)
 }
 
 private[sbt] sealed trait SetupResult extends NotNull

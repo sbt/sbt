@@ -19,12 +19,12 @@ trait SimpleScalaProject extends ExecProject
 	case class CompileOption(val asString: String) extends ActionOption
 	case class JavaCompileOption(val asString: String) extends ActionOption
 
-	val Deprecation = CompileOption("-deprecation")
+	val Deprecation = CompileOption(CompileOptions.Deprecation)
 	val ExplainTypes = CompileOption("-explaintypes")
 	val Optimize = CompileOption("-optimise")
 	def Optimise = Optimize
-	val Verbose = CompileOption("-verbose")
-	val Unchecked = CompileOption("-unchecked")
+	val Verbose = CompileOption(CompileOptions.Verbose)
+	val Unchecked = CompileOption(CompileOptions.Unchecked)
 	val DisableWarnings = CompileOption("-nowarn")
 	def target(target: Target.Value) = CompileOption("-target:" + target)
 	object Target extends Enumeration
@@ -107,7 +107,7 @@ trait ScalaProject extends SimpleScalaProject with FileTasks with MultiTaskProje
 	def access(access: Access.Value) = SimpleDocOption("-access:" + access)
 	def documentBottom(bottomText: String) = CompoundDocOption("-bottom", bottomText)
 	def documentCharset(charset: String) = CompoundDocOption("-charset", charset)
-	def documentTitle(title: String) = CompoundDocOption("-doctitle", title)
+	def documentTitle(title: String) = CompoundDocOption(if(isScala27) "-doctitle" else "-doc-title", title)
 	def documentFooter(footerText: String) = CompoundDocOption("-footer", footerText)
 	def documentHeader(headerText: String) = CompoundDocOption("-header", headerText)
 	def stylesheetFile(path: Path) = CompoundDocOption("-stylesheetfile", path.asFile.getAbsolutePath)

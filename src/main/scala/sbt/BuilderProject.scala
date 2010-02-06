@@ -13,7 +13,7 @@ sealed abstract class InternalProject extends Project
 	override final protected def disableCrossPaths = false
 	override final def shouldCheckOutputDirectories = false
 }
-private sealed abstract class BasicBuilderProject extends InternalProject with SimpleScalaProject
+private sealed abstract class BasicBuilderProject extends InternalProject
 {
 	def sourceFilter = "*.scala" | "*.java"
 	def jarFilter: NameFilter = "*.jar"
@@ -33,13 +33,13 @@ private sealed abstract class BasicBuilderProject extends InternalProject with S
 	}
 
 	def projectClasspath = compilePath +++ libraries +++ sbtJars
-	def sbtJars = Path.lazyPathFinder { info.app.mainClasspath.map(Path.fromFile) }
+	def sbtJars = info.sbtClasspath
 
 	abstract class BuilderCompileConfiguration extends AbstractCompileConfiguration
 	{
 		def projectPath = info.projectPath
 		def log = BasicBuilderProject.this.log
-		def options = (Deprecation :: Unchecked :: Nil).map(_.asString)
+		def options = CompileOptions.Deprecation :: CompileOptions.Unchecked :: Nil
 		def javaOptions = Nil
 		def maxErrors = ScalaProject.DefaultMaximumCompileErrors
 		def compileOrder = CompileOrder.Mixed
@@ -111,7 +111,7 @@ private sealed abstract class BasicBuilderProject extends InternalProject with S
 	override final def methods = Map.empty
 }
 /** The project definition used to build project definitions. */
-private final class BuilderProject(val info: ProjectInfo, val pluginPath: Path, additional: Iterable[Path], rawLogger: Logger) extends BasicBuilderProject
+private final class BuilderProject(val info: ProjectInfo, val pluginPath: Path, additional: PathFinder, rawLogger: Logger) extends BasicBuilderProject
 {
 	private lazy val pluginProject =
 	{
@@ -122,7 +122,7 @@ private final class BuilderProject(val info: ProjectInfo, val pluginPath: Path, 
 	}
 	override def projectClasspath = super.projectClasspath +++
 		pluginProject.map(_.pluginClasspath).getOrElse(Path.emptyPathFinder) +++
-		Path.lazyPathFinder{ additional }
+		additional
 	def tpe = "project definition"
 
 	override def compileTask = super.compileTask dependsOn(pluginProject.map(_.syncPlugins).toList : _*)
@@ -210,11 +210,16 @@ class PluginDefinition(val info: ProjectInfo) extends InternalProject with Basic
 }
 class PluginProject(info: ProjectInfo) extends DefaultProject(info)
 {
+	/* Since plugins are distributed as source, there is no need to append _<scala.version>  */
 	override def moduleID = normalizedName
+	/* Fix the version used to build to the version currently running sbt. */
 	override def buildScalaVersion = defScalaVersion.value
-	override def unmanagedClasspath = super.unmanagedClasspath +++ Path.lazyPathFinder(info.app.mainClasspath.map(Path.fromFile))
+	/* Add sbt to the classpath */
+	override def unmanagedClasspath = super.unmanagedClasspath +++ info.sbtClasspath
+	/* Package the plugin as source. */
 	override def packageAction = packageSrc dependsOn(test)
 	override def packageSrcJar = jarPath
+	/* Some setup to make publishing quicker to configure. */
 	override def useMavenConfigurations = true
 	override def managedStyle = ManagedStyle.Maven
 }
