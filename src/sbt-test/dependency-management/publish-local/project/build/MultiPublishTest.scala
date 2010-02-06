@@ -7,7 +7,11 @@ class MultiPublishTest(info: ProjectInfo) extends ParentProject(info)
 			ManagedStyle.Maven
 		else
 			ManagedStyle.Auto
-	override def ivyCacheDirectory = Some(outputPath / "ivy" / "cache")
+
+	override def deliverProjectDependencies = if(managedStyle == sub.managedStyle) super.deliverProjectDependencies else Nil
+
+	override def ivyCacheDirectory = Some("ivy" / "cache")
+	override def ivyRepositories = Resolver.file("local", "ivy" / "local" asFile)(Resolver.ivyStylePatterns) :: Nil
 	
 	lazy val sub = project("sub", "Sub Project", new SubProject(_))
 	class SubProject(info: ProjectInfo) extends DefaultProject(info)

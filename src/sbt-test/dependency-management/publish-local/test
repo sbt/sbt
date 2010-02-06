@@ -1,16 +1,34 @@
+> set project.organization A
+> reload
 > publish-local
 
-> clean 
-$ touch mavenStyle 
-> reload 
+> set project.organization B
+$ touch mavenStyle
+> reload
 > publish-local
 
-> clean 
-$ touch sub/mavenStyle 
-> reload 
+> set project.organization C
+$ touch sub/mavenStyle
+> reload
 > publish-local
 
-> clean 
-$ delete mavenStyle 
-> reload 
+> set project.organization D
+$ delete mavenStyle
+> reload
 > publish-local
+
+
+> set project.name Retrieve Test
+> clean
+$ delete project/build/
+$ copy-file project/changes/RetrieveTest.scala project/build/RetrieveTest.scala
+> reload
+
+> clean-lib
+>debug
+> update
+
+$ touch mavenStyle
+> reload
+> clean-lib
+> update
