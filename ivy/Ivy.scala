@@ -150,6 +150,7 @@ final class IvySbt(configuration: IvyConfiguration)
 			val moduleID = new DefaultModuleDescriptor(IvySbt.toID(module), "release", null, false)
 			moduleID.setLastModified(System.currentTimeMillis)
 			moduleID.addConfiguration(IvySbt.toIvyConfiguration(Configurations.Default))
+			IvySbt.addArtifacts(moduleID, module.explicitArtifacts)
 			IvySbt.addMainArtifact(moduleID)
 			(moduleID, defaultConf)
 		}
