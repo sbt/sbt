@@ -162,10 +162,15 @@ object Resolver
 	val ScalaToolsReleasesRoot = "http://scala-tools.org/repo-releases"
 	val ScalaToolsSnapshotsRoot = "http://scala-tools.org/repo-snapshots"
 
+	/** Add the local, Maven Central, and Scala Tools releases repositories to the user repositories.  */
 	def withDefaultResolvers(userResolvers: Seq[Resolver]): Seq[Resolver] =
 		withDefaultResolvers(userResolvers, true)
+	/** Add the local Ivy and Maven Central repositories to the user repositories.  If `scalaTools` is true, add the Scala Tools releases repository as well.  */
 	def withDefaultResolvers(userResolvers: Seq[Resolver], scalaTools: Boolean): Seq[Resolver] =
 		withDefaultResolvers(userResolvers, true, scalaTools)
+	/** Add the local Ivy repository to the user repositories.
+	* If `scalaTools` is true, add the Scala Tools releases repository.
+	* If `mavenCentral` is true, add the Maven Central repository.  */
 	def withDefaultResolvers(userResolvers: Seq[Resolver], mavenCentral: Boolean, scalaTools: Boolean): Seq[Resolver] =
 		Seq(Resolver.defaultLocal(None)) ++
 		userResolvers ++
