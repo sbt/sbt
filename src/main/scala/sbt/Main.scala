@@ -407,7 +407,7 @@ class xMain extends xsbti.AppMain
 		printCmd(HelpAction, "Displays this help message.")
 		printCmd(ShowCurrent, "Shows the current project, Scala version, and logging level.")
 		printCmd(Level.levels.mkString(", "), "Set logging for the current project to the specified level.")
-		printCmd(TraceCommand + " " + validTraceArguments, "Configures stack trace logging.")
+		printCmd(TraceCommand + " " + validTraceArguments, "Configures stack trace logging. " + traceExplanation)
 		printCmd(ProjectAction + " <project name>", "Sets the currently active project.")
 		printCmd(ShowProjectsAction, "Shows all available projects.")
 		printCmd(TerminateActions.elements.mkString(", "), "Terminates the build.")
@@ -690,7 +690,8 @@ class xMain extends xsbti.AppMain
 		actionValid
 	}
 
-	def validTraceArguments = "'on', 'nosbt', 'off', or <integer>.\n    'nosbt' prints stack traces up to the first sbt frame.\n    An integer argument defines the number of stack elements to show per exception."
+	def validTraceArguments = "'on', 'nosbt', 'off', or <integer>"
+	def traceExplanation = "'nosbt' prints stack traces up to the first sbt frame.  An integer gives the number of frames to show per exception."
 	private def isTerminateAction(s: String) = TerminateActions.elements.contains(s.toLowerCase)
 	private def setTraceError(log: Logger) = logError(log)("Invalid arguments for 'trace': expected " + validTraceArguments + ".")
 	private def setArgumentError(log: Logger) = logError(log)("Invalid arguments for 'set': expected property name and new value.")
