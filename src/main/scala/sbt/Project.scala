@@ -249,7 +249,13 @@ trait Project extends TaskManager with Dag[Project] with BasicEnvironment
 	lazy val localScalaInstances: Seq[ScalaInstance] = localScala ++ info.parent.toList.flatMap(_.localScalaInstances)
 	def localScala: Seq[ScalaInstance] = Nil
 	def buildCompiler = new AnalyzingCompiler(buildScalaInstance, componentManager)
+	/** Get a `ScalaInstance` for the Scala version with base directory `home`.  The library and compiler jars are
+	* assumed to be at `new File(home, "lib/scala-library.jar")` and `new File(home, "lib/scala-compiler.jar")`.
+	* The label for this instance is determined by the version String in the `compiler.properties` file in `scala-compiler.jar`.*/
 	def defineScala(home: File): ScalaInstance = ScalaInstance(home, info.launcher)
+	/** Get a `ScalaInstance` for the Scala version with base directory `home`.  The library and compiler jars are
+	* assumed to be at `new File(home, "lib/scala-library.jar")` and `new File(home, "lib/scala-compiler.jar")`.
+	* `version` is used as the label for this instance.*/
 	def defineScala(version: String, home: File): ScalaInstance = ScalaInstance(version, home, info.launcher)
 
 	/** If this project is cross-building, returns `base` with an additional path component containing the scala version
