@@ -1,8 +1,8 @@
-package xsbt
-
 // stripped down version of http://trac.assembla.com/metascala/browser/src/metascala/HLists.scala
 //   Copyright (c) 2009, Jesper Nordenberg
-//   new BSD license, see licenses/MetaScala
+//   new BSD license, see licenses/LICENSE_MetaScala
+
+package xsbt
 
 object HLists extends HLists
 trait HLists
