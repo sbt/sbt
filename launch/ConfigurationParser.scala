@@ -1,3 +1,6 @@
+/* sbt -- Simple Build Tool
+ * Copyright 2009, 2010  Mark Harrah
+ */
 package xsbt.boot
 
 

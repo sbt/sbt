@@ -1,3 +1,6 @@
+/* sbt -- Simple Build Tool
+ * Copyright 2009  Mark Harrah
+ */
 package xsbt.api
 
 import java.io.File

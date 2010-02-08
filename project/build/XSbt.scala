@@ -65,7 +65,7 @@ class XSbt(info: ProjectInfo) extends ParentProject(info)
 	def compilerInterfaceClasspath = compileInterfaceSub.projectClasspath(Configurations.Test)
 
 	//run in parallel
-	override def parallelExecution = false
+	override def parallelExecution = true
 	def jlineRev = "0.9.94"
 	def jlineDep = "jline" % "jline" % jlineRev intransitive()
 
@@ -108,10 +108,19 @@ class XSbt(info: ProjectInfo) extends ParentProject(info)
 		//override def compileOptions = super.compileOptions ++ List(Unchecked,ExplainTypes, CompileOption("-Xlog-implicits"))
 		val sbinary = "org.scala-tools.sbinary" %% "sbinary" % "0.3"
 	}
-	class Base(info: ProjectInfo) extends DefaultProject(info) with ManagedBase with Component
+	class Base(info: ProjectInfo) extends DefaultProject(info) with ManagedBase with Component with Licensed
 	{
 		override def scratch = true
 		override def consoleClasspath = testClasspath
+	}
+	trait Licensed extends BasicScalaProject
+	{
+		def notice = path("NOTICE")
+		abstract override def mainResources = super.mainResources +++ notice +++ Path.lazyPathFinder( extractLicenses )
+		lazy val seeRegex = """\(see (.*?)\)""".r
+		def licensePath(str: String): Path = { val path = Path.fromString(XSbt.this.info.projectPath, str); if(path.exists) path else error("Referenced license '" + str + "' not found at " + path) }
+		def seePaths(noticeString: String): List[Path] = seeRegex.findAllIn(noticeString).matchData.map(d => licensePath(d.group(1))).toList
+		def extractLicenses = if(!notice.exists) Nil else FileUtilities.readString(notice asFile, log).fold(_ => { log.warn("Could not read NOTICE"); Nil} , seePaths _)
 	}
 	class CompileProject(info: ProjectInfo) extends Base(info) with TestWithLog with TestWithLaunch
 	{

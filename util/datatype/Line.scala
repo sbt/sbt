@@ -1,3 +1,6 @@
+/* sbt -- Simple Build Tool
+ * Copyright 2009  Mark Harrah
+ */
 package xsbt.api
 
 sealed trait Line extends NotNull { val line: Int }

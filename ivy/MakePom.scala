@@ -1,3 +1,7 @@
+/* sbt -- Simple Build Tool
+ * Copyright 2008, 2009, 2010  Mark Harrah
+ */
+
 // based on Ivy's PomModuleDescriptorWriter, which is Apache Licensed, Version 2.0
 // http://www.apache.org/licenses/LICENSE-2.0
 

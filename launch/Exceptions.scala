@@ -1,3 +1,6 @@
+/* sbt -- Simple Build Tool
+ * Copyright 2009 Mark Harrah
+ */
 package xsbt.boot
 
 // The exception to use when an error occurs at the launcher level (and not a nested exception).
