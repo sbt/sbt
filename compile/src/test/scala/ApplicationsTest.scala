@@ -116,9 +116,7 @@ object ApplicationsTest extends Specification
 	}
 	private def testRun(loader: ClassLoader, className: String)
 	{
-		val obj = Class.forName(className+"$", true, loader)
-		val singletonField = obj.getField("MODULE$")
-		val singleton = singletonField.get(null)
-		singleton.asInstanceOf[{def main(args: Array[String]): Unit}].main(Array[String]())
+		val obj = Class.forName(className, true, loader)
+		obj.getMethod("main", classOf[Array[String]]).invoke(null, new Array[String](0))
 	}
 }
