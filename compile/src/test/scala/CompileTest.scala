@@ -43,22 +43,20 @@ object WithCompiler
 					val manager = new ComponentManager(xsbt.boot.Locks, new boot.ComponentProvider(componentDirectory), log)
 					val compiler = new AnalyzingCompiler(ScalaInstance(scalaVersion, launch), manager)
 					compiler.newComponentCompiler(log).clearCache(ComponentCompiler.compilerInterfaceID)
-					prepare(manager, ComponentCompiler.compilerInterfaceSrcID, "CompilerInterface.scala")
-					prepare(manager, ComponentCompiler.xsbtiID, classOf[xsbti.AnalysisCallback])
+					define(manager, ComponentCompiler.compilerInterfaceSrcID, getResource("CompilerInterface.scala"), getClassResource(classOf[jline.Completor]))
+					define(manager, ComponentCompiler.xsbtiID, getClassResource(classOf[xsbti.AnalysisCallback]))
 					f(compiler, log)
 				}
 			}
 		}
 	}
-	def prepare(manager: ComponentManager, id: String, resource: Class[_]): Unit = define(manager, id, FileUtilities.classLocationFile(resource) :: Nil)
-	def prepare(manager: ComponentManager, id: String, resource: String)
+	def getClassResource(resource: Class[_]): File = FileUtilities.classLocationFile(resource)
+	def getResource(resource: String): File = 
 	{
 		val src = getClass.getClassLoader.getResource(resource)
-		if(src eq null)
-			error("Resource not found: " + resource)
-		define(manager, id, FileUtilities.asFile(src) :: Nil)
+		if(src ne null) FileUtilities.asFile(src) else error("Resource not found: " + resource)
 	}
-	def define(manager: ComponentManager, id: String, files: List[File])
+	def define(manager: ComponentManager, id: String, files: File*)
 	{
 		manager.clearCache(id)
 		manager.define(id, files)
