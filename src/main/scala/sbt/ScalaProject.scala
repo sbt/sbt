@@ -8,31 +8,11 @@ import java.io.File
 import java.util.jar.{Attributes, Manifest}
 import scala.collection.mutable.ListBuffer
 
-trait SimpleScalaProject extends ExecProject
+trait Cleanable extends Project
 {
-	def errorTask(message: String) = task{ Some(message) }
-
 	trait CleanOption extends ActionOption
 	case class ClearAnalysis(analysis: TaskAnalysis[_, _, _]) extends CleanOption
 	case class Preserve(paths: PathFinder) extends CleanOption
-
-	case class CompileOption(val asString: String) extends ActionOption
-	case class JavaCompileOption(val asString: String) extends ActionOption
-
-	val Deprecation = CompileOption(CompileOptions.Deprecation)
-	val ExplainTypes = CompileOption("-explaintypes")
-	val Optimize = CompileOption("-optimise")
-	def Optimise = Optimize
-	val Verbose = CompileOption(CompileOptions.Verbose)
-	val Unchecked = CompileOption(CompileOptions.Unchecked)
-	val DisableWarnings = CompileOption("-nowarn")
-	def target(target: Target.Value) = CompileOption("-target:" + target)
-	object Target extends Enumeration
-	{
-		val Java1_5 = Value("jvm-1.5")
-		val Java1_4 = Value("jvm-1.4")
-		val Msil = Value("msil")
-	}
 
 	def cleanTask(paths: PathFinder, options: CleanOption*): Task =
 		cleanTask(paths, options)
@@ -53,6 +33,30 @@ trait SimpleScalaProject extends ExecProject
 				pathClean orElse restored
 			}
 		}
+	
+	lazy val cleanPlugins = cleanTask(info.pluginsOutputPath +++ info.pluginsManagedSourcePath +++ info.pluginsManagedDependencyPath)
+}
+trait SimpleScalaProject extends ExecProject with Cleanable
+{
+	def errorTask(message: String) = task{ Some(message) }
+
+	case class CompileOption(val asString: String) extends ActionOption
+	case class JavaCompileOption(val asString: String) extends ActionOption
+
+	val Deprecation = CompileOption(CompileOptions.Deprecation)
+	val ExplainTypes = CompileOption("-explaintypes")
+	val Optimize = CompileOption("-optimise")
+	def Optimise = Optimize
+	val Verbose = CompileOption(CompileOptions.Verbose)
+	val Unchecked = CompileOption(CompileOptions.Unchecked)
+	val DisableWarnings = CompileOption("-nowarn")
+	def target(target: Target.Value) = CompileOption("-target:" + target)
+	object Target extends Enumeration
+	{
+		val Java1_5 = Value("jvm-1.5")
+		val Java1_4 = Value("jvm-1.4")
+		val Msil = Value("msil")
+	}
 }
 trait ScalaProject extends SimpleScalaProject with FileTasks with MultiTaskProject with Exec
 {

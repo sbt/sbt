@@ -563,7 +563,7 @@ trait ReflectiveModules extends Project
 trait ReflectiveProject extends ReflectiveModules with ReflectiveTasks with ReflectiveMethods
 
 /** This Project subclass is used to contain other projects as dependencies.*/
-class ParentProject(val info: ProjectInfo) extends BasicDependencyProject
+class ParentProject(val info: ProjectInfo) extends BasicDependencyProject with Cleanable
 {
 	def dependencies: Iterable[Project] = info.dependencies ++ subProjects.values.toList
 	/** The directories to which a project writes are listed here and is used
