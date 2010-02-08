@@ -18,7 +18,7 @@ private[boot] final class BootFilteredLoader(parent: ClassLoader) extends ClassL
 		else
 			super.loadClass(className, resolve)
 	}
-	override def getResources(name: String) = if(includeResource(name)) super.getResources(name) else null
-	override def getResource(name: String) = if(includeResource(name)) super.getResource(name) else null
+	override def getResources(name: String) = if(includeResource(name)) super.getResources(name) else parent.getParent.getResources(name)
+	override def getResource(name: String) = if(includeResource(name)) super.getResource(name) else parent.getParent.getResource(name)
 	def includeResource(name: String) = name.startsWith(JLinePackagePath)
 }
