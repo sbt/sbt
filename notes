@@ -12,7 +12,6 @@ As usual:
  - Robust, flexible API
 
 ISSUES
-  - webapp: Jetty 7 + jsp
  - java sources are not recompiled when jars change: possibly binary dependencies are not recorded?
  
 TODO

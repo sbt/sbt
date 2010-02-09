@@ -66,6 +66,7 @@ class XSbt(info: ProjectInfo) extends ParentProject(info)
 
 	//run in parallel
 	override def parallelExecution = true
+	override def disableCrossPaths = true
 	def jlineRev = "0.9.94"
 	def jlineDep = "jline" % "jline" % jlineRev intransitive()
 
@@ -78,7 +79,7 @@ class XSbt(info: ProjectInfo) extends ParentProject(info)
 		val jline = jlineDep
 		val ivy = "org.apache.ivy" % "ivy" % "2.0.0"
 		def rawJarPath = jarPath
-		override final def crossScalaVersions = Set.empty // don't need to cross-build, since the distributed jar is standalone (proguard)
+		override def disableCrossPaths = true
 		lazy val rawPackage = packageTask(packagePaths +++ launchInterfaceSub.packagePaths, rawJarPath, packageOptions).dependsOn(compile)
 		// to test the retrieving and loading of the main sbt, we package and publish the test classes to the local repository
 		override def defaultMainArtifact = Artifact(testID)
@@ -220,20 +221,19 @@ class XSbt(info: ProjectInfo) extends ParentProject(info)
 }
 trait JavaProject extends BasicScalaProject
 {
-	override final def crossScalaVersions = Set.empty // don't need to cross-build Java sources
+	override def disableCrossPaths = true
 	// ensure that interfaces are only Java sources and that they cannot reference Scala classes
 	override def mainSources = descendents(mainSourceRoots, "*.java")
 	override def compileOrder = CompileOrder.JavaThenScala
 }
 trait SourceProject extends BasicScalaProject
 {
-	override final def crossScalaVersions = Set.empty // don't need to cross-build a source package
+	override def disableCrossPaths = true
 	override def packagePaths = mainResources +++ mainSources // the default artifact is a jar of the main sources and resources
 }
 trait ManagedBase extends BasicScalaProject
 {
 	override def deliverScalaDependencies = Nil
-	override def crossScalaVersions = Set("2.7.2", "2.7.5")
 	override def managedStyle = ManagedStyle.Ivy
 	override def useDefaultConfigurations = false
 	val defaultConf = Configurations.Default
