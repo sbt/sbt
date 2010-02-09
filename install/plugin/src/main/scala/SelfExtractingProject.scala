@@ -12,7 +12,7 @@ trait SelfExtractingProject extends Project
 	protected def createSelfExtractingJar(actions: List[String], jvmOptions: List[String], projectZip: Path, outputJar: Path): Option[String] =
 	{
 		def jarForClass(name: String) = Path.fromFile(classLocationFile(Class.forName(name)))
-		val loaderJar = jarForClass("sbt.boot.Boot")
+		val loaderJar = jarForClass("xsbti.Launcher")
 		val bytes = new ByteArrayOutputStream
 		transferAndClose(this.getClass.getResourceAsStream("extract.location"), bytes, log) orElse
 		{

@@ -12,7 +12,7 @@ object Main
 	
 	def main(args: Array[String])
 	{
-		if(args.contains("debug"))
+		if( args contains "debug" )
 			log.setLevel(Level.Debug)
 		val result = OpenResource.zipFile.ioOption(FileUtilities.classLocationFile[Install], "processing", log)(process)
 		for(msg <- result)
@@ -84,7 +84,7 @@ object Main
 	private def filterEmpty(list: List[String]) = list.filter(!_.isEmpty)
 	private def run(loader: File, project: File, install: Install) =
 	{
-		val command = "java" :: "-cp" :: loader.getAbsolutePath :: filterEmpty(install.options) ::: "sbt.boot.Boot" :: filterEmpty(install.actions)
+		val command = "java" :: "-jar" :: loader.getAbsolutePath :: filterEmpty(install.options) ::: filterEmpty(install.actions)
 		val builder = new java.lang.ProcessBuilder(command.toArray : _*)
 		builder.directory(project)
 		val exitCode = (Process(builder) !<)
