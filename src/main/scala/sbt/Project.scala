@@ -200,7 +200,7 @@ trait Project extends TaskManager with Dag[Project] with BasicEnvironment
 		result match
 		{
 			case LoadSetupDeclined => Predef.error("No project exists at path " + path)
-			case lse: LoadSetupError => Predef.error("Error setting up new project at path " + Path + " : " + lse.message)
+			case lse: LoadSetupError => Predef.error("Error setting up new project at path " + path + " : " + lse.message)
 			case err: LoadError => Predef.error("Error loading project at path " + path + " : " + err.message)
 			case success: LoadSuccess => success.project
 		}
