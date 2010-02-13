@@ -9,7 +9,7 @@ import FileUtilities._
 
 object Resources
 {
-	def apply(basePath: String, provider: AppProvider, buildScalaVersion: Option[String]) =
+	def apply(basePath: String) =
 	{
 		require(basePath.startsWith("/"))
 		val resource = getClass.getResource(basePath)
@@ -19,7 +19,7 @@ object Resources
 		{
 			val file = toFile(resource)
 			if(file.exists)
-				new Resources(file, provider, buildScalaVersion)
+				new Resources(file)
 			else
 				error("Resource base directory '" + basePath + "' does not exist.")
 		}
@@ -27,7 +27,7 @@ object Resources
 	private val LoadErrorPrefix = "Error loading initial project: "
 }
 
-class Resources(val baseDirectory: File, app: AppProvider, buildScalaVersion: Option[String])
+class Resources(val baseDirectory: File)
 {
 	import Resources._
 	// The returned directory is not actually read-only, but it should be treated that way
