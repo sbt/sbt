@@ -59,7 +59,7 @@ private sealed abstract class BasicBuilderProject extends InternalProject
 
 		import xsbt.ScalaInstance
 
-	val definitionCompileConditional = new BuilderCompileConditional(definitionCompileConfiguration, buildCompiler, tpe)
+	lazy val definitionCompileConditional = new BuilderCompileConditional(definitionCompileConfiguration, buildCompiler, tpe)
 	final class BuilderCompileConditional(config: BuilderCompileConfiguration, compiler: xsbt.AnalyzingCompiler, tpe: String) extends AbstractCompileConditional(config, compiler)
 	{
 		type AnalysisType = BuilderCompileAnalysis
@@ -111,9 +111,9 @@ private sealed abstract class BasicBuilderProject extends InternalProject
 	override final def methods = Map.empty
 }
 /** The project definition used to build project definitions. */
-private final class BuilderProject(val info: ProjectInfo, val pluginPath: Path, additional: PathFinder, rawLogger: Logger) extends BasicBuilderProject
+private final class BuilderProject(val info: ProjectInfo, val pluginPath: Path, rawLogger: Logger) extends BasicBuilderProject
 {
-	private lazy val pluginProject =
+	lazy val pluginProject =
 	{
 		if(pluginPath.exists)
 			Some(new PluginBuilderProject(ProjectInfo(pluginPath.asFile, Nil, None)(rawLogger, info.app, info.buildScalaVersion)))
@@ -121,15 +121,14 @@ private final class BuilderProject(val info: ProjectInfo, val pluginPath: Path, 
 			None
 	}
 	override def projectClasspath = super.projectClasspath +++
-		pluginProject.map(_.pluginClasspath).getOrElse(Path.emptyPathFinder) +++
-		additional
+		pluginProject.map(_.pluginClasspath).getOrElse(Path.emptyPathFinder)
 	def tpe = "project definition"
 
 	override def compileTask = super.compileTask dependsOn(pluginProject.map(_.syncPlugins).toList : _*)
 
 	final class PluginBuilderProject(val info: ProjectInfo) extends BasicBuilderProject
 	{
-		val pluginUptodate = propertyOptional[Boolean](false)
+		lazy val pluginUptodate = propertyOptional[Boolean](false)
 		def tpe = "plugin definition"
 		def managedSourcePath = path(BasicDependencyPaths.DefaultManagedSourceDirectoryName)
 		def managedDependencyPath = crossPath(BasicDependencyPaths.DefaultManagedDirectoryName)

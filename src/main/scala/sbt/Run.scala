@@ -109,11 +109,8 @@ object Run
 		override def createInterpreter()
 		{
 			val projectLoader = project.getClass.getClassLoader
-			val launcherJar = FileUtilities.classLocationFile[xsbti.Launcher]
-			val app = project.info.app
-			val projectJars: Array[File] = projectLoader.asInstanceOf[URLClassLoader].getURLs.flatMap(ClasspathUtilities.asFile).toArray[File]
-			val classpathFiles = app.mainClasspath ++ app.scalaProvider.jars ++ Array(launcherJar) ++ projectJars
-			compilerSettings.classpath.value = classpathFiles.map(_.getAbsolutePath).mkString(File.pathSeparator)
+			val classpath = Project.getProjectClasspath(project)
+			compilerSettings.classpath.value = Path.makeString(classpath.get ++ Path.fromFiles(project.info.app.scalaProvider.jars))
 			project.log.debug("  Compiler classpath: " + compilerSettings.classpath.value)
 
 			in = InteractiveReader.createDefault()

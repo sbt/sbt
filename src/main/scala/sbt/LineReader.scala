@@ -10,8 +10,15 @@ trait LineReader extends NotNull
 class Completors(val projectAction: String, val projectNames: Iterable[String],
 	val generalCommands: Iterable[String], val propertyActions: Iterable[String],
 	val specificPrefix: String, val scalaVersions: Iterable[String],
-	val prefixes: Iterable[String], val taskNames: Iterable[String], 
-	val propertyNames: Iterable[String], val extra: Iterable[(String, Iterable[String])]) extends NotNull
+	val prefixes: Iterable[String], val taskNames: Iterable[String],
+	val propertyNames: Iterable[String], val extra: ExtraCompletions) extends NotNull
+
+trait ExtraCompletions extends NotNull
+{
+	def names: Iterable[String]
+	def completions(name: String): Iterable[String]
+}
+
 
 import jline.{Completor, ConsoleReader}
 abstract class JLine extends LineReader
@@ -91,8 +98,10 @@ object MainCompletor
 			val specific = simpleCompletor(specificPrefix :: Nil) // TODO
 			new ArgumentCompletor( Array( specific, simpleCompletor(scalaVersions), baseCompletor ) )
 		}
+		def extraCompletor(name: String) =
+			repeatedArgumentCompletor(simpleCompletor(name :: Nil), new LazyCompletor(simpleCompletor(extra.completions(name))))
 		val taskCompletor = simpleCompletor(TreeSet(taskNames.toSeq : _*))
-		val extraCompletors = for( (first, repeat) <- extra) yield repeatedArgumentCompletor(simpleCompletor(first :: Nil), simpleCompletor(repeat))
+		val extraCompletors = extra.names.map(extraCompletor)
 		val baseCompletors = generalCompletor :: taskCompletor :: projectCompletor :: propertyCompletor(propertyNames) :: extraCompletors.toList
 		val baseCompletor = new MultiCompletor(baseCompletors.toArray)
 

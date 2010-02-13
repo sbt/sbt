@@ -576,7 +576,7 @@ object Reflective
 {
 	def reflectiveMappings[T](obj: AnyRef)(implicit m: scala.reflect.Manifest[T]): Map[String, T] =
 	{
-		val mappings = new mutable.OpenHashMap[String, T]
+		val mappings = new mutable.HashMap[String, T]
 		for ((name, value) <- ReflectUtilities.allVals[T](obj))
 			mappings(ReflectUtilities.transformCamelCase(name, '-')) = value
 		mappings

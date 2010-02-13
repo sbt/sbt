@@ -233,16 +233,21 @@ trait Project extends TaskManager with Dag[Project] with BasicEnvironment
 	def buildScalaInstance = buildScalaInstance0
 	final def buildScalaInstance0: ScalaInstance =
 	{
-		try { getScalaInstance(buildScalaVersion) }
+		val scalaVersion = buildScalaVersion
+		try { getScalaInstance(scalaVersion) }
 		catch { case e: xsbti.RetrieveException if info.buildScalaVersion.isEmpty => // only catch the exception if this is the default Scala version
 			log.error(e.getMessage)
 			SimpleReader.readLine("\nProvide a new Scala version or press enter to exit: ") match
 			{
-				case Some(v) if v.length > 0=> buildScalaVersions() = v; saveEnvironment(); buildScalaInstance0
+				case Some(v) if v.length > 0=>
+					buildScalaVersions() = replace(scalaVersion, v)
+					saveEnvironment()
+					buildScalaInstance0
 				case _ => throw e
 			}
 		}
 	}
+	private def replace(originalV: String, newV: String) = buildScalaVersions.value.replaceAll("""\b\Q""" + originalV + """\E\b""", newV)
 	def getScalaInstance(version: String) =
 		localScalaInstances.find(_.version == version) getOrElse
 			xsbt.ScalaInstance(version, info.launcher)
@@ -407,28 +412,40 @@ object Project
 		}
 		val useName = p.projectName.get.getOrElse("at " + p.info.projectDirectory.getAbsolutePath)
 		checkDependencies(useName, p.info.dependencies, log)
+		p.buildScalaInstance // done so that build Scala version is initialized on project startup
 		p
 	}
 	/** Compiles the project definition classes and returns the project definition class name
 	* and the class loader that should be used to load the definition. */
 	private def getProjectDefinition(info: ProjectInfo, buildLog: Logger): Either[String, Class[P] forSome { type P <: Project }] =
-	{
-		val builderProjectPath = info.builderPath / BuilderProjectDirectoryName
-		if(builderProjectPath.asFile.isDirectory)
+		getProjectBuilder(info, buildLog) match
 		{
-			val pluginProjectPath = info.builderPath / PluginProjectDirectoryName
-			val additionalPaths = info.sbtClasspath
-			val builderInfo = ProjectInfo(builderProjectPath.asFile, Nil, None)(buildLog, info.app, Some(info.definitionScalaVersion))
-			val builderProject = new BuilderProject(builderInfo, pluginProjectPath, additionalPaths, buildLog)
-			builderProject.compile.run.toLeft(()).right.flatMap { ignore =>
-				builderProject.projectDefinition.right.map {
-					case Some(definition) =>  getProjectClass[Project](definition, builderProject.projectClasspath, getClass.getClassLoader)
-					case None => DefaultBuilderClass
-				}
+			case Some(builder) => buildProjectDefinition(builder)
+			case None => Right(DefaultBuilderClass)
+		}
+	private def buildProjectDefinition(builderProject: BuilderProject): Either[String, Class[P] forSome { type P <: Project }] =
+		builderProject.compile.run.toLeft(()).right.flatMap { ignore =>
+			builderProject.projectDefinition.right.map {
+				case Some(definition) =>  getProjectClass[Project](definition, builderProject.projectClasspath, getClass.getClassLoader)
+				case None => DefaultBuilderClass
 			}
 		}
+	private[sbt] def getProjectClasspath(project: Project): PathFinder =
+		getProjectBuilder(project.info, project.log) match
+		{
+			case Some(builder) => builder.projectClasspath
+			case None => project.info.sbtClasspath
+		}
+	private[sbt] def getProjectBuilder(info: ProjectInfo, buildLog: Logger): Option[BuilderProject] =
+	{
+		if(info.builderProjectPath.asFile.isDirectory)
+		{
+			val builderInfo = ProjectInfo(info.builderProjectPath.asFile, Nil, None)(buildLog, info.app, Some(info.definitionScalaVersion))
+			val builderProject = new BuilderProject(builderInfo, info.pluginsPath, buildLog)
+			Some(builderProject)
+		}
 		else
-			Right(DefaultBuilderClass)
+			None
 	}
 	/** Verifies that the given list of project dependencies contains no nulls.  The
 	* String argument should be the project name with the dependencies.*/

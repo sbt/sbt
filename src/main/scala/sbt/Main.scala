@@ -310,7 +310,8 @@ class xMain extends xsbti.AppMain
 		lazy val projectNames = baseProject.projectClosure.map(_.name)
 		val prefixes = ContinuousExecutePrefix :: CrossBuildPrefix :: Nil
 		lazy val scalaVersions = baseProject.crossScalaVersions ++ Seq(baseProject.defScalaVersion.value)
-		lazy val methodCompletions = for( (name, method) <- project.methods) yield (name, method.completions)
+		lazy val methods = project.methods
+		lazy val methodCompletions = new ExtraCompletions { def names = methods.keys.toList; def completions(name: String) = methods(name).completions }
 		lazy val completors = new Completors(ProjectAction, projectNames, interactiveCommands, List(GetAction, SetAction), SpecificBuildPrefix, scalaVersions, prefixes, project.taskNames, project.propertyNames, methodCompletions)
 		val reader = new LazyJLineReader(baseProject.historyPath, MainCompletor(completors), baseProject.log)
 		reader.readLine("> ").getOrElse(ExitCommand)

@@ -125,7 +125,7 @@ trait ScalaProject extends SimpleScalaProject with FileTasks with MultiTaskProje
 		val Private = Value("private")
 	}
 
-	def javapTask(classpath: PathFinder, conditional: CompileConditional, compilePath: Path) =
+	def javapTask(classpath: PathFinder, conditional: => CompileConditional, compilePath: Path) =
 	 task { args =>
 		val cp = classpath +++ Path.fromFile(FileUtilities.scalaLibraryJar) +++ Path.fromFile(FileUtilities.scalaCompilerJar)
 		execOut { Process("javap" :: "-classpath" :: Path.makeString(cp.get) :: args.toList) }
@@ -179,9 +179,9 @@ trait ScalaProject extends SimpleScalaProject with FileTasks with MultiTaskProje
 	}
 	private def toTask(testTask: NamedTestTask) = task(testTask.run()) named(testTask.name)
 
-	def graphSourcesTask(outputDirectory: Path, roots: PathFinder, analysis: CompileAnalysis): Task =
+	def graphSourcesTask(outputDirectory: Path, roots: PathFinder, analysis: => CompileAnalysis): Task =
 		task { DotGraph.sources(analysis, outputDirectory, roots.get, log) }
-	def graphPackagesTask(outputDirectory: Path, roots: PathFinder, analysis: CompileAnalysis): Task =
+	def graphPackagesTask(outputDirectory: Path, roots: PathFinder, analysis: => CompileAnalysis): Task =
 		task { DotGraph.packages(analysis, outputDirectory, roots.get, log) }
 	def scaladocTask(label: String, sources: PathFinder, outputDirectory: Path, classpath: PathFinder, options: ScaladocOption*): Task =
 		scaladocTask(label, sources, outputDirectory, classpath, options)
