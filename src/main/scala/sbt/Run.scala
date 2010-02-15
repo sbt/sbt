@@ -99,8 +99,8 @@ object Run
 	*   import Process._
 	*   import current._.
 	* To do this,
-	* 1)  The compiler uses a different settings instance: 'compilerSettings', which will have its classpath set to include the classpath
-	*    of the loader that loaded 'project'.  The compiler can then find the classes it needs to compile code referencing the project.
+	* 1)  The compiler uses a different settings instance: 'compilerSettings', which will have its classpath set to include
+	*    the Scala compiler and library jars and the classpath used to compile the project.
 	* 2) The parent class loader for the interpreter is the loader that loaded the project, so that the project can be bound to a variable
 	*    in the interpreter.
 	*/
@@ -110,8 +110,9 @@ object Run
 		{
 			val projectLoader = project.getClass.getClassLoader
 			val classpath = Project.getProjectClasspath(project)
-			compilerSettings.classpath.value = Path.makeString(classpath.get ++ Path.fromFiles(project.info.app.scalaProvider.jars))
-			project.log.debug("  Compiler classpath: " + compilerSettings.classpath.value)
+			val fullClasspath = classpath.get ++ Path.fromFiles(project.info.app.scalaProvider.jars)
+			compilerSettings.classpath.value = Path.makeString(fullClasspath)
+			project.log.debug("  console-project classpath:\n\t" + fullClasspath.mkString("\n\t"))
 
 			in = InteractiveReader.createDefault()
 			interpreter = new Interpreter(settings)
