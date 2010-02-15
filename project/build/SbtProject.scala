@@ -6,7 +6,7 @@ import sbt._
 import java.io.File
 import java.net.URL
 
-class SbtProject(info: ProjectInfo) extends DefaultProject(info) with test.SbtScripted
+class SbtProject(info: ProjectInfo) extends DefaultProject(info) //with test.SbtScripted with posterous.Publish
 {
 	/* Additional resources to include in the produced jar.*/
 	def extraResources = descendents(info.projectPath / "licenses", "*") +++ "LICENSE" +++ "NOTICE"
@@ -23,18 +23,16 @@ class SbtProject(info: ProjectInfo) extends DefaultProject(info) with test.SbtSc
 
 	/**  configuration of scripted testing **/
 	// Set to false to show logging as it happens without buffering, true to buffer until it completes and only show if the task fails.
-	//   The output of scripted tasks executed in parallel will be inteleaved if true.
-	override def scriptedBufferLog = true
+	//   The output of scripted tasks executed in parallel will be inteleaved if false.
+	//override def scriptedBufferLog = true
 	// Configure which versions of Scala to test against for those tests that do cross building
-	override def scriptedCompatibility = sbt.test.CompatibilityLevel.Full
+	//override def scriptedCompatibility = sbt.test.CompatibilityLevel.Minimal
 
 	override def useDefaultConfigurations = false
 	val default = Configurations.Default
 	val optional = Configurations.Optional
 	val provided = Configurations.Provided
 	val testConf = Configurations.Test
-
-	override def crossScalaVersions = Set("2.7.7")
 
 	//testing
 	val scalacheck = "org.scala-tools.testing" %% "scalacheck" % "1.6" % "test"

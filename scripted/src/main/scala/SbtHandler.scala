@@ -32,7 +32,9 @@ final class SbtHandler(directory: File, log: Logger, server: IPC.Server) extends
 		}
 	def newRemote =
 	{
-		val builder = new java.lang.ProcessBuilder("xsbt", "<" + server.port).directory(directory)
+		val launcherJar = FileUtilities.classLocationFile(Class.forName("xsbti.AppProvider")).getAbsolutePath
+		val args = "java" :: "-jar" :: launcherJar :: ( "<" + server.port) :: Nil
+		val builder = new java.lang.ProcessBuilder(args.toArray : _*).directory(directory)
 		val io = BasicIO(log, false).withInput(_.close())
 		val p = Process(builder) run( io )
 		Spawn { p.exitValue(); server.close() }
@@ -40,9 +42,8 @@ final class SbtHandler(directory: File, log: Logger, server: IPC.Server) extends
 		catch { case e: java.net.SocketException => error("Remote sbt initialization failed") }
 		p
 	}
+	import java.util.regex.Pattern.{quote => q}
 	// if the argument contains spaces, enclose it in quotes, quoting backslashes and quotes
 	def escape(argument: String) =
 		if(argument.contains(" ")) "\"" + argument.replaceAll(q("""\"""), """\\""").replaceAll(q("\""), "\\\"") + "\"" else argument
-	def q(s: String) = java.util.regex.Pattern.quote(s)
-//		Process("java" :: "-classpath" :: classpath.map(_.getAbsolutePath).mkString(File.pathSeparator) :: "xsbt.boot.Boot" :: ( "<" + server.port) :: Nil) run log
 }

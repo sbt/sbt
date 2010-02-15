@@ -29,13 +29,13 @@ final case class ScriptedTest(group: String, name: String) extends NotNull
 trait Scripted extends Project with MultiTaskProject
 {
 	def scriptedCompatibility = CompatibilityLevel.Minimal
-	def scriptedDefScala = scalaVersion.value.toString
+	def scriptedDefScala = buildScalaVersion
 	def scriptedSbt = projectVersion.value.toString
 	def scriptedBufferLog = true
 	
 	def sbtTests: Path
 	def scriptedTask(dependencies: ManagedTask*) = dynamic(scriptedTests(listTests)) dependsOn(dependencies : _*)
-	def scriptedMethodTask(dependencies: ManagedTask*) = multiTask(listTests.map(_.toString).toList) { includeFunction =>
+	def scriptedMethodTask(dependencies: ManagedTask*) = multiTask(listTests.map(_.toString).toList) { (args, includeFunction) =>
 		scriptedTests(listTests.filter(test => includeFunction(test.toString)), dependencies : _*)
 	}
 	def listTests = (new ListTests(sbtTests.asFile, include _, log)).listTests
