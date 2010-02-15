@@ -110,16 +110,17 @@ class AggressiveCompile(val cacheDirectory: File, val compilerTask: Task[Analyzi
 						val newAPIMap = doCompile(sources, classpath, outputDirectory, options, tracker, compiler, log)
 						val apiChanged = sources filter { src => !sameAPI(previousAPIMap, newAPIMap, src) }
 						log.info("Sources with API changes:\n\t" + apiChanged.mkString("\n\t"))
+						lazy val nextSources = transitiveIfNeeded.invalid ** sourceChanges.checked
+						def nextDone = nextSources.forall(sources contains _)
 						val finalAPIMap =
-							// if either nothing changed or everything was recompiled, stop here
-							if(apiChanged.isEmpty || sources.size == sourceChanges.checked.size) newAPIMap
+							// if either nothing changed or everything was already recompiled, stop here
+							if(apiChanged.isEmpty || nextDone) newAPIMap
 							else
 							{
 								//val changedNames = TopLevel.nameChanges(newAPIMap.values, previousAPIMap.values)
 								InvalidateTransitive.clean(tracker, FileUtilities.delete, transitiveIfNeeded)
-								val sources = transitiveIfNeeded.invalid ** sourceChanges.checked
-								log.info("All sources invalidated by API changes:\n\t" + sources.mkString("\n\t"))
-								doCompile(sources, classpath, outputDirectory, options, tracker, compiler, log)
+								log.info("All sources invalidated by API changes:\n\t" + nextSources.mkString("\n\t"))
+								doCompile(nextSources, classpath, outputDirectory, options, tracker, compiler, log)
 							}
 						finalAPIMap.foreach { case (src, api) => tracker.tag(src, APIFormat.write(api)) }
 					}
