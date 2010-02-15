@@ -248,9 +248,10 @@ abstract class AbstractCompileConditional(val config: AbstractCompileConfigurati
 	protected def productLastModified(product: Path) = product.asFile.lastModified
 
 	private def libraryJar = compiler.scalaInstance.libraryJar
+	private def compilerJar = compiler.scalaInstance.compilerJar
 	protected def externalInfo(externals: Iterable[File]) =
 	{
-		val (classpathJars, classpathDirs) = ClasspathUtilities.buildSearchPaths(classpath.get)
+		val (classpathJars, classpathDirs) = ClasspathUtilities.buildSearchPaths(classpath.get ++ Seq(Path.fromFile(libraryJar),  Path.fromFile(compilerJar)))
 		for(external <- externals) yield
 		{
 			val available = external.exists && (external == libraryJar || ClasspathUtilities.onClasspath(classpathJars, classpathDirs, external) )
