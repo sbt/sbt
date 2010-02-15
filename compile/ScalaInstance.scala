@@ -10,6 +10,7 @@ package xsbt
 final class ScalaInstance(val version: String, val loader: ClassLoader, val libraryJar: File, val compilerJar: File) extends NotNull
 {
 	require(version.indexOf(' ') < 0, "Version cannot contain spaces (was '" + version + "')")
+	def jars = libraryJar :: compilerJar :: Nil
 	/** Gets the version of Scala in the compiler.properties file from the loader.  This version may be different than that given by 'version'*/
 	lazy val actualVersion = ScalaInstance.actualVersion(loader)(" version " + version)
 	override def toString = "Scala instance{version label " + version + ", actual version " + actualVersion + ", library jar: " + libraryJar + ", compiler jar: " + compilerJar + "}"
