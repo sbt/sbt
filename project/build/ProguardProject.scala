@@ -69,14 +69,16 @@ trait ProguardProject extends BasicScalaProject
 	private def writeProguardConfigurationTask =
 		task
 		{
-			val externalDependencies = (mainCompileConditional.analysis.allExternals).map(_.getAbsoluteFile).filter(_.getName.endsWith(".jar"))
-			log.debug("proguard configuration external dependencies: \n\t" + externalDependencies.mkString("\n\t"))
+			val dependencies = mainDependencies.snapshot
+			log.debug("proguard configuration, all dependencies:\n\t" + dependencies.all.mkString("\n\t"))
+			val externalJars = dependencies.external// mainDependencies.map(_.getAbsoluteFile).filter(_.getName.endsWith(".jar"))
+			log.debug("proguard configuration external dependencies: \n\t" + externalJars.mkString("\n\t"))
 			// partition jars from the external jar dependencies of this project by whether they are located in the project directory
 			// if they are, they are specified with -injars, otherwise they are specified with -libraryjars
-			val (externalJars, libraryJars) = externalDependencies.toList.partition(jar => Path.relativize(rootProjectDirectory, jar).isDefined)
-			log.debug("proguard configuration library jars locations: " + libraryJars.mkString(", "))
+			val libraryJars = dependencies.libraries ++ dependencies.scalaJars//toList.partition(jar => Path.relativize(rootProjectDirectory, jar).isDefined)
+			log.debug("proguard configuration library jars locations:\n\t" + libraryJars.mkString("\n\t"))
 
-			val proguardConfiguration = template(externalJars, libraryJars, outputJar.asFile, basicOptions, getMainClass(false), keepClasses)
+			val proguardConfiguration = template(libraryJars, externalJars, outputJar.asFile, basicOptions, getMainClass(false), keepClasses)
 			log.debug("Proguard configuration written to " + proguardConfigurationPath)
 			FileUtilities.write(proguardConfigurationPath.asFile, proguardConfiguration, log)
 		}

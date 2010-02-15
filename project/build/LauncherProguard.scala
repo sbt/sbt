@@ -13,13 +13,15 @@ trait ProguardLaunch extends ProguardProject
 	override def mapInJars(inJars: Seq[File]) =
 	{
 		val inputJar = jarPath.asFile.getAbsolutePath
-		val (jlineJars, notJLine) = inJars.partition(isJLineJar)
+		val jlineJars = runClasspath.getFiles.filter(isJLineJar)
 		// pull out Ivy in order to exclude resources inside
-		val (ivyJars, notIvy) = notJLine.partition(isIvyJar)
+		val (ivyJars, notIvy) = inJars.filter(jar => !isJLineJar(jar)).partition(isIvyJar)
 		val otherJars = notIvy.filter(jar => !isJarX(jar, "scala-compiler"))
 
-		log.debug("proguard configuration ivy jar location: " + ivyJars.mkString(", "))
-
+		log.debug("proguard configuration:")
+		log.debug("\tJLline jar location: " + jlineJars.mkString(", "))
+		log.debug("\tIvy jar location: " + ivyJars.mkString(", "))
+		log.debug("\tOther jars:\n\t" + otherJars.mkString("\n\t"))
 		val excludeIvyResourcesString = excludeString(excludeIvyResources)
 		((withJar(ivyJars.toSeq, "Ivy") + excludeIvyResourcesString) ::
 		(withJar(jlineJars, "JLine") + "(!META-INF/**)" ) ::
