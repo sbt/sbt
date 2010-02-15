@@ -269,6 +269,8 @@ sealed abstract class PathFinder extends NotNull
 		addTo(pathSet)
 		wrap.Wrappers.readOnly(pathSet)
 	}
+	final def filter(f: Path => Boolean): PathFinder = Path.lazyPathFinder(get.filter(f))
+	final def flatMap(f: Path => PathFinder): PathFinder = Path.lazyPathFinder(get.flatMap(p => f(p).get))
 	final def getFiles: scala.collection.Set[File] = Set( get.map(_.asFile).toSeq : _*)
 	final def getPaths: scala.collection.Set[String] = Set( get.map(_.absolutePath).toSeq : _*)
 	private[sbt] def addTo(pathSet: Set[Path])
