@@ -51,7 +51,7 @@ class MakePom
 		val a: NodeSeq = 
 			(<groupId>{ mrid.getOrganisation }</groupId>
 			<artifactId>{ mrid.getName }</artifactId>
-			<packaging> { packaging(mrid) }</packaging>)
+			<packaging>{ packaging(mrid) }</packaging>)
 		val b: NodeSeq =
 			( (description(module.getDescription) ++
 			homePage(module.getHomePage) ++
