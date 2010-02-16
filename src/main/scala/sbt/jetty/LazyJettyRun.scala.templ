@@ -15,6 +15,10 @@ private object LazyJettyRun${jetty.version} extends JettyRun
 
 	import java.lang.ref.{Reference, WeakReference}
 
+	// Jetty classes must be loaded on initialization in order for the version detection code in WebApp to work properly
+	//   this forces them to be loaded- otherwise, it is possible they aren't loaded until 'apply' is called
+	private[this] val forceJettyLoad = classOf[Server]
+
 	val DefaultMaxIdleTime = 30000
 
 	def apply(configuration: JettyConfiguration, jettyLoader: ClassLoader): Stoppable =
