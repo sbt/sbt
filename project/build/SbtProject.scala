@@ -6,7 +6,7 @@ import sbt._
 import java.io.File
 import java.net.URL
 
-class SbtProject(info: ProjectInfo) extends DefaultProject(info) with test.SbtScripted //with posterous.Publish
+class SbtProject(info: ProjectInfo) extends DefaultProject(info) with test.SbtScripted with posterous.Publish
 {
 	/* Additional resources to include in the produced jar.*/
 	def extraResources = descendents(info.projectPath / "licenses", "*") +++ "LICENSE" +++ "NOTICE"
