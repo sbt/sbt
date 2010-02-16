@@ -125,7 +125,8 @@ class MakePom
 				case m: IBiblioResolver if m.isM2compatible && m.getRoot != IBiblioResolver.DEFAULT_M2_ROOT => m :: Nil
 				case _ => Nil
 			}
-		mavenRepositories.map { repo => mavenRepository(repo.getName, repo.getRoot) }
+		val repositoryElements = mavenRepositories.map { repo => mavenRepository(repo.getName, repo.getRoot) }
+		if(repositoryElements.isEmpty) repositoryElements else <repositories>{repositoryElements}</repositories>
 	}
 	def flatten(rs: Seq[DependencyResolver]): Seq[DependencyResolver] = if(rs eq null) Nil else rs.flatMap(resolvers)
 	def resolvers(r: DependencyResolver): Seq[DependencyResolver] =
