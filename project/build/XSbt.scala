@@ -126,15 +126,12 @@ class XSbt(info: ProjectInfo) extends ParentProject(info)
 	class CompileProject(info: ProjectInfo) extends Base(info) with TestWithLog with TestWithLaunch
 	{
 		override def testCompileAction = super.testCompileAction dependsOn(compileInterfaceSub.`package`, interfaceSub.`package`)
-		 // don't include launch interface in published dependencies because it will be provided by launcher
-		override def deliverProjectDependencies = Set(super.deliverProjectDependencies.toSeq : _*) - launchInterfaceSub.projectID
 		override def testClasspath = super.testClasspath +++ compileInterfaceSub.jarPath +++ interfaceSub.jarPath --- compilerInterfaceClasspath --- interfaceSub.mainCompilePath
 		override def compileOptions = super.compileOptions ++ Seq(CompileOption("-Xno-varargs-conversion")) //needed for invoking nsc.scala.tools.Main.process(Array[String])
 	}
 	class IvyProject(info: ProjectInfo) extends Base(info) with TestWithIO with TestWithLog with TestWithLaunch
 	{
 		val ivy = "org.apache.ivy" % "ivy" % "2.1.0"
-		override def deliverProjectDependencies = Set(super.deliverProjectDependencies.toSeq : _*) - launchInterfaceSub.projectID
 	}
 	abstract class BaseInterfaceProject(info: ProjectInfo) extends DefaultProject(info) with ManagedBase with TestWithLog with Component with JavaProject
 	class InterfaceProject(info: ProjectInfo) extends BaseInterfaceProject(info)
@@ -213,10 +210,6 @@ class XSbt(info: ProjectInfo) extends ParentProject(info)
 		def testWithTestClasspath: Seq[BasicScalaProject] = Nil
 		override def testCompileAction = super.testCompileAction dependsOn((testWithTestClasspath.map(_.testCompile) ++ testWithCompileClasspath.map(_.compile)) : _*)
 		override def testClasspath = (super.testClasspath /: (testWithTestClasspath.map(_.testClasspath) ++  testWithCompileClasspath.map(_.compileClasspath) ))(_ +++ _)
-	}
-	trait WithLauncherInterface extends BasicScalaProject
-	{
-		override def deliverProjectDependencies = super.deliverProjectDependencies.toList - launchInterfaceSub.projectID
 	}
 }
 trait JavaProject extends BasicScalaProject

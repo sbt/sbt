@@ -1,8 +1,10 @@
 DONE
--fix caching issue for compiler interface
--fix test ClassLoader
--implement <file and <port
-
+ - fixed Jetty 7 and JRebel
+ - fixed make-pom and missing <repositories> tag
+ - fixed referencing xsbti classes from project definition and plugins
+ - added experimental 'sbt-update version [output.jar]' command enabled by mixing in UpdateSbt trait.  It probably doesn't work on Windows, but confirmation either way would be helpful.
+  Changes 'sbt.version' after verifying the version is valid by downloading that version of sbt.
+  Updates the current launcher jar or the location specified in the second argument with either a downloaded sbt-launch-<version>.jar if available or a copy of the current launcher jar that uses <version> by default when starting new projects.
 
 Goals/Guidelines for xsbt
 =====
@@ -10,9 +12,6 @@ As usual:
  - Immutable interfaces
  - Typesafe
  - Robust, flexible API
-
-ISSUES
- - java sources are not recompiled when jars change: possibly binary dependencies are not recorded?
  
 TODO
  - launcher interface versioning
@@ -20,12 +19,10 @@ TODO
  - tests for API extractor
  - have background triggered commands (~sync)
 
-update 0_6_Summary to mention different output directories.
-
 Task engine
 - method tasks will be normal tasks that pull the command line from a CommandLine task
 - per task configuration, including logging (e.g. 'task compile log debug')
-- unnamed tasks log to parent task 
+- unnamed tasks log to parent task
 - better control over parallel logging.  Approach undecided. Some possibilities:
   + optionally one task always logging
   + log each task to a file
