@@ -222,3 +222,13 @@ class PluginProject(info: ProjectInfo) extends DefaultProject(info)
 	override def useMavenConfigurations = true
 	override def managedStyle = ManagedStyle.Maven
 }
+class ProcessorProject(info: ProjectInfo) extends DefaultProject(info)
+{
+	/* Fix the version used to build to the version currently running sbt. */
+	override def buildScalaVersion = defScalaVersion.value
+	/* Add sbt to the classpath */
+	override def unmanagedClasspath = super.unmanagedClasspath +++ info.sbtClasspath
+	/* Some setup to make publishing quicker to configure. */
+	override def useMavenConfigurations = true
+	override def managedStyle = ManagedStyle.Maven
+}

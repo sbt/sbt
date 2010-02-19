@@ -1,5 +1,5 @@
 /* sbt -- Simple Build Tool
- * Copyright 2008, 2009  Steven Blundy, Mark Harrah, David MacIver, Mikko Peltonen
+ * Copyright 2008, 2009, 2010  Steven Blundy, Mark Harrah, David MacIver, Mikko Peltonen
  */
 package sbt
 
@@ -117,6 +117,7 @@ class xMain extends xsbti.AppMain
 		def ExitOnFailure = None
 		lazy val interactiveContinue = Some( InteractiveCommand )
 		def remoteContinue(port: Int) = Some( FileCommandsPrefix + "-" + port )
+		lazy val PHandler = new processor.Handler(baseProject)
 		
 		// replace in 2.8
 		trait Trampoline
@@ -134,6 +135,7 @@ class xMain extends xsbti.AppMain
 			def rememberCurrent(newArgs: List[String]) = rememberProject(rememberFail(newArgs))
 			def rememberProject(newArgs: List[String]) = if(baseProject.name != project.name) (ProjectAction + " " + project.name) :: newArgs else newArgs
 			def rememberFail(newArgs: List[String]) = failAction.map(f => (FailureHandlerPrefix + f)).toList :::  newArgs
+			def tryOrFail(action: => Trampoline)  =  try { action } catch { case e: Exception => logCommandError(project.log, e); failed(BuildErrorExitCode) }
 			def failed(code: Int) =
 				failAction match
 				{
@@ -204,7 +206,21 @@ class xMain extends xsbti.AppMain
 				case action :: tail if action.startsWith(FailureHandlerPrefix) =>
 					val errorAction = action.substring(FailureHandlerPrefix.length).trim
 					continue(project, tail, if(errorAction.isEmpty) None else Some(errorAction) )
-					
+
+				case action :: tail if action.startsWith(ProcessorPrefix) =>
+					val processorCommand = action.substring(ProcessorPrefix.length).trim
+					val runner = processor.CommandRunner(PHandler.manager, PHandler.defParser, ProcessorPrefix, project.log)
+					tryOrFail {
+						runner(processorCommand)
+						continue(project, tail, failAction)
+					}
+
+				case PHandler(processor, arguments) :: tail =>
+					 tryOrFail {
+						val result =processor(project, arguments)
+						continue(project, result.insertArguments ::: tail, failAction)
+					 }
+		
 				case action :: tail =>
 					val success = processAction(baseProject, project, action, failAction == interactiveContinue)
 					if(success) continue(project, tail, failAction)
@@ -356,6 +372,8 @@ class xMain extends xsbti.AppMain
 	val FileCommandsPrefix = "<"
 	/** The prefix used to identify the action to run after an error*/
 	val FailureHandlerPrefix = "!"
+	/** The prefix used to identify commands for managing processors.*/
+	val ProcessorPrefix = "*"
 
 	/** The number of seconds between polling by the continuous compile command.*/
 	val ContinuousCompilePollDelaySeconds = 1
@@ -387,7 +405,7 @@ class xMain extends xsbti.AppMain
 					handleCommand(currentProject, action)
 		}
 
-	private def printCmd(name:String, desc:String) = Console.println("\t" + name + " : " + desc)
+	private def printCmd(name:String, desc:String) = Console.println("   " + name + " : " + desc)
 	val BatchHelpHeader = "You may execute any project action or method or one of the commands described below."
 	val InteractiveHelpHeader = "You may execute any project action or one of the commands described below. Only one action " +
 			"may be executed at a time in interactive mode and is entered by name, as it would be at the command line." +
@@ -399,10 +417,12 @@ class xMain extends xsbti.AppMain
 
 		printCmd("<action name>", "Executes the project specified action.")
 		printCmd("<method name> <parameter>*", "Executes the project specified method.")
+		printCmd("<processor label> <arguments>", "Runs the specified processor.")
 		printCmd(ContinuousExecutePrefix + " <command>", "Executes the project specified action or method whenever source files change.")
 		printCmd(FileCommandsPrefix + " file", "Executes the commands in the given file.  Each command should be on its own line.  Empty lines and lines beginning with '#' are ignored")
 		printCmd(CrossBuildPrefix + " <command>", "Executes the project specified action or method for all versions of Scala defined in crossScalaVersions.")
 		printCmd(SpecificBuildPrefix + "<version> <command>", "Changes the version of Scala building the project and executes the provided command.  <command> is optional.")
+		printCmd(ProcessorPrefix, "Prefix for commands for managing processors.  Run '" + ProcessorPrefix + "help' for details.")
 		printCmd(ShowActions, "Shows all available actions.")
 		printCmd(RebootCommand, "Reloads sbt, picking up modifications to sbt.version or scala.version and recompiling modified project definitions.")
 		printCmd(HelpAction, "Displays this help message.")
@@ -504,7 +524,7 @@ class xMain extends xsbti.AppMain
 	}
 	private def printTraceEnabled(project: Project)
 	{
-		def traceLevel(level: Int) = if(level == 0) " (no stack elements)" else if(level == MaxInt) "" else " (maximum " + level + " stack elements per exception)"
+		def traceLevel(level: Int) = if(level == 0) " (no sbt stack elements)" else if(level == MaxInt) "" else " (maximum " + level + " stack elements per exception)"
 		Console.println("Stack traces are " + (if(project.log.traceEnabled) "enabled" + traceLevel(project.log.getTrace) else "disabled"))
 	}
 	/** Sets the logging level on the given project.*/
@@ -700,4 +720,14 @@ class xMain extends xsbti.AppMain
 	private def setProjectError(log: Logger) = logError(log)("Invalid arguments for 'project': expected project name.")
 	private def logError(log: Logger)(s: String) = { log.error(s); false }
 
+	private def logCommandError(log: Logger, e: Throwable) =
+		e match
+		{
+			case pe: processor.ProcessorException =>
+				if(pe.getCause ne null) log.trace(pe.getCause)
+				log.error(e.getMessage)
+			case e =>
+				log.trace(e)
+				log.error(e.toString)
+		}
 }
