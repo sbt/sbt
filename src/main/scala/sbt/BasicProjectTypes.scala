@@ -29,6 +29,9 @@ trait ClasspathProject extends Project
 			}
 			set.toList
 		}
+	/* Filter used to select dependencies for the classpath from managed and unmanaged directories.
+	* By default, it explicitly filters (x)sbt-launch(er)-<version>.jar, since it contains minified versions of various classes.*/
+   def classpathFilter: FileFilter = "*.jar" - "*sbt-launch*.jar"
 }
 trait BasicDependencyProject extends BasicManagedProject with UnmanagedClasspathProject
 {
@@ -43,14 +46,12 @@ trait UnmanagedClasspathProject extends ClasspathProject
 	/** The classpath containing all jars in the unmanaged directory. */
 	def unmanagedClasspath: PathFinder =
 	{
-		val base = descendents(dependencyPath, jarFilter)
+		val base = descendents(dependencyPath, classpathFilter)
 		if(scratch)
-			base +++ (info.projectPath * jarFilter)
+			base +++ (info.projectPath * classpathFilter)
 		else
 			base
 	}
-	/* Explicitly filter (x)sbt-launch(er)-<version>.jar, since it contains minified versions of various classes.*/
-	private def jarFilter: NameFilter = "*.jar" - "*sbt-launch*.jar"
 	/** The classpath containing all unmanaged classpath elements for the given configuration. This typically includes
 	* at least 'unmanagedClasspath'.*/
 	def fullUnmanagedClasspath(config: Configuration): PathFinder
@@ -123,7 +124,7 @@ trait ManagedProject extends ClasspathProject with IvyTasks
 	def managedClasspath(config: Configuration): PathFinder = configurationClasspath(config)
 	/** All dependencies in the given configuration. */
 	final def configurationClasspath(config: Configuration): PathFinder = descendents(configurationPath(config), classpathFilter)
-	def classpathFilter: FileFilter = "*.jar"
+
 	/** The base path to which dependencies in configuration 'config' are downloaded.*/
 	def configurationPath(config: Configuration): Path = managedDependencyPath / config.toString
 

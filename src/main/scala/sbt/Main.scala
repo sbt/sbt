@@ -135,7 +135,10 @@ class xMain extends xsbti.AppMain
 			def rememberCurrent(newArgs: List[String]) = rememberProject(rememberFail(newArgs))
 			def rememberProject(newArgs: List[String]) = if(baseProject.name != project.name) (ProjectAction + " " + project.name) :: newArgs else newArgs
 			def rememberFail(newArgs: List[String]) = failAction.map(f => (FailureHandlerPrefix + f)).toList :::  newArgs
+
 			def tryOrFail(action: => Trampoline)  =  try { action } catch { case e: Exception => logCommandError(project.log, e); failed(BuildErrorExitCode) }
+			def reload(newID: ApplicationID, args: List[String]) =
+				result( new Reboot(project.defScalaVersion.value, rememberCurrent(args), newID, configuration.baseDirectory) )
 			def failed(code: Int) =
 				failAction match
 				{
@@ -147,9 +150,7 @@ class xMain extends xsbti.AppMain
 			{
 				case "" :: tail => continue(project, tail, failAction)
 				case (ExitCommand | QuitCommand) :: _ => result( Exit(NormalExitCode) )
-				case RebootCommand :: tail =>
-					val newID = new ApplicationID(configuration.provider.id, baseProject.sbtVersion.value)
-					result( new Reboot(project.defScalaVersion.value, rememberCurrent(tail), newID, configuration.baseDirectory) )
+				case RebootCommand :: tail => reload( new ApplicationID(configuration.provider.id, baseProject.sbtVersion.value), tail )
 				case InteractiveCommand :: _ => continue(project, prompt(baseProject, project) :: arguments, interactiveContinue)
 				case SpecificBuild(version, action) :: tail =>
 					if(Some(version) != baseProject.info.buildScalaVersion)
