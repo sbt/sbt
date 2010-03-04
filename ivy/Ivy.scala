@@ -58,7 +58,7 @@ final class IvySbt(configuration: IvyConfiguration)
 			case e: ExternalIvyConfiguration => is.load(e.file)
 			case i: InlineIvyConfiguration => 
 				IvySbt.configureCache(is, i.paths.cacheDirectory)
-				IvySbt.setResolvers(is, i.resolvers, log)
+				IvySbt.setResolvers(is, i.resolvers, i.otherResolvers, log)
 				IvySbt.setModuleConfigurations(is, i.moduleConfigurations)
 		}
 		is
@@ -167,17 +167,26 @@ private object IvySbt
 	def defaultIvyConfiguration(project: File) = new File(project, DefaultIvyConfigFilename)
 	def defaultPOM(project: File) = new File(project, DefaultMavenFilename)
 
-	/** Sets the resolvers for 'settings' to 'resolvers'.  This is done by creating a new chain and making it the default. */
-	private def setResolvers(settings: IvySettings, resolvers: Seq[Resolver], log: IvyLogger)
+	/** Sets the resolvers for 'settings' to 'resolvers'.  This is done by creating a new chain and making it the default.
+	* 'other' is for resolvers that should be in a different chain.  These are typically used for publishing or other actions. */
+	private def setResolvers(settings: IvySettings, resolvers: Seq[Resolver], other: Seq[Resolver], log: IvyLogger)
 	{
-		val newDefault = new ChainResolver
-		newDefault.setName("sbt-chain")
-		newDefault.setReturnFirst(true)
-		newDefault.setCheckmodified(true)
-		resolvers.foreach(r => newDefault.add(ConvertResolver(r)))
+		val otherChain = resolverChain("sbt-other", other)
+		settings.addResolver(otherChain)
+		val newDefault = resolverChain("sbt-chain", resolvers)
 		settings.addResolver(newDefault)
 		settings.setDefaultResolver(newDefault.getName)
 		log.debug("Using repositories:\n" + resolvers.mkString("\n\t"))
+		log.debug("Using other repositories:\n" + other.mkString("\n\t"))
+	}
+	private def resolverChain(name: String, resolvers: Seq[Resolver]): ChainResolver =
+	{
+		val newDefault = new ChainResolver
+		newDefault.setName(name)
+		newDefault.setReturnFirst(true)
+		newDefault.setCheckmodified(true)
+		resolvers.foreach(r => newDefault.add(ConvertResolver(r)))
+		newDefault
 	}
 	private def setModuleConfigurations(settings: IvySettings, moduleConfigurations: Seq[ModuleConfiguration])
 	{
