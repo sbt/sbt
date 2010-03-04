@@ -7,7 +7,10 @@ class ArtifactTest(info: ProjectInfo) extends DefaultProject(info)
 
 	// define a test repository to publish to
 	override def managedStyle = ManagedStyle.Maven
-	val publishTo = Resolver.file("Test Repo", ("test-repo") asFile)
+	val publishTo = Resolver.file("Test Publish Repo", "test-repo" asFile)
+
+	// include the publishTo repository, which is normally excluded
+	override def ivyRepositories = publishTo :: Nil
 
 	// define strings for defining the artifact
 	override def artifactID = "test"

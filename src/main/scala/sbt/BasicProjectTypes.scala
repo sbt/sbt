@@ -5,6 +5,7 @@ package sbt
 
 import scala.xml.NodeSeq
 import StringUtilities.{appendable,nonEmpty}
+import BasicManagedProject._
 
 /** A project that provides a classpath. */
 trait ClasspathProject extends Project
@@ -176,8 +177,6 @@ object ManagedStyle extends Enumeration
 import ManagedStyle.{Auto, Ivy, Maven, Value => ManagedType}
 trait BasicManagedProject extends ManagedProject with ReflectiveManagedProject with BasicDependencyPaths
 {
-	import BasicManagedProject._
-
 	def ivyUpdateConfiguration =  new UpdateConfiguration(managedDependencyPath.asFile, outputPattern, true/*sync*/, true/*quiet*/)
 
 	def ivyRepositories: Seq[Resolver] =
@@ -185,12 +184,13 @@ trait BasicManagedProject extends ManagedProject with ReflectiveManagedProject w
 		val repos = repositories.toSeq
 		if(repos.isEmpty) Nil else Resolver.withDefaultResolvers(repos)
 	}
+	def otherRepositories: Seq[Resolver] = defaultPublishRepository.toList
 	def ivyValidate = true
 	def ivyScala: Option[IvyScala] = Some(new IvyScala(buildScalaVersion, checkScalaInConfigurations, checkExplicitScalaDependencies, filterScalaJars))
 	def ivyCacheDirectory: Option[Path] = None
 	
 	def ivyPaths: IvyPaths = new IvyPaths(info.projectPath.asFile, ivyCacheDirectory.map(_.asFile))
-	def inlineIvyConfiguration = new InlineIvyConfiguration(ivyPaths, ivyRepositories.toSeq, moduleConfigurations.toSeq, Some(info.launcher.globalLock), log)
+	def inlineIvyConfiguration = new InlineIvyConfiguration(ivyPaths, ivyRepositories.toSeq, otherRepositories, moduleConfigurations.toSeq, Some(info.launcher.globalLock), log)
 	def ivyConfiguration: IvyConfiguration =
 	{
 		val in = inlineIvyConfiguration
@@ -198,7 +198,7 @@ trait BasicManagedProject extends ManagedProject with ReflectiveManagedProject w
 		def parentIvyConfiguration(default: IvyConfiguration)(p: Project) = p match { case b: BasicManagedProject => adapt(b.ivyConfiguration); case _ => default }
 		if(in.resolvers.isEmpty)
 		{
-			 if(in.moduleConfigurations.isEmpty)
+			 if(in.moduleConfigurations.isEmpty && in.otherResolvers.isEmpty)
 			 {
 				IvyConfiguration(in.paths, in.lock, in.log) match
 				{
@@ -207,7 +207,7 @@ trait BasicManagedProject extends ManagedProject with ReflectiveManagedProject w
 				}
 			}
 			else
-				new InlineIvyConfiguration(in.paths, Resolver.withDefaultResolvers(Nil), in.moduleConfigurations, in.lock, in.log)
+				new InlineIvyConfiguration(in.paths, Resolver.withDefaultResolvers(Nil), in.otherResolvers, in.moduleConfigurations, in.lock, in.log)
 		}
 		else
 			in
@@ -342,7 +342,7 @@ trait BasicManagedProject extends ManagedProject with ReflectiveManagedProject w
 	}
 	def defaultPublishRepository: Option[Resolver] =
 	{
-		reflectiveRepositories.get("publish-to") orElse
+		reflectiveRepositories.get(PublishToName) orElse
 		info.parent.flatMap
 			{
 				case managed: BasicManagedProject => managed.defaultPublishRepository
@@ -451,6 +451,9 @@ object BasicManagedProject
 		"Deletes the managed library directory."
 	val CleanCacheDescription =
 		"Deletes the cache of artifacts downloaded for automatically managed dependencies."
+
+	val PublishToName = "publish-to"
+	val RetrieveFromName = "retrieve-from"
 }
 
 class DefaultInstallProject(val info: ProjectInfo) extends InstallProject with MavenStyleScalaPaths with BasicDependencyProject
@@ -464,8 +467,8 @@ trait InstallProject extends BasicManagedProject
 	def installIvyModule: IvySbt#Module = newIvyModule(installModuleSettings)
 	
 	lazy val install = installTask(installIvyModule, fromResolver, toResolver)
-	def toResolver = reflectiveRepositories.get("publish-to").getOrElse(error("No repository to publish to was specified"))
-	def fromResolver = reflectiveRepositories.get("retrieve-from").getOrElse(error("No repository to retrieve from was specified"))
+	def toResolver = reflectiveRepositories.get(PublishToName).getOrElse(error("No repository to publish to was specified"))
+	def fromResolver = reflectiveRepositories.get(RetrieveFromName).getOrElse(error("No repository to retrieve from was specified"))
 }
 
 trait BasicDependencyPaths extends ManagedProject
@@ -621,7 +624,7 @@ trait ReflectiveRepositories extends Project
 {
 	def repositories: Set[Resolver] =
 	{
-		val reflective = Set[Resolver](reflectiveRepositories.values.toList: _*)
+		val reflective = Set[Resolver]() ++ reflectiveRepositories.toList.flatMap {  case (PublishToName, _) => Nil; case (_, value) => List(value) }
 		info.parent match
 		{
 			case Some(p: ReflectiveRepositories) => p.repositories ++ reflective

@@ -12,7 +12,7 @@ class Retrieve(retrieveDirectory: File, module: ModuleID, lock: xsbti.GlobalLock
 		val paths = new IvyPaths(retrieveDirectory, None)
 		val ivyScala = new IvyScala("", Nil, false, true)
 		val fullRepositories = Resolver.withDefaultResolvers(repositories) // TODO: move this somewhere under user control
-		val configuration = new InlineIvyConfiguration(paths, fullRepositories, Nil, Some(lock), log)
+		val configuration = new InlineIvyConfiguration(paths, fullRepositories, Nil, Nil, Some(lock), log)
 		val moduleConfiguration = new InlineConfiguration(thisID, module :: Nil, scala.xml.NodeSeq.Empty, Nil, None, Some(ivyScala), false)
 		val update = new UpdateConfiguration(retrieveDirectory, retrievePattern, true, true)
 		val ivySbt = new IvySbt(configuration)
