@@ -18,12 +18,12 @@ sealed trait IvyConfiguration extends NotNull
 	def log: IvyLogger
 	def withBase(newBaseDirectory: File): This
 }
-final class InlineIvyConfiguration(val paths: IvyPaths, val resolvers: Seq[Resolver], 
+final class InlineIvyConfiguration(val paths: IvyPaths, val resolvers: Seq[Resolver], val otherResolvers: Seq[Resolver],
 	val moduleConfigurations: Seq[ModuleConfiguration], val lock: Option[xsbti.GlobalLock], val log: IvyLogger) extends IvyConfiguration
 {
 	type This = InlineIvyConfiguration
 	def baseDirectory = paths.baseDirectory
-	def withBase(newBase: File) = new InlineIvyConfiguration(paths.withBase(newBase), resolvers, moduleConfigurations, lock, log)
+	def withBase(newBase: File) = new InlineIvyConfiguration(paths.withBase(newBase), resolvers, otherResolvers, moduleConfigurations, lock, log)
 }
 final class ExternalIvyConfiguration(val baseDirectory: File, val file: File, val lock: Option[xsbti.GlobalLock], val log: IvyLogger) extends IvyConfiguration
 {
@@ -42,7 +42,7 @@ object IvyConfiguration
 		if(defaultIvyConfigFile.canRead)
 			new ExternalIvyConfiguration(paths.baseDirectory, defaultIvyConfigFile, lock, log)
 		else
-			new InlineIvyConfiguration(paths, Resolver.withDefaultResolvers(Nil), Nil, lock, log)
+			new InlineIvyConfiguration(paths, Resolver.withDefaultResolvers(Nil), Nil, Nil, lock, log)
 	}
 }
 
