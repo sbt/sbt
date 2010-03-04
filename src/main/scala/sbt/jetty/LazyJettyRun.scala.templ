@@ -58,10 +58,15 @@ private object LazyJettyRun${jetty.version} extends JettyRun
 					
 					def createLoader =
 					{
-						class SbtWebAppLoader extends WebAppClassLoader(jettyLoader, webapp) { override def addURL(u: URL) = super.addURL(u) };
-						val loader = new SbtWebAppLoader
-						classpathURLs.foreach(loader.addURL)
-						loader
+						// Jetty treats WebAppClassLoader subclasses specially and we need this special behavior.
+						//   However, Jetty adds extra classpath components directly using 'addURL'.
+						//   We only want the 'urls' we provide in the constructor, so 'addURL' is overridden to do nothing.
+						class SbtWebAppLoader(urls: Seq[URL]) extends WebAppClassLoader(jettyLoader, webapp)
+						{
+							urls.foreach(super.addURL)
+							override def addURL(u: URL) = {}
+						}
+						new SbtWebAppLoader(classpathURLs)
 					}
 					def setLoader() = webapp.setClassLoader(createLoader)
 					
