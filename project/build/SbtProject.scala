@@ -19,7 +19,7 @@ class SbtProject(info: ProjectInfo) extends DefaultProject(info) with test.SbtSc
 	//val publishTo = Resolver.file("technically", new File("/var/dbwww/repo/"))
 	val technically = Resolver.url("technically.us", new URL("http://databinder.net/repo/"))(Resolver.ivyStylePatterns)
 
-	override def compileOptions = Nil
+	override def compileOptions = CompileOption("-Xno-varargs-conversion") :: Nil
 
 	/**  configuration of scripted testing **/
 	// Set to false to show logging as it happens without buffering, true to buffer until it completes and only show if the task fails.

@@ -10,6 +10,7 @@ import scala.tools.nsc.util.ClassPath
 
 import java.io.File
 import java.net.{URL, URLClassLoader}
+import java.lang.reflect.Modifier.{isPublic, isStatic}
 
 trait ScalaRun
 {
@@ -35,13 +36,44 @@ class ForkRun(config: ForkScalaRun) extends ScalaRun
 			Some("Nonzero exit code returned from " + label + ": " + exitCode)
 	}
 }
-class Run(compiler: xsbt.AnalyzingCompiler) extends ScalaRun
+class Run(instance: xsbt.ScalaInstance) extends ScalaRun
 {
 	/** Runs the class 'mainClass' using the given classpath and options using the scala runner.*/
 	def run(mainClass: String, classpath: Iterable[Path], options: Seq[String], log: Logger) =
 	{
-		def execute = compiler.run(Set() ++ classpath.map(_.asFile), mainClass, options, log)
+		log.info("Running " + mainClass + " " + options.mkString(" "))
+
+		def execute = 
+			try { run0(mainClass, classpath, options, log) }
+			catch { case e: java.lang.reflect.InvocationTargetException => throw e.getCause }
+
 		Run.executeTrapExit( execute, log )
+	}
+	private def run0(mainClassName: String, classpath: Iterable[Path], options: Seq[String], log: Logger)
+	{
+		val loader = getLoader(classpath, log)
+		val main = getMainMethod(mainClassName, loader)
+
+		val currentThread = Thread.currentThread
+		val oldLoader = Thread.currentThread.getContextClassLoader()
+		currentThread.setContextClassLoader(loader)
+		try { main.invoke(null, options.toArray[String].asInstanceOf[Array[String]] ) }
+		finally { currentThread.setContextClassLoader(oldLoader) }
+	}
+	def getMainMethod(mainClassName: String, loader: ClassLoader) =
+	{
+		val mainClass = Class.forName(mainClassName, true, loader)
+		val method = mainClass.getMethod("main", classOf[Array[String]])
+		val modifiers = method.getModifiers
+		if(!isPublic(modifiers)) throw new NoSuchMethodException(mainClassName + ".main is not public")
+		if(!isStatic(modifiers)) throw new NoSuchMethodException(mainClassName + ".main is not static")
+		method
+	}
+	def getLoader(classpath: Iterable[Path], log: Logger) =
+	{
+		val classpathURLs = classpath.toSeq.map(_.asURL).toArray
+		log.debug("  Classpath:\n\t" + classpathURLs.mkString("\n\t"))
+		new URLClassLoader( classpathURLs, instance.loader)
 	}
 }
 

@@ -250,7 +250,7 @@ abstract class BasicScalaProject extends ScalaProject with BasicDependencyProjec
 		fork match
 		{
 			case Some(fr: ForkScalaRun) => new ForkRun(fr)
-			case _ => new Run(buildCompiler)
+			case _ => new Run(buildScalaInstance)
 		}
 	}
 
