@@ -87,11 +87,15 @@ class xMain extends xsbti.AppMain
 			}
 		}
 	}
+	/** If no arguments are provided, drop to interactive prompt.
+	* If the user wants to run commands before dropping to the interactive prompt,
+	*   make dropping to the interactive prompt the action to perform on failure */
 	private def initialize(args: List[String]): List[String] =
 		args.lastOption match
 		{
 			case None => InteractiveCommand :: Nil
-			case Some(InteractiveCommand | ExitCommand | QuitCommand) => args
+			case Some(InteractiveCommand) => (FailureHandlerPrefix + InteractiveCommand) :: args
+			case Some(ExitCommand | QuitCommand) => args
 			case _ => args ::: ExitCommand :: Nil
 		}
 	private def startProject(project: Project, configuration: xsbti.AppConfiguration, remainingArguments: List[String], startTime: Long): xsbti.MainResult =

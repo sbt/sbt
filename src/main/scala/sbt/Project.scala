@@ -213,9 +213,8 @@ trait Project extends TaskManager with Dag[Project] with BasicEnvironment
 	final val projectOrganization = propertyOptional[String](normalizedName, true)
 	/** The property that defines the version of Scala to use with the project definition.  This can be different
 	* from the version of Scala used to build the project (current version used is buildScalaVersion, available are in buildScalaVersions).
-	* This property is only read by `sbt` on startup and reload. It is the definitive source for the version of Scala
-	* that sbt and the project definition are using.*/
-	final val defScalaVersion = property[String]
+	* This property is only read by `sbt` on startup and reload.*/
+	final val defScalaVersion = propertyOptional[String](info.definitionScalaVersion)
 	final val sbtVersion = property[String]
 	final val projectInitialize = propertyOptional[Boolean](false)
 	final val projectScratch = propertyOptional[Boolean](false, true)
