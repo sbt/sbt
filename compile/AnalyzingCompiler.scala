@@ -36,17 +36,6 @@ class AnalyzingCompiler(val scalaInstance: ScalaInstance, val manager: Component
 		val arguments = (new CompilerArguments(scalaInstance))(sources, classpath, outputDirectory, options, compilerOnClasspath)
 		call("xsbt.ScaladocInterface", log) (classOf[Array[String]], classOf[Int], classOf[xLogger]) (arguments.toArray[String] : Array[String], maximumErrors: java.lang.Integer, log)
 	}
-	def run(classpath: Set[File], mainClass: String, options: Seq[String], log: CompileLogger)
-	{
-		val arguments = new CompilerArguments(scalaInstance)
-		val classpathURLs = arguments.finishClasspath(classpath, true).toSeq
-		val bootClasspath = FileUtilities.pathSplit( arguments.createBootClasspath )
-		val extraURLs = bootClasspath.filter(_.length > 0).map(new File(_))
-		val classpathArray = (classpathURLs ++ extraURLs).map(_.toURI.toURL).toArray[URL]
-		call("xsbt.RunInterface", log)(classOf[Array[URL]], classOf[String], classOf[Array[String]], classOf[xLogger]) (
-			classpathArray : Array[URL], mainClass, options.toArray[String] : Array[String], log
-		)
-	}
 	def console(classpath: Set[File], initialCommands: String, log: CompileLogger): Unit =
 	{
 		val arguments = new CompilerArguments(scalaInstance)
