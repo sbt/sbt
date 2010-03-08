@@ -80,9 +80,21 @@ object ComponentManager
 	lazy val (version, timestamp) =
 	{
 		val properties = new java.util.Properties
-		val propertiesStream = getClass.getResourceAsStream("/xsbt.version.properties")
+		val propertiesStream = versionResource.openStream
 		try { properties.load(propertiesStream) } finally { propertiesStream.close() }
 		(properties.getProperty("version"), properties.getProperty("timestamp"))
 	}
 	lazy val stampedVersion = version + "_" + timestamp
+
+	import java.net.URL
+	private def versionResource: URL =
+	{
+		import java.util.Collections.list
+		// could be just:
+		//    getClass.getResource("/xsbt.version.properties")
+		// but the launcher up until 0.7.1 contained a stale xsbt.version.properties.
+		//    post-0.7.1, only xsbti.jar contains xsbt.version.properties
+		// for the transition, we take the last one, which is the one we want because of the order resources are searched
+		list(getClass.getClassLoader.getResources("xsbt.version.properties")).toArray(new Array[URL](0)).last
+	}
 }
