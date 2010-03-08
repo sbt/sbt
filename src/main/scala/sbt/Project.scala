@@ -215,6 +215,9 @@ trait Project extends TaskManager with Dag[Project] with BasicEnvironment
 	* from the version of Scala used to build the project (current version used is buildScalaVersion, available are in buildScalaVersions).
 	* This property is only read by `sbt` on startup and reload.*/
 	final val defScalaVersion = propertyOptional[String](info.definitionScalaVersion)
+	/** The property to specify the sbt revision to use.
+	* Note that this can by a dynamic revision (see Ivy documentation for details on dynamic revisions).
+	*Therefore, use `sbt.ComponentManager.version` and `timestamp` for actual version information. */
 	final val sbtVersion = property[String]
 	final val projectInitialize = propertyOptional[Boolean](false)
 	final val projectScratch = propertyOptional[Boolean](false, true)
@@ -223,9 +226,10 @@ trait Project extends TaskManager with Dag[Project] with BasicEnvironment
 	* This property is only read by `sbt` on startup and reload.  The definitive source for the version of Scala currently
 	* being used is buildScalaVersion.*/
 	final val buildScalaVersions = propertyOptional[String](defScalaVersion.value, true)
-	/** The definitive source for the version of Scala being used to *build* the project.*/
+	/** The definitive source for the version of Scala being requested to *build* the project.
+	* For the full version information, see buildScalaInstance.actualVersion.*/
 	def buildScalaVersion = info.buildScalaVersion.getOrElse(crossScalaVersions.first)
-	private[sbt] def isScala27 = buildScalaVersion.startsWith("2.7.")
+	private[sbt] def isScala27 = buildScalaInstance.actualVersion.startsWith("2.7.")
 
 
 	def componentManager = new ComponentManager(info.launcher.globalLock, info.app.components, log)

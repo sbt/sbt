@@ -101,7 +101,7 @@ class xMain extends xsbti.AppMain
 	private def startProject(project: Project, configuration: xsbti.AppConfiguration, remainingArguments: List[String], startTime: Long): xsbti.MainResult =
 	{
 		project.log.info("Building project " + project.name + " " + project.version.toString + " against Scala " + project.buildScalaVersion)
-		project.log.info("   using " + project.getClass.getName + " with sbt " + project.sbtVersion.value + " and Scala " + project.defScalaVersion.value)
+		project.log.info("   using " + project.getClass.getName + " with sbt " + ComponentManager.version + " and Scala " + project.defScalaVersion.value)
 		processArguments(project, initialize(remainingArguments), configuration, startTime) match
 		{
 			case e: xsbti.Exit =>
