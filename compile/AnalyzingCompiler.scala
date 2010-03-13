@@ -9,7 +9,7 @@ package xsbt
 * provided by scalaInstance.  This class requires a ComponentManager in order to obtain the interface code to scalac and
 * the analysis plugin.  Because these call Scala code for a different Scala version than the one used for this class, they must
 * be compiled for the version of Scala being used.*/
-class AnalyzingCompiler(val scalaInstance: ScalaInstance, val manager: ComponentManager) extends NotNull
+class AnalyzingCompiler(val scalaInstance: ScalaInstance, val manager: ComponentManager, log: CompileLogger) extends NotNull
 {
 	def apply(sources: Set[File], classpath: Set[File], outputDirectory: File, options: Seq[String], callback: AnalysisCallback, maximumErrors: Int, log: CompileLogger): Unit =
 		apply(sources, classpath, outputDirectory, options, false, callback, maximumErrors, log)
@@ -52,13 +52,13 @@ class AnalyzingCompiler(val scalaInstance: ScalaInstance, val manager: Component
 		try { method.invoke(interface, args: _*) }
 		catch { case e: java.lang.reflect.InvocationTargetException => throw e.getCause }
 	}
-	private def getInterfaceClass(name: String, log: CompileLogger) =
+	private[this] def loader =
 	{
 		val interfaceJar = getInterfaceJar(log)
 		val dual = createDualLoader(scalaInstance.loader, getClass.getClassLoader) // this goes to scalaLoader for scala classes and sbtLoader for xsbti classes
-		val interfaceLoader = new URLClassLoader(Array(interfaceJar.toURI.toURL), dual)
-		Class.forName(name, true, interfaceLoader)
+		new URLClassLoader(Array(interfaceJar.toURI.toURL), dual)
 	}
+	private def getInterfaceClass(name: String, log: CompileLogger) = Class.forName(name, true, loader)
 	private def getInterfaceJar(log: CompileLogger) =
 	{
 		// this is the instance used to compile the interface component
