@@ -120,12 +120,14 @@ object Path
 	def absolute(file: File) = new File(file.toURI.normalize).getAbsoluteFile
 	/** Constructs a String representation of <code>Path</code>s.  The absolute path String of each <code>Path</code> is
 	* separated by the platform's path separator.*/
-	def makeString(paths: Iterable[Path]): String = paths.map(_.absolutePath).mkString(pathSeparator)
+	def makeString(paths: Iterable[Path]): String = makeString(paths, pathSeparator)
+	/** Constructs a String representation of <code>Path</code>s.  The absolute path String of each <code>Path</code> is
+	* separated by the given separator String.*/
+	def makeString(paths: Iterable[Path], sep: String): String = paths.map(_.absolutePath).mkString(sep)
 	
 	/** Constructs a String representation of <code>Path</code>s.  The relative path String of each <code>Path</code> is
 	* separated by the platform's path separator.*/
-	def makeRelativeString(paths: Iterable[Path]): String = makeRelativeString(paths, sep.toString)
-	def makeRelativeString(paths: Iterable[Path], separator: String): String = paths.map(_.relativePathString(separator)).mkString(pathSeparator)
+	def makeRelativeString(paths: Iterable[Path]): String = paths.map(_.relativePathString(sep.toString)).mkString(pathSeparator)
 	
 	def splitString(projectPath: Path, value: String): Iterable[Path] =
 	{
@@ -273,7 +275,12 @@ sealed abstract class PathFinder extends NotNull
 	final def flatMap(f: Path => PathFinder): PathFinder = Path.lazyPathFinder(get.flatMap(p => f(p).get))
 	final def getFiles: scala.collection.Set[File] = Set( get.map(_.asFile).toSeq : _*)
 	final def getPaths: scala.collection.Set[String] = Set( get.map(_.absolutePath).toSeq : _*)
+	final def getRelativePaths: scala.collection.Set[String] = Set( get.map(_.relativePath).toSeq : _*)
 	private[sbt] def addTo(pathSet: Set[Path])
+
+	final def absString = Path.makeString(get)
+	final def relativeString = Path.makeRelativeString(get)
+	override def toString = getRelativePaths.mkString("\n")
 }
 private class BasePathFinder(base: PathFinder) extends PathFinder
 {
