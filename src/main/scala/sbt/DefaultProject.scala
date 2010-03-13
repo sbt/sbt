@@ -353,9 +353,13 @@ abstract class BasicWebScalaProject extends BasicScalaProject with WebScalaProje
 	import BasicWebScalaProject._
 	override def watchPaths = super.watchPaths +++ webappResources
 
+	/** Override this to define paths that `prepare-webapp` and `package` should ignore.
+	* They will not be pruned by prepare-webapp and will not be included in the war.*/
+	def webappUnmanaged: PathFinder = Path.emptyPathFinder
+
 	lazy val prepareWebapp = prepareWebappAction
 	protected def prepareWebappAction =
-		prepareWebappTask(webappResources, temporaryWarPath, webappClasspath, mainDependencies.scalaJars) dependsOn(compile, copyResources)
+		prepareWebappTask(webappResources, temporaryWarPath, webappClasspath, mainDependencies.scalaJars, webappUnmanaged) dependsOn(compile, copyResources)
 
 	lazy val jettyInstance = new JettyRunner(jettyConfiguration)
 
@@ -414,7 +418,7 @@ abstract class BasicWebScalaProject extends BasicScalaProject with WebScalaProje
 	override def cleanAction = super.cleanAction dependsOn jettyStop
 
 	/** Redefine the `package` action to make a war file.*/
-	override protected def packageAction = packageTask(descendents(temporaryWarPath ##, "*"), warPath, Nil) dependsOn(prepareWebapp) describedAs PackageWarDescription
+	override protected def packageAction = packageWarAction(temporaryWarPath, webappUnmanaged, warPath, Nil) dependsOn(prepareWebapp) describedAs PackageWarDescription
 
 	/** Redefine the default main artifact to be a war file.*/
 	override protected def defaultMainArtifact = Artifact(artifactID, "war", "war")

@@ -3,7 +3,6 @@
  */
 package sbt
 
-import sbt.impl.CommandParser
 import java.lang.{Process => JProcess, ProcessBuilder => JProcessBuilder}
 import java.io.{Closeable, File, IOException}
 import java.io.{BufferedReader, InputStream, InputStreamReader, OutputStream, PipedInputStream, PipedOutputStream}
@@ -22,10 +21,12 @@ object Process
 		apply(command, Some(cwd), extraEnv : _*)
 	/** create ProcessBuilder with working dir optionaly set to File and extra environment variables */
 	def apply(command: String, cwd: Option[File], extraEnv: (String,String)*): ProcessBuilder = {
-		CommandParser.parse(command) match {
+		apply(command.split("""\s+"""), cwd, extraEnv : _*)
+		// not smart to use this on windows, because CommandParser uses \ to escape ".
+		/*CommandParser.parse(command) match {
 			case Left(errorMsg) => error(errorMsg)
 			case Right((cmd, args)) => apply(cmd :: args, cwd, extraEnv : _*)
-		}
+		}*/
 	}
 	/** create ProcessBuilder with working dir optionaly set to File and extra environment variables */
 	def apply(command: Seq[String], cwd: Option[File], extraEnv: (String,String)*): ProcessBuilder = {

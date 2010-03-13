@@ -11,7 +11,14 @@ import scala.util.parsing.input.CharArrayReader.EofCh
 * identifier argument*
 * where argument may be quoted to include spaces and
 * quotes and backslashes should be escaped.
-* (Most of the complexity is for decent error handling.)*/
+*/
+object Arguments
+{
+	def apply(commandString: String): Either[String, (String, List[String])] =
+		CommandParser.parse(commandString)
+}
+
+/* Most of the complexity is for error handling.*/
 private[sbt] object CommandParser extends Parsers
 {
 	type Elem = Char

@@ -322,9 +322,14 @@ trait ScalaProject extends SimpleScalaProject with FileTasks with MultiTaskProje
 
 trait WebScalaProject extends ScalaProject
 {
+	protected def packageWarAction(stagedWarPath: Path, ignore: PathFinder, outputWarPath: => Path, options: => Seq[PackageOption]): Task =
+		packageTask(descendents(stagedWarPath ##, "*") --- ignore, outputWarPath, options)
+
 	@deprecated protected def prepareWebappTask(webappContents: PathFinder, warPath: => Path, classpath: PathFinder, extraJars: => Iterable[File]): Task =
 		prepareWebappTask(webappContents, warPath, classpath, Path.lazyPathFinder(extraJars.map(Path.fromFile)))
 	protected def prepareWebappTask(webappContents: PathFinder, warPath: => Path, classpath: PathFinder, extraJars: PathFinder): Task =
+		prepareWebappTask(webappContents, warPath, classpath, extraJars, Path.emptyPathFinder)
+	protected def prepareWebappTask(webappContents: PathFinder, warPath: => Path, classpath: PathFinder, extraJars: PathFinder, ignore: PathFinder): Task =
 		task
 		{
 			val webInfPath = warPath / "WEB-INF"
@@ -342,7 +347,7 @@ trait WebScalaProject extends ScalaProject
 			copyFlat(libs, webLibDirectory, log).right flatMap { copiedLibs =>
 			copyFilesFlat(extraJars.get.map(_.asFile), webLibDirectory, log).right flatMap { copiedExtraLibs =>
 				{
-					val toRemove = scala.collection.mutable.HashSet((warPath ** "*").get.toSeq : _*)
+					val toRemove = scala.collection.mutable.HashSet(((warPath ** "*") --- ignore).get.toSeq : _*)
 					toRemove --= copiedWebapp
 					toRemove --= copiedClasses
 					toRemove --= copiedLibs
