@@ -7,11 +7,16 @@ trait LineReader extends NotNull
 {
 	def readLine(prompt: String): Option[String]
 }
-class Completors(val projectAction: String, val projectNames: Iterable[String],
+class Completors(val projectAction: String, projectNames0: => Iterable[String],
 	val generalCommands: Iterable[String], val propertyActions: Iterable[String],
-	val specificPrefix: String, val scalaVersions: Iterable[String],
+	val specificPrefix: String, scalaVersions0: => Iterable[String],
 	val prefixes: Iterable[String], val taskNames: Iterable[String],
-	val propertyNames: Iterable[String], val extra: ExtraCompletions) extends NotNull
+	propertyNames0: => Iterable[String], val extra: ExtraCompletions) extends NotNull
+{
+	lazy val scalaVersions = scalaVersions0
+	lazy val propertyNames = propertyNames0
+	lazy val projectNames = projectNames0
+}
 
 trait ExtraCompletions extends NotNull
 {
@@ -96,16 +101,17 @@ object MainCompletor
 		def specificCompletor(baseCompletor: Completor) =
 		{
 			val specific = simpleCompletor(specificPrefix :: Nil) // TODO
-			new ArgumentCompletor( Array( specific, simpleCompletor(scalaVersions), baseCompletor ) )
+			argumentCompletor( Array( specific, lazySimpleCompletor(scalaVersions), baseCompletor ) )
 		}
 		def extraCompletor(name: String) =
-			repeatedArgumentCompletor(simpleCompletor(name :: Nil), new LazyCompletor(simpleCompletor(extra.completions(name))))
+			repeatedArgumentCompletor(simpleCompletor(name :: Nil), lazySimpleCompletor(extra.completions(name)))
 		val taskCompletor = simpleCompletor(TreeSet(taskNames.toSeq : _*))
 		val extraCompletors = extra.names.map(extraCompletor)
-		val baseCompletors = generalCompletor :: taskCompletor :: projectCompletor :: propertyCompletor(propertyNames) :: extraCompletors.toList
+		val baseCompletors = generalCompletor :: projectCompletor :: taskCompletor :: propertyCompletor(propertyNames) :: extraCompletors.toList
 		val baseCompletor = new MultiCompletor(baseCompletors.toArray)
 
 		val completor = new MultiCompletor()
+		//TODO: baseCompletor for prefixedCompletor should only be taskCompletor ++ extraCompletors
 		completor.setCompletors( Array(baseCompletor, prefixedCompletor(baseCompletor), specificCompletor(baseCompletor)) )
 		completor
 	}
@@ -116,22 +122,19 @@ object MainCompletor
 			(buffer.charAt(pos) == ' ') && buffer.substring(0, pos).trim.indexOf(' ') == -1
 	}
 
+	private def lazySimpleCompletor(completions: => Iterable[String]) = new LazyCompletor(simpleCompletor(completions))
 	private def simpleCompletor(completions: Iterable[String]) = new SimpleCompletor(completions.toList.toArray)
-	private def simpleArgumentCompletor(first: Iterable[String], second: Iterable[String]) =
-		singleArgumentCompletor(simpleCompletor(first), simpleCompletor(second))
+	private def simpleArgumentCompletor(first: Iterable[String], second: => Iterable[String]) =
+		singleArgumentCompletor(simpleCompletor(first), lazySimpleCompletor(second))
 	private def singleArgumentCompletor(first: Completor, second: Completor) =
 	{
 		val completors = Array(first, second, new NullCompletor)
-		val c = new ArgumentCompletor(completors, SingleArgumentDelimiter)
-		c.setStrict(true)
-		c
+		strict(  new ArgumentCompletor(completors, SingleArgumentDelimiter) )
 	}
-	private def repeatedArgumentCompletor(first: Completor, repeat: Completor) =
-	{
-		val c = new ArgumentCompletor(Array(first, repeat))
-		c.setStrict(true)
-		c
-	}
+	private def repeatedArgumentCompletor(first: Completor, repeat: Completor) = argumentCompletor(Array(first, repeat))
+	private def argumentCompletor(args: Array[Completor]) = strict(new ArgumentCompletor(args))
+		
+	private def strict(c: ArgumentCompletor) = { c.setStrict(true); c }
 }
 private class LazyCompletor(delegate0: => Completor) extends Completor
 {

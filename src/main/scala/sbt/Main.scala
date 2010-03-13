@@ -325,9 +325,9 @@ class xMain extends xsbti.AppMain
 			None
 		}
 	}
-	// todo:  project.log.info("No actions specified, interactive session started. Execute 'help' for more information.")
 	private def prompt(baseProject: Project, project: Project): String =
 	{
+		// the times for evaluating the lazy vals here are a few hundred ms out of a 2s startup
 		lazy val projectNames = baseProject.projectClosure.map(_.name)
 		val prefixes = ContinuousExecutePrefix :: CrossBuildPrefix :: Nil
 		lazy val scalaVersions = baseProject.crossScalaVersions ++ Seq(baseProject.defScalaVersion.value)
@@ -439,7 +439,7 @@ class xMain extends xsbti.AppMain
 		printCmd(TerminateActions.elements.mkString(", "), "Terminates the build.")
 		printCmd(SetAction + " <property> <value>", "Sets the value of the property given as its argument.")
 		printCmd(GetAction + " <property>", "Gets the value of the property given as its argument.")
-		printCmd(ProjectConsoleAction, "Enters the Scala interpreter with the current project bound to the variable 'current' and all members imported.")
+		printCmd(ProjectConsoleAction, "Enters the Scala interpreter with the current project definition bound to the variable 'current' and all members imported.")
 		if(!isInteractive)
 			printCmd(InteractiveCommand, "Enters the sbt interactive shell")
 	}
