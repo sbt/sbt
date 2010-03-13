@@ -35,7 +35,7 @@ object FileUtilities
 	import wrap.Wrappers.readOnly
 	/** The size of the byte or char buffer used in various methods.*/
 	private val BufferSize = 8192
-	private val Newline = System.getProperty("line.separator")
+	val Newline = System.getProperty("line.separator")
 	/** A pattern used to split a String by path separator characters.*/
 	private val PathSeparatorPattern = java.util.regex.Pattern.compile(File.pathSeparator)
 

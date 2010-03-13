@@ -69,7 +69,7 @@ sealed abstract class CompilerBase extends CompilerCore
 // Copyright 2005-2008 LAMP/EPFL
 // Original author: Martin Odersky
 
-final class Compile(maximumErrors: Int, compiler: AnalyzingCompiler, analysisCallback: AnalysisCallback, baseDirectory: Path) extends CompilerBase
+final class Compile(maximumErrors: Int, compiler: AnalyzingCompiler, analysisCallback: AnalysisCallback, baseDirectory: Path) extends CompilerBase with WithArgumentFile
 {
 	protected def processScala(sources: Set[File], classpath: Set[File], outputDirectory: File, options: Seq[String], log: Logger)
 	{
@@ -80,9 +80,25 @@ final class Compile(maximumErrors: Int, compiler: AnalyzingCompiler, analysisCal
 	{
 		val arguments = (new CompilerArguments(compiler.scalaInstance))(sources, classpath, outputDirectory, options, true)
 		log.debug("Calling 'javac' with arguments:\n\t" + arguments.mkString("\n\t"))
-		val code = Process("javac", arguments) ! log
+		def javac(argFile: File) = Process("javac", ("@" + normalizeSlash(argFile.getAbsolutePath)) :: Nil) ! log
+		val code = withArgumentFile(arguments)(javac)
 		if( code != 0 ) throw new CompileFailed(arguments.toArray, "javac returned nonzero exit code")
 	}
+}
+trait WithArgumentFile extends NotNull
+{
+	def withArgumentFile[T](args: Seq[String])(f: File => T): T =
+	{
+		import xsbt.FileUtilities._
+		withTemporaryDirectory { tmp =>
+			val argFile = new File(tmp, "argfile")
+			write(argFile, args.map(escapeSpaces).mkString(FileUtilities.Newline))
+			f(argFile)
+		}
+	}
+	// javac's argument file seems to allow naive space escaping with quotes.  escaping a quote with a backslash does not work
+	def escapeSpaces(s: String): String = '\"' + normalizeSlash(s) + '\"'
+	def normalizeSlash(s: String) = s.replace(File.separatorChar, '/')
 }
 final class Scaladoc(maximumErrors: Int, compiler: AnalyzingCompiler) extends CompilerCore
 {
