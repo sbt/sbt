@@ -4,6 +4,7 @@
 package xsbt
 
 import java.io.File
+import java.net.URL
 
 object Paths
 {
@@ -24,6 +25,7 @@ import Paths._
 trait PathBase extends NotNull
 {
 	def files: Set[File]
+	def urls: Array[URL] = files.toArray[File].map(_.toURI.toURL)
 	def x(mapper: PathMapper): Iterable[(File,String)] = mapper(files)
 	def x(mapper: FileMapper): Iterable[(File,File)] = mapper(files)
 	def *(filter: java.io.FileFilter): Set[File] = files.flatMap(FileUtilities.listFiles(filter))

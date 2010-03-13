@@ -30,7 +30,7 @@ class AggressiveCompiler extends xsbti.AppMain
 		val options = Task(args.tail.toSeq)
 		val log = new ConsoleLogger with CompileLogger with sbt.IvyLogger { def verbose(msg: => String) = debug(msg) }
 		val componentManager = new sbt.ComponentManager(launcher.globalLock, app.components, log)
-		val compiler = Task(new AnalyzingCompiler(ScalaInstance(args.head, launcher), componentManager))
+		val compiler = Task(new AnalyzingCompiler(ScalaInstance(args.head, launcher), componentManager, log))
 		val compileTask = AggressiveCompile(sources, classpath, outputDirectory, options, cacheDirectory, compiler, log)
 		
 		try { TaskRunner(compileTask.task); true }
