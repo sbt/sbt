@@ -241,6 +241,7 @@ sealed abstract class PathFinder extends NotNull
 	/** Constructs a new finder that selects all paths with a name that matches <code>filter</code> and are
 	* descendents of paths selected by this finder.*/
 	def **(filter: FileFilter): PathFinder = new DescendentOrSelfPathFinder(this, filter)
+	def *** : PathFinder = **(AllPassFilter)
 	/** Constructs a new finder that selects all paths with a name that matches <code>filter</code> and are
 	* immediate children of paths selected by this finder.*/
 	def *(filter: FileFilter): PathFinder = new ChildPathFinder(this, filter)
