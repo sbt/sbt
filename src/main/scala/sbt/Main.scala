@@ -141,8 +141,11 @@ class xMain extends xsbti.AppMain
 			def rememberFail(newArgs: List[String]) = failAction.map(f => (FailureHandlerPrefix + f)).toList :::  newArgs
 
 			def tryOrFail(action: => Trampoline)  =  try { action } catch { case e: Exception => logCommandError(project.log, e); failed(BuildErrorExitCode) }
-			def reload(newID: ApplicationID, args: List[String]) =
+			def reload(args: List[String]) =
+			{
+				val newID = new ApplicationID(configuration.provider.id, baseProject.sbtVersion.value)
 				result( new Reboot(project.defScalaVersion.value, rememberCurrent(args), newID, configuration.baseDirectory) )
+			}
 			def failed(code: Int) =
 				failAction match
 				{
@@ -154,7 +157,7 @@ class xMain extends xsbti.AppMain
 			{
 				case "" :: tail => continue(project, tail, failAction)
 				case (ExitCommand | QuitCommand) :: _ => result( Exit(NormalExitCode) )
-				case RebootCommand :: tail => reload( new ApplicationID(configuration.provider.id, baseProject.sbtVersion.value), tail )
+				case RebootCommand :: tail => reload( tail )
 				case InteractiveCommand :: _ => continue(project, prompt(baseProject, project) :: arguments, interactiveContinue)
 				case SpecificBuild(version, action) :: tail =>
 					if(Some(version) != baseProject.info.buildScalaVersion)
@@ -220,10 +223,14 @@ class xMain extends xsbti.AppMain
 						continue(project, tail, failAction)
 					}
 
-				case PHandler(processor, arguments) :: tail =>
+				case PHandler(parsed) :: tail =>
 					 tryOrFail {
-						val result =processor(project, arguments)
-						continue(project, result.insertArguments ::: tail, failAction)
+						parsed.processor(parsed.label, project, failAction, parsed.arguments) match
+						{
+							case s: processor.Success => continue(s.project, s.insertArguments ::: tail, s.onFailure)
+							case e: processor.Exit => result( Exit(e.code) )
+							case r: processor.Reload => reload( r.insertArguments ::: tail )
+						}
 					 }
 		
 				case action :: tail =>

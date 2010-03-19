@@ -11,10 +11,28 @@ trait Processor extends NotNull
 	/** Apply this processor's action to the given `project`.
 	* The arguments are passed unparsed as a single String `args`.
 	* The return value optionally provides additional commands to run, such as 'reload'.
-	* Note: `project` is not necessarily the root project.  To get the root project, use `project.rootProject`.*/
-	def apply(project: Project, args: String): ProcessorResult
+	* Note: `project` is not necessarily the root project.  To get the root project, use `project.rootProject`.
+	* The `label` used to call the processor is provided to allow recursing.*/
+	def apply(label: String, project: Project, onFailure: Option[String], args: String): ProcessorResult
 }
-/** The result of a Processor run.
+/** An interface for code that operates on an sbt `Project` but doesn't need to modify command processing.*/
+abstract class BasicProcessor extends Processor
+{
+	/** Apply this processor's action to the given `project`.
+	* The arguments are passed unparsed as a single String `args`.
+	* Note: `project` is not necessarily the root project.  To get the root project, use `project.rootProject`.*/
+	def apply(project: Project, args: String): Unit
+
+	override final def apply(label: String, project: Project, onFailure: Option[String], args: String): ProcessorResult =
+	{
+		apply(project, args)
+		new Success(project, onFailure)
+	}
+}
+
+/** The result of a Processor run.*/
+sealed trait ProcessorResult extends NotNull
+/* Processor success.
 * `insertArgs` allows the Processor to insert additional commands to run.
 * These commands are run before pending commands.
 * 
@@ -25,7 +43,12 @@ trait Processor extends NotNull
 *   `sbt a cleanCompile b `
 * This runs `a`, `cleanCompile`, `clean`, `compile`, and finally `b`.
 * Commands are processed as if they were entered at the prompt or from the command line.*/
-final class ProcessorResult(insertArgs: String*) extends NotNull
+final class Success(val project: Project, val onFailure: Option[String], insertArgs: String*) extends ProcessorResult
+{
+	val insertArguments = insertArgs.toList
+}
+final class Exit(val code: Int) extends ProcessorResult
+final class Reload(insertArgs: String*) extends ProcessorResult
 {
 	val insertArguments = insertArgs.toList
 }

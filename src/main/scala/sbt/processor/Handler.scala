@@ -5,10 +5,10 @@ package sbt.processor
 
 class Handler(baseProject: Project) extends NotNull
 {
-	def unapply(line: String): Option[(Processor, String)] =
+	def unapply(line: String): Option[ParsedProcessor] =
 		line.split("""\s+""", 2) match
 		{
-			case Array(GetProcessor(processor), args @ _*) => Some( (processor, args.mkString) )
+			case Array(label @ GetProcessor(processor), args @ _*) => Some( new ParsedProcessor(label, processor, args.mkString) )
 			case _ => None
 		}
 	private object GetProcessor
@@ -32,3 +32,4 @@ class Handler(baseProject: Project) extends NotNull
 	lazy val defParser = new DefinitionParser
 	lazy val manager = new ManagerImpl(files, scalaVersion, new Persist(lock, persistLockFile.asFile, defParser), baseProject.log)
 }
+class ParsedProcessor(val label: String, val processor: Processor, val arguments: String) extends NotNull
