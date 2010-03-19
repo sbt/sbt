@@ -9,6 +9,9 @@ import java.util.Properties
 
 object Initialize
 {
+	lazy val selectCreate = (_: AppProperty).create
+	lazy val selectQuick = (_: AppProperty).quick
+	lazy val selectFill = (_: AppProperty).fill
 	def create(file: File, promptCreate: String, enableQuick: Boolean, spec: List[AppProperty])
 	{
 		SimpleReader.readLine(promptCreate + " (y/N" + (if(enableQuick) "/s" else "") + ") ") match
@@ -17,8 +20,8 @@ object Initialize
 			case Some(line) =>
 				line.toLowerCase match
 				{
-					case "y" | "yes" => process(file, spec, _.create)
-					case "s" => process(file, spec, _.quick)
+					case "y" | "yes" => process(file, spec, selectCreate)
+					case "s" => process(file, spec, selectQuick)
 					case "n" | "no" | "" => declined("")
 					case x =>
 						System.out.println("  '" + x + "' not understood.")
@@ -26,7 +29,7 @@ object Initialize
 				}
 		}
 	}
-	def fill(file: File, spec: List[AppProperty]): Unit = process(file, spec, _.fill)
+	def fill(file: File, spec: List[AppProperty]): Unit = process(file, spec, selectFill)
 	def process(file: File, appProperties: List[AppProperty], select: AppProperty => Option[PropertyInit])
 	{
 		val properties = new Properties

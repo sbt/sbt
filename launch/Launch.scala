@@ -10,8 +10,6 @@ import java.net.URL
 
 object Launch
 {
-	//val start = System.currentTimeMillis
-	def time(label: String) = ()//System.out.println(label + " : " + (System.currentTimeMillis - start) / 1000.0 + " s")
 	def apply(arguments: List[String]): Unit = apply( (new File("")).getAbsoluteFile , arguments )
 
 	def apply(currentDirectory: File, arguments: List[String]): Unit =
@@ -19,32 +17,27 @@ object Launch
 
 	def configured(currentDirectory: File, configLocation: URL, arguments: List[String]): Unit =
 	{
-		time("found boot config")
 		val config = Configuration.parse(configLocation, currentDirectory)
-		time("parsed")
 		Find(config, currentDirectory) match { case (resolved, baseDirectory) => parsed(baseDirectory, resolved, arguments) }
 	}
 	def parsed(currentDirectory: File, parsed: LaunchConfiguration, arguments: List[String]): Unit =
 	{
-		time("found working directory")
 		val propertiesFile = parsed.boot.properties
 		import parsed.boot.{enableQuick, promptCreate, promptFill}
 		if(isNonEmpty(promptCreate) && !propertiesFile.exists)
 			Initialize.create(propertiesFile, promptCreate, enableQuick, parsed.appProperties)
 		else if(promptFill)
 			Initialize.fill(propertiesFile, parsed.appProperties)
-		time("initialized")
 		initialized(currentDirectory, parsed, arguments)
 	}
 	def initialized(currentDirectory: File, parsed: LaunchConfiguration, arguments: List[String]): Unit =
 	{
 		val resolved = ResolveVersions(parsed)
-		time("resolved")
 		explicit(currentDirectory, resolved, arguments)
 	}
 
 	def explicit(currentDirectory: File, explicit: LaunchConfiguration, arguments: List[String]): Unit =
-		launch( run(new Launch(explicit.boot.directory, explicit.repositories, explicit.scalaClassifiers)) ) (
+		launch( run(Launcher(explicit)) ) (
 			new RunConfiguration(explicit.getScalaVersion, explicit.app.toID, currentDirectory, arguments) )
 
 	def run(launcher: xsbti.Launcher)(config: RunConfiguration): xsbti.MainResult =
@@ -54,12 +47,8 @@ object Launch
 		val appProvider: xsbti.AppProvider = scalaProvider.app(app)
 		val appConfig: xsbti.AppConfiguration = new AppConfiguration(toArray(arguments), workingDirectory, appProvider)
 
-		time("pre-load")
 		val main = appProvider.newMain()
-		time("loaded")
-		val result = main.run(appConfig)
-		time("ran")
-		result
+		main.run(appConfig)
 	}
 	final def launch(run: RunConfiguration => xsbti.MainResult)(config: RunConfiguration)
 	{
@@ -128,6 +117,27 @@ class Launch(val bootDirectory: File, repositories: List[Repository], scalaClass
 
 			lazy val components = new ComponentProvider(appHome)
 		}
+	}
+}
+object Launcher
+{
+	def apply(bootDirectory: File, repositories: List[Repository], scalaClassifiers: List[String]): xsbti.Launcher =
+		apply(bootDirectory, repositories, scalaClassifiers, GetLocks.find)
+	def apply(bootDirectory: File, repositories: List[Repository], scalaClassifiers: List[String], locks: xsbti.GlobalLock): xsbti.Launcher =
+		new Launch(bootDirectory, repositories, scalaClassifiers) {
+			override def globalLock = locks
+		}
+	def apply(explicit: LaunchConfiguration): xsbti.Launcher =
+		new Launch(explicit.boot.directory, explicit.repositories, explicit.scalaClassifiers)
+	def defaultAppProvider(baseDirectory: File): xsbti.AppProvider = getAppProvider(baseDirectory, Configuration.configurationOnClasspath)
+	def getAppProvider(baseDirectory: File, configLocation: URL): xsbti.AppProvider =
+	{
+		val parsed = ResolvePaths(Configuration.parse(configLocation, baseDirectory), baseDirectory)
+		Initialize.process(parsed.boot.properties, parsed.appProperties, Initialize.selectQuick)
+		val config = ResolveVersions(parsed)
+		val launcher = apply(config)
+		val scalaProvider = launcher.getScala(config.getScalaVersion)
+		scalaProvider.app(config.app.toID)
 	}
 }
 class ComponentProvider(baseDirectory: File) extends xsbti.ComponentProvider

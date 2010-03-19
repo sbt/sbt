@@ -39,14 +39,19 @@ class Find(config: LaunchConfiguration) extends NotNull
 			}
 		val baseDirectory = found.getOrElse(current)
 		System.setProperty("user.dir", baseDirectory.getAbsolutePath)
-		(config.map(f => resolve(baseDirectory, f)), baseDirectory)
+		(ResolvePaths(config, baseDirectory), baseDirectory)
 	}
-	def resolve(baseDirectory: File, f: File): File =
+	private def hasProject(f: File) = f.isDirectory && search.paths.forall(p => ResolvePaths(f, p).exists)
+	private def path(f: File, acc: List[File]): List[File] = if(f eq null) acc else path(f.getParentFile, f :: acc)
+}
+object ResolvePaths
+{
+	def apply(config: LaunchConfiguration, baseDirectory: File): LaunchConfiguration =
+		config.map(f => apply(baseDirectory, f))
+	def apply(baseDirectory: File, f: File): File =
 	{
 		assert(baseDirectory.isDirectory) // if base directory is not a directory, URI.resolve will not work properly
 		val uri = new URI(null, null, f.getPath, null)
 		new File(baseDirectory.toURI.resolve(uri))
 	}
-	private def hasProject(f: File) = f.isDirectory && search.paths.forall(p => resolve(f, p).exists)
-	private def path(f: File, acc: List[File]): List[File] = if(f eq null) acc else path(f.getParentFile, f :: acc)
 }

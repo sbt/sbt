@@ -41,7 +41,7 @@ object WithCompiler
 			boot.LaunchTest.withLauncher { launch =>
 				FileUtilities.withTemporaryDirectory { componentDirectory =>
 					val manager = new ComponentManager(xsbt.boot.Locks, new boot.ComponentProvider(componentDirectory), log)
-					val compiler = new AnalyzingCompiler(ScalaInstance(scalaVersion, launch), manager)
+					val compiler = new AnalyzingCompiler(ScalaInstance(scalaVersion, launch), manager, log)
 					compiler.newComponentCompiler(log).clearCache(ComponentCompiler.compilerInterfaceID)
 					define(manager, ComponentCompiler.compilerInterfaceSrcID, getResource("CompilerInterface.scala"), getClassResource(classOf[jline.Completor]))
 					define(manager, ComponentCompiler.xsbtiID, getClassResource(classOf[xsbti.AnalysisCallback]))

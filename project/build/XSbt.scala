@@ -2,7 +2,7 @@ import sbt._
 
 import java.io.File
 
-class XSbt(info: ProjectInfo) extends ParentProject(info)
+class XSbt(info: ProjectInfo) extends ParentProject(info) with NoCrossPaths
 {
 		/* Subproject declarations*/
 
@@ -34,8 +34,6 @@ class XSbt(info: ProjectInfo) extends ParentProject(info)
 
 	val altCompilerSub = baseProject("main", "Alternate Compiler Test", stdTaskSub, logSub)
 
-	val distSub = project("dist", "Distribution", new DistProject(_))
-
 	def baseProject(path: Path, name: String, deps: Project*) = project(path, name, new Base(_), deps : _*)
 	
 		/* Multi-subproject paths */
@@ -45,51 +43,38 @@ class XSbt(info: ProjectInfo) extends ParentProject(info)
 	def utilPath = path("util")
 	def compilePath = path("compile")
 
-	class DistProject(info: ProjectInfo) extends Base(info) with ManagedBase
-	{
-		lazy val interDependencies = (XSbt.this.dependencies.toList -- List(distSub, launchSub, launchInterfaceSub, interfaceSub, compileInterfaceSub)) flatMap {
-			 case b: Base =>  b :: Nil; case _ => Nil
-		}
-		override def dependencies = interfaceSub :: compileInterfaceSub :: interDependencies
-		lazy val dist = increment dependsOn(publishLocal)
-		override def artifactID = "xsbt"
-	}
-
-	def increment = task {
-		val Array(keep, inc) = projectVersion.value.toString.split("_")
-		projectVersion() = Version.fromString(keep + "_" + (inc.toInt + 1)).right.get
-		log.info("Version is now " + projectVersion.value)
-		None
-	}
-
 	def compilerInterfaceClasspath = compileInterfaceSub.projectClasspath(Configurations.Test)
 
 	//run in parallel
 	override def parallelExecution = true
-	override def disableCrossPaths = true
 	def jlineRev = "0.9.94"
 	def jlineDep = "jline" % "jline" % jlineRev intransitive()
 
+	// publish locally when on repository server
 	override def managedStyle = ManagedStyle.Ivy
 	val publishTo = Resolver.file("test-repo", new File("/var/dbwww/repo/"))
 
 		/* Subproject configurations*/
-	class LaunchProject(info: ProjectInfo) extends Base(info) with TestWithIO with TestDependencies with ProguardLaunch
+	class LaunchProject(info: ProjectInfo) extends Base(info) with TestWithIO with TestDependencies with ProguardLaunch with NoCrossPaths
 	{
 		val jline = jlineDep
 		val ivy = "org.apache.ivy" % "ivy" % "2.0.0"
-		def rawJarPath = jarPath
-		override def disableCrossPaths = true
-		lazy val rawPackage = packageTask(packagePaths +++ launchInterfaceSub.packagePaths, rawJarPath, packageOptions).dependsOn(compile)
-		// to test the retrieving and loading of the main sbt, we package and publish the test classes to the local repository
-		override def defaultMainArtifact = Artifact(testID)
-		override def projectID = ModuleID(organization, testID, "test-" + version)
-		override def packageAction = packageTask(packageTestPaths, outputPath / (testID + "-" + projectID.revision +".jar"), packageOptions).dependsOn(rawTestCompile)
 		override def deliverProjectDependencies = Nil
-		def testID = "launch-test"
+
+		// defines the package that proguard operates on
+		def rawJarPath = jarPath
+		def rawPackage = `package`
+		override def packagePaths = super.packagePaths +++ launchInterfaceSub.packagePaths
+
+		// configure testing
 		override def testClasspath = super.testClasspath +++ interfaceSub.compileClasspath +++ interfaceSub.mainResourcesPath
-		lazy val rawTestCompile = super.testCompileAction dependsOn(interfaceSub.compile)
-		override def testCompileAction = publishLocal dependsOn(rawTestCompile, interfaceSub.publishLocal)
+		override def testCompileAction = super.testCompileAction dependsOn(interfaceSub.publishLocal, testSamples.publishLocal)
+
+		// used to test the retrieving and loading of an application: sample app is packaged and published to the local repository
+		lazy val testSamples = project("test-sample", "Launch Test", new TestSamples(_), interfaceSub, launchInterfaceSub)
+		class TestSamples(info: ProjectInfo) extends Base(info) with NoCrossPaths with NoPublish {
+			override def deliverProjectDependencies = Nil
+		}
 	}
 	trait TestDependencies extends Project
 	{
@@ -211,29 +196,4 @@ class XSbt(info: ProjectInfo) extends ParentProject(info)
 		override def testCompileAction = super.testCompileAction dependsOn((testWithTestClasspath.map(_.testCompile) ++ testWithCompileClasspath.map(_.compile)) : _*)
 		override def testClasspath = (super.testClasspath /: (testWithTestClasspath.map(_.testClasspath) ++  testWithCompileClasspath.map(_.compileClasspath) ))(_ +++ _)
 	}
-}
-trait JavaProject extends BasicScalaProject
-{
-	override def disableCrossPaths = true
-	// ensure that interfaces are only Java sources and that they cannot reference Scala classes
-	override def mainSources = descendents(mainSourceRoots, "*.java")
-	override def compileOrder = CompileOrder.JavaThenScala
-}
-trait SourceProject extends BasicScalaProject
-{
-	override def disableCrossPaths = true
-	override def packagePaths = mainResources +++ mainSources // the default artifact is a jar of the main sources and resources
-}
-trait ManagedBase extends BasicScalaProject
-{
-	override def deliverScalaDependencies = Nil
-	override def managedStyle = ManagedStyle.Ivy
-	override def useDefaultConfigurations = false
-	val defaultConf = Configurations.Default
-	val testConf = Configurations.Test
-}
-trait Component extends DefaultProject
-{
-	override def projectID = componentID match { case Some(id) => super.projectID extra("e:component" -> id); case None => super.projectID }
-	def componentID: Option[String] = None
 }

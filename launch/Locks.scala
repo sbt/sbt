@@ -7,6 +7,18 @@ import java.io.{File, FileOutputStream}
 import java.nio.channels.FileChannel
 import java.util.concurrent.Callable
 
+object GetLocks
+{
+	/** Searches for Locks in parent class loaders before returning Locks from this class loader.
+	* Normal class loading doesn't work because the launcher class loader hides xsbt classes.*/
+	def find: xsbti.GlobalLock =
+		Loaders(getClass.getClassLoader.getParent).flatMap(tryGet).headOption.getOrElse(Locks)
+	private[this] def tryGet(loader: ClassLoader): List[xsbti.GlobalLock] =
+		try { getLocks0(loader) :: Nil } catch { case e: ClassNotFoundException => Nil }
+	private[this] def getLocks0(loader: ClassLoader) =
+		Class.forName("xsbt.boot.Locks$", true, loader).getField("MODULE$").get(null).asInstanceOf[xsbti.GlobalLock]
+}
+
 // gets a file lock by first getting a JVM-wide lock.
 object Locks extends xsbti.GlobalLock
 {
