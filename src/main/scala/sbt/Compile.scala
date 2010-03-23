@@ -74,11 +74,11 @@ final class Compile(maximumErrors: Int, compiler: AnalyzingCompiler, analysisCal
 	protected def processScala(sources: Set[File], classpath: Set[File], outputDirectory: File, options: Seq[String], log: Logger)
 	{
 		val callbackInterface = new AnalysisInterface(analysisCallback, baseDirectory, outputDirectory)
-		compiler(Set() ++ sources, Set() ++ classpath, outputDirectory, options, true, callbackInterface, maximumErrors, log)
+		compiler(Set() ++ sources, Set() ++ classpath, outputDirectory, options, callbackInterface, maximumErrors, log)
 	}
 	protected def processJava(sources: Set[File], classpath: Set[File], outputDirectory: File, options: Seq[String], log: Logger)
 	{
-		val arguments = (new CompilerArguments(compiler.scalaInstance))(sources, classpath, outputDirectory, options, true)
+		val arguments = (new CompilerArguments(compiler.scalaInstance, false, compiler.compilerOnClasspath))(sources, classpath, outputDirectory, options)
 		log.debug("Calling 'javac' with arguments:\n\t" + arguments.mkString("\n\t"))
 		def javac(argFile: File) = Process("javac", ("@" + normalizeSlash(argFile.getAbsolutePath)) :: Nil) ! log
 		val code = withArgumentFile(arguments)(javac)

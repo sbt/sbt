@@ -437,7 +437,13 @@ object Project
 		getProjectBuilder(project.info, project.log) match
 		{
 			case Some(builder) => builder.projectClasspath
-			case None => project.info.sbtClasspath
+			case _ if project.getClass == DefaultBuilderClass => project.info.sbtClasspath
+			case _ =>
+				project.info.parent match
+				{
+					case Some(p) => getProjectClasspath(p)
+					case None => project.info.sbtClasspath
+				}
 		}
 	private[sbt] def getProjectBuilder(info: ProjectInfo, buildLog: Logger): Option[BuilderProject] =
 	{
