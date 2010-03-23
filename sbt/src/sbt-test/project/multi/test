@@ -1,0 +1,16 @@
+# There should be no ambiguity with a single project definition
+
+$ copy-file changes/SingleProject.scala project/build/src/TestProject.scala
+> reload
+
+# Again, no ambiguity with a single project definition and any number of abstract classes/traits implementing Project
+$ copy-file changes/SingleAndTraitProject.scala project/build/src/TestProject.scala
+> reload
+
+# One public project and any number of non-public projects should not be an error
+$ copy-file changes/SinglePublicProject.scala project/build/src/TestProject.scala
+> reload
+
+# Multiple public projects should be an error
+$ copy-file changes/MultiProject.scala project/build/src/TestProject.scala
+-> reload

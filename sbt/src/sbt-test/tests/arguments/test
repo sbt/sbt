@@ -1,0 +1,29 @@
+> ++2.8.0.Beta1-RC7
+> update
+
+# should fail because it should run all tests, some of which are expected to fail (1 and 4)
+-> test
+
+$ touch success1
+> test
+$ delete success1
+
+$ touch failure1
+-> test
+$ delete failure1
+
+$ touch success2
+> test
+$ delete success2
+
+$ touch failure2
+-> test
+$ delete failure2
+
+$ touch success3
+> test
+$ delete success3
+
+$ touch failure3
+-> test
+$ delete failure3

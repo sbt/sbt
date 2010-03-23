@@ -1,0 +1,12 @@
+> update
+> jetty-run
+> check-page "Hello World!"
+
+$ copy-file changes/index.jsp src/main/webapp/index.jsp
+
+> prepare-webapp
+> jetty-reload
+> check-page "Hello World 2!"
+
+> jetty-stop
+-> check-page "Hello World 2!"

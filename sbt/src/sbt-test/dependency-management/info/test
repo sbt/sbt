@@ -1,0 +1,13 @@
+> update
+> check-download
+> deliver-local
+> check-info
+
+> clean
+> clean-lib
+$ touch info
+
+> update
+> check-download
+> deliver-local
+> check-info

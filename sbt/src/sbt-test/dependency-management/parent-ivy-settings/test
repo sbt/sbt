@@ -1,0 +1,13 @@
+-> update
+> clean-lib
+$ copy-file changes/ivysettings.xml sub/ivysettings.xml
+
+> update
+> clean-lib
+
+$ delete sub/ivysettings.xml
+-> update
+> clean-lib
+
+$ copy-file changes/ivysettings.xml ivysettings.xml
+> update

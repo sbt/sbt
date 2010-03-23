@@ -1,0 +1,64 @@
+### Major Features
+* Batch and interactive commands are now unifed.  All commands that can be executed at the interactive prompt can be run from the command line.  To run commands and then enter interactive prompt, make the last command 'shell'.
+* Scala version handling has been overhauled.
+	* The version of Scala used to run sbt (currently 2.7.7) is decoupled from the version used to build the project
+	* Easily change between Scala versions with `++<version>`
+	* Improved cross-building: project definition is only compiled against 2.7.7 instead of every Scala version cross-built against
+	* Works with Scala 2.8.0.Beta1; however, classpath handling in Scala 2.8 trunk is changing and sbt currently cannot use 2.8 trunk to build projects until this settles
+	* Using a [local version of Scala](http://code.google.com/p/simple-build-tool/wiki/LocalScala) is easier now.
+* Dependency management improvements:
+	+ `make-pom` task now uses custom pom generation code instead of Ivy's pom writer
+		- Writes Maven-style repositories to the pom by default
+		- Override the 'pomExtra' method to provide XML (scala.xml.NodeSeq) to insert directly into the generated pom
+	+ sbt's [Ivy interface](http://code.google.com/p/simple-build-tool/wiki/IvyInterface) can be used directly (useful for implementing certain tasks)
+* Test framework support is now done through a [uniform test interface](http://github.com/harrah/test-interface).  Implications:
+	+ New versions of specs, ScalaCheck, and ScalaTest are supported as soon as they are released
+	+ Stefan Zeiger has written an [implementation for running JUnit](http://github.com/szeiger/junit-interface)
+	+ Support is better, since the test framework authors are the ones providing the implementation
+	+ Arguments can be passed to the test framework.  In the simplest case: `test-only  your.test -- -a -b -c`
+* Generalized the [launcher](http://code.google.com/p/simple-build-tool/wiki/GeneralizedLauncher) to be able to launch Scala applications, not just sbt
+	* Provide a configuration file to the launcher and it can download the application and its dependencies from a repository and run it
+	* sbt's configuration can be customized.  For example,
+		* The default values used to create a new project can be changed
+		* The repositories used to fetch sbt and its dependencies, including Scala, can be configured
+		* The location that sbt is retrieved to is configurable.  For example, instead of `project/boot`, `/home/user/.ivy2/sbt/`
+		* Configurable method of project searching (previously configurable by system property)
+
+### Other Improvements
+* Jetty 7 support (doesn't work with JRebel at this time)
+* Control traces with 'on' 'off', 'nosbt', `<level>` (Thanks to Tony Sloane.)
+* New action 'test-run' method that is analogous to 'run', but for test classes.
+* New action 'clean-plugins' task that clears built plugins (useful for plugin development).
+* Can provide commands from a file with <file command (file is the name of the file to read from)
+* Can provide commands over loopback interface with <port command (port is the number to read commands from)
+* Launcher is allowed in root directory or `lib/` directory (jar name must match '*sbt-launch*.jar' and will be kept off classpath by default)
+* Compilation properly tracks certain types of synthetic classes (for comprehension with >30 clauses, for example)
+* Can provide custom task start and end delimiters by defining the system properties `sbt.start.delimiter` and `sbt.end.delimiter`
+
+### Migrating from 0.5.6
+* Get the 0.7.0 launcher and [set it up as usual](http://code.google.com/p/simple-build-tool/wiki/Setup)
+* In your `project/build.properties`
+	* Rename `scala.version`to `build.scala.versions`.  If you previously overrode `crossScalaVersions`, just put the versions in `build.scala.versions` separated by whitespace.
+	* Set `sbt.version` to 0.7.0
+* Check the compatibility section below
+
+### Compatibility with 0.5.6
+* Artifact IDs (like your project's jar and ID for publishing to repositories) and output paths (like `target/` and `lib_managed/`) now have _<scala.version> appended.  To keep the old way, `override def disableCrossPaths = true`.
+* 'reboot' is gone, 'reload' now covers 'reboot'
+* [Properties](http://code.google.com/p/simple-build-tool/wiki/Properties) need to be declared `lazy val` instead of just `val`.
+* The way to fork `run` has changed due to reworking the Scala version handling.  See [Forking](http://code.google.com/p/simple-build-tool/wiki/Forking) for details.  Forking the compiler is no longer supported.
+* The project definition is always compiled against the version of Scala running sbt (currently, 2.7.7).  It was previously the same as the version used to build the project.
+* The Ivy interface has been broken out into its own subproject and reworked.  All functional tests pass, but please report any issues you encounter.
+* `updateOptions` has been replaced by overriding the appropriate methods directly.  Some other advanced configuration options have changed- documentation pending.
+* Web application support was reworked.  Please report any issues you encounter.
+* Test framework support is now done through the uniform test interface.  If you manually manage your test dependencies, you will need the [test-compat implementation](http://github.com/harrah/test-compat) of this interface.  The earliest releases of test frameworks supported are:
+	+ specs: 1.6.1
+	+ ScalaCheck: 1.5
+	+ ScalaTest: 1.0
+
+### Other Notes
+* A message like `'compiler-interface' not compiled for '2.7.7'` is sbt adapting to your build Scala version (and Java version).  It takes 5-20s depending on your machine and is a one time compilation for a given Scala/Java version combination.
+* Version control is now done with git and the source code is hosted on [Github](http://github.com/harrah).  See the [instructions](http://code.google.com/p/simple-build-tool/wiki/Build) for building it locally.  [Issue tracking](http://code.google.com/p/simple-build-tool/issues/list) and [documentation](http://code.google.com/p/simple-build-tool/wiki/DocumentationHome) are still on [Google Code](http://code.google.com/p/simple-build-tool).
+* Reports of performance degradation or improvement in 0.7.0 are useful.
+* Regular documentation has been updated.  API Documentation is pending.
+* Now using the [posterous-sbt plugin](http://github.com/n8han/posterous-sbt) to generate and publish release notes to [http://implicit.ly/](http://implicit.ly/).

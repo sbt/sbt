@@ -1,0 +1,11 @@
+> package
+$ exists "target/lazy-package-name-0.1.1.jar"
+> clean
+
+> increment-version
+> package
+$ exists "target/lazy-package-name-0.1.2.jar"
+
+> increment-version
+> package
+$ exists "target/lazy-package-name-0.1.3.jar"

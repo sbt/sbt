@@ -1,0 +1,4 @@
+> clean
+> test
+# this will fail if the sources are recompiled again (see the project definition)
+> test

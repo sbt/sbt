@@ -1,0 +1,46 @@
+# This test verifies the behavior of actions declared interactive
+
+# Single project, non-interactive task
+> interactive-test
+$ exists ran
+$ delete ran
+
+# Single project, interactive task
+$ copy-file changes/TestProject2.scala project/build/src/TestProject.scala
+> reload
+> interactive-test
+$ exists ran
+$ delete ran
+
+# Multi-project, single interactive task on parent project
+$ copy-file changes/TestProject3.scala project/build/src/TestProject.scala
+> reload
+> interactive-test
+$ exists ran
+$ delete ran
+
+# Multi-project, single interactive task on child project
+$ copy-file changes/TestProject4.scala project/build/src/TestProject.scala
+> reload
+-> interactive-test
+
+# Multi-project, two interactive tasks with same name, which is allowed because it is defined on parent
+$ copy-file changes/TestProject5.scala project/build/src/TestProject.scala
+> reload
+> interactive-test
+$ exists "ran"
+$ delete "ran"
+
+# Multi-project, interactive on subproject + non-interactive on parent, which cannot be run from parent
+$ copy-file changes/TestProject6.scala project/build/src/TestProject.scala
+> reload
+-> interactive-test
+
+# Multi-project, two non-interactive tasks with same name, which is allowed
+$ copy-file changes/TestProject7.scala project/build/src/TestProject.scala
+> reload
+> interactive-test
+$ exists "ran"
+$ exists "a/ran"
+$ delete "ran"
+$ delete "a/ran"

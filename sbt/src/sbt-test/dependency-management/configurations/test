@@ -1,0 +1,43 @@
+# publish a jar with Published with managedStyle = ManagedStyle.Maven
+
+$ copy-file changes/maven/Published.scala src/main/scala/Published.scala
+> publish
+
+
+# get and compile against each published jar with managedStyle = ManagedStyle.Maven
+
+> set project.name test-use
+> set project.organization test
+$ delete src project/build lib_managed
+$ copy-file changes/maven/TestUse.scala project/build/TestUse.scala
+> reload
+$ copy-file changes/maven/Use.scala src/main/scala/Use.scala
+
+-> compile
+
+> update
+> compile
+
+
+# publish a jar with PublishedIvy with managedStyle = ManagedStyle.Ivy
+> set project.name test-ivy
+> set project.organization org.example
+$ delete src project/build lib_managed repo
+$ copy-file changes/ivy/TestPublish.scala project/build/TestPublish.scala
+> reload
+$ copy-file changes/ivy/Published.scala src/main/scala/Published.scala
+> publish
+
+# get and compile against each published jar with managedStyle = ManagedStyle.Ivy
+
+> set project.name test-ivy-use
+> set project.organization test
+$ delete src project/build lib_managed
+$ copy-file changes/ivy/TestUse.scala project/build/TestUse.scala
+> reload
+$ copy-file changes/ivy/Use.scala src/main/scala/Use.scala
+
+-> compile
+
+> update
+> compile

@@ -1,0 +1,3 @@
+> update
+
+$ exists lib_managed/compile/scalacheck-1.5.jar

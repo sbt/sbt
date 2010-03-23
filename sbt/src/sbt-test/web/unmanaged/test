@@ -1,0 +1,6 @@
+> prepare-webapp
+$ touch target/webapp/WEB-INF/appengine-generated/test-keep
+$ touch target/webapp/WEB-INF/other/test-remove
+> prepare-webapp
+$ exists target/webapp/WEB-INF/appengine-generated/test-keep
+$ absent target/webapp/WEB-INF/other/test-remove

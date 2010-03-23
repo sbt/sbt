@@ -1,0 +1,9 @@
+> update
+
+$ copy-file changes/scalacheck-ivy.xml ivy.xml
+-> update
+$ absent lib_managed/default/scalacheck-1.5.jar
+
+$ copy-file changes/scala-tools-ivysettings.xml ivysettings.xml
+> update
+$ exists lib_managed/default/scalacheck-1.5.jar
