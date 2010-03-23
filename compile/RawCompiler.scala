@@ -3,30 +3,29 @@ package xsbt
 	import java.io.File
 
 /** A basic interface to the compiler.  It is called in the same virtual machine, but no dependency analysis is done.  This
-* is used, for example, to compile the interface/plugin code.*/
-class RawCompiler(val scalaInstance: ScalaInstance, log: CompileLogger)
+* is used, for example, to compile the interface/plugin code.
+* If `explicitClasspath` is true, the bootclasspath and classpath are not augmented.  If it is false,
+* the scala-library.jar from `scalaInstance` is put on bootclasspath and the scala-compiler jar goes on the classpath.*/
+class RawCompiler(val scalaInstance: ScalaInstance, autoBootClasspath: Boolean, compilerOnClasspath: Boolean, log: CompileLogger)
 {
-	def apply(sources: Set[File], classpath: Set[File], outputDirectory: File, options: Seq[String]): Unit =
-		apply(sources, classpath, outputDirectory, options, false)
-	def apply(sources: Set[File], classpath: Set[File], outputDirectory: File, options: Seq[String], compilerOnClasspath: Boolean)
+	def apply(sources: Set[File], classpath: Set[File], outputDirectory: File, options: Seq[String])
 	{
 		// reflection is required for binary compatibility
-			// The following imports ensure there is a compile error if the identifiers change,
+			// The following import ensures there is a compile error if the identifiers change,
 			//   but should not be otherwise directly referenced
-			import scala.tools.nsc.Main
+			import scala.tools.nsc.Main.{process => _}
 
-		val arguments = (new CompilerArguments(scalaInstance))(sources, classpath, outputDirectory, options, compilerOnClasspath)
+		val arguments = compilerArguments(sources, classpath, outputDirectory, options)
 		log.debug("Plain interface to Scala compiler " + scalaInstance.actualVersion + "  with arguments: " + arguments.mkString("\n\t", "\n\t", ""))
 		val mainClass = Class.forName("scala.tools.nsc.Main", true, scalaInstance.loader)
 		val process = mainClass.getMethod("process", classOf[Array[String]])
 		process.invoke(null, toJavaArray(arguments))
 		checkForFailure(mainClass, arguments.toArray)
 	}
+	def compilerArguments = new CompilerArguments(scalaInstance, autoBootClasspath, compilerOnClasspath)
 	protected def checkForFailure(mainClass: Class[_], args: Array[String])
 	{
 		val reporter = mainClass.getMethod("reporter").invoke(null)
-		// this is commented out because of Scala ticket #2365
-		//val failed = reporter.asInstanceOf[{ def hasErrors: Boolean }].hasErrors
 		val failed = reporter.getClass.getMethod("hasErrors").invoke(reporter).asInstanceOf[Boolean]
 		if(failed) throw new CompileFailed(args, "Plain compile failed")
 	}
