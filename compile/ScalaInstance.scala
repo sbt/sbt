@@ -7,10 +7,10 @@ package xsbt
 * for the compiler itself.
 * The 'version' field is the version used to obtain the Scala classes.  This is typically the version for the maven repository.
 * The 'actualVersion' field should be used to uniquely identify the compiler.  It is obtained from the compiler.properties file.*/
-final class ScalaInstance(val version: String, val loader: ClassLoader, val libraryJar: File, val compilerJar: File) extends NotNull
+final class ScalaInstance(val version: String, val loader: ClassLoader, val libraryJar: File, val compilerJar: File, val extraJars: Seq[File]) extends NotNull
 {
 	require(version.indexOf(' ') < 0, "Version cannot contain spaces (was '" + version + "')")
-	def jars = libraryJar :: compilerJar :: Nil
+	def jars = libraryJar :: compilerJar :: extraJars.toList
 	/** Gets the version of Scala in the compiler.properties file from the loader.  This version may be different than that given by 'version'*/
 	lazy val actualVersion = ScalaInstance.actualVersion(loader)(" version " + version)
 	override def toString = "Scala instance{version label " + version + ", actual version " + actualVersion + ", library jar: " + libraryJar + ", compiler jar: " + compilerJar + "}"
@@ -22,20 +22,20 @@ object ScalaInstance
 	def apply(version: String, launcher: xsbti.Launcher): ScalaInstance =
 		apply(version, launcher.getScala(version))
 	def apply(version: String, provider: xsbti.ScalaProvider): ScalaInstance =
-		new ScalaInstance(version, provider.loader, provider.libraryJar, provider.compilerJar)
+		new ScalaInstance(version, provider.loader, provider.libraryJar, provider.compilerJar, Nil)
 
 	def apply(scalaHome: File, launcher: xsbti.Launcher): ScalaInstance =
 		apply(libraryJar(scalaHome), compilerJar(scalaHome), launcher)
 	def apply(version: String, scalaHome: File, launcher: xsbti.Launcher): ScalaInstance =
 		apply(version, libraryJar(scalaHome), compilerJar(scalaHome), launcher)
-	def apply(libraryJar: File, compilerJar: File, launcher: xsbti.Launcher): ScalaInstance =
+	def apply(libraryJar: File, compilerJar: File, launcher: xsbti.Launcher, extraJars: File*): ScalaInstance =
 	{
-		val loader = scalaLoader(launcher, libraryJar, compilerJar)
+		val loader = scalaLoader(launcher, libraryJar :: compilerJar :: extraJars.toList)
 		val version = actualVersion(loader)(" (library jar  " + libraryJar.getAbsolutePath + ")")
-		new ScalaInstance(version, loader, libraryJar, compilerJar)
+		new ScalaInstance(version, loader, libraryJar, compilerJar, extraJars)
 	}
-	def apply(version: String, libraryJar: File, compilerJar: File, launcher: xsbti.Launcher): ScalaInstance =
-		new ScalaInstance(version, scalaLoader(launcher, libraryJar, compilerJar), libraryJar, compilerJar)
+	def apply(version: String, libraryJar: File, compilerJar: File, launcher: xsbti.Launcher, extraJars: File*): ScalaInstance =
+		new ScalaInstance(version, scalaLoader(launcher, libraryJar :: compilerJar :: extraJars.toList), libraryJar, compilerJar, extraJars)
 
 	private def compilerJar(scalaHome: File) = scalaJar(scalaHome, "scala-compiler.jar")
 	private def libraryJar(scalaHome: File) = scalaJar(scalaHome, "scala-library.jar")
@@ -50,7 +50,7 @@ object ScalaInstance
 	}
 
 	import java.net.{URL, URLClassLoader}
-	private def scalaLoader(launcher: xsbti.Launcher, jars: File*): ClassLoader =
+	private def scalaLoader(launcher: xsbti.Launcher, jars: Seq[File]): ClassLoader =
 		new URLClassLoader(jars.map(_.toURI.toURL).toArray[URL], launcher.topLoader)
 }
 class InvalidScalaInstance(message: String, cause: Throwable) extends RuntimeException(message, cause)

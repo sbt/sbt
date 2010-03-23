@@ -8,18 +8,18 @@ package xsbt
 * order to add these jars to the boot classpath. The 'scala.home' property must be unset because Scala
 * puts jars in that directory on the bootclasspath.  Because we use multiple Scala versions,
 * this would lead to compiling against the wrong library jar.*/
-class CompilerArguments(scalaInstance: ScalaInstance)
+class CompilerArguments(scalaInstance: ScalaInstance, autoBootClasspath: Boolean, compilerOnClasspath: Boolean)
 {
-	def apply(sources: Set[File], classpath: Set[File], outputDirectory: File, options: Seq[String], compilerOnClasspath: Boolean): Seq[String] =
+	def apply(sources: Set[File], classpath: Set[File], outputDirectory: File, options: Seq[String]): Seq[String] =
 	{
 		checkScalaHomeUnset()
-		val bootClasspathOption = Seq("-bootclasspath", createBootClasspath)
-		val cpWithCompiler = finishClasspath(classpath, compilerOnClasspath)
+		val bootClasspathOption = if(autoBootClasspath) Seq("-bootclasspath", createBootClasspath) else Nil
+		val cpWithCompiler = finishClasspath(classpath)
 		val classpathOption = Seq("-cp", absString(cpWithCompiler) )
 		val outputOption = Seq("-d", outputDirectory.getAbsolutePath)
 		options ++ outputOption ++ bootClasspathOption ++ classpathOption ++ abs(sources)
 	}
-	def finishClasspath(classpath: Set[File], compilerOnClasspath: Boolean): Set[File] =
+	def finishClasspath(classpath: Set[File]): Set[File] =
 		classpath ++ (if(compilerOnClasspath) scalaInstance.compilerJar :: Nil else Nil)
 	protected def abs(files: Set[File]) = files.map(_.getAbsolutePath)
 	protected def checkScalaHomeUnset()
