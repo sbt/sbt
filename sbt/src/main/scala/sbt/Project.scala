@@ -17,7 +17,7 @@ trait Project extends TaskManager with Dag[Project] with BasicEnvironment
 	final val log: Logger = logImpl
 	protected def logImpl: Logger =
 	{
-		val lg = new BufferedLogger(info.logger)
+		val lg = new FilterLogger(new BufferedLogger(info.logger))
 		lg.setLevel(defaultLoggingLevel)
 		lg
 	}
@@ -147,7 +147,7 @@ trait Project extends TaskManager with Dag[Project] with BasicEnvironment
 	/** Loads the project at the given path and declares the project to have the given
 	* dependencies.  This method will configure the project according to the
 	* project/ directory in the directory denoted by path.*/
-	def project(path: Path, deps: Project*): Project = getProject(Project.loadProject(path, deps, Some(this), log, info.app, info.buildScalaVersion), path)
+	def project(path: Path, deps: Project*): Project = getProject(Project.loadProject(path, deps, Some(this), info.logger, info.app, info.buildScalaVersion), path)
 
 	/** Loads the project at the given path using the given name and inheriting this project's version.
 	* The builder class is the default builder class, sbt.DefaultProject. The loaded project is declared
@@ -166,7 +166,7 @@ trait Project extends TaskManager with Dag[Project] with BasicEnvironment
 	* The construct function is used to obtain the Project instance. Any project/build/ directory for the project
 	* is ignored.  The project is declared to have the dependencies given by deps.*/
 	def project[P <: Project](path: Path, name: String, construct: ProjectInfo => P, deps: Project*): P =
-		initialize(construct(ProjectInfo(path.asFile, deps, Some(this))(log, info.app, info.buildScalaVersion)), Some(new SetupInfo(name, None, None, false)), log)
+		initialize(construct(ProjectInfo(path.asFile, deps, Some(this))(info.logger, info.app, info.buildScalaVersion)), Some(new SetupInfo(name, None, None, false)), log)
 
 	/** Initializes the project directories when a user has requested that sbt create a new project.*/
 	def initializeDirectories() {}

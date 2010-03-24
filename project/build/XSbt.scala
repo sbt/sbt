@@ -34,6 +34,8 @@ class XSbt(info: ProjectInfo) extends ParentProject(info) with NoCrossPaths
 
 	val altCompilerSub = baseProject("main", "Alternate Compiler Test", stdTaskSub, logSub)
 
+	val sbtSub = project("sbt", "Simple Build Tool", new SbtProject(_) {}, compilerSub, launchInterfaceSub)
+
 	def baseProject(path: Path, name: String, deps: Project*) = project(path, name, new Base(_), deps : _*)
 	
 		/* Multi-subproject paths */
@@ -158,7 +160,7 @@ class XSbt(info: ProjectInfo) extends ParentProject(info) with NoCrossPaths
 		/** compiles the generated sources */
 		override def compileAction = super.compileAction dependsOn(generateSource)
 	}
-	class LaunchInterfaceProject(info: ProjectInfo) extends  BaseInterfaceProject(info)
+	class LaunchInterfaceProject(info: ProjectInfo) extends BaseInterfaceProject(info)
 	{
 		override def componentID = None
 	}

@@ -23,7 +23,7 @@ final case class ProjectInfo(projectDirectory: File, dependencies: Iterable[Proj
 	/** The launcher instance that booted sbt.*/
 	def launcher = app.scalaProvider.launcher
 
-	val logger = new FilterLogger(log)
+	val logger = log
 	/** The base path for the project, preserving information to the root project directory.*/
 	val projectPath: Path =
 	{

@@ -6,7 +6,7 @@ import sbt._
 import java.io.File
 import java.net.URL
 
-class SbtProject(info: ProjectInfo) extends DefaultProject(info) with test.SbtScripted with posterous.Publish
+abstract class SbtProject(info: ProjectInfo) extends DefaultProject(info) with test.SbtScripted with posterous.Publish
 {
 	/* Additional resources to include in the produced jar.*/
 	def extraResources = descendents(info.projectPath / "licenses", "*") +++ "LICENSE" +++ "NOTICE"
@@ -46,9 +46,8 @@ class SbtProject(info: ProjectInfo) extends DefaultProject(info) with test.SbtSc
 
 	val testInterface = "org.scala-tools.testing" % "test-interface" % "0.4"
 
-	// xsbt components
-	val xsbti = "org.scala-tools.sbt" % "launcher-interface" % projectVersion.value.toString % "provided"
-	val compiler = "org.scala-tools.sbt" %% "compile" % projectVersion.value.toString
+	def deepSources = Path.finder { topologicalSort.flatMap { case p: ScalaPaths => p.mainSources.getFiles } }
+	lazy val sbtDoc = scaladocTask("sbt", deepSources, docPath, docClasspath, documentOptions)
 
 	/* For generating JettyRun for Jetty 6 and 7.  The only difference is the imports, but the file has to be compiled against each set of imports. */
 	override def compileAction = super.compileAction dependsOn (generateJettyRun6, generateJettyRun7)
