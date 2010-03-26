@@ -3,17 +3,15 @@
 * Arguments are passed to javac using an argument file (@).  This should fix errors on Windows caused by long command lines.
 * Fixed `console-project` for custom subprojects
 * Works with Scala 2.8 trunk again.
-* API Documentation is up again.
+* [API Documentation](http://simple-build-tool.googlecode.com/svn/artifacts/latest/api/index.html) is up again.
 * Fixed logging level behavior on subprojects.
 
 ### Improvements
-* Added `sbt.impl.Arguments` for parsing a command like a normal action (for [http://code.google.com/p/simple-build-tool/wiki/Processors Processors])
-* `Processor` split into `Processor`/`BasicProcessor`. `Processor` provides a high level of integration with command processing.  `BasicProcessor` operates on a `Project` but does not affect command processing.  See the API documentation for the signature change.
+* Added `sbt.impl.Arguments` for parsing a command like a normal action (for [Processors](http://code.google.com/p/simple-build-tool/wiki/Processors))
+* `Processor` split into `Processor`/`BasicProcessor`. `Processor` provides a high level of integration with command processing.  `BasicProcessor` operates on a `Project` but does not affect command processing.  See the [API documentation](http://simple-build-tool.googlecode.com/svn/artifacts/latest/api/sbt/processor$package.html) for the signature change.
 * Can now use Launcher externally, including launching sbt outside of the official jar. This means a `Project` can now be created from tests.
-* Added `webappUnmanaged: PathFinder` method to `DefaultWebProject`. `Path`s selected by this `PathFinder` will not be pruned by `prepare-webapp` and will not be packaged by package. For example, to exclude the GAE datastore directory:
-{{{
-  override def webappUnmanaged =
-    (temporaryWarPath / "WEB-INF" / "appengine-generated" ***)
-}}}
 * Added some String generation methods to `PathFinder`: `toString` for debugging and `absString` and `relativeString` for joining the absolute (relative) paths by the platform separator.
-* All sbt code is now at http://github.com/harrah/xsbt in one project.  Instructions for building from source have been updated.
+* All sbt code is now in a [single github repository](http://github.com/harrah/xsbt).  Instructions for building from source have been updated.
+* Added `webappUnmanaged: PathFinder` method to `DefaultWebProject`. `Path`s selected by this `PathFinder` will not be pruned by `prepare-webapp` and will not be packaged by package. For example, to exclude the GAE datastore directory:
+
+	override def webappUnmanaged = (temporaryWarPath / "WEB-INF" / "appengine-generated" ***)
