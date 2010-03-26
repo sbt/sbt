@@ -137,7 +137,7 @@ final class FilterLogger(delegate: Logger) extends BasicLogger
 		if(atLevel(Level.Info))
 			delegate.control(event, message)
 	}
-	def logAll(events: Seq[LogEvent]): Unit = events.foreach(delegate.log)
+	def logAll(events: Seq[LogEvent]): Unit = delegate.logAll(events)
 }
 
 /** A logger that can buffer the logging done on it by currently executing Thread and
@@ -354,4 +354,11 @@ object Level extends Enumeration with NotNull
 	def apply(s: String) = levels.find(s == _.toString)
 	/** Same as apply, defined for use in pattern matching. */
 	private[sbt] def unapply(s: String) = apply(s)
+}
+final class LoggerWriter(delegate: Logger, level: Level.Value) extends java.io.Writer
+{
+	override def flush() {}
+	override def close() {}
+	override def write(content: Array[Char], offset: Int, length: Int): Unit =
+		delegate.log(level, new String(content, offset, length))
 }

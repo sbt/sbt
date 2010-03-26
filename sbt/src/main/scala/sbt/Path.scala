@@ -55,6 +55,19 @@ sealed abstract class Path extends PathFinder with NotNull
 	def absolutePath: String = asFile.getAbsolutePath
 	private[sbt] def prependTo(s: String): String
 	
+	/** The last component of this path.*/
+	def name = asFile.getName
+	/** The extension part of the name of this path.  This is the part of the name after the last period, or the empty string if there is no period.*/
+	def ext = baseAndExt._2
+	/** The base of the name of this path.  This is the part of the name before the last period, or the full name if there is no period.*/
+	def base = baseAndExt._1
+	def baseAndExt: (String, String) =
+	{
+		val nme = name
+		val dot = nme.lastIndexOf('.')
+		if(dot < 0) (nme, "") else (nme.substring(0, dot), nme.substring(dot+1))
+	}
+	
 	/** Equality of Paths is defined in terms of the underlying <code>File</code>.*/
 	override final def equals(other: Any) =
 		other match

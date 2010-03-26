@@ -17,7 +17,7 @@ trait Project extends TaskManager with Dag[Project] with BasicEnvironment
 	final val log: Logger = logImpl
 	protected def logImpl: Logger =
 	{
-		val lg = new FilterLogger(new BufferedLogger(info.logger))
+		val lg = new BufferedLogger(new FilterLogger(info.logger))
 		lg.setLevel(defaultLoggingLevel)
 		lg
 	}
@@ -388,6 +388,7 @@ object Project
 	/** Checks the project's dependencies, initializes its environment, and possibly its directories.*/
 	private def initialize[P <: Project](p: P, setupInfo: Option[SetupInfo], log: Logger): P =
 	{
+		def save() = p.saveEnvironment() foreach { errorMsg => log.error(errorMsg) }
 		setupInfo match
 		{
 			case Some(setup) =>
@@ -399,8 +400,7 @@ object Project
 					p.projectOrganization() = org
 				if(!setup.initializeDirectories)
 					p.setEnvironmentModified(false)
-				for(errorMessage <- p.saveEnvironment())
-					log.error(errorMessage)
+				save()
 				if(setup.initializeDirectories)
 					p.initializeDirectories()
 			}
@@ -409,8 +409,7 @@ object Project
 				{
 					p.initializeDirectories()
 					p.projectInitialize() = false
-					for(errorMessage <- p.saveEnvironment())
-						log.error(errorMessage)
+					save()
 				}
 		}
 		val useName = p.projectName.get.getOrElse("at " + p.info.projectDirectory.getAbsolutePath)
