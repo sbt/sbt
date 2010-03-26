@@ -1,5 +1,5 @@
-Simple Build Tool (xsbt)
-Copyright 2008, 2009, 2010 Mark Harrah
+Simple Build Tool (xsbt components other than sbt/)
+Copyright 2008, 2009, 2010 Mark Harrah, Jason Zaugg
 Licensed under BSD-style license (see LICENSE)
 
 Portions based on code from the Scala compiler.  Portions of the Scala
