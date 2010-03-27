@@ -78,7 +78,8 @@ final class Compile(maximumErrors: Int, compiler: AnalyzingCompiler, analysisCal
 	}
 	protected def processJava(sources: Set[File], classpath: Set[File], outputDirectory: File, options: Seq[String], log: Logger)
 	{
-		val arguments = (new CompilerArguments(compiler.scalaInstance, false, compiler.compilerOnClasspath))(sources, classpath, outputDirectory, options)
+		val augmentedClasspath = if(compiler.autoBootClasspath) classpath + compiler.scalaInstance.libraryJar else classpath
+		val arguments = (new CompilerArguments(compiler.scalaInstance, false, compiler.compilerOnClasspath))(sources, augmentedClasspath, outputDirectory, options)
 		log.debug("Calling 'javac' with arguments:\n\t" + arguments.mkString("\n\t"))
 		def javac(argFile: File) = Process("javac", ("@" + normalizeSlash(argFile.getAbsolutePath)) :: Nil) ! log
 		val code = withArgumentFile(arguments)(javac)
