@@ -65,7 +65,7 @@ final class InlineConfiguration(val module: ModuleID, val dependencies: Iterable
 	val validate: Boolean) extends ModuleSettings
 {
 	def withConfigurations(configurations: Iterable[Configuration]) = 
-		new InlineConfiguration(module, dependencies, ivyXML, configurations, defaultConfiguration, None, validate)
+		new InlineConfiguration(module, dependencies, ivyXML, configurations, defaultConfiguration, ivyScala, validate)
 	def noScala = new InlineConfiguration(module, dependencies, ivyXML, configurations, defaultConfiguration, None, validate)
 }
 final class EmptyConfiguration(val module: ModuleID, val ivyScala: Option[IvyScala], val validate: Boolean) extends ModuleSettings
