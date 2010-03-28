@@ -53,7 +53,6 @@ private object LazyJettyRun${jetty.version} extends JettyRun
 				case c: DefaultJettyConfiguration =>
 					import c._
 					configureDefaultConnector(server, port)
-					def classpathURLs = classpath.get.map(_.asURL).toSeq
 					val webapp = new WebAppContext(war.absolutePath, contextPath)
 					
 					def createLoader =
@@ -66,7 +65,7 @@ private object LazyJettyRun${jetty.version} extends JettyRun
 							urls.foreach(super.addURL)
 							override def addURL(u: URL) = {}
 						}
-						new SbtWebAppLoader(classpathURLs)
+						new SbtWebAppLoader(classpath.getURLs)
 					}
 					def setLoader() = webapp.setClassLoader(createLoader)
 					

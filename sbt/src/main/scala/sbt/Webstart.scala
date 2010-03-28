@@ -95,7 +95,7 @@ trait WebstartScalaProject extends ScalaProject
 			import FileUtilities._
 
 			val jars = (webstartLibraries +++ webstartExtraLibraries).get.filter(ClasspathUtilities.isArchive)
-			def process(jars: Iterable[Path]) = for(jar <- jars if jar.asFile.getName.endsWith(".jar")) yield relativize(jar)
+			def process(jars: Iterable[Path]) = for(jar <- jars if jar.name.endsWith(".jar")) yield relativize(jar)
 
 			thread(signAndPack(webstartMainJar :: Nil, webstartOutputDirectory)) { mainJars =>
 				thread(signAndPack(jars.toList, webstartLibDirectory)) { libJars =>
@@ -135,7 +135,7 @@ private object WebstartScalaProject
 	private def packPath(jar: Path) = appendExtension(jar, ".pack")
 	private def signOnly(jar: Path, signConfiguration: SignConfiguration, targetDirectory: Path, log: Logger) =
 	{
-		val targetJar = targetDirectory / jar.asFile.getName
+		val targetJar = targetDirectory / jar.name
 		runOption("sign", targetJar from jar, log) {
 			log.debug("Signing " + jar)
 			signAndVerify(jar, signConfiguration, targetJar, log)
@@ -162,7 +162,7 @@ private object WebstartScalaProject
 	* See java.util.jar.Pack200 for more information.*/
 	private def signAndPack200(jar: Path, signConfiguration: SignConfiguration, targetDirectory: Path, log: Logger) =
 	{
-		val signedJar = targetDirectory / jar.asFile.getName
+		val signedJar = targetDirectory / jar.name
 		val packedJar = packPath(signedJar)
 		import signConfiguration._
 
@@ -186,7 +186,7 @@ private object WebstartScalaProject
 	}
 	private def pack200Only(jar: Path, targetDirectory: Path, log: Logger) =
 	{
-		val targetJar = targetDirectory / jar.asFile.getName
+		val targetJar = targetDirectory / jar.name
 		val packedJar = packPath(targetJar)
 		val packResult =
 			runOption("pack200", packedJar from jar, log)
@@ -202,7 +202,7 @@ private object WebstartScalaProject
 	}
 	private def copyJar(jar: Path, targetDirectory: Path, log: Logger) =
 	{
-		val targetJar = targetDirectory / jar.asFile.getName
+		val targetJar = targetDirectory / jar.name
 		runOption("copy jar", targetJar from jar, log)( FileUtilities.copyFile(jar, targetJar, log) ).toLeft(targetJar :: Nil)
 	}
 	/** Writes the XML string 'xmlString' to the file 'outputPath'.*/
@@ -245,7 +245,7 @@ private object WebstartScalaProject
 		}
 	}
 	private def jarResource(isMain: Boolean)(jar: Path): WebstartJarResource =
-		new WebstartJarResource(jar.asFile.getName, jar.relativePathString("/"), isMain)
+		new WebstartJarResource(jar.name, jar.relativePathString("/"), isMain)
 	private def jarResources(mainJars: Iterable[Path], libraries: Iterable[Path]): Seq[WebstartJarResource] =
 		mainJars.map(jarResource(true)).toList ::: libraries.map(jarResource(false)).toList
 

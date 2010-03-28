@@ -326,7 +326,7 @@ trait WebScalaProject extends ScalaProject
 		packageTask(descendents(stagedWarPath ##, "*") --- ignore, outputWarPath, options)
 
 	@deprecated protected def prepareWebappTask(webappContents: PathFinder, warPath: => Path, classpath: PathFinder, extraJars: => Iterable[File]): Task =
-		prepareWebappTask(webappContents, warPath, classpath, Path.lazyPathFinder(extraJars.map(Path.fromFile)))
+		prepareWebappTask(webappContents, warPath, classpath, Path.finder(extraJars))
 	protected def prepareWebappTask(webappContents: PathFinder, warPath: => Path, classpath: PathFinder, extraJars: PathFinder): Task =
 		prepareWebappTask(webappContents, warPath, classpath, extraJars, Path.emptyPathFinder)
 	protected def prepareWebappTask(webappContents: PathFinder, warPath: => Path, classpath: PathFinder, extraJars: PathFinder, ignore: PathFinder): Task =
@@ -345,7 +345,7 @@ trait WebScalaProject extends ScalaProject
 			(copy(webappContents.get, warPath, log).right flatMap { copiedWebapp =>
 			copy(classesAndResources.get, classesTargetDirectory, log).right flatMap { copiedClasses =>
 			copyFlat(libs, webLibDirectory, log).right flatMap { copiedLibs =>
-			copyFilesFlat(extraJars.get.map(_.asFile), webLibDirectory, log).right flatMap { copiedExtraLibs =>
+			copyFilesFlat(extraJars.getFiles, webLibDirectory, log).right flatMap { copiedExtraLibs =>
 				{
 					val toRemove = scala.collection.mutable.HashSet(((warPath ** "*") --- ignore).get.toSeq : _*)
 					toRemove --= copiedWebapp

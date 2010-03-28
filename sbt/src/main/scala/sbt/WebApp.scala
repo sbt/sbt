@@ -32,9 +32,8 @@ class JettyRunner(configuration: JettyConfiguration) extends ExitHook
 		def runJetty() =
 		{
 			val baseLoader = this.getClass.getClassLoader
-			val classpathURLs = jettyClasspath.get.map(_.asURL).toSeq
 			val jettyParentLoader = configuration match { case d: DefaultJettyConfiguration => d.parentLoader; case _ => ClassLoader.getSystemClassLoader }
-			val jettyLoader: ClassLoader = new java.net.URLClassLoader(classpathURLs.toArray, jettyParentLoader)
+			val jettyLoader: ClassLoader = ClasspathUtilities.toLoader(jettyClasspath, jettyParentLoader)
 			
 			val jettyFilter = (name: String) => name.startsWith("org.mortbay.") || name.startsWith("org.eclipse.jetty.")
 			val notJettyFilter = (name: String) => !jettyFilter(name)

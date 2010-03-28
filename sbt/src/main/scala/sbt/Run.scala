@@ -71,9 +71,8 @@ class Run(instance: xsbt.ScalaInstance) extends ScalaRun
 	}
 	def getLoader(classpath: Iterable[Path], log: Logger) =
 	{
-		val classpathURLs = classpath.toSeq.map(_.asURL).toArray
-		log.debug("  Classpath:\n\t" + classpathURLs.mkString("\n\t"))
-		new URLClassLoader( classpathURLs, instance.loader)
+		log.debug("  Classpath:\n\t" + classpath.mkString("\n\t"))
+		ClasspathUtilities.toLoader(classpath, instance.loader)
 	}
 }
 

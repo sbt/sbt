@@ -111,7 +111,7 @@ abstract class BasicScalaProject extends ScalaProject with BasicDependencyProjec
 	* sbt.*/
 	override final def initializeDirectories()
 	{
-		FileUtilities.createDirectories(directoriesToCreate.map(_.asFile), log) match
+		FileUtilities.createDirectories(directoriesToCreate, log) match
 		{
 			case Some(errorMessage) => log.error("Could not initialize directory structure: " + errorMessage)
 			case None => log.success("Successfully initialized directory structure.")
@@ -166,7 +166,7 @@ abstract class BasicScalaProject extends ScalaProject with BasicDependencyProjec
 	protected def testUnmanagedClasspath = testCompilePath +++ testResourcesOutputPath  +++ testDependencies.scalaCompiler +++ runUnmanagedClasspath
 
 	/** @deprecated Use `mainDependencies.scalaJars`*/
-	@deprecated protected final def scalaJars: Iterable[File] = mainDependencies.scalaJars.get.map(_.asFile)
+	@deprecated protected final def scalaJars: Iterable[File] = mainDependencies.scalaJars.getFiles
 	/** An analysis of the jar dependencies of the main Scala sources.  It is only valid after main source compilation.
 	* See the LibraryDependencies class for details. */
 	final def mainDependencies = new LibraryDependencies(this, mainCompileConditional)
@@ -379,7 +379,7 @@ abstract class BasicWebScalaProject extends BasicScalaProject with WebScalaProje
 			def contextPath = jettyContextPath
 			def classpathName = "test"
 			def parentLoader = buildScalaInstance.loader
-			def scanDirectories = p.scanDirectories.map(_.asFile)
+			def scanDirectories = Path.getFiles(p.scanDirectories).toSeq
 			def scanInterval = p.scanInterval
 			def port = jettyPort
 			def log = p.log
@@ -509,17 +509,17 @@ object BasicWebScalaProject
 final class LibraryDependencies(project: Project, conditional: CompileConditional) extends NotNull
 {
 	/** Library jars located in unmanaged or managed dependency paths.*/
-	def libraries: PathFinder = pathFinder(snapshot.libraries)
+	def libraries: PathFinder = Path.finder(snapshot.libraries)
 	/** Library jars located outside of the project.*/
-	def external: PathFinder = pathFinder(snapshot.external)
+	def external: PathFinder = Path.finder(snapshot.external)
 	/** The Scala library jar.*/
-	def scalaLibrary: PathFinder = pathFinder(snapshot.scalaLibrary)
+	def scalaLibrary: PathFinder = Path.finder(snapshot.scalaLibrary)
 	/** The Scala compiler jar.*/
-	def scalaCompiler: PathFinder = pathFinder(snapshot.scalaCompiler)
+	def scalaCompiler: PathFinder = Path.finder(snapshot.scalaCompiler)
 	/** All jar dependencies.*/
-	def all: PathFinder = pathFinder(snapshot.all)
+	def all: PathFinder = Path.finder(snapshot.all)
 	/** The Scala library and compiler jars.*/
-	def scalaJars: PathFinder = pathFinder(snapshot.scalaJars)
+	def scalaJars: PathFinder = Path.finder(snapshot.scalaJars)
 
 	/** Returns an object that has all analyzed dependency information frozen at the time of this method call. */
 	def snapshot = new Dependencies
@@ -538,8 +538,6 @@ final class LibraryDependencies(project: Project, conditional: CompileConditiona
 		def external = externalNoScala
 		def libraries = librariesNoScala
 	}
-
-	private def pathFinder(it: => Iterable[File]) = Path.lazyPathFinder(it.map(Path.fromFile))
 }
 private object LibraryDependencies
 {

@@ -7,22 +7,22 @@ import java.io.{File, Writer}
 
 object DotGraph
 {
+	private def fToString(roots: Iterable[File]): (File => String) =
+		(x: File) => sourceToString(roots, x)
 	def sources(analysis: BasicCompileAnalysis, outputDirectory: Path, sourceRoots: Iterable[Path], log: Logger) =
 	{
-		val roots = sourceRoots.toList.map(_.asFile)
-		val toString = (x: File) => sourceToString(roots, x)
+		val toString = fToString(Path.getFiles(sourceRoots))
 		apply(analysis, outputDirectory, toString, toString, log)
 	}
 	def packages(analysis: BasicCompileAnalysis, outputDirectory: Path, sourceRoots: Iterable[Path], log: Logger) =
 	{
-		val roots = sourceRoots.toList.map(_.asFile)
 		val packageOnly = (path: String) =>
 		{
 			val last = path.lastIndexOf(File.separatorChar)
 			val packagePath = (if(last > 0) path.substring(0, last) else path).trim
 			if(packagePath.isEmpty) "" else packagePath.replace(File.separatorChar, '.')
 		}
-		val toString = packageOnly compose ((x: File) => sourceToString(roots, x))
+		val toString = packageOnly compose fToString(Path.getFiles(sourceRoots))
 		apply(analysis, outputDirectory, toString, toString, log)
 	}
 	def apply(analysis: BasicCompileAnalysis, outputDirectory: Path, sourceToString: File => String, externalToString: File => String, log: Logger) =
@@ -57,7 +57,7 @@ object DotGraph
 		generateGraph(BasicAnalysis.ExternalDependenciesFileName, "externalDependencies", analysis.allExternalDependencies,
 			externalToString, srcToString)
 	}
-	def sourceToString(roots: List[File], source: File) =
+	def sourceToString(roots: Iterable[File], source: File) =
 	{
 		val rawName = relativized(roots, source).trim
 		if(rawName.endsWith(".scala"))
@@ -65,7 +65,7 @@ object DotGraph
 		else
 			rawName
 	}
-	private def relativized(roots: List[File], path: File): String =
+	private def relativized(roots: Iterable[File], path: File): String =
 	{
 		val relativized = roots.flatMap(root => Path.relativize(root, path))
 		val shortest = (Int.MaxValue /: relativized)(_ min _.length)

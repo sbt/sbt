@@ -11,8 +11,8 @@ import scala.collection.mutable.{HashSet, ListBuffer}
 
 object ClasspathUtilities
 {
-	def toClasspath(finder: PathFinder): Array[URL] = toClasspath(finder.get)
-	def toClasspath(paths: Iterable[Path]): Array[URL] = paths.map(_.asURL).toSeq.toArray
+	def toClasspath(finder: PathFinder): Array[URL] = finder.getURLs
+	def toClasspath(paths: Iterable[Path]): Array[URL] = Path.getURLs(paths)
 	def toLoader(finder: PathFinder): ClassLoader = toLoader(finder.get)
 	def toLoader(finder: PathFinder, parent: ClassLoader): ClassLoader = toLoader(finder.get, parent)
 	def toLoader(paths: Iterable[Path]): ClassLoader = new URLClassLoader(toClasspath(paths), rootLoader)
@@ -55,7 +55,7 @@ object ClasspathUtilities
 	/** Returns all entries in 'classpath' that correspond to a compiler plugin.*/
 	private[sbt] def compilerPlugins(classpath: Iterable[Path]): Iterable[File] =
 	{
-		val loader = new URLClassLoader(classpath.map(_.asURL).toList.toArray)
+		val loader = new URLClassLoader(Path.getURLs(classpath))
 		wrap.Wrappers.toList(loader.getResources("scalac-plugin.xml")).flatMap(asFile(true))
 	}
 	/** Converts the given URL to a File.  If the URL is for an entry in a jar, the File for the jar is returned. */

@@ -325,7 +325,7 @@ object FileUtilities
 		}
 	}
 	/** Creates directories at the given locations.*/
-	def createDirectories(d: Seq[Path], log: Logger): Option[String] = createDirectories(d.toList.map(_.asFile), log)
+	def createDirectories(d: Iterable[Path], log: Logger): Option[String] = createDirectories(Path.getFiles(d).toList, log)
 	/** Creates directories at the given locations.*/
 	def createDirectories(d: List[File], log: Logger): Option[String] =
 		d match
@@ -595,7 +595,7 @@ object FileUtilities
 	* If it is true, each file in <code>files</code> is logged at the <code>info</code> level.
 	* If it is false, the <code>debug</code> level is used.*/
 	def clean(files: Iterable[Path], quiet: Boolean, log: Logger): Option[String] =
-		deleteFiles(files.map(_.asFile), quiet, log)
+		deleteFiles(Path.getFiles(files), quiet, log)
 			
 	private def deleteFiles(files: Iterable[File], quiet: Boolean, log: Logger): Option[String] =
 		((None: Option[String]) /: files)( (result, file) => result orElse delete(file, quiet, log))

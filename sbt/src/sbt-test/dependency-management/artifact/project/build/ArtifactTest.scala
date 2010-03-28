@@ -40,5 +40,5 @@ class ArtifactTest(info: ProjectInfo) extends DefaultProject(info)
 	def check0 =
 		try { Class.forName("test.Test", false, loader); None }
 		catch { case _: ClassNotFoundException | _: NoClassDefFoundError => Some("Dependency not retrieved properly") }
-	def loader = new java.net.URLClassLoader(compileClasspath.get.map(_.asURL).toSeq.toArray, buildScalaInstance.loader)
+	def loader = ClasspathUtilities.toLoader(compileClasspath, buildScalaInstance.loader)
 }

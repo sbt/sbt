@@ -6,6 +6,7 @@ package sbt
 import Path._
 import FileUtilities.wrapNull
 import java.io.File
+import java.net.URL
 import scala.collection.mutable.{Set, HashSet}
 
 /** A Path represents a file in a project.
@@ -240,6 +241,12 @@ object Path
 	def fromFile(file: String): Path = fromFile(new File(file))
 	def fromFile(file: File): Path = new FilePath(file)
 	def fromFiles(files: Iterable[File]): Iterable[Path] =  files.map(fromFile)
+
+	// done this way because collection.Set.map returns Iterable that is Set underneath, so no need to create a new set
+	def mapSet[T](files: Iterable[Path])(f: Path => T): scala.collection.immutable.Set[T] =
+		files.map(f) match { case s: scala.collection.immutable.Set[T] => s; case x => scala.collection.immutable.Set() ++ x }
+	def getFiles(files: Iterable[Path]): scala.collection.immutable.Set[File] = mapSet(files)(_.asFile)
+	def getURLs(files: Iterable[Path]): Array[URL] = files.map(_.asURL).toSeq.toArray
 }
 
 /** A path finder constructs a set of paths.  The set is evaluated by a call to the <code>get</code>
@@ -287,9 +294,11 @@ sealed abstract class PathFinder extends NotNull
 	}
 	final def filter(f: Path => Boolean): PathFinder = Path.lazyPathFinder(get.filter(f))
 	final def flatMap(f: Path => PathFinder): PathFinder = Path.lazyPathFinder(get.flatMap(p => f(p).get))
-	final def getFiles: scala.collection.Set[File] = Set( get.map(_.asFile).toSeq : _*)
-	final def getPaths: scala.collection.Set[String] = Set( get.map(_.absolutePath).toSeq : _*)
-	final def getRelativePaths: scala.collection.Set[String] = Set( get.map(_.relativePath).toSeq : _*)
+	final def getURLs: Array[URL] = Path.getURLs(get)
+	final def getFiles: scala.collection.immutable.Set[File] = Path.getFiles(get)
+	final def getPaths: scala.collection.immutable.Set[String] = strictMap(_.absolutePath)
+	final def getRelativePaths: scala.collection.immutable.Set[String] = strictMap(_.relativePath)
+	final def strictMap[T](f: Path => T): scala.collection.immutable.Set[T] = Path.mapSet(get)(f)
 	private[sbt] def addTo(pathSet: Set[Path])
 
 	final def absString = Path.makeString(get)

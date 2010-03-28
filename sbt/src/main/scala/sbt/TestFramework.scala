@@ -227,6 +227,6 @@ object TestFramework
 		val interfaceFilter = (name: String) => name.startsWith("org.scalatools.testing.")
 		val notInterfaceFilter = (name: String) => !interfaceFilter(name)
 		val dual = new xsbt.DualLoader(filterCompilerLoader, notInterfaceFilter, x => true, getClass.getClassLoader, interfaceFilter, x => false)
-		new URLClassLoader(classpath.map(_.asURL).toSeq.toArray, dual)
+		ClasspathUtilities.toLoader(classpath, dual)
 	}
 }

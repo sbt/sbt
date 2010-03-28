@@ -17,14 +17,13 @@ sealed abstract class CompilerCore
 		apply(label, sources, classpath, outputDirectory, scalaOptions, Nil, CompileOrder.Mixed, log)
 	final def apply(label: String, sources: Iterable[Path], classpath: Iterable[Path], outputDirectory: Path, scalaOptions: Seq[String], javaOptions: Seq[String], order: CompileOrder.Value, log: Logger): Option[String] =
 	{
-			def filteredSources(extension: String) = sources.filter(_.asFile.getName.endsWith(extension))
-			def fileSet(sources: Iterable[Path]) = Set() ++ sources.map(_.asFile)
+			def filteredSources(extension: String) = sources.filter(_.name.endsWith(extension))
 			def process(label: String, sources: Iterable[_], act: => Unit) =
 				() => if(sources.isEmpty) log.debug("No " + label + " sources.") else act
 
-		val javaSources = fileSet(filteredSources(".java"))
-		val scalaSources = fileSet( if(order == CompileOrder.Mixed) sources else filteredSources(".scala") )
-		val classpathSet = fileSet(classpath)
+		val javaSources = Path.getFiles(filteredSources(".java"))
+		val scalaSources = Path.getFiles( if(order == CompileOrder.Mixed) sources else filteredSources(".scala") )
+		val classpathSet = Path.getFiles(classpath)
 		val scalaCompile = process("Scala", scalaSources, processScala(scalaSources, classpathSet, outputDirectory.asFile, scalaOptions, log) )
 		val javaCompile = process("Java", javaSources, processJava(javaSources, classpathSet, outputDirectory.asFile, javaOptions, log))
 		doCompile(label, sources, outputDirectory, order, log)(javaCompile, scalaCompile)
@@ -119,7 +118,7 @@ final class Console(compiler: AnalyzingCompiler) extends NotNull
 		apply(classpath, "", log)
 	def apply(classpath: Iterable[Path], initialCommands: String, log: Logger): Option[String] =
 	{
-		def console0 = compiler.console(Set() ++ classpath.map(_.asFile), initialCommands, log)
+		def console0 = compiler.console(Path.getFiles(classpath), initialCommands, log)
 		JLine.withJLine( Run.executeTrapExit(console0, log) )
 	}
 }
