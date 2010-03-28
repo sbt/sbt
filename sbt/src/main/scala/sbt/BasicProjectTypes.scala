@@ -275,11 +275,7 @@ trait BasicManagedProject extends ManagedProject with ReflectiveManagedProject w
 	* See http://code.google.com/p/simple-build-tool/wiki/LibraryManagement for details.*/
 	def ivyXML: NodeSeq = NodeSeq.Empty
 	def pomExtra: NodeSeq = NodeSeq.Empty
-	def expandedIvyConfigurations =
-	{
-		val confs = ivyConfigurations
-		if(confs.isEmpty) Configurations.defaultMavenConfigurations else confs
-	}
+
 	override def ivyConfigurations: Iterable[Configuration] =
 	{
 		val reflective = super.ivyConfigurations
@@ -332,14 +328,7 @@ trait BasicManagedProject extends ManagedProject with ReflectiveManagedProject w
 	* be more appropriate, however.*/
 	def filterScalaJars = true
 	/** The configurations to check/filter.*/
-	def checkScalaInConfigurations: Iterable[Configuration] =
-	{
-		val all = ivyConfigurations
-		if(all.isEmpty)
-			Configurations.defaultMavenConfigurations
-		else
-			all
-	}
+	def checkScalaInConfigurations: Iterable[Configuration] = ivyConfigurations
 	def defaultPublishRepository: Option[Resolver] =
 	{
 		reflectiveRepositories.get(PublishToName) orElse
