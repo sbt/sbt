@@ -205,8 +205,10 @@ abstract class AbstractCompileConfiguration extends NotNull
 }
 abstract class CompileConfiguration extends AbstractCompileConfiguration
 {
-	def testDefinitionClassNames: Iterable[String]
+	def testFingerprints: TestFingerprints
 }
+final case class TestFingerprints(superclassNames: Iterable[String], annotationNames: Iterable[String]) extends NotNull
+
 import java.io.File
 class CompileConditional(override val config: CompileConfiguration, compiler: AnalyzingCompiler) extends AbstractCompileConditional(config, compiler)
 {
@@ -217,9 +219,13 @@ class CompileConditional(override val config: CompileConfiguration, compiler: An
 	protected def analysisCallback = new CompileAnalysisCallback
 	protected class CompileAnalysisCallback extends BasicCompileAnalysisCallback(projectPath, analysis)
 	{
-		def superclassNames = testDefinitionClassNames
+		private[this] val fingerprints = testFingerprints
+		def superclassNames = fingerprints.superclassNames
+		def annotationNames = fingerprints.annotationNames
 		def foundSubclass(sourcePath: Path, subclassName: String, superclassName: String, isModule: Boolean): Unit =
-			analysis.addTest(sourcePath, TestDefinition(isModule, subclassName, superclassName))
+			analysis.addTest(sourcePath, DiscoveredSubclass(isModule, subclassName, superclassName))
+		def foundAnnotated(sourcePath: Path, className: String, annotationName: String, isModule: Boolean): Unit =
+			analysis.addTest(sourcePath, DiscoveredAnnotated(isModule, className, annotationName))
 	}
 }
 abstract class AbstractCompileConditional(val config: AbstractCompileConfiguration, val compiler: AnalyzingCompiler) extends Conditional[Path, Path, File]

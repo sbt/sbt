@@ -82,7 +82,9 @@ private sealed abstract class BasicBuilderProject extends InternalProject
 			new BasicAnalysisCallback(info.projectPath, analysis)
 			{
 				def superclassNames = List(Project.ProjectClassName)
+				def annotationNames = Nil
 				def foundApplication(sourcePath: Path, className: String)  {}
+				def foundAnnotated(sourcePath: Path, subclassName: String, annotationName: String, isModule: Boolean) {}
 				def foundSubclass(sourcePath: Path, subclassName: String, superclassName: String, isModule: Boolean)
 				{
 					if(superclassName == Project.ProjectClassName && !isModule)

@@ -302,16 +302,16 @@ trait ScalaProject extends SimpleScalaProject with FileTasks with MultiTaskProje
 			log.debug("Excluding tests: ")
 			excludeTestsSet.foreach(test => log.debug("\t" + test))
 		}
-		def includeTest(test: TestDefinition) = !excludeTestsSet.contains(test.testClassName) && testFilters.forall(filter => filter(test.testClassName))
-		val tests = HashSet.empty[TestDefinition] ++ analysis.allTests.filter(includeTest)
+		def includeTest(test: TestDefinition) = !excludeTestsSet.contains(test.name) && testFilters.forall(filter => filter(test.name))
+		val tests = HashSet.empty[TestDefinition] ++ analysis.allTests.map(_.toDefinition).filter(includeTest)
 		TestFramework.testTasks(frameworks, classpath.get, buildScalaInstance.loader, tests.toSeq, log,
 			testListeners.readOnly, false, setup.readOnly, cleanup.readOnly, testArgsByFramework)
 	}
 	private def flatten[T](i: Iterable[Iterable[T]]) = i.flatMap(x => x)
 
 	protected def testQuickMethod(testAnalysis: CompileAnalysis, options: => Seq[TestOption])(toRun: (Seq[TestOption]) => Task) = {
-    val analysis = testAnalysis.allTests.map(_.testClassName).toList
-		multiTask(analysis) { (args, includeFunction) =>
+		val analysis = Set() ++ testAnalysis.allTests.map(_.className)
+		multiTask(analysis.toList) { (args, includeFunction) =>
 			  toRun(TestArgument(args:_*) :: TestFilter(includeFunction) :: options.toList)
 		}
   }

@@ -38,8 +38,8 @@ object Format
 		def fromString(s: String) = (new HashSet[T]) ++ FileUtilities.pathSplit(s).map(_.trim).filter(!_.isEmpty).map(format.fromString)
 	}
 	implicit val string: Format[String] = new SimpleFormat[String] { def fromString(s: String) = s }
-	implicit val test: Format[TestDefinition] = new SimpleFormat[TestDefinition]
+	implicit val test: Format[Discovered] = new SimpleFormat[Discovered]
 	{
-		def fromString(s: String) = TestParser.parse(s).fold(error, x => x)
+		def fromString(s: String) = DiscoveredParser.parse(s).fold(error, x => x)
 	}
 }

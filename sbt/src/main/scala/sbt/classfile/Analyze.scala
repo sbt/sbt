@@ -7,6 +7,9 @@ import sbt._
 import scala.collection.mutable
 import mutable.{ArrayBuffer, Buffer}
 import java.io.File
+import java.lang.annotation.Annotation
+import java.lang.reflect.Method
+import java.lang.reflect.Modifier.{STATIC, PUBLIC, ABSTRACT}
 
 private[sbt] object Analyze
 {
@@ -17,7 +20,11 @@ private[sbt] object Analyze
 		val sourceSet = Set(sources.toSeq : _*)
 		val classesFinder = outputDirectory ** GlobFilter("*.class")
 		val existingClasses = classesFinder.get
-		
+
+		def load(tpe: String, errMsg: => String): Option[Class[_]] =
+			try { Some(Class.forName(tpe, false, loader)) }
+			catch { case e => log.warn(errMsg + " : " +e.toString); None }
+
 		// runs after compilation
 		def analyze()
 		{
@@ -26,7 +33,12 @@ private[sbt] object Analyze
 			
 			val productToSource = new mutable.HashMap[Path, Path]
 			val sourceToClassFiles = new mutable.HashMap[Path, Buffer[ClassFile]]
-			
+
+			val superclasses = analysis.superclassNames flatMap { tpe => load(tpe, "Could not load superclass '" + tpe + "'") }
+			val annotations = analysis.annotationNames
+
+			def annotated(fromClass: Seq[Annotation]) = if(fromClass.isEmpty) Nil else annotations.filter(Set() ++ fromClass.map(_.annotationType.getName))
+
 			// parse class files and assign classes to sources.  This must be done before dependencies, since the information comes
 			// as class->class dependencies that must be mapped back to source->class dependencies using the source+class assignment
 			for(newClass <- newClasses;
@@ -45,15 +57,27 @@ private[sbt] object Analyze
 			for( (source, classFiles) <- sourceToClassFiles )
 			{
 				for(classFile <- classFiles if isTopLevel(classFile);
-					method <- classFile.methods; if method.isMain)
-						analysis.foundApplication(source, classFile.className)
+					cls <- load(classFile.className, "Could not load '" + classFile.className + "' to check for superclasses.") )
+				{
+					for(superclass <- superclasses)
+						if(superclass.isAssignableFrom(cls))
+							analysis.foundSubclass(source, classFile.className, superclass.getName, false)
+
+					val annotations = new ArrayBuffer[String]
+					annotations ++= annotated(cls.getAnnotations)
+					for(method <- cls.getMethods)
+					{
+						annotations ++= annotated(method.getAnnotations)
+						if(isMain(method))
+							analysis.foundApplication(source, classFile.className)
+					}
+					annotations.foreach { ann => analysis.foundAnnotated(source, classFile.className, ann, false) }
+				}
 				def processDependency(tpe: String)
 				{
 					Control.trapAndLog(log)
 					{
-						val loaded =
-							try { Some(Class.forName(tpe, false, loader)) }
-							catch { case e => log.warn("Problem processing dependencies of source " + source + " : " +e.toString); None }
+						val loaded = load(tpe, "Problem processing dependencies of source " + source)
 						for(clazz <- loaded; file <- Control.convertException(FileUtilities.classLocationFile(clazz)).right)
 						{
 							if(file.isDirectory)
@@ -104,4 +128,16 @@ private[sbt] object Analyze
 		candidates
 	}
 	private def isTopLevel(classFile: ClassFile) = classFile.className.indexOf('$') < 0
+	private lazy val unit = classOf[Unit]
+	private lazy val strArray = List(classOf[Array[String]])
+
+	private def isMain(method: Method): Boolean =
+		method.getName == "main" &&
+		isMain(method.getModifiers) &&
+		method.getReturnType == unit &&
+		method.getParameterTypes.toList == strArray
+	private def isMain(modifiers: Int): Boolean = (modifiers & mainModifiers) == mainModifiers && (modifiers & notMainModifiers) == 0
+	
+	private val mainModifiers = STATIC  | PUBLIC
+	private val notMainModifiers = ABSTRACT
 }

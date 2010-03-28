@@ -44,7 +44,7 @@ abstract class SbtProject(info: ProjectInfo) extends DefaultProject(info) with t
 	val jetty7server = "org.eclipse.jetty" % "jetty-server" % "7.0.1.v20091125" % "optional"
 	val jetty7webapp = "org.eclipse.jetty" % "jetty-webapp" % "7.0.1.v20091125" % "optional"
 
-	val testInterface = "org.scala-tools.testing" % "test-interface" % "0.4"
+	val testInterface = "org.scala-tools.testing" % "test-interface" % "0.5"
 
 	def deepSources = Path.finder { topologicalSort.flatMap { case p: ScalaPaths => p.mainSources.getFiles } }
 	lazy val sbtDoc = scaladocTask("sbt", deepSources, docPath, docClasspath, documentOptions)

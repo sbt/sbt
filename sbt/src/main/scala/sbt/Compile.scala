@@ -128,16 +128,22 @@ private final class AnalysisInterface(delegate: AnalysisCallback, basePath: Path
 {
 	val outputPath = Path.fromFile(outputDirectory)
 	def superclassNames = delegate.superclassNames.toSeq.toArray[String]
+	def annotationNames = delegate.annotationNames.toSeq.toArray[String]
 	def superclassNotFound(superclassName: String) = delegate.superclassNotFound(superclassName)
 	def beginSource(source: File) = delegate.beginSource(srcPath(source))
+
 	def foundSubclass(source: File, subclassName: String, superclassName: String, isModule: Boolean) =
 		delegate.foundSubclass(srcPath(source), subclassName, superclassName, isModule)
+	def foundAnnotated(source: File, className: String, annotationName: String, isModule: Boolean) =
+		delegate.foundAnnotated(srcPath(source), className, annotationName, isModule)
+	def foundApplication(source: File, className: String) = delegate.foundApplication(srcPath(source), className)
+
 	def sourceDependency(dependsOn: File, source: File) =
 		delegate.sourceDependency(srcPath(dependsOn), srcPath(source))
 	def jarDependency(jar: File, source: File) = delegate.jarDependency(jar, srcPath(source))
 	def generatedClass(source: File, clazz: File) = delegate.generatedClass(srcPath(source), classPath(clazz))
 	def endSource(source: File) = delegate.endSource(srcPath(source))
-	def foundApplication(source: File, className: String) = delegate.foundApplication(srcPath(source), className)
+
 	def classDependency(clazz: File, source: File) =
 	{
 		val sourcePath = srcPath(source)

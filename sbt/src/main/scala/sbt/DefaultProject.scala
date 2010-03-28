@@ -14,6 +14,7 @@ import ScalaProject.{optionsAsString, javaOptionsAsString}
 import java.io.File
 import java.net.URLClassLoader
 import java.util.jar.Attributes
+import scala.collection.mutable.ListBuffer
 
 /** This class defines concrete instances of actions from ScalaProject using overridable paths,
 * options, and configuration. */
@@ -179,7 +180,7 @@ abstract class BasicScalaProject extends ScalaProject with BasicDependencyProjec
 	def testFrameworks: Seq[TestFramework] = 
 	{
 		import TestFrameworks.{JUnit, ScalaCheck, ScalaTest, Specs, ScalaCheckCompat, ScalaTestCompat, SpecsCompat}
-		ScalaCheck :: Specs :: ScalaTest :: JUnit :: ScalaCheckCompat :: ScalaTestCompat :: SpecsCompat :: Nil
+		ScalaCheck :: Specs :: ScalaTest :: ScalaCheckCompat :: ScalaTestCompat :: SpecsCompat :: JUnit :: Nil
 	}
 	/** The list of listeners for testing. */
 	def testListeners: Seq[TestReportListener] = TestLogger(log) :: Nil
@@ -197,12 +198,18 @@ abstract class BasicScalaProject extends ScalaProject with BasicDependencyProjec
 		def options = optionsAsString(baseCompileOptions.filter(!_.isInstanceOf[MaxCompileErrors]))
 		def maxErrors = maximumErrors(baseCompileOptions)
 		def compileOrder = BasicScalaProject.this.compileOrder
-		protected def testClassNames(frameworks: Seq[TestFramework]) = 
+		protected def fingerprints(frameworks: Seq[TestFramework]): TestFingerprints =
 		{
+			import org.scalatools.testing.{SubclassFingerprint, AnnotatedFingerprint}
 			val loader = TestFramework.createTestLoader(classpath.get, buildScalaInstance.loader)
-			def getTestNames(framework: TestFramework): Seq[String] =
-				framework.create(loader, log).toList.flatMap(_.tests.map(_.superClassName))
-			frameworks.flatMap(getTestNames)
+			val annotations = new ListBuffer[String]
+			val superclasses = new ListBuffer[String]
+			frameworks flatMap { _.create(loader, log) } flatMap(TestFramework.getTests) foreach {
+				case s: SubclassFingerprint => superclasses += s.superClassName
+				case a: AnnotatedFingerprint => annotations += a.annotationName
+				case _ => ()
+			}
+			TestFingerprints(superclasses.toList, annotations.toList)
 		}
 	}
 	class MainCompileConfig extends BaseCompileConfig
@@ -214,7 +221,7 @@ abstract class BasicScalaProject extends ScalaProject with BasicDependencyProjec
 		def outputDirectory = mainCompilePath
 		def classpath = compileClasspath
 		def analysisPath = mainAnalysisPath
-		def testDefinitionClassNames: Seq[String] = Nil
+		def testFingerprints = TestFingerprints(Nil, Nil)
 		def javaOptions = javaOptionsAsString(javaCompileOptions)
 	}
 	class TestCompileConfig extends BaseCompileConfig
@@ -226,7 +233,7 @@ abstract class BasicScalaProject extends ScalaProject with BasicDependencyProjec
 		def outputDirectory = testCompilePath
 		def classpath = testClasspath
 		def analysisPath = testAnalysisPath
-		def testDefinitionClassNames: Seq[String] = testClassNames(testFrameworks)
+		def testFingerprints = fingerprints(testFrameworks)
 		def javaOptions = javaOptionsAsString(testJavaCompileOptions)
 	}
 

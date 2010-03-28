@@ -4,8 +4,8 @@
 package sbt
 
 	import java.net.URLClassLoader
-	import org.scalatools.testing.{TestFingerprint => Fingerprint, Framework,
-    Runner, Logger=>TLogger, EventHandler, Event}
+	import org.scalatools.testing.{AnnotatedFingerprint, Fingerprint, SubclassFingerprint, TestFingerprint}
+	import org.scalatools.testing.{Event, EventHandler, Framework, Runner, Runner2, Logger=>TLogger}
 
 object Result extends Enumeration
 {
@@ -32,36 +32,54 @@ class TestFramework(val implClassName: String) extends NotNull
 		catch { case e: ClassNotFoundException => log.debug("Framework implementation '" + implClassName + "' not present."); None }
 	}
 }
+final class TestDefinition(val name: String, val fingerprint: Fingerprint) extends NotNull
+{
+	override def toString = "Test " + name + " : " + fingerprint
+	override def equals(t: Any) =
+		t match
+		{
+			case r: TestDefinition => name == r.name && TestFramework.matches(fingerprint, r.fingerprint)
+			case _ => false
+		}
+}
 
 final class TestRunner(framework: Framework, loader: ClassLoader, listeners: Seq[TestReportListener], log: Logger) extends NotNull
 {
 	private[this] val delegate = framework.testRunner(loader, listeners.flatMap(_.contentLogger).toArray)
+	private[this] def run(testDefinition: TestDefinition, handler: EventHandler, args: Array[String]): Unit =
+		(testDefinition.fingerprint, delegate) match
+		{
+			case (simple: TestFingerprint, _) => delegate.run(testDefinition.name, simple, handler, args)
+			case (basic, runner2: Runner2) => runner2.run(testDefinition.name, basic, handler, args)
+			case _ => error("Framework '" + framework + "' does not support test '" + testDefinition + "'")
+		}
+
 	final def run(testDefinition: TestDefinition, args: Seq[String]): Result.Value =
 	{
 		log.debug("Running " + testDefinition + " with arguments " + args.mkString(", "))
-		val testClass = testDefinition.testClassName
+		val name = testDefinition.name
 		def runTest() =
 		{
 			// here we get the results! here is where we'd pass in the event listener
 			val results = new scala.collection.mutable.ListBuffer[Event]
 			val handler = new EventHandler { def handle(e:Event){ results += e } }
-			delegate.run(testClass, testDefinition, handler, args.toArray)
+			run(testDefinition, handler, args.toArray)
 			val event = TestEvent(results)
 			safeListenersCall(_.testEvent( event ))
 			event.result
 		}
 
-		safeListenersCall(_.startGroup(testClass))
+		safeListenersCall(_.startGroup(name))
 		try
 		{
 			val result = runTest().getOrElse(Result.Passed)
-			safeListenersCall(_.endGroup(testClass, result))
+			safeListenersCall(_.endGroup(name, result))
 			result
 		}
 		catch
 		{
 			case e =>
-				safeListenersCall(_.endGroup(testClass, e))
+				safeListenersCall(_.endGroup(name, e))
 				Result.Error
 		}
 	}
@@ -74,16 +92,14 @@ final class NamedTestTask(val name: String, action: => Option[String]) extends N
 
 object TestFramework
 {
-//	def runTests(frameworks: Seq[TestFramework], classpath: Iterable[Path], scalaLoader: ClassLoader,
-//               tests: Seq[TestDefinition], testArgs: Seq[String], log: Logger, listeners: Seq[TestReportListener]) =
-//	{
-//		val (start, runTests, end) = testTasks(frameworks, classpath, scalaLoader, tests, log, listeners, true, Nil, Nil, Nil)
-//		def run(tasks: Iterable[NamedTestTask]) = tasks.foreach(_.run())
-//		run(start)
-//		run(runTests)
-//		run(end)
-//	}
-	
+	def getTests(framework: Framework): Seq[Fingerprint] =
+		framework.getClass.getMethod("tests").invoke(framework) match
+		{
+			case newStyle: Array[Fingerprint] => newStyle.toList
+			case oldStyle: Array[TestFingerprint] => oldStyle.toList
+			case _ => error("Could not call 'tests' on framework " + framework)
+		}
+
 	private val ScalaCompilerJarPackages = "scala.tools.nsc." :: "jline." :: "ch.epfl.lamp." :: Nil
 
 	private val TestStartName = "test-start"
@@ -91,6 +107,14 @@ object TestFramework
 	
 	private[sbt] def safeForeach[T](it: Iterable[T], log: Logger)(f: T => Unit): Unit =
 		it.foreach(i => Control.trapAndLog(log){ f(i) } )
+
+	def matches(a: Fingerprint, b: Fingerprint) =
+		(a, b) match
+		{
+			case (a: SubclassFingerprint, b: SubclassFingerprint) => a.isModule == b.isModule && a.superClassName == b.superClassName
+			case (a: AnnotatedFingerprint, b: AnnotatedFingerprint) => a.isModule == b.isModule && a.annotationName == b.annotationName
+			case _ => false
+		}
 
 		import scala.collection.{immutable, Map, Set}
 
@@ -127,11 +151,7 @@ object TestFramework
 		{
 			for(test <- tests if !map.values.exists(_.contains(test)))
 			{
-				def isTestForFramework(framework: Framework) = framework.tests.exists(matches)
-				def matches(fingerprint: Fingerprint) =
-					(fingerprint.isModule == test.isModule) &&
-					fingerprint.superClassName == test.superClassName
-				
+				def isTestForFramework(framework: Framework) = getTests(framework).exists {t => matches(t, test.fingerprint) }
 				for(framework <- frameworks.find(isTestForFramework))
 					map.getOrElseUpdate(framework, new HashSet[TestDefinition]) += test
 			}
@@ -180,7 +200,7 @@ object TestFramework
 								Thread.currentThread.setContextClassLoader(oldLoader)
 							}
 						}
-						new NamedTestTask(testDefinition.testClassName, runTest())
+						new NamedTestTask(testDefinition.name, runTest())
 					}
 			}
 		def end() =

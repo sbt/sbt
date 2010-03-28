@@ -1,19 +1,34 @@
 DONE
- - fixed Jetty 7 and JRebel
- - fixed make-pom and missing <repositories> tag
- - fixed referencing xsbti classes from project definition and plugins
+- fixed java + scala.compiler.jar not on classpath
+- Java tests + Annotation detection (described below)
+
+Java tests + Annotation detection:
+- Discovered is new root of hierarchy representing discovered subclasses + annotations.  TestDefinition no longer fulfills this role.
+- TestDefinition is modified to be name+Fingerprint and represents a runnable test.  It need not be Discovered.
+- added foundAnnotation to AnalysisCallback
+- added Runner2, Fingerprint, AnnotationFingerprint, SubclassFingerprint to test-interface.  Existing test frameworks should still work.  Implement Runner2 from now on.
+- replaced testDefinitionClassNames with testFingerprints in CompileConfiguration.  needs to be renamed again to something like 'discovery', at least dropping 'test'
+- detect subclasses and annotations in Java sources (really, their class files)
+- test frameworks can now specify annotation fingerprints.  They specify the names of annotations and sbt discovers classes with the annotations on it or one of its methods.
+
+- script tasks (in 'scripts' branch).  To use:
+ 1) add implementation of jsr223 to project/build/lib, declare in project/plugins, or add to sbt startup classpath
+ 2) Mix sbt.scripts.Scripts into your project definition
+ 3) Create project/scripts/name.ext
+ 4) Run as 'name'
+ 5) To work with dependencies, get the task from the scriptedTasks map by name.  Ex:
+   lazy val myTask = task { ... } dependsOn scriptedTasks("myscript").
+
  - added experimental 'sbt-update version [output.jar]' command enabled by mixing in UpdateSbt trait.  It probably doesn't work on Windows, but confirmation either way would be helpful.
   Changes 'sbt.version' after verifying the version is valid by downloading that version of sbt.
   Updates the current launcher jar or the location specified in the second argument with either a downloaded sbt-launch-<version>.jar if available or a copy of the current launcher jar that uses <version> by default when starting new projects.
 
-Goals/Guidelines for xsbt
-=====
-As usual:
- - Immutable interfaces
- - Typesafe
- - Robust, flexible API
- 
-TODO
+TODO:
+ - tasks as promises
+ - aggressive recompilation
+ - API API.  Read, write, search API.
+ - source build system
+
  - launcher interface versioning
  - allow comments in datatype definition file
  - tests for API extractor
@@ -27,6 +42,8 @@ Task engine
   + optionally one task always logging
   + log each task to a file
   + interactive control over logging (might require tasks that use console to be explicit in their dependence on the console)
+
+- should be able to connect one preprocessor to another
 
 - Interfaces subproject that depends on no other project and defines interfaces in package xsbti.  They are written in Java and cannot refer to Scala classes (compileOrder = JavaThenScala).  These interfaces can be used to pass objects across ClassLoader boundaries.
 - launcher/main interface is not static (no system properties should be used past the static entry point)
@@ -46,5 +63,3 @@ Dependency Management
 
 Launcher
 - see launch.specification
-- boot interface contains static final int version = N that main xsbt can use to check if it can be loaded by that version (a lower bound check)
-- main xsbt has static final int version = N that boot can use to check if it can load that version (a lower bound check)

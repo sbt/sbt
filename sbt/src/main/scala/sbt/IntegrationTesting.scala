@@ -83,7 +83,7 @@ trait BasicIntegrationTesting extends ScalaIntegrationTesting with IntegrationTe
 		def analysisPath = integrationTestAnalysisPath
 		def baseCompileOptions = integrationTestCompileOptions
 		def javaOptions = javaOptionsAsString(javaCompileOptions)
-		def testDefinitionClassNames = testClassNames(integrationTestFrameworks)
+		def testFingerprints = fingerprints(integrationTestFrameworks)
 	}
 }
 

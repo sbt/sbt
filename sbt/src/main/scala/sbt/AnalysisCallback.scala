@@ -27,6 +27,8 @@ trait AnalysisCallback extends NotNull
 {
 	/** The names of classes that the analyzer should find subclasses of.*/
 	def superclassNames: Iterable[String]
+	/** The names of annotations that the analyzer should look for on classes and methods. */
+	def annotationNames: Iterable[String]
 	/** The base path for the project.*/
 	def basePath: Path
 	/** Called when the the given superclass could not be found on the classpath by the compiler.*/
@@ -36,6 +38,8 @@ trait AnalysisCallback extends NotNull
 	/** Called when the a subclass of one of the classes given in <code>superclassNames</code> is
 	* discovered.*/
 	def foundSubclass(sourcePath: Path, subclassName: String, superclassName: String, isModule: Boolean): Unit
+	/** Called when a class or one of its methods has an annotation listed in <code>annotationNames</code>*/
+	def foundAnnotated(source: Path, className: String, annotationName: String, isModule: Boolean): Unit
 	/** Called to indicate that the source file <code>sourcePath</code> depends on the source file
 	* <code>dependsOnPath</code>.*/
 	def sourceDependency(dependsOnPath: Path, sourcePath: Path): Unit

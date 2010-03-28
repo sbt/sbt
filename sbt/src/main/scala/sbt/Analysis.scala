@@ -201,24 +201,24 @@ private[sbt] final class BuilderCompileAnalysis(analysisPath: Path, projectPath:
 }
 class CompileAnalysis(analysisPath: Path, projectPath: Path, log: Logger) extends BasicCompileAnalysis(analysisPath, projectPath, log)
 {
-	private val testMap = new HashMap[Path, Set[TestDefinition]]
+	private val testMap = new HashMap[Path, Set[Discovered]]
 	private val applicationsMap = new HashMap[Path, Set[String]]
 	def allTests = all(testMap)
 	def allApplications = all(applicationsMap)
-	def addTest(source: Path, test: TestDefinition) = add(source, test, testMap)
+	def addTest(source: Path, test: Discovered) = add(source, test, testMap)
 	def addApplication(source: Path, className: String) = add(source, className, applicationsMap)
 	
 	def testSourceMap: Map[String, Path] =
 	{
 		val map = new HashMap[String, Path]
-		for( (source, tests) <- testMap; test <- tests) map(test.testClassName) = source
+		for( (source, tests) <- testMap; test <- tests) map(test.className) = source
 		map
 	}
 	
 	override protected def mapsToClear = applicationsMap :: testMap :: super.mapsToClear
 	override protected def mapsToRemoveSource = applicationsMap :: testMap :: super.mapsToRemoveSource
 	
-	implicit val testSet: Format[Set[TestDefinition]] = Format.set
+	implicit val testSet: Format[Set[Discovered]] = Format.set
 	override protected def backedMaps =
 		Backed(testMap, TestsLabel, TestsFileName) ::
 		Backed(applicationsMap, ApplicationsLabel, ApplicationsFileName) ::
