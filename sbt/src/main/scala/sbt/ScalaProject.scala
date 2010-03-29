@@ -310,7 +310,7 @@ trait ScalaProject extends SimpleScalaProject with FileTasks with MultiTaskProje
 	private def flatten[T](i: Iterable[Iterable[T]]) = i.flatMap(x => x)
 
 	protected def testQuickMethod(testAnalysis: CompileAnalysis, options: => Seq[TestOption])(toRun: (Seq[TestOption]) => Task) = {
-		val analysis = Set() ++ testAnalysis.allTests.map(_.className)
+		def analysis = Set() ++ testAnalysis.allTests.map(_.className)
 		multiTask(analysis.toList) { (args, includeFunction) =>
 			  toRun(TestArgument(args:_*) :: TestFilter(includeFunction) :: options.toList)
 		}
