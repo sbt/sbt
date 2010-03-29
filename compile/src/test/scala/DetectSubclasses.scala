@@ -19,7 +19,7 @@ object DetectSubclasses extends Specification
 		{
 			case files @ Seq(supFile, sup2File, midFile, sub1File, sub2File, sub3File) =>
 				for(scalaVersion <- TestCompile.allVersions)
-					CallbackTest(scalaVersion, files, Seq( "a.Super", "Super2", "x.Super3", "Super4") )  { (callback, x, xx) =>
+					CallbackTest(scalaVersion, files, Seq( "a.Super", "Super2", "x.Super3", "Super4"), Nil )  { (callback, x, xx) =>
 						val expected =
 							(sub1File, "a.Sub1", "a.Super", false) ::
 							(sub2File, "Sub2", "a.Super", false) ::
