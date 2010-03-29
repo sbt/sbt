@@ -8,7 +8,7 @@ import org.specs._
 
 object CompileTest extends Specification
 {
-	/*"Analysis compiler" should {
+	"Analysis compiler" should {
 		"compile basic sources" in {
 			WithCompiler( "2.7.2" )(testCompileAnalysis)
 			WithCompiler( "2.7.3" )(testCompileAnalysis)
@@ -16,9 +16,9 @@ object CompileTest extends Specification
 			WithCompiler( "2.7.5" )(testCompileAnalysis)
 			WithCompiler( "2.7.7" )(testCompileAnalysis)
 			WithCompiler( "2.8.0.Beta1" )(testCompileAnalysis)
-			WithCompiler( "2.8.0-SNAPSHOT" )(testCompileAnalysis)
+			//WithCompiler( "2.8.0-SNAPSHOT" )(testCompileAnalysis)
 		}
-	}*/
+	}
 	
 	"Raw compiler" should {
 		"Properly handle classpaths" in {
@@ -32,7 +32,7 @@ object CompileTest extends Specification
 	{
 		WithFiles( new File("Test.scala") -> "object Test" ) { sources =>
 			withTemporaryDirectory { temp =>
-				val callback = new xsbti.TestCallback(Array())
+				val callback = new xsbti.TestCallback(Array(), Array())
 				compiler(Set() ++ sources, Set.empty, temp, Nil, callback, 10, log)
 				(callback.beganSources) must haveTheSameElementsAs(sources)
 			}
@@ -52,7 +52,7 @@ object CompileTest extends Specification
 			def compiler(autoBoot: Boolean, compilerOnClasspath: Boolean): RawCompiler =
 				new RawCompiler(ScalaInstance(scalaVersion, launch), autoBoot, compilerOnClasspath, log)
 
-			val callback = new xsbti.TestCallback(Array())
+			val callback = new xsbti.TestCallback(Array(), Array())
 				
 			val standard = compiler(true, true)
 			val noCompiler = compiler(true, false)
