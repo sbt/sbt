@@ -234,6 +234,9 @@ trait Project extends TaskManager with Dag[Project] with BasicEnvironment
 
 	def componentManager = new ComponentManager(info.launcher.globalLock, info.app.components, log)
 	def buildScalaInstance = buildScalaInstance0
+	def buildLibraryJar = Path.fromFile(buildScalaInstance.libraryJar)
+	def buildCompilerJar = Path.fromFile(buildScalaInstance.compilerJar)
+	def buildScalaJars = Path.finder { buildScalaInstance.jars }
 	final def buildScalaInstance0: ScalaInstance =
 	{
 		val scalaVersion = buildScalaVersion
