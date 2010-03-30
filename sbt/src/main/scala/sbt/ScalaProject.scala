@@ -43,6 +43,8 @@ trait SimpleScalaProject extends ExecProject with Cleanable
 	case class CompileOption(val asString: String) extends ActionOption
 	case class JavaCompileOption(val asString: String) extends ActionOption
 
+	def compileOptions(asString: String*): Seq[CompileOption] = asString.map(CompileOption.apply)
+
 	val Deprecation = CompileOption(CompileOptions.Deprecation)
 	val ExplainTypes = CompileOption("-explaintypes")
 	val Optimize = CompileOption("-optimise")
