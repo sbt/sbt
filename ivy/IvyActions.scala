@@ -49,8 +49,7 @@ object IvyActions
 	{
 		module.withModule { (ivy, md, default) =>
 			addLateDependencies(ivy, md, default, extraDependencies)
-			val pomModule = keepConfigurations(md, configurations)
-			(new MakePom).write(ivy, pomModule, extra, output)
+			(new MakePom).write(ivy, md, configurations, extra, output)
 			module.logger.info("Wrote " + output.getAbsolutePath)
 		}
 	}
@@ -61,32 +60,6 @@ object IvyActions
 		parser.setMd(module)
 		IvySbt.addDependencies(module, extraDependencies, parser)
 	}
-	private def getConfigurations(module: ModuleDescriptor, configurations: Option[Iterable[Configuration]]) =
-		configurations match
-		{
-			case Some(confs) => confs.map(_.name).toList.toArray
-			case None => module.getPublicConfigurationsNames
-		}
-	/** Retain dependencies only with the configurations given, or all public configurations of `module` if `configurations` is None.
-	* This currently only preserves the information required by makePom*/
-	private def keepConfigurations(module: ModuleDescriptor, configurations: Option[Iterable[Configuration]]): ModuleDescriptor =
-	{
-		val keepConfigurations = getConfigurations(module, configurations)
-		val keepSet = Set(keepConfigurations.toSeq : _*)
-		def translate(dependency: DependencyDescriptor) =
-		{
-			val keep = dependency.getModuleConfigurations.filter(keepSet.contains)
-			if(keep.isEmpty)
-				None
-			else // TODO: translate the dependency to contain only configurations to keep
-				Some(dependency)
-		}
-		val newModule = new DefaultModuleDescriptor(module.getModuleRevisionId, "", null)
-		newModule.setHomePage(module.getHomePage)
-		for(dependency <- module.getDependencies; translated <- translate(dependency))
-			newModule.addDependency(translated)
-		newModule
-	}
 
 	def deliver(module: IvySbt#Module, status: String, deliverIvyPattern: String, extraDependencies: Iterable[ModuleID], configurations: Option[Iterable[Configuration]], quiet: Boolean)
 	{
@@ -95,7 +68,7 @@ object IvyActions
 			resolve(quiet)(ivy, md, default) // todo: set download = false for resolve
 			val revID = md.getModuleRevisionId
 			val options = DeliverOptions.newInstance(ivy.getSettings).setStatus(status)
-			options.setConfs(getConfigurations(md, configurations))
+			options.setConfs(IvySbt.getConfigurations(md, configurations))
 			ivy.deliver(revID, revID.getRevision, deliverIvyPattern, options)
 		}
 	}
@@ -108,7 +81,7 @@ object IvyActions
 			srcArtifactPatterns.foreach(pattern => patterns.add(pattern))
 			val options = (new PublishOptions).setOverwrite(true)
 			deliveredIvyPattern.foreach(options.setSrcIvyPattern)
-			options.setConfs(getConfigurations(md, configurations))
+			options.setConfs(IvySbt.getConfigurations(md, configurations))
 			ivy.publish(revID, patterns, resolverName, options)
 		}
 	}
