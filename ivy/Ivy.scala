@@ -343,4 +343,10 @@ private object IvySbt
 			case dmd: DefaultModuleDescriptor => dmd
 			case _ => error("Unknown ModuleDescriptor type.")
 		}
+	def getConfigurations(module: ModuleDescriptor, configurations: Option[Iterable[Configuration]]) =
+		configurations match
+		{
+			case Some(confs) => confs.map(_.name).toList.toArray
+			case None => module.getPublicConfigurationsNames
+		}
 }

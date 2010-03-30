@@ -20,7 +20,8 @@ import plugins.resolver.{ChainResolver, DependencyResolver, IBiblioResolver}
 class MakePom
 {
 	def encoding = "UTF-8"
-	def write(ivy: Ivy, module: ModuleDescriptor, extra: NodeSeq, output: File): Unit = write(toPom(ivy, module, extra), output)
+	def write(ivy: Ivy, module: ModuleDescriptor, configurations: Option[Iterable[Configuration]], extra: NodeSeq, output: File): Unit =
+		write(toPom(ivy, module, configurations, extra), output)
 	def write(node: Node, output: File): Unit = write(toString(node), output)
 	def write(xmlString: String, output: File)
 	{
@@ -36,12 +37,12 @@ class MakePom
 	}
 
 	def toString(node: Node): String = new PrettyPrinter(1000, 4).format(node)
-	def toPom(ivy: Ivy, module: ModuleDescriptor, extra: NodeSeq): Node =
+	def toPom(ivy: Ivy, module: ModuleDescriptor, configurations: Option[Iterable[Configuration]], extra: NodeSeq): Node =
 		(<project xmlns="http://maven.apache.org/POM/4.0.0"  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
 			<modelVersion>4.0.0</modelVersion>
 			{ makeModuleID(module) }
 			{ extra }
-			{ makeDependencies(module) }
+			{ makeDependencies(module, configurations) }
 			{ makeRepositories(ivy.getSettings) }
 		</project>)
 
@@ -51,7 +52,7 @@ class MakePom
 		val a: NodeSeq = 
 			(<groupId>{ mrid.getOrganisation }</groupId>
 			<artifactId>{ mrid.getName }</artifactId>
-			<packaging>{ packaging(mrid) }</packaging>)
+			<packaging>{ packaging(module) }</packaging>)
 		val b: NodeSeq =
 			( (description(module.getDescription) ++
 			homePage(module.getHomePage) ++
@@ -70,11 +71,19 @@ class MakePom
 		</license>
 	def homePage(homePage: String) = if(homePage eq null) NodeSeq.Empty else <url>{homePage}</url>
 	def revision(version: String) = if(version ne null) <version>{version}</version> else NodeSeq.Empty
-	def packaging(module: ModuleRevisionId) = "jar"//module.getDefaultArtifact.getExt
+	def packaging(module: ModuleDescriptor) =
+		module.getAllArtifacts match
+		{
+			case Array() => "pom"
+			case Array(x) => x.getType
+			case xs =>
+				val notpom = xs.filter(_.getType != "pom")
+				if(notpom.isEmpty) "pom" else notpom(0).getType
+		}
 
-	def makeDependencies(module: ModuleDescriptor): NodeSeq =
+	def makeDependencies(module: ModuleDescriptor, configurations: Option[Iterable[Configuration]]): NodeSeq =
 	{
-		val dependencies = module.getDependencies
+		val dependencies = depsInConfs(module, configurations)
 		if(dependencies.isEmpty) NodeSeq.Empty
 		else
 			<dependencies>
@@ -147,4 +156,21 @@ class MakePom
 			<name>{name}</name>
 			<url>{root}</url>
 		</repository>
+
+	/** Retain dependencies only with the configurations given, or all public configurations of `module` if `configurations` is None.
+	* This currently only preserves the information required by makePom*/
+	private def depsInConfs(module: ModuleDescriptor, configurations: Option[Iterable[Configuration]]): Seq[DependencyDescriptor] =
+	{
+		val keepConfigurations = IvySbt.getConfigurations(module, configurations)
+		val keepSet = Set(keepConfigurations.toSeq : _*)
+		def translate(dependency: DependencyDescriptor) =
+		{
+			val keep = dependency.getModuleConfigurations.filter(keepSet.contains)
+			if(keep.isEmpty)
+				None
+			else // TODO: translate the dependency to contain only configurations to keep
+				Some(dependency)
+		}
+		module.getDependencies flatMap translate
+	}
 }
