@@ -39,10 +39,13 @@ class ComponentCompiler(compiler: RawCompiler, manager: ComponentManager)
 	* any resources from the source jars into a final jar.*/
 	private def compileSources(sourceJars: Iterable[File], targetJar: File, id: String)
 	{
+		val isSource = (f: File) => isSourceName(f.getName)
+		def keepIfSource(files: Set[File]): Set[File] = if(files.exists(isSource)) files else Set()
+
 		import Paths._
 		withTemporaryDirectory { dir =>
-			val extractedSources = (Set[File]() /: sourceJars) { (extracted, sourceJar)=> extracted ++ unzip(sourceJar, dir) }
-			val (sourceFiles, resources) = extractedSources.partition(_.getName.endsWith(".scala"))
+			val extractedSources = (Set[File]() /: sourceJars) { (extracted, sourceJar)=> extracted ++ keepIfSource(unzip(sourceJar, dir)) }
+			val (sourceFiles, resources) = extractedSources.partition(isSource)
 			withTemporaryDirectory { outputDirectory =>
 				val xsbtiJars = manager.files(xsbtiID)(IfMissing.Fail)
 				manager.log.info("'" + id + "' not yet compiled for Scala " + compiler.scalaInstance.actualVersion + ". Compiling...")
@@ -58,4 +61,5 @@ class ComponentCompiler(compiler: RawCompiler, manager: ComponentManager)
 			}
 		}
 	}
+	private def isSourceName(name: String): Boolean = name.endsWith(".scala") || name.endsWith(".java")
 }
