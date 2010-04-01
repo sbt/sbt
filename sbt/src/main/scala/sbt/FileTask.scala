@@ -59,6 +59,7 @@ object FileTasks
 	def apply[T](label: String, files: ProductsSources, log: Logger)(ifOutofdate: => T)(ifUptodate: => T): T =
 	{
 		val products = files.products
+		require(!products.isEmpty, "No products were specified; products must be known in advance.")
 		existenceCheck[T](label, products, log)(ifOutofdate)
 		{
 			val sources = files.sources
