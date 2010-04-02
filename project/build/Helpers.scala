@@ -5,6 +5,10 @@ trait NoPublish extends ManagedBase
 	override final def publishAction = task { None }
 	override final def deliverAction = publishAction
 }
+trait NoUpdate extends ManagedBase
+{
+	override final def updateAction = task { None }
+}
 trait NoCrossPaths extends Project
 {
 	override def disableCrossPaths = true
@@ -31,4 +35,14 @@ trait Component extends DefaultProject
 {
 	override def projectID = componentID match { case Some(id) => super.projectID extra("e:component" -> id); case None => super.projectID }
 	def componentID: Option[String] = None
+}
+trait PrecompiledInterface extends BasicScalaProject with ManagedBase
+{
+	override def fullClasspath(config: Configuration) = super.fullClasspath(config) filter(f => !f.asFile.getName.contains("scala-compiler"))
+	def binID = "compiler-interface-bin"
+	def bincID = binID + "_" + buildScalaInstance.actualVersion
+	override def jarPath = mkJarPath(binID)
+	override def defaultMainArtifact = Artifact(binID) extra("e:component" -> bincID)
+	def mkJarPath(id: String) = outputPath / (id + "-" + version.toString + ".jar")
+	override def ivyXML: scala.xml.NodeSeq = <publications/> // Remove when we build with 0.7.3, which does not unnecessarily add a default artifact
 }

@@ -49,8 +49,8 @@ class XSbt(info: ProjectInfo) extends ParentProject(info) with NoCrossPaths
 
 	//run in parallel
 	override def parallelExecution = true
-	def jlineRev = "0.9.94"
-	def jlineDep = "jline" % "jline" % jlineRev intransitive()
+
+	def jlineDep = "jline" % "jline" % "0.9.94" intransitive()
 
 	// publish locally when on repository server
 	override def managedStyle = ManagedStyle.Ivy
@@ -60,7 +60,7 @@ class XSbt(info: ProjectInfo) extends ParentProject(info) with NoCrossPaths
 	class LaunchProject(info: ProjectInfo) extends Base(info) with TestWithIO with TestDependencies with ProguardLaunch with NoCrossPaths
 	{
 		val jline = jlineDep
-		val ivy = "org.apache.ivy" % "ivy" % "2.0.0"
+		val ivy = "org.apache.ivy" % "ivy" % "2.1.0"
 		override def deliverProjectDependencies = Nil
 
 		// defines the package that proguard operates on
@@ -113,7 +113,7 @@ class XSbt(info: ProjectInfo) extends ParentProject(info) with NoCrossPaths
 	class CompileProject(info: ProjectInfo) extends Base(info) with TestWithLog with TestWithLaunch
 	{
 		override def testCompileAction = super.testCompileAction dependsOn(compileInterfaceSub.`package`, interfaceSub.`package`)
-		override def testClasspath = super.testClasspath +++ compileInterfaceSub.jarPath +++ interfaceSub.jarPath --- compilerInterfaceClasspath --- interfaceSub.mainCompilePath
+		override def testClasspath = super.testClasspath +++ compileInterfaceSub.packageSrcJar +++ interfaceSub.jarPath --- compilerInterfaceClasspath --- interfaceSub.mainCompilePath
 		override def compileOptions = super.compileOptions ++ Seq(CompileOption("-Xno-varargs-conversion")) //needed for invoking nsc.scala.tools.Main.process(Array[String])
 	}
 	class IvyProject(info: ProjectInfo) extends Base(info) with TestWithIO with TestWithLog with TestWithLaunch
@@ -168,19 +168,47 @@ class XSbt(info: ProjectInfo) extends ParentProject(info) with NoCrossPaths
 	{
 		val process = "org.scala-tools.sbt" % "process" % "0.1"
 	}
-	class CompilerInterfaceProject(info: ProjectInfo) extends Base(info) with SourceProject with TestWithIO with TestWithLog
-	{
-		def xTestClasspath =  projectClasspath(Configurations.Test)
-		def cID = "compiler-interface-src"
-		override def componentID = Some(cID)
+	class CompilerInterfaceProject(info: ProjectInfo) extends Base(info) with PrecompiledInterface with NoCrossPaths with TestWithIO with TestWithLog
+	{ cip => 
+		//val jline = jlineDep artifacts(Artifact("jline", Map("e:component" -> srcID)))
 		// necessary because jline is not distributed with 2.8 and we will get a compile error 
-		//val jline = jlineDep artifacts(Artifact("jline", Map("e:component" -> cID)))
+		// sbt should work with the above inline declaration, but it doesn't, so the inline Ivy version is used for now.
 		override def ivyXML =
+			( <publications />
 			<dependencies>
-				<dependency org="jline" name="jline" rev={jlineRev} transitive="false">
-					<artifact name="jline" type="jar" e:component={cID}/>
+				<dependency org="jline" name="jline" rev="0.9.94" transitive="false">
+					<artifact name="jline" type="jar" e:component={srcID}/>
 				</dependency>
-			</dependencies>
+			</dependencies> )
+
+		def xTestClasspath =  projectClasspath(Configurations.Test)
+
+		def srcID = "compiler-interface-src"
+		lazy val srcArtifact = Artifact(srcID) extra("e:component" -> srcID)
+		override def packageSrcJar = mkJarPath(srcID)
+		lazy val pkgSrc = packageSrc // call it something else because we don't need dependencies to run package-src
+		override def packageAction = super.packageAction dependsOn(pkgSrc)
+		
+		// sub projects for each version of Scala to precompile against other than the one sbt is built against
+		// each sub project here will add ~100k to the download
+		lazy val precompiled28 = precompiledSub("2.8.0.Beta1")
+
+		def precompiledSub(v: String) = 
+			project(info.projectPath, "Precompiled " + v, new Precompiled(v)(_), cip.info.dependencies.toSeq : _* /*doesn't include subprojects of cip*/ )
+
+		/** A project that compiles the compiler interface against the Scala version 'sv'.
+		* This is done for selected Scala versions (generally, popular ones) so that it doesn't need to be done at runtime. */
+		class Precompiled(sv: String)(info: ProjectInfo) extends Base(info) with PrecompiledInterface with NoUpdate {
+			/** force the Scala version in order to precompile the compiler interface for different Scala versions*/
+			override def buildScalaVersion = sv
+
+			/** Get compilation classpath from parent.  Scala dependencies are added on top of this and this
+			* subproject does not depend on any Scala subprojects, so mixing versions is not a problem. */
+			override def compileClasspath = cip.compileClasspath --- cip.mainUnmanagedClasspath +++ mainUnmanagedClasspath
+
+			// these ensure that the classes compiled against other versions of Scala are not exported (for compilation/testing/...)
+			override def projectClasspath(config: Configuration) = Path.emptyPathFinder
+		}
 	}
 	trait TestWithIO extends TestWith {
 		override def testWithTestClasspath = super.testWithTestClasspath ++ Seq(ioSub)
