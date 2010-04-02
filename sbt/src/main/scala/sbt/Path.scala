@@ -304,7 +304,7 @@ sealed abstract class PathFinder extends NotNull
 
 	final def absString = Path.makeString(get)
 	final def relativeString = Path.makeRelativeString(get)
-	override def toString = getRelativePaths.mkString("\n   ", "\n   ","")
+	override def toString = get.mkString("\n   ", "\n   ","")
 }
 private class BasePathFinder(base: PathFinder) extends PathFinder
 {
