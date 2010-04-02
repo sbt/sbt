@@ -20,6 +20,8 @@ import plugins.parser.m2.PomModuleDescriptorParser
 import plugins.resolver.ChainResolver
 import util.Message
 
+import scala.xml.NodeSeq
+
 final class IvySbt(configuration: IvyConfiguration)
 {
 	import configuration.{log, baseDirectory}
@@ -220,8 +222,6 @@ private object IvySbt
 		import configuration._
 		new IvyConfig(name, if(isPublic) PUBLIC else PRIVATE, description, extendsConfigs.map(_.name).toArray, transitive, null)
 	}
-	private def addDefaultArtifact(defaultConf: String, moduleID: DefaultModuleDescriptor) =
-		moduleID.addArtifact(defaultConf, new MDArtifact(moduleID, moduleID.getModuleRevisionId.getName, defaultType, defaultExtension))
 	/** Adds the ivy.xml main artifact. */
 	private def addMainArtifact(moduleID: DefaultModuleDescriptor)
 	{
@@ -266,16 +266,20 @@ private object IvySbt
 		}
 	}
 	/** Creates a full ivy file for 'module' using the 'dependencies' XML as the part after the &lt;info&gt;...&lt;/info&gt; section. */
-	private def wrapped(module: ModuleID, dependencies: scala.xml.NodeSeq) =
+	private def wrapped(module: ModuleID, dependencies: NodeSeq) =
 	{
 		import module._
 		<ivy-module version="2.0">
 			{ if(hasInfo(dependencies))
-				scala.xml.NodeSeq.Empty
+				NodeSeq.Empty
 			else
 				<info organisation={organization} module={name} revision={revision}/>
 			}
 			{dependencies}
+			{
+				// this is because Ivy adds a default artifact if none are specified.
+				if(dependencies \\ "publications" isEmpty) <publications/> else NodeSeq.Empty
+			}
 		</ivy-module>
 	}
 	private def hasInfo(x: scala.xml.NodeSeq) = !(<g>{x}</g> \ "info").isEmpty
