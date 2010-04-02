@@ -125,19 +125,22 @@ abstract class BasicScalaProject extends ScalaProject with BasicDependencyProjec
 	* by default. */
 	def docClasspath = compileClasspath
 	/** A PathFinder that provides the classpath to pass to the compiler.*/
-	def compileClasspath = fullClasspath(Compile) +++ optionalClasspath
+	def compileClasspath = fullClasspath(Compile) +++ optionalClasspath +++ providedClasspath
 	/** A PathFinder that provides the classpath to use when unit testing.*/
-	def testClasspath = fullClasspath(Test) +++ optionalClasspath
+	def testClasspath = fullClasspath(Test) +++ optionalClasspath +++ providedClasspath
 	/** A PathFinder that provides the classpath to use when running the class specified by 'getMainClass'.*/
-	def runClasspath = fullClasspath(Runtime) +++ optionalClasspath
+	def runClasspath = fullClasspath(Runtime) +++ optionalClasspath +++ providedClasspath
 	/** A PathFinder that provides the classpath to use for a Scala interpreter session.*/
-	def consoleClasspath = fullClasspath(consoleConfiguration) +++ optionalClasspath
+	def consoleClasspath = fullClasspath(consoleConfiguration) +++ optionalClasspath +++ providedClasspath
 	/** A PathFinder that corresponds to Maven's optional scope.  It includes any managed libraries in the
 	* 'optional' configuration for this project only.*/
 	def optionalClasspath = managedClasspath(Optional)
+	/** A PathFinder that corresponds to Maven's provided scope.  It includes any managed libraries in the
+	* 'provided' configuration for this project only.*/
+	def providedClasspath = managedClasspath(Provided)
 	/** A PathFinder that contains the jars that should be included in a comprehensive package.  This is
 	* by default the 'runtime' classpath excluding the 'provided' classpath.*/
-	def publicClasspath = runClasspath --- fullClasspath(Provided)
+	def publicClasspath = runClasspath --- providedClasspath
 
 	/** This returns the unmanaged classpath for only this project for the given configuration.  It by
 	* default includes the main compiled classes for this project and the libraries in this project's
