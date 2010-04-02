@@ -1,7 +1,7 @@
 package xsbt
 
 import java.io.File
-import sbt.{ComponentManager, IfMissing}
+import sbt.{ComponentManager, IfMissing, InvalidComponent}
 
 object ComponentCompiler
 {
@@ -20,12 +20,25 @@ class ComponentCompiler(compiler: RawCompiler, manager: ComponentManager)
 	import ComponentCompiler._
 	import FileUtilities.{copy, createDirectory, zip, jars, unzip, withTemporaryDirectory}
 	def apply(id: String): File =
+		try { getPrecompiled(id) }
+		catch { case _: InvalidComponent => getLocallyCompiled(id) }
+
+	/** Gets the precompiled (distributed with sbt) component with the given 'id'
+	* If the component has not been precompiled, this throws InvalidComponent. */
+	def getPrecompiled(id: String): File = manager.file( binaryID(id, false) )(IfMissing.Fail)
+	/** Get the locally compiled component with the given 'id' or compiles it if it has not been compiled yet.
+	* If the component does not exist, this throws InvalidComponent. */
+	def getLocallyCompiled(id: String): File =
 	{
-		val binID = binaryID(id)
+		val binID = binaryID(id, true)
 		manager.file(binID)( new IfMissing.Define(true, compileAndInstall(id, binID)) )
 	}
-	def clearCache(id: String): Unit = manager.clearCache(binaryID(id))
-	protected def binaryID(id: String) = id + binSeparator + compiler.scalaInstance.actualVersion + "__" + javaVersion
+	def clearCache(id: String): Unit = manager.clearCache(binaryID(id, true))
+	protected def binaryID(id: String, withJavaVersion: Boolean) =
+	{
+		val base = id + binSeparator + compiler.scalaInstance.actualVersion
+		if(withJavaVersion) base + "__" + javaVersion else base
+	}
 	protected def compileAndInstall(id: String, binID: String)
 	{
 		val srcID = id + srcExtension
