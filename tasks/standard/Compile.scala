@@ -163,9 +163,11 @@ private final class APIAnalysisCallback(tracking: UpdateTracking[File]) extends 
 	def api(source: File, api: xsbti.api.Source) { apiMap(source) = api }
 
 	def superclassNames = Array()
+	def annotationNames = Array()
 	def superclassNotFound(superclassName: String) {}
 	def beginSource(source: File)  {}
 	def endSource(source: File) {}
 	def foundApplication(source: File, className: String) {}
 	def foundSubclass(source: File, subclassName: String, superclassName: String, isModule: Boolean) {}
+	def foundAnnotated(source: File, className: String, annotationName: String, isModule: Boolean) {}
 }

@@ -77,6 +77,7 @@ class StandardCompile(val sources: Task[Set[File]], val classpath: Task[Set[File
 		private var applications = List[String]()
 		private var subclasses = List[DetectedSubclass]()
 		def superclassNames = superClasses
+		def annotationNames = error("TODO")
 		def superclassNotFound(superclassName: String) = error("Superclass not found: " + superclassName)
 		def beginSource(source: File) {}
 		def endSource(source: File)
@@ -89,6 +90,7 @@ class StandardCompile(val sources: Task[Set[File]], val classpath: Task[Set[File
 			}
 		}
 		def foundApplication(source: File, className: String) { applications ::= className }
+		def foundAnnotated(source: File, className: String, annotationName: String, isModule: Boolean) { error("TODO") }
 		def foundSubclass(source: File, subclassName: String, superclassName: String, isModule: Boolean): Unit =
 			subclasses ::= DetectedSubclass(source, subclassName, superclassName, isModule)
 		def sourceDependency(dependsOn: File, source: File) { tracking.dependency(source, dependsOn) }
