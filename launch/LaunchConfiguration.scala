@@ -70,6 +70,7 @@ object Repository
 		def apply(s: String): Predefined = Predefined(toValue(s))
 	}
 
+	def isMavenLocal(repo: Repository) = repo == Predefined(Predefined.MavenLocal)
 	def defaults: List[Repository] = Predefined.elements.map(Predefined.apply).toList
 }
 

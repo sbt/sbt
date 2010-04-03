@@ -154,6 +154,7 @@ final class Update(config: UpdateConfiguration)
 		val resolveOptions = new ResolveOptions
 		  // this reduces the substantial logging done by Ivy, including the progress dots when downloading artifacts
 		resolveOptions.setLog(LogOptions.LOG_DOWNLOAD_ONLY)
+		resolveOptions.setCheckIfChanged(false)
 		val resolveEngine = new ResolveEngine(settings, eventManager, new SortEngine(settings))
 		val resolveReport = resolveEngine.resolve(module, resolveOptions)
 		if(resolveReport.hasError)
@@ -194,16 +195,23 @@ final class Update(config: UpdateConfiguration)
 		val newDefault = new ChainResolver
 		newDefault.setName("redefined-public")
 		if(repositories.isEmpty) error("No repositories defined.")
-		repositories.foreach(repo => newDefault.add(toIvyRepository(settings, repo)))
+		for(repo <- repositories if includeRepo(repo))
+			newDefault.add(toIvyRepository(settings, repo))
 		onDefaultRepositoryCacheManager(settings)(configureCache)
 		settings.addResolver(newDefault)
 		settings.setDefaultResolver(newDefault.getName)
 	}
+	// exclude the local Maven repository for Scala -SNAPSHOTs
+	private def includeRepo(repo: Repository) = !(Repository.isMavenLocal(repo) && isSnapshot(scalaVersion) )
+	private def isSnapshot(scalaVersion: String) = scalaVersion.endsWith(Snapshot)
+	private[this] val Snapshot = "-SNAPSHOT"
+	private[this] val ChangingPattern = ".*" + Snapshot
+	private[this] val ChangingMatcher = PatternMatcher.REGEXP
 	private def configureCache(manager: DefaultRepositoryCacheManager)
 	{
 		manager.setUseOrigin(true)
-		manager.setChangingMatcher(PatternMatcher.REGEXP)
-		manager.setChangingPattern(".*-SNAPSHOT")
+		manager.setChangingMatcher(ChangingMatcher)
+		manager.setChangingPattern(ChangingPattern)
 	}
 	private def toIvyRepository(settings: IvySettings, repo: Repository) =
 	{
