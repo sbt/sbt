@@ -201,7 +201,7 @@ abstract class BasicScalaProject extends ScalaProject with BasicDependencyProjec
 		def options = optionsAsString(baseCompileOptions.filter(!_.isInstanceOf[MaxCompileErrors]))
 		def maxErrors = maximumErrors(baseCompileOptions)
 		def compileOrder = BasicScalaProject.this.compileOrder
-		protected def fingerprints(frameworks: Seq[TestFramework]): TestFingerprints =
+		protected def getFingerprints(frameworks: Seq[TestFramework]): Fingerprints =
 		{
 			import org.scalatools.testing.{SubclassFingerprint, AnnotatedFingerprint}
 			val loader = TestFramework.createTestLoader(classpath.get, buildScalaInstance.loader)
@@ -212,7 +212,7 @@ abstract class BasicScalaProject extends ScalaProject with BasicDependencyProjec
 				case a: AnnotatedFingerprint => annotations += a.annotationName
 				case _ => ()
 			}
-			TestFingerprints(superclasses.toList, annotations.toList)
+			Fingerprints(superclasses.toList, annotations.toList)
 		}
 	}
 	class MainCompileConfig extends BaseCompileConfig
@@ -224,7 +224,7 @@ abstract class BasicScalaProject extends ScalaProject with BasicDependencyProjec
 		def outputDirectory = mainCompilePath
 		def classpath = compileClasspath
 		def analysisPath = mainAnalysisPath
-		def testFingerprints = TestFingerprints(Nil, Nil)
+		def fingerprints = Fingerprints(Nil, Nil)
 		def javaOptions = javaOptionsAsString(javaCompileOptions)
 	}
 	class TestCompileConfig extends BaseCompileConfig
@@ -236,7 +236,7 @@ abstract class BasicScalaProject extends ScalaProject with BasicDependencyProjec
 		def outputDirectory = testCompilePath
 		def classpath = testClasspath
 		def analysisPath = testAnalysisPath
-		def testFingerprints = fingerprints(testFrameworks)
+		def fingerprints = getFingerprints(testFrameworks)
 		def javaOptions = javaOptionsAsString(testJavaCompileOptions)
 	}
 
