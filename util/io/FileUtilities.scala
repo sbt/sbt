@@ -74,10 +74,8 @@ object FileUtilities
 	{
 		createDirectory(file.getParentFile)
 		val created = translate("Could not create file " + file) { file.createNewFile() }
-		if(created)
+		if(created || file.isDirectory)
 			()
-		else if(file.isDirectory)
-			error("File exists and is a directory.")
 		else if(!file.setLastModified(System.currentTimeMillis))
 			error("Could not update last modified time for file " + file)
 	}

@@ -293,17 +293,30 @@ sealed abstract class PathFinder extends NotNull
 		addTo(pathSet)
 		wrap.Wrappers.readOnly(pathSet)
 	}
+	/** Only keeps paths for which `f` returns true.  It is non-strict, so it is not evaluated until the returned finder is evaluated.*/
 	final def filter(f: Path => Boolean): PathFinder = Path.lazyPathFinder(get.filter(f))
+	/* Non-strict flatMap: no evaluation occurs until the returned finder is evaluated.*/
 	final def flatMap(f: Path => PathFinder): PathFinder = Path.lazyPathFinder(get.flatMap(p => f(p).get))
+	/** Evaluates this finder and converts the results to an `Array` of `URL`s..*/
 	final def getURLs: Array[URL] = Path.getURLs(get)
+	/** Evaluates this finder and converts the results to a `Set` of `File`s.*/
 	final def getFiles: immutable.Set[File] = Path.getFiles(get)
+	/** Evaluates this finder and converts the results to a `Set` of absolute path strings.*/
 	final def getPaths: immutable.Set[String] = strictMap(_.absolutePath)
+	/** Evaluates this finder and converts the results to a `Set` of relative path strings.*/
 	final def getRelativePaths: immutable.Set[String] = strictMap(_.relativePath)
 	final def strictMap[T](f: Path => T): immutable.Set[T] = Path.mapSet(get)(f)
 	private[sbt] def addTo(pathSet: Set[Path])
 
+	/** Create a PathFinder from this one where each path has a unique name.
+	* A single path is arbitrarily selected from the set of paths with the same name.*/
+	def distinct: PathFinder = Path.lazyPathFinder((Map() ++ get.map(p => (p.asFile.getName, p))) .values.toList )
+
+	/** Constructs a string by evaluating this finder, converting the resulting Paths to absolute path strings, and joining them with the platform path separator.*/
 	final def absString = Path.makeString(get)
+	/** Constructs a string by evaluating this finder, converting the resulting Paths to relative path strings, and joining them with the platform path separator.*/
 	final def relativeString = Path.makeRelativeString(get)
+	/** Constructs a debugging string for this finder by evaluating it and separating paths by newlines.*/
 	override def toString = get.mkString("\n   ", "\n   ","")
 }
 private class BasePathFinder(base: PathFinder) extends PathFinder
