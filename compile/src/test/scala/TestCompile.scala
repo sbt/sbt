@@ -8,7 +8,7 @@ import FileUtilities.withTemporaryDirectory
 object TestCompile
 {
 	// skip 2.7.3 and 2.7.4 for speed
-	def allVersions = List("2.7.2", "2.7.5", "2.7.7", "2.8.0.Beta1")//List("2.7.2", "2.7.3", "2.7.4", "2.7.5", "2.8.0-SNAPSHOT")
+	def allVersions = List("2.7.2", "2.7.5", "2.7.7", "2.8.0.Beta1", "2.8.0-SNAPSHOT")//List("2.7.2", "2.7.3", "2.7.4", "2.7.5", "2.8.0-SNAPSHOT")
 	/** Tests running the compiler interface with the analyzer plugin with a test callback.  The test callback saves all information
 	* that the plugin sends it for post-compile analysis by the provided function.*/
 	def apply[T](scalaVersion: String, sources: Set[File], outputDirectory: File, options: Seq[String], superclassNames: Seq[String], annotationNames: Seq[String])
