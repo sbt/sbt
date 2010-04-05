@@ -1,5 +1,5 @@
 /* sbt -- Simple Build Tool
- * Copyright 2008, 2009 Mark Harrah
+ * Copyright 2008, 2009 Mark Harrah, Seth Tisue
  */
 package sbt
 
@@ -79,10 +79,29 @@ final class Compile(maximumErrors: Int, compiler: AnalyzingCompiler, analysisCal
 	{
 		val augmentedClasspath = if(compiler.autoBootClasspath) classpath + compiler.scalaInstance.libraryJar else classpath
 		val arguments = (new CompilerArguments(compiler.scalaInstance, false, compiler.compilerOnClasspath))(sources, augmentedClasspath, outputDirectory, options)
-		log.debug("Calling 'javac' with arguments:\n\t" + arguments.mkString("\n\t"))
-		def javac(argFile: File) = Process("javac", ("@" + normalizeSlash(argFile.getAbsolutePath)) :: Nil) ! log
-		val code = withArgumentFile(arguments)(javac)
+		log.debug("running javac with arguments:\n\t" + arguments.mkString("\n\t"))
+		val code: Int =
+			try { directJavac(arguments, log) }
+			catch { case e: ClassNotFoundException => forkJavac(arguments, log) }
+		log.debug("javac returned exit code: " + code)
 		if( code != 0 ) throw new CompileFailed(arguments.toArray, "javac returned nonzero exit code")
+	}
+	private def forkJavac(arguments: Seq[String], log: Logger): Int =
+	{
+		log.debug("com.sun.tools.javac.Main not found; forking javac instead")
+		def externalJavac(argFile: File) = Process("javac", ("@" + normalizeSlash(argFile.getAbsolutePath)) :: Nil) ! log
+		withArgumentFile(arguments)(externalJavac)
+	}
+	private def directJavac(arguments: Seq[String], log: Logger): Int =
+	{
+		val writer = new java.io.PrintWriter(new LoggerWriter(log, Level.Error))
+		val argsArray = arguments.toArray
+		val javac = Class.forName("com.sun.tools.javac.Main")
+		log.debug("Calling javac directly.")
+		javac.getDeclaredMethod("compile", classOf[Array[String]], classOf[java.io.PrintWriter])
+		.invoke(null, argsArray, writer)
+		.asInstanceOf[java.lang.Integer]
+		.intValue
 	}
 }
 trait WithArgumentFile extends NotNull
