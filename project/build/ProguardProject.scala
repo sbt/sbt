@@ -17,8 +17,8 @@ trait ProguardProject extends BasicScalaProject
 	def outputJar: Path
 	def rootProjectDirectory = rootProject.info.projectPath
 
-	val toolsConfig = config("tools")
-	val proguardJar = "net.sf.proguard" % "proguard" % "4.3" % "tools->default"
+	val toolsConfig = config("tools") hide
+	val proguardJar = "net.sf.proguard" % "proguard" % "4.3" % "tools"
 
 	lazy val proguard = proguardAction
 	def proguardAction = proguardTask dependsOn(writeProguardConfiguration) describedAs(ProguardDescription)
@@ -71,11 +71,11 @@ trait ProguardProject extends BasicScalaProject
 		{
 			val dependencies = mainDependencies.snapshot
 			log.debug("proguard configuration, all dependencies:\n\t" + dependencies.all.mkString("\n\t"))
-			val externalJars = dependencies.external// mainDependencies.map(_.getAbsoluteFile).filter(_.getName.endsWith(".jar"))
+			val externalJars = dependencies.external
 			log.debug("proguard configuration external dependencies: \n\t" + externalJars.mkString("\n\t"))
 			// partition jars from the external jar dependencies of this project by whether they are located in the project directory
 			// if they are, they are specified with -injars, otherwise they are specified with -libraryjars
-			val libraryJars = dependencies.libraries ++ dependencies.scalaJars//toList.partition(jar => Path.relativize(rootProjectDirectory, jar).isDefined)
+			val libraryJars = dependencies.libraries ++ dependencies.scalaJars
 			log.debug("proguard configuration library jars locations:\n\t" + libraryJars.mkString("\n\t"))
 
 			val proguardConfiguration = template(libraryJars, externalJars, outputJar.asFile, basicOptions, getMainClass(false), keepClasses)
