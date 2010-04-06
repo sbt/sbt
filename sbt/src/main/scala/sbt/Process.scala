@@ -101,6 +101,28 @@ trait Process extends NotNull
 /** Represents a runnable process. */
 trait ProcessBuilder extends SourcePartialBuilder with SinkPartialBuilder
 {
+	/** Starts the process represented by this builder, blocks until it exits, and returns the output as a String.  Standard error is
+	* sent to the console.  If the exit code is non-zero, an exception is thrown.*/
+	def !! : String
+	/** Starts the process represented by this builder, blocks until it exits, and returns the output as a String.  Standard error is
+	* sent to the provided Logger.  If the exit code is non-zero, an exception is thrown.*/
+	def !!(log: Logger) : String
+	/** Starts the process represented by this builder.  The output is returned as a Stream that blocks when lines are not available
+	* but the process has not completed.  Standard error is sent to the console.  If the process exits with a non-zero value,
+	* the Stream will provide all lines up to termination and then throw an exception. */
+	def lines: Stream[String]
+	/** Starts the process represented by this builder.  The output is returned as a Stream that blocks when lines are not available
+	* but the process has not completed.  Standard error is sent to the provided Logger.  If the process exits with a non-zero value,
+	* the Stream will provide all lines up to termination but will not throw an exception. */
+	def lines(log: Logger): Stream[String]
+	/** Starts the process represented by this builder.  The output is returned as a Stream that blocks when lines are not available
+	* but the process has not completed.  Standard error is sent to the console. If the process exits with a non-zero value,
+	* the Stream will provide all lines up to termination but will not throw an exception. */
+	def lines_! : Stream[String]
+	/** Starts the process represented by this builder.  The output is returned as a Stream that blocks when lines are not available
+	* but the process has not completed.  Standard error is sent to the provided Logger. If the process exits with a non-zero value,
+	* the Stream will provide all lines up to termination but will not throw an exception. */
+	def lines_!(log: Logger): Stream[String]
 	/** Starts the process represented by this builder, blocks until it exits, and returns the exit code.  Standard output and error are
 	* sent to the console.*/
 	def ! : Int
@@ -108,10 +130,10 @@ trait ProcessBuilder extends SourcePartialBuilder with SinkPartialBuilder
 	* sent to the given Logger.*/
 	def !(log: Logger): Int
 	/** Starts the process represented by this builder, blocks until it exits, and returns the exit code.  Standard output and error are
-	* sent to the console.  The newly started process reads from standard input of the current process if `connectInput` is true.*/
+	* sent to the console.  The newly started process reads from standard input of the current process.*/
 	def !< : Int
 	/** Starts the process represented by this builder, blocks until it exits, and returns the exit code.  Standard output and error are
-	* sent to the given Logger.  The newly started process reads from standard input of the current process if `connectInput` is true.*/
+	* sent to the given Logger.  The newly started process reads from standard input of the current process.*/
 	def !<(log: Logger) : Int
 	/** Starts the process represented by this builder.  Standard output and error are sent to the console.*/
 	def run(): Process

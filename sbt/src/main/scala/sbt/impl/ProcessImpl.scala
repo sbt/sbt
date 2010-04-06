@@ -43,17 +43,24 @@ private object Future
 
 private object BasicIO
 {
+	def apply(buffer: StringBuffer, log: Option[Logger], withIn: Boolean) = new ProcessIO(input(withIn), processFully(buffer), getErr(log))
 	def apply(log: Logger, withIn: Boolean) = new ProcessIO(input(withIn), processFully(log, Level.Info), processFully(log, Level.Error))
 
+	def getErr(log: Option[Logger]) = log match { case Some(lg) => processFully(lg, Level.Error); case None => toStdErr }
+
 	def ignoreOut = (i: OutputStream) => ()
-	val BufferSize = 8192
+	final val BufferSize = 8192
+	final val Newline = FileUtilities.Newline
+
 	def close(c: java.io.Closeable) = try { c.close() } catch { case _: java.io.IOException => () }
-	def processFully(log: Logger, level: Level.Value)(i: InputStream) { processFully(line => log.log(level, line))(i) }
-	def processFully(processLine: String => Unit)(i: InputStream)
-	{
-		val reader = new BufferedReader(new InputStreamReader(i))
-		processLinesFully(processLine)(reader.readLine)
-	}
+	def processFully(log: Logger, level: Level.Value): InputStream => Unit = processFully(line => log.log(level, line))
+	def processFully(buffer: Appendable): InputStream => Unit = processFully(appendLine(buffer))
+	def processFully(processLine: String => Unit): InputStream => Unit =
+		in =>
+		{
+			val reader = new BufferedReader(new InputStreamReader(in))
+			processLinesFully(processLine)(reader.readLine)
+		}
 	def processLinesFully(processLine: String => Unit)(readLine: () => String)
 	{
 		def readFully()
@@ -70,12 +77,22 @@ private object BasicIO
 	def connectToIn(o: OutputStream) { transferFully(System.in, o) }
 	def input(connect: Boolean): OutputStream => Unit = if(connect) connectToIn else ignoreOut
 	def standard(connectInput: Boolean): ProcessIO = standard(input(connectInput))
-	def standard(in: OutputStream => Unit): ProcessIO = new ProcessIO(in, transferFully(_, System.out), transferFully(_, System.err))
+	def standard(in: OutputStream => Unit): ProcessIO = new ProcessIO(in, toStdOut, toStdErr)
+
+	def toStdErr = (in: InputStream) => transferFully(in, System.err)
+	def toStdOut = (in: InputStream) => transferFully(in, System.out)
 
 	def transferFully(in: InputStream, out: OutputStream): Unit =
 		try { transferFullyImpl(in, out) }
 		catch { case  _: InterruptedException => () }
-	
+
+	private[this] def appendLine(buffer: Appendable): String => Unit =
+		line =>
+		{
+			buffer.append(line)
+			buffer.append(Newline)
+		}
+
 	private[this] def transferFullyImpl(in: InputStream, out: OutputStream)
 	{
 		val continueCount = 1//if(in.isInstanceOf[PipedInputStream]) 1 else 0
@@ -113,7 +130,31 @@ private abstract class AbstractProcessBuilder extends ProcessBuilder with SinkPa
 	def run(connectInput: Boolean): Process = run(BasicIO.standard(connectInput))
 	def run(log: Logger): Process = run(log, false)
 	def run(log: Logger, connectInput: Boolean): Process = run(BasicIO(log, connectInput))
-	
+
+	private[this] def getString(log: Option[Logger], withIn: Boolean): String =
+	{
+		val buffer = new StringBuffer
+		val code = this ! BasicIO(buffer, log, withIn)
+		if(code == 0) buffer.toString else error("Nonzero exit value: " + code)
+	}
+	def !! = getString(None, false)
+	def !!(log: Logger) = getString(Some(log), false)
+	def !!< = getString(None, true)
+	def !!<(log: Logger) = getString(Some(log), true)
+
+	def lines: Stream[String] = lines(false, true, None)
+	def lines(log: Logger): Stream[String] = lines(false, true, Some(log))
+	def lines_! : Stream[String] = lines(false, false, None)
+	def lines_!(log: Logger): Stream[String] = lines(false, false, Some(log))
+
+	private[this] def lines(withInput: Boolean, nonZeroException: Boolean, log: Option[Logger]): Stream[String] =
+	{
+		val streamed = Streamed[String](nonZeroException)
+		val process = run(new ProcessIO(BasicIO.input(withInput), BasicIO.processFully(streamed.process), BasicIO.getErr(log)))
+		Spawn { streamed.done(process.exitValue()) }
+		streamed.stream()
+	}
+
 	def ! = run(false).exitValue()
 	def !< = run(true).exitValue()
 	def !(log: Logger) = runBuffered(log, false)
@@ -413,3 +454,20 @@ object Uncloseable
 	def protect(in: InputStream): InputStream = if(in eq System.in) Uncloseable(in) else in
 	def protect(out: OutputStream): OutputStream = if( (out eq System.out) || (out eq System.err)) Uncloseable(out) else out
 }
+private object Streamed
+{
+	def apply[T](nonzeroException: Boolean): Streamed[T] =
+	{
+		val q = new java.util.concurrent.LinkedBlockingQueue[Either[Int, T]]
+		def next(): Stream[T] =
+			q.take match
+			{
+				case Left(0) => Stream.empty
+				case Left(code) => if(nonzeroException) error("Nonzero exit code: " + code) else Stream.empty
+				case Right(s) => Stream.cons(s, next)
+			}
+		new Streamed((s: T) => q.put(Right(s)), code => q.put(Left(code)), () => next())
+	}
+}
+
+private final class Streamed[T](val process: T => Unit, val done: Int => Unit, val stream: () => Stream[T]) extends NotNull

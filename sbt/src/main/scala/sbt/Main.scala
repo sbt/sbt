@@ -156,7 +156,7 @@ class xMain extends xsbti.AppMain
 			arguments match
 			{
 				case "" :: tail => continue(project, tail, failAction)
-				case x :: tail if x.startsWith(";") => continue(project, x.split(";").toList ::: arguments, failAction)
+				case x :: tail if x.startsWith(";") => continue(project, x.split(";").toList ::: tail, failAction)
 				case (ExitCommand | QuitCommand) :: _ => result( Exit(NormalExitCode) )
 				case RebootCommand :: tail => reload( tail )
 				case InteractiveCommand :: _ => continue(project, prompt(baseProject, project) :: arguments, interactiveContinue)
