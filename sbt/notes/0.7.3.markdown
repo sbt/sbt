@@ -1,0 +1,28 @@
+### Fixes
+* Fixed issue with scala.library.jar not being on javac's classpath
+* Fixed buffered logging for parallel execution
+* Fixed test-* tab completion being permanently set on first completion
+* Works with Scala 2.8 trunk again.
+* [sxr sources](http://simple-build-tool.googlecode.com/svn/artifacts/latest/sxr/index.html)
+* Maven local repository excluded when the Scala version is a snapshot.  This should fix issues with out of date Scala snapshots.
+
+### Improvements
+* Merged Seth's patch to invoke `javac` in the same jvm when `tools.jar` is on the classpath.  Macs include `tools.jar` by default, Linux and Windows users would need to add it to their sbt startup script or explicitly add it to `compileClasspath`.
+* The compiler interface is precompiled against common Scala versions (for this release, 2.7.7 and 2.8.0.Beta1).
+* There have been some new methods added to `Path` and `PathFinder` recently, such as [PathFinder.distinct](http://simple-build-tool.googlecode.com/svn/artifacts/latest/api/sbt/PathFinder.html#distinct)
+* Running multiple commands at once at the interactive prompt is now supported.  Prefix each command with ';'.
+* Run and return the output of a process as a String with `!!` or as a (blocking) `Stream[String]` with `lines`.
+
+### New Feature
+* Java tests + Annotation detection
+ * Test frameworks can now specify annotation fingerprints.  Specify the names of annotations and sbt discovers classes with the annotations on it or one of its methods.  Use version 0.5 of the [test-interface](http://github.com/harrah/test-interface).
+ * Detect subclasses and annotations in Java sources (really, their class files)
+
+### Compatibility
+This section is important for users that work with the `TestDefinition`, `AnalysisCallback`, or `CompileConfiguration` classes in sbt.
+ * Discovered is new root of hierarchy representing discovered subclasses + annotations.  `TestDefinition` no longer fulfills this role.
+ * `TestDefinition` is modified to be name+`Fingerprint` and represents a runnable test.  It need not be `Discovered` and could be file-based in the future, for example.
+ * Replaced testDefinitionClassNames method with `fingerprints` in `CompileConfiguration`.
+ * Added foundAnnotation to `AnalysisCallback`
+ * Added `Runner2`, `Fingerprint`, `AnnotationFingerprint`, and `SubclassFingerprint` to the [test-interface](http://github.com/harrah/test-interface).  Existing test frameworks should still work.  Implement `Runner2` to use fingerprints other than `SubclassFingerprint`.
+
