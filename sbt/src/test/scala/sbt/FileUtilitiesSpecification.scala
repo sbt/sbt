@@ -17,6 +17,17 @@ object WriteContentSpecification extends Properties("Write content")
 	specify("Write bytes overwrites", overwriteAndCheckBytes _)
 	specify("Append string appends", appendAndCheckStrings _)
 	specify("Append bytes appends", appendAndCheckBytes _)
+	property("Unzip doesn't stack overflow") = largeUnzip() match { case Some(msg) => error(msg); case None => true }
+
+	private def largeUnzip() =
+		testUnzip[ScalaObject] orElse
+		testUnzip[scala.tools.nsc.Global]
+	private def testUnzip[T](implicit mf: scala.reflect.Manifest[T]) =
+		unzipFile(FileUtilities.classLocationFile(mf.erasure))
+	private def unzipFile(jar: File) =
+		FileUtilities.withTemporaryDirectory(log) { tmp =>
+			FileUtilities.unzip(jar, Path.fromFile(tmp), log).left.toOption
+		}
 
 	// make the test independent of underlying platform and allow any unicode character in Strings to be encoded
 	val charset = java.nio.charset.Charset.forName("UTF-8")

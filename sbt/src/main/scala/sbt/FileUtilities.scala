@@ -255,7 +255,7 @@ object FileUtilities
 						None
 					}
 				from.closeEntry()
-				entryErr orElse next()
+				entryErr match { case None => next(); case x => x }
 			}
 		}
 		val result = next()
