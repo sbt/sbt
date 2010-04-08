@@ -8,7 +8,6 @@ class WebappBuild(info: ProjectInfo) extends DefaultWebProject(info) {
 		"org.mortbay.jetty"          % "jetty"                   % "6.1.14"  % "test->default")
 	def jetty7Dependencies =
 		Set("javax.servlet" % "servlet-api" % "2.5" % "provided",
-		"org.eclipse.jetty" % "jetty-server" % "7.0.1.v20091125" % "test",
 		"org.eclipse.jetty" % "jetty-webapp" % "7.0.1.v20091125" % "test")
 
 	def indexURL = new java.net.URL("http://localhost:8080")
