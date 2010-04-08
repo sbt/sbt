@@ -39,7 +39,7 @@ trait Project extends TaskManager with Dag[Project] with BasicEnvironment
 	final type ManagerType = Project
 	final type ManagedTask = Project#Task
 	/** The tasks declared on this project. */
-	def tasks: Map[String, Task]
+	def tasks: Map[String, ManagedTask]
 	/** The task methods declared on this project */
 	def methods: Map[String, MethodTask]
 	/** The names of all available tasks that may be called through `act`.  These include

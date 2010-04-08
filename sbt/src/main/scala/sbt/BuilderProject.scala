@@ -4,16 +4,18 @@
 package sbt
 
 import BasicProjectPaths._
+import scala.collection.{immutable, Map}
+import immutable.Map.{empty => emptyMap}
 
 sealed abstract class InternalProject extends Project
 {
 	override def defaultLoggingLevel = Level.Warn
 	override final def historyPath = None
-	override def tasks: Map[String, Task] = Map.empty
+	override def tasks: Map[String, ManagedTask] = emptyMap
 	override final protected def disableCrossPaths = false
 	override final def shouldCheckOutputDirectories = false
 }
-private sealed abstract class BasicBuilderProject extends InternalProject
+sealed abstract class BasicBuilderProject extends InternalProject
 {
 	def sourceFilter = "*.scala" | "*.java"
 	def jarFilter: NameFilter = "*.jar"
@@ -110,11 +112,12 @@ private sealed abstract class BasicBuilderProject extends InternalProject
 			case multipleDefinitions =>Left(multipleDefinitions.mkString("Multiple " + tpe + "s detected: \n\t","\n\t","\n"))
 		}
 	}
-	override final def methods = Map.empty
+	override final def methods = emptyMap
 }
 /** The project definition used to build project definitions. */
-private final class BuilderProject(val info: ProjectInfo, val pluginPath: Path, rawLogger: Logger) extends BasicBuilderProject
+final class BuilderProject(val info: ProjectInfo, val pluginPath: Path, rawLogger: Logger) extends BasicBuilderProject with ReflectiveTasks
 {
+	override def name = "Project Definition Builder"
 	lazy val pluginProject =
 	{
 		if(pluginPath.exists)
@@ -126,16 +129,19 @@ private final class BuilderProject(val info: ProjectInfo, val pluginPath: Path, 
 		pluginProject.map(_.pluginClasspath).getOrElse(Path.emptyPathFinder)
 	def tpe = "project definition"
 
-	override def compileTask = super.compileTask dependsOn(pluginProject.map(_.syncPlugins).toList : _*)
+	override def compileTask = super.compileTask dependsOn(pluginProject.map(_.sync).toList : _*)
+	override def tasks = immutable.Map() ++ super[ReflectiveTasks].tasks ++ pluginProject.toList.flatMap { _.tasks.map { case (k,v) => (k + "-plugins", v) } }
 
-	final class PluginBuilderProject(val info: ProjectInfo) extends BasicBuilderProject
+	final class PluginBuilderProject(val info: ProjectInfo) extends BasicBuilderProject with ReflectiveTasks
 	{
+		override def name = "Plugin Builder"
 		lazy val pluginUptodate = propertyOptional[Boolean](false)
 		def tpe = "plugin definition"
 		def managedSourcePath = path(BasicDependencyPaths.DefaultManagedSourceDirectoryName)
 		def managedDependencyPath = crossPath(BasicDependencyPaths.DefaultManagedDirectoryName)
 		override protected def definitionChanged() { setUptodate(false) }
-		private def setUptodate(flag: Boolean)
+		override def tasks: Map[String, ManagedTask] = super[ReflectiveTasks].tasks
+		def setUptodate(flag: Boolean)
 		{
 			pluginUptodate() = flag
 			saveEnvironment()
@@ -143,12 +149,14 @@ private final class BuilderProject(val info: ProjectInfo, val pluginPath: Path, 
 
 		private def pluginTask(f: => Option[String]) = task { if(!pluginUptodate.value) f else None }
 
-		lazy val syncPlugins = pluginTask(sync()) dependsOn(extractSources)
-		lazy val extractSources = pluginTask(extract()) dependsOn(update)
-		lazy val update = pluginTask(loadAndUpdate()) dependsOn(compile)
+		lazy val sync = pluginTask(doSync()) dependsOn(extract)
+		lazy val extract = pluginTask(extractSources()) dependsOn(autoUpdate)
+		lazy val autoUpdate = pluginTask(loadAndUpdate(false)) dependsOn(compile)
+		// manual update.  force uptodate = false
+		lazy val update = task { setUptodate(false); loadAndUpdate(true) } dependsOn(compile)
 
-		private def sync() = pluginCompileConditional.run orElse { setUptodate(true); None }
-		private def extract() =
+		def doSync() = pluginCompileConditional.run orElse { setUptodate(true); None }
+		def extractSources() =
 		{
 			FileUtilities.clean(managedSourcePath, log) orElse
 			Control.lazyFold(plugins.get.toList) { jar =>
@@ -159,24 +167,32 @@ private final class BuilderProject(val info: ProjectInfo, val pluginPath: Path, 
 				}
 			}
 		}
-		private def loadAndUpdate() =
+		def loadAndUpdate(forceUpdate: Boolean) =
 		{
 			Control.thread(projectDefinition) {
 				case Some(definition) =>
-					logInfo("\nUpdating plugins...")
 					val pluginInfo = ProjectInfo(info.projectPath.asFile, Nil, None)(rawLogger, info.app, info.buildScalaVersion)
 					val pluginBuilder = Project.constructProject(pluginInfo, Project.getProjectClass[PluginDefinition](definition, projectClasspath, getClass.getClassLoader))
-					pluginBuilder.projectName() = "Plugin builder"
-					pluginBuilder.projectVersion() = OpaqueVersion("1.0")
-					val result = pluginBuilder.update.run
-					if(result.isEmpty)
+					if(forceUpdate || pluginBuilder.autoUpdate)
 					{
-						atInfo {
-							log.success("Plugins updated successfully.")
-							log.info("")
+						logInfo("\nUpdating plugins...")
+						pluginBuilder.projectName() = "Plugin Definition"
+						pluginBuilder.projectVersion() = OpaqueVersion("1.0")
+						val result = pluginBuilder.update.run
+						if(result.isEmpty)
+						{
+							atInfo {
+								log.success("Plugins updated successfully.")
+								log.info("")
+							}
 						}
+						result
 					}
-					result
+					else
+					{
+						log.warn("Plugin definition recompiled, but autoUpdate is disabled.\n\tUsing already retrieved plugins...")
+						None
+					}
 				case None => None
 			}
 		}
@@ -205,9 +221,10 @@ class PluginDefinition(val info: ProjectInfo) extends InternalProject with Basic
 {
 	override def defaultLoggingLevel = Level.Info
 	override final def outputPattern = "[artifact](-[revision]).[ext]"
-	override final val tasks = Map("update" -> update)
+	override final val tasks = immutable.Map("update" -> update)
 	override def projectClasspath(config: Configuration) = Path.emptyPathFinder
 	override def dependencies = info.dependencies
+	def autoUpdate = true
 }
 class PluginProject(info: ProjectInfo) extends DefaultProject(info)
 {

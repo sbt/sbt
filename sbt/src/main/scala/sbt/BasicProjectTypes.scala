@@ -533,7 +533,7 @@ import scala.collection.{Map, mutable}
 * that conforms to Task.*/
 trait ReflectiveTasks extends Project
 {
-	def tasks: Map[String, Task] = reflectiveTaskMappings
+	def tasks: Map[String, ManagedTask] = reflectiveTaskMappings
 	def reflectiveTaskMappings : Map[String, Task] = Reflective.reflectiveMappings[Task](this)
 }
 /** A Project that determines its method tasks by reflectively finding all vals with a type

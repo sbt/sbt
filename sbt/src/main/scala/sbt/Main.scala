@@ -137,7 +137,8 @@ class xMain extends xsbti.AppMain
 		{
 			project.log.debug("commands " + failAction.map("(on failure: " + _ + "): ").mkString + arguments.mkString(", "))
 			def rememberCurrent(newArgs: List[String]) = rememberProject(rememberFail(newArgs))
-			def rememberProject(newArgs: List[String]) = if(baseProject.name != project.name) (ProjectAction + " " + project.name) :: newArgs else newArgs
+			def rememberProject(newArgs: List[String]) =
+				if(baseProject.name != project.name && !internal(project)) (ProjectAction + " " + project.name) :: newArgs else newArgs
 			def rememberFail(newArgs: List[String]) = failAction.map(f => (FailureHandlerPrefix + f)).toList :::  newArgs
 
 			def tryOrFail(action: => Trampoline)  =  try { action } catch { case e: Exception => logCommandError(project.log, e); failed(BuildErrorExitCode) }
@@ -156,10 +157,16 @@ class xMain extends xsbti.AppMain
 			arguments match
 			{
 				case "" :: tail => continue(project, tail, failAction)
-				case x :: tail if x.startsWith(";") => continue(project, x.split(";").toList ::: tail, failAction)
+				case x :: tail if x.startsWith(";") => continue(project, x.split("""\s*;\s*""").toList ::: tail, failAction)
 				case (ExitCommand | QuitCommand) :: _ => result( Exit(NormalExitCode) )
 				case RebootCommand :: tail => reload( tail )
 				case InteractiveCommand :: _ => continue(project, prompt(baseProject, project) :: arguments, interactiveContinue)
+				case BuilderCommand :: tail =>
+					Project.getProjectBuilder(project.info, project.log) match
+					{
+						case Some(b) => project.log.info("Set current project to builder of " + project.name); continue(b, tail, failAction)
+						case None => project.log.error("No project/build directory for " + project.name + ".\n  Not switching to builder project."); failed(BuildErrorExitCode)
+					}
 				case SpecificBuild(version, action) :: tail =>
 					if(Some(version) != baseProject.info.buildScalaVersion)
 					{
@@ -246,6 +253,7 @@ class xMain extends xsbti.AppMain
 		}
 		run(process(baseProject, arguments, ExitOnFailure))
 	}
+	private def internal(p: Project) = p.isInstanceOf[InternalProject]
 	private def isInteractive(failureActions: Option[List[String]]) = failureActions == Some(InteractiveCommand :: Nil)
 	private def getSource(action: String, baseDirectory: File) =
 	{
@@ -341,7 +349,7 @@ class xMain extends xsbti.AppMain
 		lazy val scalaVersions = baseProject.crossScalaVersions ++ Seq(baseProject.defScalaVersion.value)
 		lazy val methods = project.methods
 		lazy val methodCompletions = new ExtraCompletions { def names = methods.keys.toList; def completions(name: String) = methods(name).completions }
-		lazy val completors = new Completors(ProjectAction, projectNames, interactiveCommands, List(GetAction, SetAction), SpecificBuildPrefix, scalaVersions, prefixes, project.taskNames, project.propertyNames, methodCompletions)
+		lazy val completors = new Completors(ProjectAction, projectNames, basicCommands, List(GetAction, SetAction), SpecificBuildPrefix, scalaVersions, prefixes, project.taskNames, project.propertyNames, methodCompletions)
 		val reader = new LazyJLineReader(baseProject.historyPath, MainCompletor(completors), baseProject.log)
 		reader.readLine("> ").getOrElse(ExitCommand)
 	}
@@ -358,6 +366,7 @@ class xMain extends xsbti.AppMain
 	val ShowProjectsAction = "projects"
 	val ExitCommand = "exit"
 	val QuitCommand = "quit"
+	val BuilderCommand = "builder"
 	val InteractiveCommand = "shell"
 	/** The list of lowercase command names that may be used to terminate the program.*/
 	val TerminateActions: Iterable[String] = ExitCommand :: QuitCommand :: Nil
@@ -391,14 +400,11 @@ class xMain extends xsbti.AppMain
 	/** The number of seconds between polling by the continuous compile command.*/
 	val ContinuousCompilePollDelaySeconds = 1
 
-	/** The list of all available commands at the interactive prompt in addition to the tasks defined
-	* by a project.*/
-	protected def interactiveCommands: Iterable[String] = basicCommands.toList ++ logLevels.toList ++ TerminateActions
 	/** The list of logging levels.*/
 	private def logLevels: Iterable[String] = TreeSet.empty[String] ++ Level.levels.map(_.toString)
 	/** The list of all interactive commands other than logging level.*/
 	private def basicCommands: Iterable[String] = TreeSet(ShowProjectsAction, ShowActions, ShowCurrent, HelpAction,
-		RebootCommand, TraceCommand, ContinuousCompileCommand, ProjectConsoleAction)
+		RebootCommand, TraceCommand, ContinuousCompileCommand, ProjectConsoleAction, BuilderCommand)  ++ logLevels.toList ++ TerminateActions
 
 	private def processAction(baseProject: Project, currentProject: Project, action: String, isInteractive: Boolean): Boolean =
 		action match
