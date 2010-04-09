@@ -454,6 +454,7 @@ class xMain extends xsbti.AppMain
 		printCmd(SetAction + " <property> <value>", "Sets the value of the property given as its argument.")
 		printCmd(GetAction + " <property>", "Gets the value of the property given as its argument.")
 		printCmd(ProjectConsoleAction, "Enters the Scala interpreter with the current project definition bound to the variable 'current' and all members imported.")
+		printCmd(BuilderCommand, "Set the current project to be the project definition builder.")
 		if(!isInteractive)
 			printCmd(InteractiveCommand, "Enters the sbt interactive shell")
 	}
