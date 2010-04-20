@@ -36,7 +36,8 @@ final case class ProjectInfo(projectDirectory: File, dependencies: Iterable[Proj
 	val builderPath = projectPath / ProjectInfo.MetadataDirectoryName
 	/** The boot directory contains the jars needed for building the project, including Scala, sbt, processors and dependencies of these.*/
 	def bootPath = builderPath / Project.BootDirectoryName
-	/** The path to the build definition project. */
+	/** The path to the build definition project.
+	* Currently, this is 'project/build'. */
 	def builderProjectPath = builderPath / Project.BuilderProjectDirectoryName
 	def builderProjectOutputPath = builderProjectPath / Project.DefaultOutputDirectoryName
 	/** The path to the plugin definition project. This declares the plugins to use for the build definition.*/
