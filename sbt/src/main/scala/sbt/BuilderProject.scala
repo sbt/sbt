@@ -153,8 +153,15 @@ final class BuilderProject(val info: ProjectInfo, val pluginPath: Path, rawLogge
 		lazy val extract = pluginTask(extractSources()) dependsOn(autoUpdate)
 		lazy val autoUpdate = pluginTask(loadAndUpdate(false)) dependsOn(compile)
 		// manual update.  force uptodate = false
-		lazy val update = task { setUptodate(false); loadAndUpdate(true) } dependsOn(compile)
+		lazy val update = task { manualUpdate() } dependsOn(compile) describedAs("Manual plugin update.  Used when autoUpdate is disabled.")
 
+		def manualUpdate() =
+		{
+			setUptodate(false)
+			val result = loadAndUpdate(true)
+			logInfo("'reload' required to rebuild plugins.")
+			result
+		}
 		def doSync() = pluginCompileConditional.run orElse { setUptodate(true); None }
 		def extractSources() =
 		{

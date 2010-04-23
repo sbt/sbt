@@ -1,0 +1,26 @@
+# check that both properties are unset
+
+> check-first-unset
+->check-first-set
+> check-second-unset
+->check-second-set
+
+# create the extra properties file with only the first property set
+
+$ copy-file changes/first.properties project/extra.properties
+> reload
+
+-> check-first-unset
+>check-first-set
+> check-second-unset
+->check-second-set
+
+# create the extra properties file with both properties set
+
+$ copy-file changes/second.properties project/extra.properties
+> reload
+
+-> check-first-unset
+>check-first-set
+-> check-second-unset
+>check-second-set
