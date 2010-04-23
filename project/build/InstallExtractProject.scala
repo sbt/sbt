@@ -5,6 +5,7 @@
 import sbt._
 import java.io.File
 
+// TODO: use ProguardProject
 protected class InstallExtractProject(info: ProjectInfo, pluginProject: => InstallPluginProject) extends DefaultProject(info) with NoPublish
 {
 	override def unmanagedClasspath = super.unmanagedClasspath +++ info.sbtClasspath
@@ -17,7 +18,7 @@ protected class InstallExtractProject(info: ProjectInfo, pluginProject: => Insta
 	def rootProjectDirectory = rootProject.info.projectPath
 	def outputJar = (plugin.outputPath ##) / defaultJarName
 	
-	/******** Proguard *******/
+	/******** Proguard  *******/
 	lazy val proguard = proguardTask dependsOn(`package`, writeProguardConfiguration, cleanProguard)
 	lazy val writeProguardConfiguration = writeProguardConfigurationTask dependsOn `package`
 	lazy val cleanProguard = cleanTask(outputJar)

@@ -34,11 +34,13 @@ class XSbt(info: ProjectInfo) extends ParentProject(info) with NoCrossPaths
 
 	val altCompilerSub = baseProject("main", "Alternate Compiler Test", stdTaskSub, logSub)
 
-	val sbtSub = project("sbt", "Simple Build Tool", new SbtProject(_) {}, compilerSub, launchInterfaceSub)
+	val sbtSub = project(sbtPath, "Simple Build Tool", new SbtProject(_) {}, compilerSub, launchInterfaceSub)
+	val installerSub = project(sbtPath / "install", "Installer", new InstallerProject(_) {}, sbtSub)
 
 	def baseProject(path: Path, name: String, deps: Project*) = project(path, name, new Base(_), deps : _*)
 	
 		/* Multi-subproject paths */
+	def sbtPath = path("sbt")
 	def cachePath = path("cache")
 	def tasksPath = path("tasks")
 	def launchPath = path("launch")
@@ -74,7 +76,7 @@ class XSbt(info: ProjectInfo) extends ParentProject(info) with NoCrossPaths
 
 		// used to test the retrieving and loading of an application: sample app is packaged and published to the local repository
 		lazy val testSamples = project("test-sample", "Launch Test", new TestSamples(_), interfaceSub, launchInterfaceSub)
-		class TestSamples(info: ProjectInfo) extends Base(info) with NoCrossPaths with NoPublish {
+		class TestSamples(info: ProjectInfo) extends Base(info) with NoCrossPaths with NoRemotePublish {
 			override def deliverProjectDependencies = Nil
 		}
 	}

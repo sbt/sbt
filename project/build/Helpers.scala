@@ -1,13 +1,8 @@
 import sbt._
 
-trait NoPublish extends ManagedBase
+trait NoUpdate extends ManagedBase with EmptyTask
 {
-	override final def publishAction = task { None }
-	override final def deliverAction = publishAction
-}
-trait NoUpdate extends ManagedBase
-{
-	override final def updateAction = task { None }
+	override final def updateAction = emptyTask
 }
 trait NoCrossPaths extends Project
 {
@@ -46,3 +41,17 @@ trait PrecompiledInterface extends BasicScalaProject with ManagedBase
 	def mkJarPath(id: String) = outputPath / (id + "-" + version.toString + ".jar")
 	override def ivyXML: scala.xml.NodeSeq = <publications/> // Remove when we build with 0.7.3, which does not unnecessarily add a default artifact
 }
+trait EmptyTask extends Project {
+	def emptyTask = task {None}
+}
+trait NoRemotePublish extends BasicManagedProject with EmptyTask
+{
+	override def deliverAction = emptyTask
+	override def publishAction = emptyTask
+}
+trait NoLocalPublish extends BasicManagedProject with EmptyTask
+{
+	override def publishLocalAction = emptyTask
+	override def deliverLocalAction = emptyTask
+}
+trait NoPublish extends NoLocalPublish with NoRemotePublish
