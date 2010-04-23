@@ -47,7 +47,7 @@ private object IvyScala
 	private def configurationSet(configurations: Iterable[Configuration]) = HashSet(configurations.map(_.toString).toSeq : _*)
 	/** Adds exclusions for the scala library and compiler jars so that they are not downloaded.  This is
 	* done because normally these jars are already on the classpath and cannot/should not be overridden.  The version
-	* of Scala to use is done by setting scala.version in the project definition. */
+	* of Scala to use is done by setting build.scala.versions in the project definition. */
 	private def excludeScalaJars(module: DefaultModuleDescriptor, configurations: Iterable[Configuration])
 	{
 		val configurationNames =
