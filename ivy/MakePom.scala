@@ -20,8 +20,8 @@ import plugins.resolver.{ChainResolver, DependencyResolver, IBiblioResolver}
 class MakePom
 {
 	def encoding = "UTF-8"
-	def write(ivy: Ivy, module: ModuleDescriptor, configurations: Option[Iterable[Configuration]], extra: NodeSeq, output: File): Unit =
-		write(toPom(ivy, module, configurations, extra), output)
+	def write(ivy: Ivy, module: ModuleDescriptor, configurations: Option[Iterable[Configuration]], extra: NodeSeq, process: Node => Node, filterRepositories: MavenRepository => Boolean, output: File): Unit =
+		write(process(toPom(ivy, module, configurations, extra, filterRepositories)), output)
 	def write(node: Node, output: File): Unit = write(toString(node), output)
 	def write(xmlString: String, output: File)
 	{
@@ -37,13 +37,13 @@ class MakePom
 	}
 
 	def toString(node: Node): String = new PrettyPrinter(1000, 4).format(node)
-	def toPom(ivy: Ivy, module: ModuleDescriptor, configurations: Option[Iterable[Configuration]], extra: NodeSeq): Node =
+	def toPom(ivy: Ivy, module: ModuleDescriptor, configurations: Option[Iterable[Configuration]], extra: NodeSeq, filterRepositories: MavenRepository => Boolean): Node =
 		(<project xmlns="http://maven.apache.org/POM/4.0.0"  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
 			<modelVersion>4.0.0</modelVersion>
 			{ makeModuleID(module) }
 			{ extra }
 			{ makeDependencies(module, configurations) }
-			{ makeRepositories(ivy.getSettings) }
+			{ makeRepositories(ivy.getSettings, filterRepositories) }
 		</project>)
 
 	def makeModuleID(module: ModuleDescriptor): NodeSeq =
@@ -125,16 +125,17 @@ class MakePom
 	def isOptional(confs: Array[String]) = confs.isEmpty || (confs.length == 1 && confs(0) == Configurations.Optional.name)
 
 
-	def makeRepositories(settings: IvySettings) =
+	def makeRepositories(settings: IvySettings, filterRepositories: MavenRepository => Boolean) =
 	{
 		class MavenRepo(name: String, snapshots: Boolean, releases: Boolean)
 		val repositories = resolvers(settings.getDefaultResolver)
 		val mavenRepositories =
 			repositories.flatMap {
-				case m: IBiblioResolver if m.isM2compatible && m.getRoot != IBiblioResolver.DEFAULT_M2_ROOT => m :: Nil
+				case m: IBiblioResolver if m.isM2compatible && m.getRoot != IBiblioResolver.DEFAULT_M2_ROOT =>
+					MavenRepository(m.getName, m.getRoot) :: Nil
 				case _ => Nil
 			}
-		val repositoryElements = mavenRepositories.map { repo => mavenRepository(repo.getName, repo.getRoot) }
+		val repositoryElements =  mavenRepositories.filter(filterRepositories).map(mavenRepository)
 		if(repositoryElements.isEmpty) repositoryElements else <repositories>{repositoryElements}</repositories>
 	}
 	def flatten(rs: Seq[DependencyResolver]): Seq[DependencyResolver] = if(rs eq null) Nil else rs.flatMap(resolvers)
@@ -148,8 +149,8 @@ class MakePom
 	def toID(name: String) = checkID(name.filter(isValidIDCharacter).mkString, name)
 	def isValidIDCharacter(c: Char) = c.isLetterOrDigit
 	private def checkID(id: String, name: String) = if(id.isEmpty) error("Could not convert '" + name + "' to an ID") else id
-	def mavenRepository(name: String, root: String): Node =
-		mavenRepository(toID(name), name, root)
+	def mavenRepository(repo: MavenRepository): Node =
+		mavenRepository(toID(repo.name), repo.name, repo.root)
 	def mavenRepository(id: String, name: String, root: String): Node =
 		<repository>
 			<id>{id}</id>

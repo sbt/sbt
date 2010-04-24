@@ -4,7 +4,7 @@
 package sbt
 
 import java.io.File
-import scala.xml.NodeSeq
+import scala.xml.{Node,NodeSeq}
 
 import org.apache.ivy.{core, plugins, util, Ivy}
 import core.cache.DefaultRepositoryCacheManager
@@ -20,6 +20,13 @@ import core.retrieve.RetrieveOptions
 import plugins.parser.m2.{PomModuleDescriptorParser,PomModuleDescriptorWriter}
 
 final class UpdateConfiguration(val retrieveDirectory: File, val outputPattern: String, val synchronize: Boolean, val quiet: Boolean) extends NotNull
+final class MakePomConfiguration(val extraDependencies: Iterable[ModuleID], val configurations: Option[Iterable[Configuration]],
+	val extra: NodeSeq, val process: Node => Node, val filterRepositories: MavenRepository => Boolean) extends NotNull
+object MakePomConfiguration
+{
+	def apply(extraDependencies: Iterable[ModuleID], configurations: Option[Iterable[Configuration]], extra: NodeSeq) =
+		new MakePomConfiguration(extraDependencies, configurations, extra, identity, _ => true)
+}
 
 object IvyActions
 {
@@ -45,11 +52,14 @@ object IvyActions
 	}
 
 	/** Creates a Maven pom from the given Ivy configuration*/
-	def makePom(module: IvySbt#Module, extraDependencies: Iterable[ModuleID], configurations: Option[Iterable[Configuration]], extra: NodeSeq, output: File)
+	@deprecated def makePom(module: IvySbt#Module, extraDependencies: Iterable[ModuleID], configurations: Option[Iterable[Configuration]], extra: NodeSeq, output: File): Unit =
+		 makePom(module, MakePomConfiguration(extraDependencies, configurations, extra), output)
+	def makePom(module: IvySbt#Module, configuration: MakePomConfiguration,  output: File)
 	{
+		import configuration.{configurations, extra, extraDependencies, filterRepositories, process}
 		module.withModule { (ivy, md, default) =>
 			addLateDependencies(ivy, md, default, extraDependencies)
-			(new MakePom).write(ivy, md, configurations, extra, output)
+			(new MakePom).write(ivy, md, configurations, extra, process, filterRepositories, output)
 			module.logger.info("Wrote " + output.getAbsolutePath)
 		}
 	}
