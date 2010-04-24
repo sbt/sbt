@@ -1,0 +1,11 @@
+# write the default pom.  The only repositories should be Scala Tools Releases and Snapshots
+> check-pom http://scala-tools.org/repo-releases/ http://scala-tools.org/repo-snapshots/
+
+# include file:// repositories.  The generated repositories section should include the local Maven repository as well
+$ touch repo.all
+> check-pom http://scala-tools.org/repo-releases/ http://scala-tools.org/repo-snapshots/ file://*.m2/repository/
+
+# include file:// repositories.  The generated repositories section should include the local Maven repository as well
+$ delete repo.all
+$ touch repo.none
+> check-pom
