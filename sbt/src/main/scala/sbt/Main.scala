@@ -157,6 +157,7 @@ class xMain extends xsbti.AppMain
 			arguments match
 			{
 				case "" :: tail => continue(project, tail, failAction)
+				case ResetCommand :: tail => JLine.resetTerminal(); continue(project, tail, failAction)
 				case x :: tail if x.startsWith(";") => continue(project, x.split("""\s*;\s*""").toList ::: tail, failAction)
 				case (ExitCommand | QuitCommand) :: _ => result( Exit(NormalExitCode) )
 				case RebootCommand :: tail => reload( tail )
@@ -366,7 +367,11 @@ class xMain extends xsbti.AppMain
 	val ShowProjectsAction = "projects"
 	val ExitCommand = "exit"
 	val QuitCommand = "quit"
+	/** The name of the command that resets JLine.  This is necessary when resuming from suspension.*/
+	val ResetCommand = "reset"
+	/** The name of the command that switches to the builder project.*/
 	val BuilderCommand = "builder"
+	/** The name of the command that loads the interactive shell.*/
 	val InteractiveCommand = "shell"
 	/** The list of lowercase command names that may be used to terminate the program.*/
 	val TerminateActions: Iterable[String] = ExitCommand :: QuitCommand :: Nil
@@ -721,10 +726,12 @@ class xMain extends xsbti.AppMain
 		val actionValid = checkAction(project, action)
 		if(actionValid)
 		{
+			var count = 0
 			SourceModificationWatch.watchUntil(project, ContinuousCompilePollDelaySeconds)(shouldTerminate)
 			{
+				count += 1
 				handleAction(project, action)
-				Console.println("Waiting for source changes... (press enter to interrupt)")
+				Console.println(count + ". Waiting for source changes... (press enter to interrupt)")
 			}
 			while (System.in.available() > 0) System.in.read()
 		}

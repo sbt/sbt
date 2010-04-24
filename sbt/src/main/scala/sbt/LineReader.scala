@@ -40,24 +40,32 @@ abstract class JLine extends LineReader
 private object JLine
 {
 	def terminal = jline.Terminal.getTerminal
-	def createReader() =
-		terminal.synchronized
+	def resetTerminal() = withTerminal { _ => jline.Terminal.resetTerminal }
+	private def withTerminal[T](f: jline.Terminal => T): T =
+		synchronized
 		{
-			val cr = new ConsoleReader
-			terminal.enableEcho()
-			cr.setBellEnabled(false)
-			cr
+			val t = terminal
+			t.synchronized { f(t) }
+		}
+	def createReader() =
+		withTerminal { t =>
+			t.synchronized
+			{
+				val cr = new ConsoleReader
+				t.enableEcho()
+				cr.setBellEnabled(false)
+				cr
+			}
 		}
 	def withJLine[T](action: => T): T =
-	{
-		val t = terminal
-		t.synchronized
-		{
-			t.disableEcho()
-			try { action }
-			finally { t.enableEcho() }
+		withTerminal { t =>
+			t.synchronized
+			{
+				t.disableEcho()
+				try { action }
+				finally { t.enableEcho() }
+			}
 		}
-	}
 }
 object SimpleReader extends JLine
 {
