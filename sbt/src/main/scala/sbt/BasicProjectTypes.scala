@@ -3,7 +3,7 @@
  */
 package sbt
 
-import scala.xml.NodeSeq
+import scala.xml.{Node, NodeSeq}
 import StringUtilities.{appendable,nonEmpty}
 import BasicManagedProject._
 
@@ -92,8 +92,11 @@ trait IvyTasks extends Project
 			import deliverConfig._
 			IvyActions.deliver(module, status, deliveredPattern, extraDependencies, configurations, quiet)
 		}
-	def makePomTask(module: => IvySbt#Module, output: => Path, extraDependencies: => Iterable[ModuleID], pomExtra: => NodeSeq, configurations: => Option[Iterable[Configuration]]) =
-		ivyTask { IvyActions.makePom(module, extraDependencies, configurations, pomExtra, output asFile) }
+	@deprecated def makePomTask(module: => IvySbt#Module, output: => Path, extraDependencies: => Iterable[ModuleID], pomExtra: => NodeSeq, configurations: => Option[Iterable[Configuration]]): Task =
+		makePomTask(module, MakePomConfiguration(extraDependencies, configurations, pomExtra), output)
+	def makePomTask(module: => IvySbt#Module, configuration: => MakePomConfiguration, output: => Path): Task =
+		ivyTask { IvyActions.makePom(module, configuration, output asFile) }
+		
 
 	def installTask(module: IvySbt#Module, from: Resolver, to: Resolver) =
 		ivyTask { IvyActions.install(module, from.name, to.name) }
@@ -372,8 +375,12 @@ trait BasicManagedProject extends ManagedProject with ReflectiveManagedProject w
 			interDependencies ++= deliverScalaDependencies
 		interDependencies.readOnly
 	}
+	def pomIncludeRepository(repo: MavenRepository): Boolean = !repo.root.startsWith("file:")
+	def pomPostProcess(pom: Node): Node = pom
+
+	def makePomConfiguration = new MakePomConfiguration(deliverProjectDependencies, None, pomExtra, pomPostProcess, pomIncludeRepository)
 	protected def deliverScalaDependencies: Iterable[ModuleID] = Nil
-	protected def makePomAction = makePomTask(deliverIvyModule, pomPath, deliverProjectDependencies, pomExtra, None)
+	protected def makePomAction = makePomTask(deliverIvyModule, makePomConfiguration, pomPath)
 	protected def deliverLocalAction = deliverTask(deliverIvyModule, publishLocalConfiguration, true /*quiet*/)
 	protected def publishLocalAction =
 	{
