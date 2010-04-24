@@ -135,6 +135,8 @@ final class BuilderProject(val info: ProjectInfo, val pluginPath: Path, rawLogge
 	final class PluginBuilderProject(val info: ProjectInfo) extends BasicBuilderProject with ReflectiveTasks
 	{
 		override def name = "Plugin Builder"
+	// don't include Java sources because BND includes Java sources in its jar (#85)
+		def pluginSourceFilter: NameFilter = "*.scala"
 		lazy val pluginUptodate = propertyOptional[Boolean](false)
 		def tpe = "plugin definition"
 		def managedSourcePath = path(BasicDependencyPaths.DefaultManagedSourceDirectoryName)
@@ -167,7 +169,7 @@ final class BuilderProject(val info: ProjectInfo, val pluginPath: Path, rawLogge
 		{
 			FileUtilities.clean(managedSourcePath, log) orElse
 			Control.lazyFold(plugins.get.toList) { jar =>
-				Control.thread(FileUtilities.unzip(jar, extractTo(jar), sourceFilter, log)) { extracted =>
+				Control.thread(FileUtilities.unzip(jar, extractTo(jar), pluginSourceFilter, log)) { extracted =>
 					if(!extracted.isEmpty)
 						logInfo("\tExtracted source plugin " + jar + " ...")
 					None

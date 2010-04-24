@@ -1,4 +1,5 @@
 $ copy-file changes/TestPlugin.scala src/main/scala/TestPlugin.scala
+$ copy-file changes/JavaTest.java src/main/java/JavaTest.java
 > publish
 
 > set project.name use-plugin-test
