@@ -67,6 +67,8 @@ abstract class BasicScalaProject extends ScalaProject with BasicDependencyProjec
 
 	/** The options provided to the 'compile' action to pass to the Scala compiler.*/
 	def compileOptions: Seq[CompileOption] = Deprecation :: Nil
+	/** The options provided to the 'console' action to pass to the Scala interpreter.*/
+	def consoleOptions: Seq[CompileOption] = compileOptions
 	/** The options provided to the 'compile' action to pass to the Java compiler. */
 	def javaCompileOptions: Seq[JavaCompileOption] = Nil
 	/** The options provided to the 'test-compile' action, defaulting to those for the 'compile' action.*/
@@ -264,7 +266,7 @@ abstract class BasicScalaProject extends ScalaProject with BasicDependencyProjec
 		}
 	}
 
-	def basicConsoleTask = consoleTask(consoleClasspath, consoleInit)
+	def basicConsoleTask = consoleTask(consoleClasspath, consoleOptions, consoleInit)
 
 	protected def runTask(mainClass: String): MethodTask = task { args => runTask(Some(mainClass), runClasspath, args) dependsOn(compile, copyResources) }
 

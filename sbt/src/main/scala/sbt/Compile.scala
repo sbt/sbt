@@ -134,10 +134,10 @@ final class Console(compiler: AnalyzingCompiler) extends NotNull
 {
 	/** Starts an interactive scala interpreter session with the given classpath.*/
 	def apply(classpath: Iterable[Path], log: Logger): Option[String] =
-		apply(classpath, "", log)
-	def apply(classpath: Iterable[Path], initialCommands: String, log: Logger): Option[String] =
+		apply(classpath, Nil, "", log)
+	def apply(classpath: Iterable[Path], options: Seq[String], initialCommands: String, log: Logger): Option[String] =
 	{
-		def console0 = compiler.console(Path.getFiles(classpath), initialCommands, log)
+		def console0 = compiler.console(Path.getFiles(classpath), options, initialCommands, log)
 		JLine.withJLine( Run.executeTrapExit(console0, log) )
 	}
 }

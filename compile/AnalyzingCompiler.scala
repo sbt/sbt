@@ -24,12 +24,12 @@ class AnalyzingCompiler(val scalaInstance: ScalaInstance, val manager: Component
 		val arguments = (new CompilerArguments(scalaInstance, autoBootClasspath, compilerOnClasspath))(sources, classpath, outputDirectory, options)
 		call("xsbt.ScaladocInterface", log) (classOf[Array[String]], classOf[Int], classOf[xLogger]) (arguments.toArray[String] : Array[String], maximumErrors: java.lang.Integer, log)
 	}
-	def console(classpath: Set[File], initialCommands: String, log: CompileLogger): Unit =
+	def console(classpath: Set[File], options: Seq[String], initialCommands: String, log: CompileLogger): Unit =
 	{
 		val arguments = new CompilerArguments(scalaInstance, autoBootClasspath, compilerOnClasspath)
 		val classpathString = CompilerArguments.absString(arguments.finishClasspath(classpath))
 		val bootClasspath = if(autoBootClasspath) arguments.createBootClasspath else ""
-		call("xsbt.ConsoleInterface", log) (classOf[String], classOf[String], classOf[String], classOf[xLogger]) (bootClasspath, classpathString, initialCommands, log)
+		call("xsbt.ConsoleInterface", log) (classOf[Array[String]], classOf[String], classOf[String], classOf[String], classOf[xLogger]) (options.toArray[String]: Array[String], bootClasspath, classpathString, initialCommands, log)
 	}
 	def force(log: CompileLogger): Unit = getInterfaceJar(log)
 	private def call(interfaceClassName: String, log: CompileLogger)(argTypes: Class[_]*)(args: AnyRef*)
