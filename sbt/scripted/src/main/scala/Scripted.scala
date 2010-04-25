@@ -29,6 +29,7 @@ final case class ScriptedTest(group: String, name: String) extends NotNull
 trait Scripted extends Project with MultiTaskProject
 {
 	def scriptedCompatibility = CompatibilityLevel.Minimal
+	def scriptedBuildVersions = CompatibilityLevel.defaultVersions(scriptedCompatibility)
 	def scriptedDefScala = buildScalaVersion
 	def scriptedSbt = projectVersion.value.toString
 	def scriptedBufferLog = true
@@ -36,18 +37,19 @@ trait Scripted extends Project with MultiTaskProject
 	def sbtTests: Path
 	def scriptedTask(dependencies: ManagedTask*) = dynamic(scriptedTests(listTests)) dependsOn(dependencies : _*)
 	def scriptedMethodTask(dependencies: ManagedTask*) = multiTask(listTests.map(_.toString).toList) { (args, includeFunction) =>
-		scriptedTests(listTests.filter(test => includeFunction(test.toString)), dependencies : _*)
+		try { scriptedTests(listTests.filter(test => includeFunction(test.toString)), dependencies : _*) }
+		catch { case e: TestSetupException => task { Some(e.getMessage) } named("test-setup") }
 	}
 	def listTests = (new ListTests(sbtTests.asFile, include _, log)).listTests
 	def scriptedTests(tests: Seq[ScriptedTest], dependencies: ManagedTask*) =
 	{
-		val runner = new ScriptedTests(sbtTests.asFile, scriptedBufferLog, scriptedSbt, scriptedDefScala, scriptedCompatibility)
+		val runner = new ScriptedTests(sbtTests.asFile, scriptedBufferLog, scriptedSbt, scriptedDefScala, scriptedBuildVersions)
 		
 		val startTask = task { None } named("scripted-test-start") dependsOn(dependencies  : _*)
 		def scriptedTest(test: ScriptedTest) =
 			task { runner.scriptedTest(test.group, test.name, log) } named test.toString dependsOn(startTask)
 		val testTasks = tests.map(scriptedTest)
-		task { None } named("scripted-test-complete") dependsOn(testTasks : _*)
+		Empty named("scripted-test-complete") dependsOn(testTasks : _*)
 	}
 	private def unwrapOption[T](s: T): Option[T] = if(s == null) None else Some(s)
 	

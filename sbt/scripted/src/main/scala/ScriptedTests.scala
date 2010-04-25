@@ -10,8 +10,11 @@ import java.nio.charset.Charset
 import xsbt.IPC
 import xsbt.test.{CommentHandler, FileCommands, ScriptRunner, TestScriptParser}
 
-final class ScriptedTests(resourceBaseDirectory: File, bufferLog: Boolean, sbtVersion: String, defScalaVersion: String, level: CompatibilityLevel.Value) extends NotNull
+final class ScriptedTests(resourceBaseDirectory: File, bufferLog: Boolean, sbtVersion: String, defScalaVersion: String, buildScalaVersions: String) extends NotNull
 {
+	@deprecated def this(resourceBaseDirectory: File, bufferLog: Boolean, sbtVersion: String, defScalaVersion: String, level: CompatibilityLevel.Value) =
+		this(resourceBaseDirectory, bufferLog, sbtVersion, defScalaVersion, CompatibilityLevel.defaultVersions(level)) =
+
 	private val testResources = new Resources(resourceBaseDirectory)
 	
 	val ScriptFilename = "test"
@@ -24,7 +27,7 @@ final class ScriptedTests(resourceBaseDirectory: File, bufferLog: Boolean, sbtVe
 		IPC.pullServer( scriptedTest0(label, testDirectory, log) )
 	private def scriptedTest0(label: String, testDirectory: File, log: Logger)(server: IPC.Server): Option[String] =
 	{
-		FillProperties(testDirectory, sbtVersion, defScalaVersion, level)
+		FillProperties(testDirectory, sbtVersion, defScalaVersion, buildScalaVersions)
 		val buffered = new BufferedLogger(log)
 		if(bufferLog)
 			buffered.recordAll
@@ -70,30 +73,30 @@ final class ScriptedTests(resourceBaseDirectory: File, bufferLog: Boolean, sbtVe
 object CompatibilityLevel extends Enumeration
 {
 	val Full, Basic, Minimal, Minimal27, Minimal28 = Value
+
+	def defaultVersions(level: Value) =
+		level match
+		{
+			case Full =>  "2.7.2 2.7.3 2.7.5 2.7.7 2.8.0.Beta1 2.8.0.RC1 2.8.0-SNAPSHOT"
+			case Basic =>  "2.7.7 2.7.2 2.8.0.RC1"
+			case Minimal => "2.7.7 2.8.0.RC1"
+			case Minimal27 => "2.7.7"
+			case Minimal28 => "2.8.0.RC1"
+		}
 }
 object FillProperties
 {
 	def apply(projectDirectory: File, sbtVersion: String, defScalaVersion: String, level: CompatibilityLevel.Value): Unit =
+		apply(projectDirectory, sbtVersion, defScalaVersion, defaultVersions(level))
+	def apply(projectDirectory: File, sbtVersion: String, defScalaVersion: String, buildScalaVersions: String): Unit =
 	{
 		import xsbt.Paths._
-		fill(projectDirectory / "project" / "build.properties", sbtVersion, defScalaVersion, getVersions(level))
+		fill(projectDirectory / "project" / "build.properties", sbtVersion, defScalaVersion, buildScalaVersions)
 	}
 	def fill(properties: File, sbtVersion: String, defScalaVersion: String, buildScalaVersions: String)
 	{
 		val toAppend = extraProperties(sbtVersion, defScalaVersion, buildScalaVersions)
 		xsbt.OpenResource.fileWriter(Charset.forName("ISO-8859-1"), true)(properties) { _.write(toAppend) }
-	}
-	def getVersions(level: CompatibilityLevel.Value) =
-	{
-		import CompatibilityLevel._
-		level match
-		{
-			case Full =>  "2.7.2 2.7.3 2.7.5 2.7.7 2.8.0.Beta1 2.8.0-SNAPSHOT"
-			case Basic =>  "2.7.7 2.7.2 2.8.0.Beta1"
-			case Minimal => "2.7.7 2.8.0.Beta1" 
-			case Minimal27 => "2.7.7"
-			case Minimal28 => "2.8.0.Beta1"
-		}
 	}
 	def extraProperties(sbtVersion: String, defScalaVersion: String, buildScalaVersions: String) = 
 <x>
