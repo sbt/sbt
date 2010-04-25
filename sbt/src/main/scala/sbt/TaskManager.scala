@@ -98,6 +98,7 @@ trait TaskManager{
 		val interactiveDependencyIndex = dependencyList.findIndexOf(_.interactive)
 		require(interactiveDependencyIndex < 0, "Dependency (at index " + interactiveDependencyIndex + ") is interactive.  Interactive tasks cannot be dependencies.")
 	}
+	lazy val Empty = task { None}
 }
 object TaskManager
 {
