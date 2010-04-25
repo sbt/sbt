@@ -1,18 +1,21 @@
 package foo.bar
 
 import java.io.File
+import File.{pathSeparator => / }
 import java.net.{URISyntaxException, URL}
 
 class Holder { var value: Any = _ }
 
-import scala.tools.nsc.{Interpreter, Settings}
+import scala.tools.nsc.{GenericRunnerSettings, Interpreter, Settings}
 
 class Foo {
+	val g = new GenericRunnerSettings(System.err.println)
 	val settings = new Settings()
 	settings.classpath.value = location(classOf[Holder])
-	settings.bootclasspath.value = settings.bootclasspath.value + File.pathSeparator + location(classOf[ScalaObject])
-	val inter = new Interpreter(settings)
-
+	settings.bootclasspath.value = settings.bootclasspath.value + / + location(classOf[ScalaObject]) + / + location(classOf[Settings])
+	val inter = new Interpreter(settings) {
+		override protected def parentClassLoader = Foo.this.getClass.getClassLoader
+	}
 	def eval(code: String): Any = {
 		val h = new Holder
 		inter.bind("$r_", h.getClass.getName, h)

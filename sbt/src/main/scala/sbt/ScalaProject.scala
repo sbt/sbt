@@ -167,16 +167,20 @@ trait ScalaProject extends SimpleScalaProject with FileTasks with MultiTaskProje
 		testTask(frameworks, classpath, analysis, options)
 	def testTask(frameworks: Seq[TestFramework], classpath: PathFinder, analysis: CompileAnalysis, options: => Seq[TestOption]): Task =
 	{
-		def work =
+		def rawWork =
 		{
 			val (begin, work, end) = testTasks(frameworks, classpath, analysis, options)
 			val beginTasks = begin.map(toTask).toSeq // test setup tasks
 			val workTasks = work.map(w => toTask(w) dependsOn(beginTasks : _*)) // the actual tests
 			val endTasks = end.map(toTask).toSeq // tasks that perform test cleanup and are run regardless of success of tests
-			val endTask = task { None } named("test-cleanup") dependsOn(endTasks : _*)
-			val rootTask = task { None } named("test-complete") dependsOn(workTasks.toSeq : _*) // the task that depends on all test subtasks
+			val endTask = Empty named("test-cleanup") dependsOn(endTasks : _*)
+			val rootTask = Empty named("test-complete") dependsOn(workTasks.toSeq : _*) // the task that depends on all test subtasks
 			SubWork[Project#Task](rootTask, endTask)
 		}
+		def errorTask(e: TestSetupException) = task { Some(e.getMessage) } named("test-setup")
+		def work =
+			try { rawWork }
+			catch { case e: TestSetupException => SubWork[Project#Task](errorTask(e)) }
 		new CompoundTask(work)
 	}
 	private def toTask(testTask: NamedTestTask) = task(testTask.run()) named(testTask.name)
@@ -381,6 +385,7 @@ object ScalaProject
 	def optionsAsString(options: Seq[ScalaProject#CompileOption]) = options.map(_.asString).filter(!_.isEmpty)
 	def javaOptionsAsString(options: Seq[ScalaProject#JavaCompileOption]) = options.map(_.asString)
 }
+final class TestSetupException(msg: String) extends RuntimeException(msg)
 trait MultiTaskProject extends Project
 {
 	def multiTask(allTests: => List[String])(run: (Seq[String], String => Boolean) => Task): MethodTask = {
@@ -392,17 +397,24 @@ trait MultiTaskProject extends Project
 
 			def filterInclude =
 			{
-				val (exactFilters, testFilters) = testNames.toList.map(GlobFilter.apply).partition(_.isInstanceOf[ExactFilter])
-				val includeTests = exactFilters.map(_.asInstanceOf[ExactFilter].matchName)
-				val toCheck = scala.collection.mutable.HashSet(includeTests: _*)
-				toCheck --= allTests
-
-				if(!toCheck.isEmpty && log.atLevel(Level.Warn))
+				lazy val (exactFilters, testFilters) = testNames.toList.map(GlobFilter.apply).partition(_.isInstanceOf[ExactFilter])
+				lazy val includeTests = exactFilters.map(_.asInstanceOf[ExactFilter].matchName)
+				def checkExistence() =
 				{
-					log.warn("Test(s) not found:")
-					toCheck.foreach(test => log.warn("\t" + test))
+					val toCheck = Set() ++ includeTests -- allTests
+
+					if(!toCheck.isEmpty)
+					{
+						log.error("Test(s) not found:")
+						toCheck.foreach(test => log.error("\t" + test))
+						throw new TestSetupException("Invalid test name(s): " + toCheck.mkString(", "))
+					}
 				}
-				val includeTestsSet = Set(includeTests: _*)
+				lazy val includeTestsSet =
+				{
+					checkExistence()
+					Set(includeTests: _*)
+				}
 				(test: String) => includeTestsSet.contains(test) || testFilters.exists(_.accept(test))
 			}
 			
