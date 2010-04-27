@@ -20,12 +20,12 @@ final case class ModuleID(organization: String, name: String, revision: String, 
 	def classifier(c: String) = artifacts(Artifact(name, c))
 	def artifacts(newArtifacts: Artifact*) = ModuleID(organization, name, revision, configurations, isChanging, isTransitive, newArtifacts ++ explicitArtifacts, extraAttributes)
 	def extra(attributes: (String,String)*) = ModuleID(organization, name, revision, configurations, isChanging, isTransitive, explicitArtifacts, extraAttributes ++ ModuleID.checkE(attributes))
-	def sources() = artifacts(Artifact(name, "sources", "jar", "sources"))
-	def javadoc() = artifacts(Artifact(name, "javadoc", "jar", "javadoc"))
+	def sources() = artifacts(Artifact.sources(name))
+	def javadoc() = artifacts(Artifact.javadoc(name))
 	def withSources() = jarIfEmpty.sources()
 	def withJavadoc() = jarIfEmpty.javadoc()
 	private def jarIfEmpty = if(explicitArtifacts.isEmpty) jar() else this
-	def jar() = artifacts(Artifact(name, "jar", "jar"))
+	def jar() = artifacts(Artifact(name))
 }
 object ModuleID
 {
@@ -337,6 +337,8 @@ object Artifact
 		Artifact(name, `type`, extension, classifier, configurations, url, Map.empty)
 	val defaultExtension = "jar"
 	val defaultType = "jar"
+	def sources(name: String) = Artifact(name, "src", "jar", "sources")
+	def javadoc(name: String) = Artifact(name, "doc", "jar", "javadoc")
 	def extract(url: URL, default: String): String = extract(url.toString, default)
 	def extract(name: String, default: String): String =
 	{
