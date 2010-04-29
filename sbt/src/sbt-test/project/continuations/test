@@ -1,0 +1,5 @@
+> ++2.8.0.RC1
+> update
+> compile
+> console
+> test-only ContinuationsTest
