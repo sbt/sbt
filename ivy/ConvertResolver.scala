@@ -85,10 +85,11 @@ private object ConvertResolver
 			{
 				case RepositoryHelpers.PasswordAuthentication(user, password) =>
 					setUser(user)
-					setUserPassword(password)
-				case RepositoryHelpers.KeyFileAuthentication(file, password) =>
+					password.foreach(setUserPassword)
+				case RepositoryHelpers.KeyFileAuthentication(user, file, password) =>
 					setKeyFile(file)
-					setKeyFilePassword(password)
+					password.foreach(setKeyFilePassword)
+					setUser(user)
 			}
 	}
 	private def initializePatterns(resolver: AbstractPatternsBasedResolver, patterns: Patterns)
