@@ -76,8 +76,8 @@ object RepositoryHelpers
 		def nonlocal() = FileConfiguration(false, isTransactional)
 	}
 	sealed trait SshAuthentication extends NotNull
-	final case class PasswordAuthentication(user: String, password: String) extends SshAuthentication
-	final case class KeyFileAuthentication(keyfile: File, password: String) extends SshAuthentication
+	final case class PasswordAuthentication(user: String, password: Option[String]) extends SshAuthentication
+	final case class KeyFileAuthentication(user: String, keyfile: File, password: Option[String]) extends SshAuthentication
 }
 import RepositoryHelpers.{SshConnection, FileConfiguration}
 import RepositoryHelpers.{KeyFileAuthentication, PasswordAuthentication, SshAuthentication}
@@ -124,9 +124,13 @@ sealed abstract class SshBasedRepository extends PatternsBasedRepository
 	def connection: SshConnection
 
 	/** Configures this to use the specified user name and password when connecting to the remote repository. */
-	def as(user: String, password: String): RepositoryType = copy(new PasswordAuthentication(user, password))
+	def as(user: String, password: String): RepositoryType = as(user, Some(password))
+	def as(user: String): RepositoryType = as(user, None)
+	def as(user: String, password: Option[String]) = copy(new PasswordAuthentication(user, password))
 	/** Configures this to use the specified keyfile and password for the keyfile when connecting to the remote repository. */
-	def as(keyfile: File, password: String): RepositoryType = copy(new KeyFileAuthentication(keyfile, password))
+	def as(user: String, keyfile: File): RepositoryType = as(user, keyfile, None)
+	def as(user: String, keyfile: File, password: String): RepositoryType = as(user, keyfile, Some(password))
+	def as(user: String, keyfile: File, password: Option[String]): RepositoryType = copy(new KeyFileAuthentication(user, keyfile, password))
 }
 /** sbt interface for an Ivy repository over ssh.  More convenient construction is done using Resolver.ssh.  */
 final case class SshRepository(name: String, connection: SshConnection, patterns: Patterns, publishPermissions: Option[String]) extends SshBasedRepository
