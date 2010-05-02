@@ -221,6 +221,7 @@ trait Project extends TaskManager with Dag[Project] with BasicEnvironment
 	final val sbtVersion = property[String]
 	final val projectInitialize = propertyOptional[Boolean](false)
 	final val projectScratch = propertyOptional[Boolean](false, true)
+	final val offline = propertyOptional[Boolean](false)
 	/** The property that defines the versions of Scala to build this project against as a comma separated string.  This can be
 	* different from the version of Scala used to build and run the project definition (defined by defScalaVersion).
 	* This property is only read by `sbt` on startup and reload.  The definitive source for the version of Scala currently

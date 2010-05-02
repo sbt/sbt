@@ -86,7 +86,7 @@ object IvyCache
 	{
 		val local = Resolver.defaultLocal(None)
 		val paths = new IvyPaths(new File("."), None)
-		val conf = new InlineIvyConfiguration(paths, Seq(local), Nil, Nil, lock, log)
+		val conf = new InlineIvyConfiguration(paths, Seq(local), Nil, Nil, false, lock, log)
 		(new IvySbt(conf), local)
 	}
 	/** Creates a default jar artifact based on the given ID.*/

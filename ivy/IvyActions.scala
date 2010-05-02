@@ -19,13 +19,21 @@ import core.resolve.ResolveOptions
 import core.retrieve.RetrieveOptions
 import plugins.parser.m2.{PomModuleDescriptorParser,PomModuleDescriptorWriter}
 
-final class UpdateConfiguration(val retrieveDirectory: File, val outputPattern: String, val synchronize: Boolean, val quiet: Boolean) extends NotNull
+final class UpdateConfiguration(val retrieveDirectory: File, val outputPattern: String, val synchronize: Boolean, val logging: UpdateLogging.Value) extends NotNull
 final class MakePomConfiguration(val extraDependencies: Iterable[ModuleID], val configurations: Option[Iterable[Configuration]],
 	val extra: NodeSeq, val process: Node => Node, val filterRepositories: MavenRepository => Boolean) extends NotNull
 object MakePomConfiguration
 {
 	def apply(extraDependencies: Iterable[ModuleID], configurations: Option[Iterable[Configuration]], extra: NodeSeq) =
 		new MakePomConfiguration(extraDependencies, configurations, extra, identity, _ => true)
+}
+/** Configures logging during an 'update'.  `level` determines the amount of other information logged.
+* `Full` is the default and logs the most.
+* `DownloadOnly` only logs what is downloaded.
+* `Quiet` only displays errors.*/
+object UpdateLogging extends Enumeration
+{
+	val Full, DownloadOnly, Quiet = Value
 }
 
 object IvyActions
@@ -71,11 +79,11 @@ object IvyActions
 		IvySbt.addDependencies(module, extraDependencies, parser)
 	}
 
-	def deliver(module: IvySbt#Module, status: String, deliverIvyPattern: String, extraDependencies: Iterable[ModuleID], configurations: Option[Iterable[Configuration]], quiet: Boolean)
+	def deliver(module: IvySbt#Module, status: String, deliverIvyPattern: String, extraDependencies: Iterable[ModuleID], configurations: Option[Iterable[Configuration]], logging: UpdateLogging.Value)
 	{
 		module.withModule { case (ivy, md, default) =>
 			addLateDependencies(ivy, md, default, extraDependencies)
-			resolve(quiet)(ivy, md, default) // todo: set download = false for resolve
+			resolve(logging)(ivy, md, default) // todo: set download = false for resolve
 			val revID = md.getModuleRevisionId
 			val options = DeliverOptions.newInstance(ivy.getSettings).setStatus(status)
 			options.setConfs(IvySbt.getConfigurations(md, configurations))
@@ -101,7 +109,7 @@ object IvyActions
 	{
 		module.withModule { case (ivy, md, default) =>
 			import configuration._
-			resolve(quiet)(ivy, md, default)
+			resolve(logging)(ivy, md, default)
 			val retrieveOptions = new RetrieveOptions
 			retrieveOptions.setSync(synchronize)
 			val patternBase = retrieveDirectory.getAbsolutePath
@@ -113,14 +121,23 @@ object IvyActions
 			ivy.retrieve(md.getModuleRevisionId, pattern, retrieveOptions)
 		}
 	}
-	private def resolve(quiet: Boolean)(ivy: Ivy, module: DefaultModuleDescriptor, defaultConf: String) =
+	private def resolve(logging: UpdateLogging.Value)(ivy: Ivy, module: DefaultModuleDescriptor, defaultConf: String) =
 	{
 		val resolveOptions = new ResolveOptions
-		if(quiet)
-			resolveOptions.setLog(LogOptions.LOG_DOWNLOAD_ONLY)
+		resolveOptions.setLog(ivyLogLevel(logging))
 		val resolveReport = ivy.resolve(module, resolveOptions)
 		if(resolveReport.hasError)
 			throw new ResolveException(resolveReport.getAllProblemMessages.toArray.map(_.toString).toList.removeDuplicates)
 	}
+
+	import UpdateLogging.{Quiet, Full, DownloadOnly}
+	import LogOptions.{LOG_QUIET, LOG_DEFAULT, LOG_DOWNLOAD_ONLY}
+	private def ivyLogLevel(level: UpdateLogging.Value) =
+		level match
+		{
+			case Quiet => LOG_QUIET
+			case DownloadOnly => LOG_DOWNLOAD_ONLY
+			case Full => LOG_DEFAULT
+		}
 }
 final class ResolveException(messages: List[String]) extends RuntimeException(messages.mkString("\n"))

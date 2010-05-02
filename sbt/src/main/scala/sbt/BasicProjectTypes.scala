@@ -85,12 +85,12 @@ trait IvyTasks extends Project
 			val deliveredIvy = if(publishIvy) Some(deliveredPattern) else None
 			IvyActions.publish(module, resolverName, srcArtifactPatterns, deliveredIvy, configurations)
 		}
-	def deliverTask(module: => IvySbt#Module, deliverConfiguration: => PublishConfiguration, quiet: Boolean) =
+	def deliverTask(module: => IvySbt#Module, deliverConfiguration: => PublishConfiguration, logging: => UpdateLogging.Value) =
 		ivyTask
 		{
 			val deliverConfig = deliverConfiguration
 			import deliverConfig._
-			IvyActions.deliver(module, status, deliveredPattern, extraDependencies, configurations, quiet)
+			IvyActions.deliver(module, status, deliveredPattern, extraDependencies, configurations, logging)
 		}
 	@deprecated def makePomTask(module: => IvySbt#Module, output: => Path, extraDependencies: => Iterable[ModuleID], pomExtra: => NodeSeq, configurations: => Option[Iterable[Configuration]]): Task =
 		makePomTask(module, MakePomConfiguration(extraDependencies, configurations, pomExtra), output)
@@ -180,7 +180,9 @@ object ManagedStyle extends Enumeration
 import ManagedStyle.{Auto, Ivy, Maven, Value => ManagedType}
 trait BasicManagedProject extends ManagedProject with ReflectiveManagedProject with BasicDependencyPaths
 {
-	def ivyUpdateConfiguration =  new UpdateConfiguration(managedDependencyPath.asFile, outputPattern, true/*sync*/, true/*quiet*/)
+	def ivyUpdateConfiguration =  new UpdateConfiguration(managedDependencyPath.asFile, outputPattern, true/*sync*/, ivyUpdateLogging)
+	def ivyUpdateLogging = UpdateLogging.DownloadOnly
+	def ivyLocalOnly: Boolean = offline.value
 
 	def ivyRepositories: Seq[Resolver] =
 	{
@@ -193,7 +195,7 @@ trait BasicManagedProject extends ManagedProject with ReflectiveManagedProject w
 	def ivyCacheDirectory: Option[Path] = None
 	
 	def ivyPaths: IvyPaths = new IvyPaths(info.projectPath.asFile, ivyCacheDirectory.map(_.asFile))
-	def inlineIvyConfiguration = new InlineIvyConfiguration(ivyPaths, ivyRepositories.toSeq, otherRepositories, moduleConfigurations.toSeq, Some(info.launcher.globalLock), log)
+	def inlineIvyConfiguration = new InlineIvyConfiguration(ivyPaths, ivyRepositories.toSeq, otherRepositories, moduleConfigurations.toSeq, ivyLocalOnly, Some(info.launcher.globalLock), log)
 	def ivyConfiguration: IvyConfiguration =
 	{
 		val in = inlineIvyConfiguration
@@ -203,14 +205,14 @@ trait BasicManagedProject extends ManagedProject with ReflectiveManagedProject w
 		{
 			 if(in.moduleConfigurations.isEmpty && in.otherResolvers.isEmpty)
 			 {
-				IvyConfiguration(in.paths, in.lock, in.log) match
+				IvyConfiguration(in.paths, in.lock, in.localOnly, in.log) match
 				{
 					case e: ExternalIvyConfiguration => e
 					case i => info.parent map(parentIvyConfiguration(i)) getOrElse(i)
 				}
 			}
 			else
-				new InlineIvyConfiguration(in.paths, Resolver.withDefaultResolvers(Nil), in.otherResolvers, in.moduleConfigurations, in.lock, in.log)
+				in.changeResolvers(Resolver.withDefaultResolvers(Nil))
 		}
 		else
 			in
@@ -381,14 +383,14 @@ trait BasicManagedProject extends ManagedProject with ReflectiveManagedProject w
 	def makePomConfiguration = new MakePomConfiguration(deliverProjectDependencies, None, pomExtra, pomPostProcess, pomIncludeRepository)
 	protected def deliverScalaDependencies: Iterable[ModuleID] = Nil
 	protected def makePomAction = makePomTask(deliverIvyModule, makePomConfiguration, pomPath)
-	protected def deliverLocalAction = deliverTask(deliverIvyModule, publishLocalConfiguration, true /*quiet*/)
+	protected def deliverLocalAction = deliverTask(deliverIvyModule, publishLocalConfiguration, ivyUpdateLogging)
 	protected def publishLocalAction =
 	{
 		val dependencies = deliverLocal :: publishPomDepends
 		publishTask(publishIvyModule, publishLocalConfiguration) dependsOn(dependencies : _*)
 	}
 	protected def publishLocalConfiguration = new DefaultPublishConfiguration("local", "release", true)
-	protected def deliverAction = deliverTask(deliverIvyModule, publishConfiguration, true)
+	protected def deliverAction = deliverTask(deliverIvyModule, publishConfiguration, ivyUpdateLogging)
 	protected def publishAction =
 	{
 		val dependencies = deliver :: publishPomDepends

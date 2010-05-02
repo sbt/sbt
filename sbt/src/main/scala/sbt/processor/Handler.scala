@@ -30,6 +30,6 @@ class Handler(baseProject: Project) extends NotNull
 	def files = new ManagerFiles(base.asFile, retrieveLockFile.asFile, definitionsFile.asFile)
 	
 	lazy val defParser = new DefinitionParser
-	lazy val manager = new ManagerImpl(files, scalaVersion, new Persist(lock, persistLockFile.asFile, defParser), baseProject.log)
+	lazy val manager = new ManagerImpl(files, scalaVersion, new Persist(lock, persistLockFile.asFile, defParser), baseProject.offline.value, baseProject.log)
 }
 class ParsedProcessor(val label: String, val processor: Processor, val arguments: String) extends NotNull

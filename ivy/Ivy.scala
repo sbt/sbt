@@ -59,8 +59,8 @@ final class IvySbt(configuration: IvyConfiguration)
 		{
 			case e: ExternalIvyConfiguration => is.load(e.file)
 			case i: InlineIvyConfiguration => 
-				IvySbt.configureCache(is, i.paths.cacheDirectory)
-				IvySbt.setResolvers(is, i.resolvers, i.otherResolvers, log)
+				IvySbt.configureCache(is, i.paths.cacheDirectory, i.localOnly)
+				IvySbt.setResolvers(is, i.resolvers, i.otherResolvers, i.localOnly, log)
 				IvySbt.setModuleConfigurations(is, i.moduleConfigurations)
 		}
 		is
@@ -171,23 +171,28 @@ private object IvySbt
 
 	/** Sets the resolvers for 'settings' to 'resolvers'.  This is done by creating a new chain and making it the default.
 	* 'other' is for resolvers that should be in a different chain.  These are typically used for publishing or other actions. */
-	private def setResolvers(settings: IvySettings, resolvers: Seq[Resolver], other: Seq[Resolver], log: IvyLogger)
+	private def setResolvers(settings: IvySettings, resolvers: Seq[Resolver], other: Seq[Resolver], localOnly: Boolean, log: IvyLogger)
 	{
-		val otherChain = resolverChain("sbt-other", other)
-		settings.addResolver(otherChain)
-		val newDefault = resolverChain("sbt-chain", resolvers)
-		settings.addResolver(newDefault)
-		settings.setDefaultResolver(newDefault.getName)
-		log.debug("Using repositories:\n" + resolvers.mkString("\n\t"))
-		log.debug("Using other repositories:\n" + other.mkString("\n\t"))
+		def makeChain(label: String, name: String, rs: Seq[Resolver]) = {
+			log.debug(label + " repositories:")
+			val chain = resolverChain(name, rs, localOnly, log)
+			settings.addResolver(chain)
+			chain
+		}
+		val otherChain = makeChain("Other", "sbt-other", other)
+		val mainChain = makeChain("Default", "sbt-chain", resolvers)
+		settings.setDefaultResolver(mainChain.getName)
 	}
-	private def resolverChain(name: String, resolvers: Seq[Resolver]): ChainResolver =
+	private def resolverChain(name: String, resolvers: Seq[Resolver], localOnly: Boolean, log: IvyLogger): ChainResolver =
 	{
 		val newDefault = new ChainResolver
 		newDefault.setName(name)
 		newDefault.setReturnFirst(true)
-		newDefault.setCheckmodified(true)
-		resolvers.foreach(r => newDefault.add(ConvertResolver(r)))
+		newDefault.setCheckmodified(!localOnly)
+		for(sbtResolver <- resolvers) {
+			log.debug("\t" + sbtResolver)
+			newDefault.add(ConvertResolver(sbtResolver))
+		}
 		newDefault
 	}
 	private def setModuleConfigurations(settings: IvySettings, moduleConfigurations: Seq[ModuleConfiguration])
@@ -204,13 +209,18 @@ private object IvySbt
 			settings.addModuleConfiguration(attributes, settings.getMatcher(EXACT_OR_REGEXP), resolver.name, null, null, null)
 		}
 	}
-	private def configureCache(settings: IvySettings, dir: Option[File])
+	private def configureCache(settings: IvySettings, dir: Option[File], localOnly: Boolean)
 	{
 		val cacheDir = dir.getOrElse(settings.getDefaultRepositoryCacheBasedir())
 		val manager = new DefaultRepositoryCacheManager("default-cache", settings, cacheDir)
 		manager.setUseOrigin(true)
-		manager.setChangingMatcher(PatternMatcher.REGEXP);
-		manager.setChangingPattern(".*-SNAPSHOT");
+		if(localOnly)
+			manager.setDefaultTTL(java.lang.Long.MAX_VALUE);
+		else
+		{
+			manager.setChangingMatcher(PatternMatcher.REGEXP);
+			manager.setChangingPattern(".*-SNAPSHOT");
+		}
 		settings.addRepositoryCacheManager(manager)
 		settings.setDefaultRepositoryCacheManager(manager)
 		dir.foreach(dir => settings.setDefaultResolutionCacheBasedir(dir.getAbsolutePath))

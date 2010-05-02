@@ -13,7 +13,7 @@ import ProcessorException.error
 * `definitionsFile` is the file to save repository and processor definitions to.  It is usually per-user instead of per-project.*/
 class ManagerFiles(val retrieveBaseDirectory: File, val retrieveLockFile: File, val definitionsFile: File)
 
-class ManagerImpl(files: ManagerFiles, scalaVersion: String, persist: Persist, log: Logger) extends Manager
+class ManagerImpl(files: ManagerFiles, scalaVersion: String, persist: Persist, localOnly: Boolean, log: Logger) extends Manager
 {
 	import files._
 	
@@ -26,7 +26,7 @@ class ManagerImpl(files: ManagerFiles, scalaVersion: String, persist: Persist, l
 		 // try to load the processor.  It will succeed here if the processor has already been retrieved
 		tryProcessor.left.flatMap { _ =>
 			 // if it hasn't been retrieved, retrieve the processor and its dependencies
-			retrieveProcessor(pdef)
+			retrieveProcessor(pdef, localOnly)
 			// try to load the processor now that it has been retrieved
 			tryProcessor.left.map { // if that fails, log a warning
 				case p: ProcessorException => log.warn(p.getMessage)
@@ -37,7 +37,7 @@ class ManagerImpl(files: ManagerFiles, scalaVersion: String, persist: Persist, l
 	def defineProcessor(p: ProcessorDefinition)
 	{
 		checkExisting(p)
-		retrieveProcessor(p)
+		retrieveProcessor(p, localOnly)
 		add(p)
 	}
 	def defineRepository(r: RepositoryDefinition)
@@ -54,11 +54,11 @@ class ManagerImpl(files: ManagerFiles, scalaVersion: String, persist: Persist, l
 			case None => error("Label '" + label + "' not defined.")
 		}
 	
-	private def retrieveProcessor(p: ProcessorDefinition): Unit =
+	private def retrieveProcessor(p: ProcessorDefinition, localOnly: Boolean): Unit =
 	{
 		val resolvers = repositories.values.toList.map(toResolver)
 		val module = p.toModuleID(scalaVersion)
-		( new Retrieve(retrieveDirectory(p), module, persist.lock, retrieveLockFile, resolvers, log) ).retrieve()
+		( new Retrieve(retrieveDirectory(p), module, persist.lock, retrieveLockFile, resolvers, log) ).retrieve(localOnly)
 	}
 	private def add(d: Definition)
 	{
