@@ -251,13 +251,7 @@ trait BasicEnvironment extends Environment
 			propertyMap(name) = property
 		propertyMap //.readOnly (not currently in 2.8)
 	}
-	private val initialValues: Map[String, String] =
-	{
-		val map = new scala.collection.mutable.HashMap[String, String]
-		for(errorMsg <- impl.MapUtilities.read(map, envBackingPath, log))
-			log.error("Error loading properties from " + environmentLabel + " : " + errorMsg)
-		map //.readOnly (not currently in 2.8)
-	}
+	private val initialValues: Map[String, String] = impl.MapUtilities.readStrings(environmentLabel, envBackingPath, log)
 
 	def propertyNames: Iterable[String] = propertyMap.keys.toList
 	def getPropertyNamed(name: String): Option[UserProperty[_]] = propertyMap.get(name)

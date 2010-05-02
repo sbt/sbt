@@ -44,6 +44,13 @@ private[sbt] object MapUtilities
 			None
 		}
 	}
+	def readStrings(label: String, envBackingPath: Path, log: Logger): scala.collection.Map[String, String] =
+	{
+		val map = new HashMap[String, String]
+		for(errorMsg <- read(map, envBackingPath, log))
+			log.error("Error loading properties from " + label + " : " + errorMsg)
+		map.readOnly
+	}
 	def all[Key, Value](map: Map[Key, Set[Value]]): Iterable[Value] =
 		map.values.toList.flatMap(set => set.toList)
 	
