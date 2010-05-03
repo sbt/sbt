@@ -197,6 +197,15 @@ class xMain extends xsbti.AppMain
 						case Some(newProject) => continue(newProject, tail, failAction)
 						case None => failed(BuildErrorExitCode)
 					}
+
+				case action :: tail if action.startsWith(HistoryPrefix) =>
+					historyCommand(action.substring(HistoryPrefix.length).trim, baseProject.historyPath, project.log) match
+					{
+						case Some(command) =>
+							println(command)  //better to print it than to log it
+							continue(project, command :: tail, failAction)
+						case None => failed(UsageErrorExitCode)
+					}
 					
 				case action :: tail if action.startsWith(FileCommandsPrefix) =>
 					getSource(action.substring(FileCommandsPrefix.length).trim, baseProject.info.projectDirectory) match
@@ -270,6 +279,37 @@ class xMain extends xsbti.AppMain
 			val message = ipc.receive
 			if(message eq null) None else Some(message)
 		}
+	}
+	private def historyCommand(s: String, historyPath: Option[Path], log: Logger): Option[String] =
+	{
+		val lines = historyPath.toList.flatMap(h => xsbt.FileUtilities.readLines(h.asFile) ).toArray
+		if(lines.isEmpty)
+		{
+			log.warn("No history")
+			None
+		}
+		else
+		{
+			def replaceLastCommand(s: String) {
+				lines(lines.length - 1) = s
+				historyPath foreach { h => xsbt.FileUtilities.writeLines(h.asFile, lines) }
+			}
+			val command = historyCommand(complete.History(lines, log), s, log)
+			command.foreach(replaceLastCommand)
+			command
+		}
+	}
+	private def historyCommand(history: complete.History, s: String, log: Logger): Option[String] =
+	{
+		val ContainsPrefix = "?"
+		val Last = "!"
+		val PreviousPrefix = "-"
+		if(s == Last)
+			history !!
+		else if(s.startsWith(ContainsPrefix))
+			history !? s.substring(ContainsPrefix.length)
+		else
+			history ! s
 	}
 	object SetProject
 	{
@@ -355,6 +395,7 @@ class xMain extends xsbti.AppMain
 		reader.readLine("> ").getOrElse(ExitCommand)
 	}
 
+	val HistoryPrefix = "!"
 	/** The name of the command that loads a console with access to the current project through the variable 'project'.*/
 	val ProjectConsoleAction = "console-project"
 	/** The name of the command that shows the current project and logging level of that project.*/
@@ -398,7 +439,7 @@ class xMain extends xsbti.AppMain
 	/** The prefix used to identify a file or local port to read commands from. */
 	val FileCommandsPrefix = "<"
 	/** The prefix used to identify the action to run after an error*/
-	val FailureHandlerPrefix = "!"
+	val FailureHandlerPrefix = "-"
 	/** The prefix used to identify commands for managing processors.*/
 	val ProcessorPrefix = "*"
 

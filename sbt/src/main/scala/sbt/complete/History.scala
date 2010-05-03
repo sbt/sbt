@@ -1,0 +1,42 @@
+package sbt.complete
+
+import History.number
+
+final class History private(lines: Array[String], log: Logger) extends NotNull
+{
+	private def reversed = lines.reverse
+
+	def all: Seq[String] = lines.toArray
+	def size = lines.length
+	def !! : Option[String] = !- (1)
+	def apply(i: Int): Option[String] = if(0 <= i && i < size) Some( lines(i) ) else { log.error("Invalid history index: " + i); None }
+	def !(i: Int): Option[String] = apply(i)
+
+	def !(s: String): Option[String] =
+		number(s) match
+		{
+			case Some(n) => if(n < 0) !- (-n) else apply(n)
+			case None => nonEmpty(s) { reversed.find(_.startsWith(s)) }
+		}
+	def !- (n: Int): Option[String] = apply(size - n - 1)
+
+	def !?(s: String): Option[String] = nonEmpty(s) { reversed.drop(1).find(_.contains(s)) }
+
+	private def nonEmpty[T](s: String)(act: => Option[T]): Option[T] =
+		if(s.isEmpty)
+		{
+			log.error("No action specified to history command")
+			None
+		}
+		else
+			act
+}
+
+object History
+{
+	def apply(lines: Seq[String], log: Logger): History = new History(lines.toArray, log)
+
+	private def number(s: String): Option[Int] =
+		try { Some(s.toInt) }
+		catch { case e: NumberFormatException => None }
+}

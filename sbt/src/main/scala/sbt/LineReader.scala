@@ -36,6 +36,10 @@ abstract class JLine extends LineReader
 			case null => None
 			case x => Some(x.trim)
 		}
+	def getHistory: Array[String]  =
+		JLine.synchronized {
+			reader.getHistory.getHistoryList.toArray(new Array[String](0))
+		}
 }
 private object JLine
 {
@@ -49,23 +53,33 @@ private object JLine
 		}
 	def createReader() =
 		withTerminal { t =>
-			t.synchronized
-			{
-				val cr = new ConsoleReader
-				t.enableEcho()
-				cr.setBellEnabled(false)
-				cr
-			}
+			val cr = new ConsoleReader
+			t.enableEcho()
+			cr.setBellEnabled(false)
+			cr
 		}
 	def withJLine[T](action: => T): T =
 		withTerminal { t =>
-			t.synchronized
+			t.disableEcho()
+			try { action }
+			finally { t.enableEcho() }
+		}
+	private[sbt] def initializeHistory(cr: ConsoleReader, historyPath: Option[Path], log: Logger): Unit =
+		for(historyLocation <- historyPath)
+		{
+			val historyFile = historyLocation.asFile
+			Control.trapAndLog(log)
 			{
-				t.disableEcho()
-				try { action }
-				finally { t.enableEcho() }
+				historyFile.getParentFile.mkdirs()
+				cr.getHistory.setHistoryFile(historyFile)
 			}
 		}
+	def simple(historyPath: Option[Path], log: Logger): SimpleReader = new SimpleReader(historyPath, log)
+}
+class SimpleReader private[sbt] (historyPath: Option[Path], log: Logger) extends JLine
+{
+	protected[this] val reader = JLine.createReader()
+	JLine.initializeHistory(reader, historyPath, log)
 }
 object SimpleReader extends JLine
 {
@@ -77,15 +91,7 @@ private[sbt] final class LazyJLineReader(historyPath: Option[Path], completor: =
 	{
 		val cr = new ConsoleReader
 		cr.setBellEnabled(false)
-		for(historyLocation <- historyPath)
-		{
-			val historyFile = historyLocation.asFile
-			Control.trapAndLog(log)
-			{
-				historyFile.getParentFile.mkdirs()
-				cr.getHistory.setHistoryFile(historyFile)
-			}
-		}
+		JLine.initializeHistory(cr, historyPath, log)
 		cr.addCompletor(new LazyCompletor(completor))
 		cr
 	}
