@@ -6,7 +6,7 @@ package xsbt
 import OpenResource._
 import ErrorHandling.translate
 
-import java.io.{ByteArrayOutputStream, File, FileInputStream, InputStream, OutputStream}
+import java.io.{ByteArrayOutputStream, BufferedWriter, File, FileInputStream, InputStream, OutputStream}
 import java.net.{URI, URISyntaxException, URL}
 import java.nio.charset.Charset
 import java.util.jar.{Attributes, JarEntry, JarFile, JarInputStream, JarOutputStream, Manifest}
@@ -346,13 +346,17 @@ object FileUtilities
 	def defaultCharset = utf8
 	def write(toFile: File, content: String): Unit = write(toFile, content, defaultCharset)
 	def write(toFile: File, content: String, charset: Charset): Unit = write(toFile, content, charset, false)
-	def write(file: File, content: String, charset: Charset, append: Boolean)
+	def write(file: File, content: String, charset: Charset, append: Boolean): Unit =
+		writeCharset(file, content, charset, append) { _.write(content)  }
+
+	def writeCharset[T](file: File, content: String, charset: Charset, append: Boolean)(f: BufferedWriter => T): T =
 	{
 		if(charset.newEncoder.canEncode(content))
-			fileWriter(charset, append)(file) { w => w.write(content); None }
+			fileWriter(charset, append)(file) { f }
 		else
 			error("String cannot be encoded by charset " + charset.name)
 	}
+
 	def read(file: File): String = read(file, defaultCharset)
 	def read(file: File, charset: Charset): String =
 	{
@@ -391,6 +395,12 @@ object FileUtilities
 			readLine(Nil)
 		}
 	}
+	def writeLines(file: File, lines: Seq[String]): Unit = writeLines(file, lines, defaultCharset)
+	def writeLines(file: File, lines: Seq[String], charset: Charset): Unit = writeLines(file, lines, charset, false)
+	def writeLines(file: File, lines: Seq[String], charset: Charset, append: Boolean): Unit =
+		writeCharset(file, lines.headOption.getOrElse(""), charset, append) { w =>
+			lines.foreach { line => w.write(line); w.newLine() }
+		}
 
 	/** A pattern used to split a String by path separator characters.*/
 	private val PathSeparatorPattern = java.util.regex.Pattern.compile(File.pathSeparator)
