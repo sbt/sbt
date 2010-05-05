@@ -6,7 +6,7 @@ package xsbt
 * is used, for example, to compile the interface/plugin code.
 * If `explicitClasspath` is true, the bootclasspath and classpath are not augmented.  If it is false,
 * the scala-library.jar from `scalaInstance` is put on bootclasspath and the scala-compiler jar goes on the classpath.*/
-class RawCompiler(val scalaInstance: ScalaInstance, autoBootClasspath: Boolean, compilerOnClasspath: Boolean, log: CompileLogger)
+class RawCompiler(val scalaInstance: ScalaInstance, cp: ClasspathOptions, log: CompileLogger)
 {
 	def apply(sources: Set[File], classpath: Set[File], outputDirectory: File, options: Seq[String])
 	{
@@ -22,7 +22,7 @@ class RawCompiler(val scalaInstance: ScalaInstance, autoBootClasspath: Boolean, 
 		process.invoke(null, toJavaArray(arguments))
 		checkForFailure(mainClass, arguments.toArray)
 	}
-	def compilerArguments = new CompilerArguments(scalaInstance, autoBootClasspath, compilerOnClasspath)
+	def compilerArguments = new CompilerArguments(scalaInstance, cp)
 	protected def checkForFailure(mainClass: Class[_], args: Array[String])
 	{
 		val reporter = mainClass.getMethod("reporter").invoke(null)
