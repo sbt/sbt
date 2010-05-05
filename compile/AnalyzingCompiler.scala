@@ -9,26 +9,26 @@ package xsbt
 * provided by scalaInstance.  This class requires a ComponentManager in order to obtain the interface code to scalac and
 * the analysis plugin.  Because these call Scala code for a different Scala version than the one used for this class, they must
 * be compiled for the version of Scala being used.*/
-class AnalyzingCompiler(val scalaInstance: ScalaInstance, val manager: ComponentManager, val autoBootClasspath: Boolean, val compilerOnClasspath: Boolean, log: CompileLogger) extends NotNull
+class AnalyzingCompiler(val scalaInstance: ScalaInstance, val manager: ComponentManager, val cp: ClasspathOptions, log: CompileLogger) extends NotNull
 {
-	def this(scalaInstance: ScalaInstance, manager: ComponentManager, log: CompileLogger) = this(scalaInstance, manager, true, true, log)
+	def this(scalaInstance: ScalaInstance, manager: ComponentManager, log: CompileLogger) = this(scalaInstance, manager, ClasspathOptions.auto, log)
 	def apply(sources: Set[File], classpath: Set[File], outputDirectory: File, options: Seq[String], callback: AnalysisCallback, maximumErrors: Int, log: CompileLogger)
 	{
-		val arguments = (new CompilerArguments(scalaInstance, autoBootClasspath, compilerOnClasspath))(sources, classpath, outputDirectory, options)
+		val arguments = (new CompilerArguments(scalaInstance, cp))(sources, classpath, outputDirectory, options)
 		call("xsbt.CompilerInterface", log)(
 			classOf[Array[String]], classOf[AnalysisCallback], classOf[Int], classOf[xLogger] ) (
 			arguments.toArray[String] : Array[String], callback, maximumErrors: java.lang.Integer, log )
 	}
 	def doc(sources: Set[File], classpath: Set[File], outputDirectory: File, options: Seq[String], maximumErrors: Int, log: CompileLogger): Unit =
 	{
-		val arguments = (new CompilerArguments(scalaInstance, autoBootClasspath, compilerOnClasspath))(sources, classpath, outputDirectory, options)
+		val arguments = (new CompilerArguments(scalaInstance, cp))(sources, classpath, outputDirectory, options)
 		call("xsbt.ScaladocInterface", log) (classOf[Array[String]], classOf[Int], classOf[xLogger]) (arguments.toArray[String] : Array[String], maximumErrors: java.lang.Integer, log)
 	}
 	def console(classpath: Set[File], options: Seq[String], initialCommands: String, log: CompileLogger): Unit =
 	{
-		val arguments = new CompilerArguments(scalaInstance, autoBootClasspath, compilerOnClasspath)
+		val arguments = new CompilerArguments(scalaInstance, cp)
 		val classpathString = CompilerArguments.absString(arguments.finishClasspath(classpath))
-		val bootClasspath = if(autoBootClasspath) arguments.createBootClasspath else ""
+		val bootClasspath = if(cp.autoBoot) arguments.createBootClasspath else ""
 		call("xsbt.ConsoleInterface", log) (classOf[Array[String]], classOf[String], classOf[String], classOf[String], classOf[xLogger]) (options.toArray[String]: Array[String], bootClasspath, classpathString, initialCommands, log)
 	}
 	def force(log: CompileLogger): Unit = getInterfaceJar(log)
@@ -54,7 +54,7 @@ class AnalyzingCompiler(val scalaInstance: ScalaInstance, val manager: Component
 		log.debug("Getting " + ComponentCompiler.compilerInterfaceID + " from component compiler for Scala " + scalaInstance.version)
 		componentCompiler(ComponentCompiler.compilerInterfaceID)
 	}
-	def newComponentCompiler(log: CompileLogger) = new ComponentCompiler(new RawCompiler(scalaInstance, true, true, log), manager)
+	def newComponentCompiler(log: CompileLogger) = new ComponentCompiler(new RawCompiler(scalaInstance, ClasspathOptions.auto, log), manager)
 	protected def createDualLoader(scalaLoader: ClassLoader, sbtLoader: ClassLoader): ClassLoader =
 	{
 		val xsbtiFilter = (name: String) => name.startsWith("xsbti.")

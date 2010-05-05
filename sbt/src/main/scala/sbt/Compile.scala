@@ -77,8 +77,9 @@ final class Compile(maximumErrors: Int, compiler: AnalyzingCompiler, analysisCal
 	}
 	protected def processJava(sources: Set[File], classpath: Set[File], outputDirectory: File, options: Seq[String], log: Logger)
 	{
-		val augmentedClasspath = if(compiler.autoBootClasspath) classpath + compiler.scalaInstance.libraryJar else classpath
-		val arguments = (new CompilerArguments(compiler.scalaInstance, false, compiler.compilerOnClasspath))(sources, augmentedClasspath, outputDirectory, options)
+		val augmentedClasspath = if(compiler.cp.autoBoot) classpath + compiler.scalaInstance.libraryJar else classpath
+		val cp = new xsbt.ClasspathOptions(false, compiler.cp.compiler, false)
+		val arguments = (new CompilerArguments(compiler.scalaInstance, cp))(sources, augmentedClasspath, outputDirectory, options)
 		log.debug("running javac with arguments:\n\t" + arguments.mkString("\n\t"))
 		val code: Int =
 			try { directJavac(arguments, log) }
