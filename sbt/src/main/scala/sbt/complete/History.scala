@@ -30,13 +30,16 @@ final class History private(lines: Array[String], log: Logger) extends NotNull
 		}
 		else
 			act
+
+	def list(historySize: Int, show: Int): Seq[String] =
+		lines.toList.drop((lines.size - historySize) max 0).zipWithIndex.map { case (line, number) => "   " + number + "  " + line }.takeRight(show max 1)
 }
 
 object History
 {
 	def apply(lines: Seq[String], log: Logger): History = new History(lines.toArray, log)
 
-	private def number(s: String): Option[Int] =
+	def number(s: String): Option[Int] =
 		try { Some(s.toInt) }
 		catch { case e: NumberFormatException => None }
 }

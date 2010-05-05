@@ -36,10 +36,6 @@ abstract class JLine extends LineReader
 			case null => None
 			case x => Some(x.trim)
 		}
-	def getHistory: Array[String]  =
-		JLine.synchronized {
-			reader.getHistory.getHistoryList.toArray(new Array[String](0))
-		}
 }
 private object JLine
 {
@@ -71,10 +67,13 @@ private object JLine
 			Control.trapAndLog(log)
 			{
 				historyFile.getParentFile.mkdirs()
-				cr.getHistory.setHistoryFile(historyFile)
+				val history = cr.getHistory
+				history.setMaxSize(MaxHistorySize)
+				history.setHistoryFile(historyFile)
 			}
 		}
 	def simple(historyPath: Option[Path], log: Logger): SimpleReader = new SimpleReader(historyPath, log)
+	val MaxHistorySize = 500
 }
 class SimpleReader private[sbt] (historyPath: Option[Path], log: Logger) extends JLine
 {

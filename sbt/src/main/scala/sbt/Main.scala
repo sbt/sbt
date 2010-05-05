@@ -199,11 +199,11 @@ class xMain extends xsbti.AppMain
 					}
 
 				case action :: tail if action.startsWith(HistoryPrefix) =>
-					historyCommand(action.substring(HistoryPrefix.length).trim, baseProject.historyPath, project.log) match
+					historyCommand(action.substring(HistoryPrefix.length).trim, baseProject.historyPath, JLine.MaxHistorySize, project.log) match
 					{
-						case Some(command) =>
-							println(command)  //better to print it than to log it
-							continue(project, command :: tail, failAction)
+						case Some(commands) =>
+							commands.foreach(println)  //better to print it than to log it
+							continue(project, commands ::: tail, failAction)
 						case None => failed(UsageErrorExitCode)
 					}
 					
@@ -280,7 +280,7 @@ class xMain extends xsbti.AppMain
 			if(message eq null) None else Some(message)
 		}
 	}
-	private def historyCommand(s: String, historyPath: Option[Path], log: Logger): Option[String] =
+	private def historyCommand(s: String, historyPath: Option[Path], maxLines: Int, log: Logger): Option[List[String]] =
 	{
 		val lines = historyPath.toList.flatMap(h => xsbt.FileUtilities.readLines(h.asFile) ).toArray
 		if(lines.isEmpty)
@@ -290,15 +290,24 @@ class xMain extends xsbti.AppMain
 		}
 		else
 		{
-			def replaceLastCommand(s: String) {
-				lines(lines.length - 1) = s
-				historyPath foreach { h => xsbt.FileUtilities.writeLines(h.asFile, lines) }
+			val ListPrefix = ":"
+			val history = complete.History(lines, log)
+			if(s.startsWith(ListPrefix))
+			{
+				val rest = s.substring(ListPrefix.length)
+				val show = complete.History.number(rest).getOrElse(lines.length)
+				printHistory(history, maxLines, show)
+				Some(Nil)
 			}
-			val command = historyCommand(complete.History(lines, log), s, log)
-			command.foreach(replaceLastCommand)
-			command
+			else {
+				val command = historyCommand(history, s, log)
+				command.foreach(lines(lines.length - 1) = _)
+				historyPath foreach { h => xsbt.FileUtilities.writeLines(h.asFile, lines) }
+				Some(command.toList)
+			}
 		}
 	}
+	private def printHistory(history: complete.History, historySize: Int, show: Int): Unit = history.list(historySize, show).foreach(println)
 	private def historyCommand(history: complete.History, s: String, log: Logger): Option[String] =
 	{
 		val ContainsPrefix = "?"
