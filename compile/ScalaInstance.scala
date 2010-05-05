@@ -12,8 +12,9 @@ final class ScalaInstance(val version: String, val loader: ClassLoader, val libr
 	require(version.indexOf(' ') < 0, "Version cannot contain spaces (was '" + version + "')")
 	def jars = libraryJar :: compilerJar :: extraJars.toList
 	/** Gets the version of Scala in the compiler.properties file from the loader.  This version may be different than that given by 'version'*/
-	lazy val actualVersion = ScalaInstance.actualVersion(loader)(" version " + version)
-	override def toString = "Scala instance{version label " + version + ", actual version " + actualVersion + ", library jar: " + libraryJar + ", compiler jar: " + compilerJar + "}"
+	lazy val actualVersion = ScalaInstance.actualVersion(loader)("\n    version " + version + ", " + jarStrings)
+	def jarStrings = "library jar: " + libraryJar + ", compiler jar: " + compilerJar
+	override def toString = "Scala instance{version label " + version + ", actual version " + actualVersion + ", " + jarStrings + "}"
 }
 object ScalaInstance
 {
@@ -45,7 +46,7 @@ object ScalaInstance
 	private def actualVersion(scalaLoader: ClassLoader)(label: String) =
 	{
 		val v = try { Class.forName("scala.tools.nsc.Properties", true, scalaLoader).getMethod("versionString").invoke(null).toString }
-		catch { case cause: Exception => throw new InvalidScalaInstance("Incompatible Scala instance: " + label, cause) }
+		catch { case cause: Exception => throw new InvalidScalaInstance("Scala instance doesn't exist or is invalid: " + label, cause) }
 		if(v.startsWith(VersionPrefix)) v.substring(VersionPrefix.length) else v
 	}
 
