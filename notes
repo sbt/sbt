@@ -1,10 +1,3 @@
-Added:
-1. prefix continuous compilation with run number
-2. Added pomRepositoryFilter(repo: MavenRepository): Boolean that excludes local repositories by default
-3. Added pomPostProcess(pom: Node): Node to make advanced manipulation of the default pom easier (pomExtra covers basic cases)
-4. Added 'reset' command to reset JLine terminal.  This needs to be run after suspending and then resuming sbt.
-
-
 - script tasks (in 'scripts' branch).  To use:
  1) add implementation of jsr223 to project/build/lib, declare in project/plugins, or add to sbt startup classpath
  2) Mix sbt.scripts.Scripts into your project definition

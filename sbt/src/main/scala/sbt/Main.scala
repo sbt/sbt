@@ -5,6 +5,8 @@ package sbt
 
 import java.io.File
 import scala.collection.immutable.TreeSet
+import complete.HistoryCommands
+import HistoryCommands.{Start => HistoryPrefix}
 
 /** This class is the entry point for sbt.  If it is given any arguments, it interprets them
 * as actions, executes the corresponding actions, and exits.  If there were no arguments provided,
@@ -199,7 +201,7 @@ class xMain extends xsbti.AppMain
 					}
 
 				case action :: tail if action.startsWith(HistoryPrefix) =>
-					historyCommand(action.substring(HistoryPrefix.length).trim, baseProject.historyPath, JLine.MaxHistorySize, project.log) match
+					HistoryCommands(action.substring(HistoryPrefix.length).trim, baseProject.historyPath, JLine.MaxHistorySize, project.log) match
 					{
 						case Some(commands) =>
 							commands.foreach(println)  //better to print it than to log it
@@ -279,46 +281,6 @@ class xMain extends xsbti.AppMain
 			val message = ipc.receive
 			if(message eq null) None else Some(message)
 		}
-	}
-	private def historyCommand(s: String, historyPath: Option[Path], maxLines: Int, log: Logger): Option[List[String]] =
-	{
-		val lines = historyPath.toList.flatMap(h => xsbt.FileUtilities.readLines(h.asFile) ).toArray
-		if(lines.isEmpty)
-		{
-			log.warn("No history")
-			None
-		}
-		else
-		{
-			val ListPrefix = ":"
-			val history = complete.History(lines, log)
-			if(s.startsWith(ListPrefix))
-			{
-				val rest = s.substring(ListPrefix.length)
-				val show = complete.History.number(rest).getOrElse(lines.length)
-				printHistory(history, maxLines, show)
-				Some(Nil)
-			}
-			else {
-				val command = historyCommand(history, s, log)
-				command.foreach(lines(lines.length - 1) = _)
-				historyPath foreach { h => xsbt.FileUtilities.writeLines(h.asFile, lines) }
-				Some(command.toList)
-			}
-		}
-	}
-	private def printHistory(history: complete.History, historySize: Int, show: Int): Unit = history.list(historySize, show).foreach(println)
-	private def historyCommand(history: complete.History, s: String, log: Logger): Option[String] =
-	{
-		val ContainsPrefix = "?"
-		val Last = "!"
-		val PreviousPrefix = "-"
-		if(s == Last)
-			history !!
-		else if(s.startsWith(ContainsPrefix))
-			history !? s.substring(ContainsPrefix.length)
-		else
-			history ! s
 	}
 	object SetProject
 	{
@@ -403,8 +365,6 @@ class xMain extends xsbti.AppMain
 		val reader = new LazyJLineReader(baseProject.historyPath, MainCompletor(completors), baseProject.log)
 		reader.readLine("> ").getOrElse(ExitCommand)
 	}
-
-	val HistoryPrefix = "!"
 	/** The name of the command that loads a console with access to the current project through the variable 'project'.*/
 	val ProjectConsoleAction = "console-project"
 	/** The name of the command that shows the current project and logging level of that project.*/
@@ -459,7 +419,9 @@ class xMain extends xsbti.AppMain
 	private def logLevels: Iterable[String] = TreeSet.empty[String] ++ Level.levels.map(_.toString)
 	/** The list of all interactive commands other than logging level.*/
 	private def basicCommands: Iterable[String] = TreeSet(ShowProjectsAction, ShowActions, ShowCurrent, HelpAction,
-		RebootCommand, TraceCommand, ContinuousCompileCommand, ProjectConsoleAction, BuilderCommand)  ++ logLevels.toList ++ TerminateActions
+		RebootCommand, TraceCommand, ContinuousCompileCommand, ProjectConsoleAction, BuilderCommand)  ++
+		logLevels.toList ++ TerminateActions ++
+		HistoryCommands.plainCommands
 
 	private def processAction(baseProject: Project, currentProject: Project, action: String, isInteractive: Boolean): Boolean =
 		action match
@@ -497,6 +459,7 @@ class xMain extends xsbti.AppMain
 		printCmd(CrossBuildPrefix + " <command>", "Executes the project specified action or method for all versions of Scala defined in crossScalaVersions.")
 		printCmd(SpecificBuildPrefix + "<version> <command>", "Changes the version of Scala building the project and executes the provided command.  <command> is optional.")
 		printCmd(ProcessorPrefix, "Prefix for commands for managing processors.  Run '" + ProcessorPrefix + "help' for details.")
+		printCmd(HistoryPrefix, "Prefix for history commands.  Run '" + HistoryPrefix+ "' for history command help.")
 		printCmd(ShowActions, "Shows all available actions.")
 		printCmd(RebootCommand, "Reloads sbt, picking up modifications to sbt.version or scala.version and recompiling modified project definitions.")
 		printCmd(HelpAction, "Displays this help message.")
