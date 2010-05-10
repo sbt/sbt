@@ -44,7 +44,7 @@ private[sbt] object Analyze
 			for(newClass <- newClasses;
 				path <- Path.relativize(outputDirectory, newClass);
 				classFile = Parser(newClass.asFile, log);
-				sourceFile <- classFile.sourceFile;
+				sourceFile <- classFile.sourceFile orElse guessSourceName(newClass.asFile.getName);
 				source <- guessSourcePath(sourceSet, roots, classFile, log))
 			{
 				analysis.beginSource(source)
@@ -109,7 +109,15 @@ private[sbt] object Analyze
 		
 		compile orElse Control.convertErrorMessage(log)(analyze()).left.toOption
 	}
-	private def resolveClassFile(file: File, className: String): File = (file /: (className.replace('.','/') + ".class").split("/"))(new File(_, _))
+	private def guessSourceName(name: String) = Some( takeToDollar(trimClassExt(name)) )
+	private def takeToDollar(name: String) =
+	{
+		val dollar = name.indexOf('$')
+		if(dollar < 0) name else name.substring(0, dollar)
+	}
+	private final val ClassExt = ".class"
+	private def trimClassExt(name: String) = if(name.endsWith(ClassExt)) name.substring(0, name.length - ClassExt.length) else name
+	private def resolveClassFile(file: File, className: String): File = (file /: (className.replace('.','/') + ClassExt).split("/"))(new File(_, _))
 	private def guessSourcePath(sources: scala.collection.Set[Path], roots: Iterable[Path], classFile: ClassFile, log: Logger) =
 	{
 		val classNameParts = classFile.className.split("""\.""")
