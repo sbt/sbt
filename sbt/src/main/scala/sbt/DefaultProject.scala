@@ -98,7 +98,7 @@ abstract class BasicScalaProject extends ScalaProject with BasicDependencyProjec
 		getMainClass(false).map(MainClass(_)).toList
 
 	private def succeededTestPath = testAnalysisPath / "succeeded-tests"
-	private def quickOptions(failedOnly: Boolean) =
+	protected final def quickOptions(failedOnly: Boolean) =
 	{
 		val path = succeededTestPath
 		val analysis = testCompileConditional.analysis
@@ -281,12 +281,11 @@ abstract class BasicScalaProject extends ScalaProject with BasicDependencyProjec
 	protected def docTestAction = scaladocTask(testLabel, testSources, testDocPath, docClasspath, documentOptions).dependsOn(testCompile) describedAs TestDocDescription
 
 	protected def testAction = defaultTestTask(testOptions)
-	protected def testOnlyAction = testQuickMethod(testCompileConditional.analysis, testOptions)((options) => {
-		defaultTestTask(options)
-	}) describedAs (TestOnlyDescription)
-	protected def testQuickAction = defaultTestQuickMethod(false) describedAs (TestQuickDescription)
-	protected def testFailedAction = defaultTestQuickMethod(true) describedAs (TestFailedDescription)
-	protected def defaultTestQuickMethod(failedOnly: Boolean) =
+	protected def testOnlyAction = testOnlyTask(testOptions)
+	protected def testOnlyTask(testOptions: => Seq[TestOption]) = testQuickMethod(testCompileConditional.analysis, testOptions)(o => defaultTestTask(o)) describedAs (TestOnlyDescription)
+	protected def testQuickAction = defaultTestQuickMethod(false, testOptions) describedAs (TestQuickDescription)
+	protected def testFailedAction = defaultTestQuickMethod(true, testOptions) describedAs (TestFailedDescription)
+	protected def defaultTestQuickMethod(failedOnly: Boolean, testOptions: => Seq[TestOption]) =
 		testQuickMethod(testCompileConditional.analysis, testOptions)(options => defaultTestTask(quickOptions(failedOnly) ::: options.toList))
 	protected def defaultTestTask(testOptions: => Seq[TestOption]) =
 		testTask(testFrameworks, testClasspath, testCompileConditional.analysis, testOptions).dependsOn(testCompile, copyResources, copyTestResources) describedAs TestDescription
