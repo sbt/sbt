@@ -50,7 +50,7 @@ object CompileTest extends Specification
 	private def testClasspath(scalaVersion: String) =
 		WithCompiler.launcher { (launch, log) =>
 			def compiler(autoBoot: Boolean, compilerOnClasspath: Boolean): RawCompiler =
-				new RawCompiler(ScalaInstance(scalaVersion, launch), autoBoot, compilerOnClasspath, log)
+				new RawCompiler(ScalaInstance(scalaVersion, launch), new ClasspathOptions(autoBoot, compilerOnClasspath, true), log)
 
 			val callback = new xsbti.TestCallback(Array(), Array())
 				
