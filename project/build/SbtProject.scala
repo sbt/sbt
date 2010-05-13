@@ -58,7 +58,7 @@ abstract class SbtProject(info: ProjectInfo) extends DefaultProject(info) with t
 	lazy val sbtDoc = packageTask(mainDocPath ##, packageDocsJar, Recursive) dependsOn(sbtGenDoc)
 	lazy val sbtSrc = packageTask(deepSources, packageSrcJar, packageOptions) dependsOn(compile)
 	
-	override def packageToPublishActions = super.packageToPublishActions ++ Seq(sbtSrc, sbtDoc) //sxr
+	override def packageToPublishActions = super.packageToPublishActions //++ Seq(sbtSrc, sbtDoc) //sxr
 	
 	override def packageDocsJar = defaultJarPath("-javadoc.jar")
 	override def packageSrcJar= defaultJarPath("-sources.jar")
