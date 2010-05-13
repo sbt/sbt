@@ -10,8 +10,9 @@ class WebappBuild(info: ProjectInfo) extends DefaultWebProject(info) {
 		Set("javax.servlet" % "servlet-api" % "2.5" % "provided",
 		"org.eclipse.jetty" % "jetty-webapp" % "7.0.1.v20091125" % "test")
 
-	def indexURL = new java.net.URL("http://localhost:8080")
+	def indexURL = new java.net.URL("http://localhost:" + jettyPort)
 	def indexFile = new java.io.File("index.html")
+	override def jettyPort = 7123
 	import Process._
 	lazy val getPage = execTask { indexURL #> indexFile }
 	lazy val checkPage = task { args => task { checkHelloWorld(args.mkString(" ")) } dependsOn getPage }
