@@ -28,20 +28,22 @@ class ConfigurationParser extends NotNull
 	def processSections(sections: SectionMap): LaunchConfiguration =
 	{
 		val ((scalaVersion, scalaClassifiers), m1) = processSection(sections, "scala", getScala)
-		val (app, m2) = processSection(m1, "app", getApplication)
+		val ((app, appClassifiers), m2) = processSection(m1, "app", getApplication)
 		val (repositories, m3) = processSection(m2, "repositories", getRepositories)
 		val (boot, m4) = processSection(m3, "boot", getBoot)
 		val (logging, m5) = processSection(m4, "log", getLogging)
 		val (properties, m6) = processSection(m5, "app-properties", getAppProperties)
-		check(m6, "section")
-		new LaunchConfiguration(scalaVersion, scalaClassifiers, app, repositories, boot, logging, properties)
+		val (cacheDir, m7) = processSection(m6, "ivy", getIvy)
+		check(m7, "section")
+		val classifiers = Classifiers("" :: scalaClassifiers, "" :: appClassifiers)
+		new LaunchConfiguration(scalaVersion, IvyOptions(cacheDir, classifiers, repositories), app, boot, logging, properties)
 	}
 	def getScala(m: LabelMap) =
 	{
 		val (scalaVersion, m1) = getVersion(m, "Scala version", "scala.version")
 		val (scalaClassifiers, m2) = ids(m1, "classifiers", Nil)
 		check(m2, "label")
-		(scalaVersion, "" :: scalaClassifiers) // the added "" ensures that the main jars are retrieved
+		(scalaVersion, scalaClassifiers) // the added "" ensures that the main jars are retrieved
 	}
 	def getVersion(m: LabelMap, label: String, defaultName: String): (Version, LabelMap) = process(m, "version", processVersion(label, defaultName))
 	def processVersion(label: String, defaultName: String)(value: Option[String]): Version =
@@ -75,6 +77,12 @@ class ConfigurationParser extends NotNull
 	def file(map: LabelMap, name: String, default: File): (File, LabelMap) =
 		(orElse(getOrNone(map, name).map(toFile), default), map - name)
 
+	def getIvy(m: LabelMap): Option[File] =
+	{
+		val (cacheDir, m1) = file(m, "cache-directory", null) // fix this later
+		check(m1, "label")
+		if(cacheDir eq null) None else Some(cacheDir)
+	}
 	def getBoot(m: LabelMap): BootSetup =
 	{
 		val (dir, m1) = file(m, "directory", toFile("project/boot"))
@@ -96,7 +104,7 @@ class ConfigurationParser extends NotNull
 			case (tpe :: paths, newM) => (Search(tpe, toFiles(paths)), newM)
 		}
 
-	def getApplication(m: LabelMap): Application =
+	def getApplication(m: LabelMap): (Application, List[String]) =
 	{
 		val (org, m1) = id(m, "org", "org.scala-tools.sbt")
 		val (name, m2) = id(m1, "name", "sbt")
@@ -105,9 +113,11 @@ class ConfigurationParser extends NotNull
 		val (components, m5) = ids(m4, "components", List("default"))
 		val (crossVersioned, m6) = id(m5, "cross-versioned", "true")
 		val (resources, m7) = ids(m6, "resources", Nil)
-		check(m7, "label")
+		val (classifiers, m8) = ids(m7, "classifiers", Nil)
+		check(m8, "label")
 		val classpathExtra = toArray(toFiles(resources))
-		new Application(org, name, rev, main, components, toBoolean(crossVersioned), classpathExtra)
+		val app = new Application(org, name, rev, main, components, toBoolean(crossVersioned), classpathExtra)
+		(app, classifiers)
 	}
 	def getRepositories(m: LabelMap): List[Repository] =
 	{

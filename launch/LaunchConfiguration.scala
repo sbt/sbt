@@ -7,24 +7,26 @@ import Pre._
 import java.io.File
 import java.net.URL
 
-final case class LaunchConfiguration(scalaVersion: Version, scalaClassifiers: List[String], app: Application, repositories: List[Repository], boot: BootSetup, logging: Logging, appProperties: List[AppProperty]) extends NotNull
+final case class LaunchConfiguration(scalaVersion: Version, ivyConfiguration: IvyOptions, app: Application, boot: BootSetup, logging: Logging, appProperties: List[AppProperty]) extends NotNull
 {
 	def getScalaVersion = Version.get(scalaVersion)
-	def withScalaVersion(newScalaVersion: String) = LaunchConfiguration(new Version.Explicit(newScalaVersion), scalaClassifiers, app, repositories, boot, logging, appProperties)
-	def withApp(app: Application) = LaunchConfiguration(scalaVersion, scalaClassifiers, app, repositories, boot, logging, appProperties)
-	def withAppVersion(newAppVersion: String) = LaunchConfiguration(scalaVersion, scalaClassifiers, app.withVersion(new Version.Explicit(newAppVersion)), repositories, boot, logging, appProperties)
-	def withVersions(newScalaVersion: String, newAppVersion: String) = LaunchConfiguration(new Version.Explicit(newScalaVersion), scalaClassifiers, app.withVersion(new Version.Explicit(newAppVersion)), repositories, boot, logging, appProperties)
-	def map(f: File => File) = LaunchConfiguration(scalaVersion, scalaClassifiers, app.map(f), repositories, boot.map(f), logging, appProperties)
+	def withScalaVersion(newScalaVersion: String) = LaunchConfiguration(new Version.Explicit(newScalaVersion), ivyConfiguration, app, boot, logging, appProperties)
+	def withApp(app: Application) = LaunchConfiguration(scalaVersion, ivyConfiguration, app, boot, logging, appProperties)
+	def withAppVersion(newAppVersion: String) = LaunchConfiguration(scalaVersion, ivyConfiguration, app.withVersion(new Version.Explicit(newAppVersion)), boot, logging, appProperties)
+	def withVersions(newScalaVersion: String, newAppVersion: String) = LaunchConfiguration(new Version.Explicit(newScalaVersion), ivyConfiguration, app.withVersion(new Version.Explicit(newAppVersion)), boot, logging, appProperties)
+	def map(f: File => File) = LaunchConfiguration(scalaVersion, ivyConfiguration, app.map(f), boot.map(f), logging, appProperties)
 }
-
+final case class IvyOptions(cacheDirectory: Option[File], classifiers: Classifiers, repositories: List[Repository]) extends NotNull
+final case class Classifiers(forScala: List[String], app: List[String]) extends NotNull
 sealed trait Version extends NotNull
 object Version
 {
-	final class Explicit(val value: String) extends Version
+	final class Explicit(val value: String) extends Version { override def toString = value }
 	final class Implicit(val name: String, val default: Option[String]) extends Version
 	{
 		require(isNonEmpty(name), "Name cannot be empty")
 		require(default.isEmpty || isNonEmpty(default.get), "Default cannot be the empty string")
+		override def toString = name + (default match { case Some(d) => "[" + d + "]"; case None => "" })
 	}
 
 	object Implicit
@@ -96,12 +98,18 @@ final class SetProperty(val value: String) extends PropertyInit
 final class PromptProperty(val label: String, val default: Option[String]) extends PropertyInit
 
 final class Logging(level: LogLevel.Value) extends NotNull
+{
+	import LogLevel._
+	def log(s: => String, at: Value) = if(level.id <= at.id) stream(at).println("[" + at + "] " + s)
+	def debug(s: => String) = log(s, Debug)
+	private def stream(at: Value) = if(at == Error) System.err else System.out
+}
 object LogLevel extends Enumeration
 {
-	val Debug = value("debug")
-	val Info = value("info")
-	val Warn = value("warn")
-	val Error = value("error")
+	val Debug = value("debug", 0)
+	val Info = value("info", 1)
+	val Warn = value("warn", 2)
+	val Error = value("error", 3)
 	def apply(s: String): Logging = new Logging(toValue(s))
 }
 

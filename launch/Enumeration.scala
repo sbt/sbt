@@ -22,8 +22,9 @@ class Enumeration extends NotNull
 				Nil
 		}
 	}
-	def value(s: String) = new Value(s)
-	class Value(override val toString: String) extends NotNull
+	def value(s: String) = new Value(s, 0)
+	def value(s: String, i: Int) = new Value(s, i)
+	class Value(override val toString: String, val id: Int) extends NotNull
 	
 	def toValue(s: String): Value = elements.find(_.toString == s).getOrElse(error("Expected one of " + elements.mkString(",") + " (got: " + s + ")"))
 }

@@ -26,16 +26,16 @@ import util.{DefaultMessageLogger, Message, MessageLoggerEngine}
 
 import BootConfiguration._
 
-sealed trait UpdateTarget extends NotNull { def tpe: String }
+sealed trait UpdateTarget extends NotNull { def tpe: String; def classifiers: List[String] }
 final class UpdateScala(val classifiers: List[String]) extends UpdateTarget { def tpe = "scala" }
-final class UpdateApp(val id: Application) extends UpdateTarget { def tpe = "app" }
+final class UpdateApp(val id: Application, val classifiers: List[String]) extends UpdateTarget { def tpe = "app" }
 
-final class UpdateConfiguration(val bootDirectory: File, val scalaVersion: String, val repositories: List[Repository]) extends NotNull
+final class UpdateConfiguration(val bootDirectory: File, val ivyCacheDirectory: Option[File], val scalaVersion: String, val repositories: List[Repository]) extends NotNull
 
 /** Ensures that the Scala and application jars exist for the given versions or else downloads them.*/
 final class Update(config: UpdateConfiguration)
 {
-	import config.{bootDirectory, repositories, scalaVersion}
+	import config.{bootDirectory, ivyCacheDirectory, repositories, scalaVersion}
 	bootDirectory.mkdirs
 
 	private def logFile = new File(bootDirectory, UpdateLogName)
@@ -103,7 +103,7 @@ final class Update(config: UpdateConfiguration)
 			case u: UpdateApp =>
 				val app = u.id
 				val resolvedName = if(app.crossVersioned) app.name + "_" + scalaVersion else app.name
-				addDependency(moduleID, app.groupID, resolvedName, app.getVersion, "default(compile)", Nil)
+				addDependency(moduleID, app.groupID, resolvedName, app.getVersion, "default(compile)", u.classifiers)
 				excludeScala(moduleID)
 				System.out.println("Getting " + app.groupID + " " + resolvedName + " " + app.getVersion + " ...")
 		}
@@ -132,7 +132,7 @@ final class Update(config: UpdateConfiguration)
 		val extraMap = new java.util.HashMap[String,String]
 		if(!classifier.isEmpty)
 			extraMap.put("e:classifier", classifier)
-		val ivyArtifact = new DefaultDependencyArtifactDescriptor(dep, name, "jar", "jar", null, extraMap)
+		val ivyArtifact = new DefaultDependencyArtifactDescriptor(dep, name, artifactType(classifier), "jar", null, extraMap)
 		for(conf <- dep.getModuleConfigurations)
 			dep.addDependencyArtifact(conf, ivyArtifact)
 	}
@@ -197,7 +197,7 @@ final class Update(config: UpdateConfiguration)
 		if(repositories.isEmpty) error("No repositories defined.")
 		for(repo <- repositories if includeRepo(repo))
 			newDefault.add(toIvyRepository(settings, repo))
-		onDefaultRepositoryCacheManager(settings)(configureCache)
+		configureCache(settings, ivyCacheDirectory)
 		settings.addResolver(newDefault)
 		settings.setDefaultResolver(newDefault.getName)
 	}
@@ -207,11 +207,16 @@ final class Update(config: UpdateConfiguration)
 	private[this] val Snapshot = "-SNAPSHOT"
 	private[this] val ChangingPattern = ".*" + Snapshot
 	private[this] val ChangingMatcher = PatternMatcher.REGEXP
-	private def configureCache(manager: DefaultRepositoryCacheManager)
+	private def configureCache(settings: IvySettings, dir: Option[File])
 	{
+		val cacheDir = dir.getOrElse(settings.getDefaultRepositoryCacheBasedir())
+		val manager = new DefaultRepositoryCacheManager("default-cache", settings, cacheDir)
 		manager.setUseOrigin(true)
 		manager.setChangingMatcher(ChangingMatcher)
 		manager.setChangingPattern(ChangingPattern)
+		settings.addRepositoryCacheManager(manager)
+		settings.setDefaultRepositoryCacheManager(manager)
+		dir.foreach(dir => settings.setDefaultResolutionCacheBasedir(dir.getAbsolutePath))
 	}
 	private def toIvyRepository(settings: IvySettings, repo: Repository) =
 	{
@@ -280,7 +285,7 @@ final class Update(config: UpdateConfiguration)
 		if(m.matches)
 		{
 			val base = List(1,2,3).map(m.group).mkString(".")
-			val pattern = "http://scala-tools.org/repo-snapshots/[organization]/[module]/" + base + "-SNAPSHOT/[artifact]-[revision].[ext]"
+			val pattern = "http://scala-tools.org/repo-snapshots/[organization]/[module]/" + base + "-SNAPSHOT/[artifact]-[revision](-[classifier]).[ext]"
 
 			val resolver = new URLResolver
 			resolver.setName("Scala Tools Snapshots")

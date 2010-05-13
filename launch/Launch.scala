@@ -32,7 +32,9 @@ object Launch
 	}
 	def initialized(currentDirectory: File, parsed: LaunchConfiguration, arguments: List[String]): Unit =
 	{
+		parsed.logging.debug("Parsed configuration: " + parsed)
 		val resolved = ResolveVersions(parsed)
+		resolved.logging.debug("Resolved configuration: " + resolved)
 		explicit(currentDirectory, resolved, arguments)
 	}
 
@@ -63,8 +65,9 @@ object Launch
 final class RunConfiguration(val scalaVersion: String, val app: xsbti.ApplicationID, val workingDirectory: File, val arguments: List[String]) extends NotNull
 
 import BootConfiguration.{appDirectoryName, baseDirectoryName, ScalaDirectoryName, TestLoadScalaClasses}
-class Launch(val bootDirectory: File, repositories: List[Repository], scalaClassifiers: List[String]) extends xsbti.Launcher
+class Launch private[xsbt](val bootDirectory: File, val ivyOptions: IvyOptions) extends xsbti.Launcher
 {
+	import ivyOptions.{cacheDirectory, classifiers, repositories}
 	bootDirectory.mkdirs
 	private val scalaProviders = new Cache[String, ScalaProvider](new ScalaProvider(_))
 	def getScala(version: String): xsbti.ScalaProvider = scalaProviders(version)
@@ -79,7 +82,7 @@ class Launch(val bootDirectory: File, repositories: List[Repository], scalaClass
 		def launcher: xsbti.Launcher = Launch.this
 		def parentLoader = topLoader
 
-		lazy val configuration = new UpdateConfiguration(bootDirectory, version, repositories)
+		lazy val configuration = new UpdateConfiguration(bootDirectory, cacheDirectory, version, repositories)
 		lazy val libDirectory = new File(configuration.bootDirectory, baseDirectoryName(version))
 		lazy val scalaHome = new File(libDirectory, ScalaDirectoryName)
 		def compilerJar = new File(scalaHome,CompilerModuleName + ".jar")
@@ -87,7 +90,7 @@ class Launch(val bootDirectory: File, repositories: List[Repository], scalaClass
 		override def classpath = array(compilerJar, libraryJar)
 		def baseDirectories = List(scalaHome)
 		def testLoadClasses = TestLoadScalaClasses
-		def target = new UpdateScala(scalaClassifiers)
+		def target = new UpdateScala(classifiers.forScala)
 		def failLabel = "Scala " + version
 		def lockFile = updateLockFile
 		def extraClasspath = array()
@@ -102,7 +105,7 @@ class Launch(val bootDirectory: File, repositories: List[Repository], scalaClass
 			def parentLoader = ScalaProvider.this.loader
 			def baseDirectories = appHome :: id.mainComponents.map(components.componentLocation).toList
 			def testLoadClasses = List(id.mainClass)
-			def target = new UpdateApp(Application(id))
+			def target = new UpdateApp(Application(id), classifiers.app)
 			def failLabel = id.name + " " + id.version
 			def lockFile = updateLockFile
 			def mainClasspath = fullClasspath
@@ -121,14 +124,16 @@ class Launch(val bootDirectory: File, repositories: List[Repository], scalaClass
 }
 object Launcher
 {
-	def apply(bootDirectory: File, repositories: List[Repository], scalaClassifiers: List[String]): xsbti.Launcher =
-		apply(bootDirectory, repositories, scalaClassifiers, GetLocks.find)
-	def apply(bootDirectory: File, repositories: List[Repository], scalaClassifiers: List[String], locks: xsbti.GlobalLock): xsbti.Launcher =
-		new Launch(bootDirectory, repositories, scalaClassifiers) {
+	def apply(bootDirectory: File, repositories: List[Repository]): xsbti.Launcher =
+		apply(bootDirectory, IvyOptions(None, Classifiers(Nil, Nil), repositories))
+	def apply(bootDirectory: File, ivyOptions: IvyOptions): xsbti.Launcher =
+		apply(bootDirectory, ivyOptions, GetLocks.find)
+	def apply(bootDirectory: File, ivyOptions: IvyOptions, locks: xsbti.GlobalLock): xsbti.Launcher =
+		new Launch(bootDirectory, ivyOptions) {
 			override def globalLock = locks
 		}
 	def apply(explicit: LaunchConfiguration): xsbti.Launcher =
-		new Launch(explicit.boot.directory, explicit.repositories, explicit.scalaClassifiers)
+		new Launch(explicit.boot.directory, explicit.ivyConfiguration)
 	def defaultAppProvider(baseDirectory: File): xsbti.AppProvider = getAppProvider(baseDirectory, Configuration.configurationOnClasspath)
 	def getAppProvider(baseDirectory: File, configLocation: URL): xsbti.AppProvider =
 	{
