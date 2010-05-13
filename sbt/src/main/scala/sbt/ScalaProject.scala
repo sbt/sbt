@@ -192,7 +192,7 @@ trait ScalaProject extends SimpleScalaProject with FileTasks with MultiTaskProje
 	def scaladocTask(label: String, sources: PathFinder, outputDirectory: Path, classpath: PathFinder, options: ScaladocOption*): Task =
 		scaladocTask(label, sources, outputDirectory, classpath, options)
 	def scaladocTask(label: String, sources: PathFinder, outputDirectory: Path, classpath: PathFinder, options: => Seq[ScaladocOption]): Task =
-		task
+		fileTask(outputDirectory / "index.html" from sources)
 		{
 			val optionsLocal = options
 			val maxErrors = maximumErrors(optionsLocal)
