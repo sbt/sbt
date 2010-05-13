@@ -33,6 +33,8 @@ abstract class SbtProject(info: ProjectInfo) extends DefaultProject(info) with t
 	val optional = Configurations.Optional
 	val provided = Configurations.Provided
 	val testConf = Configurations.Test
+	val docConf = Configurations.Javadoc
+	val srcConf = Configurations.Sources
 
 	//testing
 	val scalacheck = "org.scala-tools.testing" %% "scalacheck" % "1.6" % "test"
@@ -46,8 +48,22 @@ abstract class SbtProject(info: ProjectInfo) extends DefaultProject(info) with t
 
 	val testInterface = "org.scala-tools.testing" % "test-interface" % "0.5"
 
-	def deepSources = Path.finder { topologicalSort.flatMap { case p: ScalaPaths => p.mainSources.getFiles } }
-	lazy val sbtDoc = scaladocTask("sbt", deepSources, docPath, docClasspath, documentOptions)
+	def concatPaths[T](s: Seq[T])(f: PartialFunction[T, PathFinder]): PathFinder =
+	{
+		def finder: T => PathFinder = (f orElse { case _ => Path.emptyPathFinder })
+		(Path.emptyPathFinder /: s) { _ +++ finder(_) }
+	}
+	def deepSources = concatPaths(topologicalSort){ case p: ScalaPaths => p.mainSources }
+	lazy val sbtGenDoc = scaladocTask("sbt", deepSources, docPath, docClasspath, documentOptions) dependsOn(compile)
+	lazy val sbtDoc = packageTask(mainDocPath ##, packageDocsJar, Recursive) dependsOn(sbtGenDoc)
+	lazy val sbtSrc = packageTask(deepSources, packageSrcJar, packageOptions) dependsOn(compile)
+	
+	override def packageToPublishActions = super.packageToPublishActions ++ Seq(sbtSrc, sbtDoc) //sxr
+	
+	override def packageDocsJar = defaultJarPath("-javadoc.jar")
+	override def packageSrcJar= defaultJarPath("-sources.jar")
+	val sourceArtifact = Artifact(artifactID, "src", "jar", "sources")
+	val docsArtifact = Artifact(artifactID, "doc", "jar", "javadoc")
 
 	/* For generating JettyRun for Jetty 6 and 7.  The only difference is the imports, but the file has to be compiled against each set of imports. */
 	override def compileAction = super.compileAction dependsOn (generateJettyRun6, generateJettyRun7)
