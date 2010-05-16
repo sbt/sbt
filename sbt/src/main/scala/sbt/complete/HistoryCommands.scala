@@ -13,7 +13,8 @@ object HistoryCommands
 	def ListFull = h(ListCommands)
 
 	def ListN = ListFull + "n"
-	def ContainsString = Contains + "string"
+	def ContainsString = ContainsFull + "string"
+	def StartsWithString = Start + "string"
 	def Previous = Start + "-n"
 	def Nth = Start + "n"
 	
@@ -24,9 +25,10 @@ object HistoryCommands
 		LastFull -> "Execute the last command again",
 		ListFull -> "Show all previous commands",
 		ListN -> "Show the last n commands",
-		ContainsString -> "Execute the most recent command containing 'string'",
+		Nth -> ("Execute the command with index n, as shown by the " + ListFull + " command"),
 		Previous -> "Execute the nth command before this one",
-		Nth -> ("Execute the command with index n, as shown by the " + ListFull + " command")
+		StartsWithString -> "Execute the most recent command starting with 'string'",
+		ContainsString -> "Execute the most recent command containing 'string'"
 	)
 	def printHelp(log: Logger): Unit =
 		println("History commands:\n   " + (descriptions.map{ case (c,d) => c + "    " + d}).mkString("\n   "))
