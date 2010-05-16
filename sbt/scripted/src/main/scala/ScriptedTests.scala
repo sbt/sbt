@@ -77,11 +77,11 @@ object CompatibilityLevel extends Enumeration
 	def defaultVersions(level: Value) =
 		level match
 		{
-			case Full =>  "2.7.2 2.7.3 2.7.5 2.7.7 2.8.0.Beta1 2.8.0.RC1 2.8.0-SNAPSHOT"
-			case Basic =>  "2.7.7 2.7.2 2.8.0.RC1"
-			case Minimal => "2.7.7 2.8.0.RC1"
+			case Full =>  "2.7.2 2.7.3 2.7.5 2.7.7 2.8.0.Beta1 2.8.0.RC1 2.8.0.RC2 2.8.0-SNAPSHOT"
+			case Basic =>  "2.7.7 2.7.2 2.8.0.RC2"
+			case Minimal => "2.7.7 2.8.0.RC2"
 			case Minimal27 => "2.7.7"
-			case Minimal28 => "2.8.0.RC1"
+			case Minimal28 => "2.8.0.RC2"
 		}
 }
 object FillProperties
