@@ -1,5 +1,6 @@
 ### Fixes
 * Fixed issue with using 2.8.0.RC1 (or later) compiler in tests.
+* Fix `FileUtilities.unzip` to be tail-recursive again.
 * Honor `-Xfatal-warnings` option added to compiler in 2.8.0.RC2.
 * Derive Java source file from name of class file when no SourceFile attribute is present in the class file. Improves tracking when -g:none option is used.
 * Properly support sftp/ssh repositories using key-based authentication. See the updated section of the [Resolvers](http://code.google.com/p/simple-build-tool/wiki/Resolvers#SFTP_and_SSH_Repositories) page.
