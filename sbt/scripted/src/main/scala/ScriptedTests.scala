@@ -13,7 +13,7 @@ import xsbt.test.{CommentHandler, FileCommands, ScriptRunner, TestScriptParser}
 final class ScriptedTests(resourceBaseDirectory: File, bufferLog: Boolean, sbtVersion: String, defScalaVersion: String, buildScalaVersions: String) extends NotNull
 {
 	@deprecated def this(resourceBaseDirectory: File, bufferLog: Boolean, sbtVersion: String, defScalaVersion: String, level: CompatibilityLevel.Value) =
-		this(resourceBaseDirectory, bufferLog, sbtVersion, defScalaVersion, CompatibilityLevel.defaultVersions(level)) =
+		this(resourceBaseDirectory, bufferLog, sbtVersion, defScalaVersion, CompatibilityLevel.defaultVersions(level))
 
 	private val testResources = new Resources(resourceBaseDirectory)
 	
@@ -87,7 +87,7 @@ object CompatibilityLevel extends Enumeration
 object FillProperties
 {
 	def apply(projectDirectory: File, sbtVersion: String, defScalaVersion: String, level: CompatibilityLevel.Value): Unit =
-		apply(projectDirectory, sbtVersion, defScalaVersion, defaultVersions(level))
+		apply(projectDirectory, sbtVersion, defScalaVersion, CompatibilityLevel.defaultVersions(level))
 	def apply(projectDirectory: File, sbtVersion: String, defScalaVersion: String, buildScalaVersions: String): Unit =
 	{
 		import xsbt.Paths._

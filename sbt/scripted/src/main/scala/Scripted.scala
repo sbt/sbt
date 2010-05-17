@@ -49,7 +49,7 @@ trait Scripted extends Project with MultiTaskProject
 		def scriptedTest(test: ScriptedTest) =
 			task { runner.scriptedTest(test.group, test.name, log) } named test.toString dependsOn(startTask)
 		val testTasks = tests.map(scriptedTest)
-		Empty named("scripted-test-complete") dependsOn(testTasks : _*)
+		task {None} named("scripted-test-complete") dependsOn(testTasks : _*)
 	}
 	private def unwrapOption[T](s: T): Option[T] = if(s == null) None else Some(s)
 	
