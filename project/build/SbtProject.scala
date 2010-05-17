@@ -62,8 +62,8 @@ abstract class SbtProject(info: ProjectInfo) extends DefaultProject(info) with t
 	
 	override def packageDocsJar = defaultJarPath("-javadoc.jar")
 	override def packageSrcJar= defaultJarPath("-sources.jar")
-	val sourceArtifact = Artifact(artifactID, "src", "jar", "sources")
-	val docsArtifact = Artifact(artifactID, "doc", "jar", "javadoc")
+	/*val sourceArtifact = Artifact(artifactID, "src", "jar", "sources")
+	val docsArtifact = Artifact(artifactID, "doc", "jar", "javadoc")*/
 
 	/* For generating JettyRun for Jetty 6 and 7.  The only difference is the imports, but the file has to be compiled against each set of imports. */
 	override def compileAction = super.compileAction dependsOn (generateJettyRun6, generateJettyRun7)
