@@ -6,7 +6,7 @@ import sbt._
 import java.io.File
 import java.net.URL
 
-abstract class SbtProject(info: ProjectInfo) extends DefaultProject(info) with test.SbtScripted with posterous.Publish// with Sxr
+abstract class SbtProject(info: ProjectInfo) extends DefaultProject(info) with test.SbtScripted with posterous.Publish with Sxr
 {
 	/* Additional resources to include in the produced jar.*/
 	def extraResources = descendents(info.projectPath / "licenses", "*") +++ "LICENSE" +++ "NOTICE"
@@ -26,7 +26,7 @@ abstract class SbtProject(info: ProjectInfo) extends DefaultProject(info) with t
 	//   The output of scripted tasks executed in parallel will be inteleaved if false.
 	override def scriptedBufferLog = true
 	// Configure which versions of Scala to test against for those tests that do cross building
-	override def scriptedCompatibility = sbt.test.CompatibilityLevel.Minimal
+	override def scriptedBuildVersions = "2.7.7 2.7.5 2.7.2 2.8.0.RC2 2.8.0.Beta1"
 
 	override def useDefaultConfigurations = false
 	val default = Configurations.Default
@@ -58,7 +58,7 @@ abstract class SbtProject(info: ProjectInfo) extends DefaultProject(info) with t
 	lazy val sbtDoc = packageTask(mainDocPath ##, packageDocsJar, Recursive) dependsOn(sbtGenDoc)
 	lazy val sbtSrc = packageTask(deepSources, packageSrcJar, packageOptions) dependsOn(compile)
 	
-	override def packageToPublishActions = super.packageToPublishActions //++ Seq(sbtSrc, sbtDoc) //sxr
+	override def packageToPublishActions = super.packageToPublishActions //++ Seq(sbtSrc, sbtDoc, sxr)
 	
 	override def packageDocsJar = defaultJarPath("-javadoc.jar")
 	override def packageSrcJar= defaultJarPath("-sources.jar")

@@ -17,9 +17,8 @@ trait Sxr extends BasicScalaProject
 	lazy val sxr = task {
 		xsbt.FileUtilities.delete(sxrOutput +++ sxrClassesOutput getFiles)
 		xsbt.FileUtilities.createDirectory(sxrClassesOutput asFile)
-		val compiler = new xsbt.RawCompiler(buildScalaInstance, true, true, log)
-		// `Set() ++` is temporary.  getFiles returns immutable.Set in sbt 0.7.3.
-		compiler(Set() ++ deepSources.getFiles, Set() ++ compileClasspath.getFiles, sxrClassesOutput asFile, sxrOptions)
+		val compiler = new xsbt.RawCompiler(buildScalaInstance, xsbt.ClasspathOptions.auto, log)
+		compiler(deepSources.getFiles, compileClasspath.getFiles, sxrClassesOutput asFile, sxrOptions)
 		None
 	}
 }
