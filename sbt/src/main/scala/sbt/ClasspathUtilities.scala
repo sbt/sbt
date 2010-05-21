@@ -1,5 +1,5 @@
 /* sbt -- Simple Build Tool
- * Copyright 2008, 2009 Mark Harrah
+ * Copyright 2008, 2009, 2010 Mark Harrah
  */
 package sbt
 
@@ -8,6 +8,8 @@ import java.net.{URI, URL, URLClassLoader}
 import java.util.Collections
 import scala.collection.Set
 import scala.collection.mutable.{HashSet, ListBuffer}
+import xsbt.ScalaInstance
+import xsbt.FileUtilities.{createTemporaryDirectory, withTemporaryDirectory, write}
 
 object ClasspathUtilities
 {
@@ -15,7 +17,7 @@ object ClasspathUtilities
 	def toClasspath(paths: Iterable[Path]): Array[URL] = Path.getURLs(paths)
 	def toLoader(finder: PathFinder): ClassLoader = toLoader(finder.get)
 	def toLoader(finder: PathFinder, parent: ClassLoader): ClassLoader = toLoader(finder.get, parent)
-	def toLoader(paths: Iterable[Path]): ClassLoader = new URLClassLoader(toClasspath(paths), rootLoader)
+	def toLoader(paths: Iterable[Path]): ClassLoader = toLoader(paths, rootLoader)
 	def toLoader(paths: Iterable[Path], parent: ClassLoader): ClassLoader = new URLClassLoader(toClasspath(paths), parent)
 	
 	lazy val rootLoader =
@@ -26,6 +28,32 @@ object ClasspathUtilities
 			if(p eq null) loader else parent(p)
 		}
 		parent(getClass.getClassLoader)
+	}
+	
+	final val AppClassPath = "app.class.path"
+	final val BootClassPath = "boot.class.path"
+	
+	def createClasspathResources(classpath: Iterable[Path], instance: ScalaInstance, baseDir: Path): Iterable[Path] =
+		createClasspathResources(classpath ++ Path.fromFiles(instance.jars), Path.fromFiles(instance.jars), baseDir)
+		
+	def createClasspathResources(appPaths: Iterable[Path], bootPaths: Iterable[Path], baseDir: Path): Iterable[Path] =
+	{
+		def writePaths(name: String, paths: Iterable[Path]): Unit =
+			write(baseDir / name asFile, Path.makeString(paths))
+		writePaths(AppClassPath, appPaths)
+		writePaths(BootClassPath, bootPaths)
+		appPaths ++ Seq(baseDir)
+	}
+
+	/** The client is responsible for cleaning up the temporary directory.*/
+	def makeLoader[T](classpath: Iterable[Path], instance: ScalaInstance): (ClassLoader, Path) =
+		makeLoader(classpath, instance.loader, instance)
+	/** The client is responsible for cleaning up the temporary directory.*/
+	def makeLoader[T](classpath: Iterable[Path], parent: ClassLoader, instance: ScalaInstance): (ClassLoader, Path) =
+	{
+		val dir = Path.fromFile(createTemporaryDirectory)
+		val modifiedClasspath = createClasspathResources(classpath, instance, dir)
+		(toLoader(modifiedClasspath, parent), dir)
 	}
 	
 	private[sbt] def printSource(c: Class[_]) =

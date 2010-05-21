@@ -311,7 +311,7 @@ trait ScalaProject extends SimpleScalaProject with FileTasks with MultiTaskProje
 		}
 		def includeTest(test: TestDefinition) = !excludeTestsSet.contains(test.name) && testFilters.forall(filter => filter(test.name))
 		val tests = HashSet.empty[TestDefinition] ++ analysis.allTests.map(_.toDefinition).filter(includeTest)
-		TestFramework.testTasks(frameworks, classpath.get, buildScalaInstance.loader, tests.toSeq, log,
+		TestFramework.testTasks(frameworks, classpath.get, buildScalaInstance, tests.toSeq, log,
 			testListeners.readOnly, false, setup.readOnly, cleanup.readOnly, testArgsByFramework)
 	}
 	private def flatten[T](i: Iterable[Iterable[T]]) = i.flatMap(x => x)

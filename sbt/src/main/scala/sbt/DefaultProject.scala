@@ -206,7 +206,8 @@ abstract class BasicScalaProject extends ScalaProject with BasicDependencyProjec
 		protected def getFingerprints(frameworks: Seq[TestFramework]): Fingerprints =
 		{
 			import org.scalatools.testing.{SubclassFingerprint, AnnotatedFingerprint}
-			val loader = TestFramework.createTestLoader(classpath.get, buildScalaInstance.loader)
+			val (loader, tempDir) = TestFramework.createTestLoader(classpath.get, buildScalaInstance)
+			xsbt.FileUtilities.delete(tempDir.asFile)
 			val annotations = new ListBuffer[String]
 			val superclasses = new ListBuffer[String]
 			frameworks flatMap { _.create(loader, log) } flatMap(TestFramework.getTests) foreach {

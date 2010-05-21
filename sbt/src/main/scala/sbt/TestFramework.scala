@@ -6,6 +6,7 @@ package sbt
 	import java.net.URLClassLoader
 	import org.scalatools.testing.{AnnotatedFingerprint, Fingerprint, SubclassFingerprint, TestFingerprint}
 	import org.scalatools.testing.{Event, EventHandler, Framework, Runner, Runner2, Logger=>TLogger}
+	import xsbt.ScalaInstance
 
 object Result extends Enumeration
 {
@@ -120,7 +121,7 @@ object TestFramework
 
 	def testTasks(frameworks: Seq[TestFramework],
 		classpath: Iterable[Path],
-		scalaLoader: ClassLoader,
+		scalaInstance: ScalaInstance,
 		tests: Seq[TestDefinition],
 		log: Logger,
 		listeners: Seq[TestReportListener],
@@ -130,16 +131,17 @@ object TestFramework
 		testArgsByFramework: Map[TestFramework, Seq[String]]):
 			(Iterable[NamedTestTask], Iterable[NamedTestTask], Iterable[NamedTestTask]) =
 	{
-		val loader = createTestLoader(classpath, scalaLoader)
+		val (loader, tempDir) = createTestLoader(classpath, scalaInstance)
 		val arguments = immutable.Map() ++
 			( for(framework <- frameworks; created <- framework.create(loader, log)) yield
 				(created, testArgsByFramework.getOrElse(framework, Nil)) )
+		val cleanTmp = () => FileUtilities.clean(tempDir, log)
 
 		val mappedTests = testMap(arguments.keys.toList, tests, arguments)
 		if(mappedTests.isEmpty)
-			(new NamedTestTask(TestStartName, None) :: Nil, Nil, new NamedTestTask(TestFinishName, { log.info("No tests to run."); None }) :: Nil )
+			(new NamedTestTask(TestStartName, None) :: Nil, Nil, new NamedTestTask(TestFinishName, { log.info("No tests to run."); cleanTmp() }) :: Nil )
 		else
-			createTestTasks(loader, mappedTests, log, listeners, endErrorsEnabled, setup, cleanup)
+			createTestTasks(loader, mappedTests, log, listeners, endErrorsEnabled, setup, Seq(cleanTmp) ++ cleanup)
 	}
 
 	private def testMap(frameworks: Seq[Framework], tests: Seq[TestDefinition], args: Map[Framework, Seq[String]]):
@@ -221,12 +223,12 @@ object TestFramework
 		val endTask = new NamedTestTask(TestFinishName, end() ) :: createTasks(cleanup, "Test cleanup")
 		(startTask, testTasks, endTask)
 	}
-	def createTestLoader(classpath: Iterable[Path], scalaLoader: ClassLoader): ClassLoader =
+	def createTestLoader(classpath: Iterable[Path], scalaInstance: ScalaInstance): (ClassLoader, Path) =
 	{
-		val filterCompilerLoader = new FilteredLoader(scalaLoader, ScalaCompilerJarPackages)
+		val filterCompilerLoader = new FilteredLoader(scalaInstance.loader, ScalaCompilerJarPackages)
 		val interfaceFilter = (name: String) => name.startsWith("org.scalatools.testing.")
 		val notInterfaceFilter = (name: String) => !interfaceFilter(name)
 		val dual = new xsbt.DualLoader(filterCompilerLoader, notInterfaceFilter, x => true, getClass.getClassLoader, interfaceFilter, x => false)
-		ClasspathUtilities.toLoader(classpath, dual)
+		ClasspathUtilities.makeLoader(classpath, dual, scalaInstance)
 	}
 }

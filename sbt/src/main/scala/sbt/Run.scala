@@ -10,7 +10,8 @@ import scala.tools.nsc.util.ClassPath
 
 import java.io.File
 import java.net.{URL, URLClassLoader}
-import java.lang.reflect.Modifier.{isPublic, isStatic}
+import java.lang.reflect.{Method, Modifier}
+import Modifier.{isPublic, isStatic}
 
 trait ScalaRun
 {
@@ -51,9 +52,17 @@ class Run(instance: xsbt.ScalaInstance) extends ScalaRun
 	}
 	private def run0(mainClassName: String, classpath: Iterable[Path], options: Seq[String], log: Logger)
 	{
-		val loader = getLoader(classpath, log)
-		val main = getMainMethod(mainClassName, loader)
-
+		log.debug("  Classpath:\n\t" + classpath.mkString("\n\t"))
+		val (loader, tempDir) = ClasspathUtilities.makeLoader(classpath, instance)
+		try 
+		{
+			val main = getMainMethod(mainClassName, loader)
+			invokeMain(loader, main, options)
+		}
+		finally { xsbt.FileUtilities.delete(tempDir asFile) }
+	}
+	private def invokeMain(loader: ClassLoader, main: Method, options: Seq[String])
+	{
 		val currentThread = Thread.currentThread
 		val oldLoader = Thread.currentThread.getContextClassLoader()
 		currentThread.setContextClassLoader(loader)
@@ -68,11 +77,6 @@ class Run(instance: xsbt.ScalaInstance) extends ScalaRun
 		if(!isPublic(modifiers)) throw new NoSuchMethodException(mainClassName + ".main is not public")
 		if(!isStatic(modifiers)) throw new NoSuchMethodException(mainClassName + ".main is not static")
 		method
-	}
-	def getLoader(classpath: Iterable[Path], log: Logger) =
-	{
-		log.debug("  Classpath:\n\t" + classpath.mkString("\n\t"))
-		ClasspathUtilities.toLoader(classpath, instance.loader)
 	}
 }
 
