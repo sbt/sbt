@@ -121,6 +121,9 @@ private class JettyLoggerBase(delegate: Logger)
 	def info(msg: String, arg0: AnyRef, arg1: AnyRef) { delegate.info(format(msg, arg0, arg1)) }
 	def debug(msg: String, arg0: AnyRef, arg1: AnyRef) { delegate.debug(format(msg, arg0, arg1)) }
 	def warn(msg: String, arg0: AnyRef, arg1: AnyRef) { delegate.warn(format(msg, arg0, arg1)) }
+	def info(msg: String, args: Array[AnyRef]) { delegate.info(format(msg, args: _*)) }
+	def debug(msg: String, args: Array[AnyRef]) { delegate.debug(format(msg, args: _*)) }
+	def warn(msg: String, args: Array[AnyRef]) { delegate.warn(format(msg, args: _*)) }
 	def warn(msg: String, th: Throwable)
 	{
 		delegate.warn(msg)
@@ -131,19 +134,15 @@ private class JettyLoggerBase(delegate: Logger)
 		delegate.debug(msg)
 		delegate.trace(th)
 	}
-	private def format(msg: String, arg0: AnyRef, arg1: AnyRef) =
+	private def format(msg: String, args: AnyRef*) =
 	{
 		def toString(arg: AnyRef) = if(arg == null) "" else arg.toString
-		val pieces = msg.split("""\{\}""", 3)
-		if(pieces.length == 1)
-			pieces(0)
-		else
-		{
-			val base = pieces(0) + toString(arg0) + pieces(1)
-			if(pieces.length == 2)
-				base
-			else
-				base + toString(arg1) + pieces(2)
-		}
+		val pieces = msg.split("""\{\}""", args.length + 1).toList
+		val argStrs = args.map(toString).toList ::: List("")
+		pieces.zip(argStrs).foldLeft(new StringBuilder) { (sb, pair) =>
+			val (piece, argStr) = pair
+			if (piece.isEmpty) sb
+			else sb.append(piece).append(argStr)
+		}.toString
 	}
 }
