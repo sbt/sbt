@@ -20,8 +20,9 @@ class BasicTaskListener extends TaskListener
 	def completed[T](t: Task[T], value: Option[T]) {}
 	def failed[T](t: Task[T], exception: Throwable) {}
 }
-class DebugTaskListener extends TaskListener
+class DebugTaskListener(debug: String => Unit) extends TaskListener
 {
+	def this() = this(println)
 	def added(t: Task[_]) { debug("Added " + t) }
 	def runnable(t: Task[_]) { debug("Runnable " + t)}
 	def running(t: Task[_]) { debug("Running " + t) }
@@ -29,5 +30,4 @@ class DebugTaskListener extends TaskListener
 	def called(caller: Task[_], t: Task[_]) { debug(caller + " called " + t)}
 	def completed[T](t: Task[T], value: Option[T]) { debug("Completed " + t + " with " + value)}
 	def failed[T](t: Task[T], exception: Throwable) { debug("Failed " + t + " with " + exception.toString); exception.printStackTrace }
-	private def debug(msg: String) { println(msg) }
 }
