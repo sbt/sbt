@@ -174,8 +174,8 @@ trait ScalaProject extends SimpleScalaProject with FileTasks with MultiTaskProje
 			val beginTasks = begin.map(toTask).toSeq // test setup tasks
 			val workTasks = work.map(w => toTask(w) dependsOn(beginTasks : _*)) // the actual tests
 			val endTasks = end.map(toTask).toSeq // tasks that perform test cleanup and are run regardless of success of tests
-			val endTask = Empty named("test-cleanup") dependsOn(endTasks : _*)
-			val rootTask = Empty named("test-complete") dependsOn(workTasks.toSeq : _*) // the task that depends on all test subtasks
+			val endTask = task { None} named("test-cleanup") dependsOn(endTasks : _*)
+			val rootTask = task { None} named("test-complete") dependsOn(workTasks.toSeq : _*) // the task that depends on all test subtasks
 			SubWork[Project#Task](rootTask, endTask)
 		}
 		def errorTask(e: TestSetupException) = task { Some(e.getMessage) } named("test-setup")

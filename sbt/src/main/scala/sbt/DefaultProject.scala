@@ -301,7 +301,7 @@ abstract class BasicScalaProject extends ScalaProject with BasicDependencyProjec
 	protected def packageProjectAction = zipTask(packageProjectPaths, packageProjectZip) describedAs ProjectPackageDescription
 
 	protected def docAllAction = (doc && docTest) describedAs DocAllDescription
-	protected def packageAllAction = Empty dependsOn(`package`, packageTest, packageSrc, packageTestSrc, packageDocs) describedAs PackageAllDescription
+	protected def packageAllAction = task { None} dependsOn(`package`, packageTest, packageSrc, packageTestSrc, packageDocs) describedAs PackageAllDescription
 	protected def graphSourcesAction = graphSourcesTask(graphSourcesPath, mainSourceRoots, mainCompileConditional.analysis).dependsOn(compile)
 	protected def graphPackagesAction = graphPackagesTask(graphPackagesPath, mainSourceRoots, mainCompileConditional.analysis).dependsOn(compile)
 	protected def incrementVersionAction = task { incrementVersionNumber(); None } describedAs IncrementVersionDescription
