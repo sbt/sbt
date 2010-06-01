@@ -1,42 +1,33 @@
+/* sbt -- Simple Build Tool
+ * Copyright 2010 Mark Harrah
+ */
 package sbt
 
 import Types._
 
-sealed trait MList[M[_]]
+sealed trait MList[+M[_]]
 {
 	type Map[N[_]] <: MList[N]
 	def map[N[_]](f: M ~> N): Map[N]
 
-	type Down <: HList
-	def down: Down
-
 	def toList: List[M[_]]
 }
-final case class MCons[H, T <: MList[M], M[_]](head: M[H], tail: T) extends MList[M]
+final case class MCons[H, +T <: MList[M], +M[_]](head: M[H], tail: T) extends MList[M]
 {
-	type Down = M[H] :+: T#Down
-	def down = HCons(head, tail.down)
-
-	type Map[N[_]] = MCons[H, T#Map[N], N]
+	type Map[N[_]] = MCons[H, tail.Map[N], N]
 	def map[N[_]](f: M ~> N) = MCons( f(head), tail.map(f) )
 
-	def :^: [G](g: M[G]): MCons[G, MCons[H, T, M], M] = MCons(g, this)
+	def :^: [N[X] >: M[X], G](g: N[G]): MCons[G, MCons[H, T, N], N] = MCons(g, this)
 
 	def toList = head :: tail.toList
 }
-sealed class MNil[M[_]] extends MList[M]
+sealed class MNil extends MList[Nothing]
 {
-	type Down = HNil
-	def down = HNil
-	
-	type Map[N[_]] = MNil[N]
-	def map[N[_]](f: M ~> N): MNil[N] = new MNil[N]
+	type Map[N[_]] = MNil
+	def map[N[_]](f: Nothing ~> N) = MNil
 
-	def :^: [H](h: M[H]): MCons[H, MNil[M], M] = MCons(h, this)
+	def :^: [M[_], H](h: M[H]): MCons[H, MNil, M] = MCons(h, this)
 
 	def toList = Nil
 }
-object MNil extends MNil[Id]
-{
-	implicit def apply[N[_]]: MNil[N] = new MNil[N]
-}
+object MNil extends MNil
