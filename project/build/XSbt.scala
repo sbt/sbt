@@ -102,6 +102,7 @@ class XSbt(info: ProjectInfo) extends ParentProject(info) with NoCrossPaths
 	{
 		override def scratch = true
 		override def consoleClasspath = testClasspath
+		override def compileOptions = super.compileOptions ++ compileOptions("-Xelide-below", "3000")
 	}
 	trait Licensed extends BasicScalaProject
 	{
