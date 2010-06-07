@@ -7,112 +7,152 @@ import java.io.{File,IOException}
 import CacheIO.{fromFile, toFile}
 import sbinary.Format
 import scala.reflect.Manifest
-import Task.{iterableToBuilder, iterableToForkBuilder}
+import xsbt.FileUtilities.{delete, read, write}
+
+/* A proper implementation of fileTask that tracks inputs and outputs properly
+
+def fileTask(cacheBaseDirectory: Path)(inputs: PathFinder, outputs: PathFinder)(action: => Unit): Task =
+	fileTask(cacheBaseDirectory, FilesInfo.hash, FilesInfo.lastModified)
+def fileTask(cacheBaseDirectory: Path, inStyle: FilesInfo.Style, outStyle: FilesInfo.Style)(inputs: PathFinder, outputs: PathFinder)(action: => Unit): Task =
+{
+	lazy val inCache = diffInputs(base / "in-cache", inStyle)(inputs)
+	lazy val outCache = diffOutputs(base / "out-cache", outStyle)(outputs)
+	task
+	{
+		inCache { inReport =>
+			outCache { outReport =>
+				if(inReport.modified.isEmpty && outReport.modified.isEmpty) () else action
+			}
+		}
+	}
+}
+*/
+
+object Tracked
+{
+	/** Creates a tracker that provides the last time it was evaluated.
+	* If 'useStartTime' is true, the recorded time is the start of the evaluated function.
+	* If 'useStartTime' is false, the recorded time is when the evaluated function completes.
+	* In both cases, the timestamp is not updated if the function throws an exception.*/
+	def tstamp(cacheFile: File, useStartTime: Boolean): Timestamp = new Timestamp(cacheFile)
+	/** Creates a tracker that only evaluates a function when the input has changed.*/
+	def changed[O](cacheFile: File)(getValue: => O)(implicit input: InputCache[O]): Changed[O] =
+		new Changed[O](getValue, cacheFile)
+	
+	/** Creates a tracker that provides the difference between the set of input files provided for successive invocations.*/
+	def diffInputs(cache: File, style: FilesInfo.Style)(files: => Set[File]): Difference =
+		Difference.inputs(files, style, cache)
+	/** Creates a tracker that provides the difference between the set of output files provided for successive invocations.*/
+	def diffOutputs(cache: File, style: FilesInfo.Style)(files: => Set[File]): Difference =
+		Difference.outputs(files, style, cache)
+}
 
 trait Tracked extends NotNull
 {
-	/** Cleans outputs.  This operation might require information from the cache, so it should be called first if clear is also called.*/
-	def clean: Task[Unit]
-	/** Clears the cache. If also cleaning, 'clean' should be called first as it might require information from the cache.*/
-	def clear: Task[Unit]
+	/** Cleans outputs and clears the cache.*/
+	def clean: Unit
 }
-class Timestamp(val cacheFile: File) extends Tracked
+class Timestamp(val cacheFile: File, useStartTime: Boolean) extends Tracked
 {
-	val clean = Clean(cacheFile)
-	def clear = Task.empty
-	def apply[T](f: Long => Task[T]): Task[T] =
+	def clean = delete(cacheFile)
+	/** Reads the previous timestamp, evaluates the provided function, and then updates the timestamp.*/
+	def apply[T](f: Long => T): T =
 	{
-		val getTimestamp = Task { readTimestamp }
-		getTimestamp bind f map { result =>
-			FileUtilities.write(cacheFile, System.currentTimeMillis.toString)
-			result
-		}
+		val start = now()
+		val result = f(readTimestamp)
+		write(cacheFile, (if(useStartTime) start else now()).toString)
+		result
 	}
+	private def now() = System.currentTimeMillis
 	def readTimestamp: Long =
-		try { FileUtilities.read(cacheFile).toLong }
+		try { read(cacheFile).toLong }
 		catch { case _: NumberFormatException | _: java.io.FileNotFoundException => 0 }
 }
-object Clean
-{
-	def apply(src: Task[Set[File]]): Task[Unit] = src map FileUtilities.delete
-	def apply(srcs: File*): Task[Unit] = Task(FileUtilities.delete(srcs))
-	def apply(srcs: Set[File]): Task[Unit] = Task(FileUtilities.delete(srcs))
-}
 
-class Changed[O](val task: Task[O], val cacheFile: File)(implicit input: InputCache[O]) extends Tracked
+class Changed[O](getValue: => O, val cacheFile: File)(implicit input: InputCache[O]) extends Tracked
 {
-	val clean = Clean(cacheFile)
-	def clear = Task.empty
-	def apply[O2](ifChanged: O => O2, ifUnchanged: O => O2): Task[O2] =
-		task map { value =>
-			val cache =
-				try { OpenResource.fileInputStream(cacheFile)(input.uptodate(value)) }
-				catch { case _: IOException => new ForceResult(input)(value) }
-			if(cache.uptodate)
-				ifUnchanged(value)
-			else
-			{
-				OpenResource.fileOutputStream(false)(cacheFile)(cache.update)
-				ifChanged(value)
-			}
+	def clean = delete(cacheFile)
+	def apply[O2](ifChanged: O => O2, ifUnchanged: O => O2): O2 =
+	{
+		val value = getValue
+		val cache =
+			try { OpenResource.fileInputStream(cacheFile)(input.uptodate(value)) }
+			catch { case _: IOException => new ForceResult(input)(value) }
+		if(cache.uptodate)
+			ifUnchanged(value)
+		else
+		{
+			OpenResource.fileOutputStream(false)(cacheFile)(cache.update)
+			ifChanged(value)
 		}
+	}
 }
 object Difference
 {
 	sealed class Constructor private[Difference](defineClean: Boolean, filesAreOutputs: Boolean) extends NotNull
 	{
-		def apply(filesTask: Task[Set[File]], style: FilesInfo.Style, cache: File): Difference = new Difference(filesTask, style, cache, defineClean, filesAreOutputs)
-		def apply(files: Set[File], style: FilesInfo.Style, cache: File): Difference = apply(Task(files), style, cache)
+		def apply(files: => Set[File], style: FilesInfo.Style, cache: File): Difference = new Difference(files, style, cache, defineClean, filesAreOutputs)
 	}
+	/** Provides a constructor for a Difference that removes the files from the previous run on a call to 'clean' and saves the
+	* hash/last modified time of the files as they are after running the function.  This means that this information must be evaluated twice:
+	* before and after running the function.*/
 	object outputs extends Constructor(true, true)
+	/** Provides a constructor for a Difference that does nothing on a call to 'clean' and saves the
+	* hash/last modified time of the files as they were prior to running the function.*/
 	object inputs extends Constructor(false, false)
 }
-class Difference(val filesTask: Task[Set[File]], val style: FilesInfo.Style, val cache: File, val defineClean: Boolean, val filesAreOutputs: Boolean) extends Tracked
+class Difference(getFiles: => Set[File], val style: FilesInfo.Style, val cache: File, val defineClean: Boolean, val filesAreOutputs: Boolean) extends Tracked
 {
-	val clean =  if(defineClean) Clean(Task(raw(cachedFilesInfo))) else Task.empty
-	val clear = Clean(cache)
+	def clean =
+	{
+		if(defineClean) delete(raw(cachedFilesInfo)) else ()
+		clearCache()
+	}
+	private def clearCache = delete(cache)
 	
 	private def cachedFilesInfo = fromFile(style.formats, style.empty)(cache)(style.manifest).files
 	private def raw(fs: Set[style.F]): Set[File] = fs.map(_.file)
 	
-	def apply[T](f: ChangeReport[File] => Task[T]): Task[T] =
-		filesTask bind { files =>
-			val lastFilesInfo = cachedFilesInfo
-			val lastFiles = raw(lastFilesInfo)
-			val currentFiles = files.map(_.getAbsoluteFile)
-			val currentFilesInfo = style(currentFiles)
+	def apply[T](f: ChangeReport[File] => T): T =
+	{
+		val files = getFiles
+		val lastFilesInfo = cachedFilesInfo
+		val lastFiles = raw(lastFilesInfo)
+		val currentFiles = files.map(_.getAbsoluteFile)
+		val currentFilesInfo = style(currentFiles)
 
-			val report = new ChangeReport[File]
-			{
-				lazy val checked = currentFiles
-				lazy val removed = lastFiles -- checked // all files that were included previously but not this time.  This is independent of whether the files exist.
-				lazy val added = checked -- lastFiles // all files included now but not previously.  This is independent of whether the files exist.
-				lazy val modified = raw(lastFilesInfo -- currentFilesInfo.files) ++ added
-				lazy val unmodified = checked -- modified
-			}
-
-			f(report) map { result =>
-				val info = if(filesAreOutputs) style(currentFiles) else currentFilesInfo
-				toFile(style.formats)(info)(cache)(style.manifest)
-				result
-			}
+		val report = new ChangeReport[File]
+		{
+			lazy val checked = currentFiles
+			lazy val removed = lastFiles -- checked // all files that were included previously but not this time.  This is independent of whether the files exist.
+			lazy val added = checked -- lastFiles // all files included now but not previously.  This is independent of whether the files exist.
+			lazy val modified = raw(lastFilesInfo -- currentFilesInfo.files) ++ added
+			lazy val unmodified = checked -- modified
 		}
+
+		val result = f(report)
+		val info = if(filesAreOutputs) style(currentFiles) else currentFilesInfo
+		toFile(style.formats)(info)(cache)(style.manifest)
+		result
+	}
 }
 class DependencyTracked[T](val cacheDirectory: File, val translateProducts: Boolean, cleanT: T => Unit)(implicit format: Format[T], mf: Manifest[T]) extends Tracked
 {
 	private val trackFormat = new TrackingFormat[T](cacheDirectory, translateProducts)
 	private def cleanAll(fs: Set[T]) = fs.foreach(cleanT)
 	
-	val clean = Task(cleanAll(trackFormat.read.allProducts))
-	val clear = Clean(cacheDirectory)
+	def clean =
+	{
+		cleanAll(trackFormat.read.allProducts)
+		delete(cacheDirectory)
+	}
 	
-	def apply[R](f: UpdateTracking[T] => Task[R]): Task[R] =
+	def apply[R](f: UpdateTracking[T] => R): R =
 	{
 		val tracker = trackFormat.read
-		f(tracker) map { result =>
-			trackFormat.write(tracker)
-			result
-		}
+		val result = f(tracker)
+		trackFormat.write(tracker)
+		result
 	}
 }
 object InvalidateFiles
@@ -179,30 +219,29 @@ class InvalidateTransitive[T](cacheDirectory: File, translateProducts: Boolean, 
 		this(cacheDirectory, translateProducts, (_: T) => ())
 		
 	private val tracked = new DependencyTracked(cacheDirectory, translateProducts, cleanT)
-	def clean = tracked.clean
-	def clear = tracked.clear
-
-	def apply[R](changes: ChangeReport[T])(f: (InvalidationReport[T], UpdateTracking[T]) => Task[R]): Task[R] =
-		apply(Task(changes))(f)
-	def apply[R](changesTask: Task[ChangeReport[T]])(f: (InvalidationReport[T], UpdateTracking[T]) => Task[R]): Task[R] =
+	def clean
 	{
-		changesTask bind { changes =>
-			tracked { tracker =>
-				val report = InvalidateTransitive.andClean[T](tracker, _.foreach(cleanT), changes.modified)
-				f(report, tracker)
-			}
+		tracked.clean
+		tracked.clear
+	}
+
+	def apply[R](getChanges: => ChangeReport[T])(f: (InvalidationReport[T], UpdateTracking[T]) => R): R =
+	{
+		val changes = getChanges
+		tracked { tracker =>
+			val report = InvalidateTransitive.andClean[T](tracker, _.foreach(cleanT), changes.modified)
+			f(report, tracker)
 		}
 	}
 }
-class BasicTracked(filesTask: Task[Set[File]], style: FilesInfo.Style, cacheDirectory: File) extends Tracked
+class BasicTracked(files: => Set[File], style: FilesInfo.Style, cacheDirectory: File) extends Tracked
 {
-	private val changed = Difference.inputs(filesTask, style, new File(cacheDirectory, "files"))
+	private val changed = Difference.inputs(files, style, new File(cacheDirectory, "files"))
 	private val invalidation = InvalidateFiles(new File(cacheDirectory, "invalidation"))
-	private def onTracked(f: Tracked => Task[Unit]) = Seq(invalidation, changed).forkTasks(f).joinIgnore
-	val clear = onTracked(_.clear)
-	val clean = onTracked(_.clean)
+	private def onTracked(f: Tracked => Unit) = { f(invalidation); f(changed) }
+	def clean = onTracked(_.clean)
 	
-	def apply[R](f: (ChangeReport[File], InvalidationReport[File], UpdateTracking[File]) => Task[R]): Task[R] =
+	def apply[R](f: (ChangeReport[File], InvalidationReport[File], UpdateTracking[File]) => R): R =
 		changed { sourceChanges =>
 			invalidation(sourceChanges) { (report, tracking) =>
 				f(sourceChanges, report, tracking)

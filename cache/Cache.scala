@@ -2,7 +2,6 @@ package xsbt
 
 import sbinary.{CollectionTypes, Format, JavaFormats}
 import java.io.File
-import scala.reflect.Manifest
 
 trait Cache[I,O]
 {
@@ -23,13 +22,6 @@ object Cache extends BasicCacheImplicits with SBinaryFormats with HListCacheImpl
 	def wrapOutputCache[O,DO](implicit convert: O => DO, reverse: DO => O, base: OutputCache[DO]): OutputCache[O] =
 		new WrappedOutputCache[O,DO](convert, reverse, base)
 
-	def apply[I,O](file: File)(f: I => Task[O])(implicit cache: Cache[I,O]): I => Task[O] =
-		in => 
-			cache(file)(in) match
-			{
-				case Left(value) => Task(value)
-				case Right(store) => f(in) map { out => store(out); out }
-			}
 	def cached[I,O](file: File)(f: I => O)(implicit cache: Cache[I,O]): I => O =
 		in =>
 			cache(file)(in) match
