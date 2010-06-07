@@ -78,7 +78,7 @@ private class SameAPI(a: Source, b: Source, includePrivate: Boolean)
 	import SameAPI._
 	/** de Bruijn levels for type parameters in source `a`*/
 	private lazy val tagsA = TagTypeVariables(a)
-	/** de Bruijn levels for type parameters in source `a`*/
+	/** de Bruijn levels for type parameters in source `b`*/
 	private lazy val tagsB = TagTypeVariables(b)
 	
 	def debug(flag: Boolean, msg: => String): Boolean =
