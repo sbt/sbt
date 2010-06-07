@@ -35,7 +35,7 @@ class ConfigurationParser extends NotNull
 		val (properties, m6) = processSection(m5, "app-properties", getAppProperties)
 		val (cacheDir, m7) = processSection(m6, "ivy", getIvy)
 		check(m7, "section")
-		val classifiers = Classifiers("" :: scalaClassifiers, "" :: appClassifiers)
+		val classifiers = Classifiers("" :: scalaClassifiers, "" :: appClassifiers)  // the added "" ensures that the main jars are retrieved
 		new LaunchConfiguration(scalaVersion, IvyOptions(cacheDir, classifiers, repositories), app, boot, logging, properties)
 	}
 	def getScala(m: LabelMap) =
@@ -43,7 +43,7 @@ class ConfigurationParser extends NotNull
 		val (scalaVersion, m1) = getVersion(m, "Scala version", "scala.version")
 		val (scalaClassifiers, m2) = ids(m1, "classifiers", Nil)
 		check(m2, "label")
-		(scalaVersion, scalaClassifiers) // the added "" ensures that the main jars are retrieved
+		(scalaVersion, scalaClassifiers)
 	}
 	def getVersion(m: LabelMap, label: String, defaultName: String): (Version, LabelMap) = process(m, "version", processVersion(label, defaultName))
 	def processVersion(label: String, defaultName: String)(value: Option[String]): Version =
