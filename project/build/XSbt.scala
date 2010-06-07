@@ -26,16 +26,19 @@ class XSbt(info: ProjectInfo) extends ParentProject(info) with NoCrossPaths
 	val compileInterfaceSub = project(compilePath / "interface", "Compiler Interface", new CompilerInterfaceProject(_), interfaceSub)
 
 	val taskSub = project(tasksPath, "Tasks", new TaskProject(_), controlSub, collectionSub)
-	val cacheSub = project(cachePath, "Cache", new CacheProject(_), taskSub, ioSub)
+	val cacheSub = project(cachePath, "Cache", new CacheProject(_), ioSub, collectionSub)
 	val trackingSub = baseProject(cachePath / "tracking", "Tracking", cacheSub)
 	val compilerSub = project(compilePath, "Compile", new CompileProject(_),
 		launchInterfaceSub, interfaceSub, ivySub, ioSub, classpathSub, compileInterfaceSub)
-	val stdTaskSub = project(tasksPath / "standard", "Standard Tasks", new StandardTaskProject(_), trackingSub, compilerSub, apiSub)
+	val stdTaskSub = project(tasksPath / "standard", "Standard Tasks", new StandardTaskProject(_), trackingSub, taskSub, compilerSub, apiSub)
 
 	val altCompilerSub = baseProject("main", "Alternate Compiler Test", stdTaskSub, logSub)
 
 	val sbtSub = project(sbtPath, "Simple Build Tool", new SbtProject(_) {}, compilerSub, launchInterfaceSub)
 	val installerSub = project(sbtPath / "install", "Installer", new InstallerProject(_) {}, sbtSub)
+
+
+	lazy val dist = task { None } dependsOn(launchSub.proguard, sbtSub.publishLocal, installerSub.publishLocal)
 
 	def baseProject(path: Path, name: String, deps: Project*) = project(path, name, new Base(_), deps : _*)
 	

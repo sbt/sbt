@@ -1,0 +1,21 @@
+> set build.scala.versions 2.7.7
+$ copy-file changes/P.scala project/build/P.scala
+$ copy-file changes/A.scala a/src/main/scala/A.scala
+$ copy-file changes/B.scala b/src/main/scala/B.scala
+> reload
+
+> project A
+-> compile
+> update
+> compile
+
+> project B
+-> compile
+> update
+-> compile
+
+$ touch b/declare.lib
+> reload
+-> compile
+> update
+> compile

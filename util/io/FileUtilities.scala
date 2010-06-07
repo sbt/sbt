@@ -407,4 +407,36 @@ object FileUtilities
 
 	/** Splits a String around path separator characters. */
 	def pathSplit(s: String) = PathSeparatorPattern.split(s)
+
+	/** Move the provided files to a temporary location.
+	*   If 'f' returns normally, delete the files.
+	*   If 'f' throws an Exception, return the files to their original location.*/
+	def stash[T](files: Set[File])(f: => T): T =
+		withTemporaryDirectory { dir =>
+			val stashed = stashLocations(dir, files.toArray)
+			move(stashed)
+
+			try { f } catch { case e: Exception =>
+				try { move(stashed.map(_.swap)); throw e }
+				catch { case _: Exception => throw e }
+			}
+		}
+
+	private def stashLocations(dir: File, files: Array[File]) =
+		for( (file, index) <- files.zipWithIndex) yield
+			(file, new File(dir, index.toHexString))
+
+	def move(files: Iterable[(File, File)]): Unit =
+		files.foreach(Function.tupled(move))
+		
+	def move(a: File, b: File): Unit =
+	{
+		if(b.exists)
+			delete(b)
+		if(!a.renameTo(b))
+		{
+			copyFile(a, b)
+			delete(a)
+		}
+	}
 }

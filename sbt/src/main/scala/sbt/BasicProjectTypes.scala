@@ -322,8 +322,6 @@ trait BasicManagedProject extends ManagedProject with ReflectiveManagedProject w
 	def deliverIvyModule = newIvyModule(deliverModuleSettings)
 	def publishModuleSettings = deliverModuleSettings
 	def publishIvyModule = newIvyModule(publishModuleSettings)
-	/** True if the 'provided' configuration should be included on the 'compile' classpath.  The default value is true.*/
-	def includeProvidedWithCompile = true
 	/** True if the default implicit extensions should be used when determining classpaths.  The default value is true. */
 	def defaultConfigurationExtensions = true
 	/** If true, verify that explicit dependencies on Scala libraries use the same version as scala.version. */
@@ -343,22 +341,15 @@ trait BasicManagedProject extends ManagedProject with ReflectiveManagedProject w
 				case _ => None
 			}
 	}
-	/** Includes the Provided configuration on the Compile classpath, the Compile configuration on the Runtime classpath,
-	* and Compile and Runtime on the Test classpath.  Including Provided can be disabled by setting
-	* includeProvidedWithCompile to false.  Including Compile and Runtime can be disabled by setting
-	* defaultConfigurationExtensions to false.*/
+	/** Includes the Compile configuration on the Runtime classpath, and Compile and Runtime on the Test classpath.
+	* Including Compile and Runtime can be disabled by setting defaultConfigurationExtensions to false.*/
 	override def managedClasspath(config: Configuration) =
 	{
-		import Configurations.{Compile, CompilerPlugin, Default, Provided, Runtime, Test}
+		import Configurations.{Compile, Default, Runtime, Test}
 		val baseClasspath = configurationClasspath(config)
 		config match
 		{
-			case Compile =>
-				val baseCompileClasspath = baseClasspath +++ managedClasspath(Default)
-				if(includeProvidedWithCompile)
-					baseCompileClasspath +++ managedClasspath(Provided)
-				else
-					baseCompileClasspath
+			case Compile => baseClasspath +++ managedClasspath(Default)
 			case Runtime if defaultConfigurationExtensions => baseClasspath +++ managedClasspath(Compile)
 			case Test if defaultConfigurationExtensions => baseClasspath +++ managedClasspath(Runtime)
 			case _ => baseClasspath
