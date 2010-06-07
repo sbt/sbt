@@ -7,6 +7,11 @@ import Types._
 
 sealed trait MList[+M[_]]
 {
+	// For converting MList[Id] to an HList
+	//  This is useful because type inference doesn't work well with Id
+	type Raw <: HList
+	def down(implicit ev: M ~> Id): Raw
+
 	type Map[N[_]] <: MList[N]
 	def map[N[_]](f: M ~> N): Map[N]
 
@@ -14,6 +19,9 @@ sealed trait MList[+M[_]]
 }
 final case class MCons[H, +T <: MList[M], +M[_]](head: M[H], tail: T) extends MList[M]
 {
+	type Raw = H :+: tail.Raw
+	def down(implicit f: M ~> Id): Raw = HCons(f(head), tail.down(f))
+
 	type Map[N[_]] = MCons[H, tail.Map[N], N]
 	def map[N[_]](f: M ~> N) = MCons( f(head), tail.map(f) )
 
@@ -23,6 +31,9 @@ final case class MCons[H, +T <: MList[M], +M[_]](head: M[H], tail: T) extends ML
 }
 sealed class MNil extends MList[Nothing]
 {
+	type Raw = HNil
+	def down(implicit f: Nothing ~> Id) = HNil
+
 	type Map[N[_]] = MNil
 	def map[N[_]](f: Nothing ~> N) = MNil
 
