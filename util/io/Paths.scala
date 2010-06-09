@@ -1,7 +1,7 @@
 /* sbt -- Simple Build Tool
  * Copyright 2008, 2009, 2010  Mark Harrah
  */
-package xsbt
+package sbt
 
 import java.io.File
 import java.net.URL
@@ -28,7 +28,7 @@ trait PathBase extends NotNull
 	def urls: Array[URL] = files.toArray[File].map(_.toURI.toURL)
 	def x(mapper: PathMapper): Iterable[(File,String)] = mapper(files)
 	def x(mapper: FileMapper): Iterable[(File,File)] = mapper(files)
-	def *(filter: java.io.FileFilter): Set[File] = files.flatMap(FileUtilities.listFiles(filter))
+	def *(filter: java.io.FileFilter): Set[File] = files.flatMap(IO.listFiles(filter))
 	def **(filter: java.io.FileFilter): Set[File] = files.filter(filter.accept) ++ files.flatMap(_ * AllPassFilter ** filter)
 	def *** = **(AllPassFilter)
 	def abs = files.map(_.getAbsoluteFile)

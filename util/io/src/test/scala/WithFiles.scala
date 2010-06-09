@@ -1,7 +1,7 @@
-package xsbt
+package sbt
 
 import java.io.File
-import FileUtilities.{withTemporaryDirectory, write}
+import IO.{withTemporaryDirectory, write}
 
 object WithFiles
 {

@@ -1,10 +1,10 @@
 /* sbt -- Simple Build Tool
- * Copyright 2008, 2009 Mark Harrah
+ * Copyright 2008, 2009, 2010 Mark Harrah
  */
-package xsbt
+package sbt
 
-import OpenResource._
-import ErrorHandling.translate
+import Using._
+import xsbt.ErrorHandling.translate
 
 import java.io.{ByteArrayOutputStream, BufferedWriter, File, FileInputStream, InputStream, OutputStream}
 import java.net.{URI, URISyntaxException, URL}
@@ -15,7 +15,7 @@ import scala.collection.mutable.HashSet
 import scala.reflect.{Manifest => SManifest}
 import Function.tupled
 
-object FileUtilities
+object IO
 {
 	/** The maximum number of times a unique temporary filename is attempted to be created.*/
 	private val MaximumTries = 10
@@ -26,7 +26,7 @@ object FileUtilities
 	private val BufferSize = 8192
 	private val Newline = System.getProperty("line.separator")
 
-	def utf8 = Charset.forName("UTF-8")
+	val utf8 = Charset.forName("UTF-8")
 
 	def classLocation(cl: Class[_]): URL =
 	{
@@ -91,8 +91,7 @@ object FileUtilities
 		else
 			error(failBase)
 	}
-	def unzip(from: File, toDirectory: File): Set[File] = unzip(from, toDirectory, AllPassFilter)
-	def unzip(from: File, toDirectory: File, filter: NameFilter): Set[File] = fileInputStream(from)(in => unzip(in, toDirectory, filter))
+	def unzip(from: File, toDirectory: File, filter: NameFilter = AllPassFilter): Set[File] = fileInputStream(from)(in => unzip(in, toDirectory, filter))
 	def unzip(from: InputStream, toDirectory: File, filter: NameFilter): Set[File] =
 	{
 		createDirectory(toDirectory)
@@ -187,7 +186,7 @@ object FileUtilities
 		create(0)
 	}
 
-	private[xsbt] def jars(dir: File): Iterable[File] = listFiles(dir, GlobFilter("*.jar"))
+	private[sbt] def jars(dir: File): Iterable[File] = listFiles(dir, GlobFilter("*.jar"))
 
 	def delete(files: Iterable[File]): Unit = files.foreach(delete)
 	def delete(file: File)
@@ -246,20 +245,23 @@ object FileUtilities
 	{
 		def add(sourceFile: File, name: String)
 		{
-			if(sourceFile.isDirectory)
-				()
-			else if(sourceFile.exists)
-			{
-				val nextEntry = createEntry(normalizeName(name))
-				nextEntry.setTime(sourceFile.lastModified)
-				output.putNextEntry(nextEntry)
-				transferAndClose(new FileInputStream(sourceFile), output)
-			}
-			else
+			if(!sourceFile.exists)
 				error("Source " + sourceFile + " does not exist.")
+			val isDirectory = sourceFile.isDirectory
+			val relName = if(isDirectory) normalizeDirName(name) else normalizeName(name)
+			val nextEntry = createEntry(relName)
+			nextEntry.setTime(sourceFile.lastModified)
+			output.putNextEntry(nextEntry)
+			if(!isDirectory)
+				transfer(new FileInputStream(sourceFile), output)
 		}
-		sources.foreach(tupled(add))
+		sources.foreach((add _).tupled)
 		output.closeEntry()
+	}
+	private def normalizeDirName(name: String) =
+	{
+		val norm1 = normalizeName(name)
+		if(norm1.endsWith("/")) norm1 else (norm1 + "/")
 	}
 	private def normalizeName(name: String) =
 	{
@@ -308,10 +310,8 @@ object FileUtilities
 		{
 			val cp = baseFile.getAbsolutePath
 			assert(cp.length > 0)
-			if(cp.charAt(cp.length - 1) == File.separatorChar)
-				Some(cp)
-			else
-				Some(cp + File.separatorChar)
+			val normalized = if(cp.charAt(cp.length - 1) == File.separatorChar) cp else cp + File.separatorChar
+			Some(normalized)
 		}
 		else
 			None
@@ -344,9 +344,7 @@ object FileUtilities
 		}
 	}
 	def defaultCharset = utf8
-	def write(toFile: File, content: String): Unit = write(toFile, content, defaultCharset)
-	def write(toFile: File, content: String, charset: Charset): Unit = write(toFile, content, charset, false)
-	def write(file: File, content: String, charset: Charset, append: Boolean): Unit =
+	def write(file: File, content: String, charset: Charset = defaultCharset, append: Boolean = false): Unit =
 		writeCharset(file, content, charset, append) { _.write(content)  }
 
 	def writeCharset[T](file: File, content: String, charset: Charset, append: Boolean)(f: BufferedWriter => T): T =
@@ -357,17 +355,14 @@ object FileUtilities
 			error("String cannot be encoded by charset " + charset.name)
 	}
 
-	def read(file: File): String = read(file, defaultCharset)
-	def read(file: File, charset: Charset): String =
+	def read(file: File, charset: Charset = defaultCharset): String =
 	{
 		val out = new ByteArrayOutputStream(file.length.toInt)
 		fileInputStream(file){ in => transfer(in, out) }
 		out.toString(charset.name)
 	}
 	/** doesn't close the InputStream */
-	def read(in: InputStream): String = read(in, defaultCharset)
-	/** doesn't close the InputStream */
-	def read(in: InputStream, charset: Charset): String =
+	def readStream(in: InputStream, charset: Charset = defaultCharset): String =
 	{
 		val out = new ByteArrayOutputStream
 		transfer(in, out)
@@ -383,8 +378,7 @@ object FileUtilities
 	}
 
 	// Not optimized for large files
-	def readLines(file: File): List[String] = readLines(file, defaultCharset)
-	def readLines(file: File, charset: Charset): List[String] =
+	def readLines(file: File, charset: Charset = defaultCharset): List[String] =
 	{
 		fileReader(charset)(file){ in =>
 			def readLine(accum: List[String]): List[String] =
@@ -395,9 +389,7 @@ object FileUtilities
 			readLine(Nil)
 		}
 	}
-	def writeLines(file: File, lines: Seq[String]): Unit = writeLines(file, lines, defaultCharset)
-	def writeLines(file: File, lines: Seq[String], charset: Charset): Unit = writeLines(file, lines, charset, false)
-	def writeLines(file: File, lines: Seq[String], charset: Charset, append: Boolean): Unit =
+	def writeLines(file: File, lines: Seq[String], charset: Charset = defaultCharset, append: Boolean = false): Unit =
 		writeCharset(file, lines.headOption.getOrElse(""), charset, append) { w =>
 			lines.foreach { line => w.write(line); w.newLine() }
 		}

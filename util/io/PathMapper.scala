@@ -1,16 +1,16 @@
 /* sbt -- Simple Build Tool
  * Copyright 2008, 2009  Mark Harrah
  */
-package xsbt
+package sbt
 
 import java.io.File
 
 trait PathMapper extends NotNull
 {
 	def apply(file: File): String
-	def apply(files: Set[File]): Iterable[(File,String)] = files.projection.map(f => (f,apply(f)))
+	def apply(files: Set[File]): Iterable[(File,String)] = files.view.map(f => (f,apply(f)))
 }
-final case class RelativePathMapper(base: File) extends PMapper(file => FileUtilities.relativize(base, file).getOrElse(file.getPath))
+final case class RelativePathMapper(base: File) extends PMapper(file => IO.relativize(base, file).getOrElse(file.getPath))
 final case object BasicPathMapper extends PMapper(_.getPath)
 final case object FlatPathMapper extends PMapper(_.getName)
 class PMapper(val f: File => String) extends PathMapper
@@ -22,7 +22,7 @@ object PathMapper
 	val basic: PathMapper = BasicPathMapper
 	def relativeTo(base: File): PathMapper = RelativePathMapper(base)
 	def rebase(oldBase: File, newBase: File): PathMapper =
-		new PMapper(file => if(file == oldBase) "." else FileUtilities.relativize(oldBase, file).getOrElse(error(file + " not a descendent of " + oldBase)))
+		new PMapper(file => if(file == oldBase) "." else IO.relativize(oldBase, file).getOrElse(error(file + " not a descendent of " + oldBase)))
 	val flat = FlatPathMapper
 	def apply(f: File => String): PathMapper = new PMapper(f)
 }
@@ -30,7 +30,7 @@ object PathMapper
 trait FileMapper extends NotNull
 {
 	def apply(file: File): File
-	def apply(files: Set[File]): Iterable[(File,File)] = files.projection.map(f => (f,apply(f)))
+	def apply(files: Set[File]): Iterable[(File,File)] = files.view.map(f => (f,apply(f)))
 }
 class FMapper(f: File => File) extends FileMapper
 {

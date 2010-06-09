@@ -1,7 +1,7 @@
 /* sbt -- Simple Build Tool
  * Copyright 2009 Mark Harrah
  */
-package xsbt
+package sbt
 
 import java.io.{ByteArrayInputStream, File, InputStream}
 
@@ -35,7 +35,7 @@ object Hash
 	/** Calculates the SHA-1 hash of the given String.*/
 	def apply(s: String): Array[Byte] = apply(new ByteArrayInputStream(s.getBytes("UTF-8")))
 	/** Calculates the SHA-1 hash of the given file.*/
-	def apply(file: File): Array[Byte] = OpenResource.fileInputStream(file)(apply)
+	def apply(file: File): Array[Byte] = Using.fileInputStream(file)(apply)
 	/** Calculates the SHA-1 hash of the given stream, closing it when finished.*/
 	def apply(stream: InputStream): Array[Byte] =
 	{

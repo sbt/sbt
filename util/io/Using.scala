@@ -1,7 +1,7 @@
 /* sbt -- Simple Build Tool
  * Copyright 2008, 2009 Mark Harrah
  */
-package xsbt
+package sbt
 
 import java.io.{Closeable, File, FileInputStream, FileOutputStream, InputStream, OutputStream}
 import java.io.{ByteArrayOutputStream, InputStreamReader, OutputStreamWriter}
@@ -13,10 +13,10 @@ import java.nio.channels.FileChannel
 import java.util.jar.{Attributes, JarEntry, JarFile, JarInputStream, JarOutputStream, Manifest}
 import java.util.zip.{GZIPOutputStream, ZipEntry, ZipFile, ZipInputStream, ZipOutputStream}
 
-import ErrorHandling.translate
-import OpenResource._
+import xsbt.ErrorHandling.translate
+import Using._
 
-abstract class OpenResource[Source, T] extends NotNull
+abstract class Using[Source, T] extends NotNull
 {
 	protected def open(src: Source): T
 	def apply[R](src: Source)(f: T => R): R =
@@ -28,57 +28,58 @@ abstract class OpenResource[Source, T] extends NotNull
 	protected def close(out: T): Unit
 }
 import scala.reflect.{Manifest => SManifest}
-abstract class WrapOpenResource[Source, T](implicit srcMf: SManifest[Source], targetMf: SManifest[T]) extends OpenResource[Source, T]
+abstract class WrapUsing[Source, T](implicit srcMf: SManifest[Source], targetMf: SManifest[T]) extends Using[Source, T]
 {
 	protected def label[S](m: SManifest[S]) = m.erasure.getSimpleName
 	protected def openImpl(source: Source): T
 	protected final def open(source: Source): T =
 		translate("Error wrapping " + label(srcMf) + " in " + label(targetMf) + ": ") { openImpl(source) }
 }
-trait OpenFile[T] extends OpenResource[File, T]
+trait OpenFile[T] extends Using[File, T]
 {
 	protected def openImpl(file: File): T
 	protected final def open(file: File): T =
 	{
 		val parent = file.getParentFile
 		if(parent != null)
-			FileUtilities.createDirectory(parent)
+			IO.createDirectory(parent)
 		openImpl(file)
 	}
 }
-object OpenResource
+object Using
 {
-	def wrap[Source, T<: Closeable](openF: Source => T)(implicit srcMf: SManifest[Source], targetMf: SManifest[T]): OpenResource[Source,T] =
-		wrap(openF, _.close)
-	def wrap[Source, T](openF: Source => T, closeF: T => Unit)(implicit srcMf: SManifest[Source], targetMf: SManifest[T]): OpenResource[Source,T] =
-		new WrapOpenResource[Source, T]
+	def wrap[Source, T<: Closeable](openF: Source => T)(implicit srcMf: SManifest[Source], targetMf: SManifest[T]): Using[Source,T] =
+		wrap(openF, closeCloseable)
+	def wrap[Source, T](openF: Source => T, closeF: T => Unit)(implicit srcMf: SManifest[Source], targetMf: SManifest[T]): Using[Source,T] =
+		new WrapUsing[Source, T]
 		{
 			def openImpl(source: Source) = openF(source)
 			def close(t: T) = closeF(t)
 		}
 
-	def resource[Source, T <: Closeable](openF: Source => T): OpenResource[Source,T] =
-		resource(openF, _.close)
-	def resource[Source, T](openF: Source => T, closeF: T => Unit): OpenResource[Source,T] =
-		new OpenResource[Source,T]
+	def resource[Source, T <: Closeable](openF: Source => T): Using[Source,T] =
+		resource(openF, closeCloseable)
+	def resource[Source, T](openF: Source => T, closeF: T => Unit): Using[Source,T] =
+		new Using[Source,T]
 		{
 			def open(s: Source) = openF(s)
 			def close(s: T) = closeF(s)
 		}
-	def file[T <: Closeable](openF: File => T): OpenFile[T] = file(openF, _.close())
+	def file[T <: Closeable](openF: File => T): OpenFile[T] = file(openF, closeCloseable)
 	def file[T](openF: File => T, closeF: T => Unit): OpenFile[T] =
 		new OpenFile[T]
 		{
 			def openImpl(file: File) = openF(file)
 			def close(t: T) = closeF(t)
 		}
+	private def closeCloseable[T <: Closeable]: T => Unit = _.close()
 
-	def fileOutputStream(append: Boolean) = file(f => new FileOutputStream(f, append))
+	def fileOutputStream(append: Boolean = false) = file(f => new FileOutputStream(f, append))
 	def fileInputStream = file(f => new FileInputStream(f))
 	def urlInputStream = resource( (u: URL) => translate("Error opening " + u + ": ")(u.openStream))
 	def fileOutputChannel = file(f => new FileOutputStream(f).getChannel)
 	def fileInputChannel = file(f => new FileInputStream(f).getChannel)
-	def fileWriter(charset: Charset, append: Boolean) =
+	def fileWriter(charset: Charset = IO.utf8, append: Boolean = false) =
 		file(f => new BufferedWriter(new OutputStreamWriter(new FileOutputStream(f, append), charset)) )
 	def fileReader(charset: Charset) = file(f => new BufferedReader(new InputStreamReader(new FileInputStream(f), charset)) )
 	def jarFile(verify: Boolean) = file(f => new JarFile(f, verify), (_: JarFile).close())
