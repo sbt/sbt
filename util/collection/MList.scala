@@ -42,3 +42,10 @@ sealed class MNil extends MList[Nothing]
 	def toList = Nil
 }
 object MNil extends MNil
+
+
+object MList
+{
+	implicit def fromTCList[A[_]](list: Traversable[A[_]]): MList[A] = ((MNil: MList[A]) /: list) ( (hl,v) => MCons(v, hl) )
+	implicit def fromList[A](list: Traversable[A]): MList[Const[A]#Apply] = ((MNil: MList[Const[A]#Apply]) /: list) ( (hl,v) => MCons[A, hl.type, Const[A]#Apply](v, hl) )
+}
