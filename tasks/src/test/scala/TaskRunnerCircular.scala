@@ -1,8 +1,9 @@
-import xsbt._
+package sbt
 
 import org.scalacheck._
 import Prop._
 import TaskGen._
+import Task._
 
 object TaskRunnerCircularTest extends Properties("TaskRunner Circular")
 {
@@ -10,32 +11,33 @@ object TaskRunnerCircularTest extends Properties("TaskRunner Circular")
 	property("Allows references to completed tasks") = forAllNoShrink(MaxTasksGen, MaxWorkersGen) { allowedReference _ }
 	final def allowedReference(intermediate: Int, workers: Int) =
 	{
-		val top = Task(intermediate) named("top")
+		val top = pure("top", intermediate)
 		def iterate(task: Task[Int]): Task[Int] =
-			task bind { t =>
+			task flatMap { t =>
 				if(t <= 0)
 					top
 				else
-					iterate(Task(t-1) named (t-1).toString)
+					iterate(pure((t-1).toString, t-1) )
 			}
-		try { checkResult(TaskRunner(iterate(top), workers), intermediate) }
-		catch { case e: CircularDependency => ("Unexpected exception: " + e) |: false }
+		try { checkResult(tryRun(iterate(top), true, workers), intermediate) }
+		catch { case i: Incomplete if cyclic(i) => ("Unexpected cyclic exception: " + i) |: false }
 	}
 	final def checkCircularReferences(intermediate: Int, workers: Int) =
 	{
-		lazy val top = iterate(Task(intermediate) named"bottom", intermediate)
+		lazy val top = iterate(pure("bottom", intermediate), intermediate)
 		def iterate(task: Task[Int], i: Int): Task[Int] =
 		{
 			lazy val it: Task[Int] =
-				task bind { t =>
+				task flatMap { t =>
 					if(t <= 0)
 						top
 					else
-						iterate(Task(t-1) named (t-1).toString, i-1)
-				} named("it_" + i)
+						iterate(pure((t-1).toString, t-1), i-1)
+				}
 			it
 		}
-		try { TaskRunner(top, workers); false }
-		catch { case TasksFailed(failures) => failures.exists(_.exception.isInstanceOf[CircularDependency]) }
+		try { tryRun(top, true, workers); false }
+		catch { case i: Incomplete => cyclic(i) }
 	}
+	def cyclic(i: Incomplete) = Incomplete.allExceptions(i).exists(_.isInstanceOf[Execute[Task]#CyclicException[_]])
 }

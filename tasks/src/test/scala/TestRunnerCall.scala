@@ -1,8 +1,9 @@
-import xsbt._
+import sbt._
 
 import org.scalacheck._
 import Prop._
 import TaskGen._
+import Task._
 
 object TaskRunnerCallTest extends Properties("TaskRunner Call")
 {
@@ -11,7 +12,7 @@ object TaskRunnerCallTest extends Properties("TaskRunner Call")
 			val f = fibDirect(i)
 			("Workers: " + workers) |: ("i: " + i) |: ("fib(i): " + f) |:
 			{
-				def result = TaskRunner( fibTask(i), workers)
+				def result = tryRun( fibTask(i), false, workers)
 				checkResult(result, f)
 			}
 		}
@@ -23,11 +24,11 @@ object TaskRunnerCallTest extends Properties("TaskRunner Call")
 			(index, x1, x2) =>
 			{
 				if(index == i)
-					Task(x2)
+					pure(x2)
 				else
 					iterate( (index+1, x2, x1+x2) )
 			}
-		def iterate(iteration: (Int,Int,Int)) = Task( iteration ) bind Function.tupled(next)
+		def iterate(iteration: (Int,Int,Int)) = pure( iteration ) flatMap next.tupled
 		iterate( (1, 0, 1) )
 	}
 	final def fibDirect(i: Int): Int =

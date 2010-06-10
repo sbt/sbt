@@ -1,44 +1,49 @@
-import xsbt._
+/* sbt -- Simple Build Tool
+ * Copyright 2009, 2010 Mark Harrah
+ */
+package sbt
 
 import org.scalacheck._
 import Prop._
 import TaskGen._
+import Task._
 
-object TaskRunnerSpec extends Properties("TaskRunner")
+object ExecuteSpec extends Properties("Execute")
 {
 	val iGen = Arbitrary.arbInt.arbitrary
 	property("evaluates simple task") = forAll(iGen, MaxWorkersGen) { (i: Int, workers: Int) =>
 		("Workers: " + workers) |:
-			checkResult(TaskRunner(Task(i), workers), i)
+			checkResult(tryRun(pure(i), false, workers), i)
 	}
-	property("evaluates simple static graph") = forAll(iGen, MaxWorkersGen) { (i: Int, workers: Int) =>
+	// no direct dependencies currently
+	/*property("evaluates simple static graph") = forAll(iGen, MaxWorkersGen) { (i: Int, workers: Int) =>
 		("Workers: " + workers) |:
 		{
-			def result = TaskRunner(Task(i) dependsOn(Task(false),Task("a")), workers)
+			def result = tryRun(Task(i) dependsOn(pure(false),pure("a")), false, workers)
 			checkResult(result, i)
 		}
-	}
+	}*/
 	
 	property("evaluates simple mapped task") = forAll(iGen, MaxTasksGen, MaxWorkersGen) { (i: Int, times: Int, workers: Int) =>
 		("Workers: " + workers) |: ("Value: " + i) |: ("Times: " + times) |:
 		{
-			def result = TaskRunner(Task(i).map(_*times), workers)
+			def result = tryRun(pure(i).map(_*times), false, workers)
 			checkResult(result, i*times)
 		}
 	}
-	property("evaluates chained mapped task") =  forAllNoShrink(iGen, Gen.choose(0, 1000), MaxWorkersGen) { (i: Int, times: Int, workers: Int) =>
+	property("evaluates chained mapped task") =  forAllNoShrink(iGen, MaxTasksGen, MaxWorkersGen) { (i: Int, times: Int, workers: Int) =>
 		("Workers: " + workers) |: ("Value: " + i) |: ("Times: " + times) |:
 		{
-			val initial = Task(0) map(identity[Int])
+			val initial = pure(0) map(identity[Int])
 			def task = ( initial /: (0 until times) )( (t,ignore) => t.map(_ + i))
-			checkResult(TaskRunner(task, workers), i*times)
+			checkResult(tryRun(task, false, workers), i*times)
 		}
 	}
 
 	property("evaluates simple bind") = forAll(iGen, MaxTasksGen, MaxWorkersGen) { (i: Int, times: Int, workers: Int) =>
 		("Workers: " + workers) |: ("Value: " + i) |: ("Times: " + times) |:
 		{
-			def result = TaskRunner(Task(i).bind(x => Task(x*times)), workers)
+			def result = tryRun(pure(i).flatMap(x => pure(x*times)), false, workers)
 			checkResult(result, i*times)
 		}
 	}

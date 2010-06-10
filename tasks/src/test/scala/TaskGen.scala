@@ -1,11 +1,16 @@
+/* sbt -- Simple Build Tool
+ * Copyright 2009 Mark Harrah
+ */
+package sbt
+
 import org.scalacheck._
 import Gen.choose
 
 object TaskGen
 {
 	// upper bounds to make the tests finish in reasonable time
-	val MaxTasks = 10000
-	val MaxWorkers = 257
+	val MaxTasks = 100
+	val MaxWorkers = 29
 	val MaxJoin = 100
 	
 	val MaxTasksGen = choose(0, MaxTasks)
