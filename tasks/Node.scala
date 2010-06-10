@@ -3,33 +3,16 @@
  */
 package sbt
 
-import Node._
 import Types._
 
 trait Node[A[_], T]
 {
-	type Inputs <: MList[A]
-	type Results = Inputs#Map[Result]
+	type Mixed <: MList[A]
+	type MixedResults = Mixed#Map[Result]
+	type Uniform
 
-	val inputs: Inputs
-	def unitDependencies: Iterable[A[_]]
+	val mixedIn: Mixed
+	val uniformIn: Seq[A[Uniform]]
 
-	def work(results: Results, units: UnitResults[A]): Either[A[T], T]
-}
-
-object Node
-{
-	/*def pure[T](f: () => T): PureNode[T]= map[Id, T, MNil](MNil, Nil)((_,_) => f() )
-
-	def map[A[_], T, Inputs0 <: MList[A]](inputs0: Inputs0, deps0: Iterable[A[_]])(work0: (Inputs0#Map[Result], UnitResults[A]) => T):
-		Node[A,T] { type Inputs = Inputs0 } =
-			new Node[A,T] {
-				type Inputs = Inputs0
-				val inputs = inputs0
-				def unitDependencies = deps0
-				def work(results: Results, units: UnitResults[A]) = Right(work0(results, units))
-			}
-
-	type PureNode[T] = Node[Id, T] { type Inputs = MNil; type Results = MNil }*/
-	type UnitResults[A[_]] = Iterable[(A[_], Incomplete)]
+	def work(mixed: MixedResults, uniform: Seq[Result[Uniform]]): Either[A[T], T]
 }
