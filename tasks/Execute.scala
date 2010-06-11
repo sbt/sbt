@@ -3,8 +3,7 @@
  */
 package sbt
 
-// TODO: Incomplete needs to be parameterized with A[_] and have val node
-
+import ErrorHandling.wideConvert
 import Types._
 import Execute._
 
@@ -215,12 +214,10 @@ final class Execute[A[_] <: AnyRef](checkCycles: Boolean)(implicit view: A ~> No
 	* This returns a Completed instance, which contains the post-processing to perform after the result is retrieved from the Strategy.*/
 	def work[T](node: A[T], f: => Either[A[T], T])(implicit strategy: Strategy): Completed =
 	{
-		val result =
-			try { Right(f) }
-			catch {
-				case i: Incomplete => Left(i)
-				case e => Left( Incomplete(Incomplete.Error, directCause = Some(e)) )
-			}
+		val result = wideConvert(f).left.map {
+			case i: Incomplete => i
+			case e => Incomplete(Incomplete.Error, directCause = Some(e))
+		}
 		completed {
 			result match {
 				case Left(i) => retire(node, Inc(i))
