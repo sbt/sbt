@@ -93,7 +93,7 @@ object LogWriterTest extends Properties("Log Writer")
 		for(ls <- arbList[List[ToLog]].arbitrary; lv <- genLevel) yield
 			new Output(ls, lv)
 		
-	def levelsGen: Seq[Gen[Level.Value]] = Level.elements.toList.map(x => value(x))
+	def levelsGen: Seq[Gen[Level.Value]] = Level.values.toList.map(x => value(x))
 	
 	def removeNewlines(s: String) = s.replaceAll("""[\n\r]+""", "")
 	def addNewline(l: ToLog): ToLog =

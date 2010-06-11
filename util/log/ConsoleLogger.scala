@@ -1,7 +1,7 @@
 /* sbt -- Simple Build Tool
- * Copyright 2008, 2009 Mark Harrah
+ * Copyright 2008, 2009, 2010 Mark Harrah
  */
- package xsbt
+package sbt
 
 object ConsoleLogger
 {
@@ -17,10 +17,12 @@ object ConsoleLogger
 }
 
 /** A logger that logs to the console.  On supported systems, the level labels are
-* colored. */
+* colored.
+*
+* This logger is not thread-safe.*/
 class ConsoleLogger extends BasicLogger
 {
-	import ConsoleLogger.formatEnabled
+	override def ansiCodesSupported = ConsoleLogger.formatEnabled
 	def messageColor(level: Level.Value) = Console.RESET
 	def labelColor(level: Level.Value) =
 		level match
@@ -39,8 +41,9 @@ class ConsoleLogger extends BasicLogger
 	def trace(t: => Throwable): Unit =
 		System.out.synchronized
 		{
-			if(traceEnabled)
-				t.printStackTrace
+			val traceLevel = getTrace
+			if(traceLevel >= 0)
+				System.out.synchronized { System.out.print(StackTrace.trimmed(t, traceLevel)) }
 		}
 	def log(level: Level.Value, message: => String)
 	{
@@ -49,7 +52,7 @@ class ConsoleLogger extends BasicLogger
 	}
 	private def setColor(color: String)
 	{
-		if(formatEnabled)
+		if(ansiCodesSupported)
 			System.out.synchronized { System.out.print(color) }
 	}
 	private def log(labelColor: String, label: String, messageColor: String, message: String): Unit =

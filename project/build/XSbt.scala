@@ -18,7 +18,7 @@ class XSbt(info: ProjectInfo) extends ParentProject(info) with NoCrossPaths
 	val classpathSub = baseProject(utilPath / "classpath", "Classpath")
 
 	val ivySub = project("ivy", "Ivy", new IvyProject(_), interfaceSub, launchInterfaceSub)
-	val logSub = baseProject(utilPath / "log", "Logging", interfaceSub)
+	val logSub = project(utilPath / "log", "Logging", new LogProject(_), interfaceSub)
 	val datatypeSub = baseProject("util" /"datatype", "Datatype Generator", ioSub)
 
 	val testSub = project("scripted", "Test", new TestProject(_), ioSub)
@@ -26,16 +26,18 @@ class XSbt(info: ProjectInfo) extends ParentProject(info) with NoCrossPaths
 	val compileInterfaceSub = project(compilePath / "interface", "Compiler Interface", new CompilerInterfaceProject(_), interfaceSub)
 
 	val taskSub = project(tasksPath, "Tasks", new TaskProject(_), controlSub, collectionSub)
-	val cacheSub = project(cachePath, "Cache", new CacheProject(_), taskSub, ioSub)
+	val cacheSub = project(cachePath, "Cache", new CacheProject(_), ioSub, collectionSub)
 	val trackingSub = baseProject(cachePath / "tracking", "Tracking", cacheSub)
 	val compilerSub = project(compilePath, "Compile", new CompileProject(_),
 		launchInterfaceSub, interfaceSub, ivySub, ioSub, classpathSub, compileInterfaceSub)
-	val stdTaskSub = project(tasksPath / "standard", "Standard Tasks", new StandardTaskProject(_), trackingSub, compilerSub, apiSub)
+	val stdTaskSub = project(tasksPath / "standard", "Standard Tasks", new StandardTaskProject(_), trackingSub, taskSub, compilerSub, apiSub)
 
 	val altCompilerSub = baseProject("main", "Alternate Compiler Test", stdTaskSub, logSub)
 
 	val sbtSub = project(sbtPath, "Simple Build Tool", new SbtProject(_) {}, compilerSub, launchInterfaceSub)
 	val installerSub = project(sbtPath / "install", "Installer", new InstallerProject(_) {}, sbtSub)
+
+	lazy val dist = task { None } dependsOn(launchSub.proguard, sbtSub.publishLocal, installerSub.publishLocal)
 
 	def baseProject(path: Path, name: String, deps: Project*) = project(path, name, new Base(_), deps : _*)
 	
@@ -89,6 +91,10 @@ class XSbt(info: ProjectInfo) extends ParentProject(info) with NoCrossPaths
 	class StandardTaskProject(info: ProjectInfo) extends Base(info)
 	{
 		override def testClasspath = super.testClasspath +++ compilerSub.testClasspath --- compilerInterfaceClasspath
+	}
+	class LogProject(info: ProjectInfo) extends Base(info)
+	{
+		val jline = jlineDep
 	}
 
 	class IOProject(info: ProjectInfo) extends Base(info) with TestDependencies

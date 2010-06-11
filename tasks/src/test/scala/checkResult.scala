@@ -1,4 +1,7 @@
-package xsbt
+/* sbt -- Simple Build Tool
+ * Copyright 2009 Mark Harrah
+ */
+package sbt
 
 import org.scalacheck.Prop._
 
@@ -14,8 +17,8 @@ object checkResult
 		}
 		catch
 		{
-			case TasksFailed(failures) =>
-				failures.foreach(f => f.exception.printStackTrace)
+			case i: Incomplete =>
+				println(Incomplete.show(i, true))
 				"One or more tasks failed" |: false
 			case e =>
 				e.printStackTrace

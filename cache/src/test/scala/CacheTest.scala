@@ -7,22 +7,23 @@ object CacheTest// extends Properties("Cache test")
 	val lengthCache = new File("/tmp/length-cache")
 	val cCache = new File("/tmp/c-cache")
 
-	import Task._
 	import Cache._
 	import FileInfo.hash._
 	def test
 	{
-		val createTask = Task { new File("test") }
+		lazy val create = new File("test")
 
-		val length = (f: File) => { println("File length: " + f.length); f.length }
-		val cachedLength = cached(lengthCache) ( length )
+		val length = cached(lengthCache) { 
+			(f: File) => { println("File length: " + f.length); f.length }
+		}
 
-		val lengthTask = createTask map cachedLength
+		lazy val fileLength = length(create)
 
-		val c = (file: File, len: Long) => { println("File: " + file + ", length: " + len); len :: file :: HNil }
-		val cTask = (createTask :: lengthTask :: TNil) map cached(cCache) { case (file :: len :: HNil) => c(file, len) }
-
-		try { TaskRunner(cTask) }
-		catch { case TasksFailed(failures) => failures.foreach(_.exception.printStackTrace) }
+		val c = cached(cCache) { (in: (File :: Long :: HNil)) =>
+			val file :: len :: HNil = in
+			println("File: " + file + " (" + file.exists + "), length: " + len)
+			(len+1) :: file :: HNil
+		}
+		c(create :: fileLength :: HNil)
 	}
 }

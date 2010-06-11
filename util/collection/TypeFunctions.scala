@@ -13,6 +13,10 @@ trait TypeFunctions
 	final val left = new (Id ~> P1of2[Left, Nothing]#Flip) { def apply[T](t: T) = Left(t) }
 	final val right = new (Id ~> P1of2[Right, Nothing]#Apply) { def apply[T](t: T) = Right(t) }
 	final val some = new (Id ~> Some) { def apply[T](t: T) = Some(t) }
+	
+	implicit def toFn1[A,B](f: A => B): Fn1[A,B] = new Fn1[A,B] {
+		def ∙[C](g: C => A) = f compose g
+	}
 }
 object TypeFunctions extends TypeFunctions
 
@@ -29,4 +33,7 @@ object ~>
 	import TypeFunctions._
 	val Id: Id ~> Id = new (Id ~> Id) { def apply[T](a: T): T = a }
 	implicit def tcIdEquals: (Id ~> Id) = Id
+}
+trait Fn1[A, B] {
+	def ∙[C](g: C => A): C => B
 }

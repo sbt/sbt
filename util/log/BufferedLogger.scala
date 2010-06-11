@@ -1,8 +1,9 @@
 /* sbt -- Simple Build Tool
- * Copyright 2008, 2009 Mark Harrah
+ * Copyright 2008, 2009, 2010 Mark Harrah
  */
  package xsbt
 
+	import sbt.{AbstractLogger, ControlEvent, Level, Log, LogEvent, SetLevel, SetTrace, Success, Trace}
 	import scala.collection.mutable.ListBuffer
 
 /** A logger that can buffer the logging done on it and then can flush the buffer
@@ -13,7 +14,7 @@
 *
 * This class assumes that it is the only client of the delegate logger.
 * */
-class BufferedLogger(delegate: Logger) extends Logger
+class BufferedLogger(delegate: AbstractLogger) extends AbstractLogger
 {
 	private[this] val buffer = new ListBuffer[LogEvent]
 	private[this] var recording = false
@@ -54,10 +55,10 @@ class BufferedLogger(delegate: Logger) extends Logger
 	}
 	def getLevel = delegate.getLevel
 	def traceEnabled = delegate.traceEnabled
-	def enableTrace(flag: Boolean)
+	def setTrace(level: Int)
 	{
-		buffer  += new SetTrace(flag)
-		delegate.enableTrace(flag)
+		buffer  += new SetTrace(level)
+		delegate.setTrace(level)
 	}
 
 	def trace(t: => Throwable): Unit =
@@ -73,9 +74,9 @@ class BufferedLogger(delegate: Logger) extends Logger
 			delegate.logAll(events)
 	def control(event: ControlEvent.Value, message: => String): Unit =
 		doBufferable(Level.Info, new ControlEvent(event, message), _.control(event, message))
-	private def doBufferable(level: Level.Value, appendIfBuffered: => LogEvent, doUnbuffered: Logger => Unit): Unit =
+	private def doBufferable(level: Level.Value, appendIfBuffered: => LogEvent, doUnbuffered: AbstractLogger => Unit): Unit =
 		doBufferableIf(atLevel(level), appendIfBuffered, doUnbuffered)
-	private def doBufferableIf(condition: => Boolean, appendIfBuffered: => LogEvent, doUnbuffered: Logger => Unit): Unit =
+	private def doBufferableIf(condition: => Boolean, appendIfBuffered: => LogEvent, doUnbuffered: AbstractLogger => Unit): Unit =
 		if(condition)
 		{
 			if(recording)

@@ -18,8 +18,10 @@ sealed trait ModifiedFileInfo  extends FileInfo
 {
 	val lastModified: Long
 }
+sealed trait PlainFileInfo extends FileInfo
 sealed trait HashModifiedFileInfo extends HashFileInfo with ModifiedFileInfo
 
+private final case class PlainFile(file: File) extends PlainFileInfo
 private final case class FileHash(file: File, hash: List[Byte]) extends HashFileInfo
 private final case class FileModified(file: File, lastModified: Long) extends ModifiedFileInfo
 private final case class FileHashModified(file: File, hash: List[Byte], lastModified: Long) extends HashModifiedFileInfo
@@ -32,8 +34,6 @@ object FileInfo
 		implicit def apply(file: File): F
 		implicit def unapply(info: F): File = info.file
 		implicit val format: Format[F]
-		/*val manifest: Manifest[F]
-		def formatManifest: Manifest[Format[F]] = CacheIO.manifest[Format[F]]*/
 		import Cache._
 		implicit def infoInputCache: InputCache[File] = wrapInputCache[File,F]
 		implicit def infoOutputCache: OutputCache[File] = wrapOutputCache[File,F]
@@ -41,7 +41,6 @@ object FileInfo
 	object full extends Style
 	{
 		type F = HashModifiedFileInfo
-		//val manifest: Manifest[F] = CacheIO.manifest[HashModifiedFileInfo]
 		implicit def apply(file: File): HashModifiedFileInfo = make(file, Hash(file).toList, file.lastModified)
 		def make(file: File, hash: List[Byte], lastModified: Long): HashModifiedFileInfo = FileHashModified(file.getAbsoluteFile, hash, lastModified)
 		implicit val format: Format[HashModifiedFileInfo] = wrap(f => (f.file, f.hash, f.lastModified), tupled(make _))
@@ -49,7 +48,6 @@ object FileInfo
 	object hash extends Style
 	{
 		type F = HashFileInfo
-		//val manifest: Manifest[F] = CacheIO.manifest[HashFileInfo]
 		implicit def apply(file: File): HashFileInfo = make(file, computeHash(file).toList)
 		def make(file: File, hash: List[Byte]): HashFileInfo = FileHash(file.getAbsoluteFile, hash)
 		implicit val format: Format[HashFileInfo] = wrap(f => (f.file, f.hash), tupled(make _))
@@ -58,10 +56,16 @@ object FileInfo
 	object lastModified extends Style
 	{
 		type F = ModifiedFileInfo
-		//val manifest: Manifest[F] = CacheIO.manifest[ModifiedFileInfo]
 		implicit def apply(file: File): ModifiedFileInfo = make(file, file.lastModified)
 		def make(file: File, lastModified: Long): ModifiedFileInfo = FileModified(file.getAbsoluteFile, lastModified)
 		implicit val format: Format[ModifiedFileInfo] = wrap(f => (f.file, f.lastModified), tupled(make _))
+	}
+	object exists extends Style
+	{
+		type F = PlainFileInfo
+		implicit def apply(file: File): PlainFileInfo = make(file)
+		def make(file: File): PlainFileInfo = PlainFile(file.getAbsoluteFile)
+		implicit val format: Format[PlainFileInfo] = wrap(_.file, make)
 	}
 }
 
@@ -92,4 +96,5 @@ object FilesInfo
 	lazy val full: Style = new BasicStyle(FileInfo.full)
 	lazy val hash: Style = new BasicStyle(FileInfo.hash)
 	lazy val lastModified: Style = new BasicStyle(FileInfo.lastModified)
+	lazy val exists: Style = new BasicStyle(FileInfo.exists)
 }

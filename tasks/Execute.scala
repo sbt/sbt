@@ -3,9 +3,7 @@
  */
 package sbt
 
-// TODO: Incomplete needs to be parameterized with A[_] and have val node
-
-import Node._
+import ErrorHandling.wideConvert
 import Types._
 import Execute._
 
@@ -87,13 +85,21 @@ final class Execute[A[_] <: AnyRef](checkCycles: Boolean)(implicit view: A ~> No
 			readyInv( node )
 		}
 
-		state(node) = Calling
-		addChecked(target)
-		addCaller(node, target)
+		results.get(target) match {
+			case Some(result) => retire(node, result)
+			case None => 
+				state(node) = Calling
+				addChecked(target)
+				addCaller(node, target)
+		}
 
 		post {
-			assert( calling(node) )
-			assert( callers(target) contains node )
+			if(done(target))
+				assert(done(node))
+			else {
+				assert(calling(node) )
+				assert( callers(target) contains node )
+			}
 			readyInv( node )
 		}
 	}
@@ -200,20 +206,18 @@ final class Execute[A[_] <: AnyRef](checkCycles: Boolean)(implicit view: A ~> No
 	def submit[T]( node: A[T] )(implicit strategy: Strategy)
 	{
 		val v = view(node)
-		val rs: v.Inputs#Map[Result] = v.inputs.map(results)
-		val ud = v.unitDependencies.flatMap(incomplete)
+		val rs: v.Mixed#Map[Result] = v.mixedIn.map(results)
+		val ud = v.uniformIn.map(results.apply[v.Uniform])
 		strategy.submit( node, () => work(node, v.work(rs, ud)) )
 	}
 	/** Evaluates the computation 'f' for 'node'.
 	* This returns a Completed instance, which contains the post-processing to perform after the result is retrieved from the Strategy.*/
 	def work[T](node: A[T], f: => Either[A[T], T])(implicit strategy: Strategy): Completed =
 	{
-		val result =
-			try { Right(f) }
-			catch {
-				case i: Incomplete => Left(i)
-				case e => Left( Incomplete(Incomplete.Error, directCause = Some(e)) )
-			}
+		val result = wideConvert(f).left.map {
+			case i: Incomplete => i
+			case e => Incomplete(Incomplete.Error, directCause = Some(e))
+		}
 		completed {
 			result match {
 				case Left(i) => retire(node, Inc(i))
@@ -229,7 +233,7 @@ final class Execute[A[_] <: AnyRef](checkCycles: Boolean)(implicit view: A ~> No
 	def addCaller[T](caller: A[T], target: A[T]): Unit = callers.getOrUpdate(target, IDSet.create[A[T]]) += caller
 
 	def dependencies(node: A[_]): Iterable[A[_]] = dependencies(view(node))
-	def dependencies(v: Node[A, _]): Iterable[A[_]] = v.unitDependencies ++ v.inputs.toList
+	def dependencies(v: Node[A, _]): Iterable[A[_]] = v.uniformIn ++ v.mixedIn.toList
 
 		// Contracts
 
