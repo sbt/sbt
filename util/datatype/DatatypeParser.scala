@@ -1,10 +1,11 @@
 /* sbt -- Simple Build Tool
  * Copyright 2009  Mark Harrah
  */
-package xsbt.api
+package xsbt
+package api
 
 import java.io.File
-import xsbt.FileUtilities
+import sbt.IO.read
 import Function.tupled
 import java.util.regex.Pattern
 
@@ -30,7 +31,7 @@ class DatatypeParser extends NotNull
 		}
 		open ++ closed
 	}
-	def parseLines(file: File): Seq[Line] = getLines(FileUtilities.read(file)).toList.zipWithIndex.map(tupled(parseLine))
+	def parseLines(file: File): Seq[Line] = getLines(read(file)).toList.zipWithIndex.map(tupled(parseLine))
 	def getLines(content: String): Seq[String] = content split "(?m)$(?s:.)(?!$)*(^|\\Z)"
 	def parseLine(line: String, lineNumber: Int): Line =
 		matchPattern(WhitespacePattern -> processWhitespaceLine _, EnumPattern -> processEnumLine _,

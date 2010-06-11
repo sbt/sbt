@@ -54,7 +54,7 @@ class BufferedLogger(delegate: AbstractLogger) extends AbstractLogger
 		delegate.setLevel(newLevel)
 	}
 	def getLevel = delegate.getLevel
-	def traceEnabled = delegate.traceEnabled
+	def getTrace = delegate.getTrace
 	def setTrace(level: Int)
 	{
 		buffer  += new SetTrace(level)

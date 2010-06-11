@@ -22,7 +22,7 @@ class LoggerWriter(delegate: AbstractLogger, level: Level.Value, nl: String) ext
 		}
 	override def write(content: Array[Char], offset: Int, length: Int): Unit =
 		synchronized {
-			buffer.append(content, offset, length)
+			buffer.appendAll(content, offset, length)
 			process()
 		}
 
