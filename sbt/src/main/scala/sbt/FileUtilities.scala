@@ -96,8 +96,6 @@ object FileUtilities
 	* @param log The Logger to use. */
 	def jar(sources: Iterable[Path], outputJar: Path, manifest: Manifest, recursive: Boolean, log: Logger) =
 		archive(sources, outputJar, Some(manifest), recursive, log)
-	@deprecated def pack(sources: Iterable[Path], outputJar: Path, manifest: Manifest, recursive: Boolean, log: Logger) =
-		jar(sources, outputJar, manifest, recursive, log)
 	/** Creates a zip file.
 	* @param sources The files to include in the jar file.  The path used for the jar is
 	* relative to the base directory for the source.  That is, the path in the jar for source
