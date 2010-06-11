@@ -8,7 +8,7 @@ import java.net.{URI, URL, URLClassLoader}
 
 /** This is a starting point for defining a custom ClassLoader.  Override 'doLoadClass' to define
 * loading a class that has not yet been loaded.*/
-abstract class LoaderBase(urls: Seq[URL], parent: ClassLoader) extends URLClassLoader(urls.toArray, parent) with NotNull
+abstract class LoaderBase(urls: Seq[URL], parent: ClassLoader) extends URLClassLoader(urls.toArray, parent)
 {
 	require(parent != null) // included because a null parent is legitimate in Java
 	@throws(classOf[ClassNotFoundException])
