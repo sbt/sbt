@@ -416,7 +416,7 @@ class xMain extends xsbti.AppMain
 	val ContinuousCompilePollDelaySeconds = 1
 
 	/** The list of logging levels.*/
-	private def logLevels: Iterable[String] = TreeSet.empty[String] ++ Level.levels.map(_.toString)
+	private def logLevels: Iterable[String] = TreeSet.empty[String] ++ Level.values.map(_.toString)
 	/** The list of all interactive commands other than logging level.*/
 	private def basicCommands: Iterable[String] = TreeSet(ShowProjectsAction, ShowActions, ShowCurrent, HelpAction,
 		RebootCommand, TraceCommand, ContinuousCompileCommand, ProjectConsoleAction, BuilderCommand)  ++
@@ -464,7 +464,7 @@ class xMain extends xsbti.AppMain
 		printCmd(RebootCommand, "Reloads sbt, picking up modifications to sbt.version or scala.version and recompiling modified project definitions.")
 		printCmd(HelpAction, "Displays this help message.")
 		printCmd(ShowCurrent, "Shows the current project, Scala version, and logging level.")
-		printCmd(Level.levels.mkString(", "), "Set logging for the current project to the specified level.")
+		printCmd(Level.values.mkString(", "), "Set logging for the current project to the specified level.")
 		printCmd(TraceCommand + " " + validTraceArguments, "Configures stack trace logging. " + traceExplanation)
 		printCmd(ProjectAction + " <project name>", "Sets the currently active project.")
 		printCmd(ShowProjectsAction, "Shows all available projects.")

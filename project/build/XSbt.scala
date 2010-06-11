@@ -18,7 +18,7 @@ class XSbt(info: ProjectInfo) extends ParentProject(info) with NoCrossPaths
 	val classpathSub = baseProject(utilPath / "classpath", "Classpath")
 
 	val ivySub = project("ivy", "Ivy", new IvyProject(_), interfaceSub, launchInterfaceSub)
-	val logSub = baseProject(utilPath / "log", "Logging", interfaceSub)
+	val logSub = project(utilPath / "log", "Logging", new LogProject(_), interfaceSub)
 	val datatypeSub = baseProject("util" /"datatype", "Datatype Generator", ioSub)
 
 	val testSub = project("scripted", "Test", new TestProject(_), ioSub)
@@ -36,7 +36,6 @@ class XSbt(info: ProjectInfo) extends ParentProject(info) with NoCrossPaths
 
 	val sbtSub = project(sbtPath, "Simple Build Tool", new SbtProject(_) {}, compilerSub, launchInterfaceSub)
 	val installerSub = project(sbtPath / "install", "Installer", new InstallerProject(_) {}, sbtSub)
-
 
 	lazy val dist = task { None } dependsOn(launchSub.proguard, sbtSub.publishLocal, installerSub.publishLocal)
 
@@ -85,12 +84,16 @@ class XSbt(info: ProjectInfo) extends ParentProject(info) with NoCrossPaths
 	}
 	trait TestDependencies extends Project
 	{
-		val sc = "org.scala-tools.testing" %% "scalacheck" % "1.6" % "test"
+		val sc = "org.scala-tools.testing" %% "scalacheck" % "1.7" % "test"
 		val sp = "org.scala-tools.testing" % "specs" % "1.6.0" % "test"
 	}
 	class StandardTaskProject(info: ProjectInfo) extends Base(info)
 	{
 		override def testClasspath = super.testClasspath +++ compilerSub.testClasspath --- compilerInterfaceClasspath
+	}
+	class LogProject(info: ProjectInfo) extends Base(info)
+	{
+		val jline = jlineDep
 	}
 
 	class IOProject(info: ProjectInfo) extends Base(info) with TestDependencies
