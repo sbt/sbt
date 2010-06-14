@@ -28,7 +28,7 @@ trait SelfExtractingProject extends Project
 			write(new File(tmp, "install"), installContents, log) orElse
 			unzip(this.getClass.getResource(extractorJarLocation), tmpPath, log).left.toOption orElse
 			Control.thread(compressLoader(loaderJar)) { compressedLoader =>
-				zip( (tmpPath ##) :: flat(projectZip) :: compressedLoader :: Nil, outputJar, true, log)
+				zip( (tmpPath ###) :: flat(projectZip) :: compressedLoader :: Nil, outputJar, true, log)
 			}
 		}
 	}
@@ -49,7 +49,7 @@ trait SelfExtractingProject extends Project
 			else jarName
 		val packedName = baseName + ".pack"
 		val packed = outputPath / packedName
-		val packedAndGzip = (outputPath ##) / (packedName + ".gz")
+		val packedAndGzip = (outputPath ###) / (packedName + ".gz")
 		val result =
 			Pack.pack(loaderJar, packed, log) orElse
 			FileUtilities.gzip(packed, packedAndGzip, log)
@@ -73,7 +73,7 @@ object SelfExtractingProject
 	private def flat(p: Path) =
 		p match
 		{
-			case rp: RelativePath => (rp.parentPath ##) / rp.component
+			case rp: RelativePath => (rp.parentPath ###) / rp.component
 			case _ => p
 		}
 }

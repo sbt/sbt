@@ -121,7 +121,7 @@ private abstract class AbstractProcessBuilder extends ProcessBuilder with SinkPa
 		require(other.canPipeTo, "Piping to multiple processes is not supported.")
 		new PipedProcessBuilder(this, other, false)
 	}
-	def ##(other: ProcessBuilder): ProcessBuilder = new SequenceProcessBuilder(this, other)
+	def ###(other: ProcessBuilder): ProcessBuilder = new SequenceProcessBuilder(this, other)
 	
 	protected def toSource = this
 	protected def toSink = this
@@ -246,7 +246,7 @@ private class OrProcessBuilder(first: ProcessBuilder, second: ProcessBuilder) ex
 {
 	override def createProcess(io: ProcessIO) = new OrProcess(first, second, io)
 }
-private class SequenceProcessBuilder(first: ProcessBuilder, second: ProcessBuilder) extends SequentialProcessBuilder(first, second, "##")
+private class SequenceProcessBuilder(first: ProcessBuilder, second: ProcessBuilder) extends SequentialProcessBuilder(first, second, "###")
 {
 	override def createProcess(io: ProcessIO) = new ProcessSequence(first, second, io)
 }

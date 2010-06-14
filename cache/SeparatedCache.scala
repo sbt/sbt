@@ -1,4 +1,7 @@
-package xsbt
+/* sbt -- Simple Build Tool
+ * Copyright 2009 Mark Harrah
+ */
+package sbt
 
 import sbinary.Format
 import sbinary.JavaIO._
@@ -31,11 +34,11 @@ class SeparatedCache[I,O](input: InputCache[I], output: OutputCache[O]) extends 
 		catch { case _: Exception => Right(update(file)(in)) }
 	protected def applyImpl(file: File, in: I) =
 	{
-		OpenResource.fileInputStream(file) { stream =>
+		Using.fileInputStream(file) { stream =>
 			val cache = input.uptodate(in)(stream)
 			lazy val doUpdate = (result: O) =>
 			{
-				OpenResource.fileOutputStream(false)(file) { stream =>
+				Using.fileOutputStream(false)(file) { stream =>
 					cache.update(stream)
 					output.update(result)(stream)
 				}
@@ -49,7 +52,7 @@ class SeparatedCache[I,O](input: InputCache[I], output: OutputCache[O]) extends 
 	}
 	protected def update(file: File)(in: I)(out: O)
 	{
-		OpenResource.fileOutputStream(false)(file) { stream =>
+		Using.fileOutputStream(false)(file) { stream =>
 			input.force(in)(stream)
 			output.update(out)(stream)
 		}

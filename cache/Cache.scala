@@ -1,7 +1,11 @@
-package xsbt
+/* sbt -- Simple Build Tool
+ * Copyright 2009 Mark Harrah
+ */
+package sbt
 
 import sbinary.{CollectionTypes, Format, JavaFormats}
 import java.io.File
+import Types.:+:
 
 trait Cache[I,O]
 {
@@ -44,13 +48,13 @@ trait BasicCacheImplicits extends NotNull
 		new SeparatedCache(input, output)
 	implicit def defaultEquiv[T]: Equiv[T] = new Equiv[T] { def equiv(a: T, b: T) = a == b }
 }
-trait HListCacheImplicits extends HLists
+trait HListCacheImplicits
 {
-	implicit def hConsInputCache[H,T<:HList](implicit headCache: InputCache[H], tailCache: InputCache[T]): InputCache[HCons[H,T]] =
+	implicit def hConsInputCache[H,T<:HList](implicit headCache: InputCache[H], tailCache: InputCache[T]): InputCache[H :+: T] =
 		new HConsInputCache(headCache, tailCache)
 	implicit lazy val hNilInputCache: InputCache[HNil] = new HNilInputCache
 
-	implicit def hConsOutputCache[H,T<:HList](implicit headCache: OutputCache[H], tailCache: OutputCache[T]): OutputCache[HCons[H,T]] =
+	implicit def hConsOutputCache[H,T<:HList](implicit headCache: OutputCache[H], tailCache: OutputCache[T]): OutputCache[H :+: T] =
 		new HConsOutputCache(headCache, tailCache)
 	implicit lazy val hNilOutputCache: OutputCache[HNil] = new HNilOutputCache
 }

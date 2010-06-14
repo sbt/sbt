@@ -1,4 +1,7 @@
-package xsbt
+/* sbt -- Simple Build Tool
+ * Copyright 2009 Mark Harrah
+ */
+package sbt
 
 import java.io.{File, FileNotFoundException}
 import sbinary.{DefaultProtocol, Format, Operations}
@@ -24,7 +27,7 @@ object CacheIO
 		toFile(value)(file)(format, mf)
 	def toFile[T](value: T)(file: File)(implicit format: Format[T], mf: Manifest[Format[T]]): Unit =
 	{
-		FileUtilities.createDirectory(file.getParentFile)
+		IO.createDirectory(file.getParentFile)
 		Operations.toFile(value)(file)(stampedFormat(format))
 	}
 	def stampedFormat[T](format: Format[T])(implicit mf: Manifest[Format[T]]): Format[T] =

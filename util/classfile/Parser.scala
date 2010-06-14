@@ -1,8 +1,8 @@
 /* sbt -- Simple Build Tool
  * Copyright 2009 Mark Harrah
  */
-package sbt.classfile
-import sbt._
+package sbt
+package classfile
 
 import java.io.{DataInputStream, File, InputStream}
 
@@ -15,9 +15,9 @@ import Constants._
 
 private[sbt] object Parser
 {
-	def apply(file: File, log: Logger): ClassFile = FileUtilities.readStreamValue(file, log)(parse(file.getCanonicalPath, log)).right.get
-	private def parse(fileName: String, log: Logger)(is: InputStream): Either[String, ClassFile] = Right(parseImpl(fileName, is, log))
-	private def parseImpl(filename: String, is: InputStream, log: Logger): ClassFile =
+	def apply(file: File): ClassFile = Using.fileInputStream(file)(parse(file.getCanonicalPath)).right.get
+	private def parse(fileName: String)(is: InputStream): Either[String, ClassFile] = Right(parseImpl(fileName, is))
+	private def parseImpl(filename: String, is: InputStream): ClassFile =
 	{
 		val in = new DataInputStream(is)
 		new ClassFile
@@ -114,7 +114,7 @@ private[sbt] object Parser
 			}
 		}
     }
-    private def array[T](size: Int)(f: => T)(implicit mf: scala.reflect.Manifest[T]) = Array.fromFunction(i => f)(size)
+    private def array[T : scala.reflect.Manifest](size: Int)(f: => T) = Array.tabulate(size)(_ => f)
 	private def parseConstantPool(in: DataInputStream) =
 	{
 		val constantPoolSize = in.readUnsignedShort()

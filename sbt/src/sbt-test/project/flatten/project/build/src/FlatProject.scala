@@ -6,12 +6,12 @@ class FlatProject(info: ProjectInfo) extends DefaultProject(info)
 	val sc = "org.scalacheck" % "scalacheck" % "1.5" % "test"
 
 	def sourceFilter =  "*.java" | "*.scala"
-	override def mainSources = descendents(sourcePath ##, sourceFilter)
-	override def mainResources = descendents(sourcePath ##, -sourceFilter)
+	override def mainSources = descendents(sourcePath ###, sourceFilter)
+	override def mainResources = descendents(sourcePath ###, -sourceFilter)
 
 	override def testSourcePath = "test-src"
-	override def testSources = descendents(testSourcePath ##, sourceFilter)
-	override def testResources = descendents(testSourcePath ##, -sourceFilter)
+	override def testSources = descendents(testSourcePath ###, sourceFilter)
+	override def testResources = descendents(testSourcePath ###, -sourceFilter)
 
 	lazy val unpackageProject =
 		task

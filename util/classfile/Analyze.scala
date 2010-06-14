@@ -1,9 +1,10 @@
 /* sbt -- Simple Build Tool
- * Copyright 2009 Mark Harrah
+ * Copyright 2009, 2010  Mark Harrah
  */
-package sbt.classfile
-import sbt._
+package sbt
+package classfile
 
+import ClassfileLogger._
 import scala.collection.mutable
 import mutable.{ArrayBuffer, Buffer}
 import java.io.File
@@ -13,8 +14,8 @@ import java.lang.reflect.Modifier.{STATIC, PUBLIC, ABSTRACT}
 
 private[sbt] object Analyze
 {
-	def apply[T](basePath: Path, outputDirectory: Path, sources: Iterable[Path], roots: Iterable[Path], log: Logger)
-		(allProducts: => scala.collection.Set[Path], analysis: AnalysisCallback, loader: ClassLoader)
+	def apply[T](basePath: Path, outputDirectory: Path, sources: Iterable[Path], roots: Iterable[Path], log: ClassfileLogger)
+		(allProducts: => scala.collection.Set[Path], analysis: xsbti.AnalysisCallback, loader: ClassLoader)
 		(compile: => Option[String]): Option[String] =
 	{
 		val sourceSet = Set(sources.toSeq : _*)
@@ -35,15 +36,15 @@ private[sbt] object Analyze
 			val sourceToClassFiles = new mutable.HashMap[Path, Buffer[ClassFile]]
 
 			val superclasses = analysis.superclassNames flatMap { tpe => load(tpe, "Could not load superclass '" + tpe + "'") }
-			val annotations = analysis.annotationNames
+			val annotations = analysis.annotationNames.toSeq
 
-			def annotated(fromClass: Seq[Annotation]) = if(fromClass.isEmpty) Nil else annotations.filter(Set() ++ fromClass.map(_.annotationType.getName))
+			def annotated(fromClass: Seq[Annotation]) = if(fromClass.isEmpty) Nil else annotations.filter(fromClass.map(_.annotationType.getName).toSet)
 
 			// parse class files and assign classes to sources.  This must be done before dependencies, since the information comes
 			// as class->class dependencies that must be mapped back to source->class dependencies using the source+class assignment
 			for(newClass <- newClasses;
 				path <- Path.relativize(outputDirectory, newClass);
-				classFile = Parser(newClass.asFile, log);
+				classFile = Parser(newClass.asFile);
 				sourceFile <- classFile.sourceFile orElse guessSourceName(newClass.asFile.getName);
 				source <- guessSourcePath(sourceSet, roots, classFile, log))
 			{
@@ -75,10 +76,10 @@ private[sbt] object Analyze
 				}
 				def processDependency(tpe: String)
 				{
-					Control.trapAndLog(log)
+					trapAndLog(log)
 					{
 						val loaded = load(tpe, "Problem processing dependencies of source " + source)
-						for(clazz <- loaded; file <- Control.convertException(FileUtilities.classLocationFile(clazz)).right)
+						for(clazz <- loaded; file <- ErrorHandling.convert(IO.classLocationFile(clazz)).right)
 						{
 							if(file.isDirectory)
 							{
@@ -107,7 +108,7 @@ private[sbt] object Analyze
 			}
 		}
 		
-		compile orElse Control.convertErrorMessage(log)(analyze()).left.toOption
+		compile orElse ClassfileLogger.convertErrorMessage(log)(analyze()).left.toOption
 	}
 	private def guessSourceName(name: String) = Some( takeToDollar(trimClassExt(name)) )
 	private def takeToDollar(name: String) =
@@ -118,7 +119,7 @@ private[sbt] object Analyze
 	private final val ClassExt = ".class"
 	private def trimClassExt(name: String) = if(name.endsWith(ClassExt)) name.substring(0, name.length - ClassExt.length) else name
 	private def resolveClassFile(file: File, className: String): File = (file /: (className.replace('.','/') + ClassExt).split("/"))(new File(_, _))
-	private def guessSourcePath(sources: scala.collection.Set[Path], roots: Iterable[Path], classFile: ClassFile, log: Logger) =
+	private def guessSourcePath(sources: scala.collection.Set[Path], roots: Iterable[Path], classFile: ClassFile, log: ClassfileLogger) =
 	{
 		val classNameParts = classFile.className.split("""\.""")
 		val lastIndex = classNameParts.length - 1

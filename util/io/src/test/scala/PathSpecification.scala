@@ -10,9 +10,6 @@ import java.io.File
 
 object PathSpecification extends Properties("Path")
 {
-	val log = new ConsoleLogger
-	log.setLevel(Level.Warn)
-
 	// certain operations require a real underlying file.  We'd like to create them in a managed temporary directory so that junk isn't left over from the test.
 	//  The arguments to several properties are functions that construct a Path or PathFinder given a base directory.
 	type ToPath = ProjectDirectory => Path
@@ -33,7 +30,7 @@ object PathSpecification extends Properties("Path")
 	}
 	property("Relative path") = forAll { (a: List[String], b: List[String]) =>
 		inTemp { dir =>
-			pathForComponents(pathForComponents(dir, a) ##, b).relativePath == pathString(b) }
+			pathForComponents(pathForComponents(dir, a) ###, b).relativePath == pathString(b) }
 		}
 	property("Proper URL conversion") = forAll { (tp: ToPath) =>
 		withPath(tp) { path => path.asURL == path.asFile.toURI.toURL }
@@ -43,7 +40,7 @@ object PathSpecification extends Properties("Path")
 	}
 	property("Base path equality") = forAll { (a: List[String], b: List[String]) =>
 		inTemp { dir =>
-			pathForComponents(pathForComponents(dir, a) ##, b) == pathForComponents(pathForComponents(dir, a) ##, b)
+			pathForComponents(pathForComponents(dir, a) ###, b) == pathForComponents(pathForComponents(dir, a) ###, b)
 		}
 	}
 
@@ -86,15 +83,15 @@ object PathSpecification extends Properties("Path")
 		inTemp { dir =>
 			val bases = repeat(baseDirs(dir).get)
 			val reallyDistinct: Set[String] = Set() ++ distinctNames -- dupNames.map(_._1)
-			val dupList = dupNames.flatMap { case (name, repeat) => if(reallyDistinct(name)) Nil else List.make(repeat, name) }
+			val dupList = dupNames.flatMap { case (name, repeat) => if(reallyDistinct(name)) Nil else List.fill(repeat)(name) }
 
 			def create(names: List[String]): PathFinder =
 			{
 				val paths = (bases zip names ).map { case (a, b) => a / b }.filter(!_.exists)
-				paths.foreach { f => xsbt.FileUtilities.touch(f asFile) }
+				paths.foreach { f => IO.touch(f asFile) }
 				Path.lazyPathFinder(paths)
 			}
-			def names(s: scala.collection.Set[Path]) = s.map(_.name)
+			def names(s: Set[Path]) = s.map(_.name)
 
 			val distinctPaths = create(reallyDistinct.toList)
 			val dupPaths = create(dupList)
@@ -102,15 +99,22 @@ object PathSpecification extends Properties("Path")
 			val all = distinctPaths +++ dupPaths
 			val distinct = all.distinct.get
 
-			val allNames = Set() ++ names(all.get)
+			val allNames = names(all.get)
 
-			(Set() ++ names(distinct)) == allNames && // verify nothing lost
+			names(distinct) == allNames && // verify nothing lost
 				distinct.size == allNames.size // verify duplicates removed
 		} } catch { case e => e.printStackTrace; throw e}
 	}
 
-	private def repeat[T](s: Iterable[T]): List[T] =
-		List.make(100, ()).flatMap(_ => s) // should be an infinite Stream, but Stream isn't very lazy
+	def repeat[T](s: Iterable[T]): Stream[T] =
+	{
+		def toStr(l: List[T]): Stream[T] = l match {
+			case Nil => st
+			case x :: xs => Stream.cons(x, toStr(xs))
+		}
+		lazy val st = if(s.isEmpty) Stream.empty else toStr(s.toList)
+		st
+	}
 		
 
 	private def withPath[T](tp: ToPath)(f: Path => T): T =
@@ -119,24 +123,12 @@ object PathSpecification extends Properties("Path")
 		inTemp { dir => f(ta(dir), tb(dir)) }
 	
 	private def createFileAndDo(a: List[String], b: List[String])(f: Path => Boolean) =
-	{
-		val result =
-			FileUtilities.doInTemporaryDirectory(log)( dir =>
-			{
-				FileUtilities.touch(fileForComponents(dir, a ::: b), log) match
-				{
-					case None => Right(Some( f(new ProjectDirectory(dir)) ))
-					case Some(err) => Left(err)
-				}
-			})
-		result match
-		{
-			case Left(err) => throw new RuntimeException(err)
-			case Right(opt) => opt.isDefined ==> opt.get
+		IO.withTemporaryDirectory { dir =>
+			IO.touch(fileForComponents(dir, a ::: b))
+			f(new ProjectDirectory(dir))
 		}
-	}
 	private def inTemp[T](f: ProjectDirectory => T): T =
-		xsbt.FileUtilities.withTemporaryDirectory { dir => f(new ProjectDirectory(dir)) }
+		IO.withTemporaryDirectory { dir => f(new ProjectDirectory(dir)) }
 	
 	private def pathString(components: List[String]): String = components.mkString(File.separator)
 	private def pathForComponents(base: Path, components: List[String]): Path =
@@ -148,7 +140,7 @@ object PathSpecification extends Properties("Path")
 		for(dir <- d; name <- s) yield  {
 			(projectPath: ProjectDirectory) =>
 				val f = dir(projectPath) / name
-				xsbt.FileUtilities.touch(f asFile)
+				IO.touch(f asFile)
 				f
 		}
 
@@ -161,7 +153,7 @@ object PathSpecification extends Properties("Path")
 		for(p <- genPath) yield {
 			(projectPath: ProjectDirectory) => {
 				val f = p(projectPath)
-				xsbt.FileUtilities.createDirectory(f asFile)
+				IO.createDirectory(f asFile)
 				f
 			}
 		}
@@ -176,7 +168,7 @@ object PathSpecification extends Properties("Path")
 				b match
 				{
 					case None => base
-					case Some(relative) => pathForComponents(base ##, relative)
+					case Some(relative) => pathForComponents(base ###, relative)
 				}
 			}
 	private implicit lazy val componentList: Gen[List[String]] = genList[String](MaxComponentCount)(pathComponent.arbitrary)
@@ -185,7 +177,7 @@ object PathSpecification extends Properties("Path")
 		for(size <- Gen.choose(0, maxSize); a <- Gen.listOfN(size, genA)) yield a
 
 	private def trim(components: List[String]): List[String] = components.take(MaxComponentCount)
-	private def trim(component: String): String = component.substring(0, Math.min(component.length, MaxFilenameLength))
+	private def trim(component: String): String = component.substring(0, math.min(component.length, MaxFilenameLength))
 
 	final val MaxFilenameLength = 20
 	final val MaxComponentCount = 6

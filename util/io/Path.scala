@@ -1,32 +1,31 @@
 /* sbt -- Simple Build Tool
- * Copyright 2008, 2009 Mark Harrah
+ * Copyright 2008, 2009, 2010  Mark Harrah
  */
 package sbt
 
 import Path._
-import FileUtilities.wrapNull
+import IO.{pathSplit, wrapNull}
 import java.io.File
 import java.net.URL
-import scala.collection.{immutable, mutable}
-import mutable.{Set, HashSet}
+import scala.collection.{generic, immutable, mutable, TraversableLike}
 
 /** A Path represents a file in a project.
 * @see sbt.PathFinder*/
-sealed abstract class Path extends PathFinder with NotNull
+sealed abstract class Path extends PathFinder
 {
 	/** Creates a base directory for this path.  This is used by copy and zip functions
 	* to determine the relative path that should be used in the destination.  For example,
 	* if the following path is specified to be copied to directory 'd',
 	* 
-	* <code>((a / b) ##) / x / y</code>
+	* <code>((a / b) ###) / x / y</code>
 	*
 	* the copied path would be 
 	*
 	* <code>d / x / y</code>
 	*
 	* The <code>relativePath</code> method is used to return the relative path to the base directory. */
-	override def ## : Path = new BaseDirectory(this)
-	private[sbt] def addTo(pathSet: Set[Path])
+	override def ### : Path = new BaseDirectory(this)
+	private[sbt] def addTo(pathSet: mutable.Set[Path])
 	{
 		if(asFile.exists)
 			pathSet += this
@@ -49,7 +48,7 @@ sealed abstract class Path extends PathFinder with NotNull
 	/** The file represented by this path converted to a <code>URL</code>.*/
 	def asURL = asFile.toURI.toURL
 	/** The string representation of this path relative to the base directory.  The project directory is the
-	* default base directory if one is not specified explicitly using the <code>##</code> operator.*/
+	* default base directory if one is not specified explicitly using the <code>###</code> operator.*/
 	lazy val relativePath: String = relativePathString(sep.toString)
 	def relativePathString(separator: String): String
 	final def projectRelativePath: String = projectRelativePathString(sep.toString)
@@ -82,7 +81,7 @@ sealed abstract class Path extends PathFinder with NotNull
 }
 private final class BaseDirectory(private[sbt] val path: Path) extends Path
 {
-	override def ## : Path = this
+	override def ### : Path = this
 	override def toString = path.toString
 	def asFile = path.asFile
 	def relativePathString(separator: String) = ""
@@ -124,10 +123,14 @@ private[sbt] final class RelativePath(val parentPath: Path, val component: Strin
 			parentRelative + separator + component
 	}
 }
-object Path
+object Path extends Alternatives with Mapper
 {
 	import java.io.File
 	import File.pathSeparator
+	implicit def fileToPath(file: File): Path = Path.fromFile(file)
+	implicit def pathToFile(path: Path): File = path.asFile
+	implicit def pathsToFiles[CC[X] <: TraversableLike[X,CC[X]]](cc: CC[Path])(implicit cb: generic.CanBuildFrom[CC[Path], File, CC[File]]): CC[File] =
+		cc.map(_.asFile)
 	
 	def fileProperty(name: String) = Path.fromFile(System.getProperty(name))
 	def userHome = fileProperty("user.home")
@@ -146,7 +149,7 @@ object Path
 	
 	def splitString(projectPath: Path, value: String): Iterable[Path] =
 	{
-		for(pathString <- FileUtilities.pathSplit(value) if pathString.length > 0) yield
+		for(pathString <- pathSplit(value) if pathString.length > 0) yield
 			Path.fromString(projectPath, pathString)
 	}
 	
@@ -154,14 +157,14 @@ object Path
 	def emptyPathFinder =
 		new PathFinder
 		{
-			private[sbt] def addTo(pathSet: Set[Path]) {}
+			private[sbt] def addTo(pathSet: mutable.Set[Path]) {}
 		}
 	/** A <code>PathFinder</code> that selects the paths provided by the <code>paths</code> argument, which is
 	* reevaluated on each call to the <code>PathFinder</code>'s <code>get</code> method.  */
 	def lazyPathFinder(paths: => Iterable[Path]): PathFinder =
 		new PathFinder
 		{
-			private[sbt] def addTo(pathSet: Set[Path]) = pathSet ++= paths
+			private[sbt] def addTo(pathSet: mutable.Set[Path]) = pathSet ++= paths
 		}
 	def finder(files: => Iterable[File]): PathFinder =  lazyPathFinder { fromFiles(files) }
 		
@@ -243,11 +246,8 @@ object Path
 	def fromFile(file: File): Path = new FilePath(file)
 	def fromFiles(files: Iterable[File]): Iterable[Path] =  files.map(fromFile)
 
-	// done this way because collection.Set.map returns Iterable that is Set underneath, so no need to create a new set
-	def mapSet[T](files: Iterable[Path])(f: Path => T): immutable.Set[T] =
-		files.map(f) match { case s: immutable.Set[T] => s; case x => immutable.Set() ++ x }
-	def getFiles(files: Iterable[Path]): immutable.Set[File] = mapSet(files)(_.asFile)
-	def getURLs(files: Iterable[Path]): Array[URL] = files.map(_.asURL).toSeq.toArray
+	def getFiles(files: Traversable[Path]): immutable.Set[File] = files.map(_.asFile).toSet
+	def getURLs(files: Traversable[Path]): Array[URL] = files.map(_.asURL).toArray
 }
 
 /** A path finder constructs a set of paths.  The set is evaluated by a call to the <code>get</code>
@@ -274,9 +274,20 @@ sealed abstract class PathFinder extends NotNull
 	final def \ (literal: String): PathFinder = this / literal
 
 	/** Makes the paths selected by this finder into base directories.
-	* @see Path.##
+	* @see Path.###
 	*/
-	def ## : PathFinder = new BasePathFinder(this)
+	def ### : PathFinder = new BasePathFinder(this)
+
+	/** Applies `mapper` to each path selected by this PathFinder and returns the path paired with the non-empty result.
+	* If the result is empty (None) and `errorIfNone` is true, an exception is thrown.
+	* If `errorIfNone` is false, the path is dropped from the returned Traversable.*/
+	def x[T](mapper: File => Option[T], errorIfNone: Boolean = true): Traversable[(File,T)] =
+	{
+		val apply = if(errorIfNone) mapper | fail else mapper
+		for(file <- getFiles; mapped <- apply(file)) yield (file, mapped)
+	}
+	/** Pairs each path selected by this PathFinder with its relativePath.*/
+	def xx: Traversable[(File, String)] = get.map(path => (path.asFile, path.relativePath))
 
 	/** Selects all descendent paths with a name that matches <code>include</code> and do not have an intermediate
 	* path with a name that matches <code>intermediateExclude</code>.  Typical usage is:
@@ -287,11 +298,11 @@ sealed abstract class PathFinder extends NotNull
 	
 	/** Evaluates this finder.  The set returned by this method will reflect the underlying filesystem at the
 	* time of calling.  If the filesystem changes, two calls to this method might be different.*/
-	final def get: scala.collection.Set[Path] =
+	final def get: immutable.Set[Path] =
 	{
-		val pathSet = new HashSet[Path]
+		val pathSet = new mutable.HashSet[Path]
 		addTo(pathSet)
-		wrap.Wrappers.readOnly(pathSet)
+		pathSet.toSet
 	}
 	/** Only keeps paths for which `f` returns true.  It is non-strict, so it is not evaluated until the returned finder is evaluated.*/
 	final def filter(f: Path => Boolean): PathFinder = Path.lazyPathFinder(get.filter(f))
@@ -305,8 +316,8 @@ sealed abstract class PathFinder extends NotNull
 	final def getPaths: immutable.Set[String] = strictMap(_.absolutePath)
 	/** Evaluates this finder and converts the results to a `Set` of relative path strings.*/
 	final def getRelativePaths: immutable.Set[String] = strictMap(_.relativePath)
-	final def strictMap[T](f: Path => T): immutable.Set[T] = Path.mapSet(get)(f)
-	private[sbt] def addTo(pathSet: Set[Path])
+	final def strictMap[T](f: Path => T): immutable.Set[T] = get.map(f).toSet
+	private[sbt] def addTo(pathSet: mutable.Set[Path])
 
 	/** Create a PathFinder from this one where each path has a unique name.
 	* A single path is arbitrarily selected from the set of paths with the same name.*/
@@ -321,10 +332,10 @@ sealed abstract class PathFinder extends NotNull
 }
 private class BasePathFinder(base: PathFinder) extends PathFinder
 {
-	private[sbt] def addTo(pathSet: Set[Path])
+	private[sbt] def addTo(pathSet: mutable.Set[Path])
 	{
 		for(path <- base.get)
-			pathSet += (path ##)
+			pathSet += (path ###)
 	}
 }
 private abstract class FilterPath extends PathFinder with FileFilter
@@ -333,7 +344,7 @@ private abstract class FilterPath extends PathFinder with FileFilter
 	def filter: FileFilter
 	final def accept(file: File) = filter.accept(file)
 	
-	protected def handlePath(path: Path, pathSet: Set[Path])
+	protected def handlePath(path: Path, pathSet: mutable.Set[Path])
 	{
 		for(matchedFile <- wrapNull(path.asFile.listFiles(this)))
 			pathSet += path / matchedFile.getName
@@ -341,7 +352,7 @@ private abstract class FilterPath extends PathFinder with FileFilter
 }
 private class DescendentOrSelfPathFinder(val parent: PathFinder, val filter: FileFilter) extends FilterPath
 {
-	private[sbt] def addTo(pathSet: Set[Path])
+	private[sbt] def addTo(pathSet: mutable.Set[Path])
 	{
 		for(path <- parent.get)
 		{
@@ -350,7 +361,7 @@ private class DescendentOrSelfPathFinder(val parent: PathFinder, val filter: Fil
 			handlePathDescendent(path, pathSet)
 		}
 	}
-	private def handlePathDescendent(path: Path, pathSet: Set[Path])
+	private def handlePathDescendent(path: Path, pathSet: mutable.Set[Path])
 	{
 		handlePath(path, pathSet)
 		for(childDirectory <- wrapNull(path.asFile.listFiles(DirectoryFilter)))
@@ -359,7 +370,7 @@ private class DescendentOrSelfPathFinder(val parent: PathFinder, val filter: Fil
 }
 private class ChildPathFinder(val parent: PathFinder, val filter: FileFilter) extends FilterPath
 {
-	private[sbt] def addTo(pathSet: Set[Path])
+	private[sbt] def addTo(pathSet: mutable.Set[Path])
 	{
 		for(path <- parent.get)
 			handlePath(path, pathSet)
@@ -367,7 +378,7 @@ private class ChildPathFinder(val parent: PathFinder, val filter: FileFilter) ex
 }
 private class Paths(a: PathFinder, b: PathFinder) extends PathFinder
 {
-	private[sbt] def addTo(pathSet: Set[Path])
+	private[sbt] def addTo(pathSet: mutable.Set[Path])
 	{
 		a.addTo(pathSet)
 		b.addTo(pathSet)
@@ -375,12 +386,12 @@ private class Paths(a: PathFinder, b: PathFinder) extends PathFinder
 }
 private class ExcludePaths(include: PathFinder, exclude: PathFinder) extends PathFinder
 {
-	private[sbt] def addTo(pathSet: Set[Path])
+	private[sbt] def addTo(pathSet: mutable.Set[Path])
 	{
-		val includeSet = new HashSet[Path]
+		val includeSet = new mutable.HashSet[Path]
 		include.addTo(includeSet)
 		
-		val excludeSet = new HashSet[Path]
+		val excludeSet = new mutable.HashSet[Path]
 		exclude.addTo(excludeSet)
 		
 		includeSet --= excludeSet

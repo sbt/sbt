@@ -330,7 +330,7 @@ trait ScalaProject extends SimpleScalaProject with FileTasks with MultiTaskProje
 trait WebScalaProject extends ScalaProject
 {
 	protected def packageWarAction(stagedWarPath: Path, ignore: PathFinder, outputWarPath: => Path, options: => Seq[PackageOption]): Task =
-		packageTask(descendents(stagedWarPath ##, "*") --- ignore, outputWarPath, options)
+		packageTask(descendents(stagedWarPath ###, "*") --- ignore, outputWarPath, options)
 
 	@deprecated protected def prepareWebappTask(webappContents: PathFinder, warPath: => Path, classpath: PathFinder, extraJars: => Iterable[File]): Task =
 		prepareWebappTask(webappContents, warPath, classpath, Path.finder(extraJars))
@@ -344,7 +344,7 @@ trait WebScalaProject extends ScalaProject
 			val classesTargetDirectory = webInfPath / "classes"
 
 			val (libs, directories) = classpath.get.toList.partition(ClasspathUtilities.isArchive)
-			val classesAndResources = descendents(Path.lazyPathFinder(directories) ##, "*")
+			val classesAndResources = descendents(Path.lazyPathFinder(directories) ###, "*")
 			if(log.atLevel(Level.Debug))
 				directories.foreach(d => log.debug(" Copying the contents of directory " + d + " to " + classesTargetDirectory))
 

@@ -1,7 +1,8 @@
 /* sbt -- Simple Build Tool
  * Copyright 2009 Mark Harrah
  */
-package sbt.classfile
+package sbt
+package classfile
 
 import Constants._
 import java.io.File
@@ -31,7 +32,7 @@ private[sbt] final case class Constant(tag: Byte, nameIndex: Int, typeIndex: Int
 	def this(tag: Byte, value: AnyRef) = this(tag, -1, -1, Some(value))
 	def wide = tag == ConstantLong || tag == ConstantDouble
 }
-private[sbt] final case class FieldOrMethodInfo(accessFlags: Int, name: Option[String], descriptor: Option[String], attributes: RandomAccessSeq[AttributeInfo]) extends NotNull
+private[sbt] final case class FieldOrMethodInfo(accessFlags: Int, name: Option[String], descriptor: Option[String], attributes: IndexedSeq[AttributeInfo]) extends NotNull
 {
 	def isStatic = (accessFlags&ACC_STATIC)== ACC_STATIC
 	def isPublic = (accessFlags&ACC_PUBLIC)==ACC_PUBLIC

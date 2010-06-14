@@ -1,11 +1,11 @@
 /* sbt -- Simple Build Tool
  * Copyright 2010 Mark Harrah */
 
-package xsbt
+package sbt
 
 import org.specs._
 
-import FileUtilities._
+import IO._
 import java.io.File
 import Function.tupled
 
@@ -14,6 +14,7 @@ object CheckStash extends Specification
 	"stash" should {
 		"handle empty files" in {
 			stash(Set()) { }
+			true must beTrue
 		}
 		
 		"move files during execution" in {
@@ -57,7 +58,7 @@ object CheckStash extends Specification
 			case _: TestError | _: TestException | _: TestRuntimeException => false
 		}
 	
-	def allCorrect(s: Seq[File]) = (s.toList zip TestFiles.toList).forall(tupled(correct))
+	def allCorrect(s: Seq[File]) = (s.toList zip TestFiles.toList).foreach((correct _).tupled)
 	def correct(check: File, ref: (File, String)) =
 	{
 		check.exists must beTrue

@@ -1,7 +1,7 @@
 /* sbt -- Simple Build Tool
  * Copyright 2009, 2010 Mark Harrah
  */
-package xsbt
+package sbt
 
 private object DependencyTracking
 {
@@ -24,7 +24,6 @@ trait UpdateTracking[T] extends NotNull
 	// removes sources as keys/values in source, product maps and as values in reverseDependencies map
 	def pending(sources: Iterable[T]): Unit
 }
-import scala.collection.Set
 trait ReadTracking[T] extends NotNull
 {
 	def isProduct(file: T): Boolean
@@ -75,13 +74,13 @@ private abstract class DependencyTracking[T](translateProducts: Boolean) extends
 	def isUsed(file: T): Boolean = exists(reverseUses, file)
 
 
-	final def allProducts = Set() ++ sourceMap.keys
-	final def allSources = Set() ++ productMap.keys
-	final def allUsed = Set() ++ reverseUses.keys
+	final def allProducts = sourceMap.keysIterator.toSet
+	final def allSources = productMap.keysIterator.toSet
+	final def allUsed = reverseUses.keysIterator.toSet
 	final def allTags = tagMap.toSeq
 
 	private def exists(map: DMap[T], value: T): Boolean = map.contains(value)
-	private def get(map: DMap[T], value: T): Set[T] = map.getOrElse(value, Set.empty[T])
+	private def get(map: DMap[T], value: T): Set[T] = map.getOrElse[collection.Set[T]](value, Set.empty[T]).toSet
 
 	final def dependency(sourceFile: T, dependsOn: T)
 	{
@@ -89,7 +88,7 @@ private abstract class DependencyTracking[T](translateProducts: Boolean) extends
 			if(!translateProducts)
 				Seq(dependsOn)
 			else
-				sourceMap.getOrElse(dependsOn, Seq(dependsOn))
+				sourceMap.getOrElse[Iterable[T]](dependsOn, Seq(dependsOn))
 		actualDependencies.foreach { actualDependency => reverseDependencies.add(actualDependency, sourceFile) }
 	}
 	final def product(sourceFile: T, product: T)

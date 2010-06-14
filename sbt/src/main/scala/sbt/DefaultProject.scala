@@ -295,7 +295,7 @@ abstract class BasicScalaProject extends ScalaProject with BasicDependencyProjec
 
 	protected def packageAction = packageTask(packagePaths, jarPath, packageOptions).dependsOn(compile) describedAs PackageDescription
 	protected def packageTestAction = packageTask(packageTestPaths, packageTestJar).dependsOn(testCompile) describedAs TestPackageDescription
-	protected def packageDocsAction = packageTask(mainDocPath ##, packageDocsJar, Recursive).dependsOn(doc) describedAs DocPackageDescription
+	protected def packageDocsAction = packageTask(mainDocPath ###, packageDocsJar, Recursive).dependsOn(doc) describedAs DocPackageDescription
 	protected def packageSrcAction = packageTask(packageSourcePaths, packageSrcJar) describedAs SourcePackageDescription
 	protected def packageTestSrcAction = packageTask(packageTestSourcePaths, packageTestSrcJar) describedAs TestSourcePackageDescription
 	protected def packageProjectAction = zipTask(packageProjectPaths, packageProjectZip) describedAs ProjectPackageDescription

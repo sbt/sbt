@@ -31,6 +31,12 @@ public interface AnalysisCallback
 	/** Called to indicate that the source file <code>source</code> depends on the class file
 	* <code>clazz</code>.*/
 	public void classDependency(File clazz, File source);
+	/** Called to indicate that the source file <code>sourcePath</code> depends on the class file
+	* <code>classFile</code> that is a product of some source.  This differs from classDependency
+	* because it is really a sourceDependency.  The source corresponding to <code>classFile</code>
+	* was not incuded in the compilation so the plugin doesn't know what the source is though.  It
+	* only knows that the class file came from the output directory.*/
+	public void productDependency(File classFile, File sourcePath);
 	/** Called to indicate that the source file <code>source</code> produces a class file at
 	* <code>module</code>.*/
 	public void generatedClass(File source, File module);

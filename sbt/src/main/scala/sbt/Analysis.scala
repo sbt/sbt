@@ -179,7 +179,7 @@ class BasicCompileAnalysis protected (analysisPath: Path, projectPath: Path, log
 	def getClasses(sources: PathFinder, outputDirectory: Path): PathFinder =
 		Path.lazyPathFinder
 		{
-			val basePath = (outputDirectory ##)
+			val basePath = (outputDirectory ###)
 			for(c <- products(sources.get)) yield
 				Path.relativize(basePath, c).getOrElse(c)
 		}

@@ -1,4 +1,7 @@
-package xsbt
+/* sbt -- Simple Build Tool
+ * Copyright 2009 Mark Harrah
+ */
+package sbt
 
 import java.io.{InputStream,OutputStream}
 

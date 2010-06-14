@@ -5,13 +5,16 @@ package sbt
 
 import org.scalacheck._
 import Arbitrary.{arbitrary => arb, _}
-import Gen.{oneOf, value}
+import Gen.{listOfN, oneOf}
 import Prop._
 
 import java.io.Writer
 
 object LogWriterTest extends Properties("Log Writer")
 {
+	final val MaxLines = 100
+	final val MaxSegments = 10
+
 	/* Tests that content written through a LoggerWriter is properly passed to the underlying Logger.
 	* Each line, determined by the specified newline separator, must be logged at the correct logging level. */
 	property("properly logged") = forAll { (output: Output, newLine: NewLine) =>
@@ -72,7 +75,7 @@ object LogWriterTest extends Properties("Log Writer")
 	implicit lazy val arbLevel : Arbitrary[Level.Value] = Arbitrary(genLevel)
 	
 	implicit def genLine(implicit logG: Gen[ToLog]): Gen[List[ToLog]] =
-		for(l <- arbList[ToLog].arbitrary; last <- logG) yield
+		for(l <- listOf[ToLog](MaxSegments); last <- logG) yield
 			(addNewline(last) :: l.filter(!_.content.isEmpty)).reverse
 
 	implicit def genLog(implicit content: Arbitrary[String], byChar: Arbitrary[Boolean]): Gen[ToLog] = 
@@ -87,17 +90,18 @@ object LogWriterTest extends Properties("Log Writer")
 			new NewLine(str)
 			
 	implicit lazy val genLevel: Gen[Level.Value] =
-		oneOf(levelsGen : _*)
+		oneOf(Level.values.toSeq)
 	
 	implicit lazy val genOutput: Gen[Output] =
-		for(ls <- arbList[List[ToLog]].arbitrary; lv <- genLevel) yield
+		for(ls <- listOf[List[ToLog]](MaxLines); lv <- genLevel) yield
 			new Output(ls, lv)
 		
-	def levelsGen: Seq[Gen[Level.Value]] = Level.values.toList.map(x => value(x))
-	
 	def removeNewlines(s: String) = s.replaceAll("""[\n\r]+""", "")
 	def addNewline(l: ToLog): ToLog =
 		new ToLog(l.content + "\n", l.byCharacter) // \n will be replaced by a random line terminator for all lines
+
+	def listOf[T](max: Int)(implicit content: Arbitrary[T]): Gen[List[T]] =
+		Gen.choose(0, max) flatMap { sz => listOfN(sz, content.arbitrary) }
 }
 
 /* Helper classes*/

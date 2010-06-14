@@ -1,15 +1,19 @@
-package sbt.complete
+/* sbt -- Simple Build Tool
+ * Copyright 2010  Mark Harrah
+ */
+package sbt
+package complete
 
 import History.number
 
-final class History private(lines: Array[String], log: Logger) extends NotNull
+final class History private(lines: IndexedSeq[String], error: (=> String) => Unit) extends NotNull
 {
 	private def reversed = lines.reverse
 
-	def all: Seq[String] = lines.toArray
+	def all: Seq[String] = lines
 	def size = lines.length
 	def !! : Option[String] = !- (1)
-	def apply(i: Int): Option[String] = if(0 <= i && i < size) Some( lines(i) ) else { log.error("Invalid history index: " + i); None }
+	def apply(i: Int): Option[String] = if(0 <= i && i < size) Some( lines(i) ) else { error("Invalid history index: " + i); None }
 	def !(i: Int): Option[String] = apply(i)
 
 	def !(s: String): Option[String] =
@@ -25,7 +29,7 @@ final class History private(lines: Array[String], log: Logger) extends NotNull
 	private def nonEmpty[T](s: String)(act: => Option[T]): Option[T] =
 		if(s.isEmpty)
 		{
-			log.error("No action specified to history command")
+			error("No action specified to history command")
 			None
 		}
 		else
@@ -37,7 +41,7 @@ final class History private(lines: Array[String], log: Logger) extends NotNull
 
 object History
 {
-	def apply(lines: Seq[String], log: Logger): History = new History(lines.toArray, log)
+	def apply(lines: Seq[String], error: (=> String) => Unit): History = new History(lines.toIndexedSeq, error)
 
 	def number(s: String): Option[Int] =
 		try { Some(s.toInt) }

@@ -5,45 +5,50 @@ package sbt
 
 import java.io.File
 
-trait PathMapper extends NotNull
+trait Mapper
 {
-	def apply(file: File): String
-	def apply(files: Set[File]): Iterable[(File,String)] = files.view.map(f => (f,apply(f)))
-}
-final case class RelativePathMapper(base: File) extends PMapper(file => IO.relativize(base, file).getOrElse(file.getPath))
-final case object BasicPathMapper extends PMapper(_.getPath)
-final case object FlatPathMapper extends PMapper(_.getName)
-class PMapper(val f: File => String) extends PathMapper
-{
-	def apply(file: File): String = f(file)
-}
-object PathMapper
-{
-	val basic: PathMapper = BasicPathMapper
-	def relativeTo(base: File): PathMapper = RelativePathMapper(base)
-	def rebase(oldBase: File, newBase: File): PathMapper =
-		new PMapper(file => if(file == oldBase) "." else IO.relativize(oldBase, file).getOrElse(error(file + " not a descendent of " + oldBase)))
-	val flat = FlatPathMapper
-	def apply(f: File => String): PathMapper = new PMapper(f)
+	type PathMap = File => Option[String]
+	type FileMap = File => Option[File]
+
+	val basic: PathMap = f => Some(f.getPath)
+	def relativeTo(base: File): PathMap = IO.relativize(base, _)
+	def rebase(oldBase: File, newBase0: String): PathMap =
+	{
+		val newBase = normalizeBase(newBase0)
+		(file: File) =>
+			if(file == oldBase)
+				Some( if(newBase.isEmpty) "." else newBase )
+			else
+				IO.relativize(oldBase, file).map(newBase + _)
+	}
+	def fail: Any => Nothing = f => error("No mapping for " + f)
+	val flat: PathMap = f => Some(f.getName)
+	def flatRebase(newBase0: String): PathMap =
+	{
+		val newBase = normalizeBase(newBase0)
+		f => Some(newBase + f.getName)
+	}
+	def some[A,B](f: A => B): A => Some[B] = x => Some(f(x))
+
+	def normalizeBase(base: String) = if(!base.isEmpty && !base.endsWith("/"))  base + "/" else base
+
+	def abs: FileMap = f => Some(f.getAbsoluteFile)
+	def resolve(newDirectory: File): FileMap = file => Some(new File(newDirectory, file.getPath))
+	def rebase(oldBase: File, newBase: File): FileMap =
+		file =>
+			if(file == oldBase)
+				Some(newBase)
+			else
+				IO.relativize(oldBase, file) map { r => new File(newBase, r) }
+
+	def flat(newDirectory: File): FileMap = file => Some(new File(newDirectory, file.getName))
 }
 
-trait FileMapper extends NotNull
+trait Alternative[A,B] { def | (g: A => Option[B]): A => Option[B] }
+trait Alternatives
 {
-	def apply(file: File): File
-	def apply(files: Set[File]): Iterable[(File,File)] = files.view.map(f => (f,apply(f)))
-}
-class FMapper(f: File => File) extends FileMapper
-{
-	def apply(file: File) = f(file)
-}
-object FileMapper
-{
-	def basic(newDirectory: File) = new FMapper(file => new File(newDirectory, file.getPath))
-	def rebase(oldBase: File, newBase: File): FileMapper =
-	{
-		val paths = PathMapper.rebase(oldBase, newBase)
-		new FMapper(file => new File(newBase, paths(file)))
-	}
-	def flat(newDirectory: File) = new FMapper(file => new File(newDirectory, file.getName))
-	def apply(f: File => File) = new FMapper(f)
+	implicit def alternative[A,B](f:A => Option[B]): Alternative[A,B] =
+		new Alternative[A,B] { def | (g: A => Option[B]) =
+			(a: A) => f(a) orElse g(a)
+		}
 }

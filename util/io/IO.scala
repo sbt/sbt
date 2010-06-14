@@ -4,7 +4,7 @@
 package sbt
 
 import Using._
-import xsbt.ErrorHandling.translate
+import ErrorHandling.translate
 
 import java.io.{ByteArrayOutputStream, BufferedWriter, File, FileInputStream, InputStream, OutputStream}
 import java.net.{URI, URISyntaxException, URL}
@@ -24,7 +24,7 @@ object IO
 	val temporaryDirectory = new File(System.getProperty("java.io.tmpdir"))
 	/** The size of the byte or char buffer used in various methods.*/
 	private val BufferSize = 8192
-	private val Newline = System.getProperty("line.separator")
+	val Newline = System.getProperty("line.separator")
 
 	val utf8 = Charset.forName("UTF-8")
 
@@ -91,8 +91,38 @@ object IO
 		else
 			error(failBase)
 	}
-	def unzip(from: File, toDirectory: File, filter: NameFilter = AllPassFilter): Set[File] = fileInputStream(from)(in => unzip(in, toDirectory, filter))
-	def unzip(from: InputStream, toDirectory: File, filter: NameFilter): Set[File] =
+
+	/** Gzips the file 'in' and writes it to 'out'.  'in' cannot be the same file as 'out'. */
+	def gzip(in: File, out: File)
+	{
+		require(in != out, "Input file cannot be the same as the output file.")
+		Using.fileInputStream(in) { inputStream =>
+			Using.fileOutputStream()(out) { outputStream =>
+				gzip(inputStream, outputStream)
+			}
+		}
+	}
+	/** Gzips the InputStream 'in' and writes it to 'output'.  Neither stream is closed.*/
+	def gzip(input: InputStream, output: OutputStream): Unit =
+		gzipOutputStream(output) { gzStream => transfer(input, gzStream) }
+
+	/** Gunzips the file 'in' and writes it to 'out'.  'in' cannot be the same file as 'out'. */
+	def gunzip(in: File, out: File)
+	{
+		require(in != out, "Input file cannot be the same as the output file.")
+		Using.fileInputStream(in) { inputStream =>
+			Using.fileOutputStream()(out) { outputStream =>
+				gunzip(inputStream, outputStream)
+			}
+		}
+	}
+	/** Gunzips the InputStream 'input' and writes it to 'output'.  Neither stream is closed.*/
+	def gunzip(input: InputStream, output: OutputStream): Unit =
+		gzipInputStream(input) { gzStream => transfer(gzStream, output) }
+
+	def unzip(from: File, toDirectory: File, filter: NameFilter = AllPassFilter): Set[File] = fileInputStream(from)(in => unzipStream(in, toDirectory, filter))
+	def unzipURL(from: URL, toDirectory: File, filter: NameFilter = AllPassFilter): Set[File] = urlInputStream(from)(in => unzipStream(in, toDirectory, filter))
+	def unzipStream(from: InputStream, toDirectory: File, filter: NameFilter = AllPassFilter): Set[File] =
 	{
 		createDirectory(toDirectory)
 		zipInputStream(from) { zipInput => extract(zipInput, toDirectory, filter) }
@@ -134,6 +164,14 @@ object IO
 		next()
 		Set() ++ set
 	}
+
+	/** Retrieves the content of the given URL and writes it to the given File. */
+	def download(url: URL, to: File) =
+		Using.urlInputStream(url) { inputStream =>
+			Using.fileOutputStream()(to) { outputStream =>
+				transfer(inputStream, outputStream)
+			}
+		}
 
 	/** Copies all bytes from the given input stream to the given output stream.
 	* Neither stream is closed.*/
@@ -185,6 +223,12 @@ object IO
 		}
 		create(0)
 	}
+	def withTemporaryFile[T](prefix: String, postfix: String)(action: File => T): T =
+	{
+		val file = File.createTempFile(prefix, postfix)
+		try { action(file) }
+		finally { file.delete() }
+	}
 
 	private[sbt] def jars(dir: File): Iterable[File] = listFiles(dir, GlobFilter("*.jar"))
 
@@ -205,7 +249,7 @@ object IO
 	def listFiles(filter: java.io.FileFilter)(dir: File): Array[File] = wrapNull(dir.listFiles(filter))
 	def listFiles(dir: File, filter: java.io.FileFilter): Array[File] = wrapNull(dir.listFiles(filter))
 	def listFiles(dir: File): Array[File] = wrapNull(dir.listFiles())
-	private def wrapNull(a: Array[File]) =
+	private[sbt] def wrapNull(a: Array[File]) =
 	{
 		if(a == null)
 			new Array[File](0)
@@ -219,14 +263,14 @@ object IO
 	* @param outputJar The file to write the jar to.
 	* @param manifest The manifest for the jar.*/
 	def jar(sources: Iterable[(File,String)], outputJar: File, manifest: Manifest): Unit =
-		archive(sources, outputJar, Some(manifest))
+		archive(sources.toSeq, outputJar, Some(manifest))
 	/** Creates a zip file.
 	* @param sources The files to include in the zip file paired with the entry name in the zip.
 	* @param outputZip The file to write the zip to.*/
 	def zip(sources: Iterable[(File,String)], outputZip: File): Unit =
-		archive(sources, outputZip, None)
+		archive(sources.toSeq, outputZip, None)
 
-	private def archive(sources: Iterable[(File,String)], outputFile: File, manifest: Option[Manifest])
+	private def archive(sources: Seq[(File,String)], outputFile: File, manifest: Option[Manifest])
 	{
 		if(outputFile.isDirectory)
 			error("Specified output file " + outputFile + " is a directory.")
@@ -241,7 +285,7 @@ object IO
 			}
 		}
 	}
-	private def writeZip(sources: Iterable[(File,String)], output: ZipOutputStream)(createEntry: String => ZipEntry)
+	private def writeZip(sources: Seq[(File,String)], output: ZipOutputStream)(createEntry: String => ZipEntry)
 	{
 		def add(sourceFile: File, name: String)
 		{
@@ -316,22 +360,26 @@ object IO
 		else
 			None
 	}
-	def copy(sources: Iterable[(File,File)]): Set[File] = Set( sources.map(tupled(copyImpl)).toSeq.toArray : _*)
-	private def copyImpl(from: File, to: File): File =
+	def copy(sources: Iterable[(File,File)], overwrite: Boolean = false, preserveLastModified: Boolean = false): Set[File] =
+		sources.map( tupled(copyImpl(overwrite, preserveLastModified)) ).toSet
+	private def copyImpl(overwrite: Boolean, preserveLastModified: Boolean)(from: File, to: File): File =
 	{
-		if(!to.exists || from.lastModified > to.lastModified)
+		if(overwrite || !to.exists || from.lastModified > to.lastModified)
 		{
 			if(from.isDirectory)
 				createDirectory(to)
 			else
 			{
 				createDirectory(to.getParentFile)
-				copyFile(from, to)
+				copyFile(from, to, preserveLastModified)
 			}
 		}
 		to
 	}
-	def copyFile(sourceFile: File, targetFile: File)
+	def copyDirectory(source: File, target: File, overwrite: Boolean = false, preserveLastModified: Boolean = false): Unit =
+		copy( (Path.fromFile(source) ***) x Path.rebase(source, target), overwrite, preserveLastModified)
+
+	def copyFile(sourceFile: File, targetFile: File, preserveLastModified: Boolean = false)
 	{
 		require(sourceFile.exists, "Source file '" + sourceFile.getAbsolutePath + "' does not exist.")
 		require(!sourceFile.isDirectory, "Source file '" + sourceFile.getAbsolutePath + "' is a directory.")
@@ -342,7 +390,10 @@ object IO
 					error("Could not copy '" + sourceFile + "' to '" + targetFile + "' (" + copied + "/" + in.size + " bytes copied)")
 			}
 		}
+		if(preserveLastModified)
+			copyLastModified(sourceFile, targetFile)
 	}
+	def copyLastModified(sourceFile: File, targetFile: File) = targetFile.setLastModified( sourceFile.lastModified )
 	def defaultCharset = utf8
 	def write(file: File, content: String, charset: Charset = defaultCharset, append: Boolean = false): Unit =
 		writeCharset(file, content, charset, append) { _.write(content)  }
@@ -427,7 +478,7 @@ object IO
 			delete(b)
 		if(!a.renameTo(b))
 		{
-			copyFile(a, b)
+			copyFile(a, b, true)
 			delete(a)
 		}
 	}

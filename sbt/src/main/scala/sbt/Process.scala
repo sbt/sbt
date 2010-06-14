@@ -156,7 +156,7 @@ trait ProcessBuilder extends SourcePartialBuilder with SinkPartialBuilder
 	/** Constructs a command that will run this command and pipes the output to `other`.  `other` must be a simple command.*/
 	def #| (other: ProcessBuilder): ProcessBuilder
 	/** Constructs a command that will run this command and then `other`.  The exit code will be the exit code of `other`.*/
-	def ## (other: ProcessBuilder): ProcessBuilder
+	def ### (other: ProcessBuilder): ProcessBuilder
 
 	def canPipeTo: Boolean
 }

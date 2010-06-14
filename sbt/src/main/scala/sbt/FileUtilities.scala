@@ -88,7 +88,7 @@ object FileUtilities
 	/** Creates a jar file.
 	* @param sources The files to include in the jar file.  The path used for the jar is
 	* relative to the base directory for the source.  That is, the path in the jar for source
-	* <code>(basePath ##) / x / y</code> is <code>x / y</code>.
+	* <code>(basePath ###) / x / y</code> is <code>x / y</code>.
 	* @param outputJar The file to write the jar to.
 	* @param manifest The manifest for the jar.
 	* @param recursive If true, any directories in <code>sources</code> are recursively processed.  Otherwise,
@@ -99,7 +99,7 @@ object FileUtilities
 	/** Creates a zip file.
 	* @param sources The files to include in the jar file.  The path used for the jar is
 	* relative to the base directory for the source.  That is, the path in the jar for source
-	* <code>(basePath ##) / x / y</code> is <code>x / y</code>.
+	* <code>(basePath ###) / x / y</code> is <code>x / y</code>.
 	* @param outputZip The file to write the zip to.
 	* @param recursive If true, any directories in <code>sources</code> are recursively processed.  Otherwise,
 	* they are not
@@ -465,7 +465,7 @@ object FileUtilities
 	* directory.  Directories are not recursively entered.  The destination hierarchy matches the
 	* source paths relative to any base directories.  For example:
 	*
-	* A source <code>(basePath ##) / x / y</code> is copied to <code>destinationDirectory / x / y</code>.
+	* A source <code>(basePath ###) / x / y</code> is copied to <code>destinationDirectory / x / y</code>.
 	*
 	* @param overwrite if true, existing destination files are always overwritten
 	* @param preserveLastModified if true, the last modified time of copied files will be set equal to
@@ -575,7 +575,7 @@ object FileUtilities
 	/** Synchronizes the contents of the <code>sourceDirectory</code> directory to the
 	* <code>targetDirectory</code> directory.*/
 	def sync(sourceDirectory: Path, targetDirectory: Path, log: Logger): Option[String] =
-		syncPaths((sourceDirectory ##) ** AllPassFilter, targetDirectory, log)
+		syncPaths((sourceDirectory ###) ** AllPassFilter, targetDirectory, log)
 	def syncPaths(sources: PathFinder, targetDirectory: Path, log: Logger): Option[String] =
 	{
 		copy(sources.get, targetDirectory, log).right.flatMap
@@ -583,7 +583,7 @@ object FileUtilities
 	}
 	def prune(directory: Path, keepOnly: Iterable[Path], log: Logger): Option[String] =
 	{
-		val existing = ((directory ##) ** AllPassFilter).get
+		val existing = ((directory ###) ** AllPassFilter).get
 		val toRemove = scala.collection.mutable.HashSet(existing.toSeq: _*)
 		toRemove --= keepOnly
 		if(log.atLevel(Level.Debug))
@@ -808,7 +808,7 @@ object FileUtilities
 	def readChannelValue[R](file: File, log: Logger)(f: FileChannel => Either[String, R]): Either[String, R] =
 		fileInputChannel.io(file, Reading, log)(f)
 
-	private[sbt] def wrapNull(a: Array[File]): Array[File] =
+	private[sbt] (a: Array[File]): Array[File] =
 		if(a == null)
 			new Array[File](0)
 		else

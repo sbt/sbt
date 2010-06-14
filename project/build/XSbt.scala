@@ -16,6 +16,8 @@ class XSbt(info: ProjectInfo) extends ParentProject(info) with NoCrossPaths
 	val collectionSub = baseProject(utilPath / "collection", "Collections")
 	val ioSub = project(utilPath / "io", "IO", new IOProject(_), controlSub)
 	val classpathSub = baseProject(utilPath / "classpath", "Classpath")
+	val classfileSub = project(utilPath / "classfile", "Classfile", new ClassfileProject(_), ioSub, interfaceSub)
+	val completeSub = project(utilPath / "complete", "Completion", new CompletionProject(_), ioSub)
 
 	val ivySub = project("ivy", "Ivy", new IvyProject(_), interfaceSub, launchInterfaceSub)
 	val logSub = project(utilPath / "log", "Logging", new LogProject(_), interfaceSub)
@@ -84,26 +86,28 @@ class XSbt(info: ProjectInfo) extends ParentProject(info) with NoCrossPaths
 	}
 	trait TestDependencies extends Project
 	{
-		val sc = "org.scala-tools.testing" %% "scalacheck" % "1.7" % "test"
-		val sp = "org.scala-tools.testing" %% "specs" % "1.6.5-SNAPSHOT" % "test"
+		val sc = "org.scala-tools.testing" % "scalacheck_2.8.0.RC3" % "1.7" % "test"
+		val sp = "org.scala-tools.testing" % "specs_2.8.0.RC3" % "1.6.5-SNAPSHOT" % "test"
 		val snaps = ScalaToolsSnapshots
 	}
 	class StandardTaskProject(info: ProjectInfo) extends Base(info)
 	{
 		override def testClasspath = super.testClasspath +++ compilerSub.testClasspath --- compilerInterfaceClasspath
 	}
-	class LogProject(info: ProjectInfo) extends Base(info)
+	class LogProject(info: ProjectInfo) extends Base(info) with TestDependencies
 	{
 		val jline = jlineDep
 	}
 
 	class IOProject(info: ProjectInfo) extends Base(info) with TestDependencies
 	class TaskProject(info: ProjectInfo) extends Base(info) with TestDependencies
+	class ClassfileProject(info: ProjectInfo) extends Base(info) with TestDependencies
+	class CompletionProject(info: ProjectInfo) extends Base(info) with TestDependencies
 	class CacheProject(info: ProjectInfo) extends Base(info)
 	{
 		// these compilation options are useful for debugging caches and task composition
 		//override def compileOptions = super.compileOptions ++ List(Unchecked,ExplainTypes, CompileOption("-Xlog-implicits"))
-		val sbinary = "org.scala-tools.sbinary" %% "sbinary" % "0.3"
+		val sbinary = "org.scala-tools.sbinary" %% "sbinary" % "0.3.1-SNAPSHOT"
 	}
 	class Base(info: ProjectInfo) extends DefaultProject(info) with ManagedBase with Component with Licensed
 	{
@@ -201,7 +205,7 @@ class XSbt(info: ProjectInfo) extends ParentProject(info) with NoCrossPaths
 		
 		// sub projects for each version of Scala to precompile against other than the one sbt is built against
 		// each sub project here will add ~100k to the download
-		lazy val precompiled28 = precompiledSub("2.8.0.RC2")
+		lazy val precompiled28 = precompiledSub("2.8.0.RC4")
 
 		def precompiledSub(v: String) = 
 			project(info.projectPath, "Precompiled " + v, new Precompiled(v)(_), cip.info.dependencies.toSeq : _* /*doesn't include subprojects of cip*/ )

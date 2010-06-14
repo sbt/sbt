@@ -4,7 +4,7 @@
 package sbt
 
 import java.io.{Closeable, File, FileInputStream, FileOutputStream, InputStream, OutputStream}
-import java.io.{ByteArrayOutputStream, InputStreamReader, OutputStreamWriter}
+import java.io.{BufferedInputStream, BufferedOutputStream, ByteArrayOutputStream, InputStreamReader, OutputStreamWriter}
 import java.io.{BufferedReader, BufferedWriter, FileReader, FileWriter, Reader, Writer}
 import java.util.zip.{GZIPInputStream, GZIPOutputStream}
 import java.net.{URL, URISyntaxException}
@@ -13,7 +13,7 @@ import java.nio.channels.FileChannel
 import java.util.jar.{Attributes, JarEntry, JarFile, JarInputStream, JarOutputStream, Manifest}
 import java.util.zip.{GZIPOutputStream, ZipEntry, ZipFile, ZipInputStream, ZipOutputStream}
 
-import xsbt.ErrorHandling.translate
+import ErrorHandling.translate
 import Using._
 
 abstract class Using[Source, T] extends NotNull
@@ -74,8 +74,8 @@ object Using
 		}
 	private def closeCloseable[T <: Closeable]: T => Unit = _.close()
 
-	def fileOutputStream(append: Boolean = false) = file(f => new FileOutputStream(f, append))
-	def fileInputStream = file(f => new FileInputStream(f))
+	def fileOutputStream(append: Boolean = false) = file(f => new BufferedOutputStream(new FileOutputStream(f, append)))
+	def fileInputStream = file(f => new BufferedInputStream(new FileInputStream(f)))
 	def urlInputStream = resource( (u: URL) => translate("Error opening " + u + ": ")(u.openStream))
 	def fileOutputChannel = file(f => new FileOutputStream(f).getChannel)
 	def fileInputChannel = file(f => new FileInputStream(f).getChannel)

@@ -83,17 +83,17 @@ trait BasicScalaPaths extends Project with ScalaPaths
 	}
 	def testSources = sources(testSourceRoots)
 	
-	def mainResources = descendents(mainResourcesPath ##, "*")
-	def testResources = descendents(testResourcesPath ##, "*")
+	def mainResources = descendents(mainResourcesPath ###, "*")
+	def testResources = descendents(testResourcesPath ###, "*")
 	
-	def mainClasses = (mainCompilePath ##) ** "*.class"
-	def testClasses = (testCompilePath ##) ** "*.class"
+	def mainClasses = (mainCompilePath ###) ** "*.class"
+	def testClasses = (testCompilePath ###) ** "*.class"
 	
 	def packagePaths = mainClasses +++ mainResources
 	def packageTestPaths = testClasses +++ testResources
 	def packageSourcePaths = mainSources +++ mainResources
 	def packageTestSourcePaths = testSources +++ testResources
-	def packageProjectPaths = descendents( (info.projectPath ##), "*") --- (packageProjectExcludes ** "*")
+	def packageProjectPaths = descendents( (info.projectPath ###), "*") --- (packageProjectExcludes ** "*")
 	protected def packageProjectExcludes: PathFinder =
 		outputRootPath +++ managedDependencyRootPath +++
 		info.bootPath +++ info.builderProjectOutputPath +++
@@ -159,8 +159,8 @@ trait MavenStyleScalaPaths extends BasicScalaPaths with BasicPackagePaths
 		testResourcesPath ::
 		Nil
 		
-	def mainSourceRoots = (mainJavaSourcePath##) +++ (mainScalaSourcePath##)
-	def testSourceRoots = (testJavaSourcePath##) +++ (testScalaSourcePath##)
+	def mainSourceRoots = (mainJavaSourcePath###) +++ (mainScalaSourcePath##)
+	def testSourceRoots = (testJavaSourcePath###) +++ (testScalaSourcePath##)
 }
 
 trait BasicPackagePaths extends ScalaPaths with PackagePaths
@@ -222,7 +222,7 @@ trait MavenStyleWebScalaPaths extends WebScalaPaths with MavenStyleScalaPaths
 	def warPath = outputPath / defaultWarName
 	/** Additional files to include in the web application. */
 	protected def extraWebappFiles: PathFinder = Path.emptyPathFinder
-	def webappResources = descendents(webappPath ##, "*") +++ extraWebappFiles
+	def webappResources = descendents(webappPath ###, "*") +++ extraWebappFiles
 }
 object WebProjectPaths
 {

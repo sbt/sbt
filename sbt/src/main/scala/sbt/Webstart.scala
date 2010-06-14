@@ -61,7 +61,7 @@ trait WebstartScalaProject extends ScalaProject
 			FileUtilities.createDirectories(webstartOutputDirectory :: webstartLibDirectory :: Nil, log) // ignore errors
 			verifyOptions(options)
 
-			def relativize(jar: Path) = Path.relativize(webstartOutputDirectory ##, jar) getOrElse
+			def relativize(jar: Path) = Path.relativize(webstartOutputDirectory ###, jar) getOrElse
 				error("Jar (" + jar + ") was not in webstart output directory (" + webstartOutputDirectory + ").")
 			def signAndPack(jars: List[Path], targetDirectory: Path): Either[String, List[Path]] =
 			{
@@ -104,7 +104,7 @@ trait WebstartScalaProject extends ScalaProject
 						val keep = jnlpFile +++ Path.lazyPathFinder(mainJars ++ libJars ++ copiedResources) +++
 							webstartOutputDirectory +++ webstartLibDirectory
 						prune(webstartOutputDirectory, keep.get, log) orElse
-						webstartZip.flatMap( zipPath => zip(List(webstartOutputDirectory ##), zipPath, true, log) )
+						webstartZip.flatMap( zipPath => zip(List(webstartOutputDirectory ###), zipPath, true, log) )
 					}
 				}
 			}
@@ -276,7 +276,7 @@ abstract class BasicWebstartProject extends BasicScalaProject with WebstartScala
 
 	def webstartExtraLibraries = mainDependencies.scalaJars
 	def webstartLibraries = publicClasspath +++ jarsOfProjectDependencies
-	def webstartResources = descendents(jnlpResourcesPath ##, AllPassFilter)
+	def webstartResources = descendents(jnlpResourcesPath ###, AllPassFilter)
 
 	def webstartPack200 = true
 	def webstartGzip = true
