@@ -1,6 +1,7 @@
-package xsbt
+package sbt
 
 import java.io.File
+import Types.:+:
 
 object CacheTest// extends Properties("Cache test")
 {
@@ -19,11 +20,11 @@ object CacheTest// extends Properties("Cache test")
 
 		lazy val fileLength = length(create)
 
-		val c = cached(cCache) { (in: (File :: Long :: HNil)) =>
-			val file :: len :: HNil = in
+		val c = cached(cCache) { (in: (File :+: Long :+: HNil)) =>
+			val file :+: len :+: HNil = in
 			println("File: " + file + " (" + file.exists + "), length: " + len)
-			(len+1) :: file :: HNil
+			(len+1) :+: file :+: HNil
 		}
-		c(create :: fileLength :: HNil)
+		c(create :+: fileLength :+: HNil)
 	}
 }

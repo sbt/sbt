@@ -1,7 +1,7 @@
 /* sbt -- Simple Build Tool
  * Copyright 2009  Mark Harrah
  */
-package xsbt
+package sbt
 
 object ErrorHandling
 {
@@ -22,7 +22,7 @@ object ErrorHandling
 		try { Right(f) }
 		catch { case e: Exception => Left(e) }
 }
-final class TranslatedException private[xsbt](msg: String, cause: Throwable) extends RuntimeException(msg, cause)
+final class TranslatedException private[sbt](msg: String, cause: Throwable) extends RuntimeException(msg, cause)
 {
 	override def toString = msg
 }

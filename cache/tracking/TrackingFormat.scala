@@ -1,7 +1,7 @@
 /* sbt -- Simple Build Tool
  * Copyright 2009, 2010 Mark Harrah
  */
-package xsbt
+package sbt
 
 import java.io.File
 import scala.collection.mutable.{HashMap, Map, MultiMap, Set}
@@ -34,16 +34,22 @@ private class TrackingFormat[T](directory: File, translateProducts: Boolean)(imp
 }
 private object TrackingFormat
 {
-	 implicit def mutableMapFormat[S, T](implicit binS : Format[S], binT : Format[T]) : Format[Map[S, T]] =
-		viaArray( (x : Array[(S, T)]) => Map(x :_*));
-	 implicit def depMapFormat[T](implicit bin: Format[T]) : Format[DMap[T]] =
-	{
-		viaArray { (x : Array[(T, Set[T])]) =>
-			val map = newMap[T]
-			map ++= x
-			map
+	 implicit def mutableMapFormat[S, T](implicit binS : Format[S], binT : Format[T]) : Format[HashMap[S, T]] =
+		new LengthEncoded[HashMap[S, T], (S, T)] {
+			def build(size : Int, ts : Iterator[(S, T)]) : HashMap[S, T] = {
+				val b = new HashMap[S, T]
+				b ++= ts
+				b
+			}
 		}
-	}
+	 implicit def depMapFormat[T](implicit bin: Format[T]) : Format[DMap[T]] =
+		new LengthEncoded[DMap[T], (T, Set[T])] {
+			def build(size : Int, ts : Iterator[(T, Set[T])]) : DMap[T] = {
+				val b = newMap[T]
+				b ++= ts
+				b
+			}
+		}
 	def trackingFormat[T](translateProducts: Boolean)(implicit tFormat: Format[T]): Format[DependencyTracking[T]] =
 		asProduct4((a: DMap[T],b: DMap[T],c: DMap[T], d:TagMap[T]) => new DefaultTracking(translateProducts)(a,b,c,d) : DependencyTracking[T]
 			)(dt => (dt.reverseDependencies, dt.reverseUses, dt.sourceMap, dt.tagMap))

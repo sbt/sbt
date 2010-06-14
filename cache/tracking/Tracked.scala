@@ -1,13 +1,13 @@
 /* sbt -- Simple Build Tool
  * Copyright 2009, 2010 Mark Harrah
  */
-package xsbt
+package sbt
 
 import java.io.{File,IOException}
 import CacheIO.{fromFile, toFile}
 import sbinary.Format
 import scala.reflect.Manifest
-import xsbt.FileUtilities.{delete, read, write}
+import IO.{delete, read, write}
 
 /* A proper implementation of fileTask that tracks inputs and outputs properly
 
@@ -34,7 +34,7 @@ object Tracked
 	* If 'useStartTime' is true, the recorded time is the start of the evaluated function.
 	* If 'useStartTime' is false, the recorded time is when the evaluated function completes.
 	* In both cases, the timestamp is not updated if the function throws an exception.*/
-	def tstamp(cacheFile: File, useStartTime: Boolean): Timestamp = new Timestamp(cacheFile)
+	def tstamp(cacheFile: File, useStartTime: Boolean = true): Timestamp = new Timestamp(cacheFile, useStartTime)
 	/** Creates a tracker that only evaluates a function when the input has changed.*/
 	def changed[O](cacheFile: File)(getValue: => O)(implicit input: InputCache[O]): Changed[O] =
 		new Changed[O](getValue, cacheFile)
@@ -76,13 +76,13 @@ class Changed[O](getValue: => O, val cacheFile: File)(implicit input: InputCache
 	{
 		val value = getValue
 		val cache =
-			try { OpenResource.fileInputStream(cacheFile)(input.uptodate(value)) }
+			try { Using.fileInputStream(cacheFile)(input.uptodate(value)) }
 			catch { case _: IOException => new ForceResult(input)(value) }
 		if(cache.uptodate)
 			ifUnchanged(value)
 		else
 		{
-			OpenResource.fileOutputStream(false)(cacheFile)(cache.update)
+			Using.fileOutputStream(false)(cacheFile)(cache.update)
 			ifChanged(value)
 		}
 	}
@@ -108,7 +108,7 @@ class Difference(getFiles: => Set[File], val style: FilesInfo.Style, val cache: 
 		if(defineClean) delete(raw(cachedFilesInfo)) else ()
 		clearCache()
 	}
-	private def clearCache = delete(cache)
+	private def clearCache() = delete(cache)
 	
 	private def cachedFilesInfo = fromFile(style.formats, style.empty)(cache)(style.manifest).files
 	private def raw(fs: Set[style.F]): Set[File] = fs.map(_.file)
@@ -161,7 +161,7 @@ object InvalidateFiles
 	def apply(cacheDirectory: File, translateProducts: Boolean): InvalidateTransitive[File] =
 	{
 		import sbinary.DefaultProtocol.FileFormat
-		new InvalidateTransitive[File](cacheDirectory, translateProducts, FileUtilities.delete)
+		new InvalidateTransitive[File](cacheDirectory, translateProducts, IO.delete)
 	}
 }
 

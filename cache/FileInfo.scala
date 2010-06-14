@@ -1,9 +1,11 @@
-package xsbt
+/* sbt -- Simple Build Tool
+ * Copyright 2009 Mark Harrah
+ */
+package sbt
 
 import java.io.{File, IOException}
 import sbinary.{DefaultProtocol, Format}
 import DefaultProtocol._
-import Function.tupled
 import scala.reflect.Manifest
 
 sealed trait FileInfo extends NotNull
@@ -43,22 +45,22 @@ object FileInfo
 		type F = HashModifiedFileInfo
 		implicit def apply(file: File): HashModifiedFileInfo = make(file, Hash(file).toList, file.lastModified)
 		def make(file: File, hash: List[Byte], lastModified: Long): HashModifiedFileInfo = FileHashModified(file.getAbsoluteFile, hash, lastModified)
-		implicit val format: Format[HashModifiedFileInfo] = wrap(f => (f.file, f.hash, f.lastModified), tupled(make _))
+		implicit val format: Format[HashModifiedFileInfo] = wrap(f => (f.file, f.hash, f.lastModified), (make _).tupled)
 	}
 	object hash extends Style
 	{
 		type F = HashFileInfo
-		implicit def apply(file: File): HashFileInfo = make(file, computeHash(file).toList)
+		implicit def apply(file: File): HashFileInfo = make(file, computeHash(file))
 		def make(file: File, hash: List[Byte]): HashFileInfo = FileHash(file.getAbsoluteFile, hash)
-		implicit val format: Format[HashFileInfo] = wrap(f => (f.file, f.hash), tupled(make _))
-		private def computeHash(file: File) = try { Hash(file) } catch { case e: Exception => Nil }
+		implicit val format: Format[HashFileInfo] = wrap(f => (f.file, f.hash), (make _).tupled)
+		private def computeHash(file: File): List[Byte] = try { Hash(file).toList } catch { case e: Exception => Nil }
 	}
 	object lastModified extends Style
 	{
 		type F = ModifiedFileInfo
 		implicit def apply(file: File): ModifiedFileInfo = make(file, file.lastModified)
 		def make(file: File, lastModified: Long): ModifiedFileInfo = FileModified(file.getAbsoluteFile, lastModified)
-		implicit val format: Format[ModifiedFileInfo] = wrap(f => (f.file, f.lastModified), tupled(make _))
+		implicit val format: Format[ModifiedFileInfo] = wrap(f => (f.file, f.lastModified), (make _).tupled)
 	}
 	object exists extends Style
 	{

@@ -1,12 +1,15 @@
-package xsbt
+/* sbt -- Simple Build Tool
+ * Copyright 2009 Mark Harrah
+ */
+package sbt
 
 import java.io.{InputStream,OutputStream}
 
-import HLists._
+import Types._
 class HNilInputCache extends NoInputCache[HNil]
-class HConsInputCache[H,T <: HList](val headCache: InputCache[H], val tailCache: InputCache[T]) extends InputCache[HCons[H,T]]
+class HConsInputCache[H,T <: HList](val headCache: InputCache[H], val tailCache: InputCache[T]) extends InputCache[H :+: T]
 {
-	def uptodate(in: HCons[H,T])(cacheStream: InputStream) =
+	def uptodate(in: H :+: T)(cacheStream: InputStream) =
 	{
 		val headResult = headCache.uptodate(in.head)(cacheStream)
 		val tailResult = tailCache.uptodate(in.tail)(cacheStream)
@@ -20,7 +23,7 @@ class HConsInputCache[H,T <: HList](val headCache: InputCache[H], val tailCache:
 			}
 		}
 	}
-	def force(in: HCons[H,T])(cacheStream: OutputStream) =
+	def force(in: H :+: T)(cacheStream: OutputStream) =
 	{
 		headCache.force(in.head)(cacheStream)
 		tailCache.force(in.tail)(cacheStream)
@@ -28,7 +31,7 @@ class HConsInputCache[H,T <: HList](val headCache: InputCache[H], val tailCache:
 }
 
 class HNilOutputCache extends NoOutputCache[HNil](HNil)
-class HConsOutputCache[H,T <: HList](val headCache: OutputCache[H], val tailCache: OutputCache[T]) extends OutputCache[HCons[H,T]]
+class HConsOutputCache[H,T <: HList](val headCache: OutputCache[H], val tailCache: OutputCache[T]) extends OutputCache[H :+: T]
 {
 	def loadCached(cacheStream: InputStream) =
 	{
@@ -36,7 +39,7 @@ class HConsOutputCache[H,T <: HList](val headCache: OutputCache[H], val tailCach
 		val tail = tailCache.loadCached(cacheStream)
 		HCons(head, tail)
 	}
-	def update(out: HCons[H,T])(cacheStream: OutputStream)
+	def update(out: H :+: T)(cacheStream: OutputStream)
 	{
 		headCache.update(out.head)(cacheStream)
 		tailCache.update(out.tail)(cacheStream)
