@@ -5,6 +5,7 @@ package xsbt
 package api
 
 import java.io.File
+import sbt.Path
 import sbt.IO.write
 
 import Generator._
@@ -25,8 +26,8 @@ abstract class GeneratorBase(val basePkgName: String, val baseDirectory: File) e
 
 	def writeSource(name: String, pkgName: String, content: String)
 	{
-		import sbt.Paths._
-		val file = baseDirectory / packagePath(pkgName) / (name+ ".java")
+		import Path._
+		val file = Path.fromString(baseDirectory, packagePath(pkgName)) / (name+ ".java")
 		file.getParentFile.mkdirs()
 		write(file, "package " + pkgName + ";\n\n" + content)
 	}

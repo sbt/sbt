@@ -13,6 +13,7 @@ class TestCallback(val superclassNames: Array[String], val annotationNames: Arra
 	val sourceDependencies = new ArrayBuffer[(File, File)]
 	val jarDependencies = new ArrayBuffer[(File, File)]
 	val classDependencies = new ArrayBuffer[(File, File)]
+	val productDependencies = new ArrayBuffer[(File, File)]
 	val products = new ArrayBuffer[(File, File)]
 	val applications = new ArrayBuffer[(File, String)]
 
@@ -25,6 +26,7 @@ class TestCallback(val superclassNames: Array[String], val annotationNames: Arra
 	def sourceDependency(dependsOn: File, source: File) { sourceDependencies += ((dependsOn, source)) }
 	def jarDependency(jar: File, source: File) { jarDependencies += ((jar, source)) }
 	def classDependency(clazz: File, source: File) { classDependencies += ((clazz, source)) }
+	def productDependency(clazz: File, source: File) { productDependencies += ((clazz, source)) }
 	def generatedClass(source: File, module: File) { products += ((source, module)) }
 	def endSource(source: File) { endedSources += source }
 	def foundApplication(source: File, className: String) { applications += ((source, className)) }
