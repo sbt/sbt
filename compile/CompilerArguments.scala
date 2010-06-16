@@ -22,7 +22,7 @@ class CompilerArguments(scalaInstance: ScalaInstance, cp: ClasspathOptions) exte
 	def finishClasspath(classpath: Set[File]): Set[File] =
 		classpath ++ include(cp.compiler, scalaInstance.compilerJar) ++ include(cp.extra, scalaInstance.extraJars : _*)
 	private def include(flag: Boolean, jars: File*) = if(flag) jars else Nil
-	protected def abs(files: Set[File]) = files.map(_.getAbsolutePath).toList.sort(_ < _)
+	protected def abs(files: Set[File]) = files.map(_.getAbsolutePath).toList.sortWith(_ < _)
 	protected def checkScalaHomeUnset()
 	{
 		val scalaHome = System.getProperty("scala.home")

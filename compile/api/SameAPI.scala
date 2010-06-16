@@ -48,7 +48,7 @@ object SameAPI
 	}
 
 	def separateDefinitions(s: Seq[Definition]): (Seq[Definition], Seq[Definition]) =
-		s.toArray.partition(isValueDefinition)
+		s.partition(isValueDefinition)
 	def isValueDefinition(d: Definition): Boolean =
 		d match
 		{
@@ -59,12 +59,12 @@ object SameAPI
 	def isValue(d: DefinitionType): Boolean =
 		d == DefinitionType.Module || d == DefinitionType.PackageModule
 	/** Puts the given definitions in a map according to their names.*/
-	def byName(s: Seq[Definition]): scala.collection.Map[String, List[Definition]] =
+	def byName(s: Seq[Definition]): Map[String, List[Definition]] =
 	{
-		val map = new mutable.HashMap[String, List[Definition]]
+		var map = Map[String, List[Definition]]()
 		for(d <- s; name = d.name)
-			map(name) = d :: map.getOrElse(name, Nil)
-		map.readOnly
+			map = map.updated(name, d :: map.getOrElse(name, Nil) )
+		map
 	}
 }
 /** Used to implement API equality.  All comparisons must be done between constructs in source files `a` and `b`.  For example, when doing:
@@ -358,7 +358,5 @@ private class SameAPI(a: Source, b: Source, includePrivate: Boolean)
 	def sameStrings(a: scala.collection.Set[String], b: scala.collection.Set[String]): Boolean =
 		a == b
 	final def sameSeq[T](a: Seq[T], b: Seq[T])(eq: (T,T) => Boolean): Boolean =
-		sameArray(a.toArray, b.toArray)(eq)
-	final def sameArray[T](a: Array[T], b: Array[T])(eq: (T,T) => Boolean): Boolean =
 		(a.length == b.length) && (a zip b).forall(tupled(eq))
 }
