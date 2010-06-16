@@ -18,7 +18,7 @@ object ComponentCompiler
 class ComponentCompiler(compiler: RawCompiler, manager: ComponentManager)
 {
 	import ComponentCompiler._
-	import FileUtilities.{copy, createDirectory, zip, jars, unzip, withTemporaryDirectory}
+	import sbt.IO.{copy, createDirectory, zip, jars, unzip, withTemporaryDirectory}
 	def apply(id: String): File =
 		try { getPrecompiled(id) }
 		catch { case _: InvalidComponent => getLocallyCompiled(id) }
@@ -55,7 +55,6 @@ class ComponentCompiler(compiler: RawCompiler, manager: ComponentManager)
 		val isSource = (f: File) => isSourceName(f.getName)
 		def keepIfSource(files: Set[File]): Set[File] = if(files.exists(isSource)) files else Set()
 
-		import Paths._
 		withTemporaryDirectory { dir =>
 			val extractedSources = (Set[File]() /: sourceJars) { (extracted, sourceJar)=> extracted ++ keepIfSource(unzip(sourceJar, dir)) }
 			val (sourceFiles, resources) = extractedSources.partition(isSource)
@@ -69,8 +68,9 @@ class ComponentCompiler(compiler: RawCompiler, manager: ComponentManager)
 					manager.log.info("  Compilation completed in " + (System.currentTimeMillis - start) / 1000.0 + " s")
 				}
 				catch { case e: xsbti.CompileFailed => throw new CompileFailed(e.arguments, "Error compiling sbt component '" + id + "'") }
-				copy(resources x (FileMapper.rebase(dir, outputDirectory)))
-				zip((outputDirectory ***) x (PathMapper.relativeTo(outputDirectory)), targetJar)
+				import sbt.Path._
+				copy(resources x rebase(dir, outputDirectory))
+				zip((outputDirectory ***) x relativeTo(outputDirectory), targetJar)
 			}
 		}
 	}

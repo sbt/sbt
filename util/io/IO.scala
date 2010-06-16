@@ -68,7 +68,7 @@ object IO
 			(name, "")
 	}
 
-	def touch(files: Iterable[File]): Unit = files.foreach(touch)
+	def touch(files: Traversable[File]): Unit = files.foreach(touch)
 	/** Creates a file at the given location.*/
 	def touch(file: File)
 	{
@@ -79,7 +79,7 @@ object IO
 		else if(!file.setLastModified(System.currentTimeMillis))
 			error("Could not update last modified time for file " + file)
 	}
-	def createDirectories(dirs: Iterable[File]): Unit =
+	def createDirectories(dirs: Traversable[File]): Unit =
 		dirs.foreach(createDirectory)
 	def createDirectory(dir: File): Unit =
 	{
@@ -262,12 +262,12 @@ object IO
 	* @param sources The files to include in the jar file paired with the entry name in the jar.
 	* @param outputJar The file to write the jar to.
 	* @param manifest The manifest for the jar.*/
-	def jar(sources: Iterable[(File,String)], outputJar: File, manifest: Manifest): Unit =
+	def jar(sources: Traversable[(File,String)], outputJar: File, manifest: Manifest): Unit =
 		archive(sources.toSeq, outputJar, Some(manifest))
 	/** Creates a zip file.
 	* @param sources The files to include in the zip file paired with the entry name in the zip.
 	* @param outputZip The file to write the zip to.*/
-	def zip(sources: Iterable[(File,String)], outputZip: File): Unit =
+	def zip(sources: Traversable[(File,String)], outputZip: File): Unit =
 		archive(sources.toSeq, outputZip, None)
 
 	private def archive(sources: Seq[(File,String)], outputFile: File, manifest: Option[Manifest])
@@ -360,7 +360,7 @@ object IO
 		else
 			None
 	}
-	def copy(sources: Iterable[(File,File)], overwrite: Boolean = false, preserveLastModified: Boolean = false): Set[File] =
+	def copy(sources: Traversable[(File,File)], overwrite: Boolean = false, preserveLastModified: Boolean = false): Set[File] =
 		sources.map( tupled(copyImpl(overwrite, preserveLastModified)) ).toSet
 	private def copyImpl(overwrite: Boolean, preserveLastModified: Boolean)(from: File, to: File): File =
 	{
@@ -469,7 +469,7 @@ object IO
 		for( (file, index) <- files.zipWithIndex) yield
 			(file, new File(dir, index.toHexString))
 
-	def move(files: Iterable[(File, File)]): Unit =
+	def move(files: Traversable[(File, File)]): Unit =
 		files.foreach(Function.tupled(move))
 		
 	def move(a: File, b: File): Unit =

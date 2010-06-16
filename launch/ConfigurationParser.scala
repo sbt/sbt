@@ -9,6 +9,7 @@ import java.lang.Character.isWhitespace
 import java.io.{BufferedReader, File, FileInputStream, InputStreamReader, Reader, StringReader}
 import java.net.{MalformedURLException, URL}
 import java.util.regex.Pattern
+import scala.collection.immutable.List
 
 class ConfigurationParser extends NotNull
 {

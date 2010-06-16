@@ -5,6 +5,7 @@ import java.util.Properties
 import xsbti._
 import org.specs._
 import LaunchTest._
+import sbt.IO.{createDirectory, touch,withTemporaryDirectory}
 
 object ScalaProviderTest extends Specification
 {
@@ -34,7 +35,7 @@ object ScalaProviderTest extends Specification
 	def checkLoad(arguments: List[String], mainClassName: String): MainResult =
 		checkLoad(arguments, mainClassName, _ => Array[File]())
 	def checkLoad(arguments: List[String], mainClassName: String, extra: File => Array[File]): MainResult =
-		FileUtilities.withTemporaryDirectory { currentDirectory =>
+		withTemporaryDirectory { currentDirectory =>
 			withLauncher { launcher =>
 				Launch.run(launcher)(
 					new RunConfiguration(mapScalaVersion(LaunchTest.getScalaVersion), LaunchTest.testApp(mainClassName, extra(currentDirectory)).toID, currentDirectory, arguments)
@@ -45,8 +46,8 @@ object ScalaProviderTest extends Specification
 	private def createExtra(currentDirectory: File) =
 	{
 		val resourceDirectory = new File(currentDirectory, "resources")
-		FileUtilities.createDirectory(resourceDirectory)
-		testResources.foreach(resource => FileUtilities.touch(new File(resourceDirectory, resource.replace('/', File.separatorChar))))
+		createDirectory(resourceDirectory)
+		testResources.foreach(resource => touch(new File(resourceDirectory, resource.replace('/', File.separatorChar))))
 		Array(resourceDirectory)
 	}
 	private def checkScalaLoader(version: String): Unit = withLauncher( checkLauncher(version, scalaVersionMap(version)) )
@@ -67,7 +68,7 @@ object LaunchTest
 	import Repository.Predefined._
 	def testRepositories = List(Local, ScalaToolsReleases, ScalaToolsSnapshots).map(Repository.Predefined.apply)
 	def withLauncher[T](f: xsbti.Launcher => T): T =
-		FileUtilities.withTemporaryDirectory { bootDirectory =>
+		withTemporaryDirectory { bootDirectory =>
 			f(Launcher(bootDirectory, testRepositories))
 		}
 

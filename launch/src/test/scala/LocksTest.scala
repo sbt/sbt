@@ -3,20 +3,21 @@ package xsbt.boot
 import org.scalacheck._
 import Prop._
 import java.io.File
+import sbt.IO.withTemporaryDirectory
 
 /** These mainly test that things work in the uncontested case and that no OverlappingFileLockExceptions occur.
 * There is no real locking testing, just the coordination of locking.*/
 object LocksTest extends Properties("Locks")
 {
 	property("Lock in nonexisting directory") = spec {
-		FileUtilities.withTemporaryDirectory { dir =>
+		withTemporaryDirectory { dir =>
 			val lockFile = new File(dir, "doesntexist/lock")
 			Locks(lockFile, callTrue)
 		}
 	}
 		
 	property("Uncontested re-entrant lock") =  spec {
-		FileUtilities.withTemporaryDirectory { dir =>
+		withTemporaryDirectory { dir =>
 			val lockFile = new File(dir, "lock")
 			Locks(lockFile,  callLocked(lockFile)) &&
 			Locks(lockFile,  callLocked(lockFile))
@@ -24,7 +25,7 @@ object LocksTest extends Properties("Locks")
 	}
 		
 	property("Uncontested double lock") = spec {
-		FileUtilities.withTemporaryDirectory { dir =>
+		withTemporaryDirectory { dir =>
 			val lockFileA = new File(dir, "lockA")
 			val lockFileB = new File(dir, "lockB")
 			Locks(lockFileA,  callLocked(lockFileB)) &&
@@ -33,7 +34,7 @@ object LocksTest extends Properties("Locks")
 	}
 		
 	property("Contested single lock") = spec {
-		FileUtilities.withTemporaryDirectory { dir =>
+		withTemporaryDirectory { dir =>
 			val lockFile = new File(dir, "lock")
 			forkFold(2000){i => Locks(lockFile, callTrue) }
 		}

@@ -1,3 +1,13 @@
+Issues moving Launcher to 2.8:
+  creating an Array requires a Manifest, which brings in 40k of classes in scala.reflect
+  scala.package$ is 3k (import scala.collection.immutable.List) and brings in scala.xml
+  RichInt 2k. scala.collection.mutable.StringBuilder.ensureCapacity uses it (max), which is needed for string concat
+  scala.xml brings in 50k of classes
+  scala.math brought in 30k, can't remove because RichInt apparently uses it
+  100k additional size adds 50ms to startup time (on my faster machine)
+  difference between classpaths a) just launcher jar b) current directory + launcher jar is that b) is 50 ms slower than a)
+  was able to return to old size by enabling optimize/obfuscate phases of ProGuard
+
 - script tasks (in 'scripts' branch).  To use:
  1) add implementation of jsr223 to project/build/lib, declare in project/plugins, or add to sbt startup classpath
  2) Mix sbt.scripts.Scripts into your project definition

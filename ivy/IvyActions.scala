@@ -60,8 +60,6 @@ object IvyActions
 	}
 
 	/** Creates a Maven pom from the given Ivy configuration*/
-	@deprecated def makePom(module: IvySbt#Module, extraDependencies: Iterable[ModuleID], configurations: Option[Iterable[Configuration]], extra: NodeSeq, output: File): Unit =
-		 makePom(module, MakePomConfiguration(extraDependencies, configurations, extra), output)
 	def makePom(module: IvySbt#Module, configuration: MakePomConfiguration,  output: File)
 	{
 		import configuration.{configurations, extra, extraDependencies, filterRepositories, process}
@@ -127,7 +125,7 @@ object IvyActions
 		resolveOptions.setLog(ivyLogLevel(logging))
 		val resolveReport = ivy.resolve(module, resolveOptions)
 		if(resolveReport.hasError)
-			throw new ResolveException(resolveReport.getAllProblemMessages.toArray.map(_.toString).toList.removeDuplicates)
+			throw new ResolveException(resolveReport.getAllProblemMessages.toArray.map(_.toString).distinct)
 	}
 
 	import UpdateLogging.{Quiet, Full, DownloadOnly}
@@ -140,4 +138,4 @@ object IvyActions
 			case Full => LOG_DEFAULT
 		}
 }
-final class ResolveException(messages: List[String]) extends RuntimeException(messages.mkString("\n"))
+final class ResolveException(messages: Seq[String]) extends RuntimeException(messages.mkString("\n"))

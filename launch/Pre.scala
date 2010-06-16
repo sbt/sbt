@@ -2,6 +2,7 @@
  * Copyright 2008, 2009, 2010  Mark Harrah
  */
 package xsbt.boot
+import scala.collection.immutable.List
 
 object Pre
 {
@@ -19,7 +20,7 @@ object Pre
 	def declined(msg: String): Nothing = throw new BootException(msg)
 	def prefixError(msg: String): String = "Error during sbt execution: " + msg
 	def toBoolean(s: String) = java.lang.Boolean.parseBoolean(s)
-	def toArray[T](list: List[T]) =
+	def toArray[T : ClassManifest](list: List[T]) =
 	{
 		val arr = new Array[T](list.length)
 		def copy(i: Int, rem: List[T]): Unit =

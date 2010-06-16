@@ -6,6 +6,7 @@ package xsbt.boot
 import java.io.{File, FileOutputStream}
 import java.nio.channels.FileChannel
 import java.util.concurrent.Callable
+import scala.collection.immutable.List
 
 object GetLocks
 {

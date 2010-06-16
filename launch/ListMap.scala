@@ -4,9 +4,11 @@
 package xsbt.boot
 
 import Pre._
+import scala.collection.{Iterable, Iterator}
+import scala.collection.immutable.List
 
 // preserves iteration order
-sealed class ListMap[K,V] private(backing: List[(K,V)]) extends Iterable[(K,V)] with NotNull
+sealed class ListMap[K,V] private(backing: List[(K,V)]) extends Traversable[(K,V)] with NotNull
 {
 	import ListMap.remove
 	def update(k: K, v: V) = this.+( (k,v) )
@@ -16,7 +18,7 @@ sealed class ListMap[K,V] private(backing: List[(K,V)]) extends Iterable[(K,V)] 
 	def keys: List[K] = backing.reverse.map(_._1)
 	def apply(k: K): V = get(k).getOrElse(error("Key " + k + " not found"))
 	def contains(k: K): Boolean = get(k).isDefined
-	def elements: Iterator[(K,V)] = backing.reverse.elements
+	def foreach[T](f: ((K,V)) => T) = backing.reverse.foreach(f)
 	override def isEmpty: Boolean = backing.isEmpty
 	override def toList = backing.reverse
 	override def toSeq = toList
@@ -30,7 +32,7 @@ sealed class ListMap[K,V] private(backing: List[(K,V)]) extends Iterable[(K,V)] 
 }
 object ListMap
 {
-	def apply[K,V](pairs: (K,V)*) = new ListMap[K,V](pairs.toList.removeDuplicates)
+	def apply[K,V](pairs: (K,V)*) = new ListMap[K,V](pairs.toList.distinct)
 	def empty[K,V] = new ListMap[K,V](Nil)
 	private def remove[K,V](backing: List[(K,V)], k: K) = backing.filter(_._1 != k)
 }

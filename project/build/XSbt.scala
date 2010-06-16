@@ -113,7 +113,7 @@ class XSbt(info: ProjectInfo) extends ParentProject(info) with NoCrossPaths
 	{
 		override def scratch = true
 		override def consoleClasspath = testClasspath
-		override def compileOptions = super.compileOptions ++ compileOptions("-Xelide-below", "3000")
+		override def compileOptions = super.compileOptions ++ compileOptions("-Xelide-below", "0")
 	}
 	trait Licensed extends BasicScalaProject
 	{
@@ -128,7 +128,6 @@ class XSbt(info: ProjectInfo) extends ParentProject(info) with NoCrossPaths
 	{
 		override def testCompileAction = super.testCompileAction dependsOn(compileInterfaceSub.`package`, interfaceSub.`package`)
 		override def testClasspath = super.testClasspath +++ compileInterfaceSub.packageSrcJar +++ interfaceSub.jarPath --- compilerInterfaceClasspath --- interfaceSub.mainCompilePath
-		override def compileOptions = super.compileOptions ++ Seq(CompileOption("-Xno-varargs-conversion")) //needed for invoking nsc.scala.tools.Main.process(Array[String])
 	}
 	class IvyProject(info: ProjectInfo) extends Base(info) with TestWithIO with TestWithLog with TestWithLaunch
 	{

@@ -4,10 +4,11 @@
 package xsbt.boot
 
 import BootConfiguration.{IvyPackage, JLinePackagePath, SbtBootPackage, ScalaPackage}
+import scala.collection.immutable.Stream
 
 /** A custom class loader to ensure the main part of sbt doesn't load any Scala or
 * Ivy classes from the jar containing the loader. */
-private[boot] final class BootFilteredLoader(parent: ClassLoader) extends ClassLoader(parent) with NotNull
+private[boot] final class BootFilteredLoader(parent: ClassLoader) extends ClassLoader(parent)
 {
 	@throws(classOf[ClassNotFoundException])
 	override final def loadClass(className: String, resolve: Boolean): Class[_] =

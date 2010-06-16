@@ -309,7 +309,7 @@ import SbtIvyLogger.{acceptError, acceptMessage}
 
 /** A custom logger for Ivy to ignore the messages about not finding classes
 * intentionally filtered using proguard and about 'unknown resolver'. */
-private final class SbtIvyLogger(logWriter: PrintWriter) extends DefaultMessageLogger(Message.MSG_INFO) with NotNull
+private final class SbtIvyLogger(logWriter: PrintWriter) extends DefaultMessageLogger(Message.MSG_INFO)
 {
 	override def log(msg: String, level: Int)
 	{

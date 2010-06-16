@@ -131,6 +131,8 @@ object Path extends Alternatives with Mapper
 	implicit def pathToFile(path: Path): File = path.asFile
 	implicit def pathsToFiles[CC[X] <: TraversableLike[X,CC[X]]](cc: CC[Path])(implicit cb: generic.CanBuildFrom[CC[Path], File, CC[File]]): CC[File] =
 		cc.map(_.asFile)
+	implicit def filesToFinder(cc: Traversable[File]): PathFinder = finder(cc)
+	implicit def pathsToFinder(cc: Traversable[Path]): PathFinder = lazyPathFinder(cc)
 	
 	def fileProperty(name: String) = Path.fromFile(System.getProperty(name))
 	def userHome = fileProperty("user.home")
@@ -161,12 +163,12 @@ object Path extends Alternatives with Mapper
 		}
 	/** A <code>PathFinder</code> that selects the paths provided by the <code>paths</code> argument, which is
 	* reevaluated on each call to the <code>PathFinder</code>'s <code>get</code> method.  */
-	def lazyPathFinder(paths: => Iterable[Path]): PathFinder =
+	def lazyPathFinder(paths: => Traversable[Path]): PathFinder =
 		new PathFinder
 		{
 			private[sbt] def addTo(pathSet: mutable.Set[Path]) = pathSet ++= paths
 		}
-	def finder(files: => Iterable[File]): PathFinder =  lazyPathFinder { fromFiles(files) }
+	def finder(files: => Traversable[File]): PathFinder =  lazyPathFinder { fromFiles(files) }
 		
 	/** The separator character of the platform.*/
 	val sep = java.io.File.separatorChar
@@ -244,7 +246,7 @@ object Path extends Alternatives with Mapper
 	}
 	def fromFile(file: String): Path = fromFile(new File(file))
 	def fromFile(file: File): Path = new FilePath(file)
-	def fromFiles(files: Iterable[File]): Iterable[Path] =  files.map(fromFile)
+	def fromFiles(files: Traversable[File]): Traversable[Path] =  files.map(fromFile)
 
 	def getFiles(files: Traversable[Path]): immutable.Set[File] = files.map(_.asFile).toSet
 	def getURLs(files: Traversable[Path]): Array[URL] = files.map(_.asURL).toArray

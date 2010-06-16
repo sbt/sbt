@@ -6,6 +6,7 @@ package xsbt.boot
 import Pre._
 import java.io.File
 import java.net.URI
+import scala.collection.immutable.List
 
 object Find { def apply(config: LaunchConfiguration, currentDirectory: File) = (new Find(config))(currentDirectory) }
 class Find(config: LaunchConfiguration) extends NotNull

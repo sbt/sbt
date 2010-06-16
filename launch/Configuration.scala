@@ -6,6 +6,7 @@ package xsbt.boot
 import Pre._
 import java.io.{File, FileInputStream, InputStreamReader}
 import java.net.{MalformedURLException, URI, URL}
+import scala.collection.immutable.List
 
 object Configuration
 {
@@ -21,7 +22,7 @@ object Configuration
 		}
 	def configurationOnClasspath: URL =
 	{
-		resourcePaths.elements.map(getClass.getResource).find(_ ne null) getOrElse
+		resourcePaths.iterator.map(getClass.getResource).find(_ ne null) getOrElse
 			( multiPartError("Could not finder sbt launch configuration.  Searched classpath for:", resourcePaths))
 	}
 	def directConfiguration(path: String, baseDirectory: File): URL =
@@ -39,7 +40,7 @@ object Configuration
 		}
 		val against = resolveAgainst(baseDirectory)
 		// use Iterators so that resolution occurs lazily, for performance
-		val resolving = against.elements.flatMap(e => resolve(e).toList.elements)
+		val resolving = against.iterator.flatMap(e => resolve(e).toList.iterator)
 		if(!resolving.hasNext) multiPartError("Could not find configuration file '" + path + "'.  Searched:", against)
 		resolving.next()
 	}
@@ -49,9 +50,9 @@ object Configuration
 	val JarBasePath = "/sbt/"
 	def userConfigurationPath = "/" + ConfigurationName
 	def defaultConfigurationPath = JarBasePath + ConfigurationName
-	def resourcePaths: List[String] = List(userConfigurationPath, defaultConfigurationPath)
-	def resolveAgainst(baseDirectory: File): List[URI] = List(baseDirectory toURI, new File(System.getProperty("user.home")) toURI,
-		toDirectory(classLocation(getClass).toURI))
+	def resourcePaths: List[String] = userConfigurationPath :: defaultConfigurationPath :: Nil
+	def resolveAgainst(baseDirectory: File): List[URI] = (baseDirectory toURI) :: (new File(System.getProperty("user.home")) toURI) ::
+		toDirectory(classLocation(getClass).toURI) :: Nil
 
 	def classLocation(cl: Class[_]): URL =
 	{

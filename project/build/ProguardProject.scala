@@ -18,7 +18,7 @@ trait ProguardProject extends BasicScalaProject
 	def rootProjectDirectory = rootProject.info.projectPath
 
 	val toolsConfig = config("tools") hide
-	val proguardJar = "net.sf.proguard" % "proguard" % "4.3" % "tools"
+	val proguardJar = "net.sf.proguard" % "proguard" % "4.4" % "tools"
 
 	lazy val proguard = proguardAction
 	def proguardAction = proguardTask dependsOn(writeProguardConfiguration) describedAs(ProguardDescription)
@@ -27,12 +27,17 @@ trait ProguardProject extends BasicScalaProject
 
 	def basicOptions: Seq[String] =
 		Seq(
-				"-dontoptimize",
-				"-dontobfuscate",
+				"-keep,allowoptimization,allowshrinking class * { *; }",
+				"-keepattributes SourceFile,LineNumberTable",
 				"-dontnote",
 				"-dontwarn",
-				 "-ignorewarnings")
+				 "-ignorewarnings") ++
+		optimizeOptions
+	
+	def keepFullClasses: Seq[String] = Nil
 	def keepClasses: Seq[String] = Nil
+	def optimize: Int = 0
+	def optimizeOptions = if(optimize <= 0) Seq("-dontoptimize") else Seq( "-optimizationpasses 2", "-optimizations !code/allocation/variable")
 
 	def mapInJars(inJars: Seq[File]): Seq[String] = inJars.map(f => "-injars " + mkpath(f))
 	def mapLibraryJars(libraryJars: Seq[File]): Seq[String] = libraryJars.map(f => "-libraryjars " + mkpath(f))
@@ -47,7 +52,8 @@ trait ProguardProject extends BasicScalaProject
 
 		val lines =
 			options ++
-			keepClasses.map("-keep public class " + _  + " {\n public * ;\n}") ++
+			keepFullClasses.map("-keep public class " + _  + " {\n public protected * ;\n}") ++
+			keepClasses.map("-keep class " + _  + " {}") ++
 			mapInJars(inJars) ++
 			 Seq("-injars " + mkpath(rawJarPath.asFile),
 				mapOutJar(outJar)) ++

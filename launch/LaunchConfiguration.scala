@@ -6,6 +6,7 @@ package xsbt.boot
 import Pre._
 import java.io.File
 import java.net.URL
+import scala.collection.immutable.List
 
 final case class LaunchConfiguration(scalaVersion: Version, ivyConfiguration: IvyOptions, app: Application, boot: BootSetup, logging: Logging, appProperties: List[AppProperty]) extends NotNull
 {

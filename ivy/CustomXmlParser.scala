@@ -14,10 +14,10 @@ import plugins.repository.Resource
 import plugins.repository.url.URLResource
 
 /** Subclasses the default Ivy file parser in order to provide access to protected methods.*/
-private[sbt] object CustomXmlParser extends XmlModuleDescriptorParser with NotNull
+private[sbt] object CustomXmlParser extends XmlModuleDescriptorParser
 {
 	import XmlModuleDescriptorParser.Parser
-	class CustomParser(settings: IvySettings, defaultConfig: Option[String]) extends Parser(CustomXmlParser, settings) with NotNull
+	class CustomParser(settings: IvySettings, defaultConfig: Option[String]) extends Parser(CustomXmlParser, settings)
 	{
 		if(defaultConfig.isDefined) setDefaultConfMapping("*->default(compile)")
 

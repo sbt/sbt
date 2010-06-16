@@ -19,7 +19,7 @@ class RawCompiler(val scalaInstance: ScalaInstance, cp: ClasspathOptions, log: C
 		log.debug("Plain interface to Scala compiler " + scalaInstance.actualVersion + "  with arguments: " + arguments.mkString("\n\t", "\n\t", ""))
 		val mainClass = Class.forName("scala.tools.nsc.Main", true, scalaInstance.loader)
 		val process = mainClass.getMethod("process", classOf[Array[String]])
-		process.invoke(null, toJavaArray(arguments))
+		process.invoke(null, arguments.toArray)
 		checkForFailure(mainClass, arguments.toArray)
 	}
 	def compilerArguments = new CompilerArguments(scalaInstance, cp)
@@ -28,12 +28,6 @@ class RawCompiler(val scalaInstance: ScalaInstance, cp: ClasspathOptions, log: C
 		val reporter = mainClass.getMethod("reporter").invoke(null)
 		val failed = reporter.getClass.getMethod("hasErrors").invoke(reporter).asInstanceOf[Boolean]
 		if(failed) throw new CompileFailed(args, "Plain compile failed")
-	}
-	protected def toJavaArray(arguments: Seq[String]): Array[String] =
-	{
-		val realArray: Array[String] = arguments.toArray
-		assert(realArray.getClass eq classOf[Array[String]])
-		realArray
 	}
 }
 class CompileFailed(val arguments: Array[String], override val toString: String) extends xsbti.CompileFailed

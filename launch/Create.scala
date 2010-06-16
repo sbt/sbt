@@ -6,6 +6,7 @@ package xsbt.boot
 import Pre._
 import java.io.{File, FileInputStream, FileOutputStream}
 import java.util.Properties
+import scala.collection.immutable.List
 
 object Initialize
 {
@@ -41,7 +42,7 @@ object Initialize
 		if(!uninitialized.isEmpty)
 		{
 			file.getParentFile.mkdirs()
-			Using(new FileOutputStream(file))( out => properties.save(out, "") )
+			Using(new FileOutputStream(file))( out => properties.store(out, "") )
 		}
 	}
 	def initialize(properties: Properties, name: String, init: PropertyInit)

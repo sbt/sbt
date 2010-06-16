@@ -7,6 +7,7 @@ import Pre._
 import BootConfiguration.{CompilerModuleName, LibraryModuleName}
 import java.io.File
 import java.net.URL
+import scala.collection.immutable.List
 
 object Launch
 {
