@@ -257,13 +257,7 @@ private object IvySbt
 		javaMap(ea.extraAttributes)
 	}
 	private def javaMap(map: Map[String,String]) =
-		if(map.isEmpty) null
-		else
-		{
-			val wrap = scala.collection.jcl.Map(new java.util.HashMap[String,String])
-			wrap ++= map
-			wrap.underlying
-		}
+		if(map.isEmpty) null else scala.collection.JavaConversions.asMap(map)
 
 	private object javaMap
 	{
@@ -337,7 +331,7 @@ private object IvySbt
 		lazy val allConfigurations = moduleID.getPublicConfigurationsNames
 		for(artifact <- artifacts)
 		{
-			val configurationStrings =
+			val configurationStrings: Iterable[String] =
 			{
 				val artifactConfigurations = artifact.configurations
 				if(artifactConfigurations.isEmpty)

@@ -25,7 +25,7 @@ class ComponentManager(globalLock: xsbti.GlobalLock, provider: xsbti.ComponentPr
 				try { update(id); getOrElse(createAndCache) }
 				catch { case e: NotInCache => createAndCache }
 			}
-		def getOrElse(orElse: => Iterable[File]) =
+		def getOrElse(orElse: => Iterable[File]): Iterable[File] =
 		{
 			val existing = provider.component(id)
 			if(existing.isEmpty) orElse else existing
