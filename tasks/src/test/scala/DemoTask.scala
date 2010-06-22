@@ -52,12 +52,12 @@ object Task
 	def pure[T](name: String, f: => T): Task[T] = new Pure(f _) { override def toString = name }
 	implicit def toPure[T](f: () => T): Task[T] = new Pure(f)
 
-	implicit def toTasks[S](in: Seq[S]): Seq[Task[S]] = in.map(s => pure(s))
+	implicit def pureTasks[S](in: Seq[S]): Seq[Task[S]] = in.map(s => pure(s))
 	implicit def toTasks[S](in: Seq[() => S]): Seq[Task[S]] = in.map(toPure)
 	implicit def iterableTask[S](in: Seq[S]): ForkTask[S, Seq] = new ForkTask[S, Seq] {
 		def fork[T](f: S => T): Seq[Task[T]] = in.map(x => pure(x) map f)
 	}
-	implicit def joinTasks[S](in: Seq[S]): JoinTask[S, Seq] = joinTasks(toTasks(in))
+	implicit def pureJoin[S](in: Seq[S]): JoinTask[S, Seq] = joinTasks(pureTasks(in))
 	implicit def joinTasks[S](in: Seq[Task[S]]): JoinTask[S, Seq] = new JoinTask[S, Seq] {
 		def join: Task[Seq[S]] = new Join(in, (s: Seq[S]) => Right(s) )
 		//def join[T](f: Iterable[S] => T): Task[Iterable[T]] = new MapAll( MList.fromTCList[Task](in), ml => f(ml.toList))
