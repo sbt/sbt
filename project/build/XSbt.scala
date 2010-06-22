@@ -13,7 +13,7 @@ class XSbt(info: ProjectInfo) extends ParentProject(info) with NoCrossPaths
 	val apiSub = baseProject(compilePath / "api", "API", interfaceSub)
 
 	val controlSub = baseProject(utilPath / "control", "Control")
-	val collectionSub = baseProject(utilPath / "collection", "Collections")
+	val collectionSub = project(utilPath / "collection", "Collections", new CollectionsProject(_))
 	val ioSub = project(utilPath / "io", "IO", new IOProject(_), controlSub)
 	val classpathSub = baseProject(utilPath / "classpath", "Classpath")
 	val classfileSub = project(utilPath / "classfile", "Classfile", new ClassfileProject(_), ioSub, interfaceSub)
@@ -26,6 +26,7 @@ class XSbt(info: ProjectInfo) extends ParentProject(info) with NoCrossPaths
 	val testSub = project("scripted", "Test", new TestProject(_), ioSub)
 
 	val compileInterfaceSub = project(compilePath / "interface", "Compiler Interface", new CompilerInterfaceProject(_), interfaceSub)
+	val compileIncrementalSub = project(compilePath / "inc", "Incremental Compiler", new IncrementalProject(_), collectionSub, apiSub, ioSub)
 
 	val taskSub = project(tasksPath, "Tasks", new TaskProject(_), controlSub, collectionSub)
 	val cacheSub = project(cachePath, "Cache", new CacheProject(_), ioSub, collectionSub)
@@ -86,8 +87,8 @@ class XSbt(info: ProjectInfo) extends ParentProject(info) with NoCrossPaths
 	}
 	trait TestDependencies extends Project
 	{
-		val sc = "org.scala-tools.testing" % "scalacheck_2.8.0.RC3" % "1.7" % "test"
-		val sp = "org.scala-tools.testing" % "specs_2.8.0.RC3" % "1.6.5-SNAPSHOT" % "test"
+		val sc = "org.scala-tools.testing" %% "scalacheck" % "1.7" % "test"
+		val sp = "org.scala-tools.testing" %% "specs" % "1.6.5-SNAPSHOT" % "test"
 		val snaps = ScalaToolsSnapshots
 	}
 	class StandardTaskProject(info: ProjectInfo) extends Base(info)
@@ -98,7 +99,8 @@ class XSbt(info: ProjectInfo) extends ParentProject(info) with NoCrossPaths
 	{
 		val jline = jlineDep
 	}
-
+	class IncrementalProject(info: ProjectInfo) extends Base(info) with TestDependencies
+	class CollectionsProject(info: ProjectInfo) extends Base(info) with TestDependencies
 	class IOProject(info: ProjectInfo) extends Base(info) with TestDependencies
 	class TaskProject(info: ProjectInfo) extends Base(info) with TestDependencies
 	class ClassfileProject(info: ProjectInfo) extends Base(info) with TestDependencies
@@ -204,7 +206,7 @@ class XSbt(info: ProjectInfo) extends ParentProject(info) with NoCrossPaths
 		
 		// sub projects for each version of Scala to precompile against other than the one sbt is built against
 		// each sub project here will add ~100k to the download
-		lazy val precompiled28 = precompiledSub("2.8.0.RC4")
+		lazy val precompiled28 = precompiledSub("2.8.0.RC6")
 
 		def precompiledSub(v: String) = 
 			project(info.projectPath, "Precompiled " + v, new Precompiled(v)(_), cip.info.dependencies.toSeq : _* /*doesn't include subprojects of cip*/ )
