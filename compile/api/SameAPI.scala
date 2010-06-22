@@ -8,24 +8,25 @@ import xsbti.api._
 import Function.tupled
 import scala.collection.{immutable, mutable}
 
+class NameChanges(val newTypes: Set[String], val removedTypes: Set[String], val newTerms: Set[String], val removedTerms: Set[String])
+
 object TopLevel
 {
-	class Changes(val newTypeNames: Set[String], val removedTypeNames: Set[String], val newValueNames: Set[String], val removedValueNames: Set[String])
 	/** Identifies removed and new top-level definitions by name. */
-	def nameChanges(a: Iterable[Source], b: Iterable[Source]): Changes =
+	def nameChanges(a: Iterable[Source], b: Iterable[Source]): NameChanges =
 	{
-		def definitions(i: Iterable[Source]) = SameAPI.separateDefinitions(i.toSeq.flatMap( _.definitions ))
-		def names(s: Iterable[Definition]): Set[String] = Set() ++ s.map(_.name)
 		def changes(s: Set[String], t: Set[String]) = (s -- t, t -- s)
 
 		val (avalues, atypes) = definitions(a)
 		val (bvalues, btypes) = definitions(b)
 		
 		val (newTypes, removedTypes) = changes(names(atypes), names(btypes))
-		val (newValues, removedValues) = changes(names(avalues), names(bvalues))
+		val (newTerms, removedTerms) = changes(names(avalues), names(bvalues))
 
-		new Changes(newTypes, removedTypes, newValues, removedValues)
+		new NameChanges(newTypes, removedTypes, newTerms, removedTerms)
 	}
+	def definitions(i: Iterable[Source]) = SameAPI.separateDefinitions(i.toSeq.flatMap( _.definitions ))
+	def names(s: Iterable[Definition]): Set[String] = Set() ++ s.map(_.name)
 }
 
 /** Checks the API of two source files for equality.*/
