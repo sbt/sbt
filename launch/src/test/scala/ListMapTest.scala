@@ -35,4 +35,5 @@ object ListMapEmpty extends Properties("ListMap.empty")
 	property("toSeq.isEmpty") = empty.toSeq.isEmpty
 	property("toStream.isEmpty") = empty.toStream.isEmpty
 	property("keys.isEmpty") = empty.keys.isEmpty
+	property("iterator.isEmpty") = empty.iterator.isEmpty
 }

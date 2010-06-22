@@ -8,7 +8,7 @@ import scala.collection.{Iterable, Iterator}
 import scala.collection.immutable.List
 
 // preserves iteration order
-sealed class ListMap[K,V] private(backing: List[(K,V)]) extends Traversable[(K,V)] with NotNull
+sealed class ListMap[K,V] private(backing: List[(K,V)]) extends Iterable[(K,V)] with NotNull // use Iterable because Traversable.toStream loops
 {
 	import ListMap.remove
 	def update(k: K, v: V) = this.+( (k,v) )
@@ -18,7 +18,7 @@ sealed class ListMap[K,V] private(backing: List[(K,V)]) extends Traversable[(K,V
 	def keys: List[K] = backing.reverse.map(_._1)
 	def apply(k: K): V = get(k).getOrElse(error("Key " + k + " not found"))
 	def contains(k: K): Boolean = get(k).isDefined
-	def foreach[T](f: ((K,V)) => T) = backing.reverse.foreach(f)
+	def iterator = backing.reverse.iterator
 	override def isEmpty: Boolean = backing.isEmpty
 	override def toList = backing.reverse
 	override def toSeq = toList
