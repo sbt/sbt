@@ -5,7 +5,7 @@ package sbt
 
 object Types extends TypeFunctions
 {
-	val :^: = MCons
+	val :^: = KCons
 	val :+: = HCons
 	type :+:[H, T <: HList] = HCons[H,T]
 }

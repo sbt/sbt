@@ -8,11 +8,11 @@ import Prop._
 
 object RelationTest extends Properties("Relation")
 {
-	property("Added entry check") = forAll { (pairs: List[(Int, Int)]) =>
-		val r = Relation.empty[Int] ++ pairs
+	property("Added entry check") = forAll { (pairs: List[(Int, Double)]) =>
+		val r = Relation.empty[Int, Double] ++ pairs
 		check(r, pairs)
 	}
-	def check(r: Relation[Int], pairs: Seq[(Int, Int)]) =
+	def check(r: Relation[Int, Double], pairs: Seq[(Int, Double)]) =
 	{
 		val _1s = pairs.map(_._1).toSet
 		val _2s = pairs.map(_._2).toSet
@@ -27,15 +27,15 @@ object RelationTest extends Properties("Relation")
 			}
 	}
 	
-	property("Does not contain removed entries") = forAll { (pairs: List[(Int, Int, Boolean)]) =>
+	property("Does not contain removed entries") = forAll { (pairs: List[(Int, Double, Boolean)]) =>
 		val add = pairs.map { case (a,b,c) => (a,b) }
-		val added = Relation.empty[Int] ++ add
+		val added = Relation.empty[Int, Double] ++ add
 		
 		val removeFine = pairs.collect { case (a,b,true) => (a,b) }
 		val removeCoarse = removeFine.map(_._1)
 		val r = added -- removeCoarse
 		
-		def notIn[T](map: Map[T, Set[T]], a: T, b: T) = map.get(a).forall(set => ! (set contains b) )
+		def notIn[X,Y](map: Map[X, Set[Y]], a: X, b: Y) = map.get(a).forall(set => ! (set contains b) )
 		
 		all(removeCoarse) { rem =>
 			("_1s does not contain removed" |: (!r._1s.contains(rem)) ) &&
@@ -56,12 +56,12 @@ object RelationTest extends Properties("Relation")
 
 object EmptyRelationTest extends Properties("Empty relation")
 {
-	lazy val e = Relation.empty[Int]
+	lazy val e = Relation.empty[Int, Double]
 
 	property("Forward empty") = forAll { (i: Int) => e.forward(i).isEmpty }
-	property("Reverse empty") = forAll { (i: Int) => e.reverse(i).isEmpty }
-	property("Forward map empty") = forAll { (i: Int) => e.forwardMap.isEmpty }
-	property("Reverse map empty") = forAll { (i: Int) => e.reverseMap.isEmpty }
-	property("_1 empty") = forAll { (i: Int) => e._1s.isEmpty }
-	property("_2 empty") = forAll { (i: Int) => e._2s.isEmpty }
+	property("Reverse empty") = forAll { (i: Double) => e.reverse(i).isEmpty }
+	property("Forward map empty") = e.forwardMap.isEmpty
+	property("Reverse map empty") = e.reverseMap.isEmpty
+	property("_1 empty") = e._1s.isEmpty
+	property("_2 empty") = e._2s.isEmpty
 }
