@@ -206,7 +206,7 @@ final class Execute[A[_] <: AnyRef](checkCycles: Boolean)(implicit view: A ~> No
 	def submit[T]( node: A[T] )(implicit strategy: Strategy)
 	{
 		val v = view(node)
-		val rs: v.Mixed#Map[Result] = v.mixedIn.map(results)
+		val rs = v.mixedIn.map(results)
 		val ud = v.uniformIn.map(results.apply[v.Uniform])
 		strategy.submit( node, () => work(node, v.work(rs, ud)) )
 	}

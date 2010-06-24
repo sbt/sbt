@@ -7,12 +7,11 @@ import Types._
 
 trait Node[A[_], T]
 {
-	type Mixed <: MList[A]
-	type MixedResults = Mixed#Map[Result]
+	type Mixed <: HList
 	type Uniform
 
-	val mixedIn: Mixed
+	val mixedIn: KList[A, Mixed]
 	val uniformIn: Seq[A[Uniform]]
 
-	def work(mixed: MixedResults, uniform: Seq[Result[Uniform]]): Either[A[T], T]
+	def work(mixed: KList[Result, Mixed], uniform: Seq[Result[Uniform]]): Either[A[T], T]
 }

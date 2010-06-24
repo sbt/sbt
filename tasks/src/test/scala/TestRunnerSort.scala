@@ -41,7 +41,7 @@ object TaskRunnerSortTest extends Properties("TaskRunnerSort")
 			pure(a) flatMap { a =>
 				val pivot = a(0)
 				val (lt,gte) = a.view.drop(1).partition(_ < pivot)
-				sort(lt) :^: sort(gte) :^: MNil mapH {
+				sort(lt) :^: sort(gte) :^: KNil mapH {
 					case l :+: g :+: HNil => l ++ List(pivot) ++ g
 				}
 			}

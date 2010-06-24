@@ -9,21 +9,21 @@ import Execute._
 
 sealed trait Task[+T]
 sealed case class Pure[+T](eval: () => T) extends Task[T]
-final case class Mapped[+T, In <: MList[Task]](in: In, f: In#Map[Result] => T) extends Task[T]
-final case class MapAll[+T, In <: MList[Task]](in: In, f: In#Map[Result]#Raw => T) extends Task[T]
-final case class FlatMapAll[+T, In <: MList[Task]](in: In, f: In#Map[Result]#Raw => Task[T]) extends Task[T]
-final case class MapFailure[+T, In <: MList[Task]](in: In, f: Seq[Incomplete] => T) extends Task[T]
-final case class FlatMapFailure[+T, In <: MList[Task]](in: In, f: Seq[Incomplete] => Task[T]) extends Task[T]
-final case class FlatMapped[+T, In <: MList[Task]](in: In, f: In#Map[Result] => Task[T]) extends Task[T]
+final case class Mapped[+T, In <: HList](in: Tasks[In], f: Results[In] => T) extends Task[T]
+final case class MapAll[+T, In <: HList](in: Tasks[In], f: In => T) extends Task[T]
+final case class FlatMapAll[+T, In <: HList](in: Tasks[In], f: In => Task[T]) extends Task[T]
+final case class MapFailure[+T, In <: HList](in: Tasks[In], f: Seq[Incomplete] => T) extends Task[T]
+final case class FlatMapFailure[+T, In <: HList](in: Tasks[In], f: Seq[Incomplete] => Task[T]) extends Task[T]
+final case class FlatMapped[+T, In <: HList](in: Tasks[In], f: Results[In] => Task[T]) extends Task[T]
 final case class DependsOn[+T](in: Task[T], deps: Seq[Task[_]]) extends Task[T]
 final case class Join[+T, U](in: Seq[Task[U]], f: Seq[U] => Either[Task[T], T]) extends Task[T] { type Uniform = U }
 
-trait MultiInTask[M <: MList[Task]]
+trait MultiInTask[In <: HList]
 {
-	def flatMap[T](f: M#Map[Result]#Raw => Task[T]): Task[T]
-	def flatMapR[T](f: M#Map[Result] => Task[T]): Task[T]
-	def mapH[T](f: M#Map[Result]#Raw => T): Task[T]
-	def mapR[T](f: M#Map[Result] => T): Task[T]
+	def flatMap[T](f: In => Task[T]): Task[T]
+	def flatMapR[T](f: Results[In] => Task[T]): Task[T]
+	def mapH[T](f: In => T): Task[T]
+	def mapR[T](f: Results[In] => T): Task[T]
 	def flatFailure[T](f: Seq[Incomplete] => Task[T]): Task[T]
 	def mapFailure[T](f: Seq[Incomplete] => T): Task[T]
 }
@@ -48,6 +48,9 @@ trait JoinTask[S, CC[_]]
 }
 object Task
 {
+	type Tasks[HL <: HList] = KList[Task, HL]
+	type Results[HL <: HList] = KList[Result, HL]
+
 	def pure[T](f: => T): Task[T] = toPure(f _)
 	def pure[T](name: String, f: => T): Task[T] = new Pure(f _) { override def toString = name }
 	implicit def toPure[T](f: () => T): Task[T] = new Pure(f)
@@ -66,23 +69,24 @@ object Task
 	}
 	
 
-	implicit def multInputTask[M <: MList[Task]](ml: M): MultiInTask[M] = new MultiInTask[M] {
-		def flatMap[T](f: M#Map[Result]#Raw => Task[T]): Task[T] = new FlatMapAll(ml, f)
-		def flatMapR[T](f: M#Map[Result] => Task[T]): Task[T] = new FlatMapped(ml, f)
-		def mapH[T](f: M#Map[Result]#Raw => T): Task[T] = new MapAll(ml, f)
-		def mapR[T](f: M#Map[Result] => T): Task[T] = new Mapped(ml, f)
-		def flatFailure[T](f: Seq[Incomplete] => Task[T]): Task[T] = new FlatMapFailure(ml, f)
-		def mapFailure[T](f: Seq[Incomplete] => T): Task[T] = new MapFailure(ml, f)
+	implicit def multInputTask[In <: HList](tasks: Tasks[In]): MultiInTask[In] = new MultiInTask[In] {
+		def flatMap[T](f: In => Task[T]): Task[T] = new FlatMapAll(tasks, f)
+		def flatMapR[T](f: Results[In] => Task[T]): Task[T] = new FlatMapped(tasks, f)
+		def mapH[T](f: In => T): Task[T] = new MapAll(tasks, f)
+		def mapR[T](f: Results[In] => T): Task[T] = new Mapped(tasks, f)
+		def flatFailure[T](f: Seq[Incomplete] => Task[T]): Task[T] = new FlatMapFailure(tasks, f)
+		def mapFailure[T](f: Seq[Incomplete] => T): Task[T] = new MapFailure(tasks, f)
 	}
 	implicit def singleInputTask[S](in: Task[S]): SingleInTask[S] = new SingleInTask[S] {
-		private val ml = in :^: MNil
-		private def headM = (_: ml.Map[Result]).head
-		private def headH = (_: S :+: HNil).head
+		type HL = S :+: HNil
+		private val ml = in :^: KNil
+		private def headM = (_: Results[HL]).combine.head
+		private def headH = (_: HL).head
 		private def headS = (_: Seq[Incomplete]).head
-		def flatMapR[T](f: Result[S] => Task[T]): Task[T] = new FlatMapped[T, ml.type](ml, f ∙ headM)
-		def flatMap[T](f: S => Task[T]): Task[T] = new FlatMapAll[T, ml.type](ml, f ∙ headH)
-		def map[T](f: S => T): Task[T] = new MapAll[T, ml.type](ml, f ∙ headH)
-		def mapR[T](f: Result[S] => T): Task[T] = new Mapped[T, ml.type](ml, f ∙ headM)
+		def flatMapR[T](f: Result[S] => Task[T]): Task[T] = new FlatMapped[T, HL](ml, f ∙ headM)
+		def flatMap[T](f: S => Task[T]): Task[T] = new FlatMapAll(ml, f ∙ headH)
+		def map[T](f: S => T): Task[T] = new MapAll(ml, f ∙ headH)
+		def mapR[T](f: Result[S] => T): Task[T] = new Mapped[T, HL](ml, f ∙ headM)
 		def flatFailure[T](f: Incomplete => Task[T]): Task[T] = new FlatMapFailure(ml, f ∙ headS)
 		def mapFailure[T](f: Incomplete => T): Task[T] = new MapFailure(ml, f ∙ headS)
 		def dependsOn(tasks: Task[_]*): Task[S] = new DependsOn(in, tasks)
@@ -90,35 +94,35 @@ object Task
 
 	implicit val taskToNode = new (Task ~> NodeT[Task]#Apply) {
 		def apply[T](t: Task[T]): Node[Task, T] = t match {
-			case Pure(eval) => toNode[T, MNil](MNil, _ => Right(eval()) )
-			case Mapped(in, f) => toNode[T, in.type](in, right ∙ f  )
-			case MapAll(in, f) => toNode[T, in.type](in, right ∙ (f compose allM) )
-			case MapFailure(in, f) => toNode[T, in.type](in, right ∙ (f compose failuresM))
-			case FlatMapped(in, f) => toNode[T, in.type](in, left ∙ f )
-			case FlatMapAll(in, f) => toNode[T, in.type](in, left ∙ (f compose allM) )
-			case FlatMapFailure(in, f) => toNode[T, in.type](in, left ∙ (f compose failuresM))
+			case Pure(eval) => toNode[T, HNil](KNil, _ => Right(eval()) )
+			case Mapped(in, f) => toNode(in, right ∙ f  )
+			case MapAll(in, f) => toNode[T, in.Raw](in, right ∙ (f compose allM) )
+			case MapFailure(in, f) => toNode[T, in.Raw](in, right ∙ (f compose failuresM))
+			case FlatMapped(in, f) => toNode(in, left ∙ f )
+			case FlatMapAll(in, f) => toNode[T, in.Raw](in, left ∙ (f compose allM) )
+			case FlatMapFailure(in, f) => toNode[T, in.Raw](in, left ∙ (f compose failuresM))
 			case DependsOn(in, tasks) => join[T, Any](tasks, (_: Seq[Result[_]]) => Left(in))
 			case j@ Join(in, f) => join[T, j.Uniform](in, f compose all)
 		}
 	}
 	def join[T, D](tasks: Seq[Task[D]], f: Seq[Result[D]] => Either[Task[T], T]): Node[Task, T] = new Node[Task, T] {
-		type Mixed = MNil
-		val mixedIn = MNil
+		type Mixed = HNil
+		val mixedIn = KNil
 		type Uniform = D
 		val uniformIn = tasks
-		def work(mixed: MNil, uniform: Seq[Result[Uniform]]) = {
+		def work(mixed: Results[HNil], uniform: Seq[Result[Uniform]]) = {
 			val inc = failures(uniform)
 			if(inc.isEmpty) f(uniform) else throw Incomplete(causes = inc)
 		}
 	}
-	def toNode[T, In <: MList[Task]](in: In, f: In#Map[Result] => Either[Task[T], T]): Node[Task, T] = new Node[Task, T] {
+	def toNode[T, In <: HList](in: Tasks[In], f: Results[In] => Either[Task[T], T]): Node[Task, T] = new Node[Task, T] {
 		type Mixed = In
 		val mixedIn = in
 		type Uniform = Nothing
 		val uniformIn = Nil
-		def work(results: Mixed#Map[Result], units: Seq[Result[Uniform]]) = f(results)
+		def work(results: Results[In], units: Seq[Result[Uniform]]) = f(results)
 	}
-	def allM[In <: MList[Result]]: In => In#Raw = in =>
+	def allM[In <: HList]: Results[In] => In = in =>
 	{
 		val incs = failuresM(in)
 		if(incs.isEmpty) in.down(Result.tryValue) else throw Incomplete(causes = incs)
@@ -128,7 +132,7 @@ object Task
 		val incs = failures(in)
 		if(incs.isEmpty) in.map(Result.tryValue.apply[D]) else throw Incomplete(causes = incs)
 	}
-	def failuresM[In <: MList[Result]]: In => Seq[Incomplete] = x => failures[Any](x.toList)
+	def failuresM[In <: HList]: Results[In] => Seq[Incomplete] = x => failures[Any](x.toList)
 	def failures[A]: Seq[Result[A]] => Seq[Incomplete] = _.collect { case Inc(i) => i }
 	
 	def run[T](root: Task[T], checkCycles: Boolean, maxWorkers: Int): Result[T] =
@@ -155,5 +159,5 @@ object Task
 				reducePair( reduce(a, f), reduce(b, f), f )
 		}
 	def reducePair[S](a: Task[S], b: Task[S], f: (S, S) => S): Task[S] =
-		(a :^: b :^: MNil) mapH { case x :+: y :+: HNil => f(x,y) }
+		(a :^: b :^: KNil) mapH { case x :+: y :+: HNil => f(x,y) }
 }
