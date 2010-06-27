@@ -8,7 +8,7 @@ package xsbt
 * the scala-library.jar from `scalaInstance` is put on bootclasspath and the scala-compiler jar goes on the classpath.*/
 class RawCompiler(val scalaInstance: ScalaInstance, cp: ClasspathOptions, log: CompileLogger)
 {
-	def apply(sources: Set[File], classpath: Set[File], outputDirectory: File, options: Seq[String])
+	def apply(sources: Seq[File], classpath: Seq[File], outputDirectory: File, options: Seq[String])
 	{
 		// reflection is required for binary compatibility
 			// The following import ensures there is a compile error if the identifiers change,

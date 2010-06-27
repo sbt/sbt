@@ -64,7 +64,7 @@ class ComponentCompiler(compiler: RawCompiler, manager: ComponentManager)
 				val start = System.currentTimeMillis
 				try
 				{
-					compiler(Set() ++ sourceFiles, Set() ++ xsbtiJars ++ sourceJars, outputDirectory, "-nowarn" :: Nil)
+					compiler(sourceFiles.toSeq, xsbtiJars.toSeq ++ sourceJars, outputDirectory, "-nowarn" :: Nil)
 					manager.log.info("  Compilation completed in " + (System.currentTimeMillis - start) / 1000.0 + " s")
 				}
 				catch { case e: xsbti.CompileFailed => throw new CompileFailed(e.arguments, "Error compiling sbt component '" + id + "'") }
