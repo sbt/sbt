@@ -10,19 +10,18 @@ package xsbt
 * this would lead to compiling against the wrong library jar.*/
 class CompilerArguments(scalaInstance: ScalaInstance, cp: ClasspathOptions) extends NotNull
 {
-	def apply(sources: Set[File], classpath: Set[File], outputDirectory: File, options: Seq[String]): Seq[String] =
+	def apply(sources: Seq[File], classpath: Seq[File], outputDirectory: File, options: Seq[String]): Seq[String] =
 	{
 		checkScalaHomeUnset()
-		val bootClasspathOption = if(cp.autoBoot) Seq("-bootclasspath", createBootClasspath) else Nil
 		val cpWithCompiler = finishClasspath(classpath)
 		val classpathOption = Seq("-cp", absString(cpWithCompiler) )
 		val outputOption = Seq("-d", outputDirectory.getAbsolutePath)
 		options ++ outputOption ++ bootClasspathOption ++ classpathOption ++ abs(sources)
 	}
-	def finishClasspath(classpath: Set[File]): Set[File] =
+	def finishClasspath(classpath: Seq[File]): Seq[File] =
 		classpath ++ include(cp.compiler, scalaInstance.compilerJar) ++ include(cp.extra, scalaInstance.extraJars : _*)
 	private def include(flag: Boolean, jars: File*) = if(flag) jars else Nil
-	protected def abs(files: Set[File]) = files.map(_.getAbsolutePath).toList.sortWith(_ < _)
+	protected def abs(files: Seq[File]) = files.map(_.getAbsolutePath).sortWith(_ < _)
 	protected def checkScalaHomeUnset()
 	{
 		val scalaHome = System.getProperty("scala.home")
@@ -35,6 +34,8 @@ class CompilerArguments(scalaInstance: ScalaInstance, cp: ClasspathOptions) exte
 		val newBootPrefix = if(originalBoot.isEmpty) "" else originalBoot + File.pathSeparator
 		newBootPrefix + scalaInstance.libraryJar.getAbsolutePath
 	}
+	def bootClasspathOption = if(cp.autoBoot) Seq("-bootclasspath", createBootClasspath) else Nil
+	def bootClasspath = if(cp.autoBoot) sbt.IO.pathSplit(createBootClasspath).map(new File(_)).toSeq else Nil
 }
 class ClasspathOptions(val autoBoot: Boolean, val compiler: Boolean, val extra: Boolean)  extends NotNull
 object ClasspathOptions

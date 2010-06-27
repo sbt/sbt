@@ -12,19 +12,23 @@ package xsbt
 class AnalyzingCompiler(val scalaInstance: ScalaInstance, val manager: ComponentManager, val cp: ClasspathOptions, log: CompileLogger) extends NotNull
 {
 	def this(scalaInstance: ScalaInstance, manager: ComponentManager, log: CompileLogger) = this(scalaInstance, manager, ClasspathOptions.auto, log)
-	def apply(sources: Set[File], classpath: Set[File], outputDirectory: File, options: Seq[String], callback: AnalysisCallback, maximumErrors: Int, log: CompileLogger)
+	def apply(sources: Seq[File], classpath: Seq[File], outputDirectory: File, options: Seq[String], callback: AnalysisCallback, maximumErrors: Int, log: CompileLogger)
 	{
 		val arguments = (new CompilerArguments(scalaInstance, cp))(sources, classpath, outputDirectory, options)
+		compile(arguments, callback, maximumErrors, log)
+	}
+	def compile(arguments: Seq[String], callback: AnalysisCallback, maximumErrors: Int, log: CompileLogger)
+	{
 		call("xsbt.CompilerInterface", log)(
 			classOf[Array[String]], classOf[AnalysisCallback], classOf[Int], classOf[xLogger] ) (
 			arguments.toArray[String] : Array[String], callback, maximumErrors: java.lang.Integer, log )
 	}
-	def doc(sources: Set[File], classpath: Set[File], outputDirectory: File, options: Seq[String], maximumErrors: Int, log: CompileLogger): Unit =
+	def doc(sources: Seq[File], classpath: Seq[File], outputDirectory: File, options: Seq[String], maximumErrors: Int, log: CompileLogger): Unit =
 	{
 		val arguments = (new CompilerArguments(scalaInstance, cp))(sources, classpath, outputDirectory, options)
 		call("xsbt.ScaladocInterface", log) (classOf[Array[String]], classOf[Int], classOf[xLogger]) (arguments.toArray[String] : Array[String], maximumErrors: java.lang.Integer, log)
 	}
-	def console(classpath: Set[File], options: Seq[String], initialCommands: String, log: CompileLogger): Unit =
+	def console(classpath: Seq[File], options: Seq[String], initialCommands: String, log: CompileLogger): Unit =
 	{
 		val arguments = new CompilerArguments(scalaInstance, cp)
 		val classpathString = CompilerArguments.absString(arguments.finishClasspath(classpath))
