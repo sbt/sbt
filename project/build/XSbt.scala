@@ -23,19 +23,21 @@ class XSbt(info: ProjectInfo) extends ParentProject(info) with NoCrossPaths
 	val logSub = project(utilPath / "log", "Logging", new LogProject(_), interfaceSub)
 	val datatypeSub = baseProject("util" /"datatype", "Datatype Generator", ioSub)
 
-	val testSub = project("scripted", "Test", new TestProject(_), ioSub)
-
 	val compileInterfaceSub = project(compilePath / "interface", "Compiler Interface", new CompilerInterfaceProject(_), interfaceSub)
 	val compileIncrementalSub = project(compilePath / "inc", "Incremental Compiler", new IncrementalProject(_), collectionSub, apiSub, ioSub)
+	val compilerSub = project(compilePath, "Compile", new CompileProject(_),
+		launchInterfaceSub, interfaceSub, ivySub, ioSub, classpathSub, compileInterfaceSub)
 
 	val taskSub = project(tasksPath, "Tasks", new TaskProject(_), controlSub, collectionSub)
 	val cacheSub = project(cachePath, "Cache", new CacheProject(_), ioSub, collectionSub)
+
+	/** following are not updated for 2.8 or 0.9 */
+	val testSub = project("scripted", "Test", new TestProject(_), ioSub)
+
 	val trackingSub = baseProject(cachePath / "tracking", "Tracking", cacheSub)
-	val compilerSub = project(compilePath, "Compile", new CompileProject(_),
-		launchInterfaceSub, interfaceSub, ivySub, ioSub, classpathSub, compileInterfaceSub)
 	val stdTaskSub = project(tasksPath / "standard", "Standard Tasks", new StandardTaskProject(_), trackingSub, taskSub, compilerSub, apiSub)
 
-	val altCompilerSub = baseProject("main", "Alternate Compiler Test", stdTaskSub, logSub)
+	val altCompilerSub = project("main", "Alternate Compiler Test", new AlternateProject(_), compileIncrementalSub, compilerSub, ioSub, logSub)
 
 	val sbtSub = project(sbtPath, "Simple Build Tool", new SbtProject(_) {}, compilerSub, launchInterfaceSub)
 	val installerSub = project(sbtPath / "install", "Installer", new InstallerProject(_) {}, sbtSub)
@@ -105,7 +107,9 @@ class XSbt(info: ProjectInfo) extends ParentProject(info) with NoCrossPaths
 	class TaskProject(info: ProjectInfo) extends Base(info) with TestDependencies
 	class ClassfileProject(info: ProjectInfo) extends Base(info) with TestDependencies
 	class CompletionProject(info: ProjectInfo) extends Base(info) with TestDependencies
-	class CacheProject(info: ProjectInfo) extends Base(info)
+	class CacheProject(info: ProjectInfo) extends Base(info) with SBinaryDep
+	class AlternateProject(info: ProjectInfo) extends Base(info) with SBinaryDep
+	trait SBinaryDep extends BasicManagedProject
 	{
 		// these compilation options are useful for debugging caches and task composition
 		//override def compileOptions = super.compileOptions ++ List(Unchecked,ExplainTypes, CompileOption("-Xlog-implicits"))

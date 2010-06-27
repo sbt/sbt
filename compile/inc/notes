@@ -1,0 +1,11 @@
+each compilation group gets an Analysis
+an sbt-style project could have multiple compilation groups or there could be multiple projects per compilation group.
+Tradiationally, there has been a main group and a test group.
+
+Each Analysis is associated with one or more classpath entries.  Typically, it will be associated with the output directory and/or any artifacts produced from that output directory.
+
+Need to be able to process Source and extract classes {C} s.t. C <: D for D in {D} or C or one of its non-private methods is annotated with annotation A in {A} or C.main(args: Array[String]) exists
+
+For Java sources, need to write a (File, Set[File]) => Source function that reads an API from a class file.  The compile function passed to IncrementalCompile needs to handle compiling Java sources in the proper order
+
+Need to handle entries removed from classpath.  Could be done similarly to how Locate is used for getting the API for a dependency.  In this case, we'd get the Stamp for a binary dependency.
