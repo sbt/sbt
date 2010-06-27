@@ -6,7 +6,8 @@ package sbt
 object Relation
 {
 	/** Constructs a new immutable, finite relation that is initially empty. */
-	def empty[A,B]: Relation[A,B] = new MRelation[A,B](Map.empty, Map.empty)
+	def empty[A,B]: Relation[A,B] = make(Map.empty, Map.empty)
+	def make[A,B](forward: Map[A,Set[B]], reverse: Map[B, Set[A]]): Relation[A,B] = new MRelation(forward, reverse)
 }
 /** Binary relation between A and B.  It is a set of pairs (_1, _2) for _1 in A, _2 in B.  */
 trait Relation[A,B]
