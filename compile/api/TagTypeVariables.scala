@@ -4,15 +4,17 @@ import xsbti.api._
 
 object TagTypeVariables
 {
-	def apply(s: Source): scala.collection.Map[Int, (Int, Int)] = (new TagTypeVariables).tag(s)
+	type TypeVars = collection.Map[Int, (Int, Int)]
+	def apply(s: Source): TypeVars = (new TagTypeVariables).tag(s)
 }
+import TagTypeVariables.TypeVars
 private class TagTypeVariables extends NotNull
 {
 	private val tags = new scala.collection.mutable.HashMap[Int, (Int, Int)]
 	private var level = 0
 	private var index = 0
 
-	def tag(s: Source): scala.collection.Map[Int, (Int, Int)] =
+	def tag(s: Source): TypeVars =
 	{
 		s.definitions.foreach(tagDefinition)
 		tags

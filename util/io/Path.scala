@@ -280,6 +280,7 @@ sealed abstract class PathFinder extends NotNull
 	*/
 	def ### : PathFinder = new BasePathFinder(this)
 
+	def x_![T](mapper: File => Option[T]): Traversable[(File,T)] = x(mapper, false)
 	/** Applies `mapper` to each path selected by this PathFinder and returns the path paired with the non-empty result.
 	* If the result is empty (None) and `errorIfNone` is true, an exception is thrown.
 	* If `errorIfNone` is false, the path is dropped from the returned Traversable.*/

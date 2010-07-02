@@ -4,7 +4,6 @@
 package sbt
 package inc
 
-import xsbti.api.Source
 import java.io.{File, IOException}
 import Stamp.getStamp
 
@@ -52,6 +51,11 @@ object Stamp
 			case (lm1: LastModified, lm2: LastModified) => lm1.value == lm2.value
 			case _ => false
 		}
+	}
+	def show(s: Stamp): String = s match {
+		case h: Hash => "hash(" + Hash.toHex(h.value) + ")"
+		case e: Exists => if(e.value) "exists" else "does not exist"
+		case lm: LastModified => "last modified(" + lm.value + ")"
 	}
 	
 	val hash = (f: File) => tryStamp(new Hash(Hash(f)))

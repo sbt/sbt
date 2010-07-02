@@ -102,4 +102,6 @@ private class MRelations(val srcProd: Relation[File, File], val binaryDep: Relat
 		new MRelations(srcProd ++ o.srcProd, binaryDep ++ o.binaryDep, internalSrcDep ++ o.internalSrcDep, externalDep ++ o.externalDep)
 	def -- (sources: Iterable[File]) =
 		new MRelations(srcProd -- sources, binaryDep -- sources, internalSrcDep -- sources, externalDep -- sources)
+
+	override def toString = "Relations:\n  products: " + srcProd + "\n  bin deps: " + binaryDep + "\n  src deps: " +  internalSrcDep + "\n  ext deps: " + externalDep + "\n"
 }

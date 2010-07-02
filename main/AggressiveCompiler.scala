@@ -14,13 +14,13 @@ class AggressiveCompiler extends xsbti.AppMain
 	final def run(configuration: xsbti.AppConfiguration): xsbti.MainResult =
 	{
 		val args = configuration.arguments.map(_.trim).toList
-		readLine("Press enter to compile... ")
+		val command = readLine("Press enter to compile... ").trim()
 		val start = now
-		val success = run(args, configuration.baseDirectory, configuration.provider)
+		val success = run(command, args, configuration.baseDirectory, configuration.provider)
 		println("Compiled in " + ((now - start) / 1000.0) + " s")
 		run(configuration)
 	}
-	def run(args: List[String], cwd: Path, app: xsbti.AppProvider): Boolean =
+	def run(command: String, args: List[String], cwd: Path, app: xsbti.AppProvider): Boolean =
 	{
 		val launcher = app.scalaProvider.launcher
 		val sources = cwd ** "*.scala"
@@ -34,7 +34,12 @@ class AggressiveCompiler extends xsbti.AppMain
 		val compiler = new AnalyzingCompiler(ScalaInstance(args.head, launcher), componentManager, log)
 
 		val agg = new AggressiveCompile(cacheDirectory)
-		try { agg(sources.get.toSeq, classpath.get.toSeq, outputDirectory, options, compiler, log); true }
+		try
+		{
+			val analysis = agg(sources.get.toSeq, classpath.get.toSeq, outputDirectory, options, compiler, log)
+			processResult(analysis, command)
+			true
+		}
 		catch { case e: Exception => handleException(e); false }
 	}
 	def handleException(e: Throwable) =
@@ -44,5 +49,22 @@ class AggressiveCompiler extends xsbti.AppMain
 			e.printStackTrace
 			System.err.println(e.toString)
 		}
+	}
+	def processResult(analysis: inc.Analysis, command: String)
+	{
+		if(command.isEmpty) ()
+		else
+		{
+			xsbt.api.ParseType.parseType(command) match
+			{
+				case Left(err) => println("Error parsing type: " + err)
+				case Right(tpe) => analysis.apis.internal.values.foreach(processAPI)
+			}
+		}
+	}
+	def processAPI(api: xsbti.api.Source)
+	{
+		val d = new inc.Discovery(Set("scala.Enumeration", "scala.AnyRef", "scala.ScalaObject"), Set("scala.deprecated", "scala.annotation.tailrec"))
+		println(d(api.definitions).map { case (a, b) => (a.name, b) } )
 	}
 }

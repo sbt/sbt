@@ -7,7 +7,7 @@ package inc
 trait AnalysisStore
 {
 	def set(analysis: Analysis, setup: CompileSetup): Unit
-	def get(): (Analysis, CompileSetup)
+	def get(): Option[(Analysis, CompileSetup)]
 }
 
 object AnalysisStore
@@ -19,15 +19,15 @@ object AnalysisStore
 			backing.set(analysis, setup)
 			last = Some( (analysis, setup) )
 		}
-		def get(): (Analysis, CompileSetup) =
+		def get(): Option[(Analysis, CompileSetup)] =
 		{
 			if(last.isEmpty)
-				last = Some(backing.get())
-			last.get
+				last = backing.get()
+			last
 		}
 	}
 	def sync(backing: AnalysisStore): AnalysisStore = new AnalysisStore {
 		def set(analysis: Analysis, setup: CompileSetup): Unit = synchronized { backing.set(analysis, setup) }
-		def get(): (Analysis, CompileSetup) = synchronized { backing.get() }
+		def get(): Option[(Analysis, CompileSetup)] = synchronized { backing.get() }
 	}
 }

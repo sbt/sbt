@@ -70,7 +70,7 @@ class ComponentCompiler(compiler: RawCompiler, manager: ComponentManager)
 				catch { case e: xsbti.CompileFailed => throw new CompileFailed(e.arguments, "Error compiling sbt component '" + id + "'") }
 				import sbt.Path._
 				copy(resources x rebase(dir, outputDirectory))
-				zip((outputDirectory ***) x relativeTo(outputDirectory), targetJar)
+				zip((outputDirectory ***) x_! relativeTo(outputDirectory), targetJar)
 			}
 		}
 	}

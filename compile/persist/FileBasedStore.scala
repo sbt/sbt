@@ -2,10 +2,9 @@
  * Copyright 2010 Mark Harrah
  */
 package sbt
+package inc
 
-import inc.{Analysis, AnalysisStore, CompileSetup}
-
-	import java.io.File
+	import java.io.{File, IOException}
 	import sbinary._
 	import Operations.{read, write}
 	import DefaultProtocol._
@@ -19,7 +18,9 @@ object FileBasedStore
 				write[(Analysis, CompileSetup)](out, (analysis, setup) )
 			}
 
-		def get(): (Analysis, CompileSetup) =
+		def get(): Option[(Analysis, CompileSetup)] =
+			try { Some(getUncaught()) } catch { case io: IOException => None }
+		def getUncaught(): (Analysis, CompileSetup) =
 			Using.fileInputStream(file) { in =>
 				read[(Analysis, CompileSetup)]( in )
 			}

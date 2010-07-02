@@ -13,7 +13,7 @@ import inc._
 	import sbinary.DefaultProtocol.{ immutableMapFormat, immutableSetFormat, StringFormat }
 
 final class CompileConfiguration(val sources: Seq[File], val classpath: Seq[File], val previousAnalysis: Analysis,
-	val previousSetup: CompileSetup, val currentSetup: CompileSetup, val getAnalysis: File => Option[Analysis],
+	val previousSetup: Option[CompileSetup], val currentSetup: CompileSetup, val getAnalysis: File => Option[Analysis],
 	val maxErrors: Int, val compiler: AnalyzingCompiler)
 
 class AggressiveCompile(cacheDirectory: File)
@@ -29,7 +29,7 @@ class AggressiveCompile(cacheDirectory: File)
 
 	def compile1(sources: Seq[File], classpath: Seq[File], setup: CompileSetup, store: AnalysisStore, analysis: Map[File, Analysis], compiler: AnalyzingCompiler, log: CompileLogger): Analysis =
 	{
-		val (previousAnalysis, previousSetup) = store.get()
+		val (previousAnalysis, previousSetup) = extract(store.get())
 		val config = new CompileConfiguration(sources, classpath, previousAnalysis, previousSetup, setup, analysis.get _, 100, compiler)
 		val result = compile2(config, log)
 		store.set(result, setup)
@@ -47,20 +47,29 @@ class AggressiveCompile(cacheDirectory: File)
 		val cArgs = new CompilerArguments(compiler.scalaInstance, compiler.cp)
 		val externalAPI = apiOrEmpty compose Locate.value(withBootclasspath(cArgs, classpath), getAPI)
 		val compile0 = (include: Set[File], callback: AnalysisCallback) => {
+			IO.createDirectory(outputDirectory)
 			val arguments = cArgs(sources.filter(include), classpath, outputDirectory, options.options)
 			compiler.compile(arguments, callback, maxErrors, log)
 		}
 		val sourcesSet = sources.toSet
-		val analysis = if(equiv.equiv(previousSetup, currentSetup)) previousAnalysis else Incremental.prune(sourcesSet, previousAnalysis)
+		val analysis = previousSetup match {
+			case Some(previous) if equiv.equiv(previous, currentSetup) => previousAnalysis
+			case _ => Incremental.prune(sourcesSet, previousAnalysis)
+		}
 		IncrementalCompile(sourcesSet, compile0, analysis, externalAPI)
 	}
+	private def extract(previous: Option[(Analysis, CompileSetup)]): (Analysis, Option[CompileSetup]) =
+		previous match
+		{
+			case Some((an, setup)) => (an, Some(setup))
+			case None => (Analysis.Empty, None)
+		}
 
 	import AnalysisFormats._
 	// The following intermediate definitions are needed because of Scala's implicit parameter rules.
-	//   implicit def a(implicit b: T[Int]): S = ...
-	// triggers a divierging expansion because T[Int] dominates S, even though they are unrelated
+	//   implicit def a(implicit b: Format[T[Int]]): Format[S] = ...
+	// triggers a diverging expansion because Format[T[Int]] dominates Format[S]
 	implicit val r = relationFormat[File,File]
-	implicit val map = immutableMapFormat[File, Stamp]
 	implicit val rF = relationsFormat(r,r,r, relationFormat[File, String])
 	implicit val aF = analysisFormat(stampsFormat, apisFormat, rF)
 

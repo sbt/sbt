@@ -2,8 +2,7 @@
  * Copyright 2010 Mark Harrah
  */
 package sbt
-
-import inc._
+package inc
 
 	import xsbti.api.Source
 	import xsbt.api.APIFormat

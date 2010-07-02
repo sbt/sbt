@@ -4,11 +4,19 @@
 package xsbt.api
 
 import xsbti.api._
+import TagTypeVariables.TypeVars
 
 import Function.tupled
 import scala.collection.{immutable, mutable}
 
 class NameChanges(val newTypes: Set[String], val removedTypes: Set[String], val newTerms: Set[String], val removedTerms: Set[String])
+{
+	override def toString =
+		(("New types", newTypes) :: ("Removed types", removedTypes) :: ("New terms", newTerms) :: ("Removed terms", removedTerms) :: Nil).map {
+			case (label,set) => label + ":\n\t" + set.mkString("\n\t")
+		}.mkString("Name changes:\n  ", "\n  ", "\n")
+
+}
 
 object TopLevel
 {
@@ -41,8 +49,12 @@ object SameAPI
 		println(ShowAPI.show(a))
 		println("\n=========== API #2 ================")
 		println(ShowAPI.show(b))
-		
-		val result = (new SameAPI(a,b, false)).check
+
+		/** de Bruijn levels for type parameters in source a and b*/
+		val tagsA = TagTypeVariables(a)
+		val tagsB = TagTypeVariables(b)
+
+		val result = (new SameAPI(tagsA,tagsB, false, true)).check(a,b)
 		val end = System.currentTimeMillis
 		println(" API comparison took: " + (end - start) / 1000.0 + " s")
 		result
@@ -74,13 +86,9 @@ object SameAPI
 *
 * If `includePrivate` is true, `private` and `private[this]` members are included in the comparison.  Otherwise, those members are excluded.
 */
-private class SameAPI(a: Source, b: Source, includePrivate: Boolean)
+class SameAPI(tagsA: TypeVars, tagsB: TypeVars, includePrivate: Boolean, includeParamNames: Boolean)
 {
 	import SameAPI._
-	/** de Bruijn levels for type parameters in source `a`*/
-	private lazy val tagsA = TagTypeVariables(a)
-	/** de Bruijn levels for type parameters in source `b`*/
-	private lazy val tagsB = TagTypeVariables(b)
 	
 	def debug(flag: Boolean, msg: => String): Boolean =
 	{
@@ -89,7 +97,7 @@ private class SameAPI(a: Source, b: Source, includePrivate: Boolean)
 	}
 
 	/** Returns true if source `a` has the same API as source `b`.*/
-	def check: Boolean =
+	def check(a: Source, b: Source): Boolean =
 	{
 		samePackages(a, b) &&
 		debug(sameDefinitions(a, b), "Definitions differed")
@@ -263,7 +271,7 @@ private class SameAPI(a: Source, b: Source, includePrivate: Boolean)
 	def sameParameters(a: Seq[MethodParameter], b: Seq[MethodParameter]): Boolean =
 		sameSeq(a, b)(sameMethodParameter)
 	def sameMethodParameter(a: MethodParameter, b: MethodParameter): Boolean =
-		(a.name == b.name) &&
+		(!includeParamNames || a.name == b.name) &&
 		sameType(a.tpe, b.tpe) &&
 		(a.hasDefault == b.hasDefault) &&
 		sameParameterModifier(a.modifier, b.modifier)

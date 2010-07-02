@@ -13,31 +13,32 @@ class XSbt(info: ProjectInfo) extends ParentProject(info) with NoCrossPaths
 	val apiSub = baseProject(compilePath / "api", "API", interfaceSub)
 
 	val controlSub = baseProject(utilPath / "control", "Control")
-	val collectionSub = project(utilPath / "collection", "Collections", new CollectionsProject(_))
-	val ioSub = project(utilPath / "io", "IO", new IOProject(_), controlSub)
+	val collectionSub = testedBase(utilPath / "collection", "Collections")
+	val ioSub = testedBase(utilPath / "io", "IO", controlSub)
 	val classpathSub = baseProject(utilPath / "classpath", "Classpath")
-	val classfileSub = project(utilPath / "classfile", "Classfile", new ClassfileProject(_), ioSub, interfaceSub)
-	val completeSub = project(utilPath / "complete", "Completion", new CompletionProject(_), ioSub)
+	val classfileSub = testedBase(utilPath / "classfile", "Classfile", ioSub, interfaceSub)
+	val completeSub = testedBase(utilPath / "complete", "Completion", ioSub)
 
 	val ivySub = project("ivy", "Ivy", new IvyProject(_), interfaceSub, launchInterfaceSub)
 	val logSub = project(utilPath / "log", "Logging", new LogProject(_), interfaceSub)
 	val datatypeSub = baseProject("util" /"datatype", "Datatype Generator", ioSub)
 
 	val compileInterfaceSub = project(compilePath / "interface", "Compiler Interface", new CompilerInterfaceProject(_), interfaceSub)
-	val compileIncrementalSub = project(compilePath / "inc", "Incremental Compiler", new IncrementalProject(_), collectionSub, apiSub, ioSub)
+	val compileIncrementalSub = testedBase(compilePath / "inc", "Incremental Compiler", collectionSub, apiSub, ioSub)
+	val discoverySub = testedBase(compilePath / "discover", "Discovery", compileIncrementalSub, apiSub)
+	val compilePersistSub = project(compilePath / "persist", "Persist", new PersistProject(_), compileIncrementalSub, apiSub)
 	val compilerSub = project(compilePath, "Compile", new CompileProject(_),
 		launchInterfaceSub, interfaceSub, ivySub, ioSub, classpathSub, compileInterfaceSub)
 
-	val taskSub = project(tasksPath, "Tasks", new TaskProject(_), controlSub, collectionSub)
+	val taskSub = testedBase(tasksPath, "Tasks", controlSub, collectionSub)
 	val cacheSub = project(cachePath, "Cache", new CacheProject(_), ioSub, collectionSub)
+
+	val altCompilerSub = baseProject("main", "Alternate Compiler Test", compileIncrementalSub, compilerSub, ioSub, logSub, discoverySub, compilePersistSub)
 
 	/** following are not updated for 2.8 or 0.9 */
 	val testSub = project("scripted", "Test", new TestProject(_), ioSub)
 
 	val trackingSub = baseProject(cachePath / "tracking", "Tracking", cacheSub)
-	val stdTaskSub = project(tasksPath / "standard", "Standard Tasks", new StandardTaskProject(_), trackingSub, taskSub, compilerSub, apiSub)
-
-	val altCompilerSub = project("main", "Alternate Compiler Test", new AlternateProject(_), compileIncrementalSub, compilerSub, ioSub, logSub)
 
 	val sbtSub = project(sbtPath, "Simple Build Tool", new SbtProject(_) {}, compilerSub, launchInterfaceSub)
 	val installerSub = project(sbtPath / "install", "Installer", new InstallerProject(_) {}, sbtSub)
@@ -45,6 +46,7 @@ class XSbt(info: ProjectInfo) extends ParentProject(info) with NoCrossPaths
 	lazy val dist = task { None } dependsOn(launchSub.proguard, sbtSub.publishLocal, installerSub.publishLocal)
 
 	def baseProject(path: Path, name: String, deps: Project*) = project(path, name, new Base(_), deps : _*)
+	def testedBase(path: Path, name: String, deps: Project*) = project(path, name, new TestedBase(_), deps : _*)
 	
 		/* Multi-subproject paths */
 	def sbtPath = path("sbt")
@@ -93,22 +95,12 @@ class XSbt(info: ProjectInfo) extends ParentProject(info) with NoCrossPaths
 		val sp = "org.scala-tools.testing" %% "specs" % "1.6.5-SNAPSHOT" % "test"
 		val snaps = ScalaToolsSnapshots
 	}
-	class StandardTaskProject(info: ProjectInfo) extends Base(info)
-	{
-		override def testClasspath = super.testClasspath +++ compilerSub.testClasspath --- compilerInterfaceClasspath
-	}
 	class LogProject(info: ProjectInfo) extends Base(info) with TestDependencies
 	{
 		val jline = jlineDep
 	}
-	class IncrementalProject(info: ProjectInfo) extends Base(info) with TestDependencies
-	class CollectionsProject(info: ProjectInfo) extends Base(info) with TestDependencies
-	class IOProject(info: ProjectInfo) extends Base(info) with TestDependencies
-	class TaskProject(info: ProjectInfo) extends Base(info) with TestDependencies
-	class ClassfileProject(info: ProjectInfo) extends Base(info) with TestDependencies
-	class CompletionProject(info: ProjectInfo) extends Base(info) with TestDependencies
 	class CacheProject(info: ProjectInfo) extends Base(info) with SBinaryDep
-	class AlternateProject(info: ProjectInfo) extends Base(info) with SBinaryDep
+	class PersistProject(info: ProjectInfo) extends Base(info) with SBinaryDep
 	trait SBinaryDep extends BasicManagedProject
 	{
 		// these compilation options are useful for debugging caches and task composition
@@ -121,6 +113,7 @@ class XSbt(info: ProjectInfo) extends ParentProject(info) with NoCrossPaths
 		override def consoleClasspath = testClasspath
 		override def compileOptions = super.compileOptions ++ compileOptions("-Xelide-below", "0")
 	}
+	class TestedBase(info: ProjectInfo) extends Base(info) with TestDependencies
 	trait Licensed extends BasicScalaProject
 	{
 		def notice = path("NOTICE")

@@ -23,6 +23,8 @@ object IncrementalCompile
 }
 private final class AnalysisCallback(internalMap: File => Option[File], current: ReadStamps) extends xsbti.AnalysisCallback
 {
+	override def toString = ( List("APIs", "Binary deps", "Products", "Source deps") zip List(apis, binaryDeps, classes, sourceDeps)).map { case (label, map) => label + "\n\t" + map.mkString("\n\t") }.mkString("\n")
+	
 	import collection.mutable.{HashMap, HashSet, Map, Set}
 	
 	private val apis = new HashMap[File, Source]
