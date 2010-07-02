@@ -96,5 +96,5 @@ private final class MRelation[A,B](fwd: Map[A, Set[B]], rev: Map[B, Set[A]]) ext
 
 	private[this] def get[X,Y](map: M[X,Y], t: X): Set[Y] = map.getOrElse(t, Set.empty[Y])
 	
-	override def toString = all.mkString("Relation [", ", ", "]")
+	override def toString = all.map { case (a,b) => a + " -> " + b }.mkString("Relation [", ", ", "]")
 }
