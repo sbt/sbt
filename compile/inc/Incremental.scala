@@ -11,27 +11,33 @@ import java.io.File
 
 object Incremental
 {
-	// TODO: the Analysis for the last successful compilation should get returned + Boolean indicating success
-	// TODO: full external name changes, scopeInvalidations
 	def compile(sources: Set[File], previous: Analysis, current: ReadStamps, externalAPI: String => Source, doCompile: Set[File] => Analysis)(implicit equivS: Equiv[Stamp]): Analysis =
 	{
-		def cycle(invalidated: Set[File], previous: Analysis): Analysis =
-			if(invalidated.isEmpty)
-				previous
-			else
-			{
-				val pruned = prune(invalidated, previous)
-				val fresh = doCompile(invalidated)
-				val merged = pruned ++ fresh//.copy(relations = pruned.relations ++ fresh.relations, apis = pruned.apis ++ fresh.apis)
-				val incChanges = changedIncremental(invalidated, previous.apis.internalAPI _, merged.apis.internalAPI _)
-				val incInv = invalidateIncremental(merged.relations, incChanges)
-				cycle(incInv, merged)
-			}
-
 		val initialChanges = changedInitial(sources, previous.stamps, previous.apis, current, externalAPI)
 		val initialInv = invalidateInitial(previous.relations, initialChanges)
-		cycle(initialInv, previous)
+		println("Initially invalidated: " + initialInv)
+		cycle(initialInv, previous, doCompile)
 	}
+
+	// TODO: the Analysis for the last successful compilation should get returned + Boolean indicating success
+	// TODO: full external name changes, scopeInvalidations
+	def cycle(invalidated: Set[File], previous: Analysis, doCompile: Set[File] => Analysis): Analysis =
+		if(invalidated.isEmpty)
+			previous
+		else
+		{
+			val pruned = prune(invalidated, previous)
+			println("********* Pruned: \n" + pruned.relations + "\n*********")
+			val fresh = doCompile(invalidated)
+			println("********* Fresh: \n" + fresh.relations + "\n*********")
+			val merged = pruned ++ fresh//.copy(relations = pruned.relations ++ fresh.relations, apis = pruned.apis ++ fresh.apis)
+			println("********* Merged: \n" + merged.relations + "\n*********")
+			val incChanges = changedIncremental(invalidated, previous.apis.internalAPI _, merged.apis.internalAPI _)
+			println("Changes:\n" + incChanges)
+			val incInv = invalidateIncremental(merged.relations, incChanges, invalidated)
+			println("Incrementally invalidated: " + incInv)
+			cycle(incInv, merged, doCompile)
+		}
 	
 
 	/**
@@ -44,13 +50,13 @@ object Incremental
 		val oldApis = lastSources map oldAPI
 		val newApis = lastSources map newAPI
 
-		val changes = (lastSources, oldApis, newApis).zipped.filter { (src, oldApi, newApi) => SameAPI(oldApi, newApi) }
+		val changes = (lastSources, oldApis, newApis).zipped.filter { (src, oldApi, newApi) => !SameAPI(oldApi, newApi) }
 
 		val changedNames = TopLevel.nameChanges(changes._3, changes._2 )
 
 		val modifiedAPIs = changes._1.toSet
 
-		APIChanges(modifiedAPIs, changedNames)
+		new APIChanges(modifiedAPIs, changedNames)
 	}
 
 	def changedInitial(sources: Set[File], previous: Stamps, previousAPIs: APIs, current: ReadStamps, externalAPI: String => Source)(implicit equivS: Equiv[Stamp]): InitialChanges =
@@ -72,29 +78,38 @@ object Incremental
 			val (changed, unmodified) = inBoth.partition(existingModified)
 		}
 
-	def invalidateIncremental(previous: Relations, changes: APIChanges[File]): Set[File] =
-		invalidateTransitive(previous.internalSrcDeps _,  changes.modified )// ++ scopeInvalidations(previous.extAPI _, changes.modified, changes.names)
+	def invalidateIncremental(previous: Relations, changes: APIChanges[File], recompiledSources: Set[File]): Set[File] =
+	{
+		val inv = invalidateTransitive(previous.usesInternalSrc _,  changes.modified )// ++ scopeInvalidations(previous.extAPI _, changes.modified, changes.names)
+		if((inv -- recompiledSources).isEmpty) Set.empty else inv
+	}
 
 	/** Only invalidates direct source dependencies.  It excludes any sources that were recompiled during the previous run.
-	* Callers may want to augment the returned set with 'modified' or even all sources recompiled up to this point. */
-	def invalidateDirect(sourceDeps: File => Set[File], modified: Set[File]): Set[File] =
-		(modified flatMap sourceDeps) -- modified
+	* Callers may want to augment the returned set with 'modified' or all sources recompiled up to this point. */
+	def invalidateDirect(dependsOnSrc: File => Set[File], modified: Set[File]): Set[File] =
+		(modified flatMap dependsOnSrc) -- modified
 
 	/** Invalidates transitive source dependencies including `modified`.  It excludes any sources that were recompiled during the previous run.*/
-	@tailrec def invalidateTransitive(sourceDeps: File => Set[File], modified: Set[File]): Set[File] =
+	@tailrec def invalidateTransitive(dependsOnSrc: File => Set[File], modified: Set[File]): Set[File] =
 	{
-		val newInv = invalidateDirect(sourceDeps, modified)
-		if(newInv.isEmpty) modified else invalidateTransitive(sourceDeps, modified ++ newInv)
+		val newInv = invalidateDirect(dependsOnSrc, modified)
+		println("\tInvalidated direct: " + newInv)
+		if(newInv.isEmpty) modified else invalidateTransitive(dependsOnSrc, modified ++ newInv)
 	}
 
 	/** Invalidates sources based on initially detected 'changes' to the sources, products, and dependencies.*/
 	def invalidateInitial(previous: Relations, changes: InitialChanges): Set[File] =
 	{
 		val srcChanges = changes.internalSrc
+		println("Initial source changes: \n\tremoved:" + srcChanges.removed + "\n\tadded: " + srcChanges.added + "\n\tmodified: " + srcChanges.changed)
 		val srcDirect = srcChanges.removed.flatMap(previous.usesInternalSrc) ++ srcChanges.added ++ srcChanges.changed
+		println("Initial source direct: " + srcDirect)
 		val byProduct = changes.removedProducts.flatMap(previous.produced)
+		println("Initial by product: " + byProduct)
 		val byBinaryDep = changes.binaryDeps.flatMap(previous.usesBinary)
+		println("Initial by binary dep: " + byBinaryDep)
 		val byExtSrcDep = changes.external.modified.flatMap(previous.usesExternal) // ++ scopeInvalidations
+		println("Initial by binary dep: " + byExtSrcDep)
 
 		srcDirect ++ byProduct ++ byBinaryDep ++ byExtSrcDep
 	}

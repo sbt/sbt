@@ -8,7 +8,10 @@ import xsbt.api.NameChanges
 import java.io.File
 
 final case class InitialChanges(internalSrc: Changes[File], removedProducts: Set[File], binaryDeps: Set[File], external: APIChanges[String])
-final case class APIChanges[T](modified: Set[T], names: NameChanges)
+final class APIChanges[T](val modified: Set[T], val names: NameChanges)
+{
+	override def toString = "API Changes: " + modified + "\n" + names
+}
 
 trait Changes[A]
 {
