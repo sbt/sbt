@@ -41,7 +41,7 @@ private object Future
 	}
 }
 
-private object BasicIO
+object BasicIO
 {
 	def apply(buffer: StringBuffer, log: Option[Logger], withIn: Boolean) = new ProcessIO(input(withIn), processFully(buffer), getErr(log))
 	def apply(log: Logger, withIn: Boolean) = new ProcessIO(input(withIn), processFully(log, Level.Info), processFully(log, Level.Error))
@@ -50,7 +50,7 @@ private object BasicIO
 
 	def ignoreOut = (i: OutputStream) => ()
 	final val BufferSize = 8192
-	final val Newline = FileUtilities.Newline
+	final val Newline = System.getProperty("line.separator")
 
 	def close(c: java.io.Closeable) = try { c.close() } catch { case _: java.io.IOException => () }
 	def processFully(log: Logger, level: Level.Value): InputStream => Unit = processFully(line => log.log(level, line))
@@ -161,8 +161,8 @@ private abstract class AbstractProcessBuilder extends ProcessBuilder with SinkPa
 	def !<(log: Logger) = runBuffered(log, true)
 	private[this] def runBuffered(log: Logger, connectInput: Boolean) =
 	{
-		val log2 = new BufferedLogger(log)
-		log2.bufferAll {  run(log2, connectInput).exitValue() }
+		val log2 = new BufferedLogger(new FullLogger(log))
+		log2.buffer {  run(log2, connectInput).exitValue() }
 	}
 	def !(io: ProcessIO) = run(io).exitValue()
 

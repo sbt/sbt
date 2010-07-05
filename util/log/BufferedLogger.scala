@@ -1,7 +1,7 @@
 /* sbt -- Simple Build Tool
  * Copyright 2008, 2009, 2010 Mark Harrah
  */
- package xsbt
+package sbt
 
 	import sbt.{AbstractLogger, ControlEvent, Level, Log, LogEvent, SetLevel, SetTrace, Success, Trace}
 	import scala.collection.mutable.ListBuffer
@@ -50,14 +50,14 @@ class BufferedLogger(delegate: AbstractLogger) extends AbstractLogger
 
 	def setLevel(newLevel: Level.Value)
 	{
-		buffer  += new SetLevel(newLevel)
+		buffer += new SetLevel(newLevel)
 		delegate.setLevel(newLevel)
 	}
 	def getLevel = delegate.getLevel
 	def getTrace = delegate.getTrace
 	def setTrace(level: Int)
 	{
-		buffer  += new SetTrace(level)
+		buffer += new SetTrace(level)
 		delegate.setTrace(level)
 	}
 

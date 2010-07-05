@@ -1,6 +1,6 @@
 package sbt
 
-import java.io.File
+import java.io.{File, FileNotFoundException, IOException}
 
 object exit
 {
@@ -13,18 +13,19 @@ object cat
 {
 	def main(args: Array[String])
 	{
-		val result =
+		try {
 			if(args.length == 0)
-				FileUtilities.transfer(System.in, System.out, log)
+				IO.transfer(System.in, System.out)
 			else
 				catFiles(args.toList)
-		result match
-		{
-			case Some(err) => System.err.println("Error: " + err); System.exit(1)
-			case None => System.exit(0)
+			System.exit(0)
+		} catch {
+			case e =>
+				e.printStackTrace()
+				System.err.println("Error: " + e.toString)
+				System.exit(1)
 		}
 	}
-	private val log = new ConsoleLogger
 	private def catFiles(filenames: List[String]): Option[String] =
 	{
 		filenames match
@@ -32,16 +33,16 @@ object cat
 			case head :: tail =>
 				val file = new File(head)
 				if(file.isDirectory)
-					Some("Is directory: " + file)
+					throw new IOException("Is directory: " + file)
 				else if(file.exists)
 				{
-					FileUtilities.readStream(file, log) { stream =>
-						FileUtilities.transfer(stream, System.out, log)
+					Using.fileInputStream(file) { stream =>
+						IO.transfer(stream, System.out)
 					}
 					catFiles(tail)
 				}
 				else
-					Some("No such file or directory: " + file)
+					throw new FileNotFoundException("No such file or directory: " + file)
 			case Nil => None
 		}
 	}

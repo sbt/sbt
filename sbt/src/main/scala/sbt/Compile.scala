@@ -6,10 +6,6 @@ package sbt
 import java.io.File
 import xsbt.{AnalyzingCompiler, CompileFailed, CompilerArguments, ScalaInstance}
 
-object CompileOrder extends Enumeration
-{
-	val Mixed, JavaThenScala, ScalaThenJava = Value
-}
 
 sealed abstract class CompilerCore
 {
@@ -75,50 +71,6 @@ final class Compile(maximumErrors: Int, compiler: AnalyzingCompiler, analysisCal
 		val callbackInterface = new AnalysisInterface(analysisCallback, baseDirectory, outputDirectory)
 		compiler(Set() ++ sources, Set() ++ classpath, outputDirectory, options, callbackInterface, maximumErrors, log)
 	}
-	protected def processJava(sources: Set[File], classpath: Set[File], outputDirectory: File, options: Seq[String], log: Logger)
-	{
-		val augmentedClasspath = if(compiler.cp.autoBoot) classpath + compiler.scalaInstance.libraryJar else classpath
-		val cp = new xsbt.ClasspathOptions(false, compiler.cp.compiler, false)
-		val arguments = (new CompilerArguments(compiler.scalaInstance, cp))(sources, augmentedClasspath, outputDirectory, options)
-		log.debug("running javac with arguments:\n\t" + arguments.mkString("\n\t"))
-		val code: Int =
-			try { directJavac(arguments, log) }
-			catch { case e: ClassNotFoundException => forkJavac(arguments, log) }
-		log.debug("javac returned exit code: " + code)
-		if( code != 0 ) throw new CompileFailed(arguments.toArray, "javac returned nonzero exit code")
-	}
-	private def forkJavac(arguments: Seq[String], log: Logger): Int =
-	{
-		log.debug("com.sun.tools.javac.Main not found; forking javac instead")
-		def externalJavac(argFile: File) = Process("javac", ("@" + normalizeSlash(argFile.getAbsolutePath)) :: Nil) ! log
-		withArgumentFile(arguments)(externalJavac)
-	}
-	private def directJavac(arguments: Seq[String], log: Logger): Int =
-	{
-		val writer = new java.io.PrintWriter(new LoggerWriter(log, Level.Error))
-		val argsArray = arguments.toArray
-		val javac = Class.forName("com.sun.tools.javac.Main")
-		log.debug("Calling javac directly.")
-		javac.getDeclaredMethod("compile", classOf[Array[String]], classOf[java.io.PrintWriter])
-		.invoke(null, argsArray, writer)
-		.asInstanceOf[java.lang.Integer]
-		.intValue
-	}
-}
-trait WithArgumentFile extends NotNull
-{
-	def withArgumentFile[T](args: Seq[String])(f: File => T): T =
-	{
-		import xsbt.FileUtilities._
-		withTemporaryDirectory { tmp =>
-			val argFile = new File(tmp, "argfile")
-			write(argFile, args.map(escapeSpaces).mkString(FileUtilities.Newline))
-			f(argFile)
-		}
-	}
-	// javac's argument file seems to allow naive space escaping with quotes.  escaping a quote with a backslash does not work
-	def escapeSpaces(s: String): String = '\"' + normalizeSlash(s) + '\"'
-	def normalizeSlash(s: String) = s.replace(File.separatorChar, '/')
 }
 final class Scaladoc(maximumErrors: Int, compiler: AnalyzingCompiler) extends CompilerCore
 {
@@ -141,41 +93,4 @@ final class Console(compiler: AnalyzingCompiler) extends NotNull
 		def console0 = compiler.console(Path.getFiles(classpath), options, initialCommands, log)
 		JLine.withJLine( Run.executeTrapExit(console0, log) )
 	}
-}
-
-private final class AnalysisInterface(delegate: AnalysisCallback, basePath: Path, outputDirectory: File) extends xsbti.AnalysisCallback with NotNull
-{
-	val outputPath = Path.fromFile(outputDirectory)
-	def superclassNames = delegate.superclassNames.toSeq.toArray[String]
-	def annotationNames = delegate.annotationNames.toSeq.toArray[String]
-	def superclassNotFound(superclassName: String) = delegate.superclassNotFound(superclassName)
-	def beginSource(source: File) = delegate.beginSource(srcPath(source))
-
-	def foundSubclass(source: File, subclassName: String, superclassName: String, isModule: Boolean) =
-		delegate.foundSubclass(srcPath(source), subclassName, superclassName, isModule)
-	def foundAnnotated(source: File, className: String, annotationName: String, isModule: Boolean) =
-		delegate.foundAnnotated(srcPath(source), className, annotationName, isModule)
-	def foundApplication(source: File, className: String) = delegate.foundApplication(srcPath(source), className)
-
-	def sourceDependency(dependsOn: File, source: File) =
-		delegate.sourceDependency(srcPath(dependsOn), srcPath(source))
-	def jarDependency(jar: File, source: File) = delegate.jarDependency(jar, srcPath(source))
-	def generatedClass(source: File, clazz: File) = delegate.generatedClass(srcPath(source), classPath(clazz))
-	def endSource(source: File) = delegate.endSource(srcPath(source))
-
-	def classDependency(clazz: File, source: File) =
-	{
-		val sourcePath = srcPath(source)
-		Path.relativize(outputPath, clazz) match
-		{
-			case None =>  // dependency is a class file outside of the output directory
-				delegate.classDependency(clazz, sourcePath)
-			case Some(relativeToOutput) => // dependency is a product of a source not included in this compilation
-				delegate.productDependency(relativeToOutput, sourcePath)
-		}
-	}
-	def relativizeOrAbs(base: Path, file: File) = Path.relativize(base, file).getOrElse(Path.fromFile(file))
-	def classPath(file: File) = relativizeOrAbs(outputPath, file)
-	def srcPath(file: File) = relativizeOrAbs(basePath, file)
-	def api(file: File, source: xsbti.api.Source) = delegate.api(srcPath(file), source)
 }

@@ -1,7 +1,7 @@
 /* sbt -- Simple Build Tool
  * Copyright 2008 David MacIver, Mark Harrah
  */
-package sbt;
+package sbt
 
 import scala.collection._
 

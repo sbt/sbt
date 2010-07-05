@@ -14,8 +14,6 @@ object Process
 	implicit def apply(command: String): ProcessBuilder = apply(command, None)
 	implicit def apply(command: Seq[String]): ProcessBuilder = apply (command.toArray, None)
 	def apply(command: String, arguments: Seq[String]): ProcessBuilder = apply(command :: arguments.toList, None)
-	/** create ProcessBuilder with working dir set to path and extra environment variables */
-	def apply(command: String, cwd: Path, extraEnv: (String,String)*): ProcessBuilder = apply(command, cwd.asFile, extraEnv : _*)
 	/** create ProcessBuilder with working dir set to File and extra environment variables */
 	def apply(command: String, cwd: File, extraEnv: (String,String)*): ProcessBuilder =
 		apply(command, Some(cwd), extraEnv : _*)

@@ -1,10 +1,8 @@
 package sbt
 
-import xsbt.{BufferedLogger, FileUtilities}
-
 import java.io.File
 import org.specs._
-import FileUtilities.{createDirectory, delete, touch, withTemporaryDirectory}
+import IO.{createDirectory, delete, touch, withTemporaryDirectory}
 import org.apache.ivy.util.ChecksumHelper
 import IfMissing.Fail
 
@@ -76,7 +74,7 @@ object ComponentManagerTest extends Specification
 			manager.define(id, files)
 			f(files)
 		}
-	private def writeRandomContent(file: File) = FileUtilities.write(file, randomString)
+	private def writeRandomContent(file: File) = IO.write(file, randomString)
 	private def randomString = "asdf"
 	private def withManager[T](f: ComponentManager => T): T =
 		TestIvyLogger( logger => withTemporaryDirectory { temp =>  f(new ComponentManager(xsbt.boot.Locks, new xsbt.boot.ComponentProvider(temp), logger)) } )

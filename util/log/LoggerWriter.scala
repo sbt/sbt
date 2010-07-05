@@ -5,9 +5,9 @@ package sbt
 
 /** Provides a `java.io.Writer` interface to a `Logger`.  Content is line-buffered and logged at `level`.
 * A line is delimited by `nl`, which is by default the platform line separator.*/
-class LoggerWriter(delegate: AbstractLogger, level: Level.Value, nl: String) extends java.io.Writer
+class LoggerWriter(delegate: Logger, level: Level.Value, nl: String) extends java.io.Writer
 {
-	def this(delegate: AbstractLogger, level: Level.Value) = this(delegate, level, System.getProperty("line.separator"))
+	def this(delegate: Logger, level: Level.Value) = this(delegate, level, System.getProperty("line.separator"))
 	
 	private[this] val buffer = new StringBuilder
 

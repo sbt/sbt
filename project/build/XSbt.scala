@@ -12,26 +12,30 @@ class XSbt(info: ProjectInfo) extends ParentProject(info) with NoCrossPaths
 	val interfaceSub = project("interface", "Interface", new InterfaceProject(_))
 	val apiSub = baseProject(compilePath / "api", "API", interfaceSub)
 
+	// util
 	val controlSub = baseProject(utilPath / "control", "Control")
 	val collectionSub = testedBase(utilPath / "collection", "Collections")
 	val ioSub = testedBase(utilPath / "io", "IO", controlSub)
-	val classpathSub = baseProject(utilPath / "classpath", "Classpath")
+	val classpathSub = baseProject(utilPath / "classpath", "Classpath", launchInterfaceSub, ioSub)
 	val classfileSub = testedBase(utilPath / "classfile", "Classfile", ioSub, interfaceSub)
 	val completeSub = testedBase(utilPath / "complete", "Completion", ioSub)
-
-	val ivySub = project("ivy", "Ivy", new IvyProject(_), interfaceSub, launchInterfaceSub)
 	val logSub = project(utilPath / "log", "Logging", new LogProject(_), interfaceSub)
-	val datatypeSub = baseProject("util" /"datatype", "Datatype Generator", ioSub)
+	val datatypeSub = baseProject(utilPath /"datatype", "Datatype Generator", ioSub)
+	val processSub = project(utilPath /"process", "Process", new Base(_) with TestWithIO, ioSub, logSub)
 
+	// intermediate-level modules
+	val ivySub = project("ivy", "Ivy", new IvyProject(_), interfaceSub, launchInterfaceSub, logSub)
+	val testingSub = project("testing", "Testing", new TestingProject(_), ioSub, classpathSub, logSub)
+	val taskSub = testedBase(tasksPath, "Tasks", controlSub, collectionSub)
+	val cacheSub = project(cachePath, "Cache", new CacheProject(_), ioSub, collectionSub)
+
+	// compilation/discovery related modules
 	val compileInterfaceSub = project(compilePath / "interface", "Compiler Interface", new CompilerInterfaceProject(_), interfaceSub)
 	val compileIncrementalSub = testedBase(compilePath / "inc", "Incremental Compiler", collectionSub, apiSub, ioSub)
 	val discoverySub = testedBase(compilePath / "discover", "Discovery", compileIncrementalSub, apiSub)
 	val compilePersistSub = project(compilePath / "persist", "Persist", new PersistProject(_), compileIncrementalSub, apiSub)
 	val compilerSub = project(compilePath, "Compile", new CompileProject(_),
-		launchInterfaceSub, interfaceSub, ivySub, ioSub, classpathSub, compileInterfaceSub)
-
-	val taskSub = testedBase(tasksPath, "Tasks", controlSub, collectionSub)
-	val cacheSub = project(cachePath, "Cache", new CacheProject(_), ioSub, collectionSub)
+		launchInterfaceSub, interfaceSub, ivySub, ioSub, classpathSub, compileInterfaceSub, logSub, processSub)
 
 	val altCompilerSub = baseProject("main", "Alternate Compiler Test", compileIncrementalSub, compilerSub, ioSub, logSub, discoverySub, compilePersistSub)
 
@@ -40,7 +44,7 @@ class XSbt(info: ProjectInfo) extends ParentProject(info) with NoCrossPaths
 
 	val trackingSub = baseProject(cachePath / "tracking", "Tracking", cacheSub)
 
-	val sbtSub = project(sbtPath, "Simple Build Tool", new SbtProject(_) {}, compilerSub, launchInterfaceSub)
+	val sbtSub = project(sbtPath, "Simple Build Tool", new SbtProject(_) {}, compilerSub, launchInterfaceSub, testingSub, cacheSub, taskSub)
 	val installerSub = project(sbtPath / "install", "Installer", new InstallerProject(_) {}, sbtSub)
 
 	lazy val dist = task { None } dependsOn(launchSub.proguard, sbtSub.publishLocal, installerSub.publishLocal)
@@ -122,6 +126,10 @@ class XSbt(info: ProjectInfo) extends ParentProject(info) with NoCrossPaths
 		def licensePath(str: String): Path = { val path = Path.fromString(XSbt.this.info.projectPath, str); if(path.exists) path else error("Referenced license '" + str + "' not found at " + path) }
 		def seePaths(noticeString: String): List[Path] = seeRegex.findAllIn(noticeString).matchData.map(d => licensePath(d.group(1))).toList
 		def extractLicenses = if(!notice.exists) Nil else FileUtilities.readString(notice asFile, log).fold(_ => { log.warn("Could not read NOTICE"); Nil} , seePaths _)
+	}
+	class TestingProject(info: ProjectInfo) extends Base(info)
+	{
+		val testInterface = "org.scala-tools.testing" % "test-interface" % "0.5"
 	}
 	class CompileProject(info: ProjectInfo) extends Base(info) with TestWithLog with TestWithLaunch
 	{

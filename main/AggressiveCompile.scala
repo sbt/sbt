@@ -6,7 +6,7 @@ package sbt
 import inc._
 
 	import java.io.File
-	import xsbt.{AnalyzingCompiler, CompileLogger, CompilerArguments}
+	import sbt.compile.{AnalyzingCompiler, CompilerArguments}
 	import xsbti.api.Source
 	import xsbti.AnalysisCallback
 	import CompileSetup._
@@ -18,7 +18,7 @@ final class CompileConfiguration(val sources: Seq[File], val classpath: Seq[File
 
 class AggressiveCompile(cacheDirectory: File)
 {
-	def apply(sources: Seq[File], classpath: Seq[File], outputDirectory: File, options: Seq[String], compiler: AnalyzingCompiler, log: CompileLogger): Analysis =
+	def apply(sources: Seq[File], classpath: Seq[File], outputDirectory: File, options: Seq[String], compiler: AnalyzingCompiler, log: Logger): Analysis =
 	{
 		val setup = new CompileSetup(outputDirectory, new CompileOptions(options), compiler.scalaInstance.actualVersion, CompileOrder.Mixed)
 		compile1(sources, classpath, setup, store, Map.empty, compiler, log)
@@ -27,7 +27,7 @@ class AggressiveCompile(cacheDirectory: File)
 	def withBootclasspath(args: CompilerArguments, classpath: Seq[File]): Seq[File] =
 		args.bootClasspath ++ classpath
 
-	def compile1(sources: Seq[File], classpath: Seq[File], setup: CompileSetup, store: AnalysisStore, analysis: Map[File, Analysis], compiler: AnalyzingCompiler, log: CompileLogger): Analysis =
+	def compile1(sources: Seq[File], classpath: Seq[File], setup: CompileSetup, store: AnalysisStore, analysis: Map[File, Analysis], compiler: AnalyzingCompiler, log: Logger): Analysis =
 	{
 		val (previousAnalysis, previousSetup) = extract(store.get())
 		val config = new CompileConfiguration(sources, classpath, previousAnalysis, previousSetup, setup, analysis.get _, 100, compiler)
@@ -35,7 +35,7 @@ class AggressiveCompile(cacheDirectory: File)
 		store.set(result, setup)
 		result
 	}
-	def compile2(config: CompileConfiguration, log: CompileLogger)(implicit equiv: Equiv[CompileSetup]): Analysis =
+	def compile2(config: CompileConfiguration, log: Logger)(implicit equiv: Equiv[CompileSetup]): Analysis =
 	{
 		import config._
 		import currentSetup._

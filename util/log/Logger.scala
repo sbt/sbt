@@ -1,28 +1,20 @@
 /* sbt -- Simple Build Tool
- * Copyright 2008, 2009 Mark Harrah
+ * Copyright 2008, 2009, 2010  Mark Harrah
  */
  package sbt
 
 	import xsbti.{Logger => xLogger, F0}
 
-abstract class AbstractLogger extends xLogger with NotNull
+abstract class AbstractLogger extends Logger
 {
 	def getLevel: Level.Value
 	def setLevel(newLevel: Level.Value)
 	def setTrace(flag: Int)
 	def getTrace: Int
 	final def traceEnabled = getTrace >= 0
-	def ansiCodesSupported = false
 
 	def atLevel(level: Level.Value) = level.id >= getLevel.id
-	def trace(t: => Throwable): Unit
-	final def verbose(message: => String): Unit = debug(message)
-	final def debug(message: => String): Unit = log(Level.Debug, message)
-	final def info(message: => String): Unit = log(Level.Info, message)
-	final def warn(message: => String): Unit = log(Level.Warn, message)
-	final def error(message: => String): Unit = log(Level.Error, message)
 	def success(message: => String): Unit
-	def log(level: Level.Value, message: => String): Unit
 	def control(event: ControlEvent.Value, message: => String): Unit
 
 	def logAll(events: Seq[LogEvent]): Unit
@@ -39,7 +31,23 @@ abstract class AbstractLogger extends xLogger with NotNull
 			case c: ControlEvent => control(c.event, c.msg)
 		}
 	}
+}
 
+/** This is intended to be the simplest logging interface for use by code that wants to log.
+* It does not include configuring the logger. */
+trait Logger extends xLogger
+{
+	final def verbose(message: => String): Unit = debug(message)
+	final def debug(message: => String): Unit = log(Level.Debug, message)
+	final def info(message: => String): Unit = log(Level.Info, message)
+	final def warn(message: => String): Unit = log(Level.Warn, message)
+	final def error(message: => String): Unit = log(Level.Error, message)
+
+	def ansiCodesSupported = false
+	
+	def trace(t: => Throwable): Unit
+	def log(level: Level.Value, message: => String): Unit
+	
 	def debug(msg: F0[String]): Unit = log(Level.Debug, msg)
 	def warn(msg: F0[String]): Unit = log(Level.Warn, msg)
 	def info(msg: F0[String]): Unit = log(Level.Info, msg)

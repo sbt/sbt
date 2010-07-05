@@ -1,7 +1,8 @@
 /* sbt -- Simple Build Tool
  * Copyright 2008, 2009 Mark Harrah
  */
-package xsbt
+package sbt
+package classpath
 
 import java.net.URL
 import java.util.Enumeration

@@ -740,7 +740,8 @@ class xMain extends xsbti.AppMain
 		if(actionValid)
 		{
 			var count = 0
-			SourceModificationWatch.watchUntil(project, ContinuousCompilePollDelaySeconds)(shouldTerminate)
+			val sourcesFinder: PathFinder = (Path.emptyPathFinder /: project.topologicalSort)(_ +++ _.watchPaths)
+			SourceModificationWatch.watchUntil(sourcesFinder, ContinuousCompilePollDelaySeconds)(shouldTerminate)
 			{
 				count += 1
 				handleAction(project, action)

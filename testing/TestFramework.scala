@@ -6,7 +6,7 @@ package sbt
 	import java.net.URLClassLoader
 	import org.scalatools.testing.{AnnotatedFingerprint, Fingerprint, SubclassFingerprint, TestFingerprint}
 	import org.scalatools.testing.{Event, EventHandler, Framework, Runner, Runner2, Logger=>TLogger}
-	import xsbt.ScalaInstance
+	import classpath.{ClasspathUtilities, DualLoader, FilteredLoader}
 
 object Result extends Enumeration
 {
@@ -44,7 +44,7 @@ final class TestDefinition(val name: String, val fingerprint: Fingerprint) exten
 		}
 }
 
-final class TestRunner(framework: Framework, loader: ClassLoader, listeners: Seq[TestReportListener], log: Logger) extends NotNull
+final class TestRunner(framework: Framework, loader: ClassLoader, listeners: Seq[TestReportListener], log: Logger)
 {
 	private[this] val delegate = framework.testRunner(loader, listeners.flatMap(_.contentLogger).toArray)
 	private[this] def run(testDefinition: TestDefinition, handler: EventHandler, args: Array[String]): Unit =
@@ -89,7 +89,7 @@ final class TestRunner(framework: Framework, loader: ClassLoader, listeners: Seq
 		TestFramework.safeForeach(listeners, log)(call)
 }
 
-final class NamedTestTask(val name: String, action: => Option[String]) extends NotNull { def run() = action }
+final class NamedTestTask(val name: String, action: => Unit) { def run() = action }
 
 object TestFramework
 {
@@ -107,7 +107,7 @@ object TestFramework
 	private val TestFinishName = "test-finish"
 	
 	private[sbt] def safeForeach[T](it: Iterable[T], log: Logger)(f: T => Unit): Unit =
-		it.foreach(i => Control.trapAndLog(log){ f(i) } )
+		it.foreach(i => try f(i) catch { case e: Exception => log.trace(e); log.error(e.toString) })
 
 	def matches(a: Fingerprint, b: Fingerprint) =
 		(a, b) match
@@ -126,8 +126,8 @@ object TestFramework
 		log: Logger,
 		listeners: Seq[TestReportListener],
 		endErrorsEnabled: Boolean,
-		setup: Iterable[() => Option[String]],
-		cleanup: Iterable[() => Option[String]],
+		setup: Iterable[() => Unit],
+		cleanup: Iterable[() => Unit],
 		testArgsByFramework: Map[TestFramework, Seq[String]]):
 			(Iterable[NamedTestTask], Iterable[NamedTestTask], Iterable[NamedTestTask]) =
 	{
@@ -135,7 +135,7 @@ object TestFramework
 		val arguments = immutable.Map() ++
 			( for(framework <- frameworks; created <- framework.create(loader, log)) yield
 				(created, testArgsByFramework.getOrElse(framework, Nil)) )
-		val cleanTmp = () => FileUtilities.clean(tempDir, log)
+		val cleanTmp = () => IO.delete(tempDir)
 
 		val mappedTests = testMap(arguments.keys.toList, tests, arguments)
 		if(mappedTests.isEmpty)
@@ -162,12 +162,12 @@ object TestFramework
 			assignTests()
 		(immutable.Map() ++ map) transform { (framework, tests) => (tests, args(framework)) }
 	}
-	private def createTasks(work: Iterable[() => Option[String]], baseName: String) =
+	private def createTasks(work: Iterable[() => Unit], baseName: String) =
 		work.toList.zipWithIndex.map{ case (work, index) => new NamedTestTask(baseName + " " + (index+1), work()) }
 		
 	private def createTestTasks(loader: ClassLoader, tests: Map[Framework, (Set[TestDefinition], Seq[String])], log: Logger,
-		listeners: Seq[TestReportListener], endErrorsEnabled: Boolean, setup: Iterable[() => Option[String]],
-		cleanup: Iterable[() => Option[String]]) =
+		listeners: Seq[TestReportListener], endErrorsEnabled: Boolean, setup: Iterable[() => Unit],
+		cleanup: Iterable[() => Unit]) =
 	{
 		val testsListeners = listeners.filter(_.isInstanceOf[TestsListener]).map(_.asInstanceOf[TestsListener])
 		def foreachListenerSafe(f: TestsListener => Unit): Unit = safeForeach(testsListeners, log)(f)
@@ -228,7 +228,7 @@ object TestFramework
 		val filterCompilerLoader = new FilteredLoader(scalaInstance.loader, ScalaCompilerJarPackages)
 		val interfaceFilter = (name: String) => name.startsWith("org.scalatools.testing.")
 		val notInterfaceFilter = (name: String) => !interfaceFilter(name)
-		val dual = new xsbt.DualLoader(filterCompilerLoader, notInterfaceFilter, x => true, getClass.getClassLoader, interfaceFilter, x => false)
+		val dual = new DualLoader(filterCompilerLoader, notInterfaceFilter, x => true, getClass.getClassLoader, interfaceFilter, x => false)
 		ClasspathUtilities.makeLoader(classpath, dual, scalaInstance)
 	}
 }

@@ -246,7 +246,8 @@ object Path extends Alternatives with Mapper
 	}
 	def fromFile(file: String): Path = fromFile(new File(file))
 	def fromFile(file: File): Path = new FilePath(file)
-	def fromFiles(files: Traversable[File]): Traversable[Path] =  files.map(fromFile)
+	import collection.generic.{CanBuildFrom, FilterMonadic}
+	def fromFiles[Repr, That](files: FilterMonadic[File, Repr])(implicit bf: CanBuildFrom[Repr, Path, That]): That =  files.map(fromFile)
 
 	def getFiles(files: Traversable[Path]): immutable.Set[File] = files.map(_.asFile).toSet
 	def getURLs(files: Traversable[Path]): Array[URL] = files.map(_.asURL).toArray

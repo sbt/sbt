@@ -1,4 +1,8 @@
-package xsbt
+/* sbt -- Simple Build Tool
+ * Copyright 2009, 2010  Mark Harrah
+ */
+package sbt
+package compile
 
 	import java.io.File
 	import CompilerArguments.{abs, absString}

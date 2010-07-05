@@ -3,7 +3,7 @@
  */
 package sbt
 
-	import xsbt.{AnalyzingCompiler, CompileLogger, ScalaInstance}
+	import sbt.compile.AnalyzingCompiler
 	import java.io.File
 	import System.{currentTimeMillis => now}
 	import Path._
@@ -23,13 +23,13 @@ class AggressiveCompiler extends xsbti.AppMain
 	def run(command: String, args: List[String], cwd: Path, app: xsbti.AppProvider): Boolean =
 	{
 		val launcher = app.scalaProvider.launcher
-		val sources = cwd ** "*.scala"
+		val sources = cwd ** ("*.scala" | "*.java")
 		val target = cwd / "target"
 		val outputDirectory = target / "classes"
 		val classpath = outputDirectory +++ (cwd * "*.jar") +++(cwd * (-"project")).descendentsExcept( "*.jar", "project" || HiddenFileFilter)
 		val cacheDirectory = target / "cache"
 		val options = args.tail.toSeq
-		val log = new ConsoleLogger with CompileLogger with sbt.IvyLogger
+		val log = new ConsoleLogger with Logger with sbt.IvyLogger
 		val componentManager = new ComponentManager(launcher.globalLock, app.components, log)
 		val compiler = new AnalyzingCompiler(ScalaInstance(args.head, launcher), componentManager, log)
 

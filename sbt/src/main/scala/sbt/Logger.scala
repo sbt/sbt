@@ -5,9 +5,6 @@ package sbt
 
 import scala.collection.mutable.{Buffer, HashMap, ListBuffer}
 
-
-trait Logger extends AbstractLogger with xsbt.CompileLogger with IvyLogger
-
 /** A logger that can buffer the logging done on it by currently executing Thread and
 * then can flush the buffer to the delegate logger provided in the constructor.  Use
 * 'startRecording' to start buffering and then 'play' from to flush the buffer for the
@@ -19,7 +16,7 @@ trait Logger extends AbstractLogger with xsbt.CompileLogger with IvyLogger
 *
 * This logger is thread-safe.
 * */
-final class BufferedLogger(delegate: AbstractLogger) extends Logger
+final class BufferedLogger(delegate: Logger) extends AbstractLogger
 {
 	override lazy val ansiCodesSupported = delegate.ansiCodesSupported
 	private[this] val buffers = wrap.Wrappers.weakMap[Thread, Buffer[LogEvent]]

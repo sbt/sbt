@@ -6,7 +6,7 @@ package sbt
 import Using._
 import ErrorHandling.translate
 
-import java.io.{ByteArrayOutputStream, BufferedWriter, File, FileInputStream, InputStream, OutputStream}
+import java.io.{BufferedReader, ByteArrayOutputStream, BufferedWriter, File, FileInputStream, InputStream, OutputStream}
 import java.net.{URI, URISyntaxException, URL}
 import java.nio.charset.Charset
 import java.util.jar.{Attributes, JarEntry, JarFile, JarInputStream, JarOutputStream, Manifest}
@@ -395,16 +395,20 @@ object IO
 	}
 	def copyLastModified(sourceFile: File, targetFile: File) = targetFile.setLastModified( sourceFile.lastModified )
 	def defaultCharset = utf8
-	def write(file: File, content: String, charset: Charset = defaultCharset, append: Boolean = false): Unit =
-		writeCharset(file, content, charset, append) { _.write(content)  }
 
-	def writeCharset[T](file: File, content: String, charset: Charset, append: Boolean)(f: BufferedWriter => T): T =
+	def write(file: File, content: String, charset: Charset = defaultCharset, append: Boolean = false): Unit =
+		writer(file, content, charset, append) { _.write(content)  }
+
+	def writer[T](file: File, content: String, charset: Charset, append: Boolean = false)(f: BufferedWriter => T): T =
 	{
 		if(charset.newEncoder.canEncode(content))
 			fileWriter(charset, append)(file) { f }
 		else
 			error("String cannot be encoded by charset " + charset.name)
 	}
+
+	def reader[T](file: File, charset: Charset = defaultCharset)(f: BufferedReader => T): T =
+		fileReader(charset)(file) { f }
 
 	def read(file: File, charset: Charset = defaultCharset): String =
 	{
@@ -428,6 +432,17 @@ object IO
 		out.toByteArray
 	}
 
+	def append(file: File, content: String, charset: Charset = defaultCharset): Unit =
+		write(file, content, charset, true)
+	def append(file: File, bytes: Array[Byte]): Unit =
+		writeBytes(file, bytes, true)
+
+	def write(file: File, bytes: Array[Byte]): Unit =
+		writeBytes(file, bytes, false)
+	private def writeBytes(file: File, bytes: Array[Byte], append: Boolean): Unit =
+		fileOutputStream(append)(file) { _.write(bytes) }
+
+
 	// Not optimized for large files
 	def readLines(file: File, charset: Charset = defaultCharset): List[String] =
 	{
@@ -441,7 +456,7 @@ object IO
 		}
 	}
 	def writeLines(file: File, lines: Seq[String], charset: Charset = defaultCharset, append: Boolean = false): Unit =
-		writeCharset(file, lines.headOption.getOrElse(""), charset, append) { w =>
+		writer(file, lines.headOption.getOrElse(""), charset, append) { w =>
 			lines.foreach { line => w.write(line); w.newLine() }
 		}
 

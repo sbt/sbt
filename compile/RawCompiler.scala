@@ -1,4 +1,8 @@
-package xsbt
+/* sbt -- Simple Build Tool
+ * Copyright 2009, 2010  Mark Harrah
+ */
+package sbt
+package compile
 
 	import java.io.File
 
@@ -6,7 +10,7 @@ package xsbt
 * is used, for example, to compile the interface/plugin code.
 * If `explicitClasspath` is true, the bootclasspath and classpath are not augmented.  If it is false,
 * the scala-library.jar from `scalaInstance` is put on bootclasspath and the scala-compiler jar goes on the classpath.*/
-class RawCompiler(val scalaInstance: ScalaInstance, cp: ClasspathOptions, log: CompileLogger)
+class RawCompiler(val scalaInstance: ScalaInstance, cp: ClasspathOptions, log: Logger)
 {
 	def apply(sources: Seq[File], classpath: Seq[File], outputDirectory: File, options: Seq[String])
 	{
