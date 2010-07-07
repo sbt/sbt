@@ -42,9 +42,11 @@ abstract class SbtProject(info: ProjectInfo) extends DefaultProject(info) with t
 	val ivy = "org.apache.ivy" % "ivy" % "2.1.0" intransitive()
 	val jsch = "com.jcraft" % "jsch" % "0.1.31" intransitive()
 	val jetty = "org.mortbay.jetty" % "jetty" % "6.1.14" % "optional"
+	val jettyplus = "org.mortbay.jetty" % "jetty-plus" % "6.1.14" % "optional"
 	
 	val jetty7server = "org.eclipse.jetty" % "jetty-server" % "7.0.1.v20091125" % "optional"
 	val jetty7webapp = "org.eclipse.jetty" % "jetty-webapp" % "7.0.1.v20091125" % "optional"
+	val jetty7plus = "org.eclipse.jetty" % "jetty-plus" % "7.0.1.v20091125" % "optional"
 
 	val testInterface = "org.scala-tools.testing" % "test-interface" % "0.5"
 
