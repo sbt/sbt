@@ -9,6 +9,7 @@ import ErrorHandling.translate
 import java.io.{BufferedReader, ByteArrayOutputStream, BufferedWriter, File, FileInputStream, InputStream, OutputStream}
 import java.net.{URI, URISyntaxException, URL}
 import java.nio.charset.Charset
+import java.util.Properties
 import java.util.jar.{Attributes, JarEntry, JarFile, JarInputStream, JarOutputStream, Manifest}
 import java.util.zip.{GZIPOutputStream, ZipEntry, ZipFile, ZipInputStream, ZipOutputStream}
 import scala.collection.mutable.HashSet
@@ -459,6 +460,12 @@ object IO
 		writer(file, lines.headOption.getOrElse(""), charset, append) { w =>
 			lines.foreach { line => w.write(line); w.newLine() }
 		}
+		
+	def write(properties: Properties, label: String, to: File) =
+		fileOutputStream()(to) { output => properties.store(output, label) }
+	def load(properties: Properties, from: File): Unit =
+		if(from.exists)
+			fileInputStream(from){ input => properties.load(input) }
 
 	/** A pattern used to split a String by path separator characters.*/
 	private val PathSeparatorPattern = java.util.regex.Pattern.compile(File.pathSeparator)

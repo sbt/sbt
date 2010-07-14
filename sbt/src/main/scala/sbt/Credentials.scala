@@ -12,11 +12,7 @@ object Credentials
 	def add(realm: String, host: String, userName: String, passwd: String): Unit =
 		CredentialsStore.INSTANCE.addCredentials(realm, host, userName, passwd)
 	/** Load credentials from the given file into Ivy's credentials cache.*/
-	def apply(file: String, log: Logger): Unit = apply(Path.fromFile(file), log)
-	/** Load credentials from the given file into Ivy's credentials cache.*/
-	def apply(file: File, log: Logger): Unit = apply(Path.fromFile(file), log)
-	/** Load credentials from the given file into Ivy's credentials cache.*/
-	def apply(path: Path, log: Logger)
+	def apply(path: File, log: Logger)
 	{
 		val msg =
 			if(path.exists)
@@ -24,7 +20,7 @@ object Credentials
 				val properties = new scala.collection.mutable.HashMap[String, String]
 				def get(keys: List[String]) = keys.flatMap(properties.get).firstOption.toRight(keys.head + " not specified in credentials file: " + path)
 
-					impl.MapUtilities.read(properties, path, log) orElse
+					MapIO.read(properties, path, log) orElse
 					{
 						List.separate( List(RealmKeys, HostKeys, UserKeys, PasswordKeys).map(get) ) match
 						{

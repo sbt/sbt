@@ -4,8 +4,8 @@
 package sbt
 
 import java.io.File
-import xsbti.AppProvider
-import FileUtilities._
+import IO._
+import Resources.error
 
 object Resources
 {
@@ -24,41 +24,44 @@ object Resources
 				error("Resource base directory '" + basePath + "' does not exist.")
 		}
 	}
+	def error(msg: String) = throw new ResourcesException(msg)
 	private val LoadErrorPrefix = "Error loading initial project: "
 }
+class ResourcesException(msg: String) extends Exception(msg)
 
 class Resources(val baseDirectory: File)
 {
 	import Resources._
 	// The returned directory is not actually read-only, but it should be treated that way
-	def readOnlyResourceDirectory(group: String, name: String): Either[String, File] =
+	def readOnlyResourceDirectory(group: String, name: String): File =
 	{
 		val groupDirectory = new File(baseDirectory, group)
 		if(groupDirectory.isDirectory)
 		{
 			val resourceDirectory = new File(groupDirectory, name)
 			if(resourceDirectory.isDirectory)
-				Right(resourceDirectory)
+				resourceDirectory
 			else
-				Left("Resource directory '" + name + "' in group '" + group + "' not found.")
+				error("Resource directory '" + name + "' in group '" + group + "' not found.")
 		}
 		else
-			Left("Group '" + group + "' not found.")
+			error("Group '" + group + "' not found.")
 	}
-	def readWriteResourceDirectory[T](group: String, name: String, log: Logger)
-		(withDirectory: File => Either[String, T]): Either[String, T] =
-			readOnlyResourceDirectory(group, name).right flatMap(file => readWriteResourceDirectory(file, log)(withDirectory))
-	def readWriteResourceDirectory[T](readOnly: File, log: Logger)
-		(withDirectory: File => Either[String, T]): Either[String, T] =
+	def readWriteResourceDirectory[T](group: String, name: String)(withDirectory: File => T): T =
+	{
+		val file = readOnlyResourceDirectory(group, name)
+		readWriteResourceDirectory(file)(withDirectory)
+	}
+
+	def readWriteResourceDirectory[T](readOnly: File)(withDirectory: File => T): T =
 	{
 		require(readOnly.isDirectory)
-		def readWrite(readOnly: File)(temporary: File): Either[String, T] =
+		def readWrite(readOnly: File)(temporary: File): T =
 		{
 			val readWriteDirectory = new File(temporary, readOnly.getName)
-			FileUtilities.copyDirectory(readOnly, readWriteDirectory, log).toLeft(()).right flatMap { x =>
-				withDirectory(readWriteDirectory)
-			}
+			copyDirectory(readOnly, readWriteDirectory)
+			withDirectory(readWriteDirectory)
 		}
-		doInTemporaryDirectory(log)(readWrite(readOnly))
+		withTemporaryDirectory(readWrite(readOnly))
 	}
 }

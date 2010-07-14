@@ -6,15 +6,17 @@ package sbt
 import java.io.File
 import java.net.{URL, URLClassLoader}
 import scala.xml.NodeSeq
+import classpath.ClasspathUtilities
 
 object JettyRunner
 {
 	val DefaultPort = 8080
 	val DefaultScanInterval = 3
 }
-class JettyRunner(configuration: JettyConfiguration) extends ExitHook
+//TODO: don't pass registry, just handle it in client
+class JettyRunner(configuration: JettyConfiguration, registry: ExitHookRegistry) extends ExitHook
 {
-	ExitHooks.register(this)
+	registry.register(this)
 
 	def name = "jetty-shutdown"
 	def runBeforeExiting() { stop() }
@@ -38,11 +40,11 @@ class JettyRunner(configuration: JettyConfiguration) extends ExitHook
 			val jettyFilter = (name: String) => name.startsWith("org.mortbay.") || name.startsWith("org.eclipse.jetty.")
 			val notJettyFilter = (name: String) => !jettyFilter(name)
 			
-			val dual = new xsbt.DualLoader(baseLoader, notJettyFilter, x => true, jettyLoader, jettyFilter, x => false)
+			val dual = new classpath.DualLoader(baseLoader, notJettyFilter, x => true, jettyLoader, jettyFilter, x => false)
 			
 			def createRunner(implClassName: String) =
 			{
-				val lazyLoader = new LazyFrameworkLoader(implClassName, Array(FileUtilities.classLocation[Stoppable].toURI.toURL), dual, baseLoader)
+				val lazyLoader = new classpath.LazyFrameworkLoader(implClassName, Array(IO.classLocation[Stoppable].toURI.toURL), dual, baseLoader)
 				ModuleUtilities.getObject(implClassName, lazyLoader).asInstanceOf[JettyRun]
 			}
 			val runner = try { createRunner(implClassName6) } catch { case e: NoClassDefFoundError => createRunner(implClassName7) }
@@ -89,7 +91,7 @@ sealed trait JettyConfiguration extends NotNull
 	/** The classpath to get Jetty from. */
 	def jettyClasspath: PathFinder
 	def classpathName: String
-	def log: Logger
+	def log: AbstractLogger
 }
 trait DefaultJettyConfiguration extends JettyConfiguration
 {
@@ -109,7 +111,7 @@ abstract class CustomJettyConfiguration extends JettyConfiguration
 	def jettyConfigurationXML: NodeSeq = NodeSeq.Empty
 }
 
-private class JettyLoggerBase(delegate: Logger)
+private class JettyLoggerBase(delegate: AbstractLogger)
 {
 	def getName = "JettyLogger"
 	def isDebugEnabled = delegate.atLevel(Level.Debug)

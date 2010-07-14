@@ -6,7 +6,7 @@ package sbt
 import java.io.File
 import scala.collection.mutable.{HashSet, Set}
 
-trait Format[T] extends NotNull
+trait Format[T]
 {
 	def toString(t: T): String
 	def fromString(s: String): T
@@ -35,11 +35,11 @@ object Format
 	def set[T](implicit format: Format[T]): Format[Set[T]] = new Format[Set[T]]
 	{
 		def toString(set: Set[T]) = set.toList.map(format.toString).mkString(File.pathSeparator)
-		def fromString(s: String) = (new HashSet[T]) ++ FileUtilities.pathSplit(s).map(_.trim).filter(!_.isEmpty).map(format.fromString)
+		def fromString(s: String) = (new HashSet[T]) ++ IO.pathSplit(s).map(_.trim).filter(!_.isEmpty).map(format.fromString)
 	}
 	implicit val string: Format[String] = new SimpleFormat[String] { def fromString(s: String) = s }
-	implicit val test: Format[Discovered] = new SimpleFormat[Discovered]
+	/*implicit val test: Format[Discovered] = new SimpleFormat[Discovered]
 	{
 		def fromString(s: String) = DiscoveredParser.parse(s).fold(error, x => x)
-	}
+	}*/
 }

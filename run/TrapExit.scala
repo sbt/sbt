@@ -106,11 +106,8 @@ object TrapExit
 	* thread (AWT-XAWT, AWT-Windows, ...)*/
 	private def allThreads: Set[Thread] =
 	{
-		val allThreads = wrap.Wrappers.toList(Thread.getAllStackTraces.keySet)
-		val threads = new scala.collection.mutable.HashSet[Thread]
-		for(thread <- allThreads if !isSystemThread(thread))
-			threads += thread
-		threads
+		import collection.JavaConversions._
+		Thread.getAllStackTraces.keySet.filter(thread => !isSystemThread(thread))
 	}
 	/** Returns true if the given thread is in the 'system' thread group and is an AWT thread other than
 	* AWT-EventQueue or AWT-Shutdown.*/

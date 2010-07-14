@@ -3,15 +3,11 @@
  */
 package sbt
 
-import scala.tools.nsc.{GenericRunnerCommand, Interpreter, InterpreterLoop, ObjectRunner, Settings}
-import scala.tools.nsc.interpreter.InteractiveReader
-import scala.tools.nsc.reporters.Reporter
-import scala.tools.nsc.util.ClassPath
-
 import java.io.File
 import java.net.{URL, URLClassLoader}
 import java.lang.reflect.{Method, Modifier}
 import Modifier.{isPublic, isStatic}
+import classpath.ClasspathUtilities
 
 trait ScalaRun
 {
@@ -37,7 +33,7 @@ class ForkRun(config: ForkScalaRun) extends ScalaRun
 			Some("Nonzero exit code returned from " + label + ": " + exitCode)
 	}
 }
-class Run(instance: xsbt.ScalaInstance) extends ScalaRun
+class Run(instance: ScalaInstance) extends ScalaRun
 {
 	/** Runs the class 'mainClass' using the given classpath and options using the scala runner.*/
 	def run(mainClass: String, classpath: Iterable[Path], options: Seq[String], log: Logger) =
@@ -59,7 +55,7 @@ class Run(instance: xsbt.ScalaInstance) extends ScalaRun
 			val main = getMainMethod(mainClassName, loader)
 			invokeMain(loader, main, options)
 		}
-		finally { xsbt.FileUtilities.delete(tempDir asFile) }
+		finally { IO.delete(tempDir asFile) }
 	}
 	private def invokeMain(loader: ClassLoader, main: Method, options: Seq[String])
 	{
@@ -85,8 +81,9 @@ object Run
 {
 	def run(mainClass: String, classpath: Iterable[Path], options: Seq[String], log: Logger)(implicit runner: ScalaRun) =
 		runner.run(mainClass, classpath, options, log)
+		
 	/** Executes the given function, trapping calls to System.exit. */
-	private[sbt] def executeTrapExit(f: => Unit, log: Logger): Option[String] =
+	def executeTrapExit(f: => Unit, log: Logger): Option[String] =
 	{
 		val exitCode = TrapExit(f, log)
 		if(exitCode == 0)
@@ -96,70 +93,5 @@ object Run
 		}
 		else
 			Some("Nonzero exit code: " + exitCode)
-	}
-	/** Create a settings object and execute the provided function if the settings are created ok.*/
-	private def createSettings(log: Logger)(f: Settings => Option[String]) =
-	{
-		val command = new GenericRunnerCommand(Nil, message => log.error(message))
-		if(command.ok)
-			f(command.settings)
-		else
-			Some(command.usageMsg)
-	}
-
-	/** Starts a Scala interpreter session with 'project' bound to the value 'current' in the console
-	* and the following two lines executed:
-	*   import sbt._
-	*   import current._
-	*/
-	def projectConsole(project: Project): Option[String] =
-	{
-		import project.log
-		createSettings(log) { interpreterSettings =>
-		createSettings(log) { compilerSettings =>
-			log.info("Starting scala interpreter with project definition " + project.name + " ...")
-			log.info("")
-			Control.trapUnit("Error during session: ", log)
-			{
-				JLine.withJLine {
-					val loop = new ProjectInterpreterLoop(compilerSettings, project)
-					executeTrapExit(loop.main(interpreterSettings), log)
-				}
-			}
-		}}
-	}
-	/** A custom InterpreterLoop with the purpose of creating an interpreter with Project 'project' bound to the value 'current',
-	* and the following three lines interpreted:
-	*   import sbt._
-	*   import Process._
-	*   import current._.
-	* To do this,
-	* 1)  The compiler uses a different settings instance: 'compilerSettings', which will have its classpath set to include
-	*    the Scala compiler and library jars and the classpath used to compile the project.
-	* 2) The parent class loader for the interpreter is the loader that loaded the project, so that the project can be bound to a variable
-	*    in the interpreter.
-	*/
-	private class ProjectInterpreterLoop(compilerSettings: Settings, project: Project) extends InterpreterLoop
-	{
-		override def createInterpreter()
-		{
-			val projectLoader = project.getClass.getClassLoader
-			val classpath = Project.getProjectClasspath(project)
-			val fullClasspath = classpath.get ++ Path.fromFiles(project.info.app.scalaProvider.jars)
-			compilerSettings.classpath.value = Path.makeString(fullClasspath)
-			project.log.debug("  console-project classpath:\n\t" + fullClasspath.mkString("\n\t"))
-
-			in = InteractiveReader.createDefault()
-			interpreter = new Interpreter(settings)
-			{
-				override protected def parentClassLoader = projectLoader
-				override protected def newCompiler(settings: Settings, reporter: Reporter) = super.newCompiler(compilerSettings, reporter)
-			}
-			interpreter.setContextClassLoader()
-			interpreter.bind("current", project.getClass.getName, project)
-			interpreter.interpret("import sbt._")
-			interpreter.interpret("import Process._")
-			interpreter.interpret("import current._")
-		}
 	}
 }

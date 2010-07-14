@@ -1,5 +1,5 @@
 /* sbt -- Simple Build Tool
- * Copyright 2008, 2009 David MacIver, Mark Harrah
+ * Copyright 2008, 2009, 2010 David MacIver, Mark Harrah
  */
 package sbt;
 
@@ -11,11 +11,12 @@ trait Dag[Node <: Dag[Node]]{
 }
 object Dag
 {
-	import scala.collection.mutable;
+	import scala.collection.{mutable, JavaConversions};
+	import JavaConversions.{asIterable, asSet}
 
 	def topologicalSort[T](root: T)(dependencies: T => Iterable[T]) = {
-		val discovered = new mutable.HashSet[T];
-		val finished = new wrap.MutableSetWrapper(new java.util.LinkedHashSet[T])
+		val discovered = new mutable.HashSet[T]
+		val finished = asSet(new java.util.LinkedHashSet[T])
 
 		def visit(dag : T){
 			if (!discovered(dag)) {

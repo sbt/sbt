@@ -131,6 +131,8 @@ object Path extends Alternatives with Mapper
 	implicit def pathToFile(path: Path): File = path.asFile
 	implicit def pathsToFiles[CC[X] <: TraversableLike[X,CC[X]]](cc: CC[Path])(implicit cb: generic.CanBuildFrom[CC[Path], File, CC[File]]): CC[File] =
 		cc.map(_.asFile)
+	implicit def filesToPaths[CC[X] <: TraversableLike[X,CC[X]]](cc: CC[File])(implicit cb: generic.CanBuildFrom[CC[File], Path, CC[Path]]): CC[Path] =
+		cc.map(fileToPath)
 	implicit def filesToFinder(cc: Traversable[File]): PathFinder = finder(cc)
 	implicit def pathsToFinder(cc: Traversable[Path]): PathFinder = lazyPathFinder(cc)
 	

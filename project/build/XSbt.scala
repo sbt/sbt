@@ -17,17 +17,20 @@ class XSbt(info: ProjectInfo) extends ParentProject(info) with NoCrossPaths
 	val collectionSub = testedBase(utilPath / "collection", "Collections")
 	val ioSub = testedBase(utilPath / "io", "IO", controlSub)
 	val classpathSub = baseProject(utilPath / "classpath", "Classpath", launchInterfaceSub, ioSub)
-	val classfileSub = testedBase(utilPath / "classfile", "Classfile", ioSub, interfaceSub)
 	val completeSub = testedBase(utilPath / "complete", "Completion", ioSub)
 	val logSub = project(utilPath / "log", "Logging", new LogProject(_), interfaceSub)
+	val classfileSub = testedBase(utilPath / "classfile", "Classfile", ioSub, interfaceSub, logSub)
 	val datatypeSub = baseProject(utilPath /"datatype", "Datatype Generator", ioSub)
-	val processSub = project(utilPath /"process", "Process", new Base(_) with TestWithIO, ioSub, logSub)
+	val processSub = project(utilPath / "process", "Process", new Base(_) with TestWithIO, ioSub, logSub)
+	val envSub= baseProject(utilPath / "env", "Properties", ioSub, logSub, classpathSub)
 
 	// intermediate-level modules
 	val ivySub = project("ivy", "Ivy", new IvyProject(_), interfaceSub, launchInterfaceSub, logSub)
 	val testingSub = project("testing", "Testing", new TestingProject(_), ioSub, classpathSub, logSub)
 	val taskSub = testedBase(tasksPath, "Tasks", controlSub, collectionSub)
 	val cacheSub = project(cachePath, "Cache", new CacheProject(_), ioSub, collectionSub)
+	val webappSub = project("web", "Web App", new WebAppProject(_), ioSub, logSub, classpathSub, controlSub)
+	val runSub = baseProject("run", "Run", ioSub, logSub, classpathSub, processSub)
 
 	// compilation/discovery related modules
 	val compileInterfaceSub = project(compilePath / "interface", "Compiler Interface", new CompilerInterfaceProject(_), interfaceSub)
@@ -35,16 +38,19 @@ class XSbt(info: ProjectInfo) extends ParentProject(info) with NoCrossPaths
 	val discoverySub = testedBase(compilePath / "discover", "Discovery", compileIncrementalSub, apiSub)
 	val compilePersistSub = project(compilePath / "persist", "Persist", new PersistProject(_), compileIncrementalSub, apiSub)
 	val compilerSub = project(compilePath, "Compile", new CompileProject(_),
-		launchInterfaceSub, interfaceSub, ivySub, ioSub, classpathSub, compileInterfaceSub, logSub, processSub)
+		launchInterfaceSub, interfaceSub, ivySub, ioSub, classpathSub, compileInterfaceSub, logSub)
 
-	val altCompilerSub = baseProject("main", "Alternate Compiler Test", compileIncrementalSub, compilerSub, ioSub, logSub, discoverySub, compilePersistSub)
+	val altCompilerSub = baseProject("main", "Alternate Compiler Test",
+		classfileSub, compileIncrementalSub, compilerSub, ioSub, logSub, discoverySub, compilePersistSub, processSub)
 
-	/** following are not updated for 2.8 or 0.9 */
+	/** following modules are not updated for 2.8 or 0.9 */
 	val testSub = project("scripted", "Test", new TestProject(_), ioSub)
 
 	val trackingSub = baseProject(cachePath / "tracking", "Tracking", cacheSub)
 
-	val sbtSub = project(sbtPath, "Simple Build Tool", new SbtProject(_) {}, compilerSub, launchInterfaceSub, testingSub, cacheSub, taskSub)
+	val sbtSub = project(sbtPath, "Simple Build Tool", new SbtProject(_) {},
+		compilerSub, launchInterfaceSub, testingSub, cacheSub, taskSub)
+
 	val installerSub = project(sbtPath / "install", "Installer", new InstallerProject(_) {}, sbtSub)
 
 	lazy val dist = task { None } dependsOn(launchSub.proguard, sbtSub.publishLocal, installerSub.publishLocal)
@@ -92,6 +98,35 @@ class XSbt(info: ProjectInfo) extends ParentProject(info) with NoCrossPaths
 		class TestSamples(info: ProjectInfo) extends Base(info) with NoCrossPaths with NoRemotePublish {
 			override def deliverProjectDependencies = Nil
 		}
+	}
+	class WebAppProject(info: ProjectInfo) extends Base(info)
+	{
+		val jetty = "org.mortbay.jetty" % "jetty" % "6.1.14" % "optional"
+
+		val jetty7server = "org.eclipse.jetty" % "jetty-server" % "7.0.1.v20091125" % "optional"
+		val jetty7webapp = "org.eclipse.jetty" % "jetty-webapp" % "7.0.1.v20091125" % "optional"
+
+		val optional = Configurations.Optional
+
+		/* For generating JettyRun for Jetty 6 and 7.  The only difference is the imports, but the file has to be compiled against each set of imports. */
+		override def compileAction = super.compileAction dependsOn (generateJettyRun6, generateJettyRun7)
+		def jettySrcDir = info.projectPath
+		def jettyTemplate = jettySrcDir / "LazyJettyRun.scala.templ"
+
+		lazy val generateJettyRun6 = generateJettyRunN("6")
+		lazy val generateJettyRun7 = generateJettyRunN("7")
+
+		def generateJettyRunN(n: String) =
+			generateJettyRun(jettyTemplate, jettySrcDir / ("LazyJettyRun" + n + ".scala"), n, jettySrcDir / ("jetty" + n + ".imports"))
+
+		def generateJettyRun(in: Path, out: Path, version: String, importsPath: Path) =
+			task
+			{
+				(for(template <- FileUtilities.readString(in asFile, log).right; imports <- FileUtilities.readString(importsPath asFile, log).right) yield
+					FileUtilities.write(out asFile, processJettyTemplate(template, version, imports), log).toLeft(()) ).left.toOption
+			}
+		def processJettyTemplate(template: String, version: String, imports: String): String =
+			template.replaceAll("""\Q${jetty.version}\E""", version).replaceAll("""\Q${jetty.imports}\E""", imports)
 	}
 	trait TestDependencies extends Project
 	{

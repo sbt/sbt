@@ -1,29 +1,27 @@
 /* sbt -- Simple Build Tool
  * Copyright 2009 Mark Harrah
  */
-package sbt.impl
-import sbt._
+package sbt
 
-private[sbt] object SelectMainClass
+object SelectMainClass
 {
-	def apply(promptIfMultipleChoices: Boolean, mainClasses: List[String]) =
+	// Some(SimpleReader.readLine _)
+	def apply(promptIfMultipleChoices: Option[String => Option[String]], mainClasses: List[String]) =
 	{
 		mainClasses match
 		{
 			case Nil => None
 			case head :: Nil => Some(head)
 			case multiple =>
-				if(promptIfMultipleChoices)
+				for(prompt <- promptIfMultipleChoices) yield
 				{
 					println("\nMultiple main classes detected, select one to run:\n")
 					for( (className, index) <- multiple.zipWithIndex )
 						println(" [" + (index+1) + "] " + className)
-					val line = trim(SimpleReader.readLine("\nEnter number: "))
+					val line = trim(prompt("\nEnter number: "))
 					println("")
 					toInt(line, multiple.length) map multiple.apply
 				}
-				else
-					None
 		}
 	}
 	private def trim(s: Option[String]) = s.getOrElse("")

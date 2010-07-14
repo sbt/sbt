@@ -3,7 +3,7 @@
  */
 package sbt
 
-sealed trait Version extends NotNull
+sealed trait Version
 case class BasicVersion(major: Int, minor: Option[Int], micro: Option[Int], extra: Option[String]) extends Version
 {
 	import Version._

@@ -12,7 +12,6 @@ abstract class SbtProject(info: ProjectInfo) extends DefaultProject(info) with t
 	def extraResources = descendents(info.projectPath / "licenses", "*") +++ "LICENSE" +++ "NOTICE"
 	override def mainResources = super.mainResources +++ extraResources
 
-	override def testOptions = ExcludeTests("sbt.ReflectiveSpecification" :: Nil) :: super.testOptions.toList
 	override def normalizedName = "sbt"
 
 	override def managedStyle = ManagedStyle.Ivy
@@ -41,10 +40,6 @@ abstract class SbtProject(info: ProjectInfo) extends DefaultProject(info) with t
 
 	val ivy = "org.apache.ivy" % "ivy" % "2.1.0" intransitive()
 	val jsch = "com.jcraft" % "jsch" % "0.1.31" intransitive()
-	val jetty = "org.mortbay.jetty" % "jetty" % "6.1.14" % "optional"
-	
-	val jetty7server = "org.eclipse.jetty" % "jetty-server" % "7.0.1.v20091125" % "optional"
-	val jetty7webapp = "org.eclipse.jetty" % "jetty-webapp" % "7.0.1.v20091125" % "optional"
 
 	val testInterface = "org.scala-tools.testing" % "test-interface" % "0.5"
 
@@ -64,20 +59,4 @@ abstract class SbtProject(info: ProjectInfo) extends DefaultProject(info) with t
 	override def packageSrcJar= defaultJarPath("-sources.jar")
 	/*val sourceArtifact = Artifact(artifactID, "src", "jar", "sources")
 	val docsArtifact = Artifact(artifactID, "doc", "jar", "javadoc")*/
-
-	/* For generating JettyRun for Jetty 6 and 7.  The only difference is the imports, but the file has to be compiled against each set of imports. */
-	override def compileAction = super.compileAction dependsOn (generateJettyRun6, generateJettyRun7)
-	def jettySrcDir = mainScalaSourcePath / "sbt" / "jetty"
-	def jettyTemplate = jettySrcDir / "LazyJettyRun.scala.templ"
-	
-	lazy val generateJettyRun6 = generateJettyRun(jettyTemplate, jettySrcDir / "LazyJettyRun6.scala", "6", jettySrcDir / "jetty6.imports")
-	lazy val generateJettyRun7 = generateJettyRun(jettyTemplate, jettySrcDir / "LazyJettyRun7.scala", "7", jettySrcDir / "jetty7.imports")
-	def generateJettyRun(in: Path, out: Path, version: String, importsPath: Path) =
-		task
-		{
-			(for(template <- FileUtilities.readString(in asFile, log).right; imports <- FileUtilities.readString(importsPath asFile, log).right) yield
-				FileUtilities.write(out asFile, processJettyTemplate(template, version, imports), log).toLeft(()) ).left.toOption
-		}
-	def processJettyTemplate(template: String, version: String, imports: String): String =
-		template.replaceAll("""\Q${jetty.version}\E""", version).replaceAll("""\Q${jetty.imports}\E""", imports)
 }

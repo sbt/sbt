@@ -3,7 +3,7 @@
  */
 package sbt
 
-	import sbt.compile.AnalyzingCompiler
+	import sbt.compile.{AnalyzingCompiler, JavaCompiler}
 	import java.io.File
 	import System.{currentTimeMillis => now}
 	import Path._
@@ -25,6 +25,7 @@ class AggressiveCompiler extends xsbti.AppMain
 		val launcher = app.scalaProvider.launcher
 		val sources = cwd ** ("*.scala" | "*.java")
 		val target = cwd / "target"
+		val javaBaseDirs = cwd :: Nil
 		val outputDirectory = target / "classes"
 		val classpath = outputDirectory +++ (cwd * "*.jar") +++(cwd * (-"project")).descendentsExcept( "*.jar", "project" || HiddenFileFilter)
 		val cacheDirectory = target / "cache"
@@ -32,11 +33,12 @@ class AggressiveCompiler extends xsbti.AppMain
 		val log = new ConsoleLogger with Logger with sbt.IvyLogger
 		val componentManager = new ComponentManager(launcher.globalLock, app.components, log)
 		val compiler = new AnalyzingCompiler(ScalaInstance(args.head, launcher), componentManager, log)
+		val javac = JavaCompiler.directOrFork(compiler.cp, compiler.scalaInstance)( (args: Seq[String], log: Logger) => Process("javac", args) ! log )
 
 		val agg = new AggressiveCompile(cacheDirectory)
 		try
 		{
-			val analysis = agg(sources.get.toSeq, classpath.get.toSeq, outputDirectory, options, compiler, log)
+			val analysis = agg(compiler, javac, sources.get.toSeq, classpath.get.toSeq, outputDirectory, javaBaseDirs, options)(log)
 			processResult(analysis, command)
 			true
 		}

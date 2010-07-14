@@ -42,7 +42,7 @@ object AnalysisFormats
 	implicit def fileFormat: Format[File] = wrap[File, String](_.getAbsolutePath, s => new File(s))
 	// can't require Format[Seq[String]] because its complexity is higher than Format[CompileOptions]
 	implicit def optsFormat(implicit strF: Format[String]): Format[CompileOptions] =
-		wrap[CompileOptions, Seq[String]](_.options, os => new CompileOptions(os))(seqFormat[String])
+		wrap[CompileOptions, (Seq[String],Seq[String])](co => (co.options, co.javacOptions), os => new CompileOptions(os._1, os._2))
 
 	implicit val orderFormat: Format[CompileOrder.Value] = enumerationFormat(CompileOrder)
 	implicit def seqFormat[T](implicit optionFormat: Format[T]): Format[Seq[T]] = viaSeq[Seq[T], T](x => x)

@@ -10,9 +10,9 @@ import scala.collection.mutable.HashSet
 
 object DagSpecification extends Properties("Dag")
 {
-	specify("No repeated nodes", (dag: TestDag) => isSet(dag.topologicalSort))
-	specify("Sort contains node", (dag: TestDag) => dag.topologicalSort.contains(dag))
-	specify("Dependencies precede node", (dag: TestDag) => dependenciesPrecedeNodes(dag.topologicalSort))
+	property("No repeated nodes") = forAll{ (dag: TestDag) => isSet(dag.topologicalSort) }
+	property("Sort contains node") = forAll{ (dag: TestDag) => dag.topologicalSort.contains(dag) }
+	property("Dependencies precede node") = forAll{ (dag: TestDag) => dependenciesPrecedeNodes(dag.topologicalSort) }
 
 	implicit lazy val arbTestDag: Arbitrary[TestDag] = Arbitrary(Gen.sized(dagGen))
 	private def dagGen(nodeCount: Int): Gen[TestDag] =
