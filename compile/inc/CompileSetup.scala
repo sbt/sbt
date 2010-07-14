@@ -15,7 +15,7 @@ object CompileOrder extends Enumeration
 //  We cannot require an implicit parameter Equiv[Seq[String]] to construct Equiv[CompileSetup]
 //    because complexity(Equiv[Seq[String]]) > complexity(Equiv[CompileSetup])
 //     (6 > 4)
-final class CompileOptions(val options: Seq[String])
+final class CompileOptions(val options: Seq[String], val javacOptions: Seq[String])
 final class CompileSetup(val outputDirectory: File, val options: CompileOptions, val compilerVersion: String, val order: CompileOrder.Value)
 
 object CompileSetup
@@ -32,7 +32,9 @@ object CompileSetup
 		def equiv(a: File, b: File) = a.getAbsoluteFile == b.getAbsoluteFile
 	}
 	implicit val equivOpts: Equiv[CompileOptions] = new Equiv[CompileOptions] {
-		def equiv(a: CompileOptions, b: CompileOptions) = a.options sameElements b.options
+		def equiv(a: CompileOptions, b: CompileOptions) =
+			(a.options sameElements b.options) &&
+			(a.javacOptions sameElements b.javacOptions) 
 	}
 	implicit val equivCompilerVersion: Equiv[String] = new Equiv[String] {
 		def equiv(a: String, b: String) = a == b

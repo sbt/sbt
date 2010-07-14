@@ -4,7 +4,6 @@
 package sbt
 package classfile
 
-import ClassfileLogger._
 import scala.collection.mutable
 import mutable.{ArrayBuffer, Buffer}
 import java.io.File
@@ -14,28 +13,26 @@ import java.lang.reflect.Modifier.{STATIC, PUBLIC, ABSTRACT}
 
 private[sbt] object Analyze
 {
-	def apply[T](basePath: Path, outputDirectory: Path, sources: Iterable[Path], roots: Iterable[Path], log: ClassfileLogger)
-		(allProducts: => scala.collection.Set[Path], analysis: xsbti.AnalysisCallback, loader: ClassLoader)
-		(compile: => Option[String]): Option[String] =
+	def apply[T](outputDirectory: Path, sources: Seq[Path], roots: Seq[Path], log: Logger)(analysis: xsbti.AnalysisCallback, loader: ClassLoader)(compile: => Unit)
 	{
 		val sourceSet = Set(sources.toSeq : _*)
 		val classesFinder = outputDirectory ** GlobFilter("*.class")
 		val existingClasses = classesFinder.get
 
-		def load(tpe: String, errMsg: => String): Option[Class[_]] =
+		def load(tpe: String, errMsg: => Option[String]): Option[Class[_]] =
 			try { Some(Class.forName(tpe, false, loader)) }
-			catch { case e => log.warn(errMsg + " : " +e.toString); None }
+			catch { case e => errMsg.foreach(msg => log.warn(msg + " : " +e.toString)); None }
 
 		// runs after compilation
 		def analyze()
 		{
 			val allClasses = Set(classesFinder.get.toSeq : _*)
-			val newClasses = allClasses -- existingClasses -- allProducts
+			val newClasses = allClasses -- existingClasses
 			
 			val productToSource = new mutable.HashMap[Path, Path]
 			val sourceToClassFiles = new mutable.HashMap[Path, Buffer[ClassFile]]
 
-			val superclasses = analysis.superclassNames flatMap { tpe => load(tpe, "Could not load superclass '" + tpe + "'") }
+			val superclasses = analysis.superclassNames flatMap { tpe => load(tpe, None) }
 			val annotations = analysis.annotationNames.toSeq
 
 			def annotated(fromClass: Seq[Annotation]) = if(fromClass.isEmpty) Nil else annotations.filter(fromClass.map(_.annotationType.getName).toSet)
@@ -58,7 +55,7 @@ private[sbt] object Analyze
 			for( (source, classFiles) <- sourceToClassFiles )
 			{
 				for(classFile <- classFiles if isTopLevel(classFile);
-					cls <- load(classFile.className, "Could not load '" + classFile.className + "' to check for superclasses.") )
+					cls <- load(classFile.className, Some("Could not load '" + classFile.className + "' to check for superclasses.")) )
 				{
 					for(superclass <- superclasses)
 						if(superclass.isAssignableFrom(cls))
@@ -78,7 +75,7 @@ private[sbt] object Analyze
 				{
 					trapAndLog(log)
 					{
-						val loaded = load(tpe, "Problem processing dependencies of source " + source)
+						val loaded = load(tpe, Some("Problem processing dependencies of source " + source))
 						for(clazz <- loaded; file <- ErrorHandling.convert(IO.classLocationFile(clazz)).right)
 						{
 							if(file.isDirectory)
@@ -108,7 +105,13 @@ private[sbt] object Analyze
 			}
 		}
 		
-		compile orElse ClassfileLogger.convertErrorMessage(log)(analyze()).left.toOption
+		compile
+		analyze()
+	}
+	private def trapAndLog(log: Logger)(execute: => Unit)
+	{
+		try { execute }
+		catch { case e => log.trace(e); log.error(e.toString) }
 	}
 	private def guessSourceName(name: String) = Some( takeToDollar(trimClassExt(name)) )
 	private def takeToDollar(name: String) =
@@ -119,7 +122,7 @@ private[sbt] object Analyze
 	private final val ClassExt = ".class"
 	private def trimClassExt(name: String) = if(name.endsWith(ClassExt)) name.substring(0, name.length - ClassExt.length) else name
 	private def resolveClassFile(file: File, className: String): File = (file /: (className.replace('.','/') + ClassExt).split("/"))(new File(_, _))
-	private def guessSourcePath(sources: scala.collection.Set[Path], roots: Iterable[Path], classFile: ClassFile, log: ClassfileLogger) =
+	private def guessSourcePath(sources: scala.collection.Set[Path], roots: Iterable[Path], classFile: ClassFile, log: Logger) =
 	{
 		val classNameParts = classFile.className.split("""\.""")
 		val lastIndex = classNameParts.length - 1

@@ -12,6 +12,8 @@ trait JavaCompiler
 }
 object JavaCompiler
 {
+	type Fork = (Seq[String], Logger) => Int
+
 	def construct(f: (Seq[String], Logger) => Int, cp: ClasspathOptions, scalaInstance: ScalaInstance): JavaCompiler =
 		new JavaCompiler {
 			def apply(sources: Seq[File], classpath: Seq[File], outputDirectory: File, options: Seq[String])(implicit log: Logger) {
@@ -24,20 +26,26 @@ object JavaCompiler
 				if( code != 0 ) throw new CompileFailed(arguments.toArray, "javac returned nonzero exit code")
 			}
 		}
-	def directOrFork(cp: ClasspathOptions, scalaInstance: ScalaInstance): JavaCompiler = construct(directOrForkJavac, cp, scalaInstance)
-	def direct(cp: ClasspathOptions, scalaInstance: ScalaInstance): JavaCompiler = construct(directJavac, cp, scalaInstance)
-	def fork(cp: ClasspathOptions, scalaInstance: ScalaInstance): JavaCompiler = construct(forkJavac, cp, scalaInstance)
+	def directOrFork(cp: ClasspathOptions, scalaInstance: ScalaInstance)(implicit doFork: Fork): JavaCompiler =
+		construct(directOrForkJavac, cp, scalaInstance)
+		
+	def direct(cp: ClasspathOptions, scalaInstance: ScalaInstance)(implicit doFork: Fork): JavaCompiler =
+		construct(directJavac, cp, scalaInstance)
 	
-	val directOrForkJavac = (arguments: Seq[String], log: Logger) => 
+	def fork(cp: ClasspathOptions, scalaInstance: ScalaInstance)(implicit doFork: Fork): JavaCompiler =
+		construct(forkJavac, cp, scalaInstance)
+	
+	def directOrForkJavac(implicit doFork: Fork) = (arguments: Seq[String], log: Logger) => 
 		try { directJavac(arguments, log) }
 		catch { case e: ClassNotFoundException => 
 			log.debug("com.sun.tools.javac.Main not found; forking javac instead")
-			forkJavac(arguments, log)
+			forkJavac(doFork)(arguments, log)
 		}
 
-	val forkJavac = (arguments: Seq[String], log: Logger) =>
+	/** `fork` should be a function that forks javac with the provided arguments and sends output to the given Logger.*/
+	def forkJavac(implicit doFork: Fork) = (arguments: Seq[String], log: Logger) =>
 	{
-		def externalJavac(argFile: File) = Process("javac", ("@" + normalizeSlash(argFile.getAbsolutePath)) :: Nil) ! log
+		def externalJavac(argFile: File) = doFork(("@" + normalizeSlash(argFile.getAbsolutePath)) :: Nil, log)
 		withArgumentFile(arguments)(externalJavac)
 	}
 	val directJavac = (arguments: Seq[String], log: Logger) =>

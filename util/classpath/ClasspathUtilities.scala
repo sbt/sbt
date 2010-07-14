@@ -200,7 +200,7 @@ class IncludePackagesFilter(include: Iterable[String]) extends PackageFilter(inc
 	def include(className: String): Boolean = matches(className)
 }
 
-private class LazyFrameworkLoader(runnerClassName: String, urls: Array[URL], parent: ClassLoader, grandparent: ClassLoader)
+private[sbt] class LazyFrameworkLoader(runnerClassName: String, urls: Array[URL], parent: ClassLoader, grandparent: ClassLoader)
 	extends LoaderBase(urls, parent)
 {
 	def doLoadClass(className: String): Class[_] =
