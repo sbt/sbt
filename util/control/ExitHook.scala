@@ -12,21 +12,11 @@ trait ExitHook extends NotNull
 	def runBeforeExiting(): Unit
 }
 
-trait ExitHookRegistry
+object ExitHooks
 {
-	def register(hook: ExitHook): Unit
-	def unregister(hook: ExitHook): Unit
-}
-
-
-class ExitHooks extends ExitHookRegistry
-{
-	private val exitHooks = new scala.collection.mutable.HashSet[ExitHook]
-	def register(hook: ExitHook) { exitHooks += hook }
-	def unregister(hook: ExitHook) { exitHooks -= hook }
 	/** Calls each registered exit hook, trapping any exceptions so that each hook is given a chance to run. */
-	def runExitHooks(debug: String => Unit): List[Throwable] =
-		exitHooks.toList.flatMap( hook =>
+	def runExitHooks(exitHooks: Seq[ExitHook]): Seq[Throwable] =
+		exitHooks.flatMap( hook =>
 			ErrorHandling.wideConvert( hook.runBeforeExiting() ).left.toOption
 		)
 }

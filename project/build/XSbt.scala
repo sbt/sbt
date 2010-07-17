@@ -40,11 +40,14 @@ class XSbt(info: ProjectInfo) extends ParentProject(info) with NoCrossPaths
 	val compilerSub = project(compilePath, "Compile", new CompileProject(_),
 		launchInterfaceSub, interfaceSub, ivySub, ioSub, classpathSub, compileInterfaceSub, logSub)
 
-	val altCompilerSub = baseProject("main", "Alternate Compiler Test",
-		classfileSub, compileIncrementalSub, compilerSub, ioSub, logSub, discoverySub, compilePersistSub, processSub)
+	val buildSub = baseProject("main" / "build", "Project Builder",
+		classfileSub, classpathSub, compilePersistSub, compilerSub, compileIncrementalSub, interfaceSub, ivySub, launchInterfaceSub, logSub, discoverySub, processSub)
+
+	val altCompilerSub = project("main", "Alternate Compiler Test", (i: ProjectInfo) => new Base(i) {  override def normalizedName = "sbt" }, // temporary
+		buildSub, compileIncrementalSub, compilerSub, completeSub, discoverySub, ioSub, logSub, processSub)
 
 	/** following modules are not updated for 2.8 or 0.9 */
-	val testSub = project("scripted", "Test", new TestProject(_), ioSub)
+	/*val testSub = project("scripted", "Test", new TestProject(_), ioSub)
 
 	val trackingSub = baseProject(cachePath / "tracking", "Tracking", cacheSub)
 
@@ -53,7 +56,7 @@ class XSbt(info: ProjectInfo) extends ParentProject(info) with NoCrossPaths
 
 	val installerSub = project(sbtPath / "install", "Installer", new InstallerProject(_) {}, sbtSub)
 
-	lazy val dist = task { None } dependsOn(launchSub.proguard, sbtSub.publishLocal, installerSub.publishLocal)
+	lazy val dist = task { None } dependsOn(launchSub.proguard, sbtSub.publishLocal, installerSub.publishLocal)*/
 
 	def baseProject(path: Path, name: String, deps: Project*) = project(path, name, new Base(_), deps : _*)
 	def testedBase(path: Path, name: String, deps: Project*) = project(path, name, new TestedBase(_), deps : _*)
@@ -131,8 +134,7 @@ class XSbt(info: ProjectInfo) extends ParentProject(info) with NoCrossPaths
 	trait TestDependencies extends Project
 	{
 		val sc = "org.scala-tools.testing" %% "scalacheck" % "1.7" % "test"
-		val sp = "org.scala-tools.testing" %% "specs" % "1.6.5-SNAPSHOT" % "test"
-		val snaps = ScalaToolsSnapshots
+		val sp = "org.scala-tools.testing" %% "specs" % "1.6.5" % "test"
 	}
 	class LogProject(info: ProjectInfo) extends Base(info) with TestDependencies
 	{
@@ -144,7 +146,7 @@ class XSbt(info: ProjectInfo) extends ParentProject(info) with NoCrossPaths
 	{
 		// these compilation options are useful for debugging caches and task composition
 		//override def compileOptions = super.compileOptions ++ List(Unchecked,ExplainTypes, CompileOption("-Xlog-implicits"))
-		val sbinary = "org.scala-tools.sbinary" %% "sbinary" % "0.3.1-SNAPSHOT"
+		val sbinary = "org.scala-tools.sbinary" %% "sbinary" % "0.3.1"
 	}
 	class Base(info: ProjectInfo) extends DefaultProject(info) with ManagedBase with Component with Licensed
 	{
@@ -246,7 +248,8 @@ class XSbt(info: ProjectInfo) extends ParentProject(info) with NoCrossPaths
 		
 		// sub projects for each version of Scala to precompile against other than the one sbt is built against
 		// each sub project here will add ~100k to the download
-		lazy val precompiled28 = precompiledSub("2.8.0.RC6")
+		//lazy val precompiled28 = precompiledSub("2.8.0")
+		lazy val precompiled27 = precompiledSub("2.7.7")
 
 		def precompiledSub(v: String) = 
 			project(info.projectPath, "Precompiled " + v, new Precompiled(v)(_), cip.info.dependencies.toSeq : _* /*doesn't include subprojects of cip*/ )
@@ -261,6 +264,7 @@ class XSbt(info: ProjectInfo) extends ParentProject(info) with NoCrossPaths
 			* subproject does not depend on any Scala subprojects, so mixing versions is not a problem. */
 			override def compileClasspath = cip.compileClasspath --- cip.mainUnmanagedClasspath +++ mainUnmanagedClasspath
 
+			override def compileOptions = Nil
 			// these ensure that the classes compiled against other versions of Scala are not exported (for compilation/testing/...)
 			override def projectClasspath(config: Configuration) = Path.emptyPathFinder
 		}

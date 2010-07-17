@@ -4,6 +4,7 @@
 package sbt
 
 	import sbt.compile.{AnalyzingCompiler, JavaCompiler}
+	import sbt.build.AggressiveCompile
 	import java.io.File
 	import System.{currentTimeMillis => now}
 	import Path._

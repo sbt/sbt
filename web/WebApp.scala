@@ -13,11 +13,8 @@ object JettyRunner
 	val DefaultPort = 8080
 	val DefaultScanInterval = 3
 }
-//TODO: don't pass registry, just handle it in client
-class JettyRunner(configuration: JettyConfiguration, registry: ExitHookRegistry) extends ExitHook
+class JettyRunner(configuration: JettyConfiguration) extends ExitHook
 {
-	registry.register(this)
-
 	def name = "jetty-shutdown"
 	def runBeforeExiting() { stop() }
 	private var running: Option[Stoppable] = None

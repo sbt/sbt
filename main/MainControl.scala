@@ -9,7 +9,7 @@ private case class Exit(code: Int) extends xsbti.Exit
 {
 	require(code >= 0)
 }
-private class Reboot(val scalaVersion: String, argsList: List[String], val app: xsbti.ApplicationID, val baseDirectory: File) extends xsbti.Reboot
+private class Reboot(val scalaVersion: String, argsList: Seq[String], val app: xsbti.ApplicationID, val baseDirectory: File) extends xsbti.Reboot
 {
 	def arguments = argsList.toArray
 }
@@ -24,8 +24,4 @@ private class ApplicationID(delegate: xsbti.ApplicationID, newVersion: String) e
 	def crossVersioned = delegate.crossVersioned
 	
 	def classpathExtra = delegate.classpathExtra
-}
-private final class ReloadException(val remainingArguments: List[String], val buildScalaVersion: Option[String]) extends RuntimeException
-{
-	override def fillInStackTrace = this
 }

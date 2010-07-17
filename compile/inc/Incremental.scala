@@ -11,6 +11,7 @@ import java.io.File
 
 object Incremental
 {
+	def println(s: String) = ()
 	def compile(sources: Set[File], previous: Analysis, current: ReadStamps, externalAPI: String => Source, doCompile: Set[File] => Analysis)(implicit equivS: Equiv[Stamp]): Analysis =
 	{
 		val initialChanges = changedInitial(sources, previous.stamps, previous.apis, current, externalAPI)
