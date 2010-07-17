@@ -87,8 +87,3 @@ object Discovery
 
 	def isUnit(t: Type): Boolean = named(t, "scala.Unit")
 }
-final case class Discovered(baseClasses: Set[String], annotations: Set[String], hasMain: Boolean, isModule: Boolean)
-object Discovered
-{
-	def empty = new Discovered(Set.empty, Set.empty, false, false)
-}
