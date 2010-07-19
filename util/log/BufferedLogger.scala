@@ -3,7 +3,6 @@
  */
 package sbt
 
-	import sbt.{AbstractLogger, ControlEvent, Level, Log, LogEvent, SetLevel, SetTrace, Success, Trace}
 	import scala.collection.mutable.ListBuffer
 
 /** A logger that can buffer the logging done on it and then can flush the buffer
