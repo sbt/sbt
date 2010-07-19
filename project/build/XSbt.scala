@@ -138,7 +138,8 @@ class XSbt(info: ProjectInfo) extends ParentProject(info) with NoCrossPaths
 	}
 	class LogProject(info: ProjectInfo) extends Base(info) with TestDependencies
 	{
-		val jline = jlineDep
+		val opt = Configurations.Optional
+		val jline = jlineDep % "optional"
 	}
 	class CacheProject(info: ProjectInfo) extends Base(info) with SBinaryDep
 	class PersistProject(info: ProjectInfo) extends Base(info) with SBinaryDep
