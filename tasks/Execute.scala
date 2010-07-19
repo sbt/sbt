@@ -15,6 +15,7 @@ object Execute
 {
 	trait Part1of2K[M[_[_], _], A[_]] { type Apply[T] = M[A, T] }
 	type NodeT[A[_]] = Part1of2K[Node, A]
+	type NodeView[A[_]] = A ~> NodeT[A]#Apply
 	
 	def idMap[A,B]: Map[A, B] = JavaConversions.asMap(new java.util.IdentityHashMap[A,B])
 	def pMap[A[_], B[_]]: PMap[A,B] = new DelegatingPMap[A, B](idMap)
@@ -27,7 +28,7 @@ sealed trait Completed {
 }
 
 
-final class Execute[A[_] <: AnyRef](checkCycles: Boolean)(implicit view: A ~> NodeT[A]#Apply )
+final class Execute[A[_] <: AnyRef](checkCycles: Boolean)(implicit view: NodeView[A] )
 {
 	type Strategy = CompletionService[A[_], Completed]
 

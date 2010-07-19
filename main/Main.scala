@@ -3,6 +3,7 @@
  */
 package sbt
 
+import Execute.NodeView
 import complete.HistoryCommands
 import HistoryCommands.{Start => HistoryPrefix}
 import sbt.build.{AggressiveCompile, Build, BuildException, Parse, ParseException}
@@ -76,6 +77,20 @@ object Commands
 			s.exit(true)
 		}
 	}
+
+	def act = Command { case s @ State(p: Tasked) =>
+		new Apply {
+			def help = p.help
+			def run = in => {
+				lazy val (checkCycles, maxThreads) = p match {
+					case c: TaskSetup => (c.checkCycles, c.maxThreads)
+					case _ => (false, Runtime.getRuntime.availableProcessors)
+				}
+				for(task <- p.task(in.name, s)) yield
+					processResult(runTask(task, checkCycles, maxThreads)(p.taskToNode), s)
+			}
+		}
+	}
 	
 	def load = Command { case s => Apply(Nil) {
 		case Input(line) if line.startsWith("load") =>
@@ -95,6 +110,23 @@ object Commands
 	
 	val Exit = "exit"
 	val Quit = "quit"
-	/** The list of lowercase command names that may be used to terminate the program.*/
+	/** The list of command names that may be used to terminate the program.*/
 	val TerminateActions: Seq[String] = Seq(Exit, Quit)
+
+
+	def runTask[Task[_] <: AnyRef](root: Task[State], checkCycles: Boolean, maxWorkers: Int)(implicit taskToNode: NodeView[Task]): Result[State] =
+	{
+		val (service, shutdown) = CompletionService[Task[_], Completed](maxWorkers)
+
+		val x = new Execute[Task](checkCycles)(taskToNode)
+		try { x.run(root)(service) } finally { shutdown() }
+	}
+	def processResult[State](result: Result[State], original: State): State =
+		result match
+		{
+			case Value(v) => v
+			case Inc(Incomplete(tpe, message, causes, directCause)) => // tpe: IValue = Error, message: Option[String] = None, causes: Seq[Incomplete] = Nil, directCause: Option[Throwable] = None)
+				println("Task did not complete successfully (TODO: error logging)")
+				original
+		}
 }

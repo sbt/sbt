@@ -9,6 +9,7 @@ import classpath.ClasspathUtilities.toLoader
 import ModuleUtilities.getObject
 import compile.{AnalyzingCompiler, JavaCompiler}
 import Path._
+import GlobFilter._
 
 final class BuildException(msg: String) extends RuntimeException(msg)
 
@@ -24,8 +25,17 @@ object Build
 				binary(classpath, module, name, loader(configuration))
 			case SourceLoad(classpath, sourcepath, output, module, auto, name) =>
 				source(classpath, sourcepath, output, module, auto, name, configuration)
-			case _ => error("Not implemented yet")
+			case ProjectLoad(base, name) =>
+				project(base, name, configuration)
 		}
+
+	def project(base: File, name: String, configuration: xsbti.AppConfiguration): Any =
+	{
+		val nonEmptyName = if(name.isEmpty) "Project" else name
+		val buildDir = base / "project" / "build"
+		val sources = buildDir * "*.scala" +++ buildDir / "src" / "main" / "scala" ** "*.scala"
+		source(Nil, sources.get.toSeq, Some(buildDir / "target" asFile), false, Auto.Explicit, nonEmptyName, configuration)
+	}
 		
 	def binary(classpath: Seq[File], module: Boolean, name: String, parent: ClassLoader): Any =
 	{

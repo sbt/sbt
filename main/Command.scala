@@ -41,7 +41,18 @@ trait HistoryEnabled
 {
 	def historyPath: Option[Path]
 }
-
+trait Tasked
+{
+	type Task[T] <: AnyRef
+	def task(name: String, state: State): Option[Task[State]]
+	implicit def taskToNode: NodeView[Task]
+	def help: Seq[(String, String)]
+}
+trait TaskSetup
+{
+	def maxThreads = Runtime.getRuntime.availableProcessors
+	def checkCycles = false
+}
 final case class Input(line: String)
 {
 	def name: String = error("TODO")
