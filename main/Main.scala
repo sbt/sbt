@@ -36,7 +36,7 @@ class xMain extends xsbti.AppMain
 	def process(command: String, state: State): State =
 	{
 		val in = Input(command)
-		Commands.applicable(state).flatMap( _.run.lift(in) ).headOption.getOrElse {
+		Commands.applicable(state).flatMap( _.run(in) ).headOption.getOrElse {
 			System.err.println("Unknown command '" + command + "'")
 			state.fail
 		}
@@ -48,7 +48,7 @@ class xMain extends xsbti.AppMain
 object Commands
 {
 	def applicable(state: State): Stream[Apply] =
-		state.processors.toStream.flatMap(_.applies.lift(state) )
+		state.processors.toStream.flatMap(_.applies(state) )
 		
 	def help = Command.simple("help", ("help", "Displays this help message.")) { s =>
 		val message = applicable(s).flatMap(_.help).map { case (a,b) => a + " : " + b }.mkString("\n")

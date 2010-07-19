@@ -3,27 +3,34 @@
  */
 package sbt
 
+import Execute.NodeView
+
 sealed trait Command
 {
-	def applies: PartialFunction[State, Apply]
+	def applies: State => Option[Apply]
 }
 trait Apply
 {
 	def help: Seq[(String,String)]
-	def run: PartialFunction[Input, State]
+	def run: Input => Option[State]
 }
 object Command
 {
-	def apply(f: PartialFunction[State, Apply]): Command =
+	def direct(f: State => Option[Apply]): Command =
 		new Command { def applies = f }
+	def apply(f: PartialFunction[State, Apply]): Command =
+		direct(f.lift)
 		
 	def simple(name: String, help: (String, String)*)(f: State => State): Command =
 		apply { case s => Apply(help) { case in if in.line == name => f(s) }}
 }
 object Apply
 {
-	def apply(h: Seq[(String,String)])(r: PartialFunction[Input, State]): Apply =
+	def direct(h: Seq[(String,String)])(r: Input => Option[State]): Apply =
 		new Apply { def help = h; def run = r }
+		
+	def apply(h: Seq[(String,String)])(r: PartialFunction[Input, State]): Apply =
+		direct(h)(r.lift)
 }
 
 trait Logged
