@@ -17,7 +17,8 @@ class Retrieve(retrieveDirectory: File, module: ModuleID, lock: xsbti.GlobalLock
 		val update = new UpdateConfiguration(retrieveDirectory, retrievePattern, true, logging)
 		val ivySbt = new IvySbt(configuration)
 		val ivyModule = new ivySbt.Module(moduleConfiguration)
-		
+
+		log.info("Getting processor...")
 		lock(lockFile, Callable { IvyActions.update(ivyModule, update) } )
 	}
 	def thisID = ModuleID("org.scala-tools.sbt", "retrieve-processor", "1.0")
