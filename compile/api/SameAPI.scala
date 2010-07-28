@@ -44,11 +44,11 @@ object SameAPI
 	{
 		val start = System.currentTimeMillis
 		
-		println("\n=========== API #1 ================")
+		/*println("\n=========== API #1 ================")
 		import DefaultShowAPI._
 		println(ShowAPI.show(a))
 		println("\n=========== API #2 ================")
-		println(ShowAPI.show(b))
+		println(ShowAPI.show(b))*/
 
 		/** de Bruijn levels for type parameters in source a and b*/
 		val tagsA = TagTypeVariables(a)
