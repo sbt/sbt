@@ -8,6 +8,7 @@ import java.io.File
 import classpath.ClasspathUtilities.toLoader
 import ModuleUtilities.getObject
 import compile.{AnalyzingCompiler, JavaCompiler}
+import inc.Analysis
 import Path._
 import GlobFilter._
 
@@ -18,43 +19,36 @@ object Build
 	def loader(configuration: xsbti.AppConfiguration): ClassLoader =
 		configuration.provider.mainClass.getClassLoader
 	
-	def apply(command: LoadCommand, configuration: xsbti.AppConfiguration): Any =
+	def apply(command: LoadCommand, configuration: xsbti.AppConfiguration, allowMultiple: Boolean = false): Seq[Any] =
 		command match
 		{
 			case BinaryLoad(classpath, module, name) =>
-				binary(classpath, module, name, loader(configuration))
+				binary(classpath, module, name, loader(configuration), allowMultiple)
 			case SourceLoad(classpath, sourcepath, output, module, auto, name) =>
-				source(classpath, sourcepath, output, module, auto, name, configuration)
-			case ProjectLoad(base, name) =>
-				project(base, name, configuration)
+				source(classpath, sourcepath, output, module, auto, name, configuration, allowMultiple)._1
+			case ProjectLoad(base, auto, name) =>
+				project(base, auto, name, configuration, allowMultiple)._1
 		}
 
-	def project(base: File, name: String, configuration: xsbti.AppConfiguration): Any =
+	def project(base: File, auto: Auto.Value, name: String, configuration: xsbti.AppConfiguration, allowMultiple: Boolean = false): (Seq[Any], Analysis) =
 	{
-		val nonEmptyName = if(name.isEmpty) "Project" else name
 		val buildDir = base / "project" / "build"
 		val sources = buildDir * "*.scala" +++ buildDir / "src" / "main" / "scala" ** "*.scala"
-		source(Nil, sources.get.toSeq, Some(buildDir / "target" asFile), false, Auto.Explicit, nonEmptyName, configuration)
+		source(Nil, sources.get.toSeq, Some(buildDir / "target" asFile), false, auto, name, configuration, allowMultiple)
 	}
 		
-	def binary(classpath: Seq[File], module: Boolean, name: String, parent: ClassLoader): Any =
+	def binary(classpath: Seq[File], module: Boolean, name: String, parent: ClassLoader, allowMultiple: Boolean = false): Seq[Any] =
 	{
 		if(name.isEmpty)
 			error("Class name required to load binary project.")
 		else
 		{
-			val loader = toLoader(classpath, parent)
-			if(module)
-				getObject(name, loader)
-			else
-			{
-				val clazz = Class.forName(name, true, loader)
-				clazz.newInstance
-			}
+			val names = if(allowMultiple) name.split(",").toSeq else Seq(name)
+			binaries(classpath, module, names, parent)
 		}
 	}
 	
-	def source(classpath: Seq[File], sources: Seq[File], output: Option[File], module: Boolean, auto: Auto.Value, name: String, configuration: xsbti.AppConfiguration): Any =
+	def source(classpath: Seq[File], sources: Seq[File], output: Option[File], module: Boolean, auto: Auto.Value, name: String, configuration: xsbti.AppConfiguration, allowMultiple: Boolean = false): (Seq[Any], Analysis) =
 	{
 		// TODO: accept Logger as an argument
 		val log = new ConsoleLogger with Logger with sbt.IvyLogger
@@ -78,7 +72,9 @@ object Build
 		val analysis = agg(compiler, javac, sources, compileClasspath, outputDirectory, Nil, Nil)(log)
 		
 		val discovered = discover(analysis, module, auto, name)
-		load(discovered)(x => binary(projectClasspath, module, x, loader(configuration)) )
+		val loaded = binaries(projectClasspath, module, check(discovered, allowMultiple), loader(configuration))
+
+		(loaded, analysis)
 	}
 	def discover(analysis: inc.Analysis, module: Boolean, auto: Auto.Value, name: String): Seq[String] =
 	{
@@ -92,16 +88,33 @@ object Build
 	def discover(analysis: inc.Analysis, module: Boolean, discovery: inc.Discovery): Seq[String] =
 	{
 		for(src <- analysis.apis.internal.values.toSeq;
-			(df, found) <- discovery(src.definitions) if found.isModule == module)
+			(df, found) <- discovery(src.definitions) if !found.isEmpty && found.isModule == module)
 		yield
 			df.name
 	}
-	def load(discovered: Seq[String])(doLoad: String => Any): Any =
+
+	def binaries(classpath: Seq[File], module: Boolean, names: Seq[String], parent: ClassLoader): Seq[Any] =
+		loadBinaries(names, module, toLoader(classpath, parent))
+
+	def loadBinaries(names: Seq[String], module: Boolean, loader: ClassLoader): Seq[Any] =
+		for(name <- names if !name.isEmpty) yield
+			loadBinary(name, module, loader)
+
+	def loadBinary(name: String, module: Boolean, loader: ClassLoader): Any =
+		if(module)
+			getObject(name, loader)
+		else
+		{
+			val clazz = Class.forName(name, true, loader)
+			clazz.newInstance
+		}
+
+	def check(discovered: Seq[String], allowMultiple: Boolean): Seq[String] =
 		discovered match
 		{
 			case Seq() => error("No project found")
-			case Seq(x) => doLoad(x)
-			case xs => error("Multiple projects found: " + discovered.mkString(", "))
+			case Seq(x) => discovered
+			case _ => if(allowMultiple) discovered else error("Multiple projects found: " + discovered.mkString(", "))
 		}
 	
 	def error(msg: String) = throw new BuildException(msg)

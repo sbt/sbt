@@ -3,6 +3,8 @@
  */
 package sbt
 
+import java.io.File
+
 case class State(project: Any)(
 	val configuration: xsbti.AppConfiguration,
 	val processors: Seq[Command],
@@ -20,18 +22,24 @@ trait StateOps {
 	def reload: State
 	def exit(ok: Boolean): State
 	def fail: State
+	def ++ (newCommands: Seq[Command]): State
+	def + (newCommand: Command): State
+	def baseDir: File
 }
 object State
 {
 	implicit def stateOps(s: State): StateOps = new StateOps {
 		def process(f: (String, State) => State): State =
 			s.commands match {
-				case x :: xs => f(x, s.copy()(commands = xs))
-				case Nil => exit(true)
+				case Seq(x, xs @ _*) => f(x, s.copy()(commands = xs))
+				case Seq() => exit(true)
 			}
 			s.copy()(commands = s.commands.drop(1))
 		def ::: (newCommands: Seq[String]): State = s.copy()(commands = newCommands ++ s.commands)
-		def :: (command: String): State = s.copy()(commands = command +: s.commands)
+		def :: (command: String): State = (command :: Nil) ::: this
+		def ++ (newCommands: Seq[Command]): State = s.copy()(processors = s.processors ++ newCommands)
+		def + (newCommand: Command): State = this ++ (newCommand :: Nil)
+		def baseDir: File = s.configuration.baseDirectory
 		def setNext(n: Next.Value) = s.copy()(next = n)
 		def continue = setNext(Next.Continue)
 		def reload = setNext(Next.Reload)

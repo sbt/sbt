@@ -17,7 +17,7 @@ class XSbt(info: ProjectInfo) extends ParentProject(info) with NoCrossPaths
 	val collectionSub = testedBase(utilPath / "collection", "Collections")
 	val ioSub = testedBase(utilPath / "io", "IO", controlSub)
 	val classpathSub = baseProject(utilPath / "classpath", "Classpath", launchInterfaceSub, ioSub)
-	val completeSub = testedBase(utilPath / "complete", "Completion", ioSub)
+	val completeSub = project(utilPath / "complete", "Completion", new InputProject(_), controlSub, ioSub)
 	val logSub = project(utilPath / "log", "Logging", new LogProject(_), interfaceSub)
 	val classfileSub = testedBase(utilPath / "classfile", "Classfile", ioSub, interfaceSub, logSub)
 	val datatypeSub = baseProject(utilPath /"datatype", "Datatype Generator", ioSub)
@@ -101,6 +101,10 @@ class XSbt(info: ProjectInfo) extends ParentProject(info) with NoCrossPaths
 		class TestSamples(info: ProjectInfo) extends Base(info) with NoCrossPaths with NoRemotePublish {
 			override def deliverProjectDependencies = Nil
 		}
+	}
+	class InputProject(info: ProjectInfo) extends TestedBase(info)
+	{
+		val jline = jlineDep
 	}
 	class WebAppProject(info: ProjectInfo) extends Base(info)
 	{

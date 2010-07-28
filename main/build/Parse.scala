@@ -8,48 +8,56 @@ import java.io.File
 
 final class ParseException(msg: String) extends RuntimeException(msg)
 
-/** Parses a load command.
-*
-* load ::= 'load' (binary | source | project)
-*
-* binary ::= classpath module name
-* source ::= classpath '-src' paths ('-d' dir)? ('-auto' ('sub' | 'annot'))? module name
-* project ::= ('-project' path)? name?
-*
-* name ::= '-name' nameString
-* module ::= ('-module' ('true'|'false') )?
-* classpath ::= '-cp' paths 
-* path ::= pathChar+
-* paths ::= path (pathSep path)*
-*/
-
+/** Parses a load command. The implementation is a quick hack.
+It is not robust and feedback is not helpful.*/
 object Parse
 {
+	def helpBrief(name: String, label: String): (String, String) = (name + " <options>", "Loads " + label + " according to the specified options.")
+	def helpDetail(name: String, label: String, multiple: Boolean) =
+"Loads " + label + """ by one of the following methods:
+ 1) binary: loads a class from an existing classpath
+ 2) source: compiles provided sources and loads a specific class
+ 3) project: builds from source using default settings
+
+The command has the following syntax:
+
+  load ::= """ + name + """ ('-help' | binary | source | project)
+
+  binary ::= classpath module? name
+  source ::= classpath? sources out? module? (detect | name)
+  project ::= base? name?
+
+  base ::= '-project' path
+  sources ::=  '-src' paths
+  out ::= '-d' dir
+  detect ::= '-auto' ('sub' | 'annot')
+  name ::= '-name' nameString
+  module ::= '-module' ('true'|'false')
+  classpath ::= '-cp' paths
+  path ::= pathChar+
+  paths ::= path (pathSep path)*
+""" +
+( if(multiple) "\nTo specify multiple names, separate them by commas." else "")
+
 	import File.{pathSeparatorChar => sep}
 
 	def error(msg: String) = throw new ParseException(msg)
 	def apply(commandString: String)(implicit base: File): LoadCommand =
 	{
-		val tokens = commandString.split("""\s+""").toSeq
-		if(tokens.isEmpty) error("Empty command")
-		else if(tokens.head != "load") error("Not a load command")
+		val args = commandString.split("""\s+""").toSeq
+		val srcs = sourcepath(args)
+		val nme = name(args)
+
+		lazy val cp = classpath(args)
+		lazy val mod = module(args)
+		lazy val proj = project(args).getOrElse(base)
+
+		if(!srcs.isEmpty)
+			SourceLoad(cp, srcs, output(args), mod, auto(args), nme)
+		else if(!cp.isEmpty)
+			BinaryLoad(cp, mod, nme)
 		else
-		{
-			val args = tokens.drop(1)
-			val srcs = sourcepath(args)
-			val nme = name(args)
-			
-			lazy val cp = classpath(args)
-			lazy val mod = module(args)
-			lazy val proj = project(args).getOrElse(base)
-			
-			if(!srcs.isEmpty)
-				SourceLoad(cp, srcs, output(args), mod, auto(args), nme)
-			else if(!cp.isEmpty)
-				BinaryLoad(cp, mod, nme)
-			else
-				ProjectLoad(proj, nme)
-		}
+			ProjectLoad(proj, auto(args), nme)
 	}
 	
 	def auto(args: Seq[String]): Auto.Value =
