@@ -39,7 +39,12 @@ class xMain extends xsbti.AppMain
 				new Reboot(app.scalaProvider.version, state.commands, app.id, state.configuration.baseDirectory)
 		}
 	}
-	def next(state: State): State = state.process(process)
+	def next(state: State): State =
+		ErrorHandling.wideConvert { state.process(process) } match
+		{
+			case Right(s) => s
+			case Left(t) => Commands.handleException(t, state)
+		}
 	def process(command: String, state: State): State =
 	{
 		val in = Input(command, None)
@@ -193,8 +198,15 @@ object Commands
 		loadCommand(in.arguments, s.configuration, false, "sbt.Project") match // TODO: classOf[Project].getName when ready
 		{
 			case Right(Seq(newValue)) => runExitHooks(s).copy(project = newValue)()
-			case Left(e) => e.printStackTrace; System.err.println(e.toString); s.fail // TODO: log instead of print
+			case Left(e) => handleException(e, s)
 		}
+	}
+	
+	def handleException(e: Throwable, s: State): State = {
+		// TODO: log instead of print
+		e.printStackTrace
+		System.err.println(e.toString)
+		s.fail
 	}
 	
 	def runExitHooks(s: State): State = {
