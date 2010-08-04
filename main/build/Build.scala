@@ -19,7 +19,7 @@ object Build
 	def loader(configuration: xsbti.AppConfiguration): ClassLoader =
 		configuration.provider.mainClass.getClassLoader
 	
-	def apply(command: LoadCommand, configuration: xsbti.AppConfiguration, allowMultiple: Boolean = false): Seq[Any] =
+	def apply(command: LoadCommand, configuration: xsbti.AppConfiguration, allowMultiple: Boolean): Seq[Any] =
 		command match
 		{
 			case BinaryLoad(classpath, module, name) =>
@@ -30,14 +30,14 @@ object Build
 				project(base, auto, name, configuration, allowMultiple)._1
 		}
 
-	def project(base: File, auto: Auto.Value, name: String, configuration: xsbti.AppConfiguration, allowMultiple: Boolean = false): (Seq[Any], Analysis) =
+	def project(base: File, auto: Auto.Value, name: String, configuration: xsbti.AppConfiguration, allowMultiple: Boolean): Seq[Any] =
 	{
 		val buildDir = base / "project" / "build"
 		val sources = buildDir * "*.scala" +++ buildDir / "src" / "main" / "scala" ** "*.scala"
 		source(Nil, sources.get.toSeq, Some(buildDir / "target" asFile), false, auto, name, configuration, allowMultiple)
 	}
 		
-	def binary(classpath: Seq[File], module: Boolean, name: String, parent: ClassLoader, allowMultiple: Boolean = false): Seq[Any] =
+	def binary(classpath: Seq[File], module: Boolean, name: String, parent: ClassLoader, allowMultiple: Boolean): Seq[Any] =
 	{
 		if(name.isEmpty)
 			error("Class name required to load binary project.")
