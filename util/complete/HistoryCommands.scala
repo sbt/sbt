@@ -38,7 +38,7 @@ object HistoryCommands
 	def printHelp(): Unit =
 		println(helpString)
 
-	def apply(s: String, historyPath: Option[Path], maxLines: Int, error: (=> String) => Unit): Option[List[String]] =
+	def apply(s: String, historyPath: Option[Path], maxLines: Int, error: String => Unit): Option[List[String]] =
 		if(s.isEmpty)
 		{
 			printHelp()
