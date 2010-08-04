@@ -33,7 +33,7 @@ object Build
 	def project(base: File, auto: Auto.Value, name: String, configuration: xsbti.AppConfiguration, allowMultiple: Boolean): Seq[Any] =
 	{
 		val buildDir = base / "project" / "build"
-		val sources = buildDir * "*.scala" +++ buildDir / "src" / "main" / "scala" ** "*.scala"
+		val sources = (buildDir * "*.scala") +++ (buildDir / "src" / "main" / "scala" ** "*.scala")
 		source(Nil, sources.get.toSeq, Some(buildDir / "target" asFile), false, auto, name, configuration, allowMultiple)
 	}
 		
