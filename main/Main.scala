@@ -49,8 +49,11 @@ class xMain extends xsbti.AppMain
 	{
 		val in = Input(command, None)
 		Commands.applicable(state).flatMap( _.run(in) ).headOption.getOrElse {
-			System.err.println("Unknown command '" + command + "'")
-			state.fail
+			if(command.isEmpty) state
+			else {
+				System.err.println("Unknown command '" + command + "'")
+				state.fail
+			}
 		}
 	}
 }
@@ -58,7 +61,8 @@ class xMain extends xsbti.AppMain
 import CommandSupport._
 object Commands
 {
-	def DefaultCommands = Seq(help, reload, read, history, exit, load, loadCommands, projects, project, setOnFailure, ifLast, multi, shell, alias, act)
+	def DefaultCommands = Seq(help, reload, read, history, exit, load, loadCommands, compile, discover,
+		projects, project, setOnFailure, ifLast, multi, shell, alias, append, act)
 
 	def applicable(state: State): Stream[Apply] =
 		state.processors.toStream.flatMap(_.applies(state) )
@@ -89,10 +93,13 @@ object Commands
 	}
 	
 	def shell = Command.simple(Shell, ShellBrief, ShellDetailed) { (in, s) =>
-		val historyPath = s.project match { case he: HistoryEnabled => he.historyPath; case _ => None }
+		val historyPath = s.project match { case he: HistoryEnabled => he.historyPath; case _ => Some(s.baseDir / ".history") }
 		val reader = new LazyJLineReader(historyPath, new LazyCompletor(completor(s)))
 		val line = reader.readLine("> ")
-		line match { case Some(line) => line :: Shell :: s; case None => s }
+		line match {
+			case Some(line) => s.copy()(onFailure = Some(Shell), commands = line +: Shell +: s.commands)
+			case None => s
+		}
 	}
 	
 	def multi = Command.simple(Multi, MultiBrief, MultiDetailed) { (in, s) =>
@@ -101,6 +108,9 @@ object Commands
 	
 	def ifLast = Command.simple(IfLast, IfLastBrief, IfLastDetailed) { (in, s) =>
 		if(s.commands.isEmpty) in.arguments :: s else s
+	}
+	def append = Command.simple(Append, AppendLastBrief, AppendLastDetailed) { (in, s) =>
+		s.copy()(commands = s.commands :+ in.arguments)
 	}
 	
 	def setOnFailure = Command.simple(OnFailure, OnFailureBrief, OnFailureDetailed) { (in, s) =>
@@ -116,7 +126,7 @@ object Commands
 	}
 
 	def initialize = Command.simple(InitCommand, InitBrief, InitDetailed) { (in, s) =>
-		readLines( readable( sbtRCs(s) ) ) ::: s
+		/*"load-commands -base ~/.sbt/commands" :: */readLines( readable( sbtRCs(s) ) ) ::: s
 	}
 
 	def read = Command.simple(ReadCommand, ReadBrief, ReadDetailed) { (in, s) =>
@@ -130,10 +140,11 @@ object Commands
 		}
 	}
 
-	def history = Command { case s @ State(p: HistoryEnabled with Logged) =>
+	def history = Command { case s @ State(p: HistoryEnabled) =>
 		Apply( historyHelp: _* ) {
 			case in if in.line startsWith("!") => 
-				HistoryCommands(in.line.substring(HistoryPrefix.length).trim, p.historyPath, 500/*JLine.MaxHistorySize*/, p.log.error _) match
+				val logError: (String => Unit) = p match { case l: Logged => (s: String) => l.log.error(s) ; case _ => System.err.println _ }
+				HistoryCommands(in.line.substring(HistoryPrefix.length).trim, p.historyPath, 500/*JLine.MaxHistorySize*/, logError) match
 				{
 					case Some(commands) =>
 						commands.foreach(println)  //printing is more appropriate than logging
@@ -143,13 +154,14 @@ object Commands
 		}
 	}
 
-	def listProject(p: Named, log: Logger) = printProject("\t", p, log)
+	def indent(withStar: Boolean) = if(withStar) "\t*" else "\t"
+	def listProject(p: Named, current: Boolean, log: Logger) = printProject( indent(current), p, log)
 	def printProject(prefix: String, p: Named, log: Logger) = log.info(prefix + p.name)
 
 	def projects = Command { case s @ State(d: Member[_]) =>
 		Apply.simple(ProjectsCommand, projectsBrief, projectsDetailed ) { (in,s) =>
 			val log = logger(s)
-			d.projectClosure.foreach { case n: Named => listProject(n, log) }
+			d.projectClosure.foreach { case n: Named => listProject(n, d eq n, log) }
 			s
 		}(s)
 	}
@@ -194,6 +206,19 @@ object Commands
 		}
 	}
 
+	def discover = Command { case s @ State(analysis: inc.Analysis) =>
+		Apply.simple(Discover, DiscoverBrief, DiscoverDetailed) { (in, s) =>
+			val command = Parse.discover(in.arguments)
+			val discovered = Build.discover(analysis, command)
+			println(discovered.mkString("\n"))
+			s
+		}(s)
+	}
+	def compile = Command.simple(Compile, CompileBrief, CompileDetailed ) { (in, s) =>
+		val command = Parse.compile(in.arguments)(s.baseDir)
+		val analysis = Build.compile(command, s.configuration)
+		s.copy(project = analysis)()
+	}
 	def load = Command.simple(Load, Parse.helpBrief(Load, LoadLabel), Parse.helpDetail(Load, LoadLabel, false) ) { (in, s) =>
 		loadCommand(in.arguments, s.configuration, false, "sbt.Project") match // TODO: classOf[Project].getName when ready
 		{
@@ -215,14 +240,19 @@ object Commands
 	}
 
 	def loadCommands = Command.simple(LoadCommand, Parse.helpBrief(LoadCommand, LoadCommandLabel), Parse.helpDetail(LoadCommand, LoadCommandLabel, true) ) { (in, s) =>
-		loadCommand(in.arguments, s.configuration, true, classOf[UserCommand].getName) match
-		{
+		applyCommands(s, buildCommands(in.arguments, s.configuration))
+	}
+	
+	def buildCommands(arguments: String, configuration: xsbti.AppConfiguration): Either[Throwable, Seq[Any]] =
+		loadCommand(arguments, configuration, true, classOf[UserCommand].getName)
+
+	def applyCommands(s: State, commands: Either[Throwable, Seq[Any]]): State =
+		commands match {
 			case Right(newCommands) =>
 				val asCommands = newCommands map { case c: Command => c; case x => error("Not a Command: " + x.asInstanceOf[AnyRef].getClass) }
 				s.copy()(processors = asCommands ++ s.processors)
 			case Left(e) => e.printStackTrace; System.err.println(e.toString); s.fail // TODO: log instead of print
 		}
-	}
 	
 	def loadCommand(line: String, configuration: xsbti.AppConfiguration, allowMultiple: Boolean, defaultSuper: String): Either[Throwable, Seq[Any]] =
 		try
