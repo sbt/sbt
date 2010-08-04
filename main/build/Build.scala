@@ -25,9 +25,9 @@ object Build
 			case BinaryLoad(classpath, module, name) =>
 				binary(classpath, module, name, loader(configuration), allowMultiple)
 			case SourceLoad(classpath, sourcepath, output, module, auto, name) =>
-				source(classpath, sourcepath, output, module, auto, name, configuration, allowMultiple)._1
+				source(classpath, sourcepath, output, module, auto, name, configuration, allowMultiple)
 			case ProjectLoad(base, auto, name) =>
-				project(base, auto, name, configuration, allowMultiple)._1
+				project(base, auto, name, configuration, allowMultiple)
 		}
 
 	def project(base: File, auto: Auto.Value, name: String, configuration: xsbti.AppConfiguration, allowMultiple: Boolean): Seq[Any] =
@@ -48,33 +48,33 @@ object Build
 		}
 	}
 	
-	def source(classpath: Seq[File], sources: Seq[File], output: Option[File], module: Boolean, auto: Auto.Value, name: String, configuration: xsbti.AppConfiguration, allowMultiple: Boolean = false): (Seq[Any], Analysis) =
+	def compile(command: CompileCommand, configuration: xsbti.AppConfiguration): Analysis =
 	{
+		import command._
+		compile(classpath, sources, output, options, configuration)
+	}
+	def compile(classpath: Seq[File], sources: Seq[File], output: Option[File], options: Seq[String], configuration: xsbti.AppConfiguration): Analysis =
+		compile(new Compile(classpath, sources, output, options, configuration))
+
+	def compile(conf : Compile): Analysis =
+	{
+		import conf._
 		// TODO: accept Logger as an argument
 		val log = new ConsoleLogger with Logger with sbt.IvyLogger
-		
-		val scalaProvider = configuration.provider.scalaProvider
-		val launcher = scalaProvider.launcher
-		val instance = ScalaInstance(scalaProvider.version, launcher)
-		
-		val out = output.getOrElse(configuration.baseDirectory / "target" asFile)
-		val target = out / ("scala_" + instance.actualVersion)
-		val outputDirectory = target / "classes"
-		val cacheDirectory = target / "cache"
-		val projectClasspath = outputDirectory.asFile +: classpath
-		val compileClasspath = projectClasspath ++ configuration.provider.mainClasspath.toSeq
-		
+
 		val componentManager = new ComponentManager(launcher.globalLock, configuration.provider.components, log)
 		val compiler = new AnalyzingCompiler(instance, componentManager, log)
 		val javac = JavaCompiler.directOrFork(compiler.cp, compiler.scalaInstance)( (args: Seq[String], log: Logger) => Process("javac", args) ! log )
 
 		val agg = new AggressiveCompile(cacheDirectory)
-		val analysis = agg(compiler, javac, sources, compileClasspath, outputDirectory, Nil, Nil)(log)
-		
+		agg(compiler, javac, sources, compileClasspath, outputDirectory, Nil, options)(log)
+	}
+	def source(classpath: Seq[File], sources: Seq[File], output: Option[File], module: Boolean, auto: Auto.Value, name: String, configuration: xsbti.AppConfiguration, allowMultiple: Boolean = false): Seq[Any] =
+	{
+		val conf = new Compile(classpath, sources, output, Nil, configuration)
+		val analysis = compile(conf)
 		val discovered = discover(analysis, module, auto, name)
-		val loaded = binaries(projectClasspath, module, check(discovered, allowMultiple), loader(configuration))
-
-		(loaded, analysis)
+		binaries(conf.projectClasspath, module, check(discovered, allowMultiple), loader(configuration))
 	}
 	def discover(analysis: inc.Analysis, module: Boolean, auto: Auto.Value, name: String): Seq[String] =
 	{
@@ -85,6 +85,9 @@ object Build
 			case Annotation => discover(analysis, module, new inc.Discovery(Set.empty, Set(name)))
 		}
 	}
+	def discover(analysis: inc.Analysis, command: DiscoverCommand): Seq[String] =
+		discover(analysis, command.module, command.discovery)
+		
 	def discover(analysis: inc.Analysis, module: Boolean, discovery: inc.Discovery): Seq[String] =
 	{
 		for(src <- analysis.apis.internal.values.toSeq;

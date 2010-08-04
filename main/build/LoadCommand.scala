@@ -16,3 +16,5 @@ object Auto extends Enumeration
 	val Subclass, Annotation, Explicit = Value
 }
 
+final case class CompileCommand(classpath: Seq[File], sources: Seq[File], output: Option[File], options: Seq[String])
+final case class DiscoverCommand(module: Boolean, discovery: inc.Discovery)

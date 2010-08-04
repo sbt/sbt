@@ -88,8 +88,15 @@ ReloadCommand + """
 """
 
 	def Multi = ";"
-	def MultiBrief = ("( " + Multi + " command )+", MultiDetailed)
-	def MultiDetailed = "Runs the provided semicolon-separated commands."
+	def MultiBrief = ("( " + Multi + " command )+", "Runs the provided semicolon-separated commands.")
+	def MultiDetailed =
+Multi + " command1 " + Multi + """ command2 ...
+	Runs the specified commands.
+"""
+
+	def Append = "append"
+	def AppendLastBrief = (Append + " command", AppendLastDetailed)
+	def AppendLastDetailed = "Appends `command` to list of commands to run."
 
 	val AliasCommand = "alias"
 	def AliasBrief = (AliasCommand, "Adds, removes, or prints command aliases.")
@@ -112,6 +119,48 @@ AliasCommand + """ name=
 	Removes the alias for `name`.
 """
 
+	def Discover = "discover"
+	def DiscoverBrief = (DiscoverSyntax, "Finds annotated classes and subclasses.")
+	def DiscoverSyntax = Discover + " [-module true|false] [-sub <names>] [-annot <names>]"
+	def DiscoverDetailed =
+DiscoverSyntax + """
+
+	Looks for public, concrete classes that match the requested query using the current sbt.inc.Analysis instance.
+	
+	-module
+		Specifies whether modules (true) or classes (false) are found.
+		The default is classes/traits (false).
+	
+	-sub
+		Specifies comma-separated class names.
+		Classes that have one or more of these classes as an ancestor are included in the resulting list.
+	
+	-annot
+		Specifies comma-separated annotation names.
+		Classes with one or more of these annotations on the class or one of its non-private methods are included in the resulting list.
+"""
+
+	def Compile = "compile"
+	def CompileBrief = (CompileSyntax, "Incrementally compiles the provided sources.")
+	def CompileSyntax = Compile + " -src <paths> [-cp <paths>] [-d <path>]"
+	def CompileDetailed =
+CompileSyntax + """
+
+	Incrementally compiles Scala and Java sources.
+	Java source support is limited at this time.
+	
+	<paths> are explicit paths separated by the platform path separator.
+	
+	The specified output path will contain the following directory structure:
+	
+		scala_<version>/
+			classes/
+			cache/
+
+	Compiled classes will be written to the 'classes' directory.
+	Cached information about the compilation will be written to 'cache'.
+"""
+	
 	def Load = "load"
 	def LoadLabel = "a project"
 	def LoadCommand = "load-commands"

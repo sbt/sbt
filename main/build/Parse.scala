@@ -9,7 +9,7 @@ import java.io.File
 final class ParseException(msg: String) extends RuntimeException(msg)
 
 /** Parses a load command. The implementation is a quick hack.
-It is not robust and feedback is not helpful.*/
+It is not robust and errors are not helpful.*/
 object Parse
 {
 	def helpBrief(name: String, label: String): (String, String) = (name + " <options>", "Loads " + label + " according to the specified options.")
@@ -44,7 +44,7 @@ The command has the following syntax:
 	def error(msg: String) = throw new ParseException(msg)
 	def apply(commandString: String)(implicit base: File): LoadCommand =
 	{
-		val args = commandString.split("""\s+""").toSeq
+		val args = arguments(commandString)
 		val srcs = sourcepath(args)
 		val nme = name(args)
 
@@ -58,6 +58,21 @@ The command has the following syntax:
 			BinaryLoad(cp, mod, nme)
 		else
 			ProjectLoad(proj, auto(args), nme)
+	}
+	
+	def arguments(in: String) = in.split("""\s+""").toSeq
+	
+	def compile(commandString: String)(implicit base: File): CompileCommand =
+	{
+		val args = arguments(commandString)
+		CompileCommand(classpath(args), sourcepath(args), output(args), Nil)
+	}
+	def discover(commandString: String): DiscoverCommand =
+	{
+		val args = arguments(commandString)
+		val subs = names("sub", args)
+		val annots = names("annot", args)
+		DiscoverCommand(module(args), new inc.Discovery(subs, annots))
 	}
 	
 	def auto(args: Seq[String]): Auto.Value =
@@ -74,6 +89,9 @@ The command has the following syntax:
 			case Some("true") => true
 			case Some(x) => error("Expected boolean, got '" + x + "'")
 		}
+		
+	def names(label: String, args: Seq[String]): Set[String] =
+		getArg(args, label) match { case Some(ns) => ns.split(",").toSet; case None => Set.empty }
 		
 	def name(args: Seq[String]): String =
 		getArg(args, "name") getOrElse("")
