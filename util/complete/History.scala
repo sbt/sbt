@@ -6,7 +6,7 @@ package complete
 
 import History.number
 
-final class History private(lines: IndexedSeq[String], error: (=> String) => Unit) extends NotNull
+final class History private(lines: IndexedSeq[String], error: String => Unit) extends NotNull
 {
 	private def reversed = lines.reverse
 
@@ -41,7 +41,7 @@ final class History private(lines: IndexedSeq[String], error: (=> String) => Uni
 
 object History
 {
-	def apply(lines: Seq[String], error: (=> String) => Unit): History = new History(lines.toIndexedSeq, error)
+	def apply(lines: Seq[String], error: String => Unit): History = new History(lines.toIndexedSeq, error)
 
 	def number(s: String): Option[Int] =
 		try { Some(s.toInt) }
