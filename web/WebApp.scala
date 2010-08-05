@@ -95,12 +95,14 @@ trait DefaultJettyConfiguration extends JettyConfiguration
 	def war: Path
 	def scanDirectories: Seq[File]
 	def scanInterval: Int
+	
 
 	def contextPath: String
 	def port: Int
 	/** The classpath containing the classes, jars, and resources for the web application. */
 	def classpath: PathFinder
 	def parentLoader: ClassLoader
+	def jettyEnv: Option[File]
 }
 abstract class CustomJettyConfiguration extends JettyConfiguration
 {

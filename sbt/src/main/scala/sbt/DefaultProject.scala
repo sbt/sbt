@@ -388,6 +388,7 @@ abstract class BasicWebScalaProject extends BasicScalaProject with WebScalaProje
 			def scanInterval = p.scanInterval
 			def port = jettyPort
 			def log = p.log
+			def jettyEnv = jettyEnvXml
 		}
 	/** This is the classpath used to determine what classes, resources, and jars to put in the war file.*/
 	def webappClasspath = publicClasspath
@@ -419,6 +420,8 @@ abstract class BasicWebScalaProject extends BasicScalaProject with WebScalaProje
 	def scanInterval: Int = JettyRunner.DefaultScanInterval
 	/** The port that Jetty runs on. */
 	def jettyPort: Int = JettyRunner.DefaultPort
+
+	def jettyEnvXml : Option[File] = None
 
 	lazy val jettyReload = task { jettyInstance.reload(); None } describedAs(JettyReloadDescription)
 	lazy val jettyRestart = jettyStop && jettyRun

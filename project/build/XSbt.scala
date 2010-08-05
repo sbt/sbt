@@ -109,9 +109,11 @@ class XSbt(info: ProjectInfo) extends ParentProject(info) with NoCrossPaths
 	class WebAppProject(info: ProjectInfo) extends Base(info)
 	{
 		val jetty = "org.mortbay.jetty" % "jetty" % "6.1.14" % "optional"
+		val jettyplus = "org.mortbay.jetty" % "jetty-plus" % "6.1.14" % "optional"
 
 		val jetty7server = "org.eclipse.jetty" % "jetty-server" % "7.0.1.v20091125" % "optional"
 		val jetty7webapp = "org.eclipse.jetty" % "jetty-webapp" % "7.0.1.v20091125" % "optional"
+		val jetty7plus = "org.eclipse.jetty" % "jetty-plus" % "7.0.1.v20091125" % "optional"
 
 		val optional = Configurations.Optional
 
