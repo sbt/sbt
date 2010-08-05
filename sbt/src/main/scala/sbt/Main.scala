@@ -476,7 +476,7 @@ class xMain extends xsbti.AppMain
 		if(!isInteractive)
 			printCmd(InteractiveCommand, "Enters the sbt interactive shell")
 	}
-	private def listProject(p: Project, curr: Project) = printProject(if(p.name == curr.name) "\t* " else "\t  ", p)
+	private def listProject(p: Project, curr: Project) = printProject(if(p eq curr) "\t* " else "\t  ", p)
 	private def printProject(prefix: String, p: Project): Unit =
 		Console.println(prefix + p.name + " " + p.version)
 
