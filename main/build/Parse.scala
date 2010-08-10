@@ -124,7 +124,27 @@ The command has the following syntax:
 	}
 
 	def paths(implicit base: File): String => Seq[File] =
-		_ split sep map file(base)
+		_ split sep flatMap files(base)
+		
+	def files(base: File)(path: String): Seq[File] = readFinder(Path.fromFile(base), path).getFiles.toSeq
 		
 	def file(base: File) = (path: String) => Path.fromString(base, path).asFile
+	
+	def readFinder(base: File, s: String): PathFinder =
+	{
+		val f = new File(s)
+		asFinder( if(f.isAbsolute) f else new File(base, s) )
+	}
+	def asFinder(f: File): PathFinder =
+	{
+		val parent = f.getParentFile
+		if(parent eq null)
+			Path.fromFile(f)
+		else
+		{
+			val finder = asFinder(parent)
+			val sub = f.getName
+			if(sub == "**") (finder ***) else if(sub contains "*") finder * GlobFilter(sub) else finder / sub
+		}
+	}
 }
