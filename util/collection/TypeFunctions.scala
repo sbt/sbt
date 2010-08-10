@@ -17,6 +17,8 @@ trait TypeFunctions
 	implicit def toFn1[A,B](f: A => B): Fn1[A,B] = new Fn1[A,B] {
 		def ∙[C](g: C => A) = f compose g
 	}
+	
+	type ~>|[A[_],B[_]] = A ~> Compose[Option, B]#Apply
 }
 object TypeFunctions extends TypeFunctions
 
