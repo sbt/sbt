@@ -6,11 +6,10 @@ package sbt
 import Execute.NodeView
 import Completions.noCompletions
 
-sealed trait Command
+trait Command
 {
 	def applies: State => Option[Apply]
 }
-trait UserCommand extends Command
 trait Apply
 {
 	def help: Seq[Help]
@@ -108,4 +107,12 @@ object Input
 
 object Next extends Enumeration {
 	val Reload, Fail, Done, Continue = Value
+}
+trait CommandDefinitions
+{
+	def commands: Seq[Command]
+}
+trait ReflectedCommands extends CommandDefinitions
+{
+	def commands = ReflectUtilities.allVals[Command](this).values.toSeq
 }

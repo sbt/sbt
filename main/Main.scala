@@ -244,12 +244,15 @@ object Commands
 	}
 	
 	def buildCommands(arguments: String, configuration: xsbti.AppConfiguration): Either[Throwable, Seq[Any]] =
-		loadCommand(arguments, configuration, true, classOf[UserCommand].getName)
+		loadCommand(arguments, configuration, true, classOf[CommandDefinitions].getName)
 
 	def applyCommands(s: State, commands: Either[Throwable, Seq[Any]]): State =
 		commands match {
 			case Right(newCommands) =>
-				val asCommands = newCommands map { case c: Command => c; case x => error("Not a Command: " + x.asInstanceOf[AnyRef].getClass) }
+				val asCommands = newCommands flatMap {
+					case c: CommandDefinitions => c.commands
+					case x => error("Not an instance of CommandDefinitions: " + x.asInstanceOf[AnyRef].getClass)
+				}
 				s.copy()(processors = asCommands ++ s.processors)
 			case Left(e) => e.printStackTrace; System.err.println(e.toString); s.fail // TODO: log instead of print
 		}
@@ -323,7 +326,7 @@ object Commands
 	def aliasStrings(s: State) = aliases(s).map(a => a.name + " = " + a.value)
 	def aliases(s: State) = s.processors collect { case a: Alias => a }
 
-	final class Alias(val name: String, val value: String) extends UserCommand {
+	final class Alias(val name: String, val value: String) extends Command {
 		assert(name.length > 0)
 		assert(value.length > 0)
 		def applies = s => Some(Apply() {
