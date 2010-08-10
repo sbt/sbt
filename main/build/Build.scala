@@ -34,7 +34,7 @@ object Build
 	{
 		val buildDir = base / "project" / "build"
 		val sources = (buildDir * "*.scala") +++ (buildDir / "src" / "main" / "scala" ** "*.scala")
-		source(Nil, sources.get.toSeq, Some(buildDir / "target" asFile), false, auto, name, configuration, allowMultiple)
+		source(Nil, sources.get.toSeq, Some(buildDir / "target" asFile), None, auto, name, configuration, allowMultiple)
 	}
 		
 	def binary(classpath: Seq[File], module: Boolean, name: String, parent: ClassLoader, allowMultiple: Boolean): Seq[Any] =
@@ -44,7 +44,7 @@ object Build
 		else
 		{
 			val names = if(allowMultiple) name.split(",").toSeq else Seq(name)
-			binaries(classpath, module, names, parent)
+			binaries(classpath, names.map(n => ToLoad(n,module)), parent)
 		}
 	}
 	
@@ -69,38 +69,40 @@ object Build
 		val agg = new AggressiveCompile(cacheDirectory)
 		agg(compiler, javac, sources, compileClasspath, outputDirectory, Nil, options)(log)
 	}
-	def source(classpath: Seq[File], sources: Seq[File], output: Option[File], module: Boolean, auto: Auto.Value, name: String, configuration: xsbti.AppConfiguration, allowMultiple: Boolean = false): Seq[Any] =
+	def source(classpath: Seq[File], sources: Seq[File], output: Option[File], module: Option[Boolean], auto: Auto.Value, name: String, configuration: xsbti.AppConfiguration, allowMultiple: Boolean = false): Seq[Any] =
 	{
 		val conf = new Compile(classpath, sources, output, Nil, configuration)
 		val analysis = compile(conf)
 		val discovered = discover(analysis, module, auto, name)
-		binaries(conf.projectClasspath, module, check(discovered, allowMultiple), loader(configuration))
+		binaries(conf.projectClasspath, check(discovered, allowMultiple), loader(configuration))
 	}
-	def discover(analysis: inc.Analysis, module: Boolean, auto: Auto.Value, name: String): Seq[String] =
+	def discover(analysis: inc.Analysis, module: Option[Boolean], auto: Auto.Value, name: String): Seq[ToLoad] =
 	{
 		import Auto.{Annotation, Explicit, Subclass}
 		auto match {
-			case Explicit => if(name.isEmpty) error("No name specified to load explicitly.") else Seq(name)
+			case Explicit => if(name.isEmpty) error("No name specified to load explicitly.") else Seq(new ToLoad(name))
 			case Subclass => discover(analysis, module, new inc.Discovery(Set(name), Set.empty))
 			case Annotation => discover(analysis, module, new inc.Discovery(Set.empty, Set(name)))
 		}
 	}
-	def discover(analysis: inc.Analysis, command: DiscoverCommand): Seq[String] =
+	def discover(analysis: inc.Analysis, command: DiscoverCommand): Seq[ToLoad] =
 		discover(analysis, command.module, command.discovery)
 		
-	def discover(analysis: inc.Analysis, module: Boolean, discovery: inc.Discovery): Seq[String] =
+	def discover(analysis: inc.Analysis, module: Option[Boolean], discovery: inc.Discovery): Seq[ToLoad] =
 	{
 		for(src <- analysis.apis.internal.values.toSeq;
-			(df, found) <- discovery(src.definitions) if !found.isEmpty && found.isModule == module)
+			(df, found) <- discovery(src.definitions) if !found.isEmpty && moduleMatches(found.isModule, module))
 		yield
-			df.name
+			new ToLoad(df.name, found.isModule)
 	}
+	def moduleMatches(isModule: Boolean, expected: Option[Boolean]): Boolean =
+		expected.isEmpty || (Some(isModule) == expected)
 
-	def binaries(classpath: Seq[File], module: Boolean, names: Seq[String], parent: ClassLoader): Seq[Any] =
-		loadBinaries(names, module, toLoader(classpath, parent))
+	def binaries(classpath: Seq[File], toLoad: Seq[ToLoad], parent: ClassLoader): Seq[Any] =
+		loadBinaries(toLoad, toLoader(classpath, parent))
 
-	def loadBinaries(names: Seq[String], module: Boolean, loader: ClassLoader): Seq[Any] =
-		for(name <- names if !name.isEmpty) yield
+	def loadBinaries(toLoad: Seq[ToLoad], loader: ClassLoader): Seq[Any] =
+		for(ToLoad(name, module) <- toLoad if !name.isEmpty) yield
 			loadBinary(name, module, loader)
 
 	def loadBinary(name: String, module: Boolean, loader: ClassLoader): Any =
@@ -112,7 +114,7 @@ object Build
 			clazz.newInstance
 		}
 
-	def check(discovered: Seq[String], allowMultiple: Boolean): Seq[String] =
+	def check[T](discovered: Seq[T], allowMultiple: Boolean): Seq[T] =
 		discovered match
 		{
 			case Seq() => error("No project found")

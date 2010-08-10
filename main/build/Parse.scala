@@ -55,7 +55,7 @@ The command has the following syntax:
 		if(!srcs.isEmpty)
 			SourceLoad(cp, srcs, output(args), mod, auto(args), nme)
 		else if(!cp.isEmpty)
-			BinaryLoad(cp, mod, nme)
+			BinaryLoad(cp, mod.getOrElse(false), nme)
 		else
 			ProjectLoad(proj, auto(args), nme)
 	}
@@ -83,11 +83,11 @@ The command has the following syntax:
 			case Some(x) => error("Illegal auto argument '" + x + "'")
 		}
 	
-	def module(args: Seq[String]): Boolean =
-		getArg(args, "module") match {
-			case None | Some("false") => false
-			case Some("true") => true
-			case Some(x) => error("Expected boolean, got '" + x + "'")
+	def module(args: Seq[String]): Option[Boolean] =
+		getArg(args, "module") map {
+			case "false" => false
+			case "true" => true
+			case x => error("Expected boolean, got '" + x + "'")
 		}
 		
 	def names(label: String, args: Seq[String]): Set[String] =
