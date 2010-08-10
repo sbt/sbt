@@ -216,20 +216,23 @@ object Commands
 	}
 	def compile = Command.simple(Compile, CompileBrief, CompileDetailed ) { (in, s) =>
 		val command = Parse.compile(in.arguments)(s.baseDir)
-		val analysis = Build.compile(command, s.configuration)
-		s.copy(project = analysis)()
+		try {
+			val analysis = Build.compile(command, s.configuration)
+			s.copy(project = analysis)()
+		} catch { case e: xsbti.CompileFailed => s.fail /* already logged */ }
 	}
 	def load = Command.simple(Load, Parse.helpBrief(Load, LoadLabel), Parse.helpDetail(Load, LoadLabel, false) ) { (in, s) =>
 		loadCommand(in.arguments, s.configuration, false, "sbt.Project") match // TODO: classOf[Project].getName when ready
 		{
 			case Right(Seq(newValue)) => runExitHooks(s).copy(project = newValue)()
-			case Left(e) => handleException(e, s)
+			case Left(e) => handleException(e, s, false)
 		}
 	}
 	
-	def handleException(e: Throwable, s: State): State = {
+	def handleException(e: Throwable, s: State, trace: Boolean = true): State = {
 		// TODO: log instead of print
-		e.printStackTrace
+		if(trace)
+			e.printStackTrace
 		System.err.println(e.toString)
 		s.fail
 	}
@@ -254,7 +257,7 @@ object Commands
 					case x => error("Not an instance of CommandDefinitions: " + x.asInstanceOf[AnyRef].getClass)
 				}
 				s.copy()(processors = asCommands ++ s.processors)
-			case Left(e) => e.printStackTrace; System.err.println(e.toString); s.fail // TODO: log instead of print
+			case Left(e) => handleException(e, s, false)
 		}
 	
 	def loadCommand(line: String, configuration: xsbti.AppConfiguration, allowMultiple: Boolean, defaultSuper: String): Either[Throwable, Seq[Any]] =
