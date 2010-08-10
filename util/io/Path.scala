@@ -193,8 +193,14 @@ object Path extends Alternatives with Mapper
 			basePath
 		else
 		{
-			val components = value.split("""[/\\]""")
-			(basePath /: components)( (path, component) => path / component )
+			val f = new File(value)
+			if(f.isAbsolute)
+				fromFile(f)
+			else
+			{
+				val components = value.split("""[/\\]""")
+				(basePath /: components)( (path, component) => path / component )
+			}
 		}
 	}
 	def baseAncestor(path: Path): Option[Path] =
