@@ -5,12 +5,15 @@ package sbt
 
 import Types._
 
-trait PMap[K[_], V[_]] extends (K ~> V)
+trait RMap[K[_], V[_]]
 {
 	def apply[T](k: K[T]): V[T]
 	def get[T](k: K[T]): Option[V[T]]
-	def update[T](k: K[T], v: V[T]): Unit
 	def contains[T](k: K[T]): Boolean
+}
+trait PMap[K[_], V[_]] extends (K ~> V) with RMap[K,V]
+{
+	def update[T](k: K[T], v: V[T]): Unit
 	def remove[T](k: K[T]): Option[V[T]]
 	def getOrUpdate[T](k: K[T], make: => V[T]): V[T]
 }
@@ -27,8 +30,11 @@ abstract class AbstractPMap[K[_], V[_]] extends PMap[K,V]
 
 import collection.mutable.Map
 
-/** Only suitable for K that is invariant in its parameter.
-* Option and List keys are not, for example, because None <:< Option[String] and None <: Option[Int].*/
+/**
+* Only suitable for K that is invariant in its type parameter.
+* Option and List keys are not suitable, for example,
+*  because None &lt;:&lt; Option[String] and None &lt;: Option[Int].
+*/
 class DelegatingPMap[K[_], V[_]](backing: Map[K[_], V[_]]) extends AbstractPMap[K,V]
 {
 	def get[T](k: K[T]): Option[V[T]] = cast[T]( backing.get(k) )
