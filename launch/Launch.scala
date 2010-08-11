@@ -34,7 +34,7 @@ object Launch
 	def initialized(currentDirectory: File, parsed: LaunchConfiguration, arguments: List[String]): Unit =
 	{
 		parsed.logging.debug("Parsed configuration: " + parsed)
-		val resolved = ResolveVersions(parsed)
+		val resolved = ResolveValues(parsed)
 		resolved.logging.debug("Resolved configuration: " + resolved)
 		explicit(currentDirectory, resolved, arguments)
 	}
@@ -91,7 +91,7 @@ class Launch private[xsbt](val bootDirectory: File, val ivyOptions: IvyOptions) 
 		override def classpath = array(compilerJar, libraryJar)
 		def baseDirectories = List(scalaHome)
 		def testLoadClasses = TestLoadScalaClasses
-		def target = new UpdateScala(classifiers.forScala)
+		def target = new UpdateScala(Value.get(classifiers.forScala))
 		def failLabel = "Scala " + version
 		def lockFile = updateLockFile
 		def extraClasspath = array()
@@ -106,7 +106,7 @@ class Launch private[xsbt](val bootDirectory: File, val ivyOptions: IvyOptions) 
 			def parentLoader = ScalaProvider.this.loader
 			def baseDirectories = appHome :: id.mainComponents.map(components.componentLocation).toList
 			def testLoadClasses = List(id.mainClass)
-			def target = new UpdateApp(Application(id), classifiers.app)
+			def target = new UpdateApp(Application(id), Value.get(classifiers.app))
 			def failLabel = id.name + " " + id.version
 			def lockFile = updateLockFile
 			def mainClasspath = fullClasspath
@@ -140,7 +140,7 @@ object Launcher
 	{
 		val parsed = ResolvePaths(Configuration.parse(configLocation, baseDirectory), baseDirectory)
 		Initialize.process(parsed.boot.properties, parsed.appProperties, Initialize.selectQuick)
-		val config = ResolveVersions(parsed)
+		val config = ResolveValues(parsed)
 		val launcher = apply(config)
 		val scalaProvider = launcher.getScala(config.getScalaVersion)
 		scalaProvider.app(config.app.toID)

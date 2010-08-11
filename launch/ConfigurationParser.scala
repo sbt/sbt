@@ -5,12 +5,20 @@ package xsbt.boot
 
 
 import Pre._
+import ConfigurationParser._
 import java.lang.Character.isWhitespace
 import java.io.{BufferedReader, File, FileInputStream, InputStreamReader, Reader, StringReader}
 import java.net.{MalformedURLException, URL}
 import java.util.regex.Pattern
 import scala.collection.immutable.List
 
+object ConfigurationParser
+{
+	def trim(s: Array[String]) = s.map(_.trim).toList
+	def ids(value: String) = trim(value.split(",")).filter(isNonEmpty)
+	
+	implicit val readIDs = ids _
+}
 class ConfigurationParser extends NotNull
 {
 	def apply(file: File): LaunchConfiguration = Using(new InputStreamReader(new FileInputStream(file), "UTF-8"))(apply)
@@ -36,24 +44,30 @@ class ConfigurationParser extends NotNull
 		val (properties, m6) = processSection(m5, "app-properties", getAppProperties)
 		val (cacheDir, m7) = processSection(m6, "ivy", getIvy)
 		check(m7, "section")
-		val classifiers = Classifiers("" :: scalaClassifiers, "" :: appClassifiers)  // the added "" ensures that the main jars are retrieved
+		val classifiers = Classifiers(scalaClassifiers, appClassifiers)
 		new LaunchConfiguration(scalaVersion, IvyOptions(cacheDir, classifiers, repositories), app, boot, logging, properties)
 	}
 	def getScala(m: LabelMap) =
 	{
 		val (scalaVersion, m1) = getVersion(m, "Scala version", "scala.version")
-		val (scalaClassifiers, m2) = ids(m1, "classifiers", Nil)
+		val (scalaClassifiers, m2) = getClassifiers(m1, "Scala classifiers")
 		check(m2, "label")
 		(scalaVersion, scalaClassifiers)
 	}
-	def getVersion(m: LabelMap, label: String, defaultName: String): (Version, LabelMap) = process(m, "version", processVersion(label, defaultName))
-	def processVersion(label: String, defaultName: String)(value: Option[String]): Version =
-		value.map(version(label)).getOrElse(new Version.Implicit(defaultName, None))
-	def version(label: String)(value: String): Version =
+	def getClassifiers(m: LabelMap, label: String): (Value[List[String]], LabelMap) =
+		process(m, "classifiers", processClassifiers(label))
+	def processClassifiers(label: String)(value: Option[String]): Value[List[String]] =
+		value.map(readValue[List[String]](label)) getOrElse new Explicit(Nil)
+		
+	def getVersion(m: LabelMap, label: String, defaultName: String): (Value[String], LabelMap) = process(m, "version", processVersion(label, defaultName))
+	def processVersion(label: String, defaultName: String)(value: Option[String]): Value[String] =
+		value.map(readValue[String](label)).getOrElse(new Implicit(defaultName, None))
+		
+	def readValue[T](label: String)(implicit read: String => T): String => Value[T] = value =>
 	{
-		if(isEmpty(value)) error(label + " cannot be empty (omit version declaration to use the default version)")
-		try { parsePropertyValue(label, value)(Version.Implicit.apply) }
-		catch { case e: BootException =>  new Version.Explicit(value) }
+		if(isEmpty(value)) error(label + " cannot be empty (omit declaration to use the default)")
+		try { parsePropertyValue(label, value)(Value.readImplied[T]) }
+		catch { case e: BootException =>  new Explicit(read(value)) }
 	}
 	def processSection[T](sections: SectionMap, name: String, f: LabelMap => T) =
 		process[String,LabelMap,T](sections, name, m => f(m default(x => None)))
@@ -65,7 +79,7 @@ class ConfigurationParser extends NotNull
 	def getOrNone[K,V](map: ListMap[K,Option[V]], k: K) = orElse(map.get(k), None)
 	def ids(map: LabelMap, name: String, default: List[String]) =
 	{
-		val result = map(name).map(value => trim(value.split(",")).filter(isNonEmpty))
+		val result = map(name) map ConfigurationParser.ids
 		(orElse(result, default), map - name)
 	}
 	def bool(map: LabelMap, name: String, default: Boolean): (Boolean, LabelMap) =
@@ -105,7 +119,7 @@ class ConfigurationParser extends NotNull
 			case (tpe :: paths, newM) => (Search(tpe, toFiles(paths)), newM)
 		}
 
-	def getApplication(m: LabelMap): (Application, List[String]) =
+	def getApplication(m: LabelMap): (Application, Value[List[String]]) =
 	{
 		val (org, m1) = id(m, "org", "org.scala-tools.sbt")
 		val (name, m2) = id(m1, "name", "sbt")
@@ -114,7 +128,7 @@ class ConfigurationParser extends NotNull
 		val (components, m5) = ids(m4, "components", List("default"))
 		val (crossVersioned, m6) = id(m5, "cross-versioned", "true")
 		val (resources, m7) = ids(m6, "resources", Nil)
-		val (classifiers, m8) = ids(m7, "classifiers", Nil)
+		val (classifiers, m8) = getClassifiers(m7, "Application classifiers")
 		check(m8, "label")
 		val classpathExtra = toArray(toFiles(resources))
 		val app = new Application(org, name, rev, main, components, toBoolean(crossVersioned), classpathExtra)
@@ -156,7 +170,6 @@ class ConfigurationParser extends NotNull
 		val optionalArg = m.group(3)
 		f(m.group(1), m.group(2), if(optionalArg eq null) None else Some(optionalArg))
 	}
-	def trim(s: Array[String]) = s.map(_.trim).toList
 
 	type LabelMap = ListMap[String, Option[String]]
 	// section-name -> label -> value

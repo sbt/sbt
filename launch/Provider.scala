@@ -26,7 +26,7 @@ trait Provider extends NotNull
 	def retrieveCorrupt(missing: Iterable[String]): Nothing = fail(": missing " + missing.mkString(", "))
 	private def fail(extra: String) =
 		throw new xsbti.RetrieveException(versionString, "Could not retrieve " + failLabel + extra)
-	private def versionString: String = target match { case _: UpdateScala => configuration.scalaVersion; case a: UpdateApp => Version.get(a.id.version) }
+	private def versionString: String = target match { case _: UpdateScala => configuration.scalaVersion; case a: UpdateApp => Value.get(a.id.version) }
 
 	val (jars, loader) = Locks(lockFile, new initialize)
 	private final class initialize extends Callable[(Array[File], ClassLoader)]

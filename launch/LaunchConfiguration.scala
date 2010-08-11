@@ -8,40 +8,45 @@ import java.io.File
 import java.net.URL
 import scala.collection.immutable.List
 
-final case class LaunchConfiguration(scalaVersion: Version, ivyConfiguration: IvyOptions, app: Application, boot: BootSetup, logging: Logging, appProperties: List[AppProperty]) extends NotNull
+//TODO: use copy constructor, check size change
+final case class LaunchConfiguration(scalaVersion: Value[String], ivyConfiguration: IvyOptions, app: Application, boot: BootSetup, logging: Logging, appProperties: List[AppProperty]) extends NotNull
 {
-	def getScalaVersion = Version.get(scalaVersion)
-	def withScalaVersion(newScalaVersion: String) = LaunchConfiguration(new Version.Explicit(newScalaVersion), ivyConfiguration, app, boot, logging, appProperties)
+	def getScalaVersion = Value.get(scalaVersion)
+	def withScalaVersion(newScalaVersion: String) = LaunchConfiguration(new Explicit(newScalaVersion), ivyConfiguration, app, boot, logging, appProperties)
 	def withApp(app: Application) = LaunchConfiguration(scalaVersion, ivyConfiguration, app, boot, logging, appProperties)
-	def withAppVersion(newAppVersion: String) = LaunchConfiguration(scalaVersion, ivyConfiguration, app.withVersion(new Version.Explicit(newAppVersion)), boot, logging, appProperties)
-	def withVersions(newScalaVersion: String, newAppVersion: String) = LaunchConfiguration(new Version.Explicit(newScalaVersion), ivyConfiguration, app.withVersion(new Version.Explicit(newAppVersion)), boot, logging, appProperties)
+	def withAppVersion(newAppVersion: String) = LaunchConfiguration(scalaVersion, ivyConfiguration, app.withVersion(new Explicit(newAppVersion)), boot, logging, appProperties)
+	// TODO: withExplicit
+	def withVersions(newScalaVersion: String, newAppVersion: String, classifiers0: Classifiers) =
+		LaunchConfiguration(new Explicit(newScalaVersion), ivyConfiguration.copy(classifiers = classifiers0), app.withVersion(new Explicit(newAppVersion)), boot, logging, appProperties)
 	def map(f: File => File) = LaunchConfiguration(scalaVersion, ivyConfiguration, app.map(f), boot.map(f), logging, appProperties)
 }
 final case class IvyOptions(cacheDirectory: Option[File], classifiers: Classifiers, repositories: List[Repository]) extends NotNull
-final case class Classifiers(forScala: List[String], app: List[String]) extends NotNull
-sealed trait Version extends NotNull
-object Version
-{
-	final class Explicit(val value: String) extends Version { override def toString = value }
-	final class Implicit(val name: String, val default: Option[String]) extends Version
-	{
-		require(isNonEmpty(name), "Name cannot be empty")
-		require(default.isEmpty || isNonEmpty(default.get), "Default cannot be the empty string")
-		override def toString = name + (default match { case Some(d) => "[" + d + "]"; case None => "" })
-	}
 
-	object Implicit
-	{
-		def apply(s: String, name: String, default: Option[String]): Version =
-			if(s == "read") new Implicit(name, default) else error("Expected 'read', got '" + s +"'")
-	}
-	def get(v: Version) = v  match { case e: Version.Explicit => e.value; case _ => throw new BootException("Unresolved version: " + v) }
+sealed trait Value[T]
+final class Explicit[T](val value: T) extends Value[T] {
+	override def toString = value.toString
+}
+final class Implicit[T](val name: String, val default: Option[T]) extends Value[T]
+{
+	require(isNonEmpty(name), "Name cannot be empty")
+	override def toString = name + (default match { case Some(d) => "[" + d + "]"; case None => "" })
+}
+object Value
+{
+	def get[T](v: Value[T]): T = v match { case e: Explicit[T] => e.value; case _ => throw new BootException("Unresolved version: " + v) }
+	def readImplied[T](s: String, name: String, default: Option[String])(implicit read: String => T): Value[T] =
+		if(s == "read") new Implicit(name, default map read) else error("Expected 'read', got '" + s +"'")
 }
 
-final case class Application(groupID: String, name: String, version: Version, main: String, components: List[String], crossVersioned: Boolean, classpathExtra: Array[File]) extends NotNull
+final case class Classifiers(forScala: Value[List[String]], app: Value[List[String]])
+object Classifiers {
+	def apply(forScala: List[String], app: List[String]):Classifiers = Classifiers(new Explicit(forScala), new Explicit(app))
+}
+
+final case class Application(groupID: String, name: String, version: Value[String], main: String, components: List[String], crossVersioned: Boolean, classpathExtra: Array[File]) extends NotNull
 {
-	def getVersion = Version.get(version)
-	def withVersion(newVersion: Version) = Application(groupID, name, newVersion, main, components, crossVersioned, classpathExtra)
+	def getVersion = Value.get(version)
+	def withVersion(newVersion: Value[String]) = Application(groupID, name, newVersion, main, components, crossVersioned, classpathExtra)
 	def toID = AppID(groupID, name, getVersion, main, toArray(components), crossVersioned, classpathExtra)
 	def map(f: File => File) = Application(groupID, name, version, main, components, crossVersioned, classpathExtra.map(f))
 }
@@ -52,7 +57,7 @@ object Application
 	def apply(id: xsbti.ApplicationID): Application =
 	{
 		import id._
-		Application(groupID, name, new Version.Explicit(version), mainClass, mainComponents.toList, crossVersioned, classpathExtra)
+		Application(groupID, name, new Explicit(version), mainClass, mainComponents.toList, crossVersioned, classpathExtra)
 	}
 }
 
@@ -100,10 +105,9 @@ final class PromptProperty(val label: String, val default: Option[String]) exten
 
 final class Logging(level: LogLevel.Value) extends NotNull
 {
-	import LogLevel._
-	def log(s: => String, at: Value) = if(level.id <= at.id) stream(at).println("[" + at + "] " + s)
-	def debug(s: => String) = log(s, Debug)
-	private def stream(at: Value) = if(at == Error) System.err else System.out
+	def log(s: => String, at: LogLevel.Value) = if(level.id <= at.id) stream(at).println("[" + at + "] " + s)
+	def debug(s: => String) = log(s, LogLevel.Debug)
+	private def stream(at: LogLevel.Value) = if(at == LogLevel.Error) System.err else System.out
 }
 object LogLevel extends Enumeration
 {
