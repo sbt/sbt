@@ -1,0 +1,38 @@
+<?xml version="1.0"?>
+<!DOCTYPE Configure PUBLIC "-//Mort Bay Consulting//DTD Configure//EN" "http://jetty.mortbay.org/configure.dtd">
+<Configure class="org.eclipse.jetty.webapp.WebAppContext">
+    <New id="testEnvEntry" class="org.eclipse.jetty.plus.jndi.EnvEntry">
+      <Arg></Arg>
+	  <Arg>testValue</Arg>
+	  <Arg type="java.lang.String">It works</Arg>
+	  <Arg type="boolean">true</Arg>
+    </New>
+
+	<!--
+    <New id="DbNameDataSource" class="org.eclipse.jetty.plus.jndi.Resource">
+       <Arg>jdbc/DbName</Arg>
+       <Arg>
+          <New class="com.mchange.v2.c3p0.ComboPooledDataSource">
+          	 <Set name="driverClass">com.mysql.jdbc.Driver</Set>
+             <Set name="jdbcUrl">jdbc:mysql://localhost/dbName</Set>
+             <Set name="User">myUsername</Set>
+             <Set name="Password">myPassword</Set> 
+		     <Set name="maxPoolSize">30</Set>
+			 <Set name="checkoutTimeout">1800</Set>
+          </New>
+       </Arg>
+   </New>
+   <New id="DbNameDataSource" class="org.eclipse.jetty.plus.jndi.Resource">
+       <Arg>jdbc/DbName</Arg>
+       <Arg>
+          <New class="com.mchange.v2.c3p0.ComboPooledDataSource">
+          	 <Set name="driverClass">org.h2.Driver</Set>
+             <Set name="jdbcUrl">jdbc:h2:tcp://localhost/~/dbName</Set>
+             <Set name="jdbcUrl">jdbc:h2:mem:dbName</Set>
+             <Set name="User">myUsername</Set>
+             <Set name="Password">myPassword</Set> 
+          </New>
+       </Arg>
+   </New>
+   -->
+</Configure>
