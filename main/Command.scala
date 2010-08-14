@@ -86,8 +86,7 @@ trait Member[Node <: Member[Node]]
 trait Tasked
 {
 	type Task[T] <: AnyRef
-	def task(name: String, state: State): Option[Task[State]]
-	implicit def taskToNode: NodeView[Task]
+	def act(in: Input, state: State): Option[(Task[State], NodeView[Task])]
 	def help: Seq[Help]
 }
 trait TaskSetup

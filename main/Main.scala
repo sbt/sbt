@@ -200,8 +200,8 @@ object Commands
 					case c: TaskSetup => (c.checkCycles, c.maxThreads)
 					case _ => (false, Runtime.getRuntime.availableProcessors)
 				}
-				for(task <- p.task(in.name, s)) yield
-					processResult(runTask(task, checkCycles, maxThreads)(p.taskToNode), s)
+				for( (task, taskToNode) <- p.act(in, s)) yield
+					processResult(runTask(task, checkCycles, maxThreads)(taskToNode), s)
 			}
 		}
 	}
