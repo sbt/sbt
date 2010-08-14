@@ -169,9 +169,13 @@ object IO
 	/** Retrieves the content of the given URL and writes it to the given File. */
 	def download(url: URL, to: File) =
 		Using.urlInputStream(url) { inputStream =>
-			Using.fileOutputStream()(to) { outputStream =>
-				transfer(inputStream, outputStream)
-			}
+			transfer(inputStream, to)
+		}
+
+	/** Copies all bytes from the given input stream to the given File.*/
+	def transfer(in: InputStream, to: File): Unit =
+		Using.fileOutputStream()(to) { outputStream =>
+			transfer(in, outputStream)
 		}
 
 	/** Copies all bytes from the given input stream to the given output stream.
@@ -446,15 +450,17 @@ object IO
 
 	// Not optimized for large files
 	def readLines(file: File, charset: Charset = defaultCharset): List[String] =
+		fileReader(charset)(file)(readLines)
+		
+	// Not optimized for large files
+	def readLines(in: BufferedReader): List[String] = 
 	{
-		fileReader(charset)(file){ in =>
-			def readLine(accum: List[String]): List[String] =
-			{
-				val line = in.readLine()
-				if(line eq null) accum.reverse else readLine(line :: accum)
-			}
-			readLine(Nil)
+		def readLine(accum: List[String]): List[String] =
+		{
+			val line = in.readLine()
+			if(line eq null) accum.reverse else readLine(line :: accum)
 		}
+		readLine(Nil)
 	}
 	def writeLines(file: File, lines: Seq[String], charset: Charset = defaultCharset, append: Boolean = false): Unit =
 		writer(file, lines.headOption.getOrElse(""), charset, append) { w =>
