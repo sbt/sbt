@@ -206,7 +206,7 @@ final class Execute[A[_] <: AnyRef](checkCycles: Boolean)(implicit view: NodeVie
 		/** Send the work for this node to the provided Strategy. */
 	def submit[T]( node: A[T] )(implicit strategy: Strategy)
 	{
-		val v = view(node)
+		val v = viewCache(node)
 		val rs = v.mixedIn.map(results)
 		val ud = v.uniformIn.map(results.apply[v.Uniform])
 		strategy.submit( node, () => work(node, v.work(rs, ud)) )
@@ -233,7 +233,7 @@ final class Execute[A[_] <: AnyRef](checkCycles: Boolean)(implicit view: NodeVie
 	def addReverse(node: A[_], dependent: A[_]): Unit = reverse(node) ++= Seq(dependent)
 	def addCaller[T](caller: A[T], target: A[T]): Unit = callers.getOrUpdate(target, IDSet.create[A[T]]) += caller
 
-	def dependencies(node: A[_]): Iterable[A[_]] = dependencies(view(node))
+	def dependencies(node: A[_]): Iterable[A[_]] = dependencies(viewCache(node))
 	def dependencies(v: Node[A, _]): Iterable[A[_]] = v.uniformIn ++ v.mixedIn.toList
 
 		// Contracts
