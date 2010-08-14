@@ -9,7 +9,7 @@ import Types._
 * type parameters HL.  The underlying data is M applied to each type parameter.
 * Explicitly tracking M[_] allows performing natural transformations or ensuring
 * all data conforms to some common type. */
-sealed trait KList[+M[_], HL <: HList] {
+sealed trait KList[+M[_], +HL <: HList] {
 	type Raw = HL
 	/** Transform to the underlying HList type.*/
 	def down(implicit ev: M ~> Id): HL
@@ -44,4 +44,6 @@ object KList
 {
 	// nicer alias for pattern matching
 	val :^: = KCons
+	
+	def fromList[M[_]](s: Seq[M[_]]): KList[M, HList] = if(s.isEmpty) KNil else KCons(s.head, fromList(s.tail))
 }
