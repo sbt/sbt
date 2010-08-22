@@ -50,14 +50,14 @@ sealed trait JoinTask[S, CC[_]]
 import java.io._
 sealed trait BinaryPipe
 {
-	def #| [T](f: BufferedInputStream => T): Task[T]
-	//def #| [T](sid: String)(f: BufferedInputStream => T): Task[T]
+	def binary[T](f: BufferedInputStream => T): Task[T]
+	//def binary[T](sid: String)(f: BufferedInputStream => T): Task[T]
 	def #>(f: File): Task[Unit]
 	//def #>(sid: String, f: File): Task[Unit]
 }
 sealed trait TextPipe
 {
-	def #| [T](f: BufferedReader => T): Task[T]
+	def text[T](f: BufferedReader => T): Task[T]
 	//def #| [T](sid: String)(f: BufferedReader => T): Task[T]
 }
 sealed trait TaskLines
@@ -137,7 +137,7 @@ trait TaskExtra
 	}
 
 	final implicit def binaryPipeTask(in: Task[_])(implicit streams: Task[TaskStreams]): BinaryPipe = new BinaryPipe {
-		def #| [T](f: BufferedInputStream => T): Task[T] = pipe0(None, f)
+		def binary[T](f: BufferedInputStream => T): Task[T] = pipe0(None, f)
 		//def #| [T](sid: String)(f: BufferedInputStream => T): Task[T] = pipe0(Some(sid), f)
 		
 		def #>(f: File): Task[Unit] = pipe0(None, toFile(f))
@@ -149,7 +149,7 @@ trait TaskExtra
 		private def toFile(f: File) = (in: InputStream) => IO.transfer(in, f)
 	}
 	final implicit def textPipeTask(in: Task[_])(implicit streams: Task[TaskStreams]): TextPipe = new TextPipe {
-		def #| [T](f: BufferedReader => T): Task[T] = pipe0(None, f)
+		def text[T](f: BufferedReader => T): Task[T] = pipe0(None, f)
 		//def #| [T](sid: String)(f: BufferedReader => T): Task[T] = pipe0(Some(sid), f)
 		
 		private def pipe0 [T](sid: Option[String], f: BufferedReader => T): Task[T] =
