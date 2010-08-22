@@ -13,7 +13,7 @@ sealed trait MultiInTask[In <: HList]
 {
 	def flatMap[T](f: In => Task[T]): Task[T]
 	def flatMapR[T](f: Results[In] => Task[T]): Task[T]
-	def mapH[T](f: In => T): Task[T]
+	def map[T](f: In => T): Task[T]
 	def mapR[T](f: Results[In] => T): Task[T]
 	def flatFailure[T](f: Seq[Incomplete] => Task[T]): Task[T]
 	def mapFailure[T](f: Seq[Incomplete] => T): Task[T]
@@ -51,14 +51,14 @@ import java.io._
 sealed trait BinaryPipe
 {
 	def binary[T](f: BufferedInputStream => T): Task[T]
-	//def binary[T](sid: String)(f: BufferedInputStream => T): Task[T]
+	def binary[T](sid: String)(f: BufferedInputStream => T): Task[T]
 	def #>(f: File): Task[Unit]
-	//def #>(sid: String, f: File): Task[Unit]
+	def #>(sid: String, f: File): Task[Unit]
 }
 sealed trait TextPipe
 {
 	def text[T](f: BufferedReader => T): Task[T]
-	//def #| [T](sid: String)(f: BufferedReader => T): Task[T]
+	def text[T](sid: String)(f: BufferedReader => T): Task[T]
 }
 sealed trait TaskLines
 {
@@ -67,7 +67,7 @@ sealed trait TaskLines
 }
 sealed trait ProcessPipe {
 	def #| (p: ProcessBuilder): Task[Int]
-	//def #| (sid: String)(p: ProcessBuilder): Task[Int]
+	def pipe(sid: String)(p: ProcessBuilder): Task[Int]
 }
 
 trait TaskExtra
@@ -84,35 +84,36 @@ trait TaskExtra
 	}
 	final implicit def pureJoin[S](in: Seq[S]): JoinTask[S, Seq] = joinTasks(pureTasks(in))
 	final implicit def joinTasks[S](in: Seq[Task[S]]): JoinTask[S, Seq] = new JoinTask[S, Seq] {
-		def join: Task[Seq[S]] = new Join(in, (s: Seq[S]) => Right(s) )
-		//def join[T](f: Iterable[S] => T): Task[Iterable[T]] = new MapAll( MList.fromTCList[Task](in), ml => f(ml.toList))
-		//def joinR[T](f: Iterable[Result[S]] => T): Task[Iterable[Result[T]]] = new Mapped( MList.fromTCList[Task](in), ml => f(ml.toList))
+		def join: Task[Seq[S]] = new Join(in, (s: Seq[Result[S]]) => Right(TaskExtra.all(s)) )
 		def reduce(f: (S,S) => S): Task[S] = TaskExtra.reduce(in.toIndexedSeq, f)
 	}
 
 	final implicit def multInputTask[In <: HList](tasks: Tasks[In]): MultiInTask[In] = new MultiInTask[In] {
-		def flatMap[T](f: In => Task[T]): Task[T] = new FlatMapAll(tasks, f)
+			import TaskExtra.{allM, anyFailM}
+
 		def flatMapR[T](f: Results[In] => Task[T]): Task[T] = new FlatMapped(tasks, f)
-		def mapH[T](f: In => T): Task[T] = new MapAll(tasks, f)
+		def flatMap[T](f: In => Task[T]): Task[T] = flatMapR(f compose allM)
+		def flatFailure[T](f: Seq[Incomplete] => Task[T]): Task[T] = flatMapR(f compose anyFailM)
+
 		def mapR[T](f: Results[In] => T): Task[T] = new Mapped(tasks, f)
-		def flatFailure[T](f: Seq[Incomplete] => Task[T]): Task[T] = new FlatMapFailure(tasks, f)
-		def mapFailure[T](f: Seq[Incomplete] => T): Task[T] = new MapFailure(tasks, f)
+		def map[T](f: In => T): Task[T] = mapR(f compose allM)
+		def mapFailure[T](f: Seq[Incomplete] => T): Task[T] = mapR(f compose anyFailM)
 	}
 	
 	final implicit def singleInputTask[S](in: Task[S]): SingleInTask[S] = new SingleInTask[S] {
+			import TaskExtra.{successM, failM}
+
 		type HL = S :+: HNil
 		private val ml = in :^: KNil
 		private def headM = (_: Results[HL]).combine.head
-		private def headH = (_: HL).head
-		private def headS = (_: Seq[Incomplete]).head
 		
 		def flatMapR[T](f: Result[S] => Task[T]): Task[T] = new FlatMapped[T, HL](ml, f ∙ headM)
-		def flatMap[T](f: S => Task[T]): Task[T] = new FlatMapAll(ml, f ∙ headH)
-		def flatFailure[T](f: Incomplete => Task[T]): Task[T] = new FlatMapFailure(ml, f ∙ headS)
-		
-		def map[T](f: S => T): Task[T] = new MapAll(ml, f ∙ headH)
+		def flatMap[T](f: S => Task[T]): Task[T] = flatMapR(f compose successM)
+		def flatFailure[T](f: Incomplete => Task[T]): Task[T] = flatMapR(f compose failM)
+
 		def mapR[T](f: Result[S] => T): Task[T] = new Mapped[T, HL](ml, f ∙ headM)
-		def mapFailure[T](f: Incomplete => T): Task[T] = new MapFailure(ml, f ∙ headS)
+		def map[T](f: S => T): Task[T] = mapR(f compose successM)
+		def mapFailure[T](f: Incomplete => T): Task[T] = mapR(f compose failM)
 		
 		def dependsOn(tasks: Task[_]*): Task[S] = new DependsOn(in, tasks)
 		def andFinally(fin: => Unit): Task[S] = mapR(x => Result.tryValue[S]( { fin; x }))
@@ -121,14 +122,14 @@ trait TaskExtra
 		def && [T](alt: Task[T]): Task[T] = flatMap( _ => alt )
 	}
 	final implicit def toTaskInfo[S](in: Task[S]): TaskInfo[S] = new TaskInfo[S] {
-		def named(s: String): Task[S] = in.copy(info = in.info.copy(name = Some(s)))
-		def describedAs(s: String): Task[S] = in.copy(info = in.info.copy(description = Some(s)))
-		def implies: Task[S] = in.copy(info = in.info.copy(implied = true))
+		def named(s: String): Task[S] = in.copy(info = in.info.setName(s))
+		def describedAs(s: String): Task[S] = in.copy(info = in.info.setDescription(s))
+		def implies: Task[S] = in.copy(info = in.info.setImplied(true))
 	}
 
 	final implicit def pipeToProcess(t: Task[_])(implicit streams: Task[TaskStreams]): ProcessPipe = new ProcessPipe {
 		def #| (p: ProcessBuilder): Task[Int] = pipe0(None, p)
-		//def #| (sid: String)(p: ProcessBuilder): Task[Int] = pipe0(Some(sid), p)
+		def pipe(sid: String)(p: ProcessBuilder): Task[Int] = pipe0(Some(sid), p)
 		private def pipe0(sid: Option[String], p: ProcessBuilder): Task[Int] =
 			for(s <- streams; in <- s.readBinary(t, sid, true)) yield {
 				val pio = TaskExtra.processIO(s).withInput( out => { BasicIO.transferFully(in, out); out.close() } )
@@ -138,10 +139,10 @@ trait TaskExtra
 
 	final implicit def binaryPipeTask(in: Task[_])(implicit streams: Task[TaskStreams]): BinaryPipe = new BinaryPipe {
 		def binary[T](f: BufferedInputStream => T): Task[T] = pipe0(None, f)
-		//def #| [T](sid: String)(f: BufferedInputStream => T): Task[T] = pipe0(Some(sid), f)
+		def binary[T](sid: String)(f: BufferedInputStream => T): Task[T] = pipe0(Some(sid), f)
 		
 		def #>(f: File): Task[Unit] = pipe0(None, toFile(f))
-		//def #>(sid: String, f: File): Task[Unit] = pipe0(Some(sid), toFile(f))
+		def #>(sid: String, f: File): Task[Unit] = pipe0(Some(sid), toFile(f))
 		
 		private def pipe0 [T](sid: Option[String], f: BufferedInputStream => T): Task[T] =
 			streams flatMap { s => s.readBinary(in, sid, true) map f }
@@ -150,7 +151,7 @@ trait TaskExtra
 	}
 	final implicit def textPipeTask(in: Task[_])(implicit streams: Task[TaskStreams]): TextPipe = new TextPipe {
 		def text[T](f: BufferedReader => T): Task[T] = pipe0(None, f)
-		//def #| [T](sid: String)(f: BufferedReader => T): Task[T] = pipe0(Some(sid), f)
+		def text [T](sid: String)(f: BufferedReader => T): Task[T] = pipe0(Some(sid), f)
 		
 		private def pipe0 [T](sid: Option[String], f: BufferedReader => T): Task[T] =
 			streams flatMap { s => s.readText(in, sid, true) map f }
@@ -185,5 +186,29 @@ object TaskExtra extends TaskExtra
 				reducePair( reduce(a, f), reduce(b, f), f )
 		}
 	def reducePair[S](a: Task[S], b: Task[S], f: (S, S) => S): Task[S] =
-		(a :^: b :^: KNil) mapH { case x :+: y :+: HNil => f(x,y) }
+		(a :^: b :^: KNil) map { case x :+: y :+: HNil => f(x,y) }
+
+	def anyFailM[In <: HList]: Results[In] => Seq[Incomplete] = in =>
+	{
+		val incs = failuresM(in)
+		if(incs.isEmpty) expectedFailure else incs
+	}
+	def failM[T]: Result[T] => Incomplete = { case Inc(i) => i; case x => expectedFailure }
+
+	def expectedFailure = throw Incomplete(message = Some("Expected failure"))
+
+	def successM[T]: Result[T] => T = { case Inc(i) => throw i; case Value(t) => t }
+	def allM[In <: HList]: Results[In] => In = in =>
+	{
+		val incs = failuresM(in)
+		if(incs.isEmpty) in.down(Result.tryValue) else throw Incomplete(causes = incs)
+	}
+	def failuresM[In <: HList]: Results[In] => Seq[Incomplete] = x => failures[Any](x.toList)
+
+	def all[D](in: Seq[Result[D]]) =
+	{
+		val incs = failures(in)
+		if(incs.isEmpty) in.map(Result.tryValue.fn[D]) else throw Incomplete(causes = incs)
+	}
+	def failures[A](results: Seq[Result[A]]): Seq[Incomplete] = results.collect { case Inc(i) => i }
 }

@@ -46,7 +46,10 @@ object System
 		new (Task ~> Task) {
 			def apply[T](in: Task[T]): Task[T] = {
 				val finalName = in.info.name orElse staticName(in.original)
-				in.copy(info = in.info.copy(name = finalName) )
+				finalName match {
+					case None => in
+					case Some(finalName) => in.copy(info = in.info.setName(finalName) )
+				}
 			}
 		}
 
@@ -61,12 +64,11 @@ object System
 	*  For example, this does not include the inputs of MapFailure or the dependencies of DependsOn. */
 	def usedInputs(t: Action[_]): Seq[Task[_]] = t match {
 		case m: Mapped[_,_] => m.in.toList
-		case m: MapAll[_,_] => m.in.toList
 		case m: FlatMapped[_,_] => m.in.toList
-		case m: FlatMapAll[_,_] => m.in.toList
 		case j: Join[_,_] => j.in
 		case _ => Nil
 	}
+
 
 	def streamed(streams: Streams, dummy: Task[TaskStreams]): Task ~> Task =
 		new (Task ~> Task) {
@@ -86,10 +88,8 @@ object System
 				def newWork(a: Action[T]): Task[T] = t.copy(work = a)
 
 				t.work match {
-					case m: Mapped[_,_] => newWork( m.copy(in = m.in map depMap, f = wrap0(m.f) ) ) // the Streams instance is valid only within the mapping function
-					case m: MapAll[_,_] => newWork( m.copy(in = m.in map depMap, f = wrap0(m.f) ) )
-					case fm: FlatMapped[_,_] => fin(newWork( fm.copy(in = fm.in map depMap) )) // the Streams instance is valid until a result is produced for the task
-					case fm: FlatMapAll[_,_] => fin(newWork( fm.copy(in = fm.in map depMap) ))
+					case m: Mapped[_,_] => newWork( m.copy(in = m.in transform depMap, f = wrap0(m.f) ) ) // the Streams instance is valid only within the mapping function
+					case fm: FlatMapped[_,_] => fin(newWork( fm.copy(in = fm.in transform depMap) )) // the Streams instance is valid until a result is produced for the task
 					case j: Join[_,u] => newWork( j.copy(j.in map depMap.fn[u], f = wrap0(j.f)) )
 					case _ => t // can't get a TaskStreams value from the other types, so no need to transform here (shouldn't get here anyway because of usedInputs check)
 				}
@@ -108,6 +108,17 @@ object Transform
 		def subs: Owner => Iterable[Owner]
 		def static: (Owner, String) => Option[Task[_]]
 	}
+	def setOriginal(delegate: Task ~> Task): Task ~> Task =
+		new (Task ~> Task) {
+			def apply[T](in: Task[T]): Task[T] =
+			{
+				val transformed = delegate(in)
+				if( (transformed eq in) || transformed.info.original.isDefined)
+					transformed 
+				else
+					transformed.copy(info = transformed.info.copy(original = in.info.original orElse Some(in)))
+			}
+		}
 
 	def apply[Input, State, Owner](dummies: Dummies[Input, State], injected: Injected[Input, State], context: Context[Owner]) =
 	{
@@ -117,7 +128,7 @@ object Transform
 		import System._
 		import Convert._
 		val inputs = dummyMap(dummyIn, dummyState)(in, state)
-		Convert.taskToNode ∙ streamed(streams, dummyStreams) ∙ implied(owner, subs, static) ∙ name(staticName) ∙ getOrId(inputs)
+		Convert.taskToNode ∙ setOriginal(streamed(streams, dummyStreams)) ∙ implied(owner, subs, static) ∙ setOriginal(name(staticName)) ∙ getOrId(inputs)
 	}
 }
 object Convert
@@ -126,13 +137,9 @@ object Convert
 		def apply[T](t: Task[T]): Node[Task, T] = t.work match {
 			case Pure(eval) => toNode(KNil)( _ => Right(eval()) )
 			case Mapped(in, f) => toNode(in)( right ∙ f  )
-			case MapAll(in, f) => toNode(in)( right ∙ (f compose allM) )
-			case MapFailure(in, f) => toNode(in)( right ∙ (f compose anyFailM))
 			case FlatMapped(in, f) => toNode(in)( left ∙ f )
-			case FlatMapAll(in, f) => toNode(in)( left ∙ (f compose allM) )
-			case FlatMapFailure(in, f) => toNode(in)( left ∙ (f compose anyFailM) )
 			case DependsOn(in, deps) => toNode(KList.fromList(deps))( _ => Left(in) )
-			case Join(in, f) => uniform(in)(f compose all)
+			case Join(in, f) => uniform(in)(f)
 		}
 	}
 		
@@ -150,24 +157,4 @@ object Convert
 		val uniformIn = Nil
 		def work(results: Results[In], units: Seq[Result[Uniform]]) = f(results)
 	}
-	
-	def anyFailM[In <: HList]: Results[In] => Seq[Incomplete] = in =>
-	{
-		val incs = failuresM(in)
-		if(incs.isEmpty) throw Incomplete(message = Some("Expected failure")) else incs
-	}
-	
-	def allM[In <: HList]: Results[In] => In = in =>
-	{
-		val incs = failuresM(in)
-		if(incs.isEmpty) in.down(Result.tryValue) else throw Incomplete(causes = incs)
-	}
-	def all[D]: Seq[Result[D]] => Seq[D] = in =>
-	{
-		val incs = failures(in)
-		if(incs.isEmpty) in.map(Result.tryValue.fn[D]) else throw Incomplete(causes = incs)
-	}
-	def failuresM[In <: HList]: Results[In] => Seq[Incomplete] = x => failures[Any](x.toList)
-	def failures[A](results: Seq[Result[A]]): Seq[Incomplete] = results.collect { case Inc(i) => i }
-	
 }

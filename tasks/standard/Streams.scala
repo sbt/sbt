@@ -111,5 +111,5 @@ object Streams
 	}
 	
 	def name(a: Task[_]): String = a.info.name getOrElse anonName(a)
-	def anonName(a: Task[_]) = "anon" + java.lang.Integer.toString(java.lang.System.identityHashCode(a), 36)
+	def anonName(a: Task[_]) = "anon-" + java.lang.Integer.toString(java.lang.System.identityHashCode(a), 36)
 }
