@@ -20,7 +20,7 @@ class XSbt(info: ProjectInfo) extends ParentProject(info) with NoCrossPaths
 	val ioSub = testedBase(utilPath / "io", "IO", controlSub)
 	val classpathSub = baseProject(utilPath / "classpath", "Classpath", launchInterfaceSub, ioSub)
 	val completeSub = project(utilPath / "complete", "Completion", new InputProject(_), controlSub, ioSub)
-	val logSub = project(utilPath / "log", "Logging", new LogProject(_), interfaceSub)
+	val logSub = project(utilPath / "log", "Logging", new LogProject(_), interfaceSub, processSub)
 	val classfileSub = testedBase(utilPath / "classfile", "Classfile", ioSub, interfaceSub, logSub)
 	val datatypeSub = baseProject(utilPath /"datatype", "Datatype Generator", ioSub)
 	val envSub= baseProject(utilPath / "env", "Properties", ioSub, logSub, classpathSub)
