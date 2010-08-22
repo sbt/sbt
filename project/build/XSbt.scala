@@ -15,13 +15,14 @@ class XSbt(info: ProjectInfo) extends ParentProject(info) with NoCrossPaths
 	// util
 	val controlSub = baseProject(utilPath / "control", "Control")
 	val collectionSub = testedBase(utilPath / "collection", "Collections")
+	val processSub = project(utilPath / "process", "Process", new Base(_) with TestWithIO)
+
 	val ioSub = testedBase(utilPath / "io", "IO", controlSub)
 	val classpathSub = baseProject(utilPath / "classpath", "Classpath", launchInterfaceSub, ioSub)
 	val completeSub = project(utilPath / "complete", "Completion", new InputProject(_), controlSub, ioSub)
 	val logSub = project(utilPath / "log", "Logging", new LogProject(_), interfaceSub)
 	val classfileSub = testedBase(utilPath / "classfile", "Classfile", ioSub, interfaceSub, logSub)
 	val datatypeSub = baseProject(utilPath /"datatype", "Datatype Generator", ioSub)
-	val processSub = project(utilPath / "process", "Process", new Base(_) with TestWithIO, ioSub, logSub)
 	val envSub= baseProject(utilPath / "env", "Properties", ioSub, logSub, classpathSub)
 
 	// intermediate-level modules
