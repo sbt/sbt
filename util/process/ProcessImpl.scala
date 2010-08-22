@@ -43,17 +43,19 @@ private object Future
 
 object BasicIO
 {
-	def apply(buffer: StringBuffer, log: Option[Logger], withIn: Boolean) = new ProcessIO(input(withIn), processFully(buffer), getErr(log))
-	def apply(log: Logger, withIn: Boolean) = new ProcessIO(input(withIn), processFully(log, Level.Info), processFully(log, Level.Error))
+	def apply(buffer: StringBuffer, log: Option[ProcessLogger], withIn: Boolean) = new ProcessIO(input(withIn), processFully(buffer), getErr(log))
+	def apply(log: ProcessLogger, withIn: Boolean) = new ProcessIO(input(withIn), processInfoFully(log), processErrFully(log))
 
-	def getErr(log: Option[Logger]) = log match { case Some(lg) => processFully(lg, Level.Error); case None => toStdErr }
+	def getErr(log: Option[ProcessLogger]) = log match { case Some(lg) => processErrFully(lg); case None => toStdErr }
+
+	private def processErrFully(log: ProcessLogger) = processFully(s => log.error(s))
+	private def processInfoFully(log: ProcessLogger) = processFully(s => log.info(s))
 
 	def ignoreOut = (i: OutputStream) => ()
 	final val BufferSize = 8192
 	final val Newline = System.getProperty("line.separator")
 
 	def close(c: java.io.Closeable) = try { c.close() } catch { case _: java.io.IOException => () }
-	def processFully(log: Logger, level: Level.Value): InputStream => Unit = processFully(line => log.log(level, line))
 	def processFully(buffer: Appendable): InputStream => Unit = processFully(appendLine(buffer))
 	def processFully(processLine: String => Unit): InputStream => Unit =
 		in =>
@@ -128,26 +130,26 @@ private abstract class AbstractProcessBuilder extends ProcessBuilder with SinkPa
 	
 	def run(): Process = run(false)
 	def run(connectInput: Boolean): Process = run(BasicIO.standard(connectInput))
-	def run(log: Logger): Process = run(log, false)
-	def run(log: Logger, connectInput: Boolean): Process = run(BasicIO(log, connectInput))
+	def run(log: ProcessLogger): Process = run(log, false)
+	def run(log: ProcessLogger, connectInput: Boolean): Process = run(BasicIO(log, connectInput))
 
-	private[this] def getString(log: Option[Logger], withIn: Boolean): String =
+	private[this] def getString(log: Option[ProcessLogger], withIn: Boolean): String =
 	{
 		val buffer = new StringBuffer
 		val code = this ! BasicIO(buffer, log, withIn)
 		if(code == 0) buffer.toString else error("Nonzero exit value: " + code)
 	}
 	def !! = getString(None, false)
-	def !!(log: Logger) = getString(Some(log), false)
+	def !!(log: ProcessLogger) = getString(Some(log), false)
 	def !!< = getString(None, true)
-	def !!<(log: Logger) = getString(Some(log), true)
+	def !!<(log: ProcessLogger) = getString(Some(log), true)
 
 	def lines: Stream[String] = lines(false, true, None)
-	def lines(log: Logger): Stream[String] = lines(false, true, Some(log))
+	def lines(log: ProcessLogger): Stream[String] = lines(false, true, Some(log))
 	def lines_! : Stream[String] = lines(false, false, None)
-	def lines_!(log: Logger): Stream[String] = lines(false, false, Some(log))
+	def lines_!(log: ProcessLogger): Stream[String] = lines(false, false, Some(log))
 
-	private[this] def lines(withInput: Boolean, nonZeroException: Boolean, log: Option[Logger]): Stream[String] =
+	private[this] def lines(withInput: Boolean, nonZeroException: Boolean, log: Option[ProcessLogger]): Stream[String] =
 	{
 		val streamed = Streamed[String](nonZeroException)
 		val process = run(new ProcessIO(BasicIO.input(withInput), BasicIO.processFully(streamed.process), BasicIO.getErr(log)))
@@ -157,13 +159,10 @@ private abstract class AbstractProcessBuilder extends ProcessBuilder with SinkPa
 
 	def ! = run(false).exitValue()
 	def !< = run(true).exitValue()
-	def !(log: Logger) = runBuffered(log, false)
-	def !<(log: Logger) = runBuffered(log, true)
-	private[this] def runBuffered(log: Logger, connectInput: Boolean) =
-	{
-		val log2 = new BufferedLogger(new FullLogger(log))
-		log2.buffer {  run(log2, connectInput).exitValue() }
-	}
+	def !(log: ProcessLogger) = runBuffered(log, false)
+	def !<(log: ProcessLogger) = runBuffered(log, true)
+	private[this] def runBuffered(log: ProcessLogger, connectInput: Boolean) =
+		log.buffer {  run(log, connectInput).exitValue() }
 	def !(io: ProcessIO) = run(io).exitValue()
 
 	def canPipeTo = false

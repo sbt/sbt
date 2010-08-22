@@ -103,49 +103,49 @@ trait ProcessBuilder extends SourcePartialBuilder with SinkPartialBuilder
 	* sent to the console.  If the exit code is non-zero, an exception is thrown.*/
 	def !! : String
 	/** Starts the process represented by this builder, blocks until it exits, and returns the output as a String.  Standard error is
-	* sent to the provided Logger.  If the exit code is non-zero, an exception is thrown.*/
-	def !!(log: Logger) : String
+	* sent to the provided ProcessLogger.  If the exit code is non-zero, an exception is thrown.*/
+	def !!(log: ProcessLogger) : String
 	/** Starts the process represented by this builder.  The output is returned as a Stream that blocks when lines are not available
 	* but the process has not completed.  Standard error is sent to the console.  If the process exits with a non-zero value,
 	* the Stream will provide all lines up to termination and then throw an exception. */
 	def lines: Stream[String]
 	/** Starts the process represented by this builder.  The output is returned as a Stream that blocks when lines are not available
-	* but the process has not completed.  Standard error is sent to the provided Logger.  If the process exits with a non-zero value,
+	* but the process has not completed.  Standard error is sent to the provided ProcessLogger.  If the process exits with a non-zero value,
 	* the Stream will provide all lines up to termination but will not throw an exception. */
-	def lines(log: Logger): Stream[String]
+	def lines(log: ProcessLogger): Stream[String]
 	/** Starts the process represented by this builder.  The output is returned as a Stream that blocks when lines are not available
 	* but the process has not completed.  Standard error is sent to the console. If the process exits with a non-zero value,
 	* the Stream will provide all lines up to termination but will not throw an exception. */
 	def lines_! : Stream[String]
 	/** Starts the process represented by this builder.  The output is returned as a Stream that blocks when lines are not available
-	* but the process has not completed.  Standard error is sent to the provided Logger. If the process exits with a non-zero value,
+	* but the process has not completed.  Standard error is sent to the provided ProcessLogger. If the process exits with a non-zero value,
 	* the Stream will provide all lines up to termination but will not throw an exception. */
-	def lines_!(log: Logger): Stream[String]
+	def lines_!(log: ProcessLogger): Stream[String]
 	/** Starts the process represented by this builder, blocks until it exits, and returns the exit code.  Standard output and error are
 	* sent to the console.*/
 	def ! : Int
 	/** Starts the process represented by this builder, blocks until it exits, and returns the exit code.  Standard output and error are
-	* sent to the given Logger.*/
-	def !(log: Logger): Int
+	* sent to the given ProcessLogger.*/
+	def !(log: ProcessLogger): Int
 	/** Starts the process represented by this builder, blocks until it exits, and returns the exit code.  Standard output and error are
 	* sent to the console.  The newly started process reads from standard input of the current process.*/
 	def !< : Int
 	/** Starts the process represented by this builder, blocks until it exits, and returns the exit code.  Standard output and error are
-	* sent to the given Logger.  The newly started process reads from standard input of the current process.*/
-	def !<(log: Logger) : Int
+	* sent to the given ProcessLogger.  The newly started process reads from standard input of the current process.*/
+	def !<(log: ProcessLogger) : Int
 	/** Starts the process represented by this builder.  Standard output and error are sent to the console.*/
 	def run(): Process
-	/** Starts the process represented by this builder.  Standard output and error are sent to the given Logger.*/
-	def run(log: Logger): Process
+	/** Starts the process represented by this builder.  Standard output and error are sent to the given ProcessLogger.*/
+	def run(log: ProcessLogger): Process
 	/** Starts the process represented by this builder.  I/O is handled by the given ProcessIO instance.*/
 	def run(io: ProcessIO): Process
 	/** Starts the process represented by this builder.  Standard output and error are sent to the console.
 	* The newly started process reads from standard input of the current process if `connectInput` is true.*/
 	def run(connectInput: Boolean): Process
 	/** Starts the process represented by this builder, blocks until it exits, and returns the exit code.  Standard output and error are
-	* sent to the given Logger.
+	* sent to the given ProcessLogger.
 	* The newly started process reads from standard input of the current process if `connectInput` is true.*/
-	def run(log: Logger, connectInput: Boolean): Process
+	def run(log: ProcessLogger, connectInput: Boolean): Process
 
 	/** Constructs a command that runs this command first and then `other` if this command succeeds.*/
 	def #&& (other: ProcessBuilder): ProcessBuilder
@@ -164,4 +164,10 @@ final class ProcessIO(val writeInput: OutputStream => Unit, val processOutput: I
 	def withOutput(process: InputStream => Unit): ProcessIO = new ProcessIO(writeInput, process, processError)
 	def withError(process: InputStream => Unit): ProcessIO = new ProcessIO(writeInput, processOutput, process)
 	def withInput(write: OutputStream => Unit): ProcessIO = new ProcessIO(write, processOutput, processError)
+}
+trait ProcessLogger
+{
+	def info(s: => String): Unit
+	def error(s: => String): Unit
+	def buffer[T](f: => T): T
 }

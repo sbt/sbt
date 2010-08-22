@@ -8,8 +8,6 @@ import Process._
 
 object ProcessSpecification extends Properties("Process I/O")
 {
-	private val log = new ConsoleLogger
-
 	implicit val exitCodeArb: Arbitrary[Array[Byte]] = Arbitrary(Gen.choose(0, 10) flatMap { size => Gen.resize(size, Arbitrary.arbArray[Byte].arbitrary) })
 
 	/*property("Correct exit code") = forAll( (exitCode: Byte) => checkExit(exitCode))

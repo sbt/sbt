@@ -33,6 +33,14 @@ abstract class AbstractLogger extends Logger
 	}
 }
 
+/*
+These need to go in a module that integrates Logger and Process.
+object Logger
+{
+	implicit def absLog2PLog(log: AbstractLogger): ProcessLogger = new BufferedLogger(log) with ProcessLogger
+	implicit def log2PLog(log: Logger): ProcessLogger = absLog2PLog(new FullLogger(log))
+}*/
+
 /** This is intended to be the simplest logging interface for use by code that wants to log.
 * It does not include configuring the logger. */
 trait Logger extends xLogger
