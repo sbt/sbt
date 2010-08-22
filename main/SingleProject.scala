@@ -15,13 +15,18 @@ trait SingleProject extends Tasked
 	def base: File
 	def streamBase = base / "streams"
 
+	implicit def streams = Dummy.Streams
+	def input = Dummy.In
+	def state = Dummy.State
+
 	type Task[T] = sbt.Task[T]
 	def act(input: Input, state: State): Option[(Task[State], Execute.NodeView[Task])] =
 	{
 		import Dummy._
 		val context = ReflectiveContext(this)
 		val dummies = new Transform.Dummies(In, State, Streams)
-		val injected = new Transform.Injected( input, state, std.Streams(t => streamBase / std.Streams.name(t)) )
+		def name(t: Task[_]): String = context.staticName(t) getOrElse std.Streams.name(t)
+		val injected = new Transform.Injected( input, state, std.Streams(t => streamBase / name(t)) )
 		context.forName(input.name) map { t => (t map(_ => state), Transform(dummies, injected, context) ) }
 	}
 
@@ -44,16 +49,16 @@ object ReflectiveContext
 	import Transform.Context
 	def apply[Owner <: AnyRef : Manifest](context: Owner): Context[Owner] = new Context[Owner]
 	{
-		private[sbt] lazy val tasks: Map[String, Task[_]] = ReflectUtilities.allVals[Task[_]](context).toMap.transform { case (nme,task) => setName(task,nme) }
+		private[sbt] lazy val tasks: Map[String, Task[_]] = ReflectUtilities.allVals[Task[_]](context).toMap
 		private[sbt] lazy val reverseName: collection.Map[Task[_], String] = reverseMap(tasks)
 		private[sbt] lazy val sub: collection.Map[String, Owner] = ReflectUtilities.allVals[Owner](context)
 		private[sbt] lazy val reverseSub: collection.Map[Owner, String] = reverseMap(sub)
 
 		def forName(s: String): Option[Task[_]] = tasks get s
-		def staticName: Task[_] => Option[String] = reverseName.get _
-		def owner = (_: Task[_]) => Some(context)
-		def subs = (o: Owner) => Nil
-		def static = (o: Owner, s: String) => if(o eq context) tasks.get(s) else None
+		val staticName: Task[_] => Option[String] = reverseName.get _
+		val owner = (_: Task[_]) => Some(context)
+		val subs = (o: Owner) => Nil
+		val static = (o: Owner, s: String) => if(o eq context) tasks.get(s) else None
 
 		private def reverseMap[A,B](in: Iterable[(A,B)]): collection.Map[B,A] =
 		{
@@ -62,7 +67,5 @@ object ReflectiveContext
 			for( (name, task) <- in ) map(task) = name
 			map
 		}
-		private def setName[T](task: Task[T], nme: String): Task[T] =
-			task.copy(task.info.copy(name = task.info.name orElse Some(nme), original = Some(task) ))
 	}
 }
