@@ -140,6 +140,7 @@ object Convert
 			case FlatMapped(in, f) => toNode(in)( left ∙ f )
 			case DependsOn(in, deps) => toNode(KList.fromList(deps))( _ => Left(in) )
 			case Join(in, f) => uniform(in)(f)
+			case CrossAction(subs) => error("Cannot run cross task: " + subs.mkString("\n\t","\n\t","\n"))
 		}
 	}
 		

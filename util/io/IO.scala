@@ -454,14 +454,21 @@ object IO
 		
 	// Not optimized for large files
 	def readLines(in: BufferedReader): List[String] = 
+		foldLines[List[String]](in, Nil)( (accum, line) => line :: accum )
+	
+	def foreachLine(in: BufferedReader)(f: String => Unit): Unit =
+		foldLines(in, ())( (_, line) => f(line) )
+		
+	def foldLines[T](in: BufferedReader, init: T)(f: (T, String) => T): T =
 	{
-		def readLine(accum: List[String]): List[String] =
+		def readLine(accum: T): T =
 		{
 			val line = in.readLine()
-			if(line eq null) accum.reverse else readLine(line :: accum)
+			if(line eq null) accum else readLine(f(accum, line))
 		}
-		readLine(Nil)
+		readLine(init)
 	}
+	
 	def writeLines(file: File, lines: Seq[String], charset: Charset = defaultCharset, append: Boolean = false): Unit =
 		writer(file, lines.headOption.getOrElse(""), charset, append) { w =>
 			lines.foreach { line => w.write(line); w.newLine() }

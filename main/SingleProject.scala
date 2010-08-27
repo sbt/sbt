@@ -27,7 +27,7 @@ trait SingleProject extends Tasked
 		val dummies = new Transform.Dummies(In, State, Streams)
 		def name(t: Task[_]): String = context.staticName(t) getOrElse std.Streams.name(t)
 		val injected = new Transform.Injected( input, state, std.Streams(t => streamBase / name(t)) )
-		context.forName(input.name) map { t => (t map(_ => state), Transform(dummies, injected, context) ) }
+		context.forName(input.name) map { t => (t.merge.map(_ => state), Transform(dummies, injected, context) ) }
 	}
 
 	def help: Seq[Help] = Nil
