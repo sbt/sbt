@@ -10,9 +10,9 @@ import scala.collection.{mutable, JavaConversions}
 
 import java.io.File
 
-trait SingleProject extends Tasked
+trait SingleProject extends Tasked with PrintTask with TaskExtra with Types
 {
-	def base: File
+	def base = new File(".")
 	def streamBase = base / "streams"
 
 	implicit def streams = Dummy.Streams
@@ -42,6 +42,22 @@ object Dummy
 	val In = dummy[Input](InName)
 	val State = dummy[State](StateName)
 	val Streams = dummy[TaskStreams](StreamsName)
+}
+
+trait PrintTask
+{
+	def input: Task[Input]
+	lazy val show = input flatMap { in =>
+		val m = ReflectUtilities.allVals[Task[_]](this)
+		val taskStrings = in.splitArgs map { name =>
+			m(name).merge.map {
+				case Seq() => "No result for " + name
+				case Seq( (conf, v) ) => name + ": " + v.toString
+				case confs => confs map { case (conf, v) => conf + ": " + v  } mkString(name + ":\n\t", "\n\t", "\n")
+			}
+		}
+		taskStrings.join.map { _ foreach println  }
+	}
 }
 
 object ReflectiveContext

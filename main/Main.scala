@@ -130,7 +130,7 @@ object Commands
 	}
 
 	def read = Command.simple(ReadCommand, ReadBrief, ReadDetailed) { (in, s) =>
-		val from = in.splitSpace map { p => new File(s.baseDir, p) }
+		val from = in.splitArgs map { p => new File(s.baseDir, p) }
 		val notFound = notReadable(from)
 		if(notFound.isEmpty)
 			readLines(from) ::: s // this means that all commands from all files are loaded, parsed, and inserted before any are executed
