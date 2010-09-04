@@ -15,7 +15,7 @@ import java.util.concurrent.Callable
 * This is used for compiled source jars so that the compilation need not be repeated for other projects on the same
 * machine.
 */
-class ComponentManager(globalLock: xsbti.GlobalLock, provider: xsbti.ComponentProvider, val log: IvyLogger) extends NotNull
+class ComponentManager(globalLock: xsbti.GlobalLock, provider: xsbti.ComponentProvider, val log: Logger) extends NotNull
 {
 	/** Get all of the files for component 'id', throwing an exception if no files exist for the component. */
 	def files(id: String)(ifMissing: IfMissing): Iterable[File] =

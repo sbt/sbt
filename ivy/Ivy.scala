@@ -171,7 +171,7 @@ private object IvySbt
 
 	/** Sets the resolvers for 'settings' to 'resolvers'.  This is done by creating a new chain and making it the default.
 	* 'other' is for resolvers that should be in a different chain.  These are typically used for publishing or other actions. */
-	private def setResolvers(settings: IvySettings, resolvers: Seq[Resolver], other: Seq[Resolver], localOnly: Boolean, log: IvyLogger)
+	private def setResolvers(settings: IvySettings, resolvers: Seq[Resolver], other: Seq[Resolver], localOnly: Boolean, log: Logger)
 	{
 		def makeChain(label: String, name: String, rs: Seq[Resolver]) = {
 			log.debug(label + " repositories:")
@@ -183,7 +183,7 @@ private object IvySbt
 		val mainChain = makeChain("Default", "sbt-chain", resolvers)
 		settings.setDefaultResolver(mainChain.getName)
 	}
-	private def resolverChain(name: String, resolvers: Seq[Resolver], localOnly: Boolean, log: IvyLogger): ChainResolver =
+	private def resolverChain(name: String, resolvers: Seq[Resolver], localOnly: Boolean, log: Logger): ChainResolver =
 	{
 		val newDefault = new ChainResolver
 		newDefault.setName(name)

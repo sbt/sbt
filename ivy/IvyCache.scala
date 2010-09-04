@@ -32,7 +32,7 @@ object IvyCache
 {
 	def lockFile = new File(System.getProperty("user.home"), ".sbt.cache.lock")
 	/** Caches the given 'file' with the given ID.  It may be retrieved or cleared using this ID.*/
-	def cacheJar(moduleID: ModuleID, file: File, lock: Option[xsbti.GlobalLock], log: IvyLogger)
+	def cacheJar(moduleID: ModuleID, file: File, lock: Option[xsbti.GlobalLock], log: Logger)
 	{
 		val artifact = defaultArtifact(moduleID)
 		val resolved = new ResolvedResource(new FileResource(new IvyFileRepository, file), moduleID.revision)
@@ -42,13 +42,13 @@ object IvyCache
 		}
 	}
 	/** Clears the cache of the jar for the given ID.*/
-	def clearCachedJar(id: ModuleID, lock: Option[xsbti.GlobalLock], log: IvyLogger)
+	def clearCachedJar(id: ModuleID, lock: Option[xsbti.GlobalLock], log: Logger)
 	{
 		try { withCachedJar(id, lock, log)(_.delete) }
 		catch { case e: Exception => log.debug("Error cleaning cached jar: " + e.toString) }
 	}
 	/** Copies the cached jar for the given ID to the directory 'toDirectory'.  If the jar is not in the cache, NotInCache is thrown.*/
-	def retrieveCachedJar(id: ModuleID, toDirectory: File, lock: Option[xsbti.GlobalLock], log: IvyLogger) =
+	def retrieveCachedJar(id: ModuleID, toDirectory: File, lock: Option[xsbti.GlobalLock], log: Logger) =
 		withCachedJar(id, lock, log) { cachedFile =>
 			val copyTo = new File(toDirectory, cachedFile.getName)
 			FileUtil.copy(cachedFile, copyTo, null)
@@ -56,7 +56,7 @@ object IvyCache
 		}
 
 	/** Get the location of the cached jar for the given ID in the Ivy cache.  If the jar is not in the cache, NotInCache is thrown .*/
-	def withCachedJar[T](id: ModuleID, lock: Option[xsbti.GlobalLock], log: IvyLogger)(f: File => T): T =
+	def withCachedJar[T](id: ModuleID, lock: Option[xsbti.GlobalLock], log: Logger)(f: File => T): T =
 	{
 		val cachedFile =
 			try
@@ -71,7 +71,7 @@ object IvyCache
 		if(cachedFile.exists) f(cachedFile) else throw new NotInCache(id)
 	}
 	/** Calls the given function with the default Ivy cache.*/
-	def withDefaultCache[T](lock: Option[xsbti.GlobalLock], log: IvyLogger)(f: DefaultRepositoryCacheManager => T): T =
+	def withDefaultCache[T](lock: Option[xsbti.GlobalLock], log: Logger)(f: DefaultRepositoryCacheManager => T): T =
 	{
 		val (ivy, local) = basicLocalIvy(lock, log)
 		ivy.withIvy { ivy =>
@@ -82,7 +82,7 @@ object IvyCache
 	}
 	private def unknownOrigin(artifact: IvyArtifact) = ArtifactOrigin.unkwnown(artifact)
 	/** A minimal Ivy setup with only a local resolver and the current directory as the base directory.*/
-	private def basicLocalIvy(lock: Option[xsbti.GlobalLock], log: IvyLogger) =
+	private def basicLocalIvy(lock: Option[xsbti.GlobalLock], log: Logger) =
 	{
 		val local = Resolver.defaultLocal(None)
 		val paths = new IvyPaths(new File("."), None)

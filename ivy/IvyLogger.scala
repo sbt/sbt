@@ -5,17 +5,8 @@ package sbt
 
 import org.apache.ivy.util.{Message, MessageLogger, MessageLoggerEngine}
 
-trait IvyLogger extends NotNull
-{
-	def info(msg: => String)
-	def debug(msg: => String)
-	def warn(msg: => String)
-	def error(msg: => String)
-	def verbose(msg: => String)
-}
-
 /** Interface to Ivy logging. */
-private final class IvyLoggerInterface(logger: IvyLogger) extends MessageLogger
+private final class IvyLoggerInterface(logger: Logger) extends MessageLogger
 {
 	def rawlog(msg: String, level: Int) = log(msg, level)
 	def log(msg: String, level: Int)
