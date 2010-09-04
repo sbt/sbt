@@ -31,12 +31,15 @@ class AnalyzingCompiler(val scalaInstance: ScalaInstance, val manager: Component
 		val arguments = (new CompilerArguments(scalaInstance, cp))(sources, classpath, outputDirectory, options)
 		call("xsbt.ScaladocInterface", log) (classOf[Array[String]], classOf[Int], classOf[xLogger]) (arguments.toArray[String] : Array[String], maximumErrors: java.lang.Integer, log)
 	}
-	def console(classpath: Seq[File], options: Seq[String], initialCommands: String, log: Logger): Unit =
+	def console(classpath: Seq[File], options: Seq[String], initialCommands: String, log: Logger)(loader: Option[ClassLoader] = None, bindings: Seq[(String, Any)] = Nil): Unit =
 	{
 		val arguments = new CompilerArguments(scalaInstance, cp)
 		val classpathString = CompilerArguments.absString(arguments.finishClasspath(classpath))
 		val bootClasspath = if(cp.autoBoot) arguments.createBootClasspath else ""
-		call("xsbt.ConsoleInterface", log) (classOf[Array[String]], classOf[String], classOf[String], classOf[String], classOf[xLogger]) (options.toArray[String]: Array[String], bootClasspath, classpathString, initialCommands, log)
+		val (names, values) = bindings.unzip
+		call("xsbt.ConsoleInterface", log)(
+			classOf[Array[String]], classOf[String], classOf[String], classOf[String], classOf[ClassLoader], classOf[Array[String]], classOf[Array[Any]], classOf[xLogger])(
+			options.toArray[String]: Array[String], bootClasspath, classpathString, initialCommands, loader.orNull, names.toArray[String], values.toArray[Any], log)
 	}
 	def force(log: Logger): Unit = getInterfaceJar(log)
 	private def call(interfaceClassName: String, log: Logger)(argTypes: Class[_]*)(args: AnyRef*)
