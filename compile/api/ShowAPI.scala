@@ -269,6 +269,9 @@ trait ShowTypeParameters
 		}
 }
 
+// this class is a hack to resolve some diverging implicit errors.
+// I'm pretty sure the cause is the Show[Seq[T]] dominating Show[X] issue.
+//  It could probably be reduced a bit if that is the case (below was trial and error)
 object DefaultShowAPI extends ShowBase with ShowBasicTypes with ShowValueParameters
 {
 	def apply(d: Definition) = ShowAPI.show(d)
