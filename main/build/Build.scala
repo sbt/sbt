@@ -44,7 +44,7 @@ object Build
 		else
 		{
 			val names = if(allowMultiple) name.split(",").toSeq else Seq(name)
-			binaries(classpath, names.map(n => ToLoad(n,module)), parent)
+			binaries(classpath, names.map(n => ToLoad(n,module)), parent)(_.newInstance)
 		}
 	}
 	
@@ -74,8 +74,18 @@ object Build
 		val conf = new Compile(classpath, sources, output, Nil, configuration)
 		val analysis = compile(conf)
 		val discovered = discover(analysis, module, auto, name)
-		binaries(conf.projectClasspath, check(discovered, allowMultiple), loader(configuration))
+		binaries(conf.projectClasspath, check(discovered, allowMultiple), loader(configuration))( constructCompiled(new Compiled(conf, analysis) ) )
 	}
+	def constructCompiled(compiled: Compiled): Class[_] => Any = clazz =>
+		constructor(clazz, classOf[Compiled]) match {
+			case Some(c) => c.newInstance(compiled)
+			case None => clazz.newInstance
+		}
+
+	def constructor(c: Class[_], args: Class[_]*): Option[java.lang.reflect.Constructor[_]] =
+		try { Some( c.getConstructor( args : _*) ) }
+		catch { case e: NoSuchMethodException => None }
+
 	def discover(analysis: inc.Analysis, module: Option[Boolean], auto: Auto.Value, name: String): Seq[ToLoad] =
 	{
 		import Auto.{Annotation, Explicit, Subclass}
@@ -98,21 +108,18 @@ object Build
 	def moduleMatches(isModule: Boolean, expected: Option[Boolean]): Boolean =
 		expected.isEmpty || (Some(isModule) == expected)
 
-	def binaries(classpath: Seq[File], toLoad: Seq[ToLoad], parent: ClassLoader): Seq[Any] =
-		loadBinaries(toLoad, toLoader(classpath, parent))
+	def binaries(classpath: Seq[File], toLoad: Seq[ToLoad], parent: ClassLoader)(newImpl: Class[_] => Any): Seq[Any] =
+		loadBinaries(toLoad, toLoader(classpath, parent))(newImpl)
 
-	def loadBinaries(toLoad: Seq[ToLoad], loader: ClassLoader): Seq[Any] =
+	def loadBinaries(toLoad: Seq[ToLoad], loader: ClassLoader)(newImpl: Class[_] => Any): Seq[Any] =
 		for(ToLoad(name, module) <- toLoad if !name.isEmpty) yield
-			loadBinary(name, module, loader)
+			loadBinary(name, module, loader)(newImpl)
 
-	def loadBinary(name: String, module: Boolean, loader: ClassLoader): Any =
+	def loadBinary(name: String, module: Boolean, loader: ClassLoader)(newImpl: Class[_] => Any): Any =
 		if(module)
 			getObject(name, loader)
 		else
-		{
-			val clazz = Class.forName(name, true, loader)
-			clazz.newInstance
-		}
+			newImpl( Class.forName(name, true, loader) )
 
 	def check[T](discovered: Seq[T], allowMultiple: Boolean): Seq[T] =
 		discovered match
