@@ -60,7 +60,7 @@ object Build
 	{
 		import conf._
 		// TODO: accept Logger as an argument
-		val log = new ConsoleLogger with Logger with sbt.IvyLogger
+		val log = ConsoleLogger()
 
 		val componentManager = new ComponentManager(launcher.globalLock, configuration.provider.components, log)
 		val compiler = new AnalyzingCompiler(instance, componentManager, log)

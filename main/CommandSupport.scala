@@ -13,7 +13,7 @@ object CommandSupport
 {
 	def logger(s: State) = s match {
 		case State(p: Logged) => p.log
-		case _ => new ConsoleLogger //TODO: add a default logger to State
+		case _ => ConsoleLogger() //TODO: add a default logger to State
 	}
 	def notReadable(files: Seq[File]): Seq[File] = files filter { !_.canRead }
 	def readable(files: Seq[File]): Seq[File] = files filter { _.canRead }

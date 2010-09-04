@@ -3,8 +3,24 @@
  */
 package sbt
 
+	import java.io.{PrintStream, PrintWriter}
+
 object ConsoleLogger
 {
+	def systemOut: ConsoleOut = printStreamOut(System.out)
+	def printStreamOut(out: PrintStream): ConsoleOut = new ConsoleOut {
+		val lockObject = out
+		def print(s: String) = out.print(s)
+		def println(s: String) = out.println(s)
+		def println() = out.println()
+	}
+	def printWriterOut(out: PrintWriter): ConsoleOut = new ConsoleOut {
+		val lockObject = out
+		def print(s: String) = out.print(s)
+		def println(s: String) = out.println(s)
+		def println() = out.println()
+	}
+
 	private val formatEnabled = ansiSupported && !formatExplicitlyDisabled
 
 	private[this] def formatExplicitlyDisabled = java.lang.Boolean.getBoolean("sbt.log.noformat")
@@ -14,15 +30,20 @@ object ConsoleLogger
 
 	private[this] def os = System.getProperty("os.name")
 	private[this] def isWindows = os.toLowerCase.indexOf("windows") >= 0
+	
+	def apply(): ConsoleLogger = apply(systemOut)
+	def apply(out: PrintStream): ConsoleLogger = apply(printStreamOut(out))
+	def apply(out: PrintWriter): ConsoleLogger = apply(printWriterOut(out))
+	def apply(out: ConsoleOut, ansiCodesSupported: Boolean = formatEnabled, useColor: Boolean = true): ConsoleLogger =
+		new ConsoleLogger(out, ansiCodesSupported, useColor)
 }
 
 /** A logger that logs to the console.  On supported systems, the level labels are
 * colored.
 *
 * This logger is not thread-safe.*/
-class ConsoleLogger extends BasicLogger
+class ConsoleLogger private[ConsoleLogger](val out: ConsoleOut, override val ansiCodesSupported: Boolean, val useColor: Boolean) extends BasicLogger
 {
-	override def ansiCodesSupported = ConsoleLogger.formatEnabled
 	def messageColor(level: Level.Value) = Console.RESET
 	def labelColor(level: Level.Value) =
 		level match
@@ -39,41 +60,50 @@ class ConsoleLogger extends BasicLogger
 			log(successLabelColor, Level.SuccessLabel, successMessageColor, message)
 	}
 	def trace(t: => Throwable): Unit =
-		System.out.synchronized
+		out.lockObject.synchronized
 		{
 			val traceLevel = getTrace
 			if(traceLevel >= 0)
-				System.out.synchronized { System.out.print(StackTrace.trimmed(t, traceLevel)) }
+				out.print(StackTrace.trimmed(t, traceLevel))
 		}
 	def log(level: Level.Value, message: => String)
 	{
 		if(atLevel(level))
 			log(labelColor(level), level.toString, messageColor(level), message)
 	}
+	private def reset(): Unit = setColor(Console.RESET)
+	
 	private def setColor(color: String)
 	{
-		if(ansiCodesSupported)
-			System.out.synchronized { System.out.print(color) }
+		if(ansiCodesSupported && useColor)
+			out.lockObject.synchronized { out.print(color) }
 	}
 	private def log(labelColor: String, label: String, messageColor: String, message: String): Unit =
-		System.out.synchronized
+		out.lockObject.synchronized
 		{
 			for(line <- message.split("""\n"""))
 			{
-				setColor(Console.RESET)
-				System.out.print('[')
+				reset()
+				out.print("[")
 				setColor(labelColor)
-				System.out.print(label)
-				setColor(Console.RESET)
-				System.out.print("] ")
+				out.print(label)
+				reset()
+				out.print("] ")
 				setColor(messageColor)
-				System.out.print(line)
-				setColor(Console.RESET)
-				System.out.println()
+				out.print(line)
+				reset()
+				out.println()
 			}
 		}
 
-	def logAll(events: Seq[LogEvent]) = System.out.synchronized { events.foreach(log) }
+	def logAll(events: Seq[LogEvent]) = out.lockObject.synchronized { events.foreach(log) }
 	def control(event: ControlEvent.Value, message: => String)
 		{ log(labelColor(Level.Info), Level.Info.toString, Console.BLUE, message) }
+}
+sealed trait ConsoleOut
+{
+	val lockObject: AnyRef
+	def print(s: String): Unit
+	def println(s: String): Unit
+	def println(): Unit
 }

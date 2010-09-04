@@ -31,7 +31,7 @@ class AggressiveCompiler extends xsbti.AppMain
 		val classpath = outputDirectory +++ (cwd * "*.jar") +++(cwd * (-"project")).descendentsExcept( "*.jar", "project" || HiddenFileFilter)
 		val cacheDirectory = target / "cache"
 		val options = args.tail.toSeq
-		val log = new ConsoleLogger with Logger with sbt.IvyLogger
+		val log = ConsoleLogger()
 		val componentManager = new ComponentManager(launcher.globalLock, app.components, log)
 		val compiler = new AnalyzingCompiler(ScalaInstance(args.head, launcher), componentManager, log)
 		val javac = JavaCompiler.directOrFork(compiler.cp, compiler.scalaInstance)( (args: Seq[String], log: Logger) => Process("javac", args) ! log )
