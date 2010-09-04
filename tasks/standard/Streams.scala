@@ -29,8 +29,8 @@ sealed trait TaskStreams
 	def binary(sid: String = default): BufferedOutputStream
 
 	// default logger
-	/*val log: Logger
-	def log(sid: String): Logger*/
+	final lazy val log: Logger = log(default)
+	def log(sid: String): Logger
 	
 	private[this] def getID(s: Option[String]) = s getOrElse default
 }
@@ -48,13 +48,13 @@ object Streams
 {
 	private[this] val closeQuietly = (_: Closeable).close()
 	
-	def multi[Owner](bases: Owner => File, taskOwner: Task[_] => Option[Owner]): Streams =
+	def multi[Owner](bases: Owner => File, taskOwner: Task[_] => Option[Owner], mkLogger: (Task[_], PrintWriter) => Logger): Streams =
 	{
 		val taskDirectory = (t: Task[_]) => taskOwner(t) map bases getOrElse error("Cannot get streams for task '" + name(t) + "' with no owner.")
-		apply(taskDirectory)
+		apply(taskDirectory, mkLogger)
 	}
 	
-	def apply(taskDirectory: Task[_] => File): Streams = new Streams { streams =>
+	def apply(taskDirectory: Task[_] => File, mkLogger: (Task[_], PrintWriter) => Logger): Streams = new Streams { streams =>
 	
 		def apply(a: Task[_], update: Boolean): ManagedTaskStreams = new ManagedTaskStreams {
 			private[this] var opened: List[Closeable] = Nil
@@ -71,6 +71,8 @@ object Streams
 
 			def binary(sid: String = default): BufferedOutputStream =
 				make(a, sid)(f => new BufferedOutputStream(new FileOutputStream(f)))
+
+			def log(sid: String): Logger = mkLogger(a, text(sid))
 
 			def make[T <: Closeable](a: Task[_], sid: String)(f: File => T): T = synchronized {
 				checkOpen()

@@ -26,7 +26,7 @@ trait SingleProject extends Tasked with PrintTask with TaskExtra with Types
 		val context = ReflectiveContext(this, (x: SingleProject) => Some("project")) // TODO: project names
 		val dummies = new Transform.Dummies(In, State, Streams)
 		def name(t: Task[_]): String = context.staticName(t) getOrElse std.Streams.name(t)
-		val injected = new Transform.Injected( input, state, std.Streams(t => streamBase / name(t)) )
+		val injected = new Transform.Injected( input, state, std.Streams(t => streamBase / name(t), (t, writer) => ConsoleLogger() ) )
 		context.forName(input.name) map { t => (t.merge.map(_ => state), Transform(dummies, injected, context) ) }
 	}
 
