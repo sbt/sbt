@@ -6,7 +6,7 @@ package sbt
 import java.io.File
 import scala.xml.{Node,NodeSeq}
 
-import org.apache.ivy.{core, plugins, util, Ivy}
+import org.apache.ivy.{core, plugins, Ivy}
 import core.cache.DefaultRepositoryCacheManager
 import core.LogOptions
 import core.deliver.DeliverOptions
@@ -15,6 +15,7 @@ import core.module.descriptor.{DefaultArtifact, DefaultDependencyArtifactDescrip
 import core.module.descriptor.{DefaultDependencyDescriptor, DefaultModuleDescriptor, DependencyDescriptor, ModuleDescriptor}
 import core.module.id.{ArtifactId,ModuleId, ModuleRevisionId}
 import core.publish.PublishOptions
+import core.report.ResolveReport
 import core.resolve.ResolveOptions
 import core.retrieve.RetrieveOptions
 import plugins.parser.m2.{PomModuleDescriptorParser,PomModuleDescriptorWriter}
@@ -103,12 +104,18 @@ object IvyActions
 	}
 	/** Resolves and retrieves dependencies.  'ivyConfig' is used to produce an Ivy file and configuration.
 	* 'updateConfig' configures the actual resolution and retrieval process. */
-	def update(module: IvySbt#Module, configuration: UpdateConfiguration)
+	def update(module: IvySbt#Module, configuration: UpdateConfiguration) =
 	{
 		module.withModule { case (ivy, md, default) =>
 			import configuration._
-			resolve(logging)(ivy, md, default)
-			val retrieveOptions = new RetrieveOptions
+			val report = resolve(logging)(ivy, md, default)
+			import IvyRetrieve._
+			/*if(synchronize)
+				IO delete retrieveDirectory
+			IO createDirectory retrieveDirectory
+			retrieve( cachePaths(report), , retrieveDirectory)*/
+			cachePaths(report)
+			/*val retrieveOptions = new RetrieveOptions
 			retrieveOptions.setSync(synchronize)
 			val patternBase = retrieveDirectory.getAbsolutePath
 			val pattern =
@@ -116,16 +123,17 @@ object IvyActions
 					patternBase + outputPattern
 				else
 					patternBase + File.separatorChar + outputPattern
-			ivy.retrieve(md.getModuleRevisionId, pattern, retrieveOptions)
+			ivy.retrieve(md.getModuleRevisionId, pattern, retrieveOptions)*/
 		}
 	}
-	private def resolve(logging: UpdateLogging.Value)(ivy: Ivy, module: DefaultModuleDescriptor, defaultConf: String) =
+	private def resolve(logging: UpdateLogging.Value)(ivy: Ivy, module: DefaultModuleDescriptor, defaultConf: String): ResolveReport =
 	{
 		val resolveOptions = new ResolveOptions
 		resolveOptions.setLog(ivyLogLevel(logging))
 		val resolveReport = ivy.resolve(module, resolveOptions)
 		if(resolveReport.hasError)
 			throw new ResolveException(resolveReport.getAllProblemMessages.toArray.map(_.toString).distinct)
+		resolveReport
 	}
 
 	import UpdateLogging.{Quiet, Full, DownloadOnly}

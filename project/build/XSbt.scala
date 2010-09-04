@@ -26,7 +26,7 @@ class XSbt(info: ProjectInfo) extends ParentProject(info) with NoCrossPaths
 	val envSub= baseProject(utilPath / "env", "Properties", ioSub, logSub, classpathSub)
 
 	// intermediate-level modules
-	val ivySub = project("ivy", "Ivy", new IvyProject(_), interfaceSub, launchInterfaceSub, logSub)
+	val ivySub = project("ivy", "Ivy", new IvyProject(_), interfaceSub, launchInterfaceSub, logSub, ioSub)
 	val testingSub = project("testing", "Testing", new TestingProject(_), ioSub, classpathSub, logSub)
 	val taskSub = testedBase(tasksPath, "Tasks", controlSub, collectionSub)
 	val cacheSub = project(cachePath, "Cache", new CacheProject(_), ioSub, collectionSub)
