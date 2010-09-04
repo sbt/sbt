@@ -16,6 +16,8 @@ object Level extends Enumeration
 	* label is also defined here. */
 	val SuccessLabel = "success"
 
+	def union(a: Value, b: Value) = if(a.id < b.id) a else b
+
 	/** Returns the level with the given name wrapped in Some, or None if no level exists for that name. */
 	def apply(s: String) = values.find(s == _.toString)
 	/** Same as apply, defined for use in pattern matching. */
