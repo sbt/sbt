@@ -102,7 +102,6 @@ trait BasicScalaPaths extends Project with ScalaPaths
 	override def outputDirectories = outputPath :: managedDependencyPath :: Nil
 }
 
-@deprecated trait BasicProjectPaths extends MavenStyleScalaPaths
 trait MavenStyleScalaPaths extends BasicScalaPaths with BasicPackagePaths
 {
 	import BasicProjectPaths._
@@ -196,11 +195,6 @@ object BasicProjectPaths
 	val DefaultJavaDirectoryName = "java"
 	val DefaultResourcesDirectoryName = "resources"
 	val DefaultTestDirectoryName = "test"
-	
-	// forwarders to new locations
-	def BootDirectoryName = Project.BootDirectoryName
-	def DefaultManagedDirectoryName = BasicDependencyPaths.DefaultManagedDirectoryName
-	def DefaultDependencyDirectoryName = BasicDependencyPaths.DefaultDependencyDirectoryName
 }
 
 trait WebScalaPaths extends ScalaPaths
@@ -210,7 +204,6 @@ trait WebScalaPaths extends ScalaPaths
 	def jettyContextPath: String
 	def warPath: Path
 }
-@deprecated trait WebProjectPaths extends MavenStyleWebScalaPaths
 trait MavenStyleWebScalaPaths extends WebScalaPaths with MavenStyleScalaPaths
 {
 	import WebProjectPaths._
