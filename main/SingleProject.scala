@@ -23,7 +23,7 @@ trait SingleProject extends Tasked with PrintTask with TaskExtra with Types
 	def act(input: Input, state: State): Option[(Task[State], Execute.NodeView[Task])] =
 	{
 		import Dummy._
-		val context = ReflectiveContext(this)
+		val context = ReflectiveContext(this, (x: SingleProject) => Some("project")) // TODO: project names
 		val dummies = new Transform.Dummies(In, State, Streams)
 		def name(t: Task[_]): String = context.staticName(t) getOrElse std.Streams.name(t)
 		val injected = new Transform.Injected( input, state, std.Streams(t => streamBase / name(t)) )
@@ -63,7 +63,7 @@ trait PrintTask
 object ReflectiveContext
 {
 	import Transform.Context
-	def apply[Owner <: AnyRef : Manifest](context: Owner): Context[Owner] = new Context[Owner]
+	def apply[Owner <: AnyRef : Manifest](context: Owner, name: Owner => Option[String]): Context[Owner] = new Context[Owner]
 	{
 		private[sbt] lazy val tasks: Map[String, Task[_]] = ReflectUtilities.allVals[Task[_]](context).toMap
 		private[sbt] lazy val reverseName: collection.Map[Task[_], String] = reverseMap(tasks)
@@ -72,6 +72,7 @@ object ReflectiveContext
 
 		def forName(s: String): Option[Task[_]] = tasks get s
 		val staticName: Task[_] => Option[String] = reverseName.get _
+		val ownerName = name
 		val owner = (_: Task[_]) => Some(context)
 		val subs = (o: Owner) => Nil
 		val static = (o: Owner, s: String) => if(o eq context) tasks.get(s) else None

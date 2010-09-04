@@ -105,6 +105,7 @@ object Transform
 		def forName(s: String): Option[Task[_]]
 		def staticName: Task[_] => Option[String]
 		def owner: Task[_] => Option[Owner]
+		def ownerName: Owner => Option[String]
 		def subs: Owner => Iterable[Owner]
 		def static: (Owner, String) => Option[Task[_]]
 	}
