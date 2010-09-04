@@ -59,7 +59,88 @@ trait PrintTask
 		taskStrings.join.map { _ foreach println  }
 	}
 }
-
+/*
+trait LogManager
+{
+	def makeLogger(context: Context): (Task[_], PrintWriter) => Logger
+}
+sealed trait Properties
+{
+	def parent: Option[Properties]
+	def get[T](key: AttributeKey[T]): Option[T]
+	def sub(name: String): Properties
+	def set[T](key: AttributeKey[T], value: T): Properties
+	def s
+}
+sealed trait Attribute[T]
+{
+	def default: Option[T]
+	def sub(s: String): Option[Attribute[T]]
+	def value(s: String): Option[T]
+	
+	def get(path: List[String]): Option[T]
+	def set(path: List[String], value: T): Attribute[T]
+	def setDefault(path: List[String], default: T): Attribute[T]
+}
+final class MapBackedAttribute[T](val default: Option[T], subs: Map[String, MapBackedAttribute[T]], values: Map[String, T]) extends Attribute[T]
+{
+	def sub(s: String) = subs get s
+	def value(s: String) = values get s
+	
+	def get(path: List[String]): Option[T] =
+		path match {
+			case Nil => None
+			case x :: Nil => values get x
+			case h :: t => (subs get h) flatMap (_ get t ) orElse default
+		}
+	def set(path: List[String], value: T): Attribute[T] =
+		path match {
+			case Nil => this
+			case x :: Nil => new MapBackedAttribute(default, subs, values updated( x, value) )
+			case h :: t =>
+				val (newSubs, sub) = (subs get h) match {
+					case Some(s) => (subs, s)
+					case None => (subs.updated(h, Attribute.empty[T]), Attribute.empty[T])
+				}
+				newSubs put (h, sub.set(t, value)
+		}
+	def setDefault(path: List[String], default: T): Attribute[T] =
+	
+	def lastComponent(path: List[String]): Option[MapBackedAttribute[T]] =
+		path match {
+			case Nil => this
+			case x :: Nil => new MapBackedAttribute(default, subs, values updated( x, value) )
+			case h :: t =>
+				val (newSubs, sub) = (subs get h) match {
+					case Some(s) => (subs, s)
+					case None => (subs.updated(h, Attribute.empty[T]), Attribute.empty[T])
+				}
+				newSubs put (h, su
+		
+}
+trait ConsoleLogManager
+{
+	def makeLogger(context: Context, configuration: Configuration) = (task: Task[_], to: PrintWriter) =>
+	{
+		val owner = context owner task
+		val taskPath = (context ownerName owner).getOrElse("") :: (context staticName task).getOrElse("") ::: Nil
+		def level(key: AttributeKey[Level.Value], default: Level.Value): Level.Value = select(key) get taskPath getOrElse default
+		val screenLevel = level(ScreenLogLevel, Level.Info)
+		val backingLevel = select(PersistLogLevel, Level.Debug)
+		
+		val console = ConsoleLogger()
+		val backed = ConsoleLogger(to, useColor = false) // TODO: wrap this with a filter that strips ANSI codes
+		
+		val multi = new MultiLogger(console :: backed :: Nil)
+			// sets multi to the most verbose for clients that inspect the current level
+		multi setLevel Level.union(backingLevel, screenLevel)
+			// set the specific levels
+		console setLevel screenLevel
+		backed setLevel backingLevel
+		multi: Logger
+	}
+}
+*/
 object ReflectiveContext
 {
 	import Transform.Context
