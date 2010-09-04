@@ -63,12 +63,6 @@ class EmptyChangeReport[T] extends ChangeReport[T]
 	def removed = Set.empty[T]
 	override def toString = "No changes"
 }
-trait InvalidationReport[T] extends NotNull
-{
-	def valid: Set[T]
-	def invalid: Set[T]
-	def invalidProducts: Set[T]
-}
 private class CompoundChangeReport[T](a: ChangeReport[T], b: ChangeReport[T]) extends ChangeReport[T]
 {
 	lazy val checked = a.checked ++ b.checked
