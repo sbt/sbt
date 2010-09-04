@@ -30,6 +30,7 @@ class XSbt(info: ProjectInfo) extends ParentProject(info) with NoCrossPaths
 	val testingSub = project("testing", "Testing", new TestingProject(_), ioSub, classpathSub, logSub)
 	val taskSub = testedBase(tasksPath, "Tasks", controlSub, collectionSub)
 	val cacheSub = project(cachePath, "Cache", new CacheProject(_), ioSub, collectionSub)
+	val trackingSub = baseProject(cachePath / "tracking", "Tracking", cacheSub, ioSub)
 	val webappSub = project("web", "Web App", new WebAppProject(_), ioSub, logSub, classpathSub, controlSub)
 	val runSub = baseProject("run", "Run", ioSub, logSub, classpathSub, processSub)
 
@@ -50,8 +51,6 @@ class XSbt(info: ProjectInfo) extends ParentProject(info) with NoCrossPaths
 
 	/** following modules are not updated for 2.8 or 0.9 */
 	/*val testSub = project("scripted", "Test", new TestProject(_), ioSub)
-
-	val trackingSub = baseProject(cachePath / "tracking", "Tracking", cacheSub)
 
 	val sbtSub = project(sbtPath, "Simple Build Tool", new SbtProject(_) {},
 		compilerSub, launchInterfaceSub, testingSub, cacheSub, taskSub)

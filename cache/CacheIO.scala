@@ -21,8 +21,11 @@ object CacheIO
 	def fromFile[T](format: Format[T], default: => T)(file: File)(implicit mf: Manifest[Format[T]]): T =
 		fromFile(file, default)(format, mf)
 	def fromFile[T](file: File, default: => T)(implicit format: Format[T], mf: Manifest[Format[T]]): T =
-		try { Operations.fromFile(file)(stampedFormat(format)) }
-		catch { case e: FileNotFoundException => default }
+		fromFile[T](file) getOrElse default
+	def fromFile[T](file: File)(implicit format: Format[T], mf: Manifest[Format[T]]): Option[T] =
+		try { Some( Operations.fromFile(file)(stampedFormat(format)) ) }
+		catch { case e: FileNotFoundException => None }
+		
 	def toFile[T](format: Format[T])(value: T)(file: File)(implicit mf: Manifest[Format[T]]): Unit =
 		toFile(value)(file)(format, mf)
 	def toFile[T](value: T)(file: File)(implicit format: Format[T], mf: Manifest[Format[T]]): Unit =
