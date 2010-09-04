@@ -214,7 +214,7 @@ object Commands
 			s
 		}(s)
 	}
-	def compile = Command.simple(Compile, CompileBrief, CompileDetailed ) { (in, s) =>
+	def compile = Command.simple(CompileName, CompileBrief, CompileDetailed ) { (in, s) =>
 		val command = Parse.compile(in.arguments)(s.baseDir)
 		try {
 			val analysis = Build.compile(command, s.configuration)
