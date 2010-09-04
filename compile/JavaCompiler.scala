@@ -29,7 +29,7 @@ object JavaCompiler
 	def directOrFork(cp: ClasspathOptions, scalaInstance: ScalaInstance)(implicit doFork: Fork): JavaCompiler =
 		construct(directOrForkJavac, cp, scalaInstance)
 		
-	def direct(cp: ClasspathOptions, scalaInstance: ScalaInstance)(implicit doFork: Fork): JavaCompiler =
+	def direct(cp: ClasspathOptions, scalaInstance: ScalaInstance): JavaCompiler =
 		construct(directJavac, cp, scalaInstance)
 	
 	def fork(cp: ClasspathOptions, scalaInstance: ScalaInstance)(implicit doFork: Fork): JavaCompiler =
@@ -42,7 +42,7 @@ object JavaCompiler
 			forkJavac(doFork)(arguments, log)
 		}
 
-	/** `fork` should be a function that forks javac with the provided arguments and sends output to the given Logger.*/
+	/** `doFork` should be a function that forks javac with the provided arguments and sends output to the given Logger.*/
 	def forkJavac(implicit doFork: Fork) = (arguments: Seq[String], log: Logger) =>
 	{
 		def externalJavac(argFile: File) = doFork(("@" + normalizeSlash(argFile.getAbsolutePath)) :: Nil, log)
