@@ -47,7 +47,7 @@ class XSbt(info: ProjectInfo) extends ParentProject(info) with NoCrossPaths
 
 	val stdTaskSub = testedBase(tasksPath / "standard", "Task System", taskSub, collectionSub, logSub, ioSub, processSub)
 	val altCompilerSub = project("main", "Alternate Compiler Test", (i: ProjectInfo) => new Base(i) {  override def normalizedName = "sbt" }, // temporary
-		buildSub, compileIncrementalSub, compilerSub, completeSub, discoverySub, ioSub, logSub, processSub, taskSub, stdTaskSub)
+		buildSub, compileIncrementalSub, compilerSub, completeSub, discoverySub, ioSub, logSub, processSub, taskSub, stdTaskSub, runSub, trackingSub)
 
 	/** following modules are not updated for 2.8 or 0.9 */
 	/*val testSub = project("scripted", "Test", new TestProject(_), ioSub)
