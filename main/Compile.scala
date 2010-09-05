@@ -10,6 +10,8 @@ package sbt
 
 object Compile
 {
+	val DefaultMaxErrors = 100
+
 	final class Inputs(val compilers: Compilers, val config: Options, val incSetup: IncSetup, val log: Logger)
 	final class Options(val classpath: Seq[File], val sources: Seq[File], val classesDirectory: File, val options: Seq[String], val javacOptions: Seq[String], val maxErrors: Int)
 	final class IncSetup(val javaSrcBases: Seq[File], val cacheDirectory: File)
@@ -30,7 +32,13 @@ object Compile
 			new IncSetup(javaSrcBases, cacheDirectory),
 			log
 		)
-	
+
+	def compilers(implicit app: AppConfiguration, log: Logger): Compilers =
+	{
+		val scalaProvider = app.provider.scalaProvider
+		compilers(ScalaInstance(scalaProvider.version, scalaProvider.launcher))
+	}
+
 	def compilers(instance: ScalaInstance)(implicit app: AppConfiguration, log: Logger): Compilers =
 		compilers(instance, ClasspathOptions.auto)
 

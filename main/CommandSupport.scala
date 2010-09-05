@@ -166,6 +166,10 @@ CompileSyntax + """
 	def LoadCommand = "load-commands"
 	def LoadCommandLabel = "commands"
 
+	def LoadProject = "loadp"
+	def LoadProjectBrief = (LoadProject, LoadProjectDetailed)
+	def LoadProjectDetailed = "Loads the project in the current directory"
+
 	def Shell = "shell"
 	def ShellBrief = (Shell, ShellDetailed)
 	def ShellDetailed = "Provides an interactive prompt from which commands can be run."
