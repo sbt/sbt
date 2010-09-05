@@ -61,7 +61,7 @@ class xMain extends xsbti.AppMain
 import CommandSupport._
 object Commands
 {
-	def DefaultCommands = Seq(ignore, help, reload, read, history, exit, load, loadCommands, compile, discover,
+	def DefaultCommands = Seq(ignore, help, reload, read, history, continuous, exit, load, loadCommands, loadProject, compile, discover,
 		projects, project, setOnFailure, ifLast, multi, shell, alias, append, act)
 
 	def ignore = nothing(Set(FailureWall))
