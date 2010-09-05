@@ -142,7 +142,7 @@ DiscoverSyntax + """
 
 	def CompileName = "compile"
 	def CompileBrief = (CompileSyntax, "Incrementally compiles the provided sources.")
-	def CompileSyntax = Compile + " -src <paths> [-cp <paths>] [-d <path>]"
+	def CompileSyntax = CompileName + " -src <paths> [-cp <paths>] [-d <path>]"
 	def CompileDetailed =
 CompileSyntax + """
 
