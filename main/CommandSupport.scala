@@ -160,6 +160,8 @@ CompileSyntax + """
 	Compiled classes will be written to the 'classes' directory.
 	Cached information about the compilation will be written to 'cache'.
 """
+
+	val FailureWall = "--"
 	
 	def Load = "load"
 	def LoadLabel = "a project"

@@ -3,7 +3,8 @@
  */
 package sbt
 
-import java.io.File
+	import java.io.File
+	import CommandSupport.FailureWall
 
 case class State(project: Any)(
 	val configuration: xsbti.AppConfiguration,
@@ -50,10 +51,18 @@ object State
 		def get[T](key: AttributeKey[T]) = s.attributes.get(key)
 		def put[T](key: AttributeKey[T], value: T) = s.copy()(attributes = s.attributes.put(key, value))
 		def fail =
-			s.onFailure match
+		{
+			val remaining = s.commands.dropWhile(_ != FailureWall)
+			if(remaining.isEmpty)
 			{
-				case Some(c) => s.copy()(commands = c :: Nil, onFailure = None)
-				case None => exit(ok = false)
+				s.onFailure match
+				{
+					case Some(c) => s.copy()(commands = c :: Nil, onFailure = None)
+					case None => exit(ok = false)
+				}
 			}
+			else
+				s.copy()(commands = remaining)
+		}
 	}
 }

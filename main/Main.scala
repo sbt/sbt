@@ -61,8 +61,12 @@ class xMain extends xsbti.AppMain
 import CommandSupport._
 object Commands
 {
-	def DefaultCommands = Seq(help, reload, read, history, exit, load, loadCommands, compile, discover,
+	def DefaultCommands = Seq(ignore, help, reload, read, history, exit, load, loadCommands, compile, discover,
 		projects, project, setOnFailure, ifLast, multi, shell, alias, append, act)
+
+	def ignore = nothing(Set(FailureWall))
+
+	def nothing(ignore: Set[String]) = Command.univ { s => Apply(){ case in if ignore(in.line) => s } }
 
 	def applicable(state: State): Stream[Apply] =
 		state.processors.toStream.flatMap(_.applies(state) )
