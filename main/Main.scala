@@ -144,6 +144,12 @@ object Commands
 		}
 	}
 
+	def continuous = Command { case s @ State(p: Project with Watched) =>
+		Apply( Help(continuousBriefHelp) ) {
+			case in if in.line startsWith ContinuousExecutePrefix => Watched.executeContinuously(p, s, in)
+		}
+	}
+
 	def history = Command { case s @ State(p: HistoryEnabled) =>
 		Apply( historyHelp: _* ) {
 			case in if in.line startsWith("!") => 

@@ -26,6 +26,8 @@ object CommandSupport
 	def processLine(s: String) = { val trimmed = s.trim; if(ignoreLine(trimmed)) None else Some(trimmed) }
 	def ignoreLine(s: String) = s.isEmpty || s.startsWith("#")
 
+	/** The prefix used to identify a request to execute the remaining input on source changes.*/
+	val ContinuousExecutePrefix = "~"
 	val HelpCommand = "help"
 	val ProjectCommand = "project"
 	val ProjectsCommand = "projects"
@@ -35,6 +37,9 @@ object CommandSupport
 
 	/** The list of command names that may be used to terminate the program.*/
 	val TerminateActions: Seq[String] = Seq(Exit, Quit)
+
+
+	def continuousBriefHelp = (ContinuousExecutePrefix + " <action>", "Executes the specified command whenever source files change.")
 
 	def helpBrief = (HelpCommand + " command*", "Displays this help message or prints detailed help on requested commands.")
 	def helpDetailed = "If an argument is provided, this prints detailed help for that command.\nOtherwise, this prints a help summary."

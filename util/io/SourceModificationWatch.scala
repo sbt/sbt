@@ -3,35 +3,45 @@
  */
 package sbt
 
+	import annotation.tailrec
+
 object SourceModificationWatch
 {
-	def watchUntil(sourcesFinder: PathFinder, pollDelaySec: Int)(terminationCondition: => Boolean)(onSourcesModified: => Unit)
+	@tailrec def watch(sourcesFinder: PathFinder, pollDelaySec: Int, state: WatchState)(terminationCondition: => Boolean): (Boolean, WatchState) =
 	{
+			import state._
+
 		def sourceFiles: Iterable[java.io.File] = sourcesFinder.getFiles
-		def loop(lastCallbackCallTime: Long, previousFileCount: Int, awaitingQuietPeriod:Boolean)
+		val (lastModifiedTime, fileCount) =
+			( (0L, 0) /: sourceFiles) {(acc, file) => (math.max(acc._1, file.lastModified), acc._2 + 1)}
+
+		val sourcesModified =
+			lastModifiedTime > lastCallbackCallTime ||
+			previousFileCount != fileCount
+
+		val (triggered, newCallbackCallTime) =
+			if (sourcesModified && !awaitingQuietPeriod)
+				(false, System.currentTimeMillis)
+			else if (!sourcesModified && awaitingQuietPeriod)
+				(true, lastCallbackCallTime)
+			else
+				(false, lastCallbackCallTime)
+
+		val newState = new WatchState(newCallbackCallTime, fileCount, sourcesModified, if(triggered) count + 1 else count)
+		if(triggered)
+			(true, newState)
+		else
 		{
-			val (lastModifiedTime, fileCount) =
-				( (0L, 0) /: sourceFiles) {(acc, file) => (math.max(acc._1, file.lastModified), acc._2 + 1)}
-
-			val sourcesModified =
-				lastModifiedTime > lastCallbackCallTime ||
-				previousFileCount != fileCount
-
-			val newCallbackCallTime =
-				if (sourcesModified && !awaitingQuietPeriod)
-					System.currentTimeMillis
-				else if (!sourcesModified && awaitingQuietPeriod)
-				{
-					onSourcesModified
-					lastCallbackCallTime
-				}
-				else
-					lastCallbackCallTime
-
 			Thread.sleep(pollDelaySec * 1000)
-			if(!terminationCondition)
-				loop(newCallbackCallTime, fileCount, sourcesModified)
+			if(terminationCondition)
+				(false, newState)
+			else
+				watch(sourcesFinder, pollDelaySec, newState)(terminationCondition)
 		}
-		loop(0L, 0, false)
 	}
+}
+final class WatchState(val lastCallbackCallTime: Long, val previousFileCount: Int, val awaitingQuietPeriod:Boolean, val count: Int)
+object WatchState
+{
+	def empty = new WatchState(0L, 0, false, 0)
 }
