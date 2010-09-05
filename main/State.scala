@@ -11,6 +11,7 @@ case class State(project: Any)(
 	val exitHooks: Set[ExitHook],
 	val onFailure: Option[String],
 	val commands: Seq[String],
+	val attributes: AttributeMap,
 	val next: Next.Value
 )
 
@@ -24,6 +25,8 @@ trait StateOps {
 	def fail: State
 	def ++ (newCommands: Seq[Command]): State
 	def + (newCommand: Command): State
+	def get[T](key: AttributeKey[T]): Option[T]
+	def put[T](key: AttributeKey[T], value: T): State
 	def baseDir: File
 }
 object State
@@ -44,6 +47,8 @@ object State
 		def continue = setNext(Next.Continue)
 		def reload = setNext(Next.Reload)
 		def exit(ok: Boolean) = setNext(if(ok) Next.Fail else Next.Done)
+		def get[T](key: AttributeKey[T]) = s.attributes.get(key)
+		def put[T](key: AttributeKey[T], value: T) = s.copy()(attributes = s.attributes.put(key, value))
 		def fail =
 			s.onFailure match
 			{

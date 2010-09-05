@@ -22,7 +22,7 @@ class xMain extends xsbti.AppMain
 		import CommandSupport.{DefaultsCommand, InitCommand}
 		val initialCommandDefs = Seq(initialize, defaults)
 		val commands = DefaultsCommand :: InitCommand :: configuration.arguments.map(_.trim).toList
-		val state = State( () )( configuration, initialCommandDefs, Set.empty, None, commands, Next.Continue )
+		val state = State( () )( configuration, initialCommandDefs, Set.empty, None, commands, AttributeMap.empty, Next.Continue )
 		run(state)
 	}
 		
