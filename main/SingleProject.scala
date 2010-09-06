@@ -23,11 +23,11 @@ trait SingleProject extends Tasked with PrintTask with TaskExtra with Types
 	def act(input: Input, state: State): Option[(Task[State], Execute.NodeView[Task])] =
 	{
 		import Dummy._
-		val context = ReflectiveContext(this, (x: SingleProject) => Some("project")) // TODO: project names
+		val context = ReflectiveContext(this, "project")
 		val dummies = new Transform.Dummies(In, State, Streams)
 		def name(t: Task[_]): String = context.staticName(t) getOrElse std.Streams.name(t)
 		val injected = new Transform.Injected( input, state, std.Streams(t => streamBase / name(t), (t, writer) => ConsoleLogger() ) )
-		context.forName(input.name) map { t => (t.merge.map(_ => state), Transform(dummies, injected, context) ) }
+		context.static(this, input.name) map { t => (t.merge.map(_ => state), Transform(dummies, injected, context) ) }
 	}
 
 	def help: Seq[Help] = Nil
@@ -118,7 +118,7 @@ final class MapBackedAttribute[T](val default: Option[T], subs: Map[String, MapB
 				newSubs put (h, su
 		
 }
-trait ConsoleLogManager
+trait ConsoleLogManager extends LogManager
 {
 	def makeLogger(context: Context, configuration: Configuration) = (task: Task[_], to: PrintWriter) =>
 	{
@@ -144,18 +144,19 @@ trait ConsoleLogManager
 object ReflectiveContext
 {
 	import Transform.Context
-	def apply[Owner <: AnyRef : Manifest](context: Owner, name: Owner => Option[String]): Context[Owner] = new Context[Owner]
+	def apply[Owner <: AnyRef : Manifest](context: Owner, name: String): Context[Owner] = new Context[Owner]
 	{
 		private[sbt] lazy val tasks: Map[String, Task[_]] = ReflectUtilities.allVals[Task[_]](context).toMap
 		private[sbt] lazy val reverseName: collection.Map[Task[_], String] = reverseMap(tasks)
 		private[sbt] lazy val sub: collection.Map[String, Owner] = ReflectUtilities.allVals[Owner](context)
 		private[sbt] lazy val reverseSub: collection.Map[Owner, String] = reverseMap(sub)
 
-		def forName(s: String): Option[Task[_]] = tasks get s
 		val staticName: Task[_] => Option[String] = reverseName.get _
-		val ownerName = name
-		val owner = (_: Task[_]) => Some(context)
-		val subs = (o: Owner) => Nil
+		val ownerName = (o: Owner) => if(o eq context) Some(name) else None
+		val owner = (t: Task[_]) => if(reverseName contains t) Some(context) else None
+		def allTasks(o: Owner): Iterable[Task[_]] = if(o eq context) tasks.values else Nil
+		def ownerForName(oname: String): Option[Owner] = if(name == oname) Some(context) else None
+		val aggregate = (_: Owner) => Nil
 		val static = (o: Owner, s: String) => if(o eq context) tasks.get(s) else None
 
 		private def reverseMap[A,B](in: Iterable[(A,B)]): collection.Map[B,A] =

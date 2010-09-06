@@ -242,7 +242,7 @@ object Commands
 	def loadProject = Command.simple(LoadProject, LoadProjectBrief, LoadProjectDetailed) { (in, s) =>
 		val base = s.configuration.baseDirectory
 		val p = MultiProject.load(s.configuration, ConsoleLogger() /*TODO*/)(base)
-		val exts = p match { case pc: ProjectContainer => MultiProject.loadExternals(pc :: Nil, p.info.construct); case _ => Map.empty[File, Project] }
+		val exts = MultiProject.loadExternals(p :: Nil, p.info.construct)
 		s.copy(project = p)().put(MultiProject.ExternalProjects, exts.updated(base, p))
 	}
 	

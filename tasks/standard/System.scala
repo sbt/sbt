@@ -102,12 +102,13 @@ object Transform
 	final class Injected[Input, State](val in: Input, val state: State, val streams: Streams)
 	trait Context[Owner]
 	{
-		def forName(s: String): Option[Task[_]]
 		def staticName: Task[_] => Option[String]
 		def owner: Task[_] => Option[Owner]
 		def ownerName: Owner => Option[String]
-		def subs: Owner => Iterable[Owner]
+		def aggregate: Owner => Iterable[Owner]
 		def static: (Owner, String) => Option[Task[_]]
+		def allTasks(owner: Owner): Iterable[Task[_]]
+		def ownerForName(name: String): Option[Owner]
 	}
 	def setOriginal(delegate: Task ~> Task): Task ~> Task =
 		new (Task ~> Task) {
@@ -129,7 +130,7 @@ object Transform
 		import System._
 		import Convert._
 		val inputs = dummyMap(dummyIn, dummyState)(in, state)
-		Convert.taskToNode ∙ setOriginal(streamed(streams, dummyStreams)) ∙ implied(owner, subs, static) ∙ setOriginal(name(staticName)) ∙ getOrId(inputs)
+		Convert.taskToNode ∙ setOriginal(streamed(streams, dummyStreams)) ∙ implied(owner, aggregate, static) ∙ setOriginal(name(staticName)) ∙ getOrId(inputs)
 	}
 }
 object Convert
