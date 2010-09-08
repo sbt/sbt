@@ -37,7 +37,12 @@ object System
 			def impliedDeps(t: Task[_]): Seq[Task[_]] = 
 				for( n <- t.info.name.toList; o <- owner(t.original).toList; agg <- subs(o); implied <- static(agg, n) ) yield implied
 
-			def withImplied[T](in: Task[T]): Task[T]  =  Task(Info(), DependsOn(in, impliedDeps(in)))
+			def withImplied[T](in: Task[T]): Task[T]  =
+			{
+				val deps = impliedDeps(in)
+					import TaskExtra._
+				if( deps.isEmpty ) in else Task(Info(), DependsOn(in.local, deps))
+			}
 
 			def apply[T](in: Task[T]): Task[T]  =  if(in.info.implied) withImplied(in) else in
 		}
