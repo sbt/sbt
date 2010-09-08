@@ -454,7 +454,7 @@ object IO
 		
 	// Not optimized for large files
 	def readLines(in: BufferedReader): List[String] = 
-		foldLines[List[String]](in, Nil)( (accum, line) => line :: accum )
+		foldLines[List[String]](in, Nil)( (accum, line) => line :: accum ).reverse
 	
 	def foreachLine(in: BufferedReader)(f: String => Unit): Unit =
 		foldLines(in, ())( (_, line) => f(line) )
