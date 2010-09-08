@@ -41,6 +41,8 @@ sealed trait TaskInfo[S]
 	def named(s: String): Task[S]
 	def describedAs(s: String): Task[S]
 	def implies: Task[S]
+	def implied(flag: Boolean): Task[S]
+	def local: Task[S]
 }
 sealed trait ForkTask[S, CC[_]]
 {
@@ -164,7 +166,10 @@ trait TaskExtra
 	final implicit def toTaskInfo[S](in: Task[S]): TaskInfo[S] = new TaskInfo[S] {
 		def named(s: String): Task[S] = in.copy(info = in.info.setName(s))
 		def describedAs(s: String): Task[S] = in.copy(info = in.info.setDescription(s))
-		def implies: Task[S] = in.copy(info = in.info.setImplied(true))
+		def implied(flag: Boolean): Task[S] = in.copy(info = in.info.setImplied(flag))
+		def implies: Task[S] = implied(true)
+		def local: Task[S] = implied(false)
+
 	}
 
 	final implicit def pipeToProcess(t: Task[_])(implicit streams: Task[TaskStreams]): ProcessPipe = new ProcessPipe {
