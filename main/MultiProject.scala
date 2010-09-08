@@ -17,6 +17,7 @@ import java.io.File
 object MultiProject
 {
 	val ExternalProjects = AttributeKey[Map[File, Project]]("external-projects")
+	val InitialProject = AttributeKey[Project]("initial-project")
 
 	val defaultExcludes: FileFilter = (".*"  - ".") || HiddenFileFilter
 	def descendents(base: PathFinder, select: FileFilter) = base.descendentsExcept(select, defaultExcludes)

@@ -81,7 +81,7 @@ trait Named
 }
 trait Member[Node <: Member[Node]]
 { self: Node =>
-	def projectClosure: Seq[Node]
+	def projectClosure(state: State): Seq[Node]
 }
 trait Tasked
 {

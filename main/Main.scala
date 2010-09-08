@@ -171,7 +171,7 @@ object Commands
 	def projects = Command { case s @ State(d: Member[_]) =>
 		Apply.simple(ProjectsCommand, projectsBrief, projectsDetailed ) { (in,s) =>
 			val log = logger(s)
-			d.projectClosure.foreach { case n: Named => listProject(n, d eq n, log) }
+			d.projectClosure(s).foreach { case n: Named => listProject(n, d eq n, log); case _ => () }
 			s
 		}(s)
 	}
@@ -186,7 +186,7 @@ object Commands
 			}
 			else
 			{
-				d.projectClosure.find { case n: Named => n.name == to; case _ => false } match
+				d.projectClosure(s).find { case n: Named => n.name == to; case _ => false } match
 				{
 					case Some(np) => logger(s).info("Set current project to " + to); s.copy(np)()
 					case None => logger(s).error("Invalid project name '" + to + "' (type 'projects' to list available projects)."); s.fail
@@ -243,7 +243,7 @@ object Commands
 		val base = s.configuration.baseDirectory
 		val p = MultiProject.load(s.configuration, ConsoleLogger() /*TODO*/)(base)
 		val exts = MultiProject.loadExternals(p :: Nil, p.info.construct)
-		s.copy(project = p)().put(MultiProject.ExternalProjects, exts.updated(base, p))
+		s.copy(project = p)().put(MultiProject.ExternalProjects, exts.updated(base, p)).put(MultiProject.InitialProject, p)
 	}
 	
 	def handleException(e: Throwable, s: State, trace: Boolean = true): State = {
