@@ -146,13 +146,14 @@ object MultiContext
 	}
 }
 
-trait Project extends Tasked
+trait Project extends Tasked with HistoryEnabled
 {
 	val info: ProjectInfo
 	def name: String = info.name getOrElse "'name' not overridden"
 
 	def base = info.projectDirectory
 	def outputRootPath = base / "target"
+	def historyPath = Some(outputRootPath / ".history")
 	def streamBase = outputRootPath / "streams"
 
 	implicit def streams = Dummy.Streams
