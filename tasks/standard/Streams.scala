@@ -4,7 +4,7 @@
 package sbt
 package std
 
-import java.io.{InputStream, OutputStream, Reader, Writer}
+import java.io.{InputStream, IOException, OutputStream, Reader, Writer}
 import java.io.{BufferedInputStream, BufferedOutputStream, BufferedReader, BufferedWriter, PrintWriter}
 import java.io.{Closeable, File, FileInputStream, FileOutputStream, InputStreamReader, OutputStreamWriter}
 
@@ -46,7 +46,7 @@ sealed trait Streams
 }
 object Streams
 {
-	private[this] val closeQuietly = (_: Closeable).close()
+	private[this] val closeQuietly = (c: Closeable) => try { c.close() } catch { case _: IOException => () }
 	
 	def multi[Owner](bases: Owner => File, taskOwner: Task[_] => Option[Owner], mkLogger: (Task[_], PrintWriter) => Logger): Streams =
 	{
