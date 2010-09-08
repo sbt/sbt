@@ -13,6 +13,7 @@ import build.{Auto, Build}
 import xsbti.AppConfiguration
 
 import java.io.File
+import annotation.tailrec
 
 object MultiProject
 {
@@ -85,8 +86,9 @@ object MultiProject
 			containers flatMap { container => externalProjects(container) ++ exts(internalProjects(container)) }
 		exts(containers).toSet
 	}
-	def externalProjects(p: Project) = p.aggregate._1 ++ p.dependencies._1.map(_.path)
-	def internalProjects(p: Project) = p.aggregate._2 ++ p.dependencies._2.map(_.project)
+	def externalProjects(p: Project) = lefts( allDependencies(p) )
+	def internalProjects(p: Project) = rights( allDependencies(p) )
+	def allDependencies(p: Project) = (p.aggregate ++ p.dependencies).map(_.project)
 
 	def internalTopologicalSort(root: Project): Seq[Project] =
 		Dag.topologicalSort(root)(internalProjects)
@@ -97,23 +99,20 @@ object MultiProject
 			(externalProjects(p) map resolveExternal) ++ internalProjects(p)
 		}
 	def externalMap(state: State): File => Project = state get MultiProject.ExternalProjects getOrElse Map.empty
+	def initialProject(state: State, ifUnset: => Project): Project =state get MultiProject.InitialProject getOrElse ifUnset
 
 	def makeContext(root: Project, state: State) =
 	{
 		val allProjects = topologicalSort(root, state)
 		val contexts = allProjects map { p => (p, ReflectiveContext(p, p.name)) }
 		val externals = externalMap(state)
-		def subs(f: Project => (Iterable[File], Iterable[Project])): Project =>  Iterable[Project] = p =>
-		{
-			val (ext, int) = f(p)
-			(ext map externals) ++ int
-		}
-		val deps = (p: Project) => {
-			val (dsI, dsE) = p.dependencies
-			(dsI.map(_.path), dsE.map(_.project))
-		}
-		MultiContext(contexts)(subs(_.aggregate), subs(deps) )
+		def subs(f: Project => Iterable[ProjectDependency]): Project =>  Iterable[Project] = p =>
+			f(p) map( _.project match { case Left(path) => externals(path); case Right(proj) => proj } )
+		MultiContext(contexts)(subs(_.aggregate), subs(_.dependencies) )
 	}
+
+	def lefts[A,B](e: Iterable[Either[A,B]]):Iterable[A] = e collect { case Left(l) => l }
+	def rights[A,B](e: Iterable[Either[A,B]]):Iterable[B] = e collect { case Right(r)=> r }
 }
 
 object MultiContext
@@ -146,9 +145,11 @@ object MultiContext
 	}
 }
 
-trait Project extends Tasked with HistoryEnabled
+trait Project extends Tasked with HistoryEnabled with Member[Project] with Named
 {
 	val info: ProjectInfo
+
+	def settings: Settings = Settings.empty
 	def name: String = info.name getOrElse "'name' not overridden"
 
 	def base = info.projectDirectory
@@ -156,13 +157,15 @@ trait Project extends Tasked with HistoryEnabled
 	def historyPath = Some(outputRootPath / ".history")
 	def streamBase = outputRootPath / "streams"
 
+	def projectClosure(s: State): Seq[Project] = MultiProject.topologicalSort(MultiProject.initialProject(s, rootProject), s)
+	@tailrec final def rootProject: Project = info.parent match { case Some(p) => p.rootProject; case None => this }
+
 	implicit def streams = Dummy.Streams
 	def input = Dummy.In
 	def state = Dummy.State
 
-	// (external, internal)
-	def aggregate: (Iterable[File], Iterable[Project])
-	def dependencies: (Iterable[ExternalDependency], Iterable[ProjectDependency])
+	def aggregate: Iterable[ProjectDependency.Execution]
+	def dependencies: Iterable[ProjectDependency.Classpath]
 
 	type Task[T] = sbt.Task[T]
 	def act(input: Input, state: State): Option[(Task[State], Execute.NodeView[Task])] =
@@ -170,47 +173,58 @@ trait Project extends Tasked with HistoryEnabled
 		import Dummy._
 		val context = MultiProject.makeContext(this, state)
 		val dummies = new Transform.Dummies(In, State, Streams)
-		def name(t: Task[_]): String = context.staticName(t) getOrElse std.Streams.name(t)
-		val actualStreams = std.Streams(t => context.owner(t).get.streamBase / name(t), (t, writer) => ConsoleLogger() )
+		def name(t: Task[_]): String = context.staticName(t.original) getOrElse std.Streams.name(t)
+		val mklog = LogManager.construct(context, settings)
+		val actualStreams = std.Streams(t => context.owner(t.original).get.streamBase / name(t), mklog )
 		val injected = new Transform.Injected( input, state, actualStreams )
 		context.static(this, input.name) map { t => (t.merge.map(_ => state), Transform(dummies, injected, context) ) }
 	}
 
 	def help: Seq[Help] = Nil
 }
-
-trait ReflectiveProject extends Project
-{
-	import ReflectUtilities.allVals
-	private[this] def vals[T: Manifest] = allVals[T](this).map(_._2)
-	def aggregate: (Iterable[File], Iterable[Project]) = (vals[ExternalProject].map(_.path), vals[Project] )
-	/** All projects directly contained in this that are defined in this container's compilation set.
-	* This is for any contained projects, including execution and classpath dependencies, but not external projects.  */
-	def dependencies: (Iterable[ExternalDependency], Iterable[ProjectDependency]) = (vals[ExternalDependency], vals[ProjectDependency])
-}
-
-trait ProjectConstructors
+trait ProjectExtra
 {
 	val info: ProjectInfo
-	def project(base: Path, name: String, deps: ProjectDependency*): Project
-	def project[P <: Project](path: Path, name: String, builderClass: Class[P], deps: ProjectDependency*): P
-	def project[P <: Project](path: Path, name: String, construct: ProjectInfo => P, deps: ProjectDependency*): P
-	def project(base: Path): ExternalProject = new ExternalProject(base.asFile)
+	/** Converts a String to a path relative to the project directory of this project. */
+	implicit def path(component: String): Path = info.projectDirectory / component
+	/** Converts a String to a simple name filter.  * has the special meaning: zero or more of any character */
+	implicit def filter(simplePattern: String): NameFilter = GlobFilter(simplePattern)
+}
+trait ReflectiveProject extends Project
+{
+	private[this] def vals[T: Manifest] = ReflectUtilities.allVals[T](this).map(_._2)
+	// TODO: what to do with raw Projects
+	def aggregate: Iterable[ProjectDependency.Execution] = vals[ProjectDependency.Execution]// ++ vals[Project].map(p => ProjectDependency.Execution(Right(p)))
+	/** All projects directly contained in this that are defined in this container's compilation set.
+	* This is for any contained projects, including execution and classpath dependencies, but not external projects.  */
+	def dependencies: Iterable[ProjectDependency.Classpath] = vals[ProjectDependency.Classpath]
+}
 
-	implicit def defaultProjectDependency(p: Project): ProjectDependency = new ProjectDependency(p, None)
-	implicit def dependencyConstructor(p: Project): ProjectDependencyConstructor = new ProjectDependencyConstructor {
-		def %(conf: String) = new ProjectDependency(p, Some(conf))
-	}
-	implicit def extDependencyConstructor(p: ExternalProject): ExtProjectDependencyConstructor = new ExtProjectDependencyConstructor {
-		def %(conf: String) = new ExternalDependency(p.path, Some(conf))
+trait ProjectConstructors extends Project
+{
+	val info: ProjectInfo
+	//def project(base: Path, name: String, deps: ProjectDependency*): Project = project(path, name, info => new DefaultProject(info), deps: _* )
+	def project[P <: Project](path: Path, name: String, construct: ProjectInfo => P, deps: ProjectDependency*): P =
+		construct( info.copy(Some(name), projectDirectory = path.asFile, parent = Some(this))() )
+
+	def project(base: Path): ProjectDependency.Execution = new ProjectDependency.Execution(Left(base.asFile))
+
+	implicit def defaultProjectDependency(p: Project): ProjectDependency = new ProjectDependency.Classpath(Right(p), None)
+
+	implicit def dependencyConstructor(p: Project): ProjectDependencyConstructor = dependencyConstructor(Right(p))
+	implicit def extDependencyConstructor(p: File): ProjectDependencyConstructor = dependencyConstructor(Left(p))
+	implicit def extDependencyConstructor(p: ProjectDependency.Execution): ProjectDependencyConstructor = dependencyConstructor(p.project)
+
+	def dependencyConstructor(p: Either[File, Project]): ProjectDependencyConstructor = new ProjectDependencyConstructor {
+		def %(conf: String) = new ProjectDependency.Classpath(p, Some(conf))
 	}
 }
-final class ProjectDependency(val project: Project, val configuration: Option[String])
+sealed trait ProjectDependency { val project: Either[File, Project] }
+object ProjectDependency
+{
+	final class Execution(val project: Either[File, Project]) extends ProjectDependency
+	final class Classpath(val project: Either[File, Project], configuration: Option[String]) extends ProjectDependency
+}
 sealed trait ProjectDependencyConstructor {
-	def %(conf: String): ProjectDependency
+	def %(conf: String): ProjectDependency.Classpath
 }
-sealed trait ExtProjectDependencyConstructor {
-	def %(conf: String): ExternalDependency
-}
-final class ExternalProject(val path: File)
-final class ExternalDependency(val path: File, val configuration: Option[String])
