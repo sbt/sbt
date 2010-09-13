@@ -92,7 +92,7 @@ final class IvySbt(configuration: IvyConfiguration)
 		def withModule[T](f: (Ivy,DefaultModuleDescriptor,String) => T): T =
 			withIvy[T] { ivy => f(ivy, moduleDescriptor, defaultConfig) }
 
-		private lazy val (moduleDescriptor: DefaultModuleDescriptor, defaultConfig: String) =
+		lazy val (moduleDescriptor: DefaultModuleDescriptor, defaultConfig: String) =
 		{
 			val (baseModule, baseConfiguration) =
 				moduleSettings match
