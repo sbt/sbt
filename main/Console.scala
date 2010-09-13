@@ -29,6 +29,8 @@ object Console
 	val SbtInitial = "import sbt._; import Process._; import current._"
 	
 	def apply(conf: build.Compile)(implicit log: Logger): Console = new Console( compiler(conf) )
+	def apply(conf: Compile.Inputs): Console = new Console( conf.compilers.scalac )
+
 	def compiler(conf: build.Compile)(implicit log: Logger): AnalyzingCompiler =
 	{
 		val componentManager = new ComponentManager(conf.launcher.globalLock, conf.configuration.provider.components, log)
@@ -39,6 +41,11 @@ object Console
 		val c = new Console(compiler(conf))
 		val loader = value.asInstanceOf[AnyRef].getClass.getClassLoader
 		c.apply(conf.compileClasspath, Nil, loader, SbtInitial)("current" -> value)
+	}
+	def sbtDefault(conf: Compile.Inputs, value: Any)(implicit log: Logger)
+	{
+		val loader = value.asInstanceOf[AnyRef].getClass.getClassLoader
+		Console(conf)(conf.config.classpath, Nil, loader, SbtInitial)("current" -> value)
 	}
 }
 
