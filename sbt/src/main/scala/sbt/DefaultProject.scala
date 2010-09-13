@@ -170,8 +170,6 @@ abstract class BasicScalaProject extends ScalaProject with BasicDependencyProjec
 	* classpath returned by `mainUnmanagedClasspath`.*/
 	protected def testUnmanagedClasspath = testCompilePath +++ testResourcesOutputPath  +++ testDependencies.scalaCompiler +++ runUnmanagedClasspath
 
-	/** @deprecated Use `mainDependencies.scalaJars`*/
-	@deprecated protected final def scalaJars: Iterable[File] = mainDependencies.scalaJars.getFiles
 	/** An analysis of the jar dependencies of the main Scala sources.  It is only valid after main source compilation.
 	* See the LibraryDependencies class for details. */
 	final def mainDependencies = new LibraryDependencies(this, mainCompileConditional)
