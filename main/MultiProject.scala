@@ -145,7 +145,7 @@ object MultiContext
 	}
 }
 
-trait Project extends Tasked with HistoryEnabled with Member[Project] with Named
+trait Project extends Tasked with HistoryEnabled with Member[Project] with Named with ConsoleTask
 {
 	val info: ProjectInfo
 
@@ -198,6 +198,11 @@ trait ReflectiveProject extends Project
 	/** All projects directly contained in this that are defined in this container's compilation set.
 	* This is for any contained projects, including execution and classpath dependencies, but not external projects.  */
 	def dependencies: Iterable[ProjectDependency.Classpath] = vals[ProjectDependency.Classpath]
+}
+trait ConsoleTask
+{
+	val info: ProjectInfo
+	lazy val projectConsole = task { Console.sbtDefault(info.compileInputs, this)(ConsoleLogger()) }
 }
 
 trait ProjectConstructors extends Project
