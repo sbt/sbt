@@ -303,9 +303,9 @@ object Commands
 		result match
 		{
 			case Value(v) => v
-			case Inc(Incomplete(tpe, message, causes, directCause)) => // tpe: IValue = Error, message: Option[String] = None, causes: Seq[Incomplete] = Nil, directCause: Option[Throwable] = None)
-				println("Task did not complete successfully (TODO: error logging)")
-				directCause.foreach(_.printStackTrace)
+			case Inc(inc) =>
+				println(Incomplete.show(inc, true))
+				println("Task did not complete successfully")
 				original
 		}
 		
