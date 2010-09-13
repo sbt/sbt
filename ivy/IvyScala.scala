@@ -21,7 +21,7 @@ object ScalaArtifacts
 
 import ScalaArtifacts._
 
-final class IvyScala(val scalaVersion: String, val configurations: Iterable[Configuration], val checkExplicit: Boolean, val filterImplicit: Boolean) extends NotNull
+final class IvyScala(val scalaVersion: String, val configurations: Iterable[Configuration], val checkExplicit: Boolean, val filterImplicit: Boolean)
 private object IvyScala
 {
 	/** Performs checks/adds filters on Scala dependencies (if enabled in IvyScala). */
