@@ -140,10 +140,11 @@ object ClasspathProject
 	}
 
 	def parseSimpleConfigurations(confString: String): Map[String, String] =
-		confString.split(";").map(
-			_.split("->",2).toList.map(_.trim) match {
+		confString.split(";").map( conf =>
+			conf.split("->",2).toList.map(_.trim) match {
 				case x :: Nil => (x,x)
 				case x :: y :: Nil => (x,y)
+				case _ => error("Invalid configuration '" + conf + "'") // shouldn't get here
 			}
 		).toMap
 }
