@@ -18,12 +18,12 @@ object Watched
 	val ContinuousCompilePollDelaySeconds = 1
 	def isEnter(key: Int): Boolean = key == 10 || key == 13
 
-	def watched(p: Project, s: State): Seq[Watched] = MultiProject.topologicalSort(p, s).collect { case w: Watched => w }
-	def sourcePaths(p: Project, s: State): PathFinder = (Path.emptyPathFinder /: watched(p, s))(_ +++ _.watchPaths)
+	def watched(p: Project): Seq[Watched] = MultiProject.topologicalSort(p).collect { case w: Watched => w }
+	def sourcePaths(p: Project): PathFinder = (Path.emptyPathFinder /: watched(p))(_ +++ _.watchPaths)
 	def executeContinuously(project: Project with Watched, s: State, in: Input): State =
 	{
 		def shouldTerminate: Boolean = (System.in.available > 0) && (project.terminateWatch(System.in.read()) || shouldTerminate)
-		val sourcesFinder = sourcePaths(project, s)
+		val sourcesFinder = sourcePaths(project)
 		val watchState = s get ContinuousState getOrElse WatchState.empty
 
 		if(watchState.count > 0)

@@ -17,7 +17,6 @@ import annotation.tailrec
 
 object MultiProject
 {
-	val ExternalProjects = AttributeKey[Map[File, Project]]("external-projects")
 	val InitialProject = AttributeKey[Project]("initial-project")
 
 	val defaultExcludes: FileFilter = (".*"  - ".") || HiddenFileFilter
@@ -42,7 +41,8 @@ object MultiProject
 			case None => error("Couldn't find constructor with one argument of type " + mf.toString)
 		}
 
-	def load(configuration: AppConfiguration, log: Logger)(base: File): Project =
+	// externals must not be evaluated until after _all_ projects have been loaded
+	def load(configuration: AppConfiguration, log: Logger, externals: ExternalProjects)(base: File): Project =
 	{
 		val projectDir = selectProjectDir(base)
 		val buildDir = projectDir / "build"
@@ -55,7 +55,7 @@ object MultiProject
 		val inputs = Compile.inputs(classpath, sources.getFiles.toSeq, target, Nil, Nil, javaSrcBase :: Nil, Compile.DefaultMaxErrors)(compilers, log)
 
 		val analysis = Compile(inputs)
-		val info = ProjectInfo(None, base, projectDir, Nil, None)(configuration, analysis, inputs, load(configuration, log))
+		val info = ProjectInfo(None, base, projectDir, Nil, None)(configuration, analysis, inputs, load(configuration, log, externals), externals)
 
 		val discovered = Build.check(Build.discover(analysis, Some(false), Auto.Subclass, projectClassName), false)
 		Build.binaries(inputs.config.classpath, discovered, getClass.getClassLoader)(construct(info)).head.asInstanceOf[Project]
@@ -93,19 +93,17 @@ object MultiProject
 	def internalTopologicalSort(root: Project): Seq[Project] =
 		Dag.topologicalSort(root)(internalProjects)
 
-	def topologicalSort(root: Project, state: State): Seq[Project] = topologicalSort(root)(externalMap(state))
-	def topologicalSort(root: Project)(implicit resolveExternal: File => Project): Seq[Project] =
+	def topologicalSort(root: Project): Seq[Project] = topologicalSort(root, root.info.externals)
+	def topologicalSort(root: Project, resolveExternal: File => Project): Seq[Project] =
 		Dag.topologicalSort(root) { p =>
 			(externalProjects(p) map resolveExternal) ++ internalProjects(p)
 		}
-	def externalMap(state: State): File => Project = state get MultiProject.ExternalProjects getOrElse Map.empty
 	def initialProject(state: State, ifUnset: => Project): Project =state get MultiProject.InitialProject getOrElse ifUnset
 
-	def makeContext(root: Project, state: State) =
+	def makeContext(root: Project) =
 	{
-		val allProjects = topologicalSort(root, state)
-		val contexts = allProjects map { p => (p, ReflectiveContext(p, p.name)) }
-		val externals = externalMap(state)
+		val contexts = topologicalSort(root) map { p => (p, ReflectiveContext(p, p.name)) }
+		val externals = root.info.externals
 		def subs(f: Project => Iterable[ProjectDependency]): Project =>  Iterable[Project] = p =>
 			f(p) map( _.project match { case Left(path) => externals(path); case Right(proj) => proj } )
 		MultiContext(contexts)(subs(_.aggregate), subs(_.dependencies) )
@@ -157,7 +155,7 @@ trait Project extends Tasked with HistoryEnabled with Member[Project] with Named
 	def historyPath = Some(outputRootPath / ".history")
 	def streamBase = outputRootPath / "streams"
 
-	def projectClosure(s: State): Seq[Project] = MultiProject.topologicalSort(MultiProject.initialProject(s, rootProject), s)
+	def projectClosure(s: State): Seq[Project] = MultiProject.topologicalSort(MultiProject.initialProject(s, rootProject))
 	@tailrec final def rootProject: Project = info.parent match { case Some(p) => p.rootProject; case None => this }
 
 	implicit def streams = Dummy.Streams
@@ -171,7 +169,7 @@ trait Project extends Tasked with HistoryEnabled with Member[Project] with Named
 	def act(input: Input, state: State): Option[(Task[State], Execute.NodeView[Task])] =
 	{
 		import Dummy._
-		val context = MultiProject.makeContext(this, state)
+		val context = MultiProject.makeContext(this)
 		val dummies = new Transform.Dummies(In, State, Streams)
 		def name(t: Task[_]): String = context.staticName(t.original) getOrElse std.Streams.name(t)
 		val mklog = LogManager.construct(context, settings)
@@ -227,8 +225,8 @@ trait ProjectConstructors extends Project
 sealed trait ProjectDependency { val project: Either[File, Project] }
 object ProjectDependency
 {
-	final class Execution(val project: Either[File, Project]) extends ProjectDependency
-	final class Classpath(val project: Either[File, Project], configuration: Option[String]) extends ProjectDependency
+	final case class Execution(project: Either[File, Project]) extends ProjectDependency
+	final case class Classpath(project: Either[File, Project], configuration: Option[String]) extends ProjectDependency
 }
 sealed trait ProjectDependencyConstructor {
 	def %(conf: String): ProjectDependency.Classpath

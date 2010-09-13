@@ -241,9 +241,11 @@ object Commands
 
 	def loadProject = Command.simple(LoadProject, LoadProjectBrief, LoadProjectDetailed) { (in, s) =>
 		val base = s.configuration.baseDirectory
-		val p = MultiProject.load(s.configuration, ConsoleLogger() /*TODO*/)(base)
-		val exts = MultiProject.loadExternals(p :: Nil, p.info.construct)
-		s.copy(project = p)().put(MultiProject.ExternalProjects, exts.updated(base, p)).put(MultiProject.InitialProject, p)
+		lazy val p: Project = MultiProject.load(s.configuration, ConsoleLogger() /*TODO*/, ProjectInfo.externals(exts))(base)
+		// lazy so that p can forward-reference it
+		lazy val exts: Map[File, Project] = MultiProject.loadExternals(p :: Nil, p.info.construct).updated(base, p)
+		exts// force
+		runExitHooks(s).copy(project = p)().put(MultiProject.InitialProject, p)
 	}
 	
 	def handleException(e: Throwable, s: State, trace: Boolean = true): State = {
