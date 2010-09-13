@@ -60,6 +60,7 @@ private object ConvertResolver
 				initializePatterns(resolver, repo.patterns)
 				resolver
 			}
+			case repo: RawRepository => repo.resolver
 		}
 	}
 	private def initializeMavenStyle(resolver: IBiblioResolver, name: String, root: String)
