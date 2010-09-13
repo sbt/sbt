@@ -71,7 +71,7 @@ private object IvyScala
 	* the given configurations. */
 	private def excludeRule(organization: String, name: String, configurationNames: Iterable[String]): ExcludeRule =
 	{
-		val artifact = new ArtifactId(ModuleId.newInstance(organization, name), "*", "*", "*")
+		val artifact = new ArtifactId(ModuleId.newInstance(organization, name), "*", "jar", "*")
 		val rule = new DefaultExcludeRule(artifact, ExactPatternMatcher.INSTANCE, Collections.emptyMap[AnyRef,AnyRef])
 		configurationNames.foreach(rule.addConfiguration)
 		rule
