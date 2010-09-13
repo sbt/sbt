@@ -31,6 +31,8 @@ final case class KCons[H, T <: HList, +M[_]](head: M[H], tail: KList[M,T]) exten
 	def toList = head :: tail.toList
 	
 	def combine[N[X] >: M[X]]: (H :+: T)#Wrap[N] = HCons(head, tail.combine)
+
+	override def toString = head + " :^: " + tail.toString
 }
 
 sealed class KNil extends KList[Nothing, HNil]
@@ -40,6 +42,7 @@ sealed class KNil extends KList[Nothing, HNil]
 	def :^: [M[_], H](h: M[H]) = KCons(h, this)
 	def toList = Nil
 	def combine[N[X]] = HNil
+	override def toString = "KNil"
 }
 object KNil extends KNil
 
