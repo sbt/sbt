@@ -232,7 +232,7 @@ object Commands
 		} catch { case e: xsbti.CompileFailed => s.fail /* already logged */ }
 	}
 	def load = Command.simple(Load, Parse.helpBrief(Load, LoadLabel), Parse.helpDetail(Load, LoadLabel, false) ) { (in, s) =>
-		loadCommand(in.arguments, s.configuration, false, "sbt.Project") match // TODO: classOf[Project].getName when ready
+		loadCommand(in.arguments, s.configuration, false, "sbt.Project") match
 		{
 			case Right(Seq(newValue)) => runExitHooks(s).copy(project = newValue)()
 			case Left(e) => handleException(e, s, false)
