@@ -6,7 +6,7 @@ package sbt
 import java.io.File
 import java.net.{URI, URL}
 import scala.xml.NodeSeq
-import org.apache.ivy.plugins.resolver.IBiblioResolver
+import org.apache.ivy.plugins.resolver.{DependencyResolver, IBiblioResolver}
 import org.apache.ivy.util.url.CredentialsStore
 
 final case class ModuleID(organization: String, name: String, revision: String, configurations: Option[String], isChanging: Boolean, isTransitive: Boolean, explicitArtifacts: Seq[Artifact], extraAttributes: Map[String,String]) extends NotNull
@@ -44,6 +44,10 @@ object ModuleID
 sealed trait Resolver extends NotNull
 {
 	def name: String
+}
+final class RawRepository(val resolver: DependencyResolver) extends Resolver
+{
+	def name = resolver.getName
 }
 sealed case class MavenRepository(name: String, root: String) extends Resolver
 {
