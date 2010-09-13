@@ -12,7 +12,7 @@ object Incomplete extends Enumeration {
 	def show(i: Incomplete, traces: Boolean): String =
 	{
 		val exceptions = allExceptions(i)
-		val traces = exceptions.map(_.getStackTrace).mkString("\n")
+		val traces = exceptions.map(ex => ex.getStackTrace.mkString(ex.toString + "\n\t", "\n\t", "\n"))
 		val causeStr = if(i.causes.isEmpty) "" else (i.causes.length + " cause(s)")
 		"Incomplete (" + show(i.tpe) + ") " + i.message.getOrElse("") + causeStr + "\n" + traces
 	}

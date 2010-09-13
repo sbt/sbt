@@ -28,6 +28,7 @@ object Task
 final case class Task[T](info: Info[T], work: Action[T])
 {
 	def original = info.original getOrElse this
+	override def toString = info.name orElse original.info.name getOrElse ("Task(" + info + ", " + work + ")")
 }
 /** `original` is used during transformation only.*/
 final case class Info[T](attributes: AttributeMap = AttributeMap.empty, original: Option[Task[T]] = None)
@@ -40,7 +41,12 @@ final case class Info[T](attributes: AttributeMap = AttributeMap.empty, original
 	def setDescription(d: String) = set(Description, d)
 	def setImplied(i: Boolean) = set(Implied, i)
 	def set[T](key: AttributeKey[T], value: T) = copy(attributes = this.attributes.put(key, value))
-	
+
+	override def toString =
+		if(attributes.isEmpty && original.isEmpty)
+			"_"
+		else
+			attributes.toString + (original match { case Some(o) => ", original: " + o; case None => "" })
 }
 object Info
 {
