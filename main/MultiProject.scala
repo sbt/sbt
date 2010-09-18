@@ -191,8 +191,7 @@ trait ProjectExtra
 trait ReflectiveProject extends Project
 {
 	private[this] def vals[T: Manifest] = ReflectUtilities.allVals[T](this).map(_._2)
-	// TODO: what to do with raw Projects
-	def aggregate: Iterable[ProjectDependency.Execution] = vals[ProjectDependency.Execution]// ++ vals[Project].map(p => ProjectDependency.Execution(Right(p)))
+	def aggregate: Iterable[ProjectDependency.Execution] = vals[ProjectDependency.Execution] ++ vals[Project].map(p => ProjectDependency.Execution(Right(p)))
 	/** All projects directly contained in this that are defined in this container's compilation set.
 	* This is for any contained projects, including execution and classpath dependencies, but not external projects.  */
 	def dependencies: Iterable[ProjectDependency.Classpath] = vals[ProjectDependency.Classpath]
