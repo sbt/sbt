@@ -29,6 +29,15 @@ object Locate
 				case x => x
 			}
 	
+	/** Returns a function that searches the provided class path for
+	* a class name and returns the entry that defines that class.*/
+	def entry(classpath: Seq[File]): String => Option[File] =
+	{
+		val entries = classpath.toStream.map { entry => (entry, definesClass(entry)) }
+		className => entries collect { case (entry, defines) if defines(className) => entry } headOption;
+	}
+	def resolve(f: File, className: String): File = if(f.isDirectory) classFile(f, className) else f
+	
 	def getValue[S](get: File => String => Option[S])(entry: File): String => Either[Boolean, S] = 
 	{
 		val defClass = definesClass(entry)

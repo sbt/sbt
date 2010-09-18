@@ -18,7 +18,7 @@ trait Analysis
 	def copy(stamps: Stamps = stamps, apis: APIs = apis, relations: Relations = relations): Analysis
 	
 	def addSource(src: File, api: Source, stamp: Stamp, internalDeps: Iterable[File]): Analysis
-	def addBinaryDep(src: File, dep: File, stamp: Stamp): Analysis
+	def addBinaryDep(src: File, dep: File, className: String, stamp: Stamp): Analysis
 	def addExternalDep(src: File, dep: String, api: Source): Analysis
 	def addProduct(src: File, product: File, stamp: Stamp): Analysis 
 }
@@ -44,8 +44,8 @@ private class MAnalysis(val stamps: Stamps, val apis: APIs, val relations: Relat
 	def addSource(src: File, api: Source, stamp: Stamp, internalDeps: Iterable[File]): Analysis =
 		copy( stamps.markInternalSource(src, stamp), apis.markInternalSource(src, api), relations.addInternalSrcDeps(src, internalDeps) )
 
-	def addBinaryDep(src: File, dep: File, stamp: Stamp): Analysis =
-		copy( stamps.markBinary(dep, stamp), apis, relations.addBinaryDep(src, dep) )
+	def addBinaryDep(src: File, dep: File, className: String, stamp: Stamp): Analysis =
+		copy( stamps.markBinary(dep, className, stamp), apis, relations.addBinaryDep(src, dep) )
 
 	def addExternalDep(src: File, dep: String, depAPI: Source): Analysis =
 		copy( stamps, apis.markExternalAPI(dep, depAPI), relations.addExternalDep(src, dep) )

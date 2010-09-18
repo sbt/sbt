@@ -12,9 +12,9 @@ import java.io.File
 object Incremental
 {
 	def println(s: String) = if(java.lang.Boolean.getBoolean("xsbt.inc.debug")) System.out.println(s) else ()
-	def compile(sources: Set[File], previous: Analysis, current: ReadStamps, externalAPI: String => Source, doCompile: Set[File] => Analysis)(implicit equivS: Equiv[Stamp]): Analysis =
+	def compile(sources: Set[File], entry: String => Option[File], previous: Analysis, current: ReadStamps, forEntry: File => Option[Analysis], doCompile: Set[File] => Analysis)(implicit equivS: Equiv[Stamp]): Analysis =
 	{
-		val initialChanges = changedInitial(sources, previous.stamps, previous.apis, current, externalAPI)
+		val initialChanges = changedInitial(entry, sources, previous, current, forEntry)
 		val initialInv = invalidateInitial(previous.relations, initialChanges)
 		println("Initially invalidated: " + initialInv)
 		cycle(initialInv, previous, doCompile)
@@ -60,12 +60,15 @@ object Incremental
 		new APIChanges(modifiedAPIs, changedNames)
 	}
 
-	def changedInitial(sources: Set[File], previous: Stamps, previousAPIs: APIs, current: ReadStamps, externalAPI: String => Source)(implicit equivS: Equiv[Stamp]): InitialChanges =
+	def changedInitial(entry: String => Option[File], sources: Set[File], previousAnalysis: Analysis, current: ReadStamps, forEntry: File => Option[Analysis])(implicit equivS: Equiv[Stamp]): InitialChanges =
 	{
+		val previous = previousAnalysis.stamps
+		val previousAPIs = previousAnalysis.apis
+		
 		val srcChanges = changes(previous.allInternalSources.toSet, sources,  f => !equivS.equiv( previous.internalSource(f), current.internalSource(f) ) )
 		val removedProducts = previous.allProducts.filter( p => !equivS.equiv( previous.product(p), current.product(p) ) ).toSet
-		val binaryDepChanges = previous.allBinaries.filter( f => !equivS.equiv( previous.binary(f), current.binary(f) ) ).toSet
-		val extChanges = changedIncremental(previousAPIs.allExternals, previousAPIs.externalAPI, externalAPI)
+		val binaryDepChanges = previous.allBinaries.filter( externalBinaryModified(entry, previous.className _, previous, current)).toSet
+		val extChanges = changedIncremental(previousAPIs.allExternals, previousAPIs.externalAPI, currentExternalAPI(entry, forEntry))
 
 		InitialChanges(srcChanges, removedProducts, binaryDepChanges, extChanges )
 	}
@@ -121,6 +124,31 @@ object Incremental
 		previous -- invalidatedSrcs
 	}
 
+	def externalBinaryModified(entry: String => Option[File], className: File => Option[String], previous: Stamps, current: ReadStamps)(implicit equivS: Equiv[Stamp]): File => Boolean =
+		dependsOn =>
+			orTrue(
+				for {
+					name <- className(dependsOn)
+					e <- entry(name)
+				} yield {
+					val resolved = Locate.resolve(e, name)
+					(resolved != dependsOn) || !equivS.equiv(previous.binary(dependsOn), current.binary(resolved))
+				}
+			)
+
+	def currentExternalAPI(entry: String => Option[File], forEntry: File => Option[Analysis]): String => Source =
+		className =>
+			orEmpty(
+				for {
+					e <- entry(className)
+					analysis <- forEntry(e)
+					src <- analysis.relations.produced(Locate.resolve(e, className)).headOption
+				} yield
+					analysis.apis.internalAPI(src)
+			)
+
+	def orEmpty(o: Option[Source]): Source = o getOrElse APIs.emptyAPI
+	def orTrue(o: Option[Boolean]): Boolean = o getOrElse true
 	// unmodifiedSources should not contain any sources in the previous compilation run
 	//  (this may unnecessarily invalidate them otherwise)
 	/*def scopeInvalidation(previous: Analysis, otherSources: Set[File], names: NameChanges): Set[File] =

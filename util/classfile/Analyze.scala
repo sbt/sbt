@@ -56,6 +56,7 @@ private[sbt] object Analyze
 						val loaded = load(tpe, Some("Problem processing dependencies of source " + source))
 						for(clazz <- loaded; file <- ErrorHandling.convert(IO.classLocationFile(clazz)).right)
 						{
+							val name = clazz.getName
 							if(file.isDirectory)
 							{
 								val resolved = resolveClassFile(file, tpe)
@@ -66,14 +67,14 @@ private[sbt] object Analyze
 									productToSource.get(resolvedPath) match
 									{
 										case Some(dependsOn) => analysis.sourceDependency(dependsOn, source)
-										case None => analysis.productDependency(resolvedPath, source)
+										case None => analysis.binaryDependency(resolved, clazz.getName, source)
 									}
 								}
 								else
-									analysis.classDependency(resolved, source)
+									analysis.binaryDependency(resolved, name, source)
 							}
 							else
-								analysis.jarDependency(file, source)
+								analysis.binaryDependency(file, name, source)
 						}
 					}
 				}
