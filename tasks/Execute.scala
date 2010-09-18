@@ -161,9 +161,11 @@ final class Execute[A[_] <: AnyRef](checkCycles: Boolean)(implicit view: NodeVie
 		else
 		{
 			forward(node) = IDSet(active)
-			val newD = active filter isNew
-			newD foreach { x => addNew(x) }
-			active foreach { addReverse(_, node) }
+			for(a <- active)
+			{
+				addChecked(a)
+				addReverse(a, node)
+			}
 		}
 
 		post {
