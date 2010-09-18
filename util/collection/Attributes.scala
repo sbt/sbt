@@ -54,3 +54,12 @@ final case class AttributeEntry[T](a: AttributeKey[T], b: T)
 {
 	override def toString = a.label + ": " + b
 }
+
+final case class Attributed[D](data: D)(val metadata: AttributeMap)
+{
+	def put[T](key: AttributeKey[T], value: T): Attributed[D] = Attributed(data)(metadata.put(key, value))
+}
+object Attributed
+{
+	implicit def blank[T](data: T): Attributed[T] = Attributed(data)(AttributeMap.empty)
+}
