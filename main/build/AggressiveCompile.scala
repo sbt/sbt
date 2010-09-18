@@ -21,14 +21,14 @@ final class CompileConfiguration(val sources: Seq[File], val classpath: Seq[File
 
 class AggressiveCompile(cacheDirectory: File)
 {
-	def apply(compiler: AnalyzingCompiler, javac: JavaCompiler, sources: Seq[File], classpath: Seq[File], outputDirectory: File, javaSrcBases: Seq[File] = Nil, options: Seq[String] = Nil, javacOptions: Seq[String] = Nil, maxErrors: Int = 100)(implicit log: Logger): Analysis =
+	def apply(compiler: AnalyzingCompiler, javac: JavaCompiler, sources: Seq[File], classpath: Seq[File], outputDirectory: File, javaSrcBases: Seq[File] = Nil, options: Seq[String] = Nil, javacOptions: Seq[String] = Nil, analysisMap: Map[File, Analysis] = Map.empty, maxErrors: Int = 100)(implicit log: Logger): Analysis =
 	{
 		val setup = new CompileSetup(outputDirectory, new CompileOptions(options, javacOptions), compiler.scalaInstance.actualVersion, CompileOrder.Mixed)
-		compile1(sources, classpath, javaSrcBases, setup, store, Map.empty, compiler, javac, maxErrors)
+		compile1(sources, classpath, javaSrcBases, setup, store, analysisMap, compiler, javac, maxErrors)
 	}
 
 	def withBootclasspath(args: CompilerArguments, classpath: Seq[File]): Seq[File] =
-		args.bootClasspath ++ classpath
+		args.bootClasspath ++ args.finishClasspath(classpath)
 
 	def compile1(sources: Seq[File], classpath: Seq[File], javaSrcBases: Seq[File], setup: CompileSetup, store: AnalysisStore, analysis: Map[File, Analysis], compiler: AnalyzingCompiler, javac: JavaCompiler, maxErrors: Int)(implicit log: Logger): Analysis =
 	{
@@ -46,9 +46,10 @@ class AggressiveCompile(cacheDirectory: File)
 			val extApis = getAnalysis(f) match { case Some(a) => a.apis.external; case None => Map.empty[String, Source] }
 			extApis.get _
 		}
-		val apiOrEmpty = (api: Either[Boolean, Source]) => api.right.toOption.getOrElse( APIs.emptyAPI )
+		val apiOption= (api: Either[Boolean, Source]) => api.right.toOption
 		val cArgs = new CompilerArguments(compiler.scalaInstance, compiler.cp)
-		val externalAPI = apiOrEmpty compose Locate.value(withBootclasspath(cArgs, classpath), getAPI)
+		val searchClasspath = withBootclasspath(cArgs, classpath)
+		val entry = Locate.entry(searchClasspath)
 		
 		val compile0 = (include: Set[File], callback: AnalysisCallback) => {
 			IO.createDirectory(outputDirectory)
@@ -72,7 +73,7 @@ class AggressiveCompile(cacheDirectory: File)
 			case Some(previous) if equiv.equiv(previous, currentSetup) => previousAnalysis
 			case _ => Incremental.prune(sourcesSet, previousAnalysis)
 		}
-		IncrementalCompile(sourcesSet, compile0, analysis, externalAPI)
+		IncrementalCompile(sourcesSet, entry, compile0, analysis, getAnalysis, outputDirectory)
 	}
 	private def extract(previous: Option[(Analysis, CompileSetup)]): (Analysis, Option[CompileSetup]) =
 		previous match
