@@ -223,6 +223,7 @@ object Path extends Alternatives with Mapper
 		else
 			None
 	}
+	def relativizeFile(baseFile: File, file: File): Option[File] = relativize(baseFile, file).map { path => new File(path) }
 	private[sbt] def relativize(baseFile: File, file: File): Option[String] =
 	{
 		val pathString = file.getAbsolutePath
