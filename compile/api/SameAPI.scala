@@ -171,7 +171,6 @@ class SameAPI(tagsA: TypeVars, tagsB: TypeVars, includePrivate: Boolean, include
 			case (_: Public, _: Public) => true
 			case (qa: Protected, qb: Protected) => sameQualifier(qa, qb)
 			case (qa: Private, qb: Private) => sameQualifier(qa, qb)
-			case (qa: Pkg, qb: Pkg) => sameQualifier(qa, qb)
 			case _ => debug(false, "Different access categories")
 		}
 	def sameQualifier(a: Qualified, b: Qualified): Boolean =

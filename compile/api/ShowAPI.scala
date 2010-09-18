@@ -78,7 +78,6 @@ trait ShowBase
 				{
 					case p: Protected => "protected"
 					case p: Private => "private"
-					case p: Pkg => "package"
 				})
 				+ sq.show(q.qualifier) )
 		}
