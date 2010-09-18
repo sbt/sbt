@@ -32,11 +32,6 @@ private[sbt] object Analyze
 			val productToSource = new mutable.HashMap[Path, Path]
 			val sourceToClassFiles = new mutable.HashMap[Path, Buffer[ClassFile]]
 
-			val superclasses = analysis.superclassNames flatMap { tpe => load(tpe, None) }
-			val annotations = analysis.annotationNames.toSeq
-
-			def annotated(fromClass: Seq[Annotation]) = if(fromClass.isEmpty) Nil else annotations.filter(fromClass.map(_.annotationType.getName).toSet)
-
 			// parse class files and assign classes to sources.  This must be done before dependencies, since the information comes
 			// as class->class dependencies that must be mapped back to source->class dependencies using the source+class assignment
 			for(newClass <- newClasses;
@@ -54,23 +49,6 @@ private[sbt] object Analyze
 			// get class to class dependencies and map back to source to class dependencies
 			for( (source, classFiles) <- sourceToClassFiles )
 			{
-				for(classFile <- classFiles if isTopLevel(classFile);
-					cls <- load(classFile.className, Some("Could not load '" + classFile.className + "' to check for superclasses.")) )
-				{
-					for(superclass <- superclasses)
-						if(superclass.isAssignableFrom(cls))
-							analysis.foundSubclass(source, classFile.className, superclass.getName, false)
-
-					val annotations = new ArrayBuffer[String]
-					annotations ++= annotated(cls.getAnnotations)
-					for(method <- cls.getMethods)
-					{
-						annotations ++= annotated(method.getAnnotations)
-						if(isMain(method))
-							analysis.foundApplication(source, classFile.className)
-					}
-					annotations.foreach { ann => analysis.foundAnnotated(source, classFile.className, ann, false) }
-				}
 				def processDependency(tpe: String)
 				{
 					trapAndLog(log)
