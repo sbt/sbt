@@ -145,7 +145,7 @@ DiscoverSyntax + """
 		Classes with one or more of these annotations on the class or one of its non-private methods are included in the resulting list.
 """
 
-	def CompileName = "compile"
+	def CompileName = "direct-compile"
 	def CompileBrief = (CompileSyntax, "Incrementally compiles the provided sources.")
 	def CompileSyntax = CompileName + " -src <paths> [-cp <paths>] [-d <path>]"
 	def CompileDetailed =
