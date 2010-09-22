@@ -20,12 +20,10 @@ object SourceModificationWatch
 			previousFileCount != fileCount
 
 		val (triggered, newCallbackCallTime) =
-			if (sourcesModified && !awaitingQuietPeriod)
+			if (sourcesModified)
 				(false, System.currentTimeMillis)
-			else if (!sourcesModified && awaitingQuietPeriod)
-				(true, lastCallbackCallTime)
 			else
-				(false, lastCallbackCallTime)
+				(awaitingQuietPeriod, lastCallbackCallTime)
 
 		val newState = new WatchState(newCallbackCallTime, fileCount, sourcesModified, if(triggered) count + 1 else count)
 		if(triggered)
