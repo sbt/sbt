@@ -257,7 +257,7 @@ private object IvySbt
 		javaMap(ea.extraAttributes)
 	}
 	private def javaMap(map: Map[String,String]) =
-		if(map.isEmpty) null else scala.collection.JavaConversions.asMap(map)
+		if(map.isEmpty) null else scala.collection.JavaConversions.asJavaMap(map)
 
 	private object javaMap
 	{

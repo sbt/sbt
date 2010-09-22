@@ -85,7 +85,7 @@ class XSbt(info: ProjectInfo) extends ParentProject(info) with NoCrossPaths
 	class LaunchProject(info: ProjectInfo) extends Base(info) with TestWithIO with TestDependencies with ProguardLaunch with NoCrossPaths
 	{
 		val jline = jlineDep
-		val ivy = "org.apache.ivy" % "ivy" % "2.1.0"
+		val ivy = "org.apache.ivy" % "ivy" % "2.2.0-rc1"
 		override def deliverProjectDependencies = Nil
 
 		// defines the package that proguard operates on
@@ -140,8 +140,8 @@ class XSbt(info: ProjectInfo) extends ParentProject(info) with NoCrossPaths
 	}
 	trait TestDependencies extends Project
 	{
-		val sc = "org.scala-tools.testing" %% "scalacheck" % "1.7" % "test"
-		val sp = "org.scala-tools.testing" %% "specs" % "1.6.5" % "test"
+		val sc = "org.scala-tools.testing" % "scalacheck_2.8.0" % "1.7" % "test"
+		val sp = "org.scala-tools.testing" % "specs_2.8.0" % "1.6.5" % "test"
 	}
 	class LogProject(info: ProjectInfo) extends Base(info) with TestDependencies
 	{
@@ -154,7 +154,7 @@ class XSbt(info: ProjectInfo) extends ParentProject(info) with NoCrossPaths
 	{
 		// these compilation options are useful for debugging caches and task composition
 		//override def compileOptions = super.compileOptions ++ List(Unchecked,ExplainTypes, CompileOption("-Xlog-implicits"))
-		val sbinary = "org.scala-tools.sbinary" %% "sbinary" % "0.3.1"
+		val sbinary = "org.scala-tools.sbinary" % "sbinary_2.8.0" % "0.3.1"
 	}
 	class Base(info: ProjectInfo) extends DefaultProject(info) with ManagedBase with Component with Licensed
 	{
@@ -183,7 +183,7 @@ class XSbt(info: ProjectInfo) extends ParentProject(info) with NoCrossPaths
 	}
 	class IvyProject(info: ProjectInfo) extends Base(info) with TestWithIO with TestWithLog with TestWithLaunch
 	{
-		val ivy = "org.apache.ivy" % "ivy" % "2.1.0"
+		val ivy = "org.apache.ivy" % "ivy" % "2.2.0-rc1"
 	}
 	abstract class BaseInterfaceProject(info: ProjectInfo) extends DefaultProject(info) with ManagedBase with TestWithLog with Component with JavaProject
 	class InterfaceProject(info: ProjectInfo) extends BaseInterfaceProject(info)
