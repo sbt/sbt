@@ -11,10 +11,14 @@ package sbt
 	import Path._
 	import Types._
 	import scala.xml.NodeSeq
+	import scala.collection.mutable.{LinkedHashMap, LinkedHashSet}
 
 trait ClasspathProject
 {
+	def name: String
 	def configurations: Seq[Configuration]
+	def defaultConfiguration: Option[Configuration]
+
 	val products: Classpath
 	val unmanagedClasspath: Classpath
 	val managedClasspath: Classpath
@@ -39,6 +43,9 @@ trait ClasspathProject
 			val prod = products(configuration)
 			(dep, prod) map concat[Attributed[File]]
 		}
+
+	lazy val configurationMap: Map[String, Configuration] = 
+		configurations map { conf => (conf.name, conf) } toMap;
 }
 
 trait BasicClasspathProject extends ClasspathProject
@@ -47,9 +54,7 @@ trait BasicClasspathProject extends ClasspathProject
 	val moduleSettings: Task[ModuleSettings]
 	val unmanagedBase: Task[File]
 
-	lazy val updateConfig: Task[UpdateConfiguration] = task {
-		new UpdateConfiguration(null, null, true, UpdateLogging.Full)
-	}
+	val updateConfig: Task[UpdateConfiguration]
 
 	lazy val ivySbt: Task[IvySbt] =
 		ivyConfiguration map { conf => new IvySbt(conf) }
@@ -60,7 +65,7 @@ trait BasicClasspathProject extends ClasspathProject
 		}
 
 	def classpathFilter: FileFilter = GlobFilter("*.jar")
-	def defaultExcludeFilter: FileFilter = MultiProject.defaultExcludes
+	def defaultExcludes: FileFilter
 
 	override val managedClasspath: Classpath =
 		TaskMap { configuration =>
@@ -70,14 +75,11 @@ trait BasicClasspathProject extends ClasspathProject
 	val unmanagedClasspath: Classpath =
 		TaskMap { configuration =>
 			unmanagedBase map { base =>
-				attributed( (base * (classpathFilter -- defaultExcludeFilter) +++
-				(base / configuration.toString).descendentsExcept(classpathFilter, defaultExcludeFilter)).getFiles.toSeq )
+				attributed( (base * (classpathFilter -- defaultExcludes) +++
+				(base / configuration.toString).descendentsExcept(classpathFilter, defaultExcludes)).getFiles.toSeq )
 			}
 		}
 		
-	lazy val configurationMap: Map[String, Configuration] = 
-		configurations map { conf => (conf.name, conf) } toMap;
-
 	import Types._
 	lazy val update = (ivyModule, updateConfig) map { case module :+: config :+: HNil =>
 		val confMap = configurationMap
@@ -94,6 +96,14 @@ trait DefaultClasspathProject extends BasicClasspathProject with Project
 	def otherResolvers: Seq[Resolver] = Nil
 	def moduleConfigurations: Seq[ModuleConfiguration] = Nil
 
+	def retrievePattern = "[type]/[organisation]/[module]/[artifact](-[revision])(-[classifier]).[ext]"
+	override lazy val updateConfig: Task[UpdateConfiguration] = retrieveConfig map { rConf =>
+		new UpdateConfiguration(rConf, UpdateLogging.Full)
+	}
+	lazy val retrieveConfig: Task[Option[RetrieveConfiguration]] = task {
+		None//Some(new RetrieveConfiguration(managedDependencyPath asFile, retrievePattern, true))
+	}
+
 	def offline: Boolean = false
 	def paths: IvyPaths = new IvyPaths(info.projectDirectory, None)
 	
@@ -104,6 +114,7 @@ trait DefaultClasspathProject extends BasicClasspathProject with Project
 
 	def libraryDependencies: Iterable[ModuleID] = ReflectUtilities.allVals[ModuleID](this).map(_._2)
 
+	def managedDependencyPath: Path = info.projectDirectory / "lib_managed"
 	def dependencyPath: Path = info.projectDirectory / "lib"
 
 	def ivyXML: NodeSeq = NodeSeq.Empty
@@ -111,19 +122,7 @@ trait DefaultClasspathProject extends BasicClasspathProject with Project
 	def ivyScala: Option[IvyScala] = None
 	def ivyValidate: Boolean = false
 
-	//TODO: transitive dependencies
-	lazy val internalDependencyClasspath: Classpath =
-		TaskMap { (conf: Configuration) =>
-			val confMap = configurationMap
-			val productsTasks =
-				for( (p: ClasspathProject, Some(confString)) <- ClasspathProject.resolvedDependencies(this)) yield
-				{
-					println("Project " + p.name + ", conf: " + confString)
-					val to = parseSimpleConfigurations(confString).getOrElse(conf.toString, missingMapping(this.name, p.name, conf.toString))
-					p.products(confMap(to))
-				}
-			(productsTasks.toSeq.join) named(name + "/join") map(_.flatten) named(name + "/int")
-		}
+	lazy val internalDependencyClasspath: Classpath = internalDependencies(this)
 
 	lazy val unmanagedBase = task { dependencyPath.asFile }
 
@@ -209,18 +208,52 @@ object ClasspathProject
 			case Left(extPath) => context.info.externals(extPath)
 			case Right(proj) => proj
 		}
-		
+
+	def mapped(c: String, mapping: Option[String], default: String)(errMsg: => String): String =
+		parseSimpleConfigurations(mapping getOrElse default).getOrElse(c, errMsg)
+	def internalDependencies(project: Project): Classpath =
+		TaskMap { (conf: Configuration) =>
+			val visited = new LinkedHashSet[(Project,String)]
+			def visit(p: Project, c: String)
+			{
+				for( (dep, confMapping) <- ClasspathProject.resolvedDependencies(p))
+				{
+					val depConf = mapped(c, confMapping, defaultConfiguration(dep).toString) { missingMapping(p.name, dep.name, c) }
+					println("Dep: " + dep.name + " mapping: " + confMapping + " depConf: " + depConf)
+					val unvisited = visited.add( (dep, depConf) )
+					if(unvisited) visit(dep, depConf)
+				}
+			}
+			visit(project, conf.toString)
+
+			val productsTasks = new LinkedHashSet[Task[Seq[Attributed[File]]]]
+			for( (dep: ClasspathProject, conf) <- visited )
+				if(dep ne project) productsTasks += products(dep, conf)
+			(productsTasks.toSeq.join) named(project.name + "/join") map(_.flatten) 
+		}
 
 	def parseSimpleConfigurations(confString: String): Map[String, String] =
 		confString.split(";").flatMap( conf =>
 			trim(conf.split("->",2)) match {
-				case x :: Nil => (x,x) :: Nil
-				case x :: y :: Nil => trim(x.split(",")) map { a => (a,y) }
+				case x :: Nil => for(a <- parseList(x)) yield (a,a)
+				case x :: y :: Nil => for(a <- parseList(x); b <- parseList(x)) yield (a,b)
 				case _ => error("Invalid configuration '" + conf + "'") // shouldn't get here
 			}
 		).toMap
+
+	def parseList(s: String): Seq[String] = trim(s split ",")
 	private def trim(a: Array[String]): List[String] = a.toList.map(_.trim)
 	
 	def missingMapping(from: String, to: String, conf: String) = 
 		error("No configuration mapping defined from '" + from + "' to '" + to + "' for '" + conf + "'")
+	def missingConfiguration(in: String, conf: String) =
+		 error("Configuration '" + conf + "' not defined in '" + in)
+	def products(dep: ClasspathProject, conf: String) =
+		dep.products(dep.configurationMap.getOrElse(conf,missingConfiguration(dep.name, conf)))
+	def defaultConfiguration(p: Project): Configuration =
+		p match
+		{
+			case cp: ClasspathProject => cp.defaultConfiguration getOrElse Configurations.Default
+			case _ => Configurations.Default
+		}
 }

@@ -15,14 +15,15 @@ import core.module.descriptor.{DefaultArtifact, DefaultDependencyArtifactDescrip
 import core.module.descriptor.{DefaultDependencyDescriptor, DefaultModuleDescriptor, DependencyDescriptor, ModuleDescriptor}
 import core.module.id.{ArtifactId,ModuleId, ModuleRevisionId}
 import core.publish.PublishOptions
-import core.report.ResolveReport
+import core.report.{ArtifactDownloadReport,ResolveReport}
 import core.resolve.ResolveOptions
 import core.retrieve.RetrieveOptions
 import plugins.parser.m2.{PomModuleDescriptorParser,PomModuleDescriptorWriter}
 
-final class UpdateConfiguration(val retrieveDirectory: File, val outputPattern: String, val synchronize: Boolean, val logging: UpdateLogging.Value) extends NotNull
+final class UpdateConfiguration(val retrieve: Option[RetrieveConfiguration], val logging: UpdateLogging.Value)
+final class RetrieveConfiguration(val retrieveDirectory: File, val outputPattern: String, val synchronize: Boolean)
 final class MakePomConfiguration(val extraDependencies: Iterable[ModuleID], val configurations: Option[Iterable[Configuration]],
-	val extra: NodeSeq, val process: Node => Node, val filterRepositories: MavenRepository => Boolean) extends NotNull
+	val extra: NodeSeq, val process: Node => Node, val filterRepositories: MavenRepository => Boolean)
 object MakePomConfiguration
 {
 	def apply(extraDependencies: Iterable[ModuleID], configurations: Option[Iterable[Configuration]], extra: NodeSeq) =
@@ -107,15 +108,20 @@ object IvyActions
 	def update(module: IvySbt#Module, configuration: UpdateConfiguration) =
 	{
 		module.withModule { case (ivy, md, default) =>
-			import configuration._
+			import configuration.{retrieve => rConf, logging}
 			val report = resolve(logging)(ivy, md, default)
-			import IvyRetrieve._
-			/*if(synchronize)
-				IO delete retrieveDirectory
-			IO createDirectory retrieveDirectory
-			retrieve( cachePaths(report), , retrieveDirectory)*/
-			cachePaths(report)
-			/*val retrieveOptions = new RetrieveOptions
+			rConf match
+			{
+				case None => IvyRetrieve.cachePaths(report)
+				case Some(conf) => retrieve(ivy, md, conf, logging)
+			}
+		}
+	}
+	// doesn't work.  perhaps replace retrieve/determineArtifactsToCopy with custom code
+	private def retrieve(ivy: Ivy, md: ModuleDescriptor, conf: RetrieveConfiguration, logging: UpdateLogging.Value) =
+	{
+			import conf._
+			val retrieveOptions = new RetrieveOptions
 			retrieveOptions.setSync(synchronize)
 			val patternBase = retrieveDirectory.getAbsolutePath
 			val pattern =
@@ -123,8 +129,19 @@ object IvyActions
 					patternBase + outputPattern
 				else
 					patternBase + File.separatorChar + outputPattern
-			ivy.retrieve(md.getModuleRevisionId, pattern, retrieveOptions)*/
-		}
+
+			val engine = ivy.getRetrieveEngine
+			engine.retrieve(md.getModuleRevisionId, pattern, retrieveOptions)
+
+			//TODO: eliminate the duplication for better efficiency (retrieve already calls determineArtifactsToCopy once)
+			val rawMap = engine.determineArtifactsToCopy(md.getModuleRevisionId, pattern, retrieveOptions)
+			val map = rawMap.asInstanceOf[java.util.Map[ArtifactDownloadReport,java.util.Set[String]]]
+			val confMap = new collection.mutable.HashMap[String, Seq[File]]
+
+				import collection.JavaConversions.{asScalaMap,asScalaSet}
+			for( (report, all) <- map; retrieved <- all; val file = new File(retrieved); conf <- report.getArtifact.getConfigurations)
+				confMap.put(conf, file +: confMap.getOrElse(conf, Nil))
+			confMap.toMap
 	}
 	private def resolve(logging: UpdateLogging.Value)(ivy: Ivy, module: DefaultModuleDescriptor, defaultConf: String): ResolveReport =
 	{

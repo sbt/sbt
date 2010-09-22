@@ -8,11 +8,14 @@ package sbt
 	import TaskExtra._
 	import Configurations.{Compile => CompileConfig, Test => TestConfig}
 	import ClasspathProject._
-	
+	import Types._
+
 	import java.io.File
 
 abstract class DefaultProject extends TestProject with MultiClasspathProject with ReflectiveClasspathProject
 {
+	override def watchPaths: PathFinder = descendents("src","*")
+
 	def javacOptions: Seq[String] = Nil
 	def scalacOptions: Seq[String] = Nil
 
@@ -49,7 +52,7 @@ abstract class DefaultProject extends TestProject with MultiClasspathProject wit
 			val scalaSrc = base / "scala"
 			val out = "target" / compilers.scalac.scalaInstance.actualVersion
 
-			val sources = ((javaSrc +++ scalaSrc) ** sourceFilter) +++ (if(configuration == Compile) (".": Path) * sourceFilter else Path.emptyPathFinder)
+			val sources = descendents((javaSrc +++ scalaSrc), sourceFilter) +++ (if(configuration == Compile) (".": Path) * (sourceFilter -- defaultExcludes) else Path.emptyPathFinder)
 			println("Sources: " + sources)
 			val classes = classesDirectory(configuration)
 			val classpath = (classes +: data(prodcp)) ++ data(cp)

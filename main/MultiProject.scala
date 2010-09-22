@@ -143,7 +143,7 @@ object MultiContext
 	}
 }
 
-trait Project extends Tasked with HistoryEnabled with Member[Project] with Named with ConsoleTask
+trait Project extends Tasked with HistoryEnabled with Member[Project] with Named with ConsoleTask with Watched
 {
 	val info: ProjectInfo
 
@@ -186,7 +186,9 @@ trait ProjectExtra
 	/** Converts a String to a path relative to the project directory of this project. */
 	implicit def path(component: String): Path = info.projectDirectory / component
 	/** Converts a String to a simple name filter.  * has the special meaning: zero or more of any character */
-	implicit def filter(simplePattern: String): NameFilter = GlobFilter(simplePattern)
+	implicit def globFilter(simplePattern: String): NameFilter = GlobFilter(simplePattern)
+	def defaultExcludes: FileFilter = MultiProject.defaultExcludes
+	def descendents(path: PathFinder, filter: FileFilter): PathFinder = path.descendentsExcept(filter, defaultExcludes)
 }
 trait ReflectiveProject extends Project
 {
