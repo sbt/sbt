@@ -4,6 +4,7 @@
 package sbt
 
 	import CommandSupport.FailureWall
+	import annotation.tailrec
 
 trait Watched
 {
@@ -15,21 +16,21 @@ trait Watched
 
 object Watched
 {
-	val ContinuousCompilePollDelaySeconds = 1
+	val PollDelaySeconds = 1
 	def isEnter(key: Int): Boolean = key == 10 || key == 13
 
 	def watched(p: Project): Seq[Watched] = MultiProject.topologicalSort(p).collect { case w: Watched => w }
 	def sourcePaths(p: Project): PathFinder = (Path.emptyPathFinder /: watched(p))(_ +++ _.watchPaths)
 	def executeContinuously(project: Project with Watched, s: State, in: Input): State =
 	{
-		def shouldTerminate: Boolean = (System.in.available > 0) && (project.terminateWatch(System.in.read()) || shouldTerminate)
+		@tailrec def shouldTerminate: Boolean = (System.in.available > 0) && (project.terminateWatch(System.in.read()) || shouldTerminate)
 		val sourcesFinder = sourcePaths(project)
 		val watchState = s get ContinuousState getOrElse WatchState.empty
 
 		if(watchState.count > 0)
 			System.out.println(watchState.count + ". Waiting for source changes... (press enter to interrupt)")
 
-		val (triggered, newWatchState) = SourceModificationWatch.watch(sourcesFinder, ContinuousCompilePollDelaySeconds, watchState)(shouldTerminate)
+		val (triggered, newWatchState) = SourceModificationWatch.watch(sourcesFinder, PollDelaySeconds, watchState)(shouldTerminate)
 
 		if(triggered)
 			(in.arguments :: FailureWall :: in.line :: s).put(ContinuousState, newWatchState)
