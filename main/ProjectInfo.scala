@@ -15,7 +15,7 @@ import inc.Analysis
 * `parent` is the parent Project, or None if this is the root project.
 * `buildScalaVersion` contains the explicitly requested Scala version to use  for building (as when using `+` or `++`) or None if the normal version should be used.
 */
-final case class ProjectInfo(name: Option[String], projectDirectory: File, builderDir: File, dependencies: Iterable[Project], parent: Option[Project])(
+final case class ProjectInfo(name: Option[String], projectDirectory: File, builderDir: File, dependencies: Iterable[ProjectDependency], parent: Option[Project])(
 	val configuration: AppConfiguration, val analysis: Analysis, val compileInputs: Compile.Inputs, val construct: File => Project, external: ExternalProjects)
 {
 	def app = configuration.provider

@@ -162,8 +162,8 @@ trait Project extends Tasked with HistoryEnabled with Member[Project] with Named
 	def input = Dummy.In
 	def state = Dummy.State
 
-	def aggregate: Iterable[ProjectDependency.Execution]
-	def dependencies: Iterable[ProjectDependency.Classpath]
+	def aggregate: Iterable[ProjectDependency.Execution] = info.dependencies collect { case ex: ProjectDependency.Execution => ex }
+	def dependencies: Iterable[ProjectDependency.Classpath] = info.dependencies collect { case cp: ProjectDependency.Classpath => cp }
 
 	type Task[T] = sbt.Task[T]
 	def act(input: Input, state: State): Option[(Task[State], Execute.NodeView[Task])] =
@@ -191,10 +191,8 @@ trait ProjectExtra
 trait ReflectiveProject extends Project
 {
 	private[this] def vals[T: Manifest] = ReflectUtilities.allVals[T](this).map(_._2)
-	def aggregate: Iterable[ProjectDependency.Execution] = vals[ProjectDependency.Execution] ++ vals[Project].map(p => ProjectDependency.Execution(Right(p)))
-	/** All projects directly contained in this that are defined in this container's compilation set.
-	* This is for any contained projects, including execution and classpath dependencies, but not external projects.  */
-	def dependencies: Iterable[ProjectDependency.Classpath] = vals[ProjectDependency.Classpath]
+	override def aggregate: Iterable[ProjectDependency.Execution] = vals[ProjectDependency.Execution] ++ vals[Project].map(p => ProjectDependency.Execution(Right(p))) ++ super.aggregate
+	override def dependencies: Iterable[ProjectDependency.Classpath] = vals[ProjectDependency.Classpath] ++ super.dependencies
 }
 trait ConsoleTask
 {
@@ -207,7 +205,7 @@ trait ProjectConstructors extends Project
 	val info: ProjectInfo
 	//def project(base: Path, name: String, deps: ProjectDependency*): Project = project(path, name, info => new DefaultProject(info), deps: _* )
 	def project[P <: Project](path: Path, name: String, construct: ProjectInfo => P, deps: ProjectDependency*): P =
-		construct( info.copy(Some(name), projectDirectory = path.asFile, parent = Some(this))() )
+		construct( info.copy(Some(name), projectDirectory = path.asFile, parent = Some(this), dependencies = deps)() )
 
 	def project(base: Path): ProjectDependency.Execution = new ProjectDependency.Execution(Left(base.asFile))
 
