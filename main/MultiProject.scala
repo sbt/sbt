@@ -148,7 +148,7 @@ trait Project extends Tasked with HistoryEnabled with Member[Project] with Named
 	val info: ProjectInfo
 
 	def settings: Settings = Settings.empty
-	def name: String = info.name getOrElse "'name' not overridden"
+	def name: String = info.name getOrElse error("'name' not overridden")
 
 	def base = info.projectDirectory
 	def outputRootPath = base / "target"
