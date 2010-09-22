@@ -1,0 +1,11 @@
+/* sbt -- Simple Build Tool
+ * Copyright 2008 Mark Harrah
+ *
+ * Partially based on exit trapping in Nailgun by Pete Kirkham,
+ * copyright 2004, Martian Software, Inc
+ * licensed under Apache 2.0 License.
+ */
+
+Portions based on code by Pete Kirkham in Nailgun
+Copyright 2004, Martian Software, Inc
+Licensed under the Apache License, Version 2.0 (see licenses/LICENSE_Apache)

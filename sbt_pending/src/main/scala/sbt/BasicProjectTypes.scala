@@ -112,9 +112,9 @@ trait IvyTasks extends Project
 trait ManagedProject extends ClasspathProject with IvyTasks
 {
 	/** This is the public ID of the project (used for publishing, for example) */
-	def moduleID: String = normalizedName + appendable(crossScalaVersionString)
+	def moduleID: String = normalizedName
 	/** This is the full public ID of the project (used for publishing, for example) */
-	def projectID: ModuleID = ModuleID(organization, moduleID, version.toString).artifacts(artifacts.toSeq : _*)
+	def projectID: ModuleID = ModuleID(organization, moduleID, version.toString).artifacts(artifacts.toSeq : _*).cross(true)
 
 	/** This is the default name for artifacts (such as jars) without any version string.*/
 	def artifactID = moduleID
@@ -132,22 +132,6 @@ trait ManagedProject extends ClasspathProject with IvyTasks
 	/** The base path to which dependencies in configuration 'config' are downloaded.*/
 	def configurationPath(config: Configuration): Path = managedDependencyPath / config.toString
 
-	import StringUtilities.nonEmpty
-	implicit def toGroupID(groupID: String): GroupID =
-	{
-		nonEmpty(groupID, "Group ID")
-		new GroupID(groupID, buildScalaVersion)
-	}
-	implicit def toRepositoryName(name: String): RepositoryName =
-	{
-		nonEmpty(name, "Repository name")
-		new RepositoryName(name)
-	}
-	implicit def moduleIDConfigurable(m: ModuleID): ModuleIDConfigurable =
-	{
-		require(m.configurations.isEmpty, "Configurations already specified for module " + m)
-		new ModuleIDConfigurable(m)
-	}
 
 	/** Creates a new configuration with the given name.*/
 	def config(name: String) = new Configuration(name)
@@ -478,56 +462,6 @@ object BasicDependencyPaths
 	val DefaultDependencyDirectoryName = "lib"
 	val PomExtension = ".pom"
 }
-
-object StringUtilities
-{
-	def normalize(s: String) = s.toLowerCase.replaceAll("""\s+""", "-")
-	def nonEmpty(s: String, label: String)
-	{
-		require(s.trim.length > 0, label + " cannot be empty.")
-	}
-	def appendable(s: String) = if(s.isEmpty) "" else "_" + s
-}
-final class GroupID private[sbt] (groupID: String, scalaVersion: String) extends NotNull
-{
-	def % (artifactID: String) = groupArtifact(artifactID)
-	def %% (artifactID: String) =
-	{
-		require(!scalaVersion.isEmpty, "Cannot use %% when the sbt launcher is not used.")
-		groupArtifact(artifactID + appendable(scalaVersion))
-	}
-	private def groupArtifact(artifactID: String) =
-	{
-		nonEmpty(artifactID, "Artifact ID")
-		new GroupArtifactID(groupID, artifactID)
-	}
-}
-final class GroupArtifactID private[sbt] (groupID: String, artifactID: String) extends NotNull
-{
-	def % (revision: String): ModuleID =
-	{
-		nonEmpty(revision, "Revision")
-		ModuleID(groupID, artifactID, revision, None)
-	}
-}
-final class ModuleIDConfigurable private[sbt] (moduleID: ModuleID) extends NotNull
-{
-	def % (configurations: String): ModuleID =
-	{
-		nonEmpty(configurations, "Configurations")
-		import moduleID._
-		ModuleID(organization, name, revision, Some(configurations))
-	}
-}
-final class RepositoryName private[sbt] (name: String) extends NotNull
-{
-	def at (location: String) =
-	{
-		nonEmpty(location, "Repository location")
-		new MavenRepository(name, location)
-	}
-}
-
 import scala.collection.{Map, mutable}
 /** A Project that determines its tasks by reflectively finding all vals with a type
 * that conforms to Task.*/
