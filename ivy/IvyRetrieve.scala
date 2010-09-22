@@ -23,24 +23,12 @@ object IvyRetrieve
 	}
 
 	def cachePath(reports: Seq[ArtifactDownloadReport]): Seq[File] =
-		reports map( _.getLocalFile )
+		for(r <- reports) yield
+		{
+			val file = r.getLocalFile
+			if(file eq null) error("No file for " + r.getArtifact) else file
+		}
 
 	def cachePaths(report: ResolveReport): Map[String, Seq[File]] =
 		reports(report).mapValues(confReport => cachePath(artifactReports(confReport)))
-
-	def copy(files: Set[File], cacheBase: File, to: File): Map[File, File] =
-	{
-		import Path._
-		val copyDef = files x rebase(cacheBase, to)
-		IO.copy( copyDef, overwrite = true, preserveLastModified = true )
-		copyDef.toMap
-	}
-
-	// TODO: not a sufficient way to do it: cacheBase is not necessarily common to all files
-	def retrieve(result: Map[String, Seq[File]], cacheBase: File, to: File): Map[String, Seq[File]] =
-	{
-		val all = result.values.flatten.toSet
-		val copyMap = copy(all, cacheBase, to)
-		result mapValues (_ map copyMap)
-	}
 }
