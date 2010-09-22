@@ -34,22 +34,13 @@ class ProjectResolver(name: String, map: Map[ModuleRevisionId, ModuleDescriptor]
 		val artifact = DefaultArtifact.newIvyArtifact(revisionId, new Date)
 		val r = new MetadataArtifactDownloadReport(artifact)
 		r.setSearched(false)
-		r.setDownloadStatus(DownloadStatus.NO)
+		r.setDownloadStatus(DownloadStatus.FAILED)
 		r
 	}
-
-	def findIvyFileRef(dd: DependencyDescriptor, data: ResolveData) = null
 
 	// this resolver nevers locates artifacts, only resolves dependencies
 	def exists(artifact: IArtifact) = false
 	def locate(artifact: IArtifact) = null
-
-	def notDownloaded(artifact: IArtifact): ArtifactDownloadReport=
-	{
-		val r = new ArtifactDownloadReport(artifact)
-		r.setDownloadStatus(DownloadStatus.NO)
-		r
-	}
 	def download(artifacts: Array[IArtifact], options: DownloadOptions): DownloadReport =
 	{
 		val r = new DownloadReport
@@ -57,14 +48,22 @@ class ProjectResolver(name: String, map: Map[ModuleRevisionId, ModuleDescriptor]
 			r addArtifactReport notDownloaded(artifact)
 		r
 	}
-    def download(artifact: ArtifactOrigin, options: DownloadOptions): ArtifactDownloadReport  =
+	def download(artifact: ArtifactOrigin, options: DownloadOptions): ArtifactDownloadReport  =
 		notDownloaded(artifact.getArtifact)
+	def findIvyFileRef(dd: DependencyDescriptor, data: ResolveData) = null
+
+	def notDownloaded(artifact: IArtifact): ArtifactDownloadReport=
+	{
+		val r = new ArtifactDownloadReport(artifact)
+		r.setDownloadStatus(DownloadStatus.FAILED)
+		r
+	}
 
 	// doesn't support publishing
 	def publish(artifact: IArtifact, src: File, overwrite: Boolean) = error("Publish not supported by ProjectResolver")
 	def beginPublishTransaction(module: ModuleRevisionId, overwrite: Boolean) {}
-    def abortPublishTransaction() {}
-    def commitPublishTransaction() {}
+	def abortPublishTransaction() {}
+	def commitPublishTransaction() {}
 
 	def reportFailure()  {}
 	def reportFailure(art: IArtifact)  {}
@@ -73,7 +72,7 @@ class ProjectResolver(name: String, map: Map[ModuleRevisionId, ModuleDescriptor]
 	def listModules(org: OrganisationEntry) = new Array[ModuleEntry](0)
 	def listRevisions(module: ModuleEntry) = new Array[RevisionEntry](0)
 
-    def getNamespace = Namespace.SYSTEM_NAMESPACE
+	def getNamespace = Namespace.SYSTEM_NAMESPACE
 
 	private[this] var settings: Option[ResolverSettings] = None
 
