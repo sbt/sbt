@@ -9,17 +9,18 @@ import scala.xml.NodeSeq
 import org.apache.ivy.plugins.resolver.{DependencyResolver, IBiblioResolver}
 import org.apache.ivy.util.url.CredentialsStore
 
-final case class ModuleID(organization: String, name: String, revision: String, configurations: Option[String], isChanging: Boolean, isTransitive: Boolean, explicitArtifacts: Seq[Artifact], extraAttributes: Map[String,String]) extends NotNull
+final case class ModuleID(organization: String, name: String, revision: String, configurations: Option[String] = None, isChanging: Boolean = false, isTransitive: Boolean = true, explicitArtifacts: Seq[Artifact] = Nil, extraAttributes: Map[String,String] = Map.empty, crossVersion: Boolean = false)
 {
 	override def toString = organization + ":" + name + ":" + revision
 	// () required for chaining
+	def cross(v: Boolean) = copy(crossVersion = v)
 	def notTransitive() = intransitive()
-	def intransitive() = ModuleID(organization, name, revision, configurations, isChanging, false, explicitArtifacts, extraAttributes)
-	def changing() = ModuleID(organization, name, revision, configurations, true, isTransitive, explicitArtifacts, extraAttributes)
+	def intransitive() = copy(isTransitive = false)
+	def changing() = copy(isChanging = true)
 	def from(url: String) = artifacts(Artifact(name, new URL(url)))
 	def classifier(c: String) = artifacts(Artifact(name, c))
-	def artifacts(newArtifacts: Artifact*) = ModuleID(organization, name, revision, configurations, isChanging, isTransitive, newArtifacts ++ explicitArtifacts, extraAttributes)
-	def extra(attributes: (String,String)*) = ModuleID(organization, name, revision, configurations, isChanging, isTransitive, explicitArtifacts, extraAttributes ++ ModuleID.checkE(attributes))
+	def artifacts(newArtifacts: Artifact*) = copy(explicitArtifacts = newArtifacts ++ this.explicitArtifacts)
+	def extra(attributes: (String,String)*) = copy(extraAttributes = this.extraAttributes ++ ModuleID.checkE(attributes))
 	def sources() = artifacts(Artifact.sources(name))
 	def javadoc() = artifacts(Artifact.javadoc(name))
 	def withSources() = jarIfEmpty.sources()
@@ -29,14 +30,6 @@ final case class ModuleID(organization: String, name: String, revision: String, 
 }
 object ModuleID
 {
-	def apply(organization: String, name: String, revision: String): ModuleID = ModuleID(organization, name, revision, None)
-	def apply(organization: String, name: String, revision: String, configurations: Option[String]): ModuleID =
-		ModuleID(organization, name, revision, configurations, false, true)
-	def apply(organization: String, name: String, revision: String, configurations: Option[String], isChanging: Boolean, isTransitive: Boolean): ModuleID =
-		ModuleID(organization, name, revision, configurations, isChanging, isTransitive, Nil)
-	def apply(organization: String, name: String, revision: String, configurations: Option[String], isChanging: Boolean, isTransitive: Boolean, explicitArtifacts: Seq[Artifact]): ModuleID =
-		ModuleID(organization, name, revision, configurations, isChanging, isTransitive, explicitArtifacts, Map.empty)
-
 	def checkE(attributes: Seq[(String, String)]) =
 		for ( (key, value) <- attributes) yield
 			if(key.startsWith("e:")) (key, value) else ("e:" + key, value)
