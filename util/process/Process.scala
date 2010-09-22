@@ -8,11 +8,26 @@ import java.io.{Closeable, File, IOException}
 import java.io.{BufferedReader, InputStream, InputStreamReader, OutputStream, PipedInputStream, PipedOutputStream}
 import java.net.URL
 
-/** Methods for constructing simple commands that can then be combined. */
-object Process
+trait ProcessExtra
 {
-	implicit def apply(command: String): ProcessBuilder = apply(command, None)
-	implicit def apply(command: Seq[String]): ProcessBuilder = apply (command.toArray, None)
+	import Process._
+	implicit def builderToProcess(builder: JProcessBuilder): ProcessBuilder = apply(builder)
+	implicit def fileToProcess(file: File): FilePartialBuilder = apply(file)
+	implicit def urlToProcess(url: URL): URLPartialBuilder = apply(url)
+	implicit def xmlToProcess(command: scala.xml.Elem): ProcessBuilder = apply(command)
+	implicit def buildersToProcess[T](builders: Seq[T])(implicit convert: T => SourcePartialBuilder): Seq[SourcePartialBuilder] = applySeq(builders)
+
+	implicit def stringToProcess(command: String): ProcessBuilder = apply(command)
+	implicit def stringSeqToProcess(command: Seq[String]): ProcessBuilder = apply(command)
+}
+
+/** Methods for constructing simple commands that can then be combined. */
+object Process extends ProcessExtra
+{
+	def apply(command: String): ProcessBuilder = apply(command, None)
+
+	def apply(command: Seq[String]): ProcessBuilder = apply (command.toArray, None)
+
 	def apply(command: String, arguments: Seq[String]): ProcessBuilder = apply(command :: arguments.toList, None)
 	/** create ProcessBuilder with working dir set to File and extra environment variables */
 	def apply(command: String, cwd: File, extraEnv: (String,String)*): ProcessBuilder =
@@ -33,11 +48,12 @@ object Process
 		extraEnv.foreach { case (k, v) => jpb.environment.put(k, v) }
 		apply(jpb)
 	}
-	implicit def apply(builder: JProcessBuilder): ProcessBuilder = new SimpleProcessBuilder(builder)
-	implicit def apply(file: File): FilePartialBuilder = new FileBuilder(file)
-	implicit def apply(url: URL): URLPartialBuilder = new URLBuilder(url)
-	implicit def apply(command: scala.xml.Elem): ProcessBuilder = apply(command.text.trim)
-	implicit def applySeq[T](builders: Seq[T])(implicit convert: T => SourcePartialBuilder): Seq[SourcePartialBuilder] = builders.map(convert)
+	def apply(builder: JProcessBuilder): ProcessBuilder = new SimpleProcessBuilder(builder)
+	def apply(file: File): FilePartialBuilder = new FileBuilder(file)
+	def apply(url: URL): URLPartialBuilder = new URLBuilder(url)
+	def apply(command: scala.xml.Elem): ProcessBuilder = apply(command.text.trim)
+	def applySeq[T](builders: Seq[T])(implicit convert: T => SourcePartialBuilder): Seq[SourcePartialBuilder] = builders.map(convert)
+
 	def apply(value: Boolean): ProcessBuilder = apply(value.toString, if(value) 0 else 1)
 	def apply(name: String, exitValue: => Int): ProcessBuilder = new DummyProcessBuilder(name, exitValue)
 
