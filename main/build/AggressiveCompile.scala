@@ -84,12 +84,5 @@ class AggressiveCompile(cacheDirectory: File)
 	def javaOnly(f: File) = f.getName.endsWith(".java")
 
 	import AnalysisFormats._
-	// The following intermediate definitions are needed because of Scala's implicit parameter rules.
-	//   implicit def a(implicit b: Format[T[Int]]): Format[S] = ...
-	// triggers a diverging expansion because Format[T[Int]] dominates Format[S]
-	implicit val r = relationFormat[File,File]
-	implicit val rF = relationsFormat(r,r,r, relationFormat[File, String])
-	implicit val aF = analysisFormat(stampsFormat, apisFormat, rF)
-
-	val store = AnalysisStore.sync(AnalysisStore.cached(FileBasedStore(cacheDirectory)(aF, setupFormat)))
+	val store = AnalysisStore.sync(AnalysisStore.cached(FileBasedStore(cacheDirectory)))
 }
