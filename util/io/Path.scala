@@ -123,10 +123,10 @@ private[sbt] final class RelativePath(val parentPath: Path, val component: Strin
 			parentRelative + separator + component
 	}
 }
-object Path extends Alternatives with Mapper
-{
 	import java.io.File
 	import File.pathSeparator
+trait PathExtra extends Alternatives with Mapper
+{
 	implicit def fileToPath(file: File): Path = Path.fromFile(file)
 	implicit def pathToFile(path: Path): File = path.asFile
 	implicit def pathsToFiles[CC[X] <: TraversableLike[X,CC[X]]](cc: CC[Path])(implicit cb: generic.CanBuildFrom[CC[Path], File, CC[File]]): CC[File] =
@@ -135,7 +135,9 @@ object Path extends Alternatives with Mapper
 		cc.map(fileToPath)
 	implicit def filesToFinder(cc: Traversable[File]): PathFinder = finder(cc)
 	implicit def pathsToFinder(cc: Traversable[Path]): PathFinder = lazyPathFinder(cc)
-	
+}
+object Path extends PathExtra
+{
 	def fileProperty(name: String) = Path.fromFile(System.getProperty(name))
 	def userHome = fileProperty("user.home")
 	

@@ -6,7 +6,7 @@ package sbt
 import java.io.File
 import compile.AnalyzingCompiler
 
-final class Console(compiler: AnalyzingCompiler) extends NotNull
+final class Console(compiler: AnalyzingCompiler)
 {
 	/** Starts an interactive scala interpreter session with the given classpath.*/
 	def apply(classpath: Seq[File], log: Logger): Option[String] =

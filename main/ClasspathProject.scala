@@ -98,7 +98,7 @@ trait DefaultClasspathProject extends BasicClasspathProject with Project
 
 	def retrievePattern = "[type]/[organisation]/[module]/[artifact](-[revision])(-[classifier]).[ext]"
 	override lazy val updateConfig: Task[UpdateConfiguration] = retrieveConfig map { rConf =>
-		new UpdateConfiguration(rConf, UpdateLogging.Full)
+		new UpdateConfiguration(rConf, UpdateLogging.Quiet)
 	}
 	lazy val retrieveConfig: Task[Option[RetrieveConfiguration]] = task {
 		None//Some(new RetrieveConfiguration(managedDependencyPath asFile, retrievePattern, true))
@@ -219,7 +219,6 @@ object ClasspathProject
 				for( (dep, confMapping) <- ClasspathProject.resolvedDependencies(p))
 				{
 					val depConf = mapped(c, confMapping, defaultConfiguration(dep).toString) { missingMapping(p.name, dep.name, c) }
-					println("Dep: " + dep.name + " mapping: " + confMapping + " depConf: " + depConf)
 					val unvisited = visited.add( (dep, depConf) )
 					if(unvisited) visit(dep, depConf)
 				}

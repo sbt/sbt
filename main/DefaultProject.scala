@@ -14,6 +14,10 @@ package sbt
 
 abstract class DefaultProject extends TestProject with MultiClasspathProject with ReflectiveClasspathProject
 {
+	// easier to demo for now
+	override def organization = "org.example"
+	override def version = "1.0"
+
 	override def watchPaths: PathFinder = descendents("src","*")
 
 	def javacOptions: Seq[String] = Nil
@@ -38,6 +42,8 @@ abstract class DefaultProject extends TestProject with MultiClasspathProject wit
 		}
 
 	def sourceFilter: FileFilter = "*.java" | "*.scala"
+	// temporary default for simpler demo
+	override def configurations = super.configurations ++ Configurations.defaultMavenConfigurations
 
 	def compileTask(inputs: Task[Compile.Inputs]): Task[Analysis] = inputs map Compile.apply
 
@@ -51,9 +57,8 @@ abstract class DefaultProject extends TestProject with MultiClasspathProject wit
 			val javaSrc = base / "java"
 			val scalaSrc = base / "scala"
 			val out = "target" / compilers.scalac.scalaInstance.actualVersion
-
-			val sources = descendents((javaSrc +++ scalaSrc), sourceFilter) +++ (if(configuration == Compile) (".": Path) * (sourceFilter -- defaultExcludes) else Path.emptyPathFinder)
-			println("Sources: " + sources)
+				import Path._
+			val sources = descendents((javaSrc +++ scalaSrc), sourceFilter) +++ (if(configuration == CompileConfig) info.projectDirectory * (sourceFilter -- defaultExcludes) else Path.emptyPathFinder)
 			val classes = classesDirectory(configuration)
 			val classpath = (classes +: data(prodcp)) ++ data(cp)
 			val analysis = analysisMap(prodcp ++ cp)
