@@ -54,6 +54,7 @@ class AggressiveCompile(cacheDirectory: File)
 		val compile0 = (include: Set[File], callback: AnalysisCallback) => {
 			IO.createDirectory(outputDirectory)
 			val incSrc = sources.filter(include)
+			println("Compiling:\n\t" + incSrc.mkString("\n\t"))
 			val arguments = cArgs(incSrc, classpath, outputDirectory, options.options)
 			compiler.compile(arguments, callback, maxErrors, log)
 			val javaSrcs = incSrc.filter(javaOnly) 

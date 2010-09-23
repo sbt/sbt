@@ -18,7 +18,6 @@ object IncrementalCompile
 	}
 	def doCompile(compile: (Set[File], xsbti.AnalysisCallback) => Unit, internalMap: File => Option[File], externalAPI: (File, String) => Option[Source], current: ReadStamps, outputPath: File) = (srcs: Set[File]) => {
 		val callback = new AnalysisCallback(internalMap, externalAPI, current, outputPath)
-		println("Compiling:\n\t" + srcs.mkString("\n\t"))
 		compile(srcs, callback)
 		callback.get 
 	}
