@@ -44,6 +44,7 @@ object MultiProject
 	// externals must not be evaluated until after _all_ projects have been loaded
 	def load(configuration: AppConfiguration, log: Logger, externals: ExternalProjects)(base: File): Project =
 	{
+		if(!base.isDirectory) throw new build.BuildException(base + " is not a project directory")
 		val projectDir = selectProjectDir(base)
 		val buildDir = projectDir / "build"
 		val srcMain = buildDir / "src" / "main"
