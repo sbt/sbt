@@ -154,7 +154,7 @@ trait MultiClasspathProject extends DefaultClasspathProject
 trait ReflectiveClasspathProject extends DefaultClasspathProject
 {
 	private[this] def vals[T: Manifest] = ReflectUtilities.allVals[T](this).toSeq.map(_._2)
-	def configurations: Seq[Configuration] = vals[Configuration]
+	def configurations: Seq[Configuration] = vals[Configuration] ++ Configurations.defaultMavenConfigurations
 	def baseResolvers: Seq[Resolver] = Resolver.withDefaultResolvers(vals[Resolver] )
 }
 
@@ -164,6 +164,14 @@ trait ReflectiveClasspathProject extends DefaultClasspathProject
 
 object ClasspathProject
 {
+/*	def consoleTask(compileTask: Task[Analysis], inputTask: Task[Compile.Inputs]): Task[Unit] =
+	{
+		(compileTask, inputTask) map { (analysis, in) =>
+			val console = new Console(in.compilers.scalac)
+			console()
+		}
+	}
+*/
 	type Classpath = Configuration => Task[Seq[Attributed[File]]]
 	
 	val Analyzed = AttributeKey[Analysis]("analysis")
