@@ -32,6 +32,9 @@ object Process extends ProcessExtra
 	/** create ProcessBuilder with working dir set to File and extra environment variables */
 	def apply(command: String, cwd: File, extraEnv: (String,String)*): ProcessBuilder =
 		apply(command, Some(cwd), extraEnv : _*)
+	/** create ProcessBuilder with working dir set to File and extra environment variables */
+	def apply(command: Seq[String], cwd: File, extraEnv: (String,String)*): ProcessBuilder =
+		apply(command, Some(cwd), extraEnv : _*)
 	/** create ProcessBuilder with working dir optionaly set to File and extra environment variables */
 	def apply(command: String, cwd: Option[File], extraEnv: (String,String)*): ProcessBuilder = {
 		apply(command.split("""\s+"""), cwd, extraEnv : _*)
