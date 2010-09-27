@@ -97,7 +97,7 @@ trait TaskSetup
 final case class Input(line: String, cursor: Option[Int])
 {
 	lazy val (name, arguments) = line match { case Input.NameRegex(n, a) => (n, a); case _ => (line, "") }
-	lazy val splitArgs = (arguments split """\s+""").toSeq
+	lazy val splitArgs: Seq[String] = if(arguments.isEmpty) Nil else (arguments split """\s+""").toSeq
 }
 object Input
 {
