@@ -11,6 +11,7 @@ import Transform.Context
 import inc.Analysis
 import build.{Auto, Build}
 import xsbti.AppConfiguration
+import MultiProject.transformName
 
 import java.io.File
 import annotation.tailrec
@@ -112,6 +113,12 @@ object MultiProject
 
 	def lefts[A,B](e: Iterable[Either[A,B]]):Iterable[A] = e collect { case Left(l) => l }
 	def rights[A,B](e: Iterable[Either[A,B]]):Iterable[B] = e collect { case Right(r)=> r }
+
+	def transformName(s: String) =
+	{
+		val parts = s.split("-+")
+		(parts.take(1) ++ parts.drop(1).map(_.capitalize)).mkString
+	}
 }
 
 object MultiContext
@@ -176,7 +183,7 @@ trait Project extends Tasked with HistoryEnabled with Member[Project] with Named
 		val mklog = LogManager.construct(context, settings)
 		val actualStreams = std.Streams(t => context.owner(t.original).get.streamBase / name(t), mklog )
 		val injected = new Transform.Injected( input, state, actualStreams )
-		context.static(this, input.name) map { t => (t.merge.map(_ => state), Transform(dummies, injected, context) ) }
+		context.static(this, transformName(input.name)) map { t => (t.merge.map(_ => state), Transform(dummies, injected, context) ) }
 	}
 
 	def help: Seq[Help] = Nil
