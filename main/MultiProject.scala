@@ -59,8 +59,10 @@ object MultiProject
 		val analysis = Compile(inputs)
 		val info = ProjectInfo(None, base, projectDir, Nil, None)(configuration, analysis, inputs, load(configuration, log, externals), externals)
 
-		val discovered = Build.check(Build.discover(analysis, Some(false), Auto.Subclass, projectClassName), false)
-		Build.binaries(inputs.config.classpath, discovered, getClass.getClassLoader)(construct(info)).head.asInstanceOf[Project]
+		val discovered = Build.discover(analysis, Some(false), Auto.Subclass, projectClassName)
+		val discoveredOrDefault = if(discovered.isEmpty) List(build.ToLoad("sbt.DefaultProject", false)) else discovered
+		val toLoad = Build.check(discoveredOrDefault, false)
+		Build.binaries(inputs.config.classpath, toLoad, getClass.getClassLoader)(construct(info)).head.asInstanceOf[Project]
 	}
 
 	def loadExternals(from: Iterable[Project], loadImpl: File => Project): Map[File, Project] =
