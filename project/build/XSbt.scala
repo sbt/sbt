@@ -45,15 +45,19 @@ class XSbt(info: ProjectInfo) extends ParentProject(info) with NoCrossPaths
 	val buildSub = baseProject("main" / "build", "Project Builder",
 		classfileSub, classpathSub, compilePersistSub, compilerSub, compileIncrementalSub, interfaceSub, ivySub, launchInterfaceSub, logSub, discoverySub, processSub)
 
+	val scriptedBaseSub = project("scripted" / "base", "Scripted Framework", new TestProject(_), ioSub, processSub)
+	val scriptedSbtSub = baseProject("scripted" / "sbt", "Scripted sbt", ioSub, logSub, processSub, scriptedBaseSub, launchInterfaceSub /*should really be a 'provided' dependency*/)
+	val scriptedPluginSub = project("scripted" / "plugin", "Scripted Plugin", new Scripted(_))
+
+		// Standard task system.  This provides map, flatMap, join, and more on top of the basic task model.
 	val stdTaskSub = testedBase(tasksPath / "standard", "Task System", taskSub, collectionSub, logSub, ioSub, processSub)
 	val mainSub = baseProject("main", "Main",
 		buildSub, compileIncrementalSub, compilerSub, completeSub, discoverySub, ioSub, logSub, processSub, taskSub, stdTaskSub, runSub, trackingSub)
-	val sbtSub = project(sbtPath, "Simple Build Tool", (i: ProjectInfo) => new Base(i) { override def normalizedName = "sbt" }, 
-		mainSub) // technically, we need a dependency on all of mainSub's dependencies, but we don't do that since this is strictly an integration project
+		// Strictly for bringing implicits and aliases from subsystems into the top-level sbt namespace through a single package object
+	val sbtSub = project(sbtPath, "Simple Build Tool", new Sbt(_), mainSub) // technically, we need a dependency on all of mainSub's dependencies, but we don't do that since this is strictly an integration project
 
 	/** following modules are not updated for 2.8 or 0.9 */
-	/*val testSub = project("scripted", "Test", new TestProject(_), ioSub)
-
+	/*
 	val sbtSub = project(sbtPath, "Simple Build Tool", new SbtProject(_) {},
 		compilerSub, launchInterfaceSub, testingSub, cacheSub, taskSub)
 
@@ -231,6 +235,11 @@ class XSbt(info: ProjectInfo) extends ParentProject(info) with NoCrossPaths
 	{
 		override def componentID = None
 	}
+	class Scripted(info: ProjectInfo) extends PluginProject(info) with Licensed
+	{
+		override def managedStyle = ManagedStyle.Ivy
+		override def scratch = true
+	}
 	class TestProject(info: ProjectInfo) extends Base(info)
 	{
 		val process = "org.scala-tools.sbt" % "process" % "0.1"
@@ -294,5 +303,21 @@ class XSbt(info: ProjectInfo) extends ParentProject(info) with NoCrossPaths
 		def testWithTestClasspath: Seq[BasicScalaProject] = Nil
 		override def testCompileAction = super.testCompileAction dependsOn((testWithTestClasspath.map(_.testCompile) ++ testWithCompileClasspath.map(_.compile)) : _*)
 		override def testClasspath = (super.testClasspath /: (testWithTestClasspath.map(_.testClasspath) ++  testWithCompileClasspath.map(_.compileClasspath) ))(_ +++ _)
+	}
+	class Sbt(info: ProjectInfo) extends Base(info) with TestWith
+	{
+		override def normalizedName = "sbt"
+		override def testWithCompileClasspath = super.testWithCompileClasspath ++ Seq(scriptedSbtSub)
+		override def testAction = super.testAction dependsOn(publishLocal)
+		def scriptedScalaVersions = "2.8.1.RC1"
+		lazy val scripted = task { args => task {
+			val launcher  = launchSub.outputJar.asFile
+			val loader = ClasspathUtilities.toLoader(scriptedSbtSub.testClasspath, buildScalaInstance.loader)
+			val m = ModuleUtilities.getObject("sbt.test.ScriptedTests", loader)
+			val r = m.getClass.getMethod("run", classOf[File], classOf[Boolean], classOf[String], classOf[String], classOf[String], classOf[Array[String]], classOf[File])
+			try { r.invoke(m, sourcePath / "sbt-test" asFile, true: java.lang.Boolean, version.toString, buildScalaVersion, scriptedScalaVersions, args, launcher) }
+			catch { case e: java.lang.reflect.InvocationTargetException => throw e.getCause }
+			None
+		} dependsOn(publishLocal, scriptedSbtSub.compile) }
 	}
 }
