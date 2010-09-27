@@ -106,7 +106,7 @@ object Incremental
 	{
 		val srcChanges = changes.internalSrc
 		println("Initial source changes: \n\tremoved:" + srcChanges.removed + "\n\tadded: " + srcChanges.added + "\n\tmodified: " + srcChanges.changed)
-		val srcDirect = srcChanges.removed.flatMap(previous.usesInternalSrc) ++ srcChanges.added ++ srcChanges.changed
+		val srcDirect = srcChanges.removed ++ srcChanges.removed.flatMap(previous.usesInternalSrc) ++ srcChanges.added ++ srcChanges.changed
 		println("Initial source direct: " + srcDirect)
 		val byProduct = changes.removedProducts.flatMap(previous.produced)
 		println("Initial by product: " + byProduct)

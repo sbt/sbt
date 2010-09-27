@@ -75,6 +75,10 @@ object Stamp
 
 object Stamps
 {
+	/** Creates a ReadStamps instance that will calculate and cache the stamp for sources and binaries
+	* on the first request according to the provided `srcStamp` and `binStamp` functions.  Each
+	* stamp is calculated separately on demand.
+	* The stamp for a product is always recalculated. */
 	def initial(prodStamp: File => Stamp, srcStamp: File => Stamp, binStamp: File => Stamp): ReadStamps = new InitialStamps(prodStamp, srcStamp, binStamp)
 	
 	def empty: Stamps =
@@ -117,12 +121,11 @@ private class MStamps(val products: Map[File, Stamp], val sources: Map[File, Sta
 private class InitialStamps(prodStamp: File => Stamp, srcStamp: File => Stamp, binStamp: File => Stamp) extends ReadStamps
 {
 	import collection.mutable.{HashMap, Map}
-	// cached stamps
-	private val products: Map[File, Stamp] = new HashMap
+	// cached stamps for files that do not change during compilation
 	private val sources: Map[File, Stamp] = new HashMap
 	private val binaries: Map[File, Stamp] = new HashMap
 	
-	def product(prod: File): Stamp = synchronized { products.getOrElseUpdate(prod, prodStamp(prod)) }
+	def product(prod: File): Stamp = prodStamp(prod)
 	def internalSource(src: File): Stamp = synchronized { sources.getOrElseUpdate(src, srcStamp(src)) }
 	def binary(bin: File): Stamp = synchronized { binaries.getOrElseUpdate(bin, binStamp(bin)) }
 }
