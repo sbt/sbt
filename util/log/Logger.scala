@@ -37,6 +37,27 @@ object Logger
 {
 	implicit def absLog2PLog(log: AbstractLogger): ProcessLogger = new BufferedLogger(log) with ProcessLogger
 	implicit def log2PLog(log: Logger): ProcessLogger = absLog2PLog(new FullLogger(log))
+	implicit def xlog2Log(lg: xLogger): Logger = new Logger {
+		override def debug(msg: F0[String]): Unit = lg.debug(msg)
+		override def warn(msg: F0[String]): Unit = lg.warn(msg)
+		override def info(msg: F0[String]): Unit = lg.info(msg)
+		override def error(msg: F0[String]): Unit = lg.error(msg)
+		override def trace(msg: F0[Throwable]) = lg.trace(msg)
+		override def log(level: Level.Value, msg: F0[String]) = lg.log(level, msg)
+		def trace(t: => Throwable) = trace(f0(t))
+		def log(level: Level.Value, msg: => String) =
+		{
+			val fmsg = f0(msg)
+			level match
+			{
+				case Level.Debug => lg.debug(fmsg)
+				case Level.Info => lg.info(fmsg)
+				case Level.Warn => lg.warn(fmsg)
+				case Level.Error => lg.error(fmsg)
+			}
+		}
+	}
+	def f0[T](t: =>T): F0[T] = new F0[T] { def apply = t }
 }
 
 /** This is intended to be the simplest logging interface for use by code that wants to log.
