@@ -188,7 +188,7 @@ private object IvySbt
 		val newDefault = new ChainResolver
 		newDefault.setName(name)
 		newDefault.setReturnFirst(true)
-		newDefault.setCheckmodified(!localOnly)
+		newDefault.setCheckmodified(false)
 		for(sbtResolver <- resolvers) {
 			log.debug("\t" + sbtResolver)
 			newDefault.add(ConvertResolver(sbtResolver))
