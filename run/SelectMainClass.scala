@@ -6,15 +6,14 @@ package sbt
 object SelectMainClass
 {
 	// Some(SimpleReader.readLine _)
-	def apply(promptIfMultipleChoices: Option[String => Option[String]], mainClasses: List[String]) =
+	def apply(promptIfMultipleChoices: Option[String => Option[String]], mainClasses: Seq[String]): Option[String] =
 	{
-		mainClasses match
+		mainClasses.toList match
 		{
 			case Nil => None
 			case head :: Nil => Some(head)
 			case multiple =>
-				for(prompt <- promptIfMultipleChoices) yield
-				{
+				promptIfMultipleChoices flatMap { prompt =>
 					println("\nMultiple main classes detected, select one to run:\n")
 					for( (className, index) <- multiple.zipWithIndex )
 						println(" [" + (index+1) + "] " + className)
