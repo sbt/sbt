@@ -12,7 +12,7 @@ final class Compile(val classpath: Seq[File], val sources: Seq[File], output: Op
 {
 	val scalaProvider = configuration.provider.scalaProvider
 	val launcher = scalaProvider.launcher
-	val instance = ScalaInstance(scalaProvider.version, launcher)
+	val instance = ScalaInstance(scalaProvider.version, scalaProvider)
 
 	val out = output.getOrElse(configuration.baseDirectory / "target" asFile)
 	val target = out / ("scala_" + instance.actualVersion)
