@@ -50,7 +50,7 @@ object Incremental
 	{
 		val oldApis = lastSources map oldAPI
 		val newApis = lastSources map newAPI
-
+		for(api <- newApis; definition <- api.definitions) { println(xsbt.api.DefaultShowAPI(definition)) }
 		val changes = (lastSources, oldApis, newApis).zipped.filter { (src, oldApi, newApi) => !SameAPI(oldApi, newApi) }
 
 		val changedNames = TopLevel.nameChanges(changes._3, changes._2 )
