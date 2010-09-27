@@ -13,7 +13,7 @@ import java.lang.reflect.Modifier.{STATIC, PUBLIC, ABSTRACT}
 
 private[sbt] object Analyze
 {
-	def apply[T](outputDirectory: Path, sources: Seq[Path], roots: Seq[Path], log: Logger)(analysis: xsbti.AnalysisCallback, loader: ClassLoader)(compile: => Unit)
+	def apply[T](outputDirectory: Path, sources: Seq[Path], roots: Seq[Path], log: Logger)(analysis: xsbti.AnalysisCallback, loader: ClassLoader, readAPI: (File,Seq[Class[_]]) => Unit)(compile: => Unit)
 	{
 		val sourceSet = Set(sources.toSeq : _*)
 		val classesFinder = outputDirectory ** GlobFilter("*.class")
@@ -80,6 +80,7 @@ private[sbt] object Analyze
 				}
 				
 				classFiles.flatMap(_.types).foreach(processDependency)
+				readAPI(source asFile, classFiles.toSeq.flatMap(c => load(c.className, Some("Error reading API from class file") )))
 				analysis.endSource(source)
 			}
 		}
