@@ -211,7 +211,7 @@ object Commands
 					case _ => (false, Runtime.getRuntime.availableProcessors)
 				}
 				for( (task, taskToNode) <- p.act(in, s)) yield
-					processResult(runTask(task, checkCycles, maxThreads)(taskToNode), s)
+					processResult(runTask(task, checkCycles, maxThreads)(taskToNode), s, s.fail)
 			}
 		}
 	}
@@ -301,14 +301,14 @@ object Commands
 		val x = new Execute[Task](checkCycles)(taskToNode)
 		try { x.run(root)(service) } finally { shutdown() }
 	}
-	def processResult[State](result: Result[State], original: State): State =
+	def processResult[State](result: Result[State], original: State, onFailure: => State): State =
 		result match
 		{
 			case Value(v) => v
 			case Inc(inc) =>
 				println(Incomplete.show(inc, true))
 				println("Task did not complete successfully")
-				original
+				onFailure
 		}
 		
 	def completor(s: State): jline.Completor = new jline.Completor {
