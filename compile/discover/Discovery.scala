@@ -34,6 +34,12 @@ class Discovery(baseClasses: Set[String], annotations: Set[String])
 }
 object Discovery
 {
+	def apply(subclasses: Set[String], annotations: Set[String])(definitions: Seq[Definition]): Seq[(Definition, Discovered)] =
+	{
+		val d = new Discovery(subclasses, annotations)
+		d(definitions)
+	}
+
 	def isConcrete(a: Definition): Boolean = isConcrete(a.modifiers)
 	def isConcrete(m: Modifiers) = !m.isAbstract && !m.isDeferred
 	def isPublic(a: Definition): Boolean = isPublic(a.access)
