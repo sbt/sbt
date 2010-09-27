@@ -134,16 +134,44 @@ object Commands
 	}
 
 	def read = Command.simple(ReadCommand, ReadBrief, ReadDetailed) { (in, s) =>
-		val from = in.splitArgs map { p => new File(s.baseDir, p) }
-		val notFound = notReadable(from)
-		if(notFound.isEmpty)
-			readLines(from) ::: s // this means that all commands from all files are loaded, parsed, and inserted before any are executed
-		else {
-			logger(s).error("File(s) not readable: \n\t" + notFound.mkString("\n\t"))
-			s
+		getSource(in, s.baseDir) match
+		{
+			case Left(portAndSuccess) =>
+				val port = math.abs(portAndSuccess)
+				val previousSuccess = portAndSuccess >= 0
+				readMessage(port, previousSuccess) match
+				{
+					case Some(message) => (message :: (ReadCommand + " " + port) :: s).copy()(onFailure = Some(ReadCommand + " " + (-port)))
+					case None =>
+						System.err.println("Connection closed.")
+						s.fail
+				}
+			case Right(from) =>
+				val notFound = notReadable(from)
+				if(notFound.isEmpty)
+					readLines(from) ::: s // this means that all commands from all files are loaded, parsed, and inserted before any are executed
+				else {
+					logger(s).error("Command file(s) not readable: \n\t" + notFound.mkString("\n\t"))
+					s
+				}
 		}
 	}
-
+	private def getSource(in: Input, baseDirectory: File) =
+	{
+		try { Left(in.line.stripPrefix(ReadCommand).trim.toInt) }
+		catch { case _: NumberFormatException => Right(in.splitArgs map { p => new File(baseDirectory, p) }) }
+	}
+	private def readMessage(port: Int, previousSuccess: Boolean): Option[String] =
+	{
+		// split into two connections because this first connection ends the previous communication
+		xsbt.IPC.client(port) { _.send(previousSuccess.toString) }
+		//   and this second connection starts the next communication
+		xsbt.IPC.client(port) { ipc =>
+			val message = ipc.receive
+			if(message eq null) None else Some(message)
+		}
+	}
+							
 	def continuous = Command { case s @ State(p: Project with Watched) =>
 		Apply( Help(continuousBriefHelp) ) {
 			case in if in.line startsWith ContinuousExecutePrefix => Watched.executeContinuously(p, s, in)
