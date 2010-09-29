@@ -2,5 +2,6 @@ import sbt._
 
 class SpecializeTest(info: ProjectInfo) extends DefaultProject(info)
 {
-	override def compileOptions = super.compileOptions ++ Seq(CompileOption("-Yspecialize"))
+// now on by default in 2.8
+//	override def compileOptions = super.compileOptions ++ Seq(CompileOption("-Yspecialize"))
 }

@@ -20,10 +20,21 @@ final class ScriptedTests(resourceBaseDirectory: File, bufferLog: Boolean, sbtVe
 	
 	def scriptedTest(group: String, name: String, log: xsbti.Logger): Unit =
 		scriptedTest(group, name, Logger.xlog2Log(log))
-	def scriptedTest(group: String, name: String, log: Logger): Unit =
-		testResources.readWriteResourceDirectory(group, name) { testDirectory =>
-			scriptedTest(group + " / " + name, testDirectory, log)
+	def scriptedTest(group: String, name: String, log: Logger): Unit = {
+			import Path._
+			import GlobFilter._
+		var failed = false
+		for(groupDir <- (resourceBaseDirectory * group).getFiles; nme <- (groupDir * name).getFiles ) {
+			val g = groupDir.getName
+			val n = nme.getName
+			println("Running " + g + " / " + n)
+			testResources.readWriteResourceDirectory(g, n) { testDirectory =>
+				try { scriptedTest(g + " / " + n, testDirectory, log) }
+				catch { case e: xsbt.test.TestException => failed = true }
+			}
 		}
+		if(failed) error(group + " / " + name + " failed")
+	}
 	private def scriptedTest(label: String, testDirectory: File, log: Logger): Unit =
 		IPC.pullServer( scriptedTest0(label, testDirectory, log) )
 	private def scriptedTest0(label: String, testDirectory: File, log: Logger)(server: IPC.Server)
@@ -54,7 +65,7 @@ final class ScriptedTests(resourceBaseDirectory: File, bufferLog: Boolean, sbtVe
 		catch
 		{
 			case e: xsbt.test.TestException =>
-				buffered.play()
+				buffered.stop()
 				buffered.error("x " + label)
 				if(e.getCause eq null)
 					buffered.error("   " + e.getMessage)
@@ -62,7 +73,7 @@ final class ScriptedTests(resourceBaseDirectory: File, bufferLog: Boolean, sbtVe
 					e.printStackTrace
 				throw e
 			case e: Exception =>
-				buffered.play()
+				buffered.stop()
 				buffered.error("x " + label)
 				throw e
 		}
