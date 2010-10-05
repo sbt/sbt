@@ -55,6 +55,7 @@ private object LazyJettyRun${jetty.version} extends JettyRun
 					import c._
 					configureDefaultConnector(server, port)
 					val webapp = new WebAppContext(war.absolutePath, contextPath)
+					webDefaultXml.foreach{webDefaultXml:File => webapp.setDefaultsDescriptor(webDefaultXml.toString)}
 					
 					def createLoader =
 					{
