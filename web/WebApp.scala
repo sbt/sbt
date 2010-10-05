@@ -103,6 +103,7 @@ trait DefaultJettyConfiguration extends JettyConfiguration
 	def classpath: PathFinder
 	def parentLoader: ClassLoader
 	def jettyEnv: Option[File]
+	def webDefaultXml: Option[File]
 }
 abstract class CustomJettyConfiguration extends JettyConfiguration
 {
