@@ -427,7 +427,7 @@ class xMain extends xsbti.AppMain
 		action match
 		{
 			case HelpAction => displayHelp(isInteractive); true
-			case ShowProjectsAction => baseProject.projectClosure.foreach(listProject); true
+			case ShowProjectsAction => baseProject.projectClosure.foreach(listProject(_, currentProject)); true
 			case ProjectConsoleAction =>
 				showResult(Run.projectConsole(currentProject), currentProject.log)
 			case _ =>
@@ -476,7 +476,7 @@ class xMain extends xsbti.AppMain
 		if(!isInteractive)
 			printCmd(InteractiveCommand, "Enters the sbt interactive shell")
 	}
-	private def listProject(p: Project) = printProject("\t", p)
+	private def listProject(p: Project, curr: Project) = printProject(if(p eq curr) "\t* " else "\t  ", p)
 	private def printProject(prefix: String, p: Project): Unit =
 		Console.println(prefix + p.name + " " + p.version)
 
