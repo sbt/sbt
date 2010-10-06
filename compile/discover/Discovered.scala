@@ -2,7 +2,7 @@
  * Copyright 2010 Mark Harrah
  */
 package sbt
-package inc
+package compile
 
 final case class Discovered(baseClasses: Set[String], annotations: Set[String], hasMain: Boolean, isModule: Boolean)
 {
