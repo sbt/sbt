@@ -66,13 +66,14 @@ class XSbt(info: ProjectInfo) extends ParentProject(info) with NoCrossPaths
 		// Implements the core functionality of detecting and propagating changes incrementally.
 		//   Defines the data structures for representing file fingerprints and relationships and the overall source analysis
 	val compileIncrementalSub = testedBase(compilePath / "inc", "Incremental Compiler", collectionSub, apiSub, ioSub)
-		// Searches the source API data structures, currently looks for subclasses and annotations
-	val discoverySub = testedBase(compilePath / "discover", "Discovery", compileIncrementalSub, apiSub)
 		// Persists the incremental data structures using SBinary
 	val compilePersistSub = project(compilePath / "persist", "Persist", new PersistProject(_), compileIncrementalSub, apiSub)
 		// sbt-side interface to compiler.  Calls compiler-side interface reflectively
 	val compilerSub = project(compilePath, "Compile", new CompileProject(_),
 		launchInterfaceSub, interfaceSub, ivySub, ioSub, classpathSub, compileInterfaceSub, logSub)
+		// Searches the source API data structures, currently looks for subclasses and annotations
+	val discoverySub = project(compilePath / "discover", "Discovery", new DiscoveryProject(_), compileIncrementalSub, apiSub)
+
 
 		// mostly for implementing 'load' command, could perhaps be trimmed and merged into 'main'
 	val buildSub = baseProject("main" / "build", "Project Builder",
@@ -216,6 +217,7 @@ class XSbt(info: ProjectInfo) extends ParentProject(info) with NoCrossPaths
 	{
 		val testInterface = "org.scala-tools.testing" % "test-interface" % "0.5"
 	}
+	class DiscoveryProject(info: ProjectInfo) extends TestedBase(info) with TestWithCompile
 	class CompileProject(info: ProjectInfo) extends Base(info) with TestWithLog with TestWithLaunch
 	{
 		override def testCompileAction = super.testCompileAction dependsOn(compileInterfaceSub.`package`, interfaceSub.`package`)
@@ -321,6 +323,9 @@ class XSbt(info: ProjectInfo) extends ParentProject(info) with NoCrossPaths
 			// these ensure that the classes compiled against other versions of Scala are not exported (for compilation/testing/...)
 			override def projectClasspath(config: Configuration) = Path.emptyPathFinder
 		}
+	}
+	trait TestWithCompile extends TestWith {
+		override def testWithTestClasspath = super.testWithTestClasspath ++ Seq(compilerSub)
 	}
 	trait TestWithIO extends TestWith {
 		override def testWithTestClasspath = super.testWithTestClasspath ++ Seq(ioSub)

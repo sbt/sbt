@@ -4,7 +4,8 @@
 package sbt
 package build
 
-import java.io.File
+	import compile.Discovery
+	import java.io.File
 
 final class ParseException(msg: String) extends RuntimeException(msg)
 
@@ -72,7 +73,7 @@ The command has the following syntax:
 		val args = arguments(commandString)
 		val subs = names("sub", args)
 		val annots = names("annot", args)
-		DiscoverCommand(module(args), new inc.Discovery(subs, annots))
+		DiscoverCommand(module(args), new Discovery(subs, annots))
 	}
 	
 	def auto(args: Seq[String]): Auto.Value =

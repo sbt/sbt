@@ -4,7 +4,8 @@
 package sbt
 
 	import std._
-	import inc.{Analysis,Discovered,Discovery}
+	import compile.{Discovered,Discovery}
+	import inc.Analysis
 	import TaskExtra._
 	import Configurations.{Compile => CompileConfig, Test => TestConfig, Runtime => RunConfig}
 	import ClasspathProject._

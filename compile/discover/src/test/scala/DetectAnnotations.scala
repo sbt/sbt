@@ -1,7 +1,8 @@
-package xsbt
+package sbt
+package compile
 
-import java.io.File
-import org.specs.Specification
+	import java.io.File
+	import org.specs.Specification
 
 object DetectAnnotations extends Specification
 {
@@ -32,20 +33,30 @@ object DetectAnnotations extends Specification
 		{
 			case files @ Seq(a, b, c, sup1File, sup2File, sup3File, sup4File, midFile, sub1File, sub2File, sub3File, sub4File, sub5File, sub6File, sub7File, sub8File, sub9File, subAFile, subBFile) =>
 				for(scalaVersion <- TestCompile.allVersions)
-					CallbackTest(scalaVersion, files, Nil, Seq("c.A", "B", "d.C") )  { (callback, _, _, _) =>
+					CallbackTest.simple(scalaVersion, files)  { callback =>
 						val expected =
-							(sup3File, "Super3", "B", false) ::
-							(sub3File, "Sub3", "B", false) ::
-							(sub3File, "Sub3", "c.A", false) ::
-							(sub7File, "Sub7", "d.C", false) ::
-							(sub8File, "Sub8", "c.A", false) ::
-							(sub9File, "Sub9", "B", true) ::
-							(subAFile, "SubA", "c.A", true) ::
-							(subBFile, "SubB", "c.A", true) ::
-							(subBFile, "SubB", "d.C", false) ::
+							(sup3File, "Super3", Set("B"), false) ::
+							(sub3File, "Sub3", Set("B", "c.A"), false) ::
+							(sub7File, "Sub7", Set("d.C"), false) ::
+							(sub8File, "Sub8", Set("c.A"), false) ::
+							(sub9File, "Sub9", Set("B"), true) ::
+							(subAFile, "SubA", Set("c.A"), true) ::
+							(subBFile, "SubB", Set("c.A"), true) ::
+							(subBFile, "SubB", Set("d.C"), false) ::
 							Nil
-						(callback.foundAnnotated) must haveTheSameElementsAs(expected)
+						val actual = subclasses(callback).toSet
+						val actualOnly = (actual -- expected)
+						println("Actual: " + actualOnly)
+						val expectedOnly = (expected.toSet -- actual)
+						println("Expected: " + expectedOnly)
+						expectedOnly must beEmpty
+						actualOnly must beEmpty
 					}
 		}
 	}
+	def subclasses(callback: xsbti.TestCallback): Seq[(File, String, Set[String], Boolean)] =
+		for( (file, src) <- callback.apis.toSeq; (definition, discovered) <- Discovery(Set.empty, annotationNames)(src.definitions) if !discovered.isEmpty ) yield
+			(file, definition.name, discovered.annotations, discovered.isModule)
+
+	def annotationNames = Set("c.A", "B", "d.C")
 }

@@ -7,7 +7,7 @@ package build
 import java.io.File
 import classpath.ClasspathUtilities.toLoader
 import ModuleUtilities.getObject
-import compile.{AnalyzingCompiler, JavaCompiler}
+import compile.{AnalyzingCompiler, Discovery, JavaCompiler}
 import inc.Analysis
 import Path._
 import GlobFilter._
@@ -91,14 +91,14 @@ object Build
 		import Auto.{Annotation, Explicit, Subclass}
 		auto match {
 			case Explicit => if(name.isEmpty) error("No name specified to load explicitly.") else Seq(new ToLoad(name))
-			case Subclass => discover(analysis, module, new inc.Discovery(Set(name), Set.empty))
-			case Annotation => discover(analysis, module, new inc.Discovery(Set.empty, Set(name)))
+			case Subclass => discover(analysis, module, new Discovery(Set(name), Set.empty))
+			case Annotation => discover(analysis, module, new Discovery(Set.empty, Set(name)))
 		}
 	}
 	def discover(analysis: inc.Analysis, command: DiscoverCommand): Seq[ToLoad] =
 		discover(analysis, command.module, command.discovery)
 		
-	def discover(analysis: inc.Analysis, module: Option[Boolean], discovery: inc.Discovery): Seq[ToLoad] =
+	def discover(analysis: inc.Analysis, module: Option[Boolean], discovery: Discovery): Seq[ToLoad] =
 	{
 		for(src <- analysis.apis.internal.values.toSeq;
 			(df, found) <- discovery(src.definitions) if !found.isEmpty && moduleMatches(found.isModule, module))

@@ -1,10 +1,9 @@
-package xsbt
+package sbt
+package compile
 
-import sbt.{ComponentManager, TestIvyLogger}
-
-import java.io.File
-import FileUtilities.withTemporaryDirectory
-import org.specs._
+	import java.io.File
+	import IO.withTemporaryDirectory
+	import org.specs._
 
 object CompileTest extends Specification
 {
@@ -15,8 +14,8 @@ object CompileTest extends Specification
 			WithCompiler( "2.7.4" )(testCompileAnalysis)
 			WithCompiler( "2.7.5" )(testCompileAnalysis)
 			WithCompiler( "2.7.7" )(testCompileAnalysis)
-			WithCompiler( "2.8.0.Beta1" )(testCompileAnalysis)
-			WithCompiler( "2.8.0-SNAPSHOT" )(testCompileAnalysis)
+			WithCompiler( "2.8.0" )(testCompileAnalysis)
+			WithCompiler( "2.8.1.RC2" )(testCompileAnalysis)
 		}
 	}
 	
@@ -24,16 +23,17 @@ object CompileTest extends Specification
 		"Properly handle classpaths" in {
 			testClasspath("2.7.2")
 			testClasspath("2.7.7")
-			testClasspath("2.8.0.Beta1")
+			testClasspath("2.8.0")
+			testClasspath("2.8.1.RC2")
 		}
 	}
 	
-	private def testCompileAnalysis(compiler: AnalyzingCompiler, log: CompileLogger)
+	private def testCompileAnalysis(compiler: AnalyzingCompiler, log: Logger)
 	{
 		WithFiles( new File("Test.scala") -> "object Test" ) { sources =>
 			withTemporaryDirectory { temp =>
-				val callback = new xsbti.TestCallback(Array(), Array())
-				compiler(Set() ++ sources, Set.empty, temp, Nil, callback, 10, log)
+				val callback = new xsbti.TestCallback
+				compiler(sources, Nil, temp, Nil, callback, 10, log)
 				(callback.beganSources) must haveTheSameElementsAs(sources)
 			}
 		}
@@ -52,66 +52,31 @@ object CompileTest extends Specification
 			def compiler(autoBoot: Boolean, compilerOnClasspath: Boolean): RawCompiler =
 				new RawCompiler(ScalaInstance(scalaVersion, launch), new ClasspathOptions(autoBoot, compilerOnClasspath, true), log)
 
-			val callback = new xsbti.TestCallback(Array(), Array())
+			val callback = new xsbti.TestCallback
 				
 			val standard = compiler(true, true)
 			val noCompiler = compiler(true, false)
 			val fullExplicit = compiler(false, false)
 			
 			val fullBoot = "-bootclasspath" :: fullExplicit.compilerArguments.createBootClasspath :: Nil
-			val withCompiler = Set() + noCompiler.scalaInstance.compilerJar
+			val withCompiler = noCompiler.scalaInstance.compilerJar :: Nil
 			
-			WithFiles( new File("Test.scala") -> "object Test", new File("Test2.scala") -> UsingCompiler ) { case Array(plain, useCompiler) =>
-				val plainSrcs = Set[File](plain)
-				val compSrcs = Set[File](useCompiler)
-				FileUtilities.withTemporaryDirectory { out =>
-					standard(plainSrcs, Set.empty,  out, Nil) //success
-					standard(compSrcs, Set.empty,  out, Nil) //success
+			WithFiles( new File("Test.scala") -> "object Test", new File("Test2.scala") -> UsingCompiler ) { case Seq(plain, useCompiler) =>
+				val plainSrcs = Seq[File](plain)
+				val compSrcs = Seq[File](useCompiler)
+				withTemporaryDirectory { out =>
+					standard(plainSrcs, Nil,  out, Nil) //success
+					standard(compSrcs, Nil,  out, Nil) //success
 					
-					noCompiler(plainSrcs, Set.empty,  out, Nil) //success
-					shouldFail( noCompiler(compSrcs, Set.empty,  out, Nil) )
-					noCompiler(compSrcs, withCompiler,  out, Nil) //success
+					noCompiler(plainSrcs, Nil,  out, Nil) //success
+					shouldFail( noCompiler(compSrcs, Nil,  out, Nil) )
+					noCompiler(compSrcs, withCompiler, out, Nil) //success
 					
-					shouldFail( fullExplicit(plainSrcs, Set.empty, out, Nil) )// failure
-					shouldFail( fullExplicit(compSrcs, Set.empty, out, Nil) )// failure
-					fullExplicit(plainSrcs, Set.empty, out, fullBoot) // success
+					shouldFail( fullExplicit(plainSrcs, Nil, out, Nil) )// failure
+					shouldFail( fullExplicit(compSrcs, Nil, out, Nil) )// failure
+					fullExplicit(plainSrcs, Nil, out, fullBoot) // success
 					fullExplicit(compSrcs, withCompiler, out, fullBoot) // success
 				}
 			}
 		}
-}
-object WithCompiler
-{
-	def apply[T](scalaVersion: String)(f: (AnalyzingCompiler, CompileLogger) => T): T =
-	{
-		launcher { (launch, log) =>
-			FileUtilities.withTemporaryDirectory { componentDirectory =>
-				val manager = new ComponentManager(xsbt.boot.Locks, new boot.ComponentProvider(componentDirectory), log)
-				val compiler = new AnalyzingCompiler(ScalaInstance(scalaVersion, launch), manager, log)
-				compiler.newComponentCompiler(log).clearCache(ComponentCompiler.compilerInterfaceID)
-				define(manager, ComponentCompiler.compilerInterfaceSrcID, getResource("CompilerInterface.scala"), getClassResource(classOf[jline.Completor]))
-				define(manager, ComponentCompiler.xsbtiID, getClassResource(classOf[xsbti.AnalysisCallback]))
-				f(compiler, log)
-			}
-		}
-	}
-	def launcher[T](f: (xsbti.Launcher, TestIvyLogger with CompileLogger) => T): T =
-	{
-		val log = new TestIvyLogger with CompileLogger
-		log.setLevel(Level.Debug)
-		log.bufferQuietly {
-			boot.LaunchTest.withLauncher { launch => f(launch, log) }
-		}
-	}
-	def getClassResource(resource: Class[_]): File = FileUtilities.classLocationFile(resource)
-	def getResource(resource: String): File = 
-	{
-		val src = getClass.getClassLoader.getResource(resource)
-		if(src ne null) FileUtilities.asFile(src) else error("Resource not found: " + resource)
-	}
-	def define(manager: ComponentManager, id: String, files: File*)
-	{
-		manager.clearCache(id)
-		manager.define(id, files)
-	}
 }

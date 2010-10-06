@@ -4,7 +4,8 @@
 package sbt
 package build
 
-import java.io.File
+	import java.io.File
+	import compile.Discovery
 
 sealed trait LoadCommand
 final case class BinaryLoad(classpath: Seq[File], module: Boolean, name: String) extends LoadCommand
@@ -17,7 +18,7 @@ object Auto extends Enumeration
 }
 
 final case class CompileCommand(classpath: Seq[File], sources: Seq[File], output: Option[File], options: Seq[String])
-final case class DiscoverCommand(module: Option[Boolean], discovery: inc.Discovery)
+final case class DiscoverCommand(module: Option[Boolean], discovery: Discovery)
 
 final case class ToLoad(name: String, isModule: Boolean = false)
 {

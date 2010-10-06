@@ -2,7 +2,7 @@
  * Copyright 2010 Mark Harrah
  */
 package sbt
-package inc
+package compile
 
 	import xsbti.api.{Path => APath, _}
 
@@ -23,14 +23,14 @@ class Discovery(baseClasses: Set[String], annotations: Set[String])
 		val onClass = findAnnotations(c.annotations)
 		val onDefs = defAnnotations(c.structure.declared) ++ defAnnotations(c.structure.inherited)
 		val module = isModule(c)
-		new Discovered( bases(c.structure.parents), onClass ++ onDefs, module && hasMainMethod(c), module )
+		new Discovered( bases(c.name, c.structure.parents), onClass ++ onDefs, module && hasMainMethod(c), module )
 	}
-	def bases(c: Seq[Type]): Set[String] =
-		c.flatMap(simpleName).filter(baseClasses).toSet
+	def bases(own: String, c: Seq[Type]): Set[String] =
+		(own +: c.flatMap(simpleName)).filter(baseClasses).toSet
 	def findAnnotations(as: Seq[Annotation]): Set[String] =
 		as.flatMap { a => simpleName(a.base).filter(annotations) }.toSet
 	def defAnnotations(defs: Seq[Definition]): Set[String] =
-		findAnnotations( defs.flatMap { case d: Def => d.annotations.toSeq; case _ => Nil } )
+		findAnnotations( defs.flatMap { case d: Def if isPublic(d) => d.annotations.toSeq; case _ => Nil } )
 }
 object Discovery
 {
@@ -39,6 +39,8 @@ object Discovery
 		val d = new Discovery(subclasses, annotations)
 		d(definitions)
 	}
+	def applications(definitions: Seq[Definition]): Seq[(Definition, Discovered)] =
+		apply(Set.empty, Set.empty)( definitions )
 
 	def isConcrete(a: Definition): Boolean = isConcrete(a.modifiers)
 	def isConcrete(m: Modifiers) = !m.isAbstract && !m.isDeferred

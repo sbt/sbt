@@ -1,36 +1,37 @@
-package xsbt
+package sbt
+package compile
 
-import java.io.File
-import java.net.URLClassLoader
-import xsbti.TestCallback
-import FileUtilities.withTemporaryDirectory
+	import java.io.File
+	import java.net.URLClassLoader
+	import xsbti.TestCallback
+	import IO.withTemporaryDirectory
 
 object TestCompile
 {
 	// skip 2.7.3 and 2.7.4 for speed
-	def allVersions = List("2.7.2", "2.7.5", "2.7.7", "2.8.0.Beta1", "2.8.0-SNAPSHOT")//List("2.7.2", "2.7.3", "2.7.4", "2.7.5", "2.8.0-SNAPSHOT")
+	def allVersions = List("2.8.0")//List("2.7.2", "2.7.5", "2.7.7", "2.8.0", "2.8.1.RC1")
 	/** Tests running the compiler interface with the analyzer plugin with a test callback.  The test callback saves all information
 	* that the plugin sends it for post-compile analysis by the provided function.*/
-	def apply[T](scalaVersion: String, sources: Set[File], outputDirectory: File, options: Seq[String], superclassNames: Seq[String], annotationNames: Seq[String])
-		(f: (TestCallback, ScalaInstance, CompileLogger) => T): T =
+	def apply[T](scalaVersion: String, sources: Seq[File], outputDirectory: File, options: Seq[String])
+		(f: (TestCallback, ScalaInstance, Logger) => T): T =
 	{
-		val testCallback = new TestCallback(superclassNames.toArray, annotationNames.toArray)
+		val testCallback = new TestCallback
 		WithCompiler(scalaVersion) { (compiler, log) =>
-			compiler(sources, Set.empty, outputDirectory, options, testCallback, 5, log)
+			compiler(sources, Nil, outputDirectory, options, testCallback, 5, log)
 			f(testCallback, compiler.scalaInstance, log)
 		}
 	}
 	/** Tests running the compiler interface with the analyzer plugin.  The provided function is given a ClassLoader that can
 	* load the compiled classes..*/
 	def apply[T](scalaVersion: String, sources: Seq[File])(f: ClassLoader => T): T =
-		CallbackTest.apply(scalaVersion, sources, Nil, Nil){ case (_, outputDir, _, _) => f(new URLClassLoader(Array(outputDir.toURI.toURL))) }
+		CallbackTest.full(scalaVersion, sources){ case (_, outputDir, _, _) => f(new URLClassLoader(Array(outputDir.toURI.toURL))) }
 }
 object CallbackTest
 {
-	def apply[T](scalaVersion: String, sources: Iterable[File])(f: TestCallback => T): T =
-		apply(scalaVersion, sources.toSeq, Nil, Nil){ case (callback, _, _, _) => f(callback) }
-	def apply[T](scalaVersion: String, sources: Seq[File], superclassNames: Seq[String], annotationNames: Seq[String])(f: (TestCallback, File, ScalaInstance, CompileLogger) => T): T =
+	def simple[T](scalaVersion: String, sources: Seq[File])(f: TestCallback => T): T =
+		full(scalaVersion, sources){ case (callback, _, _, _) => f(callback) }
+	def full[T](scalaVersion: String, sources: Seq[File])(f: (TestCallback, File, ScalaInstance, Logger) => T): T =
 		withTemporaryDirectory { outputDir =>
-			TestCompile(scalaVersion, Set() ++ sources, outputDir, Nil, superclassNames, annotationNames) { case (callback, instance, log) => f(callback, outputDir, instance, log) }
+			TestCompile(scalaVersion, sources, outputDir, Nil) { case (callback, instance, log) => f(callback, outputDir, instance, log) }
 		}
 }

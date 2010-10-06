@@ -1,7 +1,8 @@
-package xsbt
+package sbt
+package compile
 
-import java.io.File
-import org.specs.Specification
+	import java.io.File
+	import org.specs.Specification
 
 object CheckBasic extends Specification
 {
@@ -21,9 +22,9 @@ object CheckBasic extends Specification
 		WithFiles(basicName -> basicSource){ files =>
 			for(scalaVersion <- TestCompile.allVersions)
 			{
-				FileUtilities.withTemporaryDirectory { outputDirectory =>
+				IO.withTemporaryDirectory { outputDirectory =>
 					WithCompiler(scalaVersion) { (compiler, log) =>
-						compiler.doc(Set() ++ files, Set.empty, outputDirectory, Nil, 5, log)
+						compiler.doc(files.toSeq, Nil, outputDirectory, Nil, 5, log)
 					}
 				}
 				true must beTrue // don't know how to just check that previous line completes without exception
@@ -33,7 +34,7 @@ object CheckBasic extends Specification
 	"Analyzer plugin should send source begin and end" in {
 		WithFiles(basicName -> basicSource) { files =>
 			for(scalaVersion <- TestCompile.allVersions)
-				CallbackTest(scalaVersion, files) { callback =>
+				CallbackTest.simple(scalaVersion, files) { callback =>
 					(callback.beganSources) must haveTheSameElementsAs(files)
 					(callback.endedSources) must haveTheSameElementsAs(files)
 				}
