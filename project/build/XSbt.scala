@@ -62,7 +62,7 @@ class XSbt(info: ProjectInfo) extends ParentProject(info) with NoCrossPaths
 	class LaunchProject(info: ProjectInfo) extends Base(info) with TestWithIO with TestDependencies with ProguardLaunch with NoCrossPaths
 	{
 		val jline = jlineDep
-		val ivy = "org.apache.ivy" % "ivy" % "2.1.0"
+		val ivy = "org.apache.ivy" % "ivy" % "2.2.0"
 		override def deliverProjectDependencies = Nil
 
 		// defines the package that proguard operates on
@@ -120,7 +120,7 @@ class XSbt(info: ProjectInfo) extends ParentProject(info) with NoCrossPaths
 	}
 	class IvyProject(info: ProjectInfo) extends Base(info) with TestWithIO with TestWithLog with TestWithLaunch
 	{
-		val ivy = "org.apache.ivy" % "ivy" % "2.1.0"
+		val ivy = "org.apache.ivy" % "ivy" % "2.2.0"
 	}
 	abstract class BaseInterfaceProject(info: ProjectInfo) extends DefaultProject(info) with ManagedBase with TestWithLog with Component with JavaProject
 	class InterfaceProject(info: ProjectInfo) extends BaseInterfaceProject(info)
@@ -193,7 +193,8 @@ class XSbt(info: ProjectInfo) extends ParentProject(info) with NoCrossPaths
 		
 		// sub projects for each version of Scala to precompile against other than the one sbt is built against
 		// each sub project here will add ~100k to the download
-		lazy val precompiled28 = precompiledSub("2.8.0.RC2")
+		lazy val precompiled280 = precompiledSub("2.8.0")
+		lazy val precompiled281 = precompiledSub("2.8.1.RC2")
 
 		def precompiledSub(v: String) = 
 			project(info.projectPath, "Precompiled " + v, new Precompiled(v)(_), cip.info.dependencies.toSeq : _* /*doesn't include subprojects of cip*/ )

@@ -39,7 +39,7 @@ abstract class SbtProject(info: ProjectInfo) extends DefaultProject(info) with t
 	//testing
 	val scalacheck = "org.scala-tools.testing" %% "scalacheck" % "1.6" % "test"
 
-	val ivy = "org.apache.ivy" % "ivy" % "2.1.0" intransitive()
+	val ivy = "org.apache.ivy" % "ivy" % "2.2.0" intransitive()
 	val jsch = "com.jcraft" % "jsch" % "0.1.31" intransitive()
 	val jetty = "org.mortbay.jetty" % "jetty" % "6.1.14" % "optional"
 	val jettyplus = "org.mortbay.jetty" % "jetty-plus" % "6.1.14" % "optional"
