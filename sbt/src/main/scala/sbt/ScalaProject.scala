@@ -449,21 +449,21 @@ trait ExecProject extends Project
 		task
 		{
 			val command = buildCommand
-			if(command.command.isEmpty)
-				Some("No command specified.")
+			log.debug("Executing command " + command)
+			val exitValue = command.run(log).exitValue() // don't buffer output
+			if(exitValue == 0)
+				None
 			else
-			{
-				log.debug("Executing command " + command)
-				val exitValue = command.run(log).exitValue() // don't buffer output
-				if(exitValue == 0)
-					None
-				else
-					Some("Nonzero exit value: " + exitValue)
-			}
+				Some("Nonzero exit value: " + exitValue)
 		}
 }
 trait Exec extends SimpleScalaProject
 {
 	lazy val sh = task { args =>  execOut { Process("sh" :: "-c" :: args.mkString(" ") :: Nil) } }
-	lazy val exec = task { args => execOut { Process(args) } }
+	lazy val exec = task { args =>
+		if(args.isEmpty)
+			task { Some("No command specified.") }
+		else
+			execOut { Process(args) }
+	}
 }
