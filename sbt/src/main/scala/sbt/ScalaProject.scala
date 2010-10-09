@@ -447,12 +447,17 @@ trait ExecProject extends Project
 		task
 		{
 			val command = buildCommand
-			log.debug("Executing command " + command)
-			val exitValue = command.run(log).exitValue() // don't buffer output
-			if(exitValue == 0)
-				None
+			if(command.command.isEmpty)
+				Some("No command specified.")
 			else
-				Some("Nonzero exit value: " + exitValue)
+			{
+				log.debug("Executing command " + command)
+				val exitValue = command.run(log).exitValue() // don't buffer output
+				if(exitValue == 0)
+					None
+				else
+					Some("Nonzero exit value: " + exitValue)
+			}
 		}
 }
 trait Exec extends SimpleScalaProject
