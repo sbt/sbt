@@ -139,7 +139,7 @@ object TestFramework
 
 		val mappedTests = testMap(arguments.keys.toList, tests, arguments)
 		if(mappedTests.isEmpty)
-			(new NamedTestTask(TestStartName, None) :: Nil, Nil, new NamedTestTask(TestFinishName, { log.info("No tests to run."); cleanTmp() }) :: Nil )
+			(new NamedTestTask(TestStartName, None) :: Nil, Nil, new NamedTestTask(TestFinishName, { log.info("No tests to run."); cleanTmp(loader) }) :: Nil )
 		else
 			createTestTasks(loader, mappedTests, log, listeners, endErrorsEnabled, setup, Seq(cleanTmp) ++ cleanup)
 	}
