@@ -69,11 +69,13 @@ trait ScalaProject extends SimpleScalaProject with FileTasks with MultiTaskProje
 	trait PackageOption extends ActionOption
 	trait TestOption extends ActionOption
 
-	case class TestSetup(setup: ClassLoader => Unit) extends TestOption {
-		def this(setup: () => Unit) = this(_ => setup())
+	final case class TestSetup(setup: ClassLoader => Unit) extends TestOption
+	object TestSetup {
+		def apply(setup: () => Unit) = new TestSetup(_ => setup())
 	}
-	case class TestCleanup(cleanup: ClassLoader => Unit) extends TestOption {
-		def this(setup: () => Unit) = this(_ => setup())
+	final case class TestCleanup(cleanup: ClassLoader => Unit) extends TestOption
+	object TestCleanup {
+		def apply(setup: () => Unit) = new TestCleanup(_ => setup())
 	}
 	case class ExcludeTests(tests: Iterable[String]) extends TestOption
 	case class TestListeners(listeners: Iterable[TestReportListener]) extends TestOption
