@@ -126,8 +126,8 @@ object TestFramework
 		log: Logger,
 		listeners: Seq[TestReportListener],
 		endErrorsEnabled: Boolean,
-		setup: Iterable[() => Option[String]],
-		cleanup: Iterable[() => Option[String]],
+		setup: Iterable[ClassLoader => Option[String]],
+		cleanup: Iterable[ClassLoader => Option[String]],
 		testArgsByFramework: Map[TestFramework, Seq[String]]):
 			(Iterable[NamedTestTask], Iterable[NamedTestTask], Iterable[NamedTestTask]) =
 	{
@@ -135,7 +135,7 @@ object TestFramework
 		val arguments = immutable.Map() ++
 			( for(framework <- frameworks; created <- framework.create(loader, log)) yield
 				(created, testArgsByFramework.getOrElse(framework, Nil)) )
-		val cleanTmp = () => FileUtilities.clean(tempDir, log)
+		val cleanTmp = (_: ClassLoader) => FileUtilities.clean(tempDir, log)
 
 		val mappedTests = testMap(arguments.keys.toList, tests, arguments)
 		if(mappedTests.isEmpty)
@@ -162,12 +162,12 @@ object TestFramework
 			assignTests()
 		(immutable.Map() ++ map) transform { (framework, tests) => (tests, args(framework)) }
 	}
-	private def createTasks(work: Iterable[() => Option[String]], baseName: String) =
-		work.toList.zipWithIndex.map{ case (work, index) => new NamedTestTask(baseName + " " + (index+1), work()) }
+	private def createTasks[T](work: Iterable[T => Option[String]], baseName: String, input: T) =
+		work.toList.zipWithIndex.map{ case (work, index) => new NamedTestTask(baseName + " " + (index+1), work(input)) }
 		
 	private def createTestTasks(loader: ClassLoader, tests: Map[Framework, (Set[TestDefinition], Seq[String])], log: Logger,
-		listeners: Seq[TestReportListener], endErrorsEnabled: Boolean, setup: Iterable[() => Option[String]],
-		cleanup: Iterable[() => Option[String]]) =
+		listeners: Seq[TestReportListener], endErrorsEnabled: Boolean, setup: Iterable[ClassLoader => Option[String]],
+		cleanup: Iterable[ClassLoader => Option[String]]) =
 	{
 		val testsListeners = listeners.filter(_.isInstanceOf[TestsListener]).map(_.asInstanceOf[TestsListener])
 		def foreachListenerSafe(f: TestsListener => Unit): Unit = safeForeach(testsListeners, log)(f)
@@ -179,7 +179,7 @@ object TestFramework
 			def apply() = synchronized { value }
 			def update(v: Result.Value): Unit = synchronized { if(value != Error) value = v }
 		}
-		val startTask = new NamedTestTask(TestStartName, {foreachListenerSafe(_.doInit); None}) :: createTasks(setup, "Test setup")
+		val startTask = new NamedTestTask(TestStartName, {foreachListenerSafe(_.doInit); None}) :: createTasks(setup, "Test setup", loader)
 		val testTasks =
 			tests flatMap { case (framework, (testDefinitions, testArgs)) =>
 			
@@ -220,7 +220,7 @@ object TestFramework
 				}
 			}
 		}
-		val endTask = new NamedTestTask(TestFinishName, end() ) :: createTasks(cleanup, "Test cleanup")
+		val endTask = new NamedTestTask(TestFinishName, end() ) :: createTasks(cleanup, "Test cleanup", loader)
 		(startTask, testTasks, endTask)
 	}
 	def createTestLoader(classpath: Iterable[Path], scalaInstance: ScalaInstance): (ClassLoader, Path) =

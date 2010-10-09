@@ -69,8 +69,12 @@ trait ScalaProject extends SimpleScalaProject with FileTasks with MultiTaskProje
 	trait PackageOption extends ActionOption
 	trait TestOption extends ActionOption
 
-	case class TestSetup(setup: () => Option[String]) extends TestOption
-	case class TestCleanup(cleanup: () => Option[String]) extends TestOption
+	case class TestSetup(setup: ClassLoader => Option[String]) extends TestOption {
+		def this(setup: () => Option[String]) = this(_ => setup())
+	}
+	case class TestCleanup(cleanup: ClassLoader => Option[String]) extends TestOption {
+		def this(setup: () => Option[String]) = this(_ => setup())
+	}
 	case class ExcludeTests(tests: Iterable[String]) extends TestOption
 	case class TestListeners(listeners: Iterable[TestReportListener]) extends TestOption
 	case class TestFilter(filterTest: String => Boolean) extends TestOption
@@ -275,7 +279,7 @@ trait ScalaProject extends SimpleScalaProject with FileTasks with MultiTaskProje
 
 		val testFilters = new ListBuffer[String => Boolean]
 		val excludeTestsSet = new HashSet[String]
-		val setup, cleanup = new ListBuffer[() => Option[String]]
+		val setup, cleanup = new ListBuffer[ClassLoader => Option[String]]
 		val testListeners = new ListBuffer[TestReportListener]
 		val testArgsByFramework = Map[TestFramework, ListBuffer[String]]()
 		def frameworkArgs(framework: TestFramework): ListBuffer[String] =
