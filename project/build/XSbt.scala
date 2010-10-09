@@ -126,7 +126,7 @@ class XSbt(info: ProjectInfo) extends ParentProject(info) with NoCrossPaths
 	class LaunchProject(info: ProjectInfo) extends Base(info) with TestWithIO with TestDependencies with ProguardLaunch with NoCrossPaths
 	{
 		val jline = jlineDep
-		val ivy = "org.apache.ivy" % "ivy" % "2.2.0-rc1"
+		val ivy = "org.apache.ivy" % "ivy" % "2.2.0"
 		override def deliverProjectDependencies = Nil
 
 		// defines the package that proguard operates on
@@ -225,7 +225,7 @@ class XSbt(info: ProjectInfo) extends ParentProject(info) with NoCrossPaths
 	}
 	class IvyProject(info: ProjectInfo) extends Base(info) with TestWithIO with TestWithLog with TestWithLaunch
 	{
-		val ivy = "org.apache.ivy" % "ivy" % "2.2.0-rc1"
+		val ivy = "org.apache.ivy" % "ivy" % "2.2.0"
 	}
 	abstract class BaseInterfaceProject(info: ProjectInfo) extends DefaultProject(info) with ManagedBase with TestWithLog with Component with JavaProject
 	class InterfaceProject(info: ProjectInfo) extends BaseInterfaceProject(info)
