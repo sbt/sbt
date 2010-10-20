@@ -89,9 +89,10 @@ final class Compile(maximumErrors: Int, compiler: AnalyzingCompiler, analysisCal
 	}
 	private def forkJavac(arguments: Seq[String], log: Logger): Int =
 	{
-		log.debug("com.sun.tools.javac.Main not found; forking javac instead")
-		def externalJavac(argFile: File) = Process("javac", ("@" + normalizeSlash(argFile.getAbsolutePath)) :: Nil) ! log
-		withArgumentFile(arguments)(externalJavac)
+	        log.debug("com.sun.tools.javac.Main not found; forking javac instead")
+	        val (jArgs, nonJArgs) = arguments.partition(_.startsWith("-J"))
+	        def externalJavac(argFile: File) = Process("javac", jArgs.toSeq ++ (("@" + normalizeSlash(argFile.getAbsolutePath)) :: Nil)) ! log
+	        withArgumentFile(nonJArgs.toSeq)(externalJavac)
 	}
 	private def directJavac(arguments: Seq[String], log: Logger): Int =
 	{
