@@ -45,8 +45,9 @@ object JavaCompiler
 	/** `doFork` should be a function that forks javac with the provided arguments and sends output to the given Logger.*/
 	def forkJavac(implicit doFork: Fork) = (arguments: Seq[String], log: Logger) =>
 	{
-		def externalJavac(argFile: File) = doFork(("@" + normalizeSlash(argFile.getAbsolutePath)) :: Nil, log)
-		withArgumentFile(arguments)(externalJavac)
+		val (jArgs, nonJArgs) = arguments.partition(_.startsWith("-J"))
+		def externalJavac(argFile: File) = doFork(jArgs :+ ("@" + normalizeSlash(argFile.getAbsolutePath)), log)
+		withArgumentFile(nonJArgs)(externalJavac)
 	}
 	val directJavac = (arguments: Seq[String], log: Logger) =>
 	{
