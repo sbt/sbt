@@ -12,6 +12,16 @@ object Compile
 {
 	val DefaultMaxErrors = 100
 
+	def allProblems(inc: Incomplete): Seq[Problem] =
+		allProblems(inc :: Nil)
+	def allProblems(incs: Seq[Incomplete]): Seq[Problem] =
+		problems(Incomplete.allExceptions(incs).toSeq)
+	def problems(es: Seq[Throwable]): Seq[Problem]  =
+		es flatMap {
+			case cf: xsbti.CompileFailed => cf.problems
+			case _ => Nil
+		}
+
 	final class Inputs(val compilers: Compilers, val config: Options, val incSetup: IncSetup, val log: Logger)
 	final class Options(val classpath: Seq[File], val sources: Seq[File], val classesDirectory: File, val options: Seq[String], val javacOptions: Seq[String], val maxErrors: Int)
 	final class IncSetup(val javaSrcBases: Seq[File], val analysisMap: Map[File, Analysis], val cacheDirectory: File)

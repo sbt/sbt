@@ -16,6 +16,9 @@ object Incomplete extends Enumeration {
 		val causeStr = if(i.causes.isEmpty) "" else (i.causes.length + " cause(s)")
 		"Incomplete (" + show(i.tpe) + ") " + i.message.getOrElse("") + causeStr + "\n" + traces
 	}
+
+	def allExceptions(is: Seq[Incomplete]): Iterable[Throwable] =
+		allExceptions(new Incomplete(causes = is))
 	def allExceptions(i: Incomplete): Iterable[Throwable] =
 	{
 		val exceptions = IDSet.create[Throwable]
