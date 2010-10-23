@@ -43,7 +43,7 @@ object Discovery
 		apply(Set.empty, Set.empty)( definitions )
 
 	def isConcrete(a: Definition): Boolean = isConcrete(a.modifiers)
-	def isConcrete(m: Modifiers) = !m.isAbstract && !m.isDeferred
+	def isConcrete(m: Modifiers) = !m.isAbstract
 	def isPublic(a: Definition): Boolean = isPublic(a.access)
 	def isPublic(a: Access): Boolean = a.isInstanceOf[Public]
 	def isModule(c: ClassLike) = c.definitionType == DefinitionType.Module
@@ -54,7 +54,7 @@ object Discovery
 		defs.exists(isMainMethod)
 	def isMainMethod(d: Definition): Boolean =
 		d match {
-			case d: Def => isPublic(d) && isConcrete(d) && isUnit(d.returnType) && isStringArray(d.valueParameters)
+			case d: Def => d.name == "main" && isPublic(d) && isConcrete(d) && isUnit(d.returnType) && isStringArray(d.valueParameters)
 			case _ => false
 		}
 	def isStringArray(vp: IndexedSeq[ParameterList]): Boolean = vp.length == 1 && isStringArray(vp(0).parameters)

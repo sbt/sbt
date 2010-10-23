@@ -18,7 +18,10 @@ object TestCompile
 		val testCallback = new TestCallback
 		WithCompiler(scalaVersion) { (compiler, log) =>
 			compiler(sources, Nil, outputDirectory, options, testCallback, 5, log)
-			f(testCallback, compiler.scalaInstance, log)
+			val result = f(testCallback, compiler.scalaInstance, log)
+			for( (file, src) <- testCallback.apis )
+				xsbt.api.APIUtil.verifyTypeParameters(src)
+			result
 		}
 	}
 	/** Tests running the compiler interface with the analyzer plugin.  The provided function is given a ClassLoader that can

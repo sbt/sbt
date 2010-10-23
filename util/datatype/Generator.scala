@@ -54,9 +54,9 @@ class ImmutableGenerator(pkgName: String, baseDir: File) extends GeneratorBase(p
 		val hasParent = c.parent.isDefined
 		val allMembers = c.allMembers.map(normalize)
 		val normalizedMembers = c.members.map(normalize)
-		val fields = normalizedMembers.map(m => "private final " + m.asJavaDeclaration + ";")
-		val accessors = normalizedMembers.map(m => "public final " + m.asJavaDeclaration + "()\n\t{\n\t\treturn " + m.name + ";\n\t}")
-		val parameters = allMembers.map(_.asJavaDeclaration)
+		val fields = normalizedMembers.map(m => "private final " + m.asJavaDeclaration(false) + ";")
+		val accessors = normalizedMembers.map(m => "public final " + m.asJavaDeclaration(true) + "()\n\t{\n\t\treturn " + m.asGet + ";\n\t}")
+		val parameters = allMembers.map(_.asJavaDeclaration(false))
 		val assignments = normalizedMembers.map(m => "this." + m.name + " = " + m.name + ";")
 		val superConstructor =
 		{
@@ -90,8 +90,8 @@ class MutableGenerator(pkgName: String, baseDir: File) extends GeneratorBase(pkg
 	def interfaceContent(c: ClassDef): String =
 	{
 		val normalizedMembers = c.members.map(normalize)
-		val getters = normalizedMembers.map(m => "public " + m.asJavaDeclaration + "();")
-		val setters = normalizedMembers.map(m => "public void " + m.name +  "(" + m.javaType + " newValue);")
+		val getters = normalizedMembers.map(m => "public " + m.asJavaDeclaration(true) + "();")
+		val setters = normalizedMembers.map(m => "public void " + m.name +  "(" + m.javaType(false) + " newValue);")
 		val extendsPhrase = c.parent.map(_.name).map(" extends " + _).getOrElse("")
 
 		("public interface " + c.name + extendsPhrase + "\n" +
@@ -102,9 +102,9 @@ class MutableGenerator(pkgName: String, baseDir: File) extends GeneratorBase(pkg
 	def implContent(c: ClassDef): String =
 	{
 		val normalizedMembers = c.members.map(normalize)
-		val fields = normalizedMembers.map(m => "private " + m.asJavaDeclaration + ";")
-		val getters = normalizedMembers.map(m => "public final " + m.asJavaDeclaration + "()\n\t{\n\t\treturn " + m.name + ";\n\t}")
-		val setters = normalizedMembers.map(m => "public final void " + m.name + "(" + m.javaType + " newValue)\n\t{\n\t\t" + m.name + " = newValue;\n\t}")
+		val fields = normalizedMembers.map(m => "private " + m.asJavaDeclaration(false) + ";")
+		val getters = normalizedMembers.map(m => "public final " + m.asJavaDeclaration(true) + "()\n\t{\n\t\treturn " + m.asGet + ";\n\t}")
+		val setters = normalizedMembers.map(m => "public final void " + m.name + "(" + m.javaType(false) + " newValue)\n\t{\n\t\t" + m.name + " = newValue;\n\t}")
 		val extendsClass = c.parent.map(p => implName(p.name))
 		val serializable = if(c.parent.isDefined) Nil else "java.io.Serializable" :: Nil
 		val implements = c.name :: serializable

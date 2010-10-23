@@ -53,7 +53,8 @@ class AnalyzingCompiler(val scalaInstance: ScalaInstance, val manager: Component
 	private[this] def loader =
 	{
 		val interfaceJar = getInterfaceJar(log)
-		val dual = createDualLoader(scalaInstance.loader, getClass.getClassLoader) // this goes to scalaLoader for scala classes and sbtLoader for xsbti classes
+		// this goes to scalaInstance.loader for scala classes and the loader of this class for xsbti classes
+		val dual = createDualLoader(scalaInstance.loader, getClass.getClassLoader)
 		new URLClassLoader(Array(interfaceJar.toURI.toURL), dual)
 	}
 	private def getInterfaceClass(name: String, log: Logger) = Class.forName(name, true, loader)

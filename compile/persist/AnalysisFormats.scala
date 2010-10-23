@@ -5,7 +5,6 @@ package sbt
 package inc
 
 	import xsbti.api.Source
-	import xsbt.api.APIFormat
 	import java.io.File
 	import sbinary._
 	import DefaultProtocol._
@@ -36,8 +35,7 @@ object AnalysisFormats
 	implicit def relationFormat[A,B](implicit af: Format[Map[A, Set[B]]], bf: Format[Map[B, Set[A]]]): Format[Relation[A,B]] =
 		asProduct2[Relation[A,B], Map[A, Set[B]], Map[B, Set[A]]]( Relation.make _ )( r => (r.forwardMap, r.reverseMap) )(af, bf)
 
-	implicit val sourceFormat: Format[Source] =
-		wrap[Source, Array[Byte]]( APIFormat.write _, APIFormat.read _)
+	implicit val sourceFormat: Format[Source] = xsbt.api.SourceFormat
 
 	implicit def fileFormat: Format[File] = wrap[File, String](_.getAbsolutePath, s => new File(s))
 	// can't require Format[Seq[String]] because its complexity is higher than Format[CompileOptions]

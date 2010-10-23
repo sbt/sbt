@@ -29,7 +29,9 @@ object ApplicationsTest extends Specification
 		""" ::"""
 		object Main4 extends Main2
 		""" :: """
-		trait Main5 { def main(args: Array[String]) {} }; trait Main5b extends Main5; trait Main5c extends Main2; abstract class Main5d { def main(args: Array[String]) {} }
+		trait Main5 { def main(args: Array[String]) {} }; trait Main5b extends Main5; trait Main5c extends Main2; abstract class Main5d { def main(args: Array[String]) {} };
+		trait Main5e[T] { def main(args: Array[T]) {} }
+		trait Main5f[T <: String] { def main(args: Array[T]) {} }
 		""" :: """
 		object Main6a { var main = () }
 		object Main6b { var main = (args: Array[String]) => () }
@@ -93,6 +95,9 @@ object ApplicationsTest extends Specification
 			type A[T] = Array[String]
 			def main[T](args: A[T]) {}
 		}
+		object MainE6 extends Main5e[String]
+		object MainE7 extends Main5e[Int]
+		object MainE8 extends Main5f[String]
 		""" :: """
 		object MainF1  extends Application { var x = 3; x = 5 }
 		object MainF2  { def main(args: Array[java.lang.String]) {} }
@@ -107,18 +112,23 @@ object ApplicationsTest extends Specification
 			for(scalaVersion <- TestCompile.allVersions)
 				CallbackTest.full(scalaVersion, files) { (callback, file, scalaInstance, log) =>
 					val expected = Set( main -> "Main", main4 -> "Main4", main8 -> "Main8", main9 -> "Main9", mainB -> "MainB",
-						mainE -> "MainE1", mainE -> "MainE2", mainE -> "MainE3", mainE -> "MainE4", mainE -> "MainE5",
+						mainE -> "MainE1", mainE -> "MainE2", mainE -> "MainE3", mainE -> "MainE4", mainE -> "MainE5", mainE -> "MainE6", mainE -> "MainE8",
 						mainF -> "MainF1", mainF -> "MainF2", mainF -> "MainF4")
+						// the source signature is valid for the following, but the binary signature is not, so they can't actually be run.
+						//   these are then known discrepancies between detected and actual entry points
+					val erased = Set( mainE -> "MainE6", mainE -> "MainE8" )
 					val actual = applications(callback).toSet
 					(actual -- expected) must beEmpty
 					(expected -- actual) must beEmpty
 					val loader = new URLClassLoader(Array(file.toURI.toURL), scalaInstance.loader)
-					for( (_, className) <- expected) testRun(loader, className)
+					for( (_, className) <- expected filterNot erased) testRun(loader, className)
 				}
 		}
 	}
 	def applications(callback: xsbti.TestCallback): Seq[(File, String)] =
-		for( (file, api) <- callback.apis.toSeq; application <- applications(api))
+		for( (file, api) <- callback.apis.toSeq;
+	x = println("\n" + file + ":\n" + (api.definitions.flatMap { case c: xsbti.api.ClassLike => c.structure.inherited.filter(_.name == "main"); case _ => Nil }).map(xsbt.api.DefaultShowAPI.apply).mkString("\n"));
+ application <- applications(api))
 			yield	(file, application)
 	def applications(src: xsbti.api.Source): Seq[String] =
 		Discovery.applications(src.definitions) collect { case (definition, Discovered(_, _, true, _)) => definition.name }

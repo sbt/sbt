@@ -3,6 +3,8 @@ package sbt
 	import java.lang.reflect.{Array => _, _}
 	import java.lang.annotation.Annotation
 	import xsbti.api
+	import xsbti.SafeLazy
+	import SafeLazy.strict
 
 object ClassToAPI
 {
@@ -27,10 +29,10 @@ object ClassToAPI
 		val annots = annotations(c.getAnnotations)
 		val name = c.getName
 		val tpe = if(Modifier.isInterface(c.getModifiers)) Trait else ClassDef
-		val (static, instance) = structure(c)
-		val cls = new api.ClassLike(tpe, Empty, instance, typeParameters(c.getTypeParameters), name, acc, mods, annots)
+		lazy val (static, instance) = structure(c)
+		val cls = new api.ClassLike(tpe, strict(Empty), lzy(instance), typeParameters(c.getTypeParameters), name, acc, mods, annots)
 		def makeStatic(s: api.Structure) = 
-			new api.ClassLike(Module, Empty, s, Array(), name, acc, mods, annots)
+			new api.ClassLike(Module, strict(Empty), strict(s), Array(), name, acc, mods, annots)
 		cls :: static.map(makeStatic).toList
 	}
 
@@ -42,17 +44,20 @@ object ClassToAPI
 		val classes = merge[Class[_]](c, c.getClasses, c.getDeclaredClasses, toDefinitions, (_: Seq[Class[_]]).partition(isStatic), _.getEnclosingClass != c)
 		val all = (methods ++ fields ++ constructors ++ classes)
 		val parentTypes = parents(c)
-		val instanceStructure = new api.Structure(parentTypes.toArray, all.declared.toArray, all.inherited.toArray)
-		def static = new api.Structure(Array(), all.staticDeclared.toArray, all.staticInherited.toArray)
+		val instanceStructure = new api.Structure(lzy(parentTypes.toArray), lzy(all.declared.toArray), lzy(all.inherited.toArray))
+		def static = new api.Structure(emptyTpeArray, lzy(all.staticDeclared.toArray), lzy(all.staticInherited.toArray))
 		val staticStructure = if(all.staticDeclared.isEmpty && all.staticInherited.isEmpty) None else Some(static)
 		(staticStructure, instanceStructure)
 	}
+	def lzy[T <: AnyRef](t: => T): xsbti.api.Lazy[T] = xsbti.SafeLazy(t)
+	private val emptyTpeArray = lzy(Array[xsbti.api.Type]())
+	private val emptyDefArray = lzy(Array[xsbti.api.Definition]())
 
 	def parents(c: Class[_]): Seq[api.Type] =
 		types(c.getGenericSuperclass +: c.getGenericInterfaces)
 	def types(ts: Seq[Type]): Array[api.Type] = ts filter (_ ne null) map reference toArray;
 	def upperBounds(ts: Array[Type]): api.Type =
-		new api.Structure(types(ts), Array(), Array())
+		new api.Structure(lzy(types(ts)), emptyDefArray, emptyDefArray)
 
 	def fieldToDef(f: Field): api.FieldLike =
 	{
@@ -133,7 +138,7 @@ object ClassToAPI
 	def modifiers(i: Int): api.Modifiers =
 	{
 		import Modifier.{isAbstract, isFinal}
-		new api.Modifiers( isAbstract(i),  false, false, isFinal(i), false, false, false, false)
+		new api.Modifiers( isAbstract(i), false, isFinal(i), false, false, false)
 	}
 	def access(i: Int): api.Access =
 	{

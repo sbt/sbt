@@ -30,8 +30,8 @@ object DetectSubclasses extends Specification
 						val actual = subclasses(callback).toSet
 						val actualOnly = actual -- expected
 						val expectedOnly = expected.toSet -- actual
-						assert(actualOnly.isEmpty, "Actual only: " + actualOnly)
-						assert(expectedOnly.isEmpty , "Expected only: " + expectedOnly)
+						actualOnly must beEmpty
+						expectedOnly must beEmpty
 					}
 		}
 	}

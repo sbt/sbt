@@ -14,8 +14,8 @@ Definition
 			returnType: Type
 		ClassLike
 			definitionType: DefinitionType
-			selfType: Type
-			structure: Structure
+			selfType: ~Type
+			structure: ~Structure
 		TypeMember
 			TypeAlias
 				tpe: Type

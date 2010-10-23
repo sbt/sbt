@@ -3,7 +3,7 @@
  */
 package xsbt.api
 
-import xsbti.api._
+	import xsbti.api._
 
 trait Show[A]
 {
@@ -16,7 +16,7 @@ final class ShowLazy[A](delegate: => Show[A]) extends Show[A]
 	def show(a: A) = s.show(a)
 }
 
-import ShowAPI._
+	import ShowAPI._
 
 object ShowAPI
 {
@@ -26,7 +26,7 @@ object ShowAPI
 	def bounds(lower: Type, upper: Type)(implicit t: Show[Type]): String =
 		">: " + t.show(lower) + " <: " + t.show(upper)
 
-	import ParameterModifier._
+		import ParameterModifier._
 	def parameterModifier(base: String, pm: ParameterModifier): String =
 		pm match
 		{
@@ -50,7 +50,7 @@ trait ShowBase
 	implicit def showAnnotationArgument: Show[AnnotationArgument] =
 		new Show[AnnotationArgument] { def show(a: AnnotationArgument) = a.name + " = " + a.value }
 		
-	import Variance._
+		import Variance._
 	implicit def showVariance: Show[Variance] = 
 		new Show[Variance] { def show(v: Variance) = v match { case Invariant => ""; case Covariant => "+"; case Contravariant => "-" } }
 	
@@ -102,9 +102,8 @@ trait ShowBase
 					(m.isFinal, "final") ::
 					(m.isSealed, "sealed") ::
 					(m.isImplicit, "implicit") ::
-					(m.isAbstract || m.isDeferred, "abstract") ::
+					(m.isAbstract, "abstract") ::
 					(m.isLazy, "lazy") ::
-					(m.isSynthetic, "synthetic") ::
 					Nil
 				mods.filter(_._1).map(_._2).mkString(" ")
 			}
@@ -142,7 +141,9 @@ trait ShowDefinitions
 		
 	implicit def showTypeDeclaration(implicit acs: Show[Access], ms: Show[Modifiers], ans: Show[Annotation], tp: Show[Seq[TypeParameter]], t: Show[Type]): Show[TypeDeclaration] =
 		new Show[TypeDeclaration] { def show(td: TypeDeclaration) = parameterizedDef(td, "type")(acs, ms, ans, tp) + bounds(td.lowerBound, td.upperBound) }
-		
+	def showClassLikeSimple(implicit acs: Show[Access], ms: Show[Modifiers], ans: Show[Annotation], tp: Show[Seq[TypeParameter]], dt: Show[DefinitionType]): Show[ClassLike] =
+		new Show[ClassLike] { def show(cl: ClassLike) = parameterizedDef(cl, dt.show(cl.definitionType))(acs, ms, ans, tp) }
+
 	def parameterizedDef(d: ParameterizedDefinition, label: String)(implicit acs: Show[Access], ms: Show[Modifiers], ans: Show[Annotation], tp: Show[Seq[TypeParameter]]): String =
 		definitionBase(d, label)(acs, ms, ans) + tp.show(d.typeParameters)
 	def definitionBase(d: Definition, label: String)(implicit acs: Show[Access], ms: Show[Modifiers], ans: Show[Annotation]): String =
@@ -209,7 +210,8 @@ trait ShowTypes
 	implicit def showStructure(implicit t: Show[Type], d: Show[Definition]): Show[Structure] =
 		new Show[Structure] {
 			def show(s: Structure) =
-				concat(s.parents, t, " with ") + "\n{\n  Declared:\n" + lines(s.declared, d) + "\n  Inherited:\n" + lines(s.inherited, d) + "\n}"
+				// don't show inherited to avoid dealing with cycles
+				concat(s.parents, t, " with ") + "\n{\n" + lines(s.declared, d) + "\n}"
 		}
 	implicit def showAnnotated(implicit as: Show[Annotation], t: Show[SimpleType]): Show[Annotated] = 
 		new Show[Annotated] { def show(a: Annotated) = spaced(a.annotations, as) + " " + t.show(a.baseType) }
