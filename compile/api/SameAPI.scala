@@ -4,7 +4,6 @@
 package xsbt.api
 
 import xsbti.api._
-import TagTypeVariables.TypeVars
 
 import Function.tupled
 import scala.collection.{immutable, mutable}
@@ -36,7 +35,7 @@ object TopLevel
 	def definitions(i: Iterable[Source]) = SameAPI.separateDefinitions(i.toSeq.flatMap( _.definitions ))
 	def names(s: Iterable[Definition]): Set[String] = Set() ++ s.map(_.name)
 }
-
+	import TagTypeVariables.TypeVars
 /** Checks the API of two source files for equality.*/
 object SameAPI
 {
@@ -89,10 +88,12 @@ object SameAPI
 class SameAPI(tagsA: TypeVars, tagsB: TypeVars, includePrivate: Boolean, includeParamNames: Boolean)
 {
 	import SameAPI._
-	
+
+	private val pending = new mutable.HashSet[(Structure, Structure)]
+	private[this] val debugEnabled = java.lang.Boolean.getBoolean("xsbt.api.debug")
 	def debug(flag: Boolean, msg: => String): Boolean =
 	{
-		//if(!flag) println(msg)
+		if(debugEnabled && !flag) println(msg)
 		flag
 	}
 
@@ -192,13 +193,11 @@ class SameAPI(tagsA: TypeVars, tagsB: TypeVars, includePrivate: Boolean, include
 		import m._
 		val bs = new mutable.BitSet
 		setIf(bs, isAbstract, 0)
-		setIf(bs, isDeferred, 1)
-		setIf(bs, isOverride, 2)
-		setIf(bs, isFinal, 3)
-		setIf(bs, isSealed, 4)
-		setIf(bs, isImplicit, 5)
-		setIf(bs, isLazy, 6)
-		setIf(bs, isSynthetic, 7)
+		setIf(bs, isOverride, 1)
+		setIf(bs, isFinal, 2)
+		setIf(bs, isSealed, 3)
+		setIf(bs, isImplicit, 4)
+		setIf(bs, isLazy, 5)
 		bs.toImmutable
 	}
 	def setIf(bs: mutable.BitSet, flag: Boolean, i: Int): Unit =
@@ -314,6 +313,12 @@ class SameAPI(tagsA: TypeVars, tagsB: TypeVars, includePrivate: Boolean, include
 		sameSimpleType(a.baseType, b.baseType) &&
 		sameAnnotations(a.annotations, b.annotations)
 	def sameStructure(a: Structure, b: Structure): Boolean =
+		if(pending add ((a,b)) )
+			try { sameStructureDirect(a,b) }
+			finally { pending -= ((a,b)) }
+		else
+			true
+	def sameStructureDirect(a: Structure, b: Structure): Boolean =
 		sameSeq(a.parents, b.parents)(sameType) &&
 		sameMembers(a.declared, b.declared) &&
 		sameMembers(a.inherited, b.inherited)

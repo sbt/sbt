@@ -20,13 +20,11 @@ Qualifier
 
 Modifiers
 	isAbstract: Boolean
-	isDeferred: Boolean
 	isOverride: Boolean
 	isFinal: Boolean
 	isSealed: Boolean
 	isImplicit: Boolean
 	isLazy: Boolean
-	isSynthetic: Boolean
 
 ParameterList
 	parameters: MethodParameter*

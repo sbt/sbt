@@ -62,8 +62,6 @@ trait ProguardLaunch extends ProguardProject
 		val name = file.getName
 		name.startsWith(x) && name.endsWith(".jar")
 	}
-	// class body declaration for proguard that keeps all public members
-	private val allPublic = " {\n public * ;\n}"
 
 	private val keepJLine =
 	"""

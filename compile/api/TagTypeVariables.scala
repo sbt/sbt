@@ -1,6 +1,10 @@
+/* sbt -- Simple Build Tool
+ * Copyright 2010 Mark Harrah
+ */
 package xsbt.api
 
-import xsbti.api._
+	import xsbti.api._
+	import scala.collection.mutable
 
 object TagTypeVariables
 {
@@ -8,9 +12,12 @@ object TagTypeVariables
 	def apply(s: Source): TypeVars = (new TagTypeVariables).tag(s)
 }
 import TagTypeVariables.TypeVars
-private class TagTypeVariables extends NotNull
+private class TagTypeVariables
 {
-	private val tags = new scala.collection.mutable.HashMap[Int, (Int, Int)]
+	private val taggedStructures = new mutable.HashSet[Structure]
+	private val taggedClasses = new mutable.HashSet[ClassLike]
+
+	private val tags = new mutable.HashMap[Int, (Int, Int)]
 	private var level = 0
 	private var index = 0
 
@@ -31,7 +38,8 @@ private class TagTypeVariables extends NotNull
 			case t: TypeAlias => tagTypeAlias(t)
 		}
 	}
-	def tagClass(c: ClassLike): Unit =
+	def tagClass(c: ClassLike): Unit = if(taggedClasses add c) tagClass0(c)
+	def tagClass0(c: ClassLike): Unit =
 		tagParameterizedDefinition(c) {
 			tagType(c.selfType)
 			tagStructure(c.structure)
@@ -108,7 +116,8 @@ private class TagTypeVariables extends NotNull
 		tagType(a.baseType)
 		tagAnnotations(a.annotations)
 	}
-	def tagStructure(structure: Structure)
+	def tagStructure(structure: Structure): Unit = if(taggedStructures add structure) tagStructure0(structure)
+	def tagStructure0(structure: Structure)
 	{
 		tagTypes(structure.parents)
 		tagDefinitions(structure.declared)

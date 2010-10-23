@@ -46,9 +46,7 @@ object DetectAnnotations extends Specification
 							Nil
 						val actual = subclasses(callback).toSet
 						val actualOnly = (actual -- expected)
-						println("Actual: " + actualOnly)
 						val expectedOnly = (expected.toSet -- actual)
-						println("Expected: " + expectedOnly)
 						expectedOnly must beEmpty
 						actualOnly must beEmpty
 					}
