@@ -4,7 +4,7 @@
 package sbt
 package compile
 
-	import xsbti.{AnalysisCallback, Logger => xLogger}
+	import xsbti.{AnalysisCallback, Logger => xLogger, Reporter}
 	import java.io.File
 	import java.net.{URL, URLClassLoader}
 
@@ -12,7 +12,7 @@ package compile
 * provided by scalaInstance.  This class requires a ComponentManager in order to obtain the interface code to scalac and
 * the analysis plugin.  Because these call Scala code for a different Scala version than the one used for this class, they must
 * be compiled for the version of Scala being used.*/
-class AnalyzingCompiler(val scalaInstance: ScalaInstance, val manager: ComponentManager, val cp: ClasspathOptions, log: Logger) extends NotNull
+class AnalyzingCompiler(val scalaInstance: ScalaInstance, val manager: ComponentManager, val cp: ClasspathOptions, log: Logger)
 {
 	def this(scalaInstance: ScalaInstance, manager: ComponentManager, log: Logger) = this(scalaInstance, manager, ClasspathOptions.auto, log)
 	def apply(sources: Seq[File], classpath: Seq[File], outputDirectory: File, options: Seq[String], callback: AnalysisCallback, maximumErrors: Int, log: Logger)
@@ -20,16 +20,23 @@ class AnalyzingCompiler(val scalaInstance: ScalaInstance, val manager: Component
 		val arguments = (new CompilerArguments(scalaInstance, cp))(sources, classpath, outputDirectory, options)
 		compile(arguments, callback, maximumErrors, log)
 	}
-	def compile(arguments: Seq[String], callback: AnalysisCallback, maximumErrors: Int, log: Logger)
+
+	def compile(arguments: Seq[String], callback: AnalysisCallback, maximumErrors: Int, log: Logger): Unit =
+		compile(arguments, callback, log, new LoggerReporter(maximumErrors, log))
+	def compile(arguments: Seq[String], callback: AnalysisCallback, log: Logger, reporter: Reporter)
 	{
 		call("xsbt.CompilerInterface", log)(
-			classOf[Array[String]], classOf[AnalysisCallback], classOf[Int], classOf[xLogger] ) (
-			arguments.toArray[String] : Array[String], callback, maximumErrors: java.lang.Integer, log )
+			classOf[Array[String]], classOf[AnalysisCallback], classOf[xLogger], classOf[Reporter] ) (
+			arguments.toArray[String] : Array[String], callback, log, reporter )
 	}
+
 	def doc(sources: Seq[File], classpath: Seq[File], outputDirectory: File, options: Seq[String], maximumErrors: Int, log: Logger): Unit =
+		doc(sources, classpath, outputDirectory, options, log, new LoggerReporter(maximumErrors, log))
+	def doc(sources: Seq[File], classpath: Seq[File], outputDirectory: File, options: Seq[String], log: Logger, reporter: Reporter): Unit =
 	{
 		val arguments = (new CompilerArguments(scalaInstance, cp))(sources, classpath, outputDirectory, options)
-		call("xsbt.ScaladocInterface", log) (classOf[Array[String]], classOf[Int], classOf[xLogger]) (arguments.toArray[String] : Array[String], maximumErrors: java.lang.Integer, log)
+		call("xsbt.ScaladocInterface", log) (classOf[Array[String]], classOf[xLogger], classOf[Reporter]) (
+			arguments.toArray[String] : Array[String], log, reporter)
 	}
 	def console(classpath: Seq[File], options: Seq[String], initialCommands: String, log: Logger)(loader: Option[ClassLoader] = None, bindings: Seq[(String, Any)] = Nil): Unit =
 	{
