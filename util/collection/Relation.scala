@@ -38,7 +38,9 @@ trait Relation[A,B]
 	def _1s: collection.Set[A]
 	/** Returns the set of all _2s such that (_1, _2) is in this relation. */
 	def _2s: collection.Set[B]
-	
+	/** Returns the number of pairs in this relation */
+	def size: Int
+
 	/** Returns all pairs in this relation.*/
 	def all: Traversable[(A,B)]
 	
@@ -57,6 +59,8 @@ private final class MRelation[A,B](fwd: Map[A, Set[B]], rev: Map[B, Set[A]]) ext
 
 	def _1s = fwd.keySet
 	def _2s = rev.keySet
+
+	def size = fwd.size
 	
 	def all: Traversable[(A,B)] = fwd.iterator.flatMap { case (a, bs) => bs.iterator.map( b => (a,b) ) }.toTraversable
 	
