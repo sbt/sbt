@@ -65,7 +65,7 @@ object MultiProject
 		Build.binaries(inputs.config.classpath, toLoad, getClass.getClassLoader)(construct(info)).head.asInstanceOf[Project]
 	}
 
-	def loadExternals(from: Iterable[Project], loadImpl: File => Project): Map[File, Project] =
+	def loadExternals(from: Seq[Project], loadImpl: File => Project): Map[File, Project] =
 	{
 		def load(loaded: Map[File, Project], file: File): Map[File, Project] =
 			(loaded get file) match
@@ -84,9 +84,9 @@ object MultiProject
 		loadAll(  externals(from) , Map.empty)
 	}
 
-	def externals(containers: Iterable[Project]): Set[File] =
+	def externals(containers: Seq[Project]): Set[File] =
 	{
-		def exts(containers: Iterable[Project]): Iterable[File] =
+		def exts(containers: Seq[Project]): Seq[File] =
 			containers flatMap { container => externalProjects(container) ++ exts(internalProjects(container)) }
 		exts(containers).toSet
 	}
@@ -108,13 +108,13 @@ object MultiProject
 	{
 		val contexts = topologicalSort(root) map { p => (p, ReflectiveContext(p, p.name)) }
 		val externals = root.info.externals
-		def subs(f: Project => Iterable[ProjectDependency]): Project =>  Iterable[Project] = p =>
+		def subs(f: Project => Seq[ProjectDependency]): Project =>  Seq[Project] = p =>
 			f(p) map( _.project match { case Left(path) => externals(path); case Right(proj) => proj } )
 		MultiContext(contexts)(subs(_.aggregate), subs(_.dependencies) )
 	}
 
-	def lefts[A,B](e: Iterable[Either[A,B]]):Iterable[A] = e collect { case Left(l) => l }
-	def rights[A,B](e: Iterable[Either[A,B]]):Iterable[B] = e collect { case Right(r)=> r }
+	def lefts[A,B](e: Seq[Either[A,B]]):Seq[A] = e collect { case Left(l) => l }
+	def rights[A,B](e: Seq[Either[A,B]]):Seq[B] = e collect { case Right(r)=> r }
 
 	def transformName(s: String) =
 	{
@@ -172,8 +172,8 @@ trait Project extends Tasked with HistoryEnabled with Member[Project] with Named
 	def input = Dummy.In
 	def state = Dummy.State
 
-	def aggregate: Iterable[ProjectDependency.Execution] = info.dependencies collect { case ex: ProjectDependency.Execution => ex }
-	def dependencies: Iterable[ProjectDependency.Classpath] = info.dependencies collect { case cp: ProjectDependency.Classpath => cp }
+	def aggregate: Seq[ProjectDependency.Execution] = info.dependencies collect { case ex: ProjectDependency.Execution => ex }
+	def dependencies: Seq[ProjectDependency.Classpath] = info.dependencies collect { case cp: ProjectDependency.Classpath => cp }
 
 	type Task[T] = sbt.Task[T]
 	def act(input: Input, state: State): Option[(Task[State], Execute.NodeView[Task])] =
@@ -202,9 +202,9 @@ trait ProjectExtra
 }
 trait ReflectiveProject extends Project
 {
-	private[this] def vals[T: Manifest] = ReflectUtilities.allVals[T](this).map(_._2)
-	override def aggregate: Iterable[ProjectDependency.Execution] = vals[ProjectDependency.Execution] ++ vals[Project].map(p => ProjectDependency.Execution(Right(p))) ++ super.aggregate
-	override def dependencies: Iterable[ProjectDependency.Classpath] = vals[ProjectDependency.Classpath] ++ super.dependencies
+	private[this] def vals[T: Manifest] = ReflectUtilities.allVals[T](this).toSeq.map(_._2)
+	override def aggregate: Seq[ProjectDependency.Execution] = vals[ProjectDependency.Execution] ++ vals[Project].map(p => ProjectDependency.Execution(Right(p))) ++ super.aggregate
+	override def dependencies: Seq[ProjectDependency.Classpath] = vals[ProjectDependency.Classpath] ++ super.dependencies
 }
 trait ConsoleTask
 {

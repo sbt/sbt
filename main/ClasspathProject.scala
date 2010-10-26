@@ -112,7 +112,7 @@ trait DefaultClasspathProject extends BasicClasspathProject with Project
 		new InlineIvyConfiguration(paths, rs, otherResolvers, moduleConfigurations, offline, Some(info.globalLock), ConsoleLogger())
 	}
 
-	def libraryDependencies: Iterable[ModuleID] = ReflectUtilities.allVals[ModuleID](this).map(_._2)
+	def libraryDependencies: Seq[ModuleID] = ReflectUtilities.allVals[ModuleID](this).toSeq.map(_._2)
 
 	def managedDependencyPath: Path = info.projectDirectory / "lib_managed"
 	def dependencyPath: Path = info.projectDirectory / "lib"
@@ -132,12 +132,12 @@ trait DefaultClasspathProject extends BasicClasspathProject with Project
 }
 trait MultiClasspathProject extends DefaultClasspathProject
 {
-	def dependencies: Iterable[ProjectDependency.Classpath]
+	def dependencies: Seq[ProjectDependency.Classpath]
 	def name: String
 	def organization: String
 	def version: String
 
-	def projectDependencies: Iterable[ModuleID] =
+	def projectDependencies: Seq[ModuleID] =
 		resolvedDependencies(this) collect { case (p: DefaultClasspathProject, conf) => p.projectID.copy(configurations = conf) }
 
 	lazy val projectResolver =
@@ -146,7 +146,7 @@ trait MultiClasspathProject extends DefaultClasspathProject
 		}
 
 	override def projectID = ModuleID(organization, name, version)
-	override def libraryDependencies: Iterable[ModuleID] = super.libraryDependencies ++ projectDependencies
+	override def libraryDependencies: Seq[ModuleID] = super.libraryDependencies ++ projectDependencies
 	
 	override lazy val resolvers: Task[Seq[Resolver]] = projectResolver map { _ +: baseResolvers }
 }
@@ -206,7 +206,7 @@ object ClasspathProject
 			}).toMap
 		}
 
-	def resolvedDependencies(p: Project): Iterable[(Project, Option[String])] =
+	def resolvedDependencies(p: Project): Seq[(Project, Option[String])] =
 		p.dependencies map { cp =>
 			(resolveProject(cp.project, p), cp.configuration)
 		}

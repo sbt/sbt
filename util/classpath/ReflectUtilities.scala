@@ -33,9 +33,9 @@ object ReflectUtilities
 			flatMap(_.getDeclaredFields).
 			map(f => (f.getName, f)):_*)
 	
-	def allValsC[T](self: AnyRef, clazz: Class[T]): Map[String, T] =
+	def allValsC[T](self: AnyRef, clazz: Class[T]): immutable.SortedMap[String, T] =
 	{
-		val mappings = new mutable.OpenHashMap[String, T]
+		var mappings = new immutable.TreeMap[String, T]
 		val correspondingFields = fields(self.getClass)
 		for(method <- self.getClass.getMethods)
 		{
@@ -45,13 +45,13 @@ object ReflectUtilities
 				{
 					val value = method.invoke(self).asInstanceOf[T]
 					if(value == null) throw new UninitializedVal(method.getName, method.getDeclaringClass.getName)
-					mappings(method.getName) = value
+					mappings += ((method.getName, value))
 				}
 			}
 		}
 		mappings
 	}
-	def allVals[T](self: AnyRef)(implicit mt: scala.reflect.Manifest[T]): Map[String, T] =
-		allValsC(self, mt.erasure).asInstanceOf[Map[String,T]]
+	def allVals[T](self: AnyRef)(implicit mt: scala.reflect.Manifest[T]): immutable.SortedMap[String, T] =
+		allValsC(self, mt.erasure).asInstanceOf[immutable.SortedMap[String,T]]
 }
 final class UninitializedVal(val valName: String, val className: String) extends RuntimeException("val " + valName + " in class " + className + " was null.\nThis is probably an initialization problem and a 'lazy val' should be used.")
