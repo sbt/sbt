@@ -5,7 +5,7 @@ package sbt
 
 import java.io.{File,IOException}
 import CacheIO.{fromFile, toFile}
-import sbinary.Format
+import sbinary.{Format, JavaIO}
 import scala.reflect.Manifest
 import IO.{delete, read, write}
 
@@ -18,8 +18,8 @@ object Tracked
 	* In both cases, the timestamp is not updated if the function throws an exception.*/
 	def tstamp(cacheFile: File, useStartTime: Boolean = true): Timestamp = new Timestamp(cacheFile, useStartTime)
 	/** Creates a tracker that only evaluates a function when the input has changed.*/
-	def changed[O](cacheFile: File)(implicit input: InputCache[O]): Changed[O] =
-		new Changed[O](cacheFile)(input)
+	def changed[O](cacheFile: File)(implicit format: Format[O], equiv: Equiv[O]): Changed[O] =
+		new Changed[O](cacheFile)
 	
 	/** Creates a tracker that provides the difference between a set of input files for successive invocations.*/
 	def diffInputs(cache: File, style: FilesInfo.Style): Difference =
@@ -52,22 +52,29 @@ class Timestamp(val cacheFile: File, useStartTime: Boolean) extends Tracked
 		catch { case _: NumberFormatException | _: java.io.FileNotFoundException => 0 }
 }
 
-class Changed[O](val cacheFile: File)(implicit input: InputCache[O]) extends Tracked
+class Changed[O](val cacheFile: File)(implicit equiv: Equiv[O], format: Format[O]) extends Tracked
 {
 	def clean = delete(cacheFile)
 	def apply[O2](ifChanged: O => O2, ifUnchanged: O => O2): O => O2 = value =>
 	{
-		val cache =
-			try { Using.fileInputStream(cacheFile)(input.uptodate(value)) }
-			catch { case _: IOException => new ForceResult(input)(value) }
-		if(cache.uptodate)
+		if(uptodate(value))
 			ifUnchanged(value)
 		else
 		{
-			Using.fileOutputStream(false)(cacheFile)(cache.update)
+			update(value)
 			ifChanged(value)
 		}
 	}
+	import JavaIO._
+	def update(value: O): Unit = Using.fileOutputStream(false)(cacheFile)(stream => format.writes(stream, value))
+	def uptodate(value: O): Boolean =
+		try {
+			Using.fileInputStream(cacheFile) {
+				stream => equiv.equiv(value, format.reads(stream))
+			}
+		} catch {
+			case _: IOException => false
+		}
 }
 object Difference
 {
