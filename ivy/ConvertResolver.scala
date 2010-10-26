@@ -21,7 +21,7 @@ private object ConvertResolver
 				initializeMavenStyle(resolver, repo.name, repo.root)
 				resolver
 			}
-			case JavaNet1Repository =>
+			case r: JavaNet1Repository =>
 			{
 				// Thanks to Matthias Pfau for posting how to use the Maven 1 repository on java.net with Ivy:
 				// http://www.nabble.com/Using-gradle-Ivy-with-special-maven-repositories-td23775489.html
