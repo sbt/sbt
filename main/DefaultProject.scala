@@ -100,7 +100,8 @@ abstract class BasicProject extends TestProject with MultiClasspathProject with 
 			val classes = classesDirectory(configuration)
 			val classpath = (classes +: data(prodcp)) ++ data(cp)
 			val analysis = analysisMap(prodcp ++ cp)
-			Compile.inputs(classpath, sources.getFiles.toSeq, classes, scalacOptions, javacOptions, javaSrc.getFiles.toSeq, analysis, cacheDirectory, 100)(compilers, log)
+			val cache = cacheDirectory / "compile" / configuration.toString
+			Compile.inputs(classpath, sources.getFiles.toSeq, classes, scalacOptions, javacOptions, javaSrc.getFiles.toSeq, analysis, cache, 100)(compilers, log)
 		}
 	}
 
