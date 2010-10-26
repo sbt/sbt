@@ -22,7 +22,7 @@ import util.Message
 
 import scala.xml.NodeSeq
 
-final class IvySbt(configuration: IvyConfiguration)
+final class IvySbt(val configuration: IvyConfiguration)
 {
 	import configuration.{log, baseDirectory}
 	/** ========== Configuration/Setup ============
@@ -86,8 +86,9 @@ final class IvySbt(configuration: IvyConfiguration)
 			finally { ivy.popContext() }
 		}
 
-	final class Module(val moduleSettings: ModuleSettings) extends NotNull
+	final class Module(val moduleSettings: ModuleSettings)
 	{
+		def owner = IvySbt.this
 		def logger = configuration.log
 		def withModule[T](f: (Ivy,DefaultModuleDescriptor,String) => T): T =
 			withIvy[T] { ivy => f(ivy, moduleDescriptor, defaultConfig) }

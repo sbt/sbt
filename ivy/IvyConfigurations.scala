@@ -6,11 +6,11 @@ package sbt
 import java.io.File
 import scala.xml.{Node, NodeSeq}
 
-final class IvyPaths(val baseDirectory: File, val cacheDirectory: Option[File]) extends NotNull
+final class IvyPaths(val baseDirectory: File, val cacheDirectory: Option[File])
 {
 	def withBase(newBaseDirectory: File) = new IvyPaths(newBaseDirectory, cacheDirectory)
 }
-sealed trait IvyConfiguration extends NotNull
+sealed trait IvyConfiguration
 {
 	type This <: IvyConfiguration
 	def lock: Option[xsbti.GlobalLock]
@@ -48,7 +48,7 @@ object IvyConfiguration
 	}
 }
 
-sealed trait ModuleSettings extends NotNull
+sealed trait ModuleSettings
 {
 	def validate: Boolean
 	def ivyScala: Option[IvyScala]
@@ -62,11 +62,11 @@ final class PomConfiguration(val file: File, val ivyScala: Option[IvyScala], val
 {
 	def noScala = new PomConfiguration(file, None, validate)
 }
-final class InlineConfiguration(val module: ModuleID, val dependencies: Iterable[ModuleID], val ivyXML: NodeSeq,
-	val configurations: Iterable[Configuration], val defaultConfiguration: Option[Configuration], val ivyScala: Option[IvyScala],
+final class InlineConfiguration(val module: ModuleID, val dependencies: Seq[ModuleID], val ivyXML: NodeSeq,
+	val configurations: Seq[Configuration], val defaultConfiguration: Option[Configuration], val ivyScala: Option[IvyScala],
 	val validate: Boolean) extends ModuleSettings
 {
-	def withConfigurations(configurations: Iterable[Configuration]) = 
+	def withConfigurations(configurations: Seq[Configuration]) = 
 		new InlineConfiguration(module, dependencies, ivyXML, configurations, defaultConfiguration, ivyScala, validate)
 	def noScala = new InlineConfiguration(module, dependencies, ivyXML, configurations, defaultConfiguration, None, validate)
 }
@@ -76,7 +76,7 @@ final class EmptyConfiguration(val module: ModuleID, val ivyScala: Option[IvySca
 }
 object InlineConfiguration
 {
-	def apply(module: ModuleID, dependencies: Iterable[ModuleID]) =
+	def apply(module: ModuleID, dependencies: Seq[ModuleID]) =
 		new InlineConfiguration(module, dependencies, NodeSeq.Empty, Nil, None, None, false)
 	def configurations(explicitConfigurations: Iterable[Configuration], defaultConfiguration: Option[Configuration]) =
 		if(explicitConfigurations.isEmpty)

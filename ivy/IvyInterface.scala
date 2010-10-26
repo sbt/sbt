@@ -34,7 +34,7 @@ object ModuleID
 		for ( (key, value) <- attributes) yield
 			if(key.startsWith("e:")) (key, value) else ("e:" + key, value)
 }
-sealed trait Resolver extends NotNull
+sealed trait Resolver
 {
 	def name: String
 }
@@ -47,7 +47,7 @@ sealed case class MavenRepository(name: String, root: String) extends Resolver
 	override def toString = name + ": " + root
 }
 
-final class Patterns(val ivyPatterns: Seq[String], val artifactPatterns: Seq[String], val isMavenCompatible: Boolean) extends NotNull
+final class Patterns(val ivyPatterns: Seq[String], val artifactPatterns: Seq[String], val isMavenCompatible: Boolean)
 {
 	private[sbt] def mavenStyle(): Patterns = Patterns(ivyPatterns, artifactPatterns, true)
 	private[sbt] def withIvys(patterns: Seq[String]): Patterns = Patterns(patterns ++ ivyPatterns, artifactPatterns, isMavenCompatible)
@@ -61,12 +61,12 @@ object Patterns
 }
 object RepositoryHelpers
 {
-	final case class SshConnection(authentication: Option[SshAuthentication], hostname: Option[String], port: Option[Int]) extends NotNull
+	final case class SshConnection(authentication: Option[SshAuthentication], hostname: Option[String], port: Option[Int])
 	{
 		def copy(authentication: Option[SshAuthentication]) = SshConnection(authentication, hostname, port)
 	}
 	/** Configuration specific to an Ivy filesystem resolver. */
-	final case class FileConfiguration(isLocal: Boolean, isTransactional: Option[Boolean]) extends NotNull
+	final case class FileConfiguration(isLocal: Boolean, isTransactional: Option[Boolean])
 	{
 		def transactional() = FileConfiguration(isLocal, Some(true))
 		def nontransactional() = FileConfiguration(isLocal, Some(false))
@@ -151,7 +151,8 @@ import Resolver._
 object ScalaToolsReleases extends MavenRepository(ScalaToolsReleasesName, ScalaToolsReleasesRoot)
 object ScalaToolsSnapshots extends MavenRepository(ScalaToolsSnapshotsName, ScalaToolsSnapshotsRoot)
 object DefaultMavenRepository extends MavenRepository("public", IBiblioResolver.DEFAULT_M2_ROOT)
-object JavaNet1Repository extends Resolver
+object JavaNet1Repository extends JavaNet1Repository
+sealed trait JavaNet1Repository extends Resolver
 {
 	def name = "java.net Maven1 Repository"
 }
@@ -357,7 +358,7 @@ object Artifact
 		Artifact(name, extract(name, defaultType), extract(name, defaultExtension), None, Nil, Some(file.toURI.toURL))
 	}
 }
-final case class ModuleConfiguration(organization: String, name: String, revision: String, resolver: Resolver) extends NotNull
+final case class ModuleConfiguration(organization: String, name: String, revision: String, resolver: Resolver)
 object ModuleConfiguration
 {
 	def apply(org: String, resolver: Resolver): ModuleConfiguration = apply(org, "*", "*", resolver)
