@@ -53,6 +53,8 @@ trait BasicClasspathProject extends ClasspathProject
 	val ivyConfiguration: Task[IvyConfiguration]
 	val moduleSettings: Task[ModuleSettings]
 	val unmanagedBase: Task[File]
+	def cacheDirectory: File
+
 
 	val updateConfig: Task[UpdateConfiguration]
 
@@ -80,11 +82,7 @@ trait BasicClasspathProject extends ClasspathProject
 			}
 		}
 		
-	import Types._
-	lazy val update = (ivyModule, updateConfig) map { case module :+: config :+: HNil =>
-		val confMap = configurationMap
-		IvyActions.update(module, config) map { case (key, value) => (confMap(key), value) } toMap;
-	}
+	lazy val update = (ivyModule, updateConfig) map cachedUpdate(cacheDirectory / "update", configurationMap)
 }
 
 trait DefaultClasspathProject extends BasicClasspathProject with Project
@@ -263,4 +261,24 @@ object ClasspathProject
 			case cp: ClasspathProject => cp.defaultConfiguration getOrElse Configurations.Default
 			case _ => Configurations.Default
 		}
+
+		import Cache._
+		import Types._
+		import CacheIvy.{classpathFormat, updateIC}
+		
+
+	def cachedUpdate(cacheFile: File, configMap: Map[String, Configuration]): (IvySbt#Module :+: UpdateConfiguration :+: HNil) => Map[Configuration, Seq[File]] =
+		{ case module :+: config :+: HNil =>
+			implicit val updateCache = updateIC
+			val f = cached(cacheFile) { (conf: IvyConfiguration, settings: ModuleSettings, config: UpdateConfiguration) =>
+				println("Updating...")
+				val r = IvyActions.update(module, config)
+				println("Done updating...")
+				r
+			}
+			val classpaths = f(module.owner.configuration :+: module.moduleSettings :+: config :+: HNil)
+			val confMap = configMap
+			classpaths map { case (key, value) => (confMap(key), value) } toMap;
+		}
+
 }
