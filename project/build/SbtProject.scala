@@ -26,7 +26,7 @@ abstract class SbtProject(info: ProjectInfo) extends DefaultProject(info) with t
 	//   The output of scripted tasks executed in parallel will be inteleaved if false.
 	override def scriptedBufferLog = true
 	// Configure which versions of Scala to test against for those tests that do cross building
-	override def scriptedBuildVersions = "2.7.7 2.7.5 2.7.2 2.8.0.RC2 2.8.0.Beta1"
+	override def scriptedBuildVersions = "2.7.7 2.7.5 2.7.2 2.8.0 2.8.1.RC4"
 
 	override def useDefaultConfigurations = false
 	val default = Configurations.Default
