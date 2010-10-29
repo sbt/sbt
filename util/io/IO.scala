@@ -1,5 +1,5 @@
 /* sbt -- Simple Build Tool
- * Copyright 2008, 2009, 2010 Mark Harrah
+ * Copyright 2008, 2009, 2010 Mark Harrah, Viktor Klang, Ross McDonald
  */
 package sbt
 
@@ -11,7 +11,8 @@ import java.net.{URI, URISyntaxException, URL}
 import java.nio.charset.Charset
 import java.util.Properties
 import java.util.jar.{Attributes, JarEntry, JarFile, JarInputStream, JarOutputStream, Manifest}
-import java.util.zip.{GZIPOutputStream, ZipEntry, ZipFile, ZipInputStream, ZipOutputStream}
+import java.util.zip.{CRC32, GZIPOutputStream, ZipEntry, ZipFile, ZipInputStream, ZipOutputStream}
+import scala.collection.immutable.TreeSet
 import scala.collection.mutable.HashSet
 import scala.reflect.{Manifest => SManifest}
 import Function.tupled
@@ -172,6 +173,12 @@ object IO
 			transfer(inputStream, to)
 		}
 
+	def transfer(in: File, out: File): Unit =
+		fileInputStream(in){ in => transfer(in, out) }
+
+	def transfer(in: File, out: OutputStream): Unit =
+		fileInputStream(in){ in => transfer(in, out) }
+
 	/** Copies all bytes from the given input stream to the given File.*/
 	def transfer(in: InputStream, to: File): Unit =
 		Using.fileOutputStream()(to) { outputStream =>
@@ -292,21 +299,66 @@ object IO
 	}
 	private def writeZip(sources: Seq[(File,String)], output: ZipOutputStream)(createEntry: String => ZipEntry)
 	{
-		def add(sourceFile: File, name: String)
+			import Path.{lazyPathFinder => pf}
+		val files = sources.collect { case (file,name) if file.isFile => (file, normalizeName(name)) }
+		val now = System.currentTimeMillis
+		// The CRC32 for an empty value, needed to store directories in zip files
+		val emptyCRC = new CRC32().getValue()
+
+		def addDirectoryEntry(name: String)
 		{
-			if(!sourceFile.exists)
-				error("Source " + sourceFile + " does not exist.")
-			val isDirectory = sourceFile.isDirectory
-			val relName = if(isDirectory) normalizeDirName(name) else normalizeName(name)
-			val nextEntry = createEntry(relName)
-			nextEntry.setTime(sourceFile.lastModified)
-			output.putNextEntry(nextEntry)
-			if(!isDirectory)
-				transfer(new FileInputStream(sourceFile), output)
+			output putNextEntry makeDirectoryEntry(name)
+			output.closeEntry()
 		}
-		sources.foreach((add _).tupled)
-		output.closeEntry()
+
+		def makeDirectoryEntry(name: String) =
+		{
+//			log.debug("\tAdding directory " + relativePath + " ...")
+			val e = createEntry(name)
+			e setTime now
+			e setSize 0
+			e setMethod ZipEntry.STORED
+			e setCrc emptyCRC
+			e
+		}
+
+		def makeFileEntry(file: File, name: String) =
+		{
+//			log.debug("\tAdding " + file + " as " + name + " ...")
+			val e = createEntry(name)
+			e setTime file.lastModified
+			e
+		}
+		def addFileEntry(file: File, name: String)
+		{
+			output putNextEntry makeFileEntry(file, name)
+			transfer(file, output)
+			output.closeEntry()
+		}
+
+		//Calculate directories and add them to the generated Zip
+		allDirectoryPaths(files) foreach addDirectoryEntry
+
+		//Add all files to the generated Zip
+		files foreach { case (file, name) => addFileEntry(file, name) }
 	}
+
+	// map a path a/b/c to List("a", "b")
+	private def relativeComponents(path: String): List[String] =
+		path.split("/").toList.dropRight(1)
+
+	// map components List("a", "b", "c") to List("a/b/c/", "a/b/", "a/", "")
+	private def directories(path: List[String]): List[String] =
+		path.foldLeft(List(""))( (e,l) => (e.head + l + "/") :: e )
+
+	// map a path a/b/c to List("a/b/", "a/")
+	private def directoryPaths(path: String): List[String] =
+		directories(relativeComponents(path)).filter(_.length > 1)
+
+	// produce a sorted list of all the subdirectories of all provided files
+	private def allDirectoryPaths(files: Iterable[(File,String)]) =
+		TreeSet[String]() ++ (files flatMap { case (file, name) => directoryPaths(name) })
+
 	private def normalizeDirName(name: String) =
 	{
 		val norm1 = normalizeName(name)
@@ -418,7 +470,7 @@ object IO
 	def read(file: File, charset: Charset = defaultCharset): String =
 	{
 		val out = new ByteArrayOutputStream(file.length.toInt)
-		fileInputStream(file){ in => transfer(in, out) }
+		transfer(file, out)
 		out.toString(charset.name)
 	}
 	/** doesn't close the InputStream */
