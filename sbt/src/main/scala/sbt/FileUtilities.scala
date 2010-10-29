@@ -1,5 +1,5 @@
 /* sbt -- Simple Build Tool
- * Copyright 2008, 2009, 2010 Mark Harrah, Nathan Hamblen, Justin Caballero
+ * Copyright 2008, 2009, 2010 Mark Harrah, Nathan Hamblen, Justin Caballero, Viktor Klang, Ross McDonald
  */
 package sbt
 
@@ -11,7 +11,9 @@ import java.net.{URL, URISyntaxException}
 import java.nio.charset.{Charset, CharsetDecoder, CharsetEncoder}
 import java.nio.channels.FileChannel
 import java.util.jar.{Attributes, JarEntry, JarFile, JarInputStream, JarOutputStream, Manifest}
-import java.util.zip.{GZIPOutputStream, ZipEntry, ZipFile, ZipInputStream, ZipOutputStream}
+import java.util.zip.{CRC32, GZIPOutputStream, ZipEntry, ZipFile, ZipInputStream, ZipOutputStream}
+
+import scala.collection.immutable.TreeSet
 
 import OpenResource._
 
@@ -132,30 +134,77 @@ object FileUtilities
 
 	private def writeZip(sources: Iterable[Path], output: ZipOutputStream, recursive: Boolean, log: Logger)(createEntry: String => ZipEntry) =
 	{
-		def add(source: Path)
+			import Path.{lazyPathFinder => pf}
+		// Expand if recursive and filter directories, which will be handled automatically
+		val inputs = if(recursive) (pf(sources) ***).get else sources
+		val files = inputs.filter(!_.isDirectory)
+		val now = System.currentTimeMillis
+		// The CRC32 for an empty value, needed to store directories in zip files
+		val emptyCRC = new CRC32().getValue()
+
+		def addDirectoryEntry(relativePath: String)
 		{
-			val sourceFile = source.asFile
-			if(sourceFile.isDirectory)
+			output putNextEntry makeDirectoryEntry(relativePath)
+			output.closeEntry()
+		}
+
+		def makeDirectoryEntry(relativePath: String) =
+		{
+			log.debug("\tAdding directory " + relativePath + " ...")
+			val e = createEntry(relativePath)
+			e setTime now
+			e setSize 0
+			e setMethod ZipEntry.STORED
+			e setCrc emptyCRC
+			e
+		}
+
+		def makeFileEntry(path: Path) =
+		{
+			val relativePath = path.relativePathString("/")
+			log.debug("\tAdding " + path + " as " + relativePath + " ...")
+
+			val e = createEntry(relativePath)
+			e setTime path.lastModified
+			e
+		}
+		def addFileEntry(path: Path)
+		{
+			val file = path.asFile
+			if(file.exists)
 			{
-				if(recursive)
-					wrapNull(sourceFile.listFiles).foreach(file => add(source / file.getName))
-			}
-			else if(sourceFile.exists)
-			{
-				val relativePath = source.relativePathString("/")
-				log.debug("\tAdding " + source + " as " + relativePath + " ...")
-				val nextEntry = createEntry(relativePath)
-				nextEntry.setTime(sourceFile.lastModified)
-				output.putNextEntry(nextEntry)
-				transferAndClose(new FileInputStream(sourceFile), output, log)
+				output putNextEntry makeFileEntry(path)
+				transferAndClose(new FileInputStream(file), output, log)
 				output.closeEntry()
 			}
 			else
-				log.warn("\tSource " + source + " does not exist.")
+				log.warn("\tFile " + file + " does not exist.")
 		}
-		sources.foreach(add)
+
+		//Calculate directories and add them to the generated Zip
+		allDirectoryPaths(files) foreach addDirectoryEntry
+
+		//Add all files to the generated Zip
+		files foreach addFileEntry
+
 		None
 	}
+
+	// map a path a/b/c to List("a", "b")
+	private def relativeComponents(path: Path): List[String] =
+		path.relativePathString("/").split("/").toList.dropRight(1)
+
+	// map components List("a", "b", "c") to List("a/b/c/", "a/b/", "a/", "")
+	private def directories(path: List[String]): List[String] =
+		path.foldLeft(List(""))( (e,l) => (e.head + l + "/") :: e )
+
+	// map a path a/b/c to List("a/b/", "a/")
+	private def directoryPaths(path: Path): List[String] =
+		directories(relativeComponents(path)).filter(_.length > 1)
+
+	// produce a sorted list of all the subdirectories of all provided files
+	private def allDirectoryPaths(files: Iterable[Path]) =
+		TreeSet[String]() ++ (files flatMap directoryPaths)
 
 	private def withZipOutput(file: File, manifest: Option[Manifest], log: Logger)(f: ZipOutputStream => Option[String]): Option[String] =
 	{
