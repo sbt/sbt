@@ -6,6 +6,6 @@ class SettingsTest(info: ProjectInfo) extends DefaultProject(info)
 
 	class SubProject(info: ProjectInfo) extends DefaultProject(info)
 	{
-		val configgy = "net.lag" % "configgy" % "1.1"
+		val dispatch = "net.databinder" % "databinder-dispatch" % "1.1.2" intransitive()
 	}
 }

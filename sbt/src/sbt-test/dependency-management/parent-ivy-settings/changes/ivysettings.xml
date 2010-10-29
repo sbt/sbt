@@ -1,7 +1,7 @@
 <ivysettings>
-	<settings defaultResolver="lag"/>
+	<settings defaultResolver="databinder"/>
 	<caches defaultCacheDir="${ivy.settings.dir}/target/cache"/>
 	<resolvers>
-		<ibiblio name="lag" m2compatible="true" root="http://www.lag.net/repo/"/>
+		<ibiblio name="databinder" m2compatible="true" root="http://databinder.net/repo/"/>
 	</resolvers>
 </ivysettings> 
