@@ -18,14 +18,6 @@ Qualifier
 	IdQualifier
 		value: String
 
-Modifiers
-	isAbstract: Boolean
-	isOverride: Boolean
-	isFinal: Boolean
-	isSealed: Boolean
-	isImplicit: Boolean
-	isLazy: Boolean
-
 ParameterList
 	parameters: MethodParameter*
 	isImplicit: Boolean
