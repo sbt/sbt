@@ -199,7 +199,7 @@ object Commands
 	def projects = Command { case s @ State(d: Member[_]) =>
 		Apply.simple(ProjectsCommand, projectsBrief, projectsDetailed ) { (in,s) =>
 			val log = logger(s)
-			d.projectClosure(s).foreach { case n: Named => listProject(n, d eq n, log); case _ => () }
+			d.navigation.projectClosure(s).foreach { case n: Named => listProject(n, d eq n, log); case _ => () }
 			s
 		}(s)
 	}
@@ -212,17 +212,34 @@ object Commands
 				logger(s).info(d.name)
 				s
 			}
+			else if(to == "/")
+				setProject(d.navigation.initialProject(s), s)
+			else if(to.forall(_ == '.'))
+				if(to.length > 1) gotoParent(to.length - 1, d, s) else s
 			else
 			{
-				d.projectClosure(s).find { case n: Named => n.name == to; case _ => false } match
+				d.navigation.projectClosure(s).find { case n: Named => n.name == to; case _ => false } match
 				{
-					case Some(np) => logger(s).info("Set current project to " + to); s.copy(np)()
+					case Some(np) => setProject(np, s)
 					case None => logger(s).error("Invalid project name '" + to + "' (type 'projects' to list available projects)."); s.fail
 				}
 			}
 		}(s)
 	}
-	
+	@tailrec def gotoParent[Node <: Member[Node]](n: Int, base: Member[Node], s: State): State =
+		base.navigation.parentProject match
+		{
+			case Some(pp) => if(n <= 1) setProject(pp, s) else gotoParent(n-1, pp, s)
+			case None => if(s.project == base) s else setProject(base, s)
+		}
+
+	def setProject(np: AnyRef, s: State): State =
+	{
+		np match { case n: Named =>
+			logger(s).info("Set current project to " + n.name)
+		}
+		s.copy(np)()
+	}
 	def exit = Command { case s => Apply( Help(exitBrief) ) {
 		case in if TerminateActions contains in.line =>
 			runExitHooks(s).exit(true)

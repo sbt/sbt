@@ -53,6 +53,14 @@ ProjectCommand +
 """ + ProjectCommand + """ name
 	Changes to the project with the provided name.
 	This command fails if there is no project with the given name.
+""" + ProjectCommand + """ /
+	Changes to the initial project.
+""" + ProjectCommand + """ ..
+	Changes to the parent project of the current project.
+	If there is no parent project, the current project is unchanged.
+
+	Use n+1 dots to change to the nth parent.
+	For example, 'project ....' is equivalent to three consecutive 'project ..' commands.
 """
 
 	def projectsBrief = (ProjectsCommand, projectsDetailed)

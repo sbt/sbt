@@ -79,9 +79,18 @@ trait Named
 {
 	def name: String
 }
+
+trait Navigation[Project]
+{
+	def parentProject: Option[Project]
+	def self: Project
+	def initialProject(s: State): Project
+	def projectClosure(s: State): Seq[Project]
+	def rootProject: Project
+}
 trait Member[Node <: Member[Node]]
-{ self: Node =>
-	def projectClosure(state: State): Seq[Node]
+{
+	def navigation: Navigation[Node]
 }
 trait Tasked
 {

@@ -152,7 +152,12 @@ object MultiContext
 		val static = (o: Owner, s: String) => context(o).static(o, s)
 	}
 }
-
+final class MultiNavigation(val self: Project, val parentProject: Option[Project]) extends Navigation[Project]
+{
+	def initialProject(s: State): Project = MultiProject.initialProject(s, rootProject)
+	def projectClosure(s: State): Seq[Project] = MultiProject.topologicalSort(initialProject(s))
+	@tailrec final lazy val rootProject: Project = parentProject match { case Some(p) => p.navigation.rootProject; case None => self }
+}
 trait Project extends Tasked with HistoryEnabled with Member[Project] with Named with ConsoleTask with Watched
 {
 	val info: ProjectInfo
@@ -165,8 +170,7 @@ trait Project extends Tasked with HistoryEnabled with Member[Project] with Named
 	def historyPath = Some(outputRootPath / ".history")
 	def streamBase = outputRootPath / "streams"
 
-	def projectClosure(s: State): Seq[Project] = MultiProject.topologicalSort(MultiProject.initialProject(s, rootProject))
-	@tailrec final def rootProject: Project = info.parent match { case Some(p) => p.rootProject; case None => this }
+	def navigation: Navigation[Project] = new MultiNavigation(this, info.parent)
 
 	implicit def streams = Dummy.Streams
 	def input = Dummy.In
