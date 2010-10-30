@@ -352,7 +352,7 @@ class XSbt(info: ProjectInfo) extends ParentProject(info) with NoCrossPaths
 		override def normalizedName = "sbt"
 		override def testWithCompileClasspath = super.testWithCompileClasspath ++ Seq(scriptedSbtSub)
 		override def testAction = super.testAction dependsOn(publishLocal)
-		def scriptedScalaVersions = "2.8.1.RC2"
+		def scriptedScalaVersions = "2.8.1.RC4"
 		lazy val scripted = task { args => task {
 			val launcher  = launchSub.outputJar.asFile
 			val loader = ClasspathUtilities.toLoader(scriptedSbtSub.testClasspath, buildScalaInstance.loader)
