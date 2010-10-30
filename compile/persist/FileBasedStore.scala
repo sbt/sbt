@@ -4,7 +4,7 @@
 package sbt
 package inc
 
-	import java.io.{File, IOException}
+	import java.io.{File, InputStream, IOException}
 	import sbinary._
 	import Operations.{read, write}
 	import DefaultProtocol._
@@ -15,18 +15,18 @@ object FileBasedStore
 	def apply(file: File)(implicit analysisF: Format[Analysis], setupF: Format[CompileSetup]): AnalysisStore = new AnalysisStore {
 		def set(analysis: Analysis, setup: CompileSetup): Unit =
 			Using.fileOutputStream()(file) { fout =>
-				Using.gzipOutputStream(fout) { out =>
-					write[(Analysis, CompileSetup)](out, (analysis, setup) )
-				}
-			}
+			Using.gzipOutputStream(fout) { outg =>
+			Using.bufferedOutputStream(outg) { out =>
+				write[(Analysis, CompileSetup)](out, (analysis, setup) )
+			}}}
 
 		def get(): Option[(Analysis, CompileSetup)] =
 			try { Some(getUncaught()) } catch { case io: IOException => None }
 		def getUncaught(): (Analysis, CompileSetup) =
 			Using.fileInputStream(file) { fin =>
-				Using.gzipInputStream(fin) { in =>
-					read[(Analysis, CompileSetup)]( in )
-				}
-			}
+			Using.gzipInputStream(fin) { ing =>
+			Using.bufferedInputStream(ing) { in =>
+				read[(Analysis, CompileSetup)]( in )
+			}}}
 	}
 }
