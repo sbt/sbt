@@ -34,11 +34,12 @@ class AggressiveCompile(cacheDirectory: File)
 	{
 		val (previousAnalysis, previousSetup) = extract(store.get())
 		val config = new CompileConfiguration(sources, classpath, javaSrcBases, previousAnalysis, previousSetup, setup, analysis.get _, maxErrors, compiler, javac)
-		val result = compile2(config)
-		store.set(result, setup)
+		val (modified, result) = compile2(config)
+		if(modified)
+			store.set(result, setup)
 		result
 	}
-	def compile2(config: CompileConfiguration)(implicit log: Logger, equiv: Equiv[CompileSetup]): Analysis =
+	def compile2(config: CompileConfiguration)(implicit log: Logger, equiv: Equiv[CompileSetup]): (Boolean, Analysis) =
 	{
 		import config._
 		import currentSetup._

@@ -12,12 +12,13 @@ import java.io.File
 object Incremental
 {
 	def println(s: String) = if(java.lang.Boolean.getBoolean("xsbt.inc.debug")) System.out.println(s) else ()
-	def compile(sources: Set[File], entry: String => Option[File], previous: Analysis, current: ReadStamps, forEntry: File => Option[Analysis], doCompile: Set[File] => Analysis)(implicit equivS: Equiv[Stamp]): Analysis =
+	def compile(sources: Set[File], entry: String => Option[File], previous: Analysis, current: ReadStamps, forEntry: File => Option[Analysis], doCompile: Set[File] => Analysis)(implicit equivS: Equiv[Stamp]): (Boolean, Analysis) =
 	{
 		val initialChanges = changedInitial(entry, sources, previous, current, forEntry)
 		val initialInv = invalidateInitial(previous.relations, initialChanges)
 		println("Initially invalidated: " + initialInv)
-		cycle(initialInv, previous, doCompile)
+		val analysis = cycle(initialInv, previous, doCompile)
+		(!initialInv.isEmpty, analysis)
 	}
 
 	// TODO: the Analysis for the last successful compilation should get returned + Boolean indicating success
