@@ -201,8 +201,12 @@ OnFailure + """ command
 """
 
 	def IfLast = "iflast"
-	def IfLastBrief = (IfLast + " command", IfLastDetailed)
-	def IfLastDetailed = "If there are no more commands after this one, 'command' is run."
+	def IfLastBrief = (IfLast + " command", IfLastCommon)
+	def IfLastCommon = "If there are no more commands after this one, 'command' is run."
+	def IfLastDetailed =
+IfLast + """ command
+
+	""" + IfLastCommon
 
 	def InitCommand = "initialize"
 	def InitBrief = (InitCommand, "Initializes command processing.")
