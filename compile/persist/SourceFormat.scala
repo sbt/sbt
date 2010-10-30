@@ -15,6 +15,32 @@ package xsbt.api
 
 object SourceFormat extends Format[Source]
 {
+	import java.io._
+	def reads(in: Input): Source =
+	{
+		val oin = new ObjectInputStream(new InputWrapperStream(in))
+		try { oin.readObject.asInstanceOf[Source] } finally { oin.close() }
+	}
+	def writes(out: Output, src: Source)
+	{
+		val oout = new ObjectOutputStream(new OutputWrapperStream(out))
+		try { oout.writeObject(src) } finally { oout.close() }
+	}
+}
+final class InputWrapperStream(in: Input) extends java.io.InputStream
+{
+	def toInt(b: Byte) = if(b < 0) b + 256 else b.toInt
+	def read() = try { toInt(in.readByte)  } catch { case e: sbinary.EOF => -1 }
+	override def read(b: Array[Byte], off: Int, len: Int) = in.readTo(b, off, len)
+}
+final class OutputWrapperStream(out: Output) extends java.io.OutputStream
+{
+	override def write(bs: Array[Byte], off: Int, len: Int) = out.writeAll(bs, off, len)
+	def write(b: Int) = out.writeByte(b.toByte)
+}
+
+object SourceFormat2 extends Format[Source]
+{
 	private[this] final val StructureFields = 3
 	private[this] final val ClassFields = 2
 
@@ -90,10 +116,10 @@ object SourceFormat extends Format[Source]
 		import formats._
 		
 		val expandedStructures = structures map { s => (s.parents, s.declared, s.inherited)}
-			// TODO: type parameters and annotations need to be lazy as well
+			// TODO: type parameters and annotations might need to be lazy as well
 		val expandedClassesStrict = classes map { c => (c.definitionType, c.typeParameters, c.name, c.access, c.modifiers, c.annotations) }
 		val expandedClassesLazy = classes map { c => (c.selfType, c.structure) }
-			
+
 		write(out, structures.size )
 		write(out, expandedClassesStrict)
 		write(out, expandedStructures)
