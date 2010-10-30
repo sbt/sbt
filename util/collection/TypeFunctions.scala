@@ -6,9 +6,9 @@ package sbt
 trait TypeFunctions
 {
 	type Id[X] = X
-	trait Const[A] { type Apply[B] = A }
-	trait Compose[A[_], B[_]] { type Apply[T] = A[B[T]] }
-	trait P1of2[M[_,_], A] { type Apply[B] = M[A,B]; type Flip[B] = M[B, A] }
+	sealed trait Const[A] { type Apply[B] = A }
+	sealed trait Compose[A[_], B[_]] { type Apply[T] = A[B[T]] }
+	sealed trait P1of2[M[_,_], A] { type Apply[B] = M[A,B]; type Flip[B] = M[B, A] }
 
 	final val left = new (Id ~> P1of2[Left, Nothing]#Flip) { def apply[T](t: T) = Left(t) }
 	final val right = new (Id ~> P1of2[Right, Nothing]#Apply) { def apply[T](t: T) = Right(t) }
