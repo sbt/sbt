@@ -74,6 +74,8 @@ object Using
 		}
 	private def closeCloseable[T <: Closeable]: T => Unit = _.close()
 
+	def bufferedOutputStream = wrap( (out: OutputStream) => new BufferedOutputStream(out) )
+	def bufferedInputStream = wrap( (in: InputStream) => new BufferedInputStream(in) )
 	def fileOutputStream(append: Boolean = false) = file(f => new BufferedOutputStream(new FileOutputStream(f, append)))
 	def fileInputStream = file(f => new BufferedInputStream(new FileInputStream(f)))
 	def urlInputStream = resource( (u: URL) => translate("Error opening " + u + ": ")(u.openStream))
@@ -85,9 +87,10 @@ object Using
 	def jarFile(verify: Boolean) = file(f => new JarFile(f, verify), (_: JarFile).close())
 	def zipFile = file(f => new ZipFile(f), (_: ZipFile).close())
 	def streamReader = wrap{ (_: (InputStream, Charset)) match { case (in, charset) => new InputStreamReader(in, charset) } }
-	def gzipInputStream = wrap( (in: InputStream) => new GZIPInputStream(in) )
+	def gzipInputStream = wrap( (in: InputStream) => new GZIPInputStream(in, 8192) )
 	def zipInputStream = wrap( (in: InputStream) => new ZipInputStream(in))
-	def gzipOutputStream = wrap((out: OutputStream) => new GZIPOutputStream(out), (_: GZIPOutputStream).finish())
+	def zipOutputStream = wrap( (out: OutputStream) => new ZipOutputStream(out))
+	def gzipOutputStream = wrap((out: OutputStream) => new GZIPOutputStream(out, 8192), (_: GZIPOutputStream).finish())
 	def jarOutputStream = wrap( (out: OutputStream) => new JarOutputStream(out))
 	def jarInputStream = wrap( (in: InputStream) => new JarInputStream(in))
 	def zipEntry(zip: ZipFile) = resource( (entry: ZipEntry) =>
