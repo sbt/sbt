@@ -62,7 +62,6 @@ class AggressiveCompile(cacheDirectory: File)
 			{
 				import Path._
 				val loader = ClasspathUtilities.toLoader(classpath, compiler.scalaInstance.loader)
-				// TODO: Analyze needs to generate API from Java class files
 				def readAPI(source: File, classes: Seq[Class[_]]) { callback.api(source, ClassToAPI(classes)) }
 				Analyze(outputDirectory, javaSrcs, javaSrcBases, log)(callback, loader, readAPI) {
 					javac(javaSrcs, classpath, outputDirectory, options.javacOptions)
