@@ -14,6 +14,32 @@ object AnalysisFormats
 	type RFF = Relation[File, File]
 	type RFS = Relation[File, String]
 
+
+		import System.{currentTimeMillis => now}
+	val start = now
+		def time(label: String) =
+		{
+			val end = now
+			println(label + ": " + (end - start) + " ms")
+		}
+
+	def debug[T](label: String, f: Format[T]): Format[T] = new Format[T]
+	{
+		def reads(in: Input): T =
+		{
+			time(label + ".read.start")
+			val r = f.reads(in)
+			time(label + ".read.end")
+			r
+		}
+		def writes(out: Output, t: T)
+		{
+			time(label + ".write.start")
+			f.writes(out,t)
+			time(label + ".write.end")
+		}
+	}
+
 	implicit def analysisFormat(implicit stampsF: Format[Stamps], apisF: Format[APIs], relationsF: Format[Relations]): Format[Analysis] =
 		asProduct3( Analysis.Empty.copy _)( a => (a.stamps, a.apis, a.relations))(stampsF, apisF, relationsF)
 
