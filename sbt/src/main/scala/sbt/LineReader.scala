@@ -105,7 +105,7 @@ object MainCompletor
 			import scala.collection.immutable.TreeSet
 
 		val generalCompletor = simpleCompletor(generalCommands)
-		val projectCompletor = simpleArgumentCompletor(projectAction :: Nil, projectNames)
+		val projectCompletor = simpleArgumentCompletor(projectAction :: Nil, "/" :: ".." :: projectNames.toList)
 
 		def propertyCompletor(propertyNames: Iterable[String]) =
 			simpleArgumentCompletor(propertyActions, propertyNames)

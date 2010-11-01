@@ -286,19 +286,37 @@ class xMain extends xsbti.AppMain
 	{
 		def unapply(s: String) =
 			if(s.startsWith(ProjectAction + " "))
-				Some(s.substring(ProjectAction.length + 1))
+				Some(s.substring(ProjectAction.length + 1).trim)
 			else
 				None
-		def apply(baseProject: Project, projectName: String, currentProject: Project) =
+		def change(newProject: Project, current: Project): Option[Project] =
 		{
-			val found = baseProject.projectClosure.find(_.name == projectName)
-			found match
-			{
-				case Some(newProject) => printProject("Set current project to ", newProject)
-				case None => currentProject.log.error("Invalid project name '" + projectName + "' (type 'projects' to list available projects).")
-			}
-			found
+			val msg = if(newProject eq current) "Current project is " else "Set current project to "
+			printProject(msg, newProject)
+			Some(newProject)
 		}
+		def apply(baseProject: Project, projectName: String, currentProject: Project): Option[Project] =
+		{
+			if(projectName.isEmpty)
+				change(currentProject, currentProject)
+			else if(projectName == "/")
+				change(baseProject, currentProject)
+			else if(projectName.forall(_ == '.'))
+				change(ancestors(currentProject).take(projectName.size).last, currentProject)
+			else
+			{
+				val found = baseProject.projectClosure.find(_.name == projectName)
+				found match
+				{
+					case Some(newProject) => change(newProject, currentProject)
+					case None => currentProject.log.error("Invalid project name '" + projectName + "' (type 'projects' to list available projects).")
+				}
+				found
+			}
+		}
+		def ancestors(op: Option[Project]): Stream[Project] = op match { case None => Stream.empty; case Some(p) => ancestors(p) }
+		// includes the project itself
+		def ancestors(p: Project): Stream[Project] = Stream.cons(p, ancestors(p.info.parent))
 	}
 	object SpecificBuild
 	{
@@ -466,7 +484,7 @@ class xMain extends xsbti.AppMain
 		printCmd(ShowCurrent, "Shows the current project, Scala version, and logging level.")
 		printCmd(Level.levels.mkString(", "), "Set logging for the current project to the specified level.")
 		printCmd(TraceCommand + " " + validTraceArguments, "Configures stack trace logging. " + traceExplanation)
-		printCmd(ProjectAction + " <project name>", "Sets the currently active project.")
+		printCmd(ProjectAction + " <project name>", "Sets the currently active project.  Use 'project /' to change to the root project or 'project ..' to change to the parent project.")
 		printCmd(ShowProjectsAction, "Shows all available projects.")
 		printCmd(TerminateActions.elements.mkString(", "), "Terminates the build.")
 		printCmd(SetAction + " <property> <value>", "Sets the value of the property given as its argument.")
