@@ -188,6 +188,22 @@ trait HListCacheImplicits
 		}
 		
 	implicit def hNilCache: InputCache[HNil] = Cache.singleton(HNil : HNil)
+
+	implicit def hConsFormat[H, T <: HList](implicit head: Format[H], tail: Format[T]): Format[H :+: T] = new Format[H :+: T] {
+		def reads(from: Input) =
+		{
+			val h = head.reads(from)
+			val t = tail.reads(from)
+			HCons(h, t)
+		}
+		def writes(to: Output, hc: H :+: T)
+		{
+			head.writes(to, hc.head)
+			tail.writes(to, hc.tail)
+		}
+	}
+
+	implicit def hNilFormat: Format[HNil] = asSingleton(HNil)
 }
 trait UnionImplicits
 {

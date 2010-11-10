@@ -10,6 +10,8 @@ object CacheTest// extends Properties("Cache test")
 
 	import Cache._
 	import FileInfo.hash._
+	import Ordering._
+	import sbinary.DefaultProtocol.FileFormat
 	def test
 	{
 		lazy val create = new File("test")
