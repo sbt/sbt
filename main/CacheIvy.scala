@@ -42,7 +42,7 @@ package sbt
 */
 object CacheIvy
 {
-	def password(s: Option[String]) = s map Hash.apply
+	def password(s: Option[String]) = new Array[Byte](0)
 	def names(s: Iterable[Configuration]): Set[String] = s.map(_.name).toSet
 
 	import Cache._
