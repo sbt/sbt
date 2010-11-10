@@ -55,7 +55,7 @@ object SameAPI
 
 		val result = (new SameAPI(tagsA,tagsB, false, true)).check(a,b)
 		val end = System.currentTimeMillis
-		println(" API comparison took: " + (end - start) / 1000.0 + " s")
+		//println(" API comparison took: " + (end - start) / 1000.0 + " s")
 		result
 	}
 
@@ -283,14 +283,21 @@ class SameAPI(tagsA: TypeVars, tagsB: TypeVars, includePrivate: Boolean, include
 	def sameTypeParameters(a: Seq[TypeParameter], b: Seq[TypeParameter]): Boolean =
 		debug(sameSeq(a, b)(sameTypeParameter), "Different type parameters")
 	def sameTypeParameter(a: TypeParameter, b: TypeParameter): Boolean =
+	{
 		sameTypeParameters(a.typeParameters, b.typeParameters) &&
 		debug(sameAnnotations(a.annotations, b.annotations), "Different type parameter annotations") &&
 		debug(sameVariance(a.variance, b.variance), "Different variance") &&
 		debug(sameType(a.lowerBound, b.lowerBound), "Different lower bound") &&
 		debug(sameType(a.upperBound, b.upperBound), "Different upper bound") &&
-		debug(sameTags(a.id, b.id), "Different type parameter bindings")
-		
-	def sameTags(a: Int, b: Int): Boolean = tagsA(a) == tagsB(b)
+		sameTags(a.id, b.id)
+	}
+		// until dangling type parameter references are straightened out in API phase, approximate
+	def sameTags(a: Int, b: Int): Boolean =
+	{
+		val ta = tagsA.get(a)
+		val tb = tagsB.get(b)
+		debug(ta == tb, "Different type parameter bindings: " + ta + "(" + a + "), " + tb + "(" + b + ")")
+	}
 
 	def sameType(a: Type, b: Type): Boolean =
 		(a, b) match
