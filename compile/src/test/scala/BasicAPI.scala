@@ -21,6 +21,9 @@ package org.example {
 		def t: In
 	}
 }
+package org.example3 {
+	trait A extends Iterator[Int]
+}
 package org.example2 {
 	trait ZZ[S] {
 		val p: S
