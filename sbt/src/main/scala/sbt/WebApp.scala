@@ -42,7 +42,7 @@ class JettyRunner(configuration: JettyConfiguration) extends ExitHook
 			
 			def createRunner(implClassName: String) =
 			{
-				val lazyLoader = new LazyFrameworkLoader(implClassName, Array(FileUtilities.classLocation[Stoppable].toURI.toURL), dual, baseLoader)
+				val lazyLoader = new LazyFrameworkLoader("sbt.jetty.", Array(FileUtilities.classLocation[Stoppable].toURI.toURL), dual, baseLoader)
 				ModuleUtilities.getObject(implClassName, lazyLoader).asInstanceOf[JettyRun]
 			}
 			val runner = try { createRunner(implClassName6) } catch { case e: NoClassDefFoundError => createRunner(implClassName7) }

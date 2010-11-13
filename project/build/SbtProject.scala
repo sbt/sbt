@@ -41,12 +41,25 @@ abstract class SbtProject(info: ProjectInfo) extends DefaultProject(info) with t
 
 	val ivy = "org.apache.ivy" % "ivy" % "2.2.0" intransitive()
 	val jsch = "com.jcraft" % "jsch" % "0.1.31" intransitive()
-	val jetty = "org.mortbay.jetty" % "jetty" % "6.1.14" % "optional"
-	val jettyplus = "org.mortbay.jetty" % "jetty-plus" % "6.1.14" % "optional"
-	
-	val jetty7server = "org.eclipse.jetty" % "jetty-server" % "7.0.1.v20091125" % "optional"
-	val jetty7webapp = "org.eclipse.jetty" % "jetty-webapp" % "7.0.1.v20091125" % "optional"
-	val jetty7plus = "org.eclipse.jetty" % "jetty-plus" % "7.0.1.v20091125" % "optional"
+
+	override def libraryDependencies = super.libraryDependencies ++
+		jetty6Dependencies ++
+		jetty7Dependencies
+
+	def jetty6Dependencies = Set(
+		"org.mortbay.jetty" % "jetty" % "6.1.14" % "optional",
+		"org.mortbay.jetty" % "jetty-plus" % "6.1.14" % "optional"
+	)
+	def jetty7Dependencies = Set(
+		"org.eclipse.jetty" % "jetty-server" % "7.0.1.v20091125" % "optional",
+		"org.eclipse.jetty" % "jetty-webapp" % "7.0.1.v20091125" % "optional",
+		"org.eclipse.jetty" % "jetty-plus" % "7.0.1.v20091125" % "optional"
+	)
+	def jetty72Dependencies = Set(
+		"org.eclipse.jetty" % "jetty-server" % "7.2.0.v20101020" % "optional",
+		"org.eclipse.jetty" % "jetty-webapp" % "7.2.0.v20101020" % "optional",
+		"org.eclipse.jetty" % "jetty-plus" % "7.2.0.v20101020" % "optional"
+	)
 
 	val testInterface = "org.scala-tools.testing" % "test-interface" % "0.5"
 
@@ -60,6 +73,7 @@ abstract class SbtProject(info: ProjectInfo) extends DefaultProject(info) with t
 	lazy val sbtDoc = packageTask(mainDocPath ##, packageDocsJar, Recursive) dependsOn(sbtGenDoc)
 	lazy val sbtSrc = packageTask(deepSources, packageSrcJar, packageOptions) dependsOn(compile)
 	
+	override def packagePaths = super.packagePaths +++ jetty6Compat.packagePaths
 	override def packageToPublishActions = super.packageToPublishActions //++ Seq(sbtSrc, sbtDoc, sxr)
 	
 	override def packageDocsJar = defaultJarPath("-javadoc.jar")
@@ -70,10 +84,11 @@ abstract class SbtProject(info: ProjectInfo) extends DefaultProject(info) with t
 	/* For generating JettyRun for Jetty 6 and 7.  The only difference is the imports, but the file has to be compiled against each set of imports. */
 	override def compileAction = super.compileAction dependsOn (generateJettyRun6, generateJettyRun7)
 	def jettySrcDir = mainScalaSourcePath / "sbt" / "jetty"
+	def jettyImports(version: String) = jettySrcDir / ("jetty" + version + ".imports")
 	def jettyTemplate = jettySrcDir / "LazyJettyRun.scala.templ"
 	
-	lazy val generateJettyRun6 = generateJettyRun(jettyTemplate, jettySrcDir / "LazyJettyRun6.scala", "6", jettySrcDir / "jetty6.imports")
-	lazy val generateJettyRun7 = generateJettyRun(jettyTemplate, jettySrcDir / "LazyJettyRun7.scala", "7", jettySrcDir / "jetty7.imports")
+	lazy val generateJettyRun6 = generateJettyRun(jettyTemplate, jettySrcDir / "LazyJettyRun6.scala", "6", jettyImports("6"))
+	lazy val generateJettyRun7 = generateJettyRun(jettyTemplate, jettySrcDir / "LazyJettyRun7.scala", "7", jettyImports("7"))
 	def generateJettyRun(in: Path, out: Path, version: String, importsPath: Path) =
 		task
 		{
@@ -82,4 +97,20 @@ abstract class SbtProject(info: ProjectInfo) extends DefaultProject(info) with t
 		}
 	def processJettyTemplate(template: String, version: String, imports: String): String =
 		template.replaceAll("""\Q${jetty.version}\E""", version).replaceAll("""\Q${jetty.imports}\E""", imports)
+
+	final class JettyCompat(info: ProjectInfo, version: String, override val libraryDependencies: Set[ModuleID]) extends DefaultProject(info) with NoPublish
+	{
+		def outName = "SbtWebAppLoader" + version + ".scala"
+		def imports = "jetty" + version + ".imports"
+		override def managedDependencyPath = super.managedDependencyPath / ("jetty" + version)
+
+		lazy val generateLoaderCompat = generateJettyRun("SbtWebAppLoader.scala.templ", outName, version, jettySrcDir / imports)
+		override def mainSources = outName : Path
+		override def compileAction = super.compileAction dependsOn generateLoaderCompat
+	}
+
+	lazy val jetty6Compat = project("jetty-compat", "Jetty 6.x Compat", i => new JettyCompat(i, "6", jetty6Dependencies))
+	lazy val jetty7Compat = project("jetty-compat", "Jetty 7.0-1 Compat", i => new JettyCompat(i, "7", jetty7Dependencies))
+	lazy val jetty72Compat = project("jetty-compat", "Jetty 7.2 Compat", i => new JettyCompat(i, "72", jetty72Dependencies))
+	override def deliverProjectDependencies = Set() ++ super.deliverProjectDependencies - jetty6Compat.projectID - jetty7Compat.projectID - jetty72Compat.projectID
 }

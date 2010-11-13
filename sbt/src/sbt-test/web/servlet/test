@@ -36,7 +36,28 @@ $ copy-file changes/MyServlet2.scala src/main/scala/test/MyServlet.scala
 
 
 # test that it works with Jetty 7 support
+$ delete jetty7.0
 $ touch jetty7.1
+> reload
+
+$ copy-file changes/MyServlet1.scala src/main/scala/test/MyServlet.scala
+> update
+> jetty-run
+> check-page "Hello, Scala!"
+
+$ copy-file changes/MyServlet2.scala src/main/scala/test/MyServlet.scala
+
+> prepare-webapp
+> jetty-reload
+> check-page "Hello, Scala 2!"
+
+> jetty-stop
+-> check-page "Hello World 2!"
+
+
+# test that it works with Jetty 7 support
+$ delete jetty7.1
+$ touch jetty7.2
 > reload
 
 $ copy-file changes/MyServlet1.scala src/main/scala/test/MyServlet.scala

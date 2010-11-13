@@ -51,6 +51,7 @@ class XSbt(info: ProjectInfo) extends ParentProject(info) with NoCrossPaths
 
 	//run in parallel
 	override def parallelExecution = true
+	override def shouldCheckOutputDirectories = false
 
 	def jlineDep = "jline" % "jline" % "0.9.94" intransitive()
 

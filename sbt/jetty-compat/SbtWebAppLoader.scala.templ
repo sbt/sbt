@@ -1,0 +1,17 @@
+package sbt.jetty
+
+	import java.io.File
+	import java.net.URL
+
+	${jetty.imports}
+
+// Jetty 7.2 is binary incompatible with 7.1 because the type of the second argument to WebAppClassLoader's constructor changed from
+//  
+private class SbtWebAppLoader${jetty.version}(parent: ClassLoader, webapp: WebAppContext, urls: Seq[URL]) extends WebAppClassLoader(parent, webapp)
+{
+	// Jetty treats WebAppClassLoader subclasses specially and we need this special behavior.
+	//   However, Jetty adds extra classpath components directly using 'addURL'.
+	//   We only want the 'urls' we provide in the constructor, so 'addURL' is overridden to do nothing.
+	urls.foreach(super.addURL)
+	override def addURL(u: URL) = {}
+}

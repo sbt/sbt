@@ -219,12 +219,12 @@ private class IncludePackagesFilter(include: Iterable[String]) extends PackageFi
 	def include(className: String): Boolean = matches(className)
 }
 
-private class LazyFrameworkLoader(runnerClassName: String, urls: Array[URL], parent: ClassLoader, grandparent: ClassLoader)
+private class LazyFrameworkLoader(baseName: String, urls: Array[URL], parent: ClassLoader, grandparent: ClassLoader)
 	extends LoaderBase(urls, parent) with NotNull
 {
 	def doLoadClass(className: String): Class[_] =
 	{
-		if(Loaders.isNestedOrSelf(className, runnerClassName))
+		if(className.startsWith(baseName))
 			findClass(className)
 		else if(Loaders.isSbtClass(className)) // we circumvent the parent loader because we know that we want the
 			grandparent.loadClass(className)              // version of sbt that is currently the builder (not the project being built)
@@ -235,7 +235,5 @@ private class LazyFrameworkLoader(runnerClassName: String, urls: Array[URL], par
 private object Loaders
 {
 	val SbtPackage = "sbt."
-	def isNestedOrSelf(className: String, checkAgainst: String) =
-		className == checkAgainst || className.startsWith(checkAgainst + "$")
 	def isSbtClass(className: String) = className.startsWith(Loaders.SbtPackage)
 }

@@ -57,19 +57,7 @@ private object LazyJettyRun${jetty.version} extends JettyRun
 					val webapp = new WebAppContext(war.absolutePath, contextPath)
 					webDefaultXml.foreach{webDefaultXml:File => webapp.setDefaultsDescriptor(webDefaultXml.toString)}
 					
-					def createLoader =
-					{
-						// Jetty treats WebAppClassLoader subclasses specially and we need this special behavior.
-						//   However, Jetty adds extra classpath components directly using 'addURL'.
-						//   We only want the 'urls' we provide in the constructor, so 'addURL' is overridden to do nothing.
-						class SbtWebAppLoader(urls: Seq[URL]) extends WebAppClassLoader(jettyLoader, webapp)
-						{
-							urls.foreach(super.addURL)
-							override def addURL(u: URL) = {}
-						}
-						new SbtWebAppLoader(classpath.getURLs)
-					}
-					def setLoader() = webapp.setClassLoader(createLoader)
+					def setLoader() = webapp.setClassLoader(webAppLoader(jettyLoader, webapp, classpath.getURLs))
 					
 					// enable loading of custom jetty-env.xml file.
 					jettyEnv.foreach{jettyEnvFile:File => 
@@ -152,5 +140,26 @@ private object LazyJettyRun${jetty.version} extends JettyRun
 	private class JettyLogger(delegate: Logger) extends JettyLoggerBase(delegate) with JLogger
 	{
 		def getLogger(name: String) = this
+	}
+	
+	def compatVersions = "6" :: "7" :: "72" :: Nil
+	def loaderBaseName = "sbt.jetty.SbtWebAppLoader"
+
+	def webAppLoader(parent: ClassLoader, webapp: WebAppContext, urls: Seq[URL]): ClassLoader =
+	{
+		def attempt(remaining: List[String]): ClassLoader =
+			remaining match {
+				case Nil => error("Could not instantiate WebAppClassLoader")
+				case v :: vs =>
+					try { tryLoad(loaderBaseName + v, parent, webapp, urls) }
+					catch { case _: NoClassDefFoundError | _: java.lang.reflect.InvocationTargetException => attempt(vs) }
+			}
+		attempt(compatVersions)
+	}
+	private[this] def tryLoad(name: String, parent: ClassLoader, webapp: WebAppContext, urls: Seq[URL]): ClassLoader =
+	{
+		val clazz = Class.forName(name)
+		val construct = clazz.getConstructor(classOf[ClassLoader], classOf[WebAppContext], classOf[Seq[URL]])
+		construct.newInstance(parent, webapp, urls).asInstanceOf[ClassLoader]
 	}
 }

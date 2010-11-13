@@ -7,6 +7,8 @@ class WebappBuild(info: ProjectInfo) extends DefaultWebProject(info) {
 			jetty70Dependencies
 		else if("jetty7.1".asFile.exists)
 			jetty71Dependencies
+		else if("jetty7.2".asFile.exists)
+			jetty72Dependencies
 		else
 			jetty6Dependencies
 
@@ -19,6 +21,9 @@ class WebappBuild(info: ProjectInfo) extends DefaultWebProject(info) {
 	def jetty71Dependencies =
 		Set("javax.servlet" % "servlet-api" % "2.5" % "provided",
 		"org.eclipse.jetty" % "jetty-webapp" % "7.1.6.v20100715" % "test")
+	def jetty72Dependencies =
+		Set("javax.servlet" % "servlet-api" % "2.5" % "provided",
+		"org.eclipse.jetty" % "jetty-webapp" % "7.2.0.v20101020" % "test")
 
 	def indexURL = new java.net.URL("http://localhost:" + jettyPort)
 	def indexFile = new java.io.File("index.html")
