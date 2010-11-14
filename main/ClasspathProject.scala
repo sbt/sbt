@@ -183,6 +183,12 @@ object ClasspathProject
 			analyzed(i.config.classesDirectory, analysis)
 		}
 
+	def makeProducts(compile: Task[Analysis], inputs: Task[Compile.Inputs], name: String, prefix: String) =
+	{
+		def mkName(postfix: String) = name + "/" + prefix + postfix
+		analyzed(compile, inputs) named(mkName("analyzed")) map { _ :: Nil } named(mkName("products"))
+	}
+
 	def concat[A]: (Seq[A], Seq[A]) => Seq[A] = _ ++ _
 
 	def extractAnalysis[T](a: Attributed[T]): (T, Analysis) = 
@@ -222,19 +228,26 @@ object ClasspathProject
 			val visited = new LinkedHashSet[(Project,String)]
 			def visit(p: Project, c: String)
 			{
-				for( (dep, confMapping) <- ClasspathProject.resolvedDependencies(p))
+				val applicableConfigs = allConfigs(p, c)
+				for(ac <- applicableConfigs)
+					visited add (p, ac)
+
+				for( (dep, confMapping) <- resolvedDependencies(p))
 				{
 					val depConf = mapped(c, confMapping, defaultConfiguration(dep).toString) { missingMapping(p.name, dep.name, c) }
-					val unvisited = visited.add( (dep, depConf) )
-					if(unvisited) visit(dep, depConf)
+					if( ! visited( (dep, depConf) ) )
+						visit(dep, depConf)
 				}
 			}
-			visit(project, conf.toString)
+			visit(project, conf.name)
 
 			val productsTasks = new LinkedHashSet[Task[Seq[Attributed[File]]]]
-			for( (dep: ClasspathProject, conf) <- visited )
-				if(dep ne project) productsTasks += products(dep, conf)
-			(productsTasks.toSeq.join) named(project.name + "/join") map(_.flatten) 
+			for( (dep: ClasspathProject, c) <- visited )
+				if( (dep ne project) || conf.name != c )
+					productsTasks += products(dep, c)
+
+			def name(action: String) = project.name + "/" + conf + "/" + action + "-products"
+			(productsTasks.toSeq.join) named(name("join")) map(_.flatten) named(name("flatten"))
 		}
 
 	def parseSimpleConfigurations(confString: String): Map[String, String] =
@@ -253,8 +266,15 @@ object ClasspathProject
 		error("No configuration mapping defined from '" + from + "' to '" + to + "' for '" + conf + "'")
 	def missingConfiguration(in: String, conf: String) =
 		 error("Configuration '" + conf + "' not defined in '" + in)
+	def allConfigs(dep: Project, conf: String): Seq[String] =
+		dep match {
+			case cp: ClasspathProject => Dag.topologicalSort(configuration(cp, conf))(_.extendsConfigs).map(_.name)
+			case _ => Nil
+		}
+	def configuration(dep: ClasspathProject, conf: String): Configuration =
+		dep.configurationMap.getOrElse(conf,missingConfiguration(dep.name, conf))
 	def products(dep: ClasspathProject, conf: String) =
-		dep.products(dep.configurationMap.getOrElse(conf,missingConfiguration(dep.name, conf)))
+		dep.products(configuration(dep, conf))
 	def defaultConfiguration(p: Project): Configuration =
 		p match
 		{

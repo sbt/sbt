@@ -7,7 +7,7 @@ package sbt
 	import compile.{Discovered,Discovery}
 	import inc.Analysis
 	import TaskExtra._
-	import Configurations.{Compile => CompileConfig, Test => TestConfig, Runtime => RunConfig}
+	import Configurations.{Compile => CompileConfig, Test => TestConfig, Runtime => RunConfig, Default => DefaultConfig}
 	import ClasspathProject._
 	import Types._
 	import xsbti.api.Definition
@@ -38,13 +38,14 @@ abstract class BasicProject extends TestProject with MultiClasspathProject with 
 			case x => outputDirectory / (x.toString + "-classes")
 		}
 
-	 // TODO: resources, jars, test classes
-	lazy val products: Classpath =
-		TaskMap { (conf: Configuration) =>
-			conf match {
-				case CompileConfig | RunConfig => analyzed(compile, compileInputs) named(name + "/analyzed") map { _ :: Nil } named(name + "/products")
-				case x => error("Unknown compilation configuration: " + x)
-			}
+	lazy val products: Classpath = TaskMap(productsTask)
+
+	 // TODO: it config, include resources, perhaps handle jars v. directories
+	def productsTask(conf: Configuration) =
+		conf match {
+			case CompileConfig | DefaultConfig => makeProducts(compile, compileInputs, name, "")
+			case TestConfig => makeProducts(testCompile, testCompileInputs, name, "test-")
+			case x => task { Nil }
 		}
 
 	lazy val buildScalaInstance: Task[ScalaInstance] = task {
@@ -88,8 +89,7 @@ abstract class BasicProject extends TestProject with MultiClasspathProject with 
 	def compileInputsTask(configuration: Configuration, base: PathFinder, scalaInstance: Task[ScalaInstance]): Task[Compile.Inputs] =
 	{
 		val dep = dependencyClasspath(configuration)
-		val prod: Task[Seq[Attributed[File]]] = (configuration.extendsConfigs map products).join.map(_.flatten)
-		(dep, prod, scalaInstance) map { case (cp :+: prodcp :+: si :+: HNil) =>
+		(dep, scalaInstance) map { case (cp :+: si :+: HNil) =>
 			val log = ConsoleLogger()
 			val compilers = Compile.compilers(si)(info.configuration, log)
 			val javaSrc = base / "java"
@@ -98,8 +98,8 @@ abstract class BasicProject extends TestProject with MultiClasspathProject with 
 				import Path._
 			val sources = descendents((javaSrc +++ scalaSrc), sourceFilter) +++ (if(configuration == CompileConfig) info.projectDirectory * (sourceFilter -- defaultExcludes) else Path.emptyPathFinder)
 			val classes = classesDirectory(configuration)
-			val classpath = (classes +: data(prodcp)) ++ data(cp)
-			val analysis = analysisMap(prodcp ++ cp)
+			val classpath = classes +: data(cp)
+			val analysis = analysisMap(cp)
 			val cache = cacheDirectory / "compile" / configuration.toString
 			Compile.inputs(classpath, sources.getFiles.toSeq, classes, scalacOptions, javacOptions, javaSrc.getFiles.toSeq, analysis, cache, 100)(compilers, log)
 		}

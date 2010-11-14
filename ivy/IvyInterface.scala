@@ -292,11 +292,11 @@ object Configurations
 
 	lazy val Default = config("default")
 	lazy val Compile = config("compile")
-	lazy val IntegrationTest = config("it") hide
+	lazy val IntegrationTest = config("it") extend(Runtime) hide;
 	lazy val Provided = config("provided")
 	lazy val Javadoc = config("javadoc")
-	lazy val Runtime = config("runtime")
-	lazy val Test = config("test") hide
+	lazy val Runtime = config("runtime") extend(Compile)
+	lazy val Test = config("test") extend(Runtime) hide;
 	lazy val Sources = config("sources")
 	lazy val System = config("system")
 	lazy val Optional = config("optional")
@@ -310,7 +310,7 @@ object Configurations
 	private[sbt] def removeDuplicates(configs: Iterable[Configuration]) = Set(scala.collection.mutable.Map(configs.map(config => (config.name, config)).toSeq: _*).values.toList: _*)
 }
 /** Represents an Ivy configuration. */
-final case class Configuration(name: String, description: String, isPublic: Boolean, extendsConfigs: List[Configuration], transitive: Boolean) extends NotNull
+final case class Configuration(name: String, description: String, isPublic: Boolean, extendsConfigs: List[Configuration], transitive: Boolean)
 {
 	require(name != null && !name.isEmpty)
 	require(description != null)
@@ -323,7 +323,7 @@ final case class Configuration(name: String, description: String, isPublic: Bool
 	override def toString = name
 }
 
-final case class Artifact(name: String, `type`: String, extension: String, classifier: Option[String], configurations: Iterable[Configuration], url: Option[URL], extraAttributes: Map[String,String]) extends NotNull
+final case class Artifact(name: String, `type`: String, extension: String, classifier: Option[String], configurations: Iterable[Configuration], url: Option[URL], extraAttributes: Map[String,String])
 {
 	def extra(attributes: (String,String)*) = Artifact(name, `type`, extension, classifier, configurations, url, extraAttributes ++ ModuleID.checkE(attributes))
 }
