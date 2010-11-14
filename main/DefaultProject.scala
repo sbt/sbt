@@ -53,11 +53,11 @@ abstract class BasicProject extends TestProject with MultiClasspathProject with 
 		ScalaInstance(provider.version, provider)
 	}
 
-	lazy val discover: Task[Seq[(Definition,Discovered)]] =
-		compile map { analysis => Discovery(Set.empty, Set.empty)(analysis.apis.internal.values.flatMap(_.definitions).toSeq) }
+	lazy val discoverMain: Task[Seq[(Definition,Discovered)]] =
+		compile map { analysis => Discovery.applications(Test.allDefs(analysis)) }
 
 	lazy val discoveredMainClasses: Task[Seq[String]] =
-		discover map { _ collect { case (definition, discovered) if(discovered.hasMain) => definition.name } }
+		discoverMain map { _ collect { case (definition, discovered) if(discovered.hasMain) => definition.name } }
 
 	lazy val runMainClass: Task[Option[String]] =
 		 discoveredMainClasses map { classes => SelectMainClass(Some(SimpleReader readLine _), classes) }
