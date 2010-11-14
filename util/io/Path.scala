@@ -148,6 +148,9 @@ object Path extends PathExtra
 	/** Constructs a String representation of <code>Path</code>s.  The absolute path String of each <code>Path</code> is
 	* separated by the given separator String.*/
 	def makeString(paths: Iterable[Path], sep: String): String = paths.map(_.absolutePath).mkString(sep)
+
+	def makeString(paths: Seq[File]): String = makeString(paths, pathSeparator)
+	def makeString(paths: Seq[File], sep: String): String = paths.map(_.getAbsolutePath).mkString(sep)
 	
 	/** Constructs a String representation of <code>Path</code>s.  The relative path String of each <code>Path</code> is
 	* separated by the platform's path separator.*/
@@ -262,6 +265,8 @@ object Path extends PathExtra
 
 	def getFiles(files: Traversable[Path]): immutable.Set[File] = files.map(_.asFile).toSet
 	def getURLs(files: Traversable[Path]): Array[URL] = files.map(_.asURL).toArray
+
+	def toURLs(files: Seq[File]): Array[URL] = files.map(_.toURI.toURL).toArray
 }
 
 /** A path finder constructs a set of paths.  The set is evaluated by a call to the <code>get</code>

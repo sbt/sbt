@@ -11,11 +11,11 @@ import classpath.ClasspathUtilities
 
 trait ScalaRun
 {
-	def run(mainClass: String, classpath: Iterable[Path], options: Seq[String], log: Logger): Option[String]
+	def run(mainClass: String, classpath: Seq[File], options: Seq[String], log: Logger): Option[String]
 }
 class ForkRun(config: ForkScalaRun) extends ScalaRun
 {
-	def run(mainClass: String, classpath: Iterable[Path], options: Seq[String], log: Logger): Option[String] =
+	def run(mainClass: String, classpath: Seq[File], options: Seq[String], log: Logger): Option[String] =
 	{
 		val scalaOptions = classpathOption(classpath) ::: mainClass :: options.toList
 		val exitCode = config.outputStrategy match {
@@ -24,7 +24,7 @@ class ForkRun(config: ForkScalaRun) extends ScalaRun
 		}
 		processExitCode(exitCode, "runner")
 	}
-	private def classpathOption(classpath: Iterable[Path]) = "-cp" :: Path.makeString(classpath) :: Nil
+	private def classpathOption(classpath: Seq[File]) = "-cp" :: Path.makeString(classpath) :: Nil
 	private def processExitCode(exitCode: Int, label: String) =
 	{
 		if(exitCode == 0)
@@ -36,7 +36,7 @@ class ForkRun(config: ForkScalaRun) extends ScalaRun
 class Run(instance: ScalaInstance) extends ScalaRun
 {
 	/** Runs the class 'mainClass' using the given classpath and options using the scala runner.*/
-	def run(mainClass: String, classpath: Iterable[Path], options: Seq[String], log: Logger) =
+	def run(mainClass: String, classpath: Seq[File], options: Seq[String], log: Logger) =
 	{
 		log.info("Running " + mainClass + " " + options.mkString(" "))
 
@@ -46,16 +46,12 @@ class Run(instance: ScalaInstance) extends ScalaRun
 
 		Run.executeTrapExit( execute, log )
 	}
-	private def run0(mainClassName: String, classpath: Iterable[Path], options: Seq[String], log: Logger)
+	private def run0(mainClassName: String, classpath: Seq[File], options: Seq[String], log: Logger)
 	{
 		log.debug("  Classpath:\n\t" + classpath.mkString("\n\t"))
-		val (loader, tempDir) = ClasspathUtilities.makeLoader(classpath, instance)
-		try 
-		{
-			val main = getMainMethod(mainClassName, loader)
-			invokeMain(loader, main, options)
-		}
-		finally { IO.delete(tempDir asFile) }
+		val loader = ClasspathUtilities.makeLoader(classpath, instance)
+		val main = getMainMethod(mainClassName, loader)
+		invokeMain(loader, main, options)
 	}
 	private def invokeMain(loader: ClassLoader, main: Method, options: Seq[String])
 	{
@@ -79,7 +75,7 @@ class Run(instance: ScalaInstance) extends ScalaRun
 /** This module is an interface to starting the scala interpreter or runner.*/
 object Run
 {
-	def run(mainClass: String, classpath: Iterable[Path], options: Seq[String], log: Logger)(implicit runner: ScalaRun) =
+	def run(mainClass: String, classpath: Seq[File], options: Seq[String], log: Logger)(implicit runner: ScalaRun) =
 		runner.run(mainClass, classpath, options, log)
 		
 	/** Executes the given function, trapping calls to System.exit. */
