@@ -31,4 +31,9 @@ object Result
 				case Inc(i) => throw i
 			}
 	}
+	def tryValues[S](r: Seq[Result[Unit]], v: Result[S]): S =
+	{
+		r foreach tryValue[Unit]
+		tryValue[S](v)
+	}
 }
