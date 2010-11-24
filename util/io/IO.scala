@@ -13,7 +13,7 @@ import java.util.Properties
 import java.util.jar.{Attributes, JarEntry, JarFile, JarInputStream, JarOutputStream, Manifest}
 import java.util.zip.{CRC32, GZIPOutputStream, ZipEntry, ZipFile, ZipInputStream, ZipOutputStream}
 import scala.collection.immutable.TreeSet
-import scala.collection.mutable.HashSet
+import scala.collection.mutable.{HashMap,HashSet}
 import scala.reflect.{Manifest => SManifest}
 import Function.tupled
 
@@ -243,6 +243,15 @@ object IO
 	}
 
 	private[sbt] def jars(dir: File): Iterable[File] = listFiles(dir, GlobFilter("*.jar"))
+
+	def deleteIfEmpty(dirs: collection.Set[File]): Unit =
+	{
+		val isEmpty = new HashMap[File, Boolean]
+		def visit(f: File): Boolean = isEmpty.getOrElseUpdate(f, dirs(f) && f.isDirectory && (f.listFiles forall visit) )
+
+		dirs foreach visit
+		for( (f, true) <- isEmpty) f.delete
+	}
 
 	def delete(files: Iterable[File]): Unit = files.foreach(delete)
 	def delete(file: File)
