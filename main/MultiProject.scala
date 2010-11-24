@@ -19,6 +19,7 @@ import annotation.tailrec
 object MultiProject
 {
 	val InitialProject = AttributeKey[Project]("initial-project")
+	val ScalaVersion = AttributeKey[String]("scala-version")
 
 	val defaultExcludes: FileFilter = (".*"  - ".") || HiddenFileFilter
 	def descendents(base: PathFinder, select: FileFilter) = base.descendentsExcept(select, defaultExcludes)
@@ -56,7 +57,7 @@ object MultiProject
 		val target = crossPath(buildDir / "target", compilers.scalac.scalaInstance)
 		val inputs = Compile.inputs(classpath, sources.getFiles.toSeq, target, Nil, Nil, javaSrcBase :: Nil, Compile.DefaultMaxErrors)(compilers, log)
 
-		val analysis = Compile(inputs)
+		val analysis = Compile(inputs, log)
 		val info = ProjectInfo(None, base, projectDir, Nil, None)(configuration, analysis, inputs, load(configuration, log, externals), externals)
 
 		val discovered = Build.discover(analysis, Some(false), Auto.Subclass, projectClassName)
@@ -106,11 +107,11 @@ object MultiProject
 
 	def makeContext(root: Project) =
 	{
-		val contexts = topologicalSort(root) map { p => (p, ReflectiveContext(p, p.name)) }
+		val contexts = topologicalSort(root) map { p => (p, ReflectiveContext(p, p.name, root)) }
 		val externals = root.info.externals
 		def subs(f: Project => Seq[ProjectDependency]): Project =>  Seq[Project] = p =>
 			f(p) map( _.project match { case Left(path) => externals(path); case Right(proj) => proj } )
-		MultiContext(contexts)(subs(_.aggregate), subs(_.dependencies) )
+		MultiContext(contexts, root)(subs(_.aggregate), subs(_.dependencies) )
 	}
 
 	def lefts[A,B](e: Seq[Either[A,B]]):Seq[A] = e collect { case Left(l) => l }
@@ -132,8 +133,9 @@ object MultiContext
 		for( (a,b) <- in) map(a) = b
 		map
 	}
+
 	def fun[A,B](map: collection.Map[A,B]): A => Option[B] = map get _
-	def apply[Owner <: AnyRef](contexts: Iterable[(Owner, Context[Owner])])(agg: Owner => Iterable[Owner], deps: Owner => Iterable[Owner]): Context[Owner] = new Context[Owner]
+	def apply[Owner <: AnyRef](contexts: Iterable[(Owner, Context[Owner])], root: Owner)(agg: Owner => Iterable[Owner], deps: Owner => Iterable[Owner]): Context[Owner] = new Context[Owner]
 	{
 		val ownerReverse = (for( (owner, context) <- contexts; name <- context.ownerName(owner).toList) yield (name, owner) ).toMap
 		val ownerMap = identityMap[Task[_],Owner]( for((owner, context) <- contexts; task <- context.allTasks(owner) ) yield (task, owner) )
@@ -142,6 +144,7 @@ object MultiContext
 		val aggMap = subMap(agg)
 		val depMap = subMap(deps)
 
+		def rootOwner: Owner = root
 		def allTasks(owner: Owner): Iterable[Task[_]] = context(owner).allTasks(owner)
 		def ownerForName(name: String): Option[Owner] = ownerReverse get name
 		val staticName: Task[_] => Option[String] = t => owner(t) flatMap { o => context(o).staticName(t) }
@@ -175,6 +178,7 @@ trait Project extends Tasked with HistoryEnabled with Member[Project] with Named
 	implicit def streams = Dummy.Streams
 	def input = Dummy.In
 	def state = Dummy.State
+	def context = Dummy.Context
 
 	def aggregate: Seq[ProjectDependency.Execution] = info.dependencies collect { case ex: ProjectDependency.Execution => ex }
 	def dependencies: Seq[ProjectDependency.Classpath] = info.dependencies collect { case cp: ProjectDependency.Classpath => cp }
@@ -184,10 +188,11 @@ trait Project extends Tasked with HistoryEnabled with Member[Project] with Named
 	{
 		import Dummy._
 		val context = MultiProject.makeContext(this)
-		val dummies = new Transform.Dummies(In, State, Streams)
+		val dummies = new Transform.Dummies(In, State, Streams, Context)
 		def name(t: Task[_]): String = context.staticName(t.original) getOrElse std.Streams.name(t)
 		val mklog = LogManager.construct(context, settings)
-		val actualStreams = std.Streams(t => context.owner(t.original).get.streamBase / name(t), mklog )
+		def getOwner(t: Task[_]) = context.owner(t.original).getOrElse(error("No owner for " + name(t.original) + "\n\t" + t.original))
+		val actualStreams = std.Streams(t => getOwner(t).streamBase / name(t), mklog )
 		val injected = new Transform.Injected( input, state, actualStreams )
 		context.static(this, transformName(input.name)) map { t => (t.merge.map(_ => state), Transform(dummies, injected, context) ) }
 	}

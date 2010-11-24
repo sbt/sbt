@@ -6,14 +6,17 @@ package sbt
 	import std._
 	import Path._
 	import TaskExtra._
+	import Types._
+	import OutputUtil._
 
 trait PrintTask
 {
 	def input: Task[Input]
-	lazy val show = input flatMap { in =>
-		val m = ReflectUtilities.allVals[Task[_]](this)
+	def context: Task[Transform.Context[Project]]
+	lazy val show = (input, context) flatMap { case in :+: ctx :+: HNil =>
 		val taskStrings = in.splitArgs map { name =>
-			m(name).merge.map {
+			val selected = taskForName(ctx, name)
+			selected.merge.map {
 				case Seq() => "No result for " + name
 				case Seq( (conf, v) ) => name + ": " + v.toString
 				case confs => confs map { case (conf, v) => conf + ": " + v  } mkString(name + ":\n\t", "\n\t", "\n")
@@ -27,20 +30,26 @@ trait LastOutput
 {
 	def input: Task[Input]
 	def streams: Task[TaskStreams]
-	lazy val last = (streams, input) flatMap { (s: TaskStreams, i: Input) =>
-		val tasks = ReflectUtilities.allVals[Task[_]](this)
-		(s.readText( tasks(i.arguments) , update = false ) map { reader =>
+	def context: Task[Transform.Context[Project]]
+	lazy val last = (streams, input, context) flatMap { case s :+: i :+: ctx :+: HNil =>
+		val task = taskForName(ctx, i.arguments)
+		(s.readText( task, update = false ) map { reader =>
 			val out = s.text()
 			def readL()
 			{
 				val line = reader.readLine()
 				if(line ne null) {
-					readL()
 					out.println(line)
 					println(line)
+					readL()
 				}
 			}
 			readL()
 		}).merge
 	}
+}
+object OutputUtil
+{
+	def taskForName(ctx: Transform.Context[Project], name: String): Task[_] =
+		ctx.static(ctx.rootOwner, MultiProject.transformName(name)).getOrElse(error("No task '" + name + "'"))
 }

@@ -15,13 +15,17 @@ object System
 
 	implicit def to_~>| [K[_], V[_]](map: RMap[K,V]) : K ~>| V = new (K ~>| V) { def apply[T](k: K[T]): Option[V[T]] = map.get(k) }
 
-	def dummyMap[Input, State](dummyIn: Task[Input], dummyState: Task[State])(in: Input, state: State): Task ~>| Task =
+	def dummyMap[Input, State, Owner](dummyIn: Task[Input], dummyState: Task[State], dummyCtx: Task[Transform.Context[Owner]])(
+		in: Input, state: State, context: Transform.Context[Owner]): Task ~>| Task =
 	{
 		// helps ensure that the same Task[Nothing] can't be passed for dummyIn and dummyState
-		assert(dummyIn ne dummyState, "Dummy tasks for Input and State must be distinct.")
+		assert((dummyIn ne dummyState)
+			&& (dummyState ne dummyCtx), "Dummy tasks for Input, State, and Context must be distinct.")
+			
 		val pmap = new DelegatingPMap[Task, Task](new collection.mutable.ListMap)
 		pmap(dummyIn) = fromDummyStrict(dummyIn, in)
 		pmap(dummyState) = fromDummyStrict(dummyState, state)
+		pmap(dummyCtx) = fromDummyStrict(dummyCtx, context)
 		pmap
 	}
 
@@ -103,10 +107,11 @@ object System
 }
 object Transform
 {
-	final class Dummies[Input, State](val dummyIn: Task[Input], val dummyState: Task[State], val dummyStreams: Task[TaskStreams])
+	final class Dummies[Input, State, Owner](val dummyIn: Task[Input], val dummyState: Task[State], val dummyStreams: Task[TaskStreams], val dummyContext: Task[Context[Owner]])
 	final class Injected[Input, State](val in: Input, val state: State, val streams: Streams)
 	trait Context[Owner]
 	{
+		def rootOwner: Owner
 		def staticName: Task[_] => Option[String]
 		def owner: Task[_] => Option[Owner]
 		def ownerName: Owner => Option[String]
@@ -127,14 +132,14 @@ object Transform
 			}
 		}
 
-	def apply[Input, State, Owner](dummies: Dummies[Input, State], injected: Injected[Input, State], context: Context[Owner]) =
+	def apply[Input, State, Owner](dummies: Dummies[Input, State, Owner], injected: Injected[Input, State], context: Context[Owner]) =
 	{
 		import dummies._
 		import injected._
 		import context._
 		import System._
 		import Convert._
-		val inputs = dummyMap(dummyIn, dummyState)(in, state)
+		val inputs = dummyMap(dummyIn, dummyState, dummyContext)(in, state, context)
 		Convert.taskToNode ∙ setOriginal(streamed(streams, dummyStreams)) ∙ implied(owner, aggregate, static) ∙ setOriginal(name(staticName)) ∙ getOrId(inputs)
 	}
 }
