@@ -16,7 +16,7 @@ import java.util.zip.{GZIPOutputStream, ZipEntry, ZipFile, ZipInputStream, ZipOu
 import ErrorHandling.translate
 import Using._
 
-abstract class Using[Source, T] extends NotNull
+abstract class Using[Source, T]
 {
 	protected def open(src: Source): T
 	def apply[R](src: Source)(f: T => R): R =

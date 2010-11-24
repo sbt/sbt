@@ -7,6 +7,7 @@ import java.io.{File,IOException}
 import CacheIO.{fromFile, toFile}
 import sbinary.{Format, JavaIO}
 import scala.reflect.Manifest
+import scala.collection.mutable
 import IO.{delete, read, write}
 
 
@@ -78,17 +79,16 @@ class Changed[O](val cacheFile: File)(implicit equiv: Equiv[O], format: Format[O
 }
 object Difference
 {
-	sealed class Constructor private[Difference](defineClean: Boolean, filesAreOutputs: Boolean) extends NotNull
-	{
-		def apply(cache: File, style: FilesInfo.Style): Difference = new Difference(cache, style, defineClean, filesAreOutputs)
-	}
+	def constructor(defineClean: Boolean, filesAreOutputs: Boolean): (File, FilesInfo.Style) => Difference =
+		(cache, style) => new Difference(cache, style, defineClean, filesAreOutputs)
+
 	/** Provides a constructor for a Difference that removes the files from the previous run on a call to 'clean' and saves the
 	* hash/last modified time of the files as they are after running the function.  This means that this information must be evaluated twice:
 	* before and after running the function.*/
-	object outputs extends Constructor(true, true)
+	val outputs = constructor(true, true)
 	/** Provides a constructor for a Difference that does nothing on a call to 'clean' and saves the
 	* hash/last modified time of the files as they were prior to running the function.*/
-	object inputs extends Constructor(false, false)
+	val inputs = constructor(false, false)
 }
 class Difference(val cache: File, val style: FilesInfo.Style, val defineClean: Boolean, val filesAreOutputs: Boolean) extends Tracked
 {
