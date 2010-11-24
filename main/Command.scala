@@ -44,7 +44,9 @@ object Command
 		new Command { def applies = f }
 	def apply(f: PartialFunction[State, Apply]): Command =
 		direct(f.lift)
-		
+
+	def simple(name: String, help: Help*)(f: (Input, State) => State): Command =
+		univ( Apply.simple(name, help : _*)(f) )
 	def simple(name: String, brief: (String, String), detail: String)(f: (Input, State) => State): Command =
 		univ( Apply.simple(name, brief, detail)(f) )
 }
@@ -63,8 +65,10 @@ object Apply
 	def simple(name: String, brief: (String, String), detail: String)(f: (Input, State) => State): State => Apply =
 	{
 		val h = Help(brief, (Set(name), detail) )
-		s => Apply( h ){ case in if name == in.name => f( in, s) }
+		simple(name, h)(f)
 	}
+	def simple(name: String, help: Help*)(f: (Input, State) => State): State => Apply =
+		s => Apply( help: _* ){ case in if name == in.name => f( in, s) }
 }
 
 trait Logged

@@ -125,11 +125,11 @@ object Commands
 		runExitHooks(s).reload
 	}
 
-	def defaults = Command.simple(DefaultsCommand, DefaultsBrief, DefaultsDetailed) { (in, s) =>
+	def defaults = Command.simple(DefaultsCommand) { (in, s) =>
 		s ++ DefaultCommands
 	}
 
-	def initialize = Command.simple(InitCommand, InitBrief, InitDetailed) { (in, s) =>
+	def initialize = Command.simple(InitCommand) { (in, s) =>
 		/*"load-commands -base ~/.sbt/commands" :: */readLines( readable( sbtRCs(s) ) ) ::: s
 	}
 
