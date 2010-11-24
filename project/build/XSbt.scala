@@ -87,7 +87,8 @@ class XSbt(info: ProjectInfo) extends ParentProject(info) with NoCrossPaths
 	val stdTaskSub = testedBase(tasksPath / "standard", "Task System", taskSub, collectionSub, logSub, ioSub, processSub)
 		// The main integration project for sbt.  It brings all of the subsystems together, configures them, and provides for overriding conventions.
 	val mainSub = baseProject("main", "Main",
-		buildSub, compileIncrementalSub, compilerSub, completeSub, discoverySub, ioSub, logSub, processSub, taskSub, stdTaskSub, runSub, trackingSub)
+		buildSub, compileIncrementalSub, compilerSub, completeSub, discoverySub,
+		ioSub, logSub, processSub, taskSub, stdTaskSub, runSub, trackingSub, testingSub)
 		// Strictly for bringing implicits and aliases from subsystems into the top-level sbt namespace through a single package object
 	val sbtSub = project(sbtPath, "Simple Build Tool", new Sbt(_), mainSub) // technically, we need a dependency on all of mainSub's dependencies, but we don't do that since this is strictly an integration project
 

@@ -15,7 +15,7 @@ trait TestReportListener
 	/** called if there was an error during test */
   def endGroup(name: String, t: Throwable)
 	/** called if test completed */
-  def endGroup(name: String, result: Result.Value)
+  def endGroup(name: String, result: TestResult.Value)
   /** Used by the test framework for logging test results*/
   def contentLogger: Option[TLogger] = None
 }
@@ -25,23 +25,23 @@ trait TestsListener extends TestReportListener
 	/** called once, at beginning. */
   def doInit
 	/** called once, at end. */
-  def doComplete(finalResult: Result.Value)
+  def doComplete(finalResult: TestResult.Value)
 }
 
 abstract class TestEvent extends NotNull
 {
-	def result: Option[Result.Value]
+	def result: Option[TestResult.Value]
 	def detail: Seq[TEvent] = Nil
 }
 object TestEvent
 {
 	def apply(events: Seq[TEvent]): TestEvent =
 	{
-		val overallResult = (Result.Passed /: events) { (sum, event) =>
+		val overallResult = (TestResult.Passed /: events) { (sum, event) =>
 			val result = event.result
-			if(sum == Result.Error || result == TResult.Error) Result.Error
-			else if(sum == Result.Failed || result == TResult.Failure) Result.Failed
-			else Result.Passed
+			if(sum == TestResult.Error || result == TResult.Error) TestResult.Error
+			else if(sum == TestResult.Failed || result == TResult.Failure) TestResult.Failed
+			else TestResult.Passed
 		}
 		new TestEvent {
 			val result = Some(overallResult)
@@ -76,7 +76,7 @@ class TestLogger(val log: TLogger) extends TestsListener
 		log.trace(t)
 		log.error("Could not run test " + name + ": " + t.toString)
 	}
-	def endGroup(name: String, result: Result.Value) {}
+	def endGroup(name: String, result: TestResult.Value) {}
 	protected def count(event: TEvent): Unit =
 	{
 		event.result match
@@ -95,15 +95,15 @@ class TestLogger(val log: TLogger) extends TestsListener
 		skipped = 0
 	}
 		/** called once, at end. */
-	def doComplete(finalResult: Result.Value): Unit =
+	def doComplete(finalResult: TestResult.Value): Unit =
 	{
 		val totalCount = failures + errors + skipped + passed
 		val postfix = ": Total " + totalCount + ", Failed " + failures + ", Errors " + errors + ", Passed " + passed + ", Skipped " + skipped
 		finalResult match
 		{
-			case Result.Error => log.error("Error" + postfix)
-			case Result.Passed => log.info("Passed: " + postfix)
-			case Result.Failed => log.error("Failed: " + postfix)
+			case TestResult.Error => log.error("Error" + postfix)
+			case TestResult.Passed => log.info("Passed: " + postfix)
+			case TestResult.Failed => log.error("Failed: " + postfix)
 		}
 	}
 	override def contentLogger: Option[TLogger] = Some(log)

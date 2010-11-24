@@ -3,14 +3,15 @@
  */
 package sbt
 
+	import java.io.File
 	import java.net.URLClassLoader
 	import org.scalatools.testing.{AnnotatedFingerprint, Fingerprint, SubclassFingerprint, TestFingerprint}
 	import org.scalatools.testing.{Event, EventHandler, Framework, Runner, Runner2, Logger=>TLogger}
 	import classpath.{ClasspathUtilities, DualLoader, FilteredLoader}
 
-object Result extends Enumeration
+object TestResult extends Enumeration
 {
-	val Error, Passed, Failed = Value
+	val Passed, Failed, Error = Value
 }
 
 object TestFrameworks
@@ -55,7 +56,7 @@ final class TestRunner(framework: Framework, loader: ClassLoader, listeners: Seq
 			case _ => error("Framework '" + framework + "' does not support test '" + testDefinition + "'")
 		}
 
-	final def run(testDefinition: TestDefinition, args: Seq[String]): Result.Value =
+	final def run(testDefinition: TestDefinition, args: Seq[String]): TestResult.Value =
 	{
 		log.debug("Running " + testDefinition + " with arguments " + args.mkString(", "))
 		val name = testDefinition.name
@@ -73,7 +74,7 @@ final class TestRunner(framework: Framework, loader: ClassLoader, listeners: Seq
 		safeListenersCall(_.startGroup(name))
 		try
 		{
-			val result = runTest().getOrElse(Result.Passed)
+			val result = runTest().getOrElse(TestResult.Passed)
 			safeListenersCall(_.endGroup(name, result))
 			result
 		}
@@ -81,15 +82,13 @@ final class TestRunner(framework: Framework, loader: ClassLoader, listeners: Seq
 		{
 			case e =>
 				safeListenersCall(_.endGroup(name, e))
-				Result.Error
+				TestResult.Error
 		}
 	}
 
 	protected def safeListenersCall(call: (TestReportListener) => Unit): Unit =
 		TestFramework.safeForeach(listeners, log)(call)
 }
-
-final class NamedTestTask(val name: String, action: => Unit) { def run() = action }
 
 object TestFramework
 {
@@ -117,39 +116,28 @@ object TestFramework
 			case _ => false
 		}
 
-		import scala.collection.{immutable, Map, Set}
-
-	def testTasks(frameworks: Seq[TestFramework],
-		classpath: Iterable[Path],
-		scalaInstance: ScalaInstance,
+	def testTasks(frameworks: Seq[Framework],
+		testLoader: ClassLoader,
 		tests: Seq[TestDefinition],
 		log: Logger,
 		listeners: Seq[TestReportListener],
-		endErrorsEnabled: Boolean,
-		setup: Iterable[ClassLoader => Unit],
-		cleanup: Iterable[ClassLoader => Unit],
-		testArgsByFramework: Map[TestFramework, Seq[String]]):
-			(Iterable[NamedTestTask], Iterable[NamedTestTask], Iterable[NamedTestTask]) =
+		testArgsByFramework: Map[Framework, Seq[String]]):
+			(() => Unit, Iterable[(String, () => TestResult.Value)], TestResult.Value => () => Unit) =
 	{
-		val (loader, tempDir) = createTestLoader(classpath, scalaInstance)
-		val arguments = immutable.Map() ++
-			( for(framework <- frameworks; created <- framework.create(loader, log)) yield
-				(created, testArgsByFramework.getOrElse(framework, Nil)) )
-		val cleanTmp = (_: ClassLoader) => IO.delete(tempDir)
-
-		val mappedTests = testMap(arguments.keys.toList, tests, arguments)
+		val arguments = testArgsByFramework withDefaultValue Nil
+		val mappedTests = testMap(frameworks, tests, arguments)
 		if(mappedTests.isEmpty)
-			(new NamedTestTask(TestStartName, None) :: Nil, Nil, new NamedTestTask(TestFinishName, { log.info("No tests to run."); cleanTmp(loader) }) :: Nil )
+			(() => (), Nil, _ => () => log.info("No tests to run.") )
 		else
-			createTestTasks(loader, mappedTests, log, listeners, endErrorsEnabled, setup, Seq(cleanTmp) ++ cleanup)
+			createTestTasks(testLoader, mappedTests, log, listeners)
 	}
 
 	private def testMap(frameworks: Seq[Framework], tests: Seq[TestDefinition], args: Map[Framework, Seq[String]]):
-		immutable.Map[Framework, (Set[TestDefinition], Seq[String])] =
+		Map[Framework, (Set[TestDefinition], Seq[String])] =
 	{
 		import scala.collection.mutable.{HashMap, HashSet, Set}
 		val map = new HashMap[Framework, Set[TestDefinition]]
-		def assignTests(): Unit =
+		def assignTests()
 		{
 			for(test <- tests if !map.values.exists(_.contains(test)))
 			{
@@ -160,70 +148,38 @@ object TestFramework
 		}
 		if(!frameworks.isEmpty)
 			assignTests()
-		(immutable.Map() ++ map) transform { (framework, tests) => (tests, args(framework)) }
+		map.toMap transform { (framework, tests) => (tests.toSet, args(framework)) };
 	}
-	private def createTasks[T](work: Iterable[T => Unit], baseName: String, input: T) =
-		work.toList.zipWithIndex.map{ case (work, index) => new NamedTestTask(baseName + " " + (index+1), work(input)) }
 		
-	private def createTestTasks(loader: ClassLoader, tests: Map[Framework, (Set[TestDefinition], Seq[String])], log: Logger,
-		listeners: Seq[TestReportListener], endErrorsEnabled: Boolean, setup: Iterable[ClassLoader => Unit],
-		cleanup: Iterable[ClassLoader => Unit]) =
+	private def createTestTasks(loader: ClassLoader, tests: Map[Framework, (Set[TestDefinition], Seq[String])], log: Logger, listeners: Seq[TestReportListener]) =
 	{
-		val testsListeners = listeners.filter(_.isInstanceOf[TestsListener]).map(_.asInstanceOf[TestsListener])
-		def foreachListenerSafe(f: TestsListener => Unit): Unit = safeForeach(testsListeners, log)(f)
+		val testsListeners = listeners collect { case tl: TestsListener => tl }
+		def foreachListenerSafe(f: TestsListener => Unit): () => Unit = () => safeForeach(testsListeners, log)(f)
 		
-			import Result.{Error,Passed,Failed}
-		object result
-		{
-			private[this] var value: Result.Value = Passed
-			def apply() = synchronized { value }
-			def update(v: Result.Value): Unit = synchronized { if(value != Error) value = v }
-		}
-		val startTask = new NamedTestTask(TestStartName, {foreachListenerSafe(_.doInit); None}) :: createTasks(setup, "Test setup", loader)
+			import TestResult.{Error,Passed,Failed}
+
+		val startTask = foreachListenerSafe(_.doInit)
 		val testTasks =
-			tests flatMap { case (framework, (testDefinitions, testArgs)) =>
+			tests.view flatMap { case (framework, (testDefinitions, testArgs)) =>
 			
 					val runner = new TestRunner(framework, loader, listeners, log)
 					for(testDefinition <- testDefinitions) yield
 					{
-						def runTest() =
-						{
-							val oldLoader = Thread.currentThread.getContextClassLoader
-							Thread.currentThread.setContextClassLoader(loader)
-							try {
-								runner.run(testDefinition, testArgs) match
-								{
-									case Error => result() = Error; Some("ERROR occurred during testing.")
-									case Failed => result() = Failed; Some("Test FAILED")
-									case _ => None
-								}
-							}
-							finally {
-								Thread.currentThread.setContextClassLoader(oldLoader)
-							}
-						}
-						new NamedTestTask(testDefinition.name, runTest())
+						val runTest = () => withContextLoader(loader) { runner.run(testDefinition, testArgs) }
+						(testDefinition.name, runTest)
 					}
 			}
-		def end() =
-		{
-			foreachListenerSafe(_.doComplete(result()))
-			result() match
-			{
-				case Error => if(endErrorsEnabled) Some("ERROR occurred during testing.") else None
-				case Failed => if(endErrorsEnabled) Some("One or more tests FAILED.") else None
-				case Passed =>
-				{
-					log.info(" ")
-					log.info("All tests PASSED.")
-					None
-				}
-			}
-		}
-		val endTask = new NamedTestTask(TestFinishName, end() ) :: createTasks(cleanup, "Test cleanup", loader)
-		(startTask, testTasks, endTask)
+
+		val endTask = (result: TestResult.Value) => foreachListenerSafe(_.doComplete(result))
+		(startTask, testTasks.toList, endTask)
 	}
-	def createTestLoader(classpath: Iterable[Path], scalaInstance: ScalaInstance): (ClassLoader, Path) =
+	private[this] def withContextLoader[T](loader: ClassLoader)(eval: => T): T =
+	{
+		val oldLoader = Thread.currentThread.getContextClassLoader
+		Thread.currentThread.setContextClassLoader(loader)
+		try { eval } finally { Thread.currentThread.setContextClassLoader(oldLoader) }
+	}
+	def createTestLoader(classpath: Seq[File], scalaInstance: ScalaInstance): ClassLoader =
 	{
 		val filterCompilerLoader = new FilteredLoader(scalaInstance.loader, ScalaCompilerJarPackages)
 		val interfaceFilter = (name: String) => name.startsWith("org.scalatools.testing.")

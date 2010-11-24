@@ -12,6 +12,7 @@ package sbt
 	import Types._
 	import xsbti.api.Definition
 
+	import org.scalatools.testing.Framework
 	import java.io.File
 
 class DefaultProject(val info: ProjectInfo) extends BasicProject
@@ -73,6 +74,43 @@ abstract class BasicProject extends TestProject with MultiClasspathProject with 
 		val classpath = cp.map(x => Path.fromFile(x.data))
 		r.run(mainClass, classpath, in.splitArgs, s.log) foreach error
 	}
+
+	lazy val testFrameworks: Task[Seq[TestFramework]] = task {
+		import TestFrameworks._
+		Seq(ScalaCheck, Specs, ScalaTest, ScalaCheckCompat, ScalaTestCompat, SpecsCompat, JUnit)
+	}
+
+	lazy val testLoader: Task[ClassLoader] =
+		fullClasspath(TestConfig) :^: buildScalaInstance :^: KNil map { case classpath :+: instance :+: HNil =>
+			TestFramework.createTestLoader(data(classpath), instance)
+		}
+
+	lazy val loadedTestFrameworks: Task[Map[TestFramework,Framework]] =
+		testFrameworks :^: streams :^: testLoader :^: KNil map { case frameworks :+: s :+: loader :+: HNil =>
+			frameworks.flatMap( f => f.create(loader, s.log).map( x => (f, x)).toIterable ).toMap
+		}
+		
+	lazy val discoverTest: Task[(Seq[TestDefinition], Set[String])] =
+		loadedTestFrameworks :^: testCompile :^: KNil map { case frameworkMap :+: analysis :+: HNil =>
+			Test.discover(frameworkMap.values.toSeq, analysis)
+		}
+	lazy val definedTests: Task[Seq[TestDefinition]] = discoverTest.map(_._1)
+
+	lazy val testOptions: Task[Seq[TestOption]] = task { Nil }
+
+	lazy val test = (loadedTestFrameworks :^: testOptions :^: testLoader :^: definedTests :^: streams :^: KNil) flatMap {
+		case frameworkMap :+: options :+: loader :+: discovered :+: s :+: HNil =>
+
+		val toTask = (testTask: NamedTestTask) => task { testTask.run() } named(testTask.name)
+		def dependsOn(on: Iterable[Task[_]]): Task[Unit] = task { () } dependsOn(on.toSeq : _*)
+
+		val (begin, work, end) = Test(frameworkMap, loader, discovered, options, s.log)
+		val beginTasks = dependsOn( begin.map(toTask) ) // test setup tasks
+		val workTasks = work.map(w => toTask(w) dependsOn(beginTasks) )  // the actual tests
+		val endTasks = dependsOn( end.map(toTask) ) // tasks that perform test cleanup and are run regardless of success of tests
+		dependsOn( workTasks ) doFinally { endTasks }
+	}
+
 	lazy val clean = task {
 		IO.delete(outputDirectory)
 	}
@@ -107,4 +145,7 @@ abstract class BasicProject extends TestProject with MultiClasspathProject with 
 
 	lazy val compileInputs: Task[Compile.Inputs] = compileInputsTask(Configurations.Compile,  "src" / "main", buildScalaInstance) named(name + "/compile-inputs")
 	lazy val compile: Task[Analysis] = compileTask(compileInputs) named(name + "/compile")
+
+	lazy val testCompileInputs: Task[Compile.Inputs] = compileInputsTask(Configurations.Test,  "src" / "test", buildScalaInstance) named(name + "/test-inputs")
+	lazy val testCompile: Task[Analysis] = compileTask(testCompileInputs) named(name + "/test")
 }

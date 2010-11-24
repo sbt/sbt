@@ -81,6 +81,9 @@ sealed trait ProcessPipe
 
 trait TaskExtra
 {
+	final def nop: Task[Unit] = const( () )
+	final def const[T](t: T): Task[T] = task(t)
+
 	final def cross[T](key: AttributeKey[T])(values: T*): Task[T] =
 		CrossAction( for(v <- values) yield ( AttributeMap.empty put (key, v), task(v) ) )
 
