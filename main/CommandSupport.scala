@@ -93,7 +93,7 @@ ProjectCommand +
 	def DefaultsDetailed = "Registers default built-in commands"
 
 	def ReloadCommand = "reload"
-	def ReloadBrief = (ReloadCommand, "Reloads the session and continues to execute the remaining commands.")
+	def ReloadBrief = (ReloadCommand, "Reloads the session and then executes the remaining commands.")
 	def ReloadDetailed =
 ReloadCommand + """
 	This command is equivalent to exiting, restarting, and running the
@@ -160,7 +160,6 @@ DiscoverSyntax + """
 CompileSyntax + """
 
 	Incrementally compiles Scala and Java sources.
-	Java source support is limited at this time.
 	
 	<paths> are explicit paths separated by the platform path separator.
 	

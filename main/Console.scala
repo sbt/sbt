@@ -56,15 +56,15 @@ final class Scaladoc(maximumErrors: Int, compiler: AnalyzingCompiler)
 	{
 		log.info(actionStartMessage(label))
 		if(sources.isEmpty)
-			log.info(actionNothingToDoMessage)
+			log.info(ActionNothingToDoMessage)
 		else
 		{
 			IO.createDirectory(outputDirectory)
 			compiler.doc(sources, classpath, outputDirectory, options, maximumErrors, log)
-			log.info(actionSuccessfulMessage)
+			log.info(ActionSuccessfulMessage)
 		}
 	}
 	def actionStartMessage(label: String) = "Generating API documentation for " + label + " sources..."
-	val actionNothingToDoMessage = "No sources specified."
-	val actionSuccessfulMessage = "API documentation generation successful."
+	val ActionNothingToDoMessage = "No sources specified."
+	val ActionSuccessfulMessage = "API documentation generation successful."
 }

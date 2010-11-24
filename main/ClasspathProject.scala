@@ -183,7 +183,7 @@ object ClasspathProject
 			analyzed(i.config.classesDirectory, analysis)
 		}
 
-	def makeProducts(compile: Task[Analysis], inputs: Task[Compile.Inputs], name: String, prefix: String) =
+	def makeProducts(compile: Task[Analysis], inputs: Task[Compile.Inputs], name: String, prefix: String): Task[Seq[Attributed[File]]] =
 	{
 		def mkName(postfix: String) = name + "/" + prefix + postfix
 		analyzed(compile, inputs) named(mkName("analyzed")) map { _ :: Nil } named(mkName("products"))
@@ -265,7 +265,7 @@ object ClasspathProject
 	def missingMapping(from: String, to: String, conf: String) = 
 		error("No configuration mapping defined from '" + from + "' to '" + to + "' for '" + conf + "'")
 	def missingConfiguration(in: String, conf: String) =
-		 error("Configuration '" + conf + "' not defined in '" + in)
+		 error("Configuration '" + conf + "' not defined in '" + in + "'")
 	def allConfigs(dep: Project, conf: String): Seq[String] =
 		dep match {
 			case cp: ClasspathProject => Dag.topologicalSort(configuration(cp, conf))(_.extendsConfigs).map(_.name)

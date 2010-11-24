@@ -569,4 +569,14 @@ object IO
 			delete(a)
 		}
 	}
+
+	def gzipFileOut[T](file: File)(f: OutputStream => T): T =
+		Using.fileOutputStream()(file) { fout =>
+		Using.gzipOutputStream(fout) { outg =>
+		Using.bufferedOutputStream(outg)(f) }}
+
+	def gzipFileIn[T](file: File)(f: InputStream => T): T =
+		Using.fileInputStream(file) { fin =>
+		Using.gzipInputStream(fin) { ing =>
+		Using.bufferedInputStream(ing)(f) }}
 }
