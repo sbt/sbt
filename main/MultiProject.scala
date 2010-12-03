@@ -167,6 +167,7 @@ trait Project extends Tasked with HistoryEnabled with Member[Project] with Named
 
 	def settings: Settings = Settings.empty
 	def name: String = info.name getOrElse error("'name' not overridden")
+	def normalizedName: String = StringUtilities.normalize(name)
 
 	def base = info.projectDirectory
 	def outputRootPath = base / "target"

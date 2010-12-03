@@ -22,10 +22,10 @@ class DefaultProject(val info: ProjectInfo) extends BasicProject
 }
 trait IntegrationTest extends BasicProject
 {
-	override def productsTask(conf: Configuration): Task[Seq[Attributed[File]]] =
+	override def directoryProductsTask(conf: Configuration): Task[Seq[Attributed[File]]] =
 		conf match {
 			case ITestConfig => makeProducts(integrationTestCompile.compile, integrationTestCompile.compileInputs, name, "it-")
-			case _ => super.productsTask(conf)
+			case _ => super.directoryProductsTask(conf)
 		}
 
 	override def configurations: Seq[Configuration] = super.configurations :+ Configurations.IntegrationTest
@@ -39,6 +39,9 @@ abstract class BasicProject extends TestProject with MultiClasspathProject with 
 	// easier to demo for now
 	override def organization = "org.example"
 	override def version = "1.0"
+	def artifactID = normalizedName
+	override def artifacts: Seq[Artifact] = Artifact(artifactID) :: pomArtifact
+	def pomArtifact = (if(publishMavenStyle) Artifact(artifactID, "pom", "pom") :: Nil else Nil)
 
 	override def watchPaths: PathFinder = (info.projectDirectory: Path) * sourceFilter +++ descendents("src","*")
 
@@ -46,6 +49,7 @@ abstract class BasicProject extends TestProject with MultiClasspathProject with 
 	def scalacOptions: Seq[String] = Nil
 	def consoleOptions: Seq[String] = scalacOptions
 	def initialCommands: String = ""
+	def maximumErrors: Int = 100
 
 	def outputDirectory = "target": Path
 	def cacheDirectory = outputDirectory / "cache"
@@ -53,19 +57,51 @@ abstract class BasicProject extends TestProject with MultiClasspathProject with 
 	def testResources = descendents("src" / "test" / "resources" ###, "*")
 
 	def classesDirectory(configuration: Configuration): File =
-		configuration match {
-			case CompileConfig => outputDirectory / "classes"
-			case c => outputDirectory / (c.name + "-classes")
-		}
+		outputDirectory / (configString(configuration, "", "-") + "classes")
 
-	lazy val products: Classpath = TaskMap(productsTask)
+	def packageToPublish: Seq[Task[_]] = configurations map packages.apply
 
-	 // TODO: include resources, perhaps handle jars v. directories
-	def productsTask(conf: Configuration): Task[Seq[Attributed[File]]] =
+	lazy val products: Classpath = directoryProducts //TaskMap(productsTask)
+
+	lazy val directoryProducts = TaskMap(directoryProductsTask)
+	lazy val packages = TaskMap(packageTask)
+	lazy val pkgMainClass = TaskMap(mainClassTask)
+	lazy val jarPath = TaskMap(jarPathTask)
+
+	lazy val `package` = packages(CompileConfig)
+	lazy val testPackage = packages(TestConfig)
+
+	def directoryProductsTask(conf: Configuration): Task[Seq[Attributed[File]]] =
 		conf match {
 			case CompileConfig | DefaultConfig => makeProducts(compile.compile, compile.compileInputs, name, "")
 			case TestConfig => makeProducts(testCompile.compile, testCompile.compileInputs, name, "test-")
 			case x => task { Nil }
+		}
+
+	def mainClassesTask(conf: Configuration): Task[Seq[String]] = conf match {
+		case CompileConfig => discoveredMainClasses
+		case TestConfig => test.testDiscoveredMainClasses
+		case _ => task { Nil }
+	}
+	def mainClassTask(conf: Configuration): Task[Option[String]]  =  mainClassesTask(conf) map { classes => SelectMainClass(None, classes) }
+	def configString(conf: Configuration, pre: String, post: String): String = conf match {
+		case CompileConfig | DefaultConfig => ""
+		case _ => pre + conf.name + post
+	}
+
+	def jarPathTask(conf: Configuration): Task[File]  =  task { outputDirectory / jarName(conf) }
+	def jarName(conf: Configuration): String  =  artifactID + "-" + version + configString(conf, "-", "") + ".jar"
+
+	def packageConfigTask(conf: Configuration): Task[Package.Configuration] =
+		pkgMainClass(conf) :^: directoryProductsTask(conf) :^: jarPath(conf) :^: KNil map { case main :+: in :+: jar :+: HNil =>
+			val srcs = data(in) flatMap { dir => descendents(dir ###, "*").xx }
+			new Package.Configuration(srcs, jar, main.map(Package.MainClass.apply).toList)
+		}
+
+	def packageTask(conf: Configuration): Task[Seq[Attributed[File]]] =
+		streams :^: packageConfigTask(conf) :^: KNil map { case s :+: config :+: HNil =>
+			Package(config, cacheDirectory / conf.name / "package", s.log)
+			List(config.jar)
 		}
 
 	lazy val buildScalaVersions: Task[String] = task { info.app.scalaProvider.version }//cross(MultiProject.ScalaVersion)(info.app.scalaProvider.version)
@@ -77,9 +113,6 @@ abstract class BasicProject extends TestProject with MultiClasspathProject with 
 
 	lazy val discoveredMainClasses: Task[Seq[String]] =
 		discoverMain map { _ collect { case (definition, discovered) if(discovered.hasMain) => definition.name } }
-
-	lazy val pkgMainClass: Task[Option[String]] =
-		 discoveredMainClasses map { classes => SelectMainClass(None, classes) }
 
 	lazy val runner: Task[ScalaRun] =
 		 buildScalaInstance map { si => new Run(si) }
@@ -108,7 +141,7 @@ abstract class BasicProject extends TestProject with MultiClasspathProject with 
 
 	lazy val clean = task { IO.delete(outputDirectory) }
 
-	// lazy val doc, test-only, test-quick, test-failed, publish(-local), deliver(-local), make-pom, package-*, javap, copy-resources
+	// lazy val test-only, test-quick, test-failed, package-src, package-test, package-doc, javap
 
 	lazy val set = input map { in =>
 		val Seq(name, value) = in.splitArgs.take(2)
@@ -138,7 +171,7 @@ abstract class BasicProject extends TestProject with MultiClasspathProject with 
 			val classpath = classes +: data(cp)
 			val analysis = analysisMap(cp)
 			val cache = cacheDirectory / "compile" / configuration.toString
-			Compile.inputs(classpath, sources.getFiles.toSeq, classes, scalacOptions, javacOptions, allBases.getFiles.toSeq, analysis, cache, 100)(compilers, log)
+			Compile.inputs(classpath, sources.getFiles.toSeq, classes, scalacOptions, javacOptions, allBases.getFiles.toSeq, analysis, cache, maximumErrors)(compilers, log)
 		}
 	}
 
@@ -239,3 +272,9 @@ class TestTasks(val prefix: Option[String], val project: ClasspathProject with P
 	}
 	lazy val test = (project.streams, executeTests) map { case s :+: results :+: HNil => Test.showResults(s.log, results) }
 }
+/*class PackageTasks
+/*	def zipTask(sources: PathFinder, outputDirectory: Path, zipName: => String): Task =
+		zipTask(sources, outputDirectory / zipName)
+	def zipTask(sources: PathFinder, zipPath: => Path): Task =
+		fileTask("zip", zipPath from sources) { FileUtilities.zip(sources.get, zipPath, false, log) }*/
+}*/

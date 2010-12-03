@@ -8,9 +8,9 @@ package sbt
 	import TaskExtra._
 	import ClasspathProject._
 	import java.io.File
-	import Path._
+	import Path._	
 	import Types._
-	import scala.xml.NodeSeq
+	import scala.xml.{Node => XNode,NodeSeq}
 	import scala.collection.mutable.{LinkedHashMap, LinkedHashSet}
 
 trait ClasspathProject
@@ -55,7 +55,6 @@ trait BasicClasspathProject extends ClasspathProject
 	val unmanagedBase: Task[File]
 	def cacheDirectory: File
 
-
 	val updateConfig: Task[UpdateConfiguration]
 
 	lazy val ivySbt: Task[IvySbt] =
@@ -84,9 +83,26 @@ trait BasicClasspathProject extends ClasspathProject
 		
 	lazy val update = (ivyModule, updateConfig) map cachedUpdate(cacheDirectory / "update", configurationMap)
 }
-
-trait DefaultClasspathProject extends BasicClasspathProject with Project
+trait PublishProject extends BasicClasspathProject
 {
+	val publishConfig: Task[PublishConfiguration]
+	val publishLocalConfig: Task[PublishConfiguration]
+	val makePomConfig: Task[MakePomConfiguration]
+	def packageToPublish: Seq[Task[_]]
+
+	def publishMavenStyle = true
+	def deliverDepends = if(publishMavenStyle) makePom :: Nil else packageToPublish
+
+	lazy val makePom = (ivyModule, makePomConfig) map(IvyActions.makePom) dependsOn( packageToPublish : _*)
+	lazy val deliver = (ivyModule, publishConfig) map cachedPublish(cacheDirectory / "deliver")(IvyActions.deliver) dependsOn(deliverDepends : _*)
+	lazy val deliverLocal = (ivyModule, publishLocalConfig) map cachedPublish(cacheDirectory / "deliver-local")(IvyActions.deliver) dependsOn(deliverDepends : _*)
+	lazy val publish = (ivyModule, publishConfig) map cachedPublish(cacheDirectory / "publish")(IvyActions.publish) dependsOn(deliver)
+	lazy val publishLocal = (ivyModule, publishLocalConfig) map cachedPublish(cacheDirectory / "publish-local")(IvyActions.publish) dependsOn(deliverLocal)
+}
+
+trait DefaultClasspathProject extends BasicClasspathProject with PublishProject with Project
+{
+	def outputDirectory: Path
 	def projectID: ModuleID
 	def baseResolvers: Seq[Resolver]
 	lazy val resolvers: Task[Seq[Resolver]] = task { baseResolvers }
@@ -119,6 +135,10 @@ trait DefaultClasspathProject extends BasicClasspathProject with Project
 	def defaultConfiguration: Option[Configuration] = None
 	def ivyScala: Option[IvyScala] = None
 	def ivyValidate: Boolean = false
+	def moduleID = normalizedName
+
+	def pomFile: File
+	def publishTo: Resolver = error("Repository for publishing is not specified.")
 
 	lazy val internalDependencyClasspath: Classpath = internalDependencies(this)
 
@@ -127,6 +147,10 @@ trait DefaultClasspathProject extends BasicClasspathProject with Project
 	lazy val moduleSettings: Task[ModuleSettings] = task {
 		new InlineConfiguration(projectID, libraryDependencies, ivyXML, configurations, defaultConfiguration, ivyScala, ivyValidate)
 	}
+
+	lazy val publishConfig = task { publishConfiguration( publishPatterns(outputDirectory), resolverName = publishTo.name ) }
+	lazy val publishLocalConfig = task { publishConfiguration( publishPatterns(outputDirectory, true) ) }
+	lazy val makePomConfig = task { makePomConfiguration(pomFile) }
 }
 trait MultiClasspathProject extends DefaultClasspathProject
 {
@@ -134,6 +158,8 @@ trait MultiClasspathProject extends DefaultClasspathProject
 	def name: String
 	def organization: String
 	def version: String
+	def pomFile: File = outputDirectory / (moduleID + "-" + version + ".pom")
+	def artifacts: Seq[Artifact] = Nil
 
 	def projectDependencies: Seq[ModuleID] =
 		resolvedDependencies(this) collect { case (p: DefaultClasspathProject, conf) => p.projectID.copy(configurations = conf) }
@@ -143,7 +169,7 @@ trait MultiClasspathProject extends DefaultClasspathProject
 			new RawRepository(new ProjectResolver("inter-project", m))
 		}
 
-	override def projectID = ModuleID(organization, name, version)
+	override def projectID = ModuleID(organization, moduleID, version).cross(true).artifacts(artifacts.toSeq : _*)
 	override def libraryDependencies: Seq[ModuleID] = super.libraryDependencies ++ projectDependencies
 	
 	override lazy val resolvers: Task[Seq[Resolver]] = projectResolver map { _ +: baseResolvers }
@@ -274,10 +300,29 @@ object ClasspathProject
 			case _ => Configurations.Default
 		}
 
+	def makePomConfiguration(file: File, configurations: Option[Iterable[Configuration]] = None, extra: NodeSeq = NodeSeq.Empty, process: XNode => XNode = n => n, filterRepositories: MavenRepository => Boolean = _ => true) = 
+		new MakePomConfiguration(file, configurations, extra, process, filterRepositories)
+
+	def publishConfiguration(patterns: PublishPatterns, resolverName: String = "local", status: String = "release", logging: UpdateLogging.Value = UpdateLogging.DownloadOnly) =
+	    new PublishConfiguration(patterns, status, resolverName, None, logging)
+
+	def publishPatterns(outputPath: Path, publishIvy: Boolean = false): PublishPatterns =
+	{
+		val deliverPattern = (outputPath / "[artifact]-[revision](-[classifier]).[ext]").absolutePath
+		val srcArtifactPatterns: Seq[String] =
+		{
+			val pathPatterns =
+				(outputPath / "[artifact]-[revision]-[type](-[classifier]).[ext]") ::
+				(outputPath / "[artifact]-[revision](-[classifier]).[ext]") ::
+				Nil
+			pathPatterns.map(_.absolutePath)
+		}
+		new PublishPatterns( if(publishIvy) Some(deliverPattern) else None, srcArtifactPatterns)
+	}
+
 		import Cache._
 		import Types._
-		import CacheIvy.{classpathFormat, updateIC}
-		
+		import CacheIvy.{classpathFormat, publishIC, updateIC}
 
 	def cachedUpdate(cacheFile: File, configMap: Map[String, Configuration]): (IvySbt#Module :+: UpdateConfiguration :+: HNil) => Map[Configuration, Seq[File]] =
 		{ case module :+: config :+: HNil =>
@@ -293,4 +338,13 @@ object ClasspathProject
 			classpaths map { case (key, value) => (confMap(key), value) } toMap;
 		}
 
+	// can't cache deliver/publish easily since files involved are hidden behind patterns.  publish will be difficult to verify target-side anyway
+	def cachedPublish(cacheFile: File)(g: (IvySbt#Module, PublishConfiguration) => Unit): (IvySbt#Module :+: PublishConfiguration :+: HNil) => Unit =
+	{ case module :+: config :+: HNil =>
+	/*	implicit val publishCache = publishIC
+		val f = cached(cacheFile) { (conf: IvyConfiguration, settings: ModuleSettings, config: PublishConfiguration) =>*/
+		    g(module, config)
+		/*}
+		f(module.owner.configuration :+: module.moduleSettings :+: config :+: HNil)*/
+	}
 }
