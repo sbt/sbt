@@ -4,7 +4,7 @@
 package sbt
 
 import sbinary.{CollectionTypes, DefaultProtocol, Format, Input, JavaFormats, Output}
-import java.io.File
+import java.io.{ByteArrayInputStream, ByteArrayOutputStream, File, InputStream, OutputStream}
 import java.net.{URI, URL}
 import Types.:+:
 import DefaultProtocol.{asProduct2, asSingleton, BooleanFormat, ByteFormat, IntFormat, wrap}
@@ -108,7 +108,13 @@ trait BasicCacheImplicits
 	implicit def stringSetEquiv: Equiv[Set[String]] = defaultEquiv
 	implicit def stringMapEquiv: Equiv[Map[String, String]] = defaultEquiv
 
-
+	def streamFormat[T](write: (T, OutputStream) => Unit, f: InputStream => T): Format[T] =
+	{
+		val toBytes = (t: T) => { val bos = new ByteArrayOutputStream; write(t, bos); bos.toByteArray }
+		val fromBytes = (bs: Array[Byte]) => f(new ByteArrayInputStream(bs))
+		wrap(toBytes, fromBytes)(DefaultProtocol.ByteArrayFormat)
+	}
+	
 	implicit def xmlInputCache(implicit strEq: InputCache[String]): InputCache[NodeSeq] = wrapIn[NodeSeq, String](_.toString, strEq)
 
 	implicit def seqCache[T](implicit t: InputCache[T]): InputCache[Seq[T]] =
