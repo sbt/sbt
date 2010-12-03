@@ -8,7 +8,7 @@ import scala.xml.{Node,NodeSeq}
 
 import org.apache.ivy.{core, plugins, Ivy}
 import core.cache.DefaultRepositoryCacheManager
-import core.LogOptions
+import core.{IvyPatternHelper,LogOptions}
 import core.deliver.DeliverOptions
 import core.install.InstallOptions
 import core.module.descriptor.{DefaultArtifact, DefaultDependencyArtifactDescriptor, MDArtifact}
@@ -20,15 +20,13 @@ import core.resolve.ResolveOptions
 import core.retrieve.RetrieveOptions
 import plugins.parser.m2.{PomModuleDescriptorParser,PomModuleDescriptorWriter}
 
+final class PublishPatterns(val deliverIvyPattern: Option[String], val srcArtifactPatterns: Seq[String])
+final class PublishConfiguration(val patterns: PublishPatterns, val status: String, val resolverName: String, val configurations: Option[Seq[Configuration]], val logging: UpdateLogging.Value)
+
 final class UpdateConfiguration(val retrieve: Option[RetrieveConfiguration], val logging: UpdateLogging.Value)
 final class RetrieveConfiguration(val retrieveDirectory: File, val outputPattern: String, val synchronize: Boolean)
-final class MakePomConfiguration(val extraDependencies: Iterable[ModuleID], val configurations: Option[Iterable[Configuration]],
-	val extra: NodeSeq, val process: Node => Node, val filterRepositories: MavenRepository => Boolean)
-object MakePomConfiguration
-{
-	def apply(extraDependencies: Iterable[ModuleID], configurations: Option[Iterable[Configuration]], extra: NodeSeq) =
-		new MakePomConfiguration(extraDependencies, configurations, extra, identity, _ => true)
-}
+final class MakePomConfiguration(val file: File, val configurations: Option[Iterable[Configuration]] = None, val extra: NodeSeq = NodeSeq.Empty, val process: Node => Node = n => n, val filterRepositories: MavenRepository => Boolean = _ => true)
+
 /** Configures logging during an 'update'.  `level` determines the amount of other information logged.
 * `Full` is the default and logs the most.
 * `DownloadOnly` only logs what is downloaded.
@@ -62,43 +60,45 @@ object IvyActions
 	}
 
 	/** Creates a Maven pom from the given Ivy configuration*/
-	def makePom(module: IvySbt#Module, configuration: MakePomConfiguration,  output: File)
+	def makePom(module: IvySbt#Module, configuration: MakePomConfiguration)
 	{
-		import configuration.{configurations, extra, extraDependencies, filterRepositories, process}
+		import configuration.{configurations, extra, file, filterRepositories, process}
 		module.withModule { (ivy, md, default) =>
-			addLateDependencies(ivy, md, default, extraDependencies)
-			(new MakePom).write(ivy, md, configurations, extra, process, filterRepositories, output)
-			module.logger.info("Wrote " + output.getAbsolutePath)
+			(new MakePom).write(ivy, md, configurations, extra, process, filterRepositories, file)
+			module.logger.info("Wrote " + file.getAbsolutePath)
 		}
 	}
-	// todo: correct default configuration for extra dependencies
-	private def addLateDependencies(ivy: Ivy, module: DefaultModuleDescriptor, defaultConfiguration: String, extraDependencies: Iterable[ModuleID])
-	{
-		val parser = new CustomXmlParser.CustomParser(ivy.getSettings, Some(defaultConfiguration))
-		parser.setMd(module)
-		IvySbt.addDependencies(module, extraDependencies, parser)
-	}
 
-	def deliver(module: IvySbt#Module, status: String, deliverIvyPattern: String, extraDependencies: Iterable[ModuleID], configurations: Option[Iterable[Configuration]], logging: UpdateLogging.Value)
+	def deliver(module: IvySbt#Module, configuration: PublishConfiguration)
 	{
+		import configuration._
+		import patterns._
 		module.withModule { case (ivy, md, default) =>
-			addLateDependencies(ivy, md, default, extraDependencies)
 			resolve(logging)(ivy, md, default) // todo: set download = false for resolve
 			val revID = md.getModuleRevisionId
 			val options = DeliverOptions.newInstance(ivy.getSettings).setStatus(status)
 			options.setConfs(IvySbt.getConfigurations(md, configurations))
-			ivy.deliver(revID, revID.getRevision, deliverIvyPattern, options)
+			ivy.deliver(revID, revID.getRevision, getDeliverIvyPattern(patterns), options)
 		}
 	}
+	// because Ivy.deliver does not provide the delivered File location, we duplicate the logic here
+	def deliverFile(module: IvySbt#Module, configuration: PublishConfiguration): File =
+		module.withModule { (ivy,md,_) =>
+			ivy.getSettings.resolveFile(IvyPatternHelper.substitute(getDeliverIvyPattern(configuration.patterns), md.getResolvedModuleRevisionId))
+		}
+	def getDeliverIvyPattern(patterns: PublishPatterns) = patterns.deliverIvyPattern.getOrElse(error("No Ivy pattern specified"))
+
 	// todo: map configurations, extra dependencies
-	def publish(module: IvySbt#Module, resolverName: String, srcArtifactPatterns: Iterable[String], deliveredIvyPattern: Option[String], configurations: Option[Iterable[Configuration]])
+	def publish(module: IvySbt#Module, configuration: PublishConfiguration)
 	{
+		import configuration._
+		import patterns._
 		module.withModule { case (ivy, md, default) =>
 			val revID = md.getModuleRevisionId
 			val patterns = new java.util.ArrayList[String]
 			srcArtifactPatterns.foreach(pattern => patterns.add(pattern))
 			val options = (new PublishOptions).setOverwrite(true)
-			deliveredIvyPattern.foreach(options.setSrcIvyPattern)
+			deliverIvyPattern.foreach(options.setSrcIvyPattern)
 			options.setConfs(IvySbt.getConfigurations(md, configurations))
 			ivy.publish(revID, patterns, resolverName, options)
 		}
