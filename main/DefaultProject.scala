@@ -103,6 +103,9 @@ abstract class BasicProject extends TestProject with MultiClasspathProject with 
 	lazy val console = consoleTask(CompileConfig, consoleOptions, initialCommands, compile.compileInputs)
 	lazy val testConsole = consoleTask(TestConfig, consoleOptions, initialCommands, testCompile.compileInputs)
 
+	lazy val doc = docTask("main", compile.compileInputs)
+	lazy val testDoc = docTask("test", testCompile.compileInputs)
+
 	lazy val clean = task { IO.delete(outputDirectory) }
 
 	// lazy val doc, test-only, test-quick, test-failed, publish(-local), deliver(-local), make-pom, package-*, javap, copy-resources
@@ -176,10 +179,16 @@ abstract class BasicProject extends TestProject with MultiClasspathProject with 
 
 	def runTasks(prefix: Option[String], config: Configuration, discoveredMainClasses: Task[Seq[String]]): RunTasks =
 		new RunTasks(prefix, this, config, discoveredMainClasses, runner)
-	
+
+	def docTask(label: String, inputs: Task[Compile.Inputs]): Task[Unit] =
+		inputs :^: streams :^: KNil map { case in :+: s :+: HNil =>
+			val d = new Scaladoc(maximumErrors, in.compilers.scalac)
+			d(label, in.config.sources, in.config.classpath, outputDirectory / "doc", scalacOptions)(s.log)
+		}
 }
 
 // TODO: move these to separate file.  The main problem with this approach is modifying dependencies and otherwise overriding a task.
+//  Intend to remedy this with injections instead of overrides
 final class CompileTasks(val prefix: Option[String], val compile: Task[Analysis], val compileInputs: Task[Compile.Inputs]) extends TaskGroup
 
 class RunTasks(val prefix: Option[String], val project: ClasspathProject with Project, val config: Configuration, discoveredMainClasses: Task[Seq[String]], runner: Task[ScalaRun]) extends TaskGroup
