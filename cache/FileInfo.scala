@@ -21,9 +21,12 @@ sealed trait ModifiedFileInfo  extends FileInfo
 	val lastModified: Long
 }
 sealed trait PlainFileInfo extends FileInfo
+{
+	def exists: Boolean
+}
 sealed trait HashModifiedFileInfo extends HashFileInfo with ModifiedFileInfo
 
-private final case class PlainFile(file: File) extends PlainFileInfo
+private final case class PlainFile(file: File, exists: Boolean) extends PlainFileInfo
 private final case class FileHash(file: File, hash: List[Byte]) extends HashFileInfo
 private final case class FileModified(file: File, lastModified: Long) extends ModifiedFileInfo
 private final case class FileHashModified(file: File, hash: List[Byte], lastModified: Long) extends HashModifiedFileInfo
@@ -72,8 +75,8 @@ object FileInfo
 	{
 		type F = PlainFileInfo
 		implicit def apply(file: File): PlainFileInfo = make(file)
-		def make(file: File): PlainFileInfo = PlainFile(file.getAbsoluteFile)
-		implicit val format: Format[PlainFileInfo] = wrap(_.file, make)
+		def make(file: File): PlainFileInfo = { val abs = file.getAbsoluteFile; PlainFile(abs, abs.exists) }
+		implicit val format: Format[PlainFileInfo] = asProduct2[PlainFileInfo, File, Boolean](PlainFile.apply)(x => (x.file, x.exists))
 	}
 }
 
@@ -82,22 +85,25 @@ object FilesInfo
 {
 	sealed abstract class Style
 	{
-		val fileStyle: FileInfo.Style
-		type F = fileStyle.F
+		type F <: FileInfo
+		val fileStyle: FileInfo.Style { type F = Style.this.F }
+
 		//def manifest: Manifest[F] = fileStyle.manifest
 		implicit def apply(files: Set[File]): FilesInfo[F]
 		implicit def unapply(info: FilesInfo[F]): Set[File] = info.files.map(_.file)
 		implicit val formats: Format[FilesInfo[F]]
 		val manifest: Manifest[Format[FilesInfo[F]]]
-		def empty: FilesInfo[F] = new FilesInfo(Set.empty)
+		def empty: FilesInfo[F] = new FilesInfo[F](Set.empty)
 		import Cache._
 		implicit def infosInputCache: InputCache[FilesInfo[F]] = basicInput
 		implicit def filesInputCache: InputCache[Set[File]] = wrapIn[Set[File],FilesInfo[F]]
 		implicit def filesInfoEquiv: Equiv[FilesInfo[F]] = defaultEquiv
 	}
-	private final class BasicStyle[FI <: FileInfo](val fileStyle: FileInfo.Style { type F  = FI })
+	private final class BasicStyle[FI <: FileInfo](style: FileInfo.Style { type F  = FI })
 		(implicit val manifest: Manifest[Format[FilesInfo[FI]]]) extends Style
 	{
+		type F = FI
+		val fileStyle: FileInfo.Style { type F = FI } = style
 		private implicit val infoFormat: Format[FI] = fileStyle.format
 		implicit def apply(files: Set[File]): FilesInfo[F] = FilesInfo( files.map(_.getAbsoluteFile).map(fileStyle.apply) )
 		implicit val formats: Format[FilesInfo[F]] = wrap(_.files, (fs: Set[F]) => new FilesInfo(fs))
