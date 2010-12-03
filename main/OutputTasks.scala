@@ -8,6 +8,8 @@ package sbt
 	import TaskExtra._
 	import Types._
 	import OutputUtil._
+	import java.io.{BufferedReader,File}
+	import java.util.regex.Pattern
 
 trait PrintTask
 {
@@ -31,25 +33,63 @@ trait LastOutput
 	def input: Task[Input]
 	def streams: Task[TaskStreams]
 	def context: Task[Transform.Context[Project]]
+
 	lazy val last = (streams, input, context) flatMap { case s :+: i :+: ctx :+: HNil =>
-		val task = taskForName(ctx, i.arguments)
-		(s.readText( task, update = false ) map { reader =>
+		mapLast(s, ctx, i.arguments) { reader =>
 			val out = s.text()
-			def readL()
-			{
-				val line = reader.readLine()
-				if(line ne null) {
+			foreachLine(reader) { line =>
+				out.println(line)
+				println(line)
+			}
+		}
+	}
+
+	lazy val grepLast = (streams, input, context) flatMap { case s :+: i :+: ctx :+: HNil =>
+		val i2 = new Input(i.arguments, None)
+		val pattern = Pattern.compile(i2.arguments)
+		mapLast(s, ctx, i2.name) { reader =>
+			val out = s.text()
+			foreachLine(reader) { line =>
+				showMatches(pattern, line) foreach { line =>
 					out.println(line)
 					println(line)
-					readL()
 				}
 			}
-			readL()
-		}).merge
+		}
 	}
 }
 object OutputUtil
 {
+	def showMatches(pattern: Pattern, line: String): Option[String] =
+	{
+		val matcher = pattern.matcher(line)
+		if(ConsoleLogger.formatEnabled)
+		{
+			val highlighted = matcher.replaceAll(scala.Console.RED + "$0" + scala.Console.RESET)
+			if(highlighted == line) None else Some(highlighted)
+		}
+		else if(matcher.find)
+			Some(line)
+		else
+			None
+	}
+	def mapLast[T](s: TaskStreams, ctx: Transform.Context[Project], taskName: String)(f: BufferedReader => T): Task[Task.Cross[T]] =
+	{
+		val task = taskForName(ctx, taskName)
+		s.readText( task, update = false ).map( f ).merge
+	}
+	def foreachLine(reader: BufferedReader)(f: String => Unit)
+	{
+		def readL()
+		{
+			val line = reader.readLine()
+			if(line ne null) {
+				f(line)
+				readL()
+			}
+		}
+		readL()
+	}
 	def taskForName(ctx: Transform.Context[Project], name: String): Task[_] =
 		ctx.static(ctx.rootOwner, MultiProject.transformName(name)).getOrElse(error("No task '" + name + "'"))
 }
