@@ -19,8 +19,8 @@ object Tracked
 	* In both cases, the timestamp is not updated if the function throws an exception.*/
 	def tstamp(cacheFile: File, useStartTime: Boolean = true): Timestamp = new Timestamp(cacheFile, useStartTime)
 	/** Creates a tracker that only evaluates a function when the input has changed.*/
-	def changed[O](cacheFile: File)(implicit format: Format[O], equiv: Equiv[O]): Changed[O] =
-		new Changed[O](cacheFile)
+	//def changed[O](cacheFile: File)(implicit format: Format[O], equiv: Equiv[O]): Changed[O] =
+	//	new Changed[O](cacheFile)
 	
 	/** Creates a tracker that provides the difference between a set of input files for successive invocations.*/
 	def diffInputs(cache: File, style: FilesInfo.Style): Difference =
@@ -28,9 +28,47 @@ object Tracked
 	/** Creates a tracker that provides the difference between a set of output files for successive invocations.*/
 	def diffOutputs(cache: File, style: FilesInfo.Style): Difference =
 		Difference.outputs(cache, style)
+
+		import sbinary.JavaIO._
+
+	def inputChanged[I,O](cacheFile: File)(f: (Boolean, I) => O)(implicit ic: InputCache[I]): I => O = in =>
+	{
+		val help = new CacheHelp(ic)
+		val conv = help.convert(in)
+		val changed = help.changed(cacheFile, conv)
+		val result = f(changed, in)
+		
+		if(changed)
+			help.save(cacheFile, conv)
+
+		result
+	}
+	def outputChanged[I,O](cacheFile: File)(f: (Boolean, I) => O)(implicit ic: InputCache[I]): (() => I) => O = in =>
+	{
+		val initial = in()
+		val help = new CacheHelp(ic)
+		val changed = help.changed(cacheFile, help.convert(initial))
+		val result = f(changed, initial)
+		
+		if(changed)
+			help.save(cacheFile, help.convert(in()))
+
+		result
+	}
+	final class CacheHelp[I](val ic: InputCache[I])
+	{
+		def convert(i: I): ic.Internal = ic.convert(i)
+		def save(cacheFile: File, value: ic.Internal): Unit =
+			Using.fileOutputStream()(cacheFile)(out => ic.write(out, value) )
+		def changed(cacheFile: File, converted: ic.Internal): Boolean =
+			try {
+				val prev = Using.fileInputStream(cacheFile)(x => ic.read(x))
+				!ic.equiv.equiv(converted, prev)
+			} catch { case e: Exception => true }
+	}
 }
 
-trait Tracked extends NotNull
+trait Tracked
 {
 	/** Cleans outputs and clears the cache.*/
 	def clean: Unit
