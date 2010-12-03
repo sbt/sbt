@@ -69,12 +69,12 @@ trait BasicClasspathProject extends ClasspathProject
 	def classpathFilter: FileFilter = GlobFilter("*.jar")
 	def defaultExcludes: FileFilter
 
-	override val managedClasspath: Classpath =
+	override lazy val managedClasspath: Classpath =
 		TaskMap { configuration =>
 			update map { x => attributed(x.getOrElse(configuration, error("No such configuration '" + configuration.toString + "'")) ) }
 		}
 
-	val unmanagedClasspath: Classpath =
+	lazy val unmanagedClasspath: Classpath =
 		TaskMap { configuration =>
 			unmanagedBase map { base =>
 				attributed( (base * (classpathFilter -- defaultExcludes) +++
@@ -162,14 +162,6 @@ trait ReflectiveClasspathProject extends DefaultClasspathProject
 
 object ClasspathProject
 {
-/*	def consoleTask(compileTask: Task[Analysis], inputTask: Task[Compile.Inputs]): Task[Unit] =
-	{
-		(compileTask, inputTask) map { (analysis, in) =>
-			val console = new Console(in.compilers.scalac)
-			console()
-		}
-	}
-*/
 	type Classpath = Configuration => Task[Seq[Attributed[File]]]
 	
 	val Analyzed = AttributeKey[Analysis]("analysis")
@@ -293,7 +285,7 @@ object ClasspathProject
 			val f = cached(cacheFile) { (conf: IvyConfiguration, settings: ModuleSettings, config: UpdateConfiguration) =>
 				println("Updating...")
 				val r = IvyActions.update(module, config)
-				println("Done updating...")
+				println("Done updating.")
 				r
 			}
 			val classpaths = f(module.owner.configuration :+: module.moduleSettings :+: config :+: HNil)
