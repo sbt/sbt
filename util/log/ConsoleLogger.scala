@@ -21,9 +21,13 @@ object ConsoleLogger
 		def println() = out.println()
 	}
 
-	private val formatEnabled = ansiSupported && !formatExplicitlyDisabled
+	val formatEnabled =
+	{
+		import java.lang.Boolean.{getBoolean, parseBoolean}
+		val value = System.getProperty("sbt.log.format")
+		if(value eq null) (ansiSupported && !getBoolean("sbt.log.noformat")) else parseBoolean(value)
+	}
 
-	private[this] def formatExplicitlyDisabled = java.lang.Boolean.getBoolean("sbt.log.noformat")
 	private[this] def ansiSupported =
 		try { jline.Terminal.getTerminal.isANSISupported }
 		catch { case e: Exception => !isWindows }
