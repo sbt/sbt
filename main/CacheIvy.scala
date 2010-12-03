@@ -13,6 +13,7 @@ package sbt
 	import RepositoryHelpers._
 	import Ordering._
 
+
 /** InputCaches for IvyConfiguration, ModuleSettings, and UpdateConfiguration
 * The InputCaches for a basic data structure is built in two parts.
 * Given the data structure:
@@ -50,6 +51,7 @@ object CacheIvy
 		Cache.wrapIn(f, cache)
 
 	def updateIC: InputCache[IvyConfiguration :+: ModuleSettings :+: UpdateConfiguration :+: HNil] = implicitly
+	def publishIC: InputCache[IvyConfiguration :+: ModuleSettings :+: PublishConfiguration :+: HNil] = implicitly
 
 	implicit def classpathFormat =
 	{
@@ -104,6 +106,7 @@ object CacheIvy
 
 		implicit def artifactToHL = (a: Artifact) => a.name :+: a.`type` :+: a.extension :+: a.classifier :+: names(a.configurations) :+: a.url :+: a.extraAttributes :+: HNil
 
+		implicit def publishConfToHL = (p: PublishConfiguration) => p.patterns :+: p.status :+: p.resolverName :+: p.configurations :+: HNil
 	}
 	import L2._
 
@@ -112,6 +115,7 @@ object CacheIvy
 	implicit def ivyFileIC: InputCache[IvyFileConfiguration] = wrapIn
 	implicit def connectionIC: InputCache[SshConnection] = wrapIn
 	implicit def artifactIC: InputCache[Artifact] = wrapIn
+	implicit def publishConfIC: InputCache[PublishConfiguration] = wrapIn
 
 	object L1 {
 		implicit def retrieveToHL = (r: RetrieveConfiguration) => exists(r.retrieveDirectory) :+: r.outputPattern :+: r.synchronize :+: HNil
@@ -127,6 +131,8 @@ object CacheIvy
 
 		implicit def externalIvyConfigurationToHL = (e: ExternalIvyConfiguration) =>
 			exists(e.baseDirectory) :+: hash(e.file) :+: HNil
+
+		implicit def publishPatternsToHL = (p: PublishPatterns) => p.deliverIvyPattern :+: p.srcArtifactPatterns :+: HNil
 	}
 	import L1._
 
@@ -137,6 +143,7 @@ object CacheIvy
 	implicit def fileConfIC: InputCache[FileConfiguration] = wrapIn
 	implicit def extIvyIC: InputCache[ExternalIvyConfiguration] = wrapIn
 	implicit def confIC: InputCache[Configuration] = wrapIn
+	implicit def publishPatternsIC: InputCache[PublishPatterns] = wrapIn
 
 	implicit def authIC: InputCache[SshAuthentication] =
 		unionInputCache[SshAuthentication, PasswordAuthentication :+: KeyFileAuthentication :+: HNil]
