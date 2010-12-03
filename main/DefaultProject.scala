@@ -31,8 +31,9 @@ trait IntegrationTest extends BasicProject
 	override def configurations: Seq[Configuration] = super.configurations :+ Configurations.IntegrationTest
 
 	lazy val integrationTestOptions: Task[Seq[TestOption]] = testOptions
-	lazy val integrationTest = testTasks(Some("it"), Configurations.IntegrationTest, integrationTestOptions, integrationTestCompile.compile, buildScalaInstance)
-	lazy val integrationTestCompile = compileTasks(Some("it"), Configurations.IntegrationTest, "src" / "it", Path.emptyPathFinder, buildScalaInstance)
+	lazy val integrationTest = testTasks(Some("it"), ITestConfig, integrationTestOptions, integrationTestCompile.compile, buildScalaInstance)
+	lazy val integrationTestCompile = compileTasks(Some("it"), ITestConfig, "src" / "it", Path.emptyPathFinder, buildScalaInstance)
+	lazy val integrationTestPackage = packages(ITestConfig)
 }
 abstract class BasicProject extends TestProject with MultiClasspathProject with ReflectiveClasspathProject
 {
@@ -67,9 +68,16 @@ abstract class BasicProject extends TestProject with MultiClasspathProject with 
 	lazy val packages = TaskMap(packageTask)
 	lazy val pkgMainClass = TaskMap(mainClassTask)
 	lazy val jarPath = TaskMap(jarPathTask)
+	lazy val javaps = TaskMap(javapCompiledTask)
+
+	lazy val javap = javaps(CompileConfig)
+	lazy val testJavap = javaps(TestConfig)
 
 	lazy val `package` = packages(CompileConfig)
 	lazy val testPackage = packages(TestConfig)
+
+	def javapCompiledTask(conf: Configuration): Task[Unit] =
+		javapTask(taskData(fullClasspath(conf)), buildScalaInstance)
 
 	def directoryProductsTask(conf: Configuration): Task[Seq[Attributed[File]]] =
 		conf match {
@@ -141,7 +149,7 @@ abstract class BasicProject extends TestProject with MultiClasspathProject with 
 
 	lazy val clean = task { IO.delete(outputDirectory) }
 
-	// lazy val test-only, test-quick, test-failed, package-src, package-test, package-doc, javap
+	// lazy val test-only, test-quick, test-failed, package-src, package-doc, jetty-{run,stop,restart}, prepare-webapp
 
 	lazy val set = input map { in =>
 		val Seq(name, value) = in.splitArgs.take(2)

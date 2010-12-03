@@ -216,6 +216,7 @@ object ClasspathProject
 		(cp map extractAnalysis).toMap
 
 	def data[T](in: Seq[Attributed[T]]): Seq[T] = in.map(_.data)
+	def taskData[T](in: Task[Seq[Attributed[T]]]): Task[Seq[T]] = in map data
 
 	def depMap(root: Project): Task[Map[ModuleRevisionId, ModuleDescriptor]] =
 		depMap(MultiProject.topologicalSort(root).dropRight(1) collect { case cp: DefaultClasspathProject => cp })

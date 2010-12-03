@@ -93,3 +93,29 @@ object OutputUtil
 	def taskForName(ctx: Transform.Context[Project], name: String): Task[_] =
 		ctx.static(ctx.rootOwner, MultiProject.transformName(name)).getOrElse(error("No task '" + name + "'"))
 }
+trait Exec
+{
+	def input: Task[Input]
+	def streams: Task[TaskStreams]
+	def fork(p: Seq[String], log: Logger): Unit = fork(Process(p), log)
+	def fork(p: ProcessBuilder, log: Logger): Unit =
+	{
+		val exitValue = p ! log
+		if(exitValue != 0) error("Nonzero exit value: " + exitValue)
+	}
+	def forkWithCode(p: ProcessBuilder, log: Logger): Task[Int] = streams map { s => p ! log }
+	
+	lazy val sh = (input, streams) map { case in :+: s :+: HNil => fork("sh" :: "-c" :: in.arguments :: Nil, s.log) }
+	lazy val exec = (input, streams) map { case in :+: s :+: HNil => fork( Process(in.splitArgs), s.log ) }
+}
+trait Javap extends Exec
+{
+	def javapTask(classpath: Task[Seq[File]], scalaInstance: Task[ScalaInstance]): Task[Unit] =
+		javapTask( (classpath, scalaInstance) map { case cp :+: si :+: HNil => cp ++ si.jars } )
+	def javapTask(classpath: Task[Seq[File]]): Task[Unit] =
+		(input, classpath, streams) map { case in :+: cp :+: s :+: HNil =>
+			val args = in.splitArgs
+			val argsWithClasspath = if(cp.isEmpty) args else "-classpath" +: Path.makeString(cp) +: args
+			fork("javap" +: argsWithClasspath, s.log)
+		}
+}
