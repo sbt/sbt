@@ -14,7 +14,11 @@ sealed trait Completions
 	final def x(o: Completions): Completions = Completions( for(cs <- get; os <- o.get) yield cs ++ os )
 	final def ++(o: Completions): Completions = Completions( get ++ o.get )
 	final def +:(o: Completion): Completions = Completions(get + o)
+	final def filter(f: Completion => Boolean): Completions = Completions(get filter f)
+	final def filterS(f: String => Boolean): Completions = filter(c => f(c.append))
 	override def toString = get.mkString("Completions(",",",")")
+	final def flatMap(f: Completion => Completions): Completions = Completions(get.flatMap(c => f(c).get))
+	final def map(f: Completion => Completion): Completions = Completions(get map f)
 }
 object Completions
 {
@@ -28,10 +32,13 @@ object Completions
 		def get = cs
 	}
 
-	/** A Completions with no suggested completions, not even the empty Completion.*/
-	val empty: Completions = strict(Set.empty)
+	/** No suggested completions, not even the empty Completion.*/
+	val nil: Completions = strict(Set.empty)
 
-	/** A Completions with only the marked empty Completion as a suggestion. */
+	/** Only includes the unmarked empty Completion as a suggestion. */
+	val empty: Completions = strict(Set.empty + Completion.empty)
+
+	/** Includes only the marked empty Completion as a suggestion. */
 	val mark: Completions = strict(Set.empty + Completion.mark)
 
 	/** Returns a strict Completions instance with a single Completion with `s` for `append`.*/
@@ -70,6 +77,8 @@ sealed trait Completion
 	
 	/** Appends the completions in `o` with the completions in this unless `o` is marked and this is nonempty.*/
 	final def ++(o: Completion): Completion = if(o.mark && !isEmpty) this else Completion(prepend + o.prepend, append + o.append, mark)
+
+	final def x(o: Completions): Completions = o.map(this ++ _)
 
 	override final def toString = triple.toString
 	override final lazy val hashCode = triple.hashCode

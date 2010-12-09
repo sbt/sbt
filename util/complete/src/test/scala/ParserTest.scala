@@ -23,4 +23,22 @@ object ParserExample
 	println(apply(t)("test").resultEmpty)
 	println(apply(t)("test w").resultEmpty)
 	println(apply(t)("test was were").resultEmpty)
+
+	def run(n: Int)
+	{
+		val a = 'a'.id
+		val aq = a.?
+		val aqn = repeat(aq, min = n, max = n)
+		val an = repeat(a, min = n, max = n)
+		val ann = aqn ~ an
+
+		def r = apply(ann)("a"*(n*2)).resultEmpty
+		println(r.isDefined)
+	}
+	def run2(n: Int)
+	{
+		val ab = "ab".?.*
+		val r = apply(ab)("a"*n).resultEmpty
+		println(r)
+	}
 }
