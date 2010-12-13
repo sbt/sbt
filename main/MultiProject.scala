@@ -165,7 +165,6 @@ trait Project extends Tasked with HistoryEnabled with Member[Project] with Named
 {
 	val info: ProjectInfo
 
-	def settings: Settings = Settings.empty
 	def name: String = info.name getOrElse error("'name' not overridden")
 	def normalizedName: String = StringUtilities.normalize(name)
 
@@ -191,7 +190,7 @@ trait Project extends Tasked with HistoryEnabled with Member[Project] with Named
 		val context = MultiProject.makeContext(this)
 		val dummies = new Transform.Dummies(In, State, Streams, Context)
 		def name(t: Task[_]): String = context.staticName(t.original) getOrElse std.Streams.name(t)
-		val mklog = LogManager.construct(context, settings)
+		val mklog = LogManager.construct(context)
 		def getOwner(t: Task[_]) = context.owner(t.original).getOrElse(error("No owner for " + name(t.original) + "\n\t" + t.original))
 		val actualStreams = std.Streams(t => getOwner(t).streamBase / name(t), mklog )
 		val injected = new Transform.Injected( input, state, actualStreams )

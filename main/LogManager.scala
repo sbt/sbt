@@ -9,12 +9,12 @@ package sbt
 
 object LogManager
 {
-	def construct(context: Transform.Context[Project], settings: Settings) = (task: Task[_], to: PrintWriter) =>
+	def construct(context: Transform.Context[Project]) = (task: Task[_], to: PrintWriter) =>
 	{
 		val owner = context owner task
 		val ownerName = owner flatMap ( context ownerName _ ) getOrElse ""
 		val taskPath = (context staticName task).toList ::: ownerName  :: Nil
-		def level(key: AttributeKey[Level.Value], default: Level.Value): Level.Value = settings.get(key, taskPath) getOrElse default
+		def level(key: AttributeKey[Level.Value], default: Level.Value): Level.Value = default//settings.get(key, taskPath) getOrElse default
 		val screenLevel = level(ScreenLogLevel, Level.Info)
 		val backingLevel = level(PersistLogLevel, Level.Debug)
 

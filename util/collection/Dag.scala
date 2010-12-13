@@ -14,21 +14,29 @@ object Dag
 	import scala.collection.{mutable, JavaConversions};
 	import JavaConversions.{asIterable, asSet}
 
-	def topologicalSort[T](root: T)(dependencies: T => Iterable[T]) = {
+	// TODO: replace implementation with call to new version
+	def topologicalSort[T](root: T)(dependencies: T => Iterable[T]): List[T] = topologicalSort(root :: Nil)(dependencies)
+	
+	def topologicalSort[T](nodes: Iterable[T])(dependencies: T => Iterable[T]): List[T] =
+	{
 		val discovered = new mutable.HashSet[T]
 		val finished = asSet(new java.util.LinkedHashSet[T])
 
+		def visitAll(nodes: Iterable[T]) = nodes foreach visit
 		def visit(dag : T){
 			if (!discovered(dag)) {
 				discovered(dag) = true; 
-				dependencies(dag).foreach(visit);
+				visitAll(dependencies(dag));
 				finished += dag;
 			}
+			else if(!finished(dag))
+				throw new Cyclic(dag)
 		}
 
-		visit(root);
+		visitAll(nodes);
 	
 		finished.toList;
 	}
+	final class Cyclic(val value: Any) extends Exception("Cyclic reference involving " + value)
 }
 
