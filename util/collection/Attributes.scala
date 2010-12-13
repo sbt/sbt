@@ -10,6 +10,7 @@ import Types._
 //  a single AttributeKey instance cannot conform to AttributeKey[T] for different Ts
 sealed trait AttributeKey[T] {
 	def label: String
+	override final def toString = label
 }
 object AttributeKey
 {
@@ -30,6 +31,9 @@ trait AttributeMap
 object AttributeMap
 {
 	val empty: AttributeMap = new BasicAttributeMap(Map.empty)
+	implicit def toNatTrans(map: AttributeMap): AttributeKey ~> Id = new (AttributeKey ~> Id) {
+		def apply[T](key: AttributeKey[T]): T = map(key)
+	}
 }
 private class BasicAttributeMap(private val backing: Map[AttributeKey[_], Any]) extends AttributeMap
 {
