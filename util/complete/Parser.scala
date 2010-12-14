@@ -34,6 +34,11 @@ sealed trait RichParser[A]
 	* For example, `'c'.id` or `"asdf".id`*/
 	def id: Parser[A]
 
+	def ^^^[B](value: B): Parser[B]
+	def ??[B >: A](alt: B): Parser[B]
+	def <~[B](b: Parser[B]): Parser[A]
+	def ~>[B](b: Parser[B]): Parser[B]
+	
 	def unary_- : Parser[Unit]
 	def & (o: Parser[_]): Parser[A]
 	def - (o: Parser[_]): Parser[A]
@@ -58,7 +63,7 @@ object Parser
 		if(p.valid) p.derive(c) else p
 
 	def completions(p: Parser[_], s: String): Completions = completions( apply(p)(s) )
-	def completions(p: Parser[_]): Completions = Completions.mark x p.completions
+	def completions(p: Parser[_]): Completions = p.completions
 
 	implicit def richParser[A](a: Parser[A]): RichParser[A] = new RichParser[A]
 	{
@@ -71,6 +76,11 @@ object Parser
 		def map[B](f: A => B) = mapParser(a, f)
 		def id = a
 
+		def ^^^[B](value: B): Parser[B] = a map { _ => value }
+		def ??[B >: A](alt: B): Parser[B] = a.? map { _ getOrElse alt }
+		def <~[B](b: Parser[B]): Parser[A] = (a ~ b) map { case av ~ _ => av }
+		def ~>[B](b: Parser[B]): Parser[B] = (a ~ b) map { case _ ~ bv => bv }
+	
 		def unary_- = not(a)
 		def & (o: Parser[_]) = and(a, o)
 		def - (o: Parser[_]) = sub(a, o)
@@ -142,10 +152,11 @@ object Parser
 		}
 		else Invalid
 
-	def token[T](t: Parser[T]): Parser[T] = tokenStart(t, "")
-	def tokenStart[T](t: Parser[T], seen: String): Parser[T] =
+	def token[T](t: Parser[T]): Parser[T] = token(t, "", true)
+	def token[T](t: Parser[T], description: String): Parser[T] = token(t, description, false)
+	def token[T](t: Parser[T], seen: String, track: Boolean): Parser[T] =
 		if(t.valid && !t.isTokenStart)
-			if(t.result.isEmpty) new TokenStart(t, seen) else t
+			if(t.result.isEmpty) new TokenStart(t, seen, track) else t
 		else
 			t
 
@@ -205,6 +216,7 @@ object Parser
 		def resultEmpty = result
 		def derive(c: Char) = Invalid
 		def completions = Completions.empty
+		override def toString = "success(" + value + ")"
 	}
 
 	val any: Parser[Char] = charClass(_ => true)
@@ -224,14 +236,20 @@ object Parser
 		new CharacterClass(set) examples(set.map(_.toString))
 	}
 	def charClass(f: Char => Boolean): Parser[Char] = new CharacterClass(f)
+
 	implicit def literal(ch: Char): Parser[Char] = new Parser[Char] {
 		def resultEmpty = None
 		def derive(c: Char) = if(c == ch) success(ch) else Invalid
-		def completions = Completions.single(ch.toString)
+		def completions = Completions.single(Completion.suggestStrict(ch.toString))
+		override def toString = "'" + ch + "'"
 	}
 	implicit def literal(s: String): Parser[String] = stringLiteral(s, s.toList)
 	def stringLiteral(s: String, remaining: List[Char]): Parser[String] =
 		if(s.isEmpty) error("String literal cannot be empty") else if(remaining.isEmpty) success(s) else new StringLiteral(s, remaining)
+
+	object ~ {
+		def unapply[A,B](t: (A,B)): Some[(A,B)] = Some(t)
+	}
 }
 private final object Invalid extends Parser[Nothing]
 {
@@ -239,6 +257,7 @@ private final object Invalid extends Parser[Nothing]
 	def derive(c: Char) = error("Invalid.")
 	override def valid = false
 	def completions = Completions.nil
+	override def toString = "inv"
 }
 private final class SeqParser[A,B](a: Parser[A], b: Parser[B]) extends Parser[(A,B)]
 {
@@ -254,6 +273,7 @@ private final class SeqParser[A,B](a: Parser[A], b: Parser[B]) extends Parser[(A
 		}
 	}
 	lazy val completions = a.completions x b.completions
+	override def toString = "(" + a + " ~ " + b + ")"
 }
 
 private final class HomParser[A](a: Parser[A], b: Parser[A]) extends Parser[A]
@@ -261,24 +281,28 @@ private final class HomParser[A](a: Parser[A], b: Parser[A]) extends Parser[A]
 	def derive(c: Char) = (a derive c) | (b derive c)
 	lazy val resultEmpty = a.resultEmpty orElse b.resultEmpty
 	lazy val completions = a.completions ++ b.completions
+	override def toString = "(" + a + " | " + b + ")"
 }
 private final class HetParser[A,B](a: Parser[A], b: Parser[B]) extends Parser[Either[A,B]]
 {
 	def derive(c: Char) = (a derive c) || (b derive c)
 	lazy val resultEmpty = a.resultEmpty.map(Left(_)) orElse b.resultEmpty.map(Right(_))
 	lazy val completions = a.completions ++ b.completions
+	override def toString = "(" + a + " || " + b + ")"
 }
 private final class BindParser[A,B](a: Parser[A], f: A => Parser[B]) extends Parser[B]
 {
 	lazy val resultEmpty = a.resultEmpty match { case None => None; case Some(av) => f(av).resultEmpty }
-	lazy val completions =
+	lazy val completions = {
 		a.completions flatMap { c =>
 			apply(a)(c.append).resultEmpty match {
-				case None => Completions.empty
+				case None => Completions.strict(Set.empty + c)
 				case Some(av) => c x f(av).completions
 			}
 		}
+	}
 	def derive(c: Char) = a derive c flatMap f
+	override def toString = "bind(" + a + ")"
 }
 private final class MapParser[A,B](a: Parser[A], f: A => B) extends Parser[B]
 {
@@ -286,23 +310,30 @@ private final class MapParser[A,B](a: Parser[A], f: A => B) extends Parser[B]
 	def derive(c: Char) = (a derive c) map f
 	def completions = a.completions
 	override def isTokenStart = a.isTokenStart
+	override def toString = "map(" + a + ")"
 }
 private final class Filter[T](p: Parser[T], f: T => Boolean) extends Parser[T]
 {
 	lazy val resultEmpty = p.resultEmpty filter f
 	def derive(c: Char) = (p derive c) filter f
 	lazy val completions = p.completions filterS { s => apply(p)(s).resultEmpty.filter(f).isDefined }
+	override def toString = "filter(" + p + ")"
 }
-private final class TokenStart[T](delegate: Parser[T], seen: String) extends Parser[T]
+private final class TokenStart[T](delegate: Parser[T], seen: String, track: Boolean) extends Parser[T]
 {
-	def derive(c: Char) = tokenStart( delegate derive c, seen + c )
+	def derive(c: Char) = token( delegate derive c, if(track) seen + c else seen, track)
 	lazy val completions =
-	{
-		val dcs = delegate.completions
-		Completions( for(c <- dcs.get) yield Completion(seen, c.append, true) )
-	}
+		if(track)
+		{
+			val dcs = delegate.completions
+			Completions( for(c <- dcs.get) yield Completion.token(seen, c.append) )
+		}
+		else
+			Completions.single(Completion.displayStrict(seen))
+
 	def resultEmpty = delegate.resultEmpty
 	override def isTokenStart = true
+	override def toString = "token('" + seen + "', " + track + ", " + delegate + ")"
 }
 private final class And[T](a: Parser[T], b: Parser[_]) extends Parser[T]
 {
@@ -321,26 +352,30 @@ private final class Examples[T](delegate: Parser[T], fixed: Set[String]) extends
 {
 	def derive(c: Char) = examples(delegate derive c, fixed.collect { case x if x.length > 0 && x(0) == c => x.tail })
 	def resultEmpty = delegate.resultEmpty
-	lazy val completions = Completions(fixed map { ex => Completion.strict("",ex,false) } )
+	lazy val completions = if(fixed.isEmpty) Completions.empty else Completions(fixed map(f => Completion.suggestion(f)) )
+	override def toString = "examples(" + delegate + ", " + fixed.take(2) + ")"
 }
 private final class StringLiteral(str: String, remaining: List[Char]) extends Parser[String]
 {
 	assert(str.length > 0 && !remaining.isEmpty)
 	def resultEmpty = None
 	def derive(c: Char) = if(remaining.head == c) stringLiteral(str, remaining.tail) else Invalid
-	lazy val completions = Completions.single(remaining.mkString)
+	lazy val completions = Completions.single(Completion.suggestion(remaining.mkString))
+	override def toString = '"' + str + '"'
 }
 private final class CharacterClass(f: Char => Boolean) extends Parser[Char]
 {
 	def resultEmpty = None
 	def derive(c: Char) = if( f(c) ) success(c) else Invalid
 	def completions = Completions.empty
+	override def toString = "class()"
 }
 private final class Optional[T](delegate: Parser[T]) extends Parser[Option[T]]
 {
 	def resultEmpty = Some(None)
 	def derive(c: Char) = (delegate derive c).map(Some(_))
 	lazy val completions = Completion.empty +: delegate.completions
+	override def toString = delegate.toString + "?"
 }
 private final class Repeat[T](partial: Option[Parser[T]], repeated: Parser[T], min: Int, max: UpperBound, accumulatedReverse: List[T]) extends Parser[Seq[T]]
 {
@@ -395,4 +430,5 @@ private final class Repeat[T](partial: Option[Parser[T]], repeated: Parser[T], m
 			for(value <- repeated.resultEmpty) yield
 				List.make(min, value)
 	}
+	override def toString = "repeat(" + min + "," + max +"," + partial + "," + repeated + ")"
 }
