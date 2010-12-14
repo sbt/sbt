@@ -301,7 +301,16 @@ private final class BindParser[A,B](a: Parser[A], f: A => Parser[B]) extends Par
 			}
 		}
 	}
-	def derive(c: Char) = a derive c flatMap f
+
+	def derive(c: Char) =
+	{
+		val common = a derive c flatMap f
+		a.resultEmpty match
+		{
+			case Some(av) => common | f(av).derive(c)
+			case None => common
+		}
+	}
 	override def toString = "bind(" + a + ")"
 }
 private final class MapParser[A,B](a: Parser[A], f: A => B) extends Parser[B]
