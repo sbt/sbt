@@ -14,7 +14,6 @@ object Dag
 	import scala.collection.{mutable, JavaConversions};
 	import JavaConversions.{asIterable, asSet}
 
-	// TODO: replace implementation with call to new version
 	def topologicalSort[T](root: T)(dependencies: T => Iterable[T]): List[T] = topologicalSort(root :: Nil)(dependencies)
 	
 	def topologicalSort[T](nodes: Iterable[T])(dependencies: T => Iterable[T]): List[T] =
