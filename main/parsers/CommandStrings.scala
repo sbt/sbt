@@ -8,9 +8,6 @@ final class PropertyParser[A,B](propertyNames: ((Option[A], Option[B])) => Set[S
 {
 	val wsc = charClass(_.isWhitespace)
 	val ws = ( wsc + ) examples(" ")
-	// lesson #1: never end a 'token' with a nullable Parser or the next token will never be suggested.
-	// lesson #2 where there is whitespace (including required whitespace), it should start a token
-	//  might be issues to try to address better at some point.  These should now be fixed, but the comment will be left here for now.
 	val optWs = ( wsc * ) examples("")
 
 	val nameChar = (c: Char) => idChar(c) && !(c == ',' || c == '*')
