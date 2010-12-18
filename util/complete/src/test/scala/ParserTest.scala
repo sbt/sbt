@@ -63,8 +63,8 @@ object ParserExample
 	val notws = charClass(!_.isWhitespace)+
 
 	val name = token("test")
-	val options = (ws ~ token("quick" | "failed" | "new") )*
-	val include = (ws ~ token(examples(notws, Set("am", "is", "are", "was", "were") )) )*
+	val options = (ws ~> token("quick" | "failed" | "new") )*
+	val include = (ws ~> token(examples(notws.string, Set("am", "is", "are", "was", "were") )) )*
 
 	val t = name ~ options ~ include
 
