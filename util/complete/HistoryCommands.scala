@@ -4,6 +4,8 @@
 package sbt
 package complete
 
+	import java.io.File
+
 object HistoryCommands
 {
 	val Start = "!"
@@ -38,7 +40,7 @@ object HistoryCommands
 	def printHelp(): Unit =
 		println(helpString)
 
-	def apply(s: String, historyPath: Option[Path], maxLines: Int, error: String => Unit): Option[List[String]] =
+	def apply(s: String, historyPath: Option[File], maxLines: Int, error: String => Unit): Option[List[String]] =
 		if(s.isEmpty)
 		{
 			printHelp()
@@ -46,7 +48,7 @@ object HistoryCommands
 		}
 		else
 		{
-			val lines = historyPath.toList.flatMap(h => IO.readLines(h.asFile) ).toArray
+			val lines = historyPath.toList.flatMap( p => IO.readLines(p) ).toArray
 			if(lines.isEmpty)
 			{
 				error("No history")
@@ -66,7 +68,7 @@ object HistoryCommands
 				{
 					val command = historyCommand(history, s)
 					command.foreach(lines(lines.length - 1) = _)
-					historyPath foreach { h => IO.writeLines(h.asFile, lines) }
+					historyPath foreach { h => IO.writeLines(h, lines) }
 					Some(command.toList)
 				}
 			}
