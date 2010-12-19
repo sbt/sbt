@@ -23,8 +23,8 @@ final class Eval(options: Seq[String], mkReporter: Settings => Reporter, parent:
 	import global._
 	import definitions._
 
-	def eval[T](expression: String)(implicit mf: Manifest[T]): T = eval(expression, mf.toString).asInstanceOf[T]
-	def eval(expression: String, tpeName: String): Any =
+	def eval[T](expression: String)(implicit mf: Manifest[T]): T = eval(expression, Some(mf.toString)).asInstanceOf[T]
+	def eval(expression: String, tpeName: Option[String]): Any =
 	{
 		reporter.reset
 		val unit = mkUnit(expression)
@@ -36,7 +36,7 @@ final class Eval(options: Seq[String], mkReporter: Settings => Reporter, parent:
 
 		try { eval0(expression, tpeName, run, unit) } finally { unlinkAll() }
 	}
-	def eval0(expression: String, tpeName: String, run: Run, unit: CompilationUnit): Any =
+	def eval0(expression: String, tpeName: Option[String], run: Run, unit: CompilationUnit): (String, Any) =
 	{
 		val virtualDirectory = new VirtualDirectory("<virtual>", None)
 		settings.outputDirs setSingleOutput virtualDirectory
@@ -46,10 +46,15 @@ final class Eval(options: Seq[String], mkReporter: Settings => Reporter, parent:
 		parser.accept(EOF)
 		checkError("Error parsing expression.")
 
-		val tpeParser = new syntaxAnalyzer.UnitParser(mkUnit(tpeName))
-		val tpt: Tree = tpeParser.typ()
-		tpeParser.accept(EOF)
-		checkError("Error parsing type.")
+		val tpt: Tree = tpeName match {
+			case Some(tpe) =>
+				val tpeParser = new syntaxAnalyzer.UnitParser(mkUnit(tpe))
+				val tpt0: Tree = tpeParser.typ()
+				tpeParser.accept(EOF)
+				checkError("Error parsing type.")
+				tpt0
+			case None => TypeTree(NoType)
+		}
 
 		unit.body = augment(parser, tree, tpt)
 		
@@ -69,9 +74,10 @@ final class Eval(options: Seq[String], mkReporter: Settings => Reporter, parent:
 
 		compile(run.namerPhase)
 		checkError("Type error.")
+		val tpe = atPhase(run.typerPhase.next) { (new TypeExtractor).getType(unit.body) }
 
 		val loader = new AbstractFileClassLoader(virtualDirectory, parent)
-		getValue(loader)
+		(tpe, getValue(loader))
 	}
 	val WrapObjectName = "$sbtobj"
 	val WrapValName = "$sbtdef"
@@ -103,6 +109,14 @@ final class Eval(options: Seq[String], mkReporter: Settings => Reporter, parent:
 		value.asInstanceOf[T]
 	}
 
+	final class TypeExtractor extends Traverser {
+		private[this] var result = ""
+		def getType(t: Tree) = { result = ""; traverse(t); result }
+		override def traverse(tree: Tree): Unit = tree match {
+			case d: DefDef if  d.symbol.nameString == WrapValName => result = d.symbol.tpe.finalResultType.toString
+			case _ => super.traverse(tree)
+		}
+	}
 
 	def mkUnit(s: String) = new CompilationUnit(new BatchSourceFile("<setting>", s))
 	def checkError(label: String) = if(reporter.hasErrors) throw new EvalException(label)
