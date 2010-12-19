@@ -3,18 +3,14 @@
  */
 package sbt
 
-import Execute.NodeView
-import Completions.noCompletions
+	import Execute.NodeView
+	import java.io.File
+	import Function.untupled
 
 trait Command
 {
-	def applies: State => Option[Apply]
-}
-trait Apply
-{
-	def help: Seq[Help]
-	def run: Input => Option[State]
-	def complete: Input => Completions
+	def help: State => Seq[Help]
+	def run: (Input, State) => Option[State]
 }
 trait Help
 {
@@ -23,87 +19,61 @@ trait Help
 }
 object Help
 {
-	def apply(briefHelp: (String, String), detailedHelp: (Set[String], String) = (Set.empty, "") ): Help = new Help { def detail = detailedHelp; def brief = briefHelp }
-}
-trait Completions
-{
-	def candidates: Seq[String]
-	def position: Int
-}
-object Completions
-{
-	implicit def seqToCompletions(s: Seq[String]): Completions = apply(s : _*)
-	def apply(s: String*): Completions = new Completions { def candidates = s; def position = 0 }
-
-	def noCompletions: PartialFunction[Input, Completions] = { case _ => Completions() }
+	def apply(briefHelp: (String, String), detailedHelp: (Set[String], String) = (Set.empty, "") ): Help =
+		new Help { def detail = detailedHelp; def brief = briefHelp }
 }
 object Command
 {
-	def univ(f: State => Apply): Command = direct(s => Some(f(s)))
-	def direct(f: State => Option[Apply]): Command =
-		new Command { def applies = f }
-	def apply(f: PartialFunction[State, Apply]): Command =
-		direct(f.lift)
+	val Logged = AttributeKey[Logger]("log")
+	val HistoryPath = AttributeKey[Option[File]]("history")
+	val Analysis = AttributeKey[inc.Analysis]("analysis")
+	val Watch = AttributeKey[Watched]("continuous-watch")
+	val Navigate = AttributeKey[Navigation]("navigation")
+	val TaskedKey = AttributeKey[Tasked]("tasked")
 
-	def simple(name: String, help: Help*)(f: (Input, State) => State): Command =
-		univ( Apply.simple(name, help : _*)(f) )
+	def direct(h: Help*)(r: (Input, State) => Option[State]): Command =
+		new Command { def help = _ => h; def run = r }
+
+	def apply(h: Help*)(r: PartialFunction[(Input, State), State]): Command =
+		direct(h : _*)(untupled(r.lift))
+
 	def simple(name: String, brief: (String, String), detail: String)(f: (Input, State) => State): Command =
-		univ( Apply.simple(name, brief, detail)(f) )
-}
-object Apply
-{
-	def direct(h: Help*)(c: Input => Completions = noCompletions )(r: Input => Option[State]): Apply =
-		new Apply { def help = h; def run = r; def complete = c }
-
-	def apply(h: Help*)(r: PartialFunction[Input, State]): Apply =
-		direct(h : _*)( noCompletions )(r.lift)
-	/* Currently problematic for apply( Seq(..): _*)() (...)
-	* TODO: report bug and uncomment when fixed
-	def apply(h: Help*)(complete: PartialFunction[Input, Completions] = noCompletions )(r: PartialFunction[Input, State]): Apply =
-		direct(h : _*)( complete orElse noCompletions )(r.lift)*/
-
-	def simple(name: String, brief: (String, String), detail: String)(f: (Input, State) => State): State => Apply =
 	{
 		val h = Help(brief, (Set(name), detail) )
 		simple(name, h)(f)
 	}
-	def simple(name: String, help: Help*)(f: (Input, State) => State): State => Apply =
-		s => Apply( help: _* ){ case in if name == in.name => f( in, s) }
+	def simple(name: String, help: Help*)(f: (Input, State) => State): Command =
+		Command( help: _* ){ case (in, s) if name == in.name => f( in, s) }
 }
+/*
+final case class ProjectSpace(
+	projects: Map[String, Project],
+/*	sessionPrepend: Seq[Setting],
+	sessionAppend: Seq[Setting],
+	data: Settings,*/
+	external: Map[String, Project]
+//	eval: Option[Eval]
+) extends Identity*/
 
-trait Logged
-{
-	def log: Logger
-}
-trait HistoryEnabled
-{
-	def historyPath: Option[Path]
-}
-trait Named
-{
-	def name: String
-}
 
-trait Navigation[Project]
+trait Navigation
 {
-	def parentProject: Option[Project]
+	type Project <: AnyRef
 	def self: Project
-	def initialProject(s: State): Project
-	def projectClosure(s: State): Seq[Project]
-	def rootProject: Project
-}
-trait Member[Node <: Member[Node]]
-{
-	def navigation: Navigation[Node]
+	def name: String
+	def parent: Option[Navigation]
+	def select(s: State): State
+	def selected: Navigation
+	def initial: Navigation
+	def closure: Seq[Navigation]
+	def root: Navigation
 }
 trait Tasked
 {
 	type Task[T] <: AnyRef
 	def act(in: Input, state: State): Option[(Task[State], NodeView[Task])]
 	def help: Seq[Help]
-}
-trait TaskSetup
-{
+
 	def maxThreads = Runtime.getRuntime.availableProcessors
 	def checkCycles = false
 }

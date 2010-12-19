@@ -11,12 +11,11 @@ import Path._
 
 object CommandSupport
 {
-	def logger(s: State) = s match {
-		case State(p: Logged) => p.log
-		case _ => ConsoleLogger() //TODO: add a default logger to State
-	}
-	def notReadable(files: Seq[File]): Seq[File] = files filter { !_.canRead }
-	def readable(files: Seq[File]): Seq[File] = files filter { _.canRead }
+	def logger(s: State) = s get Command.Logged getOrElse ConsoleLogger()
+
+	private def canRead = (_: File).canRead
+	def notReadable(files: Seq[File]): Seq[File] = files filterNot canRead
+	def readable(files: Seq[File]): Seq[File] = files filter canRead
 	def sbtRCs(s: State): Seq[File] =
 		(Path.userHome / sbtrc) ::
 		(s.baseDir / sbtrc asFile) ::

@@ -18,7 +18,6 @@ import annotation.tailrec
 
 object MultiProject
 {
-	val InitialProject = AttributeKey[Project]("initial-project")
 	val ScalaVersion = AttributeKey[String]("scala-version")
 
 	val defaultExcludes: FileFilter = (".*"  - ".") || HiddenFileFilter
@@ -103,7 +102,6 @@ object MultiProject
 		Dag.topologicalSort(root) { p =>
 			(externalProjects(p) map resolveExternal) ++ internalProjects(p)
 		}
-	def initialProject(state: State, ifUnset: => Project): Project =state get MultiProject.InitialProject getOrElse ifUnset
 
 	def makeContext(root: Project) =
 	{
@@ -155,13 +153,30 @@ object MultiContext
 		val static = (o: Owner, s: String) => context(o).static(o, s)
 	}
 }
-final class MultiNavigation(val self: Project, val parentProject: Option[Project]) extends Navigation[Project]
+final class MultiNavigation(val self: Project, val selectFun: (Project, Project, State) => State, val selectedProject: Project, val initialProject: Project) extends Navigation
 {
-	def initialProject(s: State): Project = MultiProject.initialProject(s, rootProject)
-	def projectClosure(s: State): Seq[Project] = MultiProject.topologicalSort(initialProject(s))
-	@tailrec final lazy val rootProject: Project = parentProject match { case Some(p) => p.navigation.rootProject; case None => self }
+	type Project = sbt.Project
+	def parent = self.info.parent map nav
+	def name = self.name
+	def select(s: State): State = if(selectedProject == self) s else selectFun(self, initialProject, s)
+	@tailrec final lazy val root: MultiNavigation = parent match { case Some(p) => p.root; case None => this }
+	def initial = nav(initialProject)
+	def closure = projectClosure map nav
+
+	def selected = nav(selectedProject)
+
+	def projectClosure: Seq[Project] = MultiProject.topologicalSort(initialProject)
+
+	private val nav = (p: Project) => new MultiNavigation(p, selectFun, selectedProject, initialProject)
 }
-trait Project extends Tasked with HistoryEnabled with Member[Project] with Named with ConsoleTask with Watched
+final class MultiWatched(val self: Project) extends Watched
+{
+	def watched(p: Project): Seq[Watched] = MultiProject.topologicalSort(p)
+	def sourcePaths(p: Project): PathFinder = (Path.emptyPathFinder /: watched(p))(_ +++ _.watchPaths)
+	override def watchPaths = sourcePaths(self)
+	override def terminateWatch(key: Int): Boolean = self.terminateWatch(key)
+}
+trait Project extends Tasked with ConsoleTask with Watched
 {
 	val info: ProjectInfo
 
@@ -170,10 +185,8 @@ trait Project extends Tasked with HistoryEnabled with Member[Project] with Named
 
 	def base = info.projectDirectory
 	def outputRootPath = base / "target"
-	def historyPath = Some(outputRootPath / ".history")
+	def historyPath: Option[File] = Some(outputRootPath / ".history")
 	def streamBase = outputRootPath / "streams"
-
-	def navigation: Navigation[Project] = new MultiNavigation(this, info.parent)
 
 	implicit def streams = Dummy.Streams
 	def input = Dummy.In
