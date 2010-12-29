@@ -1,20 +1,23 @@
 package sbt
 
+	import Types._
 	import annotation.tailrec
-	import Settings._
+	import collection.mutable
 
 sealed trait Settings[Scope]
 {
 	def data: Scope => AttributeMap
-	def definitions: Scope => Definitions
-	def linear: Scope => Seq[Scope]
+	def scopes: Seq[Scope]
 	def get[T](scope: Scope, key: AttributeKey[T]): Option[T]
 	def set[T](scope: Scope, key: AttributeKey[T], value: T): Settings[Scope]
 }
-private final class Settings0[Scope](val data: Map[Scope, AttributeMap], val definitions: Map[Scope, Definitions], val linear: Scope => Seq[Scope]) extends Settings[Scope]
+
+private final class Settings0[Scope](val data: Map[Scope, AttributeMap], val delegates: Scope => Seq[Scope]) extends Settings[Scope]
 {
+	def scopes: Seq[Scope] = data.keys.toSeq
+
 	def get[T](scope: Scope, key: AttributeKey[T]): Option[T] =
-		linear(scope).toStream.flatMap(sc => scopeLocal(sc, key) ).headOption
+		delegates(scope).toStream.flatMap(sc => scopeLocal(sc, key) ).headOption
 
 	private def scopeLocal[T](scope: Scope, key: AttributeKey[T]): Option[T] =
 		(data get scope).flatMap(_ get key)
@@ -23,114 +26,118 @@ private final class Settings0[Scope](val data: Map[Scope, AttributeMap], val def
 	{
 		val map = (data get scope) getOrElse AttributeMap.empty
 		val newData = data.updated(scope, map.put(key, value))
-		new Settings0(newData, definitions, linear)
+		new Settings0(newData, delegates)
 	}
 }
-object Settings
+// delegates should contain the input Scope as the first entry
+final class Init[Scope](val delegates: Scope => Seq[Scope])
 {
-	type Data[Scope] = Map[Scope, AttributeMap]
-	type Init = Seq[Setting[_]]
-	type Keys = Set[AttributeKey[_]]
+	final case class ScopedKey[T](scope: Scope, key: AttributeKey[T])
 
-	def make[Scope](inits: Iterable[(Scope,Init)], lzA: Scope => Seq[Scope]): Settings[Scope] =
-	{
-		val definitions = inits map { case (scope, init)  =>  (scope, compile(init)) } toMap;
-		val resolved = for( (scope, definition) <- definitions) yield (scope, resolveScopes(definition, lzA(scope), definitions) )
-		val scopeDeps = resolved map { case (scope, requiredMap)  =>  (scope, requiredMap.values) } toMap;
-		val ordered = Dag.topologicalSort(scopeDeps.keys)(scopeDeps)
-		val data = (Map.empty[Scope, AttributeMap] /: ordered) { (mp, scope) => add(mp, scope, definitions, resolved) }
-		new Settings0(data, definitions, lzA)
+	type SettingSeq[T] = Seq[Setting[T]]
+	type ScopedMap = IMap[ScopedKey, SettingSeq]
+	type CompiledMap = Map[ScopedKey[_], Compiled]
+	type MapScoped = ScopedKey ~> ScopedKey
+
+	def value[T](key: ScopedKey[T])(value: => T): Setting[T] = new Value(key, value _)
+	def update[T](key: ScopedKey[T])(f: T => T): Setting[T] = app(key, key :^: KNil)(h => f(h.head))
+	def app[HL <: HList, T](key: ScopedKey[T], inputs: KList[ScopedKey, HL])(f: HL => T): Setting[T] = new Apply(key, f, inputs)
+
+	def empty: Settings[Scope] = new Settings0(Map.empty, delegates)
+	def asTransform(s: Settings[Scope]): ScopedKey ~> Id = new (ScopedKey ~> Id) {
+		def apply[T](k: ScopedKey[T]): T = s.get(k.scope, k.key).get
 	}
 
-	private[this] def add[Scope](data: Data[Scope], scope: Scope, definitions: Map[Scope, Definitions], resolved: Map[Scope, Map[AttributeKey[_], Scope]]): Map[Scope, AttributeMap] =
-		data.updated(scope, mkScopeMap(data, definitions(scope), resolved(scope)) )
-
-	private[this] def mkScopeMap[Scope](data: Data[Scope], definitions: Definitions, definedIn: Map[AttributeKey[_], Scope]): AttributeMap =
+	def make(init: Seq[Setting[_]]): Settings[Scope] =
 	{
-		val start = (AttributeMap.empty /: definitions.requires) ( (mp, key) => prepop(data, definedIn, mp, key))
-		definitions eval start
+		// group by Scope/Key, dropping dead initializations
+		val sMap: ScopedMap = grouped(init)
+		// delegate references to undefined values according to 'delegates'
+		val dMap: ScopedMap = delegate(sMap)
+		// merge Seq[Setting[_]] into Compiled
+		val cMap: CompiledMap = compile(dMap)
+		// order the initializations.  cyclic references are detected here.
+		val ordered: Seq[Compiled] = sort(cMap)
+		// evaluation: apply the initializations.
+		applyInits(ordered)
 	}
+	def sort(cMap: CompiledMap): Seq[Compiled] =
+		Dag.topologicalSort(cMap.values)(_.dependencies.map(cMap))
 
-	private[this] def prepop[T, Scope](data: Data[Scope], definedIn: Map[AttributeKey[_], Scope], mp: AttributeMap, key: AttributeKey[T]): AttributeMap =
-		mp.put(key, data(definedIn(key))(key))	
-		
-	private[this] def resolveScopes[Scope](definition: Definitions, search: Seq[Scope], definitions: Map[Scope, Definitions]): Map[AttributeKey[_], Scope]  =
-		definition.requires.view.map(req => (req, resolveScope(req, search, definitions )) ).toMap
-
-	private[this] def resolveScope[Scope](key: AttributeKey[_], search: Seq[Scope], definitions: Map[Scope, Definitions]): Scope =
-		search find defines(key, definitions) getOrElse { throw new Uninitialized(key) }
-	
-	private[this] def defines[Scope](key: AttributeKey[_], definitions: Map[Scope, Definitions])(scope: Scope): Boolean =
-		(definitions get scope).filter(_.provides contains key).isDefined
-	
-	final class Definitions(val provides: Keys, val requires: Keys, val eval: AttributeMap => AttributeMap)
-
-	def value[T](key: AttributeKey[T])(value: => T): Setting[T] = new Value(key, value _)
-	def update[T](key: AttributeKey[T])(f: T => T): Setting[T] = new Update(key, f)
-	def app[HL <: HList, T](key: AttributeKey[T], inputs: KList[AttributeKey, HL])(f: HL => T): Setting[T] = new Apply(key, f, inputs)
-
-	def compile(settings: Seq[Setting[_]]): Definitions =
-	{
-		val grpd = grouped(settings)
-		val sorted = sort(grpd)
-		val eval = (map: AttributeMap) => (map /: sorted)( (m, c) => c eval m )
-		val provided = grpd.keySet.toSet
-		val requires = sorted.flatMap(_.dependencies).toSet -- provided ++ sorted.collect { case c if !c.selfContained => c.key }
-		new Definitions(provided, requires, eval)
-	}
-	private[this] def grouped(settings: Seq[Setting[_]]): Map[AttributeKey[_], Compiled] =
-		settings.groupBy(_.key) map { case (key: AttributeKey[t], actions) =>
-			(key: AttributeKey[_], compileSetting(key, actions.asInstanceOf[Seq[Setting[t]]]) )
+	def compile(sMap: ScopedMap): CompiledMap =
+		sMap.toSeq.map { case (k, ss) =>
+			val deps = ss flatMap { _.dependsOn }
+			val eval = (settings: Settings[Scope]) => (settings /: ss)(applySetting)
+			(k, new Compiled(deps, eval))
 		} toMap;
 
-	private[this] def compileSetting[T](key: AttributeKey[T], actions: Seq[Setting[T]]): Compiled =
+	def grouped(init: Seq[Setting[_]]): ScopedMap =
+		((IMap.empty : ScopedMap) /: init) ( (m,s) => add(m,s) )
+
+	def add[T](m: ScopedMap, s: Setting[T]): ScopedMap =
+		m.mapValue[T]( s.key, Nil, ss => append(ss, s))
+
+	def append[T](ss: Seq[Setting[T]], s: Setting[T]): Seq[Setting[T]] =
+		if(s.definitive) s :: Nil else ss :+ s
+		
+	def delegate(sMap: ScopedMap): ScopedMap =
 	{
-		val (alive, selfContained) = live(key, actions)
-		val f = (map: AttributeMap) => (map /: alive)(eval)
-		new Compiled(key, f, dependencies(actions), selfContained)
+		val md = memoDelegates
+		def refMap(refKey: ScopedKey[_]) = new (ScopedKey ~> ScopedKey) { def apply[T](k: ScopedKey[T]) = mapReferenced(sMap, k, md(k.scope), refKey) }
+		val f = new (SettingSeq ~> SettingSeq) { def apply[T](ks: Seq[Setting[T]]) = ks.map{ s => s mapReferenced refMap(s.key) } }
+		sMap mapValues f
 	}
-	private[this] final class Compiled(val key: AttributeKey[_], val eval: AttributeMap => AttributeMap, val dependencies: Iterable[AttributeKey[_]], val selfContained: Boolean) {
-		override def toString = key.label
+	private[this] def mapReferenced[T](sMap: ScopedMap, k: ScopedKey[T], scopes: Seq[Scope], refKey: ScopedKey[_]): ScopedKey[T] = 
+	{
+		val scache = PMap.empty[ScopedKey, ScopedKey]
+		def resolve(search: Seq[Scope]): ScopedKey[T] =
+			search match {
+				case Seq() => throw new Uninitialized(k)
+				case Seq(x, xs @ _*) =>
+					val sk = ScopedKey(x, k.key)
+					scache.getOrUpdate(sk, if(defines(sMap, sk, refKey)) sk else resolve(xs))
+			}
+		resolve(scopes)
+	}
+	private[this] def defines(map: ScopedMap, key: ScopedKey[_], refKey: ScopedKey[_]): Boolean =
+		(map get key) match { case Some(Seq(x, _*)) => (refKey != key) || x.definitive; case _ => false }
+		
+	private[this] def applyInits(ordered: Seq[Compiled]): Settings[Scope] =
+		(empty /: ordered){ (m, comp) => comp.eval(m) }
+
+	private[this] def memoDelegates: Scope => Seq[Scope] =
+	{
+		val dcache = new mutable.HashMap[Scope, Seq[Scope]]
+		(scope: Scope) => dcache.getOrElseUpdate(scope, delegates(scope))
 	}
 
-	private[this] def sort(actionMap: Map[AttributeKey[_], Compiled]): Seq[Compiled] =
-		Dag.topologicalSort(actionMap.values)( _.dependencies.flatMap(actionMap.get) )
-
-	private[this] def live[T](key: AttributeKey[T], actions: Seq[Setting[T]]): (Seq[Setting[T]], Boolean) =
-	{
-		val lastOverwrite = actions.lastIndexWhere(_ overwrite key)
-		val selfContained = lastOverwrite >= 0
-		val alive = if(selfContained) actions.drop(lastOverwrite) else actions
-		(alive, selfContained)
-	}
-	private[this] def dependencies(actions: Seq[Setting[_]]): Seq[AttributeKey[_]]  =  actions.flatMap(_.dependsOn)
-	private[this] def eval[T](map: AttributeMap, a: Setting[T]): AttributeMap =
+	private[this] def applySetting[T](map: Settings[Scope], a: Setting[T]): Settings[Scope] =
 		a match
 		{
-			case s: Value[T] => map.put(s.key, s.value())
-			case u: Update[T] => map.put(u.key, u.f(map(u.key)))
-			case a: Apply[hl, T] => map.put(a.key, a.f(a.inputs.down(map)))
+			case s: Value[T] => map.set(s.key.scope, s.key.key, s.value())
+			case a: Apply[hl, T] => map.set(a.key.scope, a.key.key, a.f(a.inputs.down(asTransform(map))))
 		}
+
+	final class Uninitialized(key: ScopedKey[_]) extends Exception("Update on uninitialized setting " + key.key.label + " (in " + key.scope + ")")
+	final class Compiled(val dependencies: Iterable[ScopedKey[_]], val eval: Settings[Scope] => Settings[Scope])
 
 	sealed trait Setting[T]
 	{
-		def key: AttributeKey[T]
-		def overwrite(key: AttributeKey[T]): Boolean
-		def dependsOn: Seq[AttributeKey[_]] = Nil
+		def key: ScopedKey[T]
+		def definitive: Boolean
+		def dependsOn: Seq[ScopedKey[_]]
+		def mapReferenced(f: MapScoped): Setting[T]
 	}
-	private[this] final class Value[T](val key: AttributeKey[T], val value: () => T) extends Setting[T]
+	private[this] final class Value[T](val key: ScopedKey[T], val value: () => T) extends Setting[T]
 	{
-		def overwrite(key: AttributeKey[T]) = true
+		def definitive = true
+		def dependsOn = Nil
+		def mapReferenced(f: MapScoped) = this
 	}
-	private[this] final class Update[T](val key: AttributeKey[T], val f: T => T) extends Setting[T]
+	private[this] final class Apply[HL <: HList, T](val key: ScopedKey[T], val f: HL => T, val inputs: KList[ScopedKey, HL]) extends Setting[T]
 	{
-		def overwrite(key: AttributeKey[T]) = false
+		def definitive = !inputs.toList.contains(key)
+		def dependsOn = inputs.toList - key
+		def mapReferenced(g: MapScoped) = new Apply(key, f, inputs transform g)
 	}
-	private[this] final class Apply[HL <: HList, T](val key: AttributeKey[T], val f: HL => T, val inputs: KList[AttributeKey, HL]) extends Setting[T]
-	{
-		def overwrite(key: AttributeKey[T]) = inputs.toList.forall(_ ne key)
-		override def dependsOn = inputs.toList - key
-	}
-
-	final class Uninitialized(key: AttributeKey[_]) extends Exception("Update on uninitialized setting " + key.label)
 }
