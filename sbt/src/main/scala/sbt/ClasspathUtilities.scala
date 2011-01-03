@@ -124,7 +124,7 @@ object ClasspathUtilities
 				findJars(dir)
 			buffer.readOnly.map(_.getCanonicalFile)
 		}
-		(linkedSet(extJars ++ bootJars), linkedSet(bootDirs))
+		(linkedSet(extJars ++ bootJars.map(_.getCanonicalFile)), linkedSet(bootDirs))
 	}
 	private def linkedSet[T](s: Iterable[T]): wrap.Set[T] =
 	{
