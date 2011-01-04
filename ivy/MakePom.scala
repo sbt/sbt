@@ -77,8 +77,9 @@ class MakePom
 			case Array() => "pom"
 			case Array(x) => x.getType
 			case xs =>
-				val notpom = xs.filter(_.getType != "pom")
-				if(notpom.isEmpty) "pom" else notpom(0).getType
+				val types = xs.map(_.getType)
+				val notpom = types.toList - "pom"
+				if(notpom.isEmpty) "pom" else if(notpom contains "jar") "jar" else notpom.head
 		}
 
 	def makeDependencies(module: ModuleDescriptor, configurations: Option[Iterable[Configuration]]): NodeSeq =
