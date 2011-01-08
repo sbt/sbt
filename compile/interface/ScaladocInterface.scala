@@ -36,9 +36,19 @@ private class Runner(args: Array[String], maximumErrors: Int, log: Logger)
 	{
 		class DocFactory(reporter: LoggerReporter, docSettings: doc.Settings) // 2.7 compatibility
 		{
-			object compiler extends Global(command.settings, reporter)
+
+			// see https://github.com/paulp/scala-full/commit/649823703a574641407d75d5c073be325ea31307
+			trait GlobalCompat
+			{
+				def onlyPresentation = false
+
+				def forScaladoc = false
+			}
+
+			object compiler extends Global(command.settings, reporter) with GlobalCompat
 			{
 				override def onlyPresentation = true
+				override def forScaladoc = true
 				class DefaultDocDriver  // 2.8 source compatibility
 				{
 					assert(false)
