@@ -3,6 +3,26 @@ package sbt.parse
 	import Parser._
 	import org.scalacheck._
 
+object JLineTest
+{
+	def main(args: Array[String])
+	{
+		import jline.{ConsoleReader,Terminal}
+		val reader = new ConsoleReader()
+		Terminal.getTerminal.disableEcho()
+
+		val parser = ParserExample.t
+		JLineCompletion.installCustomCompletor(reader, parser)
+		def loop() {
+			val line = reader.readLine("> ")
+			if(line ne null) {
+				println("Entered '" + line + "'")
+				loop()
+			}
+		}
+		loop()
+	}
+}
 object ParserTest extends Properties("Completing Parser")
 {
 	val wsc = charClass(_.isWhitespace)
