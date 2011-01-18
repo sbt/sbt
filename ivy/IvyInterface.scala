@@ -288,6 +288,7 @@ object Resolver
 object Configurations
 {
 	def config(name: String) = new Configuration(name)
+	def default = defaultMavenConfigurations
 	def defaultMavenConfigurations = Compile :: Runtime :: Test :: Provided :: System :: Optional :: Sources :: Javadoc :: Nil
 
 	lazy val Default = config("default")

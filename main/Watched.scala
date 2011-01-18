@@ -16,11 +16,19 @@ trait Watched
 
 object Watched
 {
+	private[this] class AWatched extends Watched
+	
+	def multi(base: Watched, paths: Seq[Watched]): Watched = 
+		new AWatched
+		{
+			override val watchPaths = (base.watchPaths /: paths)(_ +++ _.watchPaths)
+			override def terminateWatch(key: Int): Boolean = base.terminateWatch(key)
+		}
+	def empty: Watched = new AWatched
+		
 	val PollDelaySeconds = 1
 	def isEnter(key: Int): Boolean = key == 10 || key == 13
-/*
-	def watched(p: Project): Seq[Watched] = MultiProject.topologicalSort(p).collect { case w: Watched => w }
-	def sourcePaths(p: Project): PathFinder = (Path.emptyPathFinder /: watched(p))(_ +++ _.watchPaths)*/
+
 	def executeContinuously(watched: Watched, s: State, in: Input): State =
 	{
 		@tailrec def shouldTerminate: Boolean = (System.in.available > 0) && (watched.terminateWatch(System.in.read()) || shouldTerminate)

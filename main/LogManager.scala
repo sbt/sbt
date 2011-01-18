@@ -6,15 +6,14 @@ package sbt
 	import java.io.PrintWriter
 	import LogManager._
 	import std.Transform
+	import Project.ScopedKey
 
 object LogManager
 {
-	def construct(context: Transform.Context[Project]) = (task: Task[_], to: PrintWriter) =>
+	def construct(data: Settings[Scope]) = (task: ScopedKey[Task[_]], to: PrintWriter) =>
 	{
-		val owner = context owner task
-		val ownerName = owner flatMap ( context ownerName _ ) getOrElse ""
-		val taskPath = (context staticName task).toList ::: ownerName  :: Nil
-		def level(key: AttributeKey[Level.Value], default: Level.Value): Level.Value = default//settings.get(key, taskPath) getOrElse default
+		val scope = Scope.fillTaskAxis(task.scope, task.key)
+		def level(key: AttributeKey[Level.Value], default: Level.Value): Level.Value = data.get(scope, key) getOrElse default
 		val screenLevel = level(ScreenLogLevel, Level.Info)
 		val backingLevel = level(PersistLogLevel, Level.Debug)
 
@@ -30,6 +29,6 @@ object LogManager
 		multi: Logger
 	}
 
-	val ScreenLogLevel = AttributeKey[Level.Value]("screen log level")
-	val PersistLogLevel = AttributeKey[Level.Value]("persist log level")
+	val ScreenLogLevel = AttributeKey[Level.Value]("screen-log-level")
+	val PersistLogLevel = AttributeKey[Level.Value]("persist-log-level")
 }

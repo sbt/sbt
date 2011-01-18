@@ -6,7 +6,14 @@ package sbt
 	import Execute.NodeView
 	import java.io.File
 	import Function.untupled
+	import parse.Parser
 
+trait NewCommand // to replace Command
+{
+	type T
+	def parser: State => Option[Parser[T]]
+	def run: (T, State) => State
+}
 trait Command
 {
 	def help: State => Seq[Help]
@@ -25,11 +32,9 @@ object Help
 object Command
 {
 	val Logged = AttributeKey[Logger]("log")
-	val HistoryPath = AttributeKey[Option[File]]("history")
+	val HistoryPath = SettingKey[Option[File]]("history")
 	val Analysis = AttributeKey[inc.Analysis]("analysis")
-	val Watch = AttributeKey[Watched]("continuous-watch")
-	val Navigate = AttributeKey[Navigation]("navigation")
-	val TaskedKey = AttributeKey[Tasked]("tasked")
+	val Watch = SettingKey[Watched]("continuous-watch")
 
 	def direct(h: Help*)(r: (Input, State) => Option[State]): Command =
 		new Command { def help = _ => h; def run = r }
@@ -44,38 +49,6 @@ object Command
 	}
 	def simple(name: String, help: Help*)(f: (Input, State) => State): Command =
 		Command( help: _* ){ case (in, s) if name == in.name => f( in, s) }
-}
-/*
-final case class ProjectSpace(
-	projects: Map[String, Project],
-/*	sessionPrepend: Seq[Setting],
-	sessionAppend: Seq[Setting],
-	data: Settings,*/
-	external: Map[String, Project]
-//	eval: Option[Eval]
-) extends Identity*/
-
-
-trait Navigation
-{
-	type Project <: AnyRef
-	def self: Project
-	def name: String
-	def parent: Option[Navigation]
-	def select(s: State): State
-	def selected: Navigation
-	def initial: Navigation
-	def closure: Seq[Navigation]
-	def root: Navigation
-}
-trait Tasked
-{
-	type Task[T] <: AnyRef
-	def act(in: Input, state: State): Option[(Task[State], NodeView[Task])]
-	def help: Seq[Help]
-
-	def maxThreads = Runtime.getRuntime.availableProcessors
-	def checkCycles = false
 }
 final case class Input(line: String, cursor: Option[Int])
 {

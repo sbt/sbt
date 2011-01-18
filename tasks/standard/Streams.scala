@@ -10,20 +10,18 @@ import java.io.{Closeable, File, FileInputStream, FileOutputStream, InputStreamR
 
 import Path._
 
-sealed trait TaskStreams
+// no longer specific to Tasks, so 'TaskStreams' should be renamed
+sealed trait TaskStreams[Key]
 {
 	def default = outID
 	def outID = "out"
 	def errorID = "err"
 	
-	def readText(a: Task[_], sid: String = default, update: Boolean = true): Task[BufferedReader]
-	def readBinary(a: Task[_], sid: String = default, update: Boolean = true): Task[BufferedInputStream]
+	def readText(key: Key, sid: String = default): BufferedReader
+	def readBinary(a: Key, sid: String = default): BufferedInputStream
 	
-	final def readText(a: Task[_], sid: Option[String], update: Boolean): Task[BufferedReader] =
-		readText(a, getID(sid), update)
-		
-	final def readBinary(a: Task[_], sid: Option[String], update: Boolean): Task[BufferedInputStream] =
-		readBinary(a, getID(sid), update)
+	final def readText(a: Key, sid: Option[String]): BufferedReader  =  readText(a, getID(sid))
+	final def readBinary(a: Key, sid: Option[String]): BufferedInputStream  =  readBinary(a, getID(sid))
 
 	def text(sid: String = default): PrintWriter
 	def binary(sid: String = default): BufferedOutputStream
@@ -34,37 +32,31 @@ sealed trait TaskStreams
 	
 	private[this] def getID(s: Option[String]) = s getOrElse default
 }
-private[sbt] sealed trait ManagedTaskStreams extends TaskStreams
+private[sbt] sealed trait ManagedStreams[Key] extends TaskStreams[Key]
 {
 	def open()
 	def close()
 }
 
-sealed trait Streams
+sealed trait Streams[Key]
 {
-	def apply(a: Task[_], update: Boolean = true): ManagedTaskStreams
+	def apply(a: Key): ManagedStreams[Key]
 }
 object Streams
 {
 	private[this] val closeQuietly = (c: Closeable) => try { c.close() } catch { case _: IOException => () }
 	
-	def multi[Owner](bases: Owner => File, taskOwner: Task[_] => Option[Owner], mkLogger: (Task[_], PrintWriter) => Logger): Streams =
-	{
-		val taskDirectory = (t: Task[_]) => taskOwner(t) map bases getOrElse error("Cannot get streams for task '" + name(t) + "' with no owner.")
-		apply(taskDirectory, mkLogger)
-	}
+	def apply[Key](taskDirectory: Key => File, name: Key => String, mkLogger: (Key, PrintWriter) => Logger): Streams[Key] = new Streams[Key] {
 	
-	def apply(taskDirectory: Task[_] => File, mkLogger: (Task[_], PrintWriter) => Logger): Streams = new Streams { streams =>
-	
-		def apply(a: Task[_], update: Boolean): ManagedTaskStreams = new ManagedTaskStreams {
+		def apply(a: Key): ManagedStreams[Key] = new ManagedStreams[Key] {
 			private[this] var opened: List[Closeable] = Nil
 			private[this] var closed = false
 		
-			def readText(a: Task[_], sid: String = default, update: Boolean = true): Task[BufferedReader] =
-				maybeUpdate(a, readText0(a, sid), update)
+			def readText(a: Key, sid: String = default): BufferedReader =
+				make(a, sid)(f => new BufferedReader(new InputStreamReader(new FileInputStream(f), IO.defaultCharset)) )
 				
-			def readBinary(a: Task[_], sid: String = default, update: Boolean = true): Task[BufferedInputStream] =
-				maybeUpdate(a, readBinary0(a, sid), update)
+			def readBinary(a: Key, sid: String = default): BufferedInputStream =
+				make(a, sid)(f => new BufferedInputStream(new FileInputStream(f)))
 	
 			def text(sid: String = default): PrintWriter =
 				make(a, sid)(f => new PrintWriter(new BufferedWriter(new OutputStreamWriter(new FileOutputStream(f), IO.defaultCharset))) )
@@ -74,27 +66,13 @@ object Streams
 
 			def log(sid: String): Logger = mkLogger(a, text(sid))
 
-			def make[T <: Closeable](a: Task[_], sid: String)(f: File => T): T = synchronized {
+			def make[T <: Closeable](a: Key, sid: String)(f: File => T): T = synchronized {
 				checkOpen()
 				val file = taskDirectory(a) / sid
 				IO.touch(file)
 				val t = f( file )
 				opened ::= t
 				t
-			}
-			
-			def readText0(a: Task[_], sid: String): BufferedReader =
-				make(a, sid)(f => new BufferedReader(new InputStreamReader(new FileInputStream(f), IO.defaultCharset)) )
-			
-			def readBinary0(a: Task[_], sid: String): BufferedInputStream =
-				make(a, sid)(f => new BufferedInputStream(new FileInputStream(f)))
-			
-			def maybeUpdate[T](base: Task[_], result: => T, update: Boolean) =
-			{
-				def basic(a: Action[T]) = Task(Info(), a)
-				val main = Pure(result _)
-				val act = if(update) DependsOn(basic(main),  base :: Nil) else main
-				basic(act)
 			}
 			
 			def open() {}
@@ -111,7 +89,4 @@ object Streams
 			}
 		}
 	}
-	
-	def name(a: Task[_]): String = a.info.name getOrElse anonName(a)
-	def anonName(a: Task[_]) = "anon-" + java.lang.Integer.toString(java.lang.System.identityHashCode(a), 36)
 }

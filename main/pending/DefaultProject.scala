@@ -151,12 +151,6 @@ abstract class BasicProject extends TestProject with MultiClasspathProject with 
 
 	// lazy val test-only, test-quick, test-failed, package-src, package-doc, jetty-{run,stop,restart}, prepare-webapp
 
-	lazy val set = input map { in =>
-		val Seq(name, value) = in.splitArgs.take(2)
-		println(name + "=" + value)
-		java.lang.System.setProperty(name, value)
-	}
-
 	def sourceFilter: FileFilter = "*.java" | "*.scala"
 
 	def compileTask(inputs: Task[Compile.Inputs]): Task[Analysis] =
@@ -280,9 +274,3 @@ class TestTasks(val prefix: Option[String], val project: ClasspathProject with P
 	}
 	lazy val test = (project.streams, executeTests) map { case s :+: results :+: HNil => Test.showResults(s.log, results) }
 }
-/*class PackageTasks
-/*	def zipTask(sources: PathFinder, outputDirectory: Path, zipName: => String): Task =
-		zipTask(sources, outputDirectory / zipName)
-	def zipTask(sources: PathFinder, zipPath: => Path): Task =
-		fileTask("zip", zipPath from sources) { FileUtilities.zip(sources.get, zipPath, false, log) }*/
-}*/

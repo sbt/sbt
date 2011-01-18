@@ -6,8 +6,9 @@ package sbt
 import Execute.NodeView
 import complete.HistoryCommands
 import HistoryCommands.{Start => HistoryPrefix}
-import sbt.build.{AggressiveCompile, Auto, Build, BuildException, LoadCommand, Parse, ParseException, ProjectLoad, SourceLoad}
-import Command.{Analysis,HistoryPath,Logged,Navigate,TaskedKey,Watch}
+import Project.{SessionKey, StructureKey}
+import sbt.build.{AggressiveCompile, Auto, BuildException, LoadCommand, Parse, ParseException, ProjectLoad, SourceLoad}
+import Command.{Analysis,HistoryPath,Logged,Watch}
 import scala.annotation.tailrec
 import scala.collection.JavaConversions._
 import Path._
@@ -64,7 +65,7 @@ import CommandSupport._
 object Commands
 {
 	def DefaultCommands: Seq[Command] = Seq(ignore, help, reload, read, history, continuous, exit, loadCommands, loadProject, compile, discover,
-		projects, project, setOnFailure, ifLast, multi, shell, alias, append, act)
+		projects, project, setOnFailure, ifLast, multi, shell, alias, append)
 
 	def ignore = nothing(Set(FailureWall))
 
@@ -98,7 +99,7 @@ object Commands
 	}
 	
 	def shell = Command.simple(Shell, ShellBrief, ShellDetailed) { (in, s) =>
-		val historyPath = (s get HistoryPath) getOrElse Some((s.baseDir / ".history").asFile)
+		val historyPath = (s get HistoryPath.key) getOrElse Some((s.baseDir / ".history").asFile)
 		val reader = new LazyJLineReader(historyPath)
 		val line = reader.readLine("> ")
 		line match {
@@ -175,14 +176,14 @@ object Commands
 							
 	def continuous =
 		Command( Help(continuousBriefHelp) ) { case (in, s) if in.line startsWith ContinuousExecutePrefix =>
-			withAttribute(s, Watch, "Continuous execution not configured.") { w =>
+			withAttribute(s, Watch.key, "Continuous execution not configured.") { w =>
 				Watched.executeContinuously(w, s, in)
 			}
 		}
 
 	def history = Command( historyHelp: _* ) { case (in, s) if in.line startsWith "!" =>
 		val logError = (msg: String) => CommandSupport.logger(s).error(msg)
-		HistoryCommands(in.line.substring(HistoryPrefix.length).trim, (s get HistoryPath) getOrElse None, 500/*JLine.MaxHistorySize*/, logError) match
+		HistoryCommands(in.line.substring(HistoryPrefix.length).trim, (s get HistoryPath.key) getOrElse None, 500/*JLine.MaxHistorySize*/, logError) match
 		{
 			case Some(commands) =>
 				commands.foreach(println)  //printing is more appropriate than logging
@@ -191,68 +192,75 @@ object Commands
 		}
 	}
 
-	def indent(withStar: Boolean) = if(withStar) "\t*" else "\t"
+	def indent(withStar: Boolean) = if(withStar) "\t*" else "\t "
 	def listProject(name: String, current: Boolean, log: Logger) = log.info( indent(current) + name )
 
+	def act = error("TODO")
 	def projects = Command.simple(ProjectsCommand, projectsBrief, projectsDetailed ) { (in,s) =>
 		val log = logger(s)
-		withNavigation(s) { nav =>
-			nav.closure.foreach { p => listProject(p.name, nav.self eq p.self, log) }
-			s
+		val session = Project.session(s)
+		val structure = Project.structure(s)
+		val (curi, cid) = session.current
+		for( (uri, build) <- structure.units)
+		{
+			log.info("In " + uri)
+			for(id <- build.defined.keys) listProject(id, cid == id, log)
 		}
+		s
 	}
 	def withAttribute[T](s: State, key: AttributeKey[T], ifMissing: String)(f: T => State): State =
 		(s get key) match {
 			case None => logger(s).error(ifMissing); s.fail
 			case Some(nav) => f(nav)
 		}
-	def withNavigation(s: State)(f: Navigation => State): State = withAttribute(s, Navigate, "No navigation configured.")(f)
 
 	def project = Command.simple(ProjectCommand, projectBrief, projectDetailed ) { (in,s) =>
-		withNavigation(s) { nav =>
-			val to = in.arguments
-			if(to.isEmpty)
+		val to = in.arguments
+		val session = Project.session(s)
+		val structure = Project.structure(s)
+		val uri = session.currentBuild
+		def setProject(id: String) = updateCurrent(s.put(SessionKey, session.setCurrent(uri, id)))
+		if(to.isEmpty)
+		{
+			logger(s).info(session.currentProject(uri) + " (in build " + uri + ")")
+			s
+		}
+		else if(to == "/")
+		{
+			val id = Load.getRootProject(structure.units)(uri)
+			setProject(id)
+		}
+		else if(to.startsWith("^"))
+		{
+			val newBuild = (new java.net.URI(to substring 1)).normalize
+			if(structure.units contains newBuild)
+				updateCurrent(s.put(SessionKey, session.setCurrent(uri, session currentProject uri)))
+			else
 			{
-				logger(s).info(nav.name)
+				logger(s).error("Invalid build unit '" + newBuild + "' (type 'projects' to list available builds).")
 				s
 			}
-			else if(to == "/")
-				nav.root.select(s)
-			else if(to.forall(_ == '.'))
-				if(to.length > 1) gotoParent(to.length - 1, nav, s) else s
-			else
-				nav.closure.find { _.name == to } match
-				{
-					case Some(np) => np.select(s)
-					case None => logger(s).error("Invalid project name '" + to + "' (type 'projects' to list available projects)."); s.fail
-				}
+		}
+/*		else if(to.forall(_ == '.'))
+			if(to.length > 1) gotoParent(to.length - 1, nav, s) else s */ // semantics currently undefined
+		else if( structure.units(uri).defined.contains(to) )
+			setProject(to)
+		else
+		{
+			logger(s).error("Invalid project name '" + to + "' (type 'projects' to list available projects).")
+			s.fail
 		}
 	}
-	@tailrec def gotoParent(n: Int, nav: Navigation, s: State): State =
-		nav.parent match
-		{
-			case Some(pp) => if(n <= 1) pp.select(s) else gotoParent(n-1, pp, s)
-			case None => nav.select(s)
-		}
 
 	def exit = Command( Help(exitBrief) ) {
 		case (in, s) if TerminateActions contains in.line =>
 			runExitHooks(s).exit(true)
 	}
 
-	def act = new Command {
-		def help = s => (s get TaskedKey).toSeq.flatMap { _.help }
-		def run = (in, s) => (s get TaskedKey) flatMap { p =>
-			import p.{checkCycles, maxThreads}
-			for( (task, taskToNode) <- p.act(in, s)) yield
-				processResult(runTask(task, checkCycles, maxThreads)(taskToNode), s, s.fail)
-		}
-	}
-
 	def discover = Command.simple(Discover, DiscoverBrief, DiscoverDetailed) { (in, s) =>
 		withAttribute(s, Analysis, "No analysis to process.") { analysis =>
 			val command = Parse.discover(in.arguments)
-			val discovered = Build.discover(analysis, command)
+			val discovered = build.Build.discover(analysis, command)
 			println(discovered.mkString("\n"))
 			s
 		}
@@ -260,27 +268,42 @@ object Commands
 	def compile = Command.simple(CompileName, CompileBrief, CompileDetailed ) { (in, s) =>
 		val command = Parse.compile(in.arguments)(s.baseDir)
 		try {
-			val analysis = Build.compile(command, s.configuration)
+			val analysis = build.Build.compile(command, s.configuration)
 			s.put(Analysis, analysis)
 		} catch { case e: xsbti.CompileFailed => s.fail /* already logged */ }
 	}
 
 	def loadProject = Command.simple(LoadProject, LoadProjectBrief, LoadProjectDetailed) { (in, s) =>
-		val base = s.configuration.baseDirectory
-		lazy val p: Project = MultiProject.load(s.configuration, logger(s), ProjectInfo.externals(exts))(base)
-		// lazy so that p can forward-reference it
-		lazy val exts: Map[File, Project] = MultiProject.loadExternals(p :: Nil, p.info.construct).updated(base, p)
-		exts// force
-		setProject(p, p, runExitHooks(s))
+		val structure = Load.defaultLoad(s, logger(s))
+		val session = Load.initialSession(structure)
+		val newAttrs = s.attributes.put(StructureKey, structure).put(SessionKey, session)
+		val newState = s.copy(attributes = newAttrs)
+		updateCurrent(runExitHooks(newState))
 	}
-	def setProject(p: Project, initial: Project, s: State): State =
+
+	def updateCurrent(s: State): State =
 	{
-		logger(s).info("Set current project to " + p.name)
-		val nav = new MultiNavigation(p, setProject _, p, initial)
-		val watched = new MultiWatched(p)
-		// put(Logged, p.log)
-		val newAttrs = s.attributes.put(Analysis, p.info.analysis).put(Navigate, nav).put(Watch, watched).put(HistoryPath, p.historyPath).put(TaskedKey, p)
+		val structure = Project.structure(s)
+		val (uri, id) = Project.current(s)
+		val ref = ProjectRef(uri, id)
+		val project = Load.getProject(structure.units, uri, id)
+		logger(s).info("Set current project to " + id + " (in build " + uri +")")
+
+		val data = structure.data
+		val historyPath = HistoryPath(ref).get(data).flatMap(identity)
+		val newAttrs = s.attributes.put(Watch.key, makeWatched(data, ref, project)).put(HistoryPath.key, historyPath)
 		s.copy(attributes = newAttrs)
+	}
+	def makeWatched(data: Settings[Scope], ref: ProjectRef, project: Project): Watched =
+	{
+		def getWatch(ref: ProjectRef) = Watch(ref).get(data)
+		getWatch(ref) match
+		{
+			case Some(currentWatch) =>
+				val subWatches = project.uses flatMap { p =>  getWatch(p) }
+				Watched.multi(currentWatch, subWatches)
+			case None => Watched.empty
+		}
 	}
 	
 	def handleException(e: Throwable, s: State, trace: Boolean = true): State = {
@@ -317,7 +340,7 @@ object Commands
 		try
 		{
 			val parsed = Parse(line)(configuration.baseDirectory)
-			Right( Build( translateEmpty(parsed, defaultSuper), configuration, allowMultiple) )
+			Right( build.Build( translateEmpty(parsed, defaultSuper), configuration, allowMultiple) )
 		}
 		catch { case e @ (_: ParseException | _: BuildException | _: xsbti.CompileFailed) => Left(e) }
 

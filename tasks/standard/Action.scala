@@ -15,12 +15,9 @@ final case class Mapped[T, In <: HList](in: Tasks[In], f: Results[In] => T) exte
 final case class FlatMapped[T, In <: HList](in: Tasks[In], f: Results[In] => Task[T]) extends Action[T]
 final case class DependsOn[T](in: Task[T], deps: Seq[Task[_]]) extends Action[T]
 final case class Join[T, U](in: Seq[Task[U]], f: Seq[Result[U]] => Either[Task[T], T]) extends Action[T]
-final case class CrossAction[T](subs: Cross[Task[T]] ) extends Action[T]
-
 
 object Task
 {
-	type Cross[T] = Seq[(AttributeMap, T)]
 	type Tasks[HL <: HList] = KList[Task, HL]
 	type Results[HL <: HList] = KList[Result, HL]
 }
@@ -36,10 +33,8 @@ final case class Info[T](attributes: AttributeMap = AttributeMap.empty, original
 	import Info._
 	def name = attributes.get(Name)
 	def description = attributes.get(Description)
-	def implied = attributes.get(Implied).getOrElse(false)
 	def setName(n: String) = set(Name, n)
 	def setDescription(d: String) = set(Description, d)
-	def setImplied(i: Boolean) = set(Implied, i)
 	def set[T](key: AttributeKey[T], value: T) = copy(attributes = this.attributes.put(key, value))
 
 	override def toString =
@@ -52,6 +47,4 @@ object Info
 {
 	val Name = AttributeKey[String]("name")
 	val Description = AttributeKey[String]("description")
-	val Implied = AttributeKey[Boolean]("implied")
-	val Cross = AttributeKey[AttributeMap]("cross-configuration")
 }
