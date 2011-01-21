@@ -40,7 +40,13 @@ private[sbt] sealed trait ManagedStreams[Key] extends TaskStreams[Key]
 
 sealed trait Streams[Key]
 {
-	def apply(a: Key): ManagedStreams[Key]
+	private[sbt] def apply(a: Key): ManagedStreams[Key]
+	def use[T](key: Key)(f: TaskStreams[Key] => T): T =
+	{
+		val s = apply(key)
+		s.open()
+		try { f(s) } finally { s.close() }
+	}
 }
 object Streams
 {

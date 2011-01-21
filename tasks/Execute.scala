@@ -17,7 +17,7 @@ object Execute
 	type NodeT[A[_]] = Part1of2K[Node, A]
 	type NodeView[A[_]] = A ~> NodeT[A]#Apply
 	
-	def idMap[A,B]: Map[A, B] = JavaConversions.asMap(new java.util.IdentityHashMap[A,B])
+	def idMap[A,B]: Map[A, B] = JavaConversions.asScalaMap(new java.util.IdentityHashMap[A,B])
 	def pMap[A[_], B[_]]: PMap[A,B] = new DelegatingPMap[A, B](idMap)
 	private[sbt] def completed(p: => Unit): Completed = new Completed {
 		def process() { p }
@@ -47,14 +47,15 @@ final class Execute[A[_] <: AnyRef](checkCycles: Boolean)(implicit view: NodeVie
 
 	def dump: String = "State: "  + state.toString + "\n\nResults: " + results + "\n\nCalls: " + callers + "\n\n"
 
-	def run[T](root: A[T])(implicit strategy: Strategy) =
+	def run[T](root: A[T])(implicit strategy: Strategy): Result[T] = runKeep(root)(strategy)(root)
+	def runKeep[T](root: A[T])(implicit strategy: Strategy): RMap[A,Result] =
 	{
 		assert(state.isEmpty, "Execute already running/ran.")
 
 		addNew(root)
 		processAll()
 		assert( results contains root, "No result for root node." )
-		results(root)
+		results
 	}
 
 	def processAll()(implicit strategy: Strategy)

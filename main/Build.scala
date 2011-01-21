@@ -95,13 +95,10 @@ object EvaluateTask
 	import Project.display
 	import std.{TaskExtra,Transform}
 	import TaskExtra._
+	import BuildStreams.{Streams, TaskStreams}
 	
-	type Streams = std.Streams[ScopedKey[Task[_]]]
-	type TaskStreams = std.TaskStreams[ScopedKey[Task[_]]]
-
 	val SystemProcessors = Runtime.getRuntime.availableProcessors
 	val PluginTaskKey = TaskKey[(Seq[File], Analysis)]("plugin-task")
-	val GlobalPath = "$global"
 	
 	val (state, dummyState) = dummy[State]("state")
 	val (streams, dummyStreams) = dummy[TaskStreams]("streams")
@@ -126,7 +123,7 @@ object EvaluateTask
 	
 	def getTask[T](structure: BuildStructure, taskKey: ScopedKey[Task[T]], state: State): Option[(Task[T], Execute.NodeView[Task])] =
 	{
-		val x = transform(structure, "target" :: "log" :: Nil, dummyStreams, dummyState, state)
+		val x = transform(structure, dummyStreams, dummyState, state)
 		val thisScope = Scope(Select(Project.currentRef(state)), Global, Global, Global)
 		val resolvedScope = Scope.replaceThis(thisScope)( taskKey.scope )
 		for( t <- structure.data.get(resolvedScope, taskKey.key)) yield
@@ -141,48 +138,13 @@ object EvaluateTask
 		try { x.run(root)(service) } finally { shutdown() }
 	}
 
-	def transform(structure: BuildStructure, logRelativePath: Seq[String], streamsDummy: Task[TaskStreams], stateDummy: Task[State], state: State) =
+	def transform(structure: BuildStructure, streamsDummy: Task[TaskStreams], stateDummy: Task[State], state: State) =
 	{
-		val streams = mkStreams(structure, logRelativePath)
 		val dummies = new Transform.Dummies(stateDummy :^: KNil, streamsDummy)
-		val inject = new Transform.Injected(state :+: HNil, streams)
+		val inject = new Transform.Injected(state :+: HNil, structure.streams)
 		Transform(dummies, inject)(structure.index.taskToKey)
 	}
-	
-	def mkStreams(structure: BuildStructure, logRelativePath: Seq[String]): Streams =
-		std.Streams( path(structure, logRelativePath), display, LogManager.construct(structure.data) )
 
-	def path(structure: BuildStructure, sep: Seq[String])(scoped: ScopedKey[_]): File =
-	{
-		val (base, sub) = projectPath(structure, scoped)
-		resolvePath(base, sep ++ sub ++ nonProjectPath(scoped) )
-	}
-	def resolvePath(base: File, components: Seq[String]): File =
-		(base /: components)( (b,p) => new File(b,p) )
-
-	def pathComponent[T](axis: ScopeAxis[T], scoped: ScopedKey[_], label: String)(show: T => String): String =
-		axis match
-		{
-			case Global => GlobalPath
-			case This => error("Unresolved This reference for " + label + " in " + display(scoped))
-			case Select(t) => show(t)
-		}
-	def nonProjectPath[T](scoped: ScopedKey[T]): Seq[String] =
-	{
-		val scope = scoped.scope
-		pathComponent(scope.config, scoped, "config")(_.name) ::
-		pathComponent(scope.task, scoped, "task")(_.label) ::
-		pathComponent(scope.extra, scoped, "extra")(_ => error("Unimplemented")) ::
-		Nil
-	}
-	def projectPath(structure: BuildStructure, scoped: ScopedKey[_]): (File, Seq[String]) =
-		scoped.scope.project match
-		{
-			case Global => (structure.units(structure.root).base, GlobalPath :: Nil)
-			case Select(ProjectRef(Some(uri), Some(id))) => (structure.units(uri).defined(id).base, Nil)
-			case Select(pr) => error("Unresolved project reference (" + pr + ") in " + display(scoped))
-			case This => error("Unresolved project reference (This) in " + display(scoped))
-		}
 	def processResult[T](result: Result[T], log: Logger): T =
 		result match
 		{
@@ -215,6 +177,7 @@ object Index
 object Load
 {
 	import BuildPaths._
+	import BuildStreams._
 
 	def defaultLoad(state: State, log: Logger): BuildStructure =
 	{
@@ -259,7 +222,8 @@ object Load
 		val settings = buildConfigurations(loaded, getRootProject(projects), config.injectSettings)
 		val data = Project.make(settings)(config.delegates(loaded))
 		val index = structureIndex(data)
-		new BuildStructure(projects, loaded.root, settings, data, index)
+		val streams = mkStreams(projects, loaded.root, data)
+		new BuildStructure(projects, loaded.root, settings, data, index, streams)
 	}
 
 	def structureIndex(settings: Settings[Scope]): StructureIndex =
@@ -271,7 +235,8 @@ object Load
 		val newSettings = modifySettings(structure.settings)
 		val newData = Project.make(newSettings)(delegates)
 		val newIndex = structureIndex(newData)
-		new BuildStructure(units = structure.units, root = structure.root, settings = newSettings, data = newData, index = newIndex)
+		val newStreams = mkStreams(structure.units, structure.root, newData)
+		new BuildStructure(units = structure.units, root = structure.root, settings = newSettings, data = newData, index = newIndex, streams = newStreams)
 	}
 
 	def isProjectThis(s: Setting[_]) = s.key.scope.project == This
@@ -462,10 +427,57 @@ object Load
 	def referenced(definition: Project): Seq[ProjectRef] = definition.inherits ++ definition.aggregate ++ definition.dependencies.map(_.project)
 
 	
-	final class BuildStructure(val units: Map[URI, LoadedBuildUnit], val root: URI, val settings: Seq[Setting[_]], val data: Settings[Scope], val index: StructureIndex)
+	final class BuildStructure(val units: Map[URI, LoadedBuildUnit], val root: URI, val settings: Seq[Setting[_]], val data: Settings[Scope], val index: StructureIndex, val streams: Streams)
 	final class LoadBuildConfiguration(val stagingDirectory: File, val classpath: Seq[File], val loader: ClassLoader, val compilers: Compilers, val evalPluginDef: BuildStructure => (Seq[File], Analysis), val delegates: LoadedBuild => Scope => Seq[Scope], val injectSettings: Seq[Setting[_]], val log: Logger)
 	// information that is not original, but can be reconstructed from the rest of BuildStructure
 	final class StructureIndex(val keyMap: Map[String, AttributeKey[_]], val taskToKey: Map[Task[_], ScopedKey[Task[_]]])
+}
+object BuildStreams
+{
+		import Load.{BuildStructure, LoadedBuildUnit}
+		import Project.display
+		import std.{TaskExtra,Transform}
+	
+	type Streams = std.Streams[ScopedKey[Task[_]]]
+	type TaskStreams = std.TaskStreams[ScopedKey[Task[_]]]
+	val GlobalPath = "$global"
+
+	def mkStreams(units: Map[URI, LoadedBuildUnit], root: URI, data: Settings[Scope], logRelativePath: Seq[String] = defaultLogPath): Streams =
+		std.Streams( path(units, root, logRelativePath), display, LogManager.construct(data) )
+		
+	def defaultLogPath = "target" :: "streams" :: Nil
+
+	def path(units: Map[URI, LoadedBuildUnit], root: URI, sep: Seq[String])(scoped: ScopedKey[_]): File =
+	{
+		val (base, sub) = projectPath(units, root, scoped)
+		resolvePath(base, sep ++ sub ++ nonProjectPath(scoped) )
+	}
+	def resolvePath(base: File, components: Seq[String]): File =
+		(base /: components)( (b,p) => new File(b,p) )
+
+	def pathComponent[T](axis: ScopeAxis[T], scoped: ScopedKey[_], label: String)(show: T => String): String =
+		axis match
+		{
+			case Global => GlobalPath
+			case This => error("Unresolved This reference for " + label + " in " + display(scoped))
+			case Select(t) => show(t)
+		}
+	def nonProjectPath[T](scoped: ScopedKey[T]): Seq[String] =
+	{
+		val scope = scoped.scope
+		pathComponent(scope.config, scoped, "config")(_.name) ::
+		pathComponent(scope.task, scoped, "task")(_.label) ::
+		pathComponent(scope.extra, scoped, "extra")(_ => error("Unimplemented")) ::
+		Nil
+	}
+	def projectPath(units: Map[URI, LoadedBuildUnit], root: URI, scoped: ScopedKey[_]): (File, Seq[String]) =
+		scoped.scope.project match
+		{
+			case Global => (units(root).base, GlobalPath :: Nil)
+			case Select(ProjectRef(Some(uri), Some(id))) => (units(uri).defined(id).base, Nil)
+			case Select(pr) => error("Unresolved project reference (" + pr + ") in " + display(scoped))
+			case This => error("Unresolved project reference (This) in " + display(scoped))
+		}
 }
 object BuildPaths
 {
