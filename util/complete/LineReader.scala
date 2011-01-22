@@ -5,6 +5,7 @@ package sbt
 
 	import jline.{Completor, ConsoleReader}
 	import java.io.File
+	import complete.Parser
 	
 abstract class JLine extends LineReader
 {
@@ -56,26 +57,20 @@ private object JLine
 	val MaxHistorySize = 500
 }
 
-trait LineReader extends NotNull
+trait LineReader
 {
 	def readLine(prompt: String): Option[String]
 }
-private[sbt] final class LazyJLineReader(historyPath: Option[File] /*, completor: => Completor*/) extends JLine
+final class FullReader(historyPath: Option[File], complete: Parser[_]) extends JLine
 {
 	protected[this] val reader =
 	{
 		val cr = new ConsoleReader
 		cr.setBellEnabled(false)
 		JLine.initializeHistory(cr, historyPath)
-//		cr.addCompletor(new LazyCompletor(completor))
+		sbt.complete.JLineCompletion.installCustomCompletor(cr, complete)
 		cr
 	}
-}
-private class LazyCompletor(delegate0: => Completor) extends Completor
-{
-	private lazy val delegate = delegate0
-	def complete(buffer: String, cursor: Int, candidates: java.util.List[_]): Int =
-		delegate.complete(buffer, cursor, candidates)
 }
 
 class SimpleReader private[sbt] (historyPath: Option[File]) extends JLine

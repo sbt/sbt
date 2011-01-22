@@ -83,4 +83,19 @@ object HistoryCommands
 		else
 			history ! s
 	}
+/*
+		import parse.{Parser,Parsers}
+		import Parser._
+		import Parsers._
+	val historyParser: Parser[complete.History => Option[String]] =
+	{
+		Start ~> Specific)
+	}
+	!!    Execute the last command again
+   !:    Show all previous commands
+   !:n    Show the last n commands
+   !n    Execute the command with index n, as shown by the !: command
+   !-n    Execute the nth command before this one
+   !string    Execute the most recent command starting with 'string'
+   !?string*/
 }

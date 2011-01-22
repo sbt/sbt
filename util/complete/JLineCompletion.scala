@@ -1,7 +1,7 @@
 /* sbt -- Simple Build Tool
  * Copyright 2011  Mark Harrah
  */
-package sbt.parse
+package sbt.complete
 
 	import jline.{CandidateListCompletionHandler,Completor,CompletionHandler,ConsoleReader}
 	import scala.annotation.tailrec
@@ -41,14 +41,17 @@ object JLineCompletion
 		customCompletor(str => convertCompletions(Parser.completions(p, str)))
 	def convertCompletions(c: Completions): (Seq[String], Seq[String]) =
 	{
-		( (Seq[String](), Seq[String]()) /: c.get) { case ( t @ (insert,display), comp) =>
-			if(comp.isEmpty) t else (insert :+ comp.append, insert :+ comp.display)
-		}
+		val (insert, display) =
+			( (Set.empty[String], Set.empty[String]) /: c.get) { case ( t @ (insert,display), comp) =>
+				if(comp.isEmpty) t else (insert + comp.append, appendNonEmpty(display, comp.display.trim))
+			}
+		(insert.toSeq, display.toSeq.sorted)
 	}
-	
+	def appendNonEmpty(set: Set[String], add: String) = if(add.isEmpty) set else set + add
+
 	def customCompletor(f: String => (Seq[String], Seq[String])): ConsoleReader => Boolean =
 		reader => {
-			val success = complete(beforeCursor(reader), f, reader, false)
+			val success = complete(beforeCursor(reader), f, reader)
 			reader.flushConsole()
 			success
 		}
@@ -59,29 +62,34 @@ object JLineCompletion
 		b.getBuffer.substring(0, b.cursor)
 	}
 
-	def complete(beforeCursor: String, completions: String => (Seq[String],Seq[String]), reader: ConsoleReader, inserted: Boolean): Boolean =
+	// returns false if there was nothing to insert and nothing to display
+	def complete(beforeCursor: String, completions: String => (Seq[String],Seq[String]), reader: ConsoleReader): Boolean =
 	{
 		val (insert,display) = completions(beforeCursor)
-		if(insert.isEmpty)
-			inserted
-		else
-		{
-			lazy val common = commonPrefix(insert)
-			if(inserted || common.isEmpty)
-			{
-				showCompletions(display, reader)
-				reader.drawLine()
-				true
-			}
+		val common = commonPrefix(insert)
+		if(common.isEmpty)
+			if(display.isEmpty)
+				()
 			else
-			{
-				reader.getCursorBuffer.write(common)
-				reader.redrawLine()
-				complete(beforeCursor + common, completions, reader, true)
-			}
-		}
+				showCompletions(display, reader)
+		else
+			appendCompletion(common, reader)
+
+		!(common.isEmpty && display.isEmpty)
 	}
-	def showCompletions(cs: Seq[String], reader: ConsoleReader): Unit =
+
+	def appendCompletion(common: String, reader: ConsoleReader)
+	{
+		reader.getCursorBuffer.write(common)
+		reader.redrawLine()
+	}
+
+	def showCompletions(display: Seq[String], reader: ConsoleReader)
+	{
+		printCompletions(display, reader)
+		reader.drawLine()
+	}
+	def printCompletions(cs: Seq[String], reader: ConsoleReader): Unit =
 		if(cs.isEmpty) () else CandidateListCompletionHandler.printCandidates(reader, JavaConversions.asJavaList(cs), true)
 
 	def commonPrefix(s: Seq[String]): String = if(s.isEmpty) "" else s reduceLeft commonPrefix
