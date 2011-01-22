@@ -73,5 +73,5 @@ final class ProjectNavigation(s: State)
 		val projectP = token(ID map (id => new ChangeProject(id)) examples projects.toSet )
 		success(ShowCurrent) | ( token(Space) ~> (token('/' ^^^ Root) | buildP | projectP) )
 	}
-	val command: Parser[() => State] = Commands.applyEffect(parser)(apply)
+	val command: Parser[() => State] = Command.applyEffect(parser)(apply)
 }

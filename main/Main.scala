@@ -10,7 +10,7 @@ package sbt
 	import sbt.build.{AggressiveCompile, Auto, BuildException, LoadCommand, Parse, ParseException, ProjectLoad, SourceLoad}
 	import sbt.complete.{DefaultParsers, Parser}
 
-	import Command.{Analysis,HistoryPath,Logged,Watch}
+	import Command.{applyEffect,Analysis,HistoryPath,Logged,Watch}
 	import scala.annotation.tailrec
 	import scala.collection.JavaConversions._
 	import Function.tupled
@@ -85,8 +85,6 @@ object Commands
 		val base = (OptSpace ~> (name ~ assign.?).?)
 		applyEffect(base)(t => runAlias(s, t) )
 	}
-	def applyEffect[T](p: Parser[T])(f: T => State): Parser[() => State] =
-		p map { t => () => f(t) }
 	def runAlias(s: State, args: Option[(String, Option[String])]): State =
 		args match
 		{

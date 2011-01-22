@@ -56,7 +56,10 @@ object Command
 
 	def validID(name: String) =
 		Parser(OpOrID)(name).resultEmpty.isDefined
-	
+
+	def applyEffect[T](p: Parser[T])(f: T => State): Parser[() => State] =
+		p map { t => () => f(t) }
+
 	def combine(cmds: Seq[Command]): State => Parser[() => State] =
 	{
 		val (simple, arbs) = separateCommands(cmds)
