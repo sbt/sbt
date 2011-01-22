@@ -43,7 +43,7 @@ trait Parsers
 		(neg.toSeq ++ digits).mkString.toInt
 
 	def mapOrFail[S,T](p: Parser[S])(f: S => T): Parser[T] =
-		p flatMap { s => try { successStrict(f(s)) } catch { case e: Exception => failure(e.toString) } }
+		p flatMap { s => try { success(f(s)) } catch { case e: Exception => failure(e.toString) } }
 
 	def spaceDelimited(display: String): Parser[Seq[String]] = (token(Space) ~> token(NotSpace, display)).*
 
