@@ -1,7 +1,7 @@
 /* sbt -- Simple Build Tool
  * Copyright 2010  Mark Harrah
  */
-package sbt.parse
+package sbt.complete
 
 /**
 * Represents a set of completions.
@@ -72,9 +72,8 @@ sealed trait Completion
 	override final lazy val hashCode = Completion.hashCode(this)
 	override final def equals(o: Any) = o match { case c: Completion => Completion.equal(this, c); case _ => false }
 }
-final class DisplayOnly(display0: String) extends Completion
+final class DisplayOnly(val display: String) extends Completion
 {
-	lazy val display = display0
 	def isEmpty = display.isEmpty
 	def append = ""
 	override def toString = "{" + display + "}"

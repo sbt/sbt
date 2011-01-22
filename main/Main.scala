@@ -1,19 +1,22 @@
 /* sbt -- Simple Build Tool
- * Copyright 2008, 2009, 2010  Mark Harrah
+ * Copyright 2008, 2009, 2010, 2011  Mark Harrah
  */
 package sbt
 
-import Execute.NodeView
-import complete.HistoryCommands
-import HistoryCommands.{Start => HistoryPrefix}
-import Project.{SessionKey, StructureKey}
-import sbt.build.{AggressiveCompile, Auto, BuildException, LoadCommand, Parse, ParseException, ProjectLoad, SourceLoad}
-import Command.{Analysis,HistoryPath,Logged,Watch}
-import scala.annotation.tailrec
-import scala.collection.JavaConversions._
-import Path._
+	import Execute.NodeView
+	import complete.HistoryCommands
+	import HistoryCommands.{Start => HistoryPrefix}
+	import Project.{SessionKey, StructureKey}
+	import sbt.build.{AggressiveCompile, Auto, BuildException, LoadCommand, Parse, ParseException, ProjectLoad, SourceLoad}
+	import sbt.complete.{DefaultParsers, Parser}
 
-import java.io.File
+	import Command.{Analysis,HistoryPath,Logged,Watch}
+	import scala.annotation.tailrec
+	import scala.collection.JavaConversions._
+	import Function.tupled
+	import Path._
+
+	import java.io.File
 
 /** This class is the entry point for sbt.*/
 class xMain extends xsbti.AppMain
@@ -43,64 +46,53 @@ class xMain extends xsbti.AppMain
 		}
 	}
 	def next(state: State): State =
-		ErrorHandling.wideConvert { state.process(process) } match
+		ErrorHandling.wideConvert { state.process(Command.process) } match
 		{
 			case Right(s) => s
 			case Left(t) => Commands.handleException(t, state)
 		}
-	def process(command: String, state: State): State =
-	{
-		val in = Input(command, None)
-		Commands.applicable(state).flatMap( _.run(in, state) ).headOption.getOrElse {
-			if(command.isEmpty) state
-			else {
-				System.err.println("Unknown command '" + command + "'")
-				state.fail
-			}
-		}
-	}
 }
 
-import CommandSupport._
+	import DefaultParsers._
+	import CommandSupport._
 object Commands
 {
 	def DefaultCommands: Seq[Command] = Seq(ignore, help, reload, read, history, continuous, exit, loadCommands, loadProject, compile, discover,
-		projects, project, setOnFailure, ifLast, multi, shell, alias, append)
+		projects, project, setOnFailure, ifLast, multi, shell, alias, append, nop)
 
-	def ignore = nothing(Set(FailureWall))
-
-	def nothing(ignore: Set[String]) = Command(){ case (in, s) if ignore(in.line) => s }
-
-	def applicable(state: State): Stream[Command]  =  state.processors.toStream
+	def nop = Command.custom(successStrict, Nil)
+	def ignore = Command.command(FailureWall)(identity)
 
 	def detail(selected: Iterable[String])(h: Help): Option[String] =
 		h.detail match { case (commands, value) => if( selected exists commands ) Some(value) else None }
 
-	def help = Command.simple(HelpCommand, helpBrief, helpDetailed) { (in, s) =>
+	// TODO: tab complete on command names
+	def help = Command.args(HelpCommand, helpBrief, helpDetailed, "<command>") { (s, args) =>
 
-		val h = applicable(s).flatMap(_.help(s))
-		val argStr = (in.line stripPrefix HelpCommand).trim
-		
+		val h = s.processors.flatMap(_.help)
 		val message =
-			if(argStr.isEmpty)
+			if(args.isEmpty)
 				h.map( _.brief match { case (a,b) => a + " : " + b } ).mkString("\n", "\n", "\n")
 			else
-				h flatMap detail( argStr.split("""\s+""", 0) ) mkString("\n", "\n\n", "\n")
+				h flatMap detail(args) mkString("\n", "\n\n", "\n")
 		System.out.println(message)
 		s
 	}
 
-	def alias = Command.simple(AliasCommand, AliasBrief, AliasDetailed) { (in, s) =>
-		in.arguments.split("""\s*=\s*""",2).toSeq match {
-			case Seq(name, value) => addAlias(s, name.trim, value.trim)
-			case Seq(x) if !x.isEmpty=> printAlias(s, x.trim); s
-			case _ => printAliases(s); s
+	def alias = Command(AliasCommand, AliasBrief, AliasDetailed) { s =>
+		val name = token(OpOrID.examples( aliasNames(s) : _*) )
+		val assign = token(Space ~ '=' ~ Space) ~> matched(Command.combine(s.processors)(s), partial = true)
+		(OptSpace ~> (name ~ assign.?).?) map {
+			case Some((name, Some(value))) => addAlias(s, name.trim, value.trim)
+			case Some((x, None)) if !x.isEmpty=> printAlias(s, x.trim); s
+			case None => printAliases(s); s
 		}
 	}
 	
-	def shell = Command.simple(Shell, ShellBrief, ShellDetailed) { (in, s) =>
+	def shell = Command.command(Shell, ShellBrief, ShellDetailed) { s =>
 		val historyPath = (s get HistoryPath.key) getOrElse Some((s.baseDir / ".history").asFile)
-		val reader = new LazyJLineReader(historyPath)
+		val parser = Command.combine(s.processors)
+		val reader = new FullReader(historyPath, parser(s))
 		val line = reader.readLine("> ")
 		line match {
 			case Some(line) => s.copy(onFailure = Some(Shell), commands = line +: Shell +: s.commands)
@@ -108,35 +100,48 @@ object Commands
 		}
 	}
 	
-	def multi = Command.simple(Multi, MultiBrief, MultiDetailed) { (in, s) =>
-		in.arguments.split(";").toSeq ::: s
+	// TODO: this should nest Parsers for other commands
+	def multi = Command.single(Multi, MultiBrief, MultiDetailed) { (s,arg) =>
+		arg.split(";").toSeq ::: s
 	}
 	
-	def ifLast = Command.simple(IfLast, IfLastBrief, IfLastDetailed) { (in, s) =>
-		if(s.commands.isEmpty) in.arguments :: s else s
+	// TODO: nest
+	def ifLast = Command.single(IfLast, IfLastBrief, IfLastDetailed) { (s, arg) =>
+		if(s.commands.isEmpty) arg :: s else s
 	}
-	def append = Command.simple(Append, AppendLastBrief, AppendLastDetailed) { (in, s) =>
-		s.copy(commands = s.commands :+ in.arguments)
+	// TODO: nest
+	def append = Command.single(Append, AppendLastBrief, AppendLastDetailed) { (s, arg) =>
+		s.copy(commands = s.commands :+ arg)
 	}
 	
-	def setOnFailure = Command.simple(OnFailure, OnFailureBrief, OnFailureDetailed) { (in, s) =>
-		s.copy(onFailure = Some(in.arguments))
+	// TODO: nest
+	def setOnFailure = Command.single(OnFailure, OnFailureBrief, OnFailureDetailed) { (s, arg) =>
+		s.copy(onFailure = Some(arg))
 	}
 
-	def reload = Command.simple(ReloadCommand, ReloadBrief, ReloadDetailed) { (in, s) =>
+	def reload = Command.command(ReloadCommand, ReloadBrief, ReloadDetailed) { s =>
 		runExitHooks(s).reload
 	}
 
-	def defaults = Command.simple(DefaultsCommand) { (in, s) =>
+	def defaults = Command.command(DefaultsCommand) { s =>
 		s ++ DefaultCommands
 	}
 
-	def initialize = Command.simple(InitCommand) { (in, s) =>
+	def initialize = Command.command(InitCommand) { s =>
 		/*"load-commands -base ~/.sbt/commands" :: */readLines( readable( sbtRCs(s) ) ) ::: s
 	}
 
-	def read = Command.simple(ReadCommand, ReadBrief, ReadDetailed) { (in, s) =>
-		getSource(in, s.baseDir) match
+	def readParser(s: State) =
+	{
+		val files = (token(Space) ~> fileParser(s.baseDir)).+
+		val portAndSuccess = token(OptSpace) ~> Port
+		portAndSuccess || files
+	}
+
+	def read = Command(ReadCommand, ReadBrief, ReadDetailed)(s => readParser(s) map doRead(s))
+
+	def doRead(s: State)(arg: Either[Int, Seq[File]]): State =
+		arg match
 		{
 			case Left(portAndSuccess) =>
 				val port = math.abs(portAndSuccess)
@@ -157,12 +162,6 @@ object Commands
 					s
 				}
 		}
-	}
-	private def getSource(in: Input, baseDirectory: File) =
-	{
-		try { Left(in.line.stripPrefix(ReadCommand).trim.toInt) }
-		catch { case _: NumberFormatException => Right(in.splitArgs map { p => new File(baseDirectory, p) }) }
-	}
 	private def readMessage(port: Int, previousSuccess: Boolean): Option[String] =
 	{
 		// split into two connections because this first connection ends the previous communication
@@ -173,15 +172,19 @@ object Commands
 			if(message eq null) None else Some(message)
 		}
 	}
-							
+
+	// TODO: nest
 	def continuous =
-		Command( Help(continuousBriefHelp) ) { case (in, s) if in.line startsWith ContinuousExecutePrefix =>
+		Command.single(ContinuousExecutePrefix, Help(continuousBriefHelp) ) { (s, arg) =>
 			withAttribute(s, Watch.key, "Continuous execution not configured.") { w =>
-				Watched.executeContinuously(w, s, in)
+				val repeat = ContinuousExecutePrefix + (if(arg.startsWith(" ")) arg else " " + arg)
+				Watched.executeContinuously(w, s, arg, repeat)
 			}
 		}
 
-	def history = Command( historyHelp: _* ) { case (in, s) if in.line startsWith "!" =>
+	def history = Command.command("!!")(s => s)
+	//TODO: convert
+	/*def history = Command( historyHelp: _* ) { case (in, s) if in.line startsWith "!" =>
 		val logError = (msg: String) => CommandSupport.logger(s).error(msg)
 		HistoryCommands(in.line.substring(HistoryPrefix.length).trim, (s get HistoryPath.key) getOrElse None, 500/*JLine.MaxHistorySize*/, logError) match
 		{
@@ -190,13 +193,13 @@ object Commands
 				(commands ::: s).continue
 			case None => s.fail
 		}
-	}
+	}*/
 
 	def indent(withStar: Boolean) = if(withStar) "\t*" else "\t "
 	def listProject(name: String, current: Boolean, log: Logger) = log.info( indent(current) + name )
 
 	def act = error("TODO")
-	def projects = Command.simple(ProjectsCommand, projectsBrief, projectsDetailed ) { (in,s) =>
+	def projects = Command.command(ProjectsCommand, projectsBrief, projectsDetailed ) { s =>
 		val log = logger(s)
 		val session = Project.session(s)
 		val structure = Project.structure(s)
@@ -214,96 +217,36 @@ object Commands
 			case Some(nav) => f(nav)
 		}
 
-	def project = Command.simple(ProjectCommand, projectBrief, projectDetailed ) { (in,s) =>
-		val to = in.arguments
-		val session = Project.session(s)
-		val structure = Project.structure(s)
-		val uri = session.currentBuild
-		def setProject(id: String) = updateCurrent(s.put(SessionKey, session.setCurrent(uri, id)))
-		if(to.isEmpty)
-		{
-			logger(s).info(session.currentProject(uri) + " (in build " + uri + ")")
-			s
-		}
-		else if(to == "/")
-		{
-			val id = Load.getRootProject(structure.units)(uri)
-			setProject(id)
-		}
-		else if(to.startsWith("^"))
-		{
-			val newBuild = (new java.net.URI(to substring 1)).normalize
-			if(structure.units contains newBuild)
-				updateCurrent(s.put(SessionKey, session.setCurrent(uri, session currentProject uri)))
-			else
-			{
-				logger(s).error("Invalid build unit '" + newBuild + "' (type 'projects' to list available builds).")
-				s
-			}
-		}
-/*		else if(to.forall(_ == '.'))
-			if(to.length > 1) gotoParent(to.length - 1, nav, s) else s */ // semantics currently undefined
-		else if( structure.units(uri).defined.contains(to) )
-			setProject(to)
-		else
-		{
-			logger(s).error("Invalid project name '" + to + "' (type 'projects' to list available projects).")
-			s.fail
-		}
-	}
+	def project = Command(ProjectCommand, projectBrief, projectDetailed)(ProjectNavigation.command)
 
-	def exit = Command( Help(exitBrief) ) {
-		case (in, s) if TerminateActions contains in.line =>
-			runExitHooks(s).exit(true)
-	}
+	def exit = Command.command(TerminateAction, Help(exitBrief) :: Nil ) ( doExit )
 
-	def discover = Command.simple(Discover, DiscoverBrief, DiscoverDetailed) { (in, s) =>
+	def doExit(s: State): State  =  runExitHooks(s).exit(true)
+
+	// TODO: tab completion, low priority
+	def discover = Command.single(Discover, DiscoverBrief, DiscoverDetailed) { (s, arg) =>
 		withAttribute(s, Analysis, "No analysis to process.") { analysis =>
-			val command = Parse.discover(in.arguments)
+			val command = Parse.discover(arg)
 			val discovered = build.Build.discover(analysis, command)
 			println(discovered.mkString("\n"))
 			s
 		}
 	}
-	def compile = Command.simple(CompileName, CompileBrief, CompileDetailed ) { (in, s) =>
-		val command = Parse.compile(in.arguments)(s.baseDir)
+	// TODO: tab completion, low priority
+	def compile = Command.single(CompileName, CompileBrief, CompileDetailed ) { (s, arg) =>
+		val command = Parse.compile(arg)(s.baseDir)
 		try {
 			val analysis = build.Build.compile(command, s.configuration)
 			s.put(Analysis, analysis)
 		} catch { case e: xsbti.CompileFailed => s.fail /* already logged */ }
 	}
 
-	def loadProject = Command.simple(LoadProject, LoadProjectBrief, LoadProjectDetailed) { (in, s) =>
+	def loadProject = Command.command(LoadProject, LoadProjectBrief, LoadProjectDetailed) { s =>
 		val structure = Load.defaultLoad(s, logger(s))
 		val session = Load.initialSession(structure)
 		val newAttrs = s.attributes.put(StructureKey, structure).put(SessionKey, session)
 		val newState = s.copy(attributes = newAttrs)
-		updateCurrent(runExitHooks(newState))
-	}
-
-	def updateCurrent(s: State): State =
-	{
-		val structure = Project.structure(s)
-		val (uri, id) = Project.current(s)
-		val ref = ProjectRef(uri, id)
-		val project = Load.getProject(structure.units, uri, id)
-		logger(s).info("Set current project to " + id + " (in build " + uri +")")
-
-		val data = structure.data
-		val historyPath = HistoryPath(ref).get(data).flatMap(identity)
-		val newAttrs = s.attributes.put(Watch.key, makeWatched(data, ref, project)).put(HistoryPath.key, historyPath)
-		s.copy(attributes = newAttrs)
-	}
-	def makeWatched(data: Settings[Scope], ref: ProjectRef, project: Project): Watched =
-	{
-		def getWatch(ref: ProjectRef) = Watch(ref).get(data)
-		getWatch(ref) match
-		{
-			case Some(currentWatch) =>
-				val subWatches = project.uses flatMap { p =>  getWatch(p) }
-				Watched.multi(currentWatch, subWatches)
-			case None => Watched.empty
-		}
+		Project.updateCurrent(runExitHooks(newState))
 	}
 	
 	def handleException(e: Throwable, s: State, trace: Boolean = true): State = {
@@ -318,8 +261,9 @@ object Commands
 		s.copy(exitHooks = Set.empty)
 	}
 
-	def loadCommands = Command.simple(LoadCommand, Parse.helpBrief(LoadCommand, LoadCommandLabel), Parse.helpDetail(LoadCommand, LoadCommandLabel, true) ) { (in, s) =>
-		applyCommands(s, buildCommands(in.arguments, s.configuration))
+	// TODO: tab completion, low priority
+	def loadCommands = Command.single(LoadCommand, Parse.helpBrief(LoadCommand, LoadCommandLabel), Parse.helpDetail(LoadCommand, LoadCommandLabel, true) ) { (s, arg) =>
+		applyCommands(s, buildCommands(arg, s.configuration))
 	}
 	
 	def buildCommands(arguments: String, configuration: xsbti.AppConfiguration): Either[Throwable, Seq[Any]] =
@@ -370,33 +314,34 @@ object Commands
 		
 	def addAlias(s: State, name: String, value: String): State =
 	{
-		val in = Input(name, None)
-		if(in.name == name) {
+		if(Command validID name) {
 			val removed = removeAlias(s, name)
-			if(value.isEmpty) removed else removed.copy(processors = new Alias(name, value) +: removed.processors)
+			if(value.isEmpty) removed else removed.copy(processors = newAlias(name, value) +: removed.processors)
 		} else {
 			System.err.println("Invalid alias name '" + name + "'.")
 			s.fail
 		}
 	}
-	def removeAlias(s: State, name: String): State =
-		s.copy(processors = s.processors.filter { case a: Alias if a.name == name => false; case _ => true } )
+	def removeAlias(s: State, name: String): State  =  s.copy(processors = s.processors.filter(c => !isAliasNamed(name, c)) )
+	def isAliasNamed(name: String, c: Command): Boolean  =  isNamed(name, getAlias(c))
+	def isNamed(name: String, alias: Option[(String,String)]): Boolean  =  alias match { case None => false; case Some((alias,_)) => name != alias }
 
-	def printAliases(s: State): Unit = {
-		val strings = aliasStrings(s)
-		if(!strings.isEmpty) println( strings.mkString("\t", "\n\t","") )
-	}
+	def getAlias(c: Command): Option[(String,String)]  =  c.tags get CommandAliasKey
+	def printAlias(s: State, name: String): Unit  =  printAliases(aliases(s,(n,v) => n == name) )
+	def printAliases(s: State): Unit  =  printAliases(allAliases(s))
+	def printAliases(as: Seq[(String,String)]): Unit =
+		for( (name,value) <- as)
+			println("\t" + name + " = " + value)
 
-	def printAlias(s: State, name: String): Unit =
-		for(a <- aliases(s)) if (a.name == name) println("\t" + name + " = " + a.value)
+	def aliasNames(s: State): Seq[String] = allAliases(s).map(_._1)
+	def allAliases(s: State): Seq[(String,String)]  =  aliases(s, (n,v) => true)
+	def aliases(s: State, pred: (String,String) => Boolean): Seq[(String,String)] =
+		s.processors.flatMap(c => getAlias(c).filter(tupled(pred)))
 
-	def aliasStrings(s: State) = aliases(s).map(a => a.name + " = " + a.value)
-	def aliases(s: State) = s.processors collect { case a: Alias => a }
-
-	final class Alias(val name: String, val value: String) extends Command {
-		assert(name.length > 0)
-		assert(value.length > 0)
-		def help = _ => Nil
-		def run = (in, s) => if(in.name == name) Some((value + " " + in.arguments) :: s) else None
-	}
+	def newAlias(name: String, value: String): Command =
+		Command(name, (name, "<alias>"), "Alias of '" + value + "'")(aliasBody(name, value)).tag(CommandAliasKey, (name, value))
+	def aliasBody(name: String, value: String)(state: State): Parser[State] =
+		Parser(Command.combine(removeAlias(state,name).processors)(state))(value)
+		
+	val CommandAliasKey = AttributeKey[(String,String)]("is-command-alias")
 }

@@ -29,7 +29,7 @@ object Watched
 	val PollDelaySeconds = 1
 	def isEnter(key: Int): Boolean = key == 10 || key == 13
 
-	def executeContinuously(watched: Watched, s: State, in: Input): State =
+	def executeContinuously(watched: Watched, s: State, next: String, repeat: String): State =
 	{
 		@tailrec def shouldTerminate: Boolean = (System.in.available > 0) && (watched.terminateWatch(System.in.read()) || shouldTerminate)
 		val sourcesFinder = watched.watchPaths
@@ -41,7 +41,7 @@ object Watched
 		val (triggered, newWatchState) = SourceModificationWatch.watch(sourcesFinder, PollDelaySeconds, watchState)(shouldTerminate)
 
 		if(triggered)
-			(in.arguments :: FailureWall :: in.line :: s).put(ContinuousState, newWatchState)
+			(next :: FailureWall :: repeat :: s).put(ContinuousState, newWatchState)
 		else
 		{
 			while (System.in.available() > 0) System.in.read()

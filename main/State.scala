@@ -22,6 +22,10 @@ trait Identity {
 	override final def toString = super.toString
 }
 
+object Next extends Enumeration {
+	val Reload, Fail, Done, Continue = Value
+}
+
 trait StateOps {
 	def process(f: (String, State) => State): State
 	def ::: (commands: Seq[String]): State

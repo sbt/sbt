@@ -9,7 +9,7 @@ package sbt
 	import std.TaskExtra._
 	import Task._
 	import Project.{ScopedKey, Setting}
-	import parse.Parser
+	import complete.Parser
 	import java.io.File
 	import java.net.URI
 

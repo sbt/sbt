@@ -34,9 +34,8 @@ object CommandSupport
 	val Exit = "exit"
 	val Quit = "quit"
 
-	/** The list of command names that may be used to terminate the program.*/
-	val TerminateActions: Seq[String] = Seq(Exit, Quit)
-
+	/** The command name to terminate the program.*/
+	val TerminateAction: String = Exit
 
 	def continuousBriefHelp = (ContinuousExecutePrefix + " <action>", "Executes the specified command whenever source files change.")
 
@@ -62,12 +61,12 @@ ProjectCommand +
 	For example, 'project ....' is equivalent to three consecutive 'project ..' commands.
 """
 
-	def projectsBrief = (ProjectsCommand, projectsDetailed)
+	def projectsBrief = projectsDetailed
 	def projectsDetailed = "Displays the names of available projects."
 
 	def historyHelp = HistoryCommands.descriptions.map( d => Help(d) )
 
-	def exitBrief = (TerminateActions.mkString(", "), "Terminates the build.")
+	def exitBrief = (TerminateAction, "Terminates the build.")
 
 	def sbtrc = ".sbtrc"
 
@@ -92,7 +91,7 @@ ProjectCommand +
 	def DefaultsDetailed = "Registers default built-in commands"
 
 	def ReloadCommand = "reload"
-	def ReloadBrief = (ReloadCommand, "Reloads the session and then executes the remaining commands.")
+	def ReloadBrief = "Reloads the session and then executes the remaining commands."
 	def ReloadDetailed =
 ReloadCommand + """
 	This command is equivalent to exiting, restarting, and running the
@@ -180,11 +179,11 @@ CompileSyntax + """
 	def LoadCommandLabel = "commands"
 
 	def LoadProject = "loadp"
-	def LoadProjectBrief = (LoadProject, LoadProjectDetailed)
+	def LoadProjectBrief = LoadProjectDetailed
 	def LoadProjectDetailed = "Loads the project in the current directory"
 
 	def Shell = "shell"
-	def ShellBrief = (Shell, ShellDetailed)
+	def ShellBrief = ShellDetailed
 	def ShellDetailed = "Provides an interactive prompt from which commands can be run."
 
 	def OnFailure = "-"

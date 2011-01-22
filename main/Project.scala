@@ -6,6 +6,8 @@ package sbt
 	import java.io.File
 	import java.net.URI
 	import Project._
+	import Command.{HistoryPath,Watch}
+	import CommandSupport.logger
 
 final case class Project(id: String, base: File, aggregate: Seq[ProjectRef] = Nil, dependencies: Seq[Project.ClasspathDependency] = Nil, inherits: Seq[ProjectRef] = Nil,
 	settings: Seq[Project.Setting[_]] = Project.defaultSettings, configurations: Seq[Configuration] = Configurations.default)
@@ -36,6 +38,31 @@ object Project extends Init[Scope]
 	{
 		val (unit, it) = current(state)
 		ProjectRef(Some(unit), Some(it))
+	}
+	def updateCurrent(s: State): State =
+	{
+		val structure = Project.structure(s)
+		val (uri, id) = Project.current(s)
+		val ref = ProjectRef(uri, id)
+		val project = Load.getProject(structure.units, uri, id)
+		logger(s).info("Set current project to " + id + " (in build " + uri +")")
+
+		val data = structure.data
+		val historyPath = HistoryPath(ref).get(data).flatMap(identity)
+		val newAttrs = s.attributes.put(Watch.key, makeWatched(data, ref, project)).put(HistoryPath.key, historyPath)
+		s.copy(attributes = newAttrs)
+	}
+
+	def makeWatched(data: Settings[Scope], ref: ProjectRef, project: Project): Watched =
+	{
+		def getWatch(ref: ProjectRef) = Watch(ref).get(data)
+		getWatch(ref) match
+		{
+			case Some(currentWatch) =>
+				val subWatches = project.uses flatMap { p => getWatch(p) }
+				Watched.multi(currentWatch, subWatches)
+			case None => Watched.empty
+		}
 	}
 	def display(scoped: ScopedKey[_]): String = Scope.display(scoped.scope, scoped.key.label)
 

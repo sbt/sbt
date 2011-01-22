@@ -1,7 +1,7 @@
 /* sbt -- Simple Build Tool
  * Copyright 2008,2010  Mark Harrah
  */
-package sbt.parse
+package sbt.complete
 
 sealed trait UpperBound
 {
