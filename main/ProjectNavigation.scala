@@ -18,7 +18,7 @@ object ProjectNavigation
 	final class ChangeBuild(val base: URI) extends Navigate
 	final class ChangeProject(val id: String) extends Navigate
 
-	def command(s: State): Parser[State] =
+	def command(s: State): Parser[() => State] =
 		if(s get Project.SessionKey isEmpty) failure("No project loaded") else (new ProjectNavigation(s)).command
 }
 final class ProjectNavigation(s: State)
@@ -73,5 +73,5 @@ final class ProjectNavigation(s: State)
 		val projectP = token(ID map (id => new ChangeProject(id)) examples projects.toSet )
 		success(ShowCurrent) | ( token(Space) ~> (token('/' ^^^ Root) | buildP | projectP) )
 	}
-	val command: Parser[State] = parser map apply
+	val command: Parser[() => State] = Commands.applyEffect(parser)(apply)
 }

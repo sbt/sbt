@@ -87,7 +87,7 @@ object Parser extends ParserMain
 		if(a.valid) {
 			a.result match
 			{
-				case Some(av) => if( f(av) ) successStrict( av ) else Invalid
+				case Some(av) => if( f(av) ) success( av ) else Invalid
 				case None => new Filter(a, f)
 			}
 		}
@@ -96,7 +96,7 @@ object Parser extends ParserMain
 	def seqParser[A,B](a: Parser[A], b: Parser[B]): Parser[(A,B)] =
 		if(a.valid && b.valid)
 			(a.result, b.result) match {
-				case (Some(av), Some(bv)) => successStrict( (av, bv) )
+				case (Some(av), Some(bv)) => success( (av, bv) )
 				case (Some(av), None) => b map { bv => (av, bv) }
 				case (None, Some(bv)) => a map { av => (av, bv) }
 				case (None, None) => new SeqParser(a,b)
@@ -110,7 +110,7 @@ object Parser extends ParserMain
 			b.map( Right(_) )
 
 	def opt[T](a: Parser[T]): Parser[Option[T]] =
-		if(a.valid) new Optional(a) else successStrict(None)
+		if(a.valid) new Optional(a) else success(None)
 
 	def zeroOrMore[T](p: Parser[T]): Parser[Seq[T]] = repeat(p, 0, Infinite)
 	def oneOrMore[T](p: Parser[T]): Parser[Seq[T]] = repeat(p, 1, Infinite)
@@ -126,8 +126,8 @@ object Parser extends ParserMain
 			if(repeated.valid)
 				repeated.result match
 				{
-					case Some(value) => successStrict(revAcc reverse_::: value :: Nil) // revAcc should be Nil here
-					case None => if(max.isZero) successStrict(revAcc.reverse) else new Repeat(partial, repeated, min, max, revAcc)
+					case Some(value) => success(revAcc reverse_::: value :: Nil) // revAcc should be Nil here
+					case None => if(max.isZero) success(revAcc.reverse) else new Repeat(partial, repeated, min, max, revAcc)
 				}
 			else if(min == 0)
 				invalidButOptional
@@ -144,7 +144,7 @@ object Parser extends ParserMain
 						case None => checkRepeated(part.map(lv => (lv :: revAcc).reverse))
 					}
 				else Invalid
-			case None => checkRepeated(successStrict(Nil))
+			case None => checkRepeated(success(Nil))
 		}
 	}
 
@@ -183,14 +183,12 @@ trait ParserMain
 	implicit def literalRichParser(s: String): RichParser[String] = richParser(s)
 
 	def failure[T](msg: String): Parser[T] = Invalid(msg)
-	def successStrict[T](value: T): Parser[T] = success(value)
-	def success[T](value: => T): Parser[T] = new ValidParser[T] {
-		private[this] lazy val v = value
-		override def result = Some(v)
+	def success[T](value: T): Parser[T] = new ValidParser[T] {
+		override def result = Some(value)
 		def resultEmpty = result
 		def derive(c: Char) = Invalid
 		def completions = Completions.empty
-		override def toString = "success(" + v + ")"
+		override def toString = "success(" + value + ")"
 	}
 
 	implicit def range(r: collection.immutable.NumericRange[Char]): Parser[Char] =
@@ -204,7 +202,7 @@ trait ParserMain
 
 	implicit def literal(ch: Char): Parser[Char] = new ValidParser[Char] {
 		def resultEmpty = None
-		def derive(c: Char) = if(c == ch) successStrict(ch) else Invalid
+		def derive(c: Char) = if(c == ch) success(ch) else Invalid
 		def completions = Completions.single(Completion.suggestStrict(ch.toString))
 		override def toString = "'" + ch + "'"
 	}
@@ -244,7 +242,7 @@ trait ParserMain
 		if(a.valid) {
 			a.result match
 			{
-				case Some(av) => successStrict( av )
+				case Some(av) => success( av )
 				case None =>
 					if(check) checkMatches(a, completions.toSeq)
 					new Examples(a, completions)
@@ -254,11 +252,11 @@ trait ParserMain
 
 	def matched(t: Parser[_], seenReverse: List[Char] = Nil, partial: Boolean = false): Parser[String] =
 		if(!t.valid)
-			if(partial && !seenReverse.isEmpty) successStrict(seenReverse.reverse.mkString) else Invalid
+			if(partial && !seenReverse.isEmpty) success(seenReverse.reverse.mkString) else Invalid
 		else if(t.result.isEmpty)
 			new MatchedString(t, seenReverse, partial)
 		else
-			successStrict(seenReverse.reverse.mkString)
+			success(seenReverse.reverse.mkString)
 
 	def token[T](t: Parser[T]): Parser[T] = token(t, "", true)
 	def token[T](t: Parser[T], description: String): Parser[T] = token(t, description, false)
@@ -422,7 +420,7 @@ private final class StringLiteral(str: String, remaining: List[Char]) extends Va
 private final class CharacterClass(f: Char => Boolean) extends ValidParser[Char]
 {
 	def resultEmpty = None
-	def derive(c: Char) = if( f(c) ) successStrict(c) else Invalid
+	def derive(c: Char) = if( f(c) ) success(c) else Invalid
 	def completions = Completions.empty
 	override def toString = "class()"
 }

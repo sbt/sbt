@@ -60,7 +60,7 @@ object Commands
 	def DefaultCommands: Seq[Command] = Seq(ignore, help, reload, read, history, continuous, exit, loadCommands, loadProject, compile, discover,
 		projects, project, setOnFailure, ifLast, multi, shell, alias, append, nop)
 
-	def nop = Command.custom(successStrict, Nil)
+	def nop = Command.custom(s => success(() => s), Nil)
 	def ignore = Command.command(FailureWall)(identity)
 
 	def detail(selected: Iterable[String])(h: Help): Option[String] =
@@ -82,12 +82,18 @@ object Commands
 	def alias = Command(AliasCommand, AliasBrief, AliasDetailed) { s =>
 		val name = token(OpOrID.examples( aliasNames(s) : _*) )
 		val assign = token(Space ~ '=' ~ Space) ~> matched(Command.combine(s.processors)(s), partial = true)
-		(OptSpace ~> (name ~ assign.?).?) map {
+		val base = (OptSpace ~> (name ~ assign.?).?)
+		applyEffect(base)(t => runAlias(s, t) )
+	}
+	def applyEffect[T](p: Parser[T])(f: T => State): Parser[() => State] =
+		p map { t => () => f(t) }
+	def runAlias(s: State, args: Option[(String, Option[String])]): State =
+		args match
+		{
 			case Some((name, Some(value))) => addAlias(s, name.trim, value.trim)
 			case Some((x, None)) if !x.isEmpty=> printAlias(s, x.trim); s
 			case None => printAliases(s); s
 		}
-	}
 	
 	def shell = Command.command(Shell, ShellBrief, ShellDetailed) { s =>
 		val historyPath = (s get HistoryPath.key) getOrElse Some((s.baseDir / ".history").asFile)
@@ -138,7 +144,7 @@ object Commands
 		portAndSuccess || files
 	}
 
-	def read = Command(ReadCommand, ReadBrief, ReadDetailed)(s => readParser(s) map doRead(s))
+	def read = Command(ReadCommand, ReadBrief, ReadDetailed)(s => applyEffect(readParser(s))(doRead(s)) )
 
 	def doRead(s: State)(arg: Either[Int, Seq[File]]): State =
 		arg match
@@ -340,7 +346,7 @@ object Commands
 
 	def newAlias(name: String, value: String): Command =
 		Command(name, (name, "<alias>"), "Alias of '" + value + "'")(aliasBody(name, value)).tag(CommandAliasKey, (name, value))
-	def aliasBody(name: String, value: String)(state: State): Parser[State] =
+	def aliasBody(name: String, value: String)(state: State): Parser[() => State] =
 		Parser(Command.combine(removeAlias(state,name).processors)(state))(value)
 		
 	val CommandAliasKey = AttributeKey[(String,String)]("is-command-alias")
