@@ -8,8 +8,8 @@ import java.lang.ref.{Reference, SoftReference, WeakReference}
 import java.io.File
 import java.net.{URI, URL, URLClassLoader}
 import java.util.Collections
-import scala.collection.Set
-import scala.collection.mutable.{HashSet, LinkedHashSet, ListBuffer}
+import scala.collection.{mutable, JavaConversions, Set}
+import mutable.{HashSet, ListBuffer}
 import IO.{createTemporaryDirectory, write}
 
 object ClasspathUtilities
@@ -124,7 +124,7 @@ object ClasspathUtilities
 	}
 	private def linkedSet[T](s: Iterable[T]): Set[T] =
 	{
-		val set = new LinkedHashSet[T]
+		val set: mutable.Set[T] = JavaConversions.asScalaSet(new java.util.LinkedHashSet[T])
 		set ++= s
 		set
 	}

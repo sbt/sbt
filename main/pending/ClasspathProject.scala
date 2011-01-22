@@ -11,7 +11,6 @@ package sbt
 	import Path._	
 	import Types._
 	import scala.xml.{Node => XNode,NodeSeq}
-	import scala.collection.mutable.{LinkedHashMap, LinkedHashSet}
 
 trait ClasspathProject
 {
@@ -244,7 +243,7 @@ object ClasspathProject
 		parseSimpleConfigurations(mapping getOrElse default).getOrElse(c, errMsg)
 	def internalDependencies(project: Project): Classpath =
 		TaskMap { (conf: Configuration) =>
-			val visited = new LinkedHashSet[(Project,String)]
+			val visited = asSet(new java.util.LinkedHashSet[(Project,String)])
 			def visit(p: Project, c: String)
 			{
 				val applicableConfigs = allConfigs(p, c)
@@ -260,7 +259,7 @@ object ClasspathProject
 			}
 			visit(project, conf.name)
 
-			val productsTasks = new LinkedHashSet[Task[Seq[Attributed[File]]]]
+			val productsTasks = asSet(new java.util.LinkedHashSet[Task[Seq[Attributed[File]]]])
 			for( (dep: ClasspathProject, c) <- visited )
 				if( (dep ne project) || conf.name != c )
 					productsTasks += products(dep, c)
