@@ -23,8 +23,8 @@ final class Eval(options: Seq[String], mkReporter: Settings => Reporter, parent:
 	import global._
 	import definitions._
 
-	def eval[T](expression: String)(implicit mf: Manifest[T]): T = eval(expression, Some(mf.toString)).asInstanceOf[T]
-	def eval(expression: String, tpeName: Option[String]): Any =
+	def eval[T](expression: String)(implicit mf: Manifest[T]): T = eval(expression, Some(mf.toString))._2.asInstanceOf[T]
+	def eval(expression: String, tpeName: Option[String]): (String,Any) =
 	{
 		reporter.reset
 		val unit = mkUnit(expression)
