@@ -45,8 +45,9 @@ trait Parsers
 	def mapOrFail[S,T](p: Parser[S])(f: S => T): Parser[T] =
 		p flatMap { s => try { success(f(s)) } catch { case e: Exception => failure(e.toString) } }
 
-	def spaceDelimited(display: String): Parser[Seq[String]] = (token(Space) ~> token(NotSpace, display)).*
+	def spaceDelimited(display: String): Parser[Seq[String]] = (token(Space) ~> token(NotSpace, display)).* <~ SpaceClass.*
 
+	def trimmed(p: Parser[String]) = p map { _.trim }
 	def Uri(ex: Set[URI]) = NotSpace map { uri => new URI(uri) } examples(ex.map(_.toString))
 }
 object Parsers extends Parsers
