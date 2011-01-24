@@ -50,7 +50,7 @@ object Command
 	def single(name: String, briefHelp: (String, String), detail: String)(f: (State, String) => State): Command =
 		single(name, Help(name, briefHelp, detail) )(f)
 	def single(name: String, help: Help*)(f: (State, String) => State): Command =
-		apply(name, help : _*)( state => token(any.+.string map apply1(f, state)) )
+		apply(name, help : _*)( state => token(trimmed(any.+.string) map apply1(f, state)) )
 	
 	def custom(parser: State => Parser[() => State], help: Seq[Help]): Command  =  new ArbitraryCommand(parser, help, AttributeMap.empty)
 

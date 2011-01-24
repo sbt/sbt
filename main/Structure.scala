@@ -94,7 +94,7 @@ object Scoped
 		final def :==(value: S): Setting[S]  =  :=(value)
 		final def := (value: => S): Setting[S]  =  Project.value(scoped)(value)
 		final def :~ (f: S => S): Setting[S]  =  Project.update(scoped)(f)
-		final def :- [HL <: HList](app: Apply[S]): Setting[S]  =  app toSetting scoped
+		final def :- (app: Apply[S]): Setting[S]  =  app toSetting scoped
 
 		def apply[T](f: S => T): Apply[T] = Apply.mk(scopedList)(hl => f(hl.head))
 
@@ -115,7 +115,7 @@ object Scoped
 		def :== (v: TaskKey[S]): ScS = Project.app(scoped, ScopedKey(scope, v.key) :^: KNil)(_.head)
 		def :~ (f: S => S): ScS  =  Project.update(scoped)( _ map f )
 
-		def :- [HL <: HList](app: App[S]): ScS  =  app toSetting scoped
+		def :- (app: App[S]): ScS  =  app toSetting scoped
 
 		def get(settings: Settings[Scope]): Option[Task[S]] = settings.get(scope, key)
 

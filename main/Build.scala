@@ -68,7 +68,8 @@ object EvaluateConfigurations
 		//   handle multiple expressions at once (for efficiency and better error handling)
 		//   accept the source name for error display
 		//   accept imports to use
-		eval.eval[Setting[_]](expression)
+		//   persist the results (critical for start up time)
+		eval.eval(expression, Some("sbt.Project.Setting[_]"))._2.asInstanceOf[Setting[_]]
 	}
 	def splitExpressions(name: String, lines: Seq[String]): (Seq[String], Seq[String]) =
 	{
@@ -81,11 +82,13 @@ object EvaluateConfigurations
 	def groupedLines(lines: Seq[String], delimiter: String => Boolean): Seq[String] =
 	{
 		@tailrec def group0(lines: Seq[String], delimiter: String => Boolean, accum: Seq[String]): Seq[String] =
-		{
-			val start = lines dropWhile delimiter
-			val (next, tail) = start.span (s => !delimiter(s))
-			group0(tail, delimiter, next.mkString("\n") +: accum)
-		}
+			if(lines.isEmpty) accum.reverse
+			else
+			{
+				val start = lines dropWhile delimiter
+				val (next, tail) = start.span (s => !delimiter(s))
+				group0(tail, delimiter, next.mkString("\n") +: accum)
+			}
 		group0(lines, delimiter, Nil)
 	}
 }
