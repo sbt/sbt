@@ -99,11 +99,11 @@ trait Init[Scope]
 	def delegate(sMap: ScopedMap)(implicit delegates: Scope => Seq[Scope]): ScopedMap =
 	{
 		val md = memoDelegates(delegates)
-		def refMap(refKey: ScopedKey[_]) = new (ScopedKey ~> ScopedKey) { def apply[T](k: ScopedKey[T]) = mapReferenced(sMap, k, md(k.scope), refKey) }
+		def refMap(refKey: ScopedKey[_]) = new (ScopedKey ~> ScopedKey) { def apply[T](k: ScopedKey[T]) = delegateForKey(sMap, k, md(k.scope), refKey) }
 		val f = new (SettingSeq ~> SettingSeq) { def apply[T](ks: Seq[Setting[T]]) = ks.map{ s => s mapReferenced refMap(s.key) } }
 		sMap mapValues f
 	}
-	private[this] def mapReferenced[T](sMap: ScopedMap, k: ScopedKey[T], scopes: Seq[Scope], refKey: ScopedKey[_]): ScopedKey[T] = 
+	private[this] def delegateForKey[T](sMap: ScopedMap, k: ScopedKey[T], scopes: Seq[Scope], refKey: ScopedKey[_]): ScopedKey[T] = 
 	{
 		val scache = PMap.empty[ScopedKey, ScopedKey]
 		def resolve(search: Seq[Scope]): ScopedKey[T] =

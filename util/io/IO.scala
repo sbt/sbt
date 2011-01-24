@@ -588,4 +588,37 @@ object IO
 		Using.fileInputStream(file) { fin =>
 		Using.gzipInputStream(fin) { ing =>
 		Using.bufferedInputStream(ing)(f) }}
+	
+	/** Converts an absolute File to a URI.  The File is converted to a URI (toURI),
+	* normalized (normalize), encoded (toASCIIString), and a forward slash ('/') is appended to the path component if
+	* it does not already end with a slash.
+	*/
+	def directoryURI(dir: File): URI  =
+	{
+		assertAbsolute(dir)
+		directoryURI(dir.toURI.normalize)
+	}
+
+	/** Converts an absolute File to a URI.  The File is converted to a URI (toURI),
+	* normalized (normalize), encoded (toASCIIString), and a forward slash ('/') is appended to the path component if
+	* it does not already end with a slash.
+	*/
+	def directoryURI(uri: URI): URI =
+	{
+		assertAbsolute(uri)
+		val str = uri.toASCIIString
+		val dirStr = if(str.endsWith("/")) str else str + "/"
+		(new URI(dirStr)).normalize
+	}
+	/** Converts the given File to a URI.  If the File is relative, the URI is relative, unlike File.toURI*/
+	def toURI(f: File): URI  =  if(f.isAbsolute) f.toURI else new URI(f.getPath)
+	def resolve(base: File, f: File): File  =
+	{
+		assertAbsolute(base)
+		val fabs = if(f.isAbsolute) f else new File(directoryURI(new File(base, f.getPath)))
+		assertAbsolute(fabs)
+		fabs
+	}
+	def assertAbsolute(f: File) = assert(f.isAbsolute, "Not absolute: " + f)
+	def assertAbsolute(uri: URI) = assert(uri.isAbsolute, "Not absolute: " + uri)
 }

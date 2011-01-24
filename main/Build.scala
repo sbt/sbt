@@ -181,8 +181,8 @@ object Load
 
 	def defaultLoad(state: State, log: Logger): BuildStructure =
 	{
-		val stagingDirectory = defaultStaging // TODO: properly configurable
-		val base = state.configuration.baseDirectory
+		val stagingDirectory = defaultStaging.getCanonicalFile // TODO: properly configurable
+		val base = state.configuration.baseDirectory.getCanonicalFile
 		val loader = getClass.getClassLoader
 		val provider = state.configuration.provider
 		val classpath = provider.mainClasspath ++ provider.scalaProvider.jars
@@ -266,21 +266,25 @@ object Load
 	def configurations(srcs: Seq[File], eval: Eval): Seq[Setting[_]] =
 		if(srcs.isEmpty) Nil else EvaluateConfigurations(eval, srcs)
 
-	def load(file: File, config: LoadBuildConfiguration): LoadedBuild = load(file, uri => loadUnit(RetrieveUnit(config.stagingDirectory, uri), config) )
-	def load(file: File, loader: URI => BuildUnit): LoadedBuild = loadURI(file.getAbsoluteFile.toURI, loader)
+	def load(file: File, config: LoadBuildConfiguration): LoadedBuild = load(file, uri => loadUnit(uri, RetrieveUnit(config.stagingDirectory, uri), config) )
+	def load(file: File, loader: URI => BuildUnit): LoadedBuild = loadURI(IO.directoryURI(file), loader)
 	def loadURI(uri: URI, loader: URI => BuildUnit): LoadedBuild =
 	{
+		IO.assertAbsolute(uri)
 		val (referenced, map) = loadAll(uri :: Nil, Map.empty, loader, Map.empty)
 		checkAll(referenced, map)
 		new LoadedBuild(uri, map)
 	}
 	def loaded(unit: BuildUnit): (LoadedBuildUnit, List[ProjectRef]) =
 	{
-		val baseURI = unit.base.toURI.normalize
-		def isRoot(p: Project) = p.base.toURI.normalize == baseURI
+		// since everything should be resolved at this point, we can compare Files instead of converting to URIs
+		def isRoot(p: Project) = p.base == unit.localBase
+
 		val defined = projects(unit)
+		if(defined.isEmpty) error("No projects defined in build unit " + unit)
 		val externals = referenced(defined).toList
-		val rootProjects = defined.filter(isRoot).map(_.id)
+		val projectsInRoot = defined.filter(isRoot).map(_.id)
+		val rootProjects = if(projectsInRoot.isEmpty) defined.head.id :: Nil else projectsInRoot
 		(new LoadedBuildUnit(unit, defined.map(d => (d.id, d)).toMap, rootProjects), externals)
 	}
 
@@ -293,10 +297,22 @@ object Load
 				else
 				{
 					val (loadedBuild, refs) = loaded(externalLoader(b))
+					checkBuildBase(loadedBuild.localBase)
 					loadAll(refs.flatMap(_.uri) reverse_::: bs, references.updated(b, refs), externalLoader, builds.updated(b, loadedBuild))
 				}
 			case Nil => (references, builds)
 		}
+	def checkProjectBase(buildBase: File, projectBase: File)
+	{
+		checkDirectory(projectBase)
+		assert(buildBase == projectBase || IO.relativize(buildBase, projectBase).isDefined, "Directory " + projectBase + " is not contained in build root " + buildBase)
+	}
+	def checkBuildBase(base: File) = checkDirectory(base)
+	def checkDirectory(base: File)
+	{
+		assert(base.isDirectory, "Not an existing directory: " + base)
+		assert(base.isAbsolute, "Not absolute: " + base)
+	}
 	def checkAll(referenced: Map[URI, List[ProjectRef]], builds: Map[URI, LoadedBuildUnit])
 	{
 		val rootProject = getRootProject(builds)
@@ -310,12 +326,27 @@ object Load
 		}
 	}
 
-	def resolveBase(against: File): Project => Project =
+	def resolveBase(origin: URI, against: File): Project => Project =
 	{
-		val uri = against.getAbsoluteFile.toURI.normalize
-		p => p.copy(base = new File(uri.resolve(p.base.toURI).normalize))
+		assert(origin.isAbsolute, "Origin not absolute: " + origin)
+		def resolveRefs(prs: Seq[ProjectRef]) = prs map resolveRef
+		def resolveRef(pr: ProjectRef) = pr match { case ProjectRef(Some(uri), id) => ProjectRef(Some(resolveURI(uri)), id); case _ => pr }
+		def resolveDeps(ds: Seq[Project.ClasspathDependency]) = ds map resolveDep
+		def resolveDep(d: Project.ClasspathDependency) = d.copy(project = resolveRef(d.project))
+		def resolveURI(u: URI): URI = IO.directoryURI(origin resolve u)
+		def resolve(f: File) =
+		{
+			val fResolved = new File(IO.directoryURI(IO.resolve(against, f)))
+			checkProjectBase(against, fResolved)
+			fResolved
+		}
+		p => p.copy(base = resolve(p.base), aggregate = resolveRefs(p.aggregate), dependencies = resolveDeps(p.dependencies), inherits = resolveRefs(p.inherits))
 	}
-	def projects(unit: BuildUnit): Seq[Project] = unit.definitions.builds.flatMap(_.projects map resolveBase(unit.base))
+	def projects(unit: BuildUnit): Seq[Project] =
+	{
+		val resolve = resolveBase(unit.uri, unit.localBase)
+		unit.definitions.builds.flatMap(_.projects map resolve)
+	}
 	def getRootProject(map: Map[URI, LoadedBuildUnit]): URI => String =
 		uri => getBuild(map, uri).rootProjects.headOption getOrElse emptyBuild(uri)
 	def getConfiguration(map: Map[URI, LoadedBuildUnit], uri: URI, id: String, conf: ConfigKey): Configuration =
@@ -331,20 +362,21 @@ object Load
 	def noProject(uri: URI, id: String) = error("No project '" + id + "' defined in '" + uri + "'.")
 	def noConfiguration(uri: URI, id: String, conf: String) = error("No configuration '" + conf + "' defined in project '" + id + "' in '" + uri +"'")
 
-	def loadUnit(base: File, config: LoadBuildConfiguration): BuildUnit =
+	def loadUnit(uri: URI, localBase: File, config: LoadBuildConfiguration): BuildUnit =
 	{
-		val defDir = selectProjectDir(base)
+		val normBase = localBase.getCanonicalFile
+		val defDir = selectProjectDir(normBase)
 		val pluginDir = pluginDirectory(defDir)
 		val plugs = plugins(pluginDir, config)
 
 		val defs = definitionSources(defDir)
 		val loadedDefs =
 			if(defs.isEmpty)
-				new LoadedDefinitions(defDir, outputDirectory(defDir), plugs.loader, Build.default(base) :: Nil)
+				new LoadedDefinitions(defDir, outputDirectory(defDir), plugs.loader, Build.default(normBase) :: Nil)
 			else
 				definitions(defDir, defs, plugs, config.compilers, config.log)
 
-		new BuildUnit(base, loadedDefs, plugs)
+		new BuildUnit(uri, normBase, loadedDefs, plugs)
 	}
 
 	def plugins(dir: File, config: LoadBuildConfiguration): LoadedPlugins = if(dir.exists) buildPlugins(dir, config) else noPlugins(config)
@@ -411,15 +443,19 @@ object Load
 	object LoadedPlugins {
 		def empty(loader: ClassLoader) = new LoadedPlugins(Nil, loader, Nil)
 	}
-	final class BuildUnit(val base: File, val definitions: LoadedDefinitions, val plugins: LoadedPlugins)
+	final class BuildUnit(val uri: URI, val localBase: File, val definitions: LoadedDefinitions, val plugins: LoadedPlugins)
+	{
+		override def toString = if(uri.getScheme == "file") localBase.toString else (uri + " (locally: " + localBase +")")
+	}
 	
 	final class LoadedBuild(val root: URI, val units: Map[URI, LoadedBuildUnit])
 	final class LoadedBuildUnit(val unit: BuildUnit, val defined: Map[String, Project], val rootProjects: Seq[String])
 	{
-		assert(!rootProjects.isEmpty, "No root projects defined for build unit '" + unit.base + "'")
-		def base = unit.base
+		assert(!rootProjects.isEmpty, "No root projects defined for build unit " + unit)
+		def localBase = unit.localBase
 		def classpath = unit.definitions.target +: unit.plugins.classpath
-		def loader = unit.definitions.loader
+		def loade = unit.definitions.loader
+		override def toString = unit.toString
 	}
 
 	// these are unresolved references
@@ -473,7 +509,7 @@ object BuildStreams
 	def projectPath(units: Map[URI, LoadedBuildUnit], root: URI, scoped: ScopedKey[_]): (File, Seq[String]) =
 		scoped.scope.project match
 		{
-			case Global => (units(root).base, GlobalPath :: Nil)
+			case Global => (units(root).localBase, GlobalPath :: Nil)
 			case Select(ProjectRef(Some(uri), Some(id))) => (units(uri).defined(id).base, Nil)
 			case Select(pr) => error("Unresolved project reference (" + pr + ") in " + display(scoped))
 			case This => error("Unresolved project reference (This) in " + display(scoped))

@@ -42,7 +42,8 @@ object Scope
 	}
 	def resolveRef(current: URI, rootProject: URI => String, ref: ProjectRef): (URI, String) =
 	{
-		val uri = ref.uri getOrElse current
+		val unURI = ref.uri match { case Some(u) => current resolve u; case None => current }
+		val uri = unURI.normalize
 		(uri, ref.id getOrElse rootProject(uri))
 	}
 

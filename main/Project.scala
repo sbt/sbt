@@ -71,7 +71,7 @@ object Project extends Init[Scope]
 	}
 	def transform(g: Scope => Scope, ss: Seq[Setting[_]]): Seq[Setting[_]] = {
 		val f = mapScope(g)
-		ss.map(_ mapKey f)
+		ss.map(_ mapKey f mapReferenced f)
 	}
 
 	val SessionKey = AttributeKey[SessionSettings]("session-settings")
@@ -95,18 +95,18 @@ trait ProjectConstructors
 	implicit def configDependencyConstructor[T <% ProjectRef](p: T): Project.Constructor = new Project.Constructor(p)
 	implicit def classpathDependency[T <% ProjectRef](p: T): Project.ClasspathDependency = new Project.ClasspathDependency(p, None)
 }
-
+// the URI must be resolved and normalized before it is definitive
 final case class ProjectRef(uri: Option[URI], id: Option[String])
 object ProjectRef
 {
 	def apply(base: URI, id: String): ProjectRef = ProjectRef(Some(base), Some(id))
 	/** Reference to the project with 'id' in the current build unit.*/
 	def apply(id: String): ProjectRef = ProjectRef(None, Some(id))
-	def apply(base: File, id: String): ProjectRef = ProjectRef(Some(base.toURI), Some(id))
+	def apply(base: File, id: String): ProjectRef = ProjectRef(Some(IO.toURI(base)), Some(id))
 	/** Reference to the root project at 'base'.*/
 	def apply(base: URI): ProjectRef = ProjectRef(Some(base), None)
 	/** Reference to the root project at 'base'.*/
-	def apply(base: File): ProjectRef = ProjectRef(Some(base.toURI), None)
+	def apply(base: File): ProjectRef = ProjectRef(Some(IO.toURI(base)), None)
 	/** Reference to the root project in the current build unit.*/
 	def root = ProjectRef(None, None)
 

@@ -14,6 +14,7 @@ package sbt
 	import scala.annotation.tailrec
 	import scala.collection.JavaConversions._
 	import Function.tupled
+	import java.net.URI
 	import Path._
 
 	import java.io.File
@@ -66,10 +67,18 @@ object Commands
 	def detail(selected: Iterable[String])(h: Help): Option[String] =
 		h.detail match { case (commands, value) => if( selected exists commands ) Some(value) else None }
 
-	// TODO: tab complete on command names
-	def help = Command.args(HelpCommand, helpBrief, helpDetailed, "<command>") { (s, args) =>
+	def help = Command(HelpCommand, helpBrief, helpDetailed)(helpParser)
 
+	def helpParser(s: State) =
+	{
 		val h = s.processors.flatMap(_.help)
+		val helpCommands = h.flatMap(_.detail._1)
+		val args = (token(Space) ~> token( OpOrID.examples(helpCommands : _*) )).*
+		applyEffect(args)(runHelp(s, h))
+	}
+	
+	def runHelp(s: State, h: Seq[Help])(args: Seq[String]): State =
+	{
 		val message =
 			if(args.isEmpty)
 				h.map( _.brief match { case (a,b) => a + " : " + b } ).mkString("\n", "\n", "\n")
@@ -81,16 +90,20 @@ object Commands
 
 	def alias = Command(AliasCommand, AliasBrief, AliasDetailed) { s =>
 		val name = token(OpOrID.examples( aliasNames(s) : _*) )
-		val assign = token(Space ~ '=' ~ Space) ~> matched(Command.combine(s.processors)(s), partial = true)
-		val base = (OptSpace ~> (name ~ assign.?).?)
+		val assign = token(Space ~ '=' ~ OptSpace)
+		val sfree = removeAliases(s)
+		val to = matched(Command.combine(sfree.processors)(sfree), partial = true) | any.+.string
+		val base = (OptSpace ~> (name ~ (assign ~> to.?).?).?)
 		applyEffect(base)(t => runAlias(s, t) )
 	}
-	def runAlias(s: State, args: Option[(String, Option[String])]): State =
+
+	def runAlias(s: State, args: Option[(String, Option[Option[String]])]): State =
 		args match
 		{
-			case Some((name, Some(value))) => addAlias(s, name.trim, value.trim)
-			case Some((x, None)) if !x.isEmpty=> printAlias(s, x.trim); s
 			case None => printAliases(s); s
+			case Some(x ~ None) if !x.isEmpty => printAlias(s, x.trim); s
+			case Some(name ~ Some(None)) => removeAlias(s, name.trim)
+			case Some(name ~ Some(Some(value))) => addAlias(s, name.trim, value.trim)
 		}
 	
 	def shell = Command.command(Shell, ShellBrief, ShellDetailed) { s =>
@@ -199,8 +212,12 @@ object Commands
 		}
 	}*/
 
-	def indent(withStar: Boolean) = if(withStar) "\t*" else "\t "
-	def listProject(name: String, current: Boolean, log: Logger) = log.info( indent(current) + name )
+	def listBuild(uri: URI, build: Load.LoadedBuildUnit, current: Boolean, currentID: String, log: Logger) =
+	{
+		log.info("In " + uri)
+		def prefix(id: String) = if(currentID != id) "   " else if(current) " * " else "(*)"
+		for(id <- build.defined.keys) log.info("\t" + prefix(id) + id)
+	}
 
 	def act = error("TODO")
 	def projects = Command.command(ProjectsCommand, projectsBrief, projectsDetailed ) { s =>
@@ -208,11 +225,8 @@ object Commands
 		val session = Project.session(s)
 		val structure = Project.structure(s)
 		val (curi, cid) = session.current
-		for( (uri, build) <- structure.units)
-		{
-			log.info("In " + uri)
-			for(id <- build.defined.keys) listProject(id, cid == id, log)
-		}
+		listBuild(curi, structure.units(curi), true, cid, log)
+		for( (uri, build) <- structure.units if curi != uri) listBuild(uri, build, false, cid, log)
 		s
 	}
 	def withAttribute[T](s: State, key: AttributeKey[T], ifMissing: String)(f: T => State): State =
@@ -317,7 +331,6 @@ object Commands
 		}
 		
 	def addAlias(s: State, name: String, value: String): State =
-	{
 		if(Command validID name) {
 			val removed = removeAlias(s, name)
 			if(value.isEmpty) removed else removed.copy(processors = newAlias(name, value) +: removed.processors)
@@ -325,10 +338,12 @@ object Commands
 			System.err.println("Invalid alias name '" + name + "'.")
 			s.fail
 		}
-	}
+
+	def removeAliases(s: State): State  =  s.copy(processors = removeAliases(s.processors))
+	def removeAliases(as: Seq[Command]): Seq[Command]  =  as.filter(c => ! (c.tags contains CommandAliasKey))
 	def removeAlias(s: State, name: String): State  =  s.copy(processors = s.processors.filter(c => !isAliasNamed(name, c)) )
 	def isAliasNamed(name: String, c: Command): Boolean  =  isNamed(name, getAlias(c))
-	def isNamed(name: String, alias: Option[(String,String)]): Boolean  =  alias match { case None => false; case Some((alias,_)) => name != alias }
+	def isNamed(name: String, alias: Option[(String,String)]): Boolean  =  alias match { case None => false; case Some((n,_)) => name == n }
 
 	def getAlias(c: Command): Option[(String,String)]  =  c.tags get CommandAliasKey
 	def printAlias(s: State, name: String): Unit  =  printAliases(aliases(s,(n,v) => n == name) )
@@ -343,9 +358,9 @@ object Commands
 		s.processors.flatMap(c => getAlias(c).filter(tupled(pred)))
 
 	def newAlias(name: String, value: String): Command =
-		Command(name, (name, "<alias>"), "Alias of '" + value + "'")(aliasBody(name, value)).tag(CommandAliasKey, (name, value))
+		Command(name, (name, "'" + value + "'"), "Alias of '" + value + "'")(aliasBody(name, value)).tag(CommandAliasKey, (name, value))
 	def aliasBody(name: String, value: String)(state: State): Parser[() => State] =
-		Parser(Command.combine(removeAlias(state,name).processors)(state))(value)
-		
+		Parser(Command.combine(state.processors)(state))(value)
+
 	val CommandAliasKey = AttributeKey[(String,String)]("is-command-alias")
 }
