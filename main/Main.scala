@@ -59,7 +59,7 @@ class xMain extends xsbti.AppMain
 object Commands
 {
 	def DefaultCommands: Seq[Command] = Seq(ignore, help, reload, read, history, continuous, exit, loadCommands, loadProject, compile, discover,
-		projects, project, setOnFailure, ifLast, multi, shell, alias, append, nop)
+		projects, project, setOnFailure, ifLast, multi, shell, set, get, eval, alias, append, nop)
 
 	def nop = Command.custom(s => success(() => s), Nil)
 	def ignore = Command.command(FailureWall)(identity)
@@ -212,6 +212,35 @@ object Commands
 		}
 	}*/
 
+	def eval = Command.single(EvalCommand, evalBrief, evalDetailed) { (s, arg) =>
+		val log = logger(s)
+		val extracted = Project extract s
+		import extracted._
+		val (tpe, value) = session.currentEval().eval(arg, None)
+		log.info("ans: " + tpe + " = " + value.toString)
+		s
+	}
+	def set = Command.single(SetCommand, setBrief, setDetailed) { (s, arg) =>
+		val extracted = Project extract s
+		import extracted._
+		val setting = EvaluateConfigurations.evaluateSetting(session.currentEval(), "", Nil, arg)
+		val append = Load.transformSettings(Load.projectScope(curi, cid), curi, rootProject, setting :: Nil)
+		val newSession = session.appendSettings( append map (a => (a, arg)))
+		logger(s).info("Reapplying settings...")
+		val newStructure = Load.reapply(newSession.mergeSettings, structure)
+		setProject(newSession, newStructure, s)
+	}
+	def get = Command.single(GetCommand, getBrief, getDetailed) { (s, arg) =>
+		val extracted = Project extract s
+		import extracted._
+		val scoped = session.currentEval().eval(arg, Some("sbt.ScopedSetting[_]"))._2.asInstanceOf[ScopedSetting[_]]
+		val resolve = Scope.resolveScope(Load.projectScope(curi, cid), curi, rootProject)
+		(structure.data.get(resolve(scoped.scope), scoped.key)) match {
+			case None => logger(s).error("No entry for key."); s.fail
+			case Some(v) => logger(s).info(v.toString); s
+		}
+	}
+
 	def listBuild(uri: URI, build: Load.LoadedBuildUnit, current: Boolean, currentID: String, log: Logger) =
 	{
 		log.info("In " + uri)
@@ -221,10 +250,9 @@ object Commands
 
 	def act = error("TODO")
 	def projects = Command.command(ProjectsCommand, projectsBrief, projectsDetailed ) { s =>
+		val extracted = Project extract s
+		import extracted._
 		val log = logger(s)
-		val session = Project.session(s)
-		val structure = Project.structure(s)
-		val (curi, cid) = session.current
 		listBuild(curi, structure.units(curi), true, cid, log)
 		for( (uri, build) <- structure.units if curi != uri) listBuild(uri, build, false, cid, log)
 		s
@@ -260,8 +288,12 @@ object Commands
 	}
 
 	def loadProject = Command.command(LoadProject, LoadProjectBrief, LoadProjectDetailed) { s =>
-		val structure = Load.defaultLoad(s, logger(s))
-		val session = Load.initialSession(structure)
+		val (eval, structure) = Load.defaultLoad(s, logger(s))
+		val session = Load.initialSession(structure, eval)
+		setProject(session, structure, s)
+	}
+	def setProject(session: SessionSettings, structure: Load.BuildStructure, s: State): State =
+	{
 		val newAttrs = s.attributes.put(StructureKey, structure).put(SessionKey, session)
 		val newState = s.copy(attributes = newAttrs)
 		Project.updateCurrent(runExitHooks(newState))

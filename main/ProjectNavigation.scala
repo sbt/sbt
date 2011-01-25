@@ -29,7 +29,12 @@ final class ProjectNavigation(s: State)
 	val (uri, pid) = session.current
 	val projects = Load.getBuild(structure.units, uri).defined.keys
 
-	def setProject(uri: URI, id: String) = updateCurrent(s.put(SessionKey, session.setCurrent(uri, id)))
+	def setProject(nuri: URI, nid: String) =
+	{
+		val neval = if(uri == nuri) session.currentEval else mkEval()
+		updateCurrent(s.put(SessionKey, session.setCurrent(nuri, nid, neval)))
+	}
+	def mkEval() = Load.lazyEval(structure.units(uri).unit)
 	def getRoot(uri: URI) = Load.getRootProject(structure.units)(uri)
 
 	def apply(action: Navigate): State =

@@ -34,6 +34,37 @@ object CommandSupport
 	val Exit = "exit"
 	val Quit = "quit"
 
+	val EvalCommand = "eval"
+	val evalBrief = (EvalCommand + " <expression>", "Evaluates the given Scala expression and prints the result and type.")
+	val evalDetailed =
+EvalCommand + """ <expression>
+	Evaluates the given Scala expression and prints the result and type.
+"""
+
+	val GetCommand = "get"
+	val getBrief = (GetCommand + " <setting-key>", "Prints the value for the given key.")
+	val getDetailed =
+GetCommand + """ <setting-key>
+
+	Displays the value bound to the key argument using its toString method.
+	<setting-key> is interpreted as a Scala expression of type sbt.ScopedSetting[_].
+"""
+	
+	val SetCommand = "set"
+	val setBrief = (SetCommand + " <setting-expression>", "Evaluates the given Setting and applies to the current project.")
+	val setDetailed =
+SetCommand + """ <setting-expression>
+
+	Applies the given setting to the current project:
+	  1) Constructs the expression provided as an argument by compiling and loading it.
+	  2) Appends the new setting to the current project's settings.
+	  3) Re-evaluates the build's settings.
+
+	This command does not rebuild the build definitions, plugins, or configurations.
+	It does not automatically persist the setting.
+	This is done by running 'save-settings'.
+"""
+	
 	/** The command name to terminate the program.*/
 	val TerminateAction: String = Exit
 

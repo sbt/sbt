@@ -6,14 +6,17 @@ package sbt
 	import java.io.File
 	import java.net.URI
 	import Project._
+	import Types.Endo
 	import Command.{HistoryPath,Watch}
 	import CommandSupport.logger
+	import compile.Eval
 
 final case class Project(id: String, base: File, aggregate: Seq[ProjectRef] = Nil, dependencies: Seq[Project.ClasspathDependency] = Nil, inherits: Seq[ProjectRef] = Nil,
 	settings: Seq[Project.Setting[_]] = Project.defaultSettings, configurations: Seq[Configuration] = Configurations.default)
 {
 	def uses = aggregate ++ dependencies.map(_.project)
 }
+final case class Extracted(structure: Load.BuildStructure, session: SessionSettings, curi: URI, cid: String, rootProject: URI => String)
 
 object Project extends Init[Scope]
 {
@@ -27,13 +30,15 @@ object Project extends Init[Scope]
 	def getOrError[T](state: State, key: AttributeKey[T], msg: String): T = state get key getOrElse error(msg)
 	def structure(state: State): Load.BuildStructure = getOrError(state, StructureKey, "No build loaded.")
 	def session(state: State): SessionSettings = getOrError(state, SessionKey, "Session not initialized.")
-	
-	def current(state: State): (URI, String) =
+	def extract(state: State): Extracted =
 	{
-		val s = session(state)
-		val uri = s.currentBuild
-		(uri, s.currentProject(uri))
+		val se = session(state)
+		val (curi, cid) = se.current
+		val st = structure(state)
+		Extracted(st, se, curi, cid, Load.getRootProject(st.units))
 	}
+	
+	def current(state: State): (URI, String) = session(state).current
 	def currentRef(state: State): ProjectRef =
 	{
 		val (unit, it) = current(state)
@@ -80,12 +85,25 @@ object Project extends Init[Scope]
 
 	import SessionSettings._
 
-final class SessionSettings(val currentBuild: URI, val currentProject: Map[URI, String], val original: Seq[Setting[_]], val prepend: SessionMap, val append: SessionMap) {
+final case class SessionSettings(currentBuild: URI, currentProject: Map[URI, String], original: Seq[Setting[_]], prepend: SessionMap, append: SessionMap, currentEval: () => Eval)
+{
 	assert(currentProject contains currentBuild, "Current build (" + currentBuild + ") not associated with a current project.")
-	def setCurrent(build: URI, project: String): SessionSettings = new SessionSettings(build, currentProject.updated(build, project), original, prepend, append)
+	def setCurrent(build: URI, project: String, eval: () => Eval): SessionSettings = copy(currentBuild = build, currentProject = currentProject.updated(build, project), currentEval = eval)
 	def current: (URI, String) = (currentBuild, currentProject(currentBuild))
+	def appendSettings(s: Seq[SessionSetting]): SessionSettings = copy(append = modify(append, _ ++ s))
+	def prependSettings(s: Seq[SessionSetting]): SessionSettings = copy(prepend = modify(prepend, s ++ _))
+	def mergeSettings: Seq[Setting[_]] = merge(prepend) ++ original ++ merge(append)
+
+	private[this] def merge(map: SessionMap): Seq[Setting[_]] = map.values.toSeq.flatten[SessionSetting].map(_._1)
+	private[this] def modify(map: SessionMap, onSeq: Endo[Seq[SessionSetting]]): SessionMap =
+	{
+		val cur = current
+		map.updated(cur, onSeq(map.getOrElse( cur, Nil)))
+	}
+	
 }
-object SessionSettings {
+object SessionSettings
+{
 	type SessionSetting = (Setting[_], String)
 	type SessionMap = Map[(URI, String), Seq[SessionSetting]]
 }

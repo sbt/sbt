@@ -182,7 +182,7 @@ object Load
 	import BuildPaths._
 	import BuildStreams._
 
-	def defaultLoad(state: State, log: Logger): BuildStructure =
+	def defaultLoad(state: State, log: Logger): (() => Eval, BuildStructure) =
 	{
 		val stagingDirectory = defaultStaging.getCanonicalFile // TODO: properly configurable
 		val base = state.configuration.baseDirectory.getCanonicalFile
@@ -218,56 +218,66 @@ object Load
 		//  6) Load all configurations using build definitions and plugins (their classpaths and loaded instances).
 		//  7) Combine settings from projects, plugins, and configurations
 		//  8) Evaluate settings
-	def apply(rootBase: File, config: LoadBuildConfiguration): BuildStructure =
+	def apply(rootBase: File, config: LoadBuildConfiguration): (() => Eval, BuildStructure) =
 	{
 		val loaded = load(rootBase, config)
 		val projects = loaded.units
-		val settings = buildConfigurations(loaded, getRootProject(projects), config.injectSettings)
-		val data = Project.make(settings)(config.delegates(loaded))
+		lazy val rootEval = lazyEval(loaded.units(loaded.root).unit)
+		val settings = buildConfigurations(loaded, getRootProject(projects), config.injectSettings, rootEval)
+		val delegates = config.delegates(loaded)
+		val data = Project.make(settings)(delegates)
 		val index = structureIndex(data)
 		val streams = mkStreams(projects, loaded.root, data)
-		new BuildStructure(projects, loaded.root, settings, data, index, streams)
+		(rootEval, new BuildStructure(projects, loaded.root, settings, data, index, streams, delegates))
 	}
 
 	def structureIndex(settings: Settings[Scope]): StructureIndex =
 		new StructureIndex(Index.stringToKeyMap(settings), Index.taskToKeyMap(settings))
 
 		// Reevaluates settings after modifying them.  Does not recompile or reload any build components.
-	def reapply(modifySettings: Endo[Seq[Setting[_]]], structure: BuildStructure, delegates: Scope => Seq[Scope]): BuildStructure =
+	def reapply(newSettings: Seq[Setting[_]], structure: BuildStructure): BuildStructure =
 	{
-		val newSettings = modifySettings(structure.settings)
-		val newData = Project.make(newSettings)(delegates)
+		val newData = Project.make(newSettings)(structure.delegates)
 		val newIndex = structureIndex(newData)
 		val newStreams = mkStreams(structure.units, structure.root, newData)
-		new BuildStructure(units = structure.units, root = structure.root, settings = newSettings, data = newData, index = newIndex, streams = newStreams)
+		new BuildStructure(units = structure.units, root = structure.root, settings = newSettings, data = newData, index = newIndex, streams = newStreams, delegates = structure.delegates)
 	}
 
 	def isProjectThis(s: Setting[_]) = s.key.scope.project == This
-	def buildConfigurations(loaded: LoadedBuild, rootProject: URI => String, injectSettings: Seq[Setting[_]]): Seq[Setting[_]] =
+	def buildConfigurations(loaded: LoadedBuild, rootProject: URI => String, injectSettings: Seq[Setting[_]], rootEval: () => Eval): Seq[Setting[_]] =
 		loaded.units.toSeq flatMap { case (uri, build) =>
-			val eval = mkEval(build.unit.definitions, build.unit.plugins, Nil)
+			val eval = if(uri == loaded.root) rootEval else lazyEval(build.unit)
 			val pluginSettings = build.unit.plugins.plugins
 			val (pluginThisProject, pluginGlobal) = pluginSettings partition isProjectThis
 			val projectSettings = build.defined flatMap { case (id, project) =>
 				val srcs = configurationSources(project.base)
 				val settings = injectSettings ++ project.settings ++ pluginThisProject ++ configurations(srcs, eval)
-				
-				val ext = ProjectRef(uri, id)
-				val thisScope = Scope(Select(ext), Global, Global, Global)
 				 
 				// map This to thisScope, Select(p) to mapRef(uri, rootProject, p)
-				Project.transform(Scope.resolveScope(thisScope, uri, rootProject), settings)
+				transformSettings(projectScope(uri, id), uri, rootProject, settings)
 			}
 			pluginGlobal ++ projectSettings
 		}
+	def transformSettings(thisScope: Scope, uri: URI, rootProject: URI => String, settings: Seq[Setting[_]]): Seq[Setting[_]] =
+		Project.transform(Scope.resolveScope(thisScope, uri, rootProject), settings)
+	def projectScope(uri: URI, id: String): Scope  =  projectScope(ProjectRef(uri, id))
+	def projectScope(project: ProjectRef): Scope  =  Scope(Select(project), Global, Global, Global)
+
+	
+	def lazyEval(unit: BuildUnit): () => Eval =
+	{
+		lazy val eval = mkEval(unit)
+		() => eval
+	}
+	def mkEval(unit: BuildUnit): Eval = mkEval(unit.definitions, unit.plugins, Nil)
 	def mkEval(defs: LoadedDefinitions, plugs: LoadedPlugins, options: Seq[String]): Eval =
 	{
 		val classpathString = Path.makeString(defs.target +: plugs.classpath)
 		val optionsCp = "-cp" +: classpathString +: options // TODO: probably need to properly set up options with CompilerArguments
 		new Eval(optionsCp, s => new ConsoleReporter(s), defs.loader)
 	}
-	def configurations(srcs: Seq[File], eval: Eval): Seq[Setting[_]] =
-		if(srcs.isEmpty) Nil else EvaluateConfigurations(eval, srcs)
+	def configurations(srcs: Seq[File], eval: () => Eval): Seq[Setting[_]] =
+		if(srcs.isEmpty) Nil else EvaluateConfigurations(eval(), srcs)
 
 	def load(file: File, config: LoadBuildConfiguration): LoadedBuild = load(file, uri => loadUnit(uri, RetrieveUnit(config.stagingDirectory, uri), config) )
 	def load(file: File, loader: URI => BuildUnit): LoadedBuild = loadURI(IO.directoryURI(file), loader)
@@ -386,7 +396,7 @@ object Load
 	def noPlugins(config: LoadBuildConfiguration): LoadedPlugins = new LoadedPlugins(config.classpath, config.loader, Nil)
 	def buildPlugins(dir: File, config: LoadBuildConfiguration): LoadedPlugins =
 	{
-		val pluginDef = apply(dir, config)
+		val (_,pluginDef) = apply(dir, config)
 		val (pluginClasspath, pluginAnalysis) = config.evalPluginDef(pluginDef)
 		val pluginLoader = ClasspathUtilities.toLoader(pluginClasspath, config.loader)
 		loadPlugins(pluginClasspath, pluginLoader, pluginAnalysis)
@@ -431,8 +441,8 @@ object Load
 		discovery(Test.allDefs(analysis)).collect { case (definition, Discovered(_,_,_,true)) => definition.name }
 	}
 
-	def initialSession(structure: BuildStructure): SessionSettings =
-		new SessionSettings(structure.root, rootProjectMap(structure.units), structure.settings, Map.empty, Map.empty)
+	def initialSession(structure: BuildStructure, rootEval: () => Eval): SessionSettings =
+		new SessionSettings(structure.root, rootProjectMap(structure.units), structure.settings, Map.empty, Map.empty, rootEval)
 
 	def rootProjectMap(units: Map[URI, LoadedBuildUnit]): Map[URI, String] =
 	{
@@ -466,7 +476,7 @@ object Load
 	def referenced(definition: Project): Seq[ProjectRef] = definition.inherits ++ definition.aggregate ++ definition.dependencies.map(_.project)
 
 	
-	final class BuildStructure(val units: Map[URI, LoadedBuildUnit], val root: URI, val settings: Seq[Setting[_]], val data: Settings[Scope], val index: StructureIndex, val streams: Streams)
+	final class BuildStructure(val units: Map[URI, LoadedBuildUnit], val root: URI, val settings: Seq[Setting[_]], val data: Settings[Scope], val index: StructureIndex, val streams: Streams, val delegates: Scope => Seq[Scope])
 	final class LoadBuildConfiguration(val stagingDirectory: File, val classpath: Seq[File], val loader: ClassLoader, val compilers: Compilers, val evalPluginDef: BuildStructure => (Seq[File], Analysis), val delegates: LoadedBuild => Scope => Seq[Scope], val injectSettings: Seq[Setting[_]], val log: Logger)
 	// information that is not original, but can be reconstructed from the rest of BuildStructure
 	final class StructureIndex(val keyMap: Map[String, AttributeKey[_]], val taskToKey: Map[Task[_], ScopedKey[Task[_]]])
