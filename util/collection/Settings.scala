@@ -4,8 +4,6 @@
 package sbt
 
 	import Types._
-	import annotation.tailrec
-	import collection.mutable
 
 sealed trait Settings[Scope]
 {
@@ -98,9 +96,12 @@ trait Init[Scope]
 		
 	def delegate(sMap: ScopedMap)(implicit delegates: Scope => Seq[Scope]): ScopedMap =
 	{
-		val md = memoDelegates(delegates)
-		def refMap(refKey: ScopedKey[_]) = new (ScopedKey ~> ScopedKey) { def apply[T](k: ScopedKey[T]) = delegateForKey(sMap, k, md(k.scope), refKey) }
-		val f = new (SettingSeq ~> SettingSeq) { def apply[T](ks: Seq[Setting[T]]) = ks.map{ s => s mapReferenced refMap(s.key) } }
+		def refMap(refKey: ScopedKey[_]) = new (ScopedKey ~> ScopedKey) { def apply[T](k: ScopedKey[T]) =
+			delegateForKey(sMap, k, delegates(k.scope), refKey)
+		}
+		val f = new (SettingSeq ~> SettingSeq) { def apply[T](ks: Seq[Setting[T]]) =
+			ks.map{ s => s mapReferenced refMap(s.key) }
+		}
 		sMap mapValues f
 	}
 	private[this] def delegateForKey[T](sMap: ScopedMap, k: ScopedKey[T], scopes: Seq[Scope], refKey: ScopedKey[_]): ScopedKey[T] = 
@@ -120,12 +121,6 @@ trait Init[Scope]
 		
 	private[this] def applyInits(ordered: Seq[Compiled])(implicit delegates: Scope => Seq[Scope]): Settings[Scope] =
 		(empty /: ordered){ (m, comp) => comp.eval(m) }
-
-	private[this] def memoDelegates(implicit delegates: Scope => Seq[Scope]): Scope => Seq[Scope] =
-	{
-		val dcache = new mutable.HashMap[Scope, Seq[Scope]]
-		(scope: Scope) => dcache.getOrElseUpdate(scope, delegates(scope))
-	}
 
 	private[this] def applySetting[T](map: Settings[Scope], setting: Setting[T]): Settings[Scope] =
 	{
