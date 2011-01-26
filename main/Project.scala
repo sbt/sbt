@@ -14,6 +14,12 @@ package sbt
 final case class Project(id: String, base: File, aggregate: Seq[ProjectRef] = Nil, dependencies: Seq[Project.ClasspathDependency] = Nil, inherits: Seq[ProjectRef] = Nil,
 	settings: Seq[Project.Setting[_]] = Project.defaultSettings, configurations: Seq[Configuration] = Configurations.default)
 {
+	def dependsOn(deps: Project.ClasspathDependency*): Project = copy(dependencies = dependencies ++ deps)
+	def inherits(from: ProjectRef*): Project = copy(inherits = inherits ++ from)
+	def aggregate(refs: ProjectRef*): Project = copy(aggregate = aggregate ++ refs)
+	def configs(cs: Configuration*): Project = copy(configurations = configurations ++ cs)
+	def settings(ss: Project.Setting[_]*): Project = copy(settings = settings ++ ss)
+	
 	def uses = aggregate ++ dependencies.map(_.project)
 }
 final case class Extracted(structure: Load.BuildStructure, session: SessionSettings, curi: URI, cid: String, rootProject: URI => String)
@@ -100,7 +106,6 @@ final case class SessionSettings(currentBuild: URI, currentProject: Map[URI, Str
 		val cur = current
 		map.updated(cur, onSeq(map.getOrElse( cur, Nil)))
 	}
-	
 }
 object SessionSettings
 {
