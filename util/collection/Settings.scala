@@ -10,6 +10,7 @@ sealed trait Settings[Scope]
 	def data: Map[Scope, AttributeMap]
 	def keys(scope: Scope): Set[AttributeKey[_]]
 	def scopes: Set[Scope]
+	def allKeys[T](f: (Scope, AttributeKey[_]) => T): Seq[T]
 	def get[T](scope: Scope, key: AttributeKey[T]): Option[T]
 	def set[T](scope: Scope, key: AttributeKey[T], value: T): Settings[Scope]
 }
@@ -18,6 +19,7 @@ private final class Settings0[Scope](val data: Map[Scope, AttributeMap], val del
 {
 	def scopes: Set[Scope] = data.keySet.toSet
 	def keys(scope: Scope) = data(scope).keys.toSet
+	def allKeys[T](f: (Scope, AttributeKey[_]) => T): Seq[T] = data.flatMap { case (scope, map) => map.keys.map(k => f(scope, k)) } toSeq;
 
 	def get[T](scope: Scope, key: AttributeKey[T]): Option[T] =
 		delegates(scope).toStream.flatMap(sc => scopeLocal(sc, key) ).headOption
