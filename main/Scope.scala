@@ -13,7 +13,7 @@ object Scope
 	val GlobalScope = Scope(Global, Global, Global, Global)
 
 	def resolveScope(thisScope: Scope, current: URI, rootProject: URI => String): Scope => Scope =
-		replaceThis(thisScope) compose resolveProject(current, rootProject)
+		resolveProject(current, rootProject) compose replaceThis(thisScope)
 
 	def replaceThis(thisScope: Scope): Scope => Scope = (scope: Scope) =>
 		Scope(subThis(thisScope.project, scope.project), subThis(thisScope.config, scope.config), subThis(thisScope.task, scope.task), subThis(thisScope.extra, scope.extra))
@@ -40,11 +40,15 @@ object Scope
 		val (uri, id) = resolveRef(current, rootProject, ref)
 		ProjectRef(Some(uri), Some(id))
 	}
+	def mapRefBuild(current: URI, ref: ProjectRef): ProjectRef = ProjectRef(Some(resolveBuild(current, ref)), ref.id)
+		
+	def resolveBuild(current: URI, ref: ProjectRef): URI =
+		( ref.uri match { case Some(u) => IO.directoryURI(current resolve u); case None => current } ).normalize
+
 	def resolveRef(current: URI, rootProject: URI => String, ref: ProjectRef): (URI, String) =
 	{
-		val unURI = ref.uri match { case Some(u) => current resolve u; case None => current }
-		val uri = unURI.normalize
-		(uri, ref.id getOrElse rootProject(uri))
+		val uri = resolveBuild(current, ref)
+		(uri, ref.id getOrElse rootProject(uri) )
 	}
 
 	def display(config: ConfigKey): String = if(config.name == "compile") "" else config.name + "-"
@@ -106,8 +110,8 @@ object Scope
 
 
 sealed trait ScopeAxis[+S]
-object This extends ScopeAxis[Nothing]
-object Global extends ScopeAxis[Nothing]
+case object This extends ScopeAxis[Nothing]
+case object Global extends ScopeAxis[Nothing]
 final case class Select[S](s: S) extends ScopeAxis[S]
 
 final case class ConfigKey(name: String)

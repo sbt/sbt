@@ -607,7 +607,7 @@ object IO
 	{
 		assertAbsolute(uri)
 		val str = uri.toASCIIString
-		val dirStr = if(str.endsWith("/")) str else str + "/"
+		val dirStr = if(str.endsWith("/") || uri.getScheme != "file") str else str + "/"
 		(new URI(dirStr)).normalize
 	}
 	/** Converts the given File to a URI.  If the File is relative, the URI is relative, unlike File.toURI*/

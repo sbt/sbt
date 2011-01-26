@@ -9,6 +9,7 @@ package sbt
 	import classpath.ClasspathUtilities
 	import inc.Analysis
 	import scala.annotation.tailrec
+	import collection.mutable
 	import Compile.{Compilers,Inputs}
 	import Project.{ScopedKey, Setting}
 	import TypeFunctions.{Endo,Id}
@@ -191,11 +192,13 @@ object Load
 		val classpath = provider.mainClasspath ++ provider.scalaProvider.jars
 		val compilers = Compile.compilers(state.configuration, log)
 		val evalPluginDef = EvaluateTask.evalPluginDef(state, log) _
-		val config = new LoadBuildConfiguration(stagingDirectory, classpath, loader, compilers, evalPluginDef, defaultDelegates, EvaluateTask.injectSettings, log)
+		val delegates = memo(defaultDelegates)
+		val config = new LoadBuildConfiguration(stagingDirectory, classpath, loader, compilers, evalPluginDef, delegates, EvaluateTask.injectSettings, log)
 		apply(base, config)
 	}
 	def defaultDelegates: LoadedBuild => Scope => Seq[Scope] = (lb: LoadedBuild) => {
-		def resolveRef(project: ProjectRef) = Scope.resolveRef(lb.root, getRootProject(lb.units), project)
+		val rootProject = getRootProject(lb.units)
+		def resolveRef(project: ProjectRef) = Scope.resolveRef(lb.root, rootProject, project)
 		Scope.delegates(
 			project => projectInherit(lb, resolveRef(project)),
 			(project, config) => configInherit(lb, resolveRef(project), config),
@@ -220,7 +223,8 @@ object Load
 		//  8) Evaluate settings
 	def apply(rootBase: File, config: LoadBuildConfiguration): (() => Eval, BuildStructure) =
 	{
-		val loaded = load(rootBase, config)
+		// load, which includes some resolution, but can't fill in project IDs yet, so follow with full resolution
+		val loaded = resolveProjects(load(rootBase, config))
 		val projects = loaded.units
 		lazy val rootEval = lazyEval(loaded.units(loaded.root).unit)
 		val settings = buildConfigurations(loaded, getRootProject(projects), config.injectSettings, rootEval)
@@ -290,11 +294,13 @@ object Load
 	}
 	def loaded(unit: BuildUnit): (LoadedBuildUnit, List[ProjectRef]) =
 	{
-		// since everything should be resolved at this point, we can compare Files instead of converting to URIs
-		def isRoot(p: Project) = p.base == unit.localBase
-
 		val defined = projects(unit)
 		if(defined.isEmpty) error("No projects defined in build unit " + unit)
+
+		// since base directories are resolved at this point (after 'projects'),
+		//   we can compare Files instead of converting to URIs
+		def isRoot(p: Project) = p.base == unit.localBase
+
 		val externals = referenced(defined).toList
 		val projectsInRoot = defined.filter(isRoot).map(_.id)
 		val rootProjects = if(projectsInRoot.isEmpty) defined.head.id :: Nil else projectsInRoot
@@ -331,33 +337,49 @@ object Load
 		val rootProject = getRootProject(builds)
 		for( (uri, refs) <- referenced; ref <- refs)
 		{
-			// mapRef guarantees each component is defined
-			val ProjectRef(Some(refURI), Some(refID)) = Scope.mapRef(uri, rootProject, ref)
+			val (refURI, refID) = Scope.resolveRef(uri, rootProject, ref)
 			val loadedUnit = builds(refURI)
 			if(! (loadedUnit.defined contains refID) )
 				error("No project '" + refID + "' in '" + refURI + "'")
 		}
 	}
 
-	def resolveBase(origin: URI, against: File): Project => Project =
+	def resolveBase(against: File): Project => Project =
 	{
-		assert(origin.isAbsolute, "Origin not absolute: " + origin)
-		def resolveRefs(prs: Seq[ProjectRef]) = prs map resolveRef
-		def resolveRef(pr: ProjectRef) = pr match { case ProjectRef(Some(uri), id) => ProjectRef(Some(resolveURI(uri)), id); case _ => pr }
-		def resolveDeps(ds: Seq[Project.ClasspathDependency]) = ds map resolveDep
-		def resolveDep(d: Project.ClasspathDependency) = d.copy(project = resolveRef(d.project))
-		def resolveURI(u: URI): URI = IO.directoryURI(origin resolve u)
 		def resolve(f: File) =
 		{
 			val fResolved = new File(IO.directoryURI(IO.resolve(against, f)))
 			checkProjectBase(against, fResolved)
 			fResolved
 		}
-		p => p.copy(base = resolve(p.base), aggregate = resolveRefs(p.aggregate), dependencies = resolveDeps(p.dependencies), inherits = resolveRefs(p.inherits))
+		p => p.copy(base = resolve(p.base))
+	}
+	def resolveProjects(loaded: LoadedBuild): LoadedBuild =
+	{
+		val rootProject = getRootProject(loaded.units)
+		new LoadedBuild(loaded.root, loaded.units.map { case (uri, unit) =>
+			IO.assertAbsolute(uri)
+			(uri, resolveProjects(uri, unit, rootProject))
+		})
+	}
+	def resolveProjects(uri: URI, unit: LoadedBuildUnit, rootProject: URI => String): LoadedBuildUnit =
+	{
+		IO.assertAbsolute(uri)
+		val resolve = resolveProject(ref => Scope.mapRef(uri, rootProject, ref))
+		new LoadedBuildUnit(unit.unit, unit.defined mapValues resolve, unit.rootProjects)
+	}
+	def resolveProject(resolveRef: ProjectRef => ProjectRef): Project => Project =
+	{
+		def resolveRefs(prs: Seq[ProjectRef]) = prs map resolveRef
+		def resolveDeps(ds: Seq[Project.ClasspathDependency]) = ds map resolveDep
+		def resolveDep(d: Project.ClasspathDependency) = d.copy(project = resolveRef(d.project))
+		p => p.copy(aggregate = resolveRefs(p.aggregate), dependencies = resolveDeps(p.dependencies), inherits = resolveRefs(p.inherits))
 	}
 	def projects(unit: BuildUnit): Seq[Project] =
 	{
-		val resolve = resolveBase(unit.uri, unit.localBase)
+		// we don't have the complete build graph loaded, so we don't have the rootProject function yet.
+		//  Therefore, we use mapRefBuild instead of mapRef.  After all builds are loaded, we can fully resolve ProjectRefs.
+		val resolve = resolveProject(ref => Scope.mapRefBuild(unit.uri, ref)) compose resolveBase(unit.localBase)
 		unit.definitions.builds.flatMap(_.projects map resolve)
 	}
 	def getRootProject(map: Map[URI, LoadedBuildUnit]): URI => String =
@@ -480,6 +502,12 @@ object Load
 	final class LoadBuildConfiguration(val stagingDirectory: File, val classpath: Seq[File], val loader: ClassLoader, val compilers: Compilers, val evalPluginDef: BuildStructure => (Seq[File], Analysis), val delegates: LoadedBuild => Scope => Seq[Scope], val injectSettings: Seq[Setting[_]], val log: Logger)
 	// information that is not original, but can be reconstructed from the rest of BuildStructure
 	final class StructureIndex(val keyMap: Map[String, AttributeKey[_]], val taskToKey: Map[Task[_], ScopedKey[Task[_]]])
+
+	private[this] def memo[A,B](implicit f: A => B): A => B =
+	{
+		val dcache = new mutable.HashMap[A,B]
+		(a: A) => dcache.getOrElseUpdate(a, f(a))
+	}
 }
 object BuildStreams
 {
