@@ -59,7 +59,7 @@ class xMain extends xsbti.AppMain
 object Commands
 {
 	def DefaultCommands: Seq[Command] = Seq(ignore, help, reload, read, history, continuous, exit, loadCommands, loadProject, compile, discover,
-		projects, project, setOnFailure, ifLast, multi, shell, set, get, eval, alias, append, nop)
+		projects, project, setOnFailure, ifLast, multi, shell, set, get, eval, alias, append, nop, act)
 
 	def nop = Command.custom(s => success(() => s), Nil)
 	def ignore = Command.command(FailureWall)(identity)
@@ -248,7 +248,8 @@ object Commands
 		for(id <- build.defined.keys) log.info("\t" + prefix(id) + id)
 	}
 
-	def act = error("TODO")
+	def act = Command.custom(Act.actParser, Nil)
+
 	def projects = Command.command(ProjectsCommand, projectsBrief, projectsDetailed ) { s =>
 		val extracted = Project extract s
 		import extracted._
