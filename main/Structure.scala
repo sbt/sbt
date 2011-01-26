@@ -14,13 +14,11 @@ package sbt
 	import java.net.URI
 
 sealed trait InputTask[T] {
-	type S
-	def parser: Parser[S]
-	def apply(s: S): Task[T]
+	def parser: Parser[Task[T]]
 }
 object InputTask {
-	def apply[I,T](p: Parser[I], c: I => Task[T]): InputTask[T] { type S = I } =
-		new InputTask[T] { type S = I; def parser = p; def apply(s: I) = c(s) }
+	def apply[T](p: Parser[Task[T]]): InputTask[T] = new InputTask[T] { def parser = p }
+	def apply[I,T](p: Parser[I], c: I => Task[T]): InputTask[T] = apply(p map c)
 }
 
 sealed trait Scoped { def scope: Scope }
@@ -208,6 +206,14 @@ object Scoped
 		if(axis == This) ("Unresolved This for " + label + " axis.") :: Nil else Nil*/
 	
 //	private[this] val hcHead = new ( ({type l[t] = t :+: _})#l ~> Id ) { def apply[T](hc: t :+: _): t = hc.head }
+}
+object InputKey
+{
+	def apply[T](label: String): InputKey[T] =
+		apply( AttributeKey[InputTask[T]](label) )
+
+	def apply[T](akey: AttributeKey[InputTask[T]]): InputKey[T] =
+		new InputKey[T](akey)
 }
 object TaskKey
 {
