@@ -48,7 +48,7 @@ trait Parsers
 	def spaceDelimited(display: String): Parser[Seq[String]] = (token(Space) ~> token(NotSpace, display)).* <~ SpaceClass.*
 
 	def trimmed(p: Parser[String]) = p map { _.trim }
-	def Uri(ex: Set[URI]) = NotSpace map { uri => new URI(uri) } examples(ex.map(_.toString))
+	def Uri(ex: Set[URI]) = mapOrFail(NotSpace)( uri => new URI(uri)) examples(ex.map(_.toString))
 }
 object Parsers extends Parsers
 object DefaultParsers extends Parsers with ParserMain
