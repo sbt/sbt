@@ -23,10 +23,9 @@ object ProjectNavigation
 }
 final class ProjectNavigation(s: State)
 {
-	val session = Project session s
-	val structure = Project structure s
+	val extracted = Project extract s
+	import extracted.{curi => uri, cid => pid, structure, session}
 	val builds = structure.units.keys.toSet
-	val (uri, pid) = session.current
 	val projects = Load.getBuild(structure.units, uri).defined.keys
 
 	def setProject(nuri: URI, nid: String) =

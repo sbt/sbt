@@ -43,7 +43,9 @@ object Scope
 	def mapRefBuild(current: URI, ref: ProjectRef): ProjectRef = ProjectRef(Some(resolveBuild(current, ref)), ref.id)
 		
 	def resolveBuild(current: URI, ref: ProjectRef): URI =
-		( ref.uri match { case Some(u) => IO.directoryURI(current resolve u); case None => current } ).normalize
+		ref.uri match { case Some(u) => resolveBuild(current, u); case None => current }
+	def resolveBuild(current: URI, uri: URI): URI = 
+		IO.directoryURI(current resolve uri)
 
 	def resolveRef(current: URI, rootProject: URI => String, ref: ProjectRef): (URI, String) =
 	{

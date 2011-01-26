@@ -33,6 +33,8 @@ object Command
 	val Analysis = AttributeKey[inc.Analysis]("analysis")
 	val Watch = SettingKey[Watched]("continuous-watch")
 	val Sample = SettingKey[String]("sample-setting")
+	val SampleTask = TaskKey[String]("sample-task")
+	val SampleInput = InputKey[String]("sample-input-task")
 
 	def command(name: String)(f: State => State): Command  =  command(name, Nil)(f)
 	def command(name: String, briefHelp: String, detail: String)(f: State => State): Command  =  command(name, Help(name, (name, briefHelp), detail) :: Nil)(f)

@@ -127,14 +127,15 @@ object EvaluateTask
 	
 	def getTask[T](structure: BuildStructure, taskKey: ScopedKey[Task[T]], state: State): Option[(Task[T], Execute.NodeView[Task])] =
 	{
-		val x = transform(structure, dummyStreams, dummyState, state)
 		val thisScope = Scope(Select(Project.currentRef(state)), Global, Global, Global)
 		val resolvedScope = Scope.replaceThis(thisScope)( taskKey.scope )
 		for( t <- structure.data.get(resolvedScope, taskKey.key)) yield
-			(t, x)
+			(t, nodeView(structure, state))
 	}
+	def nodeView(structure: BuildStructure, state: State): Execute.NodeView[Task] =
+		transform(structure, dummyStreams, dummyState, state)
 
-	def runTask[Task[_] <: AnyRef, T](root: Task[T], checkCycles: Boolean, maxWorkers: Int)(implicit taskToNode: Execute.NodeView[Task]): Result[T] =
+	def runTask[Task[_] <: AnyRef, T](root: Task[T], checkCycles: Boolean = false, maxWorkers: Int = SystemProcessors)(implicit taskToNode: Execute.NodeView[Task]): Result[T] =
 	{
 		val (service, shutdown) = CompletionService[Task[_], Completed](maxWorkers)
 
@@ -236,7 +237,7 @@ object Load
 	}
 
 	def structureIndex(settings: Settings[Scope]): StructureIndex =
-		new StructureIndex(Index.stringToKeyMap(settings), Index.taskToKeyMap(settings))
+		new StructureIndex(Index.stringToKeyMap(settings), Index.taskToKeyMap(settings), KeyIndex(settings.allKeys( (s,k) => ScopedKey(s,k))))
 
 		// Reevaluates settings after modifying them.  Does not recompile or reload any build components.
 	def reapply(newSettings: Seq[Setting[_]], structure: BuildStructure): BuildStructure =
@@ -501,7 +502,7 @@ object Load
 	final class BuildStructure(val units: Map[URI, LoadedBuildUnit], val root: URI, val settings: Seq[Setting[_]], val data: Settings[Scope], val index: StructureIndex, val streams: Streams, val delegates: Scope => Seq[Scope])
 	final class LoadBuildConfiguration(val stagingDirectory: File, val classpath: Seq[File], val loader: ClassLoader, val compilers: Compilers, val evalPluginDef: BuildStructure => (Seq[File], Analysis), val delegates: LoadedBuild => Scope => Seq[Scope], val injectSettings: Seq[Setting[_]], val log: Logger)
 	// information that is not original, but can be reconstructed from the rest of BuildStructure
-	final class StructureIndex(val keyMap: Map[String, AttributeKey[_]], val taskToKey: Map[Task[_], ScopedKey[Task[_]]])
+	final class StructureIndex(val keyMap: Map[String, AttributeKey[_]], val taskToKey: Map[Task[_], ScopedKey[Task[_]]], val keyIndex: KeyIndex)
 
 	private[this] def memo[A,B](implicit f: A => B): A => B =
 	{
