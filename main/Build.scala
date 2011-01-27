@@ -5,7 +5,7 @@ package sbt
 
 	import java.io.File
 	import java.net.URI
-	import compile.{Discovered,Discovery,Eval}
+	import compile.{Discovered,Discovery,Eval,EvalImports}
 	import classpath.ClasspathUtilities
 	import inc.Analysis
 	import scala.annotation.tailrec
@@ -53,44 +53,45 @@ object RetrieveUnit
 }
 object EvaluateConfigurations
 {
-	def apply(eval: Eval, srcs: Seq[File]): Seq[Setting[_]] =
-		srcs flatMap { src =>  evaluateConfiguration(eval, src) }
-	def evaluateConfiguration(eval: Eval, src: File): Seq[Setting[_]] =
-		evaluateConfiguration(eval, src.getPath, IO.readLines(src))
-	def evaluateConfiguration(eval: Eval, name: String, lines: Seq[String]): Seq[Setting[_]] =
+	def apply(eval: Eval, srcs: Seq[File], imports: Seq[String]): Seq[Setting[_]] =
+		srcs flatMap { src =>  evaluateConfiguration(eval, src, imports) }
+	def evaluateConfiguration(eval: Eval, src: File, imports: Seq[String]): Seq[Setting[_]] =
+		evaluateConfiguration(eval, src.getPath, IO.readLines(src), imports)
+	def evaluateConfiguration(eval: Eval, name: String, lines: Seq[String], imports: Seq[String]): Seq[Setting[_]] =
 	{
 		val (importExpressions, settingExpressions) = splitExpressions(name, lines)
-		for(settingExpression <- settingExpressions) yield evaluateSetting(eval, name, importExpressions, settingExpression)
+		for((settingExpression,line) <- settingExpressions) yield
+			evaluateSetting(eval, name, (imports.map(s => (s, -1)) ++ importExpressions), settingExpression, line = line)
 	}
 
-	def evaluateSetting(eval: Eval, name: String, imports: Seq[String], expression: String): Setting[_] =
+	def evaluateSetting(eval: Eval, name: String, imports: Seq[(String,Int)], expression: String, line: Int): Setting[_] =
 	{
-		// TODO: Eval needs to be expanded to be able to:
-		//   handle multiple expressions at once (for efficiency and better error handling)
-		//   accept the source name for error display
-		//   accept imports to use
-		//   persist the results (critical for start up time)
-		eval.eval(expression, Some("sbt.Project.Setting[_]"))._2.asInstanceOf[Setting[_]]
+		// TODO: need to persist the results, which is critical for start up time
+		val result = eval.eval(expression, imports = new EvalImports(imports, name), srcName = name, tpeName = Some("sbt.Project.Setting[_]"), line = line)
+		result.value.asInstanceOf[Setting[_]]
 	}
-	def splitExpressions(name: String, lines: Seq[String]): (Seq[String], Seq[String]) =
+	private[this] def fstS(f: String => Boolean): ((String,Int)) => Boolean = { case (s,i) => f(s) }
+	def splitExpressions(name: String, lines: Seq[String]): (Seq[(String,Int)], Seq[(String,Int)]) =
 	{
 		val blank = (_: String).trim.isEmpty
-		val importOrBlank = (t: String) => blank(t) || (t.trim startsWith "import ")
+		val importOrBlank = fstS(t => blank(t) || (t.trim startsWith "import "))
 
-		val (imports, settings) = lines span importOrBlank
-		(imports dropWhile blank, groupedLines(settings, blank))
+		val (imports, settings) = lines.zipWithIndex span importOrBlank
+		(imports filterNot fstS(blank), groupedLines(settings, blank))
 	}
-	def groupedLines(lines: Seq[String], delimiter: String => Boolean): Seq[String] =
+	def groupedLines(lines: Seq[(String,Int)], delimiter: String => Boolean): Seq[(String,Int)] =
 	{
-		@tailrec def group0(lines: Seq[String], delimiter: String => Boolean, accum: Seq[String]): Seq[String] =
+		val fdelim = fstS(delimiter)
+		@tailrec def group0(lines: Seq[(String,Int)], accum: Seq[(String,Int)]): Seq[(String,Int)] =
 			if(lines.isEmpty) accum.reverse
 			else
 			{
-				val start = lines dropWhile delimiter
-				val (next, tail) = start.span (s => !delimiter(s))
-				group0(tail, delimiter, next.mkString("\n") +: accum)
+				val start = lines dropWhile fstS(delimiter)
+				val (next, tail) = start.span { case (s,_) => !delimiter(s) }
+				val grouped = if(next.isEmpty) accum else (next.map(_._1).mkString("\n"), next.head._2) +: accum
+				group0(tail, grouped)
 			}
-		group0(lines, delimiter, Nil)
+		group0(lines, Nil)
 	}
 }
 object EvaluateTask
@@ -172,7 +173,7 @@ object Index
 	def stringToKeyMap(settings: Settings[Scope]): Map[String, AttributeKey[_]] =
 	{
 		val multiMap = settings.data.values.flatMap(_.keys).toList.removeDuplicates.groupBy(_.label)
-		val duplicates = multiMap collect { case (k, x1 :: x2 :: _) => println(k + ": " + x1 + ", " + x2); k }
+		val duplicates = multiMap collect { case (k, x1 :: x2 :: _) => k }
 		if(duplicates.isEmpty)
 			multiMap.mapValues(_.head)
 		else
@@ -256,7 +257,7 @@ object Load
 			val (pluginThisProject, pluginGlobal) = pluginSettings partition isProjectThis
 			val projectSettings = build.defined flatMap { case (id, project) =>
 				val srcs = configurationSources(project.base)
-				val settings = injectSettings ++ project.settings ++ pluginThisProject ++ configurations(srcs, eval)
+				val settings = injectSettings ++ project.settings ++ pluginThisProject ++ configurations(srcs, eval, build.imports)
 				 
 				// map This to thisScope, Select(p) to mapRef(uri, rootProject, p)
 				transformSettings(projectScope(uri, id), uri, rootProject, settings)
@@ -281,8 +282,8 @@ object Load
 		val optionsCp = "-cp" +: classpathString +: options // TODO: probably need to properly set up options with CompilerArguments
 		new Eval(optionsCp, s => new ConsoleReporter(s), defs.loader)
 	}
-	def configurations(srcs: Seq[File], eval: () => Eval): Seq[Setting[_]] =
-		if(srcs.isEmpty) Nil else EvaluateConfigurations(eval(), srcs)
+	def configurations(srcs: Seq[File], eval: () => Eval, imports: Seq[String]): Seq[Setting[_]] =
+		if(srcs.isEmpty) Nil else EvaluateConfigurations(eval(), srcs, imports)
 
 	def load(file: File, config: LoadBuildConfiguration): LoadedBuild = load(file, uri => loadUnit(uri, RetrieveUnit(config.stagingDirectory, uri), config) )
 	def load(file: File, loader: URI => BuildUnit): LoadedBuild = loadURI(IO.directoryURI(file), loader)
@@ -408,7 +409,7 @@ object Load
 		val defs = definitionSources(defDir)
 		val loadedDefs =
 			if(defs.isEmpty)
-				new LoadedDefinitions(defDir, outputDirectory(defDir), plugs.loader, Build.default(normBase) :: Nil)
+				new LoadedDefinitions(defDir, outputDirectory(defDir), plugs.loader, Build.default(normBase) :: Nil, Nil)
 			else
 				definitions(defDir, defs, plugs, config.compilers, config.log)
 
@@ -416,7 +417,7 @@ object Load
 	}
 
 	def plugins(dir: File, config: LoadBuildConfiguration): LoadedPlugins = if(dir.exists) buildPlugins(dir, config) else noPlugins(config)
-	def noPlugins(config: LoadBuildConfiguration): LoadedPlugins = new LoadedPlugins(config.classpath, config.loader, Nil)
+	def noPlugins(config: LoadBuildConfiguration): LoadedPlugins = new LoadedPlugins(config.classpath, config.loader, Nil, Nil)
 	def buildPlugins(dir: File, config: LoadBuildConfiguration): LoadedPlugins =
 	{
 		val (_,pluginDef) = apply(dir, config)
@@ -430,8 +431,9 @@ object Load
 		val (inputs, defAnalysis) = build(plugins.classpath, srcs, outputDirectory(base), compilers, log)
 		val target = inputs.config.classesDirectory
 		val definitionLoader = ClasspathUtilities.toLoader(target :: Nil, plugins.loader)
-		val defs = loadDefinitions(definitionLoader, findDefinitions(defAnalysis))
-		new LoadedDefinitions(base, target, definitionLoader, defs)
+		val defNames = findDefinitions(defAnalysis)
+		val defs = loadDefinitions(definitionLoader, defNames)
+		new LoadedDefinitions(base, target, definitionLoader, defs, defNames)
 	}
 
 	def loadDefinitions(loader: ClassLoader, defs: Seq[String]): Seq[Build] =
@@ -448,7 +450,13 @@ object Load
 	}
 
 	def loadPlugins(classpath: Seq[File], loader: ClassLoader, analysis: Analysis): LoadedPlugins =
-		new LoadedPlugins(classpath, loader, if(classpath.isEmpty) Nil else loadPlugins(loader, findPlugins(analysis) ) )
+	{
+		val (pluginNames, plugins) = if(classpath.isEmpty) (Nil, Nil) else {
+			val names = findPlugins(analysis)
+			(names, loadPlugins(loader, names) )
+		}
+		new LoadedPlugins(classpath, loader, plugins, pluginNames)
+	}
 
 	def loadPlugins(loader: ClassLoader, pluginNames: Seq[String]): Seq[Setting[_]] =
 		pluginNames.flatMap(pluginName => loadPlugin(pluginName, loader))
@@ -456,6 +464,8 @@ object Load
 	def loadPlugin(pluginName: String, loader: ClassLoader): Seq[Setting[_]] =
 		ModuleUtilities.getObject(pluginName, loader).asInstanceOf[Plugin].settings
 
+	def importAll(values: Seq[String]) = if(values.isEmpty) Nil else values.map( _ + "._" ).mkString("import ", ", ", "") :: Nil
+		
 	def findPlugins(analysis: Analysis): Seq[String]  =  discover(analysis, "sbt.Plugin")
 	def findDefinitions(analysis: Analysis): Seq[String]  =  discover(analysis, "sbt.Build")
 	def discover(analysis: Analysis, subclasses: String*): Seq[String] =
@@ -466,18 +476,20 @@ object Load
 
 	def initialSession(structure: BuildStructure, rootEval: () => Eval): SessionSettings =
 		new SessionSettings(structure.root, rootProjectMap(structure.units), structure.settings, Map.empty, Map.empty, rootEval)
-
+		
 	def rootProjectMap(units: Map[URI, LoadedBuildUnit]): Map[URI, String] =
 	{
 		val getRoot = getRootProject(units)
 		units.keys.map(uri => (uri, getRoot(uri))).toMap
 	}
 
+	def baseImports = "import sbt._, Process._, java.io.File, java.net.URI" :: Nil
+
 	final class EvaluatedConfigurations(val eval: Eval, val settings: Seq[Setting[_]])
-	final class LoadedDefinitions(val base: File, val target: File, val loader: ClassLoader, val builds: Seq[Build])
-	final class LoadedPlugins(val classpath: Seq[File], val loader: ClassLoader, val plugins: Seq[Setting[_]])
+	final class LoadedDefinitions(val base: File, val target: File, val loader: ClassLoader, val builds: Seq[Build], val buildNames: Seq[String])
+	final class LoadedPlugins(val classpath: Seq[File], val loader: ClassLoader, val plugins: Seq[Setting[_]], val pluginNames: Seq[String])
 	object LoadedPlugins {
-		def empty(loader: ClassLoader) = new LoadedPlugins(Nil, loader, Nil)
+		def empty(loader: ClassLoader) = new LoadedPlugins(Nil, loader, Nil, Nil)
 	}
 	final class BuildUnit(val uri: URI, val localBase: File, val definitions: LoadedDefinitions, val plugins: LoadedPlugins)
 	{
@@ -490,7 +502,8 @@ object Load
 		assert(!rootProjects.isEmpty, "No root projects defined for build unit " + unit)
 		def localBase = unit.localBase
 		def classpath = unit.definitions.target +: unit.plugins.classpath
-		def loade = unit.definitions.loader
+		def loader = unit.definitions.loader
+		def imports = baseImports ++ importAll(unit.plugins.pluginNames ++ unit.definitions.buildNames)
 		override def toString = unit.toString
 	}
 

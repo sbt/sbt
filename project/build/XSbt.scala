@@ -227,7 +227,7 @@ class XSbt(info: ProjectInfo) extends ParentProject(info) with NoCrossPaths
 	class CompileProject(info: ProjectInfo) extends Base(info) with TestWithLog with TestWithLaunch with TestWithAPI
 	{
 		override def testCompileAction = super.testCompileAction dependsOn(compileInterfaceSub.`package`, interfaceSub.`package`)
-		override def testClasspath = super.testClasspath +++ compileInterfaceSub.packageSrcJar --- compilerInterfaceClasspath --- interfaceSub.mainCompilePath +++ interfaceSub.jarPath
+		override def testClasspath = super.testClasspath +++ compileInterfaceSub.packageSrcJar --- compilerInterfaceClasspath --- interfaceSub.mainCompilePath +++ interfaceSub.jarPath +++ buildCompilerJar
 	}
 	class IvyProject(info: ProjectInfo) extends Base(info) with TestWithIO with TestWithLog with TestWithLaunch
 	{

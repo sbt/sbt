@@ -8,6 +8,7 @@ package sbt
 	import HistoryCommands.{Start => HistoryPrefix}
 	import Project.{SessionKey, StructureKey}
 	import sbt.build.{AggressiveCompile, Auto, BuildException, LoadCommand, Parse, ParseException, ProjectLoad, SourceLoad}
+	import compile.EvalImports
 	import sbt.complete.{DefaultParsers, Parser}
 
 	import Command.{applyEffect,Analysis,HistoryPath,Logged,Watch}
@@ -216,14 +217,14 @@ object Commands
 		val log = logger(s)
 		val extracted = Project extract s
 		import extracted._
-		val (tpe, value) = session.currentEval().eval(arg, None)
-		log.info("ans: " + tpe + " = " + value.toString)
+		val result = session.currentEval().eval(arg, srcName = "<eval>", imports = autoImports(extracted))
+		log.info("ans: " + result.tpe + " = " + result.value.toString)
 		s
 	}
 	def set = Command.single(SetCommand, setBrief, setDetailed) { (s, arg) =>
 		val extracted = Project extract s
 		import extracted._
-		val setting = EvaluateConfigurations.evaluateSetting(session.currentEval(), "", Nil, arg)
+		val setting = EvaluateConfigurations.evaluateSetting(session.currentEval(), "<set>", imports(extracted), arg, 0)
 		val append = Load.transformSettings(Load.projectScope(curi, cid), curi, rootProject, setting :: Nil)
 		val newSession = session.appendSettings( append map (a => (a, arg)))
 		logger(s).info("Reapplying settings...")
@@ -233,12 +234,19 @@ object Commands
 	def get = Command.single(GetCommand, getBrief, getDetailed) { (s, arg) =>
 		val extracted = Project extract s
 		import extracted._
-		val scoped = session.currentEval().eval(arg, Some("sbt.ScopedSetting[_]"))._2.asInstanceOf[ScopedSetting[_]]
+		val result = session.currentEval().eval(arg, srcName = "get", imports = autoImports(extracted), tpeName = Some("sbt.ScopedSetting[_]"))
+		val scoped = result.value.asInstanceOf[ScopedSetting[_]]
 		val resolve = Scope.resolveScope(Load.projectScope(curi, cid), curi, rootProject)
 		(structure.data.get(resolve(scoped.scope), scoped.key)) match {
 			case None => logger(s).error("No entry for key."); s.fail
 			case Some(v) => logger(s).info(v.toString); s
 		}
+	}
+	def autoImports(extracted: Extracted): EvalImports  =  new EvalImports(imports(extracted), "<auto-imports>")
+	def imports(extracted: Extracted): Seq[(String,Int)] =
+	{
+		import extracted._
+		structure.units(curi).imports.map(s => (s, -1))
 	}
 
 	def listBuild(uri: URI, build: Load.LoadedBuildUnit, current: Boolean, currentID: String, log: Logger) =
