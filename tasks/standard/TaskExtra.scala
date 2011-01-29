@@ -100,12 +100,18 @@ trait TaskExtra
 		def reduce(f: (S,S) => S): Task[S] = TaskExtra.reduce(in.toIndexedSeq, f)
 	}
 	
-	final implicit def multInputTask[In <: HList](tasks: Tasks[In]): MultiInTask[In] = new MultiBase[In] {
+		import TaskExtra.{allM, anyFailM, failM, successM}	
+	final implicit def multInputTask[In <: HList](tasks: Tasks[In]): MultiInTask[In] = new MultiInTask[In] {
 		def flatMapR[T](f: Results[In] => Task[T]): Task[T] = new FlatMapped(tasks, f)
+		def flatMap[T](f: In => Task[T]): Task[T] = flatMapR(f compose allM)
+		def flatFailure[T](f: Seq[Incomplete] => Task[T]): Task[T] = flatMapR(f compose anyFailM)
+
 		def mapR[T](f: Results[In] => T): Task[T] = new Mapped(tasks, f)
+		def map[T](f: In => T): Task[T] = mapR(f compose allM)
+		def mapFailure[T](f: Seq[Incomplete] => T): Task[T] = mapR(f compose anyFailM)
 	}
 
-	final implicit def singleInputTask[S](in: Task[S]): SingleInTask[S] = new SingleBase[S] {
+	final implicit def singleInputTask[S](in: Task[S]): SingleInTask[S] = new SingleInTask[S] {
 		type HL = S :+: HNil
 		private val ml = in :^: KNil
 		private def headM = (_: Results[HL]).combine.head
@@ -113,6 +119,17 @@ trait TaskExtra
 		def flatMapR[T](f: Result[S] => Task[T]): Task[T] = new FlatMapped[T, HL](ml, f ∙ headM)
 		def mapR[T](f: Result[S] => T): Task[T] = new Mapped[T, HL](ml, f ∙ headM)
 		def dependsOn(tasks: Task[_]*): Task[S] = new DependsOn(in, tasks)
+		
+		def flatMap[T](f: S => Task[T]): Task[T] = flatMapR(f compose successM)
+		def flatFailure[T](f: Incomplete => Task[T]): Task[T] = flatMapR(f compose failM)
+		
+		def map[T](f: S => T): Task[T] = mapR(f compose successM)
+		def mapFailure[T](f: Incomplete => T): Task[T] = mapR(f compose failM)
+		
+		def andFinally(fin: => Unit): Task[S] = mapR(x => Result.tryValue[S]( { fin; x }))
+		def doFinally(t: Task[Unit]): Task[S] = flatMapR(x => t.mapR { tx => Result.tryValues[S](tx :: Nil, x) })
+		def || [T >: S](alt: Task[T]): Task[T] = flatMapR { case Value(v) => task(v); case Inc(i) => alt }
+		def && [T](alt: Task[T]): Task[T] = flatMap( _ => alt )
 	}
 
 	final implicit def toTaskInfo[S](in: Task[S]): TaskInfo[S] = new TaskInfo[S] {
@@ -160,32 +177,6 @@ trait TaskExtra
 	implicit def processToTask(p: ProcessBuilder)(implicit streams: Task[TaskStreams[_]]): Task[Int] = streams map { s =>
 		val pio = TaskExtra.processIO(s)
 		(p run pio).exitValue
-	}
-	
-	private[this] abstract class SingleBase[S] extends SingleInTask[S]
-	{
-			import TaskExtra.{successM, failM}
-			
-		def flatMap[T](f: S => Task[T]): Task[T] = flatMapR(f compose successM)
-		def flatFailure[T](f: Incomplete => Task[T]): Task[T] = flatMapR(f compose failM)
-		
-		def map[T](f: S => T): Task[T] = mapR(f compose successM)
-		def mapFailure[T](f: Incomplete => T): Task[T] = mapR(f compose failM)
-		
-		def andFinally(fin: => Unit): Task[S] = mapR(x => Result.tryValue[S]( { fin; x }))
-		def doFinally(t: Task[Unit]): Task[S] = flatMapR(x => t.mapR { tx => Result.tryValues[S](tx :: Nil, x) })
-		def || [T >: S](alt: Task[T]): Task[T] = flatMapR { case Value(v) => task(v); case Inc(i) => alt }
-		def && [T](alt: Task[T]): Task[T] = flatMap( _ => alt )
-	}
-	private[this] abstract class MultiBase[In <: HList] extends MultiInTask[In]
-	{
-			import TaskExtra.{allM, anyFailM}
-			
-		def flatMap[T](f: In => Task[T]): Task[T] = flatMapR(f compose allM)
-		def flatFailure[T](f: Seq[Incomplete] => Task[T]): Task[T] = flatMapR(f compose anyFailM)
-
-		def map[T](f: In => T): Task[T] = mapR(f compose allM)
-		def mapFailure[T](f: Seq[Incomplete] => T): Task[T] = mapR(f compose anyFailM)
 	}
 }
 object TaskExtra extends TaskExtra
