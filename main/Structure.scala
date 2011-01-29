@@ -22,8 +22,9 @@ object InputTask {
 }
 
 sealed trait Scoped { def scope: Scope }
-sealed trait ScopedSetting[T] extends Scoped { def key: AttributeKey[T] }
-sealed trait ScopedTask[T] extends Scoped { def key: AttributeKey[Task[T]] }
+sealed trait ScopedTaskable[T] extends Scoped
+sealed trait ScopedSetting[T] extends ScopedTaskable[T] { def key: AttributeKey[T] }
+sealed trait ScopedTask[T] extends ScopedTaskable[T] { def key: AttributeKey[Task[T]] }
 sealed trait ScopedInput[T] extends Scoped { def key: AttributeKey[InputTask[T]] }
 
 sealed trait Key[T] extends Scoped { final def scope: Scope = Scope(This,This,This,This) }
@@ -37,24 +38,26 @@ object Scoped
 	implicit def richTaskScoped[T](s: ScopedTask[T]): RichTaskScoped[T] = new RichTaskScoped[T](s.scope, s.key)
 	implicit def richInputScoped[T](s: ScopedInput[T]): RichInputScoped[T] = new RichInputScoped[T](s.scope, s.key)
 
-	implicit def settingScoping[T](s: SettingKey[T]): ScopingSetting[T] = new ScopingSetting[T](s.key)
 	implicit def taskScoping[T](s: TaskKey[T]): ScopingTask[T] = new ScopingTask[T](s.key)
-	implicit def inputScoping[T](s: InputKey[T]): ScopingInput[T] = new ScopingInput[T](s.key)
 
-	sealed abstract class AbstractScoping[T]
+	implicit def settingScoping[T](s: SettingKey[T]): ScopingSetting[T, ScopedSetting[T]] =
+		new ScopingSetting(s.key, scope => scopedSetting(scope, s.key))
+
+	implicit def inputScoping[T](s: InputKey[T]): ScopingSetting[InputTask[T], ScopedInput[T]] =
+		new ScopingSetting(s.key, scope => scopedInput(scope, s.key))
+
+	final class ScopingSetting[T, Result](val key: AttributeKey[T], app0: Scope => Result)
 	{
-		type Result
-		def key: AttributeKey[T]
-		def apply(s: Scope): Result
+		def apply(s: Scope): Result = app0(s)
 
-		final def apply(p: ProjectRef): Result  =  apply(Select(p), This, This)
-		final def apply(t: TaskKey[_]): Result  =  apply(This, This, Select(t))
-		final def apply(c: ConfigKey): Result  =  apply(This, Select(c), This)
-		final def apply(c: ConfigKey, t: TaskKey[_]): Result  =  apply(This, Select(c), Select(t))
-		final def apply(p: ProjectRef, c: ConfigKey): Result  =  apply(Select(p), Select(c), This)
-		final def apply(p: ProjectRef, t: TaskKey[_]): Result  =  apply(Select(p), This, Select(t))
-		final def apply(p: ProjectRef, c: ConfigKey, t: TaskKey[_]): Result  =  apply(Select(p), Select(c), Select(t))
-		final def apply(p: ScopeAxis[ProjectRef], c: ScopeAxis[ConfigKey], t: ScopeAxis[TaskKey[_]]): Result = apply( Scope(p, c, convert(t), This) )
+		def apply(p: ProjectRef): Result  =  apply(Select(p), This, This)
+		def apply(t: TaskKey[_]): Result  =  apply(This, This, Select(t))
+		def apply(c: ConfigKey): Result  =  apply(This, Select(c), This)
+		def apply(c: ConfigKey, t: TaskKey[_]): Result  =  apply(This, Select(c), Select(t))
+		def apply(p: ProjectRef, c: ConfigKey): Result  =  apply(Select(p), Select(c), This)
+		def apply(p: ProjectRef, t: TaskKey[_]): Result  =  apply(Select(p), This, Select(t))
+		def apply(p: ProjectRef, c: ConfigKey, t: TaskKey[_]): Result  =  apply(Select(p), Select(c), Select(t))
+		def apply(p: ScopeAxis[ProjectRef], c: ScopeAxis[ConfigKey], t: ScopeAxis[TaskKey[_]]): Result = apply( Scope(p, c, convert(t), This) )
 		private def convert(tk: ScopeAxis[TaskKey[_]]): ScopeAxis[AttributeKey[_]] =
 			tk match {
 				case Select(t) => Select(t.key)
@@ -62,16 +65,10 @@ object Scoped
 				case Global => Global
 			}
 	}
-	final class ScopingSetting[T](val key: AttributeKey[T]) extends AbstractScoping[T]
-	{
-		type Result = ScopedSetting[T]
-		def apply(s: Scope): Result  =  new ScopedSetting[T] { val scope = s; val key = ScopingSetting.this.key }
-	}
-	final class ScopingInput[T](val key: AttributeKey[InputTask[T]]) extends AbstractScoping[InputTask[T]]
-	{
-		type Result = ScopedInput[T]
-		def apply(s: Scope): Result  =  new ScopedInput[T] { val scope = s; val key = ScopingInput.this.key }
-	}
+	
+	private[this] def scopedSetting[T](s: Scope, k: AttributeKey[T]): ScopedSetting[T] = new ScopedSetting[T] { val scope = s; val key = k }
+	private[this] def scopedInput[T](s: Scope, k: AttributeKey[InputTask[T]]): ScopedInput[T] = new ScopedInput[T] { val scope = s; val key = k }
+
 	final class ScopingTask[T](taskKey: AttributeKey[Task[T]])
 	{
 		def apply(p: ProjectRef): RichTaskScoped[T] = apply(Select(p), This)
@@ -86,17 +83,17 @@ object Scoped
 	{
 		def scope: Scope
 		def key: AttributeKey[S]
-		final val scoped = ScopedKey(scope, key)
-		final val scopedList = scoped :^: KNil
+		protected final val scoped = ScopedKey(scope, key)
+		protected final val scopedList = scoped :^: KNil
 		
 		final def :==(value: S): Setting[S]  =  :=(value)
 		final def := (value: => S): Setting[S]  =  Project.value(scoped)(value)
 		final def :~ (f: S => S): Setting[S]  =  Project.update(scoped)(f)
 		final def :- (app: Apply[S]): Setting[S]  =  app toSetting scoped
 
-		def apply[T](f: S => T): Apply[T] = Apply.mk(scopedList)(hl => f(hl.head))
+		final def apply[T](f: S => T): Apply[T] = Apply.mk(scopedList)(hl => f(hl.head))
 
-		def get(settings: Settings[Scope]): Option[S] = settings.get(scope, key)
+		final def get(settings: Settings[Scope]): Option[S] = settings.get(scope, key)
 	}
 	final class RichInputScoped[T](val scope: Scope, val key: AttributeKey[InputTask[T]]) extends RichBaseScoped[InputTask[T]]
 	final class RichSettingScoped[S](val scope: Scope, val key: AttributeKey[S]) extends RichBaseScoped[S]
@@ -122,11 +119,11 @@ object Scoped
 		private[this] def mk[T](onTask: Task[S] => Task[T]): App[T] = Apply.mk(scoped :^: KNil)(hl => onTask(hl.head))
 		
 		def flatMapR[T](f: Result[S] => Task[T]): App[T] = mk(_ flatMapR f)
-		def flatMap[T](f: S => Task[T]): App[T] = mk(_ flatMap f)
-		def map[T](f: S => T): App[T] = mk(_ map f)
+		def flatMap[T](f: S => Task[T]): App[T] = flatMapR(f compose successM)
+		def map[T](f: S => T): App[T] = mapR(f compose successM)
 		def mapR[T](f: Result[S] => T): App[T] = mk(_ mapR f)
-		def flatFailure[T](f: Incomplete => Task[T]): App[T] = mk(_ flatFailure f)
-		def mapFailure[T](f: Incomplete => T): App[T] = mk(_ mapFailure f)
+		def flatFailure[T](f: Incomplete => Task[T]): App[T] = flatMapR(f compose failM)
+		def mapFailure[T](f: Incomplete => T): App[T] = mapR(f compose failM)
 		def andFinally(fin: => Unit): App[S] = mk(_ andFinally fin)
 		def doFinally(t: Task[Unit]): App[S] = mk(_ doFinally t)
 
@@ -136,27 +133,90 @@ object Scoped
 		def dependsOn(tasks: ScopedTask[_]*): App[S] =
 		{
 			val in = KCons(scopedTask(scope, key), KList.fromList(tasks))
-			Apply.tasks(in) { case KCons(h,t) => h dependsOn(t.toList :_*) }
+			Apply.tasks(in) { kl =>
+				val KCons(h,t) = KList.kcons(kl)
+				h.dependsOn(t.toList :_*)
+			}
 		}
 	}
 
-	implicit def richSettingKeys[HL <: HList](in: KList[ScopedSetting, HL]): RichSettingKeys[HL] = new RichSettingKeys(in)
-	final class RichSettingKeys[HL <: HList](keys: KList[ScopedSetting, HL])
-	{
-		type App[T] = Apply[Task[T]]
-		def map[T](f: HL => T): App[T] = Apply(keys)(settings => task(f(settings)))
-		def flatMap[T](f: HL => Task[T]): App[T] = Apply(keys)(f)
+	/*
+	* Reduced and combine provide support for mixed Setting/Task flatMap/map.
+	* The general idea is to take a KList of ScopedTaskables, which are either ScopedSettings or ScopedTasks,
+	*   and uniformly provide multi-flatMap/map for constructing a new Task.
+	* For example: {{{ (SettingKeyA, TaskKeyB) flatMap { (a,b) => ... } }}}
+	*/
+
+	trait Reduced[HLs <: HList, HLt <: HList, HLv <: HList]
+	{ o =>
+		def settings: KList[ScopedSetting, HLs]  // SS[A] :^: SS[Task[B]] :^: ...
+		def tasks(hls: HLs): KList[Task, HLt]  // takes setting values from previous line to Task[B] :^: ...
+		def expand(hls: HLs, hlt: Results[HLt]): Results[HLv] // takes Result[B] :+: ... to Value[A] :+: Result[B] :+: ...
+
+		def prependTask[H](key: ScopedSetting[Task[H]]) =
+			new Reduced[Task[H] :+: HLs, H :+: HLt, H :+: HLv]
+			{
+				val settings = KCons(key, o.settings)
+				def tasks(hls: Task[H] :+: HLs) = KCons(hls.head, o.tasks(hls.tail))
+				def expand(hls: Task[H] :+: HLs, hlt: Results[H :+: HLt]) = KCons(hlt.head, o.expand(hls.tail, hlt.tail) )
+			}
+
+		def prependSetting[H](key: ScopedSetting[H]) =
+			new Reduced[H :+: HLs, HLt, H :+: HLv]
+			{
+				val settings = KCons(key, o.settings)
+				def tasks(hls: H :+: HLs) = o.tasks(hls.tail)
+				def expand(hls: H :+: HLs, hlt: Results[HLt]) = KCons(Value(hls.head), o.expand(hls.tail, hlt))
+			}
+		def prependTaskable[H](key: ScopedTaskable[H]): Reduced[_,_,H :+: HLv] =
+			key match
+			{
+				case ss: ScopedSetting[H] => prependSetting(ss)
+				case st: ScopedTask[H] => prependTask(scopedSetting(st.scope, st.key))
+			}
+
+		def combine[D[_],S](c: Combine[D], f: Results[HLv] => D[S]): Apply[Task[S]] =
+			Apply(settings)(hls => c(tasks(hls))(hlt => f(expand(hls, hlt))) )
 	}
-	final class RichTaskKeys[In <: HList](keys: KList[ScopedTask, In])
+	type RedHL[HL <: HList] = Reduced[_,_,HL]
+	def reduced[HL <: HList](settings: KList[ScopedTaskable, HL]): Reduced[_,_,HL] =
+		settings.foldr { new KFold[ScopedTaskable, RedHL] {
+			def knil = emptyReduced
+			def kcons[H,T<:HList](h: ScopedTaskable[H], acc: Reduced[_,_,T]): Reduced[_,_,H :+: T] =
+				acc prependTaskable h
+		}}
+	def emptyReduced: Reduced[HNil,HNil,HNil] = new Reduced[HNil,HNil,HNil] {
+		def settings = KNil
+		def tasks(h: HNil) = KNil
+		def expand(a: HNil, k: Results[HNil]) = KNil
+	}
+	trait Combine[D[_]] {
+		def apply[HL <: HList,S](tasks: KList[Task, HL])(f: Results[HL] => D[S]): Task[S]
+	}
+	object Combine
+	{
+		val mapR: Combine[Id] = new Combine[Id] {
+			def apply[HL <: HList,S](tasks: KList[Task, HL])(f: Results[HL] => S): Task[S] =
+				tasks mapR f
+		}
+		val flatMapR: Combine[Task] = new Combine[Task] {
+			def apply[HL <: HList,S](tasks: KList[Task, HL])(f: Results[HL] => Task[S]): Task[S] =
+				tasks flatMapR f
+		}
+	}
+
+	implicit def richTaskableKeys[HL <: HList](in: KList[ScopedTaskable, HL]): RichTaskableKeys[HL] = new RichTaskableKeys(in)
+	final class RichTaskableKeys[In <: HList](keys: KList[ScopedTaskable, In])
 	{
 		type App[T] = Apply[Task[T]]
-		def flatMap[T](f: In => Task[T]): App[T] = mk(_ flatMap f)
-		def flatMapR[T](f: Results[In] => Task[T]): App[T] = mk(_ flatMapR f)
-		def map[T](f: In => T): App[T] = mk(_ map f)
-		def mapR[T](f: Results[In] => T): App[T] = mk(_ mapR f)
-		def flatFailure[T](f: Seq[Incomplete] => Task[T]): App[T] = mk(_ flatFailure f)
-		def mapFailure[T](f: Seq[Incomplete] => T): App[T] = mk(_ mapFailure f)
-		private[this] def mk[T](onTasks: KList[Task, In] => Task[T]): App[T] = Apply.tasks(keys)(onTasks)
+		private[this] val red = reduced(keys)
+
+		def flatMap[T](f: In => Task[T]): App[T] = flatMapR(f compose allM)
+		def flatMapR[T](f: Results[In] => Task[T]): App[T] = red.combine(Combine.flatMapR, f)
+		def map[T](f: In => T): App[T] = mapR(f compose allM)
+		def mapR[T](f: Results[In] => T): App[T] = red.combine[Id,T](Combine.mapR, f)
+		def flatFailure[T](f: Seq[Incomplete] => Task[T]): App[T] = flatMapR(f compose anyFailM)
+		def mapFailure[T](f: Seq[Incomplete] => T): App[T] = mapR(f compose anyFailM)
 	}
 
 	implicit def t2ToApp2[A,B](t2: (ScopedSetting[A], ScopedSetting[B]) ): Apply2[A,B] = new Apply2(t2)
@@ -204,8 +264,6 @@ object Scoped
 
 	def unresolvedThis(axis: ScopeAxis[_], label: String): Seq[String] =
 		if(axis == This) ("Unresolved This for " + label + " axis.") :: Nil else Nil*/
-	
-//	private[this] val hcHead = new ( ({type l[t] = t :+: _})#l ~> Id ) { def apply[T](hc: t :+: _): t = hc.head }
 }
 object InputKey
 {
