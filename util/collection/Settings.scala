@@ -111,7 +111,7 @@ trait Init[Scope]
 		val scache = PMap.empty[ScopedKey, ScopedKey]
 		def resolve(search: Seq[Scope]): ScopedKey[T] =
 			search match {
-				case Seq() => throw new Uninitialized(k)
+				case Seq() => throw Uninitialized(k, refKey)
 				case Seq(x, xs @ _*) =>
 					val sk = ScopedKey(x, k.key)
 					scache.getOrUpdate(sk, if(defines(sMap, sk, refKey)) sk else resolve(xs))
@@ -137,7 +137,9 @@ trait Init[Scope]
 		}
 	}
 
-	final class Uninitialized(key: ScopedKey[_]) extends Exception("Update on uninitialized setting " + key.key.label + " (in " + key.scope + ")")
+	final class Uninitialized(val key: ScopedKey[_], val refKey: ScopedKey[_], msg: String) extends Exception(msg)
+	def Uninitialized(key: ScopedKey[_], refKey: ScopedKey[_]): Uninitialized =
+		new Uninitialized(key, refKey, "Reference to uninitialized setting " + key.key.label + " (in " + key.scope + ") from " + refKey.key.label +" (in " + refKey.scope + ")")
 	final class Compiled(val dependencies: Iterable[ScopedKey[_]], val eval: Settings[Scope] => Settings[Scope])
 
 	sealed trait Setting[T]
