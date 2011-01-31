@@ -232,7 +232,7 @@ object Load
 		lazy val rootEval = lazyEval(loaded.units(loaded.root).unit)
 		val settings = config.injectSettings ++ buildConfigurations(loaded, getRootProject(projects), rootEval)
 		val delegates = config.delegates(loaded)
-		val data = Project.make(settings)(delegates)
+		val data = Project.makeSettings(settings, delegates)
 		val index = structureIndex(data)
 		val streams = mkStreams(projects, loaded.root, data)
 		(rootEval, new BuildStructure(projects, loaded.root, settings, data, index, streams, delegates))
@@ -244,7 +244,7 @@ object Load
 		// Reevaluates settings after modifying them.  Does not recompile or reload any build components.
 	def reapply(newSettings: Seq[Setting[_]], structure: BuildStructure): BuildStructure =
 	{
-		val newData = Project.make(newSettings)(structure.delegates)
+		val newData = Project.makeSettings(newSettings, structure.delegates)
 		val newIndex = structureIndex(newData)
 		val newStreams = mkStreams(structure.units, structure.root, newData)
 		new BuildStructure(units = structure.units, root = structure.root, settings = newSettings, data = newData, index = newIndex, streams = newStreams, delegates = structure.delegates)

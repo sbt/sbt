@@ -63,6 +63,7 @@ object Project extends Init[Scope]
 		val newAttrs = s.attributes.put(Watch.key, makeWatched(data, ref, project)).put(HistoryPath.key, historyPath)
 		s.copy(attributes = newAttrs)
 	}
+	def makeSettings(settings: Seq[Setting[_]], delegates: Scope => Seq[Scope]) = translateUninitialized( make(settings)(delegates) )
 
 	def makeWatched(data: Settings[Scope], ref: ProjectRef, project: Project): Watched =
 	{
@@ -85,6 +86,12 @@ object Project extends Init[Scope]
 		val f = mapScope(g)
 		ss.map(_ mapKey f mapReferenced f)
 	}
+	def translateUninitialized[T](f: => T): T =
+		try { f } catch { case u: Project.Uninitialized =>
+			val msg = "Uninitialized reference to " + display(u.key) + " from " + display(u.refKey)
+			throw new Uninitialized(u.key, u.refKey, msg)
+		}
+
 
 	val SessionKey = AttributeKey[SessionSettings]("session-settings")
 	val StructureKey = AttributeKey[Load.BuildStructure]("build-structure")
