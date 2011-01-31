@@ -91,7 +91,7 @@ object Project extends Init[Scope]
 	val AppConfig = SettingKey[xsbti.AppConfiguration]("app-configuration")
 	val ThisProject = SettingKey[Project]("project")
 	val ThisProjectRef = SettingKey[ProjectRef]("project-ref")
-
+	val Config = SettingKey[Configuration]("configuration")
 }
 
 	import SessionSettings._

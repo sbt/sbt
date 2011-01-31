@@ -11,7 +11,7 @@ package sbt
 	import scala.annotation.tailrec
 	import collection.mutable
 	import Compile.{Compilers,Inputs}
-	import Project.{AppConfig, ScopedKey, Setting, ThisProject, ThisProjectRef}
+	import Project.{AppConfig, Config, ScopedKey, Setting, ThisProject, ThisProjectRef}
 	import TypeFunctions.{Endo,Id}
 	import tools.nsc.reporters.ConsoleReporter
 
@@ -258,10 +258,12 @@ object Load
 			val (pluginThisProject, pluginGlobal) = pluginSettings partition isProjectThis
 			val projectSettings = build.defined flatMap { case (id, project) =>
 				val srcs = configurationSources(project.base)
+				val ref = ProjectRef(Some(uri), Some(id))
+				val defineConfig = for(c <- project.configurations) yield (Config(ref, ConfigKey(c.name)) :== c)
 				val settings =
 					(ThisProject :== project) +:
-					(ThisProjectRef :== ProjectRef(Some(uri), Some(id))) +:
-					(project.settings ++ pluginThisProject ++ configurations(srcs, eval, build.imports))
+					(ThisProjectRef :== ref) +:
+					(defineConfig ++ project.settings ++ pluginThisProject ++ configurations(srcs, eval, build.imports))
 				 
 				// map This to thisScope, Select(p) to mapRef(uri, rootProject, p)
 				transformSettings(projectScope(uri, id), uri, rootProject, settings)
