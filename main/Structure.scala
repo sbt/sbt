@@ -87,11 +87,13 @@ object Scoped
 		protected final val scopedList = scoped :^: KNil
 		
 		final def :==(value: S): Setting[S]  =  :=(value)
+		final def :==(value: SettingKey[S]): Setting[S]  =  :-(value app identity)
 		final def := (value: => S): Setting[S]  =  Project.value(scoped)(value)
 		final def :~ (f: S => S): Setting[S]  =  Project.update(scoped)(f)
 		final def :- (app: Apply[S]): Setting[S]  =  app toSetting scoped
 
 		final def apply[T](f: S => T): Apply[T] = Apply.mk(scopedList)(hl => f(hl.head))
+		final def app[T](f: S => T): Apply[T] = apply(f)
 
 		final def get(settings: Settings[Scope]): Option[S] = settings.get(scope, key)
 	}
@@ -108,10 +110,12 @@ object Scoped
 		def :==(value: Task[S]): ScS  =  Project.value(scoped)( value )
 		def := (value: => S): ScS  =  :==(task(value))
 		def :== (v: TaskKey[S]): ScS = Project.app(scoped, ScopedKey(scope, v.key) :^: KNil)(_.head)
+		def :== (v: SettingKey[S]): ScS = :-( v app const )
 		def :~ (f: S => S): ScS  =  Project.update(scoped)( _ map f )
 
 		def :- (app: App[S]): ScS  =  app toSetting scoped
 
+		def setting: ScopedSetting[Task[S]] = scopedSetting(scope, key)
 		def get(settings: Settings[Scope]): Option[Task[S]] = settings.get(scope, key)
 
 		type App[T] = Apply[Task[T]]
@@ -204,7 +208,82 @@ object Scoped
 				tasks flatMapR f
 		}
 	}
+	
+	// this is the least painful arrangement I came up with
+	implicit def t2ToTable2[A,B](t2: (ScopedTaskable[A], ScopedTaskable[B]) ): RichTaskable2[A,B] = new RichTaskable2(t2)
+	implicit def t3ToTable3[A,B,C](t3: (ScopedTaskable[A], ScopedTaskable[B], ScopedTaskable[C]) ): RichTaskable3[A,B,C] = new RichTaskable3(t3)
+	implicit def t4ToTable4[A,B,C,D](t4: (ScopedTaskable[A], ScopedTaskable[B], ScopedTaskable[C], ScopedTaskable[D]) ): RichTaskable4[A,B,C,D] = new RichTaskable4(t4)
+	implicit def t5ToTable5[A,B,C,D,E](t5: (ScopedTaskable[A], ScopedTaskable[B], ScopedTaskable[C], ScopedTaskable[D], ScopedTaskable[E]) ): RichTaskable5[A,B,C,D,E] = new RichTaskable5(t5)
+	implicit def t6ToTable6[A,B,C,D,E,F](t6: (ScopedTaskable[A], ScopedTaskable[B], ScopedTaskable[C], ScopedTaskable[D], ScopedTaskable[E], ScopedTaskable[F]) ): RichTaskable6[A,B,C,D,E,F] = new RichTaskable6(t6)
+	implicit def t7ToTable7[A,B,C,D,E,F,G](t7: (ScopedTaskable[A], ScopedTaskable[B], ScopedTaskable[C], ScopedTaskable[D], ScopedTaskable[E], ScopedTaskable[F], ScopedTaskable[G]) ): RichTaskable7[A,B,C,D,E,F,G] = new RichTaskable7(t7)
+	implicit def t8ToTable8[A,B,C,D,E,F,G,H](t8: (ScopedTaskable[A], ScopedTaskable[B], ScopedTaskable[C], ScopedTaskable[D], ScopedTaskable[E], ScopedTaskable[F], ScopedTaskable[G], ScopedTaskable[H]) ): RichTaskable8[A,B,C,D,E,F,G,H] = new RichTaskable8(t8)
+	implicit def t9ToTable9[A,B,C,D,E,F,G,H,I](t9: (ScopedTaskable[A], ScopedTaskable[B], ScopedTaskable[C], ScopedTaskable[D], ScopedTaskable[E], ScopedTaskable[F], ScopedTaskable[G], ScopedTaskable[H], ScopedTaskable[I]) ): RichTaskable9[A,B,C,D,E,F,G,H,I] = new RichTaskable9(t9)
+	
+	sealed abstract class RichTaskables[In <: HList](keys: KList[ScopedTaskable, In])
+	{
+		type App[T] = Apply[Task[T]]
+		type Fun[M[_],Ret]
+		protected def convertH[Ret](f: Fun[Id,Ret]): In => Ret
+		protected def convertK[M[_],Ret](f: Fun[M,Ret]): KList[M,In] => Ret
+		private[this] val red = reduced(keys)
+		
+		def flatMap[T](f: Fun[Id,Task[T]]): App[T] = red.combine(Combine.flatMapR, convertH(f) compose allM)
+		def flatMapR[T](f: Fun[Result,Task[T]]): App[T] = red.combine(Combine.flatMapR, convertK(f))
+		def map[T](f: Fun[Id, T]): App[T] = red.combine[Id,T](Combine.mapR, convertH(f) compose allM)
+		def mapR[T](f: Fun[Result,T]): App[T] = red.combine[Id,T](Combine.mapR, convertK(f))
+		def flatFailure[T](f: Seq[Incomplete] => Task[T]): App[T] = red.combine(Combine.flatMapR, f compose anyFailM)
+		def mapFailure[T](f: Seq[Incomplete] => T): App[T] = red.combine[Id,T](Combine.mapR, f compose anyFailM)
+	}
+	final class RichTaskable2[A,B](t2: (ScopedTaskable[A], ScopedTaskable[B])) extends RichTaskables(t2._1 :^: t2._2 :^: KNil)
+	{
+		type Fun[M[_],Ret] = (M[A],M[B]) => Ret
+		protected def convertH[R](f: (A,B) => R) = { case a :+: b :+: HNil => f(a,b) }
+		protected def convertK[M[_],R](f: (M[A],M[B]) => R) = { case a :^: b :^: KNil => f(a,b) }
+	}
+	final class RichTaskable3[A,B,C](t3: (ScopedTaskable[A], ScopedTaskable[B], ScopedTaskable[C])) extends RichTaskables(t3._1 :^: t3._2 :^: t3._3 :^: KNil)
+	{
+		type Fun[M[_],Ret] = (M[A],M[B],M[C]) => Ret
+		protected def convertH[R](f: Fun[Id,R]) = { case a :+: b :+: c :+: HNil => f(a,b,c) }
+		protected def convertK[M[_],R](f: Fun[M,R]) = { case a :^: b :^: c :^: KNil => f(a,b,c) }
+	}
+	final class RichTaskable4[A,B,C,D](t4: (ScopedTaskable[A], ScopedTaskable[B], ScopedTaskable[C], ScopedTaskable[D])) extends RichTaskables(t4._1 :^: t4._2 :^: t4._3 :^: t4._4 :^: KNil)
+	{
+		type Fun[M[_],Ret] = (M[A],M[B],M[C],M[D]) => Ret
+		protected def convertH[R](f: Fun[Id,R]) = { case a :+: b :+: c :+: d :+: HNil => f(a,b,c,d) }
+		protected def convertK[M[_],R](f: Fun[M,R]) = { case a :^: b :^: c :^: d :^: KNil => f(a,b,c,d) }
+	}
+	final class RichTaskable5[A,B,C,D,E](t5: (ScopedTaskable[A], ScopedTaskable[B], ScopedTaskable[C], ScopedTaskable[D], ScopedTaskable[E])) extends RichTaskables(t5._1 :^: t5._2 :^: t5._3 :^: t5._4 :^: t5._5 :^: KNil)
+	{
+		type Fun[M[_],Ret] = (M[A],M[B],M[C],M[D],M[E]) => Ret
+		protected def convertH[R](f: Fun[Id,R]) = { case a :+: b :+: c :+: d :+: e :+: HNil => f(a,b,c,d,e) }
+		protected def convertK[M[_],R](f: Fun[M,R]) = { case a :^: b :^: c :^: d :^: e :^: KNil => f(a,b,c,d,e) }
+	}
+	final class RichTaskable6[A,B,C,D,E,F](t6: (ScopedTaskable[A], ScopedTaskable[B], ScopedTaskable[C], ScopedTaskable[D], ScopedTaskable[E], ScopedTaskable[F])) extends RichTaskables(t6._1 :^: t6._2 :^: t6._3 :^: t6._4 :^: t6._5 :^: t6._6 :^: KNil)
+	{
+		type Fun[M[_],Ret] = (M[A],M[B],M[C],M[D],M[E],M[F]) => Ret
+		protected def convertH[R](z: Fun[Id,R]) = { case a :+: b :+: c :+: d :+: e :+: f :+: HNil => z(a,b,c,d,e,f) }
+		protected def convertK[M[_],R](z: Fun[M,R]) = { case a :^: b :^: c :^: d :^: e :^: f :^: KNil => z(a,b,c,d,e,f) }
+	}
+	final class RichTaskable7[A,B,C,D,E,F,G](t7: (ScopedTaskable[A], ScopedTaskable[B], ScopedTaskable[C], ScopedTaskable[D], ScopedTaskable[E], ScopedTaskable[F], ScopedTaskable[G])) extends RichTaskables(t7._1 :^: t7._2 :^: t7._3 :^: t7._4 :^: t7._5 :^: t7._6 :^: t7._7 :^: KNil)
+	{
+		type Fun[M[_],Ret] = (M[A],M[B],M[C],M[D],M[E],M[F],M[G]) => Ret
+		protected def convertH[R](z: Fun[Id,R]) = { case a :+: b :+: c :+: d :+: e :+: f :+: g :+: HNil => z(a,b,c,d,e,f,g) }
+		protected def convertK[M[_],R](z: Fun[M,R]) = { case a :^: b :^: c :^: d :^: e :^: f :^: g :^: KNil => z(a,b,c,d,e,f,g) }
+	}
+	final class RichTaskable8[A,B,C,D,E,F,G,H](t8: (ScopedTaskable[A], ScopedTaskable[B], ScopedTaskable[C], ScopedTaskable[D], ScopedTaskable[E], ScopedTaskable[F], ScopedTaskable[G], ScopedTaskable[H])) extends RichTaskables(t8._1 :^: t8._2 :^: t8._3 :^: t8._4 :^: t8._5 :^: t8._6 :^: t8._7 :^: t8._8 :^: KNil)
+	{
+		type Fun[M[_],Ret] = (M[A],M[B],M[C],M[D],M[E],M[F],M[G],M[H]) => Ret
+		protected def convertH[R](z: Fun[Id,R]) = { case a :+: b :+: c :+: d :+: e :+: f :+: g :+: h :+: HNil => z(a,b,c,d,e,f,g,h) }
+		protected def convertK[M[_],R](z: Fun[M,R]) = { case a :^: b :^: c :^: d :^: e :^: f :^: g :^: h :^: KNil => z(a,b,c,d,e,f,g,h) }
+	}
+	final class RichTaskable9[A,B,C,D,E,F,G,H,I](t9: (ScopedTaskable[A], ScopedTaskable[B], ScopedTaskable[C], ScopedTaskable[D], ScopedTaskable[E], ScopedTaskable[F], ScopedTaskable[G], ScopedTaskable[H], ScopedTaskable[I])) extends RichTaskables(t9._1 :^: t9._2 :^: t9._3 :^: t9._4 :^: t9._5 :^: t9._6 :^: t9._7 :^: t9._8 :^: t9._9 :^: KNil)
+	{
+		type Fun[M[_],Ret] = (M[A],M[B],M[C],M[D],M[E],M[F],M[G],M[H],M[I]) => Ret
+		protected def convertH[R](z: Fun[Id,R]) = { case a :+: b :+: c :+: d :+: e :+: f :+: g :+: h :+: i :+: HNil => z(a,b,c,d,e,f,g,h,i) }
+		protected def convertK[M[_],R](z: Fun[M,R]) = { case a :^: b :^: c :^: d :^: e :^: f :^: g :^: h :^: i :^: KNil => z(a,b,c,d,e,f,g,h,i) }
+	}
 
+	// this doesn't actually work for mixed KLists because the compiler crashes trying to infer the bound when constructing the KList
 	implicit def richTaskableKeys[HL <: HList](in: KList[ScopedTaskable, HL]): RichTaskableKeys[HL] = new RichTaskableKeys(in)
 	final class RichTaskableKeys[In <: HList](keys: KList[ScopedTaskable, In])
 	{

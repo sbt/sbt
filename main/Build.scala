@@ -11,7 +11,7 @@ package sbt
 	import scala.annotation.tailrec
 	import collection.mutable
 	import Compile.{Compilers,Inputs}
-	import Project.{ScopedKey, Setting}
+	import Project.{AppConfig, ScopedKey, Setting, ThisProject, ThisProjectRef}
 	import TypeFunctions.{Endo,Id}
 	import tools.nsc.reporters.ConsoleReporter
 
@@ -108,9 +108,9 @@ object EvaluateTask
 	val (state, dummyState) = dummy[State]("state")
 	val (streams, dummyStreams) = dummy[TaskStreams]("streams")
 
-	def injectSettings = Seq(
-		state :== dummyState,
-		streams :== dummyStreams
+	def injectSettings: Seq[Project.Setting[_]] = Seq(
+		state(Scope.GlobalScope) :== dummyState,
+		streams(Scope.GlobalScope) :== dummyStreams
 	)
 	
 	def dummy[T](name: String): (TaskKey[T], Task[T]) = (TaskKey[T](name), dummyTask(name))
@@ -195,7 +195,8 @@ object Load
 		val compilers = Compile.compilers(state.configuration, log)
 		val evalPluginDef = EvaluateTask.evalPluginDef(state, log) _
 		val delegates = memo(defaultDelegates)
-		val config = new LoadBuildConfiguration(stagingDirectory, classpath, loader, compilers, evalPluginDef, delegates, EvaluateTask.injectSettings, log)
+		val inject: Seq[Project.Setting[_]] = (AppConfig(Scope.GlobalScope) :== state.configuration) +: EvaluateTask.injectSettings
+		val config = new LoadBuildConfiguration(stagingDirectory, classpath, loader, compilers, evalPluginDef, delegates, inject, log)
 		apply(base, config)
 	}
 	def defaultDelegates: LoadedBuild => Scope => Seq[Scope] = (lb: LoadedBuild) => {
@@ -229,7 +230,7 @@ object Load
 		val loaded = resolveProjects(load(rootBase, config))
 		val projects = loaded.units
 		lazy val rootEval = lazyEval(loaded.units(loaded.root).unit)
-		val settings = buildConfigurations(loaded, getRootProject(projects), config.injectSettings, rootEval)
+		val settings = config.injectSettings ++ buildConfigurations(loaded, getRootProject(projects), rootEval)
 		val delegates = config.delegates(loaded)
 		val data = Project.make(settings)(delegates)
 		val index = structureIndex(data)
@@ -250,14 +251,17 @@ object Load
 	}
 
 	def isProjectThis(s: Setting[_]) = s.key.scope.project == This
-	def buildConfigurations(loaded: LoadedBuild, rootProject: URI => String, injectSettings: Seq[Setting[_]], rootEval: () => Eval): Seq[Setting[_]] =
+	def buildConfigurations(loaded: LoadedBuild, rootProject: URI => String, rootEval: () => Eval): Seq[Setting[_]] =
 		loaded.units.toSeq flatMap { case (uri, build) =>
 			val eval = if(uri == loaded.root) rootEval else lazyEval(build.unit)
 			val pluginSettings = build.unit.plugins.plugins
 			val (pluginThisProject, pluginGlobal) = pluginSettings partition isProjectThis
 			val projectSettings = build.defined flatMap { case (id, project) =>
 				val srcs = configurationSources(project.base)
-				val settings = injectSettings ++ project.settings ++ pluginThisProject ++ configurations(srcs, eval, build.imports)
+				val settings =
+					(ThisProject :== project) +:
+					(ThisProjectRef :== ProjectRef(Some(uri), Some(id))) +:
+					(project.settings ++ pluginThisProject ++ configurations(srcs, eval, build.imports))
 				 
 				// map This to thisScope, Select(p) to mapRef(uri, rootProject, p)
 				transformSettings(projectScope(uri, id), uri, rootProject, settings)

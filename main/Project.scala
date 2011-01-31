@@ -88,6 +88,10 @@ object Project extends Init[Scope]
 
 	val SessionKey = AttributeKey[SessionSettings]("session-settings")
 	val StructureKey = AttributeKey[Load.BuildStructure]("build-structure")
+	val AppConfig = SettingKey[xsbti.AppConfiguration]("app-configuration")
+	val ThisProject = SettingKey[Project]("project")
+	val ThisProjectRef = SettingKey[ProjectRef]("project-ref")
+
 }
 
 	import SessionSettings._
