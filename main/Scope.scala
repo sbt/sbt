@@ -53,14 +53,15 @@ object Scope
 		(uri, ref.id getOrElse rootProject(uri) )
 	}
 
-	def display(config: ConfigKey): String = if(config.name == "compile") "" else config.name + "-"
+	def display(config: ConfigKey): String = if(config.name == "compile") "" else config.name + ":"
+	def display(ref: ProjectRef): String = "(" + (ref.uri map (_.toString) getOrElse "<this>") + ")" + (ref.id getOrElse "<root>")
 	def display(scope: Scope, sep: String): String = 
 	{
 			import scope.{project, config, task, extra}
-		val projectPrefix = project match { case Select(p) => "(" + p.uri + ")" + p.id; case Global => "*"; case This => "." }
-		val configPrefix = config match { case Select(c) => display(c); case _ => "" }
-		val taskPostfix = task match { case Select(t) => " for " + t.label; case _ => "" }
-		val extraPostfix = extra match { case Select(es) => es.entries.map( _.toString ).toList; case _ => Nil }
+		val projectPrefix = project.foldStrict(display, "*", ".")
+		val configPrefix = config.foldStrict(display, "*:", ".:")
+		val taskPostfix = task.foldStrict(" for " + _.label, "", "")
+		val extraPostfix = extra.foldStrict(_.entries.map( _.toString ).toList, Nil, Nil)
 		val extras = taskPostfix :: extraPostfix
 		val postfix = if(extras.isEmpty) "" else extras.mkString("(", ", ", ")")
 		projectPrefix + "/" + configPrefix + sep + postfix
@@ -88,7 +89,7 @@ object Scope
 		extraInherit: (ProjectRef, AttributeMap) => Seq[AttributeMap])(scope: Scope): Seq[Scope] =
 	scope.project match
 	{
-		case Global | This => scope :: Nil
+		case Global | This => scope :: GlobalScope :: Nil
 		case Select(proj) =>
 			val prod =
 				for {
@@ -100,18 +101,26 @@ object Scope
 			val projI =
 				linearize(scope.project)(projectInherit) map { p => scope.copy(project = p) }
 
-			prod ++ projI
+			(prod ++ projI :+ GlobalScope).toList.removeDuplicates
 	}
 	def linearize[T](axis: ScopeAxis[T])(inherit: T => Seq[T]): Seq[ScopeAxis[T]] =
 		axis match
 		{
-			case Select(x) => Dag.topologicalSort(x)(inherit).map(Select.apply) :+ Global
+			case Select(x) => (Global +: Dag.topologicalSort(x)(inherit).map(Select.apply) ).reverse
 			case Global | This => Global :: Nil
 		}
 }
 
 
-sealed trait ScopeAxis[+S]
+sealed trait ScopeAxis[+S] {
+	def foldStrict[T](f: S => T, ifGlobal: T, ifThis: T): T = fold(f, ifGlobal, ifThis)
+	def fold[T](f: S => T, ifGlobal: => T, ifThis: => T): T = this match {
+		case This => ifThis
+		case Global => ifGlobal
+		case Select(s) => f(s)
+	}
+	def map[T](f: S => T): ScopeAxis[T] = foldStrict(s => Select(f(s)), Global, This)
+}
 case object This extends ScopeAxis[Nothing]
 case object Global extends ScopeAxis[Nothing]
 final case class Select[S](s: S) extends ScopeAxis[S]
