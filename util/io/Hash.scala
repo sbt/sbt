@@ -33,7 +33,9 @@ object Hash
 		array
 	}
 	/** Calculates the SHA-1 hash of the given String.*/
-	def apply(s: String): Array[Byte] = apply(new ByteArrayInputStream(s.getBytes("UTF-8")))
+	def apply(s: String): Array[Byte] = apply(s.getBytes("UTF-8"))
+	/** Calculates the SHA-1 hash of the given Array[Byte].*/
+	def apply(as: Array[Byte]): Array[Byte] = apply(new ByteArrayInputStream(as))
 	/** Calculates the SHA-1 hash of the given file.*/
 	def apply(file: File): Array[Byte] = Using.fileInputStream(file)(apply)
 	/** Calculates the SHA-1 hash of the given stream, closing it when finished.*/
