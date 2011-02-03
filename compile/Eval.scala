@@ -4,49 +4,65 @@ package compile
 import scala.reflect.Manifest
 import scala.tools.nsc.{ast, interpreter, io, reporters, util, CompilerCommand, Global, Phase, Settings}
 import interpreter.AbstractFileClassLoader
-import io.{PlainFile, VirtualDirectory}
+import io.{AbstractFile, PlainFile, VirtualDirectory}
 import ast.parser.Tokens
 import reporters.{ConsoleReporter, Reporter}
 import util.BatchSourceFile
 import Tokens.EOF
 import java.io.File
+import java.nio.ByteBuffer
+import java.net.URLClassLoader
 
-// TODO: if backing is Some, only recompile if out of date
+// TODO: provide a way to cleanup backing directory
 
 final class EvalImports(val strings: Seq[(String,Int)], val srcName: String)
 final class EvalResult(val tpe: String, val value: Any, val generated: Seq[File], val enclosingModule: String)
 final class EvalException(msg: String) extends RuntimeException(msg)
 // not thread safe, since it reuses a Global instance
-final class Eval(options: Seq[String], mkReporter: Settings => Reporter, parent: ClassLoader)
+final class Eval(optionsNoncp: Seq[String], classpath: Seq[File], mkReporter: Settings => Reporter, parent: ClassLoader, backing: Option[File])
 {
-	def this(mkReporter: Settings => Reporter) = this("-cp" :: IO.classLocationFile[ScalaObject].getAbsolutePath :: Nil, mkReporter, getClass.getClassLoader)
+	def this(mkReporter: Settings => Reporter) = this(Nil, IO.classLocationFile[ScalaObject] :: Nil, mkReporter, getClass.getClassLoader, None)
 	def this() = this(s => new ConsoleReporter(s))
 
-	val settings = new Settings(Console.println)
-	val command = new CompilerCommand(options.toList, settings)
-	val reporter = mkReporter(settings)
-	val global: Global = new Global(settings, reporter)
+	backing.foreach(IO.createDirectory)
+	val classpathString = Path.makeString(classpath)
+	val options = "-cp" +: classpathString +: optionsNoncp
+
+	lazy val settings =
+	{
+		val s = new Settings(Console.println)
+		val command = new CompilerCommand(options.toList, s)
+		s
+	}
+	lazy val reporter = mkReporter(settings)
+	lazy val global: Global = new Global(settings, reporter)
 	import global._
 	import definitions._
 
-	def eval(expression: String, imports: EvalImports = noImports, tpeName: Option[String] = None, backing: Option[File] = None, srcName: String = "<setting>", line: Int = DefaultStartLine): EvalResult =
+	def eval(expression: String, imports: EvalImports = noImports, tpeName: Option[String] = None, srcName: String = "<setting>", line: Int = DefaultStartLine): EvalResult =
 	{
-		val moduleName = makeModuleName(srcName, line)
-		reporter.reset
-		val unit = mkUnit(srcName, line, expression)
-		val run = new Run {
+			import Eval._
+		val hash = Hash.toHex(Hash(bytes( bytes(expression) :: optBytes(backing)(fileExistsBytes) :: seqBytes(options)(bytes) ::
+			seqBytes(classpath)(fileModifiedBytes) :: seqBytes(imports.strings.map(_._1))(bytes) :: optBytes(tpeName)(bytes) :: Nil)))
+		val moduleName = makeModuleName(hash)
+		
+		lazy val unit = {
+			reporter.reset
+			mkUnit(srcName, line, expression)
+		}
+		lazy val run = new Run {
 			override def units = (unit :: Nil).iterator
 		}
 		def unlinkAll(): Unit = for( (sym, _) <- run.symSource ) unlink(sym)
 		def unlink(sym: Symbol) = sym.owner.info.decls.unlink(sym)
 
-		try
-		{
-			val (tpe, value) = eval0(expression, imports, tpeName, run, unit, backing, moduleName)
-			val classFiles = getClassFiles(backing, moduleName)
-			new EvalResult(tpe, value, classFiles, moduleName)
-		}
-		finally { unlinkAll() }
+		val (tpe, value) =
+			(tpeName, backing) match {
+				case (Some(tpe), Some(back)) if classExists(back, moduleName) => (tpe, loadPlain(back, moduleName))
+				case _ => try { eval0(expression, imports, tpeName, run, unit, backing, moduleName) } finally { unlinkAll() }
+			}
+		val classFiles = getClassFiles(backing, moduleName)
+		new EvalResult(tpe, value, classFiles, moduleName)
 	}
 	def eval0(expression: String, imports: EvalImports, tpeName: Option[String], run: Run, unit: CompilationUnit, backing: Option[File], moduleName: String): (String, Any) =
 	{
@@ -81,9 +97,10 @@ final class Eval(options: Seq[String], mkReporter: Settings => Reporter, parent:
 		checkError("Type error.")
 		val tpe = atPhase(run.typerPhase.next) { (new TypeExtractor).getType(unit.body) }
 
-		val loader = new AbstractFileClassLoader(dir, parent)
-		(tpe, getValue(moduleName, loader))
+		(tpe, load(dir, moduleName))
 	}
+	def load(dir: AbstractFile, moduleName: String): Any  =  getValue(moduleName, new AbstractFileClassLoader(dir, parent))
+	def loadPlain(dir: File, moduleName: String): Any  =  getValue(moduleName, new URLClassLoader(Array(dir.toURI.toURL), parent))
 
 	val WrapValName = "$sbtdef"
 		//wrap tree in object objectName { def WrapValName = <tree> }
@@ -122,6 +139,7 @@ final class Eval(options: Seq[String], mkReporter: Settings => Reporter, parent:
 			case _ => super.traverse(tree)
 		}
 	}
+	private[this] def classExists(dir: File, name: String) = (new File(dir, name + ".class")).exists
 	// TODO: use the code from Analyzer
 	private[this] def getClassFiles(backing: Option[File], moduleName: String): Seq[File] =
 		backing match {
@@ -160,7 +178,7 @@ final class Eval(options: Seq[String], mkReporter: Settings => Reporter, parent:
 
 
 	val DefaultStartLine = 0
-	private[this] def makeModuleName(src: String, line: Int): String  =  "$" + halve(Hash.toHex(Hash(src + ":" + line)))
+	private[this] def makeModuleName(hash: String): String  =  "$" + halve(hash)
 	private[this] def halve(s: String) = if(s.length > 2) s.substring(0, s.length / 2)
 	private[this] def noImports = new EvalImports(Nil, "")
 	private[this] def mkUnit(srcName: String, firstLine: Int, s: String) = new CompilationUnit(new EvalSourceFile(srcName, firstLine, s))
@@ -170,5 +188,34 @@ final class Eval(options: Seq[String], mkReporter: Settings => Reporter, parent:
 	{
 		override def lineToOffset(line: Int): Int = super.lineToOffset((line - startLine) max 0)
 		override def offsetToLine(offset: Int): Int = super.offsetToLine(offset) + startLine
+	}
+}
+private object Eval
+{
+	def optBytes[T](o: Option[T])(f: T => Array[Byte]): Array[Byte] = seqBytes(o.toSeq)(f)
+	def seqBytes[T](s: Seq[T])(f: T => Array[Byte]): Array[Byte] = bytes(s map f)
+	def bytes(b: Seq[Array[Byte]]): Array[Byte] = bytes(b.length) ++ b.flatten.toArray[Byte]
+	def bytes(b: Boolean): Array[Byte] = Array[Byte](if(b) 1 else 0)
+	def filesModifiedBytes(fs: Array[File]): Array[Byte] = if(fs eq null) filesModifiedBytes(Array[File]()) else seqBytes(fs)(fileModifiedBytes)
+	def fileModifiedBytes(f: File): Array[Byte] =
+		bytes(f.lastModified) ++
+		(if(f.isDirectory) filesModifiedBytes(f.listFiles) else bytes(-1 : Int)) ++
+		bytes(f.getAbsolutePath)
+	def fileExistsBytes(f: File): Array[Byte] =
+		bytes(f.exists) ++
+		bytes(f.getAbsolutePath)
+ 
+	def bytes(s: String): Array[Byte] = s getBytes "UTF-8"
+	def bytes(l: Long): Array[Byte] =
+	{
+		val buffer = ByteBuffer.allocate(8)
+		buffer.putLong(l)
+		buffer.array
+	}
+	def bytes(i: Int): Array[Byte] =
+	{
+		val buffer = ByteBuffer.allocate(4)
+		buffer.putInt(i)
+		buffer.array
 	}
 }

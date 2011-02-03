@@ -283,11 +283,8 @@ object Load
 	}
 	def mkEval(unit: BuildUnit): Eval = mkEval(unit.definitions, unit.plugins, Nil)
 	def mkEval(defs: LoadedDefinitions, plugs: LoadedPlugins, options: Seq[String]): Eval =
-	{
-		val classpathString = Path.makeString(defs.target +: plugs.classpath)
-		val optionsCp = "-cp" +: classpathString +: options // TODO: probably need to properly set up options with CompilerArguments
-		new Eval(optionsCp, s => new ConsoleReporter(s), defs.loader)
-	}
+		new Eval(options, defs.target +: plugs.classpath, s => new ConsoleReporter(s), defs.loader, Some(evalOutputDirectory(defs.base)))
+
 	def configurations(srcs: Seq[File], eval: () => Eval, imports: Seq[String]): Seq[Setting[_]] =
 		if(srcs.isEmpty) Nil else EvaluateConfigurations(eval(), srcs, imports)
 
