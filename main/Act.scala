@@ -3,7 +3,7 @@
  */
 package sbt
 
-	import Project.ScopedKey
+	import Project.{ScopedKey, ThisProject}
 	import CommandSupport.logger
 	import Load.BuildStructure
 	import complete.{DefaultParsers, Parser}
@@ -13,23 +13,40 @@ package sbt
 object Act
 {
 	// this does not take delegation into account
-	def scopedKey(index: KeyIndex, currentBuild: URI, currentProject: String, keyMap: Map[String, AttributeKey[_]]): Parser[ScopedKey[_]] =
+	def scopedKey(index: KeyIndex, currentBuild: URI, currentProject: String, defaultConfig: ProjectRef => Option[String], keyMap: Map[String, AttributeKey[_]]): Parser[ScopedKey[_]] =
 	{
 		for {
 			proj <- optProjectRef(index, currentBuild, currentProject)
-			conf <- configs( index configs proj )
-			key <- keyRef( index.keys(proj, conf), keyMap ) }
+			confAmb <- config( index configs proj )
+			(key, conf) <- key(index, proj, configs(confAmb, defaultConfig, proj), keyMap) }
 		yield
 			ScopedKey( Scope( Select(proj), toAxis(conf map ConfigKey.apply, Global), Global, Global), key )
 	}
 
-	def toAxis[T](opt: Option[T], ifNone: ScopeAxis[Nothing]): ScopeAxis[T] =
+	def toAxis[T](opt: Option[T], ifNone: ScopeAxis[T]): ScopeAxis[T] =
 		opt match { case Some(t) => Select(t); case None => ifNone }
+	def defaultConfig(data: Settings[Scope])(project: ProjectRef): Option[String] =
+		ThisProject(project) get data flatMap( _.configurations.headOption.map(_.name))
 
-	def configs(confs: Set[String]) = token( (ID examples confs) <~ ':' ).?
-	def keyRef(keys: Set[String], keyMap: Map[String, AttributeKey[_]]) = token( ID examples keys flatMap getKey(keyMap) )
-	def getKey(keyMap: Map[String, AttributeKey[_]])(keyString: String): Parser[AttributeKey[_]] =
-		keyMap.get(keyString) match { case Some(k) => success(k); case None => failure("Invalid key: " + keyString)}
+	def config(confs: Set[String]): Parser[Option[String]] =
+		token( (ID examples confs) <~ ':' ).?
+
+	def configs(explicit: Option[String], defaultConfig: ProjectRef => Option[String], proj: ProjectRef): List[Option[String]] =
+		if(explicit.isDefined) explicit :: Nil else None :: defaultConfig(proj) :: Nil
+	def key(index: KeyIndex, proj: ProjectRef, confs: Seq[Option[String]], keyMap: Map[String,AttributeKey[_]]): Parser[(AttributeKey[_], Option[String])] =
+	{
+		val confMap = confs map { conf => (conf, index.keys(proj, conf)) } toMap;
+		val allKeys = (Set.empty[String] /: confMap.values)(_ ++ _)
+		token(ID examples allKeys).flatMap { keyString =>
+			val conf = confMap.flatMap { case (key, value) => if(value contains keyString) key :: Nil else Nil } headOption;
+			getKey(keyMap, keyString, k => (k, conf.flatMap(identity)))
+		}
+	}
+	def getKey[T](keyMap: Map[String,AttributeKey[_]], keyString: String, f: AttributeKey[_] => T): Parser[T] =
+		keyMap.get(keyString) match {
+			case Some(k) => success(f(k))
+			case None => failure("Invalid key: " + keyString)
+		}
 
 	def projectRef(index: KeyIndex, currentBuild: URI): Parser[ProjectRef] =
 	{
@@ -51,7 +68,7 @@ object Act
 			case Some(task: Task[_]) => applyTask(s, structure, success(task))
 			case Some(v) => success(() => { logger(s).info(v.toString); s})
 		}
-	def applyTask(s: State, structure: BuildStructure, p: Parser[Task[_]]): Parser[() => State] =
+	def applyTask(s: State, structure: Load.BuildStructure, p: Parser[Task[_]]): Parser[() => State] =
 		Command.applyEffect(p) { t =>
 			import EvaluateTask._
 			processResult(runTask(t)(nodeView(structure, s)), logger(s))
@@ -63,6 +80,7 @@ object Act
 	{
 		val extracted = Project extract state
 		import extracted._
-		scopedKey(structure.index.keyIndex, curi, cid, structure.index.keyMap) flatMap valueParser(state, structure)
+		val defaultConf = (ref: ProjectRef) => if(Project.getProject(ref, structure).isDefined) defaultConfig(structure.data)(ref) else None
+		scopedKey(structure.index.keyIndex, curi, cid, defaultConf, structure.index.keyMap) flatMap valueParser(state, structure)
 	}
 }
