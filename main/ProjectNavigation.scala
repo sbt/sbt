@@ -30,10 +30,10 @@ final class ProjectNavigation(s: State)
 
 	def setProject(nuri: URI, nid: String) =
 	{
-		val neval = if(uri == nuri) session.currentEval else mkEval()
+		val neval = if(uri == nuri) session.currentEval else mkEval(nuri)
 		updateCurrent(s.put(SessionKey, session.setCurrent(nuri, nid, neval)))
 	}
-	def mkEval() = Load.lazyEval(structure.units(uri).unit)
+	def mkEval(nuri: URI) = Load.lazyEval(structure.units(nuri).unit)
 	def getRoot(uri: URI) = Load.getRootProject(structure.units)(uri)
 
 	def apply(action: Navigate): State =
