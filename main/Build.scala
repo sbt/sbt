@@ -61,7 +61,7 @@ object EvaluateConfigurations
 	{
 		val (importExpressions, settingExpressions) = splitExpressions(name, lines)
 		for((settingExpression,line) <- settingExpressions) yield
-			evaluateSetting(eval, name, (imports.map(s => (s, -1)) ++ importExpressions), settingExpression, line = line)
+			evaluateSetting(eval, name, (imports.map(s => (s, -1)) ++ importExpressions), settingExpression, line)
 	}
 
 	def evaluateSetting(eval: Eval, name: String, imports: Seq[(String,Int)], expression: String, line: Int): Setting[_] =
@@ -476,8 +476,11 @@ object Load
 	def findDefinitions(analysis: Analysis): Seq[String]  =  discover(analysis, "sbt.Build")
 	def discover(analysis: Analysis, subclasses: String*): Seq[String] =
 	{
-		val discovery = new Discovery(subclasses.toSet, Set.empty)
-		discovery(Test.allDefs(analysis)).collect { case (definition, Discovered(_,_,_,true)) => definition.name }
+		val subclassSet = subclasses.toSet
+		val ds = Discovery(subclassSet, Set.empty)(Test.allDefs(analysis))
+		ds.flatMap { case (definition, Discovered(subs,_,_,true)) =>
+			if((subs ** subclassSet).isEmpty) Nil else definition.name :: Nil
+		}
 	}
 
 	def initialSession(structure: BuildStructure, rootEval: () => Eval): SessionSettings =
