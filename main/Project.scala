@@ -26,7 +26,7 @@ final case class Extracted(structure: Load.BuildStructure, session: SessionSetti
 
 object Project extends Init[Scope]
 {
-	def defaultSettings: Seq[Setting[_]] = Nil
+	def defaultSettings: Seq[Setting[_]] = Default.defaultSettings
 
 	final case class ClasspathDependency(project: ProjectRef, configuration: Option[String])
 	final class Constructor(p: ProjectRef) {
