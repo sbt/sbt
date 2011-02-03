@@ -18,7 +18,7 @@ sealed trait InputTask[T] {
 }
 object InputTask {
 	def apply[T](p: Parser[Task[T]]): InputTask[T] = new InputTask[T] { def parser = p }
-	def apply[I,T](p: Parser[I], c: I => Task[T]): InputTask[T] = apply(p map c)
+	def apply[I,T](p: Parser[I])(c: I => Task[T]): InputTask[T] = apply(p map c)
 }
 
 sealed trait Scoped { def scope: Scope }
