@@ -413,11 +413,13 @@ object Load
 		val plugs = plugins(pluginDir, config)
 
 		val defs = definitionSources(defDir)
+		val target = buildOutputDirectory(defDir, config.compilers)
+		IO.createDirectory(target)
 		val loadedDefs =
 			if(defs.isEmpty)
-				new LoadedDefinitions(defDir, outputDirectory(defDir), plugs.loader, Build.default(normBase) :: Nil, Nil)
+				new LoadedDefinitions(defDir, target, plugs.loader, Build.default(normBase) :: Nil, Nil)
 			else
-				definitions(defDir, defs, plugs, config.compilers, config.log)
+				definitions(defDir, target, defs, plugs, config.compilers, config.log, normBase)
 
 		new BuildUnit(uri, normBase, loadedDefs, plugs)
 	}
@@ -432,13 +434,13 @@ object Load
 		loadPlugins(pluginClasspath, pluginLoader, pluginAnalysis)
 	}
 
-	def definitions(base: File, srcs: Seq[File], plugins: LoadedPlugins, compilers: Compilers, log: Logger): LoadedDefinitions =
+	def definitions(base: File, targetBase: File, srcs: Seq[File], plugins: LoadedPlugins, compilers: Compilers, log: Logger, buildBase: File): LoadedDefinitions =
 	{
-		val (inputs, defAnalysis) = build(plugins.classpath, srcs, outputDirectory(base), compilers, log)
+		val (inputs, defAnalysis) = build(plugins.classpath, srcs, targetBase, compilers, log)
 		val target = inputs.config.classesDirectory
 		val definitionLoader = ClasspathUtilities.toLoader(target :: Nil, plugins.loader)
 		val defNames = findDefinitions(defAnalysis)
-		val defs = loadDefinitions(definitionLoader, defNames)
+		val defs = if(defNames.isEmpty) Build.default(buildBase) :: Nil else loadDefinitions(definitionLoader, defNames)
 		new LoadedDefinitions(base, target, definitionLoader, defs, defNames)
 	}
 
@@ -447,9 +449,8 @@ object Load
 	def loadDefinition(loader: ClassLoader, definition: String): Build =
 		ModuleUtilities.getObject(definition, loader).asInstanceOf[Build]
 
-	def build(classpath: Seq[File], sources: Seq[File], buildDir: File, compilers: Compilers, log: Logger): (Inputs, Analysis) =
+	def build(classpath: Seq[File], sources: Seq[File], target: File, compilers: Compilers, log: Logger): (Inputs, Analysis) =
 	{
-		val target = crossPath(new File(buildDir, "target"), compilers.scalac.scalaInstance)
 		val inputs = Compile.inputs(classpath, sources, target, Nil, Nil, Nil, Compile.DefaultMaxErrors)(compilers, log)
 		val analysis = Compile(inputs, log)
 		(inputs, analysis)
@@ -590,7 +591,10 @@ object BuildPaths
 	def configurationSources(base: File): Seq[File] = (base * "*.sbt").getFiles.toSeq
 	def pluginDirectory(definitionBase: Path) = definitionBase / "plugins"
 
+	def evalOutputDirectory(base: Path) = outputDirectory(base) / "config-classes"
 	def outputDirectory(base: Path) = base / "target"
+	def buildOutputDirectory(base: Path, compilers: Compilers) = crossPath(outputDirectory(base), compilers.scalac.scalaInstance)
+
 	def projectStandard(base: Path) = base / "project"
 	def projectHidden(base: Path) = base / ".sbt"
 	def selectProjectDir(base: Path) =
