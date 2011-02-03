@@ -39,8 +39,12 @@ trait Parsers
 	
 	lazy val Port = token(IntBasic, "<port>")
 	lazy val IntBasic = mapOrFail( '-'.? ~ Digit.+ )( Function.tupled(toInt) )
+	lazy val NatBasic = mapOrFail( Digit.+ )( _.mkString.toInt )
 	private[this] def toInt(neg: Option[Char], digits: Seq[Char]): Int =
 		(neg.toSeq ++ digits).mkString.toInt
+
+	def rep1sep[T](rep: Parser[T], sep: Parser[_]): Parser[Seq[T]] =
+		(rep ~ (sep ~> rep).*).map { case (x ~ xs) => x +: xs }
 
 	def mapOrFail[S,T](p: Parser[S])(f: S => T): Parser[T] =
 		p flatMap { s => try { success(f(s)) } catch { case e: Exception => failure(e.toString) } }
