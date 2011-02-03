@@ -288,8 +288,8 @@ object Resolver
 object Configurations
 {
 	def config(name: String) = new Configuration(name)
-	def default = defaultMavenConfigurations
-	def defaultMavenConfigurations = Compile :: Runtime :: Test :: Provided :: System :: Optional :: Sources :: Javadoc :: Nil
+	def default: Seq[Configuration] = defaultMavenConfigurations
+	def defaultMavenConfigurations: Seq[Configuration] = Compile :: Runtime :: Test :: Provided :: System :: Optional :: Sources :: Javadoc :: Nil
 
 	lazy val Default = config("default")
 	lazy val Compile = config("compile")
@@ -297,7 +297,7 @@ object Configurations
 	lazy val Provided = config("provided")
 	lazy val Javadoc = config("javadoc")
 	lazy val Runtime = config("runtime") extend(Compile)
-	lazy val Test = config("test") extend(Runtime) hide;
+	lazy val Test = config("test") extend(Runtime);
 	lazy val Sources = config("sources")
 	lazy val System = config("system")
 	lazy val Optional = config("optional")
