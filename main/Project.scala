@@ -43,7 +43,12 @@ object Project extends Init[Scope]
 		val st = structure(state)
 		Extracted(st, se, curi, cid, Load.getRootProject(st.units))
 	}
-	
+
+	def getProject(ref: ProjectRef, structure: Load.BuildStructure): Option[Project] =
+		ref match {
+			case ProjectRef(Some(uri), Some(id)) => (structure.units get uri).flatMap(_.defined get id)
+			case _ => None
+		}
 	def current(state: State): (URI, String) = session(state).current
 	def currentRef(state: State): ProjectRef =
 	{
@@ -77,6 +82,7 @@ object Project extends Init[Scope]
 		}
 	}
 	def display(scoped: ScopedKey[_]): String = Scope.display(scoped.scope, scoped.key.label)
+	def display(ref: ProjectRef): String = "(" + (ref.uri map (_.toString) getOrElse "<this>") + ")" + (ref.id getOrElse "<root>")
 
 	def mapScope(f: Scope => Scope) = new  (ScopedKey ~> ScopedKey) { def apply[T](key: ScopedKey[T]) =
 		ScopedKey( f(key.scope), key.key)

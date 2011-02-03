@@ -54,11 +54,10 @@ object Scope
 	}
 
 	def display(config: ConfigKey): String = if(config.name == "compile") "" else config.name + ":"
-	def display(ref: ProjectRef): String = "(" + (ref.uri map (_.toString) getOrElse "<this>") + ")" + (ref.id getOrElse "<root>")
 	def display(scope: Scope, sep: String): String = 
 	{
 			import scope.{project, config, task, extra}
-		val projectPrefix = project.foldStrict(display, "*", ".")
+		val projectPrefix = project.foldStrict(Project.display, "*", ".")
 		val configPrefix = config.foldStrict(display, "*:", ".:")
 		val taskPostfix = task.foldStrict(" for " + _.label, "", "")
 		val extraPostfix = extra.foldStrict(_.entries.map( _.toString ).toList, Nil, Nil)
