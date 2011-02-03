@@ -62,8 +62,11 @@ SetCommand + """ <setting-expression>
 
 	This command does not rebuild the build definitions, plugins, or configurations.
 	It does not automatically persist the setting.
-	This is done by running 'save-settings'.
+	This is done by running 'settings save' or 'settings save-all'.
 """
+
+	def SessionCommand = "session"
+	def sessionBrief = (SessionCommand + " ...", "Manipulates session settings.  For details, run 'help " + SessionCommand + "'..")
 	
 	/** The command name to terminate the program.*/
 	val TerminateAction: String = Exit

@@ -60,7 +60,7 @@ class xMain extends xsbti.AppMain
 object Commands
 {
 	def DefaultCommands: Seq[Command] = Seq(ignore, help, reload, read, history, continuous, exit, loadCommands, loadProject, compile, discover,
-		projects, project, setOnFailure, ifLast, multi, shell, set, get, eval, alias, append, nop, act)
+		projects, project, setOnFailure, ifLast, multi, shell, set, get, eval, alias, append, nop, sessionCommand, act)
 
 	def nop = Command.custom(s => success(() => s), Nil)
 	def ignore = Command.command(FailureWall)(identity)
@@ -221,15 +221,20 @@ object Commands
 		log.info("ans: " + result.tpe + " = " + result.value.toString)
 		s
 	}
+	def sessionCommand = Command(SessionCommand, sessionBrief, SessionSettings.Help)(SessionSettings.command)
+	def reapply(newSession: SessionSettings, structure: Load.BuildStructure, s: State): State =
+	{
+		logger(s).info("Reapplying settings...")
+		val newStructure = Load.reapply(newSession.mergeSettings, structure)
+		setProject(newSession, newStructure, s)
+	}
 	def set = Command.single(SetCommand, setBrief, setDetailed) { (s, arg) =>
 		val extracted = Project extract s
 		import extracted._
 		val setting = EvaluateConfigurations.evaluateSetting(session.currentEval(), "<set>", imports(extracted), arg, 0)
 		val append = Load.transformSettings(Load.projectScope(curi, cid), curi, rootProject, setting :: Nil)
 		val newSession = session.appendSettings( append map (a => (a, arg)))
-		logger(s).info("Reapplying settings...")
-		val newStructure = Load.reapply(newSession.mergeSettings, structure)
-		setProject(newSession, newStructure, s)
+		reapply(newSession, structure, s)
 	}
 	def get = Command.single(GetCommand, getBrief, getDetailed) { (s, arg) =>
 		val extracted = Project extract s
