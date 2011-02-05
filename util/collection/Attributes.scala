@@ -65,5 +65,6 @@ final case class Attributed[D](data: D)(val metadata: AttributeMap)
 }
 object Attributed
 {
+	implicit def blankSeq[T](in: Seq[T]): Seq[Attributed[T]] = in map blank
 	implicit def blank[T](data: T): Attributed[T] = Attributed(data)(AttributeMap.empty)
 }

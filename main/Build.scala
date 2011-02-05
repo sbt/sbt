@@ -66,7 +66,6 @@ object EvaluateConfigurations
 
 	def evaluateSetting(eval: Eval, name: String, imports: Seq[(String,Int)], expression: String, line: Int): Setting[_] =
 	{
-		// TODO: need to persist the results, which is critical for start up time
 		val result = eval.eval(expression, imports = new EvalImports(imports, name), srcName = name, tpeName = Some("sbt.Project.Setting[_]"), line = line)
 		result.value.asInstanceOf[Setting[_]]
 	}
@@ -103,32 +102,34 @@ object EvaluateTask
 	import BuildStreams.{Streams, TaskStreams}
 	
 	val SystemProcessors = Runtime.getRuntime.availableProcessors
-	val PluginTaskKey = TaskKey[(Seq[File], Analysis)]("plugin-task")
+	// TODO: we should use a Seq[Attributed[File]] so that we don't throw away Analysis information
+	val PluginDefinition = TaskKey[(Seq[File], Analysis)]("plugin-definition")
 	
 	val (state, dummyState) = dummy[State]("state")
 	val (streams, dummyStreams) = dummy[TaskStreams]("streams")
 
 	def injectSettings: Seq[Project.Setting[_]] = Seq(
-		state(Scope.GlobalScope) :== dummyState,
-		streams(Scope.GlobalScope) :== dummyStreams
+		(state in Scope.GlobalScope) :== dummyState,
+		(streams in Scope.GlobalScope) :== dummyStreams
 	)
 	
 	def dummy[T](name: String): (TaskKey[T], Task[T]) = (TaskKey[T](name), dummyTask(name))
 	def dummyTask[T](name: String): Task[T] = task( error("Dummy task '" + name + "' did not get converted to a full task.") ) named name
 
-	def evalPluginDef(state: State, log: Logger)(pluginDef: BuildStructure): (Seq[File], Analysis) =
+	def evalPluginDef(log: Logger)(pluginDef: BuildStructure, state: State): (Seq[File], Analysis) =
 	{
-		val evaluated = evaluateTask(pluginDef, ScopedKey(Scope.ThisScope, PluginTaskKey.key), state)
+		val root = ProjectRef(pluginDef.root, Load.getRootProject(pluginDef.units)(pluginDef.root))
+		val evaluated = evaluateTask(pluginDef, ScopedKey(Scope.ThisScope, PluginDefinition.key), state, root)
 		val result = evaluated getOrElse error("Plugin task does not exist for plugin definition at " + pluginDef.root)
 		processResult(result, log)
 	}
-	def evaluateTask[T](structure: BuildStructure, taskKey: ScopedKey[Task[T]], state: State, checkCycles: Boolean = false, maxWorkers: Int = SystemProcessors): Option[Result[T]] =
-		for( (task, toNode) <- getTask(structure, taskKey, state) ) yield
+	def evaluateTask[T](structure: BuildStructure, taskKey: ScopedKey[Task[T]], state: State, thisProject: ProjectRef, checkCycles: Boolean = false, maxWorkers: Int = SystemProcessors): Option[Result[T]] =
+		for( (task, toNode) <- getTask(structure, taskKey, state, thisProject) ) yield
 			runTask(task, checkCycles, maxWorkers)(toNode)
 	
-	def getTask[T](structure: BuildStructure, taskKey: ScopedKey[Task[T]], state: State): Option[(Task[T], Execute.NodeView[Task])] =
+	def getTask[T](structure: BuildStructure, taskKey: ScopedKey[Task[T]], state: State, thisProject: ProjectRef): Option[(Task[T], Execute.NodeView[Task])] =
 	{
-		val thisScope = Scope(Select(Project.currentRef(state)), Global, Global, Global)
+		val thisScope = Scope(Select(thisProject), Global, Global, Global)
 		val resolvedScope = Scope.replaceThis(thisScope)( taskKey.scope )
 		for( t <- structure.data.get(resolvedScope, taskKey.key)) yield
 			(t, nodeView(structure, state))
@@ -185,6 +186,7 @@ object Load
 	import BuildPaths._
 	import BuildStreams._
 
+	// note that there is State is passed in but not pulled out
 	def defaultLoad(state: State, log: Logger): (() => Eval, BuildStructure) =
 	{
 		val stagingDirectory = defaultStaging.getCanonicalFile // TODO: properly configurable
@@ -193,11 +195,11 @@ object Load
 		val provider = state.configuration.provider
 		val classpath = provider.mainClasspath ++ provider.scalaProvider.jars
 		val compilers = Compile.compilers(state.configuration, log)
-		val evalPluginDef = EvaluateTask.evalPluginDef(state, log) _
+		val evalPluginDef = EvaluateTask.evalPluginDef(log) _
 		val delegates = memo(defaultDelegates)
-		val inject: Seq[Project.Setting[_]] = (AppConfig(Scope.GlobalScope) :== state.configuration) +: EvaluateTask.injectSettings
+		val inject: Seq[Project.Setting[_]] = ((AppConfig in Scope.GlobalScope) :== state.configuration) +: EvaluateTask.injectSettings
 		val config = new LoadBuildConfiguration(stagingDirectory, classpath, loader, compilers, evalPluginDef, delegates, inject, log)
-		apply(base, config)
+		apply(base, state, config)
 	}
 	def defaultDelegates: LoadedBuild => Scope => Seq[Scope] = (lb: LoadedBuild) => {
 		val rootProject = getRootProject(lb.units)
@@ -224,10 +226,10 @@ object Load
 		//  6) Load all configurations using build definitions and plugins (their classpaths and loaded instances).
 		//  7) Combine settings from projects, plugins, and configurations
 		//  8) Evaluate settings
-	def apply(rootBase: File, config: LoadBuildConfiguration): (() => Eval, BuildStructure) =
+	def apply(rootBase: File, s: State, config: LoadBuildConfiguration): (() => Eval, BuildStructure) =
 	{
 		// load, which includes some resolution, but can't fill in project IDs yet, so follow with full resolution
-		val loaded = resolveProjects(load(rootBase, config))
+		val loaded = resolveProjects(load(rootBase, s, config))
 		val projects = loaded.units
 		lazy val rootEval = lazyEval(loaded.units(loaded.root).unit)
 		val settings = config.injectSettings ++ buildConfigurations(loaded, getRootProject(projects), rootEval)
@@ -259,7 +261,7 @@ object Load
 			val projectSettings = build.defined flatMap { case (id, project) =>
 				val srcs = configurationSources(project.base)
 				val ref = ProjectRef(Some(uri), Some(id))
-				val defineConfig = for(c <- project.configurations) yield (Config(ref, ConfigKey(c.name)) :== c)
+				val defineConfig = for(c <- project.configurations) yield ( (Config in (ref, ConfigKey(c.name))) :== c)
 				val settings =
 					(ThisProject :== project) +:
 					(ThisProjectRef :== ref) +:
@@ -288,7 +290,8 @@ object Load
 	def configurations(srcs: Seq[File], eval: () => Eval, imports: Seq[String]): Seq[Setting[_]] =
 		if(srcs.isEmpty) Nil else EvaluateConfigurations(eval(), srcs, imports)
 
-	def load(file: File, config: LoadBuildConfiguration): LoadedBuild = load(file, uri => loadUnit(uri, RetrieveUnit(config.stagingDirectory, uri), config) )
+	def load(file: File, s: State, config: LoadBuildConfiguration): LoadedBuild =
+		load(file, uri => loadUnit(uri, RetrieveUnit(config.stagingDirectory, uri), s, config) )
 	def load(file: File, loader: URI => BuildUnit): LoadedBuild = loadURI(IO.directoryURI(file), loader)
 	def loadURI(uri: URI, loader: URI => BuildUnit): LoadedBuild =
 	{
@@ -402,12 +405,12 @@ object Load
 	def noProject(uri: URI, id: String) = error("No project '" + id + "' defined in '" + uri + "'.")
 	def noConfiguration(uri: URI, id: String, conf: String) = error("No configuration '" + conf + "' defined in project '" + id + "' in '" + uri +"'")
 
-	def loadUnit(uri: URI, localBase: File, config: LoadBuildConfiguration): BuildUnit =
+	def loadUnit(uri: URI, localBase: File, s: State, config: LoadBuildConfiguration): BuildUnit =
 	{
 		val normBase = localBase.getCanonicalFile
 		val defDir = selectProjectDir(normBase)
 		val pluginDir = pluginDirectory(defDir)
-		val plugs = plugins(pluginDir, config)
+		val plugs = plugins(pluginDir, s, config)
 
 		val defs = definitionSources(defDir)
 		val target = buildOutputDirectory(defDir, config.compilers)
@@ -421,14 +424,17 @@ object Load
 		new BuildUnit(uri, normBase, loadedDefs, plugs)
 	}
 
-	def plugins(dir: File, config: LoadBuildConfiguration): LoadedPlugins = if(dir.exists) buildPlugins(dir, config) else noPlugins(config)
+	def plugins(dir: File, s: State, config: LoadBuildConfiguration): LoadedPlugins = if(dir.exists) buildPlugins(dir, s, config) else noPlugins(config)
 	def noPlugins(config: LoadBuildConfiguration): LoadedPlugins = new LoadedPlugins(config.classpath, config.loader, Nil, Nil)
-	def buildPlugins(dir: File, config: LoadBuildConfiguration): LoadedPlugins =
+	def buildPlugins(dir: File, s: State, config: LoadBuildConfiguration): LoadedPlugins =
 	{
-		val (_,pluginDef) = apply(dir, config)
-		val (pluginClasspath, pluginAnalysis) = config.evalPluginDef(pluginDef)
-		val pluginLoader = ClasspathUtilities.toLoader(pluginClasspath, config.loader)
-		loadPlugins(pluginClasspath, pluginLoader, pluginAnalysis)
+		val (eval,pluginDef) = apply(dir, s, config)
+		val pluginState = Project.setProject(Load.initialSession(pluginDef, eval), pluginDef, s)
+
+		val (pluginClasspath, pluginAnalysis) = config.evalPluginDef(pluginDef, pluginState)
+		val definitionClasspath = (pluginClasspath ++ config.classpath).distinct
+		val pluginLoader = ClasspathUtilities.toLoader(definitionClasspath, config.loader)
+		loadPlugins(definitionClasspath, pluginLoader, pluginAnalysis)
 	}
 
 	def definitions(base: File, targetBase: File, srcs: Seq[File], plugins: LoadedPlugins, compilers: Compilers, log: Logger, buildBase: File): LoadedDefinitions =
@@ -520,7 +526,7 @@ object Load
 
 	
 	final class BuildStructure(val units: Map[URI, LoadedBuildUnit], val root: URI, val settings: Seq[Setting[_]], val data: Settings[Scope], val index: StructureIndex, val streams: Streams, val delegates: Scope => Seq[Scope])
-	final class LoadBuildConfiguration(val stagingDirectory: File, val classpath: Seq[File], val loader: ClassLoader, val compilers: Compilers, val evalPluginDef: BuildStructure => (Seq[File], Analysis), val delegates: LoadedBuild => Scope => Seq[Scope], val injectSettings: Seq[Setting[_]], val log: Logger)
+	final class LoadBuildConfiguration(val stagingDirectory: File, val classpath: Seq[File], val loader: ClassLoader, val compilers: Compilers, val evalPluginDef: (BuildStructure, State) => (Seq[File], Analysis), val delegates: LoadedBuild => Scope => Seq[Scope], val injectSettings: Seq[Setting[_]], val log: Logger)
 	// information that is not original, but can be reconstructed from the rest of BuildStructure
 	final class StructureIndex(val keyMap: Map[String, AttributeKey[_]], val taskToKey: Map[Task[_], ScopedKey[Task[_]]], val keyIndex: KeyIndex)
 

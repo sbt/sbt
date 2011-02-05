@@ -26,7 +26,7 @@ object Act
 	def toAxis[T](opt: Option[T], ifNone: ScopeAxis[T]): ScopeAxis[T] =
 		opt match { case Some(t) => Select(t); case None => ifNone }
 	def defaultConfig(data: Settings[Scope])(project: ProjectRef): Option[String] =
-		ThisProject(project) get data flatMap( _.configurations.headOption.map(_.name))
+		ThisProject in project get data flatMap( _.configurations.headOption.map(_.name))
 
 	def config(confs: Set[String]): Parser[Option[String]] =
 		token( (ID examples confs) <~ ':' ).?

@@ -6,7 +6,6 @@ package sbt
 	import Execute.NodeView
 	import complete.HistoryCommands
 	import HistoryCommands.{Start => HistoryPrefix}
-	import Project.{SessionKey, StructureKey}
 	import sbt.build.{AggressiveCompile, Auto, BuildException, LoadCommand, Parse, ParseException, ProjectLoad, SourceLoad}
 	import compile.EvalImports
 	import sbt.complete.{DefaultParsers, Parser}
@@ -138,7 +137,7 @@ object Commands
 	}
 
 	def reload = Command.command(ReloadCommand, ReloadBrief, ReloadDetailed) { s =>
-		runExitHooks(s).reload
+		s.runExitHooks().reload
 	}
 
 	def defaults = Command.command(DefaultsCommand) { s =>
@@ -226,7 +225,7 @@ object Commands
 	{
 		logger(s).info("Reapplying settings...")
 		val newStructure = Load.reapply(newSession.mergeSettings, structure)
-		setProject(newSession, newStructure, s)
+		Project.setProject(newSession, newStructure, s)
 	}
 	def set = Command.single(SetCommand, setBrief, setDetailed) { (s, arg) =>
 		val extracted = Project extract s
@@ -281,7 +280,7 @@ object Commands
 
 	def exit = Command.command(TerminateAction, Help(exitBrief) :: Nil ) ( doExit )
 
-	def doExit(s: State): State  =  runExitHooks(s).exit(true)
+	def doExit(s: State): State  =  s.runExitHooks().exit(true)
 
 	// TODO: tab completion, low priority
 	def discover = Command.single(Discover, DiscoverBrief, DiscoverDetailed) { (s, arg) =>
@@ -304,13 +303,7 @@ object Commands
 	def loadProject = Command.command(LoadProject, LoadProjectBrief, LoadProjectDetailed) { s =>
 		val (eval, structure) = Load.defaultLoad(s, logger(s))
 		val session = Load.initialSession(structure, eval)
-		setProject(session, structure, s)
-	}
-	def setProject(session: SessionSettings, structure: Load.BuildStructure, s: State): State =
-	{
-		val newAttrs = s.attributes.put(StructureKey, structure).put(SessionKey, session)
-		val newState = s.copy(attributes = newAttrs)
-		Project.updateCurrent(runExitHooks(newState))
+		Project.setProject(session, structure, s)
 	}
 	
 	def handleException(e: Throwable, s: State, trace: Boolean = true): State = {
@@ -320,11 +313,6 @@ object Commands
 		s.fail
 	}
 	
-	def runExitHooks(s: State): State = {
-		ExitHooks.runExitHooks(s.exitHooks.toSeq)
-		s.copy(exitHooks = Set.empty)
-	}
-
 	// TODO: tab completion, low priority
 	def loadCommands = Command.single(LoadCommand, Parse.helpBrief(LoadCommand, LoadCommandLabel), Parse.helpDetail(LoadCommand, LoadCommandLabel, true) ) { (s, arg) =>
 		applyCommands(s, buildCommands(arg, s.configuration))

@@ -37,6 +37,8 @@ object Scoped
 	implicit def richSettingScoped[T](s: ScopedSetting[T]): RichSettingScoped[T] = new RichSettingScoped[T](s.scope, s.key)
 	implicit def richTaskScoped[T](s: ScopedTask[T]): RichTaskScoped[T] = new RichTaskScoped[T](s.scope, s.key)
 	implicit def richInputScoped[T](s: ScopedInput[T]): RichInputScoped[T] = new RichInputScoped[T](s.scope, s.key)
+	implicit def richSettingListScoped[T](s: ScopedSetting[Seq[T]]): RichSettingList[T] = new RichSettingList[T](s.scope, s.key)
+	implicit def richListTaskScoped[T](s: ScopedTask[Seq[T]]): RichListTask[T] = new RichListTask[T](s.scope, s.key)
 
 	implicit def taskScoping[T](s: TaskKey[T]): ScopingTask[T] = new ScopingTask[T](s.key)
 
@@ -48,16 +50,16 @@ object Scoped
 
 	final class ScopingSetting[T, Result](val key: AttributeKey[T], app0: Scope => Result)
 	{
-		def apply(s: Scope): Result = app0(s)
+		def in(s: Scope): Result = app0(s)
 
-		def apply(p: ProjectRef): Result  =  apply(Select(p), This, This)
-		def apply(t: TaskKey[_]): Result  =  apply(This, This, Select(t))
-		def apply(c: ConfigKey): Result  =  apply(This, Select(c), This)
-		def apply(c: ConfigKey, t: TaskKey[_]): Result  =  apply(This, Select(c), Select(t))
-		def apply(p: ProjectRef, c: ConfigKey): Result  =  apply(Select(p), Select(c), This)
-		def apply(p: ProjectRef, t: TaskKey[_]): Result  =  apply(Select(p), This, Select(t))
-		def apply(p: ProjectRef, c: ConfigKey, t: TaskKey[_]): Result  =  apply(Select(p), Select(c), Select(t))
-		def apply(p: ScopeAxis[ProjectRef], c: ScopeAxis[ConfigKey], t: ScopeAxis[TaskKey[_]]): Result = apply( Scope(p, c, convert(t), This) )
+		def in(p: ProjectRef): Result  =  in(Select(p), This, This)
+		def in(t: TaskKey[_]): Result  =  in(This, This, Select(t))
+		def in(c: ConfigKey): Result  =  in(This, Select(c), This)
+		def in(c: ConfigKey, t: TaskKey[_]): Result  =  in(This, Select(c), Select(t))
+		def in(p: ProjectRef, c: ConfigKey): Result  =  in(Select(p), Select(c), This)
+		def in(p: ProjectRef, t: TaskKey[_]): Result  =  in(Select(p), This, Select(t))
+		def in(p: ProjectRef, c: ConfigKey, t: TaskKey[_]): Result  =  in(Select(p), Select(c), Select(t))
+		def in(p: ScopeAxis[ProjectRef], c: ScopeAxis[ConfigKey], t: ScopeAxis[TaskKey[_]]): Result = in( Scope(p, c, convert(t), This) )
 		private def convert(tk: ScopeAxis[TaskKey[_]]): ScopeAxis[AttributeKey[_]] =
 			tk match {
 				case Select(t) => Select(t.key)
@@ -71,14 +73,24 @@ object Scoped
 
 	final class ScopingTask[T](taskKey: AttributeKey[Task[T]])
 	{
-		def apply(p: ProjectRef): RichTaskScoped[T] = apply(Select(p), This)
-		def apply(c: ConfigKey): RichTaskScoped[T] = apply(This, Select(c))
-		def apply(p: ProjectRef, c: ConfigKey): RichTaskScoped[T] = apply(Select(p), Select(c))
-		def apply(p: ScopeAxis[ProjectRef], c: ScopeAxis[ConfigKey]): ScopedTask[T]  =  apply(Scope(p, c, This, This))
-		def apply(s: Scope): ScopedTask[T]  =  scopedTask(s, taskKey)
+		def in(p: ProjectRef): ScopedTask[T] = in(Select(p), This)
+		def in(c: ConfigKey): ScopedTask[T] = in(This, Select(c))
+		def in(p: ProjectRef, c: ConfigKey): ScopedTask[T] = in(Select(p), Select(c))
+		def in(p: ScopeAxis[ProjectRef], c: ScopeAxis[ConfigKey]): ScopedTask[T]  =  in(Scope(p, c, This, This))
+		def in(s: Scope): ScopedTask[T]  =  scopedTask(s, taskKey)
 	}
 	private[this] def scopedTask[T](s: Scope, k: AttributeKey[Task[T]]): ScopedTask[T] = new ScopedTask[T] { val scope = s; val key = k }
 
+	final class RichSettingList[S](scope: Scope, key: AttributeKey[Seq[S]])
+	{
+		def += (value: => S): Setting[Seq[S]]  =  ++=(value :: Nil)
+		def ++=(values: => Seq[S]): Setting[Seq[S]]  =  (new RichSettingScoped(scope, key)) ~= (_ ++ values )
+	}
+	final class RichListTask[S](scope: Scope, key: AttributeKey[Task[Seq[S]]])
+	{
+		def += (value: => S): Setting[Task[Seq[S]]]  =  ++=(value :: Nil)
+		def ++=(values: => Seq[S]): Setting[Task[Seq[S]]]  =  (new RichTaskScoped(scope, key)) ~= (_ ++ values )
+	}
 	sealed abstract class RichBaseScoped[S]
 	{
 		def scope: Scope
@@ -87,13 +99,12 @@ object Scoped
 		protected final val scopedList = scoped :^: KNil
 		
 		final def :==(value: S): Setting[S]  =  :=(value)
-		final def :==(value: SettingKey[S]): Setting[S]  =  :-(value app identity)
+		final def :==(value: SettingKey[S]): Setting[S]  =  <<=(value(identity))
 		final def := (value: => S): Setting[S]  =  Project.value(scoped)(value)
-		final def :~ (f: S => S): Setting[S]  =  Project.update(scoped)(f)
-		final def :- (app: Apply[S]): Setting[S]  =  app toSetting scoped
+		final def ~= (f: S => S): Setting[S]  =  Project.update(scoped)(f)
+		final def <<= (app: Apply[S]): Setting[S]  =  app toSetting scoped
 
 		final def apply[T](f: S => T): Apply[T] = Apply.mk(scopedList)(hl => f(hl.head))
-		final def app[T](f: S => T): Apply[T] = apply(f)
 
 		final def get(settings: Settings[Scope]): Option[S] = settings.get(scope, key)
 	}
@@ -110,10 +121,10 @@ object Scoped
 		def :==(value: Task[S]): ScS  =  Project.value(scoped)( value )
 		def := (value: => S): ScS  =  :==(task(value))
 		def :== (v: TaskKey[S]): ScS = Project.app(scoped, ScopedKey(scope, v.key) :^: KNil)(_.head)
-		def :== (v: SettingKey[S]): ScS = :-( v app const )
-		def :~ (f: S => S): ScS  =  Project.update(scoped)( _ map f )
+		def :== (v: SettingKey[S]): ScS = <<=( v(const))
+		def ~= (f: S => S): ScS  =  Project.update(scoped)( _ map f )
 
-		def :- (app: App[S]): ScS  =  app toSetting scoped
+		def <<= (app: App[S]): ScS  =  app toSetting scoped
 
 		def setting: ScopedSetting[Task[S]] = scopedSetting(scope, key)
 		def get(settings: Settings[Scope]): Option[Task[S]] = settings.get(scope, key)

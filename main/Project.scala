@@ -49,6 +49,13 @@ object Project extends Init[Scope]
 			case ProjectRef(Some(uri), Some(id)) => (structure.units get uri).flatMap(_.defined get id)
 			case _ => None
 		}
+
+	def setProject(session: SessionSettings, structure: Load.BuildStructure, s: State): State =
+	{
+		val newAttrs = s.attributes.put(StructureKey, structure).put(SessionKey, session)
+		val newState = s.copy(attributes = newAttrs)
+		updateCurrent(newState.runExitHooks())
+	}
 	def current(state: State): (URI, String) = session(state).current
 	def currentRef(state: State): ProjectRef =
 	{
@@ -64,7 +71,7 @@ object Project extends Init[Scope]
 		logger(s).info("Set current project to " + id + " (in build " + uri +")")
 
 		val data = structure.data
-		val historyPath = HistoryPath(ref).get(data).flatMap(identity)
+		val historyPath = HistoryPath in ref get data flatMap identity
 		val newAttrs = s.attributes.put(Watch.key, makeWatched(data, ref, project)).put(HistoryPath.key, historyPath)
 		s.copy(attributes = newAttrs)
 	}
@@ -72,7 +79,7 @@ object Project extends Init[Scope]
 
 	def makeWatched(data: Settings[Scope], ref: ProjectRef, project: Project): Watched =
 	{
-		def getWatch(ref: ProjectRef) = Watch(ref).get(data)
+		def getWatch(ref: ProjectRef) = Watch in ref get data
 		getWatch(ref) match
 		{
 			case Some(currentWatch) =>

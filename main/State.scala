@@ -39,6 +39,7 @@ trait StateOps {
 	def get[T](key: AttributeKey[T]): Option[T]
 	def put[T](key: AttributeKey[T], value: T): State
 	def baseDir: File
+	def runExitHooks(): State
 }
 object State
 {
@@ -73,6 +74,10 @@ object State
 			}
 			else
 				s.copy(commands = remaining)
+		}
+		def runExitHooks(): State = {
+			ExitHooks.runExitHooks(s.exitHooks.toSeq)
+			s.copy(exitHooks = Set.empty)
 		}
 	}
 }
