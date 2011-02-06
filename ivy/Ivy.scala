@@ -34,7 +34,7 @@ final class IvySbt(val configuration: IvyConfiguration)
 	private def withDefaultLogger[T](f: => T): T =
 	{
 		def action() =
-			IvySbt.synchronized 
+			IvySbt.synchronized
 			{
 				val originalLogger = Message.getDefaultLogger
 				Message.setDefaultLogger(logger)
@@ -93,7 +93,9 @@ final class IvySbt(val configuration: IvyConfiguration)
 		def withModule[T](f: (Ivy,DefaultModuleDescriptor,String) => T): T =
 			withIvy[T] { ivy => f(ivy, moduleDescriptor, defaultConfig) }
 
-		lazy val (moduleDescriptor: DefaultModuleDescriptor, defaultConfig: String) =
+		def moduleDescriptor = IvySbt.synchronized { moduleDescriptor0 }
+		def defaultConfig = IvySbt.synchronized { defaultConfig0 }
+		private[this] lazy val (moduleDescriptor0: DefaultModuleDescriptor, defaultConfig0: String) =
 		{
 			val (baseModule, baseConfiguration) =
 				moduleSettings match
