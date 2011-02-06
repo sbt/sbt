@@ -10,6 +10,7 @@ sealed trait Settings[Scope]
 	def data: Map[Scope, AttributeMap]
 	def keys(scope: Scope): Set[AttributeKey[_]]
 	def scopes: Set[Scope]
+	def definingScope(scope: Scope, key: AttributeKey[_]): Option[Scope]
 	def allKeys[T](f: (Scope, AttributeKey[_]) => T): Seq[T]
 	def get[T](scope: Scope, key: AttributeKey[T]): Option[T]
 	def set[T](scope: Scope, key: AttributeKey[T], value: T): Settings[Scope]
@@ -23,6 +24,8 @@ private final class Settings0[Scope](val data: Map[Scope, AttributeMap], val del
 
 	def get[T](scope: Scope, key: AttributeKey[T]): Option[T] =
 		delegates(scope).toStream.flatMap(sc => scopeLocal(sc, key) ).headOption
+	def definingScope(scope: Scope, key: AttributeKey[_]): Option[Scope] =
+		delegates(scope).toStream.filter(sc => scopeLocal(sc, key).isDefined ).headOption
 
 	private def scopeLocal[T](scope: Scope, key: AttributeKey[T]): Option[T] =
 		(data get scope).flatMap(_ get key)
@@ -64,15 +67,20 @@ trait Init[Scope]
 	def getValue[T](s: Settings[Scope], k: ScopedKey[T]) = s.get(k.scope, k.key).get
 	def asFunction[T](s: Settings[Scope]): ScopedKey[T] => T = k => getValue(s, k)
 
-	def make(init: Seq[Setting[_]])(implicit delegates: Scope => Seq[Scope], scopeLocal: ScopedKey[_] => Seq[Setting[_]]): Settings[Scope] =
+	def compiled(init: Seq[Setting[_]])(implicit delegates: Scope => Seq[Scope], scopeLocal: ScopedKey[_] => Seq[Setting[_]]): CompiledMap =
 	{
+		// prepend per-scope settings 
 		val withLocal = addLocal(init)(scopeLocal)
 		// group by Scope/Key, dropping dead initializations
 		val sMap: ScopedMap = grouped(withLocal)
 		// delegate references to undefined values according to 'delegates'
 		val dMap: ScopedMap = delegate(sMap)(delegates)
 		// merge Seq[Setting[_]] into Compiled
-		val cMap: CompiledMap = compile(dMap)
+		compile(dMap)
+	}
+	def make(init: Seq[Setting[_]])(implicit delegates: Scope => Seq[Scope], scopeLocal: ScopedKey[_] => Seq[Setting[_]]): Settings[Scope] =
+	{
+		val cMap = compiled(init)(delegates, scopeLocal)
 		// order the initializations.  cyclic references are detected here.
 		val ordered: Seq[Compiled] = sort(cMap)
 		// evaluation: apply the initializations.
