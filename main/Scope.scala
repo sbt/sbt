@@ -59,9 +59,9 @@ object Scope
 			import scope.{project, config, task, extra}
 		val projectPrefix = project.foldStrict(Project.display, "*", ".")
 		val configPrefix = config.foldStrict(display, "*:", ".:")
-		val taskPostfix = task.foldStrict(" for " + _.label, "", "")
+		val taskPostfix = task.foldStrict(x => (" for " + x.label) :: Nil, Nil, Nil)
 		val extraPostfix = extra.foldStrict(_.entries.map( _.toString ).toList, Nil, Nil)
-		val extras = taskPostfix :: extraPostfix
+		val extras = taskPostfix ::: extraPostfix
 		val postfix = if(extras.isEmpty) "" else extras.mkString("(", ", ", ")")
 		projectPrefix + "/" + configPrefix + sep + postfix
 	}
