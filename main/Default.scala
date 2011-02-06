@@ -14,9 +14,11 @@ package sbt
 	import scala.xml.{Node => XNode,NodeSeq}
 	import org.apache.ivy.core.module.{descriptor, id}
 	import descriptor.ModuleDescriptor, id.ModuleRevisionId
+	import org.scalatools.testing.Framework
 
 object Keys
 {
+	// Path Keys
 	val Base = SettingKey[File]("base-directory")
 	val Target = SettingKey[File]("target")
 	val Source = SettingKey[File]("source-directory")
@@ -28,35 +30,51 @@ object Keys
 	val SourceDirectories = SettingKey[Seq[File]]("source-directories")
 	val ResourceDirectories = SettingKey[Seq[File]]("resource-directories")
 	val ClassDirectory = SettingKey[File]("classes-directory")
+	val DocDirectory = SettingKey[File]("doc-directory")
 	val CacheDirectory = SettingKey[File]("cache-directory")
 	val LibDirectory = SettingKey[File]("lib-directory")
 	val SourceFilter = SettingKey[FileFilter]("source-filter")
 	val DefaultExcludes = SettingKey[FileFilter]("default-excludes")
 	val Sources = TaskKey[Seq[File]]("sources")
-	
+	val CleanFiles = SettingKey[Seq[File]]("clean-files")
+
+	// compile/doc keys
+	val MaxErrors = SettingKey[Int]("maximum-errors")
+	val ScaladocOptions = SettingKey[Seq[String]]("scaladoc-options")
 	val ScalacOptions = SettingKey[Seq[String]]("scalac-options")
 	val JavacOptions = SettingKey[Seq[String]]("javac-options")
 	val InitialCommands = SettingKey[String]("initial-commands")
-
-	val WebappDir = SettingKey[File]("webapp-dir")
-	val ScalaVersion = SettingKey[String]("scala-version")
-	val AutoUpdate = SettingKey[Boolean]("auto-update")
-
 	val CompileInputs = TaskKey[Compile.Inputs]("compile-inputs")
 	val ScalaInstance = SettingKey[ScalaInstance]("scala-instance")
+	val ScalaVersion = SettingKey[String]("scala-version")
+
+	val WebappDir = SettingKey[File]("webapp-dir")
 
 	val Clean = TaskKey[Unit]("clean")
 	val ConsoleTask = TaskKey[Unit]("console")
 	val ConsoleQuick = TaskKey[Unit]("console-quick")
 	val CompileTask = TaskKey[Analysis]("compile")
-	val Compilers = SettingKey[Compile.Compilers]("compilers")
+	val Compilers = TaskKey[Compile.Compilers]("compilers")
+	val DocTask = TaskKey[Unit]("doc")
 	
+	// Run Keys
 	val SelectMainClass = TaskKey[Option[String]]("select-main-class")
 	val RunMainClass = TaskKey[Option[String]]("run-main-class")
 	val RunTask = InputKey[Unit]("run")
 	val DiscoveredMainClasses = TaskKey[Seq[String]]("discovered-main-classes")
 	val Runner = SettingKey[ScalaRun]("runner")
 
+	// Test Keys
+	val TestLoader = TaskKey[ClassLoader]("test-loader")
+	val LoadedTestFrameworks = TaskKey[Map[TestFramework,Framework]]("loaded-test-frameworks")
+	val DefinedTests = TaskKey[Seq[TestDefinition]]("defined-tests")
+	val ExecuteTests = TaskKey[Test.Output]("execute-tests")
+	val TestTask = TaskKey[Unit]("test")
+	val TestOptions = TaskKey[Seq[TestOption]]("test-options")
+	val TestFrameworks = SettingKey[Seq[TestFramework]]("test-frameworks")
+	val TestListeners = TaskKey[Iterable[TestReportListener]]("test-listeners")
+		
+	// Classpath/Dependency Management Keys
 	type Classpath = Seq[Attributed[File]]
 	
 	val Name = SettingKey[String]("name")
@@ -118,6 +136,7 @@ object Keys
 	val PomFile = SettingKey[File]("pom-file")
 	val Artifacts = SettingKey[Seq[Artifact]]("artifacts")
 	val ProjectDescriptors = TaskKey[Map[ModuleRevisionId,ModuleDescriptor]]("project-descriptor-map")
+	val AutoUpdate = SettingKey[Boolean]("auto-update")
 	
 	// special
 	val Data = TaskKey[Settings[Scope]]("settings")
@@ -134,18 +153,18 @@ object Default
 	final class RichFileSetting(s: ScopedSetting[File]) extends RichFileBase
 	{
 		def /(c: String): Apply[File] = s { _ / c }
-		protected[this] def map(f: PathFinder => PathFinder) = s(file => finder(f)(file :: Nil))
+		protected[this] def map0(f: PathFinder => PathFinder) = s(file => finder(f)(file :: Nil))
 	}
 	final class RichFilesSetting(s: ScopedSetting[Seq[File]]) extends RichFileBase
 	{
-		def /(s: String): Apply[Seq[File]] = map { _ / s }
-		protected[this] def map(f: PathFinder => PathFinder) = s(finder(f))
+		def /(s: String): Apply[Seq[File]] = map0 { _ / s }
+		protected[this] def map0(f: PathFinder => PathFinder) = s(finder(f))
 	}
 	sealed abstract class RichFileBase
 	{
-		def *(filter: FileFilter): Apply[Seq[File]] = map { _ * filter }
-		def **(filter: FileFilter): Apply[Seq[File]] = map { _ ** filter }
-		protected[this] def map(f: PathFinder => PathFinder): Apply[Seq[File]]
+		def *(filter: FileFilter): Apply[Seq[File]] = map0 { _ * filter }
+		def **(filter: FileFilter): Apply[Seq[File]] = map0 { _ ** filter }
+		protected[this] def map0(f: PathFinder => PathFinder): Apply[Seq[File]]
 		protected[this] def finder(f: PathFinder => PathFinder): Seq[File] => Seq[File] =
 			in => f(in).getFiles.toSeq
 	}
@@ -165,6 +184,7 @@ object Default
 	def core = Seq(
 		Name :== "test",
 		Version :== "0.1",
+		MaxErrors :== 100,
 		Data <<= EvaluateTask.state map { state => Project.structure(state).data }
 	)
 	def paths = Seq(
@@ -183,6 +203,7 @@ object Default
 		SourceManaged <<= configSrcSub(SourceManaged),
 		CacheDirectory <<= (CacheDirectory, Config) { _ / _.name },
 		ClassDirectory <<= (Target, Config) { (target, conf) => target / (prefix(conf.name) + "classes") },
+		DocDirectory <<= (Target, Config) { (target, conf) => target / (prefix(conf.name) + "api") },
 		Sources <<= (SourceDirectories, SourceFilter, DefaultExcludes) map { (d,f,excl) => d.descendentsExcept(f,excl).getFiles.toSeq },
 		ScalaSource <<= Source / "scala",
 		JavaSource <<= Source / "java",
@@ -201,7 +222,7 @@ object Default
 	)
 
 	def compileBase = Seq(
-		Compilers <<= (ScalaInstance, AppConfig) { (si, app) => Compile.compilers(si)(app, ConsoleLogger()) },
+		Compilers <<= (ScalaInstance, AppConfig, streams) map { (si, app, s) => Compile.compilers(si)(app, s.log) },
 		JavacOptions :== Nil,
 		ScalacOptions :== Nil,
 		ScalaInstance <<= (AppConfig, ScalaVersion){ (app, version) => sbt.ScalaInstance(version, app.provider.scalaProvider) },
@@ -218,11 +239,34 @@ object Default
 		Runner <<= ScalaInstance( si => new Run(si) ),
 		SelectMainClass <<= DiscoveredMainClasses map selectRunMain,
 		RunMainClass :== SelectMainClass,
-		RunTask <<= runTask(FullClasspath, RunMainClass)
+		RunTask <<= runTask(FullClasspath, RunMainClass),
+		ScaladocOptions <<= ScalacOptions(identity),
+		DocTask <<= docTask
 	)
 
 	lazy val globalTasks = Seq(
-		Clean <<= cleanTask
+		CleanFiles <<= (Target, SourceManaged) { _ :: _ :: Nil },
+		Clean <<= CleanFiles map IO.delete
+	)
+
+	lazy val testTasks = Seq(	
+		TestLoader <<= (FullClasspath, ScalaInstance) map { (cp, si) => TestFramework.createTestLoader(data(cp), si) },
+		TestFrameworks :== {
+			import sbt.TestFrameworks._
+			Seq(ScalaCheck, Specs, ScalaTest, ScalaCheckCompat, ScalaTestCompat, SpecsCompat, JUnit)
+		},
+		LoadedTestFrameworks <<= (TestFrameworks, streams, TestLoader) map { (frameworks, s, loader) =>
+			frameworks.flatMap(f => f.create(loader, s.log).map( x => (f,x)).toIterable).toMap
+		},
+		DefinedTests <<= (LoadedTestFrameworks, CompileTask) map { (frameworkMap, analysis) =>
+			Test.discover(frameworkMap.values.toSeq, analysis)._1
+		},
+		TestListeners <<= (streams in TestTask) map ( s => TestLogger(s.log) :: Nil ),
+		TestOptions <<= TestListeners map { listeners => Test.Listeners(listeners) :: Nil },
+		ExecuteTests <<= (streams in TestTask, LoadedTestFrameworks, TestOptions, TestLoader, DefinedTests) flatMap {
+			(s, frameworkMap, options, loader, discovered) => Test(frameworkMap, loader, discovered, options, s.log)
+		},
+		TestTask <<= (ExecuteTests, streams) map { (results, s) => Test.showResults(s.log, results) }
 	)
 
 	def selectRunMain(classes: Seq[String]): Option[String] =
@@ -239,6 +283,12 @@ object Default
 			}
 		}
 
+	def docTask: Apply[Task[Unit]] =
+		(CompileInputs, streams, DocDirectory, Config, ScaladocOptions) map { (in, s, target, config, options) =>
+			val d = new Scaladoc(in.config.maxErrors, in.compilers.scalac)
+			d(nameForSrc(config.name), in.config.sources, in.config.classpath, target, options)(s.log)
+		}
+
 	def mainRunTask = RunTask <<= runTask(FullClasspath in Configurations.Runtime, RunMainClass)
 
 	def discoverMainClasses(analysis: Analysis): Seq[String] =
@@ -252,7 +302,6 @@ object Default
 			println()
 	}
 	
-	def cleanTask = (Target, SourceManaged) map { (t, sm) => IO.delete(t :: sm :: Nil) }
 	def compileTask = (CompileInputs, streams) map { (i,s) => Compile(i,s.log) }
 	def compileInputsTask =
 		(DependencyClasspath, Sources, JavaSourceRoots, Compilers, JavacOptions, ScalacOptions, CacheDirectory, ClassDirectory, streams) map {
@@ -260,7 +309,7 @@ object Default
 			val classpath = classes +: data(cp)
 			val analysis = analysisMap(cp)
 			val cache = cacheDirectory / "compile"
-			Compile.inputs(classpath, sources, classes, scalacOptions, javacOptions, javaRoots, analysis, cache, 100)(compilers, ConsoleLogger())
+			Compile.inputs(classpath, sources, classes, scalacOptions, javacOptions, javaRoots, analysis, cache, 100)(compilers, s.log)
 		}
 
 //	lazy val projectConsole = task { Console.sbtDefault(info.compileInputs, this)(ConsoleLogger()) }
@@ -274,7 +323,7 @@ object Default
 	lazy val defaultTasks =
 		globalTasks ++
 		inConfig(CompileConf)(configTasks :+ mainRunTask) ++
-		inConfig(TestConf)(configTasks)
+		inConfig(TestConf)(configTasks ++ testTasks)
 
 	lazy val defaultWebTasks = Nil
 

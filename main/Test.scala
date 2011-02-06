@@ -39,7 +39,7 @@ object Test
 	final case class Argument(framework: Option[TestFramework], args: List[String]) extends TestOption
 
 	
-	def apply(frameworks: Map[TestFramework, Framework], testLoader: ClassLoader, discovered: Seq[TestDefinition], options: Seq[TestOption], log: Logger) =
+	def apply(frameworks: Map[TestFramework, Framework], testLoader: ClassLoader, discovered: Seq[TestDefinition], options: Seq[TestOption], log: Logger): Task[Output] =
 	{
 			import mutable.{HashSet, ListBuffer, Map, Set}
 		val testFilters = new ListBuffer[String => Boolean]
@@ -127,7 +127,7 @@ object Test
 		(tests, mains.toSet)
 	}
 
-	def showResults(log: Logger, results: (TestResult.Value, Map[String, TestResult.Value])) =
+	def showResults(log: Logger, results: (TestResult.Value, Map[String, TestResult.Value])): Unit =
 	{
 			import TestResult.{Error, Failed, Passed}
 
