@@ -41,13 +41,26 @@ EvalCommand + """ <expression>
 	Evaluates the given Scala expression and prints the result and type.
 """
 
-	val GetCommand = "get"
-	val getBrief = (GetCommand + " <setting-key>", "Prints the value for the given key.")
-	val getDetailed =
-GetCommand + """ <setting-key>
+	def DelegatesCommand = "delegates"
+	def delegatesBrief = (DelegatesCommand + " <key>", "Prints the scopes searched when resolving the given key.")
+	def delegatesDetailed =
+DelegatesCommand + """ <key>
+	<key> is interpreted as a Scala expression of type sbt.Scoped.
+	When a key is resolved to a value, it may not be defined in the requested scope.
+	In this case, there is a defined search sequence.
+	This command prints the scopes that are searched for the key.
+"""
 
-	Displays the value bound to the key argument using its toString method.
-	<setting-key> is interpreted as a Scala expression of type sbt.ScopedSetting[_].
+	val GetCommand = "get"
+	val getBrief = (GetCommand + " <key>", "Prints the value for the given key, the defining scope, related definitions, and dependencies.")
+	val getDetailed =
+GetCommand + """ <key>
+
+	<key> is interpreted as a Scala expression of type sbt.Scoped.
+	For a plain setting, the value bound to the key argument is displayed using its toString method.
+	Otherwise, the type of task ("Task" or "Input task") is displayed.
+	
+	Other details are shown, including the defining scope, dependencies, and related definitions.
 """
 	
 	val SetCommand = "set"

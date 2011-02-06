@@ -59,7 +59,7 @@ class xMain extends xsbti.AppMain
 object Commands
 {
 	def DefaultCommands: Seq[Command] = Seq(ignore, help, reload, read, history, continuous, exit, loadCommands, loadProject, compile, discover,
-		projects, project, setOnFailure, ifLast, multi, shell, set, get, eval, alias, append, nop, sessionCommand, act)
+		projects, project, setOnFailure, ifLast, multi, shell, set, get, eval, delegates,alias, append, nop, sessionCommand, act)
 
 	def nop = Command.custom(s => success(() => s), Nil)
 	def ignore = Command.command(FailureWall)(identity)
@@ -235,15 +235,24 @@ object Commands
 		val newSession = session.appendSettings( append map (a => (a, arg)))
 		reapply(newSession, structure, s)
 	}
-	def get = Command.single(GetCommand, getBrief, getDetailed) { (s, arg) =>
-		val extracted = Project extract s
-		import extracted._
-		val result = session.currentEval().eval(arg, srcName = "get", imports = autoImports(extracted), tpeName = Some("sbt.Scoped"))
-		val scoped = result.value.asInstanceOf[Scoped]
-		val resolve = Scope.resolveScope(Load.projectScope(curi, cid), curi, rootProject)
-		val detailString = Project.details(structure, resolve(scoped.scope), scoped.key)
+	def get = Command.single(GetCommand, getBrief, getDetailed)( scopedCommand(GetCommand) { (s, scope, key, structure) =>
+		val detailString = Project.details(structure, scope, key)
 		logger(s).info(detailString)
 		s
+	})
+	def delegates = Command.single(DelegatesCommand, delegatesBrief, delegatesDetailed) ( scopedCommand(DelegatesCommand) { (s, scope, key, structure) =>
+		val log = logger(s)
+		structure.delegates(scope).foreach(d => log.info(Project.display(Project.ScopedKey(d, key))))
+		s
+	})
+	def scopedCommand(srcName: String)(f: (State, Scope, AttributeKey[_], Load.BuildStructure) => State): (State, String) => State = (s, arg) =>
+	{
+		val extracted = Project extract s
+		import extracted._
+		val result = session.currentEval().eval(arg, srcName = srcName, imports = autoImports(extracted), tpeName = Some("sbt.Scoped"))
+		val scoped = result.value.asInstanceOf[Scoped]
+		val resolve = Scope.resolveScope(Load.projectScope(curi, cid), curi, rootProject)
+		f(s, resolve(scoped.scope), scoped.key, structure)
 	}
 	def autoImports(extracted: Extracted): EvalImports  =  new EvalImports(imports(extracted), "<auto-imports>")
 	def imports(extracted: Extracted): Seq[(String,Int)] =
