@@ -1,3 +1,6 @@
+/* sbt -- Simple Build Tool
+ * Copyright 2011 Mark Harrah
+ */
 package sbt
 
 	import java.io.File
@@ -30,8 +33,10 @@ object Keys
 	val SourceFilter = SettingKey[FileFilter]("source-filter")
 	val DefaultExcludes = SettingKey[FileFilter]("default-excludes")
 	val Sources = TaskKey[Seq[File]]("sources")
+	
 	val ScalacOptions = SettingKey[Seq[String]]("scalac-options")
 	val JavacOptions = SettingKey[Seq[String]]("javac-options")
+	val InitialCommands = SettingKey[String]("initial-commands")
 
 	val WebappDir = SettingKey[File]("webapp-dir")
 	val ScalaVersion = SettingKey[String]("scala-version")
@@ -40,8 +45,17 @@ object Keys
 	val CompileInputs = TaskKey[Compile.Inputs]("compile-inputs")
 	val ScalaInstance = SettingKey[ScalaInstance]("scala-instance")
 
+	val Clean = TaskKey[Unit]("clean")
+	val ConsoleTask = TaskKey[Unit]("console")
+	val ConsoleQuick = TaskKey[Unit]("console-quick")
 	val CompileTask = TaskKey[Analysis]("compile")
 	val Compilers = SettingKey[Compile.Compilers]("compilers")
+	
+	val SelectMainClass = TaskKey[Option[String]]("select-main-class")
+	val RunMainClass = TaskKey[Option[String]]("run-main-class")
+	val RunTask = InputKey[Unit]("run")
+	val DiscoveredMainClasses = TaskKey[Seq[String]]("discovered-main-classes")
+	val Runner = SettingKey[ScalaRun]("runner")
 
 	type Classpath = Seq[Attributed[File]]
 	
@@ -180,7 +194,7 @@ object Default
 	def addBaseSources = Seq(
 		Sources <<= (Sources, Base, SourceFilter, DefaultExcludes) map { (srcs,b,f,excl) => (srcs +++ b * (f -- excl)).getFiles.toSeq }
 	)
-	lazy val configTasks = Classpaths.configSettings ++ compileTasks
+	lazy val configTasks = Classpaths.configSettings ++ baseTasks
 	
 	def webPaths = Seq(
 		WebappDir <<= Source / "webapp"
@@ -192,12 +206,53 @@ object Default
 		ScalacOptions :== Nil,
 		ScalaInstance <<= (AppConfig, ScalaVersion){ (app, version) => sbt.ScalaInstance(version, app.provider.scalaProvider) },
 		ScalaVersion <<= AppConfig( _.provider.scalaProvider.version)
-	)	
-	def compileTasks = Seq(
-		CompileTask <<= compileTask,
-		CompileInputs <<= compileInputsTask
 	)
 
+	def baseTasks = Seq(
+		InitialCommands :== "",
+		CompileTask <<= compileTask,
+		CompileInputs <<= compileInputsTask,
+		ConsoleTask <<= console,
+		ConsoleQuick <<= consoleQuick,
+		DiscoveredMainClasses <<= CompileTask map discoverMainClasses,
+		Runner <<= ScalaInstance( si => new Run(si) ),
+		SelectMainClass <<= DiscoveredMainClasses map selectRunMain,
+		RunMainClass :== SelectMainClass,
+		RunTask <<= runTask(FullClasspath, RunMainClass)
+	)
+
+	lazy val globalTasks = Seq(
+		Clean <<= cleanTask
+	)
+
+	def selectRunMain(classes: Seq[String]): Option[String] =
+		sbt.SelectMainClass(Some(SimpleReader readLine _), classes)
+
+	def runTask(classpath: ScopedTask[Classpath], mainClass: ScopedTask[Option[String]]): Apply[InputTask[Unit]] =
+		(classpath.setting, mainClass.setting, Runner, streams.setting) { (cpTask, mainTask, runner, sTask) =>
+			import Types._
+			InputTask(complete.Parsers.spaceDelimited("<arg>")) { args =>
+				(cpTask, mainTask, sTask) map { case cp :+: main :+: s :+: HNil =>
+					val mainClass = main getOrElse error("No main class detected.")
+					runner.run(mainClass, data(cp), args, s.log) foreach error
+				}
+			}
+		}
+
+	def mainRunTask = RunTask <<= runTask(FullClasspath in Configurations.Runtime, RunMainClass)
+
+	def discoverMainClasses(analysis: Analysis): Seq[String] =
+		compile.Discovery.applications(Test.allDefs(analysis)) collect { case (definition, discovered) if(discovered.hasMain) => definition.name }
+	
+	def console = consoleTask(FullClasspath, ConsoleTask)
+	def consoleQuick = consoleTask(ExternalDependencyClasspath, ConsoleQuick)
+	def consoleTask(classpath: TaskKey[Classpath], task: TaskKey[_]) = (Compilers, classpath, ScalacOptions in task, InitialCommands in task, streams) map {
+		(cs, cp, options, initialCommands, s) =>
+			(new Console(cs.scalac))(data(cp), options, initialCommands, s.log).foreach(msg => error(msg))
+			println()
+	}
+	
+	def cleanTask = (Target, SourceManaged) map { (t, sm) => IO.delete(t :: sm :: Nil) }
 	def compileTask = (CompileInputs, streams) map { (i,s) => Compile(i,s.log) }
 	def compileInputsTask =
 		(DependencyClasspath, Sources, JavaSourceRoots, Compilers, JavacOptions, ScalacOptions, CacheDirectory, ClassDirectory, streams) map {
@@ -216,14 +271,21 @@ object Default
 	lazy val defaultPaths = paths ++ inConfig(CompileConf)(configPaths ++ addBaseSources) ++ inConfig(TestConf)(configPaths)
 	lazy val defaultWebPaths = defaultPaths ++ inConfig(CompileConf)(webPaths)
 
-	lazy val defaultTasks = inConfig(CompileConf)(configTasks) ++ inConfig(TestConf)(configTasks)
+	lazy val defaultTasks =
+		globalTasks ++
+		inConfig(CompileConf)(configTasks :+ mainRunTask) ++
+		inConfig(TestConf)(configTasks)
+
 	lazy val defaultWebTasks = Nil
 
 	def pluginDefinition = Seq(
 		EvaluateTask.PluginDefinition <<= (FullClasspath in CompileConf,CompileTask in CompileConf) map ( (c,a) => (data(c),a) )
 	)
 
-	lazy val defaultClasspaths = 	Classpaths.publishSettings ++ Classpaths.baseSettings ++ inConfig(CompileConf)(Classpaths.configSettings) ++ inConfig(TestConf)(Classpaths.configSettings)
+	lazy val defaultClasspaths =
+		Classpaths.publishSettings ++ Classpaths.baseSettings ++
+		inConfig(CompileConf)(Classpaths.configSettings) ++
+		inConfig(TestConf)(Classpaths.configSettings)
 
 
 	lazy val defaultSettings = core ++ defaultPaths ++ defaultClasspaths ++ defaultTasks ++ compileBase ++ pluginDefinition
