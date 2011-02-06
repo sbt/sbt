@@ -19,7 +19,7 @@ It is safe to use for its intended purpose: copying resources to a class output 
 */
 object Sync
 {
-	def apply(cacheFile: File, inStyle: FileInfo.Style = FileInfo.lastModified, outStyle: FileInfo.Style = FileInfo.exists): Iterable[(File,File)] => Relation[File,File] =
+	def apply(cacheFile: File, inStyle: FileInfo.Style = FileInfo.lastModified, outStyle: FileInfo.Style = FileInfo.exists): Traversable[(File,File)] => Relation[File,File] =
 		mappings =>
 		{
 			val relation = Relation.empty ++ mappings

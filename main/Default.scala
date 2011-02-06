@@ -56,6 +56,8 @@ object Keys
 	val CompileTask = TaskKey[Analysis]("compile")
 	val Compilers = TaskKey[Compile.Compilers]("compilers")
 	val DocTask = TaskKey[Unit]("doc")
+	val CopyResources = TaskKey[Traversable[(File,File)]]("copy-resources")
+	val Resources = TaskKey[Seq[File]]("resources")
 	
 	// Run Keys
 	val SelectMainClass = TaskKey[Option[String]]("select-main-class")
@@ -210,7 +212,8 @@ object Default
 		JavaSourceRoots <<= toSeq(JavaSource),
 		ResourceDir <<= Source / "resources",
 		SourceDirectories <<= (ScalaSource, JavaSourceRoots) { _ +: _ },
-		ResourceDirectories <<= toSeq(ResourceDir)
+		ResourceDirectories <<= toSeq(ResourceDir),
+		Resources <<= (ResourceDirectories, DefaultExcludes) map { (dirs, excl) => dirs.descendentsExcept("*",excl).getFiles.toSeq }
 	)
 	def addBaseSources = Seq(
 		Sources <<= (Sources, Base, SourceFilter, DefaultExcludes) map { (srcs,b,f,excl) => (srcs +++ b * (f -- excl)).getFiles.toSeq }
@@ -241,7 +244,8 @@ object Default
 		RunMainClass :== SelectMainClass,
 		RunTask <<= runTask(FullClasspath, RunMainClass),
 		ScaladocOptions <<= ScalacOptions(identity),
-		DocTask <<= docTask
+		DocTask <<= docTask,
+		CopyResources <<= copyResources
 	)
 
 	lazy val globalTasks = Seq(
@@ -263,8 +267,8 @@ object Default
 		},
 		TestListeners <<= (streams in TestTask) map ( s => TestLogger(s.log) :: Nil ),
 		TestOptions <<= TestListeners map { listeners => Test.Listeners(listeners) :: Nil },
-		ExecuteTests <<= (streams in TestTask, LoadedTestFrameworks, TestOptions, TestLoader, DefinedTests) flatMap {
-			(s, frameworkMap, options, loader, discovered) => Test(frameworkMap, loader, discovered, options, s.log)
+		ExecuteTests <<= (streams in TestTask, LoadedTestFrameworks, TestOptions, TestLoader, DefinedTests, CopyResources) flatMap {
+			(s, frameworkMap, options, loader, discovered, _) => Test(frameworkMap, loader, discovered, options, s.log)
 		},
 		TestTask <<= (ExecuteTests, streams) map { (results, s) => Test.showResults(s.log, results) }
 	)
@@ -273,10 +277,10 @@ object Default
 		sbt.SelectMainClass(Some(SimpleReader readLine _), classes)
 
 	def runTask(classpath: ScopedTask[Classpath], mainClass: ScopedTask[Option[String]]): Apply[InputTask[Unit]] =
-		(classpath.setting, mainClass.setting, Runner, streams.setting) { (cpTask, mainTask, runner, sTask) =>
+		(classpath.setting, mainClass.setting, Runner, streams.setting, CopyResources.setting) { (cpTask, mainTask, runner, sTask, copy) =>
 			import Types._
 			InputTask(complete.Parsers.spaceDelimited("<arg>")) { args =>
-				(cpTask, mainTask, sTask) map { case cp :+: main :+: s :+: HNil =>
+				(cpTask :^: mainTask :^: sTask :^: copy :^: KNil) map { case cp :+: main :+: s :+: _ :+: HNil =>
 					val mainClass = main getOrElse error("No main class detected.")
 					runner.run(mainClass, data(cp), args, s.log) foreach error
 				}
@@ -311,6 +315,17 @@ object Default
 			val cache = cacheDirectory / "compile"
 			Compile.inputs(classpath, sources, classes, scalacOptions, javacOptions, javaRoots, analysis, cache, 100)(compilers, s.log)
 		}
+
+	def copyResources =
+	(ClassDirectory, CacheDirectory, Resources, ResourceDirectories, streams) map { (target, cache, resources, dirs, s) =>
+		val cacheFile = cache / "copy-resources"
+		val mapper = ( (fail: FileMap) /: dirs)( (mapper, dir) => rebase(dir, target) | mapper )
+		val mappings = resources x mapper
+		s.log.debug("Copy resource mappings: " + mappings.mkString("\n\t","\n\t",""))
+		Sync(cacheFile)( mappings )
+		mappings
+	}
+
 
 //	lazy val projectConsole = task { Console.sbtDefault(info.compileInputs, this)(ConsoleLogger()) }
 		

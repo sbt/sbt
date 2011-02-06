@@ -304,6 +304,7 @@ object Scoped
 	implicit def t2ToApp2[A,B](t2: (ScopedSetting[A], ScopedSetting[B]) ): Apply2[A,B] = new Apply2(t2)
 	implicit def t3ToApp3[A,B,C](t3: (ScopedSetting[A], ScopedSetting[B], ScopedSetting[C]) ): Apply3[A,B,C] = new Apply3(t3)
 	implicit def t4ToApp4[A,B,C,D](t4: (ScopedSetting[A], ScopedSetting[B], ScopedSetting[C], ScopedSetting[D]) ): Apply4[A,B,C,D] = new Apply4(t4)
+	implicit def t5ToApp5[A,B,C,D,E](t5: (ScopedSetting[A], ScopedSetting[B], ScopedSetting[C], ScopedSetting[D], ScopedSetting[E]) ): Apply5[A,B,C,D,E] = new Apply5(t5)
 
 	final class Apply[T] private(val toSetting: ScopedKey[T] => Setting[T])
 
@@ -339,6 +340,10 @@ object Scoped
 	final class Apply4[A,B,C,D](t4: (ScopedSetting[A], ScopedSetting[B], ScopedSetting[C], ScopedSetting[D])) {
 		def apply[T](f: (A,B,C,D) => T) =
 			Apply(t4._1 :^: t4._2 :^: t4._3 :^: t4._4 :^: KNil){ case a :+: b :+: c :+: d :+: HNil => f(a,b,c,d) }
+	}
+	final class Apply5[A,B,C,D,E](t5: (ScopedSetting[A], ScopedSetting[B], ScopedSetting[C], ScopedSetting[D], ScopedSetting[E])) {
+		def apply[T](f: (A,B,C,D,E) => T) =
+			Apply(t5._1 :^: t5._2 :^: t5._3 :^: t5._4 :^: t5._5 :^: KNil){ case a :+: b :+: c :+: d :+: e :+: HNil => f(a,b,c,d,e) }
 	}
 
 	/*def unresolved(scope: Scope): Seq[String] = unresolvedProject(scope.project) ++ unresolvedThis(scope)
