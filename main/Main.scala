@@ -238,13 +238,12 @@ object Commands
 	def get = Command.single(GetCommand, getBrief, getDetailed) { (s, arg) =>
 		val extracted = Project extract s
 		import extracted._
-		val result = session.currentEval().eval(arg, srcName = "get", imports = autoImports(extracted), tpeName = Some("sbt.ScopedSetting[_]"))
-		val scoped = result.value.asInstanceOf[ScopedSetting[_]]
+		val result = session.currentEval().eval(arg, srcName = "get", imports = autoImports(extracted), tpeName = Some("sbt.Scoped"))
+		val scoped = result.value.asInstanceOf[Scoped]
 		val resolve = Scope.resolveScope(Load.projectScope(curi, cid), curi, rootProject)
-		(structure.data.get(resolve(scoped.scope), scoped.key)) match {
-			case None => logger(s).error("No entry for key."); s.fail
-			case Some(v) => logger(s).info(v.toString); s
-		}
+		val detailString = Project.details(structure, resolve(scoped.scope), scoped.key)
+		logger(s).info(detailString)
+		s
 	}
 	def autoImports(extracted: Extracted): EvalImports  =  new EvalImports(imports(extracted), "<auto-imports>")
 	def imports(extracted: Extracted): Seq[(String,Int)] =

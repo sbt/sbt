@@ -106,6 +106,24 @@ object Project extends Init[Scope]
 			throw new Uninitialized(u.key, u.refKey, msg)
 		}
 
+	def details(structure: Load.BuildStructure, scope: Scope, key: AttributeKey[_]): String =
+	{
+		val scoped = ScopedKey(scope,key)
+		val value = 
+			(structure.data.get(scope, key)) match {
+				case None => "No entry for key."
+				case Some(v: Task[_]) => "Task"
+				case Some(v: InputTask[_]) => "Input task"
+				case Some(v) => "Value:\n\t" + v.toString
+			}
+		val definedIn = structure.data.definingScope(scope, key) match { case Some(sc) => "Provided by:\n\t" + display(scoped); case None => "" }
+		val cMap = compiled(structure.settings)(structure.delegates, structure.scopeLocal)
+		val related = cMap.keys.filter(k => k.key == key && k.scope != scope)
+		val depends = cMap.get(scoped) match { case Some(c) => c.dependencies.toSet; case None => Set.empty }
+		def printScopes(label: String, scopes: Iterable[ScopedKey[_]]) =
+			if(scopes.isEmpty) "" else scopes.map(display).mkString(label + ":\n\t", "\n\t", "\n")
+		value + "\n" + definedIn + "\n" + printScopes("Dependencies", depends) + printScopes("Related", related)
+	}
 
 	val SessionKey = AttributeKey[SessionSettings]("session-settings")
 	val StructureKey = AttributeKey[Load.BuildStructure]("build-structure")
