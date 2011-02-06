@@ -10,9 +10,9 @@ package sbt
 
 object LogManager
 {
-	def construct(data: Settings[Scope]) = (task: ScopedKey[Task[_]], to: PrintWriter) =>
+	def construct(data: Settings[Scope]) = (task: ScopedKey[_], to: PrintWriter) =>
 	{
-		val scope = Scope.fillTaskAxis(task.scope, task.key)
+		val scope = task.scope
 		def level(key: AttributeKey[Level.Value], default: Level.Value): Level.Value = data.get(scope, key) getOrElse default
 		val screenLevel = level(ScreenLogLevel, Level.Info)
 		val backingLevel = level(PersistLogLevel, Level.Debug)

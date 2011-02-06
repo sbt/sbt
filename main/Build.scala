@@ -106,11 +106,12 @@ object EvaluateTask
 	val PluginDefinition = TaskKey[(Seq[File], Analysis)]("plugin-definition")
 	
 	val (state, dummyState) = dummy[State]("state")
-	val (streams, dummyStreams) = dummy[TaskStreams]("streams")
+	val (streamsManager, dummyStreamsManager) = dummy[Streams]("streams-manager")
+	val streams = TaskKey[TaskStreams]("streams", true)
 
 	def injectSettings: Seq[Project.Setting[_]] = Seq(
 		(state in Scope.GlobalScope) :== dummyState,
-		(streams in Scope.GlobalScope) :== dummyStreams
+		(streamsManager in Scope.GlobalScope) :== dummyStreamsManager
 	)
 	
 	def dummy[T](name: String): (TaskKey[T], Task[T]) = (TaskKey[T](name), dummyTask(name))
@@ -124,18 +125,26 @@ object EvaluateTask
 		processResult(result, log)
 	}
 	def evaluateTask[T](structure: BuildStructure, taskKey: ScopedKey[Task[T]], state: State, thisProject: ProjectRef, checkCycles: Boolean = false, maxWorkers: Int = SystemProcessors): Option[Result[T]] =
-		for( (task, toNode) <- getTask(structure, taskKey, state, thisProject) ) yield
-			runTask(task, checkCycles, maxWorkers)(toNode)
+		withStreams(structure) { str =>
+			for( (task, toNode) <- getTask(structure, taskKey, state, str, thisProject) ) yield
+				runTask(task, checkCycles, maxWorkers)(toNode)
+		}
+
+	def withStreams[T](structure: BuildStructure)(f: Streams => T): T =
+	{
+		val str = std.Streams.closeable(structure.streams)
+		try { f(str) } finally { str.close() }
+	}
 	
-	def getTask[T](structure: BuildStructure, taskKey: ScopedKey[Task[T]], state: State, thisProject: ProjectRef): Option[(Task[T], Execute.NodeView[Task])] =
+	def getTask[T](structure: BuildStructure, taskKey: ScopedKey[Task[T]], state: State, streams: Streams, thisProject: ProjectRef): Option[(Task[T], Execute.NodeView[Task])] =
 	{
 		val thisScope = Scope(Select(thisProject), Global, Global, Global)
 		val resolvedScope = Scope.replaceThis(thisScope)( taskKey.scope )
 		for( t <- structure.data.get(resolvedScope, taskKey.key)) yield
-			(t, nodeView(structure, state))
+			(t, nodeView(state, streams))
 	}
-	def nodeView(structure: BuildStructure, state: State): Execute.NodeView[Task] =
-		transform(structure, dummyStreams, dummyState, state)
+	def nodeView(state: State, streams: Streams): Execute.NodeView[Task] =
+		Transform(dummyStreamsManager :^: dummyState :^: KNil, streams :+: state :+: HNil)
 
 	def runTask[Task[_] <: AnyRef, T](root: Task[T], checkCycles: Boolean = false, maxWorkers: Int = SystemProcessors)(implicit taskToNode: Execute.NodeView[Task]): Result[T] =
 	{
@@ -143,13 +152,6 @@ object EvaluateTask
 
 		val x = new Execute[Task](checkCycles)(taskToNode)
 		try { x.run(root)(service) } finally { shutdown() }
-	}
-
-	def transform(structure: BuildStructure, streamsDummy: Task[TaskStreams], stateDummy: Task[State], state: State) =
-	{
-		val dummies = new Transform.Dummies(stateDummy :^: KNil, streamsDummy)
-		val inject = new Transform.Injected(state :+: HNil, structure.streams)
-		Transform(dummies, inject)(structure.index.taskToKey)
 	}
 
 	def processResult[T](result: Result[T], log: Logger): T =
@@ -160,6 +162,18 @@ object EvaluateTask
 				log.error(Incomplete.show(inc, true))
 				error("Task did not complete successfully")
 		}
+
+	val injectStreams = (scoped: ScopedKey[_]) =>
+		if(scoped.key == streams.key)
+		{
+			val scope = Scope.fillTaskAxis(scoped.scope, scoped.key)
+			Seq(streams in scope <<= streamsManager map { mgr =>
+				val stream = mgr(ScopedKey(scope, scoped.key))
+				stream.open()
+				stream
+			})
+		}
+		else Nil
 }
 object Index
 {
@@ -198,7 +212,7 @@ object Load
 		val evalPluginDef = EvaluateTask.evalPluginDef(log) _
 		val delegates = memo(defaultDelegates)
 		val inject: Seq[Project.Setting[_]] = ((AppConfig in Scope.GlobalScope) :== state.configuration) +: EvaluateTask.injectSettings
-		val config = new LoadBuildConfiguration(stagingDirectory, classpath, loader, compilers, evalPluginDef, delegates, inject, log)
+		val config = new LoadBuildConfiguration(stagingDirectory, classpath, loader, compilers, evalPluginDef, delegates, EvaluateTask.injectStreams, inject, log)
 		apply(base, state, config)
 	}
 	def defaultDelegates: LoadedBuild => Scope => Seq[Scope] = (lb: LoadedBuild) => {
@@ -234,10 +248,10 @@ object Load
 		lazy val rootEval = lazyEval(loaded.units(loaded.root).unit)
 		val settings = config.injectSettings ++ buildConfigurations(loaded, getRootProject(projects), rootEval)
 		val delegates = config.delegates(loaded)
-		val data = Project.makeSettings(settings, delegates)
+		val data = Project.makeSettings(settings, delegates, config.scopeLocal)
 		val index = structureIndex(data)
 		val streams = mkStreams(projects, loaded.root, data)
-		(rootEval, new BuildStructure(projects, loaded.root, settings, data, index, streams, delegates))
+		(rootEval, new BuildStructure(projects, loaded.root, settings, data, index, streams, delegates, config.scopeLocal))
 	}
 
 	def structureIndex(settings: Settings[Scope]): StructureIndex =
@@ -246,10 +260,10 @@ object Load
 		// Reevaluates settings after modifying them.  Does not recompile or reload any build components.
 	def reapply(newSettings: Seq[Setting[_]], structure: BuildStructure): BuildStructure =
 	{
-		val newData = Project.makeSettings(newSettings, structure.delegates)
+		val newData = Project.makeSettings(newSettings, structure.delegates, structure.scopeLocal)
 		val newIndex = structureIndex(newData)
 		val newStreams = mkStreams(structure.units, structure.root, newData)
-		new BuildStructure(units = structure.units, root = structure.root, settings = newSettings, data = newData, index = newIndex, streams = newStreams, delegates = structure.delegates)
+		new BuildStructure(units = structure.units, root = structure.root, settings = newSettings, data = newData, index = newIndex, streams = newStreams, delegates = structure.delegates, scopeLocal = structure.scopeLocal)
 	}
 
 	def isProjectThis(s: Setting[_]) = s.key.scope.project == This
@@ -525,8 +539,8 @@ object Load
 	def referenced(definition: Project): Seq[ProjectRef] = definition.inherits ++ definition.aggregate ++ definition.dependencies.map(_.project)
 
 	
-	final class BuildStructure(val units: Map[URI, LoadedBuildUnit], val root: URI, val settings: Seq[Setting[_]], val data: Settings[Scope], val index: StructureIndex, val streams: Streams, val delegates: Scope => Seq[Scope])
-	final class LoadBuildConfiguration(val stagingDirectory: File, val classpath: Seq[File], val loader: ClassLoader, val compilers: Compilers, val evalPluginDef: (BuildStructure, State) => (Seq[File], Analysis), val delegates: LoadedBuild => Scope => Seq[Scope], val injectSettings: Seq[Setting[_]], val log: Logger)
+	final class BuildStructure(val units: Map[URI, LoadedBuildUnit], val root: URI, val settings: Seq[Setting[_]], val data: Settings[Scope], val index: StructureIndex, val streams: Streams, val delegates: Scope => Seq[Scope], val scopeLocal: ScopedKey[_] => Seq[Setting[_]])
+	final class LoadBuildConfiguration(val stagingDirectory: File, val classpath: Seq[File], val loader: ClassLoader, val compilers: Compilers, val evalPluginDef: (BuildStructure, State) => (Seq[File], Analysis), val delegates: LoadedBuild => Scope => Seq[Scope], val scopeLocal: ScopedKey[_] => Seq[Setting[_]], val injectSettings: Seq[Setting[_]], val log: Logger)
 	// information that is not original, but can be reconstructed from the rest of BuildStructure
 	final class StructureIndex(val keyMap: Map[String, AttributeKey[_]], val taskToKey: Map[Task[_], ScopedKey[Task[_]]], val keyIndex: KeyIndex)
 
@@ -542,8 +556,8 @@ object BuildStreams
 		import Project.display
 		import std.{TaskExtra,Transform}
 	
-	type Streams = std.Streams[ScopedKey[Task[_]]]
-	type TaskStreams = std.TaskStreams[ScopedKey[Task[_]]]
+	type Streams = std.Streams[ScopedKey[_]]
+	type TaskStreams = std.TaskStreams[ScopedKey[_]]
 	val GlobalPath = "$global"
 
 	def mkStreams(units: Map[URI, LoadedBuildUnit], root: URI, data: Settings[Scope], logRelativePath: Seq[String] = defaultLogPath): Streams =

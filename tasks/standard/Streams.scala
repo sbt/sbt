@@ -38,9 +38,9 @@ private[sbt] sealed trait ManagedStreams[Key] extends TaskStreams[Key]
 	def close()
 }
 
-sealed trait Streams[Key]
+trait Streams[Key]
 {
-	private[sbt] def apply(a: Key): ManagedStreams[Key]
+	def apply(a: Key): ManagedStreams[Key]
 	def use[T](key: Key)(f: TaskStreams[Key] => T): T =
 	{
 		val s = apply(key)
@@ -48,9 +48,20 @@ sealed trait Streams[Key]
 		try { f(s) } finally { s.close() }
 	}
 }
+trait CloseableStreams[Key] extends Streams[Key] with java.io.Closeable
 object Streams
 {
 	private[this] val closeQuietly = (c: Closeable) => try { c.close() } catch { case _: IOException => () }
+
+	def closeable[Key](delegate: Streams[Key]): CloseableStreams[Key] = new CloseableStreams[Key] {
+		private[this] val streams = new collection.mutable.HashMap[Key,ManagedStreams[Key]]
+
+		def apply(key: Key): ManagedStreams[Key] =
+			synchronized { streams.getOrElseUpdate(key, delegate(key)) }
+
+		def close(): Unit =
+			synchronized { streams.values.foreach(_.close() ); streams.clear() }
+	}
 	
 	def apply[Key](taskDirectory: Key => File, name: Key => String, mkLogger: (Key, PrintWriter) => Logger): Streams[Key] = new Streams[Key] {
 	

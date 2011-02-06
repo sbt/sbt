@@ -75,7 +75,8 @@ object Project extends Init[Scope]
 		val newAttrs = s.attributes.put(Watch.key, makeWatched(data, ref, project)).put(HistoryPath.key, historyPath)
 		s.copy(attributes = newAttrs)
 	}
-	def makeSettings(settings: Seq[Setting[_]], delegates: Scope => Seq[Scope]) = translateUninitialized( make(settings)(delegates) )
+	def makeSettings(settings: Seq[Setting[_]], delegates: Scope => Seq[Scope], scopeLocal: ScopedKey[_] => Seq[Setting[_]]) =
+		translateUninitialized( make(settings)(delegates, scopeLocal) )
 
 	def makeWatched(data: Settings[Scope], ref: ProjectRef, project: Project): Watched =
 	{

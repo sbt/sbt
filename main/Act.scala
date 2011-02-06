@@ -71,7 +71,8 @@ object Act
 	def applyTask(s: State, structure: Load.BuildStructure, p: Parser[Task[_]]): Parser[() => State] =
 		Command.applyEffect(p) { t =>
 			import EvaluateTask._
-			processResult(runTask(t)(nodeView(structure, s)), logger(s))
+			val result = withStreams(structure){ str => runTask(t)(nodeView(s, str)) }
+			processResult(result, logger(s))
 			s
 		}
 	def actParser(s: State): Parser[() => State] =
