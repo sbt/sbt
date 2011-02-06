@@ -64,10 +64,11 @@ trait Init[Scope]
 	def getValue[T](s: Settings[Scope], k: ScopedKey[T]) = s.get(k.scope, k.key).get
 	def asFunction[T](s: Settings[Scope]): ScopedKey[T] => T = k => getValue(s, k)
 
-	def make(init: Seq[Setting[_]])(implicit delegates: Scope => Seq[Scope]): Settings[Scope] =
+	def make(init: Seq[Setting[_]])(implicit delegates: Scope => Seq[Scope], scopeLocal: ScopedKey[_] => Seq[Setting[_]]): Settings[Scope] =
 	{
+		val withLocal = addLocal(init)(scopeLocal)
 		// group by Scope/Key, dropping dead initializations
-		val sMap: ScopedMap = grouped(init)
+		val sMap: ScopedMap = grouped(withLocal)
 		// delegate references to undefined values according to 'delegates'
 		val dMap: ScopedMap = delegate(sMap)(delegates)
 		// merge Seq[Setting[_]] into Compiled
@@ -95,6 +96,9 @@ trait Init[Scope]
 
 	def append[T](ss: Seq[Setting[T]], s: Setting[T]): Seq[Setting[T]] =
 		if(s.definitive) s :: Nil else ss :+ s
+
+	def addLocal(init: Seq[Setting[_]])(implicit scopeLocal: ScopedKey[_] => Seq[Setting[_]]): Seq[Setting[_]] =
+		init.flatMap( _.dependsOn flatMap scopeLocal )  ++  init
 		
 	def delegate(sMap: ScopedMap)(implicit delegates: Scope => Seq[Scope]): ScopedMap =
 	{
