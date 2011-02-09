@@ -1,28 +1,43 @@
 package sbt.complete
 
-	import Parser._
-	import org.scalacheck._
-
 object JLineTest
 {
+	import DefaultParsers._
+
+	val one = "blue" | "green" | "black"
+	val two = token("color" ~> Space) ~> token(one)
+	val three = token("color" ~> Space) ~> token(ID.examples("blue", "green", "black"))
+	val four = token("color" ~> Space) ~> token(ID, "<color name>")
+
+	val num = token(NatBasic)
+	val five = (num ~ token("+" | "-") ~ num) <~ token('=') flatMap {
+		case a ~ "+" ~ b => token((a+b).toString)
+		case a ~ "-" ~ b => token((a-b).toString)
+	}
+
+	val parsers = Map("1" -> one, "2" -> two, "3" -> three, "4" -> four, "5" -> five)
 	def main(args: Array[String])
 	{
 		import jline.{ConsoleReader,Terminal}
 		val reader = new ConsoleReader()
 		Terminal.getTerminal.disableEcho()
 
-		val parser = ParserExample.t
+		val parser = parsers(args(0))
 		JLineCompletion.installCustomCompletor(reader, parser)
 		def loop() {
 			val line = reader.readLine("> ")
 			if(line ne null) {
-				println("Entered '" + line + "'")
+				println("Result: " + apply(parser)(line).resultEmpty)
 				loop()
 			}
 		}
 		loop()
 	}
 }
+
+	import Parser._
+	import org.scalacheck._
+
 object ParserTest extends Properties("Completing Parser")
 {
 		import Parsers._
