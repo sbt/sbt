@@ -187,6 +187,7 @@ object Default
 		Name :== "test",
 		Version :== "0.1",
 		MaxErrors :== 100,
+		Project.Commands :== Nil,
 		Data <<= EvaluateTask.state map { state => Project.structure(state).data }
 	)
 	def paths = Seq(

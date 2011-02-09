@@ -32,30 +32,32 @@ object Command
 	val HistoryPath = SettingKey[Option[File]]("history")
 	val Analysis = AttributeKey[inc.Analysis]("analysis")
 	val Watch = SettingKey[Watched]("continuous-watch")
-	val Sample = SettingKey[String]("sample-setting")
-	val SampleTask = TaskKey[String]("sample-task")
-	val SampleInput = InputKey[String]("sample-input-task")
 
 	def command(name: String)(f: State => State): Command  =  command(name, Nil)(f)
 	def command(name: String, briefHelp: String, detail: String)(f: State => State): Command  =  command(name, Help(name, (name, briefHelp), detail) :: Nil)(f)
-	def command(name: String, help: Seq[Help])(f: State => State): Command  =  apply(name, help : _*)(state => success(() => f(state)))
+	def command(name: String, help: Seq[Help])(f: State => State): Command  =  make(name, help : _*)(state => success(() => f(state)))
 
-	def apply(name: String, briefHelp: (String, String), detail: String)(parser: State => Parser[() => State]): Command =
-		apply(name, Help(name, briefHelp, detail) )(parser)
-	def apply(name: String, help: Help*)(parser: State => Parser[() => State]): Command  =  new SimpleCommand(name, help, parser, AttributeMap.empty)
+	def make(name: String, briefHelp: (String, String), detail: String)(parser: State => Parser[() => State]): Command =
+		make(name, Help(name, briefHelp, detail) )(parser)
+	def make(name: String, help: Help*)(parser: State => Parser[() => State]): Command  =  new SimpleCommand(name, help, parser, AttributeMap.empty)
+
+	def apply[T](name: String, briefHelp: (String, String), detail: String)(parser: State => Parser[T])(effect: (State,T) => State): Command =
+		apply(name, Help(name, briefHelp, detail) )(parser)(effect)
+	def apply[T](name: String, help: Help*)(parser: State => Parser[T])(effect: (State,T) => State): Command  =
+		make(name, help : _* )(s => applyEffect(parser(s))(t => effect(s,t)) )
 
 	def args(name: String, briefHelp: (String, String), detail: String, display: String)(f: (State, Seq[String]) => State): Command =
 		args(name, display, Help(name, briefHelp, detail) )(f)
 	
 	def args(name: String, display: String, help: Help*)(f: (State, Seq[String]) => State): Command =
-		apply(name, help : _*)( state => spaceDelimited(display) map apply1(f, state) )
+		make(name, help : _*)( state => spaceDelimited(display) map apply1(f, state) )
 
 	def single(name: String, briefHelp: (String, String), detail: String)(f: (State, String) => State): Command =
 		single(name, Help(name, briefHelp, detail) )(f)
 	def single(name: String, help: Help*)(f: (State, String) => State): Command =
-		apply(name, help : _*)( state => token(trimmed(any.+.string) map apply1(f, state)) )
+		make(name, help : _*)( state => token(trimmed(any.+.string) map apply1(f, state)) )
 	
-	def custom(parser: State => Parser[() => State], help: Seq[Help]): Command  =  new ArbitraryCommand(parser, help, AttributeMap.empty)
+	def custom(parser: State => Parser[() => State], help: Seq[Help] = Nil): Command  =  new ArbitraryCommand(parser, help, AttributeMap.empty)
 
 	def validID(name: String) =
 		Parser(OpOrID)(name).resultEmpty.isDefined

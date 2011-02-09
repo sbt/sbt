@@ -24,7 +24,7 @@ class xMain extends xsbti.AppMain
 {
 	final def run(configuration: xsbti.AppConfiguration): xsbti.MainResult =
 	{
-		import Commands.{initialize, defaults}
+		import BuiltinCommands.{initialize, defaults}
 		import CommandSupport.{DefaultsCommand, InitCommand}
 		val initialCommandDefs = Seq(initialize, defaults)
 		val commands = DefaultsCommand :: InitCommand :: configuration.arguments.map(_.trim).toList
@@ -50,24 +50,24 @@ class xMain extends xsbti.AppMain
 		ErrorHandling.wideConvert { state.process(Command.process) } match
 		{
 			case Right(s) => s
-			case Left(t) => Commands.handleException(t, state)
+			case Left(t) => BuiltinCommands.handleException(t, state)
 		}
 }
 
 	import DefaultParsers._
 	import CommandSupport._
-object Commands
+object BuiltinCommands
 {
 	def DefaultCommands: Seq[Command] = Seq(ignore, help, reload, read, history, continuous, exit, loadCommands, loadProject, compile, discover,
 		projects, project, setOnFailure, ifLast, multi, shell, set, get, eval, delegates,alias, append, nop, sessionCommand, act)
 
-	def nop = Command.custom(s => success(() => s), Nil)
+	def nop = Command.custom(s => success(() => s))
 	def ignore = Command.command(FailureWall)(identity)
 
 	def detail(selected: Iterable[String])(h: Help): Option[String] =
 		h.detail match { case (commands, value) => if( selected exists commands ) Some(value) else None }
 
-	def help = Command(HelpCommand, helpBrief, helpDetailed)(helpParser)
+	def help = Command.make(HelpCommand, helpBrief, helpDetailed)(helpParser)
 
 	def helpParser(s: State) =
 	{
@@ -88,7 +88,7 @@ object Commands
 		s
 	}
 
-	def alias = Command(AliasCommand, AliasBrief, AliasDetailed) { s =>
+	def alias = Command.make(AliasCommand, AliasBrief, AliasDetailed) { s =>
 		val name = token(OpOrID.examples( aliasNames(s) : _*) )
 		val assign = token(Space ~ '=' ~ OptSpace)
 		val sfree = removeAliases(s)
@@ -155,7 +155,7 @@ object Commands
 		portAndSuccess || files
 	}
 
-	def read = Command(ReadCommand, ReadBrief, ReadDetailed)(s => applyEffect(readParser(s))(doRead(s)) )
+	def read = Command.make(ReadCommand, ReadBrief, ReadDetailed)(s => applyEffect(readParser(s))(doRead(s)) )
 
 	def doRead(s: State)(arg: Either[Int, Seq[File]]): State =
 		arg match
@@ -201,7 +201,7 @@ object Commands
 
 	def history = Command.command("!!")(s => s)
 	//TODO: convert
-	/*def history = Command( historyHelp: _* ) { case (in, s) if in.line startsWith "!" =>
+	/*def history = Command.make( historyHelp: _* ) { case (in, s) if in.line startsWith "!" =>
 		val logError = (msg: String) => CommandSupport.logger(s).error(msg)
 		HistoryCommands(in.line.substring(HistoryPrefix.length).trim, (s get HistoryPath.key) getOrElse None, 500/*JLine.MaxHistorySize*/, logError) match
 		{
@@ -220,7 +220,7 @@ object Commands
 		log.info("ans: " + result.tpe + " = " + result.value.toString)
 		s
 	}
-	def sessionCommand = Command(SessionCommand, sessionBrief, SessionSettings.Help)(SessionSettings.command)
+	def sessionCommand = Command.make(SessionCommand, sessionBrief, SessionSettings.Help)(SessionSettings.command)
 	def reapply(newSession: SessionSettings, structure: Load.BuildStructure, s: State): State =
 	{
 		logger(s).info("Reapplying settings...")
@@ -268,7 +268,7 @@ object Commands
 		for(id <- build.defined.keys) log.info("\t" + prefix(id) + id)
 	}
 
-	def act = Command.custom(Act.actParser, Nil)
+	def act = Command.custom(Act.actParser)
 
 	def projects = Command.command(ProjectsCommand, projectsBrief, projectsDetailed ) { s =>
 		val extracted = Project extract s
@@ -284,7 +284,7 @@ object Commands
 			case Some(nav) => f(nav)
 		}
 
-	def project = Command(ProjectCommand, projectBrief, projectDetailed)(ProjectNavigation.command)
+	def project = Command.make(ProjectCommand, projectBrief, projectDetailed)(ProjectNavigation.command)
 
 	def exit = Command.command(TerminateAction, Help(exitBrief) :: Nil ) ( doExit )
 
@@ -381,9 +381,12 @@ object Commands
 			s.fail
 		}
 
-	def removeAliases(s: State): State  =  s.copy(processors = removeAliases(s.processors))
-	def removeAliases(as: Seq[Command]): Seq[Command]  =  as.filter(c => ! (c.tags contains CommandAliasKey))
+	def removeAliases(s: State): State  =  removeTagged(s, CommandAliasKey)
 	def removeAlias(s: State, name: String): State  =  s.copy(processors = s.processors.filter(c => !isAliasNamed(name, c)) )
+	
+	def removeTagged(s: State, tag: AttributeKey[_]): State = s.copy(processors = removeTagged(s.processors, tag))
+	def removeTagged(as: Seq[Command], tag: AttributeKey[_]): Seq[Command] = as.filter(c => ! (c.tags contains tag))
+
 	def isAliasNamed(name: String, c: Command): Boolean  =  isNamed(name, getAlias(c))
 	def isNamed(name: String, alias: Option[(String,String)]): Boolean  =  alias match { case None => false; case Some((n,_)) => name == n }
 
@@ -400,7 +403,7 @@ object Commands
 		s.processors.flatMap(c => getAlias(c).filter(tupled(pred)))
 
 	def newAlias(name: String, value: String): Command =
-		Command(name, (name, "'" + value + "'"), "Alias of '" + value + "'")(aliasBody(name, value)).tag(CommandAliasKey, (name, value))
+		Command.make(name, (name, "'" + value + "'"), "Alias of '" + value + "'")(aliasBody(name, value)).tag(CommandAliasKey, (name, value))
 	def aliasBody(name: String, value: String)(state: State): Parser[() => State] =
 		Parser(Command.combine(state.processors)(state))(value)
 

@@ -72,8 +72,10 @@ object Project extends Init[Scope]
 
 		val data = structure.data
 		val historyPath = HistoryPath in ref get data flatMap identity
+		val commands = (Commands in ref get data).toList.flatten[Command].map(_ tag (ProjectCommand, true))
+		val newProcessors = commands ++ BuiltinCommands.removeTagged(s.processors, ProjectCommand)
 		val newAttrs = s.attributes.put(Watch.key, makeWatched(data, ref, project)).put(HistoryPath.key, historyPath)
-		s.copy(attributes = newAttrs)
+		s.copy(attributes = newAttrs, processors = newProcessors)
 	}
 	def makeSettings(settings: Seq[Setting[_]], delegates: Scope => Seq[Scope], scopeLocal: ScopedKey[_] => Seq[Setting[_]]) =
 		translateUninitialized( make(settings)(delegates, scopeLocal) )
@@ -133,12 +135,14 @@ object Project extends Init[Scope]
 	def reverseDependencies(cMap: CompiledMap, scoped: ScopedKey[_]): Iterable[ScopedKey[_]] =
 		for( (key,compiled) <- cMap; dep <- compiled.dependencies if dep == scoped)  yield  key
 
+	val ProjectCommand = AttributeKey[Boolean]("project-command")
 	val SessionKey = AttributeKey[SessionSettings]("session-settings")
 	val StructureKey = AttributeKey[Load.BuildStructure]("build-structure")
 	val AppConfig = SettingKey[xsbti.AppConfiguration]("app-configuration")
 	val ThisProject = SettingKey[Project]("project")
 	val ThisProjectRef = SettingKey[ProjectRef]("project-ref")
 	val Config = SettingKey[Configuration]("configuration")
+	val Commands = SettingKey[Seq[Command]]("commands")
 }
 
 	import SessionSettings._
@@ -166,7 +170,7 @@ object SessionSettings
 	type SessionMap = Map[(URI, String), Seq[SessionSetting]]
 
 	def reapply(session: SessionSettings, s: State): State =
-		Commands.reapply(session, Project.structure(s), s)
+		BuiltinCommands.reapply(session, Project.structure(s), s)
 	
 	def clearSettings(s: State): State =
 		withSettings(s)(session => reapply(session.copy(append = session.append - session.current), s))
