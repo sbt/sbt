@@ -120,10 +120,18 @@ object Project extends Init[Scope]
 		val cMap = compiled(structure.settings)(structure.delegates, structure.scopeLocal)
 		val related = cMap.keys.filter(k => k.key == key && k.scope != scope)
 		val depends = cMap.get(scoped) match { case Some(c) => c.dependencies.toSet; case None => Set.empty }
+		val reverse = reverseDependencies(cMap, scoped)
 		def printScopes(label: String, scopes: Iterable[ScopedKey[_]]) =
 			if(scopes.isEmpty) "" else scopes.map(display).mkString(label + ":\n\t", "\n\t", "\n")
-		value + "\n" + definedIn + "\n" + printScopes("Dependencies", depends) + printScopes("Related", related)
+
+		value + "\n" +
+			definedIn + "\n" +
+			printScopes("Dependencies", depends) +
+			printScopes("Reverse dependencies", reverse) +
+			printScopes("Related", related)
 	}
+	def reverseDependencies(cMap: CompiledMap, scoped: ScopedKey[_]): Iterable[ScopedKey[_]] =
+		for( (key,compiled) <- cMap; dep <- compiled.dependencies if dep == scoped)  yield  key
 
 	val SessionKey = AttributeKey[SessionSettings]("session-settings")
 	val StructureKey = AttributeKey[Load.BuildStructure]("build-structure")
