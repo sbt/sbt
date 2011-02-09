@@ -228,8 +228,9 @@ object Default
 		Compilers <<= (ScalaInstance, AppConfig, streams) map { (si, app, s) => Compile.compilers(si)(app, s.log) },
 		JavacOptions :== Nil,
 		ScalacOptions :== Nil,
-		ScalaInstance <<= (AppConfig, ScalaVersion){ (app, version) => sbt.ScalaInstance(version, app.provider.scalaProvider) },
-		ScalaVersion <<= AppConfig( _.provider.scalaProvider.version)
+		ScalaInstance <<= (AppConfig, ScalaVersion){ (app, version) => sbt.ScalaInstance(version, app.provider.scalaProvider.launcher) },
+		ScalaVersion <<= AppConfig( _.provider.scalaProvider.version),
+		Target <<= (Target, ScalaInstance)( (t,si) => t / ("scala-" + si.actualVersion) )
 	)
 
 	def baseTasks = Seq(
