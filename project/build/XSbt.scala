@@ -307,6 +307,7 @@ class XSbt(info: ProjectInfo) extends ParentProject(info) with NoCrossPaths
 		
 		// sub projects for each version of Scala to precompile against other than the one sbt is built against
 		// each sub project here will add ~100k to the download
+		lazy val precompiled29 = precompiledSub("2.9.0-SNAPSHOT")
 		lazy val precompiled28 = precompiledSub("2.8.0")
 		lazy val precompiled27 = precompiledSub("2.7.7")
 
