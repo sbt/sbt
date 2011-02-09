@@ -42,12 +42,7 @@ class ProjectResolver(name: String, map: Map[ModuleRevisionId, ModuleDescriptor]
 	def exists(artifact: IArtifact) = false
 	def locate(artifact: IArtifact) = null
 	def download(artifacts: Array[IArtifact], options: DownloadOptions): DownloadReport =
-	{
-		val r = new DownloadReport
-		for(artifact <- artifacts)
-			r addArtifactReport notDownloaded(artifact)
-		r
-	}
+		new DownloadReport
 	def download(artifact: ArtifactOrigin, options: DownloadOptions): ArtifactDownloadReport  =
 		notDownloaded(artifact.getArtifact)
 	def findIvyFileRef(dd: DependencyDescriptor, data: ResolveData) = null
