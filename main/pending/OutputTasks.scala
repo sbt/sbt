@@ -11,23 +11,6 @@ package sbt
 	import java.io.{BufferedReader,File}
 	import java.util.regex.Pattern
 
-trait PrintTask
-{
-	def input: Task[Input]
-	def context: Task[Transform.Context[Project]]
-	lazy val show = (input, context) flatMap { case in :+: ctx :+: HNil =>
-		val taskStrings = in.splitArgs map { name =>
-			val selected = taskForName(ctx, name)
-			selected.merge.map {
-				case Seq() => "No result for " + name
-				case Seq( (conf, v) ) => name + ": " + v.toString
-				case confs => confs map { case (conf, v) => conf + ": " + v  } mkString(name + ":\n\t", "\n\t", "\n")
-			}
-		}
-		taskStrings.join.map { _ foreach println  }
-	}
-}
-
 trait LastOutput
 {
 	def input: Task[Input]
