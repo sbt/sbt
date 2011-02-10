@@ -54,19 +54,13 @@ object Scoped
 		def in(s: Scope): Result = app0(s)
 
 		def in(p: ProjectRef): Result  =  in(Select(p), This, This)
-		def in(t: TaskKey[_]): Result  =  in(This, This, Select(t))
+		def in(t: Scoped): Result  =  in(This, This, Select(t.key))
 		def in(c: ConfigKey): Result  =  in(This, Select(c), This)
-		def in(c: ConfigKey, t: TaskKey[_]): Result  =  in(This, Select(c), Select(t))
+		def in(c: ConfigKey, t: Scoped): Result  =  in(This, Select(c), Select(t.key))
 		def in(p: ProjectRef, c: ConfigKey): Result  =  in(Select(p), Select(c), This)
-		def in(p: ProjectRef, t: TaskKey[_]): Result  =  in(Select(p), This, Select(t))
-		def in(p: ProjectRef, c: ConfigKey, t: TaskKey[_]): Result  =  in(Select(p), Select(c), Select(t))
-		def in(p: ScopeAxis[ProjectRef], c: ScopeAxis[ConfigKey], t: ScopeAxis[TaskKey[_]]): Result = in( Scope(p, c, convert(t), This) )
-		private def convert(tk: ScopeAxis[TaskKey[_]]): ScopeAxis[AttributeKey[_]] =
-			tk match {
-				case Select(t) => Select(t.key)
-				case This => This
-				case Global => Global
-			}
+		def in(p: ProjectRef, t: Scoped): Result  =  in(Select(p), This, Select(t.key))
+		def in(p: ProjectRef, c: ConfigKey, t: Scoped): Result  =  in(Select(p), Select(c), Select(t.key))
+		def in(p: ScopeAxis[ProjectRef], c: ScopeAxis[ConfigKey], t: ScopeAxis[AttributeKey[_]]): Result = in( Scope(p, c, t, This) )
 	}
 	
 	private[this] def scopedSetting[T](s: Scope, k: AttributeKey[T], fb: Boolean): ScopedSetting[T] = new ScopedSetting[T] { val scope = s; val key = k; val fillThis = fb }
@@ -145,6 +139,12 @@ object Scoped
 				h.dependsOn(t.toList :_*)
 			}
 		}
+	}
+
+	implicit def richTaskSeq(in: Seq[ScopedTask[_]]): RichTaskSeq = new RichTaskSeq(in)
+	final class RichTaskSeq(keys: Seq[ScopedTask[_]])
+	{
+		def dependOn: Apply[Task[Unit]]  =  Apply.tasks(KList.fromList(keys)) { kl => nop.dependsOn(kl.toList :_*) }
 	}
 
 	/*

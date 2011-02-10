@@ -5,6 +5,7 @@ package sbt
 
 	import java.io.File
 	import Scoped.Apply
+	import Scope.{GlobalScope,ThisScope}
 	import Project.{AppConfig, Config, Setting, ThisProject, ThisProjectRef}
 	import Configurations.{Compile => CompileConf, Test => TestConf}
 	import Command.HistoryPath
@@ -55,13 +56,24 @@ object Keys
 	val ConsoleQuick = TaskKey[Unit]("console-quick")
 	val CompileTask = TaskKey[Analysis]("compile")
 	val Compilers = TaskKey[Compile.Compilers]("compilers")
-	val DocTask = TaskKey[Unit]("doc")
+	val DocTask = TaskKey[File]("doc")
 	val CopyResources = TaskKey[Traversable[(File,File)]]("copy-resources")
 	val Resources = TaskKey[Seq[File]]("resources")
 	
+	// package keys
+	val Package = TaskKey[sbt.Package.Configuration]("package")
+	val PackageDoc = TaskKey[sbt.Package.Configuration]("package-doc")
+	val PackageSrc = TaskKey[sbt.Package.Configuration]("package-src")
+	val PackageOptions = TaskKey[Seq[PackageOption]]("package-options")
+	val JarPath = SettingKey[File]("jar-path")
+	val JarName = SettingKey[ArtifactName]("jar-name")
+	val JarType = SettingKey[String]("jar-type")
+	val NameToString = SettingKey[ArtifactName => String]("artifact-name-to-string")
+	val Mappings = TaskKey[Seq[(File,String)]]("input-mappings")
+
 	// Run Keys
 	val SelectMainClass = TaskKey[Option[String]]("select-main-class")
-	val RunMainClass = TaskKey[Option[String]]("run-main-class")
+	val MainClass = TaskKey[Option[String]]("main-class")
 	val RunTask = InputKey[Unit]("run")
 	val DiscoveredMainClasses = TaskKey[Seq[String]]("discovered-main-classes")
 	val Runner = SettingKey[ScalaRun]("runner")
@@ -136,6 +148,7 @@ object Keys
 	val IvyLoggingLevel = SettingKey[UpdateLogging.Value]("ivy-logging-level")
 	val PublishTo = SettingKey[Option[Resolver]]("publish-to")
 	val PomFile = SettingKey[File]("pom-file")
+	val PomArtifact = SettingKey[Seq[Artifact]]("pom-artifact")
 	val Artifacts = SettingKey[Seq[Artifact]]("artifacts")
 	val ProjectDescriptors = TaskKey[Map[ModuleRevisionId,ModuleDescriptor]]("project-descriptor-map")
 	val AutoUpdate = SettingKey[Boolean]("auto-update")
@@ -148,7 +161,6 @@ object Default
 	import Path._
 	import GlobFilter._
 	import Keys._
-	import Scope.ThisScope
 	implicit def richFileSetting(s: ScopedSetting[File]): RichFileSetting = new RichFileSetting(s)
 	implicit def richFilesSetting(s: ScopedSetting[Seq[File]]): RichFilesSetting = new RichFilesSetting(s)
 	
@@ -186,18 +198,18 @@ object Default
 	def core = Seq(
 		Name :== "test",
 		Version :== "0.1",
-		MaxErrors :== 100,
+		MaxErrors in GlobalScope :== 100,
 		Project.Commands :== Nil,
 		Data <<= EvaluateTask.state map { state => Project.structure(state).data }
 	)
 	def paths = Seq(
 		Base <<= ThisProject(_.base),
 		Target <<= Base / "target",
-		DefaultExcludes :== (".*"  - ".") || HiddenFileFilter,
+		DefaultExcludes in GlobalScope :== (".*"  - ".") || HiddenFileFilter,
 		HistoryPath <<= Target(t => Some(t / ".history")),
 		CacheDirectory <<= Target / "cache",
 		Source <<= Base / "src",
-		SourceFilter :== ("*.java" | "*.scala"),
+		SourceFilter in GlobalScope :== ("*.java" | "*.scala"),
 		SourceManaged <<= Base / "src_managed"
 	)
 
@@ -227,15 +239,15 @@ object Default
 
 	def compileBase = Seq(
 		Compilers <<= (ScalaInstance, AppConfig, streams) map { (si, app, s) => Compile.compilers(si)(app, s.log) },
-		JavacOptions :== Nil,
-		ScalacOptions :== Nil,
+		JavacOptions in GlobalScope :== Nil,
+		ScalacOptions in GlobalScope :== Nil,
 		ScalaInstance <<= (AppConfig, ScalaVersion){ (app, version) => sbt.ScalaInstance(version, app.provider.scalaProvider.launcher) },
 		ScalaVersion <<= AppConfig( _.provider.scalaProvider.version),
 		Target <<= (Target, ScalaInstance)( (t,si) => t / ("scala-" + si.actualVersion) )
 	)
 
 	def baseTasks = Seq(
-		InitialCommands :== "",
+		InitialCommands in GlobalScope :== "",
 		CompileTask <<= compileTask,
 		CompileInputs <<= compileInputsTask,
 		ConsoleTask <<= console,
@@ -243,21 +255,21 @@ object Default
 		DiscoveredMainClasses <<= CompileTask map discoverMainClasses,
 		Runner <<= ScalaInstance( si => new Run(si) ),
 		SelectMainClass <<= DiscoveredMainClasses map selectRunMain,
-		RunMainClass :== SelectMainClass,
-		RunTask <<= runTask(FullClasspath, RunMainClass),
+		MainClass :== SelectMainClass,
+		RunTask <<= runTask(FullClasspath, MainClass in RunTask),
 		ScaladocOptions <<= ScalacOptions(identity),
 		DocTask <<= docTask,
 		CopyResources <<= copyResources
 	)
 
-	lazy val globalTasks = Seq(
+	lazy val projectTasks = Seq(
 		CleanFiles <<= (Target, SourceManaged) { _ :: _ :: Nil },
 		Clean <<= CleanFiles map IO.delete
 	)
 
 	lazy val testTasks = Seq(	
 		TestLoader <<= (FullClasspath, ScalaInstance) map { (cp, si) => TestFramework.createTestLoader(data(cp), si) },
-		TestFrameworks :== {
+		TestFrameworks in GlobalScope :== {
 			import sbt.TestFrameworks._
 			Seq(ScalaCheck, Specs, ScalaTest, ScalaCheckCompat, ScalaTestCompat, SpecsCompat, JUnit)
 		},
@@ -275,6 +287,49 @@ object Default
 		TestTask <<= (ExecuteTests, streams) map { (results, s) => Test.showResults(s.log, results) }
 	)
 
+	lazy val packageDefaults = packageBase ++ inConfig(CompileConf)(packageConfig) ++ inConfig(TestConf)(packageConfig)
+	
+	lazy val packageBase = Seq(
+		jarName,
+		PackageOptions in GlobalScope :== Nil,
+		NameToString in GlobalScope :== (ArtifactName.show _)
+	)
+	lazy val packageConfig = Seq(
+		JarName <<= (JarName, Config) { (n,c) => n.copy(config = c.name) },
+		PackageOptions in Package <<= MainClass in Package map ( _.map(sbt.Package.MainClass.apply).toList )
+	) ++
+	packageTasks(Package, "", packageBin) ++
+	packageTasks(PackageSrc, "src", packageSrc) ++
+	packageTasks(PackageDoc, "doc", packageDoc)
+
+	private[this] val allSubpaths = (_: File).###.***.xx.toSeq
+
+	def packageBin = (CompileInputs, CompileTask) map { (in, _) => allSubpaths(in.config.classesDirectory) }
+	def packageDoc = DocTask map allSubpaths
+	def packageSrc = (Resources, ResourceDirectories, Sources, SourceDirectories, Base) map {
+		(rs, rds, srcs, sds, base) => ( (rs x relativeTo(rds)) ++ (srcs x (relativeTo(sds)|relativeTo(base)) ) ).toSeq
+	}
+	def jarName  =  JarName <<= (ModuleName, Version) { (n,v) =>
+		ArtifactName(base = n, version = v, config = "", tpe = "", ext = "jar")
+	}
+	def jarPath  =  JarPath <<= (Target, JarName, NameToString) { (t, n, toString) => t / toString(n) }
+
+	def packageTasks(key: TaskKey[sbt.Package.Configuration], tpeString: String, mappings: Apply[Task[Seq[(File,String)]]]) =
+		inTask(key)( Seq(
+			key in ThisScope.copy(task = Global) <<= packageTask,
+			Mappings <<= mappings,
+			JarType :== tpeString,
+			JarName <<= (JarType,JarName){ (tpe, name) => (name.copy(tpe = tpe)) },
+			CacheDirectory <<= CacheDirectory / key.key.label,
+			jarPath
+		))
+	def packageTask: Apply[Task[sbt.Package.Configuration]] =
+		(JarPath, Mappings, PackageOptions, CacheDirectory, streams) map { (jar, srcs, options, cacheDir, s) =>
+			val config = new sbt.Package.Configuration(srcs, jar, options)
+			sbt.Package(config, cacheDir, s.log)
+			config
+		}
+
 	def selectRunMain(classes: Seq[String]): Option[String] =
 		sbt.SelectMainClass(Some(SimpleReader readLine _), classes)
 
@@ -289,13 +344,14 @@ object Default
 			}
 		}
 
-	def docTask: Apply[Task[Unit]] =
+	def docTask: Apply[Task[File]] =
 		(CompileInputs, streams, DocDirectory, Config, ScaladocOptions) map { (in, s, target, config, options) =>
 			val d = new Scaladoc(in.config.maxErrors, in.compilers.scalac)
 			d(nameForSrc(config.name), in.config.sources, in.config.classpath, target, options)(s.log)
+			target
 		}
 
-	def mainRunTask = RunTask <<= runTask(FullClasspath in Configurations.Runtime, RunMainClass)
+	def mainRunTask = RunTask <<= runTask(FullClasspath in Configurations.Runtime, MainClass in RunTask)
 
 	def discoverMainClasses(analysis: Analysis): Seq[String] =
 		compile.Discovery.applications(Test.allDefs(analysis)) collect { case (definition, discovered) if(discovered.hasMain) => definition.name }
@@ -321,8 +377,7 @@ object Default
 	def copyResources =
 	(ClassDirectory, CacheDirectory, Resources, ResourceDirectories, streams) map { (target, cache, resources, dirs, s) =>
 		val cacheFile = cache / "copy-resources"
-		val mapper = ( (fail: FileMap) /: dirs)( (mapper, dir) => rebase(dir, target) | mapper )
-		val mappings = resources x mapper
+		val mappings = resources x rebase(dirs, target)
 		s.log.debug("Copy resource mappings: " + mappings.mkString("\n\t","\n\t",""))
 		Sync(cacheFile)( mappings )
 		mappings
@@ -332,15 +387,20 @@ object Default
 //	lazy val projectConsole = task { Console.sbtDefault(info.compileInputs, this)(ConsoleLogger()) }
 		
 	def inConfig(conf: Configuration)(ss: Seq[Setting[_]]): Seq[Setting[_]] =
-		Project.transform(Scope.replaceThis(ThisScope.copy(config = Select(conf))), (Config :== conf) +: ss)
+		inScope(ThisScope.copy(config = Select(conf)) )( (Config :== conf) +: ss)
+	def inTask(t: Scoped)(ss: Seq[Setting[_]]): Seq[Setting[_]] =
+		inScope(ThisScope.copy(task = Select(t.key)) )( ss )
+	def inScope(scope: Scope)(ss: Seq[Setting[_]]): Seq[Setting[_]] =
+		Project.transform(Scope.replaceThis(scope), ss)
 
 	lazy val defaultPaths = paths ++ inConfig(CompileConf)(configPaths ++ addBaseSources) ++ inConfig(TestConf)(configPaths)
 	lazy val defaultWebPaths = defaultPaths ++ inConfig(CompileConf)(webPaths)
 
 	lazy val defaultTasks =
-		globalTasks ++
+		projectTasks ++
 		inConfig(CompileConf)(configTasks :+ mainRunTask) ++
-		inConfig(TestConf)(configTasks ++ testTasks)
+		inConfig(TestConf)(configTasks ++ testTasks) ++
+		packageDefaults
 
 	lazy val defaultWebTasks = Nil
 
@@ -379,10 +439,12 @@ object Classpaths
 			(base * (filter -- excl) +++ (base / config.name).descendentsExcept(filter, excl)).getFiles.toSeq
 		}
 	)
+	def defaultPackageTasks: Seq[ScopedTask[_]] =
+		for(task <- Seq(Package, PackageSrc, PackageDoc); conf <- Seq(CompileConf, TestConf)) yield (task in conf)
 
 	val publishSettings: Seq[Project.Setting[_]] = Seq(
-		PublishMavenStyle :== true,
-		PackageToPublish :== nop,
+		PublishMavenStyle in GlobalScope :== true,
+		PackageToPublish <<= defaultPackageTasks.dependOn,
 		DeliverDepends := (PublishMavenStyle, MakePom.setting, PackageToPublish.setting) { (mavenStyle, makePom, ptp) => if(mavenStyle) makePom else ptp },
 		MakePom <<= (IvyModule, MakePomConfig, PackageToPublish) map { (ivyModule, makePomConfig, _) => IvyActions.makePom(ivyModule, makePomConfig); makePomConfig.file },
 		Deliver <<= deliver(PublishConfig),
@@ -394,28 +456,29 @@ object Classpaths
 		UnmanagedBase <<= Base / "lib",
 		NormalizedName <<= Name(StringUtilities.normalize),
 		Organization :== NormalizedName,
-		ClasspathFilter :== "*.jar",
+		ClasspathFilter in GlobalScope :== "*.jar",
 		Resolvers <<= (ProjectResolver,BaseResolvers).map( (pr,rs) => pr +: Resolver.withDefaultResolvers(rs)),
-		Offline :== false,
+		Offline in GlobalScope :== false,
 		ModuleName :== NormalizedName,
-		DefaultConfiguration :== Some(Configurations.Compile),
-		DefaultConfigurationMapping <<= DefaultConfiguration{ case Some(d) => "*->" + d.name; case None => "*->*" },
+		DefaultConfiguration in GlobalScope :== Some(Configurations.Compile),
+		DefaultConfigurationMapping in GlobalScope <<= DefaultConfiguration{ case Some(d) => "*->" + d.name; case None => "*->*" },
 		PathsIvy <<= Base(base => new IvyPaths(base, None)),
-		OtherResolvers :== Nil,
+		OtherResolvers in GlobalScope :== Nil,
 		ProjectResolver <<= projectResolver,
 		ProjectDependencies <<= projectDependencies,
-		LibraryDependencies :== Nil,
+		LibraryDependencies in GlobalScope :== Nil,
 		AllDependencies <<= concat(ProjectDependencies,LibraryDependencies),
-		IvyLoggingLevel :== UpdateLogging.Quiet,
-		IvyXML :== NodeSeq.Empty,
-		IvyValidate :== false,
-		IvyScalaConfig :== None,
-		ModuleConfigurations :== Nil,
-		PublishTo :== None,
+		IvyLoggingLevel in GlobalScope :== UpdateLogging.Quiet,
+		IvyXML in GlobalScope :== NodeSeq.Empty,
+		IvyValidate in GlobalScope :== false,
+		IvyScalaConfig in GlobalScope :== None,
+		ModuleConfigurations in GlobalScope :== Nil,
+		PublishTo in GlobalScope :== None,
 		PomFile <<= (Target, Version, ModuleName)( (target, version, module) => target / (module + "-" + version + ".pom") ),
-		Artifacts <<= ModuleName(name => Artifact(name, "jar", "jar") :: Nil),
+		PomArtifact <<= (PublishMavenStyle, ModuleName)( (mavenStyle, name) => if(mavenStyle) Artifact(name, "pom", "pom") :: Nil else Nil),
+		Artifacts <<= (PomArtifact,ModuleName)( (pom,name) => Artifact(name) +: pom),
 		ProjectID <<= (Organization,ModuleName,Version,Artifacts){ (org,module,version,as) => ModuleID(org, module, version).cross(true).artifacts(as : _*) },
-		BaseResolvers :== Nil,
+		BaseResolvers in GlobalScope :== Nil,
 		ProjectDescriptors <<= depMap,
 		RetrievePattern :== "[type]/[organisation]/[module]/[artifact](-[revision])(-[classifier]).[ext]",
 		UpdateConfig <<= (RetrieveConfig, IvyLoggingLevel)((conf,level) => new UpdateConfiguration(conf, level) ),
