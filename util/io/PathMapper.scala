@@ -12,6 +12,8 @@ trait Mapper
 
 	val basic: PathMap = f => Some(f.getPath)
 	def relativeTo(base: File): PathMap = IO.relativize(base, _)
+	def relativeTo(bases: Iterable[File], zero: PathMap = transparent): PathMap = fold(zero, bases)(relativeTo)
+
 	def rebase(oldBase: File, newBase0: String): PathMap =
 	{
 		val newBase = normalizeBase(newBase0)
@@ -28,12 +30,15 @@ trait Mapper
 		val newBase = normalizeBase(newBase0)
 		f => Some(newBase + f.getName)
 	}
-	def some[A,B](f: A => B): A => Some[B] = x => Some(f(x))
+	def total[A,B](f: A => B): A => Some[B] = x => Some(f(x))
+	def transparent: Any => Option[Nothing] = _ => None
 
 	def normalizeBase(base: String) = if(!base.isEmpty && !base.endsWith("/"))  base + "/" else base
 
 	def abs: FileMap = f => Some(f.getAbsoluteFile)
 	def resolve(newDirectory: File): FileMap = file => Some(new File(newDirectory, file.getPath))
+	def rebase(oldBases: Iterable[File], newBase: File, zero: FileMap = transparent): FileMap =
+		fold(fail: FileMap, oldBases)(old => rebase(old, newBase))
 	def rebase(oldBase: File, newBase: File): FileMap =
 		file =>
 			if(file == oldBase)
@@ -42,6 +47,10 @@ trait Mapper
 				IO.relativize(oldBase, file) map { r => new File(newBase, r) }
 
 	def flat(newDirectory: File): FileMap = file => Some(new File(newDirectory, file.getName))
+
+	import Alternatives._
+	private[this] def fold[A,B,T](zero: A => Option[B], in: Iterable[T])(f: T => A => Option[B]): A => Option[B] =
+		(zero /: in)( (mapper, base) => f(base) | mapper )
 }
 
 trait Alternative[A,B] { def | (g: A => Option[B]): A => Option[B] }
@@ -58,3 +67,4 @@ trait Alternatives
 			case Seq() => a => None
 		}
 }
+object Alternatives extends Alternatives
