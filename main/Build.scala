@@ -154,10 +154,12 @@ object EvaluateTask
 		try { x.run(root)(service) } finally { shutdown() }
 	}
 
-	def processResult[T](result: Result[T], log: Logger): T =
+	def processResult[T](result: Result[T], log: Logger, show: Boolean = false): T =
 		result match
 		{
-			case Value(v) => v
+			case Value(v) =>
+				if(show) println("Result: " + v)
+				v
 			case Inc(inc) =>
 				log.error(Incomplete.show(inc, true))
 				error("Task did not complete successfully")

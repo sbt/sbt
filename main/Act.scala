@@ -60,19 +60,19 @@ object Act
 	def optProjectRef(index: KeyIndex, currentBuild: URI, currentProject: String) =
 		projectRef(index, currentBuild) ?? ProjectRef(Some(currentBuild), Some(currentProject))
 
-	def valueParser(s: State, structure: BuildStructure)(key: ScopedKey[_]): Parser[() => State] =
+	def valueParser(s: State, structure: BuildStructure, show: Boolean)(key: ScopedKey[_]): Parser[() => State] =
 		structure.data.get(key.scope, key.key) match
 		{
 			case None => failure("Invalid setting or task")
-			case Some(input: InputTask[_]) => applyTask(s, structure, input.parser)
-			case Some(task: Task[_]) => applyTask(s, structure, success(task))
+			case Some(input: InputTask[_]) => applyTask(s, structure, input.parser, show)
+			case Some(task: Task[_]) => applyTask(s, structure, success(task), show)
 			case Some(v) => success(() => { logger(s).info(v.toString); s})
 		}
-	def applyTask(s: State, structure: Load.BuildStructure, p: Parser[Task[_]]): Parser[() => State] =
+	def applyTask(s: State, structure: Load.BuildStructure, p: Parser[Task[_]], show: Boolean): Parser[() => State] =
 		Command.applyEffect(p) { t =>
 			import EvaluateTask._
 			val result = withStreams(structure){ str => runTask(t)(nodeView(s, str)) }
-			processResult(result, logger(s))
+			processResult(result, logger(s), show)
 			s
 		}
 	def actParser(s: State): Parser[() => State] =
@@ -82,6 +82,9 @@ object Act
 		val extracted = Project extract state
 		import extracted._
 		val defaultConf = (ref: ProjectRef) => if(Project.getProject(ref, structure).isDefined) defaultConfig(structure.data)(ref) else None
-		scopedKey(structure.index.keyIndex, curi, cid, defaultConf, structure.index.keyMap) flatMap valueParser(state, structure)
+		showParser.flatMap { show =>
+			scopedKey(structure.index.keyIndex, curi, cid, defaultConf, structure.index.keyMap) flatMap valueParser(state, structure, show)
+		}
 	}
+	def showParser = token( ("show" ~ Space) ^^^ true) ?? false
 }
