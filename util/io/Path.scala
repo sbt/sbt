@@ -173,7 +173,7 @@ object Path extends PathExtra
 	def lazyPathFinder(paths: => Traversable[Path]): PathFinder =
 		new PathFinder
 		{
-			private[sbt] def addTo(pathSet: mutable.Set[Path]) = pathSet ++= paths
+			private[sbt] def addTo(pathSet: mutable.Set[Path]) = paths.foreach(_.addTo(pathSet))
 		}
 	def finder(files: => Traversable[File]): PathFinder =  lazyPathFinder { fromFiles(files) }
 		
