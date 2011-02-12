@@ -37,7 +37,8 @@ object Act
 	{
 		val confMap = confs map { conf => (conf, index.keys(proj, conf)) } toMap;
 		val allKeys = (Set.empty[String] /: confMap.values)(_ ++ _)
-		token(ID examples allKeys).flatMap { keyString =>
+		val filteredKeys = allKeys.filter(Command.validID)
+		token(ID examples filteredKeys).flatMap { keyString =>
 			val conf = confMap.flatMap { case (key, value) => if(value contains keyString) key :: Nil else Nil } headOption;
 			getKey(keyMap, keyString, k => (k, conf.flatMap(identity)))
 		}
