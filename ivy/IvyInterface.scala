@@ -356,7 +356,7 @@ object Artifact
 		val name = file.getName
 		val i = name.lastIndexOf('.')
 		val base = if(i >= 0) name.substring(0, i) else name
-		Artifact(name, extract(name, defaultType), extract(name, defaultExtension), None, Nil, Some(file.toURI.toURL))
+		Artifact(base, extract(name, defaultType), extract(name, defaultExtension), None, Nil, Some(file.toURI.toURL))
 	}
 }
 final case class ModuleConfiguration(organization: String, name: String, revision: String, resolver: Resolver)

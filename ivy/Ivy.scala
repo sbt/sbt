@@ -91,10 +91,12 @@ final class IvySbt(val configuration: IvyConfiguration)
 		def owner = IvySbt.this
 		def logger = configuration.log
 		def withModule[T](f: (Ivy,DefaultModuleDescriptor,String) => T): T =
-			withIvy[T] { ivy => f(ivy, moduleDescriptor, defaultConfig) }
+			withIvy[T] { ivy => f(ivy, moduleDescriptor0, defaultConfig0) }
 
-		def moduleDescriptor = IvySbt.synchronized { moduleDescriptor0 }
-		def defaultConfig = IvySbt.synchronized { defaultConfig0 }
+		def moduleDescriptor = withModule((_,md,_) => md)
+		def defaultConfig = withModule( (_,_,dc) => dc)
+		// these should only be referenced by withModule because lazy vals synchronize on this object
+		// withIvy explicitly locks the IvySbt object, so they have to be done in the right order to avoid deadlock
 		private[this] lazy val (moduleDescriptor0: DefaultModuleDescriptor, defaultConfig0: String) =
 		{
 			val (baseModule, baseConfiguration) =
