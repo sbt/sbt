@@ -6,7 +6,7 @@ package sbt
 import Using._
 import ErrorHandling.translate
 
-import java.io.{BufferedReader, ByteArrayOutputStream, BufferedWriter, File, FileInputStream, InputStream, OutputStream}
+import java.io.{BufferedReader, ByteArrayOutputStream, BufferedWriter, File, FileInputStream, InputStream, OutputStream, PrintWriter}
 import java.net.{URI, URISyntaxException, URL}
 import java.nio.charset.Charset
 import java.util.Properties
@@ -534,6 +534,8 @@ object IO
 		writer(file, lines.headOption.getOrElse(""), charset, append) { w =>
 			lines.foreach { line => w.write(line); w.newLine() }
 		}
+	def writeLines(writer: PrintWriter, lines: Seq[String]): Unit =
+		lines foreach writer.println
 		
 	def write(properties: Properties, label: String, to: File) =
 		fileOutputStream()(to) { output => properties.store(output, label) }
