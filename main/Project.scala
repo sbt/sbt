@@ -94,6 +94,9 @@ object Project extends Init[Scope]
 	def display(scoped: ScopedKey[_]): String = Scope.display(scoped.scope, scoped.key.label)
 	def display(ref: ProjectRef): String = "(" + (ref.uri map (_.toString) getOrElse "<this>") + ")" + (ref.id getOrElse "<root>")
 
+	def fillTaskAxis(scoped: ScopedKey[_]): ScopedKey[_] =
+		ScopedKey(Scope.fillTaskAxis(scoped.scope, scoped.key), scoped.key)
+
 	def mapScope(f: Scope => Scope) = new  (ScopedKey ~> ScopedKey) { def apply[T](key: ScopedKey[T]) =
 		ScopedKey( f(key.scope), key.key)
 	}

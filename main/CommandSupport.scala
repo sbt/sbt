@@ -51,8 +51,27 @@ DelegatesCommand + """ <key>
 	This command prints the scopes that are searched for the key.
 """
 
+	val LastGrepCommand = "last-grep"
+	val lastGrepBrief = (LastGrepCommand + " <pattern> <key>", "Shows lines from the last output for 'key' that match 'pattern'.")
+	val lastGrepDetailed = 
+LastGrepCommand + """ <pattern> <key>
+
+	<key> is interpreted as a Scala expression of type sbt.Scoped and is typically a task key.
+	<pattern> is a regular expression interpreted by java.util.Pattern
+	Lines that match 'pattern' from the last streams output associated with the key are displayed.
+	See also """ + LastCommand + "."
+
+	val LastCommand = "last"
+	val lastBrief = (LastCommand + " <key>", "Prints the last output associated with 'key'.")
+	val lastDetailed = 
+LastCommand + """ <key>
+
+	<key> is interpreted as a Scala expression of type sbt.Scoped.
+	The last streams output associated with the key (typically a task key) is redisplayed.
+	See also """ + LastGrepCommand + "."
+
 	val GetCommand = "get"
-	val getBrief = (GetCommand + " <key>", "Prints the value for the given key, the defining scope, related definitions, and dependencies.")
+	val getBrief = (GetCommand + " <key>", "Prints the value for 'key', the defining scope, related definitions, and dependencies.")
 	val getDetailed =
 GetCommand + """ <key>
 

@@ -59,7 +59,7 @@ class xMain extends xsbti.AppMain
 object BuiltinCommands
 {
 	def DefaultCommands: Seq[Command] = Seq(ignore, help, reload, read, history, continuous, exit, loadCommands, loadProject, compile, discover,
-		projects, project, setOnFailure, ifLast, multi, shell, set, get, eval, delegates,alias, append, nop, sessionCommand, act)
+		projects, project, setOnFailure, ifLast, multi, shell, set, get, eval, delegates,alias, append, last, lastGrep, nop, sessionCommand, act)
 
 	def nop = Command.custom(s => success(() => s))
 	def ignore = Command.command(FailureWall)(identity)
@@ -238,6 +238,26 @@ object BuiltinCommands
 	def get = Command.single(GetCommand, getBrief, getDetailed)( scopedCommand(GetCommand) { (s, scope, key, structure) =>
 		val detailString = Project.details(structure, scope, key)
 		logger(s).info(detailString)
+		s
+	})
+	def lastGrep = Command.single(LastGrepCommand, lastGrepBrief, lastGrepDetailed) { (s,arg) =>
+		val (pattern, keyString) = arg.span(!_.isWhitespace)
+		if(keyString.isEmpty)
+		{
+			logger(s).error("Expected <pattern> <key>, found '" + arg + "'")
+			s.fail
+		}
+		else
+		{
+			val sc = scopedCommand(LastGrepCommand) { (s, scope, key, structure) =>
+				Output.lastGrep(scope, key, structure.streams, pattern)
+				s
+			}
+			sc(s, keyString)
+		}
+	}
+	def last = Command.single(LastCommand, lastBrief, lastDetailed)( scopedCommand(LastCommand) { (s, scope, key, structure) =>
+		Output.last(scope, key, structure.streams)
 		s
 	})
 	def delegates = Command.single(DelegatesCommand, delegatesBrief, delegatesDetailed) ( scopedCommand(DelegatesCommand) { (s, scope, key, structure) =>
