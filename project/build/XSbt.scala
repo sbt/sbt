@@ -57,8 +57,6 @@ class XSbt(info: ProjectInfo) extends ParentProject(info) with NoCrossPaths
 	val webappSub = project("web", "Web App", new WebAppProject(_), ioSub, logSub, classpathSub, controlSub)
 		// Embedded Scala code runner
 	val runSub = baseProject("run", "Run", ioSub, logSub, classpathSub, processSub)
-		// Command parsers
-	val parsersSub = baseProject("main" / "parsers", "Command Parsers", completeSub)
 
 	/***** compilation/discovery related modules *****/
 
