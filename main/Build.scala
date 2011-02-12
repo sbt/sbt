@@ -11,7 +11,7 @@ package sbt
 	import scala.annotation.tailrec
 	import collection.mutable
 	import Compile.{Compilers,Inputs}
-	import Project.{AppConfig, Config, ScopedKey, Setting, ThisProject, ThisProjectRef}
+	import Project.{AppConfig, Config, ScopedKey, ScopeLocal, Setting, ThisProject, ThisProjectRef}
 	import TypeFunctions.{Endo,Id}
 	import tools.nsc.reporters.ConsoleReporter
 
@@ -107,11 +107,16 @@ object EvaluateTask
 	
 	val (state, dummyState) = dummy[State]("state")
 	val (streamsManager, dummyStreamsManager) = dummy[Streams]("streams-manager")
-	val streams = TaskKey[TaskStreams]("streams", true)
+	val streams = TaskKey[TaskStreams]("streams")
+	val resolvedScoped = SettingKey[ScopedKey[_]]("resolved-scoped")
+	// will be cast to the appropriate type when passed to an InputTask implementation
+	// this assumes there is only one InputTask finally selected and will need to be
+	// revisited for aggregating InputTasks
+	private[sbt] val (parseResult, dummyParseResult) = dummy[Any]("$parse-result")
 
 	def injectSettings: Seq[Project.Setting[_]] = Seq(
-		(state in Scope.GlobalScope) :== dummyState,
-		(streamsManager in Scope.GlobalScope) :== dummyStreamsManager
+		(state in Scope.GlobalScope) ::= dummyState,
+		(streamsManager in Scope.GlobalScope) ::= dummyStreamsManager
 	)
 	
 	def dummy[T](name: String): (TaskKey[T], Task[T]) = (TaskKey[T](name), dummyTask(name))
@@ -143,8 +148,8 @@ object EvaluateTask
 		for( t <- structure.data.get(resolvedScope, taskKey.key)) yield
 			(t, nodeView(state, streams))
 	}
-	def nodeView(state: State, streams: Streams): Execute.NodeView[Task] =
-		Transform(dummyStreamsManager :^: dummyState :^: KNil, streams :+: state :+: HNil)
+	def nodeView(state: State, streams: Streams, parsed: Any = ()): Execute.NodeView[Task] =
+		Transform(dummyParseResult :^: dummyStreamsManager :^: dummyState :^: KNil, parsed :+: streams :+: state :+: HNil)
 
 	def runTask[Task[_] <: AnyRef, T](root: Task[T], checkCycles: Boolean = false, maxWorkers: Int = SystemProcessors)(implicit taskToNode: Execute.NodeView[Task]): Result[T] =
 	{
@@ -165,17 +170,20 @@ object EvaluateTask
 				error("Task did not complete successfully")
 		}
 
-	val injectStreams = (scoped: ScopedKey[_]) =>
+	// if the return type Seq[Setting[_]] is not explicitly given, scalac hangs
+	val injectStreams: ScopedKey[_] => Seq[Setting[_]] = scoped =>
 		if(scoped.key == streams.key)
-		{
-			val scope = Scope.fillTaskAxis(scoped.scope, scoped.key)
-			Seq(streams in scope <<= streamsManager map { mgr =>
-				val stream = mgr(ScopedKey(scope, scoped.key))
+			Seq(streams in scoped.scope <<= streamsManager map { mgr =>
+				val stream = mgr(scoped)
 				stream.open()
 				stream
 			})
-		}
-		else Nil
+		else if(scoped.key == resolvedScoped.key)
+			Seq(resolvedScoped in scoped.scope :== scoped)
+		else if(scoped.key == parseResult.key)
+			Seq(parseResult in scoped.scope ::= dummyParseResult)
+		else
+			Nil
 }
 object Index
 {
@@ -248,12 +256,30 @@ object Load
 		val loaded = resolveProjects(load(rootBase, s, config))
 		val projects = loaded.units
 		lazy val rootEval = lazyEval(loaded.units(loaded.root).unit)
-		val settings = config.injectSettings ++ buildConfigurations(loaded, getRootProject(projects), rootEval)
+		val settings = finalTransforms(config.injectSettings ++ buildConfigurations(loaded, getRootProject(projects), rootEval))
 		val delegates = config.delegates(loaded)
 		val data = Project.makeSettings(settings, delegates, config.scopeLocal)
 		val index = structureIndex(data)
 		val streams = mkStreams(projects, loaded.root, data)
 		(rootEval, new BuildStructure(projects, loaded.root, settings, data, index, streams, delegates, config.scopeLocal))
+	}
+
+	// map dependencies on the special tasks so that the scope is the same as the defining key
+	// additionally, set the task axis to the defining key if it is not set
+	def finalTransforms(ss: Seq[Setting[_]]): Seq[Setting[_]] =
+	{
+		import EvaluateTask.{parseResult, resolvedScoped, streams}
+		def isSpecial(key: AttributeKey[_]) = key == streams.key || key == resolvedScoped.key || key == parseResult.key
+		def mapSpecial(to: ScopedKey[_]) = new (ScopedKey ~> ScopedKey){ def apply[T](key: ScopedKey[T]) =
+			if(isSpecial(key.key))
+			{
+				val replaced = Scope.replaceThis(to.scope)(key.scope)
+				val scope = if(key.key == resolvedScoped.key) replaced else Scope.fillTaskAxis(replaced, to.key)
+				ScopedKey(scope, key.key)
+			}
+			else key
+		}
+		ss.map(s => s mapReferenced mapSpecial(s.key) )
 	}
 
 	def structureIndex(settings: Settings[Scope]): StructureIndex =
@@ -541,8 +567,8 @@ object Load
 	def referenced(definition: Project): Seq[ProjectRef] = definition.inherits ++ definition.aggregate ++ definition.dependencies.map(_.project)
 
 	
-	final class BuildStructure(val units: Map[URI, LoadedBuildUnit], val root: URI, val settings: Seq[Setting[_]], val data: Settings[Scope], val index: StructureIndex, val streams: Streams, val delegates: Scope => Seq[Scope], val scopeLocal: ScopedKey[_] => Seq[Setting[_]])
-	final class LoadBuildConfiguration(val stagingDirectory: File, val classpath: Seq[File], val loader: ClassLoader, val compilers: Compilers, val evalPluginDef: (BuildStructure, State) => (Seq[File], Analysis), val delegates: LoadedBuild => Scope => Seq[Scope], val scopeLocal: ScopedKey[_] => Seq[Setting[_]], val injectSettings: Seq[Setting[_]], val log: Logger)
+	final class BuildStructure(val units: Map[URI, LoadedBuildUnit], val root: URI, val settings: Seq[Setting[_]], val data: Settings[Scope], val index: StructureIndex, val streams: Streams, val delegates: Scope => Seq[Scope], val scopeLocal: ScopeLocal)
+	final class LoadBuildConfiguration(val stagingDirectory: File, val classpath: Seq[File], val loader: ClassLoader, val compilers: Compilers, val evalPluginDef: (BuildStructure, State) => (Seq[File], Analysis), val delegates: LoadedBuild => Scope => Seq[Scope], val scopeLocal: ScopeLocal, val injectSettings: Seq[Setting[_]], val log: Logger)
 	// information that is not original, but can be reconstructed from the rest of BuildStructure
 	final class StructureIndex(val keyMap: Map[String, AttributeKey[_]], val taskToKey: Map[Task[_], ScopedKey[Task[_]]], val keyIndex: KeyIndex)
 

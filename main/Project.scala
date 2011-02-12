@@ -102,6 +102,10 @@ object Project extends Init[Scope]
 		val f = mapScope(g)
 		ss.map(_ mapKey f mapReferenced f)
 	}
+	def transformRef(g: Scope => Scope, ss: Seq[Setting[_]]): Seq[Setting[_]] = {
+		val f = mapScope(g)
+		ss.map(_ mapReferenced f)
+	}
 	def translateUninitialized[T](f: => T): T =
 		try { f } catch { case u: Project.Uninitialized =>
 			val msg = "Uninitialized reference to " + display(u.key) + " from " + display(u.refKey)

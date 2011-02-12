@@ -65,9 +65,17 @@ object Act
 		structure.data.get(key.scope, key.key) match
 		{
 			case None => failure("Invalid setting or task")
-			case Some(input: InputTask[_]) => applyTask(s, structure, input.parser, show)
+			case Some(input: InputStatic[_]) => applyTask(s, structure, input.parser(s), show)
+			case Some(input: InputDynamic[_]) => applyDynamicTask(s, structure, input, show)
 			case Some(task: Task[_]) => applyTask(s, structure, success(task), show)
 			case Some(v) => success(() => { logger(s).info(v.toString); s})
+		}
+	def applyDynamicTask[I](s: State, structure: Load.BuildStructure, input: InputDynamic[I], show: Boolean): Parser[() => State] =
+		Command.applyEffect(input parser s) { parsed =>
+			import EvaluateTask._
+			val result = withStreams(structure){ str => runTask(input.task)(nodeView(s, str, parsed)) }
+			processResult(result, logger(s), show)
+			s
 		}
 	def applyTask(s: State, structure: Load.BuildStructure, p: Parser[Task[_]], show: Boolean): Parser[() => State] =
 		Command.applyEffect(p) { t =>

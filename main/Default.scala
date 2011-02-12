@@ -4,18 +4,20 @@
 package sbt
 
 	import java.io.File
-	import Scoped.Apply
 	import Scope.{GlobalScope,ThisScope}
-	import Project.{AppConfig, Config, Setting, ThisProject, ThisProjectRef}
+	import Project.{AppConfig, Config, Initialize, ScopedKey, Setting, ThisProject, ThisProjectRef}
 	import Configurations.{Compile => CompileConf, Test => TestConf}
 	import Command.HistoryPath
-	import EvaluateTask.streams
+	import EvaluateTask.{resolvedScoped, streams}
+	import complete._
 	import inc.Analysis
 	import std.TaskExtra._
 	import scala.xml.{Node => XNode,NodeSeq}
 	import org.apache.ivy.core.module.{descriptor, id}
 	import descriptor.ModuleDescriptor, id.ModuleRevisionId
 	import org.scalatools.testing.Framework
+	import Types._
+
 
 object Keys
 {
@@ -84,6 +86,7 @@ object Keys
 	val DefinedTests = TaskKey[Seq[TestDefinition]]("defined-tests")
 	val ExecuteTests = TaskKey[Test.Output]("execute-tests")
 	val TestTask = TaskKey[Unit]("test")
+	val TestOnly = InputKey[Unit]("test-only")
 	val TestOptions = TaskKey[Seq[TestOption]]("test-options")
 	val TestFrameworks = SettingKey[Seq[TestFramework]]("test-frameworks")
 	val TestListeners = TaskKey[Iterable[TestReportListener]]("test-listeners")
@@ -166,26 +169,26 @@ object Default
 	
 	final class RichFileSetting(s: ScopedSetting[File]) extends RichFileBase
 	{
-		def /(c: String): Apply[File] = s { _ / c }
+		def /(c: String): Initialize[File] = s { _ / c }
 		protected[this] def map0(f: PathFinder => PathFinder) = s(file => finder(f)(file :: Nil))
 	}
 	final class RichFilesSetting(s: ScopedSetting[Seq[File]]) extends RichFileBase
 	{
-		def /(s: String): Apply[Seq[File]] = map0 { _ / s }
+		def /(s: String): Initialize[Seq[File]] = map0 { _ / s }
 		protected[this] def map0(f: PathFinder => PathFinder) = s(finder(f))
 	}
 	sealed abstract class RichFileBase
 	{
-		def *(filter: FileFilter): Apply[Seq[File]] = map0 { _ * filter }
-		def **(filter: FileFilter): Apply[Seq[File]] = map0 { _ ** filter }
-		protected[this] def map0(f: PathFinder => PathFinder): Apply[Seq[File]]
+		def *(filter: FileFilter): Initialize[Seq[File]] = map0 { _ * filter }
+		def **(filter: FileFilter): Initialize[Seq[File]] = map0 { _ ** filter }
+		protected[this] def map0(f: PathFinder => PathFinder): Initialize[Seq[File]]
 		protected[this] def finder(f: PathFinder => PathFinder): Seq[File] => Seq[File] =
 			in => f(in).getFiles.toSeq
 	}
-	def configSrcSub(key: ScopedSetting[File]): Apply[File] = (key, Config) { (src, conf) => src / nameForSrc(conf.name) }
+	def configSrcSub(key: ScopedSetting[File]): Initialize[File] = (key, Config) { (src, conf) => src / nameForSrc(conf.name) }
 	def nameForSrc(config: String) = if(config == "compile") "main" else config
 	def prefix(config: String) = if(config == "compile") "" else config + "-"
-	def toSeq[T](key: ScopedSetting[T]): Apply[Seq[T]] = key( _ :: Nil)
+	def toSeq[T](key: ScopedSetting[T]): Initialize[Seq[T]] = key( _ :: Nil)
 
 	def extractAnalysis[T](a: Attributed[T]): (T, Analysis) = 
 		(a.data, a.metadata get Command.Analysis getOrElse Analysis.Empty)
@@ -255,7 +258,8 @@ object Default
 		DiscoveredMainClasses <<= CompileTask map discoverMainClasses,
 		Runner <<= ScalaInstance( si => new Run(si) ),
 		SelectMainClass <<= DiscoveredMainClasses map selectRunMain,
-		MainClass :== SelectMainClass,
+		MainClass in RunTask :== SelectMainClass,
+		MainClass <<= DiscoveredMainClasses map selectPackageMain,
 		RunTask <<= runTask(FullClasspath, MainClass in RunTask),
 		ScaladocOptions <<= ScalacOptions(identity),
 		DocTask <<= docTask,
@@ -276,17 +280,30 @@ object Default
 		LoadedTestFrameworks <<= (TestFrameworks, streams, TestLoader) map { (frameworks, s, loader) =>
 			frameworks.flatMap(f => f.create(loader, s.log).map( x => (f,x)).toIterable).toMap
 		},
-		DefinedTests <<= (LoadedTestFrameworks, CompileTask) map { (frameworkMap, analysis) =>
-			Test.discover(frameworkMap.values.toSeq, analysis)._1
+		DefinedTests <<= (LoadedTestFrameworks, CompileTask, streams) map { (frameworkMap, analysis, s) =>
+			val tests = Test.discover(frameworkMap.values.toSeq, analysis)._1
+			IO.writeLines(s.text(CompletionsID), tests.map(_.name).distinct)
+			tests
 		},
 		TestListeners <<= (streams in TestTask) map ( s => TestLogger(s.log) :: Nil ),
 		TestOptions <<= TestListeners map { listeners => Test.Listeners(listeners) :: Nil },
 		ExecuteTests <<= (streams in TestTask, LoadedTestFrameworks, TestOptions, TestLoader, DefinedTests, CopyResources) flatMap {
 			(s, frameworkMap, options, loader, discovered, _) => Test(frameworkMap, loader, discovered, options, s.log)
 		},
-		TestTask <<= (ExecuteTests, streams) map { (results, s) => Test.showResults(s.log, results) }
+		TestTask <<= (ExecuteTests, streams) map { (results, s) => Test.showResults(s.log, results) },
+		TestOnly <<= testOnly
 	)
 
+	def testOnly = 
+	InputTask(resolvedScoped(testOnlyParser)) ( result =>  
+		(streams, LoadedTestFrameworks, TestOptions, TestLoader, DefinedTests, CopyResources, result) flatMap {
+			case (s, frameworks, opts, loader, discovered, _, (tests, frameworkOptions)) =>
+				val modifiedOpts = Test.Filter(if(tests.isEmpty) _ => true else tests.toSet ) +: Test.Argument(frameworkOptions : _*) +: opts
+				Test(frameworks, loader, discovered, modifiedOpts, s.log) map { results =>
+					Test.showResults(s.log, results)
+				}
+		}
+	)
 	lazy val packageDefaults = packageBase ++ inConfig(CompileConf)(packageConfig) ++ inConfig(TestConf)(packageConfig)
 	
 	lazy val packageBase = Seq(
@@ -314,7 +331,7 @@ object Default
 	}
 	def jarPath  =  JarPath <<= (Target, JarName, NameToString) { (t, n, toString) => t / toString(n) }
 
-	def packageTasks(key: TaskKey[sbt.Package.Configuration], tpeString: String, mappings: Apply[Task[Seq[(File,String)]]]) =
+	def packageTasks(key: TaskKey[sbt.Package.Configuration], tpeString: String, mappings: Initialize[Task[Seq[(File,String)]]]) =
 		inTask(key)( Seq(
 			key in ThisScope.copy(task = Global) <<= packageTask,
 			Mappings <<= mappings,
@@ -323,7 +340,7 @@ object Default
 			CacheDirectory <<= CacheDirectory / key.key.label,
 			jarPath
 		))
-	def packageTask: Apply[Task[sbt.Package.Configuration]] =
+	def packageTask: Initialize[Task[sbt.Package.Configuration]] =
 		(JarPath, Mappings, PackageOptions, CacheDirectory, streams) map { (jar, srcs, options, cacheDir, s) =>
 			val config = new sbt.Package.Configuration(srcs, jar, options)
 			sbt.Package(config, cacheDir, s.log)
@@ -332,19 +349,18 @@ object Default
 
 	def selectRunMain(classes: Seq[String]): Option[String] =
 		sbt.SelectMainClass(Some(SimpleReader readLine _), classes)
+	def selectPackageMain(classes: Seq[String]): Option[String] =
+		sbt.SelectMainClass(None, classes)
 
-	def runTask(classpath: ScopedTask[Classpath], mainClass: ScopedTask[Option[String]]): Apply[InputTask[Unit]] =
-		(classpath.setting, mainClass.setting, Runner, streams.setting, CopyResources.setting) { (cpTask, mainTask, runner, sTask, copy) =>
-			import Types._
-			InputTask(complete.Parsers.spaceDelimited("<arg>")) { args =>
-				(cpTask :^: mainTask :^: sTask :^: copy :^: KNil) map { case cp :+: main :+: s :+: _ :+: HNil =>
-					val mainClass = main getOrElse error("No main class detected.")
-					runner.run(mainClass, data(cp), args, s.log) foreach error
-				}
+	def runTask(classpath: ScopedTask[Classpath], mainClass: ScopedTask[Option[String]]): Initialize[InputTask[Unit]] =
+		InputTask(_ => complete.Parsers.spaceDelimited("<arg>")) { result =>
+			(classpath, mainClass, Runner, streams, CopyResources, result) map { (cp, main, runner, s, _, args) =>
+				val mainClass = main getOrElse error("No main class detected.")
+				runner.run(mainClass, data(cp), args, s.log) foreach error
 			}
 		}
 
-	def docTask: Apply[Task[File]] =
+	def docTask: Initialize[Task[File]] =
 		(CompileInputs, streams, DocDirectory, Config, ScaladocOptions) map { (in, s, target, config, options) =>
 			val d = new Scaladoc(in.config.maxErrors, in.compilers.scalac)
 			d(nameForSrc(config.name), in.config.sources, in.config.classpath, target, options)(s.log)
@@ -383,6 +399,28 @@ object Default
 		mappings
 	}
 
+	def testOnlyParser(resolved: ScopedKey[_]): State => Parser[(Seq[String],Seq[String])] =
+	{ state =>
+			import DefaultParsers._
+		def distinctParser(exs: Set[String]): Parser[Seq[String]] =
+			token(Space ~> NotSpace.examples(exs)).flatMap(ex => distinctParser(exs - ex).map(ex +: _)) ?? Nil
+		val tests = savedLines(state, resolved, DefinedTests)
+		val selectTests = distinctParser(tests.toSet) // todo: proper IDs
+		val options = (Space ~> "--" ~> spaceDelimited("<arg>")) ?? Nil
+		selectTests ~ options
+	}
+	def savedLines(state: State, reader: ScopedKey[_], readFrom: Scoped): Seq[String] =
+	{
+		val structure = Project.structure(state)
+		structure.data.definingScope(reader.scope, readFrom.key) match {
+			case Some(defined) =>
+				val key = ScopedKey(Scope.fillTaskAxis(defined, readFrom.key), readFrom.key)
+				structure.streams.use(reader){ ts => IO.readLines(ts.readText(key, CompletionsID)) }
+			case None => Nil
+		}
+	}
+
+	val CompletionsID = "completions"
 
 //	lazy val projectConsole = task { Console.sbtDefault(info.compileInputs, this)(ConsoleLogger()) }
 		
@@ -426,7 +464,7 @@ object Classpaths
 		import Default._
 		import Attributed.{blank, blankSeq}
 
-	def concat[T](a: ScopedTaskable[Seq[T]], b: ScopedTaskable[Seq[T]]): Apply[Task[Seq[T]]] = (a,b) map (_ ++ _)
+	def concat[T](a: ScopedTaskable[Seq[T]], b: ScopedTaskable[Seq[T]]): Initialize[Task[Seq[T]]] = (a,b) map (_ ++ _)
 
 	val configSettings: Seq[Project.Setting[_]] = Seq(
 		ExternalDependencyClasspath <<= concat(UnmanagedClasspath, ManagedClasspath),
@@ -445,7 +483,9 @@ object Classpaths
 	val publishSettings: Seq[Project.Setting[_]] = Seq(
 		PublishMavenStyle in GlobalScope :== true,
 		PackageToPublish <<= defaultPackageTasks.dependOn,
-		DeliverDepends := (PublishMavenStyle, MakePom.setting, PackageToPublish.setting) { (mavenStyle, makePom, ptp) => if(mavenStyle) makePom else ptp },
+		DeliverDepends <<= (PublishMavenStyle, MakePom.setting, PackageToPublish.setting) { (mavenStyle, makePom, ptp) =>
+			if(mavenStyle) makePom.map(_ => ()) else ptp
+		},
 		MakePom <<= (IvyModule, MakePomConfig, PackageToPublish) map { (ivyModule, makePomConfig, _) => IvyActions.makePom(ivyModule, makePomConfig); makePomConfig.file },
 		Deliver <<= deliver(PublishConfig),
 		DeliverLocal <<= deliver(PublishLocalConfig),
@@ -502,13 +542,12 @@ object Classpaths
 	)
 
 
-	def deliver(config: TaskKey[PublishConfiguration]): Apply[Task[Unit]] =
+	def deliver(config: TaskKey[PublishConfiguration]): Initialize[Task[Unit]] =
 		(IvyModule, config, DeliverDepends) map { (ivyModule, config, _) => IvyActions.deliver(ivyModule, config) }
-	def publish(config: TaskKey[PublishConfiguration], deliverKey: TaskKey[_]): Apply[Task[Unit]] =
+	def publish(config: TaskKey[PublishConfiguration], deliverKey: TaskKey[_]): Initialize[Task[Unit]] =
 		(IvyModule, config, deliverKey) map { (ivyModule, config, _) => IvyActions.publish(ivyModule, config) }
 
 		import Cache._
-		import Types._
 		import CacheIvy.{classpathFormat, publishIC, updateIC}
 
 	def cachedUpdate(cacheFile: File, module: IvySbt#Module, config: UpdateConfiguration, log: Logger): Map[String, Seq[File]] =
@@ -560,7 +599,7 @@ object Classpaths
 			p.dependencies flatMap { dep => (ProjectID in dep.project) get data map { _.copy(configurations = dep.configuration) } }
 		}
 
-	def depMap: Apply[Task[Map[ModuleRevisionId, ModuleDescriptor]]] =
+	def depMap: Initialize[Task[Map[ModuleRevisionId, ModuleDescriptor]]] =
 		(ThisProject, ThisProjectRef, Data) flatMap { (root, rootRef, data) =>
 			val dependencies = (p: (ProjectRef, Project)) => p._2.dependencies.flatMap(pr => ThisProject in pr.project get data map { (pr.project, _) })
 			depMap(Dag.topologicalSort((rootRef,root))(dependencies).dropRight(1), data)
@@ -574,16 +613,16 @@ object Classpaths
 			}).toMap
 		}
 
-	def projectResolver: Apply[Task[Resolver]] =
+	def projectResolver: Initialize[Task[Resolver]] =
 		ProjectDescriptors map { m =>
 			new RawRepository(new ProjectResolver("inter-project", m))
 		}
 
 	def analyzed[T](data: T, analysis: Analysis) = Attributed.blank(data).put(Command.Analysis, analysis)
-	def makeProducts: Apply[Task[Classpath]] =
+	def makeProducts: Initialize[Task[Classpath]] =
 		(CompileTask, CompileInputs) map { (analysis, i) => analyzed(i.config.classesDirectory, analysis) :: Nil }
 
-	def internalDependencies: Apply[Task[Classpath]] =
+	def internalDependencies: Initialize[Task[Classpath]] =
 		(ThisProjectRef, ThisProject, Config, Data) flatMap internalDependencies0
 
 	def internalDependencies0(projectRef: ProjectRef, project: Project, conf: Configuration, data: Settings[Scope]): Task[Classpath] =

@@ -47,17 +47,19 @@ trait Init[Scope]
 	type ScopedMap = IMap[ScopedKey, SettingSeq]
 	type CompiledMap = Map[ScopedKey[_], Compiled]
 	type MapScoped = ScopedKey ~> ScopedKey
+	type ScopeLocal = ScopedKey[_] => Seq[Setting[_]]
 
-	def value[T](key: ScopedKey[T])(value: => T): Setting[T] = new Value(key, value _)
-	def update[T](key: ScopedKey[T])(f: T => T): Setting[T] = app(key, key :^: KNil)(h => f(h.head))
-	def app[HL <: HList, T](key: ScopedKey[T], inputs: KList[ScopedKey, HL])(f: HL => T): Setting[T] = new Apply(key, f, inputs)
-	def uniform[S,T](key: ScopedKey[T], inputs: Seq[ScopedKey[S]])(f: Seq[S] => T): Setting[T] = new Uniform(key, f, inputs)
-	def kapp[HL <: HList, M[_], T](key: ScopedKey[T], inputs: KList[({type l[t] = ScopedKey[M[t]]})#l, HL])(f: KList[M, HL] => T): Setting[T] = new KApply[HL, M, T](key, f, inputs)
+	def setting[T](key: ScopedKey[T], init: Initialize[T]): Setting[T] = new Setting[T](key, init)
+	def value[T](value: => T): Initialize[T] = new Value(value _)
+	def update[T](key: ScopedKey[T])(f: T => T): Setting[T] = new Setting[T](key, app(key :^: KNil)(hl => f(hl.head)))
+	def app[HL <: HList, T](inputs: KList[ScopedKey, HL])(f: HL => T): Initialize[T] = new Apply(f, inputs)
+	def uniform[S,T](inputs: Seq[ScopedKey[S]])(f: Seq[S] => T): Initialize[T] = new Uniform(f, inputs)
+	def kapp[HL <: HList, M[_], T](inputs: KList[({type l[t] = ScopedKey[M[t]]})#l, HL])(f: KList[M, HL] => T): Initialize[T] = new KApply[HL, M, T](f, inputs)
 
 	// the following is a temporary workaround for the "... cannot be instantiated from ..." bug, which renders 'kapp' above unusable outside this source file
 	class KApp[HL <: HList, M[_], T] {
 		type Composed[S] = ScopedKey[M[S]]
-		def apply(key: ScopedKey[T], inputs: KList[Composed, HL])(f: KList[M, HL] => T): Setting[T] = new KApply[HL, M, T](key, f, inputs)
+		def apply(inputs: KList[Composed, HL])(f: KList[M, HL] => T): Initialize[T] = new KApply[HL, M, T](f, inputs)
 	}
 
 	def empty(implicit delegates: Scope => Seq[Scope]): Settings[Scope] = new Settings0(Map.empty, delegates)
@@ -67,7 +69,7 @@ trait Init[Scope]
 	def getValue[T](s: Settings[Scope], k: ScopedKey[T]) = s.get(k.scope, k.key).get
 	def asFunction[T](s: Settings[Scope]): ScopedKey[T] => T = k => getValue(s, k)
 
-	def compiled(init: Seq[Setting[_]])(implicit delegates: Scope => Seq[Scope], scopeLocal: ScopedKey[_] => Seq[Setting[_]]): CompiledMap =
+	def compiled(init: Seq[Setting[_]])(implicit delegates: Scope => Seq[Scope], scopeLocal: ScopeLocal): CompiledMap =
 	{
 		// prepend per-scope settings 
 		val withLocal = addLocal(init)(scopeLocal)
@@ -78,7 +80,7 @@ trait Init[Scope]
 		// merge Seq[Setting[_]] into Compiled
 		compile(dMap)
 	}
-	def make(init: Seq[Setting[_]])(implicit delegates: Scope => Seq[Scope], scopeLocal: ScopedKey[_] => Seq[Setting[_]]): Settings[Scope] =
+	def make(init: Seq[Setting[_]])(implicit delegates: Scope => Seq[Scope], scopeLocal: ScopeLocal): Settings[Scope] =
 	{
 		val cMap = compiled(init)(delegates, scopeLocal)
 		// order the initializations.  cyclic references are detected here.
@@ -105,7 +107,7 @@ trait Init[Scope]
 	def append[T](ss: Seq[Setting[T]], s: Setting[T]): Seq[Setting[T]] =
 		if(s.definitive) s :: Nil else ss :+ s
 
-	def addLocal(init: Seq[Setting[_]])(implicit scopeLocal: ScopedKey[_] => Seq[Setting[_]]): Seq[Setting[_]] =
+	def addLocal(init: Seq[Setting[_]])(implicit scopeLocal: ScopeLocal): Seq[Setting[_]] =
 		init.flatMap( _.dependsOn flatMap scopeLocal )  ++  init
 		
 	def delegate(sMap: ScopedMap)(implicit delegates: Scope => Seq[Scope]): ScopedMap =
@@ -138,15 +140,9 @@ trait Init[Scope]
 
 	private[this] def applySetting[T](map: Settings[Scope], setting: Setting[T]): Settings[Scope] =
 	{
-		def execK[HL <: HList, M[_]](a: KApply[HL, M, T]) =
-			map.set(a.key.scope, a.key.key, a.f(a.inputs.transform[M]( nestCon[ScopedKey, Id, M](asTransform(map)) )) )
-		setting match
-		{
-			case s: Value[T] => map.set(s.key.scope, s.key.key, s.value())
-			case u: Uniform[s, T] => map.set(u.key.scope, u.key.key, u.f(u.inputs map asFunction(map)) )
-			case a: Apply[hl, T] => map.set(a.key.scope, a.key.key, a.f(a.inputs down asTransform(map) ) )
-			case ka: KApply[hl, m, T] => execK[hl, m](ka) // separate method needed to workaround bug where m is not recognized as higher-kinded in inline version
-		}
+		val value = setting.init.get(map)
+		val key = setting.key
+		map.set(key.scope, key.key, value)
 	}
 
 	final class Uninitialized(val key: ScopedKey[_], val refKey: ScopedKey[_], msg: String) extends Exception(msg)
@@ -154,42 +150,58 @@ trait Init[Scope]
 		new Uninitialized(key, refKey, "Reference to uninitialized setting " + key.key.label + " (in " + key.scope + ") from " + refKey.key.label +" (in " + refKey.scope + ")")
 	final class Compiled(val dependencies: Iterable[ScopedKey[_]], val eval: Settings[Scope] => Settings[Scope])
 
-	sealed trait Setting[T]
+	sealed trait Initialize[T]
 	{
-		def key: ScopedKey[T]
-		def definitive: Boolean
 		def dependsOn: Seq[ScopedKey[_]]
-		def mapReferenced(g: MapScoped): Setting[T]
-		def mapKey(g: MapScoped): Setting[T]
+		def map[S](g: T => S): Initialize[S]
+		def mapReferenced(g: MapScoped): Initialize[T]
+		def zip[S](o: Initialize[S]): Initialize[(T,S)] = zipWith(o)((x,y) => (x,y))
+		def zipWith[S,U](o: Initialize[S])(f: (T,S) => U): Initialize[U] = new Joined[T,S,U](this, o, f)
+		def get(map: Settings[Scope]): T
 	}
-	private[this] final class Value[T](val key: ScopedKey[T], val value: () => T) extends Setting[T]
+	final class Setting[T](val key: ScopedKey[T], val init: Initialize[T])
 	{
-		def definitive = true
+		def definitive: Boolean = !init.dependsOn.contains(key)
+		def dependsOn: Seq[ScopedKey[_]] = remove(init.dependsOn, key)
+		def mapReferenced(g: MapScoped): Setting[T] = new Setting(key, init mapReferenced g)
+		def mapKey(g: MapScoped): Setting[T] = new Setting(g(key), init)
+	}
+
+	private[this] final class Joined[S,T,U](a: Initialize[S], b: Initialize[T], f: (S,T) => U) extends Initialize[U]
+	{
+		def dependsOn = a.dependsOn ++ b.dependsOn
+		def mapReferenced(g: MapScoped) = new Joined(a mapReferenced g, b mapReferenced g, f)
+		def map[Z](g: U => Z) = new Joined[S,T,Z](a, b, (s,t) => g(f(s,t)))
+		def get(map: Settings[Scope]): U = f(a get map, b get map)
+	}
+	private[this] final class Value[T](value: () => T) extends Initialize[T]
+	{
 		def dependsOn = Nil
 		def mapReferenced(g: MapScoped) = this
-		def mapKey(g: MapScoped): Setting[T] = new Value(g(key), value)
+		def map[S](g: T => S) = new Value[S](() => g(value()))
+		def get(map: Settings[Scope]): T = value()
 	}
-	private[this] final class Apply[HL <: HList, T](val key: ScopedKey[T], val f: HL => T, val inputs: KList[ScopedKey, HL]) extends Setting[T]
+	private[this] final class Apply[HL <: HList, T](val f: HL => T, val inputs: KList[ScopedKey, HL]) extends Initialize[T]
 	{
-		def definitive = !inputs.toList.contains(key)
-		def dependsOn = remove(inputs.toList, key)
-		def mapReferenced(g: MapScoped) = new Apply(key, f, inputs transform g)
-		def mapKey(g: MapScoped): Setting[T] = new Apply(g(key), f, inputs)
+		def dependsOn = inputs.toList
+		def mapReferenced(g: MapScoped) = new Apply(f, inputs transform g)
+		def map[S](g: T => S) = new Apply(g compose f, inputs)
+		def get(map: Settings[Scope]) = f(inputs down asTransform(map) )
 	}
-	private[this] final class KApply[HL <: HList, M[_], T](val key: ScopedKey[T], val f: KList[M, HL] => T, val inputs: KList[({type l[t] = ScopedKey[M[t]]})#l, HL]) extends Setting[T]
+	private[this] final class KApply[HL <: HList, M[_], T](val f: KList[M, HL] => T, val inputs: KList[({type l[t] = ScopedKey[M[t]]})#l, HL]) extends Initialize[T]
 	{
-		def definitive = !inputs.toList.contains(key)
-		def dependsOn = remove(unnest(inputs.toList), key)
-		def mapReferenced(g: MapScoped) = new KApply[HL, M, T](key, f, inputs.transform[({type l[t] = ScopedKey[M[t]]})#l]( nestCon(g) ) )
-		def mapKey(g: MapScoped): Setting[T] = new KApply[HL, M, T](g(key), f, inputs)
+		def dependsOn = unnest(inputs.toList)
+		def mapReferenced(g: MapScoped) = new KApply[HL, M, T](f, inputs.transform[({type l[t] = ScopedKey[M[t]]})#l]( nestCon(g) ) )
+		def map[S](g: T => S) = new KApply[HL, M, S](g compose f, inputs)
+		def get(map: Settings[Scope]) = f(inputs.transform[M]( nestCon[ScopedKey, Id, M](asTransform(map)) ))
 		private[this] def unnest(l: List[ScopedKey[M[T]] forSome { type T }]): List[ScopedKey[_]] = l.asInstanceOf[List[ScopedKey[_]]]
 	}
-	private[this] final class Uniform[S, T](val key: ScopedKey[T], val f: Seq[S] => T, val inputs: Seq[ScopedKey[S]]) extends Setting[T]
+	private[this] final class Uniform[S, T](val f: Seq[S] => T, val inputs: Seq[ScopedKey[S]]) extends Initialize[T]
 	{
-		def definitive = !inputs.contains(key)
-		def dependsOn = remove(inputs, key)
-		def mapReferenced(g: MapScoped) = new Uniform(key, f, inputs map g.fn[S])
-		def mapKey(g: MapScoped): Setting[T] = new Uniform(g(key), f, inputs)
+		def dependsOn = inputs
+		def mapReferenced(g: MapScoped) = new Uniform(f, inputs map g.fn[S])
+		def map[S](g: T => S) = new Uniform(g compose f, inputs)
+		def get(map: Settings[Scope]) = f(inputs map asFunction(map))
 	}
 	private def remove[T](s: Seq[T], v: T) = s filterNot (_ == v)
 }

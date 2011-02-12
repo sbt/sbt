@@ -13,5 +13,5 @@ abstract class BasicProject
 	def javapCompiledTask(conf: Configuration): Task[Unit] =
 		javapTask(taskData(fullClasspath(conf)), buildScalaInstance)
 
-	// lazy val test-only, test-quick, test-failed, javap, javap-quick, jetty-{run,stop,restart}, prepare-webapp, watch paths, Ivy settings loaded and printed
+	// lazy val test-quick, test-failed, javap, javap-quick, jetty-{run,stop,restart}, prepare-webapp, watch paths
 }
