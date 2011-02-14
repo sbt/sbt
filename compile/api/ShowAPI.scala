@@ -169,13 +169,14 @@ trait ShowDefinition
 }
 trait ShowType
 {
-	implicit def showType(implicit s: Show[SimpleType], a: Show[Annotated], st: Show[Structure], e: Show[Existential], po: Show[Polymorphic]): Show[Type] =
+	implicit def showType(implicit s: Show[SimpleType], a: Show[Annotated], st: Show[Structure], c: Show[Constant], e: Show[Existential], po: Show[Polymorphic]): Show[Type] =
 		new Show[Type]
 		{
 			def show(t: Type) =
 				t match
 				{
 					case q: SimpleType => s.show(q)
+					case q: Constant => c.show(q)
 					case q: Annotated => a.show(q)
 					case q: Structure => st.show(q)
 					case q: Existential => e.show(q)
@@ -219,6 +220,8 @@ trait ShowTypes
 		new Show[Projection] { def show(p: Projection) = t.show(p.prefix) + "#" + p.id }
 	implicit def showParameterized(implicit t: Show[Type]): Show[Parameterized] =
 		new Show[Parameterized] { def show(p: Parameterized) = t.show(p.baseType) + mapSeq(p.typeArguments, t).mkString("[", ", ", "]") }
+	implicit def showConstant(implicit t: Show[Type]): Show[Constant] =
+		new Show[Constant] { def show(c: Constant) = t.show(c.baseType) + "(" + c.value + ")" }
 	implicit def showExistential(implicit t: Show[Type], tp: Show[TypeParameter]): Show[Existential] =
 		new Show[Existential] {
 			def show(e: Existential) =
@@ -291,6 +294,7 @@ object DefaultShowAPI extends ShowBase with ShowBasicTypes with ShowValueParamet
 	implicit lazy val showSimple: Show[SimpleType] = new ShowLazy(Cyclic.showSimpleType)
 	implicit lazy val showAnnotated: Show[Annotated] = Cyclic.showAnnotated
 	implicit lazy val showExistential: Show[Existential] = Cyclic.showExistential
+	implicit lazy val showConstant: Show[Constant] = Cyclic.showConstant
 	implicit lazy val showParameterized: Show[Parameterized] = Cyclic.showParameterized
 	
 	implicit lazy val showTypeParameters: Show[Seq[TypeParameter]] = new ShowLazy(Cyclic.showTypeParameters)
