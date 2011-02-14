@@ -383,7 +383,7 @@ object Default
 	def compileTask = (CompileInputs, streams) map { (i,s) => Compile(i,s.log) }
 	def compileInputsTask =
 		(DependencyClasspath, Sources, JavaSourceRoots, Compilers, JavacOptions, ScalacOptions, CacheDirectory, ClassDirectory, streams) map {
-		(cp, sources, javaRoots, compilers, scalacOptions, javacOptions, cacheDirectory, classes, s) =>
+		(cp, sources, javaRoots, compilers, javacOptions, scalacOptions, cacheDirectory, classes, s) =>
 			val classpath = classes +: data(cp)
 			val analysis = analysisMap(cp)
 			val cache = cacheDirectory / "compile"
