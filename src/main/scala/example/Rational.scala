@@ -29,14 +29,28 @@ class Rational(n: Int, d: Int) {
   // an implicit conversion.  (See the example package object.)
   def +(that: Int): Rational = this + new Rational(that)
   
-  // toString overrides a method in AnyRef so "override" is required.
+  // toString, equals, and hashCode all override methods in AnyRef
+  // so "override" is required.
   override def toString = n + "/" + d + (
     // The result of the if/else is a String:
     if (numerator == n) ""                          // the empty string if it is irreducible
     else " (" + numerator + "/" + denominator + ")" // the reduced form otherwise
   )
+  
+  // To preserve symmetry we will be equal only to other Rationals.
+  override def equals(other: Any) = other match {
+    case x: Rational  => this.numerator == x.numerator && this.denominator == x.denominator
+    case _            => false
+  }
+  // As with java, equals and hashCode should always be overridden together.
+  override def hashCode = numerator.## + denominator.##  
 }
 
 // The Rational companion object.
 object Rational {
+  // A factory method on the companion object allows construction
+  // without explicit calls to new.  Here, d is given a default argument
+  // of 1.  This is an alternative mechanism to the auxiliary constructor.
+  // used in the class.
+  def apply(n: Int, d: Int = 1): Rational = new Rational(n, d)
 }
