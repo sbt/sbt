@@ -239,7 +239,7 @@ object Load
 		getConfiguration(lb.units, ref._1, ref._2, config).extendsConfigs.map(c => ConfigKey(c.name))
 		
 	def projectInherit(lb: LoadedBuild, ref: (URI, String)): Seq[ProjectRef] =
-		getProject(lb.units, ref._1, ref._2).inherits
+		getProject(lb.units, ref._1, ref._2).delegates
 
 		// build, load, and evaluate all units.
 		//  1) Compile all plugin definitions
@@ -423,7 +423,7 @@ object Load
 		def resolveRefs(prs: Seq[ProjectRef]) = prs map resolveRef
 		def resolveDeps(ds: Seq[Project.ClasspathDependency]) = ds map resolveDep
 		def resolveDep(d: Project.ClasspathDependency) = d.copy(project = resolveRef(d.project))
-		p => p.copy(aggregate = resolveRefs(p.aggregate), dependencies = resolveDeps(p.dependencies), inherits = resolveRefs(p.inherits))
+		p => p.copy(aggregate = resolveRefs(p.aggregate), dependencies = resolveDeps(p.dependencies), delegates = resolveRefs(p.delegates))
 	}
 	def projects(unit: BuildUnit): Seq[Project] =
 	{
@@ -564,7 +564,7 @@ object Load
 
 	// these are unresolved references
 	def referenced(definitions: Seq[Project]): Seq[ProjectRef] = definitions flatMap referenced
-	def referenced(definition: Project): Seq[ProjectRef] = definition.inherits ++ definition.aggregate ++ definition.dependencies.map(_.project)
+	def referenced(definition: Project): Seq[ProjectRef] = definition.delegates ++ definition.aggregate ++ definition.dependencies.map(_.project)
 
 	
 	final class BuildStructure(val units: Map[URI, LoadedBuildUnit], val root: URI, val settings: Seq[Setting[_]], val data: Settings[Scope], val index: StructureIndex, val streams: Streams, val delegates: Scope => Seq[Scope], val scopeLocal: ScopeLocal)
