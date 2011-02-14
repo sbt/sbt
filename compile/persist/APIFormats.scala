@@ -56,6 +56,9 @@ trait APIFormats extends FormatExtra
 	implicit def formatPolymorphic(implicit t: Format[Type], tps: Format[Array[TypeParameter]]): Format[Polymorphic] =
 		p2( (p: Polymorphic) => (p.baseType, p.parameters) )( new Polymorphic(_,_) )(t, tps)
 
+	implicit def formatConstant(implicit t: Format[Type], fs: Format[String]): Format[Constant] =
+		p2( (c: Constant) => (c.baseType, c.value) )( new Constant(_,_) )(t,fs)
+
 	implicit def formatExistential(implicit t: Format[Type], tps: Format[Array[TypeParameter]]): Format[Existential] =
 		p2( (e: Existential) => (e.baseType, e.clause) )( new Existential(_,_) )(t,tps)
 

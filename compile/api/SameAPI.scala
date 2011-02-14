@@ -119,7 +119,8 @@ class SameAPI(tagsA: TypeVars, tagsB: TypeVars, includePrivate: Boolean, include
 		debug(sameDefinitions(byName(atypes), byName(btypes)), "Type definitions differed")
 	}
 	def sameDefinitions(a: scala.collection.Map[String, List[Definition]], b: scala.collection.Map[String, List[Definition]]): Boolean =
-		debug(sameStrings(a.keySet, b.keySet), "\tDefinition strings differed") && zippedEntries(a,b).forall(tupled(sameNamedDefinitions))
+		debug(sameStrings(a.keySet, b.keySet), "\tDefinition strings differed (a: " + a.keySet + ", b: " + b.keySet + ")") &&
+		zippedEntries(a,b).forall(tupled(sameNamedDefinitions))
 
 	/** Removes definitions that should not be considered for API equality.
 	* All top-level definitions are always considered: 'private' only means package-private.
@@ -303,6 +304,7 @@ class SameAPI(tagsA: TypeVars, tagsB: TypeVars, includePrivate: Boolean, include
 		(a, b) match
 		{
 			case (sa: SimpleType, sb: SimpleType) => debug(sameSimpleType(sa, sb), "Different simple types: " + DefaultShowAPI(sa) + " and " + DefaultShowAPI(sb))
+			case (ca: Constant, cb: Constant) => debug(sameConstantType(ca, cb), "Different constant types: " + DefaultShowAPI(ca) + " and " + DefaultShowAPI(cb))
 			case (aa: Annotated, ab: Annotated) => debug(sameAnnotatedType(aa, ab), "Different annotated types")
 			case (sa: Structure, sb: Structure) => debug(sameStructure(sa, sb), "Different structure type")
 			case (ea: Existential, eb: Existential) => debug(sameExistentialType(ea, eb), "Different existential type")
@@ -310,6 +312,9 @@ class SameAPI(tagsA: TypeVars, tagsB: TypeVars, includePrivate: Boolean, include
 			case _ => false
 		}
 
+	def sameConstantType(ca: Constant, cb: Constant): Boolean =
+		sameType(ca.baseType, cb.baseType) &&
+		ca.value == cb.value
 	def sameExistentialType(a: Existential, b: Existential): Boolean =
 		sameTypeParameters(a.clause, b.clause) &&
 		sameType(a.baseType, b.baseType)

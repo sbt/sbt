@@ -144,6 +144,7 @@ class Visit
 		{
 			case s: Structure => visitStructure(s)
 			case e: Existential => visitExistential(e)
+			case c: Constant => visitConstant(c)
 			case p: Polymorphic => visitPolymorphic(p)
 			case a: Annotated => visitAnnotated(a)
 			case p: Parameterized => visitParameterized(p)
@@ -169,6 +170,11 @@ class Visit
 	def visitIdPath(id: Id) { visitString(id.id) }
 
 
+	def visitConstant(c: Constant) =
+	{
+		visitString(c.value)
+		visitType(c.baseType)
+	}
 	def visitExistential(e: Existential) = visitParameters(e.clause, e.baseType)
 	def visitPolymorphic(p: Polymorphic) = visitParameters(p.parameters, p.baseType)
 	def visitProjection(p: Projection) =

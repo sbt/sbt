@@ -95,6 +95,7 @@ private class TagTypeVariables
 		{
 			case s: Structure => tagStructure(s)
 			case e: Existential => tagExistential(e)
+			case c: Constant => tagConstant(c)
 			case p: Polymorphic => tagPolymorphic(p)
 			case a: Annotated => tagAnnotated(a)
 			case p: Parameterized => tagParameterized(p)
@@ -102,7 +103,8 @@ private class TagTypeVariables
 			case _: EmptyType | _: Singleton | _: ParameterRef => ()
 		}
 	}
-	
+
+	def tagConstant(c: Constant) = tagType(c.baseType)
 	def tagExistential(e: Existential) = tagParameters(e.clause, e.baseType)
 	def tagPolymorphic(p: Polymorphic) = tagParameters(p.parameters, p.baseType)
 	def tagProjection(p: Projection) = tagType(p.prefix)
