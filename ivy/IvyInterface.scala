@@ -12,8 +12,8 @@ import org.apache.ivy.util.url.CredentialsStore
 final case class ModuleID(organization: String, name: String, revision: String, configurations: Option[String] = None, isChanging: Boolean = false, isTransitive: Boolean = true, explicitArtifacts: Seq[Artifact] = Nil, extraAttributes: Map[String,String] = Map.empty, crossVersion: Boolean = false)
 {
 	override def toString = organization + ":" + name + ":" + revision
-	// () required for chaining
 	def cross(v: Boolean) = copy(crossVersion = v)
+	// () required for chaining
 	def notTransitive() = intransitive()
 	def intransitive() = copy(isTransitive = false)
 	def changing() = copy(isChanging = true)

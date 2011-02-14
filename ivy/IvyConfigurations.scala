@@ -54,25 +54,24 @@ sealed trait ModuleSettings
 	def ivyScala: Option[IvyScala]
 	def noScala: ModuleSettings
 }
-final class IvyFileConfiguration(val file: File, val ivyScala: Option[IvyScala], val validate: Boolean) extends ModuleSettings
+final case class IvyFileConfiguration(file: File, ivyScala: Option[IvyScala], validate: Boolean) extends ModuleSettings
 {
-	def noScala = new IvyFileConfiguration(file, None, validate)
+	def noScala = copy(ivyScala = None)
 }
-final class PomConfiguration(val file: File, val ivyScala: Option[IvyScala], val validate: Boolean) extends ModuleSettings
+final case class PomConfiguration(file: File, ivyScala: Option[IvyScala], validate: Boolean) extends ModuleSettings
 {
-	def noScala = new PomConfiguration(file, None, validate)
+	def noScala = copy(ivyScala = None)
 }
-final class InlineConfiguration(val module: ModuleID, val dependencies: Seq[ModuleID], val ivyXML: NodeSeq,
-	val configurations: Seq[Configuration], val defaultConfiguration: Option[Configuration], val ivyScala: Option[IvyScala],
-	val validate: Boolean) extends ModuleSettings
+final case class InlineConfiguration(module: ModuleID, dependencies: Seq[ModuleID], ivyXML: NodeSeq,
+	configurations: Seq[Configuration], defaultConfiguration: Option[Configuration], ivyScala: Option[IvyScala],
+	validate: Boolean) extends ModuleSettings
 {
-	def withConfigurations(configurations: Seq[Configuration]) = 
-		new InlineConfiguration(module, dependencies, ivyXML, configurations, defaultConfiguration, ivyScala, validate)
-	def noScala = new InlineConfiguration(module, dependencies, ivyXML, configurations, defaultConfiguration, None, validate)
+	def withConfigurations(configurations: Seq[Configuration]) =  copy(configurations = configurations)
+	def noScala = copy(ivyScala = None)
 }
-final class EmptyConfiguration(val module: ModuleID, val ivyScala: Option[IvyScala], val validate: Boolean) extends ModuleSettings
+final case class EmptyConfiguration(module: ModuleID, ivyScala: Option[IvyScala], validate: Boolean) extends ModuleSettings
 {
-	def noScala = new EmptyConfiguration(module, None, validate)
+	def noScala = copy(ivyScala = None)
 }
 object InlineConfiguration
 {
