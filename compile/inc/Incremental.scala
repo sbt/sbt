@@ -15,6 +15,7 @@ object Incremental
 	def compile(sources: Set[File], entry: String => Option[File], previous: Analysis, current: ReadStamps, forEntry: File => Option[Analysis], doCompile: Set[File] => Analysis)(implicit equivS: Equiv[Stamp]): (Boolean, Analysis) =
 	{
 		val initialChanges = changedInitial(entry, sources, previous, current, forEntry)
+		println("Initial changes: " + initialChanges)
 		val initialInv = invalidateInitial(previous.relations, initialChanges)
 		println("Initially invalidated: " + initialInv)
 		val analysis = cycle(initialInv, previous, doCompile)
@@ -49,8 +50,8 @@ object Incremental
 	*/
 	def changedIncremental[T](lastSources: collection.Set[T], oldAPI: T => Source, newAPI: T => Source): APIChanges[T] =
 	{
-		val oldApis = lastSources map oldAPI
-		val newApis = lastSources map newAPI
+		val oldApis = lastSources.toSeq map oldAPI
+		val newApis = lastSources.toSeq map newAPI
 		for(api <- newApis; definition <- api.definitions) { println(xsbt.api.DefaultShowAPI(definition)) }
 		val changes = (lastSources, oldApis, newApis).zipped.filter { (src, oldApi, newApi) => !SameAPI(oldApi, newApi) }
 
