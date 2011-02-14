@@ -86,8 +86,9 @@ final class IvySbt(val configuration: IvyConfiguration)
 			finally { ivy.popContext() }
 		}
 
-	final class Module(val moduleSettings: ModuleSettings)
+	final class Module(rawModuleSettings: ModuleSettings)
 	{
+		val moduleSettings: ModuleSettings = IvySbt.substituteCross(rawModuleSettings)
 		def owner = IvySbt.this
 		def logger = configuration.log
 		def withModule[T](f: (Ivy,DefaultModuleDescriptor,String) => T): T =
@@ -250,6 +251,29 @@ private object IvySbt
 		import m._
 		ModuleRevisionId.newInstance(organization, name, revision, javaMap(extraAttributes))
 	}
+
+	private def substituteCross(m: ModuleSettings): ModuleSettings =
+		m.ivyScala match { case None => m; case Some(is) => substituteCross(m, is.scalaVersion) }
+	private def substituteCross(m: ModuleSettings, cross: String): ModuleSettings =
+		m match {
+			case ec: EmptyConfiguration => ec.copy(module = substituteCross(ec.module, cross))
+			case ic: InlineConfiguration => ic.copy(module = substituteCross(ic.module, cross), dependencies = substituteCrossM(ic.dependencies, cross))
+			case _ => m
+		}
+	private def crossName(name: String, cross: String): String =
+		name + "_" + cross
+	private def substituteCross(a: Artifact, cross: String): Artifact =
+		a.copy(name = crossName(a.name, cross))
+	private def substituteCrossA(as: Seq[Artifact], cross: String): Seq[Artifact] =
+		as.map(art => substituteCross(art, cross))
+	private def substituteCrossM(ms: Seq[ModuleID], cross: String): Seq[ModuleID] =
+		ms.map(m => substituteCross(m, cross))
+	private def substituteCross(m: ModuleID, cross: String): ModuleID =
+		if(m.crossVersion)
+			m.copy(name = crossName(m.name, cross), crossVersion = false, explicitArtifacts = substituteCrossA(m.explicitArtifacts, cross))
+		else
+			m
+		
 	private def toIvyArtifact(moduleID: ModuleDescriptor, a: Artifact, configurations: Iterable[String]): MDArtifact =
 	{
 		val artifact = new MDArtifact(moduleID, a.name, a.`type`, a.extension, null, extra(a))

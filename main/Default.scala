@@ -511,7 +511,7 @@ object Classpaths
 		IvyLoggingLevel in GlobalScope :== UpdateLogging.Quiet,
 		IvyXML in GlobalScope :== NodeSeq.Empty,
 		IvyValidate in GlobalScope :== false,
-		IvyScalaConfig in GlobalScope :== None,
+		IvyScalaConfig in GlobalScope <<= ScalaVersion(v => Some(new IvyScala(v, Nil, false, false))),
 		ModuleConfigurations in GlobalScope :== Nil,
 		PublishTo in GlobalScope :== None,
 		PomFile <<= (Target, Version, ModuleName)( (target, version, module) => target / (module + "-" + version + ".pom") ),
