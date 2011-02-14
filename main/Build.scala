@@ -538,7 +538,7 @@ object Load
 		units.keys.map(uri => (uri, getRoot(uri))).toMap
 	}
 
-	def baseImports = "import sbt._, Process._, java.io.File, java.net.URI" :: Nil
+	def baseImports = "import sbt._, Process._, Keys._" :: Nil
 
 	final class EvaluatedConfigurations(val eval: Eval, val settings: Seq[Setting[_]])
 	final class LoadedDefinitions(val base: File, val target: File, val loader: ClassLoader, val builds: Seq[Build], val buildNames: Seq[String])
