@@ -16,7 +16,8 @@ if [ -z "$PROJECT" ]; then
 fi
 
 DIR=$(echo ${PROJECT} | tr '[A-Z]' '[a-z]')
-PROJECT_CLASS=$(echo $PROJECT | sed -e 's/[^a-zA-Z_]//g;')Project
+PROJECT_UC=$(echo ${PROJECT:0:1} | tr '[a-z]' '[A-Z]')${PROJECT:1}
+PROJECT_CLASS=$(echo $PROJECT_UC | sed -e 's/[^a-zA-Z_]//g;')Project
 
 mkdir $DIR
 cd $DIR
