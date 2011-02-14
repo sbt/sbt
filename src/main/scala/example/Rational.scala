@@ -17,10 +17,26 @@ class Rational(n: Int, d: Int) {
   val numerator   = n / g
   val denominator = d / g
   
+  // Assume we have r1: Rational, r2: Rational, and num: Int.
+  // Since + is a method like any other, if we define it with a
+  // Rational argument then r1 + r2 is defined.
+  def +(that: Rational): Rational = new Rational(
+    this.numerator * that.denominator + that.numerator * this.denominator,
+    this.denominator * that.denominator
+  )
+  // You can overload the + method with an Int argument: now r1 + num
+  // is also defined.  However to make num + r1 work similarly requires
+  // an implicit conversion.  (See the example package object.)
+  def +(that: Int): Rational = this + new Rational(that)
+  
   // toString overrides a method in AnyRef so "override" is required.
   override def toString = n + "/" + d + (
     // The result of the if/else is a String:
     if (numerator == n) ""                          // the empty string if it is irreducible
     else " (" + numerator + "/" + denominator + ")" // the reduced form otherwise
   )
+}
+
+// The Rational companion object.
+object Rational {
 }
