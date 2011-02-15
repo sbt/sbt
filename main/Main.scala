@@ -59,7 +59,7 @@ class xMain extends xsbti.AppMain
 object BuiltinCommands
 {
 	def DefaultCommands: Seq[Command] = Seq(ignore, help, reload, read, history, continuous, exit, loadCommands, loadProject, compile, discover,
-		projects, project, setOnFailure, ifLast, multi, shell, set, get, eval, delegates,alias, append, last, lastGrep, nop, sessionCommand, act)
+		projects, project, setOnFailure, ifLast, multi, shell, set, inspect, eval, alias, append, last, lastGrep, nop, sessionCommand, act)
 
 	def nop = Command.custom(s => success(() => s))
 	def ignore = Command.command(FailureWall)(identity)
@@ -235,45 +235,22 @@ object BuiltinCommands
 		val newSession = session.appendSettings( append map (a => (a, arg)))
 		reapply(newSession, structure, s)
 	}
-	def get = Command.single(GetCommand, getBrief, getDetailed)( scopedCommand(GetCommand) { (s, scope, key, structure) =>
-		val detailString = Project.details(structure, scope, key)
+	def inspect = Command(InspectCommand, inspectBrief, inspectDetailed)(spacedKeyParser) { (s,sk) =>
+		val detailString = Project.details(Project.structure(s), sk.scope, sk.key)
 		logger(s).info(detailString)
 		s
-	})
-	def lastGrep = Command.single(LastGrepCommand, lastGrepBrief, lastGrepDetailed) { (s,arg) =>
-		val (pattern, keyString) = arg.span(!_.isWhitespace)
-		if(keyString.isEmpty)
-		{
-			logger(s).error("Expected <pattern> <key>, found '" + arg + "'")
-			s.fail
-		}
-		else
-		{
-			val sc = scopedCommand(LastGrepCommand) { (s, scope, key, structure) =>
-				Output.lastGrep(scope, key, structure.streams, pattern)
-				s
-			}
-			sc(s, keyString)
-		}
 	}
-	def last = Command.single(LastCommand, lastBrief, lastDetailed)( scopedCommand(LastCommand) { (s, scope, key, structure) =>
-		Output.last(scope, key, structure.streams)
+	def lastGrep = Command(LastGrepCommand, lastGrepBrief, lastGrepDetailed)(lastGrepParser) { case (s,(pattern,sk)) =>
+		Output.lastGrep(sk.scope, sk.key, Project.structure(s).streams, pattern)
 		s
-	})
-	def delegates = Command.single(DelegatesCommand, delegatesBrief, delegatesDetailed) ( scopedCommand(DelegatesCommand) { (s, scope, key, structure) =>
-		val log = logger(s)
-		structure.delegates(scope).foreach(d => log.info(Project.display(Project.ScopedKey(d, key))))
-		s
-	})
-	def scopedCommand(srcName: String)(f: (State, Scope, AttributeKey[_], Load.BuildStructure) => State): (State, String) => State = (s, arg) =>
-	{
-		val extracted = Project extract s
-		import extracted._
-		val result = session.currentEval().eval(arg, srcName = srcName, imports = autoImports(extracted), tpeName = Some("sbt.Scoped"))
-		val scoped = result.value.asInstanceOf[Scoped]
-		val resolve = Scope.resolveScope(Load.projectScope(curi, cid), curi, rootProject)
-		f(s, resolve(scoped.scope), scoped.key, structure)
 	}
+	val spacedKeyParser = (s: State) => token(Space) ~> Act.scopedKeyParser(s)
+	def lastGrepParser(s: State) = (token(Space) ~> token(NotSpace, "<pattern>")) ~ spacedKeyParser(s)
+	def last = Command(LastCommand, lastBrief, lastDetailed)(spacedKeyParser) { (s,sk) =>
+		Output.last(sk.scope, sk.key, Project.structure(s).streams)
+		s
+	}
+
 	def autoImports(extracted: Extracted): EvalImports  =  new EvalImports(imports(extracted), "<auto-imports>")
 	def imports(extracted: Extracted): Seq[(String,Int)] =
 	{

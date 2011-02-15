@@ -89,11 +89,16 @@ object Act
 	private[this] def actParser0(state: State) =
 	{
 		val extracted = Project extract state
-		import extracted._
-		val defaultConf = (ref: ProjectRef) => if(Project.getProject(ref, structure).isDefined) defaultConfig(structure.data)(ref) else None
 		showParser.flatMap { show =>
-			scopedKey(structure.index.keyIndex, curi, cid, defaultConf, structure.index.keyMap) flatMap valueParser(state, structure, show)
+			scopedKeyParser(extracted) flatMap valueParser(state, extracted.structure, show)
 		}
 	}
 	def showParser = token( ("show" ~ Space) ^^^ true) ?? false
+	def scopedKeyParser(state: State): Parser[ScopedKey[_]] = scopedKeyParser(Project extract state)
+	def scopedKeyParser(extracted: Extracted): Parser[ScopedKey[_]] =
+	{
+		import extracted._
+		val defaultConf = (ref: ProjectRef) => if(Project.getProject(ref, structure).isDefined) defaultConfig(structure.data)(ref) else None
+		scopedKey(structure.index.keyIndex, curi, cid, defaultConf, structure.index.keyMap)
+	}
 }

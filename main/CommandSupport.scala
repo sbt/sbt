@@ -41,22 +41,11 @@ EvalCommand + """ <expression>
 	Evaluates the given Scala expression and prints the result and type.
 """
 
-	def DelegatesCommand = "delegates"
-	def delegatesBrief = (DelegatesCommand + " <key>", "Prints the scopes searched when resolving the given key.")
-	def delegatesDetailed =
-DelegatesCommand + """ <key>
-	<key> is interpreted as a Scala expression of type sbt.Scoped.
-	When a key is resolved to a value, it may not be defined in the requested scope.
-	In this case, there is a defined search sequence.
-	This command prints the scopes that are searched for the key.
-"""
-
 	val LastGrepCommand = "last-grep"
 	val lastGrepBrief = (LastGrepCommand + " <pattern> <key>", "Shows lines from the last output for 'key' that match 'pattern'.")
 	val lastGrepDetailed = 
 LastGrepCommand + """ <pattern> <key>
 
-	<key> is interpreted as a Scala expression of type sbt.Scoped and is typically a task key.
 	<pattern> is a regular expression interpreted by java.util.Pattern
 	Lines that match 'pattern' from the last streams output associated with the key are displayed.
 	See also """ + LastCommand + "."
@@ -66,20 +55,26 @@ LastGrepCommand + """ <pattern> <key>
 	val lastDetailed = 
 LastCommand + """ <key>
 
-	<key> is interpreted as a Scala expression of type sbt.Scoped.
 	The last streams output associated with the key (typically a task key) is redisplayed.
 	See also """ + LastGrepCommand + "."
 
-	val GetCommand = "get"
-	val getBrief = (GetCommand + " <key>", "Prints the value for 'key', the defining scope, related definitions, and dependencies.")
-	val getDetailed =
-GetCommand + """ <key>
+	val InspectCommand = "inspect"
+	val inspectBrief = (InspectCommand + " <key>", "Prints the value for 'key', the defining scope, delegates, related definitions, and dependencies.")
+	val inspectDetailed =
+InspectCommand + """ <key>
 
-	<key> is interpreted as a Scala expression of type sbt.Scoped.
 	For a plain setting, the value bound to the key argument is displayed using its toString method.
 	Otherwise, the type of task ("Task" or "Input task") is displayed.
 	
-	Other details are shown, including the defining scope, dependencies, and related definitions.
+	"Dependencies" shows the settings that this setting depends on.
+	"Reverse dependencies" shows the settings that depend on this setting.
+
+	When a key is resolved to a value, it may not actually be defined in the requested scope.
+	In this case, there is a defined search sequence.
+	"Delegates" shows the scopes that are searched for the key.
+	"Provided by" shows the scope that contained the value returned for the key.
+
+	"Related" shows all of the scopes in which the key is defined.
 """
 	
 	val SetCommand = "set"

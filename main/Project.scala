@@ -115,6 +115,9 @@ object Project extends Init[Scope]
 			throw new Uninitialized(u.key, u.refKey, msg)
 		}
 
+	def delegates(structure: Load.BuildStructure, scope: Scope, key: AttributeKey[_]): Seq[ScopedKey[_]] =
+		structure.delegates(scope).map(d => ScopedKey(d, key))
+
 	def details(structure: Load.BuildStructure, scope: Scope, key: AttributeKey[_]): String =
 	{
 		val scoped = ScopedKey(scope,key)
@@ -137,6 +140,7 @@ object Project extends Init[Scope]
 			definedIn + "\n" +
 			printScopes("Dependencies", depends) +
 			printScopes("Reverse dependencies", reverse) +
+			printScopes("Delegates", delegates(structure, scope, key)) +
 			printScopes("Related", related)
 	}
 	def reverseDependencies(cMap: CompiledMap, scoped: ScopedKey[_]): Iterable[ScopedKey[_]] =
