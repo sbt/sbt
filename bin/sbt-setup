@@ -6,8 +6,7 @@ PROJECT="$1"
 DEFAULT_PACKAGE="template"
 PACKAGE=${ORGANIZATION:-$DEFAULT_PACKAGE}
 SCALA_VERSION="2.8.1"
-SCALACHECK_VERSION="1.8"
-SPECS_VERSION="1.6.7"
+SCALA_LOCAL_VERSION="2.9.0-local"
 SBT_VERSION="0.7.5.RC0"
 
 if [ -z "$PROJECT" ]; then
@@ -16,8 +15,9 @@ if [ -z "$PROJECT" ]; then
 fi
 
 DIR=$(echo ${PROJECT} | tr '[A-Z]' '[a-z]')
-PROJECT_UC=$(echo ${PROJECT:0:1} | tr '[a-z]' '[A-Z]')${PROJECT:1}
-PROJECT_CLASS=$(echo $PROJECT_UC | sed -e 's/[^a-zA-Z_]//g;')Project
+PROJECT_UC=$(echo ${PROJECT:0:1} | tr '[a-z]' '[A-Z]')$(echo ${PROJECT:1} | sed -e 's/[^a-zA-Z_]//g;')
+PROJECT_CLASS=${PROJECT_UC}Project
+SPEC_CLASS=${PROJECT_UC}Spec
 
 mkdir $DIR
 cd $DIR
@@ -37,20 +37,20 @@ cat > project/build/${PROJECT_CLASS}.scala <<EOF
 import sbt._
 
 class ${PROJECT_CLASS}(info: ProjectInfo) extends DefaultProject(info) {
-  val localMaven   = "Local Maven" at "file://"+Path.userHome+"/.m2/repository"
-  val localIvy     = "Local Ivy" at "file://"+Path.userHome+"/.ivy2/local"
-  val sonatype     = "Sonatype" at "https://oss.sonatype.org/content/groups/public"
+  val localMaven = "Local Maven" at "file://"+Path.userHome+"/.m2/repository"
+  val localIvy   = "Local Ivy" at "file://"+Path.userHome+"/.ivy2/local"
+  val sonatype   = "Sonatype" at "https://oss.sonatype.org/content/groups/public"
   
   // local use
   override def localScala = System.getenv("scala.local") match {
     case null   => super.localScala
     case path   => 
       log.info("Found scala.local: " + path)
-      List(defineScala("2.9.0-local", new java.io.File(path)))
+      List(defineScala("$SCALA_LOCAL_VERSION", new java.io.File(path)))
   }
 
-  val scalacheck = "org.scala-tools.testing" %% "scalacheck" % "$SCALACHECK_VERSION" % "test" withSources()
-  val specs      = "org.scala-tools.testing" %% "specs" % "$SPECS_VERSION" % "test" withSources()
+  val scalacheck = "org.scala-tools.testing" %% "scalacheck" % "latest.integration" % "test" withSources()
+  val specs      = "org.scala-tools.testing" %% "specs" % "latest.integration" % "test" withSources()
 }
 EOF
 
@@ -79,14 +79,14 @@ EOF
 
 mkdir -p src/test/scala
 
-cat > src/test/scala/TemplateSpec.scala <<EOF
+cat > src/test/scala/${SPEC_CLASS}.scala <<EOF
 package $PACKAGE
 
 import org.specs._
 
-class TemplateSpec extends Specification {
-  "A template project" should {
-    "not violate universal realities" >> {
+class ${SPEC_CLASS} extends Specification {
+  "A skeletal specification" should {
+    "do little beyond creating a skeleton" >> {
       1 mustEqual 1
     }
   }
