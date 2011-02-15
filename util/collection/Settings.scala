@@ -93,9 +93,9 @@ trait Init[Scope]
 
 	def compile(sMap: ScopedMap): CompiledMap =
 		sMap.toSeq.map { case (k, ss) =>
-			val deps = ss flatMap { _.dependsOn }
+			val deps = ss flatMap { _.dependsOn } toSet;
 			val eval = (settings: Settings[Scope]) => (settings /: ss)(applySetting)
-			(k, new Compiled(deps, eval))
+			(k, new Compiled(k, deps, eval))
 		} toMap;
 
 	def grouped(init: Seq[Setting[_]]): ScopedMap =
@@ -112,15 +112,15 @@ trait Init[Scope]
 		
 	def delegate(sMap: ScopedMap)(implicit delegates: Scope => Seq[Scope]): ScopedMap =
 	{
-		def refMap(refKey: ScopedKey[_]) = new (ScopedKey ~> ScopedKey) { def apply[T](k: ScopedKey[T]) =
-			delegateForKey(sMap, k, delegates(k.scope), refKey)
+		def refMap(refKey: ScopedKey[_], isFirst: Boolean) = new (ScopedKey ~> ScopedKey) { def apply[T](k: ScopedKey[T]) =
+			delegateForKey(sMap, k, delegates(k.scope), refKey, isFirst)
 		}
 		val f = new (SettingSeq ~> SettingSeq) { def apply[T](ks: Seq[Setting[T]]) =
-			ks.map{ s => s mapReferenced refMap(s.key) }
+			ks.zipWithIndex.map{ case (s,i) => s mapReferenced refMap(s.key, i == 0) }
 		}
 		sMap mapValues f
 	}
-	private[this] def delegateForKey[T](sMap: ScopedMap, k: ScopedKey[T], scopes: Seq[Scope], refKey: ScopedKey[_]): ScopedKey[T] = 
+	private[this] def delegateForKey[T](sMap: ScopedMap, k: ScopedKey[T], scopes: Seq[Scope], refKey: ScopedKey[_], isFirst: Boolean): ScopedKey[T] = 
 	{
 		val scache = PMap.empty[ScopedKey, ScopedKey]
 		def resolve(search: Seq[Scope]): ScopedKey[T] =
@@ -128,12 +128,12 @@ trait Init[Scope]
 				case Seq() => throw Uninitialized(k, refKey)
 				case Seq(x, xs @ _*) =>
 					val sk = ScopedKey(x, k.key)
-					scache.getOrUpdate(sk, if(defines(sMap, sk, refKey)) sk else resolve(xs))
+					scache.getOrUpdate(sk, if(defines(sMap, sk, refKey, isFirst)) sk else resolve(xs))
 			}
 		resolve(scopes)
 	}
-	private[this] def defines(map: ScopedMap, key: ScopedKey[_], refKey: ScopedKey[_]): Boolean =
-		(map get key) match { case Some(Seq(x, _*)) => (refKey != key) || x.definitive; case _ => false }
+	private[this] def defines(map: ScopedMap, key: ScopedKey[_], refKey: ScopedKey[_], isFirst: Boolean): Boolean =
+		(map get key) match { case Some(Seq(x, _*)) => (refKey != key) || !isFirst; case _ => false }
 		
 	private[this] def applyInits(ordered: Seq[Compiled])(implicit delegates: Scope => Seq[Scope]): Settings[Scope] =
 		(empty /: ordered){ (m, comp) => comp.eval(m) }
@@ -148,7 +148,7 @@ trait Init[Scope]
 	final class Uninitialized(val key: ScopedKey[_], val refKey: ScopedKey[_], msg: String) extends Exception(msg)
 	def Uninitialized(key: ScopedKey[_], refKey: ScopedKey[_]): Uninitialized =
 		new Uninitialized(key, refKey, "Reference to uninitialized setting " + key.key.label + " (in " + key.scope + ") from " + refKey.key.label +" (in " + refKey.scope + ")")
-	final class Compiled(val dependencies: Iterable[ScopedKey[_]], val eval: Settings[Scope] => Settings[Scope])
+	final class Compiled(val key: ScopedKey[_], val dependencies: Iterable[ScopedKey[_]], val eval: Settings[Scope] => Settings[Scope])
 
 	sealed trait Initialize[T]
 	{
@@ -165,6 +165,7 @@ trait Init[Scope]
 		def dependsOn: Seq[ScopedKey[_]] = remove(init.dependsOn, key)
 		def mapReferenced(g: MapScoped): Setting[T] = new Setting(key, init mapReferenced g)
 		def mapKey(g: MapScoped): Setting[T] = new Setting(g(key), init)
+		override def toString = "setting(" + key + ")"
 	}
 
 	private[this] final class Joined[S,T,U](a: Initialize[S], b: Initialize[T], f: (S,T) => U) extends Initialize[U]
