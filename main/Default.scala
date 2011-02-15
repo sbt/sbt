@@ -199,7 +199,7 @@ object Default
 	def data[T](in: Seq[Attributed[T]]): Seq[T] = in.map(_.data)
 
 	def core = Seq(
-		Name :== "test",
+		Name <<= ThisProject(_.id),
 		Version :== "0.1",
 		MaxErrors in GlobalScope :== 100,
 		Project.Commands :== Nil,
