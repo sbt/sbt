@@ -56,17 +56,18 @@ trait ProguardProject extends BasicScalaProject
 		lines.mkString("\n")
 	}
 
-	def mkpath(f: File) = '\"' + f.getAbsolutePath + '\"'
-	private def proguardTask =
+	def mkpath(f: File) : String = mkpath(f.getAbsolutePath, '\"')
+	def mkpath(path: String, delimiter : Char) : String = delimiter + path + delimiter
+	protected def proguardTask =
 		task
 		{
 			FileUtilities.clean(outputJar :: Nil, log)
-			val proguardClasspathString = Path.makeString(managedClasspath(toolsConfig).get)
-			val configFile = proguardConfigurationPath.asFile.getAbsolutePath
-			val exitValue = Process("java", List("-Xmx256M", "-cp", proguardClasspathString, "proguard.ProGuard", "@" + configFile)) ! log
+			val proguardClasspathString = mkpath( Path.makeString(managedClasspath(toolsConfig).get) , '\"' )
+			val configFile = mkpath(proguardConfigurationPath.asFile.getAbsolutePath, '\'')
+			val exitValue = Process("java", List("-Xmx256M", "-cp", proguardClasspathString, "proguard.ProGuard", "-include " + configFile)) ! log
 			if(exitValue == 0) None else Some("Proguard failed with nonzero exit code (" + exitValue + ")")
 		}
-	private def writeProguardConfigurationTask =
+	protected def writeProguardConfigurationTask =
 		task
 		{
 			val dependencies = mainDependencies.snapshot
