@@ -10,9 +10,9 @@ import java.util.concurrent.Callable
 
 import org.apache.ivy.{core, plugins, util, Ivy}
 import core.IvyPatternHelper
-import core.cache.DefaultRepositoryCacheManager
+import core.cache.{CacheMetadataOptions, DefaultRepositoryCacheManager}
 import core.module.descriptor.{DefaultArtifact, DefaultDependencyArtifactDescriptor, MDArtifact}
-import core.module.descriptor.{DefaultDependencyDescriptor, DefaultModuleDescriptor,  ModuleDescriptor}
+import core.module.descriptor.{DefaultDependencyDescriptor, DefaultModuleDescriptor, DependencyDescriptor, ModuleDescriptor}
 import core.module.id.{ArtifactId,ModuleId, ModuleRevisionId}
 import core.settings.IvySettings
 import plugins.matcher.PatternMatcher
@@ -218,7 +218,10 @@ private object IvySbt
 	private def configureCache(settings: IvySettings, dir: Option[File], localOnly: Boolean)
 	{
 		val cacheDir = dir.getOrElse(settings.getDefaultRepositoryCacheBasedir())
-		val manager = new DefaultRepositoryCacheManager("default-cache", settings, cacheDir)
+		val manager = new DefaultRepositoryCacheManager("default-cache", settings, cacheDir) {
+			override def findModuleInCache(dd: DependencyDescriptor, revId: ModuleRevisionId, options: CacheMetadataOptions, r: String) =
+				super.findModuleInCache(dd,revId,options,null)
+		}
 		manager.setUseOrigin(true)
 		if(localOnly)
 			manager.setDefaultTTL(java.lang.Long.MAX_VALUE);
