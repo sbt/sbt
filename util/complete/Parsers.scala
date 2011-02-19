@@ -33,6 +33,7 @@ trait Parsers
 	lazy val NotSpace = NotSpaceClass.+.string
 	lazy val Space = SpaceClass.+.examples(" ")
 	lazy val OptSpace = SpaceClass.*.examples(" ")
+	lazy val URIClass = charClass(x => !x.isWhitespace && ')' != x).+.string
 
 	// TODO: implement
 	def fileParser(base: File): Parser[File] = token(mapOrFail(NotSpace)(s => new File(s.mkString)), "<file>")
@@ -52,7 +53,7 @@ trait Parsers
 	def spaceDelimited(display: String): Parser[Seq[String]] = (token(Space) ~> token(NotSpace, display)).* <~ SpaceClass.*
 
 	def trimmed(p: Parser[String]) = p map { _.trim }
-	def Uri(ex: Set[URI]) = mapOrFail(NotSpace)( uri => new URI(uri)) examples(ex.map(_.toString))
+	def Uri(ex: Set[URI]) = mapOrFail(URIClass)( uri => new URI(uri)) examples(ex.map(_.toString))
 }
 object Parsers extends Parsers
 object DefaultParsers extends Parsers with ParserMain
