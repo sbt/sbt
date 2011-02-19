@@ -214,19 +214,18 @@ trait ParserMain
 	// intended to be temporary pending proper error feedback
 	def result[T](p: Parser[T], s: String): Either[(String,Int), T] =
 	{
-	/*	def loop(i: Int, a: Parser[T]): Either[(String,Int), T] =
-			a.err match
+		def loop(i: Int, a: Parser[T]): Either[(String,Int), T] =
+			if(a.valid)
 			{
-				case Some(msg) => Left((msg, i))
-				case None =>
-					val ci = i+1
-					if(ci >= s.length)
-						a.resultEmpty.toRight(("", i))
-					else
-						loop(ci, a derive s(ci))
+				val ci = i+1
+				if(ci >= s.length)
+					a.resultEmpty.toRight(("Unexpected end of input", ci))
+				else
+					loop(ci, a derive s(ci) )
 			}
-		loop(-1, p)*/
-		apply(p)(s).resultEmpty.toRight(("Parse error", 0))
+			else
+				Left(("Parse error",i))
+		loop(-1, p)
 	}
 
 	def apply[T](p: Parser[T])(s: String): Parser[T] =
