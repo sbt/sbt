@@ -24,7 +24,7 @@ private[sbt] final class ArbitraryCommand(val parser: State => Parser[() => Stat
 
 object Command
 {
-	def pointer(s: String, i: Int): String  =  (s take i) map { case '\t' => '\t'; case _ => ' ' } mkString;
+	def pointerSpace(s: String, i: Int): String  =  (s take i) map { case '\t' => '\t'; case _ => ' ' } mkString;
 	
 		import DefaultParsers._
 
@@ -98,7 +98,7 @@ object Command
 	def commandError(command: String, msg: String, index: Int): String =
 	{
 		val (line, modIndex) = extractLine(command, index)
-		msg + "\n" + line + "\n" + pointer(msg, modIndex)
+		msg + "\n" + line + "\n" + pointerSpace(msg, modIndex) + "^"
 	}
 	def extractLine(s: String, i: Int): (String, Int) =
 	{
