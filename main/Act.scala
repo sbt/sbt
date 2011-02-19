@@ -22,6 +22,8 @@ object Act
 		yield
 			ScopedKey( Scope( Select(proj), toAxis(conf map ConfigKey.apply, Global), Global, Global), key )
 	}
+	def examplesStrict(p: Parser[String], exs: Set[String]): Parser[String] =
+		p examples exs filter exs
 
 	def toAxis[T](opt: Option[T], ifNone: ScopeAxis[T]): ScopeAxis[T] =
 		opt match { case Some(t) => Select(t); case None => ifNone }
@@ -29,7 +31,7 @@ object Act
 		ThisProject in project get data flatMap( _.configurations.headOption.map(_.name))
 
 	def config(confs: Set[String]): Parser[Option[String]] =
-		token( (ID examples confs) <~ ':' ).?
+		token( examplesStrict(ID, confs) <~ ':' ).?
 
 	def configs(explicit: Option[String], defaultConfig: ProjectRef => Option[String], proj: ProjectRef): List[Option[String]] =
 		if(explicit.isDefined) explicit :: Nil else None :: defaultConfig(proj) :: Nil
@@ -53,7 +55,7 @@ object Act
 	{
 		val uris = index.buildURIs
 		val build = token( '(' ~> Uri(uris).map(uri => Scope.resolveBuild(currentBuild, uri)) <~ ')') ?? currentBuild
-		def projectID(uri: URI) = token( ID.examples(index projects uri) <~ '/' )
+		def projectID(uri: URI) = token( examplesStrict(ID, index projects uri) <~ '/' )
 
 		for(uri <- build; id <- projectID(uri)) yield
 			ProjectRef(Some(uri), Some(id))
