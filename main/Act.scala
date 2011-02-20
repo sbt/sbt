@@ -86,8 +86,8 @@ object Act
 			processResult(result, logger(s), show)
 			s
 		}
-	def actParser(s: State): Parser[() => State] =
-		if(s get Project.SessionKey isEmpty) failure("No project loaded") else actParser0(s)
+	def actParser(s: State): Parser[() => State] = requireSession(s, actParser0(s))
+
 	private[this] def actParser0(state: State) =
 	{
 		val extracted = Project extract state
@@ -103,4 +103,8 @@ object Act
 		val defaultConf = (ref: ProjectRef) => if(Project.getProject(ref, structure).isDefined) defaultConfig(structure.data)(ref) else None
 		scopedKey(structure.index.keyIndex, curi, cid, defaultConf, structure.index.keyMap)
 	}
+
+
+	def requireSession[T](s: State, p: => Parser[T]): Parser[T] =
+		if(s get Project.SessionKey isEmpty) failure("No project loaded") else p
 }

@@ -24,10 +24,10 @@ class xMain extends xsbti.AppMain
 {
 	final def run(configuration: xsbti.AppConfiguration): xsbti.MainResult =
 	{
-		import BuiltinCommands.{initialize, defaults}
+		import BuiltinCommands.{initialize, defaults, DefaultBootCommands}
 		import CommandSupport.{DefaultsCommand, InitCommand}
 		val initialCommandDefs = Seq(initialize, defaults)
-		val commands = DefaultsCommand :: InitCommand :: configuration.arguments.map(_.trim).toList
+		val commands = DefaultsCommand +: InitCommand +: (DefaultBootCommands ++ configuration.arguments.map(_.trim))
 		val state = State( configuration, initialCommandDefs, Set.empty, None, commands, initialAttributes, Next.Continue )
 		run(state)
 	}
@@ -58,8 +58,9 @@ class xMain extends xsbti.AppMain
 	import CommandSupport._
 object BuiltinCommands
 {
-	def DefaultCommands: Seq[Command] = Seq(ignore, help, reload, read, history, continuous, exit, loadCommands, loadProject, compile, discover,
-		projects, project, setOnFailure, ifLast, multi, shell, set, inspect, eval, alias, append, last, lastGrep, nop, sessionCommand, act)
+	def DefaultCommands: Seq[Command] = Seq(ignore, help, reboot, read, history, continuous, exit, loadCommands, loadProject, loadProjectImpl, loadFailed, compile, discover,
+		projects, project, setOnFailure, clearOnFailure, ifLast, multi, shell, set, inspect, eval, alias, append, last, lastGrep, nop, sessionCommand, act)
+	def DefaultBootCommands: Seq[String] = LoadProject :: (IfLast + " " + Shell) :: Nil
 
 	def nop = Command.custom(s => success(() => s))
 	def ignore = Command.command(FailureWall)(identity)
@@ -135,8 +136,9 @@ object BuiltinCommands
 	def setOnFailure = Command.single(OnFailure, OnFailureBrief, OnFailureDetailed) { (s, arg) =>
 		s.copy(onFailure = Some(arg))
 	}
+	def clearOnFailure = Command.command(ClearOnFailure)(s => s.copy(onFailure = None))
 
-	def reload = Command.command(ReloadCommand, ReloadBrief, ReloadDetailed) { s =>
+	def reboot = Command.command(RebootCommand, RebootBrief, RebootDetailed) { s =>
 		s.runExitHooks().reload
 	}
 
@@ -244,8 +246,8 @@ object BuiltinCommands
 		Output.lastGrep(sk.scope, sk.key, Project.structure(s).streams, pattern)
 		s
 	}
-	val spacedKeyParser = (s: State) => token(Space) ~> Act.scopedKeyParser(s)
-	def lastGrepParser(s: State) = (token(Space) ~> token(NotSpace, "<pattern>")) ~ spacedKeyParser(s)
+	val spacedKeyParser = (s: State) => Act.requireSession(s, token(Space) ~> Act.scopedKeyParser(s))
+	def lastGrepParser(s: State) = Act.requireSession(s, (token(Space) ~> token(NotSpace, "<pattern>")) ~ spacedKeyParser(s))
 	def last = Command(LastCommand, lastBrief, lastDetailed)(spacedKeyParser) { (s,sk) =>
 		Output.last(sk.scope, sk.key, Project.structure(s).streams)
 		s
@@ -305,7 +307,29 @@ object BuiltinCommands
 		} catch { case e: xsbti.CompileFailed => s.fail /* already logged */ }
 	}
 
-	def loadProject = Command.command(LoadProject, LoadProjectBrief, LoadProjectDetailed) { s =>
+	def loadFailed = Command.command(LoadFailed)(handleLoadFailed)
+	@tailrec def handleLoadFailed(s: State): State =
+	{
+		val result = (SimpleReader.readLine("Project loading failed: (r)etry, (q)uit, or (i)gnore? ") getOrElse Quit).toLowerCase
+		def matches(s: String) = !result.isEmpty && (s startsWith result)
+		
+		if(matches("retry"))
+			LoadProject :: s
+		else if(matches(Quit))
+			s.exit(ok = false)
+		else if(matches("ignore"))
+			s
+		else
+		{
+			println("Invalid response.")
+			handleLoadFailed(s)
+		}
+	}
+
+	def loadProjectCommands = (OnFailure + " " + LoadFailed) :: LoadProjectImpl :: ClearOnFailure :: FailureWall :: Nil
+	def loadProject = Command.command(LoadProject, LoadProjectBrief, LoadProjectDetailed) { loadProjectCommands ::: _ }
+
+	def loadProjectImpl = Command.command(LoadProjectImpl) { s =>
 		val (eval, structure) = Load.defaultLoad(s, logger(s))
 		val session = Load.initialSession(structure, eval)
 		Project.setProject(session, structure, s)

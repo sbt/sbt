@@ -3,7 +3,7 @@
  */
 package sbt
 
-	import CommandSupport.FailureWall
+	import CommandSupport.{ClearOnFailure,FailureWall}
 	import annotation.tailrec
 
 trait Watched
@@ -41,7 +41,7 @@ object Watched
 		val (triggered, newWatchState) = SourceModificationWatch.watch(sourcesFinder, PollDelaySeconds, watchState)(shouldTerminate)
 
 		if(triggered)
-			(next :: FailureWall :: repeat :: s).put(ContinuousState, newWatchState)
+			(ClearOnFailure :: next :: FailureWall :: repeat :: s).put(ContinuousState, newWatchState)
 		else
 		{
 			while (System.in.available() > 0) System.in.read()

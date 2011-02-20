@@ -65,16 +65,17 @@ object State
 		{
 			val remaining = s.commands.dropWhile(_ != FailureWall)
 			if(remaining.isEmpty)
-			{
-				s.onFailure match
-				{
-					case Some(c) => s.copy(commands = c :: Nil, onFailure = None)
-					case None => exit(ok = false)
-				}
-			}
+				applyOnFailure(s, Nil, exit(ok = false))
 			else
-				s.copy(commands = remaining)
+				applyOnFailure(s, remaining, s.copy(commands = remaining))
 		}
+		private[this] def applyOnFailure(s: State, remaining: Seq[String], noHandler: => State): State =
+			s.onFailure match
+			{
+				case Some(c) => s.copy(commands = c +: remaining, onFailure = None)
+				case None => noHandler
+			}
+
 		def runExitHooks(): State = {
 			ExitHooks.runExitHooks(s.exitHooks.toSeq)
 			s.copy(exitHooks = Set.empty)

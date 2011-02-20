@@ -151,10 +151,10 @@ ProjectCommand +
 	def DefaultsBrief = (DefaultsCommand, DefaultsDetailed)
 	def DefaultsDetailed = "Registers default built-in commands"
 
-	def ReloadCommand = "reload"
-	def ReloadBrief = "Reloads the session and then executes the remaining commands."
-	def ReloadDetailed =
-ReloadCommand + """
+	def RebootCommand = "reboot"
+	def RebootBrief = "Reboots sbt and then executes the remaining commands."
+	def RebootDetailed =
+RebootCommand + """
 	This command is equivalent to exiting, restarting, and running the
 	 remaining commands with the exception that the jvm is not shut down.
 """
@@ -232,14 +232,17 @@ CompileSyntax + """
 	Cached information about the compilation will be written to 'cache'.
 """
 
-	val FailureWall = "--"
+	val FailureWall = "---"
 	
 	def Load = "load"
 	def LoadLabel = "a project"
 	def LoadCommand = "load-commands"
 	def LoadCommandLabel = "commands"
 
-	def LoadProject = "loadp"
+	def LoadFailed = "load-failed"
+
+	def LoadProjectImpl = "loadp"
+	def LoadProject = "reload"
 	def LoadProjectBrief = LoadProjectDetailed
 	def LoadProjectDetailed = "Loads the project in the current directory"
 
@@ -247,6 +250,7 @@ CompileSyntax + """
 	def ShellBrief = ShellDetailed
 	def ShellDetailed = "Provides an interactive prompt from which commands can be run."
 
+	def ClearOnFailure = "--"
 	def OnFailure = "-"
 	def OnFailureBrief = (OnFailure + " command", "Registers 'command' to run if a command fails.")
 	def OnFailureDetailed =

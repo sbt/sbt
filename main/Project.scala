@@ -228,9 +228,11 @@ object SessionSettings
 	{
 		val project = Project.getProject(pref, structure).getOrElse(error("Invalid project reference " + pref))
 		val appendTo: File = BuildPaths.configurationSources(project.base).headOption.getOrElse(new File(project.base, "build.sbt"))
-		val sbtAppend = settingStrings(settings).flatMap("" :: _ :: Nil)
-		IO.writeLines(appendTo, sbtAppend, append = true)
+		val baseAppend = settingStrings(settings).flatMap("" :: _ :: Nil)
+		val adjustedLines = if( hasTrailingBlank(IO.readLines(appendTo)) ) baseAppend else baseAppend
+		IO.writeLines(appendTo, adjustedLines, append = true)
 	}
+	def hasTrailingBlank(lines: Seq[String]) = lines.takeRight(1).exists(_.trim.isEmpty) 
 	def printAllSettings(s: State): State =
 		withSettings(s){ session =>
 			for( ((uri,id), settings) <- session.append if !settings.isEmpty) {
