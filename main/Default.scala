@@ -102,6 +102,7 @@ object Keys
 
 	val Products = TaskKey[Classpath]("products")
 	val UnmanagedClasspath = TaskKey[Classpath]("unmanaged-classpath")
+	val UnmanagedJars = TaskKey[Classpath]("unmanaged-jars")
 	val ManagedClasspath = TaskKey[Classpath]("managed-classpath")
 	val InternalDependencyClasspath = TaskKey[Classpath]("internal-dependency-classpath")
 	val ExternalDependencyClasspath = TaskKey[Classpath]("external-dependency-classpath")
@@ -469,11 +470,12 @@ object Classpaths
 	val configSettings: Seq[Project.Setting[_]] = Seq(
 		ExternalDependencyClasspath <<= concat(UnmanagedClasspath, ManagedClasspath),
 		DependencyClasspath <<= concat(InternalDependencyClasspath, ExternalDependencyClasspath),
-		FullClasspath <<= concat(DependencyClasspath, Products),
+		FullClasspath <<= concat(Products, DependencyClasspath),
 		InternalDependencyClasspath <<= internalDependencies,
+		UnmanagedClasspath <<= unmanagedDependencies,
 		Products <<= makeProducts,
 		ManagedClasspath <<= (Config, Update) map { (config, up) => up.getOrElse(config.name, error("Configuration '" + config.name + "' unresolved by 'update'.")) },
-		UnmanagedClasspath <<= (Config, UnmanagedBase, ClasspathFilter, DefaultExcludes) map { (config, base, filter, excl) =>
+		UnmanagedJars <<= (Config, UnmanagedBase, ClasspathFilter, DefaultExcludes) map { (config, base, filter, excl) =>
 			(base * (filter -- excl) +++ (base / config.name).descendentsExcept(filter, excl)).getFiles.toSeq
 		}
 	)
@@ -624,11 +626,13 @@ object Classpaths
 
 	def internalDependencies: Initialize[Task[Classpath]] =
 		(ThisProjectRef, ThisProject, Config, Data) flatMap internalDependencies0
+	def unmanagedDependencies: Initialize[Task[Classpath]] =
+		(ThisProjectRef, ThisProject, Config, Data) flatMap unmanagedDependencies0
 
-	def internalDependencies0(projectRef: ProjectRef, project: Project, conf: Configuration, data: Settings[Scope]): Task[Classpath] =
+		import java.util.LinkedHashSet
+		import collection.JavaConversions.asScalaSet
+	def interSort(projectRef: ProjectRef, project: Project, conf: Configuration, data: Settings[Scope]): Seq[(ProjectRef,String)] =
 	{
-			import java.util.LinkedHashSet
-			import collection.JavaConversions.asScalaSet
 		val visited = asScalaSet(new LinkedHashSet[(ProjectRef,String)])
 		def visit(p: ProjectRef, project: Project, c: Configuration)
 		{
@@ -651,11 +655,20 @@ object Classpaths
 			}
 		}
 		visit(projectRef, project, conf)
-
+		visited.toSeq
+	}
+	def unmanagedDependencies0(projectRef: ProjectRef, project: Project, conf: Configuration, data: Settings[Scope]): Task[Classpath] =
+		interDependencies(projectRef, project, conf, data)(unmanagedLibs)
+	def internalDependencies0(projectRef: ProjectRef, project: Project, conf: Configuration, data: Settings[Scope]): Task[Classpath] =
+		interDependencies(projectRef, project, conf, data)(products)
+	def interDependencies(projectRef: ProjectRef, project: Project, conf: Configuration, data: Settings[Scope])(
+		f: (ProjectRef, String, Settings[Scope]) => Task[Classpath]): Task[Classpath] =
+	{
+		val visited = interSort(projectRef, project, conf, data)
 		val productsTasks = asScalaSet(new LinkedHashSet[Task[Classpath]])
 		for( (dep, c) <- visited )
 			if( (dep != projectRef) || conf.name != c )
-				productsTasks += products(dep, c, data)
+				productsTasks += f(dep, c, data)
 
 		(productsTasks.toSeq.join).map(_.flatten)
 	}
@@ -696,7 +709,11 @@ object Classpaths
 	def configuration(ref: ProjectRef, dep: Project, conf: String): Configuration =
 		dep.configurations.find(_.name == conf) getOrElse missingConfiguration(Project display ref, conf)
 	def products(dep: ProjectRef, conf: String, data: Settings[Scope]): Task[Classpath] =
-		Products in (dep, ConfigKey(conf)) get data getOrElse const(Nil)
+		getClasspath(Products, dep, conf, data)
+	def unmanagedLibs(dep: ProjectRef, conf: String, data: Settings[Scope]): Task[Classpath] =
+		getClasspath(UnmanagedJars, dep, conf, data)
+	def getClasspath(key: TaskKey[Classpath], dep: ProjectRef, conf: String, data: Settings[Scope]): Task[Classpath] =
+		( key in (dep, ConfigKey(conf)) ) get data getOrElse const(Nil)
 	def defaultConfiguration(p: ProjectRef, data: Settings[Scope]): Configuration =
 		flatten(DefaultConfiguration in p get data) getOrElse Configurations.Default
 	def flatten[T](o: Option[Option[T]]): Option[T] = o flatMap identity
