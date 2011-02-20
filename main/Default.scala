@@ -658,19 +658,19 @@ object Classpaths
 		visited.toSeq
 	}
 	def unmanagedDependencies0(projectRef: ProjectRef, project: Project, conf: Configuration, data: Settings[Scope]): Task[Classpath] =
-		interDependencies(projectRef, project, conf, data)(unmanagedLibs)
+		interDependencies(projectRef, project, conf, data, true, unmanagedLibs)
 	def internalDependencies0(projectRef: ProjectRef, project: Project, conf: Configuration, data: Settings[Scope]): Task[Classpath] =
-		interDependencies(projectRef, project, conf, data)(products)
-	def interDependencies(projectRef: ProjectRef, project: Project, conf: Configuration, data: Settings[Scope])(
+		interDependencies(projectRef, project, conf, data, false, products)
+	def interDependencies(projectRef: ProjectRef, project: Project, conf: Configuration, data: Settings[Scope], includeSelf: Boolean,
 		f: (ProjectRef, String, Settings[Scope]) => Task[Classpath]): Task[Classpath] =
 	{
 		val visited = interSort(projectRef, project, conf, data)
-		val productsTasks = asScalaSet(new LinkedHashSet[Task[Classpath]])
+		val tasks = asScalaSet(new LinkedHashSet[Task[Classpath]])
 		for( (dep, c) <- visited )
-			if( (dep != projectRef) || conf.name != c )
-				productsTasks += f(dep, c, data)
+			if(includeSelf ||  (dep != projectRef) || conf.name != c )
+				tasks += f(dep, c, data)
 
-		(productsTasks.toSeq.join).map(_.flatten)
+		(tasks.toSeq.join).map(_.flatten.distinct)
 	}
 	
 	def mapped(confString: Option[String], masterConfs: Seq[String], depConfs: Seq[String], default: String, defaultMapping: String): String => Seq[String] =
