@@ -24,9 +24,9 @@ sealed trait RichParser[A]
 	def * : Parser[Seq[A]]
 	/** Produces a Parser that applies the original Parser zero or one times.*/
 	def ? : Parser[Option[A]]
-	/** Produces a Parser that applies either the original Parser or `next`.*/
+	/** Produces a Parser that applies either the original Parser or `b`.*/
 	def |[B >: A](b: Parser[B]): Parser[B]
-	/** Produces a Parser that applies either the original Parser or `next`.*/
+	/** Produces a Parser that applies either the original Parser or `b`.*/
 	def ||[B](b: Parser[B]): Parser[Either[A,B]]
 	/** Produces a Parser that applies the original Parser to the input and then applies `f` to the result.*/
 	def map[B](f: A => B): Parser[B]
@@ -56,7 +56,6 @@ sealed trait RichParser[A]
 }
 object Parser extends ParserMain
 {
-
 	def checkMatches(a: Parser[_], completions: Seq[String])
 	{
 		val bad = completions.filter( apply(a)(_).resultEmpty.isEmpty)
@@ -273,6 +272,12 @@ trait ParserMain
 
 	def not(p: Parser[_]): Parser[Unit] = new Not(p)
 
+	def seq[T](p: Seq[Parser[T]]): Parser[Seq[T]] =
+	{
+		val valid = p.filter(_.valid)
+		if(valid.isEmpty) failure("") else new ParserSeq(valid)
+	}
+
 	def stringLiteral(s: String, remaining: List[Char]): Parser[String] =
 		if(s.isEmpty) error("String literal cannot be empty") else if(remaining.isEmpty) success(s) else new StringLiteral(s, remaining)
 }
@@ -320,6 +325,15 @@ private final class HetParser[A,B](a: Parser[A], b: Parser[B]) extends ValidPars
 	lazy val completions = a.completions ++ b.completions
 	override def toString = "(" + a + " || " + b + ")"
 }
+private final class ParserSeq[T](a: Seq[Parser[T]]) extends ValidParser[Seq[T]]
+{
+	assert(!a.isEmpty)
+	lazy val resultEmpty = { val rs = a.flatMap(_.resultEmpty); if(rs.isEmpty) None else Some(rs) }
+	lazy val completions = a.map(_.completions).reduceLeft(_ ++ _)
+	def derive(c: Char) = seq(a.map(_ derive c))
+	override def toString = "seq(" + a + ")"
+}
+
 private final class BindParser[A,B](a: Parser[A], f: A => Parser[B]) extends ValidParser[B]
 {
 	lazy val resultEmpty = a.resultEmpty match { case None => None; case Some(av) => f(av).resultEmpty }
