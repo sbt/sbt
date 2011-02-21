@@ -118,6 +118,7 @@ sealed trait ScopeAxis[+S] {
 		case Global => ifGlobal
 		case Select(s) => f(s)
 	}
+	def toOption: Option[S] = foldStrict(Some.apply, None, None)
 	def map[T](f: S => T): ScopeAxis[T] = foldStrict(s => Select(f(s)), Global, This)
 }
 case object This extends ScopeAxis[Nothing]

@@ -109,10 +109,7 @@ object EvaluateTask
 	val (streamsManager, dummyStreamsManager) = dummy[Streams]("streams-manager")
 	val streams = TaskKey[TaskStreams]("streams")
 	val resolvedScoped = SettingKey[ScopedKey[_]]("resolved-scoped")
-	// will be cast to the appropriate type when passed to an InputTask implementation
-	// this assumes there is only one InputTask finally selected and will need to be
-	// revisited for aggregating InputTasks
-	private[sbt] val (parseResult, dummyParseResult) = dummy[Any]("$parse-result")
+	private[sbt] val parseResult: TaskKey[_] = TaskKey("$parse-result")
 
 	def injectSettings: Seq[Project.Setting[_]] = Seq(
 		(state in Scope.GlobalScope) ::= dummyState,
@@ -148,8 +145,8 @@ object EvaluateTask
 		for( t <- structure.data.get(resolvedScope, taskKey.key)) yield
 			(t, nodeView(state, streams))
 	}
-	def nodeView(state: State, streams: Streams, parsed: Any = ()): Execute.NodeView[Task] =
-		Transform(dummyParseResult :^: dummyStreamsManager :^: dummyState :^: KNil, parsed :+: streams :+: state :+: HNil)
+	def nodeView[HL <: HList](state: State, streams: Streams, extraDummies: KList[Task, HL] = KNil, extraValues: HL = HNil): Execute.NodeView[Task] =
+		Transform(dummyStreamsManager :^: KCons(dummyState, extraDummies), streams :+: HCons(state, extraValues))
 
 	def runTask[Task[_] <: AnyRef, T](root: Task[T], checkCycles: Boolean = false, maxWorkers: Int = SystemProcessors)(implicit taskToNode: Execute.NodeView[Task]): Result[T] =
 	{
@@ -160,11 +157,11 @@ object EvaluateTask
 	}
 
 	def processResult[T](result: Result[T], log: Logger, show: Boolean = false): T =
+		onResult(result, log) { v => if(show) println("Result: " + v); v }
+	def onResult[T, S](result: Result[T], log: Logger)(f: T => S): S =
 		result match
 		{
-			case Value(v) =>
-				if(show) println("Result: " + v)
-				v
+			case Value(v) => f(v)
 			case Inc(inc) =>
 				log.error(Incomplete.show(inc, true))
 				error("Task did not complete successfully")
@@ -181,7 +178,7 @@ object EvaluateTask
 		else if(scoped.key == resolvedScoped.key)
 			Seq(resolvedScoped in scoped.scope :== scoped)
 		else if(scoped.key == parseResult.key)
-			Seq(parseResult in scoped.scope ::= dummyParseResult)
+			Seq(parseResult in scoped.scope := error("Unsubstituted parse result for " + Project.display(scoped)) )
 		else
 			Nil
 }

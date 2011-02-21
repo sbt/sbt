@@ -63,36 +63,13 @@ object Act
 	def optProjectRef(index: KeyIndex, currentBuild: URI, currentProject: String) =
 		projectRef(index, currentBuild) ?? ProjectRef(Some(currentBuild), Some(currentProject))
 
-	def valueParser(s: State, structure: BuildStructure, show: Boolean)(key: ScopedKey[_]): Parser[() => State] =
-		structure.data.get(key.scope, key.key) match
-		{
-			case None => failure("Invalid setting or task")
-			case Some(input: InputStatic[_]) => applyTask(s, structure, input.parser(s), show)
-			case Some(input: InputDynamic[_]) => applyDynamicTask(s, structure, input, show)
-			case Some(task: Task[_]) => applyTask(s, structure, success(task), show)
-			case Some(v) => success(() => { logger(s).info(v.toString); s})
-		}
-	def applyDynamicTask[I](s: State, structure: Load.BuildStructure, input: InputDynamic[I], show: Boolean): Parser[() => State] =
-		Command.applyEffect(input parser s) { parsed =>
-			import EvaluateTask._
-			val result = withStreams(structure){ str => runTask(input.task)(nodeView(s, str, parsed)) }
-			processResult(result, logger(s), show)
-			s
-		}
-	def applyTask(s: State, structure: Load.BuildStructure, p: Parser[Task[_]], show: Boolean): Parser[() => State] =
-		Command.applyEffect(p) { t =>
-			import EvaluateTask._
-			val result = withStreams(structure){ str => runTask(t)(nodeView(s, str)) }
-			processResult(result, logger(s), show)
-			s
-		}
 	def actParser(s: State): Parser[() => State] = requireSession(s, actParser0(s))
 
 	private[this] def actParser0(state: State) =
 	{
 		val extracted = Project extract state
 		showParser.flatMap { show =>
-			scopedKeyParser(extracted) flatMap valueParser(state, extracted.structure, show)
+			scopedKeyParser(extracted) flatMap Aggregation.valueParser(state, extracted.structure, show)
 		}
 	}
 	def showParser = token( ("show" ~ Space) ^^^ true) ?? false
