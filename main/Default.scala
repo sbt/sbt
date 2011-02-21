@@ -61,6 +61,7 @@ object Keys
 	val DocTask = TaskKey[File]("doc")
 	val CopyResources = TaskKey[Traversable[(File,File)]]("copy-resources")
 	val Resources = TaskKey[Seq[File]]("resources")
+	val Aggregate = SettingKey[Aggregation]("aggregate")
 	
 	// package keys
 	val Package = TaskKey[sbt.Package.Configuration]("package")
@@ -200,6 +201,7 @@ object Default
 	def data[T](in: Seq[Attributed[T]]): Seq[T] = in.map(_.data)
 
 	def core = Seq(
+		Aggregate in GlobalScope :== Aggregation.Enabled,
 		Name <<= ThisProject(_.id),
 		Version :== "0.1",
 		MaxErrors in GlobalScope :== 100,
@@ -434,7 +436,12 @@ object Default
 
 	lazy val defaultPaths = paths ++ inConfig(CompileConf)(configPaths ++ addBaseSources) ++ inConfig(TestConf)(configPaths)
 	lazy val defaultWebPaths = defaultPaths ++ inConfig(CompileConf)(webPaths)
-
+	
+	def noAggregation = Seq(RunTask, ConsoleTask, ConsoleQuick)
+	lazy val disableAggregation = noAggregation map disableAggregate
+	def disableAggregate(k: Scoped) =
+		Aggregate in Scope.GlobalScope.copy(task = Select(k.key)) :== false
+	
 	lazy val defaultTasks =
 		projectTasks ++
 		inConfig(CompileConf)(configTasks :+ mainRunTask) ++
@@ -453,7 +460,7 @@ object Default
 		inConfig(TestConf)(Classpaths.configSettings)
 
 
-	lazy val defaultSettings = core ++ defaultPaths ++ defaultClasspaths ++ defaultTasks ++ compileBase ++ pluginDefinition
+	lazy val defaultSettings = core ++ defaultPaths ++ defaultClasspaths ++ defaultTasks ++ compileBase ++ disableAggregation ++ pluginDefinition
 	lazy val defaultWebSettings = defaultSettings ++ defaultWebPaths ++ defaultWebTasks
 }
 object Classpaths
