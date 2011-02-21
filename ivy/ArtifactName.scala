@@ -3,7 +3,7 @@
  */
 package sbt
 
-final case class ArtifactName(base: String, version: String, config: String, tpe: String, ext: String)
+final case class ArtifactName(base: String, version: String, config: String, tpe: String, ext: String, cross: String)
 object ArtifactName
 {
 	def show(name: ArtifactName) =
@@ -11,6 +11,7 @@ object ArtifactName
 		import name._
 		val confStr = if(config.isEmpty || config == "compile") "" else "-" + config
 		val tpeStr = if(tpe.isEmpty) "" else "-" + tpe
-		base + "-" + version + confStr + tpeStr + "." + ext
+		val addCross = if(cross.isEmpty) "" else "_" + cross
+		base + addCross + "-" + version + confStr + tpeStr + "." + ext
 	}
 }
