@@ -40,6 +40,7 @@ object Keys
 	val DefaultExcludes = SettingKey[FileFilter]("default-excludes")
 	val Sources = TaskKey[Seq[File]]("sources")
 	val CleanFiles = SettingKey[Seq[File]]("clean-files")
+	val CrossPaths = SettingKey[Boolean]("cross-paths")
 
 	// compile/doc keys
 	val MaxErrors = SettingKey[Int]("maximum-errors")
@@ -152,6 +153,7 @@ object Keys
 	val IvyValidate = SettingKey[Boolean]("ivy-validate")
 	val IvyLoggingLevel = SettingKey[UpdateLogging.Value]("ivy-logging-level")
 	val PublishTo = SettingKey[Option[Resolver]]("publish-to")
+	val PomName = SettingKey[ArtifactName]("pom-name")
 	val PomFile = SettingKey[File]("pom-file")
 	val PomArtifact = SettingKey[Seq[Artifact]]("pom-artifact")
 	val Artifacts = SettingKey[Seq[Artifact]]("artifacts")
@@ -201,6 +203,7 @@ object Default
 	def data[T](in: Seq[Attributed[T]]): Seq[T] = in.map(_.data)
 
 	def core = Seq(
+		CrossPaths :== true,
 		Aggregate in GlobalScope :== Aggregation.Enabled,
 		Name <<= ThisProject(_.id),
 		Version :== "0.1",
@@ -249,7 +252,7 @@ object Default
 		ScalacOptions in GlobalScope :== Nil,
 		ScalaInstance <<= (AppConfig, ScalaVersion){ (app, version) => sbt.ScalaInstance(version, app.provider.scalaProvider.launcher) },
 		ScalaVersion <<= AppConfig( _.provider.scalaProvider.version),
-		Target <<= (Target, ScalaInstance)( (t,si) => t / ("scala-" + si.actualVersion) )
+		Target <<= (Target, ScalaInstance, CrossPaths)( (t,si,cross) => if(cross) t / ("scala-" + si.actualVersion) else t )
 	)
 
 	def baseTasks = Seq(
@@ -329,8 +332,8 @@ object Default
 	def packageSrc = (Resources, ResourceDirectories, Sources, SourceDirectories, Base) map {
 		(rs, rds, srcs, sds, base) => ( (rs x relativeTo(rds)) ++ (srcs x (relativeTo(sds)|relativeTo(base)) ) ).toSeq
 	}
-	def jarName  =  JarName <<= (ModuleName, Version) { (n,v) =>
-		ArtifactName(base = n, version = v, config = "", tpe = "", ext = "jar")
+	def jarName  =  JarName <<= (ModuleName, Version, ScalaVersion, CrossPaths) { (n,v, sv, withCross) =>
+		ArtifactName(base = n, version = v, config = "", tpe = "", ext = "jar", cross = if(withCross) sv else "")
 	}
 	def jarPath  =  JarPath <<= (Target, JarName, NameToString) { (t, n, toString) => t / toString(n) }
 
@@ -523,7 +526,10 @@ object Classpaths
 		IvyScalaConfig in GlobalScope <<= ScalaVersion(v => Some(new IvyScala(v, Nil, false, false))),
 		ModuleConfigurations in GlobalScope :== Nil,
 		PublishTo in GlobalScope :== None,
-		PomFile <<= (Target, Version, ModuleName)( (target, version, module) => target / (module + "-" + version + ".pom") ),
+		PomName <<= (ModuleName, Version, ScalaVersion, CrossPaths) { (n,v,sv, withCross) =>
+			ArtifactName(base = n, version = v, config = "", tpe = "", ext = "pom", cross = if(withCross) sv else "")
+		},
+		PomFile <<= (Target, PomName, NameToString) { (t, n, toString) => t / toString(n) },
 		PomArtifact <<= (PublishMavenStyle, ModuleName)( (mavenStyle, name) => if(mavenStyle) Artifact(name, "pom", "pom") :: Nil else Nil),
 		Artifacts <<= (PomArtifact,ModuleName)( (pom,name) => Artifact(name) +: pom),
 		ProjectID <<= (Organization,ModuleName,Version,Artifacts){ (org,module,version,as) => ModuleID(org, module, version).cross(true).artifacts(as : _*) },
