@@ -21,6 +21,7 @@ trait AttributeMap
 {
 	def apply[T](k: AttributeKey[T]): T
 	def get[T](k: AttributeKey[T]): Option[T]
+	def remove[T](k: AttributeKey[T]): AttributeMap
 	def contains[T](k: AttributeKey[T]): Boolean
 	def put[T](k: AttributeKey[T], value: T): AttributeMap
 	def keys: Iterable[AttributeKey[_]]
@@ -40,6 +41,7 @@ private class BasicAttributeMap(private val backing: Map[AttributeKey[_], Any]) 
 	def isEmpty: Boolean = backing.isEmpty
 	def apply[T](k: AttributeKey[T]) = backing(k).asInstanceOf[T]
 	def get[T](k: AttributeKey[T]) = backing.get(k).asInstanceOf[Option[T]]
+	def remove[T](k: AttributeKey[T]): AttributeMap = new BasicAttributeMap( backing - k )
 	def contains[T](k: AttributeKey[T]) = backing.contains(k)
 	def put[T](k: AttributeKey[T], value: T): AttributeMap = new BasicAttributeMap( backing.updated(k, value) )
 	def keys: Iterable[AttributeKey[_]] = backing.keys

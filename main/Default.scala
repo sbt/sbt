@@ -7,7 +7,7 @@ package sbt
 	import Scope.{GlobalScope,ThisScope}
 	import Project.{AppConfig, Config, Initialize, ScopedKey, Setting, ThisProject, ThisProjectRef}
 	import Configurations.{Compile => CompileConf, Test => TestConf}
-	import Command.HistoryPath
+	import Command.{HistoryPath, ShellPrompt}
 	import EvaluateTask.{resolvedScoped, streams}
 	import complete._
 	import inc.Analysis
@@ -204,6 +204,7 @@ object Default
 
 	def core = Seq(
 		CrossPaths :== true,
+		ShellPrompt in GlobalScope :== (_ => "> "),
 		Aggregate in GlobalScope :== Aggregation.Enabled,
 		Name <<= ThisProject(_.id),
 		Version :== "0.1",

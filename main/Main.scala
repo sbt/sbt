@@ -10,7 +10,7 @@ package sbt
 	import compile.EvalImports
 	import sbt.complete.{DefaultParsers, Parser}
 
-	import Command.{applyEffect,Analysis,HistoryPath,Logged,Watch}
+	import Command.{applyEffect,Analysis,HistoryPath,Logged,ShellPrompt,Watch}
 	import scala.annotation.tailrec
 	import scala.collection.JavaConversions._
 	import Function.tupled
@@ -109,9 +109,10 @@ object BuiltinCommands
 	
 	def shell = Command.command(Shell, ShellBrief, ShellDetailed) { s =>
 		val historyPath = (s get HistoryPath.key) getOrElse Some((s.baseDir / ".history").asFile)
+		val prompt = (s get ShellPrompt.key) match { case Some(pf) => pf(s); case None => "> " }
 		val parser = Command.combine(s.processors)
 		val reader = new FullReader(historyPath, parser(s))
-		val line = reader.readLine("> ")
+		val line = reader.readLine(prompt)
 		line match {
 			case Some(line) => s.copy(onFailure = Some(Shell), commands = line +: Shell +: s.commands)
 			case None => s

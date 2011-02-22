@@ -30,6 +30,7 @@ object Command
 
 	val Logged = AttributeKey[Logger]("log")
 	val HistoryPath = SettingKey[Option[File]]("history")
+	val ShellPrompt = SettingKey[State => String]("shell-prompt")
 	val Analysis = AttributeKey[inc.Analysis]("analysis")
 	val Watch = SettingKey[Watched]("continuous-watch")
 

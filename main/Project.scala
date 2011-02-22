@@ -7,7 +7,7 @@ package sbt
 	import java.net.URI
 	import Project._
 	import Types.Endo
-	import Command.{HistoryPath,Watch}
+	import Command.{HistoryPath,ShellPrompt,Watch}
 	import CommandSupport.logger
 	import compile.Eval
 
@@ -72,11 +72,14 @@ object Project extends Init[Scope]
 
 		val data = structure.data
 		val historyPath = HistoryPath in ref get data flatMap identity
+		val prompt = ShellPrompt in ref get data
 		val commands = (Commands in ref get data).toList.flatten[Command].map(_ tag (ProjectCommand, true))
 		val newProcessors = commands ++ BuiltinCommands.removeTagged(s.processors, ProjectCommand)
 		val newAttrs = s.attributes.put(Watch.key, makeWatched(data, ref, project)).put(HistoryPath.key, historyPath)
-		s.copy(attributes = newAttrs, processors = newProcessors)
+		s.copy(attributes = setCond(ShellPrompt.key, prompt, newAttrs), processors = newProcessors)
 	}
+	def setCond[T](key: AttributeKey[T], vopt: Option[T], attributes: AttributeMap): AttributeMap =
+		vopt match { case Some(v) => attributes.put(key, v); case None => attributes.remove(key) }
 	def makeSettings(settings: Seq[Setting[_]], delegates: Scope => Seq[Scope], scopeLocal: ScopedKey[_] => Seq[Setting[_]]) =
 		translateUninitialized( make(settings)(delegates, scopeLocal) )
 
