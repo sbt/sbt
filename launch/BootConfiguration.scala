@@ -19,7 +19,7 @@ private object BootConfiguration
 	val SbtOrg = "org.scala-tools.sbt"
 
 	/** The Ivy conflict manager to use for updating.*/
-	val ConflictManagerName = "strict"
+	val ConflictManagerName = "latest-revision"
 	/** The name of the local Ivy repository, which is used when compiling sbt from source.*/
 	val LocalIvyName = "local"
 	/** The pattern used for the local Ivy repository, which is used when compiling sbt from source.*/
