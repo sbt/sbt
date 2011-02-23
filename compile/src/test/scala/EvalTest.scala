@@ -9,7 +9,7 @@ object EvalTest extends Properties("eval")
 {
 	private[this] val reporter = new StoreReporter
 	import reporter.{ERROR,Info,Severity}
-	private[this] val eval = new Eval(_ => reporter)
+	private[this] val eval = new Eval(_ => reporter, None)
 	
 	property("inferred integer") = forAll{ (i: Int) =>
 		val result = eval.eval(i.toString)
@@ -33,8 +33,9 @@ object EvalTest extends Properties("eval")
 	}
 
 	property("backed local class") = forAll{ (i: Int) =>
-		IO.withTemporaryDirectory { dir => 
-			val result = eval.eval(local(i), backing = Some(dir))
+		IO.withTemporaryDirectory { dir =>
+			val eval = new Eval(_ => reporter, backing = Some(dir))
+			val result = eval.eval(local(i))
 			val value = result.value.asInstanceOf[{def i: Int}].i
 			(label("Value", value) |: (value == i)) &&
 			(label("Type", result.tpe) |: (result.tpe == LocalType)) &&

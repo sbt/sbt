@@ -1,6 +1,6 @@
 package xsbti
 
-object f0
+object g0
 {
 	def apply[T](s: => T) = new F0[T] { def apply = s }
 }
