@@ -40,13 +40,21 @@ final object Aggregation
 			{	
 				case Implicit(false) => (Nil, false)	
 				case Implicit(true) => (projectAggregate(key, structure), true)	
-				case e: Explicit => (e.dependencies, e.transitive)	
+				case e: Explicit => (subCurrentBuild(key, e.dependencies), e.transitive)	
 			}
+
 		agg flatMap { a =>
 			val newKey = ScopedKey(key.scope.copy(project = Select(a)), key.key)
 			getTasks(newKey, structure, transitive)
 		}
 	}
+	private def subCurrentBuild(key: ScopedKey[_], refs: Seq[ProjectRef]): Seq[ProjectRef] =
+		key.scope.project match
+		{
+			case Select(ProjectRef(Some(current), _)) => refs map { ref => Scope.mapRefBuild(current, ref) }
+			case _ => refs
+		}
+		
 
 	def printSettings[T](xs: Seq[KeyValue[T]], log: Logger) =
 		xs match

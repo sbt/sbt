@@ -521,8 +521,10 @@ object Load
 	{
 		val subclassSet = subclasses.toSet
 		val ds = Discovery(subclassSet, Set.empty)(Test.allDefs(analysis))
-		ds.flatMap { case (definition, Discovered(subs,_,_,true)) =>
-			if((subs ** subclassSet).isEmpty) Nil else definition.name :: Nil
+		ds.flatMap {
+			case (definition, Discovered(subs,_,_,true)) =>
+				if((subs ** subclassSet).isEmpty) Nil else definition.name :: Nil
+			case _ => Nil
 		}
 	}
 

@@ -320,7 +320,7 @@ object Default
 	)
 	lazy val packageConfig = Seq(
 		JarName <<= (JarName, Config) { (n,c) => n.copy(config = c.name) },
-		PackageOptions in Package <<= MainClass in Package map ( _.map(sbt.Package.MainClass.apply).toList )
+		PackageOptions in Package <<= (PackageOptions, MainClass in Package) map { _ ++ _.map(sbt.Package.MainClass.apply).toList }
 	) ++
 	packageTasks(Package, "", packageBin) ++
 	packageTasks(PackageSrc, "src", packageSrc) ++

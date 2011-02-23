@@ -39,7 +39,6 @@ final class ScriptedTests(resourceBaseDirectory: File, bufferLog: Boolean, sbtVe
 		IPC.pullServer( scriptedTest0(label, testDirectory, log) )
 	private def scriptedTest0(label: String, testDirectory: File, log: Logger)(server: IPC.Server)
 	{
-		FillProperties(testDirectory, sbtVersion, defScalaVersion, buildScalaVersions)
 		val buffered = new BufferedLogger(new FullLogger(log))
 		if(bufferLog)
 			buffered.record()
@@ -114,25 +113,7 @@ object ScriptedTests
 			ScriptedTest(group,name)
 		}
 }
-object FillProperties
-{
-	def apply(projectDirectory: File, sbtVersion: String, defScalaVersion: String, buildScalaVersions: String): Unit =
-	{
-		import sbt.Path._
-		fill(projectDirectory / "project" / "build.properties", sbtVersion, defScalaVersion, buildScalaVersions)
-	}
-	def fill(properties: File, sbtVersion: String, defScalaVersion: String, buildScalaVersions: String)
-	{
-		val toAppend = extraProperties(sbtVersion, defScalaVersion, buildScalaVersions)
-		IO.write(properties, toAppend, Charset.forName("ISO-8859-1"), true)
-	}
-	def extraProperties(sbtVersion: String, defScalaVersion: String, buildScalaVersions: String) = 
-<x>
-sbt.version={sbtVersion}
-def.scala.version={defScalaVersion}
-build.scala.versions={buildScalaVersions}
-</x>.text
-}
+
 final case class ScriptedTest(group: String, name: String) extends NotNull
 {
 	override def toString = group + "/" + name

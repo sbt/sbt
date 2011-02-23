@@ -1,46 +1,102 @@
-# This test verifies the behavior of actions declared interactive
+# single project, 'mark' not defined
+-> mark
+$ absent ran
 
-# Single project, non-interactive task
-> interactive-test
+# single project, 'mark' defined
+> set Mark <<= mark
+> mark
 $ exists ran
 $ delete ran
 
-# Single project, interactive task
-$ copy-file changes/TestProject2.scala project/build/src/TestProject.scala
-> reload
-> interactive-test
+# single project, Aggregate = Enabled on Mark
+> set Aggregate in Mark :== false
+> mark
 $ exists ran
 $ delete ran
 
-# Multi-project, single interactive task on parent project
-$ copy-file changes/TestProject3.scala project/build/src/TestProject.scala
-> reload
-> interactive-test
+# single project, Aggregate = Disabled on Mark
+> set Aggregate in Mark :== false
+> mark
 $ exists ran
 $ delete ran
 
-# Multi-project, single interactive task on child project
-$ copy-file changes/TestProject4.scala project/build/src/TestProject.scala
+# switch to multi-project, no aggregation yet.  'reload' will drop session settings
+$ touch multi
+$ mkdir sub sub/sub
 > reload
--> interactive-test
 
-# Multi-project, two interactive tasks with same name, which is allowed because it is defined on parent
-$ copy-file changes/TestProject5.scala project/build/src/TestProject.scala
-> reload
-> interactive-test
-$ exists "ran"
-$ delete "ran"
+# define in root project only
+> set Mark <<= mark
+> mark
+$ exists ran
+$ absent sub/ran
+$ delete ran
 
-# Multi-project, interactive on subproject + non-interactive on parent, which cannot be run from parent
-$ copy-file changes/TestProject6.scala project/build/src/TestProject.scala
-> reload
--> interactive-test
+# define in sub project, but shouldn't run without aggregation
+> set Mark in sub <<= mark(sub)
+> mark
+$ exists ran
+$ absent sub/ran
+$ delete ran
 
-# Multi-project, two non-interactive tasks with same name, which is allowed
-$ copy-file changes/TestProject7.scala project/build/src/TestProject.scala
+# should be able to run it directly...
+> sub/mark
+$ absent ran
+$ exists sub/ran
+$ delete sub/ran
+
+# unset the root task.  the sub task shouldn't be runnable from root
+> session remove 1
+-> mark
+$ absent ran sub/ran
+
+# enable aggregation.  'reload' resets session settings
+$ touch aggregate
 > reload
-> interactive-test
-$ exists "ran"
-$ exists "a/ran"
-$ delete "ran"
-$ delete "a/ran"
+
+# add tasks to each subproject
+> set Mark in sub <<= mark(sub)
+> set Mark in sub2 <<= mark(sub2)
+
+# check that aggregation works when root project has no task
+> mark
+$ exists sub/ran sub/sub/ran
+$ absent ran
+$ delete sub/ran sub/sub/ran
+
+# check that aggregation works on sub/
+> sub/mark
+$ exists sub/ran sub/sub/ran
+$ absent ran
+$ delete sub/ran sub/sub/ran
+
+# add task to root project
+> set Mark <<= mark
+
+# disable aggregation for sub/mark so that sub2/mark doesn't run
+> set Aggregate in (sub,Mark) :== false
+> mark
+$ exists ran sub/ran
+$ absent sub/sub/ran
+$ delete ran sub/ran
+
+# check explicit aggregation.  running on root should run root/mark and sub2/mark
+> set Aggregate in Mark :== Aggregation(sub2 :: Nil)
+> mark
+$ exists ran sub/sub/ran
+$ absent sub/ran
+$ delete ran sub/sub/ran
+
+# check intransitive aggregation.  running on root should not continue to sub2/mark
+> set Aggregate in Mark :== Aggregation(sub :: Nil, false)
+> mark
+$ exists ran sub/ran
+$ absent sub/sub/ran
+$ delete ran sub/ran
+
+# the aggregation setting in a leaf shouldn't affect whether it can be run directly
+> set Aggregate in (sub2, Mark) :== false
+> sub2/mark
+$ exists sub/sub/ran
+$ absent ran sub/ran
+$ delete sub/sub/ran

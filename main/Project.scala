@@ -103,7 +103,7 @@ object Project extends Init[Scope]
 	def mapScope(f: Scope => Scope) = new  (ScopedKey ~> ScopedKey) { def apply[T](key: ScopedKey[T]) =
 		ScopedKey( f(key.scope), key.key)
 	}
-	def resolveThis(thisScope: Scope) = mapScope(Scope.replaceThis(thisScope))
+
 	def transform(g: Scope => Scope, ss: Seq[Setting[_]]): Seq[Setting[_]] = {
 		val f = mapScope(g)
 		ss.map(_ mapKey f mapReferenced f)
