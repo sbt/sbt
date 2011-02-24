@@ -1,11 +1,22 @@
+# 'lazy-name' is not an appropriate name anymore
+# This test verifies that package uses the updated name
+# after changing the version.  It no longer serves
+# much purpose other than checking that the 'set' command
+# re-evaluates the project data.
+
+> 'set Name :== "lazy-package-name"'
+> set CrossPaths :== false
+
+> 'set Version :== "0.1.1"'
 > package
 $ exists "target/lazy-package-name-0.1.1.jar"
 > clean
 
-> increment-version
+> 'set Version :== "0.1.2"'
 > package
 $ exists "target/lazy-package-name-0.1.2.jar"
+> clean
 
-> increment-version
+> 'set Version :== "0.1.3"'
 > package
 $ exists "target/lazy-package-name-0.1.3.jar"

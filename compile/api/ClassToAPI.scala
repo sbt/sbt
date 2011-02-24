@@ -24,23 +24,24 @@ object ClassToAPI
 	def toDefinitions(c: Class[_]): Seq[api.ClassLike] =
 	{
 			import api.DefinitionType.{ClassDef, Module, Trait}
+		val enclPkg = packageName(c)
 		val mods = modifiers(c.getModifiers)
-		val acc = access(c.getModifiers)
+		val acc = access(c.getModifiers, enclPkg)
 		val annots = annotations(c.getAnnotations)
 		val name = c.getName
 		val tpe = if(Modifier.isInterface(c.getModifiers)) Trait else ClassDef
-		lazy val (static, instance) = structure(c)
+		lazy val (static, instance) = structure(c, enclPkg)
 		val cls = new api.ClassLike(tpe, strict(Empty), lzy(instance), typeParameters(c.getTypeParameters), name, acc, mods, annots)
 		def makeStatic(s: api.Structure) = 
 			new api.ClassLike(Module, strict(Empty), strict(s), Array(), name, acc, mods, annots)
 		cls :: static.map(makeStatic).toList
 	}
 
-	def structure(c: Class[_]): (Option[api.Structure], api.Structure) =
+	def structure(c: Class[_], enclPkg: Option[String]): (Option[api.Structure], api.Structure) =
 	{
-		val methods = mergeMap(c, c.getMethods, c.getDeclaredMethods, methodToDef)
-		val fields = mergeMap(c, c.getFields, c.getDeclaredFields, fieldToDef)
-		val constructors = mergeMap(c, c.getConstructors, c.getDeclaredConstructors, constructorToDef)
+		val methods = mergeMap(c, c.getMethods, c.getDeclaredMethods, methodToDef(enclPkg))
+		val fields = mergeMap(c, c.getFields, c.getDeclaredFields, fieldToDef(enclPkg))
+		val constructors = mergeMap(c, c.getConstructors, c.getDeclaredConstructors, constructorToDef(enclPkg))
 		val classes = merge[Class[_]](c, c.getClasses, c.getDeclaredClasses, toDefinitions, (_: Seq[Class[_]]).partition(isStatic), _.getEnclosingClass != c)
 		val all = (methods ++ fields ++ constructors ++ classes)
 		val parentTypes = parents(c)
@@ -59,30 +60,30 @@ object ClassToAPI
 	def upperBounds(ts: Array[Type]): api.Type =
 		new api.Structure(lzy(types(ts)), emptyDefArray, emptyDefArray)
 
-	def fieldToDef(f: Field): api.FieldLike =
+	def fieldToDef(enclPkg: Option[String])(f: Field): api.FieldLike =
 	{
 		val name = f.getName
-		val accs = access(f.getModifiers)
+		val accs = access(f.getModifiers, enclPkg)
 		val mods = modifiers(f.getModifiers)
 		val annots = annotations(f.getDeclaredAnnotations)
 		val tpe = reference(f.getGenericType)
 		if(mods.isFinal) new api.Val(tpe, name, accs, mods, annots) else new api.Var(tpe, name, accs, mods, annots)
 	}
 
-	def methodToDef(m: Method): api.Def =
-		defLike(m.getName, m.getModifiers, m.getDeclaredAnnotations, m.getTypeParameters, m.getParameterAnnotations, m.getGenericParameterTypes, Some(m.getGenericReturnType), m.getGenericExceptionTypes, m.isVarArgs)
+	def methodToDef(enclPkg: Option[String])(m: Method): api.Def =
+		defLike(m.getName, m.getModifiers, m.getDeclaredAnnotations, m.getTypeParameters, m.getParameterAnnotations, m.getGenericParameterTypes, Some(m.getGenericReturnType), m.getGenericExceptionTypes, m.isVarArgs, enclPkg)
 
-	def constructorToDef(c: Constructor[_]): api.Def =
-		defLike("<init>", c.getModifiers, c.getDeclaredAnnotations, c.getTypeParameters, c.getParameterAnnotations, c.getGenericParameterTypes, None, c.getGenericExceptionTypes, c.isVarArgs)
+	def constructorToDef(enclPkg: Option[String])(c: Constructor[_]): api.Def =
+		defLike("<init>", c.getModifiers, c.getDeclaredAnnotations, c.getTypeParameters, c.getParameterAnnotations, c.getGenericParameterTypes, None, c.getGenericExceptionTypes, c.isVarArgs, enclPkg)
 
-	def defLike[T <: GenericDeclaration](name: String, mods: Int, annots: Array[Annotation], tps: Array[TypeVariable[T]], paramAnnots: Array[Array[Annotation]], paramTypes: Array[Type], retType: Option[Type], exceptions: Array[Type], varArgs: Boolean): api.Def =
+	def defLike[T <: GenericDeclaration](name: String, mods: Int, annots: Array[Annotation], tps: Array[TypeVariable[T]], paramAnnots: Array[Array[Annotation]], paramTypes: Array[Type], retType: Option[Type], exceptions: Array[Type], varArgs: Boolean, enclPkg: Option[String]): api.Def =
 	{
 		val varArgPosition = if(varArgs) paramTypes.length - 1 else -1
 		val isVarArg = List.tabulate(paramTypes.length)(_ == varArgPosition)
 		val pa = (paramAnnots, paramTypes, isVarArg).zipped map { case (a,p,v) => parameter(a,p,v) }
 		val params = new api.ParameterList(pa, false)
 		val ret = retType match { case Some(rt) => reference(rt); case None => Empty }
-		new api.Def(Array(params), ret, typeParameters(tps), name, access(mods), modifiers(mods), annotations(annots) ++ exceptionAnnotations(exceptions))
+		new api.Def(Array(params), ret, typeParameters(tps), name, access(mods, enclPkg), modifiers(mods), annotations(annots) ++ exceptionAnnotations(exceptions))
 	}
 
 	def exceptionAnnotations(exceptions: Array[Type]): Array[api.Annotation] =
@@ -140,10 +141,10 @@ object ClassToAPI
 		import Modifier.{isAbstract, isFinal}
 		new api.Modifiers( isAbstract(i), false, isFinal(i), false, false, false)
 	}
-	def access(i: Int): api.Access =
+	def access(i: Int, pkg: Option[String]): api.Access =
 	{
 		import Modifier.{isPublic, isPrivate, isProtected}
-		if(isPublic(i)) Public else if(isPrivate(i)) Private else if(isProtected(i)) Protected else error("Invalid modifiers " + i + " : no access flag set")
+		if(isPublic(i)) Public else if(isPrivate(i)) Private else if(isProtected(i)) Protected else packagePrivate(pkg)
 	}
 
 	def annotations(a: Array[Annotation]): Array[api.Annotation] = a map annotation
@@ -209,6 +210,7 @@ object ClassToAPI
 	val Private = new api.Private(Unqualified)
 	val Protected = new api.Protected(Unqualified)
 	val Unqualified = new api.Unqualified
+	def packagePrivate(pkg: Option[String]): api.Access = new api.Private(new api.IdQualifier(pkg getOrElse ""))
 
 	val ArrayRef = reference("scala.Array")
 	val Throws = reference("scala.throws")

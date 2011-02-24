@@ -34,7 +34,7 @@ object Package
 	}
 
 	def mergeAttributes(a1: Attributes, a2: Attributes) = a1 ++= a2
-	// merges m2 into m1 (mutating m1 in the process)
+	// merges `mergeManifest` into `manifest` (mutating `manifest` in the process)
 	def mergeManifests(manifest: Manifest, mergeManifest: Manifest)
 	{
 		mergeAttributes(manifest.getMainAttributes, mergeManifest.getMainAttributes)
@@ -87,7 +87,7 @@ object Package
 	}
 	def makeJar(sources: Seq[(File, String)], jar: File, manifest: Manifest)
 	{
-		println("Packaging...")
+		println("Packaging " + jar.getAbsolutePath + " ...")
 		IO.delete(jar)
 		IO.jar(sources, jar, manifest)
 		println("Done packaging.")

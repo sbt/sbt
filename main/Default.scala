@@ -328,11 +328,21 @@ object Default
 
 	private[this] val allSubpaths = (_: File).###.***.xx.toSeq
 
-	def packageBin = (CompileInputs, CompileTask) map { (in, _) => allSubpaths(in.config.classesDirectory) }
+	def packageBin = concat(classMappings, resourceMappings)
 	def packageDoc = DocTask map allSubpaths
-	def packageSrc = (Resources, ResourceDirectories, Sources, SourceDirectories, Base) map {
-		(rs, rds, srcs, sds, base) => ( (rs x relativeTo(rds)) ++ (srcs x (relativeTo(sds)|relativeTo(base)) ) ).toSeq
+	def packageSrc = concat(resourceMappings, sourceMappings)
+
+	private type Mappings = Initialize[Task[Seq[(File, String)]]]
+	def concat(as: Mappings, bs: Mappings) = (as zipWith bs)( (a,b) => (a :^: b :^: KNil) map { case a :+: b :+: HNil => a ++ b } )
+	def classMappings = (CompileInputs, CompileTask) map { (in, _) => allSubpaths(in.config.classesDirectory) }
+	// drop base directories, since there are no valid mappings for these
+	def sourceMappings = (Sources, SourceDirectories, Base) map { (srcs, sdirs, base) =>
+		 ( (srcs --- sdirs --- base) x (relativeTo(sdirs)|relativeTo(base))) toSeq
 	}
+	def resourceMappings = (Resources, ResourceDirectories) map { (rs, rdirs) =>
+		(rs --- rdirs) x relativeTo(rdirs) toSeq
+	}
+	
 	def jarName  =  JarName <<= (ModuleName, Version, ScalaVersion, CrossPaths) { (n,v, sv, withCross) =>
 		ArtifactName(base = n, version = v, config = "", tpe = "", ext = "jar", cross = if(withCross) sv else "")
 	}

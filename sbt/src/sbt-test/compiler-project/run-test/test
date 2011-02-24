@@ -1,13 +1,10 @@
-> set build.scala.versions 2.7.7 2.8.0.RC1
-> reload
-> +update
-> +run 1
-> +test
-> +clean
+> run 1
+> test:test
+> clean
 
-> +run 2
-> +test
-> +clean
+> run 2
+> test:test
+> clean
 
-> +run -1
-> +test
+> run -1
+> test:test
