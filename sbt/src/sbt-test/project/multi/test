@@ -1,16 +1,29 @@
-# There should be no ambiguity with a single project definition
+# A single project definition with projects only defining a name
+$ copy-file changes/Build1.scala project/Build.scala
+> reload
+> a/name
+-> a/compile
+> b/name
+-> b/compile
+$ delete project/Build.scala
 
-$ copy-file changes/SingleProject.scala project/build/src/TestProject.scala
+# Two separate project definitions, implemented using a trait
+#  Only the modules should be discovered.
+# A .sbt file should be used in each
+$ copy-file changes/Build2.scala project/Build.scala
+$ copy-file changes/a.sbt a.sbt
+$ copy-file changes/b.sbt b/b.sbt
+$ copy-file changes/b2.sbt b/b2.sbt
 > reload
 
-# Again, no ambiguity with a single project definition and any number of abstract classes/traits implementing Project
-$ copy-file changes/SingleAndTraitProject.scala project/build/src/TestProject.scala
-> reload
+> a/name
+-> a/compile
+> a/example
+-> a/sample
+-> a/sample2
 
-# One public project and any number of non-public projects should not be an error
-$ copy-file changes/SinglePublicProject.scala project/build/src/TestProject.scala
-> reload
-
-# Multiple public projects should be an error
-$ copy-file changes/MultiProject.scala project/build/src/TestProject.scala
--> reload
+> b/name
+-> b/compile
+> b/sample
+> b/sample2
+-> b/example

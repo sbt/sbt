@@ -1,7 +1,6 @@
+$ mkdir sub3 sub1 sub2
 > console-project
-> project sub3
-> console-project
-> project sub1
-> console-project
+> 'sub3/console-project'
+> 'sub1/console-project'
 > project sub2
 > console-project

@@ -14,6 +14,7 @@ package sbt
 	import Project.{AppConfig, Config, ScopedKey, ScopeLocal, Setting, ThisProject, ThisProjectRef}
 	import TypeFunctions.{Endo,Id}
 	import tools.nsc.reporters.ConsoleReporter
+	import Build.{analyzed, data}
 
 // name is more like BuildDefinition, but that is too long
 trait Build
@@ -29,6 +30,9 @@ object Build
 {
 	def default(base: File): Build = new Build { def projects = defaultProject("default", base) :: Nil }
 	def defaultProject(id: String, base: File): Project = Project(id, base)
+
+	def data[T](in: Seq[Attributed[T]]): Seq[T] = in.map(_.data)
+	def analyzed(in: Seq[Attributed[_]]): Seq[Analysis] = in.flatMap{ _.metadata.get(Command.Analysis) }
 }
 object RetrieveUnit
 {
@@ -102,8 +106,6 @@ object EvaluateTask
 	import BuildStreams.{Streams, TaskStreams}
 	
 	val SystemProcessors = Runtime.getRuntime.availableProcessors
-	// TODO: we should use a Seq[Attributed[File]] so that we don't throw away Analysis information
-	val PluginDefinition = TaskKey[(Seq[File], Analysis)]("plugin-definition")
 	
 	val (state, dummyState) = dummy[State]("state")
 	val (streamsManager, dummyStreamsManager) = dummy[Streams]("streams-manager")
@@ -119,11 +121,12 @@ object EvaluateTask
 	def dummy[T](name: String): (TaskKey[T], Task[T]) = (TaskKey[T](name), dummyTask(name))
 	def dummyTask[T](name: String): Task[T] = task( error("Dummy task '" + name + "' did not get converted to a full task.") ) named name
 
-	def evalPluginDef(log: Logger)(pluginDef: BuildStructure, state: State): (Seq[File], Analysis) =
+	def evalPluginDef(log: Logger)(pluginDef: BuildStructure, state: State): Seq[Attributed[File]] =
 	{
 		val root = ProjectRef(pluginDef.root, Load.getRootProject(pluginDef.units)(pluginDef.root))
-		val evaluated = evaluateTask(pluginDef, ScopedKey(Scope.ThisScope, PluginDefinition.key), state, root)
-		val result = evaluated getOrElse error("Plugin task does not exist for plugin definition at " + pluginDef.root)
+		val pluginKey = Keys.FullClasspath in Configurations.Compile
+		val evaluated = evaluateTask(pluginDef, ScopedKey(pluginKey.scope, pluginKey.key), state, root)
+		val result = evaluated getOrElse error("Plugin classpath does not exist for plugin definition at " + pluginDef.root)
 		processResult(result, log)
 	}
 	def evaluateTask[T](structure: BuildStructure, taskKey: ScopedKey[Task[T]], state: State, thisProject: ProjectRef, checkCycles: Boolean = false, maxWorkers: Int = SystemProcessors): Option[Result[T]] =
@@ -376,8 +379,11 @@ object Load
 	def checkBuildBase(base: File) = checkDirectory(base)
 	def checkDirectory(base: File)
 	{
-		assert(base.isDirectory, "Not an existing directory: " + base)
 		assert(base.isAbsolute, "Not absolute: " + base)
+		if(base.isFile)
+			error("Not a directory: " + base)
+		else if(!base.exists)
+			IO createDirectory base
 	}
 	def checkAll(referenced: Map[URI, List[ProjectRef]], builds: Map[URI, LoadedBuildUnit])
 	{
@@ -470,10 +476,10 @@ object Load
 		val (eval,pluginDef) = apply(dir, s, config)
 		val pluginState = Project.setProject(Load.initialSession(pluginDef, eval), pluginDef, s)
 
-		val (pluginClasspath, pluginAnalysis) = config.evalPluginDef(pluginDef, pluginState)
-		val definitionClasspath = (pluginClasspath ++ config.classpath).distinct
+		val pluginClasspath = config.evalPluginDef(pluginDef, pluginState)
+		val definitionClasspath = (data(pluginClasspath) ++ config.classpath).distinct
 		val pluginLoader = ClasspathUtilities.toLoader(definitionClasspath, config.loader)
-		loadPlugins(definitionClasspath, pluginLoader, pluginAnalysis)
+		loadPlugins(definitionClasspath, pluginLoader, analyzed(pluginClasspath))
 	}
 
 	def definitions(base: File, targetBase: File, srcs: Seq[File], plugins: LoadedPlugins, compilers: Compilers, log: Logger, buildBase: File): LoadedDefinitions =
@@ -498,10 +504,10 @@ object Load
 		(inputs, analysis)
 	}
 
-	def loadPlugins(classpath: Seq[File], loader: ClassLoader, analysis: Analysis): LoadedPlugins =
+	def loadPlugins(classpath: Seq[File], loader: ClassLoader, analysis: Seq[Analysis]): LoadedPlugins =
 	{
 		val (pluginNames, plugins) = if(classpath.isEmpty) (Nil, Nil) else {
-			val names = findPlugins(analysis)
+			val names = analysis flatMap findPlugins
 			(names, loadPlugins(loader, names) )
 		}
 		new LoadedPlugins(classpath, loader, plugins, pluginNames)
@@ -557,9 +563,10 @@ object Load
 		def localBase = unit.localBase
 		def classpath = unit.definitions.target +: unit.plugins.classpath
 		def loader = unit.definitions.loader
-		def imports = baseImports ++ importAll(unit.plugins.pluginNames ++ unit.definitions.buildNames)
+		def imports = getImports(unit)
 		override def toString = unit.toString
 	}
+	def getImports(unit: BuildUnit) = baseImports ++ importAll(unit.plugins.pluginNames ++ unit.definitions.buildNames)
 
 	// these are unresolved references
 	def referenced(definitions: Seq[Project]): Seq[ProjectRef] = definitions flatMap referenced
@@ -567,7 +574,7 @@ object Load
 
 	
 	final class BuildStructure(val units: Map[URI, LoadedBuildUnit], val root: URI, val settings: Seq[Setting[_]], val data: Settings[Scope], val index: StructureIndex, val streams: Streams, val delegates: Scope => Seq[Scope], val scopeLocal: ScopeLocal)
-	final class LoadBuildConfiguration(val stagingDirectory: File, val classpath: Seq[File], val loader: ClassLoader, val compilers: Compilers, val evalPluginDef: (BuildStructure, State) => (Seq[File], Analysis), val delegates: LoadedBuild => Scope => Seq[Scope], val scopeLocal: ScopeLocal, val injectSettings: Seq[Setting[_]], val log: Logger)
+	final class LoadBuildConfiguration(val stagingDirectory: File, val classpath: Seq[File], val loader: ClassLoader, val compilers: Compilers, val evalPluginDef: (BuildStructure, State) => Seq[Attributed[File]], val delegates: LoadedBuild => Scope => Seq[Scope], val scopeLocal: ScopeLocal, val injectSettings: Seq[Setting[_]], val log: Logger)
 	// information that is not original, but can be reconstructed from the rest of BuildStructure
 	final class StructureIndex(val keyMap: Map[String, AttributeKey[_]], val taskToKey: Map[Task[_], ScopedKey[Task[_]]], val keyIndex: KeyIndex)
 

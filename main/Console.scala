@@ -26,7 +26,7 @@ final class Console(compiler: AnalyzingCompiler)
 }
 object Console
 {
-	val SbtInitial = "import sbt._; import Process._; import current._"
+	val SbtInitial = "import sbt._, Process._, current._"
 	
 	def apply(conf: build.Compile)(implicit log: Logger): Console = new Console( compiler(conf) )
 	def apply(conf: Compile.Inputs): Console = new Console( conf.compilers.scalac )
@@ -36,16 +36,16 @@ object Console
 		val componentManager = new ComponentManager(conf.launcher.globalLock, conf.configuration.provider.components, log)
 		new AnalyzingCompiler(conf.instance, componentManager, log)
 	}
-	def sbtDefault(conf: build.Compile, value: Any)(implicit log: Logger)
+	def sbt(state: State, extra: String)(implicit log: Logger)
 	{
-		val c = new Console(compiler(conf))
-		val loader = value.asInstanceOf[AnyRef].getClass.getClassLoader
-		c.apply(conf.compileClasspath, Nil, loader, SbtInitial)("current" -> value)
-	}
-	def sbtDefault(conf: Compile.Inputs, value: Any)(implicit log: Logger)
-	{
-		val loader = value.asInstanceOf[AnyRef].getClass.getClassLoader
-		Console(conf)(conf.config.classpath, Nil, loader, SbtInitial)("current" -> value)
+		val loader = classOf[State].getClassLoader
+		val extracted = Project extract state
+		val unit = extracted.currentUnit
+		val compiler = Compile.compilers(state.configuration, log).scalac
+		val imports = Load.getImports(unit.unit).mkString("", ";\n", ";\n\n")
+		val initCommands = imports + extra
+		val bindings = ("state" -> state) :: ("extracted" -> extracted ) :: Nil
+		(new Console(compiler))(unit.classpath, Nil, initCommands)(Some(loader), bindings)
 	}
 }
 

@@ -1,19 +1,21 @@
-> ++2.7.7
-
 # This test verifies that sbt works after the source hierarchy has been flattened and merged
 # so that resources and Java and Scala sources are side by side under src/
 
-> update
-> test
+> test:test
+> test:run
 
 # This part verifies that the package-src action works properly under a flattened/merged source hierarchy
 
-> package-project
+> package-src
+> test:package-src
 
 $ delete src
+$ delete test-src
 
--> test
+-> test:run
 
-> unpackage-project
+> unpackage-src
+> test:unpackage-src
 
-> test
+> test:test
+> test:run

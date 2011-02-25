@@ -1,10 +1,15 @@
-import org.scalacheck._
+	import org.scalacheck._
+	import Prop._
 
 class SimpleTest extends Properties("Simple")
 {
-	specify("increment scala", (i: Int) => (new a.b.ScalaA).increment(i) == i+1)
-	specify("increment java", (i: Int) => (new JavaA).inc(i) == i+1)
+	property("increment scala") = forAll( (i: Int) => (new a.b.ScalaA).increment(i) == i+1)
+	property("increment java") = forAll( (i: Int) => (new JavaA).inc(i) == i+1)
 	
-	specify("decrement scala", (i: Int) => (new b.ScalaB).decrement(i) == i+1)
-	specify("decrement java", (i: Int) => (new a.JavaB).dec(i) == i+1)
+	property("decrement scala") = forAll( (i: Int) => (new b.ScalaB).decrement(i) == i+1)
+	property("decrement java") = forAll( (i: Int) => (new a.JavaB).dec(i) == i+1)
+}
+object MainTest
+{
+	def main(args: Array[String]) {}
 }

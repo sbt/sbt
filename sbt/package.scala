@@ -9,4 +9,6 @@ package object sbt extends sbt.std.TaskExtra with sbt.Types with sbt.ProcessExtr
 		if(m.isDefined) Some(m.get) else None
 	def uri(s: String): URI = new URI(s)
 	def file(s: String): File = new File(s)
+
+	implicit def globFilter(expression: String): NameFilter = GlobFilter(expression)
 }

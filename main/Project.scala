@@ -23,6 +23,11 @@ final case class Project(id: String, base: File, aggregate: Seq[ProjectRef] = Ni
 	def uses = aggregate ++ dependencies.map(_.project)
 }
 final case class Extracted(structure: Load.BuildStructure, session: SessionSettings, curi: URI, cid: String, rootProject: URI => String)
+{
+	lazy val currentUnit = structure units curi
+	lazy val currentProject = currentUnit defined cid
+	lazy val currentRef = ProjectRef(Some(curi), Some(cid))
+}
 
 object Project extends Init[Scope]
 {

@@ -4,6 +4,7 @@
 package sbt
 
 	import java.io.File
+	import Build.data
 	import Scope.{GlobalScope,ThisScope}
 	import Project.{AppConfig, Config, Initialize, ScopedKey, Setting, ThisProject, ThisProjectRef}
 	import Configurations.{Compile => CompileConf, Test => TestConf}
@@ -57,6 +58,7 @@ object Keys
 	val Clean = TaskKey[Unit]("clean")
 	val ConsoleTask = TaskKey[Unit]("console")
 	val ConsoleQuick = TaskKey[Unit]("console-quick")
+	val ConsoleProject = TaskKey[Unit]("console-project")
 	val CompileTask = TaskKey[Analysis]("compile")
 	val Compilers = TaskKey[Compile.Compilers]("compilers")
 	val DocTask = TaskKey[File]("doc")
@@ -200,8 +202,6 @@ object Default
 	def analysisMap[T](cp: Seq[Attributed[T]]): Map[T, Analysis] =
 		(cp map extractAnalysis).toMap
 
-	def data[T](in: Seq[Attributed[T]]): Seq[T] = in.map(_.data)
-
 	def core = Seq(
 		CrossPaths :== true,
 		ShellPrompt in GlobalScope :== (_ => "> "),
@@ -275,7 +275,8 @@ object Default
 
 	lazy val projectTasks = Seq(
 		CleanFiles <<= (Target, SourceManaged) { _ :: _ :: Nil },
-		Clean <<= CleanFiles map IO.delete
+		Clean <<= CleanFiles map IO.delete,
+		ConsoleProject <<= consoleProject
 	)
 
 	lazy val testTasks = Seq(	
@@ -388,7 +389,8 @@ object Default
 
 	def discoverMainClasses(analysis: Analysis): Seq[String] =
 		compile.Discovery.applications(Test.allDefs(analysis)) collect { case (definition, discovered) if(discovered.hasMain) => definition.name }
-	
+
+	def consoleProject = (EvaluateTask.state, streams, InitialCommands in ConsoleProject) map { (state, s, extra) => Console.sbt(state, extra)(s.log) }
 	def console = consoleTask(FullClasspath, ConsoleTask)
 	def consoleQuick = consoleTask(ExternalDependencyClasspath, ConsoleQuick)
 	def consoleTask(classpath: TaskKey[Classpath], task: TaskKey[_]) = (Compilers, classpath, ScalacOptions in task, InitialCommands in task, streams) map {
@@ -410,7 +412,7 @@ object Default
 	def copyResources =
 	(ClassDirectory, CacheDirectory, Resources, ResourceDirectories, streams) map { (target, cache, resources, dirs, s) =>
 		val cacheFile = cache / "copy-resources"
-		val mappings = resources x rebase(dirs, target)
+		val mappings = (resources --- dirs) x rebase(dirs, target)
 		s.log.debug("Copy resource mappings: " + mappings.mkString("\n\t","\n\t",""))
 		Sync(cacheFile)( mappings )
 		mappings
@@ -439,8 +441,6 @@ object Default
 
 	val CompletionsID = "completions"
 
-//	lazy val projectConsole = task { Console.sbtDefault(info.compileInputs, this)(ConsoleLogger()) }
-		
 	def inConfig(conf: Configuration)(ss: Seq[Setting[_]]): Seq[Setting[_]] =
 		inScope(ThisScope.copy(config = Select(conf)) )( (Config :== conf) +: ss)
 	def inTask(t: Scoped)(ss: Seq[Setting[_]]): Seq[Setting[_]] =
@@ -464,17 +464,13 @@ object Default
 
 	lazy val defaultWebTasks = Nil
 
-	def pluginDefinition = Seq(
-		EvaluateTask.PluginDefinition <<= (FullClasspath in CompileConf,CompileTask in CompileConf) map ( (c,a) => (data(c),a) )
-	)
-
 	lazy val defaultClasspaths =
 		Classpaths.publishSettings ++ Classpaths.baseSettings ++
 		inConfig(CompileConf)(Classpaths.configSettings) ++
 		inConfig(TestConf)(Classpaths.configSettings)
 
 
-	lazy val defaultSettings = core ++ defaultPaths ++ defaultClasspaths ++ defaultTasks ++ compileBase ++ disableAggregation ++ pluginDefinition
+	lazy val defaultSettings = core ++ defaultPaths ++ defaultClasspaths ++ defaultTasks ++ compileBase ++ disableAggregation
 	lazy val defaultWebSettings = defaultSettings ++ defaultWebPaths ++ defaultWebTasks
 }
 object Classpaths

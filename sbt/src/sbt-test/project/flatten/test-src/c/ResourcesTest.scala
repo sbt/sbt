@@ -1,11 +1,12 @@
 package d
 
-import org.scalacheck._
+	import org.scalacheck._
+	import Prop._
 
 class ResourcesTest extends Properties("Resources")
 {
-	specify("load main resources ok", (a: Boolean) => { b.ScalaC.loadResources(); true })
-	specify("load test resources ok", (a: Boolean) => { ScalaD.loadResources(); true })
+	property("load main resources ok") = forAll( (a: Boolean) => { b.ScalaC.loadResources(); true })
+	property("load test resources ok") = forAll( (a: Boolean) => { ScalaD.loadResources(); true })
 }
 object ScalaD
 {
