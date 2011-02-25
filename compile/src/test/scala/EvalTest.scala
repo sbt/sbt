@@ -39,7 +39,6 @@ object EvalTest extends Properties("eval")
 			val value = result.value.asInstanceOf[{def i: Int}].i
 			(label("Value", value) |: (value == i)) &&
 			(label("Type", result.tpe) |: (result.tpe == LocalType)) &&
-			(label("Module name", result.enclosingModule) |: (result.enclosingModule == ModuleName)) &&
 			(label("Files", result.generated) |: (!result.generated.isEmpty))
 		}
 	}
@@ -71,7 +70,6 @@ object EvalTest extends Properties("eval")
 	}
 	val IntType = "Int"
 	val BooleanType = "Boolean"
-	val ModuleName = "$c1f67bf3eebc642f70dd"
 
 	def label(s: String, value: Any) = s + " (" + value + ")"
 }

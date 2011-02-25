@@ -15,16 +15,16 @@ object CompileTest extends Specification
 			WithCompiler( "2.7.5" )(testCompileAnalysis)
 			WithCompiler( "2.7.7" )(testCompileAnalysis)
 			WithCompiler( "2.8.0" )(testCompileAnalysis)
-			WithCompiler( "2.8.1.RC2" )(testCompileAnalysis)
+			WithCompiler( "2.8.1" )(testCompileAnalysis)
 		}
 	}
-	
+
 	"Raw compiler" should {
 		"Properly handle classpaths" in {
 			testClasspath("2.7.2")
 			testClasspath("2.7.7")
 			testClasspath("2.8.0")
-			testClasspath("2.8.1.RC2")
+			testClasspath("2.8.1")
 		}
 	}
 	
@@ -43,9 +43,16 @@ object CompileTest extends Specification
 	
 	private def shouldFail(act: => Unit) =
 	{
-		val success = try { act; true } catch { case e: Exception => false }
+		val success = try { act; true } catch { case t if expectedException(t) => false }
 		if(success) error("Expected exception not thrown")
 	}
+	private def expectedException(t: Throwable) =
+		t match
+		{
+			case e: Exception => true
+			case t if isMissingRequirementError(t) => true
+			case _ => false
+		}
 	private def isMissingRequirementError(t: Throwable) = t.getClass.getName == "scala.tools.nsc.MissingRequirementError"
 	private def testClasspath(scalaVersion: String) =
 		WithCompiler.launcher { (launch, log) =>
@@ -76,6 +83,10 @@ object CompileTest extends Specification
 					shouldFail( fullExplicit(compSrcs, Nil, out, Nil) )// failure
 					fullExplicit(plainSrcs, Nil, out, fullBoot) // success
 					fullExplicit(compSrcs, withCompiler, out, fullBoot) // success
+
+					// specs now marks something as skipped if there are no matchers
+					// this test throws exceptions on failure, so use a dummy check here
+					true must be equalTo(true)
 				}
 			}
 		}
