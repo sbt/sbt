@@ -1,29 +1,26 @@
-> ++2.8.0.Beta1-RC7
-> update
-
-# should fail because it should run all tests, some of which are expected to fail (1 and 4)
--> test
+# should fail because it should run all test:tests, some of which are expected to fail (1 and 4)
+-> test:test
 
 $ touch success1
-> test
+> test:test
 $ delete success1
 
 $ touch failure1
--> test
+-> test:test
 $ delete failure1
 
 $ touch success2
-> test
+> test:test
 $ delete success2
 
 $ touch failure2
--> test
+-> test:test
 $ delete failure2
 
 $ touch success3
-> test
+> test:test
 $ delete success3
 
 $ touch failure3
--> test
+-> test:test
 $ delete failure3

@@ -1,24 +1,20 @@
-#> ++2.8.0.Beta1-RC7
-> ++2.7.7
-> update
-
 > clean
 $ delete src/
 $ copy-file changes/ClassFailModuleSuccess.scala src/it/scala/Test.scala
--> integration-test
+-> it:test
 
 > clean
 $ delete src/
 $ copy-file changes/ClassFailModuleFail.scala src/it/scala/Test.scala
--> integration-test
+-> it:test
 
 > clean
 $ delete src/
 $ copy-file changes/ClassSuccessModuleFail.scala src/it/scala/Test.scala
--> integration-test
+-> it:test
 
 
 > clean
 $ delete src/
 $ copy-file changes/ClassSuccessModuleSuccess.scala src/it/scala/Test.scala
-> integration-test
+> it:test

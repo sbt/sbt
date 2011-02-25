@@ -36,7 +36,7 @@ class TestFramework(val implClassName: String) extends NotNull
 }
 final class TestDefinition(val name: String, val fingerprint: Fingerprint) extends NotNull
 {
-	override def toString = "Test " + name + " : " + fingerprint
+	override def toString = "Test " + name + " : " + TestFramework.toString(fingerprint)
 	override def equals(t: Any) =
 		t match
 		{
@@ -114,6 +114,13 @@ object TestFramework
 			case (a: SubclassFingerprint, b: SubclassFingerprint) => a.isModule == b.isModule && a.superClassName == b.superClassName
 			case (a: AnnotatedFingerprint, b: AnnotatedFingerprint) => a.isModule == b.isModule && a.annotationName == b.annotationName
 			case _ => false
+		}
+	def toString(f: Fingerprint): String =
+		f match
+		{
+			case sf: SubclassFingerprint => "subclass(" + sf.isModule + ", " + sf.superClassName + ")"
+			case af: AnnotatedFingerprint => "annotation(" + af.isModule + ", " + af.annotationName + ")"
+			case _ => f.toString
 		}
 
 	def testTasks(frameworks: Seq[Framework],

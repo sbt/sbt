@@ -1,0 +1,11 @@
+> run "fork"
+$ exists flag
+$ delete flag
+
+$ mkdir "forked"
+> set Keys.Fork :== true
+> 'set Base in RunTask <<= Base(_ / "forked")'
+
+> run "forked"
+$ exists forked/flag
+$ absent flag

@@ -84,6 +84,11 @@ object Keys
 	val DiscoveredMainClasses = TaskKey[Seq[String]]("discovered-main-classes")
 	val Runner = SettingKey[ScalaRun]("runner")
 
+	val Fork = SettingKey[Boolean]("fork")
+	val OutputStrategy = SettingKey[Option[sbt.OutputStrategy]]("output-strategy")
+	val JavaHome = SettingKey[Option[File]]("java-home")
+	val JavaOptions = SettingKey[Seq[String]]("java-options")
+
 	// Test Keys
 	val TestLoader = TaskKey[ClassLoader]("test-loader")
 	val LoadedTestFrameworks = TaskKey[Map[TestFramework,Framework]]("loaded-test-frameworks")
@@ -202,7 +207,11 @@ object Default
 	def analysisMap[T](cp: Seq[Attributed[T]]): Map[T, Analysis] =
 		(cp map extractAnalysis).toMap
 
-	def core = Seq(
+	def core: Seq[Setting[_]] = Seq(
+		JavaHome in GlobalScope :== None,
+		OutputStrategy in GlobalScope :== None,
+		Fork in GlobalScope :== false,
+		JavaOptions in GlobalScope :== Nil,
 		CrossPaths :== true,
 		ShellPrompt in GlobalScope :== (_ => "> "),
 		Aggregate in GlobalScope :== Aggregation.Enabled,
@@ -241,7 +250,6 @@ object Default
 	def addBaseSources = Seq(
 		Sources <<= (Sources, Base, SourceFilter, DefaultExcludes) map { (srcs,b,f,excl) => (srcs +++ b * (f -- excl)).getFiles.toSeq }
 	)
-	lazy val configTasks = Classpaths.configSettings ++ baseTasks
 	
 	def webPaths = Seq(
 		WebappDir <<= Source / "webapp"
@@ -256,24 +264,24 @@ object Default
 		Target <<= (Target, ScalaInstance, CrossPaths)( (t,si,cross) => if(cross) t / ("scala-" + si.actualVersion) else t )
 	)
 
-	def baseTasks = Seq(
+	lazy val configTasks = Seq(
 		InitialCommands in GlobalScope :== "",
 		CompileTask <<= compileTask,
 		CompileInputs <<= compileInputsTask,
 		ConsoleTask <<= console,
 		ConsoleQuick <<= consoleQuick,
 		DiscoveredMainClasses <<= CompileTask map discoverMainClasses,
-		Runner <<= ScalaInstance( si => new Run(si) ),
+		inTask(RunTask)(runner :: Nil).head,
 		SelectMainClass <<= DiscoveredMainClasses map selectRunMain,
 		MainClass in RunTask :== SelectMainClass,
 		MainClass <<= DiscoveredMainClasses map selectPackageMain,
-		RunTask <<= runTask(FullClasspath, MainClass in RunTask),
+		RunTask <<= runTask(FullClasspath, MainClass in RunTask, Runner in RunTask),
 		ScaladocOptions <<= ScalacOptions(identity),
 		DocTask <<= docTask,
 		CopyResources <<= copyResources
 	)
 
-	lazy val projectTasks = Seq(
+	lazy val projectTasks: Seq[Setting[_]] = Seq(
 		CleanFiles <<= (Target, SourceManaged) { _ :: _ :: Nil },
 		Clean <<= CleanFiles map IO.delete,
 		ConsoleProject <<= consoleProject
@@ -289,14 +297,14 @@ object Default
 			frameworks.flatMap(f => f.create(loader, s.log).map( x => (f,x)).toIterable).toMap
 		},
 		DefinedTests <<= (LoadedTestFrameworks, CompileTask, streams) map { (frameworkMap, analysis, s) =>
-			val tests = Test.discover(frameworkMap.values.toSeq, analysis)._1
+			val tests = Test.discover(frameworkMap.values.toSeq, analysis, s.log)._1
 			IO.writeLines(s.text(CompletionsID), tests.map(_.name).distinct)
 			tests
 		},
 		TestListeners <<= (streams in TestTask) map ( s => TestLogger(s.log) :: Nil ),
 		TestOptions <<= TestListeners map { listeners => Test.Listeners(listeners) :: Nil },
-		ExecuteTests <<= (streams in TestTask, LoadedTestFrameworks, TestOptions, TestLoader, DefinedTests, CopyResources) flatMap {
-			(s, frameworkMap, options, loader, discovered, _) => Test(frameworkMap, loader, discovered, options, s.log)
+		ExecuteTests <<= (streams in TestTask, LoadedTestFrameworks, TestOptions, TestLoader, DefinedTests) flatMap {
+			(s, frameworkMap, options, loader, discovered) => Test(frameworkMap, loader, discovered, options, s.log)
 		},
 		TestTask <<= (ExecuteTests, streams) map { (results, s) => Test.showResults(s.log, results) },
 		TestOnly <<= testOnly
@@ -304,15 +312,14 @@ object Default
 
 	def testOnly = 
 	InputTask(resolvedScoped(testOnlyParser)) ( result =>  
-		(streams, LoadedTestFrameworks, TestOptions, TestLoader, DefinedTests, CopyResources, result) flatMap {
-			case (s, frameworks, opts, loader, discovered, _, (tests, frameworkOptions)) =>
+		(streams, LoadedTestFrameworks, TestOptions, TestLoader, DefinedTests, result) flatMap {
+			case (s, frameworks, opts, loader, discovered, (tests, frameworkOptions)) =>
 				val modifiedOpts = Test.Filter(if(tests.isEmpty) _ => true else tests.toSet ) +: Test.Argument(frameworkOptions : _*) +: opts
 				Test(frameworks, loader, discovered, modifiedOpts, s.log) map { results =>
 					Test.showResults(s.log, results)
 				}
 		}
 	)
-	lazy val packageDefaults = packageBase ++ inConfig(CompileConf)(packageConfig) ++ inConfig(TestConf)(packageConfig)
 	
 	lazy val packageBase = Seq(
 		jarName,
@@ -370,12 +377,21 @@ object Default
 	def selectPackageMain(classes: Seq[String]): Option[String] =
 		sbt.SelectMainClass(None, classes)
 
-	def runTask(classpath: ScopedTask[Classpath], mainClass: ScopedTask[Option[String]]): Initialize[InputTask[Unit]] =
+	def runTask(classpath: ScopedTask[Classpath], mainClass: ScopedTask[Option[String]], run: ScopedSetting[ScalaRun]): Initialize[InputTask[Unit]] =
 		InputTask(_ => complete.Parsers.spaceDelimited("<arg>")) { result =>
-			(classpath, mainClass, Runner, streams, CopyResources, result) map { (cp, main, runner, s, _, args) =>
+			(classpath, mainClass, run, streams, result) map { (cp, main, runner, s, args) =>
 				val mainClass = main getOrElse error("No main class detected.")
 				runner.run(mainClass, data(cp), args, s.log) foreach error
 			}
+		}
+
+	def runner =
+		Runner <<= (ScalaInstance, Base, JavaOptions, OutputStrategy, Fork, JavaHome) { (si, base, options, strategy, fork, javaHome) =>
+			if(fork) {
+				new ForkRun( ForkOptions(scalaJars = si.jars, javaHome = javaHome, outputStrategy = strategy,
+					runJVMOptions = options, workingDirectory = Some(base)) )
+			} else
+				new Run(si)
 		}
 
 	def docTask: Initialize[Task[File]] =
@@ -385,7 +401,7 @@ object Default
 			target
 		}
 
-	def mainRunTask = RunTask <<= runTask(FullClasspath in Configurations.Runtime, MainClass in RunTask)
+	def mainRunTask = RunTask <<= runTask(FullClasspath in Configurations.Runtime, MainClass in RunTask, Runner in RunTask)
 
 	def discoverMainClasses(analysis: Analysis): Seq[String] =
 		compile.Discovery.applications(Test.allDefs(analysis)) collect { case (definition, discovered) if(discovered.hasMain) => definition.name }
@@ -448,29 +464,27 @@ object Default
 	def inScope(scope: Scope)(ss: Seq[Setting[_]]): Seq[Setting[_]] =
 		Project.transform(Scope.replaceThis(scope), ss)
 
-	lazy val defaultPaths = paths ++ inConfig(CompileConf)(configPaths ++ addBaseSources) ++ inConfig(TestConf)(configPaths)
-	lazy val defaultWebPaths = defaultPaths ++ inConfig(CompileConf)(webPaths)
+	lazy val defaultWebPaths = inConfig(CompileConf)(webPaths)
 	
 	def noAggregation = Seq(RunTask, ConsoleTask, ConsoleQuick)
 	lazy val disableAggregation = noAggregation map disableAggregate
 	def disableAggregate(k: Scoped) =
 		Aggregate in Scope.GlobalScope.copy(task = Select(k.key)) :== false
 	
-	lazy val defaultTasks =
-		projectTasks ++
-		inConfig(CompileConf)(configTasks :+ mainRunTask) ++
-		inConfig(TestConf)(configTasks ++ testTasks) ++
-		packageDefaults
+	lazy val baseTasks: Seq[Setting[_]] = projectTasks ++ packageBase
 
 	lazy val defaultWebTasks = Nil
 
-	lazy val defaultClasspaths =
-		Classpaths.publishSettings ++ Classpaths.baseSettings ++
-		inConfig(CompileConf)(Classpaths.configSettings) ++
-		inConfig(TestConf)(Classpaths.configSettings)
+	lazy val baseClasspaths = Classpaths.publishSettings ++ Classpaths.baseSettings
+	lazy val configSettings = Classpaths.configSettings ++ configTasks ++ configPaths ++ packageConfig
 
+	lazy val compileSettings = configSettings ++ (mainRunTask +: addBaseSources)
+	lazy val testSettings = configSettings ++ testTasks
 
-	lazy val defaultSettings = core ++ defaultPaths ++ defaultClasspaths ++ defaultTasks ++ compileBase ++ disableAggregation
+	lazy val itSettings = inConfig(Configurations.IntegrationTest)(testSettings)
+	lazy val defaultConfigs = inConfig(CompileConf)(compileSettings) ++ inConfig(TestConf)(testSettings)
+
+	lazy val defaultSettings: Seq[Setting[_]] = core ++ paths ++ baseClasspaths ++ baseTasks ++ compileBase ++ defaultConfigs ++ disableAggregation
 	lazy val defaultWebSettings = defaultSettings ++ defaultWebPaths ++ defaultWebTasks
 }
 object Classpaths
@@ -484,7 +498,7 @@ object Classpaths
 
 	def concat[T](a: ScopedTaskable[Seq[T]], b: ScopedTaskable[Seq[T]]): Initialize[Task[Seq[T]]] = (a,b) map (_ ++ _)
 
-	val configSettings: Seq[Project.Setting[_]] = Seq(
+	lazy val configSettings: Seq[Project.Setting[_]] = Seq(
 		ExternalDependencyClasspath <<= concat(UnmanagedClasspath, ManagedClasspath),
 		DependencyClasspath <<= concat(InternalDependencyClasspath, ExternalDependencyClasspath),
 		FullClasspath <<= concat(Products, DependencyClasspath),
@@ -642,7 +656,7 @@ object Classpaths
 
 	def analyzed[T](data: T, analysis: Analysis) = Attributed.blank(data).put(Command.Analysis, analysis)
 	def makeProducts: Initialize[Task[Classpath]] =
-		(CompileTask, CompileInputs) map { (analysis, i) => analyzed(i.config.classesDirectory, analysis) :: Nil }
+		(CompileTask, CompileInputs, CopyResources) map { (analysis, i, _) => analyzed(i.config.classesDirectory, analysis) :: Nil }
 
 	def internalDependencies: Initialize[Task[Classpath]] =
 		(ThisProjectRef, ThisProject, Config, Data) flatMap internalDependencies0

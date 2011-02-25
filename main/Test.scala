@@ -104,18 +104,20 @@ object Test
 		(overall(results.map(_._2)), results.toMap)
 	def overall(results: Iterable[TestResult.Value]): TestResult.Value =
 		(TestResult.Passed /: results) { (acc, result) => if(acc.id < result.id) result else acc }
-	def discover(frameworks: Seq[Framework], analysis: Analysis): (Seq[TestDefinition], Set[String]) =
-		discover(frameworks.flatMap(_.tests), allDefs(analysis))
+	def discover(frameworks: Seq[Framework], analysis: Analysis, log: Logger): (Seq[TestDefinition], Set[String]) =
+		discover(frameworks.flatMap(_.tests), allDefs(analysis), log)
 
 	def allDefs(analysis: Analysis) = analysis.apis.internal.values.flatMap(_.definitions).toSeq
-	def discover(fingerprints: Seq[Fingerprint], definitions: Seq[Definition]): (Seq[TestDefinition], Set[String]) =
+	def discover(fingerprints: Seq[Fingerprint], definitions: Seq[Definition], log: Logger): (Seq[TestDefinition], Set[String]) =
 	{
 		val subclasses = fingerprints collect { case sub: SubclassFingerprint => (sub.superClassName, sub.isModule, sub) };
 		val annotations = fingerprints collect { case ann: AnnotatedFingerprint => (ann.annotationName, ann.isModule, ann) };
+		log.debug("Subclass fingerprints: " + subclasses)
+		log.debug("Annotation fingerprints: " + annotations)
 
 		def firsts[A,B,C](s: Seq[(A,B,C)]): Set[A] = s.map(_._1).toSet
-		def defined(in: Seq[(String,Boolean,Fingerprint)], names: Set[String], isModule: Boolean): Seq[Fingerprint] =
-			in collect { case (name, mod, print) if names(name) && isModule == mod => print }
+		def defined(in: Seq[(String,Boolean,Fingerprint)], names: Set[String], IsModule: Boolean): Seq[Fingerprint] =
+			in collect { case (name, IsModule, print) if names(name) => print }
 
 		def toFingerprints(d: Discovered): Seq[Fingerprint] =
 			defined(subclasses, d.baseClasses, d.isModule) ++

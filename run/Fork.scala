@@ -5,20 +5,21 @@ package sbt
 
 import java.io.{File,OutputStream}
 
-abstract class ForkJava extends NotNull
+trait ForkJava
 {
-	def javaHome: Option[File] = None
-	def outputStrategy: Option[OutputStrategy] = None
+	def javaHome: Option[File]
+	def outputStrategy: Option[OutputStrategy]
 }
-abstract class ForkScala extends ForkJava
+trait ForkScala extends ForkJava
 {
-	def scalaJars: Iterable[File] = Nil
+	def scalaJars: Iterable[File]
 }
 trait ForkScalaRun extends ForkScala
 {
-	def workingDirectory: Option[File] = None
-	def runJVMOptions: Seq[String] = Nil
+	def workingDirectory: Option[File]
+	def runJVMOptions: Seq[String]
 }
+final case class ForkOptions(javaHome: Option[File] = None, outputStrategy: Option[OutputStrategy] = None, scalaJars: Iterable[File] = Nil, workingDirectory: Option[File] = None, runJVMOptions: Seq[String] = Nil) extends ForkScalaRun
 
 sealed abstract class OutputStrategy extends NotNull
 case object StdoutOutput extends OutputStrategy

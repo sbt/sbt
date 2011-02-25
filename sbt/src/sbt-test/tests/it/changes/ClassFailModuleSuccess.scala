@@ -1,9 +1,9 @@
 import org.specs._
 
-class A extends Specification
-{
-	"this" should {
-    "not work" in { 1 must_== 2 }
+class B extends Specification
+{	
+  "'hello world' has 11 characters" in {
+     "hello world".size must be equalTo(122)
   }
 }
 

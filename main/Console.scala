@@ -38,13 +38,14 @@ object Console
 	}
 	def sbt(state: State, extra: String)(implicit log: Logger)
 	{
-		val loader = classOf[State].getClassLoader
 		val extracted = Project extract state
+		val bindings = ("state" -> state) :: ("extracted" -> extracted ) :: Nil
 		val unit = extracted.currentUnit
 		val compiler = Compile.compilers(state.configuration, log).scalac
-		val imports = Load.getImports(unit.unit).mkString("", ";\n", ";\n\n")
-		val initCommands = imports + extra
-		val bindings = ("state" -> state) :: ("extracted" -> extracted ) :: Nil
+		val imports = Load.getImports(unit.unit) ++ Load.importAll(bindings.map(_._1))
+		val importString = imports.mkString("", ";\n", ";\n\n")
+		val initCommands = importString + extra
+		val loader = classOf[State].getClassLoader				
 		(new Console(compiler))(unit.classpath, Nil, initCommands)(Some(loader), bindings)
 	}
 }
