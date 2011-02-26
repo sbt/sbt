@@ -7,7 +7,7 @@ DEFAULT_PACKAGE="template"
 PACKAGE=${ORGANIZATION:-$DEFAULT_PACKAGE}
 SCALA_VERSION="2.8.1"
 SCALA_LOCAL_VERSION="2.9.0-local"
-SBT_VERSION="0.7.5.RC0"
+SBT_VERSION="0.7.5.RC1"
 
 if [ -z "$PROJECT" ]; then
     echo "Usage: $0 <project name>"
@@ -79,6 +79,7 @@ trait Libraries extends Repositories with TestLibraries {
   
   // val ant: ModuleID             = "org.apache.ant" % "ant"
   // val asmAll: ModuleID          = "asm" % "asm-all" withSources()
+  // val commonsVFS: ModuleID      = "org.apache.commons" % "commons-vfs-project"
   // val easymock: ModuleID        = "org.easymock" % "easymock"
   // val guava: ModuleID           = "com.google.guava" % "guava"
   // val ivy: ModuleID             = "org.apache.ivy" % "ivy"
@@ -89,7 +90,7 @@ trait Libraries extends Repositories with TestLibraries {
   // val liftJson: ModuleID        = "net.liftweb" %% "lift-json" 
   // val maven: ModuleID           = "org.apache.maven" % "maven-ant-tasks"
   // val scalaARM: ModuleID        = "com.github.jsuereth.scala-arm" %% "scala-arm" withSources()
-  val scalaImproving: ModuleID  = "org.improving" %% "scala-improving"
+  // val scalaImproving: ModuleID  = "org.improving" %% "scala-improving"
   // val scalaSTM: ModuleID        = "org.scala-tools" %% "scala-stm" 
   // val scalariform: ModuleID     = "org.scalariform" %% "scalariform"
   // val scalazCore: ModuleID      = "org.scalaz" %% "scalaz-core" withSources()
@@ -128,6 +129,7 @@ EOF
 
 mkdir -p project/plugins
 cat > project/plugins/Plugins.scala <<EOF
+/*
 import sbt._
 
 class Plugins(info: ProjectInfo) extends PluginDefinition(info) {
@@ -136,7 +138,7 @@ class Plugins(info: ProjectInfo) extends PluginDefinition(info) {
   
   // val bnd4sbt = "com.weiglewilczek.bnd4sbt" % "bnd4sbt" % "latest.release"
 }
-
+*/
 EOF
 
 cat > project/build.properties <<EOF
@@ -145,12 +147,14 @@ cat > project/build.properties <<EOF
 project.organization=$PACKAGE
 project.name=$PROJECT
 sbt.version=$SBT_VERSION
-project.version=0.1.1
+project.version=0.0.1
 build.scala.versions=$SCALA_VERSION
 project.initialize=false
 EOF
 
 mkdir -p src/main/scala
+mkdir -p src/main/java
+mkdir -p src/test/java
 
 cat > src/main/scala/Main.scala <<EOF
 package $PACKAGE
