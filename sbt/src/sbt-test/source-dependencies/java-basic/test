@@ -1,5 +1,5 @@
 # Basic test for Java dependency tracking
-> set xsbt.inc.debug true
+> 'eval System.setProperty("xsbt.inc.debug", "true")'
 
 # A is a basic Java file with no dependencies.  Just a basic check for Java compilation
 $ copy-file changes/A.java src/main/java/a/A.java

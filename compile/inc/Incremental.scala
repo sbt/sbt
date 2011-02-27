@@ -11,7 +11,7 @@ import java.io.File
 
 object Incremental
 {
-	def println(s: String) = if(java.lang.Boolean.getBoolean("xsbt.inc.debug")) System.out.println(s) else ()
+	def println(s: => String) = if(java.lang.Boolean.getBoolean("xsbt.inc.debug")) System.out.println(s) else ()
 	def compile(sources: Set[File], entry: String => Option[File], previous: Analysis, current: ReadStamps, forEntry: File => Option[Analysis], doCompile: Set[File] => Analysis)(implicit equivS: Equiv[Stamp]): (Boolean, Analysis) =
 	{
 		val initialChanges = changedInitial(entry, sources, previous, current, forEntry)

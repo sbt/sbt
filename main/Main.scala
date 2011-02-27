@@ -220,7 +220,7 @@ object BuiltinCommands
 		val extracted = Project extract s
 		import extracted._
 		val result = session.currentEval().eval(arg, srcName = "<eval>", imports = autoImports(extracted))
-		log.info("ans: " + result.tpe + " = " + result.value.toString)
+		log.info("ans: " + result.tpe + " = " + result.value)
 		s
 	}
 	def sessionCommand = Command.make(SessionCommand, sessionBrief, SessionSettings.Help)(SessionSettings.command)

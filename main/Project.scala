@@ -237,7 +237,7 @@ object SessionSettings
 		val project = Project.getProject(pref, structure).getOrElse(error("Invalid project reference " + pref))
 		val appendTo: File = BuildPaths.configurationSources(project.base).headOption.getOrElse(new File(project.base, "build.sbt"))
 		val baseAppend = settingStrings(settings).flatMap("" :: _ :: Nil)
-		val adjustedLines = if( hasTrailingBlank(IO.readLines(appendTo)) ) baseAppend else baseAppend
+		val adjustedLines = if(appendTo.isFile && hasTrailingBlank(IO.readLines(appendTo)) ) baseAppend else "" +: baseAppend
 		IO.writeLines(appendTo, adjustedLines, append = true)
 	}
 	def hasTrailingBlank(lines: Seq[String]) = lines.takeRight(1).exists(_.trim.isEmpty) 
