@@ -11,13 +11,13 @@ import java.io.File
 
 object Incremental
 {
-	def println(s: => String) = if(java.lang.Boolean.getBoolean("xsbt.inc.debug")) System.out.println(s) else ()
+	def debug(s: => String) = if(java.lang.Boolean.getBoolean("xsbt.inc.debug")) println(s) else ()
 	def compile(sources: Set[File], entry: String => Option[File], previous: Analysis, current: ReadStamps, forEntry: File => Option[Analysis], doCompile: Set[File] => Analysis)(implicit equivS: Equiv[Stamp]): (Boolean, Analysis) =
 	{
 		val initialChanges = changedInitial(entry, sources, previous, current, forEntry)
-		println("Initial changes: " + initialChanges)
+		debug("Initial changes: " + initialChanges)
 		val initialInv = invalidateInitial(previous.relations, initialChanges)
-		println("Initially invalidated: " + initialInv)
+		debug("Initially invalidated: " + initialInv)
 		val analysis = cycle(initialInv, previous, doCompile)
 		(!initialInv.isEmpty, analysis)
 	}
@@ -30,15 +30,15 @@ object Incremental
 		else
 		{
 			val pruned = prune(invalidated, previous)
-			println("********* Pruned: \n" + pruned.relations + "\n*********")
+			debug("********* Pruned: \n" + pruned.relations + "\n*********")
 			val fresh = doCompile(invalidated)
-			println("********* Fresh: \n" + fresh.relations + "\n*********")
+			debug("********* Fresh: \n" + fresh.relations + "\n*********")
 			val merged = pruned ++ fresh//.copy(relations = pruned.relations ++ fresh.relations, apis = pruned.apis ++ fresh.apis)
-			println("********* Merged: \n" + merged.relations + "\n*********")
+			debug("********* Merged: \n" + merged.relations + "\n*********")
 			val incChanges = changedIncremental(invalidated, previous.apis.internalAPI _, merged.apis.internalAPI _)
-			println("Changes:\n" + incChanges)
+			debug("Changes:\n" + incChanges)
 			val incInv = invalidateIncremental(merged.relations, incChanges, invalidated)
-			println("Incrementally invalidated: " + incInv)
+			debug("Incrementally invalidated: " + incInv)
 			cycle(incInv, merged, doCompile)
 		}
 	
@@ -52,7 +52,7 @@ object Incremental
 	{
 		val oldApis = lastSources.toSeq map oldAPI
 		val newApis = lastSources.toSeq map newAPI
-		for(api <- newApis; definition <- api.definitions) { println(xsbt.api.DefaultShowAPI(definition)) }
+		for(api <- newApis; definition <- api.definitions) { debug(xsbt.api.DefaultShowAPI(definition)) }
 		val changes = (lastSources, oldApis, newApis).zipped.filter { (src, oldApi, newApi) => !SameAPI(oldApi, newApi) }
 
 		val changedNames = TopLevel.nameChanges(changes._3, changes._2 )
@@ -99,7 +99,7 @@ object Incremental
 	@tailrec def invalidateTransitive(dependsOnSrc: File => Set[File], modified: Set[File]): Set[File] =
 	{
 		val newInv = invalidateDirect(dependsOnSrc, modified)
-		println("\tInvalidated direct: " + newInv)
+		debug("\tInvalidated direct: " + newInv)
 		if(newInv.isEmpty) modified else invalidateTransitive(dependsOnSrc, modified ++ newInv)
 	}
 
@@ -107,15 +107,15 @@ object Incremental
 	def invalidateInitial(previous: Relations, changes: InitialChanges): Set[File] =
 	{
 		val srcChanges = changes.internalSrc
-		println("Initial source changes: \n\tremoved:" + srcChanges.removed + "\n\tadded: " + srcChanges.added + "\n\tmodified: " + srcChanges.changed)
+		debug("Initial source changes: \n\tremoved:" + srcChanges.removed + "\n\tadded: " + srcChanges.added + "\n\tmodified: " + srcChanges.changed)
 		val srcDirect = srcChanges.removed ++ srcChanges.removed.flatMap(previous.usesInternalSrc) ++ srcChanges.added ++ srcChanges.changed
-		println("Initial source direct: " + srcDirect)
+		debug("Initial source direct: " + srcDirect)
 		val byProduct = changes.removedProducts.flatMap(previous.produced)
-		println("Initial by product: " + byProduct)
+		debug("Initial by product: " + byProduct)
 		val byBinaryDep = changes.binaryDeps.flatMap(previous.usesBinary)
-		println("Initial by binary dep: " + byBinaryDep)
+		debug("Initial by binary dep: " + byBinaryDep)
 		val byExtSrcDep = changes.external.modified.flatMap(previous.usesExternal) // ++ scopeInvalidations
-		println("Initial by binary dep: " + byExtSrcDep)
+		debug("Initial by binary dep: " + byExtSrcDep)
 
 		srcDirect ++ byProduct ++ byBinaryDep ++ byExtSrcDep
 	}
