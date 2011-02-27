@@ -5,8 +5,8 @@ package sbt
 
 	import java.io.File
 	import Build.data
-	import Scope.{GlobalScope,ThisScope}
-	import Project.{Initialize, ScopedKey, Setting}
+	import Scope.{GlobalScope, ThisScope}
+	import Project.{inConfig, Initialize, inScope, inTask, ScopedKey, Setting}
 	import Configurations.{Compile => CompileConf, Test => TestConf}
 	import EvaluateTask.{resolvedScoped, streams}
 	import complete._
@@ -53,19 +53,21 @@ object Default
 	def analysisMap[T](cp: Seq[Attributed[T]]): Map[T, inc.Analysis] =
 		(cp map extractAnalysis).toMap
 
-	def core: Seq[Setting[_]] = Seq(
-		JavaHome in GlobalScope :== None,
-		OutputStrategy in GlobalScope :== None,
-		Fork in GlobalScope :== false,
-		JavaOptions in GlobalScope :== Nil,
+	def buildCore: Seq[Setting[_]] = inScope(GlobalScope)(Seq(
+		JavaHome :== None,
+		OutputStrategy :== None,
+		Fork :== false,
+		JavaOptions :== Nil,
 		CrossPaths :== true,
-		ShellPrompt in GlobalScope :== (_ => "> "),
-		Aggregate in GlobalScope :== Aggregation.Enabled,
-		Name <<= ThisProject(_.id),
-		Version :== "0.1",
-		MaxErrors in GlobalScope :== 100,
+		ShellPrompt :== (_ => "> "),
+		Aggregate :== Aggregation.Enabled,
+		MaxErrors :== 100,
 		Commands :== Nil,
 		Data <<= EvaluateTask.state map { state => Project.structure(state).data }
+	))
+	def projectCore: Seq[Setting[_]] = Seq(
+		Name <<= ThisProject(_.id),
+		Version :== "0.1"	
 	)
 	def paths = Seq(
 		Base <<= ThisProject(_.base),
@@ -303,13 +305,6 @@ object Default
 
 	val CompletionsID = "completions"
 
-	def inConfig(conf: Configuration)(ss: Seq[Setting[_]]): Seq[Setting[_]] =
-		inScope(ThisScope.copy(config = Select(conf)) )( (Config :== conf) +: ss)
-	def inTask(t: Scoped)(ss: Seq[Setting[_]]): Seq[Setting[_]] =
-		inScope(ThisScope.copy(task = Select(t.key)) )( ss )
-	def inScope(scope: Scope)(ss: Seq[Setting[_]]): Seq[Setting[_]] =
-		Project.transform(Scope.replaceThis(scope), ss)
-
 	lazy val defaultWebPaths = inConfig(CompileConf)(webPaths)
 	
 	def noAggregation = Seq(RunTask, ConsoleTask, ConsoleQuick)
@@ -330,7 +325,7 @@ object Default
 	lazy val itSettings = inConfig(Configurations.IntegrationTest)(testSettings)
 	lazy val defaultConfigs = inConfig(CompileConf)(compileSettings) ++ inConfig(TestConf)(testSettings)
 
-	lazy val defaultSettings: Seq[Setting[_]] = core ++ paths ++ baseClasspaths ++ baseTasks ++ compileBase ++ defaultConfigs ++ disableAggregation
+	lazy val defaultSettings: Seq[Setting[_]] = projectCore ++ paths ++ baseClasspaths ++ baseTasks ++ compileBase ++ defaultConfigs ++ disableAggregation
 	lazy val defaultWebSettings = defaultSettings ++ defaultWebPaths ++ defaultWebTasks
 }
 object Classpaths

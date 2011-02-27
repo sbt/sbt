@@ -98,10 +98,16 @@ object Scope
 				} yield
 					Scope(Select(proj),c,t,e)
 			val projI =
-				linearize(scope.project)(projectInherit) map { p => scope.copy(project = p) }
+				withRawBuilds(linearize(scope.project)(projectInherit)) map { p => scope.copy(project = p) }
 
-			(prod ++ projI :+ GlobalScope).toList.removeDuplicates
+			(prod ++ projI :+ GlobalScope).distinct
 	}
+	def withRawBuilds(ps: Seq[ScopeAxis[ProjectRef]]): Seq[ScopeAxis[ProjectRef]] =
+		ps ++ ps.flatMap(rawBuilds).distinct.map(Select.apply)
+
+	def rawBuilds(ps: ScopeAxis[ProjectRef]): Seq[ProjectRef]  =  ps match { case Select(ref) => rawBuilds(ref); case _ => Nil }
+	def rawBuilds(ps: ProjectRef): Seq[ProjectRef]  =  ps.uri.map(uri => ProjectRef(Some(uri), None)).toList
+
 	def linearize[T](axis: ScopeAxis[T])(inherit: T => Seq[T]): Seq[ScopeAxis[T]] =
 		axis match
 		{

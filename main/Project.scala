@@ -8,6 +8,7 @@ package sbt
 	import Project._
 	import Types.Endo
 	import Keys.{AppConfig, Commands, Config, HistoryPath, ProjectCommand, SessionKey, ShellPrompt, StructureKey, ThisProject, ThisProjectRef, Watch}
+	import Scope.ThisScope
 	import CommandSupport.logger
 	import compile.Eval
 
@@ -153,6 +154,13 @@ object Project extends Init[Scope]
 	}
 	def reverseDependencies(cMap: CompiledMap, scoped: ScopedKey[_]): Iterable[ScopedKey[_]] =
 		for( (key,compiled) <- cMap; dep <- compiled.dependencies if dep == scoped)  yield  key
+
+	def inConfig(conf: Configuration)(ss: Seq[Setting[_]]): Seq[Setting[_]] =
+		inScope(ThisScope.copy(config = Select(conf)) )( (Config :== conf) +: ss)
+	def inTask(t: Scoped)(ss: Seq[Setting[_]]): Seq[Setting[_]] =
+		inScope(ThisScope.copy(task = Select(t.key)) )( ss )
+	def inScope(scope: Scope)(ss: Seq[Setting[_]]): Seq[Setting[_]] =
+		Project.transform(Scope.replaceThis(scope), ss)
 }
 
 	import SessionSettings._

@@ -10,16 +10,18 @@ package sbt
 	import scala.annotation.tailrec
 	import collection.mutable
 	import Compile.{Compilers,Inputs}
-	import Project.{ScopedKey, ScopeLocal, Setting}
+	import Project.{inScope, ScopedKey, ScopeLocal, Setting}
 	import Keys.{AppConfig, Config, ThisProject, ThisProjectRef}
 	import TypeFunctions.{Endo,Id}
 	import tools.nsc.reporters.ConsoleReporter
 	import Build.{analyzed, data}
+	import Scope.{GlobalScope, ThisScope}
 
 // name is more like BuildDefinition, but that is too long
 trait Build
 {
 	def projects: Seq[Project]
+	def settings: Seq[Setting[_]] = Default.buildCore
 }
 trait Plugin
 {
@@ -114,8 +116,8 @@ object EvaluateTask
 	private[sbt] val parseResult: TaskKey[_] = TaskKey("$parse-result")
 
 	def injectSettings: Seq[Project.Setting[_]] = Seq(
-		(state in Scope.GlobalScope) ::= dummyState,
-		(streamsManager in Scope.GlobalScope) ::= dummyStreamsManager
+		(state in GlobalScope) ::= dummyState,
+		(streamsManager in GlobalScope) ::= dummyStreamsManager
 	)
 	
 	def dummy[T](name: String): (TaskKey[T], Task[T]) = (TaskKey[T](name), dummyTask(name))
@@ -221,7 +223,7 @@ object Load
 		val compilers = Compile.compilers(state.configuration, log)
 		val evalPluginDef = EvaluateTask.evalPluginDef(log) _
 		val delegates = memo(defaultDelegates)
-		val inject: Seq[Project.Setting[_]] = ((AppConfig in Scope.GlobalScope) :== state.configuration) +: EvaluateTask.injectSettings
+		val inject: Seq[Project.Setting[_]] = ((AppConfig in GlobalScope) :== state.configuration) +: EvaluateTask.injectSettings
 		val config = new LoadBuildConfiguration(stagingDirectory, classpath, loader, compilers, evalPluginDef, delegates, EvaluateTask.injectStreams, inject, log)
 		apply(base, state, config)
 	}
@@ -312,7 +314,8 @@ object Load
 				// map This to thisScope, Select(p) to mapRef(uri, rootProject, p)
 				transformSettings(projectScope(uri, id), uri, rootProject, settings)
 			}
-			pluginGlobal ++ projectSettings
+			val buildScope = ThisScope.copy(project = Select(ProjectRef(Some(uri), None)))
+			pluginGlobal ++ inScope(buildScope)(build.buildSettings) ++ projectSettings
 		}
 	def transformSettings(thisScope: Scope, uri: URI, rootProject: URI => String, settings: Seq[Setting[_]]): Seq[Setting[_]] =
 		Project.transform(Scope.resolveScope(thisScope, uri, rootProject), settings)
@@ -354,8 +357,10 @@ object Load
 		val externals = referenced(defined).toList
 		val projectsInRoot = defined.filter(isRoot).map(_.id)
 		val rootProjects = if(projectsInRoot.isEmpty) defined.head.id :: Nil else projectsInRoot
-		(new LoadedBuildUnit(unit, defined.map(d => (d.id, d)).toMap, rootProjects), externals)
+		(new LoadedBuildUnit(unit, defined.map(d => (d.id, d)).toMap, rootProjects, buildSettings(unit)), externals)
 	}
+	def buildSettings(unit: BuildUnit): Seq[Setting[_]] =
+		unit.definitions.builds.flatMap(_.settings)
 
 	@tailrec def loadAll(bases: List[URI], references: Map[URI, List[ProjectRef]], externalLoader: URI => BuildUnit, builds: Map[URI, LoadedBuildUnit]): (Map[URI, List[ProjectRef]], Map[URI, LoadedBuildUnit]) =
 		bases match
@@ -419,7 +424,7 @@ object Load
 	{
 		IO.assertAbsolute(uri)
 		val resolve = resolveProject(ref => Scope.mapRef(uri, rootProject, ref))
-		new LoadedBuildUnit(unit.unit, unit.defined mapValues resolve, unit.rootProjects)
+		new LoadedBuildUnit(unit.unit, unit.defined mapValues resolve, unit.rootProjects, unit.buildSettings)
 	}
 	def resolveProject(resolveRef: ProjectRef => ProjectRef): Project => Project =
 	{
@@ -557,7 +562,7 @@ object Load
 	}
 	
 	final class LoadedBuild(val root: URI, val units: Map[URI, LoadedBuildUnit])
-	final class LoadedBuildUnit(val unit: BuildUnit, val defined: Map[String, Project], val rootProjects: Seq[String])
+	final class LoadedBuildUnit(val unit: BuildUnit, val defined: Map[String, Project], val rootProjects: Seq[String], val buildSettings: Seq[Setting[_]])
 	{
 		assert(!rootProjects.isEmpty, "No root projects defined for build unit " + unit)
 		def localBase = unit.localBase
