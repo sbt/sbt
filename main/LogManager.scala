@@ -7,6 +7,7 @@ package sbt
 	import LogManager._
 	import std.Transform
 	import Project.ScopedKey
+	import Keys.{LogLevel => ScreenLogLevel, PersistLogLevel}
 
 object LogManager
 {
@@ -14,8 +15,8 @@ object LogManager
 	{
 		val scope = task.scope
 		def level(key: AttributeKey[Level.Value], default: Level.Value): Level.Value = data.get(scope, key) getOrElse default
-		val screenLevel = level(ScreenLogLevel, Level.Info)
-		val backingLevel = level(PersistLogLevel, Level.Debug)
+		val screenLevel = level(ScreenLogLevel.key, Level.Info)
+		val backingLevel = level(PersistLogLevel.key, Level.Debug)
 
 		val console = ConsoleLogger()
 		val backed = ConsoleLogger(ConsoleLogger.printWriterOut(to), useColor = false) // TODO: wrap this with a filter that strips ANSI codes
@@ -28,7 +29,4 @@ object LogManager
 		backed setLevel backingLevel
 		multi: Logger
 	}
-
-	val ScreenLogLevel = AttributeKey[Level.Value]("screen-log-level")
-	val PersistLogLevel = AttributeKey[Level.Value]("persist-log-level")
 }

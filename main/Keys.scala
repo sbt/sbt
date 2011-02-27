@@ -15,6 +15,10 @@ package sbt
 
 object Keys
 {
+	// logging
+	val LogLevel = SettingKey[Level.Value]("log-level")
+	val PersistLogLevel = SettingKey[Level.Value]("persist-log-level")
+
 	// Project keys
 	val ProjectCommand = AttributeKey[Boolean]("project-command")
 	val SessionKey = AttributeKey[SessionSettings]("session-settings")
