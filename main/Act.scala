@@ -3,7 +3,8 @@
  */
 package sbt
 
-	import Project.{ScopedKey, ThisProject}
+	import Project.ScopedKey
+	import Keys.ThisProject
 	import CommandSupport.logger
 	import Load.BuildStructure
 	import complete.{DefaultParsers, Parser}
@@ -83,5 +84,5 @@ object Act
 
 
 	def requireSession[T](s: State, p: => Parser[T]): Parser[T] =
-		if(s get Project.SessionKey isEmpty) failure("No project loaded") else p
+		if(s get Keys.SessionKey isEmpty) failure("No project loaded") else p
 }

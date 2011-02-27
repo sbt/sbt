@@ -7,11 +7,11 @@ package sbt
 	import java.net.URI
 	import compile.{Discovered,Discovery,Eval,EvalImports}
 	import classpath.ClasspathUtilities
-	import inc.Analysis
 	import scala.annotation.tailrec
 	import collection.mutable
 	import Compile.{Compilers,Inputs}
-	import Project.{AppConfig, Config, ScopedKey, ScopeLocal, Setting, ThisProject, ThisProjectRef}
+	import Project.{ScopedKey, ScopeLocal, Setting}
+	import Keys.{AppConfig, Config, ThisProject, ThisProjectRef}
 	import TypeFunctions.{Endo,Id}
 	import tools.nsc.reporters.ConsoleReporter
 	import Build.{analyzed, data}
@@ -32,7 +32,7 @@ object Build
 	def defaultProject(id: String, base: File): Project = Project(id, base)
 
 	def data[T](in: Seq[Attributed[T]]): Seq[T] = in.map(_.data)
-	def analyzed(in: Seq[Attributed[_]]): Seq[Analysis] = in.flatMap{ _.metadata.get(Command.Analysis) }
+	def analyzed(in: Seq[Attributed[_]]): Seq[inc.Analysis] = in.flatMap{ _.metadata.get(Keys.Analysis) }
 }
 object RetrieveUnit
 {
@@ -497,14 +497,14 @@ object Load
 	def loadDefinition(loader: ClassLoader, definition: String): Build =
 		ModuleUtilities.getObject(definition, loader).asInstanceOf[Build]
 
-	def build(classpath: Seq[File], sources: Seq[File], target: File, compilers: Compilers, log: Logger): (Inputs, Analysis) =
+	def build(classpath: Seq[File], sources: Seq[File], target: File, compilers: Compilers, log: Logger): (Inputs, inc.Analysis) =
 	{
 		val inputs = Compile.inputs(classpath, sources, target, Nil, Nil, Nil, Compile.DefaultMaxErrors)(compilers, log)
 		val analysis = Compile(inputs, log)
 		(inputs, analysis)
 	}
 
-	def loadPlugins(classpath: Seq[File], loader: ClassLoader, analysis: Seq[Analysis]): LoadedPlugins =
+	def loadPlugins(classpath: Seq[File], loader: ClassLoader, analysis: Seq[inc.Analysis]): LoadedPlugins =
 	{
 		val (pluginNames, plugins) = if(classpath.isEmpty) (Nil, Nil) else {
 			val names = analysis flatMap findPlugins
@@ -521,9 +521,9 @@ object Load
 
 	def importAll(values: Seq[String]) = if(values.isEmpty) Nil else values.map( _ + "._" ).mkString("import ", ", ", "") :: Nil
 		
-	def findPlugins(analysis: Analysis): Seq[String]  =  discover(analysis, "sbt.Plugin")
-	def findDefinitions(analysis: Analysis): Seq[String]  =  discover(analysis, "sbt.Build")
-	def discover(analysis: Analysis, subclasses: String*): Seq[String] =
+	def findPlugins(analysis: inc.Analysis): Seq[String]  =  discover(analysis, "sbt.Plugin")
+	def findDefinitions(analysis: inc.Analysis): Seq[String]  =  discover(analysis, "sbt.Build")
+	def discover(analysis: inc.Analysis, subclasses: String*): Seq[String] =
 	{
 		val subclassSet = subclasses.toSet
 		val ds = Discovery(subclassSet, Set.empty)(Test.allDefs(analysis))

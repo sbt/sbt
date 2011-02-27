@@ -10,7 +10,8 @@ package sbt
 	import compile.EvalImports
 	import sbt.complete.{DefaultParsers, Parser}
 
-	import Command.{applyEffect,Analysis,HistoryPath,Logged,ShellPrompt,Watch}
+	import Command.applyEffect
+	import Keys.{Analysis,HistoryPath,Logged,ShellPrompt,Watch}
 	import scala.annotation.tailrec
 	import scala.collection.JavaConversions._
 	import Function.tupled

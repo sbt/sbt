@@ -15,6 +15,23 @@ package sbt
 
 object Keys
 {
+	// Project keys
+	val ProjectCommand = AttributeKey[Boolean]("project-command")
+	val SessionKey = AttributeKey[SessionSettings]("session-settings")
+	val StructureKey = AttributeKey[Load.BuildStructure]("build-structure")
+	val AppConfig = SettingKey[xsbti.AppConfiguration]("app-configuration")
+	val ThisProject = SettingKey[Project]("project")
+	val ThisProjectRef = SettingKey[ProjectRef]("project-ref")
+	val Config = SettingKey[Configuration]("configuration")
+	val Commands = SettingKey[Seq[Command]]("commands")
+
+	// Command keys
+	val Logged = AttributeKey[Logger]("log")
+	val HistoryPath = SettingKey[Option[File]]("history")
+	val ShellPrompt = SettingKey[State => String]("shell-prompt")
+	val Analysis = AttributeKey[inc.Analysis]("analysis")
+	val Watch = SettingKey[Watched]("continuous-watch")
+
 	// Path Keys
 	val Base = SettingKey[File]("base-directory")
 	val Target = SettingKey[File]("target")

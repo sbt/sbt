@@ -11,7 +11,7 @@ import Path._
 
 object CommandSupport
 {
-	def logger(s: State) = s get Command.Logged getOrElse ConsoleLogger()
+	def logger(s: State) = s get Keys.Logged getOrElse ConsoleLogger()
 
 	private def canRead = (_: File).canRead
 	def notReadable(files: Seq[File]): Seq[File] = files filterNot canRead

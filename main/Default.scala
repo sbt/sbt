@@ -6,12 +6,10 @@ package sbt
 	import java.io.File
 	import Build.data
 	import Scope.{GlobalScope,ThisScope}
-	import Project.{AppConfig, Config, Initialize, ScopedKey, Setting, ThisProject, ThisProjectRef}
+	import Project.{Initialize, ScopedKey, Setting}
 	import Configurations.{Compile => CompileConf, Test => TestConf}
-	import Command.{HistoryPath, ShellPrompt}
 	import EvaluateTask.{resolvedScoped, streams}
 	import complete._
-	import inc.Analysis
 	import std.TaskExtra._
 	import scala.xml.{Node => XNode,NodeSeq}
 	import org.apache.ivy.core.module.{descriptor, id}
@@ -49,10 +47,10 @@ object Default
 	def prefix(config: String) = if(config == "compile") "" else config + "-"
 	def toSeq[T](key: ScopedSetting[T]): Initialize[Seq[T]] = key( _ :: Nil)
 
-	def extractAnalysis[T](a: Attributed[T]): (T, Analysis) = 
-		(a.data, a.metadata get Command.Analysis getOrElse Analysis.Empty)
+	def extractAnalysis[T](a: Attributed[T]): (T, inc.Analysis) = 
+		(a.data, a.metadata get Keys.Analysis getOrElse inc.Analysis.Empty)
 
-	def analysisMap[T](cp: Seq[Attributed[T]]): Map[T, Analysis] =
+	def analysisMap[T](cp: Seq[Attributed[T]]): Map[T, inc.Analysis] =
 		(cp map extractAnalysis).toMap
 
 	def core: Seq[Setting[_]] = Seq(
@@ -66,7 +64,7 @@ object Default
 		Name <<= ThisProject(_.id),
 		Version :== "0.1",
 		MaxErrors in GlobalScope :== 100,
-		Project.Commands :== Nil,
+		Commands :== Nil,
 		Data <<= EvaluateTask.state map { state => Project.structure(state).data }
 	)
 	def paths = Seq(
@@ -251,7 +249,7 @@ object Default
 
 	def mainRunTask = RunTask <<= runTask(FullClasspath in Configurations.Runtime, MainClass in RunTask, Runner in RunTask)
 
-	def discoverMainClasses(analysis: Analysis): Seq[String] =
+	def discoverMainClasses(analysis: inc.Analysis): Seq[String] =
 		compile.Discovery.applications(Test.allDefs(analysis)) collect { case (definition, discovered) if(discovered.hasMain) => definition.name }
 
 	def consoleProject = (EvaluateTask.state, streams, InitialCommands in ConsoleProject) map { (state, s, extra) => Console.sbt(state, extra)(s.log) }
@@ -346,7 +344,7 @@ object Classpaths
 
 	def concat[T](a: ScopedTaskable[Seq[T]], b: ScopedTaskable[Seq[T]]): Initialize[Task[Seq[T]]] = (a,b) map (_ ++ _)
 
-	lazy val configSettings: Seq[Project.Setting[_]] = Seq(
+	lazy val configSettings: Seq[Setting[_]] = Seq(
 		ExternalDependencyClasspath <<= concat(UnmanagedClasspath, ManagedClasspath),
 		DependencyClasspath <<= concat(InternalDependencyClasspath, ExternalDependencyClasspath),
 		FullClasspath <<= concat(Products, DependencyClasspath),
@@ -361,7 +359,7 @@ object Classpaths
 	def defaultPackageTasks: Seq[ScopedTask[_]] =
 		for(task <- Seq(Package, PackageSrc, PackageDoc); conf <- Seq(CompileConf, TestConf)) yield (task in conf)
 
-	val publishSettings: Seq[Project.Setting[_]] = Seq(
+	val publishSettings: Seq[Setting[_]] = Seq(
 		PublishMavenStyle in GlobalScope :== true,
 		PackageToPublish <<= defaultPackageTasks.dependOn,
 		DeliverDepends <<= (PublishMavenStyle, MakePom.setting, PackageToPublish.setting) { (mavenStyle, makePom, ptp) =>
@@ -373,7 +371,7 @@ object Classpaths
 		Publish <<= publish(PublishConfig, Deliver),
 		PublishLocal <<= publish(PublishLocalConfig, DeliverLocal)
 	)
-	val baseSettings: Seq[Project.Setting[_]] = Seq(
+	val baseSettings: Seq[Setting[_]] = Seq(
 		UnmanagedBase <<= Base / "lib",
 		NormalizedName <<= Name(StringUtilities.normalize),
 		Organization :== NormalizedName,
@@ -502,7 +500,7 @@ object Classpaths
 			new RawRepository(new ProjectResolver("inter-project", m))
 		}
 
-	def analyzed[T](data: T, analysis: Analysis) = Attributed.blank(data).put(Command.Analysis, analysis)
+	def analyzed[T](data: T, analysis: inc.Analysis) = Attributed.blank(data).put(Keys.Analysis, analysis)
 	def makeProducts: Initialize[Task[Classpath]] =
 		(CompileTask, CompileInputs, CopyResources) map { (analysis, i, _) => analyzed(i.config.classesDirectory, analysis) :: Nil }
 

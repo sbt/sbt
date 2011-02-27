@@ -7,7 +7,7 @@ package sbt
 	import java.net.URI
 	import Project._
 	import Types.Endo
-	import Command.{HistoryPath,ShellPrompt,Watch}
+	import Keys.{AppConfig, Commands, Config, HistoryPath, ProjectCommand, SessionKey, ShellPrompt, StructureKey, ThisProject, ThisProjectRef, Watch}
 	import CommandSupport.logger
 	import compile.Eval
 
@@ -153,15 +153,6 @@ object Project extends Init[Scope]
 	}
 	def reverseDependencies(cMap: CompiledMap, scoped: ScopedKey[_]): Iterable[ScopedKey[_]] =
 		for( (key,compiled) <- cMap; dep <- compiled.dependencies if dep == scoped)  yield  key
-
-	val ProjectCommand = AttributeKey[Boolean]("project-command")
-	val SessionKey = AttributeKey[SessionSettings]("session-settings")
-	val StructureKey = AttributeKey[Load.BuildStructure]("build-structure")
-	val AppConfig = SettingKey[xsbti.AppConfiguration]("app-configuration")
-	val ThisProject = SettingKey[Project]("project")
-	val ThisProjectRef = SettingKey[ProjectRef]("project-ref")
-	val Config = SettingKey[Configuration]("configuration")
-	val Commands = SettingKey[Seq[Command]]("commands")
 }
 
 	import SessionSettings._

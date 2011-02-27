@@ -28,12 +28,6 @@ object Command
 	
 		import DefaultParsers._
 
-	val Logged = AttributeKey[Logger]("log")
-	val HistoryPath = SettingKey[Option[File]]("history")
-	val ShellPrompt = SettingKey[State => String]("shell-prompt")
-	val Analysis = AttributeKey[inc.Analysis]("analysis")
-	val Watch = SettingKey[Watched]("continuous-watch")
-
 	def command(name: String)(f: State => State): Command  =  command(name, Nil)(f)
 	def command(name: String, briefHelp: String, detail: String)(f: State => State): Command  =  command(name, Help(name, (name, briefHelp), detail) :: Nil)(f)
 	def command(name: String, help: Seq[Help])(f: State => State): Command  =  make(name, help : _*)(state => success(() => f(state)))
