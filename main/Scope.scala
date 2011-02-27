@@ -124,6 +124,11 @@ sealed trait ScopeAxis[+S] {
 case object This extends ScopeAxis[Nothing]
 case object Global extends ScopeAxis[Nothing]
 final case class Select[S](s: S) extends ScopeAxis[S]
+object ScopeAxis
+{
+	implicit def scopeAxisToScope(axis: ScopeAxis[Nothing]): Scope =
+		Scope(axis, axis, axis, axis)
+}
 
 final case class ConfigKey(name: String)
 object ConfigKey
