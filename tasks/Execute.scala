@@ -155,13 +155,13 @@ final class Execute[A[_] <: AnyRef](checkCycles: Boolean)(implicit view: NodeVie
 
 		val v = register( node )
 		val deps = dependencies(v)
-		val active = deps filter notDone
+		val active = IDSet[A[_]](deps filter notDone )
 
 		if( active.isEmpty)
 			ready( node )
 		else
 		{
-			forward(node) = IDSet(active)
+			forward(node) = active
 			for(a <- active)
 			{
 				addChecked(a)
