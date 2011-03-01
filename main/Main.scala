@@ -51,6 +51,7 @@ class xMain extends xsbti.AppMain
 		ErrorHandling.wideConvert { state.process(Command.process) } match
 		{
 			case Right(s) => s
+			case Left(t: xsbti.FullReload) => throw t
 			case Left(t) => BuiltinCommands.handleException(t, state)
 		}
 }
@@ -140,9 +141,10 @@ object BuiltinCommands
 	}
 	def clearOnFailure = Command.command(ClearOnFailure)(s => s.copy(onFailure = None))
 
-	def reboot = Command.command(RebootCommand, RebootBrief, RebootDetailed) { s =>
-		s.runExitHooks().reload
+	def reboot = Command(RebootCommand, RebootBrief, RebootDetailed)(rebootParser) { (s, full) =>
+		s.runExitHooks().reboot(full)
 	}
+	def rebootParser(s: State) = token(Space ~> "full" ^^^ true) ?? false
 
 	def defaults = Command.command(DefaultsCommand) { s =>
 		s ++ DefaultCommands

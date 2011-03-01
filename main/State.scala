@@ -31,6 +31,7 @@ trait StateOps {
 	def ::: (commands: Seq[String]): State
 	def :: (command: String): State
 	def continue: State
+	def reboot(full: Boolean): State
 	def reload: State
 	def exit(ok: Boolean): State
 	def fail: State
@@ -57,6 +58,7 @@ object State
 		def baseDir: File = s.configuration.baseDirectory
 		def setNext(n: Next.Value) = s.copy(next = n)
 		def continue = setNext(Next.Continue)
+		def reboot(full: Boolean) = throw new xsbti.FullReload(s.commands.toArray, full)
 		def reload = setNext(Next.Reload)
 		def exit(ok: Boolean) = setNext(if(ok) Next.Fail else Next.Done)
 		def get[T](key: AttributeKey[T]) = s.attributes.get(key)

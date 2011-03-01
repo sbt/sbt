@@ -152,11 +152,15 @@ ProjectCommand +
 	def DefaultsDetailed = "Registers default built-in commands"
 
 	def RebootCommand = "reboot"
-	def RebootBrief = "Reboots sbt and then executes the remaining commands."
+	def RebootSummary = RebootCommand + " [full]"
+	def RebootBrief = (RebootSummary, "Reboots sbt and then executes the remaining commands.")
 	def RebootDetailed =
-RebootCommand + """
-	This command is equivalent to exiting, restarting, and running the
+RebootSummary + """
+	This command is equivalent to exiting sbt, restarting, and running the
 	 remaining commands with the exception that the jvm is not shut down.
+	If 'full' is specified, the `project/boot` directory is deleted before
+	 restarting.  This forces an update of sbt and Scala and is useful when
+	 working with development versions of sbt or Scala.
 """
 
 	def Multi = ";"

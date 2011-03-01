@@ -51,7 +51,17 @@ object Launch
 		val appConfig: xsbti.AppConfiguration = new AppConfiguration(toArray(arguments), workingDirectory, appProvider)
 
 		val main = appProvider.newMain()
-		main.run(appConfig)
+		try { main.run(appConfig) }
+		catch { case e: xsbti.FullReload => if(e.clean) delete(launcher.bootDirectory); throw e }
+	}
+	private[this] def delete(f: File)
+	{
+		if(f.isDirectory)
+		{
+			val fs = f.listFiles()
+			if(fs ne null) fs foreach delete
+		}
+		if(f.exists) f.delete()
 	}
 	final def launch(run: RunConfiguration => xsbti.MainResult)(config: RunConfiguration)
 	{
@@ -68,7 +78,7 @@ final class RunConfiguration(val scalaVersion: String, val app: xsbti.Applicatio
 import BootConfiguration.{appDirectoryName, baseDirectoryName, ScalaDirectoryName, TestLoadScalaClasses}
 class Launch private[xsbt](val bootDirectory: File, val ivyOptions: IvyOptions) extends xsbti.Launcher
 {
-	import ivyOptions.{cacheDirectory, classifiers, repositories}
+	import ivyOptions.{classifiers, repositories}
 	bootDirectory.mkdirs
 	private val scalaProviders = new Cache[String, ScalaProvider](new ScalaProvider(_))
 	def getScala(version: String): xsbti.ScalaProvider = scalaProviders(version)
@@ -77,13 +87,14 @@ class Launch private[xsbt](val bootDirectory: File, val ivyOptions: IvyOptions) 
 	val updateLockFile = new File(bootDirectory, "sbt.boot.lock")
 
 	def globalLock: xsbti.GlobalLock = Locks
+	def cacheDirectory = ivyOptions.cacheDirectory.orNull
 
 	class ScalaProvider(val version: String) extends xsbti.ScalaProvider with Provider
 	{
 		def launcher: xsbti.Launcher = Launch.this
 		def parentLoader = topLoader
 
-		lazy val configuration = new UpdateConfiguration(bootDirectory, cacheDirectory, version, repositories)
+		lazy val configuration = new UpdateConfiguration(bootDirectory, ivyOptions.cacheDirectory, version, repositories)
 		lazy val libDirectory = new File(configuration.bootDirectory, baseDirectoryName(version))
 		lazy val scalaHome = new File(libDirectory, ScalaDirectoryName)
 		def compilerJar = new File(scalaHome,CompilerModuleName + ".jar")
