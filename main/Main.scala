@@ -11,7 +11,7 @@ package sbt
 	import sbt.complete.{DefaultParsers, Parser}
 
 	import Command.applyEffect
-	import Keys.{Analysis,HistoryPath,Logged,ShellPrompt,Watch}
+	import Keys.{Analysis,HistoryPath,Logged,ShellPrompt}
 	import scala.annotation.tailrec
 	import scala.collection.JavaConversions._
 	import Function.tupled
@@ -197,7 +197,7 @@ object BuiltinCommands
 	// TODO: nest
 	def continuous =
 		Command.single(ContinuousExecutePrefix, Help(continuousBriefHelp) ) { (s, arg) =>
-			withAttribute(s, Watch.key, "Continuous execution not configured.") { w =>
+			withAttribute(s, Watched.Configuration, "Continuous execution not configured.") { w =>
 				val repeat = ContinuousExecutePrefix + (if(arg.startsWith(" ")) arg else " " + arg)
 				Watched.executeContinuously(w, s, arg, repeat)
 			}

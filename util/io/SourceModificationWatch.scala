@@ -7,7 +7,7 @@ package sbt
 
 object SourceModificationWatch
 {
-	@tailrec def watch(sourcesFinder: PathFinder, pollDelaySec: Int, state: WatchState)(terminationCondition: => Boolean): (Boolean, WatchState) =
+	@tailrec def watch(sourcesFinder: PathFinder, pollDelayMillis: Int, state: WatchState)(terminationCondition: => Boolean): (Boolean, WatchState) =
 	{
 			import state._
 
@@ -30,11 +30,11 @@ object SourceModificationWatch
 			(true, newState)
 		else
 		{
-			Thread.sleep(pollDelaySec * 1000)
+			Thread.sleep(pollDelayMillis)
 			if(terminationCondition)
 				(false, newState)
 			else
-				watch(sourcesFinder, pollDelaySec, newState)(terminationCondition)
+				watch(sourcesFinder, pollDelayMillis, newState)(terminationCondition)
 		}
 	}
 }

@@ -75,13 +75,14 @@ object Project extends Init[Scope]
 		val ref = ProjectRef(uri, id)
 		val project = Load.getProject(structure.units, uri, id)
 		logger(s).info("Set current project to " + id + " (in build " + uri +")")
+		def get[T](k: SettingKey[T]): Option[T] = k in ref get structure.data
 
-		val data = structure.data
-		val historyPath = HistoryPath in ref get data flatMap identity
-		val prompt = ShellPrompt in ref get data
-		val commands = (Commands in ref get data).toList.flatten[Command].map(_ tag (ProjectCommand, true))
+		val historyPath = get(HistoryPath) flatMap identity
+		val prompt = get(ShellPrompt)
+		val watched = get(Watch)
+		val commands = get(Commands).toList.flatten[Command].map(_ tag (ProjectCommand, true))
 		val newProcessors = commands ++ BuiltinCommands.removeTagged(s.processors, ProjectCommand)
-		val newAttrs = s.attributes.put(Watch.key, makeWatched(data, ref, project)).put(HistoryPath.key, historyPath)
+		val newAttrs = setCond(Watched.Configuration, watched, s.attributes).put(HistoryPath.key, historyPath)
 		s.copy(attributes = setCond(ShellPrompt.key, prompt, newAttrs), processors = newProcessors)
 	}
 	def setCond[T](key: AttributeKey[T], vopt: Option[T], attributes: AttributeMap): AttributeMap =
@@ -89,17 +90,6 @@ object Project extends Init[Scope]
 	def makeSettings(settings: Seq[Setting[_]], delegates: Scope => Seq[Scope], scopeLocal: ScopedKey[_] => Seq[Setting[_]]) =
 		translateUninitialized( make(settings)(delegates, scopeLocal) )
 
-	def makeWatched(data: Settings[Scope], ref: ProjectRef, project: Project): Watched =
-	{
-		def getWatch(ref: ProjectRef) = Watch in ref get data
-		getWatch(ref) match
-		{
-			case Some(currentWatch) =>
-				val subWatches = project.uses flatMap { p => getWatch(p) }
-				Watched.multi(currentWatch, subWatches)
-			case None => Watched.empty
-		}
-	}
 	def display(scoped: ScopedKey[_]): String = Scope.display(scoped.scope, scoped.key.label)
 	def display(ref: ProjectRef): String = "(" + (ref.uri map (_.toString) getOrElse "<this>") + ")" + (ref.id getOrElse "<root>")
 
