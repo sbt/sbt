@@ -199,7 +199,7 @@ object Index
 	}
 	def stringToKeyMap(settings: Settings[Scope]): Map[String, AttributeKey[_]] =
 	{
-		val multiMap = settings.data.values.flatMap(_.keys).toList.removeDuplicates.groupBy(_.label)
+		val multiMap = settings.data.values.flatMap(_.keys).toList.distinct.groupBy(_.label)
 		val duplicates = multiMap collect { case (k, x1 :: x2 :: _) => k }
 		if(duplicates.isEmpty)
 			multiMap.mapValues(_.head)
@@ -534,7 +534,7 @@ object Load
 		val ds = Discovery(subclassSet, Set.empty)(Test.allDefs(analysis))
 		ds.flatMap {
 			case (definition, Discovered(subs,_,_,true)) =>
-				if((subs ** subclassSet).isEmpty) Nil else definition.name :: Nil
+				if((subs & subclassSet).isEmpty) Nil else definition.name :: Nil
 			case _ => Nil
 		}
 	}
