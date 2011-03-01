@@ -35,6 +35,9 @@ object Keys
 	val ShellPrompt = SettingKey[State => String]("shell-prompt")
 	val Analysis = AttributeKey[inc.Analysis]("analysis")
 	val Watch = SettingKey[Watched]("continuous-watch")
+	val PollInterval = SettingKey[Int]("poll-interval")
+	val WatchSources = TaskKey[Seq[File]]("watch-sources")
+	val WatchTransitiveSources = TaskKey[Seq[File]]("watch-transitive-sources")
 
 	// Path Keys
 	val Base = SettingKey[File]("base-directory")

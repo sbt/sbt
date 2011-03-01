@@ -54,6 +54,7 @@ object Default
 		(cp map extractAnalysis).toMap
 
 	def buildCore: Seq[Setting[_]] = inScope(GlobalScope)(Seq(
+		PollInterval :== 1,
 		JavaHome :== None,
 		OutputStrategy :== None,
 		Fork :== false,
@@ -132,8 +133,33 @@ object Default
 	lazy val projectTasks: Seq[Setting[_]] = Seq(
 		CleanFiles <<= (Target, SourceManaged) { _ :: _ :: Nil },
 		Clean <<= CleanFiles map IO.delete,
-		ConsoleProject <<= consoleProject
+		ConsoleProject <<= consoleProject,
+		WatchSources <<= watchSources,
+		WatchTransitiveSources <<= watchTransitiveSources,
+		Watch <<= watch
 	)
+
+	def inAllConfigurations[T](key: ScopedTask[T]): Initialize[Task[Seq[T]]] = (EvaluateTask.state, ThisProjectRef) flatMap { (state, ref) =>
+		val structure = Project structure state
+		val configurations = Project.getProject(ref, structure).toList.flatMap(_.configurations)
+		configurations.flatMap { conf =>
+			key in (ref, conf) get structure.data
+		} join
+	}
+	def watchTransitiveSources: Initialize[Task[Seq[File]]] =
+		(EvaluateTask.state, ThisProjectRef) flatMap { (s, base) =>
+			inAllDependencies(base, WatchSources.setting, Project structure s).join.map(_.flatten)
+		}
+	def watchSources: Initialize[Task[Seq[File]]] = Seq(Sources, Resources).map(inAllConfigurations).join { _.join.map(_.flatten.flatten) }
+
+	def watch: Initialize[Watched] = (PollInterval, ThisProjectRef) { (interval, base) =>
+		new Watched {
+			val scoped = WatchTransitiveSources in base
+			val key = ScopedKey(scoped.scope, scoped.key)
+			override def pollInterval = interval
+			override def watchPaths(s: State) = EvaluateTask.evaluateTask(Project structure s, key, s, base) match { case Some(Value(ps)) => ps; case _ => Nil }
+		}
+	}
 
 	lazy val testTasks = Seq(	
 		TestLoader <<= (FullClasspath, ScalaInstance) map { (cp, si) => TestFramework.createTestLoader(data(cp), si) },
@@ -302,6 +328,20 @@ object Default
 			case None => Nil
 		}
 	}
+
+	def inAllDependencies[T](base: ProjectRef, key: ScopedSetting[T], structure: Load.BuildStructure): Seq[T] =
+	{
+		def deps(ref: ProjectRef): Seq[ProjectRef] =
+			Project.getProject(ref, structure).toList.flatMap { p =>
+				p.dependencies.map(_.project) ++ p.aggregate
+			}
+
+		inAllDeps(base, deps, key, structure.data)
+	}
+	def inAllDeps[T](base: ProjectRef, deps: ProjectRef => Seq[ProjectRef], key: ScopedSetting[T], data: Settings[Scope]): Seq[T] =
+		inAllProjects(Dag.topologicalSort(base)(deps), key, data)
+	def inAllProjects[T](allProjects: Seq[ProjectRef], key: ScopedSetting[T], data: Settings[Scope]): Seq[T] =
+		allProjects.flatMap { p => key in p get data }
 
 	val CompletionsID = "completions"
 
