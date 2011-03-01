@@ -159,6 +159,21 @@ trait Init[Scope]
 		def zipWith[S,U](o: Initialize[S])(f: (T,S) => U): Initialize[U] = new Joined[T,S,U](this, o, f)
 		def get(map: Settings[Scope]): T
 	}
+	object Initialize
+	{
+		implicit def joinInitialize[T](s: Seq[Initialize[T]]): JoinInitSeq[T] = new JoinInitSeq(s)
+		final class JoinInitSeq[T](s: Seq[Initialize[T]])
+		{
+			def join[S](f: Seq[T] => S): Initialize[S] = this.join map f
+			def join: Initialize[Seq[T]] = Initialize.join(s)
+		}
+		def join[T](inits: Seq[Initialize[T]]): Initialize[Seq[T]] =
+			inits match
+			{
+				case Seq() => value( Nil )
+				case Seq(x, xs @ _*) => (join(xs) zipWith x)( (t,h) => h +: t)
+			}
+	}
 	final class Setting[T](val key: ScopedKey[T], val init: Initialize[T])
 	{
 		def definitive: Boolean = !init.dependsOn.contains(key)

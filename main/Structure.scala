@@ -74,16 +74,25 @@ object Scoped
 	implicit def richSettingListScoped[T](s: ScopedSetting[Seq[T]]): RichSettingList[T] = new RichSettingList[T](s.scope, s.key)
 	implicit def richListTaskScoped[T](s: ScopedTask[Seq[T]]): RichListTask[T] = new RichListTask[T](s.scope, s.key)
 
-	implicit def settingScoping[T](s: SettingKey[T]): ScopingSetting[T, ScopedSetting[T]] =
-		new ScopingSetting(s.key, scope => scopedSetting(scope, s.key))
+	implicit def scopedSettingScoping[T](s: ScopedSetting[T]): ScopingSetting[ScopedSetting[T]] =
+		new ScopingSetting(scope => scopedSetting(Scope.replaceThis(s.scope)(scope), s.key))
 
-	implicit def inputScoping[T](s: InputKey[T]): ScopingSetting[InputTask[T], ScopedInput[T]] =
-		new ScopingSetting(s.key, scope => scopedInput(scope, s.key))
+	implicit def scopedTaskScoping[T](s: ScopedTask[T]): ScopingSetting[ScopedTask[T]] =
+		new ScopingSetting(scope => scopedTask(Scope.replaceThis(s.scope)(scope), s.key))
 
-	implicit def taskScoping[T](s: TaskKey[T]): ScopingSetting[Task[T], ScopedTask[T]] =
-		new ScopingSetting(s.key, scope => scopedTask(scope, s.key))
+	implicit def scopedInputScoping[T](s: ScopedInput[T]): ScopingSetting[ScopedInput[T]] =
+		new ScopingSetting(scope => scopedInput(Scope.replaceThis(s.scope)(scope), s.key))
 
-	final class ScopingSetting[T, Result](val key: AttributeKey[T], app0: Scope => Result)
+	implicit def settingScoping[T](s: SettingKey[T]): ScopingSetting[ScopedSetting[T]] =
+		new ScopingSetting(scope => scopedSetting(scope, s.key))
+
+	implicit def inputScoping[T](s: InputKey[T]): ScopingSetting[ScopedInput[T]] =
+		new ScopingSetting(scope => scopedInput(scope, s.key))
+
+	implicit def taskScoping[T](s: TaskKey[T]): ScopingSetting[ScopedTask[T]] =
+		new ScopingSetting(scope => scopedTask(scope, s.key))
+
+	final class ScopingSetting[Result](app0: Scope => Result)
 	{
 		def in(s: Scope): Result = app0(s)
 
@@ -174,8 +183,19 @@ object Scoped
 		}
 	}
 
-	implicit def richTaskSeq(in: Seq[ScopedTask[_]]): RichTaskSeq = new RichTaskSeq(in)
-	final class RichTaskSeq(keys: Seq[ScopedTask[_]])
+	implicit def richSettingSeq[T](in: Seq[ScopedSetting[T]]): RichSettingSeq[T] = new RichSettingSeq(in)
+	final class RichSettingSeq[T](keys: Seq[ScopedSetting[T]])
+	{
+		def join: Initialize[Seq[T]] = joinWith(identity)
+		def joinWith[S](f: Seq[T] => S): Initialize[S] = Apply.uniform(keys)(f)
+	}
+	implicit def richTaskSeq[T](in: Seq[ScopedTask[T]]): RichTaskSeq[T] = new RichTaskSeq(in)
+	final class RichTaskSeq[T](keys: Seq[ScopedTask[T]])
+	{
+		def join: Initialize[Task[Seq[T]]] = Apply.uniformTasks(keys)
+	}
+	implicit def richAnyTaskSeq(in: Seq[ScopedTask[_]]): RichAnyTaskSeq = new RichAnyTaskSeq(in)
+	final class RichAnyTaskSeq(keys: Seq[ScopedTask[_]])
 	{
 		def dependOn: Initialize[Task[Unit]]  =  Apply.tasks(KList.fromList(keys)) { kl => nop.dependsOn(kl.toList :_*) }
 	}
@@ -348,6 +368,11 @@ object Scoped
 
 		def apply[HL <: HList, T](in: KList[ScopedSetting, HL])(f: HL => T): Initialize[T] =
 			Project.app(in transform ssToSK)(f)
+		def uniformTasks[S](inputs: Seq[ScopedTask[S]]): Initialize[Task[Seq[S]]] =
+			Project.uniform( inputs map stToSK.fn )(_ join)
+		def uniform[S,T](inputs: Seq[ScopedSetting[S]])(f: Seq[S] => T): Initialize[T] =
+			Project.uniform( inputs map ssToSK.fn )(f)
+
 		def tasks[HL <: HList, T](in: KList[ScopedTask, HL])(f: KList[Task, HL] => T): Initialize[T] =
 		{
 			val kapp = new Project.KApp[HL, Task, T]
