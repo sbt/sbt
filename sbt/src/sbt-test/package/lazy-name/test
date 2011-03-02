@@ -4,19 +4,19 @@
 # much purpose other than checking that the 'set' command
 # re-evaluates the project data.
 
-> 'set Name :== "lazy-package-name"'
-> set CrossPaths :== false
+> 'set name :== "lazy-package-name"'
+> set crossPaths :== false
 
-> 'set Version :== "0.1.1"'
+> 'set version :== "0.1.1"'
 > package
 $ exists "target/lazy-package-name-0.1.1.jar"
 > clean
 
-> 'set Version :== "0.1.2"'
+> 'set version :== "0.1.2"'
 > package
 $ exists "target/lazy-package-name-0.1.2.jar"
 > clean
 
-> 'set Version :== "0.1.3"'
+> 'set version :== "0.1.3"'
 > package
 $ exists "target/lazy-package-name-0.1.3.jar"

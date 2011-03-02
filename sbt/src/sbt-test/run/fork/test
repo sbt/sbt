@@ -3,8 +3,8 @@ $ exists flag
 $ delete flag
 
 $ mkdir "forked"
-> set Keys.Fork :== true
-> 'set Base in RunTask <<= Base(_ / "forked")'
+> set fork :== true
+> 'set baseDirectory in run <<= baseDirectory(_ / "forked")'
 
 > run "forked"
 $ exists forked/flag

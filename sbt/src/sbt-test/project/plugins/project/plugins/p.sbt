@@ -1,1 +1,1 @@
-LibraryDependencies += "antlr" % "antlr" % "2.7.7"
+libraryDependencies += "antlr" % "antlr" % "2.7.7"

@@ -5,7 +5,7 @@ package sbt
 
 	import ProjectNavigation._
 	import Project.updateCurrent
-	import Keys.SessionKey
+	import Keys.sessionSettings
 	import CommandSupport.logger
 	import complete.{DefaultParsers, Parser}
 	import DefaultParsers._
@@ -20,7 +20,7 @@ object ProjectNavigation
 	final class ChangeProject(val id: String) extends Navigate
 
 	def command(s: State): Parser[() => State] =
-		if(s get SessionKey isEmpty) failure("No project loaded") else (new ProjectNavigation(s)).command
+		if(s get sessionSettings isEmpty) failure("No project loaded") else (new ProjectNavigation(s)).command
 }
 final class ProjectNavigation(s: State)
 {
@@ -32,7 +32,7 @@ final class ProjectNavigation(s: State)
 	def setProject(nuri: URI, nid: String) =
 	{
 		val neval = if(uri == nuri) session.currentEval else mkEval(nuri)
-		updateCurrent(s.put(SessionKey, session.setCurrent(nuri, nid, neval)))
+		updateCurrent(s.put(sessionSettings, session.setCurrent(nuri, nid, neval)))
 	}
 	def mkEval(nuri: URI) = Load.lazyEval(structure.units(nuri).unit)
 	def getRoot(uri: URI) = Load.getRootProject(structure.units)(uri)

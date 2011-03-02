@@ -5,7 +5,7 @@ package sbt
 package build
 
 	import java.io.File
-	import compile.Discovery
+	import compiler.Discovery
 
 sealed trait LoadCommand
 final case class BinaryLoad(classpath: Seq[File], module: Boolean, name: String) extends LoadCommand

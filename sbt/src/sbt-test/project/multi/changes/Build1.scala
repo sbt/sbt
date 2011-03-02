@@ -1,5 +1,5 @@
 import sbt._
-import Keys.Name
+import Keys.name
 
 object TestBuild extends Build
 {
@@ -7,5 +7,5 @@ object TestBuild extends Build
 		proj("a", "."),
 		proj("b", "b")
 	)
-	def proj(id: String, dir: String) = Project(id, file(dir), settings = Seq( Name :== id ) )
+	def proj(id: String, dir: String) = Project(id, file(dir), settings = Seq( name :== id ) )
 }

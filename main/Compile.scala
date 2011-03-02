@@ -4,7 +4,7 @@
 package sbt
 
 	import xsbti.{Logger => _,_}
-	import compile._
+	import compiler._
 	import inc._
 	import java.io.File
 

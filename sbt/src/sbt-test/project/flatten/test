@@ -14,8 +14,8 @@ $ delete test-src
 
 -> test:run
 
-> unpackage-src
-> test:unpackage-src
+> unpackage
+> test:unpackage
 
 > test:test
 > test:run

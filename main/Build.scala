@@ -5,13 +5,13 @@ package sbt
 
 	import java.io.File
 	import java.net.URI
-	import compile.{Discovered,Discovery,Eval,EvalImports}
+	import compiler.{Discovered,Discovery,Eval,EvalImports}
 	import classpath.ClasspathUtilities
 	import scala.annotation.tailrec
 	import collection.mutable
 	import Compile.{Compilers,Inputs}
 	import Project.{inScope, ScopedKey, ScopeLocal, Setting}
-	import Keys.{AppConfig, Config, ThisProject, ThisProjectRef}
+	import Keys.{appConfiguration, configuration, thisProject, thisProjectRef}
 	import TypeFunctions.{Endo,Id}
 	import tools.nsc.reporters.ConsoleReporter
 	import Build.{analyzed, data}
@@ -34,7 +34,7 @@ object Build
 	def defaultProject(id: String, base: File): Project = Project(id, base)
 
 	def data[T](in: Seq[Attributed[T]]): Seq[T] = in.map(_.data)
-	def analyzed(in: Seq[Attributed[_]]): Seq[inc.Analysis] = in.flatMap{ _.metadata.get(Keys.Analysis) }
+	def analyzed(in: Seq[Attributed[_]]): Seq[inc.Analysis] = in.flatMap{ _.metadata.get(Keys.analysis) }
 }
 object RetrieveUnit
 {
@@ -126,14 +126,14 @@ object EvaluateTask
 	def evalPluginDef(log: Logger)(pluginDef: BuildStructure, state: State): Seq[Attributed[File]] =
 	{
 		val root = ProjectRef(pluginDef.root, Load.getRootProject(pluginDef.units)(pluginDef.root))
-		val pluginKey = Keys.FullClasspath in Configurations.Compile
+		val pluginKey = Keys.fullClasspath in Configurations.Compile
 		val evaluated = evaluateTask(pluginDef, ScopedKey(pluginKey.scope, pluginKey.key), state, root)
 		val result = evaluated getOrElse error("Plugin classpath does not exist for plugin definition at " + pluginDef.root)
 		processResult(result, log)
 	}
-	def evaluateTask[T](structure: BuildStructure, taskKey: ScopedKey[Task[T]], state: State, thisProject: ProjectRef, checkCycles: Boolean = false, maxWorkers: Int = SystemProcessors): Option[Result[T]] =
+	def evaluateTask[T](structure: BuildStructure, taskKey: ScopedKey[Task[T]], state: State, ref: ProjectRef, checkCycles: Boolean = false, maxWorkers: Int = SystemProcessors): Option[Result[T]] =
 		withStreams(structure) { str =>
-			for( (task, toNode) <- getTask(structure, taskKey, state, str, thisProject) ) yield
+			for( (task, toNode) <- getTask(structure, taskKey, state, str, ref) ) yield
 				runTask(task, checkCycles, maxWorkers)(toNode)
 		}
 
@@ -143,9 +143,9 @@ object EvaluateTask
 		try { f(str) } finally { str.close() }
 	}
 	
-	def getTask[T](structure: BuildStructure, taskKey: ScopedKey[Task[T]], state: State, streams: Streams, thisProject: ProjectRef): Option[(Task[T], Execute.NodeView[Task])] =
+	def getTask[T](structure: BuildStructure, taskKey: ScopedKey[Task[T]], state: State, streams: Streams, ref: ProjectRef): Option[(Task[T], Execute.NodeView[Task])] =
 	{
-		val thisScope = Scope(Select(thisProject), Global, Global, Global)
+		val thisScope = Scope(Select(ref), Global, Global, Global)
 		val resolvedScope = Scope.replaceThis(thisScope)( taskKey.scope )
 		for( t <- structure.data.get(resolvedScope, taskKey.key)) yield
 			(t, nodeView(state, streams))
@@ -223,7 +223,7 @@ object Load
 		val compilers = Compile.compilers(state.configuration, log)
 		val evalPluginDef = EvaluateTask.evalPluginDef(log) _
 		val delegates = memo(defaultDelegates)
-		val inject: Seq[Project.Setting[_]] = ((AppConfig in GlobalScope) :== state.configuration) +: EvaluateTask.injectSettings
+		val inject: Seq[Project.Setting[_]] = ((appConfiguration in GlobalScope) :== state.configuration) +: EvaluateTask.injectSettings
 		val config = new LoadBuildConfiguration(stagingDirectory, classpath, loader, compilers, evalPluginDef, delegates, EvaluateTask.injectStreams, inject, log)
 		apply(base, state, config)
 	}
@@ -305,10 +305,10 @@ object Load
 			val projectSettings = build.defined flatMap { case (id, project) =>
 				val srcs = configurationSources(project.base)
 				val ref = ProjectRef(Some(uri), Some(id))
-				val defineConfig = for(c <- project.configurations) yield ( (Config in (ref, ConfigKey(c.name))) :== c)
+				val defineConfig = for(c <- project.configurations) yield ( (configuration in (ref, ConfigKey(c.name))) :== c)
 				val settings =
-					(ThisProject :== project) +:
-					(ThisProjectRef :== ref) +:
+					(thisProject :== project) +:
+					(thisProjectRef :== ref) +:
 					(defineConfig ++ project.settings ++ pluginThisProject ++ configurations(srcs, eval, build.imports))
 				 
 				// map This to thisScope, Select(p) to mapRef(uri, rootProject, p)

@@ -1,5 +1,5 @@
-CrossPaths :== false
+crossPaths :== false
 
-Name :== "definition-lib-test"
+name :== "definition-lib-test"
 
-Version :== "1.0"
+version :== "1.0"

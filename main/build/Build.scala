@@ -7,7 +7,7 @@ package build
 import java.io.File
 import classpath.ClasspathUtilities.toLoader
 import ModuleUtilities.getObject
-import compile.{AnalyzingCompiler, Discovery, JavaCompiler}
+import compiler.{AnalyzingCompiler, Discovery, JavaCompiler}
 import inc.Analysis
 import Path._
 import GlobFilter._

@@ -4,7 +4,7 @@
 package sbt
 package build
 
-	import compile.Discovery
+	import compiler.Discovery
 	import java.io.File
 
 final class ParseException(msg: String) extends RuntimeException(msg)

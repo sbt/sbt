@@ -7,11 +7,11 @@ package sbt
 	import complete.HistoryCommands
 	import HistoryCommands.{Start => HistoryPrefix}
 	import sbt.build.{AggressiveCompile, Auto, BuildException, LoadCommand, Parse, ParseException, ProjectLoad, SourceLoad}
-	import compile.EvalImports
+	import compiler.EvalImports
 	import sbt.complete.{DefaultParsers, Parser}
 
 	import Command.applyEffect
-	import Keys.{Analysis,HistoryPath,Logged,ShellPrompt}
+	import Keys.{analysis,historyPath,logged,shellPrompt}
 	import scala.annotation.tailrec
 	import scala.collection.JavaConversions._
 	import Function.tupled
@@ -32,7 +32,7 @@ class xMain extends xsbti.AppMain
 		val state = State( configuration, initialCommandDefs, Set.empty, None, commands, initialAttributes, Next.Continue )
 		run(state)
 	}
-	def initialAttributes = AttributeMap.empty.put(Logged, ConsoleLogger())
+	def initialAttributes = AttributeMap.empty.put(logged, ConsoleLogger())
 		
 	@tailrec final def run(state: State): xsbti.MainResult =
 	{
@@ -110,10 +110,10 @@ object BuiltinCommands
 		}
 	
 	def shell = Command.command(Shell, ShellBrief, ShellDetailed) { s =>
-		val historyPath = (s get HistoryPath.key) getOrElse Some((s.baseDir / ".history").asFile)
-		val prompt = (s get ShellPrompt.key) match { case Some(pf) => pf(s); case None => "> " }
+		val history = (s get historyPath.key) getOrElse Some((s.baseDir / ".history").asFile)
+		val prompt = (s get shellPrompt.key) match { case Some(pf) => pf(s); case None => "> " }
 		val parser = Command.combine(s.processors)
-		val reader = new FullReader(historyPath, parser(s))
+		val reader = new FullReader(history, parser(s))
 		val line = reader.readLine(prompt)
 		line match {
 			case Some(line) => s.copy(onFailure = Some(Shell), commands = line +: Shell +: s.commands)
@@ -209,7 +209,7 @@ object BuiltinCommands
 	//TODO: convert
 	/*def history = Command.make( historyHelp: _* ) { case (in, s) if in.line startsWith "!" =>
 		val logError = (msg: String) => CommandSupport.logger(s).error(msg)
-		HistoryCommands(in.line.substring(HistoryPrefix.length).trim, (s get HistoryPath.key) getOrElse None, 500/*JLine.MaxHistorySize*/, logError) match
+		HistoryCommands(in.line.substring(HistoryPrefix.length).trim, (s get historyPath.key) getOrElse None, 500/*JLine.MaxHistorySize*/, logError) match
 		{
 			case Some(commands) =>
 				commands.foreach(println)  //printing is more appropriate than logging
@@ -295,9 +295,9 @@ object BuiltinCommands
 
 	// TODO: tab completion, low priority
 	def discover = Command.single(Discover, DiscoverBrief, DiscoverDetailed) { (s, arg) =>
-		withAttribute(s, Analysis, "No analysis to process.") { analysis =>
+		withAttribute(s, analysis, "No analysis to process.") { a =>
 			val command = Parse.discover(arg)
-			val discovered = build.Build.discover(analysis, command)
+			val discovered = build.Build.discover(a, command)
 			println(discovered.mkString("\n"))
 			s
 		}
@@ -306,8 +306,8 @@ object BuiltinCommands
 	def compile = Command.single(CompileName, CompileBrief, CompileDetailed ) { (s, arg) =>
 		val command = Parse.compile(arg)(s.baseDir)
 		try {
-			val analysis = build.Build.compile(command, s.configuration)
-			s.put(Analysis, analysis)
+			val a = build.Build.compile(command, s.configuration)
+			s.put(analysis, a)
 		} catch { case e: xsbti.CompileFailed => s.fail /* already logged */ }
 	}
 

@@ -1,8 +1,8 @@
-ScalaSource in Configurations.Compile <<= Source( _ / " scala test " )
+scalaSource in Configurations.Compile <<= sourceDirectory( _ / " scala test " )
 
-JavaSource in Configurations.Compile <<= Source( _ / " java test " )
+javaSource in Configurations.Compile <<= sourceDirectory( _ / " java test " )
 
-TaskKey("init") <<= (ScalaSource in Configurations.Compile, JavaSource in Configurations.Compile) map { (ss, js) =>
+TaskKey("init") <<= (scalaSource in Configurations.Compile, javaSource in Configurations.Compile) map { (ss, js) =>
 	import IO._
 	createDirectories(ss :: js :: Nil)
 	copyFile(file("changes") / "Test.scala", ss / " Test s.scala")

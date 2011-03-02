@@ -1,6 +1,6 @@
-LibraryDependencies += "org.scalatest" % "scalatest" % "1.3"
+libraryDependencies += "org.scalatest" % "scalatest" % "1.3"
 
-TestOptions in Configurations.Test ++= {
+testOptions in Configurations.Test ++= {
 	def args(path: String, args: String*): Seq[TestOption] = if(file(path).exists) Test.Argument(args : _*) :: Nil else Nil
 //
 	args("success1", "-n", "test2 test3") ++

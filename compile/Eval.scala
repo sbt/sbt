@@ -1,5 +1,5 @@
 package sbt
-package compile
+package compiler
 
 import scala.reflect.Manifest
 import scala.tools.nsc.{ast, interpreter, io, reporters, util, CompilerCommand, Global, Phase, Settings}

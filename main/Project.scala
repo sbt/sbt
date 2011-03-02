@@ -7,10 +7,10 @@ package sbt
 	import java.net.URI
 	import Project._
 	import Types.Endo
-	import Keys.{AppConfig, Commands, Config, HistoryPath, ProjectCommand, SessionKey, ShellPrompt, StructureKey, ThisProject, ThisProjectRef, Watch}
+	import Keys.{appConfiguration, buildStructure, commands, configuration, historyPath, projectCommand, sessionSettings, shellPrompt, thisProject, thisProjectRef, watch}
 	import Scope.ThisScope
 	import CommandSupport.logger
-	import compile.Eval
+	import compiler.Eval
 
 final case class Project(id: String, base: File, aggregate: Seq[ProjectRef] = Nil, dependencies: Seq[Project.ClasspathDependency] = Nil, delegates: Seq[ProjectRef] = Nil,
 	settings: Seq[Project.Setting[_]] = Project.defaultSettings, configurations: Seq[Configuration] = Configurations.default)
@@ -40,8 +40,8 @@ object Project extends Init[Scope]
 	}
 
 	def getOrError[T](state: State, key: AttributeKey[T], msg: String): T = state get key getOrElse error(msg)
-	def structure(state: State): Load.BuildStructure = getOrError(state, StructureKey, "No build loaded.")
-	def session(state: State): SessionSettings = getOrError(state, SessionKey, "Session not initialized.")
+	def structure(state: State): Load.BuildStructure = getOrError(state, buildStructure, "No build loaded.")
+	def session(state: State): SessionSettings = getOrError(state, sessionSettings, "Session not initialized.")
 	def extract(state: State): Extracted =
 	{
 		val se = session(state)
@@ -58,7 +58,7 @@ object Project extends Init[Scope]
 
 	def setProject(session: SessionSettings, structure: Load.BuildStructure, s: State): State =
 	{
-		val newAttrs = s.attributes.put(StructureKey, structure).put(SessionKey, session)
+		val newAttrs = s.attributes.put(buildStructure, structure).put(sessionSettings, session)
 		val newState = s.copy(attributes = newAttrs)
 		updateCurrent(newState.runExitHooks())
 	}
@@ -77,13 +77,13 @@ object Project extends Init[Scope]
 		logger(s).info("Set current project to " + id + " (in build " + uri +")")
 		def get[T](k: SettingKey[T]): Option[T] = k in ref get structure.data
 
-		val historyPath = get(HistoryPath) flatMap identity
-		val prompt = get(ShellPrompt)
-		val watched = get(Watch)
-		val commands = get(Commands).toList.flatten[Command].map(_ tag (ProjectCommand, true))
-		val newProcessors = commands ++ BuiltinCommands.removeTagged(s.processors, ProjectCommand)
-		val newAttrs = setCond(Watched.Configuration, watched, s.attributes).put(HistoryPath.key, historyPath)
-		s.copy(attributes = setCond(ShellPrompt.key, prompt, newAttrs), processors = newProcessors)
+		val history = get(historyPath) flatMap identity
+		val prompt = get(shellPrompt)
+		val watched = get(watch)
+		val commandDefs = get(commands).toList.flatten[Command].map(_ tag (projectCommand, true))
+		val newProcessors = commandDefs ++ BuiltinCommands.removeTagged(s.processors, projectCommand)
+		val newAttrs = setCond(Watched.Configuration, watched, s.attributes).put(historyPath.key, history)
+		s.copy(attributes = setCond(shellPrompt.key, prompt, newAttrs), processors = newProcessors)
 	}
 	def setCond[T](key: AttributeKey[T], vopt: Option[T], attributes: AttributeMap): AttributeMap =
 		vopt match { case Some(v) => attributes.put(key, v); case None => attributes.remove(key) }
@@ -146,7 +146,7 @@ object Project extends Init[Scope]
 		for( (key,compiled) <- cMap; dep <- compiled.dependencies if dep == scoped)  yield  key
 
 	def inConfig(conf: Configuration)(ss: Seq[Setting[_]]): Seq[Setting[_]] =
-		inScope(ThisScope.copy(config = Select(conf)) )( (Config :== conf) +: ss)
+		inScope(ThisScope.copy(config = Select(conf)) )( (configuration :== conf) +: ss)
 	def inTask(t: Scoped)(ss: Seq[Setting[_]]): Seq[Setting[_]] =
 		inScope(ThisScope.copy(task = Select(t.key)) )( ss )
 	def inScope(scope: Scope)(ss: Seq[Setting[_]]): Seq[Setting[_]] =

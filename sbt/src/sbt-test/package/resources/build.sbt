@@ -1,10 +1,10 @@
-Name :== "Main Resources Test"
+name :== "Main Resources Test"
 
-Version :== "0.1"
+version :== "0.1"
 
-CrossPaths :== false
+crossPaths :== false
 
-PackageOptions <<= (PackageOptions, Keys.ScalaInstance) map { (opts, si) =>
+packageOptions <<= (packageOptions, scalaInstance) map { (opts, si) =>
 	def manifestExtra =
 	{
 		import java.util.jar._
@@ -12,5 +12,5 @@ PackageOptions <<= (PackageOptions, Keys.ScalaInstance) map { (opts, si) =>
 		mf.getMainAttributes.put(Attributes.Name.CLASS_PATH, si.libraryJar.getAbsolutePath)
 		mf
 	}
-	sbt.Package.JarManifest(manifestExtra) +: opts
+	Package.JarManifest(manifestExtra) +: opts
 }

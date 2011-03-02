@@ -1,22 +1,21 @@
 	import java.util.jar.{Attributes, Manifest}
 	import Path.makeString
-	import Keys.{Package, ScalaInstance}
 	import Configurations.Compile
 
-Name :== "Jar Manifest Test"
+name :== "Jar Manifest Test"
 
-Version :== "0.2"
+version :== "0.2"
 
-CrossPaths :== false
+crossPaths :== false
 
-MainClass :== Some("jartest.Main")
+mainClass :== Some("jartest.Main")
 
-PackageOptions in (Compile, Package) <<= (PackageOptions in (Compile, Package), ScalaInstance) map { (opts, si) =>
+packageOptions in (Compile, packageBin) <<= (packageOptions in (Compile, packageBin), scalaInstance) map { (opts, si) =>
 	def manifestExtra =
 	{
 		val mf = new Manifest
 		mf.getMainAttributes.put(Attributes.Name.CLASS_PATH, makeString(si.libraryJar :: Nil) )
 		mf
 	}
-	opts :+ sbt.Package.JarManifest(manifestExtra)
+	opts :+ Package.JarManifest(manifestExtra)
 }

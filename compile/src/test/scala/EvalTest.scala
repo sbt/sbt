@@ -1,5 +1,5 @@
 package sbt
-package compile
+package compiler
 
 	import org.scalacheck._
 	import Prop._

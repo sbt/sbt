@@ -10,23 +10,23 @@ object Flat extends Build
 	)
 
 	def baseSettings = Seq(
-		LibraryDependencies += "org.scala-tools.testing" %% "scalacheck" % "1.8" % "test",
-		SourceFilter := "*.java" | "*.scala"
+		libraryDependencies += "org.scala-tools.testing" %% "scalacheck" % "1.8" % "test",
+		sourceFilter := "*.java" | "*.scala"
 	)
 
-	def forConfig(conf: Configuration, name: String) = Default.inConfig(conf)( unpackage(name) )
+	def forConfig(conf: Configuration, name: String) = Project.inConfig(conf)( unpackageSettings(name) )
 
-	def unpackage(name: String) = Seq(
-		SourceDirectories := file(name) :: Nil,
-		ResourceDirectories :== SourceDirectories,
-		Keys.Resources <<= (SourceDirectories, SourceFilter, DefaultExcludes) map {
+	def unpackageSettings(name: String) = Seq(
+		sourceDirectories := file(name) :: Nil,
+		resourceDirectories :== sourceDirectories,
+		resources <<= (sourceDirectories, sourceFilter, defaultExcludes) map {
 		 (srcs, filter, excl) => srcs.descendentsExcept(-filter,excl).getFiles.toSeq
 		},
-		Unpackage <<= (JarPath in PackageSrc, Base) map { (jar, base) =>
+		unpackage <<= (jarPath in packageSrc, baseDirectory) map { (jar, base) =>
 			IO.unzip(jar, base / name)
 		}
 	)
 
-	val Unpackage = TaskKey[Unit]("unpackage-src")
+	val unpackage = TaskKey[Unit]("unpackage")
 }
 

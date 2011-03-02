@@ -9,13 +9,13 @@ $ exists ran
 $ delete ran
 
 # single project, Aggregate = Enabled on Mark
-> set Aggregate in Mark :== false
+> set aggregate in Mark :== false
 > mark
 $ exists ran
 $ delete ran
 
 # single project, Aggregate = Disabled on Mark
-> set Aggregate in Mark :== false
+> set aggregate in Mark :== false
 > mark
 $ exists ran
 $ delete ran
@@ -74,28 +74,28 @@ $ delete sub/ran sub/sub/ran
 > set Mark <<= mark
 
 # disable aggregation for sub/mark so that sub2/mark doesn't run
-> set Aggregate in (sub,Mark) :== false
+> set aggregate in (sub,Mark) :== false
 > mark
 $ exists ran sub/ran
 $ absent sub/sub/ran
 $ delete ran sub/ran
 
 # check explicit aggregation.  running on root should run root/mark and sub2/mark
-> set Aggregate in Mark :== Aggregation(sub2 :: Nil)
+> set aggregate in Mark :== Aggregation(sub2 :: Nil)
 > mark
 $ exists ran sub/sub/ran
 $ absent sub/ran
 $ delete ran sub/sub/ran
 
 # check intransitive aggregation.  running on root should not continue to sub2/mark
-> set Aggregate in Mark :== Aggregation(sub :: Nil, false)
+> set aggregate in Mark :== Aggregation(sub :: Nil, false)
 > mark
 $ exists ran sub/ran
 $ absent sub/sub/ran
 $ delete ran sub/ran
 
 # the aggregation setting in a leaf shouldn't affect whether it can be run directly
-> set Aggregate in (sub2, Mark) :== false
+> set aggregate in (sub2, Mark) :== false
 > sub2/mark
 $ exists sub/sub/ran
 $ absent ran sub/ran

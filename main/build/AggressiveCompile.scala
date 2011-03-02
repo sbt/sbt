@@ -7,7 +7,7 @@ package build
 import inc._
 
 	import java.io.File
-	import compile.{AnalyzingCompiler, CompilerArguments, JavaCompiler}
+	import compiler.{AnalyzingCompiler, CompilerArguments, JavaCompiler}
 	import classpath.ClasspathUtilities
 	import classfile.Analyze
 	import xsbti.api.Source

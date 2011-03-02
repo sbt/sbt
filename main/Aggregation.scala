@@ -7,7 +7,7 @@ package sbt
 	import Project.ScopedKey
 	import Load.BuildStructure
 	import EvaluateTask.parseResult
-	import Keys.Aggregate
+	import Keys.aggregate
 	import sbt.complete.Parser
 	import Parser._
 
@@ -25,16 +25,16 @@ final object Aggregation
 	def getTasks[T](key: ScopedKey[T], structure: BuildStructure, transitive: Boolean): Seq[KeyValue[T]] =
 	{
 		val task = structure.data.get(key.scope, key.key).toList.map(t => KeyValue(key,t))
-		if(transitive) aggregate(key, structure) ++ task else task
+		if(transitive) aggregateDeps(key, structure) ++ task else task
 	}
 	def projectAggregate(key: ScopedKey[_], structure: BuildStructure): Seq[ProjectRef] =
 	{
 		val project = key.scope.project.toOption.flatMap { p => Project.getProject(p, structure) }
 		project match { case Some(p) => p.aggregate; case None => Nil }
 	}
-	def aggregate[T](key: ScopedKey[T], structure: BuildStructure): Seq[KeyValue[T]] =
+	def aggregateDeps[T](key: ScopedKey[T], structure: BuildStructure): Seq[KeyValue[T]] =
 	{
-		val aggregated = Aggregate in Scope.fillTaskAxis(key.scope, key.key) get structure.data getOrElse Enabled
+		val aggregated = aggregate in Scope.fillTaskAxis(key.scope, key.key) get structure.data getOrElse Enabled
 		val (agg, transitive) =
 			aggregated match
 			{	

@@ -4,7 +4,7 @@
 package sbt
 
 	import std._
-	import compile.{Discovered,Discovery}
+	import compiler.{Discovered,Discovery}
 	import inc.Analysis
 	import TaskExtra._
 	import Types._

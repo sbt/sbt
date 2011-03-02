@@ -4,7 +4,7 @@
 package sbt
 
 	import Project.ScopedKey
-	import Keys.ThisProject
+	import Keys.{sessionSettings, thisProject}
 	import CommandSupport.logger
 	import Load.BuildStructure
 	import complete.{DefaultParsers, Parser}
@@ -29,7 +29,7 @@ object Act
 	def toAxis[T](opt: Option[T], ifNone: ScopeAxis[T]): ScopeAxis[T] =
 		opt match { case Some(t) => Select(t); case None => ifNone }
 	def defaultConfig(data: Settings[Scope])(project: ProjectRef): Option[String] =
-		ThisProject in project get data flatMap( _.configurations.headOption.map(_.name))
+		thisProject in project get data flatMap( _.configurations.headOption.map(_.name))
 
 	def config(confs: Set[String]): Parser[Option[String]] =
 		token( examplesStrict(ID, confs) <~ ':' ).?
@@ -84,5 +84,5 @@ object Act
 
 
 	def requireSession[T](s: State, p: => Parser[T]): Parser[T] =
-		if(s get Keys.SessionKey isEmpty) failure("No project loaded") else p
+		if(s get sessionSettings isEmpty) failure("No project loaded") else p
 }

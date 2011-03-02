@@ -4,7 +4,7 @@
 package sbt
 
 import java.io.File
-import compile.AnalyzingCompiler
+import compiler.AnalyzingCompiler
 
 final class Console(compiler: AnalyzingCompiler)
 {
