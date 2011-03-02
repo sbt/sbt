@@ -2,7 +2,7 @@
  * Copyright 2008, 2009, 2010  Mark Harrah, Seth Tisue
  */
 package sbt
-package compile
+package compiler
 
 	import java.io.File
 

@@ -1,5 +1,5 @@
 package sbt
-package compile
+package compiler
 
 	import xsbt.boot
 	import java.io.File

@@ -2,7 +2,7 @@
  * Copyright 2009, 2010  Mark Harrah
  */
 package sbt
-package compile
+package compiler
 
 	import xsbti.{AnalysisCallback, Logger => xLogger, Reporter}
 	import java.io.File

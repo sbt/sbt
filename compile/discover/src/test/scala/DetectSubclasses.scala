@@ -1,5 +1,5 @@
 package sbt
-package compile
+package compiler
 
 	import java.io.File
 	import org.specs.Specification

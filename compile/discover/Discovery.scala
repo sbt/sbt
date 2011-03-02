@@ -2,7 +2,7 @@
  * Copyright 2010 Mark Harrah
  */
 package sbt
-package compile
+package compiler
 
 	import xsbti.api.{Path => APath, _}
 
