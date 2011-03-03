@@ -24,7 +24,7 @@ object Keys
 	val sessionSettings = AttributeKey[SessionSettings]("session-settings")
 	val buildStructure = AttributeKey[Load.BuildStructure]("build-structure")
 	val appConfiguration = SettingKey[xsbti.AppConfiguration]("app-configuration")
-	val thisProject = SettingKey[Project]("this-project")
+	val thisProject = SettingKey[ResolvedProject]("this-project")
 	val thisProjectRef = SettingKey[ProjectRef]("this-project-ref")
 	val configuration = SettingKey[Configuration]("configuration")
 	val commands = SettingKey[Seq[Command]]("commands")

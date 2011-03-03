@@ -9,6 +9,7 @@ package sbt
 	import EvaluateTask.parseResult
 	import Keys.aggregate
 	import sbt.complete.Parser
+	import java.net.URI
 	import Parser._
 
 sealed trait Aggregation
@@ -19,7 +20,7 @@ final object Aggregation
 	val Enabled = new Implicit(true)
 	val Disabled = new Implicit(false)
 	final case class Implicit(enabled: Boolean) extends Aggregation
-	final class Explicit(val dependencies: Seq[ProjectRef], val transitive: Boolean) extends Aggregation
+	final class Explicit(val dependencies: Seq[ProjectReference], val transitive: Boolean) extends Aggregation
 
 	final case class KeyValue[+T](key: ScopedKey[_], value: T)
 	def getTasks[T](key: ScopedKey[T], structure: BuildStructure, transitive: Boolean): Seq[KeyValue[T]] =
@@ -29,7 +30,7 @@ final object Aggregation
 	}
 	def projectAggregate(key: ScopedKey[_], structure: BuildStructure): Seq[ProjectRef] =
 	{
-		val project = key.scope.project.toOption.flatMap { p => Project.getProject(p, structure) }
+		val project = key.scope.project.toOption.flatMap { ref => Project.getProjectForReference(ref, structure) }
 		project match { case Some(p) => p.aggregate; case None => Nil }
 	}
 	def aggregateDeps[T](key: ScopedKey[T], structure: BuildStructure): Seq[KeyValue[T]] =
@@ -37,24 +38,24 @@ final object Aggregation
 		val aggregated = aggregate in Scope.fillTaskAxis(key.scope, key.key) get structure.data getOrElse Enabled
 		val (agg, transitive) =
 			aggregated match
-			{	
-				case Implicit(false) => (Nil, false)	
-				case Implicit(true) => (projectAggregate(key, structure), true)	
-				case e: Explicit => (subCurrentBuild(key, e.dependencies), e.transitive)	
+			{
+				case Implicit(false) => (Nil, false)
+				case Implicit(true) => (projectAggregate(key, structure), true)
+				case e: Explicit => (e.dependencies, e.transitive)
 			}
-
+		val currentBuild = key.scope.project.toOption.flatMap { case ProjectRef(uri, _) => Some(uri); case BuildRef(ref) => Some(ref); case _ => None }
 		agg flatMap { a =>
-			val newKey = ScopedKey(key.scope.copy(project = Select(a)), key.key)
+			val resolved = subCurrentBuild(a, currentBuild)
+			val newKey = ScopedKey(key.scope.copy(project = Select(resolved)), key.key)
 			getTasks(newKey, structure, transitive)
 		}
 	}
-	private def subCurrentBuild(key: ScopedKey[_], refs: Seq[ProjectRef]): Seq[ProjectRef] =
-		key.scope.project match
+	private def subCurrentBuild(ref: Reference, currentBuild: Option[URI]): Reference =
+		currentBuild match
 		{
-			case Select(ProjectRef(Some(current), _)) => refs map { ref => Scope.mapRefBuild(current, ref) }
-			case _ => refs
+			case None => ref
+			case Some(current) => Scope.resolveBuildOnly(current, ref)
 		}
-		
 
 	def printSettings[T](xs: Seq[KeyValue[T]], log: Logger) =
 		xs match

@@ -14,10 +14,10 @@ package sbt
 object Act
 {
 	// this does not take delegation into account
-	def scopedKey(index: KeyIndex, currentBuild: URI, currentProject: String, defaultConfig: ProjectRef => Option[String], keyMap: Map[String, AttributeKey[_]]): Parser[ScopedKey[_]] =
+	def scopedKey(index: KeyIndex, current: ProjectRef, defaultConfig: ProjectRef => Option[String], keyMap: Map[String, AttributeKey[_]]): Parser[ScopedKey[_]] =
 	{
 		for {
-			proj <- optProjectRef(index, currentBuild, currentProject)
+			proj <- optProjectRef(index, current)
 			confAmb <- config( index configs proj )
 			(key, conf) <- key(index, proj, configs(confAmb, defaultConfig, proj), keyMap) }
 		yield
@@ -59,10 +59,10 @@ object Act
 		def projectID(uri: URI) = token( examplesStrict(ID, index projects uri) <~ '/' )
 
 		for(uri <- build; id <- projectID(uri)) yield
-			ProjectRef(Some(uri), Some(id))
+			ProjectRef(uri, id)
 	}
-	def optProjectRef(index: KeyIndex, currentBuild: URI, currentProject: String) =
-		projectRef(index, currentBuild) ?? ProjectRef(Some(currentBuild), Some(currentProject))
+	def optProjectRef(index: KeyIndex, current: ProjectRef) =
+		projectRef(index, current.build) ?? current
 
 	def actParser(s: State): Parser[() => State] = requireSession(s, actParser0(s))
 
@@ -79,7 +79,7 @@ object Act
 	{
 		import extracted._
 		val defaultConf = (ref: ProjectRef) => if(Project.getProject(ref, structure).isDefined) defaultConfig(structure.data)(ref) else None
-		scopedKey(structure.index.keyIndex, curi, cid, defaultConf, structure.index.keyMap)
+		scopedKey(structure.index.keyIndex, currentRef, defaultConf, structure.index.keyMap)
 	}
 
 

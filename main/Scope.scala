@@ -6,7 +6,7 @@ package sbt
 	import java.io.File
 	import java.net.URI
 
-final case class Scope(project: ScopeAxis[ProjectRef], config: ScopeAxis[ConfigKey], task: ScopeAxis[AttributeKey[_]], extra: ScopeAxis[AttributeMap])
+final case class Scope(project: ScopeAxis[Reference], config: ScopeAxis[ConfigKey], task: ScopeAxis[AttributeKey[_]], extra: ScopeAxis[AttributeMap])
 object Scope
 {
 	val ThisScope = Scope(This, This, This, This)
@@ -30,28 +30,54 @@ object Scope
 		
 	def resolveProject(uri: URI, rootProject: URI => String): Scope => Scope =
 		{
-			case Scope(Select(ref), a,b,c) =>
-				Scope(Select(mapRef(uri, rootProject, ref)), a,b,c)
+			case Scope(Select(ref), a,b,c) => Scope(Select(resolveReference(uri, rootProject, ref)), a,b,c)
 			case x => x
 		}
 
-	def mapRef(current: URI, rootProject: URI => String, ref: ProjectRef): ProjectRef =
-	{
-		val (uri, id) = resolveRef(current, rootProject, ref)
-		ProjectRef(Some(uri), Some(id))
-	}
-	def mapRefBuild(current: URI, ref: ProjectRef): ProjectRef = ProjectRef(Some(resolveBuild(current, ref)), ref.id)
-		
-	def resolveBuild(current: URI, ref: ProjectRef): URI =
-		ref.uri match { case Some(u) => resolveBuild(current, u); case None => current }
+	def resolveBuildOnly(current: URI, ref: Reference): Reference =
+		ref match
+		{
+			case br: BuildReference => resolveBuild(current, br)
+			case pr: ProjectReference => resolveProjectBuild(current, pr)
+		}
+	def resolveBuild(current: URI, ref: BuildReference): BuildReference =
+		ref match
+		{
+			case ThisBuild => BuildRef(current)
+			case BuildRef(uri) => BuildRef(resolveBuild(current, uri))
+		}
+	def resolveProjectBuild(current: URI, ref: ProjectReference): ProjectReference =
+		ref match
+		{
+			case ThisProject => RootProject(current)
+			case LocalProject(id) => ProjectRef(current, id)
+			case RootProject(uri) => RootProject(resolveBuild(current, uri))
+			case ProjectRef(uri, id) => ProjectRef(resolveBuild(current, uri), id)
+		}
 	def resolveBuild(current: URI, uri: URI): URI = 
 		IO.directoryURI(current resolve uri)
 
-	def resolveRef(current: URI, rootProject: URI => String, ref: ProjectRef): (URI, String) =
-	{
-		val uri = resolveBuild(current, ref)
-		(uri, ref.id getOrElse rootProject(uri) )
-	}
+	def resolveReference(current: URI, rootProject: URI => String, ref: Reference): ResolvedReference =
+		ref match
+		{
+			case br: BuildReference => resolveBuildRef(current, br)
+			case pr: ProjectReference => resolveProjectRef(current, rootProject, pr)
+		}
+		
+	def resolveProjectRef(current: URI, rootProject: URI => String, ref: ProjectReference): ProjectRef =
+		ref match
+		{
+			case ThisProject => ProjectRef(current, rootProject(current))
+			case LocalProject(id) => ProjectRef(current, id)
+			case RootProject(uri) => val res = resolveBuild(current, uri); ProjectRef(res, rootProject(res))
+			case ProjectRef(uri, id) => ProjectRef(resolveBuild(current, uri), id)
+		}
+	def resolveBuildRef(current: URI, ref: BuildReference): BuildRef =
+		ref match
+		{
+			case ThisBuild => BuildRef(current)
+			case BuildRef(uri) => BuildRef(resolveBuild(current, uri))
+		}
 
 	def display(config: ConfigKey): String = if(config.name == "compile") "" else config.name + ":"
 	def display(scope: Scope, sep: String): String = 
@@ -69,7 +95,7 @@ object Scope
 	def parseScopedKey(command: String): (Scope, String) =
 	{
 		val ScopedKeyRegex(_, projectID, _, config, key) = command
-		val pref = if(projectID eq null) This else Select(ProjectRef(None, Some(projectID)))
+		val pref = if(projectID eq null) This else Select(LocalProject(projectID))
 		val conf = if(config eq null) This else Select(ConfigKey(config))
 		(Scope(pref, conf, This, This), transformTaskName(key))
 	}
@@ -82,37 +108,40 @@ object Scope
 	}
 
 	// *Inherit functions should be immediate delegates and not include argument itself.  Transitivity will be provided by this method
-	def delegates(projectInherit: ProjectRef => Seq[ProjectRef],
-		configInherit: (ProjectRef, ConfigKey) => Seq[ConfigKey],
-		taskInherit: (ProjectRef, AttributeKey[_]) => Seq[AttributeKey[_]],
-		extraInherit: (ProjectRef, AttributeMap) => Seq[AttributeMap])(scope: Scope): Seq[Scope] =
-	scope.project match
+	def delegates(projectInherit: Reference => Seq[Reference],
+		configInherit: (Reference, ConfigKey) => Seq[ConfigKey],
+		taskInherit: (Reference, AttributeKey[_]) => Seq[AttributeKey[_]],
+		extraInherit: (Reference, AttributeMap) => Seq[AttributeMap])(rawScope: Scope): Seq[Scope] =
 	{
-		case Global | This => scope :: GlobalScope :: Nil
-		case Select(proj) =>
-			val prod =
-				for {
-					c <- linearize(scope.config)(configInherit(proj, _))
-					t <- linearize(scope.task)(taskInherit(proj,_))
-					e <- linearize(scope.extra)(extraInherit(proj,_))
-				} yield
-					Scope(Select(proj),c,t,e)
-			val projI =
-				withRawBuilds(linearize(scope.project)(projectInherit)) map { p => scope.copy(project = p) }
-
-			(prod ++ projI :+ GlobalScope).distinct
+		val scope = Scope.replaceThis(GlobalScope)(rawScope)
+		scope.project match
+		{
+			case Global => scope :: GlobalScope :: Nil
+			case This => scope.copy(project = Global) :: GlobalScope :: Nil
+			case Select(proj) =>
+				val prod =
+					for {
+						c <- linearize(scope.config)(configInherit(proj, _))
+						t <- linearize(scope.task)(taskInherit(proj,_))
+						e <- linearize(scope.extra)(extraInherit(proj,_))
+					} yield
+						Scope(Select(proj),c,t,e)
+				val projI =
+					withRawBuilds(linearize(scope.project, Nil)(projectInherit)) map { p => scope.copy(project = p) }
+				(prod ++ projI :+ GlobalScope).distinct
+		}
 	}
-	def withRawBuilds(ps: Seq[ScopeAxis[ProjectRef]]): Seq[ScopeAxis[ProjectRef]] =
-		ps ++ ps.flatMap(rawBuilds).distinct.map(Select.apply)
+	def withRawBuilds(ps: Seq[ScopeAxis[Reference]]): Seq[ScopeAxis[Reference]] =
+		(ps ++ (ps flatMap rawBuilds).map(Select.apply) :+ Global).distinct
 
-	def rawBuilds(ps: ScopeAxis[ProjectRef]): Seq[ProjectRef]  =  ps match { case Select(ref) => rawBuilds(ref); case _ => Nil }
-	def rawBuilds(ps: ProjectRef): Seq[ProjectRef]  =  ps.uri.map(uri => ProjectRef(Some(uri), None)).toList
+	def rawBuilds(ps: ScopeAxis[Reference]): Seq[Reference]  =  ps match { case Select(ref) => rawBuilds(ref); case _ => Nil }
+	def rawBuilds(ps: Reference): Seq[Reference]  =  (Reference.uri(ps) map BuildRef.apply).toList
 
-	def linearize[T](axis: ScopeAxis[T])(inherit: T => Seq[T]): Seq[ScopeAxis[T]] =
+	def linearize[T](axis: ScopeAxis[T], append: Seq[ScopeAxis[T]] = Global :: Nil)(inherit: T => Seq[T]): Seq[ScopeAxis[T]] =
 		axis match
 		{
-			case Select(x) => (Global +: Dag.topologicalSort(x)(inherit).map(Select.apply) ).reverse
-			case Global | This => Global :: Nil
+			case Select(x) => Dag.topologicalSort(x)(inherit).map(Select.apply).reverse ++ append
+			case Global | This => append
 		}
 }
 

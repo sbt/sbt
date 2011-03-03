@@ -61,7 +61,7 @@ object Default
 		fork :== false,
 		javaOptions :== Nil,
 		crossPaths :== true,
-		shellPrompt :== (_ => "> "),
+//		shellPrompt :== (_ => "> "),
 		aggregate :== Aggregation.Enabled,
 		maxErrors :== 100,
 		commands :== Nil,
@@ -281,7 +281,7 @@ object Default
 	def discoverMainClasses(analysis: inc.Analysis): Seq[String] =
 		Discovery.applications(Test.allDefs(analysis)) collect { case (definition, discovered) if(discovered.hasMain) => definition.name }
 
-	def consoleProjectTask = (EvaluateTask.state, streams, initialCommands in consoleProject) map { (state, s, extra) => Console.sbt(state, extra)(s.log) }
+	def consoleProjectTask = (EvaluateTask.state, streams, initialCommands in consoleProject) map { (state, s, extra) => Console.sbt(state, extra)(s.log); println() }
 	def consoleTask: Initialize[Task[Unit]] = consoleTask(fullClasspath, console)
 	def consoleQuickTask = consoleTask(externalDependencyClasspath, consoleQuick)
 	def consoleTask(classpath: TaskKey[Classpath], task: TaskKey[_]): Initialize[Task[Unit]] = (compilers, classpath, scalacOptions in task, initialCommands in task, streams) map {
@@ -341,14 +341,14 @@ object Default
 	}
 	def inAllDeps[T](base: ProjectRef, deps: ProjectRef => Seq[ProjectRef], key: ScopedSetting[T], data: Settings[Scope]): Seq[T] =
 		inAllProjects(Dag.topologicalSort(base)(deps), key, data)
-	def inAllProjects[T](allProjects: Seq[ProjectRef], key: ScopedSetting[T], data: Settings[Scope]): Seq[T] =
+	def inAllProjects[T](allProjects: Seq[Reference], key: ScopedSetting[T], data: Settings[Scope]): Seq[T] =
 		allProjects.flatMap { p => key in p get data }
 
 	val CompletionsID = "completions"
 
 	lazy val defaultWebPaths = inConfig(CompileConf)(webPaths)
 	
-	def noAggregation = Seq(run, console, consoleQuick)
+	def noAggregation = Seq(run, console, consoleQuick, consoleProject)
 	lazy val disableAggregation = noAggregation map disableAggregate
 	def disableAggregate(k: Scoped) =
 		aggregate in Scope.GlobalScope.copy(task = Select(k.key)) :== false
@@ -519,11 +519,11 @@ object Classpaths
 
 	def depMap: Initialize[Task[Map[ModuleRevisionId, ModuleDescriptor]]] =
 		(thisProject, thisProjectRef, settings) flatMap { (root, rootRef, data) =>
-			val dependencies = (p: (ProjectRef, Project)) => p._2.dependencies.flatMap(pr => thisProject in pr.project get data map { (pr.project, _) })
+			val dependencies = (p: (ProjectRef, ResolvedProject)) => p._2.dependencies.flatMap(pr => thisProject in pr.project get data map { (pr.project, _) })
 			depMap(Dag.topologicalSort((rootRef,root))(dependencies).dropRight(1), data)
 		}
 
-	def depMap(projects: Seq[(ProjectRef,Project)], data: Settings[Scope]): Task[Map[ModuleRevisionId, ModuleDescriptor]] =
+	def depMap(projects: Seq[(ProjectRef,ResolvedProject)], data: Settings[Scope]): Task[Map[ModuleRevisionId, ModuleDescriptor]] =
 		projects.flatMap { case (p,_) => ivyModule in p get data }.join.map { mods =>
 			(mods.map{ mod =>
 				val md = mod.moduleDescriptor
@@ -547,17 +547,17 @@ object Classpaths
 
 		import java.util.LinkedHashSet
 		import collection.JavaConversions.asScalaSet
-	def interSort(projectRef: ProjectRef, project: Project, conf: Configuration, data: Settings[Scope]): Seq[(ProjectRef,String)] =
+	def interSort(projectRef: ProjectRef, project: ResolvedProject, conf: Configuration, data: Settings[Scope]): Seq[(ProjectRef,String)] =
 	{
 		val visited = asScalaSet(new LinkedHashSet[(ProjectRef,String)])
-		def visit(p: ProjectRef, project: Project, c: Configuration)
+		def visit(p: ProjectRef, project: ResolvedProject, c: Configuration)
 		{
 			val applicableConfigs = allConfigs(c)
 			for(ac <- applicableConfigs) // add all configurations in this project
 				visited add (p, ac.name)
 			val masterConfs = configurationNames(project)
 
-			for( Project.ClasspathDependency(dep, confMapping) <- project.dependencies)
+			for( Project.ResolvedClasspathDependency(dep, confMapping) <- project.dependencies)
 			{
 				val depProject = thisProject in dep get data getOrElse error("Invalid project: " + dep)
 				val mapping = mapped(confMapping, masterConfs, configurationNames(depProject), "compile", "*->compile")
@@ -573,17 +573,17 @@ object Classpaths
 		visit(projectRef, project, conf)
 		visited.toSeq
 	}
-	def unmanagedDependencies0(projectRef: ProjectRef, project: Project, conf: Configuration, data: Settings[Scope]): Task[Classpath] =
+	def unmanagedDependencies0(projectRef: ProjectRef, project: ResolvedProject, conf: Configuration, data: Settings[Scope]): Task[Classpath] =
 		interDependencies(projectRef, project, conf, data, true, unmanagedLibs)
-	def internalDependencies0(projectRef: ProjectRef, project: Project, conf: Configuration, data: Settings[Scope]): Task[Classpath] =
+	def internalDependencies0(projectRef: ProjectRef, project: ResolvedProject, conf: Configuration, data: Settings[Scope]): Task[Classpath] =
 		interDependencies(projectRef, project, conf, data, false, productsTask)
-	def interDependencies(projectRef: ProjectRef, project: Project, conf: Configuration, data: Settings[Scope], includeSelf: Boolean,
+	def interDependencies(projectRef: ProjectRef, project: ResolvedProject, conf: Configuration, data: Settings[Scope], includeSelf: Boolean,
 		f: (ProjectRef, String, Settings[Scope]) => Task[Classpath]): Task[Classpath] =
 	{
 		val visited = interSort(projectRef, project, conf, data)
 		val tasks = asScalaSet(new LinkedHashSet[Task[Classpath]])
 		for( (dep, c) <- visited )
-			if(includeSelf ||  (dep != projectRef) || conf.name != c )
+			if(includeSelf || (dep != projectRef) || conf.name != c )
 				tasks += f(dep, c, data)
 
 		(tasks.toSeq.join).map(_.flatten.distinct)
@@ -611,7 +611,7 @@ object Classpaths
 	def union[A,B](maps: Seq[A => Seq[B]]): A => Seq[B] =
 		a => (Seq[B]() /: maps) { _ ++ _(a) } distinct;
 
-	def configurationNames(p: Project): Seq[String] = p.configurations.map( _.name)
+	def configurationNames(p: ResolvedProject): Seq[String] = p.configurations.map( _.name)
 	def parseList(s: String, allConfs: Seq[String]): Seq[String] = (trim(s split ",") flatMap replaceWildcard(allConfs)).distinct
 	def replaceWildcard(allConfs: Seq[String])(conf: String): Seq[String] =
 		if(conf == "") Nil else if(conf == "*") allConfs else conf :: Nil
@@ -622,15 +622,15 @@ object Classpaths
 	def allConfigs(conf: Configuration): Seq[Configuration] =
 		Dag.topologicalSort(conf)(_.extendsConfigs)
 
-	def getConfiguration(ref: ProjectRef, dep: Project, conf: String): Configuration =
+	def getConfiguration(ref: ProjectRef, dep: ResolvedProject, conf: String): Configuration =
 		dep.configurations.find(_.name == conf) getOrElse missingConfiguration(Project display ref, conf)
-	def productsTask(dep: ProjectRef, conf: String, data: Settings[Scope]): Task[Classpath] =
+	def productsTask(dep: ResolvedReference, conf: String, data: Settings[Scope]): Task[Classpath] =
 		getClasspath(products, dep, conf, data)
-	def unmanagedLibs(dep: ProjectRef, conf: String, data: Settings[Scope]): Task[Classpath] =
+	def unmanagedLibs(dep: ResolvedReference, conf: String, data: Settings[Scope]): Task[Classpath] =
 		getClasspath(unmanagedJars, dep, conf, data)
-	def getClasspath(key: TaskKey[Classpath], dep: ProjectRef, conf: String, data: Settings[Scope]): Task[Classpath] =
+	def getClasspath(key: TaskKey[Classpath], dep: ResolvedReference, conf: String, data: Settings[Scope]): Task[Classpath] =
 		( key in (dep, ConfigKey(conf)) ) get data getOrElse const(Nil)
-	def defaultConfigurationTask(p: ProjectRef, data: Settings[Scope]): Configuration =
+	def defaultConfigurationTask(p: ResolvedReference, data: Settings[Scope]): Configuration =
 		flatten(defaultConfiguration in p get data) getOrElse Configurations.Default
 	def flatten[T](o: Option[Option[T]]): Option[T] = o flatMap identity
 }

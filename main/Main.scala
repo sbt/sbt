@@ -237,7 +237,7 @@ object BuiltinCommands
 		val extracted = Project extract s
 		import extracted._
 		val setting = EvaluateConfigurations.evaluateSetting(session.currentEval(), "<set>", imports(extracted), arg, 0)
-		val append = Load.transformSettings(Load.projectScope(curi, cid), curi, rootProject, setting :: Nil)
+		val append = Load.transformSettings(Load.projectScope(currentRef), curi, rootProject, setting :: Nil)
 		val newSession = session.appendSettings( append map (a => (a, arg)))
 		reapply(newSession, structure, s)
 	}

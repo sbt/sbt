@@ -96,14 +96,14 @@ object Scoped
 	{
 		def in(s: Scope): Result = app0(s)
 
-		def in(p: ProjectRef): Result  =  in(Select(p), This, This)
+		def in(p: Reference): Result  =  in(Select(p), This, This)
 		def in(t: Scoped): Result  =  in(This, This, Select(t.key))
 		def in(c: ConfigKey): Result  =  in(This, Select(c), This)
 		def in(c: ConfigKey, t: Scoped): Result  =  in(This, Select(c), Select(t.key))
-		def in(p: ProjectRef, c: ConfigKey): Result  =  in(Select(p), Select(c), This)
-		def in(p: ProjectRef, t: Scoped): Result  =  in(Select(p), This, Select(t.key))
-		def in(p: ProjectRef, c: ConfigKey, t: Scoped): Result  =  in(Select(p), Select(c), Select(t.key))
-		def in(p: ScopeAxis[ProjectRef], c: ScopeAxis[ConfigKey], t: ScopeAxis[AttributeKey[_]]): Result = in( Scope(p, c, t, This) )
+		def in(p: Reference, c: ConfigKey): Result  =  in(Select(p), Select(c), This)
+		def in(p: Reference, t: Scoped): Result  =  in(Select(p), This, Select(t.key))
+		def in(p: Reference, c: ConfigKey, t: Scoped): Result  =  in(Select(p), Select(c), Select(t.key))
+		def in(p: ScopeAxis[Reference], c: ScopeAxis[ConfigKey], t: ScopeAxis[AttributeKey[_]]): Result = in( Scope(p, c, t, This) )
 	}
 	
 	private[this] def scopedSetting[T](s: Scope, k: AttributeKey[T]): ScopedSetting[T] = new ScopedSetting[T] { val scope = s; val key = k }
@@ -407,21 +407,6 @@ object Scoped
 		def apply[T](z: (A,B,C,D,E,F,G) => T) =
 			Apply(t7._1 :^: t7._2 :^: t7._3 :^: t7._4 :^: t7._5 :^: t7._6 :^: t7._7 :^: KNil){ case a :+: b :+: c :+: d :+: e :+: f :+: g :+: HNil => z(a,b,c,d,e,f,g) }
 	}
-
-	/*def unresolved(scope: Scope): Seq[String] = unresolvedProject(scope.project) ++ unresolvedThis(scope)
-	def unresolvedProject(ps: ScopeAxis[ProjectRef]): Seq[String] = ps match {
-		case Select(p) => ifEmpty(p.unit, "Unspecified build unit") ++ ifEmpty(p.id, "Unspecified project ID")
-		case _ => Nil
-	}
-	def ifEmpty(p: Option[URI], msg: String): Seq[String] = if(p.isEmpty) msg :: Nil else Nil
-	def unresolvedThis(scope: Scope): Seq[String] =
-		unresolvedThis(scope.project, "project") ++
-		unresolvedThis(scope.config, "configuration") ++
-		unresolvedThis(scope.task, "task") ++
-		unresolvedThis(scope.extra, "extra")
-
-	def unresolvedThis(axis: ScopeAxis[_], label: String): Seq[String] =
-		if(axis == This) ("Unresolved This for " + label + " axis.") :: Nil else Nil*/
 }
 object InputKey
 {

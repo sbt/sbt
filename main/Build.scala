@@ -145,7 +145,7 @@ object EvaluateTask
 	
 	def getTask[T](structure: BuildStructure, taskKey: ScopedKey[Task[T]], state: State, streams: Streams, ref: ProjectRef): Option[(Task[T], Execute.NodeView[Task])] =
 	{
-		val thisScope = Scope(Select(ref), Global, Global, Global)
+		val thisScope = Load.projectScope(ref)
 		val resolvedScope = Scope.replaceThis(thisScope)( taskKey.scope )
 		for( t <- structure.data.get(resolvedScope, taskKey.key)) yield
 			(t, nodeView(state, streams))
@@ -229,19 +229,31 @@ object Load
 	}
 	def defaultDelegates: LoadedBuild => Scope => Seq[Scope] = (lb: LoadedBuild) => {
 		val rootProject = getRootProject(lb.units)
-		def resolveRef(project: ProjectRef) = Scope.resolveRef(lb.root, rootProject, project)
+		def resolveRef(project: Reference): ResolvedReference = Scope.resolveReference(lb.root, rootProject, project)
 		Scope.delegates(
 			project => projectInherit(lb, resolveRef(project)),
-			(project, config) => configInherit(lb, resolveRef(project), config),
+			(project, config) => configInherit(lb, resolveRef(project), config, rootProject),
 			(project, task) => Nil,
 			(project, extra) => Nil
 		)
 	}
-	def configInherit(lb: LoadedBuild, ref: (URI, String), config: ConfigKey): Seq[ConfigKey] =
-		getConfiguration(lb.units, ref._1, ref._2, config).extendsConfigs.map(c => ConfigKey(c.name))
-		
-	def projectInherit(lb: LoadedBuild, ref: (URI, String)): Seq[ProjectRef] =
-		getProject(lb.units, ref._1, ref._2).delegates
+	def configInherit(lb: LoadedBuild, ref: ResolvedReference, config: ConfigKey, rootProject: URI => String): Seq[ConfigKey] =
+		ref match
+		{
+			case pr: ProjectRef => configInheritRef(lb, pr, config)
+			case BuildRef(uri) => configInheritRef(lb, ProjectRef(uri, rootProject(uri)), config)
+		}
+	def configInheritRef(lb: LoadedBuild, ref: ProjectRef, config: ConfigKey): Seq[ConfigKey] =
+		getConfiguration(lb.units, ref.build, ref.project, config).extendsConfigs.map(c => ConfigKey(c.name))
+
+	def projectInherit(lb: LoadedBuild, ref: ResolvedReference): Seq[ProjectRef] =
+		ref match
+		{
+			case pr: ProjectRef => projectInheritRef(lb, pr)
+			case BuildRef(uri) => Nil
+		}
+	def projectInheritRef(lb: LoadedBuild, ref: ProjectRef): Seq[ProjectRef] =
+		getProject(lb.units, ref.build, ref.project).delegates
 
 		// build, load, and evaluate all units.
 		//  1) Compile all plugin definitions
@@ -296,7 +308,7 @@ object Load
 		new BuildStructure(units = structure.units, root = structure.root, settings = newSettings, data = newData, index = newIndex, streams = newStreams, delegates = structure.delegates, scopeLocal = structure.scopeLocal)
 	}
 
-	def isProjectThis(s: Setting[_]) = s.key.scope.project == This
+	def isProjectThis(s: Setting[_]) = s.key.scope.project match { case This | Select(ThisProject) => true; case _ => false }
 	def buildConfigurations(loaded: LoadedBuild, rootProject: URI => String, rootEval: () => Eval): Seq[Setting[_]] =
 		loaded.units.toSeq flatMap { case (uri, build) =>
 			val eval = if(uri == loaded.root) rootEval else lazyEval(build.unit)
@@ -304,7 +316,7 @@ object Load
 			val (pluginThisProject, pluginGlobal) = pluginSettings partition isProjectThis
 			val projectSettings = build.defined flatMap { case (id, project) =>
 				val srcs = configurationSources(project.base)
-				val ref = ProjectRef(Some(uri), Some(id))
+				val ref = ProjectRef(uri, id)
 				val defineConfig = for(c <- project.configurations) yield ( (configuration in (ref, ConfigKey(c.name))) :== c)
 				val settings =
 					(thisProject :== project) +:
@@ -312,15 +324,14 @@ object Load
 					(defineConfig ++ project.settings ++ pluginThisProject ++ configurations(srcs, eval, build.imports))
 				 
 				// map This to thisScope, Select(p) to mapRef(uri, rootProject, p)
-				transformSettings(projectScope(uri, id), uri, rootProject, settings)
+				transformSettings(projectScope(ref), uri, rootProject, settings)
 			}
-			val buildScope = ThisScope.copy(project = Select(ProjectRef(Some(uri), None)))
+			val buildScope = Scope(Select(BuildRef(uri)), Global, Global, Global)
 			pluginGlobal ++ inScope(buildScope)(build.buildSettings) ++ projectSettings
 		}
 	def transformSettings(thisScope: Scope, uri: URI, rootProject: URI => String, settings: Seq[Setting[_]]): Seq[Setting[_]] =
 		Project.transform(Scope.resolveScope(thisScope, uri, rootProject), settings)
-	def projectScope(uri: URI, id: String): Scope  =  projectScope(ProjectRef(uri, id))
-	def projectScope(project: ProjectRef): Scope  =  Scope(Select(project), Global, Global, Global)
+	def projectScope(project: Reference): Scope  =  Scope(Select(project), Global, Global, Global)
 
 	
 	def lazyEval(unit: BuildUnit): () => Eval =
@@ -335,17 +346,17 @@ object Load
 	def configurations(srcs: Seq[File], eval: () => Eval, imports: Seq[String]): Seq[Setting[_]] =
 		if(srcs.isEmpty) Nil else EvaluateConfigurations(eval(), srcs, imports)
 
-	def load(file: File, s: State, config: LoadBuildConfiguration): LoadedBuild =
+	def load(file: File, s: State, config: LoadBuildConfiguration): PartBuild =
 		load(file, uri => loadUnit(uri, RetrieveUnit(config.stagingDirectory, uri), s, config) )
-	def load(file: File, loader: URI => BuildUnit): LoadedBuild = loadURI(IO.directoryURI(file), loader)
-	def loadURI(uri: URI, loader: URI => BuildUnit): LoadedBuild =
+	def load(file: File, loader: URI => BuildUnit): PartBuild = loadURI(IO.directoryURI(file), loader)
+	def loadURI(uri: URI, loader: URI => BuildUnit): PartBuild =
 	{
 		IO.assertAbsolute(uri)
 		val (referenced, map) = loadAll(uri :: Nil, Map.empty, loader, Map.empty)
 		checkAll(referenced, map)
-		new LoadedBuild(uri, map)
+		new PartBuild(uri, map)
 	}
-	def loaded(unit: BuildUnit): (LoadedBuildUnit, List[ProjectRef]) =
+	def loaded(unit: BuildUnit): (PartBuildUnit, List[ProjectReference]) =
 	{
 		val defined = projects(unit)
 		if(defined.isEmpty) error("No projects defined in build unit " + unit)
@@ -357,12 +368,12 @@ object Load
 		val externals = referenced(defined).toList
 		val projectsInRoot = defined.filter(isRoot).map(_.id)
 		val rootProjects = if(projectsInRoot.isEmpty) defined.head.id :: Nil else projectsInRoot
-		(new LoadedBuildUnit(unit, defined.map(d => (d.id, d)).toMap, rootProjects, buildSettings(unit)), externals)
+		(new PartBuildUnit(unit, defined.map(d => (d.id, d)).toMap, rootProjects, buildSettings(unit)), externals)
 	}
 	def buildSettings(unit: BuildUnit): Seq[Setting[_]] =
 		unit.definitions.builds.flatMap(_.settings)
 
-	@tailrec def loadAll(bases: List[URI], references: Map[URI, List[ProjectRef]], externalLoader: URI => BuildUnit, builds: Map[URI, LoadedBuildUnit]): (Map[URI, List[ProjectRef]], Map[URI, LoadedBuildUnit]) =
+	@tailrec def loadAll(bases: List[URI], references: Map[URI, List[ProjectReference]], externalLoader: URI => BuildUnit, builds: Map[URI, PartBuildUnit]): (Map[URI, List[ProjectReference]], Map[URI, PartBuildUnit]) =
 		bases match
 		{
 			case b :: bs =>
@@ -371,8 +382,8 @@ object Load
 				else
 				{
 					val (loadedBuild, refs) = loaded(externalLoader(b))
-					checkBuildBase(loadedBuild.localBase)
-					loadAll(refs.flatMap(_.uri) reverse_::: bs, references.updated(b, refs), externalLoader, builds.updated(b, loadedBuild))
+					checkBuildBase(loadedBuild.unit.localBase)
+					loadAll(refs.flatMap(Reference.uri) reverse_::: bs, references.updated(b, refs), externalLoader, builds.updated(b, loadedBuild))
 				}
 			case Nil => (references, builds)
 		}
@@ -390,12 +401,19 @@ object Load
 		else if(!base.exists)
 			IO createDirectory base
 	}
-	def checkAll(referenced: Map[URI, List[ProjectRef]], builds: Map[URI, LoadedBuildUnit])
+	def resolveAll(builds: Map[URI, PartBuildUnit]): Map[URI, LoadedBuildUnit] =
+	{
+		val rootProject = getRootProject(builds)
+		builds map { case (uri,unit) =>
+			(uri, unit.resolveRefs( ref => Scope.resolveProjectRef(uri, rootProject, ref) ))
+		} toMap;
+	}
+	def checkAll(referenced: Map[URI, List[ProjectReference]], builds: Map[URI, PartBuildUnit])
 	{
 		val rootProject = getRootProject(builds)
 		for( (uri, refs) <- referenced; ref <- refs)
 		{
-			val (refURI, refID) = Scope.resolveRef(uri, rootProject, ref)
+			val ProjectRef(refURI, refID) = Scope.resolveProjectRef(uri, rootProject, ref)
 			val loadedUnit = builds(refURI)
 			if(! (loadedUnit.defined contains refID) )
 				error("No project '" + refID + "' in '" + refURI + "'")
@@ -412,42 +430,36 @@ object Load
 		}
 		p => p.copy(base = resolve(p.base))
 	}
-	def resolveProjects(loaded: LoadedBuild): LoadedBuild =
+	def resolveProjects(loaded: PartBuild): LoadedBuild =
 	{
 		val rootProject = getRootProject(loaded.units)
-		new LoadedBuild(loaded.root, loaded.units.map { case (uri, unit) =>
+		new LoadedBuild(loaded.root, loaded.units map { case (uri, unit) =>
 			IO.assertAbsolute(uri)
 			(uri, resolveProjects(uri, unit, rootProject))
 		})
 	}
-	def resolveProjects(uri: URI, unit: LoadedBuildUnit, rootProject: URI => String): LoadedBuildUnit =
+	def resolveProjects(uri: URI, unit: PartBuildUnit, rootProject: URI => String): LoadedBuildUnit =
 	{
 		IO.assertAbsolute(uri)
-		val resolve = resolveProject(ref => Scope.mapRef(uri, rootProject, ref))
+		val resolve = (_: Project).resolve(ref => Scope.resolveProjectRef(uri, rootProject, ref))
 		new LoadedBuildUnit(unit.unit, unit.defined mapValues resolve, unit.rootProjects, unit.buildSettings)
-	}
-	def resolveProject(resolveRef: ProjectRef => ProjectRef): Project => Project =
-	{
-		def resolveRefs(prs: Seq[ProjectRef]) = prs map resolveRef
-		def resolveDeps(ds: Seq[Project.ClasspathDependency]) = ds map resolveDep
-		def resolveDep(d: Project.ClasspathDependency) = d.copy(project = resolveRef(d.project))
-		p => p.copy(aggregate = resolveRefs(p.aggregate), dependencies = resolveDeps(p.dependencies), delegates = resolveRefs(p.delegates))
 	}
 	def projects(unit: BuildUnit): Seq[Project] =
 	{
 		// we don't have the complete build graph loaded, so we don't have the rootProject function yet.
-		//  Therefore, we use mapRefBuild instead of mapRef.  After all builds are loaded, we can fully resolve ProjectRefs.
-		val resolve = resolveProject(ref => Scope.mapRefBuild(unit.uri, ref)) compose resolveBase(unit.localBase)
+		//  Therefore, we use resolveProjectBuild instead of resolveProjectRef.  After all builds are loaded, we can fully resolve ProjectReferences.
+		val resolveBuild = (_: Project).resolveBuild(ref => Scope.resolveProjectBuild(unit.uri, ref))
+		val resolve = resolveBuild compose resolveBase(unit.localBase)
 		unit.definitions.builds.flatMap(_.projects map resolve)
 	}
-	def getRootProject(map: Map[URI, LoadedBuildUnit]): URI => String =
+	def getRootProject(map: Map[URI, BuildUnitBase]): URI => String =
 		uri => getBuild(map, uri).rootProjects.headOption getOrElse emptyBuild(uri)
 	def getConfiguration(map: Map[URI, LoadedBuildUnit], uri: URI, id: String, conf: ConfigKey): Configuration =
 		getProject(map, uri, id).configurations.find(_.name == conf.name) getOrElse noConfiguration(uri, id, conf.name)
 
-	def getProject(map: Map[URI, LoadedBuildUnit], uri: URI, id: String): Project =
+	def getProject(map: Map[URI, LoadedBuildUnit], uri: URI, id: String): ResolvedProject =
 		getBuild(map, uri).defined.getOrElse(id, noProject(uri, id))
-	def getBuild(map: Map[URI, LoadedBuildUnit], uri: URI): LoadedBuildUnit =
+	def getBuild[T](map: Map[URI, T], uri: URI): T =
 		map.getOrElse(uri, noBuild(uri))
 
 	def emptyBuild(uri: URI) = error("No root project defined for build unit '" + uri + "'")
@@ -562,7 +574,14 @@ object Load
 	}
 	
 	final class LoadedBuild(val root: URI, val units: Map[URI, LoadedBuildUnit])
-	final class LoadedBuildUnit(val unit: BuildUnit, val defined: Map[String, Project], val rootProjects: Seq[String], val buildSettings: Seq[Setting[_]])
+	final class PartBuild(val root: URI, val units: Map[URI, PartBuildUnit])
+	sealed trait BuildUnitBase { def rootProjects: Seq[String]; def buildSettings: Seq[Setting[_]] }
+	final class PartBuildUnit(val unit: BuildUnit, val defined: Map[String, Project], val rootProjects: Seq[String], val buildSettings: Seq[Setting[_]]) extends BuildUnitBase
+	{
+		def resolve(f: Project => ResolvedProject): LoadedBuildUnit = new LoadedBuildUnit(unit, defined mapValues f, rootProjects, buildSettings)
+		def resolveRefs(f: ProjectReference => ProjectRef): LoadedBuildUnit = resolve(_ resolve f)
+	}
+	final class LoadedBuildUnit(val unit: BuildUnit, val defined: Map[String, ResolvedProject], val rootProjects: Seq[String], val buildSettings: Seq[Setting[_]]) extends BuildUnitBase
 	{
 		assert(!rootProjects.isEmpty, "No root projects defined for build unit " + unit)
 		def localBase = unit.localBase
@@ -573,10 +592,7 @@ object Load
 	}
 	def getImports(unit: BuildUnit) = baseImports ++ importAll(unit.plugins.pluginNames ++ unit.definitions.buildNames)
 
-	// these are unresolved references
-	def referenced(definitions: Seq[Project]): Seq[ProjectRef] = definitions flatMap referenced
-	def referenced(definition: Project): Seq[ProjectRef] = definition.delegates ++ definition.aggregate ++ definition.dependencies.map(_.project)
-
+	def referenced[PR <: ProjectReference](definitions: Seq[ProjectDefinition[PR]]): Seq[PR] = definitions flatMap { _.referenced }
 	
 	final class BuildStructure(val units: Map[URI, LoadedBuildUnit], val root: URI, val settings: Seq[Setting[_]], val data: Settings[Scope], val index: StructureIndex, val streams: Streams, val delegates: Scope => Seq[Scope], val scopeLocal: ScopeLocal)
 	final class LoadBuildConfiguration(val stagingDirectory: File, val classpath: Seq[File], val loader: ClassLoader, val compilers: Compilers, val evalPluginDef: (BuildStructure, State) => Seq[Attributed[File]], val delegates: LoadedBuild => Scope => Seq[Scope], val scopeLocal: ScopeLocal, val injectSettings: Seq[Setting[_]], val log: Logger)
@@ -598,6 +614,7 @@ object BuildStreams
 	type Streams = std.Streams[ScopedKey[_]]
 	type TaskStreams = std.TaskStreams[ScopedKey[_]]
 	val GlobalPath = "$global"
+	val BuildUnitPath = "$build"
 
 	def mkStreams(units: Map[URI, LoadedBuildUnit], root: URI, data: Settings[Scope], logRelativePath: Seq[String] = defaultLogPath): Streams =
 		std.Streams( path(units, root, logRelativePath), display, LogManager.construct(data) )
@@ -631,7 +648,8 @@ object BuildStreams
 		scoped.scope.project match
 		{
 			case Global => (units(root).localBase, GlobalPath :: Nil)
-			case Select(ProjectRef(Some(uri), Some(id))) => (units(uri).defined(id).base, Nil)
+			case Select(BuildRef(uri)) => (units(uri).localBase, BuildUnitPath :: Nil)
+			case Select(ProjectRef(uri, id)) => (units(uri).defined(id).base, Nil)
 			case Select(pr) => error("Unresolved project reference (" + pr + ") in " + display(scoped))
 			case This => error("Unresolved project reference (This) in " + display(scoped))
 		}

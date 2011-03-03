@@ -12,30 +12,60 @@ package sbt
 	import CommandSupport.logger
 	import compiler.Eval
 
-final case class Project(id: String, base: File, aggregate: Seq[ProjectRef] = Nil, dependencies: Seq[Project.ClasspathDependency] = Nil, delegates: Seq[ProjectRef] = Nil,
-	settings: Seq[Project.Setting[_]] = Project.defaultSettings, configurations: Seq[Configuration] = Configurations.default)
+sealed trait ProjectDefinition[PR <: ProjectReference]
+{
+	def id: String
+	def base: File
+	def configurations: Seq[Configuration]
+	def settings: Seq[Project.Setting[_]]
+	def aggregate: Seq[PR]
+	def delegates: Seq[PR]
+	def dependencies: Seq[Project.ClasspathDep[PR]]
+	def uses: Seq[PR] = aggregate ++ dependencies.map(_.project)
+	def referenced: Seq[PR] = delegates ++ uses
+}
+final case class ResolvedProject(id: String, base: File, aggregate: Seq[ProjectRef], dependencies: Seq[Project.ResolvedClasspathDependency], delegates: Seq[ProjectRef],
+	settings: Seq[Project.Setting[_]], configurations: Seq[Configuration]) extends ProjectDefinition[ProjectRef]
+
+final case class Project(id: String, base: File, aggregate: Seq[ProjectReference] = Nil, dependencies: Seq[Project.ClasspathDependency] = Nil, delegates: Seq[ProjectReference] = Nil,
+	settings: Seq[Project.Setting[_]] = Project.defaultSettings, configurations: Seq[Configuration] = Configurations.default) extends ProjectDefinition[ProjectReference]
 {
 	def dependsOn(deps: Project.ClasspathDependency*): Project = copy(dependencies = dependencies ++ deps)
-	def delegates(from: ProjectRef*): Project = copy(delegates = delegates ++ from)
-	def aggregate(refs: ProjectRef*): Project = copy(aggregate = aggregate ++ refs)
+	def delegates(from: ProjectReference*): Project = copy(delegates = delegates ++ from)
+	def aggregate(refs: ProjectReference*): Project = copy(aggregate = aggregate ++ refs)
 	def configs(cs: Configuration*): Project = copy(configurations = configurations ++ cs)
 	def settings(ss: Project.Setting[_]*): Project = copy(settings = settings ++ ss)
-	
-	def uses = aggregate ++ dependencies.map(_.project)
+	def resolve(resolveRef: ProjectReference => ProjectRef): ResolvedProject =
+	{
+		def resolveRefs(prs: Seq[ProjectReference]) = prs map resolveRef
+		def resolveDeps(ds: Seq[Project.ClasspathDependency]) = ds map resolveDep
+		def resolveDep(d: Project.ClasspathDependency) = Project.ResolvedClasspathDependency(resolveRef(d.project), d.configuration)
+		ResolvedProject(id, base, aggregate = resolveRefs(aggregate), dependencies = resolveDeps(dependencies), delegates = resolveRefs(delegates), settings, configurations)
+	}
+	def resolveBuild(resolveRef: ProjectReference => ProjectReference): Project =
+	{
+		def resolveRefs(prs: Seq[ProjectReference]) = prs map resolveRef
+		def resolveDeps(ds: Seq[Project.ClasspathDependency]) = ds map resolveDep
+		def resolveDep(d: Project.ClasspathDependency) = Project.ClasspathDependency(resolveRef(d.project), d.configuration)
+		copy(aggregate = resolveRefs(aggregate), dependencies = resolveDeps(dependencies), delegates = resolveRefs(delegates))
+	}
 }
-final case class Extracted(structure: Load.BuildStructure, session: SessionSettings, curi: URI, cid: String, rootProject: URI => String)
+final case class Extracted(structure: Load.BuildStructure, session: SessionSettings, currentRef: ProjectRef, rootProject: URI => String)
 {
 	lazy val currentUnit = structure units curi
 	lazy val currentProject = currentUnit defined cid
-	lazy val currentRef = ProjectRef(Some(curi), Some(cid))
+	def curi = currentRef.build
+	def cid = currentRef.project
 }
 
 object Project extends Init[Scope]
 {
 	def defaultSettings: Seq[Setting[_]] = Default.defaultSettings
 
-	final case class ClasspathDependency(project: ProjectRef, configuration: Option[String])
-	final class Constructor(p: ProjectRef) {
+	sealed trait ClasspathDep[PR <: ProjectReference] { def project: PR; def configuration: Option[String] }
+	final case class ResolvedClasspathDependency(project: ProjectRef, configuration: Option[String]) extends ClasspathDep[ProjectRef]
+	final case class ClasspathDependency(project: ProjectReference, configuration: Option[String]) extends ClasspathDep[ProjectReference]
+	final class Constructor(p: ProjectReference) {
 		def %(conf: String): ClasspathDependency = new ClasspathDependency(p, Some(conf))
 	}
 
@@ -45,16 +75,14 @@ object Project extends Init[Scope]
 	def extract(state: State): Extracted =
 	{
 		val se = session(state)
-		val (curi, cid) = se.current
 		val st = structure(state)
-		Extracted(st, se, curi, cid, Load.getRootProject(st.units))
+		Extracted(st, se, se.current, Load.getRootProject(st.units))
 	}
 
-	def getProject(ref: ProjectRef, structure: Load.BuildStructure): Option[Project] =
-		ref match {
-			case ProjectRef(Some(uri), Some(id)) => (structure.units get uri).flatMap(_.defined get id)
-			case _ => None
-		}
+	def getProjectForReference(ref: Reference, structure: Load.BuildStructure): Option[ResolvedProject] =
+		ref match { case pr: ProjectRef => getProject(pr, structure); case _ => None }
+	def getProject(ref: ProjectRef, structure: Load.BuildStructure): Option[ResolvedProject] =
+		(structure.units get ref.build).flatMap(_.defined get ref.project)
 
 	def setProject(session: SessionSettings, structure: Load.BuildStructure, s: State): State =
 	{
@@ -62,19 +90,13 @@ object Project extends Init[Scope]
 		val newState = s.copy(attributes = newAttrs)
 		updateCurrent(newState.runExitHooks())
 	}
-	def current(state: State): (URI, String) = session(state).current
-	def currentRef(state: State): ProjectRef =
-	{
-		val (unit, it) = current(state)
-		ProjectRef(Some(unit), Some(it))
-	}
+	def current(state: State): ProjectRef = session(state).current
 	def updateCurrent(s: State): State =
 	{
 		val structure = Project.structure(s)
-		val (uri, id) = Project.current(s)
-		val ref = ProjectRef(uri, id)
-		val project = Load.getProject(structure.units, uri, id)
-		logger(s).info("Set current project to " + id + " (in build " + uri +")")
+		val ref = Project.current(s)
+		val project = Load.getProject(structure.units, ref.build, ref.project)
+		logger(s).info("Set current project to " + ref.project + " (in build " + ref.build +")")
 		def get[T](k: SettingKey[T]): Option[T] = k in ref get structure.data
 
 		val history = get(historyPath) flatMap identity
@@ -91,7 +113,26 @@ object Project extends Init[Scope]
 		translateUninitialized( make(settings)(delegates, scopeLocal) )
 
 	def display(scoped: ScopedKey[_]): String = Scope.display(scoped.scope, scoped.key.label)
-	def display(ref: ProjectRef): String = "(" + (ref.uri map (_.toString) getOrElse "<this>") + ")" + (ref.id getOrElse "<root>")
+	def display(ref: Reference): String =
+		ref match
+		{
+			case pr: ProjectReference => display(pr)
+			case br: BuildReference => display(br)
+		}
+	def display(ref: BuildReference) =
+		ref match
+		{
+			case ThisBuild => "<this>"
+			case BuildRef(uri) => "[" + uri + "]"
+		}
+	def display(ref: ProjectReference) =
+		ref match
+		{
+			case ThisProject => "(<this>)<this>"
+			case LocalProject(id) => "(<this>)" + id
+			case RootProject(uri) => "(" + uri + ")<root>"
+			case ProjectRef(uri, id) => "(" + uri + ")" + id
+		}
 
 	def fillTaskAxis(scoped: ScopedKey[_]): ScopedKey[_] =
 		ScopedKey(Scope.fillTaskAxis(scoped.scope, scoped.key), scoped.key)
@@ -159,7 +200,7 @@ final case class SessionSettings(currentBuild: URI, currentProject: Map[URI, Str
 {
 	assert(currentProject contains currentBuild, "Current build (" + currentBuild + ") not associated with a current project.")
 	def setCurrent(build: URI, project: String, eval: () => Eval): SessionSettings = copy(currentBuild = build, currentProject = currentProject.updated(build, project), currentEval = eval)
-	def current: (URI, String) = (currentBuild, currentProject(currentBuild))
+	def current: ProjectRef = ProjectRef(currentBuild, currentProject(currentBuild))
 	def appendSettings(s: Seq[SessionSetting]): SessionSettings = copy(append = modify(append, _ ++ s))
 	def prependSettings(s: Seq[SessionSetting]): SessionSettings = copy(prepend = modify(prepend, s ++ _))
 	def mergeSettings: Seq[Setting[_]] = merge(prepend) ++ original ++ merge(append)
@@ -175,7 +216,7 @@ final case class SessionSettings(currentBuild: URI, currentProject: Map[URI, Str
 object SessionSettings
 {
 	type SessionSetting = (Setting[_], String)
-	type SessionMap = Map[(URI, String), Seq[SessionSetting]]
+	type SessionMap = Map[ProjectRef, Seq[SessionSetting]]
 
 	def reapply(session: SessionSettings, s: State): State =
 		BuiltinCommands.reapply(session, Project.structure(s), s)
@@ -209,16 +250,16 @@ object SessionSettings
 			val newAppend = session.append.updated(current, removeRanges(session.append.getOrElse(current, Nil), ranges))
 			reapply(session.copy( append = newAppend ), s)
 		}
-	def saveAllSettings(s: State): State = saveSomeSettings(s)((_,_) => true)
+	def saveAllSettings(s: State): State = saveSomeSettings(s)(_ => true)
 	def saveSettings(s: State): State =
 	{
-		val (curi,cid) = Project.session(s).current
-		saveSomeSettings(s)( (uri,id) => uri == curi && id == cid)
+		val current = Project.session(s).current
+		saveSomeSettings(s)( _ == current)
 	}
-	def saveSomeSettings(s: State)(include: (URI,String) => Boolean): State =
+	def saveSomeSettings(s: State)(include: ProjectRef => Boolean): State =
 		withSettings(s){session =>
-			for( ((uri,id), settings) <- session.append if !settings.isEmpty && include(uri,id) )
-				writeSettings(ProjectRef(uri, id), settings, Project.structure(s))
+			for( (ref, settings) <- session.append if !settings.isEmpty && include(ref) )
+				writeSettings(ref, settings, Project.structure(s))
 			reapply(session.copy(original = session.mergeSettings, append = Map.empty, prepend = Map.empty), s)
 		}
 	def writeSettings(pref: ProjectRef, settings: Seq[SessionSetting], structure: Load.BuildStructure)
@@ -226,14 +267,14 @@ object SessionSettings
 		val project = Project.getProject(pref, structure).getOrElse(error("Invalid project reference " + pref))
 		val appendTo: File = BuildPaths.configurationSources(project.base).headOption.getOrElse(new File(project.base, "build.sbt"))
 		val baseAppend = settingStrings(settings).flatMap("" :: _ :: Nil)
-		val adjustedLines = if(appendTo.isFile && hasTrailingBlank(IO.readLines(appendTo)) ) baseAppend else "" +: baseAppend
+		val adjustedLines = if(appendTo.isFile && hasTrailingBlank(IO readLines appendTo) ) baseAppend else "" +: baseAppend
 		IO.writeLines(appendTo, adjustedLines, append = true)
 	}
 	def hasTrailingBlank(lines: Seq[String]) = lines.takeRight(1).exists(_.trim.isEmpty) 
 	def printAllSettings(s: State): State =
 		withSettings(s){ session =>
-			for( ((uri,id), settings) <- session.append if !settings.isEmpty) {
-				println("In " + Project.display(ProjectRef(uri,id)))
+			for( (ref, settings) <- session.append if !settings.isEmpty) {
+				println("In " + Project.display(ref))
 				printSettings(settings)
 			}
 			s
@@ -307,26 +348,7 @@ save, save-all
 
 trait ProjectConstructors
 {
-	implicit def configDependencyConstructor[T <% ProjectRef](p: T): Project.Constructor = new Project.Constructor(p)
-	implicit def classpathDependency[T <% ProjectRef](p: T): Project.ClasspathDependency = new Project.ClasspathDependency(p, None)
+	implicit def configDependencyConstructor[T <% ProjectReference](p: T): Project.Constructor = new Project.Constructor(p)
+	implicit def classpathDependency[T <% ProjectReference](p: T): Project.ClasspathDependency = new Project.ClasspathDependency(p, None)
 }
-// the URI must be resolved and normalized before it is definitive
-final case class ProjectRef(uri: Option[URI], id: Option[String])
-object ProjectRef
-{
-	def apply(base: URI, id: String): ProjectRef = ProjectRef(Some(base), Some(id))
-	/** Reference to the project with 'id' in the current build unit.*/
-	def apply(id: String): ProjectRef = ProjectRef(None, Some(id))
-	def apply(base: File, id: String): ProjectRef = ProjectRef(Some(IO.toURI(base)), Some(id))
-	/** Reference to the root project at 'base'.*/
-	def apply(base: URI): ProjectRef = ProjectRef(Some(base), None)
-	/** Reference to the root project at 'base'.*/
-	def apply(base: File): ProjectRef = ProjectRef(Some(IO.toURI(base)), None)
-	/** Reference to the root project in the current build unit.*/
-	def root = ProjectRef(None, None)
 
-	implicit def stringToRef(s: String): ProjectRef = ProjectRef(s)
-	implicit def projectToRef(p: Project): ProjectRef = ProjectRef(p.id)
-	implicit def uriToRef(u: URI): ProjectRef = ProjectRef(u)
-	implicit def fileToRef(f: File): ProjectRef = ProjectRef(f)
-}
