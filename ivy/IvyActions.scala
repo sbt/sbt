@@ -138,7 +138,7 @@ object IvyActions
 			val map = rawMap.asInstanceOf[java.util.Map[ArtifactDownloadReport,java.util.Set[String]]]
 			val confMap = new collection.mutable.HashMap[String, Seq[File]]
 
-				import collection.JavaConversions.{asScalaMap,asScalaSet}
+				import collection.JavaConversions._
 			for( (report, all) <- map; retrieved <- all; val file = new File(retrieved); conf <- report.getArtifact.getConfigurations)
 				confMap.put(conf, file +: confMap.getOrElse(conf, Nil))
 			confMap.toMap

@@ -380,7 +380,7 @@ object Scoped
 		}
 		private val ssToSK = new (ScopedSetting ~> ScopedKey) { def apply[T](sk: ScopedSetting[T]) = new ScopedKey(sk.scope, sk.key) }
 		private val stToSK = new (ScopedTask ~> ScopedTaskKey) { def apply[T](st: ScopedTask[T]) = new ScopedKey(st.scope, st.key) }
-		private type ScopedTaskKey[T] = ScopedKey[Task[T]]
+		type ScopedTaskKey[T] = ScopedKey[Task[T]]
 	}	
 
 	final class Apply2[A,B](t2: (ScopedSetting[A], ScopedSetting[B])) {

@@ -106,6 +106,7 @@ final class Eval(optionsNoncp: Seq[String], classpath: Seq[File], mkReporter: Se
 		//wrap tree in object objectName { def WrapValName = <tree> }
 	def augment(parser: global.syntaxAnalyzer.UnitParser, imports: Seq[Tree], tree: Tree, tpt: Tree, objectName: String): Tree =
 	{
+		val emptyTypeName = nme.EMPTY.toTypeName
 		def emptyPkg = parser.atPos(0, 0, 0) { Ident(nme.EMPTY_PACKAGE_NAME) }
 		def emptyInit = DefDef(
 			NoMods,
@@ -113,7 +114,7 @@ final class Eval(optionsNoncp: Seq[String], classpath: Seq[File], mkReporter: Se
 			Nil,
 			List(Nil),
 			TypeTree(),
-			Block(List(Apply(Select(Super("", ""), nme.CONSTRUCTOR), Nil)), Literal(Constant(())))
+			Block(List(Apply(Select(Super(emptyTypeName, emptyTypeName), nme.CONSTRUCTOR), Nil)), Literal(Constant(())))
 		)
 
 		def method = DefDef(NoMods, WrapValName, Nil, Nil, tpt, tree)
