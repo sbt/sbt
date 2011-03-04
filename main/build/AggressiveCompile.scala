@@ -47,9 +47,10 @@ class AggressiveCompile(cacheDirectory: File)
 			val extApis = getAnalysis(f) match { case Some(a) => a.apis.external; case None => Map.empty[String, Source] }
 			extApis.get _
 		}
+		val absClasspath = classpath.map(_.getCanonicalFile)
 		val apiOption= (api: Either[Boolean, Source]) => api.right.toOption
 		val cArgs = new CompilerArguments(compiler.scalaInstance, compiler.cp)
-		val searchClasspath = withBootclasspath(cArgs, classpath)
+		val searchClasspath = withBootclasspath(cArgs, absClasspath)
 		val entry = Locate.entry(searchClasspath)
 		
 		val compile0 = (include: Set[File], callback: AnalysisCallback) => {
@@ -59,16 +60,16 @@ class AggressiveCompile(cacheDirectory: File)
 			println("Compiling:\n\t" + incSrc.mkString("\n\t"))
 			if(!scalaSrcs.isEmpty)
 			{
-				val arguments = cArgs(incSrc, classpath, outputDirectory, options.options)
+				val arguments = cArgs(incSrc, absClasspath, outputDirectory, options.options)
 				compiler.compile(arguments, callback, maxErrors, log)
 			}
 			if(!javaSrcs.isEmpty)
 			{
 				import Path._
-				val loader = ClasspathUtilities.toLoader(classpath, compiler.scalaInstance.loader)
+				val loader = ClasspathUtilities.toLoader(absClasspath, compiler.scalaInstance.loader)
 				def readAPI(source: File, classes: Seq[Class[_]]) { callback.api(source, ClassToAPI(classes)) }
 				Analyze(outputDirectory, javaSrcs, javaSrcBases, log)(callback, loader, readAPI) {
-					javac(javaSrcs, classpath, outputDirectory, options.javacOptions)
+					javac(javaSrcs, absClasspath, outputDirectory, options.javacOptions)
 				}
 			}
 		}
