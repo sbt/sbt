@@ -9,7 +9,7 @@ package sbt
 	import classpath.ClasspathUtilities
 	import scala.annotation.tailrec
 	import collection.mutable
-	import Compile.{Compilers,Inputs}
+	import Compiler.{Compilers,Inputs}
 	import Project.{inScope, ScopedKey, ScopeLocal, Setting}
 	import Keys.{appConfiguration, configuration, thisProject, thisProjectRef}
 	import TypeFunctions.{Endo,Id}
@@ -21,7 +21,7 @@ package sbt
 trait Build
 {
 	def projects: Seq[Project]
-	def settings: Seq[Setting[_]] = Default.buildCore
+	def settings: Seq[Setting[_]] = Defaults.buildCore
 }
 trait Plugin
 {
@@ -220,7 +220,7 @@ object Load
 		val loader = getClass.getClassLoader
 		val provider = state.configuration.provider
 		val classpath = provider.mainClasspath ++ provider.scalaProvider.jars
-		val compilers = Compile.compilers(state.configuration, log)
+		val compilers = Compiler.compilers(state.configuration, log)
 		val evalPluginDef = EvaluateTask.evalPluginDef(log) _
 		val delegates = memo(defaultDelegates)
 		val inject: Seq[Project.Setting[_]] = ((appConfiguration in GlobalScope) :== state.configuration) +: EvaluateTask.injectSettings
@@ -516,8 +516,8 @@ object Load
 
 	def build(classpath: Seq[File], sources: Seq[File], target: File, compilers: Compilers, log: Logger): (Inputs, inc.Analysis) =
 	{
-		val inputs = Compile.inputs(classpath, sources, target, Nil, Nil, Nil, Compile.DefaultMaxErrors)(compilers, log)
-		val analysis = Compile(inputs, log)
+		val inputs = Compiler.inputs(classpath, sources, target, Nil, Nil, Nil, Compiler.DefaultMaxErrors)(compilers, log)
+		val analysis = Compiler(inputs, log)
 		(inputs, analysis)
 	}
 
@@ -543,7 +543,7 @@ object Load
 	def discover(analysis: inc.Analysis, subclasses: String*): Seq[String] =
 	{
 		val subclassSet = subclasses.toSet
-		val ds = Discovery(subclassSet, Set.empty)(Test.allDefs(analysis))
+		val ds = Discovery(subclassSet, Set.empty)(Tests.allDefs(analysis))
 		ds.flatMap {
 			case (definition, Discovered(subs,_,_,true)) =>
 				if((subs & subclassSet).isEmpty) Nil else definition.name :: Nil

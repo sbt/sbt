@@ -16,7 +16,7 @@ package sbt
 	import java.io.File
 
 sealed trait TestOption
-object Test
+object Tests
 {
 	type Output = (TestResult.Value, Map[String,TestResult.Value])
 	

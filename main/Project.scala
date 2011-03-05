@@ -60,7 +60,7 @@ final case class Extracted(structure: Load.BuildStructure, session: SessionSetti
 
 object Project extends Init[Scope]
 {
-	def defaultSettings: Seq[Setting[_]] = Default.defaultSettings
+	def defaultSettings: Seq[Setting[_]] = Defaults.defaultSettings
 
 	sealed trait ClasspathDep[PR <: ProjectReference] { def project: PR; def configuration: Option[String] }
 	final case class ResolvedClasspathDependency(project: ProjectRef, configuration: Option[String]) extends ClasspathDep[ProjectRef]

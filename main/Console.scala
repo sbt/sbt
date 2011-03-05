@@ -26,10 +26,8 @@ final class Console(compiler: AnalyzingCompiler)
 }
 object Console
 {
-	val SbtInitial = "import sbt._, Process._, current._"
-	
 	def apply(conf: build.Compile)(implicit log: Logger): Console = new Console( compiler(conf) )
-	def apply(conf: Compile.Inputs): Console = new Console( conf.compilers.scalac )
+	def apply(conf: Compiler.Inputs): Console = new Console( conf.compilers.scalac )
 
 	def compiler(conf: build.Compile)(implicit log: Logger): AnalyzingCompiler =
 	{
@@ -41,7 +39,7 @@ object Console
 		val extracted = Project extract state
 		val bindings = ("state" -> state) :: ("extracted" -> extracted ) :: Nil
 		val unit = extracted.currentUnit
-		val compiler = Compile.compilers(state.configuration, log).scalac
+		val compiler = Compiler.compilers(state.configuration, log).scalac
 		val imports = Load.getImports(unit.unit) ++ Load.importAll(bindings.map(_._1))
 		val importString = imports.mkString("", ";\n", ";\n\n")
 		val initCommands = importString + extra

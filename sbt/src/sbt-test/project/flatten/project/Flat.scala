@@ -6,7 +6,7 @@ object Flat extends Build
 {
 	lazy val projects = Seq(root)
 	lazy val root = Project("root", file("."),
-		settings = Default.defaultSettings ++ forConfig(Compile, "src") ++ forConfig(Test, "test-src") ++ baseSettings
+		settings = Defaults.defaultSettings ++ forConfig(Compile, "src") ++ forConfig(Test, "test-src") ++ baseSettings
 	)
 
 	def baseSettings = Seq(

@@ -11,6 +11,18 @@ package object sbt extends sbt.std.TaskExtra with sbt.Types with sbt.ProcessExtr
 		if(m.isDefined) Some(m.get) else None
 	def uri(s: String): URI = new URI(s)
 	def file(s: String): File = new File(s)
+	
+		import sbt.{Configurations => C}
+	def Compile = C.Compile
+	def Test = C.Test
+	def Runtime = C.Runtime
+	def IntegrationTest = C.IntegrationTest
+	def Default = C.Default
+	def Javadoc = C.Javadoc
+	def Sources = C.Sources
+	def Provided = C.Provided
+	def System = C.System
+	def Optional = C.Optional
 
 	implicit def globFilter(expression: String): NameFilter = GlobFilter(expression)
 }

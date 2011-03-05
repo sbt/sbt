@@ -17,7 +17,7 @@ package sbt
 	import descriptor.ModuleDescriptor, id.ModuleRevisionId
 	import Types._
 
-object Default
+object Defaults
 {
 	import Path._
 	import GlobFilter._
@@ -106,7 +106,7 @@ object Default
 	)
 
 	def compileBase = Seq(
-		compilers <<= (scalaInstance, appConfiguration, streams) map { (si, app, s) => Compile.compilers(si)(app, s.log) },
+		compilers <<= (scalaInstance, appConfiguration, streams) map { (si, app, s) => Compiler.compilers(si)(app, s.log) },
 		javacOptions in GlobalScope :== Nil,
 		scalacOptions in GlobalScope :== Nil,
 		scalaInstance <<= (appConfiguration, scalaVersion){ (app, version) => ScalaInstance(version, app.provider.scalaProvider.launcher) },
@@ -172,16 +172,16 @@ object Default
 			frameworks.flatMap(f => f.create(loader, s.log).map( x => (f,x)).toIterable).toMap
 		},
 		definedTests <<= (loadedTestFrameworks, compile, streams) map { (frameworkMap, analysis, s) =>
-			val tests = Test.discover(frameworkMap.values.toSeq, analysis, s.log)._1
+			val tests = Tests.discover(frameworkMap.values.toSeq, analysis, s.log)._1
 			IO.writeLines(s.text(CompletionsID), tests.map(_.name).distinct)
 			tests
 		},
 		testListeners <<= (streams in test) map ( s => TestLogger(s.log) :: Nil ),
-		testOptions <<= testListeners map { listeners => Test.Listeners(listeners) :: Nil },
+		testOptions <<= testListeners map { listeners => Tests.Listeners(listeners) :: Nil },
 		executeTests <<= (streams in test, loadedTestFrameworks, testOptions, testLoader, definedTests) flatMap {
-			(s, frameworkMap, options, loader, discovered) => Test(frameworkMap, loader, discovered, options, s.log)
+			(s, frameworkMap, options, loader, discovered) => Tests(frameworkMap, loader, discovered, options, s.log)
 		},
-		test <<= (executeTests, streams) map { (results, s) => Test.showResults(s.log, results) },
+		test <<= (executeTests, streams) map { (results, s) => Tests.showResults(s.log, results) },
 		testOnly <<= testOnlyTask
 	)
 
@@ -189,9 +189,9 @@ object Default
 	InputTask(resolvedScoped(testOnlyParser)) ( result =>  
 		(streams, loadedTestFrameworks, testOptions, testLoader, definedTests, result) flatMap {
 			case (s, frameworks, opts, loader, discovered, (tests, frameworkOptions)) =>
-				val modifiedOpts = Test.Filter(if(tests.isEmpty) _ => true else tests.toSet ) +: Test.Argument(frameworkOptions : _*) +: opts
-				Test(frameworks, loader, discovered, modifiedOpts, s.log) map { results =>
-					Test.showResults(s.log, results)
+				val modifiedOpts = Tests.Filter(if(tests.isEmpty) _ => true else tests.toSet ) +: Tests.Argument(frameworkOptions : _*) +: opts
+				Tests(frameworks, loader, discovered, modifiedOpts, s.log) map { results =>
+					Tests.showResults(s.log, results)
 				}
 		}
 	)
@@ -279,7 +279,7 @@ object Default
 	def mainRunTask = run <<= runTask(fullClasspath in Configurations.Runtime, mainClass in run, runner in run)
 
 	def discoverMainClasses(analysis: inc.Analysis): Seq[String] =
-		Discovery.applications(Test.allDefs(analysis)) collect { case (definition, discovered) if(discovered.hasMain) => definition.name }
+		Discovery.applications(Tests.allDefs(analysis)) collect { case (definition, discovered) if(discovered.hasMain) => definition.name }
 
 	def consoleProjectTask = (EvaluateTask.state, streams, initialCommands in consoleProject) map { (state, s, extra) => Console.sbt(state, extra)(s.log); println() }
 	def consoleTask: Initialize[Task[Unit]] = consoleTask(fullClasspath, console)
@@ -290,14 +290,14 @@ object Default
 			println()
 	}
 	
-	def compileTask = (compileInputs, streams) map { (i,s) => Compile(i,s.log) }
+	def compileTask = (compileInputs, streams) map { (i,s) => Compiler(i,s.log) }
 	def compileInputsTask =
 		(dependencyClasspath, sources, javaSourceRoots, compilers, javacOptions, scalacOptions, cacheDirectory, classDirectory, streams) map {
 		(cp, srcs, javaRoots, cs, javacOpts, scalacOpts, cacheDir, classes, s) =>
 			val classpath = classes +: data(cp)
 			val analysis = analysisMap(cp)
 			val cache = cacheDir / "compile"
-			Compile.inputs(classpath, srcs, classes, scalacOpts, javacOpts, javaRoots, analysis, cache, 100)(cs, s.log)
+			Compiler.inputs(classpath, srcs, classes, scalacOpts, javacOpts, javaRoots, analysis, cache, 100)(cs, s.log)
 		}
 
 	def copyResourcesTask =
@@ -375,7 +375,7 @@ object Classpaths
 		import GlobFilter._
 		import Keys._
 		import Scope.ThisScope
-		import Default._
+		import Defaults._
 		import Attributed.{blank, blankSeq}
 
 	def concat[T](a: ScopedTaskable[Seq[T]], b: ScopedTaskable[Seq[T]]): Initialize[Task[Seq[T]]] = (a,b) map (_ ++ _)

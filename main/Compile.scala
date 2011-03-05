@@ -8,7 +8,7 @@ package sbt
 	import inc._
 	import java.io.File
 
-object Compile
+object Compiler
 {
 	val DefaultMaxErrors = 100
 
