@@ -26,7 +26,7 @@ object ScalaInstance
 	def apply(version: String, launcher: xsbti.Launcher): ScalaInstance =
 		apply(version, launcher.getScala(version))
 	def apply(version: String, provider: xsbti.ScalaProvider): ScalaInstance =
-		new ScalaInstance(version, provider.loader, provider.libraryJar, provider.compilerJar, provider.jars - provider.libraryJar - provider.compilerJar)
+		new ScalaInstance(version, provider.loader, provider.libraryJar, provider.compilerJar, (provider.jars.toSet - provider.libraryJar - provider.compilerJar).toSeq)
 
 	def apply(scalaHome: File, launcher: xsbti.Launcher): ScalaInstance =
 		apply(libraryJar(scalaHome), compilerJar(scalaHome), launcher, jlineJar(scalaHome))
