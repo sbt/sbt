@@ -68,7 +68,7 @@ private object BootConfiguration
 	/** The name of the directory to retrieve the application and its dependencies to.*/
 	def appDirectoryName(appID: xsbti.ApplicationID, sep: String) = appID.groupID + sep + appID.name + sep + appID.version
 	/** The name of the directory in the boot directory to put all jars for the given version of scala in.*/
-	def baseDirectoryName(scalaVersion: String) = "scala-" + scalaVersion
+	def baseDirectoryName(scalaVersion: String) = if(scalaVersion.isEmpty) "other" else "scala-" + scalaVersion
 }
 private object ProxyProperties
 {

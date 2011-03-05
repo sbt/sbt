@@ -23,12 +23,12 @@ object ScalaInstance
 	def apply(version: String, launcher: xsbti.Launcher): ScalaInstance =
 		apply(version, launcher.getScala(version))
 	def apply(version: String, provider: xsbti.ScalaProvider): ScalaInstance =
-		new ScalaInstance(version, provider.loader, provider.libraryJar, provider.compilerJar, Nil)
+		new ScalaInstance(version, provider.loader, provider.libraryJar, provider.compilerJar, (Set(provider.jars: _*) - provider.libraryJar - provider.compilerJar).toSeq)
 
 	def apply(scalaHome: File, launcher: xsbti.Launcher): ScalaInstance =
-		apply(libraryJar(scalaHome), compilerJar(scalaHome), launcher)
+		apply(libraryJar(scalaHome), compilerJar(scalaHome), launcher, jlineJar(scalaHome))
 	def apply(version: String, scalaHome: File, launcher: xsbti.Launcher): ScalaInstance =
-		apply(version, libraryJar(scalaHome), compilerJar(scalaHome), launcher)
+		apply(version, libraryJar(scalaHome), compilerJar(scalaHome), launcher, jlineJar(scalaHome))
 	def apply(libraryJar: File, compilerJar: File, launcher: xsbti.Launcher, extraJars: File*): ScalaInstance =
 	{
 		val loader = scalaLoader(launcher, libraryJar :: compilerJar :: extraJars.toList)
@@ -40,6 +40,7 @@ object ScalaInstance
 
 	private def compilerJar(scalaHome: File) = scalaJar(scalaHome, "scala-compiler.jar")
 	private def libraryJar(scalaHome: File) = scalaJar(scalaHome, "scala-library.jar")
+	private def jlineJar(scalaHome: File) = scalaJar(scalaHome, "jline.jar")
 	def scalaJar(scalaHome: File, name: String)  =  new File(scalaHome, "lib" + File.separator + name)
 
 	/** Gets the version of Scala in the compiler.properties file from the loader.*/

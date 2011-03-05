@@ -72,10 +72,24 @@ class Launch private[xsbt](val bootDirectory: File, val ivyOptions: IvyOptions) 
 	private val scalaProviders = new Cache[String, ScalaProvider](new ScalaProvider(_))
 	def getScala(version: String): xsbti.ScalaProvider = scalaProviders(version)
 
-	lazy val topLoader = new BootFilteredLoader(getClass.getClassLoader)
+	lazy val topLoader = (new JNAProvider).loader
 	val updateLockFile = new File(bootDirectory, "sbt.boot.lock")
 
 	def globalLock: xsbti.GlobalLock = Locks
+
+	class JNAProvider extends Provider
+	{
+		lazy val id = new Application("net.java.dev.jna", "jna", new Version.Explicit("3.2.3"), "", Nil, false, array())
+		lazy val configuration = new UpdateConfiguration(bootDirectory, ivyOptions.cacheDirectory, "", repositories)
+		lazy val libDirectory = new File(bootDirectory, baseDirectoryName(""))
+		def baseDirectories: List[File] = new File(libDirectory, appDirectoryName(id.toID, File.separator)) :: Nil
+		def testLoadClasses: List[String] = "com.sun.jna.Function" :: Nil
+		def extraClasspath = array()
+		def target = new UpdateApp(id, Nil)
+		lazy val parentLoader = new BootFilteredLoader(getClass.getClassLoader)
+		def failLabel = "JNA"
+		def lockFile = updateLockFile
+	}
 
 	class ScalaProvider(val version: String) extends xsbti.ScalaProvider with Provider
 	{
@@ -85,9 +99,9 @@ class Launch private[xsbt](val bootDirectory: File, val ivyOptions: IvyOptions) 
 		lazy val configuration = new UpdateConfiguration(bootDirectory, cacheDirectory, version, repositories)
 		lazy val libDirectory = new File(configuration.bootDirectory, baseDirectoryName(version))
 		lazy val scalaHome = new File(libDirectory, ScalaDirectoryName)
-		def compilerJar = new File(scalaHome,CompilerModuleName + ".jar")
+		def compilerJar = new File(scalaHome, CompilerModuleName + ".jar")
 		def libraryJar = new File(scalaHome, LibraryModuleName + ".jar")
-		override def classpath = array(compilerJar, libraryJar)
+		override def classpath = Provider.getJars(scalaHome :: Nil)
 		def baseDirectories = List(scalaHome)
 		def testLoadClasses = TestLoadScalaClasses
 		def target = new UpdateScala(classifiers.forScala)
