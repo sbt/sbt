@@ -26,11 +26,11 @@ import util.{DefaultMessageLogger, Message, MessageLoggerEngine}
 
 import BootConfiguration._
 
-sealed trait UpdateTarget extends NotNull { def tpe: String; def classifiers: List[String] }
+sealed trait UpdateTarget { def tpe: String; def classifiers: List[String] }
 final class UpdateScala(val classifiers: List[String]) extends UpdateTarget { def tpe = "scala" }
 final class UpdateApp(val id: Application, val classifiers: List[String]) extends UpdateTarget { def tpe = "app" }
 
-final class UpdateConfiguration(val bootDirectory: File, val ivyCacheDirectory: Option[File], val scalaVersion: String, val repositories: List[Repository]) extends NotNull
+final class UpdateConfiguration(val bootDirectory: File, val ivyCacheDirectory: Option[File], val scalaVersion: String, val repositories: List[Repository])
 
 /** Ensures that the Scala and application jars exist for the given versions or else downloads them.*/
 final class Update(config: UpdateConfiguration)
@@ -97,7 +97,7 @@ final class Update(config: UpdateConfiguration)
 		target match
 		{
 			case u: UpdateScala =>
-				addDependency(moduleID, ScalaOrg, CompilerModuleName, scalaVersion, "default", u.classifiers)
+				addDependency(moduleID, ScalaOrg, CompilerModuleName, scalaVersion, "default;optional", u.classifiers)
 				addDependency(moduleID, ScalaOrg, LibraryModuleName, scalaVersion, "default", u.classifiers)
 				System.out.println("Getting Scala " + scalaVersion + " ...")
 			case u: UpdateApp =>
@@ -122,7 +122,8 @@ final class Update(config: UpdateConfiguration)
 	private def addDependency(moduleID: DefaultModuleDescriptor, organization: String, name: String, revision: String, conf: String, classifiers: List[String])
 	{
 		val dep = new DefaultDependencyDescriptor(moduleID, createID(organization, name, revision), false, false, true)
-		dep.addDependencyConfiguration(DefaultIvyConfiguration, conf)
+		for(c <- conf.split(";"))
+			dep.addDependencyConfiguration(DefaultIvyConfiguration, c)
 		for(classifier <- classifiers)
 			addClassifier(dep, name, classifier)
 		moduleID.addDependency(dep)
