@@ -119,16 +119,17 @@ object Scope
 			case Global => scope :: GlobalScope :: Nil
 			case This => scope.copy(project = Global) :: GlobalScope :: Nil
 			case Select(proj) =>
+				val projI = withRawBuilds(linearize(scope.project, Nil)(projectInherit)).distinct
 				val prod =
 					for {
-						c <- linearize(scope.config)(configInherit(proj, _))
-						t <- linearize(scope.task)(taskInherit(proj,_))
-						e <- linearize(scope.extra)(extraInherit(proj,_))
+						px <- projI
+						p = px.toOption getOrElse proj
+						c <- linearize(scope.config)(configInherit(p, _))
+						t <- linearize(scope.task)(taskInherit(p,_))
+						e <- linearize(scope.extra)(extraInherit(p,_))
 					} yield
-						Scope(Select(proj),c,t,e)
-				val projI =
-					withRawBuilds(linearize(scope.project, Nil)(projectInherit)) map { p => scope.copy(project = p) }
-				(prod ++ projI :+ GlobalScope).distinct
+						Scope(px,c,t,e)
+				(prod :+ GlobalScope).distinct
 		}
 	}
 	def withRawBuilds(ps: Seq[ScopeAxis[Reference]]): Seq[ScopeAxis[Reference]] =
@@ -140,7 +141,7 @@ object Scope
 	def linearize[T](axis: ScopeAxis[T], append: Seq[ScopeAxis[T]] = Global :: Nil)(inherit: T => Seq[T]): Seq[ScopeAxis[T]] =
 		axis match
 		{
-			case Select(x) => Dag.topologicalSort(x)(inherit).map(Select.apply).reverse ++ append
+			case Select(x) => (Dag.topologicalSort(x)(inherit).map(Select.apply).reverse ++ append).distinct
 			case Global | This => append
 		}
 }
