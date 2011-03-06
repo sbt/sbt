@@ -14,7 +14,9 @@ final case class State(
 	commands: Seq[String],
 	attributes: AttributeMap,
 	next: Next.Value
-) extends Identity
+) extends Identity {
+	lazy val combinedParser = Command.combine(processors)(this)
+}
 
 trait Identity {
 	override final def hashCode = super.hashCode

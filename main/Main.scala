@@ -95,7 +95,7 @@ object BuiltinCommands
 		val name = token(OpOrID.examples( aliasNames(s) : _*) )
 		val assign = token(Space ~ '=' ~ OptSpace)
 		val sfree = removeAliases(s)
-		val to = matched(Command.combine(sfree.processors)(sfree), partial = true) | any.+.string
+		val to = matched(sfree.combinedParser, partial = true) | any.+.string
 		val base = (OptSpace ~> (name ~ (assign ~> to.?).?).?)
 		applyEffect(base)(t => runAlias(s, t) )
 	}
@@ -112,8 +112,7 @@ object BuiltinCommands
 	def shell = Command.command(Shell, ShellBrief, ShellDetailed) { s =>
 		val history = (s get historyPath.key) getOrElse Some((s.baseDir / ".history").asFile)
 		val prompt = (s get shellPrompt.key) match { case Some(pf) => pf(s); case None => "> " }
-		val parser = Command.combine(s.processors)
-		val reader = new FullReader(history, parser(s))
+		val reader = new FullReader(history, s.combinedParser)
 		val line = reader.readLine(prompt)
 		line match {
 			case Some(line) => s.copy(onFailure = Some(Shell), commands = line +: Shell +: s.commands)
@@ -430,7 +429,7 @@ object BuiltinCommands
 	def newAlias(name: String, value: String): Command =
 		Command.make(name, (name, "'" + value + "'"), "Alias of '" + value + "'")(aliasBody(name, value)).tag(CommandAliasKey, (name, value))
 	def aliasBody(name: String, value: String)(state: State): Parser[() => State] =
-		Parser(Command.combine(state.processors)(state))(value)
+		Parser(Command.combine(removeAlias(state,name).processors)(state))(value)
 
 	val CommandAliasKey = AttributeKey[(String,String)]("is-command-alias")
 }
