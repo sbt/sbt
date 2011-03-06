@@ -5,9 +5,9 @@ To build from source, get the latest stable version of sbt (above) and get the c
 	$ git clone git://github.com/harrah/xsbt.git
 	$ cd xsbt
 
-The latest tag for 0.9.x is 0.9.0:
+The latest tag for 0.9.x is 0.9.1:
 
-	$ git checkout v0.9.0
+	$ git checkout v0.9.1
 
 Or, get the development branch for 0.9.x:
 
@@ -19,4 +19,8 @@ To build:
 
 Copy your stable ~/bin/sbt script to ~/bin/xsbt and change it to use the launcher at:
 
-	<xsbt>/target/sbt-launch-0.9.0-SNAPSHOT.jar
+	<xsbt>/target/sbt-launch-0.9.1.jar
+
+If using the 0.9 development branch, the launcher is at:
+
+	<xsbt>/target/sbt-launch-0.9.2-SNAPSHOT.jar
