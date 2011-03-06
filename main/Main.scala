@@ -93,7 +93,7 @@ object BuiltinCommands
 
 	def alias = Command.make(AliasCommand, AliasBrief, AliasDetailed) { s =>
 		val name = token(OpOrID.examples( aliasNames(s) : _*) )
-		val assign = token(Space ~ '=' ~ OptSpace)
+		val assign = token(OptSpace ~ '=' ~ OptSpace)
 		val sfree = removeAliases(s)
 		val to = matched(sfree.combinedParser, partial = true) | any.+.string
 		val base = (OptSpace ~> (name ~ (assign ~> to.?).?).?)
@@ -429,7 +429,7 @@ object BuiltinCommands
 	def newAlias(name: String, value: String): Command =
 		Command.make(name, (name, "'" + value + "'"), "Alias of '" + value + "'")(aliasBody(name, value)).tag(CommandAliasKey, (name, value))
 	def aliasBody(name: String, value: String)(state: State): Parser[() => State] =
-		Parser(Command.combine(removeAlias(state,name).processors)(state))(value)
+		OptSpace ~> Parser(Command.combine(removeAlias(state,name).processors)(state))(value)
 
 	val CommandAliasKey = AttributeKey[(String,String)]("is-command-alias")
 }
