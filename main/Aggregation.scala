@@ -15,7 +15,7 @@ package sbt
 sealed trait Aggregation
 final object Aggregation
 {
-	def apply(dependencies: Seq[ProjectRef], transitive: Boolean = true): Aggregation = new Explicit(dependencies, transitive)
+	def apply(dependencies: Seq[ProjectReference], transitive: Boolean = true): Aggregation = new Explicit(dependencies, transitive)
 	implicit def fromBoolean(b: Boolean): Aggregation = if(b) Enabled else Disabled
 	val Enabled = new Implicit(true)
 	val Disabled = new Implicit(false)

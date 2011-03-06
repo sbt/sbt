@@ -21,7 +21,8 @@ package object sbt extends sbt.std.TaskExtra with sbt.Types with sbt.ProcessExtr
 	def Javadoc = C.Javadoc
 	def Sources = C.Sources
 	def Provided = C.Provided
-	def System = C.System
+// java.lang.System is more important, so don't alias this one
+//	def System = C.System
 	def Optional = C.Optional
 
 	implicit def globFilter(expression: String): NameFilter = GlobFilter(expression)
