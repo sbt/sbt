@@ -60,7 +60,7 @@ class ConsoleLogger private[ConsoleLogger](val out: ConsoleOut, override val ans
 	def successMessageColor = Console.RESET
 	override def success(message: => String)
 	{
-		if(atLevel(Level.Info))
+		if(successEnabled)
 			log(successLabelColor, Level.SuccessLabel, successMessageColor, message)
 	}
 	def trace(t: => Throwable): Unit =

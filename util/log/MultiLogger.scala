@@ -19,6 +19,11 @@ class MultiLogger(delegates: List[AbstractLogger]) extends BasicLogger
 		super.setTrace(level)
 		dispatch(new SetTrace(level))
 	}
+	override def setSuccessEnabled(flag: Boolean)
+	{
+		super.setSuccessEnabled(flag)
+		dispatch(new SetSuccess(flag))
+	}
 	def trace(t: => Throwable) { dispatch(new Trace(t)) }
 	def log(level: Level.Value, message: => String) { dispatch(new Log(level, message)) }
 	def success(message: => String) { dispatch(new Success(message)) }

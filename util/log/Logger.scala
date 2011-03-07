@@ -12,9 +12,10 @@ abstract class AbstractLogger extends Logger
 	def setTrace(flag: Int)
 	def getTrace: Int
 	final def traceEnabled = getTrace >= 0
+	def successEnabled: Boolean
+	def setSuccessEnabled(flag: Boolean): Unit
 
 	def atLevel(level: Level.Value) = level.id >= getLevel.id
-	def success(message: => String): Unit
 	def control(event: ControlEvent.Value, message: => String): Unit
 
 	def logAll(events: Seq[LogEvent]): Unit
@@ -28,6 +29,7 @@ abstract class AbstractLogger extends Logger
 			case t: Trace => trace(t.exception)
 			case setL: SetLevel => setLevel(setL.newLevel)
 			case setT: SetTrace => setTrace(setT.level)
+			case setS: SetSuccess => setSuccessEnabled(setS.enabled)
 			case c: ControlEvent => control(c.event, c.msg)
 		}
 	}
@@ -45,6 +47,7 @@ object Logger
 		override def trace(msg: F0[Throwable]) = lg.trace(msg)
 		override def log(level: Level.Value, msg: F0[String]) = lg.log(level, msg)
 		def trace(t: => Throwable) = trace(f0(t))
+		def success(s: => String) = info(f0(s))
 		def log(level: Level.Value, msg: => String) =
 		{
 			val fmsg = f0(msg)
@@ -73,6 +76,7 @@ trait Logger extends xLogger
 	def ansiCodesSupported = false
 	
 	def trace(t: => Throwable): Unit
+	def success(message: => String): Unit
 	def log(level: Level.Value, message: => String): Unit
 	
 	def debug(msg: F0[String]): Unit = log(Level.Debug, msg)
