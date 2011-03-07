@@ -18,6 +18,10 @@ object Keys
 	// logging
 	val logLevel = SettingKey[Level.Value]("log-level")
 	val persistLogLevel = SettingKey[Level.Value]("persist-log-level")
+	val traceLevel = SettingKey[Int]("trace-level")
+	val showSuccess = SettingKey[Boolean]("show-success")
+	val showTiming = SettingKey[Boolean]("show-timing")
+	val timingFormat = SettingKey[java.text.DateFormat]("timing-format")
 
 	// Project keys
 	val projectCommand = AttributeKey[Boolean]("project-command")

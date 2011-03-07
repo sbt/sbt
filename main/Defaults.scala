@@ -64,6 +64,9 @@ object Defaults
 //		shellPrompt :== (_ => "> "),
 		aggregate :== Aggregation.Enabled,
 		maxErrors :== 100,
+		showTiming :== true,
+		timingFormat :== Aggregation.defaultFormat,
+		showSuccess :== true,
 		commands :== Nil,
 		settings <<= EvaluateTask.state map { state => Project.structure(state).data }
 	))

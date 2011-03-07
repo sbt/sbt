@@ -17,7 +17,8 @@ class FullLogger(delegate: Logger, override val ansiCodesSupported: Boolean = fa
 			delegate.log(level, message)
 	}
 	def success(message: => String): Unit =
-		info(message)
+		if(successEnabled)
+			delegate.success(message)
 	def control(event: ControlEvent.Value, message: => String): Unit =
 		info(message)
 	def logAll(events: Seq[LogEvent]): Unit = events.foreach(log)

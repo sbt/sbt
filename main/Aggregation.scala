@@ -7,7 +7,7 @@ package sbt
 	import Project.ScopedKey
 	import Load.BuildStructure
 	import EvaluateTask.parseResult
-	import Keys.aggregate
+	import Keys.{aggregate, showSuccess, showTiming, timingFormat}
 	import sbt.complete.Parser
 	import java.net.URI
 	import Parser._
@@ -76,10 +76,49 @@ final object Aggregation
 			import EvaluateTask._
 			import std.TaskExtra._
 		val toRun = ts map { case KeyValue(k,t) => t.map(v => KeyValue(k,v)) } join;
+		val start = System.currentTimeMillis
 		val result = withStreams(structure){ str => runTask(toRun)(nodeView(s, str, extra.tasks, extra.values)) }
+		val stop = System.currentTimeMillis
 		val log = logger(s)
-		onResult(result, log)( results => if(show) printSettings(results, log))
+		lazy val extracted = Project.extract(s)
+
+		val success = result match { case Value(_) => true; case Inc(_) => false }
+		try { onResult(result, log) { results => if(show) printSettings(results, log) } }
+		finally { printSuccess(start, stop, Project.extract(s), success, log) }
 	}
+	def printSuccess(start: Long, stop: Long, extracted: Extracted, success: Boolean, log: Logger)
+	{
+		import extracted._
+		lazy val enabled = showSuccess in extracted.currentRef get extracted.structure.data getOrElse true
+		if(enabled)
+		{
+			val timingEnabled = showTiming in currentRef get structure.data getOrElse true
+			if(timingEnabled)
+			{
+				val msg = timingString(start, stop, "", structure.data, currentRef, log)
+				if(success) log.success(msg) else log.error(msg)
+			}
+			else if(success)
+				log.success("")
+		}
+	}
+	private def timingString(startTime: Long, endTime: Long, s: String, data: Settings[Scope], currentRef: ProjectRef, log: Logger): String =
+	{
+		val format = timingFormat in currentRef get data getOrElse defaultFormat
+		timing(format, startTime, endTime, "", log)
+	}
+	def timing(format: java.text.DateFormat, startTime: Long, endTime: Long, s: String, log: Logger): String =
+	{
+		val ss = if(s.isEmpty) "" else s + " "
+		val nowString = format.format(new java.util.Date(endTime))
+		"Total " + ss + "time: " + (endTime - startTime + 500) / 1000 + " s, completed " + nowString
+	}
+	def defaultFormat =
+	{
+		import java.text.DateFormat
+		DateFormat.getDateTimeInstance(DateFormat.MEDIUM, DateFormat.MEDIUM)
+	}
+
 	final case class Dummies[HL <: HList](tasks: KList[Task,HL], values: HL)
 	private[this] def dummyMap[HL <: HList, I](vs: Values[I], data: Settings[Scope], dummies: Dummies[HL]): Dummies[HL2] forSome { type HL2 <: HList } =
 		vs match
