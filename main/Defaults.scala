@@ -106,7 +106,8 @@ object Defaults
 	)
 
 	def compileBase = Seq(
-		compilers <<= (scalaInstance, appConfiguration, streams) map { (si, app, s) => Compiler.compilers(si)(app, s.log) },
+		classpathOptions in GlobalScope :== ClasspathOptions.auto,
+		compilers <<= (scalaInstance, appConfiguration, streams, classpathOptions) map { (si, app, s, co) => Compiler.compilers(si, co)(app, s.log) },
 		javacOptions in GlobalScope :== Nil,
 		scalacOptions in GlobalScope :== Nil,
 		scalaInstance <<= (appConfiguration, scalaVersion){ (app, version) => ScalaInstance(version, app.provider.scalaProvider.launcher) },
