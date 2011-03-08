@@ -89,7 +89,7 @@ class SameAPI(tagsA: TypeVars, tagsB: TypeVars, includePrivate: Boolean, include
 {
 	import SameAPI._
 
-	private val pending = new mutable.HashSet[(Structure, Structure)]
+	private val pending = new mutable.HashSet[AnyRef]
 	private[this] val debugEnabled = java.lang.Boolean.getBoolean("xsbt.api.debug")
 	def debug(flag: Boolean, msg: => String): Boolean =
 	{
@@ -161,11 +161,15 @@ class SameAPI(tagsA: TypeVars, tagsB: TypeVars, includePrivate: Boolean, include
 
 	/** Checks that the two definitions are the same, other than their name.*/
 	def sameDefinitionContent(a: Definition, b: Definition): Boolean =
+		samePending(a,b)(sameDefinitionContentDirect)
+	def sameDefinitionContentDirect(a: Definition, b: Definition): Boolean =
+	{
 		//a.name == b.name &&
 		debug(sameAccess(a.access, b.access), "Access differed") &&
 		debug(sameModifiers(a.modifiers, b.modifiers), "Modifiers differed") &&
 		debug(sameAnnotations(a.annotations, b.annotations), "Annotations differed") &&
 		debug(sameDefinitionSpecificAPI(a, b), "Definition-specific differed")
+	}
 
 	def sameAccess(a: Access, b: Access): Boolean =
 		(a, b) match
@@ -301,6 +305,8 @@ class SameAPI(tagsA: TypeVars, tagsB: TypeVars, includePrivate: Boolean, include
 	}
 
 	def sameType(a: Type, b: Type): Boolean =
+		samePending(a,b)(sameTypeDirect)
+	def sameTypeDirect(a: Type, b: Type): Boolean =
 		(a, b) match
 		{
 			case (sa: SimpleType, sb: SimpleType) => debug(sameSimpleType(sa, sb), "Different simple types: " + DefaultShowAPI(sa) + " and " + DefaultShowAPI(sb))
@@ -325,11 +331,10 @@ class SameAPI(tagsA: TypeVars, tagsB: TypeVars, includePrivate: Boolean, include
 		sameSimpleType(a.baseType, b.baseType) &&
 		sameAnnotations(a.annotations, b.annotations)
 	def sameStructure(a: Structure, b: Structure): Boolean =
-		if(pending add ((a,b)) )
-			try { sameStructureDirect(a,b) }
-			finally { pending -= ((a,b)) }
-		else
-			true
+		samePending(a,b)(sameStructureDirect)
+	private[this] def samePending[T](a: T, b: T)(f: (T,T) => Boolean): Boolean =
+		if(pending add ((a,b)) ) f(a,b) else true
+
 	def sameStructureDirect(a: Structure, b: Structure): Boolean =
 		sameSeq(a.parents, b.parents)(sameType) &&
 		sameMembers(a.declared, b.declared) &&
