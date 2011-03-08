@@ -72,6 +72,7 @@ object Keys
 	val compileInputs = TaskKey[Compiler.Inputs]("compile-inputs")
 	val scalaInstance = SettingKey[ScalaInstance]("scala-instance")
 	val scalaVersion = SettingKey[String]("scala-version")
+	val classpathOptions = SettingKey[ClasspathOptions]("classpath-options")
 
 	val webappDir = SettingKey[File]("webapp-dir")
 

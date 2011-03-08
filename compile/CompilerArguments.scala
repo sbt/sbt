@@ -12,7 +12,7 @@ package compiler
 * order to add these jars to the boot classpath. The 'scala.home' property must be unset because Scala
 * puts jars in that directory on the bootclasspath.  Because we use multiple Scala versions,
 * this would lead to compiling against the wrong library jar.*/
-class CompilerArguments(scalaInstance: ScalaInstance, cp: ClasspathOptions) extends NotNull
+final class CompilerArguments(scalaInstance: ScalaInstance, cp: ClasspathOptions)
 {
 	def apply(sources: Seq[File], classpath: Seq[File], outputDirectory: File, options: Seq[String]): Seq[String] =
 	{
@@ -40,12 +40,6 @@ class CompilerArguments(scalaInstance: ScalaInstance, cp: ClasspathOptions) exte
 	}
 	def bootClasspathOption = if(cp.autoBoot) Seq("-bootclasspath", createBootClasspath) else Nil
 	def bootClasspath = if(cp.autoBoot) sbt.IO.pathSplit(createBootClasspath).map(new File(_)).toSeq else Nil
-}
-class ClasspathOptions(val autoBoot: Boolean, val compiler: Boolean, val extra: Boolean)  extends NotNull
-object ClasspathOptions
-{
-	def manual = new ClasspathOptions(false, false, false)
-	def auto = new ClasspathOptions(true, true, true)
 }
 object CompilerArguments
 {
