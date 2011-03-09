@@ -516,7 +516,7 @@ object Load
 
 	def build(classpath: Seq[File], sources: Seq[File], target: File, compilers: Compilers, log: Logger): (Inputs, inc.Analysis) =
 	{
-		val inputs = Compiler.inputs(classpath, sources, target, Nil, Nil, Nil, Compiler.DefaultMaxErrors)(compilers, log)
+		val inputs = Compiler.inputs(classpath, sources, target, Nil, Nil, Compiler.DefaultMaxErrors)(compilers, log)
 		val analysis = Compiler(inputs, log)
 		(inputs, analysis)
 	}

@@ -15,25 +15,25 @@ import inc._
 	import CompileSetup._
 	import sbinary.DefaultProtocol.{ immutableMapFormat, immutableSetFormat, StringFormat }
 
-final class CompileConfiguration(val sources: Seq[File], val classpath: Seq[File], val javaSrcBases: Seq[File],
+final class CompileConfiguration(val sources: Seq[File], val classpath: Seq[File],
 	val previousAnalysis: Analysis, val previousSetup: Option[CompileSetup], val currentSetup: CompileSetup, val getAnalysis: File => Option[Analysis],
 	val maxErrors: Int, val compiler: AnalyzingCompiler, val javac: JavaCompiler)
 
 class AggressiveCompile(cacheDirectory: File)
 {
-	def apply(compiler: AnalyzingCompiler, javac: JavaCompiler, sources: Seq[File], classpath: Seq[File], outputDirectory: File, javaSrcBases: Seq[File] = Nil, options: Seq[String] = Nil, javacOptions: Seq[String] = Nil, analysisMap: Map[File, Analysis] = Map.empty, maxErrors: Int = 100)(implicit log: Logger): Analysis =
+	def apply(compiler: AnalyzingCompiler, javac: JavaCompiler, sources: Seq[File], classpath: Seq[File], outputDirectory: File, options: Seq[String] = Nil, javacOptions: Seq[String] = Nil, analysisMap: Map[File, Analysis] = Map.empty, maxErrors: Int = 100)(implicit log: Logger): Analysis =
 	{
 		val setup = new CompileSetup(outputDirectory, new CompileOptions(options, javacOptions), compiler.scalaInstance.actualVersion, CompileOrder.Mixed)
-		compile1(sources, classpath, javaSrcBases, setup, store, analysisMap, compiler, javac, maxErrors)
+		compile1(sources, classpath, setup, store, analysisMap, compiler, javac, maxErrors)
 	}
 
 	def withBootclasspath(args: CompilerArguments, classpath: Seq[File]): Seq[File] =
 		args.bootClasspath ++ args.finishClasspath(classpath)
 
-	def compile1(sources: Seq[File], classpath: Seq[File], javaSrcBases: Seq[File], setup: CompileSetup, store: AnalysisStore, analysis: Map[File, Analysis], compiler: AnalyzingCompiler, javac: JavaCompiler, maxErrors: Int)(implicit log: Logger): Analysis =
+	def compile1(sources: Seq[File], classpath: Seq[File], setup: CompileSetup, store: AnalysisStore, analysis: Map[File, Analysis], compiler: AnalyzingCompiler, javac: JavaCompiler, maxErrors: Int)(implicit log: Logger): Analysis =
 	{
 		val (previousAnalysis, previousSetup) = extract(store.get())
-		val config = new CompileConfiguration(sources, classpath, javaSrcBases, previousAnalysis, previousSetup, setup, analysis.get _, maxErrors, compiler, javac)
+		val config = new CompileConfiguration(sources, classpath, previousAnalysis, previousSetup, setup, analysis.get _, maxErrors, compiler, javac)
 		val (modified, result) = compile2(config)
 		if(modified)
 			store.set(result, setup)
@@ -68,7 +68,7 @@ class AggressiveCompile(cacheDirectory: File)
 				import Path._
 				val loader = ClasspathUtilities.toLoader(absClasspath, compiler.scalaInstance.loader)
 				def readAPI(source: File, classes: Seq[Class[_]]) { callback.api(source, ClassToAPI(classes)) }
-				Analyze(outputDirectory, javaSrcs, javaSrcBases, log)(callback, loader, readAPI) {
+				Analyze(outputDirectory, javaSrcs, log)(callback, loader, readAPI) {
 					javac(javaSrcs, absClasspath, outputDirectory, options.javacOptions)
 				}
 			}

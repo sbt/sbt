@@ -55,7 +55,8 @@ object Defaults
 		(cp map extractAnalysis).toMap
 
 	def buildCore: Seq[Setting[_]] = inScope(GlobalScope)(Seq(
-		pollInterval :== 1,
+		pollInterval :== 500,
+		scalaHome :== None,
 		javaHome :== None,
 		outputStrategy :== None,
 		fork :== false,
@@ -94,9 +95,8 @@ object Defaults
 		sources <<= (sourceDirectories, sourceFilter, defaultExcludes) map { (d,f,excl) => d.descendentsExcept(f,excl).getFiles.toSeq },
 		scalaSource <<= sourceDirectory / "scala",
 		javaSource <<= sourceDirectory / "java",
-		javaSourceRoots <<= toSeq(javaSource),
 		resourceDirectory <<= sourceDirectory / "resources",
-		sourceDirectories <<= (scalaSource, javaSourceRoots) { _ +: _ },
+		sourceDirectories <<= (scalaSource, javaSource) { _ :: _ :: Nil },
 		resourceDirectories <<= toSeq(resourceDirectory),
 		resources <<= (resourceDirectories, defaultExcludes) map { (dirs, excl) => dirs.descendentsExcept("*",excl).getFiles.toSeq }
 	)
@@ -110,10 +110,10 @@ object Defaults
 
 	def compileBase = Seq(
 		classpathOptions in GlobalScope :== ClasspathOptions.auto,
-		compilers <<= (scalaInstance, appConfiguration, streams, classpathOptions) map { (si, app, s, co) => Compiler.compilers(si, co)(app, s.log) },
+		compilers <<= (scalaInstance, appConfiguration, streams, classpathOptions, javaHome) map { (si, app, s, co, jh) => Compiler.compilers(si, co, jh)(app, s.log) },
 		javacOptions in GlobalScope :== Nil,
 		scalacOptions in GlobalScope :== Nil,
-		scalaInstance <<= (appConfiguration, scalaVersion){ (app, version) => ScalaInstance(version, app.provider.scalaProvider.launcher) },
+		scalaInstance <<= scalaInstanceSetting,
 		scalaVersion <<= appConfiguration( _.provider.scalaProvider.version),
 		target <<= (target, scalaInstance, crossPaths)( (t,si,cross) => if(cross) t / ("scala-" + si.actualVersion) else t )
 	)
@@ -163,6 +163,13 @@ object Defaults
 			val key = ScopedKey(scoped.scope, scoped.key)
 			override def pollInterval = interval
 			override def watchPaths(s: State) = EvaluateTask.evaluateTask(Project structure s, key, s, base) match { case Some(Value(ps)) => ps; case _ => Nil }
+		}
+	}
+	def scalaInstanceSetting = (appConfiguration, scalaVersion, scalaHome){ (app, version, home) =>
+		val launcher = app.provider.scalaProvider.launcher
+		home match {
+			case None => ScalaInstance(version, launcher)
+			case Some(h) => ScalaInstance(h, launcher)
 		}
 	}
 
@@ -296,12 +303,12 @@ object Defaults
 	
 	def compileTask = (compileInputs, streams) map { (i,s) => Compiler(i,s.log) }
 	def compileInputsTask =
-		(dependencyClasspath, sources, javaSourceRoots, compilers, javacOptions, scalacOptions, cacheDirectory, classDirectory, streams) map {
-		(cp, srcs, javaRoots, cs, javacOpts, scalacOpts, cacheDir, classes, s) =>
+		(dependencyClasspath, sources, compilers, javacOptions, scalacOptions, cacheDirectory, classDirectory, streams) map {
+		(cp, srcs, cs, javacOpts, scalacOpts, cacheDir, classes, s) =>
 			val classpath = classes +: data(cp)
 			val analysis = analysisMap(cp)
 			val cache = cacheDir / "compile"
-			Compiler.inputs(classpath, srcs, classes, scalacOpts, javacOpts, javaRoots, analysis, cache, 100)(cs, s.log)
+			Compiler.inputs(classpath, srcs, classes, scalacOpts, javacOpts, analysis, cache, 100)(cs, s.log)
 		}
 
 	def copyResourcesTask =
@@ -416,7 +423,7 @@ object Classpaths
 		normalizedName <<= name(StringUtilities.normalize),
 		organization :== normalizedName,
 		classpathFilter in GlobalScope :== "*.jar",
-		resolvers <<= (projectResolver,baseResolvers).map( (pr,rs) => pr +: Resolver.withDefaultResolvers(rs)),
+		fullResolvers <<= (projectResolver,resolvers).map( (pr,rs) => pr +: Resolver.withDefaultResolvers(rs)),
 		offline in GlobalScope :== false,
 		moduleID :== normalizedName,
 		defaultConfiguration in GlobalScope :== Some(Configurations.Compile),
@@ -440,12 +447,12 @@ object Classpaths
 		pomArtifact <<= (publishMavenStyle, moduleID)( (mavenStyle, name) => if(mavenStyle) Artifact(name, "pom", "pom") :: Nil else Nil),
 		artifacts <<= (pomArtifact,moduleID)( (pom,name) => Artifact(name) +: pom),
 		projectID <<= (organization,moduleID,version,artifacts){ (org,module,version,as) => ModuleID(org, module, version).cross(true).artifacts(as : _*) },
-		baseResolvers in GlobalScope :== Nil,
+		resolvers in GlobalScope :== Nil,
 		projectDescriptors <<= depMap,
 		retrievePattern :== "[type]/[organisation]/[module]/[artifact](-[revision])(-[classifier]).[ext]",
 		updateConfiguration <<= (retrieveConfiguration, ivyLoggingLevel)((conf,level) => new UpdateConfiguration(conf, level) ),
 		retrieveConfiguration :== None, //Some(new RetrieveConfiguration(managedDependencyPath asFile, retrievePattern, true))
-		ivyConfiguration <<= (resolvers, ivyPaths, otherResolvers, moduleConfigurations, offline, appConfiguration) map { (rs, paths, other, moduleConfs, off, app) =>
+		ivyConfiguration <<= (fullResolvers, ivyPaths, otherResolvers, moduleConfigurations, offline, appConfiguration) map { (rs, paths, other, moduleConfs, off, app) =>
 			// todo: pass logger from streams directly to IvyActions
 			val lock = app.provider.scalaProvider.launcher.globalLock
 			new InlineIvyConfiguration(paths, rs, other, moduleConfs, off, Some(lock), ConsoleLogger())

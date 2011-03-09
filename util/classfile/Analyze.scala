@@ -13,9 +13,9 @@ import java.lang.reflect.Modifier.{STATIC, PUBLIC, ABSTRACT}
 
 private[sbt] object Analyze
 {
-	def apply[T](outputDirectory: Path, sources: Seq[Path], roots: Seq[Path], log: Logger)(analysis: xsbti.AnalysisCallback, loader: ClassLoader, readAPI: (File,Seq[Class[_]]) => Unit)(compile: => Unit)
+	def apply[T](outputDirectory: Path, sources: Seq[File], log: Logger)(analysis: xsbti.AnalysisCallback, loader: ClassLoader, readAPI: (File,Seq[Class[_]]) => Unit)(compile: => Unit)
 	{
-		val sourceSet = Set(sources.toSeq : _*)
+		val sourceMap = sources.groupBy(_.getName)
 		val classesFinder = outputDirectory ** GlobFilter("*.class")
 		val existingClasses = classesFinder.get
 
@@ -38,7 +38,7 @@ private[sbt] object Analyze
 				path <- Path.relativize(outputDirectory, newClass);
 				classFile = Parser(newClass.asFile);
 				sourceFile <- classFile.sourceFile orElse guessSourceName(newClass.asFile.getName);
-				source <- guessSourcePath(sourceSet, roots, classFile, log))
+				source <- guessSourcePath(sourceMap, classFile, log))
 			{
 				analysis.beginSource(source)
 				analysis.generatedClass(source, path)
@@ -102,23 +102,54 @@ private[sbt] object Analyze
 	private final val ClassExt = ".class"
 	private def trimClassExt(name: String) = if(name.endsWith(ClassExt)) name.substring(0, name.length - ClassExt.length) else name
 	private def resolveClassFile(file: File, className: String): File = (file /: (className.replace('.','/') + ClassExt).split("/"))(new File(_, _))
-	private def guessSourcePath(sources: scala.collection.Set[Path], roots: Iterable[Path], classFile: ClassFile, log: Logger) =
+	private def guessSourcePath(sourceNameMap: Map[String, Iterable[File]], classFile: ClassFile, log: Logger) =
 	{
 		val classNameParts = classFile.className.split("""\.""")
-		val lastIndex = classNameParts.length - 1
-		val pkg = classNameParts.take(lastIndex)
-		val simpleClassName = classNameParts(lastIndex)
+		val pkg = classNameParts.init
+		val simpleClassName = classNameParts.last
 		val sourceFileName = classFile.sourceFile.getOrElse(simpleClassName.takeWhile(_ != '$').mkString("", "", ".java"))
-		val relativeSourceFile = (pkg ++ (sourceFileName :: Nil)).mkString("/")
-		val candidates = roots.map(root => Path.fromString(root, relativeSourceFile)).filter(sources.contains).toList
+		val candidates = findSource(sourceNameMap, pkg.toList, sourceFileName)
 		candidates match
 		{
 			case Nil => log.warn("Could not determine source for class " + classFile.className)
 			case head :: Nil => ()
-			case _ =>log.warn("Multiple sources matched for class " + classFile.className + ": " + candidates.mkString(", "))
+			case _ => log.warn("Multiple sources matched for class " + classFile.className + ": " + candidates.mkString(", "))
 		}
 		candidates
 	}
+	private def findSource(sourceNameMap: Map[String, Iterable[File]], pkg: List[String], sourceFileName: String): List[File] =
+		refine( (sourceNameMap get sourceFileName).toList.flatten map { x => (x,x) }, pkg.reverse)
+	
+	private def refine(sources: List[(File, File)], pkgRev: List[String]): List[File] =
+	{
+		def make = sources.map(_._1)
+		if(sources.isEmpty || sources.tail.isEmpty)
+			make
+		else
+			pkgRev match
+			{
+				case Nil => shortest(make)
+				case x :: xs =>
+					val retain = sources flatMap { case (src, pre) =>
+						if(pre != null && pre.getName == x)
+							(src, pre.getParentFile) :: Nil
+						else
+							Nil
+					}
+					refine(retain, xs)
+			}
+	}
+	private def shortest(files: List[File]): List[File] =
+		if(files.isEmpty) files
+		else
+		{
+			val fs = files.groupBy(distanceToRoot(0))
+			fs(fs.keys.min)
+		}
+
+	private def distanceToRoot(acc: Int)(file: File): Int =
+		if(file == null) acc else distanceToRoot(acc + 1)(file.getParentFile)
+
 	private def isTopLevel(classFile: ClassFile) = classFile.className.indexOf('$') < 0
 	private lazy val unit = classOf[Unit]
 	private lazy val strArray = List(classOf[Array[String]])
