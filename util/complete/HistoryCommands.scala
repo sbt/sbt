@@ -39,63 +39,34 @@ object HistoryCommands
 	def helpString = "History commands:\n   " + (descriptions.map{ case (c,d) => c + "    " + d}).mkString("\n   ")
 	def printHelp(): Unit =
 		println(helpString)
+	def printHistory(history: complete.History, historySize: Int, show: Int): Unit =
+		 history.list(historySize, show).foreach(println)
 
-	def apply(s: String, historyPath: Option[File], maxLines: Int, error: String => Unit): Option[List[String]] =
-		if(s.isEmpty)
-		{
-			printHelp()
-			Some(Nil)
-		}
-		else
-		{
-			val lines = historyPath.toList.flatMap( p => IO.readLines(p) ).toArray
-			if(lines.isEmpty)
-			{
-				error("No history")
-				None
-			}
-			else
-			{
-				val history = complete.History(lines, error)
-				if(s.startsWith(ListCommands))
-				{
-					val rest = s.substring(ListCommands.length)
-					val show = complete.History.number(rest).getOrElse(lines.length)
-					printHistory(history, maxLines, show)
-					Some(Nil)
-				}
-				else
-				{
-					val command = historyCommand(history, s)
-					command.foreach(lines(lines.length - 1) = _)
-					historyPath foreach { h => IO.writeLines(h, lines) }
-					Some(command.toList)
-				}
-			}
-		}
-	def printHistory(history: complete.History, historySize: Int, show: Int): Unit = history.list(historySize, show).foreach(println)
-	def historyCommand(history: complete.History, s: String): Option[String] =
-	{
-		if(s == Last)
-			history !!
-		else if(s.startsWith(Contains))
-			history !? s.substring(Contains.length)
-		else
-			history ! s
+		import DefaultParsers._
+
+	val MaxLines = 500
+	lazy val num = token(NatBasic, "<integer>")
+	lazy val last = Last ^^^ { execute(_ !!) }
+	lazy val list = ListCommands ~> (num ?? Int.MaxValue) map { show =>
+		(h: History) => { printHistory(h, MaxLines, show); Some(Nil) }
 	}
-/*
-		import parse.{Parser,Parsers}
-		import Parser._
-		import Parsers._
-	val historyParser: Parser[complete.History => Option[String]] =
-	{
-		Start ~> Specific)
+	lazy val execStr = flag('?') ~ token(any.+.string, "<string>") map { case (contains, str) =>
+		execute(h => if(contains) h !? str else h ! str)
 	}
-	!!    Execute the last command again
-   !:    Show all previous commands
-   !:n    Show the last n commands
-   !n    Execute the command with index n, as shown by the !: command
-   !-n    Execute the nth command before this one
-   !string    Execute the most recent command starting with 'string'
-   !?string*/
+	lazy val execInt = flag('-') ~ num map { case (neg, value) =>
+		execute(h => if(neg) h !- value else h ! value)
+	}
+	lazy val help = success( (h: History) => { printHelp(); Some(Nil) } )
+
+	def execute(f: History => Option[String]): History => Option[List[String]] = (h: History) =>
+	{
+		val command = f(h)
+		val lines = h.lines.toArray
+		command.foreach(lines(lines.length - 1) = _)
+		h.path foreach { h => IO.writeLines(h, lines) }
+		Some(command.toList)
+	}
+
+	val actionParser: Parser[complete.History => Option[List[String]]] =
+		Start ~> (help | last | execInt | list | execStr ) // execStr must come last
 }
