@@ -35,8 +35,13 @@ final class CompilerArguments(scalaInstance: ScalaInstance, cp: ClasspathOptions
 	def createBootClasspath =
 	{
 		val originalBoot = System.getProperty("sun.boot.class.path", "")
-		val newBootPrefix = if(originalBoot.isEmpty) "" else originalBoot + File.pathSeparator
-		newBootPrefix + scalaInstance.libraryJar.getAbsolutePath
+		if(cp.bootLibrary)
+		{
+			val newBootPrefix = if(originalBoot.isEmpty) "" else originalBoot + File.pathSeparator
+			newBootPrefix + scalaInstance.libraryJar.getAbsolutePath
+		}
+		else
+			originalBoot
 	}
 	def bootClasspathOption = if(cp.autoBoot) Seq("-bootclasspath", createBootClasspath) else Nil
 	def bootClasspath = if(cp.autoBoot) sbt.IO.pathSplit(createBootClasspath).map(new File(_)).toSeq else Nil
