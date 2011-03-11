@@ -1,5 +1,5 @@
 /* sbt -- Simple Build Tool
- * Copyright 2009, 2010 Mark Harrah
+ * Copyright 2009, 2010, 2011 Mark Harrah
  */
 package xsbt.api
 
@@ -119,7 +119,7 @@ class SameAPI(tagsA: TypeVars, tagsB: TypeVars, includePrivate: Boolean, include
 		debug(sameDefinitions(byName(atypes), byName(btypes)), "Type definitions differed")
 	}
 	def sameDefinitions(a: scala.collection.Map[String, List[Definition]], b: scala.collection.Map[String, List[Definition]]): Boolean =
-		debug(sameStrings(a.keySet, b.keySet), "\tDefinition strings differed (a: " + a.keySet + ", b: " + b.keySet + ")") &&
+		debug(sameStrings(a.keySet, b.keySet), "\tDefinition strings differed (a: " + (a.keySet -- b.keySet) + ", b: " + (b.keySet -- a.keySet) + ")") &&
 		zippedEntries(a,b).forall(tupled(sameNamedDefinitions))
 
 	/** Removes definitions that should not be considered for API equality.
@@ -315,7 +315,7 @@ class SameAPI(tagsA: TypeVars, tagsB: TypeVars, includePrivate: Boolean, include
 			case (sa: Structure, sb: Structure) => debug(sameStructure(sa, sb), "Different structure type")
 			case (ea: Existential, eb: Existential) => debug(sameExistentialType(ea, eb), "Different existential type")
 			case (pa: Polymorphic, pb: Polymorphic) => debug(samePolymorphicType(pa, pb), "Different polymorphic type")
-			case _ => false
+			case _ => differentCategory("type", a, b)
 		}
 
 	def sameConstantType(ca: Constant, cb: Constant): Boolean =
@@ -351,8 +351,10 @@ class SameAPI(tagsA: TypeVars, tagsB: TypeVars, includePrivate: Boolean, include
 			case (sa: Singleton, sb: Singleton) => debug(sameSingleton(sa, sb), "Different singleton")
 			case (_: EmptyType, _: EmptyType) => true
 			case (pa: Parameterized, pb: Parameterized) => debug(sameParameterized(pa, pb), "Different parameterized")
-			case _ => debug(false, "Different category of simple type (" + a.getClass.getName + " and " + b.getClass.getName + ") for (" + a + " and " + b + ")")
+			case _ => differentCategory("simple type", a, b)
 		}
+	def differentCategory(label: String, a: AnyRef, b: AnyRef): Boolean =
+		debug(false, "Different category of " + label + " (" + a.getClass.getName + " and " + b.getClass.getName + ") for (" + a + " and " + b + ")")
 
 	def sameParameterized(a: Parameterized, b: Parameterized): Boolean =
 		sameSimpleType(a.baseType, b.baseType) &&
