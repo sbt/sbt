@@ -18,10 +18,8 @@ class ForkRun(config: ForkScalaRun) extends ScalaRun
 	def run(mainClass: String, classpath: Seq[File], options: Seq[String], log: Logger): Option[String] =
 	{
 		val scalaOptions = classpathOption(classpath) ::: mainClass :: options.toList
-		val exitCode = config.outputStrategy match {
-			case Some(strategy) => Fork.scala(config.javaHome, config.runJVMOptions, config.scalaJars, scalaOptions, config.workingDirectory, strategy)
-			case None => Fork.scala(config.javaHome, config.runJVMOptions, config.scalaJars, scalaOptions, config.workingDirectory, LoggedOutput(log))
-		}
+		val strategy = config.outputStrategy getOrElse LoggedOutput(log)
+		val exitCode =  Fork.scala(config.javaHome, config.runJVMOptions, config.scalaJars, scalaOptions, config.workingDirectory, strategy)
 		processExitCode(exitCode, "runner")
 	}
 	private def classpathOption(classpath: Seq[File]) = "-cp" :: Path.makeString(classpath) :: Nil
