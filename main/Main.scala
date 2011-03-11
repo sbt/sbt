@@ -120,22 +120,23 @@ object BuiltinCommands
 		}
 	}
 	
-	// TODO: this should nest Parsers for other commands
-	def multi = Command.single(Multi, MultiBrief, MultiDetailed) { (s,arg) =>
-		arg.split(";").toSeq ::: s
-	}
+	def multiParser(s: State): Parser[Seq[String]] =
+		( token(';' ~> OptSpace) flatMap { _ => token(matched(s.combinedParser) <~ OptSpace ) } ).+
+	def multiApplied(s: State) = 
+		Command.applyEffect( multiParser(s) )( _ ::: s )
+
+	def multi = Command.custom(multiApplied, Help(MultiBrief, (Set(Multi), MultiDetailed)) :: Nil )
 	
-	// TODO: nest
-	def ifLast = Command.single(IfLast, IfLastBrief, IfLastDetailed) { (s, arg) =>
+	lazy val otherCommandParser = (s: State) => token(OptSpace ~> matched(s.combinedParser) )
+
+	def ifLast = Command(IfLast, IfLastBrief, IfLastDetailed)(otherCommandParser) { (s, arg) =>
 		if(s.commands.isEmpty) arg :: s else s
 	}
-	// TODO: nest
-	def append = Command.single(Append, AppendLastBrief, AppendLastDetailed) { (s, arg) =>
+	def append = Command(Append, AppendLastBrief, AppendLastDetailed)(otherCommandParser) { (s, arg) =>
 		s.copy(commands = s.commands :+ arg)
 	}
 	
-	// TODO: nest
-	def setOnFailure = Command.single(OnFailure, OnFailureBrief, OnFailureDetailed) { (s, arg) =>
+	def setOnFailure = Command(OnFailure, OnFailureBrief, OnFailureDetailed)(otherCommandParser) { (s, arg) =>
 		s.copy(onFailure = Some(arg))
 	}
 	def clearOnFailure = Command.command(ClearOnFailure)(s => s.copy(onFailure = None))
@@ -195,27 +196,28 @@ object BuiltinCommands
 		}
 	}
 
-	// TODO: nest
 	def continuous =
-		Command.single(ContinuousExecutePrefix, Help(continuousBriefHelp) ) { (s, arg) =>
+		Command(ContinuousExecutePrefix, Help(continuousBriefHelp) )(otherCommandParser) { (s, arg) =>
 			withAttribute(s, Watched.Configuration, "Continuous execution not configured.") { w =>
 				val repeat = ContinuousExecutePrefix + (if(arg.startsWith(" ")) arg else " " + arg)
 				Watched.executeContinuously(w, s, arg, repeat)
 			}
 		}
 
-	def history = Command.command("!!")(s => s)
-	//TODO: convert
-	/*def history = Command.make( historyHelp: _* ) { case (in, s) if in.line startsWith "!" =>
-		val logError = (msg: String) => CommandSupport.logger(s).error(msg)
-		HistoryCommands(in.line.substring(HistoryPrefix.length).trim, (s get historyPath.key) getOrElse None, 500/*JLine.MaxHistorySize*/, logError) match
-		{
-			case Some(commands) =>
-				commands.foreach(println)  //printing is more appropriate than logging
-				(commands ::: s).continue
-			case None => s.fail
+	def history = Command.custom(historyParser, historyHelp)
+	def historyParser(s: State): Parser[() => State] =
+		Command.applyEffect(HistoryCommands.actionParser) { histFun =>
+			val logError = (msg: String) => CommandSupport.logger(s).error(msg)
+			val hp = s get historyPath.key getOrElse None
+			val lines = hp.toList.flatMap( p => IO.readLines(p) ).toIndexedSeq
+			histFun( complete.History(lines, hp, logError) ) match
+			{
+				case Some(commands) =>
+					commands foreach println  //printing is more appropriate than logging
+					(commands ::: s).continue
+				case None => s.fail
+			}
 		}
-	}*/
 
 	def eval = Command.single(EvalCommand, evalBrief, evalDetailed) { (s, arg) =>
 		val log = logger(s)

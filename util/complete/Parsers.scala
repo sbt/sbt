@@ -52,6 +52,8 @@ trait Parsers
 
 	def spaceDelimited(display: String): Parser[Seq[String]] = (token(Space) ~> token(NotSpace, display)).* <~ SpaceClass.*
 
+	def flag[T](p: Parser[T]): Parser[Boolean] = (p ^^^ true) ?? false
+
 	def trimmed(p: Parser[String]) = p map { _.trim }
 	def Uri(ex: Set[URI]) = mapOrFail(URIClass)( uri => new URI(uri)) examples(ex.map(_.toString))
 }
