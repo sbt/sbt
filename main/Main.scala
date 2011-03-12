@@ -331,11 +331,13 @@ object BuiltinCommands
 		}
 	}
 
-	def loadProjectCommands = (OnFailure + " " + LoadFailed) :: LoadProjectImpl :: ClearOnFailure :: FailureWall :: Nil
-	def loadProject = Command.command(LoadProject, LoadProjectBrief, LoadProjectDetailed) { loadProjectCommands ::: _ }
+	def loadProjectCommands(arg: String) = (OnFailure + " " + LoadFailed) :: (LoadProjectImpl + " " + arg).trim :: ClearOnFailure :: FailureWall :: Nil
+	def loadProject = Command(LoadProject, LoadProjectBrief, LoadProjectDetailed)(_ => matched(Project.loadActionParser)) { (s,arg) => loadProjectCommands(arg) ::: s }
 
-	def loadProjectImpl = Command.command(LoadProjectImpl) { s =>
-		val (eval, structure) = Load.defaultLoad(s, logger(s))
+	def loadProjectImpl = Command(LoadProjectImpl)(_ => Project.loadActionParser) { (s0, action) =>
+		val (s, base) = Project.loadAction(s0, action)
+		IO.createDirectory(base)
+		val (eval, structure) = Load.defaultLoad(s, base, logger(s))
 		val session = Load.initialSession(structure, eval)
 		Project.setProject(session, structure, s)
 	}

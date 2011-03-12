@@ -98,11 +98,13 @@ object Project extends Init[Scope]
 		val project = Load.getProject(structure.units, ref.build, ref.project)
 		logger(s).info("Set current project to " + ref.project + " (in build " + ref.build +")")
 		def get[T](k: SettingKey[T]): Option[T] = k in ref get structure.data
+		def commandsIn(axis: ResolvedReference) = commands in axis get structure.data toList ;
 
+		val allCommands = commandsIn(ref) ++ commandsIn(BuildRef(ref.build)) ++ (commands get structure.data toList )
 		val history = get(historyPath) flatMap identity
 		val prompt = get(shellPrompt)
 		val watched = get(watch)
-		val commandDefs = get(commands).toList.flatten[Command].map(_ tag (projectCommand, true))
+		val commandDefs = allCommands.distinct.flatten[Command].map(_ tag (projectCommand, true))
 		val newProcessors = commandDefs ++ BuiltinCommands.removeTagged(s.processors, projectCommand)
 		val newAttrs = setCond(Watched.Configuration, watched, s.attributes).put(historyPath.key, history)
 		s.copy(attributes = setCond(shellPrompt.key, prompt, newAttrs), processors = newProcessors)
@@ -192,6 +194,34 @@ object Project extends Init[Scope]
 		inScope(ThisScope.copy(task = Select(t.key)) )( ss )
 	def inScope(scope: Scope)(ss: Seq[Setting[_]]): Seq[Setting[_]] =
 		Project.transform(Scope.replaceThis(scope), ss)
+
+	object LoadAction extends Enumeration {
+		val Return, Current, Plugins = Value
+	}
+	import LoadAction._
+	import complete.DefaultParsers._
+
+	val loadActionParser = token(Space ~> ("plugins" ^^^ Plugins | "return" ^^^ Return)) ?? Current
+	
+	val ProjectReturn = AttributeKey[List[File]]("project-return")
+	def projectReturn(s: State): List[File] = s.attributes get ProjectReturn getOrElse Nil
+	def setProjectReturn(s: State, pr: List[File]): State = s.copy(attributes = s.attributes.put( ProjectReturn, pr) )
+	def loadAction(s: State, action: LoadAction.Value) = action match {
+		case Return =>
+			projectReturn(s) match
+			{
+				case current :: returnTo :: rest => (setProjectReturn(s, returnTo :: rest), returnTo)
+				case _ => error("Not currently in a plugin definition")
+			}
+		case Current =>
+			val base = s.configuration.baseDirectory
+			projectReturn(s) match { case Nil => (setProjectReturn(s, base :: Nil), base); case x :: xs => (s, x) }
+		case Plugins =>
+			val extracted = Project.extract(s)
+			val newBase = extracted.currentUnit.unit.plugins.base
+			val newS = setProjectReturn(s, newBase :: projectReturn(s))
+			(newS, newBase)
+	}
 }
 
 	import SessionSettings._

@@ -247,7 +247,7 @@ CompileSyntax + """
 
 	def LoadProjectImpl = "loadp"
 	def LoadProject = "reload"
-	def LoadProjectBrief = LoadProjectDetailed
+	def LoadProjectBrief = (LoadProject, LoadProjectDetailed)
 	def LoadProjectDetailed = "Loads the project in the current directory"
 
 	def Shell = "shell"

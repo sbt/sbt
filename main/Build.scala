@@ -213,10 +213,10 @@ object Load
 	import BuildStreams._
 
 	// note that there is State is passed in but not pulled out
-	def defaultLoad(state: State, log: Logger): (() => Eval, BuildStructure) =
+	def defaultLoad(state: State, baseDirectory: File, log: Logger): (() => Eval, BuildStructure) =
 	{
 		val stagingDirectory = defaultStaging.getCanonicalFile // TODO: properly configurable
-		val base = state.configuration.baseDirectory.getCanonicalFile
+		val base = baseDirectory.getCanonicalFile
 		val loader = getClass.getClassLoader
 		val provider = state.configuration.provider
 		val classpath = provider.mainClasspath ++ provider.scalaProvider.jars
@@ -486,8 +486,8 @@ object Load
 		new BuildUnit(uri, normBase, loadedDefs, plugs)
 	}
 
-	def plugins(dir: File, s: State, config: LoadBuildConfiguration): LoadedPlugins = if(dir.exists) buildPlugins(dir, s, config) else noPlugins(config)
-	def noPlugins(config: LoadBuildConfiguration): LoadedPlugins = new LoadedPlugins(config.classpath, config.loader, Nil, Nil)
+	def plugins(dir: File, s: State, config: LoadBuildConfiguration): LoadedPlugins = if(dir.exists) buildPlugins(dir, s, config) else noPlugins(dir, config)
+	def noPlugins(dir: File, config: LoadBuildConfiguration): LoadedPlugins = new LoadedPlugins(dir, config.classpath, config.loader, Nil, Nil)
 	def buildPlugins(dir: File, s: State, config: LoadBuildConfiguration): LoadedPlugins =
 	{
 		val (eval,pluginDef) = apply(dir, s, config)
@@ -496,7 +496,7 @@ object Load
 		val pluginClasspath = config.evalPluginDef(pluginDef, pluginState)
 		val definitionClasspath = (data(pluginClasspath) ++ config.classpath).distinct
 		val pluginLoader = ClasspathUtilities.toLoader(definitionClasspath, config.loader)
-		loadPlugins(definitionClasspath, pluginLoader, analyzed(pluginClasspath))
+		loadPlugins(dir, definitionClasspath, pluginLoader, analyzed(pluginClasspath))
 	}
 
 	def definitions(base: File, targetBase: File, srcs: Seq[File], plugins: LoadedPlugins, compilers: Compilers, log: Logger, buildBase: File): LoadedDefinitions =
@@ -521,13 +521,13 @@ object Load
 		(inputs, analysis)
 	}
 
-	def loadPlugins(classpath: Seq[File], loader: ClassLoader, analysis: Seq[inc.Analysis]): LoadedPlugins =
+	def loadPlugins(dir: File, classpath: Seq[File], loader: ClassLoader, analysis: Seq[inc.Analysis]): LoadedPlugins =
 	{
 		val (pluginNames, plugins) = if(classpath.isEmpty) (Nil, Nil) else {
 			val names = analysis flatMap findPlugins
 			(names, loadPlugins(loader, names) )
 		}
-		new LoadedPlugins(classpath, loader, plugins, pluginNames)
+		new LoadedPlugins(dir, classpath, loader, plugins, pluginNames)
 	}
 
 	def loadPlugins(loader: ClassLoader, pluginNames: Seq[String]): Seq[Setting[_]] =
@@ -564,10 +564,7 @@ object Load
 
 	final class EvaluatedConfigurations(val eval: Eval, val settings: Seq[Setting[_]])
 	final class LoadedDefinitions(val base: File, val target: File, val loader: ClassLoader, val builds: Seq[Build], val buildNames: Seq[String])
-	final class LoadedPlugins(val classpath: Seq[File], val loader: ClassLoader, val plugins: Seq[Setting[_]], val pluginNames: Seq[String])
-	object LoadedPlugins {
-		def empty(loader: ClassLoader) = new LoadedPlugins(Nil, loader, Nil, Nil)
-	}
+	final class LoadedPlugins(val base: File, val classpath: Seq[File], val loader: ClassLoader, val plugins: Seq[Setting[_]], val pluginNames: Seq[String])
 	final class BuildUnit(val uri: URI, val localBase: File, val definitions: LoadedDefinitions, val plugins: LoadedPlugins)
 	{
 		override def toString = if(uri.getScheme == "file") localBase.toString else (uri + " (locally: " + localBase +")")
