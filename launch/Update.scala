@@ -30,12 +30,12 @@ sealed trait UpdateTarget { def tpe: String; def classifiers: List[String] }
 final class UpdateScala(val classifiers: List[String]) extends UpdateTarget { def tpe = "scala" }
 final class UpdateApp(val id: Application, val classifiers: List[String]) extends UpdateTarget { def tpe = "app" }
 
-final class UpdateConfiguration(val bootDirectory: File, val ivyCacheDirectory: Option[File], val scalaVersion: String, val repositories: List[Repository])
+final class UpdateConfiguration(val bootDirectory: File, val ivyHome: Option[File], val scalaVersion: String, val repositories: List[Repository])
 
 /** Ensures that the Scala and application jars exist for the given versions or else downloads them.*/
 final class Update(config: UpdateConfiguration)
 {
-	import config.{bootDirectory, ivyCacheDirectory, repositories, scalaVersion}
+	import config.{bootDirectory, ivyHome, repositories, scalaVersion}
 	bootDirectory.mkdirs
 
 	private def logFile = new File(bootDirectory, UpdateLogName)
@@ -44,6 +44,7 @@ final class Update(config: UpdateConfiguration)
 	private lazy val settings =
 	{
 		val settings = new IvySettings
+		ivyHome foreach settings.setDefaultIvyUserDir
 		addResolvers(settings)
 		settings.setDefaultConflictManager(settings.getConflictManager(ConflictManagerName))
 		settings.setBaseDir(bootDirectory)
@@ -198,7 +199,7 @@ final class Update(config: UpdateConfiguration)
 		if(repositories.isEmpty) error("No repositories defined.")
 		for(repo <- repositories if includeRepo(repo))
 			newDefault.add(toIvyRepository(settings, repo))
-		configureCache(settings, ivyCacheDirectory)
+		configureCache(settings)
 		settings.addResolver(newDefault)
 		settings.setDefaultResolver(newDefault.getName)
 	}
@@ -208,16 +209,14 @@ final class Update(config: UpdateConfiguration)
 	private[this] val Snapshot = "-SNAPSHOT"
 	private[this] val ChangingPattern = ".*" + Snapshot
 	private[this] val ChangingMatcher = PatternMatcher.REGEXP
-	private def configureCache(settings: IvySettings, dir: Option[File])
+	private def configureCache(settings: IvySettings)
 	{
-		val cacheDir = dir.getOrElse(settings.getDefaultRepositoryCacheBasedir())
-		val manager = new DefaultRepositoryCacheManager("default-cache", settings, cacheDir)
+		val manager = new DefaultRepositoryCacheManager("default-cache", settings, settings.getDefaultRepositoryCacheBasedir())
 		manager.setUseOrigin(true)
 		manager.setChangingMatcher(ChangingMatcher)
 		manager.setChangingPattern(ChangingPattern)
 		settings.addRepositoryCacheManager(manager)
 		settings.setDefaultRepositoryCacheManager(manager)
-		dir.foreach(dir => settings.setDefaultResolutionCacheBasedir(dir.getAbsolutePath))
 	}
 	private def toIvyRepository(settings: IvySettings, repo: Repository) =
 	{

@@ -215,11 +215,12 @@ object Load
 	// note that there is State is passed in but not pulled out
 	def defaultLoad(state: State, baseDirectory: File, log: Logger): (() => Eval, BuildStructure) =
 	{
-		val stagingDirectory = defaultStaging.getCanonicalFile // TODO: properly configurable
+		val provider = state.configuration.provider
+		val scalaProvider = provider.scalaProvider
+		val stagingDirectory = defaultStaging.getCanonicalFile
 		val base = baseDirectory.getCanonicalFile
 		val loader = getClass.getClassLoader
-		val provider = state.configuration.provider
-		val classpath = provider.mainClasspath ++ provider.scalaProvider.jars
+		val classpath = provider.mainClasspath ++ scalaProvider.jars
 		val compilers = Compiler.compilers(state.configuration, log)
 		val evalPluginDef = EvaluateTask.evalPluginDef(log) _
 		val delegates = memo(defaultDelegates)
@@ -656,7 +657,7 @@ object BuildPaths
 	import Path._
 	import GlobFilter._
 
-	def defaultStaging = Path.userHome / ".ivy2" / "staging"
+	def defaultStaging = Path.userHome / ".sbt" / "staging"
 	
 	def definitionSources(base: File): Seq[File] = (base * "*.scala").getFiles.toSeq
 	def configurationSources(base: File): Seq[File] = (base * "*.sbt").getFiles.toSeq

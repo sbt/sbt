@@ -42,10 +42,10 @@ class ConfigurationParser extends NotNull
 		val (boot, m4) = processSection(m3, "boot", getBoot)
 		val (logging, m5) = processSection(m4, "log", getLogging)
 		val (properties, m6) = processSection(m5, "app-properties", getAppProperties)
-		val (cacheDir, m7) = processSection(m6, "ivy", getIvy)
+		val (ivyHome, m7) = processSection(m6, "ivy", getIvy)
 		check(m7, "section")
 		val classifiers = Classifiers(scalaClassifiers, appClassifiers)
-		new LaunchConfiguration(scalaVersion, IvyOptions(cacheDir, classifiers, repositories), app, boot, logging, properties)
+		new LaunchConfiguration(scalaVersion, IvyOptions(ivyHome, classifiers, repositories), app, boot, logging, properties)
 	}
 	def getScala(m: LabelMap) =
 	{
@@ -94,9 +94,9 @@ class ConfigurationParser extends NotNull
 
 	def getIvy(m: LabelMap): Option[File] =
 	{
-		val (cacheDir, m1) = file(m, "cache-directory", null) // fix this later
+		val (ivyHome, m1) = file(m, "ivy-home", null) // fix this later
 		check(m1, "label")
-		if(cacheDir eq null) None else Some(cacheDir)
+		if(ivyHome eq null) None else Some(ivyHome)
 	}
 	def getBoot(m: LabelMap): BootSetup =
 	{

@@ -9,7 +9,7 @@ import java.net.URL
 import scala.collection.immutable.List
 
 //TODO: use copy constructor, check size change
-final case class LaunchConfiguration(scalaVersion: Value[String], ivyConfiguration: IvyOptions, app: Application, boot: BootSetup, logging: Logging, appProperties: List[AppProperty]) extends NotNull
+final case class LaunchConfiguration(scalaVersion: Value[String], ivyConfiguration: IvyOptions, app: Application, boot: BootSetup, logging: Logging, appProperties: List[AppProperty])
 {
 	def getScalaVersion = Value.get(scalaVersion)
 	def withScalaVersion(newScalaVersion: String) = LaunchConfiguration(new Explicit(newScalaVersion), ivyConfiguration, app, boot, logging, appProperties)
@@ -20,7 +20,7 @@ final case class LaunchConfiguration(scalaVersion: Value[String], ivyConfigurati
 		LaunchConfiguration(new Explicit(newScalaVersion), ivyConfiguration.copy(classifiers = classifiers0), app.withVersion(new Explicit(newAppVersion)), boot, logging, appProperties)
 	def map(f: File => File) = LaunchConfiguration(scalaVersion, ivyConfiguration, app.map(f), boot.map(f), logging, appProperties)
 }
-final case class IvyOptions(cacheDirectory: Option[File], classifiers: Classifiers, repositories: List[Repository]) extends NotNull
+final case class IvyOptions(ivyHome: Option[File], classifiers: Classifiers, repositories: List[Repository]) extends NotNull
 
 sealed trait Value[T]
 final class Explicit[T](val value: T) extends Value[T] {

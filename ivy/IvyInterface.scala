@@ -174,7 +174,7 @@ object Resolver
 	* If `scalaTools` is true, add the Scala Tools releases repository.
 	* If `mavenCentral` is true, add the Maven Central repository.  */
 	def withDefaultResolvers(userResolvers: Seq[Resolver], mavenCentral: Boolean, scalaTools: Boolean): Seq[Resolver] =
-		Seq(Resolver.defaultLocal(None)) ++
+		Seq(Resolver.defaultLocal) ++
 		userResolvers ++
 		single(DefaultMavenRepository, mavenCentral)++
 		single(ScalaToolsReleases, scalaTools)
@@ -270,14 +270,13 @@ object Resolver
 	def mavenStyleBasePattern = "[organisation]/[module]/[revision]/[artifact]-[revision](-[classifier]).[ext]"
 	def localBasePattern = "[organisation]/[module]/[revision]/[type]s/[artifact](-[classifier]).[ext]"
 
-	def userRoot = System.getProperty("user.home")
-	def userMavenRoot = userRoot + "/.m2/repository/"
-	def userIvyRoot = userRoot + "/.ivy2/"
-	private def userIvyRootFile = new File(userIvyRoot)
-
-	def defaultLocal(ivyHome: Option[File]) = defaultUserFileRepository(ivyHome, "local")
-	def defaultShared(ivyHome: Option[File]) = defaultUserFileRepository(ivyHome, "shared")
-	def defaultUserFileRepository(ivyHome: Option[File], id: String) = file(id, new File(ivyHome.getOrElse(userIvyRootFile), id))(defaultIvyPatterns)
+	def defaultLocal = defaultUserFileRepository("local")
+	def defaultShared = defaultUserFileRepository("shared")
+	def defaultUserFileRepository(id: String) =
+	{
+		val pList = ("${ivy.home}/" + id + "/" + localBasePattern) :: Nil
+		FileRepository(id, defaultFileConfiguration, Patterns(pList, pList, false))
+	}
 	def defaultIvyPatterns =
 	{
 		val pList = List(localBasePattern)

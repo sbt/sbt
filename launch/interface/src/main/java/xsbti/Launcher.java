@@ -10,5 +10,5 @@ public interface Launcher
 	public GlobalLock globalLock();
 	public File bootDirectory();
 	// null if none set
-	public File cacheDirectory();
+	public File ivyHome();
 }

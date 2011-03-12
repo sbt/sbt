@@ -181,7 +181,7 @@ private object IvySbt
 	{
 		def makeChain(label: String, name: String, rs: Seq[Resolver]) = {
 			log.debug(label + " repositories:")
-			val chain = resolverChain(name, rs, localOnly, log)
+			val chain = resolverChain(name, rs, localOnly, settings, log)
 			settings.addResolver(chain)
 			chain
 		}
@@ -189,7 +189,7 @@ private object IvySbt
 		val mainChain = makeChain("Default", "sbt-chain", resolvers)
 		settings.setDefaultResolver(mainChain.getName)
 	}
-	private def resolverChain(name: String, resolvers: Seq[Resolver], localOnly: Boolean, log: Logger): ChainResolver =
+	private def resolverChain(name: String, resolvers: Seq[Resolver], localOnly: Boolean, settings: IvySettings, log: Logger): ChainResolver =
 	{
 		val newDefault = new ChainResolver
 		newDefault.setName(name)
@@ -197,7 +197,7 @@ private object IvySbt
 		newDefault.setCheckmodified(false)
 		for(sbtResolver <- resolvers) {
 			log.debug("\t" + sbtResolver)
-			newDefault.add(ConvertResolver(sbtResolver))
+			newDefault.add(ConvertResolver(sbtResolver)(settings))
 		}
 		newDefault
 	}
@@ -210,7 +210,7 @@ private object IvySbt
 			import IvyPatternHelper._
 			import PatternMatcher._
 			if(!existing.contains(resolver.name))
-				settings.addResolver(ConvertResolver(resolver))
+				settings.addResolver(ConvertResolver(resolver)(settings))
 			val attributes = javaMap(Map(MODULE_KEY -> name, ORGANISATION_KEY -> organization, REVISION_KEY -> revision))
 			settings.addModuleConfiguration(attributes, settings.getMatcher(EXACT_OR_REGEXP), resolver.name, null, null, null)
 		}
