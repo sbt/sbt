@@ -5,13 +5,14 @@ package sbt
 
 import org.apache.ivy.{core,plugins}
 import core.module.id.ModuleRevisionId
+import core.settings.IvySettings
 import plugins.resolver.{ChainResolver, DependencyResolver, IBiblioResolver}
 import plugins.resolver.{AbstractPatternsBasedResolver, AbstractSshBasedResolver, FileSystemResolver, SFTPResolver, SshResolver, URLResolver}
 
 private object ConvertResolver
 {
 	/** Converts the given sbt resolver into an Ivy resolver..*/
-	def apply(r: Resolver) =
+	def apply(r: Resolver)(implicit settings: IvySettings) =
 	{
 		r match
 		{
@@ -69,7 +70,7 @@ private object ConvertResolver
 		resolver.setM2compatible(true)
 		resolver.setRoot(root)
 	}
-	private def initializeSSHResolver(resolver: AbstractSshBasedResolver, repo: SshBasedRepository)
+	private def initializeSSHResolver(resolver: AbstractSshBasedResolver, repo: SshBasedRepository)(implicit settings: IvySettings)
 	{
 		resolver.setName(repo.name)
 		resolver.setPassfile(null)
@@ -93,10 +94,10 @@ private object ConvertResolver
 					setUser(user)
 			}
 	}
-	private def initializePatterns(resolver: AbstractPatternsBasedResolver, patterns: Patterns)
+	private def initializePatterns(resolver: AbstractPatternsBasedResolver, patterns: Patterns)(implicit settings: IvySettings)
 	{
 		resolver.setM2compatible(patterns.isMavenCompatible)
-		patterns.ivyPatterns.foreach(resolver.addIvyPattern)
-		patterns.artifactPatterns.foreach(resolver.addArtifactPattern)
+		patterns.ivyPatterns.foreach(p => resolver.addIvyPattern(settings substitute p))
+		patterns.artifactPatterns.foreach(p => resolver.addArtifactPattern(settings substitute p))
 	}
 }
