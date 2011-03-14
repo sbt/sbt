@@ -105,43 +105,13 @@ object IvyActions
 	}
 	/** Resolves and retrieves dependencies.  'ivyConfig' is used to produce an Ivy file and configuration.
 	* 'updateConfig' configures the actual resolution and retrieval process. */
-	def update(module: IvySbt#Module, configuration: UpdateConfiguration) =
+	def update(module: IvySbt#Module, configuration: UpdateConfiguration): UpdateReport =
 	{
 		module.withModule { case (ivy, md, default) =>
 			import configuration.{retrieve => rConf, logging}
 			val report = resolve(logging)(ivy, md, default)
-			rConf match
-			{
-				case None => IvyRetrieve.cachePaths(report)
-				case Some(conf) => retrieve(ivy, md, conf, logging)
-			}
+			IvyRetrieve.updateReport(report)
 		}
-	}
-	// doesn't work.  perhaps replace retrieve/determineArtifactsToCopy with custom code
-	private def retrieve(ivy: Ivy, md: ModuleDescriptor, conf: RetrieveConfiguration, logging: UpdateLogging.Value) =
-	{
-			import conf._
-			val retrieveOptions = new RetrieveOptions
-			retrieveOptions.setSync(synchronize)
-			val patternBase = retrieveDirectory.getAbsolutePath
-			val pattern =
-				if(patternBase.endsWith(File.separator))
-					patternBase + outputPattern
-				else
-					patternBase + File.separatorChar + outputPattern
-
-			val engine = ivy.getRetrieveEngine
-			engine.retrieve(md.getModuleRevisionId, pattern, retrieveOptions)
-
-			//TODO: eliminate the duplication for better efficiency (retrieve already calls determineArtifactsToCopy once)
-			val rawMap = engine.determineArtifactsToCopy(md.getModuleRevisionId, pattern, retrieveOptions)
-			val map = rawMap.asInstanceOf[java.util.Map[ArtifactDownloadReport,java.util.Set[String]]]
-			val confMap = new collection.mutable.HashMap[String, Seq[File]]
-
-				import collection.JavaConversions._
-			for( (report, all) <- map; retrieved <- all; val file = new File(retrieved); conf <- report.getArtifact.getConfigurations)
-				confMap.put(conf, file +: confMap.getOrElse(conf, Nil))
-			confMap.toMap
 	}
 	private def resolve(logging: UpdateLogging.Value)(ivy: Ivy, module: DefaultModuleDescriptor, defaultConf: String): ResolveReport =
 	{
