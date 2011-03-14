@@ -488,7 +488,7 @@ object Load
 	}
 
 	def plugins(dir: File, s: State, config: LoadBuildConfiguration): LoadedPlugins = if(dir.exists) buildPlugins(dir, s, config) else noPlugins(dir, config)
-	def noPlugins(dir: File, config: LoadBuildConfiguration): LoadedPlugins = new LoadedPlugins(dir, config.classpath, config.loader, Nil, Nil)
+	def noPlugins(dir: File, config: LoadBuildConfiguration): LoadedPlugins = new LoadedPlugins(dir, config.classpath, config.loader, Nil, binaryPlugins(config.loader))
 	def buildPlugins(dir: File, s: State, config: LoadBuildConfiguration): LoadedPlugins =
 	{
 		val (eval,pluginDef) = apply(dir, s, config)
@@ -525,10 +525,15 @@ object Load
 	def loadPlugins(dir: File, classpath: Seq[File], loader: ClassLoader, analysis: Seq[inc.Analysis]): LoadedPlugins =
 	{
 		val (pluginNames, plugins) = if(classpath.isEmpty) (Nil, Nil) else {
-			val names = analysis flatMap findPlugins
+			val names = ( binaryPlugins(loader) ++ (analysis flatMap findPlugins) ).distinct
 			(names, loadPlugins(loader, names) )
 		}
 		new LoadedPlugins(dir, classpath, loader, plugins, pluginNames)
+	}
+	def binaryPlugins(loader: ClassLoader): Seq[String] =
+	{
+		import collection.JavaConversions._
+		loader.getResources("sbt/sbt.plugins").toSeq flatMap { u => IO.readLinesURL(u) map { _.trim } filter { !_.isEmpty } };
 	}
 
 	def loadPlugins(loader: ClassLoader, pluginNames: Seq[String]): Seq[Setting[_]] =

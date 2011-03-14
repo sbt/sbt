@@ -3,7 +3,6 @@
  */
 package sbt
 
-	import java.io.File
 	import Build.data
 	import Scope.{GlobalScope, ThisScope}
 	import compiler.Discovery
@@ -12,16 +11,20 @@ package sbt
 	import EvaluateTask.{resolvedScoped, streams}
 	import complete._
 	import std.TaskExtra._
+
 	import scala.xml.{Node => XNode,NodeSeq}
 	import org.apache.ivy.core.module.{descriptor, id}
 	import descriptor.ModuleDescriptor, id.ModuleRevisionId
-	import Types._
+	import java.io.File
+	import java.net.URL
 
-object Defaults
-{
+	import Types._
 	import Path._
 	import GlobFilter._
 	import Keys._
+
+object Defaults
+{
 	implicit def richFileSetting(s: ScopedSetting[File]): RichFileSetting = new RichFileSetting(s)
 	implicit def richFilesSetting(s: ScopedSetting[Seq[File]]): RichFilesSetting = new RichFilesSetting(s)
 	
@@ -61,7 +64,9 @@ object Defaults
 		outputStrategy :== None,
 		fork :== false,
 		javaOptions :== Nil,
+		sbtPlugin :== false,
 		crossPaths :== true,
+		generatedResources :== Nil,
 //		shellPrompt :== (_ => "> "),
 		aggregate :== Aggregation.Enabled,
 		maxErrors :== 100,
@@ -96,18 +101,16 @@ object Defaults
 		scalaSource <<= sourceDirectory / "scala",
 		javaSource <<= sourceDirectory / "java",
 		resourceDirectory <<= sourceDirectory / "resources",
+		generatedResourceDirectory <<= target / "res_managed",
 		sourceDirectories <<= (scalaSource, javaSource) { _ :: _ :: Nil },
-		resourceDirectories <<= toSeq(resourceDirectory),
-		resources <<= (resourceDirectories, defaultExcludes) map { (dirs, excl) => dirs.descendentsExcept("*",excl).getFiles.toSeq }
+		resourceDirectories <<= (resourceDirectory, generatedResourceDirectory) { _ :: _ :: Nil },
+		resources <<= (resourceDirectories, defaultExcludes, generatedResources, generatedResourceDirectory) map resourcesTask,
+		generatedResources <<= (definedSbtPlugins, generatedResourceDirectory) map writePluginsDescriptor
 	)
 	def addBaseSources = Seq(
 		sources <<= (sources, baseDirectory, sourceFilter, defaultExcludes) map { (srcs,b,f,excl) => (srcs +++ b * (f -- excl)).getFiles.toSeq }
 	)
 	
-	def webPaths = Seq(
-		webappDir <<= sourceDirectory / "webapp"
-	)
-
 	def compileBase = Seq(
 		classpathOptions in GlobalScope :== ClasspathOptions.auto,
 		compilers <<= (scalaInstance, appConfiguration, streams, classpathOptions, javaHome) map { (si, app, s, co, jh) => Compiler.compilers(si, co, jh)(app, s.log) },
@@ -125,6 +128,7 @@ object Defaults
 		console <<= consoleTask,
 		consoleQuick <<= consoleQuickTask,
 		discoveredMainClasses <<= compile map discoverMainClasses,
+		definedSbtPlugins <<= discoverPlugins,
 		inTask(run)(runnerSetting :: Nil).head,
 		selectMainClass <<= discoveredMainClasses map selectRunMain,
 		mainClass in run :== selectMainClass,
@@ -172,6 +176,7 @@ object Defaults
 			case Some(h) => ScalaInstance(h, launcher)
 		}
 	}
+	def resourcesTask(dirs: Seq[File], excl: FileFilter, gen: Seq[File], genDir: File) = gen ++ (dirs --- genDir).descendentsExcept("*",excl).getFiles
 
 	lazy val testTasks = Seq(	
 		testLoader <<= (fullClasspath, scalaInstance) map { (cp, si) => TestFramework.createTestLoader(data(cp), si) },
@@ -206,7 +211,7 @@ object Defaults
 				}
 		}
 	)
-	
+
 	lazy val packageBase = Seq(
 		jarNameSetting,
 		packageOptions in GlobalScope :== Nil,
@@ -311,6 +316,28 @@ object Defaults
 			Compiler.inputs(classpath, srcs, classes, scalacOpts, javacOpts, analysis, cache, 100)(cs, s.log)
 		}
 
+	def writePluginsDescriptor(plugins: Set[String], dir: File): List[File] =
+	{
+		val descriptor: File = dir / "sbt" / "sbt.plugins"
+		if(plugins.isEmpty)
+		{
+			IO.delete(descriptor)
+			Nil
+		}
+		else
+		{
+			IO.writeLines(descriptor, plugins.toSeq)
+			descriptor :: Nil
+		}
+	}
+	def discoverPlugins: Initialize[Task[Set[String]]] = (compile, sbtPlugin, streams) map { (analysis, isPlugin, s) => if(isPlugin) discoverSbtPlugins(analysis, s.log) else Set.empty }
+	def discoverSbtPlugins(analysis: inc.Analysis, log: Logger): Set[String] =
+	{
+		val pluginClass = classOf[Plugin].getName
+		val discovery = Discovery(Set(pluginClass), Set.empty)( Tests allDefs analysis )
+		discovery collect { case (df, disc) if (disc.baseClasses contains pluginClass) && disc.isModule => df.name } toSet;
+	}
+
 	def copyResourcesTask =
 	(classDirectory, cacheDirectory, resources, resourceDirectories, streams) map { (target, cache, resrcs, dirs, s) =>
 		val cacheFile = cache / "copy-resources"
@@ -357,7 +384,6 @@ object Defaults
 
 	val CompletionsID = "completions"
 
-	lazy val defaultWebPaths = inConfig(CompileConf)(webPaths)
 	
 	def noAggregation = Seq(run, console, consoleQuick, consoleProject)
 	lazy val disableAggregation = noAggregation map disableAggregate
@@ -365,8 +391,6 @@ object Defaults
 		aggregate in Scope.GlobalScope.copy(task = Select(k.key)) :== false
 	
 	lazy val baseTasks: Seq[Setting[_]] = projectTasks ++ packageBase
-
-	lazy val defaultWebTasks = Nil
 
 	lazy val baseClasspaths = Classpaths.publishSettings ++ Classpaths.baseSettings
 	lazy val configSettings = Classpaths.configSettings ++ configTasks ++ configPaths ++ packageConfig
@@ -378,7 +402,6 @@ object Defaults
 	lazy val defaultConfigs = inConfig(CompileConf)(compileSettings) ++ inConfig(TestConf)(testSettings)
 
 	lazy val defaultSettings: Seq[Setting[_]] = projectCore ++ paths ++ baseClasspaths ++ baseTasks ++ compileBase ++ defaultConfigs ++ disableAggregation
-	lazy val defaultWebSettings = defaultSettings ++ defaultWebPaths ++ defaultWebTasks
 }
 object Classpaths
 {

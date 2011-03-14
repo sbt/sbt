@@ -73,8 +73,8 @@ object Keys
 	val scalaInstance = SettingKey[ScalaInstance]("scala-instance")
 	val scalaVersion = SettingKey[String]("scala-version")
 	val classpathOptions = SettingKey[ClasspathOptions]("classpath-options")
-
-	val webappDir = SettingKey[File]("webapp-dir")
+	val definedSbtPlugins = TaskKey[Set[String]]("defined-sbt-plugins")
+	val sbtPlugin = SettingKey[Boolean]("sbt-plugin")
 
 	val clean = TaskKey[Unit]("clean")
 	val console = TaskKey[Unit]("console")
@@ -86,7 +86,10 @@ object Keys
 	val copyResources = TaskKey[Traversable[(File,File)]]("copy-resources")
 	val resources = TaskKey[Seq[File]]("resources")
 	val aggregate = SettingKey[Aggregation]("aggregate")
-	
+	val generatedResources = TaskKey[Seq[File]]("generated-resources")
+	val generatedResourceDirectory = SettingKey[File]("generated-resource-directory")
+
+
 	// package keys
 	val packageBin = TaskKey[Package.Configuration]("package")
 	val packageDoc = TaskKey[Package.Configuration]("package-doc")
