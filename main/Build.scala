@@ -25,7 +25,7 @@ trait Build
 }
 trait Plugin
 {
-	def settings: Seq[Project.Setting[_]]
+	def settings: Seq[Project.Setting[_]] = Nil
 }
 
 object Build
