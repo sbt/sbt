@@ -7,9 +7,11 @@ package sbt
 
 	import FileInfo.{exists, hash}
 	import java.io.File
+	import java.net.URL
 	import Types.:+:
 	import scala.xml.NodeSeq
 	import sbinary.{DefaultProtocol,Format}
+	import DefaultProtocol.{immutableMapFormat, optionsAreFormat}
 	import RepositoryHelpers._
 	import Ordering._
 
@@ -52,6 +54,31 @@ object CacheIvy
 
 	def updateIC: InputCache[IvyConfiguration :+: ModuleSettings :+: UpdateConfiguration :+: HNil] = implicitly
 	def publishIC: InputCache[IvyConfiguration :+: ModuleSettings :+: PublishConfiguration :+: HNil] = implicitly
+
+	def updateReportF: Format[UpdateReport] =
+	{
+		import DefaultProtocol.{BooleanFormat, FileFormat, StringFormat}
+		updateReportFormat
+	}
+	implicit def updateReportFormat(implicit m: Format[String], cr: Format[ConfigurationReport]): Format[UpdateReport] =
+		wrap[UpdateReport, Map[String,ConfigurationReport]](_.configurations, c => new UpdateReport(c))
+	implicit def confReportFormat(implicit mf: Format[ModuleID], mr: Format[ModuleReport]): Format[ConfigurationReport] =
+		wrap[ConfigurationReport, (String,Map[ModuleID,ModuleReport])]( r => (r.configuration, r.modules), { case (c,m) => new ConfigurationReport(c,m) })
+	implicit def moduleReportFormat(implicit f: Format[Artifact], ff: Format[File], mid: Format[ModuleID]): Format[ModuleReport] =
+		wrap[ModuleReport, (ModuleID, Map[Artifact, File])]( m => (m.module, m.artifacts), { case (m, as) => new ModuleReport(m, as) })
+	implicit def artifactFormat(implicit sf: Format[String], of: Format[Seq[Configuration]], cf: Format[Configuration], uf: Format[Option[URL]]): Format[Artifact] =
+		wrap[Artifact, (String,String,String,Option[String],Seq[Configuration],Option[URL],Map[String,String])](
+			a => (a.name, a.`type`, a.extension, a.classifier, a.configurations.toSeq, a.url, a.extraAttributes),
+			{ case (n,t,x,c,cs,u,e) => Artifact(n,t,x,c,cs,u,e) }
+		)
+	implicit def moduleIDFormat(implicit sf: Format[String], af: Format[Artifact], bf: Format[Boolean]): Format[ModuleID] =
+		wrap[ModuleID, (String,String,String,Option[String],Boolean,Boolean,Seq[Artifact],Map[String,String],Boolean)](
+			m => (m.organization,m.name,m.revision,m.configurations, m.isChanging, m.isTransitive, m.explicitArtifacts, m.extraAttributes, m.crossVersion),
+			{ case (o,n,r,cs,ch,t,as,x,cv) => ModuleID(o,n,r,cs,ch,t,as,x,cv) }
+		)
+
+	implicit def configurationFormat(implicit sf: Format[String]): Format[Configuration] =
+		wrap[Configuration, String](_.name, s => new Configuration(s))
 
 	implicit def classpathFormat =
 	{

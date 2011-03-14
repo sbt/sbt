@@ -421,7 +421,7 @@ object Classpaths
 		internalDependencyClasspath <<= internalDependencies,
 		unmanagedClasspath <<= unmanagedDependencies,
 		products <<= makeProducts,
-		managedClasspath <<= (configuration, update) map { (config, up) => up.getOrElse(config.name, error("Configuration '" + config.name + "' unresolved by 'update'.")) },
+		managedClasspath <<= (configuration, update) map managedJars,
 		unmanagedJars <<= (configuration, unmanagedBase, classpathFilter, defaultExcludes) map { (config, base, filter, excl) =>
 			(base * (filter -- excl) +++ (base / config.name).descendentsExcept(filter, excl)).getFiles.toSeq
 		}
@@ -500,11 +500,12 @@ object Classpaths
 		(ivyModule, config, deliverKey) map { (module, config, _) => IvyActions.publish(module, config) }
 
 		import Cache._
-		import CacheIvy.{classpathFormat, publishIC, updateIC}
+		import CacheIvy.{classpathFormat, publishIC, updateIC, updateReportF}
 
-	def cachedUpdate(cacheFile: File, module: IvySbt#Module, config: UpdateConfiguration, log: Logger): Map[String, Seq[File]] =
+	def cachedUpdate(cacheFile: File, module: IvySbt#Module, config: UpdateConfiguration, log: Logger): UpdateReport =
 	{
 		implicit val updateCache = updateIC
+		implicit val updateReport = updateReportF
 		val work = (_:  IvyConfiguration :+: ModuleSettings :+: UpdateConfiguration :+: HNil) match { case conf :+: settings :+: config :+: HNil =>
 			log.info("Updating...")
 			val r = IvyActions.update(module, config)
@@ -667,4 +668,23 @@ object Classpaths
 	def defaultConfigurationTask(p: ResolvedReference, data: Settings[Scope]): Configuration =
 		flatten(defaultConfiguration in p get data) getOrElse Configurations.Default
 	def flatten[T](o: Option[Option[T]]): Option[T] = o flatMap identity
+
+	def managedJars(config: Configuration, up: UpdateReport): Classpath =
+		allJars( confReport(config.name, up) )
+	def confReport(config: String, up: UpdateReport): ConfigurationReport =
+		up.configurations.getOrElse(config, error("Configuration '" + config + "' unresolved by 'update'."))
+	def allJars(cr: ConfigurationReport): Seq[File] = cr.modules.values.toSeq.flatMap(mr => allJars(mr.artifacts))
+	def allJars(as: Iterable[(Artifact,File)]): Iterable[File] = as collect { case (a, f) if isJar(a) => f }
+	def isJar(a: Artifact): Boolean = a.`type` == "jar"
+}
+trait Defaults
+{
+	def addSbtDependency: Setting[Seq[ModuleID]] =
+		libraryDependencies <<= (libraryDependencies, appConfiguration) { (libs, app) =>
+			val id = app.provider.id
+			libs :+ ModuleID(id.groupID, id.name, id.version, crossVersion = true)
+		}
+	
+	def addSbtRepository: Setting[Seq[Resolver]] =
+		resolvers += Resolver.url("sbt-db", new URL("http://databinder.net/repo/"))(Resolver.ivyStylePatterns)
 }

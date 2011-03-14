@@ -149,7 +149,7 @@ object Keys
 	val ivySbt = TaskKey[IvySbt]("ivy-sbt")
 	val ivyModule = TaskKey[IvySbt#Module]("ivy-module")
 	val classpathFilter = SettingKey[FileFilter]("classpath-filter")
-	val update = TaskKey[Map[String,Seq[File]]]("update")
+	val update = TaskKey[UpdateReport]("update")
 	
 	val publishConfiguration = TaskKey[PublishConfiguration]("publish-configuration")
 	val publishLocalConfiguration = TaskKey[PublishConfiguration]("publish-local-configuration")
