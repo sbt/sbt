@@ -508,12 +508,12 @@ object IO
 	private def writeBytes(file: File, bytes: Array[Byte], append: Boolean): Unit =
 		fileOutputStream(append)(file) { _.write(bytes) }
 
+	def readLinesURL(url: URL, charset: Charset = defaultCharset): List[String] =
+		urlReader(charset)(url)(readLines)
 
-	// Not optimized for large files
 	def readLines(file: File, charset: Charset = defaultCharset): List[String] =
 		fileReader(charset)(file)(readLines)
 		
-	// Not optimized for large files
 	def readLines(in: BufferedReader): List[String] = 
 		foldLines[List[String]](in, Nil)( (accum, line) => line :: accum ).reverse
 	

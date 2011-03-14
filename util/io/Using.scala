@@ -84,6 +84,7 @@ object Using
 	def fileWriter(charset: Charset = IO.utf8, append: Boolean = false) =
 		file(f => new BufferedWriter(new OutputStreamWriter(new FileOutputStream(f, append), charset)) )
 	def fileReader(charset: Charset) = file(f => new BufferedReader(new InputStreamReader(new FileInputStream(f), charset)) )
+	def urlReader(charset: Charset) = resource( (u: URL) => new BufferedReader(new InputStreamReader(u.openStream, charset)))
 	def jarFile(verify: Boolean) = file(f => new JarFile(f, verify), (_: JarFile).close())
 	def zipFile = file(f => new ZipFile(f), (_: ZipFile).close())
 	def streamReader = wrap{ (_: (InputStream, Charset)) match { case (in, charset) => new InputStreamReader(in, charset) } }
