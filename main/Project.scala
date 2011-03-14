@@ -100,7 +100,7 @@ object Project extends Init[Scope]
 		def get[T](k: SettingKey[T]): Option[T] = k in ref get structure.data
 		def commandsIn(axis: ResolvedReference) = commands in axis get structure.data toList ;
 
-		val allCommands = commandsIn(ref) ++ commandsIn(BuildRef(ref.build)) ++ (commands get structure.data toList )
+		val allCommands = commandsIn(ref) ++ commandsIn(BuildRef(ref.build)) ++ (commands in Global get structure.data toList )
 		val history = get(historyPath) flatMap identity
 		val prompt = get(shellPrompt)
 		val watched = get(watch)
