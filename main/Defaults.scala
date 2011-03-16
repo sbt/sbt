@@ -57,7 +57,11 @@ object Defaults
 	def analysisMap[T](cp: Seq[Attributed[T]]): Map[T, inc.Analysis] =
 		(cp map extractAnalysis).toMap
 
-	def buildCore: Seq[Setting[_]] = inScope(GlobalScope)(Seq(
+	def buildCore: Seq[Setting[_]] = thisBuildCore ++ globalCore
+	def thisBuildCore: Seq[Setting[_]] = inScope(GlobalScope.copy(project = Select(ThisBuild)))(Seq(
+		managedDirectory <<= baseDirectory(_ / "lib_managed")
+	))
+	def globalCore: Seq[Setting[_]] = inScope(GlobalScope)(Seq(
 		pollInterval :== 500,
 		scalaHome :== None,
 		javaHome :== None,
@@ -74,6 +78,7 @@ object Defaults
 		timingFormat :== Aggregation.defaultFormat,
 		showSuccess :== true,
 		commands :== Nil,
+		retrieveManaged :== false,
 		settings <<= EvaluateTask.state map { state => Project.structure(state).data }
 	))
 	def projectCore: Seq[Setting[_]] = Seq(
@@ -473,8 +478,8 @@ object Classpaths
 		resolvers in GlobalScope :== Nil,
 		projectDescriptors <<= depMap,
 		retrievePattern :== "[type]/[organisation]/[module]/[artifact](-[revision])(-[classifier]).[ext]",
-		updateConfiguration <<= (retrieveConfiguration, ivyLoggingLevel)((conf,level) => new UpdateConfiguration(conf, level) ),
-		retrieveConfiguration :== None, //Some(new RetrieveConfiguration(managedDependencyPath asFile, retrievePattern, true))
+		updateConfiguration <<= (retrieveConfiguration, ivyLoggingLevel)((conf,level) => new UpdateConfiguration(conf, false, level) ),
+		retrieveConfiguration <<= (managedDirectory, retrievePattern, retrieveManaged) { (libm, pattern, enabled) => if(enabled) Some(new RetrieveConfiguration(libm, pattern)) else None },
 		ivyConfiguration <<= (fullResolvers, ivyPaths, otherResolvers, moduleConfigurations, offline, appConfiguration) map { (rs, paths, other, moduleConfs, off, app) =>
 			// todo: pass logger from streams directly to IvyActions
 			val lock = app.provider.scalaProvider.launcher.globalLock
@@ -490,6 +495,13 @@ object Classpaths
 		ivyModule <<= (ivySbt, moduleSettings) map { (ivySbt, settings) => new ivySbt.Module(settings) },
 		update <<= (ivyModule, updateConfiguration, cacheDirectory, streams) map { (module, config, cacheDirectory, s) =>
 			cachedUpdate(cacheDirectory / "update", module, config, s.log)
+		},
+		transitiveClassifiers :== Seq("sources", "javadoc"),
+		updateClassifiers <<= (ivySbt, projectID, update, transitiveClassifiers, updateConfiguration, ivyScala) map IvyActions.transitive,
+		updateSbtClassifiers <<= (ivySbt, projectID, transitiveClassifiers, updateConfiguration, appConfiguration, ivyScala) map { (is, pid, classifiers, c, app, ivyScala) =>
+			val id = app.provider.id
+			val module = ModuleID(id.groupID, id.name, id.version, crossVersion = id.crossVersioned)
+			IvyActions.transitiveScratch(is, pid, "sbt", module :: Nil, classifiers, c, ivyScala)
 		}
 	)
 

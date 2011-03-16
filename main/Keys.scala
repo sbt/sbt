@@ -150,6 +150,9 @@ object Keys
 	val ivyModule = TaskKey[IvySbt#Module]("ivy-module")
 	val classpathFilter = SettingKey[FileFilter]("classpath-filter")
 	val update = TaskKey[UpdateReport]("update")
+	val updateClassifiers = TaskKey[UpdateReport]("update-classifiers")
+	val transitiveClassifiers = SettingKey[Seq[String]]("transitive-classifiers")
+	val updateSbtClassifiers = TaskKey[UpdateReport]("update-sbt-classifiers")
 	
 	val publishConfiguration = TaskKey[PublishConfiguration]("publish-configuration")
 	val publishLocalConfiguration = TaskKey[PublishConfiguration]("publish-local-configuration")
@@ -190,6 +193,8 @@ object Keys
 	val artifacts = SettingKey[Seq[Artifact]]("artifacts")
 	val projectDescriptors = TaskKey[Map[ModuleRevisionId,ModuleDescriptor]]("project-descriptors")
 	val autoUpdate = SettingKey[Boolean]("auto-update")
+	val retrieveManaged = SettingKey[Boolean]("retrieve-managed")
+	val managedDirectory = SettingKey[File]("managed-directory")
 	
 	// special
 	val settings = TaskKey[Settings[Scope]]("settings")

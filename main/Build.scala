@@ -11,7 +11,7 @@ package sbt
 	import collection.mutable
 	import Compiler.{Compilers,Inputs}
 	import Project.{inScope, ScopedKey, ScopeLocal, Setting}
-	import Keys.{appConfiguration, configuration, thisProject, thisProjectRef}
+	import Keys.{appConfiguration, baseDirectory, configuration, thisProject, thisProjectRef}
 	import TypeFunctions.{Endo,Id}
 	import tools.nsc.reporters.ConsoleReporter
 	import Build.{analyzed, data}
@@ -328,7 +328,8 @@ object Load
 				transformSettings(projectScope(ref), uri, rootProject, settings)
 			}
 			val buildScope = Scope(Select(BuildRef(uri)), Global, Global, Global)
-			pluginGlobal ++ inScope(buildScope)(build.buildSettings) ++ projectSettings
+			val buildBase = baseDirectory :== build.localBase
+			pluginGlobal ++ inScope(buildScope)(buildBase +: build.buildSettings) ++ projectSettings
 		}
 	def transformSettings(thisScope: Scope, uri: URI, rootProject: URI => String, settings: Seq[Setting[_]]): Seq[Setting[_]] =
 		Project.transform(Scope.resolveScope(thisScope, uri, rootProject), settings)
@@ -372,7 +373,11 @@ object Load
 		(new PartBuildUnit(unit, defined.map(d => (d.id, d)).toMap, rootProjects, buildSettings(unit)), externals)
 	}
 	def buildSettings(unit: BuildUnit): Seq[Setting[_]] =
-		unit.definitions.builds.flatMap(_.settings)
+	{
+		val buildScope = GlobalScope.copy(project = Select(BuildRef(unit.uri)))
+		val resolve = Scope.resolveBuildScope(buildScope, unit.uri)
+		Project.transform(resolve, unit.definitions.builds.flatMap(_.settings))
+	}
 
 	@tailrec def loadAll(bases: List[URI], references: Map[URI, List[ProjectReference]], externalLoader: URI => BuildUnit, builds: Map[URI, PartBuildUnit]): (Map[URI, List[ProjectReference]], Map[URI, PartBuildUnit]) =
 		bases match

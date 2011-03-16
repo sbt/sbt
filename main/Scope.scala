@@ -15,6 +15,9 @@ object Scope
 	def resolveScope(thisScope: Scope, current: URI, rootProject: URI => String): Scope => Scope =
 		resolveProject(current, rootProject) compose replaceThis(thisScope)
 
+	def resolveBuildScope(thisScope: Scope, current: URI): Scope => Scope =
+		buildResolve(current) compose replaceThis(thisScope)
+
 	def replaceThis(thisScope: Scope): Scope => Scope = (scope: Scope) =>
 		Scope(subThis(thisScope.project, scope.project), subThis(thisScope.config, scope.config), subThis(thisScope.task, scope.task), subThis(thisScope.extra, scope.extra))
 		
@@ -28,11 +31,15 @@ object Scope
 			case _ => scope.copy(task = Select(key))
 		}
 		
-	def resolveProject(uri: URI, rootProject: URI => String): Scope => Scope =
+	def mapReference(f: Reference => Reference): Scope => Scope =
 		{
-			case Scope(Select(ref), a,b,c) => Scope(Select(resolveReference(uri, rootProject, ref)), a,b,c)
+			case Scope(Select(ref), a,b,c) => Scope(Select(f(ref)), a,b,c)
 			case x => x
 		}
+	def resolveProject(uri: URI, rootProject: URI => String): Scope => Scope =
+		mapReference(ref => resolveReference(uri, rootProject, ref))
+	def buildResolve(uri: URI): Scope => Scope =
+		mapReference(ref => resolveBuildOnly(uri, ref))
 
 	def resolveBuildOnly(current: URI, ref: Reference): Reference =
 		ref match

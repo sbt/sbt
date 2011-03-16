@@ -11,7 +11,7 @@ package sbt
 	import Types.:+:
 	import scala.xml.NodeSeq
 	import sbinary.{DefaultProtocol,Format}
-	import DefaultProtocol.{immutableMapFormat, optionsAreFormat}
+	import DefaultProtocol.{immutableMapFormat, immutableSetFormat, optionsAreFormat}
 	import RepositoryHelpers._
 	import Ordering._
 
@@ -65,7 +65,7 @@ object CacheIvy
 	implicit def confReportFormat(implicit mf: Format[ModuleID], mr: Format[ModuleReport]): Format[ConfigurationReport] =
 		wrap[ConfigurationReport, (String,Map[ModuleID,ModuleReport])]( r => (r.configuration, r.modules), { case (c,m) => new ConfigurationReport(c,m) })
 	implicit def moduleReportFormat(implicit f: Format[Artifact], ff: Format[File], mid: Format[ModuleID]): Format[ModuleReport] =
-		wrap[ModuleReport, (ModuleID, Map[Artifact, File])]( m => (m.module, m.artifacts), { case (m, as) => new ModuleReport(m, as) })
+		wrap[ModuleReport, (ModuleID, Map[Artifact, File], Set[Artifact])]( m => (m.module, m.artifacts, m.missingArtifacts), { case (m, as, ms) => new ModuleReport(m, as,ms) })
 	implicit def artifactFormat(implicit sf: Format[String], of: Format[Seq[Configuration]], cf: Format[Configuration], uf: Format[Option[URL]]): Format[Artifact] =
 		wrap[Artifact, (String,String,String,Option[String],Seq[Configuration],Option[URL],Map[String,String])](
 			a => (a.name, a.`type`, a.extension, a.classifier, a.configurations.toSeq, a.url, a.extraAttributes),
@@ -126,7 +126,7 @@ object CacheIvy
 	implicitly[InputCache[Seq[Configuration]]]
 
 	object L2 {
-		implicit def updateConfToHL = (u: UpdateConfiguration) => u.retrieve :+: HNil
+		implicit def updateConfToHL = (u: UpdateConfiguration) => u.retrieve :+: u.missingOk :+: HNil
 		implicit def pomConfigurationHL = (c: PomConfiguration) => hash(c.file) :+: c.ivyScala :+: c.validate :+: HNil
 		implicit def ivyFileConfigurationHL = (c: IvyFileConfiguration) => hash(c.file) :+: c.ivyScala :+: c.validate :+: HNil
 		implicit def sshConnectionToHL = (s: SshConnection) => s.authentication :+: s.hostname :+: s.port :+: HNil
@@ -145,7 +145,7 @@ object CacheIvy
 	implicit def publishConfIC: InputCache[PublishConfiguration] = wrapIn
 
 	object L1 {
-		implicit def retrieveToHL = (r: RetrieveConfiguration) => exists(r.retrieveDirectory) :+: r.outputPattern :+: r.synchronize :+: HNil
+		implicit def retrieveToHL = (r: RetrieveConfiguration) => exists(r.retrieveDirectory) :+: r.outputPattern :+: HNil
 		implicit def ivyPathsToHL = (p: IvyPaths) => exists(p.baseDirectory) :+: p.cacheDirectory.map(exists.apply) :+: HNil
 		implicit def ivyScalaHL = (i: IvyScala) => i.scalaVersion :+: names(i.configurations) :+: i.checkExplicit :+: i.filterImplicit :+: HNil
 		implicit def configurationToHL = (c: Configuration) => c.name :+: c.description :+: c.isPublic :+: names(c.extendsConfigs) :+: c.transitive :+: HNil
