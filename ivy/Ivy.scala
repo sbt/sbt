@@ -283,13 +283,16 @@ private object IvySbt
 		configurations.foreach(artifact.addConfiguration)
 		artifact
 	}
-	private def extra(artifact: Artifact) =
+	private[sbt] def extra(artifact: Artifact, unqualify: Boolean = false): java.util.Map[String, String] =
 	{
 		val ea = artifact.classifier match { case Some(c) => artifact.extra("e:classifier" -> c); case None => artifact }
-		javaMap(ea.extraAttributes)
+		javaMap(ea.extraAttributes, unqualify)
 	}
-	private def javaMap(map: Map[String,String]) =
+	private[sbt] def javaMap(m: Map[String,String], unqualify: Boolean = false) =
+	{
+		val map = m map { case (k, v) => (k.stripPrefix("e:"), v) }
 		if(map.isEmpty) null else scala.collection.JavaConversions.asJavaMap(map)
+	}
 
 	private object javaMap
 	{
