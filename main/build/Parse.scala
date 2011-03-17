@@ -127,7 +127,7 @@ The command has the following syntax:
 	def paths(implicit base: File): String => Seq[File] =
 		_ split sep flatMap files(base)
 		
-	def files(base: File)(path: String): Seq[File] = readFinder(Path.fromFile(base), path).getFiles.toSeq
+	def files(base: File)(path: String): Seq[File] = readFinder(Path.fromFile(base), path).getFiles
 		
 	def file(base: File) = (path: String) => Path.fromString(base, path).asFile
 	

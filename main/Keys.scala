@@ -83,7 +83,7 @@ object Keys
 	val compile = TaskKey[Analysis]("compile")
 	val compilers = TaskKey[Compiler.Compilers]("compilers")
 	val doc = TaskKey[File]("doc")
-	val copyResources = TaskKey[Traversable[(File,File)]]("copy-resources")
+	val copyResources = TaskKey[Seq[(File,File)]]("copy-resources")
 	val resources = TaskKey[Seq[File]]("resources")
 	val aggregate = SettingKey[Aggregation]("aggregate")
 	val generatedResources = TaskKey[Seq[File]]("generated-resources")

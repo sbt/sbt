@@ -301,7 +301,7 @@ sealed abstract class PathFinder extends NotNull
 	/** Applies `mapper` to each path selected by this PathFinder and returns the path paired with the non-empty result.
 	* If the result is empty (None) and `errorIfNone` is true, an exception is thrown.
 	* If `errorIfNone` is false, the path is dropped from the returned Traversable.*/
-	def x[T](mapper: File => Option[T], errorIfNone: Boolean = true): Traversable[(File,T)] =
+	def x[T](mapper: File => Option[T], errorIfNone: Boolean = true): Seq[(File,T)] =
 	{
 		val apply = if(errorIfNone) mapper | fail else mapper
 		for(file <- getFiles; mapped <- apply(file)) yield (file, mapped)
@@ -324,14 +324,20 @@ sealed abstract class PathFinder extends NotNull
 		addTo(pathSet)
 		pathSet.toSet
 	}
+	/** Evaluates this finder and converts the results to a `Seq` of `File`s.*/
+	final def getFiles: Seq[File] =
+	{
+			import collection.JavaConversions._
+		val pathSet: mutable.Set[Path] = new java.util.LinkedHashSet[Path]
+		addTo(pathSet)
+		pathSet.map(_.asFile).toSeq
+	}
 	/** Only keeps paths for which `f` returns true.  It is non-strict, so it is not evaluated until the returned finder is evaluated.*/
 	final def filter(f: Path => Boolean): PathFinder = Path.lazyPathFinder(get.filter(f))
 	/* Non-strict flatMap: no evaluation occurs until the returned finder is evaluated.*/
 	final def flatMap(f: Path => PathFinder): PathFinder = Path.lazyPathFinder(get.flatMap(p => f(p).get))
 	/** Evaluates this finder and converts the results to an `Array` of `URL`s..*/
-	final def getURLs: Array[URL] = Path.getURLs(get)
-	/** Evaluates this finder and converts the results to a `Set` of `File`s.*/
-	final def getFiles: immutable.Set[File] = Path.getFiles(get)
+	final def getURLs: Array[URL] = getFiles.toArray.map(_.toURI.toURL)
 	/** Evaluates this finder and converts the results to a `Set` of absolute path strings.*/
 	final def getPaths: immutable.Set[String] = strictMap(_.absolutePath)
 	/** Evaluates this finder and converts the results to a `Set` of relative path strings.*/

@@ -44,7 +44,7 @@ object Defaults
 		def **(filter: FileFilter): Initialize[Seq[File]] = map0 { _ ** filter }
 		protected[this] def map0(f: PathFinder => PathFinder): Initialize[Seq[File]]
 		protected[this] def finder(f: PathFinder => PathFinder): Seq[File] => Seq[File] =
-			in => f(in).getFiles.toSeq
+			in => f(in).getFiles
 	}
 	def configSrcSub(key: ScopedSetting[File]): Initialize[File] = (key, configuration) { (src, conf) => src / nameForSrc(conf.name) }
 	def nameForSrc(config: String) = if(config == "compile") "main" else config
@@ -102,7 +102,7 @@ object Defaults
 		cacheDirectory <<= (cacheDirectory, configuration) { _ / _.name },
 		classDirectory <<= (target, configuration) { (outDir, conf) => outDir / (prefix(conf.name) + "classes") },
 		docDirectory <<= (target, configuration) { (outDir, conf) => outDir / (prefix(conf.name) + "api") },
-		sources <<= (sourceDirectories, sourceFilter, defaultExcludes) map { (d,f,excl) => d.descendentsExcept(f,excl).getFiles.toSeq },
+		sources <<= (sourceDirectories, sourceFilter, defaultExcludes) map { (d,f,excl) => d.descendentsExcept(f,excl).getFiles },
 		scalaSource <<= sourceDirectory / "scala",
 		javaSource <<= sourceDirectory / "java",
 		resourceDirectory <<= sourceDirectory / "resources",
@@ -113,7 +113,7 @@ object Defaults
 		generatedResources <<= (definedSbtPlugins, generatedResourceDirectory) map writePluginsDescriptor
 	)
 	def addBaseSources = Seq(
-		sources <<= (sources, baseDirectory, sourceFilter, defaultExcludes) map { (srcs,b,f,excl) => (srcs +++ b * (f -- excl)).getFiles.toSeq }
+		sources <<= (sources, baseDirectory, sourceFilter, defaultExcludes) map { (srcs,b,f,excl) => (srcs +++ b * (f -- excl)).getFiles }
 	)
 	
 	def compileBase = Seq(
@@ -230,15 +230,15 @@ object Defaults
 	packageTasks(packageSrc, "src", packageSrcTask) ++
 	packageTasks(packageDoc, "doc", packageDocTask)
 
-	private[this] val allSubpaths = (_: File).###.***.xx.toSeq
+	private[this] val allSubpaths = (dir: File) => (dir.*** --- dir) x relativeTo(dir)
 
-	def packageBinTask = concat(classMappings, resourceMappings)
+	def packageBinTask = classMappings
 	def packageDocTask = doc map allSubpaths
 	def packageSrcTask = concat(resourceMappings, sourceMappings)
 
 	private type Mappings = Initialize[Task[Seq[(File, String)]]]
 	def concat(as: Mappings, bs: Mappings) = (as zipWith bs)( (a,b) => (a :^: b :^: KNil) map { case a :+: b :+: HNil => a ++ b } )
-	def classMappings = (compileInputs, compile) map { (in, _) => allSubpaths(in.config.classesDirectory) }
+	def classMappings = (compileInputs, products) map { (in, _) => allSubpaths(in.config.classesDirectory) }
 	// drop base directories, since there are no valid mappings for these
 	def sourceMappings = (sources, sourceDirectories, baseDirectory) map { (srcs, sdirs, base) =>
 		 ( (srcs --- sdirs --- base) x (relativeTo(sdirs)|relativeTo(base))) toSeq
@@ -428,7 +428,7 @@ object Classpaths
 		products <<= makeProducts,
 		managedClasspath <<= (configuration, update) map managedJars,
 		unmanagedJars <<= (configuration, unmanagedBase, classpathFilter, defaultExcludes) map { (config, base, filter, excl) =>
-			(base * (filter -- excl) +++ (base / config.name).descendentsExcept(filter, excl)).getFiles.toSeq
+			(base * (filter -- excl) +++ (base / config.name).descendentsExcept(filter, excl)).getFiles
 		}
 	)
 	def defaultPackageTasks: Seq[ScopedTask[_]] =
