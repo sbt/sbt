@@ -61,11 +61,11 @@ object CacheIvy
 		updateReportFormat
 	}
 	implicit def updateReportFormat(implicit m: Format[String], cr: Format[ConfigurationReport]): Format[UpdateReport] =
-		wrap[UpdateReport, Map[String,ConfigurationReport]](_.configurations, c => new UpdateReport(c))
+		wrap[UpdateReport, Seq[ConfigurationReport]](_.configurations, c => new UpdateReport(c))
 	implicit def confReportFormat(implicit mf: Format[ModuleID], mr: Format[ModuleReport]): Format[ConfigurationReport] =
-		wrap[ConfigurationReport, (String,Map[ModuleID,ModuleReport])]( r => (r.configuration, r.modules), { case (c,m) => new ConfigurationReport(c,m) })
+		wrap[ConfigurationReport, (String,Seq[ModuleReport])]( r => (r.configuration, r.modules), { case (c,m) => new ConfigurationReport(c,m) })
 	implicit def moduleReportFormat(implicit f: Format[Artifact], ff: Format[File], mid: Format[ModuleID]): Format[ModuleReport] =
-		wrap[ModuleReport, (ModuleID, Map[Artifact, File], Set[Artifact])]( m => (m.module, m.artifacts, m.missingArtifacts), { case (m, as, ms) => new ModuleReport(m, as,ms) })
+		wrap[ModuleReport, (ModuleID, Seq[(Artifact, File)], Seq[Artifact])]( m => (m.module, m.artifacts, m.missingArtifacts), { case (m, as, ms) => new ModuleReport(m, as,ms) })
 	implicit def artifactFormat(implicit sf: Format[String], of: Format[Seq[Configuration]], cf: Format[Configuration], uf: Format[Option[URL]]): Format[Artifact] =
 		wrap[Artifact, (String,String,String,Option[String],Seq[Configuration],Option[URL],Map[String,String])](
 			a => (a.name, a.`type`, a.extension, a.classifier, a.configurations.toSeq, a.url, a.extraAttributes),

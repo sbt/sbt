@@ -13,19 +13,13 @@ import report.{ArtifactDownloadReport, ConfigurationResolveReport, ResolveReport
 
 object IvyRetrieve
 {
-	def reports(report: ResolveReport): Map[String, ConfigurationResolveReport] =
-		( for( conf <- report.getConfigurations) yield (conf, report.getConfigurationReport(conf)) ).toMap
+	def reports(report: ResolveReport): Seq[ConfigurationResolveReport] =
+		report.getConfigurations map report.getConfigurationReport
 
-	def moduleReports(confReport: ConfigurationResolveReport): Map[ModuleID, ModuleReport] =
-		moduleReportMap(confReport) map { case (mid, arts) => (mid, artifactReports(mid, arts) ) }
+	def moduleReports(confReport: ConfigurationResolveReport): Seq[ModuleReport] =
+		for( revId <- confReport.getModuleRevisionIds.toArray collect { case revId: ModuleRevisionId => revId }) yield
+			artifactReports(toModuleID(revId), confReport getDownloadReports revId)
 
-	def moduleReportMap(confReport: ConfigurationResolveReport): Map[ModuleID, Seq[ArtifactDownloadReport]] =
-	{
-		val modules =
-			for( revId <- confReport.getModuleRevisionIds.toArray collect { case revId: ModuleRevisionId => revId }) yield
-				(toModuleID(revId), (confReport getDownloadReports revId).toSeq)
-		modules.toMap
-	}
 	def artifactReports(mid: ModuleID, artReport: Seq[ArtifactDownloadReport]): ModuleReport =
 	{
 		val missing = new mutable.ListBuffer[Artifact]
@@ -38,7 +32,7 @@ object IvyRetrieve
 			else
 				resolved += ((art,file))
 		}
-		new ModuleReport(mid, resolved.toMap, missing.toSet)
+		new ModuleReport(mid, resolved.toSeq, missing.toSeq)
 	}
  
 	def toModuleID(revID: ModuleRevisionId): ModuleID =
@@ -51,27 +45,28 @@ object IvyRetrieve
 	}
 
 	def updateReport(report: ResolveReport): UpdateReport =
-		new UpdateReport(reports(report) mapValues configurationReport)
+		new UpdateReport(reports(report) map configurationReport)
 
 	def configurationReport(confReport: ConfigurationResolveReport): ConfigurationReport =
 		new ConfigurationReport(confReport.getConfiguration, moduleReports(confReport))
 }
 
-final class UpdateReport(val configurations: Map[String, ConfigurationReport])
+final class UpdateReport(val configurations: Seq[ConfigurationReport])
 {
-	override def toString = "Update report:\n" + configurations.values.mkString
-	def allModules: Seq[ModuleID] = configurations.values.toSeq.flatMap(_.allModules).distinct
+	override def toString = "Update report:\n" + configurations.mkString
+	def allModules: Seq[ModuleID] = configurations.flatMap(_.allModules).distinct
 	def retrieve(f: (String, ModuleID, Artifact, File) => File): UpdateReport =
-		new UpdateReport(configurations map { case (k,v) => (k, v retrieve f)} )
+		new UpdateReport(configurations map { _ retrieve f} )
+	def configuration(s: String) = configurations.find(_.configuration == s)
 }
-final class ConfigurationReport(val configuration: String, val modules: Map[ModuleID, ModuleReport])
+final class ConfigurationReport(val configuration: String, val modules: Seq[ModuleReport])
 {
-	override def toString = "\t" + configuration + ":\n" + modules.values.mkString
-	def allModules: Seq[ModuleID] = modules.keys.toSeq
+	override def toString = "\t" + configuration + ":\n" + modules.mkString
+	def allModules: Seq[ModuleID] = modules.map(_.module)
 	def retrieve(f: (String, ModuleID, Artifact, File) => File): ConfigurationReport =
-		new ConfigurationReport(configuration, modules map { case (k,v) =>  (k, v.retrieve( (mid,art,file) => f(configuration, mid, art, file)) ) })
+		new ConfigurationReport(configuration, modules map { _.retrieve( (mid,art,file) => f(configuration, mid, art, file)) })
 }
-final class ModuleReport(val module: ModuleID, val artifacts: Map[Artifact, File], val missingArtifacts: Set[Artifact])
+final class ModuleReport(val module: ModuleID, val artifacts: Seq[(Artifact, File)], val missingArtifacts: Seq[Artifact])
 {
 	override def toString =
 	{

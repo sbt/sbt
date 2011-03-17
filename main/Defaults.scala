@@ -331,7 +331,7 @@ object Defaults
 		}
 		else
 		{
-			IO.writeLines(descriptor, plugins.toSeq)
+			IO.writeLines(descriptor, plugins.toSeq.sorted)
 			descriptor :: Nil
 		}
 	}
@@ -693,9 +693,9 @@ object Classpaths
 	def managedJars(config: Configuration, up: UpdateReport): Classpath =
 		allJars( confReport(config.name, up) )
 	def confReport(config: String, up: UpdateReport): ConfigurationReport =
-		up.configurations.getOrElse(config, error("Configuration '" + config + "' unresolved by 'update'."))
-	def allJars(cr: ConfigurationReport): Seq[File] = cr.modules.values.toSeq.flatMap(mr => allJars(mr.artifacts))
-	def allJars(as: Iterable[(Artifact,File)]): Iterable[File] = as collect { case (a, f) if isJar(a) => f }
+		up.configuration(config) getOrElse error("Configuration '" + config + "' unresolved by 'update'.")
+	def allJars(cr: ConfigurationReport): Seq[File] = cr.modules.flatMap(mr => allJars(mr.artifacts))
+	def allJars(as: Seq[(Artifact,File)]): Seq[File] = as collect { case (a, f) if isJar(a) => f }
 	def isJar(a: Artifact): Boolean = a.`type` == "jar"
 	
 	lazy val dbResolver = Resolver.url("sbt-db", new URL("http://databinder.net/repo/"))(Resolver.ivyStylePatterns)
