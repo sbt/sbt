@@ -225,9 +225,13 @@ object Load
 		val evalPluginDef = EvaluateTask.evalPluginDef(log) _
 		val delegates = memo(defaultDelegates)
 		val inject: Seq[Project.Setting[_]] = ((appConfiguration in GlobalScope) :== state.configuration) +: EvaluateTask.injectSettings
-		val config = new LoadBuildConfiguration(stagingDirectory, classpath, loader, compilers, evalPluginDef, delegates, EvaluateTask.injectStreams, inject, log)
+		val rawConfig = new LoadBuildConfiguration(stagingDirectory, Nil, classpath, loader, compilers, evalPluginDef, delegates, EvaluateTask.injectStreams, inject, log)
+		val commonPlugins = buildGlobalPlugins(defaultGlobalPlugins, state, rawConfig)
+		val config = rawConfig.copy(commonPluginClasspath = commonPlugins)
 		apply(base, state, config)
 	}
+	def buildGlobalPlugins(baseDirectory: File, state: State, config: LoadBuildConfiguration): Seq[Attributed[File]] =
+		if(baseDirectory.isDirectory) buildPluginDefinition(baseDirectory, state, config) else Nil
 	def defaultDelegates: LoadedBuild => Scope => Seq[Scope] = (lb: LoadedBuild) => {
 		val rootProject = getRootProject(lb.units)
 		def resolveRef(project: Reference): ResolvedReference = Scope.resolveReference(lb.root, rootProject, project)
@@ -493,16 +497,22 @@ object Load
 	}
 
 	def plugins(dir: File, s: State, config: LoadBuildConfiguration): LoadedPlugins = if(dir.exists) buildPlugins(dir, s, config) else noPlugins(dir, config)
-	def noPlugins(dir: File, config: LoadBuildConfiguration): LoadedPlugins = new LoadedPlugins(dir, config.classpath, config.loader, Nil, binaryPlugins(config.loader))
+	def noPlugins(dir: File, config: LoadBuildConfiguration): LoadedPlugins = loadPluginDefinition(dir, config, config.commonPluginClasspath)
 	def buildPlugins(dir: File, s: State, config: LoadBuildConfiguration): LoadedPlugins =
+		loadPluginDefinition(dir, config, buildPluginDefinition(dir, s, config))
+
+	def loadPluginDefinition(dir: File, config: LoadBuildConfiguration, pluginClasspath: Seq[Attributed[File]]): LoadedPlugins =
+	{
+		val definitionClasspath = if(pluginClasspath.isEmpty) config.classpath else (data(pluginClasspath) ++ config.classpath).distinct
+		val pluginLoader = if(pluginClasspath.isEmpty) config.loader else ClasspathUtilities.toLoader(definitionClasspath, config.loader)
+		loadPlugins(dir, definitionClasspath, pluginLoader, analyzed(pluginClasspath))
+	}
+	def buildPluginDefinition(dir: File, s: State, config: LoadBuildConfiguration): Seq[Attributed[File]] =
 	{
 		val (eval,pluginDef) = apply(dir, s, config)
 		val pluginState = Project.setProject(Load.initialSession(pluginDef, eval), pluginDef, s)
-
-		val pluginClasspath = config.evalPluginDef(pluginDef, pluginState)
-		val definitionClasspath = (data(pluginClasspath) ++ config.classpath).distinct
-		val pluginLoader = ClasspathUtilities.toLoader(definitionClasspath, config.loader)
-		loadPlugins(dir, definitionClasspath, pluginLoader, analyzed(pluginClasspath))
+		val thisPluginClasspath = config.evalPluginDef(pluginDef, pluginState)
+		(thisPluginClasspath ++ config.commonPluginClasspath).distinct
 	}
 
 	def definitions(base: File, targetBase: File, srcs: Seq[File], plugins: LoadedPlugins, compilers: Compilers, log: Logger, buildBase: File): LoadedDefinitions =
@@ -603,7 +613,7 @@ object Load
 	def referenced[PR <: ProjectReference](definitions: Seq[ProjectDefinition[PR]]): Seq[PR] = definitions flatMap { _.referenced }
 	
 	final class BuildStructure(val units: Map[URI, LoadedBuildUnit], val root: URI, val settings: Seq[Setting[_]], val data: Settings[Scope], val index: StructureIndex, val streams: Streams, val delegates: Scope => Seq[Scope], val scopeLocal: ScopeLocal)
-	final class LoadBuildConfiguration(val stagingDirectory: File, val classpath: Seq[File], val loader: ClassLoader, val compilers: Compilers, val evalPluginDef: (BuildStructure, State) => Seq[Attributed[File]], val delegates: LoadedBuild => Scope => Seq[Scope], val scopeLocal: ScopeLocal, val injectSettings: Seq[Setting[_]], val log: Logger)
+	final case class LoadBuildConfiguration(stagingDirectory: File, commonPluginClasspath: Seq[Attributed[File]], classpath: Seq[File], loader: ClassLoader, compilers: Compilers, evalPluginDef: (BuildStructure, State) => Seq[Attributed[File]], delegates: LoadedBuild => Scope => Seq[Scope], scopeLocal: ScopeLocal, injectSettings: Seq[Setting[_]], log: Logger)
 	// information that is not original, but can be reconstructed from the rest of BuildStructure
 	final class StructureIndex(val keyMap: Map[String, AttributeKey[_]], val taskToKey: Map[Task[_], ScopedKey[Task[_]]], val keyIndex: KeyIndex)
 
@@ -668,9 +678,10 @@ object BuildPaths
 	import GlobFilter._
 
 	def defaultStaging = Path.userHome / ".sbt" / "staging"
+	def defaultGlobalPlugins = Path.userHome / ".sbt" / "plugins"
 	
-	def definitionSources(base: File): Seq[File] = (base * "*.scala").getFiles.toSeq
-	def configurationSources(base: File): Seq[File] = (base * "*.sbt").getFiles.toSeq
+	def definitionSources(base: File): Seq[File] = (base * "*.scala").getFiles
+	def configurationSources(base: File): Seq[File] = (base * "*.sbt").getFiles
 	def pluginDirectory(definitionBase: Path) = definitionBase / "plugins"
 
 	def evalOutputDirectory(base: Path) = outputDirectory(base) / "config-classes"
