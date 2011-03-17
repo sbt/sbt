@@ -309,7 +309,8 @@ object IO
 	private def writeZip(sources: Seq[(File,String)], output: ZipOutputStream)(createEntry: String => ZipEntry)
 	{
 			import Path.{lazyPathFinder => pf}
-		val files = sources.collect { case (file,name) if file.isFile => (file, normalizeName(name)) }
+		val files = sources.flatMap { case (file,name) => if (file.isFile) (file, normalizeName(name)) :: Nil else Nil }
+
 		val now = System.currentTimeMillis
 		// The CRC32 for an empty value, needed to store directories in zip files
 		val emptyCRC = new CRC32().getValue()
@@ -396,7 +397,6 @@ object IO
 					case None => (new ZipOutputStream(fileOut), "zip")
 				}
 			try { f(zipOut) }
-			catch { case e: Exception => "Error writing " + ext + ": " + e.toString }
 			finally { zipOut.close }
 		}
 	}
