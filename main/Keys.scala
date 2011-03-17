@@ -195,7 +195,10 @@ object Keys
 	val autoUpdate = SettingKey[Boolean]("auto-update")
 	val retrieveManaged = SettingKey[Boolean]("retrieve-managed")
 	val managedDirectory = SettingKey[File]("managed-directory")
-	
+
+	val sbtResolver = SettingKey[Resolver]("sbt-resolver")
+	val sbtDependency = SettingKey[ModuleID]("sbt-dependency")
+
 	// special
 	val settings = TaskKey[Settings[Scope]]("settings")
 }

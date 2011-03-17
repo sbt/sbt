@@ -451,7 +451,10 @@ object Classpaths
 		normalizedName <<= name(StringUtilities.normalize),
 		organization :== normalizedName,
 		classpathFilter in GlobalScope :== "*.jar",
-		fullResolvers <<= (projectResolver,resolvers).map( (pr,rs) => pr +: Resolver.withDefaultResolvers(rs)),
+		fullResolvers <<= (projectResolver,resolvers,sbtPlugin,sbtResolver) map { (pr,rs,isPlugin,sr) =>
+			val base = pr +: Resolver.withDefaultResolvers(rs)
+			if(isPlugin) sr +: base else base
+		},
 		offline in GlobalScope :== false,
 		moduleID :== normalizedName,
 		defaultConfiguration in GlobalScope :== Some(Configurations.Compile),
@@ -461,7 +464,10 @@ object Classpaths
 		projectResolver <<= projectResolverTask,
 		projectDependencies <<= projectDependenciesTask,
 		libraryDependencies in GlobalScope :== Nil,
-		allDependencies <<= concat(projectDependencies,libraryDependencies),
+		allDependencies <<= (projectDependencies,libraryDependencies,sbtPlugin,sbtDependency) map { (projDeps, libDeps, isPlugin, sbtDep) =>
+			val base = projDeps ++ libDeps
+			if(isPlugin) sbtDep +: base else base
+		},
 		ivyLoggingLevel in GlobalScope :== UpdateLogging.Quiet,
 		ivyXML in GlobalScope :== NodeSeq.Empty,
 		ivyValidate in GlobalScope :== false,
@@ -498,10 +504,13 @@ object Classpaths
 		},
 		transitiveClassifiers :== Seq("sources", "javadoc"),
 		updateClassifiers <<= (ivySbt, projectID, update, transitiveClassifiers, updateConfiguration, ivyScala) map IvyActions.transitive,
-		updateSbtClassifiers <<= (ivySbt, projectID, transitiveClassifiers, updateConfiguration, appConfiguration, ivyScala) map { (is, pid, classifiers, c, app, ivyScala) =>
+		updateSbtClassifiers <<= (ivySbt, projectID, transitiveClassifiers, updateConfiguration, sbtDependency, ivyScala) map { (is, pid, classifiers, c, sbtDep, ivyScala) =>
+			IvyActions.transitiveScratch(is, pid, "sbt", sbtDep :: Nil, classifiers, c, ivyScala)
+		},
+		sbtResolver in GlobalScope :== dbResolver,
+		sbtDependency in GlobalScope <<= appConfiguration { app =>
 			val id = app.provider.id
-			val module = ModuleID(id.groupID, id.name, id.version, crossVersion = id.crossVersioned)
-			IvyActions.transitiveScratch(is, pid, "sbt", module :: Nil, classifiers, c, ivyScala)
+			ModuleID(id.groupID, id.name, id.version, crossVersion = id.crossVersioned)
 		}
 	)
 
@@ -688,15 +697,6 @@ object Classpaths
 	def allJars(cr: ConfigurationReport): Seq[File] = cr.modules.values.toSeq.flatMap(mr => allJars(mr.artifacts))
 	def allJars(as: Iterable[(Artifact,File)]): Iterable[File] = as collect { case (a, f) if isJar(a) => f }
 	def isJar(a: Artifact): Boolean = a.`type` == "jar"
-}
-trait Defaults
-{
-	def addSbtDependency: Setting[Seq[ModuleID]] =
-		libraryDependencies <<= (libraryDependencies, appConfiguration) { (libs, app) =>
-			val id = app.provider.id
-			libs :+ ModuleID(id.groupID, id.name, id.version, crossVersion = true)
-		}
 	
-	def addSbtRepository: Setting[Seq[Resolver]] =
-		resolvers += Resolver.url("sbt-db", new URL("http://databinder.net/repo/"))(Resolver.ivyStylePatterns)
+	lazy val dbResolver = Resolver.url("sbt-db", new URL("http://databinder.net/repo/"))(Resolver.ivyStylePatterns)
 }
