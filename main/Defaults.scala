@@ -527,13 +527,22 @@ object Classpaths
 	{
 		implicit val updateCache = updateIC
 		implicit val updateReport = updateReportF
-		val work = (_:  IvyConfiguration :+: ModuleSettings :+: UpdateConfiguration :+: HNil) match { case conf :+: settings :+: config :+: HNil =>
+		type In = IvyConfiguration :+: ModuleSettings :+: UpdateConfiguration :+: HNil
+		def work = (_:  In) match { case conf :+: settings :+: config :+: HNil =>
 			log.info("Updating...")
 			val r = IvyActions.update(module, config)
 			log.info("Done updating.")
 			r
 		}
-		val f = cached(cacheFile)(work)
+
+		val f =
+			Tracked.inputChanged(cacheFile / "inputs") { (inChanged: Boolean, in: In) =>
+				val outCache = Tracked.lastOutput[In, UpdateReport](cacheFile / "output") {
+					case (_, Some(out)) if !inChanged && allFiles(out).forall(_.exists) => out
+					case _ => work(in)
+				}
+				outCache(in)
+			}
 		f(module.owner.configuration :+: module.moduleSettings :+: config :+: HNil)
 	}
 /*
@@ -690,12 +699,14 @@ object Classpaths
 		flatten(defaultConfiguration in p get data) getOrElse Configurations.Default
 	def flatten[T](o: Option[Option[T]]): Option[T] = o flatMap identity
 
-	def managedJars(config: Configuration, up: UpdateReport): Classpath =
-		allJars( confReport(config.name, up) )
+	def managedJars(config: Configuration, up: UpdateReport): Classpath = managedFiles(config, up)(isJar)
+	def allFiles(up: UpdateReport): Seq[File] = data( up.configurations flatMap { cr => allJars(cr)(_ => true) }).distinct
+	def managedFiles(config: Configuration, up: UpdateReport)(pred: Artifact => Boolean): Classpath =
+		allJars( confReport(config.name, up) )(pred)
 	def confReport(config: String, up: UpdateReport): ConfigurationReport =
 		up.configuration(config) getOrElse error("Configuration '" + config + "' unresolved by 'update'.")
-	def allJars(cr: ConfigurationReport): Seq[File] = cr.modules.flatMap(mr => allJars(mr.artifacts))
-	def allJars(as: Seq[(Artifact,File)]): Seq[File] = as collect { case (a, f) if isJar(a) => f }
+	def allJars(cr: ConfigurationReport)(pred: Artifact => Boolean): Seq[File] = cr.modules.flatMap(mr => allJars(mr.artifacts)(pred))
+	def allJars(as: Seq[(Artifact,File)])(pred: Artifact => Boolean): Seq[File] = as collect { case (a, f) if pred(a) => f }
 	def isJar(a: Artifact): Boolean = a.`type` == "jar"
 	
 	lazy val dbResolver = Resolver.url("sbt-db", new URL("http://databinder.net/repo/"))(Resolver.ivyStylePatterns)

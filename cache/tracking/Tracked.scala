@@ -31,6 +31,14 @@ object Tracked
 
 		import sbinary.JavaIO._
 
+	def lastOutput[I,O](cacheFile: File)(f: (I,Option[O]) => O)(implicit o: Format[O], mf: Manifest[Format[O]]): I => O = in =>
+	{
+		val previous: Option[O] = fromFile[O](cacheFile)
+		val next = f(in, previous)
+		toFile(next)(cacheFile)
+		next
+	}
+
 	def inputChanged[I,O](cacheFile: File)(f: (Boolean, I) => O)(implicit ic: InputCache[I]): I => O = in =>
 	{
 		val help = new CacheHelp(ic)
