@@ -222,6 +222,12 @@ object Project extends Init[Scope]
 			val newS = setProjectReturn(s, newBase :: projectReturn(s))
 			(newS, newBase)
 	}
+	
+	def evaluateTask[T](taskKey: ScopedKey[Task[T]], state: State, checkCycles: Boolean = false, maxWorkers: Int = EvaluateTask.SystemProcessors): Option[Result[T]] =
+	{
+		val extracted = Project.extract(state)
+		EvaluateTask.evaluateTask(extracted.structure, taskKey, state, extracted.currentRef, checkCycles, maxWorkers)
+	}
 }
 
 	import SessionSettings._
