@@ -55,7 +55,7 @@ object State
 			s.copy(commands = s.commands.drop(1))
 		def ::: (newCommands: Seq[String]): State = s.copy(commands = newCommands ++ s.commands)
 		def :: (command: String): State = (command :: Nil) ::: this
-		def ++ (newCommands: Seq[Command]): State = s.copy(processors = s.processors ++ newCommands)
+		def ++ (newCommands: Seq[Command]): State = s.copy(processors = (s.processors ++ newCommands).distinct)
 		def + (newCommand: Command): State = this ++ (newCommand :: Nil)
 		def baseDir: File = s.configuration.baseDirectory
 		def setNext(n: Next.Value) = s.copy(next = n)
