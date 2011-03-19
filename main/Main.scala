@@ -6,7 +6,6 @@ package sbt
 	import Execute.NodeView
 	import complete.HistoryCommands
 	import HistoryCommands.{Start => HistoryPrefix}
-	import sbt.build.{AggressiveCompile, Auto, BuildException, LoadCommand, Parse, ParseException, ProjectLoad, SourceLoad}
 	import compiler.EvalImports
 	import sbt.complete.{DefaultParsers, Parser}
 
@@ -60,7 +59,7 @@ class xMain extends xsbti.AppMain
 	import CommandSupport._
 object BuiltinCommands
 {
-	def DefaultCommands: Seq[Command] = Seq(ignore, help, reboot, read, history, continuous, exit, loadCommands, loadProject, loadProjectImpl, loadFailed, compile, discover,
+	def DefaultCommands: Seq[Command] = Seq(ignore, help, reboot, read, history, continuous, exit, loadProject, loadProjectImpl, loadFailed,
 		projects, project, setOnFailure, clearOnFailure, ifLast, multi, shell, set, inspect, eval, alias, append, last, lastGrep, nop, sessionCommand, act)
 	def DefaultBootCommands: Seq[String] = LoadProject :: (IfLast + " " + Shell) :: Nil
 
@@ -294,24 +293,6 @@ object BuiltinCommands
 
 	def doExit(s: State): State  =  s.runExitHooks().exit(true)
 
-	// TODO: tab completion, low priority
-	def discover = Command.single(Discover, DiscoverBrief, DiscoverDetailed) { (s, arg) =>
-		withAttribute(s, analysis, "No analysis to process.") { a =>
-			val command = Parse.discover(arg)
-			val discovered = build.Build.discover(a, command)
-			println(discovered.mkString("\n"))
-			s
-		}
-	}
-	// TODO: tab completion, low priority
-	def compile = Command.single(CompileName, CompileBrief, CompileDetailed ) { (s, arg) =>
-		val command = Parse.compile(arg)(s.baseDir)
-		try {
-			val a = build.Build.compile(command, s.configuration)
-			s.put(analysis, a)
-		} catch { case e: xsbti.CompileFailed => s.fail /* already logged */ }
-	}
-
 	def loadFailed = Command.command(LoadFailed)(handleLoadFailed)
 	@tailrec def handleLoadFailed(s: State): State =
 	{
@@ -349,57 +330,6 @@ object BuiltinCommands
 		s.fail
 	}
 	
-	// TODO: tab completion, low priority
-	def loadCommands = Command.single(LoadCommand, Parse.helpBrief(LoadCommand, LoadCommandLabel), Parse.helpDetail(LoadCommand, LoadCommandLabel, true) ) { (s, arg) =>
-		applyCommands(s, buildCommands(arg, s.configuration))
-	}
-	
-	def buildCommands(arguments: String, configuration: xsbti.AppConfiguration): Either[Throwable, Seq[Any]] =
-		loadCommand(arguments, configuration, true, classOf[CommandDefinitions].getName)
-
-	def applyCommands(s: State, commands: Either[Throwable, Seq[Any]]): State =
-		commands match {
-			case Right(newCommands) =>
-				val asCommands = newCommands flatMap {
-					case c: CommandDefinitions => c.commands
-					case x => error("Not an instance of CommandDefinitions: " + x.asInstanceOf[AnyRef].getClass)
-				}
-				s.copy(processors = asCommands ++ s.processors)
-			case Left(e) => handleException(e, s, false)
-		}
-	
-	def loadCommand(line: String, configuration: xsbti.AppConfiguration, allowMultiple: Boolean, defaultSuper: String): Either[Throwable, Seq[Any]] =
-		try
-		{
-			val parsed = Parse(line)(configuration.baseDirectory)
-			Right( build.Build( translateEmpty(parsed, defaultSuper), configuration, allowMultiple) )
-		}
-		catch { case e @ (_: ParseException | _: BuildException | _: xsbti.CompileFailed) => Left(e) }
-
-	def translateEmpty(load: LoadCommand, defaultSuper: String): LoadCommand =
-		load match {
-			case ProjectLoad(base, Auto.Explicit, "") => ProjectLoad(base, Auto.Subclass, defaultSuper)
-			case s @ SourceLoad(_, _, _, _, Auto.Explicit, "")  => s.copy(auto = Auto.Subclass, name = defaultSuper)
-			case x => x
-		}
-
-	def runTask[Task[_] <: AnyRef](root: Task[State], checkCycles: Boolean, maxWorkers: Int)(implicit taskToNode: NodeView[Task]): Result[State] =
-	{
-		val (service, shutdown) = CompletionService[Task[_], Completed](maxWorkers)
-
-		val x = new Execute[Task](checkCycles)(taskToNode)
-		try { x.run(root)(service) } finally { shutdown() }
-	}
-	def processResult[State](result: Result[State], original: State, onFailure: => State): State =
-		result match
-		{
-			case Value(v) => v
-			case Inc(inc) =>
-				println(Incomplete.show(inc, true))
-				println("Task did not complete successfully")
-				onFailure
-		}
-		
 	def addAlias(s: State, name: String, value: String): State =
 		if(Command validID name) {
 			val removed = removeAlias(s, name)

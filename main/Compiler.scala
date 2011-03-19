@@ -97,7 +97,7 @@ object Compiler
 			import in.config._
 			import in.incSetup._
 		
-		val agg = new build.AggressiveCompile(cacheDirectory)
+		val agg = new AggressiveCompile(cacheDirectory)
 		agg(scalac, javac, sources, classpath, classesDirectory, options, javacOptions, analysisMap, maxErrors)(log)
 	}
 }

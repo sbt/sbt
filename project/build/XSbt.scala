@@ -74,11 +74,6 @@ class XSbt(info: ProjectInfo) extends ParentProject(info) with NoCrossPaths
 		// Searches the source API data structures, currently looks for subclasses and annotations
 	val discoverySub = project(compilePath / "discover", "Discovery", new DiscoveryProject(_), compileIncrementalSub, apiSub)
 
-
-		// mostly for implementing 'load' command, could perhaps be trimmed and merged into 'main'
-	val buildSub = baseProject("main" / "build", "Project Builder",
-		classfileSub, classpathSub, compilePersistSub, compilerSub, compileIncrementalSub, interfaceSub, ivySub, launchInterfaceSub, logSub, discoverySub, processSub)
-
 	val scriptedBaseSub = project("scripted" / "base", "Scripted Framework", new TestProject(_), ioSub, processSub)
 	val scriptedSbtSub = baseProject("scripted" / "sbt", "Scripted sbt", ioSub, logSub, processSub, scriptedBaseSub, launchInterfaceSub /*should really be a 'provided' dependency*/)
 	val scriptedPluginSub = project("scripted" / "plugin", "Scripted Plugin", new Scripted(_))
@@ -87,8 +82,8 @@ class XSbt(info: ProjectInfo) extends ParentProject(info) with NoCrossPaths
 	val stdTaskSub = testedBase(tasksPath / "standard", "Task System", taskSub, collectionSub, logSub, ioSub, processSub)
 		// The main integration project for sbt.  It brings all of the subsystems together, configures them, and provides for overriding conventions.
 	val mainSub = baseProject("main", "Main",
-		buildSub, compileIncrementalSub, compilerSub, completeSub, discoverySub,
-		ioSub, logSub, processSub, taskSub, stdTaskSub, runSub, trackingSub, testingSub)
+		classfileSub, classpathSub, compileIncrementalSub, compilePersistSub, compilerSub, completeSub, discoverySub,
+		interfaceSub, ioSub, ivySub, launchInterfaceSub, logSub, processSub, taskSub, stdTaskSub, runSub, trackingSub, testingSub)
 		// Strictly for bringing implicits and aliases from subsystems into the top-level sbt namespace through a single package object
 	val sbtSub = project(sbtPath, "Simple Build Tool", new Sbt(_), mainSub) // technically, we need a dependency on all of mainSub's dependencies, but we don't do that since this is strictly an integration project
 

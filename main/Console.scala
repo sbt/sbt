@@ -26,14 +26,8 @@ final class Console(compiler: AnalyzingCompiler)
 }
 object Console
 {
-	def apply(conf: build.Compile)(implicit log: Logger): Console = new Console( compiler(conf) )
 	def apply(conf: Compiler.Inputs): Console = new Console( conf.compilers.scalac )
 
-	def compiler(conf: build.Compile)(implicit log: Logger): AnalyzingCompiler =
-	{
-		val componentManager = new ComponentManager(conf.launcher.globalLock, conf.configuration.provider.components, log)
-		new AnalyzingCompiler(conf.instance, componentManager, log)
-	}
 	def sbt(state: State, extra: String)(implicit log: Logger)
 	{
 		val extracted = Project extract state
