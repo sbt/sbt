@@ -5,7 +5,6 @@ package sbt
 
 	import Project.ScopedKey
 	import Keys.{sessionSettings, thisProject}
-	import CommandSupport.logger
 	import Load.BuildStructure
 	import complete.{DefaultParsers, Parser}
 	import DefaultParsers._

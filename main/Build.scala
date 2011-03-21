@@ -11,7 +11,7 @@ package sbt
 	import collection.mutable
 	import Compiler.{Compilers,Inputs}
 	import Project.{inScope, ScopedKey, ScopeLocal, Setting}
-	import Keys.{appConfiguration, baseDirectory, configuration, thisProject, thisProjectRef}
+	import Keys.{appConfiguration, baseDirectory, configuration, streams, thisProject, thisProjectRef}
 	import TypeFunctions.{Endo,Id}
 	import tools.nsc.reporters.ConsoleReporter
 	import Build.{analyzed, data}
@@ -108,10 +108,11 @@ object EvaluateTask
 	import BuildStreams.{Streams, TaskStreams}
 	
 	val SystemProcessors = Runtime.getRuntime.availableProcessors
-	
+
+	val isDummyTask = AttributeKey[Boolean]("is-dummy-task")
+	val taskDefinitionKey = AttributeKey[ScopedKey[_]]("task-definition-key")
 	val (state, dummyState) = dummy[State]("state")
 	val (streamsManager, dummyStreamsManager) = dummy[Streams]("streams-manager")
-	val streams = TaskKey[TaskStreams]("streams")
 	val resolvedScoped = SettingKey[ScopedKey[_]]("resolved-scoped")
 	private[sbt] val parseResult: TaskKey[_] = TaskKey("$parse-result")
 
@@ -121,7 +122,12 @@ object EvaluateTask
 	)
 	
 	def dummy[T](name: String): (TaskKey[T], Task[T]) = (TaskKey[T](name), dummyTask(name))
-	def dummyTask[T](name: String): Task[T] = task( error("Dummy task '" + name + "' did not get converted to a full task.") ) named name
+	def dummyTask[T](name: String): Task[T] =
+	{
+		val base: Task[T] = task( error("Dummy task '" + name + "' did not get converted to a full task.") ) named name
+		base.copy(info = base.info.set(isDummyTask, true))
+	}
+	def isDummy(t: Task[_]): Boolean = t.info.attributes.get(isDummyTask) getOrElse false
 
 	def evalPluginDef(log: Logger)(pluginDef: BuildStructure, state: State): Seq[Attributed[File]] =
 	{
@@ -134,9 +140,22 @@ object EvaluateTask
 	def evaluateTask[T](structure: BuildStructure, taskKey: ScopedKey[Task[T]], state: State, ref: ProjectRef, checkCycles: Boolean = false, maxWorkers: Int = SystemProcessors): Option[Result[T]] =
 		withStreams(structure) { str =>
 			for( (task, toNode) <- getTask(structure, taskKey, state, str, ref) ) yield
-				runTask(task, checkCycles, maxWorkers)(toNode)
+				runTask(task, str, checkCycles, maxWorkers)(toNode)
 		}
-
+	def logIncResult(result: Result[_], streams: Streams) = result match { case Inc(i) => logIncomplete(i, streams); case _ => () }
+	def logIncomplete(result: Incomplete, streams: Streams)
+	{
+		val log = streams(ScopedKey(GlobalScope, Keys.logged)).log
+		val all = for(Incomplete(Some(key: Project.ScopedKey[_]), _, msg, _, ex) <- Incomplete linearize result) yield (key, msg, ex)
+		for( (key, _, Some(ex)) <- all)
+			getStreams(key, streams).log.trace(ex)
+		log.error("Incomplete task(s):")
+		for( (key, msg, ex) <- all if(msg.isDefined || ex.isDefined) )
+			getStreams(key, streams).log.error("  " + Project.display(key) + ": " + (msg.toList ++ ex.toList).mkString("\n\t"))
+		log.error("Run 'last <task>' for the full log(s).")
+	}
+	def getStreams(key: ScopedKey[_], streams: Streams): TaskStreams =
+		streams(ScopedKey(Project.fillTaskAxis(key).scope, Keys.streams.key))
 	def withStreams[T](structure: BuildStructure)(f: Streams => T): T =
 	{
 		val str = std.Streams.closeable(structure.streams)
@@ -153,13 +172,25 @@ object EvaluateTask
 	def nodeView[HL <: HList](state: State, streams: Streams, extraDummies: KList[Task, HL] = KNil, extraValues: HL = HNil): Execute.NodeView[Task] =
 		Transform(dummyStreamsManager :^: KCons(dummyState, extraDummies), streams :+: HCons(state, extraValues))
 
-	def runTask[Task[_] <: AnyRef, T](root: Task[T], checkCycles: Boolean = false, maxWorkers: Int = SystemProcessors)(implicit taskToNode: Execute.NodeView[Task]): Result[T] =
+	def runTask[Task[_] <: AnyRef, T](root: Task[T], streams: Streams, checkCycles: Boolean = false, maxWorkers: Int = SystemProcessors)(implicit taskToNode: Execute.NodeView[Task]): Result[T] =
 	{
 		val (service, shutdown) = CompletionService[Task[_], Completed](maxWorkers)
 
 		val x = new Execute[Task](checkCycles)(taskToNode)
-		try { x.run(root)(service) } finally { shutdown() }
+		val result = try { x.run(root)(service) } finally { shutdown() }
+		val replaced = transformInc(result)
+		logIncResult(replaced, streams)
+		replaced
 	}
+	def transformInc[T](result: Result[T]): Result[T] =
+		result.toEither.left.map { i =>
+			Incomplete.transform(i) {
+				case in @ Incomplete(Some(node: Task[_]), _, _, _, _) => in.copy(node = transformNode(node))
+				case _ => i
+			}
+		}
+	def transformNode(node: Task[_]): Option[ScopedKey[_]] =
+		node.info.attributes get taskDefinitionKey
 
 	def processResult[T](result: Result[T], log: Logger, show: Boolean = false): T =
 		onResult(result, log) { v => if(show) println("Result: " + v); v }
@@ -167,9 +198,7 @@ object EvaluateTask
 		result match
 		{
 			case Value(v) => f(v)
-			case Inc(inc) =>
-				log.error(Incomplete.show(inc, true))
-				error("Task did not complete successfully")
+			case Inc(inc) => throw inc
 		}
 
 	// if the return type Seq[Setting[_]] is not explicitly given, scalac hangs
@@ -287,7 +316,7 @@ object Load
 	// additionally, set the task axis to the defining key if it is not set
 	def finalTransforms(ss: Seq[Setting[_]]): Seq[Setting[_]] =
 	{
-		import EvaluateTask.{parseResult, resolvedScoped, streams}
+		import EvaluateTask.{parseResult, resolvedScoped}
 		def isSpecial(key: AttributeKey[_]) = key == streams.key || key == resolvedScoped.key || key == parseResult.key
 		def mapSpecial(to: ScopedKey[_]) = new (ScopedKey ~> ScopedKey){ def apply[T](key: ScopedKey[T]) =
 			if(isSpecial(key.key))
@@ -298,7 +327,11 @@ object Load
 			}
 			else key
 		}
-		ss.map(s => s mapReferenced mapSpecial(s.key) )
+		def setDefining[T] = (key: ScopedKey[T], value: T) => value match {
+			case tk: Task[t] if !EvaluateTask.isDummy(tk) => Task(tk.info.set(EvaluateTask.taskDefinitionKey, key), tk.work).asInstanceOf[T]
+			case _ => value
+		}
+		ss.map(s => s mapReferenced mapSpecial(s.key) mapInit setDefining )
 	}
 
 	def structureIndex(settings: Settings[Scope]): StructureIndex =

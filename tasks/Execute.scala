@@ -201,11 +201,6 @@ final class Execute[A[_] <: AnyRef](checkCycles: Boolean)(implicit view: NodeVie
 		reverse(node) = Seq()
 		viewCache.getOrUpdate(node, view(node))
 	}
-	def incomplete(in: A[_]): Option[(A[_], Incomplete)] =
-		results(in) match {
-			case Value(v) => None
-			case Inc(inc) => Some( (in, inc) )
-		}
 		/** Send the work for this node to the provided Strategy. */
 	def submit[T]( node: A[T] )(implicit strategy: Strategy)
 	{
@@ -219,8 +214,8 @@ final class Execute[A[_] <: AnyRef](checkCycles: Boolean)(implicit view: NodeVie
 	def work[T](node: A[T], f: => Either[A[T], T])(implicit strategy: Strategy): Completed =
 	{
 		val result = wideConvert(f).left.map {
-			case i: Incomplete => i
-			case e => Incomplete(Incomplete.Error, directCause = Some(e))
+			case i: Incomplete => if(i.node.isEmpty) i.copy(node = Some(node)) else i
+			case e => Incomplete(Some(node), Incomplete.Error, directCause = Some(e))
 		}
 		completed {
 			result match {
@@ -304,7 +299,7 @@ final class Execute[A[_] <: AnyRef](checkCycles: Boolean)(implicit view: NodeVie
 		allCallers(node)
 		if(all contains target) cyclic(node, target, "Cyclic reference")
 	}
-	def cyclic[T](caller: A[T], target: A[T], msg: String) = throw new Incomplete(message = Some(msg), directCause = Some( new CyclicException(caller, target, msg) ) )
+	def cyclic[T](caller: A[T], target: A[T], msg: String) = throw new Incomplete(Some(caller), message = Some(msg), directCause = Some( new CyclicException(caller, target, msg) ) )
 	final class CyclicException[T](val caller: A[T], val target: A[T], msg: String) extends Exception(msg)
 
 		// state testing

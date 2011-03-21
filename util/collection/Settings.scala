@@ -180,6 +180,7 @@ trait Init[Scope]
 		def dependsOn: Seq[ScopedKey[_]] = remove(init.dependsOn, key)
 		def mapReferenced(g: MapScoped): Setting[T] = new Setting(key, init mapReferenced g)
 		def mapKey(g: MapScoped): Setting[T] = new Setting(g(key), init)
+		def mapInit(f: (ScopedKey[T], T) => T): Setting[T] = new Setting(key, init.map(t => f(key,t)))
 		override def toString = "setting(" + key + ")"
 	}
 

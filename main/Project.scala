@@ -8,7 +8,7 @@ package sbt
 	import Project._
 	import Types.Endo
 	import Keys.{appConfiguration, buildStructure, commands, configuration, historyPath, projectCommand, sessionSettings, shellPrompt, thisProject, thisProjectRef, watch}
-	import Scope.ThisScope
+	import Scope.{GlobalScope,ThisScope}
 	import CommandSupport.logger
 	import compiler.Eval
 
@@ -72,6 +72,7 @@ object Project extends Init[Scope]
 	def getOrError[T](state: State, key: AttributeKey[T], msg: String): T = state get key getOrElse error(msg)
 	def structure(state: State): Load.BuildStructure = getOrError(state, buildStructure, "No build loaded.")
 	def session(state: State): SessionSettings = getOrError(state, sessionSettings, "Session not initialized.")
+
 	def extract(state: State): Extracted =
 	{
 		val se = session(state)

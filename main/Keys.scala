@@ -4,7 +4,7 @@
 package sbt
 
 	import java.io.File
-	import EvaluateTask.{resolvedScoped, streams}
+	import EvaluateTask.resolvedScoped
 	import complete._
 	import inc.Analysis
 	import std.TaskExtra._
@@ -19,6 +19,7 @@ object Keys
 	val logLevel = SettingKey[Level.Value]("log-level")
 	val persistLogLevel = SettingKey[Level.Value]("persist-log-level")
 	val traceLevel = SettingKey[Int]("trace-level")
+	val persistTraceLevel = SettingKey[Int]("persist-trace-level")
 	val showSuccess = SettingKey[Boolean]("show-success")
 	val showTiming = SettingKey[Boolean]("show-timing")
 	val timingFormat = SettingKey[java.text.DateFormat]("timing-format")
@@ -201,4 +202,5 @@ object Keys
 
 	// special
 	val settings = TaskKey[Settings[Scope]]("settings")
+	val streams = TaskKey[BuildStreams.TaskStreams]("streams")
 }

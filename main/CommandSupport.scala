@@ -41,21 +41,22 @@ EvalCommand + """ <expression>
 	Evaluates the given Scala expression and prints the result and type.
 """
 
+	val LastCommand = "last"
 	val LastGrepCommand = "last-grep"
+
 	val lastGrepBrief = (LastGrepCommand + " <pattern> <key>", "Shows lines from the last output for 'key' that match 'pattern'.")
 	val lastGrepDetailed = 
 LastGrepCommand + """ <pattern> <key>
 
-	<pattern> is a regular expression interpreted by java.util.Pattern
+	<pattern> is a regular expression interpreted by java.util.Pattern.
 	Lines that match 'pattern' from the last streams output associated with the key are displayed.
 	See also """ + LastCommand + "."
 
-	val LastCommand = "last"
 	val lastBrief = (LastCommand + " <key>", "Prints the last output associated with 'key'.")
 	val lastDetailed = 
 LastCommand + """ <key>
 
-	The last streams output associated with the key (typically a task key) is redisplayed.
+	Redisplays the last streams output associated with the key (typically a task key).
 	See also """ + LastGrepCommand + "."
 
 	val InspectCommand = "inspect"

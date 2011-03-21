@@ -206,20 +206,22 @@ object TaskExtra extends TaskExtra
 	}
 	def failM[T]: Result[T] => Incomplete = { case Inc(i) => i; case x => expectedFailure }
 
-	def expectedFailure = throw Incomplete(message = Some("Expected failure"))
+	def expectedFailure = throw Incomplete(None, message = Some("Expected dependency to fail."))
 
 	def successM[T]: Result[T] => T = { case Inc(i) => throw i; case Value(t) => t }
 	def allM[In <: HList]: Results[In] => In = in =>
 	{
 		val incs = failuresM(in)
-		if(incs.isEmpty) in.down(Result.tryValue) else throw Incomplete(causes = incs)
+		if(incs.isEmpty) in.down(Result.tryValue) else throw incompleteDeps(incs)
 	}
 	def failuresM[In <: HList]: Results[In] => Seq[Incomplete] = x => failures[Any](x.toList)
 
 	def all[D](in: Seq[Result[D]]) =
 	{
 		val incs = failures(in)
-		if(incs.isEmpty) in.map(Result.tryValue.fn[D]) else throw Incomplete(causes = incs)
+		if(incs.isEmpty) in.map(Result.tryValue.fn[D]) else throw incompleteDeps(incs)
 	}
 	def failures[A](results: Seq[Result[A]]): Seq[Incomplete] = results.collect { case Inc(i) => i }
+
+	def incompleteDeps(incs: Seq[Incomplete]): Incomplete = Incomplete(None, message = Some("Dependency did not complete successfully."), causes = incs)
 }

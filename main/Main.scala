@@ -323,10 +323,17 @@ object BuiltinCommands
 		Project.setProject(session, structure, s)
 	}
 	
-	def handleException(e: Throwable, s: State, trace: Boolean = true): State = {
-		val log = logger(s)
-		if(trace) log.trace(e)
-		log.error(e.toString)
+	def handleException(e: Throwable, s: State): State =
+		handleException(e, s, logger(s))
+	def handleException(e: Throwable, s: State, log: Logger): State =
+	{
+		e match
+		{
+			case i: Incomplete => () // already handled by evaluateTask
+			case _ =>
+				log.trace(e)
+				log.error(e.toString)
+		}
 		s.fail
 	}
 	

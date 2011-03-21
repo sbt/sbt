@@ -8,7 +8,7 @@ package sbt
 	import compiler.Discovery
 	import Project.{inConfig, Initialize, inScope, inTask, ScopedKey, Setting}
 	import Configurations.{Compile => CompileConf, Test => TestConf}
-	import EvaluateTask.{resolvedScoped, streams}
+	import EvaluateTask.resolvedScoped
 	import complete._
 	import std.TaskExtra._
 

@@ -4,31 +4,47 @@
 package sbt
 
 import Incomplete.{Error, Value => IValue}
-final case class Incomplete(tpe: IValue = Error, message: Option[String] = None, causes: Seq[Incomplete] = Nil, directCause: Option[Throwable] = None)
-	extends Exception(message.orNull, directCause.orNull)
+final case class Incomplete(node: Option[AnyRef], tpe: IValue = Error, message: Option[String] = None, causes: Seq[Incomplete] = Nil, directCause: Option[Throwable] = None)
+	extends Exception(message.orNull, directCause.orNull) {
+		override def toString = "Incomplete(node=" + node + ", tpe=" + tpe + ", msg=" + message + ", causes=" + causes + ", directCause=" + directCause +")"
+}
 
 object Incomplete extends Enumeration {
 	val Skipped, Error = Value
-	def show(i: Incomplete, traces: Boolean): String =
+	
+	def transform(i: Incomplete)(f: Incomplete => Incomplete): Incomplete =
 	{
-		val exceptions = allExceptions(i)
-		val traces = exceptions.map(ex => ex.getStackTrace.mkString(ex.toString + "\n\t", "\n\t", "\n"))
-		val causeStr = if(i.causes.isEmpty) "" else (i.causes.length + " cause(s)")
-		"Incomplete (" + show(i.tpe) + ") " + i.message.getOrElse("") + causeStr + "\n" + traces
-	}
+			import collection.JavaConversions._
+		val visited: collection.mutable.Map[Incomplete,Incomplete] = new java.util.IdentityHashMap[Incomplete, Incomplete]
+		def visit(inc: Incomplete): Incomplete =
+			visited.getOrElseUpdate(inc, visitCauses(f(inc)) )
+		def visitCauses(inc: Incomplete): Incomplete =
+			inc.copy(causes = inc.causes.map(visit) )
 
-	def allExceptions(is: Seq[Incomplete]): Iterable[Throwable] =
-		allExceptions(new Incomplete(causes = is))
-	def allExceptions(i: Incomplete): Iterable[Throwable] =
+		visit(i)
+	}
+	def visitAll(i: Incomplete)(f: Incomplete => Unit)
 	{
-		val exceptions = IDSet.create[Throwable]
 		val visited = IDSet.create[Incomplete]
 		def visit(inc: Incomplete): Unit =
 			visited.process(inc)( () ) {
-				exceptions ++= inc.directCause.toList
+				f(inc)
 				inc.causes.foreach(visit)
 			}
 		visit(i)
+	}
+	def linearize(i: Incomplete): Seq[Incomplete] =
+	{
+		var ordered = List[Incomplete]()
+		visitAll(i) { ordered ::= _ }
+		ordered
+	}
+	def allExceptions(is: Seq[Incomplete]): Iterable[Throwable] =
+		allExceptions(new Incomplete(None, causes = is))
+	def allExceptions(i: Incomplete): Iterable[Throwable] =
+	{
+		val exceptions = IDSet.create[Throwable]
+		visitAll(i) { exceptions ++= _.directCause.toList }
 		exceptions.all
 	}
 	def show(tpe: Value) = tpe match { case Skipped=> "skipped"; case Error => "error" }
