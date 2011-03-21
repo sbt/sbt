@@ -50,10 +50,8 @@ final case class Project(id: String, base: File, aggregate: Seq[ProjectReference
 }
 final case class Extracted(structure: Load.BuildStructure, session: SessionSettings, currentRef: ProjectRef, rootProject: URI => String)
 {
-	lazy val currentUnit = structure units curi
-	lazy val currentProject = currentUnit defined cid
-	def curi = currentRef.build
-	def cid = currentRef.project
+	lazy val currentUnit = structure units currentRef.build
+	lazy val currentProject = currentUnit defined currentRef.project
 }
 
 object Project extends Init[Scope]
@@ -104,9 +102,9 @@ object Project extends Init[Scope]
 		val prompt = get(shellPrompt)
 		val watched = get(watch)
 		val commandDefs = allCommands.distinct.flatten[Command].map(_ tag (projectCommand, true))
-		val newProcessors = commandDefs ++ BuiltinCommands.removeTagged(s.processors, projectCommand)
+		val newDefinedCommands = commandDefs ++ BuiltinCommands.removeTagged(s.definedCommands, projectCommand)
 		val newAttrs = setCond(Watched.Configuration, watched, s.attributes).put(historyPath.key, history)
-		s.copy(attributes = setCond(shellPrompt.key, prompt, newAttrs), processors = newProcessors)
+		s.copy(attributes = setCond(shellPrompt.key, prompt, newAttrs), definedCommands = newDefinedCommands)
 	}
 	def setCond[T](key: AttributeKey[T], vopt: Option[T], attributes: AttributeMap): AttributeMap =
 		vopt match { case Some(v) => attributes.put(key, v); case None => attributes.remove(key) }

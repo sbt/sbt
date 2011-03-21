@@ -43,7 +43,7 @@ class xMain extends xsbti.AppMain
 			case Done => Exit(0)
 			case Reload =>
 				val app = state.configuration.provider
-				new Reboot(app.scalaProvider.version, state.commands, app.id, state.configuration.baseDirectory)
+				new Reboot(app.scalaProvider.version, state.remainingCommands, app.id, state.configuration.baseDirectory)
 		}
 	}
 	def next(state: State): State =
@@ -73,7 +73,7 @@ object BuiltinCommands
 
 	def helpParser(s: State) =
 	{
-		val h = s.processors.flatMap(_.help)
+		val h = s.definedCommands.flatMap(_.help)
 		val helpCommands = h.flatMap(_.detail._1)
 		val args = (token(Space) ~> token( OpOrID.examples(helpCommands : _*) )).*
 		applyEffect(args)(runHelp(s, h))
@@ -114,7 +114,7 @@ object BuiltinCommands
 		val reader = new FullReader(history, s.combinedParser)
 		val line = reader.readLine(prompt)
 		line match {
-			case Some(line) => s.copy(onFailure = Some(Shell), commands = line +: Shell +: s.commands)
+			case Some(line) => s.copy(onFailure = Some(Shell), remainingCommands = line +: Shell +: s.remainingCommands)
 			case None => s
 		}
 	}
@@ -129,10 +129,10 @@ object BuiltinCommands
 	lazy val otherCommandParser = (s: State) => token(OptSpace ~> matched(s.combinedParser) )
 
 	def ifLast = Command(IfLast, IfLastBrief, IfLastDetailed)(otherCommandParser) { (s, arg) =>
-		if(s.commands.isEmpty) arg :: s else s
+		if(s.remainingCommands.isEmpty) arg :: s else s
 	}
 	def append = Command(Append, AppendLastBrief, AppendLastDetailed)(otherCommandParser) { (s, arg) =>
-		s.copy(commands = s.commands :+ arg)
+		s.copy(remainingCommands = s.remainingCommands :+ arg)
 	}
 	
 	def setOnFailure = Command(OnFailure, OnFailureBrief, OnFailureDetailed)(otherCommandParser) { (s, arg) =>
@@ -237,7 +237,7 @@ object BuiltinCommands
 		val extracted = Project extract s
 		import extracted._
 		val setting = EvaluateConfigurations.evaluateSetting(session.currentEval(), "<set>", imports(extracted), arg, 0)
-		val append = Load.transformSettings(Load.projectScope(currentRef), curi, rootProject, setting :: Nil)
+		val append = Load.transformSettings(Load.projectScope(currentRef), currentRef.build, rootProject, setting :: Nil)
 		val newSession = session.appendSettings( append map (a => (a, arg)))
 		reapply(newSession, structure, s)
 	}
@@ -260,8 +260,8 @@ object BuiltinCommands
 	def autoImports(extracted: Extracted): EvalImports  =  new EvalImports(imports(extracted), "<auto-imports>")
 	def imports(extracted: Extracted): Seq[(String,Int)] =
 	{
-		import extracted._
-		structure.units(curi).imports.map(s => (s, -1))
+		val curi = extracted.currentRef.build
+		extracted.structure.units(curi).imports.map(s => (s, -1))
 	}
 
 	def listBuild(uri: URI, build: Load.LoadedBuildUnit, current: Boolean, currentID: String, log: Logger) =
@@ -276,6 +276,7 @@ object BuiltinCommands
 	def projects = Command.command(ProjectsCommand, projectsBrief, projectsDetailed ) { s =>
 		val extracted = Project extract s
 		import extracted._
+		import currentRef.{build => curi, project => cid}
 		val log = logger(s)
 		listBuild(curi, structure.units(curi), true, cid, log)
 		for( (uri, build) <- structure.units if curi != uri) listBuild(uri, build, false, cid, log)
@@ -340,16 +341,16 @@ object BuiltinCommands
 	def addAlias(s: State, name: String, value: String): State =
 		if(Command validID name) {
 			val removed = removeAlias(s, name)
-			if(value.isEmpty) removed else removed.copy(processors = newAlias(name, value) +: removed.processors)
+			if(value.isEmpty) removed else removed.copy(definedCommands = newAlias(name, value) +: removed.definedCommands)
 		} else {
 			System.err.println("Invalid alias name '" + name + "'.")
 			s.fail
 		}
 
 	def removeAliases(s: State): State  =  removeTagged(s, CommandAliasKey)
-	def removeAlias(s: State, name: String): State  =  s.copy(processors = s.processors.filter(c => !isAliasNamed(name, c)) )
+	def removeAlias(s: State, name: String): State  =  s.copy(definedCommands = s.definedCommands.filter(c => !isAliasNamed(name, c)) )
 	
-	def removeTagged(s: State, tag: AttributeKey[_]): State = s.copy(processors = removeTagged(s.processors, tag))
+	def removeTagged(s: State, tag: AttributeKey[_]): State = s.copy(definedCommands = removeTagged(s.definedCommands, tag))
 	def removeTagged(as: Seq[Command], tag: AttributeKey[_]): Seq[Command] = as.filter(c => ! (c.tags contains tag))
 
 	def isAliasNamed(name: String, c: Command): Boolean  =  isNamed(name, getAlias(c))
@@ -365,12 +366,12 @@ object BuiltinCommands
 	def aliasNames(s: State): Seq[String] = allAliases(s).map(_._1)
 	def allAliases(s: State): Seq[(String,String)]  =  aliases(s, (n,v) => true)
 	def aliases(s: State, pred: (String,String) => Boolean): Seq[(String,String)] =
-		s.processors.flatMap(c => getAlias(c).filter(tupled(pred)))
+		s.definedCommands.flatMap(c => getAlias(c).filter(tupled(pred)))
 
 	def newAlias(name: String, value: String): Command =
 		Command.make(name, (name, "'" + value + "'"), "Alias of '" + value + "'")(aliasBody(name, value)).tag(CommandAliasKey, (name, value))
 	def aliasBody(name: String, value: String)(state: State): Parser[() => State] =
-		OptSpace ~> Parser(Command.combine(removeAlias(state,name).processors)(state))(value)
+		OptSpace ~> Parser(Command.combine(removeAlias(state,name).definedCommands)(state))(value)
 
 	val CommandAliasKey = AttributeKey[(String,String)]("is-command-alias")
 }

@@ -80,7 +80,7 @@ object Command
 		
 	def process(command: String, state: State): State =
 	{
-		val parser = combine(state.processors)
+		val parser = combine(state.definedCommands)
 		Parser.result(parser(state), command) match
 		{
 			case Right(s) => s() // apply command.  command side effects happen here

@@ -8,14 +8,14 @@ package sbt
 
 final case class State(
 	configuration: xsbti.AppConfiguration,
-	processors: Seq[Command],
+	definedCommands: Seq[Command],
 	exitHooks: Set[ExitHook],
 	onFailure: Option[String],
-	commands: Seq[String],
+	remainingCommands: Seq[String],
 	attributes: AttributeMap,
 	next: Next.Value
 ) extends Identity {
-	lazy val combinedParser = Command.combine(processors)(this)
+	lazy val combinedParser = Command.combine(definedCommands)(this)
 }
 
 trait Identity {
@@ -48,35 +48,35 @@ object State
 {
 	implicit def stateOps(s: State): StateOps = new StateOps {
 		def process(f: (String, State) => State): State =
-			s.commands match {
-				case Seq(x, xs @ _*) => f(x, s.copy(commands = xs))
+			s.remainingCommands match {
+				case Seq(x, xs @ _*) => f(x, s.copy(remainingCommands = xs))
 				case Seq() => exit(true)
 			}
-			s.copy(commands = s.commands.drop(1))
-		def ::: (newCommands: Seq[String]): State = s.copy(commands = newCommands ++ s.commands)
+			s.copy(remainingCommands = s.remainingCommands.drop(1))
+		def ::: (newCommands: Seq[String]): State = s.copy(remainingCommands = newCommands ++ s.remainingCommands)
 		def :: (command: String): State = (command :: Nil) ::: this
-		def ++ (newCommands: Seq[Command]): State = s.copy(processors = (s.processors ++ newCommands).distinct)
+		def ++ (newCommands: Seq[Command]): State = s.copy(definedCommands = (s.definedCommands ++ newCommands).distinct)
 		def + (newCommand: Command): State = this ++ (newCommand :: Nil)
 		def baseDir: File = s.configuration.baseDirectory
 		def setNext(n: Next.Value) = s.copy(next = n)
 		def continue = setNext(Next.Continue)
-		def reboot(full: Boolean) = throw new xsbti.FullReload(s.commands.toArray, full)
+		def reboot(full: Boolean) = throw new xsbti.FullReload(s.remainingCommands.toArray, full)
 		def reload = setNext(Next.Reload)
 		def exit(ok: Boolean) = setNext(if(ok) Next.Done else Next.Fail)
 		def get[T](key: AttributeKey[T]) = s.attributes.get(key)
 		def put[T](key: AttributeKey[T], value: T) = s.copy(attributes = s.attributes.put(key, value))
 		def fail =
 		{
-			val remaining = s.commands.dropWhile(_ != FailureWall)
+			val remaining = s.remainingCommands.dropWhile(_ != FailureWall)
 			if(remaining.isEmpty)
 				applyOnFailure(s, Nil, exit(ok = false))
 			else
-				applyOnFailure(s, remaining, s.copy(commands = remaining))
+				applyOnFailure(s, remaining, s.copy(remainingCommands = remaining))
 		}
 		private[this] def applyOnFailure(s: State, remaining: Seq[String], noHandler: => State): State =
 			s.onFailure match
 			{
-				case Some(c) => s.copy(commands = c +: remaining, onFailure = None)
+				case Some(c) => s.copy(remainingCommands = c +: remaining, onFailure = None)
 				case None => noHandler
 			}
 
