@@ -4,12 +4,14 @@
 package sbt
 
 /** Defines a function to call as sbt exits.*/
-trait ExitHook extends NotNull
+trait ExitHook
 {
-	/** Provides a name for this hook to be used to provide feedback to the user. */
-	def name: String
 	/** Subclasses should implement this method, which is called when this hook is executed. */
 	def runBeforeExiting(): Unit
+}
+object ExitHook
+{
+	def apply(f: => Unit): ExitHook = new ExitHook { def runBeforeExiting() = f }
 }
 
 object ExitHooks
