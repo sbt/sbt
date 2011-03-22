@@ -247,13 +247,14 @@ object BuiltinCommands
 		s
 	}
 	def lastGrep = Command(LastGrepCommand, lastGrepBrief, lastGrepDetailed)(lastGrepParser) { case (s,(pattern,sk)) =>
-		Output.lastGrep(sk.scope, sk.key, Project.structure(s).streams, pattern)
+		Output.lastGrep(sk, Project.structure(s).streams, pattern)
 		s
 	}
 	val spacedKeyParser = (s: State) => Act.requireSession(s, token(Space) ~> Act.scopedKeyParser(s))
-	def lastGrepParser(s: State) = Act.requireSession(s, (token(Space) ~> token(NotSpace, "<pattern>")) ~ spacedKeyParser(s))
-	def last = Command(LastCommand, lastBrief, lastDetailed)(spacedKeyParser) { (s,sk) =>
-		Output.last(sk.scope, sk.key, Project.structure(s).streams)
+	val optSpacedKeyParser = (s: State) => spacedKeyParser(s).?
+	def lastGrepParser(s: State) = Act.requireSession(s, (token(Space) ~> token(NotSpace, "<pattern>")) ~ optSpacedKeyParser(s))
+	def last = Command(LastCommand, lastBrief, lastDetailed)(optSpacedKeyParser) { (s,sk) =>
+		Output.last(sk, Project.structure(s).streams)
 		s
 	}
 
@@ -334,6 +335,7 @@ object BuiltinCommands
 			case _ =>
 				log.trace(e)
 				log.error(e.toString)
+				log.error("Use 'last' for the full log.")
 		}
 		s.fail
 	}

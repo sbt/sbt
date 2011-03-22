@@ -86,7 +86,7 @@ object Command
 			case Right(s) => s() // apply command.  command side effects happen here
 			case Left((msg,pos)) =>
 				val errMsg = commandError(command, msg, pos)
-				logger(state).info(errMsg)
+				logger(state).error(errMsg)
 				state.fail				
 		}
 	}

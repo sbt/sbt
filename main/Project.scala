@@ -6,7 +6,7 @@ package sbt
 	import java.io.File
 	import java.net.URI
 	import Project._
-	import Keys.{appConfiguration, buildStructure, commands, configuration, historyPath, projectCommand, sessionSettings, shellPrompt, thisProject, thisProjectRef, watch}
+	import Keys.{appConfiguration, buildStructure, commands, configuration, historyPath, logged, projectCommand, sessionSettings, shellPrompt, streams, thisProject, thisProjectRef, watch}
 	import Scope.{GlobalScope,ThisScope}
 	import CommandSupport.logger
 
@@ -88,9 +88,10 @@ object Project extends Init[Scope]
 		updateCurrent(newState.runExitHooks())
 	}
 	def current(state: State): ProjectRef = session(state).current
-	def updateCurrent(s: State): State =
+	def updateCurrent(s0: State): State =
 	{
-		val structure = Project.structure(s)
+		val structure = Project.structure(s0)
+		val s = installGlobalLogger(s0, structure)
 		val ref = Project.current(s)
 		val project = Load.getProject(structure.units, ref.build, ref.project)
 		logger(s).info("Set current project to " + ref.project + " (in build " + ref.build +")")
@@ -224,6 +225,13 @@ object Project extends Init[Scope]
 	{
 		val extracted = Project.extract(state)
 		EvaluateTask.evaluateTask(extracted.structure, taskKey, state, extracted.currentRef, checkCycles, maxWorkers)
+	}
+	def globalLoggerKey = fillTaskAxis(ScopedKey(GlobalScope, streams.key))
+	def installGlobalLogger(s: State, structure: Load.BuildStructure): State =
+	{
+		val str = structure.streams(globalLoggerKey)
+		str.open()
+		s.put(logged, str.log).addExitHook { str.close() }
 	}
 }
 

@@ -46,10 +46,11 @@ EvalCommand + """ <expression>
 
 	val lastGrepBrief = (LastGrepCommand + " <pattern> <key>", "Shows lines from the last output for 'key' that match 'pattern'.")
 	val lastGrepDetailed = 
-LastGrepCommand + """ <pattern> <key>
+LastGrepCommand + """ <pattern> [key]
 
 	<pattern> is a regular expression interpreted by java.util.Pattern.
 	Lines that match 'pattern' from the last streams output associated with the key are displayed.
+	If no key is specified, the global streams output is used.
 	See also """ + LastCommand + "."
 
 	val lastBrief = (LastCommand + " <key>", "Prints the last output associated with 'key'.")
@@ -57,6 +58,7 @@ LastGrepCommand + """ <pattern> <key>
 LastCommand + """ <key>
 
 	Redisplays the last streams output associated with the key (typically a task key).
+	If no key is specified, the global streams output is displayed.
 	See also """ + LastGrepCommand + "."
 
 	val InspectCommand = "inspect"

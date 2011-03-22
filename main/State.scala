@@ -41,8 +41,10 @@ trait StateOps {
 	def + (newCommand: Command): State
 	def get[T](key: AttributeKey[T]): Option[T]
 	def put[T](key: AttributeKey[T], value: T): State
+	def remove(key: AttributeKey[_]): State
 	def baseDir: File
 	def runExitHooks(): State
+	def addExitHook(f: => Unit): State
 }
 object State
 {
@@ -63,8 +65,9 @@ object State
 		def reboot(full: Boolean) = throw new xsbti.FullReload(s.remainingCommands.toArray, full)
 		def reload = setNext(Next.Reload)
 		def exit(ok: Boolean) = setNext(if(ok) Next.Done else Next.Fail)
-		def get[T](key: AttributeKey[T]) = s.attributes.get(key)
+		def get[T](key: AttributeKey[T]) = s.attributes get key
 		def put[T](key: AttributeKey[T], value: T) = s.copy(attributes = s.attributes.put(key, value))
+		def remove(key: AttributeKey[_]) = s.copy(attributes = s.attributes remove key)
 		def fail =
 		{
 			val remaining = s.remainingCommands.dropWhile(_ != FailureWall)
@@ -80,6 +83,8 @@ object State
 				case None => noHandler
 			}
 
+		def addExitHook(act: => Unit): State =
+			s.copy(exitHooks = s.exitHooks + ExitHook(act))
 		def runExitHooks(): State = {
 			ExitHooks.runExitHooks(s.exitHooks.toSeq)
 			s.copy(exitHooks = Set.empty)
