@@ -146,12 +146,16 @@ object EvaluateTask
 	def logIncomplete(result: Incomplete, streams: Streams)
 	{
 		val log = streams(ScopedKey(GlobalScope, Keys.logged)).log
-		val all = for(Incomplete(Some(key: Project.ScopedKey[_]), _, msg, _, ex) <- Incomplete linearize result) yield (key, msg, ex)
-		for( (key, _, Some(ex)) <- all)
+		val all = Incomplete linearize result
+		val keyed = for(Incomplete(Some(key: Project.ScopedKey[_]), _, msg, _, ex) <- all) yield (key, msg, ex)
+		val un = all.filter { i => i.node.isEmpty || i.message.isEmpty }
+		for( (key, _, Some(ex)) <- keyed)
 			getStreams(key, streams).log.trace(ex)
 		log.error("Incomplete task(s):")
-		for( (key, msg, ex) <- all if(msg.isDefined || ex.isDefined) )
+		for( (key, msg, ex) <- keyed if(msg.isDefined || ex.isDefined) )
 			getStreams(key, streams).log.error("  " + Project.display(key) + ": " + (msg.toList ++ ex.toList).mkString("\n\t"))
+		for(u <- un)
+			log.debug(u.toString)
 		log.error("Run 'last <task>' for the full log(s).")
 	}
 	def getStreams(key: ScopedKey[_], streams: Streams): TaskStreams =

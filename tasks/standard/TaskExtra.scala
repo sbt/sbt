@@ -223,5 +223,5 @@ object TaskExtra extends TaskExtra
 	}
 	def failures[A](results: Seq[Result[A]]): Seq[Incomplete] = results.collect { case Inc(i) => i }
 
-	def incompleteDeps(incs: Seq[Incomplete]): Incomplete = Incomplete(None, message = Some("Dependency did not complete successfully."), causes = incs)
+	def incompleteDeps(incs: Seq[Incomplete]): Incomplete = Incomplete(None, causes = incs)
 }
