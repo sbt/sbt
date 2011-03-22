@@ -22,20 +22,20 @@ import plugins.latest.LatestRevisionStrategy
 import plugins.matcher.PatternMatcher
 import plugins.parser.m2.PomModuleDescriptorParser
 import plugins.resolver.ChainResolver
-import util.Message
+import util.{Message, MessageLogger}
 
 import scala.xml.NodeSeq
 
 final class IvySbt(val configuration: IvyConfiguration)
 {
-	import configuration.{log, baseDirectory}
+		import configuration.baseDirectory
+
 	/** ========== Configuration/Setup ============
 	* This part configures the Ivy instance by first creating the logger interface to ivy, then IvySettings, and then the Ivy instance.
 	* These are lazy so that they are loaded within the right context.  This is important so that no Ivy XML configuration needs to be loaded,
 	* saving some time.  This is necessary because Ivy has global state (IvyContext, Message, DocumentBuilder, ...).
 	*/
-	private lazy val logger = new IvyLoggerInterface(log)
-	private def withDefaultLogger[T](f: => T): T =
+	private def withDefaultLogger[T](logger: MessageLogger)(f: => T): T =
 	{
 		def action() =
 			IvySbt.synchronized
@@ -55,7 +55,7 @@ final class IvySbt(val configuration: IvyConfiguration)
 			case None => action()
 		}
 	}
-	private lazy val settings =
+	private lazy val settings: IvySettings =
 	{
 		val is = new IvySettings
 		is.setBaseDir(baseDirectory)
@@ -65,17 +65,17 @@ final class IvySbt(val configuration: IvyConfiguration)
 			case e: ExternalIvyConfiguration => is.load(e.file)
 			case i: InlineIvyConfiguration => 
 				IvySbt.configureCache(is, i.paths.cacheDirectory, i.localOnly)
-				IvySbt.setResolvers(is, i.resolvers, i.otherResolvers, i.localOnly, log)
+				IvySbt.setResolvers(is, i.resolvers, i.otherResolvers, i.localOnly, configuration.log)
 				IvySbt.setModuleConfigurations(is, i.moduleConfigurations)
 		}
 		is
 	}
-	private lazy val ivy =
+	private lazy val ivy: Ivy =
 	{
 		val i = new Ivy() { private val loggerEngine = new SbtMessageLoggerEngine; override def getLoggerEngine = loggerEngine }
 		i.setSettings(settings)
 		i.bind()
-		i.getLoggerEngine.pushLogger(logger)
+		i.getLoggerEngine.pushLogger(new IvyLoggerInterface(configuration.log))
 		i
 	}
 	// Must be the same file as is used in Update in the launcher
@@ -83,24 +83,30 @@ final class IvySbt(val configuration: IvyConfiguration)
 	/** ========== End Configuration/Setup ============*/
 
 	/** Uses the configured Ivy instance within a safe context.*/
-	def withIvy[T](f: Ivy => T): T =
-		withDefaultLogger
+	def withIvy[T](log: Logger)(f: Ivy => T): T =
+		withIvy(new IvyLoggerInterface(log))(f)
+
+	def withIvy[T](log: MessageLogger)(f: Ivy => T): T =
+		withDefaultLogger(log)
 		{
 			ivy.pushContext()
+			ivy.getLoggerEngine.pushLogger(log)
 			try { f(ivy) }
-			finally { ivy.popContext() }
+			finally {
+				ivy.getLoggerEngine.popLogger()
+				ivy.popContext()
+			}
 		}
 
 	final class Module(rawModuleSettings: ModuleSettings)
 	{
 		val moduleSettings: ModuleSettings = IvySbt.substituteCross(rawModuleSettings)
 		def owner = IvySbt.this
-		def logger = configuration.log
-		def withModule[T](f: (Ivy,DefaultModuleDescriptor,String) => T): T =
-			withIvy[T] { ivy => f(ivy, moduleDescriptor0, defaultConfig0) }
+		def withModule[T](log: Logger)(f: (Ivy,DefaultModuleDescriptor,String) => T): T =
+			withIvy[T](log) { ivy => f(ivy, moduleDescriptor0, defaultConfig0) }
 
-		def moduleDescriptor = withModule((_,md,_) => md)
-		def defaultConfig = withModule( (_,_,dc) => dc)
+		def moduleDescriptor(log: Logger): DefaultModuleDescriptor = withModule(log)((_,md,_) => md)
+		def defaultConfig(log: Logger): String = withModule(log)( (_,_,dc) => dc)
 		// these should only be referenced by withModule because lazy vals synchronize on this object
 		// withIvy explicitly locks the IvySbt object, so they have to be done in the right order to avoid deadlock
 		private[this] lazy val (moduleDescriptor0: DefaultModuleDescriptor, defaultConfig0: String) =
@@ -108,7 +114,7 @@ final class IvySbt(val configuration: IvyConfiguration)
 			val (baseModule, baseConfiguration) =
 				moduleSettings match
 				{
-					case ic: InlineConfiguration => configureInline(ic)
+					case ic: InlineConfiguration => configureInline(ic, configuration.log)
 					case ec: EmptyConfiguration => configureEmpty(ec.module)
 					case pc: PomConfiguration => readPom(pc.file, pc.validate)
 					case ifc: IvyFileConfiguration => readIvyFile(ifc.file, ifc.validate)
@@ -117,7 +123,7 @@ final class IvySbt(val configuration: IvyConfiguration)
 			baseModule.getExtraAttributesNamespaces.asInstanceOf[java.util.Map[String,String]].put("e", "http://ant.apache.org/ivy/extra")
 			(baseModule, baseConfiguration)
 		}
-		private def configureInline(ic: InlineConfiguration) =
+		private def configureInline(ic: InlineConfiguration, log: Logger) =
 		{
 			import ic._
 			val moduleID = newConfiguredModuleID(module, configurations)

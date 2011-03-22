@@ -74,7 +74,7 @@ object IvyCache
 	def withDefaultCache[T](lock: Option[xsbti.GlobalLock], log: Logger)(f: DefaultRepositoryCacheManager => T): T =
 	{
 		val (ivy, local) = basicLocalIvy(lock, log)
-		ivy.withIvy { ivy =>
+		ivy.withIvy(log) { ivy =>
 			val cache = ivy.getSettings.getDefaultRepositoryCacheManager.asInstanceOf[DefaultRepositoryCacheManager]
 			cache.setUseOrigin(false)
 			f(cache)

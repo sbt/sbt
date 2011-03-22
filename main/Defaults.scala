@@ -440,7 +440,7 @@ object Classpaths
 		deliverDepends <<= (publishMavenStyle, makePom.setting, packageToPublish.setting) { (mavenStyle, mkpom, ptp) =>
 			if(mavenStyle) mkpom.map(_ => ()) else ptp
 		},
-		makePom <<= (ivyModule, makePomConfiguration, packageToPublish) map { (module, config, _) => IvyActions.makePom(module, config); config.file },
+		makePom <<= (ivyModule, makePomConfiguration, packageToPublish, streams) map { (module, config, _, s) => IvyActions.makePom(module, config, s.log); config.file },
 		deliver <<= deliverTask(publishConfiguration),
 		deliverLocal <<= deliverTask(publishLocalConfiguration),
 		publish <<= publishTask(publishConfiguration, deliver),
@@ -503,9 +503,11 @@ object Classpaths
 			cachedUpdate(cacheDirectory / "update", module, config, s.log)
 		},
 		transitiveClassifiers :== Seq("sources", "javadoc"),
-		updateClassifiers <<= (ivySbt, projectID, update, transitiveClassifiers, updateConfiguration, ivyScala) map IvyActions.transitive,
-		updateSbtClassifiers <<= (ivySbt, projectID, transitiveClassifiers, updateConfiguration, sbtDependency, ivyScala) map { (is, pid, classifiers, c, sbtDep, ivyScala) =>
-			IvyActions.transitiveScratch(is, pid, "sbt", sbtDep :: Nil, classifiers, c, ivyScala)
+		updateClassifiers <<= (ivySbt, projectID, update, transitiveClassifiers, updateConfiguration, ivyScala, streams) map { (is, pid, up, classifiers, c, ivyScala, s) =>
+			IvyActions.transitive(is, pid, up, classifiers, c, ivyScala, s.log)
+		},
+		updateSbtClassifiers <<= (ivySbt, projectID, transitiveClassifiers, updateConfiguration, sbtDependency, ivyScala, streams) map { (is, pid, classifiers, c, sbtDep, ivyScala, s) =>
+			IvyActions.transitiveScratch(is, pid, "sbt", sbtDep :: Nil, classifiers, c, ivyScala, s.log)
 		},
 		sbtResolver in GlobalScope :== dbResolver,
 		sbtDependency in GlobalScope <<= appConfiguration { app =>
@@ -516,9 +518,9 @@ object Classpaths
 
 
 	def deliverTask(config: TaskKey[PublishConfiguration]): Initialize[Task[Unit]] =
-		(ivyModule, config, deliverDepends) map { (module, config, _) => IvyActions.deliver(module, config) }
+		(ivyModule, config, deliverDepends, streams) map { (module, config, _, s) => IvyActions.deliver(module, config, s.log) }
 	def publishTask(config: TaskKey[PublishConfiguration], deliverKey: TaskKey[_]): Initialize[Task[Unit]] =
-		(ivyModule, config, deliverKey) map { (module, config, _) => IvyActions.publish(module, config) }
+		(ivyModule, config, deliverKey, streams) map { (module, config, _, s) => IvyActions.publish(module, config, s.log) }
 
 		import Cache._
 		import CacheIvy.{classpathFormat, publishIC, updateIC, updateReportF}
@@ -530,7 +532,7 @@ object Classpaths
 		type In = IvyConfiguration :+: ModuleSettings :+: UpdateConfiguration :+: HNil
 		def work = (_:  In) match { case conf :+: settings :+: config :+: HNil =>
 			log.info("Updating...")
-			val r = IvyActions.update(module, config)
+			val r = IvyActions.update(module, config, log)
 			log.info("Done updating.")
 			r
 		}
@@ -583,15 +585,15 @@ object Classpaths
 		}
 
 	def depMap: Initialize[Task[Map[ModuleRevisionId, ModuleDescriptor]]] =
-		(thisProject, thisProjectRef, settings) flatMap { (root, rootRef, data) =>
+		(thisProject, thisProjectRef, settings, streams) flatMap { (root, rootRef, data, s) =>
 			val dependencies = (p: (ProjectRef, ResolvedProject)) => p._2.dependencies.flatMap(pr => thisProject in pr.project get data map { (pr.project, _) })
-			depMap(Dag.topologicalSort((rootRef,root))(dependencies).dropRight(1), data)
+			depMap(Dag.topologicalSort((rootRef,root))(dependencies).dropRight(1), data, s.log)
 		}
 
-	def depMap(projects: Seq[(ProjectRef,ResolvedProject)], data: Settings[Scope]): Task[Map[ModuleRevisionId, ModuleDescriptor]] =
+	def depMap(projects: Seq[(ProjectRef,ResolvedProject)], data: Settings[Scope], log: Logger): Task[Map[ModuleRevisionId, ModuleDescriptor]] =
 		projects.flatMap { case (p,_) => ivyModule in p get data }.join.map { mods =>
 			(mods.map{ mod =>
-				val md = mod.moduleDescriptor
+				val md = mod.moduleDescriptor(log)
 				(md.getModuleRevisionId, md)
 			}).toMap
 		}
