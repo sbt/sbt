@@ -18,6 +18,7 @@ package sbt
 sealed trait TestOption
 object Tests
 {
+	// (overall result, individual results)
 	type Output = (TestResult.Value, Map[String,TestResult.Value])
 	
 	final case class Setup(setup: ClassLoader => Unit) extends TestOption
@@ -82,7 +83,6 @@ object Tests
 		testTask(frameworks.values.toSeq, testLoader, tests, setup.readOnly, cleanup.readOnly, log, testListeners.readOnly, arguments)
 	}
 
-	// (overall result, individual results)
 	def testTask(frameworks: Seq[Framework], loader: ClassLoader, tests: Seq[TestDefinition],
 		userSetup: Iterable[ClassLoader => Unit], userCleanup: Iterable[ClassLoader => Unit],
 		log: Logger, testListeners: Seq[TestReportListener], arguments: Map[Framework, Seq[String]]): Task[Output] =

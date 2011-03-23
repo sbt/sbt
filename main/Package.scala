@@ -71,7 +71,9 @@ object Package
 			val sources :+: _ :+: manifest :+: HNil = inputs
 			outputChanged(cacheFile / "output") { (outChanged, jar: PlainFileInfo) =>
 				if(inChanged || outChanged)
-					makeJar(sources.toSeq, jar.file, manifest)
+					makeJar(sources.toSeq, jar.file, manifest, log)
+				else
+					log.debug("Jar uptodate: " + jar.file)
 			}
 		}
 
@@ -85,13 +87,16 @@ object Package
 		if(main.getValue(version) eq null)
 			main.put(version, "1.0")
 	}
-	def makeJar(sources: Seq[(File, String)], jar: File, manifest: Manifest)
+	def makeJar(sources: Seq[(File, String)], jar: File, manifest: Manifest, log: Logger)
 	{
-		println("Packaging " + jar.getAbsolutePath + " ...")
+		log.info("Packaging " + jar.getAbsolutePath + " ...")
 		IO.delete(jar)
+		log.debug(sourcesDebugString(sources))
 		IO.jar(sources, jar, manifest)
-		println("Done packaging.")
+		log.info("Done packaging.")
 	}
+	def sourcesDebugString(sources: Seq[(File, String)]): String =
+		"Input file mappings:\n\t" + (sources map { case (f,s) => s + "\n\t  " + f} mkString("\n\t") )
 
 	implicit def manifestEquiv: Equiv[Manifest] = defaultEquiv
 	implicit def manifestFormat: Format[Manifest] = streamFormat( _ write _, in => new Manifest(in))
