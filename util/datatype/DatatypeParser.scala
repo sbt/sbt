@@ -5,7 +5,7 @@ package xsbt
 package api
 
 import java.io.File
-import sbt.IO.read
+import sbt.IO.readLines
 import Function.tupled
 import java.util.regex.Pattern
 
@@ -31,8 +31,7 @@ class DatatypeParser extends NotNull
 		}
 		open ++ closed
 	}
-	def parseLines(file: File): Seq[Line] = getLines(read(file)).toList.zipWithIndex.map(tupled(parseLine))
-	def getLines(content: String): Seq[String] = content split "(?m)$(?s:.)(?!$)*(^|\\Z)"
+	def parseLines(file: File): Seq[Line] = readLines(file).zipWithIndex.map(tupled(parseLine))
 	def parseLine(line: String, lineNumber: Int): Line =
 		matchPattern(WhitespacePattern -> processWhitespaceLine _, EnumPattern -> processEnumLine _,
 			ClassPattern -> processClassLine _, MemberPattern -> processMemberLine _)(line, lineNumber)
