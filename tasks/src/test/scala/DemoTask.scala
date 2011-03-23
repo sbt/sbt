@@ -112,7 +112,7 @@ object Task
 		val uniformIn = tasks
 		def work(mixed: Results[HNil], uniform: Seq[Result[Uniform]]) = {
 			val inc = failures(uniform)
-			if(inc.isEmpty) f(uniform) else throw Incomplete(causes = inc)
+			if(inc.isEmpty) f(uniform) else throw Incomplete(None, causes = inc)
 		}
 	}
 	def toNode[T, In <: HList](in: Tasks[In], f: Results[In] => Either[Task[T], T]): Node[Task, T] = new Node[Task, T] {
@@ -125,12 +125,12 @@ object Task
 	def allM[In <: HList]: Results[In] => In = in =>
 	{
 		val incs = failuresM(in)
-		if(incs.isEmpty) in.down(Result.tryValue) else throw Incomplete(causes = incs)
+		if(incs.isEmpty) in.down(Result.tryValue) else throw Incomplete(None, causes = incs)
 	}
 	def all[D]: Seq[Result[D]] => Seq[D] = in =>
 	{
 		val incs = failures(in)
-		if(incs.isEmpty) in.map(Result.tryValue.apply[D]) else throw Incomplete(causes = incs)
+		if(incs.isEmpty) in.map(Result.tryValue.apply[D]) else throw Incomplete(None, causes = incs)
 	}
 	def failuresM[In <: HList]: Results[In] => Seq[Incomplete] = x => failures[Any](x.toList)
 	def failures[A]: Seq[Result[A]] => Seq[Incomplete] = _.collect { case Inc(i) => i }

@@ -41,7 +41,7 @@ class AnalyzingCompiler(val scalaInstance: ScalaInstance, val manager: Component
 	def console(classpath: Seq[File], options: Seq[String], initialCommands: String, log: Logger)(loader: Option[ClassLoader] = None, bindings: Seq[(String, Any)] = Nil): Unit =
 	{
 		val arguments = new CompilerArguments(scalaInstance, cp)
-		val classpathString = CompilerArguments.absString(arguments.finishClasspath(classpath ++ jlineJar))
+		val classpathString = CompilerArguments.absString(arguments.finishClasspath(classpath))
 		val bootClasspath = if(cp.autoBoot) arguments.createBootClasspath else ""
 		val (names, values) = bindings.unzip
 		call("xsbt.ConsoleInterface", log)(
@@ -80,7 +80,4 @@ class AnalyzingCompiler(val scalaInstance: ScalaInstance, val manager: Component
 		new classpath.DualLoader(scalaLoader, notXsbtiFilter, x => true, sbtLoader, xsbtiFilter, x => false)
 	}
 	override def toString = "Analyzing compiler (Scala " + scalaInstance.actualVersion + ")"
-	lazy val jlineJar =
-		try { IO.classLocationFile[jline.ConsoleReader] :: Nil }
-		catch { case e: Exception => Nil }
 }

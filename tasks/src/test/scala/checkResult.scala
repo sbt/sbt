@@ -18,7 +18,7 @@ object checkResult
 		catch
 		{
 			case i: Incomplete =>
-				println(Incomplete.show(i, true))
+				println(i)
 				"One or more tasks failed" |: false
 			case e =>
 				e.printStackTrace

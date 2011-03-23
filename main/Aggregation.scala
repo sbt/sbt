@@ -11,6 +11,7 @@ package sbt
 	import sbt.complete.Parser
 	import java.net.URI
 	import Parser._
+	import collection.mutable
 
 sealed trait Aggregation
 final object Aggregation
@@ -24,16 +25,19 @@ final object Aggregation
 
 	final case class KeyValue[+T](key: ScopedKey[_], value: T)
 	def getTasks[T](key: ScopedKey[T], structure: BuildStructure, transitive: Boolean): Seq[KeyValue[T]] =
-	{
-		val task = structure.data.get(key.scope, key.key).toList.map(t => KeyValue(key,t))
-		if(transitive) aggregateDeps(key, structure) ++ task else task
-	}
+		getTasks0(key, structure, transitive, new mutable.HashMap[(ScopedKey[_], Boolean), Seq[KeyValue[T]]])
+	private type Memo[T] = mutable.Map[(ScopedKey[_], Boolean), Seq[KeyValue[T]]]
+	private[this] def getTasks0[T](key: ScopedKey[T], structure: BuildStructure, transitive: Boolean, memo: Memo[T]): Seq[KeyValue[T]] =
+		memo.getOrElseUpdate( (key, transitive), {
+			val task = structure.data.get(key.scope, key.key).toList.map(t => KeyValue(key,t))
+			if(transitive) aggregateDeps(key, structure, memo) ++ task else task
+		})
 	def projectAggregate(key: ScopedKey[_], structure: BuildStructure): Seq[ProjectRef] =
 	{
 		val project = key.scope.project.toOption.flatMap { ref => Project.getProjectForReference(ref, structure) }
 		project match { case Some(p) => p.aggregate; case None => Nil }
 	}
-	def aggregateDeps[T](key: ScopedKey[T], structure: BuildStructure): Seq[KeyValue[T]] =
+	private[this] def aggregateDeps[T](key: ScopedKey[T], structure: BuildStructure, memo: Memo[T]): Seq[KeyValue[T]] =
 	{
 		val aggregated = aggregate in Scope.fillTaskAxis(key.scope, key.key) get structure.data getOrElse Enabled
 		val (agg, transitive) =

@@ -27,7 +27,7 @@ object Test
 		case Value(aa) :^: Value(bb) :^: Value(cc) :^: KNil => aa + " " + bb + " " + cc
 		case x =>
 			val cs = x.toList.collect { case Inc(x) => x } // workaround for double definition bug
-			throw Incomplete(causes = cs)
+			throw Incomplete(None, causes = cs)
 	}
 	val d2 = i32 mapR f
 	val f2: Values => Task[Any] = {

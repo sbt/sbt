@@ -56,8 +56,8 @@ object CompileTest extends Specification
 	private def isMissingRequirementError(t: Throwable) = t.getClass.getName == "scala.tools.nsc.MissingRequirementError"
 	private def testClasspath(scalaVersion: String) =
 		WithCompiler.launcher { (launch, log) =>
-			def compiler(autoBoot: Boolean, compilerOnClasspath: Boolean): RawCompiler =
-				new RawCompiler(ScalaInstance(scalaVersion, launch), new ClasspathOptions(autoBoot, compilerOnClasspath, true), log)
+			def compiler(bootLibrary: Boolean, compilerOnClasspath: Boolean): RawCompiler =
+				new RawCompiler(ScalaInstance(scalaVersion, launch), new ClasspathOptions(bootLibrary, compilerOnClasspath, true, true), log)
 
 			val callback = new xsbti.TestCallback
 				
