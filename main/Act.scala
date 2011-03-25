@@ -15,12 +15,12 @@ object Act
 	val GlobalString = "*"
 
 	// this does not take aggregation into account
-	def scopedKey(index: KeyIndex, current: ProjectRef, defaultConfig: ProjectRef => Option[String], keyMap: Map[String, AttributeKey[_]]): Parser[ScopedKey[_]] =
+	def scopedKey(index: KeyIndex, current: ProjectRef, defaultConfigs: ProjectRef => Seq[String], keyMap: Map[String, AttributeKey[_]]): Parser[ScopedKey[_]] =
 	{
 		for {
 			proj <- optProjectRef(index, current)
 			confAmb <- config( index configs proj )
-			keyConf <- key(index, proj, configs(confAmb, defaultConfig, proj), keyMap)
+			keyConf <- key(index, proj, configs(confAmb, defaultConfigs, proj), keyMap)
 			taskExtra <- taskExtrasParser(keyMap, IMap.empty) }
 		yield {
 			val (key, conf) = keyConf
@@ -35,16 +35,16 @@ object Act
 		p.? map { opt => toAxis(opt, ifNone) }
 	def toAxis[T](opt: Option[T], ifNone: ScopeAxis[T]): ScopeAxis[T] =
 		opt match { case Some(t) => Select(t); case None => ifNone }
-	def defaultConfig(data: Settings[Scope])(project: ProjectRef): Option[String] =
-		thisProject in project get data flatMap( _.configurations.headOption.map(_.name))
+	def defaultConfigs(data: Settings[Scope])(project: ProjectRef): Seq[String] =
+		thisProject in project get data map( _.configurations.map(_.name)) getOrElse Nil
 
 	def config(confs: Set[String]): Parser[Option[String]] =
 		token( (examplesStrict(ID, confs) | GlobalString) <~ ':' ).?
 
-	def configs(explicit: Option[String], defaultConfig: ProjectRef => Option[String], proj: ProjectRef): List[Option[String]] =
+	def configs(explicit: Option[String], defaultConfigs: ProjectRef => Seq[String], proj: ProjectRef): List[Option[String]] =
 		explicit match
 		{
-			case None => None :: defaultConfig(proj) :: Nil
+			case None => None :: defaultConfigs(proj).map(c => Some(c)).toList
 			case Some(GlobalString) =>  None :: Nil
 			case Some(_) => explicit :: Nil
 		}
@@ -129,8 +129,8 @@ object Act
 	def scopedKeyParser(extracted: Extracted): Parser[ScopedKey[_]] =
 	{
 		import extracted._
-		val defaultConf = (ref: ProjectRef) => if(Project.getProject(ref, structure).isDefined) defaultConfig(structure.data)(ref) else None
-		scopedKey(structure.index.keyIndex, currentRef, defaultConf, structure.index.keyMap)
+		val defaultConfs = (ref: ProjectRef) => if(Project.getProject(ref, structure).isDefined) defaultConfigs(structure.data)(ref) else Nil
+		scopedKey(structure.index.keyIndex, currentRef, defaultConfs, structure.index.keyMap)
 	}
 
 
