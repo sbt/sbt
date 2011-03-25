@@ -196,6 +196,7 @@ object Keys
 	val autoUpdate = SettingKey[Boolean]("auto-update")
 	val retrieveManaged = SettingKey[Boolean]("retrieve-managed")
 	val managedDirectory = SettingKey[File]("managed-directory")
+	val classpathTypes = SettingKey[Set[String]]("classpath-types")
 
 	val sbtResolver = SettingKey[Resolver]("sbt-resolver")
 	val sbtDependency = SettingKey[ModuleID]("sbt-dependency")

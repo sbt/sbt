@@ -71,6 +71,7 @@ object Defaults
 		sbtPlugin :== false,
 		crossPaths :== true,
 		generatedResources :== Nil,
+		classpathTypes := Set("jar", "bundle"),
 //		shellPrompt :== (_ => "> "),
 		aggregate :== Aggregation.Enabled,
 		maxErrors :== 100,
@@ -426,7 +427,7 @@ object Classpaths
 		internalDependencyClasspath <<= internalDependencies,
 		unmanagedClasspath <<= unmanagedDependencies,
 		products <<= makeProducts,
-		managedClasspath <<= (configuration, update) map managedJars,
+		managedClasspath <<= (configuration, classpathTypes, update) map managedJars,
 		unmanagedJars <<= (configuration, unmanagedBase, classpathFilter, defaultExcludes) map { (config, base, filter, excl) =>
 			(base * (filter -- excl) +++ (base / config.name).descendentsExcept(filter, excl)).getFiles
 		}
@@ -701,7 +702,7 @@ object Classpaths
 		flatten(defaultConfiguration in p get data) getOrElse Configurations.Default
 	def flatten[T](o: Option[Option[T]]): Option[T] = o flatMap identity
 
-	def managedJars(config: Configuration, up: UpdateReport): Classpath = managedFiles(config, up)(isJar)
+	def managedJars(config: Configuration, jarTypes: Set[String], up: UpdateReport): Classpath = managedFiles(config, up)(isJar(jarTypes))
 	def allFiles(up: UpdateReport): Seq[File] = data( up.configurations flatMap { cr => allJars(cr)(_ => true) }).distinct
 	def managedFiles(config: Configuration, up: UpdateReport)(pred: Artifact => Boolean): Classpath =
 		allJars( confReport(config.name, up) )(pred)
@@ -709,7 +710,8 @@ object Classpaths
 		up.configuration(config) getOrElse error("Configuration '" + config + "' unresolved by 'update'.")
 	def allJars(cr: ConfigurationReport)(pred: Artifact => Boolean): Seq[File] = cr.modules.flatMap(mr => allJars(mr.artifacts)(pred))
 	def allJars(as: Seq[(Artifact,File)])(pred: Artifact => Boolean): Seq[File] = as collect { case (a, f) if pred(a) => f }
-	def isJar(a: Artifact): Boolean = a.`type` == "jar"
+	def isJar(jarTypes: Set[String])(a: Artifact): Boolean =
+		jarTypes contains a.`type`
 	
 	lazy val dbResolver = Resolver.url("sbt-db", new URL("http://databinder.net/repo/"))(Resolver.ivyStylePatterns)
 }
