@@ -44,6 +44,8 @@ trait Parsers
 	private[this] def toInt(neg: Option[Char], digits: Seq[Char]): Int =
 		(neg.toSeq ++ digits).mkString.toInt
 
+	def repsep[T](rep: Parser[T], sep: Parser[_]): Parser[Seq[T]] =
+		rep1sep(rep, sep) ?? Nil
 	def rep1sep[T](rep: Parser[T], sep: Parser[_]): Parser[Seq[T]] =
 		(rep ~ (sep ~> rep).*).map { case (x ~ xs) => x +: xs }
 
@@ -59,3 +61,8 @@ trait Parsers
 }
 object Parsers extends Parsers
 object DefaultParsers extends Parsers with ParserMain
+{
+	def matches(p: Parser[_], s: String): Boolean =
+		apply(p)(s).resultEmpty.isDefined
+	def validID(s: String): Boolean = matches(ID, s)
+}
