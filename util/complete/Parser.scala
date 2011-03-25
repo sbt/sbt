@@ -45,7 +45,7 @@ sealed trait RichParser[A]
 	/** Explicitly defines the completions for the original Parser.*/
 	def examples(s: String*): Parser[A]
 	/** Explicitly defines the completions for the original Parser.*/
-	def examples(s: Set[String]): Parser[A]
+	def examples(s: Set[String], check: Boolean = false): Parser[A]
 	/** Converts a Parser returning a Char sequence to a Parser returning a String.*/
 	def string(implicit ev: A <:< Seq[Char]): Parser[String]
 	/** Produces a Parser that filters the original parser.
@@ -173,7 +173,7 @@ trait ParserMain
 		def & (o: Parser[_]) = and(a, o)
 		def - (o: Parser[_]) = sub(a, o)
 		def examples(s: String*): Parser[A] = examples(s.toSet)
-		def examples(s: Set[String]): Parser[A] = Parser.examples(a, s, check = true)
+		def examples(s: Set[String], check: Boolean = false): Parser[A] = Parser.examples(a, s, check)
 		def filter(f: A => Boolean): Parser[A] = filterParser(a, f)
 		def string(implicit ev: A <:< Seq[Char]): Parser[String] = map(_.mkString)
 		def flatMap[B](f: A => Parser[B]) = bindParser(a, f)
