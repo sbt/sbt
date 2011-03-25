@@ -25,6 +25,7 @@ trait AttributeMap
 	def contains[T](k: AttributeKey[T]): Boolean
 	def put[T](k: AttributeKey[T], value: T): AttributeMap
 	def keys: Iterable[AttributeKey[_]]
+	def ++(o: Iterable[AttributeEntry[_]]): AttributeMap
 	def ++(o: AttributeMap): AttributeMap
 	def entries: Iterable[AttributeEntry[_]]
 	def isEmpty: Boolean
@@ -32,6 +33,8 @@ trait AttributeMap
 object AttributeMap
 {
 	val empty: AttributeMap = new BasicAttributeMap(Map.empty)
+	def apply(entries: Iterable[AttributeEntry[_]]): AttributeMap = empty ++ entries
+	def apply(entries: AttributeEntry[_]*): AttributeMap = empty ++ entries
 	implicit def toNatTrans(map: AttributeMap): AttributeKey ~> Id = new (AttributeKey ~> Id) {
 		def apply[T](key: AttributeKey[T]): T = map(key)
 	}
@@ -45,6 +48,11 @@ private class BasicAttributeMap(private val backing: Map[AttributeKey[_], Any]) 
 	def contains[T](k: AttributeKey[T]) = backing.contains(k)
 	def put[T](k: AttributeKey[T], value: T): AttributeMap = new BasicAttributeMap( backing.updated(k, value) )
 	def keys: Iterable[AttributeKey[_]] = backing.keys
+	def ++(o: Iterable[AttributeEntry[_]]): AttributeMap =
+	{
+		val newBacking = (backing /: o) { case (b, AttributeEntry(key, value)) => b.updated(key, value) }
+		new BasicAttributeMap(newBacking)
+	}
 	def ++(o: AttributeMap): AttributeMap =
 		o match {
 			case bam: BasicAttributeMap => new BasicAttributeMap(backing ++ bam.backing)

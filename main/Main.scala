@@ -120,7 +120,7 @@ object BuiltinCommands
 	}
 	
 	def multiParser(s: State): Parser[Seq[String]] =
-		( token(';' ~> OptSpace) flatMap { _ => token(matched(s.combinedParser) <~ OptSpace ) } ).+
+		( token(';' ~> OptSpace) flatMap { _ => matched(s.combinedParser) <~ token(OptSpace) } ).+
 	def multiApplied(s: State) = 
 		Command.applyEffect( multiParser(s) )( _ ::: s )
 

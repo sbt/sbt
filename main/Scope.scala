@@ -163,10 +163,13 @@ sealed trait ScopeAxis[+S] {
 	}
 	def toOption: Option[S] = foldStrict(Some.apply, None, None)
 	def map[T](f: S => T): ScopeAxis[T] = foldStrict(s => Select(f(s)), Global, This)
+	def isSelect: Boolean = false
 }
 case object This extends ScopeAxis[Nothing]
 case object Global extends ScopeAxis[Nothing]
-final case class Select[S](s: S) extends ScopeAxis[S]
+final case class Select[S](s: S) extends ScopeAxis[S] {
+	override def isSelect = true
+}
 object ScopeAxis
 {
 	implicit def scopeAxisToScope(axis: ScopeAxis[Nothing]): Scope =

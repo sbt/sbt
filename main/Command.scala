@@ -24,7 +24,7 @@ private[sbt] final class ArbitraryCommand(val parser: State => Parser[() => Stat
 
 object Command
 {
-	def pointerSpace(s: String, i: Int): String  =  (s take i) map { case '\t' => '\t'; case _ => ' ' } mkString;
+	def pointerSpace(s: String, i: Int): String  =	(s take i) map { case '\t' => '\t'; case _ => ' ' } mkString;
 	
 		import DefaultParsers._
 
@@ -54,8 +54,7 @@ object Command
 	
 	def custom(parser: State => Parser[() => State], help: Seq[Help] = Nil): Command  =  new ArbitraryCommand(parser, help, AttributeMap.empty)
 
-	def validID(name: String) =
-		Parser(OpOrID)(name).resultEmpty.isDefined
+	def validID(name: String) = DefaultParsers.matches(OpOrID, name)
 
 	def applyEffect[T](p: Parser[T])(f: T => State): Parser[() => State] =
 		p map { t => () => f(t) }
@@ -93,7 +92,8 @@ object Command
 	def commandError(command: String, msg: String, index: Int): String =
 	{
 		val (line, modIndex) = extractLine(command, index)
-		msg + "\n" + line + "\n" + pointerSpace(msg, modIndex) + "^"
+		val point = pointerSpace(command, modIndex)
+		msg + "\n" + line + "\n" + point + "^"
 	}
 	def extractLine(s: String, i: Int): (String, Int) =
 	{

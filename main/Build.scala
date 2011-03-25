@@ -9,6 +9,7 @@ package sbt
 	import classpath.ClasspathUtilities
 	import scala.annotation.tailrec
 	import collection.mutable
+	import complete.DefaultParsers.validID
 	import Compiler.{Compilers,Inputs}
 	import Project.{inScope, ScopedKey, ScopeLocal, Setting}
 	import Keys.{appConfiguration, baseDirectory, configuration, streams, thisProject, thisProjectRef}
@@ -225,7 +226,7 @@ object Index
 	def taskToKeyMap(data: Settings[Scope]): Map[Task[_], ScopedKey[Task[_]]] =
 	{
 		// AttributeEntry + the checked type test 'value: Task[_]' ensures that the cast is correct.
-		//  (scalac couldn't determine that 'key' is of type AttributeKey[Task[_]] on its own and a type match didn't still required the cast)
+		//  (scalac couldn't determine that 'key' is of type AttributeKey[Task[_]] on its own and a type match still required the cast)
 		val pairs = for( scope <- data.scopes; AttributeEntry(key, value: Task[_]) <- data.data(scope).entries ) yield
 			(value, ScopedKey(scope, key.asInstanceOf[AttributeKey[Task[_]]])) // unclear why this cast is needed even with a type test in the above filter
 		pairs.toMap[Task[_], ScopedKey[Task[_]]]
@@ -235,7 +236,7 @@ object Index
 		val multiMap = settings.data.values.flatMap(_.keys).toList.distinct.groupBy(_.label)
 		val duplicates = multiMap collect { case (k, x1 :: x2 :: _) => k }
 		if(duplicates.isEmpty)
-			multiMap.mapValues(_.head)
+			multiMap.collect { case (k, v) if validID(k) => (k, v.head) } toMap;
 		else
 			error(duplicates.mkString("AttributeKey ID collisions detected for '", "', '", "'"))
 	}

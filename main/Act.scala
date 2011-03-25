@@ -12,35 +12,48 @@ package sbt
 
 object Act
 {
-	// this does not take delegation into account
+	val GlobalString = "*"
+
+	// this does not take aggregation into account
 	def scopedKey(index: KeyIndex, current: ProjectRef, defaultConfig: ProjectRef => Option[String], keyMap: Map[String, AttributeKey[_]]): Parser[ScopedKey[_]] =
 	{
 		for {
 			proj <- optProjectRef(index, current)
 			confAmb <- config( index configs proj )
-			(key, conf) <- key(index, proj, configs(confAmb, defaultConfig, proj), keyMap) }
-		yield
-			ScopedKey( Scope( Select(proj), toAxis(conf map ConfigKey.apply, Global), Global, Global), key )
+			keyConf <- key(index, proj, configs(confAmb, defaultConfig, proj), keyMap)
+			taskExtra <- taskExtrasParser(keyMap, IMap.empty) }
+		yield {
+			val (key, conf) = keyConf
+			val (task, extra) = taskExtra
+			ScopedKey( Scope( Select(proj), toAxis(conf map ConfigKey.apply, Global), task, extra), key )
+		}
 	}
 	def examplesStrict(p: Parser[String], exs: Set[String]): Parser[String] =
 		p examples exs filter exs
-
+		
+	def optionalAxis[T](p: Parser[T], ifNone: ScopeAxis[T]): Parser[ScopeAxis[T]] =
+		p.? map { opt => toAxis(opt, ifNone) }
 	def toAxis[T](opt: Option[T], ifNone: ScopeAxis[T]): ScopeAxis[T] =
 		opt match { case Some(t) => Select(t); case None => ifNone }
 	def defaultConfig(data: Settings[Scope])(project: ProjectRef): Option[String] =
 		thisProject in project get data flatMap( _.configurations.headOption.map(_.name))
 
 	def config(confs: Set[String]): Parser[Option[String]] =
-		token( examplesStrict(ID, confs) <~ ':' ).?
+		token( (examplesStrict(ID, confs) | GlobalString) <~ ':' ).?
 
 	def configs(explicit: Option[String], defaultConfig: ProjectRef => Option[String], proj: ProjectRef): List[Option[String]] =
-		if(explicit.isDefined) explicit :: Nil else None :: defaultConfig(proj) :: Nil
+		explicit match
+		{
+			case None => None :: defaultConfig(proj) :: Nil
+			case Some(GlobalString) =>  None :: Nil
+			case Some(_) => explicit :: Nil
+		}
+
 	def key(index: KeyIndex, proj: ProjectRef, confs: Seq[Option[String]], keyMap: Map[String,AttributeKey[_]]): Parser[(AttributeKey[_], Option[String])] =
 	{
 		val confMap = confs map { conf => (conf, index.keys(proj, conf)) } toMap;
 		val allKeys = (Set.empty[String] /: confMap.values)(_ ++ _)
-		val filteredKeys = allKeys.filter(Command.validID)
-		token(ID examples filteredKeys).flatMap { keyString =>
+		token(ID examples allKeys).flatMap { keyString =>
 			val conf = confMap.flatMap { case (key, value) => if(value contains keyString) key :: Nil else Nil } headOption;
 			getKey(keyMap, keyString, k => (k, conf.flatMap(identity)))
 		}
@@ -50,6 +63,45 @@ object Act
 			case Some(k) => success(f(k))
 			case None => failure("Invalid key: " + keyString)
 		}
+
+	val spacedComma = token(OptSpace ~ ',' ~ OptSpace)
+
+	def taskExtrasParser(knownKeys: Map[String, AttributeKey[_]], knownValues: IMap[AttributeKey, Set]): Parser[(ScopeAxis[AttributeKey[_]], ScopeAxis[AttributeMap])] =
+	{
+		val extras = extrasParser(knownKeys, knownValues)
+		val taskAndExtra = 
+			optionalAxis(taskAxisParser(knownKeys), Global) flatMap { taskAxis =>
+				if(taskAxis.isSelect)
+					optionalAxis(spacedComma ~> extras, Global) map { x => (taskAxis, x) }
+				else
+					extras map { x => (taskAxis, Select(x)) }
+			}
+		val base = token('(') ~> taskAndExtra <~ token(')')
+		base ?? ( (Global, Global) )
+	}
+
+	def taskAxisParser(knownKeys: Map[String, AttributeKey[_]]): Parser[AttributeKey[_]] =
+		token("for" ~ Space) ~> knownIDParser(knownKeys)
+
+	def extrasParser(knownKeys: Map[String, AttributeKey[_]], knownValues: IMap[AttributeKey, Set]): Parser[AttributeMap] =
+	{
+		val validKeys = knownKeys.filter { case (_, key) => knownValues get key exists(!_.isEmpty) }
+		if(validKeys.isEmpty)
+			failure("")
+		else
+			rep1sep( extraParser(validKeys, knownValues), spacedComma) map AttributeMap.apply
+	}
+
+	def extraParser(knownKeys: Map[String, AttributeKey[_]], knownValues: IMap[AttributeKey, Set]): Parser[AttributeEntry[_]] =
+	{
+		val keyp = knownIDParser(knownKeys) <~ token(':' ~ OptSpace)
+		keyp flatMap { case key: AttributeKey[t] =>
+			val valueMap: Map[String,t] = knownValues(key).map( v => (v.toString, v)).toMap
+			knownIDParser(valueMap) map { value => AttributeEntry(key, value) }
+		}
+	}
+	def knownIDParser[T](knownKeys: Map[String, T]): Parser[T] =
+		 token(examplesStrict(ID, knownKeys.keys.toSet)) map knownKeys
 
 	def projectRef(index: KeyIndex, currentBuild: URI): Parser[ProjectRef] =
 	{

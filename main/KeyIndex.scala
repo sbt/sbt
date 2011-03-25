@@ -5,6 +5,7 @@ package sbt
 
 	import java.net.URI
 	import Project.ScopedKey
+	import complete.DefaultParsers.validID
 
 object KeyIndex
 {
@@ -51,6 +52,8 @@ private final class KeyIndex0(val data: Map[URI, Map[Option[String], Map[ Option
 	private[this] def getOr[A,B](m: Map[A,B], key: A, or: B): B = m.getOrElse(key, or)
 
 	def add(scoped: ScopedKey[_]): ExtendableKeyIndex =
+		if(validID(scoped.key.label)) add0(scoped) else this
+	private[this] def add0(scoped: ScopedKey[_]): ExtendableKeyIndex =
 		scoped.scope match
 		{
 			case Scope(Select(ref: ResolvedReference), config, _, _) => addRef(ref, config, scoped.key)
