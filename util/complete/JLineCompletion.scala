@@ -41,8 +41,16 @@ object JLineCompletion
 		customCompletor(str => convertCompletions(Parser.completions(p, str)))
 	def convertCompletions(c: Completions): (Seq[String], Seq[String]) =
 	{
+		val cs = c.get
+		if(cs.isEmpty)
+			(Nil, "{invalid input}" :: Nil)
+		else
+			convertCompletions(cs)
+	}
+	def convertCompletions(cs: Set[Completion]): (Seq[String], Seq[String]) =
+	{
 		val (insert, display) =
-			( (Set.empty[String], Set.empty[String]) /: c.get) { case ( t @ (insert,display), comp) =>
+			( (Set.empty[String], Set.empty[String]) /: cs) { case ( t @ (insert,display), comp) =>
 				if(comp.isEmpty) t else (insert + comp.append, appendNonEmpty(display, comp.display.trim))
 			}
 		(insert.toSeq, display.toSeq.sorted)
