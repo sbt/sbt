@@ -98,7 +98,12 @@ object JLineCompletion
 		reader.drawLine()
 	}
 	def printCompletions(cs: Seq[String], reader: ConsoleReader): Unit =
-		if(cs.isEmpty) () else CandidateListCompletionHandler.printCandidates(reader, JavaConversions.asJavaList(cs), true)
+	{
+		// CandidateListCompletionHandler doesn't print a new line before the prompt
+		if(cs.size > reader.getAutoprintThreshhold)
+			reader.printNewline()
+		CandidateListCompletionHandler.printCandidates(reader, JavaConversions.asJavaList(cs), true)
+	}
 
 	def commonPrefix(s: Seq[String]): String = if(s.isEmpty) "" else s reduceLeft commonPrefix
 	def commonPrefix(a: String, b: String): String =
