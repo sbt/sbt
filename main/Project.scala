@@ -162,13 +162,13 @@ object Project extends Init[Scope]
 	{
 		val scoped = ScopedKey(scope,key)
 		val value = 
-			(structure.data.get(scope, key)) match {
+			structure.data.get(scope, key) match {
 				case None => "No entry for key."
 				case Some(v: Task[_]) => "Task"
 				case Some(v: InputTask[_]) => "Input task"
 				case Some(v) => "Value:\n\t" + v.toString
 			}
-		val definedIn = structure.data.definingScope(scope, key) match { case Some(sc) => "Provided by:\n\t" + display(scoped); case None => "" }
+		val definedIn = structure.data.definingScope(scope, key) match { case Some(sc) => "Provided by:\n\t" + Scope.display(sc, key.label); case None => "" }
 		val cMap = compiled(structure.settings)(structure.delegates, structure.scopeLocal)
 		val related = cMap.keys.filter(k => k.key == key && k.scope != scope)
 		val depends = cMap.get(scoped) match { case Some(c) => c.dependencies.toSet; case None => Set.empty }

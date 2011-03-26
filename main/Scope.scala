@@ -123,8 +123,8 @@ object Scope
 		val scope = Scope.replaceThis(GlobalScope)(rawScope)
 		scope.project match
 		{
-			case Global => scope :: GlobalScope :: Nil
-			case This => scope.copy(project = Global) :: GlobalScope :: Nil
+			case Global => withGlobalScope(scope)
+			case This => withGlobalScope(scope.copy(project = Global))
 			case Select(proj) =>
 				val projI = withRawBuilds(linearize(scope.project, Nil)(projectInherit)).distinct
 				val prod =
@@ -139,6 +139,7 @@ object Scope
 				(prod :+ GlobalScope).distinct
 		}
 	}
+	def withGlobalScope(base: Scope): Seq[Scope] = if(base == GlobalScope) GlobalScope :: Nil else base :: GlobalScope :: Nil
 	def withRawBuilds(ps: Seq[ScopeAxis[Reference]]): Seq[ScopeAxis[Reference]] =
 		(ps ++ (ps flatMap rawBuilds).map(Select.apply) :+ Global).distinct
 
