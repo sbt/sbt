@@ -89,5 +89,19 @@ class AggressiveCompile(cacheDirectory: File)
 	def javaOnly(f: File) = f.getName.endsWith(".java")
 
 	import AnalysisFormats._
-	val store = AnalysisStore.sync(AnalysisStore.cached(FileBasedStore(cacheDirectory)))
+	val store = AggressiveCompile.staticCache(cacheDirectory, AnalysisStore.sync(AnalysisStore.cached(FileBasedStore(cacheDirectory))))
+}
+private object AggressiveCompile
+{
+		import collection.mutable
+		import java.lang.ref.{Reference,SoftReference}
+	private[this] val cache = new collection.mutable.HashMap[File, Reference[AnalysisStore]]
+	private def staticCache(file: File, backing: => AnalysisStore): AnalysisStore =
+		synchronized {
+			cache get file flatMap { ref => Option(ref.get) } getOrElse {
+				val b = backing
+				cache.put(file, new SoftReference(b))
+				b
+			}
+		}
 }
