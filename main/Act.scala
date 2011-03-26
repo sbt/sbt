@@ -15,7 +15,7 @@ object Act
 	val GlobalString = "*"
 
 	// this does not take aggregation into account
-	def scopedKey(index: KeyIndex, current: ProjectRef, defaultConfigs: ProjectRef => Seq[String], keyMap: Map[String, AttributeKey[_]]): Parser[ScopedKey[_]] =
+	def scopedKey(index: KeyIndex, current: ProjectRef, defaultConfigs: Option[ResolvedReference] => Seq[String], keyMap: Map[String, AttributeKey[_]]): Parser[ScopedKey[_]] =
 	{
 		for {
 			proj <- optProjectRef(index, current)
@@ -25,7 +25,7 @@ object Act
 		yield {
 			val (key, conf) = keyConf
 			val (task, extra) = taskExtra
-			ScopedKey( Scope( Select(proj), toAxis(conf map ConfigKey.apply, Global), task, extra), key )
+			ScopedKey( Scope( toAxis(proj, Global), toAxis(conf map ConfigKey.apply, Global), task, extra), key )
 		}
 	}
 	def examplesStrict(p: Parser[String], exs: Set[String]): Parser[String] =
@@ -41,7 +41,7 @@ object Act
 	def config(confs: Set[String]): Parser[Option[String]] =
 		token( (examplesStrict(ID, confs) | GlobalString) <~ ':' ).?
 
-	def configs(explicit: Option[String], defaultConfigs: ProjectRef => Seq[String], proj: ProjectRef): List[Option[String]] =
+	def configs(explicit: Option[String], defaultConfigs: Option[ResolvedReference] => Seq[String], proj: Option[ResolvedReference]): List[Option[String]] =
 		explicit match
 		{
 			case None => None :: defaultConfigs(proj).map(c => Some(c)).toList
@@ -49,7 +49,7 @@ object Act
 			case Some(_) => explicit :: Nil
 		}
 
-	def key(index: KeyIndex, proj: ProjectRef, confs: Seq[Option[String]], keyMap: Map[String,AttributeKey[_]]): Parser[(AttributeKey[_], Option[String])] =
+	def key(index: KeyIndex, proj: Option[ResolvedReference], confs: Seq[Option[String]], keyMap: Map[String,AttributeKey[_]]): Parser[(AttributeKey[_], Option[String])] =
 	{
 		val confMap = confs map { conf => (conf, index.keys(proj, conf)) } toMap;
 		val allKeys = (Set.empty[String] /: confMap.values)(_ ++ _)
@@ -103,17 +103,22 @@ object Act
 	def knownIDParser[T](knownKeys: Map[String, T]): Parser[T] =
 		 token(examplesStrict(ID, knownKeys.keys.toSet)) map knownKeys
 
-	def projectRef(index: KeyIndex, currentBuild: URI): Parser[ProjectRef] =
+	def projectRef(index: KeyIndex, currentBuild: URI): Parser[Option[ResolvedReference]] =
 	{
-		val uris = index.buildURIs
-		val build = token( '(' ~> Uri(uris).map(uri => Scope.resolveBuild(currentBuild, uri)) <~ ')') ?? currentBuild
 		def projectID(uri: URI) = token( examplesStrict(ID, index projects uri) <~ '/' )
+		def some[T](p: Parser[T]): Parser[Option[T]] = p map { v => Some(v) }
 
-		for(uri <- build; id <- projectID(uri)) yield
-			ProjectRef(uri, id)
+		val uris = index.buildURIs
+		val resolvedURI = Uri(uris).map(uri => Scope.resolveBuild(currentBuild, uri))
+		val buildRef = token( '[' ~> resolvedURI <~ "]/" ) map { uri => BuildRef(uri) }
+		val global = token(GlobalString <~ '/') ^^^ None
+		val build = token( '(' ~> resolvedURI <~ ')') ?? currentBuild
+		val projectRef = for(uri <- build; id <- projectID(uri)) yield ProjectRef(uri, id)
+
+		global | some(buildRef) | some(projectRef)
 	}
-	def optProjectRef(index: KeyIndex, current: ProjectRef) =
-		projectRef(index, current.build) ?? current
+	def optProjectRef(index: KeyIndex, current: ProjectRef): Parser[Option[ResolvedReference]] =
+		projectRef(index, current.build) ?? Some(current)
 
 	def actParser(s: State): Parser[() => State] = requireSession(s, actParser0(s))
 
@@ -129,10 +134,14 @@ object Act
 	def scopedKeyParser(extracted: Extracted): Parser[ScopedKey[_]] =
 	{
 		import extracted._
-		val defaultConfs = (ref: ProjectRef) => if(Project.getProject(ref, structure).isDefined) defaultConfigs(structure.data)(ref) else Nil
+		def confs(uri: URI) = if(structure.units.contains(uri)) defaultConfigs(structure.data)(ProjectRef(uri, rootProject(uri))) else Nil
+		val defaultConfs: Option[ResolvedReference] => Seq[String] = {
+			case None => confs(structure.root)
+			case Some(BuildRef(uri)) => confs(uri)
+			case Some(ref: ProjectRef) => if(Project.getProject(ref, structure).isDefined) defaultConfigs(structure.data)(ref) else Nil
+		}
 		scopedKey(structure.index.keyIndex, currentRef, defaultConfs, structure.index.keyMap)
 	}
-
 
 	def requireSession[T](s: State, p: => Parser[T]): Parser[T] =
 		if(s get sessionSettings isEmpty) failure("No project loaded") else p
