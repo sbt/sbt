@@ -106,6 +106,7 @@ object Keys
 	val selectMainClass = TaskKey[Option[String]]("select-main-class")
 	val mainClass = TaskKey[Option[String]]("main-class")
 	val run = InputKey[Unit]("run")
+	val runMain = InputKey[Unit]("run-main")
 	val discoveredMainClasses = TaskKey[Seq[String]]("discovered-main-classes")
 	val runner = SettingKey[ScalaRun]("runner")
 

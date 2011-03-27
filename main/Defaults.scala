@@ -140,6 +140,7 @@ object Defaults
 		mainClass in run :== selectMainClass,
 		mainClass <<= discoveredMainClasses map selectPackageMain,
 		run <<= runTask(fullClasspath, mainClass in run, runner in run),
+		runMain <<= runMainTask(fullClasspath, runner in run),
 		scaladocOptions <<= scalacOptions(identity),
 		doc <<= docTask,
 		copyResources <<= copyResourcesTask
@@ -274,6 +275,17 @@ object Defaults
 	def selectPackageMain(classes: Seq[String]): Option[String] =
 		sbt.SelectMainClass(None, classes)
 
+
+	def runMainTask(classpath: ScopedTask[Classpath], scalaRun: ScopedSetting[ScalaRun]): Initialize[InputTask[Unit]] =
+	{
+			import DefaultParsers._
+		val mainParser = (Space ~> token(NotSpace, "<main-class>")) ~ complete.Parsers.spaceDelimited("<arg>")
+		InputTask(_ => mainParser) { result =>
+			(classpath, scalaRun, streams, result) map { case (cp, runner, s, (mainClass, args)) =>
+				runner.run(mainClass, data(cp), args, s.log) foreach error
+			}
+		}
+	}
 	def runTask(classpath: ScopedTask[Classpath], mainClassTask: ScopedTask[Option[String]], scalaRun: ScopedSetting[ScalaRun]): Initialize[InputTask[Unit]] =
 		InputTask(_ => complete.Parsers.spaceDelimited("<arg>")) { result =>
 			(classpath, mainClassTask, scalaRun, streams, result) map { (cp, main, runner, s, args) =>
@@ -299,6 +311,7 @@ object Defaults
 		}
 
 	def mainRunTask = run <<= runTask(fullClasspath in Configurations.Runtime, mainClass in run, runner in run)
+	def mainRunMainTask = runMain <<= runMainTask(fullClasspath in Configurations.Runtime, runner in run)
 
 	def discoverMainClasses(analysis: inc.Analysis): Seq[String] =
 		Discovery.applications(Tests.allDefs(analysis)) collect { case (definition, discovered) if(discovered.hasMain) => definition.name }
@@ -401,7 +414,7 @@ object Defaults
 	lazy val baseClasspaths = Classpaths.publishSettings ++ Classpaths.baseSettings
 	lazy val configSettings = Classpaths.configSettings ++ configTasks ++ configPaths ++ packageConfig
 
-	lazy val compileSettings = configSettings ++ (mainRunTask +: addBaseSources)
+	lazy val compileSettings = configSettings ++ (mainRunMainTask +: mainRunTask +: addBaseSources)
 	lazy val testSettings = configSettings ++ testTasks
 
 	lazy val itSettings = inConfig(Configurations.IntegrationTest)(testSettings)
