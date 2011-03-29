@@ -123,7 +123,7 @@ object Defaults
 		javacOptions in GlobalScope :== Nil,
 		scalacOptions in GlobalScope :== Nil,
 		scalaInstance <<= scalaInstanceSetting,
-		scalaVersion <<= appConfiguration( _.provider.scalaProvider.version),
+		scalaVersion in GlobalScope <<= appConfiguration( _.provider.scalaProvider.version),
 		target <<= (target, scalaInstance, crossPaths)( (t,si,cross) => if(cross) t / ("scala-" + si.actualVersion) else t )
 	)
 
@@ -497,13 +497,12 @@ object Classpaths
 		projectID <<= (organization,moduleID,version,artifacts){ (org,module,version,as) => ModuleID(org, module, version).cross(true).artifacts(as : _*) },
 		resolvers in GlobalScope :== Nil,
 		projectDescriptors <<= depMap,
-		retrievePattern :== "[type]/[organisation]/[module]/[artifact](-[revision])(-[classifier]).[ext]",
+		retrievePattern in GlobalScope :== "[type]/[organisation]/[module]/[artifact](-[revision])(-[classifier]).[ext]",
 		updateConfiguration <<= (retrieveConfiguration, ivyLoggingLevel)((conf,level) => new UpdateConfiguration(conf, false, level) ),
 		retrieveConfiguration <<= (managedDirectory, retrievePattern, retrieveManaged) { (libm, pattern, enabled) => if(enabled) Some(new RetrieveConfiguration(libm, pattern)) else None },
-		ivyConfiguration <<= (fullResolvers, ivyPaths, otherResolvers, moduleConfigurations, offline, appConfiguration) map { (rs, paths, other, moduleConfs, off, app) =>
-			// todo: pass logger from streams directly to IvyActions
+		ivyConfiguration <<= (fullResolvers, ivyPaths, otherResolvers, moduleConfigurations, offline, appConfiguration, streams) map { (rs, paths, other, moduleConfs, off, app, s) =>
 			val lock = app.provider.scalaProvider.launcher.globalLock
-			new InlineIvyConfiguration(paths, rs, other, moduleConfs, off, Some(lock), ConsoleLogger())
+			new InlineIvyConfiguration(paths, rs, other, moduleConfs, off, Some(lock), s.log)
 		},
 		moduleSettings <<= (projectID, allDependencies, ivyXML, thisProject, defaultConfiguration, ivyScala, ivyValidate) map {
 			(pid, deps, ivyXML, project, defaultConf, ivyS, validate) => new InlineConfiguration(pid, deps, ivyXML, project.configurations, defaultConf, ivyS, validate)

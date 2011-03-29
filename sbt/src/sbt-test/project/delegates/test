@@ -1,0 +1,5 @@
+> sub/check-max-errors 100
+> set maxErrors := 17
+> sub/check-max-errors 17
+> set maxErrors in LocalProject("sub") := 13
+> sub/check-max-errors 13
