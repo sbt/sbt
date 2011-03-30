@@ -241,8 +241,8 @@ object BuiltinCommands
 		val newSession = session.appendSettings( append map (a => (a, arg)))
 		reapply(newSession, structure, s)
 	}
-	def inspect = Command(InspectCommand, inspectBrief, inspectDetailed)(spacedKeyParser) { (s,sk) =>
-		val detailString = Project.details(Project.structure(s), sk.scope, sk.key)
+	def inspect = Command(InspectCommand, inspectBrief, inspectDetailed)(inspectParser) { case (s,(actual,sk)) =>
+		val detailString = Project.details(Project.structure(s), actual, sk.scope, sk.key)
 		logger(s).info(detailString)
 		s
 	}
@@ -250,6 +250,7 @@ object BuiltinCommands
 		Output.lastGrep(sk, Project.structure(s).streams, pattern)
 		s
 	}
+	def inspectParser = (s: State) => token((Space ~> ("actual" ^^^ true)) ?? false) ~ spacedKeyParser(s)
 	val spacedKeyParser = (s: State) => Act.requireSession(s, token(Space) ~> Act.scopedKeyParser(s))
 	val optSpacedKeyParser = (s: State) => spacedKeyParser(s).?
 	def lastGrepParser(s: State) = Act.requireSession(s, (token(Space) ~> token(NotSpace, "<pattern>")) ~ optSpacedKeyParser(s))

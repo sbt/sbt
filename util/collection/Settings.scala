@@ -69,14 +69,14 @@ trait Init[Scope]
 	def getValue[T](s: Settings[Scope], k: ScopedKey[T]) = s.get(k.scope, k.key).get
 	def asFunction[T](s: Settings[Scope]): ScopedKey[T] => T = k => getValue(s, k)
 
-	def compiled(init: Seq[Setting[_]])(implicit delegates: Scope => Seq[Scope], scopeLocal: ScopeLocal): CompiledMap =
+	def compiled(init: Seq[Setting[_]], actual: Boolean = true)(implicit delegates: Scope => Seq[Scope], scopeLocal: ScopeLocal): CompiledMap =
 	{
 		// prepend per-scope settings 
 		val withLocal = addLocal(init)(scopeLocal)
 		// group by Scope/Key, dropping dead initializations
 		val sMap: ScopedMap = grouped(withLocal)
 		// delegate references to undefined values according to 'delegates'
-		val dMap: ScopedMap = delegate(sMap)(delegates)
+		val dMap: ScopedMap = if(actual) delegate(sMap)(delegates) else sMap
 		// merge Seq[Setting[_]] into Compiled
 		compile(dMap)
 	}
