@@ -183,6 +183,23 @@ object Project extends Init[Scope]
 			printScopes("Delegates", delegates(structure, scope, key)) +
 			printScopes("Related", related)
 	}
+	def graphSettings(structure: Load.BuildStructure, basedir: File)
+	{
+		def graph(actual: Boolean, name: String) = graphSettings(structure, actual, name, new File(basedir, name + ".dot"))
+		graph(true, "actual_dependencies")
+		graph(false, "declared_dependencies")
+	}
+	def graphSettings(structure: Load.BuildStructure, actual: Boolean, graphName: String, file: File)
+	{
+		type Rel = Relation[ScopedKey[_], ScopedKey[_]]
+		val cMap = compiled(structure.settings, actual)(structure.delegates, structure.scopeLocal)
+		val relation =
+			((Relation.empty: Rel) /: cMap) { case (r, (key, value)) =>
+				r + (key, value.dependencies)
+			}
+		val keyToString = (key: ScopedKey[_]) => Project display key
+		DotGraph.generateGraph(file, graphName, relation, keyToString, keyToString)
+	}
 	def reverseDependencies(cMap: CompiledMap, scoped: ScopedKey[_]): Iterable[ScopedKey[_]] =
 		for( (key,compiled) <- cMap; dep <- compiled.dependencies if dep == scoped)  yield  key
 
