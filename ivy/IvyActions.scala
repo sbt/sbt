@@ -20,7 +20,7 @@ import core.resolve.ResolveOptions
 import core.retrieve.RetrieveOptions
 import plugins.parser.m2.{PomModuleDescriptorParser,PomModuleDescriptorWriter}
 
-final class PublishPatterns(val deliverIvyPattern: Option[String], val srcArtifactPatterns: Seq[String])
+final class PublishPatterns(val deliverIvyPattern: String, val srcArtifactPatterns: Seq[String], val publishIvy: Boolean)
 final class PublishConfiguration(val patterns: PublishPatterns, val status: String, val resolverName: String, val configurations: Option[Seq[Configuration]], val logging: UpdateLogging.Value)
 
 final class UpdateConfiguration(val retrieve: Option[RetrieveConfiguration], val missingOk: Boolean, val logging: UpdateLogging.Value)
@@ -78,11 +78,9 @@ object IvyActions
 			val revID = md.getModuleRevisionId
 			val options = DeliverOptions.newInstance(ivy.getSettings).setStatus(status)
 			options.setConfs(IvySbt.getConfigurations(md, configurations))
-			ivy.deliver(revID, revID.getRevision, getDeliverIvyPattern(patterns), options)
+			ivy.deliver(revID, revID.getRevision, patterns.deliverIvyPattern, options)
 		}
 	}
-
-	def getDeliverIvyPattern(patterns: PublishPatterns) = patterns.deliverIvyPattern.getOrElse(error("No Ivy pattern specified"))
 
 	// todo: map configurations, extra dependencies
 	def publish(module: IvySbt#Module, configuration: PublishConfiguration, log: Logger)
@@ -94,7 +92,7 @@ object IvyActions
 			val patterns = new java.util.ArrayList[String]
 			srcArtifactPatterns.foreach(pattern => patterns.add(pattern))
 			val options = (new PublishOptions).setOverwrite(true)
-			deliverIvyPattern.foreach(options.setSrcIvyPattern)
+			if(publishIvy) options.setSrcIvyPattern(deliverIvyPattern)
 			options.setConfs(IvySbt.getConfigurations(md, configurations))
 			ivy.publish(revID, patterns, resolverName, options)
 		}
