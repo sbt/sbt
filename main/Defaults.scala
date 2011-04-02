@@ -508,7 +508,8 @@ object Classpaths
 			(pid, deps, ivyXML, project, defaultConf, ivyS, validate) => new InlineConfiguration(pid, deps, ivyXML, project.configurations, defaultConf, ivyS, validate)
 		},
 		makePomConfiguration <<= pomFile(file => makePomConfigurationTask(file)),
-		publishConfiguration <<= (target, publishTo, ivyLoggingLevel) map { (outputDirectory, publishTo, level) => publishConfig( publishPatterns(outputDirectory), resolverName = getPublishTo(publishTo).name, logging = level) },
+		publishConfiguration <<= (target, publishTo, ivyLoggingLevel, publishMavenStyle) map { (outputDirectory, publishTo, level, mavenStyle) =>
+			publishConfig( publishPatterns(outputDirectory, !mavenStyle), resolverName = getPublishTo(publishTo).name, logging = level) },
 		publishLocalConfiguration <<= (target, ivyLoggingLevel) map { (outputDirectory, level) => publishConfig( publishPatterns(outputDirectory, true), logging = level ) },
 		ivySbt <<= ivyConfiguration map { conf => new IvySbt(conf) },
 		ivyModule <<= (ivySbt, moduleSettings) map { (ivySbt, settings) => new ivySbt.Module(settings) },
@@ -589,7 +590,7 @@ object Classpaths
 				Nil
 			pathPatterns.map(_.absolutePath)
 		}
-		new PublishPatterns( if(publishIvy) Some(deliverPattern) else None, srcArtifactPatterns)
+		new PublishPatterns(deliverPattern, srcArtifactPatterns, publishIvy)
 	}
 
 	def projectDependenciesTask =
