@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 #
 
-BINDIR=$(abspath $(dirname "$0"))
+BINDIR=$(dirname $(greadlink "$0"))
 . $BINDIR/util.sh
 BASE=$(abspath $BINDIR/..)
 
