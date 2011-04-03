@@ -1,1 +1,7 @@
 This is a skeleton project for sbt.
+
+Simple usage:
+
+    bin/sbt-setup my-fancy-project
+
+That's it.  Start hacking.
