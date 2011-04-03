@@ -1,5 +1,7 @@
+/SbtTemplateProject.scala
 target
 /project/boot
+/project/plugins
 lib_managed
 src_managed
 /ext
