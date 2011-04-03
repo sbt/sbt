@@ -1,172 +1,108 @@
-#!/bin/bash
+#!/usr/bin/env bash
 #
 
-PROJECT="$1"
+BINDIR=$(abspath $(dirname "$0"))
+. $BINDIR/util.sh
+BASE=$(abspath $BINDIR/..)
 
-DEFAULT_PACKAGE="template"
-PACKAGE=${ORGANIZATION:-$DEFAULT_PACKAGE}
+declare -a args
+TEMPLATE="simple"
 SCALA_VERSION="2.8.1"
-SCALA_LOCAL_VERSION="2.9.0-local"
-SBT_VERSION="0.7.5.RC1"
+PROJECT_VERSION="0.0.1"
 
-if [ -z "$PROJECT" ]; then
+while [ $# -gt 0 ]; do
+  case "$1" in
+    --simple)
+      TEMPLATE="simple"
+      shift
+      ;;
+    --fancy)
+      TEMPLATE="fancy"
+      shift
+      ;;
+    --version)
+      shift
+      PROJECT_VERSION="$1"
+      shift
+      ;;
+    --28)
+      SCALA_VERSION="2.8.1"
+      shift
+      ;;
+    --29)
+      SCALA_VERSION="2.9.0.RC1"
+      shift
+      ;;
+    *)
+      args=("${args[@]}" "$1")
+      shift
+      ;;
+  esac
+done
+
+# reset "$@" to the remaining args
+set -- "${args[@]}"
+
+if [[ $# -ne 1 ]]; then
+  cat <<EOM
+Usage: $(basename $0) [options] <project> [dependencies]
+
+  --simple    use simple project template
+  --fancy     use multi-file project template
+  --28        latest release of scala 2.8.x
+  --29        latest release of scala 2.9.x
+
+  --version <version> project initial version
+EOM
+
+  exit 1
+fi
+
+if [ -z "$1" ]; then
     echo "Usage: $0 <project name>"
     exit 1
 fi
 
+PROJECT="$1"
+PACKAGE=${ORGANIZATION:-template}
+SBT_VERSION="0.7.6.RC0"
 DIR=$(echo ${PROJECT} | tr '[A-Z]' '[a-z]')
-PROJECT_UC=$(echo ${PROJECT:0:1} | tr '[a-z]' '[A-Z]')$(echo ${PROJECT:1} | sed -e 's/[^a-zA-Z_]//g;')
-PROJECT_CLASS=${PROJECT_UC}Project
-SPEC_CLASS=${PROJECT_UC}Spec
+PROJECT_CC=`camelCase ${PROJECT}`
+PROJECT_CLASS=${PROJECT_CC}Project
+SPEC_CLASS=${PROJECT_CC}Spec
 
-mkdir $DIR
+[[ -e $DIR ]] && { echo "$DIR exists, please remove it first." ; exit 1; }
+
+mkdir -p $DIR
 cd $DIR
-echo "Creating sbt project ${PROJECT} in ${PWD}"
-echo ""
+echo "Creating \"${PACKAGE} % ${PROJECT} % ${PROJECT_VERSION}\" from template \"$TEMPLATE\"."
+echo "Building against scala $SCALA_VERSION with sbt $SBT_VERSION."
+echo "Repository in ${PWD} ."
+echo
 
-cat > .gitignore <<EOF
-target
-/project/boot
-lib_managed
-src_managed
-/ext
-EOF
-
-mkdir -p project/build
-
-cat > project/build/Libraries.scala <<EOF
-import sbt._
-
-case class ArtifactRevision(revision: String)
-case class ArtifactConfig(confs: String, fn: ModuleID => ModuleID)
-object ArtifactConfig {
-  implicit def defaultArtifactConfig: ArtifactConfig = new ArtifactConfig("", identity[ModuleID])
-  implicit def testArtifactConfig: ArtifactConfig = new ArtifactConfig("test", identity[ModuleID])
-}
-
-trait LowPriorityLibraries {
-  self: DefaultProject =>
-  
-  // "latest.integration", "latest.milestone", "latest.release"
-  def defaultRevision = "latest.integration"
-  protected implicit def defaultArtifactRevision = new ArtifactRevision(defaultRevision)
-  // protected implicit def defaultArtifactConfig   = new ArtifactConfig("", identity[ModuleID])
-  
-  protected implicit def autoConfig
-    (artifact: GroupArtifactID)
-    (implicit rev: ArtifactRevision, config: ArtifactConfig): ModuleID =
-  {
-    val ArtifactConfig(confs, fn) = config
-    fn(
-      if (confs == "") artifact % rev.revision
-      else artifact % rev.revision % config.confs
-    )
-  }
-}
-
-trait TestLibraries extends LowPriorityLibraries {
-  self: DefaultProject =>
-  
-  private implicit val testDepConfig = ArtifactConfig("test", _.withSources)
-  val specs: ModuleID      = "org.scala-tools.testing" %% "specs"
-  val scalacheck: ModuleID = "org.scala-tools.testing" %% "scalacheck"
-}
-
-trait Libraries extends Repositories with TestLibraries {
-  self: DefaultProject =>
-  
-  import ArtifactConfig.defaultArtifactConfig
-  
-  // val ant: ModuleID             = "org.apache.ant" % "ant"
-  // val asmAll: ModuleID          = "asm" % "asm-all" withSources()
-  // val commonsVFS: ModuleID      = "org.apache.commons" % "commons-vfs-project"
-  // val easymock: ModuleID        = "org.easymock" % "easymock"
-  // val guava: ModuleID           = "com.google.guava" % "guava"
-  // val ivy: ModuleID             = "org.apache.ivy" % "ivy"
-  // val jdt: ModuleID             = "org.eclipse.jdt" % "core" notTransitive()
-  // val jetty: ModuleID           = "org.mortbay.jetty" % "jetty"
-  // val jmock: ModuleID           = "org.jmock" % "jmock"
-  // val jodaTime: ModuleID        = "joda-time" % "joda-time"
-  // val liftJson: ModuleID        = "net.liftweb" %% "lift-json" 
-  // val maven: ModuleID           = "org.apache.maven" % "maven-ant-tasks"
-  // val scalaARM: ModuleID        = "com.github.jsuereth.scala-arm" %% "scala-arm" withSources()
-  // val scalaImproving: ModuleID  = "org.improving" %% "scala-improving"
-  // val scalaSTM: ModuleID        = "org.scala-tools" %% "scala-stm" 
-  // val scalariform: ModuleID     = "org.scalariform" %% "scalariform"
-  // val scalazCore: ModuleID      = "org.scalaz" %% "scalaz-core" withSources()
-  // val scalazHttp: ModuleID      = "org.scalaz" %% "scalaz-http" withSources()
-  // val slf4s: ModuleID           = "com.weiglewilczek.slf4s" %% "slf4s" withSources()
-}
-EOF
-
-cat > project/build/Repositories.scala <<EOF
-import sbt._
-
-trait Repositories {
-  self: DefaultProject =>
-  
-  val localMaven          = "Local Maven" at "file://"+Path.userHome+"/.m2/repository"
-  val localIvy            = "Local Ivy" at "file://"+Path.userHome+"/.ivy2/local"
-  val sonatype            = "Sonatype" at "https://oss.sonatype.org/content/groups/public"
-  val scalaToolsSnapshots = "Scala Tools Snapshots" at "http://scala-tools.org/repo-snapshots/"
-  val jboss               = "JBoss Repo" at "http://repository.jboss.org/maven2"
-}
-EOF
-
-cat > project/build/${PROJECT_CLASS}.scala <<EOF
-import sbt._
-
-class ${PROJECT_CLASS}(info: ProjectInfo) extends DefaultProject(info) with Libraries {  
-  // -Dscala.local=/path/to/scala/build
-  override def localScala = System.getenv("scala.local") match {
-    case null   => super.localScala
-    case path   => 
-      log.info("Found scala.local: " + path)
-      List(defineScala("$SCALA_LOCAL_VERSION", new java.io.File(path)))
-  }  
-}
-EOF
-
-mkdir -p project/plugins
-cat > project/plugins/Plugins.scala <<EOF
-/*
-import sbt._
-
-class Plugins(info: ProjectInfo) extends PluginDefinition(info) {
-  def aquteRepo = "aQute Maven Repository" at "http://www.aqute.biz/repo"
-  lazy val aquteModuleConfig = ModuleConfiguration("biz.aQute", aquteRepo)
-  
-  // val bnd4sbt = "com.weiglewilczek.bnd4sbt" % "bnd4sbt" % "latest.release"
-}
-*/
-EOF
+for dir in project/build project/plugins src/main/scala src/main/java src/test/scala src/test/java
+do
+  mkdir -p $dir
+done
 
 cat > project/build.properties <<EOF
 #Project properties
-#Generated by sbt-setup
+#Generated by sbt-setup on $(date)
 project.organization=$PACKAGE
 project.name=$PROJECT
 sbt.version=$SBT_VERSION
-project.version=0.0.1
+project.version=$PROJECT_VERSION
 build.scala.versions=$SCALA_VERSION
 project.initialize=false
 EOF
-
-mkdir -p src/main/scala
-mkdir -p src/main/java
-mkdir -p src/test/java
 
 cat > src/main/scala/Main.scala <<EOF
 package $PACKAGE
 
 object Main {
-  def main(args: Array[String]): Unit = {
-    // Your code here
-  }
+  def main(args: Array[String]): Unit = ()
 }
 EOF
-
-mkdir -p src/test/scala
 
 cat > src/test/scala/${SPEC_CLASS}.scala <<EOF
 package $PACKAGE
@@ -182,11 +118,50 @@ class ${SPEC_CLASS} extends Specification {
 }
 EOF
 
+FILE=project/build/${PROJECT_CLASS}.scala
+if [[ $TEMPLATE == "fancy" ]]; then
+  cp $BASE/src/template/Libraries.scala project/build
+  cp $BASE/src/template/Repositories.scala project/build
+  cp $BASE/src/template/Plugins.scala project/plugins
+
+  cat > $FILE <<EOF
+import sbt._
+
+class ${PROJECT_CLASS}(info: ProjectInfo) extends DefaultProject(info) with Libraries {
+  // ...
+}
+EOF
+else
+  cat > $FILE <<EOF
+import sbt._
+
+class ${PROJECT_CLASS}(info: ProjectInfo) extends DefaultProject(info) with ProjectSupport {
+  
+}
+
+EOF
+
+  cat $BASE/src/main/resources/support.scala >> $FILE
+  cp $BASE/src/template/Plugins.scala project/plugins
+fi
+
+ln -s $FILE
+
+cat > .gitignore <<EOF
+/${PROJECT_CLASS}.scala
+target
+/project/boot
+/project/plugins
+lib_managed
+src_managed
+/ext
+EOF
+
 git init
-git add .
-git commit -m "Initial Import for ${PROJECT} (autogenerated by sbt-setup)."
-sbt update
-sbt update
+git add .gitignore project src
+git add -f project/plugins/Plugins.scala
+git commit -m "Initial Import for ${PROJECT_CC} (autogenerated by sbt-setup)."
+sbt update package test
 
 echo ""
 echo "Ready to roll in $PWD"
