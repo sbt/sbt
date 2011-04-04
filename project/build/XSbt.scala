@@ -188,7 +188,7 @@ class XSbt(info: ProjectInfo) extends ParentProject(info) with NoCrossPaths
 	class CacheProject(info: ProjectInfo) extends Base(info) with SBinaryDep
 	class PersistProject(info: ProjectInfo) extends Base(info) with SBinaryDep
 	{
-		override def compileOptions = super.compileOptions ++ compileOptions("-Xlog-implicits")
+//		override def compileOptions = super.compileOptions ++ compileOptions("-Xlog-implicits")
 	}
 	trait SBinaryDep extends BasicManagedProject
 	{
