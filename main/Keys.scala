@@ -33,6 +33,7 @@ object Keys
 	val thisProjectRef = SettingKey[ProjectRef]("this-project-ref")
 	val configuration = SettingKey[Configuration]("configuration")
 	val commands = SettingKey[Seq[Command]]("commands")
+	val initialize = SettingKey[Unit]("initialize")
 
 	// Command keys
 	val logged = AttributeKey[Logger]("log")

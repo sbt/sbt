@@ -63,6 +63,7 @@ object Defaults
 	))
 	def globalCore: Seq[Setting[_]] = inScope(GlobalScope)(Seq(
 		pollInterval :== 500,
+		initialize :== (),
 		scalaHome :== None,
 		javaHome :== None,
 		outputStrategy :== None,
