@@ -2,9 +2,8 @@
  * Copyright 2010  Mark Harrah
  */
 package sbt
-package inc
 
-import java.io.File
+	import java.io.File
 
 object CompileOrder extends Enumeration
 {

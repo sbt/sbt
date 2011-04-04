@@ -23,22 +23,22 @@ object Compiler
 		}
 
 	final class Inputs(val compilers: Compilers, val config: Options, val incSetup: IncSetup)
-	final class Options(val classpath: Seq[File], val sources: Seq[File], val classesDirectory: File, val options: Seq[String], val javacOptions: Seq[String], val maxErrors: Int)
+	final class Options(val classpath: Seq[File], val sources: Seq[File], val classesDirectory: File, val options: Seq[String], val javacOptions: Seq[String], val maxErrors: Int, val order: CompileOrder.Value)
 	final class IncSetup(val analysisMap: Map[File, Analysis], val cacheDirectory: File)
 	final class Compilers(val scalac: AnalyzingCompiler, val javac: JavaCompiler)
 
-	def inputs(classpath: Seq[File], sources: Seq[File], outputDirectory: File, options: Seq[String], javacOptions: Seq[String], maxErrors: Int)(implicit compilers: Compilers, log: Logger): Inputs =
+	def inputs(classpath: Seq[File], sources: Seq[File], outputDirectory: File, options: Seq[String], javacOptions: Seq[String], maxErrors: Int, order: CompileOrder.Value)(implicit compilers: Compilers, log: Logger): Inputs =
 	{
 			import Path._
 		val classesDirectory = outputDirectory / "classes"
 		val cacheDirectory = outputDirectory / "cache"
 		val augClasspath = classesDirectory.asFile +: classpath
-		inputs(augClasspath, sources, classesDirectory, options, javacOptions, Map.empty, cacheDirectory, maxErrors)
+		inputs(augClasspath, sources, classesDirectory, options, javacOptions, Map.empty, cacheDirectory, maxErrors, order)
 	}
-	def inputs(classpath: Seq[File], sources: Seq[File], classesDirectory: File, options: Seq[String], javacOptions: Seq[String], analysisMap: Map[File, Analysis], cacheDirectory: File, maxErrors: Int)(implicit compilers: Compilers, log: Logger): Inputs =
+	def inputs(classpath: Seq[File], sources: Seq[File], classesDirectory: File, options: Seq[String], javacOptions: Seq[String], analysisMap: Map[File, Analysis], cacheDirectory: File, maxErrors: Int, order: CompileOrder.Value)(implicit compilers: Compilers, log: Logger): Inputs =
 		new Inputs(
 			compilers,
-			new Options(classpath, sources, classesDirectory, options, javacOptions, maxErrors),
+			new Options(classpath, sources, classesDirectory, options, javacOptions, maxErrors, order),
 			new IncSetup(analysisMap, cacheDirectory)
 		)
 
@@ -98,6 +98,6 @@ object Compiler
 			import in.incSetup._
 		
 		val agg = new AggressiveCompile(cacheDirectory)
-		agg(scalac, javac, sources, classpath, classesDirectory, options, javacOptions, analysisMap, maxErrors)(log)
+		agg(scalac, javac, sources, classpath, classesDirectory, options, javacOptions, analysisMap, maxErrors, order)(log)
 	}
 }

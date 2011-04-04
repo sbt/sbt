@@ -119,6 +119,7 @@ object Defaults
 	
 	def compileBase = Seq(
 		classpathOptions in GlobalScope :== ClasspathOptions.auto,
+		compileOrder in GlobalScope :== CompileOrder.Mixed,
 		compilers <<= (scalaInstance, appConfiguration, streams, classpathOptions, javaHome) map { (si, app, s, co, jh) => Compiler.compilers(si, co, jh)(app, s.log) },
 		javacOptions in GlobalScope :== Nil,
 		scalacOptions in GlobalScope :== Nil,
@@ -327,12 +328,12 @@ object Defaults
 	
 	def compileTask = (compileInputs, streams) map { (i,s) => Compiler(i,s.log) }
 	def compileInputsTask =
-		(dependencyClasspath, sources, compilers, javacOptions, scalacOptions, cacheDirectory, classDirectory, streams) map {
-		(cp, srcs, cs, javacOpts, scalacOpts, cacheDir, classes, s) =>
+		(dependencyClasspath, sources, compilers, javacOptions, scalacOptions, cacheDirectory, classDirectory, compileOrder, streams) map {
+		(cp, srcs, cs, javacOpts, scalacOpts, cacheDir, classes, order, s) =>
 			val classpath = classes +: data(cp)
 			val analysis = analysisMap(cp)
 			val cache = cacheDir / "compile"
-			Compiler.inputs(classpath, srcs, classes, scalacOpts, javacOpts, analysis, cache, 100)(cs, s.log)
+			Compiler.inputs(classpath, srcs, classes, scalacOpts, javacOpts, analysis, cache, 100, order)(cs, s.log)
 		}
 
 	def writePluginsDescriptor(plugins: Set[String], dir: File): List[File] =

@@ -68,6 +68,7 @@ object Keys
 	val scaladocOptions = SettingKey[Seq[String]]("scaladoc-options")
 	val scalacOptions = SettingKey[Seq[String]]("scalac-options")
 	val javacOptions = SettingKey[Seq[String]]("javac-options")
+	val compileOrder = SettingKey[CompileOrder.Value]("compile-order")
 	val initialCommands = SettingKey[String]("initial-commands")
 	val compileInputs = TaskKey[Compiler.Inputs]("compile-inputs")
 	val scalaHome = SettingKey[Option[File]]("scala-home")

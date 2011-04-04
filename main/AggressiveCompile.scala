@@ -12,6 +12,7 @@ import inc._
 	import xsbti.api.Source
 	import xsbti.AnalysisCallback
 	import CompileSetup._
+	import CompileOrder.{JavaThenScala, Mixed, ScalaThenJava}
 	import sbinary.DefaultProtocol.{ immutableMapFormat, immutableSetFormat, StringFormat }
 
 final class CompileConfiguration(val sources: Seq[File], val classpath: Seq[File],
@@ -20,9 +21,9 @@ final class CompileConfiguration(val sources: Seq[File], val classpath: Seq[File
 
 class AggressiveCompile(cacheDirectory: File)
 {
-	def apply(compiler: AnalyzingCompiler, javac: JavaCompiler, sources: Seq[File], classpath: Seq[File], outputDirectory: File, options: Seq[String] = Nil, javacOptions: Seq[String] = Nil, analysisMap: Map[File, Analysis] = Map.empty, maxErrors: Int = 100)(implicit log: Logger): Analysis =
+	def apply(compiler: AnalyzingCompiler, javac: JavaCompiler, sources: Seq[File], classpath: Seq[File], outputDirectory: File, options: Seq[String] = Nil, javacOptions: Seq[String] = Nil, analysisMap: Map[File, Analysis] = Map.empty, maxErrors: Int = 100, compileOrder: CompileOrder.Value = Mixed)(implicit log: Logger): Analysis =
 	{
-		val setup = new CompileSetup(outputDirectory, new CompileOptions(options, javacOptions), compiler.scalaInstance.actualVersion, CompileOrder.Mixed)
+		val setup = new CompileSetup(outputDirectory, new CompileOptions(options, javacOptions), compiler.scalaInstance.actualVersion, compileOrder)
 		compile1(sources, classpath, setup, store, analysisMap, compiler, javac, maxErrors)
 	}
 
@@ -57,20 +58,24 @@ class AggressiveCompile(cacheDirectory: File)
 			val incSrc = sources.filter(include)
 			val (javaSrcs, scalaSrcs) = incSrc partition javaOnly
 			println("Compiling:\n\t" + incSrc.mkString("\n\t"))
-			if(!scalaSrcs.isEmpty)
-			{
-				val arguments = cArgs(incSrc, absClasspath, outputDirectory, options.options)
-				compiler.compile(arguments, callback, maxErrors, log)
-			}
-			if(!javaSrcs.isEmpty)
-			{
-				import Path._
-				val loader = ClasspathUtilities.toLoader(absClasspath, compiler.scalaInstance.loader)
-				def readAPI(source: File, classes: Seq[Class[_]]) { callback.api(source, ClassToAPI(classes)) }
-				Analyze(outputDirectory, javaSrcs, log)(callback, loader, readAPI) {
-					javac(javaSrcs, absClasspath, outputDirectory, options.javacOptions)
+			def compileScala() =
+				if(!scalaSrcs.isEmpty)
+				{
+					val sources = if(order == Mixed) incSrc else scalaSrcs
+					val arguments = cArgs(sources, absClasspath, outputDirectory, options.options)
+					compiler.compile(arguments, callback, maxErrors, log)
 				}
-			}
+			def compileJava() =
+				if(!javaSrcs.isEmpty)
+				{
+					import Path._
+					val loader = ClasspathUtilities.toLoader(absClasspath, compiler.scalaInstance.loader)
+					def readAPI(source: File, classes: Seq[Class[_]]) { callback.api(source, ClassToAPI(classes)) }
+					Analyze(outputDirectory, javaSrcs, log)(callback, loader, readAPI) {
+						javac(javaSrcs, absClasspath, outputDirectory, options.javacOptions)
+					}
+				}
+			if(order == ScalaThenJava) { compileScala(); compileJava() } else { compileJava(); compileScala() }
 		}
 		
 		val sourcesSet = sources.toSet
