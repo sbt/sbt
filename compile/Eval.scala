@@ -94,7 +94,7 @@ final class Eval(optionsNoncp: Seq[String], classpath: Seq[File], mkReporter: Se
 		}
 
 		compile(run.namerPhase)
-		checkError("Type error.")
+		checkError("Type error in expression")
 		val tpe = atPhase(run.typerPhase.next) { (new TypeExtractor).getType(unit.body) }
 
 		(tpe, load(dir, moduleName))
@@ -163,7 +163,7 @@ final class Eval(optionsNoncp: Seq[String], classpath: Seq[File], mkReporter: Se
 		val tpeParser = new syntaxAnalyzer.UnitParser(mkUnit("<expected-type>", DefaultStartLine, tpe))
 		val tpt0: Tree = tpeParser.typ()
 		tpeParser.accept(EOF)
-		checkError("Error parsing type.")
+		checkError("Error parsing expression type.")
 		tpt0
 	}
 	private[this] def parseImports(imports: EvalImports): Seq[Tree] =
@@ -173,7 +173,7 @@ final class Eval(optionsNoncp: Seq[String], classpath: Seq[File], mkReporter: Se
 		val parser = new syntaxAnalyzer.UnitParser(importUnit)
 		val trees: Seq[Tree] = parser.importClause()
 		parser.accept(EOF)
-		checkError("Error parsing imports.")
+		checkError("Error parsing imports for expression.")
 		trees
 	}
 
