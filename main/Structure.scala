@@ -13,13 +13,22 @@ package sbt
 	import java.io.File
 	import java.net.URI
 
-sealed trait InputTask[T]
-private final class InputStatic[T](val parser: State => Parser[Task[T]]) extends InputTask[T]
+sealed trait InputTask[T] {
+	def mapTask[S](f: Task[T] => Task[S]): InputTask[S]
+}
+private final class InputStatic[T](val parser: State => Parser[Task[T]]) extends InputTask[T] {
+	def mapTask[S](f: Task[T] => Task[S]) = new InputStatic(s => parser(s) map f)
+}
 private sealed trait InputDynamic[T] extends InputTask[T]
-{
+{ outer =>
 	type Result
 	def parser: State => Parser[Result]
 	def task: Task[T]
+	def mapTask[S](f: Task[T] => Task[S]) = new InputDynamic[S] {
+		type Result = outer.Result
+		def parser = outer.parser
+		def task = f(outer.task)
+	}
 }
 object InputTask
 {
@@ -127,7 +136,7 @@ object Scoped
 		protected final val scoped = ScopedKey(scope, key)
 		
 		final def :==(value: S): Setting[S]  =  :=(value)
-		final def :==(value: SettingKey[S]): Setting[S]  =  <<=(value(identity))
+		final def :==(value: ScopedSetting[S]): Setting[S]  =  <<=(value(identity))
 		final def := (value: => S): Setting[S]  =  setting(scoped, Project.value(value))
 		final def ~= (f: S => S): Setting[S]  =  Project.update(scoped)(f)
 		final def <<= (app: Initialize[S]): Setting[S]  =  setting(scoped, app)
@@ -148,8 +157,8 @@ object Scoped
 		def :==(value: S): ScS  =  :=(value)
 		def ::=(value: Task[S]): ScS  =  Project.setting(scoped, Project.value( value ))
 		def := (value: => S): ScS  =  ::=(task(value))
-		def :== (v: TaskKey[S]): ScS = Project.setting(scoped, Project.app(ScopedKey(scope, v.key) :^: KNil)(_.head) )
-		def :== (v: SettingKey[S]): ScS = <<=( v(const))
+		def :== (v: ScopedTask[S]): ScS = Project.setting(scoped, Project.app(ScopedKey(v.scope, v.key) :^: KNil)(_.head) )
+		def :== (v: ScopedSetting[S]): ScS = <<=( v(const))
 		def ~= (f: S => S): ScS  =  Project.update(scoped)( _ map f )
 
 		def <<= (app: App[S]): ScS  =  Project.setting(scoped, app)

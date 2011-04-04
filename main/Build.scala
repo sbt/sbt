@@ -337,11 +337,14 @@ object Load
 			else key
 		}
 		def setDefining[T] = (key: ScopedKey[T], value: T) => value match {
-			case tk: Task[t] if !EvaluateTask.isDummy(tk) => Task(tk.info.set(EvaluateTask.taskDefinitionKey, key), tk.work).asInstanceOf[T]
+			case tk: Task[t] => setDefinitionKey(tk, key).asInstanceOf[T]
+			case ik: InputTask[t] => ik.mapTask( tk => setDefinitionKey(tk, key) ).asInstanceOf[T]
 			case _ => value
 		}
 		ss.map(s => s mapReferenced mapSpecial(s.key) mapInit setDefining )
 	}
+	def setDefinitionKey[T](tk: Task[T], key: ScopedKey[_]): Task[T] =
+		if(EvaluateTask isDummy tk) tk else Task(tk.info.set(EvaluateTask.taskDefinitionKey, key), tk.work)
 
 	def structureIndex(settings: Settings[Scope]): StructureIndex =
 		new StructureIndex(Index.stringToKeyMap(settings), Index.taskToKeyMap(settings), KeyIndex(settings.allKeys( (s,k) => ScopedKey(s,k))))

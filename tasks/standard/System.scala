@@ -8,7 +8,7 @@ import Types._
 import Task._
 import Execute._
 
-object System
+object Transform
 {
 	def fromDummy[T](original: Task[T])(action: => T): Task[T] = Task(original.info, Pure(action _))
 	def fromDummyStrict[T](original: Task[T], value: T): Task[T] = fromDummy(original)( value)
@@ -34,19 +34,13 @@ object System
 		new (Task ~> Task) {
 			def apply[T](in: Task[T]): Task[T]  =  map(in).getOrElse(in)
 		}
-}
-object Transform
-{
-	final class Dummies[HL <: HList](val direct: KList[Task, HL])
 
 	def apply[HL <: HList, Key](dummies: KList[Task, HL], injected: HL) =
 	{
 		import System._
-		Convert.taskToNode ∙ getOrId(dummyMap(dummies)(injected))
+		taskToNode ∙ getOrId(dummyMap(dummies)(injected))
 	}
-}
-object Convert
-{
+
 	def taskToNode = new (Task ~> NodeT[Task]#Apply) {
 		def apply[T](t: Task[T]): Node[Task, T] = t.work match {
 			case Pure(eval) => toNode(KNil)( _ => Right(eval()) )
