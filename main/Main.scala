@@ -332,7 +332,10 @@ object BuiltinCommands
 	{
 		e match
 		{
-			case i: Incomplete => () // already handled by evaluateTask
+			case _: Incomplete => () // already handled by evaluateTask
+			case _: NoMessageException => ()
+			case _: MessageOnlyException =>
+				log.error(e.toString)
 			case _ =>
 				log.trace(e)
 				log.error(e.toString)

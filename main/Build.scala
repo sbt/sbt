@@ -73,7 +73,11 @@ object EvaluateConfigurations
 
 	def evaluateSetting(eval: Eval, name: String, imports: Seq[(String,Int)], expression: String, line: Int): Setting[_] =
 	{
-		val result = eval.eval(expression, imports = new EvalImports(imports, name), srcName = name, tpeName = Some("sbt.Project.Setting[_]"), line = line)
+		val result = try {
+			eval.eval(expression, imports = new EvalImports(imports, name), srcName = name, tpeName = Some("sbt.Project.Setting[_]"), line = line)
+		} catch {
+			case e: sbt.compiler.EvalException => throw new MessageOnlyException(e.getMessage)
+		}
 		result.value.asInstanceOf[Setting[_]]
 	}
 	private[this] def fstS(f: String => Boolean): ((String,Int)) => Boolean = { case (s,i) => f(s) }
@@ -570,8 +574,10 @@ object Load
 
 	def build(classpath: Seq[File], sources: Seq[File], target: File, compilers: Compilers, log: Logger): (Inputs, inc.Analysis) =
 	{
-		val inputs = Compiler.inputs(classpath, sources, target, Nil, Nil, Compiler.DefaultMaxErrors)(compilers, log)
-		val analysis = Compiler(inputs, log)
+		val inputs = Compiler.inputs(classpath, sources, target, Nil, Nil, Compiler.DefaultMaxErrors, CompileOrder.Mixed)(compilers, log)
+		val analysis =
+			try { Compiler(inputs, log) }
+			catch { case _: xsbti.CompileFailed => throw new NoMessageException } // compiler already logged errors
 		(inputs, analysis)
 	}
 
