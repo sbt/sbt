@@ -83,6 +83,9 @@ object Scoped
 	implicit def richSettingListScoped[T](s: ScopedSetting[Seq[T]]): RichSettingList[T] = new RichSettingList[T](s.scope, s.key)
 	implicit def richListTaskScoped[T](s: ScopedTask[Seq[T]]): RichListTask[T] = new RichListTask[T](s.scope, s.key)
 
+	implicit def taskScopedToKey[T](s: ScopedTask[T]): ScopedKey[Task[T]] = ScopedKey(s.scope, s.key)
+	implicit def inputScopedToKey[T](s: ScopedInput[T]): ScopedKey[InputTask[T]] = ScopedKey(s.scope, s.key)
+
 	implicit def scopedSettingScoping[T](s: ScopedSetting[T]): ScopingSetting[ScopedSetting[T]] =
 		new ScopingSetting(scope => scopedSetting(Scope.replaceThis(s.scope)(scope), s.key))
 
