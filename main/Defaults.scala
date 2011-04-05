@@ -64,6 +64,7 @@ object Defaults
 	def globalCore: Seq[Setting[_]] = inScope(GlobalScope)(Seq(
 		pollInterval :== 500,
 		initialize :== (),
+		credentials :== Nil,
 		scalaHome :== None,
 		javaHome :== None,
 		outputStrategy :== None,
@@ -531,11 +532,13 @@ object Classpaths
 		}
 	)
 
-
 	def deliverTask(config: TaskKey[PublishConfiguration]): Initialize[Task[Unit]] =
 		(ivyModule, config, deliverDepends, streams) map { (module, config, _, s) => IvyActions.deliver(module, config, s.log) }
 	def publishTask(config: TaskKey[PublishConfiguration], deliverKey: TaskKey[_]): Initialize[Task[Unit]] =
-		(ivyModule, config, deliverKey, streams) map { (module, config, _, s) => IvyActions.publish(module, config, s.log) }
+		(ivyModule, config, deliverKey, credentials, streams) map { (module, config, _, creds, s) =>
+			Credentials.register(creds, s.log)
+			IvyActions.publish(module, config, s.log)
+		}
 
 		import Cache._
 		import CacheIvy.{classpathFormat, publishIC, updateIC, updateReportF}

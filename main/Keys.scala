@@ -164,6 +164,7 @@ object Keys
 	val packageToPublish = TaskKey[Unit]("package-to-publish")
 	val deliverDepends = TaskKey[Unit]("deliver-depends")
 	val publishMavenStyle = SettingKey[Boolean]("publish-maven-style")
+	val credentials = TaskKey[Seq[Credentials]]("credentials")
 
 	val makePom = TaskKey[File]("make-pom")
 	val deliver = TaskKey[Unit]("deliver")
