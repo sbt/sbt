@@ -116,7 +116,7 @@ final class Execute[A[_] <: AnyRef](checkCycles: Boolean)(implicit view: NodeVie
 		results(node) = result
 		state(node) = Done
 		remove( reverse, node ) foreach { dep => notifyDone(node, dep) }
-		callers.remove( node ).flatten.foreach { c =>  retire(c, result) }
+		callers.remove( node ).flatten.foreach { c => retire(c, callerResult(c, result)) }
 
 		post {
 			assert( done(node) )
@@ -126,6 +126,11 @@ final class Execute[A[_] <: AnyRef](checkCycles: Boolean)(implicit view: NodeVie
 			assert( ! (callers contains node) )
 		}
 	}
+	def callerResult[T](node: A[T], result: Result[T]): Result[T] =
+		result match {
+			case _: Value[T] => result
+			case Inc(i) => Inc(Incomplete(Some(node), tpe = i.tpe, causes = i :: Nil))
+		}
 
 	def notifyDone( node: A[_], dependent: A[_] )(implicit strategy: Strategy)
 	{
