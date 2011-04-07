@@ -4,7 +4,7 @@
 package sbt
 
 	import java.util.regex.Pattern
-	import BuildStreams.{Streams, TaskStreams}
+	import Keys.{Streams, TaskStreams}
 	import Project.ScopedKey
 
 object Output

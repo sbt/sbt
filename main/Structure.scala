@@ -47,10 +47,10 @@ object InputTask
 	// This interface allows the Parser to be constructed using other Settings, but not Tasks (which is desired).
 	// The action can be constructed using Settings and Tasks and with the parse result injected into a Task.
 	// This is the ugly part, requiring hooks in injectStreams and Act to handle the dummy task for the parse result.
-	// However, this is results in a minimal interface to the full capabilities of an InputTask
+	// However, this is results in a minimal interface to the full capabilities of an InputTask for users
 	def apply[I,T](p: Initialize[State => Parser[I]])(action: TaskKey[I] => Initialize[Task[T]]): Initialize[InputTask[T]] =
 	{
-		val key = EvaluateTask.parseResult.asInstanceOf[TaskKey[I]]
+		val key = Keys.parseResult.asInstanceOf[TaskKey[I]]
 		p.zipWith(action(key)) { (parserF, act) =>
 			new InputDynamic[T]
 			{

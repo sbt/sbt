@@ -8,7 +8,6 @@ package sbt
 	import compiler.Discovery
 	import Project.{inConfig, Initialize, inScope, inTask, ScopedKey, Setting}
 	import Configurations.{Compile => CompileConf, Test => TestConf}
-	import EvaluateTask.resolvedScoped
 	import complete._
 	import std.TaskExtra._
 
@@ -81,7 +80,7 @@ object Defaults
 		showSuccess :== true,
 		commands :== Nil,
 		retrieveManaged :== false,
-		settings <<= EvaluateTask.state map { state => Project.structure(state).data }
+		settings <<= state map { state => Project.structure(state).data }
 	))
 	def projectCore: Seq[Setting[_]] = Seq(
 		name <<= thisProject(_.id),
@@ -157,7 +156,7 @@ object Defaults
 		watch <<= watchSetting
 	)
 
-	def inAllConfigurations[T](key: ScopedTask[T]): Initialize[Task[Seq[T]]] = (EvaluateTask.state, thisProjectRef) flatMap { (state, ref) =>
+	def inAllConfigurations[T](key: ScopedTask[T]): Initialize[Task[Seq[T]]] = (state, thisProjectRef) flatMap { (state, ref) =>
 		val structure = Project structure state
 		val configurations = Project.getProject(ref, structure).toList.flatMap(_.configurations)
 		configurations.flatMap { conf =>
@@ -165,7 +164,7 @@ object Defaults
 		} join
 	}
 	def watchTransitiveSourcesTask: Initialize[Task[Seq[File]]] =
-		(EvaluateTask.state, thisProjectRef) flatMap { (s, base) =>
+		(state, thisProjectRef) flatMap { (s, base) =>
 			inAllDependencies(base, watchSources.setting, Project structure s).join.map(_.flatten)
 		}
 	def watchSourcesTask: Initialize[Task[Seq[File]]] = Seq(sources, resources).map(inAllConfigurations).join { _.join.map(_.flatten.flatten) }
@@ -323,7 +322,7 @@ object Defaults
 	def discoverMainClasses(analysis: inc.Analysis): Seq[String] =
 		Discovery.applications(Tests.allDefs(analysis)) collect { case (definition, discovered) if(discovered.hasMain) => definition.name }
 
-	def consoleProjectTask = (EvaluateTask.state, streams, initialCommands in consoleProject) map { (state, s, extra) => Console.sbt(state, extra)(s.log); println() }
+	def consoleProjectTask = (state, streams, initialCommands in consoleProject) map { (state, s, extra) => Console.sbt(state, extra)(s.log); println() }
 	def consoleTask: Initialize[Task[Unit]] = consoleTask(fullClasspath, console)
 	def consoleQuickTask = consoleTask(externalDependencyClasspath, consoleQuick)
 	def consoleTask(classpath: TaskKey[Classpath], task: TaskKey[_]): Initialize[Task[Unit]] = (compilers, classpath, scalacOptions in task, initialCommands in task, streams) map {

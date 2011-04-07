@@ -12,7 +12,8 @@ package sbt
 	import complete.DefaultParsers.validID
 	import Compiler.{Compilers,Inputs}
 	import Project.{inScope, ScopedKey, ScopeLocal, Setting}
-	import Keys.{appConfiguration, baseDirectory, configuration, streams, thisProject, thisProjectRef}
+	import Keys.{appConfiguration, baseDirectory, configuration, streams, Streams, TaskStreams, thisProject, thisProjectRef}
+	import Keys.{dummyState, dummyStreamsManager, isDummy, parseResult, resolvedScoped, streamsManager, taskDefinitionKey}
 	import TypeFunctions.{Endo,Id}
 	import tools.nsc.reporters.ConsoleReporter
 	import Build.{analyzed, data}
@@ -110,29 +111,14 @@ object EvaluateTask
 	import Project.display
 	import std.{TaskExtra,Transform}
 	import TaskExtra._
-	import BuildStreams.{Streams, TaskStreams}
+	import Keys.state
 	
 	val SystemProcessors = Runtime.getRuntime.availableProcessors
-
-	val isDummyTask = AttributeKey[Boolean]("is-dummy-task")
-	val taskDefinitionKey = AttributeKey[ScopedKey[_]]("task-definition-key")
-	val (state, dummyState) = dummy[State]("state")
-	val (streamsManager, dummyStreamsManager) = dummy[Streams]("streams-manager")
-	val resolvedScoped = SettingKey[ScopedKey[_]]("resolved-scoped")
-	private[sbt] val parseResult: TaskKey[_] = TaskKey("$parse-result")
 
 	def injectSettings: Seq[Project.Setting[_]] = Seq(
 		(state in GlobalScope) ::= dummyState,
 		(streamsManager in GlobalScope) ::= dummyStreamsManager
 	)
-	
-	def dummy[T](name: String): (TaskKey[T], Task[T]) = (TaskKey[T](name), dummyTask(name))
-	def dummyTask[T](name: String): Task[T] =
-	{
-		val base: Task[T] = task( error("Dummy task '" + name + "' did not get converted to a full task.") ) named name
-		base.copy(info = base.info.set(isDummyTask, true))
-	}
-	def isDummy(t: Task[_]): Boolean = t.info.attributes.get(isDummyTask) getOrElse false
 
 	def evalPluginDef(log: Logger)(pluginDef: BuildStructure, state: State): Seq[Attributed[File]] =
 	{
@@ -332,7 +318,7 @@ object Load
 	// additionally, set the task axis to the defining key if it is not set
 	def finalTransforms(ss: Seq[Setting[_]]): Seq[Setting[_]] =
 	{
-		import EvaluateTask.{parseResult, resolvedScoped}
+		import Keys.{parseResult, resolvedScoped}
 		def isSpecial(key: AttributeKey[_]) = key == streams.key || key == resolvedScoped.key || key == parseResult.key
 		def mapSpecial(to: ScopedKey[_]) = new (ScopedKey ~> ScopedKey){ def apply[T](key: ScopedKey[T]) =
 			if(isSpecial(key.key))
@@ -351,7 +337,7 @@ object Load
 		ss.map(s => s mapReferenced mapSpecial(s.key) mapInit setDefining )
 	}
 	def setDefinitionKey[T](tk: Task[T], key: ScopedKey[_]): Task[T] =
-		if(EvaluateTask isDummy tk) tk else Task(tk.info.set(EvaluateTask.taskDefinitionKey, key), tk.work)
+		if(isDummy(tk)) tk else Task(tk.info.set(Keys.taskDefinitionKey, key), tk.work)
 
 	def structureIndex(settings: Settings[Scope]): StructureIndex =
 		new StructureIndex(Index.stringToKeyMap(settings), Index.taskToKeyMap(settings), KeyIndex(settings.allKeys( (s,k) => ScopedKey(s,k))))
@@ -683,8 +669,6 @@ object BuildStreams
 		import Project.display
 		import std.{TaskExtra,Transform}
 	
-	type Streams = std.Streams[ScopedKey[_]]
-	type TaskStreams = std.TaskStreams[ScopedKey[_]]
 	val GlobalPath = "$global"
 	val BuildUnitPath = "$build"
 

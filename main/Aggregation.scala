@@ -6,8 +6,7 @@ package sbt
 	import CommandSupport.logger
 	import Project.ScopedKey
 	import Load.BuildStructure
-	import EvaluateTask.parseResult
-	import Keys.{aggregate, showSuccess, showTiming, timingFormat}
+	import Keys.{aggregate, parseResult, showSuccess, showTiming, timingFormat}
 	import sbt.complete.Parser
 	import java.net.URI
 	import Parser._

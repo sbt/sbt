@@ -4,7 +4,7 @@
 package sbt
 
 	import java.io.File
-	import EvaluateTask.resolvedScoped
+	import Project.ScopedKey
 	import complete._
 	import inc.Analysis
 	import std.TaskExtra._
@@ -207,5 +207,22 @@ object Keys
 
 	// special
 	val settings = TaskKey[Settings[Scope]]("settings")
-	val streams = TaskKey[BuildStreams.TaskStreams]("streams")
+	val streams = TaskKey[TaskStreams]("streams")
+	val isDummyTask = AttributeKey[Boolean]("is-dummy-task")
+	val taskDefinitionKey = AttributeKey[ScopedKey[_]]("task-definition-key")
+	val (state, dummyState) = dummy[State]("state")
+	val (streamsManager, dummyStreamsManager) = dummy[Streams]("streams-manager")
+	val resolvedScoped = SettingKey[ScopedKey[_]]("resolved-scoped")
+	private[sbt] val parseResult: TaskKey[_] = TaskKey("$parse-result")
+
+	type Streams = std.Streams[ScopedKey[_]]
+	type TaskStreams = std.TaskStreams[ScopedKey[_]]
+
+	def dummy[T](name: String): (TaskKey[T], Task[T]) = (TaskKey[T](name), dummyTask(name))
+	def dummyTask[T](name: String): Task[T] =
+	{
+		val base: Task[T] = task( error("Dummy task '" + name + "' did not get converted to a full task.") ) named name
+		base.copy(info = base.info.set(isDummyTask, true))
+	}
+	def isDummy(t: Task[_]): Boolean = t.info.attributes.get(isDummyTask) getOrElse false
 }
