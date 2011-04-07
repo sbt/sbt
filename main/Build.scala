@@ -192,12 +192,19 @@ object EvaluateTask
 		replaced
 	}
 	def transformInc[T](result: Result[T]): Result[T] =
-		result.toEither.left.map { i =>
-			Incomplete.transform(i) {
-				case in @ Incomplete(Some(node: Task[_]), _, _, _, _) => in.copy(node = transformNode(node))
-				case _ => i
+		result.toEither.left.map { i => Incomplete.transformBU(i)(liftAnonymous andThen taskToKey ) }
+	def taskToKey: Incomplete => Incomplete = {
+		case in @ Incomplete(Some(node: Task[_]), _, _, _, _) => in.copy(node = transformNode(node))
+		case i => i
+	}
+	def liftAnonymous: Incomplete => Incomplete = {
+		case i @ Incomplete(node, tpe, None, causes, None) =>
+			causes.find( inc => inc.message.isDefined || inc.directCause.isDefined) match {
+				case Some(lift) => i.copy(directCause = lift.directCause, message = lift.message)
+				case None => i
 			}
-		}
+		case i => i
+	}
 	def transformNode(node: Task[_]): Option[ScopedKey[_]] =
 		node.info.attributes get taskDefinitionKey
 

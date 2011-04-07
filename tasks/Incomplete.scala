@@ -12,12 +12,14 @@ final case class Incomplete(node: Option[AnyRef], tpe: IValue = Error, message: 
 object Incomplete extends Enumeration {
 	val Skipped, Error = Value
 	
-	def transform(i: Incomplete)(f: Incomplete => Incomplete): Incomplete =
+	def transformTD(i: Incomplete)(f: Incomplete => Incomplete): Incomplete = transform(i, true)(f)
+	def transformBU(i: Incomplete)(f: Incomplete => Incomplete): Incomplete = transform(i, false)(f)
+	def transform(i: Incomplete, topDown: Boolean)(f: Incomplete => Incomplete): Incomplete =
 	{
 			import collection.JavaConversions._
 		val visited: collection.mutable.Map[Incomplete,Incomplete] = new java.util.IdentityHashMap[Incomplete, Incomplete]
 		def visit(inc: Incomplete): Incomplete =
-			visited.getOrElseUpdate(inc, visitCauses(f(inc)) )
+			visited.getOrElseUpdate(inc, if(topDown) visitCauses(f(inc)) else f(visitCauses(inc)))
 		def visitCauses(inc: Incomplete): Incomplete =
 			inc.copy(causes = inc.causes.map(visit) )
 
