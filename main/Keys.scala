@@ -126,7 +126,7 @@ object Keys
 	val testOnly = InputKey[Unit]("test-only")
 	val testOptions = TaskKey[Seq[TestOption]]("test-options")
 	val testFrameworks = SettingKey[Seq[TestFramework]]("test-frameworks")
-	val testListeners = TaskKey[Iterable[TestReportListener]]("test-listeners")
+	val testListeners = TaskKey[Seq[TestReportListener]]("test-listeners")
 		
 	// Classpath/Dependency Management Keys
 	type Classpath = Seq[Attributed[File]]

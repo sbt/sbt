@@ -187,7 +187,7 @@ object Defaults
 	}
 	def resourcesTask(dirs: Seq[File], excl: FileFilter, gen: Seq[File], genDir: File) = gen ++ (dirs --- genDir).descendentsExcept("*",excl).getFiles
 
-	lazy val testTasks = Seq(	
+	lazy val testTasks = testTaskOptions(test) ++ testTaskOptions(testOnly) ++ Seq(	
 		testLoader <<= (fullClasspath, scalaInstance) map { (cp, si) => TestFramework.createTestLoader(data(cp), si) },
 		testFrameworks in GlobalScope :== {
 			import sbt.TestFrameworks._
@@ -201,18 +201,23 @@ object Defaults
 			IO.writeLines(s.text(CompletionsID), tests.map(_.name).distinct)
 			tests
 		},
-		testListeners <<= (streams in test) map ( s => TestLogger(s.log) :: Nil ),
-		testOptions <<= testListeners map { listeners => Tests.Listeners(listeners) :: Nil },
-		executeTests <<= (streams in test, loadedTestFrameworks, testOptions, testLoader, definedTests) flatMap {
+		testListeners :== Nil,
+		testOptions :== Nil,
+		executeTests <<= (streams in test, loadedTestFrameworks, testOptions in test, testLoader, definedTests) flatMap {
 			(s, frameworkMap, options, loader, discovered) => Tests(frameworkMap, loader, discovered, options, s.log)
 		},
 		test <<= (executeTests, streams) map { (results, s) => Tests.showResults(s.log, results) },
 		testOnly <<= testOnlyTask
 	)
 
+	def testTaskOptions(key: Scoped): Seq[Setting[_]] = inTask(key)( Seq(
+		testListeners <<= (streams, testListeners) map { (s, ls) => TestLogger(s.log) +: ls },
+		testOptions <<= (testOptions, testListeners) map { (options, ls) => Tests.Listeners(ls) +: options }
+	) )
+
 	def testOnlyTask = 
 	InputTask(resolvedScoped(testOnlyParser)) ( result =>  
-		(streams, loadedTestFrameworks, testOptions, testLoader, definedTests, result) flatMap {
+		(streams, loadedTestFrameworks, testOptions in testOnly, testLoader, definedTests, result) flatMap {
 			case (s, frameworks, opts, loader, discovered, (tests, frameworkOptions)) =>
 				val modifiedOpts = Tests.Filter(if(tests.isEmpty) _ => true else tests.toSet ) +: Tests.Argument(frameworkOptions : _*) +: opts
 				Tests(frameworks, loader, discovered, modifiedOpts, s.log) map { results =>
