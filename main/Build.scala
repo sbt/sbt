@@ -178,11 +178,24 @@ object EvaluateTask
 		replaced
 	}
 	def transformInc[T](result: Result[T]): Result[T] =
-		result.toEither.left.map { i => Incomplete.transformBU(i)(liftAnonymous andThen taskToKey ) }
+		result.toEither.left.map { i => Incomplete.transformBU(i)(convertCyclicInc andThen liftAnonymous andThen taskToKey ) }
 	def taskToKey: Incomplete => Incomplete = {
 		case in @ Incomplete(Some(node: Task[_]), _, _, _, _) => in.copy(node = transformNode(node))
 		case i => i
 	}
+	type AnyCyclic = Execute[Task]#CyclicException[_]
+	def convertCyclicInc: Incomplete => Incomplete = {
+		case in @ Incomplete(_, _, _, _, Some(c: AnyCyclic)) => in.copy(directCause = Some(new RuntimeException(convertCyclic(c))) )
+		case i => i
+	}
+	def convertCyclic(c: AnyCyclic): String =
+		(c.caller, c.target) match {
+			case (caller: Task[_], target: Task[_]) =>
+				c.toString + (if(caller eq target) "(task: " + name(caller) + ")" else "(caller: " + name(caller) + ", target: " + name(target) + ")" )
+			case _ => c.toString
+		}
+	def name(node: Task[_]): String =
+		node.info.name orElse transformNode(node).map(Project.display) getOrElse ("<anon-" + System.identityHashCode(node).toHexString + ">")
 	def liftAnonymous: Incomplete => Incomplete = {
 		case i @ Incomplete(node, tpe, None, causes, None) =>
 			causes.find( inc => inc.message.isDefined || inc.directCause.isDefined) match {

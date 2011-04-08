@@ -47,7 +47,7 @@ final class Execute[A[_] <: AnyRef](checkCycles: Boolean)(implicit view: NodeVie
 
 	def dump: String = "State: "  + state.toString + "\n\nResults: " + results + "\n\nCalls: " + callers + "\n\n"
 
-	def run[T](root: A[T])(implicit strategy: Strategy): Result[T] = runKeep(root)(strategy)(root)
+	def run[T](root: A[T])(implicit strategy: Strategy): Result[T] = try { runKeep(root)(strategy)(root) } catch { case i: Incomplete => Inc(i) }
 	def runKeep[T](root: A[T])(implicit strategy: Strategy): RMap[A,Result] =
 	{
 		assert(state.isEmpty, "Execute already running/ran.")
@@ -64,7 +64,10 @@ final class Execute[A[_] <: AnyRef](checkCycles: Boolean)(implicit view: NodeVie
 		{
 			pre {
 				assert( !reverse.isEmpty, "Nothing to process." )
-				assert( state.values.exists( _ == Running ), "Nothing running")
+				if( !state.values.exists( _ == Running ) ) {
+					snapshotCycleCheck()
+					assert(false, "Nothing running.")
+				}
 			}
 
 			(strategy.take()).process()
@@ -77,7 +80,6 @@ final class Execute[A[_] <: AnyRef](checkCycles: Boolean)(implicit view: NodeVie
 			assert( complete, "Not all state was Done." )
 		}
 	}
-
 
 	def call[T](node: A[T], target: A[T])(implicit strategy: Strategy)
 	{
@@ -295,6 +297,10 @@ final class Execute[A[_] <: AnyRef](checkCycles: Boolean)(implicit view: NodeVie
 	}
 
 		// cyclic reference checking
+
+	def snapshotCycleCheck(): Unit =
+		for( (called: A[c], callers) <- callers.toSeq; caller <- callers)
+			cycleCheck(caller.asInstanceOf[A[c]], called)
 
 	def cycleCheck[T](node: A[T], target: A[T])
 	{
