@@ -25,12 +25,16 @@ object Locks extends xsbti.GlobalLock
 {
 	private[this] val locks = new Cache[File, GlobalLock](new GlobalLock(_))
 	def apply[T](file: File, action: Callable[T]): T =
-		synchronized
-		{
-			file.getParentFile.mkdirs()
-			file.createNewFile()
-			locks(file.getCanonicalFile).withLock(action)
-		}
+	{
+		val lock =
+			synchronized
+			{
+				file.getParentFile.mkdirs()
+				file.createNewFile()
+				locks(file.getCanonicalFile)
+			}
+		lock.withLock(action)
+	}
 
 	private[this] class GlobalLock(file: File)
 	{

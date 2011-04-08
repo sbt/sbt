@@ -3,7 +3,7 @@
  */
 package xsbt.boot
 
-import BootConfiguration.{IvyPackage, JLinePackagePath, SbtBootPackage, ScalaPackage}
+import BootConfiguration.{FjbgPackage, IvyPackage, JLinePackagePath, SbtBootPackage, ScalaPackage}
 import scala.collection.immutable.Stream
 
 /** A custom class loader to ensure the main part of sbt doesn't load any Scala or
@@ -14,7 +14,7 @@ private[boot] final class BootFilteredLoader(parent: ClassLoader) extends ClassL
 	override final def loadClass(className: String, resolve: Boolean): Class[_] =
 	{
 		// note that we allow xsbti.* and jline.*
-		if(className.startsWith(ScalaPackage) || className.startsWith(IvyPackage) || className.startsWith(SbtBootPackage))
+		if(className.startsWith(ScalaPackage) || className.startsWith(IvyPackage) || className.startsWith(SbtBootPackage) || className.startsWith(FjbgPackage))
 			throw new ClassNotFoundException(className)
 		else
 			super.loadClass(className, resolve)

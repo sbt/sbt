@@ -164,10 +164,10 @@ object CompatibilityLevel extends Enumeration
 	def defaultVersions(level: Value) =
 		level match
 		{
-			case Full =>  "2.7.2 2.7.3 2.7.5 2.7.7 2.8.0.Beta1 2.8.0.RC1 2.8.0.RC2 2.8.0-SNAPSHOT"
-			case Basic =>  "2.7.7 2.7.2 2.8.0.RC2"
-			case Minimal => "2.7.7 2.8.0.RC2"
+			case Full =>  "2.7.4 2.7.7 2.9.0.RC1 2.8.0 2.8.1"
+			case Basic =>  "2.7.7 2.7.4 2.8.1 2.8.0"
+			case Minimal => "2.7.7 2.8.1"
 			case Minimal27 => "2.7.7"
-			case Minimal28 => "2.8.0.RC2"
+			case Minimal28 => "2.8.1"
 		}
 }

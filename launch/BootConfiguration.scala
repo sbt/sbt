@@ -29,6 +29,7 @@ private object BootConfiguration
 	/** The Ivy pattern used for the local Ivy repository.*/
 	def LocalIvyPattern = LocalPattern
 
+	val FjbgPackage = "ch.epfl.lamp.fjbg."
 	/** The class name prefix used to hide the Scala classes used by this loader from the application */
 	val ScalaPackage = "scala."
 	/** The class name prefix used to hide the Ivy classes used by this loader from the application*/
