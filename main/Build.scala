@@ -57,13 +57,15 @@ object EvaluateConfigurations
 	def apply(eval: Eval, srcs: Seq[File], imports: Seq[String]): Seq[Setting[_]] =
 		srcs flatMap { src =>  evaluateConfiguration(eval, src, imports) }
 	def evaluateConfiguration(eval: Eval, src: File, imports: Seq[String]): Seq[Setting[_]] =
-		evaluateConfiguration(eval, src.getPath, IO.readLines(src), imports)
-	def evaluateConfiguration(eval: Eval, name: String, lines: Seq[String], imports: Seq[String]): Seq[Setting[_]] =
+		evaluateConfiguration(eval, src.getPath, IO.readLines(src), imports, 0)
+	def evaluateConfiguration(eval: Eval, name: String, lines: Seq[String], imports: Seq[String], offset: Int): Seq[Setting[_]] =
 	{
-		val (importExpressions, settingExpressions) = splitExpressions(name, lines)
-		for((settingExpression,line) <- settingExpressions) yield
-			evaluateSetting(eval, name, (imports.map(s => (s, -1)) ++ importExpressions), settingExpression, line)
+		val (importExpressions, settingExpressions) = splitExpressions(lines)
+		for((settingExpression,line) <- addOffset(offset, settingExpressions)) yield
+			evaluateSetting(eval, name, (imports.map(s => (s, -1)) ++ addOffset(offset, importExpressions)), settingExpression, line)
 	}
+	def addOffset(offset: Int, lines: Seq[(String,Int)]): Seq[(String,Int)] =
+		lines.map { case (s, i) => (s, i + offset) }
 
 	def evaluateSetting(eval: Eval, name: String, imports: Seq[(String,Int)], expression: String, line: Int): Setting[_] =
 	{
@@ -75,7 +77,7 @@ object EvaluateConfigurations
 		result.value.asInstanceOf[Setting[_]]
 	}
 	private[this] def fstS(f: String => Boolean): ((String,Int)) => Boolean = { case (s,i) => f(s) }
-	def splitExpressions(name: String, lines: Seq[String]): (Seq[(String,Int)], Seq[(String,Int)]) =
+	def splitExpressions(lines: Seq[String]): (Seq[(String,Int)], Seq[(String,Int)]) =
 	{
 		val blank = (_: String).trim.isEmpty
 		val importOrBlank = fstS(t => blank(t) || (t.trim startsWith "import "))
