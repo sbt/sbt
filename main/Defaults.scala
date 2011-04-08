@@ -322,7 +322,7 @@ object Defaults
 	def discoverMainClasses(analysis: inc.Analysis): Seq[String] =
 		Discovery.applications(Tests.allDefs(analysis)) collect { case (definition, discovered) if(discovered.hasMain) => definition.name }
 
-	def consoleProjectTask = (state, streams, initialCommands in consoleProject) map { (state, s, extra) => Console.sbt(state, extra)(s.log); println() }
+	def consoleProjectTask = (state, streams, initialCommands in consoleProject) map { (state, s, extra) => ConsoleProject(state, extra)(s.log); println() }
 	def consoleTask: Initialize[Task[Unit]] = consoleTask(fullClasspath, console)
 	def consoleQuickTask = consoleTask(externalDependencyClasspath, consoleQuick)
 	def consoleTask(classpath: TaskKey[Classpath], task: TaskKey[_]): Initialize[Task[Unit]] = (compilers, classpath, scalacOptions in task, initialCommands in task, streams) map {
@@ -426,7 +426,9 @@ object Defaults
 	lazy val itSettings = inConfig(Configurations.IntegrationTest)(testSettings)
 	lazy val defaultConfigs = inConfig(CompileConf)(compileSettings) ++ inConfig(TestConf)(testSettings)
 
-	lazy val defaultSettings: Seq[Setting[_]] = projectCore ++ paths ++ baseClasspaths ++ baseTasks ++ compileBase ++ defaultConfigs ++ disableAggregation
+	// settings that are not specific to a configuration
+	lazy val projectBaseSettings: Seq[Setting[_]] = projectCore ++ paths ++ baseClasspaths ++ baseTasks ++ compileBase ++ disableAggregation
+	lazy val defaultSettings: Seq[Setting[_]] = projectBaseSettings ++ defaultConfigs
 }
 object Classpaths
 {

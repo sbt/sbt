@@ -80,20 +80,21 @@ class XSbt(info: ProjectInfo) extends ParentProject(info) with NoCrossPaths
 
 		// Standard task system.  This provides map, flatMap, join, and more on top of the basic task model.
 	val stdTaskSub = testedBase(tasksPath / "standard", "Task System", taskSub, collectionSub, logSub, ioSub, processSub)
-		// The main integration project for sbt.  It brings all of the subsystems together, configures them, and provides for overriding conventions.
-	val mainSub = baseProject("main", "Main",
+		// Implementation and support code for defining actions.
+	val actionsSub = baseProject(mainPath / "actions", "Actions",
 		classfileSub, classpathSub, compileIncrementalSub, compilePersistSub, compilerSub, completeSub, discoverySub,
-		interfaceSub, ioSub, ivySub, launchInterfaceSub, logSub, processSub, taskSub, stdTaskSub, runSub, trackingSub, testingSub)
+		interfaceSub, ioSub, ivySub, logSub, processSub, runSub, stdTaskSub, taskSub, trackingSub, testingSub)
+
+		// The main integration project for sbt.  It brings all of the subsystems together, configures them, and provides for overriding conventions.
+	val mainSub = baseProject(mainPath, "Main", actionsSub, interfaceSub, ioSub, ivySub, launchInterfaceSub, logSub, processSub, runSub)
 		// Strictly for bringing implicits and aliases from subsystems into the top-level sbt namespace through a single package object
-	val sbtSub = project(sbtPath, "Simple Build Tool", new Sbt(_), mainSub) // technically, we need a dependency on all of mainSub's dependencies, but we don't do that since this is strictly an integration project
+		//  technically, we need a dependency on all of mainSub's dependencies, but we don't do that since this is strictly an integration project
+		//  with the sole purpose of providing certain identifiers without qualification (with a package object)
+	val sbtSub = project(sbtPath, "Simple Build Tool", new Sbt(_), mainSub)
 
 	/** following modules are not updated for 2.8 or 0.9 */
 	/*
-	val sbtSub = project(sbtPath, "Simple Build Tool", new SbtProject(_) {},
-		compilerSub, launchInterfaceSub, testingSub, cacheSub, taskSub)
-
 	val installerSub = project(sbtPath / "install", "Installer", new InstallerProject(_) {}, sbtSub)
-
 	lazy val dist = task { None } dependsOn(launchSub.proguard, sbtSub.publishLocal, installerSub.publishLocal)*/
 
 	def baseProject(path: Path, name: String, deps: Project*) = project(path, name, new Base(_), deps : _*)
@@ -106,6 +107,7 @@ class XSbt(info: ProjectInfo) extends ParentProject(info) with NoCrossPaths
 	def launchPath = path("launch")
 	def utilPath = path("util")
 	def compilePath = path("compile")
+	def mainPath = path("main")
 
 	def compilerInterfaceClasspath = compileInterfaceSub.projectClasspath(Configurations.Test)
 
