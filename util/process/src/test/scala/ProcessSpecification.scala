@@ -6,7 +6,7 @@ import Prop._
 
 import Process._
 
-object ProcessSpecification extends Properties("Process I/O")
+private[this] object ProcessSpecification extends Properties("Process I/O")
 {
 	implicit val exitCodeArb: Arbitrary[Array[Byte]] = Arbitrary(Gen.choose(0, 10) flatMap { size => Gen.resize(size, Arbitrary.arbArray[Byte].arbitrary) })
 
