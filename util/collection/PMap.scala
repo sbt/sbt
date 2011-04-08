@@ -11,6 +11,7 @@ trait RMap[K[_], V[_]]
 	def apply[T](k: K[T]): V[T]
 	def get[T](k: K[T]): Option[V[T]]
 	def contains[T](k: K[T]): Boolean
+	def toSeq: Seq[(K[_], V[_])]
 }
 
 trait IMap[K[_], V[_]] extends (K ~> V) with RMap[K,V]
@@ -19,7 +20,6 @@ trait IMap[K[_], V[_]] extends (K ~> V) with RMap[K,V]
 	def remove[T](k: K[T]): IMap[K,V]
 	def mapValue[T](k: K[T], init: V[T], f: V[T] => V[T]): IMap[K,V]
 	def mapValues[V2[_]](f: V ~> V2): IMap[K,V2]
-	def toSeq: Seq[(K[_], V[_])]
 }
 trait PMap[K[_], V[_]] extends (K ~> V) with RMap[K,V]
 {
@@ -82,6 +82,7 @@ class DelegatingPMap[K[_], V[_]](backing: mutable.Map[K[_], V[_]]) extends Abstr
 		update(k, v)
 		v
 	}
+	def toSeq = backing.toSeq
 
 	private[this] def cast[T](v: V[_]): V[T] = v.asInstanceOf[V[T]]
 	private[this] def cast[T](o: Option[V[_]]): Option[V[T]] = o map cast[T]
