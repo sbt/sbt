@@ -646,7 +646,7 @@ object Classpaths
 				visited add (p, ac.name)
 			val masterConfs = configurationNames(project)
 
-			for( Project.ResolvedClasspathDependency(dep, confMapping) <- project.dependencies)
+			for( ResolvedClasspathDependency(dep, confMapping) <- project.dependencies)
 			{
 				val depProject = thisProject in dep get data getOrElse error("Invalid project: " + dep)
 				val mapping = mapped(confMapping, masterConfs, configurationNames(depProject), "compile", "*->compile")

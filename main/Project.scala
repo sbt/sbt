@@ -18,49 +18,75 @@ sealed trait ProjectDefinition[PR <: ProjectReference]
 	def settings: Seq[Project.Setting[_]]
 	def aggregate: Seq[PR]
 	def delegates: Seq[PR]
-	def dependencies: Seq[Project.ClasspathDep[PR]]
+	def dependencies: Seq[ClasspathDep[PR]]
 	def uses: Seq[PR] = aggregate ++ dependencies.map(_.project)
 	def referenced: Seq[PR] = delegates ++ uses
-}
-final case class ResolvedProject(id: String, base: File, aggregate: Seq[ProjectRef], dependencies: Seq[Project.ResolvedClasspathDependency], delegates: Seq[ProjectRef],
-	settings: Seq[Project.Setting[_]], configurations: Seq[Configuration]) extends ProjectDefinition[ProjectRef]
 
-final case class Project(id: String, base: File, aggregate: Seq[ProjectReference] = Nil, dependencies: Seq[Project.ClasspathDependency] = Nil, delegates: Seq[ProjectReference] = Nil,
-	settings: Seq[Project.Setting[_]] = Project.defaultSettings, configurations: Seq[Configuration] = Configurations.default) extends ProjectDefinition[ProjectReference]
+	override final def hashCode = id.hashCode
+	override final def equals(o: Any) = o match {
+		case p: ProjectDefinition[_] => p.getClass == this.getClass && p.id == id
+		case _ => false
+	}
+}
+sealed trait Project extends ProjectDefinition[ProjectReference]
 {
-	def dependsOn(deps: Project.ClasspathDependency*): Project = copy(dependencies = dependencies ++ deps)
-	def delegates(from: ProjectReference*): Project = copy(delegates = delegates ++ from)
-	def aggregate(refs: ProjectReference*): Project = copy(aggregate = aggregate ++ refs)
-	def configs(cs: Configuration*): Project = copy(configurations = configurations ++ cs)
-	def settings(ss: Project.Setting[_]*): Project = copy(settings = settings ++ ss)
+	def copy(id: String = id, base: File = base, aggregate: => Seq[ProjectReference] = aggregate, dependencies: => Seq[ClasspathDep[ProjectReference]] = dependencies, delegates: => Seq[ProjectReference] = delegates,
+		settings: Seq[Project.Setting[_]] = settings, configurations: Seq[Configuration] = configurations): Project =
+			Project(id, base, aggregate = aggregate, dependencies = dependencies, delegates = delegates, settings, configurations)
+
 	def resolve(resolveRef: ProjectReference => ProjectRef): ResolvedProject =
 	{
 		def resolveRefs(prs: Seq[ProjectReference]) = prs map resolveRef
-		def resolveDeps(ds: Seq[Project.ClasspathDependency]) = ds map resolveDep
-		def resolveDep(d: Project.ClasspathDependency) = Project.ResolvedClasspathDependency(resolveRef(d.project), d.configuration)
-		ResolvedProject(id, base, aggregate = resolveRefs(aggregate), dependencies = resolveDeps(dependencies), delegates = resolveRefs(delegates), settings, configurations)
+		def resolveDeps(ds: Seq[ClasspathDep[ProjectReference]]) = ds map resolveDep
+		def resolveDep(d: ClasspathDep[ProjectReference]) = ResolvedClasspathDependency(resolveRef(d.project), d.configuration)
+		resolved(id, base, aggregate = resolveRefs(aggregate), dependencies = resolveDeps(dependencies), delegates = resolveRefs(delegates), settings, configurations)
 	}
 	def resolveBuild(resolveRef: ProjectReference => ProjectReference): Project =
 	{
 		def resolveRefs(prs: Seq[ProjectReference]) = prs map resolveRef
-		def resolveDeps(ds: Seq[Project.ClasspathDependency]) = ds map resolveDep
-		def resolveDep(d: Project.ClasspathDependency) = Project.ClasspathDependency(resolveRef(d.project), d.configuration)
-		copy(aggregate = resolveRefs(aggregate), dependencies = resolveDeps(dependencies), delegates = resolveRefs(delegates))
+		def resolveDeps(ds: Seq[ClasspathDep[ProjectReference]]) = ds map resolveDep
+		def resolveDep(d: ClasspathDep[ProjectReference]) = ClasspathDependency(resolveRef(d.project), d.configuration)
+		apply(id, base, aggregate = resolveRefs(aggregate), dependencies = resolveDeps(dependencies), delegates = resolveRefs(delegates), settings, configurations)
 	}
+
+	def dependsOn(deps: ClasspathDep[ProjectReference]*): Project = copy(dependencies = dependencies ++ deps)
+	def delegateTo(from: ProjectReference*): Project = copy(delegates = delegates ++ from)
+	def aggregate(refs: ProjectReference*): Project = copy(aggregate = (aggregate: Seq[ProjectReference]) ++ refs)
+	def configs(cs: Configuration*): Project = copy(configurations = configurations ++ cs)
+	def settings(ss: Project.Setting[_]*): Project = copy(settings = (settings: Seq[Project.Setting[_]]) ++ ss)
 }
+sealed trait ResolvedProject extends ProjectDefinition[ProjectRef]
+
 final case class Extracted(structure: Load.BuildStructure, session: SessionSettings, currentRef: ProjectRef, rootProject: URI => String)
 {
 	lazy val currentUnit = structure units currentRef.build
 	lazy val currentProject = currentUnit defined currentRef.project
 }
 
+sealed trait ClasspathDep[PR <: ProjectReference] { def project: PR; def configuration: Option[String] }
+final case class ResolvedClasspathDependency(project: ProjectRef, configuration: Option[String]) extends ClasspathDep[ProjectRef]
+final case class ClasspathDependency(project: ProjectReference, configuration: Option[String]) extends ClasspathDep[ProjectReference]
+
 object Project extends Init[Scope]
 {
+	private abstract class ProjectDef[PR <: ProjectReference](val id: String, val base: File, aggregate0: => Seq[PR], dependencies0: => Seq[ClasspathDep[PR]], delegates0: => Seq[PR],
+		val settings: Seq[Setting[_]], val configurations: Seq[Configuration]) extends ProjectDefinition[PR]
+	{
+		lazy val aggregate = aggregate0
+		lazy val dependencies = dependencies0
+		lazy val delegates = delegates0
+	}
+
+	def apply(id: String, base: File, aggregate: => Seq[ProjectReference] = Nil, dependencies: => Seq[ClasspathDep[ProjectReference]] = Nil, delegates: => Seq[ProjectReference] = Nil,
+		settings: Seq[Setting[_]] = defaultSettings, configurations: Seq[Configuration] = Configurations.default): Project =
+			new ProjectDef[ProjectReference](id, base, aggregate, dependencies, delegates, settings, configurations) with Project
+
+	def resolved(id: String, base: File, aggregate: => Seq[ProjectRef], dependencies: => Seq[ResolvedClasspathDependency], delegates: => Seq[ProjectRef],
+		settings: Seq[Setting[_]], configurations: Seq[Configuration]): ResolvedProject =
+			new ProjectDef[ProjectRef](id, base, aggregate, dependencies, delegates, settings, configurations) with ResolvedProject
+
 	def defaultSettings: Seq[Setting[_]] = Defaults.defaultSettings
 
-	sealed trait ClasspathDep[PR <: ProjectReference] { def project: PR; def configuration: Option[String] }
-	final case class ResolvedClasspathDependency(project: ProjectRef, configuration: Option[String]) extends ClasspathDep[ProjectRef]
-	final case class ClasspathDependency(project: ProjectReference, configuration: Option[String]) extends ClasspathDep[ProjectReference]
 	final class Constructor(p: ProjectReference) {
 		def %(conf: String): ClasspathDependency = new ClasspathDependency(p, Some(conf))
 	}
@@ -254,7 +280,7 @@ object Project extends Init[Scope]
 
 trait ProjectConstructors
 {
-	implicit def configDependencyConstructor[T <% ProjectReference](p: T): Project.Constructor = new Project.Constructor(p)
-	implicit def classpathDependency[T <% ProjectReference](p: T): Project.ClasspathDependency = new Project.ClasspathDependency(p, None)
+	implicit def configDependencyConstructor[T <% ProjectReference](p: T): Constructor = new Constructor(p)
+	implicit def classpathDependency[T <% ProjectReference](p: T): ClasspathDependency = new ClasspathDependency(p, None)
 }
 
