@@ -9,8 +9,6 @@ object CompileTest extends Specification
 {
 	"Analysis compiler" should {
 		"compile basic sources" in {
-			WithCompiler( "2.7.2" )(testCompileAnalysis)
-			WithCompiler( "2.7.3" )(testCompileAnalysis)
 			WithCompiler( "2.7.4" )(testCompileAnalysis)
 			WithCompiler( "2.7.5" )(testCompileAnalysis)
 			WithCompiler( "2.7.7" )(testCompileAnalysis)
@@ -21,7 +19,7 @@ object CompileTest extends Specification
 
 	"Raw compiler" should {
 		"Properly handle classpaths" in {
-			testClasspath("2.7.2")
+			testClasspath("2.7.4")
 			testClasspath("2.7.7")
 			testClasspath("2.8.0")
 			testClasspath("2.8.1")
@@ -53,6 +51,9 @@ object CompileTest extends Specification
 			case t if isMissingRequirementError(t) => true
 			case _ => false
 		}
+	private def shouldSucceed(act: => Unit) =
+		try { act } catch { case c: xsbti.CompileFailed => error(c.toString) }
+
 	private def isMissingRequirementError(t: Throwable) = t.getClass.getName == "scala.tools.nsc.MissingRequirementError"
 	private def testClasspath(scalaVersion: String) =
 		WithCompiler.launcher { (launch, log) =>
@@ -67,26 +68,25 @@ object CompileTest extends Specification
 			
 			val fullBoot = "-bootclasspath" :: fullExplicit.compilerArguments.createBootClasspath :: Nil
 			val withCompiler = noCompiler.scalaInstance.compilerJar :: Nil
+			val withLibrary = noCompiler.scalaInstance.libraryJar :: Nil
+			val withLibraryCompiler = withLibrary ++ withCompiler
 			
 			WithFiles( new File("Test.scala") -> "object Test", new File("Test2.scala") -> UsingCompiler ) { case Seq(plain, useCompiler) =>
 				val plainSrcs = Seq[File](plain)
 				val compSrcs = Seq[File](useCompiler)
 				withTemporaryDirectory { out =>
-					standard(plainSrcs, Nil,  out, Nil) //success
-					standard(compSrcs, Nil,  out, Nil) //success
+					shouldSucceed( standard(plainSrcs, Nil,  out, Nil) )//success
+					shouldSucceed( standard(compSrcs, Nil,  out, Nil) )//success
 					
-					noCompiler(plainSrcs, Nil,  out, Nil) //success
+					shouldSucceed( noCompiler(plainSrcs, Nil,  out, Nil) )//success
 					shouldFail( noCompiler(compSrcs, Nil,  out, Nil) )
-					noCompiler(compSrcs, withCompiler, out, Nil) //success
+					shouldSucceed( noCompiler(compSrcs, withCompiler, out, Nil) )//success
 					
 					shouldFail( fullExplicit(plainSrcs, Nil, out, Nil) )// failure
 					shouldFail( fullExplicit(compSrcs, Nil, out, Nil) )// failure
-					fullExplicit(plainSrcs, Nil, out, fullBoot) // success
-					fullExplicit(compSrcs, withCompiler, out, fullBoot) // success
-
-					// specs now marks something as skipped if there are no matchers
-					// this test throws exceptions on failure, so use a dummy check here
-					true must be equalTo(true)
+					shouldSucceed( fullExplicit(plainSrcs, withLibrary, out, fullBoot) )// success
+					shouldSucceed( fullExplicit(compSrcs, withLibraryCompiler, out, fullBoot) )// success
+					true must beTrue
 				}
 			}
 		}

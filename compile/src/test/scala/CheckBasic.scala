@@ -7,7 +7,7 @@ package compiler
 object CheckBasic extends Specification
 {
 	val basicName = new File("Basic.scala")
-	val basicSource = "package org.example { object Basic }"
+	val basicSource = "package org.example { /** A comment */ object Basic }"
 
 	"Compiling basic file should succeed" in {
 		WithFiles(basicName -> basicSource){ files =>
