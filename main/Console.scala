@@ -31,7 +31,7 @@ object Console
 	def sbt(state: State, extra: String)(implicit log: Logger)
 	{
 		val extracted = Project extract state
-		val bindings = ("state" -> state) :: ("extracted" -> extracted ) :: Nil
+		val bindings = ("currentState" -> state) :: ("extracted" -> extracted ) :: Nil
 		val unit = extracted.currentUnit
 		val compiler = Compiler.compilers(state.configuration, log).scalac
 		val imports = Load.getImports(unit.unit) ++ Load.importAll(bindings.map(_._1))
