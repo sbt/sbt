@@ -48,7 +48,6 @@ object Defaults
 	def configSrcSub(key: ScopedSetting[File]): Initialize[File] = (key, configuration) { (src, conf) => src / nameForSrc(conf.name) }
 	def nameForSrc(config: String) = if(config == "compile") "main" else config
 	def prefix(config: String) = if(config == "compile") "" else config + "-"
-	def toSeq[T](key: ScopedSetting[T]): Initialize[Seq[T]] = key( _ :: Nil)
 
 	def extractAnalysis[T](a: Attributed[T]): (T, inc.Analysis) = 
 		(a.data, a.metadata get Keys.analysis getOrElse inc.Analysis.Empty)
@@ -109,8 +108,8 @@ object Defaults
 		javaSource <<= sourceDirectory / "java",
 		resourceDirectory <<= sourceDirectory / "resources",
 		generatedResourceDirectory <<= target / "res_managed",
-		sourceDirectories <<= (scalaSource, javaSource) { _ :: _ :: Nil },
-		resourceDirectories <<= (resourceDirectory, generatedResourceDirectory) { _ :: _ :: Nil },
+		sourceDirectories <<= Seq(scalaSource, javaSource).join,
+		resourceDirectories <<= Seq(resourceDirectory, generatedResourceDirectory).join,
 		resources <<= (resourceDirectories, defaultExcludes, generatedResources, generatedResourceDirectory) map resourcesTask,
 		generatedResources <<= (definedSbtPlugins, generatedResourceDirectory) map writePluginsDescriptor
 	)
@@ -149,7 +148,7 @@ object Defaults
 	)
 
 	lazy val projectTasks: Seq[Setting[_]] = Seq(
-		cleanFiles <<= (target, sourceManaged) { _ :: _ :: Nil },
+		cleanFiles <<= Seq(target, sourceManaged).join,
 		clean <<= cleanFiles map IO.delete,
 		consoleProject <<= consoleProjectTask,
 		watchSources <<= watchSourcesTask,
