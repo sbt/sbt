@@ -67,7 +67,7 @@ sealed trait ClasspathDep[PR <: ProjectReference] { def project: PR; def configu
 final case class ResolvedClasspathDependency(project: ProjectRef, configuration: Option[String]) extends ClasspathDep[ProjectRef]
 final case class ClasspathDependency(project: ProjectReference, configuration: Option[String]) extends ClasspathDep[ProjectReference]
 
-object Project extends Init[Scope]
+object Project extends Init[Scope] with ProjectExtra
 {
 	private abstract class ProjectDef[PR <: ProjectReference](val id: String, val base: File, aggregate0: => Seq[PR], dependencies0: => Seq[ClasspathDep[PR]], delegates0: => Seq[PR],
 		val settings: Seq[Setting[_]], val configurations: Seq[Configuration]) extends ProjectDefinition[PR]
@@ -229,13 +229,6 @@ object Project extends Init[Scope]
 	def reverseDependencies(cMap: CompiledMap, scoped: ScopedKey[_]): Iterable[ScopedKey[_]] =
 		for( (key,compiled) <- cMap; dep <- compiled.dependencies if dep == scoped)  yield  key
 
-	def inConfig(conf: Configuration)(ss: Seq[Setting[_]]): Seq[Setting[_]] =
-		inScope(ThisScope.copy(config = Select(conf)) )( (configuration :== conf) +: ss)
-	def inTask(t: Scoped)(ss: Seq[Setting[_]]): Seq[Setting[_]] =
-		inScope(ThisScope.copy(task = Select(t.key)) )( ss )
-	def inScope(scope: Scope)(ss: Seq[Setting[_]]): Seq[Setting[_]] =
-		Project.transform(Scope.replaceThis(scope), ss)
-
 	object LoadAction extends Enumeration {
 		val Return, Current, Plugins = Value
 	}
@@ -278,9 +271,15 @@ object Project extends Init[Scope]
 	}
 }
 
-trait ProjectConstructors
+trait ProjectExtra
 {
 	implicit def configDependencyConstructor[T <% ProjectReference](p: T): Constructor = new Constructor(p)
 	implicit def classpathDependency[T <% ProjectReference](p: T): ClasspathDependency = new ClasspathDependency(p, None)
-}
 
+	def inConfig(conf: Configuration)(ss: Seq[Setting[_]]): Seq[Setting[_]] =
+		inScope(ThisScope.copy(config = Select(conf)) )( (configuration :== conf) +: ss)
+	def inTask(t: Scoped)(ss: Seq[Setting[_]]): Seq[Setting[_]] =
+		inScope(ThisScope.copy(task = Select(t.key)) )( ss )
+	def inScope(scope: Scope)(ss: Seq[Setting[_]]): Seq[Setting[_]] =
+		Project.transform(Scope.replaceThis(scope), ss)
+}

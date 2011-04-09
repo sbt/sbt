@@ -1,7 +1,7 @@
 /* sbt -- Simple Build Tool
- * Copyright  2010 Mark Harrah
+ * Copyright 2010, 2011 Mark Harrah
  */
-package object sbt extends sbt.std.TaskExtra with sbt.Types with sbt.ProcessExtra with sbt.impl.DependencyBuilders with sbt.PathExtra with sbt.ProjectConstructors
+package object sbt extends sbt.std.TaskExtra with sbt.Types with sbt.ProcessExtra with sbt.impl.DependencyBuilders with sbt.PathExtra with sbt.ProjectExtra
 {
 	type Setting[T] = Project.Setting[T]
 	type ScopedKey[T] = Project.ScopedKey[T]
@@ -24,6 +24,12 @@ package object sbt extends sbt.std.TaskExtra with sbt.Types with sbt.ProcessExtr
 // java.lang.System is more important, so don't alias this one
 //	def System = C.System
 	def Optional = C.Optional
+	def config(s: String): Configuration = Configurations.config(s)
 
 	implicit def globFilter(expression: String): NameFilter = GlobFilter(expression)
+	implicit def richAttributed(s: Seq[Attributed[File]]): RichAttributed = new RichAttributed(s)
+	final class RichAttributed private[sbt](s: Seq[Attributed[File]])
+	{
+		def files: Seq[File] = Build data s
+	}
 }
