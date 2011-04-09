@@ -82,7 +82,8 @@ object EvaluateTask
 		replaced
 	}
 	def transformInc[T](result: Result[T]): Result[T] =
-		result.toEither.left.map { i => Incomplete.transformBU(i)(convertCyclicInc andThen liftAnonymous andThen taskToKey ) }
+		// taskToKey needs to be before liftAnonymous.  liftA only lifts non-keyed (anonymous) Incompletes.
+		result.toEither.left.map { i => Incomplete.transformBU(i)(convertCyclicInc andThen taskToKey andThen liftAnonymous ) }
 	def taskToKey: Incomplete => Incomplete = {
 		case in @ Incomplete(Some(node: Task[_]), _, _, _, _) => in.copy(node = transformNode(node))
 		case i => i
@@ -102,7 +103,7 @@ object EvaluateTask
 		node.info.name orElse transformNode(node).map(Project.display) getOrElse ("<anon-" + System.identityHashCode(node).toHexString + ">")
 	def liftAnonymous: Incomplete => Incomplete = {
 		case i @ Incomplete(node, tpe, None, causes, None) =>
-			causes.find( inc => inc.message.isDefined || inc.directCause.isDefined) match {
+			causes.find( inc => !inc.node.isDefined && (inc.message.isDefined || inc.directCause.isDefined)) match {
 				case Some(lift) => i.copy(directCause = lift.directCause, message = lift.message)
 				case None => i
 			}
