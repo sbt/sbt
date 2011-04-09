@@ -19,7 +19,7 @@ object Script
 
 			val eval = session.currentEval()
 			val settings = blocks(script).flatMap { block =>
-				evaluate(eval, script.getPath, block.lines, currentUnit.imports, block.offset)
+				evaluate(eval, script.getPath, block.lines, currentUnit.imports, block.offset+1)
 			}
 			val scriptAsSource = sources in Compile := script :: Nil
 			val asScript = scalacOptions ++= Seq("-Xscript", script.getName.stripSuffix(".scala"))
