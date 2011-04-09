@@ -59,7 +59,7 @@ class xMain extends xsbti.AppMain
 	import CommandSupport._
 object BuiltinCommands
 {
-	def DefaultCommands: Seq[Command] = Seq(ignore, help, reboot, read, history, continuous, exit, loadProject, loadProjectImpl, loadFailed,
+	def DefaultCommands: Seq[Command] = Seq(ignore, help, reboot, read, history, continuous, exit, loadProject, loadProjectImpl, loadFailed, Script.command,
 		projects, project, setOnFailure, clearOnFailure, ifLast, multi, shell, set, inspect, eval, alias, append, last, lastGrep, nop, sessionCommand, act)
 	def DefaultBootCommands: Seq[String] = LoadProject :: (IfLast + " " + Shell) :: Nil
 
