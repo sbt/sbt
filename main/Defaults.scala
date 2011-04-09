@@ -80,7 +80,8 @@ object Defaults
 		showSuccess :== true,
 		commands :== Nil,
 		retrieveManaged :== false,
-		settings <<= state map { state => Project.structure(state).data }
+		buildStructure <<= state map Project.structure,
+		settings <<= buildStructure map ( _.data )
 	))
 	def projectCore: Seq[Setting[_]] = Seq(
 		name <<= thisProject(_.id),

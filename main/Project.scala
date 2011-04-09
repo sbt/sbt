@@ -6,7 +6,7 @@ package sbt
 	import java.io.File
 	import java.net.URI
 	import Project._
-	import Keys.{appConfiguration, buildStructure, commands, configuration, historyPath, logged, projectCommand, sessionSettings, shellPrompt, streams, thisProject, thisProjectRef, watch}
+	import Keys.{appConfiguration, stateBuildStructure, commands, configuration, historyPath, logged, projectCommand, sessionSettings, shellPrompt, streams, thisProject, thisProjectRef, watch}
 	import Scope.{GlobalScope,ThisScope}
 	import CommandSupport.logger
 
@@ -92,7 +92,7 @@ object Project extends Init[Scope]
 	}
 
 	def getOrError[T](state: State, key: AttributeKey[T], msg: String): T = state get key getOrElse error(msg)
-	def structure(state: State): Load.BuildStructure = getOrError(state, buildStructure, "No build loaded.")
+	def structure(state: State): Load.BuildStructure = getOrError(state, stateBuildStructure, "No build loaded.")
 	def session(state: State): SessionSettings = getOrError(state, sessionSettings, "Session not initialized.")
 
 	def extract(state: State): Extracted =
@@ -109,7 +109,7 @@ object Project extends Init[Scope]
 
 	def setProject(session: SessionSettings, structure: Load.BuildStructure, s: State): State =
 	{
-		val newAttrs = s.attributes.put(buildStructure, structure).put(sessionSettings, session)
+		val newAttrs = s.attributes.put(stateBuildStructure, structure).put(sessionSettings, session)
 		val newState = s.copy(attributes = newAttrs)
 		updateCurrent(newState.runExitHooks())
 	}
