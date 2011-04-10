@@ -8,7 +8,7 @@ object B extends Build
 
 	lazy val projects = Seq(root, sub)
 	lazy val root = Project("root", file("."))
-	lazy val sub = Project("sub", file(".")) delegates(root) settings(check <<= checkTask)
+	lazy val sub = Project("sub", file(".")) delegateTo(root) settings(check <<= checkTask)
 
 	lazy val checkTask = InputTask(_ => Space ~> NatBasic) { result =>
 		(result, maxErrors) map { (i, max)  =>

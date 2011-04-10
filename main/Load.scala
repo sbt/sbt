@@ -59,7 +59,7 @@ object Load
 			case BuildRef(uri) => configInheritRef(lb, ProjectRef(uri, rootProject(uri)), config)
 		}
 	def configInheritRef(lb: LoadedBuild, ref: ProjectRef, config: ConfigKey): Seq[ConfigKey] =
-		getConfiguration(lb.units, ref.build, ref.project, config).extendsConfigs.map(c => ConfigKey(c.name))
+		configurationOpt(lb.units, ref.build, ref.project, config).toList.flatMap(_.extendsConfigs).map(c => ConfigKey(c.name))
 
 	def projectInherit(lb: LoadedBuild, ref: ResolvedReference): Seq[ProjectRef] =
 		ref match
@@ -282,7 +282,9 @@ object Load
 	def getRootProject(map: Map[URI, BuildUnitBase]): URI => String =
 		uri => getBuild(map, uri).rootProjects.headOption getOrElse emptyBuild(uri)
 	def getConfiguration(map: Map[URI, LoadedBuildUnit], uri: URI, id: String, conf: ConfigKey): Configuration =
-		getProject(map, uri, id).configurations.find(_.name == conf.name) getOrElse noConfiguration(uri, id, conf.name)
+		configurationOpt(map, uri, id, conf) getOrElse noConfiguration(uri, id, conf.name)
+	def configurationOpt(map: Map[URI, LoadedBuildUnit], uri: URI, id: String, conf: ConfigKey): Option[Configuration] =
+		getProject(map, uri, id).configurations.find(_.name == conf.name)
 
 	def getProject(map: Map[URI, LoadedBuildUnit], uri: URI, id: String): ResolvedProject =
 		getBuild(map, uri).defined.getOrElse(id, noProject(uri, id))

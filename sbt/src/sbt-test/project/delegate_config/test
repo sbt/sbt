@@ -1,0 +1,11 @@
+-> root/sample
+> sub/sample
+
+-> root/*:sample
+> sub/*:sample
+
+> root/*:check
+> root/check
+
+> sub/*:check
+> sub/check
