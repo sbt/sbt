@@ -56,6 +56,12 @@ object NothingFilter extends NameFilter
 	def accept(name: String) = false
 }
 
+object NameFilter
+{
+	implicit def fnToNameFilter(f: String => Boolean): NameFilter =  new NameFilter {
+		def accept(name: String) = f(name)
+	}
+}
 object GlobFilter
 {
 	implicit def apply(expression: String): NameFilter =
