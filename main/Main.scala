@@ -4,10 +4,10 @@
 package sbt
 
 	import Execute.NodeView
-	import complete.HistoryCommands
+	import complete.{DefaultParsers, HistoryCommands, Parser}
 	import HistoryCommands.{Start => HistoryPrefix}
 	import compiler.EvalImports
-	import sbt.complete.{DefaultParsers, Parser}
+
 
 	import Command.applyEffect
 	import Keys.{analysis,historyPath,logged,shellPrompt}
@@ -59,7 +59,7 @@ class xMain extends xsbti.AppMain
 	import CommandSupport._
 object BuiltinCommands
 {
-	def DefaultCommands: Seq[Command] = Seq(ignore, help, reboot, read, history, continuous, exit, loadProject, loadProjectImpl, loadFailed, Script.command,
+	def DefaultCommands: Seq[Command] = Seq(ignore, help, reboot, read, history, continuous, exit, loadProject, loadProjectImpl, loadFailed, Script.command, Cross.crossBuild, Cross.switchVersion,
 		projects, project, setOnFailure, clearOnFailure, ifLast, multi, shell, set, inspect, eval, alias, append, last, lastGrep, nop, sessionCommand, act)
 	def DefaultBootCommands: Seq[String] = LoadProject :: (IfLast + " " + Shell) :: Nil
 

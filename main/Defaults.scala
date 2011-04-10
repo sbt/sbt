@@ -125,6 +125,7 @@ object Defaults
 		scalacOptions in GlobalScope :== Nil,
 		scalaInstance <<= scalaInstanceSetting,
 		scalaVersion in GlobalScope <<= appConfiguration( _.provider.scalaProvider.version),
+		crossScalaVersions <<= Seq(scalaVersion).join,
 		target <<= (target, scalaInstance, crossPaths)( (t,si,cross) => if(cross) t / ("scala-" + si.actualVersion) else t )
 	)
 

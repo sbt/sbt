@@ -76,6 +76,7 @@ object Keys
 	val scalaHome = SettingKey[Option[File]]("scala-home")
 	val scalaInstance = SettingKey[ScalaInstance]("scala-instance")
 	val scalaVersion = SettingKey[String]("scala-version")
+	val crossScalaVersions = SettingKey[Seq[String]]("cross-scala-versions")
 	val classpathOptions = SettingKey[ClasspathOptions]("classpath-options")
 	val definedSbtPlugins = TaskKey[Set[String]]("defined-sbt-plugins")
 	val sbtPlugin = SettingKey[Boolean]("sbt-plugin")

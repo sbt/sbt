@@ -39,7 +39,7 @@ object Command
 	def apply[T](name: String, briefHelp: (String, String), detail: String)(parser: State => Parser[T])(effect: (State,T) => State): Command =
 		apply(name, Help(name, briefHelp, detail) )(parser)(effect)
 	def apply[T](name: String, help: Help*)(parser: State => Parser[T])(effect: (State,T) => State): Command  =
-		make(name, help : _* )(s => applyEffect(parser(s))(t => effect(s,t)) )
+		make(name, help : _* )(applyEffect(parser)(effect) )
 
 	def args(name: String, briefHelp: (String, String), detail: String, display: String)(f: (State, Seq[String]) => State): Command =
 		args(name, display, Help(name, briefHelp, detail) )(f)
@@ -53,9 +53,12 @@ object Command
 		make(name, help : _*)( state => token(trimmed(any.+.string) map apply1(f, state)) )
 	
 	def custom(parser: State => Parser[() => State], help: Seq[Help] = Nil): Command  =  new ArbitraryCommand(parser, help, AttributeMap.empty)
+	def arb[T](parser: State => Parser[T], help: Help*)(effect: (State, T) => State): Command  =  custom(applyEffect(parser)(effect), help)
 
 	def validID(name: String) = DefaultParsers.matches(OpOrID, name)
 
+	def applyEffect[T](parser: State => Parser[T])(effect: (State, T) => State): State => Parser[() => State] =
+		s => applyEffect(parser(s))(t => effect(s,t))
 	def applyEffect[T](p: Parser[T])(f: T => State): Parser[() => State] =
 		p map { t => () => f(t) }
 
