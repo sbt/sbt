@@ -50,30 +50,3 @@ object IvyRetrieve
 	def configurationReport(confReport: ConfigurationResolveReport): ConfigurationReport =
 		new ConfigurationReport(confReport.getConfiguration, moduleReports(confReport))
 }
-
-final class UpdateReport(val configurations: Seq[ConfigurationReport])
-{
-	override def toString = "Update report:\n" + configurations.mkString
-	def allModules: Seq[ModuleID] = configurations.flatMap(_.allModules).distinct
-	def retrieve(f: (String, ModuleID, Artifact, File) => File): UpdateReport =
-		new UpdateReport(configurations map { _ retrieve f} )
-	def configuration(s: String) = configurations.find(_.configuration == s)
-}
-final class ConfigurationReport(val configuration: String, val modules: Seq[ModuleReport])
-{
-	override def toString = "\t" + configuration + ":\n" + modules.mkString
-	def allModules: Seq[ModuleID] = modules.map(_.module)
-	def retrieve(f: (String, ModuleID, Artifact, File) => File): ConfigurationReport =
-		new ConfigurationReport(configuration, modules map { _.retrieve( (mid,art,file) => f(configuration, mid, art, file)) })
-}
-final class ModuleReport(val module: ModuleID, val artifacts: Seq[(Artifact, File)], val missingArtifacts: Seq[Artifact])
-{
-	override def toString =
-	{
-		val arts = artifacts.map(_.toString) ++ missingArtifacts.map(art => "(MISSING) " + art)
-		"\t\t" + module + ": " +
-			(if(arts.size <= 1) "" else "\n\t\t\t") + arts.mkString("\n\t\t\t") + "\n"
-	}
-	def retrieve(f: (ModuleID, Artifact, File) => File): ModuleReport =
-		new ModuleReport(module, artifacts.map { case (art,file) => (art, f(module, art, file)) }, missingArtifacts)
-}
