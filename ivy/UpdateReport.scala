@@ -25,7 +25,7 @@ final class UpdateReport(val configurations: Seq[ConfigurationReport])
 	def configuration(s: String) = configurations.find(_.configuration == s)
 
 	/** Gets the names of all resolved configurations.  This `UpdateReport` contains one `ConfigurationReport` for each configuration in this list. */
-	def configurations: Seq[String] = configurations.map(_.configuration)
+	def allConfigurations: Seq[String] = configurations.map(_.configuration)
 }
 
 /** Provides information about resolution of a single configuration.
