@@ -20,7 +20,7 @@ final case class LaunchConfiguration(scalaVersion: Value[String], ivyConfigurati
 		LaunchConfiguration(new Explicit(newScalaVersion), ivyConfiguration.copy(classifiers = classifiers0), app.withVersion(new Explicit(newAppVersion)), boot, logging, appProperties)
 	def map(f: File => File) = LaunchConfiguration(scalaVersion, ivyConfiguration, app.map(f), boot.map(f), logging, appProperties)
 }
-final case class IvyOptions(ivyHome: Option[File], classifiers: Classifiers, repositories: List[Repository]) extends NotNull
+final case class IvyOptions(ivyHome: Option[File], classifiers: Classifiers, repositories: List[Repository])
 
 sealed trait Value[T]
 final class Explicit[T](val value: T) extends Value[T] {
@@ -43,7 +43,7 @@ object Classifiers {
 	def apply(forScala: List[String], app: List[String]):Classifiers = Classifiers(new Explicit(forScala), new Explicit(app))
 }
 
-final case class Application(groupID: String, name: String, version: Value[String], main: String, components: List[String], crossVersioned: Boolean, classpathExtra: Array[File]) extends NotNull
+final case class Application(groupID: String, name: String, version: Value[String], main: String, components: List[String], crossVersioned: Boolean, classpathExtra: Array[File])
 {
 	def getVersion = Value.get(version)
 	def withVersion(newVersion: Value[String]) = Application(groupID, name, newVersion, main, components, crossVersioned, classpathExtra)
@@ -61,7 +61,7 @@ object Application
 	}
 }
 
-sealed trait Repository extends NotNull
+sealed trait Repository
 object Repository
 {
 	final case class Maven(id: String, url: URL) extends Repository
@@ -82,7 +82,7 @@ object Repository
 	def defaults: List[Repository] = Predefined.elements.map(Predefined.apply).toList
 }
 
-final case class Search(tpe: Search.Value, paths: List[File]) extends NotNull
+final case class Search(tpe: Search.Value, paths: List[File])
 object Search extends Enumeration
 {
 	def none = Search(Current, Nil)
@@ -93,17 +93,17 @@ object Search extends Enumeration
 	def apply(s: String, paths: List[File]): Search = Search(toValue(s), paths)
 }
 
-final case class BootSetup(directory: File, properties: File, search: Search, promptCreate: String, enableQuick: Boolean, promptFill: Boolean) extends NotNull
+final case class BootSetup(directory: File, properties: File, search: Search, promptCreate: String, enableQuick: Boolean, promptFill: Boolean)
 {
 	def map(f: File => File) = BootSetup(f(directory), f(properties), search, promptCreate, enableQuick, promptFill)
 }
-final case class AppProperty(name: String)(val quick: Option[PropertyInit], val create: Option[PropertyInit], val fill: Option[PropertyInit]) extends NotNull
+final case class AppProperty(name: String)(val quick: Option[PropertyInit], val create: Option[PropertyInit], val fill: Option[PropertyInit])
 
-sealed trait PropertyInit extends NotNull
+sealed trait PropertyInit
 final class SetProperty(val value: String) extends PropertyInit
 final class PromptProperty(val label: String, val default: Option[String]) extends PropertyInit
 
-final class Logging(level: LogLevel.Value) extends NotNull
+final class Logging(level: LogLevel.Value)
 {
 	def log(s: => String, at: LogLevel.Value) = if(level.id <= at.id) stream(at).println("[" + at + "] " + s)
 	def debug(s: => String) = log(s, LogLevel.Debug)

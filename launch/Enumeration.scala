@@ -6,7 +6,7 @@ package xsbt.boot
 import Pre._
 import scala.collection.immutable.List
 
-class Enumeration extends NotNull
+class Enumeration
 {
 	def elements: List[Value] = members
 	private lazy val members: List[Value] =
@@ -25,6 +25,6 @@ class Enumeration extends NotNull
 	}
 	def value(s: String) = new Value(s, 0)
 	def value(s: String, i: Int) = new Value(s, i)
-	class Value(override val toString: String, val id: Int) extends NotNull
+	final class Value(override val toString: String, val id: Int)
 	def toValue(s: String): Value = elements.find(_.toString == s).getOrElse(error("Expected one of " + elements.mkString(",") + " (got: " + s + ")"))
 }

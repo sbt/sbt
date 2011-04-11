@@ -1,5 +1,5 @@
 /* sbt -- Simple Build Tool
- * Copyright 2008, 2009, 2010  Mark Harrah
+ * Copyright 2008, 2009, 2010, 2011  Mark Harrah
  */
 package xsbt.boot
 
@@ -46,7 +46,7 @@ object Launch
 	def run(launcher: xsbti.Launcher)(config: RunConfiguration): xsbti.MainResult =
 	{
 		import config._
-		val scalaProvider: xsbti.ScalaProvider = launcher.getScala(scalaVersion)
+		val scalaProvider: xsbti.ScalaProvider = launcher.getScala(scalaVersion, "(for " + app.name + ")")
 		val appProvider: xsbti.AppProvider = scalaProvider.app(app)
 		val appConfig: xsbti.AppConfiguration = new AppConfiguration(toArray(arguments), workingDirectory, appProvider)
 
@@ -73,15 +73,16 @@ object Launch
 		}
 	}
 }
-final class RunConfiguration(val scalaVersion: String, val app: xsbti.ApplicationID, val workingDirectory: File, val arguments: List[String]) extends NotNull
+final class RunConfiguration(val scalaVersion: String, val app: xsbti.ApplicationID, val workingDirectory: File, val arguments: List[String])
 
 import BootConfiguration.{appDirectoryName, baseDirectoryName, ScalaDirectoryName, TestLoadScalaClasses}
 class Launch private[xsbt](val bootDirectory: File, val ivyOptions: IvyOptions) extends xsbti.Launcher
 {
 	import ivyOptions.{classifiers, repositories}
 	bootDirectory.mkdirs
-	private val scalaProviders = new Cache[String, ScalaProvider](new ScalaProvider(_))
-	def getScala(version: String): xsbti.ScalaProvider = scalaProviders(version)
+	private val scalaProviders = new Cache[String, String, ScalaProvider](new ScalaProvider(_, _))
+	def getScala(version: String): xsbti.ScalaProvider = getScala(version, "")
+	def getScala(version: String, reason: String): xsbti.ScalaProvider = scalaProviders(version, reason)
 
 	lazy val topLoader = (new JNAProvider).loader
 	val updateLockFile = new File(bootDirectory, "sbt.boot.lock")
@@ -103,7 +104,7 @@ class Launch private[xsbt](val bootDirectory: File, val ivyOptions: IvyOptions) 
 		def lockFile = updateLockFile
 	}
 
-	class ScalaProvider(val version: String) extends xsbti.ScalaProvider with Provider
+	class ScalaProvider(val version: String, override val reason: String) extends xsbti.ScalaProvider with Provider
 	{
 		def launcher: xsbti.Launcher = Launch.this
 		def parentLoader = topLoader

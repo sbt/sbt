@@ -1,5 +1,5 @@
 /* sbt -- Simple Build Tool
- * Copyright 2009, 2010  Mark Harrah
+ * Copyright 2009, 2010, 2011  Mark Harrah
  */
 package xsbt.boot
 
@@ -62,16 +62,16 @@ final class Update(config: UpdateConfiguration)
 	private lazy val ivyLockFile = new File(settings.getDefaultIvyUserDir, ".sbt.ivy.lock")
 
 	/** The main entry point of this class for use by the Update module.  It runs Ivy */
-	def apply(target: UpdateTarget): Boolean =
+	def apply(target: UpdateTarget, reason: String): Boolean =
 	{
 		Message.setDefaultLogger(new SbtIvyLogger(logWriter))
-		val action = new Callable[Boolean] { def call =  lockedApply(target) }
+		val action = new Callable[Boolean] { def call =  lockedApply(target, reason) }
 		Locks(ivyLockFile, action)
 	}
-	private def lockedApply(target: UpdateTarget) =
+	private def lockedApply(target: UpdateTarget, reason: String) =
 	{
 		ivy.pushContext()
-		try { update(target); true }
+		try { update(target, reason); true }
 		catch
 		{
 			case e: Exception =>
@@ -87,7 +87,7 @@ final class Update(config: UpdateConfiguration)
 		}
 	}
 	/** Runs update for the specified target (updates either the scala or appliciation jars for building the project) */
-	private def update(target: UpdateTarget)
+	private def update(target: UpdateTarget, reason: String)
 	{
 		import IvyConfiguration.Visibility.PUBLIC
 		// the actual module id here is not that important
@@ -100,13 +100,13 @@ final class Update(config: UpdateConfiguration)
 			case u: UpdateScala =>
 				addDependency(moduleID, ScalaOrg, CompilerModuleName, scalaVersion, "default;optional", u.classifiers)
 				addDependency(moduleID, ScalaOrg, LibraryModuleName, scalaVersion, "default", u.classifiers)
-				System.out.println("Getting Scala " + scalaVersion + " ...")
+				System.out.println("Getting Scala " + scalaVersion + " " + reason + "...")
 			case u: UpdateApp =>
 				val app = u.id
 				val resolvedName = if(app.crossVersioned) app.name + "_" + scalaVersion else app.name
 				addDependency(moduleID, app.groupID, resolvedName, app.getVersion, "default(compile)", u.classifiers)
 				excludeScala(moduleID)
-				System.out.println("Getting " + app.groupID + " " + resolvedName + " " + app.getVersion + " ...")
+				System.out.println("Getting " + app.groupID + " " + resolvedName + " " + app.getVersion + " " + reason + "...")
 		}
 		update(moduleID, target)
 	}

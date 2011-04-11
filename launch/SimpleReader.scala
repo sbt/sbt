@@ -4,7 +4,7 @@
 package xsbt.boot
 
 import jline.ConsoleReader
-abstract class JLine extends NotNull
+abstract class JLine
 {
 	protected[this] val reader: ConsoleReader
 	def readLine(prompt: String) = JLine.withJLine { unsynchronizedReadLine(prompt) }

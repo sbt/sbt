@@ -9,7 +9,7 @@ import java.net.URI
 import scala.collection.immutable.List
 
 object Find { def apply(config: LaunchConfiguration, currentDirectory: File) = (new Find(config))(currentDirectory) }
-class Find(config: LaunchConfiguration) extends NotNull
+class Find(config: LaunchConfiguration)
 {
 	import config.boot.search
 	def apply(currentDirectory: File) =

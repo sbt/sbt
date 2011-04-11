@@ -1,5 +1,5 @@
 /* sbt -- Simple Build Tool
- * Copyright 2009, 2010 Mark Harrah
+ * Copyright 2009, 2010, 2011 Mark Harrah
  */
 package xsbt.boot
 
@@ -8,7 +8,7 @@ import java.io.{File, FileFilter}
 import java.net.{URL, URLClassLoader}
 import java.util.concurrent.Callable
 
-trait Provider extends NotNull
+trait Provider
 {
 	def configuration: UpdateConfiguration
 	def baseDirectories: List[File]
@@ -21,7 +21,8 @@ trait Provider extends NotNull
 
 	def classpath: Array[File] = Provider.getJars(baseDirectories)
 	def fullClasspath:Array[File] = concat(classpath, extraClasspath)
-		
+
+	def reason: String = ""		
 	def retrieveFailed: Nothing = fail("")
 	def retrieveCorrupt(missing: Iterable[String]): Nothing = fail(": missing " + missing.mkString(", "))
 	private def fail(extra: String) =
@@ -38,7 +39,7 @@ trait Provider extends NotNull
 				(existingJars, existingLoader)
 			else
 			{
-				val retrieveSuccess = ( new Update(configuration) )(target)
+				val retrieveSuccess = ( new Update(configuration) )(target, reason)
 				if(retrieveSuccess)
 				{
 					val (newJars, newLoader) = createLoader

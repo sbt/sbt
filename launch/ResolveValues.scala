@@ -22,7 +22,7 @@ object ResolveValues
 }
 
 import ResolveValues.{readProperties, trim}
-final class ResolveValues(conf: LaunchConfiguration) extends NotNull
+final class ResolveValues(conf: LaunchConfiguration)
 {
 	private def propertiesFile = conf.boot.properties
 	private lazy val properties = readProperties(propertiesFile)

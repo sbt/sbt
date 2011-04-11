@@ -19,7 +19,7 @@ object ConfigurationParser
 	
 	implicit val readIDs = ids _
 }
-class ConfigurationParser extends NotNull
+class ConfigurationParser
 {
 	def apply(file: File): LaunchConfiguration = Using(new InputStreamReader(new FileInputStream(file), "UTF-8"))(apply)
 	def apply(s: String): LaunchConfiguration = Using(new StringReader(s))(apply)
@@ -191,7 +191,7 @@ class ConfigurationParser extends NotNull
 	}
 }
 
-sealed trait Line extends NotNull
+sealed trait Line
 final class Labeled(val label: String, val value: Option[String]) extends Line
 final class Section(val name: String) extends Line
 object Comment extends Line

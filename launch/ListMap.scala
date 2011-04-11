@@ -8,7 +8,7 @@ import scala.collection.{Iterable, Iterator}
 import scala.collection.immutable.List
 
 // preserves iteration order
-sealed class ListMap[K,V] private(backing: List[(K,V)]) extends Iterable[(K,V)] with NotNull // use Iterable because Traversable.toStream loops
+sealed class ListMap[K,V] private(backing: List[(K,V)]) extends Iterable[(K,V)] // use Iterable because Traversable.toStream loops
 {
 	import ListMap.remove
 	def update(k: K, v: V) = this.+( (k,v) )
