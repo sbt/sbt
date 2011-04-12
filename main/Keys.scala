@@ -66,6 +66,7 @@ object Keys
 	val crossPaths = SettingKey[Boolean]("cross-paths")
 
 	// compile/doc keys
+	val autoCompilerPlugins = SettingKey[Boolean]("auto-compiler-plugins")
 	val maxErrors = SettingKey[Int]("max-errors")
 	val scaladocOptions = SettingKey[Seq[String]]("scaladoc-options")
 	val scalacOptions = SettingKey[Seq[String]]("scalac-options")
@@ -149,6 +150,7 @@ object Keys
 	val fullClasspath = TaskKey[Classpath]("full-classpath")
 	
 	val ivyConfiguration = TaskKey[IvyConfiguration]("ivy-configuration")
+	val ivyConfigurations = SettingKey[Seq[Configuration]]("ivy-configurations")
 	val moduleSettings = TaskKey[ModuleSettings]("module-settings")
 	val unmanagedBase = SettingKey[File]("unmanaged-base")
 	val updateConfiguration = SettingKey[UpdateConfiguration]("update-configuration")

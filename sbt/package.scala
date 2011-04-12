@@ -1,7 +1,8 @@
 /* sbt -- Simple Build Tool
  * Copyright 2010, 2011 Mark Harrah
  */
-package object sbt extends sbt.std.TaskExtra with sbt.Types with sbt.ProcessExtra with sbt.impl.DependencyBuilders with sbt.PathExtra with sbt.ProjectExtra with sbt.DependencyFilterExtra
+package object sbt extends sbt.std.TaskExtra with sbt.Types with sbt.ProcessExtra with sbt.impl.DependencyBuilders
+	with sbt.PathExtra with sbt.ProjectExtra with sbt.DependencyFilterExtra with sbt.CompilerPluginExtra
 {
 	type Setting[T] = Project.Setting[T]
 	type ScopedKey[T] = Project.ScopedKey[T]

@@ -22,10 +22,10 @@ object Compiler
 			case _ => Nil
 		}
 
-	final class Inputs(val compilers: Compilers, val config: Options, val incSetup: IncSetup)
-	final class Options(val classpath: Seq[File], val sources: Seq[File], val classesDirectory: File, val options: Seq[String], val javacOptions: Seq[String], val maxErrors: Int, val order: CompileOrder.Value)
-	final class IncSetup(val analysisMap: Map[File, Analysis], val cacheDirectory: File)
-	final class Compilers(val scalac: AnalyzingCompiler, val javac: JavaCompiler)
+	final case class Inputs(compilers: Compilers, config: Options, incSetup: IncSetup)
+	final case class Options(classpath: Seq[File], sources: Seq[File], classesDirectory: File, options: Seq[String], javacOptions: Seq[String], maxErrors: Int, order: CompileOrder.Value)
+	final case class IncSetup(analysisMap: Map[File, Analysis], cacheDirectory: File)
+	final case class Compilers(scalac: AnalyzingCompiler, javac: JavaCompiler)
 
 	def inputs(classpath: Seq[File], sources: Seq[File], outputDirectory: File, options: Seq[String], javacOptions: Seq[String], maxErrors: Int, order: CompileOrder.Value)(implicit compilers: Compilers, log: Logger): Inputs =
 	{

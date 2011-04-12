@@ -6,7 +6,7 @@ package sbt
 /** An abstraction on top of Settings for build configuration and task definition. */
 
 	import Types._
-	import std.TaskExtra._
+	import std.TaskExtra.{task => mktask, _}
 	import Task._
 	import Project.{Initialize, ScopedKey, Setting, setting}
 	import complete.Parser
@@ -151,7 +151,7 @@ object Scoped
 	final class RichInputScoped[T](val scope: Scope, val key: AttributeKey[InputTask[T]]) extends RichBaseScoped[InputTask[T]]
 	final class RichSettingScoped[S](val scope: Scope, val key: AttributeKey[S]) extends RichBaseScoped[S]
 	{
-		def map[T](f: S => T): Initialize[Task[T]] = flatMap(s => task(f(s)) )
+		def map[T](f: S => T): Initialize[Task[T]] = flatMap(s => mktask(f(s)) )
 		def flatMap[T](f: S => Task[T]): Initialize[Task[T]] = Apply.single(scoped)(f)
 	}
 	final class RichTaskScoped[S](scope: Scope, key: AttributeKey[Task[S]])
@@ -159,14 +159,14 @@ object Scoped
 		type ScS = Setting[Task[S]]
 		def :==(value: S): ScS  =  :=(value)
 		def ::=(value: Task[S]): ScS  =  Project.setting(scoped, Project.value( value ))
-		def := (value: => S): ScS  =  ::=(task(value))
+		def := (value: => S): ScS  =  ::=(mktask(value))
 		def :== (v: ScopedTask[S]): ScS = Project.setting(scoped, Project.app(ScopedKey(v.scope, v.key) :^: KNil)(_.head) )
 		def :== (v: ScopedSetting[S]): ScS = <<=( v(const))
 		def ~= (f: S => S): ScS  =  Project.update(scoped)( _ map f )
 
 		def <<= (app: App[S]): ScS  =  Project.setting(scoped, app)
 
-		def setting: ScopedSetting[Task[S]] = scopedSetting(scope, key)
+		def task: ScopedSetting[Task[S]] = scopedSetting(scope, key)
 		def get(settings: Settings[Scope]): Option[Task[S]] = settings.get(scope, key)
 
 		type App[T] = Initialize[Task[T]]

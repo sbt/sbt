@@ -7,7 +7,7 @@ package sbt
 	import Scope.{GlobalScope, ThisScope}
 	import compiler.Discovery
 	import Project.{inConfig, Initialize, inScope, inTask, ScopedKey, Setting}
-	import Configurations.{Compile => CompileConf, Test => TestConf}
+	import Configurations.{Compile => CompileConf, CompilerPlugin, Test => TestConf}
 	import complete._
 	import std.TaskExtra._
 
@@ -61,6 +61,7 @@ object Defaults
 	))
 	def globalCore: Seq[Setting[_]] = inScope(GlobalScope)(Seq(
 		pollInterval :== 500,
+		autoCompilerPlugins :== true,
 		initialize :== (),
 		credentials :== Nil,
 		scalaHome :== None,
@@ -166,7 +167,7 @@ object Defaults
 	}
 	def watchTransitiveSourcesTask: Initialize[Task[Seq[File]]] =
 		(state, thisProjectRef) flatMap { (s, base) =>
-			inAllDependencies(base, watchSources.setting, Project structure s).join.map(_.flatten)
+			inAllDependencies(base, watchSources.task, Project structure s).join.map(_.flatten)
 		}
 	def watchSourcesTask: Initialize[Task[Seq[File]]] = Seq(sources, resources).map(inAllConfigurations).join { _.join.map(_.flatten.flatten) }
 
@@ -409,7 +410,6 @@ object Defaults
 		allProjects.flatMap { p => key in p get data }
 
 	val CompletionsID = "completions"
-
 	
 	def noAggregation = Seq(run, console, consoleQuick, consoleProject)
 	lazy val disableAggregation = noAggregation map disableAggregate
@@ -419,7 +419,7 @@ object Defaults
 	lazy val baseTasks: Seq[Setting[_]] = projectTasks ++ packageBase
 
 	lazy val baseClasspaths = Classpaths.publishSettings ++ Classpaths.baseSettings
-	lazy val configSettings = Classpaths.configSettings ++ configTasks ++ configPaths ++ packageConfig
+	lazy val configSettings = Classpaths.configSettings ++ configTasks ++ configPaths ++ packageConfig ++ Classpaths.compilerPluginConfig
 
 	lazy val compileSettings = configSettings ++ (mainRunMainTask +: mainRunTask +: addBaseSources)
 	lazy val testSettings = configSettings ++ testTasks
@@ -460,7 +460,7 @@ object Classpaths
 	val publishSettings: Seq[Setting[_]] = Seq(
 		publishMavenStyle in GlobalScope :== true,
 		packageToPublish <<= defaultPackageTasks.dependOn,
-		deliverDepends <<= (publishMavenStyle, makePom.setting, packageToPublish.setting) { (mavenStyle, mkpom, ptp) =>
+		deliverDepends <<= (publishMavenStyle, makePom.task, packageToPublish.task) { (mavenStyle, mkpom, ptp) =>
 			if(mavenStyle) mkpom.map(_ => ()) else ptp
 		},
 		makePom <<= (ivyModule, makePomConfiguration, packageToPublish, streams) map { (module, config, _, s) => IvyActions.makePom(module, config, s.log); config.file },
@@ -513,8 +513,11 @@ object Classpaths
 			val lock = app.provider.scalaProvider.launcher.globalLock
 			new InlineIvyConfiguration(paths, rs, other, moduleConfs, off, Some(lock), s.log)
 		},
-		moduleSettings <<= (projectID, allDependencies, ivyXML, thisProject, defaultConfiguration, ivyScala, ivyValidate) map {
-			(pid, deps, ivyXML, project, defaultConf, ivyS, validate) => new InlineConfiguration(pid, deps, ivyXML, project.configurations, defaultConf, ivyS, validate)
+		ivyConfigurations <<= (autoCompilerPlugins, thisProject) { (auto, project) =>
+			project.configurations ++ (if(auto) CompilerPlugin :: Nil else Nil)
+		},
+		moduleSettings <<= (projectID, allDependencies, ivyXML, ivyConfigurations, defaultConfiguration, ivyScala, ivyValidate) map {
+			(pid, deps, ivyXML, confs, defaultConf, ivyS, validate) => new InlineConfiguration(pid, deps, ivyXML, confs, defaultConf, ivyS, validate)
 		},
 		makePomConfiguration <<= pomFile(file => makePomConfigurationTask(file)),
 		publishConfiguration <<= (target, publishTo, ivyLoggingLevel, publishMavenStyle) map { (outputDirectory, publishTo, level, mavenStyle) =>
@@ -730,4 +733,28 @@ object Classpaths
 
 		import DependencyFilter._
 	def managedJars(config: Configuration, jarTypes: Set[String], up: UpdateReport): Classpath = up.select( configuration = configurationFilter(config.name), artifact = artifactFilter(`type` = jarTypes) )
+
+	def autoPlugins(inputs: Compiler.Inputs, report: UpdateReport): Compiler.Inputs =
+		inputs.copy(config = inputs.config.copy(options = autoPlugins(report) ++ inputs.config.options))
+
+	def autoPlugins(report: UpdateReport): Seq[String] =
+	{
+		val pluginClasspath = report matching configurationFilter(CompilerPlugin.name)
+		classpath.ClasspathUtilities.compilerPlugins(pluginClasspath).map("-Xplugin:" + _.getAbsolutePath).toSeq
+	}
+
+	lazy val compilerPluginConfig = Seq(
+		compileInputs <<= (compileInputs, autoCompilerPlugins, update) map { (inputs, auto, report) =>
+			if(auto) autoPlugins(inputs, report) else inputs
+		}
+	)
+}
+
+trait CompilerPluginExtra
+{
+	def compilerPlugin(dependency: ModuleID): ModuleID =
+		dependency.copy(configurations = Some("plugin->default(compile)"))
+
+	def addCompilerPlugin(dependency: ModuleID): Setting[Seq[ModuleID]] =
+		libraryDependencies += compilerPlugin(dependency)
 }
