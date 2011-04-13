@@ -574,6 +574,7 @@ object IO
 	{
 		if(b.exists)
 			delete(b)
+		createDirectory(b.getParentFile)
 		if(!a.renameTo(b))
 		{
 			copyFile(a, b, true)

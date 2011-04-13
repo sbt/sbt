@@ -287,7 +287,7 @@ object Defaults
 
 	def doClean(clean: Seq[File], preserve: Seq[File]): Unit =
 		IO.withTemporaryDirectory { temp =>
-			val mappings = preserve.zipWithIndex map { case (f, i) => (f, new File(temp, i.toHexString)) }
+			val mappings = preserve.filter(_.exists).zipWithIndex map { case (f, i) => (f, new File(temp, i.toHexString)) }
 			IO.move(mappings)
 			IO.delete(clean)
 			IO.move(mappings.map(_.swap))
