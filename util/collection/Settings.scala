@@ -41,6 +41,8 @@ private final class Settings0[Scope](val data: Map[Scope, AttributeMap], val del
 // this trait is intended to be mixed into an object
 trait Init[Scope]
 {
+	def display(skey: ScopedKey[_]): String
+
 	final case class ScopedKey[T](scope: Scope, key: AttributeKey[T])
 
 	type SettingSeq[T] = Seq[Setting[T]]
@@ -149,6 +151,9 @@ trait Init[Scope]
 	def Uninitialized(key: ScopedKey[_], refKey: ScopedKey[_]): Uninitialized =
 		new Uninitialized(key, refKey, "Reference to uninitialized setting " + key.key.label + " (in " + key.scope + ") from " + refKey.key.label +" (in " + refKey.scope + ")")
 	final class Compiled(val key: ScopedKey[_], val dependencies: Iterable[ScopedKey[_]], val eval: Settings[Scope] => Settings[Scope])
+	{
+		override def toString = display(key)
+	}
 
 	sealed trait Initialize[T]
 	{
