@@ -179,8 +179,13 @@ trait Init[Scope]
 				case Seq(x, xs @ _*) => (join(xs) zipWith x)( (t,h) => h +: t)
 			}
 	}
-	final class Setting[T](val key: ScopedKey[T], val init: Initialize[T])
+	sealed trait SettingsDefinition {
+		def settings: Seq[Setting[_]]
+	}
+	final class SettingList(val settings: Seq[Setting[_]]) extends SettingsDefinition
+	final class Setting[T](val key: ScopedKey[T], val init: Initialize[T]) extends SettingsDefinition
 	{
+		def settings = this :: Nil
 		def definitive: Boolean = !init.dependsOn.contains(key)
 		def dependsOn: Seq[ScopedKey[_]] = remove(init.dependsOn, key)
 		def mapReferenced(g: MapScoped): Setting[T] = new Setting(key, init mapReferenced g)
