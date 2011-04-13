@@ -6,9 +6,9 @@ package sbt
 import java.io.File
 import scala.xml.{Node, NodeSeq}
 
-final class IvyPaths(val baseDirectory: File, val cacheDirectory: Option[File])
+final class IvyPaths(val baseDirectory: File, val ivyHome: Option[File])
 {
-	def withBase(newBaseDirectory: File) = new IvyPaths(newBaseDirectory, cacheDirectory)
+	def withBase(newBaseDirectory: File) = new IvyPaths(newBaseDirectory, ivyHome)
 }
 sealed trait IvyConfiguration
 {

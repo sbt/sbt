@@ -63,8 +63,9 @@ final class IvySbt(val configuration: IvyConfiguration)
 		configuration match
 		{
 			case e: ExternalIvyConfiguration => is.load(e.file)
-			case i: InlineIvyConfiguration => 
-				IvySbt.configureCache(is, i.paths.cacheDirectory, i.localOnly)
+			case i: InlineIvyConfiguration =>
+				i.paths.ivyHome foreach settings.setDefaultIvyUserDir
+				IvySbt.configureCache(is, i.localOnly)
 				IvySbt.setResolvers(is, i.resolvers, i.otherResolvers, i.localOnly, configuration.log)
 				IvySbt.setModuleConfigurations(is, i.moduleConfigurations)
 		}
@@ -226,9 +227,9 @@ private object IvySbt
 			settings.addModuleConfiguration(attributes, settings.getMatcher(EXACT_OR_REGEXP), resolver.name, null, null, null)
 		}
 	}
-	private def configureCache(settings: IvySettings, dir: Option[File], localOnly: Boolean)
+	private def configureCache(settings: IvySettings, localOnly: Boolean)
 	{
-		val cacheDir = dir.getOrElse(settings.getDefaultRepositoryCacheBasedir())
+		val cacheDir = settings.getDefaultRepositoryCacheBasedir()
 		val manager = new DefaultRepositoryCacheManager("default-cache", settings, cacheDir) {
 			override def findModuleInCache(dd: DependencyDescriptor, revId: ModuleRevisionId, options: CacheMetadataOptions, r: String) =
 				super.findModuleInCache(dd,revId,options,null)
@@ -243,7 +244,6 @@ private object IvySbt
 		}
 		settings.addRepositoryCacheManager(manager)
 		settings.setDefaultRepositoryCacheManager(manager)
-		dir.foreach(dir => settings.setDefaultResolutionCacheBasedir(dir.getAbsolutePath))
 	}
 	def toIvyConfiguration(configuration: Configuration) =
 	{
