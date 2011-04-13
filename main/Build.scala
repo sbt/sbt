@@ -62,20 +62,21 @@ object EvaluateConfigurations
 	def evaluateConfiguration(eval: Eval, name: String, lines: Seq[String], imports: Seq[String], offset: Int): Seq[Setting[_]] =
 	{
 		val (importExpressions, settingExpressions) = splitExpressions(lines)
-		for((settingExpression,line) <- addOffset(offset, settingExpressions)) yield
+		addOffset(offset, settingExpressions) flatMap { case (settingExpression,line) =>
 			evaluateSetting(eval, name, (imports.map(s => (s, -1)) ++ addOffset(offset, importExpressions)), settingExpression, line)
+		}
 	}
 	def addOffset(offset: Int, lines: Seq[(String,Int)]): Seq[(String,Int)] =
 		lines.map { case (s, i) => (s, i + offset) }
 
-	def evaluateSetting(eval: Eval, name: String, imports: Seq[(String,Int)], expression: String, line: Int): Setting[_] =
+	def evaluateSetting(eval: Eval, name: String, imports: Seq[(String,Int)], expression: String, line: Int): Seq[Setting[_]] =
 	{
 		val result = try {
-			eval.eval(expression, imports = new EvalImports(imports, name), srcName = name, tpeName = Some("sbt.Project.Setting[_]"), line = line)
+			eval.eval(expression, imports = new EvalImports(imports, name), srcName = name, tpeName = Some("sbt.Project.SettingsDefinition"), line = line)
 		} catch {
 			case e: sbt.compiler.EvalException => throw new MessageOnlyException(e.getMessage)
 		}
-		result.value.asInstanceOf[Setting[_]]
+		result.value.asInstanceOf[Project.SettingsDefinition].settings
 	}
 	private[this] def fstS(f: String => Boolean): ((String,Int)) => Boolean = { case (s,i) => f(s.trim) }
 	def splitExpressions(lines: Seq[String]): (Seq[(String,Int)], Seq[(String,Int)]) =

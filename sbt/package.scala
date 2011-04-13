@@ -6,8 +6,10 @@ package object sbt extends sbt.std.TaskExtra with sbt.Types with sbt.ProcessExtr
 {
 	type Setting[T] = Project.Setting[T]
 	type ScopedKey[T] = Project.ScopedKey[T]
+	type SettingsDefinition = Project.SettingsDefinition
 	type File = java.io.File
 	type URI = java.net.URI
+
 	implicit def maybeToOption[S](m: xsbti.Maybe[S]): Option[S] =
 		if(m.isDefined) Some(m.get) else None
 	def uri(s: String): URI = new URI(s)
@@ -33,4 +35,8 @@ package object sbt extends sbt.std.TaskExtra with sbt.Types with sbt.ProcessExtr
 	{
 		def files: Seq[File] = Build data s
 	}
+
+	def all(settings: Seq[Setting[_]]): SettingsDefinition = new Project.SettingList(settings)
+	def seq(settings: Setting[_]*): SettingsDefinition = all(settings)
+	implicit def settingsDefinitionToSeq(sd: SettingsDefinition): Seq[Setting[_]] = sd.settings
 }
