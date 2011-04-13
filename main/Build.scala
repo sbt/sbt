@@ -55,7 +55,7 @@ object RetrieveUnit
 object EvaluateConfigurations
 {
 	def apply(eval: Eval, srcs: Seq[File], imports: Seq[String]): Seq[Setting[_]] =
-		srcs flatMap { src =>  evaluateConfiguration(eval, src, imports) }
+		srcs.sortBy(_.getName) flatMap { src =>  evaluateConfiguration(eval, src, imports) }
 	def evaluateConfiguration(eval: Eval, src: File, imports: Seq[String]): Seq[Setting[_]] =
 		evaluateConfiguration(eval, src.getPath, IO.readLines(src), imports, 0)
 	def evaluateConfiguration(eval: Eval, name: String, lines: Seq[String], imports: Seq[String], offset: Int): Seq[Setting[_]] =
