@@ -71,8 +71,8 @@ object Keys
 	// compile/doc keys
 	val autoCompilerPlugins = SettingKey[Boolean]("auto-compiler-plugins")
 	val maxErrors = SettingKey[Int]("max-errors")
-	val scaladocOptions = SettingKey[Seq[String]]("scaladoc-options")
-	val scalacOptions = SettingKey[Seq[String]]("scalac-options")
+	val scaladocOptions = TaskKey[Seq[String]]("scaladoc-options")
+	val scalacOptions = TaskKey[Seq[String]]("scalac-options")
 	val javacOptions = SettingKey[Seq[String]]("javac-options")
 	val compileOrder = SettingKey[CompileOrder.Value]("compile-order")
 	val initialCommands = SettingKey[String]("initial-commands")

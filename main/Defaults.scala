@@ -145,7 +145,7 @@ object Defaults
 		mainClass <<= discoveredMainClasses map selectPackageMain,
 		run <<= runTask(fullClasspath, mainClass in run, runner in run),
 		runMain <<= runMainTask(fullClasspath, runner in run),
-		scaladocOptions <<= scalacOptions(identity),
+		scaladocOptions :== scalacOptions,
 		doc <<= docTask,
 		copyResources <<= copyResourcesTask
 	)
@@ -744,9 +744,6 @@ object Classpaths
 		import DependencyFilter._
 	def managedJars(config: Configuration, jarTypes: Set[String], up: UpdateReport): Classpath = up.select( configuration = configurationFilter(config.name), artifact = artifactFilter(`type` = jarTypes) )
 
-	def autoPlugins(inputs: Compiler.Inputs, report: UpdateReport): Compiler.Inputs =
-		inputs.copy(config = inputs.config.copy(options = autoPlugins(report) ++ inputs.config.options))
-
 	def autoPlugins(report: UpdateReport): Seq[String] =
 	{
 		val pluginClasspath = report matching configurationFilter(CompilerPlugin.name)
@@ -754,8 +751,8 @@ object Classpaths
 	}
 
 	lazy val compilerPluginConfig = Seq(
-		compileInputs <<= (compileInputs, autoCompilerPlugins, update) map { (inputs, auto, report) =>
-			if(auto) autoPlugins(inputs, report) else inputs
+		scalacOptions <<= (scalacOptions, autoCompilerPlugins, update) map { (options, auto, report) =>
+			if(auto) options ++ autoPlugins(report) else options
 		}
 	)
 }
