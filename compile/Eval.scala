@@ -199,8 +199,7 @@ private object Eval
 	def bytes(b: Boolean): Array[Byte] = Array[Byte](if(b) 1 else 0)
 	def filesModifiedBytes(fs: Array[File]): Array[Byte] = if(fs eq null) filesModifiedBytes(Array[File]()) else seqBytes(fs)(fileModifiedBytes)
 	def fileModifiedBytes(f: File): Array[Byte] =
-		bytes(f.lastModified) ++
-		(if(f.isDirectory) filesModifiedBytes(f.listFiles) else bytes(-1 : Int)) ++
+		(if(f.isDirectory) filesModifiedBytes(f listFiles classDirFilter) else bytes(f.lastModified)) ++
 		bytes(f.getAbsolutePath)
 	def fileExistsBytes(f: File): Array[Byte] =
 		bytes(f.exists) ++
@@ -219,4 +218,6 @@ private object Eval
 		buffer.putInt(i)
 		buffer.array
 	}
+
+	private val classDirFilter: FileFilter = DirectoryFilter || GlobFilter("*.class")
 }
