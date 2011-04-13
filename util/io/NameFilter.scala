@@ -31,19 +31,19 @@ object ExistsFileFilter extends FileFilter {
 object DirectoryFilter extends FileFilter {
 	def accept(file: File) = file.isDirectory
 }
-class SimpleFileFilter(val acceptFunction: File => Boolean) extends FileFilter
+final class SimpleFileFilter(val acceptFunction: File => Boolean) extends FileFilter
 {
 	def accept(file: File) = acceptFunction(file)
 }
-class ExactFilter(val matchName: String) extends NameFilter
+final class ExactFilter(val matchName: String) extends NameFilter
 {
 	def accept(name: String) = matchName == name
 }
-class SimpleFilter(val acceptFunction: String => Boolean) extends NameFilter
+final class SimpleFilter(val acceptFunction: String => Boolean) extends NameFilter
 {
 	def accept(name: String) = acceptFunction(name)
 }
-class PatternFilter(val pattern: Pattern) extends NameFilter
+final class PatternFilter(val pattern: Pattern) extends NameFilter
 {
 	def accept(name: String) = pattern.matcher(name).matches
 }

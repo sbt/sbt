@@ -29,16 +29,16 @@ private object BootConfiguration
 	/** The Ivy pattern used for the local Ivy repository.*/
 	def LocalIvyPattern = LocalPattern
 
-	val FjbgPackage = "ch.epfl.lamp.fjbg."
+	final val FjbgPackage = "ch.epfl.lamp.fjbg."
 	/** The class name prefix used to hide the Scala classes used by this loader from the application */
-	val ScalaPackage = "scala."
+	final val ScalaPackage = "scala."
 	/** The class name prefix used to hide the Ivy classes used by this loader from the application*/
-	val IvyPackage = "org.apache.ivy."
+	final val IvyPackage = "org.apache.ivy."
 	/** The class name prefix used to hide the launcher classes from the application.
 	* Note that access to xsbti classes are allowed.*/
-	val SbtBootPackage = "xsbt.boot."
+	final val SbtBootPackage = "xsbt.boot."
 	/** The prefix for JLine resources.*/
-	val JLinePackagePath = "jline/"
+	final val JLinePackagePath = "jline/"
 	/** The loader will check that these classes can be loaded and will assume that their presence indicates
 	* the Scala compiler and library have been downloaded.*/
 	val TestLoadScalaClasses = "scala.Option" :: "scala.tools.nsc.Global" :: Nil
