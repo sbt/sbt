@@ -23,6 +23,7 @@ object Keys
 	val showSuccess = SettingKey[Boolean]("show-success")
 	val showTiming = SettingKey[Boolean]("show-timing")
 	val timingFormat = SettingKey[java.text.DateFormat]("timing-format")
+	val logManager = SettingKey[LogManager]("log-manager")
 
 	// Project keys
 	val projectCommand = AttributeKey[Boolean]("project-command")

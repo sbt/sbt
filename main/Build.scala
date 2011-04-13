@@ -10,6 +10,7 @@ package sbt
 	import Compiler.Compilers
 	import Project.{ScopedKey, Setting}
 	import Keys.Streams
+	import Scope.GlobalScope
 	import scala.annotation.tailrec
 
 // name is more like BuildDefinition, but that is too long
@@ -127,20 +128,19 @@ object BuildStreams
 		import Load.{BuildStructure, LoadedBuildUnit}
 		import Project.display
 		import std.{TaskExtra,Transform}
+		import Path._
+		import BuildPaths.outputDirectory
 	
-	val GlobalPath = "$global"
-	val BuildUnitPath = "$build"
+	final val GlobalPath = "$global"
+	final val BuildUnitPath = "$build"
+	final val StreamsDirectory = "streams"
 
-	def mkStreams(units: Map[URI, LoadedBuildUnit], root: URI, data: Settings[Scope], logRelativePath: Seq[String] = defaultLogPath): Streams =
-		std.Streams( path(units, root, logRelativePath), display, LogManager.construct(data) )
+	def mkStreams(units: Map[URI, LoadedBuildUnit], root: URI, data: Settings[Scope]): Streams =
+		std.Streams( path(units, root, data), display, LogManager.construct(data) )
 		
-	def defaultLogPath = "target" :: "streams" :: Nil
+	def path(units: Map[URI, LoadedBuildUnit], root: URI, data: Settings[Scope])(scoped: ScopedKey[_]): File =
+		resolvePath( projectPath(units, root, scoped, data), nonProjectPath(scoped) )
 
-	def path(units: Map[URI, LoadedBuildUnit], root: URI, sep: Seq[String])(scoped: ScopedKey[_]): File =
-	{
-		val (base, sub) = projectPath(units, root, scoped)
-		resolvePath(base, sep ++ sub ++ nonProjectPath(scoped) )
-	}
 	def resolvePath(base: File, components: Seq[String]): File =
 		(base /: components)( (b,p) => new File(b,p) )
 
@@ -159,40 +159,49 @@ object BuildStreams
 		pathComponent(scope.extra, scoped, "extra")(_ => error("Unimplemented")) ::
 		Nil
 	}
-	def projectPath(units: Map[URI, LoadedBuildUnit], root: URI, scoped: ScopedKey[_]): (File, Seq[String]) =
+	def projectPath(units: Map[URI, LoadedBuildUnit], root: URI, scoped: ScopedKey[_], data: Settings[Scope]): File =
 		scoped.scope.project match
 		{
-			case Global => (units(root).localBase, GlobalPath :: Nil)
-			case Select(BuildRef(uri)) => (units(uri).localBase, BuildUnitPath :: Nil)
-			case Select(ProjectRef(uri, id)) => (units(uri).defined(id).base, Nil)
+			case Global => refTarget(GlobalScope, units(root).localBase, data) / GlobalPath
+			case Select(br @ BuildRef(uri)) => refTarget(br, units(uri).localBase, data) / BuildUnitPath
+			case Select(pr @ ProjectRef(uri, id)) => refTarget(pr, units(uri).defined(id).base, data)
 			case Select(pr) => error("Unresolved project reference (" + pr + ") in " + display(scoped))
 			case This => error("Unresolved project reference (This) in " + display(scoped))
 		}
+		
+	def refTarget(ref: ResolvedReference, fallbackBase: File, data: Settings[Scope]): File =
+		refTarget(GlobalScope.copy(project = Select(ref)), fallbackBase, data)
+	def refTarget(scope: Scope, fallbackBase: File, data: Settings[Scope]): File =
+		(Keys.target in scope get data getOrElse outputDirectory(fallbackBase).asFile ) / StreamsDirectory
 }
 object BuildPaths
 {
 	import Path._
 	import GlobFilter._
 
-	def defaultStaging = Path.userHome / ".sbt" / "staging"
-	def defaultGlobalPlugins = Path.userHome / ".sbt" / "plugins"
+	def defaultStaging = Path.userHome / ConfigDirectoryName / "staging"
+	def defaultGlobalPlugins = Path.userHome / ConfigDirectoryName / PluginsDirectoryName
 	
 	def definitionSources(base: File): Seq[File] = (base * "*.scala").getFiles
 	def configurationSources(base: File): Seq[File] = (base * "*.sbt").getFiles
-	def pluginDirectory(definitionBase: Path) = definitionBase / "plugins"
+	def pluginDirectory(definitionBase: Path) = definitionBase / PluginsDirectoryName
 
 	def evalOutputDirectory(base: Path) = outputDirectory(base) / "config-classes"
-	def outputDirectory(base: Path) = base / "target"
+	def outputDirectory(base: Path) = base / DefaultTargetName
 	def buildOutputDirectory(base: Path, compilers: Compilers) = crossPath(outputDirectory(base), compilers.scalac.scalaInstance)
 
 	def projectStandard(base: Path) = base / "project"
-	def projectHidden(base: Path) = base / ".sbt"
+	def projectHidden(base: Path) = base / ConfigDirectoryName
 	def selectProjectDir(base: Path) =
 	{
 		val a = projectHidden(base)
 		val b = projectStandard(base)
 		if(a.exists) a else b
 	}
+
+	final val PluginsDirectoryName = "plugins"
+	final val DefaultTargetName = "target"
+	final val ConfigDirectoryName = ".sbt"
 
 	def crossPath(base: File, instance: ScalaInstance): File = base / ("scala_" + instance.version)
 }
