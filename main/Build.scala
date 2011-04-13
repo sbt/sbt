@@ -76,23 +76,25 @@ object EvaluateConfigurations
 		}
 		result.value.asInstanceOf[Setting[_]]
 	}
-	private[this] def fstS(f: String => Boolean): ((String,Int)) => Boolean = { case (s,i) => f(s) }
+	private[this] def fstS(f: String => Boolean): ((String,Int)) => Boolean = { case (s,i) => f(s.trim) }
 	def splitExpressions(lines: Seq[String]): (Seq[(String,Int)], Seq[(String,Int)]) =
 	{
-		val blank = (_: String).trim.isEmpty
-		val importOrBlank = fstS(t => blank(t) || (t.trim startsWith "import "))
+		val blank = (_: String).isEmpty
+		val comment = (_: String).startsWith("//")
+		val blankOrComment = (s: String) => blank(s) || comment(s)
+		val importOrBlank = fstS(t => blankOrComment(t) || (t startsWith "import "))
 
 		val (imports, settings) = lines.zipWithIndex span importOrBlank
-		(imports filterNot fstS(blank), groupedLines(settings, blank))
+		(imports filterNot fstS( blankOrComment ), groupedLines(settings, blank, blankOrComment))
 	}
-	def groupedLines(lines: Seq[(String,Int)], delimiter: String => Boolean): Seq[(String,Int)] =
+	def groupedLines(lines: Seq[(String,Int)], delimiter: String => Boolean, skipInitial: String => Boolean): Seq[(String,Int)] =
 	{
 		val fdelim = fstS(delimiter)
 		@tailrec def group0(lines: Seq[(String,Int)], accum: Seq[(String,Int)]): Seq[(String,Int)] =
 			if(lines.isEmpty) accum.reverse
 			else
 			{
-				val start = lines dropWhile fstS(delimiter)
+				val start = lines dropWhile fstS( skipInitial )
 				val (next, tail) = start.span { case (s,_) => !delimiter(s) }
 				val grouped = if(next.isEmpty) accum else (next.map(_._1).mkString("\n"), next.head._2) +: accum
 				group0(tail, grouped)
