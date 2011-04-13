@@ -176,9 +176,12 @@ object Project extends Init[Scope] with ProjectExtra
 		ss.map(_ mapReferenced f)
 	}
 	def translateUninitialized[T](f: => T): T =
-		try { f } catch { case u: Project.Uninitialized =>
-			val msg = "Uninitialized reference to " + display(u.key) + " from " + display(u.refKey)
-			throw new Uninitialized(u.key, u.refKey, msg)
+		try { f } catch {
+			case u: Project.Uninitialized =>
+				val msg = "Uninitialized reference to " + display(u.key) + " from " + display(u.refKey)
+				throw new Uninitialized(u.key, u.refKey, msg)
+			case c: Dag.Cyclic =>
+				throw new MessageOnlyException(c.getMessage)
 		}
 
 	def delegates(structure: Load.BuildStructure, scope: Scope, key: AttributeKey[_]): Seq[ScopedKey[_]] =
