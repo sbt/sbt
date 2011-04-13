@@ -92,23 +92,23 @@ object Defaults
 		target <<= baseDirectory / "target",
 		defaultExcludes in GlobalScope :== (".*"  - ".") || HiddenFileFilter,
 		historyPath <<= target(t => Some(t / ".history")),
-		cacheDirectory <<= target / "cache",
 		sourceDirectory <<= baseDirectory / "src",
 		sourceFilter in GlobalScope :== ("*.java" | "*.scala"),
-		sourceManaged <<= baseDirectory / "src_managed"
+		sourceManaged <<= baseDirectory / "src_managed",
+		cacheDirectory <<= target / "cache"
 	)
 
 	lazy val configPaths = Seq(
 		sourceDirectory <<= configSrcSub( sourceDirectory in Scope(This,Global,This,This) ),
 		sourceManaged <<= configSrcSub(sourceManaged),
 		cacheDirectory <<= (cacheDirectory, configuration) { _ / _.name },
-		classDirectory <<= (target, configuration) { (outDir, conf) => outDir / (prefix(conf.name) + "classes") },
-		docDirectory <<= (target, configuration) { (outDir, conf) => outDir / (prefix(conf.name) + "api") },
+		classDirectory <<= (crossTarget, configuration) { (outDir, conf) => outDir / (prefix(conf.name) + "classes") },
+		docDirectory <<= (crossTarget, configuration) { (outDir, conf) => outDir / (prefix(conf.name) + "api") },
 		sources <<= (sourceDirectories, sourceFilter, defaultExcludes) map { (d,f,excl) => d.descendentsExcept(f,excl).getFiles },
 		scalaSource <<= sourceDirectory / "scala",
 		javaSource <<= sourceDirectory / "java",
 		resourceDirectory <<= sourceDirectory / "resources",
-		generatedResourceDirectory <<= target / "res_managed",
+		generatedResourceDirectory <<= crossTarget / "res_managed",
 		sourceDirectories <<= Seq(scalaSource, javaSource).join,
 		resourceDirectories <<= Seq(resourceDirectory, generatedResourceDirectory).join,
 		resources <<= (resourceDirectories, defaultExcludes, generatedResources, generatedResourceDirectory) map resourcesTask,
@@ -127,7 +127,8 @@ object Defaults
 		scalaInstance <<= scalaInstanceSetting,
 		scalaVersion in GlobalScope <<= appConfiguration( _.provider.scalaProvider.version),
 		crossScalaVersions <<= Seq(scalaVersion).join,
-		target <<= (target, scalaInstance, crossPaths)( (t,si,cross) => if(cross) t / ("scala-" + si.actualVersion) else t )
+		crossTarget <<= (target, scalaInstance, crossPaths)( (t,si,cross) => if(cross) t / ("scala-" + si.actualVersion) else t ),
+		cacheDirectory <<= crossTarget / "cache"
 	)
 
 	lazy val configTasks = Seq(
@@ -151,7 +152,8 @@ object Defaults
 
 	lazy val projectTasks: Seq[Setting[_]] = Seq(
 		cleanFiles <<= Seq(target, sourceManaged).join,
-		clean <<= cleanFiles map IO.delete,
+		cleanKeepFiles <<= historyPath(_.toList),
+		clean <<= (cleanFiles, cleanKeepFiles) map doClean,
 		consoleProject <<= consoleProjectTask,
 		watchSources <<= watchSourcesTask,
 		watchTransitiveSources <<= watchTransitiveSourcesTask,
@@ -260,7 +262,7 @@ object Defaults
 	def jarNameSetting  =  jarName <<= (moduleID, version, scalaVersion, crossPaths) { (n,v, sv, withCross) =>
 		ArtifactName(base = n, version = v, config = "", tpe = "", ext = "jar", cross = if(withCross) sv else "")
 	}
-	def jarPathSetting  =  jarPath <<= (target, jarName, nameToString) { (t, n, toString) => t / toString(n) }
+	def jarPathSetting  =  jarPath <<= (crossTarget, jarName, nameToString) { (t, n, toString) => t / toString(n) }
 
 	def packageTasks(key: TaskKey[Package.Configuration], tpeString: String, mappingsTask: Initialize[Task[Seq[(File,String)]]]) =
 		inTask(key)( Seq(
@@ -283,7 +285,13 @@ object Defaults
 	def selectPackageMain(classes: Seq[String]): Option[String] =
 		sbt.SelectMainClass(None, classes)
 
-
+	def doClean(clean: Seq[File], preserve: Seq[File]): Unit =
+		IO.withTemporaryDirectory { temp =>
+			val mappings = preserve.zipWithIndex map { case (f, i) => (f, new File(temp, i.toHexString)) }
+			IO.move(mappings)
+			IO.delete(clean)
+			IO.move(mappings.map(_.swap))
+		}
 	def runMainTask(classpath: ScopedTask[Classpath], scalaRun: ScopedSetting[ScalaRun]): Initialize[InputTask[Unit]] =
 	{
 			import DefaultParsers._
@@ -500,7 +508,7 @@ object Classpaths
 		pomName <<= (moduleID, version, scalaVersion, crossPaths) { (n,v,sv, withCross) =>
 			ArtifactName(base = n, version = v, config = "", tpe = "", ext = "pom", cross = if(withCross) sv else "")
 		},
-		pomFile <<= (target, pomName, nameToString) { (t, n, toString) => t / toString(n) },
+		pomFile <<= (crossTarget, pomName, nameToString) { (t, n, toString) => t / toString(n) },
 		pomArtifact <<= (publishMavenStyle, moduleID)( (mavenStyle, name) => if(mavenStyle) Artifact(name, "pom", "pom") :: Nil else Nil),
 		artifacts <<= (pomArtifact,moduleID)( (pom,name) => Artifact(name) +: pom),
 		projectID <<= (organization,moduleID,version,artifacts){ (org,module,version,as) => ModuleID(org, module, version).cross(true).artifacts(as : _*) },
@@ -520,10 +528,13 @@ object Classpaths
 			(pid, deps, ivyXML, confs, defaultConf, ivyS, validate) => new InlineConfiguration(pid, deps, ivyXML, confs, defaultConf, ivyS, validate)
 		},
 		makePomConfiguration <<= pomFile(file => makePomConfigurationTask(file)),
-		publishConfiguration <<= (target, publishTo, ivyLoggingLevel, publishMavenStyle) map { (outputDirectory, publishTo, level, mavenStyle) =>
+		publishConfiguration <<= (crossTarget, publishTo, ivyLoggingLevel, publishMavenStyle) map { (outputDirectory, publishTo, level, mavenStyle) =>
 			publishConfig( publishPatterns(outputDirectory, !mavenStyle), resolverName = getPublishTo(publishTo).name, logging = level) },
-		publishLocalConfiguration <<= (target, ivyLoggingLevel) map { (outputDirectory, level) => publishConfig( publishPatterns(outputDirectory, true), logging = level ) },
-		ivySbt <<= ivyConfiguration map { conf => new IvySbt(conf) },
+		publishLocalConfiguration <<= (crossTarget, ivyLoggingLevel) map { (outputDirectory, level) => publishConfig( publishPatterns(outputDirectory, true), logging = level ) },
+		ivySbt <<= (ivyConfiguration, credentials, streams) map { (conf, creds, s) =>
+			Credentials.register(creds, s.log)
+			new IvySbt(conf)
+		},
 		ivyModule <<= (ivySbt, moduleSettings) map { (ivySbt, settings) => new ivySbt.Module(settings) },
 		update <<= (ivyModule, updateConfiguration, cacheDirectory, streams) map { (module, config, cacheDirectory, s) =>
 			cachedUpdate(cacheDirectory / "update", module, config, s.log)
@@ -545,8 +556,7 @@ object Classpaths
 	def deliverTask(config: TaskKey[PublishConfiguration]): Initialize[Task[Unit]] =
 		(ivyModule, config, deliverDepends, streams) map { (module, config, _, s) => IvyActions.deliver(module, config, s.log) }
 	def publishTask(config: TaskKey[PublishConfiguration], deliverKey: TaskKey[_]): Initialize[Task[Unit]] =
-		(ivyModule, config, deliverKey, credentials, streams) map { (module, config, _, creds, s) =>
-			Credentials.register(creds, s.log)
+		(ivyModule, config, deliverKey, streams) map { (module, config, _, s) =>
 			IvyActions.publish(module, config, s.log)
 		}
 

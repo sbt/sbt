@@ -50,6 +50,7 @@ object Keys
 	// Path Keys
 	val baseDirectory = SettingKey[File]("base-directory")
 	val target = SettingKey[File]("target")
+	val crossTarget = SettingKey[File]("cross-target")
 	val sourceDirectory = SettingKey[File]("source-directory")
 	val sourceManaged = SettingKey[File]("source-managed")
 	val scalaSource = SettingKey[File]("scala-source")
@@ -64,6 +65,7 @@ object Keys
 	val defaultExcludes = SettingKey[FileFilter]("default-excludes")
 	val sources = TaskKey[Seq[File]]("sources")
 	val cleanFiles = SettingKey[Seq[File]]("clean-files")
+	val cleanKeepFiles = SettingKey[Seq[File]]("clean-keep-files")
 	val crossPaths = SettingKey[Boolean]("cross-paths")
 
 	// compile/doc keys
