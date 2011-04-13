@@ -146,7 +146,7 @@ object CacheIvy
 
 	object L1 {
 		implicit def retrieveToHL = (r: RetrieveConfiguration) => exists(r.retrieveDirectory) :+: r.outputPattern :+: HNil
-		implicit def ivyPathsToHL = (p: IvyPaths) => exists(p.baseDirectory) :+: p.cacheDirectory.map(exists.apply) :+: HNil
+		implicit def ivyPathsToHL = (p: IvyPaths) => exists(p.baseDirectory) :+: p.ivyHome.map(exists.apply) :+: HNil
 		implicit def ivyScalaHL = (i: IvyScala) => i.scalaVersion :+: names(i.configurations) :+: i.checkExplicit :+: i.filterImplicit :+: HNil
 		implicit def configurationToHL = (c: Configuration) => c.name :+: c.description :+: c.isPublic :+: names(c.extendsConfigs) :+: c.transitive :+: HNil
 
