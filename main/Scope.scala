@@ -115,10 +115,12 @@ object Scope
 	}
 
 	// *Inherit functions should be immediate delegates and not include argument itself.  Transitivity will be provided by this method
-	def delegates(projectInherit: Reference => Seq[Reference],
-		configInherit: (Reference, ConfigKey) => Seq[ConfigKey],
-		taskInherit: (Reference, AttributeKey[_]) => Seq[AttributeKey[_]],
-		extraInherit: (Reference, AttributeMap) => Seq[AttributeMap])(rawScope: Scope): Seq[Scope] =
+	def delegates(
+		resolve: Reference => ResolvedReference,
+		projectInherit: ResolvedReference => Seq[ResolvedReference],
+		configInherit: (ResolvedReference, ConfigKey) => Seq[ConfigKey],
+		taskInherit: (ResolvedReference, AttributeKey[_]) => Seq[AttributeKey[_]],
+		extraInherit: (ResolvedReference, AttributeMap) => Seq[AttributeMap])(rawScope: Scope): Seq[Scope] =
 	{
 		val scope = Scope.replaceThis(GlobalScope)(rawScope)
 		scope.project match
@@ -126,11 +128,11 @@ object Scope
 			case Global => withGlobalScope(scope)
 			case This => withGlobalScope(scope.copy(project = Global))
 			case Select(proj) =>
-				val projI = withRawBuilds(linearize(scope.project, Nil)(projectInherit)).distinct
+				val resolvedProj = resolve(proj)
 				val prod =
 					for {
-						px <- projI
-						p = px.toOption getOrElse proj
+						px <- withRawBuilds(linearize(scope.project map resolve, Nil)(projectInherit)).distinct
+						p = px.toOption getOrElse resolvedProj
 						c <- linearize(scope.config)(configInherit(p, _))
 						t <- linearize(scope.task)(taskInherit(p,_))
 						e <- linearize(scope.extra)(extraInherit(p,_))
@@ -140,11 +142,11 @@ object Scope
 		}
 	}
 	def withGlobalScope(base: Scope): Seq[Scope] = if(base == GlobalScope) GlobalScope :: Nil else base :: GlobalScope :: Nil
-	def withRawBuilds(ps: Seq[ScopeAxis[Reference]]): Seq[ScopeAxis[Reference]] =
+	def withRawBuilds(ps: Seq[ScopeAxis[ResolvedReference]]): Seq[ScopeAxis[ResolvedReference]] =
 		(ps ++ (ps flatMap rawBuilds).map(Select.apply) :+ Global).distinct
 
-	def rawBuilds(ps: ScopeAxis[Reference]): Seq[Reference]  =  ps match { case Select(ref) => rawBuilds(ref); case _ => Nil }
-	def rawBuilds(ps: Reference): Seq[Reference]  =  (Reference.uri(ps) map BuildRef.apply).toList
+	def rawBuilds(ps: ScopeAxis[ResolvedReference]): Seq[ResolvedReference]  =  ps match { case Select(ref) => rawBuilds(ref); case _ => Nil }
+	def rawBuilds(ps: ResolvedReference): Seq[ResolvedReference]  =  (Reference.uri(ps) map BuildRef.apply).toList
 
 	def linearize[T](axis: ScopeAxis[T], append: Seq[ScopeAxis[T]] = Global :: Nil)(inherit: T => Seq[T]): Seq[ScopeAxis[T]] =
 		axis match

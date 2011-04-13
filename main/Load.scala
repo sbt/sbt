@@ -46,8 +46,9 @@ object Load
 		val rootProject = getRootProject(lb.units)
 		def resolveRef(project: Reference): ResolvedReference = Scope.resolveReference(lb.root, rootProject, project)
 		Scope.delegates(
-			project => projectInherit(lb, resolveRef(project)),
-			(project, config) => configInherit(lb, resolveRef(project), config, rootProject),
+			resolveRef,
+			project => projectInherit(lb, project),
+			(project, config) => configInherit(lb, project, config, rootProject),
 			(project, task) => Nil,
 			(project, extra) => Nil
 		)
@@ -269,7 +270,7 @@ object Load
 	{
 		IO.assertAbsolute(uri)
 		val resolve = (_: Project).resolve(ref => Scope.resolveProjectRef(uri, rootProject, ref))
-		new LoadedBuildUnit(unit.unit, unit.defined mapValues resolve, unit.rootProjects, unit.buildSettings)
+		new LoadedBuildUnit(unit.unit, unit.defined mapValues resolve toMap, unit.rootProjects, unit.buildSettings)
 	}
 	def projects(unit: BuildUnit): Seq[Project] =
 	{
@@ -417,7 +418,7 @@ object Load
 	sealed trait BuildUnitBase { def rootProjects: Seq[String]; def buildSettings: Seq[Setting[_]] }
 	final class PartBuildUnit(val unit: BuildUnit, val defined: Map[String, Project], val rootProjects: Seq[String], val buildSettings: Seq[Setting[_]]) extends BuildUnitBase
 	{
-		def resolve(f: Project => ResolvedProject): LoadedBuildUnit = new LoadedBuildUnit(unit, defined mapValues f, rootProjects, buildSettings)
+		def resolve(f: Project => ResolvedProject): LoadedBuildUnit = new LoadedBuildUnit(unit, defined mapValues f toMap, rootProjects, buildSettings)
 		def resolveRefs(f: ProjectReference => ProjectRef): LoadedBuildUnit = resolve(_ resolve f)
 	}
 	final class LoadedBuildUnit(val unit: BuildUnit, val defined: Map[String, ResolvedProject], val rootProjects: Seq[String], val buildSettings: Seq[Setting[_]]) extends BuildUnitBase
@@ -445,7 +446,7 @@ object Load
 	// information that is not original, but can be reconstructed from the rest of BuildStructure
 	final class StructureIndex(val keyMap: Map[String, AttributeKey[_]], val taskToKey: Map[Task[_], ScopedKey[Task[_]]], val keyIndex: KeyIndex)
 
-	private[this] def memo[A,B](implicit f: A => B): A => B =
+	private[this] def memo[A,B](f: A => B): A => B =
 	{
 		val dcache = new mutable.HashMap[A,B]
 		(a: A) => dcache.getOrElseUpdate(a, f(a))
