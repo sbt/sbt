@@ -52,7 +52,7 @@ object IMap
 			put(k, f(this get k getOrElse init))
 
 		def mapValues[V2[_]](f: V ~> V2) =
-			new IMap0[K,V2](backing.mapValues(x => f(x)))
+			new IMap0[K,V2](backing.mapValues(x => f(x)).toMap)
 		def toSeq = backing.toSeq
 
 		override def toString = backing.toString
