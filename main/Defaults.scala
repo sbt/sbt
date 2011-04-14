@@ -60,7 +60,10 @@ object Defaults
 		commands :== Nil,
 		retrieveManaged :== false,
 		buildStructure <<= state map Project.structure,
-		settings <<= buildStructure map ( _.data )
+		settings <<= buildStructure map ( _.data ),
+		artifactClassifier :== None,
+		artifactClassifier in packageSrc :== Some(SourceClassifier),
+		artifactClassifier in packageDoc :== Some(DocClassifier)
 	))
 	def projectCore: Seq[Setting[_]] = Seq(
 		name <<= thisProject(_.id),
@@ -216,9 +219,9 @@ object Defaults
 	lazy val packageConfig = Seq(
 		packageOptions in packageBin <<= (packageOptions, mainClass in packageBin) map { _ ++ _.map(Package.MainClass.apply).toList }
 	) ++
-	packageTasks(packageBin, None, packageBinTask) ++
-	packageTasks(packageSrc, Some(SourceClassifier), packageSrcTask) ++
-	packageTasks(packageDoc, Some(DocClassifier), packageDocTask)
+	packageTasks(packageBin, packageBinTask) ++
+	packageTasks(packageSrc, packageSrcTask) ++
+	packageTasks(packageDoc, packageDocTask)
 
 	final val SourceClassifier = "sources"
 	final val DocClassifier = "javadoc"
@@ -243,12 +246,11 @@ object Defaults
 	def artifactPathSetting  =  (crossTarget, projectID, artifact, artifactName) { (t, module, n, toString) => t / toString(module, n) asFile }
 
 	def pairID[A,B] = (a: A, b: B) => (a,b)
-	def packageTasks(key: TaskKey[File], classifier: Option[String], mappingsTask: Initialize[Task[Seq[(File,String)]]]) =
+	def packageTasks(key: TaskKey[File], mappingsTask: Initialize[Task[Seq[(File,String)]]]) =
 		inTask(key)( Seq(
 			key in ThisScope.copy(task = Global) <<= packageTask,
 			packageConfiguration <<= packageConfigurationTask,
 			mappings <<= mappingsTask,
-			artifactClassifier :== classifier,
 			packagedArtifact <<= (artifact, key) map pairID,
 			artifact <<= (artifact, artifactClassifier, configuration) { (a,classifier,c) =>
 				val cPart = if(c == Compile) Nil else c.name :: Nil
