@@ -12,7 +12,7 @@ import java.util.{Collection, Collections}
 import org.apache.ivy.{core, plugins, util, Ivy}
 import core.IvyPatternHelper
 import core.cache.{CacheMetadataOptions, DefaultRepositoryCacheManager}
-import core.module.descriptor.{DefaultArtifact, DefaultDependencyArtifactDescriptor, MDArtifact}
+import core.module.descriptor.{Artifact => IArtifact, DefaultArtifact, DefaultDependencyArtifactDescriptor, MDArtifact}
 import core.module.descriptor.{DefaultDependencyDescriptor, DefaultModuleDescriptor, DependencyDescriptor, ModuleDescriptor}
 import core.module.id.{ArtifactId,ModuleId, ModuleRevisionId}
 import core.resolve.IvyNode
@@ -290,7 +290,7 @@ private object IvySbt
 		
 	private def toIvyArtifact(moduleID: ModuleDescriptor, a: Artifact, configurations: Iterable[String]): MDArtifact =
 	{
-		val artifact = new MDArtifact(moduleID, a.name, a.`type`, a.extension, null, extra(a))
+		val artifact = new MDArtifact(moduleID, a.name, a.`type`, a.extension, null, extra(a, false))
 		configurations.foreach(artifact.addConfiguration)
 		artifact
 	}
@@ -301,7 +301,7 @@ private object IvySbt
 	}
 	private[sbt] def javaMap(m: Map[String,String], unqualify: Boolean = false) =
 	{
-		val map = m map { case (k, v) => (k.stripPrefix("e:"), v) }
+		val map = if(unqualify) m map { case (k, v) => (k.stripPrefix("e:"), v) } else m
 		if(map.isEmpty) null else scala.collection.JavaConversions.asJavaMap(map)
 	}
 
@@ -372,10 +372,14 @@ private object IvySbt
 		}
 	}
 	/** This method is used to add inline artifacts to the provided module. */
-	def addArtifacts(moduleID: DefaultModuleDescriptor, artifacts: Iterable[Artifact])
+	def addArtifacts(moduleID: DefaultModuleDescriptor, artifacts: Iterable[Artifact]): Unit =
+		for(art <- mapArtifacts(moduleID, artifacts.toSeq); c <- art.getConfigurations)
+			moduleID.addArtifact(c, art)
+
+	def mapArtifacts(moduleID: ModuleDescriptor, artifacts: Seq[Artifact]): Seq[IArtifact] =
 	{
 		lazy val allConfigurations = moduleID.getPublicConfigurationsNames
-		for(artifact <- artifacts)
+		for(artifact <- artifacts) yield
 		{
 			val configurationStrings: Iterable[String] =
 			{
@@ -385,10 +389,10 @@ private object IvySbt
 				else
 					artifactConfigurations.map(_.name)
 			}
-			val ivyArtifact = toIvyArtifact(moduleID, artifact, configurationStrings)
-			configurationStrings.foreach(configuration => moduleID.addArtifact(configuration, ivyArtifact))
+			toIvyArtifact(moduleID, artifact, configurationStrings)
 		}
 	}
+
 	/** This code converts the given ModuleDescriptor to a DefaultModuleDescriptor by casting or generating an error.
 	* Ivy 2.0.0 always produces a DefaultModuleDescriptor. */
 	private def toDefaultModuleDescriptor(md: ModuleDescriptor) =

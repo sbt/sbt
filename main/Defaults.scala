@@ -6,8 +6,8 @@ package sbt
 	import Build.data
 	import Scope.{GlobalScope, ThisScope}
 	import compiler.Discovery
-	import Project.{inConfig, Initialize, inScope, inTask, ScopedKey, Setting}
-	import Configurations.{Compile => CompileConf, CompilerPlugin, Test => TestConf}
+	import Project.{inConfig, Initialize, inScope, inTask, ScopedKey, Setting, SettingsDefinition}
+	import Configurations.{Compile, CompilerPlugin, Test}
 	import complete._
 	import std.TaskExtra._
 
@@ -24,27 +24,6 @@ package sbt
 
 object Defaults
 {
-	implicit def richFileSetting(s: ScopedSetting[File]): RichFileSetting = new RichFileSetting(s)
-	implicit def richFilesSetting(s: ScopedSetting[Seq[File]]): RichFilesSetting = new RichFilesSetting(s)
-	
-	final class RichFileSetting(s: ScopedSetting[File]) extends RichFileBase
-	{
-		def /(c: String): Initialize[File] = s { _ / c }
-		protected[this] def map0(f: PathFinder => PathFinder) = s(file => finder(f)(file :: Nil))
-	}
-	final class RichFilesSetting(s: ScopedSetting[Seq[File]]) extends RichFileBase
-	{
-		def /(s: String): Initialize[Seq[File]] = map0 { _ / s }
-		protected[this] def map0(f: PathFinder => PathFinder) = s(finder(f))
-	}
-	sealed abstract class RichFileBase
-	{
-		def *(filter: FileFilter): Initialize[Seq[File]] = map0 { _ * filter }
-		def **(filter: FileFilter): Initialize[Seq[File]] = map0 { _ ** filter }
-		protected[this] def map0(f: PathFinder => PathFinder): Initialize[Seq[File]]
-		protected[this] def finder(f: PathFinder => PathFinder): Seq[File] => Seq[File] =
-			in => f(in).getFiles
-	}
 	def configSrcSub(key: ScopedSetting[File]): Initialize[File] = (key, configuration) { (src, conf) => src / nameForSrc(conf.name) }
 	def nameForSrc(config: String) = if(config == "compile") "main" else config
 	def prefix(config: String) = if(config == "compile") "" else config + "-"
@@ -230,17 +209,19 @@ object Defaults
 	)
 
 	lazy val packageBase = Seq(
-		jarNameSetting,
+		artifact <<= name(n => Artifact(n)),
 		packageOptions in GlobalScope :== Nil,
-		nameToString in GlobalScope :== (ArtifactName.show _)
+		artifactName in GlobalScope :== ( Artifact.artifactName _ )
 	)
 	lazy val packageConfig = Seq(
-		jarName <<= (jarName, configuration) { (n,c) => n.copy(config = c.name) },
 		packageOptions in packageBin <<= (packageOptions, mainClass in packageBin) map { _ ++ _.map(Package.MainClass.apply).toList }
 	) ++
-	packageTasks(packageBin, "", packageBinTask) ++
-	packageTasks(packageSrc, "src", packageSrcTask) ++
-	packageTasks(packageDoc, "doc", packageDocTask)
+	packageTasks(packageBin, None, packageBinTask) ++
+	packageTasks(packageSrc, Some(SourceClassifier), packageSrcTask) ++
+	packageTasks(packageDoc, Some(DocClassifier), packageDocTask)
+
+	final val SourceClassifier = "sources"
+	final val DocClassifier = "javadoc"
 
 	private[this] val allSubpaths = (dir: File) => (dir.*** --- dir) x relativeTo(dir)
 
@@ -259,25 +240,32 @@ object Defaults
 		(rs --- rdirs) x relativeTo(rdirs) toSeq
 	}
 	
-	def jarNameSetting  =  jarName <<= (moduleID, version, scalaVersion, crossPaths) { (n,v, sv, withCross) =>
-		ArtifactName(base = n, version = v, config = "", tpe = "", ext = "jar", cross = if(withCross) sv else "")
-	}
-	def jarPathSetting  =  jarPath <<= (crossTarget, jarName, nameToString) { (t, n, toString) => t / toString(n) }
+	def artifactPathSetting  =  (crossTarget, projectID, artifact, artifactName) { (t, module, n, toString) => t / toString(module, n) asFile }
 
-	def packageTasks(key: TaskKey[Package.Configuration], tpeString: String, mappingsTask: Initialize[Task[Seq[(File,String)]]]) =
+	def pairID[A,B] = (a: A, b: B) => (a,b)
+	def packageTasks(key: TaskKey[File], classifier: Option[String], mappingsTask: Initialize[Task[Seq[(File,String)]]]) =
 		inTask(key)( Seq(
 			key in ThisScope.copy(task = Global) <<= packageTask,
+			packageConfiguration <<= packageConfigurationTask,
 			mappings <<= mappingsTask,
-			jarType :== tpeString,
-			jarName <<= (jarType,jarName){ (tpe, name) => (name.copy(tpe = tpe)) },
+			artifactClassifier :== classifier,
+			packagedArtifact <<= (artifact, key) map pairID,
+			artifact <<= (artifact, artifactClassifier, configuration) { (a,classifier,c) =>
+				val cPart = if(c == Compile) Nil else c.name :: Nil
+				val combined = cPart ++ classifier.toList
+				a.copy(classifier = if(combined.isEmpty) None else Some(combined mkString "-"))
+			},
 			cacheDirectory <<= cacheDirectory / key.key.label,
-			jarPathSetting
+			artifactPath <<= artifactPathSetting
 		))
-	def packageTask: Initialize[Task[Package.Configuration]] =
-		(jarPath, mappings, packageOptions, cacheDirectory, streams) map { (jar, srcs, options, cacheDir, s) =>
-			val config = new Package.Configuration(srcs, jar, options)
+	def packageTask: Initialize[Task[File]] =
+		(packageConfiguration, cacheDirectory, streams) map { (config, cacheDir, s) =>
 			Package(config, cacheDir, s.log)
-			config
+			config.jar
+		}
+	def packageConfigurationTask: Initialize[Task[Package.Configuration]] =
+		(mappings, artifactPath, packageOptions) map { (srcs, path, options) =>
+			new Package.Configuration(srcs, path, options)
 		}
 
 	def selectRunMain(classes: Seq[String]): Option[String] =
@@ -433,7 +421,7 @@ object Defaults
 	lazy val testSettings = configSettings ++ testTasks
 
 	lazy val itSettings = inConfig(Configurations.IntegrationTest)(testSettings)
-	lazy val defaultConfigs = inConfig(CompileConf)(compileSettings) ++ inConfig(TestConf)(testSettings)
+	lazy val defaultConfigs = inConfig(Compile)(compileSettings) ++ inConfig(Test)(testSettings)
 
 	// settings that are not specific to a configuration
 	lazy val projectBaseSettings: Seq[Setting[_]] = projectCore ++ paths ++ baseClasspaths ++ baseTasks ++ compileBase ++ disableAggregation
@@ -462,18 +450,34 @@ object Classpaths
 			(base * (filter -- excl) +++ (base / config.name).descendentsExcept(filter, excl)).getFiles
 		}
 	)
-	def defaultPackageTasks: Seq[ScopedTask[_]] =
-		for(task <- Seq(packageBin, `packageSrc`, `packageDoc`); conf <- Seq(CompileConf, TestConf)) yield (task in conf)
+	def defaultPackageKeys = Seq(packageBin, packageSrc, packageDoc)
+	lazy val defaultPackages: Seq[ScopedTask[File]] =
+		for(task <- defaultPackageKeys; conf <- Seq(Compile, Test)) yield (task in conf)
+	lazy val defaultArtifactTasks: Seq[ScopedTask[File]] = makePom +: defaultPackages
+
+	def packaged(pkgTasks: Seq[ScopedTask[File]]): Initialize[Task[Map[Artifact, File]]] =
+		enabledOnly(packagedArtifact.task, pkgTasks).map(_.join.map(_.toMap))
+	def artifactDefs(pkgTasks: Seq[ScopedTask[File]]): Initialize[Seq[Artifact]] =
+		enabledOnly(artifact, pkgTasks)
+
+	def enabledOnly[T](key: ScopedSetting[T], pkgTasks: Seq[ScopedTask[File]]): Initialize[Seq[T]] =
+		( forallIn(key, pkgTasks) zipWith forallIn(publishArtifact, pkgTasks) ) ( _ zip _ collect { case (a, true) => a } )
+	def forallIn[T](key: ScopedSetting[T], pkgTasks: Seq[ScopedTask[_]]): Initialize[Seq[T]] =
+		pkgTasks.map( pkg => key in pkg.scope in pkg ).join
+
+/*	def addArtifact(a: Artifact, taskDef: ScopedTask[File]): SettingsDefinition =
+		new Project.SettingsList( Seq( artifacts += a, artifacts2 += (a, taskDef.task) ) )*/
 
 	val publishSettings: Seq[Setting[_]] = Seq(
 		publishMavenStyle in GlobalScope :== true,
-		packageToPublish <<= defaultPackageTasks.dependOn,
-		deliverDepends <<= (publishMavenStyle, makePom.task, packageToPublish.task) { (mavenStyle, mkpom, ptp) =>
-			if(mavenStyle) mkpom.map(_ => ()) else ptp
-		},
-		makePom <<= (ivyModule, makePomConfiguration, packageToPublish, streams) map { (module, config, _, s) => IvyActions.makePom(module, config, s.log); config.file },
-		deliver <<= deliverTask(publishConfiguration),
-		deliverLocal <<= deliverTask(publishLocalConfiguration),
+		publishArtifact in GlobalScope in Compile :== true,
+		publishArtifact in GlobalScope in Test:== false,
+		artifacts <<= artifactDefs(defaultArtifactTasks),
+		packagedArtifacts <<= packaged(defaultArtifactTasks),
+		makePom <<= (ivyModule, makePomConfiguration, streams) map { (module, config, s) => IvyActions.makePom(module, config, s.log); config.file },
+		packagedArtifact in makePom <<= (artifact in makePom, makePom) map pairID,
+		deliver <<= deliverTask(deliverConfiguration),
+		deliverLocal <<= deliverTask(deliverLocalConfiguration),
 		publish <<= publishTask(publishConfiguration, deliver),
 		publishLocal <<= publishTask(publishLocalConfiguration, deliverLocal)
 	)
@@ -505,13 +509,14 @@ object Classpaths
 		ivyScala in GlobalScope <<= scalaVersion(v => Some(new IvyScala(v, Nil, false, false))),
 		moduleConfigurations in GlobalScope :== Nil,
 		publishTo in GlobalScope :== None,
-		pomName <<= (moduleID, version, scalaVersion, crossPaths) { (n,v,sv, withCross) =>
-			ArtifactName(base = n, version = v, config = "", tpe = "", ext = "pom", cross = if(withCross) sv else "")
+		artifactPath in makePom <<= (crossTarget, projectID, artifact in makePom, artifactName) {
+			(t, module, art, toString) => t / toString(module, art)
 		},
-		pomFile <<= (crossTarget, pomName, nameToString) { (t, n, toString) => t / toString(n) },
-		pomArtifact <<= (publishMavenStyle, moduleID)( (mavenStyle, name) => if(mavenStyle) Artifact(name, "pom", "pom") :: Nil else Nil),
-		artifacts <<= (pomArtifact,moduleID)( (pom,name) => Artifact(name) +: pom),
-		projectID <<= (organization,moduleID,version,artifacts){ (org,module,version,as) => ModuleID(org, module, version).cross(true).artifacts(as : _*) },
+		publishArtifact in makePom :== publishMavenStyle,
+		artifact in makePom <<= moduleID( name => Artifact(name, "pom", "pom") ),
+		projectID <<= (organization,moduleID,version,artifacts){ (org,module,version,as) =>
+			ModuleID(org, module, version).cross(true).artifacts(as : _*)
+		},
 		resolvers in GlobalScope :== Nil,
 		projectDescriptors <<= depMap,
 		retrievePattern in GlobalScope :== "[type]/[organisation]/[module]/[artifact](-[revision])(-[classifier]).[ext]",
@@ -524,13 +529,16 @@ object Classpaths
 		ivyConfigurations <<= (autoCompilerPlugins, thisProject) { (auto, project) =>
 			project.configurations ++ (if(auto) CompilerPlugin :: Nil else Nil)
 		},
-		moduleSettings <<= (projectID, allDependencies, ivyXML, ivyConfigurations, defaultConfiguration, ivyScala, ivyValidate) map {
-			(pid, deps, ivyXML, confs, defaultConf, ivyS, validate) => new InlineConfiguration(pid, deps, ivyXML, confs, defaultConf, ivyS, validate)
+		moduleSettings <<= moduleSettings0,
+		makePomConfiguration <<= (artifactPath in makePom)(file => makePomConfigurationTask(file)),
+		deliverLocalConfiguration <<= (crossTarget, ivyLoggingLevel) map { (outDir, level) => deliverConfig( outDir, logging = level ) },
+		deliverConfiguration :== deliverLocalConfiguration,
+		publishConfiguration <<= (packagedArtifacts, publishTo, publishMavenStyle, deliver, ivyLoggingLevel) map { (arts, publishTo, mavenStyle, ivyFile, level) =>
+			publishConfig(arts, if(mavenStyle) None else Some(ivyFile), resolverName = getPublishTo(publishTo).name, logging = level)
 		},
-		makePomConfiguration <<= pomFile(file => makePomConfigurationTask(file)),
-		publishConfiguration <<= (crossTarget, publishTo, ivyLoggingLevel, publishMavenStyle) map { (outputDirectory, publishTo, level, mavenStyle) =>
-			publishConfig( publishPatterns(outputDirectory, !mavenStyle), resolverName = getPublishTo(publishTo).name, logging = level) },
-		publishLocalConfiguration <<= (crossTarget, ivyLoggingLevel) map { (outputDirectory, level) => publishConfig( publishPatterns(outputDirectory, true), logging = level ) },
+		publishLocalConfiguration <<= (packagedArtifacts, deliverLocal, ivyLoggingLevel) map {
+			(arts, ivyFile, level) => publishConfig(arts, Some(ivyFile), logging = level )
+		},
 		ivySbt <<= (ivyConfiguration, credentials, streams) map { (conf, creds, s) =>
 			Credentials.register(creds, s.log)
 			new IvySbt(conf)
@@ -553,15 +561,19 @@ object Classpaths
 		}
 	)
 
-	def deliverTask(config: TaskKey[PublishConfiguration]): Initialize[Task[Unit]] =
-		(ivyModule, config, deliverDepends, streams) map { (module, config, _, s) => IvyActions.deliver(module, config, s.log) }
+	def moduleSettings0: Initialize[Task[ModuleSettings]] =
+		(projectID, allDependencies, ivyXML, ivyConfigurations, defaultConfiguration, ivyScala, ivyValidate) map {
+			(pid, deps, ivyXML, confs, defaultConf, ivyS, validate) => new InlineConfiguration(pid, deps, ivyXML, confs, defaultConf, ivyS, validate)
+		}
+	def deliverTask(config: TaskKey[DeliverConfiguration]): Initialize[Task[File]] =
+		(ivyModule, config, update, streams) map { (module, config, _, s) => IvyActions.deliver(module, config, s.log) }
 	def publishTask(config: TaskKey[PublishConfiguration], deliverKey: TaskKey[_]): Initialize[Task[Unit]] =
-		(ivyModule, config, deliverKey, streams) map { (module, config, _, s) =>
+		(ivyModule, config, streams) map { (module, config, s) =>
 			IvyActions.publish(module, config, s.log)
 		}
 
 		import Cache._
-		import CacheIvy.{classpathFormat, publishIC, updateIC, updateReportF}
+		import CacheIvy.{classpathFormat, /*publishIC,*/ updateIC, updateReportF}
 
 	def cachedUpdate(cacheFile: File, module: IvySbt#Module, config: UpdateConfiguration, log: Logger): UpdateReport =
 	{
@@ -600,22 +612,12 @@ object Classpaths
 
 	def getPublishTo(repo: Option[Resolver]): Resolver = repo getOrElse error("Repository for publishing is not specified.")
 
-	def publishConfig(patterns: PublishPatterns, resolverName: String = "local", status: String = "release", logging: UpdateLogging.Value = UpdateLogging.DownloadOnly) =
-	    new PublishConfiguration(patterns, status, resolverName, None, logging)
+	def deliverConfig(outputDirectory: File, status: String = "release", logging: UpdateLogging.Value = UpdateLogging.DownloadOnly) =
+	    new DeliverConfiguration(deliverPattern(outputDirectory), status, None, logging)
+	def publishConfig(artifacts: Map[Artifact, File], ivyFile: Option[File], resolverName: String = "local", logging: UpdateLogging.Value = UpdateLogging.DownloadOnly) =
+	    new PublishConfiguration(ivyFile, resolverName, artifacts, logging)
 
-	def publishPatterns(outputPath: Path, publishIvy: Boolean = false): PublishPatterns =
-	{
-		val deliverPattern = (outputPath / "[artifact]-[revision](-[classifier]).[ext]").absolutePath
-		val srcArtifactPatterns: Seq[String] =
-		{
-			val pathPatterns =
-				(outputPath / "[artifact]-[revision]-[type](-[classifier]).[ext]") ::
-				(outputPath / "[artifact]-[revision](-[classifier]).[ext]") ::
-				Nil
-			pathPatterns.map(_.absolutePath)
-		}
-		new PublishPatterns(deliverPattern, srcArtifactPatterns, publishIvy)
-	}
+	def deliverPattern(outputPath: Path): String  =  (outputPath / "[artifact]-[revision](-[classifier]).[ext]").absolutePath
 
 	def projectDependenciesTask =
 		(thisProject, settings) map { (p, data) =>

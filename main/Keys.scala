@@ -100,14 +100,16 @@ object Keys
 
 
 	// package keys
-	val packageBin = TaskKey[Package.Configuration]("package")
-	val packageDoc = TaskKey[Package.Configuration]("package-doc")
-	val packageSrc = TaskKey[Package.Configuration]("package-src")
+	val packageBin = TaskKey[File]("package")
+	val packageDoc = TaskKey[File]("package-doc")
+	val packageSrc = TaskKey[File]("package-src")
+
 	val packageOptions = TaskKey[Seq[PackageOption]]("package-options")
-	val jarPath = SettingKey[File]("jar-path")
-	val jarName = SettingKey[ArtifactName]("jar-name")
-	val jarType = SettingKey[String]("jar-type")
-	val nameToString = SettingKey[ArtifactName => String]("name-to-string")
+	val packageConfiguration = TaskKey[Package.Configuration]("package-configuration")
+	val artifactPath = SettingKey[File]("artifact-path")
+	val artifact = SettingKey[Artifact]("artifact")
+	val artifactClassifier = SettingKey[Option[String]]("artifact-classifier")
+	val artifactName = SettingKey[(ModuleID, Artifact) => String]("artifact-name")
 	val mappings = TaskKey[Seq[(File,String)]]("mappings")
 
 	// Run Keys
@@ -167,15 +169,16 @@ object Keys
 	
 	val publishConfiguration = TaskKey[PublishConfiguration]("publish-configuration")
 	val publishLocalConfiguration = TaskKey[PublishConfiguration]("publish-local-configuration")
+	val deliverConfiguration = TaskKey[DeliverConfiguration]("deliver-configuration")
+	val deliverLocalConfiguration = TaskKey[DeliverConfiguration]("deliver-local-configuration")
 	val makePomConfiguration = SettingKey[MakePomConfiguration]("make-pom-configuration")
-	val packageToPublish = TaskKey[Unit]("package-to-publish")
-	val deliverDepends = TaskKey[Unit]("deliver-depends")
+	val packagedArtifacts = TaskKey[Map[Artifact,File]]("packaged-artifacts")
 	val publishMavenStyle = SettingKey[Boolean]("publish-maven-style")
 	val credentials = TaskKey[Seq[Credentials]]("credentials")
 
 	val makePom = TaskKey[File]("make-pom")
-	val deliver = TaskKey[Unit]("deliver")
-	val deliverLocal = TaskKey[Unit]("deliver-local")
+	val deliver = TaskKey[File]("deliver")
+	val deliverLocal = TaskKey[File]("deliver-local")
 	val publish = TaskKey[Unit]("publish")
 	val publishLocal = TaskKey[Unit]("publish-local")
 
@@ -199,15 +202,14 @@ object Keys
 	val ivyValidate = SettingKey[Boolean]("ivy-validate")
 	val ivyLoggingLevel = SettingKey[UpdateLogging.Value]("ivy-logging-level")
 	val publishTo = SettingKey[Option[Resolver]]("publish-to")
-	val pomName = SettingKey[ArtifactName]("pom-name")
-	val pomFile = SettingKey[File]("pom-file")
-	val pomArtifact = SettingKey[Seq[Artifact]]("pom-artifact")
 	val artifacts = SettingKey[Seq[Artifact]]("artifacts")
 	val projectDescriptors = TaskKey[Map[ModuleRevisionId,ModuleDescriptor]]("project-descriptors")
 	val autoUpdate = SettingKey[Boolean]("auto-update")
 	val retrieveManaged = SettingKey[Boolean]("retrieve-managed")
 	val managedDirectory = SettingKey[File]("managed-directory")
 	val classpathTypes = SettingKey[Set[String]]("classpath-types")
+	val publishArtifact = SettingKey[Boolean]("publish-artifact")
+	val packagedArtifact = TaskKey[(Artifact, File)]("packaged-artifact")
 
 	val sbtResolver = SettingKey[Resolver]("sbt-resolver")
 	val sbtDependency = SettingKey[ModuleID]("sbt-dependency")

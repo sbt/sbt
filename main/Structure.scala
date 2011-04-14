@@ -12,6 +12,7 @@ package sbt
 	import complete.Parser
 	import java.io.File
 	import java.net.URI
+	import Path._
 
 sealed trait InputTask[T] {
 	def mapTask[S](f: Task[T] => Task[S]): InputTask[S]
@@ -210,6 +211,28 @@ object Scoped
 	final class RichAnyTaskSeq(keys: Seq[ScopedTask[_]])
 	{
 		def dependOn: Initialize[Task[Unit]]  =  Apply.tasks(KList.fromList(keys)) { kl => nop.dependsOn(kl.toList :_*) }
+	}
+
+	implicit def richFileSetting(s: ScopedSetting[File]): RichFileSetting = new RichFileSetting(s)
+	implicit def richFilesSetting(s: ScopedSetting[Seq[File]]): RichFilesSetting = new RichFilesSetting(s)
+	
+	final class RichFileSetting(s: ScopedSetting[File]) extends RichFileBase
+	{
+		def /(c: String): Initialize[File] = s { _ / c }
+		protected[this] def map0(f: PathFinder => PathFinder) = s(file => finder(f)(file :: Nil))
+	}
+	final class RichFilesSetting(s: ScopedSetting[Seq[File]]) extends RichFileBase
+	{
+		def /(s: String): Initialize[Seq[File]] = map0 { _ / s }
+		protected[this] def map0(f: PathFinder => PathFinder) = s(finder(f))
+	}
+	sealed abstract class RichFileBase
+	{
+		def *(filter: FileFilter): Initialize[Seq[File]] = map0 { _ * filter }
+		def **(filter: FileFilter): Initialize[Seq[File]] = map0 { _ ** filter }
+		protected[this] def map0(f: PathFinder => PathFinder): Initialize[Seq[File]]
+		protected[this] def finder(f: PathFinder => PathFinder): Seq[File] => Seq[File] =
+			in => f(in).getFiles
 	}
 
 	/*
