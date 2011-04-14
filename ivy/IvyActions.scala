@@ -11,7 +11,7 @@ import core.cache.DefaultRepositoryCacheManager
 import core.{IvyPatternHelper,LogOptions}
 import core.deliver.DeliverOptions
 import core.install.InstallOptions
-import core.module.descriptor.{DefaultArtifact, DefaultDependencyArtifactDescriptor, MDArtifact}
+import core.module.descriptor.{Artifact => IArtifact, DefaultArtifact, DefaultDependencyArtifactDescriptor, MDArtifact}
 import core.module.descriptor.{DefaultDependencyDescriptor, DefaultModuleDescriptor, DependencyDescriptor, ModuleDescriptor}
 import core.module.id.{ArtifactId,ModuleId, ModuleRevisionId}
 import core.publish.PublishOptions
@@ -19,9 +19,10 @@ import core.report.{ArtifactDownloadReport,ResolveReport}
 import core.resolve.ResolveOptions
 import core.retrieve.RetrieveOptions
 import plugins.parser.m2.{PomModuleDescriptorParser,PomModuleDescriptorWriter}
+import plugins.resolver.DependencyResolver
 
-final class PublishPatterns(val deliverIvyPattern: String, val srcArtifactPatterns: Seq[String], val publishIvy: Boolean)
-final class PublishConfiguration(val patterns: PublishPatterns, val status: String, val resolverName: String, val configurations: Option[Seq[Configuration]], val logging: UpdateLogging.Value)
+final class DeliverConfiguration(val deliverIvyPattern: String, val status: String, val configurations: Option[Seq[Configuration]], val logging: UpdateLogging.Value)
+final class PublishConfiguration(val ivyFile: Option[File], val resolverName: String, val artifacts: Map[Artifact, File], val logging: UpdateLogging.Value)
 
 final class UpdateConfiguration(val retrieve: Option[RetrieveConfiguration], val missingOk: Boolean, val logging: UpdateLogging.Value)
 final class RetrieveConfiguration(val retrieveDirectory: File, val outputPattern: String)
@@ -69,33 +70,35 @@ object IvyActions
 		}
 	}
 
-	def deliver(module: IvySbt#Module, configuration: PublishConfiguration, log: Logger)
+	def deliver(module: IvySbt#Module, configuration: DeliverConfiguration, log: Logger): File =
 	{
 		import configuration._
-		import patterns._
 		module.withModule(log) { case (ivy, md, default) =>
-			resolve(logging)(ivy, md, default) // todo: set download = false for resolve
 			val revID = md.getModuleRevisionId
 			val options = DeliverOptions.newInstance(ivy.getSettings).setStatus(status)
 			options.setConfs(IvySbt.getConfigurations(md, configurations))
-			ivy.deliver(revID, revID.getRevision, patterns.deliverIvyPattern, options)
+			ivy.deliver(revID, revID.getRevision, deliverIvyPattern, options)
+			deliveredFile(ivy, deliverIvyPattern, md)
 		}
 	}
+	def deliveredFile(ivy: Ivy, pattern: String, md: ModuleDescriptor): File =
+		ivy.getSettings.resolveFile(IvyPatternHelper.substitute(pattern, md.getResolvedModuleRevisionId))
 
-	// todo: map configurations, extra dependencies
 	def publish(module: IvySbt#Module, configuration: PublishConfiguration, log: Logger)
 	{
 		import configuration._
-		import patterns._
 		module.withModule(log) { case (ivy, md, default) =>
-			val revID = md.getModuleRevisionId
-			val patterns = new java.util.ArrayList[String]
-			srcArtifactPatterns.foreach(pattern => patterns.add(pattern))
-			val options = (new PublishOptions).setOverwrite(true)
-			if(publishIvy) options.setSrcIvyPattern(deliverIvyPattern)
-			options.setConfs(IvySbt.getConfigurations(md, configurations))
-			ivy.publish(revID, patterns, resolverName, options)
+			val resolver = ivy.getSettings.getResolver(resolverName)
+			val ivyArtifact = ivyFile map { file => (MDArtifact.newIvyArtifact(md), file) }
+			val as = mapArtifacts(md, artifacts) ++ ivyArtifact.toList
+			publish(md, as, resolver, overwrite = true)
 		}
+	}
+	def mapArtifacts(module: ModuleDescriptor, artifacts: Map[Artifact, File]): Seq[(IArtifact, File)] =
+	{
+		val seqa = artifacts.keys.toSeq
+		val zipped = seqa zip IvySbt.mapArtifacts(module, seqa)
+		zipped map { case (a, ivyA) => (ivyA, artifacts(a)) }
 	}
 	/** Resolves and retrieves dependencies.  'ivyConfig' is used to produce an Ivy file and configuration.
 	* 'updateConfig' configures the actual resolution and retrieval process. */
@@ -177,5 +180,18 @@ object IvyActions
 			case DownloadOnly => LOG_DOWNLOAD_ONLY
 			case Full => LOG_DEFAULT
 		}
+
+	def publish(module: ModuleDescriptor, artifacts: Iterable[(IArtifact, File)], resolver: DependencyResolver, overwrite: Boolean): Unit =
+		try {
+			resolver.beginPublishTransaction(module.getModuleRevisionId(), overwrite);
+			for( (artifact, file) <- artifacts) if(file.exists)
+				resolver.publish(artifact, file, overwrite)
+			resolver.commitPublishTransaction()
+		} catch {
+			case e =>
+				try { resolver.abortPublishTransaction() }
+				finally { throw e }
+		}
+
 }
 final class ResolveException(messages: Seq[String]) extends RuntimeException(messages.mkString("\n"))
