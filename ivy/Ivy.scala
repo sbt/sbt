@@ -290,17 +290,17 @@ private object IvySbt
 			case ic: InlineConfiguration => ic.copy(module = substituteCross(ic.module, cross), dependencies = substituteCrossM(ic.dependencies, cross))
 			case _ => m
 		}
-	private def crossName(name: String, cross: String): String =
+	def crossName(name: String, cross: String): String =
 		name + "_" + cross
-	private def substituteCross(a: Artifact, cross: String): Artifact =
+	def substituteCross(a: Artifact, cross: String): Artifact =
 		a.copy(name = crossName(a.name, cross))
-	private def substituteCrossA(as: Seq[Artifact], cross: String): Seq[Artifact] =
+	def substituteCrossA(as: Seq[Artifact], cross: String): Seq[Artifact] =
 		as.map(art => substituteCross(art, cross))
-	private def substituteCrossM(ms: Seq[ModuleID], cross: String): Seq[ModuleID] =
+	def substituteCrossM(ms: Seq[ModuleID], cross: String): Seq[ModuleID] =
 		ms.map(m => substituteCross(m, cross))
-	private def substituteCross(m: ModuleID, cross: String): ModuleID =
+	def substituteCross(m: ModuleID, cross: String): ModuleID =
 		if(m.crossVersion)
-			m.copy(name = crossName(m.name, cross), crossVersion = false, explicitArtifacts = substituteCrossA(m.explicitArtifacts, cross))
+			m.copy(name = crossName(m.name, cross), explicitArtifacts = substituteCrossA(m.explicitArtifacts, cross))
 		else
 			m
 		

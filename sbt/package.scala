@@ -2,7 +2,7 @@
  * Copyright 2010, 2011 Mark Harrah
  */
 package object sbt extends sbt.std.TaskExtra with sbt.Types with sbt.ProcessExtra with sbt.impl.DependencyBuilders
-	with sbt.PathExtra with sbt.ProjectExtra with sbt.DependencyFilterExtra with sbt.CompilerPluginExtra
+	with sbt.PathExtra with sbt.ProjectExtra with sbt.DependencyFilterExtra with sbt.BuildExtra
 {
 	type Setting[T] = Project.Setting[T]
 	type ScopedKey[T] = Project.ScopedKey[T]
@@ -28,15 +28,4 @@ package object sbt extends sbt.std.TaskExtra with sbt.Types with sbt.ProcessExtr
 //	def System = C.System
 	def Optional = C.Optional
 	def config(s: String): Configuration = Configurations.config(s)
-
-	implicit def globFilter(expression: String): NameFilter = GlobFilter(expression)
-	implicit def richAttributed(s: Seq[Attributed[File]]): RichAttributed = new RichAttributed(s)
-	final class RichAttributed private[sbt](s: Seq[Attributed[File]])
-	{
-		def files: Seq[File] = Build data s
-	}
-
-	def all(settings: Seq[Setting[_]]): SettingsDefinition = new Project.SettingList(settings)
-	def seq(settings: Setting[_]*): SettingsDefinition = all(settings)
-	implicit def settingsDefinitionToSeq(sd: SettingsDefinition): Seq[Setting[_]] = sd.settings
 }

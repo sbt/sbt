@@ -109,7 +109,7 @@ object Keys
 	val artifactPath = SettingKey[File]("artifact-path")
 	val artifact = SettingKey[Artifact]("artifact")
 	val artifactClassifier = SettingKey[Option[String]]("artifact-classifier")
-	val artifactName = SettingKey[(ModuleID, Artifact) => String]("artifact-name")
+	val artifactName = SettingKey[(String, ModuleID, Artifact) => String]("artifact-name")
 	val mappings = TaskKey[Seq[(File,String)]]("mappings")
 
 	// Run Keys

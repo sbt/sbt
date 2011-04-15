@@ -244,7 +244,7 @@ object Defaults
 		(rs --- rdirs) x relativeTo(rdirs) toSeq
 	}
 	
-	def artifactPathSetting  =  (crossTarget, projectID, artifact, artifactName) { (t, module, n, toString) => t / toString(module, n) asFile }
+	def artifactPathSetting(art: ScopedSetting[Artifact])  =  (crossTarget, projectID, art, scalaVersion, artifactName) { (t, module, a, sv, toString) => t / toString(sv, module, a) asFile }
 
 	def pairID[A,B] = (a: A, b: B) => (a,b)
 	def packageTasks(key: TaskKey[File], mappingsTask: Initialize[Task[Seq[(File,String)]]]) =
@@ -259,7 +259,7 @@ object Defaults
 				a.copy(classifier = if(combined.isEmpty) None else Some(combined mkString "-"))
 			},
 			cacheDirectory <<= cacheDirectory / key.key.label,
-			artifactPath <<= artifactPathSetting
+			artifactPath <<= artifactPathSetting(artifact)
 		))
 	def packageTask: Initialize[Task[File]] =
 		(packageConfiguration, cacheDirectory, streams) map { (config, cacheDir, s) =>
@@ -468,9 +468,6 @@ object Classpaths
 	def forallIn[T](key: ScopedSetting[T], pkgTasks: Seq[ScopedTask[_]]): Initialize[Seq[T]] =
 		pkgTasks.map( pkg => key in pkg.scope in pkg ).join
 
-/*	def addArtifact(a: Artifact, taskDef: ScopedTask[File]): SettingsDefinition =
-		new Project.SettingsList( Seq( artifacts += a, artifacts2 += (a, taskDef.task) ) )*/
-
 	val publishSettings: Seq[Setting[_]] = Seq(
 		publishMavenStyle in GlobalScope :== true,
 		publishArtifact in GlobalScope in Compile :== true,
@@ -512,9 +509,7 @@ object Classpaths
 		ivyScala in GlobalScope <<= scalaVersion(v => Some(new IvyScala(v, Nil, filterImplicit = true, checkExplicit = true, overrideScalaVersion = true))),
 		moduleConfigurations in GlobalScope :== Nil,
 		publishTo in GlobalScope :== None,
-		artifactPath in makePom <<= (crossTarget, projectID, artifact in makePom, artifactName) {
-			(t, module, art, toString) => t / toString(module, art)
-		},
+		artifactPath in makePom <<= artifactPathSetting(artifact in makePom),
 		publishArtifact in makePom :== publishMavenStyle,
 		artifact in makePom <<= moduleID( name => Artifact(name, "pom", "pom") ),
 		projectID <<= (organization,moduleID,version,artifacts){ (org,module,version,as) =>
@@ -593,7 +588,7 @@ object Classpaths
 		val f =
 			Tracked.inputChanged(cacheFile / "inputs") { (inChanged: Boolean, in: In) =>
 				val outCache = Tracked.lastOutput[In, UpdateReport](cacheFile / "output") {
-					case (_, Some(out)) if !inChanged && out.allFiles.forall(_.exists) => out
+					case (_, Some(out)) if !inChanged && out.allFiles.forall(_.exists) && out.cachedDescriptor.exists => out
 					case _ => work(in)
 				}
 				outCache(in)
@@ -772,11 +767,33 @@ object Classpaths
 		}
 }
 
-trait CompilerPluginExtra
+trait BuildExtra
 {
 	def compilerPlugin(dependency: ModuleID): ModuleID =
 		dependency.copy(configurations = Some("plugin->default(compile)"))
 
 	def addCompilerPlugin(dependency: ModuleID): Setting[Seq[ModuleID]] =
 		libraryDependencies += compilerPlugin(dependency)
+
+	def addArtifact(a: Artifact, taskDef: ScopedTask[File]): SettingsDefinition =
+	{
+		val pkgd = packagedArtifacts <<= (packagedArtifacts, taskDef) map ( (pas,file) => pas updated (a, file) )
+		seq( artifacts += a, pkgd )
+	}
+	def addArtifact(artifact: ScopedSetting[Artifact], taskDef: ScopedTask[File]): SettingsDefinition =
+	{
+		val art = artifacts <<= (artifact, artifacts)( _ +: _ )
+		val pkgd = packagedArtifacts <<= (packagedArtifacts, artifact, taskDef) map ( (pas,a,file) => pas updated (a, file))
+		seq( art, pkgd )
+	}
+
+	implicit def globFilter(expression: String): NameFilter = GlobFilter(expression)
+	implicit def richAttributed(s: Seq[Attributed[File]]): RichAttributed = new RichAttributed(s)
+	final class RichAttributed private[sbt](s: Seq[Attributed[File]])
+	{
+		def files: Seq[File] = Build data s
+	}
+
+	def seq(settings: Setting[_]*): SettingsDefinition = new Project.SettingList(settings)
+	implicit def settingsDefinitionToSeq(sd: SettingsDefinition): Seq[Setting[_]] = sd.settings
 }

@@ -359,12 +359,14 @@ object Artifact
 		val base = if(i >= 0) name.substring(0, i) else name
 		Artifact(base, extract(name, defaultType), extract(name, defaultExtension), None, Nil, Some(file.toURI.toURL))
 	}
-	def artifactName(module: ModuleID, artifact: Artifact): String =
+	def artifactName(scalaVersion: String, module: ModuleID, artifact: Artifact): String =
 	{
 			import artifact._
 		val classifierStr = classifier match { case None => ""; case Some(c) => "-" + c }
-		artifact.name + "-" + module.revision + classifierStr + "." + artifact.extension
+		val base = if(module.crossVersion) IvySbt.crossName(artifact.name, scalaVersion) else artifact.name
+		base + "-" + module.revision + classifierStr + "." + artifact.extension
 	}
+	def cross(enable: Boolean, scalaVersion: String): String = if(enable) "_" + scalaVersion else ""
 }
 final case class ModuleConfiguration(organization: String, name: String, revision: String, resolver: Resolver)
 object ModuleConfiguration

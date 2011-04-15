@@ -62,7 +62,10 @@ object CacheIvy
 		updateReportFormat
 	}
 	implicit def updateReportFormat(implicit m: Format[String], cr: Format[ConfigurationReport]): Format[UpdateReport] =
-		wrap[UpdateReport, Seq[ConfigurationReport]](_.configurations, c => new UpdateReport(c))
+	{
+		import DefaultProtocol.FileFormat
+		wrap[UpdateReport, (File, Seq[ConfigurationReport])](rep => (rep.cachedDescriptor, rep.configurations), { case (cd, cs) => new UpdateReport(cd, cs) })
+	}
 	implicit def confReportFormat(implicit mf: Format[ModuleID], mr: Format[ModuleReport]): Format[ConfigurationReport] =
 		wrap[ConfigurationReport, (String,Seq[ModuleReport])]( r => (r.configuration, r.modules), { case (c,m) => new ConfigurationReport(c,m) })
 	implicit def moduleReportFormat(implicit f: Format[Artifact], ff: Format[File], mid: Format[ModuleID]): Format[ModuleReport] =
