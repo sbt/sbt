@@ -101,5 +101,18 @@ object UpdateReport
 			}
 			new UpdateReport(newConfigurations)
 		}
+		def substitute(f: (String, ModuleID, Seq[(Artifact, File)]) => Seq[(Artifact, File)]): UpdateReport =
+		{
+			val newConfigurations = report.configurations.map { confReport =>
+				import confReport._
+				val newModules =
+					modules map { modReport =>
+						val newArtifacts = f(configuration, modReport.module, modReport.artifacts)
+						new ModuleReport(modReport.module, newArtifacts, Nil)
+					}
+				new ConfigurationReport(configuration, newModules)
+			}
+			new UpdateReport(newConfigurations)
+		}
 	}
 }

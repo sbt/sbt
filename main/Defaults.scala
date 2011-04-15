@@ -509,7 +509,7 @@ object Classpaths
 		ivyLoggingLevel in GlobalScope :== UpdateLogging.Quiet,
 		ivyXML in GlobalScope :== NodeSeq.Empty,
 		ivyValidate in GlobalScope :== false,
-		ivyScala in GlobalScope <<= scalaVersion(v => Some(new IvyScala(v, Nil, false, false, overrideScalaVersion = true))),
+		ivyScala in GlobalScope <<= scalaVersion(v => Some(new IvyScala(v, Nil, filterImplicit = true, checkExplicit = true, overrideScalaVersion = true))),
 		moduleConfigurations in GlobalScope :== Nil,
 		publishTo in GlobalScope :== None,
 		artifactPath in makePom <<= (crossTarget, projectID, artifact in makePom, artifactName) {
@@ -547,8 +547,8 @@ object Classpaths
 			new IvySbt(conf)
 		},
 		ivyModule <<= (ivySbt, moduleSettings) map { (ivySbt, settings) => new ivySbt.Module(settings) },
-		update <<= (ivyModule, updateConfiguration, cacheDirectory, streams) map { (module, config, cacheDirectory, s) =>
-			cachedUpdate(cacheDirectory / "update", module, config, s.log)
+		update <<= (ivyModule, updateConfiguration, cacheDirectory, scalaInstance, streams) map { (module, config, cacheDirectory, si, s) =>
+			cachedUpdate(cacheDirectory / "update", module, config, Some(si), s.log)
 		},
 		transitiveClassifiers :== Seq("sources", "javadoc"),
 		updateClassifiers <<= (ivySbt, projectID, update, transitiveClassifiers, updateConfiguration, ivyScala, streams) map { (is, pid, up, classifiers, c, ivyScala, s) =>
@@ -578,7 +578,7 @@ object Classpaths
 		import Cache._
 		import CacheIvy.{classpathFormat, /*publishIC,*/ updateIC, updateReportF}
 
-	def cachedUpdate(cacheFile: File, module: IvySbt#Module, config: UpdateConfiguration, log: Logger): UpdateReport =
+	def cachedUpdate(cacheFile: File, module: IvySbt#Module, config: UpdateConfiguration, scalaInstance: Option[ScalaInstance], log: Logger): UpdateReport =
 	{
 		implicit val updateCache = updateIC
 		implicit val updateReport = updateReportF
@@ -587,7 +587,7 @@ object Classpaths
 			log.info("Updating...")
 			val r = IvyActions.update(module, config, log)
 			log.info("Done updating.")
-			r
+			scalaInstance match { case Some(si) => substituteScalaFiles(si, r); case None => r }
 		}
 
 		val f =
@@ -760,6 +760,16 @@ object Classpaths
 			if(auto) options ++ autoPlugins(report) else options
 		}
 	)
+	def substituteScalaFiles(scalaInstance: ScalaInstance, report: UpdateReport): UpdateReport =
+		report.substitute { (configuration, module, arts) =>
+			import ScalaArtifacts._
+			(module.organization, module.name) match
+			{
+				case (Organization, LibraryID) => (Artifact(LibraryID), scalaInstance.libraryJar) :: Nil
+				case (Organization, CompilerID) => (Artifact(CompilerID), scalaInstance.compilerJar) :: Nil
+				case _ => arts
+			}
+		}
 }
 
 trait CompilerPluginExtra
