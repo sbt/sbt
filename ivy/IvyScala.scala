@@ -8,7 +8,7 @@ import scala.collection.mutable.HashSet
 
 import org.apache.ivy.{core, plugins}
 import core.module.descriptor.{DefaultExcludeRule, ExcludeRule}
-import core.module.descriptor.{DefaultModuleDescriptor, ModuleDescriptor}
+import core.module.descriptor.{DefaultModuleDescriptor, ModuleDescriptor, OverrideDependencyDescriptorMediator}
 import core.module.id.{ArtifactId,ModuleId, ModuleRevisionId}
 import plugins.matcher.ExactPatternMatcher
 
@@ -21,7 +21,7 @@ object ScalaArtifacts
 
 import ScalaArtifacts._
 
-final class IvyScala(val scalaVersion: String, val configurations: Iterable[Configuration], val checkExplicit: Boolean, val filterImplicit: Boolean)
+final class IvyScala(val scalaVersion: String, val configurations: Iterable[Configuration], val checkExplicit: Boolean, val filterImplicit: Boolean, val overrideScalaVersion: Boolean)
 private object IvyScala
 {
 	/** Performs checks/adds filters on Scala dependencies (if enabled in IvyScala). */
@@ -31,7 +31,21 @@ private object IvyScala
 			checkDependencies(module, check.scalaVersion, check.configurations)
 		if(check.filterImplicit)
 			excludeScalaJars(module, check.configurations)
+		if(check.overrideScalaVersion)
+			overrideScalaVersion(module, check.scalaVersion)
 	}
+	def overrideScalaVersion(module: DefaultModuleDescriptor, version: String)
+	{
+		overrideVersion(module, Organization, LibraryID, version)
+		overrideVersion(module, Organization, CompilerID, version)
+	}
+	def overrideVersion(module: DefaultModuleDescriptor, org: String, name: String, version: String)
+	{
+		val id = new ModuleId(org, name)
+		val over = new OverrideDependencyDescriptorMediator(null, version)
+		module.addDependencyDescriptorMediator(id, ExactPatternMatcher.INSTANCE, over)
+	}
+                
 	/** Checks the immediate dependencies of module for dependencies on scala jars and verifies that the version on the
 	* dependencies matches scalaVersion. */
 	private def checkDependencies(module: ModuleDescriptor, scalaVersion: String, configurations: Iterable[Configuration])
