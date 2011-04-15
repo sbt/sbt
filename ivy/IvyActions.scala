@@ -90,14 +90,24 @@ object IvyActions
 		module.withModule(log) { case (ivy, md, default) =>
 			val resolver = ivy.getSettings.getResolver(resolverName)
 			val ivyArtifact = ivyFile map { file => (MDArtifact.newIvyArtifact(md), file) }
-			val as = mapArtifacts(md, artifacts) ++ ivyArtifact.toList
+			val is = crossIvyScala(module.moduleSettings)
+			val as = mapArtifacts(md, is, artifacts) ++ ivyArtifact.toList
 			publish(md, as, resolver, overwrite = true)
 		}
 	}
-	def mapArtifacts(module: ModuleDescriptor, artifacts: Map[Artifact, File]): Seq[(IArtifact, File)] =
+	private def crossIvyScala(moduleSettings: ModuleSettings): Option[IvyScala] =
+		moduleSettings match {
+			case i: InlineConfiguration if i.module.crossVersion => i.ivyScala
+			case e: EmptyConfiguration if e.module.crossVersion => e.ivyScala
+			case _ => None
+		}
+	def substituteCross(ivyScala: Option[IvyScala], artifacts: Seq[Artifact]): Seq[Artifact] =
+		ivyScala match { case None => artifacts; case Some(is) => IvySbt.substituteCrossA(artifacts, is.scalaVersion) }
+	def mapArtifacts(module: ModuleDescriptor, ivyScala: Option[IvyScala], artifacts: Map[Artifact, File]): Seq[(IArtifact, File)] =
 	{
-		val seqa = artifacts.keys.toSeq
-		val zipped = seqa zip IvySbt.mapArtifacts(module, seqa)
+		val rawa = artifacts.keys.toSeq
+		val seqa = substituteCross(ivyScala, rawa)
+		val zipped = rawa zip IvySbt.mapArtifacts(module, seqa)
 		zipped map { case (a, ivyA) => (ivyA, artifacts(a)) }
 	}
 	/** Resolves and retrieves dependencies.  'ivyConfig' is used to produce an Ivy file and configuration.
@@ -109,7 +119,8 @@ object IvyActions
 			{
 				case Some(x) if !configuration.missingOk => throw x
 				case _ =>
-					val uReport = IvyRetrieve updateReport report
+					val cachedDescriptor = ivy.getSettings.getResolutionCacheManager.getResolvedIvyFileInCache(md.getModuleRevisionId)
+					val uReport = IvyRetrieve.updateReport(report, cachedDescriptor)
 					configuration.retrieve match
 					{
 						case Some(rConf) => retrieve(ivy, uReport, rConf)

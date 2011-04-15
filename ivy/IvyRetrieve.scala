@@ -44,8 +44,8 @@ object IvyRetrieve
 		Artifact(getName, getType, getExt, Option(getExtraAttribute("classifier")), getConfigurations map Configurations.config, Option(getUrl))
 	}
 
-	def updateReport(report: ResolveReport): UpdateReport =
-		new UpdateReport(reports(report) map configurationReport)
+	def updateReport(report: ResolveReport, cachedDescriptor: File): UpdateReport =
+		new UpdateReport(cachedDescriptor, reports(report) map configurationReport)
 
 	def configurationReport(confReport: ConfigurationResolveReport): ConfigurationReport =
 		new ConfigurationReport(confReport.getConfiguration, moduleReports(confReport))

@@ -8,10 +8,11 @@ package sbt
 /** Provides information about dependency resolution.
 * It does not include information about evicted modules, only about the modules ultimately selected by the conflict manager.
 * This means that for a given configuration, there should only be one revision for a given organization and module name.
+* @param cachedDescriptor the location of the resolved module descriptor in the cache
 * @param configurations a sequence containing one report for each configuration resolved.
 * @see sbt.RichUpdateReport
  */
-final class UpdateReport(val configurations: Seq[ConfigurationReport])
+final class UpdateReport(val cachedDescriptor: File, val configurations: Seq[ConfigurationReport])
 {
 	override def toString = "Update report:\n" + configurations.mkString
 
@@ -19,7 +20,7 @@ final class UpdateReport(val configurations: Seq[ConfigurationReport])
 	def allModules: Seq[ModuleID] = configurations.flatMap(_.allModules).distinct
 
 	def retrieve(f: (String, ModuleID, Artifact, File) => File): UpdateReport =
-		new UpdateReport(configurations map { _ retrieve f} )
+		new UpdateReport(cachedDescriptor, configurations map { _ retrieve f} )
 
 	/** Gets the report for the given configuration, or `None` if the configuration was not resolved.*/
 	def configuration(s: String) = configurations.find(_.configuration == s)
@@ -99,7 +100,7 @@ object UpdateReport
 					}
 				new ConfigurationReport(configuration, newModules)
 			}
-			new UpdateReport(newConfigurations)
+			new UpdateReport(report.cachedDescriptor, newConfigurations)
 		}
 		def substitute(f: (String, ModuleID, Seq[(Artifact, File)]) => Seq[(Artifact, File)]): UpdateReport =
 		{
@@ -112,7 +113,7 @@ object UpdateReport
 					}
 				new ConfigurationReport(configuration, newModules)
 			}
-			new UpdateReport(newConfigurations)
+			new UpdateReport(report.cachedDescriptor, newConfigurations)
 		}
 	}
 }
