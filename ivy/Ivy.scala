@@ -64,6 +64,7 @@ final class IvySbt(val configuration: IvyConfiguration)
 		{
 			case e: ExternalIvyConfiguration => is.load(e.file)
 			case i: InlineIvyConfiguration =>
+				is.setVariable("ivy.checksums", i.checksums mkString ",")
 				i.paths.ivyHome foreach settings.setDefaultIvyUserDir
 				IvySbt.configureCache(is, i.localOnly)
 				IvySbt.setResolvers(is, i.resolvers, i.otherResolvers, i.localOnly, configuration.log)
@@ -182,6 +183,7 @@ private object IvySbt
 	val DefaultIvyConfigFilename = "ivysettings.xml"
 	val DefaultIvyFilename = "ivy.xml"
 	val DefaultMavenFilename = "pom.xml"
+	val DefaultChecksums = Seq("sha1", "md5")
 
 	def defaultIvyFile(project: File) = new File(project, DefaultIvyFilename)
 	def defaultIvyConfiguration(project: File) = new File(project, DefaultIvyConfigFilename)

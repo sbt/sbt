@@ -20,12 +20,12 @@ sealed trait IvyConfiguration
 }
 final class InlineIvyConfiguration(val paths: IvyPaths, val resolvers: Seq[Resolver], val otherResolvers: Seq[Resolver],
 	val moduleConfigurations: Seq[ModuleConfiguration], val localOnly: Boolean, val lock: Option[xsbti.GlobalLock],
-	val log: Logger) extends IvyConfiguration
+	val checksums: Seq[String], val log: Logger) extends IvyConfiguration
 {
 	type This = InlineIvyConfiguration
 	def baseDirectory = paths.baseDirectory
-	def withBase(newBase: File) = new InlineIvyConfiguration(paths.withBase(newBase), resolvers, otherResolvers, moduleConfigurations, localOnly, lock, log)
-	def changeResolvers(newResolvers: Seq[Resolver]) = new InlineIvyConfiguration(paths, newResolvers, otherResolvers, moduleConfigurations, localOnly, lock, log)
+	def withBase(newBase: File) = new InlineIvyConfiguration(paths.withBase(newBase), resolvers, otherResolvers, moduleConfigurations, localOnly, lock, checksums, log)
+	def changeResolvers(newResolvers: Seq[Resolver]) = new InlineIvyConfiguration(paths, newResolvers, otherResolvers, moduleConfigurations, localOnly, lock, checksums, log)
 }
 final class ExternalIvyConfiguration(val baseDirectory: File, val file: File, val lock: Option[xsbti.GlobalLock], val log: Logger) extends IvyConfiguration
 {
@@ -37,14 +37,14 @@ object IvyConfiguration
 {
 	/** Called to configure Ivy when inline resolvers are not specified.
 	* This will configure Ivy with an 'ivy-settings.xml' file if there is one or else use default resolvers.*/
-	def apply(paths: IvyPaths, lock: Option[xsbti.GlobalLock], localOnly: Boolean, log: Logger): IvyConfiguration =
+	def apply(paths: IvyPaths, lock: Option[xsbti.GlobalLock], localOnly: Boolean, checksums: Seq[String], log: Logger): IvyConfiguration =
 	{
 		log.debug("Autodetecting configuration.")
 		val defaultIvyConfigFile = IvySbt.defaultIvyConfiguration(paths.baseDirectory)
 		if(defaultIvyConfigFile.canRead)
 			new ExternalIvyConfiguration(paths.baseDirectory, defaultIvyConfigFile, lock, log)
 		else
-			new InlineIvyConfiguration(paths, Resolver.withDefaultResolvers(Nil), Nil, Nil, localOnly, lock, log)
+			new InlineIvyConfiguration(paths, Resolver.withDefaultResolvers(Nil), Nil, Nil, localOnly, lock, checksums, log)
 	}
 }
 
