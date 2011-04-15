@@ -1,12 +1,12 @@
 > publish
-> set project.name UseColor
 
-$ delete project/build/
-$ copy-file changes/UseColor.scala project/build/UseColor.scala
+$ delete DefineColor.sbt
+$ copy-file changes/UseColor.sbt UseColor.sbt
 $ copy-file changes/blue color
 > reload
 
 -> update
 
 $ copy-file changes/red color
+> reload
 > update

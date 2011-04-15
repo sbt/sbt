@@ -1,10 +1,10 @@
 # load the project definition with transitive dependencies enabled
 # and check that they are not downloaded
-
+$ pause
 $ touch transitive
+$ pause
 > reload
-
-> update
+$ pause
 
 > check-transitive
 -> check-intransitive
@@ -16,8 +16,6 @@ $ touch transitive
 $ delete ivy-cache
 $ delete transitive
 > reload
-
-> update
 
 -> check-transitive
 > check-intransitive

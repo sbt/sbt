@@ -1,13 +1,11 @@
 # verify that check fails when test class is not present
 -> check
 
-# compile and jar test class
-> package
-# verify that check succeeds
-> check
+# verify that check-full succeeds
+> check-full
 
 # publish test jar to test repository
->publish
+> publish
 
 # delete test jar and verify check fails again
 > clean
@@ -15,6 +13,7 @@
 
 # tell project definition to switch to retrieve mode
 $ touch retrieve
+> reload
+
 # verify that artifact with extension, type, and classifier can be retreieved
-> update
 > check
