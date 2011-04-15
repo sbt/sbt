@@ -63,7 +63,8 @@ object Defaults
 		settings <<= buildStructure map ( _.data ),
 		artifactClassifier :== None,
 		artifactClassifier in packageSrc :== Some(SourceClassifier),
-		artifactClassifier in packageDoc :== Some(DocClassifier)
+		artifactClassifier in packageDoc :== Some(DocClassifier),
+		checksums :== IvySbt.DefaultChecksums
 	))
 	def projectCore: Seq[Setting[_]] = Seq(
 		name <<= thisProject(_.id),
@@ -524,9 +525,9 @@ object Classpaths
 		retrievePattern in GlobalScope :== "[type]/[organisation]/[module]/[artifact](-[revision])(-[classifier]).[ext]",
 		updateConfiguration <<= (retrieveConfiguration, ivyLoggingLevel)((conf,level) => new UpdateConfiguration(conf, false, level) ),
 		retrieveConfiguration <<= (managedDirectory, retrievePattern, retrieveManaged) { (libm, pattern, enabled) => if(enabled) Some(new RetrieveConfiguration(libm, pattern)) else None },
-		ivyConfiguration <<= (fullResolvers, ivyPaths, otherResolvers, moduleConfigurations, offline, appConfiguration, streams) map { (rs, paths, other, moduleConfs, off, app, s) =>
+		ivyConfiguration <<= (fullResolvers, ivyPaths, otherResolvers, moduleConfigurations, offline, checksums, appConfiguration, streams) map { (rs, paths, other, moduleConfs, off, check, app, s) =>
 			val lock = app.provider.scalaProvider.launcher.globalLock
-			new InlineIvyConfiguration(paths, rs, other, moduleConfs, off, Some(lock), s.log)
+			new InlineIvyConfiguration(paths, rs, other, moduleConfs, off, Some(lock), check, s.log)
 		},
 		ivyConfigurations <<= (autoCompilerPlugins, thisProject) { (auto, project) =>
 			project.configurations ++ (if(auto) CompilerPlugin :: Nil else Nil)

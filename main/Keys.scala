@@ -210,6 +210,7 @@ object Keys
 	val classpathTypes = SettingKey[Set[String]]("classpath-types")
 	val publishArtifact = SettingKey[Boolean]("publish-artifact")
 	val packagedArtifact = TaskKey[(Artifact, File)]("packaged-artifact")
+	val checksums = SettingKey[Seq[String]]("checksums")
 
 	val sbtResolver = SettingKey[Resolver]("sbt-resolver")
 	val sbtDependency = SettingKey[ModuleID]("sbt-dependency")

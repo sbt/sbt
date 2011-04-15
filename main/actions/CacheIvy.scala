@@ -88,7 +88,7 @@ object CacheIvy
 	}
 
 	object L5 {
-		implicit def inlineIvyToHL = (i: InlineIvyConfiguration) => i.paths :+: i.resolvers :+: i.otherResolvers :+: i.moduleConfigurations :+: i.localOnly :+: HNil
+		implicit def inlineIvyToHL = (i: InlineIvyConfiguration) => i.paths :+: i.resolvers :+: i.otherResolvers :+: i.moduleConfigurations :+: i.localOnly :+: i.checksums :+: HNil
 	}
 	import L5._
 

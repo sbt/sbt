@@ -46,6 +46,7 @@ final class Update(config: UpdateConfiguration)
 		val settings = new IvySettings
 		ivyHome foreach settings.setDefaultIvyUserDir
 		addResolvers(settings)
+		settings.setVariable("ivy.checksums", "sha1,md5")
 		settings.setDefaultConflictManager(settings.getConflictManager(ConflictManagerName))
 		settings.setBaseDir(bootDirectory)
 		settings.setVariable("scala", scalaVersion)
