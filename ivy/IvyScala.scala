@@ -22,6 +22,11 @@ object ScalaArtifacts
 import ScalaArtifacts._
 
 final class IvyScala(val scalaVersion: String, val configurations: Iterable[Configuration], val checkExplicit: Boolean, val filterImplicit: Boolean, val overrideScalaVersion: Boolean)
+{
+	// otherwise, Ivy produces the error: "impossible to get artifacts when data has not been loaded"
+	//   which may be related to sbt's custom conflict manager, to IVY-987, or both
+	assert(if(overrideScalaVersion) checkExplicit else true, "Explicit Scala version checking cannot be disabled when forcing the Scala version.")
+}
 private object IvyScala
 {
 	/** Performs checks/adds filters on Scala dependencies (if enabled in IvyScala). */
@@ -50,18 +55,19 @@ private object IvyScala
 	* dependencies matches scalaVersion. */
 	private def checkDependencies(module: ModuleDescriptor, scalaVersion: String, configurations: Iterable[Configuration])
 	{
-		val configSet = configurationSet(configurations)
+		val configSet = if(configurations.isEmpty) (c: String) => true else configurationSet(configurations)
 		for(dep <- module.getDependencies.toList)
 		{
 			val id = dep.getDependencyRevisionId
-			if(id.getOrganisation == Organization && id.getRevision != scalaVersion && dep.getModuleConfigurations.exists(configSet.contains))
+			if(id.getOrganisation == Organization && id.getRevision != scalaVersion && dep.getModuleConfigurations.exists(configSet))
 				error("Different Scala version specified in dependency ("+ id.getRevision + ") than in project (" + scalaVersion + ").")
 		}
 	}
-	private def configurationSet(configurations: Iterable[Configuration]) = HashSet(configurations.map(_.toString).toSeq : _*)
+	private def configurationSet(configurations: Iterable[Configuration]) = configurations.map(_.toString).toSet
+
 	/** Adds exclusions for the scala library and compiler jars so that they are not downloaded.  This is
-	* done because normally these jars are already on the classpath and cannot/should not be overridden.  The version
-	* of Scala to use is done by setting build.scala.versions in the project definition. */
+	* done because these jars are provided by the ScalaInstance of the project.  The version of Scala to use
+	* is done by setting scalaVersion in the project definition. */
 	private def excludeScalaJars(module: DefaultModuleDescriptor, configurations: Iterable[Configuration])
 	{
 		val configurationNames =
