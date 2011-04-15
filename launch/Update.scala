@@ -14,7 +14,7 @@ import core.cache.DefaultRepositoryCacheManager
 import core.event.EventManager
 import core.module.id.{ArtifactId, ModuleId, ModuleRevisionId}
 import core.module.descriptor.{Configuration => IvyConfiguration, DefaultDependencyArtifactDescriptor, DefaultDependencyDescriptor, DefaultModuleDescriptor, ModuleDescriptor}
-import core.module.descriptor.{DefaultExcludeRule, ExcludeRule}
+import core.module.descriptor.{Artifact => IArtifact, DefaultExcludeRule, ExcludeRule}
 import core.report.ResolveReport
 import core.resolve.{ResolveEngine, ResolveOptions}
 import core.retrieve.{RetrieveEngine, RetrieveOptions}
@@ -195,7 +195,10 @@ final class Update(config: UpdateConfiguration)
 	/** Add the scala tools repositories and a URL resolver to download sbt from the Google code project.*/
 	private def addResolvers(settings: IvySettings)
 	{
-		val newDefault = new ChainResolver
+		val newDefault = new ChainResolver {
+			override def locate(artifact: IArtifact) =
+				if(hasImplicitClassifier(artifact)) null else super.locate(artifact)
+		}
 		newDefault.setName("redefined-public")
 		if(repositories.isEmpty) error("No repositories defined.")
 		for(repo <- repositories if includeRepo(repo))
@@ -203,6 +206,12 @@ final class Update(config: UpdateConfiguration)
 		configureCache(settings)
 		settings.addResolver(newDefault)
 		settings.setDefaultResolver(newDefault.getName)
+	}
+	// infrastructure is needed to avoid duplication between this class and the ivy/ subproject
+	private def hasImplicitClassifier(artifact: IArtifact): Boolean =
+	{
+		import collection.JavaConversions._
+		artifact.getQualifiedExtraAttributes.keys.exists(_.asInstanceOf[String] startsWith "m:")
 	}
 	// exclude the local Maven repository for Scala -SNAPSHOTs
 	private def includeRepo(repo: Repository) = !(Repository.isMavenLocal(repo) && isSnapshot(scalaVersion) )

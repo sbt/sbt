@@ -21,7 +21,7 @@ import plugins.conflict.{ConflictManager, LatestConflictManager}
 import plugins.latest.LatestRevisionStrategy
 import plugins.matcher.PatternMatcher
 import plugins.parser.m2.PomModuleDescriptorParser
-import plugins.resolver.ChainResolver
+import plugins.resolver.{ChainResolver, DependencyResolver}
 import util.{Message, MessageLogger}
 
 import scala.xml.NodeSeq
@@ -203,9 +203,15 @@ private object IvySbt
 		val mainChain = makeChain("Default", "sbt-chain", resolvers)
 		settings.setDefaultResolver(mainChain.getName)
 	}
-	private def resolverChain(name: String, resolvers: Seq[Resolver], localOnly: Boolean, settings: IvySettings, log: Logger): ChainResolver =
+	private def resolverChain(name: String, resolvers: Seq[Resolver], localOnly: Boolean, settings: IvySettings, log: Logger): DependencyResolver =
 	{
-		val newDefault = new ChainResolver
+		val newDefault = new ChainResolver {
+			// Technically, this should be applied to module configurations.
+			// That would require custom subclasses of all resolver types in ConvertResolver (a delegation approach does not work).
+			// It would be better to get proper support into Ivy.
+			override def locate(artifact: IArtifact) =
+				if(hasImplicitClassifier(artifact)) null else super.locate(artifact)
+		}
 		newDefault.setName(name)
 		newDefault.setReturnFirst(true)
 		newDefault.setCheckmodified(false)
@@ -214,6 +220,14 @@ private object IvySbt
 			newDefault.add(ConvertResolver(sbtResolver)(settings))
 		}
 		newDefault
+	}
+	/** A hack to detect if the given artifact is an automatically generated request for a classifier,
+	* as opposed to a user-initiated declaration.  It relies on Ivy prefixing classifier with m:, while sbt uses e:.
+	* Clearly, it would be better to have an explicit option in Ivy to control this.*/
+	def hasImplicitClassifier(artifact: IArtifact): Boolean =
+	{
+		import collection.JavaConversions._
+		artifact.getQualifiedExtraAttributes.keys.exists(_.asInstanceOf[String] startsWith "m:")
 	}
 	private def setModuleConfigurations(settings: IvySettings, moduleConfigurations: Seq[ModuleConfiguration])
 	{
