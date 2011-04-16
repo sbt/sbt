@@ -14,6 +14,7 @@ trait TypeFunctions
 	final val left = new (Id ~> P1of2[Left, Nothing]#Flip) { def apply[T](t: T) = Left(t) }
 	final val right = new (Id ~> P1of2[Right, Nothing]#Apply) { def apply[T](t: T) = Right(t) }
 	final val some = new (Id ~> Some) { def apply[T](t: T) = Some(t) }
+	final def idFun[T] = (t: T) => t
 	
 	def nestCon[M[_], N[_], G[_]](f: M ~> N): (M ∙ G)#l ~> (N ∙ G)#l =
 		f.asInstanceOf[(M ∙ G)#l ~> (N ∙ G)#l] // implemented with a cast to avoid extra object+method call.  castless version:
