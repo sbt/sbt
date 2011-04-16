@@ -65,7 +65,7 @@ final class IvySbt(val configuration: IvyConfiguration)
 			case e: ExternalIvyConfiguration => is.load(e.file)
 			case i: InlineIvyConfiguration =>
 				is.setVariable("ivy.checksums", i.checksums mkString ",")
-				i.paths.ivyHome foreach settings.setDefaultIvyUserDir
+				i.paths.ivyHome foreach is.setDefaultIvyUserDir
 				IvySbt.configureCache(is, i.localOnly)
 				IvySbt.setResolvers(is, i.resolvers, i.otherResolvers, i.localOnly, configuration.log)
 				IvySbt.setModuleConfigurations(is, i.moduleConfigurations)
