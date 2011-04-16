@@ -336,7 +336,7 @@ private object IvySbt
 	{
 		import module._
 		<ivy-module version="2.0">
-			{ if(hasInfo(dependencies))
+			{ if(hasInfo(module, dependencies))
 				NodeSeq.Empty
 			else
 				<info organisation={organization} module={name} revision={revision}/>
@@ -348,7 +348,24 @@ private object IvySbt
 			}
 		</ivy-module>
 	}
-	private def hasInfo(x: scala.xml.NodeSeq) = !(<g>{x}</g> \ "info").isEmpty
+	private def hasInfo(module: ModuleID, x: scala.xml.NodeSeq) =
+	{
+		val info = <g>{x}</g> \ "info"
+		if(!info.isEmpty)
+		{
+			def check(found: NodeSeq, expected: String, label: String) =
+				if(found.isEmpty)
+					error("Missing " + label + " in inline Ivy XML.")
+				else {
+					val str = found.text
+					if(str != expected) error("Inconsistent " + label + " in inline Ivy XML.  Expected '" + expected + "', got '" + str + "'")
+				}
+			check(info \ "@organisation", module.organization, "organisation")
+			check(info \ "@module", module.name, "name")
+			check(info \ "@revision", module.revision, "version")
+		}
+		!info.isEmpty
+	}
 	/** Parses the given in-memory Ivy file 'xml', using the existing 'moduleID' and specifying the given 'defaultConfiguration'. */
 	private def parseIvyXML(settings: IvySettings, xml: scala.xml.NodeSeq, moduleID: DefaultModuleDescriptor, defaultConfiguration: String, validate: Boolean): CustomXmlParser.CustomParser =
 		parseIvyXML(settings,  xml.toString, moduleID, defaultConfiguration, validate)
