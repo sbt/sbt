@@ -770,6 +770,8 @@ object Classpaths
 
 trait BuildExtra
 {
+		import Defaults._
+
 	def compilerPlugin(dependency: ModuleID): ModuleID =
 		dependency.copy(configurations = Some("plugin->default(compile)"))
 
@@ -797,4 +799,19 @@ trait BuildExtra
 
 	def seq(settings: Setting[_]*): SettingsDefinition = new Project.SettingList(settings)
 	implicit def settingsDefinitionToSeq(sd: SettingsDefinition): Seq[Setting[_]] = sd.settings
+
+	def externalIvySettings(file: Initialize[File] = baseDirectory / "ivysettings.xml"): Setting[Task[IvyConfiguration]] =
+	{
+		val other = (baseDirectory, appConfiguration, streams).identityMap
+		ivyConfiguration <<= (file zipWith other) { case (f, otherTask) =>
+			otherTask map { case (base, app, s) => new ExternalIvyConfiguration(base, f, Some(lock(app)), s.log) }
+		}
+	}
+	def externalIvyFile(file: Initialize[File] = baseDirectory / "ivy.xml", iScala: Initialize[Option[IvyScala]] = ivyScala.identity): Setting[Task[ModuleSettings]] =
+		external(file, iScala)( (f, is, v) => new IvyFileConfiguration(f, is, v) ) 
+	def externalPom(file: Initialize[File] = baseDirectory / "pom.xml", iScala: Initialize[Option[IvyScala]] = ivyScala.identity): Setting[Task[ModuleSettings]] =
+		external(file, iScala)( (f, is, v) => new PomConfiguration(f, is, v) )
+
+	private[this] def external(file: Initialize[File], iScala: Initialize[Option[IvyScala]])(make: (File, Option[IvyScala], Boolean) => ModuleSettings): Setting[Task[ModuleSettings]] =
+		moduleSettings <<= ((file zip iScala) zipWith ivyValidate.identity) { case ((f, is), v) => task { make(f, is, v) } }
 }
