@@ -325,60 +325,60 @@ object Scoped
 		def flatFailure[T](f: Seq[Incomplete] => Task[T]): App[T] = red.combine(Combine.flatMapR, f compose anyFailM)
 		def mapFailure[T](f: Seq[Incomplete] => T): App[T] = red.combine[Id,T](Combine.mapR, f compose anyFailM)
 	}
-	final class RichTaskable2[A,B](t2: (ScopedTaskable[A], ScopedTaskable[B])) extends RichTaskables(t2._1 :^: t2._2 :^: KNil)
+	final class RichTaskable2[A,B](t2: (ScopedTaskable[A], ScopedTaskable[B])) extends RichTaskables(k2(t2))
 	{
 		type Fun[M[_],Ret] = (M[A],M[B]) => Ret
-		def identity = map( (a,b) => (a,b) )
-		protected def convertH[R](f: (A,B) => R) = { case a :+: b :+: HNil => f(a,b) }
+		def identityMap = map(mkTuple2)
+		protected def convertH[R](z: (A,B) => R) = hf2(z)
 		protected def convertK[M[_],R](f: (M[A],M[B]) => R) = { case a :^: b :^: KNil => f(a,b) }
 	}
-	final class RichTaskable3[A,B,C](t3: (ScopedTaskable[A], ScopedTaskable[B], ScopedTaskable[C])) extends RichTaskables(t3._1 :^: t3._2 :^: t3._3 :^: KNil)
+	final class RichTaskable3[A,B,C](t3: (ScopedTaskable[A], ScopedTaskable[B], ScopedTaskable[C])) extends RichTaskables(k3(t3))
 	{
 		type Fun[M[_],Ret] = (M[A],M[B],M[C]) => Ret
-		def identity = map( (a,b,c) => (a,b,c) )
-		protected def convertH[R](f: Fun[Id,R]) = { case a :+: b :+: c :+: HNil => f(a,b,c) }
+		def identityMap = map(mkTuple3)
+		protected def convertH[R](z: Fun[Id,R]) = hf3(z)
 		protected def convertK[M[_],R](f: Fun[M,R]) = { case a :^: b :^: c :^: KNil => f(a,b,c) }
 	}
-	final class RichTaskable4[A,B,C,D](t4: (ScopedTaskable[A], ScopedTaskable[B], ScopedTaskable[C], ScopedTaskable[D])) extends RichTaskables(t4._1 :^: t4._2 :^: t4._3 :^: t4._4 :^: KNil)
+	final class RichTaskable4[A,B,C,D](t4: (ScopedTaskable[A], ScopedTaskable[B], ScopedTaskable[C], ScopedTaskable[D])) extends RichTaskables(k4(t4))
 	{
 		type Fun[M[_],Ret] = (M[A],M[B],M[C],M[D]) => Ret
-		def identity = map( (a,b,c,d) => (a,b,c,d) )
-		protected def convertH[R](f: Fun[Id,R]) = { case a :+: b :+: c :+: d :+: HNil => f(a,b,c,d) }
+		def identityMap = map(mkTuple4)
+		protected def convertH[R](z: Fun[Id,R]) = hf4(z)
 		protected def convertK[M[_],R](f: Fun[M,R]) = { case a :^: b :^: c :^: d :^: KNil => f(a,b,c,d) }
 	}
-	final class RichTaskable5[A,B,C,D,E](t5: (ScopedTaskable[A], ScopedTaskable[B], ScopedTaskable[C], ScopedTaskable[D], ScopedTaskable[E])) extends RichTaskables(t5._1 :^: t5._2 :^: t5._3 :^: t5._4 :^: t5._5 :^: KNil)
+	final class RichTaskable5[A,B,C,D,E](t5: (ScopedTaskable[A], ScopedTaskable[B], ScopedTaskable[C], ScopedTaskable[D], ScopedTaskable[E])) extends RichTaskables(k5(t5))
 	{
 		type Fun[M[_],Ret] = (M[A],M[B],M[C],M[D],M[E]) => Ret
-		def identity = map( (a,b,c,d,e) => (a,b,c,d,e) )
-		protected def convertH[R](f: Fun[Id,R]) = { case a :+: b :+: c :+: d :+: e :+: HNil => f(a,b,c,d,e) }
+		def identityMap = map(mkTuple5)
+		protected def convertH[R](z: Fun[Id,R]) = hf5(z)
 		protected def convertK[M[_],R](f: Fun[M,R]) = { case a :^: b :^: c :^: d :^: e :^: KNil => f(a,b,c,d,e) }
 	}
-	final class RichTaskable6[A,B,C,D,E,F](t6: (ScopedTaskable[A], ScopedTaskable[B], ScopedTaskable[C], ScopedTaskable[D], ScopedTaskable[E], ScopedTaskable[F])) extends RichTaskables(t6._1 :^: t6._2 :^: t6._3 :^: t6._4 :^: t6._5 :^: t6._6 :^: KNil)
+	final class RichTaskable6[A,B,C,D,E,F](t6: (ScopedTaskable[A], ScopedTaskable[B], ScopedTaskable[C], ScopedTaskable[D], ScopedTaskable[E], ScopedTaskable[F])) extends RichTaskables(k6(t6))
 	{
 		type Fun[M[_],Ret] = (M[A],M[B],M[C],M[D],M[E],M[F]) => Ret
-		def identity = map( (a,b,c,d,e,f) => (a,b,c,d,e,f) )
-		protected def convertH[R](z: Fun[Id,R]) = { case a :+: b :+: c :+: d :+: e :+: f :+: HNil => z(a,b,c,d,e,f) }
+		def identityMap = map(mkTuple6)
+		protected def convertH[R](z: Fun[Id,R]) = hf6(z)
 		protected def convertK[M[_],R](z: Fun[M,R]) = { case a :^: b :^: c :^: d :^: e :^: f :^: KNil => z(a,b,c,d,e,f) }
 	}
-	final class RichTaskable7[A,B,C,D,E,F,G](t7: (ScopedTaskable[A], ScopedTaskable[B], ScopedTaskable[C], ScopedTaskable[D], ScopedTaskable[E], ScopedTaskable[F], ScopedTaskable[G])) extends RichTaskables(t7._1 :^: t7._2 :^: t7._3 :^: t7._4 :^: t7._5 :^: t7._6 :^: t7._7 :^: KNil)
+	final class RichTaskable7[A,B,C,D,E,F,G](t7: (ScopedTaskable[A], ScopedTaskable[B], ScopedTaskable[C], ScopedTaskable[D], ScopedTaskable[E], ScopedTaskable[F], ScopedTaskable[G])) extends RichTaskables(k7(t7))
 	{
 		type Fun[M[_],Ret] = (M[A],M[B],M[C],M[D],M[E],M[F],M[G]) => Ret
-		def identity = map( (a,b,c,d,e,f,g) => (a,b,c,d,e,f,g) )
-		protected def convertH[R](z: Fun[Id,R]) = { case a :+: b :+: c :+: d :+: e :+: f :+: g :+: HNil => z(a,b,c,d,e,f,g) }
+		def identityMap = map(mkTuple7)
+		protected def convertH[R](z: Fun[Id,R]) = hf7(z)
 		protected def convertK[M[_],R](z: Fun[M,R]) = { case a :^: b :^: c :^: d :^: e :^: f :^: g :^: KNil => z(a,b,c,d,e,f,g) }
 	}
-	final class RichTaskable8[A,B,C,D,E,F,G,H](t8: (ScopedTaskable[A], ScopedTaskable[B], ScopedTaskable[C], ScopedTaskable[D], ScopedTaskable[E], ScopedTaskable[F], ScopedTaskable[G], ScopedTaskable[H])) extends RichTaskables(t8._1 :^: t8._2 :^: t8._3 :^: t8._4 :^: t8._5 :^: t8._6 :^: t8._7 :^: t8._8 :^: KNil)
+	final class RichTaskable8[A,B,C,D,E,F,G,H](t8: (ScopedTaskable[A], ScopedTaskable[B], ScopedTaskable[C], ScopedTaskable[D], ScopedTaskable[E], ScopedTaskable[F], ScopedTaskable[G], ScopedTaskable[H])) extends RichTaskables(k8(t8))
 	{
 		type Fun[M[_],Ret] = (M[A],M[B],M[C],M[D],M[E],M[F],M[G],M[H]) => Ret
-		def identity = map( (a,b,c,d,e,f,g,h) => (a,b,c,d,e,f,g,h) )
-		protected def convertH[R](z: Fun[Id,R]) = { case a :+: b :+: c :+: d :+: e :+: f :+: g :+: h :+: HNil => z(a,b,c,d,e,f,g,h) }
+		def identityMap = map(mkTuple8)
+		protected def convertH[R](z: Fun[Id,R]) = hf8(z)
 		protected def convertK[M[_],R](z: Fun[M,R]) = { case a :^: b :^: c :^: d :^: e :^: f :^: g :^: h :^: KNil => z(a,b,c,d,e,f,g,h) }
 	}
-	final class RichTaskable9[A,B,C,D,E,F,G,H,I](t9: (ScopedTaskable[A], ScopedTaskable[B], ScopedTaskable[C], ScopedTaskable[D], ScopedTaskable[E], ScopedTaskable[F], ScopedTaskable[G], ScopedTaskable[H], ScopedTaskable[I])) extends RichTaskables(t9._1 :^: t9._2 :^: t9._3 :^: t9._4 :^: t9._5 :^: t9._6 :^: t9._7 :^: t9._8 :^: t9._9 :^: KNil)
+	final class RichTaskable9[A,B,C,D,E,F,G,H,I](t9: (ScopedTaskable[A], ScopedTaskable[B], ScopedTaskable[C], ScopedTaskable[D], ScopedTaskable[E], ScopedTaskable[F], ScopedTaskable[G], ScopedTaskable[H], ScopedTaskable[I])) extends RichTaskables(k9(t9))
 	{
 		type Fun[M[_],Ret] = (M[A],M[B],M[C],M[D],M[E],M[F],M[G],M[H],M[I]) => Ret
-		def identity = map( (a,b,c,d,e,f,g,h,i) => (a,b,c,d,e,f,g,h,i) )
-		protected def convertH[R](z: Fun[Id,R]) = { case a :+: b :+: c :+: d :+: e :+: f :+: g :+: h :+: i :+: HNil => z(a,b,c,d,e,f,g,h,i) }
+		def identityMap = map(mkTuple9)
+		protected def convertH[R](z: Fun[Id,R]) = hf9(z)
 		protected def convertK[M[_],R](z: Fun[M,R]) = { case a :^: b :^: c :^: d :^: e :^: f :^: g :^: h :^: i :^: KNil => z(a,b,c,d,e,f,g,h,i) }
 	}
 
@@ -404,6 +404,9 @@ object Scoped
 	implicit def t5ToApp5[A,B,C,D,E](t5: (ScopedSetting[A], ScopedSetting[B], ScopedSetting[C], ScopedSetting[D], ScopedSetting[E]) ): Apply5[A,B,C,D,E] = new Apply5(t5)
 	implicit def t6ToApp6[A,B,C,D,E,F](t6: (ScopedSetting[A], ScopedSetting[B], ScopedSetting[C], ScopedSetting[D], ScopedSetting[E], ScopedSetting[F]) ): Apply6[A,B,C,D,E,F] = new Apply6(t6)
 	implicit def t7ToApp7[A,B,C,D,E,F,G](t7: (ScopedSetting[A], ScopedSetting[B], ScopedSetting[C], ScopedSetting[D], ScopedSetting[E], ScopedSetting[F], ScopedSetting[G]) ): Apply7[A,B,C,D,E,F,G] = new Apply7(t7)
+	implicit def t8ToApp8[A,B,C,D,E,F,G,H](t8: (ScopedSetting[A], ScopedSetting[B], ScopedSetting[C], ScopedSetting[D], ScopedSetting[E], ScopedSetting[F], ScopedSetting[G], ScopedSetting[H]) ): Apply8[A,B,C,D,E,F,G,H] = new Apply8(t8)
+	implicit def t9ToApp9[A,B,C,D,E,F,G,H,I](t9: (ScopedSetting[A], ScopedSetting[B], ScopedSetting[C], ScopedSetting[D], ScopedSetting[E], ScopedSetting[F], ScopedSetting[G], ScopedSetting[H], ScopedSetting[I]) ): Apply9[A,B,C,D,E,F,G,H,I] = new Apply9(t9)
+
 
 	object Apply
 	{
@@ -427,30 +430,67 @@ object Scoped
 		type ScopedTaskKey[T] = ScopedKey[Task[T]]
 	}	
 
+
+	def mkTuple2[A,B] = (a:A,b:B) => (a,b)
+	def mkTuple3[A,B,C] = (a:A,b:B,c:C) => (a,b,c)
+	def mkTuple4[A,B,C,D] = (a:A,b:B,c:C,d:D) => (a,b,c,d)
+	def mkTuple5[A,B,C,D,E] = (a:A,b:B,c:C,d:D,e:E) => (a,b,c,d,e)
+	def mkTuple6[A,B,C,D,E,F] = (a:A,b:B,c:C,d:D,e:E,f:F) => (a,b,c,d,e,f)
+	def mkTuple7[A,B,C,D,E,F,G] = (a:A,b:B,c:C,d:D,e:E,f:F,g:G) => (a,b,c,d,e,f,g)
+	def mkTuple8[A,B,C,D,E,F,G,H] = (a:A,b:B,c:C,d:D,e:E,f:F,g:G,h:H) => (a,b,c,d,e,f,g,h)
+	def mkTuple9[A,B,C,D,E,F,G,H,I] = (a:A,b:B,c:C,d:D,e:E,f:F,g:G,h:H,i:I) => (a,b,c,d,e,f,g,h,i)
+
 	final class Apply2[A,B](t2: (ScopedSetting[A], ScopedSetting[B])) {
-		def apply[T](f: (A,B) => T) =
-			Apply(t2._1 :^: t2._2 :^: KNil){ case a :+: b :+: HNil => f(a,b) }
+		def apply[T](z: (A,B) => T) = Apply( k2(t2) )( hf2(z) )
+		def identity = apply(mkTuple2)
 	}
 	final class Apply3[A,B,C](t3: (ScopedSetting[A], ScopedSetting[B], ScopedSetting[C])) {
-		def apply[T](f: (A,B,C) => T) =
-			Apply(t3._1 :^: t3._2 :^: t3._3 :^: KNil){ case a :+: b :+: c :+: HNil => f(a,b,c) }
+		def apply[T](z: (A,B,C) => T) = Apply( k3(t3) )( hf3(z) )
+		def identity = apply(mkTuple3)
 	}
 	final class Apply4[A,B,C,D](t4: (ScopedSetting[A], ScopedSetting[B], ScopedSetting[C], ScopedSetting[D])) {
-		def apply[T](f: (A,B,C,D) => T) =
-			Apply(t4._1 :^: t4._2 :^: t4._3 :^: t4._4 :^: KNil){ case a :+: b :+: c :+: d :+: HNil => f(a,b,c,d) }
+		def apply[T](z: (A,B,C,D) => T) = Apply( k4(t4) )( hf4(z) )
+		def identity = apply(mkTuple4)
 	}
 	final class Apply5[A,B,C,D,E](t5: (ScopedSetting[A], ScopedSetting[B], ScopedSetting[C], ScopedSetting[D], ScopedSetting[E])) {
-		def apply[T](f: (A,B,C,D,E) => T) =
-			Apply(t5._1 :^: t5._2 :^: t5._3 :^: t5._4 :^: t5._5 :^: KNil){ case a :+: b :+: c :+: d :+: e :+: HNil => f(a,b,c,d,e) }
+		def apply[T](z: (A,B,C,D,E) => T) = Apply( k5(t5) )( hf5(z) )
+		def identity = apply(mkTuple5)
 	}
 	final class Apply6[A,B,C,D,E,F](t6: (ScopedSetting[A], ScopedSetting[B], ScopedSetting[C], ScopedSetting[D], ScopedSetting[E], ScopedSetting[F])) {
-		def apply[T](z: (A,B,C,D,E,F) => T) =
-			Apply(t6._1 :^: t6._2 :^: t6._3 :^: t6._4 :^: t6._5 :^: t6._6 :^: KNil){ case a :+: b :+: c :+: d :+: e :+: f :+: HNil => z(a,b,c,d,e, f) }
+		def apply[T](z: (A,B,C,D,E,F) => T) = Apply( k6(t6) )( hf6(z) )
+		def identity = apply(mkTuple6)
 	}
 	final class Apply7[A,B,C,D,E,F,G](t7: (ScopedSetting[A], ScopedSetting[B], ScopedSetting[C], ScopedSetting[D], ScopedSetting[E], ScopedSetting[F], ScopedSetting[G])) {
-		def apply[T](z: (A,B,C,D,E,F,G) => T) =
-			Apply(t7._1 :^: t7._2 :^: t7._3 :^: t7._4 :^: t7._5 :^: t7._6 :^: t7._7 :^: KNil){ case a :+: b :+: c :+: d :+: e :+: f :+: g :+: HNil => z(a,b,c,d,e,f,g) }
+		def apply[T](z: (A,B,C,D,E,F,G) => T) = Apply( k7(t7) )( hf7(z) )
+		def identity = apply(mkTuple7)
 	}
+	final class Apply8[A,B,C,D,E,F,G,H](t8: (ScopedSetting[A], ScopedSetting[B], ScopedSetting[C], ScopedSetting[D], ScopedSetting[E], ScopedSetting[F], ScopedSetting[G], ScopedSetting[H])) {
+		def apply[T](z: (A,B,C,D,E,F,G,H) => T) = Apply( k8(t8) )( hf8(z) )
+		def identity = apply(mkTuple8)
+	}
+	final class Apply9[A,B,C,D,E,F,G,H,I](t9: (ScopedSetting[A], ScopedSetting[B], ScopedSetting[C], ScopedSetting[D], ScopedSetting[E], ScopedSetting[F], ScopedSetting[G], ScopedSetting[H], ScopedSetting[I])) {
+		def apply[T](z: (A,B,C,D,E,F,G,H,I) => T) = Apply( k9(t9) )( hf9(z) )
+		def identity = apply(mkTuple9)
+	}
+
+	def hf2[A, B, T](z: (A, B) => T): A :+: B :+: HNil => T = { case a :+: b :+: HNil => z(a,b) }
+	def hf3[A, B, C, T](z: (A,B,C) => T): A :+: B :+: C :+: HNil => T = { case a :+: b :+: c :+: HNil => z(a,b,c) }
+	def hf4[A, B, C, D, T](z: (A,B,C,D) => T): A :+: B :+: C :+: D :+: HNil => T = { case a :+: b :+: c :+: d :+: HNil => z(a,b,c,d) }
+	def hf5[A, B, C, D, E, T](z: (A,B,C,D,E) => T): A :+: B :+: C :+: D :+: E :+: HNil => T = { case a :+: b :+: c :+: d :+: e :+: HNil => z(a,b,c,d,e) }
+	def hf6[A, B, C, D, E, F, T](z: (A,B,C,D,E,F) => T): A :+: B :+: C :+: D :+: E :+: F :+: HNil => T = { case a :+: b :+: c :+: d :+: e :+: f :+: HNil => z(a,b,c,d,e,f) }
+	def hf7[A, B, C, D, E, F, G, T](z: (A,B,C,D,E,F,G) => T): A :+: B :+: C :+: D :+: E :+: F :+: G :+: HNil => T = { case a :+: b :+: c :+: d :+: e :+: f :+: g :+: HNil => z(a,b,c,d,e,f,g) }
+	def hf8[A, B, C, D, E, F, G, H, T](z: (A,B,C,D,E,F,G,H) => T): A :+: B :+: C :+: D :+: E :+: F :+: G :+: H :+: HNil => T = { case a :+: b :+: c :+: d :+: e :+: f :+: g :+: h :+: HNil => z(a,b,c,d,e,f,g,h) }
+	def hf9[A, B, C, D, E, F, G, H, I, T](z: (A,B,C,D,E,F,G,H,I) => T): A :+: B :+: C :+: D :+: E :+: F :+: G :+: H :+: I :+: HNil => T = { case a :+: b :+: c :+: d :+: e :+: f :+: g :+: h :+: i :+: HNil => z(a,b,c,d,e,f,g,h,i) }
+
+
+	def k2[M[_], A, B](t2: (M[A], M[B]) ) = t2._1 :^: t2._2 :^: KNil
+	def k3[M[_], A, B, C](t3: (M[A], M[B], M[C]) ) = t3._1 :^: t3._2 :^: t3._3 :^: KNil
+	def k4[M[_], A, B, C, D](t4: (M[A], M[B], M[C], M[D])) = t4._1 :^: t4._2 :^: t4._3 :^: t4._4 :^: KNil
+	def k5[M[_], A, B, C, D, E](t5: (M[A], M[B], M[C], M[D], M[E])) = t5._1 :^: t5._2 :^: t5._3 :^: t5._4 :^: t5._5 :^: KNil
+	def k6[M[_], A, B, C, D, E, F](t6: (M[A], M[B], M[C], M[D], M[E], M[F])) = t6._1 :^: t6._2 :^: t6._3 :^: t6._4 :^: t6._5 :^: t6._6 :^: KNil
+	def k7[M[_], A, B, C, D, E, F, G](t7: (M[A], M[B], M[C], M[D], M[E], M[F], M[G])) = t7._1 :^: t7._2 :^: t7._3 :^: t7._4 :^: t7._5 :^: t7._6 :^: t7._7 :^: KNil
+	def k8[M[_], A, B, C, D, E, F, G, H](t8: (M[A], M[B], M[C], M[D], M[E], M[F], M[G], M[H])) = t8._1 :^: t8._2 :^: t8._3 :^: t8._4 :^: t8._5 :^: t8._6 :^: t8._7 :^: t8._8 :^: KNil
+	def k9[M[_], A, B, C, D, E, F, G, H, I](t9: (M[A], M[B], M[C], M[D], M[E], M[F], M[G], M[H], M[I])) = t9._1 :^: t9._2 :^: t9._3 :^: t9._4 :^: t9._5 :^: t9._6 :^: t9._7 :^: t9._8 :^: t9._9 :^: KNil
 }
 object InputKey
 {
