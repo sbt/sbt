@@ -21,7 +21,7 @@ object ScalaArtifacts
 
 import ScalaArtifacts._
 
-final class IvyScala(val scalaVersion: String, val configurations: Iterable[Configuration], val checkExplicit: Boolean, val filterImplicit: Boolean, val overrideScalaVersion: Boolean)
+final case class IvyScala(scalaVersion: String, configurations: Iterable[Configuration], checkExplicit: Boolean, filterImplicit: Boolean, overrideScalaVersion: Boolean)
 {
 	// otherwise, Ivy produces the error: "impossible to get artifacts when data has not been loaded"
 	//   which may be related to sbt's custom conflict manager, to IVY-987, or both
