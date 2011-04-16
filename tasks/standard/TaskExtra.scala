@@ -91,7 +91,7 @@ trait TaskExtra
 	final implicit def toTasks[S](in: Seq[() => S]): Seq[Task[S]] = in.map(toTask)
 	final implicit def iterableTask[S](in: Seq[S]): ForkTask[S, Seq] = new ForkTask[S, Seq] {
 		def fork[T](f: S => T): Seq[Task[T]] = in.map(x => task(f(x)))
-		def tasks: Seq[Task[S]] = fork(identity)
+		def tasks: Seq[Task[S]] = fork(idFun)
 	}
 
 	final implicit def joinAnyTasks(in: Seq[Task[_]]): JoinTask[Any, Seq] = joinTasks[Any](in map (x => x: Task[Any]))

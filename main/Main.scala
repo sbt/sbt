@@ -7,7 +7,7 @@ package sbt
 	import complete.{DefaultParsers, HistoryCommands, Parser}
 	import HistoryCommands.{Start => HistoryPrefix}
 	import compiler.EvalImports
-
+	import Types.idFun
 
 	import Command.applyEffect
 	import Keys.{analysis,historyPath,logged,shellPrompt}
@@ -64,7 +64,7 @@ object BuiltinCommands
 	def DefaultBootCommands: Seq[String] = LoadProject :: (IfLast + " " + Shell) :: Nil
 
 	def nop = Command.custom(s => success(() => s))
-	def ignore = Command.command(FailureWall)(identity)
+	def ignore = Command.command(FailureWall)(idFun)
 
 	def detail(selected: Iterable[String])(h: Help): Option[String] =
 		h.detail match { case (commands, value) => if( selected exists commands ) Some(value) else None }

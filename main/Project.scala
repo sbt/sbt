@@ -9,6 +9,7 @@ package sbt
 	import Keys.{appConfiguration, stateBuildStructure, commands, configuration, historyPath, logged, projectCommand, sessionSettings, shellPrompt, streams, thisProject, thisProjectRef, watch}
 	import Scope.{GlobalScope,ThisScope}
 	import CommandSupport.logger
+	import Types.idFun
 
 sealed trait ProjectDefinition[PR <: ProjectReference]
 {
@@ -125,7 +126,7 @@ object Project extends Init[Scope] with ProjectExtra
 		def commandsIn(axis: ResolvedReference) = commands in axis get structure.data toList ;
 
 		val allCommands = commandsIn(ref) ++ commandsIn(BuildRef(ref.build)) ++ (commands in Global get structure.data toList )
-		val history = get(historyPath) flatMap identity
+		val history = get(historyPath) flatMap idFun
 		val prompt = get(shellPrompt)
 		val watched = get(watch)
 		val commandDefs = allCommands.distinct.flatten[Command].map(_ tag (projectCommand, true))

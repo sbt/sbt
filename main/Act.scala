@@ -8,6 +8,7 @@ package sbt
 	import Load.BuildStructure
 	import complete.{DefaultParsers, Parser}
 	import DefaultParsers._
+	import Types.idFun
 	import java.net.URI
 
 object Act
@@ -55,7 +56,7 @@ object Act
 		val allKeys = (Set.empty[String] /: confMap.values)(_ ++ _)
 		token(ID examples allKeys).flatMap { keyString =>
 			val conf = confMap.flatMap { case (key, value) => if(value contains keyString) key :: Nil else Nil } headOption;
-			getKey(keyMap, keyString, k => (k, conf.flatMap(identity)))
+			getKey(keyMap, keyString, k => (k, conf flatMap idFun))
 		}
 	}
 	def getKey[T](keyMap: Map[String,AttributeKey[_]], keyString: String, f: AttributeKey[_] => T): Parser[T] =

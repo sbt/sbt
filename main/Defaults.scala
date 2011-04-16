@@ -126,11 +126,11 @@ object Defaults
 		definedSbtPlugins <<= discoverPlugins,
 		inTask(run)(runnerSetting :: Nil).head,
 		selectMainClass <<= discoveredMainClasses map selectRunMain,
-		mainClass in run :== selectMainClass in run,
+		mainClass in run <<= (selectMainClass in run).identity,
 		mainClass <<= discoveredMainClasses map selectPackageMain,
 		run <<= runTask(fullClasspath, mainClass in run, runner in run),
 		runMain <<= runMainTask(fullClasspath, runner in run),
-		scaladocOptions :== scalacOptions,
+		scaladocOptions <<= scalacOptions.identity,
 		doc <<= docTask,
 		copyResources <<= copyResourcesTask
 	)
@@ -486,14 +486,14 @@ object Classpaths
 	val baseSettings: Seq[Setting[_]] = Seq(
 		unmanagedBase <<= baseDirectory / "lib",
 		normalizedName <<= name(StringUtilities.normalize),
-		organization :== normalizedName,
+		organization <<= normalizedName.identity,
 		classpathFilter in GlobalScope :== "*.jar",
 		fullResolvers <<= (projectResolver,resolvers,sbtPlugin,sbtResolver) map { (pr,rs,isPlugin,sr) =>
 			val base = pr +: Resolver.withDefaultResolvers(rs)
 			if(isPlugin) sr +: base else base
 		},
 		offline in GlobalScope :== false,
-		moduleID :== normalizedName,
+		moduleID <<= normalizedName.identity,
 		defaultConfiguration in GlobalScope :== Some(Configurations.Compile),
 		defaultConfigurationMapping in GlobalScope <<= defaultConfiguration{ case Some(d) => "*->" + d.name; case None => "*->*" },
 		ivyPaths <<= (baseDirectory, appConfiguration) { (base, app) => new IvyPaths(base, Option(app.provider.scalaProvider.launcher.ivyHome).map(_ / "cache")) },
@@ -512,7 +512,7 @@ object Classpaths
 		moduleConfigurations in GlobalScope :== Nil,
 		publishTo in GlobalScope :== None,
 		artifactPath in makePom <<= artifactPathSetting(artifact in makePom),
-		publishArtifact in makePom :== publishMavenStyle,
+		publishArtifact in makePom <<= publishMavenStyle.identity,
 		artifact in makePom <<= moduleID( name => Artifact(name, "pom", "pom") ),
 		projectID <<= (organization,moduleID,version,artifacts){ (org,module,version,as) =>
 			ModuleID(org, module, version).cross(true).artifacts(as : _*)
@@ -531,7 +531,7 @@ object Classpaths
 		moduleSettings <<= moduleSettings0,
 		makePomConfiguration <<= (artifactPath in makePom)(file => makePomConfigurationTask(file)),
 		deliverLocalConfiguration <<= (crossTarget, ivyLoggingLevel) map { (outDir, level) => deliverConfig( outDir, logging = level ) },
-		deliverConfiguration :== deliverLocalConfiguration,
+		deliverConfiguration <<= deliverLocalConfiguration.identity,
 		publishConfiguration <<= (packagedArtifacts, publishTo, publishMavenStyle, deliver, ivyLoggingLevel) map { (arts, publishTo, mavenStyle, ivyFile, level) =>
 			publishConfig(arts, if(mavenStyle) None else Some(ivyFile), resolverName = getPublishTo(publishTo).name, logging = level)
 		},
@@ -738,7 +738,7 @@ object Classpaths
 		( key in (dep, ConfigKey(conf)) ) get data getOrElse const(Nil)
 	def defaultConfigurationTask(p: ResolvedReference, data: Settings[Scope]): Configuration =
 		flatten(defaultConfiguration in p get data) getOrElse Configurations.Default
-	def flatten[T](o: Option[Option[T]]): Option[T] = o flatMap identity
+	def flatten[T](o: Option[Option[T]]): Option[T] = o flatMap idFun
 
 	lazy val dbResolver = Resolver.url("sbt-db", new URL("http://databinder.net/repo/"))(Resolver.ivyStylePatterns)
 
