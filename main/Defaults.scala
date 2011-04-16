@@ -606,9 +606,10 @@ object Classpaths
 		/*}
 		f(module.owner.configuration :+: module.moduleSettings :+: config :+: HNil)*/
 	}*/
-	def makePomConfigurationTask(file: File, configurations: Option[Iterable[Configuration]] = None, extra: NodeSeq = NodeSeq.Empty, process: XNode => XNode = n => n, filterRepositories: MavenRepository => Boolean = _ => true) = 
+	def makePomConfigurationTask(file: File, configurations: Option[Iterable[Configuration]] = None, extra: NodeSeq = NodeSeq.Empty, process: XNode => XNode = n => n, filterRepositories: MavenRepository => Boolean = defaultRepositoryFilter) = 
 		new MakePomConfiguration(file, configurations, extra, process, filterRepositories)
 
+	def defaultRepositoryFilter = (repo: MavenRepository) => !repo.root.startsWith("file:")
 	def getPublishTo(repo: Option[Resolver]): Resolver = repo getOrElse error("Repository for publishing is not specified.")
 
 	def deliverConfig(outputDirectory: File, status: String = "release", logging: UpdateLogging.Value = UpdateLogging.DownloadOnly) =

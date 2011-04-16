@@ -1,14 +1,16 @@
 > update
 > clean
 
-$ copy-file changes/WrongOrg.scala project/build/Test.scala
+$ copy-file changes/WrongOrg.sbt Test.sbt
 > reload
 -> update
+> clean
 
-$ copy-file changes/WrongVersion.scala project/build/Test.scala
+$ copy-file changes/WrongVersion.sbt Test.sbt
 > reload
 -> update
+> clean
 
-$ copy-file changes/WrongPattern.scala project/build/Test.scala
+$ copy-file changes/WrongPattern.sbt Test.sbt
 > reload
 -> update

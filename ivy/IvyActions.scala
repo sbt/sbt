@@ -26,7 +26,7 @@ final class PublishConfiguration(val ivyFile: Option[File], val resolverName: St
 
 final class UpdateConfiguration(val retrieve: Option[RetrieveConfiguration], val missingOk: Boolean, val logging: UpdateLogging.Value)
 final class RetrieveConfiguration(val retrieveDirectory: File, val outputPattern: String)
-final class MakePomConfiguration(val file: File, val configurations: Option[Iterable[Configuration]] = None, val extra: NodeSeq = NodeSeq.Empty, val process: Node => Node = n => n, val filterRepositories: MavenRepository => Boolean = _ => true)
+final case class MakePomConfiguration(file: File, configurations: Option[Iterable[Configuration]] = None, extra: NodeSeq = NodeSeq.Empty, process: Node => Node = n => n, filterRepositories: MavenRepository => Boolean = _ => true)
 
 /** Configures logging during an 'update'.  `level` determines the amount of other information logged.
 * `Full` is the default and logs the most.
