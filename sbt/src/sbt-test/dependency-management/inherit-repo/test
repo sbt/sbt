@@ -1,21 +1,21 @@
-# This should fail because the sub project declares a dependency that exists in an extra repository, which we haven't declared
+# This should fail because project A declares a dependency that exists in an extra repository, which we haven't declared
 -> update
 
-# Copy the project definition with the extra repository declared in the parent and reload
-$ copy-file changes/CorrectProject.scala project/build/src/TestProject.scala
+# Copy the project definition with the extra repository declared in project B and with A delegating to B and reload
+$ copy-file changes/WithRepository.sbt b/build.sbt
 > reload
 
-# Try updating again, which should work because the repository declared in the parent should be inherited by the child
+# Try updating again, which should work because the repository declared in B should be shared by A
 > update
 
-# Copy the project definition with the extra repository declared in the child and parent and reload
-$ copy-file changes/CorrectProject2.scala project/build/src/TestProject.scala
+# Copy the project definition with the extra repository declared in both A and B and reload
+$ copy-file changes/WithRepository.sbt a/build.sbt
 > reload
 
 > update
 
-# Copy the project definition with the extra repository declared in the child and reload
-$ copy-file changes/CorrectProject3.scala project/build/src/TestProject.scala
+# Copy the project definition with the extra repository declared in A only and reload
+$ delete b/build.sbt
 > reload
 
 > update

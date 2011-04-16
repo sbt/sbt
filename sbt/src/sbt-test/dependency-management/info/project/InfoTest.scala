@@ -7,16 +7,19 @@ object InfoTest extends Build
 	lazy val projects = Seq(root)
 	lazy val root = Project("root", file(".")) settings(
 		ivyPaths <<= (baseDirectory, target)( (dir, t) => new IvyPaths(dir, Some(t / "ivy-cache"))),
-		ivyXML <<= (baseDirectory, organization, moduleID) apply inlineXML,
+		ivyXML <<= (customInfo, organization, moduleID, version) apply inlineXML,
+		projectID ~= (_ cross false),
+		customInfo <<= baseDirectory{_ / "info" exists },
 		TaskKey("check-download") <<= checkDownload,
 		delivered <<= deliverLocal map XML.loadFile,
 		TaskKey("check-info") <<= checkInfo
 	)
 	lazy val delivered = TaskKey[NodeSeq]("delivered")
+	lazy val customInfo = SettingKey[Boolean]("custom-info")
 
-	def inlineXML(baseDirectory: File, organization: String, moduleID: String): NodeSeq =
-		if(baseDirectory / "info" exists)
-			(<info organisation={organization} module={moduleID} revision="1.0">
+	def inlineXML(addInfo: Boolean, organization: String, moduleID: String, version: String): NodeSeq =
+		if(addInfo)
+			(<info organisation={organization} module={moduleID} revision={version}>
 				<license name="Two-clause BSD-style" url="http://github.com/szeiger/scala-query/blob/master/LICENSE.txt" />
 				<description homepage="http://github.com/szeiger/scala-query/">
 					ScalaQuery is a type-safe database query API for Scala.
@@ -26,14 +29,13 @@ object InfoTest extends Build
 		else
 			<dependency org="org.scalacheck" name="scalacheck" rev="1.5"/>
 
-	def customInfo = file("info").exists
 	def checkDownload = (dependencyClasspath in Compile) map { cp => if(cp.isEmpty) error("Dependency not downloaded") }
-	def checkInfo = delivered map { d =>
+	def checkInfo = (customInfo, delivered) map { (addInfo, d) =>
 		if((d \ "info").isEmpty)
 			error("No info tag generated")
-		else if(customInfo)
+		else if(addInfo) {
 			if( !deliveredWithCustom(d) ) error("Expected 'license' and 'description' tags in info tag, got: \n" + (d \ "info"))
-		else
+		} else
 			if( deliveredWithCustom(d) ) error("Expected empty 'info' tag, got: \n" + (d \ "info"))
 	}
 	def deliveredWithCustom(d: NodeSeq) = !(d \ "info" \ "license").isEmpty && !(d \ "info" \ "description").isEmpty

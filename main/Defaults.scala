@@ -28,6 +28,8 @@ object Defaults
 	def nameForSrc(config: String) = if(config == "compile") "main" else config
 	def prefix(config: String) = if(config == "compile") "" else config + "-"
 
+	def lock(app: xsbti.AppConfiguration): xsbti.GlobalLock = app.provider.scalaProvider.launcher.globalLock
+
 	def extractAnalysis[T](a: Attributed[T]): (T, inc.Analysis) = 
 		(a.data, a.metadata get Keys.analysis getOrElse inc.Analysis.Empty)
 
@@ -521,8 +523,7 @@ object Classpaths
 		updateConfiguration <<= (retrieveConfiguration, ivyLoggingLevel)((conf,level) => new UpdateConfiguration(conf, false, level) ),
 		retrieveConfiguration <<= (managedDirectory, retrievePattern, retrieveManaged) { (libm, pattern, enabled) => if(enabled) Some(new RetrieveConfiguration(libm, pattern)) else None },
 		ivyConfiguration <<= (fullResolvers, ivyPaths, otherResolvers, moduleConfigurations, offline, checksums, appConfiguration, streams) map { (rs, paths, other, moduleConfs, off, check, app, s) =>
-			val lock = app.provider.scalaProvider.launcher.globalLock
-			new InlineIvyConfiguration(paths, rs, other, moduleConfs, off, Some(lock), check, s.log)
+			new InlineIvyConfiguration(paths, rs, other, moduleConfs, off, Some(lock(app)), check, s.log)
 		},
 		ivyConfigurations <<= (autoCompilerPlugins, thisProject) { (auto, project) =>
 			project.configurations ++ (if(auto) CompilerPlugin :: Nil else Nil)

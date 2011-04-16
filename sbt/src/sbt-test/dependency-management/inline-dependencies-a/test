@@ -1,3 +1,5 @@
-> update
+> check
 
-$ exists lib_managed/compile/scalacheck-1.5.jar
+> set retrieveManaged := true
+
+> check
