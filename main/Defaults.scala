@@ -508,7 +508,7 @@ object Classpaths
 		ivyLoggingLevel in GlobalScope :== UpdateLogging.Quiet,
 		ivyXML in GlobalScope :== NodeSeq.Empty,
 		ivyValidate in GlobalScope :== false,
-		ivyScala in GlobalScope <<= scalaVersion(v => Some(new IvyScala(v, Nil, filterImplicit = true, checkExplicit = true, overrideScalaVersion = true))),
+		ivyScala in GlobalScope <<= (scalaHome, scalaVersion)((sh,v) => Some(new IvyScala(v, Nil, filterImplicit = true, checkExplicit = true, overrideScalaVersion = sh.isEmpty))),
 		moduleConfigurations in GlobalScope :== Nil,
 		publishTo in GlobalScope :== None,
 		artifactPath in makePom <<= artifactPathSetting(artifact in makePom),
