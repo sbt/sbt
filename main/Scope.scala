@@ -123,24 +123,26 @@ object Scope
 		extraInherit: (ResolvedReference, AttributeMap) => Seq[AttributeMap])(rawScope: Scope): Seq[Scope] =
 	{
 		val scope = Scope.replaceThis(GlobalScope)(rawScope)
+	
+		def nonProjectScopes(resolvedProj: ResolvedReference)(px: ScopeAxis[ResolvedReference]) =
+		{
+			val p = px.toOption getOrElse resolvedProj
+			val cLin = linearize(scope.config)(configInherit(p, _))
+			val tLin = linearize(scope.task)(taskInherit(p,_))
+			val eLin = linearize(scope.extra)(extraInherit(p,_))
+			for(c <- cLin; t <- tLin; e <- eLin) yield Scope(px, c, t, e)
+		}
 		scope.project match
 		{
 			case Global => withGlobalScope(scope)
 			case This => withGlobalScope(scope.copy(project = Global))
 			case Select(proj) =>
 				val resolvedProj = resolve(proj)
-				val prod =
-					for {
-						px <- withRawBuilds(linearize(scope.project map resolve, Nil)(projectInherit)).distinct
-						p = px.toOption getOrElse resolvedProj
-						c <- linearize(scope.config)(configInherit(p, _))
-						t <- linearize(scope.task)(taskInherit(p,_))
-						e <- linearize(scope.extra)(extraInherit(p,_))
-					} yield
-						Scope(px,c,t,e)
+				val prod = withRawBuilds(linearize(scope.project map resolve, Nil)(projectInherit)) flatMap nonProjectScopes(resolvedProj)
 				(prod :+ GlobalScope).distinct
 		}
 	}
+
 	def withGlobalScope(base: Scope): Seq[Scope] = if(base == GlobalScope) GlobalScope :: Nil else base :: GlobalScope :: Nil
 	def withRawBuilds(ps: Seq[ScopeAxis[ResolvedReference]]): Seq[ScopeAxis[ResolvedReference]] =
 		(ps ++ (ps flatMap rawBuilds).map(Select.apply) :+ Global).distinct
