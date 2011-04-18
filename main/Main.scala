@@ -20,19 +20,30 @@ package sbt
 	import java.io.File
 
 /** This class is the entry point for sbt.*/
-class xMain extends xsbti.AppMain
+final class xMain extends xsbti.AppMain
 {
-	final def run(configuration: xsbti.AppConfiguration): xsbti.MainResult =
+	def run(configuration: xsbti.AppConfiguration): xsbti.MainResult =
 	{
-		import BuiltinCommands.{initialize, defaults, DefaultBootCommands}
+		import BuiltinCommands.{initialAttributes, initialize, defaults, DefaultBootCommands}
 		import CommandSupport.{DefaultsCommand, InitCommand}
 		val initialCommandDefs = Seq(initialize, defaults)
 		val commands = DefaultsCommand +: InitCommand +: (DefaultBootCommands ++ configuration.arguments.map(_.trim))
 		val state = State( configuration, initialCommandDefs, Set.empty, None, commands, initialAttributes, Next.Continue )
-		run(state)
+		MainLoop.run(state)
 	}
-	def initialAttributes = AttributeMap.empty.put(logged, ConsoleLogger())
-		
+}
+final class ScriptMain extends xsbti.AppMain
+{
+	def run(configuration: xsbti.AppConfiguration): xsbti.MainResult =
+	{
+		import BuiltinCommands.{initialAttributes, ScriptCommands}
+		val commands = Script.Name +: configuration.arguments.map(_.trim)
+		val state = State( configuration, ScriptCommands, Set.empty, None, commands, initialAttributes, Next.Continue )
+		MainLoop.run(state)
+	}	
+}
+object MainLoop
+{
 	@tailrec final def run(state: State): xsbti.MainResult =
 	{
 		import Next._
@@ -59,7 +70,10 @@ class xMain extends xsbti.AppMain
 	import CommandSupport._
 object BuiltinCommands
 {
-	def DefaultCommands: Seq[Command] = Seq(ignore, help, reboot, read, history, continuous, exit, loadProject, loadProjectImpl, loadFailed, Script.command, Cross.crossBuild, Cross.switchVersion,
+	def initialAttributes = AttributeMap.empty.put(logged, ConsoleLogger())
+
+	def ScriptCommands: Seq[Command] = Seq(ignore, exit, Script.command, act, nop)
+	def DefaultCommands: Seq[Command] = Seq(ignore, help, reboot, read, history, continuous, exit, loadProject, loadProjectImpl, loadFailed, Cross.crossBuild, Cross.switchVersion,
 		projects, project, setOnFailure, clearOnFailure, ifLast, multi, shell, set, inspect, eval, alias, append, last, lastGrep, nop, sessionCommand, act)
 	def DefaultBootCommands: Seq[String] = LoadProject :: (IfLast + " " + Shell) :: Nil
 

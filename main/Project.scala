@@ -8,6 +8,7 @@ package sbt
 	import Project._
 	import Keys.{appConfiguration, stateBuildStructure, commands, configuration, historyPath, logged, projectCommand, sessionSettings, shellPrompt, streams, thisProject, thisProjectRef, watch}
 	import Scope.{GlobalScope,ThisScope}
+	import Load.BuildStructure
 	import CommandSupport.logger
 	import Types.idFun
 
@@ -58,7 +59,7 @@ sealed trait Project extends ProjectDefinition[ProjectReference]
 }
 sealed trait ResolvedProject extends ProjectDefinition[ProjectRef]
 
-final case class Extracted(structure: Load.BuildStructure, session: SessionSettings, currentRef: ProjectRef, rootProject: URI => String)
+final case class Extracted(structure: BuildStructure, session: SessionSettings, currentRef: ProjectRef, rootProject: URI => String)
 {
 	lazy val currentUnit = structure units currentRef.build
 	lazy val currentProject = currentUnit defined currentRef.project
@@ -93,22 +94,18 @@ object Project extends Init[Scope] with ProjectExtra
 	}
 
 	def getOrError[T](state: State, key: AttributeKey[T], msg: String): T = state get key getOrElse error(msg)
-	def structure(state: State): Load.BuildStructure = getOrError(state, stateBuildStructure, "No build loaded.")
+	def structure(state: State): BuildStructure = getOrError(state, stateBuildStructure, "No build loaded.")
 	def session(state: State): SessionSettings = getOrError(state, sessionSettings, "Session not initialized.")
 
-	def extract(state: State): Extracted =
-	{
-		val se = session(state)
-		val st = structure(state)
-		Extracted(st, se, se.current, Load.getRootProject(st.units))
-	}
+	def extract(state: State): Extracted  =  extract( session(state), structure(state) )
+	def extract(se: SessionSettings, st: BuildStructure): Extracted  =  Extracted(st, se, se.current, Load.getRootProject(st.units))
 
-	def getProjectForReference(ref: Reference, structure: Load.BuildStructure): Option[ResolvedProject] =
+	def getProjectForReference(ref: Reference, structure: BuildStructure): Option[ResolvedProject] =
 		ref match { case pr: ProjectRef => getProject(pr, structure); case _ => None }
-	def getProject(ref: ProjectRef, structure: Load.BuildStructure): Option[ResolvedProject] =
+	def getProject(ref: ProjectRef, structure: BuildStructure): Option[ResolvedProject] =
 		(structure.units get ref.build).flatMap(_.defined get ref.project)
 
-	def setProject(session: SessionSettings, structure: Load.BuildStructure, s: State): State =
+	def setProject(session: SessionSettings, structure: BuildStructure, s: State): State =
 	{
 		val newAttrs = s.attributes.put(stateBuildStructure, structure).put(sessionSettings, session)
 		val newState = s.copy(attributes = newAttrs)
@@ -185,10 +182,10 @@ object Project extends Init[Scope] with ProjectExtra
 				throw new MessageOnlyException(c.getMessage)
 		}
 
-	def delegates(structure: Load.BuildStructure, scope: Scope, key: AttributeKey[_]): Seq[ScopedKey[_]] =
+	def delegates(structure: BuildStructure, scope: Scope, key: AttributeKey[_]): Seq[ScopedKey[_]] =
 		structure.delegates(scope).map(d => ScopedKey(d, key))
 
-	def details(structure: Load.BuildStructure, actual: Boolean, scope: Scope, key: AttributeKey[_]): String =
+	def details(structure: BuildStructure, actual: Boolean, scope: Scope, key: AttributeKey[_]): String =
 	{
 		val scoped = ScopedKey(scope,key)
 		val value = 
@@ -213,13 +210,13 @@ object Project extends Init[Scope] with ProjectExtra
 			printScopes("Delegates", delegates(structure, scope, key)) +
 			printScopes("Related", related)
 	}
-	def graphSettings(structure: Load.BuildStructure, basedir: File)
+	def graphSettings(structure: BuildStructure, basedir: File)
 	{
 		def graph(actual: Boolean, name: String) = graphSettings(structure, actual, name, new File(basedir, name + ".dot"))
 		graph(true, "actual_dependencies")
 		graph(false, "declared_dependencies")
 	}
-	def graphSettings(structure: Load.BuildStructure, actual: Boolean, graphName: String, file: File)
+	def graphSettings(structure: BuildStructure, actual: Boolean, graphName: String, file: File)
 	{
 		type Rel = Relation[ScopedKey[_], ScopedKey[_]]
 		val cMap = compiled(structure.settings, actual)(structure.delegates, structure.scopeLocal)
@@ -267,7 +264,7 @@ object Project extends Init[Scope] with ProjectExtra
 		EvaluateTask.evaluateTask(extracted.structure, taskKey, state, extracted.currentRef, checkCycles, maxWorkers)
 	}
 	def globalLoggerKey = fillTaskAxis(ScopedKey(GlobalScope, streams.key))
-	def installGlobalLogger(s: State, structure: Load.BuildStructure): State =
+	def installGlobalLogger(s: State, structure: BuildStructure): State =
 	{
 		val str = structure.streams(globalLoggerKey)
 		str.open()
