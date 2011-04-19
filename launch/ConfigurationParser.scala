@@ -75,7 +75,7 @@ class ConfigurationParser
 	def check(map: ListMap[String, _], label: String): Unit = if(map.isEmpty) () else error(map.keys.mkString("Invalid " + label + "(s): ", ",",""))
 	def check[T](label: String, pair: (T, ListMap[String, _])): T = { check(pair._2, label); pair._1 }
 	def id(map: LabelMap, name: String, default: String): (String, LabelMap) =
-		(orElse(getOrNone(map, name), default), map - name)
+		(substituteVariables(orElse(getOrNone(map, name), default)), map - name)
 	def getOrNone[K,V](map: ListMap[K,Option[V]], k: K) = orElse(map.get(k), None)
 	def ids(map: LabelMap, name: String, default: List[String]) =
 	{
@@ -191,7 +191,7 @@ class ConfigurationParser
 		s._1
 	}
 
-	private[this] lazy val VarPattern = Pattern.compile("""\$\{([\w.]+(-(.+))?)\}""")
+	private[this] lazy val VarPattern = Pattern.compile("""\$\{([\w.]+)(\-(.+))?\}""")
 	def substituteVariables(s: String): String = if(s.indexOf('$') >= 0) substituteVariables0(s) else s
 	// scala.util.Regex brought in 30kB, so we code it explicitly
 	def substituteVariables0(s: String): String =
