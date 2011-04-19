@@ -379,10 +379,10 @@ object Defaults
 	{ state =>
 			import DefaultParsers._
 		def distinctParser(exs: Set[String]): Parser[Seq[String]] =
-			token(Space ~> (NotSpace - "--").examples(exs) ).flatMap(ex => distinctParser(exs - ex).map(ex +: _)) ?? Nil
+			(token(Space) ~> token((NotSpace - "--") examples exs) ).flatMap(ex => distinctParser(exs - ex).map(ex +: _)) ?? Nil
 		val tests = savedLines(state, resolved, definedTests)
 		val selectTests = distinctParser(tests.toSet) // todo: proper IDs
-		val options = (token(Space ~> "--") ~> spaceDelimited("<option>")) ?? Nil
+		val options = (token(Space) ~> token("--") ~> spaceDelimited("<option>")) ?? Nil
 		selectTests ~ options
 	}
 	def savedLines(state: State, reader: ScopedKey[_], readFrom: Scoped): Seq[String] =
