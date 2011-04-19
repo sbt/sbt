@@ -19,7 +19,7 @@ object FileBasedStore
 			}
 
 		def get(): Option[(Analysis, CompileSetup)] =
-			try { Some(getUncaught()) } catch { case io: IOException => None }
+			try { Some(getUncaught()) } catch { case _: Exception => None }
 		def getUncaught(): (Analysis, CompileSetup) =
 			IO.gzipFileIn(file)( in => read[(Analysis, CompileSetup)](in) )
 	}
