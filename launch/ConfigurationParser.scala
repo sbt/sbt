@@ -87,8 +87,9 @@ class ConfigurationParser
 		val (b, m) = id(map, name, default.toString)
 		(toBoolean(b), m)
 	}
+		
 	def toFiles(paths: List[String]): List[File] = paths.map(toFile)
-	def toFile(path: String): File = new File(path.replace('/', File.separatorChar))// if the path is relative, it will be resolved by Launch later
+	def toFile(path: String): File = new File(substituteVariables(path).replace('/', File.separatorChar))// if the path is relative, it will be resolved by Launch later
 	def file(map: LabelMap, name: String, default: File): (File, LabelMap) =
 		(orElse(getOrNone(map, name).map(toFile), default), map - name)
 
@@ -162,7 +163,7 @@ class ConfigurationParser
 			case "set" => new SetProperty(requiredArg)
 			case _ => error("Unknown action '" + action + "' for property '"  + name + "'")
 		}
-	private lazy val propertyPattern = Pattern.compile("""(.+)\((.*)\)(?:\[(.*)\])?""") // examples: prompt(Version)[1.0] or set(1.0)
+	private[this] lazy val propertyPattern = Pattern.compile("""(.+)\((.*)\)(?:\[(.*)\])?""") // examples: prompt(Version)[1.0] or set(1.0)
 	def parsePropertyValue[T](name: String, definition: String)(f: (String, String, Option[String]) => T): T =
 	{
 		val m = propertyPattern.matcher(definition)
@@ -188,6 +189,31 @@ class ConfigurationParser
 					else ( map(section) = (sMap(l.label) = l.value), s )
 			}
 		s._1
+	}
+
+	private[this] lazy val VarPattern = Pattern.compile("""\$\{([\w.]+(-(.+))?)\}""")
+	def substituteVariables(s: String): String = if(s.indexOf('$') >= 0) substituteVariables0(s) else s
+	// scala.util.Regex brought in 30kB, so we code it explicitly
+	def substituteVariables0(s: String): String =
+	{
+		val m = VarPattern.matcher(s)
+		val b = new StringBuffer
+		while(m.find())
+		{
+			val key = m.group(1)
+			val defined = System.getProperty(key)
+			val value =
+				if(defined ne null)
+					defined
+				else
+				{
+					val default = m.group(3)
+					if(default eq null) m.group() else substituteVariables(default)
+				}
+			m.appendReplacement(b, value)
+		}
+		m.appendTail(b)
+		b.toString
 	}
 }
 
