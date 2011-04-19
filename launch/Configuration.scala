@@ -7,19 +7,32 @@ import Pre._
 import java.io.{File, FileInputStream, InputStreamReader}
 import java.net.{MalformedURLException, URI, URL}
 import scala.collection.immutable.List
+import annotation.tailrec
 
 object Configuration
 {
+	final val SysPropPrefix = "-D"
 	def parse(file: URL, baseDirectory: File) = Using( new InputStreamReader(file.openStream, "utf8") )( (new ConfigurationParser).apply )
-	def find(args: List[String], baseDirectory: File): (URL, List[String]) =
+	@tailrec def find(args: List[String], baseDirectory: File): (URL, List[String]) =
 		args match
 		{
-			case head :: tail if head.startsWith("@")=> (directConfiguration(head.substring(1), baseDirectory), tail)
+			case head :: tail if head.startsWith("@") => (directConfiguration(head.substring(1), baseDirectory), tail)
+			case head :: tail if head.startsWith(SysPropPrefix) =>
+				setProperty(head stripPrefix SysPropPrefix)
+				find(tail, baseDirectory)
 			case _ =>
 				val propertyConfigured = System.getProperty("sbt.boot.properties")
 				val url = if(propertyConfigured == null) configurationOnClasspath else configurationFromFile(propertyConfigured, baseDirectory)
 				(url , args)
 		}
+	def setProperty(head: String)
+	{
+		val keyValue = head.split("=",2)
+		if(keyValue.length != 2)
+			System.err.println("Warning: invalid system property '" + head + "'")
+		else
+			System.setProperty(keyValue(0), keyValue(1))
+	}
 	def configurationOnClasspath: URL =
 	{
 		resourcePaths.iterator.map(getClass.getResource).find(_ ne null) getOrElse
