@@ -31,7 +31,7 @@ class XSbt(info: ProjectInfo) extends ParentProject(info) with NoCrossPaths
 		// Utilities related to reflection, managing Scala versions, and custom class loaders
 	val classpathSub = baseProject(utilPath / "classpath", "Classpath", launchInterfaceSub, ioSub)
 		// Command line-related utilities.  Currently, history.
-	val completeSub = project(utilPath / "complete", "Completion", new InputProject(_), controlSub, ioSub)
+	val completeSub = project(utilPath / "complete", "Completion", new InputProject(_), collectionSub, controlSub, ioSub)
 		// logging
 	val logSub = project(utilPath / "log", "Logging", new LogProject(_), interfaceSub, processSub)
 		// class file reader and analyzer

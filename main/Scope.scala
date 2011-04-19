@@ -5,6 +5,7 @@ package sbt
 
 	import java.io.File
 	import java.net.URI
+	import Types.some
 
 final case class Scope(project: ScopeAxis[Reference], config: ScopeAxis[ConfigKey], task: ScopeAxis[AttributeKey[_]], extra: ScopeAxis[AttributeMap])
 object Scope
@@ -166,7 +167,7 @@ sealed trait ScopeAxis[+S] {
 		case Global => ifGlobal
 		case Select(s) => f(s)
 	}
-	def toOption: Option[S] = foldStrict(Some.apply, None, None)
+	def toOption: Option[S] = foldStrict(some.fn, None, None)
 	def map[T](f: S => T): ScopeAxis[T] = foldStrict(s => Select(f(s)), Global, This)
 	def isSelect: Boolean = false
 }
