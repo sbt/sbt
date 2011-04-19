@@ -4,6 +4,7 @@
 package sbt.complete
 
 	import Parser._
+	import sbt.Types.{left, right, some}
 
 sealed trait Parser[+T]
 {
@@ -104,9 +105,9 @@ object Parser extends ParserMain
 
 	def choiceParser[A,B](a: Parser[A], b: Parser[B]): Parser[Either[A,B]] =
 		if(a.valid)
-			if(b.valid) new HetParser(a,b) else a.map( Left(_) )
+			if(b.valid) new HetParser(a,b) else a.map( left.fn )
 		else
-			b.map( Right(_) )
+			b.map( right.fn )
 
 	def opt[T](a: Parser[T]): Parser[Option[T]] =
 		if(a.valid) new Optional(a) else success(None)
@@ -205,7 +206,7 @@ trait ParserMain
 		def completions = Completions.single(Completion.suggestStrict(ch.toString))
 		override def toString = "'" + ch + "'"
 	}
-	implicit def literal(s: String): Parser[String] = stringLiteral(s, s.toList)
+	implicit def literal(s: String): Parser[String] = stringLiteral(s, 0)
 	object ~ {
 		def unapply[A,B](t: (A,B)): Some[(A,B)] = Some(t)
 	}
@@ -248,13 +249,13 @@ trait ParserMain
 		}
 		else a
 
-	def matched(t: Parser[_], seenReverse: List[Char] = Nil, partial: Boolean = false): Parser[String] =
+	def matched(t: Parser[_], seen: Seq[Char] = Vector.empty, partial: Boolean = false): Parser[String] =
 		if(!t.valid)
-			if(partial && !seenReverse.isEmpty) success(seenReverse.reverse.mkString) else Invalid
+			if(partial && !seen.isEmpty) success(seen.mkString) else Invalid
 		else if(t.result.isEmpty)
-			new MatchedString(t, seenReverse, partial)
+			new MatchedString(t, seen, partial)
 		else
-			success(seenReverse.reverse.mkString)
+			success(seen.mkString)
 
 	def token[T](t: Parser[T]): Parser[T] = token(t, "", true)
 	def token[T](t: Parser[T], description: String): Parser[T] = token(t, description, false)
@@ -278,8 +279,11 @@ trait ParserMain
 		if(valid.isEmpty) failure("") else new ParserSeq(valid)
 	}
 
-	def stringLiteral(s: String, remaining: List[Char]): Parser[String] =
-		if(s.isEmpty) error("String literal cannot be empty") else if(remaining.isEmpty) success(s) else new StringLiteral(s, remaining)
+	def stringLiteral(s: String, start: Int): Parser[String] =
+	{
+		val len = s.length
+		if(len == 0) error("String literal cannot be empty") else if(start >= len) success(s) else new StringLiteral(s, start)
+	}
 }
 sealed trait ValidParser[T] extends Parser[T]
 {
@@ -321,7 +325,7 @@ private final class HomParser[A](a: Parser[A], b: Parser[A]) extends ValidParser
 private final class HetParser[A,B](a: Parser[A], b: Parser[B]) extends ValidParser[Either[A,B]]
 {
 	def derive(c: Char) = (a derive c) || (b derive c)
-	lazy val resultEmpty = a.resultEmpty.map(Left(_)) orElse b.resultEmpty.map(Right(_))
+	lazy val resultEmpty = a.resultEmpty.map(left.fn) orElse b.resultEmpty.map(right.fn)
 	lazy val completions = a.completions ++ b.completions
 	override def toString = "(" + a + " || " + b + ")"
 }
@@ -373,10 +377,10 @@ private final class Filter[T](p: Parser[T], f: T => Boolean) extends ValidParser
 	override def toString = "filter(" + p + ")"
 	override def isTokenStart = p.isTokenStart
 }
-private final class MatchedString(delegate: Parser[_], seenReverse: List[Char], partial: Boolean) extends ValidParser[String]
+private final class MatchedString(delegate: Parser[_], seenV: Vector[Char], partial: Boolean) extends ValidParser[String]
 {
-	lazy val seen = seenReverse.reverse.mkString
-	def derive(c: Char) = matched(delegate derive c, c :: seenReverse, partial)
+	lazy val seen = seenV.mkString
+	def derive(c: Char) = matched(delegate derive c, seenV :+ c, partial)
 	def completions = delegate.completions
 	def resultEmpty = if(delegate.resultEmpty.isDefined) Some(seen) else if(partial) Some(seen) else None
 	override def isTokenStart = delegate.isTokenStart
@@ -422,12 +426,12 @@ private final class Examples[T](delegate: Parser[T], fixed: Set[String]) extends
 			Completions(fixed map(f => Completion.suggestion(f)) )
 	override def toString = "examples(" + delegate + ", " + fixed.take(2) + ")"
 }
-private final class StringLiteral(str: String, remaining: List[Char]) extends ValidParser[String]
+private final class StringLiteral(str: String, start: Int) extends ValidParser[String]
 {
-	assert(str.length > 0 && !remaining.isEmpty)
+	assert(0 <= start && start < str.length)
 	def resultEmpty = None
-	def derive(c: Char) = if(remaining.head == c) stringLiteral(str, remaining.tail) else Invalid
-	lazy val completions = Completions.single(Completion.suggestion(remaining.mkString))
+	def derive(c: Char) = if(str.charAt(start) == c) stringLiteral(str, start+1) else Invalid
+	lazy val completions = Completions.single(Completion.suggestion(str.substring(start)))
 	override def toString = '"' + str + '"'
 }
 private final class CharacterClass(f: Char => Boolean) extends ValidParser[Char]
@@ -440,7 +444,7 @@ private final class CharacterClass(f: Char => Boolean) extends ValidParser[Char]
 private final class Optional[T](delegate: Parser[T]) extends ValidParser[Option[T]]
 {
 	def resultEmpty = Some(None)
-	def derive(c: Char) = (delegate derive c).map(Some(_))
+	def derive(c: Char) = (delegate derive c).map(some.fn)
 	lazy val completions = Completion.empty +: delegate.completions
 	override def toString = delegate.toString + "?"
 }
