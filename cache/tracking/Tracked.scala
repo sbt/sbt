@@ -3,7 +3,7 @@
  */
 package sbt
 
-import java.io.{File,IOException}
+import java.io.File
 import CacheIO.{fromFile, toFile}
 import sbinary.{Format, JavaIO}
 import scala.reflect.Manifest
@@ -120,7 +120,7 @@ class Changed[O](val cacheFile: File)(implicit equiv: Equiv[O], format: Format[O
 				stream => equiv.equiv(value, format.reads(stream))
 			}
 		} catch {
-			case _: IOException => false
+			case _: Exception => false
 		}
 }
 object Difference

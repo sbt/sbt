@@ -24,7 +24,7 @@ object CacheIO
 		fromFile[T](file) getOrElse default
 	def fromFile[T](file: File)(implicit format: Format[T], mf: Manifest[Format[T]]): Option[T] =
 		try { Some( Operations.fromFile(file)(stampedFormat(format)) ) }
-		catch { case e: FileNotFoundException => None }
+		catch { case e: Exception => None }
 		
 	def toFile[T](format: Format[T])(value: T)(file: File)(implicit mf: Manifest[Format[T]]): Unit =
 		toFile(value)(file)(format, mf)
