@@ -496,7 +496,7 @@ object Classpaths
 		moduleID <<= normalizedName.identity,
 		defaultConfiguration in GlobalScope :== Some(Configurations.Compile),
 		defaultConfigurationMapping in GlobalScope <<= defaultConfiguration{ case Some(d) => "*->" + d.name; case None => "*->*" },
-		ivyPaths <<= (baseDirectory, appConfiguration) { (base, app) => new IvyPaths(base, Option(app.provider.scalaProvider.launcher.ivyHome).map(_ / "cache")) },
+		ivyPaths <<= (baseDirectory, appConfiguration) { (base, app) => new IvyPaths(base, Option(app.provider.scalaProvider.launcher.ivyHome)) },
 		otherResolvers <<= publishTo(_.toList),
 		projectResolver <<= projectResolverTask,
 		projectDependencies <<= projectDependenciesTask,
