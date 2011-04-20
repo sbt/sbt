@@ -249,7 +249,7 @@ trait ParserMain
 		}
 		else a
 
-	def matched(t: Parser[_], seen: Seq[Char] = Vector.empty, partial: Boolean = false): Parser[String] =
+	def matched(t: Parser[_], seen: Vector[Char] = Vector.empty, partial: Boolean = false): Parser[String] =
 		if(!t.valid)
 			if(partial && !seen.isEmpty) success(seen.mkString) else Invalid
 		else if(t.result.isEmpty)
