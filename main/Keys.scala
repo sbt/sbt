@@ -154,6 +154,8 @@ object Keys
 	val dependencyClasspath = TaskKey[Classpath]("dependency-classpath")
 	val fullClasspath = TaskKey[Classpath]("full-classpath")
 	
+	val internalConfigurationMap = SettingKey[Configuration => Configuration]("internal-configuration-map")
+	val classpathConfiguration = SettingKey[Configuration]("classpath-configuration")
 	val ivyConfiguration = TaskKey[IvyConfiguration]("ivy-configuration")
 	val ivyConfigurations = SettingKey[Seq[Configuration]]("ivy-configurations")
 	val moduleSettings = TaskKey[ModuleSettings]("module-settings")

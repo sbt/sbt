@@ -7,7 +7,7 @@ package sbt
 	import Scope.{GlobalScope, ThisScope}
 	import compiler.Discovery
 	import Project.{inConfig, Initialize, inScope, inTask, ScopedKey, Setting, SettingsDefinition}
-	import Configurations.{Compile, CompilerPlugin, Test}
+	import Configurations.{Compile, CompilerPlugin, IntegrationTest, Runtime, Test}
 	import complete._
 	import std.TaskExtra._
 
@@ -43,6 +43,7 @@ object Defaults
 	def globalCore: Seq[Setting[_]] = inScope(GlobalScope)(Seq(
 		pollInterval :== 500,
 		autoCompilerPlugins :== true,
+		internalConfigurationMap :== Configurations.internalMap _,
 		initialize :== (),
 		credentials :== Nil,
 		scalaHome :== None,
@@ -319,8 +320,8 @@ object Defaults
 			target
 		}
 
-	def mainRunTask = run <<= runTask(fullClasspath in Configurations.Runtime, mainClass in run, runner in run)
-	def mainRunMainTask = runMain <<= runMainTask(fullClasspath in Configurations.Runtime, runner in run)
+	def mainRunTask = run <<= runTask(fullClasspath in Runtime, mainClass in run, runner in run)
+	def mainRunMainTask = runMain <<= runMainTask(fullClasspath in Runtime, runner in run)
 
 	def discoverMainClasses(analysis: inc.Analysis): Seq[String] =
 		Discovery.applications(Tests.allDefs(analysis)) collect { case (definition, discovered) if(discovered.hasMain) => definition.name }
@@ -425,8 +426,9 @@ object Defaults
 	lazy val compileSettings = configSettings ++ (mainRunMainTask +: mainRunTask +: addBaseSources)
 	lazy val testSettings = configSettings ++ testTasks
 
-	lazy val itSettings = inConfig(Configurations.IntegrationTest)(testSettings)
+	lazy val itSettings = inConfig(IntegrationTest)(testSettings)
 	lazy val defaultConfigs = inConfig(Compile)(compileSettings) ++ inConfig(Test)(testSettings)
+		
 
 	// settings that are not specific to a configuration
 	lazy val projectBaseSettings: Seq[Setting[_]] = projectCore ++ paths ++ baseClasspaths ++ baseTasks ++ compileBase ++ disableAggregation
@@ -450,7 +452,8 @@ object Classpaths
 		internalDependencyClasspath <<= internalDependencies,
 		unmanagedClasspath <<= unmanagedDependencies,
 		products <<= makeProducts,
-		managedClasspath <<= (configuration, classpathTypes, update) map managedJars,
+		classpathConfiguration <<= (internalConfigurationMap, configuration)( _ apply _ ),
+		managedClasspath <<= (classpathConfiguration, classpathTypes, update) map managedJars,
 		unmanagedJars <<= (configuration, unmanagedBase, classpathFilter, defaultExcludes) map { (config, base, filter, excl) =>
 			(base * (filter -- excl) +++ (base / config.name).descendentsExcept(filter, excl)).getFiles
 		}
@@ -525,8 +528,8 @@ object Classpaths
 		ivyConfiguration <<= (fullResolvers, ivyPaths, otherResolvers, moduleConfigurations, offline, checksums, appConfiguration, streams) map { (rs, paths, other, moduleConfs, off, check, app, s) =>
 			new InlineIvyConfiguration(paths, rs, other, moduleConfs, off, Some(lock(app)), check, s.log)
 		},
-		ivyConfigurations <<= (autoCompilerPlugins, thisProject) { (auto, project) =>
-			project.configurations ++ (if(auto) CompilerPlugin :: Nil else Nil)
+		ivyConfigurations <<= (autoCompilerPlugins, internalConfigurationMap, thisProject) { (auto, internalMap, project) =>
+			(project.configurations ++ project.configurations.map(internalMap) ++ (if(auto) CompilerPlugin :: Nil else Nil)).distinct
 		},
 		moduleSettings <<= moduleSettings0,
 		makePomConfiguration <<= (artifactPath in makePom)(file => makePomConfigurationTask(file)),

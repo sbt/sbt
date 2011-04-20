@@ -290,11 +290,29 @@ object Configurations
 {
 	def config(name: String) = new Configuration(name)
 	def default: Seq[Configuration] = defaultMavenConfigurations
-	def defaultMavenConfigurations: Seq[Configuration] = Compile :: Runtime :: Test :: Provided :: System :: Optional :: Sources :: Javadoc :: Nil
+	def defaultMavenConfigurations: Seq[Configuration] = Compile :: Runtime :: Test :: Provided :: Optional :: Nil
+	def defaultInternal: Seq[Configuration] = CompileInternal :: RuntimeInternal :: TestInternal :: Nil
+
+	lazy val RuntimeInternal = optionalInternal(Runtime)
+	lazy val TestInternal = fullInternal(Test)
+	lazy val IntegrationTestInternal = fullInternal(IntegrationTest)
+	lazy val CompileInternal = fullInternal(Compile)
+
+	def internalMap(c: Configuration) = c match {
+		case Compile => CompileInternal
+		case Test => TestInternal
+		case Runtime => RuntimeInternal
+		case IntegrationTest => IntegrationTestInternal
+		case _ => c
+	}
+
+	def internal(base: Configuration, ext: Configuration*) = config(base.name + "-internal") extend(ext : _*) hide;
+	def fullInternal(base: Configuration): Configuration  =  internal(base, base, Optional, Provided)
+	def optionalInternal(base: Configuration): Configuration  =  internal(base, base, Optional)
 
 	lazy val Default = config("default")
 	lazy val Compile = config("compile")
-	lazy val IntegrationTest = config("it") extend(Runtime) hide;
+	lazy val IntegrationTest = config("it") extend(Runtime);
 	lazy val Provided = config("provided")
 	lazy val Javadoc = config("javadoc")
 	lazy val Runtime = config("runtime") extend(Compile)
