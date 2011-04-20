@@ -46,7 +46,7 @@ object FileInfo
 		implicit val format: Format[F]
 		import Cache._
 		implicit def fileInfoEquiv: Equiv[F] = defaultEquiv
-		implicit def infoInputCache: InputCache[F] = basicInput
+		def infoInputCache: InputCache[F] = basicInput
 		implicit def fileInputCache: InputCache[File] = wrapIn[File,F]
 	}
 	object full extends Style
@@ -95,7 +95,7 @@ object FilesInfo
 		val manifest: Manifest[Format[FilesInfo[F]]]
 		def empty: FilesInfo[F] = new FilesInfo[F](Set.empty)
 		import Cache._
-		implicit def infosInputCache: InputCache[FilesInfo[F]] = basicInput
+		def infosInputCache: InputCache[FilesInfo[F]] = basicInput
 		implicit def filesInputCache: InputCache[Set[File]] = wrapIn[Set[File],FilesInfo[F]]
 		implicit def filesInfoEquiv: Equiv[FilesInfo[F]] = defaultEquiv
 	}
@@ -112,4 +112,9 @@ object FilesInfo
 	lazy val hash: Style { type F = HashFileInfo } = new BasicStyle(FileInfo.hash)
 	lazy val lastModified: Style { type F = ModifiedFileInfo } = new BasicStyle(FileInfo.lastModified)
 	lazy val exists: Style { type F = PlainFileInfo } = new BasicStyle(FileInfo.exists)
+
+	implicit def existsInputsCache: InputCache[FilesInfo[PlainFileInfo]] = exists.infosInputCache
+	implicit def hashInputsCache: InputCache[FilesInfo[HashFileInfo]] = hash.infosInputCache
+	implicit def modifiedInputsCache: InputCache[FilesInfo[ModifiedFileInfo]] = lastModified.infosInputCache
+	implicit def fullInputsCache: InputCache[FilesInfo[HashModifiedFileInfo]] = full.infosInputCache
 }

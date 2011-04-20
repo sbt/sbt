@@ -314,9 +314,10 @@ object Defaults
 		}
 
 	def docTask: Initialize[Task[File]] =
-		(compileInputs, streams, docDirectory, configuration, scaladocOptions) map { (in, s, target, config, options) =>
+		(cacheDirectory, compileInputs, streams, docDirectory, configuration, scaladocOptions) map { (cache, in, s, target, config, options) =>
 			val d = new Scaladoc(in.config.maxErrors, in.compilers.scalac)
-			d(nameForSrc(config.name), in.config.sources, in.config.classpath, target, options)(s.log)
+			val cp = in.config.classpath.toList - in.config.classesDirectory
+			d.cached(cache / "doc", nameForSrc(config.name), in.config.sources, cp, target, options, s.log)
 			target
 		}
 

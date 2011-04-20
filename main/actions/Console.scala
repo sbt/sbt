@@ -28,22 +28,3 @@ object Console
 {
 	def apply(conf: Compiler.Inputs): Console = new Console( conf.compilers.scalac )
 }
-
-final class Scaladoc(maximumErrors: Int, compiler: AnalyzingCompiler)
-{
-	final def apply(label: String, sources: Seq[File], classpath: Seq[File], outputDirectory: File, options: Seq[String])(implicit log: Logger)
-	{
-		log.info(actionStartMessage(label))
-		if(sources.isEmpty)
-			log.info(ActionNothingToDoMessage)
-		else
-		{
-			IO.createDirectory(outputDirectory)
-			compiler.doc(sources, classpath, outputDirectory, options, maximumErrors, log)
-			log.info(ActionSuccessfulMessage)
-		}
-	}
-	def actionStartMessage(label: String) = "Generating API documentation for " + label + " sources..."
-	val ActionNothingToDoMessage = "No sources specified."
-	val ActionSuccessfulMessage = "API documentation generation successful."
-}
