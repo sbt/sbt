@@ -137,7 +137,7 @@ object Defaults
 	)
 
 	lazy val projectTasks: Seq[Setting[_]] = Seq(
-		cleanFiles <<= Seq(target, sourceManaged).join,
+		cleanFiles <<= Seq(managedDirectory, target, sourceManaged).join,
 		cleanKeepFiles <<= historyPath(_.toList),
 		clean <<= (cleanFiles, cleanKeepFiles) map doClean,
 		consoleProject <<= consoleProjectTask,
