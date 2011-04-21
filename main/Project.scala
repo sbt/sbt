@@ -63,6 +63,23 @@ final case class Extracted(structure: BuildStructure, session: SessionSettings, 
 {
 	lazy val currentUnit = structure units currentRef.build
 	lazy val currentProject = currentUnit defined currentRef.project
+	def get[T](key: ScopedTask[T]): Task[T] = get(key.task)
+	def get[T](key: ScopedSetting[T]): T =
+	{
+		val scope = if(key.scope.project == This) key.scope.copy(project = Select(currentRef)) else key.scope
+		getOrError(scope, key.key)
+	}
+	def runTask[T](key: ScopedTask[T], state: State): T =
+	{
+			import EvaluateTask._
+		val value: Option[Result[T]] = evaluateTask(structure, key.task.scoped, state, currentRef)
+		val result = getOrError(key.scope, key.key, value)
+		processResult(result, ConsoleLogger())
+	}
+	private def getOrError[T](scope: Scope, key: AttributeKey[_], value: Option[T]): T =
+		value getOrElse error(Project.display(ScopedKey(scope, key)) + " is undefined.")
+	private def getOrError[T](scope: Scope, key: AttributeKey[T]): T =
+		structure.data.get(scope, key) getOrElse error(Project.display(ScopedKey(scope, key)) + " is undefined.")
 }
 
 sealed trait ClasspathDep[PR <: ProjectReference] { def project: PR; def configuration: Option[String] }

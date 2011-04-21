@@ -137,7 +137,7 @@ object Scoped
 	{
 		def scope: Scope
 		def key: AttributeKey[S]
-		protected final val scoped = ScopedKey(scope, key)
+		final val scoped = ScopedKey(scope, key)
 		
 		final def :==(value: S): Setting[S]  =  :=(value)
 		final def := (value: => S): Setting[S]  =  setting(scoped, Project.value(value))
@@ -170,7 +170,7 @@ object Scoped
 		def get(settings: Settings[Scope]): Option[Task[S]] = settings.get(scope, key)
 
 		type App[T] = Initialize[Task[T]]
-		private[this] def scoped = ScopedKey(scope, key)
+		def scoped = ScopedKey(scope, key)
 		private[this] def mk[T](onTask: Task[S] => Task[T]): App[T] = Apply.single(scoped)(onTask)
 		
 		def flatMapR[T](f: Result[S] => Task[T]): App[T] = mk(_ flatMapR f)
