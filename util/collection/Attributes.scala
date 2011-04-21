@@ -6,15 +6,23 @@ package sbt
 import Types._
 
 // T must be invariant to work properly.
-//  Because it is sealed and the only instances go through make,
+//  Because it is sealed and the only instances go through AttributeKey.apply,
 //  a single AttributeKey instance cannot conform to AttributeKey[T] for different Ts
 sealed trait AttributeKey[T] {
 	def label: String
+	def description: Option[String]
 	override final def toString = label
 }
 object AttributeKey
 {
-	def apply[T](name: String): AttributeKey[T] = new AttributeKey[T] { def label = name }
+	def apply[T](name: String): AttributeKey[T] = new AttributeKey[T] {
+		def label = name
+		def description = None
+	}
+	def apply[T](name: String, description0: String): AttributeKey[T] = new AttributeKey[T] {
+		def label = name
+		def description = Some(description0)
+	}
 }
 
 trait AttributeMap
