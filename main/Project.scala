@@ -195,7 +195,11 @@ object Project extends Init[Scope] with ProjectExtra
 				case Some(v: InputTask[_]) => "Input task"
 				case Some(v) => "Value:\n\t" + v.toString
 			}
-		val definedIn = structure.data.definingScope(scope, key) match { case Some(sc) => "Provided by:\n\t" + Scope.display(sc, key.label); case None => "" }
+		val description = key.description match { case Some(desc) => "Description:\n\t" + desc + "\n"; case None => "" }
+		val definedIn = structure.data.definingScope(scope, key) match {
+			case Some(sc) => "Provided by:\n\t" + Scope.display(sc, key.label) + "\n"
+			case None => ""
+		}
 		val cMap = compiled(structure.settings, actual)(structure.delegates, structure.scopeLocal)
 		val related = cMap.keys.filter(k => k.key == key && k.scope != scope)
 		val depends = cMap.get(scoped) match { case Some(c) => c.dependencies.toSet; case None => Set.empty }
@@ -204,7 +208,8 @@ object Project extends Init[Scope] with ProjectExtra
 			if(scopes.isEmpty) "" else scopes.map(display).mkString(label + ":\n\t", "\n\t", "\n")
 
 		value + "\n" +
-			definedIn + "\n" +
+			description +
+			definedIn +
 			printScopes("Dependencies", depends) +
 			printScopes("Reverse dependencies", reverse) +
 			printScopes("Delegates", delegates(structure, scope, key)) +
@@ -238,7 +243,7 @@ object Project extends Init[Scope] with ProjectExtra
 
 	val loadActionParser = token(Space ~> ("plugins" ^^^ Plugins | "return" ^^^ Return)) ?? Current
 	
-	val ProjectReturn = AttributeKey[List[File]]("project-return")
+	val ProjectReturn = AttributeKey[List[File]]("project-return", "Maintains a stack of builds visited using reload.")
 	def projectReturn(s: State): List[File] = s.attributes get ProjectReturn getOrElse Nil
 	def setProjectReturn(s: State, pr: List[File]): State = s.copy(attributes = s.attributes.put( ProjectReturn, pr) )
 	def loadAction(s: State, action: LoadAction.Value) = action match {

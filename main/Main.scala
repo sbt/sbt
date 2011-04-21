@@ -393,5 +393,5 @@ object BuiltinCommands
 	def aliasBody(name: String, value: String)(state: State): Parser[() => State] =
 		OptSpace ~> Parser(Command.combine(removeAlias(state,name).definedCommands)(state))(value)
 
-	val CommandAliasKey = AttributeKey[(String,String)]("is-command-alias")
+	val CommandAliasKey = AttributeKey[(String,String)]("is-command-alias", "Internal: marker for Commands created as aliases for another command.")
 }

@@ -14,9 +14,8 @@ package sbt
 		import DefaultProtocol.{FileFormat, immutableMapFormat, StringFormat, UnitFormat}
 		import Cache.{defaultEquiv, hConsCache, hNilCache, streamFormat, wrapIn}
 		import Tracked.{inputChanged, outputChanged}
-		import FileInfo.{exists, existsInputCache}
+		import FileInfo.exists
 		import FilesInfo.lastModified
-		import lastModified.infosInputCache
 
 sealed trait PackageOption
 object Package

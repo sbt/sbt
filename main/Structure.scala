@@ -494,24 +494,24 @@ object Scoped
 }
 object InputKey
 {
-	def apply[T](label: String): InputKey[T] =
-		apply( AttributeKey[InputTask[T]](label) )
+	def apply[T](label: String, description: String = ""): InputKey[T] =
+		apply( AttributeKey[InputTask[T]](label, description) )
 
 	def apply[T](akey: AttributeKey[InputTask[T]]): InputKey[T] =
 		new InputKey[T](akey)
 }
 object TaskKey
 {
-	def apply[T](label: String): TaskKey[T] =
-		apply( AttributeKey[Task[T]](label) )
+	def apply[T](label: String, description: String = ""): TaskKey[T] =
+		apply( AttributeKey[Task[T]](label, description) )
 
 	def apply[T](akey: AttributeKey[Task[T]]): TaskKey[T] =
 		new TaskKey[T](akey)
 }
 object SettingKey
 {
-	def apply[T](label: String): SettingKey[T] =
-		apply( AttributeKey[T](label) )
+	def apply[T](label: String, description: String = ""): SettingKey[T] =
+		apply( AttributeKey[T](label, description) )
 
 	def apply[T](akey: AttributeKey[T]): SettingKey[T] =
 		new SettingKey[T](akey)

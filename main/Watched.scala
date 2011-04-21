@@ -53,6 +53,6 @@ object Watched
 			s.put(ContinuousState, WatchState.empty)
 		}
 	}
-	val ContinuousState = AttributeKey[WatchState]("watch state")
-	val Configuration = AttributeKey[Watched]("watched-configuration")
+	val ContinuousState = AttributeKey[WatchState]("watch state", "Internal: tracks state for continuous execution.")
+	val Configuration = AttributeKey[Watched]("watched-configuration", "Configures continuous execution.")
 }
