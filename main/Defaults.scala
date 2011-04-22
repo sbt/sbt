@@ -233,7 +233,7 @@ object Defaults
 	final val SourceClassifier = "sources"
 	final val DocClassifier = "javadoc"
 
-	private[this] val allSubpaths = (dir: File) => (dir.*** --- dir) x relativeTo(dir)
+	private[this] val allSubpaths = (dir: File) => (dir.*** --- dir) x (relativeTo(dir)|flat)
 
 	def packageBinTask = classMappings
 	def packageDocTask = doc map allSubpaths
@@ -244,10 +244,10 @@ object Defaults
 	def classMappings = (compileInputs, products) map { (in, _) => allSubpaths(in.config.classesDirectory) }
 	// drop base directories, since there are no valid mappings for these
 	def sourceMappings = (sources, sourceDirectories, baseDirectory) map { (srcs, sdirs, base) =>
-		 ( (srcs --- sdirs --- base) x (relativeTo(sdirs)|relativeTo(base))) toSeq
+		 ( (srcs --- sdirs --- base) x (relativeTo(sdirs)|relativeTo(base)|flat)) toSeq
 	}
 	def resourceMappings = (resources, resourceDirectories) map { (rs, rdirs) =>
-		(rs --- rdirs) x relativeTo(rdirs) toSeq
+		(rs --- rdirs) x (relativeTo(rdirs)|flat) toSeq
 	}
 	
 	def artifactPathSetting(art: ScopedSetting[Artifact])  =  (crossTarget, projectID, art, scalaVersion, artifactName) { (t, module, a, sv, toString) => t / toString(sv, module, a) asFile }
@@ -374,7 +374,7 @@ object Defaults
 	def copyResourcesTask =
 	(classDirectory, cacheDirectory, resources, resourceDirectories, streams) map { (target, cache, resrcs, dirs, s) =>
 		val cacheFile = cache / "copy-resources"
-		val mappings = (resrcs --- dirs) x rebase(dirs, target)
+		val mappings = (resrcs --- dirs) x (rebase(dirs, target) | flat(target))
 		s.log.debug("Copy resource mappings: " + mappings.mkString("\n\t","\n\t",""))
 		Sync(cacheFile)( mappings )
 		mappings
