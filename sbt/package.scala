@@ -9,11 +9,13 @@ package object sbt extends sbt.std.TaskExtra with sbt.Types with sbt.ProcessExtr
 	type SettingsDefinition = Project.SettingsDefinition
 	type File = java.io.File
 	type URI = java.net.URI
+	type URL = java.net.URL
 
 	implicit def maybeToOption[S](m: xsbti.Maybe[S]): Option[S] =
 		if(m.isDefined) Some(m.get) else None
 	def uri(s: String): URI = new URI(s)
 	def file(s: String): File = new File(s)
+	def url(s: String): URL = new URL(s)
 	
 		import sbt.{Configurations => C}
 	def Compile = C.Compile
