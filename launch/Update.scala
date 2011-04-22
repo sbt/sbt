@@ -180,6 +180,7 @@ final class Update(config: UpdateConfiguration)
 	private def retrieve(eventManager: EventManager, module: ModuleDescriptor,  target: UpdateTarget)
 	{
 		val retrieveOptions = new RetrieveOptions
+	        retrieveOptions.setMakeSymlinks(true)
 		val retrieveEngine = new RetrieveEngine(settings, eventManager)
 		val pattern =
 			target match

@@ -112,6 +112,7 @@ object IvyActions
 			resolve(logging)(ivy, md, default)
 			val retrieveOptions = new RetrieveOptions
 			retrieveOptions.setSync(synchronize)
+			retrieveOptions.setMakeSymlinks(true)
 			val patternBase = retrieveDirectory.getAbsolutePath
 			val pattern =
 				if(patternBase.endsWith(File.separator))
