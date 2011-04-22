@@ -67,7 +67,10 @@ object Defaults
 		artifactClassifier :== None,
 		artifactClassifier in packageSrc :== Some(SourceClassifier),
 		artifactClassifier in packageDoc :== Some(DocClassifier),
-		checksums :== IvySbt.DefaultChecksums
+		checksums :== IvySbt.DefaultChecksums,
+		pomExtra := NodeSeq.Empty,
+		pomPostProcess := idFun,
+		pomIncludeRepository := Classpaths.defaultRepositoryFilter
 	))
 	def projectCore: Seq[Setting[_]] = Seq(
 		name <<= thisProject(_.id),
@@ -533,7 +536,9 @@ object Classpaths
 			(project.configurations ++ project.configurations.map(internalMap) ++ (if(auto) CompilerPlugin :: Nil else Nil)).distinct
 		},
 		moduleSettings <<= moduleSettings0,
-		makePomConfiguration <<= (artifactPath in makePom)(file => makePomConfigurationTask(file)),
+		makePomConfiguration <<= (artifactPath in makePom, pomExtra, pomPostProcess, pomIncludeRepository) {
+			(file, extra, process, include) => new MakePomConfiguration(file, None, extra, process, include)
+		},
 		deliverLocalConfiguration <<= (crossTarget, ivyLoggingLevel) map { (outDir, level) => deliverConfig( outDir, logging = level ) },
 		deliverConfiguration <<= deliverLocalConfiguration.identity,
 		publishConfiguration <<= (packagedArtifacts, publishTo, publishMavenStyle, deliver, ivyLoggingLevel) map { (arts, publishTo, mavenStyle, ivyFile, level) =>
@@ -610,8 +615,6 @@ object Classpaths
 		/*}
 		f(module.owner.configuration :+: module.moduleSettings :+: config :+: HNil)*/
 	}*/
-	def makePomConfigurationTask(file: File, configurations: Option[Iterable[Configuration]] = None, extra: NodeSeq = NodeSeq.Empty, process: XNode => XNode = n => n, filterRepositories: MavenRepository => Boolean = defaultRepositoryFilter) = 
-		new MakePomConfiguration(file, configurations, extra, process, filterRepositories)
 
 	def defaultRepositoryFilter = (repo: MavenRepository) => !repo.root.startsWith("file:")
 	def getPublishTo(repo: Option[Resolver]): Resolver = repo getOrElse error("Repository for publishing is not specified.")

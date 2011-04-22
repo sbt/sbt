@@ -8,7 +8,7 @@ package sbt
 	import complete._
 	import inc.Analysis
 	import std.TaskExtra._
-	import scala.xml.NodeSeq
+	import scala.xml.{Node => XNode, NodeSeq}
 	import org.apache.ivy.core.module.{descriptor, id}
 	import descriptor.ModuleDescriptor, id.ModuleRevisionId
 	import org.scalatools.testing.Framework
@@ -186,6 +186,10 @@ object Keys
 	val deliverLocal = TaskKey[File]("deliver-local", "Generates the Ivy file for publishing to the local repository.")
 	val publish = TaskKey[Unit]("publish", "Publishes artifacts to a repository.")
 	val publishLocal = TaskKey[Unit]("publish-local", "Publishes artifacts to the local repository.")
+
+	val pomExtra = SettingKey[NodeSeq]("pom-extra", "Extra XML to insert into the generated POM.")
+	val pomPostProcess = SettingKey[XNode => XNode]("pom-post-process", "Transforms the generated POM.")
+	val pomIncludeRepository = SettingKey[MavenRepository => Boolean]("pom-include-repository", "Selects repositories to include in the generated POM.")
 
 	val moduleID = SettingKey[String]("module-id", "The name of the current module, used for dependency management.")
 	val version = SettingKey[String]("version", "The version/revision of the current module.")
