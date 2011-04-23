@@ -213,8 +213,6 @@ object Scoped
 		def dependOn: Initialize[Task[Unit]]  =  Apply.tasks(KList.fromList(keys)) { kl => nop.dependsOn(kl.toList :_*) }
 	}
 
-
-	implicit def richInitializeTask[T](init: Initialize[Task[T]]): RichInitializeTask[T] = new RichInitializeTask(init)
 	final class RichInitializeTask[T](init: Initialize[Task[T]])
 	{
 		def triggeredBy(tasks: ScopedTask[_]*): Initialize[Task[T]] = nonLocal(tasks, Keys.triggeredBy)

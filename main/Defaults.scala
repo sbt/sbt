@@ -128,7 +128,7 @@ object Defaults
 		compileInputs <<= compileInputsTask,
 		console <<= consoleTask,
 		consoleQuick <<= consoleQuickTask,
-		discoveredMainClasses <<= compile map discoverMainClasses,
+		discoveredMainClasses <<= TaskData.write(compile map discoverMainClasses) triggeredBy compile,
 		definedSbtPlugins <<= discoverPlugins,
 		inTask(run)(runnerSetting :: Nil).head,
 		selectMainClass <<= discoveredMainClasses map selectRunMain,
@@ -190,7 +190,7 @@ object Defaults
 		loadedTestFrameworks <<= (testFrameworks, streams, testLoader) map { (frameworks, s, loader) =>
 			frameworks.flatMap(f => f.create(loader, s.log).map( x => (f,x)).toIterable).toMap
 		},
-		definedTests <<= TaskData.write(detectTests, _.map(_.name).distinct),
+		definedTests <<= TaskData.writeRelated(detectTests)(_.map(_.name).distinct) triggeredBy compile,
 		testListeners :== Nil,
 		testOptions :== Nil,
 		executeTests <<= (streams in test, loadedTestFrameworks, testOptions in test, testLoader, definedTests) flatMap {
@@ -293,8 +293,7 @@ object Defaults
 	def runMainTask(classpath: ScopedTask[Classpath], scalaRun: ScopedSetting[ScalaRun]): Initialize[InputTask[Unit]] =
 	{
 			import DefaultParsers._
-		val mainParser = (Space ~> token(NotSpace, "<main-class>")) ~ complete.Parsers.spaceDelimited("<arg>")
-		InputTask(_ => mainParser) { result =>
+		InputTask( TaskData(discoveredMainClasses)(runMainParser)(Nil) ) { result =>  
 			(classpath, scalaRun, streams, result) map { case (cp, runner, s, (mainClass, args)) =>
 				runner.run(mainClass, data(cp), args, s.log) foreach error
 			}
@@ -379,6 +378,12 @@ object Defaults
 		s.log.debug("Copy resource mappings: " + mappings.mkString("\n\t","\n\t",""))
 		Sync(cacheFile)( mappings )
 		mappings
+	}
+
+	def runMainParser: (State, Seq[String]) => Parser[(String, Seq[String])] =
+	{
+			import DefaultParsers._
+		(state, mainClasses) => Space ~> token(NotSpace examples mainClasses.toSet) ~ spaceDelimited("<arg>")
 	}
 
 	def testOnlyParser: (State, Seq[String]) => Parser[(Seq[String],Seq[String])] =

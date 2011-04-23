@@ -292,6 +292,8 @@ object Project extends Init[Scope] with ProjectExtra
 		str.open()
 		s.put(logged, str.log).addExitHook { str.close() }
 	}
+	// this is here instead of Scoped so that it is considered without need for import (because of Project.Initialize)
+	implicit def richInitializeTask[T](init: Initialize[Task[T]]): Scoped.RichInitializeTask[T] = new Scoped.RichInitializeTask(init)
 }
 
 trait ProjectExtra
