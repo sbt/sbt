@@ -16,6 +16,8 @@ package sbt
 	import descriptor.ModuleDescriptor, id.ModuleRevisionId
 	import java.io.File
 	import java.net.URL
+	import sbinary.DefaultProtocol.StringFormat
+	import Cache.seqFormat
 
 	import Types._
 	import Path._
@@ -188,11 +190,7 @@ object Defaults
 		loadedTestFrameworks <<= (testFrameworks, streams, testLoader) map { (frameworks, s, loader) =>
 			frameworks.flatMap(f => f.create(loader, s.log).map( x => (f,x)).toIterable).toMap
 		},
-		definedTests <<= (loadedTestFrameworks, compile, streams) map { (frameworkMap, analysis, s) =>
-			val tests = Tests.discover(frameworkMap.values.toSeq, analysis, s.log)._1
-			IO.writeLines(s.text(CompletionsID), tests.map(_.name).distinct)
-			tests
-		},
+		definedTests <<= TaskData.write(detectTests, _.map(_.name).distinct),
 		testListeners :== Nil,
 		testOptions :== Nil,
 		executeTests <<= (streams in test, loadedTestFrameworks, testOptions in test, testLoader, definedTests) flatMap {
@@ -208,7 +206,7 @@ object Defaults
 	) )
 
 	def testOnlyTask = 
-	InputTask(resolvedScoped(testOnlyParser)) ( result =>  
+	InputTask( TaskData(definedTests)(testOnlyParser)(Nil) ) { result =>  
 		(streams, loadedTestFrameworks, testOptions in testOnly, testLoader, definedTests, result) flatMap {
 			case (s, frameworks, opts, loader, discovered, (tests, frameworkOptions)) =>
 				val modifiedOpts = Tests.Filter(if(tests.isEmpty) _ => true else tests.toSet ) +: Tests.Argument(frameworkOptions : _*) +: opts
@@ -216,7 +214,10 @@ object Defaults
 					Tests.showResults(s.log, results)
 				}
 		}
-	)
+	}
+	def detectTests: Initialize[Task[Seq[TestDefinition]]] = (loadedTestFrameworks, compile, streams) map { (frameworkMap, analysis, s) =>
+		Tests.discover(frameworkMap.values.toSeq, analysis, s.log)._1
+	}
 
 	lazy val packageBase = Seq(
 		artifact <<= name(n => Artifact(n)),
@@ -380,25 +381,14 @@ object Defaults
 		mappings
 	}
 
-	def testOnlyParser(resolved: ScopedKey[_]): State => Parser[(Seq[String],Seq[String])] =
-	{ state =>
+	def testOnlyParser: (State, Seq[String]) => Parser[(Seq[String],Seq[String])] =
+	{ (state, tests) =>
 			import DefaultParsers._
 		def distinctParser(exs: Set[String]): Parser[Seq[String]] =
 			(token(Space) ~> token((NotSpace - "--") examples exs) ).flatMap(ex => distinctParser(exs - ex).map(ex +: _)) ?? Nil
-		val tests = savedLines(state, resolved, definedTests)
 		val selectTests = distinctParser(tests.toSet) // todo: proper IDs
 		val options = (token(Space) ~> token("--") ~> spaceDelimited("<option>")) ?? Nil
 		selectTests ~ options
-	}
-	def savedLines(state: State, reader: ScopedKey[_], readFrom: Scoped): Seq[String] =
-	{
-		val structure = Project.structure(state)
-		structure.data.definingScope(reader.scope, readFrom.key) match {
-			case Some(defined) =>
-				val key = ScopedKey(Scope.fillTaskAxis(defined, readFrom.key), readFrom.key)
-				structure.streams.use(reader){ ts => IO.readLines(ts.readText(key, CompletionsID)) }
-			case None => Nil
-		}
 	}
 
 	def inAllDependencies[T](base: ProjectRef, key: ScopedSetting[T], structure: Load.BuildStructure): Seq[T] =
