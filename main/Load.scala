@@ -120,7 +120,7 @@ object Load
 		if(isDummy(tk)) tk else Task(tk.info.set(Keys.taskDefinitionKey, key), tk.work)
 
 	def structureIndex(settings: Settings[Scope]): StructureIndex =
-		new StructureIndex(Index.stringToKeyMap(settings), Index.taskToKeyMap(settings), KeyIndex(settings.allKeys( (s,k) => ScopedKey(s,k))))
+		new StructureIndex(Index.stringToKeyMap(settings), Index.taskToKeyMap(settings), Index.triggers(settings), KeyIndex(settings.allKeys( (s,k) => ScopedKey(s,k))))
 
 		// Reevaluates settings after modifying them.  Does not recompile or reload any build components.
 	def reapply(newSettings: Seq[Setting[_]], structure: BuildStructure): BuildStructure =
@@ -444,7 +444,7 @@ object Load
 	}
 	final case class LoadBuildConfiguration(stagingDirectory: File, commonPluginClasspath: Seq[Attributed[File]], classpath: Seq[File], loader: ClassLoader, compilers: Compilers, evalPluginDef: (BuildStructure, State) => Seq[Attributed[File]], delegates: LoadedBuild => Scope => Seq[Scope], scopeLocal: ScopeLocal, injectSettings: Seq[Setting[_]], log: Logger)
 	// information that is not original, but can be reconstructed from the rest of BuildStructure
-	final class StructureIndex(val keyMap: Map[String, AttributeKey[_]], val taskToKey: Map[Task[_], ScopedKey[Task[_]]], val keyIndex: KeyIndex)
+	final class StructureIndex(val keyMap: Map[String, AttributeKey[_]], val taskToKey: Map[Task[_], ScopedKey[Task[_]]], val triggers: Triggers[Task], val keyIndex: KeyIndex)
 
 	private[this] def memo[A,B](f: A => B): A => B =
 	{

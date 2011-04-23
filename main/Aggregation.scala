@@ -80,7 +80,7 @@ final object Aggregation
 			import std.TaskExtra._
 		val toRun = ts map { case KeyValue(k,t) => t.map(v => KeyValue(k,v)) } join;
 		val start = System.currentTimeMillis
-		val result = withStreams(structure){ str => runTask(toRun, str)(nodeView(s, str, extra.tasks, extra.values)) }
+		val result = withStreams(structure){ str => runTask(toRun, str, structure.index.triggers)(nodeView(s, str, extra.tasks, extra.values)) }
 		val stop = System.currentTimeMillis
 		val log = logger(s)
 		lazy val extracted = Project.extract(s)

@@ -234,6 +234,9 @@ object Keys
 	val resolvedScoped = SettingKey[ScopedKey[_]]("resolved-scoped", "The ScopedKey for the referencing setting or task.")
 	private[sbt] val parseResult: TaskKey[_] = TaskKey("$parse-result", "Internal: used to implement input tasks.")
 
+	val triggeredBy = AttributeKey[Seq[Task[_]]]("triggered-by")
+	val runBefore = AttributeKey[Seq[Task[_]]]("run-before")
+
 	type Streams = std.Streams[ScopedKey[_]]
 	type TaskStreams = std.TaskStreams[ScopedKey[_]]
 

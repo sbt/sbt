@@ -26,9 +26,9 @@ object Execute
 sealed trait Completed {
 	def process(): Unit
 }
+final class Triggers[A[_]](val runBefore: collection.Map[A[_], Seq[A[_]]], val injectFor: collection.Map[A[_], Seq[A[_]]])
 
-
-final class Execute[A[_] <: AnyRef](checkCycles: Boolean)(implicit view: NodeView[A] )
+final class Execute[A[_] <: AnyRef](checkCycles: Boolean, triggers: Triggers[A])(implicit view: NodeView[A])
 {
 	type Strategy = CompletionService[A[_], Completed]
 
@@ -119,6 +119,7 @@ final class Execute[A[_] <: AnyRef](checkCycles: Boolean)(implicit view: NodeVie
 		state(node) = Done
 		remove( reverse, node ) foreach { dep => notifyDone(node, dep) }
 		callers.remove( node ).flatten.foreach { c => retire(c, callerResult(c, result)) }
+		triggeredBy( node ) foreach { t => addChecked(t) }
 
 		post {
 			assert( done(node) )
@@ -126,6 +127,7 @@ final class Execute[A[_] <: AnyRef](checkCycles: Boolean)(implicit view: NodeVie
 			readyInv( node )
 			assert( ! (reverse contains node) )
 			assert( ! (callers contains node) )
+			assert( triggeredBy(node) forall added )
 		}
 	}
 	def callerResult[T](node: A[T], result: Result[T]): Result[T] =
@@ -161,7 +163,7 @@ final class Execute[A[_] <: AnyRef](checkCycles: Boolean)(implicit view: NodeVie
 		pre { newPre(node) }
 
 		val v = register( node )
-		val deps = dependencies(v)
+		val deps = dependencies(v) ++ runBefore(node)
 		val active = IDSet[A[_]](deps filter notDone )
 
 		if( active.isEmpty)
@@ -241,6 +243,10 @@ final class Execute[A[_] <: AnyRef](checkCycles: Boolean)(implicit view: NodeVie
 	def dependencies(node: A[_]): Iterable[A[_]] = dependencies(viewCache(node))
 	def dependencies(v: Node[A, _]): Iterable[A[_]] = v.uniformIn ++ v.mixedIn.toList
 
+	def runBefore(node: A[_]): Seq[A[_]] = getSeq(triggers.runBefore, node)
+	def triggeredBy(node: A[_]): Seq[A[_]] = getSeq(triggers.injectFor, node)
+	def getSeq(map: collection.Map[A[_], Seq[A[_]]], node: A[_]): Seq[A[_]] = map.getOrElse(node, Nil)
+
 		// Contracts
 
 	def addedInv(node: A[_]): Unit = topologicalSort(node) foreach addedCheck
@@ -262,7 +268,7 @@ final class Execute[A[_] <: AnyRef](checkCycles: Boolean)(implicit view: NodeVie
 	def pendingInv(node: A[_])
 	{
 		assert( atState(node, Pending) )
-		assert( dependencies( node ) exists notDone )
+		assert( (dependencies( node ) ++ runBefore(node) ) exists notDone )
 	}
 	def runningInv( node: A[_] )
 	{

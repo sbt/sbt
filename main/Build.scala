@@ -123,6 +123,22 @@ object Index
 		else
 			error(duplicates.mkString("AttributeKey ID collisions detected for '", "', '", "'"))
 	}
+	private[this] type TriggerMap = collection.mutable.HashMap[Task[_], Seq[Task[_]]]
+	def triggers(ss: Settings[Scope]): Triggers[Task] =
+	{
+		val runBefore = new TriggerMap
+		val triggeredBy = new TriggerMap
+		for( (_, amap) <- ss.data; AttributeEntry(_, value: Task[_]) <- amap.entries)
+		{
+			val as = value.info.attributes
+			update(runBefore, value, as get Keys.runBefore)
+			update(triggeredBy, value, as get Keys.triggeredBy)
+		}
+		new Triggers[Task](runBefore, triggeredBy)
+	}
+	private[this] def update(map: TriggerMap, base: Task[_], tasksOpt: Option[Seq[Task[_]]]): Unit =
+		for( tasks <- tasksOpt; task <- tasks )
+			map(task) = base +: map.getOrElse(task, Nil)
 }
 object BuildStreams
 {

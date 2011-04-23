@@ -213,6 +213,22 @@ object Scoped
 		def dependOn: Initialize[Task[Unit]]  =  Apply.tasks(KList.fromList(keys)) { kl => nop.dependsOn(kl.toList :_*) }
 	}
 
+
+	implicit def richInitializeTask[T](init: Initialize[Task[T]]): RichInitializeTask[T] = new RichInitializeTask(init)
+	final class RichInitializeTask[T](init: Initialize[Task[T]])
+	{
+		def triggeredBy(tasks: ScopedTask[_]*): Initialize[Task[T]] = nonLocal(tasks, Keys.triggeredBy)
+		def runBefore(tasks: ScopedTask[_]*): Initialize[Task[T]] = nonLocal(tasks, Keys.runBefore)
+		private[this] def nonLocal(tasks: Seq[ScopedTask[_]], key: AttributeKey[Seq[Task[_]]]): Initialize[Task[T]] =
+		{
+			val getTasks = Apply.tasks(KList.fromList(tasks))(idFun)
+			(getTasks zipWith init) { (tasks, i) =>
+				i.copy(info = i.info.set(key, tasks.toList))
+			}
+		}
+	}
+
+
 	implicit def richFileSetting(s: ScopedSetting[File]): RichFileSetting = new RichFileSetting(s)
 	implicit def richFilesSetting(s: ScopedSetting[Seq[File]]): RichFilesSetting = new RichFilesSetting(s)
 	

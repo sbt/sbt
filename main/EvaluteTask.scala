@@ -35,7 +35,7 @@ object EvaluateTask
 	def evaluateTask[T](structure: BuildStructure, taskKey: ScopedKey[Task[T]], state: State, ref: ProjectRef, checkCycles: Boolean = false, maxWorkers: Int = SystemProcessors): Option[Result[T]] =
 		withStreams(structure) { str =>
 			for( (task, toNode) <- getTask(structure, taskKey, state, str, ref) ) yield
-				runTask(task, str, checkCycles, maxWorkers)(toNode)
+				runTask(task, str, structure.index.triggers, checkCycles, maxWorkers)(toNode)
 		}
 	def logIncResult(result: Result[_], streams: Streams) = result match { case Inc(i) => logIncomplete(i, streams); case _ => () }
 	def logIncomplete(result: Incomplete, streams: Streams)
@@ -71,11 +71,11 @@ object EvaluateTask
 	def nodeView[HL <: HList](state: State, streams: Streams, extraDummies: KList[Task, HL] = KNil, extraValues: HL = HNil): Execute.NodeView[Task] =
 		Transform(dummyStreamsManager :^: KCons(dummyState, extraDummies), streams :+: HCons(state, extraValues))
 
-	def runTask[Task[_] <: AnyRef, T](root: Task[T], streams: Streams, checkCycles: Boolean = false, maxWorkers: Int = SystemProcessors)(implicit taskToNode: Execute.NodeView[Task]): Result[T] =
+	def runTask[Task[_] <: AnyRef, T](root: Task[T], streams: Streams, triggers: Triggers[Task], checkCycles: Boolean = false, maxWorkers: Int = SystemProcessors)(implicit taskToNode: Execute.NodeView[Task]): Result[T] =
 	{
 		val (service, shutdown) = CompletionService[Task[_], Completed](maxWorkers)
 
-		val x = new Execute[Task](checkCycles)(taskToNode)
+		val x = new Execute[Task](checkCycles, triggers)(taskToNode)
 		val result = try { x.run(root)(service) } finally { shutdown() }
 		val replaced = transformInc(result)
 		logIncResult(replaced, streams)
