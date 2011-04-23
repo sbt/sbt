@@ -16,6 +16,3 @@
   maven-central
   scala-tools-releases
   scala-tools-snapshots
-
-[boot]
- directory: ${sbt.boot.directory-${user.home}/.sbt/scripts/}
