@@ -17,8 +17,5 @@
   scala-tools-releases
   scala-tools-snapshots
 
-[boot]
- directory: ${sbt.boot.directory-project/boot/}
-
 [ivy]
   ivy-home: ${sbt.ivy.home-${user.home}/.ivy2/}
