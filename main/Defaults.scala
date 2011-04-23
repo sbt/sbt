@@ -498,7 +498,7 @@ object Classpaths
 		moduleID <<= normalizedName.identity,
 		defaultConfiguration in GlobalScope :== Some(Configurations.Compile),
 		defaultConfigurationMapping in GlobalScope <<= defaultConfiguration{ case Some(d) => "*->" + d.name; case None => "*->*" },
-		ivyPaths <<= (baseDirectory, appConfiguration) { (base, app) => new IvyPaths(base, Option(app.provider.scalaProvider.launcher.ivyHome)) },
+		ivyPaths <<= (baseDirectory, appConfiguration) { (base, app) => new IvyPaths(base, bootIvyHome(app)) },
 		otherResolvers <<= publishTo(_.toList),
 		projectResolver <<= projectResolverTask,
 		projectDependencies <<= projectDependenciesTask,
@@ -769,6 +769,11 @@ object Classpaths
 				case _ => arts
 			}
 		}
+
+		// support earlier launchers
+	def bootIvyHome(app: xsbti.AppConfiguration): Option[File] =
+		try { Option(app.provider.scalaProvider.launcher.ivyHome) }
+		catch { case _: NoSuchMethodError => None }
 }
 
 trait BuildExtra

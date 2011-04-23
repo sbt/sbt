@@ -13,6 +13,11 @@ object CommandSupport
 {
 	def logger(s: State) = s get Keys.logged getOrElse ConsoleLogger()
 
+	// slightly better fallback in case of older launcher
+	def bootDirectory(state: State): File =
+		try { state.configuration.provider.scalaProvider.launcher.bootDirectory }
+		catch { case e: NoSuchMethodError => new File(".").getAbsoluteFile }
+
 	private def canRead = (_: File).canRead
 	def notReadable(files: Seq[File]): Seq[File] = files filterNot canRead
 	def readable(files: Seq[File]): Seq[File] = files filter canRead
