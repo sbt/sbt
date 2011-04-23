@@ -4,7 +4,7 @@
 [app]
   org: org.scala-tools.sbt
   name: sbt
-  version: 0.9.4
+  version: 0.9.5-SNAPSHOT
   class: sbt.ConsoleMain
   components: xsbti
   cross-versioned: true
