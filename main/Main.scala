@@ -42,6 +42,16 @@ final class ScriptMain extends xsbti.AppMain
 		MainLoop.run(state)
 	}	
 }
+final class ConsoleMain extends xsbti.AppMain
+{
+	def run(configuration: xsbti.AppConfiguration): xsbti.MainResult =
+	{
+		import BuiltinCommands.{initialAttributes, ConsoleCommands}
+		val commands = IvyConsole.Name +: configuration.arguments.map(_.trim)
+		val state = State( configuration, ConsoleCommands, Set.empty, None, commands, initialAttributes, Next.Continue )
+		MainLoop.run(state)
+	}
+}
 object MainLoop
 {
 	@tailrec final def run(state: State): xsbti.MainResult =
@@ -72,6 +82,7 @@ object BuiltinCommands
 {
 	def initialAttributes = AttributeMap.empty.put(logged, ConsoleLogger())
 
+	def ConsoleCommands: Seq[Command] = Seq(ignore, exit, IvyConsole.command, act, nop)
 	def ScriptCommands: Seq[Command] = Seq(ignore, exit, Script.command, act, nop)
 	def DefaultCommands: Seq[Command] = Seq(ignore, help, reboot, read, history, continuous, exit, loadProject, loadProjectImpl, loadFailed, Cross.crossBuild, Cross.switchVersion,
 		projects, project, setOnFailure, clearOnFailure, ifLast, multi, shell, set, inspect, eval, alias, append, last, lastGrep, nop, sessionCommand, act)
