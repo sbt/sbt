@@ -4,7 +4,7 @@
 package sbt
 
 	import java.io.File
-	import complete.{DefaultParsers, Parser}
+	import complete.{DefaultParsers, EditDistance, Parser}
 	import CommandSupport.logger
 
 sealed trait Command {
@@ -77,7 +77,10 @@ object Command
 
 	def simpleParser(commandMap: Map[String, State => Parser[() => State]]): State => Parser[() => State] =
 		(state: State) => token(OpOrID examples commandMap.keys.toSet) flatMap { id =>
-			(commandMap get id) match { case None => failure("No command named '" + id + "'"); case Some(c) => c(state) }
+			(commandMap get id) match {
+				case None => failure(invalidValue("command", commandMap.keys)(id))
+				case Some(c) => c(state)
+			}
 		}
 		
 	def process(command: String, state: State): State =
@@ -86,17 +89,17 @@ object Command
 		Parser.result(parser(state), command) match
 		{
 			case Right(s) => s() // apply command.  command side effects happen here
-			case Left((msg,pos)) =>
-				val errMsg = commandError(command, msg, pos)
+			case Left((msgs,pos)) =>
+				val errMsg = commandError(command, msgs, pos)
 				logger(state).error(errMsg)
 				state.fail				
 		}
 	}
-	def commandError(command: String, msg: String, index: Int): String =
+	def commandError(command: String, msgs: Seq[String], index: Int): String =
 	{
 		val (line, modIndex) = extractLine(command, index)
 		val point = pointerSpace(command, modIndex)
-		msg + "\n" + line + "\n" + point + "^"
+		msgs.mkString("\n") + "\n" + line + "\n" + point + "^"
 	}
 	def extractLine(s: String, i: Int): (String, Int) =
 	{
@@ -115,6 +118,22 @@ object Command
 			else
 				s.substring(i+1)
 		loop(s.length - 1)
+	}
+	def invalidValue(label: String, allowed: Iterable[String])(value: String): String =
+		"Not a valid " + label + ": " + value + similar(value, allowed)
+	def similar(value: String, allowed: Iterable[String]): String =
+	{
+		val suggested = suggestions(value, allowed.toSeq)
+		if(suggested.isEmpty) "" else suggested.mkString(" (similar: ", ", ", ")")
+	}
+	def suggestions(a: String, bs: Seq[String], maxDistance: Int = 3, maxSuggestions: Int = 3): Seq[String] =
+		bs.map { b => (b, distance(a, b) ) } filter withinDistance(maxDistance, a) sortBy(_._2) take(maxSuggestions) map(_._1)
+	def distance(a: String, b: String): Int =
+		EditDistance.levenshtein(a, b, insertCost = 1, deleteCost = 1, subCost = 2, transposeCost = 1, true)
+	def withinDistance(dist: Int, a: String)(ai: (String, Int)): Boolean =
+	{
+		val lengthBased = ( (ai._1.length min a.length) - 1 ) max 2
+		ai._2 <= (dist min lengthBased)
 	}
 }
 

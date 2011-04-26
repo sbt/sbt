@@ -14,12 +14,12 @@ trait Parsers
 	lazy val any: Parser[Char] = charClass(_ => true)
 
 	lazy val DigitSet = Set("0","1","2","3","4","5","6","7","8","9")
-	lazy val Digit = charClass(_.isDigit) examples DigitSet
-	lazy val Letter = charClass(_.isLetter)
+	lazy val Digit = charClass(_.isDigit, "digit") examples DigitSet
+	lazy val Letter = charClass(_.isLetter, "letter")
 	def IDStart = Letter
-	lazy val IDChar = charClass(isIDChar)
+	lazy val IDChar = charClass(isIDChar, "ID character")
 	lazy val ID = IDStart ~ IDChar.* map { case x ~ xs => (x +: xs).mkString }
-	lazy val OpChar = charClass(isOpChar)
+	lazy val OpChar = charClass(isOpChar, "symbol")
 	lazy val Op = OpChar.+.string
 	lazy val OpOrID = ID | Op
 
@@ -28,12 +28,15 @@ trait Parsers
 	def isIDChar(c: Char) = c.isLetterOrDigit || c == '-' || c == '_'
 	def isDelimiter(c: Char) = c match { case '`' | '\'' | '\"' | /*';' | */',' | '.' => true ; case _ => false }
 	
-	lazy val NotSpaceClass = charClass(!_.isWhitespace)
-	lazy val SpaceClass = charClass(_.isWhitespace)
+	lazy val NotSpaceClass = charClass(!_.isWhitespace, "non-whitespace character")
+	lazy val SpaceClass = charClass(_.isWhitespace, "whitespace character")
 	lazy val NotSpace = NotSpaceClass.+.string
 	lazy val Space = SpaceClass.+.examples(" ")
 	lazy val OptSpace = SpaceClass.*.examples(" ")
-	lazy val URIClass = charClass(x => !x.isWhitespace && ')' != x).+.string
+	lazy val URIClass = URIChar.+.string !!! "Invalid URI"
+
+	lazy val URIChar = charClass(alphanum) | chars("_-!.~'()*,;:$&+=?/[]@%")
+	def alphanum(c: Char) = ('a' <= c && c <= 'z') || ('A' <= c && c <= 'Z') || ('0' <= c && c <= '9')
 
 	// TODO: implement
 	def fileParser(base: File): Parser[File] = token(mapOrFail(NotSpace)(s => new File(s.mkString)), "<file>")
@@ -63,6 +66,6 @@ object Parsers extends Parsers
 object DefaultParsers extends Parsers with ParserMain
 {
 	def matches(p: Parser[_], s: String): Boolean =
-		apply(p)(s).resultEmpty.isDefined
+		apply(p)(s).resultEmpty.isValid
 	def validID(s: String): Boolean = matches(ID, s)
 }

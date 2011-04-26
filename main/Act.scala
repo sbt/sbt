@@ -29,8 +29,8 @@ object Act
 			ScopedKey( Scope( toAxis(proj, Global), toAxis(conf map ConfigKey.apply, Global), task, extra), key )
 		}
 	}
-	def examplesStrict(p: Parser[String], exs: Set[String]): Parser[String] =
-		p examples exs filter exs
+	def examplesStrict(p: Parser[String], exs: Set[String], label: String): Parser[String] =
+		p !!! ("Expected " + label) examples exs filter(exs, Command.invalidValue(label, exs))
 		
 	def optionalAxis[T](p: Parser[T], ifNone: ScopeAxis[T]): Parser[ScopeAxis[T]] =
 		p.? map { opt => toAxis(opt, ifNone) }
@@ -40,7 +40,7 @@ object Act
 		thisProject in project get data map( _.configurations.map(_.name)) getOrElse Nil
 
 	def config(confs: Set[String]): Parser[Option[String]] =
-		token( (examplesStrict(ID, confs) | GlobalString) <~ ':' ).?
+		token( (examplesStrict(ID, confs, "configuration") | GlobalString) <~ ':' ).?
 
 	def configs(explicit: Option[String], defaultConfigs: Option[ResolvedReference] => Seq[String], proj: Option[ResolvedReference]): List[Option[String]] =
 		explicit match
@@ -54,7 +54,7 @@ object Act
 	{
 		val confMap = confs map { conf => (conf, index.keys(proj, conf)) } toMap;
 		val allKeys = (Set.empty[String] /: confMap.values)(_ ++ _)
-		token(ID examples allKeys).flatMap { keyString =>
+		token(ID !!! "Expected key" examples allKeys).flatMap { keyString =>
 			val conf = confMap.flatMap { case (key, value) => if(value contains keyString) key :: Nil else Nil } headOption;
 			getKey(keyMap, keyString, k => (k, conf flatMap idFun))
 		}
@@ -62,7 +62,7 @@ object Act
 	def getKey[T](keyMap: Map[String,AttributeKey[_]], keyString: String, f: AttributeKey[_] => T): Parser[T] =
 		keyMap.get(keyString) match {
 			case Some(k) => success(f(k))
-			case None => failure("Invalid key: " + keyString)
+			case None => failure(Command.invalidValue("key", keyMap.keys)(keyString))
 		}
 
 	val spacedComma = token(OptSpace ~ ',' ~ OptSpace)
@@ -82,41 +82,44 @@ object Act
 	}
 
 	def taskAxisParser(knownKeys: Map[String, AttributeKey[_]]): Parser[AttributeKey[_]] =
-		token("for" ~ Space) ~> knownIDParser(knownKeys)
+		token("for" ~ Space) ~> knownIDParser(knownKeys, "key")
 
 	def extrasParser(knownKeys: Map[String, AttributeKey[_]], knownValues: IMap[AttributeKey, Set]): Parser[AttributeMap] =
 	{
 		val validKeys = knownKeys.filter { case (_, key) => knownValues get key exists(!_.isEmpty) }
 		if(validKeys.isEmpty)
-			failure("")
+			failure("No valid extra keys.")
 		else
 			rep1sep( extraParser(validKeys, knownValues), spacedComma) map AttributeMap.apply
 	}
 
 	def extraParser(knownKeys: Map[String, AttributeKey[_]], knownValues: IMap[AttributeKey, Set]): Parser[AttributeEntry[_]] =
 	{
-		val keyp = knownIDParser(knownKeys) <~ token(':' ~ OptSpace)
+		val keyp = knownIDParser(knownKeys, "Not a valid extra key") <~ token(':' ~ OptSpace)
 		keyp flatMap { case key: AttributeKey[t] =>
 			val valueMap: Map[String,t] = knownValues(key).map( v => (v.toString, v)).toMap
-			knownIDParser(valueMap) map { value => AttributeEntry(key, value) }
+			knownIDParser(valueMap, "extra value") map { value => AttributeEntry(key, value) }
 		}
 	}
-	def knownIDParser[T](knownKeys: Map[String, T]): Parser[T] =
-		 token(examplesStrict(ID, knownKeys.keys.toSet)) map knownKeys
+	def knownIDParser[T](knownKeys: Map[String, T], label: String): Parser[T] =
+		 token(examplesStrict(ID, knownKeys.keys.toSet, label)) map knownKeys
 
 	def projectRef(index: KeyIndex, currentBuild: URI): Parser[Option[ResolvedReference]] =
 	{
-		def projectID(uri: URI) = token( examplesStrict(ID, index projects uri) <~ '/' )
+		def projectID(uri: URI) = token( examplesStrict(ID, index projects uri, "project ID") )
 		def some[T](p: Parser[T]): Parser[Option[T]] = p map { v => Some(v) }
 
 		val uris = index.buildURIs
 		val resolvedURI = Uri(uris).map(uri => Scope.resolveBuild(currentBuild, uri))
-		val buildRef = token( '[' ~> resolvedURI <~ "]/" ) map { uri => BuildRef(uri) }
+		val buildRef = token( '{' ~> resolvedURI <~ '}' ).?
 		val global = token(GlobalString <~ '/') ^^^ None
-		val build = token( '(' ~> resolvedURI <~ ')') ?? currentBuild
-		val projectRef = for(uri <- build; id <- projectID(uri)) yield ProjectRef(uri, id)
+		def projectRef(uri: URI) = (projectID(uri) <~ '/') map { id => ProjectRef(uri, id) }
+		val resolvedRef = buildRef flatMap {
+			case None => projectRef(currentBuild)
+			case Some(uri) => projectRef(uri) ?? BuildRef(uri)
+		}
 
-		global | some(buildRef) | some(projectRef)
+		global | some(resolvedRef <~ '/')
 	}
 	def optProjectRef(index: KeyIndex, current: ProjectRef): Parser[Option[ResolvedReference]] =
 		projectRef(index, current.build) ?? Some(current)

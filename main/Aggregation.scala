@@ -149,7 +149,7 @@ final object Aggregation
 	def valueParser(s: State, structure: BuildStructure, show: Boolean)(key: ScopedKey[_]): Parser[() => State] =
 		getTasks(key, structure, true).toList match
 		{
-			case Nil => failure("Invalid setting or task")
+			case Nil => failure("No such setting/task: " + (Project display key))
 			case xs @ KeyValue(_, _: InputStatic[t]) :: _ => applyTasks(s, structure, maps(xs.asInstanceOf[Values[InputStatic[t]]])(_.parser(s)), show)
 			case xs @ KeyValue(_, _: InputDynamic[t]) :: _ => applyDynamicTasks(s, structure, xs.asInstanceOf[Values[InputDynamic[t]]], show)
 			case xs @ KeyValue(_, _: Task[t]) :: _ => applyTasks(s, structure, maps(xs.asInstanceOf[Values[Task[t]]])(x => success(x)), show)

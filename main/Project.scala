@@ -164,15 +164,15 @@ object Project extends Init[Scope] with ProjectExtra
 		ref match
 		{
 			case ThisBuild => "<this>"
-			case BuildRef(uri) => "[" + uri + "]"
+			case BuildRef(uri) => "{" + uri + "}"
 		}
 	def display(ref: ProjectReference) =
 		ref match
 		{
 			case ThisProject => "(<this>)<this>"
 			case LocalProject(id) => "(<this>)" + id
-			case RootProject(uri) => "(" + uri + ")<root>"
-			case ProjectRef(uri, id) => "(" + uri + ")" + id
+			case RootProject(uri) => "{" + uri + " }<root>"
+			case ProjectRef(uri, id) => "{" + uri + "}" + id
 		}
 
 	def fillTaskAxis(scoped: ScopedKey[_]): ScopedKey[_] =
