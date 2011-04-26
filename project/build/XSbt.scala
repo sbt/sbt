@@ -75,8 +75,7 @@ class XSbt(info: ProjectInfo) extends ParentProject(info) with NoCrossPaths
 	val discoverySub = project(compilePath / "discover", "Discovery", new DiscoveryProject(_), compileIncrementalSub, apiSub)
 
 	val scriptedBaseSub = project("scripted" / "base", "Scripted Framework", new TestProject(_), ioSub, processSub)
-	val scriptedSbtSub = baseProject("scripted" / "sbt", "Scripted sbt", ioSub, logSub, processSub, scriptedBaseSub, launchInterfaceSub /*should really be a 'provided' dependency*/)
-	val scriptedPluginSub = project("scripted" / "plugin", "Scripted Plugin", new Scripted(_))
+	val scriptedSbtSub = baseProject("scripted" / "sbt", "Scripted sbt", ioSub, logSub, processSub, scriptedBaseSub, launchInterfaceSub /*should really be a 'provided' dependency*/)	
 
 		// Standard task system.  This provides map, flatMap, join, and more on top of the basic task model.
 	val stdTaskSub = testedBase(tasksPath / "standard", "Task System", taskSub, collectionSub, logSub, ioSub, processSub)
@@ -91,6 +90,7 @@ class XSbt(info: ProjectInfo) extends ParentProject(info) with NoCrossPaths
 		//  technically, we need a dependency on all of mainSub's dependencies, but we don't do that since this is strictly an integration project
 		//  with the sole purpose of providing certain identifiers without qualification (with a package object)
 	val sbtSub = project(sbtPath, "Simple Build Tool", new Sbt(_), mainSub)
+	val scriptedPluginSub = project("scripted" / "plugin", "Scripted Plugin", new Scripted(_), sbtSub, classpathSub)
 
 	/** following modules are not updated for 2.8 or 0.9 */
 	/*
@@ -272,7 +272,7 @@ class XSbt(info: ProjectInfo) extends ParentProject(info) with NoCrossPaths
 	{
 		override def componentID = None
 	}
-	class Scripted(info: ProjectInfo) extends PluginProject(info) with Licensed
+	class Scripted(info: ProjectInfo) extends DefaultProject(info)
 	{
 		override def managedStyle = ManagedStyle.Ivy
 		override def scratch = true
