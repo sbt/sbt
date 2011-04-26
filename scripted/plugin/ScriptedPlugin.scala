@@ -1,3 +1,6 @@
+/* sbt -- Simple Build Tool
+ * Copyright 2011 Artyom Olshevskiy
+ */
 import sbt._
 
 import Project.Initialize
