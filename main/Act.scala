@@ -106,20 +106,21 @@ object Act
 
 	def projectRef(index: KeyIndex, currentBuild: URI): Parser[Option[ResolvedReference]] =
 	{
-		def projectID(uri: URI) = token( examplesStrict(ID, index projects uri, "project ID") )
 		def some[T](p: Parser[T]): Parser[Option[T]] = p map { v => Some(v) }
+		def projectID(uri: URI) = token( examplesStrict(ID, index projects uri, "project ID") <~ '/' )
+		def projectRef(uri: URI) = projectID(uri) map { id => ProjectRef(uri, id) }
 
 		val uris = index.buildURIs
 		val resolvedURI = Uri(uris).map(uri => Scope.resolveBuild(currentBuild, uri))
 		val buildRef = token( '{' ~> resolvedURI <~ '}' ).?
 		val global = token(GlobalString <~ '/') ^^^ None
-		def projectRef(uri: URI) = (projectID(uri) <~ '/') map { id => ProjectRef(uri, id) }
+
 		val resolvedRef = buildRef flatMap {
 			case None => projectRef(currentBuild)
-			case Some(uri) => projectRef(uri) ?? BuildRef(uri)
+			case Some(uri) => projectRef(uri) | ( token('/') ^^^ BuildRef(uri) )
 		}
 
-		global | some(resolvedRef <~ '/')
+		some(resolvedRef) | global
 	}
 	def optProjectRef(index: KeyIndex, current: ProjectRef): Parser[Option[ResolvedReference]] =
 		projectRef(index, current.build) ?? Some(current)
