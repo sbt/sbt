@@ -124,10 +124,17 @@ object Project extends Init[Scope] with ProjectExtra
 
 	def setProject(session: SessionSettings, structure: BuildStructure, s: State): State =
 	{
-		val newAttrs = s.attributes.put(stateBuildStructure, structure).put(sessionSettings, session)
-		val newState = s.copy(attributes = newAttrs)
-		updateCurrent(newState.runExitHooks())
+		val previousOnUnload = orIdentity(s get Keys.onUnload.key)
+		val unloaded = previousOnUnload(s.runExitHooks())
+		val (onLoad, onUnload) = getHooks(structure.data)
+		val newAttrs = unloaded.attributes.put(stateBuildStructure, structure).put(sessionSettings, session).put(Keys.onUnload.key, onUnload)
+		val newState = unloaded.copy(attributes = newAttrs)
+		onLoad(updateCurrent( newState ))
 	}
+	def orIdentity[T](opt: Option[T => T]): T => T = opt getOrElse idFun
+	def getHook[T](key: ScopedSetting[T => T], data: Settings[Scope]): T => T  =  orIdentity(key in GlobalScope get data)
+	def getHooks(data: Settings[Scope]): (State => State, State => State)  =  (getHook(Keys.onLoad, data), getHook(Keys.onUnload, data))
+
 	def current(state: State): ProjectRef = session(state).current
 	def updateCurrent(s0: State): State =
 	{

@@ -39,6 +39,8 @@ object Keys
 	val configuration = SettingKey[Configuration]("configuration", "Provides the current configuration of the referencing scope.")
 	val commands = SettingKey[Seq[Command]]("commands", "Defines commands to be registered when this project or build is the current selected one.")
 	val initialize = SettingKey[Unit]("initialize", "A convenience setting for performing side-effects during initialization.")
+	val onLoad = SettingKey[State => State]("on-load", "Transformation to apply to the build state when the build is loaded.")
+	val onUnload = SettingKey[State => State]("on-unload", "Transformation to apply to the build state when the build is unloaded.")
 
 	// Command keys
 	val logged = AttributeKey[Logger]("log", "Provides a Logger for commands.")
