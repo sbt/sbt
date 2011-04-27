@@ -147,8 +147,8 @@ object Parser extends ParserMain
 		a.ifValid {
 			a.result match
 			{
-				case Some(av) => if( f(av) ) success( av ) else Parser.failure(msg(seen))
-				case None => new Filter(a, f, seen, msg)
+				case Some(av) if f(av) => success( av )
+				case _ => new Filter(a, f, seen, msg)
 			}
 		}
 
@@ -471,7 +471,7 @@ private final class MapParser[A,B](a: Parser[A], f: A => B) extends ValidParser[
 }
 private final class Filter[T](p: Parser[T], f: T => Boolean, seen: String, msg: String => String) extends ValidParser[T]
 {
-	def filterResult(r: Result[T]) = p.resultEmpty.filter(f, msg(seen))
+	def filterResult(r: Result[T]) = r.filter(f, msg(seen))
 	lazy val result = p.result filter f
 	lazy val resultEmpty = filterResult(p.resultEmpty)
 	def derive(c: Char) = filterParser(p derive c, f, seen + c, msg)
