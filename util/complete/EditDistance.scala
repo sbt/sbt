@@ -6,7 +6,7 @@ object EditDistance {
   *    http://www.merriampark.com/ld.htm
   *  which is declared to be public domain.
   */
- def levenshtein(s: String, t: String, insertCost: Int, deleteCost: Int, subCost: Int, transposeCost: Int, transpositions: Boolean = false): Int = {
+ def levenshtein(s: String, t: String, insertCost: Int = 1, deleteCost: Int = 1, subCost: Int = 1, transposeCost: Int = 1, matchCost: Int = 0, transpositions: Boolean = false): Int = {
    val n = s.length
    val m = t.length
    if (n == 0) return m
@@ -18,17 +18,19 @@ object EditDistance {
 
    for (i <- 1 to n ; val s_i = s(i - 1) ; j <- 1 to m) {
      val t_j   = t(j - 1)
-     val cost  = if (s_i == t_j) 0 else 1
+     val cost  = if (s_i == t_j) matchCost else subCost
+     val tcost  = if (s_i == t_j) matchCost else transposeCost
+	  
 
      val c1 = d(i - 1)(j) + deleteCost
      val c2 = d(i)(j - 1) + insertCost
-     val c3 = d(i - 1)(j - 1) + cost*subCost
+     val c3 = d(i - 1)(j - 1) + cost
 
      d(i)(j) = c1 min c2 min c3
 
      if (transpositions) {
        if (i > 1 && j > 1 && s(i - 1) == t(j - 2) && s(i - 2) == t(j - 1))
-         d(i)(j) = d(i)(j) min (d(i - 2)(j - 2) + cost*transposeCost)
+         d(i)(j) = d(i)(j) min (d(i - 2)(j - 2) + cost)
      }
    }
 

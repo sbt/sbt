@@ -127,14 +127,9 @@ object Command
 		if(suggested.isEmpty) "" else suggested.mkString(" (similar: ", ", ", ")")
 	}
 	def suggestions(a: String, bs: Seq[String], maxDistance: Int = 3, maxSuggestions: Int = 3): Seq[String] =
-		bs.map { b => (b, distance(a, b) ) } filter withinDistance(maxDistance, a) sortBy(_._2) take(maxSuggestions) map(_._1)
+		bs.map { b => (b, distance(a, b) ) } filter (_._2 <= maxDistance) sortBy(_._2) take(maxSuggestions) map(_._1)
 	def distance(a: String, b: String): Int =
-		EditDistance.levenshtein(a, b, insertCost = 1, deleteCost = 1, subCost = 2, transposeCost = 1, true)
-	def withinDistance(dist: Int, a: String)(ai: (String, Int)): Boolean =
-	{
-		val lengthBased = ( (ai._1.length min a.length) - 1 ) max 2
-		ai._2 <= (dist min lengthBased)
-	}
+		EditDistance.levenshtein(a, b, insertCost = 1, deleteCost = 1, subCost = 2, transposeCost = 1, matchCost = -1, true)
 }
 
 trait Help
