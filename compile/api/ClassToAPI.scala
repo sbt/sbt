@@ -166,7 +166,7 @@ object ClassToAPI
 		pkg match
 		{
 			// translate all primitives?
-			case None => new api.Projection(EmptyPrefix, cls)
+			case None => new api.Projection(Empty, cls)
 			case Some(p) =>
 				new api.Projection(new api.Singleton(pathFromString(p)), cls)
 		}
@@ -202,8 +202,6 @@ object ClassToAPI
 	}
 
 	val Empty = new api.EmptyType
-	val EmptyPath = new api.Path(Array())
-	val EmptyPrefix = new api.Singleton(EmptyPath)
 	val ThisRef = new api.This
 
 	val Public = new api.Public
