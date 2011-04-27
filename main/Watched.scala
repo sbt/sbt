@@ -9,8 +9,7 @@ package sbt
 
 trait Watched
 {
-	/** A `PathFinder` that determines the files watched when an action is run with a preceeding ~ when this is the current
-	* project.  This project does not need to include the watched paths for projects that this project depends on.*/
+	/** The files watched when an action is run with a preceeding ~ */
 	def watchPaths(s: State): Seq[File] = Nil
 	def terminateWatch(key: Int): Boolean = Watched.isEnter(key)
 	/** The time in milliseconds between checking for changes.  The actual time between the last change made to a file and the
@@ -43,7 +42,17 @@ object Watched
 		if(watchState.count > 0)
 			System.out.println(watchState.count + ". Waiting for source changes... (press enter to interrupt)")
 
-		val (triggered, newWatchState) = SourceModificationWatch.watch(sourcesFinder, watched.pollInterval, watchState)(shouldTerminate)
+		val (triggered, newWatchState, newState) =
+			try {
+				val (triggered, newWatchState) = SourceModificationWatch.watch(sourcesFinder, watched.pollInterval, watchState)(shouldTerminate)
+				(triggered, newWatchState, s)
+			}
+			catch { case e: Exception =>
+				val log = CommandSupport.logger(s)
+				log.error("Error occurred obtaining files to watch.  Terminating continuous execution...")
+				BuiltinCommands.handleException(e, s, log)
+				(false, watchState, s.fail)
+			}
 
 		if(triggered)
 			(ClearOnFailure :: next :: FailureWall :: repeat :: s).put(ContinuousState, newWatchState)
