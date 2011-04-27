@@ -55,7 +55,6 @@ object Defaults
 		javaOptions :== Nil,
 		sbtPlugin :== false,
 		crossPaths :== true,
-		generatedResources :== Nil,
 		classpathTypes := Set("jar", "bundle"),
 		aggregate :== Aggregation.Enabled,
 		maxErrors :== 100,
@@ -85,28 +84,41 @@ object Defaults
 		historyPath <<= target(t => Some(t / ".history")),
 		sourceDirectory <<= baseDirectory / "src",
 		sourceFilter in GlobalScope :== ("*.java" | "*.scala"),
-		sourceManaged <<= baseDirectory / "src_managed",
+		sourceManaged <<= crossTarget / "src_managed",
 		cacheDirectory <<= target / "cache"
 	)
 
-	lazy val configPaths = Seq(
+	lazy val configPaths = sourceConfigPaths ++ resourceConfigPaths ++ outputConfigPaths
+	lazy val sourceConfigPaths = Seq(
 		sourceDirectory <<= configSrcSub( sourceDirectory in Scope(This,Global,This,This) ),
 		sourceManaged <<= configSrcSub(sourceManaged),
-		cacheDirectory <<= (cacheDirectory, configuration) { _ / _.name },
-		classDirectory <<= (crossTarget, configuration) { (outDir, conf) => outDir / (prefix(conf.name) + "classes") },
-		docDirectory <<= (crossTarget, configuration) { (outDir, conf) => outDir / (prefix(conf.name) + "api") },
-		sources <<= (sourceDirectories, sourceFilter, defaultExcludes) map { (d,f,excl) => d.descendentsExcept(f,excl).getFiles },
 		scalaSource <<= sourceDirectory / "scala",
 		javaSource <<= sourceDirectory / "java",
+		unmanagedSourceDirectories <<= Seq(scalaSource, javaSource).join,
+		unmanagedSources <<= collectFiles(unmanagedSourceDirectories, sourceFilter, defaultExcludes),
+		managedSourceDirectories :== Nil,
+		managedSources <<= collectFiles(managedSourceDirectories, sourceFilter, defaultExcludes),
+		sources <<= Classpaths.concat(unmanagedSources, managedSources)
+	)
+	lazy val resourceConfigPaths = Seq(
 		resourceDirectory <<= sourceDirectory / "resources",
-		generatedResourceDirectory <<= crossTarget / "res_managed",
-		sourceDirectories <<= Seq(scalaSource, javaSource).join,
-		resourceDirectories <<= Seq(resourceDirectory, generatedResourceDirectory).join,
-		resources <<= (resourceDirectories, defaultExcludes, generatedResources, generatedResourceDirectory) map resourcesTask,
-		generatedResources <<= (definedSbtPlugins, generatedResourceDirectory) map writePluginsDescriptor
+		resourceManaged <<= sourceManaged / "res_managed",
+		unmanagedResourceDirectories <<= Seq(resourceDirectory).join,
+		managedResourceDirectories <<= Seq(resourceManaged).join,
+		resourceDirectories <<= Classpaths.concatSettings(unmanagedResourceDirectories, managedResourceDirectories),
+		unmanagedResources <<= (unmanagedResourceDirectories, defaultExcludes) map unmanagedResourcesTask,
+		managedResources <<= (definedSbtPlugins, resourceManaged) map writePluginsDescriptor,
+		resources <<= Classpaths.concat(managedResources, unmanagedResources)
+	)
+	lazy val outputConfigPaths = Seq(
+		cacheDirectory <<= (cacheDirectory, configuration) { _ / _.name },
+		classDirectory <<= (crossTarget, configuration) { (outDir, conf) => outDir / (prefix(conf.name) + "classes") },
+		docDirectory <<= (crossTarget, configuration) { (outDir, conf) => outDir / (prefix(conf.name) + "api") }
 	)
 	def addBaseSources = Seq(
-		sources <<= (sources, baseDirectory, sourceFilter, defaultExcludes) map { (srcs,b,f,excl) => (srcs +++ b * (f -- excl)).getFiles }
+		unmanagedSources <<= (unmanagedSources, baseDirectory, sourceFilter, defaultExcludes) map {
+			(srcs,b,f,excl) => (srcs +++ b * (f -- excl)).getFiles 
+		}
 	)
 	
 	def compileBase = Seq(
@@ -142,7 +154,7 @@ object Defaults
 	)
 
 	lazy val projectTasks: Seq[Setting[_]] = Seq(
-		cleanFiles <<= Seq(managedDirectory, target, sourceManaged).join,
+		cleanFiles <<= Seq(managedDirectory, target).join,
 		cleanKeepFiles <<= historyPath(_.toList),
 		clean <<= (cleanFiles, cleanKeepFiles) map doClean,
 		consoleProject <<= consoleProjectTask,
@@ -162,14 +174,19 @@ object Defaults
 		(state, thisProjectRef) flatMap { (s, base) =>
 			inAllDependencies(base, watchSources.task, Project structure s).join.map(_.flatten)
 		}
-	def watchSourcesTask: Initialize[Task[Seq[File]]] = Seq(sources, resources).map(inAllConfigurations).join { _.join.map(_.flatten.flatten) }
+	def watchSourcesTask: Initialize[Task[Seq[File]]] =
+		Seq(unmanagedSources, unmanagedResources).map(inAllConfigurations).join { _.join.map(_.flatten.flatten.distinct) }
 
 	def watchSetting: Initialize[Watched] = (pollInterval, thisProjectRef) { (interval, base) =>
 		new Watched {
 			val scoped = watchTransitiveSources in base
 			val key = ScopedKey(scoped.scope, scoped.key)
 			override def pollInterval = interval
-			override def watchPaths(s: State) = EvaluateTask.evaluateTask(Project structure s, key, s, base) match { case Some(Value(ps)) => ps; case _ => Nil }
+			override def watchPaths(s: State) = EvaluateTask.evaluateTask(Project structure s, key, s, base) match {
+				case Some(Value(ps)) => ps
+				case Some(Inc(i)) => throw i
+				case None => error("key not found: " + Project.display(key))
+			}
 		}
 	}
 	def scalaInstanceSetting = (appConfiguration, scalaVersion, scalaHome){ (app, version, home) =>
@@ -179,7 +196,8 @@ object Defaults
 			case Some(h) => ScalaInstance(h, launcher)
 		}
 	}
-	def resourcesTask(dirs: Seq[File], excl: FileFilter, gen: Seq[File], genDir: File) = gen ++ (dirs --- genDir).descendentsExcept("*",excl).getFiles
+	def unmanagedResourcesTask(dirs: Seq[File], excl: FileFilter) =
+		dirs.descendentsExcept("*",excl).getFiles
 
 	lazy val testTasks = testTaskOptions(test) ++ testTaskOptions(testOnly) ++ Seq(	
 		testLoader <<= (fullClasspath, scalaInstance) map { (cp, si) => TestFramework.createTestLoader(data(cp), si) },
@@ -238,19 +256,22 @@ object Defaults
 
 	def packageBinTask = classMappings
 	def packageDocTask = doc map allSubpaths
-	def packageSrcTask = concat(resourceMappings, sourceMappings)
+	def packageSrcTask = concatMappings(resourceMappings, sourceMappings)
 
 	private type Mappings = Initialize[Task[Seq[(File, String)]]]
-	def concat(as: Mappings, bs: Mappings) = (as zipWith bs)( (a,b) => (a :^: b :^: KNil) map { case a :+: b :+: HNil => a ++ b } )
+	def concatMappings(as: Mappings, bs: Mappings) = (as zipWith bs)( (a,b) => (a :^: b :^: KNil) map { case a :+: b :+: HNil => a ++ b } )
 	def classMappings = (compileInputs, products) map { (in, _) => allSubpaths(in.config.classesDirectory) }
 	// drop base directories, since there are no valid mappings for these
-	def sourceMappings = (sources, sourceDirectories, baseDirectory) map { (srcs, sdirs, base) =>
+	def sourceMappings = (unmanagedSources, unmanagedSourceDirectories, baseDirectory) map { (srcs, sdirs, base) =>
 		 ( (srcs --- sdirs --- base) x (relativeTo(sdirs)|relativeTo(base)|flat)) toSeq
 	}
-	def resourceMappings = (resources, resourceDirectories) map { (rs, rdirs) =>
+	def resourceMappings = (unmanagedResources, unmanagedResourceDirectories) map { (rs, rdirs) =>
 		(rs --- rdirs) x (relativeTo(rdirs)|flat) toSeq
 	}
 	
+	def collectFiles(dirs: ScopedTaskable[Seq[File]], filter: ScopedTaskable[FileFilter], excludes: ScopedTaskable[FileFilter]): Initialize[Task[Seq[File]]] =
+		(dirs, filter, excludes) map { (d,f,excl) => d.descendentsExcept(f,excl).getFiles }
+
 	def artifactPathSetting(art: ScopedSetting[Artifact])  =  (crossTarget, projectID, art, scalaVersion, artifactName) { (t, module, a, sv, toString) => t / toString(sv, module, a) asFile }
 
 	def pairID[A,B] = (a: A, b: B) => (a,b)
@@ -443,6 +464,7 @@ object Classpaths
 		import Attributed.{blank, blankSeq}
 
 	def concat[T](a: ScopedTaskable[Seq[T]], b: ScopedTaskable[Seq[T]]): Initialize[Task[Seq[T]]] = (a,b) map (_ ++ _)
+	def concatSettings[T](a: ScopedSetting[Seq[T]], b: ScopedSetting[Seq[T]]): Initialize[Seq[T]] = (a,b)(_ ++ _)
 
 	lazy val configSettings: Seq[Setting[_]] = Seq(
 		externalDependencyClasspath <<= concat(unmanagedClasspath, managedClasspath),
