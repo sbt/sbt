@@ -117,9 +117,22 @@ object Scope
 
 	// *Inherit functions should be immediate delegates and not include argument itself.  Transitivity will be provided by this method
 	def delegates(
+		refs: Seq[(ProjectRef, ResolvedProject)],
 		resolve: Reference => ResolvedReference,
-		projectInherit: ResolvedReference => Seq[ResolvedReference],
+		rootProject: URI => String,
+		projectInherit: ProjectRef => Seq[ProjectRef],
 		configInherit: (ResolvedReference, ConfigKey) => Seq[ConfigKey],
+		taskInherit: (ResolvedReference, AttributeKey[_]) => Seq[AttributeKey[_]],
+		extraInherit: (ResolvedReference, AttributeMap) => Seq[AttributeMap]): Scope => Seq[Scope] =
+	{
+		val index = delegates(refs, projectInherit, configInherit)
+		scope => indexedDelegates(resolve, index, rootProject, taskInherit, extraInherit)(scope)
+	}
+
+	def indexedDelegates(
+		resolve: Reference => ResolvedReference,
+		index: DelegateIndex,
+		rootProject: URI => String,
 		taskInherit: (ResolvedReference, AttributeKey[_]) => Seq[AttributeKey[_]],
 		extraInherit: (ResolvedReference, AttributeMap) => Seq[AttributeMap])(rawScope: Scope): Seq[Scope] =
 	{
@@ -128,9 +141,10 @@ object Scope
 		def nonProjectScopes(resolvedProj: ResolvedReference)(px: ScopeAxis[ResolvedReference]) =
 		{
 			val p = px.toOption getOrElse resolvedProj
-			val cLin = linearize(scope.config)(configInherit(p, _))
-			val tLin = linearize(scope.task)(taskInherit(p,_))
-			val eLin = linearize(scope.extra)(extraInherit(p,_))
+			val configProj = p match { case pr: ProjectRef => pr; case br: BuildRef => ProjectRef(br.build, rootProject(br.build)) }
+			val cLin = scope.config match { case Select(conf) => index.config(configProj, conf); case _ => withGlobalAxis(scope.config) }
+			val tLin = withGlobalAxis(scope.task)
+			val eLin = withGlobalAxis(scope.extra)
 			for(c <- cLin; t <- tLin; e <- eLin) yield Scope(px, c, t, e)
 		}
 		scope.project match
@@ -139,24 +153,56 @@ object Scope
 			case This => withGlobalScope(scope.copy(project = Global))
 			case Select(proj) =>
 				val resolvedProj = resolve(proj)
-				val prod = withRawBuilds(linearize(scope.project map resolve, Nil)(projectInherit)) flatMap nonProjectScopes(resolvedProj)
-				(prod :+ GlobalScope).distinct
+				val projAxes: Seq[ScopeAxis[ResolvedReference]] =
+					resolvedProj match
+					{
+						case pr: ProjectRef => index.project(pr)
+						case br: BuildRef => Select(br) :: Global :: Nil
+					}
+				projAxes flatMap nonProjectScopes(resolvedProj)
 		}
 	}
 
+	def withGlobalAxis[T](base: ScopeAxis[T]): Seq[ScopeAxis[T]] = if(base.isSelect) base :: Global :: Nil else Global :: Nil
 	def withGlobalScope(base: Scope): Seq[Scope] = if(base == GlobalScope) GlobalScope :: Nil else base :: GlobalScope :: Nil
-	def withRawBuilds(ps: Seq[ScopeAxis[ResolvedReference]]): Seq[ScopeAxis[ResolvedReference]] =
-		(ps ++ (ps flatMap rawBuilds).map(Select.apply) :+ Global).distinct
+	def withRawBuilds(ps: Seq[ScopeAxis[ProjectRef]]): Seq[ScopeAxis[ResolvedReference]] =
+		ps ++ (ps flatMap rawBuild) :+ Global
 
-	def rawBuilds(ps: ScopeAxis[ResolvedReference]): Seq[ResolvedReference]  =  ps match { case Select(ref) => rawBuilds(ref); case _ => Nil }
-	def rawBuilds(ps: ResolvedReference): Seq[ResolvedReference]  =  (Reference.uri(ps) map BuildRef.apply).toList
+	def rawBuild(ps: ScopeAxis[ProjectRef]): Seq[ScopeAxis[BuildRef]]  =  ps match { case Select(ref) => Select(BuildRef(ref.build)) :: Nil; case _ => Nil }
 
-	def linearize[T](axis: ScopeAxis[T], append: Seq[ScopeAxis[T]] = Global :: Nil)(inherit: T => Seq[T]): Seq[ScopeAxis[T]] =
+
+	def delegates(
+		refs: Seq[(ProjectRef, ResolvedProject)],
+		projectInherit: ProjectRef => Seq[ProjectRef],
+		configInherit: (ResolvedReference, ConfigKey) => Seq[ConfigKey]): DelegateIndex =
+	{
+		val pDelegates = refs map { case (ref, project) =>
+			(ref, delegateIndex(ref, project.configurations)(projectInherit, configInherit) )
+		} toMap ;
+		new DelegateIndex0(pDelegates)
+	}
+	private[this] def delegateIndex(ref: ProjectRef, confs: Seq[Configuration])(projectInherit: ProjectRef => Seq[ProjectRef], configInherit: (ResolvedReference, ConfigKey) => Seq[ConfigKey]): ProjectDelegates =
+	{
+		val refDelegates = withRawBuilds(linearize(Select(ref), false)(projectInherit))
+		val configs = confs map { c => axisDelegates(configInherit, ref, ConfigKey(c.name)) }
+		val tasks = confs map { c => axisDelegates(configInherit, ref, ConfigKey(c.name)) }
+		new ProjectDelegates(ref, refDelegates, configs.toMap)
+	}
+	def axisDelegates[T](direct: (ResolvedReference, T) => Seq[T], ref: ResolvedReference, init: T): (T, Seq[ScopeAxis[T]]) =
+		( init,  linearize(Select(init))(direct(ref, _)) )
+
+	def linearize[T](axis: ScopeAxis[T], appendGlobal: Boolean = true)(inherit: T => Seq[T]): Seq[ScopeAxis[T]] =
 		axis match
 		{
-			case Select(x) => (Dag.topologicalSort(x)(inherit).map(Select.apply).reverse ++ append).distinct
-			case Global | This => append
+			case Select(x) => topologicalSort(x, appendGlobal)(inherit)
+			case Global | This => if(appendGlobal) Global :: Nil else Nil
 		}
+
+	def topologicalSort[T](node: T, appendGlobal: Boolean)(dependencies: T => Seq[T]): Seq[ScopeAxis[T]] =
+	{
+		val o = Dag.topologicalSortUnchecked(node)(dependencies).map(Select.apply)
+		if(appendGlobal) o ::: Global :: Nil else o
+	}
 }
 
 
@@ -187,3 +233,21 @@ object ConfigKey
 {
 	implicit def configurationToKey(c: Configuration): ConfigKey = ConfigKey(c.name)
 }
+
+sealed trait DelegateIndex
+{
+	def project(ref: ProjectRef): Seq[ScopeAxis[ResolvedReference]]
+	def config(ref: ProjectRef, conf: ConfigKey): Seq[ScopeAxis[ConfigKey]]
+//	def task(ref: ProjectRef, task: ScopedKey[_]): Seq[ScopeAxis[ScopedKey[_]]]
+//	def extra(ref: ProjectRef, e: AttributeMap): Seq[ScopeAxis[AttributeMap]]
+}
+private final class DelegateIndex0(refs: Map[ProjectRef, ProjectDelegates]) extends DelegateIndex
+{
+	def project(ref: ProjectRef): Seq[ScopeAxis[ResolvedReference]] = refs.get(ref) match { case Some(pd) => pd.refs; case None => Nil }
+	def config(ref: ProjectRef, conf: ConfigKey): Seq[ScopeAxis[ConfigKey]] =
+		refs.get(ref) match {
+			case Some(pd) => pd.confs.get(conf) match { case Some(cs) => cs; case None => Nil }
+			case None => Nil
+		}
+}
+private final class ProjectDelegates(val ref: ProjectRef, val refs: Seq[ScopeAxis[ResolvedReference]], val confs: Map[ConfigKey, Seq[ScopeAxis[ConfigKey]]])

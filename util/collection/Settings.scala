@@ -68,7 +68,7 @@ trait Init[Scope]
 	def asTransform(s: Settings[Scope]): ScopedKey ~> Id = new (ScopedKey ~> Id) {
 		def apply[T](k: ScopedKey[T]): T = getValue(s, k)
 	}
-	def getValue[T](s: Settings[Scope], k: ScopedKey[T]) = s.get(k.scope, k.key).get
+	def getValue[T](s: Settings[Scope], k: ScopedKey[T]) = s.get(k.scope, k.key) getOrElse error("Internal settings error: invalid reference to " + display(k))
 	def asFunction[T](s: Settings[Scope]): ScopedKey[T] => T = k => getValue(s, k)
 
 	def compiled(init: Seq[Setting[_]], actual: Boolean = true)(implicit delegates: Scope => Seq[Scope], scopeLocal: ScopeLocal): CompiledMap =
@@ -124,18 +124,16 @@ trait Init[Scope]
 	}
 	private[this] def delegateForKey[T](sMap: ScopedMap, k: ScopedKey[T], scopes: Seq[Scope], refKey: ScopedKey[_], isFirst: Boolean): ScopedKey[T] = 
 	{
-		val scache = PMap.empty[ScopedKey, ScopedKey]
 		def resolve(search: Seq[Scope]): ScopedKey[T] =
 			search match {
 				case Seq() => throw Uninitialized(k, refKey)
 				case Seq(x, xs @ _*) =>
 					val sk = ScopedKey(x, k.key)
-					scache.getOrUpdate(sk, if(defines(sMap, sk, refKey, isFirst)) sk else resolve(xs))
+					val definesKey = (refKey != sk || !isFirst) && (sMap contains sk)
+					if(definesKey) sk else resolve(xs)
 			}
 		resolve(scopes)
 	}
-	private[this] def defines(map: ScopedMap, key: ScopedKey[_], refKey: ScopedKey[_], isFirst: Boolean): Boolean =
-		(map get key) match { case Some(Seq(x, _*)) => (refKey != key) || !isFirst; case _ => false }
 		
 	private[this] def applyInits(ordered: Seq[Compiled])(implicit delegates: Scope => Seq[Scope]): Settings[Scope] =
 		(empty /: ordered){ (m, comp) => comp.eval(m) }
@@ -149,7 +147,7 @@ trait Init[Scope]
 
 	final class Uninitialized(val key: ScopedKey[_], val refKey: ScopedKey[_], msg: String) extends Exception(msg)
 	def Uninitialized(key: ScopedKey[_], refKey: ScopedKey[_]): Uninitialized =
-		new Uninitialized(key, refKey, "Reference to uninitialized setting " + key.key.label + " (in " + key.scope + ") from " + refKey.key.label +" (in " + refKey.scope + ")")
+		new Uninitialized(key, refKey, "Reference to uninitialized setting " + display(key) + " from " + display(refKey))
 	final class Compiled(val key: ScopedKey[_], val dependencies: Iterable[ScopedKey[_]], val eval: Settings[Scope] => Settings[Scope])
 	{
 		override def toString = display(key)

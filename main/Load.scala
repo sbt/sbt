@@ -22,7 +22,7 @@ object Load
 	import BuildPaths._
 	import BuildStreams._
 
-	// note that there is State is passed in but not pulled out
+	// note that there is State passed in but not pulled out
 	def defaultLoad(state: State, baseDirectory: File, log: Logger): (() => Eval, BuildStructure) =
 	{
 		val provider = state.configuration.provider
@@ -33,7 +33,7 @@ object Load
 		val classpath = provider.mainClasspath ++ scalaProvider.jars
 		val compilers = Compiler.compilers(state.configuration, log)
 		val evalPluginDef = EvaluateTask.evalPluginDef(log) _
-		val delegates = memo(defaultDelegates)
+		val delegates = defaultDelegates
 		val inject: Seq[Project.Setting[_]] = ((appConfiguration in GlobalScope) :== state.configuration) +: EvaluateTask.injectSettings
 		val rawConfig = new LoadBuildConfiguration(stagingDirectory, Nil, classpath, loader, compilers, evalPluginDef, delegates, EvaluateTask.injectStreams, inject, log)
 		val commonPlugins = buildGlobalPlugins(defaultGlobalPlugins, state, rawConfig)
@@ -46,7 +46,9 @@ object Load
 		val rootProject = getRootProject(lb.units)
 		def resolveRef(project: Reference): ResolvedReference = Scope.resolveReference(lb.root, rootProject, project)
 		Scope.delegates(
+			lb.allProjectRefs,
 			resolveRef,
+			rootProject,
 			project => projectInherit(lb, project),
 			(project, config) => configInherit(lb, project, config, rootProject),
 			(project, task) => Nil,
@@ -62,13 +64,7 @@ object Load
 	def configInheritRef(lb: LoadedBuild, ref: ProjectRef, config: ConfigKey): Seq[ConfigKey] =
 		configurationOpt(lb.units, ref.build, ref.project, config).toList.flatMap(_.extendsConfigs).map(c => ConfigKey(c.name))
 
-	def projectInherit(lb: LoadedBuild, ref: ResolvedReference): Seq[ProjectRef] =
-		ref match
-		{
-			case pr: ProjectRef => projectInheritRef(lb, pr)
-			case BuildRef(uri) => Nil
-		}
-	def projectInheritRef(lb: LoadedBuild, ref: ProjectRef): Seq[ProjectRef] =
+	def projectInherit(lb: LoadedBuild, ref: ProjectRef): Seq[ProjectRef] =
 		getProject(lb.units, ref.build, ref.project).delegates
 
 		// build, load, and evaluate all units.
@@ -414,6 +410,21 @@ object Load
 	}
 	
 	final class LoadedBuild(val root: URI, val units: Map[URI, LoadedBuildUnit])
+	{
+		checkCycles(units)
+		def allProjectRefs: Seq[(ProjectRef, ResolvedProject)] = for( (uri, unit) <- units.toSeq; (id, proj) <- unit.defined ) yield ProjectRef(uri, id) -> proj
+	}
+	def checkCycles(units: Map[URI, LoadedBuildUnit])
+	{
+		def getRef(pref: ProjectRef) = units(pref.build).defined(pref.project)
+		def deps(proj: ResolvedProject)(base: ResolvedProject => Seq[ProjectRef]): Seq[ResolvedProject]  =  Dag.topologicalSort(proj)(p => base(p) map getRef)
+		 // check for cycles
+		for( (_, lbu) <- units; proj <- lbu.defined.values) {
+			deps(proj)(_.dependencies.map(_.project))
+			deps(proj)(_.delegates)
+			deps(proj)(_.aggregate)
+		}
+	}
 	final class PartBuild(val root: URI, val units: Map[URI, PartBuildUnit])
 	sealed trait BuildUnitBase { def rootProjects: Seq[String]; def buildSettings: Seq[Setting[_]] }
 	final class PartBuildUnit(val unit: BuildUnit, val defined: Map[String, Project], val rootProjects: Seq[String], val buildSettings: Seq[Setting[_]]) extends BuildUnitBase
