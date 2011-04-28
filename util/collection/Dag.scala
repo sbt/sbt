@@ -36,6 +36,24 @@ object Dag
 	
 		finished.toList;
 	}
+	// doesn't check for cycles
+	def topologicalSortUnchecked[T](node: T)(dependencies: T => Iterable[T]): List[T] =
+	{
+		val discovered = new mutable.HashSet[T]
+		var finished: List[T] = Nil
+
+		def visitAll(nodes: Iterable[T]) = nodes foreach visit
+		def visit(node : T){
+			if (!discovered(node)) {
+				discovered(node) = true; 
+				visitAll(dependencies(node))
+				finished ::= node;
+			}
+		}
+
+		visit(node);
+		finished;
+	}
 	final class Cyclic(val value: Any, val all: List[Any], val complete: Boolean)
 		extends Exception( "Cyclic reference involving " + (if(complete) all.mkString(", ") else value) )
 	{
