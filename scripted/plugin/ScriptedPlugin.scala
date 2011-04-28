@@ -10,7 +10,7 @@ import java.lang.reflect.Method
 import java.util.Properties
 
 object ScriptedPlugin extends Plugin {
-	def scriptedConf = config("scripted-sbt")
+	def scriptedConf = config("scripted-sbt") hide
 
 	val scriptedSbt = SettingKey[String]("scripted-sbt")
 	val sbtLauncher = SettingKey[File]("sbt-launcher")
@@ -47,7 +47,7 @@ object ScriptedPlugin extends Plugin {
 	val scriptedSettings = Seq(
 		ivyConfigurations += scriptedConf,
 		scriptedSbt <<= (appConfiguration)(_.provider.id.version),
-		scriptedScalas <<= (scalaInstance) { (scala) => ScriptedScalas(scala.version, scala.version) },
+		scriptedScalas <<= (scalaVersion) { (scala) => ScriptedScalas(scala, scala) },
 		libraryDependencies <<= (libraryDependencies, scriptedScalas, scriptedSbt) {(deps, scalas, version) => deps :+ "org.scala-tools.sbt" % ("scripted-sbt_" + scalas.build) % version % scriptedConf.toString },
 		sbtLauncher <<= (appConfiguration)(app => IO.classLocationFile(app.provider.scalaProvider.launcher.getClass)),
 		sbtTestDirectory <<= sourceDirectory / "sbt-test",
