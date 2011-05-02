@@ -21,7 +21,7 @@ object Cross
 	lazy val switchVersion = Command.arb(requireSession(switchParser)) { case (state, (version, command)) =>
 		val x = Project.extract(state)
 			import x._
-		val add = (scalaVersion := version) :: Nil
+		val add = (scalaVersion :== version) :: (scalaHome :== None) :: Nil
 		val append = Load.transformSettings(Load.projectScope(currentRef), currentRef.build, rootProject, add)
 		val newStructure = Load.reapply(session.original ++ append, structure)
 		Project.setProject(session, newStructure, command :: state)
