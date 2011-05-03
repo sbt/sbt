@@ -447,7 +447,7 @@ object Defaults
 	lazy val testSettings = configSettings ++ testTasks
 
 	lazy val itSettings = inConfig(IntegrationTest)(testSettings)
-	lazy val defaultConfigs = inConfig(Compile)(compileSettings) ++ inConfig(Test)(testSettings)
+	lazy val defaultConfigs = inConfig(Compile)(compileSettings) ++ inConfig(Test)(testSettings) ++ inConfig(Runtime)(Classpaths.configSettings)
 		
 
 	// settings that are not specific to a configuration
