@@ -40,7 +40,7 @@ object RetrieveUnit
 		lazy val tmp = temporary(tempDir, base)
 		base.getScheme match
 		{
-			case "git" => Some { () => gitClone(base, tmp); tmp }
+			case "git" => Some { () => gitRetrieve(base, tmp); tmp }
 			case "http" | "https" => Some { () => downloadAndExtract(base, tmp); tmp }
 			case "file" => 
 				val f = new File(base)
@@ -53,10 +53,24 @@ object RetrieveUnit
 	def hash(uri: URI): String = Hash.toHex(Hash(uri.toASCIIString))
 
 	import Process._
-	def gitClone(base: URI, tempDir: File): Unit =
-		if(!tempDir.exists)  ("git" :: "clone" :: dropFragment(base).toASCIIString :: tempDir.getAbsolutePath :: branch(base)) ! ;
-	def branch(base: URI): List[String]  =  base.getFragment match { case null => Nil; case b => "-b" :: b :: Nil }
+	def gitRetrieve(base: URI, tempDir: File): Unit =
+		if(!tempDir.exists)
+		{
+			IO.createDirectory(tempDir)
+			gitClone(dropFragment(base), tempDir)
+			Option(base.getFragment) foreach { branch => gitCheckout(tempDir, branch) }
+		}
 	def dropFragment(base: URI): URI = if(base.getFragment eq null) base else new URI(base.getScheme, base.getSchemeSpecificPart, null)
+	def gitClone(base: URI, tempDir: File): Unit =
+		run("git" :: "clone" :: dropFragment(base).toASCIIString :: tempDir.getAbsolutePath :: Nil, tempDir) ;
+	def gitCheckout(tempDir: File, branch: String): Unit =
+		run("git" :: "checkout" :: "-q" :: branch :: Nil, tempDir) ;
+	def run(command: List[String], cwd: File): Unit =
+	{
+		val result = Process(command, cwd) ! ;
+		if(result != 0)
+			error("Nonzero exit code (" + result + "): " + command.mkString(" "))
+	}
 }
 object EvaluateConfigurations
 {
