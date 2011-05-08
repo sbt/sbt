@@ -22,15 +22,17 @@ object Act
 			proj <- optProjectRef(index, current)
 			confAmb <- config( index configs proj )
 			keyConf <- key(index, proj, configs(confAmb, defaultConfigs, proj), keyMap)
-			taskExtra <- taskExtrasParser(keyMap, IMap.empty) }
+			taskExtra <- taskExtrasParser(index.tasks(proj, keyConf._2, keyConf._1.label), keyMap, IMap.empty) }
 		yield {
 			val (key, conf) = keyConf
 			val (task, extra) = taskExtra
 			ScopedKey( Scope( toAxis(proj, Global), toAxis(conf map ConfigKey.apply, Global), task, extra), key )
 		}
 	}
+	def examples(p: Parser[String], exs: Set[String], label: String): Parser[String] =
+		p !!! ("Expected " + label) examples exs
 	def examplesStrict(p: Parser[String], exs: Set[String], label: String): Parser[String] =
-		p !!! ("Expected " + label) examples exs filter(exs, Command.invalidValue(label, exs))
+		filterStrings(examples(p, exs, label), exs, label)
 		
 	def optionalAxis[T](p: Parser[T], ifNone: ScopeAxis[T]): Parser[ScopeAxis[T]] =
 		p.? map { opt => toAxis(opt, ifNone) }
@@ -67,11 +69,12 @@ object Act
 
 	val spacedComma = token(OptSpace ~ ',' ~ OptSpace)
 
-	def taskExtrasParser(knownKeys: Map[String, AttributeKey[_]], knownValues: IMap[AttributeKey, Set]): Parser[(ScopeAxis[AttributeKey[_]], ScopeAxis[AttributeMap])] =
+	def taskExtrasParser(tasks: Set[AttributeKey[_]], knownKeys: Map[String, AttributeKey[_]], knownValues: IMap[AttributeKey, Set]): Parser[(ScopeAxis[AttributeKey[_]], ScopeAxis[AttributeMap])] =
 	{
 		val extras = extrasParser(knownKeys, knownValues)
+		val taskParser = if(tasks.isEmpty) success(Global) else optionalAxis(taskAxisParser(tasks, knownKeys), Global)
 		val taskAndExtra = 
-			optionalAxis(taskAxisParser(knownKeys), Global) flatMap { taskAxis =>
+			taskParser flatMap { taskAxis =>
 				if(taskAxis.isSelect)
 					optionalAxis(spacedComma ~> extras, Global) map { x => (taskAxis, x) }
 				else
@@ -81,8 +84,17 @@ object Act
 		base ?? ( (Global, Global) )
 	}
 
-	def taskAxisParser(knownKeys: Map[String, AttributeKey[_]]): Parser[AttributeKey[_]] =
-		token("for" ~ Space) ~> knownIDParser(knownKeys, "key")
+	def taskAxisParser(tasks: Set[AttributeKey[_]], allKnown: Map[String, AttributeKey[_]]): Parser[AttributeKey[_]] =
+	{
+		val knownKeys: Map[String, AttributeKey[_]] = tasks.toSeq.map(key => (key.label, key)).toMap
+		val known = allKnown ++ knownKeys
+		val valid = known.keys.toSet
+		val suggested = knownKeys.keys.toSet
+		val keyP = filterStrings(examples(ID, suggested, "key"), valid, "key") map known
+		token("for" ~ Space) ~> token(keyP)
+	}
+	def filterStrings(base: Parser[String], valid: Set[String], label: String): Parser[String] =
+		base.filter(valid, Command.invalidValue(label, valid))
 
 	def extrasParser(knownKeys: Map[String, AttributeKey[_]], knownValues: IMap[AttributeKey, Set]): Parser[AttributeMap] =
 	{
