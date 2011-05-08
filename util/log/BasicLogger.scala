@@ -9,10 +9,10 @@ abstract class BasicLogger extends AbstractLogger
 	private var traceEnabledVar = java.lang.Integer.MAX_VALUE
 	private var level: Level.Value = Level.Info
 	private var successEnabledVar = true
-	def successEnabled = successEnabledVar
-	def setSuccessEnabled(flag: Boolean) { successEnabledVar = flag }
-	def getLevel = level
-	def setLevel(newLevel: Level.Value) { level = newLevel }
-	def setTrace(level: Int) { traceEnabledVar = level }
-	def getTrace = traceEnabledVar
+	def successEnabled = synchronized { successEnabledVar }
+	def setSuccessEnabled(flag: Boolean): Unit = synchronized { successEnabledVar = flag }
+	def getLevel = synchronized { level }
+	def setLevel(newLevel: Level.Value): Unit = synchronized { level = newLevel }
+	def setTrace(level: Int): Unit = synchronized { traceEnabledVar = level }
+	def getTrace = synchronized { traceEnabledVar }
 }

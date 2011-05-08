@@ -13,21 +13,19 @@ package sbt
 *
 * This class assumes that it is the only client of the delegate logger.
 * */
-class BufferedLogger(delegate: AbstractLogger) extends AbstractLogger
+class BufferedLogger(delegate: AbstractLogger) extends BasicLogger
 {
 	private[this] val buffer = new ListBuffer[LogEvent]
 	private[this] var recording = false
 
 	/** Enables buffering. */
-	def record() = { recording = true }
-	def buffer[T](f: => T): T =
-	{
+	def record() = synchronized { recording = true }
+	def buffer[T](f: => T): T = synchronized {
 		record()
 		try { f }
 		finally { stopQuietly() }
 	}
-	def bufferQuietly[T](f: => T): T =
-	{
+	def bufferQuietly[T](f: => T): T = synchronized {
 		record()
 		try
 		{
@@ -37,33 +35,36 @@ class BufferedLogger(delegate: AbstractLogger) extends AbstractLogger
 		}
 		catch { case e => stopQuietly(); throw e }
 	}
-	private def stopQuietly() = try { stop() } catch { case e: Exception => () }
+	def stopQuietly() = synchronized { try { stop() } catch { case e: Exception => () } }
 
 	/** Flushes the buffer to the delegate logger.  This method calls logAll on the delegate
 	* so that the messages are written consecutively. The buffer is cleared in the process. */
-	def play() { delegate.logAll(buffer.readOnly); buffer.clear() }
+	def play(): Unit = synchronized { delegate.logAll(buffer.readOnly); buffer.clear() }
 	/** Clears buffered events and disables buffering. */
-	def clear(): Unit = { buffer.clear(); recording = false }
+	def clear(): Unit = synchronized { buffer.clear(); recording = false }
 	/** Plays buffered events and disables buffering. */
-	def stop() { play(); clear() }
+	def stop(): Unit = synchronized { play(); clear() }
 
-	def setLevel(newLevel: Level.Value)
-	{
-		buffer += new SetLevel(newLevel)
-		delegate.setLevel(newLevel)
+	override def setLevel(newLevel: Level.Value): Unit = synchronized {
+		super.setLevel(newLevel)
+		if(recording)
+			buffer += new SetLevel(newLevel)
+		else
+			delegate.setLevel(newLevel)
 	}
-	def setSuccessEnabled(flag: Boolean)
-	{
-		buffer += new SetSuccess(flag)
-		delegate.setSuccessEnabled(flag)
+	override def setSuccessEnabled(flag: Boolean): Unit = synchronized {
+		super.setSuccessEnabled(flag)
+		if(recording)
+			buffer += new SetSuccess(flag)
+		else
+			delegate.setSuccessEnabled(flag)
 	}
-	def successEnabled = delegate.successEnabled
-	def getLevel = delegate.getLevel
-	def getTrace = delegate.getTrace
-	def setTrace(level: Int)
-	{
-		buffer += new SetTrace(level)
-		delegate.setTrace(level)
+	override def setTrace(level: Int): Unit = synchronized {
+		super.setTrace(level)
+		if(recording)
+			buffer += new SetTrace(level)
+		else
+			delegate.setTrace(level)
 	}
 
 	def trace(t: => Throwable): Unit =
@@ -72,16 +73,17 @@ class BufferedLogger(delegate: AbstractLogger) extends AbstractLogger
 		doBufferable(Level.Info, new Success(message), _.success(message))
 	def log(level: Level.Value, message: => String): Unit =
 		doBufferable(level, new Log(level, message), _.log(level, message))
-	def logAll(events: Seq[LogEvent]): Unit =
+	def logAll(events: Seq[LogEvent]): Unit = synchronized {
 		if(recording)
 			buffer ++= events
 		else
 			delegate.logAll(events)
+	}
 	def control(event: ControlEvent.Value, message: => String): Unit =
 		doBufferable(Level.Info, new ControlEvent(event, message), _.control(event, message))
 	private def doBufferable(level: Level.Value, appendIfBuffered: => LogEvent, doUnbuffered: AbstractLogger => Unit): Unit =
 		doBufferableIf(atLevel(level), appendIfBuffered, doUnbuffered)
-	private def doBufferableIf(condition: => Boolean, appendIfBuffered: => LogEvent, doUnbuffered: AbstractLogger => Unit): Unit =
+	private def doBufferableIf(condition: => Boolean, appendIfBuffered: => LogEvent, doUnbuffered: AbstractLogger => Unit): Unit = synchronized {
 		if(condition)
 		{
 			if(recording)
@@ -89,4 +91,5 @@ class BufferedLogger(delegate: AbstractLogger) extends AbstractLogger
 			else
 				doUnbuffered(delegate)
 		}
+	}
 }
