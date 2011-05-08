@@ -1,6 +1,5 @@
 	import java.util.jar.{Attributes, Manifest}
 	import Path.makeString
-	import Configurations.Compile
 
 name :== "Jar Manifest Test"
 

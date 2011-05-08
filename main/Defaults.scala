@@ -238,7 +238,7 @@ object Defaults
 	}
 
 	lazy val packageBase = Seq(
-		artifact <<= name(n => Artifact(n)),
+		artifact <<= normalizedName(n => Artifact(n)),
 		packageOptions in GlobalScope :== Nil,
 		artifactName in GlobalScope :== ( Artifact.artifactName _ )
 	)
@@ -538,8 +538,8 @@ object Classpaths
 		artifactPath in makePom <<= artifactPathSetting(artifact in makePom),
 		publishArtifact in makePom <<= publishMavenStyle.identity,
 		artifact in makePom <<= moduleID( name => Artifact(name, "pom", "pom") ),
-		projectID <<= (organization,moduleID,version,artifacts){ (org,module,version,as) =>
-			ModuleID(org, module, version).cross(true).artifacts(as : _*)
+		projectID <<= (organization,moduleID,version,artifacts,crossPaths){ (org,module,version,as,crossEnabled) =>
+			ModuleID(org, module, version).cross(crossEnabled).artifacts(as : _*)
 		},
 		resolvers in GlobalScope :== Nil,
 		projectDescriptors <<= depMap,
