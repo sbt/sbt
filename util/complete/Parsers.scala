@@ -35,7 +35,7 @@ trait Parsers
 	lazy val OptSpace = SpaceClass.*.examples(" ")
 	lazy val URIClass = URIChar.+.string !!! "Invalid URI"
 
-	lazy val URIChar = charClass(alphanum) | chars("_-!.~'()*,;:$&+=?/[]@%")
+	lazy val URIChar = charClass(alphanum) | chars("_-!.~'()*,;:$&+=?/[]@%#")
 	def alphanum(c: Char) = ('a' <= c && c <= 'z') || ('A' <= c && c <= 'Z') || ('0' <= c && c <= '9')
 
 	// TODO: implement
@@ -52,6 +52,7 @@ trait Parsers
 	def rep1sep[T](rep: Parser[T], sep: Parser[_]): Parser[Seq[T]] =
 		(rep ~ (sep ~> rep).*).map { case (x ~ xs) => x +: xs }
 
+	def some[T](p: Parser[T]): Parser[Option[T]] = p map { v => Some(v) }
 	def mapOrFail[S,T](p: Parser[S])(f: S => T): Parser[T] =
 		p flatMap { s => try { success(f(s)) } catch { case e: Exception => failure(e.toString) } }
 

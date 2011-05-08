@@ -13,12 +13,6 @@ package sbt
 
 object ProjectNavigation
 {
-	sealed trait Navigate
-	final object ShowCurrent extends Navigate
-	final object Root extends Navigate
-	final class ChangeBuild(val base: URI) extends Navigate
-	final class ChangeProject(val id: String) extends Navigate
-
 	def command(s: State): Parser[() => State] =
 		if(s get sessionSettings isEmpty) failure("No project loaded") else (new ProjectNavigation(s)).command
 }
@@ -26,44 +20,38 @@ final class ProjectNavigation(s: State)
 {
 	val extracted = Project extract s
 		import extracted.{currentRef, structure, session}
-		import currentRef.{build => uri, project => pid}
-	val builds = structure.units.keys.toSet
-	val projects = Load.getBuild(structure.units, uri).defined.keys
 
 	def setProject(nuri: URI, nid: String) =
 	{
-		val neval = if(uri == nuri) session.currentEval else mkEval(nuri)
+		val neval = if(currentRef.build == nuri) session.currentEval else mkEval(nuri)
 		updateCurrent(s.put(sessionSettings, session.setCurrent(nuri, nid, neval)))
 	}
 	def mkEval(nuri: URI) = Load.lazyEval(structure.units(nuri).unit)
 	def getRoot(uri: URI) = Load.getRootProject(structure.units)(uri)
 
-	def apply(action: Navigate): State =
+	def apply(action: Option[ResolvedReference]): State =
 		action match
 		{
-			case ShowCurrent => show(); s
-			case Root => setProject(uri, getRoot(uri))
-			case b: ChangeBuild => changeBuild(b.base)
+			case None => show(); s
+			case Some(BuildRef(uri)) => changeBuild(uri)
+			case Some(ProjectRef(uri, id)) => selectProject(uri, id)
 /*			else if(to.forall(_ == '.'))
 				if(to.length > 1) gotoParent(to.length - 1, nav, s) else s */ // semantics currently undefined
-			case s: ChangeProject => selectProject(s.id)
 		}
 
-	def show(): Unit  =  logger(s).info(pid + " (in build " + uri + ")")
-	def selectProject(to: String): State =
+	def show(): Unit  =  logger(s).info(currentRef.project + " (in build " + currentRef.build + ")")
+	def selectProject(uri: URI, to: String): State =
 		if( structure.units(uri).defined.contains(to) )
 			setProject(uri, to)
 		else
-			fail("Invalid project name '" + to + "' (type 'projects' to list available projects).")
+			fail("Invalid project name '" + to + "' in build " + uri + " (type 'projects' to list available projects).")
 
-	def changeBuild(to: URI): State =
-	{	
-		val newBuild = (uri resolve to).normalize
+	def changeBuild(newBuild: URI): State =
 		if(structure.units contains newBuild)
 			setProject(newBuild, getRoot(newBuild))
 		else
 			fail("Invalid build unit '" + newBuild + "' (type 'projects' to list available builds).")
-	}
+
 	def fail(msg: String): State =
 	{
 		logger(s).error(msg)
@@ -73,11 +61,12 @@ final class ProjectNavigation(s: State)
 		import complete.Parser._
 		import complete.Parsers._
 
-	val parser: Parser[Navigate] =
+	val parser: Parser[Option[ResolvedReference]] =
 	{
-		val buildP = token('^') ~> token(Uri(builds) map(u => new ChangeBuild(u) ) )
-		val projectP = token(ID map (id => new ChangeProject(id)) examples projects.toSet )
-		success(ShowCurrent) | ( token(Space) ~> (token('/' ^^^ Root) | buildP | projectP) )
+		val reference = Act.resolvedReference(structure.index.keyIndex, currentRef.build, success(()))
+		val root = token('/' ^^^ rootRef)
+		success(None) | some( token(Space) ~> (root | reference) )
 	}
+	def rootRef = ProjectRef(currentRef.build, getRoot(currentRef.build))
 	val command: Parser[() => State] = Command.applyEffect(parser)(apply)
 }
