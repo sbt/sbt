@@ -46,12 +46,11 @@ object EvaluateTask
 		val un = all.filter { i => i.node.isEmpty || i.message.isEmpty }
 		for( (key, _, Some(ex)) <- keyed)
 			getStreams(key, streams).log.trace(ex)
-		log.error("Incomplete task(s):")
+		log.error("Incomplete tasks (run 'last <task>' for the full log):")
 		for( (key, msg, ex) <- keyed if(msg.isDefined || ex.isDefined) )
 			getStreams(key, streams).log.error("  " + Project.display(key) + ": " + (msg.toList ++ ex.toList).mkString("\n\t"))
 		for(u <- un)
 			log.debug(u.toString)
-		log.error("Run 'last <task>' for the full log(s).")
 	}
 	def getStreams(key: ScopedKey[_], streams: Streams): TaskStreams =
 		streams(ScopedKey(Project.fillTaskAxis(key).scope, Keys.streams.key))
