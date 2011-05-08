@@ -18,6 +18,7 @@ trait Build
 {
 	def projects: Seq[Project]
 	def settings: Seq[Setting[_]] = Defaults.buildCore
+	def buildResolvers: Seq[BuildLoader.BuildResolver] = Nil
 }
 trait Plugin
 {
@@ -34,24 +35,28 @@ object Build
 }
 object RetrieveUnit
 {
-	def apply(tempDir: File, base: URI): File =
+	def apply(tempDir: File, base: URI): Option[() => File] =
 	{
 		lazy val tmp = temporary(tempDir, base)
 		base.getScheme match
 		{
-			case "file" => val f = new File(base); if(f.isDirectory) f else error("Not a directory: '" + base + "'")
-			case "git" => gitClone(base, tmp); tmp
-			case "http" | "https" => downloadAndExtract(base, tmp); tmp
-			case _ => error("Unknown scheme in '" + base + "'")
+			case "git" => Some { () => gitClone(base, tmp); tmp }
+			case "http" | "https" => Some { () => downloadAndExtract(base, tmp); tmp }
+			case "file" => 
+				val f = new File(base)
+				if(f.isDirectory) Some(() => f) else None
+			case _ => None
 		}
 	}
 	def downloadAndExtract(base: URI, tempDir: File): Unit = if(!tempDir.exists) IO.unzipURL(base.toURL, tempDir)
-	def temporary(tempDir: File, uri: URI): File = new File(tempDir, hash(uri))
+	def temporary(tempDir: File, uri: URI): File = new File(tempDir, Hash.halve(hash(uri)))
 	def hash(uri: URI): String = Hash.toHex(Hash(uri.toASCIIString))
 
 	import Process._
 	def gitClone(base: URI, tempDir: File): Unit =
-		if(!tempDir.exists)  ("git" :: "clone" :: base.toASCIIString :: tempDir.getAbsolutePath :: Nil) ! ;
+		if(!tempDir.exists)  ("git" :: "clone" :: dropFragment(base).toASCIIString :: tempDir.getAbsolutePath :: branch(base)) ! ;
+	def branch(base: URI): List[String]  =  base.getFragment match { case null => Nil; case b => "-b" :: b :: Nil }
+	def dropFragment(base: URI): URI = if(base.getFragment eq null) base else new URI(base.getScheme, base.getSchemeSpecificPart, null)
 }
 object EvaluateConfigurations
 {

@@ -167,15 +167,30 @@ object Load
 		if(srcs.isEmpty) Nil else EvaluateConfigurations(eval(), srcs, imports)
 
 	def load(file: File, s: State, config: LoadBuildConfiguration): PartBuild =
-		load(file, uri => loadUnit(uri, RetrieveUnit(config.stagingDirectory, uri), s, config) )
-	def load(file: File, loader: URI => BuildUnit): PartBuild = loadURI(IO.directoryURI(file), loader)
-	def loadURI(uri: URI, loader: URI => BuildUnit): PartBuild =
+	{
+		val loader = (uri: URI, local: File) => loadUnit(uri, local, s, config)
+		val fail = (uri: URI) => error("Invalid build URI: " + uri)
+		val builtinLoader = BuildLoader(loader, info => RetrieveUnit(info.staging, info.build), fail, config)
+		load(file, builtinLoader)
+	}
+	def load(file: File, loaders: BuildLoader): PartBuild = loadURI(IO.directoryURI(file), loaders)
+	def loadURI(uri: URI, loaders: BuildLoader): PartBuild =
 	{
 		IO.assertAbsolute(uri)
-		val (referenced, map) = loadAll(uri :: Nil, Map.empty, loader, Map.empty)
+		val (referenced, map) = loadAll(uri :: Nil, Map.empty, loaders, Map.empty)
 		checkAll(referenced, map)
 		new PartBuild(uri, map)
 	}
+	def addResolvers(unit: BuildUnit, isRoot: Boolean, loaders: BuildLoader): BuildLoader =
+		unit.definitions.builds.flatMap(_.buildResolvers) match
+		{
+			case Nil => loaders
+			case x :: xs =>
+				import Alternatives._
+				val resolver = (x /: xs){ _ | _ }
+				if(isRoot) loaders.setRoot(resolver) else loaders.addNonRoot(unit.uri, resolver)
+		}
+
 	def loaded(unit: BuildUnit): (PartBuildUnit, List[ProjectReference]) =
 	{
 		val defined = projects(unit)
@@ -197,17 +212,18 @@ object Load
 		Project.transform(resolve, unit.definitions.builds.flatMap(_.settings))
 	}
 
-	@tailrec def loadAll(bases: List[URI], references: Map[URI, List[ProjectReference]], externalLoader: URI => BuildUnit, builds: Map[URI, PartBuildUnit]): (Map[URI, List[ProjectReference]], Map[URI, PartBuildUnit]) =
+	@tailrec def loadAll(bases: List[URI], references: Map[URI, List[ProjectReference]], loaders: BuildLoader, builds: Map[URI, PartBuildUnit]): (Map[URI, List[ProjectReference]], Map[URI, PartBuildUnit]) =
 		bases match
 		{
 			case b :: bs =>
 				if(builds contains b)
-					loadAll(bs, references, externalLoader, builds)
+					loadAll(bs, references, loaders, builds)
 				else
 				{
-					val (loadedBuild, refs) = loaded(externalLoader(b))
+					val (loadedBuild, refs) = loaded(loaders(b))
 					checkBuildBase(loadedBuild.unit.localBase)
-					loadAll(refs.flatMap(Reference.uri) reverse_::: bs, references.updated(b, refs), externalLoader, builds.updated(b, loadedBuild))
+					val newLoader = addResolvers(loadedBuild.unit, builds.isEmpty, loaders)
+					loadAll(refs.flatMap(Reference.uri) reverse_::: bs, references.updated(b, refs), newLoader, builds.updated(b, loadedBuild))
 				}
 			case Nil => (references, builds)
 		}
@@ -456,10 +472,4 @@ object Load
 	final case class LoadBuildConfiguration(stagingDirectory: File, commonPluginClasspath: Seq[Attributed[File]], classpath: Seq[File], loader: ClassLoader, compilers: Compilers, evalPluginDef: (BuildStructure, State) => Seq[Attributed[File]], delegates: LoadedBuild => Scope => Seq[Scope], scopeLocal: ScopeLocal, injectSettings: Seq[Setting[_]], log: Logger)
 	// information that is not original, but can be reconstructed from the rest of BuildStructure
 	final class StructureIndex(val keyMap: Map[String, AttributeKey[_]], val taskToKey: Map[Task[_], ScopedKey[Task[_]]], val triggers: Triggers[Task], val keyIndex: KeyIndex)
-
-	private[this] def memo[A,B](f: A => B): A => B =
-	{
-		val dcache = new mutable.HashMap[A,B]
-		(a: A) => dcache.getOrElseUpdate(a, f(a))
-	}
 }

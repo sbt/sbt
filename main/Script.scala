@@ -15,7 +15,7 @@ object Script
 		Command.command(Name) { state =>
 			val scriptArg = state.remainingCommands.headOption getOrElse error("No script file specified")
 			val script = new File(scriptArg).getAbsoluteFile
-			val hash = halve(Hash.toHex(Hash(script.getAbsolutePath)))
+			val hash = Hash.halve(Hash.toHex(Hash(script.getAbsolutePath)))
 			val base = new File(CommandSupport.bootDirectory(state), hash)
 			IO.createDirectory(base)
 
@@ -36,7 +36,6 @@ object Script
 			val newState = "run" :: state.copy(remainingCommands = state.remainingCommands.drop(1))
 			Project.setProject(session, newStructure, newState)
 		}
-	def halve(s: String): String = if(s.length > 3) s.substring(0, s.length / 2) else s
 
 	final case class Block(offset: Int, lines: Seq[String])
 	def blocks(file: File): Seq[Block] =

@@ -32,6 +32,8 @@ object Hash
 		}
 		array
 	}
+	def halve(s: String): String = if(s.length > 3) s.substring(0, s.length / 2) else s
+
 	/** Calculates the SHA-1 hash of the given String.*/
 	def apply(s: String): Array[Byte] = apply(s.getBytes("UTF-8"))
 	/** Calculates the SHA-1 hash of the given Array[Byte].*/

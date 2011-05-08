@@ -179,8 +179,7 @@ final class Eval(optionsNoncp: Seq[String], classpath: Seq[File], mkReporter: Se
 
 
 	val DefaultStartLine = 0
-	private[this] def makeModuleName(hash: String): String  =  "$" + halve(hash)
-	private[this] def halve(s: String): String = if(s.length > 2) s.substring(0, s.length / 2) else s
+	private[this] def makeModuleName(hash: String): String  =  "$" + Hash.halve(hash)
 	private[this] def noImports = new EvalImports(Nil, "")
 	private[this] def mkUnit(srcName: String, firstLine: Int, s: String) = new CompilationUnit(new EvalSourceFile(srcName, firstLine, s))
 	private[this] def checkError(label: String) = if(reporter.hasErrors) throw new EvalException(label)
