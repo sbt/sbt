@@ -72,9 +72,9 @@ private class BasicAttributeMap(private val backing: Map[AttributeKey[_], Any]) 
 }
 
 // type inference required less generality
-final case class AttributeEntry[T](a: AttributeKey[T], b: T)
+final case class AttributeEntry[T](key: AttributeKey[T], value: T)
 {
-	override def toString = a.label + ": " + b
+	override def toString = key.label + ": " + value
 }
 
 final case class Attributed[D](data: D)(val metadata: AttributeMap)

@@ -192,9 +192,11 @@ object BuildStreams
 		val scope = scoped.scope
 		pathComponent(scope.config, scoped, "config")(_.name) ::
 		pathComponent(scope.task, scoped, "task")(_.label) ::
-		pathComponent(scope.extra, scoped, "extra")(_ => error("Unimplemented")) ::
+		pathComponent(scope.extra, scoped, "extra")(showAMap) ::
 		Nil
 	}
+	def showAMap(a: AttributeMap): String =
+		a.entries.toSeq.sortBy(_.key.label).map { case AttributeEntry(key, value) => key.label + "=" + value.toString } mkString(" ")
 	def projectPath(units: Map[URI, LoadedBuildUnit], root: URI, scoped: ScopedKey[_], data: Settings[Scope]): File =
 		scoped.scope.project match
 		{
