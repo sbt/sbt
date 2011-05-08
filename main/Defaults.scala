@@ -99,9 +99,9 @@ object Defaults
 		scalaSource <<= sourceDirectory / "scala",
 		javaSource <<= sourceDirectory / "java",
 		unmanagedSourceDirectories <<= Seq(scalaSource, javaSource).join,
-		unmanagedSources <<= collectFiles(unmanagedSourceDirectories, sourceFilter, defaultExcludes),
+		unmanagedSources <<= collectFiles(unmanagedSourceDirectories, sourceFilter, defaultExcludes in unmanagedSources),
 		managedSourceDirectories :== Nil,
-		managedSources <<= collectFiles(managedSourceDirectories, sourceFilter, defaultExcludes),
+		managedSources <<= collectFiles(managedSourceDirectories, sourceFilter, defaultExcludes in managedSources),
 		sources <<= Classpaths.concat(unmanagedSources, managedSources)
 	)
 	lazy val resourceConfigPaths = Seq(
@@ -110,7 +110,7 @@ object Defaults
 		unmanagedResourceDirectories <<= Seq(resourceDirectory).join,
 		managedResourceDirectories <<= Seq(resourceManaged).join,
 		resourceDirectories <<= Classpaths.concatSettings(unmanagedResourceDirectories, managedResourceDirectories),
-		unmanagedResources <<= (unmanagedResourceDirectories, defaultExcludes) map unmanagedResourcesTask,
+		unmanagedResources <<= (unmanagedResourceDirectories, defaultExcludes in unmanagedResources) map unmanagedResourcesTask,
 		managedResources <<= (definedSbtPlugins, resourceManaged) map writePluginsDescriptor,
 		resources <<= Classpaths.concat(managedResources, unmanagedResources)
 	)
@@ -120,7 +120,7 @@ object Defaults
 		docDirectory <<= (crossTarget, configuration) { (outDir, conf) => outDir / (prefix(conf.name) + "api") }
 	)
 	def addBaseSources = Seq(
-		unmanagedSources <<= (unmanagedSources, baseDirectory, sourceFilter, defaultExcludes) map {
+		unmanagedSources <<= (unmanagedSources, baseDirectory, sourceFilter, defaultExcludes in unmanagedSources) map {
 			(srcs,b,f,excl) => (srcs +++ b * (f -- excl)).getFiles 
 		}
 	)
@@ -494,7 +494,7 @@ object Classpaths
 		products <<= makeProducts,
 		classpathConfiguration <<= (internalConfigurationMap, configuration)( _ apply _ ),
 		managedClasspath <<= (classpathConfiguration, classpathTypes, update) map managedJars,
-		unmanagedJars <<= (configuration, unmanagedBase, classpathFilter, defaultExcludes) map { (config, base, filter, excl) =>
+		unmanagedJars <<= (configuration, unmanagedBase, classpathFilter, defaultExcludes in unmanagedJars) map { (config, base, filter, excl) =>
 			(base * (filter -- excl) +++ (base / config.name).descendentsExcept(filter, excl)).getFiles
 		}
 	)
