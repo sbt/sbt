@@ -166,10 +166,9 @@ object Scope
 	def withGlobalAxis[T](base: ScopeAxis[T]): Seq[ScopeAxis[T]] = if(base.isSelect) base :: Global :: Nil else Global :: Nil
 	def withGlobalScope(base: Scope): Seq[Scope] = if(base == GlobalScope) GlobalScope :: Nil else base :: GlobalScope :: Nil
 	def withRawBuilds(ps: Seq[ScopeAxis[ProjectRef]]): Seq[ScopeAxis[ResolvedReference]] =
-		ps ++ (ps flatMap rawBuild) :+ Global
+		ps ++ (ps flatMap rawBuild).distinct :+ Global
 
 	def rawBuild(ps: ScopeAxis[ProjectRef]): Seq[ScopeAxis[BuildRef]]  =  ps match { case Select(ref) => Select(BuildRef(ref.build)) :: Nil; case _ => Nil }
-
 
 	def delegates(
 		refs: Seq[(ProjectRef, ResolvedProject)],
