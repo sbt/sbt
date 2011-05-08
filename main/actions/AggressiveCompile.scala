@@ -75,7 +75,7 @@ class AggressiveCompile(cacheDirectory: File)
 						javac(javaSrcs, absClasspath, outputDirectory, options.javacOptions)
 					}
 				}
-			if(order == ScalaThenJava) { compileScala(); compileJava() } else { compileJava(); compileScala() }
+			if(order == JavaThenScala) { compileJava(); compileScala() } else { compileScala(); compileJava() }
 		}
 		
 		val sourcesSet = sources.toSet
