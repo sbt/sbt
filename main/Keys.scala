@@ -27,6 +27,7 @@ object Keys
 	val showTiming = SettingKey[Boolean]("show-timing", "If true, the command success message includes the completion time.")
 	val timingFormat = SettingKey[java.text.DateFormat]("timing-format", "The format used for displaying the completion time.")
 	val logManager = SettingKey[LogManager]("log-manager", "The log manager, which creates Loggers for different contexts.")
+	val logBuffered = SettingKey[Boolean]("log-buffered", "True if logging should be buffered until work completes.")
 
 	// Project keys
 	val projectCommand = AttributeKey[Boolean]("project-command", "Marks Commands that were registered for the current Project.")
@@ -154,6 +155,7 @@ object Keys
 	val testOptions = TaskKey[Seq[TestOption]]("test-options", "Options for running tests.")
 	val testFrameworks = SettingKey[Seq[TestFramework]]("test-frameworks", "Registered, although not necessarily present, test frameworks.")
 	val testListeners = TaskKey[Seq[TestReportListener]]("test-listeners", "Defines test listeners.")
+	val isModule = AttributeKey[Boolean]("is-module", "True if the target is a module.")
 		
 	// Classpath/Dependency Management Keys
 	type Classpath = Seq[Attributed[File]]

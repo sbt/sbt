@@ -10,6 +10,7 @@ package sbt
 	import Configurations.{Compile, CompilerPlugin, IntegrationTest, Runtime, Test}
 	import complete._
 	import std.TaskExtra._
+	import org.scalatools.testing.{AnnotatedFingerprint, SubclassFingerprint}
 
 	import scala.xml.{Node => XNode,NodeSeq}
 	import org.apache.ivy.core.module.{descriptor, id}
@@ -44,6 +45,9 @@ object Defaults
 	))
 	def globalCore: Seq[Setting[_]] = inScope(GlobalScope)(Seq(
 		pollInterval :== 500,
+		logBuffered :== false,
+		logBuffered in testOnly :== true,
+		logBuffered in test :== true,
 		autoCompilerPlugins :== true,
 		internalConfigurationMap :== Configurations.internalMap _,
 		initialize :== (),
@@ -219,9 +223,24 @@ object Defaults
 	)
 
 	def testTaskOptions(key: Scoped): Seq[Setting[_]] = inTask(key)( Seq(
-		testListeners <<= (streams, testListeners) map { (s, ls) => TestLogger(s.log) +: ls },
+		testListeners <<= (streams, resolvedScoped, streamsManager, logBuffered in key, testListeners) map { (s, sco, sm, buff, ls) =>
+			TestLogger(s.log, testLogger(sm, test in sco.scope), buff) +: ls
+		},
 		testOptions <<= (testOptions, testListeners) map { (options, ls) => Tests.Listeners(ls) +: options }
 	) )
+	def testLogger(manager: Streams, baseKey: Scoped)(tdef: TestDefinition): Logger =
+	{
+		val scope = baseKey.scope
+		val extra = scope.extra match { case Select(x) => x; case _ => AttributeMap.empty }
+		val key = ScopedKey(scope.copy(extra = Select(testExtra(extra, tdef))), baseKey.key)
+		manager(key).log
+	}
+	def buffered(log: Logger): Logger = new BufferedLogger(FullLogger(log))
+	def testExtra(extra: AttributeMap, tdef: TestDefinition): AttributeMap =
+	{
+		val mod = tdef.fingerprint match { case f: SubclassFingerprint => f.isModule; case f: AnnotatedFingerprint => f.isModule; case _ => false }
+		extra.put(name.key, tdef.name).put(isModule, mod)
+	}
 
 	def testOnlyTask = 
 	InputTask( TaskData(definedTests)(testOnlyParser)(Nil) ) { result =>  

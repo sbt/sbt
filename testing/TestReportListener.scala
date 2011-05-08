@@ -17,7 +17,7 @@ trait TestReportListener
 	/** called if test completed */
   def endGroup(name: String, result: TestResult.Value)
   /** Used by the test framework for logging test results*/
-  def contentLogger: Option[TLogger] = None
+  def contentLogger(test: TestDefinition): Option[ContentLogger] = None
 }
 
 trait TestsListener extends TestReportListener
@@ -52,7 +52,15 @@ object TestEvent
 
 object TestLogger
 {
-	def apply(logger: sbt.Logger): TestLogger = new TestLogger(wrap(logger))
+	def apply(logger: sbt.Logger, logTest: TestDefinition => sbt.Logger, buffered: Boolean): TestLogger =
+		new TestLogger(new TestLogging(wrap(logger), tdef => contentLogger(logTest(tdef), buffered)) )
+
+	def contentLogger(log: sbt.Logger, buffered: Boolean): ContentLogger =
+	{
+		val blog = new BufferedLogger(FullLogger(log))
+		if(buffered) blog.record()
+		new ContentLogger(wrap(blog), () => blog.stopQuietly())
+	}
 	def wrap(logger: sbt.Logger): TLogger =
 		new TLogger
 		{
@@ -62,11 +70,14 @@ object TestLogger
 			def debug(s: String) = log(Level.Debug, s)
 			def trace(t: Throwable) = logger.trace(t)
 			private def log(level: Level.Value, s: String) = logger.log(level, s)
-			def ansiCodesSupported() = logger.ansiCodesSupported
+			def ansiCodesSupported() = true//logger.ansiCodesSupported
 		}
 }
-class TestLogger(val log: TLogger) extends TestsListener
+final class TestLogging(val global: TLogger, val logTest: TestDefinition => ContentLogger)
+final class ContentLogger(val log: TLogger, val flush: () => Unit)
+class TestLogger(val logging: TestLogging) extends TestsListener
 {
+		import logging.{global => log, logTest}
 	protected var skipped, errors, passed, failures = 0
 	
 	def startGroup(name: String) {}
@@ -106,5 +117,5 @@ class TestLogger(val log: TLogger) extends TestsListener
 			case TestResult.Failed => log.error("Failed: " + postfix)
 		}
 	}
-	override def contentLogger: Option[TLogger] = Some(log)
+	override def contentLogger(test: TestDefinition): Option[ContentLogger] = Some(logTest(test))
 }

@@ -24,7 +24,7 @@ object LogManager
 
 	def withScreenLogger(mk: => AbstractLogger): LogManager = withLoggers(mk)
 	
-	def withLoggers(screen: => AbstractLogger = defaultScreen, backed: PrintWriter => AbstractLogger = defaultBacked(false)): LogManager =
+	def withLoggers(screen: => AbstractLogger = defaultScreen, backed: PrintWriter => AbstractLogger = defaultBacked(true)): LogManager =
 		new LogManager {
 			def apply(data: Settings[Scope], task: ScopedKey[_], to: PrintWriter): Logger =
 				defaultLogger(data, task, screen, backed(to))
