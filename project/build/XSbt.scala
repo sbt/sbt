@@ -53,8 +53,6 @@ class XSbt(info: ProjectInfo) extends ParentProject(info) with NoCrossPaths
 	val cacheSub = project(cachePath, "Cache", new CacheProject(_), ioSub, collectionSub)
 		// Builds on cache to provide caching for filesystem-related operations
 	val trackingSub = baseProject(cachePath / "tracking", "Tracking", cacheSub, ioSub)
-		// Interface to Jetty
-	val webappSub = project("web", "Web App", new WebAppProject(_), ioSub, logSub, classpathSub, controlSub)
 		// Embedded Scala code runner
 	val runSub = baseProject("run", "Run", ioSub, logSub, classpathSub, processSub)
 
@@ -145,37 +143,6 @@ class XSbt(info: ProjectInfo) extends ParentProject(info) with NoCrossPaths
 	class InputProject(info: ProjectInfo) extends TestedBase(info)
 	{
 		val jline = jlineDep
-	}
-	class WebAppProject(info: ProjectInfo) extends Base(info)
-	{
-		val jetty = "org.mortbay.jetty" % "jetty" % "6.1.14" % "optional"
-		val jettyplus = "org.mortbay.jetty" % "jetty-plus" % "6.1.14" % "optional"
-
-		val jetty7server = "org.eclipse.jetty" % "jetty-server" % "7.0.1.v20091125" % "optional"
-		val jetty7webapp = "org.eclipse.jetty" % "jetty-webapp" % "7.0.1.v20091125" % "optional"
-		val jetty7plus = "org.eclipse.jetty" % "jetty-plus" % "7.0.1.v20091125" % "optional"
-
-		val optional = Configurations.Optional
-
-		/* For generating JettyRun for Jetty 6 and 7.  The only difference is the imports, but the file has to be compiled against each set of imports. */
-		override def compileAction = super.compileAction dependsOn (generateJettyRun6, generateJettyRun7)
-		def jettySrcDir = info.projectPath
-		def jettyTemplate = jettySrcDir / "LazyJettyRun.scala.templ"
-
-		lazy val generateJettyRun6 = generateJettyRunN("6")
-		lazy val generateJettyRun7 = generateJettyRunN("7")
-
-		def generateJettyRunN(n: String) =
-			generateJettyRun(jettyTemplate, jettySrcDir / ("LazyJettyRun" + n + ".scala"), n, jettySrcDir / ("jetty" + n + ".imports"))
-
-		def generateJettyRun(in: Path, out: Path, version: String, importsPath: Path) =
-			task
-			{
-				(for(template <- FileUtilities.readString(in asFile, log).right; imports <- FileUtilities.readString(importsPath asFile, log).right) yield
-					FileUtilities.write(out asFile, processJettyTemplate(template, version, imports), log).toLeft(()) ).left.toOption
-			}
-		def processJettyTemplate(template: String, version: String, imports: String): String =
-			template.replaceAll("""\Q${jetty.version}\E""", version).replaceAll("""\Q${jetty.imports}\E""", imports)
 	}
 	trait TestDependencies extends Project
 	{

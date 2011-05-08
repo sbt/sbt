@@ -1,9 +1,0 @@
-> ++2.7.7
-> update
-# verify that it fails without Jetty running
--> check-page It works
-
-> jetty-run
-# verify it now works with our servlet running
-> check-page It works
-> jetty-stop
