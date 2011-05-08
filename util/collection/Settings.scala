@@ -53,6 +53,7 @@ trait Init[Scope]
 
 	def setting[T](key: ScopedKey[T], init: Initialize[T]): Setting[T] = new Setting[T](key, init)
 	def value[T](value: => T): Initialize[T] = new Value(value _)
+	def optional[T,U](key: ScopedKey[T])(f: Option[T] => U): Initialize[U] = new Optional(Some(key), f)
 	def update[T](key: ScopedKey[T])(f: T => T): Setting[T] = new Setting[T](key, app(key :^: KNil)(hl => f(hl.head)))
 	def app[HL <: HList, T](inputs: KList[ScopedKey, HL])(f: HL => T): Initialize[T] = new Apply(f, inputs)
 	def uniform[S,T](inputs: Seq[ScopedKey[S]])(f: Seq[S] => T): Initialize[T] = new Uniform(f, inputs)
@@ -192,6 +193,14 @@ trait Init[Scope]
 		override def toString = "setting(" + key + ")"
 	}
 
+	private[this] final class Optional[S,T](a: Option[ScopedKey[S]], f: Option[S] => T) extends Initialize[T]
+	{
+		def dependsOn = a.toList
+		def map[Z](g: T => Z): Initialize[Z] = new Optional[S,Z](a, g compose f)
+		def get(map: Settings[Scope]): T = f(a map asFunction(map))
+		def mapReferenced(g: MapScoped) = new Optional(mapKey(g), f)
+		private[this] def mapKey(g: MapScoped) = try { a map g.fn } catch { case _: Uninitialized => None }
+	}
 	private[this] final class Joined[S,T,U](a: Initialize[S], b: Initialize[T], f: (S,T) => U) extends Initialize[U]
 	{
 		def dependsOn = a.dependsOn ++ b.dependsOn
