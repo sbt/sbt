@@ -139,7 +139,7 @@ object Task
 	{
 		val (service, shutdown) = CompletionService[Task[_], Completed](maxWorkers)
 		
-		val x = new Execute[Task](checkCycles)(taskToNode)
+		val x = new Execute[Task](checkCycles, Execute.noTriggers)(taskToNode)
 		try { x.run(root)(service) } finally { shutdown() }
 	}
 	def tryRun[T](root: Task[T], checkCycles: Boolean, maxWorkers: Int): T =

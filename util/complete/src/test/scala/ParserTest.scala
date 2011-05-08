@@ -110,7 +110,7 @@ object ParserExample
 		val ann = aqn ~ an
 
 		def r = apply(ann)("a"*(n*2)).resultEmpty
-		println(r.isDefined)
+		println(r.isValid)
 	}
 	def run2(n: Int)
 	{

@@ -22,6 +22,7 @@ object Execute
 	private[sbt] def completed(p: => Unit): Completed = new Completed {
 		def process() { p }
 	}
+	def noTriggers[A[_]] = new Triggers[A](Map.empty, Map.empty)
 }
 sealed trait Completed {
 	def process(): Unit

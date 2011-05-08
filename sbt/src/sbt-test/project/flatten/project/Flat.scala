@@ -17,12 +17,10 @@ object Flat extends Build
 	def forConfig(conf: Configuration, name: String) = Project.inConfig(conf)( unpackageSettings(name) )
 
 	def unpackageSettings(name: String) = Seq(
-		sourceDirectories := file(name) :: Nil,
-		resourceDirectories :== sourceDirectories,
-		resources <<= (sourceDirectories, sourceFilter, defaultExcludes) map {
-		 (srcs, filter, excl) => srcs.descendentsExcept(-filter,excl).getFiles.toSeq
-		},
-		unpackage <<= (jarPath in packageSrc, baseDirectory) map { (jar, base) =>
+		unmanagedSourceDirectories <<= baseDirectory( base => (base / name) :: Nil ),
+		defaultExcludes in unmanagedResources <<= sourceFilter.identity,
+		unmanagedResourceDirectories <<= unmanagedSourceDirectories.identity,
+		unpackage <<= (artifactPath in packageSrc, baseDirectory) map { (jar, base) =>
 			IO.unzip(jar, base / name)
 		}
 	)
