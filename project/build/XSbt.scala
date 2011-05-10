@@ -146,7 +146,7 @@ class XSbt(info: ProjectInfo) extends ParentProject(info) with NoCrossPaths
 	}
 	trait TestDependencies extends Project
 	{
-		val sc = "org.scala-tools.testing" % "scalacheck_2.8.0" % "1.7" % "test"
+		val sc = "org.scala-tools.testing" % "scalacheck_2.8.1" % "1.8" % "test"
 		val sp = "org.scala-tools.testing" % "specs_2.8.1" % "1.6.7.2" % "test"
 	}
 	class LogProject(info: ProjectInfo) extends Base(info) with TestDependencies
@@ -269,7 +269,7 @@ class XSbt(info: ProjectInfo) extends ParentProject(info) with NoCrossPaths
 		
 		// sub projects for each version of Scala to precompile against other than the one sbt is built against
 		// each sub project here will add ~100k to the download
-		lazy val precompiled29 = precompiledSub("2.9.0.RC2")
+		lazy val precompiled29 = precompiledSub("2.9.0.RC4")
 		lazy val precompiled28 = precompiledSub("2.8.0")
 		lazy val precompiled27 = precompiledSub("2.7.7")
 

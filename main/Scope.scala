@@ -116,8 +116,9 @@ object Scope
 	}
 
 	// *Inherit functions should be immediate delegates and not include argument itself.  Transitivity will be provided by this method
-	def delegates(
-		refs: Seq[(ProjectRef, ResolvedProject)],
+	def delegates[Proj](
+		refs: Seq[(ProjectRef, Proj)],
+		configurations: Proj => Seq[ConfigKey],
 		resolve: Reference => ResolvedReference,
 		rootProject: URI => String,
 		projectInherit: ProjectRef => Seq[ProjectRef],
@@ -125,7 +126,7 @@ object Scope
 		taskInherit: (ResolvedReference, AttributeKey[_]) => Seq[AttributeKey[_]],
 		extraInherit: (ResolvedReference, AttributeMap) => Seq[AttributeMap]): Scope => Seq[Scope] =
 	{
-		val index = delegates(refs, projectInherit, configInherit)
+		val index = delegates(refs, configurations, projectInherit, configInherit)
 		scope => indexedDelegates(resolve, index, rootProject, taskInherit, extraInherit)(scope)
 	}
 
@@ -149,8 +150,7 @@ object Scope
 		}
 		scope.project match
 		{
-			case Global => withGlobalScope(scope)
-			case This => withGlobalScope(scope.copy(project = Global))
+			case Global | This => globalProjectDelegates(scope)
 			case Select(proj) =>
 				val resolvedProj = resolve(proj)
 				val projAxes: Seq[ScopeAxis[ResolvedReference]] =
@@ -170,21 +170,22 @@ object Scope
 
 	def rawBuild(ps: ScopeAxis[ProjectRef]): Seq[ScopeAxis[BuildRef]]  =  ps match { case Select(ref) => Select(BuildRef(ref.build)) :: Nil; case _ => Nil }
 
-	def delegates(
-		refs: Seq[(ProjectRef, ResolvedProject)],
+	def delegates[Proj](
+		refs: Seq[(ProjectRef, Proj)],
+		configurations: Proj => Seq[ConfigKey],
 		projectInherit: ProjectRef => Seq[ProjectRef],
 		configInherit: (ResolvedReference, ConfigKey) => Seq[ConfigKey]): DelegateIndex =
 	{
 		val pDelegates = refs map { case (ref, project) =>
-			(ref, delegateIndex(ref, project.configurations)(projectInherit, configInherit) )
+			(ref, delegateIndex(ref, configurations(project))(projectInherit, configInherit) )
 		} toMap ;
 		new DelegateIndex0(pDelegates)
 	}
-	private[this] def delegateIndex(ref: ProjectRef, confs: Seq[Configuration])(projectInherit: ProjectRef => Seq[ProjectRef], configInherit: (ResolvedReference, ConfigKey) => Seq[ConfigKey]): ProjectDelegates =
+	private[this] def delegateIndex(ref: ProjectRef, confs: Seq[ConfigKey])(projectInherit: ProjectRef => Seq[ProjectRef], configInherit: (ResolvedReference, ConfigKey) => Seq[ConfigKey]): ProjectDelegates =
 	{
 		val refDelegates = withRawBuilds(linearize(Select(ref), false)(projectInherit))
-		val configs = confs map { c => axisDelegates(configInherit, ref, ConfigKey(c.name)) }
-		val tasks = confs map { c => axisDelegates(configInherit, ref, ConfigKey(c.name)) }
+		val configs = confs map { c => axisDelegates(configInherit, ref, c) }
+		val tasks = confs map { c => axisDelegates(configInherit, ref, c) }
 		new ProjectDelegates(ref, refDelegates, configs.toMap)
 	}
 	def axisDelegates[T](direct: (ResolvedReference, T) => Seq[T], ref: ResolvedReference, init: T): (T, Seq[ScopeAxis[T]]) =
@@ -202,6 +203,11 @@ object Scope
 		val o = Dag.topologicalSortUnchecked(node)(dependencies).map(Select.apply)
 		if(appendGlobal) o ::: Global :: Nil else o
 	}
+	def globalProjectDelegates(scope: Scope): Seq[Scope] =
+		if(scope == GlobalScope)
+			GlobalScope :: Nil
+		else
+			for( c <- withGlobalAxis(scope.config); t <- withGlobalAxis(scope.task); e <- withGlobalAxis(scope.extra) ) yield Scope(Global, c, t, e)
 }
 
 
@@ -245,8 +251,8 @@ private final class DelegateIndex0(refs: Map[ProjectRef, ProjectDelegates]) exte
 	def project(ref: ProjectRef): Seq[ScopeAxis[ResolvedReference]] = refs.get(ref) match { case Some(pd) => pd.refs; case None => Nil }
 	def config(ref: ProjectRef, conf: ConfigKey): Seq[ScopeAxis[ConfigKey]] =
 		refs.get(ref) match {
-			case Some(pd) => pd.confs.get(conf) match { case Some(cs) => cs; case None => Nil }
-			case None => Nil
+			case Some(pd) => pd.confs.get(conf) match { case Some(cs) => cs; case None => Select(conf) :: Global :: Nil }
+			case None => Select(conf) :: Global :: Nil
 		}
 }
 private final class ProjectDelegates(val ref: ProjectRef, val refs: Seq[ScopeAxis[ResolvedReference]], val confs: Map[ConfigKey, Seq[ScopeAxis[ConfigKey]]])

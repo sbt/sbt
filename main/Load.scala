@@ -47,6 +47,7 @@ object Load
 		def resolveRef(project: Reference): ResolvedReference = Scope.resolveReference(lb.root, rootProject, project)
 		Scope.delegates(
 			lb.allProjectRefs,
+			(_: ResolvedProject).configurations.map(c => ConfigKey(c.name)),
 			resolveRef,
 			rootProject,
 			project => projectInherit(lb, project),
