@@ -97,7 +97,7 @@ final class Update(config: UpdateConfiguration)
 		target match
 		{
 			case u: UpdateScala =>
-				addDependency(moduleID, ScalaOrg, CompilerModuleName, scalaVersion, "default;optional", u.classifiers)
+				addDependency(moduleID, ScalaOrg, CompilerModuleName, scalaVersion, "default;optional(default)", u.classifiers)
 				addDependency(moduleID, ScalaOrg, LibraryModuleName, scalaVersion, "default", u.classifiers)
 				System.out.println("Getting Scala " + scalaVersion + " ...")
 			case u: UpdateApp =>
