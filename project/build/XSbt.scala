@@ -114,9 +114,10 @@ class XSbt(info: ProjectInfo) extends ParentProject(info) with NoCrossPaths
 
 	def jlineDep = "jline" % "jline" % "0.9.94" intransitive()
 
-	// publish locally when on repository server
 	override def managedStyle = ManagedStyle.Ivy
-	val publishTo = Resolver.file("test-repo", new File("/var/dbwww/repo/"))
+	val publishTo = Resolver.url("typesafe-ivy-releases", new java.net.URL("http://typesafe.artifactoryonline.com/typesafe/ivy-releases/"))
+	val additional = publishTo
+	Credentials(Path.userHome / ".ivy2" / ".typesafe-credentials", log)
 
 		/* Subproject configurations*/
 	class LaunchProject(info: ProjectInfo) extends Base(info) with TestWithIO with TestDependencies with ProguardLaunch with NoCrossPaths

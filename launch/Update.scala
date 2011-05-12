@@ -22,7 +22,8 @@ import core.sort.SortEngine
 import core.settings.IvySettings
 import plugins.matcher.{ExactPatternMatcher, PatternMatcher}
 import plugins.resolver.{ChainResolver, FileSystemResolver, IBiblioResolver, URLResolver}
-import util.{DefaultMessageLogger, Message, MessageLoggerEngine}
+import util.{DefaultMessageLogger, Message, MessageLoggerEngine, url}
+import url.CredentialsStore
 
 import BootConfiguration._
 
@@ -41,8 +42,15 @@ final class Update(config: UpdateConfiguration)
 	private def logFile = new File(bootDirectory, UpdateLogName)
 	private val logWriter = new PrintWriter(new FileWriter(logFile))
 
+	private def addCredentials()
+	{
+		val List(realm, host, user, password) = List("sbt.boot.realm", "sbt.boot.host", "sbt.boot.user", "sbt.boot.password") map System.getProperty
+		if(realm != null && host != null && user != null && password != null)
+			CredentialsStore.INSTANCE.addCredentials(realm, host, user, password)
+	}
 	private lazy val settings =
 	{
+		addCredentials()
 		val settings = new IvySettings
 		ivyHome foreach settings.setDefaultIvyUserDir
 		addResolvers(settings)
