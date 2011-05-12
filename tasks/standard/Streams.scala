@@ -32,7 +32,7 @@ sealed trait TaskStreams[Key]
 	
 	private[this] def getID(s: Option[String]) = s getOrElse default
 }
-private[sbt] sealed trait ManagedStreams[Key] extends TaskStreams[Key]
+sealed trait ManagedStreams[Key] extends TaskStreams[Key]
 {
 	def open()
 	def close()
