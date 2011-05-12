@@ -1,7 +1,7 @@
 [Google Code project]: http://code.google.com/p/simple-build-tool
 [Northeast Scala Symposium]: http://www.nescala.org/2011/
 [documentation]: https://github.com/harrah/xsbt/wiki
-[Setup]: https://github.com/harrah/xsbt/wiki/Setup.md
+[Setup]: https://github.com/harrah/xsbt/wiki/Setup
 [video of a demo]: http://vimeo.com/20263617
 
 # sbt 0.9
