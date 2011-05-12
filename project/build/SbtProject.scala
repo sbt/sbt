@@ -68,7 +68,7 @@ abstract class SbtProject(info: ProjectInfo) extends DefaultProject(info) with t
 		def finder: T => PathFinder = (f orElse { case _ => Path.emptyPathFinder })
 		(Path.emptyPathFinder /: s) { _ +++ finder(_) }
 	}
-	def deepSources = concatPaths(topologicalSort){ case p: ScalaPaths => p.mainSources }
+	def deepSources = concatPaths(topologicalSort){ case p: ScalaPaths => p.mainSources } --- jetty72Compat.mainSources
 	lazy val sbtGenDoc = scaladocTask("sbt", deepSources, docPath, docClasspath, documentOptions) dependsOn(compile)
 	lazy val sbtDoc = packageTask(mainDocPath ##, packageDocsJar, Recursive) dependsOn(sbtGenDoc)
 	lazy val sbtSrc = packageTask(deepSources, packageSrcJar, packageOptions) dependsOn(compile)
