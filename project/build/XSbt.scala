@@ -239,7 +239,7 @@ class XSbt(info: ProjectInfo) extends ParentProject(info) with NoCrossPaths
 	{
 		override def componentID = None
 	}
-	class Scripted(info: ProjectInfo) extends DefaultProject(info)
+	class Scripted(info: ProjectInfo) extends Base(info)
 	{
 		override def managedStyle = ManagedStyle.Ivy
 		override def scratch = true
@@ -269,7 +269,7 @@ class XSbt(info: ProjectInfo) extends ParentProject(info) with NoCrossPaths
 		
 		// sub projects for each version of Scala to precompile against other than the one sbt is built against
 		// each sub project here will add ~100k to the download
-		lazy val precompiled29 = precompiledSub("2.9.0.RC4")
+		lazy val precompiled29 = precompiledSub("2.9.0")
 		lazy val precompiled28 = precompiledSub("2.8.0")
 		lazy val precompiled27 = precompiledSub("2.7.7")
 
