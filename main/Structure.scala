@@ -123,15 +123,26 @@ object Scoped
 	private[this] def scopedInput[T](s: Scope, k: AttributeKey[InputTask[T]]): ScopedInput[T] = new ScopedInput[T] { val scope = s; val key = k }
 	private[this] def scopedTask[T](s: Scope, k: AttributeKey[Task[T]]): ScopedTask[T] = new ScopedTask[T] { val scope = s; val key = k }
 
-	final class RichSettingList[S](scope: Scope, key: AttributeKey[Seq[S]])
+	sealed abstract class RichXList[S, M[_]]
 	{
-		def += (value: => S): Setting[Seq[S]]  =  ++=(value :: Nil)
-		def ++=(values: => Seq[S]): Setting[Seq[S]]  =  (new RichSettingScoped(scope, key)) ~= (_ ++ values )
+		protected[this] def make[T](other: Initialize[M[T]])(f: (Seq[S], T) => Seq[S]): Setting[M[Seq[S]]]
+		protected[this] def update(f: Seq[S] => Seq[S]): Setting[M[Seq[S]]]
+		def <+= (value: Initialize[M[S]]): Setting[M[Seq[S]]]  =  make(value) {_ :+ _ }
+		def <++=(values: Initialize[M[Seq[S]]]): Setting[M[Seq[S]]]  =  make(values) {_ ++ _ }
+		def += (value: => S): Setting[M[Seq[S]]]  =  update(_ :+ value)
+		def ++=(values: => Seq[S]): Setting[M[Seq[S]]]  =  update(_ ++ values)
 	}
-	final class RichListTask[S](scope: Scope, key: AttributeKey[Task[Seq[S]]])
+	final class RichSettingList[S](scope: Scope, key: AttributeKey[Seq[S]]) extends RichXList[S, Id]
 	{
-		def += (value: => S): Setting[Task[Seq[S]]]  =  ++=(value :: Nil)
-		def ++=(values: => Seq[S]): Setting[Task[Seq[S]]]  =  (new RichTaskScoped(scope, key)) ~= (_ ++ values )
+		private[this] val base = new RichSettingScoped(scope, key)
+		protected[this] def make[T](other: Initialize[T])(f: (Seq[S], T) => Seq[S]): Setting[Seq[S]] = base <<= (base.identity zipWith other)(f)
+		protected[this] def update(f: Seq[S] => Seq[S]): Setting[Seq[S]] = base ~= f
+	}
+	final class RichListTask[S](scope: Scope, key: AttributeKey[Task[Seq[S]]]) extends RichXList[S, Task]
+	{
+		private[this] val base = new RichTaskScoped(scope, key)
+		protected[this] def make[T](other: Initialize[Task[T]])(f: (Seq[S], T) => Seq[S]): Setting[Task[Seq[S]]] = base <<= (base.identity zipWith other) { (a,b) => (a,b) map f }
+		protected[this] def update(f: Seq[S] => Seq[S]): Setting[Task[Seq[S]]] = base ~= f
 	}
 	sealed abstract class RichBaseScoped[S]
 	{
