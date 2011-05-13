@@ -92,6 +92,10 @@ object Keys
 	val cleanKeepFiles = SettingKey[Seq[File]]("clean-keep-files", "Files to keep during a clean.")
 	val crossPaths = SettingKey[Boolean]("cross-paths", "If true, enables cross paths, which distinguish output directories for cross-building.")
 
+		// Generators
+	val sourceGenerators = SettingKey[Seq[Task[Seq[File]]]]("source-generators", "List of tasks that generate sources.")
+	val resourceGenerators = SettingKey[Seq[Task[Seq[File]]]]("resource-generators", "List of tasks that generate resources.")
+
 	// compile/doc keys
 	val autoCompilerPlugins = SettingKey[Boolean]("auto-compiler-plugins", "If true, enables automatically generating -Xplugin arguments to the compiler based on the classpath for the " + CompilerPlugin.name + " configuration.")
 	val maxErrors = SettingKey[Int]("max-errors", "The maximum number of errors, such as compile errors, to list.")

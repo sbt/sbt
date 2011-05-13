@@ -22,10 +22,9 @@ package sbt
 
 	import Types._
 	import Path._
-	import GlobFilter._
 	import Keys._
 
-object Defaults
+object Defaults extends BuildCommon
 {
 	def configSrcSub(key: ScopedSetting[File]): Initialize[File] = (key, configuration) { (src, conf) => src / nameForSrc(conf.name) }
 	def nameForSrc(config: String) = if(config == "compile") "main" else config
@@ -58,6 +57,8 @@ object Defaults
 		fork :== false,
 		javaOptions :== Nil,
 		sbtPlugin :== false,
+		sourceGenerators :== Nil,
+		resourceGenerators :== Nil,
 		crossPaths :== true,
 		classpathTypes := Set("jar", "bundle"),
 		aggregate :== Aggregation.Enabled,
@@ -100,8 +101,9 @@ object Defaults
 		javaSource <<= sourceDirectory / "java",
 		unmanagedSourceDirectories <<= Seq(scalaSource, javaSource).join,
 		unmanagedSources <<= collectFiles(unmanagedSourceDirectories, sourceFilter, defaultExcludes in unmanagedSources),
-		managedSourceDirectories :== Nil,
-		managedSources <<= collectFiles(managedSourceDirectories, sourceFilter, defaultExcludes in managedSources),
+		managedSourceDirectories <<= Seq(sourceManaged).join,
+		managedSources <<= generate(sourceGenerators),
+		sourceDirectories <<= Classpaths.concatSettings(unmanagedSourceDirectories, managedSourceDirectories),
 		sources <<= Classpaths.concat(unmanagedSources, managedSources)
 	)
 	lazy val resourceConfigPaths = Seq(
@@ -111,7 +113,8 @@ object Defaults
 		managedResourceDirectories <<= Seq(resourceManaged).join,
 		resourceDirectories <<= Classpaths.concatSettings(unmanagedResourceDirectories, managedResourceDirectories),
 		unmanagedResources <<= (unmanagedResourceDirectories, defaultExcludes in unmanagedResources) map unmanagedResourcesTask,
-		managedResources <<= (definedSbtPlugins, resourceManaged) map writePluginsDescriptor,
+		resourceGenerators <+= (definedSbtPlugins, resourceManaged) map writePluginsDescriptor,
+		managedResources <<= generate(resourceGenerators),
 		resources <<= Classpaths.concat(managedResources, unmanagedResources)
 	)
 	lazy val outputConfigPaths = Seq(
@@ -124,7 +127,7 @@ object Defaults
 			(srcs,b,f,excl) => (srcs +++ b * (f -- excl)).getFiles 
 		}
 	)
-	
+
 	def compileBase = Seq(
 		classpathOptions in GlobalScope :== ClasspathOptions.auto,
 		compileOrder in GlobalScope :== CompileOrder.Mixed,
@@ -166,6 +169,8 @@ object Defaults
 		watchTransitiveSources <<= watchTransitiveSourcesTask,
 		watch <<= watchSetting
 	)
+
+	def generate(generators: ScopedSetting[Seq[Task[Seq[File]]]]): Initialize[Task[Seq[File]]] = generators {_.join.map(_.flatten) }
 
 	def inAllConfigurations[T](key: ScopedTask[T]): Initialize[Task[Seq[T]]] = (state, thisProjectRef) flatMap { (state, ref) =>
 		val structure = Project structure state
@@ -335,15 +340,16 @@ object Defaults
 			import DefaultParsers._
 		InputTask( TaskData(discoveredMainClasses)(runMainParser)(Nil) ) { result =>  
 			(classpath, scalaRun, streams, result) map { case (cp, runner, s, (mainClass, args)) =>
-				runner.run(mainClass, data(cp), args, s.log) foreach error
+				toError(runner.run(mainClass, data(cp), args, s.log))
 			}
 		}
 	}
+
 	def runTask(classpath: ScopedTask[Classpath], mainClassTask: ScopedTask[Option[String]], scalaRun: ScopedSetting[ScalaRun]): Initialize[InputTask[Unit]] =
-		InputTask(_ => complete.Parsers.spaceDelimited("<arg>")) { result =>
+		inputTask { result =>
 			(classpath, mainClassTask, scalaRun, streams, result) map { (cp, main, runner, s, args) =>
 				val mainClass = main getOrElse error("No main class detected.")
-				runner.run(mainClass, data(cp), args, s.log) foreach error
+				toError(runner.run(mainClass, data(cp), args, s.log))
 			}
 		}
 
@@ -476,7 +482,6 @@ object Defaults
 object Classpaths
 {
 		import Path._
-		import GlobFilter._
 		import Keys._
 		import Scope.ThisScope
 		import Defaults._
@@ -811,13 +816,13 @@ object Classpaths
 			}
 		}
 
-		// support earlier launchers
+		// try/catch for supporting earlier launchers
 	def bootIvyHome(app: xsbti.AppConfiguration): Option[File] =
 		try { Option(app.provider.scalaProvider.launcher.ivyHome) }
 		catch { case _: NoSuchMethodError => None }
 }
 
-trait BuildExtra
+trait BuildExtra extends BuildCommon
 {
 		import Defaults._
 
@@ -839,13 +844,6 @@ trait BuildExtra
 		seq( art, pkgd )
 	}
 
-	implicit def globFilter(expression: String): NameFilter = GlobFilter(expression)
-	implicit def richAttributed(s: Seq[Attributed[File]]): RichAttributed = new RichAttributed(s)
-	final class RichAttributed private[sbt](s: Seq[Attributed[File]])
-	{
-		def files: Seq[File] = Build data s
-	}
-
 	def seq(settings: Setting[_]*): SettingsDefinition = new Project.SettingList(settings)
 	implicit def settingsDefinitionToSeq(sd: SettingsDefinition): Seq[Setting[_]] = sd.settings
 
@@ -863,4 +861,27 @@ trait BuildExtra
 
 	private[this] def external(file: Initialize[File], iScala: Initialize[Option[IvyScala]])(make: (File, Option[IvyScala], Boolean) => ModuleSettings): Setting[Task[ModuleSettings]] =
 		moduleSettings <<= ((file zip iScala) zipWith ivyValidate.identity) { case ((f, is), v) => task { make(f, is, v) } }
+
+	def runInputTask(config: Configuration, mainClass: String, baseArguments: String*): Initialize[InputTask[Unit]] =
+		inputTask { result =>
+			(fullClasspath in config, runner in (config, run), streams, result) map { (cp, r, s, args) =>
+				toError(r.run(mainClass, data(cp), baseArguments ++ args, s.log))
+			}
+		}
+	def runTask(config: Configuration, mainClass: String, arguments: String*): Initialize[Task[Unit]] =
+		(fullClasspath in config, runner in (config, run), streams) map { (cp, r, s) =>
+			toError(r.run(mainClass, data(cp), arguments, s.log))
+		}
+}
+trait BuildCommon
+{
+	def inputTask[T](f: TaskKey[Seq[String]] => Initialize[Task[T]]): Initialize[InputTask[T]] = InputTask(_ => complete.Parsers.spaceDelimited("<arg>"))(f)
+
+	implicit def globFilter(expression: String): NameFilter = GlobFilter(expression)
+	implicit def richAttributed(s: Seq[Attributed[File]]): RichAttributed = new RichAttributed(s)
+	final class RichAttributed private[sbt](s: Seq[Attributed[File]])
+	{
+		def files: Seq[File] = Build data s
+	}
+	def toError(o: Option[String]): Unit = o foreach error
 }
