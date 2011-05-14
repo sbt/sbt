@@ -26,8 +26,7 @@ abstract class GeneratorBase(val basePkgName: String, val baseDirectory: File) e
 
 	def writeSource(name: String, pkgName: String, content: String)
 	{
-		import Path._
-		val file = Path.fromString(baseDirectory, packagePath(pkgName)) / (name+ ".java")
+		val file = new File(new File(baseDirectory, packagePath(pkgName)), name+ ".java")
 		file.getParentFile.mkdirs()
 		write(file, "package " + pkgName + ";\n\n" + content)
 	}
