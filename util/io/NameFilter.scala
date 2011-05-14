@@ -62,9 +62,13 @@ object NameFilter
 		def accept(name: String) = f(name)
 	}
 }
+object FileFilter
+{
+	implicit def globFilter(s: String): NameFilter = GlobFilter(s)
+}
 object GlobFilter
 {
-	implicit def apply(expression: String): NameFilter =
+	def apply(expression: String): NameFilter =
 	{
 		require(!expression.exists(java.lang.Character.isISOControl), "Control characters not allowed in filter expression.")
 		if(expression == "*")

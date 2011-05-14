@@ -308,7 +308,6 @@ object IO
 	}
 	private def writeZip(sources: Seq[(File,String)], output: ZipOutputStream)(createEntry: String => ZipEntry)
 	{
-			import Path.{lazyPathFinder => pf}
 		val files = sources.flatMap { case (file,name) => if (file.isFile) (file, normalizeName(name)) :: Nil else Nil }
 
 		val now = System.currentTimeMillis
@@ -443,7 +442,7 @@ object IO
 		to
 	}
 	def copyDirectory(source: File, target: File, overwrite: Boolean = false, preserveLastModified: Boolean = false): Unit =
-		copy( (Path.fromFile(source) ***) x Path.rebase(source, target), overwrite, preserveLastModified)
+		copy( (PathFinder(source) ***) x Path.rebase(source, target), overwrite, preserveLastModified)
 
 	def copyFile(sourceFile: File, targetFile: File, preserveLastModified: Boolean = false)
 	{

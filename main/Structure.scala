@@ -261,7 +261,7 @@ object Scoped
 		def **(filter: FileFilter): Initialize[Seq[File]] = map0 { _ ** filter }
 		protected[this] def map0(f: PathFinder => PathFinder): Initialize[Seq[File]]
 		protected[this] def finder(f: PathFinder => PathFinder): Seq[File] => Seq[File] =
-			in => f(in).getFiles
+			in => f(in).get
 	}
 
 	/*

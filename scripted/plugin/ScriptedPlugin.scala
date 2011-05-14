@@ -52,7 +52,7 @@ object ScriptedPlugin extends Plugin {
 		sbtLauncher <<= (appConfiguration)(app => IO.classLocationFile(app.provider.scalaProvider.launcher.getClass)),
 		sbtTestDirectory <<= sourceDirectory / "sbt-test",
 		scriptedBufferLog := true,
-		scriptedClasspath <<= (classpathTypes, update) map { (ct, report) => Path.finder(Classpaths.managedJars(scriptedConf, ct, report).map(_.data)) },
+		scriptedClasspath <<= (classpathTypes, update) map { (ct, report) => PathFinder(Classpaths.managedJars(scriptedConf, ct, report).map(_.data)) },
 		scriptedTests <<= scriptedTestsTask,
 		scriptedRun <<= scriptedRunTask,
 		scriptedDependencies <<= (compile in Test, publishLocal) map { (analysis, pub) => Unit },

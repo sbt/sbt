@@ -220,17 +220,17 @@ object BuildPaths
 	def defaultStaging = Path.userHome / ConfigDirectoryName / "staging"
 	def defaultGlobalPlugins = Path.userHome / ConfigDirectoryName / PluginsDirectoryName
 	
-	def definitionSources(base: File): Seq[File] = (base * "*.scala").getFiles
-	def configurationSources(base: File): Seq[File] = (base * "*.sbt").getFiles
-	def pluginDirectory(definitionBase: Path) = definitionBase / PluginsDirectoryName
+	def definitionSources(base: File): Seq[File] = (base * "*.scala").get
+	def configurationSources(base: File): Seq[File] = (base * "*.sbt").get
+	def pluginDirectory(definitionBase: File) = definitionBase / PluginsDirectoryName
 
-	def evalOutputDirectory(base: Path) = outputDirectory(base) / "config-classes"
-	def outputDirectory(base: Path) = base / DefaultTargetName
-	def buildOutputDirectory(base: Path, compilers: Compilers) = crossPath(outputDirectory(base), compilers.scalac.scalaInstance)
+	def evalOutputDirectory(base: File) = outputDirectory(base) / "config-classes"
+	def outputDirectory(base: File) = base / DefaultTargetName
+	def buildOutputDirectory(base: File, compilers: Compilers) = crossPath(outputDirectory(base), compilers.scalac.scalaInstance)
 
-	def projectStandard(base: Path) = base / "project"
-	def projectHidden(base: Path) = base / ConfigDirectoryName
-	def selectProjectDir(base: Path) =
+	def projectStandard(base: File) = base / "project"
+	def projectHidden(base: File) = base / ConfigDirectoryName
+	def selectProjectDir(base: File) =
 	{
 		val a = projectHidden(base)
 		val b = projectStandard(base)

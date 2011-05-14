@@ -49,6 +49,6 @@ final class Scaladoc(maximumErrors: Int, compiler: AnalyzingCompiler)
 			}
 		}
 
-		cachedDoc(inputs)(() => exists(outputDirectory.***.get))
+		cachedDoc(inputs)(() => exists(outputDirectory.***.get.toSet))
 	}
 }

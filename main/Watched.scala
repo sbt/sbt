@@ -36,7 +36,7 @@ object Watched
 	def executeContinuously(watched: Watched, s: State, next: String, repeat: String): State =
 	{
 		@tailrec def shouldTerminate: Boolean = (System.in.available > 0) && (watched.terminateWatch(System.in.read()) || shouldTerminate)
-		val sourcesFinder = Path.finder { watched watchPaths s }
+		val sourcesFinder = PathFinder { watched watchPaths s }
 		val watchState = s get ContinuousState getOrElse WatchState.empty
 
 		if(watchState.count > 0)

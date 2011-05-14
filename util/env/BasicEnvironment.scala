@@ -4,17 +4,18 @@
 package sbt
 
 import scala.reflect.Manifest
-
+import java.io.File
 import scala.collection.Map
+
 trait BasicEnvironment extends Environment
 {
 	protected def log: Logger
 	/** The location of the properties file that backs the user-defined properties. */
-	def envBackingPath: Path
+	def envBackingPath: File
 	/** The environment from which user-defined properties inherit (if enabled). */
 	protected def parentEnvironment: Option[BasicEnvironment] = None
 	/** The identifier used in messages to refer to this environment. */
-	def environmentLabel = envBackingPath.absolutePath
+	def environmentLabel = envBackingPath.getAbsolutePath
 
 	private[this] var isModified = false
 	private[sbt] def setEnvironmentModified(modified: Boolean) { synchronized { isModified = modified } }

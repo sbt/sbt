@@ -11,7 +11,7 @@ object SourceModificationWatch
 	{
 			import state._
 
-		def sourceFiles: Iterable[java.io.File] = sourcesFinder.getFiles
+		def sourceFiles: Iterable[java.io.File] = sourcesFinder.get
 		val (lastModifiedTime, fileCount) =
 			( (0L, 0) /: sourceFiles) {(acc, file) => (math.max(acc._1, file.lastModified), acc._2 + 1)}
 

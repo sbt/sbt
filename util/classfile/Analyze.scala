@@ -13,10 +13,10 @@ import java.lang.reflect.Modifier.{STATIC, PUBLIC, ABSTRACT}
 
 private[sbt] object Analyze
 {
-	def apply[T](outputDirectory: Path, sources: Seq[File], log: Logger)(analysis: xsbti.AnalysisCallback, loader: ClassLoader, readAPI: (File,Seq[Class[_]]) => Unit)(compile: => Unit)
+	def apply[T](outputDirectory: File, sources: Seq[File], log: Logger)(analysis: xsbti.AnalysisCallback, loader: ClassLoader, readAPI: (File,Seq[Class[_]]) => Unit)(compile: => Unit)
 	{
 		val sourceMap = sources.groupBy(_.getName)
-		val classesFinder = outputDirectory ** GlobFilter("*.class")
+		val classesFinder = PathFinder(outputDirectory) ** "*.class"
 		val existingClasses = classesFinder.get
 
 		def load(tpe: String, errMsg: => Option[String]): Option[Class[_]] =
@@ -26,23 +26,22 @@ private[sbt] object Analyze
 		// runs after compilation
 		def analyze()
 		{
-			val allClasses = Set(classesFinder.get.toSeq : _*)
+			val allClasses = Set(classesFinder.get: _*)
 			val newClasses = allClasses -- existingClasses
 			
-			val productToSource = new mutable.HashMap[Path, Path]
-			val sourceToClassFiles = new mutable.HashMap[Path, Buffer[ClassFile]]
+			val productToSource = new mutable.HashMap[File, File]
+			val sourceToClassFiles = new mutable.HashMap[File, Buffer[ClassFile]]
 
 			// parse class files and assign classes to sources.  This must be done before dependencies, since the information comes
 			// as class->class dependencies that must be mapped back to source->class dependencies using the source+class assignment
 			for(newClass <- newClasses;
-				path <- Path.relativize(outputDirectory, newClass);
-				classFile = Parser(newClass.asFile);
-				sourceFile <- classFile.sourceFile orElse guessSourceName(newClass.asFile.getName);
+				classFile = Parser(newClass);
+				sourceFile <- classFile.sourceFile orElse guessSourceName(newClass.getName);
 				source <- guessSourcePath(sourceMap, classFile, log))
 			{
 				analysis.beginSource(source)
-				analysis.generatedClass(source, path)
-				productToSource(path) = source
+				analysis.generatedClass(source, newClass)
+				productToSource(newClass) = source
 				sourceToClassFiles.getOrElseUpdate(source, new ArrayBuffer[ClassFile]) += classFile
 			}
 			
@@ -61,10 +60,9 @@ private[sbt] object Analyze
 							{
 								val resolved = resolveClassFile(file, tpe)
 								assume(resolved.exists, "Resolved class file " + resolved + " from " + source + " did not exist")
-								val resolvedPath = Path.fromFile(resolved)
-								if(Path.fromFile(file) == outputDirectory)
+								if(file == outputDirectory)
 								{
-									productToSource.get(resolvedPath) match
+									productToSource.get(resolved) match
 									{
 										case Some(dependsOn) => analysis.sourceDependency(dependsOn, source)
 										case None => analysis.binaryDependency(resolved, clazz.getName, source)
@@ -80,7 +78,7 @@ private[sbt] object Analyze
 				}
 				
 				classFiles.flatMap(_.types).foreach(processDependency)
-				readAPI(source asFile, classFiles.toSeq.flatMap(c => load(c.className, Some("Error reading API from class file") )))
+				readAPI(source, classFiles.toSeq.flatMap(c => load(c.className, Some("Error reading API from class file") )))
 				analysis.endSource(source)
 			}
 		}

@@ -44,7 +44,7 @@ object SignJar
 		override def toString = toList.mkString(" ")
 	}
 	def keyStore(url: URL) = new SignOption("-keystore" :: url.toExternalForm :: Nil, true)
-	def signedJar(p: Path) = new SignOption("-signedjar" :: p.asFile.getAbsolutePath :: Nil, true)
+	def signedJar(p: File) = new SignOption("-signedjar" :: p.getAbsolutePath :: Nil, true)
 	def verbose = new SignOption("-verbose" :: Nil, false)
 	def sigFile(name: String) = new SignOption("-sigfile" :: name :: Nil, true)
 	def storeType(t: String) = new SignOption("-storetype" :: t :: Nil, false)

@@ -33,7 +33,7 @@ class FileCommands(baseDirectory: File) extends BasicStatementHandler
 	def scriptError(message: String): Some[String] = error("Test script error: " + message)
 	def spaced[T](l: Seq[T]) = l.mkString(" ")
 	def fromStrings(paths: List[String]) = paths.map(fromString)
-	def fromString(path: String) = Path.fromString(baseDirectory, path)
+	def fromString(path: String) = new File(baseDirectory, path)
 	def touch(paths: List[String]) = IO.touch(fromStrings(paths))
 	def delete(paths: List[String]): Unit = IO.delete(fromStrings(paths))
 	/*def sync(from: String, to: String) =

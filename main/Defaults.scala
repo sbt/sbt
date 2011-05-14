@@ -124,7 +124,7 @@ object Defaults extends BuildCommon
 	)
 	def addBaseSources = Seq(
 		unmanagedSources <<= (unmanagedSources, baseDirectory, sourceFilter, defaultExcludes in unmanagedSources) map {
-			(srcs,b,f,excl) => (srcs +++ b * (f -- excl)).getFiles 
+			(srcs,b,f,excl) => (srcs +++ b * (f -- excl)).get 
 		}
 	)
 
@@ -206,7 +206,7 @@ object Defaults extends BuildCommon
 		}
 	}
 	def unmanagedResourcesTask(dirs: Seq[File], excl: FileFilter) =
-		dirs.descendentsExcept("*",excl).getFiles
+		dirs.descendentsExcept("*",excl).get
 
 	lazy val testTasks = testTaskOptions(test) ++ testTaskOptions(testOnly) ++ Seq(	
 		testLoader <<= (fullClasspath, scalaInstance) map { (cp, si) => TestFramework.createTestLoader(data(cp), si) },
@@ -294,7 +294,7 @@ object Defaults extends BuildCommon
 	}
 	
 	def collectFiles(dirs: ScopedTaskable[Seq[File]], filter: ScopedTaskable[FileFilter], excludes: ScopedTaskable[FileFilter]): Initialize[Task[Seq[File]]] =
-		(dirs, filter, excludes) map { (d,f,excl) => d.descendentsExcept(f,excl).getFiles }
+		(dirs, filter, excludes) map { (d,f,excl) => d.descendentsExcept(f,excl).get }
 
 	def artifactPathSetting(art: ScopedSetting[Artifact])  =  (crossTarget, projectID, art, scalaVersion, artifactName) { (t, module, a, sv, toString) => t / toString(sv, module, a) asFile }
 
@@ -500,7 +500,7 @@ object Classpaths
 		classpathConfiguration <<= (internalConfigurationMap, configuration)( _ apply _ ),
 		managedClasspath <<= (classpathConfiguration, classpathTypes, update) map managedJars,
 		unmanagedJars <<= (configuration, unmanagedBase, classpathFilter, defaultExcludes in unmanagedJars) map { (config, base, filter, excl) =>
-			(base * (filter -- excl) +++ (base / config.name).descendentsExcept(filter, excl)).getFiles
+			(base * (filter -- excl) +++ (base / config.name).descendentsExcept(filter, excl)).get
 		}
 	)
 	def defaultPackageKeys = Seq(packageBin, packageSrc, packageDoc)
@@ -665,7 +665,7 @@ object Classpaths
 	def publishConfig(artifacts: Map[Artifact, File], ivyFile: Option[File], resolverName: String = "local", logging: UpdateLogging.Value = UpdateLogging.DownloadOnly) =
 	    new PublishConfiguration(ivyFile, resolverName, artifacts, logging)
 
-	def deliverPattern(outputPath: Path): String  =  (outputPath / "[artifact]-[revision](-[classifier]).[ext]").absolutePath
+	def deliverPattern(outputPath: File): String  =  (outputPath / "[artifact]-[revision](-[classifier]).[ext]").absolutePath
 
 	def projectDependenciesTask =
 		(thisProject, settings) map { (p, data) =>

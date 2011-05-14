@@ -54,17 +54,15 @@ object ClasspathUtilities
 	private[sbt] def printSource(c: Class[_]) =
 		println(c.getName + " loader=" +c.getClassLoader + " location=" + IO.classLocationFile(c))
 	
-	def isArchive(path: Path): Boolean = isArchive(path.asFile)
 	def isArchive(file: File): Boolean = isArchiveName(file.getName)
 	def isArchiveName(fileName: String) = fileName.endsWith(".jar") || fileName.endsWith(".zip")
 	// Partitions the given classpath into (jars, directories)
 	private[sbt] def separate(paths: Iterable[File]): (Iterable[File], Iterable[File]) = paths.partition(isArchive)
 	// Partitions the given classpath into (jars, directories)
-	private[sbt] def separatePaths(paths: Iterable[Path]) = separate(paths.map(_.asFile.getCanonicalFile))
-	private[sbt] def buildSearchPaths(classpath: Iterable[Path]): (collection.Set[File], collection.Set[File]) =
+	private[sbt] def buildSearchPaths(classpath: Iterable[File]): (collection.Set[File], collection.Set[File]) =
 	{
-		val (jars, dirs) = separatePaths(classpath)
-		(linkedSet(jars ++ extraJars.toList), linkedSet(dirs ++ extraDirs.toList))
+		val (jars, dirs) = separate(classpath)
+		(linkedSet(jars ++ extraJars), linkedSet(dirs ++ extraDirs))
 	}
 	private[sbt] def onClasspath(classpathJars: collection.Set[File], classpathDirectories: collection.Set[File], file: File): Boolean =
 	{
@@ -76,10 +74,10 @@ object ClasspathUtilities
 	}
 	
 	/** Returns all entries in 'classpath' that correspond to a compiler plugin.*/
-	private[sbt] def compilerPlugins(classpath: Iterable[Path]): Iterable[File] =
+	private[sbt] def compilerPlugins(classpath: Seq[File]): Iterable[File] =
 	{
 		import collection.JavaConversions._
-		val loader = new URLClassLoader(Path.getURLs(classpath))
+		val loader = new URLClassLoader(Path.toURLs(classpath))
 		loader.getResources("scalac-plugin.xml").toList.flatMap(asFile(true))
 	}
 	/** Converts the given URL to a File.  If the URL is for an entry in a jar, the File for the jar is returned. */
