@@ -17,7 +17,6 @@ object ConsoleProject
 		val imports = Load.getImports(unit.unit) ++ Load.importAll(bindings.map(_._1))
 		val importString = imports.mkString("", ";\n", ";\n\n")
 		val initCommands = importString + extra
-		val loader = classOf[State].getClassLoader				
-		(new Console(compiler))(unit.classpath, Nil, initCommands)(Some(loader), bindings)
+		(new Console(compiler))(unit.classpath, Nil, initCommands)(Some(unit.loader), bindings)
 	}
 }
