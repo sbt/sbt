@@ -216,6 +216,7 @@ object Keys
 	val moduleID = SettingKey[String]("module-id", "The name of the current module, used for dependency management.")
 	val version = SettingKey[String]("version", "The version/revision of the current module.")
 	val projectID = SettingKey[ModuleID]("project-id", "The dependency management descriptor for the current module.")
+	val externalResolvers = TaskKey[Seq[Resolver]]("external-resolvers", "The external resolvers for automatically managed dependencies.")
 	val resolvers = SettingKey[Seq[Resolver]]("resolvers", "The user-defined additional resolvers for automatically managed dependencies.")
 	val projectResolver = TaskKey[Resolver]("project-resolver", "Resolver that handles inter-project dependencies.")
 	val fullResolvers = TaskKey[Seq[Resolver]]("full-resolvers", "Combines the project resolver, default resolvers, and user-defined resolvers.")

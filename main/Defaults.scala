@@ -539,8 +539,9 @@ object Classpaths
 		normalizedName <<= name(StringUtilities.normalize),
 		organization <<= normalizedName.identity,
 		classpathFilter in GlobalScope :== "*.jar",
-		fullResolvers <<= (projectResolver,resolvers,sbtPlugin,sbtResolver) map { (pr,rs,isPlugin,sr) =>
-			val base = pr +: Resolver.withDefaultResolvers(rs)
+		externalResolvers <<= resolvers map Resolver.withDefaultResolvers,
+		fullResolvers <<= (projectResolver,externalResolvers,sbtPlugin,sbtResolver) map { (pr,rs,isPlugin,sr) =>
+			val base = pr +: rs
 			if(isPlugin) sr +: base else base
 		},
 		offline in GlobalScope :== false,
