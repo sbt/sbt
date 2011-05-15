@@ -262,7 +262,7 @@ final class Execute[A[_] <: AnyRef](checkCycles: Boolean, triggers: Triggers[A])
 		dependencies( node ) foreach { dep =>
 			def onOpt[T](o: Option[T])(f: T => Boolean) = o match { case None => false; case Some(x) => f(x) }
 			def checkForward = onOpt( forward.get(node) ) { _ contains dep }
-			def checkReverse = onOpt( reverse.get(dep) ){ _.toSet contains node }
+			def checkReverse = onOpt( reverse.get(dep) ){ _.exists(_ == node) }
 			assert( done(dep) ^ ( checkForward && checkReverse ) )
 		}
 	}
