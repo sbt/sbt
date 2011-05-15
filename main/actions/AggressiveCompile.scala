@@ -69,7 +69,7 @@ class AggressiveCompile(cacheDirectory: File)
 				if(!javaSrcs.isEmpty)
 				{
 					import Path._
-					val loader = ClasspathUtilities.toLoader(absClasspath, compiler.scalaInstance.loader)
+					val loader = ClasspathUtilities.toLoader(absClasspath)
 					def readAPI(source: File, classes: Seq[Class[_]]) { callback.api(source, ClassToAPI(classes)) }
 					Analyze(outputDirectory, javaSrcs, log)(callback, loader, readAPI) {
 						javac(javaSrcs, absClasspath, outputDirectory, options.javacOptions)
