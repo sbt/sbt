@@ -1,13 +1,23 @@
 #!/usr/bin/env bash
 #
 
-BINDIR=$(dirname $(greadlink "$0"))
+function programDir () {
+  SDIR=$(dirname "$1");
+  echo $(cd $SDIR ; pwd -P)
+}
+
+if [ -h "$0" ]; then
+  BINDIR=$(programDir $(greadlink "$0"))
+else
+  BINDIR=$(programDir "$0")
+fi
+
 . $BINDIR/util.sh
 BASE=$(abspath $BINDIR/..)
 
 declare -a args
 TEMPLATE="simple"
-SCALA_VERSION="2.8.1"
+  SCALA_VERSION="2.9.0"
 PROJECT_VERSION="0.0.1"
 DO_GITHUB=
 
@@ -35,7 +45,7 @@ while [ $# -gt 0 ]; do
       shift
       ;;
     --29)
-      SCALA_VERSION="2.9.0.RC1"
+      SCALA_VERSION="2.9.0"
       shift
       ;;
     *)
@@ -71,7 +81,7 @@ fi
 
 PROJECT="$1"
 PACKAGE=${ORGANIZATION:-template}
-SBT_VERSION="0.7.6.RC0"
+SBT_VERSION="0.7.7"
 DIR=$(echo ${PROJECT} | tr '[A-Z]' '[a-z]')
 PROJECT_CC=`camelCase ${PROJECT}`
 PROJECT_CLASS=${PROJECT_CC}Project
@@ -102,13 +112,13 @@ build.scala.versions=$SCALA_VERSION
 project.initialize=false
 EOF
 
-cat > src/main/scala/Main.scala <<EOF
-package $PACKAGE
-
-object Main {
-  def main(args: Array[String]): Unit = ()
-}
-EOF
+# cat > src/main/scala/Main.scala <<EOF
+# package $PACKAGE
+# 
+# object Main {
+#   def main(args: Array[String]): Unit = ()
+# }
+# EOF
 
 cat > src/test/scala/${SPEC_CLASS}.scala <<EOF
 package $PACKAGE
@@ -147,7 +157,7 @@ class ${PROJECT_CLASS}(info: ProjectInfo) extends DefaultProject(info) with Proj
 
 EOF
 
-  cat $BASE/src/main/resources/support.scala >> $FILE
+  cat $BASE/src/main/resources/$TEMPLATE.scala >> $FILE
   cp $BASE/src/template/Plugins.scala project/plugins
 fi
 

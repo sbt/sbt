@@ -15,14 +15,16 @@ trait ProjectSupport extends ModuleIdDynamifactory {
   val sonatype            = "Sonatype" at "https://oss.sonatype.org/content/groups/public"
   val scalaToolsSnapshots = "Scala Tools Snapshots" at "http://scala-tools.org/repo-snapshots/"
   val jboss               = "JBoss Repo" at "http://repository.jboss.org/maven2"
+  // val akkaReleases        = "Akka Maven Repository" at "http://scalablesolutions.se/akka/repository"
 
   private val testConfig: ArtifactConfig = ArtifactConfig(
     ArtifactRevision(_ => dynamicRevision), ArtifactTransform(inScope("test"), withSources)
   )
 
   /*** Libraries ***/
-  val specs: ModuleID           = testConfig("org.scala-tools.testing" %% "specs")
-  val scalacheck: ModuleID      = testConfig("org.scala-tools.testing" %% "scalacheck")
+  // val specs: ModuleID      = testConfig("org.scala-tools.testing" %% "specs")
+  // val specs2: ModuleID     = testConfig("org.specs2" %% "specs2")  
+  // val scalacheck: ModuleID = testConfig("org.scala-tools.testing" %% "scalacheck")
 
   private implicit lazy val implicitTransform: ArtifactTransform = ArtifactTransform()
 
