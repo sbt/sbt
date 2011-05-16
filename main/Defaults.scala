@@ -45,6 +45,8 @@ object Defaults extends BuildCommon
 	def globalCore: Seq[Setting[_]] = inScope(GlobalScope)(Seq(
 		pollInterval :== 500,
 		logBuffered :== false,
+		trapExit :== false,
+		trapExit in run :== true,
 		logBuffered in testOnly :== true,
 		logBuffered in test :== true,
 		traceLevel in console :== Int.MaxValue,
@@ -83,7 +85,8 @@ object Defaults extends BuildCommon
 	))
 	def projectCore: Seq[Setting[_]] = Seq(
 		name <<= thisProject(_.id),
-		version :== "0.1"	
+		version :== "0.1",
+		runnerSetting
 	)
 	def paths = Seq(
 		baseDirectory <<= thisProject(_.base),
@@ -357,12 +360,12 @@ object Defaults extends BuildCommon
 		}
 
 	def runnerSetting =
-		runner <<= (scalaInstance, baseDirectory, javaOptions, outputStrategy, fork, javaHome) { (si, base, options, strategy, forkRun, javaHomeDir) =>
+		runner <<= (scalaInstance, baseDirectory, javaOptions, outputStrategy, fork, javaHome, trapExit) { (si, base, options, strategy, forkRun, javaHomeDir, trap) =>
 			if(forkRun) {
 				new ForkRun( ForkOptions(scalaJars = si.jars, javaHome = javaHomeDir, outputStrategy = strategy,
 					runJVMOptions = options, workingDirectory = Some(base)) )
 			} else
-				new Run(si)
+				new Run(si, trap)
 		}
 
 	def docTask: Initialize[Task[File]] =

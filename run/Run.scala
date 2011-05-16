@@ -31,7 +31,7 @@ class ForkRun(config: ForkScalaRun) extends ScalaRun
 			Some("Nonzero exit code returned from " + label + ": " + exitCode)
 	}
 }
-class Run(instance: ScalaInstance) extends ScalaRun
+class Run(instance: ScalaInstance, trapExit: Boolean) extends ScalaRun
 {
 	/** Runs the class 'mainClass' using the given classpath and options using the scala runner.*/
 	def run(mainClass: String, classpath: Seq[File], options: Seq[String], log: Logger) =
@@ -41,8 +41,9 @@ class Run(instance: ScalaInstance) extends ScalaRun
 		def execute = 
 			try { run0(mainClass, classpath, options, log) }
 			catch { case e: java.lang.reflect.InvocationTargetException => throw e.getCause }
+		def directExecute = try { execute; None } catch { case e: Exception => log.trace(e); Some(e.toString) }
 
-		Run.executeTrapExit( execute, log )
+		if(trapExit) Run.executeTrapExit( execute, log ) else directExecute
 	}
 	private def run0(mainClassName: String, classpath: Seq[File], options: Seq[String], log: Logger)
 	{

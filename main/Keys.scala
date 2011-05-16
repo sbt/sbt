@@ -143,6 +143,7 @@ object Keys
 	val runMain = InputKey[Unit]("run-main", "Runs the main class selected by the first argument, passing the remaining arguments to the main method.")
 	val discoveredMainClasses = TaskKey[Seq[String]]("discovered-main-classes", "Auto-detects main classes.")
 	val runner = SettingKey[ScalaRun]("runner", "Implementation used to run a main class.")
+	val trapExit = SettingKey[Boolean]("trap-exit", "If true, enables exit trapping and thread management for 'run'-like tasks.  This is currently only suitable for serially-executed 'run'-like tasks.")
 
 	val fork = SettingKey[Boolean]("fork", "If true, forks a new JVM when running.  If false, runs in the same JVM as the build.")
 	val outputStrategy = SettingKey[Option[sbt.OutputStrategy]]("output-strategy", "Selects how to log output when running a main class.")
