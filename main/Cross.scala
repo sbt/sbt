@@ -6,7 +6,8 @@ package sbt
 	import Keys._
 	import complete.{DefaultParsers, Parser}
 	import DefaultParsers._
-
+	import Project.Setting
+	import Scope.GlobalScope
 
 object Cross
 {
@@ -21,11 +22,14 @@ object Cross
 	lazy val switchVersion = Command.arb(requireSession(switchParser)) { case (state, (version, command)) =>
 		val x = Project.extract(state)
 			import x._
-		val add = (scalaVersion :== version) :: (scalaHome :== None) :: Nil
-		val append = Load.transformSettings(Load.projectScope(currentRef), currentRef.build, rootProject, add)
-		val newStructure = Load.reapply(session.original ++ append, structure)
+		println("Setting version to " + version)
+		val add = (scalaVersion in GlobalScope :== version) :: (scalaHome in GlobalScope :== None) :: Nil
+		val cleared = session.original.filterNot( crossExclude )
+		val newStructure = Load.reapply(add ++ cleared, structure)
 		Project.setProject(session, newStructure, command :: state)
 	}
+	def crossExclude(s: Setting[_]): Boolean =
+		s.key.key == scalaVersion.key || s.key.key == scalaHome.key
 
 	def crossParser(state: State): Parser[String] =
 		token(Cross ~ Space) flatMap { _ => token(matched(state.combinedParser)) }
