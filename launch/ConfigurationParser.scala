@@ -9,7 +9,8 @@ import ConfigurationParser._
 import java.lang.Character.isWhitespace
 import java.io.{BufferedReader, File, FileInputStream, InputStreamReader, Reader, StringReader}
 import java.net.{MalformedURLException, URL}
-import java.util.regex.Pattern
+import java.util.regex.{Matcher,Pattern}
+import Matcher.quoteReplacement
 import scala.collection.immutable.List
 
 object ConfigurationParser
@@ -210,7 +211,7 @@ class ConfigurationParser
 					val default = m.group(3)
 					if(default eq null) m.group() else substituteVariables(default)
 				}
-			m.appendReplacement(b, value)
+			m.appendReplacement(b, quoteReplacement(value))
 		}
 		m.appendTail(b)
 		b.toString
