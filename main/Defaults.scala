@@ -142,7 +142,7 @@ object Defaults extends BuildCommon
 		scalacOptions in GlobalScope :== Nil,
 		scalaInstance <<= scalaInstanceSetting,
 		scalaVersion in GlobalScope <<= appConfiguration( _.provider.scalaProvider.version),
-		crossScalaVersions <<= Seq(scalaVersion).join,
+		crossScalaVersions in GlobalScope <<= Seq(scalaVersion).join,
 		crossTarget <<= (target, scalaInstance, crossPaths)( (t,si,cross) => if(cross) t / ("scala-" + si.actualVersion) else t ),
 		cacheDirectory <<= crossTarget / "cache"
 	)
