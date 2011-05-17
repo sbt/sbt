@@ -610,7 +610,7 @@ object Classpaths
 		updateSbtClassifiers <<= (ivySbt, projectID, transitiveClassifiers, updateConfiguration, sbtDependency, ivyScala, streams) map { (is, pid, classifiers, c, sbtDep, ivyScala, s) =>
 			IvyActions.transitiveScratch(is, pid, "sbt", sbtDep :: Nil, classifiers, c, ivyScala, s.log)
 		},
-		sbtResolver in GlobalScope :== dbResolver,
+		sbtResolver in GlobalScope :== typesafeResolver,
 		sbtDependency in GlobalScope <<= appConfiguration { app =>
 			val id = app.provider.id
 			ModuleID(id.groupID, id.name, id.version, crossVersion = id.crossVersioned)
@@ -796,7 +796,7 @@ object Classpaths
 		flatten(defaultConfiguration in p get data) getOrElse Configurations.Default
 	def flatten[T](o: Option[Option[T]]): Option[T] = o flatMap idFun
 
-	lazy val dbResolver = Resolver.url("sbt-db", new URL("http://databinder.net/repo/"))(Resolver.ivyStylePatterns)
+	lazy val typesafeResolver = Resolver.url("typesafe-ivy-releases", new URL("http://repo.typesafe.com/typesafe/ivy-releases/"))(Resolver.ivyStylePatterns)
 
 		import DependencyFilter._
 	def managedJars(config: Configuration, jarTypes: Set[String], up: UpdateReport): Classpath = up.select( configuration = configurationFilter(config.name), artifact = artifactFilter(`type` = jarTypes) )
