@@ -38,7 +38,7 @@ trait Mapper
 	def abs: FileMap = f => Some(f.getAbsoluteFile)
 	def resolve(newDirectory: File): FileMap = file => Some(new File(newDirectory, file.getPath))
 	def rebase(oldBases: Iterable[File], newBase: File, zero: FileMap = transparent): FileMap =
-		fold(fail: FileMap, oldBases)(old => rebase(old, newBase))
+		fold(zero, oldBases)(old => rebase(old, newBase))
 	def rebase(oldBase: File, newBase: File): FileMap =
 		file =>
 			if(file == oldBase)
