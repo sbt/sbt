@@ -105,7 +105,7 @@ object Tests
 	def overall(results: Iterable[TestResult.Value]): TestResult.Value =
 		(TestResult.Passed /: results) { (acc, result) => if(acc.id < result.id) result else acc }
 	def discover(frameworks: Seq[Framework], analysis: Analysis, log: Logger): (Seq[TestDefinition], Set[String]) =
-		discover(frameworks.flatMap(_.tests), allDefs(analysis), log)
+		discover(frameworks flatMap TestFramework.getTests, allDefs(analysis), log)
 
 	def allDefs(analysis: Analysis) = analysis.apis.internal.values.flatMap(_.definitions).toSeq
 	def discover(fingerprints: Seq[Fingerprint], definitions: Seq[Definition], log: Logger): (Seq[TestDefinition], Set[String]) =
