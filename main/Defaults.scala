@@ -26,7 +26,7 @@ package sbt
 
 object Defaults extends BuildCommon
 {
-	def configSrcSub(key: ScopedSetting[File]): Initialize[File] = (key, configuration) { (src, conf) => src / nameForSrc(conf.name) }
+	def configSrcSub(key: ScopedSetting[File]): Initialize[File] = (key in ThisScope.copy(config = Global), configuration) { (src, conf) => src / nameForSrc(conf.name) }
 	def nameForSrc(config: String) = if(config == "compile") "main" else config
 	def prefix(config: String) = if(config == "compile") "" else config + "-"
 
@@ -62,8 +62,6 @@ object Defaults extends BuildCommon
 		fork :== false,
 		javaOptions :== Nil,
 		sbtPlugin :== false,
-		sourceGenerators :== Nil,
-		resourceGenerators :== Nil,
 		crossPaths :== true,
 		classpathTypes := Set("jar", "bundle"),
 		aggregate :== Aggregation.Enabled,
@@ -96,12 +94,13 @@ object Defaults extends BuildCommon
 		sourceDirectory <<= baseDirectory / "src",
 		sourceFilter in GlobalScope :== ("*.java" | "*.scala"),
 		sourceManaged <<= crossTarget / "src_managed",
+		resourceManaged <<= crossTarget / "resource_managed",
 		cacheDirectory <<= target / "cache"
 	)
 
 	lazy val configPaths = sourceConfigPaths ++ resourceConfigPaths ++ outputConfigPaths
 	lazy val sourceConfigPaths = Seq(
-		sourceDirectory <<= configSrcSub( sourceDirectory in Scope(This,Global,This,This) ),
+		sourceDirectory <<= configSrcSub( sourceDirectory),
 		sourceManaged <<= configSrcSub(sourceManaged),
 		scalaSource <<= sourceDirectory / "scala",
 		javaSource <<= sourceDirectory / "java",
@@ -109,16 +108,18 @@ object Defaults extends BuildCommon
 		unmanagedSources <<= collectFiles(unmanagedSourceDirectories, sourceFilter, defaultExcludes in unmanagedSources),
 		managedSourceDirectories <<= Seq(sourceManaged).join,
 		managedSources <<= generate(sourceGenerators),
+		sourceGenerators :== Nil,
 		sourceDirectories <<= Classpaths.concatSettings(unmanagedSourceDirectories, managedSourceDirectories),
 		sources <<= Classpaths.concat(unmanagedSources, managedSources)
 	)
 	lazy val resourceConfigPaths = Seq(
 		resourceDirectory <<= sourceDirectory / "resources",
-		resourceManaged <<= sourceManaged / "res_managed",
+		resourceManaged <<= configSrcSub(resourceManaged),
 		unmanagedResourceDirectories <<= Seq(resourceDirectory).join,
 		managedResourceDirectories <<= Seq(resourceManaged).join,
 		resourceDirectories <<= Classpaths.concatSettings(unmanagedResourceDirectories, managedResourceDirectories),
 		unmanagedResources <<= (unmanagedResourceDirectories, defaultExcludes in unmanagedResources) map unmanagedResourcesTask,
+		resourceGenerators :== Nil,
 		resourceGenerators <+= (definedSbtPlugins, resourceManaged) map writePluginsDescriptor,
 		managedResources <<= generate(resourceGenerators),
 		resources <<= Classpaths.concat(managedResources, unmanagedResources)
