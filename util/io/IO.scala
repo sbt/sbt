@@ -70,15 +70,15 @@ object IO
 			(name, "")
 	}
 
-	def touch(files: Traversable[File]): Unit = files.foreach(touch)
+	def touch(files: Traversable[File]): Unit = files.foreach(f => touch(f))
 	/** Creates a file at the given location.*/
-	def touch(file: File)
+	def touch(file: File, setModified: Boolean = true)
 	{
 		createDirectory(file.getParentFile)
 		val created = translate("Could not create file " + file) { file.createNewFile() }
 		if(created || file.isDirectory)
 			()
-		else if(!file.setLastModified(System.currentTimeMillis))
+		else if(setModified && !file.setLastModified(System.currentTimeMillis))
 			error("Could not update last modified time for file " + file)
 	}
 	def createDirectories(dirs: Traversable[File]): Unit =

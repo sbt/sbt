@@ -86,7 +86,7 @@ object Streams
 			def make[T <: Closeable](a: Key, sid: String)(f: File => T): T = synchronized {
 				checkOpen()
 				val file = taskDirectory(a) / sid
-				IO.touch(file)
+				IO.touch(file, false)
 				val t = f( file )
 				opened ::= t
 				t
