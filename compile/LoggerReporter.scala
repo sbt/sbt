@@ -12,7 +12,7 @@ package sbt
 	import java.util.EnumMap
 	import scala.collection.mutable
 	import LoggerReporter._
-	import Severity.{Error,Info,Warn}
+	import Severity.{Error,Info => SInfo,Warn}
 
 object LoggerReporter
 {
@@ -56,7 +56,7 @@ class LoggerReporter(maximumErrors: Int, log: Logger) extends xsbti.Reporter
 	def reset()
 	{
 		count.put(Warn, 0)
-		count.put(Info, 0)
+		count.put(SInfo, 0)
 		count.put(Error, 0)
 		positions.clear()
 		allProblems.clear()
@@ -90,7 +90,7 @@ class LoggerReporter(maximumErrors: Int, log: Logger) extends xsbti.Reporter
 			{
 				case Error => log.error(m)
 				case Warn => log.warn(m)
-				case Info => log.info(m)
+				case SInfo => log.info(m)
 			})
 		}
 

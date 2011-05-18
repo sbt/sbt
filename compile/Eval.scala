@@ -30,7 +30,7 @@ final class Eval(optionsNoncp: Seq[String], classpath: Seq[File], mkReporter: Se
 
 	lazy val settings =
 	{
-		val s = new Settings(Console.println)
+		val s = new Settings(println)
 		val command = new CompilerCommand(options.toList, s)
 		s
 	}
