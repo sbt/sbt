@@ -5,7 +5,7 @@ package sbt
 
 import java.io.File
 import CacheIO.{fromFile, toFile}
-import sbinary.{Format, JavaIO}
+import sbinary.Format
 import scala.reflect.Manifest
 import scala.collection.mutable
 import IO.{delete, read, write}
@@ -28,8 +28,6 @@ object Tracked
 	/** Creates a tracker that provides the difference between a set of output files for successive invocations.*/
 	def diffOutputs(cache: File, style: FilesInfo.Style): Difference =
 		Difference.outputs(cache, style)
-
-		import sbinary.JavaIO._
 
 	def lastOutput[I,O](cacheFile: File)(f: (I,Option[O]) => O)(implicit o: Format[O], mf: Manifest[Format[O]]): I => O = in =>
 	{
@@ -112,7 +110,7 @@ class Changed[O](val cacheFile: File)(implicit equiv: Equiv[O], format: Format[O
 			ifChanged(value)
 		}
 	}
-	import JavaIO._
+
 	def update(value: O): Unit = Using.fileOutputStream(false)(cacheFile)(stream => format.writes(stream, value))
 	def uptodate(value: O): Boolean =
 		try {
