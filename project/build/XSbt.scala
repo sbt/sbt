@@ -195,6 +195,7 @@ class XSbt(info: ProjectInfo) extends ParentProject(info) with NoCrossPaths
 	class IvyProject(info: ProjectInfo) extends Base(info) with TestWithIO with TestWithLog with TestWithLaunch
 	{
 		val ivy = "org.apache.ivy" % "ivy" % "2.2.0"
+		val jsch = "com.jcraft" % "jsch" % "0.1.31" intransitive()
 	}
 	abstract class BaseInterfaceProject(info: ProjectInfo) extends DefaultProject(info) with ManagedBase with TestWithLog with Component with JavaProject
 	class InterfaceProject(info: ProjectInfo) extends BaseInterfaceProject(info)
