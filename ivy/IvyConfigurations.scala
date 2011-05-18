@@ -4,7 +4,7 @@
 package sbt
 
 import java.io.File
-import scala.xml.{Node, NodeSeq}
+import scala.xml.NodeSeq
 
 final class IvyPaths(val baseDirectory: File, val ivyHome: Option[File])
 {

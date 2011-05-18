@@ -4,7 +4,7 @@
 package sbt
 
 import java.io.File
-import scala.xml.{Node,NodeSeq}
+import scala.xml.{Node => XNode,NodeSeq}
 
 import org.apache.ivy.{core, plugins, Ivy}
 import core.cache.DefaultRepositoryCacheManager
@@ -26,7 +26,7 @@ final class PublishConfiguration(val ivyFile: Option[File], val resolverName: St
 
 final class UpdateConfiguration(val retrieve: Option[RetrieveConfiguration], val missingOk: Boolean, val logging: UpdateLogging.Value)
 final class RetrieveConfiguration(val retrieveDirectory: File, val outputPattern: String)
-final case class MakePomConfiguration(file: File, configurations: Option[Iterable[Configuration]] = None, extra: NodeSeq = NodeSeq.Empty, process: Node => Node = n => n, filterRepositories: MavenRepository => Boolean = _ => true)
+final case class MakePomConfiguration(file: File, configurations: Option[Iterable[Configuration]] = None, extra: NodeSeq = NodeSeq.Empty, process: XNode => XNode = n => n, filterRepositories: MavenRepository => Boolean = _ => true)
 
 /** Configures logging during an 'update'.  `level` determines the amount of other information logged.
 * `Full` is the default and logs the most.
