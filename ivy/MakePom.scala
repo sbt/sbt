@@ -8,7 +8,7 @@
 package sbt;
 
 import java.io.{BufferedWriter, File, OutputStreamWriter, FileOutputStream}
-import scala.xml.{Node, NodeSeq, PrettyPrinter, XML}
+import scala.xml.{Node => XNode, NodeSeq, PrettyPrinter, XML}
 
 import org.apache.ivy.{core, plugins, Ivy}
 import core.settings.IvySettings
@@ -20,9 +20,9 @@ import plugins.resolver.{ChainResolver, DependencyResolver, IBiblioResolver}
 class MakePom
 {
 	def encoding = "UTF-8"
-	def write(ivy: Ivy, module: ModuleDescriptor, configurations: Option[Iterable[Configuration]], extra: NodeSeq, process: Node => Node, filterRepositories: MavenRepository => Boolean, output: File): Unit =
+	def write(ivy: Ivy, module: ModuleDescriptor, configurations: Option[Iterable[Configuration]], extra: NodeSeq, process: XNode => XNode, filterRepositories: MavenRepository => Boolean, output: File): Unit =
 		write(process(toPom(ivy, module, configurations, extra, filterRepositories)), output)
-	def write(node: Node, output: File): Unit = write(toString(node), output)
+	def write(node: XNode, output: File): Unit = write(toString(node), output)
 	def write(xmlString: String, output: File)
 	{
 		output.getParentFile.mkdirs()
@@ -36,8 +36,8 @@ class MakePom
 		finally { out.close() }
 	}
 
-	def toString(node: Node): String = new PrettyPrinter(1000, 4).format(node)
-	def toPom(ivy: Ivy, module: ModuleDescriptor, configurations: Option[Iterable[Configuration]], extra: NodeSeq, filterRepositories: MavenRepository => Boolean): Node =
+	def toString(node: XNode): String = new PrettyPrinter(1000, 4).format(node)
+	def toPom(ivy: Ivy, module: ModuleDescriptor, configurations: Option[Iterable[Configuration]], extra: NodeSeq, filterRepositories: MavenRepository => Boolean): XNode =
 		(<project xmlns="http://maven.apache.org/POM/4.0.0"  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
 			<modelVersion>4.0.0</modelVersion>
 			{ makeModuleID(module) }
@@ -150,9 +150,9 @@ class MakePom
 	def toID(name: String) = checkID(name.filter(isValidIDCharacter).mkString, name)
 	def isValidIDCharacter(c: Char) = c.isLetterOrDigit
 	private def checkID(id: String, name: String) = if(id.isEmpty) error("Could not convert '" + name + "' to an ID") else id
-	def mavenRepository(repo: MavenRepository): Node =
+	def mavenRepository(repo: MavenRepository): XNode =
 		mavenRepository(toID(repo.name), repo.name, repo.root)
-	def mavenRepository(id: String, name: String, root: String): Node =
+	def mavenRepository(id: String, name: String, root: String): XNode =
 		<repository>
 			<id>{id}</id>
 			<name>{name}</name>

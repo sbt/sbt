@@ -3,7 +3,7 @@
  */
 package sbt
 
-import sbinary.{CollectionTypes, DefaultProtocol, Format, Input, JavaFormats, Output}
+import sbinary.{CollectionTypes, DefaultProtocol, Format, Input, JavaFormats, Output => Out}
 import java.io.{ByteArrayInputStream, ByteArrayOutputStream, File, InputStream, OutputStream}
 import java.net.{URI, URL}
 import Types.:+:
@@ -45,7 +45,7 @@ object Cache extends CacheImplicits
 				println(label + ".read: " + v)
 				v
 			}
-			def write(to: Output, v: Internal)
+			def write(to: Out, v: Internal)
 			{
 				println(label + ".write: " + v)
 				c.write(to, v)
@@ -79,7 +79,7 @@ trait BasicCacheImplicits
 				val isDefined = BooleanFormat.reads(from)
 				if(isDefined) Some(t.read(from)) else None
 			}
-			def write(to: Output, j: Internal): Unit =
+			def write(to: Out, j: Internal): Unit =
 			{
 				BooleanFormat.writes(to, j.isDefined)
 				j foreach { x => t.write(to, x) }
@@ -129,7 +129,7 @@ trait BasicCacheImplicits
 					if(left <= 0) acc.reverse else next(left - 1, t.read(from) :: acc)
 				next(size, Nil)
 			}
-			def write(to: Output, vs: Internal)
+			def write(to: Out, vs: Internal)
 			{
 				val size = vs.length
 				IntFormat.writes(to, size)
@@ -157,7 +157,7 @@ trait BasicCacheImplicits
 			type Internal = jCache.Internal
 			def convert(i: I) = jCache.convert(f(i))
 			def read(from: Input) = jCache.read(from)
-			def write(to: Output, j: Internal) = jCache.write(to, j)
+			def write(to: Out, j: Internal) = jCache.write(to, j)
 			def equiv = jCache.equiv
 		}
 
@@ -180,7 +180,7 @@ trait HListCacheImplicits
 				val t = tail.read(from)
 				(h, t)
 			}
-			def write(to: Output, j: Internal)
+			def write(to: Out, j: Internal)
 			{
 				head.write(to, j._1)
 				tail.write(to, j._2)
@@ -202,7 +202,7 @@ trait HListCacheImplicits
 			val t = tail.reads(from)
 			HCons(h, t)
 		}
-		def writes(to: Output, hc: H :+: T)
+		def writes(to: Out, hc: H :+: T)
 		{
 			head.writes(to, hc.head)
 			tail.writes(to, hc.tail)
@@ -225,7 +225,7 @@ trait UnionImplicits
 				val value = cache.read(in)
 				new Found[cache.Internal](cache, clazz, value, index)
 			}
-			def write(to: Output, i: Internal)
+			def write(to: Out, i: Internal)
 			{
 				def write0[I](f: Found[I])
 				{

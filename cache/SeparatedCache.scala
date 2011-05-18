@@ -4,9 +4,8 @@
 package sbt
 
 import Types.:+:
-import sbinary.{DefaultProtocol, Format, Input, JavaIO, Output}
+import sbinary.{DefaultProtocol, Format, Input, Output => Out}
 import DefaultProtocol.ByteFormat
-import JavaIO._
 import java.io.{File, InputStream, OutputStream}
 
 trait InputCache[I]
@@ -14,7 +13,7 @@ trait InputCache[I]
 	type Internal
 	def convert(i: I): Internal
 	def read(from: Input): Internal
-	def write(to: Output, j: Internal): Unit
+	def write(to: Out, j: Internal): Unit
 	def equiv: Equiv[Internal]
 }
 object InputCache
@@ -25,7 +24,7 @@ object InputCache
 			type Internal = I
 			def convert(i: I) = i
 			def read(from: Input): I = fmt.reads(from)
-			def write(to: Output, i: I) = fmt.writes(to, i)
+			def write(to: Out, i: I) = fmt.writes(to, i)
 			def equiv = eqv
 		}
 }

@@ -9,8 +9,7 @@ package sbt
 	import std.TaskExtra._
 	import Types.{:+:, idFun}
 
-	import sbinary.{Format, JavaIO, Operations}
-	import JavaIO._
+	import sbinary.{Format, Operations}
 
 object TaskData
 {

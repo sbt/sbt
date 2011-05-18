@@ -7,7 +7,8 @@ import Artifact.{defaultExtension, defaultType}
 
 import java.io.File
 import java.util.concurrent.Callable
-import java.util.{Collection, Collections}
+import java.util.{Collection, Collections => CS}
+import CS.singleton
 
 import org.apache.ivy.{core, plugins, util, Ivy}
 import core.IvyPatternHelper
@@ -465,7 +466,7 @@ private object IvySbt
 				if(dynamic) null else {
 					try {
 						val l = getStrategy.findLatest(toArtifactInfo(conflicts), null).asInstanceOf[{def getNode(): IvyNode}]
-						if(l eq null) conflicts else Collections.singleton(l.getNode)
+						if(l eq null) conflicts else singleton(l.getNode)
 					} 
 					catch { case e: LatestConflictManager.NoConflictResolvedYetException => null }
 				}

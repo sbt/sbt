@@ -54,16 +54,17 @@ object ConsoleLogger
 * This logger is not thread-safe.*/
 class ConsoleLogger private[ConsoleLogger](val out: ConsoleOut, override val ansiCodesSupported: Boolean, val useColor: Boolean) extends BasicLogger
 {
-	def messageColor(level: Level.Value) = Console.RESET
+		import scala.Console.{BLUE, GREEN, RED, RESET, YELLOW}
+	def messageColor(level: Level.Value) = RESET
 	def labelColor(level: Level.Value) =
 		level match
 		{
-			case Level.Error => Console.RED
-			case Level.Warn => Console.YELLOW
-			case _ => Console.RESET
+			case Level.Error => RED
+			case Level.Warn => YELLOW
+			case _ => RESET
 		}
-	def successLabelColor = Console.GREEN
-	def successMessageColor = Console.RESET
+	def successLabelColor = GREEN
+	def successMessageColor = RESET
 	override def success(message: => String)
 	{
 		if(successEnabled)
@@ -81,7 +82,7 @@ class ConsoleLogger private[ConsoleLogger](val out: ConsoleOut, override val ans
 		if(atLevel(level))
 			log(labelColor(level), level.toString, messageColor(level), message)
 	}
-	private def reset(): Unit = setColor(Console.RESET)
+	private def reset(): Unit = setColor(RESET)
 	
 	private def setColor(color: String)
 	{
@@ -108,7 +109,7 @@ class ConsoleLogger private[ConsoleLogger](val out: ConsoleOut, override val ans
 
 	def logAll(events: Seq[LogEvent]) = out.lockObject.synchronized { events.foreach(log) }
 	def control(event: ControlEvent.Value, message: => String)
-		{ log(labelColor(Level.Info), Level.Info.toString, Console.BLUE, message) }
+		{ log(labelColor(Level.Info), Level.Info.toString, BLUE, message) }
 }
 sealed trait ConsoleOut
 {

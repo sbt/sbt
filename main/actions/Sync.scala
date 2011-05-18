@@ -71,7 +71,6 @@ object Sync
 		import sbinary._
 		import Operations.{read, write}
 		import DefaultProtocol.{FileFormat => _, _}
-		import JavaIO._
 		import inc.AnalysisFormats._
 
 	def writeInfo[F <: FileInfo](file: File, relation: Relation[File, File], info: Map[File, F])(implicit infoFormat: Format[F]): Unit =

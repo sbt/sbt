@@ -83,7 +83,7 @@ class XSbt(info: ProjectInfo) extends ParentProject(info) with NoCrossPaths
 		interfaceSub, ioSub, ivySub, logSub, processSub, runSub, stdTaskSub, taskSub, trackingSub, testingSub)
 
 		// The main integration project for sbt.  It brings all of the subsystems together, configures them, and provides for overriding conventions.
-	val mainSub = baseProject(mainPath, "Main", actionsSub, interfaceSub, ioSub, ivySub, launchInterfaceSub, logSub, processSub, runSub)
+	val mainSub = project(mainPath, "Main", new Main(_), actionsSub, interfaceSub, ioSub, ivySub, launchInterfaceSub, logSub, processSub, runSub)
 		// Strictly for bringing implicits and aliases from subsystems into the top-level sbt namespace through a single package object
 		//  technically, we need a dependency on all of mainSub's dependencies, but we don't do that since this is strictly an integration project
 		//  with the sole purpose of providing certain identifiers without qualification (with a package object)
@@ -164,7 +164,7 @@ class XSbt(info: ProjectInfo) extends ParentProject(info) with NoCrossPaths
 	{
 		// these compilation options are useful for debugging caches and task composition
 		//override def compileOptions = super.compileOptions ++ List(Unchecked,ExplainTypes, CompileOption("-Xlog-implicits"))
-		val sbinary = "org.scala-tools.sbinary" % "sbinary_2.8.0" % "0.3.1"
+		val sbinary = "org.scala-tools.sbinary" %% "sbinary" % "0.4.0"
 	}
 	class Base(info: ProjectInfo) extends DefaultProject(info) with ManagedBase with Component with Licensed
 	{
@@ -329,5 +329,17 @@ class XSbt(info: ProjectInfo) extends ParentProject(info) with NoCrossPaths
 			catch { case e: java.lang.reflect.InvocationTargetException => throw e.getCause }
 			None
 		} dependsOn(publishLocal, scriptedSbtSub.compile, testCompile) }
+	}
+	class Main(info: ProjectInfo) extends Base(info) with Sxr
+	{
+		def concatPaths[T](s: Seq[T])(f: PartialFunction[T, PathFinder]): PathFinder =
+		{
+			def finder: T => PathFinder = (f orElse { case _ => Path.emptyPathFinder })
+			(Path.emptyPathFinder /: s) { _ +++ finder(_) }
+		}
+		def deepBaseDirectories = Path.finder { topologicalSort.flatMap { case p: ScalaPaths => p.mainSourceRoots.getFiles } }
+		def deepSources = concatPaths(mainSub.topologicalSort){ case p: ScalaPaths => p.mainSources }
+//		override def documentOptions = CompoundDocOption("-sourcepath", deepBaseDirectories.absString) :: LinkSource :: super.documentOptions.toList
+		lazy val sbtGenDoc = scaladocTask("sbt", deepSources, docPath, docClasspath, documentOptions) dependsOn(compile)
 	}
 }

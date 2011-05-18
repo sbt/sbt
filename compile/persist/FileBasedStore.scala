@@ -8,7 +8,6 @@ package inc
 	import sbinary._
 	import Operations.{read, write}
 	import DefaultProtocol._
-	import JavaIO._
 
 object FileBasedStore
 {

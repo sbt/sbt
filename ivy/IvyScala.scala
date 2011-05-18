@@ -3,7 +3,7 @@
  */
 package sbt
 
-import java.util.Collections
+import java.util.Collections.emptyMap
 import scala.collection.mutable.HashSet
 
 import org.apache.ivy.{core, plugins}
@@ -92,7 +92,7 @@ private object IvyScala
 	private def excludeRule(organization: String, name: String, configurationNames: Iterable[String]): ExcludeRule =
 	{
 		val artifact = new ArtifactId(ModuleId.newInstance(organization, name), "*", "jar", "*")
-		val rule = new DefaultExcludeRule(artifact, ExactPatternMatcher.INSTANCE, Collections.emptyMap[AnyRef,AnyRef])
+		val rule = new DefaultExcludeRule(artifact, ExactPatternMatcher.INSTANCE, emptyMap[AnyRef,AnyRef])
 		configurationNames.foreach(rule.addConfiguration)
 		rule
 	}

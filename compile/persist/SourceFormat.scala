@@ -9,7 +9,6 @@ package xsbt.api
 	import sbinary._
 	import DefaultProtocol._
 	import Operations.{read,write}
-	import JavaIO._
 	import java.io.File
 	import scala.collection.mutable
 
