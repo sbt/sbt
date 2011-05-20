@@ -93,9 +93,9 @@ object Search extends Enumeration
 	def apply(s: String, paths: List[File]): Search = Search(toValue(s), paths)
 }
 
-final case class BootSetup(directory: File, properties: File, search: Search, promptCreate: String, enableQuick: Boolean, promptFill: Boolean)
+final case class BootSetup(directory: File, lock: Boolean, properties: File, search: Search, promptCreate: String, enableQuick: Boolean, promptFill: Boolean)
 {
-	def map(f: File => File) = BootSetup(f(directory), f(properties), search, promptCreate, enableQuick, promptFill)
+	def map(f: File => File) = BootSetup(f(directory), lock, f(properties), search, promptCreate, enableQuick, promptFill)
 }
 final case class AppProperty(name: String)(val quick: Option[PropertyInit], val create: Option[PropertyInit], val fill: Option[PropertyInit])
 

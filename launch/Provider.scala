@@ -17,7 +17,7 @@ trait Provider
 	def target: UpdateTarget
 	def failLabel: String
 	def parentLoader: ClassLoader
-	def lockFile: File
+	def lockFile: Option[File]
 
 	def classpath: Array[File] = Provider.getJars(baseDirectories)
 	def fullClasspath:Array[File] = concat(classpath, extraClasspath)
@@ -29,7 +29,8 @@ trait Provider
 		throw new xsbti.RetrieveException(versionString, "Could not retrieve " + failLabel + extra)
 	private def versionString: String = target match { case _: UpdateScala => configuration.scalaVersion; case a: UpdateApp => Value.get(a.id.version) }
 
-	val (jars, loader) = Locks(lockFile, new initialize)
+	val (jars, loader) = Locks(orNull(lockFile), new initialize)
+	private[this] def orNull[T >: Null](opt: Option[T]): T = opt match { case None => null; case Some(x) => x }
 	private final class initialize extends Callable[(Array[File], ClassLoader)]
 	{
 		def call =

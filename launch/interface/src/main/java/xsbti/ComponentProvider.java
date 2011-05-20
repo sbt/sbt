@@ -6,5 +6,6 @@ public interface ComponentProvider
 {
 	public File[] component(String componentID);
 	public void defineComponent(String componentID, File[] components);
+	 // null if locking disabled
 	public File lockFile();
 }

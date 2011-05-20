@@ -24,7 +24,8 @@ object GetLocks
 object Locks extends xsbti.GlobalLock
 {
 	private[this] val locks = new Cache[File, Unit, GlobalLock]( (f, _) => new GlobalLock(f))
-	def apply[T](file: File, action: Callable[T]): T =
+	def apply[T](file: File, action: Callable[T]): T = if(file eq null) action.call else apply0(file, action)
+	private[this] def apply0[T](file: File, action: Callable[T]): T =
 	{
 		val lock =
 			synchronized

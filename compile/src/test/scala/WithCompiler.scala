@@ -11,7 +11,7 @@ object WithCompiler
 	{
 		launcher { (launch, log) =>
 			withTemporaryDirectory { componentDirectory =>
-				val manager = new ComponentManager(xsbt.boot.Locks, new boot.ComponentProvider(componentDirectory), log)
+				val manager = new ComponentManager(xsbt.boot.Locks, new boot.ComponentProvider(componentDirectory, true), log)
 				val compiler = new AnalyzingCompiler(ScalaInstance(scalaVersion, launch), manager, log)
 				compiler.newComponentCompiler(log).clearCache(ComponentCompiler.compilerInterfaceID)
 				define(manager, ComponentCompiler.compilerInterfaceSrcID, getResource("CompilerInterface.scala"), getClassResource(classOf[jline.Completor]))
