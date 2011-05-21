@@ -44,6 +44,7 @@ object Defaults extends BuildCommon
 	))
 	def globalCore: Seq[Setting[_]] = inScope(GlobalScope)(Seq(
 		parallelExecution :== true,
+		sbtVersion in GlobalScope <<= appConfiguration { _.provider.id.version },
 		pollInterval :== 500,
 		logBuffered :== false,
 		trapExit :== false,
