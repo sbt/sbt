@@ -15,7 +15,7 @@ object CompletionService
 {
 	def apply[A, T](poolSize: Int): (CompletionService[A,T], () => Unit) =
 	{
-		val pool = Executors.newFixedThreadPool(2)
+		val pool = Executors.newFixedThreadPool(poolSize)
 		(apply[A,T]( pool ), () => pool.shutdownNow() )
 	}
 	def apply[A, T](x: Executor): CompletionService[A,T] =

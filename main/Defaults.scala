@@ -43,6 +43,7 @@ object Defaults extends BuildCommon
 		managedDirectory <<= baseDirectory(_ / "lib_managed")
 	))
 	def globalCore: Seq[Setting[_]] = inScope(GlobalScope)(Seq(
+		parallelExecution :== true,
 		pollInterval :== 500,
 		logBuffered :== false,
 		trapExit :== false,
@@ -227,8 +228,8 @@ object Defaults extends BuildCommon
 		definedTests <<= TaskData.writeRelated(detectTests)(_.map(_.name).distinct) triggeredBy compile,
 		testListeners :== Nil,
 		testOptions :== Nil,
-		executeTests <<= (streams in test, loadedTestFrameworks, testOptions in test, testLoader, definedTests) flatMap {
-			(s, frameworkMap, options, loader, discovered) => Tests(frameworkMap, loader, discovered, options, s.log)
+		executeTests <<= (streams in test, loadedTestFrameworks, parallelExecution in test, testOptions in test, testLoader, definedTests) flatMap {
+			(s, frameworkMap, par, options, loader, discovered) => Tests(frameworkMap, loader, discovered, options, par, s.log)
 		},
 		test <<= (executeTests, streams) map { (results, s) => Tests.showResults(s.log, results) },
 		testOnly <<= testOnlyTask
@@ -256,10 +257,10 @@ object Defaults extends BuildCommon
 
 	def testOnlyTask = 
 	InputTask( TaskData(definedTests)(testOnlyParser)(Nil) ) { result =>  
-		(streams, loadedTestFrameworks, testOptions in testOnly, testLoader, definedTests, result) flatMap {
-			case (s, frameworks, opts, loader, discovered, (tests, frameworkOptions)) =>
+		(streams, loadedTestFrameworks, parallelExecution in testOnly, testOptions in testOnly, testLoader, definedTests, result) flatMap {
+			case (s, frameworks, par, opts, loader, discovered, (tests, frameworkOptions)) =>
 				val modifiedOpts = Tests.Filter(if(tests.isEmpty) _ => true else tests.toSet ) +: Tests.Argument(frameworkOptions : _*) +: opts
-				Tests(frameworks, loader, discovered, modifiedOpts, s.log) map { results =>
+				Tests(frameworks, loader, discovered, modifiedOpts, par, s.log) map { results =>
 					Tests.showResults(s.log, results)
 				}
 		}

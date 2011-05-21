@@ -78,17 +78,23 @@ final object Aggregation
 	{
 			import EvaluateTask._
 			import std.TaskExtra._
+		val extracted = Project extract s
 		val toRun = ts map { case KeyValue(k,t) => t.map(v => KeyValue(k,v)) } join;
+		val workers = maxWorkers(extracted, structure)
 		val start = System.currentTimeMillis
-		val result = withStreams(structure){ str => runTask(toRun, str, structure.index.triggers)(nodeView(s, str, extra.tasks, extra.values)) }
+		val result = withStreams(structure){ str => runTask(toRun, str, structure.index.triggers, maxWorkers = workers)(nodeView(s, str, extra.tasks, extra.values)) }
 		val stop = System.currentTimeMillis
 		val log = logger(s)
-		lazy val extracted = Project.extract(s)
 
 		val success = result match { case Value(_) => true; case Inc(_) => false }
 		try { onResult(result, log) { results => if(show) printSettings(results, log) } }
-		finally { printSuccess(start, stop, Project.extract(s), success, log) }
+		finally { printSuccess(start, stop, extracted, success, log) }
 	}
+	def maxWorkers(extracted: Extracted, structure: Load.BuildStructure): Int =
+		(Keys.parallelExecution in extracted.currentRef get structure.data) match {
+			case Some(true) | None => EvaluateTask.SystemProcessors
+			case Some(false) => 1
+		}
 	def printSuccess(start: Long, stop: Long, extracted: Extracted, success: Boolean, log: Logger)
 	{
 		import extracted._
