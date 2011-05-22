@@ -5,13 +5,14 @@ package sbt
 	import xsbti.api
 	import xsbti.SafeLazy
 	import SafeLazy.strict
+	import collection.mutable
 
 object ClassToAPI
 {
 	def apply(c: Seq[Class[_]]): api.Source =
 	{
 		val pkgs = packages(c).map(p => new api.Package(p))
-		val defs = c.filter(isTopLevel).flatMap(toDefinitions)
+		val defs = c.filter(isTopLevel).flatMap(toDefinitions(new mutable.HashMap))
 		new api.Source(pkgs.toArray, defs.toArray)
 	}
 
@@ -21,7 +22,10 @@ object ClassToAPI
 	def isTopLevel(c: Class[_]): Boolean =
 		c.getEnclosingClass eq null
 
-	def toDefinitions(c: Class[_]): Seq[api.ClassLike] =
+	type ClassMap = mutable.Map[String, Seq[api.ClassLike]]
+	def toDefinitions(cmap: ClassMap)(c: Class[_]): Seq[api.ClassLike] =
+		cmap.getOrElseUpdate(c.getName, toDefinitions0(c, cmap))
+	def toDefinitions0(c: Class[_], cmap: ClassMap): Seq[api.ClassLike] =
 	{
 			import api.DefinitionType.{ClassDef, Module, Trait}
 		val enclPkg = packageName(c)
@@ -30,24 +34,24 @@ object ClassToAPI
 		val annots = annotations(c.getAnnotations)
 		val name = c.getName
 		val tpe = if(Modifier.isInterface(c.getModifiers)) Trait else ClassDef
-		lazy val (static, instance) = structure(c, enclPkg)
+		lazy val (static, instance) = structure(c, enclPkg, cmap)
 		val cls = new api.ClassLike(tpe, strict(Empty), lzy(instance), typeParameters(c.getTypeParameters), name, acc, mods, annots)
-		def makeStatic(s: api.Structure) = 
-			new api.ClassLike(Module, strict(Empty), strict(s), Array(), name, acc, mods, annots)
-		cls :: static.map(makeStatic).toList
+		val stat = new api.ClassLike(Module, strict(Empty), lzy(static), Array(), name, acc, mods, annots)
+		val defs = cls :: stat :: Nil
+		cmap(c.getName) = defs
+		defs
 	}
 
-	def structure(c: Class[_], enclPkg: Option[String]): (Option[api.Structure], api.Structure) =
+	def structure(c: Class[_], enclPkg: Option[String], cmap: ClassMap): (api.Structure, api.Structure) =
 	{
 		val methods = mergeMap(c, c.getMethods, c.getDeclaredMethods, methodToDef(enclPkg))
 		val fields = mergeMap(c, c.getFields, c.getDeclaredFields, fieldToDef(enclPkg))
 		val constructors = mergeMap(c, c.getConstructors, c.getDeclaredConstructors, constructorToDef(enclPkg))
-		val classes = merge[Class[_]](c, c.getClasses, c.getDeclaredClasses, toDefinitions, (_: Seq[Class[_]]).partition(isStatic), _.getEnclosingClass != c)
+		val classes = merge[Class[_]](c, c.getClasses, c.getDeclaredClasses, toDefinitions(cmap), (_: Seq[Class[_]]).partition(isStatic), _.getEnclosingClass != c)
 		val all = (methods ++ fields ++ constructors ++ classes)
 		val parentTypes = parents(c)
 		val instanceStructure = new api.Structure(lzy(parentTypes.toArray), lzy(all.declared.toArray), lzy(all.inherited.toArray))
-		def static = new api.Structure(emptyTpeArray, lzy(all.staticDeclared.toArray), lzy(all.staticInherited.toArray))
-		val staticStructure = if(all.staticDeclared.isEmpty && all.staticInherited.isEmpty) None else Some(static)
+		val staticStructure = new api.Structure(emptyTpeArray, lzy(all.staticDeclared.toArray), lzy(all.staticInherited.toArray))
 		(staticStructure, instanceStructure)
 	}
 	def lzy[T <: AnyRef](t: => T): xsbti.api.Lazy[T] = xsbti.SafeLazy(t)
