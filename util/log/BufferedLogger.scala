@@ -20,12 +20,12 @@ class BufferedLogger(delegate: AbstractLogger) extends BasicLogger
 
 	/** Enables buffering. */
 	def record() = synchronized { recording = true }
-	def buffer[T](f: => T): T = synchronized {
+	def buffer[T](f: => T): T = {
 		record()
 		try { f }
 		finally { stopQuietly() }
 	}
-	def bufferQuietly[T](f: => T): T = synchronized {
+	def bufferQuietly[T](f: => T): T = {
 		record()
 		try
 		{
