@@ -211,7 +211,7 @@ class SameAPI(tagsA: TypeVars, tagsB: TypeVars, includePrivate: Boolean, include
 	def sameAnnotations(a: Seq[Annotation], b: Seq[Annotation]): Boolean =
 		sameSeq(a, b)(sameAnnotation)
 	def sameAnnotation(a: Annotation, b: Annotation): Boolean =
-		debug(sameSimpleType(a.base, b.base), "Annotation base type differed") &&
+		debug(sameType(a.base, b.base), "Annotation base type differed") &&
 		debug(sameAnnotationArguments(a.arguments, b.arguments), "Annotation arguments differed (" + a + ") and (" + b + ")")
 	def sameAnnotationArguments(a: Seq[AnnotationArgument], b: Seq[AnnotationArgument]): Boolean =
 		argumentMap(a) == argumentMap(b)

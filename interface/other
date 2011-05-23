@@ -36,7 +36,7 @@ TypeParameter
 	upperBound: Type
 
 Annotation
-	base: SimpleType
+	base: Type
 	arguments: AnnotationArgument*
 AnnotationArgument
 	name: String
