@@ -158,6 +158,7 @@ object Scoped
 		final def apply[T](f: S => T): Initialize[T] = Apply.single(scoped)(f)
 		final def identity: Initialize[S] = apply(idFun)
 		final def ? : Initialize[Option[S]] = Project.optional(scoped)(idFun)
+		final def or[T >: S](i: Initialize[T]): Initialize[T] = (this.? zipWith i)(_ getOrElse _ )
 		final def ??[T >: S](or: => T): Initialize[T] = Project.optional(scoped)(_ getOrElse or )
 
 		final def get(settings: Settings[Scope]): Option[S] = settings.get(scope, key)
@@ -197,6 +198,7 @@ object Scoped
 		def identity: App[S] = mk(idFun)
 		def ? : Initialize[Task[Option[S]]] = Project.optional(scoped) { case None => mktask { None }; case Some(t) => t map some.fn }
 		def ??[T >: S](or: => T): Initialize[Task[T]] = Project.optional(scoped)( _ getOrElse mktask(or) )
+		def or[T >: S](i: Initialize[Task[T]]): Initialize[Task[T]] = (this.? zipWith i)( (x,y) => (x :^: y :^: KNil) map hf2( _ getOrElse _ ))
 
 		def || [T >: S](alt: Task[T]): App[T]  =  mk(_ || alt)
 		def && [T](alt: Task[T]): App[T]  =  mk(_ && alt)
