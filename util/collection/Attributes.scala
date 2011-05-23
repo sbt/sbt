@@ -11,6 +11,7 @@ import Types._
 sealed trait AttributeKey[T] {
 	def label: String
 	def description: Option[String]
+	def extend: Seq[AttributeKey[_]]
 	override final def toString = label
 }
 object AttributeKey
@@ -18,10 +19,17 @@ object AttributeKey
 	def apply[T](name: String): AttributeKey[T] = new AttributeKey[T] {
 		def label = name
 		def description = None
+		def extend = Nil
 	}
 	def apply[T](name: String, description0: String): AttributeKey[T] = new AttributeKey[T] {
 		def label = name
 		def description = Some(description0)
+		def extend = Nil
+	}
+	def apply[T](name: String, description0: String, extend0: Seq[AttributeKey[_]]): AttributeKey[T] = new AttributeKey[T] {
+		def label = name
+		def description = Some(description0)
+		def extend = extend0
 	}
 }
 
