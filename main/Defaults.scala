@@ -60,6 +60,7 @@ object Defaults extends BuildCommon
 		credentials :== Nil,
 		scalaHome :== None,
 		javaHome :== None,
+		version :== "0.1",
 		outputStrategy :== None,
 		fork :== false,
 		javaOptions :== Nil,
@@ -85,7 +86,6 @@ object Defaults extends BuildCommon
 	))
 	def projectCore: Seq[Setting[_]] = Seq(
 		name <<= thisProject(_.id),
-		version :== "0.1",
 		runnerSetting
 	)
 	def paths = Seq(
@@ -543,9 +543,9 @@ object Classpaths
 	val baseSettings: Seq[Setting[_]] = Seq(
 		unmanagedBase <<= baseDirectory / "lib",
 		normalizedName <<= name(StringUtilities.normalize),
-		organization <<= normalizedName.identity,
+		organization <<= organization or normalizedName.identity,
 		classpathFilter in GlobalScope :== "*.jar",
-		externalResolvers <<= resolvers map Resolver.withDefaultResolvers,
+		externalResolvers <<= externalResolvers or (resolvers map Resolver.withDefaultResolvers),
 		fullResolvers <<= (projectResolver,externalResolvers,sbtPlugin,sbtResolver) map { (pr,rs,isPlugin,sr) =>
 			val base = pr +: rs
 			if(isPlugin) sr +: base else base
@@ -580,9 +580,7 @@ object Classpaths
 		retrievePattern in GlobalScope :== "[type]/[organisation]/[module]/[artifact](-[revision])(-[classifier]).[ext]",
 		updateConfiguration <<= (retrieveConfiguration, ivyLoggingLevel)((conf,level) => new UpdateConfiguration(conf, false, level) ),
 		retrieveConfiguration <<= (managedDirectory, retrievePattern, retrieveManaged) { (libm, pattern, enabled) => if(enabled) Some(new RetrieveConfiguration(libm, pattern)) else None },
-		ivyConfiguration <<= (fullResolvers, ivyPaths, otherResolvers, moduleConfigurations, offline, checksums, appConfiguration, streams) map { (rs, paths, other, moduleConfs, off, check, app, s) =>
-			new InlineIvyConfiguration(paths, rs, other, moduleConfs, off, Some(lock(app)), check, s.log)
-		},
+		ivyConfiguration <<= ivyConfiguration or mkIvyConfiguration,
 		ivyConfigurations <<= (autoCompilerPlugins, internalConfigurationMap, thisProject) { (auto, internalMap, project) =>
 			(project.configurations ++ project.configurations.map(internalMap) ++ (if(auto) CompilerPlugin :: Nil else Nil)).distinct
 		},
@@ -606,7 +604,7 @@ object Classpaths
 		update <<= (ivyModule, updateConfiguration, cacheDirectory, scalaInstance, streams) map { (module, config, cacheDirectory, si, s) =>
 			cachedUpdate(cacheDirectory / "update", module, config, Some(si), s.log)
 		},
-		transitiveClassifiers :== Seq("sources", "javadoc"),
+		transitiveClassifiers in GlobalScope :== Seq("sources", "javadoc"),
 		updateClassifiers <<= (ivySbt, projectID, update, transitiveClassifiers, updateConfiguration, ivyScala, streams) map { (is, pid, up, classifiers, c, ivyScala, s) =>
 			IvyActions.transitive(is, pid, up, classifiers, c, ivyScala, s.log)
 		},
@@ -709,6 +707,10 @@ object Classpaths
 		(thisProjectRef, thisProject, configuration, settings) flatMap internalDependencies0
 	def unmanagedDependencies: Initialize[Task[Classpath]] =
 		(thisProjectRef, thisProject, configuration, settings) flatMap unmanagedDependencies0
+	def mkIvyConfiguration: Initialize[Task[IvyConfiguration]] =
+		(fullResolvers, ivyPaths, otherResolvers, moduleConfigurations, offline, checksums, appConfiguration, streams) map { (rs, paths, other, moduleConfs, off, check, app, s) =>
+			new InlineIvyConfiguration(paths, rs, other, moduleConfs, off, Some(lock(app)), check, s.log)
+		}
 
 		import java.util.LinkedHashSet
 		import collection.JavaConversions.asScalaSet
