@@ -1,0 +1,5 @@
+> compile
+
+$ copy changes/Fail.java src/main/java/Fail.java
+
+-> compile
