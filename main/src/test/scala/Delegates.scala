@@ -101,16 +101,17 @@ object Delegates extends Properties("delegates")
 		val delegated = scopes map env.delegates
 	}
 	
-	final class Env(val builds: Seq[Build])
+	final class Env(val builds: Seq[Build], val tasks: Seq[Task])
 	{
-		override def toString = "Env:\n  " + builds.mkString("\n  ")
+		override def toString = "Env:\n  "+ "  Tasks:\n    " + tasks.mkString("\n    ") +"\n" + builds.mkString("\n  ") 
 		val buildMap = mapBy(builds)(_.uri)
+		val taskMap = mapBy(tasks)(getKey)
 		def project(ref: ProjectRef) = buildMap(ref.build).projectMap(ref.project)
 		def projectFor(ref: ResolvedReference) = ref match { case pr: ProjectRef => project(pr); case BuildRef(uri) => buildMap(uri).root }
 		def allProjects = builds.flatMap(_.allProjects)
 		def rootProject(uri: URI): String = buildMap(uri).root.id
 		def inheritConfig(ref: ResolvedReference, config: ConfigKey) = projectFor(ref).confMap(config.name).extended map toConfigKey
-		def inheritTask(ref: ResolvedReference, task: AttributeKey[_]) = projectFor(ref).taskMap(task).delegates map getKey
+		def inheritTask(task: AttributeKey[_]) = taskMap(task).delegates map getKey
 		def inheritProject(ref: ProjectRef) = project(ref).delegates
 		def resolve(ref: Reference) = Scope.resolveReference(builds.head.uri, rootProject, ref)
 		lazy val delegates: Scope => Seq[Scope] =
@@ -134,12 +135,11 @@ object Delegates extends Properties("delegates")
 		val root = projects.head
 		val projectMap = mapBy(projects)(_.id)
 	}
-	final class Proj(val id: String, val delegates: Seq[ProjectRef], val configurations: Seq[Config], val tasks: Seq[Task])
+	final class Proj(val id: String, val delegates: Seq[ProjectRef], val configurations: Seq[Config])
 	{
 		override def toString = "Project " + id + "\n      Delegates:\n      " + delegates.mkString("\n      ") +
-			"\n      Configurations:\n        " + configurations.mkString("\n        ") + "\n      Tasks:\n        " + tasks.mkString("\n        ")
+			"\n      Configurations:\n        " + configurations.mkString("\n        ")
 		val confMap = mapBy(configurations)(_.name)
-		val taskMap = mapBy(tasks)(getKey)
 	}
 
 	final class Config(val name: String, val extended: Seq[Config])
@@ -161,7 +161,7 @@ object Delegates extends Properties("delegates")
 			build <- oneOf(env.builds)
 			project <- oneOf(build.projects)
 			cAxis <- oneOrGlobal(project.configurations map toConfigKey)
-			tAxis <- oneOrGlobal( project.tasks map getKey )
+			tAxis <- oneOrGlobal( env.tasks map getKey )
 			pAxis <- orGlobal( frequency( (1, BuildRef(build.uri)), (3, ProjectRef(build.uri, project.id) ) ) )
 		} yield
 			Scope( pAxis, cAxis, tAxis, Global)
@@ -174,23 +174,24 @@ object Delegates extends Properties("delegates")
 	{
 		implicit val cGen = genConfigs(idGen, MaxDepsGen, MaxConfigsGen)
 		implicit val tGen = genTasks(idGen, MaxDepsGen, MaxTasksGen)
-		implicit val pGen = (uri: URI) => genProjects(uri)(idGen, MaxDepsGen, MaxProjectsGen, cGen, tGen)
-		envGen(buildGen(uriGen, pGen))
+		implicit val pGen = (uri: URI) => genProjects(uri)(idGen, MaxDepsGen, MaxProjectsGen, cGen)
+		envGen(buildGen(uriGen, pGen), tGen)
 	}
 
 	implicit lazy val idGen: Gen[String] = for(size <- chooseShrinkable(1, MaxIDSize); cs <- listOfN(size, alphaChar)) yield cs.mkString
 	implicit lazy val optIDGen: Gen[Option[String]] = frequency( (1, idGen map some.fn), (1, None) )
 	implicit lazy val uriGen: Gen[URI] = for(sch <- idGen; ssp <- idGen; frag <- optIDGen) yield new URI(sch, ssp, frag.orNull)
 
-	implicit def envGen(implicit bGen: Gen[Build]): Gen[Env] = for(i <- MaxBuildsGen; bs <- listOfN(i, bGen)) yield new Env(bs)
+	implicit def envGen(implicit bGen: Gen[Build], tasks: Gen[Seq[Task]]): Gen[Env] =
+		for(i <- MaxBuildsGen; bs <- listOfN(i, bGen); ts <- tasks) yield new Env(bs, ts)
 	implicit def buildGen(implicit uGen: Gen[URI], pGen: URI => Gen[Seq[Proj]]): Gen[Build] = for(u <- uGen; ps <- pGen(u)) yield new Build(u, ps)
 	
 	def nGen[T](igen: Gen[Int])(implicit g: Gen[T]): Gen[List[T]] = igen flatMap { ig => listOfN(ig, g) }
 
-	implicit def genProjects(build: URI)(implicit genID: Gen[String], maxDeps: Gen[Int], count: Gen[Int], confs: Gen[Seq[Config]], tasks: Gen[Seq[Task]]): Gen[Seq[Proj]] =
+	implicit def genProjects(build: URI)(implicit genID: Gen[String], maxDeps: Gen[Int], count: Gen[Int], confs: Gen[Seq[Config]]): Gen[Seq[Proj]] =
 		genAcyclic(maxDeps, genID, count) { (id: String) =>
-			for(cs <- confs; ts <- tasks) yield { (deps: Seq[Proj]) =>
-				new Proj(id, deps.map{dep => ProjectRef(build, dep.id) }, cs, ts)
+			for(cs <- confs) yield { (deps: Seq[Proj]) =>
+				new Proj(id, deps.map{dep => ProjectRef(build, dep.id) }, cs)
 			}
 		}
 	def genConfigs(implicit genName: Gen[String], maxDeps: Gen[Int], count: Gen[Int]): Gen[Seq[Config]] =
