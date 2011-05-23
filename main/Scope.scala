@@ -123,7 +123,7 @@ object Scope
 		rootProject: URI => String,
 		projectInherit: ProjectRef => Seq[ProjectRef],
 		configInherit: (ResolvedReference, ConfigKey) => Seq[ConfigKey],
-		taskInherit: (ResolvedReference, AttributeKey[_]) => Seq[AttributeKey[_]],
+		taskInherit: AttributeKey[_] => Seq[AttributeKey[_]],
 		extraInherit: (ResolvedReference, AttributeMap) => Seq[AttributeMap]): Scope => Seq[Scope] =
 	{
 		val index = delegates(refs, configurations, projectInherit, configInherit)
@@ -134,7 +134,7 @@ object Scope
 		resolve: Reference => ResolvedReference,
 		index: DelegateIndex,
 		rootProject: URI => String,
-		taskInherit: (ResolvedReference, AttributeKey[_]) => Seq[AttributeKey[_]],
+		taskInherit: AttributeKey[_] => Seq[AttributeKey[_]],
 		extraInherit: (ResolvedReference, AttributeMap) => Seq[AttributeMap])(rawScope: Scope): Seq[Scope] =
 	{
 		val scope = Scope.replaceThis(GlobalScope)(rawScope)
@@ -144,7 +144,7 @@ object Scope
 			val p = px.toOption getOrElse resolvedProj
 			val configProj = p match { case pr: ProjectRef => pr; case br: BuildRef => ProjectRef(br.build, rootProject(br.build)) }
 			val cLin = scope.config match { case Select(conf) => index.config(configProj, conf); case _ => withGlobalAxis(scope.config) }
-			val tLin = withGlobalAxis(scope.task)
+			val tLin = scope.task match { case t @ Select(task) => linearize(t)(taskInherit); case _ => withGlobalAxis(scope.task) }
 			val eLin = withGlobalAxis(scope.extra)
 			for(c <- cLin; t <- tLin; e <- eLin) yield Scope(px, c, t, e)
 		}
@@ -185,7 +185,6 @@ object Scope
 	{
 		val refDelegates = withRawBuilds(linearize(Select(ref), false)(projectInherit))
 		val configs = confs map { c => axisDelegates(configInherit, ref, c) }
-		val tasks = confs map { c => axisDelegates(configInherit, ref, c) }
 		new ProjectDelegates(ref, refDelegates, configs.toMap)
 	}
 	def axisDelegates[T](direct: (ResolvedReference, T) => Seq[T], ref: ResolvedReference, init: T): (T, Seq[ScopeAxis[T]]) =

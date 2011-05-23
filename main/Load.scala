@@ -52,7 +52,7 @@ object Load
 			rootProject,
 			project => projectInherit(lb, project),
 			(project, config) => configInherit(lb, project, config, rootProject),
-			(project, task) => Nil,
+			task => task.extend,
 			(project, extra) => Nil
 		)
 	}
