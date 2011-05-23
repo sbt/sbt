@@ -214,7 +214,7 @@ trait ShowTypes
 				// don't show inherited to avoid dealing with cycles
 				concat(s.parents, t, " with ") + "\n{\n" + lines(s.declared, d) + "\n}"
 		}
-	implicit def showAnnotated(implicit as: Show[Annotation], t: Show[SimpleType]): Show[Annotated] = 
+	implicit def showAnnotated(implicit as: Show[Annotation], t: Show[Type]): Show[Annotated] = 
 		new Show[Annotated] { def show(a: Annotated) = spaced(a.annotations, as) + " " + t.show(a.baseType) }
 	implicit def showProjection(implicit t: Show[SimpleType]): Show[Projection] =
 		new Show[Projection] { def show(p: Projection) = t.show(p.prefix) + "#" + p.id }
