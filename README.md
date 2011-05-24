@@ -22,9 +22,9 @@ To build from source, get the latest stable version of sbt (above) and get the c
 The '-n' option is strictly only necessary when using msysgit on Windows.
 (This works around an issue with spaces in the 'master' branch by not checking the 'master' branch out initially.)
 
-The latest tag for 0.9.x is 0.9.7:
+The latest tag for 0.9.x is 0.9.8:
 
-	$ git checkout v0.9.7
+	$ git checkout v0.9.8
 
 Or, get the development branch for 0.9.x:
 
@@ -36,8 +36,8 @@ To build:
 
 Copy your stable ~/bin/sbt script to ~/bin/xsbt and change it to use the launcher at:
 
-	<xsbt>/target/sbt-launch-0.9.7.jar
+	<xsbt>/target/sbt-launch-0.9.8.jar
 
 If using the 0.9 development branch, the launcher is at:
 
-	<xsbt>/target/sbt-launch-0.9.8-SNAPSHOT.jar
+	<xsbt>/target/sbt-launch-0.9.9-SNAPSHOT.jar
