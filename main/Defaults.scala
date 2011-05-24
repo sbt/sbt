@@ -4,7 +4,7 @@
 package sbt
 
 	import Build.data
-	import Scope.{GlobalScope, ThisScope}
+	import Scope.{fillTaskAxis, GlobalScope, ThisScope}
 	import compiler.Discovery
 	import Project.{inConfig, Initialize, inScope, inTask, ScopedKey, Setting, SettingsDefinition}
 	import Configurations.{Compile, CompilerPlugin, IntegrationTest, Runtime, Test}
@@ -362,8 +362,8 @@ object Defaults extends BuildCommon
 			}
 		}
 
-	def runnerSetting =
-		runner <<= (scalaInstance, baseDirectory, javaOptions, outputStrategy, fork, javaHome, trapExit) { (si, base, options, strategy, forkRun, javaHomeDir, trap) =>
+	def runnerSetting = runner <<= runnerInit
+	def runnerInit: Initialize[ScalaRun] = (scalaInstance, baseDirectory, javaOptions, outputStrategy, fork, javaHome, trapExit) { (si, base, options, strategy, forkRun, javaHomeDir, trap) =>
 			if(forkRun) {
 				new ForkRun( ForkOptions(scalaJars = si.jars, javaHome = javaHomeDir, outputStrategy = strategy,
 					runJVMOptions = options, workingDirectory = Some(base)) )
@@ -884,6 +884,24 @@ trait BuildExtra extends BuildCommon
 		(fullClasspath in config, runner in (config, run), streams) map { (cp, r, s) =>
 			toError(r.run(mainClass, data(cp), arguments, s.log))
 		}
+	
+	def fullRunInputTask(scoped: ScopedInput[Unit], config: Configuration, mainClass: String, baseArguments: String*): Setting[InputTask[Unit]] =
+		scoped <<= inputTask { result =>
+			( inScoped(scoped.scoped, runnerInit) zipWith (fullClasspath in config, streams, result).identityMap) { (r, t) =>
+				t map { case (cp, s, args) =>
+					toError(r.run(mainClass, data(cp), baseArguments ++ args, s.log))
+				}
+			}
+		}
+	def fullRunTask(scoped: ScopedTask[Unit], config: Configuration, mainClass: String, arguments: String*): Setting[Task[Unit]] =
+		scoped <<= ( inScoped(scoped.scoped, runnerInit) zipWith (fullClasspath in config, streams).identityMap ) { case (r, t) =>
+			t map { case (cp, s) =>
+				toError(r.run(mainClass, data(cp), arguments, s.log))
+			}
+		}
+	private[this] def inScoped[T](sk: ScopedKey[_], i: Initialize[T]): Initialize[T]  =  inScope(fillTaskAxis(sk.scope, sk.key), i)
+	private[this] def inScope[T](s: Scope, i: Initialize[T]): Initialize[T]  =  i mapReferenced Project.mapScope(Scope.replaceThis(s))
+		
 }
 trait BuildCommon
 {
