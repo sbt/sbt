@@ -227,8 +227,8 @@ object Defaults extends BuildCommon
 			frameworks.flatMap(f => f.create(loader, s.log).map( x => (f,x)).toIterable).toMap
 		},
 		definedTests <<= TaskData.writeRelated(detectTests)(_.map(_.name).distinct) triggeredBy compile,
-		testListeners :== Nil,
-		testOptions :== Nil,
+		testListeners in GlobalScope :== Nil,
+		testOptions in GlobalScope :== Nil,
 		executeTests <<= (streams in test, loadedTestFrameworks, parallelExecution in test, testOptions in test, testLoader, definedTests) flatMap {
 			(s, frameworkMap, par, options, loader, discovered) => Tests(frameworkMap, loader, discovered, options, par, s.log)
 		},
