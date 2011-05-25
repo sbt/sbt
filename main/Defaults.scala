@@ -444,11 +444,20 @@ object Defaults extends BuildCommon
 	def testOnlyParser: (State, Seq[String]) => Parser[(Seq[String],Seq[String])] =
 	{ (state, tests) =>
 			import DefaultParsers._
-		def distinctParser(exs: Set[String]): Parser[Seq[String]] =
-			(token(Space) ~> token((NotSpace - "--") examples exs) ).flatMap(ex => distinctParser(exs - ex).map(ex +: _)) ?? Nil
-		val selectTests = distinctParser(tests.toSet) // todo: proper IDs
+		val selectTests = distinctParser(tests.toSet)
 		val options = (token(Space) ~> token("--") ~> spaceDelimited("<option>")) ?? Nil
 		selectTests ~ options
+	}
+
+	def distinctParser(exs: Set[String]): Parser[Seq[String]] =
+	{
+			import DefaultParsers._
+		val base = token(Space) ~> token(NotSpace - "--" examples exs)
+		val recurse = base flatMap { ex =>
+			val (matching, notMatching) = exs.partition( GlobFilter(ex).accept _ )
+			distinctParser(notMatching).map(matching.toSeq ++ _)
+		}
+		recurse ?? Nil
 	}
 
 	def inAllDependencies[T](base: ProjectRef, key: ScopedSetting[T], structure: Load.BuildStructure): Seq[T] =
