@@ -69,11 +69,13 @@ final case class Extracted(structure: BuildStructure, session: SessionSettings, 
 		val scope = if(key.scope.project == This) key.scope.copy(project = Select(currentRef)) else key.scope
 		getOrError(scope, key.key)
 	}
-	def runTask[T](key: ScopedTask[T], state: State): T =
+	def evalTask[T](key: ScopedTask[T], state: State): T =
 	{
 			import EvaluateTask._
+		val extracted = Project.extract(state)
+		val rkey = Project.mapScope(Scope.resolveScope(GlobalScope, extracted.currentRef.build, rootProject) )( key )
 		val value: Option[Result[T]] = evaluateTask(structure, key.task.scoped, state, currentRef)
-		val result = getOrError(key.scope, key.key, value)
+		val result = getOrError(rkey.scope, rkey.key, value)
 		processResult(result, ConsoleLogger())
 	}
 	private def getOrError[T](scope: Scope, key: AttributeKey[_], value: Option[T]): T =
