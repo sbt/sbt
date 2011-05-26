@@ -1,2 +1,3 @@
-> update
-> check
+> check-binaries
+> show update-classifiers
+> check-sources

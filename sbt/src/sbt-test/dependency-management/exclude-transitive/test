@@ -1,10 +1,11 @@
 # load the project definition with transitive dependencies enabled
 # and check that they are not downloaded
-$ pause
+#$ pause
 $ touch transitive
-$ pause
+
+#$ pause
 > reload
-$ pause
+#$ pause
 
 > check-transitive
 -> check-intransitive
