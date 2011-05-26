@@ -23,7 +23,7 @@ final class CompilerArguments(scalaInstance: ScalaInstance, cp: ClasspathOptions
 		options ++ outputOption ++ bootClasspathOption ++ classpathOption ++ abs(sources)
 	}
 	def finishClasspath(classpath: Seq[File]): Seq[File] =
-		classpath ++ include(cp.compiler, scalaInstance.compilerJar) ++ include(cp.extra, scalaInstance.extraJars : _*)
+		filterLibrary(classpath) ++ include(cp.compiler, scalaInstance.compilerJar) ++ include(cp.extra, scalaInstance.extraJars : _*)
 	private def include(flag: Boolean, jars: File*) = if(flag) jars else Nil
 	protected def abs(files: Seq[File]) = files.map(_.getAbsolutePath).sortWith(_ < _)
 	protected def checkScalaHomeUnset()
@@ -43,6 +43,8 @@ final class CompilerArguments(scalaInstance: ScalaInstance, cp: ClasspathOptions
 		else
 			originalBoot
 	}
+	def filterLibrary(classpath: Seq[File]) =
+		if(cp.filterLibrary) classpath.filterNot(_.getName contains ScalaArtifacts.LibraryID) else classpath
 	def bootClasspathOption = if(cp.autoBoot) Seq("-bootclasspath", createBootClasspath) else Nil
 	def bootClasspath = if(cp.autoBoot) sbt.IO.pathSplit(createBootClasspath).map(new File(_)).toSeq else Nil
 }

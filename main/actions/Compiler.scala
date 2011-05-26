@@ -42,17 +42,14 @@ object Compiler
 			new IncSetup(analysisMap, cacheDirectory)
 		)
 
-	def compilers(implicit app: AppConfiguration, log: Logger): Compilers =
+	def compilers(cpOptions: ClasspathOptions)(implicit app: AppConfiguration, log: Logger): Compilers =
 	{
 		val scalaProvider = app.provider.scalaProvider
-		compilers(ScalaInstance(scalaProvider.version, scalaProvider.launcher))
+		compilers(ScalaInstance(scalaProvider.version, scalaProvider.launcher), cpOptions)
 	}
 
-	def compilers(instance: ScalaInstance)(implicit app: AppConfiguration, log: Logger): Compilers =
-		compilers(instance, ClasspathOptions.auto, None)
-
-	def compilers(instance: ScalaInstance, javac: (Seq[String], Logger) => Int)(implicit app: AppConfiguration, log: Logger): Compilers =
-		compilers(instance, ClasspathOptions.auto, javac)
+	def compilers(instance: ScalaInstance, cpOptions: ClasspathOptions)(implicit app: AppConfiguration, log: Logger): Compilers =
+		compilers(instance, cpOptions, None)
 
 	def compilers(instance: ScalaInstance, cpOptions: ClasspathOptions, javaHome: Option[File])(implicit app: AppConfiguration, log: Logger): Compilers =
 	{

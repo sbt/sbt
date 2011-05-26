@@ -115,7 +115,7 @@ object Keys
 
 	val clean = TaskKey[Unit]("clean", "Deletes files produced by the build, such as generated sources, compiled classes, and task caches.")
 	val console = TaskKey[Unit]("console", "Starts the Scala interpreter with the project classes on the classpath.")
-	val consoleQuick = TaskKey[Unit]("console-quick", "Starts the Scala interpreter with the project dependencies on the classpath.")
+	val consoleQuick = TaskKey[Unit]("console-quick", "Starts the Scala interpreter with the project dependencies on the classpath.", console)
 	val consoleProject = TaskKey[Unit]("console-project", "Starts the Scala interpreter with the sbt and the build definition on the classpath and useful imports.")
 	val compile = TaskKey[Analysis]("compile", "Compiles sources.")
 	val compilers = TaskKey[Compiler.Compilers]("compilers", "Defines the Scala and Java compilers to use for compilation.")
@@ -245,6 +245,7 @@ object Keys
 	val packagedArtifact = TaskKey[(Artifact, File)]("packaged-artifact", "Generates a packaged artifact, returning the Artifact and the produced File.")
 	val checksums = SettingKey[Seq[String]]("checksums", "The list of checksums to generate and to verify for dependencies.")
 
+	val autoScalaLibrary = SettingKey[Boolean]("auto-scala-library", "Adds a dependency on scala-library if true.")
 	val sbtResolver = SettingKey[Resolver]("sbt-resolver", "Provides a resolver for obtaining sbt as a dependency.")
 	val sbtDependency = SettingKey[ModuleID]("sbt-dependency", "Provides a definition for declaring the current version of sbt.")
 	val sbtVersion = SettingKey[String]("sbt-version", "Provides the version of sbt.  This setting should be not be modified.")

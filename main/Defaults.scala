@@ -47,13 +47,13 @@ object Defaults extends BuildCommon
 		sbtVersion in GlobalScope <<= appConfiguration { _.provider.id.version },
 		pollInterval :== 500,
 		logBuffered :== false,
+		autoScalaLibrary :== true,
 		trapExit :== false,
 		trapExit in run :== true,
 		logBuffered in testOnly :== true,
 		logBuffered in test :== true,
 		traceLevel in console :== Int.MaxValue,
 		traceLevel in consoleProject :== Int.MaxValue,
-		traceLevel in consoleQuick :== Int.MaxValue,
 		autoCompilerPlugins :== true,
 		internalConfigurationMap :== Configurations.internalMap _,
 		initialize :== (),
@@ -137,10 +137,11 @@ object Defaults extends BuildCommon
 		}
 	)
 
-	def compileBase = Seq(
-		classpathOptions in GlobalScope :== ClasspathOptions.auto,
+	def compileBase = inTask(console)(compilersSetting :: Nil) ++ Seq(
+		classpathOptions in GlobalScope :== ClasspathOptions.boot,
+		classpathOptions in GlobalScope in console :== ClasspathOptions.repl,
 		compileOrder in GlobalScope :== CompileOrder.Mixed,
-		compilers <<= (scalaInstance, appConfiguration, streams, classpathOptions, javaHome) map { (si, app, s, co, jh) => Compiler.compilers(si, co, jh)(app, s.log) },
+		compilersSetting,
 		javacOptions in GlobalScope :== Nil,
 		scalacOptions in GlobalScope :== Nil,
 		scalaInstance <<= scalaInstanceSetting,
@@ -149,6 +150,7 @@ object Defaults extends BuildCommon
 		crossTarget <<= (target, scalaInstance, crossPaths)( (t,si,cross) => if(cross) t / ("scala-" + si.actualVersion) else t ),
 		cacheDirectory <<= crossTarget / "cache"
 	)
+	def compilersSetting = compilers <<= (scalaInstance, appConfiguration, streams, classpathOptions, javaHome) map { (si, app, s, co, jh) => Compiler.compilers(si, co, jh)(app, s.log) }
 
 	lazy val configTasks = Seq(
 		initialCommands in GlobalScope :== "",
@@ -388,7 +390,7 @@ object Defaults extends BuildCommon
 	def consoleProjectTask = (state, streams, initialCommands in consoleProject) map { (state, s, extra) => ConsoleProject(state, extra)(s.log); println() }
 	def consoleTask: Initialize[Task[Unit]] = consoleTask(fullClasspath, console)
 	def consoleQuickTask = consoleTask(externalDependencyClasspath, consoleQuick)
-	def consoleTask(classpath: TaskKey[Classpath], task: TaskKey[_]): Initialize[Task[Unit]] = (compilers, classpath, scalacOptions in task, initialCommands in task, streams) map {
+	def consoleTask(classpath: TaskKey[Classpath], task: TaskKey[_]): Initialize[Task[Unit]] = (compilers in task, classpath, scalacOptions in task, initialCommands in task, streams) map {
 		(cs, cp, options, initCommands, s) =>
 			(new Console(cs.scalac))(data(cp), options, initCommands, s.log).foreach(msg => error(msg))
 			println()
@@ -568,6 +570,7 @@ object Classpaths
 		projectResolver <<= projectResolverTask,
 		projectDependencies <<= projectDependenciesTask,
 		libraryDependencies in GlobalScope :== Nil,
+		libraryDependencies <++= (autoScalaLibrary, scalaVersion) { (auto, sv) => if(auto) ScalaArtifacts.libraryDependency(sv) :: Nil else Nil},
 		allDependencies <<= (projectDependencies,libraryDependencies,sbtPlugin,sbtDependency) map { (projDeps, libDeps, isPlugin, sbtDep) =>
 			val base = projDeps ++ libDeps
 			if(isPlugin) sbtDep +: base else base

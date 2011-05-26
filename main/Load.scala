@@ -31,7 +31,7 @@ object Load
 		val base = baseDirectory.getCanonicalFile
 		val loader = getClass.getClassLoader
 		val classpath = provider.mainClasspath ++ scalaProvider.jars
-		val compilers = Compiler.compilers(state.configuration, log)
+		val compilers = Compiler.compilers(ClasspathOptions.boot)(state.configuration, log)
 		val evalPluginDef = EvaluateTask.evalPluginDef(log) _
 		val delegates = defaultDelegates
 		val inject: Seq[Project.Setting[_]] = ((appConfiguration in GlobalScope) :== state.configuration) +: EvaluateTask.injectSettings
