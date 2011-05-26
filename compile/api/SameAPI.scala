@@ -309,10 +309,10 @@ class SameAPI(tagsA: TypeVars, tagsB: TypeVars, includePrivate: Boolean, include
 	def sameTypeDirect(a: Type, b: Type): Boolean =
 		(a, b) match
 		{
-			case (sa: SimpleType, sb: SimpleType) => debug(sameSimpleType(sa, sb), "Different simple types: " + DefaultShowAPI(sa) + " and " + DefaultShowAPI(sb))
+			case (sa: SimpleType, sb: SimpleType) => debug(sameSimpleTypeDirect(sa, sb), "Different simple types: " + DefaultShowAPI(sa) + " and " + DefaultShowAPI(sb))
 			case (ca: Constant, cb: Constant) => debug(sameConstantType(ca, cb), "Different constant types: " + DefaultShowAPI(ca) + " and " + DefaultShowAPI(cb))
 			case (aa: Annotated, ab: Annotated) => debug(sameAnnotatedType(aa, ab), "Different annotated types")
-			case (sa: Structure, sb: Structure) => debug(sameStructure(sa, sb), "Different structure type")
+			case (sa: Structure, sb: Structure) => debug(sameStructureDirect(sa, sb), "Different structure type")
 			case (ea: Existential, eb: Existential) => debug(sameExistentialType(ea, eb), "Different existential type")
 			case (pa: Polymorphic, pb: Polymorphic) => debug(samePolymorphicType(pa, pb), "Different polymorphic type")
 			case _ => differentCategory("type", a, b)
@@ -332,18 +332,23 @@ class SameAPI(tagsA: TypeVars, tagsB: TypeVars, includePrivate: Boolean, include
 		sameAnnotations(a.annotations, b.annotations)
 	def sameStructure(a: Structure, b: Structure): Boolean =
 		samePending(a,b)(sameStructureDirect)
+
 	private[this] def samePending[T](a: T, b: T)(f: (T,T) => Boolean): Boolean =
 		if(pending add ((a,b)) ) f(a,b) else true
 
 	def sameStructureDirect(a: Structure, b: Structure): Boolean =
+	{
 		sameSeq(a.parents, b.parents)(sameType) &&
 		sameMembers(a.declared, b.declared) &&
 		sameMembers(a.inherited, b.inherited)
+	}
 
 	def sameMembers(a: Seq[Definition], b: Seq[Definition]): Boolean =
 		sameDefinitions(a, b, false)
 
 	def sameSimpleType(a: SimpleType, b: SimpleType): Boolean =
+		samePending(a,b)(sameSimpleTypeDirect)
+	def sameSimpleTypeDirect(a: SimpleType, b: SimpleType): Boolean =
 		(a, b) match
 		{
 			case (pa: Projection, pb: Projection) => debug(sameProjection(pa, pb), "Different projection")
