@@ -4,29 +4,39 @@
 package sbt
 
 import Types._
+import scala.reflect.Manifest
 
 // T must be invariant to work properly.
 //  Because it is sealed and the only instances go through AttributeKey.apply,
 //  a single AttributeKey instance cannot conform to AttributeKey[T] for different Ts
 sealed trait AttributeKey[T] {
+	def manifest: Manifest[T]
 	def label: String
 	def description: Option[String]
 	def extend: Seq[AttributeKey[_]]
 	override final def toString = label
+	override final def hashCode = label.hashCode
+	override final def equals(o: Any) = (this eq o.asInstanceOf[AnyRef]) || (o match {
+		case a: AttributeKey[t] => a.label == this.label && a.manifest == this.manifest
+		case _ => false
+	})
 }
 object AttributeKey
 {
-	def apply[T](name: String): AttributeKey[T] = new AttributeKey[T] {
+	def apply[T](name: String)(implicit mf: Manifest[T]): AttributeKey[T] = new AttributeKey[T] {
+		def manifest = mf
 		def label = name
 		def description = None
 		def extend = Nil
 	}
-	def apply[T](name: String, description0: String): AttributeKey[T] = new AttributeKey[T] {
+	def apply[T](name: String, description0: String)(implicit mf: Manifest[T]): AttributeKey[T] = new AttributeKey[T] {
+		def manifest = mf
 		def label = name
 		def description = Some(description0)
 		def extend = Nil
 	}
-	def apply[T](name: String, description0: String, extend0: Seq[AttributeKey[_]]): AttributeKey[T] = new AttributeKey[T] {
+	def apply[T](name: String, description0: String, extend0: Seq[AttributeKey[_]])(implicit mf: Manifest[T]): AttributeKey[T] = new AttributeKey[T] {
+		def manifest = mf
 		def label = name
 		def description = Some(description0)
 		def extend = extend0

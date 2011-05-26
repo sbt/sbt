@@ -135,12 +135,12 @@ object Index
 	}
 	def stringToKeyMap(settings: Settings[Scope]): Map[String, AttributeKey[_]] =
 	{
-		val multiMap = settings.data.values.flatMap(_.keys).toList.distinct.groupBy(_.label)
-		val duplicates = multiMap collect { case (k, x1 :: x2 :: _) => k }
+		val multiMap = settings.data.values.flatMap(_.keys).toSet[AttributeKey[_]].groupBy(_.label)
+		val duplicates = multiMap collect { case (k, xs) if xs.size > 1 => (k, xs.map(_.manifest)) } collect { case (k, xs) if xs.size > 1 => (k, xs) }
 		if(duplicates.isEmpty)
 			multiMap.collect { case (k, v) if validID(k) => (k, v.head) } toMap;
 		else
-			error(duplicates.mkString("AttributeKey ID collisions detected for '", "', '", "'"))
+			error(duplicates map { case (k, tps) => "'" + k + "' (" + tps.mkString(", ") + ")" } mkString("AttributeKey ID collisions detected for: ", ", ", ""))
 	}
 	private[this] type TriggerMap = collection.mutable.HashMap[Task[_], Seq[Task[_]]]
 	def triggers(ss: Settings[Scope]): Triggers[Task] =

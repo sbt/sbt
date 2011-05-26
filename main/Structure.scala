@@ -530,10 +530,10 @@ object Scoped
 
 object InputKey
 {
-	def apply[T](label: String, description: String = ""): InputKey[T] =
+	def apply[T: Manifest](label: String, description: String = ""): InputKey[T] =
 		apply( AttributeKey[InputTask[T]](label, description) )
 
-	def apply[T](label: String, description: String, extend1: Scoped, extendN: Scoped*): InputKey[T] =
+	def apply[T: Manifest](label: String, description: String, extend1: Scoped, extendN: Scoped*): InputKey[T] =
 		apply( AttributeKey[InputTask[T]](label, description, extendScoped(extend1, extendN)) )
 
 	def apply[T](akey: AttributeKey[InputTask[T]]): InputKey[T] =
@@ -541,10 +541,10 @@ object InputKey
 }
 object TaskKey
 {
-	def apply[T](label: String, description: String = ""): TaskKey[T] =
+	def apply[T: Manifest](label: String, description: String = ""): TaskKey[T] =
 		apply( AttributeKey[Task[T]](label, description) )
 
-	def apply[T](label: String, description: String, extend1: Scoped, extendN: Scoped*): TaskKey[T] =
+	def apply[T: Manifest](label: String, description: String, extend1: Scoped, extendN: Scoped*): TaskKey[T] =
 		apply( AttributeKey[Task[T]](label, description, extendScoped(extend1, extendN)) )
 
 	def apply[T](akey: AttributeKey[Task[T]]): TaskKey[T] =
@@ -552,10 +552,10 @@ object TaskKey
 }
 object SettingKey
 {
-	def apply[T](label: String, description: String = ""): SettingKey[T] =
+	def apply[T: Manifest](label: String, description: String = ""): SettingKey[T] =
 		apply( AttributeKey[T](label, description) )
 
-	def apply[T](label: String, description: String, extend1: Scoped, extendN: Scoped*): SettingKey[T] =
+	def apply[T: Manifest](label: String, description: String, extend1: Scoped, extendN: Scoped*): SettingKey[T] =
 		apply( AttributeKey[T](label, description, extendScoped(extend1, extendN)) )
 
 	def apply[T](akey: AttributeKey[T]): SettingKey[T] =

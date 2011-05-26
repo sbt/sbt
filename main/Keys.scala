@@ -267,7 +267,7 @@ object Keys
 	type Streams = std.Streams[ScopedKey[_]]
 	type TaskStreams = std.TaskStreams[ScopedKey[_]]
 
-	def dummy[T](name: String, description: String): (TaskKey[T], Task[T]) = (TaskKey[T](name, description), dummyTask(name))
+	def dummy[T: Manifest](name: String, description: String): (TaskKey[T], Task[T]) = (TaskKey[T](name, description), dummyTask(name))
 	def dummyTask[T](name: String): Task[T] =
 	{
 		val base: Task[T] = task( error("Dummy task '" + name + "' did not get converted to a full task.") ) named name
