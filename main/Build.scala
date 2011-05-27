@@ -16,7 +16,8 @@ package sbt
 // name is more like BuildDefinition, but that is too long
 trait Build
 {
-	def projects: Seq[Project]
+	def projectDefinitions(baseDirectory: File): Seq[Project] = projects
+	def projects: Seq[Project] = ReflectUtilities.allVals[Project](this).values.toSeq
 	def settings: Seq[Setting[_]] = Defaults.buildCore
 	def buildResolvers: Seq[BuildLoader.BuildResolver] = Nil
 }
@@ -27,8 +28,7 @@ trait Plugin
 
 object Build
 {
-	def default(base: File): Build = new Build { def projects = defaultProject("default", base) :: Nil }
-	def defaultProject(id: String, base: File): Project = Project(id, base)
+	val default: Build = new Build { override def projectDefinitions(base: File) = Project("default", base) :: Nil }
 
 	def data[T](in: Seq[Attributed[T]]): Seq[T] = in.map(_.data)
 	def analyzed(in: Seq[Attributed[_]]): Seq[inc.Analysis] = in.flatMap{ _.metadata.get(Keys.analysis) }

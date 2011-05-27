@@ -291,7 +291,7 @@ object Load
 		//  Therefore, we use resolveProjectBuild instead of resolveProjectRef.  After all builds are loaded, we can fully resolve ProjectReferences.
 		val resolveBuild = (_: Project).resolveBuild(ref => Scope.resolveProjectBuild(unit.uri, ref))
 		val resolve = resolveBuild compose resolveBase(unit.localBase)
-		unit.definitions.builds.flatMap(_.projects map resolve)
+		unit.definitions.builds.flatMap(_.projectDefinitions(unit.localBase) map resolve)
 	}
 	def getRootProject(map: Map[URI, BuildUnitBase]): URI => String =
 		uri => getBuild(map, uri).rootProjects.headOption getOrElse emptyBuild(uri)
@@ -322,7 +322,7 @@ object Load
 		IO.createDirectory(target)
 		val loadedDefs =
 			if(defs.isEmpty)
-				new LoadedDefinitions(defDir, target, plugs.loader, Build.default(normBase) :: Nil, Nil)
+				new LoadedDefinitions(defDir, target, plugs.loader, Build.default :: Nil, Nil)
 			else
 				definitions(defDir, target, defs, plugs, config.compilers, config.log, normBase)
 
@@ -354,7 +354,7 @@ object Load
 		val target = inputs.config.classesDirectory
 		val definitionLoader = ClasspathUtilities.toLoader(target :: Nil, plugins.loader)
 		val defNames = findDefinitions(defAnalysis)
-		val defs = if(defNames.isEmpty) Build.default(buildBase) :: Nil else loadDefinitions(definitionLoader, defNames)
+		val defs = if(defNames.isEmpty) Build.default :: Nil else loadDefinitions(definitionLoader, defNames)
 		new LoadedDefinitions(base, target, definitionLoader, defs, defNames)
 	}
 
