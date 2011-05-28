@@ -3,7 +3,6 @@
 
 object B extends Build
 {
-	lazy val projects = Seq(root)
 	lazy val root =
 		Project("root", file("."))
 			.configs( IntegrationTest )

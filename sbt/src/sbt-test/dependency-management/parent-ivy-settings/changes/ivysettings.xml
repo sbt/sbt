@@ -1,7 +1,9 @@
 <ivysettings>
-	<settings defaultResolver="lag"/>
+	<settings defaultResolver="chain"/>
 	<caches defaultCacheDir="${ivy.settings.dir}/target/cache"/>
 	<resolvers>
-		<ibiblio name="lag" m2compatible="true" root="http://www.lag.net/repo/"/>
+	  <chain name="chain" returnFirst="true">
+		<ibiblio name="scala-tools-releases" m2compatible="true" root="http://scala-tools.org/repo-releases/"/>
+	  </chain>
 	</resolvers>
 </ivysettings> 

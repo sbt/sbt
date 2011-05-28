@@ -1,1 +1,1 @@
-TaskKey("sample2") := ()
+TaskKey[Unit]("sample2") := ()

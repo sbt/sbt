@@ -4,7 +4,6 @@ import Configurations.{Compile, Test}
 
 object Flat extends Build
 {
-	lazy val projects = Seq(root)
 	lazy val root = Project("root", file("."),
 		settings = Defaults.defaultSettings ++ forConfig(Compile, "src") ++ forConfig(Test, "test-src") ++ baseSettings
 	)

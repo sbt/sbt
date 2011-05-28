@@ -11,7 +11,6 @@ object B extends Build
 	val sample = SettingKey[Int]("sample")
 	val check = TaskKey[Unit]("check")
 	
-	lazy val projects = Seq(root, sub)
 	lazy val root = Project("root", file("."), settings = Nil)
 	lazy val sub = Project("sub", file("."), delegates = root :: Nil, configurations = newConfig :: Nil, settings = incSample :: checkTask(4) :: Nil)
 	override lazy val settings =

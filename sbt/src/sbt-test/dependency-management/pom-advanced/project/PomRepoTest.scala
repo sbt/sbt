@@ -4,10 +4,9 @@
 
 object PomRepoTest extends Build
 {
-	lazy val projects = Seq(root)
 	lazy val root = Project("root", file(".")) settings(
 		resolvers ++= Seq(local, ScalaToolsSnapshots),
-		InputKey("check-pom") <<= InputTask(_ => spaceDelimited("<args>")) { result => (makePom, result, streams) map checkPomRepositories },
+		InputKey[Unit]("check-pom") <<= InputTask(_ => spaceDelimited("<args>")) { result => (makePom, result, streams) map checkPomRepositories },
 		makePomConfiguration <<= (makePomConfiguration, baseDirectory) { (conf, base) =>
 			conf.copy(filterRepositories = pomIncludeRepository(base, conf.filterRepositories) )
 		},

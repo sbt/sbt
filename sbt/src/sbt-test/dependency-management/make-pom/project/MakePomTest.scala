@@ -4,11 +4,10 @@
 
 object MakePomTest extends Build
 {
-	lazy val projects = Seq(root)
 	lazy val root = Project("root", file(".")) settings(
 		readPom <<= makePom map XML.loadFile,
-		TaskKey("check-pom") <<= checkPom,
-		TaskKey("check-extra") <<= checkExtra,
+		TaskKey[Unit]("check-pom") <<= checkPom,
+		TaskKey[Unit]("check-extra") <<= checkExtra,
 		makePomConfiguration ~= { _.copy(extra = <extra-tag/>) }
 	)
 
@@ -30,7 +29,7 @@ object MakePomTest extends Build
 	lazy val checkExtra = readPom map { pomXML =>
 		checkProject(pomXML)
 		val extra =  pomXML \ extraTagName
-		if(extra.isEmpty) error("'" + extraTagName + "' not found in generated pom.xml.")
+		if(extra.isEmpty) error("'" + extraTagName + "' not found in generated pom.xml.") else ()
 	}
 	
 	lazy val checkPom = (readPom, fullResolvers) map { (pomXML, ivyRepositories) =>
@@ -44,6 +43,8 @@ object MakePomTest extends Build
 			
 			if( writtenRepositories != mavenStyleRepositories )
 				error("Written repositories did not match declared repositories.\n\t" + explain)
+			else
+				()
 		}
 	}
 	

@@ -6,7 +6,6 @@ object B extends Build
 {
 	val check = InputKey[Unit]("check-max-errors")
 
-	lazy val projects = Seq(root, sub)
 	lazy val root = Project("root", file("."))
 	lazy val sub = Project("sub", file(".")) delegateTo(root) settings(check <<= checkTask)
 

@@ -3,7 +3,7 @@ import Keys.name
 
 object TestBuild extends Build
 {
-	lazy val projects = Seq(
+	override def projects = Seq(
 		proj("a", "."),
 		proj("b", "b")
 	)

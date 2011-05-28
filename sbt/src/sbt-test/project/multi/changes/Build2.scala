@@ -3,11 +3,11 @@ import Keys.name
 
 object TestBuild extends MakeBuild
 {
-	lazy val projects = Seq( proj("a", ".") )
+	lazy val a = proj("a", ".")
 }
 object SecondBuild extends MakeBuild
 {
-	lazy val projects = Seq( proj("b", "b") )
+	lazy val b = proj("b", "b")
 }
 trait MakeBuild extends Build
 {

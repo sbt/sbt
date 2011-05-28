@@ -3,7 +3,6 @@
 
 object ArtifactTest extends Build
 {
-	lazy val projects = Seq(root)
 	lazy val root = Project("root", file(".")) settings(
 		ivyPaths <<= (baseDirectory, target)( (dir, t) => new IvyPaths(dir, Some(t / "ivy-cache"))),
 		publishTo := Some(Resolver.file("Test Publish Repo", file("test-repo"))),

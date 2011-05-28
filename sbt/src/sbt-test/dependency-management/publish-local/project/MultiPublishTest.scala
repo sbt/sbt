@@ -10,7 +10,6 @@ object MultiPublishTest extends Build
 		externalResolvers <<= baseDirectory { base => Resolver.file("local", base / "ivy" / "local" asFile)(Resolver.ivyStylePatterns) :: Nil }
 	)
 
-	lazy val projects = Seq(root)
 	lazy val root = Project("root", file(".")) settings( mavenStyle, name = "Publish Test" )
 
 	lazy val sub = Project("sub", file("sub")) settings( mavenStyle, name = "Sub Project" )

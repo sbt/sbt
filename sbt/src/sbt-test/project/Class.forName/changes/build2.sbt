@@ -1,3 +1,3 @@
 crossPaths :== false
 
-TaskKey("use-jar") := { injar.Test.other; () }
+TaskKey[Unit]("use-jar") := { injar.Test.other; () }

@@ -3,7 +3,6 @@
 
 object ExcludeScala extends Build
 {
-	lazy val projects = Seq(root)
 	lazy val root = Project("root", file(".")) settings(
 		libraryDependencies <++= baseDirectory(dependencies),
 		scalaVersion := "2.8.1",
