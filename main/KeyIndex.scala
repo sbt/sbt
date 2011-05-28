@@ -6,7 +6,7 @@ package sbt
 	import java.net.URI
 	import Project.ScopedKey
 	import complete.DefaultParsers.validID
-	import Types.idFun
+	import Types.{idFun, some}
 
 object KeyIndex
 {
@@ -19,6 +19,7 @@ object KeyIndex
 		def configs(proj: Option[ResolvedReference]) = concat(_.configs(proj))
 		def tasks(proj: Option[ResolvedReference], conf: Option[String]) = concat(_.tasks(proj, conf))
 		def tasks(proj: Option[ResolvedReference], conf: Option[String], key: String) = concat(_.tasks(proj, conf, key))
+		def keys(proj: Option[ResolvedReference]) = concat(_.keys(proj))
 		def keys(proj: Option[ResolvedReference], conf: Option[String]) = concat(_.keys(proj, conf))
 		def keys(proj: Option[ResolvedReference], conf: Option[String], task: Option[AttributeKey[_]]) = concat(_.keys(proj, conf, task))
 		def concat[T](f: KeyIndex => Set[T]): Set[T] =
@@ -40,6 +41,7 @@ trait KeyIndex
 	def configs(proj: Option[ResolvedReference]): Set[String]
 	def tasks(proj: Option[ResolvedReference], conf: Option[String]): Set[AttributeKey[_]]
 	def tasks(proj: Option[ResolvedReference], conf: Option[String], key: String): Set[AttributeKey[_]]
+	def keys(proj: Option[ResolvedReference]): Set[String]
 	def keys(proj: Option[ResolvedReference], conf: Option[String]): Set[String]
 	def keys(proj: Option[ResolvedReference], conf: Option[String], task: Option[AttributeKey[_]]): Set[String]
 }
@@ -84,7 +86,8 @@ private final class KeyIndex0(val data: BuildIndex) extends ExtendableKeyIndex
 	def configs(project: Option[ResolvedReference]): Set[String] = confIndex(project).configs
 	def tasks(proj: Option[ResolvedReference], conf: Option[String]): Set[AttributeKey[_]] = keyIndex(proj, conf).tasks
 	def tasks(proj: Option[ResolvedReference], conf: Option[String], key: String): Set[AttributeKey[_]] = keyIndex(proj, conf).tasks(key)
-	def keys(project: Option[ResolvedReference], conf: Option[String]): Set[String] = keyIndex(project, conf).allKeys
+	def keys(proj: Option[ResolvedReference]): Set[String] = (Set.empty[String] /: optConfigs(proj)) { (s,c) => s ++ keys(proj, c) }
+	def keys(proj: Option[ResolvedReference], conf: Option[String]): Set[String] = keyIndex(proj, conf).allKeys
 	def keys(proj: Option[ResolvedReference], conf: Option[String], task: Option[AttributeKey[_]]): Set[String] = keyIndex(proj, conf).keys(task)
 
 	def keyIndex(proj: Option[ResolvedReference], conf: Option[String]): AKeyIndex =
@@ -101,6 +104,7 @@ private final class KeyIndex0(val data: BuildIndex) extends ExtendableKeyIndex
 			case Some(BuildRef(uri)) => (Some(uri), None)
 			case _ => (None, None)
 		}
+	private[this] def optConfigs(project: Option[ResolvedReference]): Seq[Option[String]] = None +: (configs(project).toSeq map some.fn)
 
 	def add(scoped: ScopedKey[_]): ExtendableKeyIndex =
 		if(validID(scoped.key.label)) add0(scoped) else this

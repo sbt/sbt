@@ -33,6 +33,7 @@ object CommandSupport
 	/** The prefix used to identify a request to execute the remaining input on source changes.*/
 	val ContinuousExecutePrefix = "~"
 	val HelpCommand = "help"
+	val TasksCommand = "tasks"
 	val ProjectCommand = "project"
 	val ProjectsCommand = "projects"
 
@@ -107,6 +108,15 @@ SetCommand + """ <setting-expression>
 	val TerminateAction: String = Exit
 
 	def continuousBriefHelp = (ContinuousExecutePrefix + " <action>", "Executes the specified command whenever source files change.")
+
+	def tasksPreamble = """
+This is a list of tasks defined for the current project.
+It does not list the scopes the tasks are defined in; use the 'inspect' command for that.
+Tasks produce values.  Use the 'show' command to run the task and print the resulting value.
+"""
+
+	def tasksBrief = "Displays the tasks defined for the current project."
+	def tasksDetailed = TasksCommand + "\n\t" + tasksBrief
 
 	def helpBrief = (HelpCommand + " command*", "Displays this help message or prints detailed help on requested commands.")
 	def helpDetailed = "If an argument is provided, this prints detailed help for that command.\nOtherwise, this prints a help summary."
