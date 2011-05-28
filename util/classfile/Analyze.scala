@@ -6,6 +6,7 @@ package classfile
 
 import scala.collection.mutable
 import mutable.{ArrayBuffer, Buffer}
+import scala.annotation.tailrec
 import java.io.File
 import java.lang.annotation.Annotation
 import java.lang.reflect.Method
@@ -15,7 +16,7 @@ private[sbt] object Analyze
 {
 	def apply[T](outputDirectory: File, sources: Seq[File], log: Logger)(analysis: xsbti.AnalysisCallback, loader: ClassLoader, readAPI: (File,Seq[Class[_]]) => Unit)(compile: => Unit)
 	{
-		val sourceMap = sources.groupBy(_.getName)
+		val sourceMap = sources.toSet[File].groupBy(_.getName)
 		val classesFinder = PathFinder(outputDirectory) ** "*.class"
 		val existingClasses = classesFinder.get
 
@@ -100,7 +101,7 @@ private[sbt] object Analyze
 	private final val ClassExt = ".class"
 	private def trimClassExt(name: String) = if(name.endsWith(ClassExt)) name.substring(0, name.length - ClassExt.length) else name
 	private def resolveClassFile(file: File, className: String): File = (file /: (className.replace('.','/') + ClassExt).split("/"))(new File(_, _))
-	private def guessSourcePath(sourceNameMap: Map[String, Iterable[File]], classFile: ClassFile, log: Logger) =
+	private def guessSourcePath(sourceNameMap: Map[String, Set[File]], classFile: ClassFile, log: Logger) =
 	{
 		val classNameParts = classFile.className.split("""\.""")
 		val pkg = classNameParts.init
@@ -116,9 +117,9 @@ private[sbt] object Analyze
 		candidates
 	}
 	private def findSource(sourceNameMap: Map[String, Iterable[File]], pkg: List[String], sourceFileName: String): List[File] =
-		refine( (sourceNameMap get sourceFileName).toList.flatten map { x => (x,x) }, pkg.reverse)
+		refine( (sourceNameMap get sourceFileName).toList.flatten.map { x => (x,x.getParentFile) }, pkg.reverse)
 	
-	private def refine(sources: List[(File, File)], pkgRev: List[String]): List[File] =
+	@tailrec private def refine(sources: List[(File, File)], pkgRev: List[String]): List[File] =
 	{
 		def make = sources.map(_._1)
 		if(sources.isEmpty || sources.tail.isEmpty)
