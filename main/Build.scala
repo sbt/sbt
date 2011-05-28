@@ -97,13 +97,17 @@ object EvaluateConfigurations
 		}
 		result.value.asInstanceOf[Project.SettingsDefinition].settings
 	}
-	private[this] def fstS(f: String => Boolean): ((String,Int)) => Boolean = { case (s,i) => f(s.trim) }
+	private[this] def isSpace = (c: Char) => Character isSpace c
+	private[this] def fstS(f: String => Boolean): ((String,Int)) => Boolean = { case (s,i) => f(s) }
+	private[this] def firstNonSpaceIs(lit: String) = (_: String).view.dropWhile(isSpace).startsWith(lit)
+	private[this] def or[A](a: A => Boolean, b: A => Boolean): A => Boolean = in => a(in) || b(in)
 	def splitExpressions(lines: Seq[String]): (Seq[(String,Int)], Seq[(String,Int)]) =
 	{
-		val blank = (_: String).isEmpty
-		val comment = (_: String).startsWith("//")
-		val blankOrComment = (s: String) => blank(s) || comment(s)
-		val importOrBlank = fstS(t => blankOrComment(t) || (t startsWith "import "))
+		val blank = (_: String).forall(isSpace)
+		val isImport = firstNonSpaceIs("import ")
+		val comment = firstNonSpaceIs("//")
+		val blankOrComment = or(blank, comment)
+		val importOrBlank = fstS(or(blankOrComment, isImport))
 
 		val (imports, settings) = lines.zipWithIndex span importOrBlank
 		(imports filterNot fstS( blankOrComment ), groupedLines(settings, blank, blankOrComment))
