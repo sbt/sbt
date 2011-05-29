@@ -19,6 +19,7 @@ object TestFrameworks
 	val ScalaCheck = new TestFramework("org.scalacheck.ScalaCheckFramework")
 	val ScalaTest = new TestFramework("org.scalatest.tools.ScalaTestFramework")
 	val Specs = new TestFramework("org.specs.runner.SpecsFramework")
+	val Specs2 = new TestFramework("org.specs2.runner.SpecsFramework")
 	val JUnit = new TestFramework("com.novocode.junit.JUnitFramework")
 	// These are compatibility frameworks included in the 'test-compat' library
 	val ScalaCheckCompat = new TestFramework("sbt.impl.ScalaCheckFramework")
