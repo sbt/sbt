@@ -9,6 +9,7 @@ object Flat extends Build
 	)
 
 	def baseSettings = Seq(
+		scalaVersion := "2.8.1",
 		libraryDependencies += "org.scala-tools.testing" %% "scalacheck" % "1.8" % "test",
 		sourceFilter := "*.java" | "*.scala"
 	)
