@@ -68,7 +68,7 @@ object Command
 		state => (simpleParser(simple)(state) /: arbs.map(_ parser state) ){ _ | _ }
 	}
 	private[this] def separateCommands(cmds: Seq[Command]): (Seq[SimpleCommand], Seq[ArbitraryCommand]) =
-		Collections.separate(cmds){ case s: SimpleCommand => Left(s); case a: ArbitraryCommand => Right(a) }
+		Util.separate(cmds){ case s: SimpleCommand => Left(s); case a: ArbitraryCommand => Right(a) }
 	private[this] def apply1[A,B,C](f: (A,B) => C, a: A): B => () => C =
 		b => () => f(a,b)
 

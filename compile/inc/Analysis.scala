@@ -6,6 +6,7 @@ package inc
 
 import xsbti.api.Source
 import java.io.File
+import sbt.Util.counted
 
 trait Analysis
 {
@@ -20,12 +21,28 @@ trait Analysis
 	def addSource(src: File, api: Source, stamp: Stamp, internalDeps: Iterable[File]): Analysis
 	def addBinaryDep(src: File, dep: File, className: String, stamp: Stamp): Analysis
 	def addExternalDep(src: File, dep: String, api: Source): Analysis
-	def addProduct(src: File, product: File, stamp: Stamp): Analysis 
+	def addProduct(src: File, product: File, stamp: Stamp): Analysis
+
+	override lazy val toString = Analysis.summary(this)
 }
 
 object Analysis
 {
 	lazy val Empty: Analysis = new MAnalysis(Stamps.empty, APIs.empty, Relations.empty)
+	def summary(a: Analysis): String =
+	{
+		val (j, s) = a.apis.allInternalSources.partition(_.getName.endsWith(".java"))
+		val c = a.stamps.allProducts
+		val ext = a.apis.allExternals
+		val jars = a.relations.allBinaryDeps.filter(_.getName.endsWith(".jar"))
+		val sections =
+			counted("Scala source", "", "s", s.size) ++
+			counted("Java source", "", "s", j.size) ++
+			counted("class", "", "es", c.size) ++
+			counted("external source dependenc", "y", "ies", ext.size) ++
+			counted("binary dependenc", "y", "ies", jars.size)
+		sections.mkString("Analysis: ", ", ", "")
+	}
 }
 private class MAnalysis(val stamps: Stamps, val apis: APIs, val relations: Relations) extends Analysis
 {
