@@ -5,7 +5,7 @@ package sbt.complete
 
 	import Parser._
 	import sbt.Types.{left, right, some}
-	import sbt.Collections.separate
+	import sbt.Util.separate
 
 sealed trait Parser[+T]
 {
