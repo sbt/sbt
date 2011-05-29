@@ -83,7 +83,7 @@ class AggressiveCompile(cacheDirectory: File)
 			case Some(previous) if equiv.equiv(previous, currentSetup) => previousAnalysis
 			case _ => Incremental.prune(sourcesSet, previousAnalysis)
 		}
-		IncrementalCompile(sourcesSet, entry, compile0, analysis, getAnalysis, outputDirectory)
+		IncrementalCompile(sourcesSet, entry, compile0, analysis, getAnalysis, outputDirectory, log)
 	}
 	private[this] def logInputs(log: Logger, javaCount: Int, scalaCount: Int)
 	{
