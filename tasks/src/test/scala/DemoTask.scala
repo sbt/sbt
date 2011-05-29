@@ -44,7 +44,7 @@ trait ForkTask[S, CC[_]]
 trait JoinTask[S, CC[_]]
 {
 	def join: Task[CC[S]]
-	def reduce(f: (S,S) => S): Task[S]
+	def reduced(f: (S,S) => S): Task[S]
 }
 object Task
 {
@@ -65,7 +65,7 @@ object Task
 		def join: Task[Seq[S]] = new Join(in, (s: Seq[S]) => Right(s) )
 		//def join[T](f: Iterable[S] => T): Task[Iterable[T]] = new MapAll( MList.fromTCList[Task](in), ml => f(ml.toList))
 		//def joinR[T](f: Iterable[Result[S]] => T): Task[Iterable[Result[T]]] = new Mapped( MList.fromTCList[Task](in), ml => f(ml.toList))
-		def reduce(f: (S,S) => S): Task[S] = Task.reduce(in.toIndexedSeq, f)
+		def reduced(f: (S,S) => S): Task[S] = Task.reduced(in.toIndexedSeq, f)
 	}
 	
 
@@ -148,7 +148,7 @@ object Task
 			case Inc(i) => throw i
 		}
 		
-	def reduce[S](i: IndexedSeq[Task[S]], f: (S, S) => S): Task[S] =
+	def reduced[S](i: IndexedSeq[Task[S]], f: (S, S) => S): Task[S] =
 		i match
 		{
 			case Seq() => error("Cannot reduce empty sequence") 
@@ -156,7 +156,7 @@ object Task
 			case Seq(x, y) => reducePair(x, y, f)
 			case z =>
 				val (a, b) = i.splitAt(i.size / 2)
-				reducePair( reduce(a, f), reduce(b, f), f )
+				reducePair( reduced(a, f), reduced(b, f), f )
 		}
 	def reducePair[S](a: Task[S], b: Task[S], f: (S, S) => S): Task[S] =
 		(a :^: b :^: KNil) mapH { case x :+: y :+: HNil => f(x,y) }

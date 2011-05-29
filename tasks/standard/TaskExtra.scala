@@ -45,7 +45,8 @@ sealed trait ForkTask[S, CC[_]]
 sealed trait JoinTask[S, CC[_]]
 {
 	def join: Task[CC[S]]
-	def reduce(f: (S,S) => S): Task[S]
+	// had to rename from 'reduce' for 2.9.0
+	def reduced(f: (S,S) => S): Task[S]
 }
 
 sealed trait BinaryPipe
@@ -97,7 +98,7 @@ trait TaskExtra
 	final implicit def joinAnyTasks(in: Seq[Task[_]]): JoinTask[Any, Seq] = joinTasks[Any](in map (x => x: Task[Any]))
 	final implicit def joinTasks[S](in: Seq[Task[S]]): JoinTask[S, Seq] = new JoinTask[S, Seq] {
 		def join: Task[Seq[S]] = new Join(in, (s: Seq[Result[S]]) => Right(TaskExtra.all(s)) )
-		def reduce(f: (S,S) => S): Task[S] = TaskExtra.reduce(in.toIndexedSeq, f)
+		def reduced(f: (S,S) => S): Task[S] = TaskExtra.reduced(in.toIndexedSeq, f)
 	}
 	
 		import TaskExtra.{allM, anyFailM, failM, successM}	
@@ -186,7 +187,7 @@ object TaskExtra extends TaskExtra
 		def transfer(id: String) = (in: InputStream) => BasicIO.transferFully(in, s.binary(id))
 		new ProcessIO(BasicIO.ignoreOut, transfer(s.outID), transfer(s.errorID))
 	}
-	def reduce[S](i: IndexedSeq[Task[S]], f: (S, S) => S): Task[S] =
+	def reduced[S](i: IndexedSeq[Task[S]], f: (S, S) => S): Task[S] =
 		i match
 		{
 			case Seq() => error("Cannot reduce empty sequence") 
@@ -194,7 +195,7 @@ object TaskExtra extends TaskExtra
 			case Seq(x, y) => reducePair(x, y, f)
 			case z =>
 				val (a, b) = i.splitAt(i.size / 2)
-				reducePair( reduce(a, f), reduce(b, f), f )
+				reducePair( reduced(a, f), reduced(b, f), f )
 		}
 	def reducePair[S](a: Task[S], b: Task[S], f: (S, S) => S): Task[S] =
 		(a :^: b :^: KNil) map { case x :+: y :+: HNil => f(x,y) }
