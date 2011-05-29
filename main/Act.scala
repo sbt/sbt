@@ -57,7 +57,7 @@ object Act
 		val confMap = confs map { conf => (conf, index.keys(proj, conf)) } toMap;
 		val allKeys = (Set.empty[String] /: confMap.values)(_ ++ _)
 		token(ID !!! "Expected key" examples allKeys).flatMap { keyString =>
-			val conf = confMap.flatMap { case (key, value) => if(value contains keyString) key :: Nil else Nil } headOption;
+			val conf = confs.flatMap { conf => if(confMap(conf) contains keyString) conf :: Nil else Nil } headOption;
 			getKey(keyMap, keyString, k => (k, conf flatMap idFun))
 		}
 	}
