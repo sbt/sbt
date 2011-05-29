@@ -1,0 +1,1 @@
+libraryDependencies += "com.joestelmach" % "natty" % "0.3"

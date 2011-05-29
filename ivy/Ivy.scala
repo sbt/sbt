@@ -18,7 +18,7 @@ import core.module.descriptor.{DefaultDependencyDescriptor, DefaultModuleDescrip
 import core.module.id.{ArtifactId,ModuleId, ModuleRevisionId}
 import core.resolve.IvyNode
 import core.settings.IvySettings
-import plugins.conflict.{ConflictManager, LatestConflictManager}
+import plugins.conflict.{ConflictManager, LatestCompatibleConflictManager, LatestConflictManager}
 import plugins.latest.LatestRevisionStrategy
 import plugins.matcher.PatternMatcher
 import plugins.parser.m2.PomModuleDescriptorParser
@@ -60,7 +60,6 @@ final class IvySbt(val configuration: IvyConfiguration)
 	{
 		val is = new IvySettings
 		is.setBaseDir(baseDirectory)
-		is.setDefaultConflictManager(IvySbt.latestNoForce(is))
 		configuration match
 		{
 			case e: ExternalIvyConfiguration => is.load(e.file)
@@ -441,36 +440,4 @@ private object IvySbt
 			case Some(confs) => confs.map(_.name).toList.toArray
 			case None => module.getPublicConfigurationsNames
 		}
-
-	// same as Ivy's builtin latest-revision manager except that it ignores the force setting,
-	//   which seems to be added to dependencies read from poms (perhaps only in certain circumstances)
-	//   causing revisions of indirect dependencies other than latest to be selected
-	def latestNoForce(settings: IvySettings): ConflictManager =
-	{
-			import collection.JavaConversions._
-
-		new LatestConflictManager("latest-revision-no-force", new LatestRevisionStrategy)
-		{
-			setSettings(settings)
-
-			override def resolveConflicts(parent: IvyNode, conflicts: Collection[_]): Collection[_] =
-				if(conflicts.size < 2)
-					conflicts
-				else
-					resolveMultiple(parent, conflicts.asInstanceOf[Collection[IvyNode]]).asInstanceOf[Collection[_]]
-
-			def resolveMultiple(parent: IvyNode, conflicts: Collection[IvyNode]): Collection[IvyNode] =
-			{
-				val matcher = settings.getVersionMatcher
-				val dynamic = conflicts.exists { node => matcher.isDynamic(node.getResolvedId) }
-				if(dynamic) null else {
-					try {
-						val l = getStrategy.findLatest(toArtifactInfo(conflicts), null).asInstanceOf[{def getNode(): IvyNode}]
-						if(l eq null) conflicts else singleton(l.getNode)
-					} 
-					catch { case e: LatestConflictManager.NoConflictResolvedYetException => null }
-				}
-			}
-		}
-	}
 }
