@@ -12,19 +12,18 @@ import java.io.File
 object Incremental
 {
 	def debug(s: => String) = if(java.lang.Boolean.getBoolean("xsbt.inc.debug")) println(s) else ()
-	def compile(sources: Set[File], entry: String => Option[File], previous: Analysis, current: ReadStamps, forEntry: File => Option[Analysis], doCompile: Set[File] => Analysis)(implicit equivS: Equiv[Stamp]): (Boolean, Analysis) =
+	def compile(sources: Set[File], entry: String => Option[File], previous: Analysis, current: ReadStamps, forEntry: File => Option[Analysis], doCompile: Set[File] => Analysis, log: Logger)(implicit equivS: Equiv[Stamp]): (Boolean, Analysis) =
 	{
 		val initialChanges = changedInitial(entry, sources, previous, current, forEntry)
-		debug("Initial changes: " + initialChanges)
-		val initialInv = invalidateInitial(previous.relations, initialChanges)
-		debug("Initially invalidated: " + initialInv)
-		val analysis = cycle(initialInv, previous, doCompile)
+		val initialInv = invalidateInitial(previous.relations, initialChanges, log)
+		log.debug("Initially invalidated: " + initialInv)
+		val analysis = cycle(initialInv, previous, doCompile, log)
 		(!initialInv.isEmpty, analysis)
 	}
 
 	// TODO: the Analysis for the last successful compilation should get returned + Boolean indicating success
 	// TODO: full external name changes, scopeInvalidations
-	def cycle(invalidated: Set[File], previous: Analysis, doCompile: Set[File] => Analysis): Analysis =
+	def cycle(invalidated: Set[File], previous: Analysis, doCompile: Set[File] => Analysis, log: Logger): Analysis =
 		if(invalidated.isEmpty)
 			previous
 		else
@@ -37,9 +36,9 @@ object Incremental
 			debug("********* Merged: \n" + merged.relations + "\n*********")
 			val incChanges = changedIncremental(invalidated, previous.apis.internalAPI _, merged.apis.internalAPI _)
 			debug("Changes:\n" + incChanges)
-			val incInv = invalidateIncremental(merged.relations, incChanges, invalidated)
-			debug("Incrementally invalidated: " + incInv)
-			cycle(incInv, merged, doCompile)
+			val incInv = invalidateIncremental(merged.relations, incChanges, invalidated, log)
+			log.debug("Incrementally invalidated: " + incInv)
+			cycle(incInv, merged, doCompile, log)
 		}
 	
 
@@ -84,9 +83,9 @@ object Incremental
 			val (changed, unmodified) = inBoth.partition(existingModified)
 		}
 
-	def invalidateIncremental(previous: Relations, changes: APIChanges[File], recompiledSources: Set[File]): Set[File] =
+	def invalidateIncremental(previous: Relations, changes: APIChanges[File], recompiledSources: Set[File], log: Logger): Set[File] =
 	{
-		val inv = invalidateTransitive(previous.usesInternalSrc _,  changes.modified )// ++ scopeInvalidations(previous.extAPI _, changes.modified, changes.names)
+		val inv = invalidateTransitive(previous.usesInternalSrc _,  changes.modified, log)// ++ scopeInvalidations(previous.extAPI _, changes.modified, changes.names)
 		if((inv -- recompiledSources).isEmpty) Set.empty else inv
 	}
 
@@ -96,26 +95,32 @@ object Incremental
 		(modified flatMap dependsOnSrc) -- modified
 
 	/** Invalidates transitive source dependencies including `modified`.  It excludes any sources that were recompiled during the previous run.*/
-	@tailrec def invalidateTransitive(dependsOnSrc: File => Set[File], modified: Set[File]): Set[File] =
+	@tailrec def invalidateTransitive(dependsOnSrc: File => Set[File], modified: Set[File], log: Logger): Set[File] =
 	{
 		val newInv = invalidateDirect(dependsOnSrc, modified)
-		debug("\tInvalidated direct: " + newInv)
-		if(newInv.isEmpty) modified else invalidateTransitive(dependsOnSrc, modified ++ newInv)
+		log.debug("\tInvalidated direct: " + newInv)
+		if(newInv.isEmpty) modified else invalidateTransitive(dependsOnSrc, modified ++ newInv, log)
 	}
 
 	/** Invalidates sources based on initially detected 'changes' to the sources, products, and dependencies.*/
-	def invalidateInitial(previous: Relations, changes: InitialChanges): Set[File] =
+	def invalidateInitial(previous: Relations, changes: InitialChanges, log: Logger): Set[File] =
 	{
 		val srcChanges = changes.internalSrc
-		debug("Initial source changes: \n\tremoved:" + srcChanges.removed + "\n\tadded: " + srcChanges.added + "\n\tmodified: " + srcChanges.changed)
 		val srcDirect = srcChanges.removed ++ srcChanges.removed.flatMap(previous.usesInternalSrc) ++ srcChanges.added ++ srcChanges.changed
-		debug("Initial source direct: " + srcDirect)
 		val byProduct = changes.removedProducts.flatMap(previous.produced)
-		debug("Initial by product: " + byProduct)
 		val byBinaryDep = changes.binaryDeps.flatMap(previous.usesBinary)
-		debug("Initial by binary dep: " + byBinaryDep)
 		val byExtSrcDep = changes.external.modified.flatMap(previous.usesExternal) // ++ scopeInvalidations
-		debug("Initial by binary dep: " + byExtSrcDep)
+		log.debug(
+			"\nInitial source changes: \n\tremoved:" + srcChanges.removed + "\n\tadded: " + srcChanges.added + "\n\tmodified: " + srcChanges.changed +
+			"\nRemoved products: " + changes.removedProducts +
+			"\nModified external sources: " + changes.external.modified +
+			"\nModified binary dependencies: " + changes.binaryDeps +
+			"\nInitial directly invalidated sources: " + srcDirect +
+			"\n\nSources indirectly invalidated by:" +
+			"\n\tproduct: " + byProduct +
+			"\n\tbinary dep: " + byBinaryDep +
+			"\n\texternal source: " + byExtSrcDep
+		)
 
 		srcDirect ++ byProduct ++ byBinaryDep ++ byExtSrcDep
 	}

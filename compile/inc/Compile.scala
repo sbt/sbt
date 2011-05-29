@@ -9,12 +9,12 @@ import java.io.File
 
 object IncrementalCompile
 {
-	def apply(sources: Set[File], entry: String => Option[File], compile: (Set[File], xsbti.AnalysisCallback) => Unit, previous: Analysis, forEntry: File => Option[Analysis], outputPath: File): (Boolean, Analysis) =
+	def apply(sources: Set[File], entry: String => Option[File], compile: (Set[File], xsbti.AnalysisCallback) => Unit, previous: Analysis, forEntry: File => Option[Analysis], outputPath: File, log: Logger): (Boolean, Analysis) =
 	{
 		val current = Stamps.initial(Stamp.exists, Stamp.hash, Stamp.lastModified)
 		val internalMap = (f: File) => previous.relations.produced(f).headOption
 		val externalAPI = getExternalAPI(entry, forEntry)
-		Incremental.compile(sources, entry, previous, current, forEntry, doCompile(compile, internalMap, externalAPI, current, outputPath))
+		Incremental.compile(sources, entry, previous, current, forEntry, doCompile(compile, internalMap, externalAPI, current, outputPath), log)
 	}
 	def doCompile(compile: (Set[File], xsbti.AnalysisCallback) => Unit, internalMap: File => Option[File], externalAPI: (File, String) => Option[Source], current: ReadStamps, outputPath: File) = (srcs: Set[File]) => {
 		val callback = new AnalysisCallback(internalMap, externalAPI, current, outputPath)
