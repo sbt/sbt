@@ -114,7 +114,7 @@ final class Eval(optionsNoncp: Seq[String], classpath: Seq[File], mkReporter: Se
 			Nil,
 			List(Nil),
 			TypeTree(),
-			Block(List(Apply(Select(Super(This(emptyTypeName), emptyTypeName), nme.CONSTRUCTOR), Nil)), Literal(Constant(())))
+			Block(List(Apply(Select(Super(emptyTypeName, emptyTypeName), nme.CONSTRUCTOR), Nil)), Literal(Constant(())))
 		)
 
 		def method = DefDef(NoMods, WrapValName, Nil, Nil, tpt, tree)
