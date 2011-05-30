@@ -262,11 +262,17 @@ object Defaults extends BuildCommon
 	InputTask( TaskData(definedTests)(testOnlyParser)(Nil) ) { result =>  
 		(streams, loadedTestFrameworks, parallelExecution in testOnly, testOptions in testOnly, testLoader, definedTests, result) flatMap {
 			case (s, frameworks, par, opts, loader, discovered, (tests, frameworkOptions)) =>
-				val modifiedOpts = Tests.Filter(if(tests.isEmpty) _ => true else tests.toSet ) +: Tests.Argument(frameworkOptions : _*) +: opts
+				val filter = selectedFilter(tests)
+				val modifiedOpts = Tests.Filter(filter) +: Tests.Argument(frameworkOptions : _*) +: opts
 				Tests(frameworks, loader, discovered, modifiedOpts, par, s.log) map { results =>
 					Tests.showResults(s.log, results)
 				}
 		}
+	}
+	def selectedFilter(args: Seq[String]): String => Boolean =
+	{
+		val filters = args map GlobFilter.apply
+		s => filters exists { _ accept s }
 	}
 	def detectTests: Initialize[Task[Seq[TestDefinition]]] = (loadedTestFrameworks, compile, streams) map { (frameworkMap, analysis, s) =>
 		Tests.discover(frameworkMap.values.toSeq, analysis, s.log)._1
@@ -446,18 +452,18 @@ object Defaults extends BuildCommon
 	def testOnlyParser: (State, Seq[String]) => Parser[(Seq[String],Seq[String])] =
 	{ (state, tests) =>
 			import DefaultParsers._
-		val selectTests = distinctParser(tests.toSet)
+		val selectTests = distinctParser(tests.toSet, true)
 		val options = (token(Space) ~> token("--") ~> spaceDelimited("<option>")) ?? Nil
 		selectTests ~ options
 	}
 
-	def distinctParser(exs: Set[String]): Parser[Seq[String]] =
+	def distinctParser(exs: Set[String], raw: Boolean): Parser[Seq[String]] =
 	{
 			import DefaultParsers._
 		val base = token(Space) ~> token(NotSpace - "--" examples exs)
 		val recurse = base flatMap { ex =>
 			val (matching, notMatching) = exs.partition( GlobFilter(ex).accept _ )
-			distinctParser(notMatching).map(matching.toSeq ++ _)
+			distinctParser(notMatching, raw) map { result => if(raw) ex +: result else matching.toSeq ++ result }
 		}
 		recurse ?? Nil
 	}
