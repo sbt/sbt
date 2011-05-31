@@ -61,7 +61,7 @@ private object IvyScala
 		{
 			val id = dep.getDependencyRevisionId
 			if(id.getOrganisation == Organization && id.getRevision != scalaVersion && dep.getModuleConfigurations.exists(configSet))
-				error("Different Scala version specified in dependency ("+ id.getRevision + ") than in project (" + scalaVersion + ").")
+				error("Version specified for dependency " + id + " differs from Scala version in project (" + scalaVersion + ").")
 		}
 	}
 	private def configurationSet(configurations: Iterable[Configuration]) = configurations.map(_.toString).toSet
