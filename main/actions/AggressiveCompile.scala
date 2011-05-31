@@ -57,7 +57,7 @@ class AggressiveCompile(cacheDirectory: File)
 			IO.createDirectory(outputDirectory)
 			val incSrc = sources.filter(include)
 			val (javaSrcs, scalaSrcs) = incSrc partition javaOnly
-			logInputs(log, javaSrcs.size, scalaSrcs.size)
+			logInputs(log, javaSrcs.size, scalaSrcs.size, outputDirectory)
 			def compileScala() =
 				if(!scalaSrcs.isEmpty)
 				{
@@ -85,13 +85,13 @@ class AggressiveCompile(cacheDirectory: File)
 		}
 		IncrementalCompile(sourcesSet, entry, compile0, analysis, getAnalysis, outputDirectory, log)
 	}
-	private[this] def logInputs(log: Logger, javaCount: Int, scalaCount: Int)
+	private[this] def logInputs(log: Logger, javaCount: Int, scalaCount: Int, out: File)
 	{
 		val scalaMsg = Util.counted("Scala source", "", "s", scalaCount)
 		val javaMsg = Util.counted("Java source", "", "s", javaCount)
 		val combined = scalaMsg ++ javaMsg
 		if(!combined.isEmpty)
-			log.info(combined.mkString("Compiling ", " and ", "..."))
+			log.info(combined.mkString("Compiling ", " and ", " to " + out.getAbsolutePath + "..."))
 	}
 	private def extract(previous: Option[(Analysis, CompileSetup)]): (Analysis, Option[CompileSetup]) =
 		previous match
