@@ -62,6 +62,7 @@ object Defaults extends BuildCommon
 		javaHome :== None,
 		version :== "0.1",
 		outputStrategy :== None,
+		exportJars := false,
 		fork :== false,
 		javaOptions :== Nil,
 		sbtPlugin :== false,
@@ -301,14 +302,17 @@ object Defaults extends BuildCommon
 
 	private type Mappings = Initialize[Task[Seq[(File, String)]]]
 	def concatMappings(as: Mappings, bs: Mappings) = (as zipWith bs)( (a,b) => (a :^: b :^: KNil) map { case a :+: b :+: HNil => a ++ b } )
-	def classMappings = (compileInputs, products) map { (in, _) => allSubpaths(in.config.classesDirectory) }
+	def classMappings = relativeMappings(products, productDirectories)
+
 	// drop base directories, since there are no valid mappings for these
 	def sourceMappings = (unmanagedSources, unmanagedSourceDirectories, baseDirectory) map { (srcs, sdirs, base) =>
 		 ( (srcs --- sdirs --- base) x (relativeTo(sdirs)|relativeTo(base)|flat)) toSeq
 	}
-	def resourceMappings = (unmanagedResources, unmanagedResourceDirectories) map { (rs, rdirs) =>
-		(rs --- rdirs) x (relativeTo(rdirs)|flat) toSeq
-	}
+	def resourceMappings = relativeMappings(unmanagedResources, unmanagedResourceDirectories)
+	def relativeMappings(files: ScopedTaskable[Seq[File]], dirs: ScopedTaskable[Seq[File]]): Initialize[Task[Seq[(File, String)]]] =
+		(files, dirs) map { (rs, rdirs) =>
+			(rs --- rdirs) x (relativeTo(rdirs)|flat) toSeq
+		}
 	
 	def collectFiles(dirs: ScopedTaskable[Seq[File]], filter: ScopedTaskable[FileFilter], excludes: ScopedTaskable[FileFilter]): Initialize[Task[Seq[File]]] =
 		(dirs, filter, excludes) map { (d,f,excl) => d.descendentsExcept(f,excl).get }
@@ -519,14 +523,16 @@ object Classpaths
 	lazy val configSettings: Seq[Setting[_]] = Seq(
 		externalDependencyClasspath <<= concat(unmanagedClasspath, managedClasspath),
 		dependencyClasspath <<= concat(internalDependencyClasspath, externalDependencyClasspath),
-		fullClasspath <<= concat(products, dependencyClasspath),
+		fullClasspath <<= concat(exportedProducts, dependencyClasspath),
 		internalDependencyClasspath <<= internalDependencies,
 		unmanagedClasspath <<= unmanagedDependencies,
 		products <<= makeProducts,
+		productDirectories <<= compileInputs map (_.config.classesDirectory :: Nil),
+		exportedProducts <<= exportProductsTask,
 		classpathConfiguration <<= (internalConfigurationMap, configuration)( _ apply _ ),
 		managedClasspath <<= (classpathConfiguration, classpathTypes, update) map managedJars,
 		unmanagedJars <<= (configuration, unmanagedBase, classpathFilter, defaultExcludes in unmanagedJars) map { (config, base, filter, excl) =>
-			(base * (filter -- excl) +++ (base / config.name).descendentsExcept(filter, excl)).get
+			(base * (filter -- excl) +++ (base / config.name).descendentsExcept(filter, excl)).classpath
 		}
 	)
 	def defaultPackageKeys = Seq(packageBin, packageSrc, packageDoc)
@@ -718,8 +724,12 @@ object Classpaths
 		}
 
 	def analyzed[T](data: T, analysis: inc.Analysis) = Attributed.blank(data).put(Keys.analysis, analysis)
-	def makeProducts: Initialize[Task[Classpath]] =
-		(compile, compileInputs, copyResources) map { (analysis, i, _) => analyzed(i.config.classesDirectory, analysis) :: Nil }
+	def makeProducts: Initialize[Task[Seq[File]]] = 
+		(compile, compileInputs, copyResources) map { (_, i, _) => i.config.classesDirectory :: Nil }
+	def exportProductsTask: Initialize[Task[Classpath]] =
+		(products.task, packageBin.task, exportJars, compile) flatMap { (psTask, pkgTask, useJars, analysis) =>
+			(if(useJars) Seq(pkgTask).join else psTask) map { _ map { f => analyzed(f, analysis) } }
+		}
 
 	def internalDependencies: Initialize[Task[Classpath]] =
 		(thisProjectRef, thisProject, configuration, settings) flatMap internalDependencies0
@@ -810,7 +820,7 @@ object Classpaths
 	def getConfiguration(ref: ProjectRef, dep: ResolvedProject, conf: String): Configuration =
 		dep.configurations.find(_.name == conf) getOrElse missingConfiguration(Project display ref, conf)
 	def productsTask(dep: ResolvedReference, conf: String, data: Settings[Scope]): Task[Classpath] =
-		getClasspath(products, dep, conf, data)
+		getClasspath(exportedProducts, dep, conf, data)
 	def unmanagedLibs(dep: ResolvedReference, conf: String, data: Settings[Scope]): Task[Classpath] =
 		getClasspath(unmanagedJars, dep, conf, data)
 	def getClasspath(key: TaskKey[Classpath], dep: ResolvedReference, conf: String, data: Settings[Scope]): Task[Classpath] =
@@ -822,7 +832,8 @@ object Classpaths
 	lazy val typesafeResolver = Resolver.url("typesafe-ivy-releases", new URL("http://repo.typesafe.com/typesafe/ivy-releases/"))(Resolver.ivyStylePatterns)
 
 		import DependencyFilter._
-	def managedJars(config: Configuration, jarTypes: Set[String], up: UpdateReport): Classpath = up.select( configuration = configurationFilter(config.name), artifact = artifactFilter(`type` = jarTypes) )
+	def managedJars(config: Configuration, jarTypes: Set[String], up: UpdateReport): Classpath =
+		up.select( configuration = configurationFilter(config.name), artifact = artifactFilter(`type` = jarTypes) ) classpath;
 
 	def autoPlugins(report: UpdateReport): Seq[String] =
 	{
@@ -927,9 +938,19 @@ trait BuildCommon
 
 	implicit def globFilter(expression: String): NameFilter = GlobFilter(expression)
 	implicit def richAttributed(s: Seq[Attributed[File]]): RichAttributed = new RichAttributed(s)
+	implicit def richFiles(s: Seq[File]): RichFiles = new RichFiles(s)
+	implicit def richPathFinder(s: PathFinder): RichPathFinder = new RichPathFinder(s)
+	final class RichPathFinder private[sbt](s: PathFinder)
+	{
+		def classpath: Classpath = Attributed blankSeq s.get
+	}
 	final class RichAttributed private[sbt](s: Seq[Attributed[File]])
 	{
 		def files: Seq[File] = Build data s
+	}
+	final class RichFiles private[sbt](s: Seq[File])
+	{
+		def classpath: Classpath = Attributed blankSeq s
 	}
 	def toError(o: Option[String]): Unit = o foreach error
 }

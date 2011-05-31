@@ -25,7 +25,7 @@ object IvyConsole
 			val depSettings: Seq[Project.Setting[_]] = Seq(
 				libraryDependencies ++= managed.reverse,
 				resolvers ++= repos.reverse,
-				unmanagedJars in Compile ++= unmanaged.reverse,
+				unmanagedJars in Compile ++= Attributed blankSeq unmanaged.reverse,
 				logLevel in Global := Level.Warn,
 				showSuccess in Global := false
 			)

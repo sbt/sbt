@@ -171,7 +171,10 @@ object Keys
 	val defaultConfiguration = SettingKey[Option[Configuration]]("default-configuration", "Defines the configuration used when none is specified for a dependency.")
 	val defaultConfigurationMapping = SettingKey[String]("default-configuration-mapping", "Defines the mapping used for a simple, unmapped configuration definition.")
 
-	val products = TaskKey[Classpath]("products", "Build products that go on the exported classpath.")
+	val products = TaskKey[Seq[File]]("products", "Build products that get packaged.")
+	val productDirectories = TaskKey[Seq[File]]("product-directories", "Base directories of build products.")
+	val exportJars = SettingKey[Boolean]("export-jars", "Determines whether the exported classpath for this project contains classes (false) or a packaged jar (true).")
+	val exportedProducts = TaskKey[Classpath]("exported-products", "Build products that go on the exported classpath.")
 	val unmanagedClasspath = TaskKey[Classpath]("unmanaged-classpath", "Classpath entries (deep) that are manually managed.")
 	val unmanagedJars = TaskKey[Classpath]("unmanaged-jars", "Classpath entries for the current project (shallow) that are manually managed.")
 	val managedClasspath = TaskKey[Classpath]("managed-classpath", "The classpath consisting of external, managed library dependencies.")
