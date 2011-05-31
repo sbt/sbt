@@ -21,6 +21,15 @@ object ErrorHandling
 	def convert[T](f: => T): Either[Exception, T] =
 		try { Right(f) }
 		catch { case e: Exception => Left(e) }
+
+	def reducedToString(e: Throwable): String =
+		if(e.getClass == classOf[RuntimeException])
+		{
+			val msg = e.getMessage
+			if(msg == null || msg.isEmpty) e.toString else msg
+		}
+		else
+			e.toString
 }
 final class TranslatedException private[sbt](msg: String, cause: Throwable) extends RuntimeException(msg, cause)
 {
