@@ -15,6 +15,7 @@ package sbt
 	import scala.collection.JavaConversions._
 	import Function.tupled
 	import java.net.URI
+	import java.lang.reflect.InvocationTargetException
 	import Path._
 
 	import java.io.File
@@ -380,14 +381,19 @@ object BuiltinCommands
 		{
 			case _: Incomplete => () // already handled by evaluateTask
 			case _: NoMessageException => ()
-			case _: MessageOnlyException =>
-				log.error(e.toString)
-			case _ =>
-				log.trace(e)
-				log.error(e.toString)
-				log.error("Use 'last' for the full log.")
+			case ite: InvocationTargetException =>
+				val cause = ite.getCause
+				if(cause == null || cause == ite) logFullException(ite, log) else handleException(cause, s, log)
+			case _: MessageOnlyException => log.error(e.toString)
+			case _ => logFullException(e, log)
 		}
 		s.fail
+	}
+	def logFullException(e: Throwable, log: Logger)
+	{
+		log.trace(e)
+		log.error(ErrorHandling reducedToString e)
+		log.error("Use 'last' for the full log.")
 	}
 	
 	def addAlias(s: State, name: String, value: String): State =

@@ -8,6 +8,7 @@ package sbt
 	import Keys.{streams, Streams, TaskStreams}
 	import Keys.{dummyState, dummyStreamsManager, parseResult, resolvedScoped, streamsManager, taskDefinitionKey}
 	import Scope.{GlobalScope, ThisScope}
+	import scala.Console.{RED, RESET}
 
 object EvaluateTask
 {
@@ -48,7 +49,11 @@ object EvaluateTask
 			getStreams(key, streams).log.trace(ex)
 		log.error("Incomplete tasks (run 'last <task>' for the full log):")
 		for( (key, msg, ex) <- keyed if(msg.isDefined || ex.isDefined) )
-			getStreams(key, streams).log.error("  " + Project.display(key) + ": " + (msg.toList ++ ex.toList).mkString("\n\t"))
+		{
+			val msgString = (msg.toList ++ ex.toList.map(ErrorHandling.reducedToString)).mkString("\n\t")
+			val keyString = if(log.ansiCodesSupported) RED + key.key.label + RESET else key.key.label
+			getStreams(key, streams).log.error("  " + Scope.display(key.scope, keyString) + ": " + msgString)
+		}
 		for(u <- un)
 			log.debug(u.toString)
 	}
