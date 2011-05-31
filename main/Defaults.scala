@@ -273,7 +273,7 @@ object Defaults extends BuildCommon
 	def selectedFilter(args: Seq[String]): String => Boolean =
 	{
 		val filters = args map GlobFilter.apply
-		s => filters exists { _ accept s }
+		s => filters.isEmpty || filters.exists { _ accept s }
 	}
 	def detectTests: Initialize[Task[Seq[TestDefinition]]] = (loadedTestFrameworks, compile, streams) map { (frameworkMap, analysis, s) =>
 		Tests.discover(frameworkMap.values.toSeq, analysis, s.log)._1
