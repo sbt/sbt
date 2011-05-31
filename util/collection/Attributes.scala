@@ -98,9 +98,10 @@ final case class AttributeEntry[T](key: AttributeKey[T], value: T)
 final case class Attributed[D](data: D)(val metadata: AttributeMap)
 {
 	def put[T](key: AttributeKey[T], value: T): Attributed[D] = Attributed(data)(metadata.put(key, value))
+	def map[T](f: D => T): Attributed[T] = Attributed(f(data))(metadata)
 }
 object Attributed
 {
-	implicit def blankSeq[T](in: Seq[T]): Seq[Attributed[T]] = in map blank
-	implicit def blank[T](data: T): Attributed[T] = Attributed(data)(AttributeMap.empty)
+	def blankSeq[T](in: Seq[T]): Seq[Attributed[T]] = in map blank
+	def blank[T](data: T): Attributed[T] = Attributed(data)(AttributeMap.empty)
 }
