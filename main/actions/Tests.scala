@@ -113,7 +113,7 @@ object Tests
 	def discover(frameworks: Seq[Framework], analysis: Analysis, log: Logger): (Seq[TestDefinition], Set[String]) =
 		discover(frameworks flatMap TestFramework.getTests, allDefs(analysis), log)
 
-	def allDefs(analysis: Analysis) = analysis.apis.internal.values.flatMap(_.definitions).toSeq
+	def allDefs(analysis: Analysis) = analysis.apis.internal.values.flatMap(_.api.definitions).toSeq
 	def discover(fingerprints: Seq[Fingerprint], definitions: Seq[Definition], log: Logger): (Seq[TestDefinition], Set[String]) =
 	{
 		val subclasses = fingerprints collect { case sub: SubclassFingerprint => (sub.superClassName, sub.isModule, sub) };

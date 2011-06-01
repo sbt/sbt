@@ -36,8 +36,10 @@ object APIs
 	def apply(internal: Map[File, Source], external: Map[String, Source]): APIs = new MAPIs(internal, external)
 	def empty: APIs = apply(Map.empty, Map.empty)
 	
-	val emptyAPI = new xsbti.api.Source(Array(), Array())
-	def getAPI[T](map: Map[T, Source], src: T): Source = map.getOrElse(src, emptyAPI)
+	val emptyAPI = new xsbti.api.SourceAPI(Array(), Array())
+	val emptyCompilation = new xsbti.api.Compilation(-1, "")
+	val emptySource = new xsbti.api.Source(emptyCompilation, Array(), emptyAPI)
+	def getAPI[T](map: Map[T, Source], src: T): Source = map.getOrElse(src, emptySource)
 }
 
 private class MAPIs(val internal: Map[File, Source], val external: Map[String, Source]) extends APIs

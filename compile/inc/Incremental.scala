@@ -6,7 +6,7 @@ package inc
 
 import xsbt.api.{NameChanges, SameAPI, TopLevel}
 import annotation.tailrec
-import xsbti.api.Source
+import xsbti.api.{Compilation, Source}
 import java.io.File
 
 object Incremental
@@ -51,8 +51,7 @@ object Incremental
 	{
 		val oldApis = lastSources.toSeq map oldAPI
 		val newApis = lastSources.toSeq map newAPI
-		for(api <- newApis; definition <- api.definitions) { debug(xsbt.api.DefaultShowAPI(definition)) }
-		val changes = (lastSources, oldApis, newApis).zipped.filter { (src, oldApi, newApi) => !SameAPI(oldApi, newApi) }
+		val changes = (lastSources, oldApis, newApis).zipped.filter { (src, oldApi, newApi) => !sameSource(oldApi, newApi) }
 
 		val changedNames = TopLevel.nameChanges(changes._3, changes._2 )
 
@@ -60,6 +59,9 @@ object Incremental
 
 		new APIChanges(modifiedAPIs, changedNames)
 	}
+	def sameSource(a: Source, b: Source): Boolean  =  shortcutSameSource(a, b) || SameAPI(a.api, b.api)
+	def shortcutSameSource(a: Source, b: Source): Boolean  =  !a.hash.isEmpty && !b.hash.isEmpty && sameCompilation(a.compilation, b.compilation) && (a.hash deepEquals b.hash)
+	def sameCompilation(a: Compilation, b: Compilation): Boolean  =  a.startTime == b.startTime && a.target == b.target
 
 	def changedInitial(entry: String => Option[File], sources: Set[File], previousAnalysis: Analysis, current: ReadStamps, forEntry: File => Option[Analysis])(implicit equivS: Equiv[Stamp]): InitialChanges =
 	{
@@ -154,7 +156,7 @@ object Incremental
 					analysis.apis.internalAPI(src)
 			)
 
-	def orEmpty(o: Option[Source]): Source = o getOrElse APIs.emptyAPI
+	def orEmpty(o: Option[Source]): Source = o getOrElse APIs.emptySource
 	def orTrue(o: Option[Boolean]): Boolean = o getOrElse true
 	// unmodifiedSources should not contain any sources in the previous compilation run
 	//  (this may unnecessarily invalidate them otherwise)

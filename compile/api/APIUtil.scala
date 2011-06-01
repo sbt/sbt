@@ -15,7 +15,7 @@ object APIUtil
 		new Modifiers( x(0), x(1), x(2), x(3), x(4), x(5) )
 	}
 
-	def verifyTypeParameters(s: Source): Boolean =
+	def verifyTypeParameters(s: SourceAPI): Boolean =
 	{
 		val check = new CheckTypeParameters
 		val invalid = check(s)
@@ -26,9 +26,9 @@ object APIUtil
 	{
 		private val defined = new HashSet[Int]
 		private val referenced = new HashSet[Int]
-		def apply(s: Source): List[Int] =
+		def apply(s: SourceAPI): List[Int] =
 		{
-			super.visit(s)
+			super.visitAPI(s)
 			(referenced filterNot defined).toList
 		}
 		override def visitTypeParameter(parameter: TypeParameter)

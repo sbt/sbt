@@ -19,8 +19,12 @@ class NameChanges(val newTypes: Set[String], val removedTypes: Set[String], val 
 
 object TopLevel
 {
+	def nameChanges(a: Iterable[Source], b: Iterable[Source]): NameChanges = {
+		val api = (_: Source).api
+		apiNameChanges(a map api, b map api)
+	}
 	/** Identifies removed and new top-level definitions by name. */
-	def nameChanges(a: Iterable[Source], b: Iterable[Source]): NameChanges =
+	def apiNameChanges(a: Iterable[SourceAPI], b: Iterable[SourceAPI]): NameChanges =
 	{
 		def changes(s: Set[String], t: Set[String]) = (s -- t, t -- s)
 
@@ -32,14 +36,14 @@ object TopLevel
 
 		new NameChanges(newTypes, removedTypes, newTerms, removedTerms)
 	}
-	def definitions(i: Iterable[Source]) = SameAPI.separateDefinitions(i.toSeq.flatMap( _.definitions ))
+	def definitions(i: Iterable[SourceAPI]) = SameAPI.separateDefinitions(i.toSeq.flatMap( _.definitions ))
 	def names(s: Iterable[Definition]): Set[String] = Set() ++ s.map(_.name)
 }
 	import TagTypeVariables.TypeVars
 /** Checks the API of two source files for equality.*/
 object SameAPI
 {
-	def apply(a: Source, b: Source) =
+	def apply(a: SourceAPI, b: SourceAPI) =
 	{
 		val start = System.currentTimeMillis
 		
@@ -98,18 +102,18 @@ class SameAPI(tagsA: TypeVars, tagsB: TypeVars, includePrivate: Boolean, include
 	}
 
 	/** Returns true if source `a` has the same API as source `b`.*/
-	def check(a: Source, b: Source): Boolean =
+	def check(a: SourceAPI, b: SourceAPI): Boolean =
 	{
 		samePackages(a, b) &&
 		debug(sameDefinitions(a, b), "Definitions differed")
 	}
 
-	def samePackages(a: Source, b: Source): Boolean =
+	def samePackages(a: SourceAPI, b: SourceAPI): Boolean =
 		sameStrings(packages(a), packages(b))
-	def packages(s: Source): Set[String] =
+	def packages(s: SourceAPI): Set[String] =
 		Set() ++ s.packages.map(_.name)
 
-	def sameDefinitions(a: Source, b: Source): Boolean =
+	def sameDefinitions(a: SourceAPI, b: SourceAPI): Boolean =
 		sameDefinitions(a.definitions, b.definitions, true)
 	def sameDefinitions(a: Seq[Definition], b: Seq[Definition], topLevel: Boolean): Boolean =
 	{

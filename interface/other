@@ -1,6 +1,15 @@
 Source
+	compilation: Compilation
+	hash: Byte*
+	api: SourceAPI
+
+SourceAPI
 	packages : Package*
 	definitions: Definition*
+
+Compilation
+	startTime: Long
+	target: String
 
 Package
 	name: String

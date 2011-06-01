@@ -9,7 +9,7 @@ package xsbt.api
 object TagTypeVariables
 {
 	type TypeVars = collection.Map[Int, (Int, Int)]
-	def apply(s: Source): TypeVars = (new TagTypeVariables).tag(s)
+	def apply(s: SourceAPI): TypeVars = (new TagTypeVariables).tag(s)
 }
 import TagTypeVariables.TypeVars
 private class TagTypeVariables
@@ -21,7 +21,7 @@ private class TagTypeVariables
 	private var level = 0
 	private var index = 0
 
-	def tag(s: Source): TypeVars =
+	def tag(s: SourceAPI): TypeVars =
 	{
 		s.definitions.foreach(tagDefinition)
 		tags
