@@ -296,13 +296,12 @@ object Defaults extends BuildCommon
 
 	private[this] val allSubpaths = (dir: File) => (dir.*** --- dir) x (relativeTo(dir)|flat)
 
-	def packageBinTask = classMappings
+	def packageBinTask = products map { ps => ps flatMap { p => allSubpaths(p) } }
 	def packageDocTask = doc map allSubpaths
 	def packageSrcTask = concatMappings(resourceMappings, sourceMappings)
 
 	private type Mappings = Initialize[Task[Seq[(File, String)]]]
 	def concatMappings(as: Mappings, bs: Mappings) = (as zipWith bs)( (a,b) => (a :^: b :^: KNil) map { case a :+: b :+: HNil => a ++ b } )
-	def classMappings = relativeMappings(products, productDirectories)
 
 	// drop base directories, since there are no valid mappings for these
 	def sourceMappings = (unmanagedSources, unmanagedSourceDirectories, baseDirectory) map { (srcs, sdirs, base) =>
