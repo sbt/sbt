@@ -3,7 +3,7 @@ import sbt._
 trait Sxr extends BasicScalaProject
 {
 	val sxrConf = config("sxr") hide
-	val sxrDep = "org.scala-tools.sxr" % "sxr_2.9.0" % "0.2.7" % sxrConf.name jar()
+	val sxrDep = "org.scala-tools.sxr" %% "sxr" % "0.2.7" % sxrConf.name jar()
 
 	def deepSources: PathFinder
 	def deepBaseDirectories: PathFinder
