@@ -23,5 +23,5 @@ public interface AnalysisCallback
 	/** Called after the source at the given location has been processed. */
 	public void endSource(File sourcePath);
 	/** Called when the public API of a source file is extracted. */
-	public void api(File sourceFile, xsbti.api.Source source);
+	public void api(File sourceFile, xsbti.api.SourceAPI source);
 }
