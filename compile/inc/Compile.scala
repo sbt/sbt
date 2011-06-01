@@ -4,7 +4,7 @@
 package sbt
 package inc
 
-import xsbti.api.Source
+import xsbti.api.{Source, SourceAPI}
 import java.io.File
 
 object IncrementalCompile
@@ -36,11 +36,14 @@ object IncrementalCompile
 }
 private final class AnalysisCallback(internalMap: File => Option[File], externalAPI: (File, String) => Option[Source], current: ReadStamps, outputPath: File) extends xsbti.AnalysisCallback
 {
+	val time = System.currentTimeMillis
+	val compilation = new xsbti.api.Compilation(time, outputPath.getAbsolutePath)
+
 	override def toString = ( List("APIs", "Binary deps", "Products", "Source deps") zip List(apis, binaryDeps, classes, sourceDeps)).map { case (label, map) => label + "\n\t" + map.mkString("\n\t") }.mkString("\n")
 	
 	import collection.mutable.{HashMap, HashSet, ListBuffer, Map, Set}
 	
-	private val apis = new HashMap[File, Source]
+	private val apis = new HashMap[File, SourceAPI]
 	private val binaryDeps = new HashMap[File, Set[File]]
 	private val classes = new HashMap[File, Set[File]]
 	private val sourceDeps = new HashMap[File, Set[File]]
@@ -80,7 +83,7 @@ private final class AnalysisCallback(internalMap: File => Option[File], external
 		
 	def generatedClass(source: File, module: File) = add(classes, source, module)
 	
-	def api(sourceFile: File, source: Source) { apis(sourceFile) = source }
+	def api(sourceFile: File, source: SourceAPI) { apis(sourceFile) = source }
 	def endSource(sourcePath: File): Unit =
 		assert(apis.contains(sourcePath))
 	
@@ -89,7 +92,10 @@ private final class AnalysisCallback(internalMap: File => Option[File], external
 	def addBinaries(base: Analysis): Analysis = addAll(base, binaryDeps)( (a, src, bin) => a.addBinaryDep(src, bin, binaryClassName(bin), current binary bin) )
 	def addSources(base: Analysis): Analysis =
 		(base /: apis) { case (a, (src, api) ) =>
-			a.addSource(src, api, current.internalSource(src), sourceDeps.getOrElse(src, Nil: Iterable[File]))
+			val stamp = current.internalSource(src)
+			val hash = stamp match { case h: Hash => h.value; case _ => new Array[Byte](0) }
+			val s = new xsbti.api.Source(compilation, hash, api)
+			a.addSource(src, s, stamp, sourceDeps.getOrElse(src, Nil: Iterable[File]))
 		}
 	def addExternals(base: Analysis): Analysis = (base /: extSrcDeps) { case (a, (source, name, api)) => a.addExternalDep(source, name, api) }
 		

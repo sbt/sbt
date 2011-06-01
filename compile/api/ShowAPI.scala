@@ -54,8 +54,8 @@ trait ShowBase
 	implicit def showVariance: Show[Variance] = 
 		new Show[Variance] { def show(v: Variance) = v match { case Invariant => ""; case Covariant => "+"; case Contravariant => "-" } }
 	
-	implicit def showSource(implicit ps: Show[Package], ds: Show[Definition]): Show[Source] =
-		new Show[Source] { def show(a: Source) = lines(a.packages, ps) + "\n" + lines(a.definitions, ds) }
+	implicit def showSource(implicit ps: Show[Package], ds: Show[Definition]): Show[SourceAPI] =
+		new Show[SourceAPI] { def show(a: SourceAPI) = lines(a.packages, ps) + "\n" + lines(a.definitions, ds) }
 
 	implicit def showPackage: Show[Package] =
 		new Show[Package] { def show(pkg: Package) = "package " + pkg.name }

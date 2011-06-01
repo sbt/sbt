@@ -130,7 +130,7 @@ object ApplicationsTest extends Specification
 	x = println("\n" + file + ":\n" + (api.definitions.flatMap { case c: xsbti.api.ClassLike => c.structure.inherited.filter(_.name == "main"); case _ => Nil }).map(xsbt.api.DefaultShowAPI.apply).mkString("\n"));
  application <- applications(api))
 			yield	(file, application)
-	def applications(src: xsbti.api.Source): Seq[String] =
+	def applications(src: xsbti.api.SourceAPI): Seq[String] =
 		Discovery.applications(src.definitions) collect { case (definition, Discovered(_, _, true, _)) => definition.name }
 
 	private def testRun(loader: ClassLoader, className: String)

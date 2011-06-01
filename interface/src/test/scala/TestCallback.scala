@@ -10,7 +10,7 @@ class TestCallback extends AnalysisCallback
 	val sourceDependencies = new ArrayBuffer[(File, File)]
 	val binaryDependencies = new ArrayBuffer[(File, String, File)]
 	val products = new ArrayBuffer[(File, File)]
-	val apis = new ArrayBuffer[(File, xsbti.api.Source)]
+	val apis = new ArrayBuffer[(File, xsbti.api.SourceAPI)]
 
 	def beginSource(source: File) { beganSources += source }
 
@@ -19,5 +19,5 @@ class TestCallback extends AnalysisCallback
 	def generatedClass(source: File, module: File) { products += ((source, module)) }
 	def endSource(source: File) { endedSources += source }
 
-	def api(source: File, sourceAPI: xsbti.api.Source) { apis += ((source, sourceAPI)) }
+	def api(source: File, sourceAPI: xsbti.api.SourceAPI) { apis += ((source, sourceAPI)) }
 }

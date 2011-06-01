@@ -47,8 +47,8 @@ trait APIFormats extends FormatExtra
 		wrap[Id, String](_.id, i => new Id(i))(s)
 	implicit val formatThis: Format[This] = asSingleton(new This)
 
-	implicit def formatSource(implicit pa: Format[Array[Package]], da: Format[Array[Definition]]): Format[Source] =
-		p2( (s: Source) => (s.packages, s.definitions))( (p, d) => new Source(p, d) )(pa, da)
+	implicit def formatSource(implicit pa: Format[Array[Package]], da: Format[Array[Definition]]): Format[SourceAPI] =
+		p2( (s: SourceAPI) => (s.packages, s.definitions))( (p, d) => new SourceAPI(p, d) )(pa, da)
 
 	implicit def formatAnnotated(implicit t: Format[SimpleType], as: Format[Array[Annotation]]): Format[Annotated] =
 		p2( (a: Annotated) => (a.baseType,a.annotations))(new Annotated(_,_))(t,as)
@@ -218,7 +218,7 @@ class DefaultAPIFormats(implicit val references: References) extends APIFormats
 	implicit lazy val sf: Format[Super] = lazyFormat(formatSuper(pathf))
 	implicit lazy val pathf: Format[Path] = formatPath
 
-	implicit val srcFormat: Format[Source] = formatSource(??, array(df))
+	implicit val srcFormat: Format[SourceAPI] = formatSource(??, array(df))
 
 	private[this] def array[T](format: Format[T])(implicit mf: Manifest[T]): Format[Array[T]] = arrayFormat(format, mf)
 }

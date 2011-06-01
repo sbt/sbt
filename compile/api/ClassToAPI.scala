@@ -9,11 +9,11 @@ package sbt
 
 object ClassToAPI
 {
-	def apply(c: Seq[Class[_]]): api.Source =
+	def apply(c: Seq[Class[_]]): api.SourceAPI =
 	{
 		val pkgs = packages(c).map(p => new api.Package(p))
 		val defs = c.filter(isTopLevel).flatMap(toDefinitions(new mutable.HashMap))
-		new api.Source(pkgs.toArray, defs.toArray)
+		new api.SourceAPI(pkgs.toArray, defs.toArray)
 	}
 
 	def packages(c: Seq[Class[_]]): Set[String] = 
