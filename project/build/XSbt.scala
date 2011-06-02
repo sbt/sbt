@@ -312,7 +312,7 @@ class XSbt(info: ProjectInfo) extends ParentProject(info) with NoCrossPaths
 		override def testCompileAction = super.testCompileAction dependsOn((testWithTestClasspath.map(_.testCompile) ++ testWithCompileClasspath.map(_.compile)) : _*)
 		override def testClasspath = (super.testClasspath /: (testWithTestClasspath.map(_.testClasspath) ++  testWithCompileClasspath.map(_.compileClasspath) ))(_ +++ _)
 	}
-	class Sbt(info: ProjectInfo) extends Base(info) with TestWith
+	class Sbt(info: ProjectInfo) extends Base(info) with TestWith with posterous.Publish
 	{
 		override def normalizedName = "sbt"
 		override def testWithCompileClasspath = super.testWithCompileClasspath ++ Seq(scriptedSbtSub)

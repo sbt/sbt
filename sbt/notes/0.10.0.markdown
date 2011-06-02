@@ -1,0 +1,18 @@
+This is a major redesign of sbt, so only prominent changes are listed:
+
+ * New configuration system
+ * New task engine
+ * New multiple project support
+ * More aggressive incremental recompilation for both Java and Scala sources
+ * Merged plugins and processors into improved plugins system
+ * Web application and webstart support moved to plugins instead of core features
+ * Fixed all of the issues in (Google Code) issue #44
+ * Managed dependencies automatically updated when configuration changes
+ * `update-sbt-classifiers` and `update-classifiers` tasks for resolving sources and/or javadocs for dependencies, transitively
+ * Improved artifact handling and configuration
+ * Tab completion parser combinators for commands and input tasks
+ * Project definitions are in Scala 2.8.1
+
+Note that the project has completely moved to GitHub now: <https://github.com/harrah/xsbt>
+
+Documentation may be found at <https://github.com/harrah/xsbt/wiki>
