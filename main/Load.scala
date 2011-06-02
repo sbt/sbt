@@ -36,7 +36,7 @@ object Load
 		val delegates = defaultDelegates
 		val inject: Seq[Project.Setting[_]] = ((appConfiguration in GlobalScope) :== state.configuration) +: EvaluateTask.injectSettings
 		val rawConfig = new LoadBuildConfiguration(stagingDirectory, Nil, classpath, loader, compilers, evalPluginDef, delegates, EvaluateTask.injectStreams, inject, log)
-		val commonPlugins = buildGlobalPlugins(defaultGlobalPlugins, state, rawConfig)
+		val commonPlugins = if(baseDirectory == defaultGlobalPlugins) Nil else buildGlobalPlugins(defaultGlobalPlugins, state, rawConfig)
 		val config = rawConfig.copy(commonPluginClasspath = commonPlugins)
 		apply(base, state, config)
 	}
