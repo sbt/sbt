@@ -58,7 +58,7 @@ object Patterns
 	implicit def defaultPatterns: Patterns = Resolver.defaultPatterns
 
 	def apply(artifactPatterns: String*): Patterns = Patterns(true, artifactPatterns : _*)
-	def apply(isMavenCompatible: Boolean, artifactPatterns: String*): Patterns = Patterns(Nil, artifactPatterns, isMavenCompatible)
+	def apply(isMavenCompatible: Boolean, artifactPatterns: String*): Patterns = Patterns(artifactPatterns, artifactPatterns, isMavenCompatible)
 	def apply(ivyPatterns: Seq[String], artifactPatterns: Seq[String], isMavenCompatible: Boolean): Patterns = new Patterns(ivyPatterns, artifactPatterns, isMavenCompatible)
 }
 object RepositoryHelpers
