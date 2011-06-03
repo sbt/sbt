@@ -38,8 +38,6 @@ class XSbt(info: ProjectInfo) extends ParentProject(info) with NoCrossPaths
 	val classfileSub = testedBase(utilPath / "classfile", "Classfile", ioSub, interfaceSub, logSub)
 		// generates immutable or mutable Java data types according to a simple input format
 	val datatypeSub = baseProject(utilPath /"datatype", "Datatype Generator", ioSub)
-		// persisted, hierarchical properties
-	val envSub= baseProject(utilPath / "env", "Properties", ioSub, logSub, classpathSub)
 
 	/***** Intermediate-level Modules *****/
 
