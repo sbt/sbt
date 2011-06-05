@@ -50,9 +50,11 @@ object ResolvePaths
 	def apply(config: LaunchConfiguration, baseDirectory: File): LaunchConfiguration =
 		config.map(f => apply(baseDirectory, f))
 	def apply(baseDirectory: File, f: File): File =
-	{
-		assert(baseDirectory.isDirectory) // if base directory is not a directory, URI.resolve will not work properly
-		val uri = new URI(null, null, f.getPath, null)
-		new File(baseDirectory.toURI.resolve(uri))
-	}
+		if (f.isAbsolute) f
+		else
+		{
+			assert(baseDirectory.isDirectory) // if base directory is not a directory, URI.resolve will not work properly
+			val uri = new URI(null, null, f.getPath, null)
+			new File(baseDirectory.toURI.resolve(uri))
+		}
 }
