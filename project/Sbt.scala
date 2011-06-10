@@ -171,7 +171,7 @@ object Sbt extends Build
 			in.copy(config = in.config.copy(sources = srcs, classpath = cp.files))
 		},
 		publishAll <<= state flatMap { s => nop dependsOn( Defaults.inAllProjects(nonRoots, publishLocal.task, Project.extract(s).structure.data) : _*) },
-		TaskKey[Unit]("build-all") <<= (publishAll, sxr, doc) map { (_,_,_) => () }
+		TaskKey[Unit]("build-all") <<= (publishAll, proguard in Proguard, sxr, doc) map { (_,_,_,_) => () }
 	)
 	def docSetting = inConfig(Compile)(inTask(sxr)(doc in ThisScope.copy(task = Global, config = Global) <<= Defaults.docTask))
 
