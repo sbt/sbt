@@ -58,7 +58,7 @@ object CompileTest extends Specification
 	private def testClasspath(scalaVersion: String) =
 		WithCompiler.launcher { (launch, log) =>
 			def compiler(bootLibrary: Boolean, compilerOnClasspath: Boolean): RawCompiler =
-				new RawCompiler(ScalaInstance(scalaVersion, launch), new ClasspathOptions(bootLibrary, compilerOnClasspath, true, true, true), log)
+				new RawCompiler(ScalaInstance(scalaVersion, launch), new ClasspathOptions(bootLibrary, compilerOnClasspath, true, true, bootLibrary), log)
 
 			val callback = new xsbti.TestCallback
 				
@@ -75,17 +75,17 @@ object CompileTest extends Specification
 				val plainSrcs = Seq[File](plain)
 				val compSrcs = Seq[File](useCompiler)
 				withTemporaryDirectory { out =>
-					shouldSucceed( standard(plainSrcs, Nil,  out, Nil) )//success
-					shouldSucceed( standard(compSrcs, Nil,  out, Nil) )//success
+					shouldSucceed( standard(plainSrcs, Nil,  out, Nil) )
+					shouldSucceed( standard(compSrcs, Nil,  out, Nil) )
 					
-					shouldSucceed( noCompiler(plainSrcs, Nil,  out, Nil) )//success
+					shouldSucceed( noCompiler(plainSrcs, Nil,  out, Nil) )
 					shouldFail( noCompiler(compSrcs, Nil,  out, Nil) )
-					shouldSucceed( noCompiler(compSrcs, withCompiler, out, Nil) )//success
+					shouldSucceed( noCompiler(compSrcs, withCompiler, out, Nil) )
 					
-					shouldFail( fullExplicit(plainSrcs, Nil, out, Nil) )// failure
-					shouldFail( fullExplicit(compSrcs, Nil, out, Nil) )// failure
-					shouldSucceed( fullExplicit(plainSrcs, withLibrary, out, fullBoot) )// success
-					shouldSucceed( fullExplicit(compSrcs, withLibraryCompiler, out, fullBoot) )// success
+					shouldFail( fullExplicit(plainSrcs, Nil, out, Nil) )
+					shouldFail( fullExplicit(compSrcs, Nil, out, Nil) )
+					shouldSucceed( fullExplicit(plainSrcs, withLibrary, out, fullBoot) )
+					shouldSucceed( fullExplicit(compSrcs, withLibraryCompiler, out, fullBoot) )
 					true must beTrue
 				}
 			}
