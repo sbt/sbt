@@ -1,15 +1,15 @@
 > publish-local
 
 $ touch mavenStyle
-> set organization in ThisBuild := "B"
+> set organization in ThisBuild :="B"
 > publish-local
 
 $ touch sub/mavenStyle
-> set organization in ThisBuild := "C"
+> set organization in ThisBuild :="C"
 > publish-local
 
 $ delete mavenStyle
-> set organization := "D"
+> set organization in ThisBuild :="D"
 > publish-local
 
 > set name := "Retrieve Test"

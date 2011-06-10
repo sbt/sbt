@@ -7,14 +7,15 @@ object MultiPublishTest extends Build
 		organization := "A",
 		version := "1.0",
 		ivyPaths <<= baseDirectory( dir => new IvyPaths(dir, Some(dir / "ivy" / "cache")) ),
-		externalResolvers <<= baseDirectory { base => Resolver.file("local", base / "ivy" / "local" asFile)(Resolver.ivyStylePatterns) :: Nil }
+		externalResolvers <<= baseDirectory map { base => Resolver.file("local", base / "ivy" / "local" asFile)(Resolver.ivyStylePatterns) :: Nil }
 	)
 
-	lazy val root = Project("root", file(".")) settings( mavenStyle, name = "Publish Test" )
+	lazy val root = Project("root", file(".")) dependsOn(sub) aggregate(sub) settings( mavenStyle, interProject, name := "Publish Test" )
 
-	lazy val sub = Project("sub", file("sub")) settings( mavenStyle, name = "Sub Project" )
+	lazy val sub = Project("sub", file("sub")) settings( mavenStyle, name := "Sub Project" )
 
 	lazy val mavenStyle = publishMavenStyle <<= baseDirectory { base => (base / "mavenStyle") exists }
 
-	override def deliverProjectDependencies = if(managedStyle == sub.managedStyle) super.deliverProjectDependencies else Nil
+	def interProject =
+		projectDependencies <<= (publishMavenStyle, publishMavenStyle in sub, projectDependencies) map { (style, subStyle, pd) => if(style == subStyle) pd else Nil }
 }

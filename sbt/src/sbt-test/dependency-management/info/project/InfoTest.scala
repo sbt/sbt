@@ -6,7 +6,7 @@ object InfoTest extends Build
 {
 	lazy val root = Project("root", file(".")) settings(
 		ivyPaths <<= (baseDirectory, target)( (dir, t) => new IvyPaths(dir, Some(t / "ivy-cache"))),
-		ivyXML <<= (customInfo, organization, moduleID, version) apply inlineXML,
+		ivyXML <<= (customInfo, organization, moduleName, version) apply inlineXML,
 		projectID ~= (_ cross false),
 		customInfo <<= baseDirectory{_ / "info" exists },
 		TaskKey[Unit]("check-download") <<= checkDownload,

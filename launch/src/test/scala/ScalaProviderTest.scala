@@ -13,10 +13,10 @@ object ScalaProviderTest extends Specification
 	"Launch" should provide {
 		"ClassLoader for Scala 2.7.4" in { checkScalaLoader("2.7.4") }
 		"ClassLoader for Scala 2.7.5" in { checkScalaLoader("2.7.5") }
-		"ClassLoader for Scala 2.7.6" in { checkScalaLoader("2.7.6") }
 		"ClassLoader for Scala 2.7.7" in { checkScalaLoader("2.7.7") }
 		"ClassLoader for Scala 2.8.0" in { checkScalaLoader("2.8.0") }
 		"ClassLoader for Scala 2.8.1" in { checkScalaLoader("2.8.1") }
+		"ClassLoader for Scala 2.9.0-1" in { checkScalaLoader("2.9.0-1") }
 	}
 
 	"Launch" should {
@@ -74,7 +74,7 @@ object LaunchTest
 
 	def mapScalaVersion(versionNumber: String) = scalaVersionMap.find(_._2 == versionNumber).getOrElse {
 		error("Scala version number " + versionNumber + " from library.properties has no mapping")}._1
-	val scalaVersionMap = List("2.8.0", "2.8.1", "2.9.0.RC1").map(x => (x,x)).toMap ++ List("2.7.4", "2.7.5", "2.7.6", "2.7.7").map(v => (v, v + ".final"))
+	val scalaVersionMap = Map("2.9.0-1" -> "2.9.0.1") ++ List("2.7.4", "2.7.5", "2.7.6", "2.7.7", "2.8.0", "2.8.1").map(v => (v, v + ".final"))
 	def getScalaVersion: String = getScalaVersion(getClass.getClassLoader)
 	def getScalaVersion(loader: ClassLoader): String = loadProperties(loader, "library.properties").getProperty("version.number")
 	lazy val AppVersion = loadProperties(getClass.getClassLoader, "xsbt.version.properties").getProperty("version")

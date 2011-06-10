@@ -1,5 +1,6 @@
 	import sbt._
 	import Keys._
+	import classpath.ClasspathUtilities
 
 object TestProject extends Build
 {
@@ -9,19 +10,17 @@ object TestProject extends Build
 		TaskKey[Unit]("check-in-compile") <<= checkClasspath(Compile)
 	)
 		
-	lazy val checkInTest = checkClasspath(testClasspath)
-	lazy val checkInCompile = checkClasspath(compileClasspath)
 	private def checkClasspath(conf: Configuration) =
 		fullClasspath in conf map { cp =>
 			try
 			{
-				val loader = ClasspathUtilities.toLoader(cp)
+				val loader = ClasspathUtilities.toLoader(cp.files)
 				Class.forName("slinky.http.Application", false, loader)
 				()
 			}
 			catch
 			{
-				case _: ClassNotFoundException => error("Dependency not downloaded.") 
+				case _: ClassNotFoundException => error("Dependency not downloaded.")
 			}
 		}
 }
