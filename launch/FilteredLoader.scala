@@ -34,6 +34,6 @@ object Loaders
 	{
 		def loaders(loader: ClassLoader, accum: Stream[ClassLoader]): Stream[ClassLoader] =
 			if(loader eq null) accum else loaders(loader.getParent, Stream.cons(loader, accum))
-		loaders(getClass.getClassLoader.getParent, Stream.empty)
+		loaders(loader, Stream.empty)
 	}
 }
