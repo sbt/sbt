@@ -17,6 +17,9 @@ package object sbt extends sbt.std.TaskExtra with sbt.Types with sbt.ProcessExtr
 	def file(s: String): File = new File(s)
 	def url(s: String): URL = new URL(s)
 	
+	def ThisScope = Scope.ThisScope
+	def GlobalScope = Scope.GlobalScope
+
 		import sbt.{Configurations => C}
 	def Compile = C.Compile
 	def Test = C.Test
