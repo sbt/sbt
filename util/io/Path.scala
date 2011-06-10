@@ -63,10 +63,10 @@ object Path extends PathExtra
 {
 	def apply(f: File): RichFile = new RichFile(f)
 	def apply(f: String): RichFile = new RichFile(new File(f))
-	def fileProperty(name: String) = Path(System.getProperty(name))
-	def userHome = fileProperty("user.home")
+	def fileProperty(name: String): File = new File(System.getProperty(name))
+	def userHome: File = fileProperty("user.home")
 	
-	def absolute(file: File) = new File(file.toURI.normalize).getAbsoluteFile
+	def absolute(file: File): File = new File(file.toURI.normalize).getAbsoluteFile
 	def makeString(paths: Seq[File]): String = makeString(paths, pathSeparator)
 	def makeString(paths: Seq[File], sep: String): String = paths.map(_.getAbsolutePath).mkString(sep)
 	def newerThan(a: File, b: File): Boolean = a.exists && (!b.exists || a.lastModified > b.lastModified)
