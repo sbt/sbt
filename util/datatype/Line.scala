@@ -1,7 +1,7 @@
 /* sbt -- Simple Build Tool
  * Copyright 2009  Mark Harrah
  */
-package xsbt.api
+package xsbt.datatype
 
 sealed trait Line extends NotNull { val line: Int }
 final class ClassLine(val name: String, val level: Int, val line: Int) extends Line

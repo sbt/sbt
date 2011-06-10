@@ -2,7 +2,7 @@
  * Copyright 2009, 2010  Mark Harrah
  */
 package xsbt
-package api
+package datatype
 
 import java.io.File
 import sbt.Path
