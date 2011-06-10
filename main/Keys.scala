@@ -217,8 +217,9 @@ object Keys
 	val pomPostProcess = SettingKey[XNode => XNode]("pom-post-process", "Transforms the generated POM.")
 	val pomIncludeRepository = SettingKey[MavenRepository => Boolean]("pom-include-repository", "Selects repositories to include in the generated POM.")
 
-	val moduleID = SettingKey[String]("module-id", "The name of the current module, used for dependency management.")
+	val moduleName = SettingKey[String]("module-name", "The name of the current module, used for dependency management.")
 	val version = SettingKey[String]("version", "The version/revision of the current module.")
+	val moduleID = SettingKey[ModuleID]("module", "A dependency management descriptor.  This is currently used for associating a ModuleID with a classpath entry.")
 	val projectID = SettingKey[ModuleID]("project-id", "The dependency management descriptor for the current module.")
 	val externalResolvers = TaskKey[Seq[Resolver]]("external-resolvers", "The external resolvers for automatically managed dependencies.")
 	val resolvers = SettingKey[Seq[Resolver]]("resolvers", "The user-defined additional resolvers for automatically managed dependencies.")

@@ -573,7 +573,7 @@ object Classpaths
 			if(isPlugin) sr +: base else base
 		},
 		offline in GlobalScope :== false,
-		moduleID <<= normalizedName.identity,
+		moduleName <<= normalizedName.identity,
 		defaultConfiguration in GlobalScope :== Some(Configurations.Compile),
 		defaultConfigurationMapping in GlobalScope <<= defaultConfiguration{ case Some(d) => "*->" + d.name; case None => "*->*" },
 		ivyPaths <<= (baseDirectory, appConfiguration) { (base, app) => new IvyPaths(base, bootIvyHome(app)) },
@@ -594,8 +594,8 @@ object Classpaths
 		publishTo in GlobalScope :== None,
 		artifactPath in makePom <<= artifactPathSetting(artifact in makePom),
 		publishArtifact in makePom <<= publishMavenStyle.identity,
-		artifact in makePom <<= moduleID( name => Artifact(name, "pom", "pom") ),
-		projectID <<= (organization,moduleID,version,artifacts,crossPaths){ (org,module,version,as,crossEnabled) =>
+		artifact in makePom <<= moduleName( name => Artifact(name, "pom", "pom") ),
+		projectID <<= (organization,moduleName,version,artifacts,crossPaths){ (org,module,version,as,crossEnabled) =>
 			ModuleID(org, module, version).cross(crossEnabled).artifacts(as : _*)
 		},
 		resolvers in GlobalScope :== Nil,
@@ -833,7 +833,9 @@ object Classpaths
 
 		import DependencyFilter._
 	def managedJars(config: Configuration, jarTypes: Set[String], up: UpdateReport): Classpath =
-		up.select( configuration = configurationFilter(config.name), artifact = artifactFilter(`type` = jarTypes) ) classpath;
+		up.filter( configurationFilter(config.name) && artifactFilter(`type` = jarTypes) ).toSeq.map { case (conf, module, art, file) =>
+			Attributed(file)(AttributeMap.empty.put(artifact.key, art).put(moduleID.key, module).put(configuration.key, config))
+		} distinct;
 
 	def autoPlugins(report: UpdateReport): Seq[String] =
 	{
