@@ -67,7 +67,7 @@ final class Execute[A[_] <: AnyRef](checkCycles: Boolean, triggers: Triggers[A])
 				assert( !reverse.isEmpty, "Nothing to process." )
 				if( !state.values.exists( _ == Running ) ) {
 					snapshotCycleCheck()
-					assert(false, "Nothing running.")
+					assert(false, "Internal task engine error: nothing running.  This usually indicates a cycle in tasks.\n  Dumping state:\n" + state.mkString("\n\t"))
 				}
 			}
 
