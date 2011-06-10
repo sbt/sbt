@@ -115,5 +115,9 @@ object UpdateReport
 			}
 			new UpdateReport(report.cachedDescriptor, newConfigurations)
 		}
+
+		def toSeq: Seq[(String, ModuleID, Artifact, File)] =
+			for(confReport <- report.configurations; modReport <- confReport.modules; (artifact, file) <- modReport.artifacts) yield
+				(confReport.configuration, modReport.module, artifact, file)
 	}
 }
