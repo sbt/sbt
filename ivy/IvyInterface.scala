@@ -312,11 +312,11 @@ object Configurations
 
 	lazy val Default = config("default")
 	lazy val Compile = config("compile")
-	lazy val IntegrationTest = config("it") extend(Runtime);
-	lazy val Provided = config("provided")
+	lazy val IntegrationTest = config("it") extend(Runtime)
+	lazy val Provided = config("provided") intransitive ;
 	lazy val Javadoc = config("javadoc")
 	lazy val Runtime = config("runtime") extend(Compile)
-	lazy val Test = config("test") extend(Runtime);
+	lazy val Test = config("test") extend(Runtime)
 	lazy val Sources = config("sources")
 	lazy val System = config("system")
 	lazy val Optional = config("optional")
