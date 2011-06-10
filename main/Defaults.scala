@@ -637,7 +637,8 @@ object Classpaths
 		sbtResolver in GlobalScope :== typesafeResolver,
 		sbtDependency in GlobalScope <<= appConfiguration { app =>
 			val id = app.provider.id
-			ModuleID(id.groupID, id.name, id.version, crossVersion = id.crossVersioned)
+			val base = ModuleID(id.groupID, id.name, id.version, crossVersion = id.crossVersioned)
+			IvySbt.substituteCross(base, app.provider.scalaProvider.version)
 		}
 	)
 
