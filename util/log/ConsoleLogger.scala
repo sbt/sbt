@@ -44,7 +44,7 @@ object ConsoleLogger
 	def apply(): ConsoleLogger = apply(systemOut)
 	def apply(out: PrintStream): ConsoleLogger = apply(printStreamOut(out))
 	def apply(out: PrintWriter): ConsoleLogger = apply(printWriterOut(out))
-	def apply(out: ConsoleOut, ansiCodesSupported: Boolean = formatEnabled, useColor: Boolean = true): ConsoleLogger =
+	def apply(out: ConsoleOut, ansiCodesSupported: Boolean = formatEnabled, useColor: Boolean = formatEnabled): ConsoleLogger =
 		new ConsoleLogger(out, ansiCodesSupported, useColor)
 }
 
