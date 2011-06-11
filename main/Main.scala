@@ -294,15 +294,21 @@ object BuiltinCommands
 		s
 	}
 	def lastGrep = Command(LastGrepCommand, lastGrepBrief, lastGrepDetailed)(lastGrepParser) { case (s,(pattern,sk)) =>
-		Output.lastGrep(sk, Project.structure(s).streams, pattern)
+		val (str, ref) = extractLast(s)
+		Output.lastGrep(sk, str, pattern, ref)
 		s
+	}
+	def extractLast(s: State) = {
+		val ext = Project.extract(s)
+		(ext.structure.streams, Select(ext.currentRef))
 	}
 	def inspectParser = (s: State) => token((Space ~> ("actual" ^^^ true)) ?? false) ~ spacedKeyParser(s)
 	val spacedKeyParser = (s: State) => Act.requireSession(s, token(Space) ~> Act.scopedKeyParser(s))
 	val optSpacedKeyParser = (s: State) => spacedKeyParser(s).?
 	def lastGrepParser(s: State) = Act.requireSession(s, (token(Space) ~> token(NotSpace, "<pattern>")) ~ optSpacedKeyParser(s))
 	def last = Command(LastCommand, lastBrief, lastDetailed)(optSpacedKeyParser) { (s,sk) =>
-		Output.last(sk, Project.structure(s).streams)
+		val (str, ref) = extractLast(s)
+		Output.last(sk, str, ref)
 		s
 	}
 

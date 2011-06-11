@@ -23,16 +23,16 @@ object Output
 			None
 	}
 
-	def last(key: Option[ScopedKey[_]], mgr: Streams): Unit =
-		printLines(lastLines(key, mgr))
+	def last(key: Option[ScopedKey[_]], mgr: Streams, ref: ScopeAxis[ProjectRef]): Unit =
+		printLines(lastLines(key, mgr, ref))
 	def printLines(lines: Seq[String]) = lines foreach println
-	def lastGrep(key: Option[ScopedKey[_]], mgr: Streams, patternString: String)
+	def lastGrep(key: Option[ScopedKey[_]], mgr: Streams, patternString: String, ref: ScopeAxis[ProjectRef])
 	{
 		val pattern = Pattern.compile(patternString)
-		printLines(lastLines(key, mgr).flatMap(showMatches(pattern)) )
+		printLines(lastLines(key, mgr, ref).flatMap(showMatches(pattern)) )
 	}
-	def lastLines(key: Option[ScopedKey[_]], mgr: Streams): Seq[String] =
-		lastLines(key getOrElse Project.globalLoggerKey, mgr)
+	def lastLines(key: Option[ScopedKey[_]], mgr: Streams, ref: ScopeAxis[ProjectRef]): Seq[String] =
+		lastLines(key getOrElse Project.globalLoggerKey(ref), mgr)
 	def lastLines(key: ScopedKey[_], mgr: Streams): Seq[String] =
 		mgr.use(key) { s => IO.readLines(s.readText( Project.fillTaskAxis(key) )) }
 }

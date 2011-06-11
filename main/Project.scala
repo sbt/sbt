@@ -143,8 +143,8 @@ object Project extends Init[Scope] with ProjectExtra
 	def updateCurrent(s0: State): State =
 	{
 		val structure = Project.structure(s0)
-		val s = installGlobalLogger(s0, structure)
-		val ref = Project.current(s)
+		val ref = Project.current(s0)
+		val s = installGlobalLogger(s0, structure, ref)
 		val project = Load.getProject(structure.units, ref.build, ref.project)
 		logger(s).info("Set current project to " + ref.project + " (in build " + ref.build +")")
 		def get[T](k: SettingKey[T]): Option[T] = k in ref get structure.data
@@ -290,10 +290,10 @@ object Project extends Init[Scope] with ProjectExtra
 		val extracted = Project.extract(state)
 		EvaluateTask.evaluateTask(extracted.structure, taskKey, state, extracted.currentRef, checkCycles, maxWorkers)
 	}
-	def globalLoggerKey = fillTaskAxis(ScopedKey(GlobalScope, streams.key))
-	def installGlobalLogger(s: State, structure: BuildStructure): State =
+	def globalLoggerKey(ref: ScopeAxis[ResolvedReference]) = fillTaskAxis(ScopedKey(GlobalScope.copy(project = ref), streams.key))
+	def installGlobalLogger(s: State, structure: BuildStructure, ref: ProjectRef): State =
 	{
-		val str = structure.streams(globalLoggerKey)
+		val str = structure.streams(globalLoggerKey(Select(ref)))
 		str.open()
 		s.put(logged, str.log).addExitHook { str.close() }
 	}
