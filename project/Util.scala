@@ -68,9 +68,11 @@ object Common
 	lazy val jlineDep = "jline" % "jline" % "0.9.94" intransitive()
 	lazy val jline = lib(jlineDep)
 	lazy val ivy = lib("org.apache.ivy" % "ivy" % "2.2.0")
+	lazy val httpclient = lib("commons-httpclient" % "commons-httpclient" % "3.1")
 	lazy val jsch = lib("com.jcraft" % "jsch" % "0.1.31" intransitive() )
 	lazy val sbinary = lib("org.scala-tools.sbinary" %% "sbinary" % "0.4.0" )
 	lazy val scalaCompiler = libraryDependencies <+= scalaVersion("org.scala-lang" % "scala-compiler" % _ )
+	lazy val excludeJUnit = ivyXML := <dependencies><exclude org="junit"/></dependencies>
 }
 object Licensed
 {

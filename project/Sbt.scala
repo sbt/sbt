@@ -1,6 +1,5 @@
 // TODO(high): proper incremental xsbt.version.properties generation
 // TODO(low): proper generated API sources caching: doesn't detect output directory change
-// TODO: fix discovery/test
 
 	import sbt._
 	import Keys._
@@ -73,7 +72,7 @@ object Sbt extends Build
 	/***** Intermediate-level Modules *****/
 
 		// Apache Ivy integration
-	lazy val ivySub = baseProject(file("ivy"), "Ivy") dependsOn(interfaceSub, launchInterfaceSub, logSub % "compile;test->test", ioSub % "compile;test->test", launchSub % "test->test") settings(ivy, jsch)
+	lazy val ivySub = baseProject(file("ivy"), "Ivy") dependsOn(interfaceSub, launchInterfaceSub, logSub % "compile;test->test", ioSub % "compile;test->test", launchSub % "test->test") settings(ivy, jsch, httpclient, excludeJUnit)
 		// Runner for uniform test interface
 	lazy val testingSub = baseProject(file("testing"), "Testing") dependsOn(ioSub, classpathSub, logSub) settings(libraryDependencies += "org.scala-tools.testing" % "test-interface" % "0.5")
 
