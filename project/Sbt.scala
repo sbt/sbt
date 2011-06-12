@@ -72,7 +72,7 @@ object Sbt extends Build
 	/***** Intermediate-level Modules *****/
 
 		// Apache Ivy integration
-	lazy val ivySub = baseProject(file("ivy"), "Ivy") dependsOn(interfaceSub, launchInterfaceSub, logSub % "compile;test->test", ioSub % "compile;test->test", launchSub % "test->test") settings(ivy, jsch, httpclient, excludeJUnit)
+	lazy val ivySub = baseProject(file("ivy"), "Ivy") dependsOn(interfaceSub, launchInterfaceSub, logSub % "compile;test->test", ioSub % "compile;test->test", launchSub % "test->test") settings(ivy, jsch, httpclient)
 		// Runner for uniform test interface
 	lazy val testingSub = baseProject(file("testing"), "Testing") dependsOn(ioSub, classpathSub, logSub) settings(libraryDependencies += "org.scala-tools.testing" % "test-interface" % "0.5")
 
@@ -120,7 +120,7 @@ object Sbt extends Build
 		// Strictly for bringing implicits and aliases from subsystems into the top-level sbt namespace through a single package object
 		//  technically, we need a dependency on all of mainSub's dependencies, but we don't do that since this is strictly an integration project
 		//  with the sole purpose of providing certain identifiers without qualification (with a package object)
-	lazy val sbtSub = baseProject(sbtPath, "Simple Build Tool") dependsOn(mainSub, scriptedSbtSub % "test->test") settings(sbtSettings : _*)
+	lazy val sbtSub = baseProject(sbtPath, "Simple Build Tool") dependsOn(mainSub, compileInterfaceSub, precompiled29, scriptedSbtSub % "test->test") settings(sbtSettings : _*)
 
 		/* Nested subproject paths */
 	def sbtPath = file("sbt")
@@ -198,6 +198,7 @@ object Sbt extends Build
 		libraryDependencies <+= scalaVersion( "org.scala-lang" % "scala-compiler" % _ % "provided"),
 		libraryDependencies += jlineDep artifacts(Artifact("jline", Map("e:component" -> srcID)))
 	)
+	//
 	def compileInterfaceSettings: Seq[Setting[_]] = precompiledSettings ++ Seq(
 		exportJars := true,
 		artifact in packageSrc := Artifact(srcID) extra("e:component" -> srcID)

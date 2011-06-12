@@ -8,7 +8,7 @@ package compiler
 
 object TestCompile
 {
-	def allVersions = List("2.8.1", "2.9.0-1")
+	def allVersions = List("2.8.1", "2.9.0-1", "2.8.0")
 	/** Tests running the compiler interface with the analyzer plugin with a test callback.  The test callback saves all information
 	* that the plugin sends it for post-compile analysis by the provided function.*/
 	def apply[T](scalaVersion: String, sources: Seq[File], outputDirectory: File, options: Seq[String])
