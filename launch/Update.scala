@@ -22,7 +22,8 @@ import core.sort.SortEngine
 import core.settings.IvySettings
 import plugins.matcher.{ExactPatternMatcher, PatternMatcher}
 import plugins.resolver.{ChainResolver, FileSystemResolver, IBiblioResolver, URLResolver}
-import util.{DefaultMessageLogger, Message, MessageLoggerEngine, url}
+import util.{DefaultMessageLogger, filter, Message, MessageLoggerEngine, url}
+import filter.Filter
 import url.CredentialsStore
 
 import BootConfiguration._
@@ -189,10 +190,14 @@ final class Update(config: UpdateConfiguration)
 				problem.printStackTrace(logWriter)
         }
 	}
+	private final class ArtifactFilter(f: IArtifact => Boolean) extends Filter {
+		def accept(o: Any) = o match { case a: IArtifact => f(a); case _ => false }
+	}
 	/** Retrieves resolved dependencies using the given target to determine the location to retrieve to. */
 	private def retrieve(eventManager: EventManager, module: ModuleDescriptor,  target: UpdateTarget)
 	{
 		val retrieveOptions = new RetrieveOptions
+		retrieveOptions.setArtifactFilter(new ArtifactFilter(a => "jar" == a.getType && a.getExtraAttribute("classifier") == null))
 		val retrieveEngine = new RetrieveEngine(settings, eventManager)
 		val pattern =
 			target match
