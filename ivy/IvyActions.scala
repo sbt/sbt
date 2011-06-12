@@ -142,7 +142,7 @@ object IvyActions
 	{
 		assert(!classifiers.isEmpty, "classifiers cannot be empty")
 		val baseModules = modules map { m => ModuleID(m.organization, m.name, m.revision, crossVersion = m.crossVersion) }
-		val deps = baseModules.distinct map { m => m.copy(explicitArtifacts = classifiers map { c => Artifact(m.name, c) }) }
+		val deps = baseModules.distinct map { m => m.copy(explicitArtifacts = classifiers map { c => Artifact.classified(m.name, c) }) }
 		val base = id.copy(name = id.name + classifiers.mkString("$","_",""))
 		val module = new ivySbt.Module(InlineConfiguration(base, deps).copy(ivyScala = ivyScala))
 		update(module, configuration, log)
