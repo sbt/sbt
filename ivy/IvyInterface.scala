@@ -359,8 +359,10 @@ object Artifact
 		Artifact(name, `type`, extension, classifier, configurations, url, Map.empty)
 	val defaultExtension = "jar"
 	val defaultType = "jar"
-	def sources(name: String) = Artifact(name, "src", "jar", "sources")
-	def javadoc(name: String) = Artifact(name, "doc", "jar", "javadoc")
+	def sources(name: String) = classified(name, SourceClassifier)
+	def javadoc(name: String) = classified(name, DocClassifier)
+	val DocClassifier = "javadoc"
+	val SourceClassifier = "sources"
 	def extract(url: URL, default: String): String = extract(url.toString, default)
 	def extract(name: String, default: String): String =
 	{
@@ -385,6 +387,9 @@ object Artifact
 		base + "-" + module.revision + classifierStr + "." + artifact.extension
 	}
 	def cross(enable: Boolean, scalaVersion: String): String = if(enable) "_" + scalaVersion else ""
+
+	val classifierTypeMap = Map("sources" -> "src", "javadoc" -> "doc")
+	def classified(name: String, classifier: String): Artifact = Artifact(name, classifierTypeMap.getOrElse(classifier, defaultType), defaultExtension, classifier)
 }
 final case class ModuleConfiguration(organization: String, name: String, revision: String, resolver: Resolver)
 object ModuleConfiguration
