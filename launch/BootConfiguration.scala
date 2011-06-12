@@ -16,6 +16,8 @@ private object BootConfiguration
 	val CompilerModuleName = "scala-compiler"
 	val LibraryModuleName = "scala-library"
 
+	val JUnitName = "junit"
+
 	val SbtOrg = "org.scala-tools.sbt"
 
 	/** The Ivy conflict manager to use for updating.*/

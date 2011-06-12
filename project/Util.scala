@@ -72,7 +72,6 @@ object Common
 	lazy val jsch = lib("com.jcraft" % "jsch" % "0.1.31" intransitive() )
 	lazy val sbinary = lib("org.scala-tools.sbinary" %% "sbinary" % "0.4.0" )
 	lazy val scalaCompiler = libraryDependencies <+= scalaVersion("org.scala-lang" % "scala-compiler" % _ )
-	lazy val excludeJUnit = ivyXML := <dependencies><exclude org="junit"/></dependencies>
 }
 object Licensed
 {

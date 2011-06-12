@@ -109,6 +109,7 @@ final class Update(config: UpdateConfiguration)
 			case u: UpdateScala =>
 				addDependency(moduleID, ScalaOrg, CompilerModuleName, scalaVersion, "default;optional(default)", u.classifiers)
 				addDependency(moduleID, ScalaOrg, LibraryModuleName, scalaVersion, "default", u.classifiers)
+				excludeJUnit(moduleID)
 				System.out.println("Getting Scala " + scalaVersion + " " + reason + "...")
 			case u: UpdateApp =>
 				val app = u.id
@@ -147,6 +148,7 @@ final class Update(config: UpdateConfiguration)
 		for(conf <- dep.getModuleConfigurations)
 			dep.addDependencyArtifact(conf, ivyArtifact)
 	}
+	private def excludeJUnit(module: DefaultModuleDescriptor): Unit = module.addExcludeRule(excludeRule(JUnitName, JUnitName))
 	private def excludeScala(module: DefaultModuleDescriptor)
 	{
 		def excludeScalaJar(name: String): Unit = module.addExcludeRule(excludeRule(ScalaOrg, name))
