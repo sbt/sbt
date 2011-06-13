@@ -26,7 +26,7 @@ final class PublishConfiguration(val ivyFile: Option[File], val resolverName: St
 
 final class UpdateConfiguration(val retrieve: Option[RetrieveConfiguration], val missingOk: Boolean, val logging: UpdateLogging.Value)
 final class RetrieveConfiguration(val retrieveDirectory: File, val outputPattern: String)
-final case class MakePomConfiguration(file: File, configurations: Option[Iterable[Configuration]] = None, extra: NodeSeq = NodeSeq.Empty, process: XNode => XNode = n => n, filterRepositories: MavenRepository => Boolean = _ => true)
+final case class MakePomConfiguration(file: File, configurations: Option[Iterable[Configuration]] = None, extra: NodeSeq = NodeSeq.Empty, process: XNode => XNode = n => n, filterRepositories: MavenRepository => Boolean = _ => true, allRepositories: Boolean)
 
 /** Configures logging during an 'update'.  `level` determines the amount of other information logged.
 * `Full` is the default and logs the most.
@@ -63,9 +63,9 @@ object IvyActions
 	/** Creates a Maven pom from the given Ivy configuration*/
 	def makePom(module: IvySbt#Module, configuration: MakePomConfiguration, log: Logger)
 	{
-		import configuration.{configurations, extra, file, filterRepositories, process}
+		import configuration.{allRepositories, configurations, extra, file, filterRepositories, process}
 		module.withModule(log) { (ivy, md, default) =>
-			(new MakePom).write(ivy, md, configurations, extra, process, filterRepositories, file)
+			(new MakePom).write(ivy, md, configurations, extra, process, filterRepositories, allRepositories, file)
 			log.info("Wrote " + file.getAbsolutePath)
 		}
 	}

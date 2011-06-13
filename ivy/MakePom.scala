@@ -20,8 +20,8 @@ import plugins.resolver.{ChainResolver, DependencyResolver, IBiblioResolver}
 class MakePom
 {
 	def encoding = "UTF-8"
-	def write(ivy: Ivy, module: ModuleDescriptor, configurations: Option[Iterable[Configuration]], extra: NodeSeq, process: XNode => XNode, filterRepositories: MavenRepository => Boolean, output: File): Unit =
-		write(process(toPom(ivy, module, configurations, extra, filterRepositories)), output)
+	def write(ivy: Ivy, module: ModuleDescriptor, configurations: Option[Iterable[Configuration]], extra: NodeSeq, process: XNode => XNode, filterRepositories: MavenRepository => Boolean, allRepositories: Boolean, output: File): Unit =
+		write(process(toPom(ivy, module, configurations, extra, filterRepositories, allRepositories)), output)
 	def write(node: XNode, output: File): Unit = write(toString(node), output)
 	def write(xmlString: String, output: File)
 	{
@@ -37,13 +37,13 @@ class MakePom
 	}
 
 	def toString(node: XNode): String = new PrettyPrinter(1000, 4).format(node)
-	def toPom(ivy: Ivy, module: ModuleDescriptor, configurations: Option[Iterable[Configuration]], extra: NodeSeq, filterRepositories: MavenRepository => Boolean): XNode =
+	def toPom(ivy: Ivy, module: ModuleDescriptor, configurations: Option[Iterable[Configuration]], extra: NodeSeq, filterRepositories: MavenRepository => Boolean, allRepositories: Boolean): XNode =
 		(<project xmlns="http://maven.apache.org/POM/4.0.0"  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
 			<modelVersion>4.0.0</modelVersion>
 			{ makeModuleID(module) }
 			{ extra }
 			{ makeDependencies(module, configurations) }
-			{ makeRepositories(ivy.getSettings, filterRepositories) }
+			{ makeRepositories(ivy.getSettings, allRepositories, filterRepositories) }
 		</project>)
 
 	def makeModuleID(module: ModuleDescriptor): NodeSeq =
@@ -126,10 +126,10 @@ class MakePom
 	def isOptional(confs: Array[String]) = confs.isEmpty || (confs.length == 1 && confs(0) == Configurations.Optional.name)
 
 
-	def makeRepositories(settings: IvySettings, filterRepositories: MavenRepository => Boolean) =
+	def makeRepositories(settings: IvySettings, includeAll: Boolean, filterRepositories: MavenRepository => Boolean) =
 	{
 		class MavenRepo(name: String, snapshots: Boolean, releases: Boolean)
-		val repositories = resolvers(settings.getDefaultResolver)
+		val repositories = if(includeAll) allResolvers(settings) else resolvers(settings.getDefaultResolver)
 		val mavenRepositories =
 			repositories.flatMap {
 				case m: IBiblioResolver if m.isM2compatible && m.getRoot != IBiblioResolver.DEFAULT_M2_ROOT =>
@@ -139,6 +139,7 @@ class MakePom
 		val repositoryElements =  mavenRepositories.filter(filterRepositories).map(mavenRepository)
 		if(repositoryElements.isEmpty) repositoryElements else <repositories>{repositoryElements}</repositories>
 	}
+	def allResolvers(settings: IvySettings): Seq[DependencyResolver] = flatten(castResolvers(settings.getResolvers)).distinct
 	def flatten(rs: Seq[DependencyResolver]): Seq[DependencyResolver] = if(rs eq null) Nil else rs.flatMap(resolvers)
 	def resolvers(r: DependencyResolver): Seq[DependencyResolver] =
 		r match { case c: ChainResolver => flatten(castResolvers(c.getResolvers)); case _ => r :: Nil }
