@@ -329,7 +329,10 @@ object Defaults extends BuildCommon
 			artifact <<= (artifact, artifactClassifier, configuration) { (a,classifier,c) =>
 				val cPart = if(c == Compile) Nil else c.name :: Nil
 				val combined = cPart ++ classifier.toList
-				a.copy(classifier = if(combined.isEmpty) None else Some(combined mkString "-"))
+				if(combined.isEmpty) a.copy(classifier = None) else {
+					val classifier = combined mkString "-"
+					a.copy(classifier = Some(classifier), `type` = Artifact.classifierType(classifier))
+				}
 			},
 			cacheDirectory <<= cacheDirectory / key.key.label,
 			artifactPath <<= artifactPathSetting(artifact)

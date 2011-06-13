@@ -389,7 +389,8 @@ object Artifact
 	def cross(enable: Boolean, scalaVersion: String): String = if(enable) "_" + scalaVersion else ""
 
 	val classifierTypeMap = Map("sources" -> "src", "javadoc" -> "doc")
-	def classified(name: String, classifier: String): Artifact = Artifact(name, classifierTypeMap.getOrElse(classifier, defaultType), defaultExtension, classifier)
+	def classifierType(classifier: String): String = classifierTypeMap.getOrElse(classifier, defaultType)
+	def classified(name: String, classifier: String): Artifact = Artifact(name, classifierType(classifier), defaultExtension, classifier)
 }
 final case class ModuleConfiguration(organization: String, name: String, revision: String, resolver: Resolver)
 object ModuleConfiguration
