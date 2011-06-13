@@ -216,6 +216,7 @@ object Keys
 	val pomExtra = SettingKey[NodeSeq]("pom-extra", "Extra XML to insert into the generated POM.")
 	val pomPostProcess = SettingKey[XNode => XNode]("pom-post-process", "Transforms the generated POM.")
 	val pomIncludeRepository = SettingKey[MavenRepository => Boolean]("pom-include-repository", "Selects repositories to include in the generated POM.")
+	val pomAllRepositories = SettingKey[Boolean]("pom-all-repositories", "If true, includes repositories used in module configurations in the pom repositories section.  If false, only the common repositories are included.")
 
 	val moduleName = SettingKey[String]("module-name", "The name of the current module, used for dependency management.")
 	val version = SettingKey[String]("version", "The version/revision of the current module.")

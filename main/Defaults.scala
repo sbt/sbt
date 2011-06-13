@@ -62,7 +62,7 @@ object Defaults extends BuildCommon
 		javaHome :== None,
 		version :== "0.1",
 		outputStrategy :== None,
-		exportJars := false,
+		exportJars :== false,
 		fork :== false,
 		javaOptions :== Nil,
 		sbtPlugin :== false,
@@ -81,9 +81,10 @@ object Defaults extends BuildCommon
 		artifactClassifier in packageSrc :== Some(SourceClassifier),
 		artifactClassifier in packageDoc :== Some(DocClassifier),
 		checksums :== IvySbt.DefaultChecksums,
-		pomExtra := NodeSeq.Empty,
-		pomPostProcess := idFun,
-		pomIncludeRepository := Classpaths.defaultRepositoryFilter
+		pomExtra :== NodeSeq.Empty,
+		pomPostProcess :== idFun,
+		pomAllRepositories :== false,
+		pomIncludeRepository :== Classpaths.defaultRepositoryFilter
 	))
 	def projectCore: Seq[Setting[_]] = Seq(
 		name <<= thisProject(_.id),
@@ -608,8 +609,8 @@ object Classpaths
 			(project.configurations ++ project.configurations.map(internalMap) ++ (if(auto) CompilerPlugin :: Nil else Nil)).distinct
 		},
 		moduleSettings <<= moduleSettings0,
-		makePomConfiguration <<= (artifactPath in makePom, pomExtra, pomPostProcess, pomIncludeRepository) {
-			(file, extra, process, include) => new MakePomConfiguration(file, None, extra, process, include)
+		makePomConfiguration <<= (artifactPath in makePom, pomExtra, pomPostProcess, pomIncludeRepository, pomAllRepositories) {
+			(file, extra, process, include, all) => new MakePomConfiguration(file, None, extra, process, include, all)
 		},
 		deliverLocalConfiguration <<= (crossTarget, ivyLoggingLevel) map { (outDir, level) => deliverConfig( outDir, logging = level ) },
 		deliverConfiguration <<= deliverLocalConfiguration.identity,
