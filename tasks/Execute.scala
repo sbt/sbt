@@ -67,7 +67,7 @@ final class Execute[A[_] <: AnyRef](checkCycles: Boolean, triggers: Triggers[A])
 				assert( !reverse.isEmpty, "Nothing to process." )
 				if( !state.values.exists( _ == Running ) ) {
 					snapshotCycleCheck()
-					assert(false, "Internal task engine error: nothing running.  This usually indicates a cycle in tasks.\n  Dumping state:\n" + state.mkString("\n\t"))
+					assert(false, "Internal task engine error: nothing running.  This usually indicates a cycle in tasks.\n  Calling tasks (internal task engine state):\n" + dumpCalling)
 				}
 			}
 
@@ -81,6 +81,7 @@ final class Execute[A[_] <: AnyRef](checkCycles: Boolean, triggers: Triggers[A])
 			assert( complete, "Not all state was Done." )
 		}
 	}
+	def dumpCalling: String = state.filter(_._2 == Calling).mkString("\n\t")
 
 	def call[T](node: A[T], target: A[T])(implicit strategy: Strategy)
 	{
