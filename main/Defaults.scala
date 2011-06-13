@@ -639,7 +639,7 @@ object Classpaths
 		sbtDependency in GlobalScope <<= appConfiguration { app =>
 			val id = app.provider.id
 			val base = ModuleID(id.groupID, id.name, id.version, crossVersion = id.crossVersioned)
-			IvySbt.substituteCross(base, app.provider.scalaProvider.version)
+			IvySbt.substituteCross(base, app.provider.scalaProvider.version).copy(crossVersion = false)
 		}
 	)
 
