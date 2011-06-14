@@ -82,6 +82,12 @@ private[sbt] object Analyze
 				readAPI(source, classFiles.toSeq.flatMap(c => load(c.className, Some("Error reading API from class file") )))
 				analysis.endSource(source)
 			}
+
+			for( source <- sources filterNot sourceToClassFiles.keySet ) {
+				analysis.beginSource(source)
+				analysis.api(source, new xsbti.api.SourceAPI(Array(), Array()))
+				analysis.endSource(source)
+			}
 		}
 		
 		compile
