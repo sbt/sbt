@@ -210,13 +210,18 @@ object Project extends Init[Scope] with ProjectExtra
 	def details(structure: BuildStructure, actual: Boolean, scope: Scope, key: AttributeKey[_]): String =
 	{
 		val scoped = ScopedKey(scope,key)
-		val value = 
-			structure.data.get(scope, key) match {
-				case None => "No entry for key."
-				case Some(v: Task[_]) => "Task"
-				case Some(v: InputTask[_]) => "Input task"
-				case Some(v) => "Value:\n\t" + v.toString
-			}
+		lazy val clazz = key.manifest.erasure
+		lazy val firstType = key.manifest.typeArguments.head
+		val value =
+			if(structure.data.get(scope, key).isEmpty)
+				"No entry for key."
+			else if(clazz == classOf[Task[_]])
+				"Task of type " + firstType.toString
+			else if(clazz == classOf[InputTask[_]])
+				"Input task of type " + firstType.toString
+			else
+				"Setting of type " + key.manifest.toString
+
 		val description = key.description match { case Some(desc) => "Description:\n\t" + desc + "\n"; case None => "" }
 		val definedIn = structure.data.definingScope(scope, key) match {
 			case Some(sc) => "Provided by:\n\t" + Scope.display(sc, key.label) + "\n"
