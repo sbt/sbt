@@ -26,7 +26,7 @@ package object sbt extends sbt.std.TaskExtra with sbt.Types with sbt.ProcessExtr
 	def Runtime = C.Runtime
 	def IntegrationTest = C.IntegrationTest
 	def Default = C.Default
-	def Javadoc = C.Javadoc
+	def Docs = C.Docs
 	def Sources = C.Sources
 	def Provided = C.Provided
 // java.lang.System is more important, so don't alias this one

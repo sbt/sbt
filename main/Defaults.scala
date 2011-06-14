@@ -7,6 +7,7 @@ package sbt
 	import Scope.{fillTaskAxis, GlobalScope, ThisScope}
 	import compiler.Discovery
 	import Project.{inConfig, Initialize, inScope, inTask, ScopedKey, Setting, SettingsDefinition}
+	import Artifact.{DocClassifier, SourceClassifier}
 	import Configurations.{Compile, CompilerPlugin, IntegrationTest, Runtime, Test}
 	import complete._
 	import std.TaskExtra._
@@ -292,9 +293,6 @@ object Defaults extends BuildCommon
 	packageTasks(packageSrc, packageSrcTask) ++
 	packageTasks(packageDoc, packageDocTask)
 
-	final val SourceClassifier = "sources"
-	final val DocClassifier = "javadoc"
-
 	private[this] val allSubpaths = (dir: File) => (dir.*** --- dir) x (relativeTo(dir)|flat)
 
 	def packageBinTask = products map { ps => ps flatMap { p => allSubpaths(p) } }
@@ -329,9 +327,10 @@ object Defaults extends BuildCommon
 			artifact <<= (artifact, artifactClassifier, configuration) { (a,classifier,c) =>
 				val cPart = if(c == Compile) Nil else c.name :: Nil
 				val combined = cPart ++ classifier.toList
-				if(combined.isEmpty) a.copy(classifier = None) else {
+				if(combined.isEmpty) a.copy(classifier = None, configurations = c :: Nil) else {
 					val classifier = combined mkString "-"
-					a.copy(classifier = Some(classifier), `type` = Artifact.classifierType(classifier))
+					val confs = if(a.configurations.isEmpty) Artifact.classifierConf(classifier) :: Nil else a.configurations
+					a.copy(classifier = Some(classifier), `type` = Artifact.classifierType(classifier), configurations = confs)
 				}
 			},
 			cacheDirectory <<= cacheDirectory / key.key.label,
@@ -598,7 +597,7 @@ object Classpaths
 		publishTo in GlobalScope :== None,
 		artifactPath in makePom <<= artifactPathSetting(artifact in makePom),
 		publishArtifact in makePom <<= publishMavenStyle.identity,
-		artifact in makePom <<= moduleName( name => Artifact(name, "pom", "pom") ),
+		artifact in makePom <<= moduleName(Artifact.pom),
 		projectID <<= (organization,moduleName,version,artifacts,crossPaths){ (org,module,version,as,crossEnabled) =>
 			ModuleID(org, module, version).cross(crossEnabled).artifacts(as : _*)
 		},
@@ -611,6 +610,7 @@ object Classpaths
 		ivyConfigurations <<= (autoCompilerPlugins, internalConfigurationMap, thisProject) { (auto, internalMap, project) =>
 			(project.configurations ++ project.configurations.map(internalMap) ++ (if(auto) CompilerPlugin :: Nil else Nil)).distinct
 		},
+		ivyConfigurations ++= Configurations.auxiliary,
 		moduleSettings <<= moduleSettings0,
 		makePomConfiguration <<= (artifactPath in makePom, pomExtra, pomPostProcess, pomIncludeRepository, pomAllRepositories) {
 			(file, extra, process, include, all) => new MakePomConfiguration(file, None, extra, process, include, all)
@@ -631,7 +631,7 @@ object Classpaths
 		update <<= (ivyModule, updateConfiguration, cacheDirectory, scalaInstance, streams) map { (module, config, cacheDirectory, si, s) =>
 			cachedUpdate(cacheDirectory / "update", module, config, Some(si), s.log)
 		},
-		transitiveClassifiers in GlobalScope :== Seq("sources", "javadoc"),
+		transitiveClassifiers in GlobalScope :== Seq(SourceClassifier, DocClassifier),
 		updateClassifiers <<= (ivySbt, projectID, update, transitiveClassifiers, updateConfiguration, ivyScala, streams) map { (is, pid, up, classifiers, c, ivyScala, s) =>
 			IvyActions.transitive(is, pid, up, classifiers, c, ivyScala, s.log)
 		},
