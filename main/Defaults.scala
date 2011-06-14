@@ -736,7 +736,7 @@ object Classpaths
 		}
 
 	def internalDependencies: Initialize[Task[Classpath]] =
-		(thisProjectRef, thisProject, configuration, settings) flatMap internalDependencies0
+		(thisProjectRef, thisProject, classpathConfiguration, configuration, settings) flatMap internalDependencies0
 	def unmanagedDependencies: Initialize[Task[Classpath]] =
 		(thisProjectRef, thisProject, configuration, settings) flatMap unmanagedDependencies0
 	def mkIvyConfiguration: Initialize[Task[IvyConfiguration]] =
@@ -773,16 +773,16 @@ object Classpaths
 		visited.toSeq
 	}
 	def unmanagedDependencies0(projectRef: ProjectRef, project: ResolvedProject, conf: Configuration, data: Settings[Scope]): Task[Classpath] =
-		interDependencies(projectRef, project, conf, data, true, unmanagedLibs)
-	def internalDependencies0(projectRef: ProjectRef, project: ResolvedProject, conf: Configuration, data: Settings[Scope]): Task[Classpath] =
-		interDependencies(projectRef, project, conf, data, false, productsTask)
-	def interDependencies(projectRef: ProjectRef, project: ResolvedProject, conf: Configuration, data: Settings[Scope], includeSelf: Boolean,
+		interDependencies(projectRef, project, conf, conf, data, true, unmanagedLibs)
+	def internalDependencies0(projectRef: ProjectRef, project: ResolvedProject, conf: Configuration, self: Configuration, data: Settings[Scope]): Task[Classpath] =
+		interDependencies(projectRef, project, conf, self, data, false, productsTask)
+	def interDependencies(projectRef: ProjectRef, project: ResolvedProject, conf: Configuration, self: Configuration, data: Settings[Scope], includeSelf: Boolean,
 		f: (ProjectRef, String, Settings[Scope]) => Task[Classpath]): Task[Classpath] =
 	{
 		val visited = interSort(projectRef, project, conf, data)
 		val tasks = asScalaSet(new LinkedHashSet[Task[Classpath]])
 		for( (dep, c) <- visited )
-			if(includeSelf || (dep != projectRef) || conf.name != c )
+			if(includeSelf || (dep != projectRef) || (conf.name != c && self.name != c))
 				tasks += f(dep, c, data)
 
 		(tasks.toSeq.join).map(_.flatten.distinct)
