@@ -519,13 +519,14 @@ object Classpaths
 		import Defaults._
 		import Attributed.{blank, blankSeq}
 
-	def concat[T](a: ScopedTaskable[Seq[T]], b: ScopedTaskable[Seq[T]]): Initialize[Task[Seq[T]]] = (a,b) map (_ ++ _)
+	def concatDistinct[T](a: ScopedTaskable[Seq[T]], b: ScopedTaskable[Seq[T]]): Initialize[Task[Seq[T]]] = (a,b) map { (x,y) => (x ++ y).distinct }
+	def concat[T](a: ScopedTaskable[Seq[T]], b: ScopedTaskable[Seq[T]]): Initialize[Task[Seq[T]]] = (a,b) map ( _ ++ _)
 	def concatSettings[T](a: ScopedSetting[Seq[T]], b: ScopedSetting[Seq[T]]): Initialize[Seq[T]] = (a,b)(_ ++ _)
 
 	lazy val configSettings: Seq[Setting[_]] = Seq(
 		externalDependencyClasspath <<= concat(unmanagedClasspath, managedClasspath),
 		dependencyClasspath <<= concat(internalDependencyClasspath, externalDependencyClasspath),
-		fullClasspath <<= concat(exportedProducts, dependencyClasspath),
+		fullClasspath <<= concatDistinct(exportedProducts, dependencyClasspath),
 		internalDependencyClasspath <<= internalDependencies,
 		unmanagedClasspath <<= unmanagedDependencies,
 		products <<= makeProducts,
