@@ -47,12 +47,12 @@ object EvaluateTask
 		val un = all.filter { i => i.node.isEmpty || i.message.isEmpty }
 		for( (key, _, Some(ex)) <- keyed)
 			getStreams(key, streams).log.trace(ex)
-		log.error("Incomplete tasks (run 'last <task>' for the full log):")
+
 		for( (key, msg, ex) <- keyed if(msg.isDefined || ex.isDefined) )
 		{
 			val msgString = (msg.toList ++ ex.toList.map(ErrorHandling.reducedToString)).mkString("\n\t")
 			val keyString = if(log.ansiCodesSupported) RED + key.key.label + RESET else key.key.label
-			getStreams(key, streams).log.error("  " + Scope.display(key.scope, keyString) + ": " + msgString)
+			getStreams(key, streams).log.error(Scope.display(key.scope, keyString) + ": " + msgString)
 		}
 		for(u <- un)
 			log.debug(u.toString)
