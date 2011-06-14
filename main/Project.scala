@@ -91,17 +91,18 @@ final case class ClasspathDependency(project: ProjectReference, configuration: O
 object Project extends Init[Scope] with ProjectExtra
 {
 	private abstract class ProjectDef[PR <: ProjectReference](val id: String, val base: File, aggregate0: => Seq[PR], dependencies0: => Seq[ClasspathDep[PR]], delegates0: => Seq[PR],
-		val settings: Seq[Setting[_]], val configurations: Seq[Configuration]) extends ProjectDefinition[PR]
+		settings0: => Seq[Setting[_]], val configurations: Seq[Configuration]) extends ProjectDefinition[PR]
 	{
 		lazy val aggregate = aggregate0
 		lazy val dependencies = dependencies0
 		lazy val delegates = delegates0
+		lazy val settings = settings0
 	
 		Dag.topologicalSort(configurations)(_.extendsConfigs) // checks for cyclic references here instead of having to do it in Scope.delegates
 	}
 
 	def apply(id: String, base: File, aggregate: => Seq[ProjectReference] = Nil, dependencies: => Seq[ClasspathDep[ProjectReference]] = Nil, delegates: => Seq[ProjectReference] = Nil,
-		settings: Seq[Setting[_]] = defaultSettings, configurations: Seq[Configuration] = Configurations.default): Project =
+		settings: => Seq[Setting[_]] = defaultSettings, configurations: Seq[Configuration] = Configurations.default): Project =
 			new ProjectDef[ProjectReference](id, base, aggregate, dependencies, delegates, settings, configurations) with Project
 
 	def resolved(id: String, base: File, aggregate: => Seq[ProjectRef], dependencies: => Seq[ResolvedClasspathDependency], delegates: => Seq[ProjectRef],
