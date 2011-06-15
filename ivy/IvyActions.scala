@@ -131,7 +131,7 @@ object IvyActions
 
 	def transitiveScratch(ivySbt: IvySbt, id: ModuleID, label: String, deps: Seq[ModuleID], classifiers: Seq[String], c: UpdateConfiguration, ivyScala: Option[IvyScala], log: Logger): UpdateReport =
 	{
-		val base = id.copy(name = id.name + "$" + label)
+		val base = restrictedCopy(id).copy(name = id.name + "$" + label)
 		val module = new ivySbt.Module(InlineConfiguration(base, deps).copy(ivyScala = ivyScala))
 		val report = update(module, c, log)
 		transitive(ivySbt, id, report, classifiers, c, ivyScala, log)
@@ -141,13 +141,14 @@ object IvyActions
 	def updateClassifiers(ivySbt: IvySbt, id: ModuleID, modules: Seq[ModuleID], classifiers: Seq[String], configuration: UpdateConfiguration, ivyScala: Option[IvyScala], log: Logger): UpdateReport =
 	{
 		assert(!classifiers.isEmpty, "classifiers cannot be empty")
-		val baseModules = modules map { m => ModuleID(m.organization, m.name, m.revision, crossVersion = m.crossVersion) }
+		val baseModules = modules map restrictedCopy
 		val deps = baseModules.distinct map { m => m.copy(explicitArtifacts = classifiers map { c => Artifact.classified(m.name, c) }) }
-		val base = id.copy(name = id.name + classifiers.mkString("$","_",""))
+		val base = restrictedCopy(id).copy(name = id.name + classifiers.mkString("$","_",""))
 		val module = new ivySbt.Module(InlineConfiguration(base, deps).copy(ivyScala = ivyScala))
 		update(module, configuration, log)
 	}
-	private def resolve(logging: UpdateLogging.Value)(ivy: Ivy, module: DefaultModuleDescriptor, defaultConf: String): (ResolveReport, Option[ResolveException]) =
+	private[this] def restrictedCopy(m: ModuleID) = ModuleID(m.organization, m.name, m.revision, crossVersion = m.crossVersion)
+	private[this] def resolve(logging: UpdateLogging.Value)(ivy: Ivy, module: DefaultModuleDescriptor, defaultConf: String): (ResolveReport, Option[ResolveException]) =
 	{
 		val resolveOptions = new ResolveOptions
 		resolveOptions.setLog(ivyLogLevel(logging))
