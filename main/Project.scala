@@ -214,14 +214,17 @@ object Project extends Init[Scope] with ProjectExtra
 		lazy val clazz = key.manifest.erasure
 		lazy val firstType = key.manifest.typeArguments.head
 		val value =
-			if(structure.data.get(scope, key).isEmpty)
-				"No entry for key."
-			else if(clazz == classOf[Task[_]])
-				"Task of type " + firstType.toString
-			else if(clazz == classOf[InputTask[_]])
-				"Input task of type " + firstType.toString
-			else
-				"Setting of type " + key.manifest.toString
+			structure.data.get(scope, key) match
+			{
+				case None => "No entry for key."
+				case Some(v) =>
+					if(clazz == classOf[Task[_]])
+						"Task: " + firstType.toString
+					else if(clazz == classOf[InputTask[_]])
+						"Input task: " + firstType.toString
+					else
+						"Setting: " + key.manifest.toString + " = " + v.toString
+			}
 
 		val description = key.description match { case Some(desc) => "Description:\n\t" + desc + "\n"; case None => "" }
 		val definedIn = structure.data.definingScope(scope, key) match {
