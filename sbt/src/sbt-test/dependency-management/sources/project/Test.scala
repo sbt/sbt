@@ -16,7 +16,7 @@ object Test extends Build
 		val srcs = getSources(report)
 		if(srcs.isEmpty)
 			error("No sources retrieved")
-		else if(srcs.size != 2)
+		else if(srcs.size != 3)
 			error("Incorrect sources retrieved:\n\t" + srcs.mkString("\n\t"))
 		else
 			()
