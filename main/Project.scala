@@ -24,9 +24,9 @@ sealed trait ProjectDefinition[PR <: ProjectReference]
 	def uses: Seq[PR] = aggregate ++ dependencies.map(_.project)
 	def referenced: Seq[PR] = delegates ++ uses
 
-	override final def hashCode = id.hashCode
+	override final def hashCode: Int = id.hashCode ^ base.hashCode ^ getClass.hashCode
 	override final def equals(o: Any) = o match {
-		case p: ProjectDefinition[_] => p.getClass == this.getClass && p.id == id
+		case p: ProjectDefinition[_] => p.getClass == this.getClass && p.id == id && p.base == base
 		case _ => false
 	}
 }
