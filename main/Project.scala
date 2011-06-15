@@ -29,6 +29,7 @@ sealed trait ProjectDefinition[PR <: ProjectReference]
 		case p: ProjectDefinition[_] => p.getClass == this.getClass && p.id == id && p.base == base
 		case _ => false
 	}
+	override def toString = "Project(id: " + id + ", base: " + base + ", aggregate: " + aggregate + ", dependencies: " + dependencies + ", delegates: " + delegates + ", configurations: " + configurations + ")"
 }
 sealed trait Project extends ProjectDefinition[ProjectReference]
 {
