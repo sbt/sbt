@@ -8,7 +8,7 @@ import io.{AbstractFile, PlainFile, VirtualDirectory}
 import ast.parser.Tokens
 import reporters.{ConsoleReporter, Reporter}
 import util.BatchSourceFile
-import Tokens.EOF
+import Tokens.{EOF, NEWLINE, NEWLINES, SEMI}
 import java.io.File
 import java.nio.ByteBuffer
 import java.net.URLClassLoader
@@ -153,9 +153,22 @@ final class Eval(optionsNoncp: Seq[String], classpath: Seq[File], mkReporter: Se
 	private[this] def parseExpr(unit: CompilationUnit) = 
 	{
 		val parser = new syntaxAnalyzer.UnitParser(unit)
+
 		val tree: Tree = parser.expr()
+		val extra = parser.in.token match {
+			case EOF => "  Ensure that there are no blank lines within a setting."
+			case _ => ""
+		}
+		checkError("Error parsing expression." + extra)
+
 		parser.accept(EOF)
-		checkError("Error parsing expression.")
+		val extra2 = parser.in.token match {
+			case SEMI => "  Note that settings are expressions and do not end with semicolons.  (Semicolons are fine within {} blocks, however.)"
+			case NEWLINE | NEWLINES => "  Ensure that settings are separated by blank lines."
+			case _ => ""
+		}
+		checkError("Error parsing expression." + extra2)
+
 		(parser, tree)
 	}
 	private[this] def parseType(tpe: String): Tree =
