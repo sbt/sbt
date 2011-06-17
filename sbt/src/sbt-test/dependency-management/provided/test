@@ -1,30 +1,16 @@
+> show update
+
+# verify that the classpaths are correct for when a dependency is in the compile configuration
+> check runtime true
+> check compile true
+> check provided false
+> check test true
+
 # verify that the classpaths are correct for when a dependency is in the provided configuration
 $ touch useProvided
 > reload
 
-> update
-
-> check-run
-> check-compile
-> check-provided
-> check-public
-
-> package
-> check-war
-
-# verify that the classpaths are correct for when a dependency is in the compile configuration
-$ delete useProvided
-> reload
-
-> update
-
-> check-run
-> check-compile
-> check-provided
-> check-public
-
-# prepare-webapp is last modified based, so we need to force it to do work
-$ delete target
-
-> package
-> check-war
+> check runtime false
+> check compile true
+> check test true
+> check provided true
