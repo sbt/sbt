@@ -243,8 +243,8 @@ trait ParserMain
 		def string(implicit ev: A <:< Seq[Char]): Parser[String] = map(_.mkString)
 		def flatMap[B](f: A => Parser[B]) = bindParser(a, f)
 	}
-	implicit def literalRichParser(c: Char): RichParser[Char] = richParser(c)
-	implicit def literalRichParser(s: String): RichParser[String] = richParser(s)
+	implicit def literalRichCharParser(c: Char): RichParser[Char] = richParser(c)
+	implicit def literalRichStringParser(s: String): RichParser[String] = richParser(s)
 
 	def invalid(msgs: => Seq[String]): Parser[Nothing] = Invalid(mkFailures(msgs))
 	def failure(msg: => String): Parser[Nothing] = invalid(msg :: Nil)
