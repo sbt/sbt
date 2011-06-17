@@ -46,6 +46,7 @@ trait Parsers
 	lazy val NatBasic = mapOrFail( Digit.+ )( _.mkString.toInt )
 	private[this] def toInt(neg: Option[Char], digits: Seq[Char]): Int =
 		(neg.toSeq ++ digits).mkString.toInt
+	lazy val Bool = ("true" ^^^ true) | ("false" ^^^ false)
 
 	def repsep[T](rep: Parser[T], sep: Parser[_]): Parser[Seq[T]] =
 		rep1sep(rep, sep) ?? Nil
