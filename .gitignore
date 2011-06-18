@@ -1,4 +1,2 @@
-LazyJettyRun6.scala
-LazyJettyRun7.scala
-project/plugins/project/
-interface/src/main/resources/xsbt.version.properties
+target/
+project/boot/
