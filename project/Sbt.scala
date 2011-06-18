@@ -201,7 +201,7 @@ object Sbt extends Build
 	//
 	def compileInterfaceSettings: Seq[Setting[_]] = precompiledSettings ++ Seq(
 		exportJars := true,
-		artifact in packageSrc := Artifact(srcID) extra("e:component" -> srcID)
+		artifact in (Compile, packageSrc) := Artifact(srcID) extra("e:component" -> srcID)
 	)
 	def compilerSettings = Seq(
 		libraryDependencies <+= scalaVersion( "org.scala-lang" % "scala-compiler" % _ % "test"),
