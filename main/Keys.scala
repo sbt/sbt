@@ -188,7 +188,7 @@ object Keys
 	val ivyConfiguration = TaskKey[IvyConfiguration]("ivy-configuration", "General dependency management (Ivy) settings, such as the resolvers and paths to use.")
 	val ivyConfigurations = SettingKey[Seq[Configuration]]("ivy-configurations", "The defined configurations for dependency management.  This may be different from the configurations for Project settings.")
 	val moduleSettings = TaskKey[ModuleSettings]("module-settings", "Module settings, which configure a specific module, such as a project.")
-	val unmanagedBase = SettingKey[File]("unmanaged-base", "The default directory for manually managed directories.")
+	val unmanagedBase = SettingKey[File]("unmanaged-base", "The default directory for manually managed libraries.")
 	val updateConfiguration = SettingKey[UpdateConfiguration]("update-configuration", "Configuration for resolving and retrieving managed dependencies.")
 	val ivySbt = TaskKey[IvySbt]("ivy-sbt", "Provides the sbt interface to Ivy.")
 	val ivyModule = TaskKey[IvySbt#Module]("ivy-module", "Provides the sbt interface to a configured Ivy module.")
