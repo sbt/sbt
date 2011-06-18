@@ -142,7 +142,7 @@ final class IvySbt(val configuration: IvyConfiguration)
 		{
 			val mod = new DefaultModuleDescriptor(IvySbt.toID(module), "release", null, false)
 			mod.setLastModified(System.currentTimeMillis)
-			configurations.foreach(config => mod.addConfiguration(IvySbt.toIvyConfiguration(config)))
+			IvySbt.addConfigurations(mod, configurations)
 			IvySbt.addArtifacts(mod, module.explicitArtifacts)
 			mod
 		}
@@ -151,7 +151,9 @@ final class IvySbt(val configuration: IvyConfiguration)
 		private def readPom(pomFile: File, validate: Boolean) =
 		{
 			val md = PomModuleDescriptorParser.getInstance.parseDescriptor(settings, toURL(pomFile), validate)
-			(IvySbt.toDefaultModuleDescriptor(md), "compile")
+			val dmd = IvySbt.toDefaultModuleDescriptor(md)
+			IvySbt.addConfigurations(dmd, Configurations.defaultInternal)
+			(dmd, "compile")
 		}
 		/** Parses the given Ivy file 'ivyFile'.*/
 		private def readIvyFile(ivyFile: File, validate: Boolean) =
@@ -408,6 +410,8 @@ private object IvySbt
 	def addArtifacts(moduleID: DefaultModuleDescriptor, artifacts: Iterable[Artifact]): Unit =
 		for(art <- mapArtifacts(moduleID, artifacts.toSeq); c <- art.getConfigurations)
 			moduleID.addArtifact(c, art)
+	def addConfigurations(mod: DefaultModuleDescriptor, configurations: Iterable[Configuration]): Unit =
+			configurations.foreach(config => mod.addConfiguration(toIvyConfiguration(config)))
 
 	def mapArtifacts(moduleID: ModuleDescriptor, artifacts: Seq[Artifact]): Seq[IArtifact] =
 	{
