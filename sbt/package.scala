@@ -17,20 +17,20 @@ package object sbt extends sbt.std.TaskExtra with sbt.Types with sbt.ProcessExtr
 	def file(s: String): File = new File(s)
 	def url(s: String): URL = new URL(s)
 	
-	def ThisScope = Scope.ThisScope
-	def GlobalScope = Scope.GlobalScope
+	final val ThisScope = Scope.ThisScope
+	final val GlobalScope = Scope.GlobalScope
 
 		import sbt.{Configurations => C}
-	def Compile = C.Compile
-	def Test = C.Test
-	def Runtime = C.Runtime
-	def IntegrationTest = C.IntegrationTest
-	def Default = C.Default
-	def Docs = C.Docs
-	def Sources = C.Sources
-	def Provided = C.Provided
+	final val Compile = C.Compile
+	final val Test = C.Test
+	final val Runtime = C.Runtime
+	final val IntegrationTest = C.IntegrationTest
+	final val Default = C.Default
+	final val Docs = C.Docs
+	final val Sources = C.Sources
+	final val Provided = C.Provided
 // java.lang.System is more important, so don't alias this one
-//	def System = C.System
-	def Optional = C.Optional
+//	final val System = C.System
+	final val Optional = C.Optional
 	def config(s: String): Configuration = Configurations.config(s)
 }
