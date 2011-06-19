@@ -23,6 +23,7 @@ class ProjectResolver(name: String, map: Map[ModuleRevisionId, ModuleDescriptor]
 {
 	def getName = name
 	def setName(name: String) = error("Setting name not supported by ProjectResolver")
+	override def toString = "ProjectResolver(" + name + ", mapped: " + map.keys.mkString(", ") + ")"
 
 	def getDependency(dd: DependencyDescriptor, data: ResolveData): ResolvedModuleRevision =
 	{

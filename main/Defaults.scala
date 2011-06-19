@@ -571,7 +571,10 @@ object Classpaths
 		normalizedName <<= name(StringUtilities.normalize),
 		organization <<= organization or normalizedName.identity,
 		classpathFilter in GlobalScope :== "*.jar",
-		externalResolvers <<= externalResolvers or (resolvers map Resolver.withDefaultResolvers),
+		externalResolvers <<= (externalResolvers.task.? zipWith resolvers.identity) {
+			case (Some(delegated), Seq()) => delegated
+			case (_, rs) => task { Resolver.withDefaultResolvers(rs) }
+		},
 		fullResolvers <<= (projectResolver,externalResolvers,sbtPlugin,sbtResolver) map { (pr,rs,isPlugin,sr) =>
 			val base = pr +: rs
 			if(isPlugin) sr +: base else base
@@ -607,7 +610,7 @@ object Classpaths
 		retrievePattern in GlobalScope :== "[type]s/[organisation]/[module]/[artifact](-[revision])(-[classifier]).[ext]",
 		updateConfiguration <<= (retrieveConfiguration, ivyLoggingLevel)((conf,level) => new UpdateConfiguration(conf, false, level) ),
 		retrieveConfiguration <<= (managedDirectory, retrievePattern, retrieveManaged) { (libm, pattern, enabled) => if(enabled) Some(new RetrieveConfiguration(libm, pattern)) else None },
-		ivyConfiguration <<= ivyConfiguration or mkIvyConfiguration,
+		ivyConfiguration <<= mkIvyConfiguration,
 		ivyConfigurations <<= (autoCompilerPlugins, internalConfigurationMap, thisProject) { (auto, internalMap, project) =>
 			(project.configurations ++ project.configurations.map(internalMap) ++ (if(auto) CompilerPlugin :: Nil else Nil)).distinct
 		},
@@ -629,8 +632,8 @@ object Classpaths
 			new IvySbt(conf)
 		},
 		ivyModule <<= (ivySbt, moduleSettings) map { (ivySbt, settings) => new ivySbt.Module(settings) },
-		update <<= (ivyModule, updateConfiguration, cacheDirectory, scalaInstance, streams) map { (module, config, cacheDirectory, si, s) =>
-			cachedUpdate(cacheDirectory / "update", module, config, Some(si), s.log)
+		update <<= (ivyModule, thisProjectRef, updateConfiguration, cacheDirectory, scalaInstance, streams) map { (module, ref, config, cacheDirectory, si, s) =>
+			cachedUpdate(cacheDirectory / "update", Project.display(ref), module, config, Some(si), s.log)
 		},
 		transitiveClassifiers in GlobalScope :== Seq(SourceClassifier, DocClassifier),
 		updateClassifiers <<= (ivySbt, projectID, update, transitiveClassifiers, updateConfiguration, ivyScala, streams) map { (is, pid, up, classifiers, c, ivyScala, s) =>
@@ -661,13 +664,13 @@ object Classpaths
 		import Cache._
 		import CacheIvy.{classpathFormat, /*publishIC,*/ updateIC, updateReportF}
 
-	def cachedUpdate(cacheFile: File, module: IvySbt#Module, config: UpdateConfiguration, scalaInstance: Option[ScalaInstance], log: Logger): UpdateReport =
+	def cachedUpdate(cacheFile: File, label: String, module: IvySbt#Module, config: UpdateConfiguration, scalaInstance: Option[ScalaInstance], log: Logger): UpdateReport =
 	{
 		implicit val updateCache = updateIC
 		implicit val updateReport = updateReportF
 		type In = IvyConfiguration :+: ModuleSettings :+: UpdateConfiguration :+: HNil
 		def work = (_:  In) match { case conf :+: settings :+: config :+: HNil =>
-			log.info("Updating...")
+			log.info("Updating " + label + "...")
 			val r = IvyActions.update(module, config, log)
 			log.info("Done updating.")
 			scalaInstance match { case Some(si) => substituteScalaFiles(si, r); case None => r }
