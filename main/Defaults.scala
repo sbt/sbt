@@ -222,7 +222,7 @@ object Defaults extends BuildCommon
 	def unmanagedResourcesTask(dirs: Seq[File], excl: FileFilter) =
 		dirs.descendentsExcept("*",excl).get
 
-	lazy val testTasks = testTaskOptions(test) ++ testTaskOptions(testOnly) ++ Seq(	
+	lazy val testTasks: Seq[Setting[_]] = testTaskOptions(test) ++ testTaskOptions(testOnly) ++ Seq(	
 		testLoader <<= (fullClasspath, scalaInstance) map { (cp, si) => TestFramework.createTestLoader(data(cp), si) },
 		testFrameworks in GlobalScope :== {
 			import sbt.TestFrameworks._
@@ -281,12 +281,12 @@ object Defaults extends BuildCommon
 		Tests.discover(frameworkMap.values.toSeq, analysis, s.log)._1
 	}
 
-	lazy val packageBase = Seq(
+	lazy val packageBase: Seq[Setting[_]] = Seq(
 		artifact <<= normalizedName(n => Artifact(n)),
 		packageOptions in GlobalScope :== Nil,
 		artifactName in GlobalScope :== ( Artifact.artifactName _ )
 	)
-	lazy val packageConfig = Seq(
+	lazy val packageConfig: Seq[Setting[_]] = Seq(
 		packageOptions in packageBin <<= (packageOptions, mainClass in packageBin) map { _ ++ _.map(Package.MainClass.apply).toList }
 	) ++
 	packageTasks(packageBin, packageBinTask) ++
@@ -497,14 +497,14 @@ object Defaults extends BuildCommon
 	
 	lazy val baseTasks: Seq[Setting[_]] = projectTasks ++ packageBase
 
-	lazy val baseClasspaths = Classpaths.publishSettings ++ Classpaths.baseSettings
-	lazy val configSettings = Classpaths.configSettings ++ configTasks ++ configPaths ++ packageConfig ++ Classpaths.compilerPluginConfig
+	lazy val baseClasspaths: Seq[Setting[_]] = Classpaths.publishSettings ++ Classpaths.baseSettings
+	lazy val configSettings: Seq[Setting[_]] = Classpaths.configSettings ++ configTasks ++ configPaths ++ packageConfig ++ Classpaths.compilerPluginConfig
 
-	lazy val compileSettings = configSettings ++ (mainRunMainTask +: mainRunTask +: addBaseSources)
-	lazy val testSettings = configSettings ++ testTasks
+	lazy val compileSettings: Seq[Setting[_]] = configSettings ++ (mainRunMainTask +: mainRunTask +: addBaseSources)
+	lazy val testSettings: Seq[Setting[_]] = configSettings ++ testTasks
 
-	lazy val itSettings = inConfig(IntegrationTest)(testSettings)
-	lazy val defaultConfigs = inConfig(Compile)(compileSettings) ++ inConfig(Test)(testSettings) ++ inConfig(Runtime)(Classpaths.configSettings)
+	lazy val itSettings: Seq[Setting[_]] = inConfig(IntegrationTest)(testSettings)
+	lazy val defaultConfigs: Seq[Setting[_]] = inConfig(Compile)(compileSettings) ++ inConfig(Test)(testSettings) ++ inConfig(Runtime)(Classpaths.configSettings)
 		
 
 	// settings that are not specific to a configuration
