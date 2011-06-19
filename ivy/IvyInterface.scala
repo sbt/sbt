@@ -41,6 +41,7 @@ sealed trait Resolver
 final class RawRepository(val resolver: DependencyResolver) extends Resolver
 {
 	def name = resolver.getName
+	override def toString = "Raw(" + resolver.toString + ")"
 }
 sealed case class MavenRepository(name: String, root: String) extends Resolver
 {
