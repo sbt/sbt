@@ -27,6 +27,16 @@ object InputCache
 			def write(to: Out, i: I) = fmt.writes(to, i)
 			def equiv = eqv
 		}
+	def lzy[I](mkIn: => InputCache[I]): InputCache[I] =
+		new InputCache[I]
+		{
+			lazy val ic = mkIn
+			type Internal = ic.Internal
+			def convert(i: I) = ic convert i
+			def read(from: Input): ic.Internal = ic.read(from)
+			def write(to: Out, i: ic.Internal) = ic.write(to, i)
+			def equiv = ic.equiv
+		}
 }
 
 class BasicCache[I,O](implicit input: InputCache[I], outFormat: Format[O]) extends Cache[I,O]
