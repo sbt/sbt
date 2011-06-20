@@ -121,12 +121,14 @@ object CacheIvy
 		implicit def sshRToHL = (s: SshRepository) => s.name :+: s.connection :+: s.patterns :+: s.publishPermissions :+: HNil
 		implicit def sftpRToHL = (s: SftpRepository) => s.name :+: s.connection :+: s.patterns :+: HNil
 		implicit def rawRToHL = (r: RawRepository) => r.name :+: r.resolver.getClass.getName :+: HNil
+		implicit def chainRToHL = (c: ChainedResolver) => c.name :+: c.resolvers :+: HNil
 		implicit def moduleToHL = (m: ModuleID) => m.organization :+: m.name :+: m.revision :+: m.configurations :+: m.isChanging :+: m.isTransitive :+: m.explicitArtifacts :+: m.extraAttributes :+: m.crossVersion :+: HNil
 	}
 	import L3._
 
-	implicit def resolverIC: InputCache[Resolver] =
-		unionInputCache[Resolver, JavaNet1Repository :+: MavenRepository :+: FileRepository :+: URLRepository :+: SshRepository :+: SftpRepository :+: RawRepository :+: HNil]
+	implicit lazy val chainedIC: InputCache[ChainedResolver] = InputCache.lzy(wrapIn)
+	implicit lazy val resolverIC: InputCache[Resolver] =
+		unionInputCache[Resolver, ChainedResolver :+: JavaNet1Repository :+: MavenRepository :+: FileRepository :+: URLRepository :+: SshRepository :+: SftpRepository :+: RawRepository :+: HNil]
 	implicit def moduleIC: InputCache[ModuleID] = wrapIn
 	implicitly[InputCache[Seq[Configuration]]]
 
