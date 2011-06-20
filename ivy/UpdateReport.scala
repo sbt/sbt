@@ -88,36 +88,40 @@ object UpdateReport
 			
 		/** Constructs a new report that only contains files matching the specified filter.*/
 		def filter(f: DependencyFilter): UpdateReport =
-		{
-			val newConfigurations = report.configurations.map { confReport =>
-				import confReport._
-				val newModules =
-					modules map { modReport =>
-						import modReport._
-						val newArtifacts = artifacts filter { case (art, file) => f(configuration, module, art) }
-						val newMissing = missingArtifacts filter { art => f(configuration, module, art) }
-						new ModuleReport(module, newArtifacts, newMissing)
-					}
-				new ConfigurationReport(configuration, newModules)
+			moduleReportMap { (configuration, modReport) =>
+				import modReport._
+				val newArtifacts = artifacts filter { case (art, file) => f(configuration, module, art) }
+				val newMissing = missingArtifacts filter { art => f(configuration, module, art) }
+				new ModuleReport(module, newArtifacts, newMissing)
 			}
-			new UpdateReport(report.cachedDescriptor, newConfigurations)
-		}
 		def substitute(f: (String, ModuleID, Seq[(Artifact, File)]) => Seq[(Artifact, File)]): UpdateReport =
-		{
-			val newConfigurations = report.configurations.map { confReport =>
-				import confReport._
-				val newModules =
-					modules map { modReport =>
-						val newArtifacts = f(configuration, modReport.module, modReport.artifacts)
-						new ModuleReport(modReport.module, newArtifacts, Nil)
-					}
-				new ConfigurationReport(configuration, newModules)
+			moduleReportMap { (configuration, modReport) =>
+				val newArtifacts = f(configuration, modReport.module, modReport.artifacts)
+				new ModuleReport(modReport.module, newArtifacts, Nil)
 			}
-			new UpdateReport(report.cachedDescriptor, newConfigurations)
-		}
 
 		def toSeq: Seq[(String, ModuleID, Artifact, File)] =
 			for(confReport <- report.configurations; modReport <- confReport.modules; (artifact, file) <- modReport.artifacts) yield
 				(confReport.configuration, modReport.module, artifact, file)
+
+		def allMissing: Seq[(String, ModuleID, Artifact)] =
+			for(confReport <- report.configurations; modReport <- confReport.modules; artifact <- modReport.missingArtifacts) yield
+				(confReport.configuration, modReport.module, artifact)
+
+		def addMissing(f: ModuleID => Seq[Artifact]): UpdateReport =
+			moduleReportMap { (configuration, modReport) =>
+					import modReport._
+				new ModuleReport(module, artifacts, (missingArtifacts ++ f(module)).distinct)
+			}
+
+		def moduleReportMap(f: (String, ModuleReport) => ModuleReport): UpdateReport =
+		{
+			val newConfigurations = report.configurations.map { confReport =>
+				import confReport._
+				val newModules = modules map { modReport => f(configuration, modReport) }
+				new ConfigurationReport(configuration, newModules)
+			}
+			new UpdateReport(report.cachedDescriptor, newConfigurations)
+		}
 	}
 }
