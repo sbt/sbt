@@ -18,6 +18,7 @@ package sbt
 	import descriptor.ModuleDescriptor, id.ModuleRevisionId
 	import java.io.File
 	import java.net.URL
+	import java.util.concurrent.Callable
 	import sbinary.DefaultProtocol.StringFormat
 	import Cache.seqFormat
 
@@ -636,11 +637,16 @@ object Classpaths
 			cachedUpdate(cacheDirectory / "update", Project.display(ref), module, config, Some(si), s.log)
 		},
 		transitiveClassifiers in GlobalScope :== Seq(SourceClassifier, DocClassifier),
-		updateClassifiers <<= (ivySbt, projectID, update, transitiveClassifiers, updateConfiguration, ivyScala, streams) map { (is, pid, up, classifiers, c, ivyScala, s) =>
-			IvyActions.transitive(is, pid, up, classifiers, c, ivyScala, s.log)
+		updateClassifiers <<= (ivySbt, projectID, update, transitiveClassifiers, updateConfiguration, ivyScala, baseDirectory in ThisBuild, appConfiguration, streams) map { (is, pid, up, classifiers, c, ivyScala, out, app, s) =>
+			withExcludes(out, classifiers, lock(app)) { excludes =>
+				IvyActions.updateClassifiers(is, GetClassifiersConfiguration(pid, up.allModules, classifiers, excludes, c, ivyScala), s.log)
+			}
 		},
-		updateSbtClassifiers <<= (ivySbt, projectID, transitiveClassifiers, updateConfiguration, sbtDependency, ivyScala, streams) map { (is, pid, classifiers, c, sbtDep, ivyScala, s) =>
-			IvyActions.transitiveScratch(is, pid, "sbt", sbtDep :: Nil, classifiers, c, ivyScala, s.log)
+		updateSbtClassifiers <<= (ivySbt, projectID, transitiveClassifiers, updateConfiguration, sbtDependency, ivyScala, baseDirectory in ThisBuild, appConfiguration, streams) map {
+				(is, pid, classifiers, c, sbtDep, ivyScala, out, app, s) =>
+			withExcludes(out, classifiers, lock(app)) { excludes =>
+				IvyActions.transitiveScratch(is, "sbt", GetClassifiersConfiguration(pid, sbtDep :: Nil, classifiers, excludes, c, ivyScala), s.log)
+			}
 		},
 		sbtResolver in GlobalScope :== typesafeResolver,
 		sbtDependency in GlobalScope <<= appConfiguration { app =>
@@ -662,7 +668,20 @@ object Classpaths
 		}
 
 		import Cache._
-		import CacheIvy.{classpathFormat, /*publishIC,*/ updateIC, updateReportF}
+		import CacheIvy.{classpathFormat, /*publishIC,*/ updateIC, updateReportF, excludeMap}
+
+	def withExcludes(out: File, classifiers: Seq[String], lock: xsbti.GlobalLock)(f: Map[ModuleID, Set[String]] => UpdateReport): UpdateReport =
+	{
+		val exclName = "exclude_classifiers"
+		val file = out / exclName
+		lock(out / (exclName + ".lock"), new Callable[UpdateReport] { def call = {
+			val excludes = CacheIO.fromFile[Map[ModuleID, Set[String]]](excludeMap, Map.empty[ModuleID, Set[String]])(file)
+			val report = f(excludes)
+			val allExcludes = excludes ++ IvyActions.extractExcludes(report)
+			CacheIO.toFile(excludeMap)(allExcludes)(file)
+			IvyActions.addExcluded(report, classifiers, allExcludes)
+		}})
+	}
 
 	def cachedUpdate(cacheFile: File, label: String, module: IvySbt#Module, config: UpdateConfiguration, scalaInstance: Option[ScalaInstance], log: Logger): UpdateReport =
 	{

@@ -27,6 +27,8 @@ final class PublishConfiguration(val ivyFile: Option[File], val resolverName: St
 final class UpdateConfiguration(val retrieve: Option[RetrieveConfiguration], val missingOk: Boolean, val logging: UpdateLogging.Value)
 final class RetrieveConfiguration(val retrieveDirectory: File, val outputPattern: String)
 final case class MakePomConfiguration(file: File, configurations: Option[Iterable[Configuration]] = None, extra: NodeSeq = NodeSeq.Empty, process: XNode => XNode = n => n, filterRepositories: MavenRepository => Boolean = _ => true, allRepositories: Boolean)
+	// exclude is a map on a restricted ModuleID
+final case class GetClassifiersConfiguration(id: ModuleID, modules: Seq[ModuleID], classifiers: Seq[String], exclude: Map[ModuleID, Set[String]], configuration: UpdateConfiguration, ivyScala: Option[IvyScala])
 
 /** Configures logging during an 'update'.  `level` determines the amount of other information logged.
 * `Full` is the default and logs the most.
@@ -129,24 +131,40 @@ object IvyActions
 			}
 		}
 
-	def transitiveScratch(ivySbt: IvySbt, id: ModuleID, label: String, deps: Seq[ModuleID], classifiers: Seq[String], c: UpdateConfiguration, ivyScala: Option[IvyScala], log: Logger): UpdateReport =
+	def transitiveScratch(ivySbt: IvySbt, label: String, config: GetClassifiersConfiguration, log: Logger): UpdateReport =
 	{
+			import config.{configuration => c, id, ivyScala, modules => deps}
 		val base = restrictedCopy(id).copy(name = id.name + "$" + label)
 		val module = new ivySbt.Module(InlineConfiguration(base, deps).copy(ivyScala = ivyScala))
 		val report = update(module, c, log)
-		transitive(ivySbt, id, report, classifiers, c, ivyScala, log)
+		val newConfig = config.copy(modules = report.allModules)
+		updateClassifiers(ivySbt, newConfig, log)
 	}
-	def transitive(ivySbt: IvySbt, module: ModuleID, report: UpdateReport, classifiers: Seq[String], c: UpdateConfiguration, ivyScala: Option[IvyScala], log: Logger): UpdateReport =
-		updateClassifiers(ivySbt, module, report.allModules, classifiers, new UpdateConfiguration(c.retrieve, true, c.logging), ivyScala, log)
-	def updateClassifiers(ivySbt: IvySbt, id: ModuleID, modules: Seq[ModuleID], classifiers: Seq[String], configuration: UpdateConfiguration, ivyScala: Option[IvyScala], log: Logger): UpdateReport =
+	def updateClassifiers(ivySbt: IvySbt, config: GetClassifiersConfiguration, log: Logger): UpdateReport =
 	{
+			import config.{configuration => c, _}
 		assert(!classifiers.isEmpty, "classifiers cannot be empty")
 		val baseModules = modules map restrictedCopy
-		val deps = baseModules.distinct map { m => m.copy(explicitArtifacts = classifiers map { c => Artifact.classified(m.name, c) }) }
+		val deps = baseModules.distinct flatMap classifiedArtifacts(classifiers, exclude)
 		val base = restrictedCopy(id).copy(name = id.name + classifiers.mkString("$","_",""))
 		val module = new ivySbt.Module(InlineConfiguration(base, deps).copy(ivyScala = ivyScala))
-		update(module, configuration, log)
+		val upConf = new UpdateConfiguration(c.retrieve, true, c.logging)
+		update(module, upConf, log)
 	}
+	def classifiedArtifacts(classifiers: Seq[String], exclude: Map[ModuleID, Set[String]])(m: ModuleID): Option[ModuleID] =
+	{
+		val excluded = exclude getOrElse(m, Set.empty)
+		val included = classifiers filterNot excluded
+		if(included.isEmpty) None else Some(m.copy(explicitArtifacts = classifiedArtifacts(m.name, included) ))
+	}
+	def addExcluded(report: UpdateReport, classifiers: Seq[String], exclude: Map[ModuleID, Set[String]]): UpdateReport =
+		report.addMissing { id => classifiedArtifacts(id.name, classifiers filter exclude.getOrElse(id, Set.empty[String])) }
+	def classifiedArtifacts(name: String, classifiers: Seq[String]): Seq[Artifact] =
+		classifiers map { c => Artifact.classified(name, c) }
+
+	def extractExcludes(report: UpdateReport): Map[ModuleID, Set[String]] =
+		report.allMissing flatMap { case (_, mod, art) => art.classifier.map { c => (restrictedCopy(mod), c) } } groupBy(_._1) map { case (mod, pairs) => (mod, pairs.map(_._2).toSet) }
+
 	private[this] def restrictedCopy(m: ModuleID) = ModuleID(m.organization, m.name, m.revision, crossVersion = m.crossVersion)
 	private[this] def resolve(logging: UpdateLogging.Value)(ivy: Ivy, module: DefaultModuleDescriptor, defaultConf: String): (ResolveReport, Option[ResolveException]) =
 	{

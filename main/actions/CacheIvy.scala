@@ -52,11 +52,12 @@ object CacheIvy
 	implicit def wrapHL[W, H, T <: HList](implicit f: W => H :+: T, cache: InputCache[H :+: T]): InputCache[W] =
 		Cache.wrapIn(f, cache)
 
-	def updateIC: InputCache[IvyConfiguration :+: ModuleSettings :+: UpdateConfiguration :+: HNil] = implicitly
+	lazy val excludeMap: Format[Map[ModuleID, Set[String]]] = implicitly
+	lazy val updateIC: InputCache[IvyConfiguration :+: ModuleSettings :+: UpdateConfiguration :+: HNil] = implicitly
 /*	def deliverIC: InputCache[IvyConfiguration :+: ModuleSettings :+: DeliverConfiguration :+: HNil] = implicitly
 	def publishIC: InputCache[IvyConfiguration :+: ModuleSettings :+: PublishConfiguration :+: HNil] = implicitly*/
 
-	def updateReportF: Format[UpdateReport] =
+	lazy val updateReportF: Format[UpdateReport] =
 	{
 		import DefaultProtocol.{BooleanFormat, FileFormat, StringFormat}
 		updateReportFormat
