@@ -43,6 +43,7 @@ final class RawRepository(val resolver: DependencyResolver) extends Resolver
 	def name = resolver.getName
 	override def toString = "Raw(" + resolver.toString + ")"
 }
+sealed case class ChainedResolver(name: String, resolvers: Seq[Resolver]) extends Resolver
 sealed case class MavenRepository(name: String, root: String) extends Resolver
 {
 	override def toString = name + ": " + root

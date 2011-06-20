@@ -68,7 +68,7 @@ final class IvySbt(val configuration: IvyConfiguration)
 				i.paths.ivyHome foreach is.setDefaultIvyUserDir
 				IvySbt.configureCache(is, i.localOnly)
 				IvySbt.setResolvers(is, i.resolvers, i.otherResolvers, i.localOnly, configuration.log)
-				IvySbt.setModuleConfigurations(is, i.moduleConfigurations)
+				IvySbt.setModuleConfigurations(is, i.moduleConfigurations, configuration.log)
 		}
 		is
 	}
@@ -205,7 +205,7 @@ private object IvySbt
 		val mainChain = makeChain("Default", "sbt-chain", resolvers)
 		settings.setDefaultResolver(mainChain.getName)
 	}
-	private def resolverChain(name: String, resolvers: Seq[Resolver], localOnly: Boolean, settings: IvySettings, log: Logger): DependencyResolver =
+	def resolverChain(name: String, resolvers: Seq[Resolver], localOnly: Boolean, settings: IvySettings, log: Logger): DependencyResolver =
 	{
 		val newDefault = new ChainResolver {
 			// Technically, this should be applied to module configurations.
@@ -219,7 +219,7 @@ private object IvySbt
 		newDefault.setCheckmodified(false)
 		for(sbtResolver <- resolvers) {
 			log.debug("\t" + sbtResolver)
-			newDefault.add(ConvertResolver(sbtResolver)(settings))
+			newDefault.add(ConvertResolver(sbtResolver)(settings, log))
 		}
 		newDefault
 	}
@@ -231,7 +231,7 @@ private object IvySbt
 		import collection.JavaConversions._
 		artifact.getQualifiedExtraAttributes.keys.exists(_.asInstanceOf[String] startsWith "m:")
 	}
-	private def setModuleConfigurations(settings: IvySettings, moduleConfigurations: Seq[ModuleConfiguration])
+	private def setModuleConfigurations(settings: IvySettings, moduleConfigurations: Seq[ModuleConfiguration], log: Logger)
 	{
 		val existing = settings.getResolverNames
 		for(moduleConf <- moduleConfigurations)
@@ -240,7 +240,7 @@ private object IvySbt
 			import IvyPatternHelper._
 			import PatternMatcher._
 			if(!existing.contains(resolver.name))
-				settings.addResolver(ConvertResolver(resolver)(settings))
+				settings.addResolver(ConvertResolver(resolver)(settings, log))
 			val attributes = javaMap(Map(MODULE_KEY -> name, ORGANISATION_KEY -> organization, REVISION_KEY -> revision))
 			settings.addModuleConfiguration(attributes, settings.getMatcher(EXACT_OR_REGEXP), resolver.name, null, null, null)
 		}

@@ -6,13 +6,13 @@ package sbt
 import org.apache.ivy.{core,plugins}
 import core.module.id.ModuleRevisionId
 import core.settings.IvySettings
-import plugins.resolver.{ChainResolver, DependencyResolver, IBiblioResolver}
+import plugins.resolver.{DependencyResolver, IBiblioResolver}
 import plugins.resolver.{AbstractPatternsBasedResolver, AbstractSshBasedResolver, FileSystemResolver, SFTPResolver, SshResolver, URLResolver}
 
 private object ConvertResolver
 {
 	/** Converts the given sbt resolver into an Ivy resolver..*/
-	def apply(r: Resolver)(implicit settings: IvySettings) =
+	def apply(r: Resolver)(implicit settings: IvySettings, log: Logger) =
 	{
 		r match
 		{
@@ -61,6 +61,7 @@ private object ConvertResolver
 				initializePatterns(resolver, repo.patterns)
 				resolver
 			}
+			case repo: ChainedResolver => IvySbt.resolverChain(repo.name, repo.resolvers, false, settings, log)
 			case repo: RawRepository => repo.resolver
 		}
 	}
