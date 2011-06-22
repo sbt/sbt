@@ -8,7 +8,7 @@ package sbt
 	import compiler.Discovery
 	import Project.{inConfig, Initialize, inScope, inTask, ScopedKey, Setting, SettingsDefinition}
 	import Artifact.{DocClassifier, SourceClassifier}
-	import Configurations.{Compile, CompilerPlugin, IntegrationTest, Runtime, Test}
+	import Configurations.{Compile, CompilerPlugin, IntegrationTest, names, Runtime, Test}
 	import complete._
 	import std.TaskExtra._
 	import org.scalatools.testing.{AnnotatedFingerprint, SubclassFingerprint}
@@ -777,18 +777,19 @@ object Classpaths
 			val applicableConfigs = allConfigs(c)
 			for(ac <- applicableConfigs) // add all configurations in this project
 				visited add (p, ac.name)
-			val masterConfs = configurationNames(project)
+			val masterConfs = names(getConfigurations(projectRef, data))
 
 			for( ResolvedClasspathDependency(dep, confMapping) <- project.dependencies)
 			{
 				val depProject = thisProject in dep get data getOrElse error("Invalid project: " + dep)
-				val mapping = mapped(confMapping, masterConfs, configurationNames(depProject), "compile", "*->compile")
+				val configurations = getConfigurations(dep, data)
+				val mapping = mapped(confMapping, masterConfs, names(configurations), "compile", "*->compile")
 				// map master configuration 'c' and all extended configurations to the appropriate dependency configuration
 				for(ac <- applicableConfigs; depConfName <- mapping(ac.name))
 				{
-					val depConf = getConfiguration(dep, depProject, depConfName)
-					if( ! visited( (dep, depConfName) ) )
-						visit(dep, depProject, depConf)
+					for(depConf <- confOpt(configurations, depConfName) )
+						if( ! visited( (dep, depConfName) ) )
+							visit(dep, depProject, depConf)
 				}
 			}
 		}
@@ -833,7 +834,6 @@ object Classpaths
 	def union[A,B](maps: Seq[A => Seq[B]]): A => Seq[B] =
 		a => (Seq[B]() /: maps) { _ ++ _(a) } distinct;
 
-	def configurationNames(p: ResolvedProject): Seq[String] = p.configurations.map( _.name)
 	def parseList(s: String, allConfs: Seq[String]): Seq[String] = (trim(s split ",") flatMap replaceWildcard(allConfs)).distinct
 	def replaceWildcard(allConfs: Seq[String])(conf: String): Seq[String] =
 		if(conf == "") Nil else if(conf == "*") allConfs else conf :: Nil
@@ -844,8 +844,10 @@ object Classpaths
 	def allConfigs(conf: Configuration): Seq[Configuration] =
 		Dag.topologicalSort(conf)(_.extendsConfigs)
 
-	def getConfiguration(ref: ProjectRef, dep: ResolvedProject, conf: String): Configuration =
-		dep.configurations.find(_.name == conf) getOrElse missingConfiguration(Project display ref, conf)
+	def getConfigurations(p: ResolvedReference, data: Settings[Scope]): Seq[Configuration] =
+		ivyConfigurations in p get data getOrElse Nil
+	def confOpt(configurations: Seq[Configuration], conf: String): Option[Configuration] =
+		configurations.find(_.name == conf)
 	def productsTask(dep: ResolvedReference, conf: String, data: Settings[Scope]): Task[Classpath] =
 		getClasspath(exportedProducts, dep, conf, data)
 	def unmanagedLibs(dep: ResolvedReference, conf: String, data: Settings[Scope]): Task[Classpath] =
