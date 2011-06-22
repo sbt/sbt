@@ -10,6 +10,7 @@ package sbt
 	import scala.annotation.tailrec
 	import collection.mutable
 	import Compiler.{Compilers,Inputs}
+	import inc.{FileValueCache, Locate}
 	import Project.{inScope, ScopedKey, ScopeLocal, Setting}
 	import Keys.{appConfiguration, baseDirectory, configuration, streams, Streams, thisProject, thisProjectRef}
 	import Keys.{isDummy, parseResult, resolvedScoped, taskDefinitionKey}
@@ -21,6 +22,7 @@ object Load
 {
 	import BuildPaths._
 	import BuildStreams._
+	import Locate.DefinesClass
 
 	// note that there is State passed in but not pulled out
 	def defaultLoad(state: State, baseDirectory: File, log: Logger): (() => Eval, BuildStructure) =
@@ -35,10 +37,13 @@ object Load
 		val evalPluginDef = EvaluateTask.evalPluginDef(log) _
 		val delegates = defaultDelegates
 		val inject: Seq[Project.Setting[_]] = ((appConfiguration in GlobalScope) :== state.configuration) +: EvaluateTask.injectSettings
-		val rawConfig = new LoadBuildConfiguration(stagingDirectory, Nil, classpath, loader, compilers, evalPluginDef, delegates, EvaluateTask.injectStreams, inject, log)
+		val definesClass = FileValueCache(Locate.definesClass _)
+		val rawConfig = new LoadBuildConfiguration(stagingDirectory, Nil, classpath, loader, compilers, evalPluginDef, definesClass.get, delegates, EvaluateTask.injectStreams, inject, log)
 		val commonPlugins = if(baseDirectory == defaultGlobalPlugins) Nil else buildGlobalPlugins(defaultGlobalPlugins, state, rawConfig)
 		val config = rawConfig.copy(commonPluginClasspath = commonPlugins)
-		apply(base, state, config)
+		val result = apply(base, state, config)
+		definesClass.clear()
+		result
 	}
 	def buildGlobalPlugins(baseDirectory: File, state: State, config: LoadBuildConfiguration): Seq[Attributed[File]] =
 		if(baseDirectory.isDirectory) buildPluginDefinition(baseDirectory, state, config) else Nil
@@ -324,7 +329,7 @@ object Load
 			if(defs.isEmpty)
 				new LoadedDefinitions(defDir, target, plugs.loader, Build.default :: Nil, Nil)
 			else
-				definitions(defDir, target, defs, plugs, config.compilers, config.log, normBase)
+				definitions(defDir, target, defs, plugs, config.definesClass, config.compilers, config.log, normBase)
 
 		new BuildUnit(uri, normBase, loadedDefs, plugs)
 	}
@@ -348,9 +353,9 @@ object Load
 		(thisPluginClasspath ++ config.commonPluginClasspath).distinct
 	}
 
-	def definitions(base: File, targetBase: File, srcs: Seq[File], plugins: LoadedPlugins, compilers: Compilers, log: Logger, buildBase: File): LoadedDefinitions =
+	def definitions(base: File, targetBase: File, srcs: Seq[File], plugins: LoadedPlugins, definesClass: DefinesClass, compilers: Compilers, log: Logger, buildBase: File): LoadedDefinitions =
 	{
-		val (inputs, defAnalysis) = build(plugins.classpath, srcs, targetBase, compilers, log)
+		val (inputs, defAnalysis) = build(plugins.classpath, srcs, targetBase, compilers, definesClass, log)
 		val target = inputs.config.classesDirectory
 		val definitionLoader = ClasspathUtilities.toLoader(target :: Nil, plugins.loader)
 		val defNames = findDefinitions(defAnalysis)
@@ -363,9 +368,9 @@ object Load
 	def loadDefinition(loader: ClassLoader, definition: String): Build =
 		ModuleUtilities.getObject(definition, loader).asInstanceOf[Build]
 
-	def build(classpath: Seq[File], sources: Seq[File], target: File, compilers: Compilers, log: Logger): (Inputs, inc.Analysis) =
+	def build(classpath: Seq[File], sources: Seq[File], target: File, compilers: Compilers, definesClass: DefinesClass, log: Logger): (Inputs, inc.Analysis) =
 	{
-		val inputs = Compiler.inputs(classpath, sources, target, Nil, Nil, Compiler.DefaultMaxErrors, CompileOrder.Mixed)(compilers, log)
+		val inputs = Compiler.inputs(classpath, sources, target, Nil, Nil, definesClass, Compiler.DefaultMaxErrors, CompileOrder.Mixed)(compilers, log)
 		val analysis =
 			try { Compiler(inputs, log) }
 			catch { case _: xsbti.CompileFailed => throw new NoMessageException } // compiler already logged errors
@@ -470,7 +475,7 @@ object Load
 		def allProjectRefs(build: URI): Seq[ProjectRef] = refs(build, allProjects(build))
 		private[this] def refs(build: URI, projects: Seq[ResolvedProject]): Seq[ProjectRef] = projects.map { p => ProjectRef(build, p.id) }
 	}
-	final case class LoadBuildConfiguration(stagingDirectory: File, commonPluginClasspath: Seq[Attributed[File]], classpath: Seq[File], loader: ClassLoader, compilers: Compilers, evalPluginDef: (BuildStructure, State) => Seq[Attributed[File]], delegates: LoadedBuild => Scope => Seq[Scope], scopeLocal: ScopeLocal, injectSettings: Seq[Setting[_]], log: Logger)
+	final case class LoadBuildConfiguration(stagingDirectory: File, commonPluginClasspath: Seq[Attributed[File]], classpath: Seq[File], loader: ClassLoader, compilers: Compilers, evalPluginDef: (BuildStructure, State) => Seq[Attributed[File]], definesClass: DefinesClass, delegates: LoadedBuild => Scope => Seq[Scope], scopeLocal: ScopeLocal, injectSettings: Seq[Setting[_]], log: Logger)
 	// information that is not original, but can be reconstructed from the rest of BuildStructure
 	final class StructureIndex(val keyMap: Map[String, AttributeKey[_]], val taskToKey: Map[Task[_], ScopedKey[Task[_]]], val triggers: Triggers[Task], val keyIndex: KeyIndex)
 }

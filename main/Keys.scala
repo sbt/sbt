@@ -7,6 +7,7 @@ package sbt
 	import Project.ScopedKey
 	import complete._
 	import inc.Analysis
+	import inc.Locate.DefinesClass
 	import std.TaskExtra._
 	import scala.xml.{Node => XNode, NodeSeq}
 	import org.apache.ivy.core.module.{descriptor, id}
@@ -120,6 +121,8 @@ object Keys
 	val consoleProject = TaskKey[Unit]("console-project", "Starts the Scala interpreter with the sbt and the build definition on the classpath and useful imports.")
 	val compile = TaskKey[Analysis]("compile", "Compiles sources.")
 	val compilers = TaskKey[Compiler.Compilers]("compilers", "Defines the Scala and Java compilers to use for compilation.")
+	val compileIncSetup = TaskKey[Compiler.IncSetup]("inc-compile-setup", "Configurations aspects of incremental compilation.")
+	val definesClass = TaskKey[DefinesClass]("defines-class", "Internal use: provides a function that determines whether the provided file contains a given class.")
 	val doc = TaskKey[File]("doc", "Generates API documentation.")
 	val copyResources = TaskKey[Seq[(File,File)]]("copy-resources", "Copies resources to the output directory.")
 	val aggregate = SettingKey[Aggregation]("aggregate", "Configures task aggregation.")

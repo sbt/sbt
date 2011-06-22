@@ -11,6 +11,7 @@ package sbt
 	import Configurations.{Compile, CompilerPlugin, IntegrationTest, names, Runtime, Test}
 	import complete._
 	import std.TaskExtra._
+	import inc.{FileValueCache, Locate}
 	import org.scalatools.testing.{AnnotatedFingerprint, SubclassFingerprint}
 
 	import scala.xml.{Node => XNode,NodeSeq}
@@ -50,6 +51,7 @@ object Defaults extends BuildCommon
 		pollInterval :== 500,
 		logBuffered :== false,
 		autoScalaLibrary :== true,
+		definesClass := FileValueCache(Locate.definesClass _ ).get,
 		trapExit :== false,
 		trapExit in run :== true,
 		logBuffered in testOnly :== true,
@@ -162,6 +164,7 @@ object Defaults extends BuildCommon
 		initialCommands in GlobalScope :== "",
 		compile <<= compileTask,
 		compileInputs <<= compileInputsTask,
+		compileIncSetup <<= compileIncSetupTask,
 		console <<= consoleTask,
 		consoleQuick <<= consoleQuickTask,
 		discoveredMainClasses <<= TaskData.write(compile map discoverMainClasses) triggeredBy compile,
@@ -412,13 +415,15 @@ object Defaults extends BuildCommon
 	}
 	
 	def compileTask = (compileInputs, streams) map { (i,s) => Compiler(i,s.log) }
+	def compileIncSetupTask = 
+		(dependencyClasspath, cacheDirectory, definesClass) map { (cp, cacheDir, definesC) =>
+			Compiler.IncSetup(analysisMap(cp), definesC, cacheDir / "compile")
+		}
 	def compileInputsTask =
-		(dependencyClasspath, sources, compilers, javacOptions, scalacOptions, cacheDirectory, classDirectory, compileOrder, streams) map {
-		(cp, srcs, cs, javacOpts, scalacOpts, cacheDir, classes, order, s) =>
+		(dependencyClasspath, sources, compilers, javacOptions, scalacOptions, classDirectory, compileOrder, compileIncSetup, streams) map {
+		(cp, srcs, cs, javacOpts, scalacOpts, classes, order, incSetup, s) =>
 			val classpath = classes +: data(cp)
-			val analysis = analysisMap(cp)
-			val cache = cacheDir / "compile"
-			Compiler.inputs(classpath, srcs, classes, scalacOpts, javacOpts, analysis, cache, 100, order)(cs, s.log)
+			Compiler.inputs(classpath, srcs, classes, scalacOpts, javacOpts, 100, order)(cs, incSetup, s.log)
 		}
 
 	def writePluginsDescriptor(plugins: Set[String], dir: File): List[File] =
