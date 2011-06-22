@@ -62,6 +62,7 @@ object Defaults extends BuildCommon
 		credentials :== Nil,
 		scalaHome :== None,
 		javaHome :== None,
+		extraLoggers :== { _ => Nil },
 		version :== "0.1",
 		outputStrategy :== None,
 		exportJars :== false,
@@ -90,6 +91,7 @@ object Defaults extends BuildCommon
 	))
 	def projectCore: Seq[Setting[_]] = Seq(
 		name <<= thisProject(_.id),
+		logManager <<= extraLoggers(LogManager.defaults),
 		runnerSetting
 	)
 	def paths = Seq(

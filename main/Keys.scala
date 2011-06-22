@@ -26,6 +26,7 @@ object Keys
 	val showSuccess = SettingKey[Boolean]("show-success", "If true, displays a success message after running a command successfully.")
 	val showTiming = SettingKey[Boolean]("show-timing", "If true, the command success message includes the completion time.")
 	val timingFormat = SettingKey[java.text.DateFormat]("timing-format", "The format used for displaying the completion time.")
+	val extraLoggers = SettingKey[ScopedKey[_] => Seq[AbstractLogger]]("extra-loggers", "A function that provides additional loggers for a given setting.")
 	val logManager = SettingKey[LogManager]("log-manager", "The log manager, which creates Loggers for different contexts.")
 	val logBuffered = SettingKey[Boolean]("log-buffered", "True if logging should be buffered until work completes.")
 

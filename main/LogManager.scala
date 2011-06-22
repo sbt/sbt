@@ -17,6 +17,7 @@ object LogManager
 		manager(data, task, to)
 	}
 	lazy val default: LogManager = withLoggers()
+	def defaults(extra: ScopedKey[_] => Seq[AbstractLogger]): LogManager  =  withLoggers(extra = extra)
 
 	def defaultScreen: AbstractLogger = ConsoleLogger()
 	def defaultBacked(useColor: Boolean): PrintWriter => AbstractLogger =
@@ -24,13 +25,13 @@ object LogManager
 
 	def withScreenLogger(mk: => AbstractLogger): LogManager = withLoggers(mk)
 	
-	def withLoggers(screen: => AbstractLogger = defaultScreen, backed: PrintWriter => AbstractLogger = defaultBacked(ConsoleLogger.formatEnabled)): LogManager =
+	def withLoggers(screen: => AbstractLogger = defaultScreen, backed: PrintWriter => AbstractLogger = defaultBacked(ConsoleLogger.formatEnabled), extra: ScopedKey[_] => Seq[AbstractLogger] = _ => Nil): LogManager =
 		new LogManager {
 			def apply(data: Settings[Scope], task: ScopedKey[_], to: PrintWriter): Logger =
-				defaultLogger(data, task, screen, backed(to))
+				defaultLogger(data, task, screen, backed(to), extra(task).toList)
 		}
 
-	def defaultLogger(data: Settings[Scope], task: ScopedKey[_], console: AbstractLogger, backed: AbstractLogger): Logger =
+	def defaultLogger(data: Settings[Scope], task: ScopedKey[_], console: AbstractLogger, backed: AbstractLogger, extra: List[AbstractLogger]): Logger =
 	{
 		val scope = task.scope
 		def getOr[T](key: AttributeKey[T], default: T): T = data.get(scope, key) getOrElse default
@@ -39,9 +40,9 @@ object LogManager
 		val screenTrace = getOr(traceLevel.key, -1)
 		val backingTrace = getOr(persistTraceLevel.key, Int.MaxValue)
 
-		val multi = new MultiLogger(console :: backed :: Nil)
+		val multi = new MultiLogger(console :: backed :: extra)
 			// sets multi to the most verbose for clients that inspect the current level
-		multi setLevel Level.union(backingLevel, screenLevel)
+		multi setLevel Level.unionAll(backingLevel :: screenLevel :: extra.map(_.getLevel))
 			// set the specific levels
 		console setLevel screenLevel
 		backed setLevel backingLevel
