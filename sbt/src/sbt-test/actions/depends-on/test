@@ -1,0 +1,8 @@
+-> a
+-> b
+-> c
+
+$ touch succeed
+> a
+> b
+> c

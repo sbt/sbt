@@ -207,8 +207,7 @@ object Scoped
 		{
 			val in = KCons(scopedTask(scope, key), KList.fromList(tasks))
 			Apply.tasks(in) { kl =>
-				val KCons(h,t) = KList.kcons(kl)
-				h.dependsOn(t.toList :_*)
+				kl.head.dependsOn(kl.tail.toList :_*)
 			}
 		}
 	}

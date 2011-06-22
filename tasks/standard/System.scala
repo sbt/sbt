@@ -6,6 +6,7 @@ package std
 
 import Types._
 import Task._
+import TaskExtra.allM
 import Execute._
 
 object Transform
@@ -46,7 +47,7 @@ object Transform
 			case Pure(eval) => toNode(KNil)( _ => Right(eval()) )
 			case Mapped(in, f) => toNode(in)( right ∙ f  )
 			case FlatMapped(in, f) => toNode(in)( left ∙ f )
-			case DependsOn(in, deps) => toNode(KList.fromList(deps))( _ => Left(in) )
+			case DependsOn(in, deps) => toNode(KList.fromList(deps))( ((_:Any) => Left(in)) ∙ allM )
 			case Join(in, f) => uniform(in)(f)
 		}
 	}
