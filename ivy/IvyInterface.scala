@@ -295,6 +295,7 @@ object Configurations
 	def defaultMavenConfigurations: Seq[Configuration] = Seq(Compile, Runtime, Test, Provided, Optional)
 	def defaultInternal: Seq[Configuration] = Seq(CompileInternal, RuntimeInternal, TestInternal)
 	def auxiliary: Seq[Configuration] = Seq(Sources, Docs, Pom)
+	def names(cs: Seq[Configuration]) = cs.map(_.name)
 
 	lazy val RuntimeInternal = optionalInternal(Runtime)
 	lazy val TestInternal = fullInternal(Test)
