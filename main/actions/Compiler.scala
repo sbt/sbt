@@ -84,7 +84,14 @@ object Compiler
 		val exec = javaHome match { case None => "javac"; case Some(jh) => (jh / "bin" / "javac").absolutePath }
 		(args: Seq[String], log: Logger) => {
 			log.debug("Forking javac: " + exec + " " + args.mkString(" "))
-			Process(exec, args) ! log
+			val javacLogger = new JavacLogger(log)
+			var exitCode = -1
+			try {
+				exitCode = Process(exec, args) ! javacLogger
+			} finally {
+				javacLogger.flush(exitCode)
+			}
+			exitCode
 		}
 	}
 
@@ -93,8 +100,34 @@ object Compiler
 			import in.compilers._
 			import in.config._
 			import in.incSetup._
-		
+
 		val agg = new AggressiveCompile(cacheDirectory)
 		agg(scalac, javac, sources, classpath, classesDirectory, options, javacOptions, analysisMap, maxErrors, order)(log)
 	}
+}
+
+private[sbt] class JavacLogger(log: Logger) extends ProcessLogger {
+  import scala.collection.mutable.ListBuffer
+  import Level.{Info, Warn, Error, Value => LogLevel}
+
+  private val msgs: ListBuffer[(LogLevel, String)] = new ListBuffer()
+
+  def info(s: => String): Unit =
+    synchronized { msgs += ((Info, s)) }
+
+  def error(s: => String): Unit =
+    synchronized { msgs += ((Error, s)) }
+
+  def buffer[T](f: => T): T = f
+
+  private def print(desiredLevel: LogLevel)(t: (LogLevel, String)) = t match {
+    case (Info, msg) => log.info(msg)
+    case (Error, msg) => log.log(desiredLevel, msg)
+  }
+
+  def flush(exitCode: Int): Unit = {
+    val level = if (exitCode == 0) Warn else Error
+    msgs foreach print(level)
+    msgs.clear()
+  }
 }
