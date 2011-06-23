@@ -84,7 +84,14 @@ object Compiler
 		val exec = javaHome match { case None => "javac"; case Some(jh) => (jh / "bin" / "javac").absolutePath }
 		(args: Seq[String], log: Logger) => {
 			log.debug("Forking javac: " + exec + " " + args.mkString(" "))
-			Process(exec, args) ! log
+			val exitCode = Process(exec, args) ! log
+      log match {
+        case javacLogger: JavacLogger => {
+          javacLogger.flush(exitCode)
+        }
+        case _ =>
+      }
+      exitCode
 		}
 	}
 
