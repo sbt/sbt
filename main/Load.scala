@@ -138,7 +138,7 @@ object Load
 		loaded.units.toSeq flatMap { case (uri, build) =>
 			val eval = if(uri == loaded.root) rootEval else lazyEval(build.unit)
 			val pluginSettings = build.unit.plugins.plugins
-			val (pluginThisProject, pluginGlobal) = pluginSettings partition isProjectThis
+			val (pluginThisProject, pluginNotThis) = pluginSettings partition isProjectThis
 			val projectSettings = build.defined flatMap { case (id, project) =>
 				val srcs = configurationSources(project.base)
 				val ref = ProjectRef(uri, id)
@@ -153,12 +153,12 @@ object Load
 			}
 			val buildScope = Scope(Select(BuildRef(uri)), Global, Global, Global)
 			val buildBase = baseDirectory :== build.localBase
-			pluginGlobal ++ inScope(buildScope)(buildBase +: build.buildSettings) ++ projectSettings
+			val buildSettings = transformSettings(buildScope, uri, rootProject, pluginNotThis ++ (buildBase +: build.buildSettings))
+			buildSettings ++ projectSettings
 		}
 	def transformSettings(thisScope: Scope, uri: URI, rootProject: URI => String, settings: Seq[Setting[_]]): Seq[Setting[_]] =
 		Project.transform(Scope.resolveScope(thisScope, uri, rootProject), settings)
 	def projectScope(project: Reference): Scope  =  Scope(Select(project), Global, Global, Global)
-
 	
 	def lazyEval(unit: BuildUnit): () => Eval =
 	{
