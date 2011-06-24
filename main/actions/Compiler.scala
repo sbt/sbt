@@ -110,7 +110,7 @@ private[sbt] class JavacLogger(log: Logger) extends ProcessLogger {
   import scala.collection.mutable.ListBuffer
   import Level.{Info, Warn, Error, Value => LogLevel}
 
-  private var msgs: ListBuffer[(LogLevel, String)] = new ListBuffer()
+  private val msgs: ListBuffer[(LogLevel, String)] = new ListBuffer()
 
   def info(s: => String): Unit =
     synchronized { msgs += ((Info, s)) }
@@ -128,5 +128,6 @@ private[sbt] class JavacLogger(log: Logger) extends ProcessLogger {
   def flush(exitCode: Int): Unit = {
     val level = if (exitCode == 0) Warn else Error
     msgs foreach print(level)
+    msgs.clear()
   }
 }
