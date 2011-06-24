@@ -19,6 +19,7 @@ sealed trait ProjectReference extends Reference
 final case class ProjectRef(build: URI, project: String) extends ProjectReference with ResolvedReference
 final case class LocalProject(project: String) extends ProjectReference
 final case class RootProject(build: URI) extends ProjectReference
+final case object LocalRootProject extends ProjectReference
 final case object ThisProject extends ProjectReference
 
 object ProjectRef

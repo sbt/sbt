@@ -176,14 +176,15 @@ object Project extends Init[Scope] with ProjectExtra
 	def display(ref: BuildReference) =
 		ref match
 		{
-			case ThisBuild => "<this>"
+			case ThisBuild => "{<this>}"
 			case BuildRef(uri) => "{" + uri + "}"
 		}
 	def display(ref: ProjectReference) =
 		ref match
 		{
-			case ThisProject => "(<this>)<this>"
-			case LocalProject(id) => "(<this>)" + id
+			case ThisProject => "{<this>}<this>"
+			case LocalRootProject => "{<this>}<root>"
+			case LocalProject(id) => "{<this>}" + id
 			case RootProject(uri) => "{" + uri + " }<root>"
 			case ProjectRef(uri, id) => "{" + uri + "}" + id
 		}

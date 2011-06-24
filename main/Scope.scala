@@ -58,6 +58,7 @@ object Scope
 		ref match
 		{
 			case ThisProject => RootProject(current)
+			case LocalRootProject => RootProject(current)
 			case LocalProject(id) => ProjectRef(current, id)
 			case RootProject(uri) => RootProject(resolveBuild(current, uri))
 			case ProjectRef(uri, id) => ProjectRef(resolveBuild(current, uri), id)
@@ -75,7 +76,7 @@ object Scope
 	def resolveProjectRef(current: URI, rootProject: URI => String, ref: ProjectReference): ProjectRef =
 		ref match
 		{
-			case ThisProject => ProjectRef(current, rootProject(current))
+			case ThisProject | LocalRootProject => ProjectRef(current, rootProject(current))
 			case LocalProject(id) => ProjectRef(current, id)
 			case RootProject(uri) => val res = resolveBuild(current, uri); ProjectRef(res, rootProject(res))
 			case ProjectRef(uri, id) => ProjectRef(resolveBuild(current, uri), id)
