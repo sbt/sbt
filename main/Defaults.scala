@@ -968,7 +968,10 @@ trait BuildExtra extends BuildCommon
 		}
 	private[this] def inScoped[T](sk: ScopedKey[_], i: Initialize[T]): Initialize[T]  =  inScope(fillTaskAxis(sk.scope, sk.key), i)
 	private[this] def inScope[T](s: Scope, i: Initialize[T]): Initialize[T]  =  i mapReferenced Project.mapScope(Scope.replaceThis(s))
-		
+	
+	/** Disables post-compilation hook for determining tests for tab-completion (such as for 'test-only').
+	* This is useful for reducing test:compile time when not running test. */
+	def noTestCompletion(config: Configuration = Test): Setting[_]  =  inConfig(config)( Seq(definedTests <<= Defaults.detectTests) ).head
 }
 trait BuildCommon
 {
