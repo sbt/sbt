@@ -21,7 +21,7 @@ object JavaCompiler
 				val javaCp = ClasspathOptions.javac(cp.compiler)
 				val arguments = (new CompilerArguments(scalaInstance, javaCp))(sources, augmentedClasspath, outputDirectory, options)
 				log.debug("running javac with arguments:\n\t" + arguments.mkString("\n\t"))
-				val code: Int = f(arguments, JavacLogger(log))
+				val code: Int = f(arguments, log)
 				log.debug("javac returned exit code: " + code)
 				if( code != 0 ) throw new CompileFailed(arguments.toArray, "javac returned nonzero exit code")
 			}
@@ -72,28 +72,4 @@ object JavaCompiler
 	// javac's argument file seems to allow naive space escaping with quotes.  escaping a quote with a backslash does not work
 	def escapeSpaces(s: String): String = '\"' + normalizeSlash(s) + '\"'
 	def normalizeSlash(s: String) = s.replace(File.separatorChar, '/')
-}
-
-case class JavacLogger(log: Logger) extends Logger {
-
-  private var msgs: Seq[String] = Seq()
-
-  def trace(t: => Throwable) = log.trace(t)
-
-  def success(s: => String) = log.success(s)
-
-  def log(level: Level.Value, msg: => String) = {
-    level match {
-      case Level.Debug => log.debug(msg)
-      case Level.Info => log.info(msg)
-      case Level.Warn => msgs = msgs :+ msg
-      case Level.Error => msgs = msgs :+ msg
-    }
-  }
-
-  def flush(exitCode: Int): Unit =
-    if (exitCode == 0)
-      msgs foreach { msg => log.warn(msg) }
-    else
-      msgs foreach { msg => log.error(msg) }
 }

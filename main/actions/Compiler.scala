@@ -84,14 +84,10 @@ object Compiler
 		val exec = javaHome match { case None => "javac"; case Some(jh) => (jh / "bin" / "javac").absolutePath }
 		(args: Seq[String], log: Logger) => {
 			log.debug("Forking javac: " + exec + " " + args.mkString(" "))
-			val exitCode = Process(exec, args) ! log
-      log match {
-        case javacLogger: JavacLogger => {
-          javacLogger.flush(exitCode)
-        }
-        case _ =>
-      }
-      exitCode
+			val javacLogger = new JavacLogger(log)
+			val exitCode = Process(exec, args) ! javacLogger
+			javacLogger.flush(exitCode)
+			exitCode
 		}
 	}
 
@@ -104,4 +100,28 @@ object Compiler
 		val agg = new AggressiveCompile(cacheDirectory)
 		agg(scalac, javac, sources, classpath, classesDirectory, options, javacOptions, analysisMap, maxErrors, order)(log)
 	}
+}
+
+private[sbt] class JavacLogger(log: Logger) extends ProcessLogger {
+  import Level.{Debug, Warn, Error, Value => LogLevel}
+
+  private var msgs: Seq[(LogLevel, String)] = Seq()
+
+  def info(s: => String): Unit =
+    msgs = msgs :+ (Level.Debug, s)
+
+  def error(s: => String): Unit =
+    msgs = msgs :+ (Level.Error, s)
+
+  def buffer[T](f: => T): T = f
+
+  private def print(desiredLevel: LogLevel)(t: (LogLevel, String)) = t match {
+    case (Debug, msg) => log.debug(msg)
+    case (Error, msg) => log.log(desiredLevel, msg)
+  }
+
+  def flush(exitCode: Int): Unit = exitCode match {
+    case 0 => msgs foreach print(Warn)
+    case _ => msgs foreach print(Error)
+  }
 }
