@@ -85,8 +85,12 @@ object Compiler
 		(args: Seq[String], log: Logger) => {
 			log.debug("Forking javac: " + exec + " " + args.mkString(" "))
 			val javacLogger = new JavacLogger(log)
-			val exitCode = Process(exec, args) ! javacLogger
-			javacLogger.flush(exitCode)
+			var exitCode = -1
+			try {
+				exitCode = Process(exec, args) ! javacLogger
+			} finally {
+				javacLogger.flush(exitCode)
+			}
 			exitCode
 		}
 	}
@@ -96,32 +100,33 @@ object Compiler
 			import in.compilers._
 			import in.config._
 			import in.incSetup._
-		
+
 		val agg = new AggressiveCompile(cacheDirectory)
 		agg(scalac, javac, sources, classpath, classesDirectory, options, javacOptions, analysisMap, maxErrors, order)(log)
 	}
 }
 
 private[sbt] class JavacLogger(log: Logger) extends ProcessLogger {
-  import Level.{Debug, Warn, Error, Value => LogLevel}
+  import scala.collection.mutable.ListBuffer
+  import Level.{Info, Warn, Error, Value => LogLevel}
 
-  private var msgs: Seq[(LogLevel, String)] = Seq()
+  private var msgs: ListBuffer[(LogLevel, String)] = new ListBuffer()
 
   def info(s: => String): Unit =
-    msgs = msgs :+ (Level.Debug, s)
+    synchronized { msgs += ((Info, s)) }
 
   def error(s: => String): Unit =
-    msgs = msgs :+ (Level.Error, s)
+    synchronized { msgs += ((Error, s)) }
 
   def buffer[T](f: => T): T = f
 
   private def print(desiredLevel: LogLevel)(t: (LogLevel, String)) = t match {
-    case (Debug, msg) => log.debug(msg)
+    case (Info, msg) => log.debug(msg)
     case (Error, msg) => log.log(desiredLevel, msg)
   }
 
-  def flush(exitCode: Int): Unit = exitCode match {
-    case 0 => msgs foreach print(Warn)
-    case _ => msgs foreach print(Error)
+  def flush(exitCode: Int): Unit = {
+    val level = if (exitCode == 0) Warn else Error
+    msgs foreach print(level)
   }
 }
