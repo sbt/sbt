@@ -644,12 +644,12 @@ object Classpaths
 			cachedUpdate(cacheDirectory / "update", Project.display(ref), module, config, Some(si), s.log)
 		},
 		transitiveClassifiers in GlobalScope :== Seq(SourceClassifier, DocClassifier),
-		updateClassifiers <<= (ivySbt, projectID, update, transitiveClassifiers, updateConfiguration, ivyScala, baseDirectory in ThisBuild, appConfiguration, streams) map { (is, pid, up, classifiers, c, ivyScala, out, app, s) =>
+		updateClassifiers <<= (ivySbt, projectID, update, transitiveClassifiers, updateConfiguration, ivyScala, target in LocalRootProject, appConfiguration, streams) map { (is, pid, up, classifiers, c, ivyScala, out, app, s) =>
 			withExcludes(out, classifiers, lock(app)) { excludes =>
 				IvyActions.updateClassifiers(is, GetClassifiersConfiguration(pid, up.allModules, classifiers, excludes, c, ivyScala), s.log)
 			}
 		},
-		updateSbtClassifiers <<= (ivySbt, projectID, transitiveClassifiers, updateConfiguration, sbtDependency, ivyScala, baseDirectory in ThisBuild, appConfiguration, streams) map {
+		updateSbtClassifiers <<= (ivySbt, projectID, transitiveClassifiers, updateConfiguration, sbtDependency, ivyScala, target in LocalRootProject, appConfiguration, streams) map {
 				(is, pid, classifiers, c, sbtDep, ivyScala, out, app, s) =>
 			withExcludes(out, classifiers, lock(app)) { excludes =>
 				IvyActions.transitiveScratch(is, "sbt", GetClassifiersConfiguration(pid, sbtDep :: Nil, classifiers, excludes, c, ivyScala), s.log)
