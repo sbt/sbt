@@ -1,9 +1,0 @@
-<ivysettings>
-	<settings defaultResolver="chain"/>
-	<caches defaultCacheDir="${ivy.settings.dir}/target/cache"/>
-	<resolvers>
-	  <chain name="chain" returnFirst="true">
-		<ibiblio name="scala-tools-releases" m2compatible="true" root="http://scala-tools.org/repo-releases/"/>
-	  </chain>
-	</resolvers>
-</ivysettings> 
