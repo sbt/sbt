@@ -247,11 +247,12 @@ object Defaults extends BuildCommon
 		testOnly <<= testOnlyTask
 	)
 
+	lazy val TaskGlobal: Scope = ThisScope.copy(task = Global)
 	def testTaskOptions(key: Scoped): Seq[Setting[_]] = inTask(key)( Seq(
-		testListeners <<= (streams, resolvedScoped, streamsManager, logBuffered in key, testListeners) map { (s, sco, sm, buff, ls) =>
+		testListeners <<= (streams, resolvedScoped, streamsManager, logBuffered, testListeners in TaskGlobal) map { (s, sco, sm, buff, ls) =>
 			TestLogger(s.log, testLogger(sm, test in sco.scope), buff) +: ls
 		},
-		testOptions <<= (testOptions, testListeners) map { (options, ls) => Tests.Listeners(ls) +: options }
+		testOptions <<= (testOptions in TaskGlobal, testListeners) map { (options, ls) => Tests.Listeners(ls) +: options }
 	) )
 	def testLogger(manager: Streams, baseKey: Scoped)(tdef: TestDefinition): Logger =
 	{
@@ -326,7 +327,7 @@ object Defaults extends BuildCommon
 	def pairID[A,B] = (a: A, b: B) => (a,b)
 	def packageTasks(key: TaskKey[File], mappingsTask: Initialize[Task[Seq[(File,String)]]]) =
 		inTask(key)( Seq(
-			key in ThisScope.copy(task = Global) <<= packageTask,
+			key in TaskGlobal <<= packageTask,
 			packageConfiguration <<= packageConfigurationTask,
 			mappings <<= mappingsTask,
 			packagedArtifact <<= (artifact, key) map pairID,
