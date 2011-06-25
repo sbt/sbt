@@ -65,7 +65,7 @@ sealed trait Repository
 object Repository
 {
 	final case class Maven(id: String, url: URL) extends Repository
-	final case class Ivy(id: String, url: URL, pattern: String) extends Repository
+	final case class Ivy(id: String, url: URL, ivyPattern: String, artifactPattern: String) extends Repository
 	final case class Predefined(id: Predefined.Value) extends Repository
 
 	object Predefined extends Enumeration

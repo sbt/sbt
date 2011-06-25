@@ -250,7 +250,7 @@ final class Update(config: UpdateConfiguration)
 		repo match
 		{
 			case Maven(id, url) => mavenResolver(id, url.toString)
-			case Ivy(id, url, pattern) => urlResolver(id, url.toString, pattern)
+			case Ivy(id, url, ivyPattern, artifactPattern) => urlResolver(id, url.toString, ivyPattern, artifactPattern)
 			case Predefined(Local) => localResolver(settings.getDefaultIvyUserDir.getAbsolutePath)
 			case Predefined(MavenLocal) => mavenLocal
 			case Predefined(MavenCentral) => mavenMainResolver
@@ -267,15 +267,16 @@ final class Update(config: UpdateConfiguration)
 		}
 	}
 	/** Uses the pattern defined in BuildConfiguration to download sbt from Google code.*/
-	private def urlResolver(id: String, base: String, pattern: String) =
+	private def urlResolver(id: String, base: String, ivyPattern: String, artifactPattern: String) =
 	{
 		val resolver = new URLResolver
 		resolver.setName(id)
-		val adjusted = (if(base.endsWith("/")) base else (base + "/") ) + pattern
-		resolver.addIvyPattern(adjusted)
-		resolver.addArtifactPattern(adjusted)
+		resolver.addIvyPattern(adjustPattern(base, ivyPattern))
+		resolver.addArtifactPattern(adjustPattern(base, artifactPattern))
 		resolver
 	}
+	private def adjustPattern(base: String, pattern: String): String =
+		(if(base.endsWith("/") || base.isEmpty) base else (base + "/") ) + pattern
 	private def mavenLocal = mavenResolver("Maven2 Local", "file://" + System.getProperty("user.home") + "/.m2/repository/")
 	/** Creates a maven-style resolver.*/
 	private def mavenResolver(name: String, root: String) =
