@@ -51,14 +51,17 @@ object JavaCompiler
 	}
 	val directJavac = (arguments: Seq[String], log: Logger) =>
 	{
-		val writer = new java.io.PrintWriter(new LoggerWriter(log, Level.Error))
+		val logger = new LoggerWriter(log)
+		val writer = new java.io.PrintWriter(logger)
 		val argsArray = arguments.toArray
 		val javac = Class.forName("com.sun.tools.javac.Main")
 		log.debug("Calling javac directly.")
-		javac.getDeclaredMethod("compile", classOf[Array[String]], classOf[java.io.PrintWriter])
-		.invoke(null, argsArray, writer)
-		.asInstanceOf[java.lang.Integer]
-		.intValue
+		val compileMethod = javac.getDeclaredMethod("compile", classOf[Array[String]], classOf[java.io.PrintWriter])
+
+		var exitCode = -1
+		try { exitCode = compileMethod.invoke(null, argsArray, writer).asInstanceOf[java.lang.Integer].intValue }
+		finally { logger.flushLines( if(exitCode == 0) Level.Warn else Level.Error) }
+		exitCode
 	}
 	def withArgumentFile[T](args: Seq[String])(f: File => T): T =
 	{
