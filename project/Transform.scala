@@ -34,10 +34,11 @@ object Transform
 	{
 		def get(key: String): String = map.getOrElse(key, error("No value defined for key '" + key + "'"))
 		val newString = Property.replaceAllIn(IO.read(in), mtch => get(mtch.group(1)) )
-		if(newString != IO.read(out))
+		if(Some(newString) != read(out))
 			IO.write(out, newString)
 		out
 	}
+	def read(file: File): Option[String] = try { Some(IO.read(file)) } catch { case _: java.io.IOException => None }
 	lazy val Property = """\$\{\{([\w.-]+)\}\}""".r
 
 	def repositories(isSnapshot: Boolean) = Releases :: (if(isSnapshot) Snapshots :: Nil else Nil)
