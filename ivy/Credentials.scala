@@ -18,6 +18,22 @@ object Credentials
 		CredentialsStore.INSTANCE.addCredentials(realm, host, userName, passwd)
 	/** Load credentials from the given file into Ivy's credentials cache.*/
 	def add(path: File, log: Logger): Unit =
+		loadCredentials(path) match
+		{
+			case Left(err) => log.warn(err)
+			case Right(dc) => add(dc.realm, dc.host, dc.userName, dc.passwd)
+		}
+
+	def forHost(sc: Seq[Credentials], host: String) = allDirect(sc) find { _.host == host }
+	def allDirect(sc: Seq[Credentials]): Seq[DirectCredentials] = sc map toDirect
+	def toDirect(c: Credentials): DirectCredentials = c match {
+		case dc: DirectCredentials => dc
+		case fc: FileCredentials => loadCredentials(fc.path) match {
+			case Left(err) => error(err)
+			case Right(dc) => dc
+		}
+	}
+	def loadCredentials(path: File): Either[String, DirectCredentials] =
 		if(path.exists)
 		{
 			val properties = read(path)
@@ -25,12 +41,12 @@ object Credentials
 
 			List.separate( List(RealmKeys, HostKeys, UserKeys, PasswordKeys).map(get) ) match
 			{
-				case (Nil, List(realm, host, user, pass)) => add(realm, host, user, pass)
-				case (errors, _) => log.warn(errors.mkString("\n"))
+				case (Nil, List(realm, host, user, pass)) => Right( new DirectCredentials(realm, host, user, pass) )
+				case (errors, _) => Left(errors.mkString("\n"))
 			}
 		}
 		else
-			log.warn("Credentials file " + path + " does not exist")
+			Left("Credentials file " + path + " does not exist")
 
 	def register(cs: Seq[Credentials], log: Logger): Unit =
 		cs foreach {
