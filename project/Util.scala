@@ -6,6 +6,9 @@ object Util
 {
 	lazy val componentID = SettingKey[Option[String]]("component-id")
 
+	def inAll(projects: => Seq[ProjectReference], key: ScopedSetting[Task[Unit]]) =
+		state flatMap { s => nop dependsOn( Defaults.inAllProjects(projects, key, Project.extract(s).structure.data) : _*) }
+	
 	def noPublish(p: Project) = p.copy(settings = noRemotePublish(p.settings))
 	def noRemotePublish(in: Seq[Setting[_]]) = in filterNot { s => s.key == deliver || s.key == publish }
 	lazy val noExtra = projectDependencies ~= { _.map(_.copy(extraAttributes = Map.empty)) } // not sure why this is needed
@@ -54,14 +57,14 @@ object Util
 		val content = "version=" + version + "\ntimestamp=" + timestamp
 		val f = dir / "xsbt.version.properties"
 		if(!f.exists) { // TODO: properly handle this
-		s.log.info("Writing version information to " + f + " :\n" + content)
-		IO.write(f, content) }
+			s.log.info("Writing version information to " + f + " :\n" + content)
+			IO.write(f, content)
+		}
 		f :: Nil
 	}
 	def binID = "compiler-interface-bin"
 	def srcID = "compiler-interface-src"
 }
-
 object Common
 {
 	def lib(m: ModuleID) = libraryDependencies += m

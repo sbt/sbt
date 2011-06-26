@@ -12,15 +12,14 @@
 
 object Sbt extends Build
 {
-	override lazy val settings = super.settings ++ Seq(
+	override lazy val settings = super.settings ++ buildSettings ++ Status.settings
+	def buildSettings = Seq(
 		organization := "org.scala-tools.sbt",
 		version := "0.10.1-SNAPSHOT",
 		publishArtifact in packageDoc := false,
 		scalaVersion := "2.8.1",
 		publishMavenStyle := false,
-		componentID := None,
-		publishTo := Some( Resolver.url("typesafe-ivy-releases", url("http://repo.typesafe.com/typesafe/ivy-releases/"))(Resolver.ivyStylePatterns) ),
-		credentials += Credentials(Path.userHome / ".ivy2" / ".typesafe-credentials")
+		componentID := None
 	)
 
 	lazy val myProvided = config("provided") intransitive;
@@ -34,10 +33,6 @@ object Sbt extends Build
 	lazy val launchInterfaceSub = project(launchPath / "interface", "Launcher Interface") settings(javaOnly : _*)
 		// the launcher.  Retrieves, loads, and runs applications based on a configuration file.
 	lazy val launchSub = testedBaseProject(launchPath, "Launcher") dependsOn(ioSub % "test->test", interfaceSub % "test", launchInterfaceSub) settings(launchSettings : _*)
-	def launchSettings = Seq(jline, ivy, crossPaths := false,
-		compile in Test <<= compile in Test dependsOn(publishLocal in interfaceSub, publishLocal in testSamples, publishLocal in launchInterfaceSub)
-//		mappings in (Compile, packageBin) <++= (mappings in (launchInterfaceSub, Compile, packageBin) ).identity
-	)
 
 		// used to test the retrieving and loading of an application: sample app is packaged and published to the local repository
 	lazy val testSamples = noPublish( baseProject(launchPath / "test-sample", "Launch Test") ) dependsOn(interfaceSub, launchInterfaceSub) settings(scalaCompiler, crossPaths := false)
@@ -158,8 +153,14 @@ object Sbt extends Build
 			Defaults.inAllProjects(sxrProjects, scoped, Project.extract(s).structure.data)
 		}
 
+	def launchSettings = inConfig(Compile)(Transform.configSettings) ++ Seq(jline, ivy, crossPaths := false,
+		compile in Test <<= compile in Test dependsOn(publishLocal in interfaceSub, publishLocal in testSamples, publishLocal in launchInterfaceSub)
+//		mappings in (Compile, packageBin) <++= (mappings in (launchInterfaceSub, Compile, packageBin) ).identity
+	)
+
 		import Sxr.sxr
-	def rootSettings = LaunchProguard.settings ++ LaunchProguard.specific(launchSub) ++ Sxr.settings ++ docSetting ++ Seq(
+	def releaseSettings = Release.settings(nonRoots, proguard in Proguard)
+	def rootSettings = releaseSettings ++ LaunchProguard.settings ++ LaunchProguard.specific(launchSub) ++ Sxr.settings ++ docSetting ++ Seq(
 		scriptedScalaVersion := "2.8.1",
 		scripted <<= scriptedTask,
 		scriptedSource <<= (sourceDirectory in sbtSub) / "sbt-test",
@@ -169,7 +170,7 @@ object Sbt extends Build
 		compileInputs in (Compile,sxr) <<= (sources in sxr, compileInputs in sbtSub in Compile, fullClasspath in sxr) map { (srcs, in, cp) =>
 			in.copy(config = in.config.copy(sources = srcs, classpath = cp.files))
 		},
-		publishAll <<= state flatMap { s => nop dependsOn( Defaults.inAllProjects(nonRoots, publishLocal.task, Project.extract(s).structure.data) : _*) },
+		publishAll <<= inAll(nonRoots, publishLocal.task),
 		TaskKey[Unit]("build-all") <<= (publishAll, proguard in Proguard, sxr, doc) map { (_,_,_,_) => () }
 	)
 	def docSetting = inConfig(Compile)(inTask(sxr)(doc in ThisScope.copy(task = Global, config = Global) <<= Defaults.docTask))
