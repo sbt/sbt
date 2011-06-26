@@ -54,13 +54,19 @@ object Locks extends xsbti.GlobalLock
 			}
 		private[this] def withFileLock[T](run: Callable[T]): T =
 		{
+			def withChannelRetries(retries: Int)(channel: FileChannel): T =
+				try { withChannel(channel) }
+				catch { case i: InternalLockNPE =>
+					if(retries > 0) withChannelRetries(retries - 1)(channel) else throw i
+				}
+				
 			def withChannel(channel: FileChannel) =
 			{
-				val freeLock = channel.tryLock
+				val freeLock = try { channel.tryLock } catch { case e: NullPointerException => throw new InternalLockNPE(e) }
 				if(freeLock eq null)
 				{
 					System.out.println("Waiting for lock on " + file + " to be available...");
-					val lock = channel.lock
+					val lock = try { channel.lock } catch { case e: NullPointerException => throw new InternalLockNPE(e) }
 					try { run.call }
 					finally { lock.release() }
 				}
@@ -70,7 +76,8 @@ object Locks extends xsbti.GlobalLock
 					finally { freeLock.release() }
 				}
 			}
-			Using(new FileOutputStream(file).getChannel)(withChannel)
+			Using(new FileOutputStream(file).getChannel)(withChannelRetries(5))
 		}
 	}
+	private[this] final class InternalLockNPE(cause: Exception) extends RuntimeException(cause)
 }
