@@ -139,6 +139,7 @@ object Keys
 	val artifactClassifier = SettingKey[Option[String]]("artifact-classifier", "Sets the classifier used by the default artifact definition.")
 	val artifactName = SettingKey[(String, ModuleID, Artifact) => String]("artifact-name", "Function that produces the artifact name from its definition.")
 	val mappings = TaskKey[Seq[(File,String)]]("mappings", "Defines the mappings from a file to a path, used by packaging, for example.")
+	val fileMappings = TaskKey[Seq[(File,File)]]("file-mappings", "Defines the mappings from a file to a file, used for copying files, for example.")
 
 	// Run Keys
 	val selectMainClass = TaskKey[Option[String]]("select-main-class", "Selects the main class to run.")

@@ -83,6 +83,13 @@ final case class Extracted(structure: BuildStructure, session: SessionSettings, 
 		value getOrElse error(Project.display(ScopedKey(scope, key)) + " is undefined.")
 	private def getOrError[T](scope: Scope, key: AttributeKey[T]): T =
 		structure.data.get(scope, key) getOrElse error(Project.display(ScopedKey(scope, key)) + " is undefined.")
+
+	def append(settings: Seq[Setting[_]], state: State): State =
+	{
+		val appendSettings = Load.transformSettings(Load.projectScope(currentRef), currentRef.build, rootProject, settings)
+		val newStructure = Load.reapply(session.original ++ appendSettings, structure)
+		Project.setProject(session, newStructure, state)
+	}
 }
 
 sealed trait ClasspathDep[PR <: ProjectReference] { def project: PR; def configuration: Option[String] }
