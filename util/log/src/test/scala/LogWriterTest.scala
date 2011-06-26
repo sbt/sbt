@@ -20,7 +20,7 @@ object LogWriterTest extends Properties("Log Writer")
 	property("properly logged") = forAll { (output: Output, newLine: NewLine) =>
 		import output.{lines, level}
 		val log = new RecordingLogger
-		val writer = new LoggerWriter(log, level, newLine.str)
+		val writer = new LoggerWriter(log, Some(level), newLine.str)
 		logLines(writer, lines, newLine.str)
 		val events = log.getEvents
 		 ("Recorded:\n" + events.map(show).mkString("\n")) |:
