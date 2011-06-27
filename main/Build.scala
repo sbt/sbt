@@ -56,9 +56,14 @@ object RetrieveUnit
 	def gitRetrieve(base: URI, tempDir: File): Unit =
 		if(!tempDir.exists)
 		{
-			IO.createDirectory(tempDir)
-			gitClone(dropFragment(base), tempDir)
-			Option(base.getFragment) foreach { branch => gitCheckout(tempDir, branch) }
+			try {
+				IO.createDirectory(tempDir)
+				gitClone(dropFragment(base), tempDir)
+				Option(base.getFragment) foreach { branch => gitCheckout(tempDir, branch) }
+			} catch {
+				case e => IO.delete(tempDir)
+				throw e
+			}
 		}
 	def dropFragment(base: URI): URI = if(base.getFragment eq null) base else new URI(base.getScheme, base.getSchemeSpecificPart, null)
 	def gitClone(base: URI, tempDir: File): Unit =
