@@ -53,7 +53,14 @@ object SessionSettings
 		else
 			f(session)
 	}
-	
+
+	def pluralize(size: Int, of: String) = size.toString + (if(size == 1) of else (of + "s"))
+	def checkSession(newSession: SessionSettings, oldState: State)
+	{
+		val oldSettings = (oldState get Keys.sessionSettings).toList.flatMap(_.append).flatMap(_._2)
+		if(newSession.append.isEmpty && !oldSettings.isEmpty)
+			logger(oldState).warn("Discarding " + pluralize(oldSettings.size, " session setting") + ".  Use 'session save' to persist session settings.")
+	}
 	def removeRanges[T](in: Seq[T], ranges: Seq[(Int,Int)]): Seq[T] =
 	{
 		val asSet = (Set.empty[Int] /: ranges) { case (s, (hi,lo)) => s ++ (hi to lo) }
