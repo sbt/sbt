@@ -12,15 +12,14 @@ package sbt
 
 	import SessionSettings._
 
-final case class SessionSettings(currentBuild: URI, currentProject: Map[URI, String], original: Seq[Setting[_]], prepend: SessionMap, append: SessionMap, currentEval: () => Eval)
+final case class SessionSettings(currentBuild: URI, currentProject: Map[URI, String], original: Seq[Setting[_]], append: SessionMap, currentEval: () => Eval)
 {
 	assert(currentProject contains currentBuild, "Current build (" + currentBuild + ") not associated with a current project.")
 	def setCurrent(build: URI, project: String, eval: () => Eval): SessionSettings = copy(currentBuild = build, currentProject = currentProject.updated(build, project), currentEval = eval)
 	def current: ProjectRef = ProjectRef(currentBuild, currentProject(currentBuild))
 	def appendSettings(s: Seq[SessionSetting]): SessionSettings = copy(append = modify(append, _ ++ s))
-	def prependSettings(s: Seq[SessionSetting]): SessionSettings = copy(prepend = modify(prepend, s ++ _))
-	def mergeSettings: Seq[Setting[_]] = merge(prepend) ++ original ++ merge(append)
-	def clearExtraSettings: SessionSettings = copy(prepend = Map.empty, append = Map.empty)
+	def mergeSettings: Seq[Setting[_]] = original ++ merge(append)
+	def clearExtraSettings: SessionSettings = copy(append = Map.empty)
 
 	private[this] def merge(map: SessionMap): Seq[Setting[_]] = map.values.toSeq.flatten[SessionSetting].map(_._1)
 	private[this] def modify(map: SessionMap, onSeq: Endo[Seq[SessionSetting]]): SessionMap =
@@ -46,7 +45,7 @@ object SessionSettings
 	{
 		val extracted = Project extract s
 		import extracted._
-		if(session.prepend.isEmpty && session.append.isEmpty)
+		if(session.append.isEmpty)
 		{
 			logger(s).info("No session settings defined.")
 			s
@@ -76,7 +75,7 @@ object SessionSettings
 		withSettings(s){session =>
 			for( (ref, settings) <- session.append if !settings.isEmpty && include(ref) )
 				writeSettings(ref, settings, Project.structure(s))
-			reapply(session.copy(original = session.mergeSettings, append = Map.empty, prepend = Map.empty), s)
+			reapply(session.copy(original = session.mergeSettings, append = Map.empty), s)
 		}
 	def writeSettings(pref: ProjectRef, settings: Seq[SessionSetting], structure: Load.BuildStructure)
 	{
