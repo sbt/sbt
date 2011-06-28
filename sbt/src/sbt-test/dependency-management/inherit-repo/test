@@ -1,5 +1,6 @@
+> set logLevel := Level.Debug
 # This should fail because project A declares a dependency that exists in an extra repository, which we haven't declared
--> update
+-> show update
 
 # Copy the project definition with the extra repository declared in project B and with A delegating to B and reload
 $ copy-file changes/WithRepository.sbt b/build.sbt

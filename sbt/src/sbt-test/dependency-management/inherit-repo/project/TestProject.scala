@@ -4,7 +4,11 @@
 object TestProject extends Build
 {
 	override lazy val settings = super.settings :+
+		(externalResolvers := Nil) :+
+		(autoScalaLibrary := false) :+
 		( ivyPaths <<= baseDirectory( dir => new IvyPaths(dir, Some(dir / "ivy-home"))) )
+
+	lazy val root = Project("root", file(".")) aggregate(a, b)
 
 	lazy val a = Project("a", file("a")) delegateTo(b) settings(
 		libraryDependencies += "com.camptocamp.tl.caltar" % "core" % "0.5" intransitive()
