@@ -1,28 +1,9 @@
-> ++2.7.2
-> update
-> test-only Success
--> test-only Failure
-> ++2.7.3
+> ++ 2.7.4
 > update
 > test-only Success
 -> test-only Failure
 
-> ++2.7.4
-> update
-> test-only Success
--> test-only Failure
-
-> ++2.7.5
-> update
-> test-only Success
--> test-only Failure
-
-> ++2.7.6
-> update
-> test-only Success
--> test-only Failure
-
-> ++2.7.7
+> ++ 2.7.7
 > update
 > test-only Success
 -> test-only Failure

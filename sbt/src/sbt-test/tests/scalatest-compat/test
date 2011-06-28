@@ -1,9 +1,9 @@
-> ++2.7.5
+> ++ 2.7.5
 > update
 > test-only StackSpecSuccess
 -> test-only Failure
 
-> ++2.7.7
+> ++ 2.7.7
 > update
 > test-only StackSpecSuccess
 -> test-only Failure
