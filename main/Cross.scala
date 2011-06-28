@@ -24,7 +24,7 @@ object Cross
 			import x._
 		println("Setting version to " + version)
 		val add = (scalaVersion in GlobalScope :== version) :: (scalaHome in GlobalScope :== None) :: Nil
-		val cleared = session.original.filterNot( crossExclude )
+		val cleared = session.mergeSettings.filterNot( crossExclude )
 		val newStructure = Load.reapply(add ++ cleared, structure)
 		Project.setProject(session, newStructure, command :: state)
 	}
