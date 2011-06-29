@@ -98,7 +98,7 @@ SetCommand + """ <setting-expression>
 
 	This command does not rebuild the build definitions, plugins, or configurations.
 	It does not automatically persist the setting.
-	This is done by running 'settings save' or 'settings save-all'.
+	This is done by running 'session save' or 'session save-all'.
 """
 
 	def SessionCommand = "session"
