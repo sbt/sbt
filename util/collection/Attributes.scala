@@ -97,6 +97,7 @@ final case class AttributeEntry[T](key: AttributeKey[T], value: T)
 
 final case class Attributed[D](data: D)(val metadata: AttributeMap)
 {
+	def get[T](key: AttributeKey[T]): Option[T] = metadata.get(key)
 	def put[T](key: AttributeKey[T], value: T): Attributed[D] = Attributed(data)(metadata.put(key, value))
 	def map[T](f: D => T): Attributed[T] = Attributed(f(data))(metadata)
 }
