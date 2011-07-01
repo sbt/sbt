@@ -86,10 +86,14 @@ object IO
 	def createDirectory(dir: File): Unit =
 	{
 		def failBase = "Could not create directory " + dir
-		if(dir.isDirectory || dir.mkdirs())
+		// Need a retry because mkdirs() has a race condition
+		var tryCount = 0
+		while (!dir.exists && !dir.mkdirs() && tryCount < 100) { tryCount += 1 }
+		if(dir.isDirectory)
 			()
-		else if(dir.exists)
+		else if(dir.exists) {
 			error(failBase + ": file exists and is not a directory.")
+		}
 		else
 			error(failBase)
 	}
