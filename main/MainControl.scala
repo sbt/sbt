@@ -5,23 +5,23 @@ package sbt
 
 import java.io.File
 
-private case class Exit(code: Int) extends xsbti.Exit
+final case class Exit(code: Int) extends xsbti.Exit
 {
 	require(code >= 0)
 }
-private class Reboot(val scalaVersion: String, argsList: Seq[String], val app: xsbti.ApplicationID, val baseDirectory: File) extends xsbti.Reboot
+final case class Reboot(scalaVersion: String, argsList: Seq[String], app: xsbti.ApplicationID, baseDirectory: File) extends xsbti.Reboot
 {
 	def arguments = argsList.toArray
 }
-private class ApplicationID(delegate: xsbti.ApplicationID, newVersion: String) extends xsbti.ApplicationID
+final case class ApplicationID(groupID: String, name: String, version: String, mainClass: String, components: Seq[String], crossVersioned: Boolean, extra: Seq[File]) extends xsbti.ApplicationID
 {
-	def groupID = delegate.groupID
-	def name = delegate.name
-	def version = newVersion
-	
-	def mainClass = delegate.mainClass
-	def mainComponents = delegate.mainComponents
-	def crossVersioned = delegate.crossVersioned
-	
-	def classpathExtra = delegate.classpathExtra
+	def mainComponents = components.toArray
+	def classpathExtra = extra.toArray
+}
+object ApplicationID
+{
+	def apply(delegate: xsbti.ApplicationID, newVersion: String): ApplicationID =
+		apply(delegate).copy(version = newVersion)
+	def apply(delegate: xsbti.ApplicationID): ApplicationID =
+		ApplicationID(delegate.groupID, delegate.name, delegate.version, delegate.mainClass, delegate.mainComponents, delegate.crossVersioned, delegate.classpathExtra)
 }

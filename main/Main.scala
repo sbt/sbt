@@ -29,7 +29,7 @@ final class xMain extends xsbti.AppMain
 		import CommandSupport.{DefaultsCommand, InitCommand}
 		val initialCommandDefs = Seq(initialize, defaults)
 		val commands = DefaultsCommand +: InitCommand +: (DefaultBootCommands ++ configuration.arguments.map(_.trim))
-		val state = State( configuration, initialCommandDefs, Set.empty, None, commands, initialAttributes, Next.Continue )
+		val state = State( configuration, initialCommandDefs, Set.empty, None, commands, initialAttributes, None )
 		MainLoop.run(state)
 	}
 }
@@ -39,7 +39,7 @@ final class ScriptMain extends xsbti.AppMain
 	{
 		import BuiltinCommands.{initialAttributes, ScriptCommands}
 		val commands = Script.Name +: configuration.arguments.map(_.trim)
-		val state = State( configuration, ScriptCommands, Set.empty, None, commands, initialAttributes, Next.Continue )
+		val state = State( configuration, ScriptCommands, Set.empty, None, commands, initialAttributes, None )
 		MainLoop.run(state)
 	}	
 }
@@ -49,25 +49,19 @@ final class ConsoleMain extends xsbti.AppMain
 	{
 		import BuiltinCommands.{initialAttributes, ConsoleCommands}
 		val commands = IvyConsole.Name +: configuration.arguments.map(_.trim)
-		val state = State( configuration, ConsoleCommands, Set.empty, None, commands, initialAttributes, Next.Continue )
+		val state = State( configuration, ConsoleCommands, Set.empty, None, commands, initialAttributes, None )
 		MainLoop.run(state)
 	}
 }
 object MainLoop
 {
 	@tailrec final def run(state: State): xsbti.MainResult =
-	{
-		import Next._
-		state.next match
+		state.result match
 		{
-			case Continue => run(next(state))
-			case Fail => Exit(1)
-			case Done => Exit(0)
-			case Reload =>
-				val app = state.configuration.provider
-				new Reboot(app.scalaProvider.version, state.remainingCommands, app.id, state.configuration.baseDirectory)
+			case None => run(next(state))
+			case Some(result) => result
 		}
-	}
+
 	def next(state: State): State =
 		ErrorHandling.wideConvert { state.process(Command.process) } match
 		{

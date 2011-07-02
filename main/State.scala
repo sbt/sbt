@@ -13,7 +13,7 @@ final case class State(
 	onFailure: Option[String],
 	remainingCommands: Seq[String],
 	attributes: AttributeMap,
-	next: Next.Value
+	result: Option[xsbti.MainResult]
 ) extends Identity {
 	lazy val combinedParser = Command.combine(definedCommands)(this)
 }
@@ -24,16 +24,13 @@ trait Identity {
 	override final def toString = super.toString
 }
 
-object Next extends Enumeration {
-	val Reload, Fail, Done, Continue = Value
-}
-
 trait StateOps {
 	def process(f: (String, State) => State): State
 	def ::: (commands: Seq[String]): State
 	def :: (command: String): State
 	def continue: State
 	def reboot(full: Boolean): State
+	def setResult(n: Option[xsbti.MainResult]): State
 	def reload: State
 	def exit(ok: Boolean): State
 	def fail: State
@@ -48,6 +45,12 @@ trait StateOps {
 }
 object State
 {
+	def defaultReload(state: State): Reboot =
+	{
+		val app = state.configuration.provider
+		new Reboot(app.scalaProvider.version, state.remainingCommands, app.id, state.configuration.baseDirectory)
+	}
+
 	implicit def stateOps(s: State): StateOps = new StateOps {
 		def process(f: (String, State) => State): State =
 			s.remainingCommands match {
@@ -60,11 +63,11 @@ object State
 		def ++ (newCommands: Seq[Command]): State = s.copy(definedCommands = (s.definedCommands ++ newCommands).distinct)
 		def + (newCommand: Command): State = this ++ (newCommand :: Nil)
 		def baseDir: File = s.configuration.baseDirectory
-		def setNext(n: Next.Value) = s.copy(next = n)
-		def continue = setNext(Next.Continue)
+		def setResult(n: Option[xsbti.MainResult]) = s.copy(result = n)
+		def continue = setResult(None)
 		def reboot(full: Boolean) = throw new xsbti.FullReload(s.remainingCommands.toArray, full)
-		def reload = setNext(Next.Reload)
-		def exit(ok: Boolean) = setNext(if(ok) Next.Done else Next.Fail)
+		def reload = setResult(Some(defaultReload(s)))
+		def exit(ok: Boolean) = setResult(Some(Exit(if(ok) 0 else 1)))
 		def get[T](key: AttributeKey[T]) = s.attributes get key
 		def put[T](key: AttributeKey[T], value: T) = s.copy(attributes = s.attributes.put(key, value))
 		def remove(key: AttributeKey[_]) = s.copy(attributes = s.attributes remove key)
