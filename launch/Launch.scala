@@ -184,6 +184,8 @@ class ComponentProvider(baseDirectory: File, lockBoot: Boolean) extends xsbti.Co
 		else
 			Copy(files.toList, location)
 	}
+	def addToComponent(id: String, files: Array[File]): Boolean =
+		Copy(files.toList, componentLocation(id))
 	def lockFile = if(lockBoot) ComponentProvider.lockFile(baseDirectory) else null // null for the Java interface
 }
 object ComponentProvider

@@ -13,15 +13,21 @@ object Using
 
 object Copy
 {
-	def apply(files: List[File], toDirectory: File): Unit =  files.foreach(file => apply(file, toDirectory))
-	def apply(file: File, toDirectory: File)
+	def apply(files: List[File], toDirectory: File): Boolean = files.map(file => apply(file, toDirectory)).contains(true)
+	def apply(file: File, toDirectory: File): Boolean =
 	{
 		toDirectory.mkdirs()
-		Using(new FileInputStream(file)) { in =>
-			Using(new FileOutputStream(new File(toDirectory, file.getName))) { out =>
-				transfer(in, out)
+		val to = new File(toDirectory, file.getName)
+		val missing = !to.exists
+		if(missing)
+		{
+			Using(new FileInputStream(file)) { in =>
+				Using(new FileOutputStream(to)) { out =>
+					transfer(in, out)
+				}
 			}
 		}
+		missing
 	}
 	def transfer(in: InputStream, out: OutputStream)
 	{
