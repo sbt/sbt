@@ -8,7 +8,7 @@ package sbt
 	import compiler.Discovery
 	import Project.{inConfig, Initialize, inScope, inTask, ScopedKey, Setting, SettingsDefinition}
 	import Artifact.{DocClassifier, SourceClassifier}
-	import Configurations.{Compile, CompilerPlugin, IntegrationTest, names, Runtime, Test}
+	import Configurations.{Compile, CompilerPlugin, IntegrationTest, names, Provided, Runtime, Test}
 	import complete._
 	import std.TaskExtra._
 	import inc.{FileValueCache, Locate}
@@ -600,7 +600,7 @@ object Classpaths
 		libraryDependencies <++= (autoScalaLibrary, scalaVersion) { (auto, sv) => if(auto) ScalaArtifacts.libraryDependency(sv) :: Nil else Nil},
 		allDependencies <<= (projectDependencies,libraryDependencies,sbtPlugin,sbtDependency) map { (projDeps, libDeps, isPlugin, sbtDep) =>
 			val base = projDeps ++ libDeps
-			if(isPlugin) sbtDep +: base else base
+			if(isPlugin) sbtDep.copy(configurations = Some(Provided.name)) +: base else base
 		},
 		ivyLoggingLevel in GlobalScope :== UpdateLogging.Quiet,
 		ivyXML in GlobalScope :== NodeSeq.Empty,
