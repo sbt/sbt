@@ -4,6 +4,7 @@
 package sbt
 
 	import java.io.File
+	import java.util.concurrent.Callable
 	import CommandSupport.FailureWall
 
 final case class State(
@@ -40,6 +41,7 @@ trait StateOps {
 	def put[T](key: AttributeKey[T], value: T): State
 	def remove(key: AttributeKey[_]): State
 	def baseDir: File
+	def locked[T](file: File)(t: => T): T
 	def runExitHooks(): State
 	def addExitHook(f: => Unit): State
 }
@@ -92,5 +94,7 @@ object State
 			ExitHooks.runExitHooks(s.exitHooks.toSeq)
 			s.copy(exitHooks = Set.empty)
 		}
+		def locked[T](file: File)(t: => T): T =
+			s.configuration.provider.scalaProvider.launcher.globalLock.apply(file, new Callable[T] { def call = t })
 	}
 }
