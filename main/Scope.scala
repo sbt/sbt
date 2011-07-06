@@ -8,6 +8,15 @@ package sbt
 	import Types.some
 
 final case class Scope(project: ScopeAxis[Reference], config: ScopeAxis[ConfigKey], task: ScopeAxis[AttributeKey[_]], extra: ScopeAxis[AttributeMap])
+{
+	def in(project: Reference, config: ConfigKey): Scope = copy(project = Select(project), config = Select(config))
+	def in(config: ConfigKey, task: AttributeKey[_]): Scope = copy(config = Select(config), task = Select(task))
+	def in(project: Reference, task: AttributeKey[_]): Scope = copy(project = Select(project), task = Select(task))
+	def in(project: Reference, config: ConfigKey, task: AttributeKey[_]): Scope = copy(project = Select(project), config = Select(config), task = Select(task))
+	def in(project: Reference): Scope = copy(project = Select(project))
+	def in(config: ConfigKey): Scope = copy(config = Select(config))
+	def in(task: AttributeKey[_]): Scope = copy(task = Select(task))
+}
 object Scope
 {
 	val ThisScope = Scope(This, This, This, This)
