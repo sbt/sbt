@@ -21,29 +21,45 @@ object GlobalPlugin
 			internalDependencyClasspath in Compile ~= { prev => (prev ++ gp.internalClasspath).distinct }
 		)
 	
-	def build(base: File, s: State, config: LoadBuildConfiguration): BuildStructure =  Load(base, s, config)._2
+	def build(base: File, s: State, config: LoadBuildConfiguration): (BuildStructure, State) =
+	{
+		val globalConfig = config.copy(injectSettings = config.injectSettings.copy(global = config.injectSettings.global ++ globalPluginSettings))
+		val (eval, structure) = Load(base, s, globalConfig)
+		val session = Load.initialSession(structure, eval)
+		(structure, Project.setProject(session, structure, s))
+	}
 	def load(base: File, s: State, config: LoadBuildConfiguration): GlobalPlugin =
 	{
-		val structure = build(base, s, config)
-		val data = extract(s, structure)
+		val (structure, state) = build(base, s, config)
+		val data = extract(state, structure)
 		GlobalPlugin(data, structure, inject(data))
 	}
 	def extract(state: State, structure: BuildStructure): GlobalPluginData =
 	{
-		import structure.{data, root}
-		val p = RootProject(root)
-		val task = (projectID in p, projectDependencies in p, projectDescriptors in p, fullClasspath in (p, Compile), internalDependencyClasspath in (p, Compile) ) map GlobalPluginData.apply get data
+		import structure.{data, root, rootProject}
+		val p: Scope = Scope.GlobalScope in ProjectRef(root, rootProject(root))
+		val taskInit = (projectID, projectDependencies, projectDescriptors, fullClasspath in Compile, internalDependencyClasspath in Compile, exportedProducts in Compile, ivyModule) map {
+			(pid, pdeps, pdescs, cp, intcp, prods, mod) =>
+				val depMap = pdescs + mod.dependencyMapping(log(state))
+				GlobalPluginData(pid, pdeps, depMap, cp, prods ++ intcp)
+		}
+		val task = taskInit mapReferenced Project.mapScope(Scope replaceThis p) get data
 		evaluate(state, structure, task)
 	}
 	def evaluate[T](state: State, structure: BuildStructure, t: Task[T]): T =
 	{
 			import EvaluateTask._
-		val log = CommandSupport.logger(state)
 		withStreams(structure) { str =>
 			val nv = nodeView(state, str)
-			processResult(runTask(t, str, structure.index.triggers)(nv), log)
+			processResult(runTask(t, str, structure.index.triggers)(nv), log(state))
 		}
 	}
+	private[this] def log(s: State) = CommandSupport.logger(s)
+	val globalPluginSettings = Seq(
+		organization := "org.scala-tools.sbt",
+		name := "global-plugin",
+		version := "0.0"
+	)
 }
-final case class GlobalPluginData(projectID: ModuleID, dependencies: Seq[ModuleID], descriptors: Map[ModuleRevisionId, ModuleDescriptor], fullClasspath: Seq[Attributed[File]], internalClasspath: Seq[Attributed[File]])
+final case class GlobalPluginData(projectID: ModuleID, dependencies: Seq[ModuleID], descriptors: Map[ModuleRevisionId, ModuleDescriptor], fullClasspath: Classpath, internalClasspath: Classpath)
 final case class GlobalPlugin(data: GlobalPluginData, structure: BuildStructure, inject: Seq[Setting[_]])
