@@ -108,6 +108,11 @@ final class IvySbt(val configuration: IvyConfiguration)
 			withIvy[T](log) { ivy => f(ivy, moduleDescriptor0, defaultConfig0) }
 
 		def moduleDescriptor(log: Logger): DefaultModuleDescriptor = withModule(log)((_,md,_) => md)
+		def dependencyMapping(log: Logger): (ModuleRevisionId, ModuleDescriptor) =
+		{
+			val md = moduleDescriptor(log)
+			(md.getModuleRevisionId, md)
+		}
 		def defaultConfig(log: Logger): String = withModule(log)( (_,_,dc) => dc)
 		// these should only be referenced by withModule because lazy vals synchronize on this object
 		// withIvy explicitly locks the IvySbt object, so they have to be done in the right order to avoid deadlock

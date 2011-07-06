@@ -747,10 +747,7 @@ object Classpaths
 
 	def depMap(projects: Seq[(ProjectRef,ResolvedProject)], data: Settings[Scope], log: Logger): Task[Map[ModuleRevisionId, ModuleDescriptor]] =
 		projects.flatMap { case (p,_) => ivyModule in p get data }.join.map { mods =>
-			(mods.map{ mod =>
-				val md = mod.moduleDescriptor(log)
-				(md.getModuleRevisionId, md)
-			}).toMap
+			mods map { _.dependencyMapping(log) } toMap ;
 		}
 
 	def projectResolverTask: Initialize[Task[Resolver]] =
