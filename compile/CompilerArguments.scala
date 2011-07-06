@@ -18,7 +18,7 @@ final class CompilerArguments(scalaInstance: ScalaInstance, cp: ClasspathOptions
 	{
 		checkScalaHomeUnset()
 		val cpWithCompiler = finishClasspath(classpath)
-		val classpathOption = if(cpWithCompiler.isEmpty) Nil else Seq("-cp", absString(cpWithCompiler) )
+		val classpathOption = Seq("-cp", if(cpWithCompiler.isEmpty) "" else absString(cpWithCompiler) )
 		val outputOption = Seq("-d", outputDirectory.getAbsolutePath)
 		options ++ outputOption ++ bootClasspathOption ++ classpathOption ++ abs(sources)
 	}
