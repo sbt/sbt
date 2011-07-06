@@ -60,8 +60,9 @@ sealed trait Project extends ProjectDefinition[ProjectReference]
 }
 sealed trait ResolvedProject extends ProjectDefinition[ProjectRef]
 
-final case class Extracted(structure: BuildStructure, session: SessionSettings, currentRef: ProjectRef, rootProject: URI => String)
+final case class Extracted(structure: BuildStructure, session: SessionSettings, currentRef: ProjectRef)
 {
+	def rootProject = structure.rootProject
 	lazy val currentUnit = structure units currentRef.build
 	lazy val currentProject = currentUnit defined currentRef.project
 	def get[T](key: ScopedTask[T]): Task[T] = get(key.task)
@@ -128,7 +129,7 @@ object Project extends Init[Scope] with ProjectExtra
 	def session(state: State): SessionSettings = getOrError(state, sessionSettings, "Session not initialized.")
 
 	def extract(state: State): Extracted  =  extract( session(state), structure(state) )
-	def extract(se: SessionSettings, st: BuildStructure): Extracted  =  Extracted(st, se, se.current, Load.getRootProject(st.units))
+	def extract(se: SessionSettings, st: BuildStructure): Extracted  =  Extracted(st, se, se.current)
 
 	def getProjectForReference(ref: Reference, structure: BuildStructure): Option[ResolvedProject] =
 		ref match { case pr: ProjectRef => getProject(pr, structure); case _ => None }

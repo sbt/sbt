@@ -492,6 +492,7 @@ object Load
 	
 	final class BuildStructure(val units: Map[URI, LoadedBuildUnit], val root: URI, val settings: Seq[Setting[_]], val data: Settings[Scope], val index: StructureIndex, val streams: Streams, val delegates: Scope => Seq[Scope], val scopeLocal: ScopeLocal)
 	{
+		val rootProject: URI => String = Load getRootProject units
 		def allProjects: Seq[ResolvedProject] = units.values.flatMap(_.defined.values).toSeq
 		def allProjects(build: URI): Seq[ResolvedProject] = units(build).defined.values.toSeq
 		def allProjectRefs: Seq[ProjectRef] = units.toSeq flatMap { case (build, unit) => refs(build, unit.defined.values.toSeq) }
