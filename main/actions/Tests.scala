@@ -48,8 +48,14 @@ object Tests
 		val setup, cleanup = new ListBuffer[ClassLoader => Unit]
 		val testListeners = new ListBuffer[TestReportListener]
 		val testArgsByFramework = Map[Framework, ListBuffer[String]]()
+		val undefinedFrameworks = new ListBuffer[String]
 		def frameworkArgs(framework: Framework, args: Seq[String]): Unit =
 			testArgsByFramework.getOrElseUpdate(framework, new ListBuffer[String]) ++= args
+		def frameworkArguments(framework: TestFramework, args: Seq[String]): Unit =
+			(frameworks get framework) match {
+				case Some(f) => frameworkArgs(f, args)
+				case None => undefinedFrameworks += framework.implClassName
+			}
 
 		for(option <- options)
 		{
@@ -69,13 +75,15 @@ object Tests
 					*   -- command line arguments (ex: test-only someClass -- someArg)
 					*      (currently, command line args must be passed to all frameworks)
 					*/
-				case Argument(Some(framework), args) => frameworkArgs(frameworks(framework), args)
+				case Argument(Some(framework), args) => frameworkArguments(framework, args)
 				case Argument(None, args) => frameworks.values.foreach { f => frameworkArgs(f, args) }
 			}
 		}
 
 		if(excludeTestsSet.size > 0)
 			log.debug(excludeTestsSet.mkString("Excluding tests: \n\t", "\n\t", ""))
+		if(undefinedFrameworks.size > 0)
+			log.warn("Arguments defined for test frameworks that are not present:\n\t" + undefinedFrameworks.mkString("\n\t"))
 
 		def includeTest(test: TestDefinition) = !excludeTestsSet.contains(test.name) && testFilters.forall(filter => filter(test.name))
 		val tests = discovered.filter(includeTest).toSet.toSeq
