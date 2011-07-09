@@ -16,12 +16,12 @@ import java.net.URLClassLoader
 // TODO: provide a way to cleanup backing directory
 
 final class EvalImports(val strings: Seq[(String,Int)], val srcName: String)
-final class EvalResult(val tpe: String, val value: Any, val generated: Seq[File], val enclosingModule: String)
+final class EvalResult(val tpe: String, val getValue: ClassLoader => Any, val generated: Seq[File], val enclosingModule: String)
 final class EvalException(msg: String) extends RuntimeException(msg)
 // not thread safe, since it reuses a Global instance
-final class Eval(optionsNoncp: Seq[String], classpath: Seq[File], mkReporter: Settings => Reporter, parent: ClassLoader, backing: Option[File])
+final class Eval(optionsNoncp: Seq[String], classpath: Seq[File], mkReporter: Settings => Reporter, backing: Option[File])
 {
-	def this(mkReporter: Settings => Reporter, backing: Option[File]) = this(Nil, IO.classLocationFile[ScalaObject] :: Nil, mkReporter, getClass.getClassLoader, backing)
+	def this(mkReporter: Settings => Reporter, backing: Option[File]) = this(Nil, IO.classLocationFile[ScalaObject] :: Nil, mkReporter, backing)
 	def this() = this(s => new ConsoleReporter(s), None)
 
 	backing.foreach(IO.createDirectory)
@@ -64,7 +64,7 @@ final class Eval(optionsNoncp: Seq[String], classpath: Seq[File], mkReporter: Se
 		val classFiles = getClassFiles(backing, moduleName)
 		new EvalResult(tpe, value, classFiles, moduleName)
 	}
-	def eval0(expression: String, imports: EvalImports, tpeName: Option[String], run: Run, unit: CompilationUnit, backing: Option[File], moduleName: String): (String, Any) =
+	def eval0(expression: String, imports: EvalImports, tpeName: Option[String], run: Run, unit: CompilationUnit, backing: Option[File], moduleName: String): (String, ClassLoader => Any) =
 	{
 		val dir = backing match { case None => new VirtualDirectory("<virtual>", None); case Some(dir) => new PlainFile(dir) }
 		settings.outputDirs setSingleOutput dir
@@ -99,8 +99,8 @@ final class Eval(optionsNoncp: Seq[String], classpath: Seq[File], mkReporter: Se
 
 		(tpe, load(dir, moduleName))
 	}
-	def load(dir: AbstractFile, moduleName: String): Any  =  getValue(moduleName, new AbstractFileClassLoader(dir, parent))
-	def loadPlain(dir: File, moduleName: String): Any  =  getValue(moduleName, new URLClassLoader(Array(dir.toURI.toURL), parent))
+	def load(dir: AbstractFile, moduleName: String): ClassLoader => Any  = parent => getValue[Any](moduleName, new AbstractFileClassLoader(dir, parent))
+	def loadPlain(dir: File, moduleName: String): ClassLoader => Any  = parent => getValue[Any](moduleName, new URLClassLoader(Array(dir.toURI.toURL), parent))
 
 	val WrapValName = "$sbtdef"
 		//wrap tree in object objectName { def WrapValName = <tree> }
