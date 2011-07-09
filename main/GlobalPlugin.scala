@@ -4,7 +4,7 @@ package sbt
 	import Project._
 	import Scoped._
 	import Keys._
-	import Configurations.Compile
+	import Configurations.Runtime
 	import java.io.File
 	import org.apache.ivy.core.module.{descriptor, id}
 	import descriptor.ModuleDescriptor, id.ModuleRevisionId
@@ -18,7 +18,7 @@ object GlobalPlugin
 		Seq[Setting[_]](
 			projectDescriptors ~= { _ ++ gp.descriptors },
 			projectDependencies ++= gp.projectID +: gp.dependencies,
-			internalDependencyClasspath in Compile ~= { prev => (prev ++ gp.internalClasspath).distinct }
+			internalDependencyClasspath in Runtime ~= { prev => (prev ++ gp.internalClasspath).distinct }
 		)
 	
 	def build(base: File, s: State, config: LoadBuildConfiguration): (BuildStructure, State) =
@@ -38,7 +38,7 @@ object GlobalPlugin
 	{
 		import structure.{data, root, rootProject}
 		val p: Scope = Scope.GlobalScope in ProjectRef(root, rootProject(root))
-		val taskInit = (projectID, projectDependencies, projectDescriptors, fullClasspath in Compile, internalDependencyClasspath in Compile, exportedProducts in Compile, ivyModule) map {
+		val taskInit = (projectID, projectDependencies, projectDescriptors, fullClasspath in Runtime, internalDependencyClasspath in Runtime, exportedProducts in Runtime, ivyModule) map {
 			(pid, pdeps, pdescs, cp, intcp, prods, mod) =>
 				val depMap = pdescs + mod.dependencyMapping(log(state))
 				GlobalPluginData(pid, pdeps, depMap, cp, prods ++ intcp)
@@ -55,11 +55,12 @@ object GlobalPlugin
 		}
 	}
 	private[this] def log(s: State) = CommandSupport.logger(s)
-	val globalPluginSettings = Seq(
+	val globalPluginSettings = inScope(Scope.GlobalScope in LocalRootProject)(Seq(
 		organization := "org.scala-tools.sbt",
 		name := "global-plugin",
+		sbtPlugin := true,
 		version := "0.0"
-	)
+	))
 }
 final case class GlobalPluginData(projectID: ModuleID, dependencies: Seq[ModuleID], descriptors: Map[ModuleRevisionId, ModuleDescriptor], fullClasspath: Classpath, internalClasspath: Classpath)
 final case class GlobalPlugin(data: GlobalPluginData, structure: BuildStructure, inject: Seq[Setting[_]])

@@ -598,7 +598,7 @@ object Classpaths
 		projectResolver <<= projectResolverTask,
 		projectDependencies <<= projectDependenciesTask,
 		libraryDependencies in GlobalScope :== Nil,
-		libraryDependencies <++= (autoScalaLibrary, scalaVersion) { (auto, sv) => if(auto) ScalaArtifacts.libraryDependency(sv) :: Nil else Nil},
+		libraryDependencies <++= (autoScalaLibrary, sbtPlugin, scalaVersion) apply autoLibraryDependency,
 		allDependencies <<= (projectDependencies,libraryDependencies,sbtPlugin,sbtDependency) map { (projDeps, libDeps, isPlugin, sbtDep) =>
 			val base = projDeps ++ libDeps
 			if(isPlugin) sbtDep.copy(configurations = Some(Provided.name)) +: base else base
@@ -866,6 +866,13 @@ object Classpaths
 	def flatten[T](o: Option[Option[T]]): Option[T] = o flatMap idFun
 
 	lazy val typesafeResolver = Resolver.url("typesafe-ivy-releases", new URL("http://repo.typesafe.com/typesafe/ivy-releases/"))(Resolver.ivyStylePatterns)
+	def modifyForPlugin(plugin: Boolean, dep: ModuleID): ModuleID =
+		if(plugin) dep.copy(configurations = Some(Provided.name)) else dep
+	def autoLibraryDependency(auto: Boolean, plugin: Boolean, version: String): Seq[ModuleID] =
+		if(auto)
+			modifyForPlugin(plugin, ScalaArtifacts.libraryDependency(version)) :: Nil
+		else
+			Nil
 
 		import DependencyFilter._
 	def managedJars(config: Configuration, jarTypes: Set[String], up: UpdateReport): Classpath =

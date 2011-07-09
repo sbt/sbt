@@ -233,6 +233,8 @@ object BuildPaths
 
 	def defaultStaging = Path.userHome / ConfigDirectoryName / "staging"
 	def defaultGlobalPlugins = Path.userHome / ConfigDirectoryName / PluginsDirectoryName
+	def defaultGlobalBase = Path.userHome / ConfigDirectoryName
+	def defaultGlobalSettings = configurationSources(defaultGlobalBase)
 	
 	def definitionSources(base: File): Seq[File] = (base * "*.scala").get
 	def configurationSources(base: File): Seq[File] = (base * "*.sbt").get
