@@ -70,7 +70,7 @@ object TestLogger
 			def debug(s: String) = log(Level.Debug, s)
 			def trace(t: Throwable) = logger.trace(t)
 			private def log(level: Level.Value, s: String) = logger.log(level, s)
-			def ansiCodesSupported() = true//logger.ansiCodesSupported
+			def ansiCodesSupported() = logger.ansiCodesSupported
 		}
 }
 final class TestLogging(val global: TLogger, val logTest: TestDefinition => ContentLogger)
