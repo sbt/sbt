@@ -62,13 +62,15 @@ object CacheIvy
 		import DefaultProtocol.{BooleanFormat, FileFormat, StringFormat}
 		updateReportFormat
 	}
-	implicit def updateReportFormat(implicit m: Format[String], cr: Format[ConfigurationReport]): Format[UpdateReport] =
+	implicit def updateReportFormat(implicit m: Format[String], cr: Format[ConfigurationReport], us: Format[UpdateStats]): Format[UpdateReport] =
 	{
 		import DefaultProtocol.FileFormat
-		wrap[UpdateReport, (File, Seq[ConfigurationReport])](rep => (rep.cachedDescriptor, rep.configurations), { case (cd, cs) => new UpdateReport(cd, cs) })
+		wrap[UpdateReport, (File, Seq[ConfigurationReport], UpdateStats)](rep => (rep.cachedDescriptor, rep.configurations, rep.stats), { case (cd, cs, stats) => new UpdateReport(cd, cs, stats) })
 	}
+	implicit def updateStatsFormat: Format[UpdateStats] =
+		wrap[UpdateStats, (Long,Long,Long)]( us => (us.resolveTime, us.downloadTime, us.downloadSize), { case (rt, dt, ds) => new UpdateStats(rt, dt, ds) })
 	implicit def confReportFormat(implicit mf: Format[ModuleID], mr: Format[ModuleReport]): Format[ConfigurationReport] =
-		wrap[ConfigurationReport, (String,Seq[ModuleReport])]( r => (r.configuration, r.modules), { case (c,m) => new ConfigurationReport(c,m) })
+		wrap[ConfigurationReport, (String,Seq[ModuleReport],Seq[ModuleID])]( r => (r.configuration, r.modules, r.evicted), { case (c,m,v) => new ConfigurationReport(c,m,v) })
 	implicit def moduleReportFormat(implicit f: Format[Artifact], ff: Format[File], mid: Format[ModuleID]): Format[ModuleReport] =
 		wrap[ModuleReport, (ModuleID, Seq[(Artifact, File)], Seq[Artifact])]( m => (m.module, m.artifacts, m.missingArtifacts), { case (m, as, ms) => new ModuleReport(m, as,ms) })
 	implicit def artifactFormat(implicit sf: Format[String], of: Format[Seq[Configuration]], cf: Format[Configuration], uf: Format[Option[URL]]): Format[Artifact] =

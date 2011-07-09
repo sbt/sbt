@@ -34,6 +34,9 @@ object IvyRetrieve
 		}
 		new ModuleReport(mid, resolved.toSeq, missing.toSeq)
 	}
+
+	def evicted(confReport: ConfigurationResolveReport): Seq[ModuleID] =
+		confReport.getEvictedNodes.map(node => toModuleID(node.getId))
  
 	def toModuleID(revID: ModuleRevisionId): ModuleID =
 		ModuleID(revID.getOrganisation, revID.getName, revID.getRevision)
@@ -45,8 +48,9 @@ object IvyRetrieve
 	}
 
 	def updateReport(report: ResolveReport, cachedDescriptor: File): UpdateReport =
-		new UpdateReport(cachedDescriptor, reports(report) map configurationReport)
-
+		new UpdateReport(cachedDescriptor, reports(report) map configurationReport, updateStats(report))
+	def updateStats(report: ResolveReport): UpdateStats =
+		new UpdateStats(report.getResolveTime, report.getDownloadTime, report.getDownloadSize)
 	def configurationReport(confReport: ConfigurationResolveReport): ConfigurationReport =
-		new ConfigurationReport(confReport.getConfiguration, moduleReports(confReport))
+		new ConfigurationReport(confReport.getConfiguration, moduleReports(confReport), evicted(confReport))
 }
