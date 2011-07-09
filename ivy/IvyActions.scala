@@ -131,6 +131,18 @@ object IvyActions
 			}
 		}
 
+	def groupedConflicts[T](moduleFilter: ModuleFilter, grouping: ModuleID => T)(report: UpdateReport): Map[T, Set[String]] =
+		report.configurations.flatMap { confReport =>
+			val evicted = confReport.evicted.filter(moduleFilter)
+			val evictedSet = evicted.map( m => (m.organization, m.name) ).toSet
+			val conflicted = confReport.allModules.filter( mod => evictedSet( (mod.organization, mod.name) ) )
+			grouped(grouping)(conflicted ++ evicted)
+		} toMap;
+
+	def grouped[T](grouping: ModuleID => T)(mods: Seq[ModuleID]): Map[T, Set[String]] =
+		mods groupBy(grouping) mapValues(_.map(_.revision).toSet)
+
+
 	def transitiveScratch(ivySbt: IvySbt, label: String, config: GetClassifiersConfiguration, log: Logger): UpdateReport =
 	{
 			import config.{configuration => c, id, ivyScala, modules => deps}
