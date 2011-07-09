@@ -1001,4 +1001,13 @@ trait BuildCommon
 		def classpath: Classpath = Attributed blankSeq s
 	}
 	def toError(o: Option[String]): Unit = o foreach error
+
+	def overrideConfigs(cs: Configuration*)(configurations: Seq[Configuration]): Seq[Configuration] =
+	{
+		val existingName = configurations.map(_.name).toSet
+		val newByName = cs.map(c => (c.name, c)).toMap
+		val overridden = configurations map { conf => newByName.getOrElse(conf.name, conf) }
+		val newConfigs = cs filter { c => !existingName(c.name) }
+		overridden ++ newConfigs
+	}
 }
