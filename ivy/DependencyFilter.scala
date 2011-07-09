@@ -32,6 +32,7 @@ object DependencyFilter extends DependencyFilterExtra
 	implicit def fnToModuleFilter(f: ModuleID => Boolean): ModuleFilter = new ModuleFilter { def apply(m: ModuleID) = f(m) }
 	implicit def fnToArtifactFilter(f: Artifact => Boolean): ArtifactFilter = new ArtifactFilter { def apply(m: Artifact) = f(m) }
 	implicit def fnToConfigurationFilter(f: String => Boolean): ConfigurationFilter = new ConfigurationFilter { def apply(c: String) = f(c) }
+	implicit def subDepFilterToFn[Arg](f: SubDepFilter[Arg, _]): Arg => Boolean = f apply _
 }
 trait DependencyFilter
 {

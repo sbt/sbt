@@ -576,6 +576,7 @@ object Classpaths
 		publishLocal <<= publishTask(publishLocalConfiguration, deliverLocal)
 	)
 	val baseSettings: Seq[Setting[_]] = Seq(
+		conflictWarning in GlobalScope := ConflictWarning.default,
 		unmanagedBase <<= baseDirectory / "lib",
 		normalizedName <<= name(StringUtilities.normalize),
 		organization <<= organization or normalizedName.identity,
@@ -644,6 +645,7 @@ object Classpaths
 		update <<= (ivyModule, thisProjectRef, updateConfiguration, cacheDirectory, scalaInstance, streams) map { (module, ref, config, cacheDirectory, si, s) =>
 			cachedUpdate(cacheDirectory / "update", Project.display(ref), module, config, Some(si), s.log)
 		},
+		update <<= (conflictWarning, update, streams) map { (config, report, s) => ConflictWarning(config, report, s.log); report },
 		transitiveClassifiers in GlobalScope :== Seq(SourceClassifier, DocClassifier),
 		updateClassifiers <<= (ivySbt, projectID, update, transitiveClassifiers in updateClassifiers, updateConfiguration, ivyScala, target in LocalRootProject, appConfiguration, streams) map { (is, pid, up, classifiers, c, ivyScala, out, app, s) =>
 			withExcludes(out, classifiers, lock(app)) { excludes =>
