@@ -26,7 +26,8 @@ object Release extends Build
 	lazy val wikiRemoteRepo = SettingKey[String]("wiki-remote-repo")
 
 	def settings(nonRoots: => Seq[ProjectReference], launcher: ScopedTask[File]): Seq[Setting[_]] =
-		if(CredentialsFile.exists) releaseSettings(nonRoots, launcher) else Nil
+		(if(CredentialsFile.exists) releaseSettings(nonRoots, launcher) else Nil) ++
+		(if(file(".release.sbt") exists) fullReleaseSettings else Nil)
 
 	def releaseSettings(nonRoots: => Seq[ProjectReference], launcher: ScopedTask[File]): Seq[Setting[_]] = Seq(
 		publishTo in ThisBuild <<= publishResolver,
@@ -36,7 +37,9 @@ object Release extends Build
 		publishAllArtifacts <<= Util.inAll(nonRoots, publish.task),
 		publishLauncher <<= deployLauncher(launcher),
 		publishRelease <<= Seq(publishLauncher, publishAllArtifacts).dependOn,
-		launcherRemotePath <<= (organization, version) { (org, v) => List(org, LaunchJarName, v, LaunchJarName + ".jar").mkString("/") },
+		launcherRemotePath <<= (organization, version) { (org, v) => List(org, LaunchJarName, v, LaunchJarName + ".jar").mkString("/") }
+	)
+	def fullReleaseSettings: Seq[Setting[_]] = Seq(
 		pushAPIDoc <<= pushAPIDoc0,
 		copyAPIDoc <<= copyAPIDoc0,
 		pushWiki <<= pushWiki0,
@@ -46,7 +49,7 @@ object Release extends Build
 		sbtRemoteRepo := "git@github.com:harrah/xsbt.git",
 		wikiRemoteRepo := "git@github.com:harrah/xsbt.wiki.git",
 		updatedPagesRepository <<= updatedRepo(pagesRepository, sbtRemoteRepo, Some("gh-pages")),
-		updatedWikiRepository <<= updatedRepo(wikiRepository, wikiRemoteRepo, None)
+		updatedWikiRepository <<= updatedRepo(wikiRepository, wikiRemoteRepo, None)		
 	)
 	def deployLauncher(launcher: ScopedTask[File]) =
 		(launcher, launcherRemotePath, credentials, remoteBase, streams) map { (launchJar, remotePath, creds, base, s) =>
