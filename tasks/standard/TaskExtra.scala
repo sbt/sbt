@@ -74,8 +74,8 @@ sealed trait ProcessPipe
 
 trait TaskExtra
 {
-	final def nop: Task[Unit] = const( () )
-	final def const[T](t: T): Task[T] = task(t)
+	final def nop: Task[Unit] = constant( () )
+	final def constant[T](t: T): Task[T] = task(t)
 
 	final implicit def t2ToMulti[A,B](t: (Task[A],Task[B])) = multInputTask(t._1 :^: t._2 :^: KNil)
 	final implicit def f2ToHfun[A,B,R](f: (A,B) => R): (A :+: B :+: HNil => R) = { case a :+: b :+: HNil => f(a,b) }

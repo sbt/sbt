@@ -65,6 +65,7 @@ final case class Extracted(structure: BuildStructure, session: SessionSettings, 
 	def rootProject = structure.rootProject
 	lazy val currentUnit = structure units currentRef.build
 	lazy val currentProject = currentUnit defined currentRef.project
+	lazy val currentLoader: ClassLoader = currentUnit.loader
 	def get[T](key: ScopedTask[T]): Task[T] = get(key.task)
 	def get[T](key: ScopedSetting[T]): T =
 	{

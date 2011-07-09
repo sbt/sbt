@@ -81,28 +81,31 @@ object RetrieveUnit
 }
 object EvaluateConfigurations
 {
-	def apply(eval: Eval, srcs: Seq[File], imports: Seq[String]): Seq[Setting[_]] =
-		srcs.sortBy(_.getName) flatMap { src =>  evaluateConfiguration(eval, src, imports) }
-	def evaluateConfiguration(eval: Eval, src: File, imports: Seq[String]): Seq[Setting[_]] =
+	def apply(eval: Eval, srcs: Seq[File], imports: Seq[String]): ClassLoader => Seq[Setting[_]] =
+		flatten(srcs.sortBy(_.getName) map { src =>  evaluateConfiguration(eval, src, imports) })
+	def evaluateConfiguration(eval: Eval, src: File, imports: Seq[String]): ClassLoader => Seq[Setting[_]] =
 		evaluateConfiguration(eval, src.getPath, IO.readLines(src), imports, 0)
-	def evaluateConfiguration(eval: Eval, name: String, lines: Seq[String], imports: Seq[String], offset: Int): Seq[Setting[_]] =
+	def evaluateConfiguration(eval: Eval, name: String, lines: Seq[String], imports: Seq[String], offset: Int): ClassLoader => Seq[Setting[_]] =
 	{
 		val (importExpressions, settingExpressions) = splitExpressions(lines)
-		addOffset(offset, settingExpressions) flatMap { case (settingExpression,line) =>
+		val settings = addOffset(offset, settingExpressions) map { case (settingExpression,line) =>
 			evaluateSetting(eval, name, (imports.map(s => (s, -1)) ++ addOffset(offset, importExpressions)), settingExpression, line)
 		}
+		flatten(settings)
 	}
+	def flatten(mksettings: Seq[ClassLoader => Seq[Setting[_]]]): ClassLoader => Seq[Setting[_]] =
+		loader => mksettings.flatMap(_ apply loader)
 	def addOffset(offset: Int, lines: Seq[(String,Int)]): Seq[(String,Int)] =
 		lines.map { case (s, i) => (s, i + offset) }
 
-	def evaluateSetting(eval: Eval, name: String, imports: Seq[(String,Int)], expression: String, line: Int): Seq[Setting[_]] =
+	def evaluateSetting(eval: Eval, name: String, imports: Seq[(String,Int)], expression: String, line: Int): ClassLoader => Seq[Setting[_]] =
 	{
 		val result = try {
 			eval.eval(expression, imports = new EvalImports(imports, name), srcName = name, tpeName = Some("sbt.Project.SettingsDefinition"), line = line)
 		} catch {
 			case e: sbt.compiler.EvalException => throw new MessageOnlyException(e.getMessage)
 		}
-		result.value.asInstanceOf[Project.SettingsDefinition].settings
+		loader => result.getValue(loader).asInstanceOf[Project.SettingsDefinition].settings
 	}
 	private[this] def isSpace = (c: Char) => Character isSpace c
 	private[this] def fstS(f: String => Boolean): ((String,Int)) => Boolean = { case (s,i) => f(s) }

@@ -17,6 +17,7 @@ package sbt
 	import tools.nsc.reporters.ConsoleReporter
 	import Build.{analyzed, data}
 	import Scope.{GlobalScope, ThisScope}
+	import Types.const
 
 object Load
 {
@@ -37,7 +38,7 @@ object Load
 		val evalPluginDef = EvaluateTask.evalPluginDef(log) _
 		val delegates = defaultDelegates
 		val injectGlobal: Seq[Project.Setting[_]] = ((appConfiguration in GlobalScope) :== state.configuration) +: EvaluateTask.injectSettings
-		val inject = InjectSettings(injectGlobal, Nil)
+		val inject = InjectSettings(injectGlobal, Nil, const(Nil))
 		val definesClass = FileValueCache(Locate.definesClass _)
 		val rawConfig = new LoadBuildConfiguration(stagingDirectory, classpath, loader, compilers, evalPluginDef, definesClass.get, delegates, EvaluateTask.injectStreams, inject, None, log)
 		val config = loadGlobal(state, baseDirectory, defaultGlobalPlugins, rawConfig)
@@ -91,7 +92,7 @@ object Load
 		val loaded = resolveProjects(load(rootBase, s, config))
 		val projects = loaded.units
 		lazy val rootEval = lazyEval(loaded.units(loaded.root).unit)
-		val settings = finalTransforms(config.injectSettings.global ++ buildConfigurations(loaded, getRootProject(projects), rootEval, config.injectSettings.project))
+		val settings = finalTransforms(buildConfigurations(loaded, getRootProject(projects), rootEval, config.injectSettings))
 		val delegates = config.delegates(loaded)
 		val data = Project.makeSettings(settings, delegates, config.scopeLocal)
 		val index = structureIndex(data)
@@ -137,8 +138,9 @@ object Load
 	}
 
 	def isProjectThis(s: Setting[_]) = s.key.scope.project match { case This | Select(ThisProject) => true; case _ => false }
-	def buildConfigurations(loaded: LoadedBuild, rootProject: URI => String, rootEval: () => Eval, injectProjectSettings: Seq[Setting[_]]): Seq[Setting[_]] =
-		loaded.units.toSeq flatMap { case (uri, build) =>
+	def buildConfigurations(loaded: LoadedBuild, rootProject: URI => String, rootEval: () => Eval, injectSettings: InjectSettings): Seq[Setting[_]] =
+		injectSettings.global ++ 
+		loaded.units.toSeq.flatMap { case (uri, build) =>
 			val eval = if(uri == loaded.root) rootEval else lazyEval(build.unit)
 			val pluginSettings = build.unit.plugins.plugins
 			val (pluginThisProject, pluginNotThis) = pluginSettings partition isProjectThis
@@ -146,10 +148,12 @@ object Load
 				val srcs = configurationSources(project.base)
 				val ref = ProjectRef(uri, id)
 				val defineConfig = for(c <- project.configurations) yield ( (configuration in (ref, ConfigKey(c.name))) :== c)
+				val loader = build.unit.definitions.loader
+				val injected = injectSettings.project ++ injectSettings.projectLoaded(loader)
 				val settings =
 					(thisProject :== project) +:
 					(thisProjectRef :== ref) +:
-					(defineConfig ++ project.settings ++ pluginThisProject ++ configurations(srcs, eval, build.imports) ++ injectProjectSettings )
+					(defineConfig ++ project.settings ++ pluginThisProject ++ configurations(srcs, eval, build.imports)(loader) ++ injected)
 				 
 				// map This to thisScope, Select(p) to mapRef(uri, rootProject, p)
 				transformSettings(projectScope(ref), uri, rootProject, settings)
@@ -170,10 +174,10 @@ object Load
 	}
 	def mkEval(unit: BuildUnit): Eval = mkEval(unit.definitions, unit.plugins, Nil)
 	def mkEval(defs: LoadedDefinitions, plugs: LoadedPlugins, options: Seq[String]): Eval =
-		new Eval(options, defs.target +: plugs.classpath, s => new ConsoleReporter(s), defs.loader, Some(evalOutputDirectory(defs.base)))
+		new Eval(options, defs.target +: plugs.classpath, s => new ConsoleReporter(s), Some(evalOutputDirectory(defs.base)))
 
-	def configurations(srcs: Seq[File], eval: () => Eval, imports: Seq[String]): Seq[Setting[_]] =
-		if(srcs.isEmpty) Nil else EvaluateConfigurations(eval(), srcs, imports)
+	def configurations(srcs: Seq[File], eval: () => Eval, imports: Seq[String]): ClassLoader => Seq[Setting[_]] =
+		if(srcs.isEmpty) const(Nil) else EvaluateConfigurations(eval(), srcs, imports)
 
 	def load(file: File, s: State, config: LoadBuildConfiguration): PartBuild =
 	{

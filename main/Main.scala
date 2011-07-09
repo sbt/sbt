@@ -264,7 +264,7 @@ object BuiltinCommands
 		val extracted = Project extract s
 		import extracted._
 		val result = session.currentEval().eval(arg, srcName = "<eval>", imports = autoImports(extracted))
-		log.info("ans: " + result.tpe + " = " + result.value)
+		log.info("ans: " + result.tpe + " = " + result.getValue(currentLoader))
 		s
 	}
 	def sessionCommand = Command.make(SessionCommand, sessionBrief, SessionSettings.Help)(SessionSettings.command)
@@ -277,7 +277,7 @@ object BuiltinCommands
 	def set = Command.single(SetCommand, setBrief, setDetailed) { (s, arg) =>
 		val extracted = Project extract s
 		import extracted._
-		val settings = EvaluateConfigurations.evaluateSetting(session.currentEval(), "<set>", imports(extracted), arg, 0)
+		val settings = EvaluateConfigurations.evaluateSetting(session.currentEval(), "<set>", imports(extracted), arg, 0)(currentLoader)
 		val append = Load.transformSettings(Load.projectScope(currentRef), currentRef.build, rootProject, settings)
 		val newSession = session.appendSettings( append map (a => (a, arg)))
 		reapply(newSession, structure, s)

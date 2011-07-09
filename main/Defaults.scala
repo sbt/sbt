@@ -860,7 +860,7 @@ object Classpaths
 	def unmanagedLibs(dep: ResolvedReference, conf: String, data: Settings[Scope]): Task[Classpath] =
 		getClasspath(unmanagedJars, dep, conf, data)
 	def getClasspath(key: TaskKey[Classpath], dep: ResolvedReference, conf: String, data: Settings[Scope]): Task[Classpath] =
-		( key in (dep, ConfigKey(conf)) ) get data getOrElse const(Nil)
+		( key in (dep, ConfigKey(conf)) ) get data getOrElse constant(Nil)
 	def defaultConfigurationTask(p: ResolvedReference, data: Settings[Scope]): Configuration =
 		flatten(defaultConfiguration in p get data) getOrElse Configurations.Default
 	def flatten[T](o: Option[Option[T]]): Option[T] = o flatMap idFun

@@ -25,7 +25,7 @@ object Script
 				import extracted._
 
 			val embeddedSettings = blocks(script).flatMap { block =>
-				evaluate(eval(), script.getPath, block.lines, currentUnit.imports, block.offset+1)
+				evaluate(eval(), script.getPath, block.lines, currentUnit.imports, block.offset+1)(currentLoader)
 			}
 			val scriptAsSource = sources in Compile := script :: Nil
 			val asScript = scalacOptions ++= Seq("-Xscript", script.getName.stripSuffix(".scala"))

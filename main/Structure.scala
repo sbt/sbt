@@ -175,7 +175,7 @@ object Scoped
 		def :==(value: S): ScS  =  :=(value)
 		def ::=(value: Task[S]): ScS  =  Project.setting(scoped, Project.value( value ))
 		def := (value: => S): ScS  =  ::=(mktask(value))
-		def :== (v: ScopedSetting[S]): ScS = <<=( v(const))
+		def :== (v: ScopedSetting[S]): ScS = <<=( v(constant))
 		def ~= (f: S => S): ScS  =  Project.update(scoped)( _ map f )
 
 		def <<= (app: App[S]): ScS  =  Project.setting(scoped, app)
