@@ -13,14 +13,14 @@ object EvalTest extends Properties("eval")
 	
 	property("inferred integer") = forAll{ (i: Int) =>
 		val result = eval.eval(i.toString)
-		(label("Value", result.value) |: (result.value == i)) &&
-		(label("Type", result.tpe) |: (result.tpe == IntType)) &&
+		(label("Value", value(result)) |: (value(result) == i)) &&
+		(label("Type", value(result)) |: (result.tpe == IntType)) &&
 		(label("Files", result.generated) |: (result.generated.isEmpty))
 	}
 
 	property("explicit integer") = forAll{ (i: Int) =>
 		val result = eval.eval(i.toString, tpeName = Some(IntType))
-		(label("Value", result.value) |: (result.value == i)) &&
+		(label("Value", value(result)) |: (value(result) == i)) &&
 		(label("Type", result.tpe) |: (result.tpe == IntType)) &&
 		(label("Files", result.generated) |: (result.generated.isEmpty))
 	}
@@ -36,8 +36,8 @@ object EvalTest extends Properties("eval")
 		IO.withTemporaryDirectory { dir =>
 			val eval = new Eval(_ => reporter, backing = Some(dir))
 			val result = eval.eval(local(i))
-			val value = result.value.asInstanceOf[{def i: Int}].i
-			(label("Value", value) |: (value == i)) &&
+			val v = value(result).asInstanceOf[{def i: Int}].i
+			(label("Value", v) |: (v == i)) &&
 			(label("Type", result.tpe) |: (result.tpe == LocalType)) &&
 			(label("Files", result.generated) |: (!result.generated.isEmpty))
 		}
@@ -50,11 +50,12 @@ object EvalTest extends Properties("eval")
 	property("multiple imports") = forAll(testImport("import util._" :: "import math._" :: "import xml._" :: Nil))
 
 	private[this] def testImport(imports: Seq[String]): Int => Prop = i =>
-		eval.eval("abs("+i+")", new EvalImports(imports.zipWithIndex, "imp")).value == math.abs(i)
+		value(eval.eval("abs("+i+")", new EvalImports(imports.zipWithIndex, "imp"))) == math.abs(i)
 
 	private[this] def local(i: Int) = "{ class ETest(val i: Int); new ETest(" + i + ") }"
 	val LocalType = "java.lang.Object with ScalaObject{val i: Int}"
 
+	private[this] def value(r: EvalResult) = r.getValue(getClass.getClassLoader)
 	private[this] def hasErrors(line: Int, src: String) =
 	{
 		val is = reporter.infos
