@@ -28,7 +28,7 @@ object EvaluateTask
 	def evalPluginDef(log: Logger)(pluginDef: BuildStructure, state: State): Seq[Attributed[File]] =
 	{
 		val root = ProjectRef(pluginDef.root, Load.getRootProject(pluginDef.units)(pluginDef.root))
-		val pluginKey = Keys.fullClasspath in Configurations.Compile
+		val pluginKey = Keys.fullClasspath in Configurations.Runtime
 		val evaluated = evaluateTask(pluginDef, ScopedKey(pluginKey.scope, pluginKey.key), state, root)
 		val result = evaluated getOrElse error("Plugin classpath does not exist for plugin definition at " + pluginDef.root)
 		processResult(result, log)
