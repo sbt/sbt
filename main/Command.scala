@@ -50,8 +50,8 @@ object Command
 	def single(name: String, briefHelp: (String, String), detail: String)(f: (State, String) => State): Command =
 		single(name, Help(name, briefHelp, detail) )(f)
 	def single(name: String, help: Help*)(f: (State, String) => State): Command =
-		make(name, help : _*)( state => token(trimmed(any.+.string) map apply1(f, state)) )
-	
+		make(name, help : _*)( state => token(trimmed(spacedAny(name)) map apply1(f, state)) )
+
 	def custom(parser: State => Parser[() => State], help: Seq[Help] = Nil): Command  =  new ArbitraryCommand(parser, help, AttributeMap.empty)
 	def arb[T](parser: State => Parser[T], help: Help*)(effect: (State, T) => State): Command  =  custom(applyEffect(parser)(effect), help)
 
@@ -130,6 +130,10 @@ object Command
 		bs.map { b => (b, distance(a, b) ) } filter (_._2 <= maxDistance) sortBy(_._2) take(maxSuggestions) map(_._1)
 	def distance(a: String, b: String): Int =
 		EditDistance.levenshtein(a, b, insertCost = 1, deleteCost = 1, subCost = 2, transposeCost = 1, matchCost = -1, true)
+
+	def spacedAny(name: String): Parser[String] = spacedC(name, any)
+	def spacedC(name: String, c: Parser[Char]): Parser[String] =
+		( (c & opOrIDSpaced(name)) ~ c.+) map { case (f, rem) => (f +: rem).mkString }
 }
 
 trait Help

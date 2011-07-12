@@ -17,8 +17,12 @@ object Cross
 	def switchParser(state: State): Parser[(String, String)] =
 	{
 		val knownVersions = crossVersions(state)
-		token(Switch ~ Space) flatMap { _ => token(NotSpace.examples(knownVersions : _*)) ~ (token(Space ~> matched(state.combinedParser)) ?? "") }
+		lazy val switchArgs = token(OptSpace ~> NotSpace.examples(knownVersions : _*)) ~ (token(Space ~> matched(state.combinedParser)) ?? "")
+		lazy val nextSpaced = spacedFirst(Switch)
+		token(Switch) flatMap { _ => switchArgs & nextSpaced }
 	}
+	def spacedFirst(name: String) = opOrIDSpaced(name) ~ any.+
+
 	lazy val switchVersion = Command.arb(requireSession(switchParser)) { case (state, (version, command)) =>
 		val x = Project.extract(state)
 			import x._
@@ -32,7 +36,7 @@ object Cross
 		s.key.key == scalaVersion.key || s.key.key == scalaHome.key
 
 	def crossParser(state: State): Parser[String] =
-		token(Cross ~ Space) flatMap { _ => token(matched(state.combinedParser)) }
+		token(Cross <~ OptSpace) flatMap { _ => token(matched( state.combinedParser & spacedFirst(Cross) )) }
 
 	lazy val crossBuild = Command.arb(requireSession(crossParser)) { (state, command) =>
 		val x = Project.extract(state)

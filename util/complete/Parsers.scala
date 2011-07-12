@@ -11,7 +11,7 @@ package sbt.complete
 // Some predefined parsers
 trait Parsers
 {
-	lazy val any: Parser[Char] = charClass(_ => true)
+	lazy val any: Parser[Char] = charClass(_ => true, "any character")
 
 	lazy val DigitSet = Set("0","1","2","3","4","5","6","7","8","9")
 	lazy val Digit = charClass(_.isDigit, "digit") examples DigitSet
@@ -22,6 +22,14 @@ trait Parsers
 	lazy val OpChar = charClass(isOpChar, "symbol")
 	lazy val Op = OpChar.+.string
 	lazy val OpOrID = ID | Op
+
+	def opOrIDSpaced(s: String): Parser[Char] =
+		if(DefaultParsers.matches(ID, s))
+			OpChar | SpaceClass
+		else if(DefaultParsers.matches(Op, s))
+			IDStart | SpaceClass
+		else
+			any
 
 	def isOpChar(c: Char) = !isDelimiter(c) && isOpType(getType(c))
 	def isOpType(cat: Int) = cat match { case MATH_SYMBOL | OTHER_SYMBOL | DASH_PUNCTUATION | OTHER_PUNCTUATION | MODIFIER_SYMBOL | CURRENCY_SYMBOL => true; case _ => false }
