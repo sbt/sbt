@@ -22,15 +22,15 @@ class MakePom
 	def encoding = "UTF-8"
 	def write(ivy: Ivy, module: ModuleDescriptor, configurations: Option[Iterable[Configuration]], extra: NodeSeq, process: XNode => XNode, filterRepositories: MavenRepository => Boolean, allRepositories: Boolean, output: File): Unit =
 		write(process(toPom(ivy, module, configurations, extra, filterRepositories, allRepositories)), output)
-	def write(node: XNode, output: File): Unit = write(toString(node), output)
-	def write(xmlString: String, output: File)
+	// use \n as newline because toString uses PrettyPrinter, which hard codes line endings to be \n
+	def write(node: XNode, output: File): Unit = write(toString(node), output, "\n")
+	def write(xmlString: String, output: File, newline: String)
 	{
 		output.getParentFile.mkdirs()
 		val out = new BufferedWriter(new OutputStreamWriter(new FileOutputStream(output), encoding))
 		try
 		{
-			out.write("<?xml version='1.0' encoding='" + encoding + "'?>")
-			out.newLine()
+			out.write("<?xml version='1.0' encoding='" + encoding + "'?>" + newline)
 			out.write(xmlString)
 		}
 		finally { out.close() }
