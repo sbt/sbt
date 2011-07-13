@@ -33,6 +33,7 @@ object Hash
 		array
 	}
 	def halve(s: String): String = if(s.length > 3) s.substring(0, s.length / 2) else s
+	def trimHashString(s: String, i: Int): String = toHex(apply(s)).take(i)
 	def halfHashString(s: String): String = halve(toHex(apply(s)))
 
 	/** Calculates the SHA-1 hash of the given String.*/

@@ -29,7 +29,7 @@ trait Plugin
 object Build
 {
 	val default: Build = new Build { override def projectDefinitions(base: File) = defaultProject(base) :: Nil }
-	def defaultID(base: File): String = "default-" + Hash.halfHashString(base.getAbsolutePath)
+	def defaultID(base: File): String = "default-" + Hash.trimHashString(base.getAbsolutePath, 6)
 	def defaultProject(base: File): Project = Project(defaultID(base), base).settings(Keys.organization := "default")
 
 	def data[T](in: Seq[Attributed[T]]): Seq[T] = in.map(_.data)
