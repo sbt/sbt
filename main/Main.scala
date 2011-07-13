@@ -370,6 +370,7 @@ object BuiltinCommands
 		IO.createDirectory(base)
 		val (eval, structure) = Load.defaultLoad(s, base, logger(s))
 		val session = Load.initialSession(structure, eval)
+		SessionSettings.checkSession(session, s)
 		Project.setProject(session, structure, s)
 	}
 	

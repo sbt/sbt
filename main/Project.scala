@@ -140,7 +140,6 @@ object Project extends Init[Scope] with ProjectExtra
 
 	def setProject(session: SessionSettings, structure: BuildStructure, s: State): State =
 	{
-		SessionSettings.checkSession(session, s)
 		val previousOnUnload = orIdentity(s get Keys.onUnload.key)
 		val unloaded = previousOnUnload(s.runExitHooks())
 		val (onLoad, onUnload) = getHooks(structure.data)
