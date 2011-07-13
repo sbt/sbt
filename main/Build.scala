@@ -9,7 +9,7 @@ package sbt
 	import complete.DefaultParsers.validID
 	import Compiler.Compilers
 	import Project.{ScopedKey, Setting}
-	import Keys.Streams
+	import Keys.{globalBaseDirectory, Streams}
 	import Scope.GlobalScope
 	import scala.annotation.tailrec
 
@@ -231,10 +231,15 @@ object BuildPaths
 	import Path._
 	import GlobFilter._
 
-	def defaultStaging = Path.userHome / ConfigDirectoryName / "staging"
-	def defaultGlobalPlugins = Path.userHome / ConfigDirectoryName / PluginsDirectoryName
+	def getGlobalBase(state: State): File  =  state get globalBaseDirectory orElse systemGlobalBase getOrElse defaultGlobalBase
+	def systemGlobalBase: Option[File] = Option(System.getProperty(GlobalBaseProperty)) flatMap { path =>
+		if(path.isEmpty) None else Some(new File(path))
+	}
+		
 	def defaultGlobalBase = Path.userHome / ConfigDirectoryName
-	def defaultGlobalSettings = configurationSources(defaultGlobalBase)
+	def defaultStaging(globalBase: File) = globalBase / "staging"
+	def defaultGlobalPlugins(globalBase: File) = globalBase / PluginsDirectoryName
+	def defaultGlobalSettings(globalBase: File) = configurationSources(globalBase)
 	
 	def definitionSources(base: File): Seq[File] = (base * "*.scala").get
 	def configurationSources(base: File): Seq[File] = (base * "*.sbt").get
@@ -256,6 +261,7 @@ object BuildPaths
 	final val PluginsDirectoryName = "plugins"
 	final val DefaultTargetName = "target"
 	final val ConfigDirectoryName = ".sbt"
+	final val GlobalBaseProperty = "sbt.global.base"
 
 	def crossPath(base: File, instance: ScalaInstance): File = base / ("scala_" + instance.version)
 }

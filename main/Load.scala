@@ -24,14 +24,24 @@ object Load
 	import BuildPaths._
 	import BuildStreams._
 	import Locate.DefinesClass
-
+	
 	// note that there is State passed in but not pulled out
 	def defaultLoad(state: State, baseDirectory: File, log: Logger): (() => Eval, BuildStructure) =
 	{
+		val globalBase = BuildPaths.getGlobalBase(state)
+		val base = baseDirectory.getCanonicalFile
+		val definesClass = FileValueCache(Locate.definesClass _)
+		val rawConfig = defaultPreGlobal(state, base, definesClass.get, globalBase, log)
+		val config = defaultWithGlobal(state, base, rawConfig, globalBase, log)
+		val result = apply(base, state, config)
+		definesClass.clear()
+		result
+	}
+	def defaultPreGlobal(state: State, baseDirectory: File, definesClass: DefinesClass, globalBase: File, log: Logger): LoadBuildConfiguration =
+	{
 		val provider = state.configuration.provider
 		val scalaProvider = provider.scalaProvider
-		val stagingDirectory = defaultStaging.getCanonicalFile
-		val base = baseDirectory.getCanonicalFile
+		val stagingDirectory = defaultStaging(globalBase).getCanonicalFile
 		val loader = getClass.getClassLoader
 		val classpath = Attributed.blankSeq(provider.mainClasspath ++ scalaProvider.jars)
 		val compilers = Compiler.compilers(ClasspathOptions.boot)(state.configuration, log)
@@ -39,14 +49,14 @@ object Load
 		val delegates = defaultDelegates
 		val injectGlobal: Seq[Project.Setting[_]] = ((appConfiguration in GlobalScope) :== state.configuration) +: EvaluateTask.injectSettings
 		val inject = InjectSettings(injectGlobal, Nil, const(Nil))
-		val definesClass = FileValueCache(Locate.definesClass _)
-		val rawConfig = new LoadBuildConfiguration(stagingDirectory, classpath, loader, compilers, evalPluginDef, definesClass.get, delegates, EvaluateTask.injectStreams, inject, None, log)
-		val withGlobal = loadGlobal(state, baseDirectory, defaultGlobalPlugins, rawConfig)
-		val config = loadGlobalSettings(baseDirectory, defaultGlobalBase, defaultGlobalSettings, withGlobal)
-		val result = apply(base, state, config)
-		definesClass.clear()
-		result
+		new LoadBuildConfiguration(stagingDirectory, classpath, loader, compilers, evalPluginDef, definesClass, delegates, EvaluateTask.injectStreams, inject, None, log)
 	}
+	def defaultWithGlobal(state: State, base: File, rawConfig: LoadBuildConfiguration, globalBase: File, log: Logger): LoadBuildConfiguration =
+	{
+		val withGlobal = loadGlobal(state, base, defaultGlobalPlugins(globalBase), rawConfig)
+		loadGlobalSettings(base, globalBase, defaultGlobalSettings(globalBase), withGlobal)
+	}
+
 	def loadGlobalSettings(base: File, globalBase: File, files: Seq[File], config: LoadBuildConfiguration): LoadBuildConfiguration =
 	{
 		val compiled: ClassLoader => Seq[Setting[_]]  =

@@ -32,7 +32,7 @@ object GlobalPlugin
 	{
 		val (structure, state) = build(base, s, config)
 		val data = extract(state, structure)
-		GlobalPlugin(data, structure, inject(data))
+		GlobalPlugin(data, structure, inject(data), base)
 	}
 	def extract(state: State, structure: BuildStructure): GlobalPluginData =
 	{
@@ -63,4 +63,4 @@ object GlobalPlugin
 	))
 }
 final case class GlobalPluginData(projectID: ModuleID, dependencies: Seq[ModuleID], descriptors: Map[ModuleRevisionId, ModuleDescriptor], fullClasspath: Classpath, internalClasspath: Classpath)
-final case class GlobalPlugin(data: GlobalPluginData, structure: BuildStructure, inject: Seq[Setting[_]])
+final case class GlobalPlugin(data: GlobalPluginData, structure: BuildStructure, inject: Seq[Setting[_]], base: File)
