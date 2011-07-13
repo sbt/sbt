@@ -51,7 +51,7 @@ object Defaults extends BuildCommon
 		pollInterval :== 500,
 		logBuffered :== false,
 		autoScalaLibrary :== true,
-		definesClass := FileValueCache(Locate.definesClass _ ).get,
+		definesClass :== FileValueCache(Locate.definesClass _ ).get,
 		trapExit :== false,
 		trapExit in run :== true,
 		logBuffered in testOnly :== true,
@@ -72,7 +72,7 @@ object Defaults extends BuildCommon
 		javaOptions :== Nil,
 		sbtPlugin :== false,
 		crossPaths :== true,
-		classpathTypes := Set("jar", "bundle"),
+		classpathTypes :== Set("jar", "bundle"),
 		aggregate :== Aggregation.Enabled,
 		maxErrors :== 100,
 		showTiming :== true,
@@ -578,7 +578,7 @@ object Classpaths
 		publishLocal <<= publishTask(publishLocalConfiguration, deliverLocal)
 	)
 	val baseSettings: Seq[Setting[_]] = Seq(
-		conflictWarning in GlobalScope := ConflictWarning.default,
+		conflictWarning in GlobalScope :== ConflictWarning.default,
 		unmanagedBase <<= baseDirectory / "lib",
 		normalizedName <<= name(StringUtilities.normalize),
 		organization <<= organization or normalizedName.identity,

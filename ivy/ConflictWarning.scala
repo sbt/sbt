@@ -5,7 +5,7 @@ package sbt
 final case class ConflictWarning(filter: ModuleFilter, group: ModuleID => String, level: Level.Value, failOnConflict: Boolean)
 object ConflictWarning
 {
-	def default: ConflictWarning = ConflictWarning( moduleFilter(organization = GlobFilter("org.scala-tools.sbt") | GlobFilter("org.scala-lang")), (_: ModuleID).organization, Level.Warn, false)
+	lazy val default: ConflictWarning = ConflictWarning( moduleFilter(organization = GlobFilter("org.scala-tools.sbt") | GlobFilter("org.scala-lang")), (_: ModuleID).organization, Level.Warn, false)
 
 	def apply(config: ConflictWarning, report: UpdateReport, log: Logger)
 	{
