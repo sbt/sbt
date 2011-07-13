@@ -649,6 +649,7 @@ object Classpaths
 		},
 		update <<= (conflictWarning, update, streams) map { (config, report, s) => ConflictWarning(config, report, s.log); report },
 		transitiveClassifiers in GlobalScope :== Seq(SourceClassifier, DocClassifier),
+		transitiveClassifiers in GlobalScope in updateSbtClassifiers ~= ( _.filter(_ != DocClassifier) ),
 		updateClassifiers <<= (ivySbt, projectID, update, transitiveClassifiers in updateClassifiers, updateConfiguration, ivyScala, target in LocalRootProject, appConfiguration, streams) map { (is, pid, up, classifiers, c, ivyScala, out, app, s) =>
 			withExcludes(out, classifiers, lock(app)) { excludes =>
 				IvyActions.updateClassifiers(is, GetClassifiersConfiguration(pid, up.allModules, classifiers, excludes, c, ivyScala), s.log)
