@@ -240,12 +240,14 @@ object Defaults extends BuildCommon
 		definedTests <<= TaskData.writeRelated(detectTests)(_.map(_.name).distinct) triggeredBy compile,
 		testListeners in GlobalScope :== Nil,
 		testOptions in GlobalScope :== Nil,
-		executeTests <<= (streams in test, loadedTestFrameworks, parallelExecution in test, testOptions in test, testLoader, definedTests) flatMap {
-			(s, frameworkMap, par, options, loader, discovered) => Tests(frameworkMap, loader, discovered, options, par, s.log)
+		executeTests <<= (streams in test, loadedTestFrameworks, parallelExecution in test, testOptions in test, testLoader, definedTests, resolvedScoped) flatMap {
+			(s, frameworkMap, par, options, loader, discovered, scoped) => Tests(frameworkMap, loader, discovered, options, par, noTestsMessage(ScopedKey(scoped.scope, test.key)), s.log)
 		},
 		test <<= (executeTests, streams) map { (results, s) => Tests.showResults(s.log, results) },
 		testOnly <<= testOnlyTask
 	)
+	private[this] def noTestsMessage(scoped: ScopedKey[_]): String =
+		"No tests to run for " + Project.display(scoped)
 
 	lazy val TaskGlobal: Scope = ThisScope.copy(task = Global)
 	def testTaskOptions(key: Scoped): Seq[Setting[_]] = inTask(key)( Seq(
@@ -270,11 +272,11 @@ object Defaults extends BuildCommon
 
 	def testOnlyTask = 
 	InputTask( TaskData(definedTests)(testOnlyParser)(Nil) ) { result =>  
-		(streams, loadedTestFrameworks, parallelExecution in testOnly, testOptions in testOnly, testLoader, definedTests, result) flatMap {
-			case (s, frameworks, par, opts, loader, discovered, (tests, frameworkOptions)) =>
+		(streams, loadedTestFrameworks, parallelExecution in testOnly, testOptions in testOnly, testLoader, definedTests, resolvedScoped, result) flatMap {
+			case (s, frameworks, par, opts, loader, discovered, scoped, (tests, frameworkOptions)) =>
 				val filter = selectedFilter(tests)
 				val modifiedOpts = Tests.Filter(filter) +: Tests.Argument(frameworkOptions : _*) +: opts
-				Tests(frameworks, loader, discovered, modifiedOpts, par, s.log) map { results =>
+				Tests(frameworks, loader, discovered, modifiedOpts, par, noTestsMessage(ScopedKey(scoped.scope, testOnly.key)), s.log) map { results =>
 					Tests.showResults(s.log, results)
 				}
 		}
