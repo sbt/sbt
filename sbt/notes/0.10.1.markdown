@@ -1,0 +1,16 @@
+This is a major redesign of sbt, so only prominent changes are listed:
+
+ * Support "provided" as a valid configuration for inter-project dependencies [#53](https://github.com/harrah/xsbt/issues/53)
+ * Try out some better error messages for build.sbt in a few common situations [#58](https://github.com/harrah/xsbt/issues/58)
+ * Drop "Incomplete tasks ..." line from error messages. [#32](https://github.com/harrah/xsbt/issues/32)
+ * Better handling of javac logging. [#74](https://github.com/harrah/xsbt/pull/74)
+ * Warn when reload  discards session settings
+ * Cache failing classifiers, making 'update-classifiers' a practical replacement for withSources()
+ * Global settings may be provided in ~/.sbt/build.sbt [#52](https://github.com/harrah/xsbt/issues/52)
+ * No need to define "sbtPlugin := true" in project/plugins/ or ~/.sbt/plugins/
+ * Provide statistics and list of evicted modules in UpdateReport
+ * Scope use of 'transitive-classifiers' by 'update-sbt-classifiers' and 'update-classifiers' for separate configuration.
+ * Default project ID includes a hash of base directory to avoid collisions in simple cases.
+ * 'extra-loggers' setting to make it easier to add loggers
+ * Associate ModuleID, Artifact and Configuration with a classpath entry (moduleID, artifact, and configuration keys). [#41](https://github.com/harrah/xsbt/issues/41)
+ * Put httpclient on Ivy's classpath, which seems to speed up 'update'.

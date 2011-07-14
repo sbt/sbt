@@ -21,9 +21,9 @@ To build from source, get the latest stable version of sbt 0.10.x (see [Setup]) 
 
 The initial branch is the development branch 0.10, which contains the latest code for the 0.10.x series.
 
-The latest tag for 0.10.x is 0.10.0:
+The latest tag for 0.10.x is 0.10.1:
 
-	$ git checkout v0.10.0
+	$ git checkout v0.10.1
 
 To build the launcher, publish all components locally, and build API and SXR documentation:
 
@@ -35,11 +35,11 @@ The individual commands are
 
 Copy your stable ~/bin/sbt script to ~/bin/xsbt and change it to use the launcher at:
 
-	<xsbt>/target/sbt-launch-0.10.0.jar
+	<xsbt>/target/sbt-launch-0.10.1.jar
 
 If using the 0.10 development branch, the launcher is at:
 
-	<xsbt>/target/sbt-launch-0.10.1-SNAPSHOT.jar
+	<xsbt>/target/sbt-launch-0.10.2-SNAPSHOT.jar
 
 ## Modifying sbt
 
@@ -49,4 +49,4 @@ To use your modified version of sbt in a project locally, run `publish-local`.  
 
 After each `publish-local`, clean the `project/boot/` directory in the project in which you want to use the locally built sbt.  Alternatively, if sbt is running and the launcher hasn't changed, run `reboot full` to have sbt do this for you.
 
-If a project has `project/build.properties` defined, either delete the file or change `sbt.version` to `0.10.1-SNAPSHOT`.
+If a project has `project/build.properties` defined, either delete the file or change `sbt.version` to `0.10.2-SNAPSHOT`.
