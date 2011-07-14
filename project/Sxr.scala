@@ -26,6 +26,6 @@ object Sxr
 		IO.createDirectory(out)
 		val comp = new compiler.RawCompiler(si, cpOpts, s.log)
 		comp(srcs, cp.files, out, opts)
-		out
+		out.getParentFile / (out.getName + ".sxr")
 	}
 }
