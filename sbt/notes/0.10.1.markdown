@@ -1,5 +1,3 @@
-This is a major redesign of sbt, so only prominent changes are listed:
-
  * Support "provided" as a valid configuration for inter-project dependencies [#53](https://github.com/harrah/xsbt/issues/53)
  * Try out some better error messages for build.sbt in a few common situations [#58](https://github.com/harrah/xsbt/issues/58)
  * Drop "Incomplete tasks ..." line from error messages. [#32](https://github.com/harrah/xsbt/issues/32)
