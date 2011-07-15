@@ -1,0 +1,27 @@
+> publish
+$ delete A.scala build.sbt
+
+$ mkdir ext
+$ copy-file changes/A.scala ext/A.scala
+$ copy-file changes/B.scala B.scala
+$ copy-file changes/Build.scala project/Build.scala
+$ copy-file changes/ext.sbt ext/build.sbt
+
+-> compile
+
+$ touch binary
+> reload
+> run 3
+
+$ delete binary
+$ touch source
+> reload
+> run 5
+
+$ touch binary source
+> reload
+> run 5
+
+$ touch ext/older
+> reload
+> run 5
