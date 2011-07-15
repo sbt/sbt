@@ -60,13 +60,8 @@ object Release extends Build
 		}
 	def getCredentials(cs: Seq[Credentials], log: Logger): (String, String) =
 	{
-		// 0.10.1
-		// val creds = Credentials.forHost(cs, "typesafe.artifactoryonline.com")
-		// (creds.userName, creds.passwd)
-
-		Credentials.register(cs, log)
-		val creds = CredentialsStore.INSTANCE.getCredentials(RemoteRealm, RemoteHost)
-		(creds.getUserName, creds.getPasswd)
+		val Some(creds) = Credentials.forHost(cs, "typesafe.artifactoryonline.com")
+		(creds.userName, creds.passwd)
 	}
 	def snapshotPattern(version: String) = Resolver.localBasePattern.replaceAll("""\[revision\]""", version)
 	def publishResolver: Project.Initialize[Option[Resolver]] = (remoteID, remoteBase) { (id, base) =>
