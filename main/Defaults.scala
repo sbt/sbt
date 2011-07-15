@@ -51,6 +51,8 @@ object Defaults extends BuildCommon
 		pollInterval :== 500,
 		logBuffered :== false,
 		autoScalaLibrary :== true,
+		onLoad :== idFun[State],
+		onUnload :== idFun[State],
 		definesClass :== FileValueCache(Locate.definesClass _ ).get,
 		trapExit :== false,
 		trapExit in run :== true,
