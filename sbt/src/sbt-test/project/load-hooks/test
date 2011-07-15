@@ -1,0 +1,8 @@
+> check-count 1 0
+> check-count 1 0
+> reload
+> check-count 2 1
+> set maxErrors := 1
+> check-count 3 2
+> reboot
+> check-count 1 0
