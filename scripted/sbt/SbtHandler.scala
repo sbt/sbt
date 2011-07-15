@@ -38,7 +38,7 @@ final class SbtHandler(directory: File, launcher: File, log: Logger, server: IPC
 	{
 		val launcherJar = launcher.getAbsolutePath
 		val globalBase = "-Dsbt.global.base=" + (new File(directory, "global")).getAbsolutePath
-		val args = "java" :: globalBase :: "-jar" :: launcherJar :: "loadp" :: ( "<" + server.port) :: Nil
+		val args = "java" :: globalBase :: "-jar" :: launcherJar :: ( "<" + server.port) :: Nil
 		val io = BasicIO(log, false).withInput(_.close())
 		val p = Process(args, directory) run( io )
 		Spawn { p.exitValue(); server.close() }
