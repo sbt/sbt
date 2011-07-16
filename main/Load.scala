@@ -176,7 +176,7 @@ object Load
 				val settings =
 					(thisProject :== project) +:
 					(thisProjectRef :== ref) +:
-					(defineConfig ++ project.settings ++ pluginThisProject ++ configurations(srcs, eval, build.imports)(loader) ++ injected)
+					(injected ++ defineConfig ++ project.settings ++ pluginThisProject ++ configurations(srcs, eval, build.imports)(loader))
 				 
 				// map This to thisScope, Select(p) to mapRef(uri, rootProject, p)
 				transformSettings(projectScope(ref), uri, rootProject, settings)
