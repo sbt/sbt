@@ -580,7 +580,8 @@ object Classpaths
 		publishLocal <<= publishTask(publishLocalConfiguration, deliverLocal)
 	)
 	val baseSettings: Seq[Setting[_]] = Seq(
-		conflictWarning in GlobalScope :== ConflictWarning.default,
+		conflictWarning in GlobalScope :== ConflictWarning.default("global"),
+		conflictWarning <<= (thisProjectRef, conflictWarning) { (ref, cw) => cw.copy(label = Project.display(ref)) },
 		unmanagedBase <<= baseDirectory / "lib",
 		normalizedName <<= name(StringUtilities.normalize),
 		organization <<= organization or normalizedName.identity,
