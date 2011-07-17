@@ -22,10 +22,10 @@ object ScalaArtifacts
 
 import ScalaArtifacts._
 
-final case class IvyScala(scalaVersion: String, configurations: Iterable[Configuration], checkExplicit: Boolean, filterImplicit: Boolean, overrideScalaVersion: Boolean)
+final case class IvyScala(scalaVersion: String, configurations: Iterable[Configuration], checkExplicit: Boolean, filterImplicit: Boolean, overrideScalaVersion: Boolean, substituteCross: ModuleID => ModuleID)
 {
 	// otherwise, Ivy produces the error: "impossible to get artifacts when data has not been loaded"
-	//   which may be related to sbt's custom conflict manager, to IVY-987, or both
+	//   which may be related to sbt's custom conflict manager (now removed), to IVY-987, or both
 	assert(if(overrideScalaVersion) checkExplicit else true, "Explicit Scala version checking cannot be disabled when forcing the Scala version.")
 }
 private object IvyScala

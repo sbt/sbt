@@ -290,11 +290,11 @@ private object IvySbt
 	}
 
 	private def substituteCross(m: ModuleSettings): ModuleSettings =
-		m.ivyScala match { case None => m; case Some(is) => substituteCross(m, is.scalaVersion) }
-	private def substituteCross(m: ModuleSettings, cross: String): ModuleSettings =
+		m.ivyScala match { case None => m; case Some(is) => substituteCross(m, is.substituteCross) }
+	private def substituteCross(m: ModuleSettings, sub: ModuleID => ModuleID): ModuleSettings =
 		m match {
-			case ec: EmptyConfiguration => ec.copy(module = substituteCross(ec.module, cross))
-			case ic: InlineConfiguration => ic.copy(module = substituteCross(ic.module, cross), dependencies = substituteCrossM(ic.dependencies, cross))
+			case ec: EmptyConfiguration => ec.copy(module = sub(ec.module))
+			case ic: InlineConfiguration => ic.copy(module = sub(ic.module), dependencies = ic.dependencies map sub)
 			case _ => m
 		}
 	def crossName(name: String, cross: String): String =
@@ -303,8 +303,6 @@ private object IvySbt
 		a.copy(name = crossName(a.name, cross))
 	def substituteCrossA(as: Seq[Artifact], cross: String): Seq[Artifact] =
 		as.map(art => substituteCross(art, cross))
-	def substituteCrossM(ms: Seq[ModuleID], cross: String): Seq[ModuleID] =
-		ms.map(m => substituteCross(m, cross))
 	def substituteCross(m: ModuleID, cross: String): ModuleID =
 		if(m.crossVersion)
 			m.copy(name = crossName(m.name, cross), explicitArtifacts = substituteCrossA(m.explicitArtifacts, cross))
