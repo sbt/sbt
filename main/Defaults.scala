@@ -326,7 +326,7 @@ object Defaults extends BuildCommon
 	def collectFiles(dirs: ScopedTaskable[Seq[File]], filter: ScopedTaskable[FileFilter], excludes: ScopedTaskable[FileFilter]): Initialize[Task[Seq[File]]] =
 		(dirs, filter, excludes) map { (d,f,excl) => d.descendentsExcept(f,excl).get }
 
-	def artifactPathSetting(art: ScopedSetting[Artifact])  =  (crossTarget, projectID, art, scalaVersion, artifactName) { (t, module, a, sv, toString) => t / toString(sv, module, a) asFile }
+	def artifactPathSetting(art: ScopedSetting[Artifact])  =  (crossTarget, projectID, art, scalaVersion in artifactName, artifactName) { (t, module, a, sv, toString) => t / toString(sv, module, a) asFile }
 
 	def pairID[A,B] = (a: A, b: B) => (a,b)
 	def packageTasks(key: TaskKey[File], mappingsTask: Initialize[Task[Seq[(File,String)]]]) =
@@ -611,7 +611,9 @@ object Classpaths
 		ivyLoggingLevel in GlobalScope :== UpdateLogging.Quiet,
 		ivyXML in GlobalScope :== NodeSeq.Empty,
 		ivyValidate in GlobalScope :== false,
-		ivyScala <<= ivyScala or (scalaHome, scalaVersion)((sh,v) => Some(new IvyScala(v, Nil, filterImplicit = true, checkExplicit = true, overrideScalaVersion = sh.isEmpty))),
+		ivyScala <<= ivyScala or (scalaHome, scalaVersion, scalaVersion in update) { (sh,v,vu) =>
+			Some(new IvyScala(v, Nil, filterImplicit = true, checkExplicit = true, overrideScalaVersion = sh.isEmpty, substituteCross = x => IvySbt.substituteCross(x, vu)))
+		},
 		moduleConfigurations in GlobalScope :== Nil,
 		publishTo in GlobalScope :== None,
 		artifactPath in makePom <<= artifactPathSetting(artifact in makePom),
