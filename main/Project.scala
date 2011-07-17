@@ -158,7 +158,8 @@ object Project extends Init[Scope] with ProjectExtra
 		val ref = Project.current(s0)
 		val s = installGlobalLogger(s0, structure, ref)
 		val project = Load.getProject(structure.units, ref.build, ref.project)
-		logger(s).info("Set current project to " + ref.project + " (in build " + ref.build +")")
+		val label = Keys.name in ref get structure.data getOrElse ref.project
+		logger(s).info("Set current project to " + label + " (in build " + ref.build +")")
 		def get[T](k: SettingKey[T]): Option[T] = k in ref get structure.data
 		def commandsIn(axis: ResolvedReference) = commands in axis get structure.data toList ;
 
