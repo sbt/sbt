@@ -55,8 +55,8 @@ object AnalysisFormats
 	implicit def apisFormat(implicit internalF: Format[Map[File, Source]], externalF: Format[Map[String, Source]]): Format[APIs] =
 		asProduct2( APIs.apply _)( as => (as.internal, as.external) )(internalF, externalF)
 
-	implicit def relationsFormat(implicit prodF: Format[RFF], binF: Format[RFF], intF: Format[RFF], extF: Format[RFS]): Format[Relations] =
-		asProduct4[Relations, RFF, RFF, RFF, RFS]( (a,b,c,d) => Relations.make(a,b,c,d) )( rs => (rs.srcProd, rs.binaryDep, rs.internalSrcDep, rs.externalDep) )(prodF, binF, intF, extF)
+	implicit def relationsFormat(implicit prodF: Format[RFF], binF: Format[RFF], intF: Format[RFF], extF: Format[RFS], csF: Format[RFS]): Format[Relations] =
+		asProduct5[Relations, RFF, RFF, RFF, RFS, RFS]( (a,b,c,d,e) => Relations.make(a,b,c,d,e) )( rs => (rs.srcProd, rs.binaryDep, rs.internalSrcDep, rs.externalDep, rs.classes) )(prodF, binF, intF, extF, csF)
 
 	implicit def relationFormat[A,B](implicit af: Format[Map[A, Set[B]]], bf: Format[Map[B, Set[A]]]): Format[Relation[A,B]] =
 		asProduct2[Relation[A,B], Map[A, Set[B]], Map[B, Set[A]]]( Relation.make _ )( r => (r.forwardMap, r.reverseMap) )(af, bf)

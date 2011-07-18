@@ -70,8 +70,8 @@ object Incremental
 		
 		val srcChanges = changes(previous.allInternalSources.toSet, sources,  f => !equivS.equiv( previous.internalSource(f), current.internalSource(f) ) )
 		val removedProducts = previous.allProducts.filter( p => !equivS.equiv( previous.product(p), current.product(p) ) ).toSet
-		val binaryDepChanges = previous.allBinaries.filter( externalBinaryModified(entry, previous.className _, previous, current)).toSet
-		val extChanges = changedIncremental(previousAPIs.allExternals, previousAPIs.externalAPI, currentExternalAPI(entry, forEntry))
+		val binaryDepChanges = previous.allBinaries.filter( externalBinaryModified(entry, forEntry, previous, current)).toSet
+		val extChanges = changedIncremental(previousAPIs.allExternals, previousAPIs.externalAPI _, currentExternalAPI(entry, forEntry))
 
 		InitialChanges(srcChanges, removedProducts, binaryDepChanges, extChanges )
 	}
@@ -133,11 +133,12 @@ object Incremental
 		previous -- invalidatedSrcs
 	}
 
-	def externalBinaryModified(entry: String => Option[File], className: File => Option[String], previous: Stamps, current: ReadStamps)(implicit equivS: Equiv[Stamp]): File => Boolean =
+	def externalBinaryModified(entry: String => Option[File], analysis: File => Option[Analysis], previous: Stamps, current: ReadStamps)(implicit equivS: Equiv[Stamp]): File => Boolean =
 		dependsOn =>
+			analysis(dependsOn).isEmpty &&
 			orTrue(
 				for {
-					name <- className(dependsOn)
+					name <- previous.className(dependsOn)
 					e <- entry(name)
 				} yield {
 					val resolved = Locate.resolve(e, name)
@@ -151,7 +152,7 @@ object Incremental
 				for {
 					e <- entry(className)
 					analysis <- forEntry(e)
-					src <- analysis.relations.produced(Locate.resolve(e, className)).headOption
+					src <- analysis.relations.definesClass(className).headOption
 				} yield
 					analysis.apis.internalAPI(src)
 			)

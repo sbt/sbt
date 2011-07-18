@@ -28,7 +28,7 @@ object IncrementalCompile
 					None
 				else
 					forEntry(defines) flatMap { analysis =>
-						analysis.relations.produced(file).headOption flatMap { src =>
+						analysis.relations.definesClass(className).headOption flatMap { src =>
 							analysis.apis.internal get src
 						}
 					}
@@ -45,7 +45,7 @@ private final class AnalysisCallback(internalMap: File => Option[File], external
 	
 	private val apis = new HashMap[File, SourceAPI]
 	private val binaryDeps = new HashMap[File, Set[File]]
-	private val classes = new HashMap[File, Set[File]]
+	private val classes = new HashMap[File, Set[(File, String)]]
 	private val sourceDeps = new HashMap[File, Set[File]]
 	private val extSrcDeps = new ListBuffer[(File, String, Source)]
 	private val binaryClassName = new HashMap[File, String]
@@ -62,7 +62,6 @@ private final class AnalysisCallback(internalMap: File => Option[File], external
 	def externalSourceDependency(triple: (File, String, Source)) =  extSrcDeps += triple
 
 	def binaryDependency(classFile: File, name: String, source: File) =
-	{
 		internalMap(classFile) match
 		{
 			case Some(dependsOn) =>
@@ -79,16 +78,15 @@ private final class AnalysisCallback(internalMap: File => Option[File], external
 						externalBinaryDependency(classFile, name, source)
 				}
 		}
-	}
 		
-	def generatedClass(source: File, module: File) = add(classes, source, module)
+	def generatedClass(source: File, module: File, name: String) = add(classes, source, (module, name))
 	
 	def api(sourceFile: File, source: SourceAPI) { apis(sourceFile) = source }
 	def endSource(sourcePath: File): Unit =
 		assert(apis.contains(sourcePath))
 	
 	def get: Analysis = addExternals( addBinaries( addProducts( addSources(Analysis.Empty) ) ) )
-	def addProducts(base: Analysis): Analysis = addAll(base, classes)( (a, src, prod) => a.addProduct(src, prod, current product prod ) )
+	def addProducts(base: Analysis): Analysis = addAll(base, classes) { case (a, src, (prod, name)) => a.addProduct(src, prod, current product prod, name ) }
 	def addBinaries(base: Analysis): Analysis = addAll(base, binaryDeps)( (a, src, bin) => a.addBinaryDep(src, bin, binaryClassName(bin), current binary bin) )
 	def addSources(base: Analysis): Analysis =
 		(base /: apis) { case (a, (src, api) ) =>

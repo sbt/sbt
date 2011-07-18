@@ -41,7 +41,7 @@ private[sbt] object Analyze
 				source <- guessSourcePath(sourceMap, classFile, log))
 			{
 				analysis.beginSource(source)
-				analysis.generatedClass(source, newClass)
+				analysis.generatedClass(source, newClass, classFile.className)
 				productToSource(newClass) = source
 				sourceToClassFiles.getOrElseUpdate(source, new ArrayBuffer[ClassFile]) += classFile
 			}
