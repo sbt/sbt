@@ -18,8 +18,8 @@ public interface AnalysisCallback
 	* class named <code>name</code> from class or jar file <code>binary</code>. */
 	public void binaryDependency(File binary, String name, File source);
 	/** Called to indicate that the source file <code>source</code> produces a class file at
-	* <code>module</code>.*/
-	public void generatedClass(File source, File module);
+	* <code>module</code> contain class <code>name</code>.*/
+	public void generatedClass(File source, File module, String name);
 	/** Called after the source at the given location has been processed. */
 	public void endSource(File sourcePath);
 	/** Called when the public API of a source file is extracted. */
