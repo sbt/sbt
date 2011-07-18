@@ -172,11 +172,10 @@ object Load
 				val ref = ProjectRef(uri, id)
 				val defineConfig = for(c <- project.configurations) yield ( (configuration in (ref, ConfigKey(c.name))) :== c)
 				val loader = build.unit.definitions.loader
-				val injected = injectSettings.project ++ injectSettings.projectLoaded(loader)
 				val settings =
 					(thisProject :== project) +:
 					(thisProjectRef :== ref) +:
-					(injected ++ defineConfig ++ project.settings ++ pluginThisProject ++ configurations(srcs, eval, build.imports)(loader))
+					(defineConfig ++ project.settings ++ injectSettings.projectLoaded(loader) ++ pluginThisProject ++ configurations(srcs, eval, build.imports)(loader) ++ injectSettings.project)
 				 
 				// map This to thisScope, Select(p) to mapRef(uri, rootProject, p)
 				transformSettings(projectScope(ref), uri, rootProject, settings)
