@@ -21,7 +21,7 @@ trait Analysis
 	def addSource(src: File, api: Source, stamp: Stamp, internalDeps: Iterable[File]): Analysis
 	def addBinaryDep(src: File, dep: File, className: String, stamp: Stamp): Analysis
 	def addExternalDep(src: File, dep: String, api: Source): Analysis
-	def addProduct(src: File, product: File, stamp: Stamp): Analysis
+	def addProduct(src: File, product: File, stamp: Stamp, name: String): Analysis
 
 	override lazy val toString = Analysis.summary(this)
 }
@@ -67,6 +67,6 @@ private class MAnalysis(val stamps: Stamps, val apis: APIs, val relations: Relat
 	def addExternalDep(src: File, dep: String, depAPI: Source): Analysis =
 		copy( stamps, apis.markExternalAPI(dep, depAPI), relations.addExternalDep(src, dep) )
 
-	def addProduct(src: File, product: File, stamp: Stamp): Analysis =
-		copy( stamps.markProduct(product, stamp), apis, relations.addProduct(src, product) )
+	def addProduct(src: File, product: File, stamp: Stamp, name: String): Analysis =
+		copy( stamps.markProduct(product, stamp), apis, relations.addProduct(src, product, name) )
 }

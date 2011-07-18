@@ -16,6 +16,9 @@ trait Relations
 	def allBinaryDeps: collection.Set[File]
 	def allInternalSrcDeps: collection.Set[File]
 	def allExternalDeps: collection.Set[String]
+
+	def classNames(src: File): Set[String]
+	def definesClass(name: String): Set[File]
 	
 	def products(src: File): Set[File]
 	def produced(prod: File): Set[File]
@@ -29,7 +32,7 @@ trait Relations
 	def externalDeps(src: File): Set[String]
 	def usesExternal(dep: String): Set[File]
 	
-	def addProduct(src: File, prod: File): Relations
+	def addProduct(src: File, prod: File, name: String): Relations
 	def addExternalDep(src: File, dependsOn: String): Relations
 	def addInternalSrcDeps(src: File, dependsOn: Iterable[File]): Relations
 	def addBinaryDep(src: File, dependsOn: File): Relations
@@ -41,14 +44,16 @@ trait Relations
 	def binaryDep: Relation[File, File]
 	def internalSrcDep: Relation[File, File]
 	def externalDep: Relation[File, String]
+	def classes: Relation[File, String]
 }
 
 object Relations
 {
-	lazy val e = Relation.empty[File, File]
-	def empty: Relations = new MRelations(e, e, e, Relation.empty[File, String])
-	def make(srcProd: Relation[File, File], binaryDep: Relation[File, File], internalSrcDep: Relation[File, File], externalDep: Relation[File, String]): Relations =
-		new MRelations(srcProd, binaryDep, internalSrcDep, externalDep)
+	private[this] lazy val e = Relation.empty[File, File]
+	private[this] lazy val es = Relation.empty[File, String]
+	def empty: Relations = new MRelations(e, e, e, es, es)
+	def make(srcProd: Relation[File, File], binaryDep: Relation[File, File], internalSrcDep: Relation[File, File], externalDep: Relation[File, String], classes: Relation[File, String]): Relations =
+		new MRelations(srcProd, binaryDep, internalSrcDep, externalDep, classes)
 }
 /**
 * `srcProd` is a relation between a source file and a product: (source, product).
@@ -63,9 +68,11 @@ object Relations
 *
 * `externalSrcDeps` is a relation between a source file and a source dependency in another compilation group.
 *   Dependencies on sources in the same group belong in internal source dependencies.
+*
+* `classes` is a relation between a source file and its generated class names.
 */
 private class MRelations(val srcProd: Relation[File, File], val binaryDep: Relation[File, File],
-	val internalSrcDep: Relation[File, File], val externalDep: Relation[File, String]) extends Relations
+	val internalSrcDep: Relation[File, File], val externalDep: Relation[File, String], val classes: Relation[File, String]) extends Relations
 {
 	def allSources: collection.Set[File] = srcProd._1s
 
@@ -73,6 +80,9 @@ private class MRelations(val srcProd: Relation[File, File], val binaryDep: Relat
 	def allBinaryDeps: collection.Set[File] = binaryDep._2s
 	def allInternalSrcDeps: collection.Set[File] = internalSrcDep._2s
 	def allExternalDeps: collection.Set[String] = externalDep._2s
+
+	def classNames(src: File): Set[String] = classes.forward(src)
+	def definesClass(name: String): Set[File] = classes.reverse(name)
 	
 	def products(src: File): Set[File] = srcProd.forward(src)
 	def produced(prod: File): Set[File] = srcProd.reverse(prod)
@@ -86,22 +96,22 @@ private class MRelations(val srcProd: Relation[File, File], val binaryDep: Relat
 	def externalDeps(src: File): Set[String] = externalDep.forward(src)
 	def usesExternal(dep: String): Set[File] = externalDep.reverse(dep)
 
-	def addProduct(src: File, prod: File): Relations =
-		new MRelations( srcProd + (src, prod), binaryDep, internalSrcDep, externalDep )
+	def addProduct(src: File, prod: File, name: String): Relations =
+		new MRelations( srcProd + (src, prod), binaryDep, internalSrcDep, externalDep, classes + (src, name) )
 
 	def addExternalDep(src: File, dependsOn: String): Relations =
-		new MRelations( srcProd, binaryDep, internalSrcDep, externalDep + (src, dependsOn) )
+		new MRelations( srcProd, binaryDep, internalSrcDep, externalDep + (src, dependsOn), classes )
 
 	def addInternalSrcDeps(src: File, dependsOn: Iterable[File]): Relations =
-		new MRelations( srcProd, binaryDep, internalSrcDep + (src, dependsOn ), externalDep )
+		new MRelations( srcProd, binaryDep, internalSrcDep + (src, dependsOn ), externalDep, classes )
 
 	def addBinaryDep(src: File, dependsOn: File): Relations =
-		new MRelations( srcProd, binaryDep + (src, dependsOn), internalSrcDep, externalDep )
+		new MRelations( srcProd, binaryDep + (src, dependsOn), internalSrcDep, externalDep, classes )
 	
 	def ++ (o: Relations): Relations =
-		new MRelations(srcProd ++ o.srcProd, binaryDep ++ o.binaryDep, internalSrcDep ++ o.internalSrcDep, externalDep ++ o.externalDep)
+		new MRelations(srcProd ++ o.srcProd, binaryDep ++ o.binaryDep, internalSrcDep ++ o.internalSrcDep, externalDep ++ o.externalDep, classes ++ o.classes)
 	def -- (sources: Iterable[File]) =
-		new MRelations(srcProd -- sources, binaryDep -- sources, internalSrcDep -- sources, externalDep -- sources)
+		new MRelations(srcProd -- sources, binaryDep -- sources, internalSrcDep -- sources, externalDep -- sources, classes -- sources)
 
-	override def toString = "Relations:\n  products: " + srcProd + "\n  bin deps: " + binaryDep + "\n  src deps: " +  internalSrcDep + "\n  ext deps: " + externalDep + "\n"
+	override def toString = "Relations:\n  products: " + srcProd + "\n  bin deps: " + binaryDep + "\n  src deps: " +  internalSrcDep + "\n  ext deps: " + externalDep + "\n  class names: " + classes + "\n"
 }
