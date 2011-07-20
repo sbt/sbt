@@ -579,7 +579,7 @@ object Classpaths
 		publish <<= publishTask(publishConfiguration, deliver),
 		publishLocal <<= publishTask(publishLocalConfiguration, deliverLocal)
 	)
-	val baseSettings: Seq[Setting[_]] = Seq(
+	val baseSettings: Seq[Setting[_]] = sbtClassifiersTasks ++ Seq(
 		conflictWarning in GlobalScope :== ConflictWarning.default("global"),
 		conflictWarning <<= (thisProjectRef, conflictWarning) { (ref, cw) => cw.copy(label = Project.display(ref)) },
 		unmanagedBase <<= baseDirectory / "lib",
@@ -644,26 +644,16 @@ object Classpaths
 		publishLocalConfiguration <<= (packagedArtifacts, deliverLocal, ivyLoggingLevel) map {
 			(arts, ivyFile, level) => publishConfig(arts, Some(ivyFile), logging = level )
 		},
-		ivySbt <<= (ivyConfiguration, credentials, streams) map { (conf, creds, s) =>
-			Credentials.register(creds, s.log)
-			new IvySbt(conf)
-		},
+		ivySbt <<= ivySbt0,
 		ivyModule <<= (ivySbt, moduleSettings) map { (ivySbt, settings) => new ivySbt.Module(settings) },
 		update <<= (ivyModule, thisProjectRef, updateConfiguration, cacheDirectory, scalaInstance, streams) map { (module, ref, config, cacheDirectory, si, s) =>
 			cachedUpdate(cacheDirectory / "update", Project.display(ref), module, config, Some(si), s.log)
 		},
 		update <<= (conflictWarning, update, streams) map { (config, report, s) => ConflictWarning(config, report, s.log); report },
 		transitiveClassifiers in GlobalScope :== Seq(SourceClassifier, DocClassifier),
-		transitiveClassifiers in GlobalScope in updateSbtClassifiers ~= ( _.filter(_ != DocClassifier) ),
 		updateClassifiers <<= (ivySbt, projectID, update, transitiveClassifiers in updateClassifiers, updateConfiguration, ivyScala, target in LocalRootProject, appConfiguration, streams) map { (is, pid, up, classifiers, c, ivyScala, out, app, s) =>
 			withExcludes(out, classifiers, lock(app)) { excludes =>
 				IvyActions.updateClassifiers(is, GetClassifiersConfiguration(pid, up.allModules, classifiers, excludes, c, ivyScala), s.log)
-			}
-		},
-		updateSbtClassifiers <<= (ivySbt, projectID, transitiveClassifiers in updateSbtClassifiers, updateConfiguration, sbtDependency, ivyScala, target in LocalRootProject, appConfiguration, streams) map {
-				(is, pid, classifiers, c, sbtDep, ivyScala, out, app, s) =>
-			withExcludes(out, classifiers, lock(app)) { excludes =>
-				IvyActions.transitiveScratch(is, "sbt", GetClassifiersConfiguration(pid, sbtDep :: Nil, classifiers, excludes, c, ivyScala), s.log)
 			}
 		},
 		sbtResolver in GlobalScope :== typesafeResolver,
@@ -673,11 +663,33 @@ object Classpaths
 			IvySbt.substituteCross(base, app.provider.scalaProvider.version).copy(crossVersion = false)
 		}
 	)
-
+	def ivySbt0: Initialize[Task[IvySbt]] =
+		(ivyConfiguration, credentials, streams) map { (conf, creds, s) =>
+			Credentials.register(creds, s.log)
+			new IvySbt(conf)
+		}
 	def moduleSettings0: Initialize[Task[ModuleSettings]] =
 		(projectID, allDependencies, ivyXML, ivyConfigurations, defaultConfiguration, ivyScala, ivyValidate) map {
 			(pid, deps, ivyXML, confs, defaultConf, ivyS, validate) => new InlineConfiguration(pid, deps, ivyXML, confs, defaultConf, ivyS, validate)
 		}
+		
+	def sbtClassifiersTasks = inTask(updateSbtClassifiers)(Seq(
+		transitiveClassifiers in GlobalScope in updateSbtClassifiers ~= ( _.filter(_ != DocClassifier) ),
+		externalResolvers <<= (externalResolvers, appConfiguration) map { (defaultRs, ac) =>
+			bootRepositories(ac) getOrElse defaultRs
+		},
+		ivyConfiguration <<= (externalResolvers, ivyPaths, offline, checksums, appConfiguration, streams) map { (rs, paths, off, check, app, s) =>
+			new InlineIvyConfiguration(paths, rs, Nil, Nil, off, Option(lock(app)), check, s.log)
+		},
+		ivySbt <<= ivySbt0,
+		updateSbtClassifiers in TaskGlobal <<= (ivySbt, projectID, transitiveClassifiers, updateConfiguration, sbtDependency, ivyScala, target in LocalRootProject, appConfiguration, streams) map {
+				(is, pid, classifiers, c, sbtDep, ivyScala, out, app, s) =>
+			withExcludes(out, classifiers, lock(app)) { excludes =>
+				IvyActions.transitiveScratch(is, "sbt", GetClassifiersConfiguration(pid, sbtDep :: Nil, classifiers, excludes, c, ivyScala), s.log)
+			}
+		}
+	))
+
 	def deliverTask(config: TaskKey[DeliverConfiguration]): Initialize[Task[File]] =
 		(ivyModule, config, update, streams) map { (module, config, _, s) => IvyActions.deliver(module, config, s.log) }
 	def publishTask(config: TaskKey[PublishConfiguration], deliverKey: TaskKey[_]): Initialize[Task[Unit]] =
@@ -914,6 +926,26 @@ object Classpaths
 	def bootIvyHome(app: xsbti.AppConfiguration): Option[File] =
 		try { Option(app.provider.scalaProvider.launcher.ivyHome) }
 		catch { case _: NoSuchMethodError => None }
+
+	def bootRepositories(app: xsbti.AppConfiguration): Option[Seq[Resolver]] =
+		try { Some(app.provider.scalaProvider.launcher.ivyRepositories.toSeq map bootRepository) }
+		catch { case _: NoSuchMethodError => None }
+	private[this] def bootRepository(repo: xsbti.Repository): Resolver =
+	{
+		import xsbti.Predefined
+		repo match
+		{
+			case m: xsbti.MavenRepository => MavenRepository(m.id, m.url.toString)
+			case i: xsbti.IvyRepository => Resolver.url(i.id, i.url)(Patterns(i.ivyPattern :: Nil, i.artifactPattern :: Nil, false))
+			case p: xsbti.PredefinedRepository => p.id match {
+				case Predefined.Local => Resolver.defaultLocal
+				case Predefined.MavenLocal => Resolver.mavenLocal
+				case Predefined.MavenCentral => DefaultMavenRepository
+				case Predefined.ScalaToolsReleases => ScalaToolsReleases
+				case Predefined.ScalaToolsSnapshots => ScalaToolsSnapshots
+			}
+		}
+	}
 }
 
 trait BuildExtra extends BuildCommon
@@ -969,20 +1001,20 @@ trait BuildExtra extends BuildCommon
 	
 	def fullRunInputTask(scoped: ScopedInput[Unit], config: Configuration, mainClass: String, baseArguments: String*): Setting[InputTask[Unit]] =
 		scoped <<= inputTask { result =>
-			( inScoped(scoped.scoped, runnerInit) zipWith (fullClasspath in config, streams, result).identityMap) { (r, t) =>
+			( initScoped(scoped.scoped, runnerInit) zipWith (fullClasspath in config, streams, result).identityMap) { (r, t) =>
 				t map { case (cp, s, args) =>
 					toError(r.run(mainClass, data(cp), baseArguments ++ args, s.log))
 				}
 			}
 		}
 	def fullRunTask(scoped: ScopedTask[Unit], config: Configuration, mainClass: String, arguments: String*): Setting[Task[Unit]] =
-		scoped <<= ( inScoped(scoped.scoped, runnerInit) zipWith (fullClasspath in config, streams).identityMap ) { case (r, t) =>
+		scoped <<= ( initScoped(scoped.scoped, runnerInit) zipWith (fullClasspath in config, streams).identityMap ) { case (r, t) =>
 			t map { case (cp, s) =>
 				toError(r.run(mainClass, data(cp), arguments, s.log))
 			}
 		}
-	private[this] def inScoped[T](sk: ScopedKey[_], i: Initialize[T]): Initialize[T]  =  inScope(fillTaskAxis(sk.scope, sk.key), i)
-	private[this] def inScope[T](s: Scope, i: Initialize[T]): Initialize[T]  =  i mapReferenced Project.mapScope(Scope.replaceThis(s))
+	def initScoped[T](sk: ScopedKey[_], i: Initialize[T]): Initialize[T]  =  initScope(fillTaskAxis(sk.scope, sk.key), i)
+	def initScope[T](s: Scope, i: Initialize[T]): Initialize[T]  =  i mapReferenced Project.mapScope(Scope.replaceThis(s))
 	
 	/** Disables post-compilation hook for determining tests for tab-completion (such as for 'test-only').
 	* This is useful for reducing test:compile time when not running test. */
