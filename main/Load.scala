@@ -127,14 +127,12 @@ object Load
 	// additionally, set the task axis to the defining key if it is not set
 	def finalTransforms(ss: Seq[Setting[_]]): Seq[Setting[_]] =
 	{
-		import Keys.{parseResult, resolvedScoped}
-		def isSpecial(key: AttributeKey[_]) = key == streams.key || key == resolvedScoped.key || key == parseResult.key
+		def isSpecial(key: AttributeKey[_]) = key == streams.key || key == parseResult.key
 		def mapSpecial(to: ScopedKey[_]) = new (ScopedKey ~> ScopedKey){ def apply[T](key: ScopedKey[T]) =
 			if(isSpecial(key.key))
 			{
 				val replaced = Scope.replaceThis(to.scope)(key.scope)
-				val scope = if(key.key == resolvedScoped.key) replaced else Scope.fillTaskAxis(replaced, to.key)
-				ScopedKey(scope, key.key)
+				ScopedKey(Scope.fillTaskAxis(replaced, to.key), key.key)
 			}
 			else key
 		}
@@ -143,7 +141,10 @@ object Load
 			case ik: InputTask[t] => ik.mapTask( tk => setDefinitionKey(tk, key) ).asInstanceOf[T]
 			case _ => value
 		}
-		ss.map(s => s mapReferenced mapSpecial(s.key) mapInit setDefining )
+		def setResolved(defining: ScopedKey[_]) = new (ScopedKey ~> Option) { def apply[T](key: ScopedKey[T]): Option[T] =
+			if(key.key == resolvedScoped.key) Some(defining.asInstanceOf[T]) else None
+		}
+		ss.map(s => s mapReferenced mapSpecial(s.key) mapInit setDefining mapConstant setResolved(s.key))
 	}
 	def setDefinitionKey[T](tk: Task[T], key: ScopedKey[_]): Task[T] =
 		if(isDummy(tk)) tk else Task(tk.info.set(Keys.taskDefinitionKey, key), tk.work)

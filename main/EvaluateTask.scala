@@ -6,7 +6,7 @@ package sbt
 	import java.io.File
 	import Project.{ScopedKey, Setting}
 	import Keys.{streams, Streams, TaskStreams}
-	import Keys.{dummyState, dummyStreamsManager, parseResult, resolvedScoped, streamsManager, taskDefinitionKey}
+	import Keys.{dummyState, dummyStreamsManager, parseResult, streamsManager, taskDefinitionKey}
 	import Scope.{GlobalScope, ThisScope}
 	import scala.Console.{RED, RESET}
 
@@ -131,8 +131,6 @@ object EvaluateTask
 				stream.open()
 				stream
 			})
-		else if(scoped.key == resolvedScoped.key)
-			Seq(resolvedScoped in scoped.scope :== scoped)
 		else if(scoped.key == parseResult.key)
 			Seq(parseResult in scoped.scope := error("Unsubstituted parse result for " + Project.display(scoped)) )
 		else

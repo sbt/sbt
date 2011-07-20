@@ -278,7 +278,7 @@ object Defaults extends BuildCommon
 			case (s, frameworks, par, opts, loader, discovered, scoped, (tests, frameworkOptions)) =>
 				val filter = selectedFilter(tests)
 				val modifiedOpts = Tests.Filter(filter) +: Tests.Argument(frameworkOptions : _*) +: opts
-				Tests(frameworks, loader, discovered, modifiedOpts, par, noTestsMessage(ScopedKey(scoped.scope, testOnly.key)), s.log) map { results =>
+				Tests(frameworks, loader, discovered, modifiedOpts, par, noTestsMessage(scoped), s.log) map { results =>
 					Tests.showResults(s.log, results)
 				}
 		}
