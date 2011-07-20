@@ -54,8 +54,6 @@ object EvaluateTask
 			val keyString = if(log.ansiCodesSupported) RED + key.key.label + RESET else key.key.label
 			getStreams(key, streams).log.error(Scope.display(key.scope, keyString) + ": " + msgString)
 		}
-		for(u <- un)
-			log.debug(u.toString)
 	}
 	def getStreams(key: ScopedKey[_], streams: Streams): TaskStreams =
 		streams(ScopedKey(Project.fillTaskAxis(key).scope, Keys.streams.key))
