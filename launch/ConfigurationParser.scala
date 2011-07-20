@@ -137,7 +137,7 @@ class ConfigurationParser
 		val app = new Application(org, name, rev, main, components, toBoolean(crossVersioned), classpathExtra)
 		(app, classifiers)
 	}
-	def getRepositories(m: LabelMap): List[Repository] =
+	def getRepositories(m: LabelMap): List[xsbti.Repository] =
 	{
 		import Repository.{Ivy, Maven, Predefined}
 		m.toList.map {

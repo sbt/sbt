@@ -32,7 +32,7 @@ sealed trait UpdateTarget { def tpe: String; def classifiers: List[String] }
 final class UpdateScala(val classifiers: List[String]) extends UpdateTarget { def tpe = "scala" }
 final class UpdateApp(val id: Application, val classifiers: List[String]) extends UpdateTarget { def tpe = "app" }
 
-final class UpdateConfiguration(val bootDirectory: File, val ivyHome: Option[File], val scalaVersion: String, val repositories: List[Repository])
+final class UpdateConfiguration(val bootDirectory: File, val ivyHome: Option[File], val scalaVersion: String, val repositories: List[xsbti.Repository])
 
 /** Ensures that the Scala and application jars exist for the given versions or else downloads them.*/
 final class Update(config: UpdateConfiguration)
@@ -229,7 +229,7 @@ final class Update(config: UpdateConfiguration)
 		artifact.getQualifiedExtraAttributes.keys.exists(_.asInstanceOf[String] startsWith "m:")
 	}
 	// exclude the local Maven repository for Scala -SNAPSHOTs
-	private def includeRepo(repo: Repository) = !(Repository.isMavenLocal(repo) && isSnapshot(scalaVersion) )
+	private def includeRepo(repo: xsbti.Repository) = !(Repository.isMavenLocal(repo) && isSnapshot(scalaVersion) )
 	private def isSnapshot(scalaVersion: String) = scalaVersion.endsWith(Snapshot)
 	private[this] val Snapshot = "-SNAPSHOT"
 	private[this] val ChangingPattern = ".*" + Snapshot
@@ -243,19 +243,20 @@ final class Update(config: UpdateConfiguration)
 		settings.addRepositoryCacheManager(manager)
 		settings.setDefaultRepositoryCacheManager(manager)
 	}
-	private def toIvyRepository(settings: IvySettings, repo: Repository) =
+	private def toIvyRepository(settings: IvySettings, repo: xsbti.Repository) =
 	{
-		import Repository.{Ivy, Maven, Predefined}
-		import Predefined._
+		import xsbti.Predefined._
 		repo match
 		{
-			case Maven(id, url) => mavenResolver(id, url.toString)
-			case Ivy(id, url, ivyPattern, artifactPattern) => urlResolver(id, url.toString, ivyPattern, artifactPattern)
-			case Predefined(Local) => localResolver(settings.getDefaultIvyUserDir.getAbsolutePath)
-			case Predefined(MavenLocal) => mavenLocal
-			case Predefined(MavenCentral) => mavenMainResolver
-			case Predefined(ScalaToolsReleases) => mavenResolver("Scala-Tools Maven2 Repository", "http://scala-tools.org/repo-releases")
-			case Predefined(ScalaToolsSnapshots) => scalaSnapshots(scalaVersion)
+			case m: xsbti.MavenRepository => mavenResolver(m.id, m.url.toString)
+			case i: xsbti.IvyRepository => urlResolver(i.id, i.url.toString, i.ivyPattern, i.artifactPattern)
+			case p: xsbti.PredefinedRepository => p.id match {
+				case Local => localResolver(settings.getDefaultIvyUserDir.getAbsolutePath)
+				case MavenLocal => mavenLocal
+				case MavenCentral => mavenMainResolver
+				case ScalaToolsReleases => mavenResolver("Scala-Tools Maven2 Repository", "http://scala-tools.org/repo-releases")
+				case ScalaToolsSnapshots => scalaSnapshots(scalaVersion)
+			}
 		}
 	}
 	private def onDefaultRepositoryCacheManager(settings: IvySettings)(f: DefaultRepositoryCacheManager => Unit)

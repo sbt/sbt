@@ -20,7 +20,7 @@ final case class LaunchConfiguration(scalaVersion: Value[String], ivyConfigurati
 		LaunchConfiguration(new Explicit(newScalaVersion), ivyConfiguration.copy(classifiers = classifiers0), app.withVersion(new Explicit(newAppVersion)), boot, logging, appProperties)
 	def map(f: File => File) = LaunchConfiguration(scalaVersion, ivyConfiguration, app.map(f), boot.map(f), logging, appProperties)
 }
-final case class IvyOptions(ivyHome: Option[File], classifiers: Classifiers, repositories: List[Repository])
+final case class IvyOptions(ivyHome: Option[File], classifiers: Classifiers, repositories: List[xsbti.Repository])
 
 sealed trait Value[T]
 final class Explicit[T](val value: T) extends Value[T] {
@@ -61,25 +61,17 @@ object Application
 	}
 }
 
-sealed trait Repository
 object Repository
 {
-	final case class Maven(id: String, url: URL) extends Repository
-	final case class Ivy(id: String, url: URL, ivyPattern: String, artifactPattern: String) extends Repository
-	final case class Predefined(id: Predefined.Value) extends Repository
-
-	object Predefined extends Enumeration
-	{
-		val Local = value("local")
-		val MavenLocal = value("maven-local")
-		val MavenCentral = value("maven-central")
-		val ScalaToolsReleases = value("scala-tools-releases")
-		val ScalaToolsSnapshots = value("scala-tools-snapshots")
-		def apply(s: String): Predefined = Predefined(toValue(s))
+	final case class Maven(id: String, url: URL) extends xsbti.MavenRepository
+	final case class Ivy(id: String, url: URL, ivyPattern: String, artifactPattern: String) extends xsbti.IvyRepository
+	final case class Predefined(id: xsbti.Predefined) extends xsbti.PredefinedRepository
+	object Predefined {
+		def apply(s: String): Predefined = Predefined(xsbti.Predefined.toValue(s))
 	}
 
-	def isMavenLocal(repo: Repository) = repo == Predefined(Predefined.MavenLocal)
-	def defaults: List[Repository] = Predefined.elements.map(Predefined.apply).toList
+	def isMavenLocal(repo: xsbti.Repository) = repo match { case p: xsbti.PredefinedRepository => p.id == xsbti.Predefined.MavenLocal; case _ => false }
+	def defaults: List[xsbti.Repository] = xsbti.Predefined.values.map(Predefined.apply).toList
 }
 
 final case class Search(tpe: Search.Value, paths: List[File])

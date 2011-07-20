@@ -89,6 +89,7 @@ class Launch private[xsbt](val bootDirectory: File, val lockBoot: Boolean, val i
 
 	def globalLock: xsbti.GlobalLock = Locks
 	def ivyHome = ivyOptions.ivyHome.orNull
+	def ivyRepositories = repositories.toArray
 
 	class JNAProvider extends Provider
 	{
@@ -151,7 +152,7 @@ class Launch private[xsbt](val bootDirectory: File, val lockBoot: Boolean, val i
 }
 object Launcher
 {
-	def apply(bootDirectory: File, repositories: List[Repository]): xsbti.Launcher =
+	def apply(bootDirectory: File, repositories: List[xsbti.Repository]): xsbti.Launcher =
 		apply(bootDirectory, IvyOptions(None, Classifiers(Nil, Nil), repositories))
 	def apply(bootDirectory: File, ivyOptions: IvyOptions): xsbti.Launcher =
 		apply(bootDirectory, ivyOptions, GetLocks.find)

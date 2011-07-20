@@ -10,6 +10,7 @@ public interface Launcher
 	public ClassLoader topLoader();
 	public GlobalLock globalLock();
 	public File bootDirectory();
+	public xsbti.Repository[] ivyRepositories();
 	// null if none set
 	public File ivyHome();
 }
