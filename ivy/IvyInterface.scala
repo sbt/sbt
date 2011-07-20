@@ -274,6 +274,7 @@ object Resolver
 	def mavenStyleBasePattern = "[organisation]/[module]/[revision]/[artifact]-[revision](-[classifier]).[ext]"
 	def localBasePattern = "[organisation]/[module]/[revision]/[type]s/[artifact](-[classifier]).[ext]"
 
+	def mavenLocal = MavenRepository("Maven2 Local", (new File(Path.userHome, ".m2/repository/")).toURI.toURL.toExternalForm)
 	def defaultLocal = defaultUserFileRepository("local")
 	def defaultShared = defaultUserFileRepository("shared")
 	def defaultUserFileRepository(id: String) =
