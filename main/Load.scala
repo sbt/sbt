@@ -155,10 +155,11 @@ object Load
 		// Reevaluates settings after modifying them.  Does not recompile or reload any build components.
 	def reapply(newSettings: Seq[Setting[_]], structure: BuildStructure): BuildStructure =
 	{
-		val newData = Project.makeSettings(newSettings, structure.delegates, structure.scopeLocal)
+		val transformed = finalTransforms(newSettings)
+		val newData = Project.makeSettings(transformed, structure.delegates, structure.scopeLocal)
 		val newIndex = structureIndex(newData)
 		val newStreams = mkStreams(structure.units, structure.root, newData)
-		new BuildStructure(units = structure.units, root = structure.root, settings = newSettings, data = newData, index = newIndex, streams = newStreams, delegates = structure.delegates, scopeLocal = structure.scopeLocal)
+		new BuildStructure(units = structure.units, root = structure.root, settings = transformed, data = newData, index = newIndex, streams = newStreams, delegates = structure.delegates, scopeLocal = structure.scopeLocal)
 	}
 
 	def isProjectThis(s: Setting[_]) = s.key.scope.project match { case This | Select(ThisProject) => true; case _ => false }
