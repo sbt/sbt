@@ -271,7 +271,7 @@ object Keys
 	val (state, dummyState) = dummy[State]("state", "Current build state.")
 	val (streamsManager, dummyStreamsManager) = dummy[Streams]("streams-manager", "Streams manager, which provides streams for different contexts.")
 	val resolvedScoped = SettingKey[ScopedKey[_]]("resolved-scoped", "The ScopedKey for the referencing setting or task.")
-	private[sbt] val parseResult: TaskKey[_] = TaskKey("$parse-result", "Internal: used to implement input tasks.")
+	private[sbt] val parseResult: TaskKey[Any] = TaskKey("$parse-result", "Internal: used to implement input tasks.")
 
 	val triggeredBy = AttributeKey[Seq[Task[_]]]("triggered-by")
 	val runBefore = AttributeKey[Seq[Task[_]]]("run-before")

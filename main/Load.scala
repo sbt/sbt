@@ -123,17 +123,17 @@ object Load
 		(rootEval, new BuildStructure(projects, loaded.root, settings, data, index, streams, delegates, config.scopeLocal))
 	}
 
-	// map dependencies on the special tasks so that the scope is the same as the defining key
-	// additionally, set the task axis to the defining key if it is not set
+	// map dependencies on the special tasks:
+	// 1. the scope of 'streams' is the same as the defining key and has the task axis set to the defining key
+	// 2. the defining key is stored on constructed tasks
+	// 3. resolvedScoped is replaced with the defining key as a value
+	// 4. parseResult is replaced with a task that provides the result of parsing for the defined InputTask
+	// Note: this must be idempotent.
 	def finalTransforms(ss: Seq[Setting[_]]): Seq[Setting[_]] =
 	{
-		def isSpecial(key: AttributeKey[_]) = key == streams.key || key == parseResult.key
 		def mapSpecial(to: ScopedKey[_]) = new (ScopedKey ~> ScopedKey){ def apply[T](key: ScopedKey[T]) =
-			if(isSpecial(key.key))
-			{
-				val replaced = Scope.replaceThis(to.scope)(key.scope)
-				ScopedKey(Scope.fillTaskAxis(replaced, to.key), key.key)
-			}
+			if(key.key == streams.key)
+				ScopedKey(Scope.fillTaskAxis(Scope.replaceThis(to.scope)(key.scope), to.key), key.key)
 			else key
 		}
 		def setDefining[T] = (key: ScopedKey[T], value: T) => value match {
@@ -142,9 +142,17 @@ object Load
 			case _ => value
 		}
 		def setResolved(defining: ScopedKey[_]) = new (ScopedKey ~> Option) { def apply[T](key: ScopedKey[T]): Option[T] =
-			if(key.key == resolvedScoped.key) Some(defining.asInstanceOf[T]) else None
+			key.key match
+			{
+				case resolvedScoped.key => Some(defining.asInstanceOf[T])
+				case parseResult.key =>
+						import std.TaskExtra._
+					val getResult = InputTask.inputMap map { m => m get defining getOrElse error("No parsed value for " + Project.display(defining) + "\n" + m) }
+					Some(getResult.asInstanceOf[T])
+				case _ => None
+			}
 		}
-		ss.map(s => s mapReferenced mapSpecial(s.key) mapInit setDefining mapConstant setResolved(s.key))
+		ss.map(s => s mapConstant setResolved(s.key) mapReferenced mapSpecial(s.key) mapInit setDefining )
 	}
 	def setDefinitionKey[T](tk: Task[T], key: ScopedKey[_]): Task[T] =
 		if(isDummy(tk)) tk else Task(tk.info.set(Keys.taskDefinitionKey, key), tk.work)
