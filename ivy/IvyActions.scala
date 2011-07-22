@@ -19,10 +19,10 @@ import core.report.{ArtifactDownloadReport,ResolveReport}
 import core.resolve.ResolveOptions
 import core.retrieve.RetrieveOptions
 import plugins.parser.m2.{PomModuleDescriptorParser,PomModuleDescriptorWriter}
-import plugins.resolver.DependencyResolver
+import plugins.resolver.{BasicResolver, DependencyResolver}
 
 final class DeliverConfiguration(val deliverIvyPattern: String, val status: String, val configurations: Option[Seq[Configuration]], val logging: UpdateLogging.Value)
-final class PublishConfiguration(val ivyFile: Option[File], val resolverName: String, val artifacts: Map[Artifact, File], val logging: UpdateLogging.Value)
+final class PublishConfiguration(val ivyFile: Option[File], val resolverName: String, val artifacts: Map[Artifact, File], val checksums: Seq[String], val logging: UpdateLogging.Value)
 
 final class UpdateConfiguration(val retrieve: Option[RetrieveConfiguration], val missingOk: Boolean, val logging: UpdateLogging.Value)
 final class RetrieveConfiguration(val retrieveDirectory: File, val outputPattern: String)
@@ -94,8 +94,17 @@ object IvyActions
 			val ivyArtifact = ivyFile map { file => (MDArtifact.newIvyArtifact(md), file) }
 			val is = crossIvyScala(module.moduleSettings)
 			val as = mapArtifacts(md, is, artifacts) ++ ivyArtifact.toList
-			publish(md, as, resolver, overwrite = true)
+			withChecksums(resolver, checksums) { publish(md, as, resolver, overwrite = true) }
 		}
+	}
+	private[this] def withChecksums[T](resolver: DependencyResolver, checksums: Seq[String])(act: => T): T =
+		resolver match { case br: BasicResolver => withChecksums(br, checksums)(act); case _ => act }
+	private[this] def withChecksums[T](resolver: BasicResolver, checksums: Seq[String])(act: => T): T =
+	{
+		val previous = resolver.getChecksumAlgorithms
+		resolver.setChecksums(checksums mkString ",")
+		try { act }
+		finally { resolver.setChecksums(previous mkString ",") }
 	}
 	private def crossIvyScala(moduleSettings: ModuleSettings): Option[IvyScala] =
 		moduleSettings match {

@@ -638,11 +638,11 @@ object Classpaths
 		},
 		deliverLocalConfiguration <<= (crossTarget, ivyLoggingLevel) map { (outDir, level) => deliverConfig( outDir, logging = level ) },
 		deliverConfiguration <<= deliverLocalConfiguration.identity,
-		publishConfiguration <<= (packagedArtifacts, publishTo, publishMavenStyle, deliver, ivyLoggingLevel) map { (arts, publishTo, mavenStyle, ivyFile, level) =>
-			publishConfig(arts, if(mavenStyle) None else Some(ivyFile), resolverName = getPublishTo(publishTo).name, logging = level)
+		publishConfiguration <<= (packagedArtifacts, publishTo, publishMavenStyle, deliver, checksums in publish, ivyLoggingLevel) map { (arts, publishTo, mavenStyle, ivyFile, checks, level) =>
+			publishConfig(arts, if(mavenStyle) None else Some(ivyFile), resolverName = getPublishTo(publishTo).name, checksums = checks, logging = level)
 		},
-		publishLocalConfiguration <<= (packagedArtifacts, deliverLocal, ivyLoggingLevel) map {
-			(arts, ivyFile, level) => publishConfig(arts, Some(ivyFile), logging = level )
+		publishLocalConfiguration <<= (packagedArtifacts, deliverLocal, checksums in publishLocal, ivyLoggingLevel) map {
+			(arts, ivyFile, checks, level) => publishConfig(arts, Some(ivyFile), checks, logging = level )
 		},
 		ivySbt <<= ivySbt0,
 		ivyModule <<= (ivySbt, moduleSettings) map { (ivySbt, settings) => new ivySbt.Module(settings) },
@@ -751,8 +751,8 @@ object Classpaths
 
 	def deliverConfig(outputDirectory: File, status: String = "release", logging: UpdateLogging.Value = UpdateLogging.DownloadOnly) =
 	    new DeliverConfiguration(deliverPattern(outputDirectory), status, None, logging)
-	def publishConfig(artifacts: Map[Artifact, File], ivyFile: Option[File], resolverName: String = "local", logging: UpdateLogging.Value = UpdateLogging.DownloadOnly) =
-	    new PublishConfiguration(ivyFile, resolverName, artifacts, logging)
+	def publishConfig(artifacts: Map[Artifact, File], ivyFile: Option[File], checksums: Seq[String], resolverName: String = "local", logging: UpdateLogging.Value = UpdateLogging.DownloadOnly) =
+	    new PublishConfiguration(ivyFile, resolverName, artifacts, checksums, logging)
 
 	def deliverPattern(outputPath: File): String  =  (outputPath / "[artifact]-[revision](-[classifier]).[ext]").absolutePath
 
@@ -790,7 +790,7 @@ object Classpaths
 	def unmanagedDependencies: Initialize[Task[Classpath]] =
 		(thisProjectRef, thisProject, configuration, settings) flatMap unmanagedDependencies0
 	def mkIvyConfiguration: Initialize[Task[IvyConfiguration]] =
-		(fullResolvers, ivyPaths, otherResolvers, moduleConfigurations, offline, checksums, appConfiguration, streams) map { (rs, paths, other, moduleConfs, off, check, app, s) =>
+		(fullResolvers, ivyPaths, otherResolvers, moduleConfigurations, offline, checksums in update, appConfiguration, streams) map { (rs, paths, other, moduleConfs, off, check, app, s) =>
 			new InlineIvyConfiguration(paths, rs, other, moduleConfs, off, Some(lock(app)), check, s.log)
 		}
 
