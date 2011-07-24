@@ -1,0 +1,25 @@
+# checks order of injected settings
+> set logLevel := Level.Debug
+
+# default, in Global scope
+> check 100
+
+# div by 25
+$ copy-file changes/global.sbt global/settings.sbt
+> reload
+> check 4
+
+# add 3
+$ copy-file changes/local.sbt local.sbt
+> reload
+> check 7
+
+# square
+$ copy-file changes/Global.scala global/plugins/Global.scala
+> reload
+> check 19
+
+# multiply by 9
+$ copy-file changes/Build.scala project/Build.scala
+> reload
+> check 1299
