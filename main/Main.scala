@@ -349,7 +349,7 @@ object BuiltinCommands
 		val result = (SimpleReader.readLine("Project loading failed: (r)etry, (q)uit, or (i)gnore? ") getOrElse Quit).toLowerCase
 		def matches(s: String) = !result.isEmpty && (s startsWith result)
 		
-		if(matches("retry"))
+		if(result.isEmpty || matches("retry"))
 			LoadProject :: s
 		else if(matches(Quit))
 			s.exit(ok = false)
