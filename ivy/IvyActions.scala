@@ -186,7 +186,7 @@ object IvyActions
 	def extractExcludes(report: UpdateReport): Map[ModuleID, Set[String]] =
 		report.allMissing flatMap { case (_, mod, art) => art.classifier.map { c => (restrictedCopy(mod), c) } } groupBy(_._1) map { case (mod, pairs) => (mod, pairs.map(_._2).toSet) }
 
-	private[this] def restrictedCopy(m: ModuleID) = ModuleID(m.organization, m.name, m.revision, crossVersion = m.crossVersion)
+	private[this] def restrictedCopy(m: ModuleID) = ModuleID(m.organization, m.name, m.revision, crossVersion = m.crossVersion, extraAttributes = m.extraAttributes)
 	private[this] def resolve(logging: UpdateLogging.Value)(ivy: Ivy, module: DefaultModuleDescriptor, defaultConf: String): (ResolveReport, Option[ResolveException]) =
 	{
 		val resolveOptions = new ResolveOptions

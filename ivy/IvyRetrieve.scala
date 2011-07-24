@@ -39,7 +39,11 @@ object IvyRetrieve
 		confReport.getEvictedNodes.map(node => toModuleID(node.getId))
  
 	def toModuleID(revID: ModuleRevisionId): ModuleID =
-		ModuleID(revID.getOrganisation, revID.getName, revID.getRevision)
+	{
+			import collection.JavaConverters._
+		val extra = revID.getExtraAttributes.asInstanceOf[java.util.Map[String,String]].asScala
+		ModuleID(revID.getOrganisation, revID.getName, revID.getRevision, extraAttributes = extra.toMap)
+	}
 		
 	def toArtifact(art: IvyArtifact): Artifact =
 	{
