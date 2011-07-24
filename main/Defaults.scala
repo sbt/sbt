@@ -603,6 +603,7 @@ object Classpaths
 		otherResolvers <<= publishTo(_.toList),
 		projectResolver <<= projectResolverTask,
 		projectDependencies <<= projectDependenciesTask,
+		publishMavenStyle <<= (publishMavenStyle, sbtPlugin) { (style, plugin) => style && !plugin },
 		libraryDependencies in GlobalScope :== Nil,
 		libraryDependencies <++= (autoScalaLibrary, sbtPlugin, scalaVersion) apply autoLibraryDependency,
 		allDependencies <<= (projectDependencies,libraryDependencies,sbtPlugin,sbtDependency) map { (projDeps, libDeps, isPlugin, sbtDep) =>
