@@ -48,6 +48,7 @@ object Defaults extends BuildCommon
 	def globalCore: Seq[Setting[_]] = inScope(GlobalScope)(Seq(
 		parallelExecution :== true,
 		sbtVersion in GlobalScope <<= appConfiguration { _.provider.id.version },
+		sbtResolver in GlobalScope <<= sbtVersion { sbtV => if(sbtV endsWith "-SNAPSHOT") Classpaths.typesafeSnapshots else Classpaths.typesafeResolver },
 		pollInterval :== 500,
 		logBuffered :== false,
 		autoScalaLibrary :== true,
@@ -659,7 +660,6 @@ object Classpaths
 				IvyActions.updateClassifiers(is, GetClassifiersConfiguration(pid, up.allModules, classifiers, excludes, c, ivyScala), s.log)
 			}
 		},
-		sbtResolver in GlobalScope :== typesafeResolver,
 		sbtDependency in GlobalScope <<= appConfiguration { app =>
 			val id = app.provider.id
 			val base = ModuleID(id.groupID, id.name, id.version, crossVersion = id.crossVersioned)
@@ -891,7 +891,10 @@ object Classpaths
 		flatten(defaultConfiguration in p get data) getOrElse Configurations.Default
 	def flatten[T](o: Option[Option[T]]): Option[T] = o flatMap idFun
 
-	lazy val typesafeResolver = Resolver.url("typesafe-ivy-releases", new URL("http://repo.typesafe.com/typesafe/ivy-releases/"))(Resolver.ivyStylePatterns)
+	lazy val typesafeSnapshots = typesafeRepo("snapshots")
+	lazy val typesafeResolver = typesafeRepo("releases")
+	def typesafeRepo(status: String) = Resolver.url("typesafe-ivy-"+status, new URL("http://repo.typesafe.com/typesafe/ivy-" + status + "/"))(Resolver.ivyStylePatterns)
+
 	def modifyForPlugin(plugin: Boolean, dep: ModuleID): ModuleID =
 		if(plugin) dep.copy(configurations = Some(Provided.name)) else dep
 	def autoLibraryDependency(auto: Boolean, plugin: Boolean, version: String): Seq[ModuleID] =
