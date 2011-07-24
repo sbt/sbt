@@ -4,8 +4,10 @@
 package sbt
 
 	import java.util.regex.Pattern
+	import java.io.File
 	import Keys.{Streams, TaskStreams}
 	import Project.ScopedKey
+	import annotation.tailrec
 
 object Output
 {
@@ -22,17 +24,27 @@ object Output
 		else
 			None
 	}
+	final val DefaultTail = "> "
 
-	def last(key: Option[ScopedKey[_]], mgr: Streams, ref: ScopeAxis[ProjectRef]): Unit =
-		printLines(lastLines(key, mgr, ref))
+	def last(key: ScopedKey[_], mgr: Streams): Unit  =  printLines(lastLines(key, mgr))
+	def last(file: File, tailDelim: String = DefaultTail): Unit  =  printLines(tailLines(file, tailDelim))
+
+	def lastGrep(key: ScopedKey[_], mgr: Streams, patternString: String): Unit =
+		lastGrep(lastLines(key, mgr), patternString )
+	def lastGrep(file: File, patternString: String, tailDelim: String = DefaultTail): Unit =
+		lastGrep( tailLines(file, tailDelim), patternString)
+	def lastGrep(lines: Seq[String], patternString: String): Unit =
+		printLines(lines flatMap showMatches(Pattern compile patternString))
+
 	def printLines(lines: Seq[String]) = lines foreach println
-	def lastGrep(key: Option[ScopedKey[_]], mgr: Streams, patternString: String, ref: ScopeAxis[ProjectRef])
-	{
-		val pattern = Pattern.compile(patternString)
-		printLines(lastLines(key, mgr, ref).flatMap(showMatches(pattern)) )
-	}
-	def lastLines(key: Option[ScopedKey[_]], mgr: Streams, ref: ScopeAxis[ProjectRef]): Seq[String] =
-		lastLines(key getOrElse Project.globalLoggerKey(ref), mgr)
-	def lastLines(key: ScopedKey[_], mgr: Streams): Seq[String] =
-		mgr.use(key) { s => IO.readLines(s.readText( Project.fillTaskAxis(key) )) }
+	def lastLines(key: ScopedKey[_], mgr: Streams): Seq[String]  =  mgr.use(key) { s => IO.readLines(s.readText( Project.fillTaskAxis(key) )) }
+	def tailLines(file: File, tailDelim: String): Seq[String]  =  headLines(IO.readLines(file).reverse, tailDelim).reverse
+	@tailrec def headLines(lines: Seq[String], tailDelim: String): Seq[String] =
+		if(lines.isEmpty)
+			lines
+		else
+		{
+			val (first, tail) = lines.span { line => ! (line startsWith tailDelim) }
+			if(first.isEmpty) headLines(tail drop 1, tailDelim) else first
+		}
 }

@@ -13,7 +13,7 @@ package sbt
 	import inc.{FileValueCache, Locate}
 	import Project.{inScope, ScopedKey, ScopeLocal, Setting}
 	import Keys.{appConfiguration, baseDirectory, configuration, streams, Streams, thisProject, thisProjectRef}
-	import Keys.{isDummy, parseResult, resolvedScoped, taskDefinitionKey}
+	import Keys.{globalLogging, isDummy, parseResult, resolvedScoped, taskDefinitionKey}
 	import tools.nsc.reporters.ConsoleReporter
 	import Build.{analyzed, data}
 	import Scope.{GlobalScope, ThisScope}
@@ -47,10 +47,13 @@ object Load
 		val compilers = Compiler.compilers(ClasspathOptions.boot)(state.configuration, log)
 		val evalPluginDef = EvaluateTask.evalPluginDef(log) _
 		val delegates = defaultDelegates
-		val injectGlobal: Seq[Project.Setting[_]] = ((appConfiguration in GlobalScope) :== state.configuration) +: EvaluateTask.injectSettings
-		val inject = InjectSettings(injectGlobal, Nil, const(Nil))
+		val inject = InjectSettings(injectGlobal(state), Nil, const(Nil))
 		new LoadBuildConfiguration(stagingDirectory, classpath, loader, compilers, evalPluginDef, definesClass, delegates, EvaluateTask.injectStreams, inject, None, log)
 	}
+	def injectGlobal(state: State): Seq[Project.Setting[_]] =
+		(appConfiguration in GlobalScope :== state.configuration) +:
+		(globalLogging in GlobalScope := CommandSupport.globalLogging(state)) +: 
+		EvaluateTask.injectSettings
 	def defaultWithGlobal(state: State, base: File, rawConfig: LoadBuildConfiguration, globalBase: File, log: Logger): LoadBuildConfiguration =
 	{
 		val withGlobal = loadGlobal(state, base, defaultGlobalPlugins(globalBase), rawConfig)

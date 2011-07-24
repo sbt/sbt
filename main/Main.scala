@@ -10,7 +10,7 @@ package sbt
 	import Types.idFun
 
 	import Command.applyEffect
-	import Keys.{analysis,historyPath,logged,shellPrompt}
+	import Keys.{analysis,historyPath,globalLogging,shellPrompt}
 	import scala.annotation.tailrec
 	import scala.collection.JavaConversions._
 	import Function.tupled
@@ -30,7 +30,7 @@ final class xMain extends xsbti.AppMain
 		val initialCommandDefs = Seq(initialize, defaults)
 		val commands = DefaultsCommand +: InitCommand +: (DefaultBootCommands ++ configuration.arguments.map(_.trim))
 		val state = State( configuration, initialCommandDefs, Set.empty, None, commands, initialAttributes, None )
-		MainLoop.run(state)
+		MainLoop.runLogged(state)
 	}
 }
 final class ScriptMain extends xsbti.AppMain
@@ -40,7 +40,7 @@ final class ScriptMain extends xsbti.AppMain
 		import BuiltinCommands.{initialAttributes, ScriptCommands}
 		val commands = Script.Name +: configuration.arguments.map(_.trim)
 		val state = State( configuration, ScriptCommands, Set.empty, None, commands, initialAttributes, None )
-		MainLoop.run(state)
+		MainLoop.runLogged(state)
 	}	
 }
 final class ConsoleMain extends xsbti.AppMain
@@ -50,12 +50,32 @@ final class ConsoleMain extends xsbti.AppMain
 		import BuiltinCommands.{initialAttributes, ConsoleCommands}
 		val commands = IvyConsole.Name +: configuration.arguments.map(_.trim)
 		val state = State( configuration, ConsoleCommands, Set.empty, None, commands, initialAttributes, None )
-		MainLoop.run(state)
+		MainLoop.runLogged(state)
 	}
 }
 object MainLoop
 {
-	@tailrec final def run(state: State): xsbti.MainResult =
+	def runLogged(state: State): xsbti.MainResult =
+	{
+		val logFile = File.createTempFile("sbt", ".log")
+		try {
+			val result = runLogged(state, logFile)
+			logFile.delete() // only delete when exiting normally
+			result
+		}
+		catch {
+			case e: xsbti.FullReload => throw e
+			case e => System.err.println("sbt appears to be exiting abnormally.\n  The log file for this session is at " + logFile); throw e			
+		}
+	}
+	def runLogged(state: State, backing: File): xsbti.MainResult =
+		Using.fileWriter()(backing) { writer =>
+			val out = new java.io.PrintWriter(writer)
+			val loggedState = state.put(globalLogging.key, LogManager.globalDefault(out, backing))
+			try { run(loggedState) } finally { out.close() }
+		}
+
+	@tailrec def run(state: State): xsbti.MainResult =
 		state.result match
 		{
 			case None => run(next(state))
@@ -75,7 +95,7 @@ object MainLoop
 	import CommandSupport._
 object BuiltinCommands
 {
-	def initialAttributes = AttributeMap.empty.put(logged, ConsoleLogger())
+	def initialAttributes = AttributeMap.empty
 
 	def ConsoleCommands: Seq[Command] = Seq(ignore, exit, IvyConsole.command, act, nop)
 	def ScriptCommands: Seq[Command] = Seq(ignore, exit, Script.command, act, nop)
@@ -176,7 +196,9 @@ object BuiltinCommands
 		val reader = new FullReader(history, s.combinedParser)
 		val line = reader.readLine(prompt)
 		line match {
-			case Some(line) => s.copy(onFailure = Some(Shell), remainingCommands = line +: Shell +: s.remainingCommands)
+			case Some(line) =>
+				if(!line.trim.isEmpty) CommandSupport.globalLogging(s).backed.out.println(Output.DefaultTail + line)
+				s.copy(onFailure = Some(Shell), remainingCommands = line +: Shell +: s.remainingCommands)
 			case None => s
 		}
 	}
@@ -308,10 +330,14 @@ object BuiltinCommands
 		logger(s).info(detailString)
 		s
 	}
-	def lastGrep = Command(LastGrepCommand, lastGrepBrief, lastGrepDetailed)(lastGrepParser) { case (s,(pattern,sk)) =>
-		val (str, ref) = extractLast(s)
-		Output.lastGrep(sk, str, pattern, ref)
-		s
+	def lastGrep = Command(LastGrepCommand, lastGrepBrief, lastGrepDetailed)(lastGrepParser) {
+		case (s, (pattern,Some(sk))) =>
+			val (str, ref) = extractLast(s)
+			Output.lastGrep(sk, str, pattern)
+			s
+		case (s, (pattern, None)) =>
+			Output.lastGrep(CommandSupport.globalLogging(s).backing, pattern)
+			s
 	}
 	def extractLast(s: State) = {
 		val ext = Project.extract(s)
@@ -321,10 +347,14 @@ object BuiltinCommands
 	val spacedKeyParser = (s: State) => Act.requireSession(s, token(Space) ~> Act.scopedKeyParser(s))
 	val optSpacedKeyParser = (s: State) => spacedKeyParser(s).?
 	def lastGrepParser(s: State) = Act.requireSession(s, (token(Space) ~> token(NotSpace, "<pattern>")) ~ optSpacedKeyParser(s))
-	def last = Command(LastCommand, lastBrief, lastDetailed)(optSpacedKeyParser) { (s,sk) =>
-		val (str, ref) = extractLast(s)
-		Output.last(sk, str, ref)
-		s
+	def last = Command(LastCommand, lastBrief, lastDetailed)(optSpacedKeyParser) {
+		case (s,Some(sk)) =>
+			val (str, ref) = extractLast(s)
+			Output.last(sk, str)
+			s
+		case (s, None) =>
+			Output.last( CommandSupport.globalLogging(s).backing )
+			s
 	}
 
 	def autoImports(extracted: Extracted): EvalImports  =  new EvalImports(imports(extracted), "<auto-imports>")

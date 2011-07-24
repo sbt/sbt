@@ -5,7 +5,7 @@ package sbt
 
 	import java.io.File
 	import Project.{ScopedKey, Setting}
-	import Keys.{streams, Streams, TaskStreams}
+	import Keys.{globalLogging, streams, Streams, TaskStreams}
 	import Keys.{dummyState, dummyStreamsManager, streamsManager, taskDefinitionKey}
 	import Scope.{GlobalScope, ThisScope}
 	import scala.Console.{RED, RESET}
@@ -41,7 +41,6 @@ object EvaluateTask
 	def logIncResult(result: Result[_], streams: Streams) = result match { case Inc(i) => logIncomplete(i, streams); case _ => () }
 	def logIncomplete(result: Incomplete, streams: Streams)
 	{
-		val log = streams(ScopedKey(GlobalScope, Keys.logged)).log
 		val all = Incomplete linearize result
 		val keyed = for(Incomplete(Some(key: Project.ScopedKey[_]), _, msg, _, ex) <- all) yield (key, msg, ex)
 		val un = all.filter { i => i.node.isEmpty || i.message.isEmpty }
@@ -51,8 +50,9 @@ object EvaluateTask
 		for( (key, msg, ex) <- keyed if(msg.isDefined || ex.isDefined) )
 		{
 			val msgString = (msg.toList ++ ex.toList.map(ErrorHandling.reducedToString)).mkString("\n\t")
+			val log = getStreams(key, streams).log
 			val keyString = if(log.ansiCodesSupported) RED + key.key.label + RESET else key.key.label
-			getStreams(key, streams).log.error(Scope.display(key.scope, keyString) + ": " + msgString)
+			log.error(Scope.display(key.scope, keyString) + ": " + msgString)
 		}
 	}
 	def getStreams(key: ScopedKey[_], streams: Streams): TaskStreams =

@@ -6,7 +6,7 @@ package sbt
 	import java.io.File
 	import java.net.URI
 	import Project._
-	import Keys.{appConfiguration, stateBuildStructure, commands, configuration, historyPath, logged, projectCommand, sessionSettings, shellPrompt, streams, thisProject, thisProjectRef, watch}
+	import Keys.{appConfiguration, stateBuildStructure, commands, configuration, historyPath, projectCommand, sessionSettings, shellPrompt, streams, thisProject, thisProjectRef, watch}
 	import Scope.{GlobalScope,ThisScope}
 	import Load.BuildStructure
 	import CommandSupport.logger
@@ -151,11 +151,10 @@ object Project extends Init[Scope] with ProjectExtra
 	def getHooks(data: Settings[Scope]): (State => State, State => State)  =  (getHook(Keys.onLoad, data), getHook(Keys.onUnload, data))
 
 	def current(state: State): ProjectRef = session(state).current
-	def updateCurrent(s0: State): State =
+	def updateCurrent(s: State): State =
 	{
-		val structure = Project.structure(s0)
-		val ref = Project.current(s0)
-		val s = installGlobalLogger(s0, structure, ref)
+		val structure = Project.structure(s)
+		val ref = Project.current(s)
 		val project = Load.getProject(structure.units, ref.build, ref.project)
 		val label = Keys.name in ref get structure.data getOrElse ref.project
 		logger(s).info("Set current project to " + label + " (in build " + ref.build +")")
@@ -313,13 +312,6 @@ object Project extends Init[Scope] with ProjectExtra
 	{
 		val extracted = Project.extract(state)
 		EvaluateTask.evaluateTask(extracted.structure, taskKey, state, extracted.currentRef, checkCycles, maxWorkers)
-	}
-	def globalLoggerKey(ref: ScopeAxis[ResolvedReference]) = fillTaskAxis(ScopedKey(GlobalScope.copy(project = ref), streams.key))
-	def installGlobalLogger(s: State, structure: BuildStructure, ref: ProjectRef): State =
-	{
-		val str = structure.streams(globalLoggerKey(Select(ref)))
-		str.open()
-		s.put(logged, str.log).addExitHook { str.close() }
 	}
 	// this is here instead of Scoped so that it is considered without need for import (because of Project.Initialize)
 	implicit def richInitializeTask[T](init: Initialize[Task[T]]): Scoped.RichInitializeTask[T] = new Scoped.RichInitializeTask(init)

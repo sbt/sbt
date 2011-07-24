@@ -46,7 +46,7 @@ object Keys
 	val onUnload = SettingKey[State => State]("on-unload", "Transformation to apply to the build state when the build is unloaded.")
 
 	// Command keys
-	val logged = AttributeKey[Logger]("log", "Provides a Logger for commands.")
+	val globalLogging = SettingKey[GlobalLogging]("global-logging", "Provides a global Logger, including command logging.")
 	val historyPath = SettingKey[Option[File]]("history", "The location where command line history is persisted.")
 	val shellPrompt = SettingKey[State => String]("shell-prompt", "The function that constructs the command prompt from the current build state.")
 	val analysis = AttributeKey[inc.Analysis]("analysis", "Analysis of compilation, including dependencies and generated outputs.")
