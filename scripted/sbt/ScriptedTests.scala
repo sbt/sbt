@@ -66,10 +66,11 @@ final class ScriptedTests(resourceBaseDirectory: File, bufferLog: Boolean, sbtVe
 			case e: xsbt.test.TestException =>
 				buffered.stop()
 				buffered.error("x " + label)
-				if(e.getCause eq null)
-					buffered.error("   " + e.getMessage)
-				else
-					e.printStackTrace
+				e.getCause match
+				{
+					case null | _: java.net.SocketException => buffered.error("   " + e.getMessage)
+					case _ => e.printStackTrace
+				}
 				throw e
 			case e: Exception =>
 				buffered.stop()
