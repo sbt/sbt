@@ -430,7 +430,8 @@ object Defaults extends BuildCommon
 			val classpath = classes +: data(cp)
 			Compiler.inputs(classpath, srcs, classes, scalacOpts, javacOpts, 100, order)(cs, incSetup, s.log)
 		}
-
+		
+	def sbtPluginExtra(m: ModuleID, sbtV: String, scalaV: String): ModuleID  =  m.extra("e:sbtVersion" -> sbtV, "e:scalaVersion" -> scalaV).copy(crossVersion = false)
 	def writePluginsDescriptor(plugins: Set[String], dir: File): List[File] =
 	{
 		val descriptor: File = dir / "sbt" / "sbt.plugins"
@@ -622,6 +623,7 @@ object Classpaths
 		projectID <<= (organization,moduleName,version,artifacts,crossPaths){ (org,module,version,as,crossEnabled) =>
 			ModuleID(org, module, version).cross(crossEnabled).artifacts(as : _*)
 		},
+		projectID <<= pluginProjectID,
 		resolvers in GlobalScope :== Nil,
 		projectDescriptors <<= depMap,
 		retrievePattern in GlobalScope :== "[type]s/[organisation]/[module]/[artifact](-[revision])(-[classifier]).[ext]",
@@ -663,6 +665,9 @@ object Classpaths
 			IvySbt.substituteCross(base, app.provider.scalaProvider.version).copy(crossVersion = false)
 		}
 	)
+	def pluginProjectID: Initialize[ModuleID] = (sbtVersion, scalaVersion, projectID, sbtPlugin) { (sbtV, scalaV, pid, isPlugin) =>
+		if(isPlugin) sbtPluginExtra(pid, sbtV, scalaV) else pid
+	}
 	def ivySbt0: Initialize[Task[IvySbt]] =
 		(ivyConfiguration, credentials, streams) map { (conf, creds, s) =>
 			Credentials.register(creds, s.log)
@@ -951,6 +956,9 @@ object Classpaths
 trait BuildExtra extends BuildCommon
 {
 		import Defaults._
+
+	def addSbtPlugin(dependency: ModuleID): Setting[Seq[ModuleID]] =
+		libraryDependencies <+= (sbtVersion,scalaVersion) { (sbtV, scalaV) => sbtPluginExtra(dependency, sbtV, scalaV) }
 
 	def compilerPlugin(dependency: ModuleID): ModuleID =
 		dependency.copy(configurations = Some("plugin->default(compile)"))
