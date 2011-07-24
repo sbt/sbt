@@ -4,6 +4,7 @@
 package sbt
 
 import Artifact.{defaultExtension, defaultType}
+import Resolver.PluginPattern
 
 import java.io.File
 import java.util.concurrent.Callable
@@ -257,6 +258,9 @@ private object IvySbt
 			override def findModuleInCache(dd: DependencyDescriptor, revId: ModuleRevisionId, options: CacheMetadataOptions, r: String) =
 				super.findModuleInCache(dd,revId,options,null)
 		}
+		manager.setArtifactPattern(PluginPattern + manager.getArtifactPattern)
+		manager.setDataFilePattern(PluginPattern + manager.getDataFilePattern)
+		manager.setIvyPattern(PluginPattern + manager.getIvyPattern)
 		manager.setUseOrigin(true)
 		if(localOnly)
 			manager.setDefaultTTL(java.lang.Long.MAX_VALUE);

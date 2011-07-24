@@ -275,8 +275,10 @@ object Resolver
 	def ivyStylePatterns = defaultIvyPatterns//Patterns(Nil, Nil, false)
 
 	def defaultPatterns = mavenStylePatterns
-	def mavenStyleBasePattern = "[organisation]/[module]/[revision]/[artifact]-[revision](-[classifier]).[ext]"
-	def localBasePattern = "[organisation]/[module]/[revision]/[type]s/[artifact](-[classifier]).[ext]"
+	def mavenStyleBasePattern = "[organisation]/[module](_[scalaVersion])(_[sbtVersion])/[revision]/[artifact]-[revision](-[classifier]).[ext]"
+	def localBasePattern = "[organisation]/[module]/" + PluginPattern + "[revision]/[type]s/[artifact](-[classifier]).[ext]"
+	def defaultRetrievePattern = "[type]s/[organisation]/[module]/" + PluginPattern + "[artifact](-[revision])(-[classifier]).[ext]"
+	final val PluginPattern = "(scala_[scalaVersion]/)(sbt_[sbtVersion]/)"
 
 	def mavenLocal = MavenRepository("Maven2 Local", (new File(Path.userHome, ".m2/repository/")).toURI.toURL.toExternalForm)
 	def defaultLocal = defaultUserFileRepository("local")
