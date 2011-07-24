@@ -367,7 +367,7 @@ object BuiltinCommands
 	def loadFailed = Command.command(LoadFailed)(handleLoadFailed)
 	@tailrec def handleLoadFailed(s: State): State =
 	{
-		val result = (SimpleReader.readLine("Project loading failed: (r)etry, (q)uit, or (i)gnore? ") getOrElse Quit).toLowerCase
+		val result = (SimpleReader.readLine("Project loading failed: (r)etry, (q)uit, (l)ast, or (i)gnore? ") getOrElse Quit).toLowerCase
 		def matches(s: String) = !result.isEmpty && (s startsWith result)
 		
 		if(result.isEmpty || matches("retry"))
@@ -380,6 +380,8 @@ object BuiltinCommands
 			logger(s).warn("Ignoring load failure: " + (if(hadPrevious) "using previously loaded project." else "no project loaded."))
 			s
 		}
+		else if(matches("last"))
+			LastCommand :: LoadFailed :: s
 		else
 		{
 			println("Invalid response.")
