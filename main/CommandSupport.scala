@@ -33,6 +33,7 @@ object CommandSupport
 	/** The prefix used to identify a request to execute the remaining input on source changes.*/
 	val ContinuousExecutePrefix = "~"
 	val HelpCommand = "help"
+	val AboutCommand = "about"
 	val TasksCommand = "tasks"
 	val ProjectCommand = "project"
 	val ProjectsCommand = "projects"
@@ -120,6 +121,9 @@ Tasks produce values.  Use the 'show' command to run the task and print the resu
 
 	def helpBrief = (HelpCommand + " command*", "Displays this help message or prints detailed help on requested commands.")
 	def helpDetailed = "If an argument is provided, this prints detailed help for that command.\nOtherwise, this prints a help summary."
+
+	def aboutBrief = "Displays basic information about sbt and the build."
+	def aboutDetailed = aboutBrief
 
 	def projectBrief = (ProjectCommand + " [project]", "Displays the current project or changes to the provided `project`.")
 	def projectDetailed =

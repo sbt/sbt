@@ -68,11 +68,9 @@ final case class Extracted(structure: BuildStructure, session: SessionSettings, 
 	lazy val currentProject = currentUnit defined currentRef.project
 	lazy val currentLoader: ClassLoader = currentUnit.loader
 	def get[T](key: ScopedTask[T]): Task[T] = get(key.task)
-	def get[T](key: ScopedSetting[T]): T =
-	{
-		val scope = if(key.scope.project == This) key.scope.copy(project = Select(currentRef)) else key.scope
-		getOrError(scope, key.key)
-	}
+	def get[T](key: ScopedSetting[T]): T = getOrError(inCurrent(key), key.key)
+	def getOpt[T](key: ScopedSetting[T]): Option[T] = structure.data.get(inCurrent(key), key.key)
+	private[this] def inCurrent[T](key: ScopedSetting[T]): Scope  =  if(key.scope.project == This) key.scope.copy(project = Select(currentRef)) else key.scope
 	def evalTask[T](key: ScopedTask[T], state: State): T =
 	{
 			import EvaluateTask._

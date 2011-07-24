@@ -79,7 +79,7 @@ object BuiltinCommands
 
 	def ConsoleCommands: Seq[Command] = Seq(ignore, exit, IvyConsole.command, act, nop)
 	def ScriptCommands: Seq[Command] = Seq(ignore, exit, Script.command, act, nop)
-	def DefaultCommands: Seq[Command] = Seq(ignore, help, reboot, read, history, continuous, exit, loadProject, loadProjectImpl, loadFailed, Cross.crossBuild, Cross.switchVersion,
+	def DefaultCommands: Seq[Command] = Seq(ignore, help, about, reboot, read, history, continuous, exit, loadProject, loadProjectImpl, loadFailed, Cross.crossBuild, Cross.switchVersion,
 		projects, project, setOnFailure, clearOnFailure, ifLast, multi, shell, set, tasks, inspect, eval, alias, append, last, lastGrep, nop, sessionCommand, act)
 	def DefaultBootCommands: Seq[String] = LoadProject :: (IfLast + " " + Shell) :: Nil
 
@@ -90,6 +90,7 @@ object BuiltinCommands
 		h.detail match { case (commands, value) => if( selected exists commands ) Some(value) else None }
 
 	def help = Command.make(HelpCommand, helpBrief, helpDetailed)(helpParser)
+	def about = Command.command(AboutCommand, aboutBrief, aboutDetailed) { s => logger(s).info(aboutString(s)); s }
 
 	def helpParser(s: State) =
 	{
@@ -109,6 +110,26 @@ object BuiltinCommands
 		System.out.println(message)
 		s
 	}
+	def sbtVersion(s: State): String = s.configuration.provider.id.version
+	def scalaVersion(s: State): String = s.configuration.provider.scalaProvider.version
+	def aboutString(s: State): String =
+	{
+		"This is sbt " + sbtVersion(s) + "\n" +
+		aboutProject(s) +
+		"sbt, sbt plugins, and build definitions are using Scala " + scalaVersion(s)
+	}
+	def aboutProject(s: State): String =
+		if(Project.isProjectLoaded(s))
+		{
+			val e = Project.extract(s)
+			val current = "The current project is " + Project.display(e.currentRef) + "\n"
+			val built = e.getOpt(Keys.scalaVersion) match {
+				case Some(sv) => "The current project is built against Scala " + sv + "\n"
+				case None => ""
+			}
+			current + built
+		}
+		else "No project is currently loaded.\n"
 
 	def tasks = Command.command(TasksCommand, tasksBrief, tasksDetailed) { s =>
 		System.out.println(tasksPreamble)
