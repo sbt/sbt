@@ -267,14 +267,17 @@ object Project extends Init[Scope] with ProjectExtra
 	}
 	def graphSettings(structure: BuildStructure, actual: Boolean, graphName: String, file: File)
 	{
+		val rel = relation(structure, actual)
+		val keyToString = (key: ScopedKey[_]) => Project display key
+		DotGraph.generateGraph(file, graphName, rel, keyToString, keyToString)
+	}
+	def relation(structure: BuildStructure, actual: Boolean) =
+	{
 		type Rel = Relation[ScopedKey[_], ScopedKey[_]]
 		val cMap = compiled(structure.settings, actual)(structure.delegates, structure.scopeLocal)
-		val relation =
-			((Relation.empty: Rel) /: cMap) { case (r, (key, value)) =>
-				r + (key, value.dependencies)
-			}
-		val keyToString = (key: ScopedKey[_]) => Project display key
-		DotGraph.generateGraph(file, graphName, relation, keyToString, keyToString)
+		((Relation.empty: Rel) /: cMap) { case (r, (key, value)) =>
+			r + (key, value.dependencies)
+		}
 	}
 	def reverseDependencies(cMap: CompiledMap, scoped: ScopedKey[_]): Iterable[ScopedKey[_]] =
 		for( (key,compiled) <- cMap; dep <- compiled.dependencies if dep == scoped)  yield  key
