@@ -128,7 +128,9 @@ object IvyActions
 			val (report, err) = resolve(configuration.logging)(ivy, md, default)
 			err match
 			{
-				case Some(x) if !configuration.missingOk => throw x
+				case Some(x) if !configuration.missingOk =>
+					processUnresolved(x, log)
+					throw x
 				case _ =>
 					val cachedDescriptor = ivy.getSettings.getResolutionCacheManager.getResolvedIvyFileInCache(md.getModuleRevisionId)
 					val uReport = IvyRetrieve.updateReport(report, cachedDescriptor)
@@ -140,6 +142,13 @@ object IvyActions
 			}
 		}
 
+	def processUnresolved(err: ResolveException, log: Logger)
+	{
+		val withExtra = err.failed.filter(!_.extraAttributes.isEmpty)
+		log.warn("\n\tNote: Some unresolved dependencies have extra attributes.  Check that these dependencies exist with the requested attributes.")
+		withExtra foreach { id => log.warn("\t\t" + id) }
+		log.warn("")
+	}
 	def groupedConflicts[T](moduleFilter: ModuleFilter, grouping: ModuleID => T)(report: UpdateReport): Map[T, Set[String]] =
 		report.configurations.flatMap { confReport =>
 			val evicted = confReport.evicted.filter(moduleFilter)
@@ -194,7 +203,11 @@ object IvyActions
 		val resolveReport = ivy.resolve(module, resolveOptions)
 		val err =
 			if(resolveReport.hasError)
-				Some(new ResolveException(resolveReport.getAllProblemMessages.toArray.map(_.toString).distinct))
+			{
+				val messages = resolveReport.getAllProblemMessages.toArray.map(_.toString).distinct
+				val failed = resolveReport.getUnresolvedDependencies.map(node => IvyRetrieve.toModuleID(node.getId))
+				Some(new ResolveException(messages, failed))
+			}
 			else None
 		(resolveReport, err)
 	}
@@ -245,4 +258,4 @@ object IvyActions
 		}
 
 }
-final class ResolveException(messages: Seq[String]) extends RuntimeException(messages.mkString("\n"))
+final class ResolveException(val messages: Seq[String], val failed: Seq[ModuleID]) extends RuntimeException(messages.mkString("\n"))
