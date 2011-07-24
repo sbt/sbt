@@ -354,7 +354,11 @@ object BuiltinCommands
 		else if(matches(Quit))
 			s.exit(ok = false)
 		else if(matches("ignore"))
+		{
+			val hadPrevious = Project.isProjectLoaded(s)
+			logger(s).warn("Ignoring load failure: " + (if(hadPrevious) "using previously loaded project." else "no project loaded."))
 			s
+		}
 		else
 		{
 			println("Invalid response.")

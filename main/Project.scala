@@ -129,6 +129,7 @@ object Project extends Init[Scope] with ProjectExtra
 	def getOrError[T](state: State, key: AttributeKey[T], msg: String): T = state get key getOrElse error(msg)
 	def structure(state: State): BuildStructure = getOrError(state, stateBuildStructure, "No build loaded.")
 	def session(state: State): SessionSettings = getOrError(state, sessionSettings, "Session not initialized.")
+	def isProjectLoaded(state: State): Boolean = (state has sessionSettings) && (state has stateBuildStructure)
 
 	def extract(state: State): Extracted  =  extract( session(state), structure(state) )
 	def extract(se: SessionSettings, st: BuildStructure): Extracted  =  Extracted(st, se, se.current)
