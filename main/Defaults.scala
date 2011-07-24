@@ -627,7 +627,7 @@ object Classpaths
 		projectID <<= pluginProjectID,
 		resolvers in GlobalScope :== Nil,
 		projectDescriptors <<= depMap,
-		retrievePattern in GlobalScope :== "[type]s/[organisation]/[module]/[artifact](-[revision])(-[classifier]).[ext]",
+		retrievePattern in GlobalScope :== Resolver.defaultRetrievePattern,
 		updateConfiguration <<= (retrieveConfiguration, ivyLoggingLevel)((conf,level) => new UpdateConfiguration(conf, false, level) ),
 		retrieveConfiguration <<= (managedDirectory, retrievePattern, retrieveManaged) { (libm, pattern, enabled) => if(enabled) Some(new RetrieveConfiguration(libm, pattern)) else None },
 		ivyConfiguration <<= mkIvyConfiguration,
