@@ -46,9 +46,28 @@ object RetrieveUnit
 			case "http" | "https" => Some { () => downloadAndExtract(base, tmp); tmp }
 			case "file" => 
 				val f = new File(base)
-				if(f.isDirectory) Some(() => f) else None
+				if(f.isDirectory)
+				{
+					val finalDir = if (!f.canWrite) retrieveRODir(f, tmp) else f
+					Some(() => finalDir)
+				}
+				else None
 			case _ => None
 		}
+	}
+	def retrieveRODir(base: File, tempDir: File): File =
+	{
+		if (!tempDir.exists)
+		{
+			try {
+				IO.copyDirectory(base, tempDir)
+			} catch {
+				case e =>
+					IO.delete(tempDir)
+					throw e
+			}
+		}
+		tempDir
 	}
 	def downloadAndExtract(base: URI, tempDir: File): Unit = if(!tempDir.exists) IO.unzipURL(base.toURL, tempDir)
 	def temporary(tempDir: File, uri: URI): File = new File(tempDir, Hash.halve(hash(uri)))
