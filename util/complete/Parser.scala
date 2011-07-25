@@ -329,11 +329,12 @@ trait ParserMain
 					success(seen.mkString)
 		}
 
-	def token[T](t: Parser[T]): Parser[T] = token(t, "", true)
-	def token[T](t: Parser[T], description: String): Parser[T] = token(t, description, false)
-	def token[T](t: Parser[T], seen: String, track: Boolean): Parser[T] =
+	def token[T](t: Parser[T]): Parser[T] = token(t, "", true, false)
+	def token[T](t: Parser[T], hide: Boolean): Parser[T] = token(t, "", true, hide)
+	def token[T](t: Parser[T], description: String): Parser[T] = token(t, description, false, false)
+	def token[T](t: Parser[T], seen: String, track: Boolean, hide: Boolean): Parser[T] =
 		if(t.valid && !t.isTokenStart)
-			if(t.result.isEmpty) new TokenStart(t, seen, track) else t
+			if(t.result.isEmpty) new TokenStart(t, seen, track, hide) else t
 		else
 			t
 
@@ -489,11 +490,12 @@ private final class MatchedString(delegate: Parser[_], seenV: Vector[Char], part
 	override def isTokenStart = delegate.isTokenStart
 	override def toString = "matched(" + partial + ", " + seen + ", " + delegate + ")"
 }
-private final class TokenStart[T](delegate: Parser[T], seen: String, track: Boolean) extends ValidParser[T]
+private final class TokenStart[T](delegate: Parser[T], seen: String, track: Boolean, hide: Boolean) extends ValidParser[T]
 {
-	def derive(c: Char) = token( delegate derive c, if(track) seen + c else seen, track)
+	def derive(c: Char) = token( delegate derive c, if(track) seen + c else seen, track, hide)
 	lazy val completions =
-		if(track)
+		if(hide) Completions.nil
+		else if(track)
 		{
 			val dcs = delegate.completions
 			Completions( for(c <- dcs.get) yield Completion.token(seen, c.append) )
