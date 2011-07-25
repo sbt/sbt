@@ -72,7 +72,7 @@ object Act
 	def taskExtrasParser(tasks: Set[AttributeKey[_]], knownKeys: Map[String, AttributeKey[_]], knownValues: IMap[AttributeKey, Set]): Parser[(ScopeAxis[AttributeKey[_]], ScopeAxis[AttributeMap])] =
 	{
 		val extras = extrasParser(knownKeys, knownValues)
-		val taskParser = if(tasks.isEmpty) success(Global) else optionalAxis(taskAxisParser(tasks, knownKeys), Global)
+		val taskParser = optionalAxis(taskAxisParser(tasks, knownKeys), Global)
 		val taskAndExtra = 
 			taskParser flatMap { taskAxis =>
 				if(taskAxis.isSelect)
@@ -80,7 +80,7 @@ object Act
 				else
 					extras map { x => (taskAxis, Select(x)) }
 			}
-		val base = token('(') ~> taskAndExtra <~ token(')')
+		val base = token('(', hide = tasks.isEmpty) ~> taskAndExtra <~ token(')')
 		base ?? ( (Global, Global) )
 	}
 
