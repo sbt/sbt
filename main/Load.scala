@@ -121,7 +121,7 @@ object Load
 		val settings = finalTransforms(buildConfigurations(loaded, getRootProject(projects), rootEval, config.injectSettings))
 		val delegates = config.delegates(loaded)
 		val data = Project.makeSettings(settings, delegates, config.scopeLocal)
-		val index = structureIndex(data)
+		val index = structureIndex(data, settings)
 		val streams = mkStreams(projects, loaded.root, data)
 		(rootEval, new BuildStructure(projects, loaded.root, settings, data, index, streams, delegates, config.scopeLocal))
 	}
@@ -160,15 +160,20 @@ object Load
 	def setDefinitionKey[T](tk: Task[T], key: ScopedKey[_]): Task[T] =
 		if(isDummy(tk)) tk else Task(tk.info.set(Keys.taskDefinitionKey, key), tk.work)
 
-	def structureIndex(settings: Settings[Scope]): StructureIndex =
-		new StructureIndex(Index.stringToKeyMap(settings), Index.taskToKeyMap(settings), Index.triggers(settings), KeyIndex(settings.allKeys( (s,k) => ScopedKey(s,k))))
+	def structureIndex(data: Settings[Scope], settings: Seq[Setting[_]]): StructureIndex =
+	{
+		val keys = Index.allKeys(settings)
+		val attributeKeys = Index.attributeKeys(data) ++ keys.map(_.key)
+		val scopedKeys = keys ++ data.allKeys( (s,k) => ScopedKey(s,k))
+		new StructureIndex(Index.stringToKeyMap(attributeKeys), Index.taskToKeyMap(data), Index.triggers(data), KeyIndex(scopedKeys))
+	}
 
 		// Reevaluates settings after modifying them.  Does not recompile or reload any build components.
 	def reapply(newSettings: Seq[Setting[_]], structure: BuildStructure): BuildStructure =
 	{
 		val transformed = finalTransforms(newSettings)
 		val newData = Project.makeSettings(transformed, structure.delegates, structure.scopeLocal)
-		val newIndex = structureIndex(newData)
+		val newIndex = structureIndex(newData, transformed)
 		val newStreams = mkStreams(structure.units, structure.root, newData)
 		new BuildStructure(units = structure.units, root = structure.root, settings = transformed, data = newData, index = newIndex, streams = newStreams, delegates = structure.delegates, scopeLocal = structure.scopeLocal)
 	}

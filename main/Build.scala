@@ -166,9 +166,13 @@ object Index
 			(value, ScopedKey(scope, key.asInstanceOf[AttributeKey[Task[_]]])) // unclear why this cast is needed even with a type test in the above filter
 		pairs.toMap[Task[_], ScopedKey[Task[_]]]
 	}
-	def stringToKeyMap(settings: Settings[Scope]): Map[String, AttributeKey[_]] =
+	def allKeys(settings: Seq[Setting[_]]): Set[ScopedKey[_]] =
+		settings.flatMap(s => s.key +: s.dependsOn).toSet
+	def attributeKeys(settings: Settings[Scope]): Set[AttributeKey[_]] =
+		settings.data.values.flatMap(_.keys).toSet[AttributeKey[_]]
+	def stringToKeyMap(settings: Set[AttributeKey[_]]): Map[String, AttributeKey[_]] =	
 	{
-		val multiMap = settings.data.values.flatMap(_.keys).toSet[AttributeKey[_]].groupBy(_.label)
+		val multiMap = settings.groupBy(_.label)
 		val duplicates = multiMap collect { case (k, xs) if xs.size > 1 => (k, xs.map(_.manifest)) } collect { case (k, xs) if xs.size > 1 => (k, xs) }
 		if(duplicates.isEmpty)
 			multiMap.collect { case (k, v) if validID(k) => (k, v.head) } toMap;

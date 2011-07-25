@@ -11,7 +11,7 @@ package sbt
 object KeyIndex
 {
 	def empty: ExtendableKeyIndex = new KeyIndex0(emptyBuildIndex)
-	def apply(known: Seq[ScopedKey[_]]): ExtendableKeyIndex =
+	def apply(known: Iterable[ScopedKey[_]]): ExtendableKeyIndex =
 		(empty /: known) { _ add _ }
 	def combine(indices: Seq[KeyIndex]): KeyIndex = new KeyIndex {
 		def buildURIs = concat(_.buildURIs)
