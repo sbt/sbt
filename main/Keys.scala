@@ -109,7 +109,7 @@ object Keys
 	val initialCommands = SettingKey[String]("initial-commands", "Initial commands to execute when starting up the Scala interpreter.")
 	val compileInputs = TaskKey[Compiler.Inputs]("compile-inputs", "Collects all inputs needed for compilation.")
 	val scalaHome = SettingKey[Option[File]]("scala-home", "If Some, defines the local Scala installation to use for compilation, running, and testing.")
-	val scalaInstance = SettingKey[ScalaInstance]("scala-instance", "Defines the Scala instance to use for compilation, running, and testing.")
+	val scalaInstance = TaskKey[ScalaInstance]("scala-instance", "Defines the Scala instance to use for compilation, running, and testing.")
 	val scalaVersion = SettingKey[String]("scala-version", "The version of Scala used for building.")
 	val crossScalaVersions = SettingKey[Seq[String]]("cross-scala-versions", "The versions of Scala used when cross-building.")
 	val classpathOptions = SettingKey[ClasspathOptions]("classpath-options", "Configures handling of Scala classpaths.")
@@ -148,7 +148,7 @@ object Keys
 	val run = InputKey[Unit]("run", "Runs a main class, passing along arguments provided on the command line.")
 	val runMain = InputKey[Unit]("run-main", "Runs the main class selected by the first argument, passing the remaining arguments to the main method.")
 	val discoveredMainClasses = TaskKey[Seq[String]]("discovered-main-classes", "Auto-detects main classes.")
-	val runner = SettingKey[ScalaRun]("runner", "Implementation used to run a main class.")
+	val runner = TaskKey[ScalaRun]("runner", "Implementation used to run a main class.")
 	val trapExit = SettingKey[Boolean]("trap-exit", "If true, enables exit trapping and thread management for 'run'-like tasks.  This is currently only suitable for serially-executed 'run'-like tasks.")
 
 	val fork = SettingKey[Boolean]("fork", "If true, forks a new JVM when running.  If false, runs in the same JVM as the build.")

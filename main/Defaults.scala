@@ -98,7 +98,7 @@ object Defaults extends BuildCommon
 	def projectCore: Seq[Setting[_]] = Seq(
 		name <<= thisProject(_.id),
 		logManager <<= extraLoggers(LogManager.defaults),
-		runnerSetting
+		runnerTask
 	)
 	def paths = Seq(
 		baseDirectory <<= thisProject(_.base),
@@ -159,7 +159,7 @@ object Defaults extends BuildCommon
 		scalaInstance <<= scalaInstanceSetting,
 		scalaVersion in GlobalScope <<= appConfiguration( _.provider.scalaProvider.version),
 		crossScalaVersions in GlobalScope <<= Seq(scalaVersion).join,
-		crossTarget <<= (target, scalaInstance, crossPaths)( (t,si,cross) => if(cross) t / ("scala-" + si.actualVersion) else t ),
+		crossTarget <<= (target, scalaVersion, crossPaths)( (t,sv,cross) => if(cross) t / ("scala-" + sv) else t ),
 		cacheDirectory <<= crossTarget / "cache"
 	)
 	def compilersSetting = compilers <<= (scalaInstance, appConfiguration, streams, classpathOptions, javaHome) map { (si, app, s, co, jh) => Compiler.compilers(si, co, jh)(app, s.log) }
@@ -173,7 +173,7 @@ object Defaults extends BuildCommon
 		consoleQuick <<= consoleQuickTask,
 		discoveredMainClasses <<= TaskData.write(compile map discoverMainClasses) triggeredBy compile,
 		definedSbtPlugins <<= discoverPlugins,
-		inTask(run)(runnerSetting :: Nil).head,
+		inTask(run)(runnerTask :: Nil).head,
 		selectMainClass <<= discoveredMainClasses map selectRunMain,
 		mainClass in run <<= (selectMainClass in run).identity,
 		mainClass <<= discoveredMainClasses map selectPackageMain,
@@ -222,7 +222,7 @@ object Defaults extends BuildCommon
 			}
 		}
 	}
-	def scalaInstanceSetting = (appConfiguration, scalaVersion, scalaHome){ (app, version, home) =>
+	def scalaInstanceSetting = (appConfiguration, scalaVersion, scalaHome) map { (app, version, home) =>
 		val launcher = app.provider.scalaProvider.launcher
 		home match {
 			case None => ScalaInstance(version, launcher)
@@ -371,7 +371,7 @@ object Defaults extends BuildCommon
 			IO.delete(clean)
 			IO.move(mappings.map(_.swap))
 		}
-	def runMainTask(classpath: ScopedTask[Classpath], scalaRun: ScopedSetting[ScalaRun]): Initialize[InputTask[Unit]] =
+	def runMainTask(classpath: ScopedTask[Classpath], scalaRun: ScopedTask[ScalaRun]): Initialize[InputTask[Unit]] =
 	{
 			import DefaultParsers._
 		InputTask( TaskData(discoveredMainClasses)(runMainParser)(Nil) ) { result =>  
@@ -381,7 +381,7 @@ object Defaults extends BuildCommon
 		}
 	}
 
-	def runTask(classpath: ScopedTask[Classpath], mainClassTask: ScopedTask[Option[String]], scalaRun: ScopedSetting[ScalaRun]): Initialize[InputTask[Unit]] =
+	def runTask(classpath: ScopedTask[Classpath], mainClassTask: ScopedTask[Option[String]], scalaRun: ScopedTask[ScalaRun]): Initialize[InputTask[Unit]] =
 		inputTask { result =>
 			(classpath, mainClassTask, scalaRun, streams, result) map { (cp, main, runner, s, args) =>
 				val mainClass = main getOrElse error("No main class detected.")
@@ -389,8 +389,8 @@ object Defaults extends BuildCommon
 			}
 		}
 
-	def runnerSetting = runner <<= runnerInit
-	def runnerInit: Initialize[ScalaRun] = (scalaInstance, baseDirectory, javaOptions, outputStrategy, fork, javaHome, trapExit) { (si, base, options, strategy, forkRun, javaHomeDir, trap) =>
+	def runnerTask = runner <<= runnerInit
+	def runnerInit: Initialize[Task[ScalaRun]] = (scalaInstance, baseDirectory, javaOptions, outputStrategy, fork, javaHome, trapExit) map { (si, base, options, strategy, forkRun, javaHomeDir, trap) =>
 			if(forkRun) {
 				new ForkRun( ForkOptions(scalaJars = si.jars, javaHome = javaHomeDir, outputStrategy = strategy,
 					runJVMOptions = options, workingDirectory = Some(base)) )
@@ -1014,17 +1014,17 @@ trait BuildExtra extends BuildCommon
 	
 	def fullRunInputTask(scoped: ScopedInput[Unit], config: Configuration, mainClass: String, baseArguments: String*): Setting[InputTask[Unit]] =
 		scoped <<= inputTask { result =>
-			( initScoped(scoped.scoped, runnerInit) zipWith (fullClasspath in config, streams, result).identityMap) { (r, t) =>
-				t map { case (cp, s, args) =>
+			( initScoped(scoped.scoped, runnerInit) zipWith (fullClasspath in config, streams, result).identityMap) { (rTask, t) =>
+				t map { case (cp, s, args) => rTask map { r =>
 					toError(r.run(mainClass, data(cp), baseArguments ++ args, s.log))
-				}
+				}}
 			}
 		}
 	def fullRunTask(scoped: ScopedTask[Unit], config: Configuration, mainClass: String, arguments: String*): Setting[Task[Unit]] =
-		scoped <<= ( initScoped(scoped.scoped, runnerInit) zipWith (fullClasspath in config, streams).identityMap ) { case (r, t) =>
-			t map { case (cp, s) =>
+		scoped <<= ( initScoped(scoped.scoped, runnerInit) zipWith (fullClasspath in config, streams).identityMap ) { case (rTask, t) =>
+			t map { case (cp, s) => rTask map { r =>
 				toError(r.run(mainClass, data(cp), arguments, s.log))
-			}
+			}}
 		}
 	def initScoped[T](sk: ScopedKey[_], i: Initialize[T]): Initialize[T]  =  initScope(fillTaskAxis(sk.scope, sk.key), i)
 	def initScope[T](s: Scope, i: Initialize[T]): Initialize[T]  =  i mapReferenced Project.mapScope(Scope.replaceThis(s))
