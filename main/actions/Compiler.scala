@@ -25,7 +25,7 @@ object Compiler
 
 	final case class Inputs(compilers: Compilers, config: Options, incSetup: IncSetup)
 	final case class Options(classpath: Seq[File], sources: Seq[File], classesDirectory: File, options: Seq[String], javacOptions: Seq[String], maxErrors: Int, order: CompileOrder.Value)
-	final case class IncSetup(analysisMap: Map[File, Analysis], definesClass: DefinesClass, cacheDirectory: File)
+	final case class IncSetup(analysisMap: Map[File, Analysis], definesClass: DefinesClass, skip: Boolean, cacheDirectory: File)
 	final case class Compilers(scalac: AnalyzingCompiler, javac: JavaCompiler)
 
 	def inputs(classpath: Seq[File], sources: Seq[File], outputDirectory: File, options: Seq[String], javacOptions: Seq[String], definesClass: DefinesClass, maxErrors: Int, order: CompileOrder.Value)(implicit compilers: Compilers, log: Logger): Inputs =
@@ -34,7 +34,7 @@ object Compiler
 		val classesDirectory = outputDirectory / "classes"
 		val cacheDirectory = outputDirectory / "cache"
 		val augClasspath = classesDirectory.asFile +: classpath
-		val incSetup = IncSetup(Map.empty, definesClass, cacheDirectory)
+		val incSetup = IncSetup(Map.empty, definesClass, false, cacheDirectory)
 		inputs(augClasspath, sources, classesDirectory, options, javacOptions, maxErrors, order)(compilers, incSetup, log)
 	}
 	def inputs(classpath: Seq[File], sources: Seq[File], classesDirectory: File, options: Seq[String], javacOptions: Seq[String], maxErrors: Int, order: CompileOrder.Value)(implicit compilers: Compilers, incSetup: IncSetup, log: Logger): Inputs =
@@ -104,7 +104,7 @@ object Compiler
 			import in.incSetup._
 
 		val agg = new AggressiveCompile(cacheDirectory)
-		agg(scalac, javac, sources, classpath, classesDirectory, options, javacOptions, analysisMap, definesClass, maxErrors, order)(log)
+		agg(scalac, javac, sources, classpath, classesDirectory, options, javacOptions, analysisMap, definesClass, maxErrors, order, skip)(log)
 	}
 }
 

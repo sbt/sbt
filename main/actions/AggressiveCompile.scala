@@ -22,23 +22,27 @@ final class CompileConfiguration(val sources: Seq[File], val classpath: Seq[File
 
 class AggressiveCompile(cacheDirectory: File)
 {
-	def apply(compiler: AnalyzingCompiler, javac: JavaCompiler, sources: Seq[File], classpath: Seq[File], outputDirectory: File, options: Seq[String] = Nil, javacOptions: Seq[String] = Nil, analysisMap: Map[File, Analysis] = Map.empty, definesClass: DefinesClass = Locate.definesClass _, maxErrors: Int = 100, compileOrder: CompileOrder.Value = Mixed)(implicit log: Logger): Analysis =
+	def apply(compiler: AnalyzingCompiler, javac: JavaCompiler, sources: Seq[File], classpath: Seq[File], outputDirectory: File, options: Seq[String] = Nil, javacOptions: Seq[String] = Nil, analysisMap: Map[File, Analysis] = Map.empty, definesClass: DefinesClass = Locate.definesClass _, maxErrors: Int = 100, compileOrder: CompileOrder.Value = Mixed, skip: Boolean = false)(implicit log: Logger): Analysis =
 	{
 		val setup = new CompileSetup(outputDirectory, new CompileOptions(options, javacOptions), compiler.scalaInstance.actualVersion, compileOrder)
-		compile1(sources, classpath, setup, store, analysisMap, definesClass, compiler, javac, maxErrors)
+		compile1(sources, classpath, setup, store, analysisMap, definesClass, compiler, javac, maxErrors, skip)
 	}
 
 	def withBootclasspath(args: CompilerArguments, classpath: Seq[File]): Seq[File] =
 		args.bootClasspath ++ args.finishClasspath(classpath)
 
-	def compile1(sources: Seq[File], classpath: Seq[File], setup: CompileSetup, store: AnalysisStore, analysis: Map[File, Analysis], definesClass: DefinesClass, compiler: AnalyzingCompiler, javac: JavaCompiler, maxErrors: Int)(implicit log: Logger): Analysis =
+	def compile1(sources: Seq[File], classpath: Seq[File], setup: CompileSetup, store: AnalysisStore, analysis: Map[File, Analysis], definesClass: DefinesClass, compiler: AnalyzingCompiler, javac: JavaCompiler, maxErrors: Int, skip: Boolean)(implicit log: Logger): Analysis =
 	{
 		val (previousAnalysis, previousSetup) = extract(store.get())
-		val config = new CompileConfiguration(sources, classpath, previousAnalysis, previousSetup, setup, analysis.get _, definesClass, maxErrors, compiler, javac)
-		val (modified, result) = compile2(config)
-		if(modified)
-			store.set(result, setup)
-		result
+		if(skip)
+			previousAnalysis
+		else {
+			val config = new CompileConfiguration(sources, classpath, previousAnalysis, previousSetup, setup, analysis.get _, definesClass, maxErrors, compiler, javac)
+			val (modified, result) = compile2(config)
+			if(modified)
+				store.set(result, setup)
+			result
+		}
 	}
 	def compile2(config: CompileConfiguration)(implicit log: Logger, equiv: Equiv[CompileSetup]): (Boolean, Analysis) =
 	{

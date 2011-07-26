@@ -68,6 +68,7 @@ object Defaults extends BuildCommon
 		scalaHome :== None,
 		javaHome :== None,
 		extraLoggers :== { _ => Nil },
+		skip :== false,
 		version :== "0.1",
 		outputStrategy :== None,
 		exportJars :== false,
@@ -422,8 +423,8 @@ object Defaults extends BuildCommon
 	
 	def compileTask = (compileInputs, streams) map { (i,s) => Compiler(i,s.log) }
 	def compileIncSetupTask = 
-		(dependencyClasspath, cacheDirectory, definesClass) map { (cp, cacheDir, definesC) =>
-			Compiler.IncSetup(analysisMap(cp), definesC, cacheDir / "compile")
+		(dependencyClasspath, cacheDirectory, skip in compile, definesClass) map { (cp, cacheDir, skip, definesC) =>
+			Compiler.IncSetup(analysisMap(cp), definesC, skip, cacheDir / "compile")
 		}
 	def compileInputsTask =
 		(dependencyClasspath, sources, compilers, javacOptions, scalacOptions, classDirectory, compileOrder, compileIncSetup, streams) map {
