@@ -666,7 +666,7 @@ object Classpaths
 			IvySbt.substituteCross(base, app.provider.scalaProvider.version).copy(crossVersion = false)
 		}
 	)
-	def pluginProjectID: Initialize[ModuleID] = (sbtVersion, scalaVersion, projectID, sbtPlugin) { (sbtV, scalaV, pid, isPlugin) =>
+	def pluginProjectID: Initialize[ModuleID] = (sbtVersion in update, scalaVersion, projectID, sbtPlugin) { (sbtV, scalaV, pid, isPlugin) =>
 		if(isPlugin) sbtPluginExtra(pid, sbtV, scalaV) else pid
 	}
 	def ivySbt0: Initialize[Task[IvySbt]] =
@@ -962,7 +962,7 @@ trait BuildExtra extends BuildCommon
 		import Defaults._
 
 	def addSbtPlugin(dependency: ModuleID): Setting[Seq[ModuleID]] =
-		libraryDependencies <+= (sbtVersion,scalaVersion) { (sbtV, scalaV) => sbtPluginExtra(dependency, sbtV, scalaV) }
+		libraryDependencies <+= (sbtVersion in update,scalaVersion) { (sbtV, scalaV) => sbtPluginExtra(dependency, sbtV, scalaV) }
 
 	def compilerPlugin(dependency: ModuleID): ModuleID =
 		dependency.copy(configurations = Some("plugin->default(compile)"))
