@@ -145,9 +145,12 @@ object IvyActions
 	def processUnresolved(err: ResolveException, log: Logger)
 	{
 		val withExtra = err.failed.filter(!_.extraAttributes.isEmpty)
-		log.warn("\n\tNote: Some unresolved dependencies have extra attributes.  Check that these dependencies exist with the requested attributes.")
-		withExtra foreach { id => log.warn("\t\t" + id) }
-		log.warn("")
+		if(!withExtra.isEmpty)
+		{
+			log.warn("\n\tNote: Some unresolved dependencies have extra attributes.  Check that these dependencies exist with the requested attributes.")
+			withExtra foreach { id => log.warn("\t\t" + id) }
+			log.warn("")
+		}
 	}
 	def groupedConflicts[T](moduleFilter: ModuleFilter, grouping: ModuleID => T)(report: UpdateReport): Map[T, Set[String]] =
 		report.configurations.flatMap { confReport =>
