@@ -444,14 +444,15 @@ object BuiltinCommands
 				val cause = ite.getCause
 				if(cause == null || cause == ite) logFullException(ite, log) else handleException(cause, s, log)
 			case _: MessageOnlyException => log.error(e.toString)
+			case _: Project.Uninitialized => logFullException(e, log, true)
 			case _ => logFullException(e, log)
 		}
 		s.fail
 	}
-	def logFullException(e: Throwable, log: Logger)
+	def logFullException(e: Throwable, log: Logger, messageOnly: Boolean = false)
 	{
 		log.trace(e)
-		log.error(ErrorHandling reducedToString e)
+		log.error(if(messageOnly) e.getMessage else ErrorHandling reducedToString e)
 		log.error("Use 'last' for the full log.")
 	}
 	
