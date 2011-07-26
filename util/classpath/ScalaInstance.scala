@@ -10,12 +10,12 @@ package sbt
 * for the compiler itself.
 * The 'version' field is the version used to obtain the Scala classes.  This is typically the version for the maven repository.
 * The 'actualVersion' field should be used to uniquely identify the compiler.  It is obtained from the compiler.properties file.*/
-final class ScalaInstance(val version: String, val loader: ClassLoader, val libraryJar: File, val compilerJar: File, val extraJars: Seq[File]) extends NotNull
+final class ScalaInstance(val version: String, val loader: ClassLoader, val libraryJar: File, val compilerJar: File, val extraJars: Seq[File], val explicitActual: Option[String])
 {
 	require(version.indexOf(' ') < 0, "Version cannot contain spaces (was '" + version + "')")
 	def jars = libraryJar :: compilerJar :: extraJars.toList
 	/** Gets the version of Scala in the compiler.properties file from the loader.  This version may be different than that given by 'version'*/
-	lazy val actualVersion = ScalaInstance.actualVersion(loader)("\n    version " + version + ", " + jarStrings)
+	lazy val actualVersion = explicitActual getOrElse ScalaInstance.actualVersion(loader)("\n    version " + version + ", " + jarStrings)
 	def jarStrings = "library jar: " + libraryJar + ", compiler jar: " + compilerJar
 	override def toString = "Scala instance{version label " + version + ", actual version " + actualVersion + ", " + jarStrings + "}"
 }
@@ -26,7 +26,7 @@ object ScalaInstance
 	def apply(version: String, launcher: xsbti.Launcher): ScalaInstance =
 		apply(version, launcher.getScala(version))
 	def apply(version: String, provider: xsbti.ScalaProvider): ScalaInstance =
-		new ScalaInstance(version, provider.loader, provider.libraryJar, provider.compilerJar, (provider.jars.toSet - provider.libraryJar - provider.compilerJar).toSeq)
+		new ScalaInstance(version, provider.loader, provider.libraryJar, provider.compilerJar, (provider.jars.toSet - provider.libraryJar - provider.compilerJar).toSeq, None)
 
 	def apply(scalaHome: File, launcher: xsbti.Launcher): ScalaInstance =
 		apply(libraryJar(scalaHome), compilerJar(scalaHome), launcher, extraJars(scalaHome): _*)
@@ -36,10 +36,12 @@ object ScalaInstance
 	{
 		val loader = scalaLoader(launcher, libraryJar :: compilerJar :: extraJars.toList)
 		val version = actualVersion(loader)(" (library jar  " + libraryJar.getAbsolutePath + ")")
-		new ScalaInstance(version, loader, libraryJar, compilerJar, extraJars)
+		new ScalaInstance(version, loader, libraryJar, compilerJar, extraJars, None)
 	}
 	def apply(version: String, libraryJar: File, compilerJar: File, launcher: xsbti.Launcher, extraJars: File*): ScalaInstance =
-		new ScalaInstance(version, scalaLoader(launcher, libraryJar :: compilerJar :: extraJars.toList), libraryJar, compilerJar, extraJars)
+		apply(version, None, libraryJar, compilerJar, launcher, extraJars : _*)
+	def apply(version: String, explicitActual: Option[String], libraryJar: File, compilerJar: File, launcher: xsbti.Launcher, extraJars: File*): ScalaInstance =
+		new ScalaInstance(version, scalaLoader(launcher, libraryJar :: compilerJar :: extraJars.toList), libraryJar, compilerJar, extraJars, explicitActual)
 
 	def extraJars(scalaHome: File): Seq[File] =
 		optScalaJar(scalaHome, "jline.jar") ++ optScalaJar(scalaHome, "fjbg.jar")
