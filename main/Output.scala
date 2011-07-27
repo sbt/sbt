@@ -7,7 +7,11 @@ package sbt
 	import java.io.File
 	import Keys.{Streams, TaskStreams}
 	import Project.ScopedKey
+	import Load.BuildStructure
+	import Aggregation.{getTasks, KeyValue}
+	import Types.idFun
 	import annotation.tailrec
+	import scala.Console.{BOLD, RESET}
 
 object Output
 {
@@ -26,18 +30,38 @@ object Output
 	}
 	final val DefaultTail = "> "
 
-	def last(key: ScopedKey[_], mgr: Streams): Unit  =  printLines(lastLines(key, mgr))
+	def last(key: ScopedKey[_], structure: BuildStructure): Unit  =  printLines( flatLines(lastLines(key, structure))(idFun) )
 	def last(file: File, tailDelim: String = DefaultTail): Unit  =  printLines(tailLines(file, tailDelim))
 
-	def lastGrep(key: ScopedKey[_], mgr: Streams, patternString: String): Unit =
-		lastGrep(lastLines(key, mgr), patternString )
+	def lastGrep(key: ScopedKey[_], structure: BuildStructure, patternString: String): Unit =
+	{
+		val pattern = Pattern compile patternString
+		val lines = flatLines( lastLines(key, structure) )(_ flatMap showMatches(pattern))
+		printLines( lines )
+	}
 	def lastGrep(file: File, patternString: String, tailDelim: String = DefaultTail): Unit =
-		lastGrep( tailLines(file, tailDelim), patternString)
-	def lastGrep(lines: Seq[String], patternString: String): Unit =
-		printLines(lines flatMap showMatches(Pattern compile patternString))
+		printLines(grep( tailLines(file, tailDelim), patternString) )
+	def grep(lines: Seq[String], patternString: String): Seq[String] =
+		lines flatMap showMatches(Pattern compile patternString)
 
+	def flatLines(outputs: Seq[KeyValue[Seq[String]]])(f: Seq[String] => Seq[String]): Seq[String] =
+	{
+		val single = outputs.size == 1
+		outputs flatMap { case KeyValue(key, lines) =>
+			val flines = f(lines)
+			if(!single) bold(Project.display(key)) +: flines else flines
+		}
+	}
 	def printLines(lines: Seq[String]) = lines foreach println
-	def lastLines(key: ScopedKey[_], mgr: Streams): Seq[String]  =  mgr.use(key) { s => IO.readLines(s.readText( Project.fillTaskAxis(key) )) }
+	def bold(s: String) = if(ConsoleLogger.formatEnabled) BOLD + s + RESET else s
+
+	def lastLines(key: ScopedKey[_], structure: BuildStructure): Seq[KeyValue[Seq[String]]] =
+	{
+		val aggregated = Aggregation.getTasks(key, structure, true)
+		val outputs = aggregated map { case KeyValue(key, value) => KeyValue(key, lastLines(key, structure.streams)) }
+		outputs.filterNot(_.value.isEmpty)
+	}
+	def lastLines(key: ScopedKey[_], mgr: Streams): Seq[String]  =	 mgr.use(key) { s => IO.readLines(s.readText( Project.fillTaskAxis(key) )) }
 	def tailLines(file: File, tailDelim: String): Seq[String]  =  headLines(IO.readLines(file).reverse, tailDelim).reverse
 	@tailrec def headLines(lines: Seq[String], tailDelim: String): Seq[String] =
 		if(lines.isEmpty)

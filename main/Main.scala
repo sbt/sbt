@@ -342,7 +342,7 @@ object BuiltinCommands
 	}
 	def extractLast(s: State) = {
 		val ext = Project.extract(s)
-		(ext.structure.streams, Select(ext.currentRef))
+		(ext.structure, Select(ext.currentRef))
 	}
 	def inspectParser = (s: State) => token((Space ~> ("actual" ^^^ true)) ?? false) ~ spacedKeyParser(s)
 	val spacedKeyParser = (s: State) => Act.requireSession(s, token(Space) ~> Act.scopedKeyParser(s))
