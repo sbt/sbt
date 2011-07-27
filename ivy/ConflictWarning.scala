@@ -11,9 +11,13 @@ object ConflictWarning
 	{
 		val conflicts = IvyActions.groupedConflicts(config.filter, config.group)(report)
 		if(!conflicts.isEmpty)
-			log.log(config.level, "Potentially incompatible versions specified by " + config.label + ":")
-		for( (label, versions) <- conflicts )
-			log.log(config.level, "   " + label + ": " + versions.mkString(", "))
+		{
+			val msg = "Potentially incompatible versions specified by " + config.label + ":"
+			val conflictMsgs =
+				for( (label, versions) <- conflicts ) yield
+					label + ": " + versions.mkString(", ")
+			log.log(config.level, msg + conflictMsgs.mkString(msg, "\n   ", ""))
+		}
 		if(config.failOnConflict && !conflicts.isEmpty)
 			error("Conflicts in " + conflicts.map(_._1).mkString )
 	}
