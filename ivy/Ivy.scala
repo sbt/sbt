@@ -25,6 +25,7 @@ import plugins.matcher.PatternMatcher
 import plugins.parser.m2.PomModuleDescriptorParser
 import plugins.resolver.{ChainResolver, DependencyResolver}
 import util.{Message, MessageLogger}
+import util.extendable.ExtendableItem
 
 import scala.xml.NodeSeq
 
@@ -61,6 +62,7 @@ final class IvySbt(val configuration: IvyConfiguration)
 	{
 		val is = new IvySettings
 		is.setBaseDir(baseDirectory)
+		CustomPomParser.registerDefault
 		configuration match
 		{
 			case e: ExternalIvyConfiguration => is.load(e.file)
@@ -318,6 +320,11 @@ private object IvySbt
 		val artifact = new MDArtifact(moduleID, a.name, a.`type`, a.extension, null, extra(a, false))
 		configurations.foreach(artifact.addConfiguration)
 		artifact
+	}
+	def getExtraAttributes(revID: ExtendableItem): Map[String,String] =
+	{
+			import collection.JavaConverters._
+		revID.getExtraAttributes.asInstanceOf[java.util.Map[String,String]].asScala.toMap
 	}
 	private[sbt] def extra(artifact: Artifact, unqualify: Boolean = false): java.util.Map[String, String] =
 	{

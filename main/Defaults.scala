@@ -433,7 +433,7 @@ object Defaults extends BuildCommon
 			Compiler.inputs(classpath, srcs, classes, scalacOpts, javacOpts, 100, order)(cs, incSetup, s.log)
 		}
 		
-	def sbtPluginExtra(m: ModuleID, sbtV: String, scalaV: String): ModuleID  =  m.extra("e:sbtVersion" -> sbtV, "e:scalaVersion" -> scalaV).copy(crossVersion = false)
+	def sbtPluginExtra(m: ModuleID, sbtV: String, scalaV: String): ModuleID  =  m.extra(CustomPomParser.SbtVersionKey -> sbtV, CustomPomParser.ScalaVersionKey -> scalaV).copy(crossVersion = false)
 	def writePluginsDescriptor(plugins: Set[String], dir: File): List[File] =
 	{
 		val descriptor: File = dir / "sbt" / "sbt.plugins"
@@ -605,7 +605,6 @@ object Classpaths
 		otherResolvers <<= publishTo(_.toList),
 		projectResolver <<= projectResolverTask,
 		projectDependencies <<= projectDependenciesTask,
-		publishMavenStyle <<= (publishMavenStyle, sbtPlugin) { (style, plugin) => style && !plugin },
 		libraryDependencies in GlobalScope :== Nil,
 		libraryDependencies <++= (autoScalaLibrary, sbtPlugin, scalaVersion) apply autoLibraryDependency,
 		allDependencies <<= (projectDependencies,libraryDependencies,sbtPlugin,sbtDependency) map { (projDeps, libDeps, isPlugin, sbtDep) =>
