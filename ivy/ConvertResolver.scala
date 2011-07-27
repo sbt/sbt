@@ -70,6 +70,7 @@ private object ConvertResolver
 		resolver.setName(name)
 		resolver.setM2compatible(true)
 		resolver.setRoot(root)
+		resolver.setPattern(Resolver.mavenStyleBasePattern)
 	}
 	private def initializeSSHResolver(resolver: AbstractSshBasedResolver, repo: SshBasedRepository)(implicit settings: IvySettings)
 	{
