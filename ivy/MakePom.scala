@@ -42,6 +42,7 @@ class MakePom
 			<modelVersion>4.0.0</modelVersion>
 			{ makeModuleID(module) }
 			{ extra }
+			{ makeProperties(module) }
 			{ makeDependencies(module, configurations) }
 			{ makeRepositories(ivy.getSettings, allRepositories, filterRepositories) }
 		</project>)
@@ -60,6 +61,16 @@ class MakePom
 			licenses(module.getLicenses)) : NodeSeq )
 		a ++ b
 	}
+	def makeProperties(module: ModuleDescriptor): NodeSeq =
+	{
+		val extra = IvySbt.getExtraAttributes(module)
+		if(extra.isEmpty) NodeSeq.Empty else makeProperties(extra)
+	}
+	def makeProperties(extra: Map[String,String]): NodeSeq =
+		<properties> {
+			for( (key,value) <- extra ) yield
+				(<x>{value}</x>).copy(label = key)
+		} </properties>
 
 	def description(d: String) = if((d eq null) || d.isEmpty) NodeSeq.Empty else <description>{d}</description>
 	def licenses(ls: Array[License]) = if(ls == null || ls.isEmpty) NodeSeq.Empty else <licenses>{ls.map(license)}</licenses>
