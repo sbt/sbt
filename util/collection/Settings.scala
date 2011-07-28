@@ -131,7 +131,7 @@ trait Init[Scope]
 			}
 		}
 		val result = sMap mapValues f
-		if(undefineds.isEmpty) result else throw Uninitialized(undefineds.toList)
+		if(undefineds.isEmpty) result else throw Uninitialized(sMap, delegates, undefineds.toList)
 	}
 	private[this] def delegateForKey[T](sMap: ScopedMap, k: ScopedKey[T], scopes: Seq[Scope], refKey: ScopedKey[_], isFirst: Boolean): Either[Undefined, ScopedKey[T]] = 
 	{
@@ -156,16 +156,34 @@ trait Init[Scope]
 		map.set(key.scope, key.key, value)
 	}
 
+	def showUndefined(u: Undefined, sMap: ScopedMap, delegates: Scope => Seq[Scope]): String =
+	{
+		val guessed = guessIntendedScope(sMap, delegates, u.referencedKey)
+		display(u.referencedKey) + " from " + display(u.definingKey) + guessed.map(g => "\n     Did you mean " + display(g) + " ?").toList.mkString
+	}
+
+	def guessIntendedScope(sMap: ScopedMap, delegates: Scope => Seq[Scope], key: ScopedKey[_]): Option[ScopedKey[_]] =
+	{
+		val distances = sMap.keys.toSeq.flatMap { validKey => refinedDistance(delegates, validKey, key).map( dist => (dist, validKey) ) }
+		distances.sortBy(_._1).map(_._2).headOption
+	}
+	def refinedDistance(delegates: Scope => Seq[Scope], a: ScopedKey[_], b: ScopedKey[_]): Option[Int]  =
+		if(a.key == b.key)
+		{
+			val dist = delegates(a.scope).indexOf(b.scope)
+			if(dist < 0) None else Some(dist)
+		}
+		else None
+
 	final class Uninitialized(val undefined: Seq[Undefined], msg: String) extends Exception(msg)
 	final class Undefined(val definingKey: ScopedKey[_], val referencedKey: ScopedKey[_])
 	def Undefined(definingKey: ScopedKey[_], referencedKey: ScopedKey[_]): Undefined = new Undefined(definingKey, referencedKey)
-	def Uninitialized(keys: Seq[Undefined]): Uninitialized =
+	def Uninitialized(sMap: ScopedMap, delegates: Scope => Seq[Scope], keys: Seq[Undefined]): Uninitialized =
 	{
 		assert(!keys.isEmpty)
-		val keyStrings = keys map { u => display(u.referencedKey) + " from " + display(u.definingKey) }
-		val suffix = if(keyStrings.length > 1) "s" else ""
-		val keysString = keyStrings.mkString("\n\t", "\n\t", "")
-		new Uninitialized(keys, "Reference" + suffix + " to undefined setting" + suffix + ": " + keysString)
+		val suffix = if(keys.length > 1) "s" else ""
+		val keysString = keys.map(u => showUndefined(u, sMap, delegates)).mkString("\n\n  ", "\n\n  ", "")
+		new Uninitialized(keys, "Reference" + suffix + " to undefined setting" + suffix + ": " + keysString + "\n ")
 	}
 	final class Compiled(val key: ScopedKey[_], val dependencies: Iterable[ScopedKey[_]], val eval: Settings[Scope] => Settings[Scope])
 	{
