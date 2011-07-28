@@ -78,7 +78,7 @@ class MakePom
 		<license>
 			<name>{l.getName}</name>
 			<url>{l.getUrl}</url>
-			<distribution>jar</distribution>
+			<distribution>repo</distribution>
 		</license>
 	def homePage(homePage: String) = if(homePage eq null) NodeSeq.Empty else <url>{homePage}</url>
 	def revision(version: String) = if(version ne null) <version>{version}</version> else NodeSeq.Empty
