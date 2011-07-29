@@ -159,6 +159,7 @@ import Resolver._
 object ScalaToolsReleases extends MavenRepository(ScalaToolsReleasesName, ScalaToolsReleasesRoot)
 object ScalaToolsSnapshots extends MavenRepository(ScalaToolsSnapshotsName, ScalaToolsSnapshotsRoot)
 object DefaultMavenRepository extends MavenRepository("public", IBiblioResolver.DEFAULT_M2_ROOT)
+object JavaNet2Repository extends MavenRepository(JavaNet2RepositoryName, JavaNet2RepositoryRoot)
 object JavaNet1Repository extends JavaNet1Repository
 sealed trait JavaNet1Repository extends Resolver
 {
@@ -171,6 +172,8 @@ object Resolver
 	val ScalaToolsSnapshotsName = "Scala-Tools Maven2 Snapshots Repository"
 	val ScalaToolsReleasesRoot = "http://scala-tools.org/repo-releases"
 	val ScalaToolsSnapshotsRoot = "http://scala-tools.org/repo-snapshots"
+	val JavaNet2RepositoryName = "java.net Maven2 Repository"
+	val JavaNet2RepositoryRoot = "http://download.java.net/maven/2"
 
 	/** Add the local, Maven Central, and Scala Tools releases repositories to the user repositories.  */
 	def withDefaultResolvers(userResolvers: Seq[Resolver]): Seq[Resolver] =
