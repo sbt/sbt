@@ -173,6 +173,7 @@ class MakePom
 			<id>{id}</id>
 			<name>{name}</name>
 			<url>{root}</url>
+			<layout>{ if(name == JavaNet1Repository.name) "legacy" else "default" }</layout>
 		</repository>
 
 	/** Retain dependencies only with the configurations given, or all public configurations of `module` if `configurations` is None.
