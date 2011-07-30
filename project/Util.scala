@@ -11,7 +11,7 @@ object Util
 	
 	def noPublish(p: Project) = p.copy(settings = noRemotePublish(p.settings))
 	def noRemotePublish(in: Seq[Setting[_]]) = in filterNot { s => s.key == deliver || s.key == publish }
-	lazy val noExtra = projectDependencies ~= { _.map(_.copy(extraAttributes = Map.empty)) } // not sure why this is needed
+	lazy val noExtra = projectDependencies ~= { _.map(_.copy(extraAttributes = Map.empty)) } // remove after 0.10.2
 
 	def project(path: File, nameString: String) = Project(normalize(nameString), path) settings( name := nameString, noExtra )
 	def baseProject(path: File, nameString: String) = project(path, nameString) settings( base : _*)
