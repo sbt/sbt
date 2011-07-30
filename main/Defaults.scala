@@ -1022,16 +1022,16 @@ trait BuildExtra extends BuildCommon
 	def fullRunInputTask(scoped: ScopedInput[Unit], config: Configuration, mainClass: String, baseArguments: String*): Setting[InputTask[Unit]] =
 		scoped <<= inputTask { result =>
 			( initScoped(scoped.scoped, runnerInit) zipWith (fullClasspath in config, streams, result).identityMap) { (rTask, t) =>
-				t map { case (cp, s, args) => rTask map { r =>
+				(t :^: rTask :^: KNil) map { case (cp, s, args) :+: r :+: HNil =>
 					toError(r.run(mainClass, data(cp), baseArguments ++ args, s.log))
-				}}
+				}
 			}
 		}
 	def fullRunTask(scoped: ScopedTask[Unit], config: Configuration, mainClass: String, arguments: String*): Setting[Task[Unit]] =
 		scoped <<= ( initScoped(scoped.scoped, runnerInit) zipWith (fullClasspath in config, streams).identityMap ) { case (rTask, t) =>
-			t map { case (cp, s) => rTask map { r =>
+			(t :^: rTask :^: KNil) map { case (cp, s) :+: r :+: HNil =>
 				toError(r.run(mainClass, data(cp), arguments, s.log))
-			}}
+			}
 		}
 	def initScoped[T](sk: ScopedKey[_], i: Initialize[T]): Initialize[T]  =  initScope(fillTaskAxis(sk.scope, sk.key), i)
 	def initScope[T](s: Scope, i: Initialize[T]): Initialize[T]  =  i mapReferenced Project.mapScope(Scope.replaceThis(s))
