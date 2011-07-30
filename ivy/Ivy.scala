@@ -3,7 +3,6 @@
  */
 package sbt
 
-import Artifact.{defaultExtension, defaultType}
 import Resolver.PluginPattern
 
 import java.io.File
