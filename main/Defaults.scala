@@ -329,7 +329,23 @@ object Defaults extends BuildCommon
 		(dirs, filter, excludes) map { (d,f,excl) => d.descendentsExcept(f,excl).get }
 
 	def artifactPathSetting(art: ScopedSetting[Artifact])  =  (crossTarget, projectID, art, scalaVersion in artifactName, artifactName) { (t, module, a, sv, toString) => t / toString(sv, module, a) asFile }
-
+	def artifactSetting = (artifact, artifactClassifier, configuration) { (a,classifier,c) =>
+		val cPart = if(c == Compile) Nil else c.name :: Nil
+		val combined = cPart ++ classifier.toList
+		if(combined.isEmpty) a.copy(classifier = None, configurations = c :: Nil) else {
+			val classifierString = combined mkString "-"
+			val confs = artifactConfigurations(a, c, classifier)
+			a.copy(classifier = Some(classifierString), `type` = Artifact.classifierType(classifierString), configurations = confs)
+		}
+	}
+	def artifactConfigurations(base: Artifact, scope: Configuration, classifier: Option[String]): Iterable[Configuration] =
+		if(base.configurations.isEmpty)
+			classifier match {
+				case Some(c) => Artifact.classifierConf(c) :: Nil
+				case None => scope :: Nil
+			}
+		else
+			base.configurations
 	def pairID[A,B] = (a: A, b: B) => (a,b)
 	def packageTasks(key: TaskKey[File], mappingsTask: Initialize[Task[Seq[(File,String)]]]) =
 		inTask(key)( Seq(
@@ -337,15 +353,7 @@ object Defaults extends BuildCommon
 			packageConfiguration <<= packageConfigurationTask,
 			mappings <<= mappingsTask,
 			packagedArtifact <<= (artifact, key) map pairID,
-			artifact <<= (artifact, artifactClassifier, configuration) { (a,classifier,c) =>
-				val cPart = if(c == Compile) Nil else c.name :: Nil
-				val combined = cPart ++ classifier.toList
-				if(combined.isEmpty) a.copy(classifier = None, configurations = c :: Nil) else {
-					val classifier = combined mkString "-"
-					val confs = if(a.configurations.isEmpty) Artifact.classifierConf(classifier) :: Nil else a.configurations
-					a.copy(classifier = Some(classifier), `type` = Artifact.classifierType(classifier), configurations = confs)
-				}
-			},
+			artifact <<= artifactSetting,
 			cacheDirectory <<= cacheDirectory / key.key.label,
 			artifactPath <<= artifactPathSetting(artifact)
 		))
