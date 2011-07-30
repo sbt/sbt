@@ -88,10 +88,14 @@ class MakePom
 			case Array() => "pom"
 			case Array(x) => x.getType
 			case xs =>
-				val types = xs.map(_.getType)
-				val notpom = types.toList - "pom"
-				if(notpom.isEmpty) "pom" else if(notpom contains "jar") "jar" else notpom.head
+				val types = xs.map(_.getType).toList.filterNot(IgnoreTypes)
+				types match {
+					case Nil => Artifact.PomType
+					case xs if xs.contains(Artifact.DefaultType) => Artifact.DefaultType
+					case x :: xs => x
+				}
 		}
+	val IgnoreTypes: Set[String] = Set(Artifact.SourceType, Artifact.DocType, Artifact.PomType)
 
 	def makeDependencies(module: ModuleDescriptor, configurations: Option[Iterable[Configuration]]): NodeSeq =
 	{

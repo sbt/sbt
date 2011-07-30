@@ -364,17 +364,17 @@ final case class Artifact(name: String, `type`: String, extension: String, class
 
 object Artifact
 {
-	def apply(name: String): Artifact = Artifact(name, defaultType, defaultExtension, None, Nil, None)
-	def apply(name: String, extra: Map[String,String]): Artifact = Artifact(name, defaultType, defaultExtension, None, Nil, None, extra)
-	def apply(name: String, classifier: String): Artifact = Artifact(name, defaultType, defaultExtension, Some(classifier), Nil, None)
+	def apply(name: String): Artifact = Artifact(name, DefaultType, DefaultExtension, None, Nil, None)
+	def apply(name: String, extra: Map[String,String]): Artifact = Artifact(name, DefaultType, DefaultExtension, None, Nil, None, extra)
+	def apply(name: String, classifier: String): Artifact = Artifact(name, DefaultType, DefaultExtension, Some(classifier), Nil, None)
 	def apply(name: String, `type`: String, extension: String): Artifact = Artifact(name, `type`, extension, None, Nil, None)
 	def apply(name: String, `type`: String, extension: String, classifier: String): Artifact = Artifact(name, `type`, extension, Some(classifier), Nil, None)
-	def apply(name: String, url: URL): Artifact =Artifact(name, extract(url, defaultType), extract(url, defaultExtension), None, Nil, Some(url))
+	def apply(name: String, url: URL): Artifact =Artifact(name, extract(url, DefaultType), extract(url, DefaultExtension), None, Nil, Some(url))
 	def apply(name: String, `type`: String, extension: String, classifier: Option[String], configurations: Iterable[Configuration], url: Option[URL]): Artifact =
 		Artifact(name, `type`, extension, classifier, configurations, url, Map.empty)
 
-	val defaultExtension = "jar"
-	val defaultType = "jar"
+	val DefaultExtension = "jar"
+	val DefaultType = "jar"
 
 	def sources(name: String) = classified(name, SourceClassifier)
 	def javadoc(name: String) = classified(name, DocClassifier)
@@ -382,6 +382,8 @@ object Artifact
 
 	val DocClassifier = "javadoc"
 	val SourceClassifier = "sources"
+	val DocType = "doc"
+	val SourceType = "src"
 	val PomType = "pom"
 
 	def extract(url: URL, default: String): String = extract(url.toString, default)
@@ -398,7 +400,7 @@ object Artifact
 		val name = file.getName
 		val i = name.lastIndexOf('.')
 		val base = if(i >= 0) name.substring(0, i) else name
-		Artifact(base, extract(name, defaultType), extract(name, defaultExtension), None, Nil, Some(file.toURI.toURL))
+		Artifact(base, extract(name, DefaultType), extract(name, DefaultExtension), None, Nil, Some(file.toURI.toURL))
 	}
 	def artifactName(scalaVersion: String, module: ModuleID, artifact: Artifact): String =
 	{
@@ -410,11 +412,11 @@ object Artifact
 	def cross(enable: Boolean, scalaVersion: String): String = if(enable) "_" + scalaVersion else ""
 
 	val classifierConfMap = Map(SourceClassifier -> Sources, DocClassifier -> Docs)
-	val classifierTypeMap = Map(SourceClassifier -> "src", DocClassifier -> "doc")
+	val classifierTypeMap = Map(SourceClassifier -> SourceType, DocClassifier -> DocType)
 	def classifierConf(classifier: String): Configuration = classifierConfMap.getOrElse(classifier, Optional)	
-	def classifierType(classifier: String): String = classifierTypeMap.getOrElse(classifier, defaultType)
+	def classifierType(classifier: String): String = classifierTypeMap.getOrElse(classifier, DefaultType)
 	def classified(name: String, classifier: String): Artifact =
-		Artifact(name, classifierType(classifier), defaultExtension, Some(classifier), classifierConf(classifier) :: Nil, None)
+		Artifact(name, classifierType(classifier), DefaultExtension, Some(classifier), classifierConf(classifier) :: Nil, None)
 }
 final case class ModuleConfiguration(organization: String, name: String, revision: String, resolver: Resolver)
 object ModuleConfiguration
