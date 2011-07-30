@@ -141,7 +141,6 @@ final class IvySbt(val configuration: IvyConfiguration)
 			log.debug("Using inline dependencies specified in Scala" + (if(ivyXML.isEmpty) "." else " and XML."))
 
 			val parser = IvySbt.parseIvyXML(ivy.getSettings, IvySbt.wrapped(module, ivyXML), moduleID, defaultConf.name, validate)
-
 			IvySbt.addDependencies(moduleID, dependencies, parser)
 			IvySbt.addMainArtifact(moduleID)
 			(moduleID, parser.getDefaultConf)
@@ -351,11 +350,11 @@ private object IvySbt
 	private def wrapped(module: ModuleID, dependencies: NodeSeq) =
 	{
 		import module._
-		<ivy-module version="2.0">
+		<ivy-module version="2.0" xmlns:e="http://ant.apache.org/ivy/extra">
 			{ if(hasInfo(module, dependencies))
 				NodeSeq.Empty
 			else
-				<info organisation={organization} module={name} revision={revision}/>
+				addExtraAttributes(<info organisation={organization} module={name} revision={revision}/>, module.extraAttributes)
 			}
 			{dependencies}
 			{
@@ -364,6 +363,8 @@ private object IvySbt
 			}
 		</ivy-module>
 	}
+	private[this] def addExtraAttributes(elem: scala.xml.Elem, extra: Map[String, String]): scala.xml.Elem =
+		(elem /: extra) { case (e, (key,value) ) => e % new scala.xml.UnprefixedAttribute(key, value, scala.xml.Null) }
 	private def hasInfo(module: ModuleID, x: scala.xml.NodeSeq) =
 	{
 		val info = <g>{x}</g> \ "info"
