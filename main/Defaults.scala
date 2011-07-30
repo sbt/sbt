@@ -991,7 +991,6 @@ trait BuildExtra extends BuildCommon
 	}
 
 	def seq(settings: Setting[_]*): SettingsDefinition = new Project.SettingList(settings)
-	implicit def settingsDefinitionToSeq(sd: SettingsDefinition): Seq[Setting[_]] = sd.settings
 
 	def externalIvySettings(file: Initialize[File] = baseDirectory / "ivysettings.xml"): Setting[Task[IvyConfiguration]] =
 	{

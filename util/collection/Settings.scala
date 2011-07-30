@@ -216,6 +216,10 @@ trait Init[Scope]
 				case Seq(x, xs @ _*) => (join(xs) zipWith x)( (t,h) => h +: t)
 			}
 	}
+	object SettingsDefinition {
+		implicit def unwrapSettingsDefinition(d: SettingsDefinition): Seq[Setting[_]] = d.settings
+		implicit def wrapSettingsDefinition(ss: Seq[Setting[_]]): SettingsDefinition = new SettingList(ss)
+	}
 	sealed trait SettingsDefinition {
 		def settings: Seq[Setting[_]]
 	}
