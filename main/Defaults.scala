@@ -1031,6 +1031,9 @@ trait BuildExtra extends BuildCommon
 	/** Disables post-compilation hook for determining tests for tab-completion (such as for 'test-only').
 	* This is useful for reducing test:compile time when not running test. */
 	def noTestCompletion(config: Configuration = Test): Setting[_]  =  inConfig(config)( Seq(definedTests <<= Defaults.detectTests) ).head
+
+	def filterKeys(ss: Seq[Setting[_]], transitive: Boolean = false)(f: ScopedKey[_] => Boolean): Seq[Setting[_]] =
+		ss filter ( s => f(s.key) && (!transitive || s.dependsOn.forall(f)) )
 }
 trait BuildCommon
 {
