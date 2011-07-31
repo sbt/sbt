@@ -295,7 +295,7 @@ object Defaults extends BuildCommon
 	}
 
 	lazy val packageBase: Seq[Setting[_]] = Seq(
-		artifact <<= normalizedName(n => Artifact(n)),
+		artifact <<= moduleName(n => Artifact(n)),
 		packageOptions in GlobalScope :== Nil,
 		artifactName in GlobalScope :== ( Artifact.artifactName _ )
 	)
