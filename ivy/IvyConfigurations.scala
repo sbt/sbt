@@ -62,21 +62,17 @@ final case class PomConfiguration(file: File, ivyScala: Option[IvyScala], valida
 {
 	def noScala = copy(ivyScala = None)
 }
-final case class InlineConfiguration(module: ModuleID, dependencies: Seq[ModuleID], ivyXML: NodeSeq,
-	configurations: Seq[Configuration], defaultConfiguration: Option[Configuration], ivyScala: Option[IvyScala],
-	validate: Boolean) extends ModuleSettings
+final case class InlineConfiguration(module: ModuleID, moduleInfo: ModuleInfo, dependencies: Seq[ModuleID], ivyXML: NodeSeq = NodeSeq.Empty, configurations: Seq[Configuration] = Nil, defaultConfiguration: Option[Configuration] = None, ivyScala: Option[IvyScala] = None, validate: Boolean = false) extends ModuleSettings
 {
 	def withConfigurations(configurations: Seq[Configuration]) =  copy(configurations = configurations)
 	def noScala = copy(ivyScala = None)
 }
-final case class EmptyConfiguration(module: ModuleID, ivyScala: Option[IvyScala], validate: Boolean) extends ModuleSettings
+final case class EmptyConfiguration(module: ModuleID, moduleInfo: ModuleInfo, ivyScala: Option[IvyScala], validate: Boolean) extends ModuleSettings
 {
 	def noScala = copy(ivyScala = None)
 }
 object InlineConfiguration
 {
-	def apply(module: ModuleID, dependencies: Seq[ModuleID]) =
-		new InlineConfiguration(module, dependencies, NodeSeq.Empty, Nil, None, None, false)
 	def configurations(explicitConfigurations: Iterable[Configuration], defaultConfiguration: Option[Configuration]) =
 		if(explicitConfigurations.isEmpty)
 		{
@@ -92,7 +88,7 @@ object InlineConfiguration
 }
 object ModuleSettings
 {
-	def apply(ivyScala: Option[IvyScala], validate: Boolean, module: => ModuleID)(baseDirectory: File, log: Logger) =
+	def apply(ivyScala: Option[IvyScala], validate: Boolean, module: => ModuleID, moduleInfo: => ModuleInfo)(baseDirectory: File, log: Logger) =
 	{
 		log.debug("Autodetecting dependencies.")
 		val defaultPOMFile = IvySbt.defaultPOM(baseDirectory)
@@ -106,7 +102,7 @@ object ModuleSettings
 			else
 			{
 				log.warn("No dependency configuration found, using defaults.")
-				new EmptyConfiguration(module, ivyScala, validate)
+				new EmptyConfiguration(module, moduleInfo, ivyScala, validate)
 			}
 		}
 	}

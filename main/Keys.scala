@@ -4,6 +4,7 @@
 package sbt
 
 	import java.io.File
+	import java.net.URL
 	import Project.ScopedKey
 	import complete._
 	import inc.Analysis
@@ -171,9 +172,15 @@ object Keys
 	// Classpath/Dependency Management Keys
 	type Classpath = Seq[Attributed[File]]
 	
-	val name = SettingKey[String]("name", "Name.")
-	val normalizedName = SettingKey[String]("normalized-name", "Name transformed from mixed case and spaces to lowercase and dash-separated.")
+	val name = SettingKey[String]("name", "Project name.")
+	val normalizedName = SettingKey[String]("normalized-name", "Project name transformed from mixed case and spaces to lowercase and dash-separated.")
+	val description = SettingKey[String]("description", "Project description.")
+	val homepage = SettingKey[Option[URL]]("homepage", "Project homepage.")
+	val licenses = SettingKey[Seq[(String, URL)]]("licenses", "Project licenses as (name, url) pairs.")
 	val organization = SettingKey[String]("organization", "Organization/group ID.")
+	val organizationName = SettingKey[String]("organization-name", "Organization full/formal name.")
+	val organizationHomepage = SettingKey[Option[URL]]("organization-homepage", "Organization homepage.")
+	val projectInfo = SettingKey[ModuleInfo]("project-info", "Addition project information like formal name, homepage, licenses etc.")
 	val defaultConfiguration = SettingKey[Option[Configuration]]("default-configuration", "Defines the configuration used when none is specified for a dependency.")
 	val defaultConfigurationMapping = SettingKey[String]("default-configuration-mapping", "Defines the mapping used for a simple, unmapped configuration definition.")
 
