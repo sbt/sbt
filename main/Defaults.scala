@@ -329,12 +329,12 @@ object Defaults extends BuildCommon
 		(dirs, filter, excludes) map { (d,f,excl) => d.descendentsExcept(f,excl).get }
 
 	def artifactPathSetting(art: ScopedSetting[Artifact])  =  (crossTarget, projectID, art, scalaVersion in artifactName, artifactName) { (t, module, a, sv, toString) => t / toString(sv, module, a) asFile }
-	def artifactSetting = (artifact, artifactClassifier, configuration) { (a,classifier,c) =>
-		val cPart = if(c == Compile) Nil else c.name :: Nil
-		val combined = cPart ++ classifier.toList
-		if(combined.isEmpty) a.copy(classifier = None, configurations = c :: Nil) else {
+	def artifactSetting = ((artifact, artifactClassifier).identity zipWith configuration.?) { case ((a,classifier),cOpt) =>
+		val cPart = cOpt flatMap { c => if(c == Compile) None else Some(c.name) }
+		val combined = cPart.toList ++ classifier.toList
+		if(combined.isEmpty) a.copy(classifier = None, configurations = cOpt.toList) else {
 			val classifierString = combined mkString "-"
-			val confs = artifactConfigurations(a, c, classifier)
+			val confs = cOpt.toList flatMap { c => artifactConfigurations(a, c, classifier) } 
 			a.copy(classifier = Some(classifierString), `type` = Artifact.classifierType(classifierString), configurations = confs)
 		}
 	}
