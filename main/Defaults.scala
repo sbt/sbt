@@ -663,9 +663,12 @@ object Classpaths
 		},
 		update <<= (conflictWarning, update, streams) map { (config, report, s) => ConflictWarning(config, report, s.log); report },
 		transitiveClassifiers in GlobalScope :== Seq(SourceClassifier, DocClassifier),
-		updateClassifiers <<= (ivySbt, projectID, update, transitiveClassifiers in updateClassifiers, updateConfiguration, ivyScala, target in LocalRootProject, appConfiguration, streams) map { (is, pid, up, classifiers, c, ivyScala, out, app, s) =>
-			withExcludes(out, classifiers, lock(app)) { excludes =>
-				IvyActions.updateClassifiers(is, GetClassifiersConfiguration(pid, up.allModules, classifiers, excludes, c, ivyScala), s.log)
+		classifiersModule in updateClassifiers <<= (projectID, update, transitiveClassifiers in updateClassifiers, ivyConfigurations in updateClassifiers) map { ( pid, up, classifiers, confs) =>
+			GetClassifiersModule(pid, up.allModules, confs, classifiers)
+		},
+		updateClassifiers <<= (ivySbt, classifiersModule in updateClassifiers, updateConfiguration, ivyScala, target in LocalRootProject, appConfiguration, streams) map { (is, mod, c, ivyScala, out, app, s) =>
+			withExcludes(out, mod.classifiers, lock(app)) { excludes =>
+				IvyActions.updateClassifiers(is, GetClassifiersConfiguration(mod, excludes, c, ivyScala), s.log)
 			}
 		},
 		sbtDependency in GlobalScope <<= appConfiguration { app =>
@@ -696,10 +699,13 @@ object Classpaths
 			new InlineIvyConfiguration(paths, rs, Nil, Nil, off, Option(lock(app)), check, s.log)
 		},
 		ivySbt <<= ivySbt0,
-		updateSbtClassifiers in TaskGlobal <<= (ivySbt, projectID, transitiveClassifiers, updateConfiguration, sbtDependency, ivyScala, target in LocalRootProject, appConfiguration, streams) map {
-				(is, pid, classifiers, c, sbtDep, ivyScala, out, app, s) =>
-			withExcludes(out, classifiers, lock(app)) { excludes =>
-				IvyActions.transitiveScratch(is, "sbt", GetClassifiersConfiguration(pid, sbtDep :: Nil, classifiers, excludes, c, ivyScala), s.log)
+		classifiersModule <<= (projectID, sbtDependency, transitiveClassifiers) map { ( pid, sbtDep, classifiers) =>
+			GetClassifiersModule(pid, sbtDep :: Nil, Configurations.Default :: Nil, classifiers)
+		},
+		updateSbtClassifiers in TaskGlobal <<= (ivySbt, classifiersModule, updateConfiguration, ivyScala, target in LocalRootProject, appConfiguration, streams) map {
+				(is, mod, c, ivyScala, out, app, s) =>
+			withExcludes(out, mod.classifiers, lock(app)) { excludes =>
+				IvyActions.transitiveScratch(is, "sbt", GetClassifiersConfiguration(mod, excludes, c, ivyScala), s.log)
 			}
 		}
 	))
