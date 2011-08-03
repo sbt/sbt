@@ -595,7 +595,13 @@ object Classpaths
 		conflictWarning <<= (thisProjectRef, conflictWarning) { (ref, cw) => cw.copy(label = Project.display(ref)) },
 		unmanagedBase <<= baseDirectory / "lib",
 		normalizedName <<= name(StringUtilities.normalize),
+		description <<= description or name.identity,
+		homepage in GlobalScope :== None,
+		licenses in GlobalScope :== Nil,
 		organization <<= organization or normalizedName.identity,
+		organizationName in GlobalScope <<= organizationName or organization.identity,
+		organizationHomepage in GlobalScope <<= organizationHomepage or homepage.identity,
+		projectInfo <<= (name, description, homepage, licenses, organizationName, organizationHomepage) apply ModuleInfo,
 		classpathFilter in GlobalScope :== "*.jar",
 		externalResolvers <<= (externalResolvers.task.? zipWith resolvers.identity) {
 			case (Some(delegated), Seq()) => delegated
@@ -645,8 +651,8 @@ object Classpaths
 		},
 		ivyConfigurations ++= Configurations.auxiliary,
 		moduleSettings <<= moduleSettings0,
-		makePomConfiguration <<= (artifactPath in makePom, pomExtra, pomPostProcess, pomIncludeRepository, pomAllRepositories) {
-			(file, extra, process, include, all) => new MakePomConfiguration(file, None, extra, process, include, all)
+		makePomConfiguration <<= (artifactPath in makePom, projectInfo, pomExtra, pomPostProcess, pomIncludeRepository, pomAllRepositories) {
+			(file, minfo, extra, process, include, all) => new MakePomConfiguration(file, minfo, None, extra, process, include, all)
 		},
 		deliverLocalConfiguration <<= (crossTarget, ivyLoggingLevel) map { (outDir, level) => deliverConfig( outDir, logging = level ) },
 		deliverConfiguration <<= deliverLocalConfiguration.identity,
@@ -686,8 +692,8 @@ object Classpaths
 			new IvySbt(conf)
 		}
 	def moduleSettings0: Initialize[Task[ModuleSettings]] =
-		(projectID, allDependencies, ivyXML, ivyConfigurations, defaultConfiguration, ivyScala, ivyValidate) map {
-			(pid, deps, ivyXML, confs, defaultConf, ivyS, validate) => new InlineConfiguration(pid, deps, ivyXML, confs, defaultConf, ivyS, validate)
+		(projectID, allDependencies, ivyXML, ivyConfigurations, defaultConfiguration, ivyScala, ivyValidate, projectInfo) map {
+			(pid, deps, ivyXML, confs, defaultConf, ivyS, validate, pinfo) => new InlineConfiguration(pid, pinfo, deps, ivyXML, confs, defaultConf, ivyS, validate)
 		}
 		
 	def sbtClassifiersTasks = inTask(updateSbtClassifiers)(Seq(
