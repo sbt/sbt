@@ -38,6 +38,14 @@ object ModuleID
 		for ( (key, value) <- attributes) yield
 			if(key.startsWith("e:")) (key, value) else ("e:" + key, value)
 }
+/** Additional information about a project module */
+case class ModuleInfo(nameFormal: String, description: String = "", homepage: Option[URL] = None, licenses: Seq[(String, URL)] = Nil, organizationName: String = "", organizationHomepage: Option[URL] = None)
+{
+	def formally(name: String) = copy(nameFormal = name)
+	def describing(desc: String, home: Option[URL]) = copy(description = desc, homepage = home)
+	def licensed(lics: (String, URL)*) = copy(licenses = lics)
+	def organization(name: String, home: Option[URL]) = copy(organizationName = name, organizationHomepage = home)
+}
 sealed trait Resolver
 {
 	def name: String

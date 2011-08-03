@@ -14,7 +14,7 @@ import org.apache.ivy.{core, plugins, util, Ivy}
 import core.IvyPatternHelper
 import core.cache.{CacheMetadataOptions, DefaultRepositoryCacheManager}
 import core.module.descriptor.{Artifact => IArtifact, DefaultArtifact, DefaultDependencyArtifactDescriptor, MDArtifact}
-import core.module.descriptor.{DefaultDependencyDescriptor, DefaultModuleDescriptor, DependencyDescriptor, ModuleDescriptor}
+import core.module.descriptor.{DefaultDependencyDescriptor, DefaultModuleDescriptor, DependencyDescriptor, ModuleDescriptor, License}
 import core.module.id.{ArtifactId,ModuleId, ModuleRevisionId}
 import core.resolve.IvyNode
 import core.settings.IvySettings
@@ -26,7 +26,7 @@ import plugins.resolver.{ChainResolver, DependencyResolver}
 import util.{Message, MessageLogger}
 import util.extendable.ExtendableItem
 
-import scala.xml.NodeSeq
+import scala.xml.{NodeSeq, Text}
 
 final class IvySbt(val configuration: IvyConfiguration)
 {
@@ -124,9 +124,9 @@ final class IvySbt(val configuration: IvyConfiguration)
 				moduleSettings match
 				{
 					case ic: InlineConfiguration => configureInline(ic, configuration.log)
-					case ec: EmptyConfiguration => configureEmpty(ec.module)
-					case pc: PomConfiguration => readPom(pc.file, pc.validate)
-					case ifc: IvyFileConfiguration => readIvyFile(ifc.file, ifc.validate)
+					case ec: EmptyConfiguration => configureEmpty(ec)
+					case pc: PomConfiguration => configurePom(pc)
+					case ifc: IvyFileConfiguration => configureIvyFile(ifc)
 				}
 			moduleSettings.ivyScala.foreach(IvyScala.checkModule(baseModule, baseConfiguration))
 			baseModule.getExtraAttributesNamespaces.asInstanceOf[java.util.Map[String,String]].put("e", "http://ant.apache.org/ivy/extra")
@@ -135,7 +135,7 @@ final class IvySbt(val configuration: IvyConfiguration)
 		private def configureInline(ic: InlineConfiguration, log: Logger) =
 		{
 			import ic._
-			val moduleID = newConfiguredModuleID(module, configurations)
+			val moduleID = newConfiguredModuleID(module, moduleInfo, configurations)
 			val defaultConf = defaultConfiguration getOrElse Configurations.config(ModuleDescriptor.DEFAULT_CONFIGURATION)
 			log.debug("Using inline dependencies specified in Scala" + (if(ivyXML.isEmpty) "." else " and XML."))
 
@@ -144,44 +144,43 @@ final class IvySbt(val configuration: IvyConfiguration)
 			IvySbt.addMainArtifact(moduleID)
 			(moduleID, parser.getDefaultConf)
 		}
-		private def newConfiguredModuleID(module: ModuleID, configurations: Iterable[Configuration]) =
+		private def newConfiguredModuleID(module: ModuleID, moduleInfo: ModuleInfo, configurations: Iterable[Configuration]) =
 		{
 			val mod = new DefaultModuleDescriptor(IvySbt.toID(module), "release", null, false)
 			mod.setLastModified(System.currentTimeMillis)
+			mod.setDescription(moduleInfo.description)
+			moduleInfo.homepage foreach { h => mod.setHomePage(h.toString) }
+			moduleInfo.licenses foreach { l => mod.addLicense(new License(l._1, l._2.toString)) }
 			IvySbt.addConfigurations(mod, configurations)
 			IvySbt.addArtifacts(mod, module.explicitArtifacts)
 			mod
 		}
 
-		/** Parses the given Maven pom 'pomFile'.*/
-		private def readPom(pomFile: File, validate: Boolean) =
+		/** Parses the Maven pom 'pomFile' from the given `PomConfiguration`.*/
+		private def configurePom(pc: PomConfiguration) =
 		{
-			val md = PomModuleDescriptorParser.getInstance.parseDescriptor(settings, toURL(pomFile), validate)
+			val md = PomModuleDescriptorParser.getInstance.parseDescriptor(settings, toURL(pc.file), pc.validate)
 			val dmd = IvySbt.toDefaultModuleDescriptor(md)
 			IvySbt.addConfigurations(dmd, Configurations.defaultInternal)
 			(dmd, "compile")
 		}
-		/** Parses the given Ivy file 'ivyFile'.*/
-		private def readIvyFile(ivyFile: File, validate: Boolean) =
+		/** Parses the Ivy file 'ivyFile' from the given `IvyFileConfiguration`.*/
+		private def configureIvyFile(ifc: IvyFileConfiguration) =
 		{
-			val url = toURL(ivyFile)
 			val parser = new CustomXmlParser.CustomParser(settings, None)
-			parser.setValidate(validate)
-			parser.setSource(url)
+			parser.setValidate(ifc.validate)
+			parser.setSource(toURL(ifc.file))
 			parser.parse()
 			val md = parser.getModuleDescriptor()
 			(IvySbt.toDefaultModuleDescriptor(md), parser.getDefaultConf)
 		}
 		private def toURL(file: File) = file.toURI.toURL
-		private def configureEmpty(module: ModuleID) =
+		private def configureEmpty(ec: EmptyConfiguration) =
 		{
 			val defaultConf = ModuleDescriptor.DEFAULT_CONFIGURATION
-			val moduleID = new DefaultModuleDescriptor(IvySbt.toID(module), "release", null, false)
-			moduleID.setLastModified(System.currentTimeMillis)
-			moduleID.addConfiguration(IvySbt.toIvyConfiguration(Configurations.Default))
-			IvySbt.addArtifacts(moduleID, module.explicitArtifacts)
-			IvySbt.addMainArtifact(moduleID)
-			(moduleID, defaultConf)
+			val mod = newConfiguredModuleID(ec.module, ec.moduleInfo, Seq(Configurations.Default))
+			IvySbt.addMainArtifact(mod)
+			(mod, defaultConf)
 		}
 	}
 }
@@ -348,12 +347,11 @@ private object IvySbt
 	/** Creates a full ivy file for 'module' using the 'dependencies' XML as the part after the &lt;info&gt;...&lt;/info&gt; section. */
 	private def wrapped(module: ModuleID, dependencies: NodeSeq) =
 	{
-		import module._
 		<ivy-module version="2.0" xmlns:e="http://ant.apache.org/ivy/extra">
 			{ if(hasInfo(module, dependencies))
 				NodeSeq.Empty
 			else
-				addExtraAttributes(<info organisation={organization} module={name} revision={revision}/>, module.extraAttributes)
+				addExtraAttributes(defaultInfo(module), module.extraAttributes)
 			}
 			{dependencies}
 			{
@@ -361,6 +359,10 @@ private object IvySbt
 				if(dependencies \\ "publications" isEmpty) <publications/> else NodeSeq.Empty
 			}
 		</ivy-module>
+	}
+	private[this] def defaultInfo(module: ModuleID): scala.xml.Elem = {
+		import module._
+		<info organisation={organization} module={name} revision={revision}/>
 	}
 	private[this] def addExtraAttributes(elem: scala.xml.Elem, extra: Map[String, String]): scala.xml.Elem =
 		(elem /: extra) { case (e, (key,value) ) => e % new scala.xml.UnprefixedAttribute(key, value, scala.xml.Null) }

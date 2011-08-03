@@ -26,7 +26,7 @@ final class PublishConfiguration(val ivyFile: Option[File], val resolverName: St
 
 final class UpdateConfiguration(val retrieve: Option[RetrieveConfiguration], val missingOk: Boolean, val logging: UpdateLogging.Value)
 final class RetrieveConfiguration(val retrieveDirectory: File, val outputPattern: String)
-final case class MakePomConfiguration(file: File, configurations: Option[Iterable[Configuration]] = None, extra: NodeSeq = NodeSeq.Empty, process: XNode => XNode = n => n, filterRepositories: MavenRepository => Boolean = _ => true, allRepositories: Boolean)
+final case class MakePomConfiguration(file: File, moduleInfo: ModuleInfo, configurations: Option[Iterable[Configuration]] = None, extra: NodeSeq = NodeSeq.Empty, process: XNode => XNode = n => n, filterRepositories: MavenRepository => Boolean = _ => true, allRepositories: Boolean)
 	// exclude is a map on a restricted ModuleID
 final case class GetClassifiersConfiguration(module: GetClassifiersModule, exclude: Map[ModuleID, Set[String]], configuration: UpdateConfiguration, ivyScala: Option[IvyScala])
 final case class GetClassifiersModule(id: ModuleID, modules: Seq[ModuleID], configurations: Seq[Configuration], classifiers: Seq[String])
@@ -66,9 +66,9 @@ object IvyActions
 	/** Creates a Maven pom from the given Ivy configuration*/
 	def makePom(module: IvySbt#Module, configuration: MakePomConfiguration, log: Logger)
 	{
-		import configuration.{allRepositories, configurations, extra, file, filterRepositories, process}
+		import configuration.{allRepositories, moduleInfo, configurations, extra, file, filterRepositories, process}
 		module.withModule(log) { (ivy, md, default) =>
-			(new MakePom).write(ivy, md, configurations, extra, process, filterRepositories, allRepositories, file)
+			(new MakePom).write(ivy, md, moduleInfo, configurations, extra, process, filterRepositories, allRepositories, file)
 			log.info("Wrote " + file.getAbsolutePath)
 		}
 	}
@@ -170,7 +170,7 @@ object IvyActions
 			import config.{configuration => c, ivyScala, module => mod}
 			import mod.{configurations => confs, id, modules => deps}
 		val base = restrictedCopy(id).copy(name = id.name + "$" + label)
-		val module = new ivySbt.Module(InlineConfiguration(base, deps).copy(ivyScala = ivyScala))
+		val module = new ivySbt.Module(InlineConfiguration(base, ModuleInfo(base.name), deps).copy(ivyScala = ivyScala))
 		val report = update(module, c, log)
 		val newConfig = config.copy(module = mod.copy(modules = report.allModules))
 		updateClassifiers(ivySbt, newConfig, log)
@@ -183,7 +183,7 @@ object IvyActions
 		val baseModules = modules map restrictedCopy
 		val deps = baseModules.distinct flatMap classifiedArtifacts(classifiers, exclude)
 		val base = restrictedCopy(id).copy(name = id.name + classifiers.mkString("$","_",""))
-		val module = new ivySbt.Module(InlineConfiguration(base, deps).copy(ivyScala = ivyScala, configurations = confs))
+		val module = new ivySbt.Module(InlineConfiguration(base, ModuleInfo(base.name), deps).copy(ivyScala = ivyScala, configurations = confs))
 		val upConf = new UpdateConfiguration(c.retrieve, true, c.logging)
 		update(module, upConf, log)
 	}
