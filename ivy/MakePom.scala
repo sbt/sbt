@@ -20,8 +20,8 @@ import plugins.resolver.{ChainResolver, DependencyResolver, IBiblioResolver}
 class MakePom
 {
 	def encoding = "UTF-8"
-	def write(ivy: Ivy, module: ModuleDescriptor, configurations: Option[Iterable[Configuration]], extra: NodeSeq, process: XNode => XNode, filterRepositories: MavenRepository => Boolean, allRepositories: Boolean, output: File): Unit =
-		write(process(toPom(ivy, module, configurations, extra, filterRepositories, allRepositories)), output)
+	def write(ivy: Ivy, module: ModuleDescriptor, moduleInfo: ModuleInfo, configurations: Option[Iterable[Configuration]], extra: NodeSeq, process: XNode => XNode, filterRepositories: MavenRepository => Boolean, allRepositories: Boolean, output: File): Unit =
+		write(process(toPom(ivy, module, moduleInfo, configurations, extra, filterRepositories, allRepositories)), output)
 	// use \n as newline because toString uses PrettyPrinter, which hard codes line endings to be \n
 	def write(node: XNode, output: File): Unit = write(toString(node), output, "\n")
 	def write(xmlString: String, output: File, newline: String)
@@ -37,10 +37,12 @@ class MakePom
 	}
 
 	def toString(node: XNode): String = new PrettyPrinter(1000, 4).format(node)
-	def toPom(ivy: Ivy, module: ModuleDescriptor, configurations: Option[Iterable[Configuration]], extra: NodeSeq, filterRepositories: MavenRepository => Boolean, allRepositories: Boolean): XNode =
+	def toPom(ivy: Ivy, module: ModuleDescriptor, moduleInfo: ModuleInfo, configurations: Option[Iterable[Configuration]], extra: NodeSeq, filterRepositories: MavenRepository => Boolean, allRepositories: Boolean): XNode =
 		(<project xmlns="http://maven.apache.org/POM/4.0.0"  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
 			<modelVersion>4.0.0</modelVersion>
 			{ makeModuleID(module) }
+			<name>{moduleInfo.nameFormal}</name>
+			{ makeOrganization(moduleInfo) }
 			{ extra }
 			{ makeProperties(module) }
 			{ makeDependencies(module, configurations) }
@@ -60,6 +62,13 @@ class MakePom
 			revision(mrid.getRevision) ++
 			licenses(module.getLicenses)) : NodeSeq )
 		a ++ b
+	}
+	def makeOrganization(moduleInfo: ModuleInfo): NodeSeq =
+	{
+		<organization>
+			<name>{moduleInfo.organizationName}</name>
+			{ moduleInfo.organizationHomepage map { h => <url>{h}</url> } getOrElse NodeSeq.Empty }
+		</organization>
 	}
 	def makeProperties(module: ModuleDescriptor): NodeSeq =
 	{
