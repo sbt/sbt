@@ -627,4 +627,6 @@ object IO
 	}
 	def assertAbsolute(f: File) = assert(f.isAbsolute, "Not absolute: " + f)
 	def assertAbsolute(uri: URI) = assert(uri.isAbsolute, "Not absolute: " + uri)
+
+	def parseClasspath(s: String): Seq[File] = IO.pathSplit(s).map(new File(_)).toSeq
 }

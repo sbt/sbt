@@ -5,7 +5,7 @@ package sbt
 package compiler
 
 	import java.io.File
-	import CompilerArguments.{abs, absString}
+	import CompilerArguments.{abs, absString, BootClasspathOption}
 
 /** Forms the list of options that is passed to the compiler from the required inputs and other options.
 * The directory containing scala-library.jar and scala-compiler.jar (scalaLibDirectory) is required in
@@ -45,11 +45,12 @@ final class CompilerArguments(scalaInstance: ScalaInstance, cp: ClasspathOptions
 	}
 	def filterLibrary(classpath: Seq[File]) =
 		if(cp.filterLibrary) classpath.filterNot(_.getName contains ScalaArtifacts.LibraryID) else classpath
-	def bootClasspathOption = if(cp.autoBoot) Seq("-bootclasspath", createBootClasspath) else Nil
-	def bootClasspath = if(cp.autoBoot) sbt.IO.pathSplit(createBootClasspath).map(new File(_)).toSeq else Nil
+	def bootClasspathOption = if(cp.autoBoot) Seq(BootClasspathOption, createBootClasspath) else Nil
+	def bootClasspath = if(cp.autoBoot) IO.parseClasspath(createBootClasspath) else Nil
 }
 object CompilerArguments
 {
+	val BootClasspathOption = "-bootclasspath"
 	def abs(files: Seq[File]): Seq[String] = files.map(_.getAbsolutePath)
 	def abs(files: Set[File]): Seq[String] = abs(files.toSeq)
 	def absString(files: Seq[File]): String = abs(files).mkString(File.pathSeparator)

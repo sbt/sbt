@@ -55,7 +55,7 @@ class AggressiveCompile(cacheDirectory: File)
 		val absClasspath = classpath.map(_.getCanonicalFile)
 		val apiOption= (api: Either[Boolean, Source]) => api.right.toOption
 		val cArgs = new CompilerArguments(compiler.scalaInstance, compiler.cp)
-		val searchClasspath = withBootclasspath(cArgs, absClasspath)
+		val searchClasspath = explicitBootClasspath(options.options) ++ withBootclasspath(cArgs, absClasspath)
 		val entry = Locate.entry(searchClasspath, definesClass)
 		
 		val compile0 = (include: Set[File], callback: AnalysisCallback) => {
@@ -105,6 +105,9 @@ class AggressiveCompile(cacheDirectory: File)
 			case None => (Analysis.Empty, None)
 		}
 	def javaOnly(f: File) = f.getName.endsWith(".java")
+
+	private[this] def explicitBootClasspath(options: Seq[String]): Seq[File] =
+		options.dropWhile(_ != CompilerArguments.BootClasspathOption).drop(1).take(1).headOption.toList.flatMap(IO.parseClasspath)
 
 	import AnalysisFormats._
 	val store = AggressiveCompile.staticCache(cacheDirectory, AnalysisStore.sync(AnalysisStore.cached(FileBasedStore(cacheDirectory))))
