@@ -97,7 +97,7 @@ object Scope
 			case BuildRef(uri) => BuildRef(resolveBuild(current, uri))
 		}
 
-	def display(config: ConfigKey): String = if(config.name == "compile") "" else config.name + ":"
+	def display(config: ConfigKey): String = config.name + ":"
 	def display(scope: Scope, sep: String): String = 
 	{
 			import scope.{project, config, task, extra}
