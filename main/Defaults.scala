@@ -218,7 +218,7 @@ object Defaults extends BuildCommon
 			override def watchPaths(s: State) = EvaluateTask.evaluateTask(Project structure s, key, s, base) match {
 				case Some(Value(ps)) => ps
 				case Some(Inc(i)) => throw i
-				case None => error("key not found: " + Project.display(key))
+				case None => error("key not found: " + Project.displayFull(key))
 			}
 		}
 	}
@@ -244,14 +244,16 @@ object Defaults extends BuildCommon
 		definedTests <<= TaskData.writeRelated(detectTests)(_.map(_.name).distinct) triggeredBy compile,
 		testListeners in GlobalScope :== Nil,
 		testOptions in GlobalScope :== Nil,
-		executeTests <<= (streams in test, loadedTestFrameworks, parallelExecution in test, testOptions in test, testLoader, definedTests, resolvedScoped) flatMap {
-			(s, frameworkMap, par, options, loader, discovered, scoped) => Tests(frameworkMap, loader, discovered, options, par, noTestsMessage(ScopedKey(scoped.scope, test.key)), s.log)
+		executeTests <<= (streams in test, loadedTestFrameworks, parallelExecution in test, testOptions in test, testLoader, definedTests, resolvedScoped, state) flatMap {
+			(s, frameworkMap, par, options, loader, discovered, scoped, st) =>
+				implicit val display = Project.showContextKey(st)
+				Tests(frameworkMap, loader, discovered, options, par, noTestsMessage(ScopedKey(scoped.scope, test.key)), s.log)
 		},
 		test <<= (executeTests, streams) map { (results, s) => Tests.showResults(s.log, results) },
 		testOnly <<= testOnlyTask
 	)
-	private[this] def noTestsMessage(scoped: ScopedKey[_]): String =
-		"No tests to run for " + Project.display(scoped)
+	private[this] def noTestsMessage(scoped: ScopedKey[_])(implicit display: Show[ScopedKey[_]]): String =
+		"No tests to run for " + display(scoped)
 
 	lazy val TaskGlobal: Scope = ThisScope.copy(task = Global)
 	def testTaskOptions(key: Scoped): Seq[Setting[_]] = inTask(key)( Seq(
@@ -276,10 +278,11 @@ object Defaults extends BuildCommon
 
 	def testOnlyTask = 
 	InputTask( TaskData(definedTests)(testOnlyParser)(Nil) ) { result =>  
-		(streams, loadedTestFrameworks, parallelExecution in testOnly, testOptions in testOnly, testLoader, definedTests, resolvedScoped, result) flatMap {
-			case (s, frameworks, par, opts, loader, discovered, scoped, (tests, frameworkOptions)) =>
+		(streams, loadedTestFrameworks, parallelExecution in testOnly, testOptions in testOnly, testLoader, definedTests, resolvedScoped, result, state) flatMap {
+			case (s, frameworks, par, opts, loader, discovered, scoped, (tests, frameworkOptions), st) =>
 				val filter = selectedFilter(tests)
 				val modifiedOpts = Tests.Filter(filter) +: Tests.Argument(frameworkOptions : _*) +: opts
+				implicit val display = Project.showContextKey(st)
 				Tests(frameworks, loader, discovered, modifiedOpts, par, noTestsMessage(scoped), s.log) map { results =>
 					Tests.showResults(s.log, results)
 				}

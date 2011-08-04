@@ -102,7 +102,7 @@ object EvaluateTask
 			case _ => c.toString
 		}
 	def name(node: Task[_]): String =
-		node.info.name orElse transformNode(node).map(Project.display) getOrElse ("<anon-" + System.identityHashCode(node).toHexString + ">")
+		node.info.name orElse transformNode(node).map(Project.displayFull) getOrElse ("<anon-" + System.identityHashCode(node).toHexString + ">")
 	def liftAnonymous: Incomplete => Incomplete = {
 		case i @ Incomplete(node, tpe, None, causes, None) =>
 			causes.find( inc => !inc.node.isDefined && (inc.message.isDefined || inc.directCause.isDefined)) match {

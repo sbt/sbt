@@ -98,16 +98,17 @@ object Scope
 		}
 
 	def display(config: ConfigKey): String = config.name + ":"
-	def display(scope: Scope, sep: String): String = 
+	def display(scope: Scope, sep: String): String = display(scope, sep, ref => Project.display(ref) + "/")
+	def display(scope: Scope, sep: String, showProject: Reference => String): String = 
 	{
 			import scope.{project, config, task, extra}
-		val projectPrefix = project.foldStrict(Project.display, "*", ".")
+		val projectPrefix = project.foldStrict(showProject, "*/", "./")
 		val configPrefix = config.foldStrict(display, "*:", ".:")
 		val taskPostfix = task.foldStrict(x => ("for " + x.label) :: Nil, Nil, Nil)
 		val extraPostfix = extra.foldStrict(_.entries.map( _.toString ).toList, Nil, Nil)
 		val extras = taskPostfix ::: extraPostfix
 		val postfix = if(extras.isEmpty) "" else extras.mkString("(", ", ", ")")
-		projectPrefix + "/" + configPrefix + sep + postfix
+		projectPrefix + configPrefix + sep + postfix
 	}
 
 	def parseScopedKey(command: String): (Scope, String) =

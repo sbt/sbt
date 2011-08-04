@@ -315,7 +315,7 @@ object BuiltinCommands
 	def reapply(newSession: SessionSettings, structure: Load.BuildStructure, s: State): State =
 	{
 		logger(s).info("Reapplying settings...")
-		val newStructure = Load.reapply(newSession.mergeSettings, structure)
+		val newStructure = Load.reapply(newSession.mergeSettings, structure)( Project.showContextKey(newSession, structure) )
 		Project.setProject(newSession, newStructure, s)
 	}
 	def set = Command.single(SetCommand, setBrief, setDetailed) { (s, arg) =>
@@ -327,14 +327,14 @@ object BuiltinCommands
 		reapply(newSession, structure, s)
 	}
 	def inspect = Command(InspectCommand, inspectBrief, inspectDetailed)(inspectParser) { case (s,(actual,sk)) =>
-		val detailString = Project.details(Project.structure(s), actual, sk.scope, sk.key)
+		val detailString = Project.details(Project.structure(s), actual, sk.scope, sk.key)( Project.showContextKey(s) )
 		logger(s).info(detailString)
 		s
 	}
 	def lastGrep = Command(LastGrepCommand, lastGrepBrief, lastGrepDetailed)(lastGrepParser) {
 		case (s, (pattern,Some(sk))) =>
-			val (str, ref) = extractLast(s)
-			Output.lastGrep(sk, str, pattern)
+			val (str, ref, display) = extractLast(s)
+			Output.lastGrep(sk, str, pattern)(display)
 			s
 		case (s, (pattern, None)) =>
 			Output.lastGrep(CommandSupport.globalLogging(s).backing, pattern)
@@ -342,7 +342,7 @@ object BuiltinCommands
 	}
 	def extractLast(s: State) = {
 		val ext = Project.extract(s)
-		(ext.structure, Select(ext.currentRef))
+		(ext.structure, Select(ext.currentRef), ext.showKey)
 	}
 	def inspectParser = (s: State) => token((Space ~> ("actual" ^^^ true)) ?? false) ~ spacedKeyParser(s)
 	val spacedKeyParser = (s: State) => Act.requireSession(s, token(Space) ~> Act.scopedKeyParser(s))
@@ -350,8 +350,8 @@ object BuiltinCommands
 	def lastGrepParser(s: State) = Act.requireSession(s, (token(Space) ~> token(NotSpace, "<pattern>")) ~ optSpacedKeyParser(s))
 	def last = Command(LastCommand, lastBrief, lastDetailed)(optSpacedKeyParser) {
 		case (s,Some(sk)) =>
-			val (str, ref) = extractLast(s)
-			Output.last(sk, str)
+			val (str, ref, display) = extractLast(s)
+			Output.last(sk, str)(display)
 			s
 		case (s, None) =>
 			Output.last( CommandSupport.globalLogging(s).backing )

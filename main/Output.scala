@@ -30,10 +30,10 @@ object Output
 	}
 	final val DefaultTail = "> "
 
-	def last(key: ScopedKey[_], structure: BuildStructure): Unit  =  printLines( flatLines(lastLines(key, structure))(idFun) )
+	def last(key: ScopedKey[_], structure: BuildStructure)(implicit display: Show[ScopedKey[_]]): Unit  =  printLines( flatLines(lastLines(key, structure))(idFun) )
 	def last(file: File, tailDelim: String = DefaultTail): Unit  =  printLines(tailLines(file, tailDelim))
 
-	def lastGrep(key: ScopedKey[_], structure: BuildStructure, patternString: String): Unit =
+	def lastGrep(key: ScopedKey[_], structure: BuildStructure, patternString: String)(implicit display: Show[ScopedKey[_]]): Unit =
 	{
 		val pattern = Pattern compile patternString
 		val lines = flatLines( lastLines(key, structure) )(_ flatMap showMatches(pattern))
@@ -44,12 +44,12 @@ object Output
 	def grep(lines: Seq[String], patternString: String): Seq[String] =
 		lines flatMap showMatches(Pattern compile patternString)
 
-	def flatLines(outputs: Seq[KeyValue[Seq[String]]])(f: Seq[String] => Seq[String]): Seq[String] =
+	def flatLines(outputs: Seq[KeyValue[Seq[String]]])(f: Seq[String] => Seq[String])(implicit display: Show[ScopedKey[_]]): Seq[String] =
 	{
 		val single = outputs.size == 1
 		outputs flatMap { case KeyValue(key, lines) =>
 			val flines = f(lines)
-			if(!single) bold(Project.display(key)) +: flines else flines
+			if(!single) bold(display(key)) +: flines else flines
 		}
 	}
 	def printLines(lines: Seq[String]) = lines foreach println

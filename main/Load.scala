@@ -120,7 +120,7 @@ object Load
 		lazy val rootEval = lazyEval(loaded.units(loaded.root).unit)
 		val settings = finalTransforms(buildConfigurations(loaded, getRootProject(projects), rootEval, config.injectSettings))
 		val delegates = config.delegates(loaded)
-		val data = Project.makeSettings(settings, delegates, config.scopeLocal)
+		val data = Project.makeSettings(settings, delegates, config.scopeLocal)( Project.showLoadingKey( loaded ) )
 		val index = structureIndex(data, settings)
 		val streams = mkStreams(projects, loaded.root, data)
 		(rootEval, new BuildStructure(projects, loaded.root, settings, data, index, streams, delegates, config.scopeLocal))
@@ -150,7 +150,7 @@ object Load
 				case resolvedScoped.key => Some(defining.asInstanceOf[T])
 				case parseResult.key =>
 						import std.TaskExtra._
-					val getResult = InputTask.inputMap map { m => m get defining getOrElse error("No parsed value for " + Project.display(defining) + "\n" + m) }
+					val getResult = InputTask.inputMap map { m => m get defining getOrElse error("No parsed value for " + Project.displayFull(defining) + "\n" + m) }
 					Some(getResult.asInstanceOf[T])
 				case _ => None
 			}
@@ -169,7 +169,7 @@ object Load
 	}
 
 		// Reevaluates settings after modifying them.  Does not recompile or reload any build components.
-	def reapply(newSettings: Seq[Setting[_]], structure: BuildStructure): BuildStructure =
+	def reapply(newSettings: Seq[Setting[_]], structure: BuildStructure)(implicit display: Show[ScopedKey[_]]): BuildStructure =
 	{
 		val transformed = finalTransforms(newSettings)
 		val newData = Project.makeSettings(transformed, structure.delegates, structure.scopeLocal)

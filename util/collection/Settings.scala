@@ -41,7 +41,8 @@ private final class Settings0[Scope](val data: Map[Scope, AttributeMap], val del
 // this trait is intended to be mixed into an object
 trait Init[Scope]
 {
-	def display(skey: ScopedKey[_]): String
+	/** The Show instance used when a detailed String needs to be generated.  It is typically used when no context is available.*/
+	def showFullKey: Show[ScopedKey[_]]
 
 	final case class ScopedKey[T](scope: Scope, key: AttributeKey[T])
 
@@ -72,23 +73,23 @@ trait Init[Scope]
 	def asTransform(s: Settings[Scope]): ScopedKey ~> Id = new (ScopedKey ~> Id) {
 		def apply[T](k: ScopedKey[T]): T = getValue(s, k)
 	}
-	def getValue[T](s: Settings[Scope], k: ScopedKey[T]) = s.get(k.scope, k.key) getOrElse error("Internal settings error: invalid reference to " + display(k))
+	def getValue[T](s: Settings[Scope], k: ScopedKey[T]) = s.get(k.scope, k.key) getOrElse error("Internal settings error: invalid reference to " + showFullKey(k))
 	def asFunction[T](s: Settings[Scope]): ScopedKey[T] => T = k => getValue(s, k)
 
-	def compiled(init: Seq[Setting[_]], actual: Boolean = true)(implicit delegates: Scope => Seq[Scope], scopeLocal: ScopeLocal): CompiledMap =
+	def compiled(init: Seq[Setting[_]], actual: Boolean = true)(implicit delegates: Scope => Seq[Scope], scopeLocal: ScopeLocal, display: Show[ScopedKey[_]]): CompiledMap =
 	{
 		// prepend per-scope settings 
 		val withLocal = addLocal(init)(scopeLocal)
 		// group by Scope/Key, dropping dead initializations
 		val sMap: ScopedMap = grouped(withLocal)
 		// delegate references to undefined values according to 'delegates'
-		val dMap: ScopedMap = if(actual) delegate(sMap)(delegates) else sMap
+		val dMap: ScopedMap = if(actual) delegate(sMap)(delegates, display) else sMap
 		// merge Seq[Setting[_]] into Compiled
 		compile(dMap)
 	}
-	def make(init: Seq[Setting[_]])(implicit delegates: Scope => Seq[Scope], scopeLocal: ScopeLocal): Settings[Scope] =
+	def make(init: Seq[Setting[_]])(implicit delegates: Scope => Seq[Scope], scopeLocal: ScopeLocal, display: Show[ScopedKey[_]]): Settings[Scope] =
 	{
-		val cMap = compiled(init)(delegates, scopeLocal)
+		val cMap = compiled(init)(delegates, scopeLocal, display)
 		// order the initializations.  cyclic references are detected here.
 		val ordered: Seq[Compiled] = sort(cMap)
 		// evaluation: apply the initializations.
@@ -116,7 +117,7 @@ trait Init[Scope]
 	def addLocal(init: Seq[Setting[_]])(implicit scopeLocal: ScopeLocal): Seq[Setting[_]] =
 		init.flatMap( _.dependsOn flatMap scopeLocal )  ++  init
 		
-	def delegate(sMap: ScopedMap)(implicit delegates: Scope => Seq[Scope]): ScopedMap =
+	def delegate(sMap: ScopedMap)(implicit delegates: Scope => Seq[Scope], display: Show[ScopedKey[_]]): ScopedMap =
 	{
 		def refMap(refKey: ScopedKey[_], isFirst: Boolean) = new ValidateRef { def apply[T](k: ScopedKey[T]) =
 			delegateForKey(sMap, k, delegates(k.scope), refKey, isFirst)
@@ -156,7 +157,7 @@ trait Init[Scope]
 		map.set(key.scope, key.key, value)
 	}
 
-	def showUndefined(u: Undefined, sMap: ScopedMap, delegates: Scope => Seq[Scope]): String =
+	def showUndefined(u: Undefined, sMap: ScopedMap, delegates: Scope => Seq[Scope])(implicit display: Show[ScopedKey[_]]): String =
 	{
 		val guessed = guessIntendedScope(sMap, delegates, u.referencedKey)
 		display(u.referencedKey) + " from " + display(u.definingKey) + guessed.map(g => "\n     Did you mean " + display(g) + " ?").toList.mkString
@@ -178,7 +179,7 @@ trait Init[Scope]
 	final class Uninitialized(val undefined: Seq[Undefined], msg: String) extends Exception(msg)
 	final class Undefined(val definingKey: ScopedKey[_], val referencedKey: ScopedKey[_])
 	def Undefined(definingKey: ScopedKey[_], referencedKey: ScopedKey[_]): Undefined = new Undefined(definingKey, referencedKey)
-	def Uninitialized(sMap: ScopedMap, delegates: Scope => Seq[Scope], keys: Seq[Undefined]): Uninitialized =
+	def Uninitialized(sMap: ScopedMap, delegates: Scope => Seq[Scope], keys: Seq[Undefined])(implicit display: Show[ScopedKey[_]]): Uninitialized =
 	{
 		assert(!keys.isEmpty)
 		val suffix = if(keys.length > 1) "s" else ""
@@ -187,7 +188,7 @@ trait Init[Scope]
 	}
 	final class Compiled(val key: ScopedKey[_], val dependencies: Iterable[ScopedKey[_]], val eval: Settings[Scope] => Settings[Scope])
 	{
-		override def toString = display(key)
+		override def toString = showFullKey(key)
 	}
 
 	sealed trait Initialize[T]

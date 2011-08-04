@@ -3,7 +3,7 @@
  */
 package sbt
 
-	import Project.ScopedKey
+	import Project.{ScopedKey, showContextKey}
 	import Keys.{sessionSettings, thisProject}
 	import Load.BuildStructure
 	import complete.{DefaultParsers, Parser}
@@ -143,8 +143,9 @@ object Act
 	private[this] def actParser0(state: State) =
 	{
 		val extracted = Project extract state
+		import extracted.{showKey, structure}
 		showParser.flatMap { show =>
-			scopedKeyParser(extracted) flatMap Aggregation.valueParser(state, extracted.structure, show)
+			scopedKeyParser(extracted) flatMap Aggregation.valueParser(state, structure, show)
 		}
 	}
 	def showParser = token( ("show" ~ Space) ^^^ true) ?? false

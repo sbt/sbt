@@ -199,7 +199,7 @@ object Index
 object BuildStreams
 {
 		import Load.{BuildStructure, LoadedBuildUnit}
-		import Project.display
+		import Project.displayFull
 		import std.{TaskExtra,Transform}
 		import Path._
 		import BuildPaths.outputDirectory
@@ -209,7 +209,7 @@ object BuildStreams
 	final val StreamsDirectory = "streams"
 
 	def mkStreams(units: Map[URI, LoadedBuildUnit], root: URI, data: Settings[Scope]): Streams =
-		std.Streams( path(units, root, data), display, LogManager.construct(data) )
+		std.Streams( path(units, root, data), displayFull, LogManager.construct(data) )
 		
 	def path(units: Map[URI, LoadedBuildUnit], root: URI, data: Settings[Scope])(scoped: ScopedKey[_]): File =
 		resolvePath( projectPath(units, root, scoped, data), nonProjectPath(scoped) )
@@ -221,7 +221,7 @@ object BuildStreams
 		axis match
 		{
 			case Global => GlobalPath
-			case This => error("Unresolved This reference for " + label + " in " + display(scoped))
+			case This => error("Unresolved This reference for " + label + " in " + Project.displayFull(scoped))
 			case Select(t) => show(t)
 		}
 	def nonProjectPath[T](scoped: ScopedKey[T]): Seq[String] =
@@ -240,8 +240,8 @@ object BuildStreams
 			case Global => refTarget(GlobalScope, units(root).localBase, data) / GlobalPath
 			case Select(br @ BuildRef(uri)) => refTarget(br, units(uri).localBase, data) / BuildUnitPath
 			case Select(pr @ ProjectRef(uri, id)) => refTarget(pr, units(uri).defined(id).base, data)
-			case Select(pr) => error("Unresolved project reference (" + pr + ") in " + display(scoped))
-			case This => error("Unresolved project reference (This) in " + display(scoped))
+			case Select(pr) => error("Unresolved project reference (" + pr + ") in " + displayFull(scoped))
+			case This => error("Unresolved project reference (This) in " + displayFull(scoped))
 		}
 		
 	def refTarget(ref: ResolvedReference, fallbackBase: File, data: Settings[Scope]): File =
