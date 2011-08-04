@@ -22,7 +22,7 @@ object ScalaArtifacts
 
 import ScalaArtifacts._
 
-final case class IvyScala(scalaVersion: String, configurations: Iterable[Configuration], checkExplicit: Boolean, filterImplicit: Boolean, overrideScalaVersion: Boolean, substituteCross: ModuleID => ModuleID)
+final case class IvyScala(scalaVersion: String, configurations: Iterable[Configuration], checkExplicit: Boolean, filterImplicit: Boolean, overrideScalaVersion: Boolean, substituteCross: ModuleID => ModuleID, ignoreScalaVersions: Boolean=false)
 {
 	// otherwise, Ivy produces the error: "impossible to get artifacts when data has not been loaded"
 	//   which may be related to sbt's custom conflict manager (now removed), to IVY-987, or both
@@ -33,7 +33,7 @@ private object IvyScala
 	/** Performs checks/adds filters on Scala dependencies (if enabled in IvyScala). */
 	def checkModule(module: DefaultModuleDescriptor, conf: String)(check: IvyScala)
 	{
-		if(check.checkExplicit)
+		if(check.checkExplicit && !check.ignoreScalaVersions)
 			checkDependencies(module, check.scalaVersion, check.configurations)
 		if(check.filterImplicit)
 			excludeScalaJars(module, check.configurations)
@@ -60,6 +60,7 @@ private object IvyScala
 		for(dep <- module.getDependencies.toList)
 		{
 			val id = dep.getDependencyRevisionId
+	                // Note: this needs to be disabled when bootstrapping scala.
 			if(id.getOrganisation == Organization && id.getRevision != scalaVersion && dep.getModuleConfigurations.exists(configSet))
 				error("Version specified for dependency " + id + " differs from Scala version in project (" + scalaVersion + ").")
 		}
