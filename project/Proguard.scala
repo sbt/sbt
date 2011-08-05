@@ -128,7 +128,7 @@ object LaunchProguard
 	private def jlineFilter = "(!META-INF/**)"
 	private def generalFilter = "(!META-INF/**,!*.properties)"
 
-	private def withJar[T](files: Seq[File], name: String) = mkpath(files.firstOption getOrElse error(name + " not present") )
+	private def withJar[T](files: Seq[File], name: String) = mkpath(files.headOption getOrElse error(name + " not present") )
 	private def isJarX(x: String)(file: File) =
 	{
 		val name = file.getName
