@@ -126,7 +126,7 @@ object EvaluateConfigurations
 		}
 		loader => result.getValue(loader).asInstanceOf[Project.SettingsDefinition].settings
 	}
-	private[this] def isSpace = (c: Char) => Character isSpace c
+	private[this] def isSpace = (c: Char) => Character isWhitespace c
 	private[this] def fstS(f: String => Boolean): ((String,Int)) => Boolean = { case (s,i) => f(s) }
 	private[this] def firstNonSpaceIs(lit: String) = (_: String).view.dropWhile(isSpace).startsWith(lit)
 	private[this] def or[A](a: A => Boolean, b: A => Boolean): A => Boolean = in => a(in) || b(in)

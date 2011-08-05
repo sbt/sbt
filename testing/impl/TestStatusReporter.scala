@@ -13,7 +13,7 @@ private[sbt] class TestStatusReporter(path: Path, log: Logger) extends TestsList
 	private lazy val succeeded: Map[String, Long] = TestStatus.read(path, log)
 
 	def doInit {}
-	def startGroup(name: String) { succeeded removeKey name }
+	def startGroup(name: String) { succeeded remove name }
 	def testEvent(event: TestEvent) {}
 	def endGroup(name: String, t: Throwable) {}
 	def endGroup(name: String, result: Result.Value)

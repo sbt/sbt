@@ -12,16 +12,7 @@ object Status
 		commands += stampVersion
 	)
 	def stampVersion = Command.command("stamp-version") { state =>
-		append((version in ThisBuild ~= stamp) :: Nil, state)
-	}
-	// TODO: replace with extracted.append from 0.10.1
-	def append(settings: Seq[Setting[_]], state: State): State =
-	{
-		val extracted = Project.extract(state)
-			import extracted._
-		val append = Load.transformSettings(Load.projectScope(currentRef), currentRef.build, rootProject, settings)
-		val newStructure = Load.reapply(session.original ++ append, structure)
-		Project.setProject(session, newStructure, state)
+		Project.extract(state).append((version in ThisBuild ~= stamp) :: Nil, state)
 	}
 	def stamp(v: String): String =
 		if(v endsWith Snapshot)
