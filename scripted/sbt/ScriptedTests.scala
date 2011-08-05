@@ -24,7 +24,7 @@ final class ScriptedTests(resourceBaseDirectory: File, bufferLog: Boolean, sbtVe
 			import Path._
 			import GlobFilter._
 		var failed = false
-		for(groupDir <- (resourceBaseDirectory * group).getFiles; nme <- (groupDir * name).getFiles ) {
+		for(groupDir <- (resourceBaseDirectory * group).get; nme <- (groupDir * name).get ) {
 			val g = groupDir.getName
 			val n = nme.getName
 			println("Running " + g + " / " + n)
