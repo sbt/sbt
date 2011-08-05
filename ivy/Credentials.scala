@@ -37,7 +37,7 @@ object Credentials
 		if(path.exists)
 		{
 			val properties = read(path)
-			def get(keys: List[String]) = keys.flatMap(properties.get).firstOption.toRight(keys.head + " not specified in credentials file: " + path)
+			def get(keys: List[String]) = keys.flatMap(properties.get).headOption.toRight(keys.head + " not specified in credentials file: " + path)
 
 			List.separate( List(RealmKeys, HostKeys, UserKeys, PasswordKeys).map(get) ) match
 			{
