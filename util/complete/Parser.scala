@@ -346,6 +346,7 @@ trait ParserMain
 
 	def not(p: Parser[_]): Parser[Unit] = new Not(p)
 
+	def oneOf[T](p: Seq[Parser[T]]): Parser[T] = p.reduceLeft(_ | _)
 	def seq[T](p: Seq[Parser[T]]): Parser[Seq[T]] = seq0(p, Nil)
 	def seq0[T](p: Seq[Parser[T]], errors: => Seq[String]): Parser[Seq[T]] =
 	{

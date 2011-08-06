@@ -21,11 +21,14 @@ object Act
 		for {
 			proj <- optProjectRef(index, current)
 			confAmb <- config( index configs proj )
-			keyConf <- key(index, proj, configs(confAmb, defaultConfigs, proj), keyMap)
-			taskExtra <- taskExtrasParser(index.tasks(proj, keyConf._2, keyConf._1.label), keyMap, IMap.empty) }
-		yield {
-			val (key, conf) = keyConf
-			val (task, extra) = taskExtra
+			keyConfs <- key(index, proj, configs(confAmb, defaultConfigs, proj), keyMap)
+			keyConfTaskExtra <- {
+				val andTaskExtra = (key: AttributeKey[_], conf: Option[String]) => 
+					taskExtrasParser(index.tasks(proj, conf, key.label), keyMap, IMap.empty) map { case (task, extra) => (key, conf, task, extra) }
+				oneOf(keyConfs map { _ flatMap andTaskExtra.tupled })
+			}
+		} yield {
+			val (key, conf, task, extra) = keyConfTaskExtra
 			ScopedKey( Scope( toAxis(proj, Global), toAxis(conf map ConfigKey.apply, Global), task, extra), key )
 		}
 	}
@@ -52,13 +55,15 @@ object Act
 			case Some(_) => explicit :: Nil
 		}
 
-	def key(index: KeyIndex, proj: Option[ResolvedReference], confs: Seq[Option[String]], keyMap: Map[String,AttributeKey[_]]): Parser[(AttributeKey[_], Option[String])] =
+	def key(index: KeyIndex, proj: Option[ResolvedReference], confs: Seq[Option[String]], keyMap: Map[String,AttributeKey[_]]): Parser[Seq[Parser[(AttributeKey[_], Option[String])]]] =
 	{
 		val confMap = confs map { conf => (conf, index.keys(proj, conf)) } toMap;
 		val allKeys = (Set.empty[String] /: confMap.values)(_ ++ _)
-		token(ID !!! "Expected key" examples allKeys).flatMap { keyString =>
-			val conf = confs.flatMap { conf => if(confMap(conf) contains keyString) conf :: Nil else Nil } headOption;
-			getKey(keyMap, keyString, k => (k, conf flatMap idFun))
+		token(ID !!! "Expected key" examples allKeys).map { keyString =>
+			val valid = confs.filter{ conf => confMap(conf) contains keyString }
+			def get(conf: Option[String]) = getKey(keyMap, keyString, k => (k, conf))
+			val parsers = valid map { conf => getKey(keyMap, keyString, k => (k, conf)) }
+			if(parsers.isEmpty) get(None) :: Nil else parsers
 		}
 	}
 	def getKey[T](keyMap: Map[String,AttributeKey[_]], keyString: String, f: AttributeKey[_] => T): Parser[T] =
