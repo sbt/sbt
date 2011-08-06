@@ -161,9 +161,14 @@ object Defaults extends BuildCommon
 		scalaInstance <<= scalaInstanceSetting,
 		scalaVersion in GlobalScope <<= appConfiguration( _.provider.scalaProvider.version),
 		crossScalaVersions in GlobalScope <<= Seq(scalaVersion).join,
-		crossTarget <<= (target, scalaVersion, crossPaths)( (t,sv,cross) => if(cross) t / ("scala-" + sv) else t ),
+		crossTarget <<= (target, scalaVersion, sbtVersion, sbtPlugin, crossPaths)(makeCrossTarget),
 		cacheDirectory <<= crossTarget / "cache"
 	)
+	def makeCrossTarget(t: File, sv: String, sbtv: String, plugin: Boolean, cross: Boolean): File =
+	{
+		val scalaBase = if(cross) t / ("scala-" + sv) else t
+		if(plugin) scalaBase / ("sbt-" + sbtv) else scalaBase
+	}
 	def compilersSetting = compilers <<= (scalaInstance, appConfiguration, streams, classpathOptions, javaHome) map { (si, app, s, co, jh) => Compiler.compilers(si, co, jh)(app, s.log) }
 
 	lazy val configTasks = Seq(
