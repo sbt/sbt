@@ -99,6 +99,7 @@ object Keys
 	val cleanFiles = SettingKey[Seq[File]]("clean-files", "The files to recursively delete during a clean.")
 	val cleanKeepFiles = SettingKey[Seq[File]]("clean-keep-files", "Files to keep during a clean.")
 	val crossPaths = SettingKey[Boolean]("cross-paths", "If true, enables cross paths, which distinguish output directories for cross-building.")
+	val taskTemporaryDirectory = SettingKey[File]("task-temporary-directory", "Directory used for temporary files for tasks that is deleted after each task execution.")
 
 		// Generators
 	val sourceGenerators = SettingKey[Seq[Task[Seq[File]]]]("source-generators", "List of tasks that generate sources.")
