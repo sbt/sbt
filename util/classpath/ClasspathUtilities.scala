@@ -26,8 +26,10 @@ object ClasspathUtilities
 	def toLoader(paths: Seq[File], parent: ClassLoader, resourceMap: Map[String,String], nativeTemp: File): ClassLoader =
 		new URLClassLoader(Path.toURLs(paths), parent) with RawResources with NativeCopyLoader {
 			override def resources = resourceMap
-			override val config = new NativeCopyConfig(nativeTemp, paths, Nil)
+			override val config = new NativeCopyConfig(nativeTemp, paths, javaLibraryPaths)
 		}
+
+	def javaLibraryPaths: Seq[File] = IO.parseClasspath(System.getProperty("java.library.path"))
 
 	lazy val rootLoader =
 	{
