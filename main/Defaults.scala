@@ -607,7 +607,7 @@ object Classpaths
 		organizationName in GlobalScope <<= organizationName or organization.identity,
 		organizationHomepage in GlobalScope <<= organizationHomepage or homepage.identity,
 		projectInfo <<= (name, description, homepage, licenses, organizationName, organizationHomepage) apply ModuleInfo,
-		classpathFilter in GlobalScope :== "*.jar",
+		classpathFilter in GlobalScope :== "*.jar" | "*.so" | "*.dll",
 		externalResolvers <<= (externalResolvers.task.? zipWith resolvers.identity) {
 			case (Some(delegated), Seq()) => delegated
 			case (_, rs) => task { Resolver.withDefaultResolvers(rs) }
