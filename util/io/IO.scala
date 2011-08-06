@@ -222,7 +222,8 @@ object IO
 		try { action(dir) }
 		finally { delete(dir) }
 	}
-	def createTemporaryDirectory: File =
+	def createTemporaryDirectory: File = createUniqueDirectory(temporaryDirectory)
+	def createUniqueDirectory(baseDirectory: File): File =
 	{
 		def create(tries: Int): File =
 		{
@@ -231,7 +232,7 @@ object IO
 			else
 			{
 				val randomName = "sbt_" + java.lang.Integer.toHexString(random.nextInt)
-				val f = new File(temporaryDirectory, randomName)
+				val f = new File(baseDirectory, randomName)
 
 				try { createDirectory(f); f }
 				catch { case e: Exception => create(tries + 1) }
