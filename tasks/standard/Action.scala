@@ -26,6 +26,7 @@ final case class Task[T](info: Info[T], work: Action[T])
 {
 	def original = info.original getOrElse this
 	override def toString = info.name orElse original.info.name getOrElse ("Task(" + info + ")")
+	override def hashCode = info.hashCode
 }
 /** `original` is used during transformation only.*/
 final case class Info[T](attributes: AttributeMap = AttributeMap.empty, original: Option[Task[T]] = None)
