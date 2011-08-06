@@ -46,6 +46,10 @@ object Keys
 	val onLoad = SettingKey[State => State]("on-load", "Transformation to apply to the build state when the build is loaded.")
 	val onUnload = SettingKey[State => State]("on-unload", "Transformation to apply to the build state when the build is unloaded.")
 
+	val onComplete = SettingKey[() => Unit]("on-complete", "Hook to run when task evaluation completes.  The type of this setting is subject to change, pending the resolution of SI-2915.")
+// https://issues.scala-lang.org/browse/SI-2915
+//	val onComplete = SettingKey[RMap[Task,Result] => RMap[Task,Result]]("on-complete", "Transformation to apply to the final task result map.  This may also be used to register hooks to run when task evaluation completes.")
+
 	// Command keys
 	val globalLogging = SettingKey[GlobalLogging]("global-logging", "Provides a global Logger, including command logging.")
 	val historyPath = SettingKey[Option[File]]("history", "The location where command line history is persisted.")

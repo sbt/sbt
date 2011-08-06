@@ -22,12 +22,12 @@ object Execute
 	private[sbt] def completed(p: => Unit): Completed = new Completed {
 		def process() { p }
 	}
-	def noTriggers[A[_]] = new Triggers[A](Map.empty, Map.empty)
+	def noTriggers[A[_]] = new Triggers[A](Map.empty, Map.empty, idFun)
 }
 sealed trait Completed {
 	def process(): Unit
 }
-final class Triggers[A[_]](val runBefore: collection.Map[A[_], Seq[A[_]]], val injectFor: collection.Map[A[_], Seq[A[_]]])
+final class Triggers[A[_]](val runBefore: collection.Map[A[_], Seq[A[_]]], val injectFor: collection.Map[A[_], Seq[A[_]]], val onComplete: RMap[A,Result] => RMap[A,Result])
 
 final class Execute[A[_] <: AnyRef](checkCycles: Boolean, triggers: Triggers[A])(implicit view: NodeView[A])
 {
@@ -56,7 +56,7 @@ final class Execute[A[_] <: AnyRef](checkCycles: Boolean, triggers: Triggers[A])
 		addNew(root)
 		processAll()
 		assert( results contains root, "No result for root node." )
-		results
+		triggers.onComplete(results)
 	}
 
 	def processAll()(implicit strategy: Strategy)

@@ -190,7 +190,8 @@ object Index
 			update(runBefore, value, as get Keys.runBefore)
 			update(triggeredBy, value, as get Keys.triggeredBy)
 		}
-		new Triggers[Task](runBefore, triggeredBy)
+		val onComplete = Keys.onComplete in GlobalScope get ss getOrElse { () => () }
+		new Triggers[Task](runBefore, triggeredBy, map => { onComplete(); map } )
 	}
 	private[this] def update(map: TriggerMap, base: Task[_], tasksOpt: Option[Seq[Task[_]]]): Unit =
 		for( tasks <- tasksOpt; task <- tasks )
