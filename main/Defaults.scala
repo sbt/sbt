@@ -235,7 +235,7 @@ object Defaults extends BuildCommon
 		dirs.descendentsExcept("*",excl).get
 
 	lazy val testTasks: Seq[Setting[_]] = testTaskOptions(test) ++ testTaskOptions(testOnly) ++ Seq(	
-		testLoader <<= (fullClasspath, scalaInstance) map { (cp, si) => TestFramework.createTestLoader(data(cp), si) },
+		testLoader <<= (fullClasspath, scalaInstance, taskTemporaryDirectory) map { (cp, si, temp) => TestFramework.createTestLoader(data(cp), si, IO.createUniqueDirectory(temp)) },
 		testFrameworks in GlobalScope :== {
 			import sbt.TestFrameworks._
 			Seq(ScalaCheck, Specs2, Specs, ScalaTest, ScalaCheckCompat, ScalaTestCompat, SpecsCompat, JUnit)
@@ -403,12 +403,13 @@ object Defaults extends BuildCommon
 		}
 
 	def runnerTask = runner <<= runnerInit
-	def runnerInit: Initialize[Task[ScalaRun]] = (scalaInstance, baseDirectory, javaOptions, outputStrategy, fork, javaHome, trapExit) map { (si, base, options, strategy, forkRun, javaHomeDir, trap) =>
+	def runnerInit: Initialize[Task[ScalaRun]] = 
+		(taskTemporaryDirectory, scalaInstance, baseDirectory, javaOptions, outputStrategy, fork, javaHome, trapExit) map { (tmp, si, base, options, strategy, forkRun, javaHomeDir, trap) =>
 			if(forkRun) {
 				new ForkRun( ForkOptions(scalaJars = si.jars, javaHome = javaHomeDir, outputStrategy = strategy,
 					runJVMOptions = options, workingDirectory = Some(base)) )
 			} else
-				new Run(si, trap)
+				new Run(si, trap, tmp)
 		}
 
 	def docTask: Initialize[Task[File]] =

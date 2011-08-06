@@ -194,13 +194,13 @@ object TestFramework
 		Thread.currentThread.setContextClassLoader(loader)
 		try { eval } finally { Thread.currentThread.setContextClassLoader(oldLoader) }
 	}
-	def createTestLoader(classpath: Seq[File], scalaInstance: ScalaInstance): ClassLoader =
+	def createTestLoader(classpath: Seq[File], scalaInstance: ScalaInstance, tempDir: File): ClassLoader =
 	{
 		val declaresCompiler = classpath.exists(_.getName contains "scala-compiler")
 		val filterCompilerLoader = if(declaresCompiler) scalaInstance.loader else new FilteredLoader(scalaInstance.loader, ScalaCompilerJarPackages)
 		val interfaceFilter = (name: String) => name.startsWith("org.scalatools.testing.")
 		val notInterfaceFilter = (name: String) => !interfaceFilter(name)
 		val dual = new DualLoader(filterCompilerLoader, notInterfaceFilter, x => true, getClass.getClassLoader, interfaceFilter, x => false)
-		ClasspathUtilities.makeLoader(classpath, dual, scalaInstance)
+		ClasspathUtilities.makeLoader(classpath, dual, scalaInstance, tempDir)
 	}
 }

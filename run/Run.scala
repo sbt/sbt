@@ -31,7 +31,7 @@ class ForkRun(config: ForkScalaRun) extends ScalaRun
 			Some("Nonzero exit code returned from " + label + ": " + exitCode)
 	}
 }
-class Run(instance: ScalaInstance, trapExit: Boolean) extends ScalaRun
+class Run(instance: ScalaInstance, trapExit: Boolean, nativeTmp: File) extends ScalaRun
 {
 	/** Runs the class 'mainClass' using the given classpath and options using the scala runner.*/
 	def run(mainClass: String, classpath: Seq[File], options: Seq[String], log: Logger) =
@@ -48,7 +48,7 @@ class Run(instance: ScalaInstance, trapExit: Boolean) extends ScalaRun
 	private def run0(mainClassName: String, classpath: Seq[File], options: Seq[String], log: Logger)
 	{
 		log.debug("  Classpath:\n\t" + classpath.mkString("\n\t"))
-		val loader = ClasspathUtilities.makeLoader(classpath, instance)
+		val loader = ClasspathUtilities.makeLoader(classpath, instance.loader, instance, nativeTmp)
 		val main = getMainMethod(mainClassName, loader)
 		invokeMain(loader, main, options)
 	}
