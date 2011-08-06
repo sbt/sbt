@@ -129,3 +129,34 @@ private object Loaders
 		className == checkAgainst || className.startsWith(checkAgainst + "$")
 	def isSbtClass(className: String) = className.startsWith(Loaders.SbtPackage)
 }
+
+final class NativeCopyConfig(val tempDirectory: File, val explicitLibraries: Seq[File], val searchPaths: Seq[File])
+trait NativeCopyLoader extends ClassLoader
+{
+	protected val config: NativeCopyConfig
+	import config._
+	
+	private[this] val mapped = new collection.mutable.HashMap[String, String]
+
+	override protected def findLibrary(name: String): String =
+		synchronized { mapped.getOrElseUpdate(name, findLibrary0(name)) }
+
+	private[this] def findLibrary0(name: String): String =
+	{
+		val mappedName = System.mapLibraryName(name)
+		val explicit = explicitLibraries.filter(_.getName == mappedName).toStream
+		val search = searchPaths.toStream flatMap relativeLibrary(mappedName)
+		(explicit ++ search).headOption.map(copy).orNull
+	}
+	private[this] def relativeLibrary(mappedName: String)(base: File): Seq[File] =
+	{
+		val f = new File(base, mappedName)
+		if(f.isFile) f :: Nil else Nil
+	}
+	private[this] def copy(f: File): String =
+	{
+		val target = new File(tempDirectory, f.getName)
+		IO.copyFile(f, target)
+		target.getAbsolutePath
+	}
+}

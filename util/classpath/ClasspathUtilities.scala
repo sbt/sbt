@@ -22,7 +22,13 @@ object ClasspathUtilities
 
 	def toLoader(paths: Seq[File], parent: ClassLoader, resourceMap: Map[String,String]): ClassLoader =
 		new URLClassLoader(Path.toURLs(paths), parent) with RawResources { override def resources = resourceMap }
-	
+
+	def toLoader(paths: Seq[File], parent: ClassLoader, resourceMap: Map[String,String], nativeTemp: File): ClassLoader =
+		new URLClassLoader(Path.toURLs(paths), parent) with RawResources with NativeCopyLoader {
+			override def resources = resourceMap
+			override val config = new NativeCopyConfig(nativeTemp, paths, Nil)
+		}
+
 	lazy val rootLoader =
 	{
 		def parent(loader: ClassLoader): ClassLoader =
@@ -50,6 +56,9 @@ object ClasspathUtilities
 
 	def makeLoader[T](classpath: Seq[File], parent: ClassLoader, instance: ScalaInstance): ClassLoader =
 		toLoader(classpath, parent, createClasspathResources(classpath, instance))
+
+	def makeLoader[T](classpath: Seq[File], parent: ClassLoader, instance: ScalaInstance, nativeTemp: File): ClassLoader =
+		toLoader(classpath, parent, createClasspathResources(classpath, instance), nativeTemp)
 	
 	private[sbt] def printSource(c: Class[_]) =
 		println(c.getName + " loader=" +c.getClassLoader + " location=" + IO.classLocationFile(c))
