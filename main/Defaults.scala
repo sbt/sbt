@@ -310,7 +310,9 @@ object Defaults extends BuildCommon
 		artifactName in GlobalScope :== ( Artifact.artifactName _ )
 	)
 	lazy val packageConfig: Seq[Setting[_]] = Seq(
-		packageOptions in packageBin <<= (packageOptions, mainClass in packageBin) map { _ ++ _.map(Package.MainClass.apply).toList }
+		packageOptions in packageBin <<= (packageOptions, mainClass in packageBin, name, version, homepage, organization, organizationName) map { (p, main, name, ver, h, org, orgName) =>
+			p ++ main.map(Package.MainClass.apply) :+ Package.addSpecManifestAttributes(name, ver, orgName) :+ Package.addImplManifestAttributes(name, ver, h, org, orgName) },
+		packageOptions in packageSrc <<= (packageOptions, name, version, organizationName) map { _ :+ Package.addSpecManifestAttributes(_, _, _) }
 	) ++
 	packageTasks(packageBin, packageBinTask) ++
 	packageTasks(packageSrc, packageSrcTask) ++
