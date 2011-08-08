@@ -51,10 +51,9 @@ object Package
 	final class Configuration(val sources: Seq[(File, String)], val jar: File, val options: Seq[PackageOption])
 	def apply(conf: Configuration, cacheFile: File, log: Logger)
 	{
-		import conf._
 		val manifest = new Manifest
 		val main = manifest.getMainAttributes
-		for(option <- options)
+		for(option <- conf.options)
 		{
 			option match
 			{
@@ -85,6 +84,20 @@ object Package
 		val version = Attributes.Name.MANIFEST_VERSION
 		if(main.getValue(version) eq null)
 			main.put(version, "1.0")
+	}
+	def addSpecManifestAttributes(name: String, version: String, orgName: String): PackageOption =
+	{
+		import Attributes.Name._
+		val attribKeys = Seq(SPECIFICATION_TITLE, SPECIFICATION_VERSION, SPECIFICATION_VENDOR)
+		val attribVals = Seq(name, version, orgName)
+		ManifestAttributes(attribKeys zip attribVals : _*)
+	}
+	def addImplManifestAttributes(name: String, version: String, homepage: Option[java.net.URL], org: String, orgName: String): PackageOption =
+	{
+		import Attributes.Name._
+		val attribKeys = Seq(IMPLEMENTATION_TITLE, IMPLEMENTATION_VERSION, IMPLEMENTATION_VENDOR, IMPLEMENTATION_VENDOR_ID)
+		val attribVals = Seq(name, version, orgName, org)
+		ManifestAttributes((attribKeys zip attribVals) ++ { homepage map(h => (IMPLEMENTATION_URL, h.toString)) } : _*)
 	}
 	def makeJar(sources: Seq[(File, String)], jar: File, manifest: Manifest, log: Logger)
 	{
