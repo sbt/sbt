@@ -186,7 +186,8 @@ object Defaults extends BuildCommon
 		mainClass <<= discoveredMainClasses map selectPackageMain,
 		run <<= runTask(fullClasspath, mainClass in run, runner in run),
 		runMain <<= runMainTask(fullClasspath, runner in run),
-		scaladocOptions <<= scalacOptions.identity,
+		scaladocOptions in GlobalScope :== Nil,
+		scaladocOptions <<= scaladocOptions or scalacOptions.identity,
 		doc <<= docTask,
 		copyResources <<= copyResourcesTask
 	)
