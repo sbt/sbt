@@ -64,13 +64,6 @@ trait Init[Scope]
 	def update[T](key: ScopedKey[T])(f: T => T): Setting[T] = new Setting[T](key, app(key :^: KNil)(hl => f(hl.head)))
 	def app[HL <: HList, T](inputs: KList[Initialize, HL])(f: HL => T): Initialize[T] = new Apply(f, inputs)
 	def uniform[S,T](inputs: Seq[Initialize[S]])(f: Seq[S] => T): Initialize[T] = new Uniform(f, inputs)
-	def kapp[HL <: HList, M[_], T](inputs: KList[({type l[t] = Initialize[M[t]]})#l, HL])(f: KList[M, HL] => T): Initialize[T] = new KApply[HL, M, T](f, inputs)
-
-	// the following is a temporary workaround for the "... cannot be instantiated from ..." bug, which renders 'kapp' above unusable outside this source file
-	class KApp[HL <: HList, M[_], T] {
-		type Composed[S] = Initialize[M[S]]
-		def apply(inputs: KList[Composed, HL])(f: KList[M, HL] => T): Initialize[T] = new KApply[HL, M, T](f, inputs)
-	}
 
 	def empty(implicit delegates: Scope => Seq[Scope]): Settings[Scope] = new Settings0(Map.empty, delegates)
 	def asTransform(s: Settings[Scope]): ScopedKey ~> Id = new (ScopedKey ~> Id) {
@@ -314,30 +307,6 @@ trait Init[Scope]
 			val get = new (ValidatedInit ~> Initialize) { def apply[T](vr: ValidatedInit[T]) = vr.right.get }
 			if(undefs.isEmpty) Right(new Apply(f, tx transform get)) else Left(undefs)
 		}
-	}
-
-	private[this] final class KApply[HL <: HList, M[_], T](val f: KList[M, HL] => T, val inputs: KList[({type l[t] = Initialize[M[t]]})#l, HL]) extends Initialize[T]
-	{
-		type InitializeM[T] = Initialize[M[T]]
-		type VInitM[T] = ValidatedInit[M[T]]
-		def dependsOn = dependencies(unnest(inputs.toList))
-		def mapReferenced(g: MapScoped) = mapInputs( mapReferencedT(g) )
-		def apply[S](g: T => S) = new KApply[HL, M, S](g compose f, inputs)
-		def evaluate(ss: Settings[Scope]) = f(inputs.transform[M]( nestCon(evaluateT(ss)) ))
-		def mapConstant(g: MapConstant) = mapInputs(mapConstantT(g))
-		def mapInputs(g: Initialize ~> Initialize): Initialize[T] =
-			new KApply[HL, M, T](f, inputs.transform[({type l[t] = Initialize[M[t]]})#l]( nestCon(g) ))
-		def validateReferenced(g: ValidateRef) =
-		{
-			val tx = inputs.transform[VInitM](nestCon(validateReferencedT(g)))
-			val undefs = tx.toList.flatMap(_.left.toSeq.flatten)
-			val get = new (VInitM ~> InitializeM) { def apply[T](vr: VInitM[T]) = vr.right.get }
-			if(undefs.isEmpty)
-				Right(new KApply[HL, M, T](f, tx transform get))
-			else
-				Left(undefs)
-		}
-		private[this] def unnest(l: List[Initialize[M[T]] forSome { type T }]): List[Initialize[_]] = l.asInstanceOf[List[Initialize[_]]]
 	}
 	private[this] final class Uniform[S, T](val f: Seq[S] => T, val inputs: Seq[Initialize[S]]) extends Initialize[T]
 	{
