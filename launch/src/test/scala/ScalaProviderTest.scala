@@ -65,7 +65,7 @@ object LaunchTest
 {
 	def testApp(main: String): Application = testApp(main, Array[File]())
 	def testApp(main: String, extra: Array[File]): Application = Application("org.scala-tools.sbt", "launch-test", new Explicit(AppVersion), main, Nil, false, extra)
-	import Repository.Predefined._
+	import Predefined._
 	def testRepositories = List(Local, ScalaToolsReleases, ScalaToolsSnapshots).map(Repository.Predefined.apply)
 	def withLauncher[T](f: xsbti.Launcher => T): T =
 		withTemporaryDirectory { bootDirectory =>
