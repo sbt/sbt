@@ -456,7 +456,7 @@ object Defaults extends BuildCommon
 		}
 		
 	def sbtPluginExtra(m: ModuleID, sbtV: String, scalaV: String): ModuleID  =  m.extra(CustomPomParser.SbtVersionKey -> sbtV, CustomPomParser.ScalaVersionKey -> scalaV).copy(crossVersion = false)
-	def writePluginsDescriptor(plugins: Set[String], dir: File): List[File] =
+	def writePluginsDescriptor(plugins: Set[String], dir: File): Seq[File] =
 	{
 		val descriptor: File = dir / "sbt" / "sbt.plugins"
 		if(plugins.isEmpty)
@@ -528,7 +528,7 @@ object Defaults extends BuildCommon
 
 	val CompletionsID = "completions"
 	
-	def noAggregation = Seq(run, console, consoleQuick, consoleProject)
+	def noAggregation: Seq[Scoped] = Seq(run, console, consoleQuick, consoleProject)
 	lazy val disableAggregation = noAggregation map disableAggregate
 	def disableAggregate(k: Scoped) =
 		aggregate in Scope.GlobalScope.copy(task = Select(k.key)) :== false
@@ -582,7 +582,7 @@ object Classpaths
 	lazy val defaultArtifactTasks: Seq[ScopedTask[File]] = makePom +: defaultPackages
 
 	def packaged(pkgTasks: Seq[ScopedTask[File]]): Initialize[Task[Map[Artifact, File]]] =
-		enabledOnly(packagedArtifact.task, pkgTasks).map(_.join.map(_.toMap))
+		enabledOnly(packagedArtifact.task, pkgTasks) apply (_.join.map(_.toMap))
 	def artifactDefs(pkgTasks: Seq[ScopedTask[File]]): Initialize[Seq[Artifact]] =
 		enabledOnly(artifact, pkgTasks)
 
@@ -617,7 +617,7 @@ object Classpaths
 		organizationHomepage in GlobalScope <<= organizationHomepage or homepage.identity,
 		projectInfo <<= (name, description, homepage, licenses, organizationName, organizationHomepage) apply ModuleInfo,
 		classpathFilter in GlobalScope :== "*.jar" | "*.so" | "*.dll",
-		externalResolvers <<= (externalResolvers.task.? zipWith resolvers.identity) {
+		externalResolvers <<= (externalResolvers.task.?, resolvers) {
 			case (Some(delegated), Seq()) => delegated
 			case (_, rs) => task { Resolver.withDefaultResolvers(rs) }
 		},
@@ -1046,14 +1046,14 @@ trait BuildExtra extends BuildCommon
 	
 	def fullRunInputTask(scoped: ScopedInput[Unit], config: Configuration, mainClass: String, baseArguments: String*): Setting[InputTask[Unit]] =
 		scoped <<= inputTask { result =>
-			( initScoped(scoped.scoped, runnerInit) zipWith (fullClasspath in config, streams, result).identityMap) { (rTask, t) =>
+			( initScoped(scoped.scopedKey, runnerInit) zipWith (fullClasspath in config, streams, result).identityMap) { (rTask, t) =>
 				(t :^: rTask :^: KNil) map { case (cp, s, args) :+: r :+: HNil =>
 					toError(r.run(mainClass, data(cp), baseArguments ++ args, s.log))
 				}
 			}
 		}
 	def fullRunTask(scoped: ScopedTask[Unit], config: Configuration, mainClass: String, arguments: String*): Setting[Task[Unit]] =
-		scoped <<= ( initScoped(scoped.scoped, runnerInit) zipWith (fullClasspath in config, streams).identityMap ) { case (rTask, t) =>
+		scoped <<= ( initScoped(scoped.scopedKey, runnerInit) zipWith (fullClasspath in config, streams).identityMap ) { case (rTask, t) =>
 			(t :^: rTask :^: KNil) map { case (cp, s) :+: r :+: HNil =>
 				toError(r.run(mainClass, data(cp), arguments, s.log))
 			}

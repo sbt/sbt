@@ -216,7 +216,7 @@ object BuiltinCommands
 	def ifLast = Command(IfLast, IfLastBrief, IfLastDetailed)(otherCommandParser) { (s, arg) =>
 		if(s.remainingCommands.isEmpty) arg :: s else s
 	}
-	def append = Command(Append, AppendLastBrief, AppendLastDetailed)(otherCommandParser) { (s, arg) =>
+	def append = Command(AppendCommand, AppendLastBrief, AppendLastDetailed)(otherCommandParser) { (s, arg) =>
 		s.copy(remainingCommands = s.remainingCommands :+ arg)
 	}
 	

@@ -43,7 +43,7 @@ object GlobalPlugin
 				val depMap = pdescs + mod.dependencyMapping(log(state))
 				GlobalPluginData(pid, pdeps, depMap, cp, prods ++ intcp)
 		}
-		val task = taskInit mapReferenced Project.mapScope(Scope replaceThis p) get data
+		val task = taskInit mapReferenced Project.mapScope(Scope replaceThis p) evaluate data
 		evaluate(state, structure, task)
 	}
 	def evaluate[T](state: State, structure: BuildStructure, t: Task[T]): T =

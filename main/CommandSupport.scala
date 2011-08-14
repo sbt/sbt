@@ -193,7 +193,7 @@ Multi + " command1 " + Multi + """ command2 ...
 	Runs the specified commands.
 """
 
-	def Append = "append"
+	def AppendCommand = "append"
 	def AppendLastBrief = (Append + " command", AppendLastDetailed)
 	def AppendLastDetailed = "Appends `command` to list of commands to run."
 

@@ -75,8 +75,8 @@ final case class Extracted(structure: BuildStructure, session: SessionSettings, 
 	{
 			import EvaluateTask._
 		val extracted = Project.extract(state)
-		val rkey = Project.mapScope(Scope.resolveScope(GlobalScope, extracted.currentRef.build, rootProject) )( key )
-		val value: Option[Result[T]] = evaluateTask(structure, key.task.scoped, state, currentRef)
+		val rkey = Project.mapScope(Scope.resolveScope(GlobalScope, extracted.currentRef.build, rootProject) )( key.scopedKey )
+		val value: Option[Result[T]] = evaluateTask(structure, key.task.scopedKey, state, currentRef)
 		val result = getOrError(rkey.scope, rkey.key, value)
 		processResult(result, ConsoleLogger())
 	}
@@ -330,6 +330,7 @@ object Project extends Init[Scope] with ProjectExtra
 	}
 	// this is here instead of Scoped so that it is considered without need for import (because of Project.Initialize)
 	implicit def richInitializeTask[T](init: Initialize[Task[T]]): Scoped.RichInitializeTask[T] = new Scoped.RichInitializeTask(init)
+	implicit def richInitialize[T](i: Initialize[T]): Scoped.RichInitialize[T] = new Scoped.RichInitialize[T](i)
 }
 
 trait ProjectExtra

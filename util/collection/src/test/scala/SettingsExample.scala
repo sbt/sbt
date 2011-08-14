@@ -12,9 +12,10 @@ final case class Scope(index: Int)
 //  That would be a general pain.)
 object SettingsExample extends Init[Scope]
 {
-	// This is the only abstract method, providing a way of showing a Scope+AttributeKey[_]
-	override def display(key: ScopedKey[_]): String =
-		key.scope.index + "/" + key.key.label
+	// Provides a way of showing a Scope+AttributeKey[_]
+	val showFullKey: Show[ScopedKey[_]] = new Show[ScopedKey[_]] {
+		def apply(key: ScopedKey[_]) = key.scope.index + "/" + key.key.label
+	}
 
 	// A sample delegation function that delegates to a Scope with a lower index.
 	val delegates: Scope => Seq[Scope] = { case s @ Scope(index) =>
@@ -55,7 +56,7 @@ object SettingsUsage
 		// "compiles" and applies the settings.
 		//  This can be split into multiple steps to access intermediate results if desired.
 		//  The 'inspect' command operates on the output of 'compile', for example.
-	val applied: Settings[Scope] = make(mySettings)(delegates, scopeLocal)
+	val applied: Settings[Scope] = make(mySettings)(delegates, scopeLocal, showFullKey)
 
 		// Show results.
 	for(i <- 0 to 5; k <- Seq(a, b)) {

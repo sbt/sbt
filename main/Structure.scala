@@ -8,7 +8,7 @@ package sbt
 	import Types._
 	import std.TaskExtra.{task => mktask, _}
 	import Task._
-	import Project.{Initialize, ScopedKey, Setting, setting}
+	import Project.{Initialize, KeyedInitialize, ScopedKey, Setting, setting}
 	import complete.Parser
 	import java.io.File
 	import java.net.URI
@@ -56,7 +56,7 @@ object InputTask
 	def apply[I,T](p: Initialize[State => Parser[I]])(action: TaskKey[I] => Initialize[Task[T]]): Initialize[InputTask[T]] =
 	{
 		val key: TaskKey[I] = Keys.parseResult.asInstanceOf[TaskKey[I]]
-		(p zip Keys.resolvedScoped.identity zipWith action(key)) { case ((parserF, scoped), act) =>
+		(p zip Keys.resolvedScoped zipWith action(key)) { case ((parserF, scoped), act) =>
 			new InputDynamic[T]
 			{
 				type Result = I
@@ -72,47 +72,45 @@ object InputTask
 
 sealed trait Scoped { def scope: Scope; def key: AttributeKey[_] }
 sealed trait ScopedTaskable[T] extends Scoped
-sealed trait ScopedSetting[T] extends ScopedTaskable[T] { def key: AttributeKey[T] }
-sealed trait ScopedTask[T] extends ScopedTaskable[T] { def key: AttributeKey[Task[T]] }
-sealed trait ScopedInput[T] extends Scoped { def key: AttributeKey[InputTask[T]] }
+sealed trait ScopedSetting[T] extends ScopedTaskable[T] with KeyedInitialize[T] with Scoped.ScopingSetting[ScopedSetting[T]] with Scoped.DefinableSetting[T] with Scoped.ListSetting[T, Id]
+{
+	def key: AttributeKey[T]
+	def scopedKey: ScopedKey[T] = ScopedKey(scope, key)
+	def in(scope: Scope): ScopedSetting[T] = Scoped.scopedSetting(Scope.replaceThis(this.scope)(scope), this.key)
 
-sealed trait Key[T] extends Scoped { final def scope: Scope = Scope(This,This,This,This) }
+	protected[this] def make[S](other: Initialize[S])(f: (T, S) => T): Setting[T] = this <<= (this, other)(f)
+}
+sealed trait ScopedTask[T] extends ScopedTaskable[T] with KeyedInitialize[Task[T]] with Scoped.ScopingSetting[ScopedTask[T]] with Scoped.ListSetting[T, Task] with Scoped.DefinableTask[T]
+{
+	def key: AttributeKey[Task[T]]
+	def scopedKey: ScopedKey[Task[T]] = ScopedKey(scope, key)
+	def in(scope: Scope): ScopedTask[T] = Scoped.scopedTask(Scope.replaceThis(this.scope)(scope), this.key)
+
+	protected[this] def make[S](other: Initialize[Task[S]])(f: (T, S) => T): Setting[Task[T]] = this <<= (this, other) { (a,b) => (a,b) map f }
+}
+sealed trait ScopedInput[T] extends Scoped with KeyedInitialize[InputTask[T]] with Scoped.ScopingSetting[ScopedInput[T]] with Scoped.DefinableSetting[InputTask[T]]
+{
+	def key: AttributeKey[InputTask[T]]
+	def scopedKey: ScopedKey[InputTask[T]] = ScopedKey(scope, key)
+	def in(scope: Scope): ScopedInput[T] = Scoped.scopedInput(Scope.replaceThis(this.scope)(scope), this.key)
+}
+
+sealed trait Key[T] extends Scoped { final def scope: Scope = Scope.ThisScope }
 final class SettingKey[T] private(val key: AttributeKey[T]) extends Key[T] with ScopedSetting[T]
 final class TaskKey[T] private(val key: AttributeKey[Task[T]]) extends Key[T] with ScopedTask[T]
 final class InputKey[T] private(val key: AttributeKey[InputTask[T]]) extends Key[InputTask[T]] with ScopedInput[T]
 
 object Scoped
 {
-	implicit def richSettingScoped[T](s: ScopedSetting[T]): RichSettingScoped[T] = new RichSettingScoped[T](s.scope, s.key)
-	implicit def richTaskScoped[T](s: ScopedTask[T]): RichTaskScoped[T] = new RichTaskScoped[T](s.scope, s.key)
-	implicit def richInputScoped[T](s: ScopedInput[T]): RichInputScoped[T] = new RichInputScoped[T](s.scope, s.key)
-	implicit def richSettingListScoped[T](s: ScopedSetting[Seq[T]]): RichSettingList[T] = new RichSettingList[T](s.scope, s.key)
-	implicit def richListTaskScoped[T](s: ScopedTask[Seq[T]]): RichListTask[T] = new RichListTask[T](s.scope, s.key)
-
+	@deprecated("Implicit conversion from ScopedTask[T] to ScopedKey[Task[T]] is deprecated.  Use the scopedKey method of ScopedTask.") 
 	implicit def taskScopedToKey[T](s: ScopedTask[T]): ScopedKey[Task[T]] = ScopedKey(s.scope, s.key)
+
+	@deprecated("Implicit conversion from ScopedInput[T] to ScopedKey[InputTask[T]] is deprecated.  Use the scopedKey method of ScopedInput.") 
 	implicit def inputScopedToKey[T](s: ScopedInput[T]): ScopedKey[InputTask[T]] = ScopedKey(s.scope, s.key)
 
-	implicit def scopedSettingScoping[T](s: ScopedSetting[T]): ScopingSetting[ScopedSetting[T]] =
-		new ScopingSetting(scope => scopedSetting(Scope.replaceThis(s.scope)(scope), s.key))
-
-	implicit def scopedTaskScoping[T](s: ScopedTask[T]): ScopingSetting[ScopedTask[T]] =
-		new ScopingSetting(scope => scopedTask(Scope.replaceThis(s.scope)(scope), s.key))
-
-	implicit def scopedInputScoping[T](s: ScopedInput[T]): ScopingSetting[ScopedInput[T]] =
-		new ScopingSetting(scope => scopedInput(Scope.replaceThis(s.scope)(scope), s.key))
-
-	implicit def settingScoping[T](s: SettingKey[T]): ScopingSetting[ScopedSetting[T]] =
-		new ScopingSetting(scope => scopedSetting(scope, s.key))
-
-	implicit def inputScoping[T](s: InputKey[T]): ScopingSetting[ScopedInput[T]] =
-		new ScopingSetting(scope => scopedInput(scope, s.key))
-
-	implicit def taskScoping[T](s: TaskKey[T]): ScopingSetting[ScopedTask[T]] =
-		new ScopingSetting(scope => scopedTask(scope, s.key))
-
-	final class ScopingSetting[Result](app0: Scope => Result)
+	sealed trait ScopingSetting[Result]
 	{
-		def in(s: Scope): Result = app0(s)
+		def in(s: Scope): Result
 
 		def in(p: Reference): Result  =  in(Select(p), This, This)
 		def in(t: Scoped): Result  =  in(This, This, Select(t.key))
@@ -124,127 +122,94 @@ object Scoped
 		def in(p: ScopeAxis[Reference], c: ScopeAxis[ConfigKey], t: ScopeAxis[AttributeKey[_]]): Result = in( Scope(p, c, t, This) )
 	}
 	
-	private[this] def scopedSetting[T](s: Scope, k: AttributeKey[T]): ScopedSetting[T] = new ScopedSetting[T] { val scope = s; val key = k }
-	private[this] def scopedInput[T](s: Scope, k: AttributeKey[InputTask[T]]): ScopedInput[T] = new ScopedInput[T] { val scope = s; val key = k }
-	private[this] def scopedTask[T](s: Scope, k: AttributeKey[Task[T]]): ScopedTask[T] = new ScopedTask[T] { val scope = s; val key = k }
+	def scopedSetting[T](s: Scope, k: AttributeKey[T]): ScopedSetting[T]  =  new ScopedSetting[T] { val scope = s; val key = k}
+	def scopedInput[T](s: Scope, k: AttributeKey[InputTask[T]]): ScopedInput[T]  =  new ScopedInput[T] { val scope = s; val key = k }
+	def scopedTask[T](s: Scope, k: AttributeKey[Task[T]]): ScopedTask[T]  =  new ScopedTask[T] { val scope = s; val key = k }
 
-	sealed abstract class RichXList[S, M[_]]
+	sealed trait ListSetting[S, M[_]]
 	{
-		protected[this] def make[T](other: Initialize[M[T]])(f: (Seq[S], T) => Seq[S]): Setting[M[Seq[S]]]
-		protected[this] def update(f: Seq[S] => Seq[S]): Setting[M[Seq[S]]]
-		def <+= (value: Initialize[M[S]]): Setting[M[Seq[S]]]  =  make(value) {_ :+ _ }
-		def <++=(values: Initialize[M[Seq[S]]]): Setting[M[Seq[S]]]  =  make(values) {_ ++ _ }
-		def += (value: => S): Setting[M[Seq[S]]]  =  update(_ :+ value)
-		def ++=(values: => Seq[S]): Setting[M[Seq[S]]]  =  update(_ ++ values)
-	}
-	final class RichSettingList[S](scope: Scope, key: AttributeKey[Seq[S]]) extends RichXList[S, Id]
-	{
-		private[this] val base = new RichSettingScoped(scope, key)
-		protected[this] def make[T](other: Initialize[T])(f: (Seq[S], T) => Seq[S]): Setting[Seq[S]] = base <<= (base.identity zipWith other)(f)
-		protected[this] def update(f: Seq[S] => Seq[S]): Setting[Seq[S]] = base ~= f
-	}
-	final class RichListTask[S](scope: Scope, key: AttributeKey[Task[Seq[S]]]) extends RichXList[S, Task]
-	{
-		private[this] val base = new RichTaskScoped(scope, key)
-		protected[this] def make[T](other: Initialize[Task[T]])(f: (Seq[S], T) => Seq[S]): Setting[Task[Seq[S]]] = base <<= (base.identity zipWith other) { (a,b) => (a,b) map f }
-		protected[this] def update(f: Seq[S] => Seq[S]): Setting[Task[Seq[S]]] = base ~= f
-	}
-	sealed abstract class RichBaseScoped[S]
-	{
-		def scope: Scope
-		def key: AttributeKey[S]
-		final val scoped = ScopedKey(scope, key)
-		
-		final def :==(value: S): Setting[S]  =  :=(value)
-		final def := (value: => S): Setting[S]  =  setting(scoped, Project.value(value))
-		final def ~= (f: S => S): Setting[S]  =  Project.update(scoped)(f)
-		final def <<= (app: Initialize[S]): Setting[S]  =  setting(scoped, app)
+		protected[this] def make[T](other: Initialize[M[T]])(f: (S, T) => S): Setting[M[S]]
+		protected[this] def ~=(f: S => S): Setting[M[S]]
 
-		final def apply[T](f: S => T): Initialize[T] = Apply.single(scoped)(f)
-		final def identity: Initialize[S] = apply(idFun)
-		final def ? : Initialize[Option[S]] = Project.optional(scoped)(idFun)
-		final def or[T >: S](i: Initialize[T]): Initialize[T] = (this.? zipWith i)(_ getOrElse _ )
-		final def ??[T >: S](or: => T): Initialize[T] = Project.optional(scoped)(_ getOrElse or )
-
-		final def get(settings: Settings[Scope]): Option[S] = settings.get(scope, key)
+		def <+= [V](value: Initialize[M[V]])(implicit a: Append.Value[S, V]): Setting[M[S]]  =  make(value)(a.appendValue)
+		def <++= [V](values: Initialize[M[V]])(implicit a: Append.Values[S, V]): Setting[M[S]]  =  make(values)(a.appendValues)
+		def += [U](value: => U)(implicit a: Append.Value[S, U]): Setting[M[S]]  =  this ~= ( v => a.appendValue(v, value) )
+		def ++=[U](values: => U)(implicit a: Append.Values[S, U]): Setting[M[S]]  =  this ~= ( v => a.appendValues(v, values) )
 	}
-	final class RichInputScoped[T](val scope: Scope, val key: AttributeKey[InputTask[T]]) extends RichBaseScoped[InputTask[T]]
-	final class RichSettingScoped[S](val scope: Scope, val key: AttributeKey[S]) extends RichBaseScoped[S]
+	sealed trait DefinableSetting[S]
 	{
-		def map[T](f: S => T): Initialize[Task[T]] = flatMap(s => mktask(f(s)) )
-		def flatMap[T](f: S => Task[T]): Initialize[Task[T]] = Apply.single(scoped)(f)
-	}
-	final class RichTaskScoped[S](scope: Scope, key: AttributeKey[Task[S]])
-	{
-		type ScS = Setting[Task[S]]
-		def :==(value: S): ScS  =  :=(value)
-		def ::=(value: Task[S]): ScS  =  Project.setting(scoped, Project.value( value ))
-		def := (value: => S): ScS  =  ::=(mktask(value))
-		def :== (v: ScopedSetting[S]): ScS = <<=( v(constant))
-		def ~= (f: S => S): ScS  =  Project.update(scoped)( _ map f )
+		def scopedKey: ScopedKey[S]
 
-		def <<= (app: App[S]): ScS  =  Project.setting(scoped, app)
+		private[sbt] final def :==(value: S): Setting[S]  =  :=(value)
+		final def := (value: => S): Setting[S]  =  setting(scopedKey, Project.value(value))
+		final def ~= (f: S => S): Setting[S]  =  Project.update(scopedKey)(f)
+		final def <<= (app: Initialize[S]): Setting[S]  =  setting(scopedKey, app)
+		final def get(settings: Settings[Scope]): Option[S] = settings.get(scopedKey.scope, scopedKey.key)
+		final def ? : Initialize[Option[S]] = Project.optional(scopedKey)(idFun)
+		final def or[T >: S](i: Initialize[T]): Initialize[T] = (this.?, i)(_ getOrElse _ )
+		final def ??[T >: S](or: => T): Initialize[T] = Project.optional(scopedKey)(_ getOrElse or )
+	}
+	final class RichInitialize[S](init: Initialize[S])
+	{
+		@deprecated("A call to 'identity' is no longer necessary and can be removed.")
+		final def identity: Initialize[S] = init
+		def map[T](f: S => T): Initialize[Task[T]] = init(s => mktask(f(s)) )
+		def flatMap[T](f: S => Task[T]): Initialize[Task[T]] = init(f)
+	}
+	sealed trait DefinableTask[S]
+	{ self: ScopedTask[S] =>
+
+		private[sbt] def :==(value: S): Setting[Task[S]]  =  :=(value)
+		private[sbt] def ::=(value: Task[S]): Setting[Task[S]]  =  Project.setting(scopedKey, Project.value( value ))
+		def := (value: => S): Setting[Task[S]]  =  ::=(mktask(value))
+		private[sbt] def :== (v: ScopedSetting[S]): Setting[Task[S]] = <<=( v(constant))
+		def ~= (f: S => S): Setting[Task[S]]  =  Project.update(scopedKey)( _ map f )
+
+		def <<= (app: Initialize[Task[S]]): Setting[Task[S]]  =  Project.setting(scopedKey, app)
 
 		def task: ScopedSetting[Task[S]] = scopedSetting(scope, key)
 		def get(settings: Settings[Scope]): Option[Task[S]] = settings.get(scope, key)
 
-		type App[T] = Initialize[Task[T]]
-		def scoped = ScopedKey(scope, key)
-		private[this] def mk[T](onTask: Task[S] => Task[T]): App[T] = Apply.single(scoped)(onTask)
-		
-		def flatMapR[T](f: Result[S] => Task[T]): App[T] = mk(_ flatMapR f)
-		def flatMap[T](f: S => Task[T]): App[T] = flatMapR(f compose successM)
-		def map[T](f: S => T): App[T] = mapR(f compose successM)
-		def mapR[T](f: Result[S] => T): App[T] = mk(_ mapR f)
-		def flatFailure[T](f: Incomplete => Task[T]): App[T] = flatMapR(f compose failM)
-		def mapFailure[T](f: Incomplete => T): App[T] = mapR(f compose failM)
-		def andFinally(fin: => Unit): App[S] = mk(_ andFinally fin)
-		def doFinally(t: Task[Unit]): App[S] = mk(_ doFinally t)
-		def identity: App[S] = mk(idFun)
-		def ? : Initialize[Task[Option[S]]] = Project.optional(scoped) { case None => mktask { None }; case Some(t) => t map some.fn }
-		def ??[T >: S](or: => T): Initialize[Task[T]] = Project.optional(scoped)( _ getOrElse mktask(or) )
-		def or[T >: S](i: Initialize[Task[T]]): Initialize[Task[T]] = (this.? zipWith i)( (x,y) => (x :^: y :^: KNil) map hf2( _ getOrElse _ ))
+		@deprecated("A call to 'identity' is no longer necessary and can be removed.")
+		def identity: Initialize[Task[S]] = this
 
-		def || [T >: S](alt: Task[T]): App[T]  =  mk(_ || alt)
-		def && [T](alt: Task[T]): App[T]  =  mk(_ && alt)
+		def ? : Initialize[Task[Option[S]]] = Project.optional(scopedKey) { case None => mktask { None }; case Some(t) => t map some.fn }
+		def ??[T >: S](or: => T): Initialize[Task[T]] = Project.optional(scopedKey)( _ getOrElse mktask(or) )
+		def or[T >: S](i: Initialize[Task[T]]): Initialize[Task[T]] = (this.? zipWith scopedKey)( (x,y) => (x :^: y :^: KNil) map hf2( _ getOrElse _ ))
+	}
+	final class RichInitializeTask[S](i: Initialize[Task[S]])
+	{
+		def flatMapR[T](f: Result[S] => Task[T]): Initialize[Task[T]] = i(_ flatMapR f)
+		def flatMap[T](f: S => Task[T]): Initialize[Task[T]] = flatMapR(f compose successM)
+		def map[T](f: S => T): Initialize[Task[T]] = mapR(f compose successM)
+		def mapR[T](f: Result[S] => T): Initialize[Task[T]] = i(_ mapR f)
+		def flatFailure[T](f: Incomplete => Task[T]): Initialize[Task[T]] = flatMapR(f compose failM)
+		def mapFailure[T](f: Incomplete => T): Initialize[Task[T]] = mapR(f compose failM)
+		def andFinally(fin: => Unit): Initialize[Task[S]] = i(_ andFinally fin)
+		def doFinally(t: Task[Unit]): Initialize[Task[S]] = i(_ doFinally t)
 
-		def dependsOn(tasks: ScopedTask[_]*): App[S] =
-		{
-			val in = KCons(scopedTask(scope, key), KList.fromList(tasks))
-			Apply.tasks(in) { kl =>
-				kl.head.dependsOn(kl.tail.toList :_*)
-			}
-		}
-	}
+		def || [T >: S](alt: Task[T]): Initialize[Task[T]]  =  i(_ || alt)
+		def && [T](alt: Task[T]): Initialize[Task[T]]  =  i(_ && alt)
 
-	implicit def richSettingSeq[T](in: Seq[ScopedSetting[T]]): RichSettingSeq[T] = new RichSettingSeq(in)
-	final class RichSettingSeq[T](keys: Seq[ScopedSetting[T]])
-	{
-		def join: Initialize[Seq[T]] = joinWith(idFun)
-		def joinWith[S](f: Seq[T] => S): Initialize[S] = Apply.uniform(keys)(f)
-	}
-	implicit def richTaskSeq[T](in: Seq[ScopedTask[T]]): RichTaskSeq[T] = new RichTaskSeq(in)
-	final class RichTaskSeq[T](keys: Seq[ScopedTask[T]])
-	{
-		def join: Initialize[Task[Seq[T]]] = Apply.uniformTasks(keys)
-	}
-	implicit def richAnyTaskSeq(in: Seq[ScopedTask[_]]): RichAnyTaskSeq = new RichAnyTaskSeq(in)
-	final class RichAnyTaskSeq(keys: Seq[ScopedTask[_]])
-	{
-		def dependOn: Initialize[Task[Unit]]  =  Apply.tasks(KList.fromList(keys)) { kl => nop.dependsOn(kl.toList :_*) }
-	}
+		def dependsOn(tasks: AnyInitTask*): Initialize[Task[S]] = (i, Initialize.joinAny(tasks)) { (thisTask, deps) => thisTask.dependsOn(deps : _*) }
 
-	final class RichInitializeTask[T](init: Initialize[Task[T]])
+		def triggeredBy(tasks: AnyInitTask*): Initialize[Task[S]] = nonLocal(tasks, Keys.triggeredBy)
+		def runBefore(tasks: AnyInitTask*): Initialize[Task[S]] = nonLocal(tasks, Keys.runBefore)
+		private[this] def nonLocal(tasks: Seq[AnyInitTask], key: AttributeKey[Seq[Task[_]]]): Initialize[Task[S]] =
+			(Initialize.joinAny(tasks), i) { (ts, i) => i.copy(info = i.info.set(key, ts)) }
+	}
+	type AnyInitTask = Initialize[Task[T]] forSome { type T }
+
+	implicit def richTaskSeq[T](in: Seq[Initialize[Task[T]]]): RichTaskSeq[T] = new RichTaskSeq(in)
+	final class RichTaskSeq[T](keys: Seq[Initialize[Task[T]]])
 	{
-		def triggeredBy(tasks: ScopedTask[_]*): Initialize[Task[T]] = nonLocal(tasks, Keys.triggeredBy)
-		def runBefore(tasks: ScopedTask[_]*): Initialize[Task[T]] = nonLocal(tasks, Keys.runBefore)
-		private[this] def nonLocal(tasks: Seq[ScopedTask[_]], key: AttributeKey[Seq[Task[_]]]): Initialize[Task[T]] =
-		{
-			val getTasks = Apply.tasks(KList.fromList(tasks))(idFun)
-			(getTasks zipWith init) { (tasks, i) =>
-				i.copy(info = i.info.set(key, tasks.toList))
-			}
-		}
+		def join: Initialize[Task[Seq[T]]] = tasks(_.join)
+		def tasks: Initialize[Seq[Task[T]]] = Initialize.join(keys)
+	}
+	implicit def richAnyTaskSeq(in: Seq[AnyInitTask]): RichAnyTaskSeq = new RichAnyTaskSeq(in)
+	final class RichAnyTaskSeq(keys: Seq[AnyInitTask])
+	{
+		def dependOn: Initialize[Task[Unit]]  =  Initialize.joinAny(keys).apply(deps => nop.dependsOn(deps : _*) )
 	}
 
 
@@ -433,36 +398,22 @@ object Scoped
 		def mapFailure[T](f: Seq[Incomplete] => T): App[T] = mapR(f compose anyFailM)
 	}
 
-	implicit def t2ToApp2[A,B](t2: (ScopedSetting[A], ScopedSetting[B]) ): Apply2[A,B] = new Apply2(t2)
-	implicit def t3ToApp3[A,B,C](t3: (ScopedSetting[A], ScopedSetting[B], ScopedSetting[C]) ): Apply3[A,B,C] = new Apply3(t3)
-	implicit def t4ToApp4[A,B,C,D](t4: (ScopedSetting[A], ScopedSetting[B], ScopedSetting[C], ScopedSetting[D]) ): Apply4[A,B,C,D] = new Apply4(t4)
-	implicit def t5ToApp5[A,B,C,D,E](t5: (ScopedSetting[A], ScopedSetting[B], ScopedSetting[C], ScopedSetting[D], ScopedSetting[E]) ): Apply5[A,B,C,D,E] = new Apply5(t5)
-	implicit def t6ToApp6[A,B,C,D,E,F](t6: (ScopedSetting[A], ScopedSetting[B], ScopedSetting[C], ScopedSetting[D], ScopedSetting[E], ScopedSetting[F]) ): Apply6[A,B,C,D,E,F] = new Apply6(t6)
-	implicit def t7ToApp7[A,B,C,D,E,F,G](t7: (ScopedSetting[A], ScopedSetting[B], ScopedSetting[C], ScopedSetting[D], ScopedSetting[E], ScopedSetting[F], ScopedSetting[G]) ): Apply7[A,B,C,D,E,F,G] = new Apply7(t7)
-	implicit def t8ToApp8[A,B,C,D,E,F,G,H](t8: (ScopedSetting[A], ScopedSetting[B], ScopedSetting[C], ScopedSetting[D], ScopedSetting[E], ScopedSetting[F], ScopedSetting[G], ScopedSetting[H]) ): Apply8[A,B,C,D,E,F,G,H] = new Apply8(t8)
-	implicit def t9ToApp9[A,B,C,D,E,F,G,H,I](t9: (ScopedSetting[A], ScopedSetting[B], ScopedSetting[C], ScopedSetting[D], ScopedSetting[E], ScopedSetting[F], ScopedSetting[G], ScopedSetting[H], ScopedSetting[I]) ): Apply9[A,B,C,D,E,F,G,H,I] = new Apply9(t9)
+	implicit def t2ToApp2[A,B](t2: (Initialize[A], Initialize[B]) ): Apply2[A,B] = new Apply2(t2)
+	implicit def t3ToApp3[A,B,C](t3: (Initialize[A], Initialize[B], Initialize[C]) ): Apply3[A,B,C] = new Apply3(t3)
+	implicit def t4ToApp4[A,B,C,D](t4: (Initialize[A], Initialize[B], Initialize[C], Initialize[D]) ): Apply4[A,B,C,D] = new Apply4(t4)
+	implicit def t5ToApp5[A,B,C,D,E](t5: (Initialize[A], Initialize[B], Initialize[C], Initialize[D], Initialize[E]) ): Apply5[A,B,C,D,E] = new Apply5(t5)
+	implicit def t6ToApp6[A,B,C,D,E,F](t6: (Initialize[A], Initialize[B], Initialize[C], Initialize[D], Initialize[E], Initialize[F]) ): Apply6[A,B,C,D,E,F] = new Apply6(t6)
+	implicit def t7ToApp7[A,B,C,D,E,F,G](t7: (Initialize[A], Initialize[B], Initialize[C], Initialize[D], Initialize[E], Initialize[F], Initialize[G]) ): Apply7[A,B,C,D,E,F,G] = new Apply7(t7)
+	implicit def t8ToApp8[A,B,C,D,E,F,G,H](t8: (Initialize[A], Initialize[B], Initialize[C], Initialize[D], Initialize[E], Initialize[F], Initialize[G], Initialize[H]) ): Apply8[A,B,C,D,E,F,G,H] = new Apply8(t8)
+	implicit def t9ToApp9[A,B,C,D,E,F,G,H,I](t9: (Initialize[A], Initialize[B], Initialize[C], Initialize[D], Initialize[E], Initialize[F], Initialize[G], Initialize[H], Initialize[I]) ): Apply9[A,B,C,D,E,F,G,H,I] = new Apply9(t9)
 
 
 	object Apply
 	{
-		def single[I,T](in: ScopedKey[I])(f: I => T): Initialize[T] =
-			Project.app(in :^: KNil)(hl => f(hl.head))
-
 		def apply[HL <: HList, T](in: KList[ScopedSetting, HL])(f: HL => T): Initialize[T] =
 			Project.app(in transform ssToSK)(f)
-		def uniformTasks[S](inputs: Seq[ScopedTask[S]]): Initialize[Task[Seq[S]]] =
-			Project.uniform( inputs map stToSK.fn )(_ join)
-		def uniform[S,T](inputs: Seq[ScopedSetting[S]])(f: Seq[S] => T): Initialize[T] =
-			Project.uniform( inputs map ssToSK.fn )(f)
 
-		def tasks[HL <: HList, T](in: KList[ScopedTask, HL])(f: KList[Task, HL] => T): Initialize[T] =
-		{
-			val kapp = new Project.KApp[HL, Task, T]
-			kapp(in transform stToSK)(f)
-		}
 		private val ssToSK = new (ScopedSetting ~> ScopedKey) { def apply[T](sk: ScopedSetting[T]) = new ScopedKey(sk.scope, sk.key) }
-		private val stToSK = new (ScopedTask ~> ScopedTaskKey) { def apply[T](st: ScopedTask[T]) = new ScopedKey(st.scope, st.key) }
-		type ScopedTaskKey[T] = ScopedKey[Task[T]]
 	}	
 
 
@@ -475,36 +426,36 @@ object Scoped
 	def mkTuple8[A,B,C,D,E,F,G,H] = (a:A,b:B,c:C,d:D,e:E,f:F,g:G,h:H) => (a,b,c,d,e,f,g,h)
 	def mkTuple9[A,B,C,D,E,F,G,H,I] = (a:A,b:B,c:C,d:D,e:E,f:F,g:G,h:H,i:I) => (a,b,c,d,e,f,g,h,i)
 
-	final class Apply2[A,B](t2: (ScopedSetting[A], ScopedSetting[B])) {
-		def apply[T](z: (A,B) => T) = Apply( k2(t2) )( hf2(z) )
+	final class Apply2[A,B](t2: (Initialize[A], Initialize[B])) {
+		def apply[T](z: (A,B) => T) = Project.app( k2(t2) )( hf2(z) )
 		def identity = apply(mkTuple2)
 	}
-	final class Apply3[A,B,C](t3: (ScopedSetting[A], ScopedSetting[B], ScopedSetting[C])) {
-		def apply[T](z: (A,B,C) => T) = Apply( k3(t3) )( hf3(z) )
+	final class Apply3[A,B,C](t3: (Initialize[A], Initialize[B], Initialize[C])) {
+		def apply[T](z: (A,B,C) => T) = Project.app( k3(t3) )( hf3(z) )
 		def identity = apply(mkTuple3)
 	}
-	final class Apply4[A,B,C,D](t4: (ScopedSetting[A], ScopedSetting[B], ScopedSetting[C], ScopedSetting[D])) {
-		def apply[T](z: (A,B,C,D) => T) = Apply( k4(t4) )( hf4(z) )
+	final class Apply4[A,B,C,D](t4: (Initialize[A], Initialize[B], Initialize[C], Initialize[D])) {
+		def apply[T](z: (A,B,C,D) => T) = Project.app( k4(t4) )( hf4(z) )
 		def identity = apply(mkTuple4)
 	}
-	final class Apply5[A,B,C,D,E](t5: (ScopedSetting[A], ScopedSetting[B], ScopedSetting[C], ScopedSetting[D], ScopedSetting[E])) {
-		def apply[T](z: (A,B,C,D,E) => T) = Apply( k5(t5) )( hf5(z) )
+	final class Apply5[A,B,C,D,E](t5: (Initialize[A], Initialize[B], Initialize[C], Initialize[D], Initialize[E])) {
+		def apply[T](z: (A,B,C,D,E) => T) = Project.app( k5(t5) )( hf5(z) )
 		def identity = apply(mkTuple5)
 	}
-	final class Apply6[A,B,C,D,E,F](t6: (ScopedSetting[A], ScopedSetting[B], ScopedSetting[C], ScopedSetting[D], ScopedSetting[E], ScopedSetting[F])) {
-		def apply[T](z: (A,B,C,D,E,F) => T) = Apply( k6(t6) )( hf6(z) )
+	final class Apply6[A,B,C,D,E,F](t6: (Initialize[A], Initialize[B], Initialize[C], Initialize[D], Initialize[E], Initialize[F])) {
+		def apply[T](z: (A,B,C,D,E,F) => T) = Project.app( k6(t6) )( hf6(z) )
 		def identity = apply(mkTuple6)
 	}
-	final class Apply7[A,B,C,D,E,F,G](t7: (ScopedSetting[A], ScopedSetting[B], ScopedSetting[C], ScopedSetting[D], ScopedSetting[E], ScopedSetting[F], ScopedSetting[G])) {
-		def apply[T](z: (A,B,C,D,E,F,G) => T) = Apply( k7(t7) )( hf7(z) )
+	final class Apply7[A,B,C,D,E,F,G](t7: (Initialize[A], Initialize[B], Initialize[C], Initialize[D], Initialize[E], Initialize[F], Initialize[G])) {
+		def apply[T](z: (A,B,C,D,E,F,G) => T) = Project.app( k7(t7) )( hf7(z) )
 		def identity = apply(mkTuple7)
 	}
-	final class Apply8[A,B,C,D,E,F,G,H](t8: (ScopedSetting[A], ScopedSetting[B], ScopedSetting[C], ScopedSetting[D], ScopedSetting[E], ScopedSetting[F], ScopedSetting[G], ScopedSetting[H])) {
-		def apply[T](z: (A,B,C,D,E,F,G,H) => T) = Apply( k8(t8) )( hf8(z) )
+	final class Apply8[A,B,C,D,E,F,G,H](t8: (Initialize[A], Initialize[B], Initialize[C], Initialize[D], Initialize[E], Initialize[F], Initialize[G], Initialize[H])) {
+		def apply[T](z: (A,B,C,D,E,F,G,H) => T) = Project.app( k8(t8) )( hf8(z) )
 		def identity = apply(mkTuple8)
 	}
-	final class Apply9[A,B,C,D,E,F,G,H,I](t9: (ScopedSetting[A], ScopedSetting[B], ScopedSetting[C], ScopedSetting[D], ScopedSetting[E], ScopedSetting[F], ScopedSetting[G], ScopedSetting[H], ScopedSetting[I])) {
-		def apply[T](z: (A,B,C,D,E,F,G,H,I) => T) = Apply( k9(t9) )( hf9(z) )
+	final class Apply9[A,B,C,D,E,F,G,H,I](t9: (Initialize[A], Initialize[B], Initialize[C], Initialize[D], Initialize[E], Initialize[F], Initialize[G], Initialize[H], Initialize[I])) {
+		def apply[T](z: (A,B,C,D,E,F,G,H,I) => T) = Project.app( k9(t9) )( hf9(z) )
 		def identity = apply(mkTuple9)
 	}
 
