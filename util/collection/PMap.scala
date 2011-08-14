@@ -12,9 +12,12 @@ trait RMap[K[_], V[_]]
 	def get[T](k: K[T]): Option[V[T]]
 	def contains[T](k: K[T]): Boolean
 	def toSeq: Seq[(K[_], V[_])]
+	def toTypedSeq = toSeq.map{ case (k: K[t],v) => TPair[t](k,v.asInstanceOf[V[t]]) }
 	def keys: Iterable[K[_]]
 	def values: Iterable[V[_]]
 	def isEmpty: Boolean
+
+	final case class TPair[T](key: K[T], value: V[T])
 }
 
 trait IMap[K[_], V[_]] extends (K ~> V) with RMap[K,V]

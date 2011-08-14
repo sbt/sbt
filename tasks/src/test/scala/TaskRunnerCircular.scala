@@ -26,16 +26,12 @@ object TaskRunnerCircularTest extends Properties("TaskRunner Circular")
 	{
 		lazy val top = iterate(pure("bottom", intermediate), intermediate)
 		def iterate(task: Task[Int], i: Int): Task[Int] =
-		{
-			lazy val it: Task[Int] =
-				task flatMap { t =>
-					if(t <= 0)
-						top
-					else
-						iterate(pure((t-1).toString, t-1), i-1)
-				}
-			it
-		}
+			task flatMap { t =>
+				if(t <= 0)
+					top
+				else
+					iterate(pure((t-1).toString, t-1), i-1)
+			}
 		try { tryRun(top, true, workers); false }
 		catch { case i: Incomplete => cyclic(i) }
 	}

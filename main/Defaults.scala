@@ -212,9 +212,7 @@ object Defaults extends BuildCommon
 		} join
 	}
 	def watchTransitiveSourcesTask: Initialize[Task[Seq[File]]] =
-		(state, thisProjectRef) flatMap { (s, base) =>
-			inAllDependencies(base, watchSources.task, Project structure s).join.map(_.flatten)
-		}
+		inDependencies[Task[Seq[File]]](watchSources.task, const(std.TaskExtra.constant(Nil)), includeRoot = true) apply { _.join.map(_.flatten) }
 	def watchSourcesTask: Initialize[Task[Seq[File]]] =
 		Seq(unmanagedSources, unmanagedResources).map(inAllConfigurations).join { _.join.map(_.flatten.flatten.distinct) }
 
@@ -512,19 +510,21 @@ object Defaults extends BuildCommon
 		recurse ?? Nil
 	}
 
-	def inAllDependencies[T](base: ProjectRef, key: ScopedSetting[T], structure: Load.BuildStructure): Seq[T] =
-	{
-		def deps(ref: ProjectRef): Seq[ProjectRef] =
-			Project.getProject(ref, structure).toList.flatMap { p =>
-				p.dependencies.map(_.project) ++ p.aggregate
-			}
+	def inDependencies[T](key: ScopedSetting[T], default: ProjectRef => T, includeRoot: Boolean = true, classpath: Boolean = true, aggregate: Boolean = false): Initialize[Seq[T]] =
+		Project.bind( (loadedBuild, thisProjectRef).identity ) { case (lb, base) =>
+			transitiveDependencies(base, lb, includeRoot, classpath, aggregate) map ( ref => (key in ref) ?? default(ref) ) join ;
+		}
 
-		inAllDeps(base, deps, key, structure.data)
+	def transitiveDependencies(base: ProjectRef, structure: Load.LoadedBuild, includeRoot: Boolean, classpath: Boolean = true, aggregate: Boolean = false): Seq[ProjectRef] =
+	{
+		val full = Dag.topologicalSort(base)(getDependencies(structure, classpath, aggregate))
+		if(includeRoot) full else full.dropRight(1)
 	}
-	def inAllDeps[T](base: ProjectRef, deps: ProjectRef => Seq[ProjectRef], key: ScopedSetting[T], data: Settings[Scope]): Seq[T] =
-		inAllProjects(Dag.topologicalSort(base)(deps), key, data)
-	def inAllProjects[T](allProjects: Seq[Reference], key: ScopedSetting[T], data: Settings[Scope]): Seq[T] =
-		allProjects.flatMap { p => key in p get data }
+	def getDependencies(structure: Load.LoadedBuild, classpath: Boolean = true, aggregate: Boolean = false): ProjectRef => Seq[ProjectRef] =
+		ref => Project.getProject(ref, structure).toList flatMap { p =>
+			(if(classpath) p.dependencies.map(_.project) else Nil) ++
+			(if(aggregate) p.aggregate else Nil)
+		}
 
 	val CompletionsID = "completions"
 	

@@ -59,9 +59,9 @@ object SettingsUsage
 	val applied: Settings[Scope] = make(mySettings)(delegates, scopeLocal, showFullKey)
 
 		// Show results.
-	for(i <- 0 to 5; k <- Seq(a, b)) {
+/*	for(i <- 0 to 5; k <- Seq(a, b)) {
 		println( k.label + i + " = " + applied.get( Scope(i), k) )
-	}
+	}*/
 
 /** Output:
 * For the None results, we never defined the value and there was no value to delegate to.

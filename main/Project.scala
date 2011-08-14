@@ -149,8 +149,10 @@ object Project extends Init[Scope] with ProjectExtra
 
 	def getProjectForReference(ref: Reference, structure: BuildStructure): Option[ResolvedProject] =
 		ref match { case pr: ProjectRef => getProject(pr, structure); case _ => None }
-	def getProject(ref: ProjectRef, structure: BuildStructure): Option[ResolvedProject] =
-		(structure.units get ref.build).flatMap(_.defined get ref.project)
+	def getProject(ref: ProjectRef, structure: BuildStructure): Option[ResolvedProject] = getProject(ref, structure.units)
+	def getProject(ref: ProjectRef, structure: Load.LoadedBuild): Option[ResolvedProject] = getProject(ref, structure.units)
+	def getProject(ref: ProjectRef, units: Map[URI, Load.LoadedBuildUnit]): Option[ResolvedProject] =
+		(units get ref.build).flatMap(_.defined get ref.project)
 
 	def setProject(session: SessionSettings, structure: BuildStructure, s: State): State =
 	{
