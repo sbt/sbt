@@ -44,28 +44,31 @@ trait Init[Scope]
 	/** The Show instance used when a detailed String needs to be generated.  It is typically used when no context is available.*/
 	def showFullKey: Show[ScopedKey[_]]
 
-	final case class ScopedKey[T](scope: Scope, key: AttributeKey[T])
+	final case class ScopedKey[T](scope: Scope, key: AttributeKey[T]) extends KeyedInitialize[T] {
+		def scopedKey = this
+	}
 
 	type SettingSeq[T] = Seq[Setting[T]]
 	type ScopedMap = IMap[ScopedKey, SettingSeq]
 	type CompiledMap = Map[ScopedKey[_], Compiled]
 	type MapScoped = ScopedKey ~> ScopedKey
 	type ValidatedRef[T] = Either[Undefined, ScopedKey[T]]
+	type ValidatedInit[T] = Either[Seq[Undefined], Initialize[T]]
 	type ValidateRef = ScopedKey ~> ValidatedRef
 	type ScopeLocal = ScopedKey[_] => Seq[Setting[_]]
 	type MapConstant = ScopedKey ~> Option
 
 	def setting[T](key: ScopedKey[T], init: Initialize[T]): Setting[T] = new Setting[T](key, init)
 	def value[T](value: => T): Initialize[T] = new Value(value _)
-	def optional[T,U](key: ScopedKey[T])(f: Option[T] => U): Initialize[U] = new Optional(Some(key), f)
+	def optional[T,U](i: Initialize[T])(f: Option[T] => U): Initialize[U] = new Optional(Some(i), f)
 	def update[T](key: ScopedKey[T])(f: T => T): Setting[T] = new Setting[T](key, app(key :^: KNil)(hl => f(hl.head)))
-	def app[HL <: HList, T](inputs: KList[ScopedKey, HL])(f: HL => T): Initialize[T] = new Apply(f, inputs)
-	def uniform[S,T](inputs: Seq[ScopedKey[S]])(f: Seq[S] => T): Initialize[T] = new Uniform(f, inputs)
-	def kapp[HL <: HList, M[_], T](inputs: KList[({type l[t] = ScopedKey[M[t]]})#l, HL])(f: KList[M, HL] => T): Initialize[T] = new KApply[HL, M, T](f, inputs)
+	def app[HL <: HList, T](inputs: KList[Initialize, HL])(f: HL => T): Initialize[T] = new Apply(f, inputs)
+	def uniform[S,T](inputs: Seq[Initialize[S]])(f: Seq[S] => T): Initialize[T] = new Uniform(f, inputs)
+	def kapp[HL <: HList, M[_], T](inputs: KList[({type l[t] = Initialize[M[t]]})#l, HL])(f: KList[M, HL] => T): Initialize[T] = new KApply[HL, M, T](f, inputs)
 
 	// the following is a temporary workaround for the "... cannot be instantiated from ..." bug, which renders 'kapp' above unusable outside this source file
 	class KApp[HL <: HList, M[_], T] {
-		type Composed[S] = ScopedKey[M[S]]
+		type Composed[S] = Initialize[M[S]]
 		def apply(inputs: KList[Composed, HL])(f: KList[M, HL] => T): Initialize[T] = new KApply[HL, M, T](f, inputs)
 	}
 
@@ -152,7 +155,7 @@ trait Init[Scope]
 
 	private[this] def applySetting[T](map: Settings[Scope], setting: Setting[T]): Settings[Scope] =
 	{
-		val value = setting.init.get(map)
+		val value = setting.init.evaluate(map)
 		val key = setting.key
 		map.set(key.scope, key.key, value)
 	}
@@ -194,28 +197,26 @@ trait Init[Scope]
 	sealed trait Initialize[T]
 	{
 		def dependsOn: Seq[ScopedKey[_]]
-		def map[S](g: T => S): Initialize[S]
+		def apply[S](g: T => S): Initialize[S]
 		def mapReferenced(g: MapScoped): Initialize[T]
-		def validateReferenced(g: ValidateRef): Either[Seq[Undefined], Initialize[T]]
+		def validateReferenced(g: ValidateRef): ValidatedInit[T]
 		def zip[S](o: Initialize[S]): Initialize[(T,S)] = zipWith(o)((x,y) => (x,y))
-		def zipWith[S,U](o: Initialize[S])(f: (T,S) => U): Initialize[U] = new Joined[T,S,U](this, o, f)
+		def zipWith[S,U](o: Initialize[S])(f: (T,S) => U): Initialize[U] =
+			new Apply[T :+: S :+: HNil, U]( { case t :+: s :+: HNil => f(t,s)}, this :^: o :^: KNil)
 		def mapConstant(g: MapConstant): Initialize[T]
-		def get(map: Settings[Scope]): T
+		def evaluate(map: Settings[Scope]): T
 	}
 	object Initialize
 	{
 		implicit def joinInitialize[T](s: Seq[Initialize[T]]): JoinInitSeq[T] = new JoinInitSeq(s)
 		final class JoinInitSeq[T](s: Seq[Initialize[T]])
 		{
-			def join[S](f: Seq[T] => S): Initialize[S] = this.join map f
-			def join: Initialize[Seq[T]] = Initialize.join(s)
+			def joinWith[S](f: Seq[T] => S): Initialize[S] = uniform(s)(f)
+			def join: Initialize[Seq[T]] = uniform(s)(idFun)
 		}
-		def join[T](inits: Seq[Initialize[T]]): Initialize[Seq[T]] =
-			inits match
-			{
-				case Seq() => value( Nil )
-				case Seq(x, xs @ _*) => (join(xs) zipWith x)( (t,h) => h +: t)
-			}
+		def join[T](inits: Seq[Initialize[T]]): Initialize[Seq[T]] = uniform(inits)(idFun)
+		def joinAny[M[_]](inits: Seq[Initialize[M[T]] forSome { type T }]): Initialize[Seq[M[_]]] =
+			join(inits.asInstanceOf[Seq[Initialize[M[Any]]]]).asInstanceOf[Initialize[Seq[M[T] forSome { type T }]]]
 	}
 	object SettingsDefinition {
 		implicit def unwrapSettingsDefinition(d: SettingsDefinition): Seq[Setting[_]] = d.settings
@@ -233,103 +234,120 @@ trait Init[Scope]
 		def mapReferenced(g: MapScoped): Setting[T] = new Setting(key, init mapReferenced g)
 		def validateReferenced(g: ValidateRef): Either[Seq[Undefined], Setting[T]] = (init validateReferenced g).right.map(newI => new Setting(key, newI))
 		def mapKey(g: MapScoped): Setting[T] = new Setting(g(key), init)
-		def mapInit(f: (ScopedKey[T], T) => T): Setting[T] = new Setting(key, init.map(t => f(key,t)))
+		def mapInit(f: (ScopedKey[T], T) => T): Setting[T] = new Setting(key, init(t => f(key,t)))
 		def mapConstant(g: MapConstant): Setting[T] = new Setting(key, init mapConstant g)
 		override def toString = "setting(" + key + ")"
 	}
 
-	private[this] final class Optional[S,T](a: Option[ScopedKey[S]], f: Option[S] => T) extends Initialize[T]
+		// mainly for reducing generated class count
+	private[this] def validateReferencedT(g: ValidateRef) =
+		new (Initialize ~> ValidatedInit) { def apply[T](i: Initialize[T]) = i validateReferenced g }
+
+	private[this] def mapReferencedT(g: MapScoped) =
+		new (Initialize ~> Initialize) { def apply[T](i: Initialize[T]) = i mapReferenced g }
+
+	private[this] def mapConstantT(g: MapConstant) =
+		new (Initialize ~> Initialize) { def apply[T](i: Initialize[T]) = i mapConstant g }
+
+	private[this] def evaluateT(g: Settings[Scope]) =
+		new (Initialize ~> Id) { def apply[T](i: Initialize[T]) = i evaluate g }
+
+	private[this] def dependencies(ls: Seq[Initialize[_]]): Seq[ScopedKey[_]] = ls.flatMap(_.dependsOn)
+
+	sealed trait Keyed[S, T] extends Initialize[T]
 	{
-		def dependsOn = a.toList
-		def map[Z](g: T => Z): Initialize[Z] = new Optional[S,Z](a, g compose f)
-		def get(map: Settings[Scope]): T = f(a map asFunction(map))
-		def mapReferenced(g: MapScoped) = new Optional(a map g.fn, f)
-		def validateReferenced(g: ValidateRef) = Right( new Optional(a flatMap { sk => g(sk).right.toOption }, f) )
-		def mapConstant(g: MapConstant): Initialize[T] =
-			(a flatMap g.fn) match {
-				case None => this
-				case s => new Value(() => f(s))
-			}
+		def scopedKey: ScopedKey[S]
+		protected def transform: S => T
+		final def dependsOn = scopedKey :: Nil
+		final def apply[Z](g: T => Z): Initialize[Z] = new GetValue(scopedKey, g compose transform)
+		final def evaluate(ss: Settings[Scope]): T = transform(getValue(ss, scopedKey))
+		final def mapReferenced(g: MapScoped): Initialize[T] = new GetValue( g(scopedKey), transform)
+		final def validateReferenced(g: ValidateRef): ValidatedInit[T] = g(scopedKey) match {
+			case Left(un) => Left(un :: Nil)
+			case Right(nk) => Right(new GetValue(nk, transform))
+		}
+		final def mapConstant(g: MapConstant): Initialize[T] = g(scopedKey) match {
+			case None => this
+			case Some(const) => new Value(() => transform(const))
+		}
+		@deprecated("Use scopedKey.")
+		def scoped = scopedKey
 	}
-	private[this] final class Joined[S,T,U](a: Initialize[S], b: Initialize[T], f: (S,T) => U) extends Initialize[U]
+	private[this] final class GetValue[S,T](val scopedKey: ScopedKey[S], val transform: S => T) extends Keyed[S, T]
+	trait KeyedInitialize[T] extends Keyed[T, T] {
+		protected final val transform = idFun[T]
+	}
+	
+	private[this] final class Optional[S,T](a: Option[Initialize[S]], f: Option[S] => T) extends Initialize[T]
 	{
-		def dependsOn = a.dependsOn ++ b.dependsOn
-		def mapReferenced(g: MapScoped) = new Joined(a mapReferenced g, b mapReferenced g, f)
-		def validateReferenced(g: ValidateRef) =
-			(a validateReferenced g, b validateReferenced g) match {
-				case (Right(ak), Right(bk)) => Right( new Joined(ak, bk, f) )
-				case (au, bu) => Left( (au.left.toSeq ++ bu.left.toSeq).flatten )
-			}
-		def map[Z](g: U => Z) = new Joined[S,T,Z](a, b, (s,t) => g(f(s,t)))
-		def mapConstant(g: MapConstant) = new Joined[S,T,U](a mapConstant g, b mapConstant g, f)
-		def get(map: Settings[Scope]): U = f(a get map, b get map)
+		def dependsOn = dependencies(a.toList)
+		def apply[Z](g: T => Z): Initialize[Z] = new Optional[S,Z](a, g compose f)
+		def evaluate(ss: Settings[Scope]): T = f(a map evaluateT(ss).fn)
+		def mapReferenced(g: MapScoped) = new Optional(a map mapReferencedT(g).fn, f)
+		def validateReferenced(g: ValidateRef) = Right( new Optional(a flatMap { _.validateReferenced(g).right.toOption }, f) )
+		def mapConstant(g: MapConstant): Initialize[T] = new Optional(a map mapConstantT(g).fn, f)
 	}
 	private[this] final class Value[T](value: () => T) extends Initialize[T]
 	{
 		def dependsOn = Nil
 		def mapReferenced(g: MapScoped) = this
 		def validateReferenced(g: ValidateRef) = Right(this)
-		def map[S](g: T => S) = new Value[S](() => g(value()))
+		def apply[S](g: T => S) = new Value[S](() => g(value()))
 		def mapConstant(g: MapConstant) = this
-		def get(map: Settings[Scope]): T = value()
+		def evaluate(map: Settings[Scope]): T = value()
 	}
-	private[this] final class Apply[HL <: HList, T](val f: HL => T, val inputs: KList[ScopedKey, HL]) extends Initialize[T]
+	private[this] final class Apply[HL <: HList, T](val f: HL => T, val inputs: KList[Initialize, HL]) extends Initialize[T]
 	{
-		def dependsOn = inputs.toList
-		def mapReferenced(g: MapScoped) = new Apply(f, inputs transform g)
-		def map[S](g: T => S) = new Apply(g compose f, inputs)
-		def mapConstant(g: MapConstant) = Reduced.reduceH(inputs, g).combine( (keys, expand) => new Apply(f compose expand, keys) )
-		def get(map: Settings[Scope]) = f(inputs down asTransform(map) )
+		def dependsOn = dependencies(inputs.toList)
+		def mapReferenced(g: MapScoped) = mapInputs( mapReferencedT(g) )
+		def apply[S](g: T => S) = new Apply(g compose f, inputs)
+		def mapConstant(g: MapConstant) = mapInputs( mapConstantT(g) )
+		def mapInputs(g: Initialize ~> Initialize): Initialize[T] = new Apply(f, inputs transform g)
+		def evaluate(ss: Settings[Scope]) = f(inputs down evaluateT(ss))
 		def validateReferenced(g: ValidateRef) =
 		{
-			val tx = inputs.transform(g)
-			val undefs = tx.toList.flatMap(_.left.toSeq)
-			val get = new (ValidatedRef ~> ScopedKey) { def apply[T](vr: ValidatedRef[T]) = vr.right.get }
+			val tx = inputs transform validateReferencedT(g)
+			val undefs = tx.toList.flatMap(_.left.toSeq.flatten)
+			val get = new (ValidatedInit ~> Initialize) { def apply[T](vr: ValidatedInit[T]) = vr.right.get }
 			if(undefs.isEmpty) Right(new Apply(f, tx transform get)) else Left(undefs)
 		}
 	}
 
-	private[this] final class KApply[HL <: HList, M[_], T](val f: KList[M, HL] => T, val inputs: KList[({type l[t] = ScopedKey[M[t]]})#l, HL]) extends Initialize[T]
+	private[this] final class KApply[HL <: HList, M[_], T](val f: KList[M, HL] => T, val inputs: KList[({type l[t] = Initialize[M[t]]})#l, HL]) extends Initialize[T]
 	{
-		type ScopedKeyM[T] = ScopedKey[M[T]]
-		type VRefM[T] = ValidatedRef[M[T]]
-		def dependsOn = unnest(inputs.toList)
-		def mapReferenced(g: MapScoped) = new KApply[HL, M, T](f, inputs.transform[({type l[t] = ScopedKey[M[t]]})#l]( nestCon(g) ) )
-		def map[S](g: T => S) = new KApply[HL, M, S](g compose f, inputs)
-		def get(map: Settings[Scope]) = f(inputs.transform[M]( nestCon[ScopedKey, Id, M](asTransform(map)) ))
-		def mapConstant(g: MapConstant) =
-		{
-			def mk[HLk <: HList](keys: KList[ScopedKeyM, HLk], expand: KList[M, HLk] => KList[M, HL]) = new KApply[HLk, M, T](f compose expand, keys)
-			Reduced.reduceK[HL, ScopedKey, M](inputs, nestCon(g)) combine mk
-		}
+		type InitializeM[T] = Initialize[M[T]]
+		type VInitM[T] = ValidatedInit[M[T]]
+		def dependsOn = dependencies(unnest(inputs.toList))
+		def mapReferenced(g: MapScoped) = mapInputs( mapReferencedT(g) )
+		def apply[S](g: T => S) = new KApply[HL, M, S](g compose f, inputs)
+		def evaluate(ss: Settings[Scope]) = f(inputs.transform[M]( nestCon(evaluateT(ss)) ))
+		def mapConstant(g: MapConstant) = mapInputs(mapConstantT(g))
+		def mapInputs(g: Initialize ~> Initialize): Initialize[T] =
+			new KApply[HL, M, T](f, inputs.transform[({type l[t] = Initialize[M[t]]})#l]( nestCon(g) ))
 		def validateReferenced(g: ValidateRef) =
 		{
-			val tx = inputs.transform[VRefM](nestCon(g))
-			val undefs = tx.toList.flatMap(_.left.toSeq)
-			val get = new (VRefM ~> ScopedKeyM) { def apply[T](vr: ValidatedRef[M[T]]) = vr.right.get }
+			val tx = inputs.transform[VInitM](nestCon(validateReferencedT(g)))
+			val undefs = tx.toList.flatMap(_.left.toSeq.flatten)
+			val get = new (VInitM ~> InitializeM) { def apply[T](vr: VInitM[T]) = vr.right.get }
 			if(undefs.isEmpty)
-				Right(new KApply[HL, M, T](f, tx.transform( get ) ))
+				Right(new KApply[HL, M, T](f, tx transform get))
 			else
 				Left(undefs)
 		}
-		private[this] def unnest(l: List[ScopedKey[M[T]] forSome { type T }]): List[ScopedKey[_]] = l.asInstanceOf[List[ScopedKey[_]]]
+		private[this] def unnest(l: List[Initialize[M[T]] forSome { type T }]): List[Initialize[_]] = l.asInstanceOf[List[Initialize[_]]]
 	}
-	private[this] final class Uniform[S, T](val f: Seq[S] => T, val inputs: Seq[ScopedKey[S]]) extends Initialize[T]
+	private[this] final class Uniform[S, T](val f: Seq[S] => T, val inputs: Seq[Initialize[S]]) extends Initialize[T]
 	{
-		def dependsOn = inputs
-		def mapReferenced(g: MapScoped) = new Uniform(f, inputs map g.fn[S])
+		def dependsOn = dependencies(inputs)
+		def mapReferenced(g: MapScoped) = new Uniform(f, inputs map mapReferencedT(g).fn)
 		def validateReferenced(g: ValidateRef) =
 		{
-			val (undefs, ok) = List.separate(inputs map g.fn[S])
-			if(undefs.isEmpty) Right( new Uniform(f, ok) ) else Left(undefs)
+			val (undefs, ok) = List.separate(inputs map validateReferencedT(g).fn )
+			if(undefs.isEmpty) Right( new Uniform(f, ok) ) else Left(undefs.flatten)
 		}
-		def map[S](g: T => S) = new Uniform(g compose f, inputs)
-		def mapConstant(g: MapConstant) =
-		{
-			val red = Reduced.reduceSeq(inputs, g)
-			new Uniform(f compose red.expand, red.keys)
-		}
-		def get(map: Settings[Scope]) = f(inputs map asFunction(map))
+		def apply[S](g: T => S) = new Uniform(g compose f, inputs)
+		def mapConstant(g: MapConstant) = new Uniform(f, inputs map mapConstantT(g).fn)
+		def evaluate(ss: Settings[Scope]) = f(inputs map evaluateT(ss).fn )
 	}
 	private def remove[T](s: Seq[T], v: T) = s filterNot (_ == v)
 }
