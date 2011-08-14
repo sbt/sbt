@@ -78,8 +78,8 @@ while [ $# -gt 0 ]; do
 
           -D*) addJava "$1"; shift ;;
           -J*) addJava "${1:2}"; shift ;;
-       -debug) debug=1 ; addSbt "set logLevel := Level.Debug"; shift ;;
-       -local) addSbt "set scalaHome := Some(file(\"/path/to/scala\"))"; shift ;;
+       -debug) addSbt "set logLevel := Level.Debug"; debug=1; shift ;;
+       -local) addSbt "set scalaHome := Some(file(\"$2\"))"; shift 2 ;;
 
             *) args=("${args[@]}" "$1") ; shift ;;
   esac
