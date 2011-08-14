@@ -18,7 +18,7 @@ object SbtCreateConfig {
     def name         = prop("sbt-create.name", "project-name-here")
     def organization = prop("sbt-create.organization", "your.organization.here")
     def version      = prop("sbt-create.version", "0.1-SNAPSHOT")
-    def scalaVersion = prop("sbt-create.scalaVersion", "2.9.0-1")
+    def scalaVersion = prop("sbt.scala.version", "2.9.0-1")
   }
 }
 
