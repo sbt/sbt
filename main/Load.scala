@@ -13,7 +13,7 @@ package sbt
 	import inc.{FileValueCache, Locate}
 	import Project.{inScope, ScopedKey, ScopeLocal, Setting}
 	import Keys.{appConfiguration, baseDirectory, configuration, streams, Streams, thisProject, thisProjectRef}
-	import Keys.{globalLogging, isDummy, parseResult, resolvedScoped, taskDefinitionKey}
+	import Keys.{globalLogging, isDummy, loadedBuild, parseResult, resolvedScoped, taskDefinitionKey}
 	import tools.nsc.reporters.ConsoleReporter
 	import Build.{analyzed, data}
 	import Scope.{GlobalScope, ThisScope}
@@ -180,7 +180,8 @@ object Load
 
 	def isProjectThis(s: Setting[_]) = s.key.scope.project match { case This | Select(ThisProject) => true; case _ => false }
 	def buildConfigurations(loaded: LoadedBuild, rootProject: URI => String, rootEval: () => Eval, injectSettings: InjectSettings): Seq[Setting[_]] =
-		transformProjectOnly(loaded.root, rootProject, injectSettings.global) ++ 
+		((loadedBuild in GlobalScope :== loaded) +:
+		transformProjectOnly(loaded.root, rootProject, injectSettings.global)) ++ 
 		loaded.units.toSeq.flatMap { case (uri, build) =>
 			val eval = if(uri == loaded.root) rootEval else lazyEval(build.unit)
 			val pluginSettings = build.unit.plugins.plugins
