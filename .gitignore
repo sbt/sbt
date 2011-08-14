@@ -5,4 +5,4 @@ target
 lib_managed
 src_managed
 /ext
-lib/sbt-launch.jar
+.lib/sbt-launch.jar

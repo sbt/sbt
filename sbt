@@ -9,34 +9,29 @@ set -e
 launch_base=http://typesafe.artifactoryonline.com/typesafe/ivy-releases/org.scala-tools.sbt/sbt-launch
 launch_url=$launch_base/0.10.1/sbt-launch.jar
 
-declare -r script_dir="$(dirname $(readlink $BASH_SOURCE))"
-declare -r script_name="$(basename $BASH_SOURCE)"
-declare -r sbt_jar="$script_dir/lib/sbt-launch.jar"
+# this seems to cover the bases on OSX, and someone will
+# have to tell me about the others.
+get_script_path () {
+  local path="$1"
+  [[ -L "$path" ]] || { echo "$path" ; return; }
+  
+  local target=$(readlink "$path")
+  if [[ "${target:0:1}" == "/" ]]; then
+    echo "$target"
+  else
+    echo "$path/$target"
+  fi
+}
+
+declare -r script_path=$(get_script_path "$BASH_SOURCE")
+declare -r script_dir="$(dirname $script_path)"
+declare -r script_name="$(basename $script_path)"
+declare -r default_sbt_jar="$script_dir/.lib/sbt-launch.jar"
 declare -r default_java_opts="-Dfile.encoding=UTF8"
 declare -r default_sbt_opts="-XX:+CMSClassUnloadingEnabled -XX:MaxPermSize=512m -Xmx2g -Xss2m"
 declare -r latest_28="2.8.1"
 declare -r latest_29="2.9.0-1"
 declare -r latest_210="2.10.0-SNAPSHOT"
-
-# pick up completion if present; todo
-[[ -f .sbt_completion.sh ]] && source .sbt_completion.sh
-
-# no jar? download it.
-[[ -f "$sbt_jar" ]] || {
-  echo "Downloading sbt launcher, this should only take a moment..."
-
-  if which curl >/dev/null; then
-    curl "$launch_url" --output "$sbt_jar"
-  elif which wget >/dev/null; then
-    wget "$launch_url" > "$sbt_jar"
-  fi
-}
-
-# still no jar? uh-oh.
-[[ -f "$sbt_jar" ]] || {
-  echo "Download failed. Obtain the jar manually and place it at $sbt_jar"
-  exit 1
-}
 
 usage () {
   cat <<EOM
@@ -45,6 +40,7 @@ Usage: $script_name [options]
   -help           prints this message
   -nocolor        disable ANSI color codes
   -debug          set sbt log level to debug
+  -sbtjar <path>  location of sbt launcher (default: $default_sbt_jar)
   -sbtdir <path>  location of global settings and plugins (default: ~/.sbt)
      -ivy <path>  local Ivy repository (default: ~/.ivy2)
   -shared <path>  shared sbt boot directory (default: none, no sharing)
@@ -79,6 +75,8 @@ EOM
 declare -a args
 declare -a java_args
 declare -a sbt_commands
+declare sbt_jar="$default_sbt_jar"
+
 addJava () {
   java_args=("${java_args[@]}" "$1")
 }
@@ -92,7 +90,7 @@ while [ $# -gt 0 ]; do
 
          -ivy) addJava "-Dsbt.ivy.home=$2"; shift 2 ;;
       -shared) addJava "-Dsbt.boot.directory=$2"; shift 2 ;;
-      -global) addJava "-Dsbt.global.base=$2"; shift 2 ;;
+      -sbtdir) addJava "-Dsbt.global.base=$2"; shift 2 ;;
     -nocolors) addJava "-Dsbt.log.noformat=true"; shift ;;
           -28) addJava "-Dsbt.scala.version=$latest_28"; shift ;;
           -29) addJava "-Dsbt.scala.version=$latest_29"; shift ;;
@@ -102,6 +100,7 @@ while [ $# -gt 0 ]; do
           -J*) addJava "${1:2}"; shift ;;
        -debug) addSbt "set logLevel := Level.Debug"; debug=1; shift ;;
        -local) addSbt "set scalaHome := Some(file(\"$2\"))"; shift 2 ;;
+      -sbtjar) sbt_jar="$2"; shift 2 ;;
 
             *) args=("${args[@]}" "$1") ; shift ;;
   esac
@@ -109,6 +108,26 @@ done
 
 # reset "$@" to the residual args
 set -- "${args[@]}"
+
+# pick up completion if present; todo
+[[ -f .sbt_completion.sh ]] && source .sbt_completion.sh
+
+# no jar? download it.
+[[ -f "$sbt_jar" ]] || {
+  echo "Downloading sbt launcher, this should only take a moment..."
+
+  if which curl >/dev/null; then
+    curl "$launch_url" --output "$sbt_jar"
+  elif which wget >/dev/null; then
+    wget "$launch_url" > "$sbt_jar"
+  fi
+}
+
+# still no jar? uh-oh.
+[[ -f "$sbt_jar" ]] || {
+  echo "Download failed. Obtain the jar manually and place it at $sbt_jar"
+  exit 1
+}
 
 execRunner () {
   # print the arguments one to a line, quoting any containing spaces

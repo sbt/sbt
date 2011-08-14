@@ -46,6 +46,7 @@ Current -help output:
       -help           prints this message
       -nocolor        disable ANSI color codes
       -debug          set sbt log level to debug
+      -sbtjar <path>  location of sbt launcher (default: ./.lib/sbt-launch.jar)
       -sbtdir <path>  location of global settings and plugins (default: ~/.sbt)
          -ivy <path>  local Ivy repository (default: ~/.ivy2)
       -shared <path>  shared sbt boot directory (default: none, no sharing)
@@ -66,4 +67,3 @@ Current -help output:
     corresponding variable is unset. In the case of a duplicated option,
     SBT_OPTS takes precedence over JAVA_OPTS, and command line options
     take precedence over both.
-
