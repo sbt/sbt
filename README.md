@@ -14,26 +14,25 @@ There is a [video of a demo] given at the [Northeast Scala Symposium] that gives
 
 # Build from source
 
-To build from source, get the latest stable version of sbt 0.10.x (see [Setup]) and get the code.
+1. Install the current stable binary release of sbt 0.10.x (see [Setup]), which will be used to build sbt from source.
+2. Get the source code.
 
 	$ git clone git://github.com/harrah/xsbt.git
 	$ cd xsbt
 
-The initial branch is the development branch 0.10, which contains the latest code for the 0.10.x series.
-
-The latest tag for 0.10.x is 0.10.1:
+3. The initial branch is the development branch 0.10, which contains the latest code for the 0.10.x series.  To build a specific release or commit, switch to the associated tag.  The tag for the latest 0.10.x release is v0.10.1:
 
 	$ git checkout v0.10.1
 
-To build the launcher, publish all components locally, and build API and SXR documentation:
+4. To build the launcher, publish all components locally, and build API and SXR documentation:
 
 	$ sbt build-all
 
-The individual commands are
+Alternatively, the individual commands run by `build-all` may be executed directly:
 
-   $ sbt publish-local proguard sxr doc
+	$ sbt publish-local proguard sxr doc
 
-Copy your stable ~/bin/sbt script to ~/bin/xsbt and change it to use the launcher at:
+5. To use this locally built version of sbt, copy your stable ~/bin/sbt script to ~/bin/xsbt and change it to use the launcher jar in `<xsbt>/target/`.  For the v0.10.1 tag, the full location is:
 
 	<xsbt>/target/sbt-launch-0.10.1.jar
 
