@@ -5,44 +5,66 @@
 
 set -e
 
+# todo - make this dynamic
+launch_base=http://typesafe.artifactoryonline.com/typesafe/ivy-releases/org.scala-tools.sbt/sbt-launch
+launch_url=$launch_base/0.10.1/sbt-launch.jar
+
+declare -r script_dir=$(cd $(dirname $BASH_SOURCE) ; pwd)
 declare -r script_name="$(basename $BASH_SOURCE)"
-declare -r sbt_jar=/soft/inst/sbt/xsbt-launch.jar
+declare -r sbt_jar="$script_dir/lib/sbt-launch.jar"
 declare -r default_java_opts="-Dfile.encoding=UTF8"
 declare -r default_sbt_opts="-XX:+CMSClassUnloadingEnabled -XX:MaxPermSize=512m -Xmx2g -Xss2m"
 declare -r latest_28="2.8.1"
 declare -r latest_29="2.9.0-1"
 declare -r latest_210="2.10.0-SNAPSHOT"
 
-# pick up completion if present
+# pick up completion if present; todo
 [[ -f .sbt_completion.sh ]] && source .sbt_completion.sh
+
+# no jar? download it.
+[[ -f "$sbt_jar" ]] || {
+  echo "Downloading sbt launcher, this should only take a moment..."
+
+  if which curl >/dev/null; then
+    curl "$launch_url" --output "$sbt_jar"
+  elif which wget >/dev/null; then
+    wget "$launch_url" > "$sbt_jar"
+  fi
+}
+
+# still no jar? uh-oh.
+[[ -f "$sbt_jar" ]] || {
+  echo "Download failed. Obtain the jar manually and place it at $sbt_jar"
+  exit 1
+}
 
 usage () {
   cat <<EOM
 Usage: $script_name [options]
 
-  -help      prints this message
-  -nocolor   disable ANSI color codes
-  -debug     set sbt log level to debug
-  -28        set scala version to $latest_28
-  -29        set scala version to $latest_29
-  -210       set scala version to $latest_210
-  -Dkey=val  pass -Dkey=val directly to the jvm
-  -J-X       pass option -X directly to the jvm
+  -help           prints this message
+  -nocolor        disable ANSI color codes
+  -debug          set sbt log level to debug
+  -sbtdir <path>  location of global settings and plugins (default: ~/.sbt)
+     -ivy <path>  local Ivy repository (default: ~/.ivy2)
+  -shared <path>  shared sbt boot directory (default: none, no sharing)
 
-  # Options which require a path:
-  -ivy       local Ivy repository (default: ~/.ivy2)
-  -sbtdir    directory containing global settings and plugins (default: ~/.sbt)
-  -shared    shared sbt boot directory (default: nones, no sharing)
-  -local     local scala installation to set as scala home
+  # setting scala version
+  -28           set scala version to $latest_28
+  -29           set scala version to $latest_29
+  -210          set scala version to $latest_210
+  -local <path> set scala version to local installation at path
 
-The contents of the following environment variables, if any, will be
-passed to the jvm. Later variables take priority over earlier ones, and
-command line options (-D/-J) take priority over all of them.
+  # passing options to jvm
+  JAVA_OPTS     environment variable  # default: "$default_java_opts"
+  SBT_OPTS      environment variable  # default: "$default_sbt_opts"
+  -Dkey=val     pass -Dkey=val directly to the jvm
+  -J-X          pass option -X directly to the jvm (-J is stripped)
 
-  JAVA_OPTS   # defaults: $default_java_opts
-  SBT_OPTS    # defaults: $default_sbt_opts
-
-If an environment variable is set, the defaults are not given.
+The defaults list for JAVA_OPTS and SBT_OPTS are only given if the
+corresponding variable is unset. In the case of a duplicated option,
+SBT_OPTS takes precedence over JAVA_OPTS, and command line options
+take precedence over both.
 EOM
 }
 
