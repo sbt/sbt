@@ -170,12 +170,12 @@ trait Init[Scope]
 		distances.sortBy(_._1).map(_._2).headOption
 	}
 	def refinedDistance(delegates: Scope => Seq[Scope], a: ScopedKey[_], b: ScopedKey[_]): Option[Int]  =
-		if(a.key == b.key)
+		if(a.key != b.key || a == b) None
+		else
 		{
 			val dist = delegates(a.scope).indexOf(b.scope)
 			if(dist < 0) None else Some(dist)
 		}
-		else None
 
 	final class Uninitialized(val undefined: Seq[Undefined], msg: String) extends Exception(msg)
 	final class Undefined(val definingKey: ScopedKey[_], val referencedKey: ScopedKey[_])
