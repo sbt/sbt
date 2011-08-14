@@ -9,7 +9,7 @@ set -e
 launch_base=http://typesafe.artifactoryonline.com/typesafe/ivy-releases/org.scala-tools.sbt/sbt-launch
 launch_url=$launch_base/0.10.1/sbt-launch.jar
 
-declare -r script_dir=$(cd $(dirname $BASH_SOURCE) ; pwd)
+declare -r script_dir="$(dirname $(readlink $BASH_SOURCE))"
 declare -r script_name="$(basename $BASH_SOURCE)"
 declare -r sbt_jar="$script_dir/lib/sbt-launch.jar"
 declare -r default_java_opts="-Dfile.encoding=UTF8"
