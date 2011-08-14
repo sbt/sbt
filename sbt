@@ -95,9 +95,9 @@ while [ $# -gt 0 ]; do
 
           -D*) addJava "$1"; shift ;;
           -J*) addJava "${1:2}"; shift ;;
-          -28) addSbt "set scalaVersion := \"$latest_28\""; shift ;;
-          -29) addSbt "set scalaVersion := \"$latest_29\""; shift ;;
-         -210) addSbt "set scalaVersion := \"$latest_210\""; shift ;;
+          -28) addSbt "++ $latest_28"; shift ;;
+          -29) addSbt "++ $latest_29"; shift ;;
+         -210) addSbt "++ $latest_210"; shift ;;
        -debug) addSbt "set logLevel in Global := Level.Debug"; debug=1; shift ;;
        -local) addSbt "set scalaHome := Some(file(\"$2\"))"; shift 2 ;;
 
