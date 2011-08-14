@@ -1,4 +1,10 @@
+sbt: the rebel cut
+==================
+
 An alternative script for running [[sbt 0.10|https://github.com/harrah/xsbt]].
+There's also a template project sbt coming together, but it's unfinished.
+However the runner is quite useful already.
+
 
     ./sbt -help
 
@@ -23,7 +29,8 @@ Usage: sbt [options]
   -Dkey=val     pass -Dkey=val directly to the jvm
   -J-X          pass option -X directly to the jvm (-J is stripped)
 
-The defaults list for JAVA_OPTS and SBT_OPTS are only given if the
+The defaults given for JAVA_OPTS and SBT_OPTS are only used if the
 corresponding variable is unset. In the case of a duplicated option,
 SBT_OPTS takes precedence over JAVA_OPTS, and command line options
 take precedence over both.
+

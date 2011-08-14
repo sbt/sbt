@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 #
-# A more capable sbt runner, coincidentally called sbt.
+# A more capable sbt runner, coincidentally also called sbt.
 # Author: Paul Phillips <paulp@typesafe.com>
 
 set -e
@@ -61,7 +61,7 @@ Usage: $script_name [options]
   -Dkey=val     pass -Dkey=val directly to the jvm
   -J-X          pass option -X directly to the jvm (-J is stripped)
 
-The defaults list for JAVA_OPTS and SBT_OPTS are only given if the
+The defaults given for JAVA_OPTS and SBT_OPTS are only used if the
 corresponding variable is unset. In the case of a duplicated option,
 SBT_OPTS takes precedence over JAVA_OPTS, and command line options
 take precedence over both.
