@@ -1,0 +1,15 @@
+#!/usr/bin/env bash
+#
+
+sbt_jar=/soft/inst/sbt/xsbt-launch.jar
+
+# get completion if present
+[[ -f .sbt_completion.sh ]] && source .sbt_completion.sh
+
+java $JAVA_OPTS \
+   $SBT_OPTS \
+  -XX:+CMSClassUnloadingEnabled \
+  -XX:ReservedCodeCacheSize=1g \
+  -XX:MaxPermSize=512m -Xmx4g -Xss4m \
+  -jar "$sbt_jar" \
+  "$@"
