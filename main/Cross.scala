@@ -17,9 +17,9 @@ object Cross
 	def switchParser(state: State): Parser[(String, String)] =
 	{
 		val knownVersions = crossVersions(state)
-		lazy val switchArgs = token(OptSpace ~> NotSpace.examples(knownVersions : _*)) ~ (token(Space ~> matched(state.combinedParser)) ?? "")
+		lazy val switchArgs = token(NotSpace.examples(knownVersions : _*)) ~ (token(Space ~> matched(state.combinedParser)) ?? "")
 		lazy val nextSpaced = spacedFirst(Switch)
-		token(Switch) flatMap { _ => switchArgs & nextSpaced }
+		token(Switch ~ OptSpace) flatMap { _ => switchArgs & nextSpaced }
 	}
 	def spacedFirst(name: String) = opOrIDSpaced(name) ~ any.+
 
