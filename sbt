@@ -99,7 +99,7 @@ while [ $# -gt 0 ]; do
           -29) addSbt "++ $latest_29"; shift ;;
          -210) addSbt "++ $latest_210"; shift ;;
        -debug) addSbt "set logLevel in Global := Level.Debug"; debug=1; shift ;;
-       -local) addSbt "set scalaHome := Some(file(\"$2\"))"; shift 2 ;;
+       -local) addSbt "set scalaHome in ThisBuild := Some(file(\"$2\"))"; shift 2 ;;
 
   -v|-verbose)   verbose=1 ; shift ;;
       -sbtjar) sbt_jar="$2"; shift 2 ;;
