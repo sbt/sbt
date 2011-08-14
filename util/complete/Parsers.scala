@@ -27,7 +27,7 @@ trait Parsers
 		if(DefaultParsers.matches(ID, s))
 			OpChar | SpaceClass
 		else if(DefaultParsers.matches(Op, s))
-			IDStart | SpaceClass
+			IDChar | SpaceClass
 		else
 			any
 
