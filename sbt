@@ -67,8 +67,6 @@ EOM
 # no args - alert them there's stuff in here
 [[ $# -gt 0 ]] || {
   echo "Starting $script_name: invoke with -help for other options"
-  # so it still starts if we injected any sbt commands
-  set -- "shell"
 }
 
 # pull -J and -D options to give to java.
@@ -92,14 +90,14 @@ while [ $# -gt 0 ]; do
       -shared) addJava "-Dsbt.boot.directory=$2"; shift 2 ;;
       -sbtdir) addJava "-Dsbt.global.base=$2"; shift 2 ;;
     -nocolors) addJava "-Dsbt.log.noformat=true"; shift ;;
-          -28) addJava "-Dsbt.scala.version=$latest_28"; shift ;;
-          -29) addJava "-Dsbt.scala.version=$latest_29"; shift ;;
-         -210) addJava "-Dsbt.scala.version=$latest_210"; shift ;;
 
           -D*) addJava "$1"; shift ;;
           -J*) addJava "${1:2}"; shift ;;
-       -debug) addSbt "set logLevel := Level.Debug"; debug=1; shift ;;
-       -local) addSbt "set scalaHome := Some(file(\"$2\"))"; shift 2 ;;
+          -28) addSbt "set scalaVersion := \"$latest_28\""; shift ;;
+          -29) addSbt "set scalaVersion := \"$latest_29\""; shift ;;
+         -210) addSbt "set scalaVersion := \"$latest_210\""; shift ;;
+       -debug) addSbt "set logLevel in Global := Level.Debug"; debug=1; shift ;;
+       -local) addSbt "set scalaHome in ThisBuild := Some(file(\"$2\"))"; shift 2 ;;
       -sbtjar) sbt_jar="$2"; shift 2 ;;
 
             *) args=("${args[@]}" "$1") ; shift ;;
@@ -152,4 +150,5 @@ execRunner java \
   ${java_args[@]} \
   -jar "$sbt_jar" \
   "${sbt_commands[@]}" \
+  "iflast shell" \
   "$@"
