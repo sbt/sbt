@@ -125,17 +125,18 @@ trait Init[Scope]
 		def refMap(refKey: ScopedKey[_], isFirst: Boolean) = new ValidateRef { def apply[T](k: ScopedKey[T]) =
 			delegateForKey(sMap, k, delegates(k.scope), refKey, isFirst)
 		}
-		val undefineds = new collection.mutable.ListBuffer[Undefined]
-		val f = new (SettingSeq ~> SettingSeq) { def apply[T](ks: Seq[Setting[T]]) =
-			ks.zipWithIndex.map{ case (s,i) =>
-				(s validateReferenced refMap(s.key, i == 0) ) match {
-					case Right(v) => v
-					case Left(l) => undefineds ++= l; s
-				}
-			}
-		}
-		val result = sMap mapValues f
-		if(undefineds.isEmpty) result else throw Uninitialized(sMap, delegates, undefineds.toList)
+		type ValidatedSettings[T] = Either[Seq[Undefined], SettingSeq[T]]
+		val f = new (SettingSeq ~> ValidatedSettings) { def apply[T](ks: Seq[Setting[T]]) = {
+			val validated = ks.zipWithIndex map { case (s,i) => s validateReferenced refMap(s.key, i == 0) }
+			val (undefs, valid) = List separate validated
+			if(undefs.isEmpty) Right(valid) else Left(undefs.flatten)
+		}}
+		type Undefs[_] = Seq[Undefined]
+		val (undefineds, result) = sMap.mapSeparate[Undefs, SettingSeq]( f )
+		if(undefineds.isEmpty)
+			result
+		else
+			throw Uninitialized(sMap.keys.toSeq, delegates, undefineds.values.flatten.toList, false)
 	}
 	private[this] def delegateForKey[T](sMap: ScopedMap, k: ScopedKey[T], scopes: Seq[Scope], refKey: ScopedKey[_], isFirst: Boolean): Either[Undefined, ScopedKey[T]] = 
 	{
@@ -160,15 +161,15 @@ trait Init[Scope]
 		map.set(key.scope, key.key, value)
 	}
 
-	def showUndefined(u: Undefined, sMap: ScopedMap, delegates: Scope => Seq[Scope])(implicit display: Show[ScopedKey[_]]): String =
+	def showUndefined(u: Undefined, validKeys: Seq[ScopedKey[_]], delegates: Scope => Seq[Scope])(implicit display: Show[ScopedKey[_]]): String =
 	{
-		val guessed = guessIntendedScope(sMap, delegates, u.referencedKey)
+		val guessed = guessIntendedScope(validKeys, delegates, u.referencedKey)
 		display(u.referencedKey) + " from " + display(u.definingKey) + guessed.map(g => "\n     Did you mean " + display(g) + " ?").toList.mkString
 	}
 
-	def guessIntendedScope(sMap: ScopedMap, delegates: Scope => Seq[Scope], key: ScopedKey[_]): Option[ScopedKey[_]] =
+	def guessIntendedScope(validKeys: Seq[ScopedKey[_]], delegates: Scope => Seq[Scope], key: ScopedKey[_]): Option[ScopedKey[_]] =
 	{
-		val distances = sMap.keys.toSeq.flatMap { validKey => refinedDistance(delegates, validKey, key).map( dist => (dist, validKey) ) }
+		val distances = validKeys.flatMap { validKey => refinedDistance(delegates, validKey, key).map( dist => (dist, validKey) ) }
 		distances.sortBy(_._1).map(_._2).headOption
 	}
 	def refinedDistance(delegates: Scope => Seq[Scope], a: ScopedKey[_], b: ScopedKey[_]): Option[Int]  =
@@ -181,13 +182,15 @@ trait Init[Scope]
 
 	final class Uninitialized(val undefined: Seq[Undefined], msg: String) extends Exception(msg)
 	final class Undefined(val definingKey: ScopedKey[_], val referencedKey: ScopedKey[_])
+	final class RuntimeUndefined(val undefined: Seq[Undefined]) extends RuntimeException("References to undefined settings at runtime.")
 	def Undefined(definingKey: ScopedKey[_], referencedKey: ScopedKey[_]): Undefined = new Undefined(definingKey, referencedKey)
-	def Uninitialized(sMap: ScopedMap, delegates: Scope => Seq[Scope], keys: Seq[Undefined])(implicit display: Show[ScopedKey[_]]): Uninitialized =
+	def Uninitialized(validKeys: Seq[ScopedKey[_]], delegates: Scope => Seq[Scope], keys: Seq[Undefined], runtime: Boolean)(implicit display: Show[ScopedKey[_]]): Uninitialized =
 	{
 		assert(!keys.isEmpty)
 		val suffix = if(keys.length > 1) "s" else ""
-		val keysString = keys.map(u => showUndefined(u, sMap, delegates)).mkString("\n\n  ", "\n\n  ", "")
-		new Uninitialized(keys, "Reference" + suffix + " to undefined setting" + suffix + ": " + keysString + "\n ")
+		val prefix = if(runtime) "Runtime reference" else "Reference"
+		val keysString = keys.map(u => showUndefined(u, validKeys, delegates)).mkString("\n\n  ", "\n\n  ", "")
+		new Uninitialized(keys, prefix + suffix + " to undefined setting" + suffix + ": " + keysString + "\n ")
 	}
 	final class Compiled(val key: ScopedKey[_], val dependencies: Iterable[ScopedKey[_]], val eval: Settings[Scope] => Settings[Scope])
 	{

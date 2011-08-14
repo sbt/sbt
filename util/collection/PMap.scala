@@ -14,6 +14,7 @@ trait RMap[K[_], V[_]]
 	def toSeq: Seq[(K[_], V[_])]
 	def keys: Iterable[K[_]]
 	def values: Iterable[V[_]]
+	def isEmpty: Boolean
 }
 
 trait IMap[K[_], V[_]] extends (K ~> V) with RMap[K,V]
@@ -22,6 +23,7 @@ trait IMap[K[_], V[_]] extends (K ~> V) with RMap[K,V]
 	def remove[T](k: K[T]): IMap[K,V]
 	def mapValue[T](k: K[T], init: V[T], f: V[T] => V[T]): IMap[K,V]
 	def mapValues[V2[_]](f: V ~> V2): IMap[K,V2]
+	def mapSeparate[VL[_], VR[_]](f: V ~> ({type l[T] = Either[VL[T], VR[T]]})#l ): (IMap[K,VL], IMap[K,VR])
 }
 trait PMap[K[_], V[_]] extends (K ~> V) with RMap[K,V]
 {
@@ -55,9 +57,21 @@ object IMap
 
 		def mapValues[V2[_]](f: V ~> V2) =
 			new IMap0[K,V2](backing.mapValues(x => f(x)).toMap)
+
+		def mapSeparate[VL[_], VR[_]](f: V ~> ({type l[T] = Either[VL[T], VR[T]]})#l ) =
+		{
+			val mapped = backing.view.map { case (k,v) => f(v) match {
+				case Left(l) => Left((k, l))
+				case Right(r) => Right((k, r))
+			}}
+			val (l, r) = List.separate[(K[_],VL[_]), (K[_],VR[_])]( mapped.toList )
+			(new IMap0[K,VL](l.toMap), new IMap0[K,VR](r.toMap))
+		}
+
 		def toSeq = backing.toSeq
 		def keys = backing.keys
 		def values = backing.values
+		def isEmpty = backing.isEmpty
 
 		override def toString = backing.toString
 	}
@@ -89,7 +103,7 @@ class DelegatingPMap[K[_], V[_]](backing: mutable.Map[K[_], V[_]]) extends Abstr
 	def toSeq = backing.toSeq
 	def keys = backing.keys
 	def values = backing.values
-
+	def isEmpty = backing.isEmpty
 
 	private[this] def cast[T](v: V[_]): V[T] = v.asInstanceOf[V[T]]
 	private[this] def cast[T](o: Option[V[_]]): Option[V[T]] = o map cast[T]
