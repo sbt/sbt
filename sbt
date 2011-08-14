@@ -1,5 +1,9 @@
 #!/usr/bin/env bash
 #
+# A more capable sbt runner, coincidentally called sbt.
+# Author: Paul Phillips <paulp@typesafe.com>
+
+set -e
 
 declare -r script_name="$(basename $BASH_SOURCE)"
 declare -r sbt_jar=/soft/inst/sbt/xsbt-launch.jar
@@ -9,7 +13,7 @@ declare -r latest_28="2.8.1"
 declare -r latest_29="2.9.0-1"
 declare -r latest_210="2.10.0-SNAPSHOT"
 
-# get completion if present
+# pick up completion if present
 [[ -f .sbt_completion.sh ]] && source .sbt_completion.sh
 
 usage () {
@@ -17,18 +21,19 @@ usage () {
 Usage: $script_name [options]
 
   -help      prints this message
-  -boot      path to shared sbt boot directory (default: none)
-  -debug     set sbt log level to debug
-  -global    path to directory containing global settings and plugins (default: ~/.sbt)
-  -ivy       path to local Ivy repository (default: ~/.ivy2)
   -nocolor   disable ANSI color codes
-
+  -debug     set sbt log level to debug
   -28        set scala version to $latest_28
   -29        set scala version to $latest_29
   -210       set scala version to $latest_210
-
   -Dkey=val  pass -Dkey=val directly to the jvm
   -J-X       pass option -X directly to the jvm
+
+  # Options which require a path:
+  -ivy       local Ivy repository (default: ~/.ivy2)
+  -sbtdir    directory containing global settings and plugins (default: ~/.sbt)
+  -shared    shared sbt boot directory (default: nones, no sharing)
+  -local     local scala installation to set as scala home
 
 The contents of the following environment variables, if any, will be
 passed to the jvm. Later variables take priority over earlier ones, and
@@ -37,7 +42,7 @@ command line options (-D/-J) take priority over all of them.
   JAVA_OPTS   # defaults: $default_java_opts
   SBT_OPTS    # defaults: $default_sbt_opts
 
-If an environment variable is set, its defaults are not given.
+If an environment variable is set, the defaults are not given.
 EOM
 }
 
@@ -62,9 +67,10 @@ addSbt () {
 while [ $# -gt 0 ]; do
   case "$1" in
         -help) usage; exit 1 ;;
-      -global) addJava "-Dsbt.global.base=$2"; shift 2 ;;
-        -boot) addJava "-Dsbt.boot.directory=$2"; shift 2 ;;
+
          -ivy) addJava "-Dsbt.ivy.home=$2"; shift 2 ;;
+      -shared) addJava "-Dsbt.boot.directory=$2"; shift 2 ;;
+      -global) addJava "-Dsbt.global.base=$2"; shift 2 ;;
     -nocolors) addJava "-Dsbt.log.noformat=true"; shift ;;
           -28) addJava "-Dsbt.scala.version=$latest_28"; shift ;;
           -29) addJava "-Dsbt.scala.version=$latest_29"; shift ;;
@@ -72,7 +78,8 @@ while [ $# -gt 0 ]; do
 
           -D*) addJava "$1"; shift ;;
           -J*) addJava "${1:2}"; shift ;;
-       -debug) addSbt "set logLevel := Level.Debug"; shift ;;
+       -debug) debug=1 ; addSbt "set logLevel := Level.Debug"; shift ;;
+       -local) addSbt "set scalaHome := Some(file(\"/path/to/scala\"))"; shift ;;
 
             *) args=("${args[@]}" "$1") ; shift ;;
   esac
@@ -81,9 +88,14 @@ done
 # reset "$@" to the residual args
 set -- "${args[@]}"
 
+execRunner () {
+  (( debug )) && echo "[command line] $@"
+  "$@"
+}
+
 # run sbt
-java \
-  $JAVA_OPTS \
+execRunner java \
+  ${JAVA_OPTS:-$default_java_opts} \
   ${SBT_OPTS:-$default_sbt_opts} \
   ${java_args[@]} \
   -jar "$sbt_jar" \
