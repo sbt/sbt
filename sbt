@@ -40,6 +40,7 @@ Usage: $script_name [options]
   -help           prints this message
   -nocolor        disable ANSI color codes
   -debug          set sbt log level to debug
+  -v | -verbose   this runner is chattier
   -sbtjar <path>  location of sbt launcher (default: $default_sbt_jar)
   -sbtdir <path>  location of global settings and plugins (default: ~/.sbt)
      -ivy <path>  local Ivy repository (default: ~/.ivy2)
@@ -74,6 +75,7 @@ declare -a args
 declare -a java_args
 declare -a sbt_commands
 declare sbt_jar="$default_sbt_jar"
+declare verbose=0
 
 addJava () {
   java_args=("${java_args[@]}" "$1")
@@ -98,6 +100,8 @@ while [ $# -gt 0 ]; do
          -210) addSbt "set scalaVersion := \"$latest_210\""; shift ;;
        -debug) addSbt "set logLevel in Global := Level.Debug"; debug=1; shift ;;
        -local) addSbt "set scalaHome in ThisBuild := Some(file(\"$2\"))"; shift 2 ;;
+
+  -v|-verbose)   verbose=1 ; shift ;;
       -sbtjar) sbt_jar="$2"; shift 2 ;;
 
             *) args=("${args[@]}" "$1") ; shift ;;
@@ -129,7 +133,7 @@ set -- "${args[@]}"
 
 execRunner () {
   # print the arguments one to a line, quoting any containing spaces
-  (( debug )) && echo "# Executing command line:" && {
+  (( debug )) || (( verbose )) && echo "# Executing command line:" && {
     for arg; do
       if echo "$arg" | grep -q ' '; then
         printf "\"%s\"\n" "$arg"
