@@ -1,15 +1,36 @@
 #!/usr/bin/env bash
 #
 
-sbt_jar=/soft/inst/sbt/xsbt-launch.jar
+declare -r script_name="$(basename $BASH_SOURCE)"
+declare -r sbt_jar=/soft/inst/sbt/xsbt-launch.jar
+
+jvm_opts_standard="-XX:+CMSClassUnloadingEnabled -XX:ReservedCodeCacheSize=1g"
+jvm_opts_memory="-XX:MaxPermSize=512m -Xmx4g -Xss4m"
 
 # get completion if present
 [[ -f .sbt_completion.sh ]] && source .sbt_completion.sh
 
-java $JAVA_OPTS \
-   $SBT_OPTS \
-  -XX:+CMSClassUnloadingEnabled \
-  -XX:ReservedCodeCacheSize=1g \
-  -XX:MaxPermSize=512m -Xmx4g -Xss4m \
+usage () {
+  cat <<EOM
+Usage: $script_name [options]
+
+  --create    creates a new project
+  --28        latest release of scala 2.8.x
+  --29        latest release of scala 2.9.x
+  --version   <version> project initial version
+EOM
+}
+
+# no args
+[[ $# -gt 0 ]] || { usage ; exit 1; }
+
+# run
+java \
+  $JAVA_OPTS \
+  $jvm_opts_standard \
+  $jvm_opts_memory \
+  $SBT_OPTS \
   -jar "$sbt_jar" \
   "$@"
+
+

@@ -3,7 +3,26 @@ import Keys._
 import Load.{ BuildStructure, StructureIndex }
 import scala.collection.{ mutable, immutable }
 
-object TemplateBuild extends Build {  
+trait SbtCreateConfig {
+  def name: String
+  def organization: String
+  def version: String
+  def scalaVersion: String
+}
+object SbtCreateConfig {
+  private def prop(propName: String, alt: String) = System.getProperty(propName) match {
+    case null   => alt
+    case value  => value
+  }
+  implicit def defaultProjectConfig = new SbtCreateConfig {
+    def name         = prop("sbt-create.name", "project-name-here")
+    def organization = prop("sbt-create.organization", "your.organization.here")
+    def version      = prop("sbt-create.version", "0.1")
+    def scalaVersion = prop("sbt-create.scalaVersion", "2.9.0-1")
+  }
+}
+
+class TemplateBuild(implicit sbtCreateConfig: SbtCreateConfig) extends Build {
   // BuildStructure contains:
   // units:      Map[URI, LoadedBuildUnit]
   // root:       URI
@@ -96,3 +115,5 @@ object TemplateBuild extends Build {
     state tap (_.sortedKeys map (_.label) show)
   }
 }
+
+object TemplateBuild extends TemplateBuild { }
