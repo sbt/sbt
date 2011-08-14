@@ -111,7 +111,18 @@ done
 set -- "${args[@]}"
 
 execRunner () {
-  (( debug )) && echo "[command line] $@"
+  # print the arguments one to a line, quoting any containing spaces
+  (( debug )) && echo "# Executing command line:" && {
+    for arg; do
+      if echo "$arg" | grep -q ' '; then
+        printf "\"%s\"\n" "$arg"
+      else
+        printf "%s\n" "$arg"
+      fi
+    done
+    echo ""
+  }
+
   "$@"
 }
 
