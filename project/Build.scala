@@ -17,7 +17,7 @@ object SbtCreateConfig {
   implicit def defaultProjectConfig = new SbtCreateConfig {
     def name         = prop("sbt-create.name", "project-name-here")
     def organization = prop("sbt-create.organization", "your.organization.here")
-    def version      = prop("sbt-create.version", "0.1")
+    def version      = prop("sbt-create.version", "0.1-SNAPSHOT")
     def scalaVersion = prop("sbt-create.scalaVersion", "2.9.0-1")
   }
 }
@@ -91,16 +91,16 @@ class TemplateBuild(implicit sbtCreateConfig: SbtCreateConfig) extends Build {
 
   lazy val buildSettings = Seq(
     resolvers       += ScalaToolsSnapshots,
-    organization    := "org.template",
-    version         := "0.1-SNAPSHOT",
-    scalaVersion    := "2.9.0-1",
+    organization    := sbtCreateConfig.organization,
+    version         := sbtCreateConfig.version,
+    scalaVersion    := sbtCreateConfig.scalaVersion,
     retrieveManaged := true,
     shellPrompt     := buildShellPrompt
     // logLevel     := Level.Debug,
   )
 
   lazy val templateConfig = Project(
-    id           = "template",
+    id           = sbtCreateConfig.name,
     base         = file("."),
     aggregate    = Nil,
     dependencies = Nil,

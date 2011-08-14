@@ -13,18 +13,11 @@ camelCase () {
   echo "$1" | $SED -e 's/[-_]\([a-z]\)/\u\1/g' | $SED -e 's/^./\u&/;'
 }
 
-githubUser () {
-  echo $(git config --global github.user)
-}
-
-githubToken () {
-  echo $(git config --global github.token)
-}
-
 createGithub () {
   which hub && { echo "You need hub for this." ; return }
   
   local project="$1"
+  # local git_token=$(git config --global github.token)
   local git_url="git@github.com:$(git config --global github.user)/$project.git"
 
   echo Creating $git_url

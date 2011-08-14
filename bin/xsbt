@@ -14,23 +14,46 @@ usage () {
   cat <<EOM
 Usage: $script_name [options]
 
-  --create    creates a new project
-  --28        latest release of scala 2.8.x
-  --29        latest release of scala 2.9.x
-  --version   <version> project initial version
+  -help      prints this message
+  -create    creates a new project
+  -version   <version> project initial version
+  -28        latest release of scala 2.8.x
+  -29        latest release of scala 2.9.x
+  -210       latest snapshot of scala 2.10
 EOM
 }
 
 # no args
-[[ $# -gt 0 ]] || { usage ; exit 1; }
+[[ $# -gt 0 ]] || echo "Starting $script_name: invoke with -help for other options"
 
-# run
+# pull -J and -D options to give to java.
+declare -a args
+declare -a java_args
+addJavaArg () {
+  java_args=("${java_args[@]}" "$1")
+}
+
+while [ $# -gt 0 ]; do
+  case "$1" in
+   -help) usage; exit 1 ;;
+     -D*) addJavaArg "$1"; shift ;;
+     -J*) addJavaArg "${1:2}"; shift ;;
+     -28) addJavaArg "-Dsbt-create.scalaVersion=2.8.1"; shift ;;
+     -29) addJavaArg "-Dsbt-create.scalaVersion=2.9.1"; shift ;;
+    -210) addJavaArg "-Dsbt-create.scalaVersion=2.10.0-SNAPSHOT"; shift ;;
+       *) args=("${args[@]}" "$1") ; shift ;;
+  esac
+done
+
+# reset "$@" to the residual args
+set -- "${args[@]}"
+
+# run sbt
 java \
   $JAVA_OPTS \
   $jvm_opts_standard \
   $jvm_opts_memory \
   $SBT_OPTS \
+  ${java_args[@]} \
   -jar "$sbt_jar" \
   "$@"
-
-
