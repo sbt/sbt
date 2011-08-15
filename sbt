@@ -38,7 +38,7 @@ usage () {
 Usage: $script_name [options]
 
   -help           prints this message
-  -nocolor        disable ANSI color codes
+  -nocolors       disable ANSI color codes
   -debug          set sbt log level to debug
   -v | -verbose   this runner is chattier
   -sbtjar <path>  location of sbt launcher (default: $default_sbt_jar)
