@@ -88,7 +88,7 @@ object InlineConfiguration
 }
 object ModuleSettings
 {
-	def apply(ivyScala: Option[IvyScala], validate: Boolean, module: => ModuleID, moduleInfo: => ModuleInfo)(baseDirectory: File, log: Logger) =
+	def apply(ivyScala: Option[IvyScala], validate: Boolean, module: => ModuleID, moduleInfo: => ModuleInfo)(baseDirectory: File, log: Logger): ModuleSettings =
 	{
 		log.debug("Autodetecting dependencies.")
 		val defaultPOMFile = IvySbt.defaultPOM(baseDirectory)
