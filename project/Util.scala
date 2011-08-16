@@ -21,8 +21,8 @@ object Util
 	lazy val base: Seq[Setting[_]] = Seq(scalacOptions ++= Seq("-Xelide-below", "0"), projectComponent) ++ Licensed.settings
 	
 	def testDependencies = libraryDependencies ++= Seq(
-		"org.scala-tools.testing" %% "scalacheck" % "1.8" % "test",
-		"org.scala-tools.testing" %% "specs" % "1.6.8" % "test"
+		"org.scala-tools.testing" % "scalacheck_2.9.0-1" % "1.9" % "test",
+		"org.scala-tools.testing" % "specs_2.9.0-1" % "1.6.8" % "test"
 	)
 
 	lazy val minimalSettings: Seq[Setting[_]] = Defaults.paths ++ Seq[Setting[_]](crossTarget <<= target.identity, name <<= thisProject(_.id))
@@ -73,7 +73,7 @@ object Common
 	lazy val ivy = lib("org.apache.ivy" % "ivy" % "2.2.0")
 	lazy val httpclient = lib("commons-httpclient" % "commons-httpclient" % "3.1")
 	lazy val jsch = lib("com.jcraft" % "jsch" % "0.1.31" intransitive() )
-	lazy val sbinary = lib("org.scala-tools.sbinary" %% "sbinary" % "0.4.0" )
+	lazy val sbinary = lib("org.scala-tools.sbinary" % "sbinary_2.9.0" % "0.4.0" )
 	lazy val scalaCompiler = libraryDependencies <+= scalaVersion("org.scala-lang" % "scala-compiler" % _ )
 }
 object Licensed

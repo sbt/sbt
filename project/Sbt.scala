@@ -15,9 +15,9 @@ object Sbt extends Build
 	override lazy val settings = super.settings ++ buildSettings ++ Status.settings
 	def buildSettings = Seq(
 		organization := "org.scala-tools.sbt",
-		version := "0.10.2-SNAPSHOT",
+		version := "0.11.0-SNAPSHOT",
 		publishArtifact in packageDoc := false,
-		scalaVersion := "2.8.1",
+		scalaVersion := "2.9.1.RC3",
 		publishMavenStyle := false,
 		componentID := None
 	)
@@ -85,7 +85,7 @@ object Sbt extends Build
 		// Compiler-side interface to compiler that is compiled against the compiler being used either in advance or on the fly.
 		//   Includes API and Analyzer phases that extract source API and relationships.
 	lazy val compileInterfaceSub = baseProject(compilePath / "interface", "Compiler Interface") dependsOn(interfaceSub, ioSub % "test->test", logSub % "test->test", launchSub % "test->test") settings( compileInterfaceSettings : _*)
-	lazy val precompiled29 = precompiled("2.9.0-1")
+	lazy val precompiled28 = precompiled("2.8.1")
 //	lazy val precompiled27 = precompiled("2.7.7")
 
 		// Implements the core functionality of detecting and propagating changes incrementally.
@@ -115,7 +115,7 @@ object Sbt extends Build
 		// Strictly for bringing implicits and aliases from subsystems into the top-level sbt namespace through a single package object
 		//  technically, we need a dependency on all of mainSub's dependencies, but we don't do that since this is strictly an integration project
 		//  with the sole purpose of providing certain identifiers without qualification (with a package object)
-	lazy val sbtSub = baseProject(sbtPath, "Simple Build Tool") dependsOn(mainSub, compileInterfaceSub, precompiled29, scriptedSbtSub % "test->test") settings(sbtSettings : _*)
+	lazy val sbtSub = baseProject(sbtPath, "Simple Build Tool") dependsOn(mainSub, compileInterfaceSub, precompiled28, scriptedSbtSub % "test->test") settings(sbtSettings : _*)
 
 		/* Nested subproject paths */
 	def sbtPath = file("sbt")
@@ -162,7 +162,7 @@ object Sbt extends Build
 		import Sxr.sxr
 	def releaseSettings = Release.settings(nonRoots, proguard in Proguard)
 	def rootSettings = releaseSettings ++ LaunchProguard.settings ++ LaunchProguard.specific(launchSub) ++ Sxr.settings ++ docSetting ++ Seq(
-		scriptedScalaVersion := "2.8.1",
+		scriptedScalaVersion := "2.9.1.RC3",
 		scripted <<= scriptedTask,
 		scriptedSource <<= (sourceDirectory in sbtSub) / "sbt-test",
 		sources in sxr <<= deepTasks(sources in Compile),

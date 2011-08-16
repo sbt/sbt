@@ -11,7 +11,7 @@ object Sxr
 	lazy val settings: Seq[Setting[_]] = inTask(sxr)(inSxrSettings) ++ baseSettings
 
 	def baseSettings = Seq(
-		libraryDependencies += "org.scala-tools.sxr" %% "sxr" % "0.2.7" % sxrConf.name
+		libraryDependencies += "org.scala-tools.sxr" % "sxr_2.9.0" % "0.2.7" % sxrConf.name
 	)
 	def inSxrSettings = Seq(
 		managedClasspath <<= update map { _.matching( configurationFilter(sxrConf.name) ).classpath },
