@@ -86,9 +86,7 @@ final class Eval(optionsNoncp: Seq[String], classpath: Seq[File], mkReporter: Se
 				()
 			else
 			{
-				reporter.withSource(unit.source) {
-					atPhase(phase) { phase.run }
-				}
+				atPhase(phase) { phase.run }
 				compile(phase.next)
 			}
 		}
@@ -114,7 +112,7 @@ final class Eval(optionsNoncp: Seq[String], classpath: Seq[File], mkReporter: Se
 			Nil,
 			List(Nil),
 			TypeTree(),
-			Block(List(Apply(Select(Super(emptyTypeName, emptyTypeName), nme.CONSTRUCTOR), Nil)), Literal(Constant(())))
+			Block(List(Apply(Select(Super(This(emptyTypeName), emptyTypeName), nme.CONSTRUCTOR), Nil)), Literal(Constant(())))
 		)
 
 		def method = DefDef(NoMods, WrapValName, Nil, Nil, tpt, tree)
