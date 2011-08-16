@@ -7,5 +7,5 @@ object TestBuild extends Build
 		proj("a", "."),
 		proj("b", "b")
 	)
-	def proj(id: String, dir: String) = Project(id, file(dir), settings = Seq( name :== id ) )
+	def proj(id: String, dir: String) = Project(id, file(dir), settings = Seq( name := id ) )
 }

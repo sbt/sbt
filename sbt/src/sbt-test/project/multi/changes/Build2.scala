@@ -11,5 +11,5 @@ object SecondBuild extends MakeBuild
 }
 trait MakeBuild extends Build
 {
-	def proj(id: String, dir: String) = Project(id, file(dir), settings = Seq( name :== id ) )
+	def proj(id: String, dir: String) = Project(id, file(dir), settings = Seq( name := id ) )
 }

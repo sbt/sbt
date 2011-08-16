@@ -1,4 +1,4 @@
-> 'set javacOptions :== Nil'
+> 'set javacOptions := Nil'
 > compile
 > 'set javacOptions ++= Seq("-source", "1.4")'
 -> compile
