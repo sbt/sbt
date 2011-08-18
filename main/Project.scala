@@ -74,8 +74,7 @@ final case class Extracted(structure: BuildStructure, session: SessionSettings, 
 	def evalTask[T](key: ScopedTask[T], state: State): T =
 	{
 			import EvaluateTask._
-		val extracted = Project.extract(state)
-		val rkey = Project.mapScope(Scope.resolveScope(GlobalScope, extracted.currentRef.build, rootProject) )( key.scopedKey )
+		val rkey = Project.mapScope(Scope.resolveScope(GlobalScope, currentRef.build, rootProject) )( key.scopedKey )
 		val value: Option[Result[T]] = evaluateTask(structure, key.task.scopedKey, state, currentRef)
 		val result = getOrError(rkey.scope, rkey.key, value)
 		processResult(result, ConsoleLogger())

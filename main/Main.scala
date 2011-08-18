@@ -144,13 +144,27 @@ object BuiltinCommands
 		{
 			val e = Project.extract(s)
 			val current = "The current project is " + Project.display(e.currentRef) + "\n"
-			val built = e.getOpt(Keys.scalaVersion) match {
-				case Some(sv) => "The current project is built against Scala " + sv + "\n"
-				case None => ""
-			}
+			val sc = aboutScala(s, e)
+			val built = if(sc.isEmpty) "" else "The current project is built against " + sc + "\n"
 			current + built
 		}
 		else "No project is currently loaded.\n"
+
+	def aboutScala(s: State, e: Extracted): String =
+	{
+		val scalaVersion = e.getOpt(Keys.scalaVersion)
+		val scalaHome = e.getOpt(Keys.scalaHome).flatMap(idFun)
+		val instance = e.getOpt(Keys.scalaInstance.task).flatMap(_ => quiet(e.evalTask(Keys.scalaInstance, s)))
+		(scalaVersion, scalaHome, instance) match {
+			case (sv, Some(home), Some(si)) => "local Scala version " + selectScalaVersion(sv, si) + " at " + home.getAbsolutePath
+			case (_, Some(home), None) => "a local Scala build at " + home.getAbsolutePath
+			case (sv, None, Some(si)) => "Scala " + selectScalaVersion(sv, si)
+			case (Some(sv), None, None) => "Scala " + sv
+			case (None, None, None) => ""
+		}
+	}
+	private[this] def selectScalaVersion(sv: Option[String], si: ScalaInstance): String  =  sv match { case Some(si.version) => si.version; case _ => si.actualVersion }
+	private[this] def quiet[T](t: => T): Option[T] = try { Some(t) } catch { case e: Exception => None }
 
 	def tasks = Command.command(TasksCommand, tasksBrief, tasksDetailed) { s =>
 		System.out.println(tasksPreamble)
