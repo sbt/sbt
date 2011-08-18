@@ -1,4 +1,4 @@
-name :== "test"
+name := "test"
 
 TaskKey[Unit]("check-same") <<= compile in Configurations.Compile map { analysis =>
 	analysis.apis.internal foreach { case (_, api) =>

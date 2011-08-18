@@ -1,3 +1,5 @@
+> 'set scalacOptions += "-Xfatal-warnings"'
+
 > compile
 
 # have new class E extend A
