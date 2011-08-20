@@ -20,6 +20,8 @@ private object ConvertResolver
 			{
 				val resolver = new IBiblioResolver
 				initializeMavenStyle(resolver, repo.name, repo.root)
+				resolver.addArtifactPattern(Resolver.mavenStyleBasePattern)
+				resolver.addIvyPattern(Resolver.mavenStyleBasePattern)
 				resolver
 			}
 			case r: JavaNet1Repository =>
@@ -70,7 +72,6 @@ private object ConvertResolver
 		resolver.setName(name)
 		resolver.setM2compatible(true)
 		resolver.setRoot(root)
-		resolver.setPattern(Resolver.mavenStyleBasePattern)
 	}
 	private def initializeSSHResolver(resolver: AbstractSshBasedResolver, repo: SshBasedRepository)(implicit settings: IvySettings)
 	{
