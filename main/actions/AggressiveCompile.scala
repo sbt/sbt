@@ -112,7 +112,8 @@ class AggressiveCompile(cacheDirectory: File)
 	import AnalysisFormats._
 	val store = AggressiveCompile.staticCache(cacheDirectory, AnalysisStore.sync(AnalysisStore.cached(FileBasedStore(cacheDirectory))))
 }
-private object AggressiveCompile
+
+object AggressiveCompile
 {
 		import collection.mutable
 		import java.lang.ref.{Reference,SoftReference}
@@ -125,4 +126,12 @@ private object AggressiveCompile
 				b
 			}
 		}
+
+	def evictCache(file: File): Unit = synchronized {
+	  if(file.isDirectory) {
+	    IO.listFiles(file).foreach(evictCache)
+		}
+
+	  cache.remove(file)
+	}
 }

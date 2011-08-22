@@ -387,6 +387,7 @@ object Defaults extends BuildCommon
 		IO.withTemporaryDirectory { temp =>
 			val mappings = preserve.filter(_.exists).zipWithIndex map { case (f, i) => (f, new File(temp, i.toHexString)) }
 			IO.move(mappings)
+			clean.foreach(AggressiveCompile.evictCache)
 			IO.delete(clean)
 			IO.move(mappings.map(_.swap))
 		}
