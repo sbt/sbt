@@ -1,0 +1,7 @@
+> 'set scaladocOptions in doc += "-Xfatal-warnings"'
+
+-> doc
+
+> 'set sources in (Compile, doc) <<= sources in Compile map { _.filter(_.getName contains "A") }'
+
+> doc
