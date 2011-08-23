@@ -3,6 +3,7 @@
  */
 package sbt
 
+import java.util.Collections
 import org.apache.ivy.{core,plugins}
 import core.module.id.ModuleRevisionId
 import core.settings.IvySettings
@@ -18,10 +19,16 @@ private object ConvertResolver
 		{
 			case repo: MavenRepository =>
 			{
-				val resolver = new IBiblioResolver
+				val pattern = Collections.singletonList(repo.root + Resolver.mavenStyleBasePattern)
+				final class PluginCapableResolver extends IBiblioResolver {
+					def setPatterns() { // done this way for access to protected methods.
+						setArtifactPatterns(pattern)
+						setIvyPatterns(pattern)
+					}
+				}
+				val resolver = new PluginCapableResolver
 				initializeMavenStyle(resolver, repo.name, repo.root)
-				resolver.addArtifactPattern(Resolver.mavenStyleBasePattern)
-				resolver.addIvyPattern(Resolver.mavenStyleBasePattern)
+				resolver.setPatterns() // has to be done after initializeMavenStyle, which calls methods that overwrite the patterns
 				resolver
 			}
 			case r: JavaNet1Repository =>
