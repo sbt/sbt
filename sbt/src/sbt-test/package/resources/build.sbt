@@ -1,8 +1,8 @@
-name :== "Main Resources Test"
+name := "Main Resources Test"
 
-version :== "0.1"
+version := "0.1"
 
-crossPaths :== false
+crossPaths := false
 
 packageOptions <<= (packageOptions, scalaInstance) map { (opts, si) =>
 	def manifestExtra =

@@ -137,7 +137,8 @@ object Keys
 	val aggregate = SettingKey[Aggregation]("aggregate", "Configures task aggregation.")
 
 	// package keys
-	val packageBin = TaskKey[File]("package", "Produces the main artifact, such as a binary jar.")
+	val packageBin = TaskKey[File]("package-bin", "Produces a main artifact, such as a binary jar.")
+	val `package` = TaskKey[File]("package", "Produces the main artifact, such as a binary jar.  This is typically an alias for the task that actually does the packaging.")
 	val packageDoc = TaskKey[File]("package-doc", "Produces a documentation artifact, such as a jar containing API documentation.")
 	val packageSrc = TaskKey[File]("package-src", "Produces a source artifact, such as a jar containing sources and resources.")
 

@@ -1,13 +1,13 @@
 	import java.util.jar.{Attributes, Manifest}
 	import Path.makeString
 
-name :== "Jar Manifest Test"
+name := "Jar Manifest Test"
 
-version :== "0.2"
+version := "0.2"
 
-crossPaths :== false
+crossPaths := false
 
-mainClass :== Some("jartest.Main")
+mainClass := Some("jartest.Main")
 
 packageOptions in (Compile, packageBin) <<= (packageOptions in (Compile, packageBin), scalaInstance) map { (opts, si) =>
 	def manifestExtra =
