@@ -19,7 +19,7 @@ private object ConvertResolver
 		{
 			case repo: MavenRepository =>
 			{
-				val pattern = Collections.singletonList(repo.root + Resolver.mavenStyleBasePattern)
+				val pattern = Collections.singletonList(Resolver.resolvePattern(repo.root, Resolver.mavenStyleBasePattern))
 				final class PluginCapableResolver extends IBiblioResolver {
 					def setPatterns() { // done this way for access to protected methods.
 						setArtifactPatterns(pattern)

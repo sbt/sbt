@@ -275,12 +275,14 @@ object Resolver
 	/** Resolves the ivy file and artifact patterns in `patterns` against the given base. */
 	private def resolvePatterns(base: String, basePatterns: Patterns): Patterns =
 	{
-		val normBase = base.replace('\\', '/')
-		def resolve(pattern: String) = if(normBase.endsWith("/") || pattern.startsWith("/")) normBase +pattern else normBase + "/" + pattern
-		def resolveAll(patterns: Seq[String]) = patterns.map(resolve)
+		def resolveAll(patterns: Seq[String]) = patterns.map(p => resolvePattern(base, p))
 		Patterns(resolveAll(basePatterns.ivyPatterns), resolveAll(basePatterns.artifactPatterns), basePatterns.isMavenCompatible)
 	}
-	
+	private[sbt] def resolvePattern(base: String, pattern: String): String = 
+	{
+		val normBase = base.replace('\\', '/')
+		if(normBase.endsWith("/") || pattern.startsWith("/")) normBase + pattern else normBase + "/" + pattern
+	}
 	def defaultFileConfiguration = FileConfiguration(true, None)
 	def mavenStylePatterns = Patterns(Nil, mavenStyleBasePattern :: Nil, true)
 	def ivyStylePatterns = defaultIvyPatterns//Patterns(Nil, Nil, false)
