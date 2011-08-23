@@ -16,7 +16,7 @@ object ConflictWarning
 			val conflictMsgs =
 				for( (label, versions) <- conflicts ) yield
 					label + ": " + versions.mkString(", ")
-			log.log(config.level, msg + conflictMsgs.mkString(msg, "\n   ", ""))
+			log.log(config.level, conflictMsgs.mkString(msg, "\n   ", ""))
 		}
 		if(config.failOnConflict && !conflicts.isEmpty)
 			error("Conflicts in " + conflicts.map(_._1).mkString )
