@@ -95,6 +95,7 @@ object Keys
 
 		// Output paths
 	val classDirectory = SettingKey[File]("class-directory", "Directory for compiled classes and copied resources.")
+	@deprecated("Use 'target', scoped by the doc task.  For example, 'target in Compile in doc'", "0.11.0")
 	val docDirectory = SettingKey[File]("doc-directory", "Directory for generated documentation.")
 	val cacheDirectory = SettingKey[File]("cache-directory", "Directory used for caching task data.")
 	val cleanFiles = SettingKey[Seq[File]]("clean-files", "The files to recursively delete during a clean.")
