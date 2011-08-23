@@ -38,7 +38,7 @@ object TrapExit
 					code.set(1) //exceptions in the main thread cause the exit code to be 1
 					throw x
 			}
-		val customThreadGroup = new ExitThreadGroup(new ExitHandler(Thread.getDefaultUncaughtExceptionHandler, originalThreads, code, log))
+		val customThreadGroup = new ExitThreadGroup(new ExitHandler(originalThreads, code, log))
 		val executionThread = new Thread(customThreadGroup, "run-main") { override def run() { executeMain } }
 		
 		val originalSecurityManager = System.getSecurityManager
@@ -168,7 +168,7 @@ object TrapExit
 	}
 	/** An uncaught exception handler that delegates to the original uncaught exception handler except when
 	* the cause was a call to System.exit (which generated a SecurityException)*/
-	private final class ExitHandler(originalHandler: Thread.UncaughtExceptionHandler, originalThreads: Set[Thread], codeHolder: ExitCode, log: Logger) extends Thread.UncaughtExceptionHandler
+	private final class ExitHandler(originalThreads: Set[Thread], codeHolder: ExitCode, log: Logger) extends Thread.UncaughtExceptionHandler
 	{
 		def uncaughtException(t: Thread, e: Throwable)
 		{
@@ -180,8 +180,8 @@ object TrapExit
 			catch
 			{
 				case _ =>
+					log.error("(" + t.getName + ") " + e.toString)
 					log.trace(e)
-					originalHandler.uncaughtException(t, e)
 			}
 		}
 	}
