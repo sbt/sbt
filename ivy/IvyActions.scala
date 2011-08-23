@@ -92,6 +92,7 @@ object IvyActions
 		import configuration._
 		module.withModule(log) { case (ivy, md, default) =>
 			val resolver = ivy.getSettings.getResolver(resolverName)
+			if(resolver eq null) error("Undefined resolver '" + resolverName + "'")
 			val ivyArtifact = ivyFile map { file => (MDArtifact.newIvyArtifact(md), file) }
 			val is = crossIvyScala(module.moduleSettings)
 			val as = mapArtifacts(md, is, artifacts) ++ ivyArtifact.toList
