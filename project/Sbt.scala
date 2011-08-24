@@ -17,7 +17,7 @@ object Sbt extends Build
 		organization := "org.scala-tools.sbt",
 		version := "0.11.0-SNAPSHOT",
 		publishArtifact in packageDoc := false,
-		scalaVersion := "2.9.1.RC3",
+		scalaVersion := "2.9.1.RC4",
 		publishMavenStyle := false,
 		componentID := None
 	)
@@ -164,7 +164,7 @@ object Sbt extends Build
 		import Sxr.sxr
 	def releaseSettings = Release.settings(nonRoots, proguard in Proguard)
 	def rootSettings = releaseSettings ++ LaunchProguard.settings ++ LaunchProguard.specific(launchSub) ++ Sxr.settings ++ docSetting ++ Seq(
-		scriptedScalaVersion := "2.9.1.RC3",
+		scriptedScalaVersion <<= scalaVersion.identity,
 		scripted <<= scriptedTask,
 		scriptedSource <<= (sourceDirectory in sbtSub) / "sbt-test",
 		sources in sxr <<= deepTasks(sources in Compile),
