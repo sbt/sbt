@@ -17,7 +17,7 @@ declare sbt_version=$(
   if [[ -f project/build.properties ]]; then
     versionLine=$(grep ^sbt.version project/build.properties)
     versionString=${versionLine##sbt.version=}
-    
+
     if [[ $versionString =~ ^[0-9]\.[0-9]\.[0-9]$ ]]; then
       echo "$versionString"
     fi
@@ -32,7 +32,7 @@ declare verbose=0
 jar_url () {
   local where=$1  # releases or snapshots
   local ver=$2
-  
+
   if [[ $ver = 0.7* ]]; then
     echo "http://simple-build-tool.googlecode.com/files/sbt-launch-$ver.jar"
   else
@@ -63,7 +63,7 @@ set_sbt_jar () {
 get_script_path () {
   local path="$1"
   [[ -L "$path" ]] || { echo "$path" ; return; }
-  
+
   local target=$(readlink "$path")
   if [[ "${target:0:1}" == "/" ]]; then
     echo "$target"
@@ -89,18 +89,18 @@ Usage: $script_name [options]
 
   -h | -help        print this message
   -v | -verbose     this runner is chattier
-  -debug            set sbt log level to debug
+  -d | -debug       set sbt log level to debug
   -no-colors        disable ANSI color codes
-  -sbt-create       start sbt even if location has no sbt project
-  -sbt-dir  <path>  location of global settings and plugins (default: ~/.sbt)
-  -sbt-boot <path>  shared sbt boot directory (default: none, no sharing)
-  -ivy      <path>  local Ivy repository (default: ~/.ivy2)
-  
+  -sbt-create       start sbt even if current directory contains no sbt project
+  -sbt-dir  <path>  path to global settings/plugins directory (default: ~/.sbt)
+  -sbt-boot <path>  path to shared boot directory (default: none, no sharing)
+  -ivy      <path>  path to local Ivy repository (default: ~/.ivy2)
+
   # sbt version (default: from project/build.properties if there, else latest release)
   -sbt-version  <version>   use the specified version of sbt
   -sbt-jar      <path>      use the specified jar as the sbt launcher
   -sbt-snapshot             use a snapshot version of sbt
-  
+
   # scala version (default: latest release)
   -28                       use $latest_28
   -29                       use $latest_29
@@ -108,14 +108,14 @@ Usage: $script_name [options]
   -210                      use $latest_210
   -scala-home <path>        use the scala build at the specified directory
   -scala-version <version>  use the specified version of scala
-  
-  # java version (default: $(which java))
-  -java-home <path>         use specified path as JAVA_HOME
+
+  # java version (default: java from PATH, currently $(java -version |& grep version))
+  -java-home <path>         alternate JAVA_HOME
 
   # jvm options and output control
   JAVA_OPTS     environment variable, if unset uses "$default_java_opts"
   SBT_OPTS      environment variable, if unset uses "$default_sbt_opts"
-  .sbtopts      if this file is in the sbt root directory, its contents are arguments
+  .sbtopts      if this file exists in the sbt root, it is prepended to the runner args
   -Dkey=val     pass -Dkey=val directly to the java runtime
   -J-X          pass option -X directly to the java runtime (-J is stripped)
 
@@ -141,7 +141,8 @@ process_args ()
   while [ $# -gt 0 ]; do
     case "$1" in
        -h|-help) usage; exit 1 ;;
-    -v|-verbose) verbose=1 ; shift ;;
+    -v|-verbose) verbose=1; shift ;;
+      -d|-debug) debug=1; addSbt "set logLevel in Global := Level.Debug"; shift ;;
 
            -ivy) addJava "-Dsbt.ivy.home=$2"; shift 2 ;;
      -no-colors) addJava "-Dsbt.log.noformat=true"; shift ;;
@@ -152,7 +153,7 @@ process_args ()
   -sbt-snapshot) sbt_snapshot=1; shift ;;
        -sbt-jar) sbt_jar="$2"; shift 2 ;;
    -sbt-version) sbt_version="$2"; shift 2 ;;
- -scala-version) scala_version="$2"; shift 2 ;;
+ -scala-version) addSbt "++ $2"; shift 2 ;;
     -scala-home) addSbt "set scalaHome in ThisBuild := Some(file(\"$2\"))"; shift 2 ;;
      -java-home) java_cmd="$2/bin/java"; shift 2 ;;
 
@@ -162,13 +163,12 @@ process_args ()
             -29) addSbt "++ $latest_29"; shift ;;
           -29rc) addSbt "++ $latest_29rc"; shift ;;
            -210) addSbt "++ $latest_210"; shift ;;
-         -debug) addSbt "set logLevel in Global := Level.Debug"; debug=1; shift ;;
 
               *) args=("${args[@]}" "$1") ; shift ;;
     esac
   done
 }
- 
+
 # if .sbtopts exists, prepend its contents so it can be processed by this runner
 [[ -f "$sbt_opts" ]] && set -- $(cat $sbt_opts) "${@}"
 
@@ -200,7 +200,7 @@ EOM
   echo "  From  $sbt_url"
   echo "    To  $sbt_jar"
 
-  mkdir -p $(dirname "$sbt_jar") &&   
+  mkdir -p $(dirname "$sbt_jar") &&
     if which curl >/dev/null; then
       curl --silent "$sbt_url" --output "$sbt_jar"
     elif which wget >/dev/null; then

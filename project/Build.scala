@@ -84,9 +84,9 @@ class TemplateBuild(implicit sbtCreateConfig: SbtCreateConfig) extends Build {
 
   lazy val testSettings = Seq(
     libraryDependencies ++= Seq(
-      "org.specs2" %% "specs2" % "1.5",
-      "org.specs2" %% "specs2-scalaz-core" % "6.0.RC2" % "test"
-    )
+      "org.scala-tools.testing" % "specs_2.9.0-1" % "1.6.8" % "test"
+    ),
+    libraryDependencies <+= (scalaVersion)(v => "org.scala-lang" % "scala-compiler" % v)
   )
 
   lazy val buildSettings = Seq(
@@ -105,7 +105,7 @@ class TemplateBuild(implicit sbtCreateConfig: SbtCreateConfig) extends Build {
     aggregate    = Nil,
     dependencies = Nil,
     delegates    = Nil,
-    settings     = Defaults.defaultSettings ++ buildSettings ++ Seq(
+    settings     = Defaults.defaultSettings ++ buildSettings ++ testSettings ++ Seq(
       commands += helpNames
     )
   )
