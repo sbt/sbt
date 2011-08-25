@@ -1,25 +1,14 @@
 sbt: the rebel cut
 ==================
 
-An alternative script for running [sbt 0.10](https://github.com/harrah/xsbt).
+An alternative script for running [sbt 0.10+](https://github.com/harrah/xsbt).
 There's also a template project sbt coming together, but it's unfinished.
 However the runner is quite useful already.
 
-Here's a sample first run, which uses a shared boot directory and a local scala.
+Here's a sample first run, which creates a new project using a snapshot
+version of sbt, and runs the sbt "about" command.
 
-    % ./sbt -shared /tmp/bippy -local /scala/inst/3 run
-    Downloading sbt launcher, this should only take a moment...
-      % Total    % Received % Xferd  Average Speed   Time    Time     Time  Current
-                                     Dload  Upload   Total   Spent    Left  Speed
-    100  915k  100  915k    0     0   339k      0  0:00:02  0:00:02 --:--:--  354k
-    [info] Set current project to project-name-here (in build file:/repo/sbt-template/)
-    [info] Running template.Main 
-    Skeleton main, reporting for duty on version 2.10.0.r25487-b20110811131227
-    [success] Total time: 0 s, completed Aug 14, 2011 11:12:58 AM
-
-Adding -debug to the same command line reveals the command line arguments:
-
-    % ./sbt -shared /tmp/bippy -local /scala/inst/3 run
+    % sbt -debug -snapshot -create about
     # Executing command line:
     java
     -Xss2m
@@ -30,12 +19,33 @@ Adding -debug to the same command line reveals the command line arguments:
     -XX:MaxPermSize=512m
     -Xmx2g
     -Xss2m
-    -Dsbt.boot.directory=/tmp/bippy
     -jar
-    /repo/sbt-template/lib/sbt-launch.jar
-    "set logLevel := Level.Debug"
-    "set scalaHome := Some(file("/scala/inst/3"))"
-    run
+    /r/sbt-extras/.lib/0.11.0-20110825-052147/sbt-launch.jar
+    "set logLevel in Global := Level.Debug"
+    "iflast shell"
+    about
+
+    Getting net.java.dev.jna jna 3.2.3 ...
+    :: retrieving :: org.scala-tools.sbt#boot-app
+    	confs: [default]
+    	1 artifacts copied, 0 already retrieved (838kB/15ms)
+    Getting Scala 2.9.1.RC4 (for sbt)...
+    :: retrieving :: org.scala-tools.sbt#boot-scala
+    	confs: [default]
+    	4 artifacts copied, 0 already retrieved (19939kB/97ms)
+    Getting org.scala-tools.sbt sbt_2.9.1.RC4 0.11.0-20110825-052147 ...
+    :: retrieving :: org.scala-tools.sbt#boot-app
+    	confs: [default]
+    	38 artifacts copied, 0 already retrieved (6948kB/71ms)
+    [info] Set current project to default-06d8dd (in build file:/private/tmp/sbt-project/)
+    [info] Reapplying settings...
+    [info] Set current project to default-06d8dd (in build file:/private/tmp/sbt-project/)
+    [info] This is sbt 0.11.0-20110825-052147
+    [info] The current project is {file:/private/tmp/sbt-project/}default-06d8dd
+    [info] The current project is built against Scala 2.9.1.RC4
+    [info] sbt, sbt plugins, and build definitions are using Scala 2.9.1.RC4
+    [info] All logging output for this session is available at /var/folders/iO/iOpjflOpHzG8Mr1BL67D6k+++TI/-Tmp-/sbt75419762724938334.log
+
 
 Current -help output:
 
@@ -44,26 +54,28 @@ Current -help output:
     Usage: sbt [options]
 
       -help           prints this message
-      -nocolor        disable ANSI color codes
+      -v | -verbose   this runner is chattier
       -debug          set sbt log level to debug
-      -sbtjar <path>  location of sbt launcher (default: ./.lib/sbt-launch.jar)
+      -nocolors       disable ANSI color codes
+      -create         start sbt even in a directory with no project
+      -sbtjar <path>  location of sbt launcher (default: ./.lib/<sbt version>/sbt-launch.jar)
       -sbtdir <path>  location of global settings and plugins (default: ~/.sbt)
          -ivy <path>  local Ivy repository (default: ~/.ivy2)
       -shared <path>  shared sbt boot directory (default: none, no sharing)
 
-      # setting scala version
-      -28           set scala version to 2.8.1
-      -29           set scala version to 2.9.0-1
+      # setting scala and sbt versions
+      -28           set scala version to 2.8.2.RC1
+      -29           set scala version to 2.9.1.RC4
       -210          set scala version to 2.10.0-SNAPSHOT
       -local <path> set scala version to local installation at path
+      -snapshot     use a snapshot of sbt (otherwise, latest released version)
 
-      # passing options to jvm
-      JAVA_OPTS     environment variable  # default: "-Dfile.encoding=UTF8"
-      SBT_OPTS      environment variable  # default: "-XX:+CMSClassUnloadingEnabled -XX:MaxPermSize=512m -Xmx2g -Xss2m"
+      # jvm options and output control
+      JAVA_OPTS     environment variable, if unset uses "-Dfile.encoding=UTF8"
+      SBT_OPTS      environment variable, if unset uses "-XX:+CMSClassUnloadingEnabled -XX:MaxPermSize=512m -Xmx2g -Xss2m"
+      .sbtopts      file in sbt root directory, if present contents passed to sbt
       -Dkey=val     pass -Dkey=val directly to the jvm
       -J-X          pass option -X directly to the jvm (-J is stripped)
 
-    The defaults given for JAVA_OPTS and SBT_OPTS are only used if the
-    corresponding variable is unset. In the case of a duplicated option,
-    SBT_OPTS takes precedence over JAVA_OPTS, and command line options
-    take precedence over both.
+    In the case of duplicated or conflicting options, the order above
+    shows precedence: JAVA_OPTS lowest, command line options highest.
