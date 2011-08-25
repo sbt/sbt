@@ -2,9 +2,9 @@ sbt: the rebel cut
 ==================
 
 An alternative script for running [sbt](https://github.com/harrah/xsbt).
-It works with sbt 0.7 projects as well as 0.10+.  If you're in a directory
-with an sbt project, you can just run it and it will use the right version
-of sbt, including downloading sbt if necessary.
+It works with sbt 0.7x projects as well as 0.10+.  If you're in an sbt
+project directory, the runner will figure out the versions of sbt
+and scala required by the project and download them if necessary.
 
 There's also a template project sbt coming together, but it's unfinished.
 However the runner is quite useful already.
