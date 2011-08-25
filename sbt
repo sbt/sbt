@@ -12,7 +12,17 @@ sbt_snapshot_version=0.11.0-20110825-052147
 # Falses made true via command line options
 useSnapshot=0
 createProject=0
-sbt_version=
+sbt_version=$(
+  if [[ -f project/build.properties ]]; then
+    versionLine=$(grep ^sbt.version project/build.properties)
+    versionString=${versionLine##sbt.version=}
+    
+    if [[ $versionString =~ ^[0-9]\.[0-9]\.[0-9]$ ]]; then
+      echo "$versionString"
+    fi
+  fi
+)
+echo $sbt_version
 
 jar_url () {
   local where=$1  # releases or snapshots
