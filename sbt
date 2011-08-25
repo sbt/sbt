@@ -59,6 +59,7 @@ declare -r script_dir="$(dirname $script_path)"
 declare -r script_name="$(basename $script_path)"
 declare -r default_java_opts="-Dfile.encoding=UTF8"
 declare -r default_sbt_opts="-XX:+CMSClassUnloadingEnabled -XX:MaxPermSize=512m -Xmx2g -Xss2m"
+declare -r sbt_opts_filename=".sbtopts"
 declare -r latest_28="2.8.2.RC1"
 declare -r latest_29="2.9.1.RC4"
 declare -r latest_210="2.10.0-SNAPSHOT"
@@ -70,6 +71,7 @@ Usage: $script_name [options]
   -help           prints this message
   -v | -verbose   this runner is chattier
   -debug          set sbt log level to debug
+  -nocolors       disable ANSI color codes
   -create         start sbt even in a directory with no project
   -sbtjar <path>  location of sbt launcher (default: $(jar_file '<sbt version>'))
   -sbtdir <path>  location of global settings and plugins (default: ~/.sbt)
@@ -86,12 +88,12 @@ Usage: $script_name [options]
   # jvm options and output control
   JAVA_OPTS     environment variable, if unset uses "$default_java_opts"
   SBT_OPTS      environment variable, if unset uses "$default_sbt_opts"
+  .sbtopts      file in sbt root directory, if present contents passed to sbt
   -Dkey=val     pass -Dkey=val directly to the jvm
   -J-X          pass option -X directly to the jvm (-J is stripped)
-  -nocolors     disable ANSI color codes
 
-In the case of a duplicated option, SBT_OPTS takes precedence over
-JAVA_OPTS, and command line options take precedence over both.
+In the case of duplicated or conflicting options, the order above
+shows precedence: JAVA_OPTS lowest, command line options highest.
 EOM
 }
 
@@ -109,31 +111,45 @@ addSbt () {
   sbt_commands=("${sbt_commands[@]}" "$1")
 }
 
-while [ $# -gt 0 ]; do
-  case "$1" in
-        -help) usage; exit 1 ;;
+process_args ()
+{
+  while [ $# -gt 0 ]; do
+    case "$1" in
+          -help) usage; exit 1 ;;
 
-         -ivy) addJava "-Dsbt.ivy.home=$2"; shift 2 ;;
-      -shared) addJava "-Dsbt.boot.directory=$2"; shift 2 ;;
-      -sbtdir) addJava "-Dsbt.global.base=$2"; shift 2 ;;
-    -snapshot) useSnapshot=1; shift ;;
-    -nocolors) addJava "-Dsbt.log.noformat=true"; shift ;;
-      -create) createProject=1; shift ;;
+           -ivy) addJava "-Dsbt.ivy.home=$2"; shift 2 ;;
+        -shared) addJava "-Dsbt.boot.directory=$2"; shift 2 ;;
+        -sbtdir) addJava "-Dsbt.global.base=$2"; shift 2 ;;
+      -snapshot) useSnapshot=1; shift ;;
+      -nocolors) addJava "-Dsbt.log.noformat=true"; shift ;;
+        -create) createProject=1; shift ;;
 
-          -D*) addJava "$1"; shift ;;
-          -J*) addJava "${1:2}"; shift ;;
-          -28) addSbt "++ $latest_28"; shift ;;
-          -29) addSbt "++ $latest_29"; shift ;;
-         -210) addSbt "++ $latest_210"; shift ;;
-       -debug) addSbt "set logLevel in Global := Level.Debug"; debug=1; shift ;;
-       -local) addSbt "set scalaHome in ThisBuild := Some(file(\"$2\"))"; shift 2 ;;
+            -D*) addJava "$1"; shift ;;
+            -J*) addJava "${1:2}"; shift ;;
+            -28) addSbt "++ $latest_28"; shift ;;
+            -29) addSbt "++ $latest_29"; shift ;;
+           -210) addSbt "++ $latest_210"; shift ;;
+         -debug) addSbt "set logLevel in Global := Level.Debug"; debug=1; shift ;;
+         -local) addSbt "set scalaHome in ThisBuild := Some(file(\"$2\"))"; shift 2 ;;
 
-  -v|-verbose)   verbose=1 ; shift ;;
-      -sbtjar) sbt_jar="$2"; shift 2 ;;
+    -v|-verbose)   verbose=1 ; shift ;;
+        -sbtjar) sbt_jar="$2"; shift 2 ;;
 
-            *) args=("${args[@]}" "$1") ; shift ;;
-  esac
-done
+              *) args=("${args[@]}" "$1") ; shift ;;
+    esac
+  done
+}
+ 
+# if .sbtopts exists, prepend its contents
+[[ -f "$sbt_opts_filename" ]] && set -- $(cat $sbt_opts_filename) "${@}"
+
+# no args - alert them there's stuff in here
+[[ $# -gt 0 ]] || {
+  echo "Starting $script_name: invoke with -help for other options"
+}
+
+# process the unified options
+process_args "$@"
 
 # reset "$@" to the residual args
 set -- "${args[@]}"
@@ -147,11 +163,6 @@ If you want to start sbt anyway, run:
 
 EOM
   exit 1
-}
-
-# no args - alert them there's stuff in here
-[[ $# -gt 0 ]] || {
-  echo "Starting $script_name: invoke with -help for other options"
 }
 
 # pick up completion if present; todo
