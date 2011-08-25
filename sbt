@@ -5,38 +5,41 @@
 
 set -e
 
+# todo - make this dynamic
+sbt_release_version=0.10.1
+sbt_snapshot_version=0.11.0-20110825-052147
+
+# Falses made true via command line options
+useSnapshot=0
+createProject=0
+sbt_version=
+
 jar_url () {
   local where=$1  # releases or snapshots
   local ver=$2
   
-  echo "http://typesafe.artifactoryonline.com/typesafe/ivy-$where/org.scala-tools.sbt/sbt-launch/$ver/sbt-launch.jar"
+  if [[ $ver = 0.7* ]]; then
+    echo "http://simple-build-tool.googlecode.com/files/sbt-launch-$ver.jar"
+  else
+    echo "http://typesafe.artifactoryonline.com/typesafe/ivy-$where/org.scala-tools.sbt/sbt-launch/$ver/sbt-launch.jar"
+  fi
 }
 jar_file () {
   echo "$script_dir/.lib/$1/sbt-launch.jar"
 }
 
-# todo - make this dynamic
-sbt_release_version=0.10.1
-sbt_release_url=$(jar_url releases $sbt_release_version)
-sbt_release_jar=$(jar_file $sbt_release_version)
-sbt_snapshot_version=0.11.0-20110825-052147
-sbt_snapshot_url=$(jar_url snapshots $sbt_snapshot_version)
-sbt_snapshot_jar=$(jar_file $sbt_snapshot_version)
-
-# Falses made true via command line options
-useSnapshot=0
-createProject=0
-
 set_sbt_jar () {
-  if (( $useSnapshot )); then
+  if [[ -n "$sbt_version" ]]; then
+    sbt_url=$(jar_url releases $sbt_version)
+  elif (( $useSnapshot )); then
     sbt_version=$sbt_snapshot_version
-    sbt_url=$sbt_snapshot_url
+    sbt_url=$(jar_url snapshots $sbt_version)
   else
     sbt_version=$sbt_release_version
-    sbt_url=$sbt_release_url
+    sbt_url=$(jar_url releases $sbt_version)
   fi
 
-  sbt_jar="$script_dir/.lib/$sbt_version/sbt-launch.jar"
+  sbt_jar=$(jar_file $sbt_version)
 }
 
 
@@ -83,6 +86,7 @@ Usage: $script_name [options]
   -29           set scala version to $latest_29
   -210          set scala version to $latest_210
   -local <path> set scala version to local installation at path
+  -sbt-version  use specified version of sbt
   -snapshot     use a snapshot of sbt (otherwise, latest released version)
 
   # jvm options and output control
@@ -123,6 +127,7 @@ process_args ()
       -snapshot) useSnapshot=1; shift ;;
       -nocolors) addJava "-Dsbt.log.noformat=true"; shift ;;
         -create) createProject=1; shift ;;
+   -sbt-version) sbt_version="$2"; shift 2 ;;
 
             -D*) addJava "$1"; shift ;;
             -J*) addJava "${1:2}"; shift ;;
@@ -171,7 +176,9 @@ EOM
 # no jar? download it.
 [[ -f "$sbt_jar" ]] || set_sbt_jar
 [[ -f "$sbt_jar" ]] || {
-  echo "Downloading sbt launcher $sbt_version, this should only take a moment..."
+  echo "Downloading sbt launcher $sbt_version:"
+  echo "  From  $sbt_url"
+  echo "    To  $sbt_jar"
 
   mkdir -p $(dirname "$sbt_jar") &&   
     if which curl >/dev/null; then
@@ -203,6 +210,14 @@ execRunner () {
   "$@"
 }
 
+iflast-shell () {
+  if [[ $sbt_version = 0.7* ]]; then
+    echo "shell"
+  else
+    echo "iflast shell"
+  fi
+}
+
 # run sbt
 execRunner java \
   ${JAVA_OPTS:-$default_java_opts} \
@@ -210,5 +225,5 @@ execRunner java \
   ${java_args[@]} \
   -jar "$sbt_jar" \
   "${sbt_commands[@]}" \
-  "iflast shell" \
+  "$(iflast-shell)" \
   "$@"
