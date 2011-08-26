@@ -17,9 +17,11 @@ declare sbt_version=$(
   if [[ -f project/build.properties ]]; then
     versionLine=$(grep ^sbt.version project/build.properties)
     versionString=${versionLine##sbt.version=}
+    noRC=${versionString%.RC*}
+    echo $noRC
 
-    if [[ $versionString =~ ^[0-9]\.[0-9]\.[0-9]$ ]]; then
-      echo "$versionString"
+    if [[ $noRC =~ ^[0-9]\.[0-9]\.[0-9]$ ]]; then
+      echo "$noRC"
     fi
   fi
 )
@@ -42,10 +44,24 @@ jar_url () {
 jar_file () {
   echo "$script_dir/.lib/$1/sbt-launch.jar"
 }
+jar_url_latest_snapshot () {
+  # e.g. 0.11.0
+  local version=${1%-SNAPSHOT}
+  # trailing slash is important
+  local base="http://typesafe.artifactoryonline.com/typesafe/ivy-snapshots/org.scala-tools.sbt/sbt-launch/"
+  # e.g. 0.11.0-20110826-052141/
+  local version1=$(curl -s --list-only "$base" | grep -F $version | tail -1 | perl -pe 's#^<a href="([^"/]+).*#$1#;')
+  
+  jar_url snapshots "$version1"
+} 
 
 set_sbt_jar () {
   if [[ -n "$sbt_version" ]]; then
-    sbt_url=$(jar_url releases $sbt_version)
+    if [[ "$sbt_version" = *SNAPSHOT* ]]; then
+      sbt_url=$(jar_url_latest_snapshot $sbt_version)
+    else
+      sbt_url=$(jar_url releases $sbt_version)
+    fi
   elif (( $sbt_snapshot )); then
     sbt_version=$sbt_snapshot_version
     sbt_url=$(jar_url snapshots $sbt_version)
@@ -56,7 +72,21 @@ set_sbt_jar () {
 
   sbt_jar=$(jar_file $sbt_version)
 }
+download_sbt_jar () {
+  local url="$sbt_url"
+  local jar="$sbt_jar"
+  
+  echo "Downloading sbt launcher $sbt_version:"
+  echo "  From  $url"
+  echo "    To  $jar"
 
+  mkdir -p $(dirname "$jar") &&
+    if which curl >/dev/null; then
+      curl --silent "$url" --output "$jar"
+    elif which wget >/dev/null; then
+      wget --quiet "$url" > "$jar"
+    fi
+}
 
 # this seems to cover the bases on OSX, and someone will
 # have to tell me about the others.
@@ -196,16 +226,13 @@ EOM
 # no jar? download it.
 [[ -f "$sbt_jar" ]] || set_sbt_jar
 [[ -f "$sbt_jar" ]] || {
-  echo "Downloading sbt launcher $sbt_version:"
-  echo "  From  $sbt_url"
-  echo "    To  $sbt_jar"
-
-  mkdir -p $(dirname "$sbt_jar") &&
-    if which curl >/dev/null; then
-      curl --silent "$sbt_url" --output "$sbt_jar"
-    elif which wget >/dev/null; then
-      wget --quiet "$sbt_url" > "$sbt_jar"
-    fi
+  download_sbt_jar || {
+    [[ "$sbt_version" = *.RC* ]] && {
+     sbt_version="${sbt_version%.RC*}" &&
+     set_sbt_jar &&
+     download_sbt_jar
+    }
+  }
 }
 
 # still no jar? uh-oh.
