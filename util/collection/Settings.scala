@@ -98,7 +98,7 @@ trait Init[Scope]
 
 	def compile(sMap: ScopedMap): CompiledMap =
 		sMap.toTypedSeq.map { case sMap.TPair(k, ss) =>
-			val deps = ss flatMap { _.dependsOn } toSet;
+			val deps = ss flatMap { _.dependencies } toSet;
 			(k, new Compiled(k, deps, ss))
 		} toMap;
 
@@ -112,7 +112,7 @@ trait Init[Scope]
 		if(s.definitive) s :: Nil else ss :+ s
 
 	def addLocal(init: Seq[Setting[_]])(implicit scopeLocal: ScopeLocal): Seq[Setting[_]] =
-		init.flatMap( _.dependsOn flatMap scopeLocal )  ++  init
+		init.flatMap( _.dependencies flatMap scopeLocal )  ++  init
 		
 	def delegate(sMap: ScopedMap)(implicit delegates: Scope => Seq[Scope], display: Show[ScopedKey[_]]): ScopedMap =
 	{
@@ -196,7 +196,7 @@ trait Init[Scope]
 
 	sealed trait Initialize[T]
 	{
-		def dependsOn: Seq[ScopedKey[_]]
+		def dependencies: Seq[ScopedKey[_]]
 		def apply[S](g: T => S): Initialize[S]
 		def mapReferenced(g: MapScoped): Initialize[T]
 		def validateReferenced(g: ValidateRef): ValidatedInit[T]
@@ -229,8 +229,8 @@ trait Init[Scope]
 	final class Setting[T](val key: ScopedKey[T], val init: Initialize[T]) extends SettingsDefinition
 	{
 		def settings = this :: Nil
-		def definitive: Boolean = !init.dependsOn.contains(key)
-		def dependsOn: Seq[ScopedKey[_]] = remove(init.dependsOn, key)
+		def definitive: Boolean = !init.dependencies.contains(key)
+		def dependencies: Seq[ScopedKey[_]] = remove(init.dependencies, key)
 		def mapReferenced(g: MapScoped): Setting[T] = new Setting(key, init mapReferenced g)
 		def validateReferenced(g: ValidateRef): Either[Seq[Undefined], Setting[T]] = (init validateReferenced g).right.map(newI => new Setting(key, newI))
 		def mapKey(g: MapScoped): Setting[T] = new Setting(g(key), init)
@@ -252,13 +252,13 @@ trait Init[Scope]
 	private[this] def evaluateT(g: Settings[Scope]) =
 		new (Initialize ~> Id) { def apply[T](i: Initialize[T]) = i evaluate g }
 
-	private[this] def dependencies(ls: Seq[Initialize[_]]): Seq[ScopedKey[_]] = ls.flatMap(_.dependsOn)
+	private[this] def deps(ls: Seq[Initialize[_]]): Seq[ScopedKey[_]] = ls.flatMap(_.dependencies)
 
 	sealed trait Keyed[S, T] extends Initialize[T]
 	{
 		def scopedKey: ScopedKey[S]
 		def transform: S => T
-		final def dependsOn = scopedKey :: Nil
+		final def dependencies = scopedKey :: Nil
 		final def apply[Z](g: T => Z): Initialize[Z] = new GetValue(scopedKey, g compose transform)
 		final def evaluate(ss: Settings[Scope]): T = transform(getValue(ss, scopedKey))
 		final def mapReferenced(g: MapScoped): Initialize[T] = new GetValue( g(scopedKey), transform)
@@ -279,7 +279,7 @@ trait Init[Scope]
 	}
 	private[sbt] final class Bind[S,T](val f: S => Initialize[T], val in: Initialize[S]) extends Initialize[T]
 	{
-		def dependsOn = in.dependsOn
+		def dependencies = in.dependencies
 		def apply[Z](g: T => Z): Initialize[Z] = new Bind[S,Z](s => f(s)(g), in)
 		def evaluate(ss: Settings[Scope]): T = f(in evaluate ss) evaluate ss
 		def mapReferenced(g: MapScoped) = new Bind[S,T](s => f(s) mapReferenced g, in mapReferenced g)
@@ -294,7 +294,7 @@ trait Init[Scope]
 	}
 	private[sbt] final class Optional[S,T](val a: Option[Initialize[S]], val f: Option[S] => T) extends Initialize[T]
 	{
-		def dependsOn = dependencies(a.toList)
+		def dependencies = deps(a.toList)
 		def apply[Z](g: T => Z): Initialize[Z] = new Optional[S,Z](a, g compose f)
 		def evaluate(ss: Settings[Scope]): T = f(a map evaluateT(ss).fn)
 		def mapReferenced(g: MapScoped) = new Optional(a map mapReferencedT(g).fn, f)
@@ -303,7 +303,7 @@ trait Init[Scope]
 	}
 	private[sbt] final class Value[T](val value: () => T) extends Initialize[T]
 	{
-		def dependsOn = Nil
+		def dependencies = Nil
 		def mapReferenced(g: MapScoped) = this
 		def validateReferenced(g: ValidateRef) = Right(this)
 		def apply[S](g: T => S) = new Value[S](() => g(value()))
@@ -312,7 +312,7 @@ trait Init[Scope]
 	}
 	private[sbt] final class Apply[HL <: HList, T](val f: HL => T, val inputs: KList[Initialize, HL]) extends Initialize[T]
 	{
-		def dependsOn = dependencies(inputs.toList)
+		def dependencies = deps(inputs.toList)
 		def mapReferenced(g: MapScoped) = mapInputs( mapReferencedT(g) )
 		def apply[S](g: T => S) = new Apply(g compose f, inputs)
 		def mapConstant(g: MapConstant) = mapInputs( mapConstantT(g) )
@@ -328,7 +328,7 @@ trait Init[Scope]
 	}
 	private[sbt] final class Uniform[S, T](val f: Seq[S] => T, val inputs: Seq[Initialize[S]]) extends Initialize[T]
 	{
-		def dependsOn = dependencies(inputs)
+		def dependencies = deps(inputs)
 		def mapReferenced(g: MapScoped) = new Uniform(f, inputs map mapReferencedT(g).fn)
 		def validateReferenced(g: ValidateRef) =
 		{
