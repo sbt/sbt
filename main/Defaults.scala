@@ -39,7 +39,7 @@ object Defaults extends BuildCommon
 		(a.data, a.metadata get Keys.analysis getOrElse inc.Analysis.Empty)
 
 	def analysisMap[T](cp: Seq[Attributed[T]]): Map[T, inc.Analysis] =
-		(cp map extractAnalysis).toMap
+		(for(a <- cp; an <- a.metadata get Keys.analysis) yield (a.data, an) ).toMap
 
 	def buildCore: Seq[Setting[_]] = thisBuildCore ++ globalCore
 	def thisBuildCore: Seq[Setting[_]] = inScope(GlobalScope.copy(project = Select(ThisBuild)))(Seq(

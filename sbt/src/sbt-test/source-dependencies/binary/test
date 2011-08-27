@@ -1,0 +1,3 @@
+> use/compile
+$ copy-file changes/Break.scala dep/A.scala
+-> use/compile

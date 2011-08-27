@@ -48,10 +48,6 @@ class AggressiveCompile(cacheDirectory: File)
 	{
 		import config._
 		import currentSetup._
-		val getAPI = (f: File) => {
-			val extApis = getAnalysis(f) match { case Some(a) => a.apis.external; case None => Map.empty[String, Source] }
-			extApis.get _
-		}
 		val absClasspath = classpath.map(_.getCanonicalFile)
 		val apiOption= (api: Either[Boolean, Source]) => api.right.toOption
 		val cArgs = new CompilerArguments(compiler.scalaInstance, compiler.cp)
