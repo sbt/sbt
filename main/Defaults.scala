@@ -71,6 +71,7 @@ object Defaults extends BuildCommon
 		javaHome :== None,
 		extraLoggers :== { _ => Nil },
 		skip :== false,
+		watchSources :== Nil,
 		version :== "0.1",
 		outputStrategy :== None,
 		exportJars :== false,
@@ -122,6 +123,7 @@ object Defaults extends BuildCommon
 		javaSource <<= sourceDirectory / "java",
 		unmanagedSourceDirectories <<= Seq(scalaSource, javaSource).join,
 		unmanagedSources <<= collectFiles(unmanagedSourceDirectories, sourceFilter, defaultExcludes in unmanagedSources),
+		watchSources in ConfigGlobal <++= unmanagedSources,
 		managedSourceDirectories <<= Seq(sourceManaged).join,
 		managedSources <<= generate(sourceGenerators),
 		sourceGenerators :== Nil,
@@ -135,6 +137,7 @@ object Defaults extends BuildCommon
 		managedResourceDirectories <<= Seq(resourceManaged).join,
 		resourceDirectories <<= Classpaths.concatSettings(unmanagedResourceDirectories, managedResourceDirectories),
 		unmanagedResources <<= (unmanagedResourceDirectories, defaultExcludes in unmanagedResources) map unmanagedResourcesTask,
+		watchSources in ConfigGlobal <++= unmanagedResources,
 		resourceGenerators :== Nil,
 		resourceGenerators <+= (definedSbtPlugins, resourceManaged) map writePluginsDescriptor,
 		managedResources <<= generate(resourceGenerators),
@@ -196,7 +199,6 @@ object Defaults extends BuildCommon
 		cleanKeepFiles <<= historyPath(_.toList),
 		clean <<= (cleanFiles, cleanKeepFiles) map doClean,
 		consoleProject <<= consoleProjectTask,
-		watchSources <<= watchSourcesTask,
 		watchTransitiveSources <<= watchTransitiveSourcesTask,
 		watch <<= watchSetting
 	)
@@ -212,8 +214,6 @@ object Defaults extends BuildCommon
 	}
 	def watchTransitiveSourcesTask: Initialize[Task[Seq[File]]] =
 		inDependencies[Task[Seq[File]]](watchSources.task, const(std.TaskExtra.constant(Nil)), includeRoot = true) apply { _.join.map(_.flatten) }
-	def watchSourcesTask: Initialize[Task[Seq[File]]] =
-		Seq(unmanagedSources, unmanagedResources).map(inAllConfigurations).join { _.join.map(_.flatten.flatten.distinct) }
 
 	def watchSetting: Initialize[Watched] = (pollInterval, thisProjectRef) { (interval, base) =>
 		new Watched {
@@ -261,6 +261,7 @@ object Defaults extends BuildCommon
 		"No tests to run for " + display(scoped)
 
 	lazy val TaskGlobal: Scope = ThisScope.copy(task = Global)
+	lazy val ConfigGlobal: Scope = ThisScope.copy(config = Global)
 	def testTaskOptions(key: Scoped): Seq[Setting[_]] = inTask(key)( Seq(
 		testListeners <<= (streams, resolvedScoped, streamsManager, logBuffered, testListeners in TaskGlobal) map { (s, sco, sm, buff, ls) =>
 			TestLogger(s.log, testLogger(sm, test in sco.scope), buff) +: ls
@@ -1076,7 +1077,7 @@ trait BuildExtra extends BuildCommon
 	def noTestCompletion(config: Configuration = Test): Setting[_]  =  inConfig(config)( Seq(definedTests <<= Defaults.detectTests) ).head
 
 	def filterKeys(ss: Seq[Setting[_]], transitive: Boolean = false)(f: ScopedKey[_] => Boolean): Seq[Setting[_]] =
-		ss filter ( s => f(s.key) && (!transitive || s.dependsOn.forall(f)) )
+		ss filter ( s => f(s.key) && (!transitive || s.dependencies.forall(f)) )
 }
 trait BuildCommon
 {
