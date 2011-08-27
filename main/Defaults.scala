@@ -59,6 +59,8 @@ object Defaults extends BuildCommon
 		definesClass :== FileValueCache(Locate.definesClass _ ).get,
 		trapExit :== false,
 		trapExit in run :== true,
+		traceLevel in run :== 0,
+		traceLevel in runMain :== 0,
 		logBuffered in testOnly :== true,
 		logBuffered in test :== true,
 		traceLevel in console :== Int.MaxValue,
