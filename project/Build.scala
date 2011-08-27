@@ -94,7 +94,7 @@ class TemplateBuild(implicit sbtCreateConfig: SbtCreateConfig) extends Build {
     organization    := sbtCreateConfig.organization,
     version         := sbtCreateConfig.version,
     scalaVersion    := sbtCreateConfig.scalaVersion,
-    retrieveManaged := true,
+    // retrieveManaged := true,
     shellPrompt     := buildShellPrompt
     // logLevel     := Level.Debug,
   )

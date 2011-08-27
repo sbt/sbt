@@ -6,8 +6,16 @@
 set -e
 
 # todo - make this dynamic
-sbt_release_version=0.10.1
-sbt_snapshot_version=0.11.0-20110825-052147
+declare -r sbt_release_version=0.10.1
+declare -r sbt_snapshot_version=0.11.0-SNAPSHOT
+
+declare -r default_java_opts="-Dfile.encoding=UTF8"
+declare -r default_sbt_opts="-XX:+CMSClassUnloadingEnabled -XX:MaxPermSize=512m -Xmx2g -Xss2m"
+declare -r sbt_opts=".sbtopts"
+declare -r latest_28="2.8.1"
+declare -r latest_29="2.9.0-1"
+declare -r latest_29rc="2.9.1.RC4"
+declare -r latest_210="2.10.0-SNAPSHOT"
 
 # A bunch of falses and empties as defaults.
 declare sbt_jar=
@@ -44,27 +52,32 @@ jar_url () {
 jar_file () {
   echo "$script_dir/.lib/$1/sbt-launch.jar"
 }
-jar_url_latest_snapshot () {
-  # e.g. 0.11.0
+
+# argument is e.g. 0.11.0-SNAPSHOT
+sbt_snapshot_actual_version () {
+  # -> 0.11.0
   local version=${1%-SNAPSHOT}
   # trailing slash is important
   local base="http://typesafe.artifactoryonline.com/typesafe/ivy-snapshots/org.scala-tools.sbt/sbt-launch/"
   # e.g. 0.11.0-20110826-052141/
-  local version1=$(curl -s --list-only "$base" | grep -F $version | tail -1 | perl -pe 's#^<a href="([^"/]+).*#$1#;')
-  
-  jar_url snapshots "$version1"
-} 
+  curl -s --list-only "$base" | grep -F $version | tail -1 | perl -pe 's#^<a href="([^"/]+).*#$1#;'
+}
 
 set_sbt_jar () {
+  snap () {
+    local ver=$(sbt_snapshot_actual_version "$sbt_version")
+    jar_url snapshots $ver
+  }
+  
   if [[ -n "$sbt_version" ]]; then
     if [[ "$sbt_version" = *SNAPSHOT* ]]; then
-      sbt_url=$(jar_url_latest_snapshot $sbt_version)
+      sbt_url=$(snap)
     else
       sbt_url=$(jar_url releases $sbt_version)
     fi
   elif (( $sbt_snapshot )); then
     sbt_version=$sbt_snapshot_version
-    sbt_url=$(jar_url snapshots $sbt_version)
+    sbt_url=$(snap)
   else
     sbt_version=$sbt_release_version
     sbt_url=$(jar_url releases $sbt_version)
@@ -105,13 +118,6 @@ get_script_path () {
 declare -r script_path=$(get_script_path "$BASH_SOURCE")
 declare -r script_dir="$(dirname $script_path)"
 declare -r script_name="$(basename $script_path)"
-declare -r default_java_opts="-Dfile.encoding=UTF8"
-declare -r default_sbt_opts="-XX:+CMSClassUnloadingEnabled -XX:MaxPermSize=512m -Xmx2g -Xss2m"
-declare -r sbt_opts=".sbtopts"
-declare -r latest_28="2.8.1"
-declare -r latest_29="2.9.0-1"
-declare -r latest_29rc="2.9.1.RC4"
-declare -r latest_210="2.10.0-SNAPSHOT"
 
 usage () {
   cat <<EOM
