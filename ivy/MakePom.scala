@@ -9,6 +9,7 @@ package sbt;
 
 import java.io.{BufferedWriter, File, OutputStreamWriter, FileOutputStream}
 import scala.xml.{Node => XNode, NodeSeq, PrettyPrinter, XML}
+import Configurations.Optional
 
 import org.apache.ivy.{core, plugins, Ivy}
 import core.settings.IvySettings
@@ -123,32 +124,37 @@ class MakePom
 			<groupId>{mrid.getOrganisation}</groupId>
 			<artifactId>{mrid.getName}</artifactId>
 			<version>{mrid.getRevision}</version>
-			{ scope(dependency)}
-			{ optional(dependency) }
+			{ scopeAndOptional(dependency)}
 		</dependency>
 	}
 
-	def scope(dependency: DependencyDescriptor): NodeSeq =
-		scope(getScope(dependency.getModuleConfigurations))
-	def scope(scope: String): NodeSeq = if(scope ne null) <scope>{scope}</scope> else NodeSeq.Empty
-	def optional(dependency: DependencyDescriptor) =
-		if(isOptional(dependency.getModuleConfigurations)) <optional>true</optional> else NodeSeq.Empty
+	def scopeAndOptional(dependency: DependencyDescriptor): NodeSeq  =
+	{
+		val (scope, opt) = getScopeAndOptional(dependency.getModuleConfigurations)
+		scopeElem(scope) ++ optionalElem(opt)
+	}
+	def scopeElem(scope: Option[String]): NodeSeq = scope match {
+		case Some(s) => <scope>{s}</scope>
+		case None => NodeSeq.Empty
+	}
+	def optionalElem(opt: Boolean)  =  if(opt) <optional>true</optional> else NodeSeq.Empty
 	def moduleDescriptor(module: ModuleDescriptor) = module.getModuleRevisionId
 
-	def getScope(confs: Array[String]) =
+	def getScopeAndOptional(confs: Array[String]): (Option[String], Boolean) =
 	{
-		Configurations.defaultMavenConfigurations.find(conf => confs.contains(conf.name)) match
+		val (opt, notOptional) = confs.partition(_ == Optional.name)
+		val defaultNotOptional = Configurations.defaultMavenConfigurations.find(notOptional contains _.name)
+		val scope = defaultNotOptional match
 		{
-			case Some(conf) => conf.name
+			case Some(conf) => Some(conf.name)
 			case None =>
-				if(confs.isEmpty || confs(0) == Configurations.Default.name)
-					null
+				if(notOptional.isEmpty || notOptional(0) == Configurations.Default.name)
+					None
 				else
-					confs(0)
+					Option(notOptional(0))
 		}
+		(scope, !opt.isEmpty)
 	}
-	def isOptional(confs: Array[String]) = confs.isEmpty || (confs.length == 1 && confs(0) == Configurations.Optional.name)
-
 
 	def makeRepositories(settings: IvySettings, includeAll: Boolean, filterRepositories: MavenRepository => Boolean) =
 	{
