@@ -102,10 +102,7 @@ final class InputKey[T] private(val key: AttributeKey[InputTask[T]]) extends Key
 
 object Scoped
 {
-	@deprecated("Implicit conversion from ScopedTask[T] to ScopedKey[Task[T]] is deprecated.  Use the scopedKey method of ScopedTask.") 
 	implicit def taskScopedToKey[T](s: ScopedTask[T]): ScopedKey[Task[T]] = ScopedKey(s.scope, s.key)
-
-	@deprecated("Implicit conversion from ScopedInput[T] to ScopedKey[InputTask[T]] is deprecated.  Use the scopedKey method of ScopedInput.") 
 	implicit def inputScopedToKey[T](s: ScopedInput[T]): ScopedKey[InputTask[T]] = ScopedKey(s.scope, s.key)
 
 	sealed trait ScopingSetting[Result]
