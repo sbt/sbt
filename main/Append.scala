@@ -12,11 +12,11 @@ object Append
 		def appendValue(a: A, b: B): A
 	}
 	@implicitNotFound(msg = "No implicit for Append.Values[${A}, ${B}] found,\n  so ${B} cannot be appended to ${A}")
-	sealed trait Values[A,B]
+	sealed trait Values[A,-B]
 	{
 		def appendValues(a: A, b: B): A
 	}
-	sealed trait Sequence[A,B,T] extends Value[A,T] with Values[A,B]
+	sealed trait Sequence[A,-B,T] extends Value[A,T] with Values[A,B]
 
 	implicit def appendSeq[T, V <: T]: Sequence[Seq[T], Seq[V], V] = new Sequence[Seq[T], Seq[V], V] {
 		def appendValues(a: Seq[T], b: Seq[V]): Seq[T] = a ++ b

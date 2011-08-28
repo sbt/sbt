@@ -1,0 +1,10 @@
+<ivysettings>
+	<caches defaultCacheDir="${ivy.settings.dir}/target/use-cache" useOrigin="true"/>
+	<settings defaultResolver="file"/>
+	<resolvers>
+		<filesystem name="file" checkconsistency="false" descriptor="required" local="true">
+			<ivy pattern="${ivy.settings.dir}/../repo/[organisation]/[module]/[revision]/ivys/ivy.xml"/>
+			<artifact pattern="${ivy.settings.dir}/../repo/[organisation]/[module]/[revision]/[type]s/[artifact].[ext]"/>
+	   </filesystem>
+	</resolvers>
+</ivysettings>
