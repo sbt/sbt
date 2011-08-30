@@ -661,6 +661,7 @@ object Classpaths
 		moduleConfigurations in GlobalScope :== Nil,
 		publishTo in GlobalScope :== None,
 		artifactPath in makePom <<= artifactPathSetting(artifact in makePom),
+		publishMavenStyle <<= (sbtPlugin, publishMavenStyle)(!_ && _),
 		publishArtifact in makePom <<= publishMavenStyle.identity,
 		artifact in makePom <<= moduleName(Artifact.pom),
 		projectID <<= (organization,moduleName,version,artifacts,crossPaths){ (org,module,version,as,crossEnabled) =>
