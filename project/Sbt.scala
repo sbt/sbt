@@ -17,7 +17,7 @@ object Sbt extends Build
 		organization := "org.scala-tools.sbt",
 		version := "0.11.0-SNAPSHOT",
 		publishArtifact in packageDoc := false,
-		scalaVersion := "2.9.1.RC4",
+		scalaVersion := "2.9.1",
 		publishMavenStyle := false,
 		componentID := None
 	)
