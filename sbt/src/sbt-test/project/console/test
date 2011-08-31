@@ -5,5 +5,5 @@ $ mkdir sub3 sub1 sub2
 
 > project sub2
 # This can't actually fail, unfortunately.  The repl traps the exception and continues normally.
-> 'set initialCommands :== """assert((name in currentRef get structure.data) == Some("sub2")) """ '
+> 'set initialCommands := """assert((name in currentRef get structure.data) == Some("sub2")) """ '
 > console-project
