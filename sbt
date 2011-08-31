@@ -10,11 +10,10 @@ declare -r sbt_release_version=0.10.1
 declare -r sbt_snapshot_version=0.11.0-SNAPSHOT
 
 declare -r default_java_opts="-Dfile.encoding=UTF8"
-declare -r default_sbt_opts="-XX:+CMSClassUnloadingEnabled -XX:MaxPermSize=512m -Xmx2g -Xss2m"
+declare -r default_sbt_opts="-XX:+CMSClassUnloadingEnabled -XX:MaxPermSize=512m -Xms1536m -Xmx1536m -Xss2m"
 declare -r sbt_opts=".sbtopts"
 declare -r latest_28="2.8.1"
-declare -r latest_29="2.9.0-1"
-declare -r latest_29rc="2.9.1.RC4"
+declare -r latest_29="2.9.1"
 declare -r latest_210="2.10.0-SNAPSHOT"
 
 # A bunch of falses and empties as defaults.
@@ -132,7 +131,7 @@ Usage: $script_name [options]
   -sbt-boot <path>  path to shared boot directory (default: none, no sharing)
   -ivy      <path>  path to local Ivy repository (default: ~/.ivy2)
 
-  # sbt version (default: from project/build.properties if there, else latest release)
+  # sbt version (default: from project/build.properties if present, else latest release)
   -sbt-version  <version>   use the specified version of sbt
   -sbt-jar      <path>      use the specified jar as the sbt launcher
   -sbt-snapshot             use a snapshot version of sbt
@@ -140,7 +139,6 @@ Usage: $script_name [options]
   # scala version (default: latest release)
   -28                       use $latest_28
   -29                       use $latest_29
-  -29rc                     use $latest_29rc
   -210                      use $latest_210
   -scala-home <path>        use the scala build at the specified directory
   -scala-version <version>  use the specified version of scala
@@ -197,7 +195,6 @@ process_args ()
             -J*) addJava "${1:2}"; shift ;;
             -28) addSbt "++ $latest_28"; shift ;;
             -29) addSbt "++ $latest_29"; shift ;;
-          -29rc) addSbt "++ $latest_29rc"; shift ;;
            -210) addSbt "++ $latest_210"; shift ;;
 
               *) args=("${args[@]}" "$1") ; shift ;;

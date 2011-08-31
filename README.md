@@ -74,15 +74,14 @@ Current -help output:
       -sbt-boot <path>  path to shared boot directory (default: none, no sharing)
       -ivy      <path>  path to local Ivy repository (default: ~/.ivy2)
 
-      # sbt version (default: from project/build.properties if there, else latest release)
+      # sbt version (default: from project/build.properties if present, else latest release)
       -sbt-version  <version>   use the specified version of sbt
       -sbt-jar      <path>      use the specified jar as the sbt launcher
       -sbt-snapshot             use a snapshot version of sbt
 
       # scala version (default: latest release)
       -28                       use 2.8.1
-      -29                       use 2.9.0-1
-      -29rc                     use 2.9.1.RC4
+      -29                       use 2.9.1
       -210                      use 2.10.0-SNAPSHOT
       -scala-home <path>        use the scala build at the specified directory
       -scala-version <version>  use the specified version of scala
@@ -92,7 +91,7 @@ Current -help output:
 
       # jvm options and output control
       JAVA_OPTS     environment variable, if unset uses "-Dfile.encoding=UTF8"
-      SBT_OPTS      environment variable, if unset uses "-XX:+CMSClassUnloadingEnabled -XX:MaxPermSize=512m -Xmx2g -Xss2m"
+      SBT_OPTS      environment variable, if unset uses "-XX:+CMSClassUnloadingEnabled -XX:MaxPermSize=512m -Xms1536m -Xmx1536m -Xss2m"
       .sbtopts      if this file exists in the sbt root, it is prepended to the runner args
       -Dkey=val     pass -Dkey=val directly to the java runtime
       -J-X          pass option -X directly to the java runtime (-J is stripped)
