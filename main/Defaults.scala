@@ -626,8 +626,8 @@ object Classpaths
 		homepage in GlobalScope :== None,
 		licenses in GlobalScope :== Nil,
 		organization <<= organization or normalizedName.identity,
-		organizationName in GlobalScope <<= organizationName or organization.identity,
-		organizationHomepage in GlobalScope <<= organizationHomepage or homepage.identity,
+		organizationName <<= organizationName or organization.identity,
+		organizationHomepage <<= organizationHomepage or homepage.identity,
 		projectInfo <<= (name, description, homepage, licenses, organizationName, organizationHomepage) apply ModuleInfo,
 		classpathFilter in GlobalScope :== "*.jar" | "*.so" | "*.dll",
 		externalResolvers <<= (externalResolvers.task.?, resolvers) {
