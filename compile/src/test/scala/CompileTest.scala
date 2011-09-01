@@ -9,9 +9,8 @@ object CompileTest extends Specification
 {
 	"Analysis compiler" should {
 		"compile basic sources" in {
-			WithCompiler( "2.7.4" )(testCompileAnalysis)
-			WithCompiler( "2.7.5" )(testCompileAnalysis)
-			WithCompiler( "2.7.7" )(testCompileAnalysis)
+			WithCompiler( "2.9.1" )(testCompileAnalysis)
+			WithCompiler( "2.9.0-1" )(testCompileAnalysis)
 			WithCompiler( "2.8.0" )(testCompileAnalysis)
 			WithCompiler( "2.8.1" )(testCompileAnalysis)
 		}
@@ -19,10 +18,10 @@ object CompileTest extends Specification
 
 	"Raw compiler" should {
 		"Properly handle classpaths" in {
-			testClasspath("2.7.4")
-			testClasspath("2.7.7")
-			testClasspath("2.8.0")
+			testClasspath("2.9.1")
+			testClasspath("2.9.0-1")
 			testClasspath("2.8.1")
+			testClasspath("2.8.0")
 		}
 	}
 	

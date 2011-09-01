@@ -194,7 +194,7 @@ Multi + " command1 " + Multi + """ command2 ...
 """
 
 	def AppendCommand = "append"
-	def AppendLastBrief = (Append + " command", AppendLastDetailed)
+	def AppendLastBrief = (AppendCommand + " command", AppendLastDetailed)
 	def AppendLastDetailed = "Appends `command` to list of commands to run."
 
 	val AliasCommand = "alias"
