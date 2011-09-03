@@ -107,11 +107,11 @@ object Defaults extends BuildCommon
 	)
 	def paths = Seq(
 		baseDirectory <<= thisProject(_.base),
+		includeFilter in GlobalScope :== NothingFilter,
+		excludeFilter in GlobalScope :== (".*"  - ".") || HiddenFileFilter,
 		target <<= baseDirectory / "target",
-		defaultExcludes in GlobalScope :== (".*"  - ".") || HiddenFileFilter,
 		historyPath <<= target(t => Some(t / ".history")),
 		sourceDirectory <<= baseDirectory / "src",
-		sourceFilter in GlobalScope :== ("*.java" | "*.scala"),
 		sourceManaged <<= crossTarget / "src_managed",
 		resourceManaged <<= crossTarget / "resource_managed",
 		cacheDirectory <<= target / "cache"
@@ -124,7 +124,8 @@ object Defaults extends BuildCommon
 		scalaSource <<= sourceDirectory / "scala",
 		javaSource <<= sourceDirectory / "java",
 		unmanagedSourceDirectories <<= Seq(scalaSource, javaSource).join,
-		unmanagedSources <<= collectFiles(unmanagedSourceDirectories, sourceFilter, defaultExcludes in unmanagedSources),
+		includeFilter in unmanagedSources :== ("*.java" | "*.scala"),
+		unmanagedSources <<= collectFiles(unmanagedSourceDirectories, includeFilter in unmanagedSources, excludeFilter in unmanagedSources),
 		watchSources in ConfigGlobal <++= unmanagedSources,
 		managedSourceDirectories <<= Seq(sourceManaged).join,
 		managedSources <<= generate(sourceGenerators),
@@ -138,7 +139,8 @@ object Defaults extends BuildCommon
 		unmanagedResourceDirectories <<= Seq(resourceDirectory).join,
 		managedResourceDirectories <<= Seq(resourceManaged).join,
 		resourceDirectories <<= Classpaths.concatSettings(unmanagedResourceDirectories, managedResourceDirectories),
-		unmanagedResources <<= (unmanagedResourceDirectories, defaultExcludes in unmanagedResources) map unmanagedResourcesTask,
+		includeFilter in unmanagedResources :== AllPassFilter,
+		unmanagedResources <<= collectFiles(unmanagedResourceDirectories, includeFilter in unmanagedResources, excludeFilter in unmanagedResources),
 		watchSources in ConfigGlobal <++= unmanagedResources,
 		resourceGenerators :== Nil,
 		resourceGenerators <+= (definedSbtPlugins, resourceManaged) map writePluginsDescriptor,
@@ -151,7 +153,7 @@ object Defaults extends BuildCommon
 		docDirectory <<= (crossTarget, configuration) { (outDir, conf) => outDir / (prefix(conf.name) + "api") }
 	)
 	def addBaseSources = Seq(
-		unmanagedSources <<= (unmanagedSources, baseDirectory, sourceFilter, defaultExcludes in unmanagedSources) map {
+		unmanagedSources <<= (unmanagedSources, baseDirectory, includeFilter in unmanagedSources, excludeFilter in unmanagedSources) map {
 			(srcs,b,f,excl) => (srcs +++ b * (f -- excl)).get 
 		}
 	)
@@ -236,8 +238,6 @@ object Defaults extends BuildCommon
 			case Some(h) => ScalaInstance(h, launcher)
 		}
 	}
-	def unmanagedResourcesTask(dirs: Seq[File], excl: FileFilter) =
-		dirs.descendentsExcept("*",excl).get
 
 	lazy val testTasks: Seq[Setting[_]] = testTaskOptions(test) ++ testTaskOptions(testOnly) ++ Seq(	
 		testLoader <<= (fullClasspath, scalaInstance, taskTemporaryDirectory) map { (cp, si, temp) => TestFramework.createTestLoader(data(cp), si, IO.createUniqueDirectory(temp)) },
@@ -585,7 +585,7 @@ object Classpaths
 		exportedProducts <<= exportProductsTask,
 		classpathConfiguration <<= (internalConfigurationMap, configuration)( _ apply _ ),
 		managedClasspath <<= (classpathConfiguration, classpathTypes, update) map managedJars,
-		unmanagedJars <<= (configuration, unmanagedBase, classpathFilter, defaultExcludes in unmanagedJars) map { (config, base, filter, excl) =>
+		unmanagedJars <<= (configuration, unmanagedBase, classpathFilter, excludeFilter in unmanagedJars) map { (config, base, filter, excl) =>
 			(base * (filter -- excl) +++ (base / config.name).descendentsExcept(filter, excl)).classpath
 		}
 	)
