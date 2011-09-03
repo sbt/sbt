@@ -217,7 +217,7 @@ object Load
 	}
 	def mkEval(unit: BuildUnit): Eval = mkEval(unit.definitions, unit.plugins, Nil)
 	def mkEval(defs: LoadedDefinitions, plugs: LoadedPlugins, options: Seq[String]): Eval =
-		mkEval(defs.target +: plugs.classpath, defs.base, options)
+		mkEval(defs.target ++ plugs.classpath, defs.base, options)
 	def mkEval(classpath: Seq[File], base: File, options: Seq[String]): Eval =
 		new Eval(options, classpath, s => new ConsoleReporter(s), Some(evalOutputDirectory(base)))
 
@@ -372,18 +372,29 @@ object Load
 		val normBase = localBase.getCanonicalFile
 		val defDir = selectProjectDir(normBase)
 		val pluginDir = pluginDirectory(defDir)
+		val (plugs, defs) = if(pluginDir.exists) loadUnitOld(defDir, pluginDir, s, config) else loadUnitNew(defDir, s, config)
+		new BuildUnit(uri, normBase, defs, plugs)
+	}
+	def loadUnitNew(defDir: File, s: State, config: LoadBuildConfiguration): (LoadedPlugins, LoadedDefinitions) =
+	{
+		val plugs = plugins(defDir, s, config)
+		val defNames = analyzed(plugs.fullClasspath) flatMap findDefinitions
+		val defs = if(defNames.isEmpty) Build.default :: Nil else loadDefinitions(plugs.loader, defNames)
+		val loadedDefs = new LoadedDefinitions(defDir, Nil, plugs.loader, defs, defNames)
+		(plugs, loadedDefs)
+	}
+	def loadUnitOld(defDir: File, pluginDir: File, s: State, config: LoadBuildConfiguration): (LoadedPlugins, LoadedDefinitions) =
+	{
 		val plugs = plugins(pluginDir, s, config)
-
 		val defs = definitionSources(defDir)
 		val target = buildOutputDirectory(defDir, config.compilers)
 		IO.createDirectory(target)
 		val loadedDefs =
 			if(defs.isEmpty)
-				new LoadedDefinitions(defDir, target, plugs.loader, Build.default :: Nil, Nil)
+				new LoadedDefinitions(defDir, target :: Nil, plugs.loader, Build.default :: Nil, Nil)
 			else
-				definitions(defDir, target, defs, plugs, config.definesClass, config.compilers, config.log, normBase)
-
-		new BuildUnit(uri, normBase, loadedDefs, plugs)
+				definitions(defDir, target, defs, plugs, config.definesClass, config.compilers, config.log)
+		(plugs, loadedDefs)
 	}
 
 	def globalPluginClasspath(globalPlugin: Option[GlobalPlugin]): Seq[Attributed[File]] =
@@ -393,7 +404,7 @@ object Load
 			case None => Nil
 		}
 	def enableSbtPlugin(config: LoadBuildConfiguration): LoadBuildConfiguration =
-		config.copy(injectSettings = config.injectSettings.copy(global = (Keys.sbtPlugin in LocalRootProject := true) +: config.injectSettings.global))
+		config.copy(injectSettings = config.injectSettings.copy(global = (Keys.sbtPlugin in Global in LocalRootProject :== true) +: config.injectSettings.global))
 	def activateGlobalPlugin(config: LoadBuildConfiguration): LoadBuildConfiguration =
 		config.globalPlugin match
 		{
@@ -401,11 +412,15 @@ object Load
 			case None => config
 		}
 	def plugins(dir: File, s: State, config: LoadBuildConfiguration): LoadedPlugins =
-		if(dir.exists)
+		if(hasDefinition(dir))
 			buildPlugins(dir, s, enableSbtPlugin(activateGlobalPlugin(config)))
 		else
 			noPlugins(dir, config)
-
+	def hasDefinition(dir: File) =
+	{
+		import Path._
+		!(dir * -GlobFilter(DefaultTargetName)).get.isEmpty
+	}
 	def noPlugins(dir: File, config: LoadBuildConfiguration): LoadedPlugins = loadPluginDefinition(dir, config, new PluginData(config.globalPluginClasspath, Nil, Nil))
 	def buildPlugins(dir: File, s: State, config: LoadBuildConfiguration): LoadedPlugins =
 		loadPluginDefinition(dir, config, buildPluginDefinition(dir, s, config))
@@ -428,14 +443,14 @@ object Load
 		config.evalPluginDef(pluginDef, pluginState)
 	}
 
-	def definitions(base: File, targetBase: File, srcs: Seq[File], plugins: LoadedPlugins, definesClass: DefinesClass, compilers: Compilers, log: Logger, buildBase: File): LoadedDefinitions =
+	def definitions(base: File, targetBase: File, srcs: Seq[File], plugins: LoadedPlugins, definesClass: DefinesClass, compilers: Compilers, log: Logger): LoadedDefinitions =
 	{
 		val (inputs, defAnalysis) = build(plugins.pluginData, srcs, targetBase, compilers, definesClass, log)
 		val target = inputs.config.classesDirectory
 		val definitionLoader = ClasspathUtilities.toLoader(target :: Nil, plugins.loader)
 		val defNames = findDefinitions(defAnalysis)
 		val defs = if(defNames.isEmpty) Build.default :: Nil else loadDefinitions(definitionLoader, defNames)
-		new LoadedDefinitions(base, target, definitionLoader, defs, defNames)
+		new LoadedDefinitions(base, target :: Nil, definitionLoader, defs, defNames)
 	}
 
 	def loadDefinitions(loader: ClassLoader, defs: Seq[String]): Seq[Build] =
@@ -504,7 +519,7 @@ object Load
 	def baseImports = "import sbt._, Process._, Keys._" :: Nil
 
 	final class EvaluatedConfigurations(val eval: Eval, val settings: Seq[Setting[_]])
-	final class LoadedDefinitions(val base: File, val target: File, val loader: ClassLoader, val builds: Seq[Build], val buildNames: Seq[String])
+	final class LoadedDefinitions(val base: File, val target: Seq[File], val loader: ClassLoader, val builds: Seq[Build], val buildNames: Seq[String])
 	final class LoadedPlugins(val base: File, val pluginData: PluginData, val loader: ClassLoader, val plugins: Seq[Setting[_]], val pluginNames: Seq[String])
 	{
 		def fullClasspath: Seq[Attributed[File]] = pluginData.classpath
@@ -542,7 +557,7 @@ object Load
 	{
 		assert(!rootProjects.isEmpty, "No root projects defined for build unit " + unit)
 		def localBase = unit.localBase
-		def classpath = unit.definitions.target +: unit.plugins.classpath
+		def classpath: Seq[File] = unit.definitions.target ++ unit.plugins.classpath
 		def loader = unit.definitions.loader
 		def imports = getImports(unit)
 		override def toString = unit.toString
