@@ -12,8 +12,8 @@ package sbt
 
 object EvaluateTask
 {
-	import Load.BuildStructure
-	import Project.display
+	import Load.{BuildStructure, PluginData}
+	import Project.{display, Initialize}
 	import std.{TaskExtra,Transform}
 	import TaskExtra._
 	import Keys.state
@@ -25,13 +25,24 @@ object EvaluateTask
 		(streamsManager in GlobalScope) ::= dummyStreamsManager
 	)
 
-	def evalPluginDef(log: Logger)(pluginDef: BuildStructure, state: State): Seq[Attributed[File]] =
+	def evalPluginDef(log: Logger)(pluginDef: BuildStructure, state: State): PluginData =
 	{
+			import Keys.{fullClasspath, javacOptions, scalacOptions}
+			import Configurations.{Compile, Runtime}
+			import Scoped._
+
 		val root = ProjectRef(pluginDef.root, Load.getRootProject(pluginDef.units)(pluginDef.root))
-		val pluginKey = Keys.fullClasspath in Configurations.Runtime
-		val evaluated = evaluateTask(pluginDef, ScopedKey(pluginKey.scope, pluginKey.key), state, root)
-		val result = evaluated getOrElse error("Plugin classpath does not exist for plugin definition at " + pluginDef.root)
-		processResult(result, log)
+		val init = (fullClasspath in Runtime, scalacOptions in Compile, javacOptions in Compile) map { (cp, so, jo) => new PluginData(cp, so, jo) }
+		processResult(evaluateInitTask(pluginDef, init, state, root), log)
+	}
+	def evaluateInitTask[T](structure: BuildStructure, init: Initialize[Task[T]], state: State, ref: ProjectRef, checkCycles: Boolean = false, maxWorkers: Int = SystemProcessors): Result[T] =
+	{
+		val resolveThis = Project.mapScope( Scope.replaceThis(Load.projectScope(ref)) )
+		val task = init mapReferenced resolveThis evaluate structure.data
+		withStreams(structure) { str =>
+			val toNode = nodeView(state, str)
+			runTask(task, str, structure.index.triggers, checkCycles, maxWorkers)(toNode)
+		}
 	}
 	def evaluateTask[T](structure: BuildStructure, taskKey: ScopedKey[Task[T]], state: State, ref: ProjectRef, checkCycles: Boolean = false, maxWorkers: Int = SystemProcessors): Option[Result[T]] =
 		withStreams(structure) { str =>
