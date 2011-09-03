@@ -146,10 +146,15 @@ object BuiltinCommands
 			val current = "The current project is " + Project.display(e.currentRef) + "\n"
 			val sc = aboutScala(s, e)
 			val built = if(sc.isEmpty) "" else "The current project is built against " + sc + "\n"
-			current + built
+			current + built + aboutPlugins(e)
 		}
 		else "No project is currently loaded.\n"
 
+	def aboutPlugins(e: Extracted): String =
+	{
+		val allPluginNames = e.structure.units.values.flatMap(_.unit.plugins.pluginNames).toSeq.distinct
+		if(allPluginNames.isEmpty) "" else allPluginNames.mkString("Available Plugins: ", ", ", "\n")
+	}
 	def aboutScala(s: State, e: Extracted): String =
 	{
 		val scalaVersion = e.getOpt(Keys.scalaVersion)
