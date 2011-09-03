@@ -593,7 +593,7 @@ object Classpaths
 		managedClasspath <<= (classpathConfiguration, classpathTypes, update) map managedJars,
 			// remove when defaultExcludes and classpathFilter are removed
 		excludeFilter in unmanagedJars <<= (defaultExcludes in unmanagedJars) or (excludeFilter in unmanagedJars),
-		includeFilter in unmanagedJars <<= classpathFilter or (defaultExcludes in unmanagedJars),
+		includeFilter in unmanagedJars <<= classpathFilter or (includeFilter in unmanagedJars),
 		unmanagedJars <<= (configuration, unmanagedBase, includeFilter in unmanagedJars, excludeFilter in unmanagedJars) map { (config, base, filter, excl) =>
 			(base * (filter -- excl) +++ (base / config.name).descendentsExcept(filter, excl)).classpath
 		}
