@@ -43,6 +43,7 @@ class MakePom
 			<modelVersion>4.0.0</modelVersion>
 			{ makeModuleID(module) }
 			<name>{moduleInfo.nameFormal}</name>
+			{ makeStartYear(moduleInfo) }
 			{ makeOrganization(moduleInfo) }
 			{ extra }
 			{ makeProperties(module) }
@@ -64,6 +65,8 @@ class MakePom
 			licenses(module.getLicenses)) : NodeSeq )
 		a ++ b
 	}
+
+	def makeStartYear(moduleInfo: ModuleInfo): NodeSeq = moduleInfo.startYear map { y => <inceptionYear>{y}</inceptionYear> } getOrElse NodeSeq.Empty
 	def makeOrganization(moduleInfo: ModuleInfo): NodeSeq =
 	{
 		<organization>
