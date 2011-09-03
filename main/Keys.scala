@@ -184,6 +184,7 @@ object Keys
 	val normalizedName = SettingKey[String]("normalized-name", "Project name transformed from mixed case and spaces to lowercase and dash-separated.")
 	val description = SettingKey[String]("description", "Project description.")
 	val homepage = SettingKey[Option[URL]]("homepage", "Project homepage.")
+	val startYear = SettingKey[Option[Int]]("start-year", "Year in which the project started.")
 	val licenses = SettingKey[Seq[(String, URL)]]("licenses", "Project licenses as (name, url) pairs.")
 	val organization = SettingKey[String]("organization", "Organization/group ID.")
 	val organizationName = SettingKey[String]("organization-name", "Organization full/formal name.")

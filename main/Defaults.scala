@@ -624,11 +624,12 @@ object Classpaths
 		normalizedName <<= name(StringUtilities.normalize),
 		description <<= description or name.identity,
 		homepage in GlobalScope :== None,
+		startYear in GlobalScope :== None,
 		licenses in GlobalScope :== Nil,
 		organization <<= organization or normalizedName.identity,
 		organizationName <<= organizationName or organization.identity,
 		organizationHomepage <<= organizationHomepage or homepage.identity,
-		projectInfo <<= (name, description, homepage, licenses, organizationName, organizationHomepage) apply ModuleInfo,
+		projectInfo <<= (name, description, homepage, startYear, licenses, organizationName, organizationHomepage) apply ModuleInfo,
 		classpathFilter in GlobalScope :== "*.jar" | "*.so" | "*.dll",
 		externalResolvers <<= (externalResolvers.task.?, resolvers) {
 			case (Some(delegated), Seq()) => delegated
