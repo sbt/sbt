@@ -98,6 +98,11 @@ object Defaults extends BuildCommon
 		pomExtra :== NodeSeq.Empty,
 		pomPostProcess :== idFun,
 		pomAllRepositories :== false,
+		includeFilter :== NothingFilter,
+		includeFilter in unmanagedSources :== "*.java" | "*.scala",
+		includeFilter in unmanagedJars :== "*.jar" | "*.so" | "*.dll",
+		includeFilter in unmanagedResources :== AllPassFilter,
+		excludeFilter :== (".*"  - ".") || HiddenFileFilter,
 		pomIncludeRepository :== Classpaths.defaultRepositoryFilter
 	))
 	def projectCore: Seq[Setting[_]] = Seq(
@@ -107,8 +112,6 @@ object Defaults extends BuildCommon
 	)
 	def paths = Seq(
 		baseDirectory <<= thisProject(_.base),
-		includeFilter in GlobalScope :== NothingFilter,
-		excludeFilter in GlobalScope :== (".*"  - ".") || HiddenFileFilter,
 		target <<= baseDirectory / "target",
 		historyPath <<= target(t => Some(t / ".history")),
 		sourceDirectory <<= baseDirectory / "src",
@@ -124,7 +127,9 @@ object Defaults extends BuildCommon
 		scalaSource <<= sourceDirectory / "scala",
 		javaSource <<= sourceDirectory / "java",
 		unmanagedSourceDirectories <<= Seq(scalaSource, javaSource).join,
-		includeFilter in unmanagedSources :== ("*.java" | "*.scala"),
+			// remove when sourceFilter, defaultExcludes are removed
+		includeFilter in unmanagedSources <<= (sourceFilter in unmanagedSources) or (includeFilter in unmanagedSources),
+		excludeFilter in unmanagedSources <<= (defaultExcludes in unmanagedSources) or (excludeFilter in unmanagedSources),
 		unmanagedSources <<= collectFiles(unmanagedSourceDirectories, includeFilter in unmanagedSources, excludeFilter in unmanagedSources),
 		watchSources in ConfigGlobal <++= unmanagedSources,
 		managedSourceDirectories <<= Seq(sourceManaged).join,
@@ -139,7 +144,8 @@ object Defaults extends BuildCommon
 		unmanagedResourceDirectories <<= Seq(resourceDirectory).join,
 		managedResourceDirectories <<= Seq(resourceManaged).join,
 		resourceDirectories <<= Classpaths.concatSettings(unmanagedResourceDirectories, managedResourceDirectories),
-		includeFilter in unmanagedResources :== AllPassFilter,
+			// remove when defaultExcludes are removed
+		excludeFilter in unmanagedResources <<= (defaultExcludes in unmanagedResources) or (excludeFilter in unmanagedResources),
 		unmanagedResources <<= collectFiles(unmanagedResourceDirectories, includeFilter in unmanagedResources, excludeFilter in unmanagedResources),
 		watchSources in ConfigGlobal <++= unmanagedResources,
 		resourceGenerators :== Nil,
@@ -585,7 +591,10 @@ object Classpaths
 		exportedProducts <<= exportProductsTask,
 		classpathConfiguration <<= (internalConfigurationMap, configuration)( _ apply _ ),
 		managedClasspath <<= (classpathConfiguration, classpathTypes, update) map managedJars,
-		unmanagedJars <<= (configuration, unmanagedBase, classpathFilter, excludeFilter in unmanagedJars) map { (config, base, filter, excl) =>
+			// remove when defaultExcludes and classpathFilter are removed
+		excludeFilter in unmanagedJars <<= (defaultExcludes in unmanagedJars) or (excludeFilter in unmanagedJars),
+		includeFilter in unmanagedJars <<= classpathFilter or (defaultExcludes in unmanagedJars),
+		unmanagedJars <<= (configuration, unmanagedBase, includeFilter in unmanagedJars, excludeFilter in unmanagedJars) map { (config, base, filter, excl) =>
 			(base * (filter -- excl) +++ (base / config.name).descendentsExcept(filter, excl)).classpath
 		}
 	)
@@ -630,7 +639,6 @@ object Classpaths
 		organizationName <<= organizationName or organization.identity,
 		organizationHomepage <<= organizationHomepage or homepage.identity,
 		projectInfo <<= (name, description, homepage, startYear, licenses, organizationName, organizationHomepage) apply ModuleInfo,
-		classpathFilter in GlobalScope :== "*.jar" | "*.so" | "*.dll",
 		externalResolvers <<= (externalResolvers.task.?, resolvers) {
 			case (Some(delegated), Seq()) => delegated
 			case (_, rs) => task { Resolver.withDefaultResolvers(rs) }

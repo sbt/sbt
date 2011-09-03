@@ -82,6 +82,8 @@ object Keys
 		// Filters
 	val includeFilter = SettingKey[FileFilter]("include-filter", "Filter for including sources and resources files from default directories.")
 	val excludeFilter = SettingKey[FileFilter]("exclude-filter", "Filter for excluding sources and resources files from default directories.")
+	@deprecated("Use `includeFilter`, scoped by respective classpath related task instead.  For example, `includeFilter in unmanagedJars`", "0.11.0")
+	val classpathFilter = SettingKey[FileFilter]("classpath-filter", "Filter for selecting unmanaged dependencies.")
 	@deprecated("Use `includeFilter`, scoped by respective source related task instead.  For example, `includeFilter in unmanagedSources`", "0.11.0")
 	val sourceFilter = SettingKey[FileFilter]("source-filter", "Filter for selecting sources from default directories.")
 	@deprecated("Use `excludeFilter`, scoped by respective task instead.  For example, `excludeFilter in unmanagedSources`", "0.11.0")
@@ -218,7 +220,6 @@ object Keys
 	val updateConfiguration = SettingKey[UpdateConfiguration]("update-configuration", "Configuration for resolving and retrieving managed dependencies.")
 	val ivySbt = TaskKey[IvySbt]("ivy-sbt", "Provides the sbt interface to Ivy.")
 	val ivyModule = TaskKey[IvySbt#Module]("ivy-module", "Provides the sbt interface to a configured Ivy module.")
-	val classpathFilter = SettingKey[FileFilter]("classpath-filter", "Filter for selecting unmanaged dependencies.")
 	val update = TaskKey[UpdateReport]("update", "Resolves and optionally retrieves dependencies, producing a report.")
 	val updateClassifiers = TaskKey[UpdateReport]("update-classifiers", "Resolves and optionally retrieves classified artifacts, such as javadocs and sources, for dependency definitions, transitively.", update)
 	val transitiveClassifiers = SettingKey[Seq[String]]("transitive-classifiers", "List of classifiers used for transitively obtaining extra artifacts for sbt or declared dependencies.")
