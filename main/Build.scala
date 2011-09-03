@@ -253,7 +253,6 @@ object BuildStreams
 object BuildPaths
 {
 	import Path._
-	import GlobFilter._
 
 	def getGlobalBase(state: State): File  =  state get globalBaseDirectory orElse systemGlobalBase getOrElse defaultGlobalBase
 	def systemGlobalBase: Option[File] = Option(System.getProperty(GlobalBaseProperty)) flatMap { path =>
@@ -266,7 +265,7 @@ object BuildPaths
 	def defaultGlobalSettings(globalBase: File) = configurationSources(globalBase)
 	
 	def definitionSources(base: File): Seq[File] = (base * "*.scala").get
-	def configurationSources(base: File): Seq[File] = (base * "*.sbt").get
+	def configurationSources(base: File): Seq[File] = (base * (GlobFilter("*.sbt") - ".sbt")).get
 	def pluginDirectory(definitionBase: File) = definitionBase / PluginsDirectoryName
 
 	def evalOutputDirectory(base: File) = outputDirectory(base) / "config-classes"
