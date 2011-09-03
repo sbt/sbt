@@ -172,8 +172,8 @@ object Project extends Init[Scope] with ProjectExtra
 		val structure = Project.structure(s)
 		val ref = Project.current(s)
 		val project = Load.getProject(structure.units, ref.build, ref.project)
-		val label = Keys.name in ref get structure.data getOrElse ref.project
-		logger(s).info("Set current project to " + label + " (in build " + ref.build +")")
+		val msg = Keys.onLoadMessage in ref get structure.data getOrElse ""
+		if(!msg.isEmpty) logger(s).info(msg)
 		def get[T](k: SettingKey[T]): Option[T] = k in ref get structure.data
 		def commandsIn(axis: ResolvedReference) = commands in axis get structure.data toList ;
 

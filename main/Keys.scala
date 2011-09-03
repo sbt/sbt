@@ -46,6 +46,7 @@ object Keys
 	val initialize = SettingKey[Unit]("initialize", "A convenience setting for performing side-effects during initialization.")
 	val onLoad = SettingKey[State => State]("on-load", "Transformation to apply to the build state when the build is loaded.")
 	val onUnload = SettingKey[State => State]("on-unload", "Transformation to apply to the build state when the build is unloaded.")
+	val onLoadMessage = SettingKey[String]("on-load-message", "Message to display when the project is loaded.")
 
 	val onComplete = SettingKey[() => Unit]("on-complete", "Hook to run when task evaluation completes.  The type of this setting is subject to change, pending the resolution of SI-2915.")
 // https://issues.scala-lang.org/browse/SI-2915

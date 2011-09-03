@@ -403,8 +403,12 @@ object Load
 			case Some(cp) => cp.data.fullClasspath
 			case None => Nil
 		}
+	val autoPluginSettings: Seq[Setting[_]] = inScope(GlobalScope in LocalRootProject)(Seq(
+		Keys.sbtPlugin :== true,
+		Keys.onLoadMessage <<= Keys.baseDirectory("Loading project definition from " + _)
+	))
 	def enableSbtPlugin(config: LoadBuildConfiguration): LoadBuildConfiguration =
-		config.copy(injectSettings = config.injectSettings.copy(global = (Keys.sbtPlugin in Global in LocalRootProject :== true) +: config.injectSettings.global))
+		config.copy(injectSettings = config.injectSettings.copy(global = autoPluginSettings ++ config.injectSettings.global))
 	def activateGlobalPlugin(config: LoadBuildConfiguration): LoadBuildConfiguration =
 		config.globalPlugin match
 		{

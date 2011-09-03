@@ -57,6 +57,7 @@ object GlobalPlugin
 	private[this] def log(s: State) = CommandSupport.logger(s)
 	val globalPluginSettings = inScope(Scope.GlobalScope in LocalRootProject)(Seq(
 		organization := "org.scala-tools.sbt",
+		onLoadMessage <<= Keys.baseDirectory("Loading global plugins from " + _),
 		name := "global-plugin",
 		sbtPlugin := true,
 		version := "0.0"
