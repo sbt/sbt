@@ -80,7 +80,11 @@ object Keys
 	val sources = TaskKey[Seq[File]]("sources", "All sources, both managed and unmanaged.")
 
 		// Filters
+	val includeFilter = SettingKey[FileFilter]("include-filter", "Filter for including sources and resources files from default directories.")
+	val excludeFilter = SettingKey[FileFilter]("exclude-filter", "Filter for excluding sources and resources files from default directories.")
+	@deprecated("Use `includeFilter`, scoped by respective source related task instead.  For example, `includeFilter in unmanagedSources`", "0.11.0")
 	val sourceFilter = SettingKey[FileFilter]("source-filter", "Filter for selecting sources from default directories.")
+	@deprecated("Use `excludeFilter`, scoped by respective task instead.  For example, `excludeFilter in unmanagedSources`", "0.11.0")
 	val defaultExcludes = SettingKey[FileFilter]("default-excludes", "Filter for excluding files, such as sources and resources, by default.")
 
 		// Resource paths
