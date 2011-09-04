@@ -284,7 +284,7 @@ object Keys
 	val sbtResolver = SettingKey[Resolver]("sbt-resolver", "Provides a resolver for obtaining sbt as a dependency.")
 	val sbtDependency = SettingKey[ModuleID]("sbt-dependency", "Provides a definition for declaring the current version of sbt.")
 	val sbtVersion = SettingKey[String]("sbt-version", "Provides the version of sbt.  This setting should be not be modified.")
-	val skip = TaskKey[Boolean]("skip")
+	val skip = TaskKey[Boolean]("skip", "For tasks that support it (currently only 'compile'), setting skip to true will force the task to not to do its work.  This exact semantics may vary by task.")
 
 	// special
 	val parallelExecution = SettingKey[Boolean]("parallel-execution", "Enables (true) or disables (false) parallel execution of tasks.")
