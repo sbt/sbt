@@ -61,8 +61,6 @@ runs the sbt "about" command.
 
 Current -help output:
 
-    % ./sbt -help
-
     Usage: sbt [options]
 
       -h | -help        print this message
@@ -71,12 +69,13 @@ Current -help output:
       -no-colors        disable ANSI color codes
       -sbt-create       start sbt even if current directory contains no sbt project
       -sbt-dir  <path>  path to global settings/plugins directory (default: ~/.sbt)
-      -sbt-boot <path>  path to shared boot directory (default: none, no sharing)
+      -sbt-boot <path>  path to shared boot directory (default: ~/.sbt/boot in 0.11 series)
       -ivy      <path>  path to local Ivy repository (default: ~/.ivy2)
 
       # sbt version (default: from project/build.properties if present, else latest release)
       -sbt-version  <version>   use the specified version of sbt
       -sbt-jar      <path>      use the specified jar as the sbt launcher
+      -sbt-rc                   use an RC version of sbt
       -sbt-snapshot             use a snapshot version of sbt
 
       # scala version (default: latest release)

@@ -3,11 +3,11 @@
 # A more capable sbt runner, coincidentally also called sbt.
 # Author: Paul Phillips <paulp@typesafe.com>
 
-set -e
-
 # todo - make this dynamic
 declare -r sbt_release_version=0.10.1
+declare -r sbt_rc_version=0.11.0-RC0
 declare -r sbt_snapshot_version=0.11.0-SNAPSHOT
+declare -r sbt_snapshot_baseurl="http://typesafe.artifactoryonline.com/typesafe/ivy-snapshots/org.scala-tools.sbt/sbt-launch/"
 
 declare -r default_java_opts="-Dfile.encoding=UTF8"
 declare -r default_sbt_opts="-XX:+CMSClassUnloadingEnabled -XX:MaxPermSize=512m -Xms1536m -Xmx1536m -Xss2m"
@@ -18,87 +18,137 @@ declare -r latest_210="2.10.0-SNAPSHOT"
 
 # A bunch of falses and empties as defaults.
 declare sbt_jar=
-declare sbt_create=0
-declare sbt_snapshot=0
+declare sbt_create=
 declare sbt_version=$(
   if [[ -f project/build.properties ]]; then
     versionLine=$(grep ^sbt.version project/build.properties)
     versionString=${versionLine##sbt.version=}
-    noRC=${versionString%.RC*}
-    echo $noRC
-
-    if [[ $noRC =~ ^[0-9]\.[0-9]\.[0-9]$ ]]; then
-      echo "$noRC"
-    fi
+    echo "${versionString%%.RC*}"
   fi
 )
-
-declare scala_version=
+declare scala_version=$(
+  if [[ -f project/build.properties ]]; then
+    versionLine=$(grep ^build.scala.versions project/build.properties)
+    versionString=${versionLine##build.scala.versions=}
+    echo ${versionString%% .*}
+  fi
+)
+declare sbt_snapshot=0
 declare java_cmd=java
 declare java_home=
-declare verbose=0
+unset verbose
+unset debug
 
-jar_url () {
-  local where=$1  # releases or snapshots
-  local ver=$2
+execRunner () {
+  # print the arguments one to a line, quoting any containing spaces
+  [[ $verbose || $debug ]] && echo "# Executing command line:" && {
+    for arg; do
+      if echo "$arg" | grep -q ' '; then
+        printf "\"%s\"\n" "$arg"
+      else
+        printf "%s\n" "$arg"
+      fi
+    done
+    echo ""
+  }
 
-  if [[ $ver = 0.7* ]]; then
-    echo "http://simple-build-tool.googlecode.com/files/sbt-launch-$ver.jar"
-  else
-    echo "http://typesafe.artifactoryonline.com/typesafe/ivy-$where/org.scala-tools.sbt/sbt-launch/$ver/sbt-launch.jar"
-  fi
+  "$@"
 }
+echoerr () {
+  echo 1>&2 "$@"
+}
+dlog () {
+  [[ $verbose || $debug ]] && echoerr "$@"
+}
+
+[[ "$sbt_version" = *-SNAPSHOT* || "$sbt_version" = *-RC* ]] && sbt_snapshot=1
+[[ -n "$sbt_version" ]] && echo "Detected sbt version $sbt_version"
+[[ -n "$scala_version" ]] && echo "Detected scala version $scala_version"
+
+sbtjar_07_url () {
+  echo "http://simple-build-tool.googlecode.com/files/sbt-launch-${1}.jar"
+}
+sbtjar_release_url () {
+  echo "http://typesafe.artifactoryonline.com/typesafe/ivy-releases/org.scala-tools.sbt/sbt-launch/$sbt_version/sbt-launch.jar"
+}
+sbtjar_snapshot_url () {
+  local ver="$sbt_version"
+  [[ "$sbt_version" == *-SNAPSHOT ]] && {
+    ver=$(sbt_snapshot_actual_version)
+    echoerr "sbt snapshot is $ver"
+  }
+  
+  echo "${sbt_snapshot_baseurl}${ver}/sbt-launch.jar"
+}
+jar_url () {
+  case $sbt_version in
+      0.7.4*) sbtjar_07_url 0.7.4 ;;
+      0.7.5*) sbtjar_07_url 0.7.5 ;;
+      0.7.7*) sbtjar_07_url 0.7.7 ;;
+       0.7.*) sbtjar_07_url 0.7.7 ;;
+ *-SNAPSHOT*) sbtjar_snapshot_url ;;
+       *-RC*) sbtjar_snapshot_url ;;
+           *) sbtjar_release_url ;;
+  esac
+}
+
 jar_file () {
   echo "$script_dir/.lib/$1/sbt-launch.jar"
 }
 
-# argument is e.g. 0.11.0-SNAPSHOT
-sbt_snapshot_actual_version () {
-  # -> 0.11.0
-  local version=${1%-SNAPSHOT}
-  # trailing slash is important
-  local base="http://typesafe.artifactoryonline.com/typesafe/ivy-snapshots/org.scala-tools.sbt/sbt-launch/"
-  # e.g. 0.11.0-20110826-052141/
-  curl -s --list-only "$base" | grep -F $version | tail -1 | perl -pe 's#^<a href="([^"/]+).*#$1#;'
-}
-
-set_sbt_jar () {
-  snap () {
-    local ver=$(sbt_snapshot_actual_version "$sbt_version")
-    jar_url snapshots $ver
-  }
+sbt_artifactory_list () {
+  local version=${sbt_version%-SNAPSHOT}
   
-  if [[ -n "$sbt_version" ]]; then
-    if [[ "$sbt_version" = *SNAPSHOT* ]]; then
-      sbt_url=$(snap)
-    else
-      sbt_url=$(jar_url releases $sbt_version)
-    fi
-  elif (( $sbt_snapshot )); then
-    sbt_version=$sbt_snapshot_version
-    sbt_url=$(snap)
-  else
-    sbt_version=$sbt_release_version
-    sbt_url=$(jar_url releases $sbt_version)
-  fi
-
-  sbt_jar=$(jar_file $sbt_version)
+  curl -s --list-only "$sbt_snapshot_baseurl" | \
+    grep -F $version | \
+    grep -v -- '-RC' | \
+    perl -e 'print reverse <>' | \
+    perl -pe 's#^<a href="([^"/]+).*#$1#;'
 }
-download_sbt_jar () {
-  local url="$sbt_url"
-  local jar="$sbt_jar"
+
+# argument is e.g. 0.11.0-SNAPSHOT
+# finds the actual version (with the build id) at artifactory
+sbt_snapshot_actual_version () {
+  for ver in $(sbt_artifactory_list); do
+    local url="$sbt_snapshot_baseurl$ver/sbt-launch.jar"
+    dlog "Testing $url"
+    curl -s --head "$url" >/dev/null
+    dlog "curl returned: $?"
+    echo "$ver"
+    return
+  done
+}
+
+download_url () {
+  local url="$1"
+  local jar="$2"
   
   echo "Downloading sbt launcher $sbt_version:"
   echo "  From  $url"
   echo "    To  $jar"
 
-  mkdir -p $(dirname "$jar") &&
+  mkdir -p $(dirname "$jar") && {
     if which curl >/dev/null; then
       curl --silent "$url" --output "$jar"
     elif which wget >/dev/null; then
       wget --quiet "$url" > "$jar"
     fi
+  } && [[ -f "$jar" ]]
 }
+
+acquire_sbt_jar () {
+  if (( $sbt_snapshot )); then
+    sbt_version=$sbt_snapshot_version
+  elif [[ ! $sbt_version ]]; then
+    sbt_version=$sbt_release_version
+  fi
+  
+  sbt_url="$(jar_url)"
+  sbt_jar="$(jar_file $sbt_version)"
+
+  [[ -f "$sbt_jar" ]] || download_url "$sbt_url" "$sbt_jar"
+}
+
 
 # this seems to cover the bases on OSX, and someone will
 # have to tell me about the others.
@@ -128,12 +178,13 @@ Usage: $script_name [options]
   -no-colors        disable ANSI color codes
   -sbt-create       start sbt even if current directory contains no sbt project
   -sbt-dir  <path>  path to global settings/plugins directory (default: ~/.sbt)
-  -sbt-boot <path>  path to shared boot directory (default: none, no sharing)
+  -sbt-boot <path>  path to shared boot directory (default: ~/.sbt/boot in 0.11 series)
   -ivy      <path>  path to local Ivy repository (default: ~/.ivy2)
 
   # sbt version (default: from project/build.properties if present, else latest release)
   -sbt-version  <version>   use the specified version of sbt
   -sbt-jar      <path>      use the specified jar as the sbt launcher
+  -sbt-rc                   use an RC version of sbt
   -sbt-snapshot             use a snapshot version of sbt
 
   # scala version (default: latest release)
@@ -159,7 +210,7 @@ EOM
 }
 
 # pull -J and -D options to give to java.
-declare -a args
+declare -a residual_args
 declare -a java_args
 declare -a sbt_commands
 
@@ -169,22 +220,27 @@ addJava () {
 addSbt () {
   sbt_commands=("${sbt_commands[@]}" "$1")
 }
+addResidual () {
+  residual_args=("${residual_args[@]}" "$1")
+}
 
 process_args ()
 {
-  while [ $# -gt 0 ]; do
+  while [[ $# -gt 0 ]]; do
     case "$1" in
        -h|-help) usage; exit 1 ;;
     -v|-verbose) verbose=1; shift ;;
-      -d|-debug) debug=1; addSbt "set logLevel in Global := Level.Debug"; shift ;;
+      -d|-debug) debug=1; shift ;;
+    # -u|-upgrade) addSbt 'set sbt.version 0.7.7' ; addSbt reload ; shift ;;
 
            -ivy) addJava "-Dsbt.ivy.home=$2"; shift 2 ;;
      -no-colors) addJava "-Dsbt.log.noformat=true"; shift ;;
       -sbt-boot) addJava "-Dsbt.boot.directory=$2"; shift 2 ;;
        -sbt-dir) addJava "-Dsbt.global.base=$2"; shift 2 ;;
 
-    -sbt-create) sbt_create=1; shift ;;
-  -sbt-snapshot) sbt_snapshot=1; shift ;;
+    -sbt-create) sbt_create=true; shift ;;
+        -sbt-rc) sbt_version=$sbt_rc_version; shift ;;
+  -sbt-snapshot) sbt_version=$sbt_snapshot_version; shift ;;
        -sbt-jar) sbt_jar="$2"; shift 2 ;;
    -sbt-version) sbt_version="$2"; shift 2 ;;
  -scala-version) addSbt "++ $2"; shift 2 ;;
@@ -197,23 +253,31 @@ process_args ()
             -29) addSbt "++ $latest_29"; shift ;;
            -210) addSbt "++ $latest_210"; shift ;;
 
-              *) args=("${args[@]}" "$1") ; shift ;;
+              *) addResidual "$1"; shift ;;
     esac
   done
+  
+  [[ $debug ]] && {
+    case "$sbt_version" in
+      0.7*) addSbt "debug" ;; 
+         *) addSbt "set logLevel in Global := Level.Debug" ;;
+    esac
+  }
 }
 
-# if .sbtopts exists, prepend its contents so it can be processed by this runner
-[[ -f "$sbt_opts" ]] && set -- $(cat $sbt_opts) "${@}"
-
-# no args - alert them there's stuff in here
-[[ $# -gt 0 ]] || echo "Starting $script_name: invoke with -help for other options"
+# if .sbtopts exists, prepend its contents to $@ so it can be processed by this runner
+[[ -f "$sbt_opts" ]] && set -- $(cat $sbt_opts) "$@"
 
 # process the combined args, then reset "$@" to the residuals
 process_args "$@"
-set -- "${args[@]}"
+set -- "${residual_args[@]}"
+argumentCount=$#
+
+# no args - alert them there's stuff in here
+(( $argumentCount > 0 )) || echo "Starting $script_name: invoke with -help for other options"
 
 # verify this is an sbt dir or -create was given
-[[ -f build.sbt ]] || [[ -d project ]] || (( $sbt_create )) || {
+[[ -f ./build.sbt || -d ./project || -n "$sbt_create" ]] || {
   cat <<EOM
 $(pwd) doesn't appear to be an sbt project.
 If you want to start sbt anyway, run:
@@ -227,45 +291,18 @@ EOM
 [[ -f .sbt_completion.sh ]] && source .sbt_completion.sh
 
 # no jar? download it.
-[[ -f "$sbt_jar" ]] || set_sbt_jar
-[[ -f "$sbt_jar" ]] || {
-  download_sbt_jar || {
-    [[ "$sbt_version" = *.RC* ]] && {
-     sbt_version="${sbt_version%.RC*}" &&
-     set_sbt_jar &&
-     download_sbt_jar
-    }
-  }
-}
-
-# still no jar? uh-oh.
-[[ -f "$sbt_jar" ]] || {
+[[ -f "$sbt_jar" ]] || acquire_sbt_jar || {
+  # still no jar? uh-oh.
   echo "Download failed. Obtain the jar manually and place it at $sbt_jar"
   exit 1
 }
 
-execRunner () {
-  # print the arguments one to a line, quoting any containing spaces
-  (( debug )) || (( verbose )) && echo "# Executing command line:" && {
-    for arg; do
-      if echo "$arg" | grep -q ' '; then
-        printf "\"%s\"\n" "$arg"
-      else
-        printf "%s\n" "$arg"
-      fi
-    done
-    echo ""
-  }
-
-  "$@"
-}
-
-# since sbt 0.7 doesn't understand iflast
-iflast-shell () {
-  if [[ $sbt_version = 0.7* ]]; then
+sbt-args () {
+  # since sbt 0.7 doesn't understand iflast
+  if (( "${#residual_args[@]}" == 0 )); then
     echo "shell"
   else
-    echo "iflast shell"
+    echo "${residual_args[@]}"
   fi
 }
 
@@ -276,5 +313,4 @@ execRunner "$java_cmd" \
   ${java_args[@]} \
   -jar "$sbt_jar" \
   "${sbt_commands[@]}" \
-  "$(iflast-shell)" \
-  "$@"
+  "$(sbt-args)"
