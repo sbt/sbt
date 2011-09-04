@@ -15,7 +15,7 @@ object Sbt extends Build
 	override lazy val settings = super.settings ++ buildSettings ++ Status.settings
 	def buildSettings = Seq(
 		organization := "org.scala-tools.sbt",
-		version := "0.11.0-SNAPSHOT",
+		version := "0.11.0-RC0",
 		publishArtifact in packageDoc := false,
 		scalaVersion := "2.9.1",
 		publishMavenStyle := false,
@@ -88,7 +88,6 @@ object Sbt extends Build
 	lazy val precompiled290 = precompiled("2.9.0")
 	lazy val precompiled281 = precompiled("2.8.1")
 	lazy val precompiled280 = precompiled("2.8.0")
-//	lazy val precompiled27 = precompiled("2.7.7")
 
 		// Implements the core functionality of detecting and propagating changes incrementally.
 		//   Defines the data structures for representing file fingerprints and relationships and the overall source analysis
