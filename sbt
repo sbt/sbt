@@ -240,6 +240,7 @@ process_args ()
      -no-colors) addJava "-Dsbt.log.noformat=true"; shift ;;
       -sbt-boot) addJava "-Dsbt.boot.directory=$2"; shift 2 ;;
        -sbt-dir) addJava "-Dsbt.global.base=$2"; shift 2 ;;
+     -debug-inc) addJava "-Dxsbt.inc.debug=true"; shift ;;
 
     -sbt-create) sbt_create=true; shift ;;
         -sbt-rc) sbt_version=$sbt_rc_version; shift ;;
