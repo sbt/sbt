@@ -3,6 +3,20 @@
 # A more capable sbt runner, coincidentally also called sbt.
 # Author: Paul Phillips <paulp@typesafe.com>
 
+# this seems to cover the bases on OSX, and someone will
+# have to tell me about the others.
+get_script_path () {
+  local path="$1"
+  [[ -L "$path" ]] || { echo "$path" ; return; }
+
+  local target=$(readlink "$path")
+  if [[ "${target:0:1}" == "/" ]]; then
+    echo "$target"
+  else
+    echo "$path/$target"
+  fi
+}
+
 # todo - make this dynamic
 declare -r sbt_release_version=0.10.1
 declare -r sbt_rc_version=0.11.0-RC0
@@ -16,28 +30,35 @@ declare -r latest_28="2.8.1"
 declare -r latest_29="2.9.1"
 declare -r latest_210="2.10.0-SNAPSHOT"
 
+declare -r script_path=$(get_script_path "$BASH_SOURCE")
+declare -r script_dir="$(dirname $script_path)"
+declare -r script_name="$(basename $script_path)"
+
 # A bunch of falses and empties as defaults.
 declare sbt_jar=
 declare sbt_create=
-declare sbt_version=$(
-  if [[ -f project/build.properties ]]; then
-    versionLine=$(grep ^sbt.version project/build.properties)
-    versionString=${versionLine##sbt.version=}
-    echo "${versionString%%.RC*}"
-  fi
-)
-declare scala_version=$(
-  if [[ -f project/build.properties ]]; then
-    versionLine=$(grep ^build.scala.versions project/build.properties)
-    versionString=${versionLine##build.scala.versions=}
-    echo ${versionString%% .*}
-  fi
-)
+declare sbt_version=
+declare scala_version=
 declare sbt_snapshot=0
 declare java_cmd=java
 declare java_home=
 unset verbose
 unset debug
+
+build_props_sbt () {
+  if [[ -f project/build.properties ]]; then
+    versionLine=$(grep ^sbt.version project/build.properties)
+    versionString=${versionLine##sbt.version=}
+    echo "$versionString"
+  fi
+}
+build_props_scala () {
+  if [[ -f project/build.properties ]]; then
+    versionLine=$(grep ^build.scala.versions project/build.properties)
+    versionString=${versionLine##build.scala.versions=}
+    echo ${versionString%% .*}
+  fi
+}
 
 execRunner () {
   # print the arguments one to a line, quoting any containing spaces
@@ -60,10 +81,6 @@ echoerr () {
 dlog () {
   [[ $verbose || $debug ]] && echoerr "$@"
 }
-
-[[ "$sbt_version" = *-SNAPSHOT* || "$sbt_version" = *-RC* ]] && sbt_snapshot=1
-[[ -n "$sbt_version" ]] && echo "Detected sbt version $sbt_version"
-[[ -n "$scala_version" ]] && echo "Detected scala version $scala_version"
 
 sbtjar_07_url () {
   echo "http://simple-build-tool.googlecode.com/files/sbt-launch-${1}.jar"
@@ -150,24 +167,6 @@ acquire_sbt_jar () {
 }
 
 
-# this seems to cover the bases on OSX, and someone will
-# have to tell me about the others.
-get_script_path () {
-  local path="$1"
-  [[ -L "$path" ]] || { echo "$path" ; return; }
-
-  local target=$(readlink "$path")
-  if [[ "${target:0:1}" == "/" ]]; then
-    echo "$target"
-  else
-    echo "$path/$target"
-  fi
-}
-
-declare -r script_path=$(get_script_path "$BASH_SOURCE")
-declare -r script_dir="$(dirname $script_path)"
-declare -r script_name="$(basename $script_path)"
-
 usage () {
   cat <<EOM
 Usage: $script_name [options]
@@ -208,11 +207,6 @@ In the case of duplicated or conflicting options, the order above
 shows precedence: JAVA_OPTS lowest, command line options highest.
 EOM
 }
-
-# pull -J and -D options to give to java.
-declare -a residual_args
-declare -a java_args
-declare -a sbt_commands
 
 addJava () {
   java_args=( "${java_args[@]}" "$1" )
@@ -272,6 +266,17 @@ process_args ()
 process_args "$@"
 set -- "${residual_args[@]}"
 argumentCount=$#
+
+# figure out the version
+[[ "$sbt_version" ]] || sbt_version=$(build_props_sbt)
+[[ "$sbt_version" = *-SNAPSHOT* || "$sbt_version" = *-RC* ]] && sbt_snapshot=1
+[[ -n "$sbt_version" ]] && echo "Detected sbt version $sbt_version"
+[[ -n "$scala_version" ]] && echo "Detected scala version $scala_version"
+
+# pull -J and -D options to give to java.
+declare -a residual_args
+declare -a java_args
+declare -a sbt_commands
 
 # no args - alert them there's stuff in here
 (( $argumentCount > 0 )) || echo "Starting $script_name: invoke with -help for other options"
