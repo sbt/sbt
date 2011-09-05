@@ -45,6 +45,11 @@ declare java_home=
 unset verbose
 unset debug
 
+# pull -J and -D options to give to java.
+declare -a residual_args
+declare -a java_args
+declare -a sbt_commands
+
 build_props_sbt () {
   if [[ -f project/build.properties ]]; then
     versionLine=$(grep ^sbt.version project/build.properties)
@@ -64,7 +69,7 @@ execRunner () {
   # print the arguments one to a line, quoting any containing spaces
   [[ $verbose || $debug ]] && echo "# Executing command line:" && {
     for arg; do
-      if echo "$arg" | grep -q ' '; then
+      if printf "%s\n" "$arg" | grep -q ' '; then
         printf "\"%s\"\n" "$arg"
       else
         printf "%s\n" "$arg"
@@ -75,6 +80,7 @@ execRunner () {
 
   "$@"
 }
+
 echoerr () {
   echo 1>&2 "$@"
 }
@@ -209,12 +215,15 @@ EOM
 }
 
 addJava () {
+  dlog "[addJava] arg = '$1'"
   java_args=( "${java_args[@]}" "$1" )
 }
 addSbt () {
+  dlog "[addSbt] arg = '$1'"
   sbt_commands=( "${sbt_commands[@]}" "$1" )
 }
 addResidual () {
+  dlog "[residual] arg = '$1'"
   residual_args=( "${residual_args[@]}" "$1" )
 }
 
@@ -273,11 +282,6 @@ argumentCount=$#
 [[ -n "$sbt_version" ]] && echo "Detected sbt version $sbt_version"
 [[ -n "$scala_version" ]] && echo "Detected scala version $scala_version"
 
-# pull -J and -D options to give to java.
-declare -a residual_args
-declare -a java_args
-declare -a sbt_commands
-
 # no args - alert them there's stuff in here
 (( $argumentCount > 0 )) || echo "Starting $script_name: invoke with -help for other options"
 
@@ -302,14 +306,8 @@ EOM
   exit 1
 }
 
-sbt-args () {
-  # since sbt 0.7 doesn't understand iflast
-  if (( "${#residual_args[@]}" == 0 )); then
-    echo "shell"
-  else
-    echo "${residual_args[@]}"
-  fi
-}
+# since sbt 0.7 doesn't understand iflast
+(( ${#residual_args[@]} == 0 )) && residual_args=( "shell" )
 
 # run sbt
 execRunner "$java_cmd" \
@@ -318,4 +316,4 @@ execRunner "$java_cmd" \
   ${java_args[@]} \
   -jar "$sbt_jar" \
   "${sbt_commands[@]}" \
-  $(sbt-args)
+  "${residual_args[@]}"
