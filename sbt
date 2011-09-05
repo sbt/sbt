@@ -215,13 +215,13 @@ declare -a java_args
 declare -a sbt_commands
 
 addJava () {
-  java_args=("${java_args[@]}" "$1")
+  java_args=( "${java_args[@]}" "$1" )
 }
 addSbt () {
-  sbt_commands=("${sbt_commands[@]}" "$1")
+  sbt_commands=( "${sbt_commands[@]}" "$1" )
 }
 addResidual () {
-  residual_args=("${residual_args[@]}" "$1")
+  residual_args=( "${residual_args[@]}" "$1" )
 }
 
 process_args ()
@@ -313,4 +313,4 @@ execRunner "$java_cmd" \
   ${java_args[@]} \
   -jar "$sbt_jar" \
   "${sbt_commands[@]}" \
-  "$(sbt-args)"
+  $(sbt-args)
