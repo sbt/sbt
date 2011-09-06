@@ -14,11 +14,11 @@ import Configurations.Optional
 import org.apache.ivy.{core, plugins, Ivy}
 import core.settings.IvySettings
 import core.module.{descriptor, id}
-import descriptor.{DependencyDescriptor, License, ModuleDescriptor}
+import descriptor.{DependencyDescriptor, License, ModuleDescriptor, ExcludeRule}
 import id.ModuleRevisionId
 import plugins.resolver.{ChainResolver, DependencyResolver, IBiblioResolver}
 
-class MakePom
+class MakePom(val log: Logger)
 {
 	def encoding = "UTF-8"
 	def write(ivy: Ivy, module: ModuleDescriptor, moduleInfo: ModuleInfo, configurations: Option[Iterable[Configuration]], extra: NodeSeq, process: XNode => XNode, filterRepositories: MavenRepository => Boolean, allRepositories: Boolean, output: File): Unit =
@@ -123,11 +123,21 @@ class MakePom
 	def makeDependency(dependency: DependencyDescriptor): NodeSeq =
 	{
 		val mrid = dependency.getDependencyRevisionId
+		val excl = dependency.getExcludeRules(dependency.getModuleConfigurations)
 		<dependency>
 			<groupId>{mrid.getOrganisation}</groupId>
 			<artifactId>{mrid.getName}</artifactId>
 			<version>{mrid.getRevision}</version>
-			{ scopeAndOptional(dependency)}
+			{ scopeAndOptional(dependency) }
+			{
+				val (warns, excls) = List.separate(excl.map(makeExclusion))
+				if(!warns.isEmpty) log.warn(warns.mkString(IO.Newline))
+				if(excls.isEmpty) NodeSeq.Empty
+				else
+					<exclusions>
+						{ excls }
+					</exclusions>
+			}
 		</dependency>
 	}
 
@@ -157,6 +167,21 @@ class MakePom
 					Option(notOptional(0))
 		}
 		(scope, !opt.isEmpty)
+	}
+
+	def makeExclusion(exclRule: ExcludeRule): Either[String, NodeSeq] =
+	{
+		val m = exclRule.getId.getModuleId
+		val (g, a) = (m.getOrganisation, m.getName)
+		if(g == null || g.isEmpty || g == "*" || a.isEmpty || a == "*")
+			Left("Skipped generating '<exclusion/>' for %s. Dependency exclusion should have both 'org' and 'module' to comply with Maven POM's schema.".format(m))
+		else
+			Right(
+				<exclusion>
+					<groupId>{g}</groupId>
+					<artifactId>{a}</artifactId>
+				</exclusion>
+			)
 	}
 
 	def makeRepositories(settings: IvySettings, includeAll: Boolean, filterRepositories: MavenRepository => Boolean) =
