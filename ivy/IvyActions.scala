@@ -68,7 +68,7 @@ object IvyActions
 	{
 		import configuration.{allRepositories, moduleInfo, configurations, extra, file, filterRepositories, process}
 		module.withModule(log) { (ivy, md, default) =>
-			(new MakePom).write(ivy, md, moduleInfo, configurations, extra, process, filterRepositories, allRepositories, file)
+			(new MakePom(log)).write(ivy, md, moduleInfo, configurations, extra, process, filterRepositories, allRepositories, file)
 			log.info("Wrote " + file.getAbsolutePath)
 		}
 	}
