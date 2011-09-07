@@ -16,7 +16,19 @@ object ClassToAPI
 		new api.SourceAPI(pkgs.toArray, defs.toArray)
 	}
 
-	def packages(c: Seq[Class[_]]): Set[String] = 
+	// Avoiding implicit allocation.
+	private def arrayMap[T <: AnyRef, U <: AnyRef : ClassManifest](xs: Array[T])(f: T => U): Array[U] = {
+	  val len = xs.length
+	  var i = 0
+	  val res = new Array[U](len)
+	  while (i < len) {
+	    res(i) = f(xs(i))
+	    i += 1
+	  }
+	  res
+	}
+
+	def packages(c: Seq[Class[_]]): Set[String] =
 		c.flatMap(packageName).toSet
 
 	def isTopLevel(c: Class[_]): Boolean =
@@ -36,7 +48,7 @@ object ClassToAPI
 		val tpe = if(Modifier.isInterface(c.getModifiers)) Trait else ClassDef
 		lazy val (static, instance) = structure(c, enclPkg, cmap)
 		val cls = new api.ClassLike(tpe, strict(Empty), lzy(instance), typeParameters(c.getTypeParameters), name, acc, mods, annots)
-		val stat = new api.ClassLike(Module, strict(Empty), lzy(static), Array(), name, acc, mods, annots)
+		val stat = new api.ClassLike(Module, strict(Empty), lzy(static), emptyTypeParameterArray, name, acc, mods, annots)
 		val defs = cls :: stat :: Nil
 		cmap(c.getName) = defs
 		defs
@@ -51,18 +63,23 @@ object ClassToAPI
 		val all = (methods ++ fields ++ constructors ++ classes)
 		val parentTypes = parents(c)
 		val instanceStructure = new api.Structure(lzy(parentTypes.toArray), lzy(all.declared.toArray), lzy(all.inherited.toArray))
-		val staticStructure = new api.Structure(emptyTpeArray, lzy(all.staticDeclared.toArray), lzy(all.staticInherited.toArray))
+		val staticStructure = new api.Structure(lzyEmptyTpeArray, lzy(all.staticDeclared.toArray), lzy(all.staticInherited.toArray))
 		(staticStructure, instanceStructure)
 	}
 	def lzy[T <: AnyRef](t: => T): xsbti.api.Lazy[T] = xsbti.SafeLazy(t)
-	private val emptyTpeArray = lzy(Array[xsbti.api.Type]())
-	private val emptyDefArray = lzy(Array[xsbti.api.Definition]())
+
+  private val emptyTypeArray          = new Array[xsbti.api.Type](0)
+  private val emptyAnnotationArray    = new Array[xsbti.api.Annotation](0)
+  private val emptyTypeParameterArray = new Array[xsbti.api.TypeParameter](0)
+  private val emptySimpleTypeArray    = new Array[xsbti.api.SimpleType](0)
+  private val lzyEmptyTpeArray        = lzy(emptyTypeArray)
+  private val lzyEmptyDefArray        = lzy(new Array[xsbti.api.Definition](0))
 
 	def parents(c: Class[_]): Seq[api.Type] =
 		types(c.getGenericSuperclass +: c.getGenericInterfaces)
 	def types(ts: Seq[Type]): Array[api.Type] = ts filter (_ ne null) map reference toArray;
 	def upperBounds(ts: Array[Type]): api.Type =
-		new api.Structure(lzy(types(ts)), emptyDefArray, emptyDefArray)
+		new api.Structure(lzy(types(ts)), lzyEmptyDefArray, lzyEmptyDefArray)
 
 	def fieldToDef(enclPkg: Option[String])(f: Field): api.FieldLike =
 	{
@@ -91,13 +108,16 @@ object ClassToAPI
 	}
 
 	def exceptionAnnotations(exceptions: Array[Type]): Array[api.Annotation] =
-		exceptions map { t => new api.Annotation(Throws, Array(new api.AnnotationArgument("value", t.toString))) }
+	  if (exceptions.length == 0) emptyAnnotationArray
+	  else arrayMap(exceptions)(t => new api.Annotation(Throws, Array(new api.AnnotationArgument("value", t.toString))))
 
 	def parameter(annots: Array[Annotation], parameter: Type, varArgs: Boolean): api.MethodParameter =
 		new api.MethodParameter("", annotated(reference(parameter),annots), false, if(varArgs) api.ParameterModifier.Repeated else api.ParameterModifier.Plain)
 
-	def annotated(t: api.SimpleType, annots: Array[Annotation]): api.Type =
-		if(annots.isEmpty) t else new api.Annotated(t, annotations(annots))
+	def annotated(t: api.SimpleType, annots: Array[Annotation]): api.Type = (
+		if (annots.length == 0) t
+		else new api.Annotated(t, annotations(annots))
+	)
 
 	case class Defs(declared: Seq[api.Definition], inherited: Seq[api.Definition], staticDeclared: Seq[api.Definition], staticInherited: Seq[api.Definition])
 	{
@@ -120,9 +140,11 @@ object ClassToAPI
 	def isStatic(a: Member): Boolean = Modifier.isStatic(a.getModifiers)
 
 	def typeParameters[T <: GenericDeclaration](tps: Array[TypeVariable[T]]): Array[api.TypeParameter] =
-		tps map typeParameter
+	  if (tps.length == 0) emptyTypeParameterArray
+	  else arrayMap(tps)(typeParameter)
+
 	def typeParameter[T <: GenericDeclaration](tp: TypeVariable[T]): api.TypeParameter =
-		new api.TypeParameter(typeVariable(tp), Array(), Array(), api.Variance.Invariant, NothingRef, upperBounds(tp.getBounds))
+		new api.TypeParameter(typeVariable(tp), emptyAnnotationArray, emptyTypeParameterArray, api.Variance.Invariant, NothingRef, upperBounds(tp.getBounds))
 
 	// needs to be stable across compilations
 	//  preferably, it would be a proper unique id based on de Bruijn index
@@ -151,7 +173,7 @@ object ClassToAPI
 		if(isPublic(i)) Public else if(isPrivate(i)) Private else if(isProtected(i)) Protected else packagePrivate(pkg)
 	}
 
-	def annotations(a: Array[Annotation]): Array[api.Annotation] = a map annotation
+	def annotations(a: Array[Annotation]): Array[api.Annotation] = if (a.length == 0) emptyAnnotationArray else arrayMap(a)(annotation)
 	def annotation(a: Annotation): api.Annotation =
 		new api.Annotation( reference(a.annotationType), Array(javaAnnotation(a.toString)))
 
@@ -177,8 +199,9 @@ object ClassToAPI
 	}
 	def referenceP(t: ParameterizedType): api.Parameterized =
 	{
-		val args = t.getActualTypeArguments.map(reference)
-		val base = reference(t.getRawType)
+		val targs = t.getActualTypeArguments
+		val args  = if (targs.length == 0) emptyTypeArray else arrayMap(targs)(t => reference(t): api.Type)
+		val base  = reference(t.getRawType)
 		new api.Parameterized(base, args.toArray[api.Type])
 	}
 	def reference(t: Type): api.SimpleType =
