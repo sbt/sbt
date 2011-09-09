@@ -632,6 +632,7 @@ object Classpaths
 		conflictWarning <<= (thisProjectRef, conflictWarning) { (ref, cw) => cw.copy(label = Project.display(ref)) },
 		unmanagedBase <<= baseDirectory / "lib",
 		normalizedName <<= name(StringUtilities.normalize),
+		isSnapshot <<= isSnapshot or version(_ endsWith "-SNAPSHOT"),
 		description <<= description or name.identity,
 		homepage in GlobalScope :== None,
 		startYear in GlobalScope :== None,
