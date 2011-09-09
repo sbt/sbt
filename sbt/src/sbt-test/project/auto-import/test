@@ -1,0 +1,8 @@
+-> check-name
+-> check-max-errors
+
+$ copy-file changes/build.sbt build.sbt
+> reload
+
+> check-name
+> check-max-errors
