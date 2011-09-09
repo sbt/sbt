@@ -69,7 +69,7 @@ object Load
 	def buildGlobalSettings(base: File, files: Seq[File], config: LoadBuildConfiguration): ClassLoader => Seq[Setting[_]] =
 	{	
 		val eval = mkEval(data(config.globalPluginClasspath), base, defaultEvalOptions)
-		val imports = baseImports ++ importAll(config.globalPluginNames)
+		val imports = baseImports ++ importAllRoot(config.globalPluginNames)
 		EvaluateConfigurations(eval, files, imports)
 	}
 	def loadGlobal(state: State, base: File, global: File, config: LoadBuildConfiguration): LoadBuildConfiguration =
@@ -497,6 +497,7 @@ object Load
 		ModuleUtilities.getObject(pluginName, loader).asInstanceOf[Plugin].settings
 
 	def importAll(values: Seq[String]) = if(values.isEmpty) Nil else values.map( _ + "._" ).mkString("import ", ", ", "") :: Nil
+	def importAllRoot(values: Seq[String]) = importAll(values.map("_root_." + _))
 		
 	def findPlugins(analysis: inc.Analysis): Seq[String]  =  discover(analysis, "sbt.Plugin")
 	def findDefinitions(analysis: inc.Analysis): Seq[String]  =  discover(analysis, "sbt.Build")
@@ -566,7 +567,7 @@ object Load
 		def imports = getImports(unit)
 		override def toString = unit.toString
 	}
-	def getImports(unit: BuildUnit) = baseImports ++ importAll(unit.plugins.pluginNames ++ unit.definitions.buildNames)
+	def getImports(unit: BuildUnit) = baseImports ++ importAllRoot(unit.plugins.pluginNames ++ unit.definitions.buildNames)
 
 	def referenced[PR <: ProjectReference](definitions: Seq[ProjectDefinition[PR]]): Seq[PR] = definitions flatMap { _.referenced }
 	

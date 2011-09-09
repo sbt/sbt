@@ -1,0 +1,3 @@
+maxErrors := xyz
+
+name := "Demo"
