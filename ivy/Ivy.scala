@@ -419,6 +419,13 @@ private object IvySbt
 				for(conf <- dependencyDescriptor.getModuleConfigurations)
 					dependencyDescriptor.addDependencyArtifact(conf, ivyArtifact)
 			}
+			for(excls <- dependency.exclusions)
+			{
+				for(conf <- dependencyDescriptor.getModuleConfigurations)
+				{
+					dependencyDescriptor.addExcludeRule(conf, IvyScala.excludeRule(excls.organization, excls.name, excls.configurations))
+				}
+			}
 			moduleID.addDependency(dependencyDescriptor)
 		}
 	}
