@@ -9,7 +9,7 @@ import scala.xml.NodeSeq
 import org.apache.ivy.plugins.resolver.{DependencyResolver, IBiblioResolver}
 import org.apache.ivy.util.url.CredentialsStore
 
-final case class ModuleID(organization: String, name: String, revision: String, configurations: Option[String] = None, isChanging: Boolean = false, isTransitive: Boolean = true, explicitArtifacts: Seq[Artifact] = Nil, extraAttributes: Map[String,String] = Map.empty, crossVersion: Boolean = false)
+final case class ModuleID(organization: String, name: String, revision: String, configurations: Option[String] = None, isChanging: Boolean = false, isTransitive: Boolean = true, explicitArtifacts: Seq[Artifact] = Nil, exclusions: Seq[ExclusionRule] = Nil, extraAttributes: Map[String,String] = Map.empty, crossVersion: Boolean = false)
 {
 	override def toString =
 		organization + ":" + name + ":" + revision +
@@ -24,6 +24,8 @@ final case class ModuleID(organization: String, name: String, revision: String, 
 	def from(url: String) = artifacts(Artifact(name, new URL(url)))
 	def classifier(c: String) = artifacts(Artifact(name, c))
 	def artifacts(newArtifacts: Artifact*) = copy(explicitArtifacts = newArtifacts ++ this.explicitArtifacts)
+	def excludeAll(rules: ExclusionRule*) = copy(exclusions = this.exclusions ++ rules)
+	def exclude(org: String, name: String) = excludeAll(ExclusionRule(org, name))
 	def extra(attributes: (String,String)*) = copy(extraAttributes = this.extraAttributes ++ ModuleID.checkE(attributes))
 	def sources() = artifacts(Artifact.sources(name))
 	def javadoc() = artifacts(Artifact.javadoc(name))
@@ -46,6 +48,8 @@ case class ModuleInfo(nameFormal: String, description: String = "", homepage: Op
 	def licensed(lics: (String, URL)*) = copy(licenses = lics)
 	def organization(name: String, home: Option[URL]) = copy(organizationName = name, organizationHomepage = home)
 }
+/** Rule to exclude unwanted dependencies pulled in transitively by a module. */
+case class ExclusionRule(organization: String = "*", name: String = "*", artifact: String = "*", configurations: Seq[String] = Nil)
 sealed trait Resolver
 {
 	def name: String

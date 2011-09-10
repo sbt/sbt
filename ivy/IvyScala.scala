@@ -86,7 +86,7 @@ private object IvyScala
 	}
 	/** Creates an ExcludeRule that excludes artifacts with the given module organization and name for
 	* the given configurations. */
-	private def excludeRule(organization: String, name: String, configurationNames: Iterable[String]): ExcludeRule =
+	private[sbt] def excludeRule(organization: String, name: String, configurationNames: Iterable[String]): ExcludeRule =
 	{
 		val artifact = new ArtifactId(ModuleId.newInstance(organization, name), "*", "jar", "*")
 		val rule = new DefaultExcludeRule(artifact, ExactPatternMatcher.INSTANCE, emptyMap[AnyRef,AnyRef])

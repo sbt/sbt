@@ -78,10 +78,12 @@ object CacheIvy
 			a => (a.name, a.`type`, a.extension, a.classifier, a.configurations.toSeq, a.url, a.extraAttributes),
 			{ case (n,t,x,c,cs,u,e) => Artifact(n,t,x,c,cs,u,e) }
 		)
-	implicit def moduleIDFormat(implicit sf: Format[String], af: Format[Artifact], bf: Format[Boolean]): Format[ModuleID] =
-		wrap[ModuleID, (String,String,String,Option[String],Boolean,Boolean,Seq[Artifact],Map[String,String],Boolean)](
-			m => (m.organization,m.name,m.revision,m.configurations, m.isChanging, m.isTransitive, m.explicitArtifacts, m.extraAttributes, m.crossVersion),
-			{ case (o,n,r,cs,ch,t,as,x,cv) => ModuleID(o,n,r,cs,ch,t,as,x,cv) }
+	implicit def exclusionRuleFormat(implicit sf: Format[String]): Format[ExclusionRule] =
+		wrap[ExclusionRule, (String, String, String, Seq[String])]( e => (e.organization, e.name, e.artifact, e.configurations), { case (o,n,a,cs) => ExclusionRule(o,n,a,cs) })
+	implicit def moduleIDFormat(implicit sf: Format[String], af: Format[Artifact], bf: Format[Boolean], ef: Format[ExclusionRule]): Format[ModuleID] =
+		wrap[ModuleID, ((String,String,String,Option[String]),(Boolean,Boolean,Seq[Artifact],Seq[ExclusionRule],Map[String,String],Boolean))](
+			m => ((m.organization,m.name,m.revision,m.configurations), (m.isChanging, m.isTransitive, m.explicitArtifacts, m.exclusions, m.extraAttributes, m.crossVersion)),
+			{ case ((o,n,r,cs),(ch,t,as,excl,x,cv)) => ModuleID(o,n,r,cs,ch,t,as,excl,x,cv) }
 		)
 
 	implicit def configurationFormat(implicit sf: Format[String]): Format[Configuration] =
@@ -124,7 +126,7 @@ object CacheIvy
 		implicit def sftpRToHL = (s: SftpRepository) => s.name :+: s.connection :+: s.patterns :+: HNil
 		implicit def rawRToHL = (r: RawRepository) => r.name :+: r.resolver.getClass.getName :+: HNil
 		implicit def chainRToHL = (c: ChainedResolver) => c.name :+: c.resolvers :+: HNil
-		implicit def moduleToHL = (m: ModuleID) => m.organization :+: m.name :+: m.revision :+: m.configurations :+: m.isChanging :+: m.isTransitive :+: m.explicitArtifacts :+: m.extraAttributes :+: m.crossVersion :+: HNil
+		implicit def moduleToHL = (m: ModuleID) => m.organization :+: m.name :+: m.revision :+: m.configurations :+: m.isChanging :+: m.isTransitive :+: m.explicitArtifacts :+: m.exclusions :+: m.extraAttributes :+: m.crossVersion :+: HNil
 	}
 	import L3._
 
@@ -141,6 +143,7 @@ object CacheIvy
 		implicit def sshConnectionToHL = (s: SshConnection) => s.authentication :+: s.hostname :+: s.port :+: HNil
 
 		implicit def artifactToHL = (a: Artifact) => a.name :+: a.`type` :+: a.extension :+: a.classifier :+: names(a.configurations) :+: a.url :+: a.extraAttributes :+: HNil
+		implicit def exclusionToHL = (e: ExclusionRule) => e.organization :+: e.name :+: e.artifact :+: e.configurations :+: HNil
 
 /*		implicit def deliverConfToHL = (p: DeliverConfiguration) => p.deliverIvyPattern :+: p.status :+: p.configurations :+: HNil
 		implicit def publishConfToHL = (p: PublishConfiguration) => p.ivyFile :+: p.resolverName :+: p.artifacts :+: HNil*/
@@ -152,6 +155,7 @@ object CacheIvy
 	implicit def ivyFileIC: InputCache[IvyFileConfiguration] = wrapIn
 	implicit def connectionIC: InputCache[SshConnection] = wrapIn
 	implicit def artifactIC: InputCache[Artifact] = wrapIn
+	implicit def exclusionIC: InputCache[ExclusionRule] = wrapIn
 /*	implicit def publishConfIC: InputCache[PublishConfiguration] = wrapIn
 	implicit def deliverConfIC: InputCache[DeliverConfiguration] = wrapIn*/
 
