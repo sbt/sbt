@@ -497,7 +497,8 @@ object Load
 		ModuleUtilities.getObject(pluginName, loader).asInstanceOf[Plugin].settings
 
 	def importAll(values: Seq[String]) = if(values.isEmpty) Nil else values.map( _ + "._" ).mkString("import ", ", ", "") :: Nil
-	def importAllRoot(values: Seq[String]) = importAll(values.map("_root_." + _))
+	def importAllRoot(values: Seq[String]) = importAll(values map rootedName)
+	def rootedName(s: String) = if(s contains '.') "_root_." + s else s
 		
 	def findPlugins(analysis: inc.Analysis): Seq[String]  =  discover(analysis, "sbt.Plugin")
 	def findDefinitions(analysis: inc.Analysis): Seq[String]  =  discover(analysis, "sbt.Build")
