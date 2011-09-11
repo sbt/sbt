@@ -1,6 +1,10 @@
-package name.example
-
 import sbt._
+
+object Q extends Plugin {
+	val zyx = -3
+}
+
+package name.example {
 
 object P extends Plugin {
 	val xyz = 3
@@ -11,4 +15,5 @@ object P extends Plugin {
 		checkMaxErrors <<= Keys.maxErrors map { me => assert(me == xyz, "Expected maxErrors to be " + xyz + ", but it was " + me ) },
 		checkName <<= Keys.name map { n => assert(n == "Demo", "Expected name to be 'Demo', but it was '" + n + "'" ) }
 	)
+}
 }
