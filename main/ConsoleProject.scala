@@ -8,7 +8,7 @@ package sbt
 
 object ConsoleProject
 {
-	def apply(state: State, extra: String, options: Seq[String] = "-Yrepl-sync" :: Nil)(implicit log: Logger)
+	def apply(state: State, extra: String, options: Seq[String] = Nil)(implicit log: Logger)
 	{
 		val extracted = Project extract state
 		val bindings = ("currentState" -> state) :: ("extracted" -> extracted ) :: Nil
