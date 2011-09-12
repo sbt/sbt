@@ -18,6 +18,7 @@ object GlobalPlugin
 		Seq[Setting[_]](
 			projectDescriptors ~= { _ ++ gp.descriptors },
 			projectDependencies ++= gp.projectID +: gp.dependencies,
+			resolvers <<= resolvers { rs => (rs ++ gp.resolvers).distinct },
 			internalDependencyClasspath in Runtime ~= { prev => (prev ++ gp.internalClasspath).distinct }
 		)
 	
@@ -38,10 +39,10 @@ object GlobalPlugin
 	{
 		import structure.{data, root, rootProject}
 		val p: Scope = Scope.GlobalScope in ProjectRef(root, rootProject(root))
-		val taskInit = (projectID, projectDependencies, projectDescriptors, fullClasspath in Runtime, internalDependencyClasspath in Runtime, exportedProducts in Runtime, ivyModule) map {
-			(pid, pdeps, pdescs, cp, intcp, prods, mod) =>
+		val taskInit = (projectID, projectDependencies, projectDescriptors, resolvers, fullClasspath in Runtime, internalDependencyClasspath in Runtime, exportedProducts in Runtime, ivyModule) map {
+			(pid, pdeps, pdescs, rs, cp, intcp, prods, mod) =>
 				val depMap = pdescs + mod.dependencyMapping(log(state))
-				GlobalPluginData(pid, pdeps, depMap, cp, prods ++ intcp)
+				GlobalPluginData(pid, pdeps, depMap, rs, cp, prods ++ intcp)
 		}
 		val task = taskInit mapReferenced Project.mapScope(Scope replaceThis p) evaluate data
 		evaluate(state, structure, task)
@@ -63,5 +64,5 @@ object GlobalPlugin
 		version := "0.0"
 	))
 }
-final case class GlobalPluginData(projectID: ModuleID, dependencies: Seq[ModuleID], descriptors: Map[ModuleRevisionId, ModuleDescriptor], fullClasspath: Classpath, internalClasspath: Classpath)
+final case class GlobalPluginData(projectID: ModuleID, dependencies: Seq[ModuleID], descriptors: Map[ModuleRevisionId, ModuleDescriptor], resolvers: Seq[Resolver], fullClasspath: Classpath, internalClasspath: Classpath)
 final case class GlobalPlugin(data: GlobalPluginData, structure: BuildStructure, inject: Seq[Setting[_]], base: File)
