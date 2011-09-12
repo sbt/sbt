@@ -200,8 +200,6 @@ object Defaults extends BuildCommon
 		mainClass <<= discoveredMainClasses map selectPackageMain,
 		run <<= runTask(fullClasspath, mainClass in run, runner in run),
 		runMain <<= runMainTask(fullClasspath, runner in run),
-		scaladocOptions in GlobalScope :== Nil,
-		scaladocOptions in doc <<= scaladocOptions in doc or scalacOptions.identity,
 		copyResources <<= copyResourcesTask
 	)
 
@@ -430,7 +428,8 @@ object Defaults extends BuildCommon
 
 	def docSetting(key: ScopedTask[File]): Seq[Setting[_]] = inTask(key)(Seq(
 		cacheDirectory ~= (_ / key.key.label),
-		target <<= docDirectory, // deprecate docDirectory in favor of 'target in doc'
+		target <<= docDirectory, // deprecate docDirectory in favor of 'target in doc'; remove when docDirectory is removed
+		scaladocOptions <<= scalacOptions, // deprecate scaladocOptions in favor of 'scalacOptions in doc'; remove when scaladocOptions is removed
 		fullClasspath <<= dependencyClasspath,
 		key in TaskGlobal <<= (sources, cacheDirectory, maxErrors, compilers, target, configuration, scaladocOptions, fullClasspath, streams) map { (srcs, cache, maxE, cs, out, config, options, cp, s) =>
 			(new Scaladoc(maxE, cs.scalac)).cached(cache, nameForSrc(config.name), srcs, cp.files, out, options, s.log)
@@ -438,7 +437,7 @@ object Defaults extends BuildCommon
 		}
 	))
 		
-	@deprecated("Use docSetting", "0.11.0") def docTask: Initialize[Task[File]] =
+	@deprecated("Use `docSetting` instead", "0.11.0") def docTask: Initialize[Task[File]] =
 		(cacheDirectory, compileInputs, streams, docDirectory, configuration, scaladocOptions) map { (cache, in, s, target, config, options) =>
 			val d = new Scaladoc(in.config.maxErrors, in.compilers.scalac)
 			val cp = in.config.classpath.toList - in.config.classesDirectory
