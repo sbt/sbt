@@ -102,7 +102,7 @@ object Keys
 
 		// Output paths
 	val classDirectory = SettingKey[File]("class-directory", "Directory for compiled classes and copied resources.")
-	@deprecated("Use 'target', scoped by the doc task.  For example, 'target in Compile in doc'", "0.11.0")
+	@deprecated("Use `target`, scoped by the doc task.  For example, `target in Compile in doc`", "0.11.0")
 	val docDirectory = SettingKey[File]("doc-directory", "Directory for generated documentation.")
 	val cacheDirectory = SettingKey[File]("cache-directory", "Directory used for caching task data.")
 	val cleanFiles = SettingKey[Seq[File]]("clean-files", "The files to recursively delete during a clean.")
@@ -117,6 +117,7 @@ object Keys
 	// compile/doc keys
 	val autoCompilerPlugins = SettingKey[Boolean]("auto-compiler-plugins", "If true, enables automatically generating -Xplugin arguments to the compiler based on the classpath for the " + CompilerPlugin.name + " configuration.")
 	val maxErrors = SettingKey[Int]("max-errors", "The maximum number of errors, such as compile errors, to list.")
+	@deprecated("Use `scalacOptions`, scoped by the doc task.  For example, `scalacOptions in doc`", "0.11.0")
 	val scaladocOptions = TaskKey[Seq[String]]("scaladoc-options", "Options for Scaladoc.")
 	val scalacOptions = TaskKey[Seq[String]]("scalac-options", "Options for the Scala compiler.")
 	val javacOptions = SettingKey[Seq[String]]("javac-options", "Options for the Java compiler.")
