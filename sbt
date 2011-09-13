@@ -1,4 +1,4 @@
-#!/usr/bin/env bash
+#!/usr/bin/env bash --norc
 #
 # A more capable sbt runner, coincidentally also called sbt.
 # Author: Paul Phillips <paulp@typesafe.com>
@@ -17,15 +17,28 @@ get_script_path () {
   fi
 }
 
+# a ham-fisted attempt to move some memory settings in concert
+# so they need not be dicked around with individually.
+get_mem_opts () {
+  local mem=${1:-1536}
+  local perm=$(( $mem / 4 ))
+  (( $perm > 256 )) || perm=256
+  (( $perm < 1024 )) || perm=1024
+  local codecache=$(( $perm / 8 ))
+  
+  echo "-Xms${mem}m -Xmx${mem}m -XX:MaxPermSize=${perm}m -XX:ReservedCodeCacheSize=${codecache}m"
+}
+
 # todo - make this dynamic
 declare -r sbt_release_version=0.10.1
-declare -r sbt_rc_version=0.11.0-RC0
+declare -r sbt_rc_version=0.11.0-RC1
 declare -r sbt_snapshot_version=0.11.0-SNAPSHOT
 declare -r sbt_snapshot_baseurl="http://typesafe.artifactoryonline.com/typesafe/ivy-snapshots/org.scala-tools.sbt/sbt-launch/"
 
 declare -r default_java_opts="-Dfile.encoding=UTF8"
-declare -r default_sbt_opts="-XX:+CMSClassUnloadingEnabled -XX:MaxPermSize=512m -Xms1536m -Xmx1536m -Xss2m"
-declare -r sbt_opts=".sbtopts"
+declare -r default_sbt_opts="-XX:+CMSClassUnloadingEnabled"
+declare -r default_sbt_mem=1536
+declare -r sbt_opts_file=".sbtopts"
 declare -r latest_28="2.8.1"
 declare -r latest_29="2.9.1"
 declare -r latest_210="2.10.0-SNAPSHOT"
@@ -34,16 +47,14 @@ declare -r script_path=$(get_script_path "$BASH_SOURCE")
 declare -r script_dir="$(dirname $script_path)"
 declare -r script_name="$(basename $script_path)"
 
-# A bunch of falses and empties as defaults.
-declare sbt_jar=
-declare sbt_create=
-declare sbt_version=
-declare scala_version=
-declare sbt_snapshot=0
 declare java_cmd=java
-declare java_home=
-unset verbose
-unset debug
+declare sbt_mem=$default_sbt_mem
+declare java_opts="${JAVA_OPTS:-$default_java_opts}"
+
+unset sbt_jar sbt_create sbt_version sbt_snapshot
+unset scala_version
+unset java_home
+unset verbose debug
 
 # pull -J and -D options to give to java.
 declare -a residual_args
@@ -63,6 +74,13 @@ build_props_scala () {
     versionString=${versionLine##build.scala.versions=}
     echo ${versionString%% .*}
   fi
+}
+
+isSnapshot () {
+  [[ "$sbt_version" = *-SNAPSHOT* ]]
+}
+isRC () {
+  [[ "$sbt_version" = *-RC* ]]
 }
 
 execRunner () {
@@ -96,11 +114,14 @@ sbtjar_release_url () {
 }
 sbtjar_snapshot_url () {
   local ver="$sbt_version"
-  [[ "$sbt_version" == *-SNAPSHOT ]] && {
-    ver=$(sbt_snapshot_actual_version)
+  if [[ "$sbt_version" = *-SNAPSHOT ]]; then
+    ver=$(sbt_snapshot_actual_version -SNAPSHOT)
     echoerr "sbt snapshot is $ver"
-  }
-  
+  elif [[ "$sbt_version" = *-SNAPSHOT ]]; then
+    ver=$(sbt_snapshot_actual_version -RC)
+    echoerr "sbt rc is $ver"
+  fi
+
   echo "${sbt_snapshot_baseurl}${ver}/sbt-launch.jar"
 }
 jar_url () {
@@ -120,11 +141,11 @@ jar_file () {
 }
 
 sbt_artifactory_list () {
+  local type="$1" # -RC or -SNAPSHOT
   local version=${sbt_version%-SNAPSHOT}
   
   curl -s --list-only "$sbt_snapshot_baseurl" | \
     grep -F $version | \
-    grep -v -- '-RC' | \
     perl -e 'print reverse <>' | \
     perl -pe 's#^<a href="([^"/]+).*#$1#;'
 }
@@ -132,7 +153,7 @@ sbt_artifactory_list () {
 # argument is e.g. 0.11.0-SNAPSHOT
 # finds the actual version (with the build id) at artifactory
 sbt_snapshot_actual_version () {
-  for ver in $(sbt_artifactory_list); do
+  for ver in $(sbt_artifactory_list "$1"); do
     local url="$sbt_snapshot_baseurl$ver/sbt-launch.jar"
     dlog "Testing $url"
     curl -s --head "$url" >/dev/null
@@ -160,7 +181,7 @@ download_url () {
 }
 
 acquire_sbt_jar () {
-  if (( $sbt_snapshot )); then
+  if [[ $sbt_snapshot ]]; then
     sbt_version=$sbt_snapshot_version
   elif [[ ! $sbt_version ]]; then
     sbt_version=$sbt_release_version
@@ -185,6 +206,7 @@ Usage: $script_name [options]
   -sbt-dir  <path>  path to global settings/plugins directory (default: ~/.sbt)
   -sbt-boot <path>  path to shared boot directory (default: ~/.sbt/boot in 0.11 series)
   -ivy      <path>  path to local Ivy repository (default: ~/.ivy2)
+  -mem   <integer>  set memory options (default: $sbt_mem, which is $(get_mem_opts $sbt_mem))
 
   # sbt version (default: from project/build.properties if present, else latest release)
   -sbt-version  <version>   use the specified version of sbt
@@ -203,7 +225,7 @@ Usage: $script_name [options]
   -java-home <path>         alternate JAVA_HOME
 
   # jvm options and output control
-  JAVA_OPTS     environment variable, if unset uses "$default_java_opts"
+  JAVA_OPTS     environment variable, if unset uses "$java_opts"
   SBT_OPTS      environment variable, if unset uses "$default_sbt_opts"
   .sbtopts      if this file exists in the sbt root, it is prepended to the runner args
   -Dkey=val     pass -Dkey=val directly to the java runtime
@@ -237,6 +259,7 @@ process_args ()
     # -u|-upgrade) addSbt 'set sbt.version 0.7.7' ; addSbt reload ; shift ;;
 
            -ivy) addJava "-Dsbt.ivy.home=$2"; shift 2 ;;
+           -mem) sbt_mem="$2"; shift 2 ;;
      -no-colors) addJava "-Dsbt.log.noformat=true"; shift ;;
       -sbt-boot) addJava "-Dsbt.boot.directory=$2"; shift 2 ;;
        -sbt-dir) addJava "-Dsbt.global.base=$2"; shift 2 ;;
@@ -270,7 +293,7 @@ process_args ()
 }
 
 # if .sbtopts exists, prepend its contents to $@ so it can be processed by this runner
-[[ -f "$sbt_opts" ]] && set -- $(cat $sbt_opts) "$@"
+[[ -f "$sbt_opts_file" ]] && set -- $(cat "$sbt_opts_file") "$@"
 
 # process the combined args, then reset "$@" to the residuals
 process_args "$@"
@@ -291,7 +314,7 @@ argumentCount=$#
   cat <<EOM
 $(pwd) doesn't appear to be an sbt project.
 If you want to start sbt anyway, run:
-  $0 -create
+  $0 -sbt-create
 
 EOM
   exit 1
@@ -312,8 +335,9 @@ EOM
 
 # run sbt
 execRunner "$java_cmd" \
-  ${JAVA_OPTS:-$default_java_opts} \
+  ${java_opts} \
   ${SBT_OPTS:-$default_sbt_opts} \
+  $(get_mem_opts $sbt_mem) \
   ${java_args[@]} \
   -jar "$sbt_jar" \
   "${sbt_commands[@]}" \
