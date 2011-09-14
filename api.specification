@@ -48,7 +48,7 @@ The field-specific API (contributed in addition to the parts common to all defin
  * The API of associated setters and getters.
 
 === Type Parameters ===
- Type parameters are not a definition, but they are used by methods, classes, and type members.  The important aspects of a type parameter are its position in its defining parameter list and its upper and lower bounds, which are types.  The actual name of a type parameter is not imporant, but it needs to be uniquely referenced within a source file.
+ Type parameters are not a definition, but they are used by methods, classes, and type members.  The important aspects of a type parameter are its position in its defining parameter list and its upper and lower bounds, which are types.  The actual name of a type parameter is not important, but it needs to be uniquely referenced within a source file.
  
 The API contributed by a type parameter section is:
  * The API of each type parameter in the type parameter section, in order.  The number of type parameters is implicit here.
