@@ -249,7 +249,7 @@ addResidual () {
   residual_args=( "${residual_args[@]}" "$1" )
 }
 addResolver () {
-  addSbt "set resolvers += $1"
+  addSbt "set resolvers in ThisBuild += $1"
 }
 addSnapshotRepo () {
   addResolver "ScalaToolsSnapshots"
