@@ -100,23 +100,15 @@ Current -help output:
     shows precedence: JAVA_OPTS lowest, command line options highest.
 
 
-## Template project
+## Template project ##
 
-To gain access to the awesome, simply add the following <project>/project/plugins/project/Build.scala file:
+To see the plugin in action, including the thrilling custom sbt command "help-names":
 
-    import sbt._
-    object PluginDef extends Build {
-      override def projects = Seq(root)
-      lazy val root = Project("plugins", file(".")) dependsOn(extras)
-      lazy val extras = uri("git://github.com/jsuereth/sbt-extras")
-    }   
+    cd template-project && ../sbt -sbt-rc help-names
+    
+The template files are:
 
-Now to continue the amazement, simply extend the TemplateBuild trait in your project.   For example, in your
-<project>/project/Build.scala file add:
-
-    import sbt._
-    import template.TemplateBuild
-
-    object MyAwesomeBuild extends TemplateBuild {}
+    project/plugins/project/Build.scala   # you can use this as-is if you want
+    project/Build.scala                   # this is a starting point for your real Build.scala
 
 The Template build isn't quite finished.  There will most likely be a build.sbt DSL variant that does not require a project scala file.
