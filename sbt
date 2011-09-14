@@ -248,6 +248,12 @@ addResidual () {
   dlog "[residual] arg = '$1'"
   residual_args=( "${residual_args[@]}" "$1" )
 }
+addResolver () {
+  addSbt "set resolvers += $1"
+}
+addSnapshotRepo () {
+  addResolver "ScalaToolsSnapshots"
+}
 
 process_args ()
 {
@@ -267,7 +273,7 @@ process_args ()
 
     -sbt-create) sbt_create=true; shift ;;
         -sbt-rc) sbt_version=$sbt_rc_version; shift ;;
-  -sbt-snapshot) sbt_version=$sbt_snapshot_version; shift ;;
+  -sbt-snapshot) addSnapshotRepo ; sbt_version=$sbt_snapshot_version; shift ;;
        -sbt-jar) sbt_jar="$2"; shift 2 ;;
    -sbt-version) sbt_version="$2"; shift 2 ;;
  -scala-version) addSbt "++ $2"; shift 2 ;;
@@ -278,7 +284,7 @@ process_args ()
             -J*) addJava "${1:2}"; shift ;;
             -28) addSbt "++ $latest_28"; shift ;;
             -29) addSbt "++ $latest_29"; shift ;;
-           -210) addSbt "++ $latest_210"; shift ;;
+           -210) addSnapshotRepo ; addSbt "++ $latest_210"; shift ;;
 
               *) addResidual "$1"; shift ;;
     esac
