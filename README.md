@@ -7,6 +7,7 @@ project directory, the runner will figure out the versions of sbt
 and scala required by the project and download them if necessary.
 
 There's also a template project sbt coming together, but it's unfinished.
+See below for how to pull the template project in as a plugin.
 However the runner is quite useful already.
 
 Here's a sample use of the runner: it creates a new project using a
@@ -97,3 +98,25 @@ Current -help output:
 
     In the case of duplicated or conflicting options, the order above
     shows precedence: JAVA_OPTS lowest, command line options highest.
+
+
+## Template project
+
+To gain access to the awesome, simply add the following <project>/project/plugins/project/Build.scala file:
+
+    import sbt._
+    object PluginDef extends Build {
+      override def projects = Seq(root)
+      lazy val root = Project("plugins", file(".")) dependsOn(extras)
+      lazy val extras = uri("git://github.com/jsuereth/sbt-extras")
+    }   
+
+Now to continue the amazement, simply extend the TemplateBuild trait in your project.   For example, in your
+<project>/project/Build.scala file add:
+
+    import sbt._
+    import template.TemplateBuild
+
+    object MyAwesomeBuild extends TemplateBuild {}
+
+The Template build isn't quite finished.  There will most likely be a build.sbt DSL variant that does not require a project scala file.
