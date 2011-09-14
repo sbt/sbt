@@ -104,7 +104,7 @@ Current -help output:
 
 To see the plugin in action, including the thrilling custom sbt command "help-names":
 
-    cd template-project && ../sbt -sbt-rc help-names
+    cd template-project && ../sbt -sbt-rc help-names zomg zomg2
     
 The template files are:
 
