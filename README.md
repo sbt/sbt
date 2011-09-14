@@ -100,7 +100,7 @@ Current -help output:
     shows precedence: JAVA_OPTS lowest, command line options highest.
 
 
-## Template project ##
+## SBT Extra plugin
 
 To see the plugin in action, including the thrilling custom sbt command "help-names":
 
@@ -112,3 +112,15 @@ The template files are:
     project/Build.scala                   # this is a starting point for your real Build.scala
 
 The Template build isn't quite finished.  There will most likely be a build.sbt DSL variant that does not require a project scala file.
+
+## Simple task DSL
+
+SBT extras defines a simplified task DSL for those who are defining simple tasks that do not need to be relied upon, or you are unsure and can refactor later.   Once including the sbt-extra-plugin, all you have to do is place the following in your build.sbt to create tasks:
+
+    simple_task("zomg") is { println("ZOMG") }
+
+or if you need to depend on other keys:
+
+    simple_task("zomg2") on (name, version) is { (n,v) => println("ZOMG " + n + " = " + v + " !!!!!") }
+
+The DSL currently supports between 2 and 9 dependencies.  The DSL does not allow defining tasks on different configurations, although this will be added shortly.
