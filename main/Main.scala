@@ -388,7 +388,7 @@ object BuiltinCommands
 	{
 		log.info("In " + uri)
 		def prefix(id: String) = if(currentID != id) "   " else if(current) " * " else "(*)"
-		for(id <- build.defined.keys) log.info("\t" + prefix(id) + id)
+		for(id <- build.defined.keys.toSeq.sorted) log.info("\t" + prefix(id) + id)
 	}
 
 	def act = Command.custom(Act.actParser)
