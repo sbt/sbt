@@ -319,8 +319,8 @@ object Defaults extends BuildCommon
 	)
 	lazy val packageConfig: Seq[Setting[_]] = Seq(
 		packageOptions in packageBin <<= (packageOptions, mainClass in packageBin, name, version, homepage, organization, organizationName) map { (p, main, name, ver, h, org, orgName) =>
-			p ++ main.map(Package.MainClass.apply) :+ Package.addSpecManifestAttributes(name, ver, orgName) :+ Package.addImplManifestAttributes(name, ver, h, org, orgName) },
-		packageOptions in packageSrc <<= (packageOptions, name, version, organizationName) map { _ :+ Package.addSpecManifestAttributes(_, _, _) },
+			Package.addSpecManifestAttributes(name, ver, orgName) +: Package.addImplManifestAttributes(name, ver, h, org, orgName) +: main.map(Package.MainClass.apply) ++: p },
+		packageOptions in packageSrc <<= (name, version, organizationName, packageOptions) map { Package.addSpecManifestAttributes(_, _, _) +: _ },
 		`package` <<= packageBin
 	) ++
 	packageTasks(packageBin, packageBinTask) ++
