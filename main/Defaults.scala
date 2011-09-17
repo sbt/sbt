@@ -56,6 +56,8 @@ object Defaults extends BuildCommon
 		autoScalaLibrary :== true,
 		onLoad <<= onLoad ?? idFun[State],
 		onUnload <<= onUnload ?? idFun[State],
+		watchingMessage <<= watchingMessage ?? Watched.defaultWatchingMessage,
+		triggeredMessage <<= triggeredMessage ?? Watched.defaultTriggeredMessage,
 		definesClass :== FileValueCache(Locate.definesClass _ ).get,
 		trapExit :== false,
 		trapExit in run :== true,
@@ -224,11 +226,13 @@ object Defaults extends BuildCommon
 	def watchTransitiveSourcesTask: Initialize[Task[Seq[File]]] =
 		inDependencies[Task[Seq[File]]](watchSources.task, const(std.TaskExtra.constant(Nil)), includeRoot = true) apply { _.join.map(_.flatten) }
 
-	def watchSetting: Initialize[Watched] = (pollInterval, thisProjectRef) { (interval, base) =>
+	def watchSetting: Initialize[Watched] = (pollInterval, thisProjectRef, watchingMessage, triggeredMessage) { (interval, base, msg, trigMsg) =>
 		new Watched {
 			val scoped = watchTransitiveSources in base
 			val key = ScopedKey(scoped.scope, scoped.key)
 			override def pollInterval = interval
+			override def watchingMessage(s: WatchState) = msg(s)
+			override def triggeredMessage(s: WatchState) = trigMsg(s)
 			override def watchPaths(s: State) = EvaluateTask.evaluateTask(Project structure s, key, s, base) match {
 				case Some(Value(ps)) => ps
 				case Some(Inc(i)) => throw i

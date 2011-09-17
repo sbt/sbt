@@ -61,6 +61,8 @@ object Keys
 	val pollInterval = SettingKey[Int]("poll-interval", "Interval between checks for modified sources by the continuous execution command.")
 	val watchSources = TaskKey[Seq[File]]("watch-sources", "Defines the sources in this project for continuous execution to watch for changes.")
 	val watchTransitiveSources = TaskKey[Seq[File]]("watch-transitive-sources", "Defines the sources in all projects for continuous execution to watch.")
+	val watchingMessage = SettingKey[WatchState => String]("watching-message", "The message to show when triggered execution waits for sources to change.")
+	val triggeredMessage = SettingKey[WatchState => String]("triggered-message", "The message to show before triggered execution executes an action after sources change.")
 
 	// Path Keys
 	val baseDirectory = SettingKey[File]("base-directory", "The base directory.  Depending on the scope, this is the base directory for the build, project, configuration, or task.")

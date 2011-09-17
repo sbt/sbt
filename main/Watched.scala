@@ -6,6 +6,7 @@ package sbt
 	import CommandSupport.{ClearOnFailure,FailureWall}
 	import annotation.tailrec
 	import java.io.File
+	import Types.const
 
 trait Watched
 {
@@ -15,10 +16,19 @@ trait Watched
 	/** The time in milliseconds between checking for changes.  The actual time between the last change made to a file and the
 	* execution time is between `pollInterval` and `pollInterval*2`.*/
 	def pollInterval: Int = Watched.PollDelayMillis
+	/** The message to show when triggered execution waits for sources to change.*/
+	def watchingMessage(s: WatchState): String = Watched.defaultWatchingMessage(s)
+	/** The message to show before an action is run. */
+	def triggeredMessage(s: WatchState): String = Watched.defaultTriggeredMessage(s)
 }
 
 object Watched
 {
+	val defaultWatchingMessage: WatchState => String = _.count + ". Waiting for source changes... (press enter to interrupt)"
+	val defaultTriggeredMessage: WatchState => String = const("")
+	val clearWhenTriggered: WatchState => String = const(clearScreen)
+	def clearScreen: String = "\033[2J\033[0;0H"
+
 	private[this] class AWatched extends Watched
 	
 	def multi(base: Watched, paths: Seq[Watched]): Watched = 
@@ -27,11 +37,14 @@ object Watched
 			override def watchPaths(s: State) = (base.watchPaths(s) /: paths)(_ ++ _.watchPaths(s))
 			override def terminateWatch(key: Int): Boolean = base.terminateWatch(key)
 			override val pollInterval = (base +: paths).map(_.pollInterval).min
+			override def watchingMessage(s: WatchState) = base.watchingMessage(s)
+			override def triggeredMessage(s: WatchState) = base.triggeredMessage(s)
 		}
 	def empty: Watched = new AWatched
 		
 	val PollDelayMillis = 500
 	def isEnter(key: Int): Boolean = key == 10 || key == 13
+	def printIfDefined(msg: String) = if(!msg.isEmpty) System.out.println(msg)
 
 	def executeContinuously(watched: Watched, s: State, next: String, repeat: String): State =
 	{
@@ -40,7 +53,7 @@ object Watched
 		val watchState = s get ContinuousState getOrElse WatchState.empty
 
 		if(watchState.count > 0)
-			System.out.println(watchState.count + ". Waiting for source changes... (press enter to interrupt)")
+			printIfDefined(watched watchingMessage watchState)
 
 		val (triggered, newWatchState, newState) =
 			try {
@@ -54,8 +67,10 @@ object Watched
 				(false, watchState, s.fail)
 			}
 
-		if(triggered)
+		if(triggered) {
+			printIfDefined(watched triggeredMessage newWatchState)
 			(ClearOnFailure :: next :: FailureWall :: repeat :: s).put(ContinuousState, newWatchState)
+		}
 		else
 		{
 			while (System.in.available() > 0) System.in.read()
