@@ -28,9 +28,9 @@ private object NotInCache
 	}
 }
 /** Provides methods for working at the level of a single jar file with the default Ivy cache.*/
-object IvyCache
+class IvyCache(val ivyHome: Option[File])
 {
-	def lockFile = new File(System.getProperty("user.home"), ".sbt.cache.lock")
+	def lockFile = new File(ivyHome getOrElse Path.userHome, ".sbt.cache.lock")
 	/** Caches the given 'file' with the given ID.  It may be retrieved or cleared using this ID.*/
 	def cacheJar(moduleID: ModuleID, file: File, lock: Option[xsbti.GlobalLock], log: Logger)
 	{
@@ -85,7 +85,7 @@ object IvyCache
 	private def basicLocalIvy(lock: Option[xsbti.GlobalLock], log: Logger) =
 	{
 		val local = Resolver.defaultLocal
-		val paths = new IvyPaths(new File("."), None)
+		val paths = new IvyPaths(new File("."), ivyHome)
 		val conf = new InlineIvyConfiguration(paths, Seq(local), Nil, Nil, false, lock, IvySbt.DefaultChecksums, log)
 		(new IvySbt(conf), local)
 	}

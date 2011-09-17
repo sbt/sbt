@@ -15,8 +15,9 @@ import java.util.concurrent.Callable
 * This is used for compiled source jars so that the compilation need not be repeated for other projects on the same
 * machine.
 */
-class ComponentManager(globalLock: xsbti.GlobalLock, provider: xsbti.ComponentProvider, val log: Logger) extends NotNull
+class ComponentManager(globalLock: xsbti.GlobalLock, provider: xsbti.ComponentProvider, ivyHome: Option[File], val log: Logger)
 {
+	private[this] val ivyCache = new IvyCache(ivyHome)
 	/** Get all of the files for component 'id', throwing an exception if no files exist for the component. */
 	def files(id: String)(ifMissing: IfMissing): Iterable[File] =
 	{
@@ -45,7 +46,7 @@ class ComponentManager(globalLock: xsbti.GlobalLock, provider: xsbti.ComponentPr
 	/** This is used to lock the local cache in project/boot/.  By checking the local cache first, we can avoid grabbing a global lock. */
 	private def lockLocalCache[T](action: => T): T = lock(provider.lockFile)( action )
 	/** This is used to ensure atomic access to components in the global Ivy cache.*/
-	private def lockGlobalCache[T](action: => T): T = lock(IvyCache.lockFile)( action )
+	private def lockGlobalCache[T](action: => T): T = lock(ivyCache.lockFile)( action )
 	private def lock[T](file: File)(action: => T): T = globalLock(file, new Callable[T] { def call = action })
 	/** Get the file for component 'id', throwing an exception if no files or multiple files exist for the component. */
 	def file(id: String)(ifMissing: IfMissing): File =
@@ -58,12 +59,12 @@ class ComponentManager(globalLock: xsbti.GlobalLock, provider: xsbti.ComponentPr
 
 	def define(id: String, files: Iterable[File]) = lockLocalCache { provider.defineComponent(id, files.toSeq.toArray) }
 	/** Retrieve the file for component 'id' from the local repository. */
-	private def update(id: String): Unit = IvyCache.withCachedJar(sbtModuleID(id), Some(globalLock), log)(jar => define(id, Seq(jar)) )
+	private def update(id: String): Unit = ivyCache.withCachedJar(sbtModuleID(id), Some(globalLock), log)(jar => define(id, Seq(jar)) )
 
 	private def sbtModuleID(id: String) = ModuleID("org.scala-tools.sbt", id, ComponentManager.stampedVersion)
 	/** Install the files for component 'id' to the local repository.  This is usually used after writing files to the directory returned by 'location'. */
-	def cache(id: String): Unit = IvyCache.cacheJar(sbtModuleID(id), file(id)(IfMissing.Fail), Some(globalLock), log)
-	def clearCache(id: String): Unit = lockGlobalCache { IvyCache.clearCachedJar(sbtModuleID(id), Some(globalLock), log) }
+	def cache(id: String): Unit = ivyCache.cacheJar(sbtModuleID(id), file(id)(IfMissing.Fail), Some(globalLock), log)
+	def clearCache(id: String): Unit = lockGlobalCache { ivyCache.clearCachedJar(sbtModuleID(id), Some(globalLock), log) }
 }
 class InvalidComponent(msg: String, cause: Throwable) extends RuntimeException(msg, cause)
 {
