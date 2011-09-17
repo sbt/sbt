@@ -71,7 +71,7 @@ object Compiler
 	def scalaCompiler(instance: ScalaInstance, cpOptions: ClasspathOptions)(implicit app: AppConfiguration, log: Logger): AnalyzingCompiler =
 	{
 		val launcher = app.provider.scalaProvider.launcher
-		val componentManager = new ComponentManager(launcher.globalLock, app.provider.components, log)
+		val componentManager = new ComponentManager(launcher.globalLock, app.provider.components, Option(launcher.ivyHome), log)
 		new AnalyzingCompiler(instance, componentManager, cpOptions, log)
 	}
 	def directOrFork(instance: ScalaInstance, cpOptions: ClasspathOptions, javaHome: Option[File]): JavaCompiler =
