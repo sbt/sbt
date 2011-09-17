@@ -1,4 +1,4 @@
-> 'set scaladocOptions in doc += "-Xfatal-warnings"'
+> 'set scalacOptions in doc += "-Xfatal-warnings"'
 
 -> doc
 
