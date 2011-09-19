@@ -45,14 +45,26 @@ final class Update(config: UpdateConfiguration)
 
 	private def addCredentials()
 	{
+          val file = Option(System.getProperty("sbt.boot.credentials")).getOrElse(System.getProperty("user.home") + "/.ivy2/.credentials")
+          
+          val props = readProperties(new java.io.File(file))
+          
+          for {
+            realm <- props.get("realm")
+            host <- props.get("host") orElse props.get("hostname")
+            user <- props.get("user") orElse props.get("username")
+            pass <- props.get("pass") orElse props.get("password")
+          } {
+            CredentialsStore.INSTANCE.addCredentials(realm, host, user, pass)
+          }
 		val List(realm, host, user, password) = List("sbt.boot.realm", "sbt.boot.host", "sbt.boot.user", "sbt.boot.password") map System.getProperty
 		if(realm != null && host != null && user != null && password != null)
 			CredentialsStore.INSTANCE.addCredentials(realm, host, user, password)
 	}
 	private lazy val settings =
 	{
-		addCredentials()
 		val settings = new IvySettings
+		addCredentials()
 		ivyHome foreach settings.setDefaultIvyUserDir
 		addResolvers(settings)
 		settings.setVariable("ivy.checksums", "sha1,md5")
@@ -330,6 +342,18 @@ final class Update(config: UpdateConfiguration)
 		catch { case e: Exception => System.err.println("Error writing to update log file: " + e.toString) }
 		System.out.println(msg)
 	}
+
+        private def readProperties(file: java.io.File): Map[String,String] =  {
+          import collection.JavaConversions._
+
+          if (file.exists) {
+            val props = new java.util.Properties
+            Using( new java.io.FileInputStream(file) )( props.load )
+            props map { case (k,v) => (k.toString, v.toString) } toMap
+          } else {
+            Map[String,String]()
+          }
+        }
 }
 
 import SbtIvyLogger.{acceptError, acceptMessage}
