@@ -45,15 +45,13 @@ final class Update(config: UpdateConfiguration)
 
 	private def addCredentials()
 	{
-          val file = Option(System.getProperty("sbt.boot.credentials")).getOrElse(System.getProperty("user.home") + "/.ivy2/.credentials")
-          
-          val props = readProperties(new java.io.File(file))
-          
           for {
-            realm <- props.get("realm")
-            host <- props.get("host") orElse props.get("hostname")
-            user <- props.get("user") orElse props.get("username")
-            pass <- props.get("pass") orElse props.get("password")
+            file <- Option(System.getProperty("sbt.boot.credentials")) orElse Option(System.getenv("SBT_CREDENTIALS"))
+            props <- Option(ResolveValues.readProperties(new File(file)))
+            realm <- Option(props.getProperty("realm"))
+            host <- Option(props.getProperty("host")) orElse Option(props.getProperty("hostname"))
+            user <- Option(props.getProperty("user")) orElse Option(props.getProperty("username"))
+            pass <- Option(props.getProperty("pass")) orElse Option(props.getProperty("password"))
           } {
             CredentialsStore.INSTANCE.addCredentials(realm, host, user, pass)
           }
@@ -63,8 +61,8 @@ final class Update(config: UpdateConfiguration)
 	}
 	private lazy val settings =
 	{
-		val settings = new IvySettings
 		addCredentials()
+		val settings = new IvySettings
 		ivyHome foreach settings.setDefaultIvyUserDir
 		addResolvers(settings)
 		settings.setVariable("ivy.checksums", "sha1,md5")
@@ -342,18 +340,6 @@ final class Update(config: UpdateConfiguration)
 		catch { case e: Exception => System.err.println("Error writing to update log file: " + e.toString) }
 		System.out.println(msg)
 	}
-
-        private def readProperties(file: java.io.File): Map[String,String] =  {
-          import collection.JavaConversions._
-
-          if (file.exists) {
-            val props = new java.util.Properties
-            Using( new java.io.FileInputStream(file) )( props.load )
-            props map { case (k,v) => (k.toString, v.toString) } toMap
-          } else {
-            Map[String,String]()
-          }
-        }
 }
 
 import SbtIvyLogger.{acceptError, acceptMessage}
