@@ -7,6 +7,7 @@ import Pre._
 import java.io.{File, FileWriter, PrintWriter, Writer}
 import java.util.concurrent.Callable
 import java.util.regex.Pattern
+import java.util.Properties
 
 import org.apache.ivy.{core, plugins, util, Ivy}
 import core.LogOptions
@@ -45,10 +46,19 @@ final class Update(config: UpdateConfiguration)
 
 	private def addCredentials()
 	{
-		val List(realm, host, user, password) = List("sbt.boot.realm", "sbt.boot.host", "sbt.boot.user", "sbt.boot.password") map System.getProperty
-		if(realm != null && host != null && user != null && password != null)
-			CredentialsStore.INSTANCE.addCredentials(realm, host, user, password)
+		val optionProps = 
+			Option(System.getProperty("sbt.boot.credentials")) orElse 
+			Option(System.getenv("SBT_CREDENTIALS")) map ( path =>
+				ResolveValues.readProperties(new File(path)) 
+			)
+		optionProps foreach extractCredentials("realm","host","user","password")
+		extractCredentials("sbt.boot.realm","sbt.boot.host","sbt.boot.user","sbt.boot.password")(System.getProperties)
 	}
+	private def extractCredentials(keys: (String,String,String,String))(props: Properties) {
+		val List(realm, host, user, password) = keys.productIterator.map(key => props.getProperty(key.toString)).toList
+		if (realm != null && host != null && user != null && password != null)
+			CredentialsStore.INSTANCE.addCredentials(realm, host, user, password)
+        }
 	private lazy val settings =
 	{
 		addCredentials()
