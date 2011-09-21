@@ -12,7 +12,7 @@ object ResolveValues
 	def apply(conf: LaunchConfiguration): LaunchConfiguration = (new ResolveValues(conf))()
 	private def trim(s: String) = if(s eq null) None else notEmpty(s.trim)
 	private def notEmpty(s: String) = if(isEmpty(s)) None else Some(s)
-	private def readProperties(propertiesFile: File) =
+	private[boot] def readProperties(propertiesFile: File) =
 	{
 		val properties = new Properties
 		if(propertiesFile.exists)
