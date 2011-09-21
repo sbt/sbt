@@ -85,7 +85,7 @@ object Act
 				else
 					extras map { x => (taskAxis, Select(x)) }
 			}
-		val base = token('(', hide = tasks.isEmpty) ~> taskAndExtra <~ token(')')
+		val base = token('(', hide = _ == 1 && tasks.isEmpty) ~> taskAndExtra <~ token(')')
 		base ?? ( (Global, Global) )
 	}
 

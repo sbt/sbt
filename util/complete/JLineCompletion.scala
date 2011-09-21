@@ -10,19 +10,26 @@ package sbt.complete
 object JLineCompletion
 {
 	def installCustomCompletor(reader: ConsoleReader, parser: Parser[_]): Unit =
-		installCustomCompletor(parserAsCompletor(parser), reader)
-	def installCustomCompletor(reader: ConsoleReader)(complete: String => (Seq[String], Seq[String])): Unit =
+		installCustomCompletor(reader)(parserAsCompletor(parser))
+	def installCustomCompletor(reader: ConsoleReader)(complete: (String, Int) => (Seq[String], Seq[String])): Unit =
 		installCustomCompletor(customCompletor(complete), reader)
-	def installCustomCompletor(complete: ConsoleReader => Boolean, reader: ConsoleReader): Unit =
+	def installCustomCompletor(complete: (ConsoleReader, Int) => Boolean, reader: ConsoleReader): Unit =
 	{
 		reader.removeCompletor(DummyCompletor)
 		reader.addCompletor(DummyCompletor)
 		reader.setCompletionHandler(new CustomHandler(complete))
 	}
 
-	private[this] final class CustomHandler(completeImpl: ConsoleReader => Boolean) extends CompletionHandler
+	private[this] final class CustomHandler(completeImpl: (ConsoleReader, Int) => Boolean) extends CompletionHandler
 	{
-		override def complete(reader: ConsoleReader, candidates: java.util.List[_], position: Int) = completeImpl(reader)
+		private[this] var previous: Option[(String,Int)] = None
+		private[this] var level: Int = 1
+		override def complete(reader: ConsoleReader, candidates: java.util.List[_], position: Int) = {
+			val current = Some(bufferSnapshot(reader))
+			level = if(current == previous) level + 1 else 1
+			previous = current
+			completeImpl(reader, level)
+		}
 	}
 	
 	// always provides dummy completions so that the custom completion handler gets called
@@ -37,8 +44,9 @@ object JLineCompletion
 		}
 	}
 
-	def parserAsCompletor(p: Parser[_]): ConsoleReader => Boolean =
-		customCompletor(str => convertCompletions(Parser.completions(p, str)))
+	def parserAsCompletor(p: Parser[_]): (String, Int) => (Seq[String], Seq[String]) =
+		(str, level) => convertCompletions(Parser.completions(p, str, level))
+
 	def convertCompletions(c: Completions): (Seq[String], Seq[String]) =
 	{
 		val cs = c.get
@@ -57,13 +65,18 @@ object JLineCompletion
 	}
 	def appendNonEmpty(set: Set[String], add: String) = if(add.isEmpty) set else set + add
 
-	def customCompletor(f: String => (Seq[String], Seq[String])): ConsoleReader => Boolean =
-		reader => {
-			val success = complete(beforeCursor(reader), f, reader)
+	def customCompletor(f: (String, Int) => (Seq[String], Seq[String])): (ConsoleReader, Int) => Boolean =
+		(reader, level) => {
+			val success = complete(beforeCursor(reader), reader => f(reader, level), reader)
 			reader.flushConsole()
 			success
 		}
 
+	def bufferSnapshot(reader: ConsoleReader): (String, Int) =
+	{
+		val b = reader.getCursorBuffer
+		(b.getBuffer.toString, b.cursor)
+	}
 	def beforeCursor(reader: ConsoleReader): String =
 	{
 		val b = reader.getCursorBuffer
