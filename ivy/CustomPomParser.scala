@@ -29,6 +29,8 @@ object CustomPomParser
 	val SbtVersionKey = "sbtVersion"
 	val ScalaVersionKey = "scalaVersion"
 
+		// packagings that should be jars, but that Ivy doesn't handle as jars
+	val JarPackagings = Set("eclipse-plugin")
 	val default = new CustomPomParser(PomModuleDescriptorParser.getInstance, defaultTransform)
 
 		// Unfortunately, ModuleDescriptorParserRegistry is add-only and is a singleton instance.
@@ -39,11 +41,17 @@ object CustomPomParser
 			import collection.JavaConverters._
 		val properties = PomModuleDescriptorBuilder.extractPomProperties(md.getExtraInfo).asInstanceOf[java.util.Map[String,String]].asScala.toMap
 		val filtered = shouldBeUnqualified(properties)
-		if(filtered.isEmpty) md else addExtra(filtered, parser, md)
+		val convertArtifacts = artifactExtIncorrect(md)
+		if(filtered.isEmpty && !convertArtifacts) md else addExtra(filtered, parser, md)
 	}
+	private[this] def artifactExtIncorrect(md: ModuleDescriptor): Boolean =
+		md.getConfigurations.exists(conf => md.getArtifacts(conf.getName).exists(art => JarPackagings(art.getExt)))
 	private[this] def shouldBeUnqualified(m: Map[String, String]): Map[String, String] =
 		m.filter { case (k,_) => k == SbtVersionKey || k == ScalaVersionKey }
 
+	
+	private[this] def condAddExtra(properties: Map[String, String], id: ModuleRevisionId): ModuleRevisionId =
+		if(properties.isEmpty) id else addExtra(properties, id)
 	private[this] def addExtra(properties: Map[String, String], id: ModuleRevisionId): ModuleRevisionId =
 	{
 			import collection.JavaConverters._
@@ -79,7 +87,9 @@ object CustomPomParser
 		for( conf <- md.getConfigurations) {
 			dmd.addConfiguration(conf)
 			for(art <- md.getArtifacts(conf.getName)) {
-				val nart = new DefaultArtifact(mrid, art.getPublicationDate, art.getName, art.getType, art.getExt, art.getUrl, art.getQualifiedExtraAttributes)
+				val ext = art.getExt
+				val newExt = if( JarPackagings(ext) ) "jar" else ext
+				val nart = new DefaultArtifact(mrid, art.getPublicationDate, art.getName, art.getType, newExt, art.getUrl, art.getQualifiedExtraAttributes)
 				dmd.addArtifact(conf.getName, nart)
 			}
 		}
