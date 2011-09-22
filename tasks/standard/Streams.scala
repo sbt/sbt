@@ -23,6 +23,7 @@ sealed trait TaskStreams[Key]
 	final def readText(a: Key, sid: Option[String]): BufferedReader  =  readText(a, getID(sid))
 	final def readBinary(a: Key, sid: Option[String]): BufferedInputStream  =  readBinary(a, getID(sid))
 
+	def key: Key
 	def text(sid: String = default): PrintWriter
 	def binary(sid: String = default): BufferedOutputStream
 
@@ -91,7 +92,8 @@ object Streams
 				opened ::= t
 				t
 			}
-			
+
+			def key: Key = a
 			def open() {}
 			
 			def close(): Unit = synchronized {

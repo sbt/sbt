@@ -15,6 +15,7 @@ package sbt
 	import descriptor.ModuleDescriptor, id.ModuleRevisionId
 	import org.scalatools.testing.Framework
 	import Configurations.CompilerPlugin
+	import Types.Id
 
 object Keys
 {
@@ -47,6 +48,7 @@ object Keys
 	val onLoad = SettingKey[State => State]("on-load", "Transformation to apply to the build state when the build is loaded.")
 	val onUnload = SettingKey[State => State]("on-unload", "Transformation to apply to the build state when the build is unloaded.")
 	val onLoadMessage = SettingKey[String]("on-load-message", "Message to display when the project is loaded.")
+	val transformState = AttributeKey[State => State]("transform-state", "State transformation to apply after tasks run.")
 
 	val onComplete = SettingKey[() => Unit]("on-complete", "Hook to run when task evaluation completes.  The type of this setting is subject to change, pending the resolution of SI-2915.")
 // https://issues.scala-lang.org/browse/SI-2915
@@ -291,6 +293,7 @@ object Keys
 	val skip = TaskKey[Boolean]("skip", "For tasks that support it (currently only 'compile'), setting skip to true will force the task to not to do its work.  This exact semantics may vary by task.")
 
 	// special
+	val sessionVars = AttributeKey[SessionVar.Map]("session-vars", "Bindings that exist for the duration of the session.")
 	val parallelExecution = SettingKey[Boolean]("parallel-execution", "Enables (true) or disables (false) parallel execution of tasks.")
 	val settings = TaskKey[Settings[Scope]]("settings", "Provides access to the project data for the build.")
 	val streams = TaskKey[TaskStreams]("streams", "Provides streams for logging and persisting data.")

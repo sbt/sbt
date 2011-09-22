@@ -1,0 +1,39 @@
+> check 10
+> check 12 11
+> check 14 13
+> reload
+> check 16 15
+
+
+-> check-keep 3
+> check-keep blue
+
+> keep
+> check-keep 3
+-> check-keep 4
+> check-keep 3
+
+> keep
+-> check-keep 3
+> check-keep 4
+> check-keep 4
+
+> reload
+> check-keep blue
+> keep
+> check-keep 3
+
+
+-> check-persist 17
+> check-persist blue
+
+> persist
+> check-persist 17
+-> check-persist blue
+
+> persist
+> check-persist 18
+> reload
+> check-persist 18
+> persist
+> check-persist 19

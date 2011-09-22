@@ -6,7 +6,7 @@ package sbt
 	import java.io.File
 	import Project.{ScopedKey, Setting}
 	import Keys.{globalLogging, streams, Streams, TaskStreams}
-	import Keys.{dummyState, dummyStreamsManager, streamsManager, taskDefinitionKey}
+	import Keys.{dummyState, dummyStreamsManager, streamsManager, taskDefinitionKey, transformState}
 	import Scope.{GlobalScope, ThisScope}
 	import scala.Console.{RED, RESET}
 
@@ -29,14 +29,19 @@ object EvaluateTask
 	{
 		val root = ProjectRef(pluginDef.root, Load.getRootProject(pluginDef.units)(pluginDef.root))
 		val pluginKey = Keys.fullClasspath in Configurations.Runtime
-		val evaluated = evaluateTask(pluginDef, ScopedKey(pluginKey.scope, pluginKey.key), state, root)
-		val result = evaluated getOrElse error("Plugin classpath does not exist for plugin definition at " + pluginDef.root)
+		val evaluated = apply(pluginDef, ScopedKey(pluginKey.scope, pluginKey.key), state, root)
+		val (newS, result) = evaluated getOrElse error("Plugin classpath does not exist for plugin definition at " + pluginDef.root)
+		Project.runUnloadHooks(newS) // discard state
 		processResult(result, log)
 	}
+
+	@deprecated("This method does not apply state changes requested during task execution.  Use 'apply' instead, which does.", "0.11.1")
 	def evaluateTask[T](structure: BuildStructure, taskKey: ScopedKey[Task[T]], state: State, ref: ProjectRef, checkCycles: Boolean = false, maxWorkers: Int = SystemProcessors): Option[Result[T]] =
+		apply(structure, taskKey, state, ref, checkCycles, maxWorkers).map(_._2)
+	def apply[T](structure: BuildStructure, taskKey: ScopedKey[Task[T]], state: State, ref: ProjectRef, checkCycles: Boolean = false, maxWorkers: Int = SystemProcessors): Option[(State, Result[T])] =
 		withStreams(structure) { str =>
 			for( (task, toNode) <- getTask(structure, taskKey, state, str, ref) ) yield
-				runTask(task, str, structure.index.triggers, checkCycles, maxWorkers)(toNode)
+				runTask(task, state, str, structure.index.triggers, checkCycles, maxWorkers)(toNode)
 		}
 	def logIncResult(result: Result[_], streams: Streams) = result match { case Inc(i) => logIncomplete(i, streams); case _ => () }
 	def logIncomplete(result: Incomplete, streams: Streams)
@@ -73,16 +78,30 @@ object EvaluateTask
 	def nodeView[HL <: HList](state: State, streams: Streams, extraDummies: KList[Task, HL] = KNil, extraValues: HL = HNil): Execute.NodeView[Task] =
 		Transform(dummyStreamsManager :^: KCons(dummyState, extraDummies), streams :+: HCons(state, extraValues))
 
-	def runTask[Task[_] <: AnyRef, T](root: Task[T], streams: Streams, triggers: Triggers[Task], checkCycles: Boolean = false, maxWorkers: Int = SystemProcessors)(implicit taskToNode: Execute.NodeView[Task]): Result[T] =
+	def runTask[T](root: Task[T], state: State, streams: Streams, triggers: Triggers[Task], checkCycles: Boolean = false, maxWorkers: Int = SystemProcessors)(implicit taskToNode: Execute.NodeView[Task]): (State, Result[T]) =
 	{
 		val (service, shutdown) = CompletionService[Task[_], Completed](maxWorkers)
 
 		val x = new Execute[Task](checkCycles, triggers)(taskToNode)
-		val result = try { x.run(root)(service) } finally { shutdown() }
+		val (newState, result) =
+			try applyResults(x.runKeep(root)(service), state, root)
+			catch { case inc: Incomplete => (state, Inc(inc)) }
+			finally shutdown()
 		val replaced = transformInc(result)
 		logIncResult(replaced, streams)
-		replaced
+		(newState, replaced)
 	}
+
+	def applyResults[T](results: RMap[Task, Result], state: State, root: Task[T]): (State, Result[T]) =
+		(stateTransform(results)(state), results(root))
+	def stateTransform(results: RMap[Task, Result]): State => State =
+		Function.chain(
+			results.toTypedSeq flatMap {
+				case results.TPair(Task(info, _), Value(v)) => info.post(v) get transformState
+				case _ => Nil
+			}
+		)
+		
 	def transformInc[T](result: Result[T]): Result[T] =
 		// taskToKey needs to be before liftAnonymous.  liftA only lifts non-keyed (anonymous) Incompletes.
 		result.toEither.left.map { i => Incomplete.transformBU(i)(convertCyclicInc andThen taskToKey andThen liftAnonymous ) }

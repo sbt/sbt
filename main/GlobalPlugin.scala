@@ -32,10 +32,11 @@ object GlobalPlugin
 	def load(base: File, s: State, config: LoadBuildConfiguration): GlobalPlugin =
 	{
 		val (structure, state) = build(base, s, config)
-		val data = extract(state, structure)
+		val (newS, data) = extract(state, structure)
+		Project.runUnloadHooks(newS) // discard state
 		GlobalPlugin(data, structure, inject(data), base)
 	}
-	def extract(state: State, structure: BuildStructure): GlobalPluginData =
+	def extract(state: State, structure: BuildStructure): (State, GlobalPluginData) =
 	{
 		import structure.{data, root, rootProject}
 		val p: Scope = Scope.GlobalScope in ProjectRef(root, rootProject(root))
@@ -47,12 +48,13 @@ object GlobalPlugin
 		val task = taskInit mapReferenced Project.mapScope(Scope replaceThis p) evaluate data
 		evaluate(state, structure, task)
 	}
-	def evaluate[T](state: State, structure: BuildStructure, t: Task[T]): T =
+	def evaluate[T](state: State, structure: BuildStructure, t: Task[T]): (State, T) =
 	{
 			import EvaluateTask._
 		withStreams(structure) { str =>
 			val nv = nodeView(state, str)
-			processResult(runTask(t, str, structure.index.triggers)(nv), log(state))
+			val (newS, result) = runTask(t, state, str, structure.index.triggers)(nv)
+			(newS, processResult(result, log(newS)))
 		}
 	}
 	private[this] def log(s: State) = CommandSupport.logger(s)

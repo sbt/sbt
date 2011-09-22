@@ -1125,4 +1125,18 @@ trait BuildCommon
 		val newConfigs = cs filter { c => !existingName(c.name) }
 		overridden ++ newConfigs
 	}
+
+		// these are intended for use in input tasks for creating parsers
+	def getFromContext[T](task: ScopedTask[T], context: ScopedKey[_], s: State): Option[T] =
+		SessionVar.get(SessionVar.resolveContext(task.scopedKey, context.scope, s), s)
+
+	def loadFromContext[T](task: ScopedTask[T], context: ScopedKey[_], s: State)(implicit f: sbinary.Format[T]): Option[T] =
+		SessionVar.load(SessionVar.resolveContext(task.scopedKey, context.scope, s), s)
+
+		// these are for use in tasks
+	def loadPrevious[T](task: ScopedTask[T])(implicit f: sbinary.Format[T]): Initialize[Task[Option[T]]] =
+		(state, resolvedScoped) map { (s, ctx) => loadFromContext(task, ctx, s)(f) }
+
+	def getPrevious[T](task: ScopedTask[T]): Initialize[Task[Option[T]]] =
+		(state, resolvedScoped) map { (s, ctx) => getFromContext(task, ctx, s) }
 }

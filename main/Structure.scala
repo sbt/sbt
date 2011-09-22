@@ -190,6 +190,15 @@ object Scoped
 
 		def dependsOn(tasks: AnyInitTask*): Initialize[Task[S]] = (i, Initialize.joinAny(tasks)) { (thisTask, deps) => thisTask.dependsOn(deps : _*) }
 
+			import SessionVar.{persistAndSet, resolveContext, set, transform}
+
+		def updateState(f: (State, S) => State): Initialize[Task[S]] = i(t => transform(t, f))
+		def storeAs(key: ScopedTask[S])(implicit f: sbinary.Format[S]): Initialize[Task[S]] = (Keys.resolvedScoped, i) { (scoped, task) =>
+			transform(task, (state, value) => persistAndSet( resolveContext(key, scoped.scope, state), state, value)(f))
+		}
+		def keepAs(key: ScopedTask[S]): Initialize[Task[S]] =
+			(i, Keys.resolvedScoped)( (t,scoped) => transform(t, (state,value) => set(resolveContext(key, scoped.scope, state), state, value) ) )
+
 		def triggeredBy(tasks: AnyInitTask*): Initialize[Task[S]] = nonLocal(tasks, Keys.triggeredBy)
 		def runBefore(tasks: AnyInitTask*): Initialize[Task[S]] = nonLocal(tasks, Keys.runBefore)
 		private[this] def nonLocal(tasks: Seq[AnyInitTask], key: AttributeKey[Seq[Task[_]]]): Initialize[Task[S]] =

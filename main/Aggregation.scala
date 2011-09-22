@@ -72,9 +72,8 @@ final object Aggregation
 	def applyTasks[T](s: State, structure: BuildStructure, ps: Values[Parser[Task[T]]], show: Boolean)(implicit display: Show[ScopedKey[_]]): Parser[() => State] =
 		Command.applyEffect(seqParser(ps)) { ts =>
 			runTasks(s, structure, ts, Dummies(KNil, HNil), show)
-			s
 		}
-	def runTasks[HL <: HList, T](s: State, structure: Load.BuildStructure, ts: Values[Task[T]], extra: Dummies[HL], show: Boolean)(implicit display: Show[ScopedKey[_]])
+	def runTasks[HL <: HList, T](s: State, structure: Load.BuildStructure, ts: Values[Task[T]], extra: Dummies[HL], show: Boolean)(implicit display: Show[ScopedKey[_]]): State =
 	{
 			import EvaluateTask._
 			import std.TaskExtra._
@@ -82,13 +81,15 @@ final object Aggregation
 		val toRun = ts map { case KeyValue(k,t) => t.map(v => KeyValue(k,v)) } join;
 		val workers = maxWorkers(extracted, structure)
 		val start = System.currentTimeMillis
-		val result = withStreams(structure){ str => runTask(toRun, str, structure.index.triggers, maxWorkers = workers)(nodeView(s, str, extra.tasks, extra.values)) }
+		val (newS, result) = withStreams(structure){ str => runTask(toRun, s,str, structure.index.triggers, maxWorkers = workers)(nodeView(s, str, extra.tasks, extra.values)) }
 		val stop = System.currentTimeMillis
-		val log = logger(s)
+		val log = logger(newS)
 
 		val success = result match { case Value(_) => true; case Inc(_) => false }
 		try { onResult(result, log) { results => if(show) printSettings(results, log) } }
 		finally { printSuccess(start, stop, extracted, success, log) }
+
+		newS
 	}
 	def maxWorkers(extracted: Extracted, structure: Load.BuildStructure): Int =
 		(Keys.parallelExecution in extracted.currentRef get structure.data) match {
@@ -138,7 +139,6 @@ final object Aggregation
 			val dummies = Dummies( InputTask.inputMap :^: KNil, inputMap :+: HNil)
 			val roots = inputs.map { case KeyValue(k,t) => KeyValue(k,t.task) }
 			runTasks(s, structure, roots, dummies, show)
-			s
 		}
 	}
 	def valueParser(s: State, structure: BuildStructure, show: Boolean)(key: ScopedKey[_])(implicit display: Show[ScopedKey[_]]): Parser[() => State] =

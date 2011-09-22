@@ -6,11 +6,11 @@ package sbt
 	import java.io.File
 	import java.net.URI
 	import Project._
-	import Keys.{appConfiguration, stateBuildStructure, commands, configuration, historyPath, projectCommand, sessionSettings, shellPrompt, streams, thisProject, thisProjectRef, watch}
+	import Keys.{appConfiguration, stateBuildStructure, commands, configuration, historyPath, projectCommand, sessionSettings, sessionVars, shellPrompt, thisProject, thisProjectRef, watch}
 	import Scope.{GlobalScope,ThisScope}
 	import Load.BuildStructure
 	import CommandSupport.logger
-	import Types.idFun
+	import Types.{idFun, Id}
 
 sealed trait ProjectDefinition[PR <: ProjectReference]
 {
@@ -71,13 +71,15 @@ final case class Extracted(structure: BuildStructure, session: SessionSettings, 
 	def get[T](key: ScopedSetting[T]) = getOrError(inCurrent(key), key.key)
 	def getOpt[T](key: ScopedSetting[T]): Option[T] = structure.data.get(inCurrent(key), key.key)
 	private[this] def inCurrent[T](key: ScopedSetting[T]): Scope  =  if(key.scope.project == This) key.scope.copy(project = Select(currentRef)) else key.scope
-	def evalTask[T](key: ScopedTask[T], state: State): T =
+	@deprecated("This method does not apply state changes requested during task execution.  Use 'runTask' instead, which does.", "0.11.1")
+	def evalTask[T](key: ScopedTask[T], state: State): T = runTask(key, state)._2
+	def runTask[T](key: ScopedTask[T], state: State): (State, T) =
 	{
 			import EvaluateTask._
 		val rkey = Project.mapScope(Scope.resolveScope(GlobalScope, currentRef.build, rootProject) )( key.scopedKey )
-		val value: Option[Result[T]] = evaluateTask(structure, key.task.scopedKey, state, currentRef)
-		val result = getOrError(rkey.scope, rkey.key, value)
-		processResult(result, ConsoleLogger())
+		val value: Option[(State, Result[T])] = apply(structure, key.task.scopedKey, state, currentRef)
+		val (newS, result) = getOrError(rkey.scope, rkey.key, value)
+		(newS, processResult(result, logger(newS)))
 	}
 	private def getOrError[T](scope: Scope, key: AttributeKey[_], value: Option[T])(implicit display: Show[ScopedKey[_]]): T =
 		value getOrElse error(display(ScopedKey(scope, key)) + " is undefined.")
@@ -153,12 +155,16 @@ object Project extends Init[Scope] with ProjectExtra
 	def getProject(ref: ProjectRef, units: Map[URI, Load.LoadedBuildUnit]): Option[ResolvedProject] =
 		(units get ref.build).flatMap(_.defined get ref.project)
 
-	def setProject(session: SessionSettings, structure: BuildStructure, s: State): State =
+	def runUnloadHooks(s: State): State =
 	{
 		val previousOnUnload = orIdentity(s get Keys.onUnload.key)
-		val unloaded = previousOnUnload(s.runExitHooks())
+		previousOnUnload(s.runExitHooks())
+	}
+	def setProject(session: SessionSettings, structure: BuildStructure, s: State): State =
+	{
+		val unloaded = runUnloadHooks(s)
 		val (onLoad, onUnload) = getHooks(structure.data)
-		val newAttrs = unloaded.attributes.put(stateBuildStructure, structure).put(sessionSettings, session).put(Keys.onUnload.key, onUnload)
+		val newAttrs = unloaded.attributes.put(stateBuildStructure, structure).put(sessionSettings, session).put(Keys.onUnload.key, onUnload).put(sessionVars, SessionVar.emptyMap)
 		val newState = unloaded.copy(attributes = newAttrs)
 		onLoad(updateCurrent( newState ))
 	}
@@ -323,11 +329,13 @@ object Project extends Init[Scope] with ProjectExtra
 			val newS = setProjectReturn(s, newBase :: projectReturn(s))
 			(newS, newBase)
 	}
-	
+	@deprecated("This method does not apply state changes requested during task execution.  Use 'runTask' instead, which does.", "0.11.1")
 	def evaluateTask[T](taskKey: ScopedKey[Task[T]], state: State, checkCycles: Boolean = false, maxWorkers: Int = EvaluateTask.SystemProcessors): Option[Result[T]] =
+		runTask(taskKey, state, checkCycles, maxWorkers).map(_._2)	
+	def runTask[T](taskKey: ScopedKey[Task[T]], state: State, checkCycles: Boolean = false, maxWorkers: Int = EvaluateTask.SystemProcessors): Option[(State, Result[T])] =
 	{
 		val extracted = Project.extract(state)
-		EvaluateTask.evaluateTask(extracted.structure, taskKey, state, extracted.currentRef, checkCycles, maxWorkers)
+		EvaluateTask(extracted.structure, taskKey, state, extracted.currentRef, checkCycles, maxWorkers)
 	}
 	// this is here instead of Scoped so that it is considered without need for import (because of Project.Initialize)
 	implicit def richInitializeTask[T](init: Initialize[Task[T]]): Scoped.RichInitializeTask[T] = new Scoped.RichInitializeTask(init)
@@ -345,4 +353,66 @@ trait ProjectExtra
 		inScope(ThisScope.copy(task = Select(t.key)) )( ss )
 	def inScope(scope: Scope)(ss: Seq[Setting[_]]): Seq[Setting[_]] =
 		Project.transform(Scope.replaceThis(scope), ss)
+}
+
+	import sbinary.{Format, Operations}
+object SessionVar
+{
+	// these are required because of inference+manifest limitations
+	final case class Key[T](key: ScopedKey[Task[T]])
+	final case class Map(map: IMap[Key, Id]) {
+		def get[T](k: ScopedKey[Task[T]]): Option[T] = map get Key(k)
+		def put[T](k: ScopedKey[Task[T]], v: T): Map = Map(map put (Key(k), v))
+	}
+	def emptyMap = Map(IMap.empty)
+
+	def persistAndSet[T](key: ScopedKey[Task[T]], state: State, value: T)(implicit f: sbinary.Format[T]): State =
+	{
+		persist(key, state, value)(f)
+		set(key, state, value)
+	}
+
+	def persist[T](key: ScopedKey[Task[T]], state: State, value: T)(implicit f: sbinary.Format[T]): Unit =
+		Project.structure(state).streams.use(key)( s =>
+			Operations.write(s.binary(TaskData.DefaultDataID), value)(f)
+		)
+
+	def get[T](key: ScopedKey[Task[T]], state: State): Option[T] = orEmpty(state get sessionVars) get key
+
+	def set[T](key: ScopedKey[Task[T]], state: State, value: T): State = state.update(sessionVars)(om => orEmpty(om) put (key, value))
+
+	def orEmpty(opt: Option[Map]) = opt getOrElse emptyMap
+
+	def transform[S](task: Task[S], f: (State, S) => State): Task[S] =
+	{
+		val g = (s: S, map: AttributeMap) => map.put(Keys.transformState, (state: State) => f(state, s))
+		task.copy(info = task.info.postTransform(g))
+	}
+
+	def resolveContext[T](key: ScopedKey[Task[T]], context: Scope, state: State): ScopedKey[Task[T]] =
+	{
+		val subScope = Scope.replaceThis(context)(key.scope)
+		val scope = Project.structure(state).data.definingScope(subScope, key.key) getOrElse subScope
+		ScopedKey(scope, key.key)
+	}
+
+	def read[T](key: ScopedKey[Task[T]], state: State)(implicit f: Format[T]): Option[T] =
+		Project.structure(state).streams.use(key) { s =>
+			try { Some(Operations.read(s.readBinary(key, TaskData.DefaultDataID))) }
+			catch { case e: Exception => None }
+		}
+
+	def load[T](key: ScopedKey[Task[T]], state: State)(implicit f: Format[T]): Option[T] =
+		get(key, state) orElse read(key, state)(f)
+
+	def loadAndSet[T](key: ScopedKey[Task[T]], state: State, setIfUnset: Boolean = true)(implicit f: Format[T]): (State, Option[T]) =
+		get(key, state) match {
+			case s: Some[T] => (state, s)
+			case None => read(key, state)(f) match {
+				case s @ Some(t) =>
+					val newState = if(setIfUnset && get(key, state).isDefined) state else set(key, state, t)
+					(newState, s)
+				case None => (state, None)
+			}
+		}
 }
