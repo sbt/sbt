@@ -22,14 +22,13 @@ object Task
 	type Results[HL <: HList] = KList[Result, HL]
 }
 
-final case class Task[T](info: Info[T], work: Action[T])
+final case class Task[T](info: Info, work: Action[T])
 {
-	def original = info.original getOrElse this
-	override def toString = info.name orElse original.info.name getOrElse ("Task(" + info + ")")
+	override def toString = info.name getOrElse ("Task(" + info + ")")
 	override def hashCode = info.hashCode
 }
 /** `original` is used during transformation only.*/
-final case class Info[T](attributes: AttributeMap = AttributeMap.empty, original: Option[Task[T]] = None)
+final case class Info(attributes: AttributeMap = AttributeMap.empty)
 {
 	import Info._
 	def name = attributes.get(Name)
@@ -39,10 +38,10 @@ final case class Info[T](attributes: AttributeMap = AttributeMap.empty, original
 	def set[T](key: AttributeKey[T], value: T) = copy(attributes = this.attributes.put(key, value))
 
 	override def toString =
-		if(attributes.isEmpty && original.isEmpty)
+		if(attributes.isEmpty)
 			"_"
 		else
-			attributes.toString + (original match { case Some(o) => ", original: " + o; case None => "" })
+			attributes.toString
 }
 object Info
 {
