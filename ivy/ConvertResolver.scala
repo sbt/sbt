@@ -7,7 +7,7 @@ import java.util.Collections
 import org.apache.ivy.{core,plugins}
 import core.module.id.ModuleRevisionId
 import core.settings.IvySettings
-import plugins.resolver.{DependencyResolver, IBiblioResolver}
+import plugins.resolver.{BasicResolver, DependencyResolver, IBiblioResolver}
 import plugins.resolver.{AbstractPatternsBasedResolver, AbstractSshBasedResolver, FileSystemResolver, SFTPResolver, SshResolver, URLResolver}
 
 private object ConvertResolver
@@ -29,6 +29,7 @@ private object ConvertResolver
 				val resolver = new PluginCapableResolver
 				initializeMavenStyle(resolver, repo.name, repo.root)
 				resolver.setPatterns() // has to be done after initializeMavenStyle, which calls methods that overwrite the patterns
+				initializeBasic(resolver)
 				resolver
 			}
 			case r: JavaNet1Repository =>
@@ -38,6 +39,7 @@ private object ConvertResolver
 				val resolver = new IBiblioResolver { override def convertM2IdForResourceSearch(mrid: ModuleRevisionId) = mrid }
 				initializeMavenStyle(resolver, JavaNet1Repository.name, "http://download.java.net/maven/1/")
 				resolver.setPattern("[organisation]/[ext]s/[module]-[revision](-[classifier]).[ext]")
+				initializeBasic(resolver)
 				resolver
 			}
 			case repo: SshRepository =>
@@ -45,12 +47,14 @@ private object ConvertResolver
 				val resolver = new SshResolver
 				initializeSSHResolver(resolver, repo)
 				repo.publishPermissions.foreach(perm => resolver.setPublishPermissions(perm))
+				initializeBasic(resolver)
 				resolver
 			}
 			case repo: SftpRepository =>
 			{
 				val resolver = new SFTPResolver
 				initializeSSHResolver(resolver, repo)
+				initializeBasic(resolver)
 				resolver
 			}
 			case repo: FileRepository =>
@@ -61,6 +65,7 @@ private object ConvertResolver
 				import repo.configuration.{isLocal, isTransactional}
 				resolver.setLocal(isLocal)
 				isTransactional.foreach(value => resolver.setTransactional(value.toString))
+				initializeBasic(resolver)
 				resolver
 			}
 			case repo: URLRepository =>
@@ -68,11 +73,16 @@ private object ConvertResolver
 				val resolver = new URLResolver
 				resolver.setName(repo.name)
 				initializePatterns(resolver, repo.patterns)
+				initializeBasic(resolver)
 				resolver
 			}
 			case repo: ChainedResolver => IvySbt.resolverChain(repo.name, repo.resolvers, false, settings, log)
 			case repo: RawRepository => repo.resolver
 		}
+	}
+	private def initializeBasic(resolver: BasicResolver)
+	{
+		resolver.setDescriptor(BasicResolver.DESCRIPTOR_REQUIRED)
 	}
 	private def initializeMavenStyle(resolver: IBiblioResolver, name: String, root: String)
 	{
