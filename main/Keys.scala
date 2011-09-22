@@ -181,6 +181,7 @@ object Keys
 	val testLoader = TaskKey[ClassLoader]("test-loader", "Provides the class loader used for testing.")
 	val loadedTestFrameworks = TaskKey[Map[TestFramework,Framework]]("loaded-test-frameworks", "Loads Framework definitions from the test loader.")
 	val definedTests = TaskKey[Seq[TestDefinition]]("defined-tests", "Provides the list of defined tests.")
+	val definedTestNames = TaskKey[Seq[String]]("defined-test-names", "Provides the set of defined test names.")
 	val executeTests = TaskKey[Tests.Output]("execute-tests", "Executes all tests, producing a report.")
 	val test = TaskKey[Unit]("test", "Executes all tests.")
 	val testOnly = InputKey[Unit]("test-only", "Executes the tests provided as arguments or all tests if no arguments are provided.")

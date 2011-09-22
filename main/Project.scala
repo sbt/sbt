@@ -358,6 +358,8 @@ trait ProjectExtra
 	import sbinary.{Format, Operations}
 object SessionVar
 {
+	val DefaultDataID = "data"
+
 	// these are required because of inference+manifest limitations
 	final case class Key[T](key: ScopedKey[Task[T]])
 	final case class Map(map: IMap[Key, Id]) {
@@ -374,7 +376,7 @@ object SessionVar
 
 	def persist[T](key: ScopedKey[Task[T]], state: State, value: T)(implicit f: sbinary.Format[T]): Unit =
 		Project.structure(state).streams.use(key)( s =>
-			Operations.write(s.binary(TaskData.DefaultDataID), value)(f)
+			Operations.write(s.binary(DefaultDataID), value)(f)
 		)
 
 	def get[T](key: ScopedKey[Task[T]], state: State): Option[T] = orEmpty(state get sessionVars) get key
@@ -398,7 +400,7 @@ object SessionVar
 
 	def read[T](key: ScopedKey[Task[T]], state: State)(implicit f: Format[T]): Option[T] =
 		Project.structure(state).streams.use(key) { s =>
-			try { Some(Operations.read(s.readBinary(key, TaskData.DefaultDataID))) }
+			try { Some(Operations.read(s.readBinary(key, DefaultDataID))) }
 			catch { case e: Exception => None }
 		}
 

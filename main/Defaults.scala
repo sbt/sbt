@@ -194,7 +194,7 @@ object Defaults extends BuildCommon
 		compileIncSetup <<= compileIncSetupTask,
 		console <<= consoleTask,
 		consoleQuick <<= consoleQuickTask,
-		discoveredMainClasses <<= TaskData.write(compile map discoverMainClasses) triggeredBy compile,
+		discoveredMainClasses <<= compile map discoverMainClasses storeAs discoveredMainClasses triggeredBy compile,
 		definedSbtPlugins <<= discoverPlugins,
 		inTask(run)(runnerTask :: Nil).head,
 		selectMainClass <<= discoveredMainClasses map selectRunMain,
@@ -257,7 +257,8 @@ object Defaults extends BuildCommon
 		loadedTestFrameworks <<= (testFrameworks, streams, testLoader) map { (frameworks, s, loader) =>
 			frameworks.flatMap(f => f.create(loader, s.log).map( x => (f,x)).toIterable).toMap
 		},
-		definedTests <<= TaskData.writeRelated(detectTests)(_.map(_.name).distinct) triggeredBy compile,
+		definedTests <<= detectTests,
+		definedTestNames <<= definedTests map ( _.map(_.name).distinct) storeAs definedTestNames triggeredBy compile,
 		testListeners in GlobalScope :== Nil,
 		testOptions in GlobalScope :== Nil,
 		executeTests <<= (streams in test, loadedTestFrameworks, parallelExecution in test, testOptions in test, testLoader, definedTests, resolvedScoped, state) flatMap {
@@ -294,7 +295,7 @@ object Defaults extends BuildCommon
 	}
 
 	def testOnlyTask = 
-	InputTask( TaskData(definedTests)(testOnlyParser)(Nil) ) { result =>  
+	InputTask( loadForParser(definedTestNames)( (s, i) => testOnlyParser(s, i getOrElse Nil) ) ) { result =>  
 		(streams, loadedTestFrameworks, parallelExecution in testOnly, testOptions in testOnly, testLoader, definedTests, resolvedScoped, result, state) flatMap {
 			case (s, frameworks, par, opts, loader, discovered, scoped, (tests, frameworkOptions), st) =>
 				val filter = selectedFilter(tests)
@@ -405,7 +406,7 @@ object Defaults extends BuildCommon
 	def runMainTask(classpath: ScopedTask[Classpath], scalaRun: ScopedTask[ScalaRun]): Initialize[InputTask[Unit]] =
 	{
 			import DefaultParsers._
-		InputTask( TaskData(discoveredMainClasses)(runMainParser)(Nil) ) { result =>  
+		InputTask( loadForParser(discoveredMainClasses)( (s, names) => runMainParser(s, names getOrElse Nil) ) ) { result =>
 			(classpath, scalaRun, streams, result) map { case (cp, runner, s, (mainClass, args)) =>
 				toError(runner.run(mainClass, data(cp), args, s.log))
 			}
@@ -1133,7 +1134,18 @@ trait BuildCommon
 	def loadFromContext[T](task: ScopedTask[T], context: ScopedKey[_], s: State)(implicit f: sbinary.Format[T]): Option[T] =
 		SessionVar.load(SessionVar.resolveContext(task.scopedKey, context.scope, s), s)
 
-		// these are for use in tasks
+		// intended for use in constructing InputTasks
+	def loadForParser[P,T](task: ScopedTask[T])(f: (State, Option[T]) => Parser[P])(implicit format: sbinary.Format[T]): Initialize[State => Parser[P]] =
+		loadForParserI(task)(Project value f)(format)
+	def loadForParserI[P,T](task: ScopedTask[T])(init: Initialize[(State, Option[T]) => Parser[P]])(implicit format: sbinary.Format[T]): Initialize[State => Parser[P]] =
+		(resolvedScoped, init)( (ctx, f) => (s: State) => f( s, loadFromContext(task, ctx, s)(format)) )
+
+	def getForParser[P,T](task: ScopedTask[T])(init: (State, Option[T]) => Parser[P]): Initialize[State => Parser[P]] =
+		getForParserI(task)(Project value init)
+	def getForParserI[P,T](task: ScopedTask[T])(init: Initialize[(State, Option[T]) => Parser[P]]): Initialize[State => Parser[P]] =
+		(resolvedScoped, init)( (ctx, f) => (s: State) => f(s, getFromContext(task, ctx, s)) )
+
+		// these are for use for constructing Tasks
 	def loadPrevious[T](task: ScopedTask[T])(implicit f: sbinary.Format[T]): Initialize[Task[Option[T]]] =
 		(state, resolvedScoped) map { (s, ctx) => loadFromContext(task, ctx, s)(f) }
 
