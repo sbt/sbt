@@ -11,19 +11,22 @@ import java.io.File
 
 object Incremental
 {
+        val maxCycles = java.lang.Integer.getInteger("xsbt.compile.maxCycles", 1).intValue
+        assert(maxCycles >= 1, "maxCycles must be at least 1")
+
 	def debug(s: => String) = if(java.lang.Boolean.getBoolean("xsbt.inc.debug")) println(s) else ()
 	def compile(sources: Set[File], entry: String => Option[File], previous: Analysis, current: ReadStamps, forEntry: File => Option[Analysis], doCompile: Set[File] => Analysis, log: Logger)(implicit equivS: Equiv[Stamp]): (Boolean, Analysis) =
 	{
 		val initialChanges = changedInitial(entry, sources, previous, current, forEntry)
 		val initialInv = invalidateInitial(previous.relations, initialChanges, log)
 		log.debug("Initially invalidated: " + initialInv)
-		val analysis = cycle(initialInv, previous, doCompile, log)
+		val analysis = cycle(initialInv, previous, doCompile, log, 0)
 		(!initialInv.isEmpty, analysis)
 	}
 
 	// TODO: the Analysis for the last successful compilation should get returned + Boolean indicating success
 	// TODO: full external name changes, scopeInvalidations
-	def cycle(invalidated: Set[File], previous: Analysis, doCompile: Set[File] => Analysis, log: Logger): Analysis =
+	def cycle(invalidated: Set[File], previous: Analysis, doCompile: Set[File] => Analysis, log: Logger, depth: Int): Analysis =
 		if(invalidated.isEmpty)
 			previous
 		else
@@ -36,11 +39,11 @@ object Incremental
 			debug("********* Merged: \n" + merged.relations + "\n*********")
 			val incChanges = changedIncremental(invalidated, previous.apis.internalAPI _, merged.apis.internalAPI _)
 			debug("Changes:\n" + incChanges)
-			val incInv = invalidateIncremental(merged.relations, incChanges, invalidated, log)
+			val incInv = invalidateIncremental(merged.relations, incChanges, invalidated, log, depth)
 			log.debug("Incrementally invalidated: " + incInv)
-			cycle(incInv, merged, doCompile, log)
+			cycle(incInv, merged, doCompile, log, depth + 1)
 		}
-	
+
 
 	/**
 	* Accepts the sources that were recompiled during the last step and functions
@@ -67,7 +70,7 @@ object Incremental
 	{
 		val previous = previousAnalysis.stamps
 		val previousAPIs = previousAnalysis.apis
-		
+
 		val srcChanges = changes(previous.allInternalSources.toSet, sources,  f => !equivS.equiv( previous.internalSource(f), current.internalSource(f) ) )
 		val removedProducts = previous.allProducts.filter( p => !equivS.equiv( previous.product(p), current.product(p) ) ).toSet
 		val binaryDepChanges = previous.allBinaries.filter( externalBinaryModified(entry, forEntry, previous, current)).toSet
@@ -85,9 +88,14 @@ object Incremental
 			val (changed, unmodified) = inBoth.partition(existingModified)
 		}
 
-	def invalidateIncremental(previous: Relations, changes: APIChanges[File], recompiledSources: Set[File], log: Logger): Set[File] =
+	def invalidateIncremental(previous: Relations, changes: APIChanges[File], recompiledSources: Set[File], log: Logger, cycleDepth: Int): Set[File] =
 	{
-		val inv = invalidateTransitive(previous.usesInternalSrc _,  changes.modified, log)// ++ scopeInvalidations(previous.extAPI _, changes.modified, changes.names)
+		val useTransitive = cycleDepth + 1 >= maxCycles
+                val inv = if (useTransitive) {
+                        invalidateTransitive(previous.usesInternalSrc _,  changes.modified, log)// ++ scopeInvalidations(previous.extAPI _, changes.modified, changes.names)
+                } else {
+                        changes.modified ++ invalidateDirect(previous.usesInternalSrc _, changes.modified)
+                }
 		if((inv -- recompiledSources).isEmpty) Set.empty else inv
 	}
 
