@@ -121,7 +121,7 @@ Before running full-release, the following should be done manually from the root
 3. 'scripted'
 4. Set the release version in README, build definition, and in src/main/conscript configurations.
 5. Run 'show updated-wiki-repository'.  Update versions, documentation for release in displayed directory.
-6. Add notes/<version>.markdown (pending)
-7. 'preview-notes' (pending)
+6. Add notes/<version>.markdown
+7. 'preview-notes'
 """
 }
