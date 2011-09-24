@@ -4,7 +4,7 @@
 [app]
   org: org.scala-tools.sbt
   name: sbt
-  version: 0.11.0-RC0
+  version: 0.11.0
   class: sbt.ScriptMain
   components: xsbti
   cross-versioned: true
