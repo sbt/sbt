@@ -443,7 +443,7 @@ object BuiltinCommands
 	def loadProject = Command(LoadProject, LoadProjectBrief, LoadProjectDetailed)(_ => matched(Project.loadActionParser)) { (s,arg) => loadProjectCommands(arg) ::: s }
 
 	def loadProjectImpl = Command(LoadProjectImpl)(_ => Project.loadActionParser) { (s0, action) =>
-		val (s, base) = Project.loadAction(s0, action)
+		val (s, base) = Project.loadAction(SessionVar.clear(s0), action)
 		IO.createDirectory(base)
 		val (eval, structure) = Load.defaultLoad(s, base, logger(s))
 		val session = Load.initialSession(structure, eval)

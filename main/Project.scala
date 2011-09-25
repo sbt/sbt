@@ -164,7 +164,7 @@ object Project extends Init[Scope] with ProjectExtra
 	{
 		val unloaded = runUnloadHooks(s)
 		val (onLoad, onUnload) = getHooks(structure.data)
-		val newAttrs = unloaded.attributes.put(stateBuildStructure, structure).put(sessionSettings, session).put(Keys.onUnload.key, onUnload).put(sessionVars, SessionVar.emptyMap)
+		val newAttrs = unloaded.attributes.put(stateBuildStructure, structure).put(sessionSettings, session).put(Keys.onUnload.key, onUnload)
 		val newState = unloaded.copy(attributes = newAttrs)
 		onLoad(updateCurrent( newState ))
 	}
@@ -378,6 +378,8 @@ object SessionVar
 		Project.structure(state).streams.use(key)( s =>
 			Operations.write(s.binary(DefaultDataID), value)(f)
 		)
+
+	def clear(s: State): State  =  s.put(sessionVars, SessionVar.emptyMap)
 
 	def get[T](key: ScopedKey[Task[T]], state: State): Option[T] = orEmpty(state get sessionVars) get key
 
