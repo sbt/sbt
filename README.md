@@ -11,7 +11,7 @@ This is the 0.11.x series of sbt.  See [Setup] for getting started with the late
 
 sbt 0.7.7 and earlier versions are hosted on [Google Code].
 
-There is a [video of a demo] given at Scala Days 2011] based on sbt 0.10.0 that gives an introduction to the configuration system in sbt 0.10.0 and later.  See the [documentation] for current information.
+There is a [video of a demo] given at [Scala Days 2011] based on sbt 0.10.0 that gives an introduction to the configuration system in sbt 0.10.0 and later.  See the [documentation] for current information.
 
 # Build from source
 
