@@ -250,11 +250,11 @@ object Scoped
 
 	trait Reduced[HLs <: HList, HLt <: HList, HLv <: HList]
 	{ o =>
-		def settings: KList[ScopedSetting, HLs]  // SS[A] :^: SS[Task[B]] :^: ...
+		def settings: KList[Initialize, HLs]  // SS[A] :^: SS[Task[B]] :^: ...
 		def tasks(hls: HLs): KList[Task, HLt]  // takes setting values from previous line to Task[B] :^: ...
 		def expand(hls: HLs, hlt: Results[HLt]): Results[HLv] // takes Result[B] :+: ... to Value[A] :+: Result[B] :+: ...
 
-		def prependTask[H](key: ScopedSetting[Task[H]]) =
+		def prependTask[H](key: Initialize[Task[H]]) =
 			new Reduced[Task[H] :+: HLs, H :+: HLt, H :+: HLv]
 			{
 				val settings = KCons(key, o.settings)
@@ -262,7 +262,7 @@ object Scoped
 				def expand(hls: Task[H] :+: HLs, hlt: Results[H :+: HLt]) = KCons(hlt.head, o.expand(hls.tail, hlt.tail) )
 			}
 
-		def prependSetting[H](key: ScopedSetting[H]) =
+		def prependSetting[H](key: Initialize[H]) =
 			new Reduced[H :+: HLs, HLt, H :+: HLv]
 			{
 				val settings = KCons(key, o.settings)
@@ -277,7 +277,7 @@ object Scoped
 			}
 
 		def combine[D[_],S](c: Combine[D], f: Results[HLv] => D[S]): Initialize[Task[S]] =
-			Apply(settings)(hls => c(tasks(hls))(hlt => f(expand(hls, hlt))) )
+			Project.app(settings)(hls => c(tasks(hls))(hlt => f(expand(hls, hlt))) )
 	}
 	type RedHL[HL <: HList] = Reduced[_,_,HL]
 	def reduced[HL <: HList](settings: KList[ScopedTaskable, HL]): Reduced[_,_,HL] =
@@ -412,16 +412,6 @@ object Scoped
 	implicit def t7ToApp7[A,B,C,D,E,F,G](t7: (Initialize[A], Initialize[B], Initialize[C], Initialize[D], Initialize[E], Initialize[F], Initialize[G]) ): Apply7[A,B,C,D,E,F,G] = new Apply7(t7)
 	implicit def t8ToApp8[A,B,C,D,E,F,G,H](t8: (Initialize[A], Initialize[B], Initialize[C], Initialize[D], Initialize[E], Initialize[F], Initialize[G], Initialize[H]) ): Apply8[A,B,C,D,E,F,G,H] = new Apply8(t8)
 	implicit def t9ToApp9[A,B,C,D,E,F,G,H,I](t9: (Initialize[A], Initialize[B], Initialize[C], Initialize[D], Initialize[E], Initialize[F], Initialize[G], Initialize[H], Initialize[I]) ): Apply9[A,B,C,D,E,F,G,H,I] = new Apply9(t9)
-
-
-	object Apply
-	{
-		def apply[HL <: HList, T](in: KList[ScopedSetting, HL])(f: HL => T): Initialize[T] =
-			Project.app(in transform ssToSK)(f)
-
-		private val ssToSK = new (ScopedSetting ~> ScopedKey) { def apply[T](sk: ScopedSetting[T]) = new ScopedKey(sk.scope, sk.key) }
-	}	
-
 
 	def mkTuple2[A,B] = (a:A,b:B) => (a,b)
 	def mkTuple3[A,B,C] = (a:A,b:B,c:C) => (a,b,c)
