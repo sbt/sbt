@@ -224,7 +224,7 @@ object Defaults extends BuildCommon
 		} join
 	}
 	def watchTransitiveSourcesTask: Initialize[Task[Seq[File]]] =
-		inDependencies[Task[Seq[File]]](watchSources.task, const(std.TaskExtra.constant(Nil)), includeRoot = true) apply { _.join.map(_.flatten) }
+		inDependencies[Task[Seq[File]]](watchSources.task, const(std.TaskExtra.constant(Nil)), aggregate = true, includeRoot = true) apply { _.join.map(_.flatten) }
 
 	def watchSetting: Initialize[Watched] = (pollInterval, thisProjectRef, watchingMessage, triggeredMessage) { (interval, base, msg, trigMsg) =>
 		new Watched {
