@@ -75,7 +75,7 @@ object Parser extends ParserMain
 		def filter(f: T => Boolean, msg: => String): Result[T]
 		def seq[B](b: => Result[B]): Result[(T,B)] = app(b)( (m,n) => (m,n) )
 		def app[B,C](b: => Result[B])(f: (T, B) => C): Result[C]
-		def toEither: Either[Seq[String], T]
+		def toEither: Either[() => Seq[String], T]
 	}
 	final case class Value[+T](value: T) extends Result[T] {
 		def isFailure = false
@@ -110,7 +110,7 @@ object Parser extends ParserMain
 		def filter(f: Nothing => Boolean, msg: => String) = this
 		def app[B,C](b: => Result[B])(f: (Nothing, B) => C): Result[C] = this
 		def &&(b: => Result[_]) = this
-		def toEither = Left(errors)
+		def toEither = Left(() => errors)
 
 		private[this] def concatErrors(f: Failure) = mkFailures(errors ++ f.errors)
 	}
@@ -278,16 +278,17 @@ trait ParserMain
 	}
 
 	// intended to be temporary pending proper error feedback
-	def result[T](p: Parser[T], s: String): Either[(Seq[String],Int), T] =
+	def result[T](p: Parser[T], s: String): Either[() => (Seq[String],Int), T] =
 	{
-		def loop(i: Int, a: Parser[T]): Either[(Seq[String],Int), T] =
+		def loop(i: Int, a: Parser[T]): Either[() => (Seq[String],Int), T] =
 			a match
 			{
-				case Invalid(f) => Left( (f.errors, i) )
+				case Invalid(f) => Left( () => (f.errors, i) )
 				case _ =>
 					val ci = i+1
 					if(ci >= s.length)
-						a.resultEmpty.toEither.left.map { msgs =>
+						a.resultEmpty.toEither.left.map { msgs0 => () =>
+							val msgs = msgs0()
 							val nonEmpty = if(msgs.isEmpty) "Unexpected end of input" :: Nil else msgs
 							(nonEmpty, ci)
 						}
@@ -427,7 +428,7 @@ private final class ParserSeq[T](a: Seq[Parser[T]], errors: => Seq[String]) exte
 	{
 		val res = a.map(_.resultEmpty)
 		val (failures, values) = separate(res)(_.toEither)
-		if(failures.isEmpty) Value(values) else mkFailures(failures.flatten ++ errors)
+		if(failures.isEmpty) Value(values) else mkFailures(failures.flatMap(_()) ++ errors)
 	}
 	def result = {
 		val success = a.flatMap(_.result)
