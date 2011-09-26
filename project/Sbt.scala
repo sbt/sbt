@@ -148,12 +148,9 @@ object Sbt extends Build
 	lazy val scriptedSource = SettingKey[File]("scripted-source")
 	lazy val publishAll = TaskKey[Unit]("publish-all")
 
-	def deepTasks[T](scoped: ScopedTask[Seq[T]]): Initialize[Task[Seq[T]]] = deep(scoped.task).map { _.flatMap(_.join.map(_.flatten)) }
-	def deep[T](scoped: ScopedSetting[T]): Initialize[Task[Seq[T]]] =
-		state map { s =>
-			val sxrProjects = projects filterNot Set(root, sbtSub, scriptedBaseSub, scriptedSbtSub, scriptedPluginSub) map { p => LocalProject(p.id) }
-			Defaults.inAllProjects(sxrProjects, scoped, Project.extract(s).structure.data)
-		}
+	def deepTasks[T](scoped: ScopedTask[Seq[T]]): Initialize[Task[Seq[T]]] = deep(scoped.task) { _.join.map(_.flatten) }
+	def deep[T](scoped: ScopedSetting[T]): Initialize[Seq[T]] =
+		Util.inAllProjects(projects filterNot Set(root, sbtSub, scriptedBaseSub, scriptedSbtSub, scriptedPluginSub) map { p => LocalProject(p.id) }, scoped)
 
 	def launchSettings = inConfig(Compile)(Transform.configSettings) ++ Seq(jline, ivy, crossPaths := false,
 		compile in Test <<= compile in Test dependsOn(publishLocal in interfaceSub, publishLocal in testSamples, publishLocal in launchInterfaceSub)
@@ -167,7 +164,7 @@ object Sbt extends Build
 		scripted <<= scriptedTask,
 		scriptedSource <<= (sourceDirectory in sbtSub) / "sbt-test",
 		sources in sxr <<= deepTasks(sources in Compile),
-		Sxr.sourceDirectories <<= deep(sourceDirectories in Compile).map(_.map(_.flatten)),
+		Sxr.sourceDirectories <<= deep(sourceDirectories in Compile).map(_.flatten),
 		fullClasspath in sxr <<= (externalDependencyClasspath in Compile in sbtSub).identity,
 		compileInputs in (Compile,sxr) <<= (sources in sxr, compileInputs in sbtSub in Compile, fullClasspath in sxr) map { (srcs, in, cp) =>
 			in.copy(config = in.config.copy(sources = srcs, classpath = cp.files))
@@ -189,8 +186,9 @@ object Sbt extends Build
 	)
 
 	def precompiledSettings = Seq(
-		artifact in packageBin <<= scalaInstance in Compile apply { si =>
-			val bincID = binID + "_" + si.actualVersion
+		artifact in packageBin <<= (appConfiguration, scalaVersion) { (app, sv) =>
+			val launcher = app.provider.scalaProvider.launcher
+			val bincID = binID + "_" + ScalaInstance(sv, launcher).actualVersion
 			Artifact(binID) extra("e:component" -> bincID)
 		},
 		target <<= (target, scalaVersion) { (base, sv) => base / ("precompiled_" + sv) },

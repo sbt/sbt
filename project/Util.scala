@@ -6,14 +6,21 @@ object Util
 {
 	lazy val componentID = SettingKey[Option[String]]("component-id")
 
-	def inAll(projects: => Seq[ProjectReference], key: ScopedSetting[Task[Unit]]) =
-		state flatMap { s => nop dependsOn( Defaults.inAllProjects(projects, key, Project.extract(s).structure.data) : _*) }
-	
+	def inAll(projects: => Seq[ProjectReference], key: ScopedSetting[Task[Unit]]): Project.Initialize[Task[Unit]] =
+		inAllProjects(projects, key) { deps => nop dependsOn( deps : _*) }
+
+	def inAllProjects[T](projects: => Seq[ProjectReference], key: ScopedSetting[T]): Project.Initialize[Seq[T]] =
+		Project.bind( (loadedBuild, thisProjectRef).identity ) { case (lb, pr) =>
+			def resolve(ref: ProjectReference): ProjectRef = Scope.resolveProjectRef(pr.build, Load.getRootProject(lb.units), ref)
+			val refs = projects flatMap { base => Defaults.transitiveDependencies(resolve(base.project), lb, includeRoot=true, classpath=true, aggregate=true) }
+			refs map ( ref => (key in ref).? ) joinWith(_ flatMap { x => x})
+		}
+
+
 	def noPublish(p: Project) = p.copy(settings = noRemotePublish(p.settings))
 	def noRemotePublish(in: Seq[Setting[_]]) = in filterNot { s => s.key == deliver || s.key == publish }
-	lazy val noExtra = projectDependencies ~= { _.map(_.copy(extraAttributes = Map.empty)) } // remove after 0.10.2
 
-	def project(path: File, nameString: String) = Project(normalize(nameString), path) settings( name := nameString, noExtra )
+	def project(path: File, nameString: String) = Project(normalize(nameString), path) settings( name := nameString )
 	def baseProject(path: File, nameString: String) = project(path, nameString) settings( base : _*)
 	def testedBaseProject(path: File, nameString: String) = baseProject(path, nameString) settings( testDependencies : _*)
 	
