@@ -172,7 +172,7 @@ object Scoped
 
 		def ? : Initialize[Task[Option[S]]] = Project.optional(scopedKey) { case None => mktask { None }; case Some(t) => t map some.fn }
 		def ??[T >: S](or: => T): Initialize[Task[T]] = Project.optional(scopedKey)( _ getOrElse mktask(or) )
-		def or[T >: S](i: Initialize[Task[T]]): Initialize[Task[T]] = (this.? zipWith scopedKey)( (x,y) => (x :^: y :^: KNil) map hf2( _ getOrElse _ ))
+		def or[T >: S](i: Initialize[Task[T]]): Initialize[Task[T]] = (this.? zipWith i)( (x,y) => (x :^: y :^: KNil) map hf2( _ getOrElse _ ))
 	}
 	final class RichInitializeTask[S](i: Initialize[Task[S]])
 	{
