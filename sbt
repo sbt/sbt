@@ -38,6 +38,7 @@ declare -r sbt_snapshot_baseurl="http://typesafe.artifactoryonline.com/typesafe/
 declare -r default_java_opts="-Dfile.encoding=UTF8"
 declare -r default_sbt_opts="-XX:+CMSClassUnloadingEnabled"
 declare -r default_sbt_mem=1536
+declare -r noshare_opts="-Dsbt.global.base=project/.sbt -Dsbt.boot.directory=project/.boot -Dsbt.ivy.home=project/.ivy"
 declare -r sbt_opts_file=".sbtopts"
 declare -r latest_28="2.8.1"
 declare -r latest_29="2.9.1"
@@ -207,6 +208,7 @@ Usage: $script_name [options]
   -sbt-boot <path>  path to shared boot directory (default: ~/.sbt/boot in 0.11 series)
   -ivy      <path>  path to local Ivy repository (default: ~/.ivy2)
   -mem   <integer>  set memory options (default: $sbt_mem, which is $(get_mem_opts $sbt_mem))
+  -no-share         use all local caches; no sharing
 
   # sbt version (default: from project/build.properties if present, else latest release)
   -sbt-version  <version>   use the specified version of sbt
@@ -267,6 +269,7 @@ process_args ()
            -ivy) addJava "-Dsbt.ivy.home=$2"; shift 2 ;;
            -mem) sbt_mem="$2"; shift 2 ;;
      -no-colors) addJava "-Dsbt.log.noformat=true"; shift ;;
+      -no-share) addJava "$noshare_opts"; shift ;;
       -sbt-boot) addJava "-Dsbt.boot.directory=$2"; shift 2 ;;
        -sbt-dir) addJava "-Dsbt.global.base=$2"; shift 2 ;;
      -debug-inc) addJava "-Dxsbt.inc.debug=true"; shift ;;
