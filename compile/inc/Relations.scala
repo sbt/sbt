@@ -113,5 +113,22 @@ private class MRelations(val srcProd: Relation[File, File], val binaryDep: Relat
 	def -- (sources: Iterable[File]) =
 		new MRelations(srcProd -- sources, binaryDep -- sources, internalSrcDep -- sources, externalDep -- sources, classes -- sources)
 
-	override def toString = "Relations:\n  products: " + srcProd + "\n  bin deps: " + binaryDep + "\n  src deps: " +  internalSrcDep + "\n  ext deps: " + externalDep + "\n  class names: " + classes + "\n"
+  /** Making large Relations a little readable. */
+  private val userDir = sys.props("user.dir").stripSuffix("/") + "/"
+  private def nocwd(s: String)              = s stripPrefix userDir
+  private def line_s(kv: (Any, Any))        = "    " + nocwd("" + kv._1) + " -> " + nocwd("" + kv._2) + "\n"
+  private def relation_s(r: Relation[_, _]) = (
+    if (r.forwardMap.isEmpty) "Relation [ ]"
+    else (r.all.toSeq map line_s sorted) mkString ("Relation [\n", "", "]")
+  )
+	override def toString = (
+	  """
+	  |Relations:
+	  |  products: %s
+	  |  bin deps: %s
+	  |  src deps: %s
+	  |  ext deps: %s
+	  |  class names: %s
+	  """.trim.stripMargin.format(List(srcProd, binaryDep, internalSrcDep, externalDep, classes) map relation_s : _*)
+	)
 }
