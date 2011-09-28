@@ -30,9 +30,9 @@ get_mem_opts () {
 }
 
 # todo - make this dynamic
-declare -r sbt_release_version=0.10.1
-declare -r sbt_rc_version=0.11.0-RC1
-declare -r sbt_snapshot_version=0.11.0-SNAPSHOT
+declare -r sbt_release_version=0.11.0
+declare -r sbt_rc_version=
+declare -r sbt_snapshot_version=0.11.1-SNAPSHOT
 declare -r sbt_snapshot_baseurl="http://typesafe.artifactoryonline.com/typesafe/ivy-snapshots/org.scala-tools.sbt/sbt-launch/"
 
 declare -r default_java_opts="-Dfile.encoding=UTF8"
