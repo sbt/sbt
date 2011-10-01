@@ -7,7 +7,7 @@ package sbt
 	import complete.{DefaultParsers, HistoryCommands, Parser}
 	import HistoryCommands.{Start => HistoryPrefix}
 	import compiler.EvalImports
-	import Types.idFun
+	import Types.{const,idFun}
 
 	import Command.applyEffect
 	import Keys.{analysis,historyPath,globalLogging,shellPrompt}
@@ -224,7 +224,7 @@ object BuiltinCommands
 	}
 	
 	def multiParser(s: State): Parser[Seq[String]] =
-		( token(';' ~> OptSpace) flatMap { _ => matched(s.combinedParser) <~ token(OptSpace) } ).+
+		( token(';' ~> OptSpace) flatMap { _ => matched(s.combinedParser | token(charClass(_ != ';').+, hide= const(true))) <~ token(OptSpace) } ).+
 	def multiApplied(s: State) = 
 		Command.applyEffect( multiParser(s) )( _ ::: s )
 
