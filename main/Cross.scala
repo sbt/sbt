@@ -6,7 +6,7 @@ package sbt
 	import Keys._
 	import complete.{DefaultParsers, Parser}
 	import DefaultParsers._
-	import Project.Setting
+	import Project.{ScopedKey, Setting}
 	import Scope.GlobalScope
 
 object Cross
@@ -33,7 +33,10 @@ object Cross
 		Project.setProject(session, newStructure, command :: state)
 	}
 	def crossExclude(s: Setting[_]): Boolean =
-		s.key.key == scalaVersion.key || s.key.key == scalaHome.key
+		s.key match {
+			case ScopedKey( Scope(_, Global, Global, _), scalaHome.key | scalaVersion.key) => true
+			case _ => false
+		}
 
 	def crossParser(state: State): Parser[String] =
 		token(Cross <~ OptSpace) flatMap { _ => token(matched( state.combinedParser & spacedFirst(Cross) )) }
