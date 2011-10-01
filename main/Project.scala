@@ -112,7 +112,7 @@ object Project extends Init[Scope] with ProjectExtra
 		case BuildRef(current.build) => "{.}/"
 		case `current` => if(multi) current.project + "/" else ""
 		case ProjectRef(current.build, x) => x + "/"
-		case _ => display(project)
+		case _ => display(project) + "/"
 	}
 
 	private abstract class ProjectDef[PR <: ProjectReference](val id: String, val base: File, aggregate0: => Seq[PR], dependencies0: => Seq[ClasspathDep[PR]], delegates0: => Seq[PR],
