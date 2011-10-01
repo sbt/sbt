@@ -46,8 +46,11 @@ class MakePom(val log: Logger)
 			{ makeStartYear(moduleInfo) }
 			{ makeOrganization(moduleInfo) }
 			{ extra }
-			{ makeProperties(module) }
-			{ makeDependencies(module, configurations) }
+			{
+				val deps = depsInConfs(module, configurations)
+				makeProperties(module, deps) ++
+				makeDependencies(deps)
+			}
 			{ makeRepositories(ivy.getSettings, allRepositories, filterRepositories) }
 		</project>)
 
@@ -74,10 +77,12 @@ class MakePom(val log: Logger)
 			{ moduleInfo.organizationHomepage map { h => <url>{h}</url> } getOrElse NodeSeq.Empty }
 		</organization>
 	}
-	def makeProperties(module: ModuleDescriptor): NodeSeq =
+	def makeProperties(module: ModuleDescriptor, dependencies: Seq[DependencyDescriptor]): NodeSeq =
 	{
 		val extra = IvySbt.getExtraAttributes(module)
-		if(extra.isEmpty) NodeSeq.Empty else makeProperties(extra)
+		val depExtra = CustomPomParser.writeDependencyExtra(dependencies).mkString("\n")
+		val allExtra = if(depExtra.isEmpty) extra else extra.updated(CustomPomParser.ExtraAttributesKey, depExtra)
+		if(allExtra.isEmpty) NodeSeq.Empty else makeProperties(allExtra)
 	}
 	def makeProperties(extra: Map[String,String]): NodeSeq =
 		<properties> {
@@ -110,15 +115,13 @@ class MakePom(val log: Logger)
 		}
 	val IgnoreTypes: Set[String] = Set(Artifact.SourceType, Artifact.DocType, Artifact.PomType)
 
-	def makeDependencies(module: ModuleDescriptor, configurations: Option[Iterable[Configuration]]): NodeSeq =
-	{
-		val dependencies = depsInConfs(module, configurations)
-		if(dependencies.isEmpty) NodeSeq.Empty
+	def makeDependencies(dependencies: Seq[DependencyDescriptor]): NodeSeq =
+		if(dependencies.isEmpty)
+			NodeSeq.Empty
 		else
 			<dependencies>
 				{ dependencies.map(makeDependency) }
 			</dependencies>
-	}
 
 	def makeDependency(dependency: DependencyDescriptor): NodeSeq =
 	{

@@ -1,0 +1,10 @@
+-> b/update
+-> c/update
+
+> a/publish
+> b/update
+-> c/update
+
+> b/publish
+> c/update
+> c/publish
