@@ -19,7 +19,8 @@ object Sbt extends Build
 		publishArtifact in packageDoc := false,
 		scalaVersion := "2.9.1",
 		publishMavenStyle := false,
-		componentID := None
+		componentID := None,
+		javacOptions in Compile ++= Seq("-target", "6", "-source", "6")
 	)
 
 	lazy val myProvided = config("provided") intransitive;
