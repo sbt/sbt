@@ -193,6 +193,25 @@ trait Init[Scope]
 	{
 		override def toString = showFullKey(key)
 	}
+	final class Flattened(val key: ScopedKey[_], val dependencies: Iterable[ScopedKey[_]])
+	
+	def flattenLocals(compiled: CompiledMap): Map[ScopedKey[_],Flattened] =
+	{
+		import collection.breakOut
+		val locals = compiled.flatMap { case (key, comp) => if(key.key.isLocal) Seq[Compiled[_]](comp) else Nil }(breakOut)
+		val ordered = Dag.topologicalSort(locals)(_.dependencies.flatMap(dep => if(dep.key.isLocal) Seq[Compiled[_]](compiled(dep)) else Nil))
+		def flatten(cmap: Map[ScopedKey[_],Flattened], key: ScopedKey[_], deps: Iterable[ScopedKey[_]]): Flattened =
+			new Flattened(key, deps.flatMap(dep => if(dep.key.isLocal) cmap(dep).dependencies else dep :: Nil))
+		
+		val empty = Map.empty[ScopedKey[_],Flattened]
+		val flattenedLocals = (empty /: ordered) { (cmap, c) => cmap.updated(c.key, flatten(cmap, c.key, c.dependencies)) }
+		compiled.flatMap{ case (key, comp) =>
+			if(key.key.isLocal)
+				Nil
+			else
+				Seq[ (ScopedKey[_], Flattened)]( (key, flatten(flattenedLocals, key, comp.dependencies)) )
+		}(breakOut)
+	}
 
 	sealed trait Initialize[T]
 	{

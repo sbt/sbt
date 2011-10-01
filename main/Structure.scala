@@ -500,6 +500,8 @@ object TaskKey
 
 	def apply[T](akey: AttributeKey[Task[T]]): TaskKey[T] =
 		new TaskKey[T](akey)
+
+	def local[T: Manifest]: TaskKey[T] = apply[T](AttributeKey.local[Task[T]])
 }
 object SettingKey
 {
@@ -511,4 +513,6 @@ object SettingKey
 
 	def apply[T](akey: AttributeKey[T]): SettingKey[T] =
 		new SettingKey[T](akey)
+
+	def local[T: Manifest]: SettingKey[T] = apply[T](AttributeKey.local[T])
 }

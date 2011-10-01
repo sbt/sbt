@@ -264,7 +264,7 @@ object Project extends Init[Scope] with ProjectExtra
 			case Some(sc) => "Provided by:\n\t" + Scope.display(sc, key.label) + "\n"
 			case None => ""
 		}
-		val cMap = compiled(structure.settings, actual)(structure.delegates, structure.scopeLocal, display)
+		val cMap = flattenLocals(compiled(structure.settings, actual)(structure.delegates, structure.scopeLocal, display))
 		val related = cMap.keys.filter(k => k.key == key && k.scope != scope)
 		val depends = cMap.get(scoped) match { case Some(c) => c.dependencies.toSet; case None => Set.empty }
 		val reverse = reverseDependencies(cMap, scoped)
@@ -294,12 +294,12 @@ object Project extends Init[Scope] with ProjectExtra
 	def relation(structure: BuildStructure, actual: Boolean)(implicit display: Show[ScopedKey[_]]) =
 	{
 		type Rel = Relation[ScopedKey[_], ScopedKey[_]]
-		val cMap = compiled(structure.settings, actual)(structure.delegates, structure.scopeLocal, display)
+		val cMap = flattenLocals(compiled(structure.settings, actual)(structure.delegates, structure.scopeLocal, display))
 		((Relation.empty: Rel) /: cMap) { case (r, (key, value)) =>
 			r + (key, value.dependencies)
 		}
 	}
-	def reverseDependencies(cMap: CompiledMap, scoped: ScopedKey[_]): Iterable[ScopedKey[_]] =
+	def reverseDependencies(cMap: Map[ScopedKey[_],Flattened], scoped: ScopedKey[_]): Iterable[ScopedKey[_]] =
 		for( (key,compiled) <- cMap; dep <- compiled.dependencies if dep == scoped)  yield  key
 
 	object LoadAction extends Enumeration {

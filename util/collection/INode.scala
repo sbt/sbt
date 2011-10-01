@@ -55,7 +55,10 @@ abstract class EvaluateSettings[Scope]
 		}
 		getResults(delegates)
 	}
-	private[this] def getResults(implicit delegates: Scope => Seq[Scope]) = (empty /: static.toTypedSeq) { case (ss, static.TPair(key, node)) => ss.set(key.scope, key.key, node.get) }
+	private[this] def getResults(implicit delegates: Scope => Seq[Scope]) =
+		(empty /: static.toTypedSeq) { case (ss, static.TPair(key, node)) =>
+			if(key.key.isLocal) ss else ss.set(key.scope, key.key, node.get)
+		}
 	private[this] val getValue = new (INode ~> Id) { def apply[T](node: INode[T]) = node.get }
 
 	private[this] def submitEvaluate(node: INode[_]) = submit(node.evaluate())

@@ -14,33 +14,46 @@ sealed trait AttributeKey[T] {
 	def label: String
 	def description: Option[String]
 	def extend: Seq[AttributeKey[_]]
+	def isLocal: Boolean
+}
+private[sbt] abstract class SharedAttributeKey[T] extends AttributeKey[T] {
 	override final def toString = label
 	override final def hashCode = label.hashCode
 	override final def equals(o: Any) = (this eq o.asInstanceOf[AnyRef]) || (o match {
-		case a: AttributeKey[t] => a.label == this.label && a.manifest == this.manifest
+		case a: SharedAttributeKey[t] => a.label == this.label && a.manifest == this.manifest
 		case _ => false
 	})
+	final def isLocal: Boolean = false
 }
 object AttributeKey
 {
-	def apply[T](name: String)(implicit mf: Manifest[T]): AttributeKey[T] = new AttributeKey[T] {
+	def apply[T](name: String)(implicit mf: Manifest[T]): AttributeKey[T] = new SharedAttributeKey[T] {
 		def manifest = mf
 		def label = name
 		def description = None
 		def extend = Nil
 	}
-	def apply[T](name: String, description0: String)(implicit mf: Manifest[T]): AttributeKey[T] = new AttributeKey[T] {
+	def apply[T](name: String, description0: String)(implicit mf: Manifest[T]): AttributeKey[T] = new SharedAttributeKey[T] {
 		def manifest = mf
 		def label = name
 		def description = Some(description0)
 		def extend = Nil
 	}
-	def apply[T](name: String, description0: String, extend0: Seq[AttributeKey[_]])(implicit mf: Manifest[T]): AttributeKey[T] = new AttributeKey[T] {
+	def apply[T](name: String, description0: String, extend0: Seq[AttributeKey[_]])(implicit mf: Manifest[T]): AttributeKey[T] = new SharedAttributeKey[T] {
 		def manifest = mf
 		def label = name
 		def description = Some(description0)
 		def extend = extend0
 	}
+	private[sbt] def local[T](implicit mf: Manifest[T]): AttributeKey[T] = new AttributeKey[T] {
+		def manifest = mf
+		def label = LocalLabel
+		def description = None
+		def extend = Nil
+		override def toString = label
+		def isLocal: Boolean = true
+	}
+	private[sbt] final val LocalLabel = "$local"
 }
 
 trait AttributeMap
