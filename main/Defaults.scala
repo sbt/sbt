@@ -1037,11 +1037,13 @@ trait BuildExtra extends BuildCommon
 		val pkgd = packagedArtifacts <<= (packagedArtifacts, taskDef) map ( (pas,file) => pas updated (a, file) )
 		seq( artifacts += a, pkgd )
 	}
-	def addArtifact(artifact: ScopedSetting[Artifact], taskDef: ScopedTask[File]): SettingsDefinition =
+	def addArtifact(artifact: Initialize[Artifact], taskDef: Initialize[Task[File]]): SettingsDefinition =
 	{
-		val art = artifacts <<= (artifact, artifacts)( _ +: _ )
-		val pkgd = packagedArtifacts <<= (packagedArtifacts, artifact, taskDef) map ( (pas,a,file) => pas updated (a, file))
-		seq( art, pkgd )
+		val artLocal = SettingKey.local[Artifact]
+		val taskLocal = TaskKey.local[File]
+		val art = artifacts <<= (artLocal, artifacts)( _ +: _ )
+		val pkgd = packagedArtifacts <<= (packagedArtifacts, artLocal, taskLocal) map ( (pas,a,file) => pas updated (a, file))
+		seq( artLocal <<= artifact, taskLocal <<= taskDef, art, pkgd )
 	}
 
 	def seq(settings: Setting[_]*): SettingsDefinition = new Project.SettingList(settings)
