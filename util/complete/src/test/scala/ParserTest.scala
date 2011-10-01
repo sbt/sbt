@@ -54,13 +54,13 @@ object ParserTest extends Properties("Completing Parser")
 		( ("display '" + in + "'") |: checkOne(in, nestedDisplay, expectDisplay) )
 		
 	def checkOne(in: String, parser: Parser[_], expect: Completion): Prop =
-		p(completions(parser, in)) == Completions.single(expect)
+		p(completions(parser, in, 1)) == Completions.single(expect)
 
 	def checkInvalid(in: String) =
 		( ("token '" + in + "'") |: checkInv(in, nested) ) &&
 		( ("display '" + in + "'") |: checkInv(in, nestedDisplay) )
 	def checkInv(in: String, parser: Parser[_]): Prop =
-		p(completions(parser, in)) == Completions.nil
+		p(completions(parser, in, 1)) == Completions.nil
 	
 	property("nested tokens a") = checkSingle("", Completion.tokenStrict("","a1") )( Completion.displayStrict("<a1>"))
 	property("nested tokens a1") = checkSingle("a", Completion.tokenStrict("a","1") )( Completion.displayStrict("<a1>"))
@@ -91,9 +91,9 @@ object ParserExample
 	val t = name ~ options ~ include
 
 	// Get completions for some different inputs
-	println(completions(t, "te"))
-	println(completions(t, "test "))
-	println(completions(t, "test w"))
+	println(completions(t, "te", 1))
+	println(completions(t, "test ",1))
+	println(completions(t, "test w",  1))
 
 	// Get the parsed result for different inputs
 	println(apply(t)("te").resultEmpty)
