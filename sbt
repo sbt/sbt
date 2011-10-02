@@ -40,7 +40,7 @@ declare -r default_sbt_opts="-XX:+CMSClassUnloadingEnabled"
 declare -r default_sbt_mem=1536
 declare -r noshare_opts="-Dsbt.global.base=project/.sbt -Dsbt.boot.directory=project/.boot -Dsbt.ivy.home=project/.ivy"
 declare -r sbt_opts_file=".sbtopts"
-declare -r latest_28="2.8.1"
+declare -r latest_28="2.8.2"
 declare -r latest_29="2.9.1"
 declare -r latest_210="2.10.0-SNAPSHOT"
 
