@@ -29,9 +29,15 @@ get_mem_opts () {
   echo "-Xms${mem}m -Xmx${mem}m -XX:MaxPermSize=${perm}m -XX:ReservedCodeCacheSize=${codecache}m"
 }
 
+die() {
+  echo "Aborting: $@"
+  exit 1
+}
+
 # todo - make this dynamic
 declare -r sbt_release_version=0.11.0
-declare -r sbt_rc_version=
+unset sbt_rc_version
+# declare -r sbt_rc_version=
 declare -r sbt_snapshot_version=0.11.1-SNAPSHOT
 declare -r sbt_snapshot_baseurl="http://typesafe.artifactoryonline.com/typesafe/ivy-snapshots/org.scala-tools.sbt/sbt-launch/"
 
@@ -275,7 +281,7 @@ process_args ()
      -debug-inc) addJava "-Dxsbt.inc.debug=true"; shift ;;
 
     -sbt-create) sbt_create=true; shift ;;
-        -sbt-rc) sbt_version=$sbt_rc_version; shift ;;
+        -sbt-rc) [[ -n "$sbt_rc_version" ]] || die "no sbt RC candidate defined."; sbt_version=$sbt_rc_version; shift ;;
   -sbt-snapshot) addSnapshotRepo ; sbt_version=$sbt_snapshot_version; shift ;;
        -sbt-jar) sbt_jar="$2"; shift 2 ;;
    -sbt-version) sbt_version="$2"; shift 2 ;;
