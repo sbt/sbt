@@ -19,7 +19,7 @@ trait Build
 	def projectDefinitions(baseDirectory: File): Seq[Project] = projects
 	def projects: Seq[Project] = ReflectUtilities.allVals[Project](this).values.toSeq
 	def settings: Seq[Setting[_]] = Defaults.buildCore
-	def buildResolvers: Seq[BuildLoader.BuildResolver] = Nil
+	def buildLoaders: Seq[BuildLoader.Components] = Nil
 }
 trait Plugin
 {
