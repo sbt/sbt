@@ -58,10 +58,23 @@ object ScalaInstance
 
 	/** Gets the version of Scala in the compiler.properties file from the loader.*/
 	private def actualVersion(scalaLoader: ClassLoader)(label: String) =
+		try fastActualVersion(scalaLoader)
+		catch { case e: Exception => slowActualVersion(scalaLoader)(label) }
+	private def slowActualVersion(scalaLoader: ClassLoader)(label: String) =
 	{
 		val v = try { Class.forName("scala.tools.nsc.Properties", true, scalaLoader).getMethod("versionString").invoke(null).toString }
 		catch { case cause: Exception => throw new InvalidScalaInstance("Scala instance doesn't exist or is invalid: " + label, cause) }
 		if(v.startsWith(VersionPrefix)) v.substring(VersionPrefix.length) else v
+	}
+	private def fastActualVersion(scalaLoader: ClassLoader): String =
+	{
+		val stream = scalaLoader.getResourceAsStream("compiler.properties")
+		try { 
+			val props = new java.util.Properties
+			props.load(stream)
+			props.getProperty("version.number")
+		}
+		finally stream.close()
 	}
 
 	import java.net.{URL, URLClassLoader}
