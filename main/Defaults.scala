@@ -7,6 +7,7 @@ package sbt
 	import Scope.{fillTaskAxis, GlobalScope, ThisScope}
 	import xsbt.api.Discovery
 	import Project.{inConfig, Initialize, inScope, inTask, ScopedKey, Setting, SettingsDefinition}
+	import Load.LoadedBuild
 	import Artifact.{DocClassifier, SourceClassifier}
 	import Configurations.{Compile, CompilerPlugin, IntegrationTest, names, Provided, Runtime, Test}
 	import complete._
@@ -539,12 +540,12 @@ object Defaults extends BuildCommon
 			transitiveDependencies(base, lb, includeRoot, classpath, aggregate) map ( ref => (key in ref) ?? default(ref) ) join ;
 		}
 
-	def transitiveDependencies(base: ProjectRef, structure: Load.LoadedBuild, includeRoot: Boolean, classpath: Boolean = true, aggregate: Boolean = false): Seq[ProjectRef] =
+	def transitiveDependencies(base: ProjectRef, structure: LoadedBuild, includeRoot: Boolean, classpath: Boolean = true, aggregate: Boolean = false): Seq[ProjectRef] =
 	{
 		val full = Dag.topologicalSort(base)(getDependencies(structure, classpath, aggregate))
 		if(includeRoot) full else full.dropRight(1)
 	}
-	def getDependencies(structure: Load.LoadedBuild, classpath: Boolean = true, aggregate: Boolean = false): ProjectRef => Seq[ProjectRef] =
+	def getDependencies(structure: LoadedBuild, classpath: Boolean = true, aggregate: Boolean = false): ProjectRef => Seq[ProjectRef] =
 		ref => Project.getProject(ref, structure).toList flatMap { p =>
 			(if(classpath) p.dependencies.map(_.project) else Nil) ++
 			(if(aggregate) p.aggregate else Nil)
@@ -594,7 +595,7 @@ object Classpaths
 		products <<= makeProducts,
 		productDirectories <<= compileInputs map (_.config.classesDirectory :: Nil),
 		exportedProducts <<= exportProductsTask,
-		classpathConfiguration <<= (internalConfigurationMap, configuration)( _ apply _ ),
+		classpathConfiguration <<= (internalConfigurationMap, configuration, classpathConfiguration.?, update.task) apply findClasspathConfig,
 		managedClasspath <<= (classpathConfiguration, classpathTypes, update) map managedJars,
 			// remove when defaultExcludes and classpathFilter are removed
 		excludeFilter in unmanagedJars <<= (defaultExcludes in unmanagedJars) or (excludeFilter in unmanagedJars),
@@ -607,6 +608,14 @@ object Classpaths
 	lazy val defaultPackages: Seq[ScopedTask[File]] =
 		for(task <- defaultPackageKeys; conf <- Seq(Compile, Test)) yield (task in conf)
 	lazy val defaultArtifactTasks: Seq[ScopedTask[File]] = makePom +: defaultPackages
+
+	def findClasspathConfig(map: Configuration => Configuration, thisConfig: Configuration, delegate: Task[Option[Configuration]], up: Task[UpdateReport]): Task[Configuration] =
+		(delegate :^: up :^: KNil) map { case delegated :+: report :+: HNil =>
+			val defined = report.allConfigurations.toSet
+			val search = map(thisConfig) +: (delegated.toList ++ Seq(Compile, Configurations.Default))
+			def notFound = error("Configuration to use for managed classpath must be explicitly defined when default configurations are not present.")
+			search find { defined contains _.name } getOrElse notFound
+		}
 
 	def packaged(pkgTasks: Seq[ScopedTask[File]]): Initialize[Task[Map[Artifact, File]]] =
 		enabledOnly(packagedArtifact.task, pkgTasks) apply (_.join.map(_.toMap))

@@ -219,7 +219,7 @@ object Keys
 	val fullClasspath = TaskKey[Classpath]("full-classpath", "The exported classpath, consisting of build products and unmanaged and managed, internal and external dependencies.")
 	
 	val internalConfigurationMap = SettingKey[Configuration => Configuration]("internal-configuration-map", "Maps configurations to the actual configuration used to define the classpath.")
-	val classpathConfiguration = SettingKey[Configuration]("classpath-configuration", "The configuration used to define the classpath.")
+	val classpathConfiguration = TaskKey[Configuration]("classpath-configuration", "The configuration used to define the classpath.")
 	val ivyConfiguration = TaskKey[IvyConfiguration]("ivy-configuration", "General dependency management (Ivy) settings, such as the resolvers and paths to use.")
 	val ivyConfigurations = SettingKey[Seq[Configuration]]("ivy-configurations", "The defined configurations for dependency management.  This may be different from the configurations for Project settings.")
 	val moduleSettings = TaskKey[ModuleSettings]("module-settings", "Module settings, which configure a specific module, such as a project.")
