@@ -59,7 +59,7 @@ object Incremental
 
 		new APIChanges(modifiedAPIs, changedNames)
 	}
-	def sameSource(a: Source, b: Source): Boolean  =  shortcutSameSource(a, b) || SameAPI(a.api, b.api)
+	def sameSource(a: Source, b: Source): Boolean  =  shortcutSameSource(a, b) || SameAPI(a,b)
 	def shortcutSameSource(a: Source, b: Source): Boolean  =  !a.hash.isEmpty && !b.hash.isEmpty && sameCompilation(a.compilation, b.compilation) && (a.hash deepEquals b.hash)
 	def sameCompilation(a: Compilation, b: Compilation): Boolean  =  a.startTime == b.startTime && a.target == b.target
 

@@ -4,7 +4,7 @@
 package sbt
 
 	import std._
-	import compiler.{Discovered,Discovery}
+	import xsbt.api.{Discovered,Discovery}
 	import inc.Analysis
 	import TaskExtra._
 	import Types._

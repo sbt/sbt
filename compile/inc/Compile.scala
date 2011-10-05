@@ -43,7 +43,7 @@ private final class AnalysisCallback(internalMap: File => Option[File], external
 	
 	import collection.mutable.{HashMap, HashSet, ListBuffer, Map, Set}
 	
-	private val apis = new HashMap[File, SourceAPI]
+	private val apis = new HashMap[File, (Int, SourceAPI)]
 	private val binaryDeps = new HashMap[File, Set[File]]
 	private val classes = new HashMap[File, Set[(File, String)]]
 	private val sourceDeps = new HashMap[File, Set[File]]
@@ -81,7 +81,7 @@ private final class AnalysisCallback(internalMap: File => Option[File], external
 		
 	def generatedClass(source: File, module: File, name: String) = add(classes, source, (module, name))
 	
-	def api(sourceFile: File, source: SourceAPI) { apis(sourceFile) = source }
+	def api(sourceFile: File, source: SourceAPI) { apis(sourceFile) = (xsbt.api.HashAPI(source), xsbt.api.APIUtil.minimize(source)) }
 	def endSource(sourcePath: File): Unit =
 		assert(apis.contains(sourcePath))
 	
@@ -92,7 +92,7 @@ private final class AnalysisCallback(internalMap: File => Option[File], external
 		(base /: apis) { case (a, (src, api) ) =>
 			val stamp = current.internalSource(src)
 			val hash = stamp match { case h: Hash => h.value; case _ => new Array[Byte](0) }
-			val s = new xsbti.api.Source(compilation, hash, api)
+			val s = new xsbti.api.Source(compilation, hash, api._2, api._1)
 			a.addSource(src, s, stamp, sourceDeps.getOrElse(src, Nil: Iterable[File]))
 		}
 	def addExternals(base: Analysis): Analysis = (base /: extSrcDeps) { case (a, (source, name, api)) => a.addExternalDep(source, name, api) }

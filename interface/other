@@ -2,6 +2,7 @@ Source
 	compilation: Compilation
 	hash: Byte*
 	api: SourceAPI
+	apiHash: Int
 
 SourceAPI
 	packages : Package*

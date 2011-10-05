@@ -5,7 +5,8 @@ package sbt
 
 	import java.io.File
 	import java.net.URI
-	import compiler.{Discovered,Discovery,Eval,EvalImports}
+	import compiler.{Eval,EvalImports}
+	import xsbt.api.{Discovered,Discovery}
 	import classpath.ClasspathUtilities
 	import scala.annotation.tailrec
 	import collection.mutable

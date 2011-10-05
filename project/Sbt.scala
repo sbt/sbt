@@ -44,7 +44,8 @@ object Sbt extends Build
 	lazy val interfaceSub = project(file("interface"), "Interface") settings(interfaceSettings : _*)
 
 		// defines operations on the API of a source, including determining whether it has changed and converting it to a string
-	lazy val apiSub = baseProject(compilePath / "api", "API") dependsOn(interfaceSub)
+		//   and discovery of subclasses and annotations
+	lazy val apiSub = testedBaseProject(compilePath / "api", "API") dependsOn(interfaceSub)
 
 	/***** Utilities *****/
 
@@ -97,10 +98,7 @@ object Sbt extends Build
 	lazy val compilePersistSub = baseProject(compilePath / "persist", "Persist") dependsOn(compileIncrementalSub, apiSub) settings(sbinary)
 		// sbt-side interface to compiler.  Calls compiler-side interface reflectively
 	lazy val compilerSub = testedBaseProject(compilePath, "Compile") dependsOn(launchInterfaceSub, interfaceSub % "compile;test->test", ivySub, ioSub, classpathSub, 
-		logSub % "test->test", launchSub % "test->test", apiSub % "test->test") settings( compilerSettings : _*)
-
-		// Searches the source API data structures, currently looks for subclasses and annotations
-	lazy val discoverySub = testedBaseProject(compilePath / "discover", "Discovery") dependsOn(compileIncrementalSub, apiSub, compilerSub % "test->test")
+		logSub % "test->test", launchSub % "test->test", apiSub % "test") settings( compilerSettings : _*)
 
 	lazy val scriptedBaseSub = baseProject(scriptedPath / "base", "Scripted Framework") dependsOn(ioSub, processSub)
 	lazy val scriptedSbtSub = baseProject(scriptedPath / "sbt", "Scripted sbt") dependsOn(ioSub, logSub, processSub, scriptedBaseSub, launchInterfaceSub % "provided")
@@ -109,7 +107,7 @@ object Sbt extends Build
 
 		// Implementation and support code for defining actions.
 	lazy val actionsSub = baseProject(mainPath / "actions", "Actions") dependsOn(
-		classfileSub, classpathSub, compileIncrementalSub, compilePersistSub, compilerSub, completeSub, discoverySub,
+		classfileSub, classpathSub, compileIncrementalSub, compilePersistSub, compilerSub, completeSub, apiSub,
 		interfaceSub, ioSub, ivySub, logSub, processSub, runSub, stdTaskSub, taskSub, trackingSub, testingSub)
 
 		// The main integration project for sbt.  It brings all of the subsystems together, configures them, and provides for overriding conventions.

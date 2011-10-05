@@ -5,7 +5,7 @@ package sbt
 
 	import Build.data
 	import Scope.{fillTaskAxis, GlobalScope, ThisScope}
-	import compiler.Discovery
+	import xsbt.api.Discovery
 	import Project.{inConfig, Initialize, inScope, inTask, ScopedKey, Setting, SettingsDefinition}
 	import Artifact.{DocClassifier, SourceClassifier}
 	import Configurations.{Compile, CompilerPlugin, IntegrationTest, names, Provided, Runtime, Test}

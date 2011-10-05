@@ -1,6 +1,7 @@
-package sbt
-package compiler
+package xsbt.api
 
+	import sbt.WithFiles
+	import sbt.compiler.{CallbackTest,TestCompile}
 	import java.io.File
 	import org.specs.Specification
 

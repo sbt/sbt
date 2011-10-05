@@ -1,9 +1,10 @@
-package sbt
-package compiler
+package xsbt.api
 
 	import java.io.File
 	import java.net.URLClassLoader
 	import org.specs.Specification
+	import sbt.WithFiles
+	import sbt.compiler.{CallbackTest,TestCompile}
 
 /** Verifies that the analyzer plugin properly detects main methods.  The main method must be
 * public with the right signature and be defined on a public, top-level module.*/

@@ -1,8 +1,7 @@
 /* sbt -- Simple Build Tool
  * Copyright 2010 Mark Harrah
  */
-package sbt
-package compiler
+package xsbt.api
 
 	import xsbti.api.{Path => APath, _}
 
