@@ -38,7 +38,7 @@ object APIs
 	
 	val emptyAPI = new xsbti.api.SourceAPI(Array(), Array())
 	val emptyCompilation = new xsbti.api.Compilation(-1, "")
-	val emptySource = new xsbti.api.Source(emptyCompilation, Array(), emptyAPI)
+	val emptySource = new xsbti.api.Source(emptyCompilation, Array(), emptyAPI, 0)
 	def getAPI[T](map: Map[T, Source], src: T): Source = map.getOrElse(src, emptySource)
 }
 

@@ -43,7 +43,8 @@ object TopLevel
 /** Checks the API of two source files for equality.*/
 object SameAPI
 {
-	def apply(a: SourceAPI, b: SourceAPI) =
+	def apply(a: Source, b: Source): Boolean = a.apiHash == b.apiHash && (a.hash.length > 0 && b.hash.length > 0) && apply(a.api, b.api)
+	def apply(a: SourceAPI, b: SourceAPI): Boolean =
 	{
 		val start = System.currentTimeMillis
 		
@@ -82,6 +83,19 @@ object SameAPI
 			map = map.updated(name, d :: map.getOrElse(name, Nil) )
 		map
 	}
+
+	/** Removes definitions that should not be considered for API equality.
+	* All top-level definitions are always considered: 'private' only means package-private.
+	* Other definitions are considered if they are not qualified with 'private[this]' or 'private'.*/
+	def filterDefinitions(d: Seq[Definition], topLevel: Boolean, includePrivate: Boolean) = if(topLevel || includePrivate) d else d.filter(isNonPrivate)
+	def isNonPrivate(d: Definition): Boolean = isNonPrivate(d.access)
+	/** Returns false if the `access` is `Private` and qualified, true otherwise.*/
+	def isNonPrivate(access: Access): Boolean =
+		access match
+		{
+			case p: Private if !p.qualifier.isInstanceOf[IdQualifier] => false
+			case _ => true
+		}
 }
 /** Used to implement API equality.  All comparisons must be done between constructs in source files `a` and `b`.  For example, when doing:
 * `sameDefinitions(as, bs)`, `as` must be definitions from source file `a` and `bs` must be definitions from source file `b`.  This is in order
@@ -117,27 +131,14 @@ class SameAPI(tagsA: TypeVars, tagsB: TypeVars, includePrivate: Boolean, include
 		sameDefinitions(a.definitions, b.definitions, true)
 	def sameDefinitions(a: Seq[Definition], b: Seq[Definition], topLevel: Boolean): Boolean =
 	{
-		val (avalues, atypes) = separateDefinitions(filterDefinitions(a, topLevel))
-		val (bvalues, btypes) = separateDefinitions(filterDefinitions(b, topLevel))
+		val (avalues, atypes) = separateDefinitions(filterDefinitions(a, topLevel, includePrivate))
+		val (bvalues, btypes) = separateDefinitions(filterDefinitions(b, topLevel, includePrivate))
 		debug(sameDefinitions(byName(avalues), byName(bvalues)), "Value definitions differed") &&
 		debug(sameDefinitions(byName(atypes), byName(btypes)), "Type definitions differed")
 	}
 	def sameDefinitions(a: scala.collection.Map[String, List[Definition]], b: scala.collection.Map[String, List[Definition]]): Boolean =
 		debug(sameStrings(a.keySet, b.keySet), "\tDefinition strings differed (a: " + (a.keySet -- b.keySet) + ", b: " + (b.keySet -- a.keySet) + ")") &&
 		zippedEntries(a,b).forall(tupled(sameNamedDefinitions))
-
-	/** Removes definitions that should not be considered for API equality.
-	* All top-level definitions are always considered: 'private' only means package-private.
-	* Other definitions are considered if they are not qualified with 'private[this]' or 'private'.*/
-	def filterDefinitions(d: Seq[Definition], topLevel: Boolean) = if(topLevel || includePrivate) d else d.filter(isNonPrivate)
-	def isNonPrivate(d: Definition): Boolean = isNonPrivate(d.access)
-	/** Returns false if the `access` is `Private` and qualified, true otherwise.*/
-	def isNonPrivate(access: Access): Boolean =
-		access match
-		{
-			case p: Private if !p.qualifier.isInstanceOf[IdQualifier] => false
-			case _ => true
-		}
 
 	/** Checks that the definitions in `a` are the same as those in `b`, ignoring order.
 	* Each list is assumed to have already been checked to have the same names (by `sameDefinitions`, for example).*/

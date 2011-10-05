@@ -1,5 +1,6 @@
 package xsbt.api
 
+	import xsbti.SafeLazy
 	import xsbti.api._
 	import scala.collection.mutable.HashSet
 
@@ -42,4 +43,27 @@ object APIUtil
 			super.visitParameterRef(ref)
 		}
 	}
+	def minimize(api: SourceAPI): SourceAPI =
+		new SourceAPI(api.packages, minimizeDefinitions(api.definitions))
+	def minimizeDefinitions(ds: Array[Definition]): Array[Definition] =
+		ds flatMap minimizeDefinition
+	def minimizeDefinition(d: Definition): Array[Definition] =
+		d match
+		{
+			case c: ClassLike => Array(minimizeClass(c))
+			case _ => Array()
+		}
+	def minimizeClass(c: ClassLike): ClassLike =
+	{
+		val struct = minimizeStructure(c.structure, c.definitionType == DefinitionType.Module)
+		new ClassLike(c.definitionType, lzy(emptyType), lzy(struct), c.typeParameters, c.name, c.access, c.modifiers, c.annotations)
+	}
+
+	def minimizeStructure(s: Structure, isModule: Boolean): Structure =
+		new Structure(lzy(s.parents), filterDefinitions(s.declared, isModule), filterDefinitions(s.inherited, isModule))
+	def filterDefinitions(ds: Array[Definition], isModule: Boolean): Lazy[Array[Definition]] =
+		lzy(if(isModule) ds filter Discovery.isMainMethod else Array())
+	private[this] def lzy[T <: AnyRef](t: T): Lazy[T] = SafeLazy.strict(t)
+
+	private[this] val emptyType = new EmptyType
 }
