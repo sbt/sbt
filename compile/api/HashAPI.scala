@@ -111,7 +111,7 @@ final class HashAPI(tags: TypeVars, includePrivate: Boolean, includeParamNames: 
 		hash = startHash(0)
 		hashSymmetric(s.packages, hashPackage)
 		hashDefinitions(s.definitions, true)
-		hash
+		finalizeHash(hash)
 	}
 
 	def hashPackage(p: Package) = hashString(p.name)
