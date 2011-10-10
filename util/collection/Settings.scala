@@ -122,7 +122,7 @@ trait Init[Scope]
 		type ValidatedSettings[T] = Either[Seq[Undefined], SettingSeq[T]]
 		val f = new (SettingSeq ~> ValidatedSettings) { def apply[T](ks: Seq[Setting[T]]) = {
 			val validated = ks.zipWithIndex map { case (s,i) => s validateReferenced refMap(s.key, i == 0) }
-			val (undefs, valid) = List separate validated
+			val (undefs, valid) = Util separateE validated
 			if(undefs.isEmpty) Right(valid) else Left(undefs.flatten)
 		}}
 		type Undefs[_] = Seq[Undefined]
@@ -351,7 +351,7 @@ trait Init[Scope]
 		def mapReferenced(g: MapScoped) = new Uniform(f, inputs map mapReferencedT(g).fn)
 		def validateReferenced(g: ValidateRef) =
 		{
-			val (undefs, ok) = List.separate(inputs map validateReferencedT(g).fn )
+			val (undefs, ok) = Util.separateE(inputs map validateReferencedT(g).fn )
 			if(undefs.isEmpty) Right( new Uniform(f, ok) ) else Left(undefs.flatten)
 		}
 		def apply[S](g: T => S) = new Uniform(g compose f, inputs)
