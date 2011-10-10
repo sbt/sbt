@@ -132,6 +132,7 @@ class MakePom(val log: Logger)
 			<artifactId>{mrid.getName}</artifactId>
 			<version>{mrid.getRevision}</version>
 			{ scopeAndOptional(dependency) }
+			{ classifier(dependency) }
 			{
 				val (warns, excls) = List.separate(excl.map(makeExclusion))
 				if(!warns.isEmpty) log.warn(warns.mkString(IO.Newline))
@@ -142,6 +143,13 @@ class MakePom(val log: Logger)
 					</exclusions>
 			}
 		</dependency>
+	}
+
+	def classifier(dependency: DependencyDescriptor): Seq[scala.xml.Node] =
+	{
+		for (da <- dependency.getAllDependencyArtifacts;
+				 cl <- Option(da.getExtraAttribute("classifier"))) yield
+					<classifier>{cl}</classifier>
 	}
 
 	def scopeAndOptional(dependency: DependencyDescriptor): NodeSeq  =
