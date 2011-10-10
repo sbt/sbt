@@ -87,15 +87,22 @@ final class HashAPI(tags: TypeVars, includePrivate: Boolean, includeParamNames: 
 		extend(s.length)
 		s foreach hashF
 	}
-	final def hashSymmetric[T](ts: TraversableOnce[T], hashF: T => Unit): Unit =
+	final def hashSymmetric[T](ts: TraversableOnce[T], hashF: T => Unit)
 	{
 		val current = hash
-		val hashes = ts.toList map { t =>
+		val mA = magicA
+		val mB = magicB
+		val (hashes, mAs, mBs) = ts.toList.map { t =>
 			hash = startHash(1)
+			magicA = startMagicA
+			magicB = startMagicB
 			hashF(t)
-			hash
-		}
-		hash = symmetricHash(hashes, current)
+			(finalizeHash(hash), magicA, magicB)
+		} unzip3;
+		hash = current
+		magicA = mA
+		magicB = mB
+		extend(symmetricHash(hashes, 0xb592f7ae))  // constant from MurmurHash3
 	}
 
 	@inline final def extend(a: Hash)
@@ -121,7 +128,7 @@ final class HashAPI(tags: TypeVars, includePrivate: Boolean, includeParamNames: 
 		val defs = SameAPI.filterDefinitions(ds, topLevel, includePrivate)
 		hashSymmetric(defs, hashDefinition)
 	}
-	def hashDefinition(d: Definition) =
+	def hashDefinition(d: Definition)
 	{
 		hashString(d.name)
 		hashAnnotations(d.annotations)
@@ -241,8 +248,7 @@ final class HashAPI(tags: TypeVars, includePrivate: Boolean, includeParamNames: 
 	}
 	
 	def hashTypes(ts: Seq[Type]) = hashSeq(ts, hashType)
-	def hashType(t: Type)
-	{
+	def hashType(t: Type): Unit =
 		t match
 		{
 			case s: Structure => hashStructure(s)
@@ -256,7 +262,6 @@ final class HashAPI(tags: TypeVars, includePrivate: Boolean, includeParamNames: 
 			case s: Singleton => hashSingleton(s)
 			case pr: ParameterRef => hashParameterRef(pr)
 		}
-	}
 	
 	def hashParameterRef(p: ParameterRef)
 	{
