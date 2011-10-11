@@ -43,12 +43,15 @@ private final class AnalysisCallback(internalMap: File => Option[File], external
 	
 	import collection.mutable.{HashMap, HashSet, ListBuffer, Map, Set}
 	
-	private val apis = new HashMap[File, (Int, SourceAPI)]
-	private val binaryDeps = new HashMap[File, Set[File]]
-	private val classes = new HashMap[File, Set[(File, String)]]
-	private val sourceDeps = new HashMap[File, Set[File]]
-	private val extSrcDeps = new ListBuffer[(File, String, Source)]
-	private val binaryClassName = new HashMap[File, String]
+	private[this] val apis = new HashMap[File, (Int, SourceAPI)]
+	private[this] val binaryDeps = new HashMap[File, Set[File]]
+		 // source file to set of generated (class file, class name)
+	private[this] val classes = new HashMap[File, Set[(File, String)]]
+		 // generated class file to its source file
+	private[this] val classToSource = new HashMap[File, File]
+	private[this] val sourceDeps = new HashMap[File, Set[File]]
+	private[this] val extSrcDeps = new ListBuffer[(File, String, Source)]
+	private[this] val binaryClassName = new HashMap[File, String]
 
 	private def add[A,B](map: Map[A,Set[B]], a: A, b: B): Unit =
 		map.getOrElseUpdate(a, new HashSet[B]) += b
@@ -68,18 +71,33 @@ private final class AnalysisCallback(internalMap: File => Option[File], external
 				 // dependency is a product of a source not included in this compilation
 				sourceDependency(dependsOn, source)
 			case None =>
-				externalAPI(classFile, name) match
+				classToSource.get(classFile) match
 				{
-					case Some(api) =>
-						// dependency is a product of a source in another project
-						externalSourceDependency( (source, name, api) )
+					case Some(dependsOn) =>
+						// dependency is a product of a source in this compilation step,
+						//  but not in the same compiler run (as in javac v. scalac)
+						sourceDependency(dependsOn, source)
 					case None =>
-						// dependency is some other binary on the classpath
-						externalBinaryDependency(classFile, name, source)
+						externalDependency(classFile, name, source)
 				}
 		}
+
+	private[this] def externalDependency(classFile: File, name: String, source: File): Unit =
+		externalAPI(classFile, name) match
+		{
+			case Some(api) =>
+				// dependency is a product of a source in another project
+				externalSourceDependency( (source, name, api) )
+			case None =>
+				// dependency is some other binary on the classpath
+				externalBinaryDependency(classFile, name, source)
+		}
 		
-	def generatedClass(source: File, module: File, name: String) = add(classes, source, (module, name))
+	def generatedClass(source: File, module: File, name: String) =
+	{
+		add(classes, source, (module, name))
+		classToSource.put(module, source)
+	}
 	
 	def api(sourceFile: File, source: SourceAPI) { apis(sourceFile) = (xsbt.api.HashAPI(source), xsbt.api.APIUtil.minimize(source)) }
 	def endSource(sourcePath: File): Unit =
