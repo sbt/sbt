@@ -25,6 +25,8 @@ There is a [video of a demo] given at [Scala Days 2011] based on sbt 0.10.0 that
 
 		$ git checkout v0.11.0
 
+	Note that sbt is always built with the previous stable release.  For example, the 0.11 branch is built with 0.11.0, the v0.11.0 tag is built with 0.10.1, and the v0.10.1 tag is built with 0.10.0.
+
 4. To build the launcher, publish all components locally, and build API and SXR documentation:
 
 		$ sbt build-all
