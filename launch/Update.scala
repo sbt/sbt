@@ -207,7 +207,7 @@ final class Update(config: UpdateConfiguration)
 	private def retrieve(eventManager: EventManager, module: ModuleDescriptor,  target: UpdateTarget)
 	{
 		val retrieveOptions = new RetrieveOptions
-		retrieveOptions.setArtifactFilter(new ArtifactFilter(a => "jar" == a.getType && a.getExtraAttribute("classifier") == null))
+		retrieveOptions.setArtifactFilter(new ArtifactFilter(a => retrieveType(a.getType) && a.getExtraAttribute("classifier") == null))
 		val retrieveEngine = new RetrieveEngine(settings, eventManager)
 		val pattern =
 			target match
@@ -217,6 +217,7 @@ final class Update(config: UpdateConfiguration)
 			}
 		retrieveEngine.retrieve(module.getModuleRevisionId, baseDirectoryName(scalaVersion) + "/" + pattern, retrieveOptions)
 	}
+	private def retrieveType(tpe: String): Boolean = tpe == "jar" || tpe == "bundle"
 	/** Add the scala tools repositories and a URL resolver to download sbt from the Google code project.*/
 	private def addResolvers(settings: IvySettings)
 	{
