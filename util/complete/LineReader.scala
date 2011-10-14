@@ -10,9 +10,12 @@ package sbt
 abstract class JLine extends LineReader
 {
 	protected[this] val reader: ConsoleReader
-	def readLine(prompt: String) = JLine.withJLine { unsynchronizedReadLine(prompt) }
-	private[this] def unsynchronizedReadLine(prompt: String) =
-		reader.readLine(prompt) match
+	def readLine(prompt: String, mask: Option[Char] = None) = JLine.withJLine { unsynchronizedReadLine(prompt, mask) }
+	private[this] def unsynchronizedReadLine(prompt: String, mask: Option[Char]) =
+		(mask match {
+			case Some(m) => reader.readLine(prompt, m)
+			case None => reader.readLine(prompt)
+		}) match
 		{
 			case null => None
 			case x => Some(x.trim)
@@ -59,7 +62,7 @@ private object JLine
 
 trait LineReader
 {
-	def readLine(prompt: String): Option[String]
+	def readLine(prompt: String, mask: Option[Char] = None): Option[String]
 }
 final class FullReader(historyPath: Option[File], complete: Parser[_]) extends JLine
 {
