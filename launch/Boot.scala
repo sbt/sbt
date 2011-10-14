@@ -16,27 +16,28 @@ object Boot
 	}
 	// this arrangement is because Scala 2.7.7 does not properly optimize away
 	// the tail recursion in a catch statement
-	final def run(args: Array[String]): Unit = run(runImpl(args))
-	private def runImpl(args: Array[String]): Array[String] =
-	{
+	final def run(args: Array[String]): Unit = runImpl(args) match {
+		case Some(newArgs) => run(newArgs)
+		case None => ()
+	}
+	private def runImpl(args: Array[String]): Option[Array[String]] =
 		try
-		{
-			Launch(args.toList)
-			System.exit(0).asInstanceOf[Nothing]
-		}
+			Launch(args.toList) map exit
 		catch
 		{
 			case b: BootException => errorAndExit(b.toString)
 			case r: xsbti.RetrieveException => errorAndExit("Error: " + r.getMessage) 
-			case r: xsbti.FullReload => r.arguments
+			case r: xsbti.FullReload => Some(r.arguments)
 			case e =>
 				e.printStackTrace
 				errorAndExit(Pre.prefixError(e.toString))
 		}
-	}
+
 	private def errorAndExit(msg: String): Nothing =
 	{
 		System.out.println(msg)
-		System.exit(1).asInstanceOf[Nothing]
+		exit(1)
 	}
+	private def exit(code: Int): Nothing = 
+		System.exit(code).asInstanceOf[Nothing]
 }

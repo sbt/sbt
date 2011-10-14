@@ -11,17 +11,17 @@ import scala.collection.immutable.List
 
 object Launch
 {
-	def apply(arguments: List[String]): Unit = apply( (new File("")).getAbsoluteFile , arguments )
+	def apply(arguments: List[String]): Option[Int] = apply( (new File("")).getAbsoluteFile , arguments )
 
-	def apply(currentDirectory: File, arguments: List[String]): Unit =
+	def apply(currentDirectory: File, arguments: List[String]): Option[Int] =
 		Configuration.find(arguments, currentDirectory) match { case (configLocation, newArguments) => configured(currentDirectory, configLocation, newArguments) }
 
-	def configured(currentDirectory: File, configLocation: URL, arguments: List[String]): Unit =
+	def configured(currentDirectory: File, configLocation: URL, arguments: List[String]): Option[Int] =
 	{
 		val config = Configuration.parse(configLocation, currentDirectory)
 		Find(config, currentDirectory) match { case (resolved, baseDirectory) => parsed(baseDirectory, resolved, arguments) }
 	}
-	def parsed(currentDirectory: File, parsed: LaunchConfiguration, arguments: List[String]): Unit =
+	def parsed(currentDirectory: File, parsed: LaunchConfiguration, arguments: List[String]): Option[Int] =
 	{
 		val propertiesFile = parsed.boot.properties
 		import parsed.boot.{enableQuick, promptCreate, promptFill}
@@ -31,7 +31,7 @@ object Launch
 			Initialize.fill(propertiesFile, parsed.appProperties)
 		initialized(currentDirectory, parsed, arguments)
 	}
-	def initialized(currentDirectory: File, parsed: LaunchConfiguration, arguments: List[String]): Unit =
+	def initialized(currentDirectory: File, parsed: LaunchConfiguration, arguments: List[String]): Option[Int] =
 	{
 		parsed.logging.debug("Parsed configuration: " + parsed)
 		val resolved = ResolveValues(parsed)
@@ -39,7 +39,7 @@ object Launch
 		explicit(currentDirectory, resolved, arguments)
 	}
 
-	def explicit(currentDirectory: File, explicit: LaunchConfiguration, arguments: List[String]): Unit =
+	def explicit(currentDirectory: File, explicit: LaunchConfiguration, arguments: List[String]): Option[Int] =
 		launch( run(Launcher(explicit)) ) (
 			new RunConfiguration(explicit.getScalaVersion, explicit.app.toID, currentDirectory, arguments) )
 
@@ -63,11 +63,12 @@ object Launch
 		}
 		if(f.exists) f.delete()
 	}
-	final def launch(run: RunConfiguration => xsbti.MainResult)(config: RunConfiguration)
+	final def launch(run: RunConfiguration => xsbti.MainResult)(config: RunConfiguration): Option[Int] =
 	{
 		run(config) match
 		{
-			case e: xsbti.Exit => System.exit(e.code)
+			case e: xsbti.Exit => Some(e.code)
+			case c: xsbti.Continue => None
 			case r: xsbti.Reboot => launch(run)(new RunConfiguration(r.scalaVersion, r.app, r.baseDirectory, r.arguments.toList))
 			case x => throw new BootException("Invalid main result: " + x + (if(x eq null) "" else " (class: " + x.getClass + ")"))
 		}
