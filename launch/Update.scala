@@ -22,7 +22,7 @@ import core.retrieve.{RetrieveEngine, RetrieveOptions}
 import core.sort.SortEngine
 import core.settings.IvySettings
 import plugins.matcher.{ExactPatternMatcher, PatternMatcher}
-import plugins.resolver.{ChainResolver, FileSystemResolver, IBiblioResolver, URLResolver}
+import plugins.resolver.{BasicResolver, ChainResolver, FileSystemResolver, IBiblioResolver, URLResolver}
 import util.{DefaultMessageLogger, filter, Message, MessageLoggerEngine, url}
 import filter.Filter
 import url.CredentialsStore
@@ -228,7 +228,7 @@ final class Update(config: UpdateConfiguration)
 		newDefault.setName("redefined-public")
 		if(repositories.isEmpty) error("No repositories defined.")
 		for(repo <- repositories if includeRepo(repo))
-			newDefault.add(toIvyRepository(settings, repo))
+			newDefault.add(initializeBasic(toIvyRepository(settings, repo)))
 		configureCache(settings)
 		settings.addResolver(newDefault)
 		settings.setDefaultResolver(newDefault.getName)
@@ -334,6 +334,12 @@ final class Update(config: UpdateConfiguration)
 		else
 			mavenResolver("Scala-Tools Maven2 Snapshots Repository", "http://scala-tools.org/repo-snapshots")
 	}
+	private def initializeBasic(resolver: BasicResolver) =
+	{
+		resolver.setDescriptor(BasicResolver.DESCRIPTOR_REQUIRED)
+		resolver
+	}
+
 	/** Logs the given message to a file and to the console. */
 	private def log(msg: String) =
 	{
