@@ -1,7 +1,7 @@
 /* sbt -- Simple Build Tool
  * Copyright 2011 Artyom Olshevskiy
  */
-import sbt._
+package sbt
 
 import Project.Initialize
 import Keys._
