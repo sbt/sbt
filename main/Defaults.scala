@@ -758,8 +758,9 @@ object Classpaths
 			new InlineIvyConfiguration(paths, rs, Nil, Nil, off, Option(lock(app)), check, s.log)
 		},
 		ivySbt <<= ivySbt0,
-		classifiersModule <<= (projectID, sbtDependency, transitiveClassifiers) map { ( pid, sbtDep, classifiers) =>
-			GetClassifiersModule(pid, sbtDep :: Nil, Configurations.Default :: Nil, classifiers)
+		classifiersModule <<= (projectID, sbtDependency, transitiveClassifiers, loadedBuild, thisProjectRef) map { ( pid, sbtDep, classifiers, lb, ref) =>
+			val pluginIDs: Seq[ModuleID] = lb.units(ref.build).unit.plugins.fullClasspath.flatMap(_ get moduleID.key)
+			GetClassifiersModule(pid, sbtDep +: pluginIDs, Configurations.Default :: Nil, classifiers)
 		},
 		updateSbtClassifiers in TaskGlobal <<= (ivySbt, classifiersModule, updateConfiguration, ivyScala, target in LocalRootProject, appConfiguration, streams) map {
 				(is, mod, c, ivyScala, out, app, s) =>
