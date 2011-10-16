@@ -15,6 +15,7 @@ package sbt
 	import inc.{FileValueCache, Locate}
 	import org.scalatools.testing.{AnnotatedFingerprint, SubclassFingerprint}
 
+	import sys.error
 	import scala.xml.{Node => XNode,NodeSeq}
 	import org.apache.ivy.core.module.{descriptor, id}
 	import descriptor.ModuleDescriptor, id.ModuleRevisionId
