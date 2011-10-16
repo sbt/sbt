@@ -170,7 +170,7 @@ object IvyActions
 	{
 			import config.{configuration => c, ivyScala, module => mod}
 			import mod.{configurations => confs, id, modules => deps}
-		val base = restrictedCopy(id).copy(name = id.name + "$" + label)
+		val base = restrictedCopy(id, true).copy(name = id.name + "$" + label)
 		val module = new ivySbt.Module(InlineConfiguration(base, ModuleInfo(base.name), deps).copy(ivyScala = ivyScala))
 		val report = update(module, c, log)
 		val newConfig = config.copy(module = mod.copy(modules = report.allModules))
@@ -181,28 +181,31 @@ object IvyActions
 			import config.{configuration => c, module => mod, _}
 			import mod.{configurations => confs, _}
 		assert(!classifiers.isEmpty, "classifiers cannot be empty")
-		val baseModules = modules map restrictedCopy
+		val baseModules = modules map { m => restrictedCopy(m, true) }
 		val deps = baseModules.distinct flatMap classifiedArtifacts(classifiers, exclude)
-		val base = restrictedCopy(id).copy(name = id.name + classifiers.mkString("$","_",""))
+		val base = restrictedCopy(id, true).copy(name = id.name + classifiers.mkString("$","_",""))
 		val module = new ivySbt.Module(InlineConfiguration(base, ModuleInfo(base.name), deps).copy(ivyScala = ivyScala, configurations = confs))
 		val upConf = new UpdateConfiguration(c.retrieve, true, c.logging)
 		update(module, upConf, log)
 	}
 	def classifiedArtifacts(classifiers: Seq[String], exclude: Map[ModuleID, Set[String]])(m: ModuleID): Option[ModuleID] =
 	{
-		val excluded = exclude getOrElse(m, Set.empty)
+		val excluded = exclude getOrElse(restrictedCopy(m, false), Set.empty)
 		val included = classifiers filterNot excluded
 		if(included.isEmpty) None else Some(m.copy(explicitArtifacts = classifiedArtifacts(m.name, included) ))
 	}
 	def addExcluded(report: UpdateReport, classifiers: Seq[String], exclude: Map[ModuleID, Set[String]]): UpdateReport =
-		report.addMissing { id => classifiedArtifacts(id.name, classifiers filter exclude.getOrElse(id, Set.empty[String])) }
+		report.addMissing { id => classifiedArtifacts(id.name, classifiers filter getExcluded(id, exclude)) }
 	def classifiedArtifacts(name: String, classifiers: Seq[String]): Seq[Artifact] =
 		classifiers map { c => Artifact.classified(name, c) }
+	private[this] def getExcluded(id: ModuleID, exclude: Map[ModuleID, Set[String]]): Set[String] =
+		exclude.getOrElse(restrictedCopy(id, false), Set.empty[String])
 
 	def extractExcludes(report: UpdateReport): Map[ModuleID, Set[String]] =
-		report.allMissing flatMap { case (_, mod, art) => art.classifier.map { c => (restrictedCopy(mod), c) } } groupBy(_._1) map { case (mod, pairs) => (mod, pairs.map(_._2).toSet) }
+		report.allMissing flatMap { case (_, mod, art) => art.classifier.map { c => (restrictedCopy(mod, false), c) } } groupBy(_._1) map { case (mod, pairs) => (mod, pairs.map(_._2).toSet) }
 
-	private[this] def restrictedCopy(m: ModuleID) = ModuleID(m.organization, m.name, m.revision, crossVersion = m.crossVersion, extraAttributes = m.extraAttributes, configurations = m.configurations)
+	private[this] def restrictedCopy(m: ModuleID, confs: Boolean) =
+		ModuleID(m.organization, m.name, m.revision, crossVersion = m.crossVersion, extraAttributes = m.extraAttributes, configurations = if(confs) m.configurations else None)
 	private[this] def resolve(logging: UpdateLogging.Value)(ivy: Ivy, module: DefaultModuleDescriptor, defaultConf: String): (ResolveReport, Option[ResolveException]) =
 	{
 		val resolveOptions = new ResolveOptions
