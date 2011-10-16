@@ -42,7 +42,7 @@ object GlobalPlugin
 		val p: Scope = Scope.GlobalScope in ProjectRef(root, rootProject(root))
 		val taskInit = (projectID, projectDependencies, projectDescriptors, resolvers, fullClasspath in Runtime, internalDependencyClasspath in Runtime, exportedProducts in Runtime, ivyModule) map {
 			(pid, pdeps, pdescs, rs, cp, intcp, prods, mod) =>
-				val depMap = pdescs + mod.dependencyMapping(log(state))
+				val depMap = pdescs + mod.dependencyMapping(state.log)
 				GlobalPluginData(pid, pdeps, depMap, rs, cp, prods ++ intcp)
 		}
 		val task = taskInit mapReferenced Project.mapScope(Scope replaceThis p) evaluate data
@@ -54,10 +54,9 @@ object GlobalPlugin
 		withStreams(structure) { str =>
 			val nv = nodeView(state, str)
 			val (newS, result) = runTask(t, state, str, structure.index.triggers)(nv)
-			(newS, processResult(result, log(newS)))
+			(newS, processResult(result, newS.log))
 		}
 	}
-	private[this] def log(s: State) = CommandSupport.logger(s)
 	val globalPluginSettings = inScope(Scope.GlobalScope in LocalRootProject)(Seq(
 		organization := "org.scala-tools.sbt",
 		onLoadMessage <<= Keys.baseDirectory("Loading global plugins from " + _),

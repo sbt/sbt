@@ -6,7 +6,6 @@ package sbt
 	import ProjectNavigation._
 	import Project.updateCurrent
 	import Keys.sessionSettings
-	import CommandSupport.logger
 	import complete.{DefaultParsers, Parser}
 	import DefaultParsers._
 	import java.net.URI
@@ -39,7 +38,7 @@ final class ProjectNavigation(s: State)
 				if(to.length > 1) gotoParent(to.length - 1, nav, s) else s */ // semantics currently undefined
 		}
 
-	def show(): Unit  =  logger(s).info(currentRef.project + " (in build " + currentRef.build + ")")
+	def show(): Unit  =  s.log.info(currentRef.project + " (in build " + currentRef.build + ")")
 	def selectProject(uri: URI, to: String): State =
 		if( structure.units(uri).defined.contains(to) )
 			setProject(uri, to)
@@ -54,7 +53,7 @@ final class ProjectNavigation(s: State)
 
 	def fail(msg: String): State =
 	{
-		logger(s).error(msg)
+		s.log.error(msg)
 		s.fail
 	}
 

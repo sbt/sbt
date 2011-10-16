@@ -143,7 +143,7 @@ object Scoped
 	}
 	final class RichInitialize[S](init: Initialize[S])
 	{
-		@deprecated("A call to 'identity' is no longer necessary and can be removed.")
+		@deprecated("A call to 'identity' is no longer necessary and can be removed.", "0.11.0")
 		final def identity: Initialize[S] = init
 		def map[T](f: S => T): Initialize[Task[T]] = init(s => mktask(f(s)) )
 		def flatMap[T](f: S => Task[T]): Initialize[Task[T]] = init(f)
@@ -162,7 +162,7 @@ object Scoped
 		def task: SettingKey[Task[S]] = scopedSetting(scope, key)
 		def get(settings: Settings[Scope]): Option[Task[S]] = settings.get(scope, key)
 
-		@deprecated("A call to 'identity' is no longer necessary and can be removed.")
+		@deprecated("A call to 'identity' is no longer necessary and can be removed.", "0.11.0")
 		def identity: Initialize[Task[S]] = this
 
 		def ? : Initialize[Task[Option[S]]] = Project.optional(scopedKey) { case None => mktask { None }; case Some(t) => t map some.fn }

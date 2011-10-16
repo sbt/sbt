@@ -19,7 +19,7 @@ object Script
 			val base = new File(CommandSupport.bootDirectory(state), hash)
 			IO.createDirectory(base)
 
-			val (eval, structure) = Load.defaultLoad(state, base, CommandSupport.logger(state))
+			val (eval, structure) = Load.defaultLoad(state, base, state.log)
 			val session = Load.initialSession(structure, eval)
 			val extracted = Project.extract(session, structure)
 				import extracted._

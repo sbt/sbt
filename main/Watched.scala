@@ -61,7 +61,7 @@ object Watched
 				(triggered, newWatchState, s)
 			}
 			catch { case e: Exception =>
-				val log = CommandSupport.logger(s)
+				val log = s.log
 				log.error("Error occurred obtaining files to watch.  Terminating continuous execution...")
 				BuiltinCommands.handleException(e, s, log)
 				(false, watchState, s.fail)

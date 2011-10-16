@@ -7,7 +7,6 @@ package sbt
 	import java.net.URI
 	import Project._
 	import Types.Endo
-	import CommandSupport.logger
 	import compiler.Eval
 
 	import SessionSettings._
@@ -47,7 +46,7 @@ object SessionSettings
 		import extracted._
 		if(session.append.isEmpty)
 		{
-			logger(s).info("No session settings defined.")
+			s.log.info("No session settings defined.")
 			s
 		}
 		else
@@ -59,7 +58,7 @@ object SessionSettings
 	{
 		val oldSettings = (oldState get Keys.sessionSettings).toList.flatMap(_.append).flatMap(_._2)
 		if(newSession.append.isEmpty && !oldSettings.isEmpty)
-			logger(oldState).warn("Discarding " + pluralize(oldSettings.size, " session setting") + ".  Use 'session save' to persist session settings.")
+			oldState.log.warn("Discarding " + pluralize(oldSettings.size, " session setting") + ".  Use 'session save' to persist session settings.")
 	}
 	def removeRanges[T](in: Seq[T], ranges: Seq[(Int,Int)]): Seq[T] =
 	{

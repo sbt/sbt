@@ -310,7 +310,7 @@ object BuiltinCommands
 	def history = Command.custom(historyParser, historyHelp)
 	def historyParser(s: State): Parser[() => State] =
 		Command.applyEffect(HistoryCommands.actionParser) { histFun =>
-			val logError = (msg: String) => CommandSupport.logger(s).error(msg)
+			val logError = (msg: String) => s.log.error(msg)
 			val hp = s get historyPath.key getOrElse None
 			val lines = hp.toList.flatMap( p => IO.readLines(p) ).toIndexedSeq
 			histFun( complete.History(lines, hp, logError) ) match

@@ -5,7 +5,6 @@ package sbt
 
 	import java.io.File
 	import complete.{DefaultParsers, EditDistance, Parser}
-	import CommandSupport.logger
 
 sealed trait Command {
 	def help: Seq[Help]
@@ -92,7 +91,7 @@ object Command
 			case Left(failures) =>
 				val (msgs,pos) = failures()
 				val errMsg = commandError(command, msgs, pos)
-				logger(state).error(errMsg)
+				state.log.error(errMsg)
 				state.fail				
 		}
 	}

@@ -9,7 +9,6 @@ package sbt
 	import Keys.{appConfiguration, stateBuildStructure, commands, configuration, historyPath, projectCommand, sessionSettings, sessionVars, shellPrompt, thisProject, thisProjectRef, watch}
 	import Scope.{GlobalScope,ThisScope}
 	import Load.BuildStructure
-	import CommandSupport.logger
 	import Types.{idFun, Id}
 
 sealed trait ProjectDefinition[PR <: ProjectReference]
@@ -79,7 +78,7 @@ final case class Extracted(structure: BuildStructure, session: SessionSettings, 
 		val rkey = Project.mapScope(Scope.resolveScope(GlobalScope, currentRef.build, rootProject) )( key.scopedKey )
 		val value: Option[(State, Result[T])] = apply(structure, key.task.scopedKey, state, currentRef)
 		val (newS, result) = getOrError(rkey.scope, rkey.key, value)
-		(newS, processResult(result, logger(newS)))
+		(newS, processResult(result, newS.log))
 	}
 	private def getOrError[T](scope: Scope, key: AttributeKey[_], value: Option[T])(implicit display: Show[ScopedKey[_]]): T =
 		value getOrElse error(display(ScopedKey(scope, key)) + " is undefined.")
@@ -179,7 +178,7 @@ object Project extends Init[Scope] with ProjectExtra
 		val ref = Project.current(s)
 		val project = Load.getProject(structure.units, ref.build, ref.project)
 		val msg = Keys.onLoadMessage in ref get structure.data getOrElse ""
-		if(!msg.isEmpty) logger(s).info(msg)
+		if(!msg.isEmpty) s.log.info(msg)
 		def get[T](k: SettingKey[T]): Option[T] = k in ref get structure.data
 		def commandsIn(axis: ResolvedReference) = commands in axis get structure.data toList ;
 

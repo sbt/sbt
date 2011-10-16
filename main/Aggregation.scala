@@ -3,7 +3,6 @@
  */
 package sbt
 
-	import CommandSupport.logger
 	import Project.ScopedKey
 	import Load.BuildStructure
 	import Keys.{aggregate, showSuccess, showTiming, timingFormat}
@@ -83,7 +82,7 @@ final object Aggregation
 		val start = System.currentTimeMillis
 		val (newS, result) = withStreams(structure){ str => runTask(toRun, s,str, structure.index.triggers, maxWorkers = workers)(nodeView(s, str, extra.tasks, extra.values)) }
 		val stop = System.currentTimeMillis
-		val log = logger(newS)
+		val log = newS.log
 
 		val success = result match { case Value(_) => true; case Inc(_) => false }
 		try { onResult(result, log) { results => if(show) printSettings(results, log) } }
@@ -148,7 +147,7 @@ final object Aggregation
 			case xs @ KeyValue(_, _: InputStatic[t]) :: _ => applyTasks(s, structure, maps(xs.asInstanceOf[Values[InputStatic[t]]])(_.parser(s)), show)
 			case xs @ KeyValue(_, _: InputDynamic[t]) :: _ => applyDynamicTasks(s, structure, xs.asInstanceOf[Values[InputDynamic[t]]], show)
 			case xs @ KeyValue(_, _: Task[t]) :: _ => applyTasks(s, structure, maps(xs.asInstanceOf[Values[Task[t]]])(x => success(x)), show)
-			case xs => success(() => { printSettings(xs, logger(s)); s} )
+			case xs => success(() => { printSettings(xs, s.log); s} )
 		}
 	private[this] def maps[T, S](vs: Values[T])(f: T => S): Values[S] =
 		vs map { case KeyValue(k,v) => KeyValue(k, f(v)) }
