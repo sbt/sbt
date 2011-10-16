@@ -199,7 +199,7 @@ object Defaults extends BuildCommon
 		definedSbtPlugins <<= discoverPlugins,
 		inTask(run)(runnerTask :: Nil).head,
 		selectMainClass <<= discoveredMainClasses map selectRunMain,
-		mainClass in run <<= (selectMainClass in run).identity,
+		mainClass in run <<= selectMainClass in run,
 		mainClass <<= discoveredMainClasses map selectPackageMain,
 		run <<= runTask(fullClasspath, mainClass in run, runner in run),
 		runMain <<= runMainTask(fullClasspath, runner in run),
@@ -646,13 +646,13 @@ object Classpaths
 		unmanagedBase <<= baseDirectory / "lib",
 		normalizedName <<= name(StringUtilities.normalize),
 		isSnapshot <<= isSnapshot or version(_ endsWith "-SNAPSHOT"),
-		description <<= description or name.identity,
+		description <<= description or name,
 		homepage in GlobalScope :== None,
 		startYear in GlobalScope :== None,
 		licenses in GlobalScope :== Nil,
-		organization <<= organization or normalizedName.identity,
-		organizationName <<= organizationName or organization.identity,
-		organizationHomepage <<= organizationHomepage or homepage.identity,
+		organization <<= organization or normalizedName,
+		organizationName <<= organizationName or organization,
+		organizationHomepage <<= organizationHomepage or homepage,
 		projectInfo <<= (name, description, homepage, startYear, licenses, organizationName, organizationHomepage) apply ModuleInfo,
 		externalResolvers <<= (externalResolvers.task.?, resolvers) {
 			case (Some(delegated), Seq()) => delegated
@@ -663,7 +663,7 @@ object Classpaths
 			if(isPlugin) sr +: base else base
 		},
 		offline in GlobalScope :== false,
-		moduleName <<= normalizedName.identity,
+		moduleName <<= normalizedName,
 		defaultConfiguration in GlobalScope :== Some(Configurations.Compile),
 		defaultConfigurationMapping in GlobalScope <<= defaultConfiguration{ case Some(d) => "*->" + d.name; case None => "*->*" },
 		ivyPaths <<= (baseDirectory, appConfiguration) { (base, app) => new IvyPaths(base, bootIvyHome(app)) },
@@ -685,7 +685,7 @@ object Classpaths
 		moduleConfigurations in GlobalScope :== Nil,
 		publishTo in GlobalScope :== None,
 		artifactPath in makePom <<= artifactPathSetting(artifact in makePom),
-		publishArtifact in makePom <<= publishMavenStyle.identity,
+		publishArtifact in makePom <<= publishMavenStyle,
 		artifact in makePom <<= moduleName(Artifact.pom),
 		projectID <<= (organization,moduleName,version,artifacts,crossPaths){ (org,module,version,as,crossEnabled) =>
 			ModuleID(org, module, version).cross(crossEnabled).artifacts(as : _*)
@@ -706,7 +706,7 @@ object Classpaths
 			(file, minfo, extra, process, include, all) => new MakePomConfiguration(file, minfo, None, extra, process, include, all)
 		},
 		deliverLocalConfiguration <<= (crossTarget, ivyLoggingLevel) map { (outDir, level) => deliverConfig( outDir, logging = level ) },
-		deliverConfiguration <<= deliverLocalConfiguration.identity,
+		deliverConfiguration <<= deliverLocalConfiguration,
 		publishConfiguration <<= (packagedArtifacts, publishTo, publishMavenStyle, deliver, checksums in publish, ivyLoggingLevel) map { (arts, publishTo, mavenStyle, ivyFile, checks, level) =>
 			publishConfig(arts, if(mavenStyle) None else Some(ivyFile), resolverName = getPublishTo(publishTo).name, checksums = checks, logging = level)
 		},
@@ -1064,13 +1064,13 @@ trait BuildExtra extends BuildCommon
 			otherTask map { case (base, app, s) => new ExternalIvyConfiguration(base, f, Some(lock(app)), s.log) }
 		}
 	}
-	def externalIvyFile(file: Initialize[File] = baseDirectory / "ivy.xml", iScala: Initialize[Option[IvyScala]] = ivyScala.identity): Setting[Task[ModuleSettings]] =
+	def externalIvyFile(file: Initialize[File] = baseDirectory / "ivy.xml", iScala: Initialize[Option[IvyScala]] = ivyScala): Setting[Task[ModuleSettings]] =
 		external(file, iScala)( (f, is, v) => new IvyFileConfiguration(f, is, v) ) 
-	def externalPom(file: Initialize[File] = baseDirectory / "pom.xml", iScala: Initialize[Option[IvyScala]] = ivyScala.identity): Setting[Task[ModuleSettings]] =
+	def externalPom(file: Initialize[File] = baseDirectory / "pom.xml", iScala: Initialize[Option[IvyScala]] = ivyScala): Setting[Task[ModuleSettings]] =
 		external(file, iScala)( (f, is, v) => new PomConfiguration(f, is, v) )
 
 	private[this] def external(file: Initialize[File], iScala: Initialize[Option[IvyScala]])(make: (File, Option[IvyScala], Boolean) => ModuleSettings): Setting[Task[ModuleSettings]] =
-		moduleSettings <<= ((file zip iScala) zipWith ivyValidate.identity) { case ((f, is), v) => task { make(f, is, v) } }
+		moduleSettings <<= ((file zip iScala) zipWith ivyValidate) { case ((f, is), v) => task { make(f, is, v) } }
 
 	def runInputTask(config: Configuration, mainClass: String, baseArguments: String*): Initialize[InputTask[Unit]] =
 		inputTask { result =>
