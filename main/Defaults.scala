@@ -191,6 +191,7 @@ object Defaults extends BuildCommon
 
 	lazy val configTasks = docSetting(doc) ++ Seq(
 		initialCommands in GlobalScope :== "",
+		cleanupCommands in GlobalScope :== "",
 		compile <<= compileTask,
 		compileInputs <<= compileInputsTask,
 		compileIncSetup <<= compileIncSetupTask,
@@ -461,9 +462,9 @@ object Defaults extends BuildCommon
 	def consoleProjectTask = (state, streams, initialCommands in consoleProject) map { (state, s, extra) => ConsoleProject(state, extra)(s.log); println() }
 	def consoleTask: Initialize[Task[Unit]] = consoleTask(fullClasspath, console)
 	def consoleQuickTask = consoleTask(externalDependencyClasspath, consoleQuick)
-	def consoleTask(classpath: TaskKey[Classpath], task: TaskKey[_]): Initialize[Task[Unit]] = (compilers in task, classpath in task, scalacOptions in task, initialCommands in task, streams) map {
-		(cs, cp, options, initCommands, s) =>
-			(new Console(cs.scalac))(data(cp), options, initCommands, s.log).foreach(msg => error(msg))
+	def consoleTask(classpath: TaskKey[Classpath], task: TaskKey[_]): Initialize[Task[Unit]] = (compilers in task, classpath in task, scalacOptions in task, initialCommands in task, cleanupCommands in task, streams) map {
+		(cs, cp, options, initCommands, cleanup, s) =>
+			(new Console(cs.scalac))(data(cp), options, initCommands, cleanup, s.log).foreach(msg => error(msg))
 			println()
 	}
 	

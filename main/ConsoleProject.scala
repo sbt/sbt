@@ -8,7 +8,7 @@ package sbt
 
 object ConsoleProject
 {
-	def apply(state: State, extra: String, options: Seq[String] = Nil)(implicit log: Logger)
+	def apply(state: State, extra: String, cleanupCommands: String = "", options: Seq[String] = Nil)(implicit log: Logger)
 	{
 		val extracted = Project extract state
 		val bindings = ("currentState" -> state) :: ("extracted" -> extracted ) :: Nil
@@ -17,6 +17,6 @@ object ConsoleProject
 		val imports = Load.getImports(unit.unit) ++ Load.importAll(bindings.map(_._1))
 		val importString = imports.mkString("", ";\n", ";\n\n")
 		val initCommands = importString + extra
-		(new Console(compiler))(unit.classpath, options, initCommands)(Some(unit.loader), bindings)
+		(new Console(compiler))(unit.classpath, options, initCommands, cleanupCommands)(Some(unit.loader), bindings)
 	}
 }
