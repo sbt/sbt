@@ -30,7 +30,7 @@ package sbt
 
 object Defaults extends BuildCommon
 {
-	def configSrcSub(key: ScopedSetting[File]): Initialize[File] = (key in ThisScope.copy(config = Global), configuration) { (src, conf) => src / nameForSrc(conf.name) }
+	def configSrcSub(key: SettingKey[File]): Initialize[File] = (key in ThisScope.copy(config = Global), configuration) { (src, conf) => src / nameForSrc(conf.name) }
 	def nameForSrc(config: String) = if(config == "compile") "main" else config
 	def prefix(config: String) = if(config == "compile") "" else config + "-"
 
@@ -215,9 +215,9 @@ object Defaults extends BuildCommon
 		watch <<= watchSetting
 	)
 
-	def generate(generators: ScopedSetting[Seq[Task[Seq[File]]]]): Initialize[Task[Seq[File]]] = generators {_.join.map(_.flatten) }
+	def generate(generators: SettingKey[Seq[Task[Seq[File]]]]): Initialize[Task[Seq[File]]] = generators {_.join.map(_.flatten) }
 
-	def inAllConfigurations[T](key: ScopedTask[T]): Initialize[Task[Seq[T]]] = (state, thisProjectRef) flatMap { (state, ref) =>
+	def inAllConfigurations[T](key: TaskKey[T]): Initialize[Task[Seq[T]]] = (state, thisProjectRef) flatMap { (state, ref) =>
 		val structure = Project structure state
 		val configurations = Project.getProject(ref, structure).toList.flatMap(_.configurations)
 		configurations.flatMap { conf =>
@@ -353,7 +353,7 @@ object Defaults extends BuildCommon
 	def collectFiles(dirs: ScopedTaskable[Seq[File]], filter: ScopedTaskable[FileFilter], excludes: ScopedTaskable[FileFilter]): Initialize[Task[Seq[File]]] =
 		(dirs, filter, excludes) map { (d,f,excl) => d.descendentsExcept(f,excl).get }
 
-	def artifactPathSetting(art: ScopedSetting[Artifact])  =  (crossTarget, projectID, art, scalaVersion in artifactName, artifactName) { (t, module, a, sv, toString) => t / toString(sv, module, a) asFile }
+	def artifactPathSetting(art: SettingKey[Artifact])  =  (crossTarget, projectID, art, scalaVersion in artifactName, artifactName) { (t, module, a, sv, toString) => t / toString(sv, module, a) asFile }
 	def artifactSetting = ((artifact, artifactClassifier).identity zipWith configuration.?) { case ((a,classifier),cOpt) =>
 		val cPart = cOpt flatMap { c => if(c == Compile) None else Some(c.name) }
 		val combined = cPart.toList ++ classifier.toList
@@ -404,7 +404,7 @@ object Defaults extends BuildCommon
 			IO.delete(clean)
 			IO.move(mappings.map(_.swap))
 		}
-	def runMainTask(classpath: ScopedTask[Classpath], scalaRun: ScopedTask[ScalaRun]): Initialize[InputTask[Unit]] =
+	def runMainTask(classpath: TaskKey[Classpath], scalaRun: TaskKey[ScalaRun]): Initialize[InputTask[Unit]] =
 	{
 			import DefaultParsers._
 		InputTask( loadForParser(discoveredMainClasses)( (s, names) => runMainParser(s, names getOrElse Nil) ) ) { result =>
@@ -414,7 +414,7 @@ object Defaults extends BuildCommon
 		}
 	}
 
-	def runTask(classpath: ScopedTask[Classpath], mainClassTask: ScopedTask[Option[String]], scalaRun: ScopedTask[ScalaRun]): Initialize[InputTask[Unit]] =
+	def runTask(classpath: TaskKey[Classpath], mainClassTask: TaskKey[Option[String]], scalaRun: TaskKey[ScalaRun]): Initialize[InputTask[Unit]] =
 		inputTask { result =>
 			(classpath, mainClassTask, scalaRun, streams, result) map { (cp, main, runner, s, args) =>
 				val mainClass = main getOrElse error("No main class detected.")
@@ -432,7 +432,7 @@ object Defaults extends BuildCommon
 				new Run(si, trap, tmp)
 		}
 
-	def docSetting(key: ScopedTask[File]): Seq[Setting[_]] = inTask(key)(Seq(
+	def docSetting(key: TaskKey[File]): Seq[Setting[_]] = inTask(key)(Seq(
 		cacheDirectory ~= (_ / key.key.label),
 		target <<= docDirectory, // deprecate docDirectory in favor of 'target in doc'; remove when docDirectory is removed
 		scaladocOptions <<= scalacOptions, // deprecate scaladocOptions in favor of 'scalacOptions in doc'; remove when scaladocOptions is removed
@@ -460,7 +460,7 @@ object Defaults extends BuildCommon
 	def consoleProjectTask = (state, streams, initialCommands in consoleProject) map { (state, s, extra) => ConsoleProject(state, extra)(s.log); println() }
 	def consoleTask: Initialize[Task[Unit]] = consoleTask(fullClasspath, console)
 	def consoleQuickTask = consoleTask(externalDependencyClasspath, consoleQuick)
-	def consoleTask(classpath: ScopedTask[Classpath], task: TaskKey[_]): Initialize[Task[Unit]] = (compilers in task, classpath in task, scalacOptions in task, initialCommands in task, streams) map {
+	def consoleTask(classpath: TaskKey[Classpath], task: TaskKey[_]): Initialize[Task[Unit]] = (compilers in task, classpath in task, scalacOptions in task, initialCommands in task, streams) map {
 		(cs, cp, options, initCommands, s) =>
 			(new Console(cs.scalac))(data(cp), options, initCommands, s.log).foreach(msg => error(msg))
 			println()
@@ -535,7 +535,7 @@ object Defaults extends BuildCommon
 		recurse ?? Nil
 	}
 
-	def inDependencies[T](key: ScopedSetting[T], default: ProjectRef => T, includeRoot: Boolean = true, classpath: Boolean = true, aggregate: Boolean = false): Initialize[Seq[T]] =
+	def inDependencies[T](key: SettingKey[T], default: ProjectRef => T, includeRoot: Boolean = true, classpath: Boolean = true, aggregate: Boolean = false): Initialize[Seq[T]] =
 		Project.bind( (loadedBuild, thisProjectRef).identity ) { case (lb, base) =>
 			transitiveDependencies(base, lb, includeRoot, classpath, aggregate) map ( ref => (key in ref) ?? default(ref) ) join ;
 		}
@@ -584,7 +584,7 @@ object Classpaths
 
 	def concatDistinct[T](a: ScopedTaskable[Seq[T]], b: ScopedTaskable[Seq[T]]): Initialize[Task[Seq[T]]] = (a,b) map { (x,y) => (x ++ y).distinct }
 	def concat[T](a: ScopedTaskable[Seq[T]], b: ScopedTaskable[Seq[T]]): Initialize[Task[Seq[T]]] = (a,b) map ( _ ++ _)
-	def concatSettings[T](a: ScopedSetting[Seq[T]], b: ScopedSetting[Seq[T]]): Initialize[Seq[T]] = (a,b)(_ ++ _)
+	def concatSettings[T](a: SettingKey[Seq[T]], b: SettingKey[Seq[T]]): Initialize[Seq[T]] = (a,b)(_ ++ _)
 
 	lazy val configSettings: Seq[Setting[_]] = Seq(
 		externalDependencyClasspath <<= concat(unmanagedClasspath, managedClasspath),
@@ -605,9 +605,9 @@ object Classpaths
 		}
 	)
 	def defaultPackageKeys = Seq(packageBin, packageSrc, packageDoc)
-	lazy val defaultPackages: Seq[ScopedTask[File]] =
+	lazy val defaultPackages: Seq[TaskKey[File]] =
 		for(task <- defaultPackageKeys; conf <- Seq(Compile, Test)) yield (task in conf)
-	lazy val defaultArtifactTasks: Seq[ScopedTask[File]] = makePom +: defaultPackages
+	lazy val defaultArtifactTasks: Seq[TaskKey[File]] = makePom +: defaultPackages
 
 	def findClasspathConfig(map: Configuration => Configuration, thisConfig: Configuration, delegate: Task[Option[Configuration]], up: Task[UpdateReport]): Task[Configuration] =
 		(delegate :^: up :^: KNil) map { case delegated :+: report :+: HNil =>
@@ -617,14 +617,14 @@ object Classpaths
 			search find { defined contains _.name } getOrElse notFound
 		}
 
-	def packaged(pkgTasks: Seq[ScopedTask[File]]): Initialize[Task[Map[Artifact, File]]] =
+	def packaged(pkgTasks: Seq[TaskKey[File]]): Initialize[Task[Map[Artifact, File]]] =
 		enabledOnly(packagedArtifact.task, pkgTasks) apply (_.join.map(_.toMap))
-	def artifactDefs(pkgTasks: Seq[ScopedTask[File]]): Initialize[Seq[Artifact]] =
+	def artifactDefs(pkgTasks: Seq[TaskKey[File]]): Initialize[Seq[Artifact]] =
 		enabledOnly(artifact, pkgTasks)
 
-	def enabledOnly[T](key: ScopedSetting[T], pkgTasks: Seq[ScopedTask[File]]): Initialize[Seq[T]] =
+	def enabledOnly[T](key: SettingKey[T], pkgTasks: Seq[TaskKey[File]]): Initialize[Seq[T]] =
 		( forallIn(key, pkgTasks) zipWith forallIn(publishArtifact, pkgTasks) ) ( _ zip _ collect { case (a, true) => a } )
-	def forallIn[T](key: ScopedSetting[T], pkgTasks: Seq[ScopedTask[_]]): Initialize[Seq[T]] =
+	def forallIn[T](key: SettingKey[T], pkgTasks: Seq[TaskKey[_]]): Initialize[Seq[T]] =
 		pkgTasks.map( pkg => key in pkg.scope in pkg ).join
 
 	val publishSettings: Seq[Setting[_]] = Seq(
@@ -1041,7 +1041,7 @@ trait BuildExtra extends BuildCommon
 	def addCompilerPlugin(dependency: ModuleID): Setting[Seq[ModuleID]] =
 		libraryDependencies += compilerPlugin(dependency)
 
-	def addArtifact(a: Artifact, taskDef: ScopedTask[File]): SettingsDefinition =
+	def addArtifact(a: Artifact, taskDef: TaskKey[File]): SettingsDefinition =
 	{
 		val pkgd = packagedArtifacts <<= (packagedArtifacts, taskDef) map ( (pas,file) => pas updated (a, file) )
 		seq( artifacts += a, pkgd )
@@ -1083,7 +1083,7 @@ trait BuildExtra extends BuildCommon
 			toError(r.run(mainClass, data(cp), arguments, s.log))
 		}
 	
-	def fullRunInputTask(scoped: ScopedInput[Unit], config: Configuration, mainClass: String, baseArguments: String*): Setting[InputTask[Unit]] =
+	def fullRunInputTask(scoped: InputKey[Unit], config: Configuration, mainClass: String, baseArguments: String*): Setting[InputTask[Unit]] =
 		scoped <<= inputTask { result =>
 			( initScoped(scoped.scopedKey, runnerInit) zipWith (fullClasspath in config, streams, result).identityMap) { (rTask, t) =>
 				(t :^: rTask :^: KNil) map { case (cp, s, args) :+: r :+: HNil =>
@@ -1091,7 +1091,7 @@ trait BuildExtra extends BuildCommon
 				}
 			}
 		}
-	def fullRunTask(scoped: ScopedTask[Unit], config: Configuration, mainClass: String, arguments: String*): Setting[Task[Unit]] =
+	def fullRunTask(scoped: TaskKey[Unit], config: Configuration, mainClass: String, arguments: String*): Setting[Task[Unit]] =
 		scoped <<= ( initScoped(scoped.scopedKey, runnerInit) zipWith (fullClasspath in config, streams).identityMap ) { case (rTask, t) =>
 			(t :^: rTask :^: KNil) map { case (cp, s) :+: r :+: HNil =>
 				toError(r.run(mainClass, data(cp), arguments, s.log))
@@ -1139,27 +1139,27 @@ trait BuildCommon
 	}
 
 		// these are intended for use in input tasks for creating parsers
-	def getFromContext[T](task: ScopedTask[T], context: ScopedKey[_], s: State): Option[T] =
+	def getFromContext[T](task: TaskKey[T], context: ScopedKey[_], s: State): Option[T] =
 		SessionVar.get(SessionVar.resolveContext(task.scopedKey, context.scope, s), s)
 
-	def loadFromContext[T](task: ScopedTask[T], context: ScopedKey[_], s: State)(implicit f: sbinary.Format[T]): Option[T] =
+	def loadFromContext[T](task: TaskKey[T], context: ScopedKey[_], s: State)(implicit f: sbinary.Format[T]): Option[T] =
 		SessionVar.load(SessionVar.resolveContext(task.scopedKey, context.scope, s), s)
 
 		// intended for use in constructing InputTasks
-	def loadForParser[P,T](task: ScopedTask[T])(f: (State, Option[T]) => Parser[P])(implicit format: sbinary.Format[T]): Initialize[State => Parser[P]] =
+	def loadForParser[P,T](task: TaskKey[T])(f: (State, Option[T]) => Parser[P])(implicit format: sbinary.Format[T]): Initialize[State => Parser[P]] =
 		loadForParserI(task)(Project value f)(format)
-	def loadForParserI[P,T](task: ScopedTask[T])(init: Initialize[(State, Option[T]) => Parser[P]])(implicit format: sbinary.Format[T]): Initialize[State => Parser[P]] =
+	def loadForParserI[P,T](task: TaskKey[T])(init: Initialize[(State, Option[T]) => Parser[P]])(implicit format: sbinary.Format[T]): Initialize[State => Parser[P]] =
 		(resolvedScoped, init)( (ctx, f) => (s: State) => f( s, loadFromContext(task, ctx, s)(format)) )
 
-	def getForParser[P,T](task: ScopedTask[T])(init: (State, Option[T]) => Parser[P]): Initialize[State => Parser[P]] =
+	def getForParser[P,T](task: TaskKey[T])(init: (State, Option[T]) => Parser[P]): Initialize[State => Parser[P]] =
 		getForParserI(task)(Project value init)
-	def getForParserI[P,T](task: ScopedTask[T])(init: Initialize[(State, Option[T]) => Parser[P]]): Initialize[State => Parser[P]] =
+	def getForParserI[P,T](task: TaskKey[T])(init: Initialize[(State, Option[T]) => Parser[P]]): Initialize[State => Parser[P]] =
 		(resolvedScoped, init)( (ctx, f) => (s: State) => f(s, getFromContext(task, ctx, s)) )
 
 		// these are for use for constructing Tasks
-	def loadPrevious[T](task: ScopedTask[T])(implicit f: sbinary.Format[T]): Initialize[Task[Option[T]]] =
+	def loadPrevious[T](task: TaskKey[T])(implicit f: sbinary.Format[T]): Initialize[Task[Option[T]]] =
 		(state, resolvedScoped) map { (s, ctx) => loadFromContext(task, ctx, s)(f) }
 
-	def getPrevious[T](task: ScopedTask[T]): Initialize[Task[Option[T]]] =
+	def getPrevious[T](task: TaskKey[T]): Initialize[Task[Option[T]]] =
 		(state, resolvedScoped) map { (s, ctx) => getFromContext(task, ctx, s) }
 }

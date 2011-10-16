@@ -67,13 +67,13 @@ final case class Extracted(structure: BuildStructure, session: SessionSettings, 
 	lazy val currentUnit = structure units currentRef.build
 	lazy val currentProject = currentUnit defined currentRef.project
 	lazy val currentLoader: ClassLoader = currentUnit.loader
-	def get[T](key: ScopedTask[T]): Task[T] = get(key.task)
-	def get[T](key: ScopedSetting[T]) = getOrError(inCurrent(key), key.key)
-	def getOpt[T](key: ScopedSetting[T]): Option[T] = structure.data.get(inCurrent(key), key.key)
-	private[this] def inCurrent[T](key: ScopedSetting[T]): Scope  =  if(key.scope.project == This) key.scope.copy(project = Select(currentRef)) else key.scope
+	def get[T](key: TaskKey[T]): Task[T] = get(key.task)
+	def get[T](key: SettingKey[T]) = getOrError(inCurrent(key), key.key)
+	def getOpt[T](key: SettingKey[T]): Option[T] = structure.data.get(inCurrent(key), key.key)
+	private[this] def inCurrent[T](key: SettingKey[T]): Scope  =  if(key.scope.project == This) key.scope.copy(project = Select(currentRef)) else key.scope
 	@deprecated("This method does not apply state changes requested during task execution.  Use 'runTask' instead, which does.", "0.11.1")
-	def evalTask[T](key: ScopedTask[T], state: State): T = runTask(key, state)._2
-	def runTask[T](key: ScopedTask[T], state: State): (State, T) =
+	def evalTask[T](key: TaskKey[T], state: State): T = runTask(key, state)._2
+	def runTask[T](key: TaskKey[T], state: State): (State, T) =
 	{
 			import EvaluateTask._
 		val rkey = Project.mapScope(Scope.resolveScope(GlobalScope, currentRef.build, rootProject) )( key.scopedKey )
@@ -169,7 +169,7 @@ object Project extends Init[Scope] with ProjectExtra
 		onLoad(updateCurrent( newState ))
 	}
 	def orIdentity[T](opt: Option[T => T]): T => T = opt getOrElse idFun
-	def getHook[T](key: ScopedSetting[T => T], data: Settings[Scope]): T => T  =  orIdentity(key in GlobalScope get data)
+	def getHook[T](key: SettingKey[T => T], data: Settings[Scope]): T => T  =  orIdentity(key in GlobalScope get data)
 	def getHooks(data: Settings[Scope]): (State => State, State => State)  =  (getHook(Keys.onLoad, data), getHook(Keys.onUnload, data))
 
 	def current(state: State): ProjectRef = session(state).current

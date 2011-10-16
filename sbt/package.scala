@@ -4,6 +4,13 @@
 package object sbt extends sbt.std.TaskExtra with sbt.Types with sbt.ProcessExtra with sbt.impl.DependencyBuilders
 	with sbt.PathExtra with sbt.ProjectExtra with sbt.DependencyFilterExtra with sbt.BuildExtra
 {
+	@deprecated("Use SettingKey, which is a drop-in replacement.", "0.11.1")
+	type ScopedSetting[T] = SettingKey[T]
+	@deprecated("Use TaskKey, which is a drop-in replacement.", "0.11.1")
+	type ScopedTask[T] = TaskKey[T]
+	@deprecated("Use InputKey, which is a drop-in replacement.", "0.11.1")
+	type ScopedInput[T] = InputKey[T]
+
 	type Setting[T] = Project.Setting[T]
 	type ScopedKey[T] = Project.ScopedKey[T]
 	type SettingsDefinition = Project.SettingsDefinition
