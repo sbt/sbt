@@ -75,11 +75,19 @@ final case class Extracted(structure: BuildStructure, session: SessionSettings, 
 	def runTask[T](key: TaskKey[T], state: State): (State, T) =
 	{
 			import EvaluateTask._
-		val rkey = Project.mapScope(Scope.resolveScope(GlobalScope, currentRef.build, rootProject) )( key.scopedKey )
+		val rkey = resolve(key.scopedKey)
 		val value: Option[(State, Result[T])] = apply(structure, key.task.scopedKey, state, currentRef)
 		val (newS, result) = getOrError(rkey.scope, rkey.key, value)
 		(newS, processResult(result, newS.log))
 	}
+	def runAggregated[T](key: TaskKey[T], state: State): State =
+	{
+		val rkey = resolve(key.scopedKey)
+		val tasks = Aggregation.getTasks(rkey, structure, true)
+		Aggregation.runTasks(state, structure, tasks, Aggregation.Dummies(KNil, HNil), show = false )(showKey)
+	}
+	private[this] def resolve[T](key: ScopedKey[T]): ScopedKey[T] =
+		Project.mapScope(Scope.resolveScope(GlobalScope, currentRef.build, rootProject) )( key.scopedKey )
 	private def getOrError[T](scope: Scope, key: AttributeKey[_], value: Option[T])(implicit display: Show[ScopedKey[_]]): T =
 		value getOrElse error(display(ScopedKey(scope, key)) + " is undefined.")
 	private def getOrError[T](scope: Scope, key: AttributeKey[T])(implicit display: Show[ScopedKey[_]]): T =
