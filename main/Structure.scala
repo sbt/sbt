@@ -105,7 +105,7 @@ sealed trait TaskKey[T] extends ScopedTaskable[T] with KeyedInitialize[Task[T]] 
 /** Identifies an input task.  An input task parses input and produces a task to run.
 * It consists of three parts: the scope, the name, and the type of the value produced by an input task associated with this key.
 * The scope is represented by a value of type Scope.
-* The name and the type are represented by a value of type AttributeKey[InputTask[T]]. */
+* The name and the type are represented by a value of type AttributeKey[InputTask[T]].
 * Instances are constructed using the companion object. */
 sealed trait InputKey[T] extends Scoped with KeyedInitialize[InputTask[T]] with Scoped.ScopingSetting[InputKey[T]] with Scoped.DefinableSetting[InputTask[T]]
 {
