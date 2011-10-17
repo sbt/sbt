@@ -8,7 +8,11 @@ import Types._
 /** A higher-order heterogeneous list.  It has a type constructor M[_] and
 * type parameters HL.  The underlying data is M applied to each type parameter.
 * Explicitly tracking M[_] allows performing natural transformations or ensuring
-* all data conforms to some common type. */
+* all data conforms to some common type.
+*
+* For background, see
+* http://apocalisp.wordpress.com/2010/11/01/type-level-programming-in-scala-part-8a-klist%C2%A0motivation/
+ */
 sealed trait KList[+M[_], HL <: HList]
 {
 	type Raw = HL
