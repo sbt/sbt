@@ -14,6 +14,7 @@ package sbt
 	import java.net.URI
 	import Path._
 
+/** Parses input and produces a task to run.  Constructed using the companion object. */
 sealed trait InputTask[T] {
 	def mapTask[S](f: Task[T] => Task[S]): InputTask[S]
 }
@@ -71,7 +72,14 @@ object InputTask
 }
 
 sealed trait Scoped { def scope: Scope; val key: AttributeKey[_] }
+
+/** A common type for SettingKey and TaskKey so that both can be used as inputs to tasks.*/
 sealed trait ScopedTaskable[T] extends Scoped
+
+/** Identifies a setting.  It consists of three parts: the scope, the name, and the type of a value associated with this key.
+* The scope is represented by a value of type Scope.
+* The name and the type are represented by a value of type AttributeKey[T].
+* Instances are constructed using the companion object. */
 sealed trait SettingKey[T] extends ScopedTaskable[T] with KeyedInitialize[T] with Scoped.ScopingSetting[SettingKey[T]] with Scoped.DefinableSetting[T] with Scoped.ListSetting[T, Id]
 {
 	val key: AttributeKey[T]
@@ -80,6 +88,11 @@ sealed trait SettingKey[T] extends ScopedTaskable[T] with KeyedInitialize[T] wit
 
 	protected[this] def make[S](other: Initialize[S])(f: (T, S) => T): Setting[T] = this <<= (this, other)(f)
 }
+
+/** Identifies a task.  It consists of three parts: the scope, the name, and the type of the value computed by a task associated with this key.
+* The scope is represented by a value of type Scope.
+* The name and the type are represented by a value of type AttributeKey[Task[T]].
+* Instances are constructed using the companion object. */
 sealed trait TaskKey[T] extends ScopedTaskable[T] with KeyedInitialize[Task[T]] with Scoped.ScopingSetting[TaskKey[T]] with Scoped.ListSetting[T, Task] with Scoped.DefinableTask[T]
 {
 	val key: AttributeKey[Task[T]]
@@ -88,6 +101,12 @@ sealed trait TaskKey[T] extends ScopedTaskable[T] with KeyedInitialize[Task[T]] 
 
 	protected[this] def make[S](other: Initialize[Task[S]])(f: (T, S) => T): Setting[Task[T]] = this <<= (this, other) { (a,b) => (a,b) map f }
 }
+
+/** Identifies an input task.  An input task parses input and produces a task to run.
+* It consists of three parts: the scope, the name, and the type of the value produced by an input task associated with this key.
+* The scope is represented by a value of type Scope.
+* The name and the type are represented by a value of type AttributeKey[InputTask[T]]. */
+* Instances are constructed using the companion object. */
 sealed trait InputKey[T] extends Scoped with KeyedInitialize[InputTask[T]] with Scoped.ScopingSetting[InputKey[T]] with Scoped.DefinableSetting[InputTask[T]]
 {
 	val key: AttributeKey[InputTask[T]]
@@ -95,6 +114,7 @@ sealed trait InputKey[T] extends Scoped with KeyedInitialize[InputTask[T]] with 
 	def in(scope: Scope): InputKey[T] = Scoped.scopedInput(Scope.replaceThis(this.scope)(scope), this.key)
 }
 
+/** Methods and types related to constructing settings, including keys, scopes, and initializations. */
 object Scoped
 {
 	implicit def taskScopedToKey[T](s: TaskKey[T]): ScopedKey[Task[T]] = ScopedKey(s.scope, s.key)
@@ -474,6 +494,7 @@ object Scoped
 
 	import Scoped.extendScoped
 
+/** Constructs InputKeys, which are associated with input tasks to define a setting.*/
 object InputKey
 {
 	def apply[T: Manifest](label: String, description: String = ""): InputKey[T] =
@@ -485,6 +506,8 @@ object InputKey
 	def apply[T](akey: AttributeKey[InputTask[T]]): InputKey[T] =
 		new InputKey[T] { val key = akey; def scope = Scope.ThisScope }
 }
+
+/** Constructs TaskKeys, which are associated with tasks to define a setting.*/
 object TaskKey
 {
 	def apply[T: Manifest](label: String, description: String = ""): TaskKey[T] =
@@ -498,6 +521,8 @@ object TaskKey
 
 	def local[T: Manifest]: TaskKey[T] = apply[T](AttributeKey.local[Task[T]])
 }
+
+/** Constructs SettingKeys, which are associated with a value to define a basic setting.*/
 object SettingKey
 {
 	def apply[T: Manifest](label: String, description: String = ""): SettingKey[T] =
