@@ -45,7 +45,7 @@ object BuildLoader
 	/** in: Build URI and staging directory
 	* out: None if unhandled or Some containing the retrieve function, which returns the directory retrieved to (can be the same as the staging directory) */
 	type Resolver = ResolveInfo => Option[() => File]
-	type Builder = BuildInfo => Option[File => BuildUnit]
+	type Builder = BuildInfo => Option[() => BuildUnit]
 	type Transformer = TransformInfo => BuildUnit
 	type Loader = LoadInfo => Option[() => BuildUnit]
 
@@ -67,7 +67,7 @@ object BuildLoader
 		def state: State
 	}
 	final class ResolveInfo(val uri: URI, val staging: File, val config: LoadBuildConfiguration, val state: State) extends Info
-	final class BuildInfo(val uri: URI, val config: LoadBuildConfiguration, val state: State) extends Info
+	final class BuildInfo(val uri: URI, val base: File, val config: LoadBuildConfiguration, val state: State) extends Info
 	final class TransformInfo(val uri: URI, val base: File, val unit: BuildUnit, val config: LoadBuildConfiguration, val state: State) extends Info {
 		def setUnit(newUnit: BuildUnit): TransformInfo = new TransformInfo(uri, base, newUnit, config, state)
 	}
@@ -85,10 +85,10 @@ object BuildLoader
 		val cs = info.components
 		for {
 			resolve <- cs.resolver(new ResolveInfo(uri, staging, config, state))
-			build <- cs.builder(new BuildInfo(uri, config, state))
-		} yield () => {
 			val base = resolve()
-			val unit = build(base)
+			build <- cs.builder(new BuildInfo(uri, base, config, state))
+		} yield () => {
+			val unit = build()
 			cs.transformer(new TransformInfo(uri, base, unit, config, state))
 		}
 	}
@@ -99,7 +99,7 @@ final class BuildLoader(
 	val state: State,
 	val config: LoadBuildConfiguration,
 	val resolvers: MultiHandler[ResolveInfo, ()=>File],
-	val builders: MultiHandler[BuildInfo, File=>BuildUnit],
+	val builders: MultiHandler[BuildInfo, ()=>BuildUnit],
 	val transformer: Transformer,
 	val full: MultiHandler[LoadInfo, ()=>BuildUnit])
 {

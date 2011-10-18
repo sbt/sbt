@@ -227,9 +227,9 @@ object Load
 
 	def load(file: File, s: State, config: LoadBuildConfiguration): PartBuild =
 	{
-		val fail = (uri: URI) => error("Invalid build URI: " + uri)
+		val fail = (uri: URI) => error("Invalid build URI (no handler available): " + uri)
 		val resolver = (info: BuildLoader.ResolveInfo) => RetrieveUnit(info.staging, info.uri)
-		val build = (info: BuildLoader.BuildInfo) => Some((base: File) => loadUnit(info.uri, base, info.state, info.config))
+		val build = (info: BuildLoader.BuildInfo) => Some(() => loadUnit(info.uri, info.base, info.state, info.config))
 		val components = BuildLoader.components(resolver, build, full = BuildLoader.componentLoader)
 		val builtinLoader = BuildLoader(components, fail, s, config)
 		load(file, builtinLoader)
