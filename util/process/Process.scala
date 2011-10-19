@@ -166,6 +166,8 @@ trait ProcessBuilder extends SourcePartialBuilder with SinkPartialBuilder
 	* The newly started process reads from standard input of the current process if `connectInput` is true.*/
 	def run(log: ProcessLogger, connectInput: Boolean): Process
 
+	def runBuffered(log: ProcessLogger, connectInput: Boolean): Process
+
 	/** Constructs a command that runs this command first and then `other` if this command succeeds.*/
 	def #&& (other: ProcessBuilder): ProcessBuilder
 	/** Constructs a command that runs this command first and then `other` if this command does not succeed.*/
