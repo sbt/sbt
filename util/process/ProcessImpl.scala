@@ -159,10 +159,10 @@ private abstract class AbstractProcessBuilder extends ProcessBuilder with SinkPa
 
 	def ! = run(false).exitValue()
 	def !< = run(true).exitValue()
-	def !(log: ProcessLogger) = runBuffered(log, false)
-	def !<(log: ProcessLogger) = runBuffered(log, true)
-	private[this] def runBuffered(log: ProcessLogger, connectInput: Boolean) =
-		log.buffer {  run(log, connectInput).exitValue() }
+	def !(log: ProcessLogger) = runBuffered(log, false).exitValue()
+	def !<(log: ProcessLogger) = runBuffered(log, true).exitValue()
+	def runBuffered(log: ProcessLogger, connectInput: Boolean) =
+		log.buffer {  run(log, connectInput) }
 	def !(io: ProcessIO) = run(io).exitValue()
 
 	def canPipeTo = false

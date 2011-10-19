@@ -9,6 +9,7 @@ trait ForkJava
 {
 	def javaHome: Option[File]
 	def outputStrategy: Option[OutputStrategy]
+	def connectInput: Boolean
 }
 trait ForkScala extends ForkJava
 {
@@ -19,7 +20,7 @@ trait ForkScalaRun extends ForkScala
 	def workingDirectory: Option[File]
 	def runJVMOptions: Seq[String]
 }
-final case class ForkOptions(javaHome: Option[File] = None, outputStrategy: Option[OutputStrategy] = None, scalaJars: Iterable[File] = Nil, workingDirectory: Option[File] = None, runJVMOptions: Seq[String] = Nil) extends ForkScalaRun
+final case class ForkOptions(javaHome: Option[File] = None, outputStrategy: Option[OutputStrategy] = None, scalaJars: Iterable[File] = Nil, workingDirectory: Option[File] = None, runJVMOptions: Seq[String] = Nil, connectInput: Boolean = false) extends ForkScalaRun
 
 sealed abstract class OutputStrategy extends NotNull
 case object StdoutOutput extends OutputStrategy
@@ -55,6 +56,8 @@ object Fork
 		def apply(javaHome: Option[File], options: Seq[String], workingDirectory: Option[File], outputStrategy: OutputStrategy): Int =
 			apply(javaHome, options, workingDirectory, Map.empty, outputStrategy)
 		def apply(javaHome: Option[File], options: Seq[String], workingDirectory: Option[File], env: Map[String, String], outputStrategy: OutputStrategy): Int =
+			fork(javaHome, options, workingDirectory, env, false, outputStrategy).exitValue
+		def fork(javaHome: Option[File], options: Seq[String], workingDirectory: Option[File], env: Map[String, String], connectInput: Boolean, outputStrategy: OutputStrategy): Process =
 		{
 			val executable = javaCommand(javaHome, commandName).getAbsolutePath
 			val command = (executable :: options.toList).toArray
@@ -64,10 +67,10 @@ object Fork
 			for( (key, value) <- env )
 				environment.put(key, value)
 			outputStrategy match {
-				case StdoutOutput => Process(builder) !
-				case BufferedOutput(logger) => Process(builder) ! logger
-				case LoggedOutput(logger) => Process(builder).run(logger).exitValue()
-				case CustomOutput(output) => (Process(builder) #> output).run.exitValue()
+				case StdoutOutput => Process(builder).run(connectInput)
+				case BufferedOutput(logger) => Process(builder).runBuffered(logger, connectInput)
+				case LoggedOutput(logger) => Process(builder).run(logger, connectInput)
+				case CustomOutput(output) => (Process(builder) #> output).run(connectInput)
 			}
 		}
 	}
@@ -79,12 +82,14 @@ object Fork
 		def apply(javaHome: Option[File], jvmOptions: Seq[String], scalaJars: Iterable[File], arguments: Seq[String], workingDirectory: Option[File], log: Logger): Int =
 			apply(javaHome, jvmOptions, scalaJars, arguments, workingDirectory, BufferedOutput(log))
 		def apply(javaHome: Option[File], jvmOptions: Seq[String], scalaJars: Iterable[File], arguments: Seq[String], workingDirectory: Option[File], outputStrategy: OutputStrategy): Int =
+			fork(javaHome, jvmOptions, scalaJars, arguments, workingDirectory, false, outputStrategy).exitValue()
+		def fork(javaHome: Option[File], jvmOptions: Seq[String], scalaJars: Iterable[File], arguments: Seq[String], workingDirectory: Option[File], connectInput: Boolean, outputStrategy: OutputStrategy): Process =
 		{
 			if(scalaJars.isEmpty) error("Scala jars not specified")
 			val scalaClasspathString = "-Xbootclasspath/a:" + scalaJars.map(_.getAbsolutePath).mkString(File.pathSeparator)
 			val mainClass = if(mainClassName.isEmpty) Nil else mainClassName :: Nil
 			val options = jvmOptions ++ (scalaClasspathString :: mainClass ::: arguments.toList)
-			Fork.java(javaHome, options, workingDirectory, Map.empty, outputStrategy)
+			Fork.java.fork(javaHome, options, workingDirectory, Map.empty, connectInput, outputStrategy)
 		}
 	}
 }

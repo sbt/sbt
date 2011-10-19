@@ -76,7 +76,8 @@ final case class Extracted(structure: BuildStructure, session: SessionSettings, 
 	{
 			import EvaluateTask._
 		val rkey = resolve(key.scopedKey)
-		val value: Option[(State, Result[T])] = apply(structure, key.task.scopedKey, state, currentRef)
+		val config = extractedConfig(this, structure)
+		val value: Option[(State, Result[T])] = apply(structure, key.task.scopedKey, state, currentRef, config)
 		val (newS, result) = getOrError(rkey.scope, rkey.key, value)
 		(newS, processResult(result, newS.log))
 	}
@@ -342,7 +343,8 @@ object Project extends Init[Scope] with ProjectExtra
 	def runTask[T](taskKey: ScopedKey[Task[T]], state: State, checkCycles: Boolean = false, maxWorkers: Int = EvaluateTask.SystemProcessors): Option[(State, Result[T])] =
 	{
 		val extracted = Project.extract(state)
-		EvaluateTask(extracted.structure, taskKey, state, extracted.currentRef, checkCycles, maxWorkers)
+		val config = EvaluateConfig(true, checkCycles, maxWorkers)
+		EvaluateTask(extracted.structure, taskKey, state, extracted.currentRef, config)
 	}
 	// this is here instead of Scoped so that it is considered without need for import (because of Project.Initialize)
 	implicit def richInitializeTask[T](init: Initialize[Task[T]]): Scoped.RichInitializeTask[T] = new Scoped.RichInitializeTask(init)

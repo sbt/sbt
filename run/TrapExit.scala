@@ -56,8 +56,17 @@ object TrapExit
 			log.debug("Sandboxed run complete..")
 			code.value.getOrElse(0)
 		}
-		finally { System.setSecurityManager(originalSecurityManager) }
+		catch { case e: InterruptedException => cancel(executionThread, allThreads, log) }
+		finally System.setSecurityManager(originalSecurityManager)
 	}
+	private[this] def cancel(executionThread: Thread, originalThreads: Set[Thread], log: Logger): Int =
+	{
+		log.warn("Run canceled.")
+		executionThread.interrupt()
+		stopAll(originalThreads)
+		1
+	}
+	
 	 // wait for all non-daemon threads to terminate
 	private def waitForExit(originalThreads: Set[Thread], log: Logger)
 	{

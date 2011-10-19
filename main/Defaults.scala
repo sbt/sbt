@@ -55,6 +55,8 @@ object Defaults extends BuildCommon
 		sbtResolver in GlobalScope <<= sbtVersion { sbtV => if(sbtV endsWith "-SNAPSHOT") Classpaths.typesafeSnapshots else Classpaths.typesafeResolver },
 		pollInterval :== 500,
 		logBuffered :== false,
+		connectInput :== false,
+		cancelable :== false,
 		autoScalaLibrary :== true,
 		onLoad <<= onLoad ?? idFun[State],
 		onUnload <<= onUnload ?? idFun[State],
@@ -426,9 +428,10 @@ object Defaults extends BuildCommon
 
 	def runnerTask = runner <<= runnerInit
 	def runnerInit: Initialize[Task[ScalaRun]] = 
-		(taskTemporaryDirectory, scalaInstance, baseDirectory, javaOptions, outputStrategy, fork, javaHome, trapExit) map { (tmp, si, base, options, strategy, forkRun, javaHomeDir, trap) =>
+		(taskTemporaryDirectory, scalaInstance, baseDirectory, javaOptions, outputStrategy, fork, javaHome, trapExit, connectInput) map {
+				(tmp, si, base, options, strategy, forkRun, javaHomeDir, trap, connectIn) =>
 			if(forkRun) {
-				new ForkRun( ForkOptions(scalaJars = si.jars, javaHome = javaHomeDir, outputStrategy = strategy,
+				new ForkRun( ForkOptions(scalaJars = si.jars, javaHome = javaHomeDir, connectInput = connectIn, outputStrategy = strategy,
 					runJVMOptions = options, workingDirectory = Some(base)) )
 			} else
 				new Run(si, trap, tmp)

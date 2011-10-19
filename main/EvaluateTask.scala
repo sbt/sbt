@@ -8,8 +8,10 @@ package sbt
 	import Keys.{globalLogging, streams, Streams, TaskStreams}
 	import Keys.{dummyState, dummyStreamsManager, streamsManager, taskDefinitionKey, transformState}
 	import Scope.{GlobalScope, ThisScope}
+	import Types.const
 	import scala.Console.{RED, RESET}
 
+final case class EvaluateConfig(cancelable: Boolean, checkCycles: Boolean = false, maxWorkers: Int = EvaluateTask.SystemProcessors)
 object EvaluateTask
 {
 	import Load.BuildStructure
@@ -19,6 +21,23 @@ object EvaluateTask
 	import Keys.state
 	
 	val SystemProcessors = Runtime.getRuntime.availableProcessors
+	def defaultConfig = EvaluateConfig(false)
+	def extractedConfig(extracted: Extracted, structure: BuildStructure): EvaluateConfig =
+	{
+		val workers = maxWorkers(extracted, structure)
+		val canCancel = cancelable(extracted, structure)
+		EvaluateConfig(cancelable = canCancel, maxWorkers = workers)
+	}
+
+	def maxWorkers(extracted: Extracted, structure: Load.BuildStructure): Int =
+		if(getBoolean(Keys.parallelExecution, true, extracted, structure))
+			EvaluateTask.SystemProcessors
+		else
+			1
+	def cancelable(extracted: Extracted, structure: Load.BuildStructure): Boolean =
+		getBoolean(Keys.cancelable, false, extracted, structure)
+	def getBoolean(key: SettingKey[Boolean], default: Boolean, extracted: Extracted, structure: Load.BuildStructure): Boolean =
+		(key in extracted.currentRef get structure.data) getOrElse default
 
 	def injectSettings: Seq[Setting[_]] = Seq(
 		(state in GlobalScope) ::= dummyState,
@@ -29,19 +48,19 @@ object EvaluateTask
 	{
 		val root = ProjectRef(pluginDef.root, Load.getRootProject(pluginDef.units)(pluginDef.root))
 		val pluginKey = Keys.fullClasspath in Configurations.Runtime
-		val evaluated = apply(pluginDef, ScopedKey(pluginKey.scope, pluginKey.key), state, root)
+		val evaluated = apply(pluginDef, ScopedKey(pluginKey.scope, pluginKey.key), state, root, defaultConfig)
 		val (newS, result) = evaluated getOrElse error("Plugin classpath does not exist for plugin definition at " + pluginDef.root)
-		Project.runUnloadHooks(newS) // discard state
+		Project.runUnloadHooks(newS) // discard states
 		processResult(result, log)
 	}
 
 	@deprecated("This method does not apply state changes requested during task execution.  Use 'apply' instead, which does.", "0.11.1")
 	def evaluateTask[T](structure: BuildStructure, taskKey: ScopedKey[Task[T]], state: State, ref: ProjectRef, checkCycles: Boolean = false, maxWorkers: Int = SystemProcessors): Option[Result[T]] =
-		apply(structure, taskKey, state, ref, checkCycles, maxWorkers).map(_._2)
-	def apply[T](structure: BuildStructure, taskKey: ScopedKey[Task[T]], state: State, ref: ProjectRef, checkCycles: Boolean = false, maxWorkers: Int = SystemProcessors): Option[(State, Result[T])] =
+		apply(structure, taskKey, state, ref, EvaluateConfig(false, checkCycles, maxWorkers)).map(_._2)
+	def apply[T](structure: BuildStructure, taskKey: ScopedKey[Task[T]], state: State, ref: ProjectRef, config: EvaluateConfig = defaultConfig): Option[(State, Result[T])] =
 		withStreams(structure) { str =>
 			for( (task, toNode) <- getTask(structure, taskKey, state, str, ref) ) yield
-				runTask(task, state, str, structure.index.triggers, checkCycles, maxWorkers)(toNode)
+				runTask(task, state, str, structure.index.triggers, config)(toNode)
 		}
 	def logIncResult(result: Result[_], streams: Streams) = result match { case Inc(i) => logIncomplete(i, streams); case _ => () }
 	def logIncomplete(result: Incomplete, streams: Streams)
@@ -78,18 +97,31 @@ object EvaluateTask
 	def nodeView[HL <: HList](state: State, streams: Streams, extraDummies: KList[Task, HL] = KNil, extraValues: HL = HNil): Execute.NodeView[Task] =
 		Transform(dummyStreamsManager :^: KCons(dummyState, extraDummies), streams :+: HCons(state, extraValues))
 
-	def runTask[T](root: Task[T], state: State, streams: Streams, triggers: Triggers[Task], checkCycles: Boolean = false, maxWorkers: Int = SystemProcessors)(implicit taskToNode: Execute.NodeView[Task]): (State, Result[T]) =
+	def runTask[T](root: Task[T], state: State, streams: Streams, triggers: Triggers[Task], config: EvaluateConfig = defaultConfig)(implicit taskToNode: Execute.NodeView[Task]): (State, Result[T]) =
 	{
-		val (service, shutdown) = CompletionService[Task[_], Completed](maxWorkers)
+		val log = state.log
+		log.debug("Running task... Cancelable: " + config.cancelable + ", max worker threads: " + config.maxWorkers + ", check cycles: " + config.checkCycles)
+		val (service, shutdown) = CompletionService[Task[_], Completed](config.maxWorkers)
 
-		val x = new Execute[Task](checkCycles, triggers)(taskToNode)
-		val (newState, result) =
-			try applyResults(x.runKeep(root)(service), state, root)
-			catch { case inc: Incomplete => (state, Inc(inc)) }
-			finally shutdown()
-		val replaced = transformInc(result)
-		logIncResult(replaced, streams)
-		(newState, replaced)
+		def run() = {
+			val x = new Execute[Task](config.checkCycles, triggers)(taskToNode)
+			val (newState, result) =
+				try applyResults(x.runKeep(root)(service), state, root)
+				catch { case inc: Incomplete => (state, Inc(inc)) }
+				finally shutdown()
+			val replaced = transformInc(result)
+			logIncResult(replaced, streams)
+			(newState, replaced)
+		}
+		val cancel = () => {
+			println("")
+			log.warn("Canceling execution...")
+			shutdown()
+		}
+		if(config.cancelable)
+			Signals.withHandler(cancel) { run }
+		else
+			run()
 	}
 
 	def applyResults[T](results: RMap[Task, Result], state: State, root: Task[T]): (State, Result[T]) =

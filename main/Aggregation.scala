@@ -76,11 +76,16 @@ final object Aggregation
 	{
 			import EvaluateTask._
 			import std.TaskExtra._
+
 		val extracted = Project extract s
 		val toRun = ts map { case KeyValue(k,t) => t.map(v => KeyValue(k,v)) } join;
-		val workers = maxWorkers(extracted, structure)
+		val config = extractedConfig(extracted, structure)
+
 		val start = System.currentTimeMillis
-		val (newS, result) = withStreams(structure){ str => runTask(toRun, s,str, structure.index.triggers, maxWorkers = workers)(nodeView(s, str, extra.tasks, extra.values)) }
+		val (newS, result) = withStreams(structure){ str =>
+			val transform = nodeView(s, str, extra.tasks, extra.values)
+			runTask(toRun, s,str, structure.index.triggers, config)(transform)
+		}
 		val stop = System.currentTimeMillis
 		val log = newS.log
 
@@ -90,11 +95,7 @@ final object Aggregation
 
 		newS
 	}
-	def maxWorkers(extracted: Extracted, structure: Load.BuildStructure): Int =
-		(Keys.parallelExecution in extracted.currentRef get structure.data) match {
-			case Some(true) | None => EvaluateTask.SystemProcessors
-			case Some(false) => 1
-		}
+
 	def printSuccess(start: Long, stop: Long, extracted: Extracted, success: Boolean, log: Logger)
 	{
 		import extracted._
