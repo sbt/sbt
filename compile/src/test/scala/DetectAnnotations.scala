@@ -54,7 +54,7 @@ object DetectAnnotations extends Specification
 		}
 	}
 	def subclasses(callback: xsbti.TestCallback): Seq[(File, String, Set[String], Boolean)] =
-		for( (file, src) <- callback.apis.toSeq; (definition, discovered) <- Discovery(Set.empty, annotationNames)(src.definitions) if !discovered.isEmpty ) yield
+		for( (file, src) <- CallbackTest.apis(callback); (definition, discovered) <- Discovery(Set.empty, annotationNames)(src.definitions) if !discovered.isEmpty ) yield
 			(file, definition.name, discovered.annotations, discovered.isModule)
 
 	def annotationNames = Set("c.A", "B", "d.C")

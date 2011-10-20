@@ -36,4 +36,6 @@ object CallbackTest
 		withTemporaryDirectory { outputDir =>
 			TestCompile(scalaVersion, sources, outputDir, Nil) { case (callback, instance, log) => f(callback, outputDir, instance, log) }
 		}
+	def apis(callback: xsbti.TestCallback) =
+		callback.apis.toSeq map { case (src, api) => (src, xsbt.api.APIUtil.minimize(api)) }
 }

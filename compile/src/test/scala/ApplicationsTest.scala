@@ -127,7 +127,7 @@ object ApplicationsTest extends Specification
 		}
 	}
 	def applications(callback: xsbti.TestCallback): Seq[(File, String)] =
-		for( (file, api) <- callback.apis.toSeq;
+		for( (file, api) <- CallbackTest.apis(callback);
 	x = println("\n" + file + ":\n" + (api.definitions.flatMap { case c: xsbti.api.ClassLike => c.structure.inherited.filter(_.name == "main"); case _ => Nil }).map(xsbt.api.DefaultShowAPI.apply).mkString("\n"));
  application <- applications(api))
 			yield	(file, application)
