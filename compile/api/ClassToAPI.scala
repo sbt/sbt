@@ -47,8 +47,8 @@ object ClassToAPI
 		val name = c.getName
 		val tpe = if(Modifier.isInterface(c.getModifiers)) Trait else ClassDef
 		lazy val (static, instance) = structure(c, enclPkg, cmap)
-		val cls = new api.ClassLike(tpe, strict(Empty), lzy(instance), typeParameters(c.getTypeParameters), name, acc, mods, annots)
-		val stat = new api.ClassLike(Module, strict(Empty), lzy(static), emptyTypeParameterArray, name, acc, mods, annots)
+		val cls = new api.ClassLike(tpe, strict(Empty), lzy(instance), emptyStringArray, typeParameters(c.getTypeParameters), name, acc, mods, annots)
+		val stat = new api.ClassLike(Module, strict(Empty), lzy(static), emptyStringArray, emptyTypeParameterArray, name, acc, mods, annots)
 		val defs = cls :: stat :: Nil
 		cmap(c.getName) = defs
 		defs
@@ -68,12 +68,13 @@ object ClassToAPI
 	}
 	def lzy[T <: AnyRef](t: => T): xsbti.api.Lazy[T] = xsbti.SafeLazy(t)
 
-  private val emptyTypeArray          = new Array[xsbti.api.Type](0)
-  private val emptyAnnotationArray    = new Array[xsbti.api.Annotation](0)
-  private val emptyTypeParameterArray = new Array[xsbti.api.TypeParameter](0)
-  private val emptySimpleTypeArray    = new Array[xsbti.api.SimpleType](0)
-  private val lzyEmptyTpeArray        = lzy(emptyTypeArray)
-  private val lzyEmptyDefArray        = lzy(new Array[xsbti.api.Definition](0))
+	private val emptyStringArray = new Array[String](0)
+	private val emptyTypeArray = new Array[xsbti.api.Type](0)
+	private val emptyAnnotationArray = new Array[xsbti.api.Annotation](0)
+	private val emptyTypeParameterArray = new Array[xsbti.api.TypeParameter](0)
+	private val emptySimpleTypeArray = new Array[xsbti.api.SimpleType](0)
+	private val lzyEmptyTpeArray = lzy(emptyTypeArray)
+	private val lzyEmptyDefArray = lzy(new Array[xsbti.api.Definition](0))
 
 	def parents(c: Class[_]): Seq[api.Type] =
 		types(c.getGenericSuperclass +: c.getGenericInterfaces)
