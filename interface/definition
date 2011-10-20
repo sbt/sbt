@@ -16,6 +16,7 @@ Definition
 			definitionType: DefinitionType
 			selfType: ~Type
 			structure: ~Structure
+			savedAnnotations: String*
 		TypeMember
 			TypeAlias
 				tpe: Type
