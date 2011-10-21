@@ -2,7 +2,7 @@
 [Northeast Scala Symposium]: http://www.nescala.org/2011/
 [Scala Days 2011]: http://days2011.scala-lang.org/node/138/285
 [documentation]: https://github.com/harrah/xsbt/wiki
-[Setup]: https://github.com/harrah/xsbt/wiki/Setup
+[Setup]: https://github.com/harrah/xsbt/wiki/Getting-Started-Setup
 [video of a demo]: http://vimeo.com/20263617
 
 # sbt 0.11
