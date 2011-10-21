@@ -80,7 +80,7 @@ object Defaults extends BuildCommon
 		extraLoggers :== { _ => Nil },
 		skip :== false,
 		watchSources :== Nil,
-		version :== "0.1",
+		version :== "0.1-SNAPSHOT",
 		outputStrategy :== None,
 		exportJars :== false,
 		fork :== false,
