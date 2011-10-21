@@ -50,7 +50,7 @@ EvalCommand + """ <expression>
 	Evaluates the given Scala expression and prints the result and type.
 """
 
-	def actHelp = Help(ShowCommand, (ShowCommand + " <key>", actBrief), actDetailed)
+	def showHelp = Help(ShowCommand, (ShowCommand + " <key>", actBrief), actDetailed)
 	def actBrief = "Displays the result of evaluating the setting or task associated with 'key'."
 	def actDetailed =
 ShowCommand + """ <setting>
@@ -160,9 +160,9 @@ ProjectCommand +
 	def projectsBrief = projectsDetailed
 	def projectsDetailed = "Displays the names of available projects."
 
-	def historyHelp = HistoryCommands.descriptions.map( d => Help(d) )
+	def historyHelp = Help.briefDetail(HistoryCommands.descriptions)
 
-	def exitBrief = (TerminateAction, "Terminates the build.")
+	def exitBrief = "Terminates the build."
 
 	def sbtrc = ".sbtrc"
 

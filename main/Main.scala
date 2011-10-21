@@ -106,27 +106,27 @@ object BuiltinCommands
 	def nop = Command.custom(s => success(() => s))
 	def ignore = Command.command(FailureWall)(idFun)
 
-	def detail(selected: Iterable[String])(h: Help): Option[String] =
-		h.detail match { case (commands, value) => if( selected exists commands ) Some(value) else None }
+	def detail(selected: Seq[String], detailMap: Map[String, String]): Seq[String] =
+		selected.distinct flatMap { detailMap get _ }
 
 	def help = Command.make(HelpCommand, helpBrief, helpDetailed)(helpParser)
 	def about = Command.command(AboutCommand, aboutBrief, aboutDetailed) { s => logger(s).info(aboutString(s)); s }
 
 	def helpParser(s: State) =
 	{
-		val h = s.definedCommands.flatMap(_.help)
-		val helpCommands = h.flatMap(_.detail._1)
-		val args = (token(Space) ~> token( OpOrID.examples(helpCommands : _*) )).*
+		val h = (Help.empty /: s.definedCommands)(_ ++ _.help(s))
+		val helpCommands = h.detail.keySet
+		val args = (token(Space) ~> token( NotSpace examples helpCommands  )).*
 		applyEffect(args)(runHelp(s, h))
 	}
 	
-	def runHelp(s: State, h: Seq[Help])(args: Seq[String]): State =
+	def runHelp(s: State, h: Help)(args: Seq[String]): State =
 	{
 		val message =
 			if(args.isEmpty)
-				aligned("  ", "   ", h.map(_.brief)).mkString("\n", "\n", "\n")
+				aligned("  ", "   ", h.brief).mkString("\n", "\n", "\n")
 			else
-				h flatMap detail(args) mkString("\n", "\n\n", "\n")
+				detail(args, h.detail) mkString("\n", "\n\n", "\n")
 		System.out.println(message)
 		s
 	}
@@ -176,14 +176,17 @@ object BuiltinCommands
 		System.out.println(tasksHelp(s))
 		s
 	}
-	def tasksHelp(s: State): String =
+	def taskDetail(s: State): Seq[(String,String)] = taskKeys(s) flatMap taskStrings
+	def taskKeys(s: State): Seq[AttributeKey[_]] =
 	{
 		val extracted = Project.extract(s)
 		import extracted._
 		val index = structure.index
-		val pairs = index.keyIndex.keys(Some(currentRef)).toSeq map index.keyMap sortBy(_.label) flatMap taskStrings
-		aligned("  ", "   ", pairs) mkString("\n", "\n", "")
+		index.keyIndex.keys(Some(currentRef)).toSeq map index.keyMap sortBy(_.label)
 	}
+	def tasksHelp(s: State): String =	
+		aligned("  ", "   ", taskDetail(s)) mkString("\n", "\n", "")
+
 	def taskStrings(key: AttributeKey[_]): Option[(String, String)]  =  key.description map { d => (key.label, d) }
 	def aligned(pre: String, sep: String, in: Seq[(String, String)]): Seq[String] =
 	{
@@ -228,7 +231,7 @@ object BuiltinCommands
 	def multiApplied(s: State) = 
 		Command.applyEffect( multiParser(s) )( _ ::: s )
 
-	def multi = Command.custom(multiApplied, Help(MultiBrief, (Set(Multi), MultiDetailed)) :: Nil )
+	def multi = Command.custom(multiApplied, Help(Multi, MultiBrief, MultiDetailed) )
 	
 	lazy val otherCommandParser = (s: State) => token(OptSpace ~> matched(s.combinedParser) )
 
@@ -391,7 +394,13 @@ object BuiltinCommands
 		for(id <- build.defined.keys.toSeq.sorted) log.info("\t" + prefix(id) + id)
 	}
 
-	def act = Command.custom(Act.actParser, actHelp :: Nil)
+	def act = Command.customHelp(Act.actParser, actHelp)
+	def actHelp = (s: State) => CommandSupport.showHelp ++ keysHelp(s)
+	def keysHelp(s: State): Help =
+		if(Project.isProjectLoaded(s))
+			Help.detailOnly(taskDetail(s))
+		else
+			Help.empty
 
 	def projects = Command.command(ProjectsCommand, projectsBrief, projectsDetailed ) { s =>
 		val extracted = Project extract s
@@ -410,7 +419,7 @@ object BuiltinCommands
 
 	def project = Command.make(ProjectCommand, projectBrief, projectDetailed)(ProjectNavigation.command)
 
-	def exit = Command.command(TerminateAction, Help(exitBrief) :: Nil ) ( doExit )
+	def exit = Command.command(TerminateAction, exitBrief, exitBrief ) ( doExit )
 
 	def doExit(s: State): State  =  s.runExitHooks().exit(true)
 

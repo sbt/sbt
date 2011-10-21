@@ -5,18 +5,20 @@ package sbt
 
 	import java.io.File
 	import complete.{DefaultParsers, EditDistance, Parser}
+	import Types.const
 
 sealed trait Command {
-	def help: Seq[Help]
+	def help: State => Help
 	def parser: State => Parser[() => State]
 	def tags: AttributeMap
 	def tag[T](key: AttributeKey[T], value: T): Command
 }
-private[sbt] final class SimpleCommand(val name: String, val help: Seq[Help], val parser: State => Parser[() => State], val tags: AttributeMap) extends Command {
+private[sbt] final class SimpleCommand(val name: String, help0: Help, val parser: State => Parser[() => State], val tags: AttributeMap) extends Command {
 	assert(Command validID name, "'" + name + "' is not a valid command name." )
-	def tag[T](key: AttributeKey[T], value: T): SimpleCommand = new SimpleCommand(name, help, parser, tags.put(key, value))
+	def tag[T](key: AttributeKey[T], value: T): SimpleCommand = new SimpleCommand(name, help0, parser, tags.put(key, value))
+	def help = const(help0)
 }
-private[sbt] final class ArbitraryCommand(val parser: State => Parser[() => State], val help: Seq[Help], val tags: AttributeMap) extends Command
+private[sbt] final class ArbitraryCommand(val parser: State => Parser[() => State], val help: State => Help, val tags: AttributeMap) extends Command
 {
 	def tag[T](key: AttributeKey[T], value: T): ArbitraryCommand = new ArbitraryCommand(parser, help, tags.put(key, value))
 }
@@ -27,32 +29,32 @@ object Command
 	
 		import DefaultParsers._
 
-	def command(name: String)(f: State => State): Command  =  command(name, Nil)(f)
-	def command(name: String, briefHelp: String, detail: String)(f: State => State): Command  =  command(name, Help(name, (name, briefHelp), detail) :: Nil)(f)
-	def command(name: String, help: Seq[Help])(f: State => State): Command  =  make(name, help : _*)(state => success(() => f(state)))
+	def command(name: String, briefHelp: String, detail: String)(f: State => State): Command  =  command(name, Help(name, (name, briefHelp), detail))(f)
+	def command(name: String, help: Help = Help.empty)(f: State => State): Command  =  make(name, help)(state => success(() => f(state)))
 
 	def make(name: String, briefHelp: (String, String), detail: String)(parser: State => Parser[() => State]): Command =
 		make(name, Help(name, briefHelp, detail) )(parser)
-	def make(name: String, help: Help*)(parser: State => Parser[() => State]): Command  =  new SimpleCommand(name, help, parser, AttributeMap.empty)
+	def make(name: String, help: Help)(parser: State => Parser[() => State]): Command  =  new SimpleCommand(name, help, parser, AttributeMap.empty)
 
 	def apply[T](name: String, briefHelp: (String, String), detail: String)(parser: State => Parser[T])(effect: (State,T) => State): Command =
 		apply(name, Help(name, briefHelp, detail) )(parser)(effect)
-	def apply[T](name: String, help: Help*)(parser: State => Parser[T])(effect: (State,T) => State): Command  =
-		make(name, help : _* )(applyEffect(parser)(effect) )
+	def apply[T](name: String, help: Help = Help.empty)(parser: State => Parser[T])(effect: (State,T) => State): Command  =
+		make(name, help)(applyEffect(parser)(effect) )
 
 	def args(name: String, briefHelp: (String, String), detail: String, display: String)(f: (State, Seq[String]) => State): Command =
 		args(name, display, Help(name, briefHelp, detail) )(f)
 	
-	def args(name: String, display: String, help: Help*)(f: (State, Seq[String]) => State): Command =
-		make(name, help : _*)( state => spaceDelimited(display) map apply1(f, state) )
+	def args(name: String, display: String, help: Help = Help.empty)(f: (State, Seq[String]) => State): Command =
+		make(name, help)( state => spaceDelimited(display) map apply1(f, state) )
 
 	def single(name: String, briefHelp: (String, String), detail: String)(f: (State, String) => State): Command =
 		single(name, Help(name, briefHelp, detail) )(f)
-	def single(name: String, help: Help*)(f: (State, String) => State): Command =
-		make(name, help : _*)( state => token(trimmed(spacedAny(name)) map apply1(f, state)) )
+	def single(name: String, help: Help = Help.empty)(f: (State, String) => State): Command =
+		make(name, help)( state => token(trimmed(spacedAny(name)) map apply1(f, state)) )
 
-	def custom(parser: State => Parser[() => State], help: Seq[Help] = Nil): Command  =  new ArbitraryCommand(parser, help, AttributeMap.empty)
-	def arb[T](parser: State => Parser[T], help: Help*)(effect: (State, T) => State): Command  =  custom(applyEffect(parser)(effect), help)
+	def custom(parser: State => Parser[() => State], help: Help = Help.empty): Command  =  customHelp(parser, const(help))
+	def customHelp(parser: State => Parser[() => State], help: State => Help): Command  =  new ArbitraryCommand(parser, help, AttributeMap.empty)
+	def arb[T](parser: State => Parser[T], help: Help = Help.empty)(effect: (State, T) => State): Command  =  custom(applyEffect(parser)(effect), help)
 
 	def validID(name: String) = DefaultParsers.matches(OpOrID, name)
 
@@ -138,15 +140,29 @@ object Command
 
 trait Help
 {
-	def detail: (Set[String], String)
-	def brief: (String, String)
+	def detail: Map[String, String]
+	def brief: Seq[(String, String)]
+	def ++(o: Help): Help
+}
+private final class Help0(val brief: Seq[(String,String)], val detail: Map[String,String]) extends Help
+{
+	def ++(h: Help): Help = new Help0(Help0.this.brief ++ h.brief, Help0.this.detail ++ h.detail)
 }
 object Help
 {
-	def apply(name: String, briefHelp: (String, String), detail: String): Help  =  apply(briefHelp, (Set(name), detail))
+	val empty: Help = briefDetail(Nil)
 
-	def apply(briefHelp: (String, String), detailedHelp: (Set[String], String) = (Set.empty, "") ): Help =
-		new Help { def detail = detailedHelp; def brief = briefHelp }
+	def apply(name: String, briefHelp: (String, String), detail: String): Help  =  apply(briefHelp, Map( (name, detail) ) )
+
+	def apply(briefHelp: (String, String), detailedHelp: Map[String, String] = Map.empty ): Help =
+		apply(briefHelp :: Nil, detailedHelp)
+
+	def apply(briefHelp: Seq[(String,String)], detailedHelp: Map[String,String]): Help =
+		new Help0(briefHelp, detailedHelp)
+
+	def briefDetail(help: Seq[(String, String)]): Help = apply(help, help.toMap)
+	def briefOnly(help: Seq[(String, String)]): Help = apply(help, Map.empty[String,String])
+	def detailOnly(help: Seq[(String, String)]): Help = apply(Nil, help.toMap)
 }
 trait CommandDefinitions
 {
