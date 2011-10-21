@@ -391,7 +391,7 @@ object BuiltinCommands
 		for(id <- build.defined.keys.toSeq.sorted) log.info("\t" + prefix(id) + id)
 	}
 
-	def act = Command.custom(Act.actParser)
+	def act = Command.custom(Act.actParser, actHelp :: Nil)
 
 	def projects = Command.command(ProjectsCommand, projectsBrief, projectsDetailed ) { s =>
 		val extracted = Project extract s

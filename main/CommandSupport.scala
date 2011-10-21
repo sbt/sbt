@@ -38,6 +38,7 @@ object CommandSupport
 	val TasksCommand = "tasks"
 	val ProjectCommand = "project"
 	val ProjectsCommand = "projects"
+	val ShowCommand = "show"
 
 	val Exit = "exit"
 	val Quit = "quit"
@@ -48,6 +49,17 @@ object CommandSupport
 EvalCommand + """ <expression>
 	Evaluates the given Scala expression and prints the result and type.
 """
+
+	def actHelp = Help(ShowCommand, (ShowCommand + " <key>", actBrief), actDetailed)
+	def actBrief = "Displays the result of evaluating the setting or task associated with 'key'."
+	def actDetailed =
+ShowCommand + """ <setting>
+
+	Displays the value of the specified setting.
+
+""" + ShowCommand + """ <task>
+
+	Evaluates the specified task and display the value returned by the task."""
 
 	val LastCommand = "last"
 	val LastGrepCommand = "last-grep"
@@ -109,7 +121,7 @@ SetCommand + """ <setting-expression>
 	/** The command name to terminate the program.*/
 	val TerminateAction: String = Exit
 
-	def continuousBriefHelp = (ContinuousExecutePrefix + " <action>", "Executes the specified command whenever source files change.")
+	def continuousBriefHelp = (ContinuousExecutePrefix + " <command>", "Executes the specified command whenever source files change.")
 
 	def tasksPreamble = """
 This is a list of tasks defined for the current project.

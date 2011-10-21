@@ -10,6 +10,7 @@ package sbt
 	import DefaultParsers._
 	import Types.idFun
 	import java.net.URI
+	import CommandSupport.ShowCommand
 
 object Act
 {
@@ -153,7 +154,7 @@ object Act
 			scopedKeyParser(extracted) flatMap Aggregation.valueParser(state, structure, show)
 		}
 	}
-	def showParser = token( ("show" ~ Space) ^^^ true) ?? false
+	def showParser = token( (ShowCommand ~ Space) ^^^ true) ?? false
 	def scopedKeyParser(state: State): Parser[ScopedKey[_]] = scopedKeyParser(Project extract state)
 	def scopedKeyParser(extracted: Extracted): Parser[ScopedKey[_]] =
 	{
