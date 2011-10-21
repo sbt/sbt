@@ -182,17 +182,18 @@ object IvyActions
 			import mod.{configurations => confs, _}
 		assert(!classifiers.isEmpty, "classifiers cannot be empty")
 		val baseModules = modules map { m => restrictedCopy(m, true) }
-		val deps = baseModules.distinct flatMap classifiedArtifacts(classifiers, exclude)
+		val deps = baseModules.distinct map classifiedArtifacts(classifiers, exclude)
 		val base = restrictedCopy(id, true).copy(name = id.name + classifiers.mkString("$","_",""))
 		val module = new ivySbt.Module(InlineConfiguration(base, ModuleInfo(base.name), deps).copy(ivyScala = ivyScala, configurations = confs))
 		val upConf = new UpdateConfiguration(c.retrieve, true, c.logging)
 		update(module, upConf, log)
 	}
-	def classifiedArtifacts(classifiers: Seq[String], exclude: Map[ModuleID, Set[String]])(m: ModuleID): Option[ModuleID] =
+
+	def classifiedArtifacts(classifiers: Seq[String], exclude: Map[ModuleID, Set[String]])(m: ModuleID): ModuleID =
 	{
 		val excluded = exclude getOrElse(restrictedCopy(m, false), Set.empty)
 		val included = classifiers filterNot excluded
-		if(included.isEmpty) None else Some(m.copy(explicitArtifacts = classifiedArtifacts(m.name, included) ))
+		m.copy(explicitArtifacts = classifiedArtifacts(m.name, included) :+ Artifact(m.name))
 	}
 	def addExcluded(report: UpdateReport, classifiers: Seq[String], exclude: Map[ModuleID, Set[String]]): UpdateReport =
 		report.addMissing { id => classifiedArtifacts(id.name, classifiers filter getExcluded(id, exclude)) }
