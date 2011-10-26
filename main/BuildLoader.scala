@@ -5,7 +5,7 @@ package sbt
 
 	import java.io.File
 	import java.net.URI
-	import Load.{BuildUnit, LoadBuildConfiguration}
+	import Load.{BuildUnit, LoadBuildConfiguration, PartBuild}
 	import BuildLoader._
 	import Alternatives._
 	import Types.{const,idFun}
@@ -48,16 +48,19 @@ object BuildLoader
 	type Builder = BuildInfo => Option[() => BuildUnit]
 	type Transformer = TransformInfo => BuildUnit
 	type Loader = LoadInfo => Option[() => BuildUnit]
+	type TransformAll = PartBuild => PartBuild
 
-	final class Components(val resolver: Resolver, val builder: Builder, val transformer: Transformer, val full: Loader) {
-		def | (cs: Components): Components = new Components(resolver | cs.resolver, builder | cs.builder, seq(transformer, cs.transformer), full | cs.full)
+	final class Components(val resolver: Resolver, val builder: Builder, val transformer: Transformer, val full: Loader, val transformAll: TransformAll) {
+		def | (cs: Components): Components =
+			new Components(resolver | cs.resolver, builder | cs.builder, seq(transformer, cs.transformer), full | cs.full, transformAll andThen cs.transformAll)
 	}
 	def transform(t: Transformer): Components = components(transformer = t)
 	def resolve(r: Resolver): Components = components(resolver = r)
 	def build(b: Builder): Components = components(builder = b)
 	def full(f: Loader): Components = components(full = f)
-	def components(resolver: Resolver = const(None), builder: Builder = const(None), transformer: Transformer = _.unit, full: Loader = const(None)) =
-		new Components(resolver, builder, transformer, full)
+	def transformAll(t: TransformAll) = components(transformAll = t)
+	def components(resolver: Resolver = const(None), builder: Builder = const(None), transformer: Transformer = _.unit, full: Loader = const(None), transformAll: TransformAll = idFun) =
+		new Components(resolver, builder, transformer, full, transformAll)
 
 	def seq(a: Transformer, b: Transformer): Transformer = info => b(info.setUnit(a(info)))
 
@@ -77,7 +80,7 @@ object BuildLoader
 	def apply(base: Components, fail: URI => Nothing, s: State, config: LoadBuildConfiguration): BuildLoader =
 	{
 		def makeMulti[S <: Info, T](base: S => Option[T]) = new MultiHandler[S,T](base, None, Nil, _.uri, _.config.log)
-		new BuildLoader(fail, s, config, makeMulti(base.resolver), makeMulti(base.builder), base.transformer, makeMulti(base.full))
+		new BuildLoader(fail, s, config, makeMulti(base.resolver), makeMulti(base.builder), base.transformer, makeMulti(base.full), base.transformAll)
 	}
 
 	def componentLoader: Loader = (info: LoadInfo) => {
@@ -101,23 +104,26 @@ final class BuildLoader(
 	val resolvers: MultiHandler[ResolveInfo, ()=>File],
 	val builders: MultiHandler[BuildInfo, ()=>BuildUnit],
 	val transformer: Transformer,
-	val full: MultiHandler[LoadInfo, ()=>BuildUnit])
+	val full: MultiHandler[LoadInfo, ()=>BuildUnit],
+	val transformAll: TransformAll)
 {
 	def addNonRoot(uri: URI, loaders: Components): BuildLoader =
 		new BuildLoader(fail, state, config,
 			resolvers.addNonRoot(uri, loaders.resolver),
 			builders.addNonRoot(uri, loaders.builder),
 			seq(transformer, loaders.transformer),
-			full.addNonRoot(uri, loaders.full)
+			full.addNonRoot(uri, loaders.full),
+			transformAll andThen loaders.transformAll
 		)
 	def setRoot(loaders: Components): BuildLoader =
 		new BuildLoader(fail, state, config,
 			resolvers.setRoot(loaders.resolver),
 			builders.setRoot(loaders.builder),
 			seq(loaders.transformer, transformer),
-			full.setRoot(loaders.full)
+			full.setRoot(loaders.full),
+			loaders.transformAll andThen transformAll
 		)
-	def components = new Components(resolvers.applyFun, builders.applyFun, transformer, full.applyFun)
+	def components = new Components(resolvers.applyFun, builders.applyFun, transformer, full.applyFun, transformAll)
 	def apply(uri: URI): BuildUnit =
 	{
 		val info = new LoadInfo(uri, config.stagingDirectory, config, state, components)

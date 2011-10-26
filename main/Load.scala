@@ -238,9 +238,10 @@ object Load
 	def loadURI(uri: URI, loaders: BuildLoader): PartBuild =
 	{
 		IO.assertAbsolute(uri)
-		val (referenced, map) = loadAll(uri :: Nil, Map.empty, loaders, Map.empty)
+		val (referenced, map, newLoaders) = loadAll(uri :: Nil, Map.empty, loaders, Map.empty)
 		checkAll(referenced, map)
-		new PartBuild(uri, map)
+		val build = new PartBuild(uri, map)
+		newLoaders transformAll build
 	}
 	def addResolvers(unit: BuildUnit, isRoot: Boolean, loaders: BuildLoader): BuildLoader =
 		unit.definitions.builds.flatMap(_.buildLoaders) match
@@ -273,7 +274,7 @@ object Load
 		Project.transform(resolve, unit.definitions.builds.flatMap(_.settings))
 	}
 
-	@tailrec def loadAll(bases: List[URI], references: Map[URI, List[ProjectReference]], loaders: BuildLoader, builds: Map[URI, PartBuildUnit]): (Map[URI, List[ProjectReference]], Map[URI, PartBuildUnit]) =
+	@tailrec def loadAll(bases: List[URI], references: Map[URI, List[ProjectReference]], loaders: BuildLoader, builds: Map[URI, PartBuildUnit]): (Map[URI, List[ProjectReference]], Map[URI, PartBuildUnit], BuildLoader) =
 		bases match
 		{
 			case b :: bs =>
@@ -286,7 +287,7 @@ object Load
 					val newLoader = addResolvers(loadedBuild.unit, builds.isEmpty, loaders)
 					loadAll(refs.flatMap(Reference.uri) reverse_::: bs, references.updated(b, refs), newLoader, builds.updated(b, loadedBuild))
 				}
-			case Nil => (references, builds)
+			case Nil => (references, builds, loaders)
 		}
 	def checkProjectBase(buildBase: File, projectBase: File)
 	{
