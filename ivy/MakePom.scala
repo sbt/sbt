@@ -7,7 +7,7 @@
 
 package sbt;
 
-import java.io.{BufferedWriter, File, OutputStreamWriter, FileOutputStream}
+import java.io.File
 import scala.xml.{Node => XNode, NodeSeq, PrettyPrinter, XML}
 import Configurations.Optional
 
@@ -20,21 +20,13 @@ import plugins.resolver.{ChainResolver, DependencyResolver, IBiblioResolver}
 
 class MakePom(val log: Logger)
 {
-	def encoding = "UTF-8"
 	def write(ivy: Ivy, module: ModuleDescriptor, moduleInfo: ModuleInfo, configurations: Option[Iterable[Configuration]], extra: NodeSeq, process: XNode => XNode, filterRepositories: MavenRepository => Boolean, allRepositories: Boolean, output: File): Unit =
 		write(process(toPom(ivy, module, moduleInfo, configurations, extra, filterRepositories, allRepositories)), output)
 	// use \n as newline because toString uses PrettyPrinter, which hard codes line endings to be \n
 	def write(node: XNode, output: File): Unit = write(toString(node), output, "\n")
 	def write(xmlString: String, output: File, newline: String)
 	{
-		output.getParentFile.mkdirs()
-		val out = new BufferedWriter(new OutputStreamWriter(new FileOutputStream(output), encoding))
-		try
-		{
-			out.write("<?xml version='1.0' encoding='" + encoding + "'?>" + newline)
-			out.write(xmlString)
-		}
-		finally { out.close() }
+		IO.write(output, "<?xml version='1.0' encoding='" + IO.utf8 + "'?>" + newline + xmlString)
 	}
 
 	def toString(node: XNode): String = new PrettyPrinter(1000, 4).format(node)
