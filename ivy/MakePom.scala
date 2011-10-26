@@ -26,7 +26,7 @@ class MakePom(val log: Logger)
 	def write(node: XNode, output: File): Unit = write(toString(node), output, "\n")
 	def write(xmlString: String, output: File, newline: String)
 	{
-		IO.write(output, "<?xml version='1.0' encoding='" + IO.utf8 + "'?>" + newline + xmlString)
+		IO.write(output, "<?xml version='1.0' encoding='" + IO.utf8.name + "'?>" + newline + xmlString)
 	}
 
 	def toString(node: XNode): String = new PrettyPrinter(1000, 4).format(node)
