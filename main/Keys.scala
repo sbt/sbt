@@ -39,6 +39,7 @@ object Keys
 	val stateBuildStructure = AttributeKey[Load.BuildStructure]("build-structure", "Data structure containing all information about the build definition.")
 	val buildStructure = TaskKey[Load.BuildStructure]("build-structure", "Provides access to the build structure, settings, and streams manager.")
 	val loadedBuild = SettingKey[Load.LoadedBuild]("loaded-build", "Provides access to the loaded project structure.  This is the information available before settings are evaluated.")
+	val buildDependencies = SettingKey[BuildDependencies]("build-dependencies", "Definitive source of inter-project dependencies for compilation and dependency management.\n\tThis is populated by default by the dependencies declared on Project instances, but may be modified.\n\tThe main restriction is that new builds may not be introduced.")
 	val appConfiguration = SettingKey[xsbti.AppConfiguration]("app-configuration", "Provides access to the launched sbt configuration, including the ScalaProvider, Launcher, and GlobalLock.")
 	val thisProject = SettingKey[ResolvedProject]("this-project", "Provides the current project for the referencing scope.")
 	val thisProjectRef = SettingKey[ProjectRef]("this-project-ref", "Provides a fully-resolved reference to the current project for the referencing scope.")

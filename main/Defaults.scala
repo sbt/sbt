@@ -48,6 +48,7 @@ object Defaults extends BuildCommon
 		managedDirectory <<= baseDirectory(_ / "lib_managed")
 	))
 	def globalCore: Seq[Setting[_]] = inScope(GlobalScope)(Seq(
+		buildDependencies <<= buildDependencies or Classpaths.constructBuildDependencies,
 		taskTemporaryDirectory := IO.createTemporaryDirectory,
 		onComplete <<= taskTemporaryDirectory { dir => () => IO.delete(dir); IO.createDirectory(dir) },
 		parallelExecution :== true,
@@ -839,20 +840,19 @@ object Classpaths
 
 	def deliverPattern(outputPath: File): String  =  (outputPath / "[artifact]-[revision](-[classifier]).[ext]").absolutePath
 
-	def projectDependenciesTask =
-		(thisProject, settings) map { (p, data) =>
-			p.dependencies flatMap { dep => (projectID in dep.project) get data map { _.copy(configurations = dep.configuration) } }
+	def projectDependenciesTask: Initialize[Task[Seq[ModuleID]]] =
+		(thisProjectRef, settings, buildDependencies) map { (ref, data, deps) =>
+			deps.classpath(ref) flatMap { dep => (projectID in dep.project) get data map { _.copy(configurations = dep.configuration) } }
 		}
 
 	def depMap: Initialize[Task[Map[ModuleRevisionId, ModuleDescriptor]]] =
-		(thisProject, thisProjectRef, settings, streams) flatMap { (root, rootRef, data, s) =>
-			val dependencies = (p: (ProjectRef, ResolvedProject)) => p._2.dependencies.flatMap(pr => thisProject in pr.project get data map { (pr.project, _) })
-			depMap(Dag.topologicalSort((rootRef,root))(dependencies).dropRight(1), data, s.log)
+		(thisProjectRef, settings, buildDependencies, streams) flatMap { (root, data, deps, s) =>
+			depMap(deps classpathTransitiveRefs root, data, s.log)
 		}
 
-	def depMap(projects: Seq[(ProjectRef,ResolvedProject)], data: Settings[Scope], log: Logger): Task[Map[ModuleRevisionId, ModuleDescriptor]] =
-		projects.flatMap { case (p,_) => ivyModule in p get data }.join.map { mods =>
-			mods map { _.dependencyMapping(log) } toMap ;
+	def depMap(projects: Seq[ProjectRef], data: Settings[Scope], log: Logger): Task[Map[ModuleRevisionId, ModuleDescriptor]] =
+		projects.flatMap( ivyModule in _ get data).join.map { mod =>
+			mod map { _.dependencyMapping(log) } toMap ;
 		}
 
 	def projectResolverTask: Initialize[Task[Resolver]] =
@@ -868,10 +868,23 @@ object Classpaths
 			(if(useJars) Seq(pkgTask).join else psTask) map { _ map { f => analyzed(f, analysis) } }
 		}
 
+	def constructBuildDependencies: Initialize[BuildDependencies] =
+		loadedBuild { lb =>
+				import collection.mutable.HashMap
+			val agg = new HashMap[ProjectRef, Seq[ProjectRef]]
+			val cp = new HashMap[ProjectRef, Seq[ClasspathDep[ProjectRef]]]
+			for(lbu <- lb.units.values; rp <- lbu.defined.values)
+			{
+				val ref = ProjectRef(lbu.unit.uri, rp.id)
+				cp(ref) = rp.dependencies
+				agg(ref) = rp.aggregate
+			}
+			BuildDependencies(cp.toMap, agg.toMap)
+		}
 	def internalDependencies: Initialize[Task[Classpath]] =
-		(thisProjectRef, thisProject, classpathConfiguration, configuration, settings) flatMap internalDependencies0
+		(thisProjectRef, classpathConfiguration, configuration, settings, buildDependencies) flatMap internalDependencies0
 	def unmanagedDependencies: Initialize[Task[Classpath]] =
-		(thisProjectRef, thisProject, configuration, settings) flatMap unmanagedDependencies0
+		(thisProjectRef, configuration, settings, buildDependencies) flatMap unmanagedDependencies0
 	def mkIvyConfiguration: Initialize[Task[IvyConfiguration]] =
 		(fullResolvers, ivyPaths, otherResolvers, moduleConfigurations, offline, checksums in update, appConfiguration, streams) map { (rs, paths, other, moduleConfs, off, check, app, s) =>
 			new InlineIvyConfiguration(paths, rs, other, moduleConfs, off, Some(lock(app)), check, s.log)
@@ -879,19 +892,18 @@ object Classpaths
 
 		import java.util.LinkedHashSet
 		import collection.JavaConversions.asScalaSet
-	def interSort(projectRef: ProjectRef, project: ResolvedProject, conf: Configuration, data: Settings[Scope]): Seq[(ProjectRef,String)] =
+	def interSort(projectRef: ProjectRef, conf: Configuration, data: Settings[Scope], deps: BuildDependencies): Seq[(ProjectRef,String)] =
 	{
 		val visited = asScalaSet(new LinkedHashSet[(ProjectRef,String)])
-		def visit(p: ProjectRef, project: ResolvedProject, c: Configuration)
+		def visit(p: ProjectRef, c: Configuration)
 		{
 			val applicableConfigs = allConfigs(c)
 			for(ac <- applicableConfigs) // add all configurations in this project
 				visited add (p, ac.name)
 			val masterConfs = names(getConfigurations(projectRef, data))
 
-			for( ResolvedClasspathDependency(dep, confMapping) <- project.dependencies)
+			for( ResolvedClasspathDependency(dep, confMapping) <- deps.classpath(p))
 			{
-				val depProject = thisProject in dep get data getOrElse error("Invalid project: " + dep)
 				val configurations = getConfigurations(dep, data)
 				val mapping = mapped(confMapping, masterConfs, names(configurations), "compile", "*->compile")
 				// map master configuration 'c' and all extended configurations to the appropriate dependency configuration
@@ -899,21 +911,21 @@ object Classpaths
 				{
 					for(depConf <- confOpt(configurations, depConfName) )
 						if( ! visited( (dep, depConfName) ) )
-							visit(dep, depProject, depConf)
+							visit(dep, depConf)
 				}
 			}
 		}
-		visit(projectRef, project, conf)
+		visit(projectRef, conf)
 		visited.toSeq
 	}
-	def unmanagedDependencies0(projectRef: ProjectRef, project: ResolvedProject, conf: Configuration, data: Settings[Scope]): Task[Classpath] =
-		interDependencies(projectRef, project, conf, conf, data, true, unmanagedLibs)
-	def internalDependencies0(projectRef: ProjectRef, project: ResolvedProject, conf: Configuration, self: Configuration, data: Settings[Scope]): Task[Classpath] =
-		interDependencies(projectRef, project, conf, self, data, false, productsTask)
-	def interDependencies(projectRef: ProjectRef, project: ResolvedProject, conf: Configuration, self: Configuration, data: Settings[Scope], includeSelf: Boolean,
+	def unmanagedDependencies0(projectRef: ProjectRef, conf: Configuration, data: Settings[Scope], deps: BuildDependencies): Task[Classpath] =
+		interDependencies(projectRef, deps, conf, conf, data, true, unmanagedLibs)
+	def internalDependencies0(projectRef: ProjectRef, conf: Configuration, self: Configuration, data: Settings[Scope], deps: BuildDependencies): Task[Classpath] =
+		interDependencies(projectRef, deps, conf, self, data, false, productsTask)
+	def interDependencies(projectRef: ProjectRef, deps: BuildDependencies, conf: Configuration, self: Configuration, data: Settings[Scope], includeSelf: Boolean,
 		f: (ProjectRef, String, Settings[Scope]) => Task[Classpath]): Task[Classpath] =
 	{
-		val visited = interSort(projectRef, project, conf, data)
+		val visited = interSort(projectRef, conf, data, deps)
 		val tasks = asScalaSet(new LinkedHashSet[Task[Classpath]])
 		for( (dep, c) <- visited )
 			if(includeSelf || (dep != projectRef) || (conf.name != c && self.name != c))
