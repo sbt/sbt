@@ -35,7 +35,7 @@ object WriteContentSpecification extends Properties("Write content")
 		}
 
 	// make the test independent of underlying platform and allow any unicode character in Strings to be encoded
-	val charset = java.nio.charset.Charset.forName("UTF-8")
+	val charset = IO.utf8
 		
 	import IO._
 	private def writeAndCheckString(s: String) =
