@@ -4,10 +4,6 @@ import sbt._
 import Scoped._
 import Project.{richInitializeTask,richInitialize}
 
-object SimpleTasks {
-  final def task(name: String) = new TaskId(name)
-}
-
 /** Represents the new 'id' of a task to define on a project. */
 final class TaskId(name: String) {
   /** Creates a Task that has no dependencies. */
