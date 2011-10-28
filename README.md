@@ -123,7 +123,7 @@ or if you need to depend on other keys:
 
     simple_task("zomg2") on (name, version) is { (n,v) => println("ZOMG " + n + " = " + v + " !!!!!") }
 
-The DSL currently supports between 2 and 9 dependencies.  The DSL does not allow defining tasks on different configurations, although this will be added shortly.
+The DSL currently supports between 0 and 9 dependencies.  The DSL does not allow defining tasks on different configurations, although this will be added shortly.
 
 ### Simple Setttings
 
