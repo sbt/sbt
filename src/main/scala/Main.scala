@@ -7,6 +7,7 @@ import scala.collection.{ mutable, immutable }
 
 object SbtExtrasPlugin extends Plugin {
   def simple_task(name: String) = sbt.extra.dsl.SimpleTasks.task(name)
+  def simple_setting(name: String) = sbt.extra.dsl.SimpleTasks.setting(name)
 }
 
 trait SbtCreateConfig {

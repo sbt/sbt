@@ -2,19 +2,18 @@ package sbt.extra.dsl
 
 import sbt._
 import Scoped._
-import Project.{richInitializeTask,richInitialize}
-
-object SimpleTasks {
-  final def task(name: String) = new TaskId(name)
-}
+import Project._
+import Project.Setting
 
 /** Represents the new 'id' of a task to define on a project. */
 final class TaskId(name: String) {
   /** Creates a Task that has no dependencies. */
   final def is[R: Manifest](f: => R) =
     TaskKey[R](name) := f
-  /*final def on[A1](a: ScopedTaskable[A1]): TaskDepend1[A1] = 
-    new TaskDepend1[A1](name, a)*/
+  final def on[A1](a: Initialize[Task[A1]]): TaskDepend1Task[A1] = 
+    new TaskDepend1Task[A1](name, a)
+  final def on[A1](a: Initialize[A1]): TaskDepend1Setting[A1] = 
+    new TaskDepend1Setting[A1](name, a)
   final def on[A1, A2](a1: ScopedTaskable[A1], a2: ScopedTaskable[A2]): TaskDepend2[A1, A2] =
     new TaskDepend2[A1, A2](name, a1, a2)
   final def on[A1, A2, A3](a1: ScopedTaskable[A1],
@@ -68,12 +67,17 @@ final class TaskId(name: String) {
     new TaskDepend9[A1, A2, A3, A4, A5, A6, A7, A8, A9](name, a1, a2, a3, a4, a5, a6, a7, a8, a9)
 }
 
-/** Represents a not-yet-defined task that has one dependency */
-/*final class TaskDepend1[A1](name: String, a1: ScopedTaskable[A1]) {
+final class TaskDepend1Setting[A1](name: String, a1: Initialize[A1]) {
   final def is[R: Manifest](f: A1 => R): Setting[Task[R]] = {
     TaskKey[R](name) <<= a1 map f
   }
-}*/
+}
+/** Represents a not-yet-defined task that has one dependency */
+final class TaskDepend1Task[A1](name: String, a1: Initialize[Task[A1]]) {
+  final def is[R: Manifest](f: A1 => R): Setting[Task[R]] = {
+    TaskKey[R](name) <<= a1 map f
+  }
+}
 
 /** Represents a not-yet-defined task that has two dependencies */
 final class TaskDepend2[A1, A2](name: String,
