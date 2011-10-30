@@ -13,10 +13,10 @@ package sbt
 
 object LogManager
 {
-	def construct(data: Settings[Scope]) = (task: ScopedKey[_], to: PrintWriter) =>
+	def construct(data: Settings[Scope], state: State) = (task: ScopedKey[_], to: PrintWriter) =>
 	{
 		val manager = logManager in task.scope get data getOrElse default
-		manager(data, task, to)
+		manager(data, state, task, to)
 	}
 	lazy val default: LogManager = withLoggers()
 	def defaults(extra: ScopedKey[_] => Seq[AbstractLogger]): LogManager  =  withLoggers(extra = extra)
@@ -30,11 +30,11 @@ object LogManager
 	
 	def withLoggers(screen: => AbstractLogger = defaultScreen, backed: PrintWriter => AbstractLogger = defaultBacked(), extra: ScopedKey[_] => Seq[AbstractLogger] = _ => Nil): LogManager =
 		new LogManager {
-			def apply(data: Settings[Scope], task: ScopedKey[_], to: PrintWriter): Logger =
-				defaultLogger(data, task, screen, backed(to), extra(task).toList)
+			def apply(data: Settings[Scope], state: State, task: ScopedKey[_], to: PrintWriter): Logger =
+				defaultLogger(data, state, task, screen, backed(to), extra(task).toList)
 		}
 
-	def defaultLogger(data: Settings[Scope], task: ScopedKey[_], console: AbstractLogger, backed: AbstractLogger, extra: List[AbstractLogger]): Logger =
+	def defaultLogger(data: Settings[Scope], state: State, task: ScopedKey[_], console: AbstractLogger, backed: AbstractLogger, extra: List[AbstractLogger]): Logger =
 	{
 		val scope = task.scope
 		def getOr[T](key: AttributeKey[T], default: T): T = data.get(scope, key) getOrElse default
@@ -42,7 +42,7 @@ object LogManager
 		val backingLevel = getOr(persistLogLevel.key, Level.Debug)
 		val screenTrace = getOr(traceLevel.key, -1)
 		val backingTrace = getOr(persistTraceLevel.key, Int.MaxValue)
-		val extraBacked = data.get(Scope.GlobalScope, Keys.globalLogging.key).map(_.backed).toList
+		val extraBacked = (state get Keys.globalLogging).map(_.backed).toList
 		multiLogger( new MultiLoggerConfig(console, backed, extraBacked ::: extra, screenLevel, backingLevel, screenTrace, backingTrace) )
 	}
 	def multiLogger(config: MultiLoggerConfig): Logger =
@@ -58,11 +58,11 @@ object LogManager
 		backed setTrace backingTrace
 		multi: Logger
 	}
-	def globalDefault(writer: PrintWriter, file: File): GlobalLogging =
+	def globalDefault(writer: PrintWriter, backing: GlobalLogBacking): GlobalLogging =
 	{
 		val backed = defaultBacked()(writer)
 		val full = multiLogger(defaultMultiConfig( backed ) )
-		GlobalLogging(full, backed, file)
+		GlobalLogging(full, backed, backing)
 	}
 
 	def defaultMultiConfig(backing: AbstractLogger): MultiLoggerConfig =
@@ -71,6 +71,11 @@ object LogManager
 final case class MultiLoggerConfig(console: AbstractLogger, backed: AbstractLogger, extra: List[AbstractLogger], screenLevel: Level.Value, backingLevel: Level.Value, screenTrace: Int, backingTrace: Int)
 trait LogManager
 {
-	def apply(data: Settings[Scope], task: ScopedKey[_], writer: PrintWriter): Logger
+	def apply(data: Settings[Scope], state: State, task: ScopedKey[_], writer: PrintWriter): Logger
 }
-final case class GlobalLogging(full: Logger, backed: ConsoleLogger, backing: File)
+final case class GlobalLogBacking(file: File, last: Option[File])
+{
+	def shift(newFile: File) = GlobalLogBacking(newFile, Some(file))
+	def unshift = GlobalLogBacking(last getOrElse file, None)
+}
+final case class GlobalLogging(full: Logger, backed: ConsoleLogger, backing: GlobalLogBacking)

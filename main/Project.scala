@@ -384,7 +384,7 @@ object SessionVar
 	}
 
 	def persist[T](key: ScopedKey[Task[T]], state: State, value: T)(implicit f: sbinary.Format[T]): Unit =
-		Project.structure(state).streams.use(key)( s =>
+		Project.structure(state).streams(state).use(key)( s =>
 			Operations.write(s.binary(DefaultDataID), value)(f)
 		)
 
@@ -410,7 +410,7 @@ object SessionVar
 	}
 
 	def read[T](key: ScopedKey[Task[T]], state: State)(implicit f: Format[T]): Option[T] =
-		Project.structure(state).streams.use(key) { s =>
+		Project.structure(state).streams(state).use(key) { s =>
 			try { Some(Operations.read(s.readBinary(key, DefaultDataID))) }
 			catch { case e: Exception => None }
 		}

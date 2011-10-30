@@ -53,7 +53,6 @@ object Load
 	}
 	def injectGlobal(state: State): Seq[Project.Setting[_]] =
 		(appConfiguration in GlobalScope :== state.configuration) +:
-		(globalLogging in GlobalScope := CommandSupport.globalLogging(state)) +: 
 		EvaluateTask.injectSettings
 	def defaultWithGlobal(state: State, base: File, rawConfig: LoadBuildConfiguration, globalBase: File, log: Logger): LoadBuildConfiguration =
 	{
@@ -576,7 +575,7 @@ object Load
 
 	def referenced[PR <: ProjectReference](definitions: Seq[ProjectDefinition[PR]]): Seq[PR] = definitions flatMap { _.referenced }
 	
-	final class BuildStructure(val units: Map[URI, LoadedBuildUnit], val root: URI, val settings: Seq[Setting[_]], val data: Settings[Scope], val index: StructureIndex, val streams: Streams, val delegates: Scope => Seq[Scope], val scopeLocal: ScopeLocal)
+	final class BuildStructure(val units: Map[URI, LoadedBuildUnit], val root: URI, val settings: Seq[Setting[_]], val data: Settings[Scope], val index: StructureIndex, val streams: State => Streams, val delegates: Scope => Seq[Scope], val scopeLocal: ScopeLocal)
 	{
 		val rootProject: URI => String = Load getRootProject units
 		def allProjects: Seq[ResolvedProject] = units.values.flatMap(_.defined.values).toSeq

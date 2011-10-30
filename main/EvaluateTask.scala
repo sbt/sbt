@@ -58,7 +58,7 @@ object EvaluateTask
 	def evaluateTask[T](structure: BuildStructure, taskKey: ScopedKey[Task[T]], state: State, ref: ProjectRef, checkCycles: Boolean = false, maxWorkers: Int = SystemProcessors): Option[Result[T]] =
 		apply(structure, taskKey, state, ref, EvaluateConfig(false, checkCycles, maxWorkers)).map(_._2)
 	def apply[T](structure: BuildStructure, taskKey: ScopedKey[Task[T]], state: State, ref: ProjectRef, config: EvaluateConfig = defaultConfig): Option[(State, Result[T])] =
-		withStreams(structure) { str =>
+		withStreams(structure, state) { str =>
 			for( (task, toNode) <- getTask(structure, taskKey, state, str, ref) ) yield
 				runTask(task, state, str, structure.index.triggers, config)(toNode)
 		}
@@ -81,9 +81,9 @@ object EvaluateTask
 	}
 	def getStreams(key: ScopedKey[_], streams: Streams): TaskStreams =
 		streams(ScopedKey(Project.fillTaskAxis(key).scope, Keys.streams.key))
-	def withStreams[T](structure: BuildStructure)(f: Streams => T): T =
+	def withStreams[T](structure: BuildStructure, state: State)(f: Streams => T): T =
 	{
-		val str = std.Streams.closeable(structure.streams)
+		val str = std.Streams.closeable(structure.streams(state))
 		try { f(str) } finally { str.close() }
 	}
 	

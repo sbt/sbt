@@ -29,7 +29,7 @@ final class xMain extends xsbti.AppMain
 		import CommandSupport.{DefaultsCommand, InitCommand}
 		val initialCommandDefs = Seq(initialize, defaults)
 		val commands = DefaultsCommand +: InitCommand +: (DefaultBootCommands ++ configuration.arguments.map(_.trim))
-		val state = State( configuration, initialCommandDefs, Set.empty, None, commands, initialAttributes, None )
+		val state = State( configuration, initialCommandDefs, Set.empty, None, commands, State.newHistory, initialAttributes, State.Continue )
 		MainLoop.runLogged(state)
 	}
 }
@@ -39,7 +39,7 @@ final class ScriptMain extends xsbti.AppMain
 	{
 		import BuiltinCommands.{initialAttributes, ScriptCommands}
 		val commands = Script.Name +: configuration.arguments.map(_.trim)
-		val state = State( configuration, ScriptCommands, Set.empty, None, commands, initialAttributes, None )
+		val state = State( configuration, ScriptCommands, Set.empty, None, commands, State.newHistory, initialAttributes, State.Continue )
 		MainLoop.runLogged(state)
 	}	
 }
@@ -49,37 +49,72 @@ final class ConsoleMain extends xsbti.AppMain
 	{
 		import BuiltinCommands.{initialAttributes, ConsoleCommands}
 		val commands = IvyConsole.Name +: configuration.arguments.map(_.trim)
-		val state = State( configuration, ConsoleCommands, Set.empty, None, commands, initialAttributes, None )
+		val state = State( configuration, ConsoleCommands, Set.empty, None, commands, State.newHistory, initialAttributes, State.Continue )
 		MainLoop.runLogged(state)
 	}
 }
 object MainLoop
 {
+	/** Entry point to run the remaining commands in State with managed global logging.*/
 	def runLogged(state: State): xsbti.MainResult =
-	{
-		val logFile = File.createTempFile("sbt", ".log")
-		try {
-			val result = runLogged(state, logFile)
-			logFile.delete() // only delete when exiting normally
-			result
+		runLoggedLoop(state, GlobalLogBacking(newBackingFile(), None))
+
+	/** Constructs a new, (weakly) unique, temporary file to use as the backing for global logging. */
+	def newBackingFile(): File = File.createTempFile("sbt",".log")
+
+	/** Run loop that evaluates remaining commands and manages changes to global logging configuration.*/
+	@tailrec def runLoggedLoop(state: State, logBacking: GlobalLogBacking): xsbti.MainResult =
+		runAndClearLast(state, logBacking) match {
+			case ret: Return =>  // delete current and last log files when exiting normally
+				logBacking.file.delete()
+				deleteLastLog(logBacking) 
+				ret.result
+			case clear: ClearGlobalLog => // delete previous log file, move current to previous, and start writing to a new file
+				deleteLastLog(logBacking)
+				runLoggedLoop(clear.state, logBacking shift newBackingFile())
+			case keep: KeepGlobalLog => // make previous log file the current log file
+				logBacking.file.delete
+				runLoggedLoop(keep.state, logBacking.unshift)
 		}
+		
+	/** Runs the next sequence of commands, cleaning up global logging after any exceptions. */
+	def runAndClearLast(state: State, logBacking: GlobalLogBacking): RunNext =
+		try
+			runWithNewLog(state, logBacking)
 		catch {
-			case e: xsbti.FullReload => throw e
-			case e => System.err.println("sbt appears to be exiting abnormally.\n  The log file for this session is at " + logFile); throw e			
-		}
-	}
-	def runLogged(state: State, backing: File): xsbti.MainResult =
-		Using.fileWriter()(backing) { writer =>
-			val out = new java.io.PrintWriter(writer)
-			val loggedState = state.put(globalLogging.key, LogManager.globalDefault(out, backing))
-			try { run(loggedState) } finally { out.close() }
+			case e: xsbti.FullReload =>
+				deleteLastLog(logBacking)
+				throw e // pass along a reboot request
+			case e =>
+				System.err.println("sbt appears to be exiting abnormally.\n  The log file for this session is at " + logBacking.file)
+				deleteLastLog(logBacking)
+				throw e
 		}
 
-	@tailrec def run(state: State): xsbti.MainResult =
-		state.result match
+	/** Deletes the previous global log file. */
+	def deleteLastLog(logBacking: GlobalLogBacking): Unit =
+		logBacking.last.foreach(_.delete())
+
+	/** Runs the next sequence of commands with global logging in place. */
+	def runWithNewLog(state: State, logBacking: GlobalLogBacking): RunNext =
+		Using.fileWriter(append = true)(logBacking.file) { writer =>
+			val out = new java.io.PrintWriter(writer)
+			val loggedState = state.put(globalLogging, LogManager.globalDefault(out, logBacking))
+			try run(loggedState) finally out.close()
+		}
+	sealed trait RunNext
+	final class ClearGlobalLog(val state: State) extends RunNext
+	final class KeepGlobalLog(val state: State) extends RunNext
+	final class Return(val result: xsbti.MainResult) extends RunNext
+
+	/** Runs the next sequence of commands that doesn't require global logging changes.*/
+	@tailrec def run(state: State): RunNext =
+		state.next match
 		{
-			case None => run(next(state))
-			case Some(result) => result
+			case State.Continue => run(next(state))
+			case State.ClearGlobalLog => new ClearGlobalLog(state.continue)
+			case State.KeepLastLog => new KeepGlobalLog(state.continue)
+			case ret: State.Return => new Return(ret.result)
 		}
 
 	def next(state: State): State =
@@ -220,12 +255,12 @@ object BuiltinCommands
 		val line = reader.readLine(prompt)
 		line match {
 			case Some(line) =>
-				if(!line.trim.isEmpty) CommandSupport.globalLogging(s).backed.out.println(Output.DefaultTail + line)
-				s.copy(onFailure = Some(Shell), remainingCommands = line +: Shell +: s.remainingCommands)
+				val newState = s.copy(onFailure = Some(Shell), remainingCommands = line +: Shell +: s.remainingCommands)
+				if(line.trim.isEmpty) newState else newState.clearGlobalLog
 			case None => s
 		}
 	}
-	
+
 	def multiParser(s: State): Parser[Seq[String]] =
 		( token(';' ~> OptSpace) flatMap { _ => matched(s.combinedParser | token(charClass(_ != ';').+, hide= const(true))) <~ token(OptSpace) } ).+
 	def multiApplied(s: State) = 
@@ -356,11 +391,12 @@ object BuiltinCommands
 	def lastGrep = Command(LastGrepCommand, lastGrepBrief, lastGrepDetailed)(lastGrepParser) {
 		case (s, (pattern,Some(sk))) =>
 			val (str, ref, display) = extractLast(s)
-			Output.lastGrep(sk, str, pattern)(display)
-			s
+			Output.lastGrep(sk, str, str.streams(s), pattern, printLast(s))(display)
+			keepLastLog(s)
 		case (s, (pattern, None)) =>
-			Output.lastGrep(CommandSupport.globalLogging(s).backing, pattern)
-			s
+			for(logFile <- lastLogFile(s)) yield
+				Output.lastGrep(logFile, pattern, printLast(s))
+			keepLastLog(s)
 	}
 	def extractLast(s: State) = {
 		val ext = Project.extract(s)
@@ -373,12 +409,33 @@ object BuiltinCommands
 	def last = Command(LastCommand, lastBrief, lastDetailed)(optSpacedKeyParser) {
 		case (s,Some(sk)) =>
 			val (str, ref, display) = extractLast(s)
-			Output.last(sk, str)(display)
-			s
+			Output.last(sk, str, str.streams(s), printLast(s))(display)
+			keepLastLog(s)
 		case (s, None) =>
-			Output.last( CommandSupport.globalLogging(s).backing )
-			s
+			for(logFile <- lastLogFile(s)) yield
+				Output.last( logFile, printLast(s) )
+			keepLastLog(s)
 	}
+
+	/** Determines the log file that last* commands should operate on.  See also isLastOnly. */
+	def lastLogFile(s: State) =
+	{
+		val backing = CommandSupport.globalLogging(s).backing
+		if(isLastOnly(s)) backing.last else Some(backing.file)
+	}
+
+	/** If false, shift the current log file to be the log file that 'last' will operate on.
+	* If true, keep the previous log file as the one 'last' operates on because there is nothing useful in the current one.*/
+	def keepLastLog(s: State): State = if(isLastOnly(s)) s.keepLastLog else s
+
+	/** The last* commands need to determine whether to read from the current log file or the previous log file
+	* and whether to keep the previous log file or not.  This is selected based on whether the previous command
+	* was 'shell', which meant that the user directly entered the 'last' command.  If it wasn't directly entered,
+	* the last* commands operate on any output since the last 'shell' command and do shift the log file.
+	* Otherwise, the output since the previous 'shell' command is used and the log file is not shifted.*/
+	def isLastOnly(s: State): Boolean = s.history.previous.forall(_ == Shell)
+		
+	def printLast(s: State): Seq[String] => Unit = _ foreach println
 
 	def autoImports(extracted: Extracted): EvalImports  =  new EvalImports(imports(extracted), "<auto-imports>")
 	def imports(extracted: Extracted): Seq[(String,Int)] =
@@ -430,7 +487,7 @@ object BuiltinCommands
 		def matches(s: String) = !result.isEmpty && (s startsWith result)
 		
 		if(result.isEmpty || matches("retry"))
-			LoadProject :: s
+			LoadProject :: s.clearGlobalLog
 		else if(matches(Quit))
 			s.exit(ok = false)
 		else if(matches("ignore"))

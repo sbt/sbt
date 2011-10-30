@@ -51,7 +51,7 @@ object GlobalPlugin
 	def evaluate[T](state: State, structure: BuildStructure, t: Task[T]): (State, T) =
 	{
 			import EvaluateTask._
-		withStreams(structure) { str =>
+		withStreams(structure, state) { str =>
 			val nv = nodeView(state, str)
 			val config = EvaluateTask.defaultConfig
 			val (newS, result) = runTask(t, state, str, structure.index.triggers, config)(nv)

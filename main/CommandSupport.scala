@@ -12,7 +12,7 @@ import Path._
 object CommandSupport
 {
 	def logger(s: State) = globalLogging(s).full
-	def globalLogging(s: State) = s get Keys.globalLogging.key getOrElse error("Global logging misconfigured")
+	def globalLogging(s: State) = s get Keys.globalLogging getOrElse error("Global logging misconfigured")
 
 	// slightly better fallback in case of older launcher
 	def bootDirectory(state: State): File =

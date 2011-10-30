@@ -82,7 +82,7 @@ final object Aggregation
 		val config = extractedConfig(extracted, structure)
 
 		val start = System.currentTimeMillis
-		val (newS, result) = withStreams(structure){ str =>
+		val (newS, result) = withStreams(structure, s){ str =>
 			val transform = nodeView(s, str, extra.tasks, extra.values)
 			runTask(toRun, s,str, structure.index.triggers, config)(transform)
 		}

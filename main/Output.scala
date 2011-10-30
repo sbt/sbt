@@ -30,16 +30,19 @@ object Output
 	}
 	final val DefaultTail = "> "
 
-	def last(key: ScopedKey[_], structure: BuildStructure)(implicit display: Show[ScopedKey[_]]): Unit  =  printLines( flatLines(lastLines(key, structure))(idFun) )
-	def last(file: File, tailDelim: String = DefaultTail): Unit  =  printLines(tailLines(file, tailDelim))
+	def last(key: ScopedKey[_], structure: BuildStructure, streams: Streams, printLines: Seq[String] => Unit)(implicit display: Show[ScopedKey[_]]): Unit =
+		printLines( flatLines(lastLines(key, structure, streams))(idFun) )
 
-	def lastGrep(key: ScopedKey[_], structure: BuildStructure, patternString: String)(implicit display: Show[ScopedKey[_]]): Unit =
+	def last(file: File, printLines: Seq[String] => Unit, tailDelim: String = DefaultTail): Unit =
+		printLines(tailLines(file, tailDelim))
+
+	def lastGrep(key: ScopedKey[_], structure: BuildStructure, streams: Streams, patternString: String, printLines: Seq[String] => Unit)(implicit display: Show[ScopedKey[_]]): Unit =
 	{
 		val pattern = Pattern compile patternString
-		val lines = flatLines( lastLines(key, structure) )(_ flatMap showMatches(pattern))
+		val lines = flatLines( lastLines(key, structure, streams) )(_ flatMap showMatches(pattern))
 		printLines( lines )
 	}
-	def lastGrep(file: File, patternString: String, tailDelim: String = DefaultTail): Unit =
+	def lastGrep(file: File, patternString: String, printLines: Seq[String] => Unit, tailDelim: String = DefaultTail): Unit =
 		printLines(grep( tailLines(file, tailDelim), patternString) )
 	def grep(lines: Seq[String], patternString: String): Seq[String] =
 		lines flatMap showMatches(Pattern compile patternString)
@@ -52,13 +55,12 @@ object Output
 			if(!single) bold(display(key)) +: flines else flines
 		}
 	}
-	def printLines(lines: Seq[String]) = lines foreach println
 	def bold(s: String) = if(ConsoleLogger.formatEnabled) BOLD + s + RESET else s
 
-	def lastLines(key: ScopedKey[_], structure: BuildStructure): Seq[KeyValue[Seq[String]]] =
+	def lastLines(key: ScopedKey[_], structure: BuildStructure, streams: Streams): Seq[KeyValue[Seq[String]]] =
 	{
 		val aggregated = Aggregation.getTasks(key, structure, true)
-		val outputs = aggregated map { case KeyValue(key, value) => KeyValue(key, lastLines(key, structure.streams)) }
+		val outputs = aggregated map { case KeyValue(key, value) => KeyValue(key, lastLines(key, streams)) }
 		outputs.filterNot(_.value.isEmpty)
 	}
 	def lastLines(key: ScopedKey[_], mgr: Streams): Seq[String]  =	 mgr.use(key) { s => IO.readLines(s.readText( Project.fillTaskAxis(key) )) }

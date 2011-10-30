@@ -209,8 +209,8 @@ object BuildStreams
 	final val BuildUnitPath = "$build"
 	final val StreamsDirectory = "streams"
 
-	def mkStreams(units: Map[URI, LoadedBuildUnit], root: URI, data: Settings[Scope]): Streams =
-		std.Streams( path(units, root, data), displayFull, LogManager.construct(data) )
+	def mkStreams(units: Map[URI, LoadedBuildUnit], root: URI, data: Settings[Scope]): State => Streams = s =>
+		std.Streams( path(units, root, data), displayFull, LogManager.construct(data, s) )
 		
 	def path(units: Map[URI, LoadedBuildUnit], root: URI, data: Settings[Scope])(scoped: ScopedKey[_]): File =
 		resolvePath( projectPath(units, root, scoped, data), nonProjectPath(scoped) )

@@ -31,7 +31,7 @@ object TaskData
 	def dataStreams[T](structure: BuildStructure, reader: ScopedKey[_], readFrom: AttributeKey[_])(f: (TaskStreams, ScopedKey[_]) => T): Option[T] =
 		structure.data.definingScope(reader.scope, readFrom) map { defined =>
 			val key = ScopedKey(Scope.fillTaskAxis(defined, readFrom), readFrom)
-			structure.streams.use(reader)(ts => f(ts, key))
+			structure.streams(fakeState(structure)).use(reader)(ts => f(ts, key))
 		}
 	def write[T](i: Initialize[Task[T]], id: String = DefaultDataID)(implicit f: Format[T]): Initialize[Task[T]] = writeRelated(i, id)(idFun[T])(f)
 
@@ -42,4 +42,11 @@ object TaskData
 				value
 			}
 		}
+	// exists to keep the method signatures the same (since this object is potentially used but deprecated),
+	//   but allow the BuildStructure Streams to be constructed from State, which isn't actually needed here
+	private[this] def fakeState(structure: BuildStructure): State =
+	{
+		val config = Keys.appConfiguration in Scope.GlobalScope get structure.data
+		State(config.get, Nil, Set.empty, None, Nil, State.newHistory, AttributeMap.empty, State.Continue)
+	}
 }

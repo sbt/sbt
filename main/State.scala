@@ -13,8 +13,9 @@ final case class State(
 	exitHooks: Set[ExitHook],
 	onFailure: Option[String],
 	remainingCommands: Seq[String],
+	history: State.History,
 	attributes: AttributeMap,
-	result: Option[xsbti.MainResult]
+	next: State.Next
 ) extends Identity {
 	lazy val combinedParser = Command.combine(definedCommands)(this)
 }
@@ -31,8 +32,11 @@ trait StateOps {
 	def :: (command: String): State
 	def continue: State
 	def reboot(full: Boolean): State
-	def setResult(n: Option[xsbti.MainResult]): State
+	def setNext(n: State.Next): State
+	@deprecated("Use setNext", "0.11.0") def setResult(ro: Option[xsbti.MainResult])
 	def reload: State
+	def clearGlobalLog: State
+	def keepLastLog: State
 	def exit(ok: Boolean): State
 	def fail: State
 	def ++ (newCommands: Seq[Command]): State
@@ -50,6 +54,27 @@ trait StateOps {
 }
 object State
 {
+	sealed trait Next
+	object Continue extends Next
+	final class Return(val result: xsbti.MainResult) extends Next
+	final object ClearGlobalLog extends Next
+	final object KeepLastLog extends Next
+
+	/** Provides a list of recently executed commands.  The commands are stored as processed instead of as entered by the user.*/
+	final class History private[State](val executed: Seq[String], val maxSize: Int)
+	{
+		def :: (command: String): History =
+		{
+			val prependTo = if(executed.size >= maxSize) executed.take(maxSize - 1) else executed
+			new History(command +: prependTo, maxSize)
+		}
+		def setMaxSize(size: Int): History =
+			new History(executed.take(size), size)
+		def current: String = executed.head
+		def previous: Option[String] = executed.drop(1).headOption
+	}
+	def newHistory = new History(Vector.empty, complete.HistoryCommands.MaxLines)
+
 	def defaultReload(state: State): Reboot =
 	{
 		val app = state.configuration.provider
@@ -59,7 +84,7 @@ object State
 	implicit def stateOps(s: State): StateOps = new StateOps {
 		def process(f: (String, State) => State): State =
 			s.remainingCommands match {
-				case Seq(x, xs @ _*) => f(x, s.copy(remainingCommands = xs))
+				case Seq(x, xs @ _*) => f(x, s.copy(remainingCommands = xs, history = x :: s.history))
 				case Seq() => exit(true)
 			}
 			s.copy(remainingCommands = s.remainingCommands.drop(1))
@@ -68,11 +93,14 @@ object State
 		def ++ (newCommands: Seq[Command]): State = s.copy(definedCommands = (s.definedCommands ++ newCommands).distinct)
 		def + (newCommand: Command): State = this ++ (newCommand :: Nil)
 		def baseDir: File = s.configuration.baseDirectory
-		def setResult(n: Option[xsbti.MainResult]) = s.copy(result = n)
-		def continue = setResult(None)
+		def setNext(n: Next) = s.copy(next = n)
+		def setResult(ro: Option[xsbti.MainResult]) = ro match { case None => continue; case Some(r) => setNext(new Return(r)) }
+		def continue = setNext(Continue)
 		def reboot(full: Boolean) = throw new xsbti.FullReload(s.remainingCommands.toArray, full)
-		def reload = setResult(Some(defaultReload(s)))
-		def exit(ok: Boolean) = setResult(Some(Exit(if(ok) 0 else 1)))
+		def reload = setNext(new Return(defaultReload(s)))
+		def clearGlobalLog = setNext(ClearGlobalLog)
+		def keepLastLog = setNext(KeepLastLog)
+		def exit(ok: Boolean) = setNext(new Return(Exit(if(ok) 0 else 1)))
 		def get[T](key: AttributeKey[T]) = s.attributes get key
 		def put[T](key: AttributeKey[T], value: T) = s.copy(attributes = s.attributes.put(key, value))
 		def update[T](key: AttributeKey[T])(f: Option[T] => T): State = put(key, f(get(key)))

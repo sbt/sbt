@@ -56,7 +56,7 @@ object Keys
 //	val onComplete = SettingKey[RMap[Task,Result] => RMap[Task,Result]]("on-complete", "Transformation to apply to the final task result map.  This may also be used to register hooks to run when task evaluation completes.")
 
 	// Command keys
-	val globalLogging = SettingKey[GlobalLogging]("global-logging", "Provides a global Logger, including command logging.")
+	val globalLogging = AttributeKey[GlobalLogging]("global-logging", "Provides a global Logger, including command logging.")
 	val historyPath = SettingKey[Option[File]]("history", "The location where command line history is persisted.")
 	val shellPrompt = SettingKey[State => String]("shell-prompt", "The function that constructs the command prompt from the current build state.")
 	val analysis = AttributeKey[inc.Analysis]("analysis", "Analysis of compilation, including dependencies and generated outputs.")
