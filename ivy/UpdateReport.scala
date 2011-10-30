@@ -10,8 +10,9 @@ package sbt
 * This means that for a given configuration, there should only be one revision for a given organization and module name.
 * @param cachedDescriptor the location of the resolved module descriptor in the cache
 * @param configurations a sequence containing one report for each configuration resolved.
+* @param stats information about the update that produced this report
 * @see sbt.RichUpdateReport
- */
+*/
 final class UpdateReport(val cachedDescriptor: File, val configurations: Seq[ConfigurationReport], val stats: UpdateStats)
 {
 	override def toString = "Update report:\n\t" + stats + "\n" + configurations.mkString
@@ -126,7 +127,7 @@ object UpdateReport
 		}
 	}
 }
-final class UpdateStats(val resolveTime: Long, val downloadTime: Long, val downloadSize: Long)
+final class UpdateStats(val resolveTime: Long, val downloadTime: Long, val downloadSize: Long, val cached: Boolean)
 {
 	override def toString = Seq("Resolve time: " + resolveTime + " ms", "Download time: " + downloadTime + " ms", "Download size: " + downloadSize + " bytes").mkString(", ")
 }

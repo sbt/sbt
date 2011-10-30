@@ -50,7 +50,7 @@ object IvyRetrieve
 	def updateReport(report: ResolveReport, cachedDescriptor: File): UpdateReport =
 		new UpdateReport(cachedDescriptor, reports(report) map configurationReport, updateStats(report))
 	def updateStats(report: ResolveReport): UpdateStats =
-		new UpdateStats(report.getResolveTime, report.getDownloadTime, report.getDownloadSize)
+		new UpdateStats(report.getResolveTime, report.getDownloadTime, report.getDownloadSize, false)
 	def configurationReport(confReport: ConfigurationResolveReport): ConfigurationReport =
 		new ConfigurationReport(confReport.getConfiguration, moduleReports(confReport), evicted(confReport))
 }
