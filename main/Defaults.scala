@@ -233,6 +233,9 @@ object Defaults extends BuildCommon
 	def watchTransitiveSourcesTask: Initialize[Task[Seq[File]]] =
 		inDependencies[Task[Seq[File]]](watchSources.task, const(std.TaskExtra.constant(Nil)), aggregate = true, includeRoot = true) apply { _.join.map(_.flatten) }
 
+	def transitiveUpdateTask: Initialize[Task[Seq[UpdateReport]]] =
+		forDependencies(ref => (update.task in ref).?, aggregate = false, includeRoot = false) apply( _.flatten.join)
+
 	def watchSetting: Initialize[Watched] = (pollInterval, thisProjectRef, watchingMessage, triggeredMessage) { (interval, base, msg, trigMsg) =>
 		new Watched {
 			val scoped = watchTransitiveSources in base
@@ -543,8 +546,11 @@ object Defaults extends BuildCommon
 	}
 
 	def inDependencies[T](key: SettingKey[T], default: ProjectRef => T, includeRoot: Boolean = true, classpath: Boolean = true, aggregate: Boolean = false): Initialize[Seq[T]] =
+		forDependencies[T,T](ref => (key in ref) ?? default(ref), includeRoot, classpath, aggregate)
+
+	def forDependencies[T,V](init: ProjectRef => Initialize[V], includeRoot: Boolean = true, classpath: Boolean = true, aggregate: Boolean = false): Initialize[Seq[V]] =
 		Project.bind( (loadedBuild, thisProjectRef).identity ) { case (lb, base) =>
-			transitiveDependencies(base, lb, includeRoot, classpath, aggregate) map ( ref => (key in ref) ?? default(ref) ) join ;
+			transitiveDependencies(base, lb, includeRoot, classpath, aggregate) map init join ;
 		}
 
 	def transitiveDependencies(base: ProjectRef, structure: LoadedBuild, includeRoot: Boolean, classpath: Boolean = true, aggregate: Boolean = false): Seq[ProjectRef] =
@@ -722,8 +728,10 @@ object Classpaths
 		},
 		ivySbt <<= ivySbt0,
 		ivyModule <<= (ivySbt, moduleSettings) map { (ivySbt, settings) => new ivySbt.Module(settings) },
-		update <<= (ivyModule, thisProjectRef, updateConfiguration, cacheDirectory, scalaInstance, streams) map { (module, ref, config, cacheDirectory, si, s) =>
-			cachedUpdate(cacheDirectory / "update", Project.display(ref), module, config, Some(si), s.log)
+		transitiveUpdate <<= transitiveUpdateTask,
+		update <<= (ivyModule, thisProjectRef, updateConfiguration, cacheDirectory, scalaInstance, transitiveUpdate, streams) map { (module, ref, config, cacheDirectory, si, reports, s) =>
+			val depsUpdated = reports.exists(!_.stats.cached)
+			cachedUpdate(cacheDirectory / "update", Project.display(ref), module, config, Some(si), depsUpdated, s.log)
 		},
 		update <<= (conflictWarning, update, streams) map { (config, report, s) => ConflictWarning(config, report, s.log); report },
 		transitiveClassifiers in GlobalScope :== Seq(SourceClassifier, DocClassifier),
@@ -798,7 +806,7 @@ object Classpaths
 		}})
 	}
 
-	def cachedUpdate(cacheFile: File, label: String, module: IvySbt#Module, config: UpdateConfiguration, scalaInstance: Option[ScalaInstance], log: Logger): UpdateReport =
+	def cachedUpdate(cacheFile: File, label: String, module: IvySbt#Module, config: UpdateConfiguration, scalaInstance: Option[ScalaInstance], depsUpdated: Boolean, log: Logger): UpdateReport =
 	{
 		implicit val updateCache = updateIC
 		implicit val updateReport = updateReportF
@@ -809,11 +817,16 @@ object Classpaths
 			log.info("Done updating.")
 			scalaInstance match { case Some(si) => substituteScalaFiles(si, r); case None => r }
 		}
+		def uptodate(inChanged: Boolean, out: UpdateReport): Boolean =
+			!depsUpdated &&
+			!inChanged &&
+			out.allFiles.forall(_.exists) &&
+			out.cachedDescriptor.exists
 
 		val f =
 			Tracked.inputChanged(cacheFile / "inputs") { (inChanged: Boolean, in: In) =>
 				val outCache = Tracked.lastOutput[In, UpdateReport](cacheFile / "output") {
-					case (_, Some(out)) if !inChanged && out.allFiles.forall(_.exists) && out.cachedDescriptor.exists => out
+					case (_, Some(out)) if uptodate(inChanged, out) => out
 					case _ => work(in)
 				}
 				outCache(in)

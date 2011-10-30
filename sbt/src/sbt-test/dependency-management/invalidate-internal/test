@@ -1,0 +1,11 @@
+> a/compile
+$ copy-file changes/A.scala a/A.scala
+-> a/compile
+
+$ copy-file changes/b.sbt b/build.sbt
+> reload
+> a/compile
+
+$ delete b/build.sbt
+> reload
+-> a/compile
