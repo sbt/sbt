@@ -68,7 +68,7 @@ object CacheIvy
 		wrap[UpdateReport, (File, Seq[ConfigurationReport], UpdateStats)](rep => (rep.cachedDescriptor, rep.configurations, rep.stats), { case (cd, cs, stats) => new UpdateReport(cd, cs, stats) })
 	}
 	implicit def updateStatsFormat: Format[UpdateStats] =
-		wrap[UpdateStats, (Long,Long,Long)]( us => (us.resolveTime, us.downloadTime, us.downloadSize), { case (rt, dt, ds) => new UpdateStats(rt, dt, ds) })
+		wrap[UpdateStats, (Long,Long,Long)]( us => (us.resolveTime, us.downloadTime, us.downloadSize), { case (rt, dt, ds) => new UpdateStats(rt, dt, ds, true) })
 	implicit def confReportFormat(implicit mf: Format[ModuleID], mr: Format[ModuleReport]): Format[ConfigurationReport] =
 		wrap[ConfigurationReport, (String,Seq[ModuleReport],Seq[ModuleID])]( r => (r.configuration, r.modules, r.evicted), { case (c,m,v) => new ConfigurationReport(c,m,v) })
 	implicit def moduleReportFormat(implicit f: Format[Artifact], ff: Format[File], mid: Format[ModuleID]): Format[ModuleReport] =
