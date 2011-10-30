@@ -5,7 +5,7 @@ package sbt
 
 	import java.io.File
 	import Project.{ScopedKey, Setting}
-	import Keys.{globalLogging, streams, Streams, TaskStreams}
+	import Keys.{streams, Streams, TaskStreams}
 	import Keys.{dummyState, dummyStreamsManager, streamsManager, taskDefinitionKey, transformState}
 	import Scope.{GlobalScope, ThisScope}
 	import Types.const

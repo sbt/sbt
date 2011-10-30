@@ -46,6 +46,10 @@ object ConsoleLogger
 	def apply(out: PrintWriter): ConsoleLogger = apply(printWriterOut(out))
 	def apply(out: ConsoleOut, ansiCodesSupported: Boolean = formatEnabled, useColor: Boolean = formatEnabled): ConsoleLogger =
 		new ConsoleLogger(out, ansiCodesSupported, useColor)
+
+	private[this] val EscapeSequence = (27.toChar + "[^@-~]*[@-~]").r
+	def stripEscapeSequences(s: String): String =
+		EscapeSequence.pattern.matcher(s).replaceAll("")
 }
 
 /** A logger that logs to the console.  On supported systems, the level labels are
