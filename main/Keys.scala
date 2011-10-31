@@ -122,10 +122,10 @@ object Keys
 	// compile/doc keys
 	val autoCompilerPlugins = SettingKey[Boolean]("auto-compiler-plugins", "If true, enables automatically generating -Xplugin arguments to the compiler based on the classpath for the " + CompilerPlugin.name + " configuration.")
 	val maxErrors = SettingKey[Int]("max-errors", "The maximum number of errors, such as compile errors, to list.")
-	@deprecated("Use `scalacOptions`, scoped by the doc task.  For example, `scalacOptions in doc`", "0.11.0")
+	@deprecated("Use `scalacOptions`, scoped by the doc task.  For example, `scalacOptions in Compile in doc`", "0.11.0")
 	val scaladocOptions = TaskKey[Seq[String]]("scaladoc-options", "Options for Scaladoc.")
 	val scalacOptions = TaskKey[Seq[String]]("scalac-options", "Options for the Scala compiler.")
-	val javacOptions = SettingKey[Seq[String]]("javac-options", "Options for the Java compiler.")
+	val javacOptions = TaskKey[Seq[String]]("javac-options", "Options for the Java compiler.")
 	val compileOrder = SettingKey[CompileOrder.Value]("compile-order", "Configures the order in which Java and sources within a single compilation are compiled.  Valid values are: JavaThenScala, ScalaThenJava, or Mixed.")
 	val initialCommands = SettingKey[String]("initial-commands", "Initial commands to execute when starting up the Scala interpreter.")
 	val cleanupCommands = SettingKey[String]("cleanup-commands", "Commands to execute before the Scala interpreter exits.")
@@ -178,7 +178,7 @@ object Keys
 	val outputStrategy = SettingKey[Option[sbt.OutputStrategy]]("output-strategy", "Selects how to log output when running a main class.")
 	val connectInput = SettingKey[Boolean]("connect-input", "If true, connects standard input when running a main class forked.")
 	val javaHome = SettingKey[Option[File]]("java-home", "Selects the Java installation used for compiling and forking.  If None, uses the Java installation running the build.")
-	val javaOptions = SettingKey[Seq[String]]("java-options", "Options passed to a new JVM when forking.")
+	val javaOptions = TaskKey[Seq[String]]("java-options", "Options passed to a new JVM when forking.")
 
 	// Test Keys
 	val testLoader = TaskKey[ClassLoader]("test-loader", "Provides the class loader used for testing.")
