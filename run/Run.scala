@@ -28,7 +28,7 @@ class ForkRun(config: ForkScalaRun) extends ScalaRun
 		val exitCode = try process.exitValue() catch { case e: InterruptedException => cancel() }
 		processExitCode(exitCode, "runner")
 	}
-	private def classpathOption(classpath: Seq[File]) = "-cp" :: Path.makeString(classpath) :: Nil
+	private def classpathOption(classpath: Seq[File]) = "-classpath" :: Path.makeString(classpath) :: Nil
 	private def processExitCode(exitCode: Int, label: String) =
 	{
 		if(exitCode == 0)
