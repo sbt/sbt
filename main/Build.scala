@@ -87,10 +87,23 @@ object RetrieveUnit
 			}
 		}
 	def dropFragment(base: URI): URI = if(base.getFragment eq null) base else new URI(base.getScheme, base.getSchemeSpecificPart, null)
+
+	lazy val isWindowsShell =
+           ((!System.getenv("SHELL").contains("cygwin")) && 
+           (System.getProperty("os.name").toLowerCase().indexOf("windows") >= 0))
+ 
 	def gitClone(base: URI, tempDir: File): Unit =
-		run("git" :: "clone" :: dropFragment(base).toASCIIString :: tempDir.getAbsolutePath :: Nil, tempDir) ;
+                if(isWindowsShell) {
+			run("cmd" :: "/c" :: "git" :: "clone" :: dropFragment(base).toASCIIString :: tempDir.getAbsolutePath :: Nil, tempDir) ;
+                } else {
+			run("git" :: "clone" :: dropFragment(base).toASCIIString :: tempDir.getAbsolutePath :: Nil, tempDir) ;
+		}
 	def gitCheckout(tempDir: File, branch: String): Unit =
-		run("git" :: "checkout" :: "-q" :: branch :: Nil, tempDir) ;
+		if(isWindowsShell) {
+			run("cmd" :: "/c" :: "git" :: "checkout" :: "-q" :: branch :: Nil, tempDir) ;
+		} else {
+			run("git" :: "checkout" :: "-q" :: branch :: Nil, tempDir) ;
+		}
 	def run(command: List[String], cwd: File): Unit =
 	{
 		val result = Process(command, cwd) ! ;
