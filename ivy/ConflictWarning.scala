@@ -12,7 +12,7 @@ object ConflictWarning
 		val conflicts = IvyActions.groupedConflicts(config.filter, config.group)(report)
 		if(!conflicts.isEmpty)
 		{
-			val msg = "Potentially incompatible versions of dependencies of " + config.label + ":"
+			val msg = "Potentially incompatible versions of dependencies of " + config.label + ":\n   "
 			val conflictMsgs =
 				for( (label, versions) <- conflicts ) yield
 					label + ": " + versions.mkString(", ")
