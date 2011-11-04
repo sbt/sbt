@@ -33,12 +33,12 @@ sealed trait UpdateTarget { def tpe: String; def classifiers: List[String] }
 final class UpdateScala(val classifiers: List[String]) extends UpdateTarget { def tpe = "scala" }
 final class UpdateApp(val id: Application, val classifiers: List[String]) extends UpdateTarget { def tpe = "app" }
 
-final class UpdateConfiguration(val bootDirectory: File, val ivyHome: Option[File], val scalaVersion: String, val repositories: List[xsbti.Repository])
+final class UpdateConfiguration(val bootDirectory: File, val ivyHome: Option[File], val scalaVersion: String, val repositories: List[xsbti.Repository], val checksums: List[String])
 
 /** Ensures that the Scala and application jars exist for the given versions or else downloads them.*/
 final class Update(config: UpdateConfiguration)
 {
-	import config.{bootDirectory, ivyHome, repositories, scalaVersion}
+	import config.{bootDirectory, checksums, ivyHome, repositories, scalaVersion}
 	bootDirectory.mkdirs
 
 	private def logFile = new File(bootDirectory, UpdateLogName)
@@ -65,7 +65,7 @@ final class Update(config: UpdateConfiguration)
 		val settings = new IvySettings
 		ivyHome foreach settings.setDefaultIvyUserDir
 		addResolvers(settings)
-		settings.setVariable("ivy.checksums", "sha1,md5")
+		settings.setVariable("ivy.checksums", checksums mkString ",")
 		settings.setDefaultConflictManager(settings.getConflictManager(ConflictManagerName))
 		settings.setBaseDir(bootDirectory)
 		settings.setVariable("scala", scalaVersion)

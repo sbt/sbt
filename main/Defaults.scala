@@ -102,7 +102,7 @@ object Defaults extends BuildCommon
 		artifactClassifier :== None,
 		artifactClassifier in packageSrc :== Some(SourceClassifier),
 		artifactClassifier in packageDoc :== Some(DocClassifier),
-		checksums :== IvySbt.DefaultChecksums,
+		checksums <<= appConfiguration(Classpaths.bootChecksums),
 		pomExtra :== NodeSeq.Empty,
 		pomPostProcess :== idFun,
 		pomAllRepositories :== false,
@@ -1038,6 +1038,10 @@ object Classpaths
 	def bootIvyHome(app: xsbti.AppConfiguration): Option[File] =
 		try { Option(app.provider.scalaProvider.launcher.ivyHome) }
 		catch { case _: NoSuchMethodError => None }
+
+	def bootChecksums(app: xsbti.AppConfiguration): Seq[String] =
+		try { app.provider.scalaProvider.launcher.checksums.toSeq }
+		catch { case _: NoSuchMethodError => IvySbt.DefaultChecksums }
 
 	def bootRepositories(app: xsbti.AppConfiguration): Option[Seq[Resolver]] =
 		try { Some(app.provider.scalaProvider.launcher.ivyRepositories.toSeq map bootRepository) }

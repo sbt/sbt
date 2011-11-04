@@ -47,6 +47,7 @@ private object BootConfiguration
 
 	val ScalaHomeProperty = "scala.home"
 	val UpdateLogName = "update.log"
+	val DefaultChecksums = "sha1" :: "md5" :: Nil
 
 	val DefaultIvyConfiguration = "default"
 

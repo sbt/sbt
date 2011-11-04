@@ -13,4 +13,5 @@ public interface Launcher
 	public xsbti.Repository[] ivyRepositories();
 	// null if none set
 	public File ivyHome();
+	public String[] checksums();
 }

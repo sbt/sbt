@@ -16,7 +16,32 @@ import scala.collection.immutable.List
 object ConfigurationParser
 {
 	def trim(s: Array[String]) = s.map(_.trim).toList
-	def ids(value: String) = trim(value.split(",")).filter(isNonEmpty)
+	def ids(value: String) = trim(substituteVariables(value).split(",")).filter(isNonEmpty)
+
+	private[this] lazy val VarPattern = Pattern.compile("""\$\{([\w.]+)(\-(.+))?\}""")
+	def substituteVariables(s: String): String = if(s.indexOf('$') >= 0) substituteVariables0(s) else s
+	// scala.util.Regex brought in 30kB, so we code it explicitly
+	def substituteVariables0(s: String): String =
+	{
+		val m = VarPattern.matcher(s)
+		val b = new StringBuffer
+		while(m.find())
+		{
+			val key = m.group(1)
+			val defined = System.getProperty(key)
+			val value =
+				if(defined ne null)
+					defined
+				else
+				{
+					val default = m.group(3)
+					if(default eq null) m.group() else substituteVariables(default)
+				}
+			m.appendReplacement(b, quoteReplacement(value))
+		}
+		m.appendTail(b)
+		b.toString
+	}
 	
 	implicit val readIDs = ids _
 }
@@ -43,10 +68,11 @@ class ConfigurationParser
 		val (boot, m4) = processSection(m3, "boot", getBoot)
 		val (logging, m5) = processSection(m4, "log", getLogging)
 		val (properties, m6) = processSection(m5, "app-properties", getAppProperties)
-		val (ivyHome, m7) = processSection(m6, "ivy", getIvy)
+		val ((ivyHome, checksums), m7) = processSection(m6, "ivy", getIvy)
 		check(m7, "section")
 		val classifiers = Classifiers(scalaClassifiers, appClassifiers)
-		new LaunchConfiguration(scalaVersion, IvyOptions(ivyHome, classifiers, repositories), app, boot, logging, properties)
+		val ivyOptions = IvyOptions(ivyHome, classifiers, repositories, checksums)
+		new LaunchConfiguration(scalaVersion, ivyOptions, app, boot, logging, properties)
 	}
 	def getScala(m: LabelMap) =
 	{
@@ -94,11 +120,13 @@ class ConfigurationParser
 	def file(map: LabelMap, name: String, default: File): (File, LabelMap) =
 		(orElse(getOrNone(map, name).map(toFile), default), map - name)
 
-	def getIvy(m: LabelMap): Option[File] =
+	def getIvy(m: LabelMap): (Option[File], List[String]) =
 	{
 		val (ivyHome, m1) = file(m, "ivy-home", null) // fix this later
-		check(m1, "label")
-		if(ivyHome eq null) None else Some(ivyHome)
+		val (checksums, m2) = ids(m1, "checksums", BootConfiguration.DefaultChecksums)
+		check(m2, "label")
+		val home = if(ivyHome eq null) None else Some(ivyHome)
+		(home, checksums)
 	}
 	def getBoot(m: LabelMap): BootSetup =
 	{
@@ -193,30 +221,6 @@ class ConfigurationParser
 		s._1
 	}
 
-	private[this] lazy val VarPattern = Pattern.compile("""\$\{([\w.]+)(\-(.+))?\}""")
-	def substituteVariables(s: String): String = if(s.indexOf('$') >= 0) substituteVariables0(s) else s
-	// scala.util.Regex brought in 30kB, so we code it explicitly
-	def substituteVariables0(s: String): String =
-	{
-		val m = VarPattern.matcher(s)
-		val b = new StringBuffer
-		while(m.find())
-		{
-			val key = m.group(1)
-			val defined = System.getProperty(key)
-			val value =
-				if(defined ne null)
-					defined
-				else
-				{
-					val default = m.group(3)
-					if(default eq null) m.group() else substituteVariables(default)
-				}
-			m.appendReplacement(b, quoteReplacement(value))
-		}
-		m.appendTail(b)
-		b.toString
-	}
 }
 
 sealed trait Line

@@ -79,7 +79,7 @@ final class RunConfiguration(val scalaVersion: String, val app: xsbti.Applicatio
 import BootConfiguration.{appDirectoryName, baseDirectoryName, ScalaDirectoryName, TestLoadScalaClasses}
 class Launch private[xsbt](val bootDirectory: File, val lockBoot: Boolean, val ivyOptions: IvyOptions) extends xsbti.Launcher
 {
-	import ivyOptions.{classifiers, repositories}
+	import ivyOptions.{checksums => checksumsList, classifiers, repositories}
 	bootDirectory.mkdirs
 	private val scalaProviders = new Cache[String, String, ScalaProvider](new ScalaProvider(_, _))
 	def getScala(version: String): xsbti.ScalaProvider = getScala(version, "")
@@ -91,11 +91,12 @@ class Launch private[xsbt](val bootDirectory: File, val lockBoot: Boolean, val i
 	def globalLock: xsbti.GlobalLock = Locks
 	def ivyHome = ivyOptions.ivyHome.orNull
 	def ivyRepositories = repositories.toArray
+	def checksums = checksumsList.toArray[String]
 
 	class JNAProvider extends Provider
 	{
 		lazy val id = new Application("net.java.dev.jna", "jna", new Explicit("3.2.3"), "", Nil, false, array())
-		lazy val configuration = new UpdateConfiguration(bootDirectory, ivyOptions.ivyHome, "", repositories)
+		lazy val configuration = new UpdateConfiguration(bootDirectory, ivyOptions.ivyHome, "", repositories, checksumsList)
 		lazy val libDirectory = new File(bootDirectory, baseDirectoryName(""))
 		def baseDirectories: List[File] = new File(libDirectory, appDirectoryName(id.toID, File.separator)) :: Nil
 		def testLoadClasses: List[String] = "com.sun.jna.Function" :: Nil
@@ -111,7 +112,7 @@ class Launch private[xsbt](val bootDirectory: File, val lockBoot: Boolean, val i
 		def launcher: xsbti.Launcher = Launch.this
 		def parentLoader = topLoader
 
-		lazy val configuration = new UpdateConfiguration(bootDirectory, ivyOptions.ivyHome, version, repositories)
+		lazy val configuration = new UpdateConfiguration(bootDirectory, ivyOptions.ivyHome, version, repositories, checksumsList)
 		lazy val libDirectory = new File(configuration.bootDirectory, baseDirectoryName(version))
 		lazy val scalaHome = new File(libDirectory, ScalaDirectoryName)
 		def compilerJar = new File(scalaHome, CompilerModuleName + ".jar")
@@ -154,7 +155,7 @@ class Launch private[xsbt](val bootDirectory: File, val lockBoot: Boolean, val i
 object Launcher
 {
 	def apply(bootDirectory: File, repositories: List[xsbti.Repository]): xsbti.Launcher =
-		apply(bootDirectory, IvyOptions(None, Classifiers(Nil, Nil), repositories))
+		apply(bootDirectory, IvyOptions(None, Classifiers(Nil, Nil), repositories, BootConfiguration.DefaultChecksums))
 	def apply(bootDirectory: File, ivyOptions: IvyOptions): xsbti.Launcher =
 		apply(bootDirectory, ivyOptions, GetLocks.find)
 	def apply(bootDirectory: File, ivyOptions: IvyOptions, locks: xsbti.GlobalLock): xsbti.Launcher =
