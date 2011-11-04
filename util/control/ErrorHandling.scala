@@ -3,6 +3,8 @@
  */
 package sbt
 
+	import java.io.IOException
+
 object ErrorHandling
 {
 	def translate[T](msg: => String)(f: => T) =
