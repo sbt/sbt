@@ -11,12 +11,12 @@ import java.util.{Collection, Collections => CS}
 import CS.singleton
 
 import org.apache.ivy.{core, plugins, util, Ivy}
-import core.IvyPatternHelper
+import core.{IvyPatternHelper, LogOptions}
 import core.cache.{CacheMetadataOptions, DefaultRepositoryCacheManager}
 import core.module.descriptor.{Artifact => IArtifact, DefaultArtifact, DefaultDependencyArtifactDescriptor, MDArtifact}
 import core.module.descriptor.{DefaultDependencyDescriptor, DefaultModuleDescriptor, DependencyDescriptor, ModuleDescriptor, License}
 import core.module.id.{ArtifactId,ModuleId, ModuleRevisionId}
-import core.resolve.IvyNode
+import core.resolve.{IvyNode, ResolveData}
 import core.settings.IvySettings
 import plugins.conflict.{ConflictManager, LatestCompatibleConflictManager, LatestConflictManager}
 import plugins.latest.LatestRevisionStrategy
@@ -218,6 +218,12 @@ private object IvySbt
 			// It would be better to get proper support into Ivy.
 			override def locate(artifact: IArtifact) =
 				if(hasImplicitClassifier(artifact)) null else super.locate(artifact)
+			override def getDependency(dd: DependencyDescriptor, data: ResolveData) =
+			{
+				if(data.getOptions.getLog != LogOptions.LOG_QUIET)
+					log.info("Resolving " + dd.getDependencyRevisionId + " ...")
+				super.getDependency(dd, data)
+			}
 		}
 		newDefault.setName(name)
 		newDefault.setReturnFirst(true)
