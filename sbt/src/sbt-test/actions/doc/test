@@ -1,4 +1,4 @@
-> 'set scalacOptions in doc += "-Xfatal-warnings"'
+> 'set scalacOptions in (Compile, doc) += "-Xfatal-warnings"'
 
 -> doc
 
