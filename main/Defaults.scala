@@ -689,7 +689,7 @@ object Classpaths
 			val base = projDeps ++ libDeps
 			if(isPlugin) sbtDep.copy(configurations = Some(Provided.name)) +: base else base
 		},
-		ivyLoggingLevel in GlobalScope :== UpdateLogging.Quiet,
+		ivyLoggingLevel in GlobalScope :== UpdateLogging.DownloadOnly,
 		ivyXML in GlobalScope :== NodeSeq.Empty,
 		ivyValidate in GlobalScope :== false,
 		ivyScala <<= ivyScala or (scalaHome, scalaVersion, scalaVersion in update) { (sh,v,vu) =>
