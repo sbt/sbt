@@ -6,7 +6,8 @@ object ArtifactTest extends Build
 	lazy val root = Project("root", file(".")) settings(
 		ivyPaths <<= (baseDirectory, target)( (dir, t) => new IvyPaths(dir, Some(t / "ivy-cache"))),
 		publishTo := Some(Resolver.file("Test Publish Repo", file("test-repo"))),
-		resolvers <<= (resolvers, publishTo)(_ ++ _.toList),
+		resolvers <+= baseDirectory { base => "Test Repo" at (base / "test-repo").toURI.toString },
+		moduleName := artifactID,
 		projectID <<= baseDirectory { base => (if(base / "retrieve" exists) retrieveID else publishedID) },
 		artifact in (Compile, packageBin) := mainArtifact,
 		libraryDependencies <<= (libraryDependencies, baseDirectory) { (deps, base) => deps ++ (if(base / "retrieve" exists) publishedID :: Nil else Nil) },
