@@ -1,0 +1,15 @@
+sbt 0.11.1 contains mainly bug fixes and minor features.  There are some notable changes:
+
+* New Getting Started Guide and wiki reorganization
+* Task interruption using ctrl+c
+* Finer 'update' logging is on by default.
+* Improved memory usage and performance of incremental recompilation using an approached based on signature hashes.
+* Improved correctness of incremental recompilation, 'update' related caching, and transitive plugin dependencies.
+* Added inline API for excluding dependencies.
+* Improved functionality for advanced build manipulations, including inter-project dependency modification by a setting.
+
+For task interruption, tasks must respond to the main thread being interrupted.  In particular, a task must not ignore InterruptedException and must interrupt any threads it has started.
+
+The previous behavior for 'update' logging may be enabled by setting 'ivyLoggingLevel := UpdateLogging.Quiet'.
+
+See [Changes](https://github.com/harrah/xsbt/wiki/Changes) for details.

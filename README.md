@@ -21,11 +21,11 @@ There is a [video of a demo] given at [Scala Days 2011] based on sbt 0.10.0 that
 		$ git clone git://github.com/harrah/xsbt.git
 		$ cd xsbt
 
-3. The initial branch is the development branch 0.11, which contains the latest code for the 0.11.x series.  To build a specific release or commit, switch to the associated tag.  The tag for the latest stable release is v0.11.0:
+3. The initial branch is the development branch 0.11, which contains the latest code for the 0.11.x series.  To build a specific release or commit, switch to the associated tag.  The tag for the latest stable release is v0.11.1:
 
-		$ git checkout v0.11.0
+		$ git checkout v0.11.1
 
-	Note that sbt is always built with the previous stable release.  For example, the 0.11 branch is built with 0.11.0, the v0.11.0 tag is built with 0.10.1, and the v0.10.1 tag is built with 0.10.0.
+	Note that sbt is always built with the previous stable release.  For example, the 0.11 branch is built with 0.11.1, the v0.11.1 tag is built with 0.11.0, and the v0.10.1 tag is built with 0.10.0.
 
 4. To build the launcher, publish all components locally, and build API and SXR documentation:
 
@@ -35,13 +35,13 @@ There is a [video of a demo] given at [Scala Days 2011] based on sbt 0.10.0 that
 
 		$ sbt publish-local proguard sxr doc
 
-5. To use this locally built version of sbt, copy your stable ~/bin/sbt script to ~/bin/xsbt and change it to use the launcher jar in `<xsbt>/target/`.  For the v0.11.0 tag, the full location is:
+5. To use this locally built version of sbt, copy your stable ~/bin/sbt script to ~/bin/xsbt and change it to use the launcher jar in `<xsbt>/target/`.  For the v0.11.1 tag, the full location is:
 
-		<xsbt>/target/sbt-launch-0.11.0.jar
+		<xsbt>/target/sbt-launch-0.11.1.jar
 
 	If using the 0.11 development branch, the launcher is at:
 
-		<xsbt>/target/sbt-launch-0.11.1-SNAPSHOT.jar
+		<xsbt>/target/sbt-launch-0.11.2-SNAPSHOT.jar
 
 ## Modifying sbt
 
@@ -51,4 +51,4 @@ To use your modified version of sbt in a project locally, run `publish-local`.  
 
 After each `publish-local`, clean the `project/boot/` directory in the project in which you want to use the locally built sbt.  Alternatively, if sbt is running and the launcher hasn't changed, run `reboot full` to have sbt do this for you.
 
-If a project has `project/build.properties` defined, either delete the file or change `sbt.version` to `0.11.1-SNAPSHOT`.
+If a project has `project/build.properties` defined, either delete the file or change `sbt.version` to `0.11.2-SNAPSHOT`.
