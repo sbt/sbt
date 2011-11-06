@@ -42,7 +42,7 @@ class Run(instance: ScalaInstance, trapExit: Boolean, nativeTmp: File) extends S
 	/** Runs the class 'mainClass' using the given classpath and options using the scala runner.*/
 	def run(mainClass: String, classpath: Seq[File], options: Seq[String], log: Logger) =
 	{
-		log.info("Running " + mainClass + " " + options.mkString(" "))
+		log.debug("Running " + mainClass + " " + options.mkString(" "))
 
 		def execute = 
 			try { run0(mainClass, classpath, options, log) }
