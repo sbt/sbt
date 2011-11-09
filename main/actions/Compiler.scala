@@ -30,7 +30,7 @@ object Compiler
 
 	def inputs(classpath: Seq[File], sources: Seq[File], outputDirectory: File, options: Seq[String], javacOptions: Seq[String], definesClass: DefinesClass, maxErrors: Int, order: CompileOrder.Value)(implicit compilers: Compilers, log: Logger): Inputs =
 	{
-			import Path._
+		import Path._
 		val classesDirectory = outputDirectory / "classes"
 		val cacheDirectory = outputDirectory / "cache"
 		val augClasspath = classesDirectory.asFile +: classpath
@@ -58,7 +58,7 @@ object Compiler
 		val javac = directOrFork(instance, cpOptions, javaHome)
 		compilers(instance, cpOptions, javac)
 	}
-	def compilers(instance: ScalaInstance, cpOptions: ClasspathOptions, javac: (Seq[String], Logger) => Int)(implicit app: AppConfiguration, log: Logger): Compilers =
+	def compilers(instance: ScalaInstance, cpOptions: ClasspathOptions, javac: JavaCompiler.Fork)(implicit app: AppConfiguration, log: Logger): Compilers =
 	{
 		val javaCompiler = JavaCompiler.fork(cpOptions, instance)(javac)
 		compilers(instance, cpOptions, javaCompiler)
@@ -78,18 +78,18 @@ object Compiler
 		if(javaHome.isDefined)
 			JavaCompiler.fork(cpOptions, instance)(forkJavac(javaHome))
 		else
-			JavaCompiler.directOrFork(cpOptions, instance)( forkJavac(None) )
+			JavaCompiler.directOrFork(cpOptions, instance)(forkJavac(None))
 
-	def forkJavac(javaHome: Option[File]): (Seq[String], Logger) => Int =
+	def forkJavac(javaHome: Option[File]): JavaCompiler.Fork =
 	{
 		import Path._
-		val exec = javaHome match { case None => "javac"; case Some(jh) => (jh / "bin" / "javac").absolutePath }
-		(args: Seq[String], log: Logger) => {
-			log.debug("Forking javac: " + exec + " " + args.mkString(" "))
+		def exec(jc: JavacContract) = javaHome match { case None => jc.name; case Some(jh) => (jh / "bin" / jc.name).absolutePath }
+		(contract: JavacContract, args: Seq[String], log: Logger) => {
+			log.debug("Forking " + contract.name + ": " + exec(contract) + " " + args.mkString(" "))
 			val javacLogger = new JavacLogger(log)
 			var exitCode = -1
 			try {
-				exitCode = Process(exec, args) ! javacLogger
+				exitCode = Process(exec(contract), args) ! javacLogger
 			} finally {
 				javacLogger.flush(exitCode)
 			}
