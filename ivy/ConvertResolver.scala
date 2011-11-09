@@ -6,6 +6,8 @@ package sbt
 import java.util.Collections
 import org.apache.ivy.{core,plugins}
 import core.module.id.ModuleRevisionId
+import core.module.descriptor.DependencyDescriptor
+import core.resolve.ResolveData
 import core.settings.IvySettings
 import plugins.resolver.{BasicResolver, DependencyResolver, IBiblioResolver}
 import plugins.resolver.{AbstractPatternsBasedResolver, AbstractSshBasedResolver, FileSystemResolver, SFTPResolver, SshResolver, URLResolver}
@@ -20,7 +22,7 @@ private object ConvertResolver
 			case repo: MavenRepository =>
 			{
 				val pattern = Collections.singletonList(Resolver.resolvePattern(repo.root, Resolver.mavenStyleBasePattern))
-				final class PluginCapableResolver extends IBiblioResolver {
+				final class PluginCapableResolver extends IBiblioResolver with DescriptorRequired {
 					def setPatterns() { // done this way for access to protected methods.
 						setArtifactPatterns(pattern)
 						setIvyPatterns(pattern)
@@ -29,60 +31,63 @@ private object ConvertResolver
 				val resolver = new PluginCapableResolver
 				initializeMavenStyle(resolver, repo.name, repo.root)
 				resolver.setPatterns() // has to be done after initializeMavenStyle, which calls methods that overwrite the patterns
-				initializeBasic(resolver)
 				resolver
 			}
 			case r: JavaNet1Repository =>
 			{
 				// Thanks to Matthias Pfau for posting how to use the Maven 1 repository on java.net with Ivy:
 				// http://www.nabble.com/Using-gradle-Ivy-with-special-maven-repositories-td23775489.html
-				val resolver = new IBiblioResolver { override def convertM2IdForResourceSearch(mrid: ModuleRevisionId) = mrid }
+				val resolver = new IBiblioResolver with DescriptorRequired { override def convertM2IdForResourceSearch(mrid: ModuleRevisionId) = mrid }
 				initializeMavenStyle(resolver, JavaNet1Repository.name, "http://download.java.net/maven/1/")
 				resolver.setPattern("[organisation]/[ext]s/[module]-[revision](-[classifier]).[ext]")
-				initializeBasic(resolver)
 				resolver
 			}
 			case repo: SshRepository =>
 			{
-				val resolver = new SshResolver
+				val resolver = new SshResolver with DescriptorRequired
 				initializeSSHResolver(resolver, repo)
 				repo.publishPermissions.foreach(perm => resolver.setPublishPermissions(perm))
-				initializeBasic(resolver)
 				resolver
 			}
 			case repo: SftpRepository =>
 			{
 				val resolver = new SFTPResolver
 				initializeSSHResolver(resolver, repo)
-				initializeBasic(resolver)
 				resolver
 			}
 			case repo: FileRepository =>
 			{
-				val resolver = new FileSystemResolver
+				val resolver = new FileSystemResolver with DescriptorRequired
 				resolver.setName(repo.name)
 				initializePatterns(resolver, repo.patterns)
 				import repo.configuration.{isLocal, isTransactional}
 				resolver.setLocal(isLocal)
 				isTransactional.foreach(value => resolver.setTransactional(value.toString))
-				initializeBasic(resolver)
 				resolver
 			}
 			case repo: URLRepository =>
 			{
-				val resolver = new URLResolver
+				val resolver = new URLResolver with DescriptorRequired
 				resolver.setName(repo.name)
 				initializePatterns(resolver, repo.patterns)
-				initializeBasic(resolver)
 				resolver
 			}
 			case repo: ChainedResolver => IvySbt.resolverChain(repo.name, repo.resolvers, false, settings, log)
 			case repo: RawRepository => repo.resolver
 		}
 	}
-	private def initializeBasic(resolver: BasicResolver)
+	private sealed trait DescriptorRequired extends BasicResolver
 	{
-		resolver.setDescriptor(BasicResolver.DESCRIPTOR_REQUIRED)
+		override def getDependency(dd: DependencyDescriptor, data: ResolveData) =
+		{
+			val prev = descriptorString(isAllownomd)
+			setDescriptor(descriptorString(hasExplicitURL(dd)))
+			try super.getDependency(dd, data) finally setDescriptor(prev)
+		}
+		def descriptorString(optional: Boolean) =
+			if(optional) BasicResolver.DESCRIPTOR_OPTIONAL else BasicResolver.DESCRIPTOR_REQUIRED
+		def hasExplicitURL(dd: DependencyDescriptor): Boolean =
+			dd.getAllDependencyArtifacts.exists(_.getUrl != null)
 	}
 	private def initializeMavenStyle(resolver: IBiblioResolver, name: String, root: String)
 	{
