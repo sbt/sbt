@@ -4,26 +4,48 @@
 package sbt
 package compiler
 
-	import java.io.File
+import java.io.{File, PrintWriter}
 
+abstract class JavacContract(val name: String, val clazz: String) {
+	def exec(args: Array[String], writer: PrintWriter): Int
+}
 trait JavaCompiler
 {
-	def apply(sources: Seq[File], classpath: Seq[File], outputDirectory: File, options: Seq[String])(implicit log: Logger): Unit
+	def apply(sources: Seq[File], classpath: Seq[File], outputDirectory: File, options: Seq[String])(implicit log: Logger) {
+		compile(JavaCompiler.javac, sources, classpath, outputDirectory, options)(log)
+	}
+	def doc(sources: Seq[File], classpath: Seq[File], outputDirectory: File, options: Seq[String], maximumErrors: Int, log: Logger) {
+		compile(JavaCompiler.javadoc, sources, classpath, outputDirectory, options)(log)
+	}
+	def compile(contract: JavacContract, sources: Seq[File], classpath: Seq[File], outputDirectory: File, options: Seq[String])(implicit log: Logger): Unit
 }
 object JavaCompiler
 {
-	type Fork = (Seq[String], Logger) => Int
+	type Fork = (JavacContract, Seq[String], Logger) => Int
 
-	def construct(f: (Seq[String], Logger) => Int, cp: ClasspathOptions, scalaInstance: ScalaInstance): JavaCompiler =
+	val javac = new JavacContract("javac", "com.sun.tools.javac.Main") {
+		def exec(args: Array[String], writer: PrintWriter) = {
+			val m = Class.forName(clazz).getDeclaredMethod("compile", classOf[Array[String]], classOf[PrintWriter])
+			m.invoke(null, args, writer).asInstanceOf[java.lang.Integer].intValue
+		}
+	}
+	val javadoc = new JavacContract("javadoc", "com.sun.tools.javadoc.Main") {
+		def exec(args: Array[String], writer: PrintWriter) = {
+			val m = Class.forName(clazz).getDeclaredMethod("execute", classOf[String], classOf[PrintWriter], classOf[PrintWriter], classOf[PrintWriter], classOf[String], classOf[Array[String]])
+			m.invoke(null, name, writer, writer, writer, "com.sun.tools.doclets.standard.Standard", args).asInstanceOf[java.lang.Integer].intValue
+		}
+	}
+
+	def construct(f: Fork, cp: ClasspathOptions, scalaInstance: ScalaInstance): JavaCompiler =
 		new JavaCompiler {
-			def apply(sources: Seq[File], classpath: Seq[File], outputDirectory: File, options: Seq[String])(implicit log: Logger) {
+			def compile(contract: JavacContract, sources: Seq[File], classpath: Seq[File], outputDirectory: File, options: Seq[String])(implicit log: Logger) {
 				val augmentedClasspath = if(cp.autoBoot) classpath ++ Seq(scalaInstance.libraryJar) else classpath
 				val javaCp = ClasspathOptions.javac(cp.compiler)
 				val arguments = (new CompilerArguments(scalaInstance, javaCp))(sources, augmentedClasspath, outputDirectory, options)
-				log.debug("running javac with arguments:\n\t" + arguments.mkString("\n\t"))
-				val code: Int = f(arguments, log)
-				log.debug("javac returned exit code: " + code)
-				if( code != 0 ) throw new CompileFailed(arguments.toArray, "javac returned nonzero exit code")
+				log.debug("Calling " + contract.name.capitalize + " with arguments:\n\t" + arguments.mkString("\n\t"))
+				val code: Int = f(contract, arguments, log)
+				log.debug(contract.name + " returned exit code: " + code)
+				if( code != 0 ) throw new CompileFailed(arguments.toArray, contract.name + " returned nonzero exit code")
 			}
 		}
 	def directOrFork(cp: ClasspathOptions, scalaInstance: ScalaInstance)(implicit doFork: Fork): JavaCompiler =
@@ -35,31 +57,29 @@ object JavaCompiler
 	def fork(cp: ClasspathOptions, scalaInstance: ScalaInstance)(implicit doFork: Fork): JavaCompiler =
 		construct(forkJavac, cp, scalaInstance)
 	
-	def directOrForkJavac(implicit doFork: Fork) = (arguments: Seq[String], log: Logger) => 
-		try { directJavac(arguments, log) }
-		catch { case e: ClassNotFoundException => 
-			log.debug("com.sun.tools.javac.Main not found; forking javac instead")
-			forkJavac(doFork)(arguments, log)
+	def directOrForkJavac(implicit doFork: Fork) = (contract: JavacContract, arguments: Seq[String], log: Logger) =>
+		try { directJavac(contract, arguments, log) }
+		catch { case e @ (_: ClassNotFoundException | _: NoSuchMethodException) =>
+			log.debug(contract.clazz + " not found with appropriate method signature; forking " + contract.name + " instead")
+			forkJavac(doFork)(contract, arguments, log)
 		}
 
 	/** `doFork` should be a function that forks javac with the provided arguments and sends output to the given Logger.*/
-	def forkJavac(implicit doFork: Fork) = (arguments: Seq[String], log: Logger) =>
+	def forkJavac(implicit doFork: Fork) = (contract: JavacContract, arguments: Seq[String], log: Logger) =>
 	{
 		val (jArgs, nonJArgs) = arguments.partition(_.startsWith("-J"))
-		def externalJavac(argFile: File) = doFork(jArgs :+ ("@" + normalizeSlash(argFile.getAbsolutePath)), log)
+		def externalJavac(argFile: File) = doFork(contract, jArgs :+ ("@" + normalizeSlash(argFile.getAbsolutePath)), log)
 		withArgumentFile(nonJArgs)(externalJavac)
 	}
-	val directJavac = (arguments: Seq[String], log: Logger) =>
+	val directJavac = (contract: JavacContract, arguments: Seq[String], log: Logger) =>
 	{
 		val logger = new LoggerWriter(log)
-		val writer = new java.io.PrintWriter(logger)
+		val writer = new PrintWriter(logger)
 		val argsArray = arguments.toArray
-		val javac = Class.forName("com.sun.tools.javac.Main")
-		log.debug("Calling javac directly.")
-		val compileMethod = javac.getDeclaredMethod("compile", classOf[Array[String]], classOf[java.io.PrintWriter])
+		log.debug("Attempting to call " + contract.name + " directly...")
 
 		var exitCode = -1
-		try { exitCode = compileMethod.invoke(null, argsArray, writer).asInstanceOf[java.lang.Integer].intValue }
+		try { exitCode = contract.exec(argsArray, writer) }
 		finally { logger.flushLines( if(exitCode == 0) Level.Warn else Level.Error) }
 		exitCode
 	}
