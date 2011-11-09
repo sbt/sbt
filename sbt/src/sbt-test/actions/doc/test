@@ -1,7 +1,34 @@
+> 'set crossPaths := false'
+
 > 'set scalacOptions in (Compile, doc) += "-Xfatal-warnings"'
 
 -> doc
 
-> 'set sources in (Compile, doc) <<= sources in Compile map { _.filter(_.getName contains "A") }'
+> 'set sources in (Compile, doc) <<= sources in Compile map { _.filterNot(_.getName contains "B") }'
 
+# hybrid project, scaladoc and javadoc in respective directories
 > doc
+$ exists "target/api/scala"
+$ exists "target/api/java"
+
+> 'set sources in (Compile, doc) <<= sources in (Compile, doc) map { _.filterNot(_.getName endsWith ".java") }'
+
+> clean
+> doc
+
+# pure scala project, only scaladoc at top level
+$ exists "target/api/index.js"
+$ absent "target/api/package-list"
+$ absent "target/api/scala"
+$ absent "target/api/java"
+
+> 'set sources in (Compile, doc) <<= sources in Compile map { _.filter(_.getName endsWith ".java") }'
+
+> clean
+> doc
+
+# pure java project, only javadoc at top level
+$ exists "target/api/package-list"
+$ absent "target/api/index.js"
+$ absent "target/api/scala"
+$ absent "target/api/java"

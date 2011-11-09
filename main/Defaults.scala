@@ -131,7 +131,7 @@ object Defaults extends BuildCommon
 
 	lazy val configPaths = sourceConfigPaths ++ resourceConfigPaths ++ outputConfigPaths
 	lazy val sourceConfigPaths = Seq(
-		sourceDirectory <<= configSrcSub( sourceDirectory),
+		sourceDirectory <<= configSrcSub(sourceDirectory),
 		sourceManaged <<= configSrcSub(sourceManaged),
 		scalaSource <<= sourceDirectory / "scala",
 		javaSource <<= sourceDirectory / "java",
@@ -445,14 +445,21 @@ object Defaults extends BuildCommon
 	def docSetting(key: TaskKey[File]): Seq[Setting[_]] = inTask(key)(Seq(
 		cacheDirectory ~= (_ / key.key.label),
 		target <<= docDirectory, // deprecate docDirectory in favor of 'target in doc'; remove when docDirectory is removed
-		scaladocOptions <<= scalacOptions, // deprecate scaladocOptions in favor of 'scalacOptions in doc'; remove when scaladocOptions is removed
-		fullClasspath <<= dependencyClasspath,
-		key in TaskGlobal <<= (sources, cacheDirectory, maxErrors, compilers, target, configuration, scaladocOptions, fullClasspath, streams) map { (srcs, cache, maxE, cs, out, config, options, cp, s) =>
-			(new Scaladoc(maxE, cs.scalac)).cached(cache, nameForSrc(config.name), srcs, cp.files, out, options, s.log)
+		scalacOptions <<= scaladocOptions or scalacOptions, // deprecate scaladocOptions in favor of 'scalacOptions in doc'; remove when scaladocOptions is removed
+		compileInputs <<= compileInputsTask,
+		key in TaskGlobal <<= (cacheDirectory, compileInputs, target, configuration, streams) map { (cache, in, out, config, s) =>
+			// For Scala/Java hybrid projects, the output docs are rebased to `scala` or `java` sub-directory accordingly. We do hybrid 
+			// mode iff both *.scala and *.java files exist -- other doc resources (package.html, *.jpg etc.) don't influence the decision.
+			val srcs = in.config.sources
+			val hybrid = srcs.exists(_.name.endsWith(".scala")) && srcs.exists(_.name.endsWith(".java"))
+			val (scalaOut, javaOut) = if (hybrid) (out / "scala", out / "java") else (out, out)
+			val cp = in.config.classpath.toList - in.config.classesDirectory
+			Doc(in.config.maxErrors, in.compilers.scalac).cached(cache / "scala", nameForSrc(config.name), srcs, cp, scalaOut, in.config.options, s.log)
+			Doc(in.config.maxErrors, in.compilers.javac).cached(cache / "java", nameForSrc(config.name), srcs, cp, javaOut, in.config.javacOptions, s.log)
 			out
 		}
 	))
-		
+
 	@deprecated("Use `docSetting` instead", "0.11.0") def docTask: Initialize[Task[File]] =
 		(cacheDirectory, compileInputs, streams, docDirectory, configuration, scaladocOptions) map { (cache, in, s, target, config, options) =>
 			val d = new Scaladoc(in.config.maxErrors, in.compilers.scalac)

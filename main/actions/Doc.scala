@@ -1,10 +1,10 @@
 /* sbt -- Simple Build Tool
- * Copyright 2008, 2009, 2010, 2011  Mark Harrah
+ * Copyright 2008, 2009, 2010, 2011  Mark Harrah, Indrajit Raychaudhuri
  */
 package sbt
 
 	import java.io.File
-	import compiler.AnalyzingCompiler
+	import compiler.{AnalyzingCompiler, JavaCompiler}
 
 	import Predef.{conforms => _, _}
 	import Types.:+:
@@ -15,24 +15,28 @@ package sbt
 	import Tracked.{inputChanged, outputChanged}
 	import FilesInfo.{exists, hash, lastModified}
 
-final class Scaladoc(maximumErrors: Int, compiler: AnalyzingCompiler)
-{
-	final def apply(label: String, sources: Seq[File], classpath: Seq[File], outputDirectory: File, options: Seq[String], log: Logger)
-	{
-		log.info(actionStartMessage(label))
+object Doc {
+	def apply(maximumErrors: Int, compiler: AnalyzingCompiler) = new Scaladoc(maximumErrors, compiler)
+	def apply(maximumErrors: Int, compiler: JavaCompiler) = new Javadoc(maximumErrors, compiler)
+}
+sealed trait Doc {
+	type Gen = (Seq[File], Seq[File], File, Seq[String], Int, Logger) => Unit
+
+	def apply(label: String, sources: Seq[File], classpath: Seq[File], outputDirectory: File, options: Seq[String], log: Logger): Unit
+
+	final def generate(variant: String, label: String, docf: Gen, sources: Seq[File], classpath: Seq[File], outputDirectory: File, options: Seq[String], maxErrors: Int, log: Logger) {
+		val logSnip = variant + " API documentation"
 		if(sources.isEmpty)
-			log.info(ActionNothingToDoMessage)
+			log.info("No sources available, skipping " + logSnip + "...")
 		else
 		{
+			log.info("Generating " + logSnip + " for " + label + " sources to " + outputDirectory.absolutePath + "...")
 			IO.delete(outputDirectory)
 			IO.createDirectory(outputDirectory)
-			compiler.doc(sources, classpath, outputDirectory, options, maximumErrors, log)
-			log.info(ActionSuccessfulMessage)
+			docf(sources, classpath, outputDirectory, options, maxErrors, log)
+			log.info(logSnip + " generation successful.")
 		}
 	}
-	def actionStartMessage(label: String) = "Generating API documentation for " + label + " sources..."
-	val ActionNothingToDoMessage = "No sources specified."
-	val ActionSuccessfulMessage = "API documentation generation successful."
 
 	def cached(cache: File, label: String, sources: Seq[File], classpath: Seq[File], outputDirectory: File, options: Seq[String], log: Logger)
 	{
@@ -48,7 +52,21 @@ final class Scaladoc(maximumErrors: Int, compiler: AnalyzingCompiler)
 					log.debug("Doc uptodate: " + outputDirectory.getAbsolutePath)
 			}
 		}
-
 		cachedDoc(inputs)(() => exists(outputDirectory.***.get.toSet))
+	}
+}
+final class Scaladoc(maximumErrors: Int, compiler: AnalyzingCompiler) extends Doc
+{
+	def apply(label: String, sources: Seq[File], classpath: Seq[File], outputDirectory: File, options: Seq[String], log: Logger)
+	{
+		generate("Scala", label, compiler.doc, sources, classpath, outputDirectory, options, maximumErrors, log)
+	}
+}
+final class Javadoc(maximumErrors: Int, compiler: JavaCompiler) extends Doc
+{
+	def apply(label: String, sources: Seq[File], classpath: Seq[File], outputDirectory: File, options: Seq[String], log: Logger)
+	{
+		// javadoc doesn't handle *.scala properly, so we evict them from javadoc sources list.
+		generate("Java", label, compiler.doc, sources.filterNot(_.name.endsWith(".scala")), classpath, outputDirectory, options, maximumErrors, log)
 	}
 }
