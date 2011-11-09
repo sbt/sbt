@@ -1,4 +1,4 @@
-#!/usr/bin/env bash --norc
+#!/usr/bin/env bash
 #
 # A more capable sbt runner, coincidentally also called sbt.
 # Author: Paul Phillips <paulp@typesafe.com>
