@@ -17,6 +17,8 @@ class ForkRun(config: ForkScalaRun) extends ScalaRun
 {
 	def run(mainClass: String, classpath: Seq[File], options: Seq[String], log: Logger): Option[String] =
 	{
+		log.info("Running " + mainClass + " " + options.mkString(" "))
+
 		val scalaOptions = classpathOption(classpath) ::: mainClass :: options.toList
 		val strategy = config.outputStrategy getOrElse LoggedOutput(log)
 		val process =  Fork.scala.fork(config.javaHome, config.runJVMOptions, config.scalaJars, scalaOptions, config.workingDirectory, config.connectInput, strategy)

@@ -16,7 +16,7 @@ package sbt
 	import org.scalatools.testing.{AnnotatedFingerprint, SubclassFingerprint}
 
 	import sys.error
-	import scala.xml.{Node => XNode,NodeSeq}
+	import scala.xml.NodeSeq
 	import org.apache.ivy.core.module.{descriptor, id}
 	import descriptor.ModuleDescriptor, id.ModuleRevisionId
 	import java.io.File
@@ -193,11 +193,10 @@ object Defaults extends BuildCommon
 	}
 	def compilersSetting = compilers <<= (scalaInstance, appConfiguration, streams, classpathOptions, javaHome) map { (si, app, s, co, jh) => Compiler.compilers(si, co, jh)(app, s.log) }
 
-	lazy val configTasks = docSetting(doc) ++ Seq(
+	lazy val configTasks = docSetting(doc) ++ compileInputsSettings ++ Seq(
 		initialCommands in GlobalScope :== "",
 		cleanupCommands in GlobalScope :== "",
 		compile <<= compileTask,
-		compileInputs <<= compileInputsTask,
 		compileIncSetup <<= compileIncSetupTask,
 		console <<= consoleTask,
 		consoleQuick <<= consoleQuickTask,
@@ -442,11 +441,10 @@ object Defaults extends BuildCommon
 				new Run(si, trap, tmp)
 		}
 
-	def docSetting(key: TaskKey[File]): Seq[Setting[_]] = inTask(key)(Seq(
+	def docSetting(key: TaskKey[File]): Seq[Setting[_]] = inTask(key)(compileInputsSettings ++ Seq(
 		cacheDirectory ~= (_ / key.key.label),
 		target <<= docDirectory, // deprecate docDirectory in favor of 'target in doc'; remove when docDirectory is removed
 		scalacOptions <<= scaladocOptions or scalacOptions, // deprecate scaladocOptions in favor of 'scalacOptions in doc'; remove when scaladocOptions is removed
-		compileInputs <<= compileInputsTask,
 		key in TaskGlobal <<= (cacheDirectory, compileInputs, target, configuration, streams) map { (cache, in, out, config, s) =>
 			// For Scala/Java hybrid projects, the output docs are rebased to `scala` or `java` sub-directory accordingly. We do hybrid 
 			// mode iff both *.scala and *.java files exist -- other doc resources (package.html, *.jpg etc.) don't influence the decision.
@@ -488,13 +486,15 @@ object Defaults extends BuildCommon
 		(dependencyClasspath, cacheDirectory, skip in compile, definesClass) map { (cp, cacheDir, skip, definesC) =>
 			Compiler.IncSetup(analysisMap(cp), definesC, skip, cacheDir / "compile")
 		}
-	def compileInputsTask =
-		(dependencyClasspath, sources, compilers, javacOptions, scalacOptions, classDirectory, compileOrder, compileIncSetup, streams) map {
-		(cp, srcs, cs, javacOpts, scalacOpts, classes, order, incSetup, s) =>
-			val classpath = classes +: data(cp)
-			Compiler.inputs(classpath, srcs, classes, scalacOpts, javacOpts, 100, order)(cs, incSetup, s.log)
-		}
-		
+	def compileInputsSettings: Seq[Setting[_]] = {
+		val optionsPair = TaskKey.local[(Seq[String], Seq[String])]
+		Seq(optionsPair <<= (scalacOptions, javacOptions) map Pair.apply,
+		compileInputs <<= (dependencyClasspath, sources, compilers, optionsPair, classDirectory, compileOrder, compileIncSetup, maxErrors, streams) map {
+			(cp, srcs, cs, optsPair, classes, order, incSetup, maxErr, s) =>
+				Compiler.inputs(classes +: data(cp), srcs, classes, optsPair._1, optsPair._2, maxErr, order)(cs, incSetup, s.log)
+			})
+	}
+
 	def sbtPluginExtra(m: ModuleID, sbtV: String, scalaV: String): ModuleID  =  m.extra(CustomPomParser.SbtVersionKey -> sbtV, CustomPomParser.ScalaVersionKey -> scalaV).copy(crossVersion = false)
 	def writePluginsDescriptor(plugins: Set[String], dir: File): Seq[File] =
 	{

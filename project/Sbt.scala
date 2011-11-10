@@ -164,7 +164,7 @@ object Sbt extends Build
 		scriptedSource <<= (sourceDirectory in sbtSub) / "sbt-test",
 		sources in sxr <<= deepTasks(sources in Compile),
 		Sxr.sourceDirectories <<= deep(sourceDirectories in Compile).map(_.flatten),
-		fullClasspath in sxr <<= (externalDependencyClasspath in Compile in sbtSub).identity,
+		fullClasspath in sxr <<= (externalDependencyClasspath in Compile in sbtSub),
 		compileInputs in (Compile,sxr) <<= (sources in sxr, compileInputs in sbtSub in Compile, fullClasspath in sxr) map { (srcs, in, cp) =>
 			in.copy(config = in.config.copy(sources = srcs, classpath = cp.files))
 		},
@@ -178,7 +178,7 @@ object Sbt extends Build
 		projectComponent,
 		exportJars := true,
 		componentID := Some("xsbti"),
-		watchSources <++= apiDefinitions.identity,
+		watchSources <++= apiDefinitions,
 		resourceGenerators in Compile <+= (version, resourceManaged, streams) map generateVersionFile,
 		apiDefinitions <<= baseDirectory map { base => (base / "definition") :: (base / "other") :: (base / "type") :: Nil },
 		sourceGenerators in Compile <+= (cacheDirectory, apiDefinitions, fullClasspath in Compile in datatypeSub, sourceManaged in Compile, mainClass in datatypeSub in Compile, runner, streams) map generateAPICached
