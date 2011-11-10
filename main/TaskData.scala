@@ -36,7 +36,7 @@ object TaskData
 	def write[T](i: Initialize[Task[T]], id: String = DefaultDataID)(implicit f: Format[T]): Initialize[Task[T]] = writeRelated(i, id)(idFun[T])(f)
 
 	def writeRelated[T, S](i: Initialize[Task[T]], id: String = DefaultDataID)(convert: T => S)(implicit f: Format[S]): Initialize[Task[T]] =
-		(streams.identity zipWith i) { (sTask, iTask) =>
+		(streams zipWith i) { (sTask, iTask) =>
 			(sTask,iTask) map { case s :+: value :+: HNil =>
 				Operations.write( s.binary(id), convert(value) )(f)
 				value
