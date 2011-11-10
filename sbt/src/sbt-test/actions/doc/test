@@ -13,8 +13,7 @@ $ exists "target/api/java"
 
 > 'set sources in (Compile, doc) <<= sources in (Compile, doc) map { _.filterNot(_.getName endsWith ".java") }'
 
-> clean
-> doc
+> ; clean ; doc
 
 # pure scala project, only scaladoc at top level
 $ exists "target/api/index.js"
@@ -24,8 +23,7 @@ $ absent "target/api/java"
 
 > 'set sources in (Compile, doc) <<= sources in Compile map { _.filter(_.getName endsWith ".java") }'
 
-> clean
-> doc
+> ; clean ; doc
 
 # pure java project, only javadoc at top level
 $ exists "target/api/package-list"

@@ -20,7 +20,7 @@ object Transform
 		transformResources <<= (fileMappings in transformResources, resourceProperties) map { (rs, props) =>
 			rs map { case (in, out) => transform(in, out, props) }
 		},
-		resourceGenerators <+= transformResources.identity
+		resourceGenerators <+= transformResources
 	)
 	def transformMappings = (inputResources, inputResourceDirectories, resourceManaged) map { (rs, rdirs, rm) =>
 		(rs --- rdirs) x (rebase(rdirs, rm)|flat(rm)) toSeq
