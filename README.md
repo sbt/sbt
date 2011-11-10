@@ -25,7 +25,7 @@ There is a [video of a demo] given at [Scala Days 2011] based on sbt 0.10.0 that
 
 		$ git checkout v0.11.1
 
-	Note that sbt is always built with the previous stable release.  For example, the 0.11 branch is built with 0.11.1, the v0.11.1 tag is built with 0.11.0, and the v0.10.1 tag is built with 0.10.0.
+	Note that sbt is always built with the previous stable release.  For example, the 0.11 branch is built with 0.11.1, the v0.11.1 tag is built with 0.11.0, the v0.11.0 tag is built with 0.10.1, and the v0.10.1 tag is built with 0.10.0.
 
 4. To build the launcher, publish all components locally, and build API and SXR documentation:
 
@@ -49,6 +49,6 @@ When developing sbt itself, there is no need to run `build-all`, since this gene
 
 To use your modified version of sbt in a project locally, run `publish-local`.  If you have modified the launcher, also run `proguard`.
 
-After each `publish-local`, clean the `project/boot/` directory in the project in which you want to use the locally built sbt.  Alternatively, if sbt is running and the launcher hasn't changed, run `reboot full` to have sbt do this for you.
+After each `publish-local`, clean the `~/.sbt/boot/` directory.  Alternatively, if sbt is running and the launcher hasn't changed, run `reboot full` to have sbt do this for you.
 
 If a project has `project/build.properties` defined, either delete the file or change `sbt.version` to `0.11.2-SNAPSHOT`.
