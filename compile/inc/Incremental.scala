@@ -87,9 +87,18 @@ object Incremental
 
 	def invalidateIncremental(previous: Relations, changes: APIChanges[File], recompiledSources: Set[File], log: Logger): Set[File] =
 	{
-		val inv = invalidateTransitive(previous.usesInternalSrc _,  changes.modified, log)// ++ scopeInvalidations(previous.extAPI _, changes.modified, changes.names)
+		val inv =
+			invalidateTransitive(previous.usesInternalSrc _,  changes.modified, log) ++
+			invalidateDuplicates(previous)
+			// ++ scopeInvalidations(previous.extAPI _, changes.modified, changes.names)
 		if((inv -- recompiledSources).isEmpty) Set.empty else inv
 	}
+
+	/** Invalidate all sources that claim to produce the same class file as another source file. */
+	def invalidateDuplicates(merged: Relations): Set[File] =
+		merged.srcProd.reverseMap.flatMap { case (classFile, sources) =>
+			if(sources.size > 1) sources else Nil
+		} toSet;
 
 	/** Only invalidates direct source dependencies.  It excludes any sources that were recompiled during the previous run.
 	* Callers may want to augment the returned set with 'modified' or all sources recompiled up to this point. */
