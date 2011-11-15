@@ -18,7 +18,7 @@ import sbt._
 
 object Plugins extends Build {
   lazy val root = Project("root", file(".")) dependsOn(
-    uri("git://github.com/") // where XX is branch
+    uri("git://github.com/jrudolph/sbt-dependency-graph.git#XX") // where XX is tag/branch
   )
 }
 ```
