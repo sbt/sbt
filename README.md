@@ -11,14 +11,20 @@ Requirements
 How To Use
 ----------
 
-For sbt 0.11, in `project/plugins/project/build.scala`:
+For sbt 0.11, add sbt-assembly as a dependency in `project/plugins.sbt`:
+
+```scala
+addSbtPlugin("net.virtualvoid" % "sbt-dependency-graph" % "0.5")
+```
+
+or, alternatively, in `project/plugins/project/build.scala`:
 
 ```scala
 import sbt._
 
 object Plugins extends Build {
   lazy val root = Project("root", file(".")) dependsOn(
-    uri("git://github.com/jrudolph/sbt-dependency-graph.git#v0.5") // or another tag/branch
+    uri("git://github.com/jrudolph/sbt-dependency-graph.git#v0.5") // or another tag/branch/revision
   )
 }
 ```
