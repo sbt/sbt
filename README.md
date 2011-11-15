@@ -39,12 +39,22 @@ In sbt you can then use the `dependency-graph` task in sbt to generate a graphml
 in `target/dependencies.graphml`. Use e.g. [yEd](http://www.yworks.com/en/products_yed_about.html)
 to format the graph to your needs.
 
+Standalone usage
+----------------
+
+You can use the project without sbt as well by either depending on the library and calling
+`IvyGraphMLDependencies.transfrom(sourceIvyReport, targetFile)` or by just getting the binary
+and calling it like `scala sbt-dependency-graph-0.5.jar <ivy-report-xml-path> <target-path>`.
+
 
 Inner Workings
 --------------
 
-The task relies on sbt/Ivy's `deliver-local` task to create an ivy report inside the `.ivy2/cache`
-directory. This report is then transformed into a graphml file.
+sbt/Ivy's `deliver-local` task create ivy-report xml-files inside `.ivy2/cache`. You can
+just open them with your browser to look at the dependency report for your project.
+This project takes the report xml of your project and creates a graphml file out of it. (BTW,
+ivy can create graphml files itself, but since I didn't want to spend to much time getting
+sbt to call into Ivy to create graphs, I went with the easy way here)
 
 License
 -------
