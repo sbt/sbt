@@ -314,7 +314,7 @@ private object IvySbt
 		as.map(art => substituteCross(art, cross))
 	def substituteCross(m: ModuleID, cross: String): ModuleID =
 		if(m.crossVersion)
-			m.copy(name = crossName(m.name, cross), explicitArtifacts = substituteCrossA(m.explicitArtifacts, cross))
+			m.copy(name = crossName(m.name, m.crossVersionRemap(cross)), explicitArtifacts = substituteCrossA(m.explicitArtifacts, cross))
 		else
 			m
 		
