@@ -9,14 +9,14 @@ import scala.xml.NodeSeq
 import org.apache.ivy.plugins.resolver.{DependencyResolver, IBiblioResolver}
 import org.apache.ivy.util.url.CredentialsStore
 
-final case class ModuleID(organization: String, name: String, revision: String, configurations: Option[String] = None, isChanging: Boolean = false, isTransitive: Boolean = true, explicitArtifacts: Seq[Artifact] = Nil, exclusions: Seq[ExclusionRule] = Nil, extraAttributes: Map[String,String] = Map.empty, crossVersion: Boolean = false)
+final case class ModuleID(organization: String, name: String, revision: String, configurations: Option[String] = None, isChanging: Boolean = false, isTransitive: Boolean = true, explicitArtifacts: Seq[Artifact] = Nil, exclusions: Seq[ExclusionRule] = Nil, extraAttributes: Map[String,String] = Map.empty, crossVersion: Boolean = false, crossVersionRemap: String => String = identity)
 {
 	override def toString =
 		organization + ":" + name + ":" + revision +
 		(configurations match { case Some(s) => ":" + s; case None => "" }) +
 		(if(extraAttributes.isEmpty) "" else " " + extraString)
 	def extraString = extraAttributes.map { case (k,v) => k + "=" + v } mkString("(",", ",")")
-	def cross(v: Boolean) = copy(crossVersion = v)
+	def cross(v: Boolean, verRemap: String => String = identity) = copy(crossVersion = v, crossVersionRemap = verRemap)
 	// () required for chaining
 	def notTransitive() = intransitive()
 	def intransitive() = copy(isTransitive = false)
@@ -282,7 +282,7 @@ object Resolver
 		def resolveAll(patterns: Seq[String]) = patterns.map(p => resolvePattern(base, p))
 		Patterns(resolveAll(basePatterns.ivyPatterns), resolveAll(basePatterns.artifactPatterns), basePatterns.isMavenCompatible)
 	}
-	private[sbt] def resolvePattern(base: String, pattern: String): String = 
+	private[sbt] def resolvePattern(base: String, pattern: String): String =
 	{
 		val normBase = base.replace('\\', '/')
 		if(normBase.endsWith("/") || pattern.startsWith("/")) normBase + pattern else normBase + "/" + pattern
@@ -423,14 +423,14 @@ object Artifact
 	{
 			import artifact._
 		val classifierStr = classifier match { case None => ""; case Some(c) => "-" + c }
-		val base = if(module.crossVersion) IvySbt.crossName(artifact.name, scalaVersion) else artifact.name
+		val base = if(module.crossVersion) IvySbt.crossName(artifact.name, module.crossVersionRemap(scalaVersion)) else artifact.name
 		base + "-" + module.revision + classifierStr + "." + artifact.extension
 	}
 	def cross(enable: Boolean, scalaVersion: String): String = if(enable) "_" + scalaVersion else ""
 
 	val classifierConfMap = Map(SourceClassifier -> Sources, DocClassifier -> Docs)
 	val classifierTypeMap = Map(SourceClassifier -> SourceType, DocClassifier -> DocType)
-	def classifierConf(classifier: String): Configuration = classifierConfMap.getOrElse(classifier, Optional)	
+	def classifierConf(classifier: String): Configuration = classifierConfMap.getOrElse(classifier, Optional)
 	def classifierType(classifier: String): String = classifierTypeMap.getOrElse(classifier, DefaultType)
 	def classified(name: String, classifier: String): Artifact =
 		Artifact(name, classifierType(classifier), DefaultExtension, Some(classifier), classifierConf(classifier) :: Nil, None)

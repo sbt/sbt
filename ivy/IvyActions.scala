@@ -205,7 +205,7 @@ object IvyActions
 		report.allMissing flatMap { case (_, mod, art) => art.classifier.map { c => (restrictedCopy(mod, false), c) } } groupBy(_._1) map { case (mod, pairs) => (mod, pairs.map(_._2).toSet) }
 
 	private[this] def restrictedCopy(m: ModuleID, confs: Boolean) =
-		ModuleID(m.organization, m.name, m.revision, crossVersion = m.crossVersion, extraAttributes = m.extraAttributes, configurations = if(confs) m.configurations else None)
+		ModuleID(m.organization, m.name, m.revision, crossVersion = m.crossVersion, crossVersionRemap = m.crossVersionRemap, extraAttributes = m.extraAttributes, configurations = if(confs) m.configurations else None)
 	private[this] def resolve(logging: UpdateLogging.Value)(ivy: Ivy, module: DefaultModuleDescriptor, defaultConf: String): (ResolveReport, Option[ResolveException]) =
 	{
 		val resolveOptions = new ResolveOptions
