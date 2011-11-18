@@ -14,7 +14,7 @@ How To Use
 For sbt 0.11, add sbt-assembly as a dependency in `project/plugins.sbt`:
 
 ```scala
-addSbtPlugin("net.virtualvoid" % "sbt-dependency-graph" % "0.5")
+addSbtPlugin("net.virtualvoid" % "sbt-dependency-graph" % "0.5.1")
 ```
 
 or, alternatively, in `project/plugins/project/build.scala`:
@@ -24,7 +24,7 @@ import sbt._
 
 object Plugins extends Build {
   lazy val root = Project("root", file(".")) dependsOn(
-    uri("git://github.com/jrudolph/sbt-dependency-graph.git#v0.5") // or another tag/branch/revision
+    uri("git://github.com/jrudolph/sbt-dependency-graph.git#v0.5.1") // or another tag/branch/revision
   )
 }
 ```
@@ -44,7 +44,7 @@ Standalone usage
 
 You can use the project without sbt as well by either depending on the library and calling
 `IvyGraphMLDependencies.transfrom(sourceIvyReport, targetFile)` or by just getting the binary
-and calling it like `scala sbt-dependency-graph-0.5.jar <ivy-report-xml-path> <target-path>`.
+and calling it like `scala sbt-dependency-graph-0.5.1.jar <ivy-report-xml-path> <target-path>`.
 
 
 Inner Workings
