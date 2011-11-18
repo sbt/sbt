@@ -4,12 +4,13 @@ import sbt._
 import Keys._
 
 object Plugin extends sbt.Plugin {
-	val dependencyGraphTask = TaskKey[File]("dependency-graph")
+  val dependencyGraphTask = TaskKey[File]("dependency-graph")
 
-	def graphSettings = Seq(
-    dependencyGraphTask <<= (projectID, appConfiguration, target, streams) map { (projectID, config, target, streams) =>
+  def graphSettings = Seq(
+    dependencyGraphTask <<= (projectID, scalaVersion, appConfiguration, target, streams) map { (projectID, scalaVersion, config, target, streams) =>
       val home = config.provider.scalaProvider.launcher.ivyHome
-      val fileName = "%s/cache/%s-%s-compile.xml" format (home, projectID.organization, projectID.name)
+
+      val fileName = "%s/cache/%s-%s-compile.xml" format (home, projectID.organization, crossName(projectID, scalaVersion))
 
       val resultFile = target / "dependencies.graphml"
       IvyGraphMLDependencies.transform(fileName, resultFile.getAbsolutePath)
@@ -17,4 +18,12 @@ object Plugin extends sbt.Plugin {
       resultFile
     } dependsOn(deliverLocal)
   )
+
+  def crossName(moduleId: ModuleID, scalaVersion: String) =
+    moduleId.name + (
+      if (moduleId.crossVersion)
+        "_"+scalaVersion
+      else
+        ""
+    )
 }
