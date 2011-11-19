@@ -2,6 +2,8 @@
 
 -> doc
 
-> 'set sources in (Compile, doc) <<= sources in Compile map { _.filter(_.getName contains "A") }'
+> 'set sources in (Compile, doc) <<= sources in Compile map { _.filterNot(_.getName contains "B") }'
 
-> doc
+# compile task is superfluous. Since doc task preceded by compile task has been problematic due to scala
+# compiler's way of handling empty classpath. We have it here to test that our workaround works.
+> ; clean ; compile ; doc
