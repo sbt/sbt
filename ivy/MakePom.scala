@@ -8,7 +8,7 @@
 package sbt;
 
 import java.io.File
-import scala.xml.{Node => XNode, NodeSeq, PrettyPrinter, XML}
+import scala.xml.{Node, NodeSeq, PrettyPrinter}
 import Configurations.Optional
 
 import org.apache.ivy.{core, plugins, Ivy}
@@ -20,17 +20,17 @@ import plugins.resolver.{ChainResolver, DependencyResolver, IBiblioResolver}
 
 class MakePom(val log: Logger)
 {
-	def write(ivy: Ivy, module: ModuleDescriptor, moduleInfo: ModuleInfo, configurations: Option[Iterable[Configuration]], extra: NodeSeq, process: XNode => XNode, filterRepositories: MavenRepository => Boolean, allRepositories: Boolean, output: File): Unit =
+	def write(ivy: Ivy, module: ModuleDescriptor, moduleInfo: ModuleInfo, configurations: Option[Iterable[Configuration]], extra: NodeSeq, process: Node => Node, filterRepositories: MavenRepository => Boolean, allRepositories: Boolean, output: File): Unit =
 		write(process(toPom(ivy, module, moduleInfo, configurations, extra, filterRepositories, allRepositories)), output)
 	// use \n as newline because toString uses PrettyPrinter, which hard codes line endings to be \n
-	def write(node: XNode, output: File): Unit = write(toString(node), output, "\n")
+	def write(node: Node, output: File): Unit = write(toString(node), output, "\n")
 	def write(xmlString: String, output: File, newline: String)
 	{
 		IO.write(output, "<?xml version='1.0' encoding='" + IO.utf8.name + "'?>" + newline + xmlString)
 	}
 
-	def toString(node: XNode): String = new PrettyPrinter(1000, 4).format(node)
-	def toPom(ivy: Ivy, module: ModuleDescriptor, moduleInfo: ModuleInfo, configurations: Option[Iterable[Configuration]], extra: NodeSeq, filterRepositories: MavenRepository => Boolean, allRepositories: Boolean): XNode =
+	def toString(node: Node): String = new PrettyPrinter(1000, 4).format(node)
+	def toPom(ivy: Ivy, module: ModuleDescriptor, moduleInfo: ModuleInfo, configurations: Option[Iterable[Configuration]], extra: NodeSeq, filterRepositories: MavenRepository => Boolean, allRepositories: Boolean): Node =
 		(<project xmlns="http://maven.apache.org/POM/4.0.0"  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
 			<modelVersion>4.0.0</modelVersion>
 			{ makeModuleID(module) }
@@ -61,12 +61,19 @@ class MakePom(val log: Logger)
 		a ++ b
 	}
 
-	def makeStartYear(moduleInfo: ModuleInfo): NodeSeq = moduleInfo.startYear map { y => <inceptionYear>{y}</inceptionYear> } getOrElse NodeSeq.Empty
+	def makeStartYear(moduleInfo: ModuleInfo): NodeSeq =
+		moduleInfo.startYear match {
+			case Some(y) => <inceptionYear>{y}</inceptionYear>
+			case _ => NodeSeq.Empty
+		}
 	def makeOrganization(moduleInfo: ModuleInfo): NodeSeq =
 	{
 		<organization>
 			<name>{moduleInfo.organizationName}</name>
-			{ moduleInfo.organizationHomepage map { h => <url>{h}</url> } getOrElse NodeSeq.Empty }
+			{ moduleInfo.organizationHomepage match {
+				case Some(h) => <url>{h}</url>
+				case _ => NodeSeq.Empty
+			}}
 		</organization>
 	}
 	def makeProperties(module: ModuleDescriptor, dependencies: Seq[DependencyDescriptor]): NodeSeq =
@@ -118,22 +125,13 @@ class MakePom(val log: Logger)
 	def makeDependency(dependency: DependencyDescriptor): NodeSeq =
 	{
 		val mrid = dependency.getDependencyRevisionId
-		val excl = dependency.getExcludeRules(dependency.getModuleConfigurations)
 		<dependency>
 			<groupId>{mrid.getOrganisation}</groupId>
 			<artifactId>{mrid.getName}</artifactId>
 			<version>{mrid.getRevision}</version>
 			{ scopeAndOptional(dependency) }
 			{ classifier(dependency) }
-			{
-				val (warns, excls) = List.separate(excl.map(makeExclusion))
-				if(!warns.isEmpty) log.warn(warns.mkString(IO.Newline))
-				if(excls.isEmpty) NodeSeq.Empty
-				else
-					<exclusions>
-						{ excls }
-					</exclusions>
-			}
+			{ exclusions(dependency) }
 		</dependency>
 	}
 
@@ -177,6 +175,14 @@ class MakePom(val log: Logger)
 		(scope, !opt.isEmpty)
 	}
 
+	def exclusions(dependency: DependencyDescriptor): NodeSeq =
+	{
+		val excl = dependency.getExcludeRules(dependency.getModuleConfigurations)
+		val (warns, excls) = List.separate(excl.map(makeExclusion))
+		if(!warns.isEmpty) log.warn(warns.mkString(IO.Newline))
+		if(!excls.isEmpty) <exclusions>{excls}</exclusions>
+		else NodeSeq.Empty
+	}
 	def makeExclusion(exclRule: ExcludeRule): Either[String, NodeSeq] =
 	{
 		val m = exclRule.getId.getModuleId
@@ -217,9 +223,9 @@ class MakePom(val log: Logger)
 	def toID(name: String) = checkID(name.filter(isValidIDCharacter).mkString, name)
 	def isValidIDCharacter(c: Char) = c.isLetterOrDigit
 	private def checkID(id: String, name: String) = if(id.isEmpty) error("Could not convert '" + name + "' to an ID") else id
-	def mavenRepository(repo: MavenRepository): XNode =
+	def mavenRepository(repo: MavenRepository): Node =
 		mavenRepository(toID(repo.name), repo.name, repo.root)
-	def mavenRepository(id: String, name: String, root: String): XNode =
+	def mavenRepository(id: String, name: String, root: String): Node =
 		<repository>
 			<id>{id}</id>
 			<name>{name}</name>
