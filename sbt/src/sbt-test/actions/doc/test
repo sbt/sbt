@@ -13,7 +13,9 @@ $ exists "target/api/java"
 
 > 'set sources in (Compile, doc) <<= sources in (Compile, doc) map { _.filterNot(_.getName endsWith ".java") }'
 
-> ; clean ; doc
+# compile task is superfluous. Since doc task preceded by compile task has been problematic due to scala
+# compiler's way of handling empty classpath. We have it here to test that our workaround works.
+> ; clean ; compile ; doc
 
 # pure scala project, only scaladoc at top level
 $ exists "target/api/index.js"
