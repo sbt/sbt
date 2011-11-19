@@ -49,7 +49,7 @@ class MakePom(val log: Logger)
 	def makeModuleID(module: ModuleDescriptor): NodeSeq =
 	{
 		val mrid = moduleDescriptor(module)
-		val a: NodeSeq = 
+		val a: NodeSeq =
 			(<groupId>{ mrid.getOrganisation }</groupId>
 			<artifactId>{ mrid.getName }</artifactId>
 			<packaging>{ packaging(module) }</packaging>)
@@ -137,11 +137,16 @@ class MakePom(val log: Logger)
 		</dependency>
 	}
 
-	def classifier(dependency: DependencyDescriptor): Seq[scala.xml.Node] =
+	def classifier(dependency: DependencyDescriptor): NodeSeq =
 	{
-		for (da <- dependency.getAllDependencyArtifacts;
-				 cl <- Option(da.getExtraAttribute("classifier"))) yield
-					<classifier>{cl}</classifier>
+		val jarDep = dependency.getAllDependencyArtifacts.filter(_.getType == Artifact.DefaultType).headOption
+		jarDep match {
+			case Some(a) => {
+				val cl = a.getExtraAttribute("classifier")
+				if (cl != null) <classifier>{cl}</classifier> else NodeSeq.Empty
+			}
+			case _ => NodeSeq.Empty
+		}
 	}
 
 	def scopeAndOptional(dependency: DependencyDescriptor): NodeSeq  =
