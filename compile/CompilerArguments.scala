@@ -18,7 +18,10 @@ final class CompilerArguments(scalaInstance: ScalaInstance, cp: ClasspathOptions
 	{
 		checkScalaHomeUnset()
 		val cpWithCompiler = finishClasspath(classpath)
-		val classpathOption = Seq("-classpath", if(cpWithCompiler.isEmpty) "" else absString(cpWithCompiler) )
+		// Scala compiler's treatment of empty classpath is troublesome (as of 2.9.1).
+		// We append a random dummy element as workaround.
+		val dummy = "dummy_" + Integer.toHexString(util.Random.nextInt)
+		val classpathOption = Seq("-classpath", if(cpWithCompiler.isEmpty) dummy else absString(cpWithCompiler))
 		val outputOption = Seq("-d", outputDirectory.getAbsolutePath)
 		options ++ outputOption ++ bootClasspathOption ++ classpathOption ++ abs(sources)
 	}
