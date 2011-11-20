@@ -6,7 +6,7 @@ package sbt
 import Types._
 
 /** Represents a task node in a format understood by the task evaluation engine Execute.
-* Heterogenous inputs (Mixed, tuple) and homogoneous (Uniform, sequence) and defined and consumed separately.
+* Heterogenous inputs (Mixed, tuple) and homogoneous (Uniform, sequence) are defined and consumed separately.
 *
 * @tparam A the task type
 * @tparam T the type computed by this node */
