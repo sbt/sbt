@@ -87,16 +87,20 @@ object Command
 	def process(command: String, state: State): State =
 	{
 		val parser = combine(state.definedCommands)
-		Parser.result(parser(state), command) match
+		parse(command, parser(state)) match
 		{
 			case Right(s) => s() // apply command.  command side effects happen here
-			case Left(failures) =>
-				val (msgs,pos) = failures()
-				val errMsg = commandError(command, msgs, pos)
+			case Left(errMsg) =>
 				state.log.error(errMsg)
 				state.fail				
 		}
 	}
+	def parse[T](str: String, parser: Parser[T]): Either[String, T] =
+		Parser.result(parser, str).left.map { failures =>
+			val (msgs,pos) = failures()
+			commandError(str, msgs, pos)
+		}
+
 	def commandError(command: String, msgs: Seq[String], index: Int): String =
 	{
 		val (line, modIndex) = extractLine(command, index)

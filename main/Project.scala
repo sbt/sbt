@@ -10,6 +10,7 @@ package sbt
 	import Scope.{GlobalScope,ThisScope}
 	import Load.BuildStructure
 	import Types.{idFun, Id}
+	import complete.DefaultParsers
 
 sealed trait ProjectDefinition[PR <: ProjectReference]
 {
@@ -136,7 +137,10 @@ object Project extends Init[Scope] with ProjectExtra
 
 	def apply(id: String, base: File, aggregate: => Seq[ProjectReference] = Nil, dependencies: => Seq[ClasspathDep[ProjectReference]] = Nil, delegates: => Seq[ProjectReference] = Nil,
 		settings: => Seq[Setting[_]] = defaultSettings, configurations: Seq[Configuration] = Configurations.default): Project =
-			new ProjectDef[ProjectReference](id, base, aggregate, dependencies, delegates, settings, configurations) with Project
+	{
+		Command.parse(id, DefaultParsers.ID).left.foreach(errMsg => error("Invalid project ID: " + errMsg))
+		new ProjectDef[ProjectReference](id, base, aggregate, dependencies, delegates, settings, configurations) with Project
+	}
 
 	def resolved(id: String, base: File, aggregate: => Seq[ProjectRef], dependencies: => Seq[ResolvedClasspathDependency], delegates: => Seq[ProjectRef],
 		settings: Seq[Setting[_]], configurations: Seq[Configuration]): ResolvedProject =
@@ -314,7 +318,7 @@ object Project extends Init[Scope] with ProjectExtra
 		val Return, Current, Plugins = Value
 	}
 	import LoadAction._
-	import complete.DefaultParsers._
+	import DefaultParsers._
 
 	val loadActionParser = token(Space ~> ("plugins" ^^^ Plugins | "return" ^^^ Return)) ?? Current
 	
