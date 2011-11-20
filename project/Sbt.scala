@@ -20,6 +20,7 @@ object Sbt extends Build
 		scalaVersion := "2.9.1",
 		publishMavenStyle := false,
 		componentID := None,
+		testOptions += Tests.Argument(TestFrameworks.ScalaCheck, "-w", "1"),
 		javacOptions in Compile ++= Seq("-target", "6", "-source", "6")
 	)
 

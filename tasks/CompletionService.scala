@@ -5,7 +5,7 @@ package sbt
 
 trait CompletionService[A, R]
 {
-	def submit(node: A,  work: () => R): () => R
+	def submit(node: A,  work: () => R): Unit
 	def take(): R
 }
 
@@ -22,13 +22,14 @@ object CompletionService
 		apply(new ExecutorCompletionService[T](x))
 	def apply[A, T](completion: JCompletionService[T]): CompletionService[A,T] =
 		new CompletionService[A, T] {
-			def submit(node: A,  work: () => T) = {
-				val future = completion.submit { new Callable[T] { def call = work() } }
-				() => future.get()
-			}
+			def submit(node: A,  work: () => T) = CompletionService.submit(work, completion)
 			def take() = completion.take().get()
 		}
-
+	def submit[T](work: () => T, completion: JCompletionService[T]): () => T =
+	{
+		val future = completion.submit { new Callable[T] { def call = work() } }
+		() => future.get()
+	}
 	def manage[A, T](service: CompletionService[A,T])(setup: A => Unit, cleanup: A => Unit): CompletionService[A,T] =
 		wrap(service) { (node, work) => () =>
 			setup(node)

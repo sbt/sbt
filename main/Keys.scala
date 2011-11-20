@@ -191,6 +191,7 @@ object Keys
 	val testOptions = TaskKey[Seq[TestOption]]("test-options", "Options for running tests.")
 	val testFrameworks = SettingKey[Seq[TestFramework]]("test-frameworks", "Registered, although not necessarily present, test frameworks.")
 	val testListeners = TaskKey[Seq[TestReportListener]]("test-listeners", "Defines test listeners.")
+	val testExecution = TaskKey[Tests.Execution]("test-execution", "Settings controlling test execution")
 	val isModule = AttributeKey[Boolean]("is-module", "True if the target is a module.")
 		
 	// Classpath/Dependency Management Keys
@@ -300,6 +301,8 @@ object Keys
 	// special
 	val sessionVars = AttributeKey[SessionVar.Map]("session-vars", "Bindings that exist for the duration of the session.")
 	val parallelExecution = SettingKey[Boolean]("parallel-execution", "Enables (true) or disables (false) parallel execution of tasks.")
+	val tags = SettingKey[Seq[(Tags.Tag,Int)]]("tags", ConcurrentRestrictions.tagsKey.label)
+	val concurrentRestrictions = SettingKey[Seq[Tags.Rule]]("concurrent-restrictions", "Rules describing restrictions on concurrent task execution.")
 	val cancelable = SettingKey[Boolean]("cancelable", "Enables (true) or disables (false) the ability to interrupt task execution with CTRL+C.")
 	val settings = TaskKey[Settings[Scope]]("settings", "Provides access to the project data for the build.")
 	val streams = TaskKey[TaskStreams]("streams", "Provides streams for logging and persisting data.")

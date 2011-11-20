@@ -205,6 +205,9 @@ object Scoped
 
 		def dependsOn(tasks: AnyInitTask*): Initialize[Task[S]] = (i, Initialize.joinAny(tasks)) { (thisTask, deps) => thisTask.dependsOn(deps : _*) }
 
+		def tag(tags: Tags.Tag*): Initialize[Task[S]] = i(_.tag(tags: _*))
+		def tagw(tags: (Tags.Tag, Int)*): Initialize[Task[S]] = i(_.tagw(tags : _*))
+
 			import SessionVar.{persistAndSet, resolveContext, set, transform}
 
 		def updateState(f: (State, S) => State): Initialize[Task[S]] = i(t => transform(t, f))

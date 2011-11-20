@@ -343,11 +343,12 @@ object Project extends Init[Scope] with ProjectExtra
 	}
 	@deprecated("This method does not apply state changes requested during task execution.  Use 'runTask' instead, which does.", "0.11.1")
 	def evaluateTask[T](taskKey: ScopedKey[Task[T]], state: State, checkCycles: Boolean = false, maxWorkers: Int = EvaluateTask.SystemProcessors): Option[Result[T]] =
-		runTask(taskKey, state, checkCycles, maxWorkers).map(_._2)	
-	def runTask[T](taskKey: ScopedKey[Task[T]], state: State, checkCycles: Boolean = false, maxWorkers: Int = EvaluateTask.SystemProcessors): Option[(State, Result[T])] =
+		runTask(taskKey, state, EvaluateConfig(true, EvaluateTask.defaultRestrictions(maxWorkers), checkCycles)).map(_._2)
+	def runTask[T](taskKey: ScopedKey[Task[T]], state: State, checkCycles: Boolean = false): Option[(State, Result[T])] =
+		runTask(taskKey, state, EvaluateConfig(true, EvaluateTask.restrictions(state), checkCycles))
+	def runTask[T](taskKey: ScopedKey[Task[T]], state: State, config: EvaluateConfig): Option[(State, Result[T])] =
 	{
 		val extracted = Project.extract(state)
-		val config = EvaluateConfig(true, checkCycles, maxWorkers)
 		EvaluateTask(extracted.structure, taskKey, state, extracted.currentRef, config)
 	}
 	// this is here instead of Scoped so that it is considered without need for import (because of Project.Initialize)

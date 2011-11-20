@@ -11,7 +11,7 @@ package sbt
 	import Types.const
 	import scala.Console.{RED, RESET}
 
-final case class EvaluateConfig(cancelable: Boolean, checkCycles: Boolean = false, maxWorkers: Int = EvaluateTask.SystemProcessors)
+final case class EvaluateConfig(cancelable: Boolean, restrictions: Seq[Tags.Rule], checkCycles: Boolean = false)
 object EvaluateTask
 {
 	import Load.BuildStructure
@@ -21,23 +21,38 @@ object EvaluateTask
 	import Keys.state
 	
 	val SystemProcessors = Runtime.getRuntime.availableProcessors
-	def defaultConfig = EvaluateConfig(false)
+	def defaultConfig(state: State): EvaluateConfig =
+		EvaluateConfig(false, restrictions(state))
+	def defaultConfig(extracted: Extracted, structure: Load.BuildStructure) =
+		EvaluateConfig(false, restrictions(extracted, structure))
+
 	def extractedConfig(extracted: Extracted, structure: BuildStructure): EvaluateConfig =
 	{
-		val workers = maxWorkers(extracted, structure)
+		val workers = restrictions(extracted, structure)
 		val canCancel = cancelable(extracted, structure)
-		EvaluateConfig(cancelable = canCancel, maxWorkers = workers)
+		EvaluateConfig(cancelable = canCancel, restrictions = workers)
 	}
 
+	def defaultRestrictions(maxWorkers: Int) = Tags.limitAll(maxWorkers) :: Nil
+	def defaultRestrictions(extracted: Extracted, structure: Load.BuildStructure): Seq[Tags.Rule] =
+		Tags.limitAll(maxWorkers(extracted, structure)) :: Nil
+
+	def restrictions(state: State): Seq[Tags.Rule] =
+	{
+		val extracted = Project.extract(state)
+		restrictions(extracted, extracted.structure)
+	}
+	def restrictions(extracted: Extracted, structure: Load.BuildStructure): Seq[Tags.Rule] =
+		getSetting(Keys.concurrentRestrictions, defaultRestrictions(extracted, structure), extracted, structure)
 	def maxWorkers(extracted: Extracted, structure: Load.BuildStructure): Int =
-		if(getBoolean(Keys.parallelExecution, true, extracted, structure))
-			EvaluateTask.SystemProcessors
+		if(getSetting(Keys.parallelExecution, true, extracted, structure))
+			SystemProcessors
 		else
 			1
 	def cancelable(extracted: Extracted, structure: Load.BuildStructure): Boolean =
-		getBoolean(Keys.cancelable, false, extracted, structure)
-	def getBoolean(key: SettingKey[Boolean], default: Boolean, extracted: Extracted, structure: Load.BuildStructure): Boolean =
-		(key in extracted.currentRef get structure.data) getOrElse default
+		getSetting(Keys.cancelable, false, extracted, structure)
+	def getSetting[T](key: SettingKey[T], default: T, extracted: Extracted, structure: Load.BuildStructure): T =
+		key in extracted.currentRef get structure.data getOrElse default
 
 	def injectSettings: Seq[Setting[_]] = Seq(
 		(state in GlobalScope) ::= dummyState,
@@ -48,16 +63,20 @@ object EvaluateTask
 	{
 		val root = ProjectRef(pluginDef.root, Load.getRootProject(pluginDef.units)(pluginDef.root))
 		val pluginKey = Keys.fullClasspath in Configurations.Runtime
-		val evaluated = apply(pluginDef, ScopedKey(pluginKey.scope, pluginKey.key), state, root, defaultConfig)
+		val config = defaultConfig(Project.extract(state), pluginDef)
+		val evaluated = apply(pluginDef, ScopedKey(pluginKey.scope, pluginKey.key), state, root, config)
 		val (newS, result) = evaluated getOrElse error("Plugin classpath does not exist for plugin definition at " + pluginDef.root)
 		Project.runUnloadHooks(newS) // discard states
 		processResult(result, log)
 	}
 
-	@deprecated("This method does not apply state changes requested during task execution.  Use 'apply' instead, which does.", "0.11.1")
+	@deprecated("This method does not apply state changes requested during task execution and does not honor concurrent execution restrictions.  Use 'apply' instead.", "0.11.1")
 	def evaluateTask[T](structure: BuildStructure, taskKey: ScopedKey[Task[T]], state: State, ref: ProjectRef, checkCycles: Boolean = false, maxWorkers: Int = SystemProcessors): Option[Result[T]] =
-		apply(structure, taskKey, state, ref, EvaluateConfig(false, checkCycles, maxWorkers)).map(_._2)
-	def apply[T](structure: BuildStructure, taskKey: ScopedKey[Task[T]], state: State, ref: ProjectRef, config: EvaluateConfig = defaultConfig): Option[(State, Result[T])] =
+		apply(structure, taskKey, state, ref, EvaluateConfig(false, defaultRestrictions(maxWorkers), checkCycles)).map(_._2)
+
+	def apply[T](structure: BuildStructure, taskKey: ScopedKey[Task[T]], state: State, ref: ProjectRef): Option[(State, Result[T])] =
+		apply[T](structure, taskKey, state, ref, defaultConfig(Project.extract(state), structure))
+	def apply[T](structure: BuildStructure, taskKey: ScopedKey[Task[T]], state: State, ref: ProjectRef, config: EvaluateConfig): Option[(State, Result[T])] =
 		withStreams(structure, state) { str =>
 			for( (task, toNode) <- getTask(structure, taskKey, state, str, ref) ) yield
 				runTask(task, state, str, structure.index.triggers, config)(toNode)
@@ -97,11 +116,14 @@ object EvaluateTask
 	def nodeView[HL <: HList](state: State, streams: Streams, extraDummies: KList[Task, HL] = KNil, extraValues: HL = HNil): Execute.NodeView[Task] =
 		Transform(dummyStreamsManager :^: KCons(dummyState, extraDummies), streams :+: HCons(state, extraValues))
 
-	def runTask[T](root: Task[T], state: State, streams: Streams, triggers: Triggers[Task], config: EvaluateConfig = defaultConfig)(implicit taskToNode: Execute.NodeView[Task]): (State, Result[T]) =
+	def runTask[T](root: Task[T], state: State, streams: Streams, triggers: Triggers[Task], config: EvaluateConfig)(implicit taskToNode: Execute.NodeView[Task]): (State, Result[T]) =
 	{
+			import ConcurrentRestrictions.{completionService, TagMap, Tag, tagged, tagsKey}
+	
 		val log = state.log
-		log.debug("Running task... Cancelable: " + config.cancelable + ", max worker threads: " + config.maxWorkers + ", check cycles: " + config.checkCycles)
-		val (service, shutdown) = CompletionService[Task[_], Completed](config.maxWorkers)
+		log.debug("Running task... Cancelable: " + config.cancelable + ", check cycles: " + config.checkCycles)
+		val tags = tagged[Task[_]](_.info get tagsKey getOrElse Map.empty, Tags.predicate(config.restrictions))
+		val (service, shutdown) = completionService[Task[_], Completed](tags, (s: String) => log.warn(s))
 
 		def run() = {
 			val x = new Execute[Task](config.checkCycles, triggers)(taskToNode)

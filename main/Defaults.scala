@@ -51,6 +51,7 @@ object Defaults extends BuildCommon
 		buildDependencies <<= buildDependencies or Classpaths.constructBuildDependencies,
 		taskTemporaryDirectory := IO.createTemporaryDirectory,
 		onComplete <<= taskTemporaryDirectory { dir => () => IO.delete(dir); IO.createDirectory(dir) },
+		concurrentRestrictions <<= concurrentRestrictions or defaultRestrictions,
 		parallelExecution :== true,
 		sbtVersion in GlobalScope <<= appConfiguration { _.provider.id.version },
 		sbtResolver in GlobalScope <<= sbtVersion { sbtV => if(sbtV endsWith "-SNAPSHOT") Classpaths.typesafeSnapshots else Classpaths.typesafeResolver },
@@ -58,8 +59,11 @@ object Defaults extends BuildCommon
 		logBuffered :== false,
 		connectInput :== false,
 		cancelable :== false,
+		cancelable :== false,
 		autoScalaLibrary :== true,
 		onLoad <<= onLoad ?? idFun[State],
+		tags in test := Seq(Tags.Test -> 1),
+		tags in testOnly <<= tags in test,
 		onUnload <<= (onUnload ?? idFun[State]),
 		onUnload <<= (onUnload, taskTemporaryDirectory) { (f, dir) => s => { try f(s) finally IO.delete(dir) } },
 		watchingMessage <<= watchingMessage ?? Watched.defaultWatchingMessage,
@@ -196,7 +200,7 @@ object Defaults extends BuildCommon
 	lazy val configTasks = docSetting(doc) ++ compileInputsSettings ++ Seq(
 		initialCommands in GlobalScope :== "",
 		cleanupCommands in GlobalScope :== "",
-		compile <<= compileTask,
+		compile <<= compileTask tag(Tags.Compile, Tags.CPU),
 		compileIncSetup <<= compileIncSetupTask,
 		console <<= consoleTask,
 		consoleQuick <<= consoleQuickTask,
@@ -270,10 +274,12 @@ object Defaults extends BuildCommon
 		definedTestNames <<= definedTests map ( _.map(_.name).distinct) storeAs definedTestNames triggeredBy compile,
 		testListeners in GlobalScope :== Nil,
 		testOptions in GlobalScope :== Nil,
-		executeTests <<= (streams in test, loadedTestFrameworks, parallelExecution in test, testOptions in test, testLoader, definedTests, resolvedScoped, state) flatMap {
-			(s, frameworkMap, par, options, loader, discovered, scoped, st) =>
+		testExecution in test <<= testExecutionTask(test),
+		testExecution in testOnly <<= testExecutionTask(testOnly),
+		executeTests <<= (streams in test, loadedTestFrameworks, testExecution in test, testLoader, definedTests, resolvedScoped, state) flatMap {
+			(s, frameworkMap, config, loader, discovered, scoped, st) =>
 				implicit val display = Project.showContextKey(st)
-				Tests(frameworkMap, loader, discovered, options, par, noTestsMessage(ScopedKey(scoped.scope, test.key)), s.log)
+				Tests(frameworkMap, loader, discovered, config, noTestsMessage(ScopedKey(scoped.scope, test.key)), s.log)
 		},
 		test <<= (executeTests, streams) map { (results, s) => Tests.showResults(s.log, results) },
 		testOnly <<= testOnlyTask
@@ -303,14 +309,18 @@ object Defaults extends BuildCommon
 		extra.put(name.key, tdef.name).put(isModule, mod)
 	}
 
+	def testExecutionTask(task: Scoped): Initialize[Task[Tests.Execution]] =
+			(testOptions in task, parallelExecution in task, tags in task) map { (opts, par, ts) => new Tests.Execution(opts, par, ts) }
+
 	def testOnlyTask = 
-	InputTask( loadForParser(definedTestNames)( (s, i) => testOnlyParser(s, i getOrElse Nil) ) ) { result =>  
-		(streams, loadedTestFrameworks, parallelExecution in testOnly, testOptions in testOnly, testLoader, definedTests, resolvedScoped, result, state) flatMap {
-			case (s, frameworks, par, opts, loader, discovered, scoped, (tests, frameworkOptions), st) =>
+	InputTask( loadForParser(definedTestNames)( (s, i) => testOnlyParser(s, i getOrElse Nil) ) ) { result =>
+		(streams, loadedTestFrameworks, testExecution in testOnly, testLoader, definedTests, resolvedScoped, result, state) flatMap {
+			case (s, frameworks, config, loader, discovered, scoped, (tests, frameworkOptions), st) =>
 				val filter = selectedFilter(tests)
-				val modifiedOpts = Tests.Filter(filter) +: Tests.Argument(frameworkOptions : _*) +: opts
+				val modifiedOpts = Tests.Filter(filter) +: Tests.Argument(frameworkOptions : _*) +: config.options
+				val newConfig = new Tests.Execution(modifiedOpts, config.parallel, config.tags)
 				implicit val display = Project.showContextKey(st)
-				Tests(frameworks, loader, discovered, modifiedOpts, par, noTestsMessage(scoped), s.log) map { results =>
+				Tests(frameworks, loader, discovered, newConfig, noTestsMessage(scoped), s.log) map { results =>
 					Tests.showResults(s.log, results)
 				}
 		}
@@ -322,6 +332,10 @@ object Defaults extends BuildCommon
 	}
 	def detectTests: Initialize[Task[Seq[TestDefinition]]] = (loadedTestFrameworks, compile, streams) map { (frameworkMap, analysis, s) =>
 		Tests.discover(frameworkMap.values.toSeq, analysis, s.log)._1
+	}
+	def defaultRestrictions: Initialize[Seq[Tags.Rule]] = parallelExecution { par =>
+		val max = EvaluateTask.SystemProcessors
+		Tags.limitAll(if(par) max else 1) :: Nil
 	}
 
 	lazy val packageBase: Seq[Setting[_]] = Seq(
@@ -739,7 +753,7 @@ object Classpaths
 		update <<= (ivyModule, thisProjectRef, updateConfiguration, cacheDirectory, scalaInstance, transitiveUpdate, streams) map { (module, ref, config, cacheDirectory, si, reports, s) =>
 			val depsUpdated = reports.exists(!_.stats.cached)
 			cachedUpdate(cacheDirectory / "update", Project.display(ref), module, config, Some(si), depsUpdated, s.log)
-		},
+		} tag(Tags.Update, Tags.Network),
 		update <<= (conflictWarning, update, streams) map { (config, report, s) => ConflictWarning(config, report, s.log); report },
 		transitiveClassifiers in GlobalScope :== Seq(SourceClassifier, DocClassifier),
 		classifiersModule in updateClassifiers <<= (projectID, update, transitiveClassifiers in updateClassifiers, ivyConfigurations in updateClassifiers) map { ( pid, up, classifiers, confs) =>
@@ -749,7 +763,7 @@ object Classpaths
 			withExcludes(out, mod.classifiers, lock(app)) { excludes =>
 				IvyActions.updateClassifiers(is, GetClassifiersConfiguration(mod, excludes, c, ivyScala), s.log)
 			}
-		},
+		} tag(Tags.Update, Tags.Network),
 		sbtDependency in GlobalScope <<= appConfiguration { app =>
 			val id = app.provider.id
 			val base = ModuleID(id.groupID, id.name, id.version, crossVersion = id.crossVersioned)
@@ -787,7 +801,7 @@ object Classpaths
 			withExcludes(out, mod.classifiers, lock(app)) { excludes =>
 				IvyActions.transitiveScratch(is, "sbt", GetClassifiersConfiguration(mod, excludes, c, ivyScala), s.log)
 			}
-		}
+		} tag(Tags.Update, Tags.Network)
 	))
 
 	def deliverTask(config: TaskKey[DeliverConfiguration]): Initialize[Task[File]] =
@@ -795,7 +809,7 @@ object Classpaths
 	def publishTask(config: TaskKey[PublishConfiguration], deliverKey: TaskKey[_]): Initialize[Task[Unit]] =
 		(ivyModule, config, streams) map { (module, config, s) =>
 			IvyActions.publish(module, config, s.log)
-		}
+		} tag(Tags.Publish, Tags.Network)
 
 		import Cache._
 		import CacheIvy.{classpathFormat, /*publishIC,*/ updateIC, updateReportF, excludeMap}

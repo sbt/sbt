@@ -9,6 +9,7 @@ package sbt
 	import TaskExtra._
 	import Types._
 	import xsbti.api.Definition
+	import ConcurrentRestrictions.Tag
 
 	import org.scalatools.testing.{AnnotatedFingerprint, Fingerprint, Framework, SubclassFingerprint}
 
@@ -39,8 +40,12 @@ object Tests
 	// None means apply to all, Some(tf) means apply to a particular framework only.
 	final case class Argument(framework: Option[TestFramework], args: List[String]) extends TestOption
 
-	
-	def apply(frameworks: Map[TestFramework, Framework], testLoader: ClassLoader, discovered: Seq[TestDefinition], options: Seq[TestOption], parallel: Boolean, noTestsMessage: => String, log: Logger): Task[Output] =
+	final class Execution(val options: Seq[TestOption], val parallel: Boolean, val tags: Seq[(Tag, Int)])
+
+	def apply(frameworks: Map[TestFramework, Framework], testLoader: ClassLoader, discovered: Seq[TestDefinition], options: Seq[TestOption], parallel: Boolean, noTestsMessage: => String, log: Logger): Task[Output] =	
+		apply(frameworks, testLoader, discovered, new Execution(options, parallel, Nil), noTestsMessage, log)
+
+	def apply(frameworks: Map[TestFramework, Framework], testLoader: ClassLoader, discovered: Seq[TestDefinition], config: Execution, noTestsMessage: => String, log: Logger): Task[Output] =
 	{
 			import mutable.{HashSet, ListBuffer, Map, Set}
 		val testFilters = new ListBuffer[String => Boolean]
@@ -57,7 +62,7 @@ object Tests
 				case None => undefinedFrameworks += framework.implClassName
 			}
 
-		for(option <- options)
+		for(option <- config.options)
 		{
 			option match
 			{
@@ -88,12 +93,12 @@ object Tests
 		def includeTest(test: TestDefinition) = !excludeTestsSet.contains(test.name) && testFilters.forall(filter => filter(test.name))
 		val tests = discovered.filter(includeTest).toSet.toSeq
 		val arguments = testArgsByFramework.map { case (k,v) => (k, v.toList) } toMap;
-		testTask(frameworks.values.toSeq, testLoader, tests, noTestsMessage, setup.readOnly, cleanup.readOnly, log, testListeners.readOnly, arguments, parallel)
+		testTask(frameworks.values.toSeq, testLoader, tests, noTestsMessage, setup.readOnly, cleanup.readOnly, log, testListeners.readOnly, arguments, config)
 	}
 
 	def testTask(frameworks: Seq[Framework], loader: ClassLoader, tests: Seq[TestDefinition], noTestsMessage: => String,
 		userSetup: Iterable[ClassLoader => Unit], userCleanup: Iterable[ClassLoader => Unit],
-		log: Logger, testListeners: Seq[TestReportListener], arguments: Map[Framework, Seq[String]], parallel: Boolean): Task[Output] =
+		log: Logger, testListeners: Seq[TestReportListener], arguments: Map[Framework, Seq[String]], config: Execution): Task[Output] =
 	{
 		def fj(actions: Iterable[() => Unit]): Task[Unit] = nop.dependsOn( actions.toSeq.fork( _() ) : _*)
 		def partApp(actions: Iterable[ClassLoader => Unit]) = actions.toSeq map {a => () => a(loader) }
@@ -102,16 +107,21 @@ object Tests
 			TestFramework.testTasks(frameworks, loader, tests, noTestsMessage, log, testListeners, arguments)
 
 		val setupTasks = fj(partApp(userSetup) :+ frameworkSetup)
-		val mainTasks = if(parallel) makeParallel(runnables, setupTasks).toSeq.join else makeSerial(runnables, setupTasks)
-		mainTasks map processResults flatMap { results =>
+		val mainTasks =
+			if(config.parallel)
+				makeParallel(runnables, setupTasks, config.tags).toSeq.join
+			else
+				makeSerial(runnables, setupTasks, config.tags)
+		val taggedMainTasks = mainTasks.tagw(config.tags : _*)
+		taggedMainTasks map processResults flatMap { results =>
 			val cleanupTasks = fj(partApp(userCleanup) :+ frameworkCleanup(results._1))
 			cleanupTasks map { _ => results }
 		}
 	}
 	type TestRunnable = (String, () => TestResult.Value)
-	def makeParallel(runnables: Iterable[TestRunnable], setupTasks: Task[Unit]) =
-		runnables map { case (name, test) => task { (name, test()) } dependsOn setupTasks named name }
-	def makeSerial(runnables: Iterable[TestRunnable], setupTasks: Task[Unit]) =
+	def makeParallel(runnables: Iterable[TestRunnable], setupTasks: Task[Unit], tags: Seq[(Tag,Int)]) =
+		runnables map { case (name, test) => task { (name, test()) } dependsOn setupTasks named name tagw(tags : _*) }
+	def makeSerial(runnables: Iterable[TestRunnable], setupTasks: Task[Unit], tags: Seq[(Tag,Int)]) =
 		task { runnables map { case (name, test) => (name, test()) } } dependsOn(setupTasks)
 
 	def processResults(results: Iterable[(String, TestResult.Value)]): (TestResult.Value, Map[String, TestResult.Value]) =
