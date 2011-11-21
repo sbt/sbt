@@ -4,21 +4,15 @@
 package sbt
 
 import java.io.File
-import scala.xml.{Node => XNode,NodeSeq}
+import scala.xml.{Node => XNode, NodeSeq}
 
 import org.apache.ivy.{core, plugins, Ivy}
-import core.cache.DefaultRepositoryCacheManager
-import core.{IvyPatternHelper,LogOptions}
+import core.{IvyPatternHelper, LogOptions}
 import core.deliver.DeliverOptions
 import core.install.InstallOptions
-import core.module.descriptor.{Artifact => IArtifact, DefaultArtifact, DefaultDependencyArtifactDescriptor, MDArtifact}
-import core.module.descriptor.{DefaultDependencyDescriptor, DefaultModuleDescriptor, DependencyDescriptor, ModuleDescriptor}
-import core.module.id.{ArtifactId,ModuleId, ModuleRevisionId}
-import core.publish.PublishOptions
-import core.report.{ArtifactDownloadReport,ResolveReport}
+import core.module.descriptor.{Artifact => IArtifact, MDArtifact, ModuleDescriptor, DefaultModuleDescriptor}
+import core.report.ResolveReport
 import core.resolve.ResolveOptions
-import core.retrieve.RetrieveOptions
-import plugins.parser.m2.{PomModuleDescriptorParser,PomModuleDescriptorWriter}
 import plugins.resolver.{BasicResolver, DependencyResolver}
 
 final class DeliverConfiguration(val deliverIvyPattern: String, val status: String, val configurations: Option[Seq[Configuration]], val logging: UpdateLogging.Value)
@@ -26,7 +20,7 @@ final class PublishConfiguration(val ivyFile: Option[File], val resolverName: St
 
 final class UpdateConfiguration(val retrieve: Option[RetrieveConfiguration], val missingOk: Boolean, val logging: UpdateLogging.Value)
 final class RetrieveConfiguration(val retrieveDirectory: File, val outputPattern: String)
-final case class MakePomConfiguration(file: File, moduleInfo: ModuleInfo, configurations: Option[Iterable[Configuration]] = None, extra: NodeSeq = NodeSeq.Empty, process: XNode => XNode = n => n, filterRepositories: MavenRepository => Boolean = _ => true, allRepositories: Boolean)
+final case class MakePomConfiguration(file: File, moduleInfo: ModuleInfo, configurations: Option[Seq[Configuration]] = None, extra: NodeSeq = NodeSeq.Empty, process: XNode => XNode = n => n, filterRepositories: MavenRepository => Boolean = _ => true, allRepositories: Boolean, includeTypes: Set[String] = Set(Artifact.DefaultType))
 	// exclude is a map on a restricted ModuleID
 final case class GetClassifiersConfiguration(module: GetClassifiersModule, exclude: Map[ModuleID, Set[String]], configuration: UpdateConfiguration, ivyScala: Option[IvyScala])
 final case class GetClassifiersModule(id: ModuleID, modules: Seq[ModuleID], configurations: Seq[Configuration], classifiers: Seq[String])
@@ -66,9 +60,9 @@ object IvyActions
 	/** Creates a Maven pom from the given Ivy configuration*/
 	def makePom(module: IvySbt#Module, configuration: MakePomConfiguration, log: Logger)
 	{
-		import configuration.{allRepositories, moduleInfo, configurations, extra, file, filterRepositories, process}
+		import configuration.{allRepositories, moduleInfo, configurations, extra, file, filterRepositories, process, includeTypes}
 		module.withModule(log) { (ivy, md, default) =>
-			(new MakePom(log)).write(ivy, md, moduleInfo, configurations, extra, process, filterRepositories, allRepositories, file)
+			(new MakePom(log)).write(ivy, md, moduleInfo, configurations, includeTypes, extra, process, filterRepositories, allRepositories, file)
 			log.info("Wrote " + file.getAbsolutePath)
 		}
 	}
@@ -168,8 +162,8 @@ object IvyActions
 
 	def transitiveScratch(ivySbt: IvySbt, label: String, config: GetClassifiersConfiguration, log: Logger): UpdateReport =
 	{
-			import config.{configuration => c, ivyScala, module => mod}
-			import mod.{configurations => confs, id, modules => deps}
+		import config.{configuration => c, ivyScala, module => mod}
+		import mod.{id, modules => deps}
 		val base = restrictedCopy(id, true).copy(name = id.name + "$" + label)
 		val module = new ivySbt.Module(InlineConfiguration(base, ModuleInfo(base.name), deps).copy(ivyScala = ivyScala))
 		val report = update(module, c, log)
@@ -178,8 +172,8 @@ object IvyActions
 	}
 	def updateClassifiers(ivySbt: IvySbt, config: GetClassifiersConfiguration, log: Logger): UpdateReport =
 	{
-			import config.{configuration => c, module => mod, _}
-			import mod.{configurations => confs, _}
+		import config.{configuration => c, module => mod, _}
+		import mod.{configurations => confs, _}
 		assert(!classifiers.isEmpty, "classifiers cannot be empty")
 		val baseModules = modules map { m => restrictedCopy(m, true) }
 		val deps = baseModules.distinct flatMap classifiedArtifacts(classifiers, exclude)
@@ -223,7 +217,7 @@ object IvyActions
 	}
 	private def retrieve(ivy: Ivy, report: UpdateReport, config: RetrieveConfiguration): UpdateReport =
 		retrieve(ivy, report, config.retrieveDirectory, config.outputPattern)
-	
+
 	private def retrieve(ivy: Ivy, report: UpdateReport, base: File, pattern: String): UpdateReport =
 	{
 		val toCopy = new collection.mutable.HashSet[(File,File)]
@@ -255,7 +249,7 @@ object IvyActions
 			case Full => LOG_DEFAULT
 		}
 
-	def publish(module: ModuleDescriptor, artifacts: Iterable[(IArtifact, File)], resolver: DependencyResolver, overwrite: Boolean): Unit =
+	def publish(module: ModuleDescriptor, artifacts: Seq[(IArtifact, File)], resolver: DependencyResolver, overwrite: Boolean): Unit =
 		try {
 			resolver.beginPublishTransaction(module.getModuleRevisionId(), overwrite);
 			for( (artifact, file) <- artifacts) if(file.exists)
