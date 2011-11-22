@@ -34,7 +34,7 @@ object SessionSettings
 
 	def reapply(session: SessionSettings, s: State): State =
 		BuiltinCommands.reapply(session, Project.structure(s), s)
-	
+
 	def clearSettings(s: State): State =
 		withSettings(s)(session => reapply(session.copy(append = session.append - session.current), s))
 	def clearAllSettings(s: State): State =
@@ -91,7 +91,7 @@ object SessionSettings
 		val adjustedLines = if(appendTo.isFile && hasTrailingBlank(IO readLines appendTo) ) baseAppend else "" +: baseAppend
 		IO.writeLines(appendTo, adjustedLines, append = true)
 	}
-	def hasTrailingBlank(lines: Seq[String]) = lines.takeRight(1).exists(_.trim.isEmpty) 
+	def hasTrailingBlank(lines: Seq[String]) = lines.takeRight(1).exists(_.trim.isEmpty)
 	def printAllSettings(s: State): State =
 		withSettings(s){ session =>
 			for( (ref, settings) <- session.append if !settings.isEmpty) {
@@ -117,23 +117,27 @@ Manipulates session settings, which are temporary settings that do not persist p
 Valid commands are:
 
 clear, clear-all
+
 	Removes temporary settings added using 'set' and re-evaluates all settings.
 	For 'clear', only the settings defined for the current project are cleared.
 	For 'clear-all', all settings in all projects are cleared.
 
 list, list-all
+
 	Prints a numbered list of session settings defined.
 	The numbers may be used to remove individual settings or ranges of settings using 'remove'.
 	For 'list', only the settings for the current project are printed.
 	For 'list-all', all settings in all projets are printed.
 
 remove <range-spec>
+
 	<range-spec> is a comma-separated list of individual numbers or ranges of numbers.
 	For example, 'remove 1,3,5-7'.
 	The temporary settings at the given indices for the current project are removed and all settings are re-evaluated.
 	Use the 'list' command to see a numbered list of settings for the current project.
 
 save, save-all
+
 	Makes the session settings permanent by writing them to a '.sbt' configuration file.
 	For 'save', only the current project's settings are saved (the settings for other projects are left alone).
 	For 'save-all', the session settings are saved for all projects.
