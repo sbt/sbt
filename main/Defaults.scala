@@ -750,9 +750,9 @@ object Classpaths
 		ivySbt <<= ivySbt0,
 		ivyModule <<= (ivySbt, moduleSettings) map { (ivySbt, settings) => new ivySbt.Module(settings) },
 		transitiveUpdate <<= transitiveUpdateTask,
-		update <<= (ivyModule, thisProjectRef, updateConfiguration, cacheDirectory, scalaInstance, transitiveUpdate, streams) map { (module, ref, config, cacheDirectory, si, reports, s) =>
+		update <<= (ivyModule, thisProjectRef, updateConfiguration, cacheDirectory, scalaInstance, transitiveUpdate, skip in update, streams) map { (module, ref, config, cacheDirectory, si, reports, skip, s) =>
 			val depsUpdated = reports.exists(!_.stats.cached)
-			cachedUpdate(cacheDirectory / "update", Project.display(ref), module, config, Some(si), depsUpdated, s.log)
+			cachedUpdate(cacheDirectory / "update", Project.display(ref), module, config, Some(si), skip, depsUpdated, s.log)
 		} tag(Tags.Update, Tags.Network),
 		update <<= (conflictWarning, update, streams) map { (config, report, s) => ConflictWarning(config, report, s.log); report },
 		transitiveClassifiers in GlobalScope :== Seq(SourceClassifier, DocClassifier),
@@ -827,7 +827,7 @@ object Classpaths
 		}})
 	}
 
-	def cachedUpdate(cacheFile: File, label: String, module: IvySbt#Module, config: UpdateConfiguration, scalaInstance: Option[ScalaInstance], depsUpdated: Boolean, log: Logger): UpdateReport =
+	def cachedUpdate(cacheFile: File, label: String, module: IvySbt#Module, config: UpdateConfiguration, scalaInstance: Option[ScalaInstance], skip: Boolean, depsUpdated: Boolean, log: Logger): UpdateReport =
 	{
 		implicit val updateCache = updateIC
 		implicit val updateReport = updateReportF
@@ -844,14 +844,21 @@ object Classpaths
 			out.allFiles.forall(_.exists) &&
 			out.cachedDescriptor.exists
 
-		val f =
+		val outCacheFile = cacheFile / "output"
+		def skipWork: In => UpdateReport = 
+			Tracked.lastOutput[In, UpdateReport](outCacheFile) {
+				case (_, Some(out)) => out
+				case _ => error("Skipping update requested, but update has not previously run successfully.")
+			}
+		def doWork: In => UpdateReport =
 			Tracked.inputChanged(cacheFile / "inputs") { (inChanged: Boolean, in: In) =>
-				val outCache = Tracked.lastOutput[In, UpdateReport](cacheFile / "output") {
+				val outCache = Tracked.lastOutput[In, UpdateReport](outCacheFile) {
 					case (_, Some(out)) if uptodate(inChanged, out) => out
 					case _ => work(in)
 				}
 				outCache(in)
 			}
+		val f = if(skip) skipWork else doWork
 		f(module.owner.configuration :+: module.moduleSettings :+: config :+: HNil)
 	}
 /*
