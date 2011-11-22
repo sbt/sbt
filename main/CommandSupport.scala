@@ -179,7 +179,7 @@ ProjectCommand +
 ReadCommand + ReadFiles + """
 
 	Reads the lines from the given files and inserts them as commands.
-	All empty lines or the ones that start with '#' are ignored.
+	All empty lines and lines that start with '#' are ignored.
 	If a file does not exist or is not readable, this command fails.
 
 	All the lines from all the files are read before any of the commands
