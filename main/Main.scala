@@ -171,8 +171,7 @@ object BuiltinCommands
 	{
 		"This is sbt " + sbtVersion(s) + "\n" +
 		aboutProject(s) +
-		"sbt, sbt plugins, and build definitions are using Scala " + scalaVersion(s) + "\n" +
-		"All logging output for this session is available at " + CommandSupport.globalLogging(s).backing
+		"sbt, sbt plugins, and build definitions are using Scala " + scalaVersion(s) + "\n"
 	}
 	def aboutProject(s: State): String =
 		if(Project.isProjectLoaded(s))
