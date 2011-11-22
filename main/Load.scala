@@ -388,6 +388,8 @@ object Load
 	}
 	def loadUnitOld(defDir: File, pluginDir: File, s: State, config: LoadBuildConfiguration): (LoadedPlugins, LoadedDefinitions) =
 	{
+		config.log.warn("Using project/plugins/ is deprecated for plugin configuration (" + pluginDir + ").\n" +
+			"Put .sbt plugin definitions directly in project/,\n  .scala plugin definitions in project/project/,\n  and remove the project/plugins/ directory.")
 		val plugs = plugins(pluginDir, s, config)
 		val defs = definitionSources(defDir)
 		val target = buildOutputDirectory(defDir, config.compilers)
