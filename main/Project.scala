@@ -291,6 +291,8 @@ object Project extends Init[Scope] with ProjectExtra
 			printScopes("Delegates", delegates(structure, scope, key)) +
 			printScopes("Related", related)
 	}
+	def settingGraph(structure: BuildStructure, basedir: File, scoped: ScopedKey[_])(implicit display: Show[ScopedKey[_]]): SettingGraph =
+		SettingGraph(structure, basedir, scoped, 0)
 	def graphSettings(structure: BuildStructure, basedir: File)(implicit display: Show[ScopedKey[_]])
 	{
 		def graph(actual: Boolean, name: String) = graphSettings(structure, actual, name, new File(basedir, name + ".dot"))

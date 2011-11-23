@@ -84,14 +84,17 @@ LastCommand + """ <key>
 	See also '""" + LastGrepCommand + "'."
 
 	val InspectCommand = "inspect"
-	val inspectBrief = (InspectCommand + " <key>", "Prints the value for 'key', the defining scope, delegates, related definitions, and dependencies.")
+	val inspectBrief = (InspectCommand + " [tree] <key>", "Prints the value for 'key', the defining scope, delegates, related definitions, and dependencies.")
 	val inspectDetailed =
-InspectCommand + """ <key>
+InspectCommand + """ [tree] <key>
 
 	For a plain setting, the value bound to the key argument is displayed using its toString method.
 	Otherwise, the type of task ("Task" or "Input task") is displayed.
 
 	"Dependencies" shows the settings that this setting depends on.
+	If 'tree' is specified, the bound value as well as the settings that this setting depends on
+	(and their bound values) are displayed as a tree structure.
+	
 	"Reverse dependencies" shows the settings that depend on this setting.
 
 	When a key is resolved to a value, it may not actually be defined in the requested scope.
