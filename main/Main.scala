@@ -382,10 +382,16 @@ object BuiltinCommands
 		val newSession = session.appendSettings( append map (a => (a, arg)))
 		reapply(newSession, structure, s)
 	}
-	def inspect = Command(InspectCommand, inspectBrief, inspectDetailed)(inspectParser) { case (s,(actual,sk)) =>
-		val detailString = Project.details(Project.structure(s), actual, sk.scope, sk.key)( Project.showContextKey(s) )
-		logger(s).info(detailString)
-		s
+	def inspect = Command(InspectCommand, inspectBrief, inspectDetailed)(inspectParser) {
+		case (s, (InspectOption.DependencyTree, sk)) =>
+		  val basedir = new File(Project.session(s).current.build)
+			val treeString = Project.settingGraph(Project.structure(s), basedir, sk)( Project.showContextKey(s) ).dependsAscii
+			logger(s).info(treeString)
+			s
+		case (s, (InspectOption.Details(actual), sk)) =>
+			val detailString = Project.details(Project.structure(s), actual, sk.scope, sk.key)( Project.showContextKey(s) )
+			logger(s).info(detailString)
+			s
 	}
 	def lastGrep = Command(LastGrepCommand, lastGrepBrief, lastGrepDetailed)(lastGrepParser) {
 		case (s, (pattern,Some(sk))) =>
@@ -401,7 +407,13 @@ object BuiltinCommands
 		val ext = Project.extract(s)
 		(ext.structure, Select(ext.currentRef), ext.showKey)
 	}
-	def inspectParser = (s: State) => token((Space ~> ("actual" ^^^ true)) ?? false) ~ spacedKeyParser(s)
+	def inspectParser = (s: State) => spacedInspectOptionParser(s) ~ spacedKeyParser(s)
+	val spacedInspectOptionParser: (State => Parser[InspectOption]) = (s: State) => {
+		import InspectOption._
+		val actual = "actual" ^^^ Details(true)
+		val tree = "tree" ^^^ DependencyTree
+		token(Space ~> (tree | actual)) ?? Details(false)
+	}
 	val spacedKeyParser = (s: State) => Act.requireSession(s, token(Space) ~> Act.scopedKeyParser(s))
 	val optSpacedKeyParser = (s: State) => spacedKeyParser(s).?
 	def lastGrepParser(s: State) = Act.requireSession(s, (token(Space) ~> token(NotSpace, "<pattern>")) ~ optSpacedKeyParser(s))

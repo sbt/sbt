@@ -142,6 +142,13 @@ object Command
 		( (c & opOrIDSpaced(name)) ~ c.+) map { case (f, rem) => (f +: rem).mkString }
 }
 
+sealed trait InspectOption
+object InspectOption
+{
+	final case class Details(actual: Boolean) extends InspectOption
+	case object DependencyTree extends InspectOption
+}
+
 trait Help
 {
 	def detail: Map[String, String]
