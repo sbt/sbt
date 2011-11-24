@@ -251,24 +251,14 @@ object Project extends Init[Scope] with ProjectExtra
 	def delegates(structure: BuildStructure, scope: Scope, key: AttributeKey[_]): Seq[ScopedKey[_]] =
 		structure.delegates(scope).map(d => ScopedKey(d, key))
 
+	def scopedKeyData(structure: BuildStructure, scope: Scope, key: AttributeKey[_]): Option[ScopedKeyData[_]] =
+		structure.data.get(scope, key) map { v => ScopedKeyData(ScopedKey(scope, key), v) }
+
 	def details(structure: BuildStructure, actual: Boolean, scope: Scope, key: AttributeKey[_])(implicit display: Show[ScopedKey[_]]): String =
 	{
 		val scoped = ScopedKey(scope,key)
-		lazy val clazz = key.manifest.erasure
-		lazy val firstType = key.manifest.typeArguments.head
-		val value =
-			structure.data.get(scope, key) match
-			{
-				case None => "No entry for key."
-				case Some(v) =>
-					if(clazz == classOf[Task[_]])
-						"Task: " + firstType.toString
-					else if(clazz == classOf[InputTask[_]])
-						"Input task: " + firstType.toString
-					else
-						"Setting: " + key.manifest.toString + " = " + v.toString
-			}
-
+		
+		val data = scopedKeyData(structure, scope, key) map {_.description} getOrElse {"No entry for key."}
 		val description = key.description match { case Some(desc) => "Description:\n\t" + desc + "\n"; case None => "" }
 		val definedIn = structure.data.definingScope(scope, key) match {
 			case Some(sc) => "Provided by:\n\t" + Scope.display(sc, key.label) + "\n"
@@ -281,7 +271,7 @@ object Project extends Init[Scope] with ProjectExtra
 		def printScopes(label: String, scopes: Iterable[ScopedKey[_]]) =
 			if(scopes.isEmpty) "" else scopes.map(display.apply).mkString(label + ":\n\t", "\n\t", "\n")
 
-		value + "\n" +
+		data + "\n" +
 			description +
 			definedIn +
 			printScopes("Dependencies", depends) +
@@ -354,6 +344,21 @@ object Project extends Init[Scope] with ProjectExtra
 	// this is here instead of Scoped so that it is considered without need for import (because of Project.Initialize)
 	implicit def richInitializeTask[T](init: Initialize[Task[T]]): Scoped.RichInitializeTask[T] = new Scoped.RichInitializeTask(init)
 	implicit def richInitialize[T](i: Initialize[T]): Scoped.RichInitialize[T] = new Scoped.RichInitialize[T](i)
+}
+
+final case class ScopedKeyData[A](scoped: ScopedKey[A], value: Any)
+{
+	val key = scoped.key
+	val scope = scoped.scope
+	def typeName: String = fold("Task[%s]" format _, "InputTask[%s]" format _, key.manifest.toString)
+	def settingValue: Option[Any] = fold(_ => None, _ => None, Some(value))
+	def description: String = fold("Task: %s" format _, "Input task: %s" format _,
+		"Setting: %s = %s" format (key.manifest.toString, value.toString))
+	def fold[A](targ: OptManifest[_] => A, itarg: OptManifest[_] => A, s: => A): A =
+		taskTypeArg map {targ(_)} getOrElse {inputTaskTypeArg map {itarg(_)} getOrElse {s}}
+	private[this] def taskTypeArg = if (key.manifest.erasure == classOf[Task[_]]) Some(firstType) else None
+	private[this] def inputTaskTypeArg = if (key.manifest.erasure == classOf[InputTask[_]]) Some(firstType) else None
+	private[this] def firstType: OptManifest[_] = key.manifest.typeArguments.head
 }
 
 trait ProjectExtra
