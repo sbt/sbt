@@ -348,17 +348,18 @@ object Project extends Init[Scope] with ProjectExtra
 
 final case class ScopedKeyData[A](scoped: ScopedKey[A], value: Any)
 {
+	import Types.const
 	val key = scoped.key
 	val scope = scoped.scope
-	def typeName: String = fold("Task[%s]" format _, "InputTask[%s]" format _, key.manifest.toString)
-	def settingValue: Option[Any] = fold(_ => None, _ => None, Some(value))
-	def description: String = fold("Task: %s" format _, "Input task: %s" format _,
+	def typeName: String = fold(fmtMf("Task[%s]"), fmtMf("InputTask[%s]"), key.manifest.toString)
+	def settingValue: Option[Any] = fold(const(None), const(None), Some(value))
+	def description: String = fold(fmtMf("Task: %s"), fmtMf("Input task: %s"),
 		"Setting: %s = %s" format (key.manifest.toString, value.toString))
 	def fold[A](targ: OptManifest[_] => A, itarg: OptManifest[_] => A, s: => A): A =
-		taskTypeArg map {targ(_)} getOrElse {inputTaskTypeArg map {itarg(_)} getOrElse {s}}
-	private[this] def taskTypeArg = if (key.manifest.erasure == classOf[Task[_]]) Some(firstType) else None
-	private[this] def inputTaskTypeArg = if (key.manifest.erasure == classOf[InputTask[_]]) Some(firstType) else None
-	private[this] def firstType: OptManifest[_] = key.manifest.typeArguments.head
+		if (key.manifest.erasure == classOf[Task[_]]) targ(key.manifest.typeArguments.head)
+		else if (key.manifest.erasure == classOf[InputTask[_]]) itarg(key.manifest.typeArguments.head)
+		else s
+	def fmtMf(s: String): OptManifest[_] => String = s format _
 }
 
 trait ProjectExtra
