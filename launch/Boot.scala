@@ -10,9 +10,15 @@ object Boot
 {
 	def main(args: Array[String])
 	{
-		System.clearProperty("scala.home") // avoid errors from mixing Scala versions in the same JVM
-		CheckProxy()
-		run(args)
+		args match {
+			case Array("--version") =>
+				println("sbt launcher version " + Package.getPackage("xsbt.boot").getImplementationVersion)
+				exit(0)
+			case _ =>
+				System.clearProperty("scala.home") // avoid errors from mixing Scala versions in the same JVM
+				CheckProxy()
+				run(args)
+		}
 	}
 	// this arrangement is because Scala 2.7.7 does not properly optimize away
 	// the tail recursion in a catch statement
