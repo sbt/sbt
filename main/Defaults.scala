@@ -576,8 +576,18 @@ object Defaults extends BuildCommon
 
 	def transitiveDependencies(base: ProjectRef, structure: LoadedBuild, includeRoot: Boolean, classpath: Boolean = true, aggregate: Boolean = false): Seq[ProjectRef] =
 	{
-		val full = Dag.topologicalSort(base)(getDependencies(structure, classpath, aggregate))
-		if(includeRoot) full else full.dropRight(1)
+		def tdeps(enabled: Boolean, f: ProjectRef => Seq[ProjectRef]): Seq[ProjectRef] = 
+		{
+			val full = if(enabled) Dag.topologicalSort(base)(f) else Nil
+			if(includeRoot) full else full dropRight 1
+		}
+		def fullCp = tdeps(classpath, getDependencies(structure, classpath=true, aggregate=false))
+		def fullAgg = tdeps(aggregate, getDependencies(structure, classpath=false, aggregate=true))
+		(classpath, aggregate) match {
+			case (true, true) => (fullCp ++ fullAgg).distinct
+			case (true, false) => fullCp
+			case _ => fullAgg
+		}
 	}
 	def getDependencies(structure: LoadedBuild, classpath: Boolean = true, aggregate: Boolean = false): ProjectRef => Seq[ProjectRef] =
 		ref => Project.getProject(ref, structure).toList flatMap { p =>

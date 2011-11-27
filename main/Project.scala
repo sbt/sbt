@@ -207,7 +207,7 @@ object Project extends Init[Scope] with ProjectExtra
 	def setCond[T](key: AttributeKey[T], vopt: Option[T], attributes: AttributeMap): AttributeMap =
 		vopt match { case Some(v) => attributes.put(key, v); case None => attributes.remove(key) }
 	def makeSettings(settings: Seq[Setting[_]], delegates: Scope => Seq[Scope], scopeLocal: ScopedKey[_] => Seq[Setting[_]])(implicit display: Show[ScopedKey[_]]) =
-		translateCyclic( make(settings)(delegates, scopeLocal, display) )
+		make(settings)(delegates, scopeLocal, display)
 
 	def displayFull(scoped: ScopedKey[_]): String = Scope.display(scoped.scope, scoped.key.label)
 	def display(ref: Reference): String =
@@ -247,8 +247,6 @@ object Project extends Init[Scope] with ProjectExtra
 		val f = mapScope(g)
 		ss.map(_ mapReferenced f)
 	}
-	def translateCyclic[T](f: => T): T =
-		try { f } catch { case c: Dag.Cyclic => throw new MessageOnlyException(c.getMessage) }
 
 	def delegates(structure: BuildStructure, scope: Scope, key: AttributeKey[_]): Seq[ScopedKey[_]] =
 		structure.delegates(scope).map(d => ScopedKey(d, key))
