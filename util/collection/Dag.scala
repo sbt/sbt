@@ -60,6 +60,7 @@ object Dag
 		)
 	{
 		def this(value: Any) = this(value, value :: Nil, false)
+		override def toString = getMessage
 		def ::(a: Any): Cyclic = 
 			if(complete)
 				this
