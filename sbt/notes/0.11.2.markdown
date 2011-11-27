@@ -1,0 +1,3 @@
+sbt 0.11.2 is a bug fix release.  See [Changes](https://github.com/harrah/xsbt/wiki/Changes) for details.
+
+An important change is that the local Maven repository has been removed from the launcher's list of default repositories, which is used for obtaining sbt and Scala dependencies.  This is motivated by the high probability that including this repository was causing the problems some users have with the launcher not finding some dependencies.

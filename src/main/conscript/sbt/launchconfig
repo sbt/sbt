@@ -4,14 +4,13 @@
 [app]
   org: org.scala-tools.sbt
   name: sbt
-  version: read(sbt.version)[0.11.1]
+  version: read(sbt.version)[0.11.2]
   class: ${sbt.main.class-sbt.xMain}
   components: xsbti
   cross-versioned: true
 
 [repositories]
   local
-  maven-local
   typesafe-ivy-releases: http://repo.typesafe.com/typesafe/ivy-releases/, [organization]/[module]/[revision]/[type]s/[artifact](-[classifier]).[ext]
   maven-central
   scala-tools-releases
