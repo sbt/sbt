@@ -7,3 +7,5 @@ src_managed
 /ext
 .lib
 /template-project/project/boot
+*~
+
