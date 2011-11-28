@@ -16,46 +16,37 @@ object SettingGraph
 	{
 		val key = scoped.key
 		val scope = scoped.scope
-		
-		lazy val clazz = key.manifest.erasure
-		lazy val firstType = key.manifest.typeArguments.head
-		val (typeName: String, value: Option[_]) =
-			structure.data.get(scope, key) match {
-				case None => ("", None)
-				case Some(v) =>
-					if(clazz == classOf[Task[_]]) ("Task[" + firstType.toString + "]", None)
-					else if(clazz == classOf[InputTask[_]]) ("InputTask[" + firstType.toString + "]", None)
-					else (key.manifest.toString, Some(v))
-			}
-		
 		val definedIn = structure.data.definingScope(scope, key) map { sc => display(ScopedKey(sc, key)) }
 		val cMap = flattenLocals(compiled(structure.settings, false)(structure.delegates, structure.scopeLocal, display))
 		// val related = cMap.keys.filter(k => k.key == key && k.scope != scope)
 		val depends = cMap.get(scoped) match { case Some(c) => c.dependencies.toSet; case None => Set.empty }
 		// val reverse = reverseDependencies(cMap, scoped)
 	
-		SettingGraph(display(scoped), definedIn, typeName, value, key.description, basedir,
+		SettingGraph(display(scoped), definedIn,
+			Project.scopedKeyData(structure, scope, key),
+			key.description, basedir,
 			depends map { apply(structure, basedir, _, generation + 1) })
 	}
 }
 
 case class SettingGraph(name: String,
 	definedIn: Option[String],
-	typeName: String,
-	value: Option[Any],
+	data: Option[ScopedKeyData[_]],
 	description: Option[String],
 	basedir: File,
 	depends: Set[SettingGraph])
 {
-	def valueString: String =
-		value map {
-			case f: File => IO.relativize(basedir, f) getOrElse {f.toString}
-			case x => x.toString
-		} getOrElse {typeName}
-	
+	def dataString: String =
+		data map { d =>
+			d.settingValue map {
+				case f: File => IO.relativize(basedir, f) getOrElse {f.toString}
+				case x => x.toString
+			} getOrElse {d.typeName}
+		} getOrElse {""}
+
 	def dependsAscii: String = Graph.toAscii(this,
 		(x: SettingGraph) => x.depends.toSeq,
-	  (x: SettingGraph) => "%s = %s" format(x.definedIn getOrElse {""}, x.valueString))
+	  (x: SettingGraph) => "%s = %s" format(x.definedIn getOrElse {""}, x.dataString))
 }
 
 object Graph
