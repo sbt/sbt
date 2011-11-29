@@ -1,0 +1,18 @@
+
+{
+ "organization":"net.virtualvoid",
+ "name":"sbt-dependency-graph",
+ "version":"0.5.1",
+ "description":"An sbt plugin which allows to create a graphml file from the dependencies of the project.",
+ "site":"http://github.com/jrudolph/sbt-dependency-graph",
+ "tags":["dependency","graph","sbt-plugin","sbt"],
+ "docs":"http://github.com/jrudolph/sbt-dependency-graph",
+ "licenses": [{
+   "name": "Apache License 2.0",
+   "url": "https://github.com/jrudolph/sbt-dependency-graph/raw/master/LICENSE"
+  }],
+ "resolvers": ["http://scala-tools.org/repo-releases"],
+ "dependencies": [],
+ "scalas": ["2.9.1"],
+ "sbt": true
+}
