@@ -35,10 +35,10 @@ die() {
 }
 
 # todo - make this dynamic
-declare -r sbt_release_version=0.11.1
+declare -r sbt_release_version=0.11.2
 unset sbt_rc_version
 # declare -r sbt_rc_version=
-declare -r sbt_snapshot_version=0.11.2-SNAPSHOT
+declare -r sbt_snapshot_version=0.11.3-SNAPSHOT
 declare -r sbt_snapshot_baseurl="http://typesafe.artifactoryonline.com/typesafe/ivy-snapshots/org.scala-tools.sbt/sbt-launch/"
 
 declare -r default_java_opts="-Dfile.encoding=UTF8"
@@ -352,9 +352,9 @@ EOM
 
 # run sbt
 execRunner "$java_cmd" \
-  ${java_opts} \
   ${SBT_OPTS:-$default_sbt_opts} \
   $(get_mem_opts $sbt_mem) \
+  ${java_opts} \
   ${java_args[@]} \
   -jar "$sbt_jar" \
   "${sbt_commands[@]}" \
