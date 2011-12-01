@@ -21,18 +21,18 @@ import java.io.File
 import xml.{XML, Node}
 
 object IvyGraphMLDependencies extends App {
-  case class Module(organisation: String, name: String) {
-    def id: String = organisation+"."+name
+  case class Module(organisation: String, name: String, version: String) {
+    def id: String = organisation+"."+name+"-"+version
   }
   def transform(ivyReportFile: String, outputFile: String) {
     val doc = ConstructingParser.fromSource(io.Source.fromFile(ivyReportFile), false).document
 
-    val edges =
-      for (mod <- doc \ "dependencies" \ "module";
-           depModule = nodeFromElement(mod);
-           caller <- mod \ "revision" \ "caller";
-           callerModule = nodeFromElement(caller))
-        yield (callerModule, depModule)
+    val edges = for {
+        mod <- doc \ "dependencies" \ "module"
+        caller <- mod \ "revision" \ "caller"
+        callerModule = nodeFromElement(caller, caller.attribute("callerrev").get.text)
+        depModule = nodeFromElement(mod, caller.attribute("rev").get.text)
+      } yield (callerModule, depModule)
 
     val nodes = edges.flatMap(e => Seq(e._1, e._2)).distinct
 
@@ -63,8 +63,8 @@ object IvyGraphMLDependencies extends App {
 
     XML.save(outputFile, xml)
   }
-  def nodeFromElement(element: Node): Module =
-    Module(element.attribute("organisation").get.text, element.attribute("name").get.text)
+  def nodeFromElement(element: Node, version: String): Module =
+    Module(element.attribute("organisation").get.text, element.attribute("name").get.text, version)
 
   def die(msg: String): Nothing = {
     println(msg)
