@@ -35,16 +35,16 @@ die() {
 }
 
 # todo - make this dynamic
-declare -r sbt_release_version=0.11.0
+declare -r sbt_release_version=0.11.2
 unset sbt_rc_version
 # declare -r sbt_rc_version=
-declare -r sbt_snapshot_version=0.11.1-SNAPSHOT
+declare -r sbt_snapshot_version=0.11.3-SNAPSHOT
 declare -r sbt_snapshot_baseurl="http://typesafe.artifactoryonline.com/typesafe/ivy-snapshots/org.scala-tools.sbt/sbt-launch/"
 
 declare -r default_java_opts="-Dfile.encoding=UTF8"
 declare -r default_sbt_opts="-XX:+CMSClassUnloadingEnabled"
 declare -r default_sbt_mem=1536
-declare -r noshare_opts="-Dsbt.global.base=project/.sbt -Dsbt.boot.directory=project/.boot -Dsbt.ivy.home=project/.ivy"
+declare -r noshare_opts="-Dsbt.global.base=project/.sbtboot -Dsbt.boot.directory=project/.boot -Dsbt.ivy.home=project/.ivy"
 declare -r sbt_opts_file=".sbtopts"
 declare -r latest_28="2.8.2"
 declare -r latest_29="2.9.1"
@@ -215,6 +215,7 @@ Usage: $script_name [options]
   -ivy      <path>  path to local Ivy repository (default: ~/.ivy2)
   -mem   <integer>  set memory options (default: $sbt_mem, which is $(get_mem_opts $sbt_mem))
   -no-share         use all local caches; no sharing
+  -offline          put sbt in offline mode
 
   # sbt version (default: from project/build.properties if present, else latest release)
   -sbt-version  <version>   use the specified version of sbt
@@ -279,6 +280,7 @@ process_args ()
       -sbt-boot) addJava "-Dsbt.boot.directory=$2"; shift 2 ;;
        -sbt-dir) addJava "-Dsbt.global.base=$2"; shift 2 ;;
      -debug-inc) addJava "-Dxsbt.inc.debug=true"; shift ;;
+       -offline) addSbt "set offline := true"; shift ;;
 
     -sbt-create) sbt_create=true; shift ;;
         -sbt-rc) [[ -n "$sbt_rc_version" ]] || die "no sbt RC candidate defined."; sbt_version=$sbt_rc_version; shift ;;
@@ -350,9 +352,9 @@ EOM
 
 # run sbt
 execRunner "$java_cmd" \
-  ${java_opts} \
   ${SBT_OPTS:-$default_sbt_opts} \
   $(get_mem_opts $sbt_mem) \
+  ${java_opts} \
   ${java_args[@]} \
   -jar "$sbt_jar" \
   "${sbt_commands[@]}" \
