@@ -24,7 +24,7 @@ get_mem_opts () {
   local perm=$(( $mem / 4 ))
   (( $perm > 256 )) || perm=256
   (( $perm < 1024 )) || perm=1024
-  local codecache=$(( $perm / 8 ))
+  local codecache=$(( $perm / 2 ))
   
   echo "-Xms${mem}m -Xmx${mem}m -XX:MaxPermSize=${perm}m -XX:ReservedCodeCacheSize=${codecache}m"
 }
