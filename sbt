@@ -205,17 +205,18 @@ usage () {
   cat <<EOM
 Usage: $script_name [options]
 
-  -h | -help        print this message
-  -v | -verbose     this runner is chattier
-  -d | -debug       set sbt log level to debug
-  -no-colors        disable ANSI color codes
-  -sbt-create       start sbt even if current directory contains no sbt project
-  -sbt-dir  <path>  path to global settings/plugins directory (default: ~/.sbt)
-  -sbt-boot <path>  path to shared boot directory (default: ~/.sbt/boot in 0.11 series)
-  -ivy      <path>  path to local Ivy repository (default: ~/.ivy2)
-  -mem   <integer>  set memory options (default: $sbt_mem, which is $(get_mem_opts $sbt_mem))
-  -no-share         use all local caches; no sharing
-  -offline          put sbt in offline mode
+  -h | -help         print this message
+  -v | -verbose      this runner is chattier
+  -d | -debug        set sbt log level to debug
+  -no-colors         disable ANSI color codes
+  -sbt-create        start sbt even if current directory contains no sbt project
+  -sbt-dir   <path>  path to global settings/plugins directory (default: ~/.sbt)
+  -sbt-boot  <path>  path to shared boot directory (default: ~/.sbt/boot in 0.11 series)
+  -ivy       <path>  path to local Ivy repository (default: ~/.ivy2)
+  -mem    <integer>  set memory options (default: $sbt_mem, which is $(get_mem_opts $sbt_mem))
+  -no-share          use all local caches; no sharing
+  -offline           put sbt in offline mode
+  -jvm-debug <port>  Turn on JVM debugging, open at the given port.
 
   # sbt version (default: from project/build.properties if present, else latest release)
   -sbt-version  <version>   use the specified version of sbt
@@ -281,6 +282,7 @@ process_args ()
        -sbt-dir) addJava "-Dsbt.global.base=$2"; shift 2 ;;
      -debug-inc) addJava "-Dxsbt.inc.debug=true"; shift ;;
        -offline) addSbt "set offline := true"; shift ;;
+     -jvm-debug) addJava "-Xdebug -Xrunjdwp:transport=dt_socket,server=y,suspend=n,address=$2"; shift 2 ;;
 
     -sbt-create) sbt_create=true; shift ;;
         -sbt-rc) [[ -n "$sbt_rc_version" ]] || die "no sbt RC candidate defined."; sbt_version=$sbt_rc_version; shift ;;
