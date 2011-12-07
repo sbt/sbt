@@ -109,8 +109,11 @@ execRunner () {
 echoerr () {
   echo 1>&2 "$@"
 }
-dlog () {
+vlog () {
   [[ $verbose || $debug ]] && echoerr "$@"
+}
+dlog () {
+  [[ $debug ]] && echoerr "$@"
 }
 
 sbtjar_07_url () {
@@ -260,8 +263,9 @@ addResidual () {
 addResolver () {
   addSbt "set resolvers in ThisBuild += $1"
 }
+unset addedSnapshotRepo
 addSnapshotRepo () {
-  addResolver "ScalaToolsSnapshots"
+  [[ -n "$addedSnapshotRepo" ]] || addResolver "ScalaToolsSnapshots" && addedSnapshotRepo=true
 }
 
 process_args ()
