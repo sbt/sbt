@@ -46,6 +46,7 @@ declare -r default_sbt_opts="-XX:+CMSClassUnloadingEnabled"
 declare -r default_sbt_mem=1536
 declare -r noshare_opts="-Dsbt.global.base=project/.sbtboot -Dsbt.boot.directory=project/.boot -Dsbt.ivy.home=project/.ivy"
 declare -r sbt_opts_file=".sbtopts"
+declare -r etc_sbt_opts_file="/etc/sbt/sbtopts"
 declare -r latest_28="2.8.2"
 declare -r latest_29="2.9.1"
 declare -r latest_210="2.10.0-SNAPSHOT"
@@ -309,8 +310,13 @@ process_args ()
   }
 }
 
-# if .sbtopts exists, prepend its contents to $@ so it can be processed by this runner
-[[ -f "$sbt_opts_file" ]] && set -- $(cat "$sbt_opts_file") "$@"
+loadConfigFile() {
+  cat "$1" | sed '/^\#/d'
+}
+
+# if sbtopts files exist, prepend their contents to $@ so it can be processed by this runner
+[[ -f "$etc_sbt_opts_file" ]] && set -- $(loadConfigFile "$etc_sbt_opts_file") "$@"
+[[ -f "$sbt_opts_file" ]] && set -- $(loadConfigFile "$sbt_opts_file") "$@"
 
 # process the combined args, then reset "$@" to the residuals
 process_args "$@"

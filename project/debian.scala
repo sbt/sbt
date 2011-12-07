@@ -84,7 +84,7 @@ object DebianPkg {
   final val ControlFileContent = """Section: java
 Priority: optional
 Architecture: all
-Depends:   curl, java2-runtime, bash (>= 2.05a-11)
+Depends:   curl, java2-runtime, bash, sed
 Recommends: git
 Maintainer: Josh Suereth <joshua.suereth@typesafe.com>
 Description: Simple Build Tool
