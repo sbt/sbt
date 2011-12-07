@@ -29,6 +29,10 @@ get_mem_opts () {
   echo "-Xms${mem}m -Xmx${mem}m -XX:MaxPermSize=${perm}m -XX:ReservedCodeCacheSize=${codecache}m"
 }
 
+is_owned_by_user () {
+  [[ "$(stat --printf='%U' $1)" == "$(USER)" ]] && { echo "OK" ; return; }
+}
+
 die() {
   echo "Aborting: $@"
   exit 1
@@ -52,7 +56,11 @@ declare -r latest_29="2.9.1"
 declare -r latest_210="2.10.0-SNAPSHOT"
 
 declare -r script_path=$(get_script_path "$BASH_SOURCE")
-declare -r script_dir="$(dirname $script_path)"
+if test -z "$HOME"; then
+  declare -r script_dir="$(dirname $script_path)"
+else
+  declare -r script_dir="$HOME/.sbt"
+fi
 declare -r script_name="$(basename $script_path)"
 
 declare java_cmd=java
