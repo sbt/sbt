@@ -268,9 +268,18 @@ unset addedSnapshotRepo
 addSnapshotRepo () {
   [[ -n "$addedSnapshotRepo" ]] || addResolver "ScalaToolsSnapshots" && addedSnapshotRepo=true
 }
+addDebugger () {
+  addJava "-Xdebug -Xrunjdwp:transport=dt_socket,server=y,suspend=n,address=$1"
+}
 
 process_args ()
 {
+  require_arg () {
+    if [[ $1 -lt 2 ]]; then
+      echoerr "$2 requires argument: $3"
+      exit 1
+    fi
+  }
   while [[ $# -gt 0 ]]; do
     case "$1" in
        -h|-help) usage; exit 1 ;;
@@ -278,24 +287,24 @@ process_args ()
       -d|-debug) debug=1; shift ;;
     # -u|-upgrade) addSbt 'set sbt.version 0.7.7' ; addSbt reload ; shift ;;
 
-           -ivy) addJava "-Dsbt.ivy.home=$2"; shift 2 ;;
-           -mem) sbt_mem="$2"; shift 2 ;;
+           -ivy) require_arg $# "$1" path && addJava "-Dsbt.ivy.home=$2"; shift 2 ;;
+           -mem) require_arg $# "$1" integer && sbt_mem="$2"; shift 2 ;;
      -no-colors) addJava "-Dsbt.log.noformat=true"; shift ;;
       -no-share) addJava "$noshare_opts"; shift ;;
-      -sbt-boot) addJava "-Dsbt.boot.directory=$2"; shift 2 ;;
-       -sbt-dir) addJava "-Dsbt.global.base=$2"; shift 2 ;;
+      -sbt-boot) require_arg $# "$1" path && addJava "-Dsbt.boot.directory=$2"; shift 2 ;;
+       -sbt-dir) require_arg $# "$1" path && addJava "-Dsbt.global.base=$2"; shift 2 ;;
      -debug-inc) addJava "-Dxsbt.inc.debug=true"; shift ;;
        -offline) addSbt "set offline := true"; shift ;;
-     -jvm-debug) addJava "-Xdebug -Xrunjdwp:transport=dt_socket,server=y,suspend=n,address=$2"; shift 2 ;;
+     -jvm-debug) require_arg $# "$1" port && addDebugger $2 && shift 2 ;;
 
     -sbt-create) sbt_create=true; shift ;;
         -sbt-rc) [[ -n "$sbt_rc_version" ]] || die "no sbt RC candidate defined."; sbt_version=$sbt_rc_version; shift ;;
   -sbt-snapshot) addSnapshotRepo ; sbt_version=$sbt_snapshot_version; shift ;;
-       -sbt-jar) sbt_jar="$2"; shift 2 ;;
-   -sbt-version) sbt_version="$2"; shift 2 ;;
- -scala-version) addSbt "++ $2"; shift 2 ;;
-    -scala-home) addSbt "set scalaHome in ThisBuild := Some(file(\"$2\"))"; shift 2 ;;
-     -java-home) java_cmd="$2/bin/java"; shift 2 ;;
+       -sbt-jar) require_arg $# "$1" path && sbt_jar="$2"; shift 2 ;;
+   -sbt-version) require_arg $# "$1" version && sbt_version="$2"; shift 2 ;;
+ -scala-version) require_arg $# "$1" version && addSbt "++ $2"; shift 2 ;;
+    -scala-home) require_arg $# "$1" path && addSbt "set scalaHome in ThisBuild := Some(file(\"$2\"))"; shift 2 ;;
+     -java-home) require_arg $# "$1" path && java_cmd="$2/bin/java"; shift 2 ;;
 
             -D*) addJava "$1"; shift ;;
             -J*) addJava "${1:2}"; shift ;;
