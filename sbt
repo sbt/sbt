@@ -275,44 +275,47 @@ addDebugger () {
 process_args ()
 {
   require_arg () {
-    if [[ $1 -lt 2 ]]; then
-      echoerr "$2 requires argument: $3"
-      exit 1
+    local type="$1"
+    local opt="$2"
+    local arg="$3"
+    
+    if [[ -z "$arg" ]] || [[ "${arg:0:1}" == "-" ]]; then
+      die "$opt requires <$type> argument"
     fi
   }
   while [[ $# -gt 0 ]]; do
     case "$1" in
        -h|-help) usage; exit 1 ;;
-    -v|-verbose) verbose=1; shift ;;
-      -d|-debug) debug=1; shift ;;
-    # -u|-upgrade) addSbt 'set sbt.version 0.7.7' ; addSbt reload ; shift ;;
+    -v|-verbose) verbose=1 && shift ;;
+      -d|-debug) debug=1 && shift ;;
+    # -u|-upgrade) addSbt 'set sbt.version 0.7.7' ; addSbt reload  && shift ;;
 
-           -ivy) require_arg $# "$1" path && addJava "-Dsbt.ivy.home=$2"; shift 2 ;;
-           -mem) require_arg $# "$1" integer && sbt_mem="$2"; shift 2 ;;
-     -no-colors) addJava "-Dsbt.log.noformat=true"; shift ;;
-      -no-share) addJava "$noshare_opts"; shift ;;
-      -sbt-boot) require_arg $# "$1" path && addJava "-Dsbt.boot.directory=$2"; shift 2 ;;
-       -sbt-dir) require_arg $# "$1" path && addJava "-Dsbt.global.base=$2"; shift 2 ;;
-     -debug-inc) addJava "-Dxsbt.inc.debug=true"; shift ;;
-       -offline) addSbt "set offline := true"; shift ;;
-     -jvm-debug) require_arg $# "$1" port && addDebugger $2 && shift 2 ;;
+           -ivy) require_arg path "$1" "$2" && addJava "-Dsbt.ivy.home=$2" && shift 2 ;;
+           -mem) require_arg integer "$1" "$2" && sbt_mem="$2" && shift 2 ;;
+     -no-colors) addJava "-Dsbt.log.noformat=true" && shift ;;
+      -no-share) addJava "$noshare_opts" && shift ;;
+      -sbt-boot) require_arg path "$1" "$2" && addJava "-Dsbt.boot.directory=$2" && shift 2 ;;
+       -sbt-dir) require_arg path "$1" "$2" && addJava "-Dsbt.global.base=$2" && shift 2 ;;
+     -debug-inc) addJava "-Dxsbt.inc.debug=true" && shift ;;
+       -offline) addSbt "set offline := true" && shift ;;
+     -jvm-debug) require_arg port "$1" "$2" && addDebugger $2 && shift 2 ;;
 
-    -sbt-create) sbt_create=true; shift ;;
-        -sbt-rc) [[ -n "$sbt_rc_version" ]] || die "no sbt RC candidate defined."; sbt_version=$sbt_rc_version; shift ;;
-  -sbt-snapshot) addSnapshotRepo ; sbt_version=$sbt_snapshot_version; shift ;;
-       -sbt-jar) require_arg $# "$1" path && sbt_jar="$2"; shift 2 ;;
-   -sbt-version) require_arg $# "$1" version && sbt_version="$2"; shift 2 ;;
- -scala-version) require_arg $# "$1" version && addSbt "++ $2"; shift 2 ;;
-    -scala-home) require_arg $# "$1" path && addSbt "set scalaHome in ThisBuild := Some(file(\"$2\"))"; shift 2 ;;
-     -java-home) require_arg $# "$1" path && java_cmd="$2/bin/java"; shift 2 ;;
+    -sbt-create) sbt_create=true && shift ;;
+        -sbt-rc) [[ -n "$sbt_rc_version" ]] || die "no sbt RC candidate defined."; sbt_version=$sbt_rc_version && shift ;;
+  -sbt-snapshot) addSnapshotRepo ; sbt_version=$sbt_snapshot_version && shift ;;
+       -sbt-jar) require_arg path "$1" "$2" && sbt_jar="$2" && shift 2 ;;
+   -sbt-version) require_arg version "$1" "$2" && sbt_version="$2" && shift 2 ;;
+ -scala-version) require_arg version "$1" "$2" && addSbt "++ $2" && shift 2 ;;
+    -scala-home) require_arg path "$1" "$2" && addSbt "set scalaHome in ThisBuild := Some(file(\"$2\"))" && shift 2 ;;
+     -java-home) require_arg path "$1" "$2" && java_cmd="$2/bin/java" && shift 2 ;;
 
-            -D*) addJava "$1"; shift ;;
-            -J*) addJava "${1:2}"; shift ;;
-            -28) addSbt "++ $latest_28"; shift ;;
-            -29) addSbt "++ $latest_29"; shift ;;
-           -210) addSnapshotRepo ; addSbt "++ $latest_210"; shift ;;
+            -D*) addJava "$1" && shift ;;
+            -J*) addJava "${1:2}" && shift ;;
+            -28) addSbt "++ $latest_28" && shift ;;
+            -29) addSbt "++ $latest_29" && shift ;;
+           -210) addSnapshotRepo ; addSbt "++ $latest_210" && shift ;;
 
-              *) addResidual "$1"; shift ;;
+              *) addResidual "$1" && shift ;;
     esac
   done
   
