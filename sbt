@@ -66,6 +66,7 @@ unset verbose debug
 # pull -J and -D options to give to java.
 declare -a residual_args
 declare -a java_args
+declare -a scalac_args
 declare -a sbt_commands
 
 build_props_sbt () {
@@ -243,6 +244,7 @@ Usage: $script_name [options]
   .sbtopts      if this file exists in the sbt root, it is prepended to the runner args
   -Dkey=val     pass -Dkey=val directly to the java runtime
   -J-X          pass option -X directly to the java runtime (-J is stripped)
+  -S-X          add -X to sbt's scalacOptions (-J is stripped)
 
 In the case of duplicated or conflicting options, the order above
 shows precedence: JAVA_OPTS lowest, command line options highest.
@@ -256,6 +258,10 @@ addJava () {
 addSbt () {
   dlog "[addSbt] arg = '$1'"
   sbt_commands=( "${sbt_commands[@]}" "$1" )
+}
+addScalac () {
+  dlog "[addScalac] arg = '$1'"
+  scalac_args=( "${scalac_args[@]}" "$1" )
 }
 addResidual () {
   dlog "[residual] arg = '$1'"
@@ -311,6 +317,7 @@ process_args ()
 
             -D*) addJava "$1" && shift ;;
             -J*) addJava "${1:2}" && shift ;;
+            -S*) addScalac "${1:2}" && shift ;;
             -28) addSbt "++ $latest_28" && shift ;;
             -29) addSbt "++ $latest_29" && shift ;;
            -210) addSnapshotRepo ; addSbt "++ $latest_210" && shift ;;
@@ -334,6 +341,9 @@ process_args ()
 process_args "$@"
 set -- "${residual_args[@]}"
 argumentCount=$#
+
+# set scalacOptions if we were given any -S opts
+[[ ${#scalac_args[@]} -eq 0 ]] || addSbt "set scalacOptions in ThisBuild += \"${scalac_args[@]}\""
 
 # figure out the version
 [[ "$sbt_version" ]] || sbt_version=$(build_props_sbt)
