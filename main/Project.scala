@@ -34,7 +34,7 @@ sealed trait ProjectDefinition[PR <: ProjectReference]
 sealed trait Project extends ProjectDefinition[ProjectReference]
 {
 	def copy(id: String = id, base: File = base, aggregate: => Seq[ProjectReference] = aggregate, dependencies: => Seq[ClasspathDep[ProjectReference]] = dependencies, delegates: => Seq[ProjectReference] = delegates,
-		settings: Seq[Project.Setting[_]] = settings, configurations: Seq[Configuration] = configurations): Project =
+		settings: => Seq[Project.Setting[_]] = settings, configurations: Seq[Configuration] = configurations): Project =
 			Project(id, base, aggregate = aggregate, dependencies = dependencies, delegates = delegates, settings, configurations)
 
 	def resolve(resolveRef: ProjectReference => ProjectRef): ResolvedProject =
