@@ -149,6 +149,8 @@ object Project extends Init[Scope] with ProjectExtra
 	def defaultSettings: Seq[Setting[_]] = Defaults.defaultSettings
 
 	final class Constructor(p: ProjectReference) {
+		def %(conf: Configuration): ClasspathDependency = %(conf.name)
+
 		def %(conf: String): ClasspathDependency = new ClasspathDependency(p, Some(conf))
 	}
 
