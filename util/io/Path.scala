@@ -27,7 +27,7 @@ final class RichFile(val asFile: File)
 	/** The wrapped file converted to a <code>URL</code>.*/
 	def asURL = asFile.toURI.toURL
 	def absolutePath: String = asFile.getAbsolutePath
-	
+
 	/** The last component of this path.*/
 	def name = asFile.getName
 	/** The extension part of the name of this path.  This is the part of the name after the last period, or the empty string if there is no period.*/
@@ -59,18 +59,18 @@ trait PathExtra extends Alternatives with Mapper with PathLow
 	implicit def richFile(file: File): RichFile = new RichFile(file)
 	implicit def filesToFinder(cc: Traversable[File]): PathFinder = PathFinder.strict(cc)
 }
-object Path extends PathExtra 
+object Path extends PathExtra
 {
 	def apply(f: File): RichFile = new RichFile(f)
 	def apply(f: String): RichFile = new RichFile(new File(f))
 	def fileProperty(name: String): File = new File(System.getProperty(name))
 	def userHome: File = fileProperty("user.home")
-	
+
 	def absolute(file: File): File = new File(file.toURI.normalize).getAbsoluteFile
 	def makeString(paths: Seq[File]): String = makeString(paths, pathSeparator)
 	def makeString(paths: Seq[File], sep: String): String = paths.map(_.getAbsolutePath).mkString(sep)
 	def newerThan(a: File, b: File): Boolean = a.exists && (!b.exists || a.lastModified > b.lastModified)
-	
+
 	/** The separator character of the platform.*/
 	val sep = java.io.File.separatorChar
 
@@ -125,8 +125,8 @@ sealed abstract class PathFinder
 	/** Excludes all paths from <code>excludePaths</code> from the paths selected by this <code>PathFinder</code>.*/
 	def ---(excludePaths: PathFinder): PathFinder = new ExcludeFiles(this, excludePaths)
 	/** Constructs a new finder that selects all paths with a name that matches <code>filter</code> and are
-	* descendents of paths selected by this finder.*/
-	def **(filter: FileFilter): PathFinder = new DescendentOrSelfPathFinder(this, filter)
+	* descendants of paths selected by this finder.*/
+	def **(filter: FileFilter): PathFinder = new DescendantOrSelfPathFinder(this, filter)
 	def *** : PathFinder = **(AllPassFilter)
 	/** Constructs a new finder that selects all paths with a name that matches <code>filter</code> and are
 	* immediate children of paths selected by this finder.*/
@@ -148,13 +148,16 @@ sealed abstract class PathFinder
 		for(file <- get; mapped <- apply(file)) yield (file, mapped)
 	}
 
-	/** Selects all descendent paths with a name that matches <code>include</code> and do not have an intermediate
+	/** Selects all descendant paths with a name that matches <code>include</code> and do not have an intermediate
 	* path with a name that matches <code>intermediateExclude</code>.  Typical usage is:
 	*
-	* <code>descendentsExcept("*.jar", ".svn")</code>*/
-	def descendentsExcept(include: FileFilter, intermediateExclude: FileFilter): PathFinder =
+	* <code>descendantsExcept("*.jar", ".svn")</code>*/
+	def descendantsExcept(include: FileFilter, intermediateExclude: FileFilter): PathFinder =
 		(this ** include) --- (this ** intermediateExclude ** include)
-	
+	@deprecated("Use `descendantsExcept` instead.", "0.11.3")
+	def descendentsExcept(include: FileFilter, intermediateExclude: FileFilter): PathFinder =
+		descendantsExcept(include, intermediateExclude)
+
 	/** Evaluates this finder and converts the results to a `Seq` of distinct `File`s.  The files returned by this method will reflect the underlying filesystem at the
 	* time of calling.  If the filesystem changes, two calls to this method might be different.*/
 	final def get: Seq[File] =
@@ -193,12 +196,12 @@ private abstract class FilterFiles extends PathFinder with FileFilter
 	def parent: PathFinder
 	def filter: FileFilter
 	final def accept(file: File) = filter.accept(file)
-	
+
 	protected def handleFile(file: File, fileSet: mutable.Set[File]): Unit =
 		for(matchedFile <- wrapNull(file.listFiles(this)))
 			fileSet += new File(file, matchedFile.getName)
 }
-private class DescendentOrSelfPathFinder(val parent: PathFinder, val filter: FileFilter) extends FilterFiles
+private class DescendantOrSelfPathFinder(val parent: PathFinder, val filter: FileFilter) extends FilterFiles
 {
 	private[sbt] def addTo(fileSet: mutable.Set[File])
 	{
@@ -206,14 +209,14 @@ private class DescendentOrSelfPathFinder(val parent: PathFinder, val filter: Fil
 		{
 			if(accept(file))
 				fileSet += file
-			handleFileDescendent(file, fileSet)
+			handleFileDescendant(file, fileSet)
 		}
 	}
-	private def handleFileDescendent(file: File, fileSet: mutable.Set[File])
+	private def handleFileDescendant(file: File, fileSet: mutable.Set[File])
 	{
 		handleFile(file, fileSet)
 		for(childDirectory <- wrapNull(file listFiles DirectoryFilter))
-			handleFileDescendent(new File(file, childDirectory.getName), fileSet)
+			handleFileDescendant(new File(file, childDirectory.getName), fileSet)
 	}
 }
 private class ChildPathFinder(val parent: PathFinder, val filter: FileFilter) extends FilterFiles
@@ -236,10 +239,10 @@ private class ExcludeFiles(include: PathFinder, exclude: PathFinder) extends Pat
 	{
 		val includeSet = new mutable.LinkedHashSet[File]
 		include.addTo(includeSet)
-		
+
 		val excludeSet = new mutable.HashSet[File]
 		exclude.addTo(excludeSet)
-		
+
 		includeSet --= excludeSet
 		pathSet ++= includeSet
 	}
