@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ivy-module version="2.0">
+    <info organisation="org.scala-tools.sbt" module=""/>
+    <dependencies>
+        <dependency org="org.apache.ivy" name="ivy" rev="[2.2.0,)"/>
+        <dependency org="jline" name="jline" rev="[0.9.94,)"/>
+        <dependency org="org.scala-tools.sbinary" name="sbinary_2.9.0" rev="[0.4.0,)"/>
+        <dependency org="org.scala-tools.testing" name="test-interface" rev="[0.5,)"/>
+        <dependency org="org.scala-tools.testing" name="scalacheck_2.9.1" rev="[1.9,)"/>
+    </dependencies>
+</ivy-module>
