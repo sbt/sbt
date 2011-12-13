@@ -34,7 +34,7 @@ object Command
 
 	def make(name: String, briefHelp: (String, String), detail: String)(parser: State => Parser[() => State]): Command =
 		make(name, Help(name, briefHelp, detail) )(parser)
-	def make(name: String, help: Help)(parser: State => Parser[() => State]): Command  =  new SimpleCommand(name, help, parser, AttributeMap.empty)
+	def make(name: String, help: Help = Help.empty)(parser: State => Parser[() => State]): Command  =  new SimpleCommand(name, help, parser, AttributeMap.empty)
 
 	def apply[T](name: String, briefHelp: (String, String), detail: String)(parser: State => Parser[T])(effect: (State,T) => State): Command =
 		apply(name, Help(name, briefHelp, detail) )(parser)(effect)

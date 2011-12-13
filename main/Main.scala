@@ -26,9 +26,9 @@ final class xMain extends xsbti.AppMain
 	def run(configuration: xsbti.AppConfiguration): xsbti.MainResult =
 	{
 		import BuiltinCommands.{initialAttributes, initialize, defaults, DefaultBootCommands}
-		import CommandSupport.{DefaultsCommand, InitCommand}
+		import CommandSupport.{BootCommand, DefaultsCommand, InitCommand}
 		val initialCommandDefs = Seq(initialize, defaults)
-		val commands = DefaultsCommand +: InitCommand +: (DefaultBootCommands ++ configuration.arguments.map(_.trim))
+		val commands = DefaultsCommand +: InitCommand +: BootCommand +: configuration.arguments.map(_.trim)
 		val state = State( configuration, initialCommandDefs, Set.empty, None, commands, State.newHistory, initialAttributes, State.Continue )
 		MainLoop.runLogged(state)
 	}
@@ -135,9 +135,10 @@ object BuiltinCommands
 	def ConsoleCommands: Seq[Command] = Seq(ignore, exit, IvyConsole.command, act, nop)
 	def ScriptCommands: Seq[Command] = Seq(ignore, exit, Script.command, act, nop)
 	def DefaultCommands: Seq[Command] = Seq(ignore, help, about, reboot, read, history, continuous, exit, loadProject, loadProjectImpl, loadFailed, Cross.crossBuild, Cross.switchVersion,
-		projects, project, setOnFailure, clearOnFailure, ifLast, multi, shell, set, tasks, inspect, eval, alias, append, last, lastGrep, nop, sessionCommand, act)
+		projects, project, setOnFailure, clearOnFailure, ifLast, multi, shell, set, tasks, inspect, eval, alias, append, last, lastGrep, boot, nop, sessionCommand, act)
 	def DefaultBootCommands: Seq[String] = LoadProject :: (IfLast + " " + Shell) :: Nil
 
+	def boot = Command.make(BootCommand)(bootParser)
 	def nop = Command.custom(s => success(() => s))
 	def ignore = Command.command(FailureWall)(idFun)
 
@@ -153,6 +154,12 @@ object BuiltinCommands
 		val helpCommands = h.detail.keySet
 		val args = (token(Space) ~> token( NotSpace examples helpCommands  )).*
 		applyEffect(args)(runHelp(s, h))
+	}
+	// This parser schedules the default boot commands unless overridden by an alias
+	def bootParser(s: State) =
+	{
+		val orElse = () => DefaultBootCommands ::: s
+		delegateToAlias(BootCommand, success(orElse) )(s)
 	}
 	
 	def runHelp(s: State, h: Help)(args: Seq[String]): State =
@@ -261,13 +268,15 @@ object BuiltinCommands
 	}
 
 	def multiParser(s: State): Parser[Seq[String]] =
-		( token(';' ~> OptSpace) flatMap { _ => matched(s.combinedParser | token(charClass(_ != ';').+, hide= const(true))) <~ token(OptSpace) } map (_.trim) ).+
+		( token(';' ~> OptSpace) flatMap { _ => combinedLax(s, charClass(_ != ';').+) <~ token(OptSpace) } map (_.trim) ).+
 	def multiApplied(s: State) = 
 		Command.applyEffect( multiParser(s) )( _ ::: s )
 
 	def multi = Command.custom(multiApplied, Help(Multi, MultiBrief, MultiDetailed) )
 	
-	lazy val otherCommandParser = (s: State) => token(OptSpace ~> matched(s.combinedParser) )
+	lazy val otherCommandParser = (s: State) => token(OptSpace ~> combinedLax(s, any.+) )
+	def combinedLax(s: State, any: Parser[_]): Parser[String] = 
+		matched(s.combinedParser | token(any, hide= const(true)))
 
 	def ifLast = Command(IfLast, IfLastBrief, IfLastDetailed)(otherCommandParser) { (s, arg) =>
 		if(s.remainingCommands.isEmpty) arg :: s else s
@@ -586,6 +595,12 @@ object BuiltinCommands
 		Command.make(name, (name, "'" + value + "'"), "Alias of '" + value + "'")(aliasBody(name, value)).tag(CommandAliasKey, (name, value))
 	def aliasBody(name: String, value: String)(state: State): Parser[() => State] =
 		OptSpace ~> Parser(Command.combine(removeAlias(state,name).definedCommands)(state))(value)
+
+	def delegateToAlias(name: String, orElse: Parser[() => State])(state: State): Parser[() => State] =
+		aliases(state, (nme,_) => nme == name).headOption match {
+			case None => orElse
+			case Some((n,v)) => aliasBody(n,v)(state)
+		}
 
 	val CommandAliasKey = AttributeKey[(String,String)]("is-command-alias", "Internal: marker for Commands created as aliases for another command.")
 }
