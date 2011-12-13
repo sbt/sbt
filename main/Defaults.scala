@@ -702,9 +702,9 @@ object Classpaths
 			case (Some(delegated), Seq()) => delegated
 			case (_, rs) => task { Resolver.withDefaultResolvers(rs) }
 		},
-		fullResolvers <<= (projectResolver,externalResolvers,sbtPlugin,sbtResolver) map { (pr,rs,isPlugin,sr) =>
-			val base = pr +: rs
-			if(isPlugin) sr +: base else base
+		fullResolvers <<= (projectResolver,externalResolvers,sbtPlugin,sbtResolver) map { (proj,rs,isPlugin,sbtr) =>
+			val base = if(isPlugin) sbtr +: rs else rs
+			proj +: base
 		},
 		offline in GlobalScope :== false,
 		moduleName <<= normalizedName,
