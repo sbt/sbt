@@ -268,7 +268,11 @@ object BuiltinCommands
 	}
 
 	def multiParser(s: State): Parser[Seq[String]] =
-		( token(';' ~> OptSpace) flatMap { _ => combinedLax(s, charClass(_ != ';').+) <~ token(OptSpace) } map (_.trim) ).+
+	{
+		val nonSemi = token(charClass(_ != ';').+, hide= const(true))
+		( token(';' ~> OptSpace) flatMap { _ => matched((s.combinedParser&nonSemi) | nonSemi) <~ token(OptSpace) } map (_.trim) ).+
+	}
+
 	def multiApplied(s: State) = 
 		Command.applyEffect( multiParser(s) )( _ ::: s )
 
