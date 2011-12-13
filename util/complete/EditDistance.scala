@@ -1,12 +1,14 @@
 package sbt.complete
 
+	import java.lang.Character.{toLowerCase => lower}
+
 /** @author Paul Phillips*/
 object EditDistance {
  /** Translated from the java version at
   *    http://www.merriampark.com/ld.htm
   *  which is declared to be public domain.
   */
- def levenshtein(s: String, t: String, insertCost: Int = 1, deleteCost: Int = 1, subCost: Int = 1, transposeCost: Int = 1, matchCost: Int = 0, transpositions: Boolean = false): Int = {
+ def levenshtein(s: String, t: String, insertCost: Int = 1, deleteCost: Int = 1, subCost: Int = 1, transposeCost: Int = 1, matchCost: Int = 0, caseCost: Int = 1, transpositions: Boolean = false): Int = {
    val n = s.length
    val m = t.length
    if (n == 0) return m
@@ -18,7 +20,7 @@ object EditDistance {
 
    for (i <- 1 to n ; val s_i = s(i - 1) ; j <- 1 to m) {
      val t_j   = t(j - 1)
-     val cost  = if (s_i == t_j) matchCost else subCost
+     val cost  = if (s_i == t_j) matchCost else if(lower(s_i) == lower(t_j)) caseCost else subCost
      val tcost  = if (s_i == t_j) matchCost else transposeCost
 	  
 
