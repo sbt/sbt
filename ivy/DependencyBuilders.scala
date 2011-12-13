@@ -46,6 +46,8 @@ final class GroupArtifactID private[sbt] (groupID: String, artifactID: String, c
 }
 final class ModuleIDConfigurable private[sbt] (moduleID: ModuleID)
 {
+	def % (configuration: Configuration): ModuleID = %(configuration.name)
+
 	def % (configurations: String): ModuleID =
 	{
 		nonEmpty(configurations, "Configurations")
