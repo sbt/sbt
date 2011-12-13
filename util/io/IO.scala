@@ -74,12 +74,13 @@ object IO
 	/** Creates a file at the given location.*/
 	def touch(file: File, setModified: Boolean = true)
 	{
-		createDirectory(file.getParentFile)
-		val created = translate("Could not create file " + file) { file.createNewFile() }
-		if(created || file.isDirectory)
+		val absFile = file.getAbsoluteFile
+		createDirectory(absFile.getParentFile)
+		val created = translate("Could not create file " + absFile) { absFile.createNewFile() }
+		if(created || absFile.isDirectory)
 			()
-		else if(setModified && !file.setLastModified(System.currentTimeMillis))
-			error("Could not update last modified time for file " + file)
+		else if(setModified && !absFile.setLastModified(System.currentTimeMillis))
+			error("Could not update last modified time for file " + absFile)
 	}
 	def createDirectories(dirs: Traversable[File]): Unit =
 		dirs.foreach(createDirectory)
