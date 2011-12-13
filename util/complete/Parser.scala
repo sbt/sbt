@@ -345,7 +345,10 @@ trait ParserMain
 		else
 			b
 
-	def not(p: Parser[_]): Parser[Unit] = new Not(p)
+	def not(p: Parser[_]): Parser[Unit] = p.result match {
+		case None => new Not(p)
+		case Some(_) => failure("Excluded.")
+	}
 
 	def oneOf[T](p: Seq[Parser[T]]): Parser[T] = p.reduceLeft(_ | _)
 	def seq[T](p: Seq[Parser[T]]): Parser[Seq[T]] = seq0(p, Nil)
