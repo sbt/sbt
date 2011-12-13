@@ -303,6 +303,17 @@ object Project extends Init[Scope] with ProjectExtra
 			r + (key, value.dependencies)
 		}
 	}
+
+	def showDefinitions(key: AttributeKey[_], defs: Seq[Scope])(implicit display: Show[ScopedKey[_]]): String =
+		defs.map(scope => display(ScopedKey(scope, key))).sorted.mkString("\n\t", "\n\t", "\n\n")
+	def showUses(defs: Seq[ScopedKey[_]])(implicit display: Show[ScopedKey[_]]): String =
+		defs.map(display.apply).sorted.mkString("\n\t", "\n\t", "\n\n")
+
+	def definitions(structure: BuildStructure, actual: Boolean, key: AttributeKey[_])(implicit display: Show[ScopedKey[_]]): Seq[Scope] =
+		relation(structure, actual)(display)._1s.toSeq flatMap { sk => if(sk.key == key) sk.scope :: Nil else Nil }
+	def usedBy(structure: BuildStructure, actual: Boolean, key: AttributeKey[_])(implicit display: Show[ScopedKey[_]]): Seq[ScopedKey[_]] =
+		relation(structure, actual)(display).all.toSeq flatMap { case (a,b) => if(b.key == key) List[ScopedKey[_]](a) else Nil }
+
 	def reverseDependencies(cMap: Map[ScopedKey[_],Flattened], scoped: ScopedKey[_]): Iterable[ScopedKey[_]] =
 		for( (key,compiled) <- cMap; dep <- compiled.dependencies if dep == scoped)  yield  key
 

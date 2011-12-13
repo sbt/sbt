@@ -395,16 +395,26 @@ object BuiltinCommands
 		val newSession = session.appendSettings( append map (a => (a, arg)))
 		reapply(newSession, structure, s)
 	}
-	def inspect = Command(InspectCommand, inspectBrief, inspectDetailed)(inspectParser) {
-		case (s, (InspectOption.DependencyTree, sk)) =>
-		  val basedir = new File(Project.session(s).current.build)
-			val treeString = Project.settingGraph(Project.structure(s), basedir, sk)( Project.showContextKey(s) ).dependsAscii
-			logger(s).info(treeString)
-			s
-		case (s, (InspectOption.Details(actual), sk)) =>
-			val detailString = Project.details(Project.structure(s), actual, sk.scope, sk.key)( Project.showContextKey(s) )
-			logger(s).info(detailString)
-			s
+	def inspect = Command(InspectCommand, inspectBrief, inspectDetailed)(inspectParser) { case (s, (option, sk)) => 
+		logger(s).info(inspectOutput(s, option, sk))
+		s
+	}
+	def inspectOutput(s: State, option: InspectOption, sk: Project.ScopedKey[_]): String =
+	{
+		val extracted = Project.extract(s)
+			import extracted._
+		option match
+		{
+			case InspectOption.Details(actual) =>
+				Project.details(structure, actual, sk.scope, sk.key)
+			case InspectOption.DependencyTree => 
+				val basedir = new File(Project.session(s).current.build)
+				Project.settingGraph(structure, basedir, sk).dependsAscii
+			case InspectOption.Uses =>
+				Project.showUses(Project.usedBy(structure, true, sk.key))
+			case InspectOption.Definitions =>
+				Project.showDefinitions(sk.key, Project.definitions(structure, true, sk.key))
+		}
 	}
 	def lastGrep = Command(LastGrepCommand, lastGrepBrief, lastGrepDetailed)(lastGrepParser) {
 		case (s, (pattern,Some(sk))) =>
@@ -420,12 +430,22 @@ object BuiltinCommands
 		val ext = Project.extract(s)
 		(ext.structure, Select(ext.currentRef), ext.showKey)
 	}
-	def inspectParser = (s: State) => spacedInspectOptionParser(s) ~ spacedKeyParser(s)
-	val spacedInspectOptionParser: (State => Parser[InspectOption]) = (s: State) => {
 		import InspectOption._
+	def inspectParser = (s: State) => spacedInspectOptionParser(s) flatMap {
+		case opt @ (Uses | Definitions) => allKeyParser(s).map(key => (opt, Project.ScopedKey(Global, key)))
+		case opt @ (DependencyTree | Details(_)) => spacedKeyParser(s).map(key => (opt, key))
+	}
+	val spacedInspectOptionParser: (State => Parser[InspectOption]) = (s: State) => {
 		val actual = "actual" ^^^ Details(true)
 		val tree = "tree" ^^^ DependencyTree
-		token(Space ~> (tree | actual)) ?? Details(false)
+		val uses = "uses" ^^^ Uses
+		val definitions = "definitions" ^^^ Definitions
+		token(Space ~> (tree | actual | uses | definitions)) ?? Details(false)
+	}
+	def allKeyParser(s: State): Parser[AttributeKey[_]] =
+	{
+		val keyMap = Project.structure(s).index.keyMap
+		token((Space ~> ID) !!! "Expected key" examples keyMap.keySet) flatMap { key => Act.getKey(keyMap, key, idFun) }
 	}
 	val spacedKeyParser = (s: State) => Act.requireSession(s, token(Space) ~> Act.scopedKeyParser(s))
 	val optSpacedKeyParser = (s: State) => spacedKeyParser(s).?
