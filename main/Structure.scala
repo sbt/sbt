@@ -333,6 +333,12 @@ object Scoped
 	implicit def t7ToTable7[A,B,C,D,E,F,G](t7: (ScopedTaskable[A], ScopedTaskable[B], ScopedTaskable[C], ScopedTaskable[D], ScopedTaskable[E], ScopedTaskable[F], ScopedTaskable[G]) ): RichTaskable7[A,B,C,D,E,F,G] = new RichTaskable7(t7)
 	implicit def t8ToTable8[A,B,C,D,E,F,G,H](t8: (ScopedTaskable[A], ScopedTaskable[B], ScopedTaskable[C], ScopedTaskable[D], ScopedTaskable[E], ScopedTaskable[F], ScopedTaskable[G], ScopedTaskable[H]) ): RichTaskable8[A,B,C,D,E,F,G,H] = new RichTaskable8(t8)
 	implicit def t9ToTable9[A,B,C,D,E,F,G,H,I](t9: (ScopedTaskable[A], ScopedTaskable[B], ScopedTaskable[C], ScopedTaskable[D], ScopedTaskable[E], ScopedTaskable[F], ScopedTaskable[G], ScopedTaskable[H], ScopedTaskable[I]) ): RichTaskable9[A,B,C,D,E,F,G,H,I] = new RichTaskable9(t9)
+	implicit def t10ToTable10[A,B,C,D,E,F,G,H,I,J](t10: (ScopedTaskable[A], ScopedTaskable[B], ScopedTaskable[C], ScopedTaskable[D], ScopedTaskable[E], ScopedTaskable[F], ScopedTaskable[G], ScopedTaskable[H], ScopedTaskable[I], ScopedTaskable[J]) ): RichTaskable10[A,B,C,D,E,F,G,H,I,J] = new RichTaskable10(t10)
+	implicit def t11ToTable11[A,B,C,D,E,F,G,H,I,J,K](t11: (ScopedTaskable[A], ScopedTaskable[B], ScopedTaskable[C], ScopedTaskable[D], ScopedTaskable[E], ScopedTaskable[F], ScopedTaskable[G], ScopedTaskable[H], ScopedTaskable[I], ScopedTaskable[J], ScopedTaskable[K]) ): RichTaskable11[A,B,C,D,E,F,G,H,I,J,K] = new RichTaskable11(t11)
+	implicit def t12ToTable12[A,B,C,D,E,F,G,H,I,J,K,L](t12: (ScopedTaskable[A], ScopedTaskable[B], ScopedTaskable[C], ScopedTaskable[D], ScopedTaskable[E], ScopedTaskable[F], ScopedTaskable[G], ScopedTaskable[H], ScopedTaskable[I], ScopedTaskable[J], ScopedTaskable[K], ScopedTaskable[L]) ): RichTaskable12[A,B,C,D,E,F,G,H,I,J,K,L] = new RichTaskable12(t12)
+	implicit def t13ToTable13[A,B,C,D,E,F,G,H,I,J,K,L,N](t13: (ScopedTaskable[A], ScopedTaskable[B], ScopedTaskable[C], ScopedTaskable[D], ScopedTaskable[E], ScopedTaskable[F], ScopedTaskable[G], ScopedTaskable[H], ScopedTaskable[I], ScopedTaskable[J], ScopedTaskable[K], ScopedTaskable[L], ScopedTaskable[N]) ): RichTaskable13[A,B,C,D,E,F,G,H,I,J,K,L,N] = new RichTaskable13(t13)
+	implicit def t14ToTable14[A,B,C,D,E,F,G,H,I,J,K,L,N,O](t14: (ScopedTaskable[A], ScopedTaskable[B], ScopedTaskable[C], ScopedTaskable[D], ScopedTaskable[E], ScopedTaskable[F], ScopedTaskable[G], ScopedTaskable[H], ScopedTaskable[I], ScopedTaskable[J], ScopedTaskable[K], ScopedTaskable[L], ScopedTaskable[N], ScopedTaskable[O]) ): RichTaskable14[A,B,C,D,E,F,G,H,I,J,K,L,N,O] = new RichTaskable14(t14)
+	implicit def t15ToTable15[A,B,C,D,E,F,G,H,I,J,K,L,N,O,P](t15: (ScopedTaskable[A], ScopedTaskable[B], ScopedTaskable[C], ScopedTaskable[D], ScopedTaskable[E], ScopedTaskable[F], ScopedTaskable[G], ScopedTaskable[H], ScopedTaskable[I], ScopedTaskable[J], ScopedTaskable[K], ScopedTaskable[L], ScopedTaskable[N], ScopedTaskable[O], ScopedTaskable[P]) ): RichTaskable15[A,B,C,D,E,F,G,H,I,J,K,L,N,O,P] = new RichTaskable15(t15)
 	
 	sealed abstract class RichTaskables[In <: HList](keys: KList[ScopedTaskable, In])
 	{
@@ -405,6 +411,53 @@ object Scoped
 		protected def convertH[R](z: Fun[Id,R]) = hf9(z)
 		protected def convertK[M[_],R](z: Fun[M,R]) = { case a :^: b :^: c :^: d :^: e :^: f :^: g :^: h :^: i :^: KNil => z(a,b,c,d,e,f,g,h,i) }
 	}
+	final class RichTaskable10[A,B,C,D,E,F,G,H,I,J](t10: ((ScopedTaskable[A], ScopedTaskable[B], ScopedTaskable[C], ScopedTaskable[D], ScopedTaskable[E], ScopedTaskable[F], ScopedTaskable[G], ScopedTaskable[H], ScopedTaskable[I], ScopedTaskable[J]))) extends RichTaskables(k10(t10))
+	{
+		type Fun[M[_],Ret] = (M[A], M[B], M[C], M[D], M[E], M[F], M[G], M[H], M[I], M[J]) => Ret
+		def identityMap = map(mkTuple10)
+		protected def convertH[R](z: Fun[Id,R]) = hf10(z)
+		protected def convertK[M[_],R](z: Fun[M,R]) = { case a :^: b :^: c :^: d :^: e :^: f :^: g :^: h :^: i :^: j :^: KNil => z(a,b,c,d,e,f,g,h,i,j) }
+	}
+
+	final class RichTaskable11[A,B,C,D,E,F,G,H,I,J,K](t11: ((ScopedTaskable[A], ScopedTaskable[B], ScopedTaskable[C], ScopedTaskable[D], ScopedTaskable[E], ScopedTaskable[F], ScopedTaskable[G], ScopedTaskable[H], ScopedTaskable[I], ScopedTaskable[J], ScopedTaskable[K]))) extends RichTaskables(k11(t11))
+	{
+		type Fun[M[_],Ret] = (M[A], M[B], M[C], M[D], M[E], M[F], M[G], M[H], M[I], M[J], M[K]) => Ret
+		def identityMap = map(mkTuple11)
+		protected def convertH[R](z: Fun[Id,R]) = hf11(z)
+		protected def convertK[M[_],R](z: Fun[M,R]) = { case a :^: b :^: c :^: d :^: e :^: f :^: g :^: h :^: i :^: j :^: k :^: KNil => z(a,b,c,d,e,f,g,h,i,j,k) }
+	}
+
+	final class RichTaskable12[A,B,C,D,E,F,G,H,I,J,K,L](t12: ((ScopedTaskable[A], ScopedTaskable[B], ScopedTaskable[C], ScopedTaskable[D], ScopedTaskable[E], ScopedTaskable[F], ScopedTaskable[G], ScopedTaskable[H], ScopedTaskable[I], ScopedTaskable[J], ScopedTaskable[K], ScopedTaskable[L]))) extends RichTaskables(k12(t12))
+	{
+		type Fun[M[_],Ret] = (M[A], M[B], M[C], M[D], M[E], M[F], M[G], M[H], M[I], M[J], M[K], M[L]) => Ret
+		def identityMap = map(mkTuple12)
+		protected def convertH[R](z: Fun[Id,R]) = hf12(z)
+		protected def convertK[M[_],R](z: Fun[M,R]) = { case a :^: b :^: c :^: d :^: e :^: f :^: g :^: h :^: i :^: j :^: k :^: l :^: KNil => z(a,b,c,d,e,f,g,h,i,j,k,l) }
+	}
+
+	final class RichTaskable13[A,B,C,D,E,F,G,H,I,J,K,L,N](t13: ((ScopedTaskable[A], ScopedTaskable[B], ScopedTaskable[C], ScopedTaskable[D], ScopedTaskable[E], ScopedTaskable[F], ScopedTaskable[G], ScopedTaskable[H], ScopedTaskable[I], ScopedTaskable[J], ScopedTaskable[K], ScopedTaskable[L], ScopedTaskable[N]))) extends RichTaskables(k13(t13))
+	{
+		type Fun[M[_],Ret] = (M[A], M[B], M[C], M[D], M[E], M[F], M[G], M[H], M[I], M[J], M[K], M[L], M[N]) => Ret
+		def identityMap = map(mkTuple13)
+		protected def convertH[R](z: Fun[Id,R]) = hf13(z)
+		protected def convertK[M[_],R](z: Fun[M,R]) = { case a :^: b :^: c :^: d :^: e :^: f :^: g :^: h :^: i :^: j :^: k :^: l :^: n :^: KNil => z(a,b,c,d,e,f,g,h,i,j,k,l,n) }
+	}
+
+	final class RichTaskable14[A,B,C,D,E,F,G,H,I,J,K,L,N,O](t14: ((ScopedTaskable[A], ScopedTaskable[B], ScopedTaskable[C], ScopedTaskable[D], ScopedTaskable[E], ScopedTaskable[F], ScopedTaskable[G], ScopedTaskable[H], ScopedTaskable[I], ScopedTaskable[J], ScopedTaskable[K], ScopedTaskable[L], ScopedTaskable[N], ScopedTaskable[O]))) extends RichTaskables(k14(t14))
+	{
+		type Fun[M[_],Ret] = (M[A], M[B], M[C], M[D], M[E], M[F], M[G], M[H], M[I], M[J], M[K], M[L], M[N], M[O]) => Ret
+		def identityMap = map(mkTuple14)
+		protected def convertH[R](z: Fun[Id,R]) = hf14(z)
+		protected def convertK[M[_],R](z: Fun[M,R]) = { case a :^: b :^: c :^: d :^: e :^: f :^: g :^: h :^: i :^: j :^: k :^: l :^: n :^: o :^: KNil => z(a,b,c,d,e,f,g,h,i,j,k,l,n,o) }
+	}
+
+	final class RichTaskable15[A,B,C,D,E,F,G,H,I,J,K,L,N,O,P](t15: ((ScopedTaskable[A], ScopedTaskable[B], ScopedTaskable[C], ScopedTaskable[D], ScopedTaskable[E], ScopedTaskable[F], ScopedTaskable[G], ScopedTaskable[H], ScopedTaskable[I], ScopedTaskable[J], ScopedTaskable[K], ScopedTaskable[L], ScopedTaskable[N], ScopedTaskable[O], ScopedTaskable[P]))) extends RichTaskables(k15(t15))
+	{
+		type Fun[M[_],Ret] = (M[A], M[B], M[C], M[D], M[E], M[F], M[G], M[H], M[I], M[J], M[K], M[L], M[N], M[O], M[P]) => Ret
+		def identityMap = map(mkTuple15)
+		protected def convertH[R](z: Fun[Id,R]) = hf15(z)
+		protected def convertK[M[_],R](z: Fun[M,R]) = { case a :^: b :^: c :^: d :^: e :^: f :^: g :^: h :^: i :^: j :^: k :^: l :^: n :^: o :^: p :^: KNil => z(a,b,c,d,e,f,g,h,i,j,k,l,n,o,p) }
+	}
 
 	// this doesn't actually work for mixed KLists because the compiler crashes trying to infer the bound when constructing the KList
 	implicit def richTaskableKeys[HL <: HList](in: KList[ScopedTaskable, HL]): RichTaskableKeys[HL] = new RichTaskableKeys(in)
@@ -430,6 +483,12 @@ object Scoped
 	implicit def t7ToApp7[A,B,C,D,E,F,G](t7: (Initialize[A], Initialize[B], Initialize[C], Initialize[D], Initialize[E], Initialize[F], Initialize[G]) ): Apply7[A,B,C,D,E,F,G] = new Apply7(t7)
 	implicit def t8ToApp8[A,B,C,D,E,F,G,H](t8: (Initialize[A], Initialize[B], Initialize[C], Initialize[D], Initialize[E], Initialize[F], Initialize[G], Initialize[H]) ): Apply8[A,B,C,D,E,F,G,H] = new Apply8(t8)
 	implicit def t9ToApp9[A,B,C,D,E,F,G,H,I](t9: (Initialize[A], Initialize[B], Initialize[C], Initialize[D], Initialize[E], Initialize[F], Initialize[G], Initialize[H], Initialize[I]) ): Apply9[A,B,C,D,E,F,G,H,I] = new Apply9(t9)
+    implicit def t10ToApp10[A,B,C,D,E,F,G,H,I,J](t10: (Initialize[A], Initialize[B], Initialize[C], Initialize[D], Initialize[E], Initialize[F], Initialize[G], Initialize[H], Initialize[I], Initialize[J]) ): Apply10[A,B,C,D,E,F,G,H,I,J] = new Apply10(t10)
+    implicit def t11ToApp11[A,B,C,D,E,F,G,H,I,J,K](t11: (Initialize[A], Initialize[B], Initialize[C], Initialize[D], Initialize[E], Initialize[F], Initialize[G], Initialize[H], Initialize[I], Initialize[J], Initialize[K]) ): Apply11[A,B,C,D,E,F,G,H,I,J,K] = new Apply11(t11)
+    implicit def t12ToApp12[A,B,C,D,E,F,G,H,I,J,K,L](t12: (Initialize[A], Initialize[B], Initialize[C], Initialize[D], Initialize[E], Initialize[F], Initialize[G], Initialize[H], Initialize[I], Initialize[J], Initialize[K], Initialize[L]) ): Apply12[A,B,C,D,E,F,G,H,I,J,K,L] = new Apply12(t12)
+    implicit def t13ToApp13[A,B,C,D,E,F,G,H,I,J,K,L,N](t13: (Initialize[A], Initialize[B], Initialize[C], Initialize[D], Initialize[E], Initialize[F], Initialize[G], Initialize[H], Initialize[I], Initialize[J], Initialize[K], Initialize[L], Initialize[N]) ): Apply13[A,B,C,D,E,F,G,H,I,J,K,L,N] = new Apply13(t13)
+    implicit def t14ToApp14[A,B,C,D,E,F,G,H,I,J,K,L,N,O](t14: (Initialize[A], Initialize[B], Initialize[C], Initialize[D], Initialize[E], Initialize[F], Initialize[G], Initialize[H], Initialize[I], Initialize[J], Initialize[K], Initialize[L], Initialize[N], Initialize[O]) ): Apply14[A,B,C,D,E,F,G,H,I,J,K,L,N,O] = new Apply14(t14)
+    implicit def t15ToApp15[A,B,C,D,E,F,G,H,I,J,K,L,N,O,P](t15: (Initialize[A], Initialize[B], Initialize[C], Initialize[D], Initialize[E], Initialize[F], Initialize[G], Initialize[H], Initialize[I], Initialize[J], Initialize[K], Initialize[L], Initialize[N], Initialize[O], Initialize[P]) ): Apply15[A,B,C,D,E,F,G,H,I,J,K,L,N,O,P] = new Apply15(t15)
 
 	def mkTuple2[A,B] = (a:A,b:B) => (a,b)
 	def mkTuple3[A,B,C] = (a:A,b:B,c:C) => (a,b,c)
@@ -439,6 +498,12 @@ object Scoped
 	def mkTuple7[A,B,C,D,E,F,G] = (a:A,b:B,c:C,d:D,e:E,f:F,g:G) => (a,b,c,d,e,f,g)
 	def mkTuple8[A,B,C,D,E,F,G,H] = (a:A,b:B,c:C,d:D,e:E,f:F,g:G,h:H) => (a,b,c,d,e,f,g,h)
 	def mkTuple9[A,B,C,D,E,F,G,H,I] = (a:A,b:B,c:C,d:D,e:E,f:F,g:G,h:H,i:I) => (a,b,c,d,e,f,g,h,i)
+     def mkTuple10[A,B,C,D,E,F,G,H,I,J] = (a:A,b:B,c:C,d:D,e:E,f:F,g:G,h:H,i:I,j:J) => (a,b,c,d,e,f,g,h,i,j)
+     def mkTuple11[A,B,C,D,E,F,G,H,I,J,K] = (a:A,b:B,c:C,d:D,e:E,f:F,g:G,h:H,i:I,j:J,k:K) => (a,b,c,d,e,f,g,h,i,j,k)
+     def mkTuple12[A,B,C,D,E,F,G,H,I,J,K,L] = (a:A,b:B,c:C,d:D,e:E,f:F,g:G,h:H,i:I,j:J,k:K,l:L) => (a,b,c,d,e,f,g,h,i,j,k,l)
+     def mkTuple13[A,B,C,D,E,F,G,H,I,J,K,L,N] = (a:A,b:B,c:C,d:D,e:E,f:F,g:G,h:H,i:I,j:J,k:K,l:L,n:N) => (a,b,c,d,e,f,g,h,i,j,k,l,n)
+     def mkTuple14[A,B,C,D,E,F,G,H,I,J,K,L,N,O] = (a:A,b:B,c:C,d:D,e:E,f:F,g:G,h:H,i:I,j:J,k:K,l:L,n:N,o:O) => (a,b,c,d,e,f,g,h,i,j,k,l,n,o)
+     def mkTuple15[A,B,C,D,E,F,G,H,I,J,K,L,N,O,P] = (a:A,b:B,c:C,d:D,e:E,f:F,g:G,h:H,i:I,j:J,k:K,l:L,n:N,o:O,p:P) => (a,b,c,d,e,f,g,h,i,j,k,l,n,o,p)
 
 	final class Apply2[A,B](t2: (Initialize[A], Initialize[B])) {
 		def apply[T](z: (A,B) => T) = Project.app( k2(t2) )( hf2(z) )
@@ -472,6 +537,30 @@ object Scoped
 		def apply[T](z: (A,B,C,D,E,F,G,H,I) => T) = Project.app( k9(t9) )( hf9(z) )
 		def identity = apply(mkTuple9)
 	}
+    final class Apply10[A,B,C,D,E,F,G,H,I,J](t10: (Initialize[A], Initialize[B], Initialize[C], Initialize[D], Initialize[E], Initialize[F], Initialize[G], Initialize[H], Initialize[I], Initialize[J])) {
+        def apply[T](z: (A,B,C,D,E,F,G,H,I,J) => T) = Project.app( k10(t10) )( hf10(z) )
+        def identity = apply(mkTuple10)
+    }
+    final class Apply11[A,B,C,D,E,F,G,H,I,J,K](t11: (Initialize[A], Initialize[B], Initialize[C], Initialize[D], Initialize[E], Initialize[F], Initialize[G], Initialize[H], Initialize[I], Initialize[J], Initialize[K])) {
+        def apply[T](z: (A,B,C,D,E,F,G,H,I,J,K) => T) = Project.app( k11(t11) )( hf11(z) )
+        def identity = apply(mkTuple11)
+    }
+    final class Apply12[A,B,C,D,E,F,G,H,I,J,K,L](t12: (Initialize[A], Initialize[B], Initialize[C], Initialize[D], Initialize[E], Initialize[F], Initialize[G], Initialize[H], Initialize[I], Initialize[J], Initialize[K], Initialize[L])) {
+        def apply[T](z: (A,B,C,D,E,F,G,H,I,J,K,L) => T) = Project.app( k12(t12) )( hf12(z) )
+        def identity = apply(mkTuple12)
+    }
+    final class Apply13[A,B,C,D,E,F,G,H,I,J,K,L,N](t13: (Initialize[A], Initialize[B], Initialize[C], Initialize[D], Initialize[E], Initialize[F], Initialize[G], Initialize[H], Initialize[I], Initialize[J], Initialize[K], Initialize[L], Initialize[N])) {
+        def apply[T](z: (A,B,C,D,E,F,G,H,I,J,K,L,N) => T) = Project.app( k13(t13) )( hf13(z) )
+        def identity = apply(mkTuple13)
+    }
+    final class Apply14[A,B,C,D,E,F,G,H,I,J,K,L,N,O](t14: (Initialize[A], Initialize[B], Initialize[C], Initialize[D], Initialize[E], Initialize[F], Initialize[G], Initialize[H], Initialize[I], Initialize[J], Initialize[K], Initialize[L], Initialize[N], Initialize[O])) {
+        def apply[T](z: (A,B,C,D,E,F,G,H,I,J,K,L,N,O) => T) = Project.app( k14(t14) )( hf14(z) )
+        def identity = apply(mkTuple14)
+    }
+    final class Apply15[A,B,C,D,E,F,G,H,I,J,K,L,N,O,P](t15: (Initialize[A], Initialize[B], Initialize[C], Initialize[D], Initialize[E], Initialize[F], Initialize[G], Initialize[H], Initialize[I], Initialize[J], Initialize[K], Initialize[L], Initialize[N], Initialize[O], Initialize[P])) {
+        def apply[T](z: (A,B,C,D,E,F,G,H,I,J,K,L,N,O,P) => T) = Project.app( k15(t15) )( hf15(z) )
+        def identity = apply(mkTuple15)
+    }
 
 	def hf2[A, B, T](z: (A, B) => T): A :+: B :+: HNil => T = { case a :+: b :+: HNil => z(a,b) }
 	def hf3[A, B, C, T](z: (A,B,C) => T): A :+: B :+: C :+: HNil => T = { case a :+: b :+: c :+: HNil => z(a,b,c) }
@@ -481,6 +570,12 @@ object Scoped
 	def hf7[A, B, C, D, E, F, G, T](z: (A,B,C,D,E,F,G) => T): A :+: B :+: C :+: D :+: E :+: F :+: G :+: HNil => T = { case a :+: b :+: c :+: d :+: e :+: f :+: g :+: HNil => z(a,b,c,d,e,f,g) }
 	def hf8[A, B, C, D, E, F, G, H, T](z: (A,B,C,D,E,F,G,H) => T): A :+: B :+: C :+: D :+: E :+: F :+: G :+: H :+: HNil => T = { case a :+: b :+: c :+: d :+: e :+: f :+: g :+: h :+: HNil => z(a,b,c,d,e,f,g,h) }
 	def hf9[A, B, C, D, E, F, G, H, I, T](z: (A,B,C,D,E,F,G,H,I) => T): A :+: B :+: C :+: D :+: E :+: F :+: G :+: H :+: I :+: HNil => T = { case a :+: b :+: c :+: d :+: e :+: f :+: g :+: h :+: i :+: HNil => z(a,b,c,d,e,f,g,h,i) }
+    def hf10[A,B,C,D,E,F,G,H,I,J,T](z: (A,B,C,D,E,F,G,H,I,J) => T): A:+:B:+:C:+:D:+:E:+:F:+:G:+:H:+:I:+:J :+: HNil => T = { case a:+:b:+:c:+:d:+:e:+:f:+:g:+:h:+:i:+:j :+: HNil => z(a,b,c,d,e,f,g,h,i,j) }
+    def hf11[A,B,C,D,E,F,G,H,I,J,K,T](z: (A,B,C,D,E,F,G,H,I,J,K) => T): A:+:B:+:C:+:D:+:E:+:F:+:G:+:H:+:I:+:J:+:K :+: HNil => T = { case a:+:b:+:c:+:d:+:e:+:f:+:g:+:h:+:i:+:j:+:k :+: HNil => z(a,b,c,d,e,f,g,h,i,j,k) }
+    def hf12[A,B,C,D,E,F,G,H,I,J,K,L,T](z: (A,B,C,D,E,F,G,H,I,J,K,L) => T): A:+:B:+:C:+:D:+:E:+:F:+:G:+:H:+:I:+:J:+:K:+:L :+: HNil => T = { case a:+:b:+:c:+:d:+:e:+:f:+:g:+:h:+:i:+:j:+:k:+:l :+: HNil => z(a,b,c,d,e,f,g,h,i,j,k,l) }
+    def hf13[A,B,C,D,E,F,G,H,I,J,K,L,N,T](z: (A,B,C,D,E,F,G,H,I,J,K,L,N) => T): A:+:B:+:C:+:D:+:E:+:F:+:G:+:H:+:I:+:J:+:K:+:L:+:N :+: HNil => T = { case a:+:b:+:c:+:d:+:e:+:f:+:g:+:h:+:i:+:j:+:k:+:l:+:n :+: HNil => z(a,b,c,d,e,f,g,h,i,j,k,l,n) }
+    def hf14[A,B,C,D,E,F,G,H,I,J,K,L,N,O,T](z: (A,B,C,D,E,F,G,H,I,J,K,L,N,O) => T): A:+:B:+:C:+:D:+:E:+:F:+:G:+:H:+:I:+:J:+:K:+:L:+:N:+:O :+: HNil => T = { case a:+:b:+:c:+:d:+:e:+:f:+:g:+:h:+:i:+:j:+:k:+:l:+:n:+:o :+: HNil => z(a,b,c,d,e,f,g,h,i,j,k,l,n,o) }
+    def hf15[A,B,C,D,E,F,G,H,I,J,K,L,N,O,P,T](z: (A,B,C,D,E,F,G,H,I,J,K,L,N,O,P) => T): A:+:B:+:C:+:D:+:E:+:F:+:G:+:H:+:I:+:J:+:K:+:L:+:N:+:O:+:P :+: HNil => T = { case a:+:b:+:c:+:d:+:e:+:f:+:g:+:h:+:i:+:j:+:k:+:l:+:n:+:o:+:p :+: HNil => z(a,b,c,d,e,f,g,h,i,j,k,l,n,o,p) }
 
 
 	def k2[M[_], A, B](t2: (M[A], M[B]) ) = t2._1 :^: t2._2 :^: KNil
@@ -491,6 +586,12 @@ object Scoped
 	def k7[M[_], A, B, C, D, E, F, G](t7: (M[A], M[B], M[C], M[D], M[E], M[F], M[G])) = t7._1 :^: t7._2 :^: t7._3 :^: t7._4 :^: t7._5 :^: t7._6 :^: t7._7 :^: KNil
 	def k8[M[_], A, B, C, D, E, F, G, H](t8: (M[A], M[B], M[C], M[D], M[E], M[F], M[G], M[H])) = t8._1 :^: t8._2 :^: t8._3 :^: t8._4 :^: t8._5 :^: t8._6 :^: t8._7 :^: t8._8 :^: KNil
 	def k9[M[_], A, B, C, D, E, F, G, H, I](t9: (M[A], M[B], M[C], M[D], M[E], M[F], M[G], M[H], M[I])) = t9._1 :^: t9._2 :^: t9._3 :^: t9._4 :^: t9._5 :^: t9._6 :^: t9._7 :^: t9._8 :^: t9._9 :^: KNil
+    def k10[M[_], A,B,C,D,E,F,G,H,I,J](t10: (M[A], M[B], M[C], M[D], M[E], M[F], M[G], M[H], M[I], M[J])) =t10._1 :^:t10._2 :^:t10._3 :^:t10._4 :^:t10._5 :^:t10._6 :^:t10._7 :^:t10._8 :^:t10._9 :^:t10._10 :^: KNil
+    def k11[M[_], A,B,C,D,E,F,G,H,I,J,K](t11: (M[A], M[B], M[C], M[D], M[E], M[F], M[G], M[H], M[I], M[J], M[K])) =t11._1 :^:t11._2 :^:t11._3 :^:t11._4 :^:t11._5 :^:t11._6 :^:t11._7 :^:t11._8 :^:t11._9 :^:t11._10 :^:t11._11 :^: KNil
+    def k12[M[_], A,B,C,D,E,F,G,H,I,J,K,L](t12: (M[A], M[B], M[C], M[D], M[E], M[F], M[G], M[H], M[I], M[J], M[K], M[L])) =t12._1 :^:t12._2 :^:t12._3 :^:t12._4 :^:t12._5 :^:t12._6 :^:t12._7 :^:t12._8 :^:t12._9 :^:t12._10 :^:t12._11 :^:t12._12 :^: KNil
+    def k13[M[_], A,B,C,D,E,F,G,H,I,J,K,L,N](t13: (M[A], M[B], M[C], M[D], M[E], M[F], M[G], M[H], M[I], M[J], M[K], M[L], M[N])) =t13._1 :^:t13._2 :^:t13._3 :^:t13._4 :^:t13._5 :^:t13._6 :^:t13._7 :^:t13._8 :^:t13._9 :^:t13._10 :^:t13._11 :^:t13._12 :^:t13._13 :^: KNil
+    def k14[M[_], A,B,C,D,E,F,G,H,I,J,K,L,N,O](t14: (M[A], M[B], M[C], M[D], M[E], M[F], M[G], M[H], M[I], M[J], M[K], M[L], M[N], M[O])) =t14._1 :^:t14._2 :^:t14._3 :^:t14._4 :^:t14._5 :^:t14._6 :^:t14._7 :^:t14._8 :^:t14._9 :^:t14._10 :^:t14._11 :^:t14._12 :^:t14._13 :^:t14._14 :^: KNil
+    def k15[M[_], A,B,C,D,E,F,G,H,I,J,K,L,N,O,P](t15: (M[A], M[B], M[C], M[D], M[E], M[F], M[G], M[H], M[I], M[J], M[K], M[L], M[N], M[O], M[P])) =t15._1 :^:t15._2 :^:t15._3 :^:t15._4 :^:t15._5 :^:t15._6 :^:t15._7 :^:t15._8 :^:t15._9 :^:t15._10 :^:t15._11 :^:t15._12 :^:t15._13 :^:t15._14 :^:t15._15 :^: KNil
 
 	private[sbt] def extendScoped(s1: Scoped, ss: Seq[Scoped]): Seq[AttributeKey[_]]  =  s1.key +: ss.map(_.key)
 }
