@@ -131,7 +131,7 @@ object Defaults extends BuildCommon
 		sourceDirectory <<= baseDirectory / "src",
 		sourceManaged <<= crossTarget / "src_managed",
 		resourceManaged <<= crossTarget / "resource_managed",
-		cacheDirectory <<= target / "cache"
+		cacheDirectory <<= (target, thisProject)(_ / "cache" / _.id)
 	)
 
 	lazy val configPaths = sourceConfigPaths ++ resourceConfigPaths ++ outputConfigPaths
@@ -190,7 +190,7 @@ object Defaults extends BuildCommon
 		scalaBinaryVersion <<= scalaVersion(v => binaryVersion(v, "2.10")),
 		crossScalaVersions in GlobalScope <<= Seq(scalaVersion).join,
 		crossTarget <<= (target, scalaBinaryVersion, sbtBinaryVersion, sbtPlugin, crossPaths)(makeCrossTarget),
-		cacheDirectory <<= crossTarget / "cache"
+		cacheDirectory <<= (crossTarget, thisProject)(_ / "cache" / _.id)
 	)
 	def makeCrossTarget(t: File, sv: String, sbtv: String, plugin: Boolean, cross: Boolean): File =
 	{
