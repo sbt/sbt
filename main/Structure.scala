@@ -189,28 +189,15 @@ object Scoped
 		def ??[T >: S](or: => T): Initialize[Task[T]] = Project.optional(scopedKey)( _ getOrElse mktask(or) )
 		def or[T >: S](i: Initialize[Task[T]]): Initialize[Task[T]] = (this.? zipWith i)( (x,y) => (x :^: y :^: KNil) map hf2( _ getOrElse _ ))
 	}
-	final class RichInitializeTask[S](i: Initialize[Task[S]])
+	final class RichInitializeTask[S](i: Initialize[Task[S]]) extends RichInitTaskBase[S, Task]
 	{
-		def flatMapR[T](f: Result[S] => Task[T]): Initialize[Task[T]] = i(_ flatMapR f)
-		def flatMap[T](f: S => Task[T]): Initialize[Task[T]] = flatMapR(f compose successM)
-		def map[T](f: S => T): Initialize[Task[T]] = mapR(f compose successM)
-		def mapR[T](f: Result[S] => T): Initialize[Task[T]] = i(_ mapR f)
-		def flatFailure[T](f: Incomplete => Task[T]): Initialize[Task[T]] = flatMapR(f compose failM)
-		def mapFailure[T](f: Incomplete => T): Initialize[Task[T]] = mapR(f compose failM)
-		def andFinally(fin: => Unit): Initialize[Task[S]] = i(_ andFinally fin)
-		def doFinally(t: Task[Unit]): Initialize[Task[S]] = i(_ doFinally t)
-
-		def || [T >: S](alt: Task[T]): Initialize[Task[T]]  =  i(_ || alt)
-		def && [T](alt: Task[T]): Initialize[Task[T]]  =  i(_ && alt)
+		protected def onTask[T](f: Task[S] => Task[T]): Initialize[Task[T]] = i apply f
 
 		def dependsOn(tasks: AnyInitTask*): Initialize[Task[S]] = (i, Initialize.joinAny(tasks)) { (thisTask, deps) => thisTask.dependsOn(deps : _*) }
 
-		def tag(tags: Tags.Tag*): Initialize[Task[S]] = i(_.tag(tags: _*))
-		def tagw(tags: (Tags.Tag, Int)*): Initialize[Task[S]] = i(_.tagw(tags : _*))
-
 			import SessionVar.{persistAndSet, resolveContext, set, transform}
 
-		def updateState(f: (State, S) => State): Initialize[Task[S]] = i(t => transform(t, f))
+		def updateState(f: (State, S) => State): Initialize[Task[S]] = onTask(t => transform(t, f))
 		def storeAs(key: TaskKey[S])(implicit f: sbinary.Format[S]): Initialize[Task[S]] = (Keys.resolvedScoped, i) { (scoped, task) =>
 			transform(task, (state, value) => persistAndSet( resolveContext(key, scoped.scope, state), state, value)(f))
 		}
@@ -222,6 +209,32 @@ object Scoped
 		private[this] def nonLocal(tasks: Seq[AnyInitTask], key: AttributeKey[Seq[Task[_]]]): Initialize[Task[S]] =
 			(Initialize.joinAny(tasks), i) { (ts, i) => i.copy(info = i.info.set(key, ts)) }
 	}
+	final class RichInitializeInputTask[S](i: Initialize[InputTask[S]]) extends RichInitTaskBase[S,InputTask]
+	{
+		protected def onTask[T](f: Task[S] => Task[T]): Initialize[InputTask[T]] = i(_ mapTask f)
+		def dependsOn(tasks: AnyInitTask*): Initialize[InputTask[S]] = (i, Initialize.joinAny(tasks)) { (thisTask, deps) => thisTask.mapTask(_.dependsOn(deps : _*)) }
+	}
+
+	sealed abstract class RichInitTaskBase[S, R[_]]
+	{
+		protected def onTask[T](f: Task[S] => Task[T]): Initialize[R[T]]
+
+		def flatMapR[T](f: Result[S] => Task[T]): Initialize[R[T]] = onTask(_ flatMapR f)
+		def flatMap[T](f: S => Task[T]): Initialize[R[T]] = flatMapR(f compose successM)
+		def map[T](f: S => T): Initialize[R[T]] = mapR(f compose successM)
+		def mapR[T](f: Result[S] => T): Initialize[R[T]] = onTask(_ mapR f)
+		def flatFailure[T](f: Incomplete => Task[T]): Initialize[R[T]] = flatMapR(f compose failM)
+		def mapFailure[T](f: Incomplete => T): Initialize[R[T]] = mapR(f compose failM)
+		def andFinally(fin: => Unit): Initialize[R[S]] = onTask(_ andFinally fin)
+		def doFinally(t: Task[Unit]): Initialize[R[S]] = onTask(_ doFinally t)
+
+		def || [T >: S](alt: Task[T]): Initialize[R[T]]  =  onTask(_ || alt)
+		def && [T](alt: Task[T]): Initialize[R[T]]  =  onTask(_ && alt)
+
+		def tag(tags: Tags.Tag*): Initialize[R[S]] = onTask(_.tag(tags: _*))
+		def tagw(tags: (Tags.Tag, Int)*): Initialize[R[S]] = onTask(_.tagw(tags : _*))
+	}
+
 	type AnyInitTask = Initialize[Task[T]] forSome { type T }
 
 	implicit def richTaskSeq[T](in: Seq[Initialize[Task[T]]]): RichTaskSeq[T] = new RichTaskSeq(in)

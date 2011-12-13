@@ -345,6 +345,7 @@ object Project extends Init[Scope] with ProjectExtra
 	}
 	// this is here instead of Scoped so that it is considered without need for import (because of Project.Initialize)
 	implicit def richInitializeTask[T](init: Initialize[Task[T]]): Scoped.RichInitializeTask[T] = new Scoped.RichInitializeTask(init)
+	implicit def richInitializeInputTask[T](init: Initialize[InputTask[T]]): Scoped.RichInitializeInputTask[T] = new Scoped.RichInitializeInputTask(init)
 	implicit def richInitialize[T](i: Initialize[T]): Scoped.RichInitialize[T] = new Scoped.RichInitialize[T](i)
 }
 
