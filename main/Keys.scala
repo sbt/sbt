@@ -133,6 +133,7 @@ object Keys
 	val scalaHome = SettingKey[Option[File]]("scala-home", "If Some, defines the local Scala installation to use for compilation, running, and testing.")
 	val scalaInstance = TaskKey[ScalaInstance]("scala-instance", "Defines the Scala instance to use for compilation, running, and testing.")
 	val scalaVersion = SettingKey[String]("scala-version", "The version of Scala used for building.")
+	val scalaBinaryVersion = SettingKey[String]("scala-binary-version", "The Scala version substring describing binary compatibility.")
 	val crossScalaVersions = SettingKey[Seq[String]]("cross-scala-versions", "The versions of Scala used when cross-building.")
 	val classpathOptions = SettingKey[ClasspathOptions]("classpath-options", "Configures handling of Scala classpaths.")
 	val definedSbtPlugins = TaskKey[Set[String]]("defined-sbt-plugins", "The set of names of Plugin implementations defined by this project.")
@@ -296,6 +297,7 @@ object Keys
 	val sbtResolver = SettingKey[Resolver]("sbt-resolver", "Provides a resolver for obtaining sbt as a dependency.")
 	val sbtDependency = SettingKey[ModuleID]("sbt-dependency", "Provides a definition for declaring the current version of sbt.")
 	val sbtVersion = SettingKey[String]("sbt-version", "Provides the version of sbt.  This setting should be not be modified.")
+	val sbtBinaryVersion = SettingKey[String]("sbt-binary-version", "Defines the binary compatibility version substring.")
 	val skip = TaskKey[Boolean]("skip", "For tasks that support it (currently only 'compile'), setting skip to true will force the task to not to do its work.  This exact semantics may vary by task.")
 
 	// special

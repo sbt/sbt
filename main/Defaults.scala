@@ -53,8 +53,9 @@ object Defaults extends BuildCommon
 		onComplete <<= taskTemporaryDirectory { dir => () => IO.delete(dir); IO.createDirectory(dir) },
 		concurrentRestrictions <<= concurrentRestrictions or defaultRestrictions,
 		parallelExecution :== true,
-		sbtVersion in GlobalScope <<= appConfiguration { _.provider.id.version },
-		sbtResolver in GlobalScope <<= sbtVersion { sbtV => if(sbtV endsWith "-SNAPSHOT") Classpaths.typesafeSnapshots else Classpaths.typesafeResolver },
+		sbtVersion <<= appConfiguration { _.provider.id.version },
+		sbtBinaryVersion <<= sbtVersion(v => binaryVersion(v, "0.12")),
+		sbtResolver <<= sbtVersion { sbtV => if(sbtV endsWith "-SNAPSHOT") Classpaths.typesafeSnapshots else Classpaths.typesafeResolver },
 		pollInterval :== 500,
 		logBuffered :== false,
 		connectInput :== false,
@@ -186,8 +187,9 @@ object Defaults extends BuildCommon
 		scalacOptions in GlobalScope :== Nil,
 		scalaInstance <<= scalaInstanceSetting,
 		scalaVersion in GlobalScope <<= appConfiguration( _.provider.scalaProvider.version),
+		scalaBinaryVersion <<= scalaVersion(v => binaryVersion(v, "2.10")),
 		crossScalaVersions in GlobalScope <<= Seq(scalaVersion).join,
-		crossTarget <<= (target, scalaVersion, sbtVersion, sbtPlugin, crossPaths)(makeCrossTarget),
+		crossTarget <<= (target, scalaBinaryVersion, sbtBinaryVersion, sbtPlugin, crossPaths)(makeCrossTarget),
 		cacheDirectory <<= crossTarget / "cache"
 	)
 	def makeCrossTarget(t: File, sv: String, sbtv: String, plugin: Boolean, cross: Boolean): File =
@@ -375,7 +377,7 @@ object Defaults extends BuildCommon
 	def collectFiles(dirs: ScopedTaskable[Seq[File]], filter: ScopedTaskable[FileFilter], excludes: ScopedTaskable[FileFilter]): Initialize[Task[Seq[File]]] =
 		(dirs, filter, excludes) map { (d,f,excl) => d.descendantsExcept(f,excl).get }
 
-	def artifactPathSetting(art: SettingKey[Artifact])  =  (crossTarget, projectID, art, scalaVersion in artifactName, artifactName) { (t, module, a, sv, toString) => t / toString(sv, module, a) asFile }
+	def artifactPathSetting(art: SettingKey[Artifact])  =  (crossTarget, projectID, art, scalaBinaryVersion in artifactName, artifactName) { (t, module, a, sv, toString) => t / toString(sv, module, a) asFile }
 	def artifactSetting = ((artifact, artifactClassifier).identity zipWith configuration.?) { case ((a,classifier),cOpt) =>
 		val cPart = cOpt flatMap { c => if(c == Compile) None else Some(c.name) }
 		val combined = cPart.toList ++ classifier.toList
@@ -595,6 +597,25 @@ object Defaults extends BuildCommon
 			(if(aggregate) p.aggregate else Nil)
 		}
 
+	val PartialVersion = """(\d+)\.(\d+)(?:\..+)?""".r
+	def partialVersion(s: String): Option[(Int,Int)] =
+		s match {
+			case PartialVersion(major, minor) => Some(major.toInt, minor.toInt)
+			case _ => None
+		}
+	private[this] def isNewer(major: Int, minor: Int, minMajor: Int, minMinor: Int): Boolean =
+		major > minMajor || (major == minMajor && minor >= minMinor)
+	
+	def binaryVersion(full: String, cutoff: String): String =
+	{
+		def sub(major: Int, minor: Int) = major + "." + minor
+		(partialVersion(full), partialVersion(cutoff)) match {
+			case (Some((major, minor)), None) => sub(major, minor)
+			case (Some((major, minor)), Some((minMajor, minMinor))) if isNewer(major, minor, minMajor, minMinor) => sub(major, minor)
+			case _ => full
+		}
+	}
+
 	val CompletionsID = "completions"
 
 	def noAggregation: Seq[Scoped] = Seq(run, console, consoleQuick, consoleProject)
@@ -723,7 +744,7 @@ object Classpaths
 		ivyLoggingLevel in GlobalScope :== UpdateLogging.DownloadOnly,
 		ivyXML in GlobalScope :== NodeSeq.Empty,
 		ivyValidate in GlobalScope :== false,
-		ivyScala <<= ivyScala or (scalaHome, scalaVersion, scalaVersion in update) { (sh,v,vu) =>
+		ivyScala <<= ivyScala or (scalaHome, scalaVersion, scalaBinaryVersion in update) { (sh,v,vu) =>
 			Some(new IvyScala(v, Nil, filterImplicit = true, checkExplicit = true, overrideScalaVersion = sh.isEmpty, substituteCross = x => IvySbt.substituteCross(x, vu)))
 		},
 		moduleConfigurations in GlobalScope :== Nil,
@@ -780,7 +801,7 @@ object Classpaths
 			IvySbt.substituteCross(base, app.provider.scalaProvider.version).copy(crossVersion = false)
 		}
 	)
-	def pluginProjectID: Initialize[ModuleID] = (sbtVersion in update, scalaVersion, projectID, sbtPlugin) { (sbtV, scalaV, pid, isPlugin) =>
+	def pluginProjectID: Initialize[ModuleID] = (sbtBinaryVersion in update, scalaBinaryVersion in update, projectID, sbtPlugin) { (sbtV, scalaV, pid, isPlugin) =>
 		if(isPlugin) sbtPluginExtra(pid, sbtV, scalaV) else pid
 	}
 	def ivySbt0: Initialize[Task[IvySbt]] =
@@ -1107,7 +1128,7 @@ trait BuildExtra extends BuildCommon
 		import Defaults._
 
 	def addSbtPlugin(dependency: ModuleID): Setting[Seq[ModuleID]] =
-		libraryDependencies <+= (sbtVersion in update,scalaVersion) { (sbtV, scalaV) => sbtPluginExtra(dependency, sbtV, scalaV) }
+		libraryDependencies <+= (sbtBinaryVersion in update,scalaBinaryVersion in update) { (sbtV, scalaV) => sbtPluginExtra(dependency, sbtV, scalaV) }
 
 	def compilerPlugin(dependency: ModuleID): ModuleID =
 		dependency.copy(configurations = Some("plugin->default(compile)"))
