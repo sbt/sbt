@@ -80,7 +80,7 @@ class LoggerReporter(maximumErrors: Int, log: Logger) extends xsbti.Reporter
 	def display(pos: Position, msg: String, severity: Severity)
 	{
 		inc(severity)
-		if(severity != Warn || maximumErrors <= 0 || count.get(severity) <= maximumErrors)
+		if(severity != Error || maximumErrors <= 0 || count.get(severity) <= maximumErrors)
 			print(severityLogger(severity), pos, msg)
 	}
 	def severityLogger(severity: Severity): (=> String) => Unit =
