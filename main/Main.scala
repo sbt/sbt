@@ -387,13 +387,18 @@ object BuiltinCommands
 		val newStructure = Load.reapply(newSession.mergeSettings, structure)( Project.showContextKey(newSession, structure) )
 		Project.setProject(newSession, newStructure, s)
 	}
-	def set = Command.single(SetCommand, setBrief, setDetailed) { (s, arg) =>
+	def set = Command(SetCommand, setBrief, setDetailed)(setParser) { case (s, (all, arg)) =>
 		val extracted = Project extract s
 		import extracted._
 		val settings = EvaluateConfigurations.evaluateSetting(session.currentEval(), "<set>", imports(extracted), arg, 0)(currentLoader)
-		val append = Load.transformSettings(Load.projectScope(currentRef), currentRef.build, rootProject, settings)
-		val newSession = session.appendSettings( append map (a => (a, arg)))
+		val newSession = if(all) Project.setAll(extracted, settings) else setThis(s, extracted, settings, arg)
 		reapply(newSession, structure, s)
+	}
+	def setThis(s: State, extracted: Extracted, settings: Seq[Project.Setting[_]], arg: String) =
+	{
+		import extracted._
+		val append = Load.transformSettings(Load.projectScope(currentRef), currentRef.build, rootProject, settings)
+		session.appendSettings( append map (a => (a, arg)))
 	}
 	def inspect = Command(InspectCommand, inspectBrief, inspectDetailed)(inspectParser) { case (s, (option, sk)) => 
 		logger(s).info(inspectOutput(s, option, sk))
@@ -430,6 +435,9 @@ object BuiltinCommands
 		val ext = Project.extract(s)
 		(ext.structure, Select(ext.currentRef), ext.showKey)
 	}
+
+	def setParser = (s: State) => token(Space ~> flag("every" ~ Space)) ~ token(any.+.string)
+
 		import InspectOption._
 	def inspectParser = (s: State) => spacedInspectOptionParser(s) flatMap {
 		case opt @ (Uses | Definitions) => allKeyParser(s).map(key => (opt, Project.ScopedKey(Global, key)))

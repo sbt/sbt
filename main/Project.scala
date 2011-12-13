@@ -317,6 +317,27 @@ object Project extends Init[Scope] with ProjectExtra
 	def reverseDependencies(cMap: Map[ScopedKey[_],Flattened], scoped: ScopedKey[_]): Iterable[ScopedKey[_]] =
 		for( (key,compiled) <- cMap; dep <- compiled.dependencies if dep == scoped)  yield  key
 
+	def setAll(extracted: Extracted, settings: Seq[Setting[_]]) =
+	{
+			import extracted._
+		val allDefs = relation(extracted.structure, true)._1s.toSeq
+		val projectScope = Load.projectScope(currentRef)
+		def resolve(s: Setting[_]): Seq[Setting[_]] = Load.transformSettings(projectScope, currentRef.build, rootProject, s :: Nil)
+		def rescope[T](setting: Setting[T]): Seq[Setting[_]] =
+		{
+			val akey = setting.key.key
+			val global = ScopedKey(Global, akey)
+			val globalSetting = resolve( Project.setting(global, setting.init) )
+			globalSetting ++ allDefs.flatMap { d =>
+				if(d.key == akey)
+					Seq( SettingKey(akey) in d.scope <<= global)
+				else
+					Nil
+			}
+		}
+		extracted.session.appendRaw(settings flatMap { x => rescope(x) } )
+	}
+
 	object LoadAction extends Enumeration {
 		val Return, Current, Plugins = Value
 	}

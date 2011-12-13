@@ -11,14 +11,15 @@ package sbt
 
 	import SessionSettings._
 
-final case class SessionSettings(currentBuild: URI, currentProject: Map[URI, String], original: Seq[Setting[_]], append: SessionMap, currentEval: () => Eval)
+final case class SessionSettings(currentBuild: URI, currentProject: Map[URI, String], original: Seq[Setting[_]], append: SessionMap, rawAppend: Seq[Setting[_]], currentEval: () => Eval)
 {
 	assert(currentProject contains currentBuild, "Current build (" + currentBuild + ") not associated with a current project.")
 	def setCurrent(build: URI, project: String, eval: () => Eval): SessionSettings = copy(currentBuild = build, currentProject = currentProject.updated(build, project), currentEval = eval)
 	def current: ProjectRef = ProjectRef(currentBuild, currentProject(currentBuild))
 	def appendSettings(s: Seq[SessionSetting]): SessionSettings = copy(append = modify(append, _ ++ s))
-	def mergeSettings: Seq[Setting[_]] = original ++ merge(append)
-	def clearExtraSettings: SessionSettings = copy(append = Map.empty)
+	def appendRaw(ss: Seq[Setting[_]]): SessionSettings = copy(rawAppend = rawAppend ++ ss)
+	def mergeSettings: Seq[Setting[_]] = original ++ merge(append) ++ rawAppend
+	def clearExtraSettings: SessionSettings = copy(append = Map.empty, rawAppend = Nil)
 
 	private[this] def merge(map: SessionMap): Seq[Setting[_]] = map.values.toSeq.flatten[SessionSetting].map(_._1)
 	private[this] def modify(map: SessionMap, onSeq: Endo[Seq[SessionSetting]]): SessionMap =

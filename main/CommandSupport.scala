@@ -106,7 +106,7 @@ InspectCommand + """ [tree] <key>
 	"Related" shows all of the scopes in which the key is defined."""
 
 	val SetCommand = "set"
-	val setBrief = (SetCommand + " <setting-expression>", "Evaluates the given Setting and applies it to the current project.")
+	val setBrief = (SetCommand + "[every] <setting-expression>", "Evaluates the given Setting and applies it to the current project.")
 	val setDetailed =
 SetCommand + """ <setting-expression>
 
@@ -117,7 +117,12 @@ SetCommand + """ <setting-expression>
 
 	This command does not rebuild the build definitions, plugins, or configurations.
 	It does not automatically persist the setting(s) either.
-	To persist the setting(s), run 'session save' or 'session save-all'."""
+	To persist the setting(s), run 'session save' or 'session save-all'.
+
+	If 'every' is specified, the setting is evaluated in the current context
+	and the resulting value is used in every scope.  This overrides the value
+	bound to the key everywhere.
+"""
 
 	def SessionCommand = "session"
 	def sessionBrief = (SessionCommand + " <session-command>", "Manipulates session settings.  For details, run 'help " + SessionCommand + "'.")
