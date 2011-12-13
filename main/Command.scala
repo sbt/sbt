@@ -135,7 +135,7 @@ object Command
 	def suggestions(a: String, bs: Seq[String], maxDistance: Int = 3, maxSuggestions: Int = 3): Seq[String] =
 		bs.map { b => (b, distance(a, b) ) } filter (_._2 <= maxDistance) sortBy(_._2) take(maxSuggestions) map(_._1)
 	def distance(a: String, b: String): Int =
-		EditDistance.levenshtein(a, b, insertCost = 1, deleteCost = 1, subCost = 2, transposeCost = 1, matchCost = -1, true)
+		EditDistance.levenshtein(a, b, insertCost = 1, deleteCost = 1, subCost = 2, transposeCost = 1, matchCost = -1, caseCost = 1, true)
 
 	def spacedAny(name: String): Parser[String] = spacedC(name, any)
 	def spacedC(name: String, c: Parser[Char]): Parser[String] =
