@@ -4,6 +4,7 @@
 package sbt
 package compiler
 
+	import scala.util
 	import java.io.File
 	import CompilerArguments.{abs, absString, BootClasspathOption}
 
