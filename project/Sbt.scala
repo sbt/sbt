@@ -29,7 +29,7 @@ object Sbt extends Build
 	lazy val root: Project = Project("xsbt", file("."), aggregate = nonRoots ) settings( rootSettings : _*) configs( Sxr.sxrConf, Proguard )
 	lazy val nonRoots = projects.filter(_ != root).map(p => LocalProject(p.id))
 
-	/*** Subproject declarations ***/
+	/* ** Subproject declarations ** */
 
 		// defines the Java interfaces through which the launcher and the launched application communicate
 	lazy val launchInterfaceSub = project(launchPath / "interface", "Launcher Interface") settings(javaOnly : _*)
@@ -48,7 +48,7 @@ object Sbt extends Build
 		//   and discovery of subclasses and annotations
 	lazy val apiSub = testedBaseProject(compilePath / "api", "API") dependsOn(interfaceSub)
 
-	/***** Utilities *****/
+	/* **** Utilities **** */
 
 	lazy val controlSub = baseProject(utilPath / "control", "Control")
 	lazy val collectionSub = testedBaseProject(utilPath / "collection", "Collections")
@@ -67,7 +67,7 @@ object Sbt extends Build
 		// generates immutable or mutable Java data types according to a simple input format
 	lazy val datatypeSub = baseProject(utilPath /"datatype", "Datatype Generator") dependsOn(ioSub)
 
-	/***** Intermediate-level Modules *****/
+	/* **** Intermediate-level Modules **** */
 
 		// Apache Ivy integration
 	lazy val ivySub = baseProject(file("ivy"), "Ivy") dependsOn(interfaceSub, launchInterfaceSub, logSub % "compile;test->test", ioSub % "compile;test->test", launchSub % "test->test") settings(ivy, jsch, httpclient)
