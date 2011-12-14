@@ -3,6 +3,7 @@
  */
 package xsbt.api
 
+import scala.util
 import xsbti.api._
 import util.MurmurHash
 import TagTypeVariables.TypeVars
