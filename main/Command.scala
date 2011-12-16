@@ -178,11 +178,8 @@ object Help
 	def briefOnly(help: Seq[(String, String)]): Help = apply(help, Map.empty[String,String])
 	def detailOnly(help: Seq[(String, String)]): Help = apply(Nil, help.toMap)
 }
-trait CommandDefinitions
+trait CommandDefinitions extends (State => State)
 {
-	def commands: Seq[Command]
-}
-trait ReflectedCommands extends CommandDefinitions
-{
-	def commands = ReflectUtilities.allVals[Command](this).values.toSeq
+	def commands: Seq[Command] = ReflectUtilities.allVals[Command](this).values.toSeq
+	def apply(s: State): State = s ++ commands
 }

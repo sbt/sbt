@@ -135,7 +135,7 @@ object BuiltinCommands
 	def ConsoleCommands: Seq[Command] = Seq(ignore, exit, IvyConsole.command, act, nop)
 	def ScriptCommands: Seq[Command] = Seq(ignore, exit, Script.command, act, nop)
 	def DefaultCommands: Seq[Command] = Seq(ignore, help, about, reboot, read, history, continuous, exit, loadProject, loadProjectImpl, loadFailed, Cross.crossBuild, Cross.switchVersion,
-		projects, project, setOnFailure, clearOnFailure, ifLast, multi, shell, set, tasks, inspect, eval, alias, append, last, lastGrep, boot, nop, sessionCommand, act)
+		projects, project, setOnFailure, clearOnFailure, ifLast, multi, shell, set, tasks, inspect, eval, alias, append, last, lastGrep, boot, nop, sessionCommand, call, act)
 	def DefaultBootCommands: Seq[String] = LoadProject :: (IfLast + " " + Shell) :: Nil
 
 	def boot = Command.make(BootCommand)(bootParser)
@@ -301,6 +301,11 @@ object BuiltinCommands
 
 	def defaults = Command.command(DefaultsCommand) { s =>
 		s ++ DefaultCommands
+	}
+	def call = Command(ApplyCommand, ApplyBrief, ApplyDetailed)(_ => spaceDelimited("<class name>")) { (state,args) =>
+		val loader = getClass.getClassLoader
+		val loaded = 	args.map(arg => ModuleUtilities.getObject(arg, loader))
+		(state /: loaded) { case (s, obj: (State => State)) => obj(s) }
 	}
 
 	def initialize = Command.command(InitCommand) { s =>

@@ -197,6 +197,10 @@ ReadCommand + ReadFiles + """
 
 	You probably need to escape this command if entering it at your shell."""
 
+	def ApplyCommand = "apply"
+	def ApplyBrief = (ApplyCommand + " <module-name>*", ApplyDetailed)
+	def ApplyDetailed = "Transforms the current State by calling <module-name>.apply(currentState) for each listed."
+
 	def DefaultsCommand = "add-default-commands"
 	def DefaultsBrief = (DefaultsCommand, DefaultsDetailed)
 	def DefaultsDetailed = "Registers default built-in commands"
