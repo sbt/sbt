@@ -163,11 +163,11 @@ object State
 		def setNext(n: Next) = s.copy(next = n)
 		def setResult(ro: Option[xsbti.MainResult]) = ro match { case None => continue; case Some(r) => setNext(new Return(r)) }
 		def continue = setNext(Continue)
-		def reboot(full: Boolean) = throw new xsbti.FullReload(s.remainingCommands.toArray, full)
-		def reload = setNext(new Return(defaultReload(s)))
+		def reboot(full: Boolean) ={ runExitHooks(); throw new xsbti.FullReload(s.remainingCommands.toArray, full) }
+		def reload = runExitHooks().setNext(new Return(defaultReload(s)))
 		def clearGlobalLog = setNext(ClearGlobalLog)
 		def keepLastLog = setNext(KeepLastLog)
-		def exit(ok: Boolean) = setNext(new Return(Exit(if(ok) 0 else 1)))
+		def exit(ok: Boolean) = runExitHooks().setNext(new Return(Exit(if(ok) 0 else 1)))
 		def get[T](key: AttributeKey[T]) = s.attributes get key
 		def put[T](key: AttributeKey[T], value: T) = s.copy(attributes = s.attributes.put(key, value))
 		def update[T](key: AttributeKey[T])(f: Option[T] => T): State = put(key, f(get(key)))

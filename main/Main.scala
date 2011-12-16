@@ -295,7 +295,7 @@ object BuiltinCommands
 	def clearOnFailure = Command.command(ClearOnFailure)(s => s.copy(onFailure = None))
 
 	def reboot = Command(RebootCommand, RebootBrief, RebootDetailed)(rebootParser) { (s, full) =>
-		s.runExitHooks().reboot(full)
+		s.reboot(full)
 	}
 	def rebootParser(s: State) = token(Space ~> "full" ^^^ true) ?? false
 
@@ -533,9 +533,7 @@ object BuiltinCommands
 
 	def project = Command.make(ProjectCommand, projectBrief, projectDetailed)(ProjectNavigation.command)
 
-	def exit = Command.command(TerminateAction, exitBrief, exitBrief ) ( doExit )
-
-	def doExit(s: State): State  =  s.runExitHooks().exit(true)
+	def exit = Command.command(TerminateAction, exitBrief, exitBrief ) ( _ exit true )
 
 	def loadFailed = Command.command(LoadFailed)(handleLoadFailed)
 	@tailrec def handleLoadFailed(s: State): State =
