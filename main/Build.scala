@@ -42,7 +42,8 @@ object RetrieveUnit
 		lazy val tmp = temporary(tempDir, base)
 		base.getScheme match
 		{
-			case "git" => Some { () => gitRetrieve(base, tmp); tmp }
+			case "git" => gitApply(tmp, base)
+			case _ if isGitPath(base.getPath) => gitApply(tmp, base)
 			case "http" | "https" => Some { () => downloadAndExtract(base, tmp); tmp }
 			case "file" => 
 				val f = new File(base)
@@ -55,6 +56,8 @@ object RetrieveUnit
 			case _ => None
 		}
 	}
+	def isGitPath(path: String) = path.endsWith(".git")
+	private[this] def gitApply(tmp: File, base: URI) = Some { () => gitRetrieve(base, tmp); tmp }
 	def retrieveRODir(base: File, tempDir: File): File =
 	{
 		if (!tempDir.exists)
