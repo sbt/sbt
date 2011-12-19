@@ -42,6 +42,7 @@ object RetrieveUnit
 	def apply(info: ResolveInfo): Option[() => File] =
 	{
 		info.uri match {
+			case Scheme("hg") => Resolvers.mercurial(info)
 			case Scheme("git") => Resolvers.git(info)
 			case Path(path) if path.endsWith(".git") => Resolvers.git(info)
 			case Scheme("http") | Scheme("https") | Scheme("ftp") => Resolvers.remote(info)

@@ -40,38 +40,67 @@ object Resolvers
 		}
 	}
 
-	val git: Resolver = (info: ResolveInfo) => {
-		def clone(at: String, into: File)
+	val mercurial: Resolver = new DistributedVCS
+	{
+		override val scheme = "hg"
+
+		override def clone(at: String, into: File)
+		{
+			run(None, "hg", "clone", at, into.getAbsolutePath)
+		}
+
+		override def checkout(branch: String, in: File)
+		{
+			run(Some(in), "hg", "-q", "checkout", branch)
+		}
+	}.toResolver
+
+	val git: Resolver = new DistributedVCS
+	{
+		override val scheme = "git"
+
+		override def clone(at: String, into: File)
 		{
 			run(None, "git", "clone", at, into.getAbsolutePath)
 		}
 
-		def checkout(branch: String, in: File)
+		override def checkout(branch: String, in: File)
 		{
 			run(Some(in), "git", "checkout", "-q", branch)
 		}
+	}.toResolver
 
-		def normalized(uri: URI) = uri.copy(scheme = "git")
+	abstract class DistributedVCS
+	{
+		val scheme: String
 
-		def retrieveLocalCopy(at: URI, into: File) = creates(into) {clone(at.withoutFragment.toASCIIString, into)}
+		def clone(at: String, into: File)
 
-		def retrieveBranch(branch: String, from: File, into: File) =
+		def checkout(branch: String, in: File)
+
+		def toResolver: Resolver = (info: ResolveInfo) => {
+			val uri = info.uri.withoutMarkerScheme
+			val staging = info.staging
+			Some {
+				() =>
+					val localCopy = retrieveLocalCopy(at = uri, into = uniqueSubdirectoryFor(normalized(uri.withoutFragment), in = staging))
+					if (uri.hasFragment)
+						retrieveBranch(branch = uri.getFragment, from = localCopy, into = uniqueSubdirectoryFor(normalized(uri), in = staging))
+					else
+						localCopy
+			}
+		}
+
+		private def normalized(uri: URI) = uri.copy(scheme = scheme)
+
+		private def retrieveLocalCopy(at: URI, into: File) = creates(into) {clone(at.withoutFragment.toASCIIString, into)}
+
+		private def retrieveBranch(branch: String, from: File, into: File) =
 		{
 			creates(into) {
 				clone(at = from.getAbsolutePath, into = into)
 				checkout(branch, in = into)
 			}
-		}
-
-		val uri = info.uri.withoutMarkerScheme
-		val staging = info.staging
-		Some {
-			() =>
-				val localCopy = retrieveLocalCopy(at = uri, into = uniqueSubdirectoryFor(normalized(uri.withoutFragment), in = staging))
-				if (uri.hasFragment)
-					retrieveBranch(branch = uri.getFragment, from = localCopy, into = uniqueSubdirectoryFor(normalized(uri), in = staging))
-				else
-					localCopy
 		}
 	}
 
