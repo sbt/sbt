@@ -40,6 +40,32 @@ object Resolvers
 		}
 	}
 
+	val subversion: Resolver = (info: ResolveInfo) => {
+		def normalized(uri: URI) = uri.copy(scheme = "svn")
+
+		def checkout(at: URI, into: File, revision: Option[String]) =
+		{
+			creates(into) {
+				revision match {
+					case Some(r) =>
+						run(None, "svn", "checkout", "-r", r, at.toASCIIString, into.getAbsolutePath)
+					case None =>
+						run(None, "svn", "checkout", at.toASCIIString, into.getAbsolutePath)
+				}
+			}
+		}
+
+		val uri = info.uri.withoutMarkerScheme
+		Some {
+			() =>
+				checkout(
+					at = uri.withoutFragment,
+					into = uniqueSubdirectoryFor(normalized(uri), in = info.staging),
+					revision = Option(uri.getFragment)
+				)
+		}
+	}
+
 	val mercurial: Resolver = new DistributedVCS
 	{
 		override val scheme = "hg"
