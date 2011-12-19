@@ -63,7 +63,7 @@ object Resolvers
 			}
 		}
 
-		val uri = info.uri
+		val uri = info.uri.withoutMarkerScheme
 		val staging = info.staging
 		Some {
 			() =>

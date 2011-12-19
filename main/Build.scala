@@ -57,7 +57,9 @@ object RetrieveUnit
 
 	object Path
 	{
-		def unapply(uri: URI) = Option(uri.getPath)
+		import RichURI.fromURI
+
+		def unapply(uri: URI) = Option(uri.withoutMarkerScheme.getPath)
 	}
 }
 object EvaluateConfigurations

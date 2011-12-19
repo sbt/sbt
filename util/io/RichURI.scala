@@ -20,6 +20,19 @@ class RichURI(uri: URI)
 			new URI(uri.getScheme, uri.getSchemeSpecificPart, null)
 		else
 			uri
+
+	def hasMarkerScheme = new URI(uri.getSchemeSpecificPart).getScheme ne null
+
+	def withoutMarkerScheme =
+	{
+		if (hasMarkerScheme)
+			if (hasFragment)
+				new URI(uri.getSchemeSpecificPart + "#" + uri.getFragment)
+			else
+				new URI(uri.getSchemeSpecificPart)
+		else
+			uri
+	}
 }
 
 object RichURI
