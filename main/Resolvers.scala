@@ -51,19 +51,27 @@ object Resolvers
 			run(Some(in), "git", "checkout", "-q", branch)
 		}
 
-		def retrieveLocalCopy(at: URI, into: File) =
+		def normalized(uri: URI) = uri.copy(scheme = "git")
+
+		def retrieveLocalCopy(at: URI, into: File) = creates(into) {clone(at.withoutFragment.toASCIIString, into)}
+
+		def retrieveBranch(branch: String, from: File, into: File) =
 		{
 			creates(into) {
-				clone(at.withoutFragment.toASCIIString, into)
-				if (at.hasFragment)
-					checkout(branch = at.getFragment, in = into)
+				clone(at = from.getAbsolutePath, into = into)
+				checkout(branch, in = into)
 			}
 		}
 
 		val uri = info.uri
+		val staging = info.staging
 		Some {
 			() =>
-				retrieveLocalCopy(at = uri, into = uniqueSubdirectoryFor(uri, in = info.staging))
+				val localCopy = retrieveLocalCopy(at = uri, into = uniqueSubdirectoryFor(normalized(uri.withoutFragment), in = staging))
+				if (uri.hasFragment)
+					retrieveBranch(branch = uri.getFragment, from = localCopy, into = uniqueSubdirectoryFor(normalized(uri), in = staging))
+				else
+					localCopy
 		}
 	}
 
