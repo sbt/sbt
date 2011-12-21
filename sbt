@@ -75,6 +75,7 @@ unset verbose debug
 # pull -J and -D options to give to java.
 declare -a residual_args
 declare -a java_args
+declare -a scalac_args
 declare -a sbt_commands
 
 build_props_sbt () {
@@ -118,8 +119,11 @@ execRunner () {
 echoerr () {
   echo 1>&2 "$@"
 }
-dlog () {
+vlog () {
   [[ $verbose || $debug ]] && echoerr "$@"
+}
+dlog () {
+  [[ $debug ]] && echoerr "$@"
 }
 
 sbtjar_07_url () {
@@ -214,17 +218,18 @@ usage () {
   cat <<EOM
 Usage: $script_name [options]
 
-  -h | -help        print this message
-  -v | -verbose     this runner is chattier
-  -d | -debug       set sbt log level to debug
-  -no-colors        disable ANSI color codes
-  -sbt-create       start sbt even if current directory contains no sbt project
-  -sbt-dir  <path>  path to global settings/plugins directory (default: ~/.sbt)
-  -sbt-boot <path>  path to shared boot directory (default: ~/.sbt/boot in 0.11 series)
-  -ivy      <path>  path to local Ivy repository (default: ~/.ivy2)
-  -mem   <integer>  set memory options (default: $sbt_mem, which is $(get_mem_opts $sbt_mem))
-  -no-share         use all local caches; no sharing
-  -offline          put sbt in offline mode
+  -h | -help         print this message
+  -v | -verbose      this runner is chattier
+  -d | -debug        set sbt log level to debug
+  -no-colors         disable ANSI color codes
+  -sbt-create        start sbt even if current directory contains no sbt project
+  -sbt-dir   <path>  path to global settings/plugins directory (default: ~/.sbt)
+  -sbt-boot  <path>  path to shared boot directory (default: ~/.sbt/boot in 0.11 series)
+  -ivy       <path>  path to local Ivy repository (default: ~/.ivy2)
+  -mem    <integer>  set memory options (default: $sbt_mem, which is $(get_mem_opts $sbt_mem))
+  -no-share          use all local caches; no sharing
+  -offline           put sbt in offline mode
+  -jvm-debug <port>  Turn on JVM debugging, open at the given port.
 
   # sbt version (default: from project/build.properties if present, else latest release)
   -sbt-version  <version>   use the specified version of sbt
@@ -248,6 +253,7 @@ Usage: $script_name [options]
   .sbtopts      if this file exists in the sbt root, it is prepended to the runner args
   -Dkey=val     pass -Dkey=val directly to the java runtime
   -J-X          pass option -X directly to the java runtime (-J is stripped)
+  -S-X          add -X to sbt's scalacOptions (-J is stripped)
 
 In the case of duplicated or conflicting options, the order above
 shows precedence: JAVA_OPTS lowest, command line options highest.
@@ -262,6 +268,10 @@ addSbt () {
   dlog "[addSbt] arg = '$1'"
   sbt_commands=( "${sbt_commands[@]}" "$1" )
 }
+addScalac () {
+  dlog "[addScalac] arg = '$1'"
+  scalac_args=( "${scalac_args[@]}" "$1" )
+}
 addResidual () {
   dlog "[residual] arg = '$1'"
   residual_args=( "${residual_args[@]}" "$1" )
@@ -269,44 +279,59 @@ addResidual () {
 addResolver () {
   addSbt "set resolvers in ThisBuild += $1"
 }
+unset addedSnapshotRepo
 addSnapshotRepo () {
-  addResolver "ScalaToolsSnapshots"
+  [[ -n "$addedSnapshotRepo" ]] || addResolver "ScalaToolsSnapshots" && addedSnapshotRepo=true
+}
+addDebugger () {
+  addJava "-Xdebug -Xrunjdwp:transport=dt_socket,server=y,suspend=n,address=$1"
 }
 
 process_args ()
 {
+  require_arg () {
+    local type="$1"
+    local opt="$2"
+    local arg="$3"
+    
+    if [[ -z "$arg" ]] || [[ "${arg:0:1}" == "-" ]]; then
+      die "$opt requires <$type> argument"
+    fi
+  }
   while [[ $# -gt 0 ]]; do
     case "$1" in
        -h|-help) usage; exit 1 ;;
-    -v|-verbose) verbose=1; shift ;;
-      -d|-debug) debug=1; shift ;;
-    # -u|-upgrade) addSbt 'set sbt.version 0.7.7' ; addSbt reload ; shift ;;
+    -v|-verbose) verbose=1 && shift ;;
+      -d|-debug) debug=1 && shift ;;
+    # -u|-upgrade) addSbt 'set sbt.version 0.7.7' ; addSbt reload  && shift ;;
 
-           -ivy) addJava "-Dsbt.ivy.home=$2"; shift 2 ;;
-           -mem) sbt_mem="$2"; shift 2 ;;
-     -no-colors) addJava "-Dsbt.log.noformat=true"; shift ;;
-      -no-share) addJava "$noshare_opts"; shift ;;
-      -sbt-boot) addJava "-Dsbt.boot.directory=$2"; shift 2 ;;
-       -sbt-dir) addJava "-Dsbt.global.base=$2"; shift 2 ;;
-     -debug-inc) addJava "-Dxsbt.inc.debug=true"; shift ;;
-       -offline) addSbt "set offline := true"; shift ;;
+           -ivy) require_arg path "$1" "$2" && addJava "-Dsbt.ivy.home=$2" && shift 2 ;;
+           -mem) require_arg integer "$1" "$2" && sbt_mem="$2" && shift 2 ;;
+     -no-colors) addJava "-Dsbt.log.noformat=true" && shift ;;
+      -no-share) addJava "$noshare_opts" && shift ;;
+      -sbt-boot) require_arg path "$1" "$2" && addJava "-Dsbt.boot.directory=$2" && shift 2 ;;
+       -sbt-dir) require_arg path "$1" "$2" && addJava "-Dsbt.global.base=$2" && shift 2 ;;
+     -debug-inc) addJava "-Dxsbt.inc.debug=true" && shift ;;
+       -offline) addSbt "set offline := true" && shift ;;
+     -jvm-debug) require_arg port "$1" "$2" && addDebugger $2 && shift 2 ;;
 
-    -sbt-create) sbt_create=true; shift ;;
-        -sbt-rc) [[ -n "$sbt_rc_version" ]] || die "no sbt RC candidate defined."; sbt_version=$sbt_rc_version; shift ;;
-  -sbt-snapshot) addSnapshotRepo ; sbt_version=$sbt_snapshot_version; shift ;;
-       -sbt-jar) sbt_jar="$2"; shift 2 ;;
-   -sbt-version) sbt_version="$2"; shift 2 ;;
- -scala-version) addSbt "++ $2"; shift 2 ;;
-    -scala-home) addSbt "set scalaHome in ThisBuild := Some(file(\"$2\"))"; shift 2 ;;
-     -java-home) java_cmd="$2/bin/java"; shift 2 ;;
+    -sbt-create) sbt_create=true && shift ;;
+        -sbt-rc) [[ -n "$sbt_rc_version" ]] || die "no sbt RC candidate defined."; sbt_version=$sbt_rc_version && shift ;;
+  -sbt-snapshot) addSnapshotRepo ; sbt_version=$sbt_snapshot_version && shift ;;
+       -sbt-jar) require_arg path "$1" "$2" && sbt_jar="$2" && shift 2 ;;
+   -sbt-version) require_arg version "$1" "$2" && sbt_version="$2" && shift 2 ;;
+ -scala-version) require_arg version "$1" "$2" && addSbt "++ $2" && shift 2 ;;
+    -scala-home) require_arg path "$1" "$2" && addSbt "set scalaHome in ThisBuild := Some(file(\"$2\"))" && shift 2 ;;
+     -java-home) require_arg path "$1" "$2" && java_cmd="$2/bin/java" && shift 2 ;;
 
-            -D*) addJava "$1"; shift ;;
-            -J*) addJava "${1:2}"; shift ;;
-            -28) addSbt "++ $latest_28"; shift ;;
-            -29) addSbt "++ $latest_29"; shift ;;
-           -210) addSnapshotRepo ; addSbt "++ $latest_210"; shift ;;
+            -D*) addJava "$1" && shift ;;
+            -J*) addJava "${1:2}" && shift ;;
+            -S*) addScalac "${1:2}" && shift ;;
+            -28) addSbt "++ $latest_28" && shift ;;
+            -29) addSbt "++ $latest_29" && shift ;;
+           -210) addSnapshotRepo ; addSbt "++ $latest_210" && shift ;;
 
-              *) addResidual "$1"; shift ;;
+              *) addResidual "$1" && shift ;;
     esac
   done
   
@@ -330,6 +355,9 @@ loadConfigFile() {
 process_args "$@"
 set -- "${residual_args[@]}"
 argumentCount=$#
+
+# set scalacOptions if we were given any -S opts
+[[ ${#scalac_args[@]} -eq 0 ]] || addSbt "set scalacOptions in ThisBuild += \"${scalac_args[@]}\""
 
 # figure out the version
 [[ "$sbt_version" ]] || sbt_version=$(build_props_sbt)
