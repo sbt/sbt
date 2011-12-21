@@ -1,15 +1,11 @@
 import sbt._
-import com.typesafe.packager.debian.DebianPlugin._
-import com.typesafe.packager.debian.Keys._
-import com.typesafe.packager.linux.{LinuxPackageMapping, LinuxFileMetaData}
-import com.typesafe.packager.rpm.RpmPlugin._
-import com.typesafe.packager.rpm.Keys._
-import sbt.Keys.{baseDirectory,sbtVersion,sourceDirectory, name,version}
-import com.typesafe.packager.linux.Keys.{linuxPackageMappings,maintainer,packageDescription}
+import com.typesafe.packager.Keys._
+import sbt.Keys._
+import com.typesafe.packager.PackagerPlugin._
 
 object DebianPkg {
   
-  val settings: Seq[Setting[_]] = debianSettings ++ rpmSettings ++ Seq(
+  val settings: Seq[Setting[_]] = packagerSettings ++ Seq(
       
     // GENERAL LINUX PACKAGING STUFFS
     maintainer := "Josh Suereth <joshua.suereth@typesafe.com>",
@@ -17,20 +13,24 @@ object DebianPkg {
  This script provides a native way to run the Simple Build Tool,
  a build tool for Scala software, also called SBT.""",
     linuxPackageMappings <+= (baseDirectory) map { bd =>
-      (packageForDebian((bd / "sbt") -> "/usr/bin/sbt")
+      (packageMapping((bd / "sbt") -> "/usr/bin/sbt")
        withUser "root" withGroup "root" withPerms "0755")
     },
     linuxPackageMappings <+= (sourceDirectory) map { bd =>
-      (packageForDebian(
+      (packageMapping(
         (bd / "linux" / "usr/share/man/man1/sbt.1") -> "/usr/share/man/man1/sbt.1.gz"
-      ) withUser "root" withGroup "root" withPerms "0644" gzipped) asDocs()
+      ) withPerms "0644" gzipped) asDocs()
     },
     linuxPackageMappings <+= (sourceDirectory in Debian) map { bd =>
-    packageForDebian(
-        (bd / "usr/share/doc/sbt") -> "/usr/share/doc/sbt",
+      packageMapping(
         (bd / "usr/share/doc/sbt/copyright") -> "/usr/share/doc/sbt/copyright"
-        ) withUser "root" withGroup "root" withPerms "0644" asDocs()
+      ) withPerms "0644" asDocs()
     },   
+    linuxPackageMappings <+= (sourceDirectory in Debian) map { bd =>
+      packageMapping(
+        (bd / "usr/share/doc/sbt") -> "/usr/share/doc/sbt"
+      ) asDocs()
+    },
 
     // DEBIAN SPECIFIC    
     name in Debian := "sbt",
@@ -40,9 +40,9 @@ object DebianPkg {
     debianPackageDependencies in Debian ++= Seq("curl", "java2-runtime", "bash (>= 2.05a-11)"),
     debianPackageRecommends in Debian += "git",
     linuxPackageMappings in Debian <+= (sourceDirectory) map { bd =>
-    (packageForDebian(
+      (packageMapping(
         (bd / "debian/changelog") -> "/usr/share/doc/sbt/changelog.gz"
-        ) withUser "root" withGroup "root" withPerms "0644" gzipped) asDocs()
+      ) withUser "root" withGroup "root" withPerms "0644" gzipped) asDocs()
     },
     
     // RPM SPECIFIC
@@ -52,6 +52,6 @@ object DebianPkg {
     rpmVendor := "typesafe",
     rpmUrl := Some("http://github.com/paulp/sbt-extras"),
     rpmSummary := Some("Simple Build Tool for Scala-driven builds."),
-    rpmLicense := Some("BSD")
+    rpmLicense := Some("BSD")   
   )
 }
