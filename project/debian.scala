@@ -50,7 +50,6 @@ object DebianPkg {
     version in Rpm <<= sbtVersion.identity,
     rpmRelease := "1",
     rpmVendor := "typesafe",
-    rpmOs := "i386",
     rpmUrl := Some("http://github.com/paulp/sbt-extras"),
     rpmSummary := Some("Simple Build Tool for Scala-driven builds."),
     rpmLicense := Some("BSD")
