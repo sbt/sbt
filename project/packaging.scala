@@ -31,6 +31,16 @@ object Packaging {
         (bd / "usr/share/doc/sbt") -> "/usr/share/doc/sbt"
       ) asDocs()
     },
+    linuxPackageMappings <+= (sourceDirectory in Linux) map { bd =>
+      packageMapping(
+        (bd / "etc/sbt") -> "/etc/sbt"
+      ) withConfig()
+    },
+    linuxPackageMappings <+= (sourceDirectory in Linux) map { bd =>
+      packageMapping(
+        (bd / "etc/sbt/sbtopts") -> "/etc/sbt/sbtopts"
+      ) withPerms "0644" withConfig()
+    },
 
     // DEBIAN SPECIFIC    
     name in Debian := "sbt",
