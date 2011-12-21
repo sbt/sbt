@@ -157,7 +157,11 @@ jar_url () {
 }
 
 jar_file () {
-  echo "$script_dir/.lib/$1/sbt-launch.jar"
+  if [[ -f "/usr/lib/sbt/$1/sbt-launch.jar" ]]; then
+    echo "/usr/lib/sbt/$1/sbt-launch.jar"
+  else
+    echo "$script_dir/.lib/$1/sbt-launch.jar"
+  fi
 }
 
 sbt_artifactory_list () {

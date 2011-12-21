@@ -4,9 +4,24 @@ import sbt.Keys._
 import com.typesafe.packager.PackagerPlugin._
 
 object Packaging {
+
+  val sbtLaunchJarUrl = SettingKey[String]("sbt-launch-jar-url")
+  val sbtLaunchJarLocation = SettingKey[File]("sbt-launch-jar-location")  
+  val sbtLaunchJar = TaskKey[File]("sbt-launch-jar", "Resolves SBT launch jar")
   
   val settings: Seq[Setting[_]] = packagerSettings ++ Seq(
-      
+    sbtLaunchJarUrl <<= sbtVersion apply ("http://typesafe.artifactoryonline.com/typesafe/ivy-releases/org.scala-tools.sbt/sbt-launch/"+_+"/sbt-launch.jar"),
+    sbtLaunchJarLocation <<= target apply (_ / "sbt-launch.jar"),
+    sbtLaunchJar <<= (sbtLaunchJarUrl, sbtLaunchJarLocation) map { (uri, file) =>
+      import dispatch._
+      if(!file.exists) {
+         val writer = new java.io.BufferedOutputStream(new java.io.FileOutputStream(file))
+         try Http(url(uri) >>> writer)
+         finally writer.close()
+      }
+      // TODO - GPG Trust validation.
+      file
+    },
     // GENERAL LINUX PACKAGING STUFFS
     maintainer := "Josh Suereth <joshua.suereth@typesafe.com>",
     packageDescription := """Simple Build Tool
@@ -41,7 +56,11 @@ object Packaging {
         (bd / "etc/sbt/sbtopts") -> "/etc/sbt/sbtopts"
       ) withPerms "0644" withConfig()
     },
-
+    linuxPackageMappings <+= (sbtLaunchJar, sourceDirectory in Linux, sbtVersion) map { (jar, dir, v) =>
+      packageMapping(dir -> "/usr/lib/sbt",
+                     dir -> ("/usr/lib/sbt/" + v),
+                     jar -> ("/usr/lib/sbt/"+v+"/sbt-launch.jar")) withPerms "0755"
+    },
     // DEBIAN SPECIFIC    
     name in Debian := "sbt",
     version in Debian <<= (version, sbtVersion) apply { (v, sv) =>       
