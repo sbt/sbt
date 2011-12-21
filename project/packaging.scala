@@ -3,7 +3,7 @@ import com.typesafe.packager.Keys._
 import sbt.Keys._
 import com.typesafe.packager.PackagerPlugin._
 
-object DebianPkg {
+object Packaging {
   
   val settings: Seq[Setting[_]] = packagerSettings ++ Seq(
       
@@ -21,12 +21,12 @@ object DebianPkg {
         (bd / "linux" / "usr/share/man/man1/sbt.1") -> "/usr/share/man/man1/sbt.1.gz"
       ) withPerms "0644" gzipped) asDocs()
     },
-    linuxPackageMappings <+= (sourceDirectory in Debian) map { bd =>
+    linuxPackageMappings <+= (sourceDirectory in Linux) map { bd =>
       packageMapping(
         (bd / "usr/share/doc/sbt/copyright") -> "/usr/share/doc/sbt/copyright"
       ) withPerms "0644" asDocs()
     },   
-    linuxPackageMappings <+= (sourceDirectory in Debian) map { bd =>
+    linuxPackageMappings <+= (sourceDirectory in Linux) map { bd =>
       packageMapping(
         (bd / "usr/share/doc/sbt") -> "/usr/share/doc/sbt"
       ) asDocs()
