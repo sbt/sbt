@@ -81,6 +81,14 @@ object Packaging {
     rpmVendor := "typesafe",
     rpmUrl := Some("http://github.com/paulp/sbt-extras"),
     rpmSummary := Some("Simple Build Tool for Scala-driven builds."),
-    rpmLicense := Some("BSD")   
+    rpmLicense := Some("BSD"),
+    
+    
+    // WINDOWS SPECIFIC
+    name in Windows := "sbt",
+    wixFile <<= sourceDirectory in Windows map (_ / "sbt.xml"),
+    mappings in packageMsi in Windows <+= sbtLaunchJar map { f => f -> "sbt-launch.jar" },
+    mappings in packageMsi in Windows <+= sourceDirectory in Windows map { d => 
+      (d / "sbt.bat") -> "sbt.bat" }
   )
 }

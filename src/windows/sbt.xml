@@ -1,0 +1,32 @@
+<?xml version='1.0'?>
+<Wix xmlns='http://schemas.microsoft.com/wix/2006/wi'>
+   <Product Id='PUT-GUID-HERE' 
+            Name='Simple Build Tool' 
+            Language='1033'
+            Version='1.0.0.00.10.2' 
+            Manufacturer='Typesafe, Inc.' 
+            UpgradeCode='PUT-GUID-HERE'>
+      <Package Description='Simple Build Tool launcher script.'
+                Comments='First attempt to create an SBT windows installer, bear with me.'
+                Manufacturer='Typesafe, Inc.' 
+                InstallerVersion='200' 
+                Compressed='yes' />
+ 
+      <Media Id='1' Cabinet='sbt.cab' EmbedCab='yes' />
+ 
+      <Directory Id='TARGETDIR' Name='SourceDir'>
+         <Directory Id='ProgramFilesFolder' Name='PFiles'>
+            <Directory Id='MyDir' Name='sbt'>
+               <Component Id='SbtLauncherScript' Guid='PUT-GUID-HERE'>
+                  <File Id='sbt' Name='sbt.bat' DiskId='1' Source='sbt.bat' />
+                  <File Id='sbt' Name='sbt-launch.jar' DiskId='1' Source='sbt-launch.jar' />
+               </Component>
+            </Directory>
+         </Directory>
+      </Directory>
+ 
+      <Feature Id='SbtLauncher' Title='Sbt Launcher Script' Level='1'>
+         <ComponentRef Id='SbtLauncherScript' />
+      </Feature>
+   </Product>
+</Wix>
