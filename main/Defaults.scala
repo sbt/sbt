@@ -351,15 +351,15 @@ object Defaults extends BuildCommon
 		packageOptions in packageSrc <<= (name, version, organizationName, packageOptions) map { Package.addSpecManifestAttributes(_, _, _) +: _ },
 		`package` <<= packageBin
 	) ++
-	packageTasks(packageBin, packageBinTask) ++
-	packageTasks(packageSrc, packageSrcTask) ++
-	packageTasks(packageDoc, packageDocTask)
+	packageTasks(packageBin, packageBinMappings) ++
+	packageTasks(packageSrc, packageSrcMappings) ++
+	packageTasks(packageDoc, packageDocMappings)
 
 	private[this] val allSubpaths = (dir: File) => (dir.*** --- dir) x (relativeTo(dir)|flat)
 
-	def packageBinTask = products map { ps => ps flatMap { p => allSubpaths(p) } }
-	def packageDocTask = doc map allSubpaths
-	def packageSrcTask = concatMappings(resourceMappings, sourceMappings)
+	def packageBinMappings = products map { ps => ps flatMap { p => allSubpaths(p) } }
+	def packageDocMappings = doc map allSubpaths
+	def packageSrcMappings = concatMappings(resourceMappings, sourceMappings)
 
 	private type Mappings = Initialize[Task[Seq[(File, String)]]]
 	def concatMappings(as: Mappings, bs: Mappings) = (as zipWith bs)( (a,b) => (a :^: b :^: KNil) map { case a :+: b :+: HNil => a ++ b } )
