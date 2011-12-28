@@ -86,7 +86,50 @@ object Packaging {
     
     // WINDOWS SPECIFIC
     name in Windows := "sbt",
-    wixFile <<= sourceDirectory in Windows map (_ / "sbt.xml"),
+    wixConfig <<= (sbtVersion) map { (sv) =>
+      val version = (sv split "\\.") match {
+        case Array(major,minor,bugfix, _*) => Seq(major,minor,bugfix, "1") mkString "."
+        case Array(major,minor) => Seq(major,minor,"0","1") mkString "."
+        case Array(major) => Seq(major,"0","0","1") mkString "."
+      }
+      (
+<Wix xmlns='http://schemas.microsoft.com/wix/2006/wi'>
+   <Product Id='ce07be71-510d-414a-92d4-dff47631848a' 
+            Name='Simple Build Tool' 
+            Language='1033'
+            Version={version}
+            Manufacturer='Typesafe, Inc.' 
+            UpgradeCode='4552fb0e-e257-4dbd-9ecb-dba9dbacf424'>
+      <Package Description='Simple Build Tool launcher script.'
+                Comments='First attempt to create an SBT windows installer, bear with me.'
+                Manufacturer='Typesafe, Inc.' 
+                InstallerVersion='200' 
+                Compressed='yes' />
+ 
+      <Media Id='1' Cabinet='sbt.cab' EmbedCab='yes' />
+ 
+      <Directory Id='TARGETDIR' Name='SourceDir'>
+         <Directory Id='ProgramFilesFolder' Name='PFiles'>
+            <Directory Id='INSTALLDIR' Name='sbt'>
+               <Component Id='SbtLauncherScript' Guid='*'>
+                  <File Id='sbt_bat' Name='sbt.bat' DiskId='1' Source='sbt.bat' />
+                  <Environment Id="PATH" Name="PATH" Value="[INSTALLDIR]" Permanent="no" Part="last" Action="set" System="yes" />
+               </Component>
+               <Component Id='SbtLauncherJar' Guid='*'>
+                  <File Id='sbt_launch_jar' Name='sbt-launch.jar' DiskId='1' Source='sbt-launch.jar' />
+               </Component>               
+            </Directory>
+         </Directory>
+      </Directory>
+ 
+      <Feature Id='SbtLauncher' Title='Sbt Launcher Script' Level='1'>
+         <ComponentRef Id='SbtLauncherScript' />
+         <ComponentRef Id='SbtLauncherJar' />
+      </Feature>
+   </Product>
+</Wix>)
+    },
+    //wixFile <<= sourceDirectory in Windows map (_ / "sbt.xml"),
     mappings in packageMsi in Windows <+= sbtLaunchJar map { f => f -> "sbt-launch.jar" },
     mappings in packageMsi in Windows <+= sourceDirectory in Windows map { d => 
       (d / "sbt.bat") -> "sbt.bat" }
