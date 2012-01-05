@@ -104,7 +104,7 @@ execRunner () {
     echo ""
   }
 
-  "$@"
+  exec "$@"
 }
 
 echoerr () {
