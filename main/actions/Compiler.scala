@@ -4,6 +4,8 @@
 package sbt
 
 	import xsbti.{Logger => _,_}
+	import xsbti.compile.CompileOrder
+	import CompileOrder.{JavaThenScala, Mixed, ScalaThenJava}
 	import compiler._
 	import inc._
 	import Locate.DefinesClass
@@ -14,12 +16,12 @@ object Compiler
 	val DefaultMaxErrors = 100
 
 	final case class Inputs(compilers: Compilers, config: Options, incSetup: IncSetup)
-	final case class Options(classpath: Seq[File], sources: Seq[File], classesDirectory: File, options: Seq[String], javacOptions: Seq[String], maxErrors: Int, order: CompileOrder.Value)
-	final case class IncSetup(analysisMap: Map[File, Analysis], definesClass: DefinesClass, skip: Boolean, cacheFile: File)
-	final case class Compilers(scalac: AnalyzingCompiler, javac: JavaCompiler)
+	final case class Options(classpath: Seq[File], sources: Seq[File], classesDirectory: File, options: Seq[String], javacOptions: Seq[String], maxErrors: Int, order: CompileOrder)
+	final case class IncSetup(analysisMap: File => Option[Analysis], definesClass: DefinesClass, skip: Boolean, cacheFile: File)
+	final case class Compilers(scalac: AnalyzingCompiler, javac: JavaTool)
 
 	@deprecated("Use the other inputs variant.", "0.12.0")
-	def inputs(classpath: Seq[File], sources: Seq[File], outputDirectory: File, options: Seq[String], javacOptions: Seq[String], definesClass: DefinesClass, maxErrors: Int, order: CompileOrder.Value)(implicit compilers: Compilers, log: Logger): Inputs =
+	def inputs(classpath: Seq[File], sources: Seq[File], outputDirectory: File, options: Seq[String], javacOptions: Seq[String], definesClass: DefinesClass, maxErrors: Int, order: CompileOrder)(implicit compilers: Compilers, log: Logger): Inputs =
 	{
 		import Path._
 		val classesDirectory = outputDirectory / "classes"
@@ -28,7 +30,7 @@ object Compiler
 		val incSetup = IncSetup(Map.empty, definesClass, false, cacheFile)
 		inputs(augClasspath, sources, classesDirectory, options, javacOptions, maxErrors, order)(compilers, incSetup, log)
 	}
-	def inputs(classpath: Seq[File], sources: Seq[File], classesDirectory: File, options: Seq[String], javacOptions: Seq[String], maxErrors: Int, order: CompileOrder.Value)(implicit compilers: Compilers, incSetup: IncSetup, log: Logger): Inputs =
+	def inputs(classpath: Seq[File], sources: Seq[File], classesDirectory: File, options: Seq[String], javacOptions: Seq[String], maxErrors: Int, order: CompileOrder)(implicit compilers: Compilers, incSetup: IncSetup, log: Logger): Inputs =
 		new Inputs(
 			compilers,
 			new Options(classpath, sources, classesDirectory, options, javacOptions, maxErrors, order),
@@ -54,7 +56,7 @@ object Compiler
 		val javaCompiler = JavaCompiler.fork(cpOptions, instance)(javac)
 		compilers(instance, cpOptions, javaCompiler)
 	}
-	def compilers(instance: ScalaInstance, cpOptions: ClasspathOptions, javac: JavaCompiler)(implicit app: AppConfiguration, log: Logger): Compilers =
+	def compilers(instance: ScalaInstance, cpOptions: ClasspathOptions, javac: JavaTool)(implicit app: AppConfiguration, log: Logger): Compilers =
 	{
 		val scalac = scalaCompiler(instance, cpOptions)
 		new Compilers(scalac, javac)

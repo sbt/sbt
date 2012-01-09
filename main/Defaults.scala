@@ -6,6 +6,7 @@ package sbt
 	import Build.data
 	import Scope.{fillTaskAxis, GlobalScope, ThisScope}
 	import xsbt.api.Discovery
+	import xsbti.compile.CompileOrder
 	import Project.{inConfig, Initialize, inScope, inTask, ScopedKey, Setting, SettingsDefinition}
 	import Load.LoadedBuild
 	import Artifact.{DocClassifier, SourceClassifier}
@@ -43,8 +44,11 @@ object Defaults extends BuildCommon
 	def extractAnalysis[T](a: Attributed[T]): (T, inc.Analysis) =
 		(a.data, a.metadata get Keys.analysis getOrElse inc.Analysis.Empty)
 
-	def analysisMap[T](cp: Seq[Attributed[T]]): Map[T, inc.Analysis] =
-		(for(a <- cp; an <- a.metadata get Keys.analysis) yield (a.data, an) ).toMap
+	def analysisMap[T](cp: Seq[Attributed[T]]): T => Option[inc.Analysis] =
+	{
+		val m = (for(a <- cp; an <- a.metadata get Keys.analysis) yield (a.data, an) ).toMap
+		m.get _
+	}
 
 	def buildCore: Seq[Setting[_]] = thisBuildCore ++ globalCore
 	def thisBuildCore: Seq[Setting[_]] = inScope(GlobalScope.copy(project = Select(ThisBuild)))(Seq(

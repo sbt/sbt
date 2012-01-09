@@ -17,7 +17,7 @@ package sbt
 
 object Doc {
 	def apply(maximumErrors: Int, compiler: AnalyzingCompiler) = new Scaladoc(maximumErrors, compiler)
-	def apply(maximumErrors: Int, compiler: JavaCompiler) = new Javadoc(maximumErrors, compiler)
+	def apply(maximumErrors: Int, compiler: sbt.compiler.Javadoc) = new Javadoc(maximumErrors, compiler)
 }
 sealed trait Doc {
 	type Gen = (Seq[File], Seq[File], File, Seq[String], Int, Logger) => Unit
@@ -62,11 +62,11 @@ final class Scaladoc(maximumErrors: Int, compiler: AnalyzingCompiler) extends Do
 		generate("Scala", label, compiler.doc, sources, classpath, outputDirectory, options, maximumErrors, log)
 	}
 }
-final class Javadoc(maximumErrors: Int, compiler: JavaCompiler) extends Doc
+final class Javadoc(maximumErrors: Int, doc: sbt.compiler.Javadoc) extends Doc
 {
 	def apply(label: String, sources: Seq[File], classpath: Seq[File], outputDirectory: File, options: Seq[String], log: Logger)
 	{
 		// javadoc doesn't handle *.scala properly, so we evict them from javadoc sources list.
-		generate("Java", label, compiler.doc, sources.filterNot(_.name.endsWith(".scala")), classpath, outputDirectory, options, maximumErrors, log)
+		generate("Java", label, doc.doc, sources.filterNot(_.name.endsWith(".scala")), classpath, outputDirectory, options, maximumErrors, log)
 	}
 }

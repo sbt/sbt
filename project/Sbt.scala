@@ -58,7 +58,7 @@ object Sbt extends Build
 		// Path, IO (formerly FileUtilities), NameFilter and other I/O utility classes
 	lazy val ioSub = testedBaseProject(utilPath / "io", "IO") dependsOn(controlSub)
 		// Utilities related to reflection, managing Scala versions, and custom class loaders
-	lazy val classpathSub = baseProject(utilPath / "classpath", "Classpath") dependsOn(launchInterfaceSub, ioSub) settings(scalaCompiler)
+	lazy val classpathSub = baseProject(utilPath / "classpath", "Classpath") dependsOn(launchInterfaceSub, interfaceSub, ioSub) settings(scalaCompiler)
 		// Command line-related utilities.
 	lazy val completeSub = testedBaseProject(utilPath / "complete", "Completion") dependsOn(collectionSub, controlSub, ioSub) settings(jline)
 		// logging
