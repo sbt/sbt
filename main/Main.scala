@@ -458,7 +458,7 @@ object BuiltinCommands
 	def allKeyParser(s: State): Parser[AttributeKey[_]] =
 	{
 		val keyMap = Project.structure(s).index.keyMap
-		token((Space ~> ID) !!! "Expected key" examples keyMap.keySet) flatMap { key => Act.getKey(keyMap, key, idFun) }
+		token(Space ~> (ID !!! "Expected key" examples keyMap.keySet)) flatMap { key => Act.getKey(keyMap, key, idFun) }
 	}
 	val spacedKeyParser = (s: State) => Act.requireSession(s, token(Space) ~> Act.scopedKeyParser(s))
 	val optSpacedKeyParser = (s: State) => spacedKeyParser(s).?
