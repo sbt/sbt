@@ -3,7 +3,7 @@
  */
 package sbt
 
-final case class ClasspathOptions(bootLibrary: Boolean, compiler: Boolean, extra: Boolean, autoBoot: Boolean, filterLibrary: Boolean)
+final case class ClasspathOptions(bootLibrary: Boolean, compiler: Boolean, extra: Boolean, autoBoot: Boolean, filterLibrary: Boolean) extends xsbti.compile.ClasspathOptions
 object ClasspathOptions
 {
 	def manual = ClasspathOptions(false, false, false, true, false)

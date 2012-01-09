@@ -6,6 +6,7 @@ package inc
 
 	import xsbti.api.Source
 	import xsbti.{Position,Problem,Severity}
+	import xsbti.compile.CompileOrder
 	import java.io.File
 	import sbinary._
 	import DefaultProtocol._
@@ -63,8 +64,8 @@ object AnalysisFormats
 		wrap[Severity, Byte]( _.ordinal.toByte, b => Severity.values.apply(b.toInt) )
 
 
-	implicit def setupFormat(implicit outDirF: Format[File], optionF: Format[CompileOptions], compilerVersion: Format[String], orderF: Format[CompileOrder.Value]): Format[CompileSetup] =
-		asProduct4[CompileSetup, File, CompileOptions, String, CompileOrder.Value]( (a,b,c,d) => new CompileSetup(a,b,c,d) )(s => (s.outputDirectory, s.options, s.compilerVersion, s.order))(outDirF, optionF, compilerVersion, orderF)
+	implicit def setupFormat(implicit outDirF: Format[File], optionF: Format[CompileOptions], compilerVersion: Format[String], orderF: Format[CompileOrder]): Format[CompileSetup] =
+		asProduct4[CompileSetup, File, CompileOptions, String, CompileOrder]( (a,b,c,d) => new CompileSetup(a,b,c,d) )(s => (s.outputDirectory, s.options, s.compilerVersion, s.order))(outDirF, optionF, compilerVersion, orderF)
 
 	implicit def stampsFormat(implicit prodF: Format[Map[File, Stamp]], srcF: Format[Map[File, Stamp]], binF: Format[Map[File, Stamp]], nameF: Format[Map[File, String]]): Format[Stamps] =
 		asProduct4( Stamps.apply _ )( s => (s.products, s.sources, s.binaries, s.classNames) )(prodF, srcF, binF, nameF)
@@ -88,7 +89,11 @@ object AnalysisFormats
 	implicit def optsFormat(implicit strF: Format[String]): Format[CompileOptions] =
 		wrap[CompileOptions, (Seq[String],Seq[String])](co => (co.options, co.javacOptions), os => new CompileOptions(os._1, os._2))
 
-	implicit val orderFormat: Format[CompileOrder.Value] = enumerationFormat(CompileOrder)
+	implicit val orderFormat: Format[CompileOrder] =
+	{
+		val values = CompileOrder.values
+		wrap[CompileOrder, Int](_.ordinal, values)
+	}
 	implicit def seqFormat[T](implicit optionFormat: Format[T]): Format[Seq[T]] = viaSeq[Seq[T], T](x => x)
 
 	implicit def hashStampFormat: Format[Hash] = wrap[Hash, Array[Byte]](_.value, new Hash(_))

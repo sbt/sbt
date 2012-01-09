@@ -24,10 +24,10 @@ public interface ScalaInstance
 	File compilerJar();
 	
 	/** Jars provided by this Scala instance other than the compiler and library jars. */
-	File[] extraJars();
+	File[] otherJars();
 
 	/** All jar files provided by this Scala instance.*/
-	File[] jars();
+	File[] allJars();
 
 	/** The unique identifier for this Scala instance.  An implementation should usually obtain this from the compiler.properties file in the compiler jar. */
 	String actualVersion(); 
