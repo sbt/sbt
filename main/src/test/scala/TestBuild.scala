@@ -53,6 +53,12 @@ object TestBuild
 					(Scope.display(scope, "<key>"), showKeys(map))
 			scopeStrings.toSeq.sorted.map(t => t._1 + t._2).mkString("\n\t")
 		}
+		val extra: BuildUtil[Proj] = 
+		{
+			val getp = (build: URI, project: String) => env.buildMap(build).projectMap(project)
+			new BuildUtil(keyIndex, env.root.uri, env.rootProject, getp, _.configurations.map(c => ConfigKey(c.name)), const(Nil))
+		}
+
 		lazy val allAttributeKeys: Set[AttributeKey[_]] = data.data.values.flatMap(_.keys).toSet
 		lazy val (taskAxes, globalTaskAxis, onlyTaskAxis, multiTaskAxis) =
 		{
@@ -94,11 +100,6 @@ object TestBuild
 		val taskMap = mapBy(tasks)(getKey)
 		def project(ref: ProjectRef) = buildMap(ref.build).projectMap(ref.project)
 		def projectFor(ref: ResolvedReference) = ref match { case pr: ProjectRef => project(pr); case BuildRef(uri) => buildMap(uri).root }
-		def resolveAxis(ref: ScopeAxis[Reference]): ResolvedReference =
-		{
-			val rootRef = BuildRef(root.uri)
-			ref.foldStrict(resolve, rootRef, rootRef)
-		}
 
 		lazy val allProjects = builds.flatMap(_.allProjects)
 		def rootProject(uri: URI): String = buildMap(uri).root.id

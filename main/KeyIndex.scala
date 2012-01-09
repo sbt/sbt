@@ -5,6 +5,7 @@ package sbt
 
 	import java.net.URI
 	import Project.ScopedKey
+	import Load.BuildStructure
 	import complete.DefaultParsers.validID
 	import Types.{idFun, some}
 
@@ -13,6 +14,9 @@ object KeyIndex
 	def empty: ExtendableKeyIndex = new KeyIndex0(emptyBuildIndex)
 	def apply(known: Iterable[ScopedKey[_]]): ExtendableKeyIndex =
 		(empty /: known) { _ add _ }
+	def aggregate(known: Iterable[ScopedKey[_]], extra: BuildUtil[_]): ExtendableKeyIndex =
+		(empty /: known) { (index, key) => index.addAggregated(key, extra) }
+
 	def combine(indices: Seq[KeyIndex]): KeyIndex = new KeyIndex {
 		def buildURIs = concat(_.buildURIs)
 		def projects(uri: URI) = concat(_.projects(uri))
@@ -52,6 +56,7 @@ trait KeyIndex
 trait ExtendableKeyIndex extends KeyIndex
 {
 	def add(scoped: ScopedKey[_]): ExtendableKeyIndex
+	def addAggregated(scoped: ScopedKey[_], extra: BuildUtil[_]): ExtendableKeyIndex
 }
 // task axis <-> key
 private final class AKeyIndex(val data: Relation[ Option[AttributeKey[_]], String])
@@ -110,13 +115,22 @@ private final class KeyIndex0(val data: BuildIndex) extends ExtendableKeyIndex
 		}
 	private[this] def optConfigs(project: Option[ResolvedReference]): Seq[Option[String]] = None +: (configs(project).toSeq map some.fn)
 
+	def addAggregated(scoped: ScopedKey[_], extra: BuildUtil[_]): ExtendableKeyIndex =
+		if(validID(scoped.key.label))
+		{
+			val aggregateProjects = Resolve.aggregateDeps(scoped, ScopeMask(), extra, reverse = true)
+			((this: ExtendableKeyIndex) /: aggregateProjects)(_ add _)
+		}
+		else
+			this
+
 	def add(scoped: ScopedKey[_]): ExtendableKeyIndex =
 		if(validID(scoped.key.label)) add0(scoped) else this
 	private[this] def add0(scoped: ScopedKey[_]): ExtendableKeyIndex =
 	{
 		val (build, project) = parts(scoped.scope.project.toOption)
-		add(build, project, scoped.scope.config, scoped.scope.task, scoped.key)
+		add1(build, project, scoped.scope.config, scoped.scope.task, scoped.key)
 	}
-	def add(uri: Option[URI], id: Option[String], config: ScopeAxis[ConfigKey], task: ScopeAxis[AttributeKey[_]], key: AttributeKey[_]): ExtendableKeyIndex =
+	private[this] def add1(uri: Option[URI], id: Option[String], config: ScopeAxis[ConfigKey], task: ScopeAxis[AttributeKey[_]], key: AttributeKey[_]): ExtendableKeyIndex =
 		new KeyIndex0( data.add(uri, id, config.toOption.map(_.name), task.toOption, key) )
 }

@@ -65,7 +65,7 @@ object ParseKey extends Properties("Key parser test")
 				import skm.{structure, key}
 			val mask = ScopeMask(config = false)
 			val string = Project.displayMasked(key, mask)
-			val resolvedConfig = resolveConfig(structure, key.scope, key.key, mask).config
+			val resolvedConfig = Resolve.resolveConfig(structure.extra, key.key, mask)(key.scope).config
 
 			("Key: " + Project.displayFull(key)) |:
 			("Mask: " + mask) |:
@@ -85,37 +85,7 @@ object ParseKey extends Properties("Key parser test")
 	final class StructureKeyMask(val structure: Structure, val key: ScopedKey[_], val mask: ScopeMask)
 	
 	def resolve(structure: Structure, key: ScopedKey[_], mask: ScopeMask): ScopedKey[_] =
-	{
-		val scope = (key.scope /: List(resolveProject _, resolveExtra _, resolveTask _, resolveConfig _)) { (scope, f) =>
-			f(structure, scope, key.key, mask)
-		}
-		ScopedKey(scope, key.key)
-	}
-	def resolveTask(structure: Structure, scope: Scope, key: AttributeKey[_], mask: ScopeMask): Scope =
-		if(mask.task)
-			scope
-		else
-			scope.copy(task = Global)
-
-	def resolveProject(structure: Structure, scope: Scope, key: AttributeKey[_], mask: ScopeMask): Scope =
-		if(mask.project) scope else scope.copy(project = Select(structure.current))
-	def resolveExtra(structure: Structure, scope: Scope, key: AttributeKey[_], mask: ScopeMask): Scope =
-		if(mask.extra) scope else scope.copy(extra = Global)
-	def resolveConfig(structure: Structure, scope: Scope, key: AttributeKey[_], mask: ScopeMask): Scope =
-		if(mask.config)
-			scope
-		else
-		{
-			val env = structure.env
-			val resolved = env.resolveAxis(scope.project)
-			val project = env.projectFor( resolved )
-			val ref = scope.project.toOption.map(env.resolve)
-			val task = scope.task.toOption
-			val projectConfigs = project.configurations.map(c => Select(ConfigKey(c.name)))
-			val definesKey = (c: ScopeAxis[ConfigKey]) => structure.keyIndex.keys(ref, c.toOption.map(_.name), task) contains key.label
-			val config = (Global +: projectConfigs) find definesKey getOrElse Global
-			scope.copy(config = config)
-		}
+		ScopedKey(Resolve(structure.extra, Select(structure.current), key.key, mask)(key.scope), key.key)
 
 	def parseExpected(structure: Structure, s: String, expected: ScopedKey[_], mask: ScopeMask): Prop =
 		("Expected: " + Project.displayFull(expected)) |:

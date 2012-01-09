@@ -8,6 +8,7 @@ package sbt
 	import HistoryCommands.{Start => HistoryPrefix}
 	import compiler.EvalImports
 	import Types.{const,idFun}
+	import Aggregation.AnyKeys
 
 	import Command.applyEffect
 	import Keys.{analysis,historyPath,globalLogging,shellPrompt}
@@ -427,9 +428,9 @@ object BuiltinCommands
 		}
 	}
 	def lastGrep = Command(LastGrepCommand, lastGrepBrief, lastGrepDetailed)(lastGrepParser) {
-		case (s, (pattern,Some(sk))) =>
+		case (s, (pattern,Some(sks))) =>
 			val (str, ref, display) = extractLast(s)
-			Output.lastGrep(sk, str, str.streams(s), pattern, printLast(s))(display)
+			Output.lastGrep(sks, str.streams(s), pattern, printLast(s))(display)
 			keepLastLog(s)
 		case (s, (pattern, None)) =>
 			for(logFile <- lastLogFile(s)) yield
@@ -460,13 +461,17 @@ object BuiltinCommands
 		val keyMap = Project.structure(s).index.keyMap
 		token(Space ~> (ID !!! "Expected key" examples keyMap.keySet)) flatMap { key => Act.getKey(keyMap, key, idFun) }
 	}
+
 	val spacedKeyParser = (s: State) => Act.requireSession(s, token(Space) ~> Act.scopedKeyParser(s))
-	val optSpacedKeyParser = (s: State) => spacedKeyParser(s).?
-	def lastGrepParser(s: State) = Act.requireSession(s, (token(Space) ~> token(NotSpace, "<pattern>")) ~ optSpacedKeyParser(s))
-	def last = Command(LastCommand, lastBrief, lastDetailed)(optSpacedKeyParser) {
-		case (s,Some(sk)) =>
+	val spacedAggregatedParser = (s: State) => Act.requireSession(s, token(Space) ~> Act.aggregatedKeyParser(s))
+	val aggregatedKeyValueParser: State => Parser[Option[AnyKeys]] =
+		(s: State) => spacedAggregatedParser(s).map(x => Act.keyValues(s)(x) ).?
+
+	def lastGrepParser(s: State) = Act.requireSession(s, (token(Space) ~> token(NotSpace, "<pattern>")) ~ aggregatedKeyValueParser(s))
+	def last = Command(LastCommand, lastBrief, lastDetailed)(aggregatedKeyValueParser) {
+		case (s,Some(sks)) =>
 			val (str, ref, display) = extractLast(s)
-			Output.last(sk, str, str.streams(s), printLast(s))(display)
+			Output.last(sks, str.streams(s), printLast(s))(display)
 			keepLastLog(s)
 		case (s, None) =>
 			for(logFile <- lastLogFile(s)) yield

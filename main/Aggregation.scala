@@ -22,42 +22,6 @@ final object Aggregation
 	final class Explicit(val dependencies: Seq[ProjectReference], val transitive: Boolean) extends Aggregation
 
 	final case class KeyValue[+T](key: ScopedKey[_], value: T)
-	def getTasks[T](key: ScopedKey[T], structure: BuildStructure, transitive: Boolean): Seq[KeyValue[T]] =
-		getTasks0(key, structure, transitive, new mutable.HashMap[(ScopedKey[_], Boolean), Seq[KeyValue[T]]])
-	private type Memo[T] = mutable.Map[(ScopedKey[_], Boolean), Seq[KeyValue[T]]]
-	private[this] def getTasks0[T](key: ScopedKey[T], structure: BuildStructure, transitive: Boolean, memo: Memo[T]): Seq[KeyValue[T]] =
-		memo.getOrElseUpdate( (key, transitive), {
-			val task = structure.data.get(key.scope, key.key).toList.map(t => KeyValue(key,t))
-			if(transitive) aggregateDeps(key, structure, memo) ++ task else task
-		})
-	def projectAggregate(key: ScopedKey[_], structure: BuildStructure): Seq[ProjectRef] =
-	{
-		val project = key.scope.project.toOption.flatMap { ref => Project.getProjectForReference(ref, structure) }
-		project match { case Some(p) => p.aggregate; case None => Nil }
-	}
-	private[this] def aggregateDeps[T](key: ScopedKey[T], structure: BuildStructure, memo: Memo[T]): Seq[KeyValue[T]] =
-	{
-		val aggregated = aggregate in Scope.fillTaskAxis(key.scope, key.key) get structure.data getOrElse Enabled
-		val (agg, transitive) =
-			aggregated match
-			{
-				case Implicit(false) => (Nil, false)
-				case Implicit(true) => (projectAggregate(key, structure), true)
-				case e: Explicit => (e.dependencies, e.transitive)
-			}
-		val currentBuild = key.scope.project.toOption.flatMap { case ProjectRef(uri, _) => Some(uri); case BuildRef(ref) => Some(ref); case _ => None }
-		agg flatMap { a =>
-			val resolved = subCurrentBuild(a, currentBuild)
-			val newKey = ScopedKey(key.scope.copy(project = Select(resolved)), key.key)
-			getTasks(newKey, structure, transitive)
-		}
-	}
-	private def subCurrentBuild(ref: Reference, currentBuild: Option[URI]): Reference =
-		currentBuild match
-		{
-			case None => ref
-			case Some(current) => Scope.resolveBuildOnly(current, ref)
-		}
 
 	def printSettings[T](xs: Seq[KeyValue[T]], log: Logger)(implicit display: Show[ScopedKey[_]]) =
 		xs match
@@ -66,6 +30,7 @@ final object Aggregation
 			case _ => xs foreach { case KeyValue(key, value) => log.info(display(key) + "\n\t" + value.toString) }
 		}
 	type Values[T] = Seq[KeyValue[T]]
+	type AnyKeys = Values[_]
 	def seqParser[T](ps: Values[Parser[T]]): Parser[Seq[KeyValue[T]]]  =  seq(ps.map { case KeyValue(k,p) => p.map(v => KeyValue(k,v) ) })
 
 	def applyTasks[T](s: State, structure: BuildStructure, ps: Values[Parser[Task[T]]], show: Boolean)(implicit display: Show[ScopedKey[_]]): Parser[() => State] =
@@ -141,10 +106,11 @@ final object Aggregation
 			runTasks(s, structure, roots, dummies, show)
 		}
 	}
-	def valueParser(s: State, structure: BuildStructure, show: Boolean)(key: ScopedKey[_])(implicit display: Show[ScopedKey[_]]): Parser[() => State] =
-		getTasks(key, structure, true).toList match
+
+	def evaluatingParser[T](s: State, structure: BuildStructure, show: Boolean)(keys: Seq[KeyValue[T]])(implicit display: Show[ScopedKey[_]]): Parser[() => State] =
+		keys.toList match
 		{
-			case Nil => failure("No such setting/task: " + display(key))
+			case Nil => failure("No such setting/task")
 			case xs @ KeyValue(_, _: InputStatic[t]) :: _ => applyTasks(s, structure, maps(xs.asInstanceOf[Values[InputStatic[t]]])(_.parser(s)), show)
 			case xs @ KeyValue(_, _: InputDynamic[t]) :: _ => applyDynamicTasks(s, structure, xs.asInstanceOf[Values[InputDynamic[t]]], show)
 			case xs @ KeyValue(_, _: Task[t]) :: _ => applyTasks(s, structure, maps(xs.asInstanceOf[Values[Task[t]]])(x => success(x)), show)
