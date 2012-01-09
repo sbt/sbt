@@ -121,7 +121,7 @@ object Load
 		val settings = finalTransforms(buildConfigurations(loaded, getRootProject(projects), rootEval, config.injectSettings))
 		val delegates = config.delegates(loaded)
 		val data = Project.makeSettings(settings, delegates, config.scopeLocal)( Project.showLoadingKey( loaded ) )
-		val index = structureIndex(data, settings, loaded.extra)
+		val index = structureIndex(data, settings, loaded.extra(data))
 		val streams = mkStreams(projects, loaded.root, data)
 		(rootEval, new BuildStructure(projects, loaded.root, settings, data, index, streams, delegates, config.scopeLocal))
 	}
@@ -175,7 +175,7 @@ object Load
 	{
 		val transformed = finalTransforms(newSettings)
 		val newData = Project.makeSettings(transformed, structure.delegates, structure.scopeLocal)
-		val newIndex = structureIndex(newData, transformed, index => buildUtil(structure.root, structure.units, index))
+		val newIndex = structureIndex(newData, transformed, index => buildUtil(structure.root, structure.units, index, newData))
 		val newStreams = mkStreams(structure.units, structure.root, newData)
 		new BuildStructure(units = structure.units, root = structure.root, settings = transformed, data = newData, index = newIndex, streams = newStreams, delegates = structure.delegates, scopeLocal = structure.scopeLocal)
 	}
@@ -547,7 +547,7 @@ object Load
 	{
 		checkCycles(units)
 		def allProjectRefs: Seq[(ProjectRef, ResolvedProject)] = for( (uri, unit) <- units.toSeq; (id, proj) <- unit.defined ) yield ProjectRef(uri, id) -> proj
-		def extra(keyIndex: KeyIndex): BuildUtil[ResolvedProject] = buildUtil(root, units, keyIndex)
+		def extra(data: Settings[Scope])(keyIndex: KeyIndex): BuildUtil[ResolvedProject] = buildUtil(root, units, keyIndex, data)
 	}
 	def checkCycles(units: Map[URI, LoadedBuildUnit])
 	{
@@ -588,15 +588,15 @@ object Load
 		def allProjects(build: URI): Seq[ResolvedProject] = units(build).defined.values.toSeq
 		def allProjectRefs: Seq[ProjectRef] = units.toSeq flatMap { case (build, unit) => refs(build, unit.defined.values.toSeq) }
 		def allProjectRefs(build: URI): Seq[ProjectRef] = refs(build, allProjects(build))
-		val extra: BuildUtil[ResolvedProject] = buildUtil(root, units, index.keyIndex)
+		val extra: BuildUtil[ResolvedProject] = buildUtil(root, units, index.keyIndex, data)
 		private[this] def refs(build: URI, projects: Seq[ResolvedProject]): Seq[ProjectRef] = projects.map { p => ProjectRef(build, p.id) }
 	}
-	def buildUtil(root: URI, units: Map[URI, LoadedBuildUnit], keyIndex: KeyIndex): BuildUtil[ResolvedProject] =
+	def buildUtil(root: URI, units: Map[URI, LoadedBuildUnit], keyIndex: KeyIndex, data: Settings[Scope]): BuildUtil[ResolvedProject] =
 	{
 		val getp = (build: URI, project: String) => Load.getProject(units, build, project)
 		val configs = (_: ResolvedProject).configurations.map(c => ConfigKey(c.name))
-		val aggregates = Resolve.aggregates(units)
-		new BuildUtil(keyIndex, root, Load getRootProject units, getp, configs, aggregates)
+		val aggregates = Aggregation.relation(units)
+		new BuildUtil(keyIndex, data, root, Load getRootProject units, getp, configs, aggregates)
 	}
 	final case class LoadBuildConfiguration(stagingDirectory: File, classpath: Seq[Attributed[File]], loader: ClassLoader, compilers: Compilers, evalPluginDef: (BuildStructure, State) => Seq[Attributed[File]], definesClass: DefinesClass, delegates: LoadedBuild => Scope => Seq[Scope], scopeLocal: ScopeLocal, injectSettings: InjectSettings, globalPlugin: Option[GlobalPlugin], log: Logger)
 	{

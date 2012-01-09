@@ -118,7 +118,7 @@ private final class KeyIndex0(val data: BuildIndex) extends ExtendableKeyIndex
 	def addAggregated(scoped: ScopedKey[_], extra: BuildUtil[_]): ExtendableKeyIndex =
 		if(validID(scoped.key.label))
 		{
-			val aggregateProjects = Resolve.aggregateDeps(scoped, ScopeMask(), extra, reverse = true)
+			val aggregateProjects = Aggregation.aggregate(scoped, ScopeMask(), extra, reverse = true)
 			((this: ExtendableKeyIndex) /: aggregateProjects)(_ add _)
 		}
 		else

@@ -26,7 +26,7 @@ object Act
 	// the index should be an aggregated index for proper tab completion
 	def scopedKeyAggregated(current: ProjectRef, defaultConfigs: Option[ResolvedReference] => Seq[String], structure: BuildStructure): KeysParser =
 			for(selected <- scopedKeySelected(structure.index.aggregateKeyIndex, current, defaultConfigs, structure.index.keyMap, structure.data) ) yield
-				Resolve.aggregateDeps(selected.key, selected.mask, structure.extra)
+				Aggregation.aggregate(selected.key, selected.mask, structure.extra)
 
 	def scopedKeySelected(index: KeyIndex, current: ProjectRef, defaultConfigs: Option[ResolvedReference] => Seq[String],
 		keyMap: Map[String, AttributeKey[_]], data: Settings[Scope]): Parser[ParsedKey] =

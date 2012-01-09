@@ -4,6 +4,7 @@ import java.net.URI
 
 final class BuildUtil[Proj](
 	val keyIndex: KeyIndex,
+	val data: Settings[Scope],
 	val root: URI,
 	val rootProjectID: URI => String,
 	val project: (URI, String) => Proj,

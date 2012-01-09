@@ -149,7 +149,7 @@ object Keys
 	val definesClass = TaskKey[DefinesClass]("defines-class", "Internal use: provides a function that determines whether the provided file contains a given class.")
 	val doc = TaskKey[File]("doc", "Generates API documentation.")
 	val copyResources = TaskKey[Seq[(File,File)]]("copy-resources", "Copies resources to the output directory.")
-	val aggregate = SettingKey[Aggregation]("aggregate", "Configures task aggregation.")
+	val aggregate = SettingKey[Boolean]("aggregate", "Configures task aggregation.")
 
 	// package keys
 	val packageBin = TaskKey[File]("package-bin", "Produces a main artifact, such as a binary jar.")

@@ -56,7 +56,7 @@ object TestBuild
 		val extra: BuildUtil[Proj] = 
 		{
 			val getp = (build: URI, project: String) => env.buildMap(build).projectMap(project)
-			new BuildUtil(keyIndex, env.root.uri, env.rootProject, getp, _.configurations.map(c => ConfigKey(c.name)), const(Nil))
+			new BuildUtil(keyIndex, data, env.root.uri, env.rootProject, getp, _.configurations.map(c => ConfigKey(c.name)), Relation.empty)
 		}
 
 		lazy val allAttributeKeys: Set[AttributeKey[_]] = data.data.values.flatMap(_.keys).toSet

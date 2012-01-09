@@ -4,7 +4,7 @@
 package sbt
 
 	import Project.ScopedKey
-	import Load.BuildStructure
+	import Load.{BuildStructure,LoadedBuildUnit}
 	import Keys.{aggregate, showSuccess, showTiming, timingFormat}
 	import sbt.complete.Parser
 	import java.net.URI
@@ -14,13 +14,6 @@ package sbt
 sealed trait Aggregation
 final object Aggregation
 {
-	def apply(dependencies: Seq[ProjectReference], transitive: Boolean = true): Aggregation = new Explicit(dependencies, transitive)
-	implicit def fromBoolean(b: Boolean): Aggregation = if(b) Enabled else Disabled
-	val Enabled = new Implicit(true)
-	val Disabled = new Implicit(false)
-	final case class Implicit(enabled: Boolean) extends Aggregation
-	final class Explicit(val dependencies: Seq[ProjectReference], val transitive: Boolean) extends Aggregation
-
 	final case class KeyValue[+T](key: ScopedKey[_], value: T)
 
 	def printSettings[T](xs: Seq[KeyValue[T]], log: Logger)(implicit display: Show[ScopedKey[_]]) =
@@ -118,4 +111,56 @@ final object Aggregation
 		}
 	private[this] def maps[T, S](vs: Values[T])(f: T => S): Values[S] =
 		vs map { case KeyValue(k,v) => KeyValue(k, f(v)) }
+
+
+	def projectAggregates[Proj](proj: Option[Reference], extra: BuildUtil[Proj], reverse: Boolean): Seq[ProjectRef] =
+	{
+		val resRef = proj.map(p => extra.projectRefFor(extra.resolveRef(p)))
+		resRef.toList.flatMap(ref =>
+			if(reverse) extra.aggregates.reverse(ref) else extra.aggregates.forward(ref)
+		)
+	}
+
+	def aggregate[T, Proj](key: ScopedKey[T], rawMask: ScopeMask, extra: BuildUtil[Proj], reverse: Boolean = false): Seq[ScopedKey[T]] =
+	{
+		val mask = rawMask.copy(project = true)
+		Dag.topologicalSort(key) { k =>
+			if(reverse)
+				reverseAggregatedKeys(k, extra, mask)
+			else if(aggregationEnabled(key, extra.data))
+				aggregatedKeys(k, extra, mask)
+			else
+				Nil
+		}
+	}
+	def reverseAggregatedKeys[T](key: ScopedKey[T], extra: BuildUtil[_], mask: ScopeMask): Seq[ScopedKey[T]] =
+		projectAggregates(key.scope.project.toOption, extra, reverse = true) flatMap { ref =>
+			val toResolve = key.scope.copy(project = Select(ref))
+			val resolved = Resolve(extra, Global, key.key, mask)(toResolve)
+			val skey = ScopedKey(resolved, key.key)
+			if( aggregationEnabled(skey, extra.data) ) skey :: Nil else Nil
+		}
+
+	def aggregatedKeys[T](key: ScopedKey[T], extra: BuildUtil[_], mask: ScopeMask): Seq[ScopedKey[T]] =
+		projectAggregates(key.scope.project.toOption, extra, reverse = false) map { ref =>
+			val toResolve = key.scope.copy(project = Select(ref))
+			val resolved = Resolve(extra, Global, key.key, mask)(toResolve)
+			ScopedKey(resolved, key.key)
+		}
+		
+	def aggregationEnabled(key: ScopedKey[_], data: Settings[Scope]): Boolean =
+		Keys.aggregate in Scope.fillTaskAxis(key.scope, key.key) get data getOrElse true
+
+	def relation(units: Map[URI, LoadedBuildUnit]): Relation[ProjectRef, ProjectRef] =
+	{
+		val depPairs =
+			for {
+				(uri, unit) <- units.toIterable
+				project <- unit.defined.values
+				ref = ProjectRef(uri, project.id)
+				agg <- project.aggregate
+			} yield
+				(ref, agg)
+		Relation.empty ++ depPairs
+	}
 }

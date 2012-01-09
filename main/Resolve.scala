@@ -1,7 +1,6 @@
 package sbt
 
 	import java.net.URI
-	import Load.LoadedBuildUnit
 
 object Resolve
 {
@@ -43,42 +42,4 @@ object Resolve
 			val config: ScopeAxis[ConfigKey] = (Global +: projectConfigs) find definesKey getOrElse Global
 			scope.copy(config = config)
 		}
-
-		import Load.BuildStructure
-		import Project.ScopedKey
-
-	def projectAggregate[Proj](proj: Option[Reference], extra: BuildUtil[Proj], reverse: Boolean): Seq[ProjectRef] =
-	{
-		val resRef = proj.map(p => extra.projectRefFor(extra.resolveRef(p)))
-		resRef.toList.flatMap(ref =>
-			if(reverse) extra.aggregates.reverse(ref) else extra.aggregates.forward(ref)
-		)
-	}
-
-	def aggregateDeps[T, Proj](key: ScopedKey[T], rawMask: ScopeMask, extra: BuildUtil[Proj], reverse: Boolean = false): Seq[ScopedKey[T]] =
-	{
-		val mask = rawMask.copy(project = true)
-		Dag.topologicalSort(key) { k =>
-			val kref = k.scope.project
-			for( ref <- projectAggregate(kref.toOption, extra, reverse)) yield
-			{
-				val toResolve = k.scope.copy(project = Select(ref))
-				val resolved = apply(extra, Global, k.key, mask)(toResolve)
-				ScopedKey(resolved, k.key)
-			}
-		}
-	}
-
-	def aggregates(units: Map[URI, LoadedBuildUnit]): Relation[ProjectRef, ProjectRef] =
-	{
-		val depPairs =
-			for {
-				(uri, unit) <- units.toIterable
-				project <- unit.defined.values
-				ref = ProjectRef(uri, project.id)
-				agg <- project.aggregate
-			} yield
-				(ref, agg)
-		Relation.empty ++ depPairs
-	}
 }
