@@ -431,7 +431,8 @@ private final class ParserSeq[T](a: Seq[Parser[T]], errors: => Seq[String]) exte
 	{
 		val res = a.map(_.resultEmpty)
 		val (failures, values) = separate(res)(_.toEither)
-		if(failures.isEmpty) Value(values) else mkFailures(failures.flatMap(_()) ++ errors)
+//		if(failures.isEmpty) Value(values) else mkFailures(failures.flatMap(_()) ++ errors)
+		if(values.nonEmpty) Value(values) else mkFailures(failures.flatMap(_()) ++ errors)
 	}
 	def result = {
 		val success = a.flatMap(_.result)
