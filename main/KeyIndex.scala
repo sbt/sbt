@@ -36,6 +36,10 @@ import KeyIndex._
 
 trait KeyIndex
 {
+	// TODO, optimize
+	def isEmpty(proj: Option[ResolvedReference], conf: Option[String]): Boolean = keys(proj, conf).isEmpty
+	def isEmpty(proj: Option[ResolvedReference], conf: Option[String], task: Option[AttributeKey[_]]): Boolean = keys(proj, conf, task).isEmpty
+
 	def buildURIs: Set[URI]
 	def projects(uri: URI): Set[String]
 	def configs(proj: Option[ResolvedReference]): Set[String]

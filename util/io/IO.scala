@@ -613,7 +613,7 @@ object IO
 	*/
 	def directoryURI(uri: URI): URI =
 	{
-		assertAbsolute(uri)
+		if(!uri.isAbsolute) return uri;//assertAbsolute(uri)
 		val str = uri.toASCIIString
 		val dirStr = if(str.endsWith("/") || uri.getScheme != "file") str else str + "/"
 		(new URI(dirStr)).normalize

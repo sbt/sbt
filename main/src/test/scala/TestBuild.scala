@@ -9,18 +9,19 @@ package sbt
 	import org.scalacheck._
 	import Prop._
 	import Gen._
+	import Arbitrary.arbBool
 
 // Notes:
 //  Generator doesn't produce cross-build project dependencies or do anything with the 'extra' axis
 object TestBuild
 {
-	val MaxTasks = 10
-	val MaxProjects = 10
-	val MaxConfigs = 10
-	val MaxBuilds = 10
-	val MaxIDSize = 10
-	val MaxDeps = 10
-	val KeysPerEnv = 25
+	val MaxTasks = 6
+	val MaxProjects = 7
+	val MaxConfigs = 5
+	val MaxBuilds = 4
+	val MaxIDSize = 8
+	val MaxDeps = 8
+	val KeysPerEnv = 10
 	
 	val MaxTasksGen = chooseShrinkable(1, MaxTasks)
 	val MaxProjectsGen = chooseShrinkable(1, MaxProjects)
@@ -38,7 +39,7 @@ object TestBuild
 	final class Keys(val env: Env, val scopes: Seq[Scope])
 	{
 		override def toString = env + "\n" + scopes.mkString("Scopes:\n\t", "\n\t", "")
-		val delegated = scopes map env.delegates
+		lazy val delegated = scopes map env.delegates
 	}
 
 	final case class Structure(env: Env, current: ProjectRef, data: Settings[Scope], keyIndex: KeyIndex, keyMap: Map[String, AttributeKey[_]])
@@ -49,8 +50,40 @@ object TestBuild
 		{
 			val scopeStrings =
 				for( (scope, map) <- data.data ) yield
-					Scope.display(scope, "<key>") + showKeys(map)
-			scopeStrings.mkString("\n\t")
+					(Scope.display(scope, "<key>"), showKeys(map))
+			scopeStrings.toSeq.sorted.map(t => t._1 + t._2).mkString("\n\t")
+		}
+		lazy val allAttributeKeys: Set[AttributeKey[_]] = data.data.values.flatMap(_.keys).toSet
+		lazy val (taskAxes, globalTaskAxis, onlyTaskAxis, multiTaskAxis) =
+		{
+			import collection.{breakOut, mutable}
+			import mutable.HashSet
+
+			// task axis of Scope is set to Global and the value of the second map is the original task axis
+			val taskAxesMappings =
+				for( (scope, keys) <- data.data.toIterable; key <- keys.keys ) yield
+					(ScopedKey(scope.copy(task = Global), key), scope.task) : (ScopedKey[_], ScopeAxis[AttributeKey[_]])
+
+			val taskAxes = Relation.empty ++ taskAxesMappings
+			val global = new HashSet[ScopedKey[_]]
+			val single = new HashSet[ScopedKey[_]]
+			val multi = new HashSet[ScopedKey[_]]
+			for( (skey, tasks) <- taskAxes.forwardMap)
+			{
+				def makeKey(task: ScopeAxis[AttributeKey[_]]) = ScopedKey(skey.scope.copy(task = task), skey.key)
+				val hasGlobal = tasks(Global)
+				if(hasGlobal)
+					global += skey
+				else
+				{
+					val keys = tasks map makeKey
+					if( keys.size == 1)
+						single ++= keys
+					else if(keys.size > 1)
+						multi ++= keys
+				}
+			}
+			(taskAxes, global.toSet, single.toSet, multi.toSet)
 		}
 	}
 	final class Env(val builds: Seq[Build], val tasks: Seq[Taskk])
@@ -61,7 +94,13 @@ object TestBuild
 		val taskMap = mapBy(tasks)(getKey)
 		def project(ref: ProjectRef) = buildMap(ref.build).projectMap(ref.project)
 		def projectFor(ref: ResolvedReference) = ref match { case pr: ProjectRef => project(pr); case BuildRef(uri) => buildMap(uri).root }
-		def allProjects = builds.flatMap(_.allProjects)
+		def resolveAxis(ref: ScopeAxis[Reference]): ResolvedReference =
+		{
+			val rootRef = BuildRef(root.uri)
+			ref.foldStrict(resolve, rootRef, rootRef)
+		}
+
+		lazy val allProjects = builds.flatMap(_.allProjects)
 		def rootProject(uri: URI): String = buildMap(uri).root.id
 		def inheritConfig(ref: ResolvedReference, config: ConfigKey) = projectFor(ref).confMap(config.name).extended map toConfigKey
 		def inheritTask(task: AttributeKey[_]) = taskMap.get(task) match { case None => Nil; case Some(t) => t.delegates map getKey }
@@ -78,9 +117,13 @@ object TestBuild
 				inheritTask,
 				(ref, mp) => Nil
 			)
-		def allFullScopes: Seq[Scope] =
-			for((ref, p) <- allProjects; t <- tasks; c <- p.configurations) yield
-				Scope(project = Select(ref), config = Select(ConfigKey(c.name)), task = Select(t.key), extra = Global)
+		lazy val allFullScopes: Seq[Scope] =
+			for {
+				(ref, p) <- (Global, root.root) +: allProjects.map { case (ref, p) => (Select(ref), p) }
+				t <- Global +: tasks.map(t => Select(t.key))
+				c <- Global +: p.configurations.map(c => Select(ConfigKey(c.name)))
+			} yield
+				Scope(project = ref, config = c, task = t, extra = Global)
 	}
 	def getKey: Taskk => AttributeKey[_] = _.key
 	def toConfigKey: Config => ConfigKey = c => ConfigKey(c.name)
@@ -93,7 +136,7 @@ object TestBuild
 	}
 	final class Proj(val id: String, val delegates: Seq[ProjectRef], val configurations: Seq[Config])
 	{
-		override def toString = "Project " + id + "\n      Delegates:\n      " + delegates.mkString("\n      ") +
+		override def toString = "Project " + id + "\n      Delegates:\n        " + delegates.mkString("\n        ") +
 			"\n      Configurations:\n        " + configurations.mkString("\n        ")
 		val confMap = mapBy(configurations)(_.name)
 	}
@@ -111,7 +154,7 @@ object TestBuild
 
 	implicit lazy val arbKeys: Arbitrary[Keys] = Arbitrary(keysGen)
 	lazy val keysGen: Gen[Keys] = for(env <- mkEnv; keyCount <- chooseShrinkable(1, KeysPerEnv); keys <- listOfN(keyCount, scope(env)) ) yield new Keys(env, keys)
-	
+
 	def scope(env: Env): Gen[Scope] =
 		for {
 			build <- oneOf(env.builds)
@@ -135,7 +178,7 @@ object TestBuild
 			case Some(BuildRef(uri)) => confs(uri)
 			case Some(ref: ProjectRef) => env.project(ref).configurations.map(_.name)
 		}
-		Act.scopedKey(keyIndex, current, defaultConfs, keyMap)//, data)
+		Act.scopedKey(keyIndex, current, defaultConfs, keyMap, data)
 	}
 
 	def structure(env: Env, settings: Seq[Setting[_]], current: ProjectRef): Structure =
@@ -153,6 +196,13 @@ object TestBuild
 		implicit val tGen = genTasks(idGen, MaxDepsGen, MaxTasksGen)
 		implicit val pGen = (uri: URI) => genProjects(uri)(idGen, MaxDepsGen, MaxProjectsGen, cGen)
 		envGen(buildGen(uriGen, pGen), tGen)
+	}
+
+	implicit def maskGen(implicit arbBoolean: Arbitrary[Boolean]): Gen[ScopeMask] =
+	{
+		val b = arbBoolean.arbitrary
+		for(p <- b; c <- b; t <- b; x <- b) yield
+			ScopeMask(project = p, config = c, task = t, extra = x)
 	}
 
 	implicit lazy val idGen: Gen[String] = for(size <- chooseShrinkable(1, MaxIDSize); cs <- listOfN(size, alphaChar)) yield cs.mkString

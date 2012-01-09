@@ -72,8 +72,11 @@ object Scope
 			case RootProject(uri) => RootProject(resolveBuild(current, uri))
 			case ProjectRef(uri, id) => ProjectRef(resolveBuild(current, uri), id)
 		}
-	def resolveBuild(current: URI, uri: URI): URI = 
-		IO.directoryURI(current resolve uri)
+	def resolveBuild(current: URI, uri: URI): URI =
+		if(!uri.isAbsolute && current.isOpaque && uri.getSchemeSpecificPart == ".")
+			current // this handles the shortcut of referring to the current build using "."
+		else
+			IO.directoryURI(current resolve uri)
 
 	def resolveReference(current: URI, rootProject: URI => String, ref: Reference): ResolvedReference =
 		ref match
@@ -98,18 +101,27 @@ object Scope
 		}
 
 	def display(config: ConfigKey): String = config.name + ":"
-	def display(scope: Scope, sep: String): String = display(scope, sep, ref => Project.display(ref) + "/")
-	def display(scope: Scope, sep: String, showProject: Reference => String): String = 
+	def display(scope: Scope, sep: String): String = displayMasked(scope, sep, showProject, ScopeMask())
+	def displayMasked(scope: Scope, sep: String, mask: ScopeMask): String = displayMasked(scope, sep, showProject, mask)
+	def display(scope: Scope, sep: String, showProject: Reference => String): String =  displayMasked(scope, sep, showProject, ScopeMask())
+	def displayMasked(scope: Scope, sep: String, showProject: Reference => String, mask: ScopeMask): String = 
 	{
 			import scope.{project, config, task, extra}
-		val projectPrefix = project.foldStrict(showProject, "*/", "./")
 		val configPrefix = config.foldStrict(display, "*:", ".:")
-		val taskPostfix = task.foldStrict(x => ("for " + x.label) :: Nil, Nil, Nil)
-		val extraPostfix = extra.foldStrict(_.entries.map( _.toString ).toList, Nil, Nil)
-		val extras = taskPostfix ::: extraPostfix
+		val taskPrefix = task.foldStrict(_.label + "::", "", ".::")
+		val extras = extra.foldStrict(_.entries.map( _.toString ).toList, Nil, Nil)
 		val postfix = if(extras.isEmpty) "" else extras.mkString("(", ", ", ")")
-		projectPrefix + configPrefix + sep + postfix
+		mask.concatShow(projectPrefix(project, showProject), configPrefix, taskPrefix, sep, postfix)
 	}
+
+	def equal(a: Scope, b: Scope, mask: ScopeMask): Boolean =
+		(!mask.project || a.project == b.project) &&
+		(!mask.config || a.config == b.config) &&
+		(!mask.task || a.task == b.task) &&
+		(!mask.extra || a.extra == b.extra)
+
+	def projectPrefix(project: ScopeAxis[Reference], show: Reference => String = showProject): String = project.foldStrict(show, "*/", "./")
+	def showProject = (ref: Reference) => Project.display(ref) + "/"
 
 	def parseScopedKey(command: String): (Scope, String) =
 	{
@@ -241,6 +253,24 @@ object ScopeAxis
 {
 	implicit def scopeAxisToScope(axis: ScopeAxis[Nothing]): Scope =
 		Scope(axis, axis, axis, axis)
+	def fromOption[T](o: Option[T]): ScopeAxis[T] = o match {
+		case Some(v) => Select(v)
+		case None => Global
+	}
+}
+/** Specifies the Scope axes that should be used for an operation.  `true` indicates an axis should be used. */
+final case class ScopeMask(project: Boolean = true, config: Boolean = true, task: Boolean = true, extra: Boolean = true)
+{
+	def concatShow(p: String, c: String, t: String, sep: String, x: String): String =
+	{
+		val sb = new StringBuilder
+		if(project) sb.append(p)
+		if(config) sb.append(c)
+		if(task) sb.append(t)
+		sb.append(sep)
+		if(extra) sb.append(x)
+		sb.toString
+	}
 }
 
 final case class ConfigKey(name: String)
