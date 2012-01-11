@@ -24,9 +24,9 @@ object Packaging {
     },
     // GENERAL LINUX PACKAGING STUFFS
     maintainer := "Josh Suereth <joshua.suereth@typesafe.com>",
-    packageDescription := """Simple Build Tool
- This script provides a native way to run the Simple Build Tool,
- a build tool for Scala software, also called SBT.""",
+    packageSummary := "Simple Build Tool for Scala-driven builds.",
+    packageDescription := """This script provides a native way to run the Simple Build Tool,
+  a build tool for Scala software, also called SBT.""",
     linuxPackageMappings <+= (baseDirectory) map { bd =>
       (packageMapping((bd / "sbt") -> "/usr/bin/sbt")
        withUser "root" withGroup "root" withPerms "0755")
@@ -80,7 +80,6 @@ object Packaging {
     rpmRelease := "1",
     rpmVendor := "typesafe",
     rpmUrl := Some("http://github.com/paulp/sbt-extras"),
-    rpmSummary := Some("Simple Build Tool for Scala-driven builds."),
     rpmLicense := Some("BSD"),
     
     
