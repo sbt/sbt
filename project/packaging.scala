@@ -24,7 +24,7 @@ object Packaging {
     },
     // GENERAL LINUX PACKAGING STUFFS
     maintainer := "Josh Suereth <joshua.suereth@typesafe.com>",
-    packageSummary := "Simple Build Tool for Scala-driven builds.",
+    packageSummary := "Simple Build Tool for Scala-driven builds",
     packageDescription := """This script provides a native way to run the Simple Build Tool,
   a build tool for Scala software, also called SBT.""",
     linuxPackageMappings <+= (baseDirectory) map { bd =>
@@ -54,7 +54,7 @@ object Packaging {
     linuxPackageMappings <+= (sourceDirectory in Linux) map { bd =>
       packageMapping(
         (bd / "etc/sbt/sbtopts") -> "/etc/sbt/sbtopts"
-      ) withPerms "0644" withConfig()
+      ) withPerms "0644" withConfig("noreplace")
     },
     linuxPackageMappings <+= (sbtLaunchJar, sourceDirectory in Linux, sbtVersion) map { (jar, dir, v) =>
       packageMapping(dir -> "/usr/lib/sbt",
