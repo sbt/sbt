@@ -221,6 +221,7 @@ Usage: $script_name [options]
   -no-share          use all local caches; no sharing
   -offline           put sbt in offline mode
   -jvm-debug <port>  Turn on JVM debugging, open at the given port.
+  -batch             Disable interactive mode
 
   # sbt version (default: from project/build.properties if present, else latest release)
   -sbt-version  <version>   use the specified version of sbt
@@ -305,6 +306,7 @@ process_args ()
      -debug-inc) addJava "-Dxsbt.inc.debug=true" && shift ;;
        -offline) addSbt "set offline := true" && shift ;;
      -jvm-debug) require_arg port "$1" "$2" && addDebugger $2 && shift 2 ;;
+         -batch) exec </dev/null && shift ;;
 
     -sbt-create) sbt_create=true && shift ;;
         -sbt-rc) [[ -n "$sbt_rc_version" ]] || die "no sbt RC candidate defined."; sbt_version=$sbt_rc_version && shift ;;
