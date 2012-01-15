@@ -75,7 +75,7 @@ object Util
 object Common
 {
 	def lib(m: ModuleID) = libraryDependencies += m
-	lazy val jlineDep = "jline" % "jline" % "0.9.94" intransitive()
+	lazy val jlineDep = "jline" % "jline" % "1.0" intransitive()
 	lazy val jline = lib(jlineDep)
 	lazy val ivy = lib("org.apache.ivy" % "ivy" % "2.2.0")
 	lazy val httpclient = lib("commons-httpclient" % "commons-httpclient" % "3.1")
