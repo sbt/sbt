@@ -375,7 +375,18 @@ object Load
 		val normBase = localBase.getCanonicalFile
 		val defDir = selectProjectDir(normBase, config.log)
 		val pluginDir = pluginDirectory(defDir)
-		val (plugs, defs) = if(pluginDir.exists) loadUnitOld(defDir, pluginDir, s, config) else loadUnitNew(defDir, s, config)
+		val oldStyleExists = pluginDir.exists
+		val newStyleExists = configurationSources(defDir).nonEmpty || projectStandard(defDir).exists
+		val (plugs, defs) =
+			if(newStyleExists || !oldStyleExists)
+			{
+				if(oldStyleExists)
+					config.log.warn("Detected both new and deprecated style of plugin configuration.\n  Ignoring deprecated project/plugins/ directory (" + pluginDir + ").")
+				loadUnitNew(defDir, s, config)
+			}
+			else
+				loadUnitOld(defDir, pluginDir, s, config)
+
 		new BuildUnit(uri, normBase, defs, plugs)
 	}
 	def loadUnitNew(defDir: File, s: State, config: LoadBuildConfiguration): (LoadedPlugins, LoadedDefinitions) =
@@ -388,7 +399,7 @@ object Load
 	}
 	def loadUnitOld(defDir: File, pluginDir: File, s: State, config: LoadBuildConfiguration): (LoadedPlugins, LoadedDefinitions) =
 	{
-		config.log.warn("Using project/plugins/ is deprecated for plugin configuration (" + pluginDir + ").\n" +
+		config.log.warn("Using project/plugins/ (" + pluginDir + ") for plugin configuration is deprecated.\n" + 
 			"Put .sbt plugin definitions directly in project/,\n  .scala plugin definitions in project/project/,\n  and remove the project/plugins/ directory.")
 		val plugs = plugins(pluginDir, s, config)
 		val defs = definitionSources(defDir)
