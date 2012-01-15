@@ -149,7 +149,7 @@ object Keys
 	val definesClass = TaskKey[DefinesClass]("defines-class", "Internal use: provides a function that determines whether the provided file contains a given class.")
 	val doc = TaskKey[File]("doc", "Generates API documentation.")
 	val copyResources = TaskKey[Seq[(File,File)]]("copy-resources", "Copies resources to the output directory.")
-	val aggregate = SettingKey[Aggregation]("aggregate", "Configures task aggregation.")
+	val aggregate = SettingKey[Boolean]("aggregate", "Configures task aggregation.")
 
 	// package keys
 	val packageBin = TaskKey[File]("package-bin", "Produces a main artifact, such as a binary jar.")
@@ -298,7 +298,7 @@ object Keys
 	val sbtDependency = SettingKey[ModuleID]("sbt-dependency", "Provides a definition for declaring the current version of sbt.")
 	val sbtVersion = SettingKey[String]("sbt-version", "Provides the version of sbt.  This setting should be not be modified.")
 	val sbtBinaryVersion = SettingKey[String]("sbt-binary-version", "Defines the binary compatibility version substring.")
-	val skip = TaskKey[Boolean]("skip", "For tasks that support it (currently only 'compile'), setting skip to true will force the task to not to do its work.  This exact semantics may vary by task.")
+	val skip = TaskKey[Boolean]("skip", "For tasks that support it (currently only 'compile' and 'update'), setting skip to true will force the task to not to do its work.  This exact semantics may vary by task.")
 
 	// special
 	val sessionVars = AttributeKey[SessionVar.Map]("session-vars", "Bindings that exist for the duration of the session.")

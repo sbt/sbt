@@ -4,7 +4,7 @@
 package sbt
 
 	import Project.ScopedKey
-	import Load.BuildStructure
+	import Load.{BuildStructure,LoadedBuildUnit}
 	import Keys.{aggregate, showSuccess, showTiming, timingFormat}
 	import sbt.complete.Parser
 	import java.net.URI
@@ -14,50 +14,7 @@ package sbt
 sealed trait Aggregation
 final object Aggregation
 {
-	def apply(dependencies: Seq[ProjectReference], transitive: Boolean = true): Aggregation = new Explicit(dependencies, transitive)
-	implicit def fromBoolean(b: Boolean): Aggregation = if(b) Enabled else Disabled
-	val Enabled = new Implicit(true)
-	val Disabled = new Implicit(false)
-	final case class Implicit(enabled: Boolean) extends Aggregation
-	final class Explicit(val dependencies: Seq[ProjectReference], val transitive: Boolean) extends Aggregation
-
 	final case class KeyValue[+T](key: ScopedKey[_], value: T)
-	def getTasks[T](key: ScopedKey[T], structure: BuildStructure, transitive: Boolean): Seq[KeyValue[T]] =
-		getTasks0(key, structure, transitive, new mutable.HashMap[(ScopedKey[_], Boolean), Seq[KeyValue[T]]])
-	private type Memo[T] = mutable.Map[(ScopedKey[_], Boolean), Seq[KeyValue[T]]]
-	private[this] def getTasks0[T](key: ScopedKey[T], structure: BuildStructure, transitive: Boolean, memo: Memo[T]): Seq[KeyValue[T]] =
-		memo.getOrElseUpdate( (key, transitive), {
-			val task = structure.data.get(key.scope, key.key).toList.map(t => KeyValue(key,t))
-			if(transitive) aggregateDeps(key, structure, memo) ++ task else task
-		})
-	def projectAggregate(key: ScopedKey[_], structure: BuildStructure): Seq[ProjectRef] =
-	{
-		val project = key.scope.project.toOption.flatMap { ref => Project.getProjectForReference(ref, structure) }
-		project match { case Some(p) => p.aggregate; case None => Nil }
-	}
-	private[this] def aggregateDeps[T](key: ScopedKey[T], structure: BuildStructure, memo: Memo[T]): Seq[KeyValue[T]] =
-	{
-		val aggregated = aggregate in Scope.fillTaskAxis(key.scope, key.key) get structure.data getOrElse Enabled
-		val (agg, transitive) =
-			aggregated match
-			{
-				case Implicit(false) => (Nil, false)
-				case Implicit(true) => (projectAggregate(key, structure), true)
-				case e: Explicit => (e.dependencies, e.transitive)
-			}
-		val currentBuild = key.scope.project.toOption.flatMap { case ProjectRef(uri, _) => Some(uri); case BuildRef(ref) => Some(ref); case _ => None }
-		agg flatMap { a =>
-			val resolved = subCurrentBuild(a, currentBuild)
-			val newKey = ScopedKey(key.scope.copy(project = Select(resolved)), key.key)
-			getTasks(newKey, structure, transitive)
-		}
-	}
-	private def subCurrentBuild(ref: Reference, currentBuild: Option[URI]): Reference =
-		currentBuild match
-		{
-			case None => ref
-			case Some(current) => Scope.resolveBuildOnly(current, ref)
-		}
 
 	def printSettings[T](xs: Seq[KeyValue[T]], log: Logger)(implicit display: Show[ScopedKey[_]]) =
 		xs match
@@ -66,6 +23,7 @@ final object Aggregation
 			case _ => xs foreach { case KeyValue(key, value) => log.info(display(key) + "\n\t" + value.toString) }
 		}
 	type Values[T] = Seq[KeyValue[T]]
+	type AnyKeys = Values[_]
 	def seqParser[T](ps: Values[Parser[T]]): Parser[Seq[KeyValue[T]]]  =  seq(ps.map { case KeyValue(k,p) => p.map(v => KeyValue(k,v) ) })
 
 	def applyTasks[T](s: State, structure: BuildStructure, ps: Values[Parser[Task[T]]], show: Boolean)(implicit display: Show[ScopedKey[_]]): Parser[() => State] =
@@ -141,10 +99,11 @@ final object Aggregation
 			runTasks(s, structure, roots, dummies, show)
 		}
 	}
-	def valueParser(s: State, structure: BuildStructure, show: Boolean)(key: ScopedKey[_])(implicit display: Show[ScopedKey[_]]): Parser[() => State] =
-		getTasks(key, structure, true).toList match
+
+	def evaluatingParser[T](s: State, structure: BuildStructure, show: Boolean)(keys: Seq[KeyValue[T]])(implicit display: Show[ScopedKey[_]]): Parser[() => State] =
+		keys.toList match
 		{
-			case Nil => failure("No such setting/task: " + display(key))
+			case Nil => failure("No such setting/task")
 			case xs @ KeyValue(_, _: InputStatic[t]) :: _ => applyTasks(s, structure, maps(xs.asInstanceOf[Values[InputStatic[t]]])(_.parser(s)), show)
 			case xs @ KeyValue(_, _: InputDynamic[t]) :: _ => applyDynamicTasks(s, structure, xs.asInstanceOf[Values[InputDynamic[t]]], show)
 			case xs @ KeyValue(_, _: Task[t]) :: _ => applyTasks(s, structure, maps(xs.asInstanceOf[Values[Task[t]]])(x => success(x)), show)
@@ -152,4 +111,56 @@ final object Aggregation
 		}
 	private[this] def maps[T, S](vs: Values[T])(f: T => S): Values[S] =
 		vs map { case KeyValue(k,v) => KeyValue(k, f(v)) }
+
+
+	def projectAggregates[Proj](proj: Option[Reference], extra: BuildUtil[Proj], reverse: Boolean): Seq[ProjectRef] =
+	{
+		val resRef = proj.map(p => extra.projectRefFor(extra.resolveRef(p)))
+		resRef.toList.flatMap(ref =>
+			if(reverse) extra.aggregates.reverse(ref) else extra.aggregates.forward(ref)
+		)
+	}
+
+	def aggregate[T, Proj](key: ScopedKey[T], rawMask: ScopeMask, extra: BuildUtil[Proj], reverse: Boolean = false): Seq[ScopedKey[T]] =
+	{
+		val mask = rawMask.copy(project = true)
+		Dag.topologicalSort(key) { k =>
+			if(reverse)
+				reverseAggregatedKeys(k, extra, mask)
+			else if(aggregationEnabled(key, extra.data))
+				aggregatedKeys(k, extra, mask)
+			else
+				Nil
+		}
+	}
+	def reverseAggregatedKeys[T](key: ScopedKey[T], extra: BuildUtil[_], mask: ScopeMask): Seq[ScopedKey[T]] =
+		projectAggregates(key.scope.project.toOption, extra, reverse = true) flatMap { ref =>
+			val toResolve = key.scope.copy(project = Select(ref))
+			val resolved = Resolve(extra, Global, key.key, mask)(toResolve)
+			val skey = ScopedKey(resolved, key.key)
+			if( aggregationEnabled(skey, extra.data) ) skey :: Nil else Nil
+		}
+
+	def aggregatedKeys[T](key: ScopedKey[T], extra: BuildUtil[_], mask: ScopeMask): Seq[ScopedKey[T]] =
+		projectAggregates(key.scope.project.toOption, extra, reverse = false) map { ref =>
+			val toResolve = key.scope.copy(project = Select(ref))
+			val resolved = Resolve(extra, Global, key.key, mask)(toResolve)
+			ScopedKey(resolved, key.key)
+		}
+		
+	def aggregationEnabled(key: ScopedKey[_], data: Settings[Scope]): Boolean =
+		Keys.aggregate in Scope.fillTaskAxis(key.scope, key.key) get data getOrElse true
+
+	def relation(units: Map[URI, LoadedBuildUnit]): Relation[ProjectRef, ProjectRef] =
+	{
+		val depPairs =
+			for {
+				(uri, unit) <- units.toIterable
+				project <- unit.defined.values
+				ref = ProjectRef(uri, project.id)
+				agg <- project.aggregate
+			} yield
+				(ref, agg)
+		Relation.empty ++ depPairs
+	}
 }

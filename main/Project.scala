@@ -85,7 +85,8 @@ final case class Extracted(structure: BuildStructure, session: SessionSettings, 
 	def runAggregated[T](key: TaskKey[T], state: State): State =
 	{
 		val rkey = resolve(key.scopedKey)
-		val tasks = Aggregation.getTasks(rkey, structure, true)
+		val keys = Aggregation.aggregate(rkey, ScopeMask(), structure.extra)
+		val tasks = Act.keyValues(structure)(keys)
 		Aggregation.runTasks(state, structure, tasks, Aggregation.Dummies(KNil, HNil), show = false )(showKey)
 	}
 	private[this] def resolve[T](key: ScopedKey[T]): ScopedKey[T] =
@@ -211,7 +212,11 @@ object Project extends Init[Scope] with ProjectExtra
 	def makeSettings(settings: Seq[Setting[_]], delegates: Scope => Seq[Scope], scopeLocal: ScopedKey[_] => Seq[Setting[_]])(implicit display: Show[ScopedKey[_]]) =
 		make(settings)(delegates, scopeLocal, display)
 
+	def equal(a: ScopedKey[_], b: ScopedKey[_], mask: ScopeMask): Boolean =
+		a.key == b.key && Scope.equal(a.scope, b.scope, mask)
+
 	def displayFull(scoped: ScopedKey[_]): String = Scope.display(scoped.scope, scoped.key.label)
+	def displayMasked(scoped: ScopedKey[_], mask: ScopeMask): String = Scope.displayMasked(scoped.scope, scoped.key.label, mask)
 	def display(ref: Reference): String =
 		ref match
 		{

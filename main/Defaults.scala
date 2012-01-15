@@ -98,7 +98,7 @@ object Defaults extends BuildCommon
 		sbtPlugin :== false,
 		crossPaths :== true,
 		classpathTypes :== Set("jar", "bundle"),
-		aggregate :== Aggregation.Enabled,
+		aggregate :== true,
 		maxErrors :== 100,
 		showTiming :== true,
 		timingFormat :== Aggregation.defaultFormat,
