@@ -3,22 +3,39 @@
  */
 package sbt
 
-	import jline.{Completor, ConsoleReader}
-	import java.io.File
+	import jline.{Completor, ConsoleReader, History}
+	import java.io.{File,PrintWriter}
 	import complete.Parser
 	
 abstract class JLine extends LineReader
 {
 	protected[this] val reader: ConsoleReader
+	protected[this] val historyPath: Option[File]
+
 	def readLine(prompt: String, mask: Option[Char] = None) = JLine.withJLine { unsynchronizedReadLine(prompt, mask) }
+
 	private[this] def unsynchronizedReadLine(prompt: String, mask: Option[Char]) =
-		(mask match {
-			case Some(m) => reader.readLine(prompt, m)
-			case None => reader.readLine(prompt)
-		}) match
+		readLineWithHistory(prompt, mask) match
 		{
 			case null => None
 			case x => Some(x.trim)
+		}
+
+	private[this] def readLineWithHistory(prompt: String, mask: Option[Char]): String =
+		historyPath match
+		{
+			case None => readLineDirect(prompt, mask)
+			case Some(file) =>
+				val h = reader.getHistory
+				JLine.loadHistory(h, file)
+				try { readLineDirect(prompt, mask) }
+				finally { JLine.saveHistory(h, file) }
+		}
+
+	private[this] def readLineDirect(prompt: String, mask: Option[Char]): String =
+		mask match {
+			case Some(m) => reader.readLine(prompt, m)
+			case None => reader.readLine(prompt)
 		}
 }
 private object JLine
@@ -44,18 +61,20 @@ private object JLine
 			try { action }
 			finally { t.enableEcho() }
 		}
-	private[sbt] def initializeHistory(cr: ConsoleReader, historyPath: Option[File]): Unit =
-		for(historyLocation <- historyPath)
-		{
-			val historyFile = historyLocation.getAbsoluteFile
-			ErrorHandling.wideConvert
-			{
-				historyFile.getParentFile.mkdirs()
-				val history = cr.getHistory
-				history.setMaxSize(MaxHistorySize)
-				history.setHistoryFile(historyFile)
-			}
+	private[sbt] def loadHistory(h: History, file: File)
+	{
+		h.setMaxSize(MaxHistorySize)
+		if(file.isFile) IO.reader(file)( h.load )
+	}
+	private[sbt] def saveHistory(h: History, file: File): Unit =
+		Using.fileWriter()(file) { writer =>
+			val out = new PrintWriter(writer, false)
+			h.setOutput(out)
+			h.flushBuffer()
+			out.close()
+			h.setOutput(null)
 		}
+
 	def simple(historyPath: Option[File]): SimpleReader = new SimpleReader(historyPath)
 	val MaxHistorySize = 500
 }
@@ -64,24 +83,20 @@ trait LineReader
 {
 	def readLine(prompt: String, mask: Option[Char] = None): Option[String]
 }
-final class FullReader(historyPath: Option[File], complete: Parser[_]) extends JLine
+final class FullReader(val historyPath: Option[File], complete: Parser[_]) extends JLine
 {
 	protected[this] val reader =
 	{
 		val cr = new ConsoleReader
 		cr.setBellEnabled(false)
-		JLine.initializeHistory(cr, historyPath)
 		sbt.complete.JLineCompletion.installCustomCompletor(cr, complete)
 		cr
 	}
 }
 
-class SimpleReader private[sbt] (historyPath: Option[File]) extends JLine
-{
-	protected[this] val reader = JLine.createReader()
-	JLine.initializeHistory(reader, historyPath)
-}
-object SimpleReader extends JLine
+class SimpleReader private[sbt] (val historyPath: Option[File]) extends JLine
 {
 	protected[this] val reader = JLine.createReader()
 }
+object SimpleReader extends SimpleReader(None)
+
