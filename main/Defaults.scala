@@ -48,6 +48,7 @@ object Defaults extends BuildCommon
 	def buildCore: Seq[Setting[_]] = thisBuildCore ++ globalCore
 	def thisBuildCore: Seq[Setting[_]] = inScope(GlobalScope.copy(project = Select(ThisBuild)))(Seq(
 		managedDirectory <<= baseDirectory(_ / "lib_managed")
+
 	))
 	def globalCore: Seq[Setting[_]] = inScope(GlobalScope)(Seq(
 		buildDependencies <<= buildDependencies or Classpaths.constructBuildDependencies,
@@ -478,14 +479,6 @@ object Defaults extends BuildCommon
 			out
 		}
 	))
-
-	@deprecated("Use `docSetting` instead", "0.11.0") def docTask: Initialize[Task[File]] =
-		(cacheDirectory, compileInputs, streams, docDirectory, configuration, scaladocOptions) map { (cache, in, s, target, config, options) =>
-			val d = new Scaladoc(in.config.maxErrors, in.compilers.scalac)
-			val cp = in.config.classpath.toList - in.config.classesDirectory
-			d.cached(cache / "doc", nameForSrc(config.name), in.config.sources, cp, target, options, s.log)
-			target
-		}
 
 	def mainRunTask = run <<= runTask(fullClasspath in Runtime, mainClass in run, runner in run)
 	def mainRunMainTask = runMain <<= runMainTask(fullClasspath in Runtime, runner in run)
