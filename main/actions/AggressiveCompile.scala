@@ -20,7 +20,7 @@ final class CompileConfiguration(val sources: Seq[File], val classpath: Seq[File
 	val previousAnalysis: Analysis, val previousSetup: Option[CompileSetup], val currentSetup: CompileSetup, val getAnalysis: File => Option[Analysis], val definesClass: DefinesClass,
 	val maxErrors: Int, val compiler: AnalyzingCompiler, val javac: JavaCompiler)
 
-class AggressiveCompile(cacheDirectory: File)
+class AggressiveCompile(cacheFile: File)
 {
 	def apply(compiler: AnalyzingCompiler, javac: JavaCompiler, sources: Seq[File], classpath: Seq[File], outputDirectory: File, options: Seq[String] = Nil, javacOptions: Seq[String] = Nil, analysisMap: Map[File, Analysis] = Map.empty, definesClass: DefinesClass = Locate.definesClass _, maxErrors: Int = 100, compileOrder: CompileOrder.Value = Mixed, skip: Boolean = false)(implicit log: Logger): Analysis =
 	{
@@ -106,7 +106,7 @@ class AggressiveCompile(cacheDirectory: File)
 		options.dropWhile(_ != CompilerArguments.BootClasspathOption).drop(1).take(1).headOption.toList.flatMap(IO.parseClasspath)
 
 	import AnalysisFormats._
-	val store = AggressiveCompile.staticCache(cacheDirectory, AnalysisStore.sync(AnalysisStore.cached(FileBasedStore(cacheDirectory))))
+	val store = AggressiveCompile.staticCache(cacheFile, AnalysisStore.sync(AnalysisStore.cached(FileBasedStore(cacheFile))))
 }
 private object AggressiveCompile
 {

@@ -31,6 +31,8 @@ package sbt
 
 object Defaults extends BuildCommon
 {
+	final val CacheDirectoryName = "cache"
+
 	def configSrcSub(key: SettingKey[File]): Initialize[File] = (key in ThisScope.copy(config = Global), configuration) { (src, conf) => src / nameForSrc(conf.name) }
 	def nameForSrc(config: String) = if(config == "compile") "main" else config
 	def prefix(config: String) = if(config == "compile") "" else config + "-"
@@ -131,7 +133,7 @@ object Defaults extends BuildCommon
 		sourceDirectory <<= baseDirectory / "src",
 		sourceManaged <<= crossTarget / "src_managed",
 		resourceManaged <<= crossTarget / "resource_managed",
-		cacheDirectory <<= (target, thisProject)(_ / "cache" / _.id)
+		cacheDirectory <<= (crossTarget, thisProject)(_ / CacheDirectoryName / _.id / "global")
 	)
 
 	lazy val configPaths = sourceConfigPaths ++ resourceConfigPaths ++ outputConfigPaths
@@ -168,7 +170,7 @@ object Defaults extends BuildCommon
 		resources <<= Classpaths.concat(managedResources, unmanagedResources)
 	)
 	lazy val outputConfigPaths = Seq(
-		cacheDirectory <<= (cacheDirectory, configuration) { _ / _.name },
+		cacheDirectory <<= (crossTarget, thisProject, configuration) { _ / CacheDirectoryName / _.id / _.name },
 		classDirectory <<= (crossTarget, configuration) { (outDir, conf) => outDir / (prefix(conf.name) + "classes") },
 		docDirectory <<= (crossTarget, configuration) { (outDir, conf) => outDir / (prefix(conf.name) + "api") }
 	)
@@ -189,8 +191,7 @@ object Defaults extends BuildCommon
 		scalaVersion in GlobalScope <<= appConfiguration( _.provider.scalaProvider.version),
 		scalaBinaryVersion <<= scalaVersion(v => binaryVersion(v, "2.10")),
 		crossScalaVersions in GlobalScope <<= Seq(scalaVersion).join,
-		crossTarget <<= (target, scalaBinaryVersion, sbtBinaryVersion, sbtPlugin, crossPaths)(makeCrossTarget),
-		cacheDirectory <<= (crossTarget, thisProject)(_ / "cache" / _.id)
+		crossTarget <<= (target, scalaBinaryVersion, sbtBinaryVersion, sbtPlugin, crossPaths)(makeCrossTarget)
 	)
 	def makeCrossTarget(t: File, sv: String, sbtv: String, plugin: Boolean, cross: Boolean): File =
 	{
@@ -396,6 +397,10 @@ object Defaults extends BuildCommon
 		else
 			base.configurations
 	def pairID[A,B] = (a: A, b: B) => (a,b)
+
+	def perTaskCache(key: TaskKey[_]): Setting[File] =
+		cacheDirectory ~= { _ / ("for_" + key.key.label) }
+
 	def packageTasks(key: TaskKey[File], mappingsTask: Initialize[Task[Seq[(File,String)]]]) =
 		inTask(key)( Seq(
 			key in TaskGlobal <<= packageTask,
@@ -403,7 +408,7 @@ object Defaults extends BuildCommon
 			mappings <<= mappingsTask,
 			packagedArtifact <<= (artifact, key) map pairID,
 			artifact <<= artifactSetting,
-			cacheDirectory <<= cacheDirectory / key.key.label,
+			perTaskCache(key),
 			artifactPath <<= artifactPathSetting(artifact)
 		))
 	def packageTask: Initialize[Task[File]] =
@@ -458,7 +463,7 @@ object Defaults extends BuildCommon
 		}
 
 	def docSetting(key: TaskKey[File]): Seq[Setting[_]] = inTask(key)(compileInputsSettings ++ Seq(
-		cacheDirectory ~= (_ / key.key.label),
+		perTaskCache(key),
 		target <<= docDirectory, // deprecate docDirectory in favor of 'target in doc'; remove when docDirectory is removed
 		scalacOptions <<= scaladocOptions or scalacOptions, // deprecate scaladocOptions in favor of 'scalacOptions in doc'; remove when scaladocOptions is removed
 		key in TaskGlobal <<= (cacheDirectory, compileInputs, target, configuration, streams) map { (cache, in, out, config, s) =>
@@ -502,7 +507,7 @@ object Defaults extends BuildCommon
 	def compileTask = (compileInputs, streams) map { (i,s) => Compiler(i,s.log) }
 	def compileIncSetupTask =
 		(dependencyClasspath, cacheDirectory, skip in compile, definesClass) map { (cp, cacheDir, skip, definesC) =>
-			Compiler.IncSetup(analysisMap(cp), definesC, skip, cacheDir / "compile")
+			Compiler.IncSetup(analysisMap(cp), definesC, skip, cacheDir / "inc_compile")
 		}
 	def compileInputsSettings: Seq[Setting[_]] = {
 		val optionsPair = TaskKey.local[(Seq[String], Seq[String])]
