@@ -84,9 +84,11 @@ Current -help output:
 ## Native Packages ##
 
 This project also includes native packages to run SBT for 
- * Windows
- * RedHat (rpm)
- * Debian (deb)
+
+* Windows
+* RedHat (rpm)
+* Debian (deb)
+* Homebrew (coming soon!)
 
 Locations for download to be available soon.
 
