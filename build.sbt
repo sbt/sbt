@@ -1,8 +1,8 @@
 sbtPlugin := true
 
-name := "sbt-extras-plugin"
+name := "sbt-launcher-package"
 
-organization := "org.improving"
+organization := "org.scalasbt"
 
 version := "0.1.0"
 

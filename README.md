@@ -1,4 +1,4 @@
-sbt: the rebel cut
+sbt: the launcher
 ==================
 
 An alternative script for running [sbt](https://github.com/harrah/xsbt).
@@ -80,39 +80,13 @@ Current -help output:
     In the case of duplicated or conflicting options, the order above
     shows precedence: JAVA_OPTS lowest, command line options highest.
 
-## SBT Extra plugin
 
-To see the plugin in action, including the thrilling custom sbt command "help-names":
+## Native Packages ##
 
-    cd template-project && ../sbt -sbt-rc help-names zomg zomg2
-    
-The template files are:
+This project also includes native packages to run SBT for 
+ * Windows
+ * RedHat (rpm)
+ * Debian (deb)
 
-    project/plugins/project/Build.scala   # you can use this as-is if you want
-    project/Build.scala                   # this is a starting point for your real Build.scala
+Locations for download to be available soon.
 
-The Template build isn't quite finished.  There will most likely be a build.sbt DSL variant that does not require a project scala file.
-
-## Simple SBT DSL
-
-SBT extras defines a simplified task DSL for those who are defining simple tasks that do not need to be relied upon, or you are unsure and can refactor later.   Once including the sbt-extra-plugin, all you have to do is place the following in your build.sbt to create tasks:
-
-    simple_task("zomg") is { println("ZOMG") }
-
-or if you need to depend on other keys:
-
-    simple_task("zomg2") on (name, version) is { (n,v) => println("ZOMG " + n + " = " + v + " !!!!!") }
-
-The DSL currently supports between 0 and 9 dependencies.  The DSL does not allow defining tasks on different configurations, although this will be added shortly.
-
-### Simple Setttings
-
-SBT distinguishes between defining Setting and Tasks through the `apply` and `map` methods.   The Simple DSL has no such distinction.   Defining a setting is as easy as:
-
-    simple_setting("name") is "project-name"
-
-Settings can also depend on other settings.
-
-    simple_setting("name") on (version) is { v => "project-name" + v }
-
-Since a Setting can *only* be defined using other settings, attempting to use a non-setting in the on calls results in a type error.
