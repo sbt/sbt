@@ -118,8 +118,9 @@ object Packaging {
     },
     javacOptions := Seq("-source", "1.5", "-target", "1.5"),
     unmanagedJars in Compile <+= sbtLaunchJar map identity,
-    unmanagedJars in Compile <+= jansiJar map identity
+    unmanagedJars in Compile <+= jansiJar map identity,
     // WINDOWS MSI Publishing
+    resolvers += Resolver.url("windows-releases", new URL(winowsReleaseUrl))(Patterns(localWindowsPattern))
   ) ++ (inConfig(Windows)(Classpaths.publishSettings)) ++ (inConfig(Windows)(Seq(
     packagedArtifacts <<= (packageMsi, name) map { (msi, name) =>
        val artifact = Artifact(name, "msi", "msi", classifier = None, configurations = Iterable.empty, url = None, extraAttributes = Map.empty)
@@ -127,15 +128,26 @@ object Packaging {
     },
     publishMavenStyle := true,
     projectID <<= (organization, name, sbtVersion) apply { (o,n,v) => ModuleID(o,n,v) },
-    moduleSettings <<= Classpaths.moduleSettings0,
+    moduleSettings <<= (projectID, projectInfo) map { (pid, pinfo) =>
+      InlineConfiguration(pid, pinfo, Seq.empty)
+    },
+    ivyModule <<= (ivySbt, moduleSettings) map { (i, s) => new i.Module(s) },
     deliverLocalConfiguration <<= (crossTarget, ivyLoggingLevel) map { (outDir, level) => Classpaths.deliverConfig(outDir, logging = level) },
     deliverConfiguration <<= deliverLocalConfiguration,
     publishTo := Some(Resolver.url("windows-releases", new URL(winowsReleaseUrl))(Patterns(localWindowsPattern))),
-    publishConfiguration <<= (packagedArtifacts, publishTo, publishMavenStyle, deliver, checksums in publish, ivyLoggingLevel) map { (arts, publishTo, mavenStyle, ivyFile, checks, level) =>
-      Classpaths.publishConfig(arts, if(mavenStyle) None else Some(ivyFile), resolverName = Classpaths.getPublishTo(publishTo).name, checksums = checks, logging = level)
+    publishConfiguration <<= (packagedArtifacts, checksums, publishTo) map { (as, checks, publishTo) =>
+      new PublishConfiguration(ivyFile = None,
+                               resolverName = Classpaths.getPublishTo(publishTo).name,
+                               artifacts = as,
+                               checksums = checks,
+                               logging = UpdateLogging.DownloadOnly)
     },
-    publishLocalConfiguration <<= (packagedArtifacts, deliverLocal, checksums in publishLocal, ivyLoggingLevel) map {
-      (arts, ivyFile, checks, level) => Classpaths.publishConfig(arts, Some(ivyFile), checks, logging = level )
+    publishLocalConfiguration <<= (packagedArtifacts, checksums) map { (as, checks) =>
+      new PublishConfiguration(ivyFile = None,
+                               resolverName = "local",
+                               artifacts = as,
+                               checksums = checks,
+                               logging = UpdateLogging.DownloadOnly)
     }
   )))
   
