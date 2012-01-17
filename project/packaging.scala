@@ -96,13 +96,24 @@ object Packaging {
     mappings in packageMsi in Windows <+= sourceDirectory in Windows map { d => 
       (d / "sbt.bat") -> "sbt.bat" }
     // WINDOWS MSI Publishing
-  ) ++ inConfig(Windows)(Classpaths.publishSettings) ++ Seq(
-    packagedArtifacts in Windows <<= (packageMsi in Windows, name in Windows) map { (msi, name) =>
+  ) ++ (inConfig(Windows)(Classpaths.publishSettings)) ++ (inConfig(Windows)(Seq(
+    packagedArtifacts <<= (packageMsi, name) map { (msi, name) =>
        val artifact = Artifact(name, "msi", "msi", classifier = None, configurations = Iterable.empty, url = None, extraAttributes = Map.empty)
        Map(artifact -> msi)
     },
-    publishTo in Windows := Some(Resolver.url("windows-releases", new URL(winowsReleaseUrl))(Patterns(localWindowsPattern))) 
-  )
+    publishMavenStyle := true,
+    projectID <<= (organization, name, sbtVersion) apply { (o,n,v) => ModuleID(o,n,v) },
+    moduleSettings <<= Classpaths.moduleSettings0,
+    deliverLocalConfiguration <<= (crossTarget, ivyLoggingLevel) map { (outDir, level) => Classpaths.deliverConfig(outDir, logging = level) },
+    deliverConfiguration <<= deliverLocalConfiguration,
+    publishTo := Some(Resolver.url("windows-releases", new URL(winowsReleaseUrl))(Patterns(localWindowsPattern))),
+    publishConfiguration <<= (packagedArtifacts, publishTo, publishMavenStyle, deliver, checksums in publish, ivyLoggingLevel) map { (arts, publishTo, mavenStyle, ivyFile, checks, level) =>
+      Classpaths.publishConfig(arts, if(mavenStyle) None else Some(ivyFile), resolverName = Classpaths.getPublishTo(publishTo).name, checksums = checks, logging = level)
+    },
+    publishLocalConfiguration <<= (packagedArtifacts, deliverLocal, checksums in publishLocal, ivyLoggingLevel) map {
+      (arts, ivyFile, checks, level) => Classpaths.publishConfig(arts, Some(ivyFile), checks, logging = level )
+    }
+  )))
   
   def makeWindowsXml(sbtVersion: String, sourceDir: File) = {
     val version = (sbtVersion split "\\.") match {
@@ -145,7 +156,7 @@ object Packaging {
  
       <Feature Id='Complete' Title='Simple Build Tool' Description='The windows installation of Simple Build Tool.'
          Display='expand' Level='1' ConfigurableDirectory='INSTALLDIR'>
-        <Feature Id='SbtLauncher' Title='Sbt Launcher Script' Description='The application which downloads and launches SBT.' Level='1'>
+        <Feature Id='SbtLauncher' Title='Sbt Launcher Script' Description='The application which downloads and launches SBT.' Level='1' Absent='disallow'>
           <ComponentRef Id='SbtLauncherScript'/>
           <ComponentRef Id='SbtLauncherJar' />
         </Feature>
@@ -153,11 +164,25 @@ object Packaging {
           <ComponentRef Id='SbtLauncherPath'/>
         </Feature>
       </Feature>
-      
-      <UIRef Id="WixUI_Mondo"/>
+      <Property Id="JAVAVERSION">
+        <RegistrySearch Id="JavaVersion"
+                        Root="HKLM"
+                        Key="SOFTWARE\Javasoft\Java Runtime Environment"
+                        Name="CurrentVersion"
+                        Type="raw"/>
+      </Property>
+      <Condition Message="This application requires a JVM available.  Please install Java, then run this installer again.">
+        <![CDATA[Installed OR JAVAVERSION]]>
+      </Condition>
+      <MajorUpgrade 
+         AllowDowngrades="no" 
+         Schedule="afterInstallInitialize"
+         DowngradeErrorMessage="A later version of [ProductName] is already installed.  Setup will no exit."/>  
+      <UIRef Id="WixUI_FeatureTree"/>
       <UIRef Id="WixUI_ErrorProgressText"/>
       <Property Id="WIXUI_INSTALLDIR" Value="INSTALLDIR"/>
       <WixVariable Id="WixUILicenseRtf" Value={sourceDir.getAbsolutePath + "\\License.rtf"} />
+      
    </Product>
 </Wix>)
   }
