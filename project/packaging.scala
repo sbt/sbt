@@ -9,6 +9,10 @@ object Packaging {
   val sbtLaunchJarLocation = SettingKey[File]("sbt-launch-jar-location")  
   val sbtLaunchJar = TaskKey[File]("sbt-launch-jar", "Resolves SBT launch jar")
 
+  val jansiJarUrl = SettingKey[String]("jansi-jar-url")
+  val jansiJarLocation = SettingKey[File]("jansi-jar-location")  
+  val jansiJar = TaskKey[File]("jansi-jar", "Resolves Jansi jar")
+
   val winowsReleaseUrl = "http://typesafe.artifactoryonline.com/typesafe/windows-releases"
 
   def localWindowsPattern = "[organisation]/[module]/[revision]/[module].[ext]"
@@ -17,6 +21,18 @@ object Packaging {
     sbtLaunchJarUrl <<= sbtVersion apply ("http://typesafe.artifactoryonline.com/typesafe/ivy-releases/org.scala-tools.sbt/sbt-launch/"+_+"/sbt-launch.jar"),
     sbtLaunchJarLocation <<= target apply (_ / "sbt-launch.jar"),
     sbtLaunchJar <<= (sbtLaunchJarUrl, sbtLaunchJarLocation) map { (uri, file) =>
+      import dispatch._
+      if(!file.exists) {
+         val writer = new java.io.BufferedOutputStream(new java.io.FileOutputStream(file))
+         try Http(url(uri) >>> writer)
+         finally writer.close()
+      }
+      // TODO - GPG Trust validation.
+      file
+    },
+    jansiJarUrl := "http://repo.fusesource.com/nexus/content/groups/public/org/fusesource/jansi/jansi/1.7/jansi-1.7.jar",
+    jansiJarLocation <<= target apply (_ / "jansi-1.7.jar"),
+    jansiJar <<= (jansiJarUrl, jansiJarLocation) map { (uri, file) =>
       import dispatch._
       if(!file.exists) {
          val writer = new java.io.BufferedOutputStream(new java.io.FileOutputStream(file))
@@ -93,15 +109,21 @@ object Packaging {
     wixConfig <<= (sbtVersion, sourceDirectory in Windows) map makeWindowsXml,
     //wixFile <<= sourceDirectory in Windows map (_ / "sbt.xml"),
     mappings in packageMsi in Windows <+= sbtLaunchJar map { f => f -> "sbt-launch.jar" },
+    mappings in packageMsi in Windows <+= jansiJar map { f => f -> "jansi.jar" },
     mappings in packageMsi in Windows <+= sourceDirectory in Windows map { d => 
-      (d / "sbt.bat") -> "sbt.bat" }
+      (d / "sbt.bat") -> "sbt.bat" },
+    mappings in packageMsi in Windows <+= (compile in Compile, classDirectory in Compile) map { (c, d) =>
+      compile; (d / "SbtJansiLaunch.class") -> "SbtJansiLaunch.class" }
     // WINDOWS MSI Publishing
   ) ++ inConfig(Windows)(Classpaths.publishSettings) ++ Seq(
     packagedArtifacts in Windows <<= (packageMsi in Windows, name in Windows) map { (msi, name) =>
        val artifact = Artifact(name, "msi", "msi", classifier = None, configurations = Iterable.empty, url = None, extraAttributes = Map.empty)
        Map(artifact -> msi)
     },
-    publishTo in Windows := Some(Resolver.url("windows-releases", new URL(winowsReleaseUrl))(Patterns(localWindowsPattern))) 
+    publishTo in Windows := Some(Resolver.url("windows-releases", new URL(winowsReleaseUrl))(Patterns(localWindowsPattern))),
+    javacOptions := Seq("-source", "1.5", "-target", "1.5"),
+    unmanagedJars in Compile <+= sbtLaunchJar map identity,
+    unmanagedJars in Compile <+= jansiJar map identity
   )
   
   def makeWindowsXml(sbtVersion: String, sourceDir: File) = {
@@ -129,8 +151,16 @@ object Packaging {
       <Directory Id='TARGETDIR' Name='SourceDir'>
          <Directory Id='ProgramFilesFolder' Name='PFiles'>
             <Directory Id='INSTALLDIR' Name='sbt'>
+               <Directory Id='classes_dir' Name='classes'>
+                  <Component Id='JansiLaunch' Guid='*'>
+                     <File Id='jansi_launch' Name='SbtJansiLaunch.class' DiskId='1' Source='SbtJansiLaunch.class' />
+                  </Component>
+               </Directory>
                <Component Id='SbtLauncherScript' Guid='*'>
                   <File Id='sbt_bat' Name='sbt.bat' DiskId='1' Source='sbt.bat' />
+               </Component>
+               <Component Id='JansiJar' Guid='*'>
+                  <File Id='jansi_jar' Name='jansi.jar' DiskId='1' Source='jansi.jar' />
                </Component>
                <Component Id='SbtLauncherJar' Guid='*'>
                   <File Id='sbt_launch_jar' Name='sbt-launch.jar' DiskId='1' Source='sbt-launch.jar' />
@@ -148,6 +178,8 @@ object Packaging {
         <Feature Id='SbtLauncher' Title='Sbt Launcher Script' Description='The application which downloads and launches SBT.' Level='1'>
           <ComponentRef Id='SbtLauncherScript'/>
           <ComponentRef Id='SbtLauncherJar' />
+          <ComponentRef Id='JansiLaunch' />
+          <ComponentRef Id='JansiJar' />
         </Feature>
         <Feature Id='SbtLauncherPathF' Title='Add SBT to windows system PATH' Description='This will append SBT to your windows system path.' Level='1'>
           <ComponentRef Id='SbtLauncherPath'/>
