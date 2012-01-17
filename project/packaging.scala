@@ -8,6 +8,10 @@ object Packaging {
   val sbtLaunchJarUrl = SettingKey[String]("sbt-launch-jar-url")
   val sbtLaunchJarLocation = SettingKey[File]("sbt-launch-jar-location")  
   val sbtLaunchJar = TaskKey[File]("sbt-launch-jar", "Resolves SBT launch jar")
+
+  val winowsReleaseUrl = "http://typesafe.artifactoryonline.com/typesafe/windows-releases"
+
+  def localWindowsPattern = "[organisation]/[module]/[revision]/[module].[ext]"
   
   val settings: Seq[Setting[_]] = packagerSettings ++ Seq(
     sbtLaunchJarUrl <<= sbtVersion apply ("http://typesafe.artifactoryonline.com/typesafe/ivy-releases/org.scala-tools.sbt/sbt-launch/"+_+"/sbt-launch.jar"),
@@ -91,6 +95,13 @@ object Packaging {
     mappings in packageMsi in Windows <+= sbtLaunchJar map { f => f -> "sbt-launch.jar" },
     mappings in packageMsi in Windows <+= sourceDirectory in Windows map { d => 
       (d / "sbt.bat") -> "sbt.bat" }
+    // WINDOWS MSI Publishing
+  ) ++ inConfig(Windows)(Classpaths.publishSettings) ++ Seq(
+    packagedArtifacts in Windows <<= (packageMsi in Windows, name in Windows) map { (msi, name) =>
+       val artifact = Artifact(name, "msi", "msi", classifier = None, configurations = Iterable.empty, url = None, extraAttributes = Map.empty)
+       Map(artifact -> msi)
+    },
+    publishTo in Windows := Some(Resolver.url("windows-releases", new URL(winowsReleaseUrl))(Patterns(localWindowsPattern))) 
   )
   
   def makeWindowsXml(sbtVersion: String, sourceDir: File) = {
