@@ -232,6 +232,7 @@ Usage: $script_name [options]
   -ivy       <path>  path to local Ivy repository (default: ~/.ivy2)
   -mem    <integer>  set memory options (default: $sbt_mem, which is $(get_mem_opts $sbt_mem))
   -no-share          use all local caches; no sharing
+  -no-global         uses global caches, but does not use global ~/.sbt directory.
   -offline           put sbt in offline mode
   -jvm-debug <port>  Turn on JVM debugging, open at the given port.
   -batch             Disable interactive mode
@@ -314,6 +315,7 @@ process_args ()
            -mem) require_arg integer "$1" "$2" && sbt_mem="$2" && shift 2 ;;
      -no-colors) addJava "-Dsbt.log.noformat=true" && shift ;;
       -no-share) addJava "$noshare_opts" && shift ;;
+     -no-global) addJava "-Dsbt.global.base=project/.sbtboot" && shift ;;
       -sbt-boot) require_arg path "$1" "$2" && addJava "-Dsbt.boot.directory=$2" && shift 2 ;;
        -sbt-dir) require_arg path "$1" "$2" && addJava "-Dsbt.global.base=$2" && shift 2 ;;
      -debug-inc) addJava "-Dxsbt.inc.debug=true" && shift ;;
