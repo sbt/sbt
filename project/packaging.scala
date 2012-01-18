@@ -110,8 +110,10 @@ object Packaging {
     //wixFile <<= sourceDirectory in Windows map (_ / "sbt.xml"),
     mappings in packageMsi in Windows <+= sbtLaunchJar map { f => f -> "sbt-launch.jar" },
     mappings in packageMsi in Windows <+= jansiJar map { f => f -> "jansi.jar" },
-    mappings in packageMsi in Windows <+= sourceDirectory in Windows map { d => 
-      (d / "sbt.bat") -> "sbt.bat" },
+    mappings in packageMsi in Windows <++= sourceDirectory in Windows map { d => Seq(
+      (d / "sbt.bat") -> "sbt.bat",
+      (d / "jansi-license.txt") -> "jansi-license.txt"
+    )},
     mappings in packageMsi in Windows <+= (compile in Compile, classDirectory in Compile) map { (c, d) =>
       compile; 
       (d / "SbtJansiLaunch.class") -> "SbtJansiLaunch.class" 
@@ -172,8 +174,9 @@ object Packaging {
                <Component Id='SbtLauncherScript' Guid='*'>
                   <File Id='sbt_bat' Name='sbt.bat' DiskId='1' Source='sbt.bat' />
                </Component>
-               <Component Id='JansiJar' Guid='*'>
+               <Component Id='JansiJar' Guid='3370A26B-E8AB-4143-B837-CE9A8573BF60'>
                   <File Id='jansi_jar' Name='jansi.jar' DiskId='1' Source='jansi.jar' />
+                  <File Id='jansi_license' Name='jansi-license.txt' DiskId='1' Source='jansi-license.txt' />
                </Component>
                <Component Id='SbtLauncherJar' Guid='*'>
                   <File Id='sbt_launch_jar' Name='sbt-launch.jar' DiskId='1' Source='sbt-launch.jar' />
