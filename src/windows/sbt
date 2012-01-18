@@ -1,0 +1,20 @@
+#!/bin/sh
+
+# sbt launcher script for Cygwin and MSYS
+
+UDIR=`dirname "$0"`
+if [ -z "$MSYSTEM" ]; then
+  WDIR=`cygpath -alm "$UDIR"`
+else
+  WDIR=`echo "$UDIR" | sed -e 's~^/\([^/]*\)/~\1:/~'`
+fi
+
+if [ "_$TERM" = "_xterm" ]; then
+  # Let the terminal handle ANSI sequences
+  LAUNCHER=xsbt.boot.Boot
+else
+  # Use Jansi to intercept ANSI sequences
+  LAUNCHER=SbtJansiLaunch
+fi
+
+java -Xmx512M -Dsbt.log.format=true -cp "$WDIR/jansi.jar;$WDIR/sbt-launch.jar;$WDIR/classes" $LAUNCHER $@
