@@ -1,6 +1,8 @@
 #!/bin/sh
-
 # sbt launcher script for Cygwin and MSYS
+
+JAVA_CMD=java
+JAVA_OPTS=-Xmx512M
 
 UDIR=`dirname "$0"`
 if [ -z "$MSYSTEM" ]; then
@@ -11,10 +13,10 @@ fi
 
 if [ "_$TERM" = "_xterm" ]; then
   # Let the terminal handle ANSI sequences
-  LAUNCHER=xsbt.boot.Boot
+  stty -icanon min 1 -echo > /dev/null 2>&1
+  $JAVA_CMD $JAVA_OPTS -Djline.terminal=jline.UnixTerminal -jar "$WDIR/sbt-launch.jar" $@
+  stty icanon echo > /dev/null 2>&1
 else
   # Use Jansi to intercept ANSI sequences
-  LAUNCHER=SbtJansiLaunch
+  $JAVA_CMD $JAVA_OPTS -Dsbt.log.format=true -cp "$WDIR/jansi.jar;$WDIR/sbt-launch.jar;$WDIR/classes" SbtJansiLaunch $@
 fi
-
-java -Xmx512M -Dsbt.log.format=true -cp "$WDIR/jansi.jar;$WDIR/sbt-launch.jar;$WDIR/classes" $LAUNCHER $@
