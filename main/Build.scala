@@ -9,7 +9,7 @@ package sbt
 	import complete.DefaultParsers.validID
 	import Compiler.Compilers
 	import Project.{ScopedKey, Setting}
-	import Keys.{globalBaseDirectory, Streams}
+	import Keys.{globalBaseDirectory, globalPluginsDirectory, globalSettingsDirectory, stagingDirectory, Streams}
 	import Scope.GlobalScope
 	import scala.annotation.tailrec
 
@@ -267,15 +267,28 @@ object BuildPaths
 {
 	import Path._
 
-	def getGlobalBase(state: State): File  =  state get globalBaseDirectory orElse systemGlobalBase getOrElse defaultGlobalBase
-	def systemGlobalBase: Option[File] = Option(System.getProperty(GlobalBaseProperty)) flatMap { path =>
+	def getGlobalBase(state: State): File =
+		getFileSetting(globalBaseDirectory, GlobalBaseProperty, defaultGlobalBase)(state)
+
+	def getStagingDirectory(state: State, globalBase: File): File =
+		 getFileSetting(stagingDirectory, StagingProperty, defaultStaging(globalBase))(state)
+
+	def getGlobalPluginsDirectory(state: State, globalBase: File): File =
+		 getFileSetting(globalPluginsDirectory, GlobalPluginsProperty, defaultGlobalPlugins(globalBase))(state)
+
+	def getGlobalSettingsDirectory(state: State, globalBase: File): File =
+		 getFileSetting(globalSettingsDirectory, GlobalSettingsProperty, globalBase)(state)
+
+	def getFileSetting(stateKey: AttributeKey[File], property: String, default: File)(state: State): File =
+		state get stateKey orElse getFileProperty(property) getOrElse default
+
+	def getFileProperty(name: String): Option[File] = Option(System.getProperty(name)) flatMap { path =>
 		if(path.isEmpty) None else Some(new File(path))
 	}
 		
 	def defaultGlobalBase = Path.userHome / ConfigDirectoryName
-	def defaultStaging(globalBase: File) = globalBase / "staging"
-	def defaultGlobalPlugins(globalBase: File) = globalBase / PluginsDirectoryName
-	def defaultGlobalSettings(globalBase: File) = configurationSources(globalBase)
+	private[this] def defaultStaging(globalBase: File) = globalBase / "staging"
+	private[this] def defaultGlobalPlugins(globalBase: File) = globalBase / PluginsDirectoryName
 	
 	def definitionSources(base: File): Seq[File] = (base * "*.scala").get
 	def configurationSources(base: File): Seq[File] = (base * (GlobFilter("*.sbt") - ".sbt")).get
@@ -303,6 +316,9 @@ object BuildPaths
 	final val DefaultTargetName = "target"
 	final val ConfigDirectoryName = ".sbt"
 	final val GlobalBaseProperty = "sbt.global.base"
+	final val StagingProperty = "sbt.global.staging"
+	final val GlobalPluginsProperty = "sbt.global.plugins"
+	final val GlobalSettingsProperty = "sbt.global.settings"
 
 	def crossPath(base: File, instance: ScalaInstance): File = base / ("scala_" + instance.version)
 }

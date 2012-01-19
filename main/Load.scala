@@ -29,7 +29,7 @@ object Load
 	// note that there is State passed in but not pulled out
 	def defaultLoad(state: State, baseDirectory: File, log: Logger): (() => Eval, BuildStructure) =
 	{
-		val globalBase = BuildPaths.getGlobalBase(state)
+		val globalBase = getGlobalBase(state)
 		val base = baseDirectory.getCanonicalFile
 		val definesClass = FileValueCache(Locate.definesClass _)
 		val rawConfig = defaultPreGlobal(state, base, definesClass.get, globalBase, log)
@@ -42,7 +42,7 @@ object Load
 	{
 		val provider = state.configuration.provider
 		val scalaProvider = provider.scalaProvider
-		val stagingDirectory = defaultStaging(globalBase).getCanonicalFile
+		val stagingDirectory = getStagingDirectory(state, globalBase).getCanonicalFile
 		val loader = getClass.getClassLoader
 		val classpath = Attributed.blankSeq(provider.mainClasspath ++ scalaProvider.jars)
 		val compilers = Compiler.compilers(ClasspathOptions.boot)(state.configuration, log)
@@ -56,8 +56,10 @@ object Load
 		EvaluateTask.injectSettings
 	def defaultWithGlobal(state: State, base: File, rawConfig: LoadBuildConfiguration, globalBase: File, log: Logger): LoadBuildConfiguration =
 	{
-		val withGlobal = loadGlobal(state, base, defaultGlobalPlugins(globalBase), rawConfig)
-		loadGlobalSettings(base, globalBase, defaultGlobalSettings(globalBase), withGlobal)
+		val globalPluginsDir = getGlobalPluginsDirectory(state, globalBase)
+		val withGlobal = loadGlobal(state, base, globalPluginsDir, rawConfig)
+		val globalSettings = configurationSources(getGlobalSettingsDirectory(state, globalBase))
+		loadGlobalSettings(base, globalBase, globalSettings, withGlobal)
 	}
 
 	def loadGlobalSettings(base: File, globalBase: File, files: Seq[File], config: LoadBuildConfiguration): LoadBuildConfiguration =
