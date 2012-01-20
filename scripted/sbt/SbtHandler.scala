@@ -10,9 +10,9 @@ package test
 
 	import Logger._
 
-final class SbtHandler(directory: File, launcher: File, log: Logger, server: IPC.Server) extends StatementHandler
+final class SbtHandler(directory: File, launcher: File, log: Logger, server: IPC.Server, launchOpts: Seq[String] = Seq()) extends StatementHandler
 {
-	def this(directory: File, launcher: File, log: xsbti.Logger, server: IPC.Server) = this(directory, launcher, log: Logger, server)
+	def this(directory: File, launcher: File, log: xsbti.Logger, server: IPC.Server, launchOpts: Seq[String]) = this(directory, launcher, log: Logger, server, launchOpts)
 	type State = Process
 	def initialState = newRemote
 	def apply(command: String, arguments: List[String], p: Process): Process =
@@ -38,7 +38,7 @@ final class SbtHandler(directory: File, launcher: File, log: Logger, server: IPC
 	{
 		val launcherJar = launcher.getAbsolutePath
 		val globalBase = "-Dsbt.global.base=" + (new File(directory, "global")).getAbsolutePath
-		val args = "java" :: globalBase :: "-jar" :: launcherJar :: ( "<" + server.port) :: Nil
+		val args = "java" :: (launchOpts.toList ++ (globalBase :: "-jar" :: launcherJar :: ( "<" + server.port) :: Nil))
 		val io = BasicIO(log, false).withInput(_.close())
 		val p = Process(args, directory) run( io )
 		Spawn { p.exitValue(); server.close() }
