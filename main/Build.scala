@@ -8,8 +8,9 @@ package sbt
 	import compiler.{Eval, EvalImports}
 	import complete.DefaultParsers.validID
 	import Compiler.Compilers
-	import Project.{ScopedKey, Setting}
 	import Keys.{globalBaseDirectory, globalPluginsDirectory, globalSettingsDirectory, stagingDirectory, Streams}
+	import Project.{ScopedKey, Setting, SourceCoord}
+	import Keys.{globalBaseDirectory, Streams}
 	import Scope.GlobalScope
 	import scala.annotation.tailrec
 
@@ -137,7 +138,10 @@ object EvaluateConfigurations
 		} catch {
 			case e: sbt.compiler.EvalException => throw new MessageOnlyException(e.getMessage)
 		}
-		loader => result.getValue(loader).asInstanceOf[Project.SettingsDefinition].settings
+		loader => {
+			val coord = SourceCoord(name, line + 1)
+			result.getValue(loader).asInstanceOf[Project.SettingsDefinition].settings map (_ setPos coord)
+		}
 	}
 	private[this] def isSpace = (c: Char) => Character isWhitespace c
 	private[this] def fstS(f: String => Boolean): ((String,Int)) => Boolean = { case (s,i) => f(s) }
