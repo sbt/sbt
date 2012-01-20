@@ -22,6 +22,7 @@ object ScriptedPlugin extends Plugin {
 	val scriptedClasspath = TaskKey[PathFinder]("scripted-classpath")
 	val scriptedTests = TaskKey[AnyRef]("scripted-tests")
 	val scriptedRun = TaskKey[Method]("scripted-run")
+	val scriptedLaunchOpts = SettingKey[Seq[String]]("scripted-launch-opts", "options to pass to jvm launching scripted tasks")
 	val scriptedDependencies = TaskKey[Unit]("scripted-dependencies")
 	val scripted = InputKey[Unit]("scripted")
 
@@ -33,13 +34,13 @@ object ScriptedPlugin extends Plugin {
 
 	def scriptedRunTask: Initialize[Task[Method]] = (scriptedTests) map {
 		(m) =>
-		m.getClass.getMethod("run", classOf[File], classOf[Boolean], classOf[String], classOf[String], classOf[String], classOf[Array[String]], classOf[File]) 
+		m.getClass.getMethod("run", classOf[File], classOf[Boolean], classOf[String], classOf[String], classOf[String], classOf[Array[String]], classOf[File], classOf[Seq[String]])
 	}
 
 	def scriptedTask: Initialize[InputTask[Unit]] = InputTask(_ => complete.Parsers.spaceDelimited("<arg>")) { result =>
-		(scriptedDependencies, scriptedTests, scriptedRun, sbtTestDirectory, scriptedBufferLog, scriptedSbt, scriptedScalas, sbtLauncher, result) map {
-			(deps, m, r, testdir, bufferlog, version, scriptedScalas, launcher, args) =>
-			try { r.invoke(m, testdir, bufferlog: java.lang.Boolean, version.toString, scriptedScalas.build, scriptedScalas.versions, args.toArray, launcher) }
+		(scriptedDependencies, scriptedTests, scriptedRun, sbtTestDirectory, scriptedBufferLog, scriptedSbt, scriptedScalas, sbtLauncher, scriptedLaunchOpts, result) map {
+			(deps, m, r, testdir, bufferlog, version, scriptedScalas, launcher, launchOpts, args) =>
+			try { r.invoke(m, testdir, bufferlog: java.lang.Boolean, version.toString, scriptedScalas.build, scriptedScalas.versions, args.toArray, launcher, launchOpts) }
 			catch { case e: java.lang.reflect.InvocationTargetException => throw e.getCause }
 		}
 	}
@@ -56,6 +57,7 @@ object ScriptedPlugin extends Plugin {
 		scriptedTests <<= scriptedTestsTask,
 		scriptedRun <<= scriptedRunTask,
 		scriptedDependencies <<= (compile in Test, publishLocal) map { (analysis, pub) => Unit },
+		scriptedLaunchOpts := Seq(),
 		scripted <<= scriptedTask
 	)
 }
