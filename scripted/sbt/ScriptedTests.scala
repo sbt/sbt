@@ -12,7 +12,7 @@ import xsbt.IPC
 import xsbt.test.{CommentHandler, FileCommands, ScriptRunner, TestScriptParser}
 import IO.wrapNull
 
-final class ScriptedTests(resourceBaseDirectory: File, bufferLog: Boolean, sbtVersion: String, defScalaVersion: String, buildScalaVersions: String, launcher: File)
+final class ScriptedTests(resourceBaseDirectory: File, bufferLog: Boolean, sbtVersion: String, defScalaVersion: String, buildScalaVersions: String, launcher: File, launchOpts: Seq[String])
 {
 	private val testResources = new Resources(resourceBaseDirectory)
 	
@@ -46,7 +46,7 @@ final class ScriptedTests(resourceBaseDirectory: File, bufferLog: Boolean, sbtVe
 		def createParser() =
 		{
 			val fileHandler = new FileCommands(testDirectory)
-			val sbtHandler = new SbtHandler(testDirectory, launcher, buffered, server)
+			val sbtHandler = new SbtHandler(testDirectory, launcher, buffered, server, launchOpts)
 			new TestScriptParser(Map('$' -> fileHandler, '>' -> sbtHandler, '#' -> CommentHandler))
 		}
 		def runTest() =
@@ -92,14 +92,14 @@ object ScriptedTests
 		val bootProperties = new File(args(5))
 		val tests = args.drop(6)
 		val logger = ConsoleLogger()
-		run(directory, buffer, sbtVersion, defScalaVersion, buildScalaVersions, tests, logger, bootProperties)
+		run(directory, buffer, sbtVersion, defScalaVersion, buildScalaVersions, tests, logger, bootProperties, Seq())
 	}
-	def run(resourceBaseDirectory: File, bufferLog: Boolean, sbtVersion: String, defScalaVersion: String, buildScalaVersions: String, tests: Array[String], bootProperties: File): Unit =
-		run(resourceBaseDirectory, bufferLog, sbtVersion, defScalaVersion, buildScalaVersions, tests, ConsoleLogger(), bootProperties)//new FullLogger(Logger.xlog2Log(log)))
+	def run(resourceBaseDirectory: File, bufferLog: Boolean, sbtVersion: String, defScalaVersion: String, buildScalaVersions: String, tests: Array[String], bootProperties: File, launchOpts: Seq[String]): Unit =
+		run(resourceBaseDirectory, bufferLog, sbtVersion, defScalaVersion, buildScalaVersions, tests, ConsoleLogger(), bootProperties, launchOpts)//new FullLogger(Logger.xlog2Log(log)))
 
-	def run(resourceBaseDirectory: File, bufferLog: Boolean, sbtVersion: String, defScalaVersion: String, buildScalaVersions: String, tests: Array[String], logger: AbstractLogger, bootProperties: File)
+	def run(resourceBaseDirectory: File, bufferLog: Boolean, sbtVersion: String, defScalaVersion: String, buildScalaVersions: String, tests: Array[String], logger: AbstractLogger, bootProperties: File, launchOpts: Seq[String])
 	{
-		val runner = new ScriptedTests(resourceBaseDirectory, bufferLog, sbtVersion, defScalaVersion, buildScalaVersions, bootProperties)	
+		val runner = new ScriptedTests(resourceBaseDirectory, bufferLog, sbtVersion, defScalaVersion, buildScalaVersions, bootProperties, launchOpts)
 		for( ScriptedTest(group, name) <- get(tests, resourceBaseDirectory, logger) )
 			runner.scriptedTest(group, name, logger)
 	}
