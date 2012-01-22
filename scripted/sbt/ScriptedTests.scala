@@ -92,12 +92,12 @@ object ScriptedTests
 		val bootProperties = new File(args(5))
 		val tests = args.drop(6)
 		val logger = ConsoleLogger()
-		run(directory, buffer, sbtVersion, defScalaVersion, buildScalaVersions, tests, logger, bootProperties, Seq())
+		run(directory, buffer, sbtVersion, defScalaVersion, buildScalaVersions, tests, logger, bootProperties, Array())
 	}
-	def run(resourceBaseDirectory: File, bufferLog: Boolean, sbtVersion: String, defScalaVersion: String, buildScalaVersions: String, tests: Array[String], bootProperties: File, launchOpts: Seq[String]): Unit =
+	def run(resourceBaseDirectory: File, bufferLog: Boolean, sbtVersion: String, defScalaVersion: String, buildScalaVersions: String, tests: Array[String], bootProperties: File, launchOpts: Array[String]): Unit =
 		run(resourceBaseDirectory, bufferLog, sbtVersion, defScalaVersion, buildScalaVersions, tests, ConsoleLogger(), bootProperties, launchOpts)//new FullLogger(Logger.xlog2Log(log)))
 
-	def run(resourceBaseDirectory: File, bufferLog: Boolean, sbtVersion: String, defScalaVersion: String, buildScalaVersions: String, tests: Array[String], logger: AbstractLogger, bootProperties: File, launchOpts: Seq[String])
+	def run(resourceBaseDirectory: File, bufferLog: Boolean, sbtVersion: String, defScalaVersion: String, buildScalaVersions: String, tests: Array[String], logger: AbstractLogger, bootProperties: File, launchOpts: Array[String])
 	{
 		val runner = new ScriptedTests(resourceBaseDirectory, bufferLog, sbtVersion, defScalaVersion, buildScalaVersions, bootProperties, launchOpts)
 		for( ScriptedTest(group, name) <- get(tests, resourceBaseDirectory, logger) )
