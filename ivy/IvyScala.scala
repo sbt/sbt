@@ -19,6 +19,10 @@ object ScalaArtifacts
 	val CompilerID = "scala-compiler"
 	def libraryDependency(version: String): ModuleID = ModuleID(Organization, LibraryID, version)
 }
+object SbtArtifacts
+{
+	val Organization = "org.scala-sbt"
+}
 
 import ScalaArtifacts._
 

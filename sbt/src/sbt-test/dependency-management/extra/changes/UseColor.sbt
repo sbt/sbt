@@ -8,7 +8,7 @@ resolvers <<= baseDirectory( base =>
 
 libraryDependencies <<= baseDirectory { base =>
 	val color = IO.read(base / "color")
-	val dep = "org.scala-tools.sbt" %% "define-color" % "1.0" extra("e:color" -> color)
+	val dep = "org.scala-sbt" %% "define-color" % "1.0" extra("e:color" -> color)
 	dep :: Nil
 }
 

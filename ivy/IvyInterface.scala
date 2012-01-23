@@ -199,8 +199,7 @@ object Resolver
 	def withDefaultResolvers(userResolvers: Seq[Resolver], mavenCentral: Boolean, scalaTools: Boolean): Seq[Resolver] =
 		Seq(Resolver.defaultLocal) ++
 		userResolvers ++
-		single(DefaultMavenRepository, mavenCentral)++
-		single(ScalaToolsReleases, scalaTools)
+		single(DefaultMavenRepository, mavenCentral)
 	private def single[T](value: T, nonEmpty: Boolean): Seq[T] = if(nonEmpty) Seq(value) else Nil
 
 	/** A base class for defining factories for interfaces to Ivy repositories that require a hostname , port, and patterns.  */

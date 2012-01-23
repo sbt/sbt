@@ -152,7 +152,7 @@ class ConfigurationParser
 
 	def getApplication(m: LabelMap): (Application, Value[List[String]]) =
 	{
-		val (org, m1) = id(m, "org", "org.scala-tools.sbt")
+		val (org, m1) = id(m, "org", BootConfiguration.SbtOrg)
 		val (name, m2) = id(m1, "name", "sbt")
 		val (rev, m3) = getVersion(m2, name + " version", name + ".version")
 		val (main, m4) = id(m3, "class", "xsbt.Main")
