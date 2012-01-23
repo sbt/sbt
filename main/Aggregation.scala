@@ -127,7 +127,7 @@ final object Aggregation
 		Dag.topologicalSort(key) { k =>
 			if(reverse)
 				reverseAggregatedKeys(k, extra, mask)
-			else if(aggregationEnabled(key, extra.data))
+			else if(aggregationEnabled(k, extra.data))
 				aggregatedKeys(k, extra, mask)
 			else
 				Nil
