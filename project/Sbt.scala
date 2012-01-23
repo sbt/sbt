@@ -137,8 +137,8 @@ object Sbt extends Build
 			(launcher, scriptedSbtClasspath, scriptedSbtInstance, _, v, sv, ssv, sourcePath, args) =>
 			val loader = classpath.ClasspathUtilities.toLoader(scriptedSbtClasspath.files, scriptedSbtInstance.loader)
 			val m = ModuleUtilities.getObject("sbt.test.ScriptedTests", loader)
-			val r = m.getClass.getMethod("run", classOf[File], classOf[Boolean], classOf[String], classOf[String], classOf[String], classOf[Array[String]], classOf[File])
-			try { r.invoke(m, sourcePath, true: java.lang.Boolean, v, sv, ssv, args.toArray[String], launcher) }
+			val r = m.getClass.getMethod("run", classOf[File], classOf[Boolean], classOf[String], classOf[String], classOf[String], classOf[Array[String]], classOf[File], classOf[Array[String]])
+			try { r.invoke(m, sourcePath, true: java.lang.Boolean, v, sv, ssv, args.toArray[String], launcher, Array[String]()) }
 			catch { case ite: java.lang.reflect.InvocationTargetException => throw ite.getCause }
 		}
 	}
