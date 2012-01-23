@@ -9,14 +9,21 @@ import scala.xml.NodeSeq
 import org.apache.ivy.plugins.resolver.{DependencyResolver, IBiblioResolver}
 import org.apache.ivy.util.url.CredentialsStore
 
-final case class ModuleID(organization: String, name: String, revision: String, configurations: Option[String] = None, isChanging: Boolean = false, isTransitive: Boolean = true, explicitArtifacts: Seq[Artifact] = Nil, exclusions: Seq[ExclusionRule] = Nil, extraAttributes: Map[String,String] = Map.empty, crossVersion: Boolean = false, crossVersionRemap: String => String = identity)
+final case class ModuleID(organization: String, name: String, revision: String, configurations: Option[String] = None, isChanging: Boolean = false, isTransitive: Boolean = true, explicitArtifacts: Seq[Artifact] = Nil, exclusions: Seq[ExclusionRule] = Nil, extraAttributes: Map[String,String] = Map.empty, crossVersion: CrossVersion = CrossVersion.Disabled)
 {
 	override def toString =
 		organization + ":" + name + ":" + revision +
 		(configurations match { case Some(s) => ":" + s; case None => "" }) +
 		(if(extraAttributes.isEmpty) "" else " " + extraString)
 	def extraString = extraAttributes.map { case (k,v) => k + "=" + v } mkString("(",", ",")")
-	def cross(v: Boolean, verRemap: String => String = identity) = copy(crossVersion = v, crossVersionRemap = verRemap)
+
+	@deprecated("Use the variant accepting a CrossVersion value constructed by a member of the CrossVersion object.", "0.12.0")
+	def cross(v: Boolean): ModuleID = cross(if(v) CrossVersion.binary else CrossVersion.Disabled)
+	@deprecated("Use the variant accepting a CrossVersion value constructed by a member of the CrossVersion object.", "0.12.0")
+	def cross(v: Boolean, verRemap: String => String): ModuleID = cross(if(v) CrossVersion.binaryMapped(verRemap) else CrossVersion.Disabled)
+
+	def cross(v: CrossVersion): ModuleID = copy(crossVersion = v)
+
 	// () required for chaining
 	def notTransitive() = intransitive()
 	def intransitive() = copy(isTransitive = false)
@@ -418,14 +425,14 @@ object Artifact
 		val base = if(i >= 0) name.substring(0, i) else name
 		Artifact(base, extract(name, DefaultType), extract(name, DefaultExtension), None, Nil, Some(file.toURI.toURL))
 	}
-	def artifactName(scalaVersion: String, module: ModuleID, artifact: Artifact): String =
+	def artifactName(scalaVersion: ScalaVersion, module: ModuleID, artifact: Artifact): String =
 	{
 			import artifact._
 		val classifierStr = classifier match { case None => ""; case Some(c) => "-" + c }
-		val base = if(module.crossVersion) IvySbt.crossName(artifact.name, module.crossVersionRemap(scalaVersion)) else artifact.name
+		val cross = CrossVersion(module.crossVersion, scalaVersion.full, scalaVersion.binary)
+		val base = CrossVersion.applyCross(artifact.name, cross)
 		base + "-" + module.revision + classifierStr + "." + artifact.extension
 	}
-	def cross(enable: Boolean, scalaVersion: String): String = if(enable) "_" + scalaVersion else ""
 
 	val classifierConfMap = Map(SourceClassifier -> Sources, DocClassifier -> Docs)
 	val classifierTypeMap = Map(SourceClassifier -> SourceType, DocClassifier -> DocType)

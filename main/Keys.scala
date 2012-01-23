@@ -138,6 +138,7 @@ object Keys
 	val scalaVersion = SettingKey[String]("scala-version", "The version of Scala used for building.")
 	val scalaBinaryVersion = SettingKey[String]("scala-binary-version", "The Scala version substring describing binary compatibility.")
 	val crossScalaVersions = SettingKey[Seq[String]]("cross-scala-versions", "The versions of Scala used when cross-building.")
+	val crossVersion = SettingKey[CrossVersion]("cross-version", "Configures handling of the Scala version when cross-building.")
 	val classpathOptions = SettingKey[ClasspathOptions]("classpath-options", "Configures handling of Scala classpaths.")
 	val definedSbtPlugins = TaskKey[Set[String]]("defined-sbt-plugins", "The set of names of Plugin implementations defined by this project.")
 	val sbtPlugin = SettingKey[Boolean]("sbt-plugin", "If true, enables adding sbt as a dependency and auto-generation of the plugin descriptor file.")
@@ -165,7 +166,7 @@ object Keys
 	val artifactPath = SettingKey[File]("artifact-path", "The location of a generated artifact.")
 	val artifact = SettingKey[Artifact]("artifact", "Describes an artifact.")
 	val artifactClassifier = SettingKey[Option[String]]("artifact-classifier", "Sets the classifier used by the default artifact definition.")
-	val artifactName = SettingKey[(String, ModuleID, Artifact) => String]("artifact-name", "Function that produces the artifact name from its definition.")
+	val artifactName = SettingKey[(ScalaVersion, ModuleID, Artifact) => String]("artifact-name", "Function that produces the artifact name from its definition.")
 	val mappings = TaskKey[Seq[(File,String)]]("mappings", "Defines the mappings from a file to a path, used by packaging, for example.")
 	val fileMappings = TaskKey[Seq[(File,File)]]("file-mappings", "Defines the mappings from a file to a file, used for copying files, for example.")
 
