@@ -8,7 +8,7 @@ publishTo <<= baseDirectory { base =>
 
 projectID <<= projectID { _.extra("e:color" -> "red") }
 
-organization := "org.scala-tools.sbt"
+organization := "org.scala-sbt"
 
 version := "1.0"
 

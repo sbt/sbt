@@ -61,7 +61,7 @@ class ComponentManager(globalLock: xsbti.GlobalLock, provider: xsbti.ComponentPr
 	/** Retrieve the file for component 'id' from the local repository. */
 	private def update(id: String): Unit = ivyCache.withCachedJar(sbtModuleID(id), Some(globalLock), log)(jar => define(id, Seq(jar)) )
 
-	private def sbtModuleID(id: String) = ModuleID("org.scala-tools.sbt", id, ComponentManager.stampedVersion)
+	private def sbtModuleID(id: String) = ModuleID("org.scala-sbt", id, ComponentManager.stampedVersion)
 	/** Install the files for component 'id' to the local repository.  This is usually used after writing files to the directory returned by 'location'. */
 	def cache(id: String): Unit = ivyCache.cacheJar(sbtModuleID(id), file(id)(IfMissing.Fail), Some(globalLock), log)
 	def clearCache(id: String): Unit = lockGlobalCache { ivyCache.clearCachedJar(sbtModuleID(id), Some(globalLock), log) }
