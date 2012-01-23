@@ -380,17 +380,24 @@ private[sbt] class SimpleProcessBuilder(p: JProcessBuilder) extends AbstractProc
 {
 	override def run(io: ProcessIO): Process =
 	{
-		val process = p.start() // start the external process
-		import io.{writeInput, processOutput, processError}
-		// spawn threads that process the input, output, and error streams using the functions defined in `io`
-		val inThread = Spawn(writeInput(process.getOutputStream), true)
-		val outThread = Spawn(processOutput(process.getInputStream))
-		val errorThread =
-			if(!p.redirectErrorStream)
-				Spawn(processError(process.getErrorStream)) :: Nil
-			else
-				Nil
-		new SimpleProcess(process, inThread, outThread :: errorThread)
+		import JavaVersion._
+		if (javaVersion eq Java7) {
+			val m = p.getClass.getMethod("inheritIO")
+			val process = m.invoke(p).asInstanceOf[JProcessBuilder].start()
+			new SimpleProcess(process, None, Nil)
+		} else {
+			val process = p.start() // start the external process
+			import io.{writeInput, processOutput, processError}
+			// spawn threads that process the input, output, and error streams using the functions defined in `io`
+			val inThread = Spawn(writeInput(process.getOutputStream), true)
+			val outThread = Spawn(processOutput(process.getInputStream))
+			val errorThread =
+				if(!p.redirectErrorStream)
+					Spawn(processError(process.getErrorStream)) :: Nil
+				else
+					Nil
+			new SimpleProcess(process, Some(inThread), outThread :: errorThread)
+		}
 	}
 	override def toString = p.command.toString
 	override def canPipeTo = true
@@ -400,7 +407,7 @@ private[sbt] class SimpleProcessBuilder(p: JProcessBuilder) extends AbstractProc
 * the process.
 * The implementation of `exitValue` interrupts `inputThread` and then waits until all I/O threads die before
 * returning. */
-private class SimpleProcess(p: JProcess, inputThread: Thread, outputThreads: List[Thread]) extends Process
+private class SimpleProcess(p: JProcess, inputThread: Option[Thread], outputThreads: List[Thread]) extends Process
 {
 	override def exitValue(): Int =
 	{
@@ -414,7 +421,7 @@ private class SimpleProcess(p: JProcess, inputThread: Thread, outputThreads: Lis
 		try
 		{
 			try { action }
-			finally { inputThread.interrupt() } // we interrupt the input thread to notify it that it can terminate
+			finally { inputThread.foreach(_.interrupt()) } // we interrupt the input thread to notify it that it can terminate
 			outputThreads.foreach(_.join()) // this ensures that all output is complete before returning (waitFor does not ensure this)
 		}
 		finally
@@ -478,3 +485,16 @@ private object Streamed
 }
 
 private final class Streamed[T](val process: T => Unit, val done: Int => Unit, val stream: () => Stream[T]) extends NotNull
+
+//TODO: move it to a more general place?
+object JavaVersion extends Enumeration {
+	val Unknown, Java5, Java6, Java7 = Value
+
+	lazy val javaVersion = {
+		val prop = System.getProperty("java.version")
+		if (prop startsWith "1.7") Java7
+		else if (prop startsWith "1.6") Java6
+		else if (prop startsWith "1.5") Java5
+		else Unknown
+	}
+}
