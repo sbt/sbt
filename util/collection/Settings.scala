@@ -259,16 +259,8 @@ trait Init[Scope]
 		override def toString = "setting(" + key + ") at " + pos
 	}
 
-	trait SourcePosition {
-		def fileName: String
-		def line: Int
-	}
-
-	case object NoPosition extends SourcePosition {
-		override def fileName = throw new UnsupportedOperationException("NoPosition")
-		override def line = throw new UnsupportedOperationException("NoPosition")
-	}
-
+	sealed trait SourcePosition
+	case object NoPosition extends SourcePosition
 	case class SourceCoord(fileName: String, line: Int) extends SourcePosition
 
 		// mainly for reducing generated class count

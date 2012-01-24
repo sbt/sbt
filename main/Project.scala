@@ -274,12 +274,14 @@ object Project extends Init[Scope] with ProjectExtra
 		}
 		val comp = compiled(structure.settings, actual)(structure.delegates, structure.scopeLocal, display)
 		val definedAt = comp get scoped map { c =>
-			if (c.settings exists (_.pos ne NoPosition)) {
-				val header = if (c.settings forall (_.pos ne NoPosition)) "Defined at:" else "Some of the definition places:"
+			val posDefined = c.settings filter (_.pos ne NoPosition)
+			if (posDefined.size > 0) {
+				val header = if (posDefined.size == c.settings.size) "Defined at:" else
+					"Some of the defining occurrences:"
 				def fmt(s: Setting[_]) = s.pos match {
 					case SourceCoord(fileName, line) => fileName + ":" + line
 				}
-				header + (c.settings filter (_.pos ne NoPosition) map fmt mkString ("\n\t", "\n\t", "\n"))
+				header + (posDefined map fmt mkString ("\n\t", "\n\t", "\n"))
 			} else ""
     } getOrElse ""
 
