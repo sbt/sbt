@@ -250,7 +250,7 @@ Usage: $script_name [options]
   -scala-home <path>        use the scala build at the specified directory
   -scala-version <version>  use the specified version of scala
 
-  # java version (default: java from PATH, currently $(java -version |& grep version))
+  # java version (default: java from PATH, currently $(java -version 2>&1 | grep version))
   -java-home <path>         alternate JAVA_HOME
 
   # jvm options and output control
