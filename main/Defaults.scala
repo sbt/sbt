@@ -218,7 +218,7 @@ object Defaults extends BuildCommon
 		discoveredMainClasses <<= compile map discoverMainClasses storeAs discoveredMainClasses triggeredBy compile,
 		definedSbtPlugins <<= discoverPlugins,
 		inTask(run)(runnerTask :: Nil).head,
-		selectMainClass <<= discoveredMainClasses map selectRunMain,
+		selectMainClass <<= (discoveredMainClasses, mainClass) map { (classes, explicit) => explicit orElse selectRunMain(classes) },
 		mainClass in run <<= selectMainClass in run,
 		mainClass <<= discoveredMainClasses map selectPackageMain,
 		run <<= runTask(fullClasspath, mainClass in run, runner in run),
