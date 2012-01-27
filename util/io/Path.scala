@@ -139,6 +139,13 @@ sealed abstract class PathFinder
 	final def \ (literal: String): PathFinder = this / literal
 
 	def x_![T](mapper: File => Option[T]): Traversable[(File,T)] = x(mapper, false)
+
+	/** Applies `mapper` to each path selected by this PathFinder and returns the path paired with the non-empty result.
+	* If the result is empty (None) and `errorIfNone` is true, an exception is thrown.
+	* If `errorIfNone` is false, the path is dropped from the returned Traversable.*/
+	def pair[T](mapper: File => Option[T], errorIfNone: Boolean = true): Seq[(File,T)] =
+		x(mapper, errorIfNone)
+
 	/** Applies `mapper` to each path selected by this PathFinder and returns the path paired with the non-empty result.
 	* If the result is empty (None) and `errorIfNone` is true, an exception is thrown.
 	* If `errorIfNone` is false, the path is dropped from the returned Traversable.*/
@@ -154,7 +161,7 @@ sealed abstract class PathFinder
 	* <code>descendantsExcept("*.jar", ".svn")</code>*/
 	def descendantsExcept(include: FileFilter, intermediateExclude: FileFilter): PathFinder =
 		(this ** include) --- (this ** intermediateExclude ** include)
-	@deprecated("Use `descendantsExcept` instead.", "0.11.3")
+	@deprecated("Use `descendantsExcept` instead.", "0.12.0")
 	def descendentsExcept(include: FileFilter, intermediateExclude: FileFilter): PathFinder =
 		descendantsExcept(include, intermediateExclude)
 

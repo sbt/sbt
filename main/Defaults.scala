@@ -364,10 +364,8 @@ object Defaults extends BuildCommon
 	packageTasks(packageSrc, packageSrcTask) ++
 	packageTasks(packageDoc, packageDocTask)
 
-	private[this] val allSubpaths = (dir: File) => (dir.*** --- dir) x (relativeTo(dir)|flat)
-
-	def packageBinTask = products map { ps => ps flatMap { p => allSubpaths(p) } }
-	def packageDocTask = doc map allSubpaths
+	def packageBinTask = products map { _ flatMap Path.allSubpaths }
+	def packageDocTask = doc map { p => Path.allSubpaths(p).toSeq }
 	def packageSrcTask = concatMappings(resourceMappings, sourceMappings)
 
 	private type Mappings = Initialize[Task[Seq[(File, String)]]]
@@ -375,12 +373,12 @@ object Defaults extends BuildCommon
 
 	// drop base directories, since there are no valid mappings for these
 	def sourceMappings = (unmanagedSources, unmanagedSourceDirectories, baseDirectory) map { (srcs, sdirs, base) =>
-		 ( (srcs --- sdirs --- base) x (relativeTo(sdirs)|relativeTo(base)|flat)) toSeq
+		 ( (srcs --- sdirs --- base) pair (relativeTo(sdirs)|relativeTo(base)|flat)) toSeq
 	}
 	def resourceMappings = relativeMappings(unmanagedResources, unmanagedResourceDirectories)
 	def relativeMappings(files: ScopedTaskable[Seq[File]], dirs: ScopedTaskable[Seq[File]]): Initialize[Task[Seq[(File, String)]]] =
 		(files, dirs) map { (rs, rdirs) =>
-			(rs --- rdirs) x (relativeTo(rdirs)|flat) toSeq
+			(rs --- rdirs) pair (relativeTo(rdirs)|flat) toSeq
 		}
 
 	def collectFiles(dirs: ScopedTaskable[Seq[File]], filter: ScopedTaskable[FileFilter], excludes: ScopedTaskable[FileFilter]): Initialize[Task[Seq[File]]] =
@@ -548,7 +546,7 @@ object Defaults extends BuildCommon
 	def copyResourcesTask =
 	(classDirectory, cacheDirectory, resources, resourceDirectories, streams) map { (target, cache, resrcs, dirs, s) =>
 		val cacheFile = cache / "copy-resources"
-		val mappings = (resrcs --- dirs) x (rebase(dirs, target) | flat(target))
+		val mappings = (resrcs --- dirs) pair (rebase(dirs, target) | flat(target))
 		s.log.debug("Copy resource mappings: " + mappings.mkString("\n\t","\n\t",""))
 		Sync(cacheFile)( mappings )
 		mappings
