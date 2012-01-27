@@ -140,7 +140,7 @@ object EvaluateConfigurations
 		}
 		loader => {
 			val coord = SourceCoord(name, line + 1)
-			result.getValue(loader).asInstanceOf[Project.SettingsDefinition].settings map (_ setPos coord)
+			result.getValue(loader).asInstanceOf[Project.SettingsDefinition].settings map (_ withPos coord)
 		}
 	}
 	private[this] def isSpace = (c: Char) => Character isWhitespace c

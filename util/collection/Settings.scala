@@ -255,13 +255,13 @@ trait Init[Scope]
 		def mapKey(g: MapScoped): Setting[T] = new Setting(g(key), init, pos)
 		def mapInit(f: (ScopedKey[T], T) => T): Setting[T] = new Setting(key, init(t => f(key,t)), pos)
 		def mapConstant(g: MapConstant): Setting[T] = new Setting(key, init mapConstant g, pos)
-		def setPos(pos: SourceCoord) = new Setting(key, init, pos)
+		def withPos(pos: SourceCoord) = new Setting(key, init, pos)
 		override def toString = "setting(" + key + ") at " + pos
 	}
 
 	sealed trait SourcePosition
 	case object NoPosition extends SourcePosition
-	case class SourceCoord(fileName: String, line: Int) extends SourcePosition
+	final case class SourceCoord(fileName: String, line: Int) extends SourcePosition
 
 		// mainly for reducing generated class count
 	private[this] def validateReferencedT(g: ValidateRef) =
