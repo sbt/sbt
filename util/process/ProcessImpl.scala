@@ -376,29 +376,38 @@ private class DummyProcess(action: => Int) extends Process
 	override def destroy() {}
 }
 /** Represents a simple command without any redirection or combination. */
-private[sbt] class SimpleProcessBuilder(p: JProcessBuilder) extends AbstractProcessBuilder
+private[sbt] class SimpleProcessBuilder(p: JProcessBuilder, source: Boolean, sink: Boolean) extends AbstractProcessBuilder
 {
+	def this(p: JProcessBuilder) = this(p, false, false)
+
+	override def toSource = new SimpleProcessBuilder(p, true, sink)
+	override def toSink = new SimpleProcessBuilder(p, source, true)
+
+	val redirectClass = p.getClass.getClasses find (_.getSimpleName == "Redirect")
+	def redirectMethod(methodName: String) = redirectClass map { r => p.getClass.getMethod(methodName, r) }
+	val inherit = redirectClass map (_ getField "INHERIT" get null)
+
+	val inheritInput = if (sink) None else redirectMethod("redirectInput")
+	val inheritOutput = if (source) None else redirectMethod("redirectOutput")
+	val inheritError = if (p.redirectErrorStream) None else redirectMethod("redirectError")
+
 	override def run(io: ProcessIO): Process =
 	{
-		import JavaVersion._
-		if (javaVersion eq Java7) {
-			val m = p.getClass.getMethod("inheritIO")
-			val process = m.invoke(p).asInstanceOf[JProcessBuilder].start()
-			new SimpleProcess(process, None, Nil)
-		} else {
-			val process = p.start() // start the external process
-			import io.{writeInput, processOutput, processError}
-			// spawn threads that process the input, output, and error streams using the functions defined in `io`
-			val inThread = Spawn(writeInput(process.getOutputStream), true)
-			val outThread = Spawn(processOutput(process.getInputStream))
-			val errorThread =
-				if(!p.redirectErrorStream)
-					Spawn(processError(process.getErrorStream)) :: Nil
-				else
-					Nil
-			new SimpleProcess(process, Some(inThread), outThread :: errorThread)
+		val pb = (p /: (inheritInput :: inheritOutput :: inheritError :: Nil).flatten) {
+			case (p, m) =>	m.invoke(p, inherit.get).asInstanceOf[JProcessBuilder]
 		}
+
+		val process = pb.start() // start the external process
+		import io.{writeInput, processOutput, processError}
+
+		// spawn threads that process the input, output, and error streams using the functions defined in `io`
+		def spawn(m: Option[_], f: => Unit, daemon: Boolean) = if (m.isDefined) None else Some(Spawn(f, daemon))
+		val inThread = spawn(inheritInput, writeInput(process.getOutputStream), true)
+		val outThread = spawn(inheritOutput, processOutput(process.getInputStream), false)
+		val errorThread = spawn(inheritError, processError(process.getErrorStream), false)
+		new SimpleProcess(process, inThread, (outThread :: errorThread :: Nil).flatten)
 	}
+
 	override def toString = p.command.toString
 	override def canPipeTo = true
 }
@@ -485,16 +494,3 @@ private object Streamed
 }
 
 private final class Streamed[T](val process: T => Unit, val done: Int => Unit, val stream: () => Stream[T]) extends NotNull
-
-//TODO: move it to a more general place?
-object JavaVersion extends Enumeration {
-	val Unknown, Java5, Java6, Java7 = Value
-
-	lazy val javaVersion = {
-		val prop = System.getProperty("java.version")
-		if (prop startsWith "1.7") Java7
-		else if (prop startsWith "1.6") Java6
-		else if (prop startsWith "1.5") Java5
-		else Unknown
-	}
-}
