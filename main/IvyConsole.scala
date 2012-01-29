@@ -14,7 +14,7 @@ object IvyConsole
 	lazy val command = 
 		Command.command(Name) { state =>
 			val Dependencies(managed, repos, unmanaged) = parseDependencies(state.remainingCommands, state.log)
-			val base = new File(CommandSupport.bootDirectory(state), Name)
+			val base = new File(CommandUtil.bootDirectory(state), Name)
 			IO.createDirectory(base)
 
 			val (eval, structure) = Load.defaultLoad(state, base, state.log)

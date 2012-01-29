@@ -16,7 +16,7 @@ object Script
 			val scriptArg = state.remainingCommands.headOption getOrElse error("No script file specified")
 			val script = new File(scriptArg).getAbsoluteFile
 			val hash = Hash.halve(Hash.toHex(Hash(script.getAbsolutePath)))
-			val base = new File(CommandSupport.bootDirectory(state), hash)
+			val base = new File(CommandUtil.bootDirectory(state), hash)
 			IO.createDirectory(base)
 
 			val (eval, structure) = Load.defaultLoad(state, base, state.log)

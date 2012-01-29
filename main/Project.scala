@@ -203,7 +203,7 @@ object Project extends Init[Scope] with ProjectExtra
 		val prompt = get(shellPrompt)
 		val watched = get(watch)
 		val commandDefs = allCommands.distinct.flatten[Command].map(_ tag (projectCommand, true))
-		val newDefinedCommands = commandDefs ++ BuiltinCommands.removeTagged(s.definedCommands, projectCommand)
+		val newDefinedCommands = commandDefs ++ BasicCommands.removeTagged(s.definedCommands, projectCommand)
 		val newAttrs = setCond(Watched.Configuration, watched, s.attributes).put(historyPath.key, history)
 		s.copy(attributes = setCond(shellPrompt.key, prompt, newAttrs), definedCommands = newDefinedCommands)
 	}

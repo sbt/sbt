@@ -13,7 +13,7 @@ import Incomplete.{Error, Value => IValue}
 * @param causes a list of incompletions that prevented `node` from completing
 * @param directCause the exception that caused `node` to not complete */
 final case class Incomplete(node: Option[AnyRef], tpe: IValue = Error, message: Option[String] = None, causes: Seq[Incomplete] = Nil, directCause: Option[Throwable] = None)
-	extends Exception(message.orNull, directCause.orNull) {
+	extends Exception(message.orNull, directCause.orNull) with UnprintableException {
 		override def toString = "Incomplete(node=" + node + ", tpe=" + tpe + ", msg=" + message + ", causes=" + causes + ", directCause=" + directCause +")"
 }
 

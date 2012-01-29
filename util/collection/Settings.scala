@@ -177,7 +177,7 @@ trait Init[Scope]
 			if(dist < 0) None else Some(dist)
 		}
 
-	final class Uninitialized(val undefined: Seq[Undefined], msg: String) extends Exception(msg)
+	final class Uninitialized(val undefined: Seq[Undefined], override val toString: String) extends Exception(toString)
 	final class Undefined(val definingKey: ScopedKey[_], val referencedKey: ScopedKey[_])
 	final class RuntimeUndefined(val undefined: Seq[Undefined]) extends RuntimeException("References to undefined settings at runtime.")
 	def Undefined(definingKey: ScopedKey[_], referencedKey: ScopedKey[_]): Undefined = new Undefined(definingKey, referencedKey)

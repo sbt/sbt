@@ -56,11 +56,10 @@ object Keys
 //	val onComplete = SettingKey[RMap[Task,Result] => RMap[Task,Result]]("on-complete", "Transformation to apply to the final task result map.  This may also be used to register hooks to run when task evaluation completes.")
 
 	// Command keys
-	val globalLogging = AttributeKey[GlobalLogging]("global-logging", "Provides a global Logger, including command logging.")
-	val historyPath = SettingKey[Option[File]]("history", "The location where command line history is persisted.")
-	val shellPrompt = SettingKey[State => String]("shell-prompt", "The function that constructs the command prompt from the current build state.")
+	val historyPath = SettingKey(BasicKeys.historyPath)
+	val shellPrompt = SettingKey(BasicKeys.shellPrompt)
 	val analysis = AttributeKey[inc.Analysis]("analysis", "Analysis of compilation, including dependencies and generated outputs.")
-	val watch = SettingKey[Watched]("watch", "Continuous execution configuration.")
+	val watch = SettingKey(BasicKeys.watch)
 	val pollInterval = SettingKey[Int]("poll-interval", "Interval between checks for modified sources by the continuous execution command.")
 	val watchSources = TaskKey[Seq[File]]("watch-sources", "Defines the sources in this project for continuous execution to watch for changes.")
 	val watchTransitiveSources = TaskKey[Seq[File]]("watch-transitive-sources", "Defines the sources in all projects for continuous execution to watch.")

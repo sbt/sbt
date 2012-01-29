@@ -111,8 +111,11 @@ object Sbt extends Build
 		classfileSub, classpathSub, compileIncrementalSub, compilePersistSub, compilerSub, completeSub, apiSub,
 		interfaceSub, ioSub, ivySub, logSub, processSub, runSub, stdTaskSub, taskSub, trackingSub, testingSub)
 
+	lazy val commandSub = testedBaseProject(commandPath, "Command") dependsOn(interfaceSub, ioSub, launchInterfaceSub, logSub, completeSub, classpathSub)
+
 		// The main integration project for sbt.  It brings all of the subsystems together, configures them, and provides for overriding conventions.
-	lazy val mainSub = testedBaseProject(mainPath, "Main") dependsOn(actionsSub, interfaceSub, ioSub, ivySub, launchInterfaceSub, logSub, processSub, runSub)
+	lazy val mainSub = testedBaseProject(mainPath, "Main") dependsOn(actionsSub, interfaceSub, ioSub, ivySub, launchInterfaceSub, logSub, processSub, runSub, commandSub)
+
 		// Strictly for bringing implicits and aliases from subsystems into the top-level sbt namespace through a single package object
 		//  technically, we need a dependency on all of mainSub's dependencies, but we don't do that since this is strictly an integration project
 		//  with the sole purpose of providing certain identifiers without qualification (with a package object)
@@ -126,6 +129,7 @@ object Sbt extends Build
 	def utilPath = file("util")
 	def compilePath = file("compile")
 	def mainPath = file("main")
+	def commandPath = mainPath / "command"
 	def scriptedPath = file("scripted")
 
 	def sbtSettings = Seq(
