@@ -267,20 +267,38 @@ object Project extends Init[Scope] with ProjectExtra
 		
 		val data = scopedKeyData(structure, scope, key) map {_.description} getOrElse {"No entry for key."}
 		val description = key.description match { case Some(desc) => "Description:\n\t" + desc + "\n"; case None => "" }
-		val definedIn = structure.data.definingScope(scope, key) match {
+
+		val providedBy = structure.data.definingScope(scope, key) match {
 			case Some(sc) => "Provided by:\n\t" + Scope.display(sc, key.label) + "\n"
 			case None => ""
 		}
-		val cMap = flattenLocals(compiled(structure.settings, actual)(structure.delegates, structure.scopeLocal, display))
+		val comp = compiled(structure.settings, actual)(structure.delegates, structure.scopeLocal, display)
+		val definedAt = comp get scoped map { c =>
+			def fmt(s: Setting[_]) = s.pos match {
+				case SourceCoord(fileName, line) => Some(fileName + ":" + line)
+				case NoPosition => None
+			}
+			val posDefined = c.settings.map(fmt).flatten
+			if (posDefined.size > 0) {
+				val header = if (posDefined.size == c.settings.size) "Defined at:" else
+					"Some of the defining occurrences:"
+				header + (posDefined mkString ("\n\t", "\n\t", "\n"))
+			} else ""
+    } getOrElse ""
+
+
+		val cMap = flattenLocals(comp)
 		val related = cMap.keys.filter(k => k.key == key && k.scope != scope)
 		val depends = cMap.get(scoped) match { case Some(c) => c.dependencies.toSet; case None => Set.empty }
+
 		val reverse = reverseDependencies(cMap, scoped)
 		def printScopes(label: String, scopes: Iterable[ScopedKey[_]]) =
 			if(scopes.isEmpty) "" else scopes.map(display.apply).mkString(label + ":\n\t", "\n\t", "\n")
 
 		data + "\n" +
 			description +
-			definedIn +
+			providedBy +
+			definedAt +
 			printScopes("Dependencies", depends) +
 			printScopes("Reverse dependencies", reverse) +
 			printScopes("Delegates", delegates(structure, scope, key)) +
@@ -332,7 +350,7 @@ object Project extends Init[Scope] with ProjectExtra
 		{
 			val akey = setting.key.key
 			val global = ScopedKey(Global, akey)
-			val globalSetting = resolve( Project.setting(global, setting.init) )
+			val globalSetting = resolve( Project.setting(global, setting.init, setting.pos) )
 			globalSetting ++ allDefs.flatMap { d =>
 				if(d.key == akey)
 					Seq( SettingKey(akey) in d.scope <<= global)
