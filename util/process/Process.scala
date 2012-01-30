@@ -178,6 +178,9 @@ trait ProcessBuilder extends SourcePartialBuilder with SinkPartialBuilder
 	def ### (other: ProcessBuilder): ProcessBuilder
 
 	def canPipeTo: Boolean
+
+	def feedStdin: ProcessBuilder
+	def feedStdout: ProcessBuilder
 }
 /** Each method will be called in a separate thread.*/
 final class ProcessIO(val writeInput: OutputStream => Unit, val processOutput: InputStream => Unit, val processError: InputStream => Unit) extends NotNull

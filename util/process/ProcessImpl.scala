@@ -132,6 +132,9 @@ private abstract class AbstractProcessBuilder extends ProcessBuilder with SinkPa
 	
 	protected def toSource = this
 	protected def toSink = this
+
+	def feedStdin: ProcessBuilder = this
+	def feedStdout: ProcessBuilder = this
 	
 	def run(): Process = run(false)
 	def run(connectInput: Boolean): Process = run(BasicIO.standard(connectInput))
@@ -240,7 +243,7 @@ private abstract class SequentialProcessBuilder(a: ProcessBuilder, b: ProcessBui
 }
 private class PipedProcessBuilder(first: ProcessBuilder, second: ProcessBuilder, toError: Boolean) extends SequentialProcessBuilder(first, second, if(toError) "#|!" else "#|")
 {
-	override def createProcess(io: ProcessIO) = new PipedProcesses(first, second, io, toError)
+	override def createProcess(io: ProcessIO) = new PipedProcesses(first.feedStdout, second.feedStdin, io, toError)
 }
 private class AndProcessBuilder(first: ProcessBuilder, second: ProcessBuilder) extends SequentialProcessBuilder(first, second, "#&&")
 {
@@ -376,26 +379,29 @@ private class DummyProcess(action: => Int) extends Process
 	override def destroy() {}
 }
 /** Represents a simple command without any redirection or combination. */
-private[sbt] class SimpleProcessBuilder(p: JProcessBuilder, source: Boolean, sink: Boolean) extends AbstractProcessBuilder
+private[sbt] class SimpleProcessBuilder(p: JProcessBuilder, feedStdout: Boolean, feedStdin: Boolean) extends AbstractProcessBuilder
 {
 	def this(p: JProcessBuilder) = this(p, false, false)
 
-	override def toSource = new SimpleProcessBuilder(p, true, sink)
-	override def toSink = new SimpleProcessBuilder(p, source, true)
+	override def feedStdout = new SimpleProcessBuilder(p, true, feedStdin)
+	override def feedStdin = new SimpleProcessBuilder(p, feedStdout, true)
 
-	val redirectClass = p.getClass.getClasses find (_.getSimpleName == "Redirect")
-	def redirectMethod(methodName: String) = redirectClass map { r => p.getClass.getMethod(methodName, r) }
-	val inherit = redirectClass map (_ getField "INHERIT" get null)
-
-	val inheritInput = if (sink) None else redirectMethod("redirectInput")
-	val inheritOutput = if (source) None else redirectMethod("redirectOutput")
-	val inheritError = if (p.redirectErrorStream) None else redirectMethod("redirectError")
+	import SimpleProcessBuilder._
+	val inheritInput = /*None:Option[java.lang.reflect.Method]*/if (feedStdin) None else redirectInput
+	val inheritOutput = None//if (feedStdout) None else redirectOutput
+	val inheritError = None//if (p.redirectErrorStream) None else redirectError
 
 	override def run(io: ProcessIO): Process =
 	{
-		val pb = (p /: (inheritInput :: inheritOutput :: inheritError :: Nil).flatten) {
+		inheritInput.foreach{ _ =>
+			System.in.skip(System.in.available)
+		}
+		val pb = (p /: List(inheritInput, inheritOutput, inheritError).flatten) {
 			case (p, m) =>	m.invoke(p, inherit.get).asInstanceOf[JProcessBuilder]
 		}
+		println(pb.redirectInput)
+		println(pb.redirectOutput)
+		println(pb.redirectError)
 
 		val process = pb.start() // start the external process
 		import io.{writeInput, processOutput, processError}
@@ -405,12 +411,25 @@ private[sbt] class SimpleProcessBuilder(p: JProcessBuilder, source: Boolean, sin
 		val inThread = spawn(inheritInput, writeInput(process.getOutputStream), true)
 		val outThread = spawn(inheritOutput, processOutput(process.getInputStream), false)
 		val errorThread = spawn(inheritError, processError(process.getErrorStream), false)
-		new SimpleProcess(process, inThread, (outThread :: errorThread :: Nil).flatten)
+		new SimpleProcess(process, inThread, List(outThread, errorThread).flatten)
 	}
 
 	override def toString = p.command.toString
 	override def canPipeTo = true
 }
+
+private[this] object SimpleProcessBuilder {
+	val pbClass = Class.forName("java.lang.ProcessBuilder")
+	val redirectClass = pbClass.getClasses find (_.getSimpleName == "Redirect")
+
+	def redirectMethod(methodName: String) = redirectClass map (pbClass.getMethod(methodName, _))
+	val redirectInput = redirectMethod("redirectInput")
+	val redirectOutput = redirectMethod("redirectOutput")
+	val redirectError = redirectMethod("redirectError")
+
+	val inherit = redirectClass map (_ getField "INHERIT" get null)
+}
+
 /** A thin wrapper around a java.lang.Process.  `outputThreads` are the Threads created to read from the
 * output and error streams of the process.  `inputThread` is the Thread created to write to the input stream of
 * the process.
