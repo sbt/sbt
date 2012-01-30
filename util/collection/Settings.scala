@@ -58,10 +58,10 @@ trait Init[Scope]
 	type ScopeLocal = ScopedKey[_] => Seq[Setting[_]]
 	type MapConstant = ScopedKey ~> Option
 
-	def setting[T](key: ScopedKey[T], init: Initialize[T]): Setting[T] = new Setting[T](key, init)
+	def setting[T](key: ScopedKey[T], init: Initialize[T], pos: SourcePosition = NoPosition): Setting[T] = new Setting[T](key, init, pos)
 	def value[T](value: => T): Initialize[T] = new Value(value _)
 	def optional[T,U](i: Initialize[T])(f: Option[T] => U): Initialize[U] = new Optional(Some(i), f)
-	def update[T](key: ScopedKey[T])(f: T => T): Setting[T] = new Setting[T](key, app(key :^: KNil)(hl => f(hl.head)))
+	def update[T](key: ScopedKey[T])(f: T => T): Setting[T] = new Setting[T](key, app(key :^: KNil)(hl => f(hl.head)), NoPosition)
 	def bind[S,T](in: Initialize[S])(f: S => Initialize[T]): Initialize[T] = new Bind(f, in)
 	def app[HL <: HList, T](inputs: KList[Initialize, HL])(f: HL => T): Initialize[T] = new Apply(f, inputs)
 	def uniform[S,T](inputs: Seq[Initialize[S]])(f: Seq[S] => T): Initialize[T] = new Uniform(f, inputs)
@@ -245,18 +245,23 @@ trait Init[Scope]
 		def settings: Seq[Setting[_]]
 	}
 	final class SettingList(val settings: Seq[Setting[_]]) extends SettingsDefinition
-	final class Setting[T](val key: ScopedKey[T], val init: Initialize[T]) extends SettingsDefinition
+	final class Setting[T](val key: ScopedKey[T], val init: Initialize[T], val pos: SourcePosition) extends SettingsDefinition
 	{
 		def settings = this :: Nil
 		def definitive: Boolean = !init.dependencies.contains(key)
 		def dependencies: Seq[ScopedKey[_]] = remove(init.dependencies, key)
-		def mapReferenced(g: MapScoped): Setting[T] = new Setting(key, init mapReferenced g)
-		def validateReferenced(g: ValidateRef): Either[Seq[Undefined], Setting[T]] = (init validateReferenced g).right.map(newI => new Setting(key, newI))
-		def mapKey(g: MapScoped): Setting[T] = new Setting(g(key), init)
-		def mapInit(f: (ScopedKey[T], T) => T): Setting[T] = new Setting(key, init(t => f(key,t)))
-		def mapConstant(g: MapConstant): Setting[T] = new Setting(key, init mapConstant g)
-		override def toString = "setting(" + key + ")"
+		def mapReferenced(g: MapScoped): Setting[T] = new Setting(key, init mapReferenced g, pos)
+		def validateReferenced(g: ValidateRef): Either[Seq[Undefined], Setting[T]] = (init validateReferenced g).right.map(newI => new Setting(key, newI, pos))
+		def mapKey(g: MapScoped): Setting[T] = new Setting(g(key), init, pos)
+		def mapInit(f: (ScopedKey[T], T) => T): Setting[T] = new Setting(key, init(t => f(key,t)), pos)
+		def mapConstant(g: MapConstant): Setting[T] = new Setting(key, init mapConstant g, pos)
+		def withPos(pos: SourceCoord) = new Setting(key, init, pos)
+		override def toString = "setting(" + key + ") at " + pos
 	}
+
+	sealed trait SourcePosition
+	case object NoPosition extends SourcePosition
+	final case class SourceCoord(fileName: String, line: Int) extends SourcePosition
 
 		// mainly for reducing generated class count
 	private[this] def validateReferencedT(g: ValidateRef) =
