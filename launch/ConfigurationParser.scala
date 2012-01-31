@@ -152,7 +152,7 @@ class ConfigurationParser
 
 	def getApplication(m: LabelMap): (Application, Value[List[String]]) =
 	{
-		val (org, m1) = id(m, "org", "org.scala-tools.sbt")
+		val (org, m1) = id(m, "org", BootConfiguration.SbtOrg)
 		val (name, m2) = id(m1, "name", "sbt")
 		val (rev, m3) = getVersion(m2, name + " version", name + ".version")
 		val (main, m4) = id(m3, "class", "xsbt.Main")
@@ -171,7 +171,7 @@ class ConfigurationParser
 		m.toList.map {
 			case (key, None) => Predefined(key)
 			case (key, Some(value)) =>
-				val r = trim(value.split(",",3))
+				val r = trim(substituteVariables(value).split(",",3))
 				val url = try { new URL(r(0)) } catch { case e: MalformedURLException => error("Invalid URL specified for '" + key + "': " + e.getMessage) }
 				if(r.length == 3) Ivy(key, url, r(1), r(2)) else if(r.length == 2) Ivy(key, url, r(1), r(1)) else Maven(key, url)
 		}

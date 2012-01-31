@@ -14,7 +14,7 @@ package sbt
 	import inc.{FileValueCache, Locate}
 	import Project.{inScope, ScopedKey, ScopeLocal, Setting}
 	import Keys.{appConfiguration, baseDirectory, configuration, streams, Streams, thisProject, thisProjectRef}
-	import Keys.{globalLogging, isDummy, loadedBuild, parseResult, resolvedScoped, taskDefinitionKey}
+	import Keys.{isDummy, loadedBuild, parseResult, resolvedScoped, taskDefinitionKey}
 	import tools.nsc.reporters.ConsoleReporter
 	import Build.{analyzed, data}
 	import Scope.{GlobalScope, ThisScope}
@@ -489,7 +489,7 @@ object Load
 		val inputs = Compiler.inputs(data(classpath), sources, target, Nil, Nil, definesClass, Compiler.DefaultMaxErrors, CompileOrder.Mixed)(compilers, log)
 		val analysis =
 			try { Compiler(inputs, log) }
-			catch { case _: xsbti.CompileFailed => throw new NoMessageException } // compiler already logged errors
+			catch { case _: xsbti.CompileFailed => throw new AlreadyHandledException } // compiler already logged errors
 		(inputs, analysis)
 	}
 

@@ -5,9 +5,9 @@ object PomTest extends Build
 {
 	override def settings = super.settings :+ (TaskKey[Unit]("check-pom") <<= checkPom)
 
-	lazy val subJar = Project("Sub Jar", file("subJar"))
-	lazy val subWar = Project("Sub War", file("subWar")) settings( warArtifact)
-	lazy val subParent = Project("Sub Parent", file("subParent")) settings( publishArtifact in Compile := false )
+	lazy val subJar = Project("sub-jar", file("subJar"))
+	lazy val subWar = Project("sub-war", file("subWar")) settings( warArtifact)
+	lazy val subParent = Project("sub-parent", file("subParent")) settings( publishArtifact in Compile := false )
 
 	def art(p: ProjectReference) = makePom in p
 	def checkPom = (art(subJar), art(subWar), art(subParent)) map { (jar, war, pom) =>

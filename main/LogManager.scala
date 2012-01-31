@@ -9,6 +9,7 @@ package sbt
 	import std.Transform
 	import Project.ScopedKey
 	import Scope.GlobalScope
+	import MainLogging._
 	import Keys.{logLevel, logManager, persistLogLevel, persistTraceLevel, state, traceLevel}
 
 object LogManager
@@ -20,11 +21,6 @@ object LogManager
 	}
 	lazy val default: LogManager = withLoggers()
 	def defaults(extra: ScopedKey[_] => Seq[AbstractLogger]): LogManager  =  withLoggers(extra = extra)
-
-	def defaultScreen: AbstractLogger = ConsoleLogger()
-	
-	def defaultBacked(useColor: Boolean = ConsoleLogger.formatEnabled): PrintWriter => ConsoleLogger =
-		to => ConsoleLogger(ConsoleLogger.printWriterOut(to), useColor = useColor) // TODO: should probably filter ANSI codes when useColor=false
 
 	def withScreenLogger(mk: => AbstractLogger): LogManager = withLoggers(mk)
 	
@@ -42,40 +38,12 @@ object LogManager
 		val backingLevel = getOr(persistLogLevel.key, Level.Debug)
 		val screenTrace = getOr(traceLevel.key, -1)
 		val backingTrace = getOr(persistTraceLevel.key, Int.MaxValue)
-		val extraBacked = (state get Keys.globalLogging).map(_.backed).toList
+		val extraBacked = state.globalLogging.backed :: Nil
 		multiLogger( new MultiLoggerConfig(console, backed, extraBacked ::: extra, screenLevel, backingLevel, screenTrace, backingTrace) )
 	}
-	def multiLogger(config: MultiLoggerConfig): Logger =
-	{
-			import config._
-		val multi = new MultiLogger(console :: backed :: extra)
-			// sets multi to the most verbose for clients that inspect the current level
-		multi setLevel Level.unionAll(backingLevel :: screenLevel :: extra.map(_.getLevel))
-			// set the specific levels
-		console setLevel screenLevel
-		backed setLevel backingLevel
-		console setTrace screenTrace
-		backed setTrace backingTrace
-		multi: Logger
-	}
-	def globalDefault(writer: PrintWriter, backing: GlobalLogBacking): GlobalLogging =
-	{
-		val backed = defaultBacked()(writer)
-		val full = multiLogger(defaultMultiConfig( backed ) )
-		GlobalLogging(full, backed, backing)
-	}
-
-	def defaultMultiConfig(backing: AbstractLogger): MultiLoggerConfig =
-		new MultiLoggerConfig(defaultScreen, backing, Nil, Level.Info, Level.Debug, -1, Int.MaxValue)
 }
-final case class MultiLoggerConfig(console: AbstractLogger, backed: AbstractLogger, extra: List[AbstractLogger], screenLevel: Level.Value, backingLevel: Level.Value, screenTrace: Int, backingTrace: Int)
+
 trait LogManager
 {
 	def apply(data: Settings[Scope], state: State, task: ScopedKey[_], writer: PrintWriter): Logger
 }
-final case class GlobalLogBacking(file: File, last: Option[File])
-{
-	def shift(newFile: File) = GlobalLogBacking(newFile, Some(file))
-	def unshift = GlobalLogBacking(last getOrElse file, None)
-}
-final case class GlobalLogging(full: Logger, backed: ConsoleLogger, backing: GlobalLogBacking)

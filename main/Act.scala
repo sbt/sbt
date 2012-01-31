@@ -11,7 +11,7 @@ package sbt
 	import DefaultParsers._
 	import Types.idFun
 	import java.net.URI
-	import CommandSupport.ShowCommand
+	import CommandStrings.ShowCommand
 
 final class ParsedKey(val key: ScopedKey[_], val mask: ScopeMask)
 object Act

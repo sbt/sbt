@@ -2,7 +2,7 @@
   version: 2.9.1
 
 [app]
-  org: org.scala-tools.sbt
+  org: org.scala-sbt
   name: sbt
   version: 0.12.0-SNAPSHOT
   class: sbt.ScriptMain
@@ -13,5 +13,3 @@
   local
   typesafe-ivy-releases: http://repo.typesafe.com/typesafe/ivy-releases/, [organization]/[module]/[revision]/[type]s/[artifact](-[classifier]).[ext]
   maven-central
-  scala-tools-releases
-  scala-tools-snapshots

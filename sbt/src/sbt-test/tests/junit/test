@@ -1,0 +1,11 @@
+> test
+
+$ copy-file changes/Success.scala src/test/scala/Success.scala
+> test
+
+> test-only com.foo.junit.test.blah.Success
+
+$ copy-file changes/Failure.scala src/test/scala/Failure.scala
+-> test
+-> test-only com.foo.junit.test.blah.Failure
+> test-only com.foo.junit.test.blah.Success

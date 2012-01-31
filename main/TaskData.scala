@@ -47,6 +47,6 @@ object TaskData
 	private[this] def fakeState(structure: BuildStructure): State =
 	{
 		val config = Keys.appConfiguration in Scope.GlobalScope get structure.data
-		State(config.get, Nil, Set.empty, None, Nil, State.newHistory, AttributeMap.empty, State.Continue)
+		State(config.get, Nil, Set.empty, None, Nil, State.newHistory, AttributeMap.empty, StandardMain.initialGlobalLogging, State.Continue)
 	}
 }

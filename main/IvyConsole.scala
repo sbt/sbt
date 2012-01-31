@@ -14,7 +14,7 @@ object IvyConsole
 	lazy val command = 
 		Command.command(Name) { state =>
 			val Dependencies(managed, repos, unmanaged) = parseDependencies(state.remainingCommands, state.log)
-			val base = new File(CommandSupport.bootDirectory(state), Name)
+			val base = new File(CommandUtil.bootDirectory(state), Name)
 			IO.createDirectory(base)
 
 			val (eval, structure) = Load.defaultLoad(state, base, state.log)
@@ -56,7 +56,9 @@ object IvyConsole
 	def parseManaged(arg: String, log: Logger): Seq[ModuleID] =
 		arg match
 		{
-			case DepPattern(group, cross, name, version) =>	ModuleID(group.trim, name.trim, version.trim, crossVersion = !cross.trim.isEmpty) :: Nil
+			case DepPattern(group, cross, name, version) =>
+				val crossV = if(cross.trim.isEmpty) CrossVersion.Disabled else CrossVersion.binary
+				ModuleID(group.trim, name.trim, version.trim, crossVersion = crossV) :: Nil
 			case _ => log.warn("Ignoring invalid argument '" + arg + "'"); Nil
 		}
 }

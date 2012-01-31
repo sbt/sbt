@@ -4,6 +4,6 @@
 	moduleConfigurations += ModuleConfiguration("org.scala-lang", "*", "2.10.0-.*", scalaSnapshots)
 }
 
-libraryDependencies += "org.scala-lang" % "scala-compiler" % "2.10.0-20111001.020530-165"
+libraryDependencies += "org.scala-lang" % "scala-compiler" % "2.10.0-20120122.024228-256"
 
 resolvers := Nil

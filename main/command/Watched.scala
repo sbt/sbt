@@ -3,7 +3,8 @@
  */
 package sbt
 
-	import CommandSupport.{ClearOnFailure,FailureWall}
+	import BasicCommandStrings.ClearOnFailure
+	import State.FailureWall
 	import annotation.tailrec
 	import java.io.File
 	import Types.const
@@ -63,7 +64,7 @@ object Watched
 			catch { case e: Exception =>
 				val log = s.log
 				log.error("Error occurred obtaining files to watch.  Terminating continuous execution...")
-				BuiltinCommands.handleException(e, s, log)
+				MainLoop.handleException(e, s, log)
 				(false, watchState, s.fail)
 			}
 

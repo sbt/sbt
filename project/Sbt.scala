@@ -14,7 +14,7 @@ object Sbt extends Build
 {
 	override lazy val settings = super.settings ++ buildSettings ++ Status.settings
 	def buildSettings = Seq(
-		organization := "org.scala-tools.sbt",
+		organization := "org.scala-sbt",
 		version := "0.12.0-SNAPSHOT",
 		publishArtifact in packageDoc := false,
 		scalaVersion := "2.9.1",
@@ -111,8 +111,11 @@ object Sbt extends Build
 		classfileSub, classpathSub, compileIncrementalSub, compilePersistSub, compilerSub, completeSub, apiSub,
 		interfaceSub, ioSub, ivySub, logSub, processSub, runSub, stdTaskSub, taskSub, trackingSub, testingSub)
 
+	lazy val commandSub = testedBaseProject(commandPath, "Command") dependsOn(interfaceSub, ioSub, launchInterfaceSub, logSub, completeSub, classpathSub)
+
 		// The main integration project for sbt.  It brings all of the subsystems together, configures them, and provides for overriding conventions.
-	lazy val mainSub = testedBaseProject(mainPath, "Main") dependsOn(actionsSub, interfaceSub, ioSub, ivySub, launchInterfaceSub, logSub, processSub, runSub)
+	lazy val mainSub = testedBaseProject(mainPath, "Main") dependsOn(actionsSub, interfaceSub, ioSub, ivySub, launchInterfaceSub, logSub, processSub, runSub, commandSub)
+
 		// Strictly for bringing implicits and aliases from subsystems into the top-level sbt namespace through a single package object
 		//  technically, we need a dependency on all of mainSub's dependencies, but we don't do that since this is strictly an integration project
 		//  with the sole purpose of providing certain identifiers without qualification (with a package object)
@@ -126,6 +129,7 @@ object Sbt extends Build
 	def utilPath = file("util")
 	def compilePath = file("compile")
 	def mainPath = file("main")
+	def commandPath = mainPath / "command"
 	def scriptedPath = file("scripted")
 
 	def sbtSettings = Seq(
@@ -137,8 +141,8 @@ object Sbt extends Build
 			(launcher, scriptedSbtClasspath, scriptedSbtInstance, _, v, sv, ssv, sourcePath, args) =>
 			val loader = classpath.ClasspathUtilities.toLoader(scriptedSbtClasspath.files, scriptedSbtInstance.loader)
 			val m = ModuleUtilities.getObject("sbt.test.ScriptedTests", loader)
-			val r = m.getClass.getMethod("run", classOf[File], classOf[Boolean], classOf[String], classOf[String], classOf[String], classOf[Array[String]], classOf[File])
-			try { r.invoke(m, sourcePath, true: java.lang.Boolean, v, sv, ssv, args.toArray[String], launcher) }
+			val r = m.getClass.getMethod("run", classOf[File], classOf[Boolean], classOf[String], classOf[String], classOf[String], classOf[Array[String]], classOf[File], classOf[Array[String]])
+			try { r.invoke(m, sourcePath, true: java.lang.Boolean, v, sv, ssv, args.toArray[String], launcher, Array[String]()) }
 			catch { case ite: java.lang.reflect.InvocationTargetException => throw ite.getCause }
 		}
 	}

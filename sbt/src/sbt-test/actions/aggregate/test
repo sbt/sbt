@@ -8,13 +8,13 @@ $ absent ran
 $ exists ran
 $ delete ran
 
-# single project, Aggregate = Enabled on Mark
-> set aggregate in Mark := false
+# single project, aggregate = true on Mark
+> set aggregate in Mark := true
 > mark
 $ exists ran
 $ delete ran
 
-# single project, Aggregate = Disabled on Mark
+# single project, aggregate = false on Mark
 > set aggregate in Mark := false
 > mark
 $ exists ran
@@ -45,7 +45,7 @@ $ absent ran
 $ exists sub/ran
 $ delete sub/ran
 
-# unset the root task.  the sub task shouldn't be runnable from root
+# unset the root task.  the sub task shouldn't be runnable from root without aggregation
 > session remove 1
 -> mark
 $ absent ran sub/ran
@@ -75,20 +75,6 @@ $ delete sub/ran sub/sub/ran
 
 # disable aggregation for sub/mark so that sub2/mark doesn't run
 > set aggregate in (sub,Mark) := false
-> mark
-$ exists ran sub/ran
-$ absent sub/sub/ran
-$ delete ran sub/ran
-
-# check explicit aggregation.  running on root should run root/mark and sub2/mark
-> set aggregate in Mark := Aggregation(sub2 :: Nil)
-> mark
-$ exists ran sub/sub/ran
-$ absent sub/ran
-$ delete ran sub/sub/ran
-
-# check intransitive aggregation.  running on root should not continue to sub2/mark
-> set aggregate in Mark := Aggregation(sub :: Nil, false)
 > mark
 $ exists ran sub/ran
 $ absent sub/sub/ran

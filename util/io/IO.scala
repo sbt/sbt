@@ -17,6 +17,7 @@ import scala.collection.mutable.{HashMap,HashSet}
 import scala.reflect.{Manifest => SManifest}
 import Function.tupled
 
+/** A collection of File, URL, and I/O utility methods.*/
 object IO
 {
 	/** The maximum number of times a unique temporary filename is attempted to be created.*/
@@ -26,21 +27,40 @@ object IO
 	val temporaryDirectory = new File(System.getProperty("java.io.tmpdir"))
 	/** The size of the byte or char buffer used in various methods.*/
 	private val BufferSize = 8192
+
+	/** The newline string for this system, as obtained by the line.separator system property. */
 	val Newline = System.getProperty("line.separator")
 
 	val utf8 = Charset.forName("UTF-8")
 
+	/** Returns a URL for the directory or jar containing the the class file `cl`.
+	* If the location cannot be determined, an error is generated.
+	* Note that Java standard library classes typically do not have a location associated with them.*/
 	def classLocation(cl: Class[_]): URL =
 	{
 		val codeSource = cl.getProtectionDomain.getCodeSource
 		if(codeSource == null) error("No class location for " + cl)
 		else codeSource.getLocation
 	}
+
+	/** Returns the directory or jar file containing the the class file `cl`.
+	* If the location cannot be determined or it is not a file, an error is generated.
+	* Note that Java standard library classes typically do not have a location associated with them.*/
 	def classLocationFile(cl: Class[_]): File = toFile(classLocation(cl))
+	
+	/** Returns a URL for the directory or jar containing the class file for type `T` (as determined by an implicit Manifest).
+	* If the location cannot be determined, an error is generated.
+	* Note that Java standard library classes typically do not have a location associated with them.*/
 	def classLocation[T](implicit mf: SManifest[T]): URL = classLocation(mf.erasure)
+
+	/** Returns the directory or jar file containing the the class file for type `T` (as determined by an implicit Manifest).
+	* If the location cannot be determined, an error is generated.
+	* Note that Java standard library classes typically do not have a location associated with them.*/
 	def classLocationFile[T](implicit mf: SManifest[T]): File = classLocationFile(mf.erasure)
 
-	def toFile(url: URL) =
+	/** Constructs a File corresponding to `url`, which must have a scheme of `file`.
+	* This method properly works around an issue with a simple conversion to URI and then to a File. */
+	def toFile(url: URL): File =
 		try { new File(url.toURI) }
 		catch { case _: URISyntaxException => new File(url.getPath) }
 
@@ -61,6 +81,13 @@ object IO
 	def assertDirectories(file: File*) { file.foreach(assertDirectory) }
 
 	// "base.extension" -> (base, extension)
+	/** Splits the given string into base and extension strings.
+	* If `name` contains no period, the base string is the input string and the extension is the empty string.
+	* Otherwise, the base is the substring up until the last period (exclusive) and
+	* the extension is the substring after the last period.
+	*
+	* For example, `split("Build.scala") == ("Build", "scala")`
+	*/
 	def split(name: String): (String, String) =
 	{
 		val lastDot = name.lastIndexOf('.')
@@ -70,8 +97,13 @@ object IO
 			(name, "")
 	}
 
+	/** Each input file in `files` is created if it doesn't exist.
+	* If a file already exists, the last modified time is set to the current time.
+	* It is not guaranteed that all files will have the same last modified time after this call.*/
 	def touch(files: Traversable[File]): Unit = files.foreach(f => touch(f))
-	/** Creates a file at the given location.*/
+
+	/** Creates a file at the given location if it doesn't exist.
+	* If the file already exists and `setModified` is true, this method sets the last modified time to the current time.*/
 	def touch(file: File, setModified: Boolean = true)
 	{
 		val absFile = file.getAbsoluteFile
@@ -178,13 +210,16 @@ object IO
 			transfer(inputStream, to)
 		}
 
+	/** Copies the contents of `in` to `out`.*/
 	def transfer(in: File, out: File): Unit =
 		fileInputStream(in){ in => transfer(in, out) }
 
+	/** Copies the contents of the input file `in` to the `out` stream.
+	* The output stream is not closed by this method.*/
 	def transfer(in: File, out: OutputStream): Unit =
 		fileInputStream(in){ in => transfer(in, out) }
 
-	/** Copies all bytes from the given input stream to the given File.*/
+	/** Copies all bytes from the given input stream to the given File.  The input stream is not closed by this method.*/
 	def transfer(in: InputStream, to: File): Unit =
 		Using.fileOutputStream()(to) { outputStream =>
 			transfer(in, outputStream)
@@ -223,7 +258,11 @@ object IO
 		try { action(dir) }
 		finally { delete(dir) }
 	}
+
+	/** Creates a directory in the default temporary directory with a name generated from a random integer. */
 	def createTemporaryDirectory: File = createUniqueDirectory(temporaryDirectory)
+
+	/** Creates a directory in `baseDirectory` with a name generated from a random integer */
 	def createUniqueDirectory(baseDirectory: File): File =
 	{
 		def create(tries: Int): File =
@@ -241,6 +280,8 @@ object IO
 		}
 		create(0)
 	}
+	/** Creates a file in the default temporary directory, calls `action` with the file, deletes the file, and returns the result of calling `action`.
+	* The name of the file will begin with `prefix`, which must be at least three characters long, and end with `postfix`, which has no minimum length.  */
 	def withTemporaryFile[T](prefix: String, postfix: String)(action: File => T): T =
 	{
 		val file = File.createTempFile(prefix, postfix)
@@ -250,6 +291,7 @@ object IO
 
 	private[sbt] def jars(dir: File): Iterable[File] = listFiles(dir, GlobFilter("*.jar"))
 
+	/** Deletes all empty directories in the set.  Any non-empty directories are ignored. */
 	def deleteIfEmpty(dirs: collection.Set[File]): Unit =
 	{
 		val isEmpty = new HashMap[File, Boolean]
@@ -259,7 +301,10 @@ object IO
 		for( (f, true) <- isEmpty) f.delete
 	}
 
+	/** Deletes each file or directory (recursively) in `files`.*/
 	def delete(files: Iterable[File]): Unit = files.foreach(delete)
+
+	/** Deletes `file`, recursively if it is a directory. */
 	def delete(file: File)
 	{
 		translate("Error deleting file " + file + ": ")
@@ -273,26 +318,32 @@ object IO
 				file.delete
 		}
 	}
+
+	/** Returns the children of directory `dir` that match `filter` in a non-null array.*/
 	def listFiles(filter: java.io.FileFilter)(dir: File): Array[File] = wrapNull(dir.listFiles(filter))
+
+	/** Returns the children of directory `dir` that match `filter` in a non-null array.*/
 	def listFiles(dir: File, filter: java.io.FileFilter): Array[File] = wrapNull(dir.listFiles(filter))
+
+	/** Returns the children of directory `dir` in a non-null array.*/
 	def listFiles(dir: File): Array[File] = wrapNull(dir.listFiles())
+
 	private[sbt] def wrapNull(a: Array[File]) =
-	{
 		if(a == null)
 			new Array[File](0)
 		else
 			a
-	}
 
 
 	/** Creates a jar file.
-	* @param sources The files to include in the jar file paired with the entry name in the jar.
+	* @param sources The files to include in the jar file paired with the entry name in the jar.  Only the pairs explicitly listed are included.
 	* @param outputJar The file to write the jar to.
 	* @param manifest The manifest for the jar.*/
 	def jar(sources: Traversable[(File,String)], outputJar: File, manifest: Manifest): Unit =
 		archive(sources.toSeq, outputJar, Some(manifest))
+
 	/** Creates a zip file.
-	* @param sources The files to include in the zip file paired with the entry name in the zip.
+	* @param sources The files to include in the zip file paired with the entry name in the zip.  Only the pairs explicitly listed are included.
 	* @param outputZip The file to write the zip to.*/
 	def zip(sources: Traversable[(File,String)], outputZip: File): Unit =
 		archive(sources.toSeq, outputZip, None)
