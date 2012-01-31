@@ -19,10 +19,14 @@ object ScalaArtifacts
 	val CompilerID = "scala-compiler"
 	def libraryDependency(version: String): ModuleID = ModuleID(Organization, LibraryID, version)
 }
+object SbtArtifacts
+{
+	val Organization = "org.scala-sbt"
+}
 
 import ScalaArtifacts._
 
-final case class IvyScala(scalaVersion: String, configurations: Iterable[Configuration], checkExplicit: Boolean, filterImplicit: Boolean, overrideScalaVersion: Boolean, substituteCross: ModuleID => ModuleID)
+final case class IvyScala(scalaFullVersion: String, scalaBinaryVersion: String, configurations: Iterable[Configuration], checkExplicit: Boolean, filterImplicit: Boolean, overrideScalaVersion: Boolean)
 
 private object IvyScala
 {
@@ -30,11 +34,11 @@ private object IvyScala
 	def checkModule(module: DefaultModuleDescriptor, conf: String)(check: IvyScala)
 	{
 		if(check.checkExplicit)
-			checkDependencies(module, check.scalaVersion, check.configurations)
+			checkDependencies(module, check.scalaBinaryVersion, check.configurations)
 		if(check.filterImplicit)
 			excludeScalaJars(module, check.configurations)
 		if(check.overrideScalaVersion)
-			overrideScalaVersion(module, check.scalaVersion)
+			overrideScalaVersion(module, check.scalaFullVersion)
 	}
 	def overrideScalaVersion(module: DefaultModuleDescriptor, version: String)
 	{
@@ -50,14 +54,15 @@ private object IvyScala
                 
 	/** Checks the immediate dependencies of module for dependencies on scala jars and verifies that the version on the
 	* dependencies matches scalaVersion. */
-	private def checkDependencies(module: ModuleDescriptor, scalaVersion: String, configurations: Iterable[Configuration])
+	private def checkDependencies(module: ModuleDescriptor, scalaBinaryVersion: String, configurations: Iterable[Configuration])
 	{
 		val configSet = if(configurations.isEmpty) (c: String) => true else configurationSet(configurations)
 		for(dep <- module.getDependencies.toList)
 		{
 			val id = dep.getDependencyRevisionId
-			if(id.getOrganisation == Organization && id.getRevision != scalaVersion && dep.getModuleConfigurations.exists(configSet))
-				error("Version specified for dependency " + id + " differs from Scala version in project (" + scalaVersion + ").")
+			val depBinaryVersion = CrossVersion.binaryScalaVersion(id.getRevision)
+			if(id.getOrganisation == Organization && depBinaryVersion != scalaBinaryVersion && dep.getModuleConfigurations.exists(configSet))
+				error("Binary version for dependency " + id + " (" + depBinaryVersion + ") differs from Scala binary version in project (" + scalaBinaryVersion + ").")
 		}
 	}
 	private def configurationSet(configurations: Iterable[Configuration]) = configurations.map(_.toString).toSet
