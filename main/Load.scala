@@ -533,13 +533,18 @@ object Load
 		}
 	}
 
+	def initialSession(structure: BuildStructure, rootEval: () => Eval, s: State): SessionSettings = {
+		val current = s get Keys.sessionSettings map (_.currentProject)
+		new SessionSettings(structure.root, projectMap(structure.units, current), structure.settings, Map.empty, Nil, rootEval)
+	}
+
 	def initialSession(structure: BuildStructure, rootEval: () => Eval): SessionSettings =
-		new SessionSettings(structure.root, rootProjectMap(structure.units), structure.settings, Map.empty, Nil, rootEval)
+		new SessionSettings(structure.root, projectMap(structure.units, None), structure.settings, Map.empty, Nil, rootEval)
 		
-	def rootProjectMap(units: Map[URI, LoadedBuildUnit]): Map[URI, String] =
+	def projectMap(units: Map[URI, LoadedBuildUnit], current: Option[Map[URI, String]]): Map[URI, String] =
 	{
 		val getRoot = getRootProject(units)
-		units.keys.map(uri => (uri, getRoot(uri))).toMap
+		units.keys.map(uri => (uri, current.flatMap(_ get uri) getOrElse getRoot(uri))).toMap
 	}
 
 	def defaultEvalOptions: Seq[String] = Nil
