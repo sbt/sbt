@@ -15,65 +15,49 @@ object Resolvers
 	type Resolver = BuildLoader.Resolver
 
 	val local: Resolver = (info: ResolveInfo) => {
-		def retrieveRODir(at: File, into: File) = creates(into) {IO.copyDirectory(at, into)}
-
 		val uri = info.uri
-		val dir = new File(uri)
-		if (dir.isDirectory) {
-			Some {
-				() =>
-					if (dir.canWrite)
-						dir
-					else
-						retrieveRODir(at = dir, into = uniqueSubdirectoryFor(uri, in = info.staging))
-			}
-		} else None
+		val from = new File(uri)
+		val to = uniqueSubdirectoryFor(uri, in = info.staging)
+
+		if (from.isDirectory)
+			if (from.canWrite) Some {() => from}
+			else Some {() => creates(to) {IO.copyDirectory(from, to)}}
+		else None
 	}
 
 	val remote: Resolver = (info: ResolveInfo) => {
-		def downloadAndExtract(at: URI, into: File) = creates(into) {IO.unzipURL(at.toURL, into)}
+		val url = info.uri.toURL
+		val to = uniqueSubdirectoryFor(info.uri, in = info.staging)
 
-		val uri = info.uri
-		Some {
-			() =>
-				downloadAndExtract(at = uri, into = uniqueSubdirectoryFor(uri, in = info.staging))
-		}
+		Some {() => creates(to) {IO.unzipURL(url, to)}}
 	}
 
 	val subversion: Resolver = (info: ResolveInfo) => {
 		def normalized(uri: URI) = uri.copy(scheme = "svn")
 
-		def checkout(at: URI, into: File, revision: Option[String]) =
-		{
-			creates(into) {
-				revision match {
-					case Some(r) =>
-						run(None, "svn", "checkout", "-r", r, at.toASCIIString, into.getAbsolutePath)
-					case None =>
-						run(None, "svn", "checkout", at.toASCIIString, into.getAbsolutePath)
+		val uri = info.uri.withoutMarkerScheme
+		val localCopy = uniqueSubdirectoryFor(normalized(uri), in = info.staging)
+
+		if (uri.hasFragment) {
+			val revision = uri.getFragment
+			Some {
+				() => creates(localCopy) {
+					run(None, "svn", "checkout", "-r", revision, uri.toASCIIString, localCopy.getAbsolutePath)
 				}
 			}
-		}
-
-		val uri = info.uri.withoutMarkerScheme
-		Some {
-			() =>
-				checkout(
-					at = uri.withoutFragment,
-					into = uniqueSubdirectoryFor(normalized(uri), in = info.staging),
-					revision = Option(uri.getFragment)
-				)
-		}
+		} else
+			Some {
+				() => creates(localCopy) {
+					run(None, "svn", "checkout", uri.toASCIIString, localCopy.getAbsolutePath)
+				}
+			}
 	}
 
 	val mercurial: Resolver = new DistributedVCS
 	{
 		override val scheme = "hg"
 
-		override def clone(at: String, into: File)
-		{
-			run(None, "hg", "clone", at, into.getAbsolutePath)
-		}
+		override def clone(at: String, into: File) = creates(into) {run(None, "hg", "clone", at, into.getAbsolutePath)}
 
 		override def checkout(branch: String, in: File)
 		{
@@ -85,10 +69,7 @@ object Resolvers
 	{
 		override val scheme = "git"
 
-		override def clone(at: String, into: File)
-		{
-			run(None, "git", "clone", at, into.getAbsolutePath)
-		}
+		override def clone(at: String, into: File) = creates(into) {run(None, "git", "clone", at, into.getAbsolutePath)}
 
 		override def checkout(branch: String, in: File)
 		{
@@ -100,34 +81,29 @@ object Resolvers
 	{
 		val scheme: String
 
-		def clone(at: String, into: File)
+		def clone(at: String, into: File): File
 
 		def checkout(branch: String, in: File)
 
 		def toResolver: Resolver = (info: ResolveInfo) => {
 			val uri = info.uri.withoutMarkerScheme
 			val staging = info.staging
-			Some {
-				() =>
-					val localCopy = retrieveLocalCopy(at = uri, into = uniqueSubdirectoryFor(normalized(uri.withoutFragment), in = staging))
-					if (uri.hasFragment)
-						retrieveBranch(branch = uri.getFragment, from = localCopy, into = uniqueSubdirectoryFor(normalized(uri), in = staging))
-					else
-						localCopy
-			}
+			val localCopy = uniqueSubdirectoryFor(normalized(uri.withoutFragment), in = staging)
+
+			if (uri.hasFragment) {
+				val branch = uri.getFragment
+				val branchCopy = uniqueSubdirectoryFor(normalized(uri), in = staging)
+				Some {
+					() =>
+						clone(uri.withoutFragment.toASCIIString, into = localCopy)
+						clone(localCopy.getAbsolutePath, into = branchCopy)
+						checkout(branch, in = branchCopy)
+						branchCopy
+				}
+			} else Some {() => clone(uri.withoutFragment.toASCIIString, into = localCopy)}
 		}
 
 		private def normalized(uri: URI) = uri.copy(scheme = scheme)
-
-		private def retrieveLocalCopy(at: URI, into: File) = creates(into) {clone(at.withoutFragment.toASCIIString, into)}
-
-		private def retrieveBranch(branch: String, from: File, into: File) =
-		{
-			creates(into) {
-				clone(at = from.getAbsolutePath, into = into)
-				checkout(branch, in = into)
-			}
-		}
 	}
 
 	private lazy val onWindows = {
