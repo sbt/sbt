@@ -45,6 +45,10 @@ object RootProject
 }
 object Reference
 {
+	def buildURI(ref: ResolvedReference): URI = ref match {
+		case BuildRef(b) => b
+		case ProjectRef(b, _) => b
+	}	
 	/** Extracts the build URI from a Reference if one has been explicitly defined.*/
 	def uri(ref: Reference): Option[URI] = ref match {
 		case RootProject(b) => Some(b)

@@ -1,1 +1,3 @@
-libraryDependencies += "org.scala-tools.testing" %% "specs" % "1.6.7.2" intransitive()
+libraryDependencies += "org.specs2" %% "specs2" % "1.7.1" % "test"
+
+resolvers += ScalaToolsReleases

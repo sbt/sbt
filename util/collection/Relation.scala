@@ -17,7 +17,6 @@ object Relation
 		make(forward, reverse)
 	}
 
-
 	private[sbt] def remove[X,Y](map: M[X,Y], from: X, to: Y): M[X,Y] =
 		map.get(from) match {
 			case Some(tos) =>

@@ -85,7 +85,8 @@ final case class Extracted(structure: BuildStructure, session: SessionSettings, 
 	def runAggregated[T](key: TaskKey[T], state: State): State =
 	{
 		val rkey = resolve(key.scopedKey)
-		val tasks = Aggregation.getTasks(rkey, structure, true)
+		val keys = Aggregation.aggregate(rkey, ScopeMask(), structure.extra)
+		val tasks = Act.keyValues(structure)(keys)
 		Aggregation.runTasks(state, structure, tasks, Aggregation.Dummies(KNil, HNil), show = false )(showKey)
 	}
 	private[this] def resolve[T](key: ScopedKey[T]): ScopedKey[T] =
@@ -202,7 +203,7 @@ object Project extends Init[Scope] with ProjectExtra
 		val prompt = get(shellPrompt)
 		val watched = get(watch)
 		val commandDefs = allCommands.distinct.flatten[Command].map(_ tag (projectCommand, true))
-		val newDefinedCommands = commandDefs ++ BuiltinCommands.removeTagged(s.definedCommands, projectCommand)
+		val newDefinedCommands = commandDefs ++ BasicCommands.removeTagged(s.definedCommands, projectCommand)
 		val newAttrs = setCond(Watched.Configuration, watched, s.attributes).put(historyPath.key, history)
 		s.copy(attributes = setCond(shellPrompt.key, prompt, newAttrs), definedCommands = newDefinedCommands)
 	}
@@ -211,7 +212,11 @@ object Project extends Init[Scope] with ProjectExtra
 	def makeSettings(settings: Seq[Setting[_]], delegates: Scope => Seq[Scope], scopeLocal: ScopedKey[_] => Seq[Setting[_]])(implicit display: Show[ScopedKey[_]]) =
 		make(settings)(delegates, scopeLocal, display)
 
+	def equal(a: ScopedKey[_], b: ScopedKey[_], mask: ScopeMask): Boolean =
+		a.key == b.key && Scope.equal(a.scope, b.scope, mask)
+
 	def displayFull(scoped: ScopedKey[_]): String = Scope.display(scoped.scope, scoped.key.label)
+	def displayMasked(scoped: ScopedKey[_], mask: ScopeMask): String = Scope.displayMasked(scoped.scope, scoped.key.label, mask)
 	def display(ref: Reference): String =
 		ref match
 		{
@@ -262,20 +267,38 @@ object Project extends Init[Scope] with ProjectExtra
 		
 		val data = scopedKeyData(structure, scope, key) map {_.description} getOrElse {"No entry for key."}
 		val description = key.description match { case Some(desc) => "Description:\n\t" + desc + "\n"; case None => "" }
-		val definedIn = structure.data.definingScope(scope, key) match {
+
+		val providedBy = structure.data.definingScope(scope, key) match {
 			case Some(sc) => "Provided by:\n\t" + Scope.display(sc, key.label) + "\n"
 			case None => ""
 		}
-		val cMap = flattenLocals(compiled(structure.settings, actual)(structure.delegates, structure.scopeLocal, display))
+		val comp = compiled(structure.settings, actual)(structure.delegates, structure.scopeLocal, display)
+		val definedAt = comp get scoped map { c =>
+			def fmt(s: Setting[_]) = s.pos match {
+				case SourceCoord(fileName, line) => Some(fileName + ":" + line)
+				case NoPosition => None
+			}
+			val posDefined = c.settings.map(fmt).flatten
+			if (posDefined.size > 0) {
+				val header = if (posDefined.size == c.settings.size) "Defined at:" else
+					"Some of the defining occurrences:"
+				header + (posDefined mkString ("\n\t", "\n\t", "\n"))
+			} else ""
+    } getOrElse ""
+
+
+		val cMap = flattenLocals(comp)
 		val related = cMap.keys.filter(k => k.key == key && k.scope != scope)
 		val depends = cMap.get(scoped) match { case Some(c) => c.dependencies.toSet; case None => Set.empty }
+
 		val reverse = reverseDependencies(cMap, scoped)
 		def printScopes(label: String, scopes: Iterable[ScopedKey[_]]) =
 			if(scopes.isEmpty) "" else scopes.map(display.apply).mkString(label + ":\n\t", "\n\t", "\n")
 
 		data + "\n" +
 			description +
-			definedIn +
+			providedBy +
+			definedAt +
 			printScopes("Dependencies", depends) +
 			printScopes("Reverse dependencies", reverse) +
 			printScopes("Delegates", delegates(structure, scope, key)) +
@@ -327,7 +350,7 @@ object Project extends Init[Scope] with ProjectExtra
 		{
 			val akey = setting.key.key
 			val global = ScopedKey(Global, akey)
-			val globalSetting = resolve( Project.setting(global, setting.init) )
+			val globalSetting = resolve( Project.setting(global, setting.init, setting.pos) )
 			globalSetting ++ allDefs.flatMap { d =>
 				if(d.key == akey)
 					Seq( SettingKey(akey) in d.scope <<= global)

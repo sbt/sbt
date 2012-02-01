@@ -5,10 +5,12 @@ package sbt
 
 	import java.io.File
 	import java.net.URI
+	import BuildLoader.ResolveInfo
 	import compiler.{Eval, EvalImports}
 	import complete.DefaultParsers.validID
 	import Compiler.Compilers
-	import Project.{ScopedKey, Setting}
+	import Keys.{globalBaseDirectory, globalPluginsDirectory, globalSettingsDirectory, stagingDirectory, Streams}
+	import Project.{ScopedKey, Setting, SourceCoord}
 	import Keys.{globalBaseDirectory, Streams}
 	import Scope.GlobalScope
 	import scala.annotation.tailrec
@@ -37,78 +39,29 @@ object Build
 }
 object RetrieveUnit
 {
-	def apply(tempDir: File, base: URI): Option[() => File] =
+	def apply(info: ResolveInfo): Option[() => File] =
 	{
-		lazy val tmp = temporary(tempDir, base)
-		base.getScheme match
-		{
-			case "git" => gitApply(tmp, base)
-			case _ if isGitPath(base.getPath) => gitApply(tmp, base)
-			case "http" | "https" => Some { () => downloadAndExtract(base, tmp); tmp }
-			case "file" => 
-				val f = new File(base)
-				if(f.isDirectory)
-				{
-					val finalDir = if (!f.canWrite) retrieveRODir(f, tmp) else f
-					Some(() => finalDir)
-				}
-				else None
+		info.uri match {
+			case Scheme("svn") | Scheme("svn+ssh") => Resolvers.subversion(info)
+			case Scheme("hg") => Resolvers.mercurial(info)
+			case Scheme("git") => Resolvers.git(info)
+			case Path(path) if path.endsWith(".git") => Resolvers.git(info)
+			case Scheme("http") | Scheme("https") | Scheme("ftp") => Resolvers.remote(info)
+			case Scheme("file") => Resolvers.local(info)
 			case _ => None
 		}
 	}
-	def isGitPath(path: String) = path.endsWith(".git")
-	private[this] def gitApply(tmp: File, base: URI) = Some { () => gitRetrieve(base, tmp); tmp }
-	def retrieveRODir(base: File, tempDir: File): File =
-	{
-		if (!tempDir.exists)
-		{
-			try {
-				IO.copyDirectory(base, tempDir)
-			} catch {
-				case e =>
-					IO.delete(tempDir)
-					throw e
-			}
-		}
-		tempDir
-	}
-	def downloadAndExtract(base: URI, tempDir: File): Unit = if(!tempDir.exists) IO.unzipURL(base.toURL, tempDir)
-	def temporary(tempDir: File, uri: URI): File = new File(tempDir, Hash.halve(hash(uri)))
-	def hash(uri: URI): String = Hash.toHex(Hash(uri.toASCIIString))
 
-	import Process._
-	def gitRetrieve(base: URI, tempDir: File): Unit =
-		if(!tempDir.exists)
-		{
-			try {
-				IO.createDirectory(tempDir)
-				gitClone(dropFragment(base), tempDir)
-				Option(base.getFragment) foreach { branch => gitCheckout(tempDir, branch) }
-			} catch {
-				case e => IO.delete(tempDir)
-				throw e
-			}
-		}
-	def dropFragment(base: URI): URI = if(base.getFragment eq null) base else new URI(base.getScheme, base.getSchemeSpecificPart, null)
-
-	def gitClone(base: URI, tempDir: File): Unit =
-                git("clone" :: dropFragment(base).toASCIIString :: tempDir.getAbsolutePath :: Nil, tempDir) ;
-	def gitCheckout(tempDir: File, branch: String): Unit =
-		git("checkout" :: "-q" :: branch :: Nil, tempDir)		
-        def git(args: List[String], cwd: File): Unit = 
-		if(isWindowsShell) run(List("cmd", "/c", "git") ++ args, cwd)
-		else run("git" +: args, cwd)
-	lazy val isWindowsShell = {
-		val ostype = System.getenv("OSTYPE")
-		val isCygwin = ostype != null && ostype.toLowerCase.contains("cygwin")
-		val isWindows = System.getProperty("os.name", "").toLowerCase.contains("windows")
-		isWindows && !isCygwin
-	}
-	def run(command: List[String], cwd: File): Unit =
+	object Scheme
 	{
-		val result = Process(command, cwd) ! ;
-		if(result != 0)
-			error("Nonzero exit code (" + result + "): " + command.mkString(" "))
+		def unapply(uri: URI) = Option(uri.getScheme)
+	}
+
+	object Path
+	{
+		import RichURI.fromURI
+
+		def unapply(uri: URI) = Option(uri.withoutMarkerScheme.getPath)
 	}
 }
 object EvaluateConfigurations
@@ -137,7 +90,10 @@ object EvaluateConfigurations
 		} catch {
 			case e: sbt.compiler.EvalException => throw new MessageOnlyException(e.getMessage)
 		}
-		loader => result.getValue(loader).asInstanceOf[Project.SettingsDefinition].settings
+		loader => {
+			val coord = SourceCoord(name, line + 1)
+			result.getValue(loader).asInstanceOf[Project.SettingsDefinition].settings map (_ withPos coord)
+		}
 	}
 	private[this] def isSpace = (c: Char) => Character isWhitespace c
 	private[this] def fstS(f: String => Boolean): ((String,Int)) => Boolean = { case (s,i) => f(s) }
@@ -267,15 +223,28 @@ object BuildPaths
 {
 	import Path._
 
-	def getGlobalBase(state: State): File  =  state get globalBaseDirectory orElse systemGlobalBase getOrElse defaultGlobalBase
-	def systemGlobalBase: Option[File] = Option(System.getProperty(GlobalBaseProperty)) flatMap { path =>
+	def getGlobalBase(state: State): File =
+		getFileSetting(globalBaseDirectory, GlobalBaseProperty, defaultGlobalBase)(state)
+
+	def getStagingDirectory(state: State, globalBase: File): File =
+		 getFileSetting(stagingDirectory, StagingProperty, defaultStaging(globalBase))(state)
+
+	def getGlobalPluginsDirectory(state: State, globalBase: File): File =
+		 getFileSetting(globalPluginsDirectory, GlobalPluginsProperty, defaultGlobalPlugins(globalBase))(state)
+
+	def getGlobalSettingsDirectory(state: State, globalBase: File): File =
+		 getFileSetting(globalSettingsDirectory, GlobalSettingsProperty, globalBase)(state)
+
+	def getFileSetting(stateKey: AttributeKey[File], property: String, default: File)(state: State): File =
+		state get stateKey orElse getFileProperty(property) getOrElse default
+
+	def getFileProperty(name: String): Option[File] = Option(System.getProperty(name)) flatMap { path =>
 		if(path.isEmpty) None else Some(new File(path))
 	}
 		
 	def defaultGlobalBase = Path.userHome / ConfigDirectoryName
-	def defaultStaging(globalBase: File) = globalBase / "staging"
-	def defaultGlobalPlugins(globalBase: File) = globalBase / PluginsDirectoryName
-	def defaultGlobalSettings(globalBase: File) = configurationSources(globalBase)
+	private[this] def defaultStaging(globalBase: File) = globalBase / "staging"
+	private[this] def defaultGlobalPlugins(globalBase: File) = globalBase / PluginsDirectoryName
 	
 	def definitionSources(base: File): Seq[File] = (base * "*.scala").get
 	def configurationSources(base: File): Seq[File] = (base * (GlobFilter("*.sbt") - ".sbt")).get
@@ -303,6 +272,9 @@ object BuildPaths
 	final val DefaultTargetName = "target"
 	final val ConfigDirectoryName = ".sbt"
 	final val GlobalBaseProperty = "sbt.global.base"
+	final val StagingProperty = "sbt.global.staging"
+	final val GlobalPluginsProperty = "sbt.global.plugins"
+	final val GlobalSettingsProperty = "sbt.global.settings"
 
 	def crossPath(base: File, instance: ScalaInstance): File = base / ("scala_" + instance.version)
 }

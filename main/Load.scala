@@ -14,7 +14,7 @@ package sbt
 	import inc.{FileValueCache, Locate}
 	import Project.{inScope, ScopedKey, ScopeLocal, Setting}
 	import Keys.{appConfiguration, baseDirectory, configuration, streams, Streams, thisProject, thisProjectRef}
-	import Keys.{globalLogging, isDummy, loadedBuild, parseResult, resolvedScoped, taskDefinitionKey}
+	import Keys.{isDummy, loadedBuild, parseResult, resolvedScoped, taskDefinitionKey}
 	import tools.nsc.reporters.ConsoleReporter
 	import Build.{analyzed, data}
 	import Scope.{GlobalScope, ThisScope}
@@ -29,7 +29,7 @@ object Load
 	// note that there is State passed in but not pulled out
 	def defaultLoad(state: State, baseDirectory: File, log: Logger): (() => Eval, BuildStructure) =
 	{
-		val globalBase = BuildPaths.getGlobalBase(state)
+		val globalBase = getGlobalBase(state)
 		val base = baseDirectory.getCanonicalFile
 		val definesClass = FileValueCache(Locate.definesClass _)
 		val rawConfig = defaultPreGlobal(state, base, definesClass.get, globalBase, log)
@@ -42,7 +42,7 @@ object Load
 	{
 		val provider = state.configuration.provider
 		val scalaProvider = provider.scalaProvider
-		val stagingDirectory = defaultStaging(globalBase).getCanonicalFile
+		val stagingDirectory = getStagingDirectory(state, globalBase).getCanonicalFile
 		val loader = getClass.getClassLoader
 		val classpath = Attributed.blankSeq(provider.mainClasspath ++ scalaProvider.jars)
 		val compilers = Compiler.compilers(ClasspathOptions.boot)(state.configuration, log)
@@ -56,8 +56,10 @@ object Load
 		EvaluateTask.injectSettings
 	def defaultWithGlobal(state: State, base: File, rawConfig: LoadBuildConfiguration, globalBase: File, log: Logger): LoadBuildConfiguration =
 	{
-		val withGlobal = loadGlobal(state, base, defaultGlobalPlugins(globalBase), rawConfig)
-		loadGlobalSettings(base, globalBase, defaultGlobalSettings(globalBase), withGlobal)
+		val globalPluginsDir = getGlobalPluginsDirectory(state, globalBase)
+		val withGlobal = loadGlobal(state, base, globalPluginsDir, rawConfig)
+		val globalSettings = configurationSources(getGlobalSettingsDirectory(state, globalBase))
+		loadGlobalSettings(base, globalBase, globalSettings, withGlobal)
 	}
 
 	def loadGlobalSettings(base: File, globalBase: File, files: Seq[File], config: LoadBuildConfiguration): LoadBuildConfiguration =
@@ -121,7 +123,7 @@ object Load
 		val settings = finalTransforms(buildConfigurations(loaded, getRootProject(projects), rootEval, config.injectSettings))
 		val delegates = config.delegates(loaded)
 		val data = Project.makeSettings(settings, delegates, config.scopeLocal)( Project.showLoadingKey( loaded ) )
-		val index = structureIndex(data, settings)
+		val index = structureIndex(data, settings, loaded.extra(data))
 		val streams = mkStreams(projects, loaded.root, data)
 		(rootEval, new BuildStructure(projects, loaded.root, settings, data, index, streams, delegates, config.scopeLocal))
 	}
@@ -160,12 +162,14 @@ object Load
 	def setDefinitionKey[T](tk: Task[T], key: ScopedKey[_]): Task[T] =
 		if(isDummy(tk)) tk else Task(tk.info.set(Keys.taskDefinitionKey, key), tk.work)
 
-	def structureIndex(data: Settings[Scope], settings: Seq[Setting[_]]): StructureIndex =
+	def structureIndex(data: Settings[Scope], settings: Seq[Setting[_]], extra: KeyIndex => BuildUtil[_]): StructureIndex =
 	{
 		val keys = Index.allKeys(settings)
 		val attributeKeys = Index.attributeKeys(data) ++ keys.map(_.key)
 		val scopedKeys = keys ++ data.allKeys( (s,k) => ScopedKey(s,k))
-		new StructureIndex(Index.stringToKeyMap(attributeKeys), Index.taskToKeyMap(data), Index.triggers(data), KeyIndex(scopedKeys))
+		val keyIndex = KeyIndex(scopedKeys)
+		val aggIndex = KeyIndex.aggregate(scopedKeys, extra(keyIndex))
+		new StructureIndex(Index.stringToKeyMap(attributeKeys), Index.taskToKeyMap(data), Index.triggers(data), keyIndex, aggIndex)
 	}
 
 		// Reevaluates settings after modifying them.  Does not recompile or reload any build components.
@@ -173,7 +177,7 @@ object Load
 	{
 		val transformed = finalTransforms(newSettings)
 		val newData = Project.makeSettings(transformed, structure.delegates, structure.scopeLocal)
-		val newIndex = structureIndex(newData, transformed)
+		val newIndex = structureIndex(newData, transformed, index => buildUtil(structure.root, structure.units, index, newData))
 		val newStreams = mkStreams(structure.units, structure.root, newData)
 		new BuildStructure(units = structure.units, root = structure.root, settings = transformed, data = newData, index = newIndex, streams = newStreams, delegates = structure.delegates, scopeLocal = structure.scopeLocal)
 	}
@@ -227,7 +231,7 @@ object Load
 	def load(file: File, s: State, config: LoadBuildConfiguration): PartBuild =
 	{
 		val fail = (uri: URI) => error("Invalid build URI (no handler available): " + uri)
-		val resolver = (info: BuildLoader.ResolveInfo) => RetrieveUnit(info.staging, info.uri)
+		val resolver = (info: BuildLoader.ResolveInfo) => RetrieveUnit(info)
 		val build = (info: BuildLoader.BuildInfo) => Some(() => loadUnit(info.uri, info.base, info.state, info.config))
 		val components = BuildLoader.components(resolver, build, full = BuildLoader.componentLoader)
 		val builtinLoader = BuildLoader(components, fail, s, config)
@@ -485,7 +489,7 @@ object Load
 		val inputs = Compiler.inputs(data(classpath), sources, target, Nil, Nil, definesClass, Compiler.DefaultMaxErrors, CompileOrder.Mixed)(compilers, log)
 		val analysis =
 			try { Compiler(inputs, log) }
-			catch { case _: xsbti.CompileFailed => throw new NoMessageException } // compiler already logged errors
+			catch { case _: xsbti.CompileFailed => throw new AlreadyHandledException } // compiler already logged errors
 		(inputs, analysis)
 	}
 
@@ -556,6 +560,7 @@ object Load
 	{
 		checkCycles(units)
 		def allProjectRefs: Seq[(ProjectRef, ResolvedProject)] = for( (uri, unit) <- units.toSeq; (id, proj) <- unit.defined ) yield ProjectRef(uri, id) -> proj
+		def extra(data: Settings[Scope])(keyIndex: KeyIndex): BuildUtil[ResolvedProject] = buildUtil(root, units, keyIndex, data)
 	}
 	def checkCycles(units: Map[URI, LoadedBuildUnit])
 	{
@@ -578,6 +583,7 @@ object Load
 	final class LoadedBuildUnit(val unit: BuildUnit, val defined: Map[String, ResolvedProject], val rootProjects: Seq[String], val buildSettings: Seq[Setting[_]]) extends BuildUnitBase
 	{
 		assert(!rootProjects.isEmpty, "No root projects defined for build unit " + unit)
+		val root = rootProjects.head
 		def localBase = unit.localBase
 		def classpath: Seq[File] = unit.definitions.target ++ unit.plugins.classpath
 		def loader = unit.definitions.loader
@@ -595,7 +601,15 @@ object Load
 		def allProjects(build: URI): Seq[ResolvedProject] = units(build).defined.values.toSeq
 		def allProjectRefs: Seq[ProjectRef] = units.toSeq flatMap { case (build, unit) => refs(build, unit.defined.values.toSeq) }
 		def allProjectRefs(build: URI): Seq[ProjectRef] = refs(build, allProjects(build))
+		val extra: BuildUtil[ResolvedProject] = buildUtil(root, units, index.keyIndex, data)
 		private[this] def refs(build: URI, projects: Seq[ResolvedProject]): Seq[ProjectRef] = projects.map { p => ProjectRef(build, p.id) }
+	}
+	def buildUtil(root: URI, units: Map[URI, LoadedBuildUnit], keyIndex: KeyIndex, data: Settings[Scope]): BuildUtil[ResolvedProject] =
+	{
+		val getp = (build: URI, project: String) => Load.getProject(units, build, project)
+		val configs = (_: ResolvedProject).configurations.map(c => ConfigKey(c.name))
+		val aggregates = Aggregation.relation(units)
+		new BuildUtil(keyIndex, data, root, Load getRootProject units, getp, configs, aggregates)
 	}
 	final case class LoadBuildConfiguration(stagingDirectory: File, classpath: Seq[Attributed[File]], loader: ClassLoader, compilers: Compilers, evalPluginDef: (BuildStructure, State) => Seq[Attributed[File]], definesClass: DefinesClass, delegates: LoadedBuild => Scope => Seq[Scope], scopeLocal: ScopeLocal, injectSettings: InjectSettings, globalPlugin: Option[GlobalPlugin], log: Logger)
 	{
@@ -605,5 +619,11 @@ object Load
 	final case class InjectSettings(global: Seq[Setting[_]], project: Seq[Setting[_]], projectLoaded: ClassLoader => Seq[Setting[_]])
 
 	// information that is not original, but can be reconstructed from the rest of BuildStructure
-	final class StructureIndex(val keyMap: Map[String, AttributeKey[_]], val taskToKey: Map[Task[_], ScopedKey[Task[_]]], val triggers: Triggers[Task], val keyIndex: KeyIndex)
+	final class StructureIndex(
+		val keyMap: Map[String, AttributeKey[_]],
+		val taskToKey: Map[Task[_], ScopedKey[Task[_]]],
+		val triggers: Triggers[Task],
+		val keyIndex: KeyIndex,
+		val aggregateKeyIndex: KeyIndex
+	)
 }

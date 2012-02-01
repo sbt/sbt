@@ -299,24 +299,19 @@ private object IvySbt
 	}
 
 	private def substituteCross(m: ModuleSettings): ModuleSettings =
-		m.ivyScala match { case None => m; case Some(is) => substituteCross(m, is.substituteCross) }
-	private def substituteCross(m: ModuleSettings, sub: ModuleID => ModuleID): ModuleSettings =
+		m.ivyScala match {
+			case None => m
+			case Some(is) => substituteCross(m, is.scalaFullVersion, is.scalaBinaryVersion)
+		}
+	private def substituteCross(m: ModuleSettings, scalaFullVersion: String, scalaBinaryVersion: String): ModuleSettings =
+	{
+		val sub = CrossVersion(scalaFullVersion, scalaBinaryVersion)
 		m match {
 			case ec: EmptyConfiguration => ec.copy(module = sub(ec.module))
 			case ic: InlineConfiguration => ic.copy(module = sub(ic.module), dependencies = ic.dependencies map sub)
 			case _ => m
 		}
-	def crossName(name: String, cross: String): String =
-		name + "_" + cross
-	def substituteCross(a: Artifact, cross: String): Artifact =
-		a.copy(name = crossName(a.name, cross))
-	def substituteCrossA(as: Seq[Artifact], cross: String): Seq[Artifact] =
-		as.map(art => substituteCross(art, cross))
-	def substituteCross(m: ModuleID, cross: String): ModuleID =
-		if(m.crossVersion)
-			m.copy(name = crossName(m.name, m.crossVersionRemap(cross)), explicitArtifacts = substituteCrossA(m.explicitArtifacts, cross))
-		else
-			m
+	}
 		
 	private def toIvyArtifact(moduleID: ModuleDescriptor, a: Artifact, configurations: Iterable[String]): MDArtifact =
 	{

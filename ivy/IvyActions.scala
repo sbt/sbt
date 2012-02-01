@@ -88,8 +88,8 @@ object IvyActions
 			val resolver = ivy.getSettings.getResolver(resolverName)
 			if(resolver eq null) error("Undefined resolver '" + resolverName + "'")
 			val ivyArtifact = ivyFile map { file => (MDArtifact.newIvyArtifact(md), file) }
-			val is = crossIvyScala(module.moduleSettings)
-			val as = mapArtifacts(md, is, artifacts) ++ ivyArtifact.toList
+			val cross = crossVersionMap(module.moduleSettings)
+			val as = mapArtifacts(md, cross, artifacts) ++ ivyArtifact.toList
 			withChecksums(resolver, checksums) { publish(md, as, resolver, overwrite = true) }
 		}
 	}
@@ -102,18 +102,16 @@ object IvyActions
 		try { act }
 		finally { resolver.setChecksums(previous mkString ",") }
 	}
-	private def crossIvyScala(moduleSettings: ModuleSettings): Option[IvyScala] =
+	private def crossVersionMap(moduleSettings: ModuleSettings): Option[String => String] =
 		moduleSettings match {
-			case i: InlineConfiguration if i.module.crossVersion => i.ivyScala
-			case e: EmptyConfiguration if e.module.crossVersion => e.ivyScala
+			case i: InlineConfiguration => CrossVersion(i.module, i.ivyScala)
+			case e: EmptyConfiguration => CrossVersion(e.module, e.ivyScala)
 			case _ => None
 		}
-	def substituteCross(ivyScala: Option[IvyScala], artifacts: Seq[Artifact]): Seq[Artifact] =
-		ivyScala match { case None => artifacts; case Some(is) => IvySbt.substituteCrossA(artifacts, is.scalaVersion) }
-	def mapArtifacts(module: ModuleDescriptor, ivyScala: Option[IvyScala], artifacts: Map[Artifact, File]): Seq[(IArtifact, File)] =
+	def mapArtifacts(module: ModuleDescriptor, cross: Option[String => String], artifacts: Map[Artifact, File]): Seq[(IArtifact, File)] =
 	{
 		val rawa = artifacts.keys.toSeq
-		val seqa = substituteCross(ivyScala, rawa)
+		val seqa = CrossVersion.substituteCross(rawa, cross)
 		val zipped = rawa zip IvySbt.mapArtifacts(module, seqa)
 		zipped map { case (a, ivyA) => (ivyA, artifacts(a)) }
 	}
@@ -199,7 +197,7 @@ object IvyActions
 		report.allMissing flatMap { case (_, mod, art) => art.classifier.map { c => (restrictedCopy(mod, false), c) } } groupBy(_._1) map { case (mod, pairs) => (mod, pairs.map(_._2).toSet) }
 
 	private[this] def restrictedCopy(m: ModuleID, confs: Boolean) =
-		ModuleID(m.organization, m.name, m.revision, crossVersion = m.crossVersion, crossVersionRemap = m.crossVersionRemap, extraAttributes = m.extraAttributes, configurations = if(confs) m.configurations else None)
+		ModuleID(m.organization, m.name, m.revision, crossVersion = m.crossVersion, extraAttributes = m.extraAttributes, configurations = if(confs) m.configurations else None)
 	private[this] def resolve(logging: UpdateLogging.Value)(ivy: Ivy, module: DefaultModuleDescriptor, defaultConf: String): (ResolveReport, Option[ResolveException]) =
 	{
 		val resolveOptions = new ResolveOptions

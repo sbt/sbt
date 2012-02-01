@@ -5,7 +5,6 @@ package sbt
 
 	import java.io.File
 	import java.util.concurrent.Callable
-	import CommandSupport.{FailureWall, logger}
 
 /**
 Data structure representing all command execution information.
@@ -27,6 +26,7 @@ final case class State(
 	remainingCommands: Seq[String],
 	history: State.History,
 	attributes: AttributeMap,
+	globalLogging: GlobalLogging,
 	next: State.Next
 ) extends Identity {
 	lazy val combinedParser = Command.combine(definedCommands)(this)
@@ -64,7 +64,9 @@ trait StateOps {
 
 	@deprecated("Use setNext", "0.11.0") def setResult(ro: Option[xsbti.MainResult]): State
 
-	/** Restarts sbt without dropping loaded Scala classes.  It is a shallower restart than `reboot`.*/
+	/** Restarts sbt without dropping loaded Scala classes.  It is a shallower restart than `reboot`.
+	* This method takes a snapshot of the remaining commands and will resume executing those commands after reload.
+	* This means that any commands added to this State will be dropped.*/
 	def reload: State
 
 	/** Sets the next command processing action to be to rotate the global log and continue executing commands.*/
@@ -110,6 +112,8 @@ trait StateOps {
 
 object State
 {
+	final val FailureWall = "---"
+
 	/** Represents the next action for the command processor.*/
 	sealed trait Next
 	/** Indicates that the command processor should process the next command.*/
@@ -173,7 +177,7 @@ object State
 		def update[T](key: AttributeKey[T])(f: Option[T] => T): State = put(key, f(get(key)))
 		def has(key: AttributeKey[_]) = s.attributes contains key
 		def remove(key: AttributeKey[_]) = s.copy(attributes = s.attributes remove key)
-		def log = CommandSupport.logger(s)
+		def log = s.globalLogging.full
 		def fail =
 		{
 			val remaining = s.remainingCommands.dropWhile(_ != FailureWall)

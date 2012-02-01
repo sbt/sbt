@@ -10,6 +10,7 @@ package sbt
 	import Load.LoadedBuild
 	import Artifact.{DocClassifier, SourceClassifier}
 	import Configurations.{Compile, CompilerPlugin, IntegrationTest, names, Provided, Runtime, Test}
+	import CrossVersion.{binarySbtVersion, binaryScalaVersion, isStable, selectVersion}
 	import complete._
 	import std.TaskExtra._
 	import inc.{FileValueCache, Locate}
@@ -48,16 +49,16 @@ object Defaults extends BuildCommon
 	def buildCore: Seq[Setting[_]] = thisBuildCore ++ globalCore
 	def thisBuildCore: Seq[Setting[_]] = inScope(GlobalScope.copy(project = Select(ThisBuild)))(Seq(
 		managedDirectory <<= baseDirectory(_ / "lib_managed")
-
 	))
 	def globalCore: Seq[Setting[_]] = inScope(GlobalScope)(Seq(
+		crossVersion :== CrossVersion.Disabled,
 		buildDependencies <<= buildDependencies or Classpaths.constructBuildDependencies,
 		taskTemporaryDirectory := IO.createTemporaryDirectory,
 		onComplete <<= taskTemporaryDirectory { dir => () => IO.delete(dir); IO.createDirectory(dir) },
 		concurrentRestrictions <<= concurrentRestrictions or defaultRestrictions,
 		parallelExecution :== true,
 		sbtVersion <<= appConfiguration { _.provider.id.version },
-		sbtBinaryVersion <<= sbtVersion(v => binaryVersion(v, "0.12")),
+		sbtBinaryVersion <<= sbtVersion apply binarySbtVersion,
 		sbtResolver <<= sbtVersion { sbtV => if(sbtV endsWith "-SNAPSHOT") Classpaths.typesafeSnapshots else Classpaths.typesafeResolver },
 		pollInterval :== 500,
 		logBuffered :== false,
@@ -98,7 +99,7 @@ object Defaults extends BuildCommon
 		sbtPlugin :== false,
 		crossPaths :== true,
 		classpathTypes :== Set("jar", "bundle"),
-		aggregate :== Aggregation.Enabled,
+		aggregate :== true,
 		maxErrors :== 100,
 		showTiming :== true,
 		timingFormat :== Aggregation.defaultFormat,
@@ -190,7 +191,13 @@ object Defaults extends BuildCommon
 		scalacOptions in GlobalScope :== Nil,
 		scalaInstance <<= scalaInstanceSetting,
 		scalaVersion in GlobalScope <<= appConfiguration( _.provider.scalaProvider.version),
-		scalaBinaryVersion <<= scalaVersion(v => binaryVersion(v, "2.10")),
+		scalaBinaryVersion in GlobalScope <<= scalaVersion apply binaryScalaVersion,
+		crossVersion <<= (crossPaths, scalaVersion) { (enabled, sv) =>
+			if(enabled)
+				if(isStable(sv)) CrossVersion.binary else CrossVersion.full
+			else
+				CrossVersion.Disabled
+		},
 		crossScalaVersions in GlobalScope <<= Seq(scalaVersion).join,
 		crossTarget <<= (target, scalaBinaryVersion, sbtBinaryVersion, sbtPlugin, crossPaths)(makeCrossTarget)
 	)
@@ -211,7 +218,7 @@ object Defaults extends BuildCommon
 		discoveredMainClasses <<= compile map discoverMainClasses storeAs discoveredMainClasses triggeredBy compile,
 		definedSbtPlugins <<= discoverPlugins,
 		inTask(run)(runnerTask :: Nil).head,
-		selectMainClass <<= discoveredMainClasses map selectRunMain,
+		selectMainClass <<= (discoveredMainClasses, mainClass) map { (classes, explicit) => explicit orElse selectRunMain(classes) },
 		mainClass in run <<= selectMainClass in run,
 		mainClass <<= discoveredMainClasses map selectPackageMain,
 		run <<= runTask(fullClasspath, mainClass in run, runner in run),
@@ -357,10 +364,8 @@ object Defaults extends BuildCommon
 	packageTasks(packageSrc, packageSrcTask) ++
 	packageTasks(packageDoc, packageDocTask)
 
-	private[this] val allSubpaths = (dir: File) => (dir.*** --- dir) x (relativeTo(dir)|flat)
-
-	def packageBinTask = products map { ps => ps flatMap { p => allSubpaths(p) } }
-	def packageDocTask = doc map allSubpaths
+	def packageBinTask = products map { _ flatMap Path.allSubpaths }
+	def packageDocTask = doc map { p => Path.allSubpaths(p).toSeq }
 	def packageSrcTask = concatMappings(resourceMappings, sourceMappings)
 
 	private type Mappings = Initialize[Task[Seq[(File, String)]]]
@@ -368,18 +373,21 @@ object Defaults extends BuildCommon
 
 	// drop base directories, since there are no valid mappings for these
 	def sourceMappings = (unmanagedSources, unmanagedSourceDirectories, baseDirectory) map { (srcs, sdirs, base) =>
-		 ( (srcs --- sdirs --- base) x (relativeTo(sdirs)|relativeTo(base)|flat)) toSeq
+		 ( (srcs --- sdirs --- base) pair (relativeTo(sdirs)|relativeTo(base)|flat)) toSeq
 	}
 	def resourceMappings = relativeMappings(unmanagedResources, unmanagedResourceDirectories)
 	def relativeMappings(files: ScopedTaskable[Seq[File]], dirs: ScopedTaskable[Seq[File]]): Initialize[Task[Seq[(File, String)]]] =
 		(files, dirs) map { (rs, rdirs) =>
-			(rs --- rdirs) x (relativeTo(rdirs)|flat) toSeq
+			(rs --- rdirs) pair (relativeTo(rdirs)|flat) toSeq
 		}
 
 	def collectFiles(dirs: ScopedTaskable[Seq[File]], filter: ScopedTaskable[FileFilter], excludes: ScopedTaskable[FileFilter]): Initialize[Task[Seq[File]]] =
 		(dirs, filter, excludes) map { (d,f,excl) => d.descendantsExcept(f,excl).get }
 
-	def artifactPathSetting(art: SettingKey[Artifact])  =  (crossTarget, projectID, art, scalaBinaryVersion in artifactName, artifactName) { (t, module, a, sv, toString) => t / toString(sv, module, a) asFile }
+	def artifactPathSetting(art: SettingKey[Artifact])  =  (crossTarget, projectID, art, scalaVersion in artifactName, scalaBinaryVersion in artifactName, artifactName) {
+		(t, module, a, sv, sbv, toString) =>
+			t / toString(ScalaVersion(sv, sbv), module, a) asFile
+	}
 	def artifactSetting = ((artifact, artifactClassifier).identity zipWith configuration.?) { case ((a,classifier),cOpt) =>
 		val cPart = cOpt flatMap { c => if(c == Compile) None else Some(c.name) }
 		val combined = cPart.toList ++ classifier.toList
@@ -511,7 +519,8 @@ object Defaults extends BuildCommon
 			})
 	}
 
-	def sbtPluginExtra(m: ModuleID, sbtV: String, scalaV: String): ModuleID  =  m.extra(CustomPomParser.SbtVersionKey -> sbtV, CustomPomParser.ScalaVersionKey -> scalaV).copy(crossVersion = false)
+	def sbtPluginExtra(m: ModuleID, sbtV: String, scalaV: String): ModuleID =
+		m.extra(CustomPomParser.SbtVersionKey -> sbtV, CustomPomParser.ScalaVersionKey -> scalaV).copy(crossVersion = CrossVersion.Disabled)
 	def writePluginsDescriptor(plugins: Set[String], dir: File): Seq[File] =
 	{
 		val descriptor: File = dir / "sbt" / "sbt.plugins"
@@ -537,7 +546,7 @@ object Defaults extends BuildCommon
 	def copyResourcesTask =
 	(classDirectory, cacheDirectory, resources, resourceDirectories, streams) map { (target, cache, resrcs, dirs, s) =>
 		val cacheFile = cache / "copy-resources"
-		val mappings = (resrcs --- dirs) x (rebase(dirs, target) | flat(target))
+		val mappings = (resrcs --- dirs) pair (rebase(dirs, target) | flat(target))
 		s.log.debug("Copy resource mappings: " + mappings.mkString("\n\t","\n\t",""))
 		Sync(cacheFile)( mappings )
 		mappings
@@ -596,25 +605,6 @@ object Defaults extends BuildCommon
 			(if(classpath) p.dependencies.map(_.project) else Nil) ++
 			(if(aggregate) p.aggregate else Nil)
 		}
-
-	val PartialVersion = """(\d+)\.(\d+)(?:\..+)?""".r
-	def partialVersion(s: String): Option[(Int,Int)] =
-		s match {
-			case PartialVersion(major, minor) => Some(major.toInt, minor.toInt)
-			case _ => None
-		}
-	private[this] def isNewer(major: Int, minor: Int, minMajor: Int, minMinor: Int): Boolean =
-		major > minMajor || (major == minMajor && minor >= minMinor)
-	
-	def binaryVersion(full: String, cutoff: String): String =
-	{
-		def sub(major: Int, minor: Int) = major + "." + minor
-		(partialVersion(full), partialVersion(cutoff)) match {
-			case (Some((major, minor)), None) => sub(major, minor)
-			case (Some((major, minor)), Some((minMajor, minMinor))) if isNewer(major, minor, minMajor, minMinor) => sub(major, minor)
-			case _ => full
-		}
-	}
 
 	val CompletionsID = "completions"
 
@@ -744,16 +734,16 @@ object Classpaths
 		ivyLoggingLevel in GlobalScope :== UpdateLogging.DownloadOnly,
 		ivyXML in GlobalScope :== NodeSeq.Empty,
 		ivyValidate in GlobalScope :== false,
-		ivyScala <<= ivyScala or (scalaHome, scalaVersion, scalaBinaryVersion in update) { (sh,v,vu) =>
-			Some(new IvyScala(v, Nil, filterImplicit = true, checkExplicit = true, overrideScalaVersion = sh.isEmpty, substituteCross = x => IvySbt.substituteCross(x, vu)))
+		ivyScala <<= ivyScala or (scalaHome, scalaVersion in update, scalaBinaryVersion in update) { (sh,fv,bv) =>
+			Some(new IvyScala(fv, bv, Nil, filterImplicit = true, checkExplicit = true, overrideScalaVersion = sh.isEmpty))
 		},
 		moduleConfigurations in GlobalScope :== Nil,
 		publishTo in GlobalScope :== None,
 		artifactPath in makePom <<= artifactPathSetting(artifact in makePom),
 		publishArtifact in makePom <<= publishMavenStyle,
 		artifact in makePom <<= moduleName(Artifact.pom),
-		projectID <<= (organization,moduleName,version,artifacts,crossPaths){ (org,module,version,as,crossEnabled) =>
-			ModuleID(org, module, version).cross(crossEnabled).artifacts(as : _*)
+		projectID <<= (organization,moduleName,version,artifacts,crossVersion in projectID){ (org,module,version,as,cross) =>
+			ModuleID(org, module, version).cross(cross).artifacts(as : _*)
 		},
 		projectID <<= pluginProjectID,
 		resolvers in GlobalScope :== Nil,
@@ -797,12 +787,19 @@ object Classpaths
 		} tag(Tags.Update, Tags.Network),
 		sbtDependency in GlobalScope <<= appConfiguration { app =>
 			val id = app.provider.id
-			val base = ModuleID(id.groupID, id.name, id.version, crossVersion = id.crossVersioned)
-			IvySbt.substituteCross(base, app.provider.scalaProvider.version).copy(crossVersion = false)
+			val scalaVersion = app.provider.scalaProvider.version
+			val binVersion = binaryScalaVersion(scalaVersion)
+			val cross = if(id.crossVersioned) if(isStable(scalaVersion)) CrossVersion.binary else CrossVersion.full else CrossVersion.Disabled
+			val base = ModuleID(id.groupID, id.name, id.version, crossVersion = cross)
+			CrossVersion(scalaVersion, binVersion)(base).copy(crossVersion = CrossVersion.Disabled)
 		}
 	)
-	def pluginProjectID: Initialize[ModuleID] = (sbtBinaryVersion in update, scalaBinaryVersion in update, projectID, sbtPlugin) { (sbtV, scalaV, pid, isPlugin) =>
-		if(isPlugin) sbtPluginExtra(pid, sbtV, scalaV) else pid
+	def pluginProjectID: Initialize[ModuleID] = (sbtVersion in update, sbtBinaryVersion in update, scalaVersion in update, scalaBinaryVersion in update, projectID, sbtPlugin) {
+		(sbtV, sbtBV, scalaV, scalaBV, pid, isPlugin) =>
+			if(isPlugin)
+				sbtPluginExtra(pid, selectVersion(sbtV, sbtBV), selectVersion(scalaV, scalaBV))
+			else
+				pid
 	}
 	def ivySbt0: Initialize[Task[IvySbt]] =
 		(ivyConfiguration, credentials, streams) map { (conf, creds, s) =>

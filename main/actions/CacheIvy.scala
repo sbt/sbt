@@ -8,7 +8,7 @@ package sbt
 	import FileInfo.{exists, hash}
 	import java.io.File
 	import java.net.URL
-	import Types.:+:
+	import Types.{:+:, idFun}
 	import scala.xml.NodeSeq
 	import sbinary.{DefaultProtocol,Format}
 	import DefaultProtocol.{immutableMapFormat, immutableSetFormat, optionsAreFormat}
@@ -80,8 +80,19 @@ object CacheIvy
 		)
 	implicit def exclusionRuleFormat(implicit sf: Format[String]): Format[ExclusionRule] =
 		wrap[ExclusionRule, (String, String, String, Seq[String])]( e => (e.organization, e.name, e.artifact, e.configurations), { case (o,n,a,cs) => ExclusionRule(o,n,a,cs) })
+
+	implicit def crossVersionFormat: Format[CrossVersion] = wrap(crossToInt, crossFromInt)
+
+	private[this] final val DisabledValue = 0
+	private[this] final val BinaryValue = 1
+	private[this] final val FullValue = 2
+
+		import CrossVersion.{Binary, Disabled, Full}
+	private[this] val crossFromInt = (i: Int) => i match { case BinaryValue => new Binary(idFun); case FullValue => new Full(idFun); case _ => Disabled }
+	private[this] val crossToInt = (c: CrossVersion) => c match { case Disabled => 0; case b: Binary => BinaryValue; case f: Full => FullValue }
+
 	implicit def moduleIDFormat(implicit sf: Format[String], af: Format[Artifact], bf: Format[Boolean], ef: Format[ExclusionRule]): Format[ModuleID] =
-		wrap[ModuleID, ((String,String,String,Option[String]),(Boolean,Boolean,Seq[Artifact],Seq[ExclusionRule],Map[String,String],Boolean))](
+		wrap[ModuleID, ((String,String,String,Option[String]),(Boolean,Boolean,Seq[Artifact],Seq[ExclusionRule],Map[String,String],CrossVersion))](
 			m => ((m.organization,m.name,m.revision,m.configurations), (m.isChanging, m.isTransitive, m.explicitArtifacts, m.exclusions, m.extraAttributes, m.crossVersion)),
 			{ case ((o,n,r,cs),(ch,t,as,excl,x,cv)) => ModuleID(o,n,r,cs,ch,t,as,excl,x,cv) }
 		)
@@ -144,6 +155,7 @@ object CacheIvy
 
 		implicit def artifactToHL = (a: Artifact) => a.name :+: a.`type` :+: a.extension :+: a.classifier :+: names(a.configurations) :+: a.url :+: a.extraAttributes :+: HNil
 		implicit def exclusionToHL = (e: ExclusionRule) => e.organization :+: e.name :+: e.artifact :+: e.configurations :+: HNil
+		implicit def crossToHL = (c: CrossVersion) => crossToInt(c) :+: HNil
 
 /*		implicit def deliverConfToHL = (p: DeliverConfiguration) => p.deliverIvyPattern :+: p.status :+: p.configurations :+: HNil
 		implicit def publishConfToHL = (p: PublishConfiguration) => p.ivyFile :+: p.resolverName :+: p.artifacts :+: HNil*/
@@ -156,13 +168,14 @@ object CacheIvy
 	implicit def connectionIC: InputCache[SshConnection] = wrapIn
 	implicit def artifactIC: InputCache[Artifact] = wrapIn
 	implicit def exclusionIC: InputCache[ExclusionRule] = wrapIn
+	implicit def crossVersionIC: InputCache[CrossVersion] = wrapIn
 /*	implicit def publishConfIC: InputCache[PublishConfiguration] = wrapIn
 	implicit def deliverConfIC: InputCache[DeliverConfiguration] = wrapIn*/
 
 	object L1 {
 		implicit def retrieveToHL = (r: RetrieveConfiguration) => exists(r.retrieveDirectory) :+: r.outputPattern :+: HNil
 		implicit def ivyPathsToHL = (p: IvyPaths) => exists(p.baseDirectory) :+: p.ivyHome.map(exists.apply) :+: HNil
-		implicit def ivyScalaHL = (i: IvyScala) => i.scalaVersion :+: names(i.configurations) :+: i.checkExplicit :+: i.filterImplicit :+: HNil
+		implicit def ivyScalaHL = (i: IvyScala) => i.scalaFullVersion :+: i.scalaBinaryVersion :+: names(i.configurations) :+: i.checkExplicit :+: i.filterImplicit :+: HNil
 		implicit def configurationToHL = (c: Configuration) => c.name :+: c.description :+: c.isPublic :+: names(c.extendsConfigs) :+: c.transitive :+: HNil
 
 		implicit def passwordToHL = (s: PasswordAuthentication) => Hash(s.user) :+: password(s.password) :+: HNil
