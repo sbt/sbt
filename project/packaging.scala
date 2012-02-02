@@ -49,6 +49,7 @@ object Packaging {
   a build tool for Scala software, also called SBT.""",
     linuxPackageMappings <+= (sourceDirectory in Linux) map { bd =>
       (packageMapping((bd / "sbt") -> "/usr/bin/sbt",
+                      bd -> "/usr/share/sbt",
                       (bd / "sbt-launch-lib.bash") -> "/usr/share/sbt/sbt-launch-lib.bash")
        withUser "root" withGroup "root" withPerms "0755")
     },
