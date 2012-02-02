@@ -3,3 +3,11 @@
 > f
 > reload
 > f
+$ copy-file changes/Build1.scala project/TestProject.scala
+> reload
+-> f
+> g
+# The current URI should be kept
+$ copy-file changes/Build2.scala project/First.scala
+> reload
+> g
