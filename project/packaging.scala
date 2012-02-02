@@ -47,8 +47,9 @@ object Packaging {
     packageSummary := "Simple Build Tool for Scala-driven builds",
     packageDescription := """This script provides a native way to run the Simple Build Tool,
   a build tool for Scala software, also called SBT.""",
-    linuxPackageMappings <+= (baseDirectory) map { bd =>
-      (packageMapping((bd / "sbt") -> "/usr/bin/sbt")
+    linuxPackageMappings <+= (sourceDirectory in Linux) map { bd =>
+      (packageMapping((bd / "sbt") -> "/usr/bin/sbt",
+                      (bd / "sbt-launch-lib.bash") -> "/usr/share/sbt/sbt-launch-lib.bash")
        withUser "root" withGroup "root" withPerms "0755")
     },
     linuxPackageMappings <+= (sourceDirectory) map { bd =>
