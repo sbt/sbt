@@ -173,6 +173,7 @@ object Packaging {
       <Package Description='Simple Build Tool launcher script.'
                 Comments='First attempt to create an SBT windows installer, bear with me.'
                 Manufacturer='Typesafe, Inc.' 
+                InstallScope='perMachine'
                 InstallerVersion='200' 
                 Compressed='yes' />
  
