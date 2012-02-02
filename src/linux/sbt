@@ -25,7 +25,7 @@ get_mem_opts () {
   (( $perm > 256 )) || perm=256
   (( $perm < 1024 )) || perm=1024
   local codecache=$(( $perm / 2 ))
-  
+
   echo "-Xms${mem}m -Xmx${mem}m -XX:MaxPermSize=${perm}m -XX:ReservedCodeCacheSize=${codecache}m"
 }
 
@@ -167,7 +167,7 @@ jar_file () {
 sbt_artifactory_list () {
   local type="$1" # -RC or -SNAPSHOT
   local version=${sbt_version%-SNAPSHOT}
-  
+
   curl -s --list-only "$sbt_snapshot_baseurl" | \
     grep -F $version | \
     perl -e 'print reverse <>' | \
@@ -190,7 +190,7 @@ sbt_snapshot_actual_version () {
 download_url () {
   local url="$1"
   local jar="$2"
-  
+
   echo "Downloading sbt launcher $sbt_version:"
   echo "  From  $url"
   echo "    To  $jar"
@@ -210,7 +210,7 @@ acquire_sbt_jar () {
   elif [[ ! $sbt_version ]]; then
     sbt_version=$sbt_release_version
   fi
-  
+
   sbt_url="$(jar_url)"
   sbt_jar="$(jar_file $sbt_version)"
 
@@ -232,6 +232,7 @@ Usage: $script_name [options]
   -ivy       <path>  path to local Ivy repository (default: ~/.ivy2)
   -mem    <integer>  set memory options (default: $sbt_mem, which is $(get_mem_opts $sbt_mem))
   -no-share          use all local caches; no sharing
+  -no-global         uses global caches, but does not use global ~/.sbt directory.
   -offline           put sbt in offline mode
   -jvm-debug <port>  Turn on JVM debugging, open at the given port.
   -batch             Disable interactive mode
@@ -249,16 +250,19 @@ Usage: $script_name [options]
   -scala-home <path>        use the scala build at the specified directory
   -scala-version <version>  use the specified version of scala
 
-  # java version (default: java from PATH, currently $(java -version |& grep version))
+  # java version (default: java from PATH, currently $(java -version 2>&1 | grep version))
   -java-home <path>         alternate JAVA_HOME
 
   # jvm options and output control
-  JAVA_OPTS     environment variable, if unset uses "$java_opts"
-  SBT_OPTS      environment variable, if unset uses "$default_sbt_opts"
-  .sbtopts      if this file exists in the sbt root, it is prepended to the runner args
-  -Dkey=val     pass -Dkey=val directly to the java runtime
-  -J-X          pass option -X directly to the java runtime (-J is stripped)
-  -S-X          add -X to sbt's scalacOptions (-J is stripped)
+  JAVA_OPTS          environment variable, if unset uses "$java_opts"
+  SBT_OPTS           environment variable, if unset uses "$default_sbt_opts"
+  .sbtopts           if this file exists in the current directory, it is
+                     prepended to the runner args
+  /etc/sbt/sbtopts   if this file exists, it is prepended to the runner args
+  -Dkey=val          pass -Dkey=val directly to the java runtime
+  -J-X               pass option -X directly to the java runtime 
+                     (-J is stripped)
+  -S-X               add -X to sbt's scalacOptions (-J is stripped)
 
 In the case of duplicated or conflicting options, the order above
 shows precedence: JAVA_OPTS lowest, command line options highest.
@@ -298,7 +302,7 @@ process_args ()
     local type="$1"
     local opt="$2"
     local arg="$3"
-    
+
     if [[ -z "$arg" ]] || [[ "${arg:0:1}" == "-" ]]; then
       die "$opt requires <$type> argument"
     fi
@@ -314,6 +318,7 @@ process_args ()
            -mem) require_arg integer "$1" "$2" && sbt_mem="$2" && shift 2 ;;
      -no-colors) addJava "-Dsbt.log.noformat=true" && shift ;;
       -no-share) addJava "$noshare_opts" && shift ;;
+     -no-global) addJava "-Dsbt.global.base=project/.sbtboot" && shift ;;
       -sbt-boot) require_arg path "$1" "$2" && addJava "-Dsbt.boot.directory=$2" && shift 2 ;;
        -sbt-dir) require_arg path "$1" "$2" && addJava "-Dsbt.global.base=$2" && shift 2 ;;
      -debug-inc) addJava "-Dxsbt.inc.debug=true" && shift ;;
@@ -340,10 +345,10 @@ process_args ()
               *) addResidual "$1" && shift ;;
     esac
   done
-  
+
   [[ $debug ]] && {
     case "$sbt_version" in
-      0.7*) addSbt "debug" ;; 
+      0.7*) addSbt "debug" ;;
          *) addSbt "set logLevel in Global := Level.Debug" ;;
     esac
   }

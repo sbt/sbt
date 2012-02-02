@@ -47,8 +47,10 @@ object Packaging {
     packageSummary := "Simple Build Tool for Scala-driven builds",
     packageDescription := """This script provides a native way to run the Simple Build Tool,
   a build tool for Scala software, also called SBT.""",
-    linuxPackageMappings <+= (baseDirectory) map { bd =>
-      (packageMapping((bd / "sbt") -> "/usr/bin/sbt")
+    linuxPackageMappings <+= (sourceDirectory in Linux) map { bd =>
+      (packageMapping((bd / "sbt") -> "/usr/bin/sbt",
+                      bd -> "/usr/share/sbt",
+                      (bd / "sbt-launch-lib.bash") -> "/usr/share/sbt/sbt-launch-lib.bash")
        withUser "root" withGroup "root" withPerms "0755")
     },
     linuxPackageMappings <+= (sourceDirectory) map { bd =>
@@ -110,8 +112,11 @@ object Packaging {
     //wixFile <<= sourceDirectory in Windows map (_ / "sbt.xml"),
     mappings in packageMsi in Windows <+= sbtLaunchJar map { f => f -> "sbt-launch.jar" },
     mappings in packageMsi in Windows <+= jansiJar map { f => f -> "jansi.jar" },
-    mappings in packageMsi in Windows <+= sourceDirectory in Windows map { d => 
-      (d / "sbt.bat") -> "sbt.bat" },
+    mappings in packageMsi in Windows <++= sourceDirectory in Windows map { d => Seq(
+      (d / "sbt.bat") -> "sbt.bat",
+      (d / "sbt") -> "sbt",
+      (d / "jansi-license.txt") -> "jansi-license.txt"
+    )},
     mappings in packageMsi in Windows <+= (compile in Compile, classDirectory in Compile) map { (c, d) =>
       compile; 
       (d / "SbtJansiLaunch.class") -> "SbtJansiLaunch.class" 
@@ -158,7 +163,7 @@ object Packaging {
         case Array(major) => Seq(major,"0","0","1") mkString "."
       }
       (
-<Wix xmlns='http://schemas.microsoft.com/wix/2006/wi'>
+<Wix xmlns='http://schemas.microsoft.com/wix/2006/wi' xmlns:util='http://schemas.microsoft.com/wix/UtilExtension'>
   <Product Id='ce07be71-510d-414a-92d4-dff47631848a' 
             Name='Simple Build Tool' 
             Language='1033'
@@ -181,11 +186,17 @@ object Packaging {
                      <File Id='jansi_launch' Name='SbtJansiLaunch.class' DiskId='1' Source='SbtJansiLaunch.class' />
                   </Component>
                </Directory>
-               <Component Id='SbtLauncherScript' Guid='*'>
-                  <File Id='sbt_bat' Name='sbt.bat' DiskId='1' Source='sbt.bat' />
+               <Component Id='SbtLauncherScript' Guid='DE0A5B50-0792-40A9-AEE0-AB97E9F845F5'>
+                  <File Id='sbt_bat' Name='sbt.bat' DiskId='1' Source='sbt.bat'>
+                     <!-- <util:PermissionEx User="Users" Domain="[LOCAL_MACHINE_NAME]" GenericRead="yes" Read="yes" GenericExecute="yes" ChangePermission="yes"/> -->
+                  </File>
+                  <File Id='sbt_sh' Name='sbt' DiskId='1' Source='sbt'>
+                     <!-- <util:PermissionEx User="Users" Domain="[LOCAL_MACHINE_NAME]" GenericRead="yes" Read="yes" GenericExecute="yes" ChangePermission="yes"/> -->
+                  </File>
                </Component>
-               <Component Id='JansiJar' Guid='*'>
+               <Component Id='JansiJar' Guid='3370A26B-E8AB-4143-B837-CE9A8573BF60'>
                   <File Id='jansi_jar' Name='jansi.jar' DiskId='1' Source='jansi.jar' />
+                  <File Id='jansi_license' Name='jansi-license.txt' DiskId='1' Source='jansi-license.txt' />
                </Component>
                <Component Id='SbtLauncherJar' Guid='*'>
                   <File Id='sbt_launch_jar' Name='sbt-launch.jar' DiskId='1' Source='sbt-launch.jar' />
