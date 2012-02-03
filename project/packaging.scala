@@ -205,6 +205,7 @@ object Packaging {
                <Component Id='SbtLauncherPath' Guid='17EA4092-3C70-11E1-8CD8-1BB54724019B'>
                   <CreateFolder/>
                   <Environment Id="PATH" Name="PATH" Value="[INSTALLDIR]" Permanent="no" Part="last" Action="set" System="yes" />
+                  <Environment Id="SBT_HOME" Name="SBT_HOME" Value="[INSTALLDIR]" Permanent="no" Action="set" System="yes" />
                </Component>
              </Directory>
          </Directory>
