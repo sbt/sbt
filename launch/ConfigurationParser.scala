@@ -94,7 +94,7 @@ class ConfigurationParser
 	{
 		if(isEmpty(value)) error(label + " cannot be empty (omit declaration to use the default)")
 		try { parsePropertyValue(label, value)(Value.readImplied[T]) }
-		catch { case e: BootException =>  new Explicit(read(value)) }
+		catch { case e: BootException =>  new Explicit(read(substituteVariables(value))) }
 	}
 	def processSection[T](sections: SectionMap, name: String, f: LabelMap => T) =
 		process[String,LabelMap,T](sections, name, m => f(m default(x => None)))
