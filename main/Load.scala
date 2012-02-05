@@ -611,7 +611,7 @@ object Load
 	{
 		val rootProject: URI => String = Load getRootProject units
 		def allProjects: Seq[ResolvedProject] = units.values.flatMap(_.defined.values).toSeq
-		def allProjects(build: URI): Seq[ResolvedProject] = units.get(build) map(_.defined.values.toSeq) getOrElse Seq.empty
+		def allProjects(build: URI): Seq[ResolvedProject] = units.get(build).toList.flatMap(_.defined.values)
 		def allProjectRefs: Seq[ProjectRef] = units.toSeq flatMap { case (build, unit) => refs(build, unit.defined.values.toSeq) }
 		def allProjectRefs(build: URI): Seq[ProjectRef] = refs(build, allProjects(build))
 		val extra: BuildUtil[ResolvedProject] = buildUtil(root, units, index.keyIndex, data)
