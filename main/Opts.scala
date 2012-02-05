@@ -27,6 +27,7 @@ object DefaultOptions {
 	import Path._
 	def javac: Seq[String] = compile.encoding("UTF-8")
 	def scalac: Seq[String] = compile.encoding("UTF-8")
+	def javadoc(name: String, version: String): Seq[String] = Seq("-doctitle", "%s %s API".format(name, version))
 	def scaladoc(name: String, version: String): Seq[String] = doc.title(name) ++ doc.version(version)
-	def credentials: Credentials = Credentials(Path.userHome / ".ivy2" / ".credentials")
+	def credentials: Credentials = Credentials(userHome / ".sbt" / ".credentials")
 }
