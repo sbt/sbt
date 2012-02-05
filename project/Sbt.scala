@@ -20,6 +20,7 @@ object Sbt extends Build
 		scalaVersion := "2.9.1",
 		publishMavenStyle := false,
 		componentID := None,
+		crossPaths := false,
 		testOptions += Tests.Argument(TestFrameworks.ScalaCheck, "-w", "1"),
 		javacOptions in Compile ++= Seq("-target", "6", "-source", "6")
 	)
@@ -37,7 +38,7 @@ object Sbt extends Build
 	lazy val launchSub = testedBaseProject(launchPath, "Launcher") dependsOn(ioSub % "test->test", interfaceSub % "test", launchInterfaceSub) settings(launchSettings : _*)
 
 		// used to test the retrieving and loading of an application: sample app is packaged and published to the local repository
-	lazy val testSamples = noPublish( baseProject(launchPath / "test-sample", "Launch Test") ) dependsOn(interfaceSub, launchInterfaceSub) settings(scalaCompiler, crossPaths := false)
+	lazy val testSamples = noPublish( baseProject(launchPath / "test-sample", "Launch Test") ) dependsOn(interfaceSub, launchInterfaceSub) settings(scalaCompiler)
 
 		// defines Java structures used across Scala versions, such as the API structures and relationships extracted by
 		//   the analysis compiler phases and passed back to sbt.  The API structures are defined in a simple 
