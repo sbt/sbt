@@ -360,13 +360,20 @@ object Defaults extends BuildCommon
 		packageOptions in packageSrc <<= (name, version, organizationName, packageOptions) map { Package.addSpecManifestAttributes(_, _, _) +: _ },
 		`package` <<= packageBin
 	) ++
-	packageTasks(packageBin, packageBinTask) ++
-	packageTasks(packageSrc, packageSrcTask) ++
-	packageTasks(packageDoc, packageDocTask)
+	packageTasks(packageBin, packageBinMappings) ++
+	packageTasks(packageSrc, packageSrcMappings) ++
+	packageTasks(packageDoc, packageDocMappings)
 
-	def packageBinTask = products map { _ flatMap Path.allSubpaths }
-	def packageDocTask = doc map { p => Path.allSubpaths(p).toSeq }
-	def packageSrcTask = concatMappings(resourceMappings, sourceMappings)
+	def packageBinMappings = products map { _ flatMap Path.allSubpaths }
+	def packageDocMappings = doc map { Path.allSubpaths(_).toSeq }
+	def packageSrcMappings = concatMappings(resourceMappings, sourceMappings)
+
+	@deprecated("Use `packageBinMappings` instead", "0.12.0")
+	def packageBinTask = packageBinMappings
+	@deprecated("Use `packageDocMappings` instead", "0.12.0")
+	def packageDocTask = packageDocMappings
+	@deprecated("Use `packageSrcMappings` instead", "0.12.0")
+	def packageSrcTask = packageSrcMappings
 
 	private type Mappings = Initialize[Task[Seq[(File, String)]]]
 	def concatMappings(as: Mappings, bs: Mappings) = (as zipWith bs)( (a,b) => (a :^: b :^: KNil) map { case a :+: b :+: HNil => a ++ b } )
