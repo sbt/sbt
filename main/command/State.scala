@@ -127,7 +127,7 @@ object State
 
 	/** Provides a list of recently executed commands.  The commands are stored as processed instead of as entered by the user.
 	* @param executed the list of the most recently executed commands, with the most recent command first.
-	* @maxSize the maximum number of commands to keep, or 0 to keep an unlimited number. */
+	* @param maxSize the maximum number of commands to keep, or 0 to keep an unlimited number. */
 	final class History private[State](val executed: Seq[String], val maxSize: Int)
 	{
 		/** Adds `command` as the most recently executed command.*/

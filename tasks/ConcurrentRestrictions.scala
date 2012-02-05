@@ -76,7 +76,7 @@ object ConcurrentRestrictions
 	type TagMap = Map[Tag, Int]
 
 	/** Implements concurrency restrictions on tasks based on Tags.
-	* @tparma A type of a task
+	* @tparam A type of a task
 	* @param get extracts tags from a task
 	* @param validF defines whether a set of tasks are allowed to execute concurrently based on their merged tags*/
 	def tagged[A](get: A => TagMap, validF: TagMap => Boolean): ConcurrentRestrictions[A] =
