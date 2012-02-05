@@ -96,7 +96,7 @@ class Launch private[xsbt](val bootDirectory: File, val lockBoot: Boolean, val i
 	class JNAProvider extends Provider
 	{
 		lazy val id = new Application("net.java.dev.jna", "jna", new Explicit("3.2.3"), "", Nil, false, array())
-		lazy val configuration = new UpdateConfiguration(bootDirectory, ivyOptions.ivyHome, "", repositories, checksumsList)
+		lazy val configuration = new UpdateConfiguration(bootDirectory, ivyOptions.ivyHome, None, repositories, checksumsList)
 		lazy val libDirectory = new File(bootDirectory, baseDirectoryName(""))
 		def baseDirectories: List[File] = new File(libDirectory, appDirectoryName(id.toID, File.separator)) :: Nil
 		def testLoadClasses: List[String] = "com.sun.jna.Function" :: Nil
@@ -112,7 +112,7 @@ class Launch private[xsbt](val bootDirectory: File, val lockBoot: Boolean, val i
 		def launcher: xsbti.Launcher = Launch.this
 		def parentLoader = topLoader
 
-		lazy val configuration = new UpdateConfiguration(bootDirectory, ivyOptions.ivyHome, version, repositories, checksumsList)
+		lazy val configuration = new UpdateConfiguration(bootDirectory, ivyOptions.ivyHome, Some(version), repositories, checksumsList)
 		lazy val libDirectory = new File(configuration.bootDirectory, baseDirectoryName(version))
 		lazy val scalaHome = new File(libDirectory, ScalaDirectoryName)
 		def compilerJar = new File(scalaHome, CompilerModuleName + ".jar")

@@ -27,7 +27,7 @@ trait Provider
 	def retrieveCorrupt(missing: Iterable[String]): Nothing = fail(": missing " + missing.mkString(", "))
 	private def fail(extra: String) =
 		throw new xsbti.RetrieveException(versionString, "Could not retrieve " + failLabel + extra)
-	private def versionString: String = target match { case _: UpdateScala => configuration.scalaVersion; case a: UpdateApp => Value.get(a.id.version) }
+	private def versionString: String = target match { case _: UpdateScala => configuration.getScalaVersion; case a: UpdateApp => Value.get(a.id.version) }
 
 	val (jars, loader) = Locks(orNull(lockFile), new initialize)
 	private[this] def orNull[T >: Null](opt: Option[T]): T = opt match { case None => null; case Some(x) => x }
@@ -40,8 +40,8 @@ trait Provider
 				(existingJars, existingLoader)
 			else
 			{
-				val retrieveSuccess = ( new Update(configuration) )(target, reason)
-				if(retrieveSuccess)
+				val result = ( new Update(configuration) )(target, reason)
+				if(result.success)
 				{
 					val (newJars, newLoader) = createLoader
 					val missing = Provider.getMissing(newLoader, testLoadClasses)
