@@ -56,7 +56,7 @@ object Initialize
 				{
 					case None => noValue
 					case Some(line) =>
-						val value = if(isEmpty(line)) prompt.default.getOrElse(noValue) else line
+						val value = if(isEmpty(line)) orElse(prompt.default, noValue) else line
 						properties.setProperty(name, value)
 				}
 		}

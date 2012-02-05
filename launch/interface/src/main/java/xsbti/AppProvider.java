@@ -9,6 +9,7 @@ public interface AppProvider
 	/** The ID of the application that will be created by 'newMain' or 'mainClass'.*/
 	public ApplicationID id();
 
+	 public ClassLoader loader();
 	/** Loads the class for the entry point for the application given by 'id'.  This method will return the same class
 	* every invocation.  That is, the ClassLoader is not recreated each call.*/
 	public Class<? extends AppMain> mainClass();

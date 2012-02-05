@@ -16,7 +16,7 @@ sealed class ListMap[K,V] private(backing: List[(K,V)]) extends Iterable[(K,V)] 
 	def -(k: K) = copy(remove(backing,k))
 	def get(k: K): Option[V] = backing.find(_._1 == k).map(_._2)
 	def keys: List[K] = backing.reverse.map(_._1)
-	def apply(k: K): V = get(k).getOrElse(error("Key " + k + " not found"))
+	def apply(k: K): V = getOrError(get(k), "Key " + k + " not found")
 	def contains(k: K): Boolean = get(k).isDefined
 	def iterator = backing.reverse.iterator
 	override def isEmpty: Boolean = backing.isEmpty

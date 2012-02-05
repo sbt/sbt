@@ -2,7 +2,10 @@
  * Copyright 2008, 2009, 2010  Mark Harrah
  */
 package xsbt.boot
-import scala.collection.immutable.List
+
+	import scala.collection.immutable.List
+	import java.io.{File, FileFilter}
+	import java.net.{URL, URLClassLoader}
 
 object Pre
 {
@@ -33,7 +36,6 @@ object Pre
 		arr
 	}
 	/* These exist in order to avoid bringing in dependencies on RichInt and ArrayBuffer, among others. */
-	import java.io.File
 	def concat(a: Array[File], b: Array[File]): Array[File] =
 	{
 		val n = new Array[File](a.length + b.length)
@@ -44,4 +46,23 @@ object Pre
 	def array(files: File*): Array[File] = toArray(files.toList)
 	/* Saves creating a closure for default if it has already been evaluated*/
 	def orElse[T](opt: Option[T], default: T) = if(opt.isDefined) opt.get else default
+
+	def wrapNull(a: Array[File]): Array[File] = if(a == null) new Array[File](0) else a
+	def const[B](b: B): Any => B = _ => b
+	def strictOr[T](a: Option[T], b: Option[T]): Option[T] = a match { case None => b; case _ => a }
+	def getOrError[T](a: Option[T], msg: String): T = a match { case None => error(msg); case Some(x) => x }
+	def orNull[T >: Null](t: Option[T]): T = t match { case None => null; case Some(x) => x }
+
+	def getJars(directories: List[File]): Array[File] = toArray(directories.flatMap(directory => wrapNull(directory.listFiles(JarFilter))))
+
+	object JarFilter extends FileFilter
+	{
+		def accept(file: File) = !file.isDirectory && file.getName.endsWith(".jar")
+	}
+	def getMissing(loader: ClassLoader, classes: Iterable[String]): Iterable[String] =
+	{
+		def classMissing(c: String) = try { Class.forName(c, false, loader); false } catch { case e: ClassNotFoundException => true }
+		classes.toList.filter(classMissing)
+	}
+	def toURLs(files: Array[File]): Array[URL] = files.map(_.toURI.toURL)
 }

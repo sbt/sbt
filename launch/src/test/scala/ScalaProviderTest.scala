@@ -36,7 +36,7 @@ object ScalaProviderTest extends Specification
 		withTemporaryDirectory { currentDirectory =>
 			withLauncher { launcher =>
 				Launch.run(launcher)(
-					new RunConfiguration(mapScalaVersion(LaunchTest.getScalaVersion), LaunchTest.testApp(mainClassName, extra(currentDirectory)).toID, currentDirectory, arguments)
+					new RunConfiguration(Some(mapScalaVersion(LaunchTest.getScalaVersion)), LaunchTest.testApp(mainClassName, extra(currentDirectory)).toID, currentDirectory, arguments)
 				)
 			}
 		}

@@ -31,7 +31,7 @@ import BootConfiguration._
 
 sealed trait UpdateTarget { def tpe: String; def classifiers: List[String] }
 final class UpdateScala(val classifiers: List[String]) extends UpdateTarget { def tpe = "scala" }
-final class UpdateApp(val id: Application, val classifiers: List[String]) extends UpdateTarget { def tpe = "app" }
+final class UpdateApp(val id: Application, val classifiers: List[String], val tpe: String) extends UpdateTarget
 
 final class UpdateConfiguration(val bootDirectory: File, val ivyHome: Option[File], val scalaVersion: Option[String], val repositories: List[xsbti.Repository], val checksums: List[String]) {
 	def getScalaVersion = scalaVersion match { case Some(sv) => sv; case None => "" }
@@ -55,7 +55,10 @@ final class Update(config: UpdateConfiguration)
 			Option(System.getenv("SBT_CREDENTIALS")) map ( path =>
 				ResolveValues.readProperties(new File(path)) 
 			)
-		optionProps foreach extractCredentials("realm","host","user","password")
+		optionProps match {
+			case Some(props) => extractCredentials("realm","host","user","password")(props)
+			case None => ()
+		}
 		extractCredentials("sbt.boot.realm","sbt.boot.host","sbt.boot.user","sbt.boot.password")(System.getProperties)
 	}
 	private def extractCredentials(keys: (String,String,String,String))(props: Properties) {
@@ -67,7 +70,7 @@ final class Update(config: UpdateConfiguration)
 	{
 		addCredentials()
 		val settings = new IvySettings
-		ivyHome foreach settings.setDefaultIvyUserDir
+		ivyHome match { case Some(dir) => settings.setDefaultIvyUserDir(dir); case None => }
 		addResolvers(settings)
 		settings.setVariable("ivy.checksums", checksums mkString ",")
 		settings.setDefaultConflictManager(settings.getConflictManager(ConflictManagerName))
@@ -76,7 +79,7 @@ final class Update(config: UpdateConfiguration)
 		settings
 	}
 	private[this] def setScalaVariable(settings: IvySettings, scalaVersion: Option[String]): Unit = 
-		scalaVersion foreach { sv => settings.setVariable("scala", sv) }
+		scalaVersion match { case Some(sv) => settings.setVariable("scala", sv); case None => }
 	private lazy val ivy =
 	{
 		val ivy = new Ivy() { private val loggerEngine = new SbtMessageLoggerEngine; override def getLoggerEngine = loggerEngine }
@@ -136,7 +139,6 @@ final class Update(config: UpdateConfiguration)
 					case _ => app.name
 				}
 				addDependency(moduleID, app.groupID, resolvedName, app.getVersion, "default(compile)", u.classifiers)
-				excludeScala(moduleID)
 				System.out.println("Getting " + app.groupID + " " + resolvedName + " " + app.getVersion + " " + reason + "...")
 		}
 		update(moduleID, target)
@@ -165,19 +167,13 @@ final class Update(config: UpdateConfiguration)
 	private def addClassifier(dep: DefaultDependencyDescriptor, name: String, classifier: String)
 	{
 		val extraMap = new java.util.HashMap[String,String]
-		if(!classifier.isEmpty)
+		if(!isEmpty(classifier))
 			extraMap.put("e:classifier", classifier)
 		val ivyArtifact = new DefaultDependencyArtifactDescriptor(dep, name, artifactType(classifier), "jar", null, extraMap)
 		for(conf <- dep.getModuleConfigurations)
 			dep.addDependencyArtifact(conf, ivyArtifact)
 	}
 	private def excludeJUnit(module: DefaultModuleDescriptor): Unit = module.addExcludeRule(excludeRule(JUnitName, JUnitName))
-	private def excludeScala(module: DefaultModuleDescriptor)
-	{
-		def excludeScalaJar(name: String): Unit = module.addExcludeRule(excludeRule(ScalaOrg, name))
-		excludeScalaJar(LibraryModuleName)
-		excludeScalaJar(CompilerModuleName)
-	}
 	private def excludeRule(organization: String, name: String): ExcludeRule =
 	{
 		val artifact = new ArtifactId(ModuleId.newInstance(organization, name), "*", "*", "*")
@@ -205,12 +201,16 @@ final class Update(config: UpdateConfiguration)
 		scalaDependencyVersion(resolveReport).headOption
 	}
 	private[this] def scalaDependencyVersion(report: ResolveReport): List[String] =
-		for {
-			config <- report.getConfigurations.toList
-			module <- report.getConfigurationReport(config).getModuleRevisionIds.toArray collect { case revId: ModuleRevisionId => revId }
-			if module.getOrganisation == ScalaOrg && module.getName == LibraryModuleName
-		} yield
-			module.getRevision
+	{
+		val modules = report.getConfigurations.toList flatMap { config =>
+			report.getConfigurationReport(config).getModuleRevisionIds.toArray
+		}
+		modules flatMap {
+			case module: ModuleRevisionId if module.getOrganisation == ScalaOrg && module.getName == LibraryModuleName =>
+				module.getRevision :: Nil
+			case _ => Nil
+		}
+	}
 
 	/** Exceptions are logged to the update log file. */
 	private def logExceptions(report: ResolveReport)
@@ -229,16 +229,21 @@ final class Update(config: UpdateConfiguration)
 	private def retrieve(eventManager: EventManager, module: ModuleDescriptor,  target: UpdateTarget, autoScalaVersion: Option[String])
 	{
 		val retrieveOptions = new RetrieveOptions
-		retrieveOptions.setArtifactFilter(new ArtifactFilter(a => retrieveType(a.getType) && a.getExtraAttribute("classifier") == null))
 		val retrieveEngine = new RetrieveEngine(settings, eventManager)
-		val pattern =
+		val (pattern, extraFilter) =
 			target match
 			{
-				case _: UpdateScala => scalaRetrievePattern
-				case u: UpdateApp => appRetrievePattern(u.id.toID)
+				case _: UpdateScala => (scalaRetrievePattern, const(true))
+				case u: UpdateApp => (appRetrievePattern(u.id.toID), notCoreScala _)
 			}
-		val scalaV = scalaVersion orElse autoScalaVersion getOrElse ""
+		val filter = (a: IArtifact) => retrieveType(a.getType) && a.getExtraAttribute("classifier") == null && extraFilter(a)
+		retrieveOptions.setArtifactFilter(new ArtifactFilter(filter))
+		val scalaV = strictOr(scalaVersion, autoScalaVersion)
 		retrieveEngine.retrieve(module.getModuleRevisionId, baseDirectoryName(scalaV) + "/" + pattern, retrieveOptions)
+	}
+	private[this] def notCoreScala(a: IArtifact) = a.getName match {
+		case LibraryModuleName | CompilerModuleName => false
+		case _ => true
 	}
 	private def retrieveType(tpe: String): Boolean = tpe == "jar" || tpe == "bundle"
 	/** Add the scala tools repositories and a URL resolver to download sbt from the Google code project.*/
@@ -311,7 +316,7 @@ final class Update(config: UpdateConfiguration)
 		resolver
 	}
 	private def adjustPattern(base: String, pattern: String): String =
-		(if(base.endsWith("/") || base.isEmpty) base else (base + "/") ) + pattern
+		(if(base.endsWith("/") || isEmpty(base)) base else (base + "/") ) + pattern
 	private def mavenLocal = mavenResolver("Maven2 Local", "file://" + System.getProperty("user.home") + "/.m2/repository/")
 	/** Creates a maven-style resolver.*/
 	private def mavenResolver(name: String, root: String) =

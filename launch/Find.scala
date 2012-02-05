@@ -38,7 +38,7 @@ class Find(config: LaunchConfiguration)
 						}
 				case _ => Some(current)
 			}
-		val baseDirectory = found.getOrElse(current)
+		val baseDirectory = orElse(found, current)
 		System.setProperty("user.dir", baseDirectory.getAbsolutePath)
 		(ResolvePaths(config, baseDirectory), baseDirectory)
 	}

@@ -3,6 +3,8 @@
  */
  package xsbt.boot
 
+	import java.io.File
+
 // <boot.directory>
 //     scala-<scala.version>/    [baseDirectoryName]
 //          lib/    [ScalaDirectoryName]
@@ -69,10 +71,20 @@ private object BootConfiguration
 	* containing all jars for the requested version of scala. */
 	def appRetrievePattern(appID: xsbti.ApplicationID) = appDirectoryName(appID, "/") + "(/[component])/[artifact]-[revision](-[classifier]).[ext]"
 
+	val ScalaDirPrefix = "scala-"
+
 	/** The name of the directory to retrieve the application and its dependencies to.*/
 	def appDirectoryName(appID: xsbti.ApplicationID, sep: String) = appID.groupID + sep + appID.name + sep + appID.version
 	/** The name of the directory in the boot directory to put all jars for the given version of scala in.*/
-	def baseDirectoryName(scalaVersion: String) = if(scalaVersion.isEmpty) "other" else "scala-" + scalaVersion
+	def baseDirectoryName(scalaVersion: Option[String]) = scalaVersion match {
+		case None => "other"
+		case Some(sv) => ScalaDirPrefix + sv
+	}
+	def extractScalaVersion(dir: File): Option[String] =
+	{
+		val name = dir.getName
+		if(name.startsWith(ScalaDirPrefix)) Some(name.substring(ScalaDirPrefix.length)) else None
+	}
 }
 private object ProxyProperties
 {

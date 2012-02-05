@@ -11,7 +11,10 @@ import scala.collection.immutable.List
 //TODO: use copy constructor, check size change
 final case class LaunchConfiguration(scalaVersion: Value[String], ivyConfiguration: IvyOptions, app: Application, boot: BootSetup, logging: Logging, appProperties: List[AppProperty])
 {
-	def getScalaVersion = Value.get(scalaVersion)
+	def getScalaVersion = {
+		val sv = Value.get(scalaVersion)
+		if(sv == "auto") None else Some(sv)
+	}
 	def withScalaVersion(newScalaVersion: String) = LaunchConfiguration(new Explicit(newScalaVersion), ivyConfiguration, app, boot, logging, appProperties)
 	def withApp(app: Application) = LaunchConfiguration(scalaVersion, ivyConfiguration, app, boot, logging, appProperties)
 	def withAppVersion(newAppVersion: String) = LaunchConfiguration(scalaVersion, ivyConfiguration, app.withVersion(new Explicit(newAppVersion)), boot, logging, appProperties)

@@ -48,7 +48,6 @@ final class ResolveValues(conf: LaunchConfiguration)
 			case e: Explicit[t] => e.value
 			case i: Implicit[t] =>
 				trim(properties.getProperty(i.name)) map read orElse
-					i.default getOrElse
-					error("No " + i.name + " specified in " + propertiesFile)
+					i.default getOrElse ("No " + i.name + " specified in " + propertiesFile)
 		}
 }
