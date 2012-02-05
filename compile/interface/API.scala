@@ -260,7 +260,7 @@ final class API(val global: Global, val callback: xsbti.AnalysisCallback) extend
 			None
 	}
 	private def ignoreClass(sym: Symbol): Boolean =
-		sym.isLocalClass || sym.isAnonymousClass || sym.fullName.endsWith(LocalChild)
+		sym.isLocalClass || sym.isAnonymousClass || sym.fullName.endsWith(LocalChild.toString)
 
 	// This filters private[this] vals/vars that were not in the original source.
 	//  The getter will be used for processing instead.
