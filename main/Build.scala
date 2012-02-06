@@ -183,17 +183,14 @@ object Index
 		settings.flatMap(s => if(s.key.key.isLocal) Nil else s.key +: s.dependencies).filter(!_.key.isLocal).toSet
 	def attributeKeys(settings: Settings[Scope]): Set[AttributeKey[_]] =
 		settings.data.values.flatMap(_.keys).toSet[AttributeKey[_]]
-	def shouldFailOnKeyCollisions: Boolean = "true".equals(System.getProperty("sbt.failOnKeyCollision"))
 	def stringToKeyMap(settings: Set[AttributeKey[_]]): Map[String, AttributeKey[_]] =
 	{
 		val multiMap = settings.groupBy(_.label)
-		if (shouldFailOnKeyCollisions) {
-			val duplicates = multiMap collect { case (k, xs) if xs.size > 1 => (k, xs.map(_.manifest)) } collect { case (k, xs) if xs.size > 1 => (k, xs) }
-			if(!duplicates.isEmpty) {
-				error(duplicates map { case (k, tps) => "'" + k + "' (" + tps.mkString(", ") + ")" } mkString("AttributeKey ID collisions detected for: ", ", ", ""))
-			}
-		}
-		multiMap.collect { case (k, v) if validID(k) => (k, v.head) } toMap;
+		val duplicates = multiMap collect { case (k, xs) if xs.size > 1 => (k, xs.map(x => "%s (hash %s)".format(k, x.manifest.hashCode))) } collect { case (k, xs) if xs.size > 1 => (k, xs) }
+		if(duplicates.isEmpty)
+			multiMap.collect { case (k, v) if validID(k) => (k, v.head) } toMap;
+		else
+			error(duplicates map { case (k, tps) => "'" + k + "' (" + tps.mkString(", ") + ")" } mkString("AttributeKey ID collisions detected for: ", ", ", ""))
 	}
 	private[this] type TriggerMap = collection.mutable.HashMap[Task[_], Seq[Task[_]]]
 	def triggers(ss: Settings[Scope]): Triggers[Task] =
