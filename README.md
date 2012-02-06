@@ -4,14 +4,16 @@
 [documentation]: https://github.com/harrah/xsbt/wiki
 [Setup]: https://github.com/harrah/xsbt/wiki/Getting-Started-Setup
 [video of a demo]: http://vimeo.com/20263617
+[FAQ]: https://github.com/harrah/xsbt/wiki/FAQ
 
 # sbt 0.11
 
-This is the 0.11.x series of sbt.  See [Setup] for getting started with the latest binary release or see below to build from source.
+This is the 0.11.x series of sbt.
 
-sbt 0.7.7 and earlier versions are hosted on [Google Code].
-
-There is a [video of a demo] given at [Scala Days 2011] based on sbt 0.10.0 that gives an introduction to the configuration system in sbt 0.10.0 and later.  See the [documentation] for current information.
+ * [Setup]: Describes getting started with the latest binary release.  See below to build from source.
+ * [FAQ]: Explains how to get help, how to report an issue, and how to contribute.
+ * There is a [video of a demo] given at [Scala Days 2011] based on sbt 0.10.0 that gives an introduction to the configuration system in sbt 0.10.0 and later.  See the [documentation] for current information.
+ * [Google Code]: hosts sbt 0.7.7 and earlier versions
 
 # Build from source
 
