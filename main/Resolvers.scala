@@ -42,13 +42,13 @@ object Resolvers
 			val revision = uri.getFragment
 			Some {
 				() => creates(localCopy) {
-					run(None, "svn", "checkout", "-r", revision, uri.toASCIIString, localCopy.getAbsolutePath)
+					run("svn", "checkout", "-r", revision, uri.toASCIIString, localCopy.getAbsolutePath)
 				}
 			}
 		} else
 			Some {
 				() => creates(localCopy) {
-					run(None, "svn", "checkout", uri.toASCIIString, localCopy.getAbsolutePath)
+					run("svn", "checkout", uri.toASCIIString, localCopy.getAbsolutePath)
 				}
 			}
 	}
@@ -57,7 +57,7 @@ object Resolvers
 	{
 		override val scheme = "hg"
 
-		override def clone(at: String, into: File) = creates(into) {run(None, "hg", "clone", at, into.getAbsolutePath)}
+		override def clone(at: String, into: File) = creates(into) {run("hg", "clone", at, into.getAbsolutePath)}
 
 		override def checkout(branch: String, in: File)
 		{
@@ -69,7 +69,7 @@ object Resolvers
 	{
 		override val scheme = "git"
 
-		override def clone(at: String, into: File) = creates(into) {run(None, "git", "clone", at, into.getAbsolutePath)}
+		override def clone(at: String, into: File) = creates(into) {run("git", "clone", at, into.getAbsolutePath)}
 
 		override def checkout(branch: String, in: File)
 		{
@@ -112,6 +112,8 @@ object Resolvers
 		val isWindows = System.getProperty("os.name", "").toLowerCase.contains("windows")
 		isWindows && !isCygwin
 	}
+
+	def run(command: String*) {run(None, command: _*)}
 
 	def run(cwd: Option[File], command: String*)
 	{
