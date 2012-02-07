@@ -183,10 +183,10 @@ object Index
 		settings.flatMap(s => if(s.key.key.isLocal) Nil else s.key +: s.dependencies).filter(!_.key.isLocal).toSet
 	def attributeKeys(settings: Settings[Scope]): Set[AttributeKey[_]] =
 		settings.data.values.flatMap(_.keys).toSet[AttributeKey[_]]
-	def stringToKeyMap(settings: Set[AttributeKey[_]]): Map[String, AttributeKey[_]] =	
+	def stringToKeyMap(settings: Set[AttributeKey[_]]): Map[String, AttributeKey[_]] =
 	{
 		val multiMap = settings.groupBy(_.label)
-		val duplicates = multiMap collect { case (k, xs) if xs.size > 1 => (k, xs.map(_.manifest)) } collect { case (k, xs) if xs.size > 1 => (k, xs) }
+		val duplicates = multiMap collect { case (k, xs) if xs.size > 1 => (k, xs.map(x => "%s (hash %s)".format(k, x.manifest.hashCode))) } collect { case (k, xs) if xs.size > 1 => (k, xs) }
 		if(duplicates.isEmpty)
 			multiMap.collect { case (k, v) if validID(k) => (k, v.head) } toMap;
 		else
