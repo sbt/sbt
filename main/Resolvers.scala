@@ -42,13 +42,13 @@ object Resolvers
 			val revision = uri.getFragment
 			Some {
 				() => creates(localCopy) {
-					run("svn", "checkout", "-r", revision, from, to)
+					run("svn", "checkout", "-q", "-r", revision, from, to) |>: stdout
 				}
 			}
 		} else
 			Some {
 				() => creates(localCopy) {
-					run("svn", "checkout", from, to)
+					run("svn", "checkout", "-q", from, to) |>: stdout
 				}
 			}
 	}
