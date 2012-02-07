@@ -35,18 +35,20 @@ object Resolvers
 
 		val uri = info.uri.withoutMarkerScheme
 		val localCopy = uniqueSubdirectoryFor(normalized(uri), in = info.staging)
+		val from = uri.withoutFragment.toASCIIString
+		val to = localCopy.getAbsolutePath
 
 		if (uri.hasFragment) {
 			val revision = uri.getFragment
 			Some {
 				() => creates(localCopy) {
-					run("svn", "checkout", "-r", revision, uri.toASCIIString, localCopy.getAbsolutePath)
+					run("svn", "checkout", "-r", revision, from, to)
 				}
 			}
 		} else
 			Some {
 				() => creates(localCopy) {
-					run("svn", "checkout", uri.toASCIIString, localCopy.getAbsolutePath)
+					run("svn", "checkout", from, to)
 				}
 			}
 	}
