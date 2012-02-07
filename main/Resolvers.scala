@@ -58,12 +58,12 @@ object Resolvers
 		override val scheme = "hg"
 
 		override def clone(from: String, to: File) {
-			run("hg", "clone", from, to.getAbsolutePath)
+			run("hg", "clone", from, to.getAbsolutePath) |>: stdout
 		}
 
 		override def checkout(branch: String, in: File)
 		{
-			run(Some(in), "hg", "-q", "checkout", branch)
+			run(Some(in), "hg", "checkout", "-q", branch) |>: stdout
 		}
 	}.toResolver
 
@@ -73,12 +73,20 @@ object Resolvers
 
 		override def clone(from: String, to: File)
 		{
-			run("git", "clone", from, to.getAbsolutePath)
+			run("git", "clone", from, to.getAbsolutePath) |>: stdout
+			checkout("origin/HEAD", to)
+			// get names of all remote branches
+			val branches = run(Some(to), "git", "ls-remote", "--heads", "origin") map {_.trim.substring(52)}
+			branches foreach {
+				branch =>
+					// locally track the remote branch
+					run(Some(to), "git", "branch", "--track", "--force", branch, "origin/" + branch)
+			}
 		}
 
 		override def checkout(branch: String, in: File)
 		{
-			run(Some(in), "git", "checkout", "-q", branch)
+			run(Some(in), "git", "checkout", "-q", branch) |>: stdout
 		}
 	}.toResolver
 
@@ -120,21 +128,13 @@ object Resolvers
 		isWindows && !isCygwin
 	}
 
-	def run(command: String*) {run(None, command: _*)}
+	def run(command: String*): Stream[String] = run(None, command: _*)
 
-	def run(cwd: Option[File], command: String*)
-	{
-		val result =
-			Process(
-				if (onWindows)
-					"cmd" +: "/c" +: command
-				else
-					command,
-				cwd
-			) !;
-		if (result != 0)
-			error("Nonzero exit code (" + result + "): " + command.mkString(" "))
-	}
+	def run(cwd: Option[File], command: String*) = Process(
+		if (onWindows) "cmd" +: "/c" +: command
+		else command,
+		cwd
+	).lines
 
 	def creates(file: File)(f: => Unit) =
 	{
@@ -150,4 +150,8 @@ object Resolvers
 	}
 
 	def uniqueSubdirectoryFor(uri: URI, in: File) = new File(in, Hash.halfHashString(uri.toASCIIString))
+
+	object stdout {
+		def |>:(seq: Seq[_]) {seq foreach (println _)}
+	}
 }
