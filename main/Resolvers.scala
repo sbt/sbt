@@ -57,7 +57,9 @@ object Resolvers
 	{
 		override val scheme = "hg"
 
-		override def clone(at: String, into: File) = creates(into) {run("hg", "clone", at, into.getAbsolutePath)}
+		override def clone(from: String, to: File) {
+			run("hg", "clone", from, to.getAbsolutePath)
+		}
 
 		override def checkout(branch: String, in: File)
 		{
@@ -69,7 +71,10 @@ object Resolvers
 	{
 		override val scheme = "git"
 
-		override def clone(at: String, into: File) = creates(into) {run("git", "clone", at, into.getAbsolutePath)}
+		override def clone(from: String, to: File)
+		{
+			run("git", "clone", from, to.getAbsolutePath)
+		}
 
 		override def checkout(branch: String, in: File)
 		{
@@ -81,7 +86,7 @@ object Resolvers
 	{
 		val scheme: String
 
-		def clone(at: String, into: File): File
+		def clone(from: String, to: File)
 
 		def checkout(branch: String, in: File)
 
@@ -89,18 +94,20 @@ object Resolvers
 			val uri = info.uri.withoutMarkerScheme
 			val staging = info.staging
 			val localCopy = uniqueSubdirectoryFor(normalized(uri.withoutFragment), in = staging)
+			val from = uri.withoutFragment.toASCIIString
 
 			if (uri.hasFragment) {
 				val branch = uri.getFragment
 				val branchCopy = uniqueSubdirectoryFor(normalized(uri), in = staging)
 				Some {
 					() =>
-						clone(uri.withoutFragment.toASCIIString, into = localCopy)
-						clone(localCopy.getAbsolutePath, into = branchCopy)
-						checkout(branch, in = branchCopy)
-						branchCopy
+						creates(localCopy) {clone(from, to = localCopy)}
+						creates(branchCopy) {
+							clone(localCopy.getAbsolutePath, to = branchCopy)
+							checkout(branch, in = branchCopy)
+						}
 				}
-			} else Some {() => clone(uri.withoutFragment.toASCIIString, into = localCopy)}
+			} else Some {() => creates(localCopy) {clone(from, to = localCopy)}}
 		}
 
 		private def normalized(uri: URI) = uri.copy(scheme = scheme)
@@ -131,15 +138,15 @@ object Resolvers
 
 	def creates(file: File)(f: => Unit) =
 	{
-		try {
-			if (!file.exists)
+		if (!file.exists)
+			try {
 				f
-			file
-		} catch {
-			case e =>
-				IO.delete(file)
-				throw e
-		}
+			} catch {
+				case e =>
+					IO.delete(file)
+					throw e
+			}
+		file
 	}
 
 	def uniqueSubdirectoryFor(uri: URI, in: File) = new File(in, Hash.halfHashString(uri.toASCIIString))
