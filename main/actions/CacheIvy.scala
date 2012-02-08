@@ -92,9 +92,9 @@ object CacheIvy
 	private[this] val crossToInt = (c: CrossVersion) => c match { case Disabled => 0; case b: Binary => BinaryValue; case f: Full => FullValue }
 
 	implicit def moduleIDFormat(implicit sf: Format[String], af: Format[Artifact], bf: Format[Boolean], ef: Format[ExclusionRule]): Format[ModuleID] =
-		wrap[ModuleID, ((String,String,String,Option[String]),(Boolean,Boolean,Seq[Artifact],Seq[ExclusionRule],Map[String,String],CrossVersion))](
-			m => ((m.organization,m.name,m.revision,m.configurations), (m.isChanging, m.isTransitive, m.explicitArtifacts, m.exclusions, m.extraAttributes, m.crossVersion)),
-			{ case ((o,n,r,cs),(ch,t,as,excl,x,cv)) => ModuleID(o,n,r,cs,ch,t,as,excl,x,cv) }
+		wrap[ModuleID, ((String,String,String,Option[String]),(Boolean,Boolean,Boolean,Seq[Artifact],Seq[ExclusionRule],Map[String,String],CrossVersion))](
+			m => ((m.organization,m.name,m.revision,m.configurations), (m.isChanging, m.isTransitive, m.isForce, m.explicitArtifacts, m.exclusions, m.extraAttributes, m.crossVersion)),
+			{ case ((o,n,r,cs),(ch,t,f,as,excl,x,cv)) => ModuleID(o,n,r,cs,ch,t,f,as,excl,x,cv) }
 		)
 
 	implicit def configurationFormat(implicit sf: Format[String]): Format[Configuration] =
