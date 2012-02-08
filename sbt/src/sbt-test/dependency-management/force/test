@@ -1,9 +1,6 @@
-#$ pause
 $ touch force
 
-#$ pause
 > reload
-#$ pause
 
 > check-forced
 -> check-depend
