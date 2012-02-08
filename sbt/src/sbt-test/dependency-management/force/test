@@ -1,1 +1,15 @@
+#$ pause
+$ touch force
+
+#$ pause
+> reload
+#$ pause
+
 > check-forced
+-> check-depend
+
+$ delete force
+> reload
+
+-> check-forced
+> check-depend
