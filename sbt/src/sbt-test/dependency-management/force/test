@@ -1,0 +1,12 @@
+$ touch force
+
+> reload
+
+> check-forced
+-> check-depend
+
+$ delete force
+> reload
+
+-> check-forced
+> check-depend

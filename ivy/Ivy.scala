@@ -404,7 +404,7 @@ private object IvySbt
 	{
 		for(dependency <- dependencies)
 		{
-			val dependencyDescriptor = new DefaultDependencyDescriptor(moduleID, toID(dependency), false, dependency.isChanging, dependency.isTransitive)
+			val dependencyDescriptor = new DefaultDependencyDescriptor(moduleID, toID(dependency), dependency.isForce, dependency.isChanging, dependency.isTransitive)
 			dependency.configurations match
 			{
 				case None => // The configuration for this dependency was not explicitly specified, so use the default
