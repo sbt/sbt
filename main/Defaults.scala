@@ -276,7 +276,7 @@ object Defaults extends BuildCommon
 		testLoader <<= (fullClasspath, scalaInstance, taskTemporaryDirectory) map { (cp, si, temp) => TestFramework.createTestLoader(data(cp), si, IO.createUniqueDirectory(temp)) },
 		testFrameworks in GlobalScope :== {
 			import sbt.TestFrameworks._
-			Seq(ScalaCheck, Specs2, Specs, ScalaTest, ScalaCheckCompat, ScalaTestCompat, SpecsCompat, JUnit)
+			Seq(ScalaCheck, Specs2, Specs, ScalaTest, JUnit)
 		},
 		loadedTestFrameworks <<= (testFrameworks, streams, testLoader) map { (frameworks, s, loader) =>
 			frameworks.flatMap(f => f.create(loader, s.log).map( x => (f,x)).toIterable).toMap
