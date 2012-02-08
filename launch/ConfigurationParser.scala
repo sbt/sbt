@@ -90,11 +90,12 @@ class ConfigurationParser
 	def processVersion(label: String, defaultName: String)(value: Option[String]): Value[String] =
 		value.map(readValue[String](label)).getOrElse(new Implicit(defaultName, None))
 		
-	def readValue[T](label: String)(implicit read: String => T): String => Value[T] = value =>
+	def readValue[T](label: String)(implicit read: String => T): String => Value[T] = value0 =>
 	{
+		val value = substituteVariables(value0)
 		if(isEmpty(value)) error(label + " cannot be empty (omit declaration to use the default)")
 		try { parsePropertyValue(label, value)(Value.readImplied[T]) }
-		catch { case e: BootException =>  new Explicit(read(substituteVariables(value))) }
+		catch { case e: BootException =>  new Explicit(read(value)) }
 	}
 	def processSection[T](sections: SectionMap, name: String, f: LabelMap => T) =
 		process[String,LabelMap,T](sections, name, m => f(m default(x => None)))
