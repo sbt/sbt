@@ -59,7 +59,7 @@ object GlobalPlugin
 		}
 	}
 	val globalPluginSettings = inScope(Scope.GlobalScope in LocalRootProject)(Seq(
-		organization := "org.scala-sbt",
+		organization := SbtArtifacts.Organization,
 		onLoadMessage <<= Keys.baseDirectory("Loading global plugins from " + _),
 		name := "global-plugin",
 		sbtPlugin := true,
