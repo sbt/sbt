@@ -769,7 +769,10 @@ object Classpaths
 		},
 		deliverLocalConfiguration <<= (crossTarget, ivyLoggingLevel) map { (outDir, level) => deliverConfig( outDir, logging = level ) },
 		deliverConfiguration <<= deliverLocalConfiguration,
-		publishConfiguration <<= (packagedArtifacts, publishTo, publishMavenStyle, deliver, checksums in publish, ivyLoggingLevel) map { (arts, publishTo, mavenStyle, ivyFile, checks, level) =>
+		validateResolvers <<= (fullResolvers, otherResolvers, streams) map { case (full, other, s) =>
+			warnResolversConflict(full ++: other, s.log)
+		},
+		publishConfiguration <<= (packagedArtifacts, publishTo, publishMavenStyle, deliver, checksums in publish, ivyLoggingLevel, validateResolvers) map { (arts, publishTo, mavenStyle, ivyFile, checks, level, v) =>
 			publishConfig(arts, if(mavenStyle) None else Some(ivyFile), resolverName = getPublishTo(publishTo).name, checksums = checks, logging = level)
 		},
 		publishLocalConfiguration <<= (packagedArtifacts, deliverLocal, checksums in publishLocal, ivyLoggingLevel) map {
@@ -801,6 +804,11 @@ object Classpaths
 			CrossVersion(scalaVersion, binVersion)(base).copy(crossVersion = CrossVersion.Disabled)
 		}
 	)
+	def warnResolversConflict(ress: Seq[Resolver], log: Logger) {
+		for ((name, r) <- ress groupBy (_.name) if r.size > 1) {
+			log.warn("Multiple resolvers configured with the name '" + name + "'. Rename to avoid conflict.")
+		}
+	}
 	def pluginProjectID: Initialize[ModuleID] = (sbtVersion in update, sbtBinaryVersion in update, scalaVersion in update, scalaBinaryVersion in update, projectID, sbtPlugin) {
 		(sbtV, sbtBV, scalaV, scalaBV, pid, isPlugin) =>
 			if(isPlugin)
@@ -963,7 +971,7 @@ object Classpaths
 	def unmanagedDependencies: Initialize[Task[Classpath]] =
 		(thisProjectRef, configuration, settings, buildDependencies) flatMap unmanagedDependencies0
 	def mkIvyConfiguration: Initialize[Task[IvyConfiguration]] =
-		(fullResolvers, ivyPaths, otherResolvers, moduleConfigurations, offline, checksums in update, appConfiguration, streams) map { (rs, paths, other, moduleConfs, off, check, app, s) =>
+		(fullResolvers, ivyPaths, otherResolvers, moduleConfigurations, offline, checksums in update, appConfiguration, streams, validateResolvers) map { (rs, paths, other, moduleConfs, off, check, app, s, _) =>
 			new InlineIvyConfiguration(paths, rs, other, moduleConfs, off, Some(lock(app)), check, s.log)
 		}
 
