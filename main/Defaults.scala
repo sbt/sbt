@@ -772,7 +772,7 @@ object Classpaths
 		validateResolvers <<= (fullResolvers, otherResolvers, streams) map { case (full, other, s) =>
 			warnResolversConflict(full ++: other, s.log)
 		},
-		publishConfiguration <<= (packagedArtifacts, publishTo, publishMavenStyle, deliver, checksums in publish, ivyLoggingLevel, validateResolvers) map { (arts, publishTo, mavenStyle, ivyFile, checks, level, v) =>
+		publishConfiguration <<= (packagedArtifacts, publishTo, publishMavenStyle, deliver, checksums in publish, ivyLoggingLevel) map { (arts, publishTo, mavenStyle, ivyFile, checks, level) =>
 			publishConfig(arts, if(mavenStyle) None else Some(ivyFile), resolverName = getPublishTo(publishTo).name, checksums = checks, logging = level)
 		},
 		publishLocalConfiguration <<= (packagedArtifacts, deliverLocal, checksums in publishLocal, ivyLoggingLevel) map {
