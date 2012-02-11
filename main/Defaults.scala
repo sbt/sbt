@@ -769,9 +769,6 @@ object Classpaths
 		},
 		deliverLocalConfiguration <<= (crossTarget, ivyLoggingLevel) map { (outDir, level) => deliverConfig( outDir, logging = level ) },
 		deliverConfiguration <<= deliverLocalConfiguration,
-		validateResolvers <<= (fullResolvers, otherResolvers, streams) map { case (full, other, s) =>
-			warnResolversConflict(full ++: other, s.log)
-		},
 		publishConfiguration <<= (packagedArtifacts, publishTo, publishMavenStyle, deliver, checksums in publish, ivyLoggingLevel) map { (arts, publishTo, mavenStyle, ivyFile, checks, level) =>
 			publishConfig(arts, if(mavenStyle) None else Some(ivyFile), resolverName = getPublishTo(publishTo).name, checksums = checks, logging = level)
 		},
@@ -971,7 +968,8 @@ object Classpaths
 	def unmanagedDependencies: Initialize[Task[Classpath]] =
 		(thisProjectRef, configuration, settings, buildDependencies) flatMap unmanagedDependencies0
 	def mkIvyConfiguration: Initialize[Task[IvyConfiguration]] =
-		(fullResolvers, ivyPaths, otherResolvers, moduleConfigurations, offline, checksums in update, appConfiguration, streams, validateResolvers) map { (rs, paths, other, moduleConfs, off, check, app, s, _) =>
+		(fullResolvers, ivyPaths, otherResolvers, moduleConfigurations, offline, checksums in update, appConfiguration, streams) map { (rs, paths, other, moduleConfs, off, check, app, s) =>
+			warnResolversConflict(rs ++: other, s.log)
 			new InlineIvyConfiguration(paths, rs, other, moduleConfs, off, Some(lock(app)), check, s.log)
 		}
 
