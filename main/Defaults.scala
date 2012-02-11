@@ -801,6 +801,11 @@ object Classpaths
 			CrossVersion(scalaVersion, binVersion)(base).copy(crossVersion = CrossVersion.Disabled)
 		}
 	)
+	def warnResolversConflict(ress: Seq[Resolver], log: Logger) {
+		for ((name, r) <- ress groupBy (_.name) if r.size > 1) {
+			log.warn("Multiple resolvers configured with the name '" + name + "'. Rename to avoid conflict.")
+		}
+	}
 	def pluginProjectID: Initialize[ModuleID] = (sbtVersion in update, sbtBinaryVersion in update, scalaVersion in update, scalaBinaryVersion in update, projectID, sbtPlugin) {
 		(sbtV, sbtBV, scalaV, scalaBV, pid, isPlugin) =>
 			if(isPlugin)
@@ -964,6 +969,7 @@ object Classpaths
 		(thisProjectRef, configuration, settings, buildDependencies) flatMap unmanagedDependencies0
 	def mkIvyConfiguration: Initialize[Task[IvyConfiguration]] =
 		(fullResolvers, ivyPaths, otherResolvers, moduleConfigurations, offline, checksums in update, appConfiguration, streams) map { (rs, paths, other, moduleConfs, off, check, app, s) =>
+			warnResolversConflict(rs ++: other, s.log)
 			new InlineIvyConfiguration(paths, rs, other, moduleConfs, off, Some(lock(app)), check, s.log)
 		}
 
