@@ -5,6 +5,7 @@ package sbt
 
 	import java.io.File
 	import java.net.URI
+	import BuildLoader.ResolveInfo
 	import compiler.{Eval, EvalImports}
 	import complete.DefaultParsers.validID
 	import Compiler.Compilers
@@ -38,78 +39,29 @@ object Build
 }
 object RetrieveUnit
 {
-	def apply(tempDir: File, base: URI): Option[() => File] =
+	def apply(info: ResolveInfo): Option[() => File] =
 	{
-		lazy val tmp = temporary(tempDir, base)
-		base.getScheme match
-		{
-			case "git" => gitApply(tmp, base)
-			case _ if isGitPath(base.getPath) => gitApply(tmp, base)
-			case "http" | "https" => Some { () => downloadAndExtract(base, tmp); tmp }
-			case "file" => 
-				val f = new File(base)
-				if(f.isDirectory)
-				{
-					val finalDir = if (!f.canWrite) retrieveRODir(f, tmp) else f
-					Some(() => finalDir)
-				}
-				else None
+		info.uri match {
+			case Scheme("svn") | Scheme("svn+ssh") => Resolvers.subversion(info)
+			case Scheme("hg") => Resolvers.mercurial(info)
+			case Scheme("git") => Resolvers.git(info)
+			case Path(path) if path.endsWith(".git") => Resolvers.git(info)
+			case Scheme("http") | Scheme("https") | Scheme("ftp") => Resolvers.remote(info)
+			case Scheme("file") => Resolvers.local(info)
 			case _ => None
 		}
 	}
-	def isGitPath(path: String) = path.endsWith(".git")
-	private[this] def gitApply(tmp: File, base: URI) = Some { () => gitRetrieve(base, tmp); tmp }
-	def retrieveRODir(base: File, tempDir: File): File =
-	{
-		if (!tempDir.exists)
-		{
-			try {
-				IO.copyDirectory(base, tempDir)
-			} catch {
-				case e =>
-					IO.delete(tempDir)
-					throw e
-			}
-		}
-		tempDir
-	}
-	def downloadAndExtract(base: URI, tempDir: File): Unit = if(!tempDir.exists) IO.unzipURL(base.toURL, tempDir)
-	def temporary(tempDir: File, uri: URI): File = new File(tempDir, Hash.halve(hash(uri)))
-	def hash(uri: URI): String = Hash.toHex(Hash(uri.toASCIIString))
 
-	import Process._
-	def gitRetrieve(base: URI, tempDir: File): Unit =
-		if(!tempDir.exists)
-		{
-			try {
-				IO.createDirectory(tempDir)
-				gitClone(dropFragment(base), tempDir)
-				Option(base.getFragment) foreach { branch => gitCheckout(tempDir, branch) }
-			} catch {
-				case e => IO.delete(tempDir)
-				throw e
-			}
-		}
-	def dropFragment(base: URI): URI = if(base.getFragment eq null) base else new URI(base.getScheme, base.getSchemeSpecificPart, null)
-
-	def gitClone(base: URI, tempDir: File): Unit =
-                git("clone" :: dropFragment(base).toASCIIString :: tempDir.getAbsolutePath :: Nil, tempDir) ;
-	def gitCheckout(tempDir: File, branch: String): Unit =
-		git("checkout" :: "-q" :: branch :: Nil, tempDir)		
-        def git(args: List[String], cwd: File): Unit = 
-		if(isWindowsShell) run(List("cmd", "/c", "git") ++ args, cwd)
-		else run("git" +: args, cwd)
-	lazy val isWindowsShell = {
-		val ostype = System.getenv("OSTYPE")
-		val isCygwin = ostype != null && ostype.toLowerCase.contains("cygwin")
-		val isWindows = System.getProperty("os.name", "").toLowerCase.contains("windows")
-		isWindows && !isCygwin
-	}
-	def run(command: List[String], cwd: File): Unit =
+	object Scheme
 	{
-		val result = Process(command, cwd) ! ;
-		if(result != 0)
-			error("Nonzero exit code (" + result + "): " + command.mkString(" "))
+		def unapply(uri: URI) = Option(uri.getScheme)
+	}
+
+	object Path
+	{
+		import RichURI.fromURI
+
+		def unapply(uri: URI) = Option(uri.withoutMarkerScheme.getPath)
 	}
 }
 object EvaluateConfigurations
