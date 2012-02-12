@@ -42,13 +42,13 @@ object Resolvers
 			val revision = uri.getFragment
 			Some {
 				() => creates(localCopy) {
-					run("svn", "checkout", "-q", "-r", revision, from, to) |>: stdout
+					run("svn", "checkout", "-q", "-r", revision, from, to)
 				}
 			}
 		} else
 			Some {
 				() => creates(localCopy) {
-					run("svn", "checkout", "-q", from, to) |>: stdout
+					run("svn", "checkout", "-q", from, to)
 				}
 			}
 	}
@@ -57,13 +57,14 @@ object Resolvers
 	{
 		override val scheme = "hg"
 
-		override def clone(from: String, to: File) {
-			run("hg", "clone", from, to.getAbsolutePath) |>: stdout
+		override def clone(from: String, to: File)
+		{
+			run("hg", "clone", "-q", from, to.getAbsolutePath)
 		}
 
 		override def checkout(branch: String, in: File)
 		{
-			run(Some(in), "hg", "checkout", "-q", branch) |>: stdout
+			run(Some(in), "hg", "checkout", "-q", branch)
 		}
 	}.toResolver
 
@@ -73,20 +74,12 @@ object Resolvers
 
 		override def clone(from: String, to: File)
 		{
-			run("git", "clone", from, to.getAbsolutePath) |>: stdout
-			checkout("origin/HEAD", to)
-			// get names of all remote branches
-			val branches = run(Some(to), "git", "ls-remote", "--heads", "origin") map {_.trim.substring(52)}
-			branches foreach {
-				branch =>
-					// locally track the remote branch
-					run(Some(to), "git", "branch", "--track", "--force", branch, "origin/" + branch)
-			}
+			run("git", "clone", from, to.getAbsolutePath)
 		}
 
 		override def checkout(branch: String, in: File)
 		{
-			run(Some(in), "git", "checkout", "-q", branch) |>: stdout
+			run(Some(in), "git", "checkout", "-q", branch)
 		}
 	}.toResolver
 
@@ -100,20 +93,16 @@ object Resolvers
 
 		def toResolver: Resolver = (info: ResolveInfo) => {
 			val uri = info.uri.withoutMarkerScheme
-			val staging = info.staging
-			val localCopy = uniqueSubdirectoryFor(normalized(uri.withoutFragment), in = staging)
+			val localCopy = uniqueSubdirectoryFor(normalized(uri), in = info.staging)
 			val from = uri.withoutFragment.toASCIIString
 
 			if (uri.hasFragment) {
 				val branch = uri.getFragment
-				val branchCopy = uniqueSubdirectoryFor(normalized(uri), in = staging)
 				Some {
-					() =>
-						creates(localCopy) {clone(from, to = localCopy)}
-						creates(branchCopy) {
-							clone(localCopy.getAbsolutePath, to = branchCopy)
-							checkout(branch, in = branchCopy)
-						}
+					() => creates(localCopy) {
+						clone(from, to = localCopy)
+						checkout(branch, in = localCopy)
+					}
 				}
 			} else Some {() => creates(localCopy) {clone(from, to = localCopy)}}
 		}
@@ -128,13 +117,21 @@ object Resolvers
 		isWindows && !isCygwin
 	}
 
-	def run(command: String*): Stream[String] = run(None, command: _*)
+	def run(command: String*)
+	{
+		run(None, command: _*)
+	}
 
-	def run(cwd: Option[File], command: String*) = Process(
-		if (onWindows) "cmd" +: "/c" +: command
-		else command,
-		cwd
-	).lines
+	def run(cwd: Option[File], command: String*)
+	{
+		val result = Process(
+			if (onWindows) "cmd" +: "/c" +: command
+			else command,
+			cwd
+		) !;
+		if (result != 0)
+			error("Nonzero exit code (" + result + "): " + command.mkString(" "))
+	}
 
 	def creates(file: File)(f: => Unit) =
 	{
@@ -150,8 +147,4 @@ object Resolvers
 	}
 
 	def uniqueSubdirectoryFor(uri: URI, in: File) = new File(in, Hash.halfHashString(uri.toASCIIString))
-
-	object stdout {
-		def |>:(seq: Seq[_]) {seq foreach (println _)}
-	}
 }
