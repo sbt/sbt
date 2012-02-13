@@ -14,7 +14,7 @@ How To Use
 For sbt 0.11, add sbt-dependency-graph as a dependency in `project/plugins.sbt`:
 
 ```scala
-addSbtPlugin("net.virtualvoid" % "sbt-dependency-graph" % "0.5.1")
+addSbtPlugin("net.virtualvoid" % "sbt-dependency-graph" % "0.5.2")
 ```
 
 or, alternatively, in `project/plugins/project/build.scala`:
