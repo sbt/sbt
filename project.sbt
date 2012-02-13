@@ -2,7 +2,7 @@ sbtPlugin := true
 
 name := "sbt-dependency-graph"
 
-organization := "net.virtualvoid"
+organization := "net.virtual-void"
 
 version := "0.5.2"
 

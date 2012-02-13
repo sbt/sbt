@@ -1,6 +1,6 @@
 
 {
- "organization":"net.virtualvoid",
+ "organization":"net.virtual-void",
  "name":"sbt-dependency-graph",
  "version":"0.5.2",
  "description":"An sbt plugin which allows to create a graphml file from the dependencies of the project.",

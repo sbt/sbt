@@ -14,8 +14,10 @@ How To Use
 For sbt 0.11, add sbt-dependency-graph as a dependency in `project/plugins.sbt`:
 
 ```scala
-addSbtPlugin("net.virtualvoid" % "sbt-dependency-graph" % "0.5.2")
+addSbtPlugin("net.virtual-void" % "sbt-dependency-graph" % "0.5.2")
 ```
+
+*Note*: The organization has recently been changed to `net.virtual-void`.
 
 or, alternatively, in `project/plugins/project/build.scala`:
 
@@ -24,7 +26,7 @@ import sbt._
 
 object Plugins extends Build {
   lazy val root = Project("root", file(".")) dependsOn(
-    uri("git://github.com/jrudolph/sbt-dependency-graph.git#v0.5.1") // or another tag/branch/revision
+    uri("git://github.com/jrudolph/sbt-dependency-graph.git#v0.5.2") // or another tag/branch/revision
   )
 }
 ```
