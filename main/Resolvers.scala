@@ -19,7 +19,7 @@ object Resolvers
 		val from = new File(uri)
 		val to = uniqueSubdirectoryFor(uri, in = info.staging)
 
-		if (from.isDirectory) Some {() => creates(to) {IO.copyDirectory(from, to)}}
+		if (from.isDirectory) Some {() => if(from.canWrite) from else creates(to) {IO.copyDirectory(from, to)}}
 		else None
 	}
 
