@@ -223,7 +223,7 @@ object Packaging {
           <ComponentRef Id='SbtLauncherPath'/>
         </Feature>
       </Feature>
-      <Property Id="JAVAVERSION">
+      <!--<Property Id="JAVAVERSION">
         <RegistrySearch Id="JavaVersion"
                         Root="HKLM"
                         Key="SOFTWARE\Javasoft\Java Runtime Environment"
@@ -232,7 +232,7 @@ object Packaging {
       </Property>
       <Condition Message="This application requires a JVM available.  Please install Java, then run this installer again.">
         <![CDATA[Installed OR JAVAVERSION]]>
-      </Condition>
+      </Condition>-->
       <MajorUpgrade 
          AllowDowngrades="no" 
          Schedule="afterInstallInitialize"
