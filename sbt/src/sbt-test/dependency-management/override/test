@@ -1,8 +1,19 @@
+> 'set libraryDependencies := Seq("junit" % "junit" % "3.8.1" % "test")'
+> check 3.8.1
+> 'set dependencyOverrides := Set("junit" % "junit" % "4.5")'
+> check 4.5
+
+> 'set libraryDependencies := Seq("junit" % "junit" % "4.5" % "test")'
 > check 4.5
 > 'set dependencyOverrides := Set("junit" % "junit" % "3.8.1")'
 > check 3.8.1
 
-> 'set libraryDependencies := Seq("net.databinder" %% "dispatch-http" % "0.8.7" intransitive())'
+> 'set libraryDependencies := Seq("net.databinder" %% "dispatch-http" % "0.8.7")'
 > check 0.8.7
 > 'set dependencyOverrides := Set("net.databinder" %% "dispatch-http" % "0.8.6")'
 > check 0.8.6
+
+> 'set libraryDependencies := Seq("net.databinder" %% "dispatch-http" % "0.8.6")'
+> check 0.8.6
+> 'set dependencyOverrides := Set("net.databinder" %% "dispatch-http" % "0.8.7")'
+> check 0.8.7
