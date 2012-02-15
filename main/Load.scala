@@ -249,10 +249,8 @@ object Load
 		newLoaders transformAll build
 	}
 	def addOverrides(unit: BuildUnit, loaders: BuildLoader): BuildLoader =
-	{
-		val overrides = PluginManagement.extractOverrides(unit.plugins.fullClasspath)
-		loaders.updatePluginManagement(overrides, unit.plugins.loader)
-	}
+		loaders updatePluginManagement PluginManagement.extractOverrides(unit.plugins.fullClasspath)
+
 	def addResolvers(unit: BuildUnit, isRoot: Boolean, loaders: BuildLoader): BuildLoader =
 		unit.definitions.builds.flatMap(_.buildLoaders) match
 		{
@@ -468,7 +466,9 @@ object Load
 	def pluginDefinitionLoader(config: LoadBuildConfiguration, pluginClasspath: Seq[Attributed[File]]): (Seq[Attributed[File]], ClassLoader) =
 	{
 		val definitionClasspath = if(pluginClasspath.isEmpty) config.classpath else (pluginClasspath ++ config.classpath).distinct
-		val pluginLoader = if(pluginClasspath.isEmpty) config.loader else ClasspathUtilities.toLoader(data(pluginClasspath), config.loader)
+		val pm = config.pluginManagement
+		def addToLoader() = pm.loader add Path.toURLs(data(pluginClasspath))
+		val pluginLoader = if(pluginClasspath.isEmpty) pm.initialLoader else { addToLoader(); pm.loader }
 		(definitionClasspath, pluginLoader)
 	}
 	def buildPluginDefinition(dir: File, s: State, config: LoadBuildConfiguration): Seq[Attributed[File]] =
