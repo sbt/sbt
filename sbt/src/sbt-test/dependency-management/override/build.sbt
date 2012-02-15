@@ -1,4 +1,6 @@
-scalaVersion := "2.9.1"
+autoScalaLibrary := false
+
+libraryDependencies += "junit" % "junit" % "4.5" % "test"
 
 InputKey[Unit]("check") <<= inputTask { args => 
 	(update, args) map {

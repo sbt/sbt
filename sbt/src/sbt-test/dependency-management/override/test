@@ -1,4 +1,8 @@
-> check 2.9.1
-> 'set dependencyOverrides += "org.scala-lang" % "scala-library" % "2.8.2"'
-> check 2.8.2
+> check 4.5
+> 'set dependencyOverrides := Set("junit" % "junit" % "3.8.1")'
+> check 3.8.1
 
+> 'set libraryDependencies := Seq("net.databinder" %% "dispatch-http" % "0.8.7" intransitive())'
+> check 0.8.7
+> 'set dependencyOverrides := Set("net.databinder" %% "dispatch-http" % "0.8.6")'
+> check 0.8.6
