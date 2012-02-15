@@ -80,19 +80,49 @@ object SessionSettings
 	}
 	def saveSomeSettings(s: State)(include: ProjectRef => Boolean): State =
 		withSettings(s){session =>
-			for( (ref, settings) <- session.append if !settings.isEmpty && include(ref) )
-				writeSettings(ref, settings, Project.structure(s))
-			reapply(session.copy(original = session.mergeSettings, append = Map.empty), s)
+			val newAppend =
+				for( (ref, settings) <- session.append if !settings.isEmpty && include(ref) )
+					yield ref -> writeSettings(ref, settings.toList, session.original, Project.structure(s))
+      val newSession = session.copy(append = newAppend)
+			reapply(newSession.copy(original = newSession.mergeSettings, append = Map.empty), s)
 		}
-	def writeSettings(pref: ProjectRef, settings: Seq[SessionSetting], structure: Load.BuildStructure)
+	def writeSettings(pref: ProjectRef, settings: List[SessionSetting], original: Seq[Setting[_]], structure: Load.BuildStructure): List[SessionSetting] =
 	{
 		val project = Project.getProject(pref, structure).getOrElse(error("Invalid project reference " + pref))
-		val appendTo: File = BuildPaths.configurationSources(project.base).headOption.getOrElse(new File(project.base, "build.sbt"))
-		val baseAppend = settingStrings(settings).flatMap("" :: _ :: Nil)
-		val adjustedLines = if(appendTo.isFile && hasTrailingBlank(IO readLines appendTo) ) baseAppend else "" +: baseAppend
-		IO.writeLines(appendTo, adjustedLines, append = true)
+		val writeTo: File = BuildPaths.configurationSources(project.base).headOption.getOrElse(new File(project.base, "build.sbt"))
+		writeTo.createNewFile()
+
+		val path = writeTo.getAbsolutePath
+		val inFile = original collect { s => s.pos match { case SourceCoord(`path`, line) => (s, line) } }
+		val (lineMap, newSettings) = splitAppended(inFile, settings)
+		val exist = IO.readLines(writeTo).zipWithIndex map {
+			case (line, idx) => lineMap get (idx+1) map (_._2) getOrElse line
+		}
+		val adjusted = if(!newSettings.isEmpty && needsTrailingBlank(exist)) exist :+ "" else exist
+		val lines = adjusted ++ newSettings.map(_._2).flatMap(_ :: "" :: Nil)
+		IO.writeLines(writeTo, lines)
+		val offs = adjusted.size + 1
+		val withPos = newSettings zip Range(offs, offs + 2*newSettings.size, 2) map {
+			case ((s, text), line) => (s withPos SourceCoord(path, line), text)
+		}
+		withPos ++ lineMap.values
 	}
-	def hasTrailingBlank(lines: Seq[String]) = lines.takeRight(1).exists(_.trim.isEmpty)
+	def splitAppended(original: Seq[(Setting[_], Int)], settings: List[SessionSetting]): (Map[Int, SessionSetting], List[SessionSetting]) = {
+		def depends(s: Setting[_]) = !s.init.dependencies.isEmpty
+		val (m, news) = ((Map.empty[Int, SessionSetting], List[SessionSetting]()) /: settings) {
+			case ((m, news), s) =>
+				val replace = if (depends(s._1)) None else
+					original.collect {
+						case (orig, line) if orig.key == s._1.key => (orig, line -> s)
+					}.lastOption.collect {
+						// If the setting to replace depends on other keys, we'd better not delete a part of the dependency chain.
+						case (orig, bind) if !depends(orig) => bind
+					}
+				(m ++ replace, if (replace.isDefined) news else s::news)
+		}
+		(m, news.reverse)
+	}
+	def needsTrailingBlank(lines: Seq[String]) = !lines.isEmpty && !lines.takeRight(1).exists(_.trim.isEmpty)
 	def printAllSettings(s: State): State =
 		withSettings(s){ session =>
 			for( (ref, settings) <- session.append if !settings.isEmpty) {
@@ -107,10 +137,8 @@ object SessionSettings
 			s
 		}
 	def printSettings(settings: Seq[SessionSetting]): Unit =
-		for((stringRep, index) <- settingStrings(settings).zipWithIndex)
+		for(((_,stringRep), index) <- settings.zipWithIndex)
 			println("  " + (index+1) + ". " + stringRep)
-
-	def settingStrings(s: Seq[SessionSetting]): Seq[String] = s.map(_._2)
 
 	def Help = """session <command>
 
