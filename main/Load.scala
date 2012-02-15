@@ -48,8 +48,9 @@ object Load
 		val compilers = Compiler.compilers(ClasspathOptions.boot)(state.configuration, log)
 		val evalPluginDef = EvaluateTask.evalPluginDef(log) _
 		val delegates = defaultDelegates
+		val pluginMgmt = PluginManagement(loader)
 		val inject = InjectSettings(injectGlobal(state), Nil, const(Nil))
-		new LoadBuildConfiguration(stagingDirectory, classpath, loader, compilers, evalPluginDef, definesClass, delegates, EvaluateTask.injectStreams, inject, None, log)
+		new LoadBuildConfiguration(stagingDirectory, classpath, loader, compilers, evalPluginDef, definesClass, delegates, EvaluateTask.injectStreams, pluginMgmt, inject, None, log)
 	}
 	def injectGlobal(state: State): Seq[Project.Setting[_]] =
 		(appConfiguration in GlobalScope :== state.configuration) +:
@@ -229,13 +230,14 @@ object Load
 		if(srcs.isEmpty) const(Nil) else EvaluateConfigurations(eval(), srcs, imports)
 
 	def load(file: File, s: State, config: LoadBuildConfiguration): PartBuild =
+		load(file, builtinLoader(s, config.copy(pluginManagement = config.pluginManagement.shift) ))
+	def builtinLoader(s: State, config: LoadBuildConfiguration): BuildLoader =
 	{
 		val fail = (uri: URI) => error("Invalid build URI (no handler available): " + uri)
 		val resolver = (info: BuildLoader.ResolveInfo) => RetrieveUnit(info)
 		val build = (info: BuildLoader.BuildInfo) => Some(() => loadUnit(info.uri, info.base, info.state, info.config))
 		val components = BuildLoader.components(resolver, build, full = BuildLoader.componentLoader)
-		val builtinLoader = BuildLoader(components, fail, s, config)
-		load(file, builtinLoader)
+		BuildLoader(components, fail, s, config)
 	}
 	def load(file: File, loaders: BuildLoader): PartBuild = loadURI(IO.directoryURI(file), loaders)
 	def loadURI(uri: URI, loaders: BuildLoader): PartBuild =
@@ -245,6 +247,11 @@ object Load
 		checkAll(referenced, map)
 		val build = new PartBuild(uri, map)
 		newLoaders transformAll build
+	}
+	def addOverrides(unit: BuildUnit, loaders: BuildLoader): BuildLoader =
+	{
+		val overrides = PluginManagement.extractOverrides(unit.plugins.fullClasspath)
+		loaders.updatePluginManagement(overrides, unit.plugins.loader)
 	}
 	def addResolvers(unit: BuildUnit, isRoot: Boolean, loaders: BuildLoader): BuildLoader =
 		unit.definitions.builds.flatMap(_.buildLoaders) match
@@ -287,7 +294,7 @@ object Load
 				{
 					val (loadedBuild, refs) = loaded(loaders(b))
 					checkBuildBase(loadedBuild.unit.localBase)
-					val newLoader = addResolvers(loadedBuild.unit, builds.isEmpty, loaders)
+					val newLoader = addOverrides(loadedBuild.unit, addResolvers(loadedBuild.unit, builds.isEmpty, loaders))
 					loadAll(refs.flatMap(Reference.uri) reverse_::: bs, references.updated(b, refs), newLoader, builds.updated(b, loadedBuild))
 				}
 			case Nil => (references, builds, loaders)
@@ -428,7 +435,10 @@ object Load
 		Keys.onLoadMessage <<= Keys.baseDirectory("Loading project definition from " + _)
 	))
 	def enableSbtPlugin(config: LoadBuildConfiguration): LoadBuildConfiguration =
-		config.copy(injectSettings = config.injectSettings.copy(global = autoPluginSettings ++ config.injectSettings.global))
+		config.copy(injectSettings = config.injectSettings.copy(
+			global = autoPluginSettings ++ config.injectSettings.global,
+			project = config.pluginManagement.inject ++ config.injectSettings.project
+		))
 	def activateGlobalPlugin(config: LoadBuildConfiguration): LoadBuildConfiguration =
 		config.globalPlugin match
 		{
@@ -624,7 +634,10 @@ object Load
 		val aggregates = Aggregation.relation(units)
 		new BuildUtil(keyIndex, data, root, Load getRootProject units, getp, configs, aggregates)
 	}
-	final case class LoadBuildConfiguration(stagingDirectory: File, classpath: Seq[Attributed[File]], loader: ClassLoader, compilers: Compilers, evalPluginDef: (BuildStructure, State) => Seq[Attributed[File]], definesClass: DefinesClass, delegates: LoadedBuild => Scope => Seq[Scope], scopeLocal: ScopeLocal, injectSettings: InjectSettings, globalPlugin: Option[GlobalPlugin], log: Logger)
+	final case class LoadBuildConfiguration(stagingDirectory: File, classpath: Seq[Attributed[File]], loader: ClassLoader,
+		compilers: Compilers, evalPluginDef: (BuildStructure, State) => Seq[Attributed[File]], definesClass: DefinesClass,
+		delegates: LoadedBuild => Scope => Seq[Scope], scopeLocal: ScopeLocal,
+		pluginManagement: PluginManagement, injectSettings: InjectSettings, globalPlugin: Option[GlobalPlugin], log: Logger)
 	{
 		lazy val (globalPluginClasspath, globalPluginLoader) = pluginDefinitionLoader(this, Load.globalPluginClasspath(globalPlugin))
 		lazy val globalPluginNames = if(globalPluginClasspath.isEmpty) Nil else getPluginNames(globalPluginClasspath, globalPluginLoader)

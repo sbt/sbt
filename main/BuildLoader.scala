@@ -123,6 +123,12 @@ final class BuildLoader(
 			full.setRoot(loaders.full),
 			loaders.transformAll andThen transformAll
 		)
+	def updatePluginManagement(overrides: Set[ModuleID], loader: ClassLoader): BuildLoader =
+	{
+		val mgmt = config.pluginManagement
+		val newConfig = config.copy(pluginManagement = mgmt.copy(overrides = mgmt.overrides ++ overrides, loader = loader))
+		new BuildLoader(fail, state, newConfig, resolvers, builders, transformer, full, transformAll)
+	}
 	def components = new Components(resolvers.applyFun, builders.applyFun, transformer, full.applyFun, transformAll)
 	def apply(uri: URI): BuildUnit =
 	{
