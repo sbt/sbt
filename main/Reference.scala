@@ -45,6 +45,25 @@ object RootProject
 }
 object Reference
 {
+	implicit val resolvedReferenceOrdering: Ordering[ResolvedReference] = new Ordering[ResolvedReference] {
+		def compare(a: ResolvedReference, b: ResolvedReference): Int = (a, b) match {
+			case (ba: BuildRef, bb: BuildRef) => buildRefOrdering.compare(ba, bb)
+			case (pa: ProjectRef, pb: ProjectRef) => projectRefOrdering.compare(pa, pb)
+			case (_: BuildRef, _: ProjectRef) => -1
+			case (_: ProjectRef, _: BuildRef) => 1
+		}
+	}
+	implicit val buildRefOrdering: Ordering[BuildRef] = new Ordering[BuildRef] {
+		def compare(a: BuildRef, b: BuildRef): Int = a.build compareTo b.build
+	}
+
+	implicit val projectRefOrdering: Ordering[ProjectRef] = new Ordering[ProjectRef] {
+		def compare(a: ProjectRef, b: ProjectRef): Int = {
+			val bc = a.build compareTo b.build
+			if(bc == 0) a.project compareTo b.project else bc
+		}
+	}
+
 	def buildURI(ref: ResolvedReference): URI = ref match {
 		case BuildRef(b) => b
 		case ProjectRef(b, _) => b
