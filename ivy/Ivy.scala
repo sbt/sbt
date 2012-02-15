@@ -141,9 +141,9 @@ final class IvySbt(val configuration: IvyConfiguration)
 			log.debug("Using inline dependencies specified in Scala" + (if(ivyXML.isEmpty) "." else " and XML."))
 
 			val parser = IvySbt.parseIvyXML(ivy.getSettings, IvySbt.wrapped(module, ivyXML), moduleID, defaultConf.name, validate)
-			IvySbt.addDependencies(moduleID, dependencies, parser)
 			IvySbt.addMainArtifact(moduleID)
-			IvySbt.addOverrides(moduleID, overrides, ivy.getSettings.getMatcher(PatternMatcher.EXACT_OR_REGEXP))
+			IvySbt.addOverrides(moduleID, overrides, ivy.getSettings.getMatcher(PatternMatcher.EXACT))
+			IvySbt.addDependencies(moduleID, IvySbt.overrideDirect(dependencies, overrides), parser)
 			(moduleID, parser.getDefaultConf)
 		}
 		private def newConfiguredModuleID(module: ModuleID, moduleInfo: ModuleInfo, configurations: Iterable[Configuration]) =
@@ -439,6 +439,20 @@ private object IvySbt
 		val overrideID = new ModuleId(overrideDef.organization, overrideDef.name)
 		val overrideWith = new OverrideDependencyDescriptorMediator(null, overrideDef.revision)
 		moduleID.addDependencyDescriptorMediator(overrideID, matcher, overrideWith)
+	}
+	/** It is necessary to explicitly modify direct dependencies because Ivy gives
+	* "IllegalStateException: impossible to get artifacts when data has not been loaded." 
+	* when a direct dependency is overridden with a newer version."*/
+	def overrideDirect(dependencies: Seq[ModuleID], overrides: Set[ModuleID]): Seq[ModuleID] =
+	{
+		def key(id: ModuleID) = (id.organization, id.name)
+		val overridden = overrides.map(id => (key(id), id.revision)).toMap
+		dependencies map { dep =>
+			overridden get key(dep) match {
+				case Some(rev) => dep.copy(revision = rev)
+				case None => dep
+			}
+		}
 	}
 
 	/** This method is used to add inline artifacts to the provided module. */
