@@ -62,7 +62,7 @@ final case class PomConfiguration(file: File, ivyScala: Option[IvyScala], valida
 {
 	def noScala = copy(ivyScala = None)
 }
-final case class InlineConfiguration(module: ModuleID, moduleInfo: ModuleInfo, dependencies: Seq[ModuleID], ivyXML: NodeSeq = NodeSeq.Empty, configurations: Seq[Configuration] = Nil, defaultConfiguration: Option[Configuration] = None, ivyScala: Option[IvyScala] = None, validate: Boolean = false) extends ModuleSettings
+final case class InlineConfiguration(module: ModuleID, moduleInfo: ModuleInfo, dependencies: Seq[ModuleID], overrides: Set[ModuleID] = Set.empty, ivyXML: NodeSeq = NodeSeq.Empty, configurations: Seq[Configuration] = Nil, defaultConfiguration: Option[Configuration] = None, ivyScala: Option[IvyScala] = None, validate: Boolean = false) extends ModuleSettings
 {
 	def withConfigurations(configurations: Seq[Configuration]) =  copy(configurations = configurations)
 	def noScala = copy(ivyScala = None)

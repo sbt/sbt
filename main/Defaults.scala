@@ -732,6 +732,7 @@ object Classpaths
 		otherResolvers <<= publishTo(_.toList),
 		projectResolver <<= projectResolverTask,
 		projectDependencies <<= projectDependenciesTask,
+		dependencyOverrides in GlobalScope :== Set.empty,
 		libraryDependencies in GlobalScope :== Nil,
 		libraryDependencies <++= (autoScalaLibrary, sbtPlugin, scalaVersion) apply autoLibraryDependency,
 		allDependencies <<= (projectDependencies,libraryDependencies,sbtPlugin,sbtDependency) map { (projDeps, libDeps, isPlugin, sbtDep) =>
@@ -819,8 +820,8 @@ object Classpaths
 			new IvySbt(conf)
 		}
 	def moduleSettings0: Initialize[Task[ModuleSettings]] =
-		(projectID, allDependencies, ivyXML, ivyConfigurations, defaultConfiguration, ivyScala, ivyValidate, projectInfo) map {
-			(pid, deps, ivyXML, confs, defaultConf, ivyS, validate, pinfo) => new InlineConfiguration(pid, pinfo, deps, ivyXML, confs, defaultConf, ivyS, validate)
+		(projectID, allDependencies, dependencyOverrides, ivyXML, ivyConfigurations, defaultConfiguration, ivyScala, ivyValidate, projectInfo) map {
+			(pid, deps, over, ivyXML, confs, defaultConf, ivyS, validate, pinfo) => new InlineConfiguration(pid, pinfo, deps, over, ivyXML, confs, defaultConf, ivyS, validate)
 		}
 
 	def sbtClassifiersTasks = inTask(updateSbtClassifiers)(Seq(

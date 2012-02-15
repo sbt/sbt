@@ -277,6 +277,7 @@ object Keys
 	val offline = SettingKey[Boolean]("offline", "Configures sbt to work without a network connection where possible.")
 	val ivyPaths = SettingKey[IvyPaths]("ivy-paths", "Configures paths used by Ivy for dependency management.")
 	val libraryDependencies = SettingKey[Seq[ModuleID]]("library-dependencies", "Declares managed dependencies.")
+	val dependencyOverrides = SettingKey[Set[ModuleID]]("dependency-overrides", "Declares managed dependency overrides.")
 	val allDependencies = TaskKey[Seq[ModuleID]]("all-dependencies", "Inter-project and library dependencies.")
 	val projectDependencies = TaskKey[Seq[ModuleID]]("project-dependencies", "Inter-project dependencies.")
 	val ivyXML = SettingKey[NodeSeq]("ivy-xml", "Defines inline Ivy XML for configuring dependency management.")

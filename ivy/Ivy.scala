@@ -15,6 +15,7 @@ import core.{IvyPatternHelper, LogOptions}
 import core.cache.{CacheMetadataOptions, DefaultRepositoryCacheManager}
 import core.module.descriptor.{Artifact => IArtifact, DefaultArtifact, DefaultDependencyArtifactDescriptor, MDArtifact}
 import core.module.descriptor.{DefaultDependencyDescriptor, DefaultModuleDescriptor, DependencyDescriptor, ModuleDescriptor, License}
+import core.module.descriptor.{OverrideDependencyDescriptorMediator}
 import core.module.id.{ArtifactId,ModuleId, ModuleRevisionId}
 import core.resolve.{IvyNode, ResolveData}
 import core.settings.IvySettings
@@ -142,6 +143,7 @@ final class IvySbt(val configuration: IvyConfiguration)
 			val parser = IvySbt.parseIvyXML(ivy.getSettings, IvySbt.wrapped(module, ivyXML), moduleID, defaultConf.name, validate)
 			IvySbt.addDependencies(moduleID, dependencies, parser)
 			IvySbt.addMainArtifact(moduleID)
+			IvySbt.addOverrides(moduleID, overrides, ivy.getSettings.getMatcher(PatternMatcher.EXACT_OR_REGEXP))
 			(moduleID, parser.getDefaultConf)
 		}
 		private def newConfiguredModuleID(module: ModuleID, moduleInfo: ModuleInfo, configurations: Iterable[Configuration]) =
@@ -308,7 +310,7 @@ private object IvySbt
 		val sub = CrossVersion(scalaFullVersion, scalaBinaryVersion)
 		m match {
 			case ec: EmptyConfiguration => ec.copy(module = sub(ec.module))
-			case ic: InlineConfiguration => ic.copy(module = sub(ic.module), dependencies = ic.dependencies map sub)
+			case ic: InlineConfiguration => ic.copy(module = sub(ic.module), dependencies = ic.dependencies map sub, overrides = ic.overrides map sub)
 			case _ => m
 		}
 	}
@@ -430,6 +432,15 @@ private object IvySbt
 			moduleID.addDependency(dependencyDescriptor)
 		}
 	}
+	def addOverrides(moduleID: DefaultModuleDescriptor, overrides: Set[ModuleID], matcher: PatternMatcher): Unit =
+		overrides foreach addOverride(moduleID, matcher)
+	def addOverride(moduleID: DefaultModuleDescriptor, matcher: PatternMatcher)(overrideDef: ModuleID): Unit =
+	{
+		val overrideID = new ModuleId(overrideDef.organization, overrideDef.name)
+		val overrideWith = new OverrideDependencyDescriptorMediator(null, overrideDef.revision)
+		moduleID.addDependencyDescriptorMediator(overrideID, matcher, overrideWith)
+	}
+
 	/** This method is used to add inline artifacts to the provided module. */
 	def addArtifacts(moduleID: DefaultModuleDescriptor, artifacts: Iterable[Artifact]): Unit =
 		for(art <- mapArtifacts(moduleID, artifacts.toSeq); c <- art.getConfigurations)

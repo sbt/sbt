@@ -1,0 +1,4 @@
+> check 2.9.1
+> 'set dependencyOverrides += "org.scala-lang" % "scala-library" % "2.8.2"'
+> check 2.8.2
+
