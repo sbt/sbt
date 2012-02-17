@@ -51,14 +51,8 @@ object BasicIO
 	private def processErrFully(log: ProcessLogger) = processFully(s => log.error(s))
 	private def processInfoFully(log: ProcessLogger) = processFully(s => log.info(s))
 
-	def ignoreOut = (i: OutputStream) => ()
 	final val BufferSize = 8192
 	final val Newline = System.getProperty("line.separator")
-
-	def closeProcessStreams(p: JProcess): Unit =
-		Seq(p.getOutputStream, p.getInputStream, p.getErrorStream) foreach { s =>
-			if(s ne null) close(s)
-		}
 
 	def close(c: java.io.Closeable) = try { c.close() } catch { case _: java.io.IOException => () }
 	def processFully(buffer: Appendable): InputStream => Unit = processFully(appendLine(buffer))
@@ -67,6 +61,7 @@ object BasicIO
 		{
 			val reader = new BufferedReader(new InputStreamReader(in))
 			processLinesFully(processLine)(reader.readLine)
+                        reader.close()
 		}
 	def processLinesFully(processLine: String => Unit)(readLine: () => String)
 	{
@@ -81,8 +76,11 @@ object BasicIO
 		}
 		readFully()
 	}
-	def connectToIn(o: OutputStream) { transferFully(System.in, o) }
-	def input(connect: Boolean): OutputStream => Unit = if(connect) connectToIn else ignoreOut
+	def connectToIn(o: OutputStream) { transferFully(Uncloseable protect System.in, o) }
+	def input(connect: Boolean): OutputStream => Unit = { outputToProcess =>
+          if(connect) connectToIn(outputToProcess)
+          else outputToProcess.close()
+        }
 	def standard(connectInput: Boolean): ProcessIO = standard(input(connectInput))
 	def standard(in: OutputStream => Unit): ProcessIO = new ProcessIO(in, toStdOut, toStdErr)
 
@@ -115,6 +113,7 @@ object BasicIO
 			}
 		}
 		read
+                in.close()
 	}
 }
 
@@ -369,6 +368,8 @@ private[sbt] class DummyProcessBuilder(override val toString: String, exitValue 
 	override def run(io: ProcessIO): Process = new DummyProcess(exitValue)
 	override def canPipeTo = true
 }
+/** A thin wrapper around a java.lang.Process.  `ioThreads` are the Threads created to do I/O.
+* The implementation of `exitValue` waits until these threads die before returning. */
 private class DummyProcess(action: => Int) extends Process
 {
 	private[this] val exitCode = Future(action)
@@ -402,23 +403,18 @@ private[sbt] class SimpleProcessBuilder(p: JProcessBuilder) extends AbstractProc
 * returning. */
 private class SimpleProcess(p: JProcess, inputThread: Thread, outputThreads: List[Thread]) extends Process
 {
-	override def exitValue(): Int =
+	override def exitValue() =
 	{
-		andCleanup { p.waitFor() }// wait for the process to terminate
+		try { p.waitFor() }// wait for the process to terminate
+		finally { inputThread.interrupt() } // we interrupt the input thread to notify it that it can terminate
+		outputThreads.foreach(_.join()) // this ensures that all output is complete before returning (waitFor does not ensure this)
 		p.exitValue()
 	}
 	override def destroy() =
-		andCleanup { p.destroy() }
-
-	private[this] def andCleanup[T](action: => Unit): Unit =
-		try
-		{
-			try { action }
-			finally { inputThread.interrupt() } // we interrupt the input thread to notify it that it can terminate
-			outputThreads.foreach(_.join()) // this ensures that all output is complete before returning (waitFor does not ensure this)
-		}
-		finally
-			BasicIO.closeProcessStreams(p)
+	{
+		try { p.destroy() }
+		finally { inputThread.interrupt() }
+	}
 }
 
 private class FileOutput(file: File, append: Boolean) extends OutputStreamBuilder(new FileOutputStream(file, append), file.getAbsolutePath)
