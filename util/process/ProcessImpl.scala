@@ -132,6 +132,9 @@ private abstract class AbstractProcessBuilder extends ProcessBuilder with SinkPa
 	
 	protected def toSource = this
 	protected def toSink = this
+
+	def feedStdin: ProcessBuilder = this
+	def feedStdout: ProcessBuilder = this
 	
 	def run(): Process = run(false)
 	def run(connectInput: Boolean): Process = run(BasicIO.standard(connectInput))
@@ -240,7 +243,7 @@ private abstract class SequentialProcessBuilder(a: ProcessBuilder, b: ProcessBui
 }
 private class PipedProcessBuilder(first: ProcessBuilder, second: ProcessBuilder, toError: Boolean) extends SequentialProcessBuilder(first, second, if(toError) "#|!" else "#|")
 {
-	override def createProcess(io: ProcessIO) = new PipedProcesses(first, second, io, toError)
+	override def createProcess(io: ProcessIO) = new PipedProcesses(first.feedStdout, second.feedStdin, io, toError)
 }
 private class AndProcessBuilder(first: ProcessBuilder, second: ProcessBuilder) extends SequentialProcessBuilder(first, second, "#&&")
 {
@@ -376,31 +379,63 @@ private class DummyProcess(action: => Int) extends Process
 	override def destroy() {}
 }
 /** Represents a simple command without any redirection or combination. */
-private[sbt] class SimpleProcessBuilder(p: JProcessBuilder) extends AbstractProcessBuilder
+private[sbt] class SimpleProcessBuilder(p: JProcessBuilder, feedStdout: Boolean, feedStdin: Boolean) extends AbstractProcessBuilder
 {
+	def this(p: JProcessBuilder) = this(p, false, false)
+
+	override def feedStdout = new SimpleProcessBuilder(p, true, feedStdin)
+	override def feedStdin = new SimpleProcessBuilder(p, feedStdout, true)
+
+	import SimpleProcessBuilder._
+	val inheritInput = /*None:Option[java.lang.reflect.Method]*/if (feedStdin) None else redirectInput
+	val inheritOutput = None//if (feedStdout) None else redirectOutput
+	val inheritError = None//if (p.redirectErrorStream) None else redirectError
+
 	override def run(io: ProcessIO): Process =
 	{
-		val process = p.start() // start the external process
+		inheritInput.foreach{ _ =>
+			System.in.skip(System.in.available)
+		}
+		val pb = (p /: List(inheritInput, inheritOutput, inheritError).flatten) {
+			case (p, m) =>	m.invoke(p, inherit.get).asInstanceOf[JProcessBuilder]
+		}
+		println(pb.redirectInput)
+		println(pb.redirectOutput)
+		println(pb.redirectError)
+
+		val process = pb.start() // start the external process
 		import io.{writeInput, processOutput, processError}
+
 		// spawn threads that process the input, output, and error streams using the functions defined in `io`
-		val inThread = Spawn(writeInput(process.getOutputStream), true)
-		val outThread = Spawn(processOutput(process.getInputStream))
-		val errorThread =
-			if(!p.redirectErrorStream)
-				Spawn(processError(process.getErrorStream)) :: Nil
-			else
-				Nil
-		new SimpleProcess(process, inThread, outThread :: errorThread)
+		def spawn(m: Option[_], f: => Unit, daemon: Boolean) = if (m.isDefined) None else Some(Spawn(f, daemon))
+		val inThread = spawn(inheritInput, writeInput(process.getOutputStream), true)
+		val outThread = spawn(inheritOutput, processOutput(process.getInputStream), false)
+		val errorThread = spawn(inheritError, processError(process.getErrorStream), false)
+		new SimpleProcess(process, inThread, List(outThread, errorThread).flatten)
 	}
+
 	override def toString = p.command.toString
 	override def canPipeTo = true
 }
+
+private[this] object SimpleProcessBuilder {
+	val pbClass = Class.forName("java.lang.ProcessBuilder")
+	val redirectClass = pbClass.getClasses find (_.getSimpleName == "Redirect")
+
+	def redirectMethod(methodName: String) = redirectClass map (pbClass.getMethod(methodName, _))
+	val redirectInput = redirectMethod("redirectInput")
+	val redirectOutput = redirectMethod("redirectOutput")
+	val redirectError = redirectMethod("redirectError")
+
+	val inherit = redirectClass map (_ getField "INHERIT" get null)
+}
+
 /** A thin wrapper around a java.lang.Process.  `outputThreads` are the Threads created to read from the
 * output and error streams of the process.  `inputThread` is the Thread created to write to the input stream of
 * the process.
 * The implementation of `exitValue` interrupts `inputThread` and then waits until all I/O threads die before
 * returning. */
-private class SimpleProcess(p: JProcess, inputThread: Thread, outputThreads: List[Thread]) extends Process
+private class SimpleProcess(p: JProcess, inputThread: Option[Thread], outputThreads: List[Thread]) extends Process
 {
 	override def exitValue(): Int =
 	{
@@ -414,7 +449,7 @@ private class SimpleProcess(p: JProcess, inputThread: Thread, outputThreads: Lis
 		try
 		{
 			try { action }
-			finally { inputThread.interrupt() } // we interrupt the input thread to notify it that it can terminate
+			finally { inputThread.foreach(_.interrupt()) } // we interrupt the input thread to notify it that it can terminate
 			outputThreads.foreach(_.join()) // this ensures that all output is complete before returning (waitFor does not ensure this)
 		}
 		finally
