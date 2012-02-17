@@ -55,11 +55,6 @@ object BasicIO
 	final val BufferSize = 8192
 	final val Newline = System.getProperty("line.separator")
 
-	def closeProcessStreams(p: JProcess): Unit =
-		Seq(p.getOutputStream, p.getInputStream, p.getErrorStream) foreach { s =>
-			if(s ne null) close(s)
-		}
-
 	def close(c: java.io.Closeable) = try { c.close() } catch { case _: java.io.IOException => () }
 	def processFully(buffer: Appendable): InputStream => Unit = processFully(appendLine(buffer))
 	def processFully(processLine: String => Unit): InputStream => Unit =
@@ -369,6 +364,8 @@ private[sbt] class DummyProcessBuilder(override val toString: String, exitValue 
 	override def run(io: ProcessIO): Process = new DummyProcess(exitValue)
 	override def canPipeTo = true
 }
+/** A thin wrapper around a java.lang.Process.  `ioThreads` are the Threads created to do I/O.
+* The implementation of `exitValue` waits until these threads die before returning. */
 private class DummyProcess(action: => Int) extends Process
 {
 	private[this] val exitCode = Future(action)
@@ -402,23 +399,18 @@ private[sbt] class SimpleProcessBuilder(p: JProcessBuilder) extends AbstractProc
 * returning. */
 private class SimpleProcess(p: JProcess, inputThread: Thread, outputThreads: List[Thread]) extends Process
 {
-	override def exitValue(): Int =
+	override def exitValue() =
 	{
-		andCleanup { p.waitFor() }// wait for the process to terminate
+		try { p.waitFor() }// wait for the process to terminate
+		finally { inputThread.interrupt() } // we interrupt the input thread to notify it that it can terminate
+		outputThreads.foreach(_.join()) // this ensures that all output is complete before returning (waitFor does not ensure this)
 		p.exitValue()
 	}
 	override def destroy() =
-		andCleanup { p.destroy() }
-
-	private[this] def andCleanup[T](action: => Unit): Unit =
-		try
-		{
-			try { action }
-			finally { inputThread.interrupt() } // we interrupt the input thread to notify it that it can terminate
-			outputThreads.foreach(_.join()) // this ensures that all output is complete before returning (waitFor does not ensure this)
-		}
-		finally
-			BasicIO.closeProcessStreams(p)
+	{
+		try { p.destroy() }
+		finally { inputThread.interrupt() }
+	}
 }
 
 private class FileOutput(file: File, append: Boolean) extends OutputStreamBuilder(new FileOutputStream(file, append), file.getAbsolutePath)
