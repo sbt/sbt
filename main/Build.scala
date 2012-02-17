@@ -10,7 +10,7 @@ package sbt
 	import complete.DefaultParsers.validID
 	import Compiler.Compilers
 	import Keys.{globalBaseDirectory, globalPluginsDirectory, globalSettingsDirectory, stagingDirectory, Streams}
-	import Project.{ScopedKey, Setting, SourceCoord}
+	import Project.{ScopedKey, Setting}
 	import Keys.{globalBaseDirectory, Streams}
 	import Scope.GlobalScope
 	import scala.annotation.tailrec
@@ -73,8 +73,8 @@ object EvaluateConfigurations
 	def evaluateConfiguration(eval: Eval, name: String, lines: Seq[String], imports: Seq[String], offset: Int): ClassLoader => Seq[Setting[_]] =
 	{
 		val (importExpressions, settingExpressions) = splitExpressions(lines)
-		val settings = addOffset(offset, settingExpressions) map { case (settingExpression,line) =>
-			evaluateSetting(eval, name, (imports.map(s => (s, -1)) ++ addOffset(offset, importExpressions)), settingExpression, line)
+		val settings = addOffsetToRange(offset, settingExpressions) map { case (settingExpression,range) =>
+			evaluateSetting(eval, name, (imports.map(s => (s, -1)) ++ addOffset(offset, importExpressions)), settingExpression, range)
 		}
 		flatten(settings)
 	}
@@ -82,24 +82,26 @@ object EvaluateConfigurations
 		loader => mksettings.flatMap(_ apply loader)
 	def addOffset(offset: Int, lines: Seq[(String,Int)]): Seq[(String,Int)] =
 		lines.map { case (s, i) => (s, i + offset) }
+	def addOffsetToRange(offset: Int, ranges: Seq[(String,LineRange)]): Seq[(String,LineRange)] =
+		ranges.map { case (s, r) => (s, r shift offset) }
 
-	def evaluateSetting(eval: Eval, name: String, imports: Seq[(String,Int)], expression: String, line: Int): ClassLoader => Seq[Setting[_]] =
+	def evaluateSetting(eval: Eval, name: String, imports: Seq[(String,Int)], expression: String, range: LineRange): ClassLoader => Seq[Setting[_]] =
 	{
 		val result = try {
-			eval.eval(expression, imports = new EvalImports(imports, name), srcName = name, tpeName = Some("sbt.Project.SettingsDefinition"), line = line)
+			eval.eval(expression, imports = new EvalImports(imports, name), srcName = name, tpeName = Some("sbt.Project.SettingsDefinition"), line = range.start)
 		} catch {
 			case e: sbt.compiler.EvalException => throw new MessageOnlyException(e.getMessage)
 		}
 		loader => {
-			val coord = SourceCoord(name, line + 1)
-			result.getValue(loader).asInstanceOf[Project.SettingsDefinition].settings map (_ withPos coord)
+			val pos = RangePosition(name, range shift 1)
+			result.getValue(loader).asInstanceOf[Project.SettingsDefinition].settings map (_ withPos pos)
 		}
 	}
 	private[this] def isSpace = (c: Char) => Character isWhitespace c
 	private[this] def fstS(f: String => Boolean): ((String,Int)) => Boolean = { case (s,i) => f(s) }
 	private[this] def firstNonSpaceIs(lit: String) = (_: String).view.dropWhile(isSpace).startsWith(lit)
 	private[this] def or[A](a: A => Boolean, b: A => Boolean): A => Boolean = in => a(in) || b(in)
-	def splitExpressions(lines: Seq[String]): (Seq[(String,Int)], Seq[(String,Int)]) =
+	def splitExpressions(lines: Seq[String]): (Seq[(String,Int)], Seq[(String,LineRange)]) =
 	{
 		val blank = (_: String).forall(isSpace)
 		val isImport = firstNonSpaceIs("import ")
@@ -110,16 +112,16 @@ object EvaluateConfigurations
 		val (imports, settings) = lines.zipWithIndex span importOrBlank
 		(imports filterNot fstS( blankOrComment ), groupedLines(settings, blank, blankOrComment))
 	}
-	def groupedLines(lines: Seq[(String,Int)], delimiter: String => Boolean, skipInitial: String => Boolean): Seq[(String,Int)] =
+	def groupedLines(lines: Seq[(String,Int)], delimiter: String => Boolean, skipInitial: String => Boolean): Seq[(String,LineRange)] =
 	{
 		val fdelim = fstS(delimiter)
-		@tailrec def group0(lines: Seq[(String,Int)], accum: Seq[(String,Int)]): Seq[(String,Int)] =
+		@tailrec def group0(lines: Seq[(String,Int)], accum: Seq[(String,LineRange)]): Seq[(String,LineRange)] =
 			if(lines.isEmpty) accum.reverse
 			else
 			{
 				val start = lines dropWhile fstS( skipInitial )
 				val (next, tail) = start.span { case (s,_) => !delimiter(s) }
-				val grouped = if(next.isEmpty) accum else (next.map(_._1).mkString("\n"), next.head._2) +: accum
+				val grouped = if(next.isEmpty) accum else (next.map(_._1).mkString("\n"), LineRange(next.head._2, next.last._2 + 1)) +: accum
 				group0(tail, grouped)
 			}
 		group0(lines, Nil)

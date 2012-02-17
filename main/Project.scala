@@ -275,7 +275,7 @@ object Project extends Init[Scope] with ProjectExtra
 		val comp = compiled(structure.settings, actual)(structure.delegates, structure.scopeLocal, display)
 		val definedAt = comp get scoped map { c =>
 			def fmt(s: Setting[_]) = s.pos match {
-				case SourceCoord(fileName, line) => Some(fileName + ":" + line)
+				case pos: FilePosition => Some(pos.path + ":" + pos.startLine)
 				case NoPosition => None
 			}
 			val posDefined = c.settings.map(fmt).flatten

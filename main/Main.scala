@@ -166,7 +166,7 @@ object BuiltinCommands
 	def set = Command(SetCommand, setBrief, setDetailed)(setParser) { case (s, (all, arg)) =>
 		val extracted = Project extract s
 		import extracted._
-		val settings = EvaluateConfigurations.evaluateSetting(session.currentEval(), "<set>", imports(extracted), arg, 0)(currentLoader)
+		val settings = EvaluateConfigurations.evaluateSetting(session.currentEval(), "<set>", imports(extracted), arg, LineRange(0,0))(currentLoader)
 		val newSession = if(all) Project.setAll(extracted, settings) else setThis(s, extracted, settings, arg)
 		reapply(newSession, structure, s)
 	}
