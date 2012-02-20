@@ -133,7 +133,7 @@ object SessionSettings
 		val offs = adjusted.size + 1
 		val newWithPos = newSettings zip Range(offs, offs + 2*newSettings.size, 2) map {
 			case ((s, text), line) => (s withPos RangePosition(path, LineRange(line, line + 1)), text)
-		}
+ 		}
 		(newWithPos, other ++ oldShifted)
 	}
 	def needsTrailingBlank(lines: Seq[String]) = !lines.isEmpty && !lines.takeRight(1).exists(_.trim.isEmpty)
