@@ -78,7 +78,8 @@ final class ContentLogger(val log: TLogger, val flush: () => Unit)
 class TestLogger(val logging: TestLogging) extends TestsListener
 {
 		import logging.{global => log, logTest}
-	protected var skipped, errors, passed, failures = 0
+		import java.util.concurrent.atomic.AtomicInteger
+	protected val skippedCount, errorsCount, passedCount, failuresCount = new AtomicInteger
 	
 	def startGroup(name: String) {}
 	def testEvent(event: TestEvent): Unit = event.detail.foreach(count)
@@ -90,28 +91,25 @@ class TestLogger(val logging: TestLogging) extends TestsListener
 	def endGroup(name: String, result: TestResult.Value) {}
 	protected def count(event: TEvent): Unit =
 	{
-		event.result match
-		{
-			case TResult.Error => errors +=1
-			case TResult.Success => passed +=1 
-			case TResult.Failure => failures +=1 
-			case TResult.Skipped => skipped += 1
+		val count = event.result match {
+			case TResult.Error => errorsCount
+			case TResult.Success => passedCount
+			case TResult.Failure => failuresCount
+			case TResult.Skipped => skippedCount
 		}
+		count.incrementAndGet()
 	}
 	def doInit
 	{
-		failures = 0
-		errors = 0
-		passed = 0
-		skipped = 0
+		for (count <- List(skippedCount, errorsCount, passedCount, failuresCount)) count.set(0)
 	}
-		/** called once, at end. */
+	/** called once, at end. */
 	def doComplete(finalResult: TestResult.Value): Unit =
 	{
+		val (skipped, errors, passed, failures) = (skippedCount.get, errorsCount.get, passedCount.get, failuresCount.get)
 		val totalCount = failures + errors + skipped + passed
 		val postfix = ": Total " + totalCount + ", Failed " + failures + ", Errors " + errors + ", Passed " + passed + ", Skipped " + skipped
-		finalResult match
-		{
+		finalResult match {
 			case TestResult.Error => log.error("Error" + postfix)
 			case TestResult.Passed => log.info("Passed: " + postfix)
 			case TestResult.Failed => log.error("Failed: " + postfix)
