@@ -15,7 +15,7 @@ object Sbt extends Build
 	override lazy val settings = super.settings ++ buildSettings ++ Status.settings
 	def buildSettings = Seq(
 		organization := "org.scala-sbt",
-		version := "0.12.0-M1",
+		version := "0.12.0-SNAPSHOT",
 		publishArtifact in packageDoc := false,
 		scalaVersion := "2.9.1",
 		publishMavenStyle := false,
@@ -177,7 +177,7 @@ object Sbt extends Build
 		publishAll <<= inAll(nonRoots, publishLocal.task),
 		TaskKey[Unit]("build-all") <<= (publishAll, proguard in Proguard, sxr, doc) map { (_,_,_,_) => () }
 	)
-	def docSetting = inConfig(Compile)(inTask(sxr)(doc in ThisScope.copy(task = Global, config = Global) <<= Defaults.docTask))
+	def docSetting = inConfig(Compile)(inTask(sxr)(Defaults.docSetting(doc in ThisScope.copy(task = Global, config = Global))))
 
 	def interfaceSettings = javaOnly ++ Seq(
 		crossPaths := false,
