@@ -104,14 +104,15 @@ object SessionSettings
 				}
 		}
 
-		val (_, oldShifted, replace, lineMap) = ((0, List[Setting[_]](), List[SessionSetting](), Map.empty[Int, (Int, String)]) /: inFile) {
+		val (_, oldShifted, replace, lineMap) = ((0, List[Setting[_]](), List[SessionSetting](), Map.empty[Int, (Int, List[String])]) /: inFile) {
 			case ((offs, olds, repl, lineMap), s) =>
 				val RangePosition(_, r@LineRange(start, end)) = s.pos
 				def depends(s: Setting[_]) = !s.init.dependencies.isEmpty
 				settings find (_._1.key == s.key) match {
 					case Some(ss@(ns, text)) if !depends(s) && !depends(ns) =>
 						val shifted = ns withPos RangePosition(path, LineRange(start - offs, start - offs + 1))
-						(offs + end - start - 1, shifted::olds, ss::repl, lineMap + (start -> (end, text)))
+						val newLines = text.split('\n').toList
+						(offs + end - start - newLines.size, shifted::olds, ss::repl, lineMap + (start -> (end, newLines)))
 					case _ =>
 						val shifted = s withPos RangePosition(path, r shift -offs)
 						(offs, shifted::olds, repl, lineMap)
@@ -121,20 +122,21 @@ object SessionSettings
 		val (tmpLines, _) = ((List[String](), 1) /: IO.readLines(writeTo).zipWithIndex) {
 			case ((accLines,  n), (line, m)) if n == m + 1 =>
 				lineMap.get(n) match {
-					case Some(Pair(end, text)) =>  (text::accLines, end)
+					case Some(Pair(end, lines)) =>  (lines reverse_::: accLines, end)
 					case None => (line::accLines, n + 1)
 				}
 			case (res,_) => res
 		}
 		val exist = tmpLines.reverse
 		val adjusted = if(!newSettings.isEmpty && needsTrailingBlank(exist)) exist :+ "" else exist
-		val lines = adjusted ++ newSettings.map(_._2).flatMap(_ :: "" :: Nil)
+		val lines = adjusted ++ newSettings.map(_._2 split '\n').flatten.flatMap(_ :: "" :: Nil)
 		IO.writeLines(writeTo, lines)
-		val offs = adjusted.size + 1
-		val newWithPos = newSettings zip Range(offs, offs + 2*newSettings.size, 2) map {
-			case ((s, text), line) => (s withPos RangePosition(path, LineRange(line, line + 1)), text)
+		val (newWithPos, _) = ((List[SessionSetting](), adjusted.size + 1) /: newSettings) {
+			case ((acc, line), (s, text)) => 
+				val endLine = line + text.split('\n').size
+				((s withPos RangePosition(path, LineRange(line, endLine)), text)::acc, endLine + 1)
  		}
-		(newWithPos, other ++ oldShifted)
+		(newWithPos.reverse, other ++ oldShifted)
 	}
 	def needsTrailingBlank(lines: Seq[String]) = !lines.isEmpty && !lines.takeRight(1).exists(_.trim.isEmpty)
 	def printAllSettings(s: State): State =
