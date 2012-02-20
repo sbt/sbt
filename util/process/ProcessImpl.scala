@@ -51,6 +51,7 @@ object BasicIO
 	private def processErrFully(log: ProcessLogger) = processFully(s => log.error(s))
 	private def processInfoFully(log: ProcessLogger) = processFully(s => log.info(s))
 
+	def closeOut = (_: OutputStream).close()
 	final val BufferSize = 8192
 	final val Newline = System.getProperty("line.separator")
 
@@ -61,7 +62,7 @@ object BasicIO
 		{
 			val reader = new BufferedReader(new InputStreamReader(in))
 			processLinesFully(processLine)(reader.readLine)
-                        reader.close()
+			reader.close()
 		}
 	def processLinesFully(processLine: String => Unit)(readLine: () => String)
 	{
@@ -77,10 +78,7 @@ object BasicIO
 		readFully()
 	}
 	def connectToIn(o: OutputStream) { transferFully(Uncloseable protect System.in, o) }
-	def input(connect: Boolean): OutputStream => Unit = { outputToProcess =>
-          if(connect) connectToIn(outputToProcess)
-          else outputToProcess.close()
-        }
+	def input(connect: Boolean): OutputStream => Unit = if(connect) connectToIn else closeOut
 	def standard(connectInput: Boolean): ProcessIO = standard(input(connectInput))
 	def standard(in: OutputStream => Unit): ProcessIO = new ProcessIO(in, toStdOut, toStdErr)
 
@@ -113,7 +111,7 @@ object BasicIO
 			}
 		}
 		read
-                in.close()
+		in.close()
 	}
 }
 
