@@ -185,7 +185,7 @@ object TaskExtra extends TaskExtra
 	def processIO(s: TaskStreams[_]): ProcessIO =
 	{
 		def transfer(id: String) = (in: InputStream) => BasicIO.transferFully(in, s.binary(id))
-		new ProcessIO(BasicIO.ignoreOut, transfer(s.outID), transfer(s.errorID))
+		new ProcessIO(BasicIO.closeOut, transfer(s.outID), transfer(s.errorID))
 	}
 	def reduced[S](i: IndexedSeq[Task[S]], f: (S, S) => S): Task[S] =
 		i match
