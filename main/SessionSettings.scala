@@ -80,47 +80,61 @@ object SessionSettings
 	}
 	def saveSomeSettings(s: State)(include: ProjectRef => Boolean): State =
 		withSettings(s){session =>
-			val newAppend =
-				for( (ref, settings) <- session.append if !settings.isEmpty && include(ref) )
-					yield ref -> writeSettings(ref, settings.toList, session.original, Project.structure(s))
-      val newSession = session.copy(append = newAppend)
+			val newSettings =
+				for( (ref, settings) <- session.append if !settings.isEmpty && include(ref) ) yield {
+					val (news, olds) = writeSettings(ref, settings.toList, session.original, Project.structure(s))
+					(ref -> news, olds)
+				}
+      val (newAppend, newOriginal) = newSettings.unzip
+      val newSession = session.copy(append = newAppend.toMap, original = newOriginal.flatten.toSeq)
 			reapply(newSession.copy(original = newSession.mergeSettings, append = Map.empty), s)
 		}
-	def writeSettings(pref: ProjectRef, settings: List[SessionSetting], original: Seq[Setting[_]], structure: Load.BuildStructure): List[SessionSetting] =
+	def writeSettings(pref: ProjectRef, settings: List[SessionSetting], original: Seq[Setting[_]], structure: Load.BuildStructure): (Seq[SessionSetting], Seq[Setting[_]]) =
 	{
 		val project = Project.getProject(pref, structure).getOrElse(error("Invalid project reference " + pref))
 		val writeTo: File = BuildPaths.configurationSources(project.base).headOption.getOrElse(new File(project.base, "build.sbt"))
 		writeTo.createNewFile()
 
 		val path = writeTo.getAbsolutePath
-		val inFile = original collect { s => s.pos match { case SourceCoord(`path`, line) => (s, line) } }
-		val (lineMap, newSettings) = splitAppended(inFile, settings)
-		val exist = IO.readLines(writeTo).zipWithIndex map {
-			case (line, idx) => lineMap get (idx+1) map (_._2) getOrElse line
+		val (inFile, other, _) = ((List[Setting[_]](), List[Setting[_]](), Set.empty[ScopedKey[_]]) /: original.reverse) {
+			case ((in, oth, keys), s) =>
+				s.pos match {
+					case RangePosition(`path`, _) if !keys.contains(s.key) => (s::in, oth, keys + s.key)
+					case _ => (in, s::oth, keys)
+				}
 		}
+
+		val (_, oldShifted, replace, lineMap) = ((0, List[Setting[_]](), List[SessionSetting](), Map.empty[Int, (Int, String)]) /: inFile) {
+			case ((offs, olds, repl, lineMap), s) =>
+				val RangePosition(_, r@LineRange(start, end)) = s.pos
+				def depends(s: Setting[_]) = !s.init.dependencies.isEmpty
+				settings find (_._1.key == s.key) match {
+					case Some(ss@(ns, text)) if !depends(s) && !depends(ns) =>
+						val shifted = ns withPos RangePosition(path, LineRange(start - offs, start - offs + 1))
+						(offs + end - start - 1, shifted::olds, ss::repl, lineMap + (start -> (end, text)))
+					case _ =>
+						val shifted = s withPos RangePosition(path, r shift -offs)
+						(offs, shifted::olds, repl, lineMap)
+				}
+		}
+		val newSettings = settings diff replace
+		val (tmpLines, _) = ((List[String](), 1) /: IO.readLines(writeTo).zipWithIndex) {
+			case ((accLines,  n), (line, m)) if n == m + 1 =>
+				lineMap.get(n) match {
+					case Some(Pair(end, text)) =>  (text::accLines, end)
+					case None => (line::accLines, n + 1)
+				}
+			case (res,_) => res
+		}
+		val exist = tmpLines.reverse
 		val adjusted = if(!newSettings.isEmpty && needsTrailingBlank(exist)) exist :+ "" else exist
 		val lines = adjusted ++ newSettings.map(_._2).flatMap(_ :: "" :: Nil)
 		IO.writeLines(writeTo, lines)
 		val offs = adjusted.size + 1
-		val withPos = newSettings zip Range(offs, offs + 2*newSettings.size, 2) map {
-			case ((s, text), line) => (s withPos SourceCoord(path, line), text)
+		val newWithPos = newSettings zip Range(offs, offs + 2*newSettings.size, 2) map {
+			case ((s, text), line) => (s withPos RangePosition(path, LineRange(line, line + 1)), text)
 		}
-		withPos ++ lineMap.values
-	}
-	def splitAppended(original: Seq[(Setting[_], Int)], settings: List[SessionSetting]): (Map[Int, SessionSetting], List[SessionSetting]) = {
-		def depends(s: Setting[_]) = !s.init.dependencies.isEmpty
-		val (m, news) = ((Map.empty[Int, SessionSetting], List[SessionSetting]()) /: settings) {
-			case ((m, news), s) =>
-				val replace = if (depends(s._1)) None else
-					original.collect {
-						case (orig, line) if orig.key == s._1.key => (orig, line -> s)
-					}.lastOption.collect {
-						// If the setting to replace depends on other keys, we'd better not delete a part of the dependency chain.
-						case (orig, bind) if !depends(orig) => bind
-					}
-				(m ++ replace, if (replace.isDefined) news else s::news)
-		}
-		(m, news.reverse)
+		(newWithPos, other ++ oldShifted)
 	}
 	def needsTrailingBlank(lines: Seq[String]) = !lines.isEmpty && !lines.takeRight(1).exists(_.trim.isEmpty)
 	def printAllSettings(s: State): State =
