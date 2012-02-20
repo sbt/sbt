@@ -1,5 +1,6 @@
 	import sbt._
 	import Keys._
+	import java.util.regex.Pattern
 
 object Status
 {
@@ -7,7 +8,7 @@ object Status
 	lazy val publishStatus = SettingKey[String]("publish-status")
 
 	def settings: Seq[Setting[_]] = Seq(
-		isSnapshot <<= version(_ contains "-"),
+		isSnapshot <<= version(v => v.contains("-") && !isMilestone(v)),
 		publishStatus <<= isSnapshot { snap => if(snap) "snapshots" else "releases" },
 		commands += stampVersion
 	)
@@ -25,4 +26,5 @@ object Status
 		format.format(new java.util.Date(time))
 	}
 	final val Snapshot = "-SNAPSHOT"
+	def isMilestone(v: String) = Pattern.matches(""".+-M\d+""", v)
 }
