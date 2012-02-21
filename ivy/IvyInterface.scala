@@ -430,7 +430,7 @@ object Artifact
 	val classifierConfMap = Map(SourceClassifier -> Sources, DocClassifier -> Docs)
 	val classifierTypeMap = Map(SourceClassifier -> SourceType, DocClassifier -> DocType)
 	def classifierConf(classifier: String): Configuration = classifierConfMap.getOrElse(classifier, Optional)	
-	def classifierType(classifier: String): String = classifierTypeMap.getOrElse(classifier, DefaultType)
+	def classifierType(classifier: String): String = classifierTypeMap.getOrElse(classifier.stripPrefix("test-"), DefaultType)
 	def classified(name: String, classifier: String): Artifact =
 		Artifact(name, classifierType(classifier), DefaultExtension, Some(classifier), classifierConf(classifier) :: Nil, None)
 }
