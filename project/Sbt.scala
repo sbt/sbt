@@ -199,6 +199,8 @@ object Sbt extends Build
 		target <<= (target, scalaVersion) { (base, sv) => base / ("precompiled_" + sv) },
 		scalacOptions := Nil,
 		crossPaths := false,
+		ivyScala ~= { _.map(_.copy(checkExplicit = false, overrideScalaVersion = false)) },
+		conflictWarning ~= { _.copy(filter = const(false)) },
 		exportedProducts in Compile := Nil,
 		exportedProducts in Test := Nil,
 		libraryDependencies <+= scalaVersion( "org.scala-lang" % "scala-compiler" % _ % "provided"),
