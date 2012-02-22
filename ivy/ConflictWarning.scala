@@ -5,7 +5,11 @@ package sbt
 final case class ConflictWarning(label: String, filter: ModuleFilter, group: ModuleID => String, level: Level.Value, failOnConflict: Boolean)
 object ConflictWarning
 {
-	def default(label: String): ConflictWarning = ConflictWarning(label, moduleFilter(organization = GlobFilter(SbtArtifacts.Organization) | GlobFilter(ScalaArtifacts.Organization)), (_: ModuleID).organization, Level.Warn, false)
+	def disable: ConflictWarning = ConflictWarning("", (_: ModuleID) => false, org, Level.Warn, false)
+
+	private[this] def org = (_: ModuleID).organization
+
+	def default(label: String): ConflictWarning = ConflictWarning(label, moduleFilter(organization = GlobFilter(SbtArtifacts.Organization) | GlobFilter(ScalaArtifacts.Organization)), org, Level.Warn, false)
 
 	def apply(config: ConflictWarning, report: UpdateReport, log: Logger)
 	{
