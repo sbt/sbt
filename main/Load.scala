@@ -189,7 +189,8 @@ object Load
 		transformProjectOnly(loaded.root, rootProject, injectSettings.global)) ++ 
 		loaded.units.toSeq.flatMap { case (uri, build) =>
 			val eval = if(uri == loaded.root) rootEval else lazyEval(build.unit)
-			val pluginSettings = build.unit.plugins.plugins
+			val plugins = build.unit.plugins.plugins
+			val (pluginSettings, pluginProjectSettings, pluginBuildSettings) = extractSettings(plugins)
 			val (pluginThisProject, pluginNotThis) = pluginSettings partition isProjectThis
 			val projectSettings = build.defined flatMap { case (id, project) =>
 				val srcs = configurationSources(project.base)
@@ -199,16 +200,19 @@ object Load
 				val settings =
 					(thisProject :== project) +:
 					(thisProjectRef :== ref) +:
-					(defineConfig ++ project.settings ++ injectSettings.projectLoaded(loader) ++ pluginThisProject ++ configurations(srcs, eval, build.imports)(loader) ++ injectSettings.project)
+					(defineConfig ++ project.settings ++ injectSettings.projectLoaded(loader) ++ pluginThisProject ++
+						pluginProjectSettings ++ configurations(srcs, eval, build.imports)(loader) ++ injectSettings.project)
 				 
 				// map This to thisScope, Select(p) to mapRef(uri, rootProject, p)
 				transformSettings(projectScope(ref), uri, rootProject, settings)
 			}
 			val buildScope = Scope(Select(BuildRef(uri)), Global, Global, Global)
 			val buildBase = baseDirectory :== build.localBase
-			val buildSettings = transformSettings(buildScope, uri, rootProject, pluginNotThis ++ (buildBase +: build.buildSettings))
+			val buildSettings = transformSettings(buildScope, uri, rootProject, pluginNotThis ++ pluginBuildSettings ++ (buildBase +: build.buildSettings))
 			buildSettings ++ projectSettings
 		}
+	def extractSettings(plugins: Seq[Plugin]): (Seq[Setting[_]], Seq[Setting[_]], Seq[Setting[_]]) =
+		(plugins.flatMap(_.settings), plugins.flatMap(_.projectSettings), plugins.flatMap(_.buildSettings))
 	def transformProjectOnly(uri: URI, rootProject: URI => String, settings: Seq[Setting[_]]): Seq[Setting[_]] =
 		Project.transform(Scope.resolveProject(uri, rootProject), settings)
 	def transformSettings(thisScope: Scope, uri: URI, rootProject: URI => String, settings: Seq[Setting[_]]): Seq[Setting[_]] =
@@ -522,11 +526,11 @@ object Load
 		loader.getResources("sbt/sbt.plugins").toSeq flatMap { u => IO.readLinesURL(u) map { _.trim } filter { !_.isEmpty } };
 	}
 
-	def loadPlugins(loader: ClassLoader, pluginNames: Seq[String]): Seq[Setting[_]] =
-		pluginNames.flatMap(pluginName => loadPlugin(pluginName, loader))
+	def loadPlugins(loader: ClassLoader, pluginNames: Seq[String]): Seq[Plugin] =
+		pluginNames.map(pluginName => loadPlugin(pluginName, loader))
 
-	def loadPlugin(pluginName: String, loader: ClassLoader): Seq[Setting[_]] =
-		ModuleUtilities.getObject(pluginName, loader).asInstanceOf[Plugin].settings
+	def loadPlugin(pluginName: String, loader: ClassLoader): Plugin =
+		ModuleUtilities.getObject(pluginName, loader).asInstanceOf[Plugin]
 
 	def importAll(values: Seq[String]) = if(values.isEmpty) Nil else values.map( _ + "._" ).mkString("import ", ", ", "") :: Nil
 	def importAllRoot(values: Seq[String]) = importAll(values map rootedName)
@@ -572,7 +576,7 @@ object Load
 
 	final class EvaluatedConfigurations(val eval: Eval, val settings: Seq[Setting[_]])
 	final class LoadedDefinitions(val base: File, val target: Seq[File], val loader: ClassLoader, val builds: Seq[Build], val buildNames: Seq[String])
-	final class LoadedPlugins(val base: File, val fullClasspath: Seq[Attributed[File]], val loader: ClassLoader, val plugins: Seq[Setting[_]], val pluginNames: Seq[String])
+	final class LoadedPlugins(val base: File, val fullClasspath: Seq[Attributed[File]], val loader: ClassLoader, val plugins: Seq[Plugin], val pluginNames: Seq[String])
 	{
 		def classpath = data(fullClasspath)
 	}

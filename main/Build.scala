@@ -25,7 +25,14 @@ trait Build
 }
 trait Plugin
 {
+	@deprecated("Override projectSettings or buildSettings instead.", "0.12.0")
 	def settings: Seq[Project.Setting[_]] = Nil
+
+	/** Settings to be appended to all projects in a build. */
+	def projectSettings: Seq[Project.Setting[_]] = Nil
+
+	/** Settings to be appended at the build scope. */
+	def buildSettings: Seq[Project.Setting[_]] = Nil
 }
 
 object Build
