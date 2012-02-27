@@ -107,9 +107,8 @@ object SessionSettings
 		val (_, oldShifted, replace, lineMap) = ((0, List[Setting[_]](), List[SessionSetting](), Map.empty[Int, (Int, List[String])]) /: inFile) {
 			case ((offs, olds, repl, lineMap), s) =>
 				val RangePosition(_, r@LineRange(start, end)) = s.pos
-				def depends(s: Setting[_]) = !s.init.dependencies.isEmpty
 				settings find (_._1.key == s.key) match {
-					case Some(ss@(ns, newLines)) if !depends(s) && !depends(ns) =>
+					case Some(ss@(ns, newLines)) if !ns.init.dependencies.contains(ns.key) =>
 						val shifted = ns withPos RangePosition(path, LineRange(start - offs, start - offs + 1))
 						(offs + end - start - newLines.size, shifted::olds, ss::repl, lineMap + (start -> (end, newLines)))
 					case _ =>
