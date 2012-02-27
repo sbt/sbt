@@ -64,7 +64,7 @@ object CustomPomParser
 			// Fixes up the detected extension in some cases missed by Ivy.
 		val convertArtifacts = artifactExtIncorrect(md)
 
-		val unqualify = filtered - ExtraAttributesKey
+		val unqualify = (filtered - ExtraAttributesKey) map { case (k,v) => ("e:" + k, v) }
 		if(unqualify.isEmpty && extraDepAttributes.isEmpty && !convertArtifacts)
 			md
 		else
@@ -168,6 +168,7 @@ object CustomPomParser
 		for(l <- md.getLicenses) dmd.addLicense(l)
 		for( (key,value) <- md.getExtraInfo.asInstanceOf[java.util.Map[String,String]].asScala ) dmd.addExtraInfo(key, value)
 		for( (key, value) <- md.getExtraAttributesNamespaces.asInstanceOf[java.util.Map[String,String]].asScala ) dmd.addExtraAttributeNamespace(key, value)
+		IvySbt.addExtraNamespace(dmd)
 		for( dd <- md.getDependencies ) dmd.addDependency(addExtra(dd, dependencyExtra))
 
 		for( ed <- md.getInheritedDescriptors) dmd.addInheritedDescriptor( new DefaultExtendsDescriptor( mrid, resolvedMrid, ed.getLocation, ed.getExtendsTypes) )
