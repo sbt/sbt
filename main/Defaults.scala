@@ -354,15 +354,15 @@ object Defaults extends BuildCommon
 		packageOptions in GlobalScope :== Nil,
 		artifactName in GlobalScope :== ( Artifact.artifactName _ )
 	)
-	lazy val packageConfig: Seq[Setting[_]] = Seq(
-		packageOptions in packageBin <<= (packageOptions, mainClass in packageBin, name, version, homepage, organization, organizationName) map { (p, main, name, ver, h, org, orgName) =>
-			Package.addSpecManifestAttributes(name, ver, orgName) +: Package.addImplManifestAttributes(name, ver, h, org, orgName) +: main.map(Package.MainClass.apply) ++: p },
-		packageOptions in packageSrc <<= (name, version, organizationName, packageOptions) map { Package.addSpecManifestAttributes(_, _, _) +: _ },
-		`package` <<= packageBin
-	) ++
+	lazy val packageConfig: Seq[Setting[_]] =
+		inTask(packageBin)(Seq(
+			packageOptions <<= (name, version, homepage, organization, organizationName, mainClass, packageOptions) map { (name, ver, h, org, orgName, main, p) => Package.addSpecManifestAttributes(name, ver, orgName) +: Package.addImplManifestAttributes(name, ver, h, org, orgName) +: main.map(Package.MainClass.apply) ++: p })) ++
+		inTask(packageSrc)(Seq(
+			packageOptions <<= (name, version, organizationName, packageOptions) map { Package.addSpecManifestAttributes(_, _, _) +: _ })) ++
 	packageTasks(packageBin, packageBinMappings) ++
 	packageTasks(packageSrc, packageSrcMappings) ++
-	packageTasks(packageDoc, packageDocMappings)
+	packageTasks(packageDoc, packageDocMappings) ++
+	Seq(`package` <<= packageBin)
 
 	def packageBinMappings = products map { _ flatMap Path.allSubpaths }
 	def packageDocMappings = doc map { Path.allSubpaths(_).toSeq }
