@@ -129,7 +129,7 @@ final class IvySbt(val configuration: IvyConfiguration)
 					case ifc: IvyFileConfiguration => configureIvyFile(ifc)
 				}
 			moduleSettings.ivyScala.foreach(IvyScala.checkModule(baseModule, baseConfiguration))
-			baseModule.getExtraAttributesNamespaces.asInstanceOf[java.util.Map[String,String]].put("e", "http://ant.apache.org/ivy/extra")
+			IvySbt.addExtraNamespace(baseModule)
 			(baseModule, baseConfiguration)
 		}
 		private def configureInline(ic: InlineConfiguration, log: Logger) =
@@ -284,6 +284,9 @@ private object IvySbt
 		import configuration._
 		new IvyConfig(name, if(isPublic) PUBLIC else PRIVATE, description, extendsConfigs.map(_.name).toArray, transitive, null)
 	}
+	def addExtraNamespace(dmd: DefaultModuleDescriptor): Unit =
+		dmd.addExtraAttributeNamespace("e", "http://ant.apache.org/ivy/extra")
+
 	/** Adds the ivy.xml main artifact. */
 	private def addMainArtifact(moduleID: DefaultModuleDescriptor)
 	{
