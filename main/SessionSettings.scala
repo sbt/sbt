@@ -30,7 +30,7 @@ final case class SessionSettings(currentBuild: URI, currentProject: Map[URI, Str
 }
 object SessionSettings
 {
-	type SessionSetting = (Setting[_], String)
+	type SessionSetting = (Setting[_], List[String])
 	type SessionMap = Map[ProjectRef, Seq[SessionSetting]]
 
 	def reapply(session: SessionSettings, s: State): State =
@@ -109,9 +109,8 @@ object SessionSettings
 				val RangePosition(_, r@LineRange(start, end)) = s.pos
 				def depends(s: Setting[_]) = !s.init.dependencies.isEmpty
 				settings find (_._1.key == s.key) match {
-					case Some(ss@(ns, text)) if !depends(s) && !depends(ns) =>
+					case Some(ss@(ns, newLines)) if !depends(s) && !depends(ns) =>
 						val shifted = ns withPos RangePosition(path, LineRange(start - offs, start - offs + 1))
-						val newLines = text.split('\n').toList
 						(offs + end - start - newLines.size, shifted::olds, ss::repl, lineMap + (start -> (end, newLines)))
 					case _ =>
 						val shifted = s withPos RangePosition(path, r shift -offs)
@@ -129,12 +128,12 @@ object SessionSettings
 		}
 		val exist = tmpLines.reverse
 		val adjusted = if(!newSettings.isEmpty && needsTrailingBlank(exist)) exist :+ "" else exist
-		val lines = adjusted ++ newSettings.map(_._2 split '\n').flatten.flatMap(_ :: "" :: Nil)
+		val lines = adjusted ++ newSettings.map(_._2).flatten.flatMap(_ :: "" :: Nil)
 		IO.writeLines(writeTo, lines)
 		val (newWithPos, _) = ((List[SessionSetting](), adjusted.size + 1) /: newSettings) {
-			case ((acc, line), (s, text)) => 
-				val endLine = line + text.split('\n').size
-				((s withPos RangePosition(path, LineRange(line, endLine)), text)::acc, endLine + 1)
+			case ((acc, line), (s, newLines)) => 
+				val endLine = line + newLines.size
+				((s withPos RangePosition(path, LineRange(line, endLine)), newLines)::acc, endLine + 1)
  		}
 		(newWithPos.reverse, other ++ oldShifted)
 	}
