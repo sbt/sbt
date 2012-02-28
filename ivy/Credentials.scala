@@ -69,5 +69,7 @@ object Credentials
 }
 
 sealed trait Credentials
-final class FileCredentials(val path: File) extends Credentials
+final class FileCredentials(val path: File) extends Credentials {
+	override def toString = "FileCredentials('" + path + "')"
+}
 final class DirectCredentials(val realm: String, val host: String, val userName: String, val passwd: String) extends Credentials
