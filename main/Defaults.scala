@@ -805,7 +805,7 @@ object Classpaths
 	)
 	def warnResolversConflict(ress: Seq[Resolver], log: Logger) {
 		for ((name, r) <- ress groupBy (_.name) if r.size > 1) {
-			log.warn("Multiple resolvers configured with the name '" + name + "'. Rename to avoid conflict.")
+			log.warn("Multiple resolvers configured with the name '" + name + "'. To avoid conflict, Remove duplicate project resolvers (`resolvers`) or rename publishing resolver (`publishTo`).")
 		}
 	}
 	def pluginProjectID: Initialize[ModuleID] = (sbtVersion in update, sbtBinaryVersion in update, scalaVersion in update, scalaBinaryVersion in update, projectID, sbtPlugin) {
