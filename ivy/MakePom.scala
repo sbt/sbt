@@ -44,6 +44,7 @@ class MakePom(val log: Logger)
 			<name>{moduleInfo.nameFormal}</name>
 			{ makeStartYear(moduleInfo) }
 			{ makeOrganization(moduleInfo) }
+			{ makeScmInfo(moduleInfo) }
 			{ extra }
 			{
 				val deps = depsInConfs(module, configurations)
@@ -82,6 +83,21 @@ class MakePom(val log: Logger)
 				case _ => NodeSeq.Empty
 			}}
 		</organization>
+	}
+	def makeScmInfo(moduleInfo: ModuleInfo): NodeSeq =
+	{
+		moduleInfo.scmInfo match {
+			case Some(s) =>
+				<scm>
+					<url>{s.browseUrl}</url>
+					<connection>{s.connection}</connection>
+					{s.devConnection match {
+						case Some(d) => <developerConnection>{d}</developerConnection>
+						case _ => NodeSeq.Empty
+					}}
+				</scm>
+			case _ => NodeSeq.Empty
+		}
 	}
 	def makeProperties(module: ModuleDescriptor, dependencies: Seq[DependencyDescriptor]): NodeSeq =
 	{
