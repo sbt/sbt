@@ -17,9 +17,9 @@ final case class ModuleID(organization: String, name: String, revision: String, 
 		(if(extraAttributes.isEmpty) "" else " " + extraString)
 	def extraString = extraAttributes.map { case (k,v) => k + "=" + v } mkString("(",", ",")")
 
-	@deprecated("Use the variant accepting a CrossVersion value constructed by a member of the CrossVersion object.", "0.12.0")
+	@deprecated("Use `cross(CrossVersion)`, the variant accepting a CrossVersion value constructed by a member of the CrossVersion object instead.", "0.12.0")
 	def cross(v: Boolean): ModuleID = cross(if(v) CrossVersion.binary else CrossVersion.Disabled)
-	@deprecated("Use the variant accepting a CrossVersion value constructed by a member of the CrossVersion object.", "0.12.0")
+	@deprecated("Use `cross(CrossVersion)`, the variant accepting a CrossVersion value constructed by a member of the CrossVersion object instead.", "0.12.0")
 	def cross(v: Boolean, verRemap: String => String): ModuleID = cross(if(v) CrossVersion.binaryMapped(verRemap) else CrossVersion.Disabled)
 
 	def cross(v: CrossVersion): ModuleID = copy(crossVersion = v)
@@ -49,13 +49,15 @@ object ModuleID
 			if(key.startsWith("e:")) (key, value) else ("e:" + key, value)
 }
 /** Additional information about a project module */
-case class ModuleInfo(nameFormal: String, description: String = "", homepage: Option[URL] = None, startYear: Option[Int] = None, licenses: Seq[(String, URL)] = Nil, organizationName: String = "", organizationHomepage: Option[URL] = None)
+case class ModuleInfo(nameFormal: String, description: String = "", homepage: Option[URL] = None, startYear: Option[Int] = None, licenses: Seq[(String, URL)] = Nil, organizationName: String = "", organizationHomepage: Option[URL] = None, scmInfo: Option[ScmInfo] = None)
 {
 	def formally(name: String) = copy(nameFormal = name)
 	def describing(desc: String, home: Option[URL]) = copy(description = desc, homepage = home)
 	def licensed(lics: (String, URL)*) = copy(licenses = lics)
 	def organization(name: String, home: Option[URL]) = copy(organizationName = name, organizationHomepage = home)
 }
+/** Basic SCM information for a project module */
+case class ScmInfo(browseUrl: URL, connection: String, devConnection: Option[String] = None)
 /** Rule to exclude unwanted dependencies pulled in transitively by a module. */
 case class ExclusionRule(organization: String = "*", name: String = "*", artifact: String = "*", configurations: Seq[String] = Nil)
 sealed trait Resolver
@@ -428,7 +430,7 @@ object Artifact
 	}
 	def artifactName(scalaVersion: ScalaVersion, module: ModuleID, artifact: Artifact): String =
 	{
-			import artifact._
+		import artifact._
 		val classifierStr = classifier match { case None => ""; case Some(c) => "-" + c }
 		val cross = CrossVersion(module.crossVersion, scalaVersion.full, scalaVersion.binary)
 		val base = CrossVersion.applyCross(artifact.name, cross)

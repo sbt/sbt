@@ -715,7 +715,8 @@ object Classpaths
 		organization <<= organization or normalizedName,
 		organizationName <<= organizationName or organization,
 		organizationHomepage <<= organizationHomepage or homepage,
-		projectInfo <<= (name, description, homepage, startYear, licenses, organizationName, organizationHomepage) apply ModuleInfo,
+		scmInfo in GlobalScope :== None,
+		projectInfo <<= (name, description, homepage, startYear, licenses, organizationName, organizationHomepage, scmInfo) apply ModuleInfo,
 		externalResolvers <<= (externalResolvers.task.?, resolvers) {
 			case (Some(delegated), Seq()) => delegated
 			case (_, rs) => task { Resolver.withDefaultResolvers(rs) }

@@ -197,10 +197,10 @@ object Keys
 	val testListeners = TaskKey[Seq[TestReportListener]]("test-listeners", "Defines test listeners.")
 	val testExecution = TaskKey[Tests.Execution]("test-execution", "Settings controlling test execution")
 	val isModule = AttributeKey[Boolean]("is-module", "True if the target is a module.")
-		
+
 	// Classpath/Dependency Management Keys
 	type Classpath = Seq[Attributed[File]]
-	
+
 	val name = SettingKey[String]("name", "Project name.")
 	val normalizedName = SettingKey[String]("normalized-name", "Project name transformed from mixed case and spaces to lowercase and dash-separated.")
 	val description = SettingKey[String]("description", "Project description.")
@@ -210,6 +210,7 @@ object Keys
 	val organization = SettingKey[String]("organization", "Organization/group ID.")
 	val organizationName = SettingKey[String]("organization-name", "Organization full/formal name.")
 	val organizationHomepage = SettingKey[Option[URL]]("organization-homepage", "Organization homepage.")
+	val scmInfo = SettingKey[Option[ScmInfo]]("scm-info", "Basic SCM information for the project.")
 	val projectInfo = SettingKey[ModuleInfo]("project-info", "Addition project information like formal name, homepage, licenses etc.")
 	val defaultConfiguration = SettingKey[Option[Configuration]]("default-configuration", "Defines the configuration used when none is specified for a dependency.")
 	val defaultConfigurationMapping = SettingKey[String]("default-configuration-mapping", "Defines the mapping used for a simple, unmapped configuration definition.")
@@ -225,7 +226,7 @@ object Keys
 	val externalDependencyClasspath = TaskKey[Classpath]("external-dependency-classpath", "The classpath consisting of library dependencies, both managed and unmanaged.")
 	val dependencyClasspath = TaskKey[Classpath]("dependency-classpath", "The classpath consisting of internal and external, managed and unmanaged dependencies.")
 	val fullClasspath = TaskKey[Classpath]("full-classpath", "The exported classpath, consisting of build products and unmanaged and managed, internal and external dependencies.")
-	
+
 	val internalConfigurationMap = SettingKey[Configuration => Configuration]("internal-configuration-map", "Maps configurations to the actual configuration used to define the classpath.")
 	val classpathConfiguration = TaskKey[Configuration]("classpath-configuration", "The configuration used to define the classpath.")
 	val ivyConfiguration = TaskKey[IvyConfiguration]("ivy-configuration", "General dependency management (Ivy) settings, such as the resolvers and paths to use.")
@@ -240,7 +241,7 @@ object Keys
 	val updateClassifiers = TaskKey[UpdateReport]("update-classifiers", "Resolves and optionally retrieves classified artifacts, such as javadocs and sources, for dependency definitions, transitively.", update)
 	val transitiveClassifiers = SettingKey[Seq[String]]("transitive-classifiers", "List of classifiers used for transitively obtaining extra artifacts for sbt or declared dependencies.")
 	val updateSbtClassifiers = TaskKey[UpdateReport]("update-sbt-classifiers", "Resolves and optionally retrieves classifiers, such as javadocs and sources, for sbt, transitively.", updateClassifiers)
-	
+
 	val publishConfiguration = TaskKey[PublishConfiguration]("publish-configuration", "Configuration for publishing to a repository.")
 	val publishLocalConfiguration = TaskKey[PublishConfiguration]("publish-local-configuration", "Configuration for publishing to the local repository.")
 	val deliverConfiguration = TaskKey[DeliverConfiguration]("deliver-configuration", "Configuration for generating the finished Ivy file for publishing.")
