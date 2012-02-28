@@ -73,7 +73,7 @@ object BuiltinCommands
 
 	def boot = Command.make(BootCommand)(bootParser)
 
-	def about = Command.command(AboutCommand, aboutBrief, aboutDetailed) { s => logger(s).info(aboutString(s)); s }
+	def about = Command.command(AboutCommand, aboutBrief, aboutDetailed) { s => s.log.info(aboutString(s)); s }
 
 	// This parser schedules the default boot commands unless overridden by an alias
 	def bootParser(s: State) =
@@ -81,7 +81,7 @@ object BuiltinCommands
 		val orElse = () => DefaultBootCommands ::: s
 		delegateToAlias(BootCommand, success(orElse) )(s)
 	}
-	
+
 	def sbtVersion(s: State): String = s.configuration.provider.id.version
 	def scalaVersion(s: State): String = s.configuration.provider.scalaProvider.version
 	def aboutString(s: State): String =
@@ -135,7 +135,7 @@ object BuiltinCommands
 		val index = structure.index
 		index.keyIndex.keys(Some(currentRef)).toSeq map index.keyMap sortBy(_.label)
 	}
-	def tasksHelp(s: State): String =	
+	def tasksHelp(s: State): String =
 		aligned("  ", "   ", taskDetail(s)) mkString("\n", "\n", "")
 
 	def taskStrings(key: AttributeKey[_]): Option[(String, String)]  =  key.description map { d => (key.label, d) }
@@ -149,17 +149,16 @@ object BuiltinCommands
 	}
 
 	def eval = Command.single(EvalCommand, evalBrief, evalDetailed) { (s, arg) =>
-		val log = logger(s)
 		val extracted = Project extract s
 		import extracted._
 		val result = session.currentEval().eval(arg, srcName = "<eval>", imports = autoImports(extracted))
-		log.info("ans: " + result.tpe + " = " + result.getValue(currentLoader))
+		s.log.info("ans: " + result.tpe + " = " + result.getValue(currentLoader))
 		s
 	}
 	def sessionCommand = Command.make(SessionCommand, sessionBrief, SessionSettings.Help)(SessionSettings.command)
 	def reapply(newSession: SessionSettings, structure: Load.BuildStructure, s: State): State =
 	{
-		logger(s).info("Reapplying settings...")
+		s.log.info("Reapplying settings...")
 		val newStructure = Load.reapply(newSession.mergeSettings, structure)( Project.showContextKey(newSession, structure) )
 		Project.setProject(newSession, newStructure, s)
 	}
@@ -176,8 +175,8 @@ object BuiltinCommands
 		val append = Load.transformSettings(Load.projectScope(currentRef), currentRef.build, rootProject, settings)
 		session.appendSettings( append map (a => (a, arg)))
 	}
-	def inspect = Command(InspectCommand, inspectBrief, inspectDetailed)(inspectParser) { case (s, (option, sk)) => 
-		logger(s).info(inspectOutput(s, option, sk))
+	def inspect = Command(InspectCommand, inspectBrief, inspectDetailed)(inspectParser) { case (s, (option, sk)) =>
+		s.log.info(inspectOutput(s, option, sk))
 		s
 	}
 	def inspectOutput(s: State, option: InspectOption, sk: Project.ScopedKey[_]): String =
@@ -188,7 +187,7 @@ object BuiltinCommands
 		{
 			case InspectOption.Details(actual) =>
 				Project.details(structure, actual, sk.scope, sk.key)
-			case InspectOption.DependencyTree => 
+			case InspectOption.DependencyTree =>
 				val basedir = new File(Project.session(s).current.build)
 				Project.settingGraph(structure, basedir, sk).dependsAscii
 			case InspectOption.Uses =>
@@ -266,7 +265,7 @@ object BuiltinCommands
 	* the last* commands operate on any output since the last 'shell' command and do shift the log file.
 	* Otherwise, the output since the previous 'shell' command is used and the log file is not shifted.*/
 	def isLastOnly(s: State): Boolean = s.history.previous.forall(_ == Shell)
-		
+
 	def printLast(s: State): Seq[String] => Unit = _ foreach println
 
 	def autoImports(extracted: Extracted): EvalImports  =  new EvalImports(imports(extracted), "<auto-imports>")
@@ -295,9 +294,8 @@ object BuiltinCommands
 		val extracted = Project extract s
 		import extracted._
 		import currentRef.{build => curi, project => cid}
-		val log = logger(s)
-		listBuild(curi, structure.units(curi), true, cid, log)
-		for( (uri, build) <- structure.units if curi != uri) listBuild(uri, build, false, cid, log)
+		listBuild(curi, structure.units(curi), true, cid, s.log)
+		for( (uri, build) <- structure.units if curi != uri) listBuild(uri, build, false, cid, s.log)
 		s
 	}
 
@@ -308,7 +306,7 @@ object BuiltinCommands
 	{
 		val result = (SimpleReader.readLine("Project loading failed: (r)etry, (q)uit, (l)ast, or (i)gnore? ") getOrElse Quit).toLowerCase
 		def matches(s: String) = !result.isEmpty && (s startsWith result)
-		
+
 		if(result.isEmpty || matches("retry"))
 			LoadProject :: s.clearGlobalLog
 		else if(matches(Quit))
@@ -316,7 +314,7 @@ object BuiltinCommands
 		else if(matches("ignore"))
 		{
 			val hadPrevious = Project.isProjectLoaded(s)
-			logger(s).warn("Ignoring load failure: " + (if(hadPrevious) "using previously loaded project." else "no project loaded."))
+			s.log.warn("Ignoring load failure: " + (if(hadPrevious) "using previously loaded project." else "no project loaded."))
 			s
 		}
 		else if(matches("last"))
@@ -334,7 +332,7 @@ object BuiltinCommands
 	def loadProjectImpl = Command(LoadProjectImpl)(_ => Project.loadActionParser) { (s0, action) =>
 		val (s, base) = Project.loadAction(SessionVar.clear(s0), action)
 		IO.createDirectory(base)
-		val (eval, structure) = Load.defaultLoad(s, base, logger(s))
+		val (eval, structure) = Load.defaultLoad(s, base, s.log)
 		val session = Load.initialSession(structure, eval, s0)
 		SessionSettings.checkSession(session, s)
 		Project.setProject(session, structure, s)
