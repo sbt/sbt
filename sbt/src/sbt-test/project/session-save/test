@@ -1,0 +1,25 @@
+> set k1 := {error("k1")}
+> session save
+> reload
+-> k1
+
+> set k2 <<= k1 map identity
+> session save
+> reload
+-> k2
+$ must-mirror build.sbt build.check.1
+
+> set k1 := {}
+> session save
+> reload
+> k1
+> k2
+$ must-mirror build.sbt build.check.2
+
+> set k1 <<= k1 map {_ => error("k1")}
+> set k2 := {}
+> session save
+> reload
+-> k1
+> k2
+$ must-mirror build.sbt build.check.3

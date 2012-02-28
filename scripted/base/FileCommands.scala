@@ -24,6 +24,7 @@ class FileCommands(baseDirectory: File) extends BasicStatementHandler
 			"exec" nonEmpty(execute _ ),
 			"copy" copy (to => rebase(baseDirectory, to)),
 			"copy-file" twoArg("Two paths", copyFile _),
+			"must-mirror" twoArg("Two paths", diffFiles _),
 			"copy-flat" copy flat
 		)
 
@@ -42,6 +43,12 @@ class FileCommands(baseDirectory: File) extends BasicStatementHandler
 		IO.copyFile(fromString(from), fromString(to))
 	def makeDirectories(paths: List[String]) =
 		IO.createDirectories(fromStrings(paths))
+	def diffFiles(file1: String, file2: String) = {
+		val lines1 = IO.readLines(fromString(file1))
+		val lines2 = IO.readLines(fromString(file2))
+		if (lines1 != lines2)
+			scriptError("File contents are different:\n" + lines1.mkString("\n") + "\nAnd:\n" + lines2.mkString("\n"))
+	}
 
 	def newer(a: String, b: String) =
 	{
