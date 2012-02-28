@@ -173,7 +173,7 @@ object BuiltinCommands
 	{
 		import extracted._
 		val append = Load.transformSettings(Load.projectScope(currentRef), currentRef.build, rootProject, settings)
-		session.appendSettings( append map (a => (a, arg)))
+		session.appendSettings( append map (a => (a, arg.split('\n').toList)))
 	}
 	def inspect = Command(InspectCommand, inspectBrief, inspectDetailed)(inspectParser) { case (s, (option, sk)) =>
 		s.log.info(inspectOutput(s, option, sk))
