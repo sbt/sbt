@@ -25,11 +25,14 @@ object Opts {
 object DefaultOptions {
 	import Opts._
 	import Path._
+
 	def javac: Seq[String] = compile.encoding("UTF-8")
 	def scalac: Seq[String] = compile.encoding("UTF-8")
 	def javadoc(name: String, version: String): Seq[String] = Seq("-doctitle", "%s %s API".format(name, version))
 	def scaladoc(name: String, version: String): Seq[String] = doc.title(name) ++ doc.version(version)
-	@deprecated("Use `credentials(State)` instead.", "0.12.0")
+
+	@deprecated("Use `credentials(State)` instead to make use of configuration path dynamically configured via `Keys.globalBaseDirectory`; relying on ~/.ivy2 is not recommended anymore.", "0.12.0")
 	def credentials: Credentials = Credentials(userHome / ".ivy2" / ".credentials")
 	def credentials(s: State): Credentials = Credentials(BuildPaths.getGlobalBase(s) / ".credentials")
+	def addCredentials: Project.Setting[_] = Keys.credentials <+= Keys.state map credentials
 }
