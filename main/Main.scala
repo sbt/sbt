@@ -82,14 +82,9 @@ object BuiltinCommands
 		delegateToAlias(BootCommand, success(orElse) )(s)
 	}
 
+	def sbtName(s: State): String = s.configuration.provider.id.name
 	def sbtVersion(s: State): String = s.configuration.provider.id.version
 	def scalaVersion(s: State): String = s.configuration.provider.scalaProvider.version
-	def aboutString(s: State): String =
-	{
-		"This is sbt " + sbtVersion(s) + "\n" +
-		aboutProject(s) +
-		"sbt, sbt plugins, and build definitions are using Scala " + scalaVersion(s) + "\n"
-	}
 	def aboutProject(s: State): String =
 		if(Project.isProjectLoaded(s))
 		{
@@ -99,12 +94,12 @@ object BuiltinCommands
 			val built = if(sc.isEmpty) "" else "The current project is built against " + sc + "\n"
 			current + built + aboutPlugins(e)
 		}
-		else "No project is currently loaded.\n"
+		else "No project is currently loaded"
 
 	def aboutPlugins(e: Extracted): String =
 	{
 		val allPluginNames = e.structure.units.values.flatMap(_.unit.plugins.pluginNames).toSeq.distinct
-		if(allPluginNames.isEmpty) "" else allPluginNames.mkString("Available Plugins: ", ", ", "\n")
+		if(allPluginNames.isEmpty) "" else allPluginNames.mkString("Available Plugins: ", ", ", "")
 	}
 	def aboutScala(s: State, e: Extracted): String =
 	{
@@ -118,6 +113,14 @@ object BuiltinCommands
 			case (Some(sv), None, None) => "Scala " + sv
 			case (None, None, None) => ""
 		}
+	}
+	def aboutString(s: State): String =
+	{
+		val (name, ver, scalaVer, about) = (sbtName(s), sbtVersion(s), scalaVersion(s), aboutProject(s))
+		"""This is %s %s
+			|%s
+			|%s, %s plugins, and build definitions are using Scala %s
+			|""".stripMargin.format(name, ver, about, name, name, scalaVer)
 	}
 	private[this] def selectScalaVersion(sv: Option[String], si: ScalaInstance): String  =  sv match { case Some(si.version) => si.version; case _ => si.actualVersion }
 	private[this] def quiet[T](t: => T): Option[T] = try { Some(t) } catch { case e: Exception => None }
