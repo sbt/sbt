@@ -13,7 +13,7 @@ object APIUtil
 	}
 	val byteToModifiers = (b: Byte) => {
 		def x(bit: Int) = (b & (1 << bit)) != 0
-		new Modifiers( x(0), x(1), x(2), x(3), x(4), x(5), x(6))
+		new Modifiers( x(0), x(1), x(2), x(3), x(4), x(5), x(6) )
 	}
 
 	def verifyTypeParameters(s: SourceAPI): Boolean =
