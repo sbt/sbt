@@ -143,7 +143,8 @@ object Sbt extends Build
 			val loader = classpath.ClasspathUtilities.toLoader(scriptedSbtClasspath.files, scriptedSbtInstance.loader)
 			val m = ModuleUtilities.getObject("sbt.test.ScriptedTests", loader)
 			val r = m.getClass.getMethod("run", classOf[File], classOf[Boolean], classOf[String], classOf[String], classOf[String], classOf[Array[String]], classOf[File], classOf[Array[String]])
-			try { r.invoke(m, sourcePath, true: java.lang.Boolean, v, sv, ssv, args.toArray[String], launcher, Array[String]()) }
+			val launcherVmOptions = Array("-XX:MaxPermSize=256M") // increased after a failure in scripted source-dependencies/macro
+			try { r.invoke(m, sourcePath, true: java.lang.Boolean, v, sv, ssv, args.toArray[String], launcher, launcherVmOptions) }
 			catch { case ite: java.lang.reflect.InvocationTargetException => throw ite.getCause }
 		}
 	}
