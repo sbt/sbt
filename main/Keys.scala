@@ -196,6 +196,7 @@ object Keys
 	val testFrameworks = SettingKey[Seq[TestFramework]]("test-frameworks", "Registered, although not necessarily present, test frameworks.")
 	val testListeners = TaskKey[Seq[TestReportListener]]("test-listeners", "Defines test listeners.")
 	val testExecution = TaskKey[Tests.Execution]("test-execution", "Settings controlling test execution")
+	val testFilter = TaskKey[Seq[String] => String => Boolean]("test-filter", "Filter controlling whether the test is executed")
 	val isModule = AttributeKey[Boolean]("is-module", "True if the target is a module.")
 
 	// Classpath/Dependency Management Keys

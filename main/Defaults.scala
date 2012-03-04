@@ -287,6 +287,7 @@ object Defaults extends BuildCommon
 		testOptions in GlobalScope :== Nil,
 		testExecution in test <<= testExecutionTask(test),
 		testExecution in testOnly <<= testExecutionTask(testOnly),
+		testFilter in testOnly :== (selectedFilter _),
 		executeTests <<= (streams in test, loadedTestFrameworks, testExecution in test, testLoader, definedTests, resolvedScoped, state) flatMap {
 			(s, frameworkMap, config, loader, discovered, scoped, st) =>
 				implicit val display = Project.showContextKey(st)
@@ -323,19 +324,22 @@ object Defaults extends BuildCommon
 	def testExecutionTask(task: Scoped): Initialize[Task[Tests.Execution]] =
 			(testOptions in task, parallelExecution in task, tags in task) map { (opts, par, ts) => new Tests.Execution(opts, par, ts) }
 
-	def testOnlyTask =
-	InputTask( loadForParser(definedTestNames)( (s, i) => testOnlyParser(s, i getOrElse Nil) ) ) { result =>
-		(streams, loadedTestFrameworks, testExecution in testOnly, testLoader, definedTests, resolvedScoped, result, state) flatMap {
-			case (s, frameworks, config, loader, discovered, scoped, (tests, frameworkOptions), st) =>
-				val filter = selectedFilter(tests)
-				val modifiedOpts = Tests.Filter(filter) +: Tests.Argument(frameworkOptions : _*) +: config.options
-				val newConfig = new Tests.Execution(modifiedOpts, config.parallel, config.tags)
-				implicit val display = Project.showContextKey(st)
-				Tests(frameworks, loader, discovered, newConfig, noTestsMessage(scoped), s.log) map { results =>
-					Tests.showResults(s.log, results)
-				}
+	def testOnlyTask: Initialize[InputTask[Unit]] = inputTests(testOnly)
+
+	def inputTests(key: InputKey[_]): Initialize[InputTask[Unit]] =
+		InputTask( loadForParser(definedTestNames)( (s, i) => testOnlyParser(s, i getOrElse Nil) ) ) { result =>
+			(streams, loadedTestFrameworks, testFilter in key, testExecution in key, testLoader, definedTests, resolvedScoped, result, state) flatMap {
+				case (s, frameworks, filter, config, loader, discovered, scoped, (tests, frameworkOptions), st) =>
+					val modifiedOpts = Tests.Filter(filter(tests)) +: Tests.Argument(frameworkOptions : _*) +: config.options
+					val newConfig = new Tests.Execution(modifiedOpts, config.parallel, config.tags)
+					implicit val display = Project.showContextKey(st)
+					Tests(frameworks, loader, discovered, newConfig, noTestsMessage(scoped), s.log) map { results =>
+						Tests.showResults(s.log, results)
+				  }
+			}
 		}
-	}
+																																																
+
 	def selectedFilter(args: Seq[String]): String => Boolean =
 	{
 		val filters = args map GlobFilter.apply
