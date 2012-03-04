@@ -166,7 +166,7 @@ object ClassToAPI
 	def modifiers(i: Int): api.Modifiers =
 	{
 		import Modifier.{isAbstract, isFinal}
-		new api.Modifiers( isAbstract(i), false, isFinal(i), false, false, false)
+		new api.Modifiers( isAbstract(i), false, isFinal(i), false, false, false, false)
 	}
 	def access(i: Int, pkg: Option[String]): api.Access =
 	{
