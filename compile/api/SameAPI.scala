@@ -43,7 +43,14 @@ object TopLevel
 /** Checks the API of two source files for equality.*/
 object SameAPI
 {
-	def apply(a: Source, b: Source): Boolean = a.apiHash == b.apiHash && (a.hash.length > 0 && b.hash.length > 0) && apply(a.api, b.api)
+	def apply(a: Source, b: Source): Boolean =
+	{
+		// Never consider a file containing macros as having the same API as the previous run.
+		val hasMacro = a.hasMacro || b.hasMacro
+
+		!hasMacro && a.apiHash == b.apiHash && (a.hash.length > 0 && b.hash.length > 0) && apply(a.api, b.api)
+	}
+
 	def apply(a: SourceAPI, b: SourceAPI): Boolean =
 	{
 		val start = System.currentTimeMillis
@@ -208,6 +215,7 @@ class SameAPI(tagsA: TypeVars, tagsB: TypeVars, includePrivate: Boolean, include
 		setIf(bs, isSealed, 3)
 		setIf(bs, isImplicit, 4)
 		setIf(bs, isLazy, 5)
+		setIf(bs, isMacro, 6)
 		bs.toImmutable
 	}
 	def setIf(bs: mutable.BitSet, flag: Boolean, i: Int): Unit =
