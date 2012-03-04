@@ -9,11 +9,11 @@ object APIUtil
 	val modifiersToByte = (m: Modifiers) => {
 			import m._
 		def x(b: Boolean, bit: Int) = if(b) 1 << bit else 0
-		( x(isAbstract, 0) | x(isOverride, 1) | x(isFinal, 2) | x(isSealed, 3) | x(isImplicit, 4) | x(isLazy, 5) ).toByte
+		( x(isAbstract, 0) | x(isOverride, 1) | x(isFinal, 2) | x(isSealed, 3) | x(isImplicit, 4) | x(isLazy, 5) | x(isMacro, 6) ).toByte
 	}
 	val byteToModifiers = (b: Byte) => {
 		def x(bit: Int) = (b & (1 << bit)) != 0
-		new Modifiers( x(0), x(1), x(2), x(3), x(4), x(5) )
+		new Modifiers( x(0), x(1), x(2), x(3), x(4), x(5), x(6) )
 	}
 
 	def verifyTypeParameters(s: SourceAPI): Boolean =
@@ -43,6 +43,25 @@ object APIUtil
 			super.visitParameterRef(ref)
 		}
 	}
+
+	def hasMacro(s: SourceAPI): Boolean =
+	{
+		val check = new HasMacro
+		check.visitAPI(s)
+		check.hasMacro
+	}
+
+	private[this] class HasMacro extends Visit
+	{
+		var hasMacro = false
+
+		override def visitModifiers(m: Modifiers)
+		{
+			hasMacro ||= m.isMacro
+			super.visitModifiers(m)
+		}
+	}
+
 	def minimize(api: SourceAPI): SourceAPI =
 		new SourceAPI(api.packages, minimizeDefinitions(api.definitions))
 	def minimizeDefinitions(ds: Array[Definition]): Array[Definition] =

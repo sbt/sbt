@@ -234,6 +234,7 @@ Modifiers
 	isImplicit: Boolean
 	isLazy: Boolean
 	isSynthetic: Boolean
+	isMacro: Boolean
 }}}
 
 {{{

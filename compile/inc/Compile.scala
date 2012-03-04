@@ -52,6 +52,8 @@ private final class AnalysisCallback(internalMap: File => Option[File], external
 	private[this] val sourceDeps = new HashMap[File, Set[File]]
 	private[this] val extSrcDeps = new ListBuffer[(File, String, Source)]
 	private[this] val binaryClassName = new HashMap[File, String]
+		 // source files containing a macro def.
+	private[this] val macroSources = Set[File]()
 
 	private def add[A,B](map: Map[A,Set[B]], a: A, b: B): Unit =
 		map.getOrElseUpdate(a, new HashSet[B]) += b
@@ -99,7 +101,12 @@ private final class AnalysisCallback(internalMap: File => Option[File], external
 		classToSource.put(module, source)
 	}
 	
-	def api(sourceFile: File, source: SourceAPI) { apis(sourceFile) = (xsbt.api.HashAPI(source), xsbt.api.APIUtil.minimize(source)) }
+	def api(sourceFile: File, source: SourceAPI) {
+		import xsbt.api.{APIUtil, HashAPI}
+		if (APIUtil.hasMacro(source)) macroSources += sourceFile
+		apis(sourceFile) = (HashAPI(source), APIUtil.minimize(source))
+	}
+
 	def endSource(sourcePath: File): Unit =
 		assert(apis.contains(sourcePath))
 	
@@ -110,7 +117,9 @@ private final class AnalysisCallback(internalMap: File => Option[File], external
 		(base /: apis) { case (a, (src, api) ) =>
 			val stamp = current.internalSource(src)
 			val hash = stamp match { case h: Hash => h.value; case _ => new Array[Byte](0) }
-			val s = new xsbti.api.Source(compilation, hash, api._2, api._1)
+			// TODO store this in Relations, rather than Source.
+			val hasMacro: Boolean = macroSources.contains(src)
+			val s = new xsbti.api.Source(compilation, hash, api._2, api._1, hasMacro)
 			a.addSource(src, s, stamp, sourceDeps.getOrElse(src, Nil: Iterable[File]))
 		}
 	def addExternals(base: Analysis): Analysis = (base /: extSrcDeps) { case (a, (source, name, api)) => a.addExternalDep(source, name, api) }

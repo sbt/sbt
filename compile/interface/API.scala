@@ -275,7 +275,7 @@ final class API(val global: Global, val callback: xsbti.AnalysisCallback) extend
 	{
 		import Flags._
 		new xsbti.api.Modifiers(s.hasFlag(ABSTRACT) || s.hasFlag(DEFERRED), s.hasFlag(OVERRIDE),
-			s.isFinal, s.hasFlag(SEALED), isImplicit(s), s.hasFlag(LAZY))
+			s.isFinal, s.hasFlag(SEALED), isImplicit(s), s.hasFlag(LAZY), hasMacro(s))
 	}
 
 	private def isImplicit(s: Symbol) = s.hasFlag(Flags.IMPLICIT)
