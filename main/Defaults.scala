@@ -1139,6 +1139,18 @@ trait BuildExtra extends BuildCommon
 {
 		import Defaults._
 
+	/** Defines an alias given by `name` that expands to `value`.
+	* This alias is defined globally after projects are loaded.
+	* The alias is undefined when projects are unloaded.
+	* Names are restricted to be either alphanumeric or completely symbolic.
+	* As an exception, '-' and '_' are allowed within an alphanumeric name.*/
+	def addCommandAlias(name: String, value: String): Seq[Setting[State => State]] =
+	{
+		val add = (s: State) => BasicCommands.addAlias(s, name, value)
+		val remove = (s: State) => BasicCommands.removeAlias(s, name)
+		def compose(setting: SettingKey[State => State], f: State => State) = setting in Global ~= (_ compose f)
+		Seq( compose(onLoad, add), compose(onUnload, remove) )
+	}
 	def addSbtPlugin(dependency: ModuleID): Setting[Seq[ModuleID]] =
 		libraryDependencies <+= (sbtBinaryVersion in update,scalaBinaryVersion in update) { (sbtV, scalaV) => sbtPluginExtra(dependency, sbtV, scalaV) }
 
