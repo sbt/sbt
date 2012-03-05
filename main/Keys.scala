@@ -192,6 +192,7 @@ object Keys
 	val executeTests = TaskKey[Tests.Output]("execute-tests", "Executes all tests, producing a report.")
 	val test = TaskKey[Unit]("test", "Executes all tests.")
 	val testOnly = InputKey[Unit]("test-only", "Executes the tests provided as arguments or all tests if no arguments are provided.")
+	val testQuick = InputKey[Unit]("test-quick", "Executes the tests that either failed before, were not run or whose transitive dependencies changed, among those provided as arguments.")
 	val testOptions = TaskKey[Seq[TestOption]]("test-options", "Options for running tests.")
 	val testFrameworks = SettingKey[Seq[TestFramework]]("test-frameworks", "Registered, although not necessarily present, test frameworks.")
 	val testListeners = TaskKey[Seq[TestReportListener]]("test-listeners", "Defines test listeners.")

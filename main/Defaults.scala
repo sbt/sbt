@@ -64,11 +64,8 @@ object Defaults extends BuildCommon
 		logBuffered :== false,
 		connectInput :== false,
 		cancelable :== false,
-		cancelable :== false,
 		autoScalaLibrary :== true,
 		onLoad <<= onLoad ?? idFun[State],
-		tags in test := Seq(Tags.Test -> 1),
-		tags in testOnly <<= tags in test,
 		onUnload <<= (onUnload ?? idFun[State]),
 		onUnload <<= (onUnload, taskTemporaryDirectory) { (f, dir) => s => { try f(s) finally IO.delete(dir) } },
 		watchingMessage <<= watchingMessage ?? Watched.defaultWatchingMessage,
@@ -78,8 +75,6 @@ object Defaults extends BuildCommon
 		trapExit in run :== true,
 		traceLevel in run :== 0,
 		traceLevel in runMain :== 0,
-		logBuffered in testOnly :== true,
-		logBuffered in test :== true,
 		traceLevel in console :== Int.MaxValue,
 		traceLevel in consoleProject :== Int.MaxValue,
 		autoCompilerPlugins :== true,
@@ -121,7 +116,13 @@ object Defaults extends BuildCommon
 		includeFilter in unmanagedResources :== AllPassFilter,
 		excludeFilter :== (".*"  - ".") || HiddenFileFilter,
 		pomIncludeRepository :== Classpaths.defaultRepositoryFilter
-	))
+	) ++ {
+		val testSettings = for (task <- Seq(test, testOnly, testQuick)) yield Seq[Setting[_]](
+			logBuffered in task := true,
+			tags in task := Seq(Tags.Test -> 1)
+		)
+		testSettings.flatten
+  })
 	def projectCore: Seq[Setting[_]] = Seq(
 		name <<= thisProject(_.id),
 		logManager <<= extraLoggers(LogManager.defaults),
@@ -285,16 +286,18 @@ object Defaults extends BuildCommon
 		definedTestNames <<= definedTests map ( _.map(_.name).distinct) storeAs definedTestNames triggeredBy compile,
 		testListeners in GlobalScope :== Nil,
 		testOptions in GlobalScope :== Nil,
-		testExecution in test <<= testExecutionTask(test),
-		testExecution in testOnly <<= testExecutionTask(testOnly),
 		testFilter in testOnly :== (selectedFilter _),
+		testFilter in testQuick <<= testQuickFilter,
 		executeTests <<= (streams in test, loadedTestFrameworks, testExecution in test, testLoader, definedTests, resolvedScoped, state) flatMap {
 			(s, frameworkMap, config, loader, discovered, scoped, st) =>
 				implicit val display = Project.showContextKey(st)
 				Tests(frameworkMap, loader, discovered, config, noTestsMessage(ScopedKey(scoped.scope, test.key)), s.log)
 		},
 		test <<= (executeTests, streams) map { (results, s) => Tests.showResults(s.log, results) },
-		testOnly <<= testOnlyTask
+		testOnly <<= inputTests(testOnly),
+		testQuick <<= inputTests(testQuick)
+	) ++ (
+		for (task <- Seq(test, testOnly, testQuick)) yield testExecution in task <<= testExecutionTask(task)
 	)
 	private[this] def noTestsMessage(scoped: ScopedKey[_])(implicit display: Show[ScopedKey[_]]): String =
 		"No tests to run for " + display(scoped)
@@ -324,7 +327,14 @@ object Defaults extends BuildCommon
 	def testExecutionTask(task: Scoped): Initialize[Task[Tests.Execution]] =
 			(testOptions in task, parallelExecution in task, tags in task) map { (opts, par, ts) => new Tests.Execution(opts, par, ts) }
 
-	def testOnlyTask: Initialize[InputTask[Unit]] = inputTests(testOnly)
+	def testQuickFilter: Initialize[Task[Seq[String] => String => Boolean]] =
+	  (compile in test, cacheDirectory) map {
+			case (analysis, dir) =>
+				val succeeded = new TestResultFilter(dir / "succeeded_tests")
+				args => test => selectedFilter(args)(test) && {
+					!succeeded(test) // Add recompilation status.
+				}
+		}
 
 	def inputTests(key: InputKey[_]): Initialize[InputTask[Unit]] =
 		InputTask( loadForParser(definedTestNames)( (s, i) => testOnlyParser(s, i getOrElse Nil) ) ) { result =>
