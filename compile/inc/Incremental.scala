@@ -143,7 +143,7 @@ object Incremental
 
 	def prune(invalidatedSrcs: Set[File], previous: Analysis): Analysis =
 	{
-		IO.delete( invalidatedSrcs.flatMap(previous.relations.products) )
+		IO.deleteFilesEmptyDirs( invalidatedSrcs.flatMap(previous.relations.products) )
 		previous -- invalidatedSrcs
 	}
 

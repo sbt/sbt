@@ -304,6 +304,25 @@ object IO
 	/** Deletes each file or directory (recursively) in `files`.*/
 	def delete(files: Iterable[File]): Unit = files.foreach(delete)
 
+	/** Deletes each file or directory in `files` recursively.  Any empty parent directories are deleted, recursively.*/
+	def deleteFilesEmptyDirs(files: Iterable[File]): Unit =
+	{
+		def isEmptyDirectory(dir: File) = dir.isDirectory && listFiles(dir).isEmpty
+		def parents(fs: Set[File]) = fs.map(_.getParentFile)
+		def deleteEmpty(dirs: Set[File])
+		{
+			val empty = dirs filter isEmptyDirectory
+			if(empty.nonEmpty)  // looks funny, but this is true if at least one of `dirs` is an empty directory
+			{
+				empty foreach { _.delete() }
+				deleteEmpty(parents(empty))
+			}
+		}
+
+		delete(files)
+		deleteEmpty(parents(files.toSet))
+	}
+
 	/** Deletes `file`, recursively if it is a directory. */
 	def delete(file: File)
 	{
