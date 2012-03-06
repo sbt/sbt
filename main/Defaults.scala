@@ -208,7 +208,7 @@ object Defaults extends BuildCommon
 	}
 	def compilersSetting = compilers <<= (scalaInstance, appConfiguration, streams, classpathOptions, javaHome) map { (si, app, s, co, jh) => Compiler.compilers(si, co, jh)(app, s.log) }
 
-	lazy val configTasks = docSetting(doc) ++ compileInputsSettings ++ Seq(
+	lazy val configTasks = docSetting(doc) ++ compileTaskSettings ++ compileInputsSettings ++ Seq(
 		initialCommands in GlobalScope :== "",
 		cleanupCommands in GlobalScope :== "",
 		compile <<= compileTask tag(Tags.Compile, Tags.CPU),
@@ -515,7 +515,9 @@ object Defaults extends BuildCommon
 				println()
 		}
 
-	def compileTask = (compileInputs, streams) map { (i,s) => Compiler(i,s.log) }
+	def compileTaskSettings: Seq[Setting[_]] = inTask(compile)(compileInputsSettings)
+
+	def compileTask = (compileInputs in compile, streams) map { (i,s) => Compiler(i,s.log) }
 	def compileIncSetupTask =
 		(dependencyClasspath, cacheDirectory, skip in compile, definesClass) map { (cp, cacheDir, skip, definesC) =>
 			Compiler.IncSetup(analysisMap(cp), definesC, skip, cacheDir / "inc_compile")

@@ -1,0 +1,5 @@
+-> compile
+
+> 'set sources in (Compile, compile) <<= sources in (Compile, compile) map { _.filterNot(_.getName contains "C") }'
+
+> compile
