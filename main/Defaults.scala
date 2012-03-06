@@ -359,9 +359,9 @@ object Defaults extends BuildCommon
 			packageOptions <<= (name, version, homepage, organization, organizationName, mainClass, packageOptions) map { (name, ver, h, org, orgName, main, p) => Package.addSpecManifestAttributes(name, ver, orgName) +: Package.addImplManifestAttributes(name, ver, h, org, orgName) +: main.map(Package.MainClass.apply) ++: p })) ++
 		inTask(packageSrc)(Seq(
 			packageOptions <<= (name, version, organizationName, packageOptions) map { Package.addSpecManifestAttributes(_, _, _) +: _ })) ++
-	packageTasks(packageBin, packageBinMappings) ++
-	packageTasks(packageSrc, packageSrcMappings) ++
-	packageTasks(packageDoc, packageDocMappings) ++
+	packageTaskSettings(packageBin, packageBinMappings) ++
+	packageTaskSettings(packageSrc, packageSrcMappings) ++
+	packageTaskSettings(packageDoc, packageDocMappings) ++
 	Seq(`package` <<= packageBin)
 
 	def packageBinMappings = products map { _ flatMap Path.allSubpaths }
@@ -412,13 +412,15 @@ object Defaults extends BuildCommon
 			}
 		else
 			base.configurations
-  @deprecated("Use `Pair.apply` instead", "0.12.0")
+	@deprecated("Use `Pair.apply` instead", "0.12.0")
 	def pairID[A,B] = (a: A, b: B) => (a,b)
 
 	def perTaskCache(key: TaskKey[_]): Setting[File] =
 		cacheDirectory ~= { _ / ("for_" + key.key.label) }
 
-	def packageTasks(key: TaskKey[File], mappingsTask: Initialize[Task[Seq[(File,String)]]]) =
+	@deprecated("Use `packageTaskSettings` instead.", "0.12.0")
+	def packageTasks(key: TaskKey[File], mappingsTask: Initialize[Task[Seq[(File,String)]]]) = packageTaskSettings(key, mappingsTask)
+	def packageTaskSettings(key: TaskKey[File], mappingsTask: Initialize[Task[Seq[(File,String)]]]) =
 		inTask(key)( Seq(
 			key in TaskGlobal <<= packageTask,
 			packageConfiguration <<= packageConfigurationTask,
