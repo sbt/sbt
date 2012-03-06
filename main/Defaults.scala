@@ -412,6 +412,7 @@ object Defaults extends BuildCommon
 			}
 		else
 			base.configurations
+  @deprecated("Use `Pair.apply` instead", "0.12.0")
 	def pairID[A,B] = (a: A, b: B) => (a,b)
 
 	def perTaskCache(key: TaskKey[_]): Setting[File] =
@@ -422,7 +423,7 @@ object Defaults extends BuildCommon
 			key in TaskGlobal <<= packageTask,
 			packageConfiguration <<= packageConfigurationTask,
 			mappings <<= mappingsTask,
-			packagedArtifact <<= (artifact, key) map pairID,
+			packagedArtifact <<= (artifact, key) map Pair.apply,
 			artifact <<= artifactSetting,
 			perTaskCache(key),
 			artifactPath <<= artifactPathSetting(artifact)
@@ -451,7 +452,7 @@ object Defaults extends BuildCommon
 		}
 	def runMainTask(classpath: TaskKey[Classpath], scalaRun: TaskKey[ScalaRun]): Initialize[InputTask[Unit]] =
 	{
-			import DefaultParsers._
+		import DefaultParsers._
 		InputTask( loadForParser(discoveredMainClasses)( (s, names) => runMainParser(s, names getOrElse Nil) ) ) { result =>
 			(classpath, scalaRun, streams, result) map { case (cp, runner, s, (mainClass, args)) =>
 				toError(runner.run(mainClass, data(cp), args, s.log))
@@ -696,7 +697,7 @@ object Classpaths
 		artifacts <<= artifactDefs(defaultArtifactTasks),
 		packagedArtifacts <<= packaged(defaultArtifactTasks),
 		makePom <<= (ivyModule, makePomConfiguration, streams) map { (module, config, s) => IvyActions.makePom(module, config, s.log); config.file },
-		packagedArtifact in makePom <<= (artifact in makePom, makePom) map pairID,
+		packagedArtifact in makePom <<= (artifact in makePom, makePom) map Pair.apply,
 		deliver <<= deliverTask(deliverConfiguration),
 		deliverLocal <<= deliverTask(deliverLocalConfiguration),
 		publish <<= publishTask(publishConfiguration, deliver),
