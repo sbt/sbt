@@ -208,7 +208,7 @@ object Defaults extends BuildCommon
 	}
 	def compilersSetting = compilers <<= (scalaInstance, appConfiguration, streams, classpathOptions, javaHome) map { (si, app, s, co, jh) => Compiler.compilers(si, co, jh)(app, s.log) }
 
-	lazy val configTasks = docSetting(doc) ++ compileTaskSettings ++ compileInputsSettings ++ Seq(
+	lazy val configTasks = docTaskSettings(doc) ++ compileTaskSettings ++ compileInputsSettings ++ Seq(
 		initialCommands in GlobalScope :== "",
 		cleanupCommands in GlobalScope :== "",
 		compile <<= compileTask tag(Tags.Compile, Tags.CPU),
@@ -418,7 +418,7 @@ object Defaults extends BuildCommon
 	def perTaskCache(key: TaskKey[_]): Setting[File] =
 		cacheDirectory ~= { _ / ("for_" + key.key.label) }
 
-	@deprecated("Use `packageTaskSettings` instead.", "0.12.0")
+	@deprecated("Use `packageTaskSettings` instead", "0.12.0")
 	def packageTasks(key: TaskKey[File], mappingsTask: Initialize[Task[Seq[(File,String)]]]) = packageTaskSettings(key, mappingsTask)
 	def packageTaskSettings(key: TaskKey[File], mappingsTask: Initialize[Task[Seq[(File,String)]]]) =
 		inTask(key)( Seq(
@@ -481,7 +481,9 @@ object Defaults extends BuildCommon
 				new Run(si, trap, tmp)
 		}
 
-	def docSetting(key: TaskKey[File]): Seq[Setting[_]] = inTask(key)(compileInputsSettings ++ Seq(
+	@deprecated("Use `docTaskSettings` instead", "0.12.0")
+	def docSetting(key: TaskKey[File]) = docTaskSettings(key)
+	def docTaskSettings(key: TaskKey[File] = doc): Seq[Setting[_]] = inTask(key)(compileInputsSettings ++ Seq(
 		perTaskCache(key),
 		target <<= docDirectory, // deprecate docDirectory in favor of 'target in doc'; remove when docDirectory is removed
 		scalacOptions <<= scaladocOptions or scalacOptions, // deprecate scaladocOptions in favor of 'scalacOptions in doc'; remove when scaladocOptions is removed
