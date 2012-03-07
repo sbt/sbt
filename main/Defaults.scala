@@ -332,7 +332,7 @@ object Defaults extends BuildCommon
 						case Some(ts) =>
 							import analysis.{relations => rel, apis}
 							rel.definesClass(test) flatMap {
-								f => (rel.internalSrcDeps(f) map apis.internal) ++ (rel.externalDeps(f) map apis.external)
+								f => ((rel.internalSrcDeps(f) + f) map apis.internal) ++ (rel.externalDeps(f) map apis.external)
               } exists (_.compilation.startTime > ts)
 					}
 				}
