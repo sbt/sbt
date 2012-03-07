@@ -25,10 +25,10 @@ private[sbt] class TestStatusReporter(f: File) extends TestsListener
 	}
 }
 
-private[sbt] class TestResultFilter(f: File) extends (String => Boolean) with NotNull
+private[sbt] class TestResultFilter(f: File) extends NotNull
 {
 	private lazy val succeeded = TestStatus.read(f)
-	def apply(test: String) = succeeded.contains(test)
+	def apply(test: String): Option[Long] = succeeded.get(test)
 }
 
 private object TestStatus

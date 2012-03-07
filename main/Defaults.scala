@@ -327,7 +327,14 @@ object Defaults extends BuildCommon
 			case (analysis, dir) =>
 				val succeeded = new TestResultFilter(succeededFile(dir))
 				args => test => selectedFilter(args)(test) && {
-					!succeeded(test) // Add recompilation status.
+					succeeded(test) match {
+						case None => true
+						case Some(ts) =>
+							import analysis.{relations => rel, apis}
+							rel.definesClass(test) flatMap {
+								f => (rel.internalSrcDeps(f) map apis.internal) ++ (rel.externalDeps(f) map apis.external)
+              } exists (_.compilation.startTime > ts)
+					}
 				}
 		}
 	def succeededFile(dir: File) = dir / "succeeded_tests"
