@@ -50,7 +50,7 @@ object Defaults extends BuildCommon
 	def thisBuildCore: Seq[Setting[_]] = inScope(GlobalScope.copy(project = Select(ThisBuild)))(Seq(
 		managedDirectory <<= baseDirectory(_ / "lib_managed")
 	))
-	def globalCore: Seq[Setting[_]] = inScope(GlobalScope)(Seq(
+	def globalCore: Seq[Setting[_]] = inScope(GlobalScope)(defaultTestTasks(test) ++ defaultTestTasks(testOnly) ++ defaultTestTasks(testQuick) ++ Seq(
 		crossVersion :== CrossVersion.Disabled,
 		buildDependencies <<= buildDependencies or Classpaths.constructBuildDependencies,
 		taskTemporaryDirectory := IO.createTemporaryDirectory,
@@ -64,11 +64,8 @@ object Defaults extends BuildCommon
 		logBuffered :== false,
 		connectInput :== false,
 		cancelable :== false,
-		cancelable :== false,
 		autoScalaLibrary :== true,
 		onLoad <<= onLoad ?? idFun[State],
-		tags in test := Seq(Tags.Test -> 1),
-		tags in testOnly <<= tags in test,
 		onUnload <<= (onUnload ?? idFun[State]),
 		onUnload <<= (onUnload, taskTemporaryDirectory) { (f, dir) => s => { try f(s) finally IO.delete(dir) } },
 		watchingMessage <<= watchingMessage ?? Watched.defaultWatchingMessage,
@@ -78,8 +75,6 @@ object Defaults extends BuildCommon
 		trapExit in run :== true,
 		traceLevel in run :== 0,
 		traceLevel in runMain :== 0,
-		logBuffered in testOnly :== true,
-		logBuffered in test :== true,
 		traceLevel in console :== Int.MaxValue,
 		traceLevel in consoleProject :== Int.MaxValue,
 		autoCompilerPlugins :== true,
@@ -122,6 +117,10 @@ object Defaults extends BuildCommon
 		excludeFilter :== (".*"  - ".") || HiddenFileFilter,
 		pomIncludeRepository :== Classpaths.defaultRepositoryFilter
 	))
+	def defaultTestTasks(key: Scoped): Seq[Setting[_]] = Seq(
+		tags in key := Seq(Tags.Test -> 1),
+		logBuffered in key := true
+	)
 	def projectCore: Seq[Setting[_]] = Seq(
 		name <<= thisProject(_.id),
 		logManager <<= extraLoggers(LogManager.defaults),
@@ -272,7 +271,7 @@ object Defaults extends BuildCommon
 		}
 	}
 
-	lazy val testTasks: Seq[Setting[_]] = testTaskOptions(test) ++ testTaskOptions(testOnly) ++ Seq(
+	lazy val testTasks: Seq[Setting[_]] = testTaskOptions(test) ++ testTaskOptions(testOnly) ++ testTaskOptions(testQuick) ++ Seq(
 		testLoader <<= (fullClasspath, scalaInstance, taskTemporaryDirectory) map { (cp, si, temp) => TestFramework.createTestLoader(data(cp), si, IO.createUniqueDirectory(temp)) },
 		testFrameworks in GlobalScope :== {
 			import sbt.TestFrameworks._
@@ -285,15 +284,16 @@ object Defaults extends BuildCommon
 		definedTestNames <<= definedTests map ( _.map(_.name).distinct) storeAs definedTestNames triggeredBy compile,
 		testListeners in GlobalScope :== Nil,
 		testOptions in GlobalScope :== Nil,
-		testExecution in test <<= testExecutionTask(test),
-		testExecution in testOnly <<= testExecutionTask(testOnly),
+		testFilter in testOnly :== (selectedFilter _),
+		testFilter in testQuick <<= testQuickFilter,
 		executeTests <<= (streams in test, loadedTestFrameworks, testExecution in test, testLoader, definedTests, resolvedScoped, state) flatMap {
 			(s, frameworkMap, config, loader, discovered, scoped, st) =>
 				implicit val display = Project.showContextKey(st)
 				Tests(frameworkMap, loader, discovered, config, noTestsMessage(ScopedKey(scoped.scope, test.key)), s.log)
 		},
 		test <<= (executeTests, streams) map { (results, s) => Tests.showResults(s.log, results) },
-		testOnly <<= testOnlyTask
+		testOnly <<= inputTests(testOnly),
+		testQuick <<= inputTests(testQuick)
 	)
 	private[this] def noTestsMessage(scoped: ScopedKey[_])(implicit display: Show[ScopedKey[_]]): String =
 		"No tests to run for " + display(scoped)
@@ -301,10 +301,11 @@ object Defaults extends BuildCommon
 	lazy val TaskGlobal: Scope = ThisScope.copy(task = Global)
 	lazy val ConfigGlobal: Scope = ThisScope.copy(config = Global)
 	def testTaskOptions(key: Scoped): Seq[Setting[_]] = inTask(key)( Seq(
-		testListeners <<= (streams, resolvedScoped, streamsManager, logBuffered, testListeners in TaskGlobal) map { (s, sco, sm, buff, ls) =>
-			TestLogger(s.log, testLogger(sm, test in sco.scope), buff) +: ls
+		testListeners <<= (streams, resolvedScoped, streamsManager, logBuffered, cacheDirectory in test, testListeners in TaskGlobal) map { (s, sco, sm, buff, dir, ls) =>
+			TestLogger(s.log, testLogger(sm, test in sco.scope), buff) +: new TestStatusReporter(succeededFile(dir)) +: ls
 		},
-		testOptions <<= (testOptions in TaskGlobal, testListeners) map { (options, ls) => Tests.Listeners(ls) +: options }
+		testOptions <<= (testOptions in TaskGlobal, testListeners) map { (options, ls) => Tests.Listeners(ls) +: options },
+		testExecution <<= testExecutionTask(key)
 	) )
 	def testLogger(manager: Streams, baseKey: Scoped)(tdef: TestDefinition): Logger =
 	{
@@ -323,19 +324,49 @@ object Defaults extends BuildCommon
 	def testExecutionTask(task: Scoped): Initialize[Task[Tests.Execution]] =
 			(testOptions in task, parallelExecution in task, tags in task) map { (opts, par, ts) => new Tests.Execution(opts, par, ts) }
 
-	def testOnlyTask =
-	InputTask( loadForParser(definedTestNames)( (s, i) => testOnlyParser(s, i getOrElse Nil) ) ) { result =>
-		(streams, loadedTestFrameworks, testExecution in testOnly, testLoader, definedTests, resolvedScoped, result, state) flatMap {
-			case (s, frameworks, config, loader, discovered, scoped, (tests, frameworkOptions), st) =>
-				val filter = selectedFilter(tests)
-				val modifiedOpts = Tests.Filter(filter) +: Tests.Argument(frameworkOptions : _*) +: config.options
-				val newConfig = new Tests.Execution(modifiedOpts, config.parallel, config.tags)
-				implicit val display = Project.showContextKey(st)
-				Tests(frameworks, loader, discovered, newConfig, noTestsMessage(scoped), s.log) map { results =>
-					Tests.showResults(s.log, results)
+	def testQuickFilter: Initialize[Task[Seq[String] => String => Boolean]] =
+	  (fullClasspath in test, cacheDirectory) map {
+			(cp, dir) =>
+				val ans = for(e <- cp; an <- e.metadata get Keys.analysis) yield an
+				val succeeded = TestStatus.read(succeededFile(dir))
+				val stamps = collection.mutable.Map.empty[File, Long]
+				def stamp(dep: String): Long = {
+					val stamps = for (a <- ans; f <- a.relations.definesClass(dep)) yield intlStamp(f, a, Set.empty)
+					if (stamps.isEmpty) Long.MinValue else stamps.max
 				}
+				def intlStamp(f: File, analysis: inc.Analysis, s: Set[File]): Long = {
+					stamps.getOrElseUpdate(f, {
+						import analysis.{relations => rel, apis}
+						(
+							rel.internalSrcDeps(f).map(intlStamp(_, analysis, s + f)) ++
+							rel.externalDeps(f).map(stamp) +
+							apis.internal(f).compilation.startTime
+						).max
+					})
+				}
+				(args: Seq[String]) => (test: String) => selectedFilter(args)(test) && {
+					succeeded.get(test) match {
+						case None => true
+						case Some(ts) => stamp(test) > ts
+					}
+				}
+		} dependsOn (compile in test)
+	def succeededFile(dir: File) = dir / "succeeded_tests"
+
+	def inputTests(key: InputKey[_]): Initialize[InputTask[Unit]] =
+		InputTask( loadForParser(definedTestNames)( (s, i) => testOnlyParser(s, i getOrElse Nil) ) ) { result =>
+			(streams, loadedTestFrameworks, testFilter in key, testExecution in key, testLoader, definedTests, resolvedScoped, result, state) flatMap {
+				case (s, frameworks, filter, config, loader, discovered, scoped, (tests, frameworkOptions), st) =>
+					val modifiedOpts = Tests.Filter(filter(tests)) +: Tests.Argument(frameworkOptions : _*) +: config.options
+					val newConfig = new Tests.Execution(modifiedOpts, config.parallel, config.tags)
+					implicit val display = Project.showContextKey(st)
+					Tests(frameworks, loader, discovered, newConfig, noTestsMessage(scoped), s.log) map { results =>
+						Tests.showResults(s.log, results)
+				  }
+			}
 		}
-	}
+																																																
+
 	def selectedFilter(args: Seq[String]): String => Boolean =
 	{
 		val filters = args map GlobFilter.apply
