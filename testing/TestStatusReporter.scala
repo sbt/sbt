@@ -25,13 +25,7 @@ private[sbt] class TestStatusReporter(f: File) extends TestsListener
 	}
 }
 
-private[sbt] class TestResultFilter(f: File) extends NotNull
-{
-	private lazy val succeeded = TestStatus.read(f)
-	def apply(test: String): Option[Long] = succeeded.get(test)
-}
-
-private object TestStatus
+private[sbt] object TestStatus
 {
 	import java.util.Properties
 	def read(f: File): Map[String, Long] =

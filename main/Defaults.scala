@@ -50,7 +50,7 @@ object Defaults extends BuildCommon
 	def thisBuildCore: Seq[Setting[_]] = inScope(GlobalScope.copy(project = Select(ThisBuild)))(Seq(
 		managedDirectory <<= baseDirectory(_ / "lib_managed")
 	))
-	def globalCore: Seq[Setting[_]] = inScope(GlobalScope)(Seq(
+	def globalCore: Seq[Setting[_]] = inScope(GlobalScope)(defaultTestTasks(test) ++ defaultTestTasks(testOnly) ++ defaultTestTasks(testQuick) ++ Seq(
 		crossVersion :== CrossVersion.Disabled,
 		buildDependencies <<= buildDependencies or Classpaths.constructBuildDependencies,
 		taskTemporaryDirectory := IO.createTemporaryDirectory,
@@ -117,6 +117,10 @@ object Defaults extends BuildCommon
 		excludeFilter :== (".*"  - ".") || HiddenFileFilter,
 		pomIncludeRepository :== Classpaths.defaultRepositoryFilter
 	))
+	def defaultTestTasks(key: Scoped): Seq[Setting[_]] = Seq(
+		tags in key := Seq(Tags.Test -> 1),
+		logBuffered in key := true
+	)
 	def projectCore: Seq[Setting[_]] = Seq(
 		name <<= thisProject(_.id),
 		logManager <<= extraLoggers(LogManager.defaults),
@@ -301,9 +305,7 @@ object Defaults extends BuildCommon
 			TestLogger(s.log, testLogger(sm, test in sco.scope), buff) +: new TestStatusReporter(succeededFile(dir)) +: ls
 		},
 		testOptions <<= (testOptions in TaskGlobal, testListeners) map { (options, ls) => Tests.Listeners(ls) +: options },
-		testExecution <<= testExecutionTask(key),
-		logBuffered := true,
-		tags := Seq(Tags.Test -> 1)
+		testExecution <<= testExecutionTask(key)
 	) )
 	def testLogger(manager: Streams, baseKey: Scoped)(tdef: TestDefinition): Logger =
 	{
@@ -323,20 +325,32 @@ object Defaults extends BuildCommon
 			(testOptions in task, parallelExecution in task, tags in task) map { (opts, par, ts) => new Tests.Execution(opts, par, ts) }
 
 	def testQuickFilter: Initialize[Task[Seq[String] => String => Boolean]] =
-	  (compile in test, cacheDirectory) map {
-			case (analysis, dir) =>
-				val succeeded = new TestResultFilter(succeededFile(dir))
-				args => test => selectedFilter(args)(test) && {
-					succeeded(test) match {
+	  (fullClasspath in test, cacheDirectory) map {
+			(cp, dir) =>
+				val ans = for(e <- cp; an <- e.metadata get Keys.analysis) yield an
+				val succeeded = TestStatus.read(succeededFile(dir))
+				val stamps = collection.mutable.Map.empty[File, Long]
+				def stamp(dep: String): Long = {
+					val stamps = for (a <- ans; f <- a.relations.definesClass(dep)) yield intlStamp(f, a, Set.empty)
+					if (stamps.isEmpty) Long.MinValue else stamps.max
+				}
+				def intlStamp(f: File, analysis: inc.Analysis, s: Set[File]): Long = {
+					stamps.getOrElseUpdate(f, {
+						import analysis.{relations => rel, apis}
+						(
+							rel.internalSrcDeps(f).map(intlStamp(_, analysis, s + f)) ++
+							rel.externalDeps(f).map(stamp) +
+							apis.internal(f).compilation.startTime
+						).max
+					})
+				}
+				(args: Seq[String]) => (test: String) => selectedFilter(args)(test) && {
+					succeeded.get(test) match {
 						case None => true
-						case Some(ts) =>
-							import analysis.{relations => rel, apis}
-							rel.definesClass(test) flatMap {
-								f => ((rel.internalSrcDeps(f) + f) map apis.internal) ++ (rel.externalDeps(f) map apis.external)
-              } exists (_.compilation.startTime > ts)
+						case Some(ts) => stamp(test) > ts
 					}
 				}
-		}
+		} dependsOn (compile in test)
 	def succeededFile(dir: File) = dir / "succeeded_tests"
 
 	def inputTests(key: InputKey[_]): Initialize[InputTask[Unit]] =
