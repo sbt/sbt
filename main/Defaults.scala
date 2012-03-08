@@ -327,7 +327,7 @@ object Defaults extends BuildCommon
 	def testQuickFilter: Initialize[Task[Seq[String] => String => Boolean]] =
 	  (fullClasspath in test, cacheDirectory) map {
 			(cp, dir) =>
-				val ans = for(e <- cp; an <- e.metadata get Keys.analysis) yield an
+				val ans = cp.flatMap(_.metadata get Keys.analysis)
 				val succeeded = TestStatus.read(succeededFile(dir))
 				val stamps = collection.mutable.Map.empty[File, Long]
 				def stamp(dep: String): Long = {
@@ -335,22 +335,21 @@ object Defaults extends BuildCommon
 					if (stamps.isEmpty) Long.MinValue else stamps.max
 				}
 				def intlStamp(f: File, analysis: inc.Analysis, s: Set[File]): Long = {
-					stamps.getOrElseUpdate(f, {
-						import analysis.{relations => rel, apis}
-						(
+					if (s contains f) Long.MinValue else
+						stamps.getOrElseUpdate(f, {
+							import analysis.{relations => rel, apis}
 							rel.internalSrcDeps(f).map(intlStamp(_, analysis, s + f)) ++
 							rel.externalDeps(f).map(stamp) +
 							apis.internal(f).compilation.startTime
-						).max
-					})
+						}.max)
 				}
-				(args: Seq[String]) => (test: String) => selectedFilter(args)(test) && {
+				args => test => selectedFilter(args)(test) && {
 					succeeded.get(test) match {
 						case None => true
 						case Some(ts) => stamp(test) > ts
 					}
 				}
-		} dependsOn (compile in test)
+		}
 	def succeededFile(dir: File) = dir / "succeeded_tests"
 
 	def inputTests(key: InputKey[_]): Initialize[InputTask[Unit]] =
