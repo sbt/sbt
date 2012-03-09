@@ -139,7 +139,7 @@ object Project extends Init[Scope] with ProjectExtra
 	def apply(id: String, base: File, aggregate: => Seq[ProjectReference] = Nil, dependencies: => Seq[ClasspathDep[ProjectReference]] = Nil, delegates: => Seq[ProjectReference] = Nil,
 		settings: => Seq[Setting[_]] = defaultSettings, configurations: Seq[Configuration] = Configurations.default): Project =
 	{
-		Command.parse(id, DefaultParsers.ID).left.foreach(errMsg => error("Invalid project ID: " + errMsg))
+		DefaultParsers.parse(id, DefaultParsers.ID).left.foreach(errMsg => error("Invalid project ID: " + errMsg))
 		new ProjectDef[ProjectReference](id, base, aggregate, dependencies, delegates, settings, configurations) with Project
 	}
 

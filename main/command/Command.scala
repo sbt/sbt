@@ -25,8 +25,6 @@ private[sbt] final class ArbitraryCommand(val parser: State => Parser[() => Stat
 
 object Command
 {
-	def pointerSpace(s: String, i: Int): String  =	(s take i) map { case '\t' => '\t'; case _ => ' ' } mkString;
-	
 		import DefaultParsers._
 
 	def command(name: String, briefHelp: String, detail: String)(f: State => State): Command  =  command(name, Help(name, (name, briefHelp), detail))(f)
@@ -94,36 +92,6 @@ object Command
 				state.log.error(errMsg)
 				state.fail				
 		}
-	}
-	def parse[T](str: String, parser: Parser[T]): Either[String, T] =
-		Parser.result(parser, str).left.map { failures =>
-			val (msgs,pos) = failures()
-			commandError(str, msgs, pos)
-		}
-
-	def commandError(command: String, msgs: Seq[String], index: Int): String =
-	{
-		val (line, modIndex) = extractLine(command, index)
-		val point = pointerSpace(command, modIndex)
-		msgs.mkString("\n") + "\n" + line + "\n" + point + "^"
-	}
-	def extractLine(s: String, i: Int): (String, Int) =
-	{
-		val notNewline = (c: Char) => c != '\n' && c != '\r'
-		val left = takeRightWhile( s.substring(0, i) )( notNewline )
-		val right = s substring i takeWhile notNewline
-		(left + right, left.length)
-	}
-	def takeRightWhile(s: String)(pred: Char => Boolean): String =
-	{
-		def loop(i: Int): String =
-			if(i < 0)
-				s
-			else if( pred(s(i)) )
-				loop(i-1)
-			else
-				s.substring(i+1)
-		loop(s.length - 1)
 	}
 	def invalidValue(label: String, allowed: Iterable[String])(value: String): String =
 		"Not a valid " + label + ": " + value + similar(value, allowed)
