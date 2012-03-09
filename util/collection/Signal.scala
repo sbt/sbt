@@ -2,13 +2,13 @@ package sbt
 
 object Signals
 {
-	def withHandler[T](handler: () => Unit)(action: () => T): T =
+	def withHandler[T](handler: () => Unit, signal: String = "INT")(action: () => T): T =
 	{
 		val result = 
 			try
 			{
 				val signals = new Signals0
-				signals.withHandler(handler)(action)
+				signals.withHandler(signal, handler, action)
 			}
 			catch { case e: LinkageError => Right(action()) }
 
@@ -26,10 +26,10 @@ private final class Signals0
 {
 	// returns a LinkageError in `action` as Left(t) in order to avoid it being
 	// incorrectly swallowed as missing Signal/SignalHandler
-	def withHandler[T](handler: () => Unit)(action: () => T): Either[Throwable, T] =
+	def withHandler[T](signal: String, handler: () => Unit, action: () => T): Either[Throwable, T] =
 	{
 			import sun.misc.{Signal,SignalHandler}
-		val intSignal = new Signal("INT")
+		val intSignal = new Signal(signal)
 		val newHandler = new SignalHandler {
 			def handle(sig: Signal) { handler() }
 		}	
