@@ -35,7 +35,7 @@ abstract class JLine extends LineReader
 
 	private[this] def readLineDirect(prompt: String, mask: Option[Char]): String =
 		if(handleCONT)
-			Signals.withHandler(() => resume(), signal = "CONT")( () => readLineDirectRaw(prompt, mask) )
+			Signals.withHandler(() => resume(), signal = Signals.CONT)( () => readLineDirectRaw(prompt, mask) )
 		else
 			readLineDirectRaw(prompt, mask)
 	private[this] def readLineDirectRaw(prompt: String, mask: Option[Char]): String =
@@ -90,7 +90,7 @@ private object JLine
 
 	def simple(historyPath: Option[File], handleCONT: Boolean = HandleCONT): SimpleReader = new SimpleReader(historyPath, handleCONT)
 	val MaxHistorySize = 500
-	val HandleCONT = !java.lang.Boolean.getBoolean("sbt.disable.cont")
+	val HandleCONT = !java.lang.Boolean.getBoolean("sbt.disable.cont") && Signals.supported(Signals.CONT)
 }
 
 trait LineReader
