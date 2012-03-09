@@ -277,6 +277,12 @@ trait ParserMain
 		def unapply[A,B](t: (A,B)): Some[(A,B)] = Some(t)
 	}
 
+	def parse[T](str: String, parser: Parser[T]): Either[String, T] =
+		Parser.result(parser, str).left.map { failures =>
+			val (msgs,pos) = failures()
+			ProcessError(str, msgs, pos)
+		}
+
 	// intended to be temporary pending proper error feedback
 	def result[T](p: Parser[T], s: String): Either[() => (Seq[String],Int), T] =
 	{
