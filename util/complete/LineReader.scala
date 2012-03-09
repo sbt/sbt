@@ -9,6 +9,7 @@ package sbt
 	
 abstract class JLine extends LineReader
 {
+	protected[this] val handleCONT: Boolean
 	protected[this] val reader: ConsoleReader
 	protected[this] val historyPath: Option[File]
 
@@ -33,10 +34,22 @@ abstract class JLine extends LineReader
 		}
 
 	private[this] def readLineDirect(prompt: String, mask: Option[Char]): String =
+		if(handleCONT)
+			Signals.withHandler(() => resume(), signal = "CONT")( () => readLineDirectRaw(prompt, mask) )
+		else
+			readLineDirectRaw(prompt, mask)
+	private[this] def readLineDirectRaw(prompt: String, mask: Option[Char]): String =
 		mask match {
 			case Some(m) => reader.readLine(prompt, m)
 			case None => reader.readLine(prompt)
 		}
+	private[this] def resume()
+	{
+		jline.Terminal.resetTerminal
+		JLine.terminal.disableEcho()
+		reader.drawLine()
+		reader.flushConsole()
+	}
 }
 private object JLine
 {
@@ -75,15 +88,16 @@ private object JLine
 			h.setOutput(null)
 		}
 
-	def simple(historyPath: Option[File]): SimpleReader = new SimpleReader(historyPath)
+	def simple(historyPath: Option[File], handleCONT: Boolean = HandleCONT): SimpleReader = new SimpleReader(historyPath, handleCONT)
 	val MaxHistorySize = 500
+	val HandleCONT = !java.lang.Boolean.getBoolean("sbt.disable.cont")
 }
 
 trait LineReader
 {
 	def readLine(prompt: String, mask: Option[Char] = None): Option[String]
 }
-final class FullReader(val historyPath: Option[File], complete: Parser[_]) extends JLine
+final class FullReader(val historyPath: Option[File], complete: Parser[_], val handleCONT: Boolean = JLine.HandleCONT) extends JLine
 {
 	protected[this] val reader =
 	{
@@ -94,9 +108,9 @@ final class FullReader(val historyPath: Option[File], complete: Parser[_]) exten
 	}
 }
 
-class SimpleReader private[sbt] (val historyPath: Option[File]) extends JLine
+class SimpleReader private[sbt] (val historyPath: Option[File], val handleCONT: Boolean) extends JLine
 {
 	protected[this] val reader = JLine.createReader()
 }
-object SimpleReader extends SimpleReader(None)
+object SimpleReader extends SimpleReader(None, JLine.HandleCONT)
 
