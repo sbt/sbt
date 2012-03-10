@@ -159,14 +159,16 @@ object IO
 	def gunzip(input: InputStream, output: OutputStream): Unit =
 		gzipInputStream(input) { gzStream => transfer(gzStream, output) }
 
-	def unzip(from: File, toDirectory: File, filter: NameFilter = AllPassFilter): Set[File] = fileInputStream(from)(in => unzipStream(in, toDirectory, filter))
-	def unzipURL(from: URL, toDirectory: File, filter: NameFilter = AllPassFilter): Set[File] = urlInputStream(from)(in => unzipStream(in, toDirectory, filter))
-	def unzipStream(from: InputStream, toDirectory: File, filter: NameFilter = AllPassFilter): Set[File] =
+	def unzip(from: File, toDirectory: File, filter: NameFilter = AllPassFilter, preserveLastModified: Boolean = true): Set[File] =
+		fileInputStream(from)(in => unzipStream(in, toDirectory, filter, preserveLastModified))
+	def unzipURL(from: URL, toDirectory: File, filter: NameFilter = AllPassFilter, preserveLastModified: Boolean = true): Set[File] =
+		urlInputStream(from)(in => unzipStream(in, toDirectory, filter, preserveLastModified))
+	def unzipStream(from: InputStream, toDirectory: File, filter: NameFilter = AllPassFilter, preserveLastModified: Boolean = true): Set[File] =
 	{
 		createDirectory(toDirectory)
-		zipInputStream(from) { zipInput => extract(zipInput, toDirectory, filter) }
+		zipInputStream(from) { zipInput => extract(zipInput, toDirectory, filter, preserveLastModified) }
 	}
-	private def extract(from: ZipInputStream, toDirectory: File, filter: NameFilter) =
+	private def extract(from: ZipInputStream, toDirectory: File, filter: NameFilter, preserveLastModified: Boolean) =
 	{
 		val set = new HashSet[File]
 		def next()
@@ -190,7 +192,8 @@ object IO
 							fileOutputStream(false)(target) { out => transfer(from, out) }
 						}
 					}
-					//target.setLastModified(entry.getTime)
+					if(preserveLastModified)
+						target.setLastModified(entry.getTime)
 				}
 				else
 				{
