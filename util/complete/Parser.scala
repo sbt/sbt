@@ -283,6 +283,16 @@ trait ParserMain
 			ProcessError(str, msgs, pos)
 		}
 
+	def sample(str: String, parser: Parser[_], completions: Boolean = false): Unit =
+		if(completions) sampleParse(str, parser) else sampleCompletions(str, parser)
+	def sampleParse(str: String, parser: Parser[_]): Unit =
+		parse(str, parser) match {
+			case Left(msg) => println(msg)
+			case Right(v) => println(v)
+		}
+	def sampleCompletions(str: String, parser: Parser[_], level: Int = 1): Unit =
+		Parser.completions(parser, str, level).get foreach println
+
 	// intended to be temporary pending proper error feedback
 	def result[T](p: Parser[T], s: String): Either[() => (Seq[String],Int), T] =
 	{
