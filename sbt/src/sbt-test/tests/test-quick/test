@@ -1,0 +1,34 @@
+> test-quick Create
+# Create not re-run, Delete deletes the file.
+> test-quick
+# Re-create the file.
+> test-only Create
+
+# Non-API change
+$ copy-file changed/A.scala src/main/scala/A.scala
+> compile
+$ sleep 2000
+# Create is run. Delete is not since it doesn't have src/main dependency.
+-> test-quick
+> test-only Delete
+# Previous run of Create failed, re-run.
+> test-quick Create
+# No-op.
+> test-quick Create
+# API change.
+
+$ copy-file changed/B.scala src/main/scala/B.scala
+> compile
+$ sleep 2000
+-> test-quick Create
+> test-only Delete
+# Previous run of Create failed, re-run.
+> test-quick Create
+# src/test compilation group change.
+
+$ copy-file changed/Base.scala src/test/scala/Base.scala
+> test:compile
+$ sleep 2000
+-> test-quick Create
+> test-quick Delete
+> test-quick Create
