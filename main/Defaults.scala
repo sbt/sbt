@@ -59,7 +59,7 @@ object Defaults extends BuildCommon
 		parallelExecution :== true,
 		sbtVersion <<= appConfiguration { _.provider.id.version },
 		sbtBinaryVersion <<= sbtVersion apply binarySbtVersion,
-		sbtResolver <<= sbtVersion { sbtV => if(sbtV endsWith "-SNAPSHOT") Classpaths.typesafeSnapshots else Classpaths.typesafeResolver },
+		sbtResolver <<= sbtVersion { sbtV => if(sbtV endsWith "-SNAPSHOT") Classpaths.typesafeSnapshots else Classpaths.typesafeReleases },
 		pollInterval :== 500,
 		logBuffered :== false,
 		connectInput :== false,
@@ -364,7 +364,7 @@ object Defaults extends BuildCommon
 				  }
 			}
 		}
-																																																
+
 
 	def selectedFilter(args: Seq[String]): String => Boolean =
 	{
@@ -1102,9 +1102,15 @@ object Classpaths
 		flatten(defaultConfiguration in p get data) getOrElse Configurations.Default
 	def flatten[T](o: Option[Option[T]]): Option[T] = o flatMap idFun
 
-	lazy val typesafeSnapshots = typesafeRepo("snapshots")
-	lazy val typesafeResolver = typesafeRepo("releases")
-	def typesafeRepo(status: String) = Resolver.url("typesafe-ivy-"+status, new URL("http://repo.typesafe.com/typesafe/ivy-" + status + "/"))(Resolver.ivyStylePatterns)
+	lazy val typesafeReleases = Resolver.typesafeIvyRepo("releases")
+	lazy val typesafeSnapshots = Resolver.typesafeIvyRepo("snapshots")
+	@deprecated("Use `typesafeReleases` instead", "0.12.0")
+	lazy val typesafeResolver = typesafeReleases
+	@deprecated("Use `Resolver.typesafeIvyRepo` instead", "0.12.0")
+	def typesafeRepo(status: String) = Resolver.typesafeIvyRepo(status)
+
+	lazy val sbtPluginReleases = Resolver.sbtPluginRepo("releases")
+	lazy val sbtPluginSnapshots = Resolver.sbtPluginRepo("snapshots")
 
 	def modifyForPlugin(plugin: Boolean, dep: ModuleID): ModuleID =
 		if(plugin) dep.copy(configurations = Some(Provided.name)) else dep
