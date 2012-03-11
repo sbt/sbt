@@ -759,7 +759,7 @@ object Classpaths
 			case (_, rs) => task { Resolver.withDefaultResolvers(rs) }
 		},
 		fullResolvers <<= (projectResolver,externalResolvers,sbtPlugin,sbtResolver) map { (proj,rs,isPlugin,sbtr) =>
-			val base = if(isPlugin) sbtr +: rs else rs
+			val base = if(isPlugin) sbtr +: sbtPluginReleases +: rs else rs
 			proj +: base
 		},
 		offline in GlobalScope :== false,
