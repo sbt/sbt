@@ -66,21 +66,9 @@ trait Parsers
 		(neg.toSeq ++ digits).mkString.toInt
 	lazy val Bool = ("true" ^^^ true) | ("false" ^^^ false)
 	lazy val StringBasic = StringVerbatim | StringEscapable | NotQuoted
-	def StringVerbatim: Parser[String] = {
-		var dqcount = 0
-		val p = VerbatimDQuotes ~
-			charClass(_ match {
-				case DQuoteChar =>
-				  dqcount += 1
-				  dqcount < 3
-				case _ =>
-					dqcount = 0
-					true
-			}).*.string ~ DQuoteChar
-		p map { case ((s, p), c) => s + p + c.toString } filter(
-			{ _.endsWith(VerbatimDQuotes) }, _ => "Expected '%s'" format VerbatimDQuotes) map { s =>
-			s.substring(3, s.length - 3) }
-	}
+  lazy val StringVerbatim: Parser[String] = VerbatimDQuotes ~>
+  	any.+.string.filter(!_.contains(VerbatimDQuotes), _ => "Invalid verbatim string") <~ 
+  	VerbatimDQuotes
 	lazy val StringEscapable: Parser[String] = {
 		val p = DQuoteChar ~>
 		  (EscapeSequence | NotDQuoteBackslashClass map {_.toString}).* <~ DQuoteChar
