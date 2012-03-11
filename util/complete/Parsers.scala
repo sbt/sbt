@@ -48,10 +48,12 @@ trait Parsers
 	lazy val URIClass = URIChar.+.string !!! "Invalid URI"
 	lazy val VerbatimDQuotes = "\"\"\""
 	lazy val DQuoteChar = '\"'
+	lazy val BackslashChar = '\\'
 	lazy val DQuoteClass = charClass(_ == DQuoteChar, "double-quote character")
-	lazy val NotDQuoteClass = charClass(_ != DQuoteChar, "non-double-quote character")
-	lazy val NotDQuoteBackslashClass = charClass({ c: Char =>
-		c != DQuoteChar && c != '\\' }, "non-double-quote character")
+	lazy val NotDQuoteSpaceClass =
+	  charClass({ c: Char => (c != DQuoteChar) && !c.isWhitespace }, "non-double-quote-space character")
+	lazy val NotDQuoteBackslashClass =
+		charClass({ c: Char => (c != DQuoteChar) && (c != BackslashChar) }, "non-double-quote-backslash character")
 
 	lazy val URIChar = charClass(alphanum) | chars("_-!.~'()*,;:$&+=?/[]@%#")
 	def alphanum(c: Char) = ('a' <= c && c <= 'z') || ('A' <= c && c <= 'Z') || ('0' <= c && c <= '9')
@@ -69,19 +71,15 @@ trait Parsers
   lazy val StringVerbatim: Parser[String] = VerbatimDQuotes ~>
   	any.+.string.filter(!_.contains(VerbatimDQuotes), _ => "Invalid verbatim string") <~ 
   	VerbatimDQuotes
-	lazy val StringEscapable: Parser[String] = {
-		val p = DQuoteChar ~>
-		  (EscapeSequence | NotDQuoteBackslashClass map {_.toString}).* <~ DQuoteChar
-		p map { _.mkString }
-	}
-	lazy val EscapeSequence: Parser[String] =
-	  "\\" ~> ("b" ^^^ "\b" | "t" ^^^ "\t" | "n" ^^^ "\n" | "f" ^^^ "\f" | "r" ^^^ "\r" |
-	  "\"" ^^^ "\"" | "'" ^^^ "\'" | "\\" ^^^ "\\" | UnicodeEscape)
-	lazy val UnicodeEscape: Parser[String] =
-	  ("u" ~> repeat(HexDigit, 4, 4)) map { seq =>
-	  	Integer.parseInt(seq.mkString, 16).asInstanceOf[Char].toString
-	  }
-	lazy val NotQuoted = (NotDQuoteClass ~ NotSpace) map { case (c, s) => c.toString + s }
+	lazy val StringEscapable: Parser[String] =
+		(DQuoteChar ~> (NotDQuoteBackslashClass | EscapeSequence).+.string <~ DQuoteChar |
+		(DQuoteChar ~ DQuoteChar) ^^^ "")
+	lazy val EscapeSequence: Parser[Char] =
+	  BackslashChar ~> ('b' ^^^ '\b' | 't' ^^^ '\t' | 'n' ^^^ '\n' | 'f' ^^^ '\f' | 'r' ^^^ '\r' |
+	  '\"' ^^^ '\"' | '\'' ^^^ '\'' | '\\' ^^^ '\\' | UnicodeEscape)
+	lazy val UnicodeEscape: Parser[Char] =
+	  ("u" ~> repeat(HexDigit, 4, 4)) map { seq => Integer.parseInt(seq.mkString, 16).toChar }
+	lazy val NotQuoted = (NotDQuoteSpaceClass ~ NotSpace) map { case (c, s) => c.toString + s }
 
 	def repsep[T](rep: Parser[T], sep: Parser[_]): Parser[Seq[T]] =
 		rep1sep(rep, sep) ?? Nil
