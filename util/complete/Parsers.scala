@@ -17,10 +17,8 @@ trait Parsers
 
 	lazy val DigitSet = Set("0","1","2","3","4","5","6","7","8","9")
 	lazy val Digit = charClass(_.isDigit, "digit") examples DigitSet
-	lazy val OctalDigitSet = Set("0","1","2","3","4","5","6","7")
-	lazy val OctalDigit = charClass(c => OctalDigitSet(c.toString), "octal") examples OctalDigitSet
-	lazy val HexDigitSet = Set("0","1","2","3","4","5","6","7","8","9", "A", "B", "C", "D", "E", "F")
-	lazy val HexDigit = charClass(c => HexDigitSet(c.toString.toUpperCase), "hex") examples HexDigitSet
+	lazy val HexDigitSet = Set('0','1','2','3','4','5','6','7','8','9','A','B','C','D','E','F')
+	lazy val HexDigit = charClass(HexDigitSet, "hex") examples HexDigitSet.map(_.toString)
 	lazy val Letter = charClass(_.isLetter, "letter")
 	def IDStart = Letter
 	lazy val IDChar = charClass(isIDChar, "ID character")
@@ -90,11 +88,7 @@ trait Parsers
 	}
 	lazy val EscapeSequence: Parser[String] =
 	  "\\" ~> ("b" ^^^ "\b" | "t" ^^^ "\t" | "n" ^^^ "\n" | "f" ^^^ "\f" | "r" ^^^ "\r" |
-	  "\"" ^^^ "\"" | "'" ^^^ "\'" | "\\" ^^^ "\\" | OctalEscape | UnicodeEscape)
-	lazy val OctalEscape: Parser[String] =
-	  repeat(OctalDigit, 1, 3) map { seq =>
-	  	Integer.parseInt(seq.mkString, 8).asInstanceOf[Char].toString
-	  }
+	  "\"" ^^^ "\"" | "'" ^^^ "\'" | "\\" ^^^ "\\" | UnicodeEscape)
 	lazy val UnicodeEscape: Parser[String] =
 	  ("u" ~> repeat(HexDigit, 4, 4)) map { seq =>
 	  	Integer.parseInt(seq.mkString, 16).asInstanceOf[Char].toString
