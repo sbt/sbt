@@ -442,8 +442,8 @@ object Defaults extends BuildCommon
 			}
 		else
 			base.configurations
-	@deprecated("Use `Pair.apply` instead", "0.12.0")
-	def pairID[A,B] = (a: A, b: B) => (a,b)
+	@deprecated("Use `Util.pairID` instead", "0.12.0")
+	def pairID = Util.pairID
 
 	def perTaskCache(key: TaskKey[_]): Setting[File] =
 		cacheDirectory ~= { _ / ("for_" + key.key.label) }
@@ -455,7 +455,7 @@ object Defaults extends BuildCommon
 			key in TaskGlobal <<= packageTask,
 			packageConfiguration <<= packageConfigurationTask,
 			mappings <<= mappingsTask,
-			packagedArtifact <<= (artifact, key) map Pair.apply,
+			packagedArtifact <<= (artifact, key) map Util.pairID,
 			artifact <<= artifactSetting,
 			perTaskCache(key),
 			artifactPath <<= artifactPathSetting(artifact)
@@ -556,7 +556,7 @@ object Defaults extends BuildCommon
 		}
 	def compileInputsSettings: Seq[Setting[_]] = {
 		val optionsPair = TaskKey.local[(Seq[String], Seq[String])]
-		Seq(optionsPair <<= (scalacOptions, javacOptions) map Pair.apply,
+		Seq(optionsPair <<= (scalacOptions, javacOptions) map Util.pairID,
 		compileInputs <<= (dependencyClasspath, sources, compilers, optionsPair, classDirectory, compileOrder, compileIncSetup, maxErrors, streams) map {
 			(cp, srcs, cs, optsPair, classes, order, incSetup, maxErr, s) =>
 				Compiler.inputs(classes +: data(cp), srcs, classes, optsPair._1, optsPair._2, maxErr, order)(cs, incSetup, s.log)
@@ -733,7 +733,7 @@ object Classpaths
 		artifacts <<= artifactDefs(defaultArtifactTasks),
 		packagedArtifacts <<= packaged(defaultArtifactTasks),
 		makePom <<= (ivyModule, makePomConfiguration, streams) map { (module, config, s) => IvyActions.makePom(module, config, s.log); config.file },
-		packagedArtifact in makePom <<= (artifact in makePom, makePom) map Pair.apply,
+		packagedArtifact in makePom <<= (artifact in makePom, makePom) map Util.pairID,
 		deliver <<= deliverTask(deliverConfiguration),
 		deliverLocal <<= deliverTask(deliverLocalConfiguration),
 		publish <<= publishTask(publishConfiguration, deliver),

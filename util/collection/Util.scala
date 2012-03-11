@@ -27,4 +27,6 @@ object Util
 			case 1 => Some("1 " + prefix + single)
 			case x => Some(x.toString + " " + prefix + plural)
 		}
+
+	def pairID[A,B] = (a: A, b: B) => (a,b)
 }
