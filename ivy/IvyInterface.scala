@@ -178,7 +178,9 @@ final case class SftpRepository(name: String, connection: SshConnection, pattern
 }
 
 import Resolver._
+@deprecated("Maven repository at scala-tools.org is being phased out, consider using an alternative resolver", "0.12.0")
 object ScalaToolsReleases extends MavenRepository(ScalaToolsReleasesName, ScalaToolsReleasesRoot)
+@deprecated("Maven repository at scala-tools.org is being phased out, consider using an alternative resolver", "0.12.0")
 object ScalaToolsSnapshots extends MavenRepository(ScalaToolsSnapshotsName, ScalaToolsSnapshotsRoot)
 object DefaultMavenRepository extends MavenRepository("public", IBiblioResolver.DEFAULT_M2_ROOT)
 object JavaNet2Repository extends MavenRepository(JavaNet2RepositoryName, JavaNet2RepositoryRoot)
@@ -190,12 +192,24 @@ sealed trait JavaNet1Repository extends Resolver
 
 object Resolver
 {
+	val TypesafeRepositoryRoot = "http://repo.typesafe.com/typesafe"
+	val SbtPluginRepositoryRoot = "http://scalasbt.artifactoryonline.com/scalasbt"
+	val SonatypeRepositoryRoot = "https://oss.sonatype.org/content/repositories"
+	@deprecated("Maven repository at scala-tools.org is being phased out, consider using an alternative resolver", "0.12.0")
 	val ScalaToolsReleasesName = "Scala-Tools Maven2 Repository"
+	@deprecated("Maven repository at scala-tools.org is being phased out, consider using an alternative resolver", "0.12.0")
 	val ScalaToolsSnapshotsName = "Scala-Tools Maven2 Snapshots Repository"
+	@deprecated("Maven repository at scala-tools.org is being phased out, consider using an alternative resolver", "0.12.0")
 	val ScalaToolsReleasesRoot = "http://scala-tools.org/repo-releases"
+	@deprecated("Maven repository at scala-tools.org is being phased out, consider using an alternative resolver", "0.12.0")
 	val ScalaToolsSnapshotsRoot = "http://scala-tools.org/repo-snapshots"
 	val JavaNet2RepositoryName = "java.net Maven2 Repository"
 	val JavaNet2RepositoryRoot = "http://download.java.net/maven/2"
+
+	def typesafeRepo(status: String) = new MavenRepository("typesafe-" + status, TypesafeRepositoryRoot + "/" + status)
+	def typesafeIvyRepo(status: String) = url("typesafe-ivy-" + status, new URL(TypesafeRepositoryRoot + "/ivy-" + status + "/"))(ivyStylePatterns)
+	def sbtPluginRepo(status: String) = url("sbt-plugin-" + status, new URL(SbtPluginRepositoryRoot + "/sbt-plugin-" + status + "/"))(ivyStylePatterns)
+	def sonatypeRepo(status: String) = new MavenRepository("sonatype-" + status, SonatypeRepositoryRoot + "/" + status)
 
 	/** Add the local, Maven Central, and Scala Tools releases repositories to the user repositories.  */
 	def withDefaultResolvers(userResolvers: Seq[Resolver]): Seq[Resolver] =
