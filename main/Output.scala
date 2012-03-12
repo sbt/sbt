@@ -9,24 +9,11 @@ package sbt
 	import Project.ScopedKey
 	import Aggregation.{KeyValue, Values}
 	import Types.idFun
+	import Highlight.{bold, showMatches}
 	import annotation.tailrec
-	import scala.Console.{BOLD, RESET}
 
 object Output
 {
-	def showMatches(pattern: Pattern)(line: String): Option[String] =
-	{
-		val matcher = pattern.matcher(line)
-		if(ConsoleLogger.formatEnabled)
-		{
-			val highlighted = matcher.replaceAll(scala.Console.RED + "$0" + scala.Console.RESET)
-			if(highlighted == line) None else Some(highlighted)
-		}
-		else if(matcher.find)
-			Some(line)
-		else
-			None
-	}
 	final val DefaultTail = "> "
 
 	def last(keys: Values[_], streams: Streams, printLines: Seq[String] => Unit)(implicit display: Show[ScopedKey[_]]): Unit =
@@ -54,7 +41,6 @@ object Output
 			if(!single) bold(display(key)) +: flines else flines
 		}
 	}
-	def bold(s: String) = if(ConsoleLogger.formatEnabled) BOLD + s + RESET else s
 
 	def lastLines(keys: Values[_], streams: Streams): Values[Seq[String]] =
 	{

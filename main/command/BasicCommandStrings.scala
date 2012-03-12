@@ -18,10 +18,19 @@ object BasicCommandStrings
 	/** The command name to terminate the program.*/
 	val TerminateAction: String = Exit
 
-	def helpBrief = (HelpCommand + " [command]*", "Displays this help message or prints detailed help on requested commands.")
-	def helpDetailed = """
-If an argument is provided, this prints detailed help for that command.
-Otherwise, this prints a help summary."""
+	def helpBrief = (HelpCommand + " [command]", "Displays this help message or prints detailed help on requested commands.")
+	def helpDetailed = HelpCommand + """
+
+	Prints a help summary.
+
+""" + HelpCommand + """ <command>
+
+	Prints detailed help for command <command>.
+
+""" + HelpCommand + """ <regular expression>
+
+	Searches the help according to the provided regular expression.
+"""
 
 	def historyHelp = Help.briefDetail(HistoryCommands.descriptions)
 
