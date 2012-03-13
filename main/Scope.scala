@@ -216,7 +216,7 @@ object Scope
 	def linearize[T](axis: ScopeAxis[T], appendGlobal: Boolean = true)(inherit: T => Seq[T]): Seq[ScopeAxis[T]] =
 		axis match
 		{
-			case Select(x) => topologicalSort(x, appendGlobal)(inherit)
+			case Select(x) => topologicalSort[T](x, appendGlobal)(inherit)
 			case Global | This => if(appendGlobal) Global :: Nil else Nil
 		}
 
