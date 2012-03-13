@@ -43,6 +43,7 @@ trait Parsers
 	lazy val NotSpaceClass = charClass(!_.isWhitespace, "non-whitespace character")
 	lazy val SpaceClass = charClass(_.isWhitespace, "whitespace character")
 	lazy val NotSpace = NotSpaceClass.+.string
+	lazy val OptNotSpace = NotSpaceClass.*.string
 	lazy val Space = SpaceClass.+.examples(" ")
 	lazy val OptSpace = SpaceClass.*.examples(" ")
 	lazy val URIClass = URIChar.+.string !!! "Invalid URI"
@@ -79,7 +80,7 @@ trait Parsers
 	  '\"' ^^^ '\"' | '\'' ^^^ '\'' | '\\' ^^^ '\\' | UnicodeEscape)
 	lazy val UnicodeEscape: Parser[Char] =
 	  ("u" ~> repeat(HexDigit, 4, 4)) map { seq => Integer.parseInt(seq.mkString, 16).toChar }
-	lazy val NotQuoted = (NotDQuoteSpaceClass ~ NotSpace) map { case (c, s) => c.toString + s }
+	lazy val NotQuoted = (NotDQuoteSpaceClass ~ OptNotSpace) map { case (c, s) => c.toString + s }
 
 	def repsep[T](rep: Parser[T], sep: Parser[_]): Parser[Seq[T]] =
 		rep1sep(rep, sep) ?? Nil
