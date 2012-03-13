@@ -718,7 +718,7 @@ object Classpaths
 		makePomConfiguration <<= (artifactPath in makePom, projectInfo, pomExtra, pomPostProcess, pomIncludeRepository, pomAllRepositories) {
 			(file, minfo, extra, process, include, all) => new MakePomConfiguration(file, minfo, None, extra, process, include, all)
 		},
-		deliverLocalConfiguration <<= (crossTarget, ivyLoggingLevel) map { (outDir, level) => deliverConfig( outDir, logging = level ) },
+		deliverLocalConfiguration <<= (crossTarget, isSnapshot, ivyLoggingLevel) map { (outDir, snapshot, level) => deliverConfig( outDir, status = if (snapshot) "integration" else "release", logging = level ) },
 		deliverConfiguration <<= deliverLocalConfiguration,
 		publishConfiguration <<= (packagedArtifacts, publishTo, publishMavenStyle, deliver, checksums in publish, ivyLoggingLevel) map { (arts, publishTo, mavenStyle, ivyFile, checks, level) =>
 			publishConfig(arts, if(mavenStyle) None else Some(ivyFile), resolverName = getPublishTo(publishTo).name, checksums = checks, logging = level)
