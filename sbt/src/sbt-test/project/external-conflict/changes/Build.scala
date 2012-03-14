@@ -14,10 +14,12 @@ object B extends Build
 	def isBinary(f: File) = f / "binary" exists;
 	def isSource(f: File) = f / "source" exists;
 
-	def baseProject = Project("root", file("."))
+	def baseProject = Project("root", file(".")) settings(
+		ivyPaths <<= (baseDirectory, target)( (dir, t) => new IvyPaths(dir, Some(t / "ivy-cache")))
+	)
 	def sourceDep(p: Project) = p dependsOn( file("ext") )
 	def binaryDep(p: Project) = p settings(
 		libraryDependencies += "org.example" %% "app" % "0.1.17",
-		resolvers <+= baseDirectory(base => Resolver.file("sample", base / "repo"))
+		resolvers <+= baseDirectory(base => "sample" at (base / "repo").toURI.toString)
 	)
 }
