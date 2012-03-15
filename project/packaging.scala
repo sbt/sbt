@@ -126,6 +126,7 @@ object Packaging {
     unmanagedJars in Compile <+= jansiJar map identity,
 
     // Universal ZIP download install.  TODO - Share the above windows code, here....
+    name in Universal := "sbt",
     mappings in Universal <+= sbtLaunchJar map { f => f -> "bin/sbt-launch.jar" },
     mappings in Universal <+= jansiJar map { f => f -> "bin/jansi.jar" },
     mappings in Universal <++= sourceDirectory in Windows map { d => Seq(
