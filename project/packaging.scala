@@ -124,37 +124,21 @@ object Packaging {
     javacOptions := Seq("-source", "1.5", "-target", "1.5"),
     unmanagedJars in Compile <+= sbtLaunchJar map identity,
     unmanagedJars in Compile <+= jansiJar map identity,
-    // WINDOWS MSI Publishing
-    resolvers += Resolver.url("windows-releases", new URL(winowsReleaseUrl))(Patterns(localWindowsPattern))
-  ) ++ (inConfig(Windows)(Classpaths.publishSettings)) ++ (inConfig(Windows)(Seq(
-    packagedArtifacts <<= (packageMsi, name) map { (msi, name) =>
-       val artifact = Artifact(name, "msi", "msi", classifier = None, configurations = Iterable.empty, url = None, extraAttributes = Map.empty)
-       Map(artifact -> msi)
-    },
-    publishMavenStyle := true,
-    projectID <<= (organization, name, sbtVersion) apply { (o,n,v) => ModuleID(o,n,v) },
-    moduleSettings <<= (projectID, projectInfo) map { (pid, pinfo) =>
-      InlineConfiguration(pid, pinfo, Seq.empty)
-    },
-    ivyModule <<= (ivySbt, moduleSettings) map { (i, s) => new i.Module(s) },
-    deliverLocalConfiguration <<= (crossTarget, ivyLoggingLevel) map { (outDir, level) => Classpaths.deliverConfig(outDir, logging = level) },
-    deliverConfiguration <<= deliverLocalConfiguration,
-    publishTo := Some(Resolver.url("windows-releases", new URL(winowsReleaseUrl))(Patterns(localWindowsPattern))),
-    publishConfiguration <<= (packagedArtifacts, checksums, publishTo) map { (as, checks, publishTo) =>
-      new PublishConfiguration(ivyFile = None,
-                               resolverName = Classpaths.getPublishTo(publishTo).name,
-                               artifacts = as,
-                               checksums = checks,
-                               logging = UpdateLogging.DownloadOnly)
-    },
-    publishLocalConfiguration <<= (packagedArtifacts, checksums) map { (as, checks) =>
-      new PublishConfiguration(ivyFile = None,
-                               resolverName = "local",
-                               artifacts = as,
-                               checksums = checks,
-                               logging = UpdateLogging.DownloadOnly)
+
+    // Universal ZIP download install.  TODO - Share the above windows code, here....
+    mappings in Universal <+= sbtLaunchJar map { f => f -> "bin/sbt-launch.jar" },
+    mappings in Universal <+= jansiJar map { f => f -> "bin/jansi.jar" },
+    mappings in Universal <++= sourceDirectory in Windows map { d => Seq(
+      (d / "sbt.bat") -> "bin/sbt.bat",
+      (d / "sbt") -> "bin/win-sbt",
+      (d / "jansi-license.txt") -> "jansi-license.txt"
+    )},
+    mappings in Universal <+= (compile in Compile, classDirectory in Compile) map { (c, d) =>
+      compile; 
+      (d / "SbtJansiLaunch.class") -> "bin/SbtJansiLaunch.class" 
     }
-  )))
+    // TODO - Adapt global `sbt`/`sbt-launch-lib` scripts for universal install...
+  )
   
   def makeWindowsXml(sbtVersion: String, sourceDir: File): scala.xml.Node = {
     val version = (sbtVersion split "\\.") match {
