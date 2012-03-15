@@ -37,6 +37,8 @@ object Packaging {
     jansiJar <<= (jansiJarUrl, jansiJarLocation) map { (uri, file) =>
       import dispatch._
       if(!file.exists) {
+         // oddly, some places require us to create the file before writing...
+         file.createNewFile()
          val writer = new java.io.BufferedOutputStream(new java.io.FileOutputStream(file))
          try Http(url(uri) >>> writer)
          finally writer.close()
