@@ -7,7 +7,7 @@ object Types extends Types
 {
 	implicit def hconsToK[M[_], H, T <: HList](h: M[H] :+: T)(implicit mt: T => KList[M, T]): KList[M, H :+: T] =
 		KCons[H, T, M](h.head, mt(h.tail) )
-	implicit def hnilToK(hnil: HNil): KNil = KNil
+	implicit def hnilToK[M[_]](hnil: HNil): KNil[M] = KNil()
 }
 
 trait Types extends TypeFunctions
