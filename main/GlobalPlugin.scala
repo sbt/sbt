@@ -45,14 +45,16 @@ object GlobalPlugin
 				val depMap = pdescs + mod.dependencyMapping(state.log)
 				GlobalPluginData(pid, pdeps, depMap, rs, cp, prods ++ intcp)
 		}
-		val task = taskInit mapReferenced Project.mapScope(Scope replaceThis p) evaluate data
-		evaluate(state, structure, task)
+		val resolvedTaskInit = taskInit mapReferenced Project.mapScope(Scope replaceThis p)
+		val task = resolvedTaskInit evaluate data
+		val roots = resolvedTaskInit.dependencies
+		evaluate(state, structure, task, roots)
 	}
-	def evaluate[T](state: State, structure: BuildStructure, t: Task[T]): (State, T) =
+	def evaluate[T](state: State, structure: BuildStructure, t: Task[T], roots: Seq[ScopedKey[_]]): (State, T) =
 	{
 			import EvaluateTask._
 		withStreams(structure, state) { str =>
-			val nv = nodeView(state, str)
+			val nv = nodeView(state, str, roots)
 			val config = EvaluateTask.defaultConfig(Project.extract(state), structure)
 			val (newS, result) = runTask(t, state, str, structure.index.triggers, config)(nv)
 			(newS, processResult(result, newS.log))

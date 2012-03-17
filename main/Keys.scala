@@ -317,6 +317,7 @@ object Keys
 	val streams = TaskKey[TaskStreams]("streams", "Provides streams for logging and persisting data.")
 	val isDummyTask = AttributeKey[Boolean]("is-dummy-task", "Internal: used to identify dummy tasks.  sbt injects values for these tasks at the start of task execution.")
 	val taskDefinitionKey = AttributeKey[ScopedKey[_]]("task-definition-key", "Internal: used to map a task back to its ScopedKey.")
+	val (executionRoots, dummyRoots)= dummy[Seq[ScopedKey[_]]]("execution-roots", "The list of root tasks for this task execution.  Roots are the top-level tasks that were directly requested to be run.")
 	val (state, dummyState) = dummy[State]("state", "Current build state.")
 	val (streamsManager, dummyStreamsManager) = dummy[Streams]("streams-manager", "Streams manager, which provides streams for different contexts.")
 	val resolvedScoped = SettingKey[ScopedKey[_]]("resolved-scoped", "The ScopedKey for the referencing setting or task.")

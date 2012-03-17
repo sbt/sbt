@@ -6,7 +6,7 @@ package sbt
 	import java.io.File
 	import Project.{ScopedKey, Setting}
 	import Keys.{streams, Streams, TaskStreams}
-	import Keys.{dummyState, dummyStreamsManager, streamsManager, taskDefinitionKey, transformState}
+	import Keys.{dummyRoots, dummyState, dummyStreamsManager, executionRoots, streamsManager, taskDefinitionKey, transformState}
 	import Scope.{GlobalScope, ThisScope}
 	import Types.const
 	import scala.Console.{RED, RESET}
@@ -56,7 +56,8 @@ object EvaluateTask
 
 	def injectSettings: Seq[Setting[_]] = Seq(
 		(state in GlobalScope) ::= dummyState,
-		(streamsManager in GlobalScope) ::= dummyStreamsManager
+		(streamsManager in GlobalScope) ::= dummyStreamsManager,
+		(executionRoots in GlobalScope) ::= dummyRoots
 	)
 
 	def evalPluginDef(log: Logger)(pluginDef: BuildStructure, state: State): Seq[Attributed[File]] =
@@ -111,10 +112,10 @@ object EvaluateTask
 		val thisScope = Load.projectScope(ref)
 		val resolvedScope = Scope.replaceThis(thisScope)( taskKey.scope )
 		for( t <- structure.data.get(resolvedScope, taskKey.key)) yield
-			(t, nodeView(state, streams))
+			(t, nodeView(state, streams, taskKey :: Nil))
 	}
-	def nodeView[HL <: HList](state: State, streams: Streams, extraDummies: KList[Task, HL] = KNil, extraValues: HL = HNil): Execute.NodeView[Task] =
-		Transform(dummyStreamsManager :^: KCons(dummyState, extraDummies), streams :+: HCons(state, extraValues))
+	def nodeView[HL <: HList](state: State, streams: Streams, roots: Seq[ScopedKey[_]], extraDummies: KList[Task, HL] = KNil, extraValues: HL = HNil): Execute.NodeView[Task] =
+		Transform(dummyRoots :^: dummyStreamsManager :^: KCons(dummyState, extraDummies), roots :+: streams :+: HCons(state, extraValues))
 
 	def runTask[T](root: Task[T], state: State, streams: Streams, triggers: Triggers[Task], config: EvaluateConfig)(implicit taskToNode: Execute.NodeView[Task]): (State, Result[T]) =
 	{

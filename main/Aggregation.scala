@@ -37,11 +37,12 @@ final object Aggregation
 
 		val extracted = Project extract s
 		val toRun = ts map { case KeyValue(k,t) => t.map(v => KeyValue(k,v)) } join;
+		val roots = ts map { case KeyValue(k,_) => k }
 		val config = extractedConfig(extracted, structure)
 
 		val start = System.currentTimeMillis
 		val (newS, result) = withStreams(structure, s){ str =>
-			val transform = nodeView(s, str, extra.tasks, extra.values)
+			val transform = nodeView(s, str, roots, extra.tasks, extra.values)
 			runTask(toRun, s,str, structure.index.triggers, config)(transform)
 		}
 		val stop = System.currentTimeMillis
