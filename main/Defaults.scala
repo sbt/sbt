@@ -1198,6 +1198,8 @@ trait BuildExtra extends BuildCommon
 		def compose(setting: SettingKey[State => State], f: State => State) = setting in Global ~= (_ compose f)
 		Seq( compose(onLoad, add), compose(onUnload, remove) )
 	}
+	def addSbtPlugin(dependency: ModuleID, sbtVersion: String): Setting[Seq[ModuleID]] =
+		libraryDependencies <+= (scalaBinaryVersion in update) { scalaV => sbtPluginExtra(dependency, sbtVersion, scalaV) }
 	def addSbtPlugin(dependency: ModuleID): Setting[Seq[ModuleID]] =
 		libraryDependencies <+= (sbtBinaryVersion in update,scalaBinaryVersion in update) { (sbtV, scalaV) => sbtPluginExtra(dependency, sbtV, scalaV) }
 
