@@ -34,13 +34,13 @@ object ScriptedPlugin extends Plugin {
 
 	def scriptedRunTask: Initialize[Task[Method]] = (scriptedTests) map {
 		(m) =>
-		m.getClass.getMethod("run", classOf[File], classOf[Boolean], classOf[String], classOf[String], classOf[String], classOf[Array[String]], classOf[File], classOf[Seq[String]])
+		m.getClass.getMethod("run", classOf[File], classOf[Boolean], classOf[String], classOf[String], classOf[String], classOf[Array[String]], classOf[File], classOf[Array[String]])
 	}
 
 	def scriptedTask: Initialize[InputTask[Unit]] = InputTask(_ => complete.Parsers.spaceDelimited("<arg>")) { result =>
 		(scriptedDependencies, scriptedTests, scriptedRun, sbtTestDirectory, scriptedBufferLog, scriptedSbt, scriptedScalas, sbtLauncher, scriptedLaunchOpts, result) map {
 			(deps, m, r, testdir, bufferlog, version, scriptedScalas, launcher, launchOpts, args) =>
-			try { r.invoke(m, testdir, bufferlog: java.lang.Boolean, version.toString, scriptedScalas.build, scriptedScalas.versions, args.toArray, launcher, launchOpts) }
+			try { r.invoke(m, testdir, bufferlog: java.lang.Boolean, version.toString, scriptedScalas.build, scriptedScalas.versions, args.toArray, launcher, launchOpts.toArray) }
 			catch { case e: java.lang.reflect.InvocationTargetException => throw e.getCause }
 		}
 	}
