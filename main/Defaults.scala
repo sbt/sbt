@@ -817,9 +817,11 @@ object Classpaths
 		ivySbt <<= ivySbt0,
 		ivyModule <<= (ivySbt, moduleSettings) map { (ivySbt, settings) => new ivySbt.Module(settings) },
 		transitiveUpdate <<= transitiveUpdateTask,
-		update <<= (ivyModule, thisProjectRef, updateConfiguration, cacheDirectory, scalaInstance, transitiveUpdate, skip in update, streams) map { (module, ref, config, cacheDirectory, si, reports, skip, s) =>
-			val depsUpdated = reports.exists(!_.stats.cached)
-			cachedUpdate(cacheDirectory / "update", Project.display(ref), module, config, Some(si), skip, depsUpdated, s.log)
+		update <<= (ivyModule, thisProjectRef, updateConfiguration, cacheDirectory, scalaInstance, transitiveUpdate, executionRoots, resolvedScoped, skip in update, streams) map {
+			(module, ref, config, cacheDirectory, si, reports, roots, resolved, skip, s) =>
+				val depsUpdated = reports.exists(!_.stats.cached)
+				val isRoot = roots contains resolved
+				cachedUpdate(cacheDirectory / "update", Project.display(ref), module, config, Some(si), skip = skip, force = isRoot, depsUpdated = depsUpdated, log = s.log)
 		} tag(Tags.Update, Tags.Network),
 		update <<= (conflictWarning, update, streams) map { (config, report, s) => ConflictWarning(config, report, s.log); report },
 		transitiveClassifiers in GlobalScope :== Seq(SourceClassifier, DocClassifier),
@@ -907,7 +909,7 @@ object Classpaths
 		}})
 	}
 
-	def cachedUpdate(cacheFile: File, label: String, module: IvySbt#Module, config: UpdateConfiguration, scalaInstance: Option[ScalaInstance], skip: Boolean, depsUpdated: Boolean, log: Logger): UpdateReport =
+	def cachedUpdate(cacheFile: File, label: String, module: IvySbt#Module, config: UpdateConfiguration, scalaInstance: Option[ScalaInstance], skip: Boolean, force: Boolean, depsUpdated: Boolean, log: Logger): UpdateReport =
 	{
 		implicit val updateCache = updateIC
 		implicit val updateReport = updateReportF
@@ -919,6 +921,7 @@ object Classpaths
 			scalaInstance match { case Some(si) => substituteScalaFiles(si, r); case None => r }
 		}
 		def uptodate(inChanged: Boolean, out: UpdateReport): Boolean =
+			!force &&
 			!depsUpdated &&
 			!inChanged &&
 			out.allFiles.forall(_.exists) &&
@@ -938,7 +941,7 @@ object Classpaths
 				}
 				outCache(in)
 			}
-		val f = if(skip) skipWork else doWork
+		val f = if(skip && !force) skipWork else doWork
 		f(module.owner.configuration :+: module.moduleSettings :+: config :+: HNil)
 	}
 /*
