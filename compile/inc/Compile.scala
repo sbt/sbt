@@ -5,6 +5,8 @@ package sbt
 package inc
 
 import xsbti.api.{Source, SourceAPI}
+import xsbti.{Position,Problem,Severity}
+import Logger.{m2o, problem}
 import java.io.File
 
 object IncrementalCompile
@@ -44,6 +46,8 @@ private final class AnalysisCallback(internalMap: File => Option[File], external
 	import collection.mutable.{HashMap, HashSet, ListBuffer, Map, Set}
 	
 	private[this] val apis = new HashMap[File, (Int, SourceAPI)]
+	private[this] val unreporteds = new HashMap[File, ListBuffer[Problem]]
+	private[this] val reporteds = new HashMap[File, ListBuffer[Problem]]
 	private[this] val binaryDeps = new HashMap[File, Set[File]]
 		 // source file to set of generated (class file, class name)
 	private[this] val classes = new HashMap[File, Set[(File, String)]]
@@ -57,6 +61,14 @@ private final class AnalysisCallback(internalMap: File => Option[File], external
 
 	private def add[A,B](map: Map[A,Set[B]], a: A, b: B): Unit =
 		map.getOrElseUpdate(a, new HashSet[B]) += b
+
+	def problem(pos: Position, msg: String, severity: Severity, reported: Boolean): Unit =
+	{
+		for(source <- m2o(pos.sourceFile)) {
+			val map = if(reported) reporteds else unreporteds
+			map.getOrElseUpdate(source, ListBuffer.empty) += Logger.problem(pos, msg, severity)
+		}
+	}
 
 	def sourceDependency(dependsOn: File, source: File) = if(source != dependsOn) add(sourceDeps, source, dependsOn)
 	def externalBinaryDependency(binary: File, className: String, source: File)
@@ -120,8 +132,10 @@ private final class AnalysisCallback(internalMap: File => Option[File], external
 			// TODO store this in Relations, rather than Source.
 			val hasMacro: Boolean = macroSources.contains(src)
 			val s = new xsbti.api.Source(compilation, hash, api._2, api._1, hasMacro)
-			a.addSource(src, s, stamp, sourceDeps.getOrElse(src, Nil: Iterable[File]))
+			val info = SourceInfos.makeInfo(getOrNil(reporteds, src), getOrNil(unreporteds, src))
+			a.addSource(src, s, stamp, sourceDeps.getOrElse(src, Nil: Iterable[File]), info)
 		}
+	def getOrNil[A,B](m: collection.Map[A, Seq[B]], a: A): Seq[B] = m.get(a).toList.flatten
 	def addExternals(base: Analysis): Analysis = (base /: extSrcDeps) { case (a, (source, name, api)) => a.addExternalDep(source, name, api) }
 		
 	def addAll[A,B](base: Analysis, m: Map[A, Set[B]])( f: (Analysis, A, B) => Analysis): Analysis =

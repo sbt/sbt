@@ -9,15 +9,15 @@ package sbt
 // Original author: Martin Odersky
 
 	import xsbti.{Maybe,Position,Problem,Reporter,Severity}
+	import java.io.File
 	import java.util.EnumMap
 	import scala.collection.mutable
 	import LoggerReporter._
+	import Logger.{m2o,o2m,position,problem}
 	import Severity.{Error,Info => SInfo,Warn}
 
 object LoggerReporter
 {
-	def m2o[S](m: Maybe[S]): Option[S] = if(m.isDefined) Some(m.get) else None
-
 	final class PositionKey(pos: Position)
 	{
 		def offset = pos.offset
@@ -49,7 +49,7 @@ class LoggerReporter(maximumErrors: Int, log: Logger) extends xsbti.Reporter
 {
 	val positions = new mutable.HashMap[PositionKey, Severity]
 	val count = new EnumMap[Severity, Int](classOf[Severity])
-	private val allProblems = new mutable.ListBuffer[Problem]
+	private[this] val allProblems = new mutable.ListBuffer[Problem]
 
 	reset()
 	
@@ -63,7 +63,7 @@ class LoggerReporter(maximumErrors: Int, log: Logger) extends xsbti.Reporter
 	}
 	def hasWarnings = count.get(Warn) > 0
 	def hasErrors = count.get(Error) > 0
-	def problems = allProblems.toArray
+	def problems: Array[Problem] = allProblems.toArray
 
 	def printSummary()
 	{
@@ -126,13 +126,6 @@ class LoggerReporter(maximumErrors: Int, log: Logger) extends xsbti.Reporter
 			case _ => display(pos, msg, severity)
 		}
 	}
-	def problem(pos: Position, msg: String, sev: Severity): Problem =
-		new Problem
-		{
-			val position = pos
-			val message = msg
-			val severity = sev
-		}
 
 	def testAndLog(pos: Position, severity: Severity): Boolean =
 	{
