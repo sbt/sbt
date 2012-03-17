@@ -335,7 +335,7 @@ object BuiltinCommands
 	def loadProjectImpl = Command(LoadProjectImpl)(_ => Project.loadActionParser) { (s0, action) =>
 		val (s, base) = Project.loadAction(SessionVar.clear(s0), action)
 		IO.createDirectory(base)
-		val (eval, structure) = Load.defaultLoad(s, base, s.log)
+		val (eval, structure) = Load.defaultLoad(s, base, s.log, Project.inPluginProject(s))
 		val session = Load.initialSession(structure, eval, s0)
 		SessionSettings.checkSession(session, s)
 		Project.setProject(session, structure, s)

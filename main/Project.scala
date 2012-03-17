@@ -370,7 +370,8 @@ object Project extends Init[Scope] with ProjectExtra
 	val loadActionParser = token(Space ~> ("plugins" ^^^ Plugins | "return" ^^^ Return)) ?? Current
 	
 	val ProjectReturn = AttributeKey[List[File]]("project-return", "Maintains a stack of builds visited using reload.")
-	def projectReturn(s: State): List[File] = s.attributes get ProjectReturn getOrElse Nil
+	def projectReturn(s: State): List[File] = s get ProjectReturn getOrElse Nil
+	def inPluginProject(s: State): Boolean = projectReturn(s).toList.length > 1
 	def setProjectReturn(s: State, pr: List[File]): State = s.copy(attributes = s.attributes.put( ProjectReturn, pr) )
 	def loadAction(s: State, action: LoadAction.Value) = action match {
 		case Return =>

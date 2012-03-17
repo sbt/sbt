@@ -27,13 +27,14 @@ object Load
 	import Locate.DefinesClass
 	
 	// note that there is State passed in but not pulled out
-	def defaultLoad(state: State, baseDirectory: File, log: Logger): (() => Eval, BuildStructure) =
+	def defaultLoad(state: State, baseDirectory: File, log: Logger, isPlugin: Boolean = false): (() => Eval, BuildStructure) =
 	{
 		val globalBase = getGlobalBase(state)
 		val base = baseDirectory.getCanonicalFile
 		val definesClass = FileValueCache(Locate.definesClass _)
 		val rawConfig = defaultPreGlobal(state, base, definesClass.get, globalBase, log)
-		val config = defaultWithGlobal(state, base, rawConfig, globalBase, log)
+		val config0 = defaultWithGlobal(state, base, rawConfig, globalBase, log)
+		val config = if(isPlugin) enableSbtPlugin(config0) else config0
 		val result = apply(base, state, config)
 		definesClass.clear()
 		result
