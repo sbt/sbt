@@ -24,4 +24,7 @@ public interface AnalysisCallback
 	public void endSource(File sourcePath);
 	/** Called when the public API of a source file is extracted. */
 	public void api(File sourceFile, xsbti.api.SourceAPI source);
+	/** Provides problems discovered during compilation.  These may be reported (logged) or unreported.
+	* Unreported problems are usually unreported because reporting was not enabled via a command line switch. */
+	public void problem(Position pos, String msg, Severity severity, boolean reported);
 }
