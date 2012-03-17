@@ -211,6 +211,7 @@ object Defaults extends BuildCommon
 		initialCommands in GlobalScope :== "",
 		cleanupCommands in GlobalScope :== "",
 		compile <<= compileTask tag(Tags.Compile, Tags.CPU),
+		printWarnings <<= printWarningsTask,
 		compileIncSetup <<= compileIncSetupTask,
 		console <<= consoleTask,
 		consoleQuick <<= consoleQuickTask,
@@ -562,6 +563,12 @@ object Defaults extends BuildCommon
 				Compiler.inputs(classes +: data(cp), srcs, classes, optsPair._1, optsPair._2, maxErr, order)(cs, incSetup, s.log)
 			})
 	}
+	def printWarningsTask: Initialize[Task[Unit]] =
+		(streams, compile, maxErrors) map { (s, analysis, max) =>
+			val problems = analysis.infos.allInfos.values.flatMap(i =>  i.reportedProblems++ i.unreportedProblems)
+			val reporter = new LoggerReporter(max, s.log)
+			problems foreach { p => reporter.display(p.position, p.message, p.severity) }
+		}
 
 	def sbtPluginExtra(m: ModuleID, sbtV: String, scalaV: String): ModuleID =
 		m.extra(CustomPomParser.SbtVersionKey -> sbtV, CustomPomParser.ScalaVersionKey -> scalaV).copy(crossVersion = CrossVersion.Disabled)

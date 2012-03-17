@@ -141,6 +141,7 @@ object Keys
 	val classpathOptions = SettingKey[ClasspathOptions]("classpath-options", "Configures handling of Scala classpaths.")
 	val definedSbtPlugins = TaskKey[Set[String]]("defined-sbt-plugins", "The set of names of Plugin implementations defined by this project.")
 	val sbtPlugin = SettingKey[Boolean]("sbt-plugin", "If true, enables adding sbt as a dependency and auto-generation of the plugin descriptor file.")
+	val printWarnings = TaskKey[Unit]("print-warnings", "Shows warnings from compilation, including ones that weren't printed initially.")
 
 	val clean = TaskKey[Unit]("clean", "Deletes files produced by the build, such as generated sources, compiled classes, and task caches.")
 	val console = TaskKey[Unit]("console", "Starts the Scala interpreter with the project classes on the classpath.")

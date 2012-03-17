@@ -5,9 +5,11 @@ package sbt
 package inc
 
 	import xsbti.api.Source
+	import xsbti.{Position,Problem,Severity}
 	import java.io.File
 	import sbinary._
 	import DefaultProtocol._
+	import Logger.{m2o, position, problem}
 
 object AnalysisFormats
 {
@@ -40,8 +42,26 @@ object AnalysisFormats
 		}
 	}
 
-	implicit def analysisFormat(implicit stampsF: Format[Stamps], apisF: Format[APIs], relationsF: Format[Relations]): Format[Analysis] =
-		asProduct3( Analysis.Empty.copy _)( a => (a.stamps, a.apis, a.relations))(stampsF, apisF, relationsF)
+	implicit def analysisFormat(implicit stampsF: Format[Stamps], apisF: Format[APIs], relationsF: Format[Relations], infosF: Format[SourceInfos]): Format[Analysis] =
+		asProduct4( Analysis.Empty.copy _)( a => (a.stamps, a.apis, a.relations, a.infos))(stampsF, apisF, relationsF, infosF)
+
+	implicit def infosFormat(implicit infoF: Format[Map[File, SourceInfo]]): Format[SourceInfos] =
+		wrap[SourceInfos, Map[File, SourceInfo]]( _.allInfos, SourceInfos.make _)
+
+	implicit def infoFormat(implicit infoF: Format[Problem]): Format[SourceInfo] =
+		wrap[SourceInfo, (Seq[Problem],Seq[Problem])](si => (si.reportedProblems, si.unreportedProblems), { case (a,b) => SourceInfos.makeInfo(a,b)})
+
+	implicit def problemFormat(implicit posF: Format[Position], msgF: Format[String], sevF: Format[Severity]): Format[Problem] =
+		asProduct3(problem _)( p => (p.position, p.message, p.severity))
+
+	implicit def positionFormat: Format[Position] =
+		asProduct7( position _ )( p => (m2o(p.line), p.lineContent, m2o(p.offset), m2o(p.pointer), m2o(p.pointerSpace), m2o(p.sourcePath), m2o(p.sourceFile)))
+
+	implicit val fileOptionFormat: Format[Option[File]] = optionsAreFormat[File](fileFormat)
+	implicit val integerFormat: Format[Integer] = wrap[Integer, Int](_.toInt, Integer.valueOf)
+	implicit val severityFormat: Format[Severity] =
+		wrap[Severity, Byte]( _.ordinal.toByte, b => Severity.values.apply(b.toInt) )
+
 
 	implicit def setupFormat(implicit outDirF: Format[File], optionF: Format[CompileOptions], compilerVersion: Format[String], orderF: Format[CompileOrder.Value]): Format[CompileSetup] =
 		asProduct4[CompileSetup, File, CompileOptions, String, CompileOrder.Value]( (a,b,c,d) => new CompileSetup(a,b,c,d) )(s => (s.outputDirectory, s.options, s.compilerVersion, s.order))(outDirF, optionF, compilerVersion, orderF)
