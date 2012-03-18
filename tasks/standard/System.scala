@@ -54,7 +54,7 @@ object Transform
 		
 	def uniform[T, D](tasks: Seq[Task[D]])(f: Seq[Result[D]] => Either[Task[T], T]): Node[Task, T] = new Node[Task, T] {
 		type Mixed = HNil
-		val mixedIn = new KNil[Task]
+		val mixedIn = KNil
 		type Uniform = D
 		val uniformIn = tasks
 		def work(mixed: Results[HNil], uniform: Seq[Result[Uniform]]) = f(uniform)

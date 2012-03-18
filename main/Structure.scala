@@ -373,63 +373,63 @@ object Scoped
 		type Fun[M[_],Ret] = (M[A],M[B]) => Ret
 		def identityMap = map(mkTuple2)
 		protected def convertH[R](z: (A,B) => R) = hf2(z)
-		protected def convertK[M[_],R](f: (M[A],M[B]) => R) = { case a :^: b :^: KNil() => f(a,b) }
+		protected def convertK[M[_],R](f: (M[A],M[B]) => R) = { case a :^: b :^: KNil => f(a,b) }
 	}
 	final class RichTaskable3[A,B,C](t3: (ScopedTaskable[A], ScopedTaskable[B], ScopedTaskable[C])) extends RichTaskables(k3(t3))
 	{
 		type Fun[M[_],Ret] = (M[A],M[B],M[C]) => Ret
 		def identityMap = map(mkTuple3)
 		protected def convertH[R](z: Fun[Id,R]) = hf3(z)
-		protected def convertK[M[_],R](f: Fun[M,R]) = { case a :^: b :^: c :^: KNil() => f(a,b,c) }
+		protected def convertK[M[_],R](f: Fun[M,R]) = { case a :^: b :^: c :^: KNil => f(a,b,c) }
 	}
 	final class RichTaskable4[A,B,C,D](t4: (ScopedTaskable[A], ScopedTaskable[B], ScopedTaskable[C], ScopedTaskable[D])) extends RichTaskables(k4(t4))
 	{
 		type Fun[M[_],Ret] = (M[A],M[B],M[C],M[D]) => Ret
 		def identityMap = map(mkTuple4)
 		protected def convertH[R](z: Fun[Id,R]) = hf4(z)
-		protected def convertK[M[_],R](f: Fun[M,R]) = { case a :^: b :^: c :^: d :^: KNil() => f(a,b,c,d) }
+		protected def convertK[M[_],R](f: Fun[M,R]) = { case a :^: b :^: c :^: d :^: KNil => f(a,b,c,d) }
 	}
 	final class RichTaskable5[A,B,C,D,E](t5: (ScopedTaskable[A], ScopedTaskable[B], ScopedTaskable[C], ScopedTaskable[D], ScopedTaskable[E])) extends RichTaskables(k5(t5))
 	{
 		type Fun[M[_],Ret] = (M[A],M[B],M[C],M[D],M[E]) => Ret
 		def identityMap = map(mkTuple5)
 		protected def convertH[R](z: Fun[Id,R]) = hf5(z)
-		protected def convertK[M[_],R](f: Fun[M,R]) = { case a :^: b :^: c :^: d :^: e :^: KNil() => f(a,b,c,d,e) }
+		protected def convertK[M[_],R](f: Fun[M,R]) = { case a :^: b :^: c :^: d :^: e :^: KNil => f(a,b,c,d,e) }
 	}
 	final class RichTaskable6[A,B,C,D,E,F](t6: (ScopedTaskable[A], ScopedTaskable[B], ScopedTaskable[C], ScopedTaskable[D], ScopedTaskable[E], ScopedTaskable[F])) extends RichTaskables(k6(t6))
 	{
 		type Fun[M[_],Ret] = (M[A],M[B],M[C],M[D],M[E],M[F]) => Ret
 		def identityMap = map(mkTuple6)
 		protected def convertH[R](z: Fun[Id,R]) = hf6(z)
-		protected def convertK[M[_],R](z: Fun[M,R]) = { case a :^: b :^: c :^: d :^: e :^: f :^: KNil() => z(a,b,c,d,e,f) }
+		protected def convertK[M[_],R](z: Fun[M,R]) = { case a :^: b :^: c :^: d :^: e :^: f :^: KNil => z(a,b,c,d,e,f) }
 	}
 	final class RichTaskable7[A,B,C,D,E,F,G](t7: (ScopedTaskable[A], ScopedTaskable[B], ScopedTaskable[C], ScopedTaskable[D], ScopedTaskable[E], ScopedTaskable[F], ScopedTaskable[G])) extends RichTaskables(k7(t7))
 	{
 		type Fun[M[_],Ret] = (M[A],M[B],M[C],M[D],M[E],M[F],M[G]) => Ret
 		def identityMap = map(mkTuple7)
 		protected def convertH[R](z: Fun[Id,R]) = hf7(z)
-		protected def convertK[M[_],R](z: Fun[M,R]) = { case a :^: b :^: c :^: d :^: e :^: f :^: g :^: KNil() => z(a,b,c,d,e,f,g) }
+		protected def convertK[M[_],R](z: Fun[M,R]) = { case a :^: b :^: c :^: d :^: e :^: f :^: g :^: KNil => z(a,b,c,d,e,f,g) }
 	}
 	final class RichTaskable8[A,B,C,D,E,F,G,H](t8: (ScopedTaskable[A], ScopedTaskable[B], ScopedTaskable[C], ScopedTaskable[D], ScopedTaskable[E], ScopedTaskable[F], ScopedTaskable[G], ScopedTaskable[H])) extends RichTaskables(k8(t8))
 	{
 		type Fun[M[_],Ret] = (M[A],M[B],M[C],M[D],M[E],M[F],M[G],M[H]) => Ret
 		def identityMap = map(mkTuple8)
 		protected def convertH[R](z: Fun[Id,R]) = hf8(z)
-		protected def convertK[M[_],R](z: Fun[M,R]) = { case a :^: b :^: c :^: d :^: e :^: f :^: g :^: h :^: KNil() => z(a,b,c,d,e,f,g,h) }
+		protected def convertK[M[_],R](z: Fun[M,R]) = { case a :^: b :^: c :^: d :^: e :^: f :^: g :^: h :^: KNil => z(a,b,c,d,e,f,g,h) }
 	}
 	final class RichTaskable9[A,B,C,D,E,F,G,H,I](t9: (ScopedTaskable[A], ScopedTaskable[B], ScopedTaskable[C], ScopedTaskable[D], ScopedTaskable[E], ScopedTaskable[F], ScopedTaskable[G], ScopedTaskable[H], ScopedTaskable[I])) extends RichTaskables(k9(t9))
 	{
 		type Fun[M[_],Ret] = (M[A],M[B],M[C],M[D],M[E],M[F],M[G],M[H],M[I]) => Ret
 		def identityMap = map(mkTuple9)
 		protected def convertH[R](z: Fun[Id,R]) = hf9(z)
-		protected def convertK[M[_],R](z: Fun[M,R]) = { case a :^: b :^: c :^: d :^: e :^: f :^: g :^: h :^: i :^: KNil() => z(a,b,c,d,e,f,g,h,i) }
+		protected def convertK[M[_],R](z: Fun[M,R]) = { case a :^: b :^: c :^: d :^: e :^: f :^: g :^: h :^: i :^: KNil => z(a,b,c,d,e,f,g,h,i) }
 	}
 	final class RichTaskable10[A,B,C,D,E,F,G,H,I,J](t10: ((ScopedTaskable[A], ScopedTaskable[B], ScopedTaskable[C], ScopedTaskable[D], ScopedTaskable[E], ScopedTaskable[F], ScopedTaskable[G], ScopedTaskable[H], ScopedTaskable[I], ScopedTaskable[J]))) extends RichTaskables(k10(t10))
 	{
 		type Fun[M[_],Ret] = (M[A], M[B], M[C], M[D], M[E], M[F], M[G], M[H], M[I], M[J]) => Ret
 		def identityMap = map(mkTuple10)
 		protected def convertH[R](z: Fun[Id,R]) = hf10(z)
-		protected def convertK[M[_],R](z: Fun[M,R]) = { case a :^: b :^: c :^: d :^: e :^: f :^: g :^: h :^: i :^: j :^: KNil() => z(a,b,c,d,e,f,g,h,i,j) }
+		protected def convertK[M[_],R](z: Fun[M,R]) = { case a :^: b :^: c :^: d :^: e :^: f :^: g :^: h :^: i :^: j :^: KNil => z(a,b,c,d,e,f,g,h,i,j) }
 	}
 
 	final class RichTaskable11[A,B,C,D,E,F,G,H,I,J,K](t11: ((ScopedTaskable[A], ScopedTaskable[B], ScopedTaskable[C], ScopedTaskable[D], ScopedTaskable[E], ScopedTaskable[F], ScopedTaskable[G], ScopedTaskable[H], ScopedTaskable[I], ScopedTaskable[J], ScopedTaskable[K]))) extends RichTaskables(k11(t11))
@@ -437,7 +437,7 @@ object Scoped
 		type Fun[M[_],Ret] = (M[A], M[B], M[C], M[D], M[E], M[F], M[G], M[H], M[I], M[J], M[K]) => Ret
 		def identityMap = map(mkTuple11)
 		protected def convertH[R](z: Fun[Id,R]) = hf11(z)
-		protected def convertK[M[_],R](z: Fun[M,R]) = { case a :^: b :^: c :^: d :^: e :^: f :^: g :^: h :^: i :^: j :^: k :^: KNil() => z(a,b,c,d,e,f,g,h,i,j,k) }
+		protected def convertK[M[_],R](z: Fun[M,R]) = { case a :^: b :^: c :^: d :^: e :^: f :^: g :^: h :^: i :^: j :^: k :^: KNil => z(a,b,c,d,e,f,g,h,i,j,k) }
 	}
 
 	final class RichTaskable12[A,B,C,D,E,F,G,H,I,J,K,L](t12: ((ScopedTaskable[A], ScopedTaskable[B], ScopedTaskable[C], ScopedTaskable[D], ScopedTaskable[E], ScopedTaskable[F], ScopedTaskable[G], ScopedTaskable[H], ScopedTaskable[I], ScopedTaskable[J], ScopedTaskable[K], ScopedTaskable[L]))) extends RichTaskables(k12(t12))
@@ -445,7 +445,7 @@ object Scoped
 		type Fun[M[_],Ret] = (M[A], M[B], M[C], M[D], M[E], M[F], M[G], M[H], M[I], M[J], M[K], M[L]) => Ret
 		def identityMap = map(mkTuple12)
 		protected def convertH[R](z: Fun[Id,R]) = hf12(z)
-		protected def convertK[M[_],R](z: Fun[M,R]) = { case a :^: b :^: c :^: d :^: e :^: f :^: g :^: h :^: i :^: j :^: k :^: l :^: KNil() => z(a,b,c,d,e,f,g,h,i,j,k,l) }
+		protected def convertK[M[_],R](z: Fun[M,R]) = { case a :^: b :^: c :^: d :^: e :^: f :^: g :^: h :^: i :^: j :^: k :^: l :^: KNil => z(a,b,c,d,e,f,g,h,i,j,k,l) }
 	}
 
 	final class RichTaskable13[A,B,C,D,E,F,G,H,I,J,K,L,N](t13: ((ScopedTaskable[A], ScopedTaskable[B], ScopedTaskable[C], ScopedTaskable[D], ScopedTaskable[E], ScopedTaskable[F], ScopedTaskable[G], ScopedTaskable[H], ScopedTaskable[I], ScopedTaskable[J], ScopedTaskable[K], ScopedTaskable[L], ScopedTaskable[N]))) extends RichTaskables(k13(t13))
@@ -453,7 +453,7 @@ object Scoped
 		type Fun[M[_],Ret] = (M[A], M[B], M[C], M[D], M[E], M[F], M[G], M[H], M[I], M[J], M[K], M[L], M[N]) => Ret
 		def identityMap = map(mkTuple13)
 		protected def convertH[R](z: Fun[Id,R]) = hf13(z)
-		protected def convertK[M[_],R](z: Fun[M,R]) = { case a :^: b :^: c :^: d :^: e :^: f :^: g :^: h :^: i :^: j :^: k :^: l :^: n :^: KNil() => z(a,b,c,d,e,f,g,h,i,j,k,l,n) }
+		protected def convertK[M[_],R](z: Fun[M,R]) = { case a :^: b :^: c :^: d :^: e :^: f :^: g :^: h :^: i :^: j :^: k :^: l :^: n :^: KNil => z(a,b,c,d,e,f,g,h,i,j,k,l,n) }
 	}
 
 	final class RichTaskable14[A,B,C,D,E,F,G,H,I,J,K,L,N,O](t14: ((ScopedTaskable[A], ScopedTaskable[B], ScopedTaskable[C], ScopedTaskable[D], ScopedTaskable[E], ScopedTaskable[F], ScopedTaskable[G], ScopedTaskable[H], ScopedTaskable[I], ScopedTaskable[J], ScopedTaskable[K], ScopedTaskable[L], ScopedTaskable[N], ScopedTaskable[O]))) extends RichTaskables(k14(t14))
@@ -461,7 +461,7 @@ object Scoped
 		type Fun[M[_],Ret] = (M[A], M[B], M[C], M[D], M[E], M[F], M[G], M[H], M[I], M[J], M[K], M[L], M[N], M[O]) => Ret
 		def identityMap = map(mkTuple14)
 		protected def convertH[R](z: Fun[Id,R]) = hf14(z)
-		protected def convertK[M[_],R](z: Fun[M,R]) = { case a :^: b :^: c :^: d :^: e :^: f :^: g :^: h :^: i :^: j :^: k :^: l :^: n :^: o :^: KNil() => z(a,b,c,d,e,f,g,h,i,j,k,l,n,o) }
+		protected def convertK[M[_],R](z: Fun[M,R]) = { case a :^: b :^: c :^: d :^: e :^: f :^: g :^: h :^: i :^: j :^: k :^: l :^: n :^: o :^: KNil => z(a,b,c,d,e,f,g,h,i,j,k,l,n,o) }
 	}
 
 	final class RichTaskable15[A,B,C,D,E,F,G,H,I,J,K,L,N,O,P](t15: ((ScopedTaskable[A], ScopedTaskable[B], ScopedTaskable[C], ScopedTaskable[D], ScopedTaskable[E], ScopedTaskable[F], ScopedTaskable[G], ScopedTaskable[H], ScopedTaskable[I], ScopedTaskable[J], ScopedTaskable[K], ScopedTaskable[L], ScopedTaskable[N], ScopedTaskable[O], ScopedTaskable[P]))) extends RichTaskables(k15(t15))
@@ -469,7 +469,7 @@ object Scoped
 		type Fun[M[_],Ret] = (M[A], M[B], M[C], M[D], M[E], M[F], M[G], M[H], M[I], M[J], M[K], M[L], M[N], M[O], M[P]) => Ret
 		def identityMap = map(mkTuple15)
 		protected def convertH[R](z: Fun[Id,R]) = hf15(z)
-		protected def convertK[M[_],R](z: Fun[M,R]) = { case a :^: b :^: c :^: d :^: e :^: f :^: g :^: h :^: i :^: j :^: k :^: l :^: n :^: o :^: p :^: KNil() => z(a,b,c,d,e,f,g,h,i,j,k,l,n,o,p) }
+		protected def convertK[M[_],R](z: Fun[M,R]) = { case a :^: b :^: c :^: d :^: e :^: f :^: g :^: h :^: i :^: j :^: k :^: l :^: n :^: o :^: p :^: KNil => z(a,b,c,d,e,f,g,h,i,j,k,l,n,o,p) }
 	}
 
 	// this doesn't actually work for mixed KLists because the compiler crashes trying to infer the bound when constructing the KList
