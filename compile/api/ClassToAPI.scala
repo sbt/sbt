@@ -76,8 +76,17 @@ object ClassToAPI
 	private val lzyEmptyTpeArray = lzy(emptyTypeArray)
 	private val lzyEmptyDefArray = lzy(new Array[xsbti.api.Definition](0))
 
+	private def allSuperclasses(t: Type): Seq[Type] =
+	{
+		def accumulate(t: Type, accum: Seq[Type] = Seq.empty): Seq[Type] = t match {
+			case cl: Class[_] => { val s = cl.getGenericSuperclass ; accumulate(s, accum :+ s) }
+			case _ => accum
+		}
+		accumulate(t)
+	}
+
 	def parents(c: Class[_]): Seq[api.Type] =
-		types(c.getGenericSuperclass +: c.getGenericInterfaces)
+		types(allSuperclasses(c) ++ c.getGenericInterfaces)
 	def types(ts: Seq[Type]): Array[api.Type] = ts filter (_ ne null) map reference toArray;
 	def upperBounds(ts: Array[Type]): api.Type =
 		new api.Structure(lzy(types(ts)), lzyEmptyDefArray, lzyEmptyDefArray)
