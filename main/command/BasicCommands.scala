@@ -28,7 +28,7 @@ object BasicCommands
 		val h = (Help.empty /: s.definedCommands)(_ ++ _.help(s))
 		val helpCommands = h.detail.keySet
 		val arg = (NotSpaceClass ~ any.*) map { case (ns, s) => (ns +: s).mkString }
-		val spacedArg = token(Space) ~> token( arg examples helpCommands  ).?
+		val spacedArg = (token(Space) ~> token( arg examples helpCommands  )).?
 		applyEffect(spacedArg)(runHelp(s, h))
 	}
 
