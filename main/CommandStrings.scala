@@ -14,6 +14,7 @@ object CommandStrings
 	/** The prefix used to identify a request to execute the remaining input on source changes.*/
 	val AboutCommand = "about"
 	val TasksCommand = "tasks"
+	val SettingsCommand = "settings"
 	val ProjectCommand = "project"
 	val ProjectsCommand = "projects"
 	val ShowCommand = "show"
@@ -115,13 +116,23 @@ SetCommand + """ <setting-expression>
 	@deprecated("Moved to BasicCommandStrings", "0.12.0")
 	val TerminateAction: String = BasicCommandStrings.TerminateAction
 
-	def tasksPreamble = """
-This is a list of tasks defined for the current project.
-It does not list the scopes the tasks are defined in; use the 'inspect' command for that.
+	def settingsPreamble = commonPreamble("settings")
+	def tasksPreamble = commonPreamble("tasks") + """
 Tasks produce values.  Use the 'show' command to run the task and print the resulting value."""
 
-	def tasksBrief = "Displays the tasks defined for the current project."
-	def tasksDetailed = "Displays the tasks defined directly or indirectly for the current project."
+	def commonPreamble(label: String) = """
+This is a list of %s defined for the current project.
+It does not list the scopes the %<s are defined in; use the 'inspect' command for that.""".format(label)
+
+	def settingsBrief(label: String) = (label, "Displays the " + label + " defined for the current project.")
+	def settingsDetailed(label: String) = 
+"""%s -[v|vv|...|V]
+
+	Displays the %<s defined directly or indirectly for the current project. 
+	Additional %<s may be displayed by providing -v, -vv, ... or -V for all %<s.
+""".format(label)
+
+	def moreAvailableMessage(label: String) = "More " + label + " may be viewed by increasing verbosity.  See '" + BasicCommandStrings.HelpCommand + " " + label + "'.\n"
 
 	def aboutBrief = "Displays basic information about sbt and the build."
 	def aboutDetailed = aboutBrief

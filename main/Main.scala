@@ -5,7 +5,7 @@ package sbt
 
 	import complete.{DefaultParsers, Parser}
 	import compiler.EvalImports
-	import Types.idFun
+	import Types.{const,idFun}
 	import Aggregation.AnyKeys
 
 	import scala.annotation.tailrec
@@ -68,7 +68,7 @@ object BuiltinCommands
 	def ConsoleCommands: Seq[Command] = Seq(ignore, exit, IvyConsole.command, act, nop)
 	def ScriptCommands: Seq[Command] = Seq(ignore, exit, Script.command, act, nop)
 	def DefaultCommands: Seq[Command] = Seq(ignore, help, about, reboot, read, history, continuous, exit, loadProject, loadProjectImpl, loadFailed, Cross.crossBuild, Cross.switchVersion,
-		projects, project, setOnFailure, clearOnFailure, ifLast, multi, shell, set, tasks, inspect, eval, alias, append, last, lastGrep, boot, nop, sessionCommand, call, act)
+		projects, project, setOnFailure, clearOnFailure, ifLast, multi, shell, set, settingsCommand, tasks, inspect, eval, alias, append, last, lastGrep, boot, nop, sessionCommand, call, act)
 	def DefaultBootCommands: Seq[String] = LoadProject :: (IfLast + " " + Shell) :: Nil
 
 	def boot = Command.make(BootCommand)(bootParser)
@@ -125,21 +125,45 @@ object BuiltinCommands
 	private[this] def selectScalaVersion(sv: Option[String], si: ScalaInstance): String  =  sv match { case Some(si.version) => si.version; case _ => si.actualVersion }
 	private[this] def quiet[T](t: => T): Option[T] = try { Some(t) } catch { case e: Exception => None }
 
-	def tasks = Command.command(TasksCommand, tasksBrief, tasksDetailed) { s =>
-		System.out.println(tasksPreamble)
-		System.out.println(tasksHelp(s))
-		s
-	}
-	def taskDetail(s: State): Seq[(String,String)] = taskKeys(s) flatMap taskStrings
-	def taskKeys(s: State): Seq[AttributeKey[_]] =
+	def settingsCommand = showSettingLike(SettingsCommand, settingsPreamble, KeyRanks.MainSettingCutoff, key => !isTask(key.manifest) )
+
+	def tasks = showSettingLike(TasksCommand, tasksPreamble, KeyRanks.MainTaskCutoff, key => isTask(key.manifest) )
+
+	def showSettingLike(command: String, preamble: String, cutoff: Int, keep: AttributeKey[_] => Boolean) =
+		Command(command, settingsBrief(command), settingsDetailed(command))(const(verbosityParser)) { (s: State, verbosity: Int) =>
+			System.out.println(preamble)
+			val prominentOnly = verbosity <= 1
+			val verboseFilter = if(prominentOnly) highPass(cutoff) else topNRanked(25*verbosity)
+			System.out.println(tasksHelp(s, keys => verboseFilter(keys filter keep) ))
+			System.out.println()
+			if(prominentOnly) System.out.println(moreAvailableMessage(command))
+			s
+		}
+	def verbosityParser: Parser[Int] = success(1) | ((Space ~ "-") ~> (
+		'v'.id.+.map(_.size + 1) |
+		("V" ^^^ Int.MaxValue)
+	)	)
+	def taskDetail(keys: Seq[AttributeKey[_]], filter: Seq[AttributeKey[_]] => Seq[AttributeKey[_]]): Seq[(String,String)] =
+		sortByLabel(filter(withDescription(keys))) flatMap taskStrings
+
+	def allTaskAndSettingKeys(s: State): Seq[AttributeKey[_]] =
 	{
 		val extracted = Project.extract(s)
 		import extracted._
 		val index = structure.index
-		index.keyIndex.keys(Some(currentRef)).toSeq map index.keyMap sortBy(_.label)
+		index.keyIndex.keys(Some(currentRef)).toSeq map index.keyMap
 	}
-	def tasksHelp(s: State): String =
-		aligned("  ", "   ", taskDetail(s)) mkString("\n", "\n", "")
+
+	def sortByLabel(keys: Seq[AttributeKey[_]]): Seq[AttributeKey[_]] = keys.sortBy(_.label)
+	def sortByRank(keys: Seq[AttributeKey[_]]): Seq[AttributeKey[_]] = keys.sortBy(_.rank)
+	def withDescription(keys: Seq[AttributeKey[_]]): Seq[AttributeKey[_]] = keys.filter(_.description.isDefined)
+	def isTask(mf: Manifest[_])(implicit taskMF: Manifest[Task[_]], inputMF: Manifest[InputTask[_]]): Boolean =
+		mf.erasure == taskMF.erasure || mf.erasure == inputMF.erasure
+	def topNRanked(n: Int) = (keys: Seq[AttributeKey[_]]) => sortByRank(keys).take(n)
+	def highPass(rankCutoff: Int) = (keys: Seq[AttributeKey[_]]) => sortByRank(keys).takeWhile(_.rank <= rankCutoff)
+
+	def tasksHelp(s: State, filter: Seq[AttributeKey[_]] => Seq[AttributeKey[_]]): String =
+		aligned("  ", "   ", taskDetail(allTaskAndSettingKeys(s), filter)) mkString("\n", "\n", "")
 
 	def taskStrings(key: AttributeKey[_]): Option[(String, String)]  =  key.description map { d => (key.label, d) }
 
@@ -289,7 +313,7 @@ object BuiltinCommands
 	def actHelp = (s: State) => CommandStrings.showHelp ++ keysHelp(s)
 	def keysHelp(s: State): Help =
 		if(Project.isProjectLoaded(s))
-			Help.detailOnly(taskDetail(s))
+			Help.detailOnly(taskDetail(allTaskAndSettingKeys(s), idFun))
 		else
 			Help.empty
 

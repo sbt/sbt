@@ -614,11 +614,11 @@ object Scoped
 /** Constructs InputKeys, which are associated with input tasks to define a setting.*/
 object InputKey
 {
-	def apply[T: Manifest](label: String, description: String = ""): InputKey[T] =
-		apply( AttributeKey[InputTask[T]](label, description) )
+	def apply[T: Manifest](label: String, description: String = "", rank: Int = KeyRanks.DefaultInputRank): InputKey[T] =
+		apply( AttributeKey[InputTask[T]](label, description, rank) )
 
-	def apply[T: Manifest](label: String, description: String, extend1: Scoped, extendN: Scoped*): InputKey[T] =
-		apply( AttributeKey[InputTask[T]](label, description, extendScoped(extend1, extendN)) )
+	def apply[T: Manifest](label: String, description: String, rank: Int, extend1: Scoped, extendN: Scoped*): InputKey[T] =
+		apply( AttributeKey[InputTask[T]](label, description, extendScoped(extend1, extendN), rank) )
 
 	def apply[T](akey: AttributeKey[InputTask[T]]): InputKey[T] =
 		new InputKey[T] { val key = akey; def scope = Scope.ThisScope }
@@ -627,11 +627,14 @@ object InputKey
 /** Constructs TaskKeys, which are associated with tasks to define a setting.*/
 object TaskKey
 {
-	def apply[T: Manifest](label: String, description: String = ""): TaskKey[T] =
-		apply( AttributeKey[Task[T]](label, description) )
+	def apply[T: Manifest](label: String, description: String = "", rank: Int = KeyRanks.DefaultTaskRank): TaskKey[T] =
+		apply( AttributeKey[Task[T]](label, description, rank) )
 
 	def apply[T: Manifest](label: String, description: String, extend1: Scoped, extendN: Scoped*): TaskKey[T] =
 		apply( AttributeKey[Task[T]](label, description, extendScoped(extend1, extendN)) )
+
+	def apply[T: Manifest](label: String, description: String, rank: Int, extend1: Scoped, extendN: Scoped*): TaskKey[T] =
+		apply( AttributeKey[Task[T]](label, description, extendScoped(extend1, extendN), rank) )
 
 	def apply[T](akey: AttributeKey[Task[T]]): TaskKey[T] =
 		new TaskKey[T] { val key = akey; def scope = Scope.ThisScope }
@@ -642,11 +645,14 @@ object TaskKey
 /** Constructs SettingKeys, which are associated with a value to define a basic setting.*/
 object SettingKey
 {
-	def apply[T: Manifest](label: String, description: String = ""): SettingKey[T] =
-		apply( AttributeKey[T](label, description) )
+	def apply[T: Manifest](label: String, description: String = "", rank: Int = KeyRanks.DefaultSettingRank): SettingKey[T] =
+		apply( AttributeKey[T](label, description, rank) )
 
 	def apply[T: Manifest](label: String, description: String, extend1: Scoped, extendN: Scoped*): SettingKey[T] =
 		apply( AttributeKey[T](label, description, extendScoped(extend1, extendN)) )
+
+	def apply[T: Manifest](label: String, description: String, rank: Int, extend1: Scoped, extendN: Scoped*): SettingKey[T] =
+		apply( AttributeKey[T](label, description, extendScoped(extend1, extendN), rank) )
 
 	def apply[T](akey: AttributeKey[T]): SettingKey[T] =
 		new SettingKey[T] { val key = akey; def scope = Scope.ThisScope }
