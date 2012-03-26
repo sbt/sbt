@@ -284,7 +284,7 @@ trait ParserMain
 		}
 
 	def sample(str: String, parser: Parser[_], completions: Boolean = false): Unit =
-		if(completions) sampleParse(str, parser) else sampleCompletions(str, parser)
+		if(completions) sampleCompletions(str, parser) else sampleParse(str, parser)
 	def sampleParse(str: String, parser: Parser[_]): Unit =
 		parse(str, parser) match {
 			case Left(msg) => println(msg)
