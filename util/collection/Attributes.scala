@@ -15,6 +15,7 @@ sealed trait AttributeKey[T] {
 	def description: Option[String]
 	def extend: Seq[AttributeKey[_]]
 	def isLocal: Boolean
+	def rank: Int
 }
 private[sbt] abstract class SharedAttributeKey[T] extends AttributeKey[T] {
 	override final def toString = label
@@ -27,23 +28,30 @@ private[sbt] abstract class SharedAttributeKey[T] extends AttributeKey[T] {
 }
 object AttributeKey
 {
-	def apply[T](name: String)(implicit mf: Manifest[T]): AttributeKey[T] = new SharedAttributeKey[T] {
+	def apply[T](name: String)(implicit mf: Manifest[T]): AttributeKey[T] =
+		make(name, None, Nil, Int.MaxValue)
+
+	def apply[T](name: String, rank: Int)(implicit mf: Manifest[T]): AttributeKey[T] =
+		make(name, None, Nil, rank)
+
+	def apply[T](name: String, description: String)(implicit mf: Manifest[T]): AttributeKey[T] =
+		apply(name, description, Nil)
+
+	def apply[T](name: String, description: String, rank: Int)(implicit mf: Manifest[T]): AttributeKey[T] =
+		apply(name, description, Nil, rank)
+
+	def apply[T](name: String, description: String, extend: Seq[AttributeKey[_]])(implicit mf: Manifest[T]): AttributeKey[T] =
+		apply(name, description, extend, Int.MaxValue)
+
+	def apply[T](name: String, description: String, extend: Seq[AttributeKey[_]], rank: Int)(implicit mf: Manifest[T]): AttributeKey[T] =
+		make(name, Some(description), extend, rank)
+
+	private[this] def make[T](name: String, description0: Option[String], extend0: Seq[AttributeKey[_]], rank0: Int)(implicit mf: Manifest[T]): AttributeKey[T] = new SharedAttributeKey[T] {
 		def manifest = mf
 		def label = name
-		def description = None
-		def extend = Nil
-	}
-	def apply[T](name: String, description0: String)(implicit mf: Manifest[T]): AttributeKey[T] = new SharedAttributeKey[T] {
-		def manifest = mf
-		def label = name
-		def description = Some(description0)
-		def extend = Nil
-	}
-	def apply[T](name: String, description0: String, extend0: Seq[AttributeKey[_]])(implicit mf: Manifest[T]): AttributeKey[T] = new SharedAttributeKey[T] {
-		def manifest = mf
-		def label = name
-		def description = Some(description0)
+		def description = description0
 		def extend = extend0
+		def rank = rank0
 	}
 	private[sbt] def local[T](implicit mf: Manifest[T]): AttributeKey[T] = new AttributeKey[T] {
 		def manifest = mf
@@ -52,6 +60,7 @@ object AttributeKey
 		def extend = Nil
 		override def toString = label
 		def isLocal: Boolean = true
+		def rank = Int.MaxValue
 	}
 	private[sbt] final val LocalLabel = "$local"
 }
