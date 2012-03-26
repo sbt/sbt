@@ -91,7 +91,7 @@ InspectCommand + """ [tree] <key>
 	"Related" shows all of the scopes in which the key is defined."""
 
 	val SetCommand = "set"
-	val setBrief = (SetCommand + "[every] <setting-expression>", "Evaluates the given Setting and applies it to the current project.")
+	val setBrief = (SetCommand + " [every] <setting-expression>", "Evaluates the given Setting and applies it to the current project.")
 	val setDetailed =
 SetCommand + """ <setting-expression>
 
