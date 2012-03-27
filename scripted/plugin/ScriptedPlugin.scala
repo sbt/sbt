@@ -58,6 +58,7 @@ object ScriptedPlugin extends Plugin {
 		scriptedRun <<= scriptedRunTask,
 		scriptedDependencies <<= (compile in Test, publishLocal) map { (analysis, pub) => Unit },
 		scriptedLaunchOpts := Seq(),
-		scripted <<= scriptedTask
+		scripted <<= scriptedTask,
+		watchSources in scripted <++= (sbtTestDirectory).map{ dir => (dir ***).get }
 	)
 }
