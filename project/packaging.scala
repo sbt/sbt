@@ -140,7 +140,7 @@ object Packaging {
     )},
     mappings in Universal <+= (compile in Compile, classDirectory in Compile) map { (c, d) =>
       compile; 
-      (d / "SbtJansiLaunch.class") -> "bin/SbtJansiLaunch.class" 
+      (d / "SbtJansiLaunch.class") -> "bin/classes/SbtJansiLaunch.class" 
     }
     // TODO - Adapt global `sbt`/`sbt-launch-lib` scripts for universal install...
   )
