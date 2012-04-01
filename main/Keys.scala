@@ -179,7 +179,6 @@ object Keys
 	val trapExit = SettingKey[Boolean]("trap-exit", "If true, enables exit trapping and thread management for 'run'-like tasks.  This is currently only suitable for serially-executed 'run'-like tasks.")
 
 	val fork = SettingKey[Boolean]("fork", "If true, forks a new JVM when running.  If false, runs in the same JVM as the build.")
-	val forkOptions = TaskKey[ForkOptions]("fork-options", "Options for starting new JVM when forking.")
 	val outputStrategy = SettingKey[Option[sbt.OutputStrategy]]("output-strategy", "Selects how to log output when running a main class.")
 	val connectInput = SettingKey[Boolean]("connect-input", "If true, connects standard input when running a main class forked.")
 	val javaHome = SettingKey[Option[File]]("java-home", "Selects the Java installation used for compiling and forking.  If None, uses the Java installation running the build.")

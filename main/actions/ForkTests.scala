@@ -10,7 +10,7 @@ import Tests._
 import ForkMain._
 
 private[sbt] object ForkTests {
-	def apply(frameworks: Seq[TestFramework], tests: List[TestDefinition], config: Execution, classpath: Seq[File], runner: ScalaRun, log: Logger): Task[Output]  = {
+	def apply(frameworks: Seq[TestFramework], tests: List[TestDefinition], config: Execution, classpath: Seq[File], javaHome: Option[File], javaOpts: Seq[String], log: Logger): Task[Output]  = {
 		val opts = config.options.toList
 		val listeners = opts flatMap {
 			case Listeners(ls) => ls
@@ -88,8 +88,10 @@ private[sbt] object ForkTests {
    				t.start()
 
 					val fullCp = classpath ++: Seq(IO.classLocationFile[ForkMain], IO.classLocationFile[Framework])
-					for (msg <- runner.run(classOf[ForkMain].getCanonicalName, fullCp, Seq(server.getLocalPort.toString), log)) {
-						log.error(msg)
+					val options = javaOpts ++: Seq("-classpath", fullCp mkString File.pathSeparator, classOf[ForkMain].getCanonicalName, server.getLocalPort.toString)
+					val ec = Fork.java(javaHome, options, StdoutOutput)
+					if (ec != 0) {
+						log.error("Running java with options " + options.mkString(" ") + " failed with exit code " + ec)
 						server.close()
 					}
 
