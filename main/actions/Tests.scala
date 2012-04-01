@@ -13,7 +13,6 @@ package sbt
 
 	import org.scalatools.testing.{AnnotatedFingerprint, Fingerprint, Framework, SubclassFingerprint}
 
-	import collection.mutable
 	import java.io.File
 
 sealed trait TestOption
@@ -40,14 +39,15 @@ object Tests
 	// None means apply to all, Some(tf) means apply to a particular framework only.
 	final case class Argument(framework: Option[TestFramework], args: List[String]) extends TestOption
 
-	final class Execution(val options: Seq[TestOption], val parallel: Boolean, val tags: Seq[(Tag, Int)])
+	sealed trait SubProcessPolicy
+	object InProcess extends SubProcessPolicy
+	final case class Fork(extraJvm: Seq[String]) extends SubProcessPolicy
 
-	def apply(frameworks: Map[TestFramework, Framework], testLoader: ClassLoader, discovered: Seq[TestDefinition], options: Seq[TestOption], parallel: Boolean, noTestsMessage: => String, log: Logger): Task[Output] =	
-		apply(frameworks, testLoader, discovered, new Execution(options, parallel, Nil), noTestsMessage, log)
+	final case class Execution(options: Seq[TestOption], parallel: Boolean, subproc: SubProcessPolicy, tags: Seq[(Tag, Int)])
 
 	def apply(frameworks: Map[TestFramework, Framework], testLoader: ClassLoader, discovered: Seq[TestDefinition], config: Execution, noTestsMessage: => String, log: Logger): Task[Output] =
 	{
-			import mutable.{HashSet, ListBuffer, Map, Set}
+			import collection.mutable.{HashSet, ListBuffer, Map, Set}
 		val testFilters = new ListBuffer[String => Boolean]
 		val excludeTestsSet = new HashSet[String]
 		val setup, cleanup = new ListBuffer[ClassLoader => Unit]
@@ -126,6 +126,10 @@ object Tests
 
 	def processResults(results: Iterable[(String, TestResult.Value)]): (TestResult.Value, Map[String, TestResult.Value]) =
 		(overall(results.map(_._2)), results.toMap)
+	def reduce(results: Seq[Task[Output]]): Task[Output] =
+		reduced(results.toIndexedSeq, {
+			case ((v1, m1), (v2, m2)) => (if (v1.id < v2.id) v2 else v1, m1 ++ m2)
+		})
 	def overall(results: Iterable[TestResult.Value]): TestResult.Value =
 		(TestResult.Passed /: results) { (acc, result) => if(acc.id < result.id) result else acc }
 	def discover(frameworks: Seq[Framework], analysis: Analysis, log: Logger): (Seq[TestDefinition], Set[String]) =
@@ -177,4 +181,7 @@ object Tests
 		if(!failures.isEmpty || !errors.isEmpty)
 			error("Tests unsuccessful")
 	}
+
+	final case class TestGroup(name: String, tests: Seq[TestDefinition], config: Execution)
 }
+

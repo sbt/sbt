@@ -23,14 +23,13 @@ object TestFrameworks
 	val JUnit = new TestFramework("com.novocode.junit.JUnitFramework")
 }
 
-class TestFramework(val implClassName: String)
+case class TestFramework(val implClassName: String)
 {
 	def create(loader: ClassLoader, log: Logger): Option[Framework] =
 	{
 		try { Some(Class.forName(implClassName, true, loader).newInstance.asInstanceOf[Framework]) }
 		catch { case e: ClassNotFoundException => log.debug("Framework implementation '" + implClassName + "' not present."); None }
 	}
-	override def toString = "TestFramework(" + implClassName + ")"
 }
 final class TestDefinition(val name: String, val fingerprint: Fingerprint)
 {

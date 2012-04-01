@@ -179,13 +179,14 @@ object Keys
 	val trapExit = SettingKey[Boolean]("trap-exit", "If true, enables exit trapping and thread management for 'run'-like tasks.  This is currently only suitable for serially-executed 'run'-like tasks.")
 
 	val fork = SettingKey[Boolean]("fork", "If true, forks a new JVM when running.  If false, runs in the same JVM as the build.")
+	val forkOptions = TaskKey[ForkOptions]("fork-options", "Options for starting new JVM when forking.")
 	val outputStrategy = SettingKey[Option[sbt.OutputStrategy]]("output-strategy", "Selects how to log output when running a main class.")
 	val connectInput = SettingKey[Boolean]("connect-input", "If true, connects standard input when running a main class forked.")
 	val javaHome = SettingKey[Option[File]]("java-home", "Selects the Java installation used for compiling and forking.  If None, uses the Java installation running the build.")
 	val javaOptions = TaskKey[Seq[String]]("java-options", "Options passed to a new JVM when forking.")
 
 	// Test Keys
-	val testLoader = TaskKey[ClassLoader]("test-loader", "Provides the class loader used for testing.")
+	val testLoader = TaskKey[ClassLoader]("test-loader", "Provides the class loader used for testing in the same JVM.")
 	val loadedTestFrameworks = TaskKey[Map[TestFramework,Framework]]("loaded-test-frameworks", "Loads Framework definitions from the test loader.")
 	val definedTests = TaskKey[Seq[TestDefinition]]("defined-tests", "Provides the list of defined tests.")
 	val definedTestNames = TaskKey[Seq[String]]("defined-test-names", "Provides the set of defined test names.")
@@ -198,6 +199,7 @@ object Keys
 	val testListeners = TaskKey[Seq[TestReportListener]]("test-listeners", "Defines test listeners.")
 	val testExecution = TaskKey[Tests.Execution]("test-execution", "Settings controlling test execution")
 	val testFilter = TaskKey[Seq[String] => String => Boolean]("test-filter", "Filter controlling whether the test is executed")
+	val testGrouping = TaskKey[Seq[Tests.TestGroup]]("test-grouping", "Groups discovered tests into groups. Groups are run sequentially.")
 	val isModule = AttributeKey[Boolean]("is-module", "True if the target is a module.")
 
 	// Classpath/Dependency Management Keys
