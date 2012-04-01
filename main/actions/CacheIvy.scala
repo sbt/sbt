@@ -186,7 +186,7 @@ object CacheIvy
 		implicit def fileConfToHL = (f: FileConfiguration) => f.isLocal :+: f.isTransactional :+: HNil
 
 		implicit def externalIvyConfigurationToHL = (e: ExternalIvyConfiguration) =>
-			exists(e.baseDirectory) :+: hash(e.file) :+: HNil
+			exists(e.baseDirectory) :+: Hash(e.url) :+: HNil
 	}
 	import L1._
 
