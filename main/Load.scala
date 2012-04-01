@@ -4,7 +4,7 @@
 package sbt
 
 	import java.io.File
-	import java.net.URI
+	import java.net.{URI,URL}
 	import compiler.{Eval,EvalImports}
 	import xsbt.api.{Discovered,Discovery}
 	import classpath.ClasspathUtilities
@@ -519,13 +519,17 @@ object Load
 		new LoadedPlugins(dir, classpath, loader, plugins, pluginNames)
 	}
 	def getPluginNames(classpath: Seq[Attributed[File]], loader: ClassLoader): Seq[String] =
-		 ( binaryPlugins(loader) ++ (analyzed(classpath) flatMap findPlugins) ).distinct
+		 ( binaryPlugins(Build.data(classpath), loader) ++ (analyzed(classpath) flatMap findPlugins) ).distinct
 
-	def binaryPlugins(loader: ClassLoader): Seq[String] =
+	def binaryPlugins(classpath: Seq[File], loader: ClassLoader): Seq[String] =
 	{
 		import collection.JavaConversions._
-		loader.getResources("sbt/sbt.plugins").toSeq flatMap { u => IO.readLinesURL(u) map { _.trim } filter { !_.isEmpty } };
+		loader.getResources("sbt/sbt.plugins").toSeq.filter(onClasspath(classpath)) flatMap { u =>
+			IO.readLinesURL(u).map( _.trim).filter(!_.isEmpty)
+		}
 	}
+	def onClasspath(classpath: Seq[File])(url: URL): Boolean =
+		IO.urlAsFile(url) exists (classpath.contains _)
 
 	def loadPlugins(loader: ClassLoader, pluginNames: Seq[String]): Seq[Plugin] =
 		pluginNames.map(pluginName => loadPlugin(pluginName, loader))

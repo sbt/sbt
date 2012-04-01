@@ -7,6 +7,7 @@ import Using._
 import ErrorHandling.translate
 
 import java.io.{BufferedReader, ByteArrayOutputStream, BufferedWriter, File, FileInputStream, InputStream, OutputStream, PrintWriter}
+import java.io.{ObjectInputStream, ObjectStreamClass}
 import java.net.{URI, URISyntaxException, URL}
 import java.nio.charset.Charset
 import java.util.Properties
@@ -65,18 +66,18 @@ object IO
 		catch { case _: URISyntaxException => new File(url.getPath) }
 
 	/** Converts the given URL to a File.  If the URL is for an entry in a jar, the File for the jar is returned. */
-	def asFile(url: URL): File =
-	{
+	def asFile(url: URL): File = urlAsFile(url) getOrElse error("URL is not a file: " + url)
+	def urlAsFile(url: URL): Option[File] =
 		url.getProtocol match
 		{
-			case "file" => toFile(url)
+			case "file" => Some(toFile(url))
 			case "jar" =>
 				val path = url.getPath
 				val end = path.indexOf('!')
-				new File(new URI(if(end == -1) path else path.substring(0, end)))
-			case _ => error("Invalid protocol " + url.getProtocol)
+				Some(new File(new URI(if(end == -1) path else path.substring(0, end))))
+			case _ => None
 		}
-	}
+
 	def assertDirectory(file: File) { assert(file.isDirectory, (if(file.exists) "Not a directory: " else "Directory not found: ") + file) }
 	def assertDirectories(file: File*) { file.foreach(assertDirectory) }
 
@@ -704,4 +705,13 @@ object IO
 	def assertAbsolute(uri: URI) = assert(uri.isAbsolute, "Not absolute: " + uri)
 
 	def parseClasspath(s: String): Seq[File] = IO.pathSplit(s).map(new File(_)).toSeq
+
+	def objectInputStream(wrapped: InputStream, loader: ClassLoader): ObjectInputStream = new ObjectInputStream(wrapped)
+	{
+		override def resolveClass(osc: ObjectStreamClass): Class[_] =
+		{
+			val c = Class.forName(osc.getName, false, loader)
+			if(c eq null) super.resolveClass(osc) else c
+		}
+	}
 }
