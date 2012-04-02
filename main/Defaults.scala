@@ -118,7 +118,7 @@ object Defaults extends BuildCommon
 		pomIncludeRepository :== Classpaths.defaultRepositoryFilter
 	))
 	def defaultTestTasks(key: Scoped): Seq[Setting[_]] = Seq(
-		tags in key := Seq(Tags.Test -> 1),
+		tags in key := Seq(Tags.Test -> 1, Tags.Subprocess -> 1),
 		logBuffered in key := true
 	)
 	def projectCore: Seq[Setting[_]] = Seq(
@@ -288,7 +288,7 @@ object Defaults extends BuildCommon
 		testFilter in testQuick <<= testQuickFilter,
 		executeTests <<= (streams in test, loadedTestFrameworks, testLoader, testGrouping in test, fullClasspath in test, javaOptions in test, javaHome in test) flatMap {
 			(s, frameworkMap, loader, groups, cp, javaOpts, javaHome) =>
-  		  val results = groups map {
+  		  val tasks = groups map {
 					case Tests.Group(name, tests, config) =>
 						config.subproc match {
 							case Tests.Fork(extraJvm) =>
@@ -297,7 +297,7 @@ object Defaults extends BuildCommon
 								Tests(frameworkMap, loader, tests, config, s.log)
 						}
 				}
-  		  Tests.foldTasks(results)
+  		  Tests.foldTasks(tasks)
 		},
 		test <<= (executeTests, streams, resolvedScoped, state) map { 
 			(results, s, scoped, st) =>
@@ -374,7 +374,7 @@ object Defaults extends BuildCommon
 			(streams, loadedTestFrameworks, testFilter in key, testGrouping in key, testLoader, resolvedScoped, result, fullClasspath in key, javaOptions in key, javaHome in key, state) flatMap {
 				case (s, frameworks, filter, groups, loader, scoped, (selected, frameworkOptions), cp, javaOpts, javaHome, st) =>
 					implicit val display = Project.showContextKey(st)
-					val results = groups map {
+					val tasks = groups map {
 						case Tests.Group(name, tests, config) =>
 							val modifiedOpts = Tests.Filter(filter(selected)) +: Tests.Argument(frameworkOptions : _*) +: config.options
   						val newConfig = config.copy(options = modifiedOpts)
@@ -385,7 +385,7 @@ object Defaults extends BuildCommon
 									Tests(frameworks, loader, tests, newConfig, s.log)
 							}
 					}
-					Tests.foldTasks(results) map (Tests.showResults(s.log, _, noTestsMessage(scoped)))
+					Tests.foldTasks(tasks) map (Tests.showResults(s.log, _, noTestsMessage(scoped)))
 			}
 		}
 

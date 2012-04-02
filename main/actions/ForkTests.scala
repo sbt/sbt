@@ -90,8 +90,8 @@ private[sbt] object ForkTests {
 	  		}
 		  }
 
-			testListeners.foreach(_.doInit())
 			try {
+				testListeners.foreach(_.doInit())
 				new Thread(Acceptor).start()
 
 				val fullCp = classpath ++: Seq(IO.classLocationFile[ForkMain], IO.classLocationFile[Framework])
@@ -104,6 +104,6 @@ private[sbt] object ForkTests {
 			val result = Acceptor.output
 			testListeners.foreach(_.doComplete(result._1))
   		result
-		}
+		} tagw (config.tags: _*)
 	}
 }
