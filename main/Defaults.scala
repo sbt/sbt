@@ -286,14 +286,14 @@ object Defaults extends BuildCommon
 		testOptions in GlobalScope :== Nil,
 		testFilter in testOnly :== (selectedFilter _),
 		testFilter in testQuick <<= testQuickFilter,
-		executeTests <<= (streams in test, loadedTestFrameworks, testLoader, testGrouping in test, fullClasspath in test, javaOptions in test, javaHome, resolvedScoped, state) flatMap {
+		executeTests <<= (streams in test, loadedTestFrameworks, testLoader, testGrouping in test, fullClasspath in test, javaOptions in test, javaHome in test, resolvedScoped, state) flatMap {
 			(s, frameworkMap, loader, groups, cp, javaOpts, javaHome, scoped, st) =>
 				implicit val display = Project.showContextKey(st)
   		  val results = groups map {
 					case Tests.TestGroup(name, tests, config) =>
 						config.subproc match {
 							case Tests.Fork(extraJvm) =>
-								ForkTests(frameworkMap.keys.toSeq, tests.toList, config, cp.map(_.data), javaHome, javaOpts, s.log)
+								ForkTests(frameworkMap.keys.toSeq, tests.toList, config, cp.files, javaHome, javaOpts, s.log)
 							case Tests.InProcess =>
 								Tests(frameworkMap, loader, tests, config, noTestsMessage(scoped, name), s.log)
 						}
@@ -368,7 +368,7 @@ object Defaults extends BuildCommon
 
 	def inputTests(key: InputKey[_]): Initialize[InputTask[Unit]] =
 		InputTask( loadForParser(definedTestNames)( (s, i) => testOnlyParser(s, i getOrElse Nil) ) ) { result =>
-			(streams, loadedTestFrameworks, testFilter in key, testGrouping in key, testLoader, resolvedScoped, result, fullClasspath in key, javaOptions in key, javaHome, state) flatMap {
+			(streams, loadedTestFrameworks, testFilter in key, testGrouping in key, testLoader, resolvedScoped, result, fullClasspath in key, javaOptions in key, javaHome in key, state) flatMap {
 				case (s, frameworks, filter, groups, loader, scoped, (selected, frameworkOptions), cp, javaOpts, javaHome, st) =>
 					implicit val display = Project.showContextKey(st)
 					val results = groups map {
@@ -377,7 +377,7 @@ object Defaults extends BuildCommon
   						val newConfig = config.copy(options = modifiedOpts)
 							newConfig.subproc match {
 								case Tests.Fork(extraJvm) =>
-									ForkTests(frameworks.keys.toSeq, tests.toList, newConfig, cp.map(_.data), javaHome, javaOpts, s.log)
+									ForkTests(frameworks.keys.toSeq, tests.toList, newConfig, cp.files, javaHome, javaOpts, s.log)
 								case Tests.InProcess =>
 									Tests(frameworks, loader, tests, newConfig, noTestsMessage(scoped, name), s.log)
 							}

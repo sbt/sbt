@@ -100,7 +100,7 @@ private[sbt] object ForkTests {
 					testListeners.foreach(_.doComplete(result._1))
   				result
 				} finally {
-					if (!server.isClosed) server.close()
+					server.close()
 				}
 			}
 		}
