@@ -66,15 +66,11 @@ public class ForkMain {
     public Result result() { return result;}
     public Throwable error() { return null; }
   }
-  public static void main(String[] args) {
-    try {
-      Socket socket = new Socket(InetAddress.getByName(null), Integer.valueOf(args[0]));
-      final ObjectInputStream is = new ObjectInputStream(socket.getInputStream());
-      final ObjectOutputStream os = new ObjectOutputStream(socket.getOutputStream());
-      new Run().run(is, os);
-    } catch (Exception e) {
-      e.printStackTrace();
-    }
+  public static void main(String[] args) throws Exception {
+    Socket socket = new Socket(InetAddress.getByName(null), Integer.valueOf(args[0]));
+		final ObjectInputStream is = new ObjectInputStream(socket.getInputStream());
+		final ObjectOutputStream os = new ObjectOutputStream(socket.getOutputStream());
+		new Run().run(is, os);
   }
   private static class Run {
     boolean matches(Fingerprint f1, Fingerprint f2) {
