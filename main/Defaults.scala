@@ -286,26 +286,29 @@ object Defaults extends BuildCommon
 		testOptions in GlobalScope :== Nil,
 		testFilter in testOnly :== (selectedFilter _),
 		testFilter in testQuick <<= testQuickFilter,
-		executeTests <<= (streams in test, loadedTestFrameworks, testLoader, testGrouping in test, fullClasspath in test, javaOptions in test, javaHome in test, resolvedScoped, state) flatMap {
-			(s, frameworkMap, loader, groups, cp, javaOpts, javaHome, scoped, st) =>
-				implicit val display = Project.showContextKey(st)
+		executeTests <<= (streams in test, loadedTestFrameworks, testLoader, testGrouping in test, fullClasspath in test, javaOptions in test, javaHome in test) flatMap {
+			(s, frameworkMap, loader, groups, cp, javaOpts, javaHome) =>
   		  val results = groups map {
-					case Tests.TestGroup(name, tests, config) =>
+					case Tests.Group(name, tests, config) =>
 						config.subproc match {
 							case Tests.Fork(extraJvm) =>
 								ForkTests(frameworkMap.keys.toSeq, tests.toList, config, cp.files, javaHome, javaOpts, s.log)
 							case Tests.InProcess =>
-								Tests(frameworkMap, loader, tests, config, noTestsMessage(scoped, name), s.log)
+								Tests(frameworkMap, loader, tests, config, s.log)
 						}
 				}
-  		  Tests.reduce(results)
+  		  Tests.flatten(results)
 		},
-		test <<= (executeTests, streams) map { (results, s) => Tests.showResults(s.log, results) },
+		test <<= (executeTests, streams, resolvedScoped, state) map { 
+			(results, s, scoped, st) =>
+				implicit val display = Project.showContextKey(st)
+				Tests.showResults(s.log, results, noTestsMessage(scoped))
+		},
 		testOnly <<= inputTests(testOnly),
 		testQuick <<= inputTests(testQuick)
 	)
-	private[this] def noTestsMessage(scoped: ScopedKey[_], group: String)(implicit display: Show[ScopedKey[_]]): String =
-		"No tests to run for group " + group + " in " + display(scoped)
+	private[this] def noTestsMessage(scoped: ScopedKey[_])(implicit display: Show[ScopedKey[_]]): String =
+		"No tests to run for " + display(scoped)
 
 	lazy val TaskGlobal: Scope = ThisScope.copy(task = Global)
 	lazy val ConfigGlobal: Scope = ThisScope.copy(config = Global)
@@ -316,7 +319,7 @@ object Defaults extends BuildCommon
 		testOptions <<= (testOptions in TaskGlobal, testListeners) map { (options, ls) => Tests.Listeners(ls) +: options },
 		testExecution <<= testExecutionTask(key),
 		testGrouping <<= ((definedTests, testExecution) map {
-			(tests, exec) => Seq(new Tests.TestGroup("<default>", tests, exec))
+			(tests, exec) => Seq(new Tests.Group("<default>", tests, exec))
 		})
 	) )
 	def testLogger(manager: Streams, baseKey: Scoped)(tdef: TestDefinition): Logger =
@@ -372,17 +375,17 @@ object Defaults extends BuildCommon
 				case (s, frameworks, filter, groups, loader, scoped, (selected, frameworkOptions), cp, javaOpts, javaHome, st) =>
 					implicit val display = Project.showContextKey(st)
 					val results = groups map {
-						case Tests.TestGroup(name, tests, config) =>
+						case Tests.Group(name, tests, config) =>
 							val modifiedOpts = Tests.Filter(filter(selected)) +: Tests.Argument(frameworkOptions : _*) +: config.options
   						val newConfig = config.copy(options = modifiedOpts)
 							newConfig.subproc match {
 								case Tests.Fork(extraJvm) =>
 									ForkTests(frameworks.keys.toSeq, tests.toList, newConfig, cp.files, javaHome, javaOpts, s.log)
 								case Tests.InProcess =>
-									Tests(frameworks, loader, tests, newConfig, noTestsMessage(scoped, name), s.log)
+									Tests(frameworks, loader, tests, newConfig, s.log)
 							}
 					}
-					Tests.reduce(results) map (Tests.showResults(s.log, _))
+					Tests.flatten(results) map (Tests.showResults(s.log, _, noTestsMessage(scoped)))
 			}
 		}
 

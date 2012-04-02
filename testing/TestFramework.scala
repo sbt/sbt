@@ -129,7 +129,6 @@ object TestFramework
 	def testTasks(frameworks: Seq[Framework],
 		testLoader: ClassLoader,
 		tests: Seq[TestDefinition],
-		noTestsMessage: => String,
 		log: Logger,
 		listeners: Seq[TestReportListener],
 		testArgsByFramework: Map[Framework, Seq[String]]):
@@ -138,7 +137,7 @@ object TestFramework
 		val arguments = testArgsByFramework withDefaultValue Nil
 		val mappedTests = testMap(frameworks, tests, arguments)
 		if(mappedTests.isEmpty)
-			(() => (), Nil, _ => () => log.info(noTestsMessage) )
+			(() => (), Nil, _ => () => () )
 		else
 			createTestTasks(testLoader, mappedTests, log, listeners)
 	}

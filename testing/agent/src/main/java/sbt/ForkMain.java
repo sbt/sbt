@@ -15,11 +15,9 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class ForkMain {
-  public static final String TestsDone = "TestsDone";
-  public static final String ErrorTag = "[error]";
-  public static final String WarnTag = "[warn]";
-  public static final String InfoTag = "[info]";
-  public static final String DebugTag = "[debug]";
+  public static enum Tags {
+			Error, Warn, Info, Debug, Done;
+	}
 
   static class SubclassFingerscan implements TestFingerprint, Serializable {
     private boolean isModule;
@@ -95,18 +93,18 @@ public class ForkMain {
       Logger[] loggers = {
           new Logger() {
             public boolean ansiCodesSupported() { return false; }
-            void print(Object obj) {
+            void write(Object obj) {
               try {
                 os.writeObject(obj);
               } catch (IOException e) {
                 System.err.println("Cannot write to socket");
               }
             }
-							public void error(String s) { print(new String[]{ErrorTag, s});  }
-            public void warn(String s) { print(new String[]{WarnTag, s}); }
-            public void info(String s) { print(new String[]{InfoTag, s}); }
-            public void debug(String s) { print(new String[]{DebugTag, s}); }
-            public void trace(Throwable t) { print(t); }
+							public void error(String s) { write(new Object[]{Tags.Error, s});  }
+            public void warn(String s) { write(new Object[]{Tags.Warn, s}); }
+            public void info(String s) { write(new Object[]{Tags.Info, s}); }
+            public void debug(String s) { write(new Object[]{Tags.Debug, s}); }
+            public void trace(Throwable t) { write(t); }
           }
       };
 
@@ -144,7 +142,7 @@ public class ForkMain {
           os.writeObject(events.toArray(new ForkEvent[events.size()]));
         }
       }
-      os.writeObject(TestsDone);
+      os.writeObject(Tags.Done);
 			is.readObject();
     }
   }

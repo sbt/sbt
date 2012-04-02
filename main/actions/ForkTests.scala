@@ -58,12 +58,13 @@ private[sbt] object ForkTests {
 							os.writeObject(args.toArray)
 						}
 
+						import Tags._
 	      	  @annotation.tailrec def react: Unit = is.readObject match {
-							case `TestsDone` => os.writeObject(TestsDone);
-							case Array(`ErrorTag`, s: String) => log.error(s); react
-							case Array(`WarnTag`, s: String) => log.warn(s); react
-							case Array(`InfoTag`, s: String) => log.info(s); react
-							case Array(`DebugTag`, s: String) => log.debug(s); react
+							case `Done` => os.writeObject(Done);
+							case Array(`Error`, s: String) => log.error(s); react
+							case Array(`Warn`, s: String) => log.warn(s); react
+							case Array(`Info`, s: String) => log.info(s); react
+							case Array(`Debug`, s: String) => log.debug(s); react
 							case t: Throwable => log.trace(t); react
 							case tEvents: Array[Event] =>
 								for (first <- tEvents.headOption) listeners.foreach(_ startGroup first.testName)
