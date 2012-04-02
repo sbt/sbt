@@ -874,8 +874,9 @@ object Classpaths
 
 	def sbtClassifiersTasks = inTask(updateSbtClassifiers)(Seq(
 		transitiveClassifiers in GlobalScope in updateSbtClassifiers ~= ( _.filter(_ != DocClassifier) ),
-		externalResolvers <<= (externalResolvers, appConfiguration) map { (defaultRs, ac) =>
-			bootRepositories(ac) getOrElse defaultRs
+		externalResolvers <<= (externalResolvers, appConfiguration, buildStructure, thisProjectRef) map { (defaultRs, ac, struct, ref) =>
+			val explicit = struct.units(ref.build).unit.plugins.pluginData.resolvers
+			explicit orElse bootRepositories(ac) getOrElse defaultRs
 		},
 		ivyConfiguration <<= (externalResolvers, ivyPaths, offline, checksums, appConfiguration, streams) map { (rs, paths, off, check, app, s) =>
 			new InlineIvyConfiguration(paths, rs, Nil, Nil, off, Option(lock(app)), check, s.log)
@@ -888,7 +889,8 @@ object Classpaths
 		updateSbtClassifiers in TaskGlobal <<= (ivySbt, classifiersModule, updateConfiguration, ivyScala, target in LocalRootProject, appConfiguration, streams) map {
 				(is, mod, c, ivyScala, out, app, s) =>
 			withExcludes(out, mod.classifiers, lock(app)) { excludes =>
-				IvyActions.transitiveScratch(is, "sbt", GetClassifiersConfiguration(mod, excludes, c, ivyScala), s.log)
+				val noExplicitCheck = ivyScala.map(_.copy(checkExplicit=false))
+				IvyActions.transitiveScratch(is, "sbt", GetClassifiersConfiguration(mod, excludes, c, noExplicitCheck), s.log)
 			}
 		} tag(Tags.Update, Tags.Network)
 	))

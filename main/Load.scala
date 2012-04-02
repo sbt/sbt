@@ -13,7 +13,7 @@ package sbt
 	import Compiler.{Compilers,Inputs}
 	import inc.{FileValueCache, Locate}
 	import Project.{inScope, ScopedKey, ScopeLocal, Setting}
-	import Keys.{appConfiguration, baseDirectory, configuration, streams, Streams, thisProject, thisProjectRef}
+	import Keys.{appConfiguration, baseDirectory, configuration, fullResolvers, fullClasspath, pluginData, streams, Streams, thisProject, thisProjectRef}
 	import Keys.{isDummy, loadedBuild, parseResult, resolvedScoped, taskDefinitionKey}
 	import tools.nsc.reporters.ConsoleReporter
 	import Build.{analyzed, data}
@@ -437,6 +437,7 @@ object Load
 		}
 	val autoPluginSettings: Seq[Setting[_]] = inScope(GlobalScope in LocalRootProject)(Seq(
 		Keys.sbtPlugin :== true,
+		pluginData <<= (fullClasspath in Configurations.Runtime, fullResolvers) map ( (cp, rs) => PluginData(cp, Some(rs)) ),
 		Keys.onLoadMessage <<= Keys.baseDirectory("Loading project definition from " + _)
 	))
 	def enableSbtPlugin(config: LoadBuildConfiguration): LoadBuildConfiguration =
@@ -461,14 +462,15 @@ object Load
 		import Path._
 		!(dir * -GlobFilter(DefaultTargetName)).get.isEmpty
 	}
-	def noPlugins(dir: File, config: LoadBuildConfiguration): LoadedPlugins = loadPluginDefinition(dir, config, config.globalPluginClasspath)
+	def noPlugins(dir: File, config: LoadBuildConfiguration): LoadedPlugins =
+		loadPluginDefinition(dir, config, PluginData(config.globalPluginClasspath, None))
 	def buildPlugins(dir: File, s: State, config: LoadBuildConfiguration): LoadedPlugins =
 		loadPluginDefinition(dir, config, buildPluginDefinition(dir, s, config))
 
-	def loadPluginDefinition(dir: File, config: LoadBuildConfiguration, pluginClasspath: Seq[Attributed[File]]): LoadedPlugins =
+	def loadPluginDefinition(dir: File, config: LoadBuildConfiguration, pluginData: PluginData): LoadedPlugins =
 	{
-		val (definitionClasspath, pluginLoader) = pluginDefinitionLoader(config, pluginClasspath)
-		loadPlugins(dir, definitionClasspath, pluginLoader)
+		val (definitionClasspath, pluginLoader) = pluginDefinitionLoader(config, pluginData.classpath)
+		loadPlugins(dir, pluginData.copy(classpath = definitionClasspath), pluginLoader)
 	}
 	def pluginDefinitionLoader(config: LoadBuildConfiguration, pluginClasspath: Seq[Attributed[File]]): (Seq[Attributed[File]], ClassLoader) =
 	{
@@ -478,7 +480,7 @@ object Load
 		val pluginLoader = if(pluginClasspath.isEmpty) pm.initialLoader else { addToLoader(); pm.loader }
 		(definitionClasspath, pluginLoader)
 	}
-	def buildPluginDefinition(dir: File, s: State, config: LoadBuildConfiguration): Seq[Attributed[File]] =
+	def buildPluginDefinition(dir: File, s: State, config: LoadBuildConfiguration): PluginData =
 	{
 		val (eval,pluginDef) = apply(dir, s, config)
 		val pluginState = Project.setProject(Load.initialSession(pluginDef, eval), pluginDef, s)
@@ -510,13 +512,13 @@ object Load
 		(inputs, analysis)
 	}
 
-	def loadPlugins(dir: File, classpath: Seq[Attributed[File]], loader: ClassLoader): LoadedPlugins =
+	def loadPlugins(dir: File, data: PluginData, loader: ClassLoader): LoadedPlugins =
 	{
-		val (pluginNames, plugins) = if(classpath.isEmpty) (Nil, Nil) else {
-			val names = getPluginNames(classpath, loader)
+		val (pluginNames, plugins) = if(data.classpath.isEmpty) (Nil, Nil) else {
+			val names = getPluginNames(data.classpath, loader)
 			(names, loadPlugins(loader, names) )
 		}
-		new LoadedPlugins(dir, classpath, loader, plugins, pluginNames)
+		new LoadedPlugins(dir, data, loader, plugins, pluginNames)
 	}
 	def getPluginNames(classpath: Seq[Attributed[File]], loader: ClassLoader): Seq[String] =
 		 ( binaryPlugins(Build.data(classpath), loader) ++ (analyzed(classpath) flatMap findPlugins) ).distinct
@@ -581,8 +583,9 @@ object Load
 
 	final class EvaluatedConfigurations(val eval: Eval, val settings: Seq[Setting[_]])
 	final class LoadedDefinitions(val base: File, val target: Seq[File], val loader: ClassLoader, val builds: Seq[Build], val buildNames: Seq[String])
-	final class LoadedPlugins(val base: File, val fullClasspath: Seq[Attributed[File]], val loader: ClassLoader, val plugins: Seq[Plugin], val pluginNames: Seq[String])
+	final class LoadedPlugins(val base: File, val pluginData: PluginData, val loader: ClassLoader, val plugins: Seq[Plugin], val pluginNames: Seq[String])
 	{
+		def fullClasspath: Seq[Attributed[File]] = pluginData.classpath
 		def classpath = data(fullClasspath)
 	}
 	final class BuildUnit(val uri: URI, val localBase: File, val definitions: LoadedDefinitions, val plugins: LoadedPlugins)
@@ -646,7 +649,7 @@ object Load
 		new BuildUtil(keyIndex, data, root, Load getRootProject units, getp, configs, aggregates)
 	}
 	final case class LoadBuildConfiguration(stagingDirectory: File, classpath: Seq[Attributed[File]], loader: ClassLoader,
-		compilers: Compilers, evalPluginDef: (BuildStructure, State) => Seq[Attributed[File]], definesClass: DefinesClass,
+		compilers: Compilers, evalPluginDef: (BuildStructure, State) => PluginData, definesClass: DefinesClass,
 		delegates: LoadedBuild => Scope => Seq[Scope], scopeLocal: ScopeLocal,
 		pluginManagement: PluginManagement, injectSettings: InjectSettings, globalPlugin: Option[GlobalPlugin], log: Logger)
 	{
