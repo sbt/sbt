@@ -14,7 +14,7 @@ private[sbt] object ForkTests {
 		val opts = config.options.toList
 		val listeners = opts flatMap {
 			case Listeners(ls) => ls
-			case _ => List.empty
+			case _ => Nil
 		}
 		val testListeners = listeners flatMap {
 			case tl: TestsListener => Some(tl)
@@ -28,11 +28,11 @@ private[sbt] object ForkTests {
 			f => f.implClassName -> opts.flatMap {
 				case Argument(None, args) =>  args
 				case Argument(Some(`f`), args) => args
-				case _ => List.empty
+				case _ => Nil
 			}
 		}.toMap
 
-		std.TaskExtra.toTask {
+		std.TaskExtra.task {
 			val server = new ServerSocket(0)
 			object Acceptor extends Runnable {
 				val results = collection.mutable.Map.empty[String, TestResult.Value]
@@ -46,17 +46,6 @@ private[sbt] object ForkTests {
 					for (socket <- socketOpt) {
 						val os = new ObjectOutputStream(socket.getOutputStream)
 						val is = new ObjectInputStream(socket.getInputStream)
-
-						val testsFiltered = tests.filter(test => filters.forall(_(test.name))).map{
-							t => new ForkTestDefinition(t.name, t.fingerprint)
-            }.toArray
-						os.writeObject(testsFiltered)
-
-						os.writeInt(frameworks.size)
-						for ((clazz, args) <- argMap) {
-							os.writeObject(clazz)
-							os.writeObject(args.toArray)
-						}
 
 						import Tags._
 	      	  @annotation.tailrec def react: Unit = is.readObject match {
@@ -77,33 +66,44 @@ private[sbt] object ForkTests {
 								}
 								react
 						}
-            react
+
+						try {
+							os.writeBoolean(log.ansiCodesSupported)
+							
+							val testsFiltered = tests.filter(test => filters.forall(_(test.name))).map{
+								t => new ForkTestDefinition(t.name, t.fingerprint)
+							}.toArray
+							os.writeObject(testsFiltered)
+
+							os.writeInt(frameworks.size)
+							for ((clazz, args) <- argMap) {
+								os.writeObject(clazz)
+								os.writeObject(args.toArray)
+							}
+
+							react
+						} finally {
+							is.close()
+							os.close()
+						}
   				}
 	  		}
 		  }
 
-  		() => {
-				try {
-					testListeners.foreach(_.doInit())
-					val t = new Thread(Acceptor)
-   				t.start()
+			testListeners.foreach(_.doInit())
+			try {
+				new Thread(Acceptor).start()
 
-					val fullCp = classpath ++: Seq(IO.classLocationFile[ForkMain], IO.classLocationFile[Framework])
-					val options = javaOpts ++: Seq("-classpath", fullCp mkString File.pathSeparator, classOf[ForkMain].getCanonicalName, server.getLocalPort.toString)
-					val ec = Fork.java(javaHome, options, StdoutOutput)
-					if (ec != 0) {
-						log.error("Running java with options " + options.mkString(" ") + " failed with exit code " + ec)
-						server.close()
-					}
-
-  				t.join()
-					val result = Acceptor.output
-					testListeners.foreach(_.doComplete(result._1))
-  				result
-				} finally {
-					server.close()
-				}
+				val fullCp = classpath ++: Seq(IO.classLocationFile[ForkMain], IO.classLocationFile[Framework])
+				val options = javaOpts ++: Seq("-classpath", fullCp mkString File.pathSeparator, classOf[ForkMain].getCanonicalName, server.getLocalPort.toString)
+				val ec = Fork.java(javaHome, options, StdoutOutput)
+				if (ec != 0) log.error("Running java with options " + options.mkString(" ") + " failed with exit code " + ec)
+			} finally {
+				server.close()
 			}
+			val result = Acceptor.output
+			testListeners.foreach(_.doComplete(result._1))
+  		result
 		}
 	}
 }

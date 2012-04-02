@@ -126,10 +126,12 @@ object Tests
 
 	def processResults(results: Iterable[(String, TestResult.Value)]): (TestResult.Value, Map[String, TestResult.Value]) =
 		(overall(results.map(_._2)), results.toMap)
-	def flatten(results: Seq[Task[Output]]): Task[Output] =
-		reduced(results.toIndexedSeq, {
-			case ((v1, m1), (v2, m2)) => (if (v1.id < v2.id) v2 else v1, m1 ++ m2)
-		})
+	def foldTasks(results: Seq[Task[Output]]): Task[Output] =
+		(task((TestResult.Passed, Map.empty[String, TestResult.Value])) /: results) {
+			reducePair(_, _, {
+				case ((v1, m1), (v2, m2)) => (if (v1.id < v2.id) v2 else v1, m1 ++ m2)
+			})
+		}
 	def overall(results: Iterable[TestResult.Value]): TestResult.Value =
 		(TestResult.Passed /: results) { (acc, result) => if(acc.id < result.id) result else acc }
 	def discover(frameworks: Seq[Framework], analysis: Analysis, log: Logger): (Seq[TestDefinition], Set[String]) =

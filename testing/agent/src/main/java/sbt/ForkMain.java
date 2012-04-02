@@ -90,9 +90,10 @@ public class ForkMain {
       return false;
     }
     void run(ObjectInputStream is, final ObjectOutputStream os) throws Exception {
+			final boolean ansiCodesSupported = is.readBoolean();
       Logger[] loggers = {
           new Logger() {
-            public boolean ansiCodesSupported() { return false; }
+            public boolean ansiCodesSupported() { return ansiCodesSupported; }
             void write(Object obj) {
               try {
                 os.writeObject(obj);
@@ -100,7 +101,7 @@ public class ForkMain {
                 System.err.println("Cannot write to socket");
               }
             }
-							public void error(String s) { write(new Object[]{Tags.Error, s});  }
+						public void error(String s) { write(new Object[]{Tags.Error, s});  }
             public void warn(String s) { write(new Object[]{Tags.Warn, s}); }
             public void info(String s) { write(new Object[]{Tags.Info, s}); }
             public void debug(String s) { write(new Object[]{Tags.Debug, s}); }

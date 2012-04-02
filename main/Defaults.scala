@@ -297,7 +297,7 @@ object Defaults extends BuildCommon
 								Tests(frameworkMap, loader, tests, config, s.log)
 						}
 				}
-  		  Tests.flatten(results)
+  		  Tests.foldTasks(results)
 		},
 		test <<= (executeTests, streams, resolvedScoped, state) map { 
 			(results, s, scoped, st) =>
@@ -385,7 +385,7 @@ object Defaults extends BuildCommon
 									Tests(frameworks, loader, tests, newConfig, s.log)
 							}
 					}
-					Tests.flatten(results) map (Tests.showResults(s.log, _, noTestsMessage(scoped)))
+					Tests.foldTasks(results) map (Tests.showResults(s.log, _, noTestsMessage(scoped)))
 			}
 		}
 
