@@ -70,7 +70,12 @@ public class ForkMain {
     Socket socket = new Socket(InetAddress.getByName(null), Integer.valueOf(args[0]));
 		final ObjectInputStream is = new ObjectInputStream(socket.getInputStream());
 		final ObjectOutputStream os = new ObjectOutputStream(socket.getOutputStream());
-		new Run().run(is, os);
+		try {
+			new Run().run(is, os);
+		} finally {
+			is.close();
+			os.close();	
+		}
   }
   private static class Run {
     boolean matches(Fingerprint f1, Fingerprint f2) {

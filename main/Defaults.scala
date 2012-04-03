@@ -57,6 +57,7 @@ object Defaults extends BuildCommon
 		onComplete <<= taskTemporaryDirectory { dir => () => IO.delete(dir); IO.createDirectory(dir) },
 		concurrentRestrictions <<= concurrentRestrictions or defaultRestrictions,
 		parallelExecution :== true,
+		parallelTestGroups := 1,
 		sbtVersion <<= appConfiguration { _.provider.id.version },
 		sbtBinaryVersion <<= sbtVersion apply binarySbtVersion,
 		sbtResolver <<= sbtVersion { sbtV => if(sbtV endsWith "-SNAPSHOT") Classpaths.typesafeSnapshots else Classpaths.typesafeReleases },
@@ -117,10 +118,10 @@ object Defaults extends BuildCommon
 		excludeFilter :== (".*"  - ".") || HiddenFileFilter,
 		pomIncludeRepository :== Classpaths.defaultRepositoryFilter
 	))
-	def defaultTestTasks(key: Scoped): Seq[Setting[_]] = Seq(
-		tags in key := Seq(Tags.Test -> 1, Tags.Subprocess -> 1),
-		logBuffered in key := true
-	)
+	def defaultTestTasks(key: Scoped): Seq[Setting[_]] = inTask(key)(Seq(
+		tags := Seq(Tags.Test -> 1),
+		logBuffered := true
+	))
 	def projectCore: Seq[Setting[_]] = Seq(
 		name <<= thisProject(_.id),
 		logManager <<= extraLoggers(LogManager.defaults),
@@ -337,8 +338,9 @@ object Defaults extends BuildCommon
 	}
 
 	def testExecutionTask(task: Scoped): Initialize[Task[Tests.Execution]] =
-			(testOptions in task, parallelExecution in task, fork in task, javaOptions in task, tags in task) map {
-				(opts, par, fork, jvmOpts, ts) => new Tests.Execution(opts, par, if (fork) Tests.Fork(jvmOpts) else Tests.InProcess, ts)
+			(testOptions in task, parallelExecution in task, fork in task, javaOptions in task, tags in task, parallelTestGroups in task) map {
+				(opts, par, fork, jvmOpts, ts, lim) =>
+					new Tests.Execution(opts, par, if (fork) Tests.Fork(jvmOpts) else Tests.InProcess, if (fork) ts :+ (Tags.ForkedTestGroup -> lim) else ts)
 			}
 
 	def testQuickFilter: Initialize[Task[Seq[String] => String => Boolean]] =

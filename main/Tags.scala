@@ -18,7 +18,8 @@ object Tags
 	val CPU = Tag("cpu")
 	val Network = Tag("network")
 	val Disk = Tag("disk")
-	val Subprocess = Tag("subprocess")
+
+	val ForkedTestGroup = Tag("forked-test-group")
 
 	/** Describes a restriction on concurrently executing tasks.
 	* A Rule is constructed using one of the Tags.limit* methods. */
