@@ -198,7 +198,7 @@ object Keys
 	val testListeners = TaskKey[Seq[TestReportListener]]("test-listeners", "Defines test listeners.")
 	val testExecution = TaskKey[Tests.Execution]("test-execution", "Settings controlling test execution")
 	val testFilter = TaskKey[Seq[String] => String => Boolean]("test-filter", "Filter controlling whether the test is executed")
-	val testGrouping = TaskKey[Seq[Tests.Group]]("test-grouping", "Groups discovered tests into groups.")
+	val testGrouping = TaskKey[Seq[Tests.Group]]("test-grouping", "Collects discovered tests into groups. Whether to fork and the options for forking are configurable on a per-group basis.")
 	val isModule = AttributeKey[Boolean]("is-module", "True if the target is a module.")
 
 	// Classpath/Dependency Management Keys

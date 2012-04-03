@@ -90,24 +90,24 @@ public class ForkMain {
       }
       return false;
     }
+		void write(ObjectOutputStream os, Object obj) {
+			try {
+				os.writeObject(obj);
+			} catch (IOException e) {
+				System.err.println("Cannot write to socket");
+			}
+		}
     void run(ObjectInputStream is, final ObjectOutputStream os) throws Exception {
 			final boolean ansiCodesSupported = is.readBoolean();
       Logger[] loggers = {
-          new Logger() {
-            public boolean ansiCodesSupported() { return ansiCodesSupported; }
-            void write(Object obj) {
-              try {
-                os.writeObject(obj);
-              } catch (IOException e) {
-                System.err.println("Cannot write to socket");
-              }
-            }
-						public void error(String s) { write(new Object[]{Tags.Error, s});  }
-            public void warn(String s) { write(new Object[]{Tags.Warn, s}); }
-            public void info(String s) { write(new Object[]{Tags.Info, s}); }
-            public void debug(String s) { write(new Object[]{Tags.Debug, s}); }
-            public void trace(Throwable t) { write(t); }
-          }
+        new Logger() {
+          public boolean ansiCodesSupported() { return ansiCodesSupported; }
+  				public void error(String s) { write(os, new Object[]{Tags.Error, s});  }
+					public void warn(String s) { write(os, new Object[]{Tags.Warn, s}); }
+					public void info(String s) { write(os, new Object[]{Tags.Info, s}); }
+					public void debug(String s) { write(os, new Object[]{Tags.Debug, s}); }
+					public void trace(Throwable t) { write(os, t); }
+        }
       };
 
       final ForkTestDefinition[] tests = (ForkTestDefinition[]) is.readObject();
@@ -118,7 +118,7 @@ public class ForkMain {
         try {
           framework = (Framework) Class.forName(implClassName).newInstance();
         } catch (ClassNotFoundException e) {
-          System.err.println("Framework implementation '" + implClassName + "' not present.");
+					write(os, new Object[]{Tags.Error, "Framework implementation '" + implClassName + "' not present."});
           continue;
         }
 
@@ -139,12 +139,12 @@ public class ForkMain {
           } else if (test.fingerprint instanceof TestFingerprint) {
             runner.run(test.name, (TestFingerprint) test.fingerprint, handler, frameworkArgs);
           } else {
-            System.err.println("Framework '" + framework + "' does not support test '" + test.name + "'");
+						write(os, new Object[]{Tags.Error, "Framework '" + framework + "' does not support test '" + test.name + "'"});
           }
-          os.writeObject(events.toArray(new ForkEvent[events.size()]));
+          write(os, events.toArray(new ForkEvent[events.size()]));
         }
       }
-      os.writeObject(Tags.Done);
+      write(os, Tags.Done);
 			is.readObject();
     }
   }

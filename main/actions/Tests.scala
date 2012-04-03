@@ -40,7 +40,7 @@ object Tests
 	final case class Argument(framework: Option[TestFramework], args: List[String]) extends TestOption
 
 	sealed trait SubProcessPolicy
-	object InProcess extends SubProcessPolicy
+	case object InProcess extends SubProcessPolicy
 	final case class Fork(extraJvm: Seq[String]) extends SubProcessPolicy
 
 	final case class Execution(options: Seq[TestOption], parallel: Boolean, subproc: SubProcessPolicy, tags: Seq[(Tag, Int)])
