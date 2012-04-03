@@ -199,7 +199,6 @@ object Keys
 	val testExecution = TaskKey[Tests.Execution]("test-execution", "Settings controlling test execution")
 	val testFilter = TaskKey[Seq[String] => String => Boolean]("test-filter", "Filter controlling whether the test is executed")
 	val testGrouping = TaskKey[Seq[Tests.Group]]("test-grouping", "Groups discovered tests into groups.")
-	val parallelTestGroups = SettingKey[Int]("parallel-test-groups", "Maximum number of test groups that may run at the same time.")
 	val isModule = AttributeKey[Boolean]("is-module", "True if the target is a module.")
 
 	// Classpath/Dependency Management Keys

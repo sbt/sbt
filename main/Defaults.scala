@@ -57,7 +57,6 @@ object Defaults extends BuildCommon
 		onComplete <<= taskTemporaryDirectory { dir => () => IO.delete(dir); IO.createDirectory(dir) },
 		concurrentRestrictions <<= concurrentRestrictions or defaultRestrictions,
 		parallelExecution :== true,
-		parallelTestGroups := 1,
 		sbtVersion <<= appConfiguration { _.provider.id.version },
 		sbtBinaryVersion <<= sbtVersion apply binarySbtVersion,
 		sbtResolver <<= sbtVersion { sbtV => if(sbtV endsWith "-SNAPSHOT") Classpaths.typesafeSnapshots else Classpaths.typesafeReleases },
@@ -399,9 +398,9 @@ object Defaults extends BuildCommon
 	def detectTests: Initialize[Task[Seq[TestDefinition]]] = (loadedTestFrameworks, compile, streams) map { (frameworkMap, analysis, s) =>
 		Tests.discover(frameworkMap.values.toSeq, analysis, s.log)._1
 	}
-	def defaultRestrictions: Initialize[Seq[Tags.Rule]] = (parallelExecution, parallelTestGroups) { (par, ptg) =>
+	def defaultRestrictions: Initialize[Seq[Tags.Rule]] = parallelExecution { par =>
 		val max = EvaluateTask.SystemProcessors
-		Tags.limitAll(if(par) max else 1) :: Tags.limit(Tags.ForkedTestGroup, ptg) :: Nil
+		Tags.limitAll(if(par) max else 1) :: Tags.limit(Tags.ForkedTestGroup, 1) :: Nil
 	}
 
 	lazy val packageBase: Seq[Setting[_]] = Seq(
