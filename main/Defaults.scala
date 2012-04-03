@@ -293,7 +293,7 @@ object Defaults extends BuildCommon
 					case Tests.Group(name, tests, config) =>
 						config.subproc match {
 							case Tests.Fork(extraJvm) =>
-								ForkTests(frameworkMap.keys.toSeq, tests.toList, config, cp.files, javaHome, javaOpts, s.log)
+								ForkTests(frameworkMap.keys.toSeq, tests.toList, config, cp.files, javaHome, javaOpts, s.log) tag Tags.ForkedTestGroup
 							case Tests.InProcess =>
 								Tests(frameworkMap, loader, tests, config, s.log)
 						}
@@ -338,9 +338,9 @@ object Defaults extends BuildCommon
 	}
 
 	def testExecutionTask(task: Scoped): Initialize[Task[Tests.Execution]] =
-			(testOptions in task, parallelExecution in task, fork in task, javaOptions in task, tags in task, parallelTestGroups in task) map {
-				(opts, par, fork, jvmOpts, ts, lim) =>
-					new Tests.Execution(opts, par, if (fork) Tests.Fork(jvmOpts) else Tests.InProcess, if (fork) ts :+ (Tags.ForkedTestGroup -> lim) else ts)
+			(testOptions in task, parallelExecution in task, fork in task, javaOptions in task, tags in task) map {
+				(opts, par, fork, jvmOpts, ts) =>
+					new Tests.Execution(opts, par, if (fork) Tests.Fork(jvmOpts) else Tests.InProcess, ts)
 			}
 
 	def testQuickFilter: Initialize[Task[Seq[String] => String => Boolean]] =
@@ -382,7 +382,7 @@ object Defaults extends BuildCommon
   						val newConfig = config.copy(options = modifiedOpts)
 							newConfig.subproc match {
 								case Tests.Fork(extraJvm) =>
-									ForkTests(frameworks.keys.toSeq, tests.toList, newConfig, cp.files, javaHome, javaOpts, s.log)
+									ForkTests(frameworks.keys.toSeq, tests.toList, newConfig, cp.files, javaHome, javaOpts, s.log) tag Tags.ForkedTestGroup
 								case Tests.InProcess =>
 									Tests(frameworks, loader, tests, newConfig, s.log)
 							}
@@ -399,9 +399,9 @@ object Defaults extends BuildCommon
 	def detectTests: Initialize[Task[Seq[TestDefinition]]] = (loadedTestFrameworks, compile, streams) map { (frameworkMap, analysis, s) =>
 		Tests.discover(frameworkMap.values.toSeq, analysis, s.log)._1
 	}
-	def defaultRestrictions: Initialize[Seq[Tags.Rule]] = parallelExecution { par =>
+	def defaultRestrictions: Initialize[Seq[Tags.Rule]] = (parallelExecution, parallelTestGroups) { (par, ptg) =>
 		val max = EvaluateTask.SystemProcessors
-		Tags.limitAll(if(par) max else 1) :: Nil
+		Tags.limitAll(if(par) max else 1) :: Tags.limit(Tags.ForkedTestGroup, ptg) :: Nil
 	}
 
 	lazy val packageBase: Seq[Setting[_]] = Seq(
