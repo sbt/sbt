@@ -37,21 +37,21 @@ private[sbt] object ForkTests {
 			object Acceptor extends Runnable {
 				val results = collection.mutable.Map.empty[String, TestResult.Value]
 				def output = (overall(results.values), results.toMap)
-  			def run = {
-					val socket = server.accept()
-					val os = new ObjectOutputStream(socket.getOutputStream)
-					val is = new ObjectInputStream(socket.getInputStream)
+  				def run = {
+						val socket = server.accept()
+						val os = new ObjectOutputStream(socket.getOutputStream)
+						val is = new ObjectInputStream(socket.getInputStream)
 
-					import Tags._
-	      	@annotation.tailrec def react: Unit = is.readObject match {
-						case `Done` => os.writeObject(Done);
-						case Array(`Error`, s: String) => log.error(s); react
-						case Array(`Warn`, s: String) => log.warn(s); react
-						case Array(`Info`, s: String) => log.info(s); react
-						case Array(`Debug`, s: String) => log.debug(s); react
-						case t: Throwable => log.trace(t); react
-						case tEvents: Array[Event] =>
-							for (first <- tEvents.headOption) listeners.foreach(_ startGroup first.testName)
+						import Tags._
+	      		@annotation.tailrec def react: Unit = is.readObject match {
+							case `Done` => os.writeObject(Done);
+							case Array(`Error`, s: String) => log.error(s); react
+							case Array(`Warn`, s: String) => log.warn(s); react
+							case Array(`Info`, s: String) => log.info(s); react
+							case Array(`Debug`, s: String) => log.debug(s); react
+							case t: Throwable => log.trace(t); react
+							case tEvents: Array[Event] =>
+								for (first <- tEvents.headOption) listeners.foreach(_ startGroup first.testName)
 							val event = TestEvent(tEvents)
 							listeners.foreach(_ testEvent event)
 							for (first <- tEvents.headOption) {
@@ -60,27 +60,27 @@ private[sbt] object ForkTests {
 								listeners.foreach(_ endGroup (first.testName, result))
 							}
 							react
-					}
-
-					try {
-						os.writeBoolean(log.ansiCodesSupported)
-							
-						val testsFiltered = tests.filter(test => filters.forall(_(test.name))).map{
-							t => new ForkTestDefinition(t.name, t.fingerprint)
-						}.toArray
-						os.writeObject(testsFiltered)
-
-						os.writeInt(frameworks.size)
-						for ((clazz, args) <- argMap) {
-							os.writeObject(clazz)
-							os.writeObject(args.toArray)
 						}
 
-						react
-					} finally {
-						is.close();	os.close(); socket.close()
-					}
-  			}
+						try {
+							os.writeBoolean(log.ansiCodesSupported)
+							
+							val testsFiltered = tests.filter(test => filters.forall(_(test.name))).map{
+								t => new ForkTestDefinition(t.name, t.fingerprint)
+							}.toArray
+							os.writeObject(testsFiltered)
+
+							os.writeInt(frameworks.size)
+							for ((clazz, args) <- argMap) {
+								os.writeObject(clazz)
+								os.writeObject(args.toArray)
+							}
+
+							react
+						} finally {
+							is.close();	os.close(); socket.close()
+						}
+  				}
 	  	}
 
 			try {
