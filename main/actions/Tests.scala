@@ -39,11 +39,7 @@ object Tests
 	// None means apply to all, Some(tf) means apply to a particular framework only.
 	final case class Argument(framework: Option[TestFramework], args: List[String]) extends TestOption
 
-	sealed trait SubProcessPolicy
-	case object InProcess extends SubProcessPolicy
-	final case class Fork(extraJvm: Seq[String]) extends SubProcessPolicy
-
-	final case class Execution(options: Seq[TestOption], parallel: Boolean, subproc: SubProcessPolicy, tags: Seq[(Tag, Int)])
+	final case class Execution(options: Seq[TestOption], parallel: Boolean, tags: Seq[(Tag, Int)])
 
 	def apply(frameworks: Map[TestFramework, Framework], testLoader: ClassLoader, discovered: Seq[TestDefinition], config: Execution, log: Logger): Task[Output] =
 	{
@@ -186,6 +182,10 @@ object Tests
 		}
 	}
 
-	final case class Group(name: String, tests: Seq[TestDefinition], config: Execution)
+	sealed trait RunPolicy
+	case object InProcess extends RunPolicy
+	final case class SubProcess(javaOptions: Seq[String]) extends RunPolicy
+
+	final case class Group(name: String, tests: Seq[TestDefinition], runPolicy: RunPolicy)
 }
 

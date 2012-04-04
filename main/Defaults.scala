@@ -286,12 +286,12 @@ object Defaults extends BuildCommon
 		testOptions in GlobalScope :== Nil,
 		testFilter in testOnly :== (selectedFilter _),
 		testFilter in testQuick <<= testQuickFilter,
-		executeTests <<= (streams in test, loadedTestFrameworks, testLoader, testGrouping in test, fullClasspath in test, javaOptions in test, javaHome in test) flatMap {
-			(s, frameworkMap, loader, groups, cp, javaOpts, javaHome) =>
+		executeTests <<= (streams in test, loadedTestFrameworks, testLoader, testGrouping in test, testExecution in test, fullClasspath in test, javaHome in test) flatMap {
+			(s, frameworkMap, loader, groups, config, cp, javaHome) =>
 				val tasks = groups map {
-					case Tests.Group(name, tests, config) =>
-						config.subproc match {
-							case Tests.Fork(extraJvm) =>
+					case Tests.Group(name, tests, runPolicy) =>
+						runPolicy match {
+							case Tests.SubProcess(javaOpts) =>
 								ForkTests(frameworkMap.keys.toSeq, tests.toList, config, cp.files, javaHome, javaOpts, s.log) tag Tags.ForkedTestGroup
 							case Tests.InProcess =>
 								Tests(frameworkMap, loader, tests, config, s.log)
@@ -318,8 +318,8 @@ object Defaults extends BuildCommon
 		},
 		testOptions <<= (testOptions in TaskGlobal, testListeners) map { (options, ls) => Tests.Listeners(ls) +: options },
 		testExecution <<= testExecutionTask(key),
-		testGrouping <<= ((definedTests, testExecution) map {
-			(tests, exec) => Seq(new Tests.Group("<default>", tests, exec))
+		testGrouping <<= testGrouping in TaskGlobal or ((definedTests, fork) map {
+			(tests, fork) => Seq(new Tests.Group("<default>", tests, if (fork) Tests.SubProcess(Seq()) else Tests.InProcess))
 		})
 	) )
 	def testLogger(manager: Streams, baseKey: Scoped)(tdef: TestDefinition): Logger =
@@ -337,9 +337,9 @@ object Defaults extends BuildCommon
 	}
 
 	def testExecutionTask(task: Scoped): Initialize[Task[Tests.Execution]] =
-			(testOptions in task, parallelExecution in task, fork in task, javaOptions in task, tags in task) map {
-				(opts, par, fork, jvmOpts, ts) =>
-					new Tests.Execution(opts, par, if (fork) Tests.Fork(jvmOpts) else Tests.InProcess, ts)
+			(testOptions in task, parallelExecution in task, fork in task, tags in task) map {
+				(opts, par, fork, ts) =>
+					new Tests.Execution(opts, par, ts)
 			}
 
 	def testQuickFilter: Initialize[Task[Seq[String] => String => Boolean]] =
@@ -372,15 +372,15 @@ object Defaults extends BuildCommon
 
 	def inputTests(key: InputKey[_]): Initialize[InputTask[Unit]] =
 		InputTask( loadForParser(definedTestNames)( (s, i) => testOnlyParser(s, i getOrElse Nil) ) ) { result =>
-			(streams, loadedTestFrameworks, testFilter in key, testGrouping in key, testLoader, resolvedScoped, result, fullClasspath in key, javaOptions in key, javaHome in key, state) flatMap {
-				case (s, frameworks, filter, groups, loader, scoped, (selected, frameworkOptions), cp, javaOpts, javaHome, st) =>
+			(streams, loadedTestFrameworks, testFilter in key, testGrouping in key, testExecution in key, testLoader, resolvedScoped, result, fullClasspath in key, javaHome in key, state) flatMap {
+				case (s, frameworks, filter, groups, config, loader, scoped, (selected, frameworkOptions), cp, javaHome, st) =>
 					implicit val display = Project.showContextKey(st)
 					val tasks = groups map {
-						case Tests.Group(name, tests, config) =>
+						case Tests.Group(name, tests, runPolicy) =>
 							val modifiedOpts = Tests.Filter(filter(selected)) +: Tests.Argument(frameworkOptions : _*) +: config.options
 							val newConfig = config.copy(options = modifiedOpts)
-							newConfig.subproc match {
-								case Tests.Fork(extraJvm) =>
+							runPolicy match {
+								case Tests.SubProcess(javaOpts) =>
 									ForkTests(frameworks.keys.toSeq, tests.toList, newConfig, cp.files, javaHome, javaOpts, s.log) tag Tags.ForkedTestGroup
 								case Tests.InProcess =>
 									Tests(frameworks, loader, tests, newConfig, s.log)
