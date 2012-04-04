@@ -43,7 +43,7 @@ private[sbt] object ForkTests {
 						val is = new ObjectInputStream(socket.getInputStream)
 
 						import Tags._
-	      		@annotation.tailrec def react: Unit = is.readObject match {
+						@annotation.tailrec def react: Unit = is.readObject match {
 							case `Done` => os.writeObject(Done);
 							case Array(`Error`, s: String) => log.error(s); react
 							case Array(`Warn`, s: String) => log.warn(s); react
@@ -52,14 +52,14 @@ private[sbt] object ForkTests {
 							case t: Throwable => log.trace(t); react
 							case tEvents: Array[Event] =>
 								for (first <- tEvents.headOption) listeners.foreach(_ startGroup first.testName)
-							val event = TestEvent(tEvents)
-							listeners.foreach(_ testEvent event)
-							for (first <- tEvents.headOption) {
-								val result = event.result getOrElse TestResult.Passed
-								results += first.testName -> result
-								listeners.foreach(_ endGroup (first.testName, result))
-							}
-							react
+								val event = TestEvent(tEvents)
+								listeners.foreach(_ testEvent event)
+								for (first <- tEvents.headOption) {
+									val result = event.result getOrElse TestResult.Passed
+									results += first.testName -> result
+									listeners.foreach(_ endGroup (first.testName, result))
+								}
+								react
 						}
 
 						try {
@@ -80,8 +80,8 @@ private[sbt] object ForkTests {
 						} finally {
 							is.close();	os.close(); socket.close()
 						}
-  				}
-	  	}
+					}
+			}
 
 			try {
 				testListeners.foreach(_.doInit())

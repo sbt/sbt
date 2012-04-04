@@ -288,7 +288,7 @@ object Defaults extends BuildCommon
 		testFilter in testQuick <<= testQuickFilter,
 		executeTests <<= (streams in test, loadedTestFrameworks, testLoader, testGrouping in test, fullClasspath in test, javaOptions in test, javaHome in test) flatMap {
 			(s, frameworkMap, loader, groups, cp, javaOpts, javaHome) =>
-  		  val tasks = groups map {
+				val tasks = groups map {
 					case Tests.Group(name, tests, config) =>
 						config.subproc match {
 							case Tests.Fork(extraJvm) =>
@@ -297,7 +297,7 @@ object Defaults extends BuildCommon
 								Tests(frameworkMap, loader, tests, config, s.log)
 						}
 				}
-  		  Tests.foldTasks(tasks)
+				Tests.foldTasks(tasks)
 		},
 		test <<= (executeTests, streams, resolvedScoped, state) map { 
 			(results, s, scoped, st) =>
@@ -378,7 +378,7 @@ object Defaults extends BuildCommon
 					val tasks = groups map {
 						case Tests.Group(name, tests, config) =>
 							val modifiedOpts = Tests.Filter(filter(selected)) +: Tests.Argument(frameworkOptions : _*) +: config.options
-  						val newConfig = config.copy(options = modifiedOpts)
+							val newConfig = config.copy(options = modifiedOpts)
 							newConfig.subproc match {
 								case Tests.Fork(extraJvm) =>
 									ForkTests(frameworks.keys.toSeq, tests.toList, newConfig, cp.files, javaHome, javaOpts, s.log) tag Tags.ForkedTestGroup
@@ -527,12 +527,11 @@ object Defaults extends BuildCommon
 	def runnerTask = runner <<= runnerInit
 	def runnerInit: Initialize[Task[ScalaRun]] =
 		(taskTemporaryDirectory, scalaInstance, baseDirectory, javaOptions, outputStrategy, fork, javaHome, trapExit, connectInput) map {
-      (tmp, si, base, options, strategy, forkRun, javaHomeDir, trap, connectIn) =>
+			(tmp, si, base, options, strategy, forkRun, javaHomeDir, trap, connectIn) =>
 				if(forkRun) {
-					new ForkRun( ForkOptions(scalaJars = si.jars, javaHome = javaHomeDir, connectInput = connectIn, outputStrategy = strategy,
-																	 runJVMOptions = options, workingDirectory = Some(base)) )
-      } else
-        new Run(si, trap, tmp)
+					new ForkRun( ForkOptions(scalaJars = si.jars, javaHome = javaHomeDir, connectInput = connectIn, outputStrategy = strategy, runJVMOptions = options, workingDirectory = Some(base)) )
+				} else
+					new Run(si, trap, tmp)
 		}
 
 	@deprecated("Use `docTaskSettings` instead", "0.12.0")
