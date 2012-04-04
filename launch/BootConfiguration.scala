@@ -53,11 +53,22 @@ private object BootConfiguration
 
 	val DefaultIvyConfiguration = "default"
 
-	/** The name of the directory within the boot directory to retrieve scala to. */
-	val ScalaDirectoryName = "lib"
+	private val ScalaDirectoryName = "lib"
+	
+	/** The name of the directory within the boot directory to retrieve scala to. 
+	 * scalaOrg is appended if non-standard scala is used. 
+	 * 
+	 * The reason for this inconsistency is backward compatiblity and
+	 * relatively infrequent use of non-standard scalaOrg */
+	def scalaDirectoryName(scalaOrg: String) = scalaOrg match {
+	  case ScalaOrg => ScalaDirectoryName
+	  case _ => ScalaDirectoryName + "-" + scalaOrg
+	}
+	
 	/** The Ivy pattern to use for retrieving the scala compiler and library.  It is relative to the directory
-	* containing all jars for the requested version of scala. */
-	val scalaRetrievePattern = ScalaDirectoryName + "/[artifact](-[classifier]).[ext]"
+	* containing all jars for the requested version of scala.
+	*/
+	def scalaRetrievePattern(scalaOrg: String) = scalaDirectoryName(scalaOrg) + "/[artifact](-[classifier]).[ext]"
 	
 	def artifactType(classifier: String) =
 		classifier match
@@ -80,6 +91,7 @@ private object BootConfiguration
 		case None => "other"
 		case Some(sv) => ScalaDirPrefix + sv
 	}
+	
 	def extractScalaVersion(dir: File): Option[String] =
 	{
 		val name = dir.getName

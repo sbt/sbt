@@ -22,6 +22,9 @@ final class ScalaInstance(val version: String, val loader: ClassLoader, val libr
 object ScalaInstance
 {
 	val VersionPrefix = "version "
+	
+	def apply(org: String, version: String, launcher: xsbti.Launcher): ScalaInstance =
+		apply(version, launcher.getScala(org, version, ""))
 	/** Creates a ScalaInstance using the given provider to obtain the jars and loader.*/
 	def apply(version: String, launcher: xsbti.Launcher): ScalaInstance =
 		apply(version, launcher.getScala(version))

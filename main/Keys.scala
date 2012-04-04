@@ -135,6 +135,7 @@ object Keys
 	val compileInputs = TaskKey[Compiler.Inputs]("compile-inputs", "Collects all inputs needed for compilation.", DTask)
 	val scalaHome = SettingKey[Option[File]]("scala-home", "If Some, defines the local Scala installation to use for compilation, running, and testing.", ASetting)
 	val scalaInstance = TaskKey[ScalaInstance]("scala-instance", "Defines the Scala instance to use for compilation, running, and testing.", DTask)
+	val scalaOrg = SettingKey[String]("scala-org", "Artifact id of Scala scala used in the project.", CSetting)
 	val scalaVersion = SettingKey[String]("scala-version", "The version of Scala used for building.", APlusSetting)
 	val scalaBinaryVersion = SettingKey[String]("scala-binary-version", "The Scala version substring describing binary compatibility.", BPlusSetting)
 	val crossScalaVersions = SettingKey[Seq[String]]("cross-scala-versions", "The versions of Scala used when cross-building.", BPlusSetting)

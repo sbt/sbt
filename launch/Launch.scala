@@ -77,18 +77,17 @@ object Launch
 }
 final class RunConfiguration(val scalaVersion: Option[String], val app: xsbti.ApplicationID, val workingDirectory: File, val arguments: List[String])
 
-import BootConfiguration.{appDirectoryName, baseDirectoryName, extractScalaVersion, ScalaDirectoryName, TestLoadScalaClasses}
+import BootConfiguration.{appDirectoryName, baseDirectoryName, extractScalaVersion, scalaDirectoryName, TestLoadScalaClasses}
 class Launch private[xsbt](val bootDirectory: File, val lockBoot: Boolean, val ivyOptions: IvyOptions) extends xsbti.Launcher
 {
 	import ivyOptions.{checksums => checksumsList, classifiers, repositories}
 	bootDirectory.mkdirs
-	private val scalaProviders = new Cache[String, String, xsbti.ScalaProvider](getScalaProvider(_,_))
+	private val scalaProviders = new Cache[(String, String), String, xsbti.ScalaProvider]((x, y) => getScalaProvider(x._1, x._2, y))
 	def getScala(version: String): xsbti.ScalaProvider = getScala(version, "")
-	def getScala(version: String, reason: String): xsbti.ScalaProvider = scalaProviders(version, reason)
+	def getScala(version: String, reason: String): xsbti.ScalaProvider = getScala(BootConfiguration.ScalaOrg, version, reason)
+	def getScala(scalaOrg: String, version: String, reason: String) = scalaProviders((scalaOrg, version), reason)
 	def app(id: xsbti.ApplicationID, version: String): xsbti.AppProvider = app(id, Option(version))
-	def app(id: xsbti.ApplicationID, scalaVersion: Option[String]): xsbti.AppProvider =
-		getAppProvider(id, scalaVersion, false)
-
+    def app(id: xsbti.ApplicationID, scalaVersion: Option[String]): xsbti.AppProvider = getAppProvider(id, scalaVersion, false)
 	val bootLoader = new BootFilteredLoader(getClass.getClassLoader)
 	val topLoader = jnaLoader(bootLoader)
 
@@ -102,7 +101,7 @@ class Launch private[xsbt](val bootDirectory: File, val lockBoot: Boolean, val i
 	def jnaLoader(parent: ClassLoader): ClassLoader =
 	{
 		val id = AppID("net.java.dev.jna", "jna", "3.2.3", "", toArray(Nil), false, array())
-		val configuration = makeConfiguration(None)
+		val configuration = makeConfiguration(None, None)
 		val jnaHome = appDirectory(new File(bootDirectory, baseDirectoryName(None)), id)
 		val module = appModule(id, None, false, "jna")
 		def makeLoader(): ClassLoader = {
@@ -129,8 +128,8 @@ class Launch private[xsbt](val bootDirectory: File, val lockBoot: Boolean, val i
 			module.retrieveCorrupt(missing)
 	}
 
-	private[this] def makeConfiguration(version: Option[String]): UpdateConfiguration =
-		new UpdateConfiguration(bootDirectory, ivyOptions.ivyHome, version, repositories, checksumsList)
+	private[this] def makeConfiguration(scalaOrg: Option[String], version: Option[String]): UpdateConfiguration =
+		new UpdateConfiguration(bootDirectory, ivyOptions.ivyHome, scalaOrg, version, repositories, checksumsList)
 
 	final def getAppProvider(id: xsbti.ApplicationID, explicitScalaVersion: Option[String], forceAppUpdate: Boolean): xsbti.AppProvider =
 		locked(new Callable[xsbti.AppProvider] { def call = getAppProvider0(id, explicitScalaVersion, forceAppUpdate) })
@@ -149,7 +148,7 @@ class Launch private[xsbt](val bootDirectory: File, val lockBoot: Boolean, val i
 				retrieve()
 			else
 				existing(app, explicitScalaVersion, baseDirs) getOrElse retrieve()
-
+ 
 		val scalaVersion = getOrError(strictOr(explicitScalaVersion, retrievedApp.detectedScalaVersion), "No Scala version specified or detected")
 		val scalaProvider = getScala(scalaVersion, "(for " + id.name + ")")
 
@@ -170,13 +169,13 @@ class Launch private[xsbt](val bootDirectory: File, val lockBoot: Boolean, val i
 		(missing, p)				
 	}
 	private[this] def locked[T](c: Callable[T]): T = Locks(orNull(updateLockFile), c)
-	def getScalaProvider(scalaVersion: String, reason: String): xsbti.ScalaProvider =
-		locked(new Callable[xsbti.ScalaProvider] { def call = getScalaProvider0(scalaVersion, reason) })
+	def getScalaProvider(scalaOrg: String, scalaVersion: String, reason: String): xsbti.ScalaProvider =
+		locked(new Callable[xsbti.ScalaProvider] { def call = getScalaProvider0(scalaOrg, scalaVersion, reason) })
 
-	private[this] final def getScalaProvider0(scalaVersion: String, reason: String) = 
+	private[this] final def getScalaProvider0(scalaOrg: String, scalaVersion: String, reason: String) = 
 	{
-		val scalaM = scalaModule(scalaVersion)
-		val (scalaHome, lib) = scalaDirs(scalaM, scalaVersion)
+		val scalaM = scalaModule(scalaOrg, scalaVersion)
+		val (scalaHome, lib) = scalaDirs(scalaM, scalaOrg, scalaVersion)
 		val baseDirs = lib :: Nil
 		def provider(retrieved: RetrievedModule): xsbti.ScalaProvider = {
 			val p = scalaProvider(scalaVersion, retrieved, topLoader, lib)
@@ -219,10 +218,10 @@ class Launch private[xsbt](val bootDirectory: File, val lockBoot: Boolean, val i
 	def appDirectory(base: File, id: xsbti.ApplicationID): File =
 		new File(base, appDirectoryName(id, File.separator))
 
-	def scalaDirs(module: ModuleDefinition, scalaVersion: String): (File, File) =
+	def scalaDirs(module: ModuleDefinition, scalaOrg: String, scalaVersion: String): (File, File) =
 	{	
 		val scalaHome = new File(bootDirectory, baseDirectoryName(Some(scalaVersion)))
-		val libDirectory = new File(scalaHome, ScalaDirectoryName)
+		val libDirectory = new File(scalaHome, scalaDirectoryName(scalaOrg))
 		(scalaHome, libDirectory)
 	}
 
@@ -257,13 +256,13 @@ class Launch private[xsbt](val bootDirectory: File, val lockBoot: Boolean, val i
 	}
 
 	def appModule(id: xsbti.ApplicationID, scalaVersion: Option[String], getClassifiers: Boolean, tpe: String): ModuleDefinition = new ModuleDefinition(
-		configuration = makeConfiguration(scalaVersion),
+		configuration = makeConfiguration(None, scalaVersion),
 		target = new UpdateApp(Application(id), if(getClassifiers) Value.get(classifiers.app) else Nil, tpe),
 		failLabel = id.name + " " + id.version,
 		extraClasspath = id.classpathExtra
 	)
-	def scalaModule(version: String): ModuleDefinition = new ModuleDefinition(
-		configuration = makeConfiguration(Some(version)),
+	def scalaModule(org: String, version: String): ModuleDefinition = new ModuleDefinition(
+		configuration = makeConfiguration(Some(org), Some(version)),
 		target = new UpdateScala(Value.get(classifiers.forScala)),
 		failLabel = "Scala " + version,
 		extraClasspath = array()
