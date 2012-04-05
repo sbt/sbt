@@ -52,7 +52,7 @@ object Defaults extends BuildCommon
 	))
 	def globalCore: Seq[Setting[_]] = inScope(GlobalScope)(defaultTestTasks(test) ++ defaultTestTasks(testOnly) ++ defaultTestTasks(testQuick) ++ Seq(
 		crossVersion :== CrossVersion.Disabled,
-		scalaOrg :== "org.scala-lang",
+		scalaOrganization :== ScalaArtifacts.Organization,
 		buildDependencies <<= buildDependencies or Classpaths.constructBuildDependencies,
 		taskTemporaryDirectory := IO.createTemporaryDirectory,
 		onComplete <<= taskTemporaryDirectory { dir => () => IO.delete(dir); IO.createDirectory(dir) },
@@ -265,10 +265,10 @@ object Defaults extends BuildCommon
 			}
 		}
 	}
-	def scalaInstanceSetting = (appConfiguration, scalaOrg, scalaVersion, scalaHome) map { (app, scalaOrg, version, home) =>
+	def scalaInstanceSetting = (appConfiguration, scalaOrganization, scalaVersion, scalaHome) map { (app, org, version, home) =>
 		val launcher = app.provider.scalaProvider.launcher
 		home match {
-			case None => ScalaInstance(scalaOrg, version, launcher)
+			case None => ScalaInstance(org, version, launcher)
 			case Some(h) => ScalaInstance(h, launcher)
 		}
 	}

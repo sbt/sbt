@@ -84,10 +84,12 @@ class Launch private[xsbt](val bootDirectory: File, val lockBoot: Boolean, val i
 	bootDirectory.mkdirs
 	private val scalaProviders = new Cache[(String, String), String, xsbti.ScalaProvider]((x, y) => getScalaProvider(x._1, x._2, y))
 	def getScala(version: String): xsbti.ScalaProvider = getScala(version, "")
-	def getScala(version: String, reason: String): xsbti.ScalaProvider = getScala(BootConfiguration.ScalaOrg, version, reason)
-	def getScala(scalaOrg: String, version: String, reason: String) = scalaProviders((scalaOrg, version), reason)
+	def getScala(version: String, reason: String): xsbti.ScalaProvider = getScala(version, reason, BootConfiguration.ScalaOrg)
+	def getScala(version: String, reason: String, scalaOrg: String) = scalaProviders((scalaOrg, version), reason)
 	def app(id: xsbti.ApplicationID, version: String): xsbti.AppProvider = app(id, Option(version))
-    def app(id: xsbti.ApplicationID, scalaVersion: Option[String]): xsbti.AppProvider = getAppProvider(id, scalaVersion, false)
+    def app(id: xsbti.ApplicationID, scalaVersion: Option[String]): xsbti.AppProvider = 
+      getAppProvider(id, scalaVersion, false)
+
 	val bootLoader = new BootFilteredLoader(getClass.getClassLoader)
 	val topLoader = jnaLoader(bootLoader)
 
