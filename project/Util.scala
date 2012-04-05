@@ -20,7 +20,7 @@ object Util
 	def noPublish(p: Project) = p.copy(settings = noRemotePublish(p.settings))
 	def noRemotePublish(in: Seq[Setting[_]]) = in filterNot { s => s.key == deliver || s.key == publish }
 
-	def project(path: File, nameString: String) = Project(normalize(nameString), path) settings( name := nameString )
+	def project(path: File, nameString: String) = Project(normalize(nameString), path) settings( Seq(name := nameString) ++ publishPomSettings : _* )
 	def baseProject(path: File, nameString: String) = project(path, nameString) settings( base : _*)
 	def testedBaseProject(path: File, nameString: String) = baseProject(path, nameString) settings( testDependencies : _*)
 	
@@ -71,6 +71,30 @@ object Util
 	}
 	def binID = "compiler-interface-bin"
 	def srcID = "compiler-interface-src"
+
+	def publishPomSettings: Seq[Setting[_]] = Seq(
+		publishArtifact in makePom := true,
+		pomPostProcess := cleanPom _
+	)
+
+	def cleanPom(pomNode: scala.xml.Node) =
+	{
+		import scala.xml._
+		def cleanNodes(nodes: Seq[Node]): Seq[Node] = nodes flatMap ( _ match {
+			case elem @ Elem(prefix, "dependency", attributes, scope, children @ _*) if excludePomDependency(elem) =>
+				NodeSeq.Empty
+			case Elem(prefix, "classifier", attributes, scope, children @ _*) =>
+				NodeSeq.Empty
+			case Elem(prefix, label, attributes, scope, children @ _*) =>
+				Elem(prefix, label, attributes, scope, cleanNodes(children): _*).theSeq
+			case other => other
+		})
+		cleanNodes(pomNode.theSeq)(0)
+	}
+
+	def excludePomDependency(node: scala.xml.Node) = node \ "artifactId" exists { n => excludePomArtifact(n.text) }
+
+	def excludePomArtifact(artifactId: String) = (artifactId == "compiler-interface") || (artifactId startsWith "precompiled")
 }
 object Common
 {
