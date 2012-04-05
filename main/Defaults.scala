@@ -318,9 +318,7 @@ object Defaults extends BuildCommon
 		},
 		testOptions <<= (testOptions in TaskGlobal, testListeners) map { (options, ls) => Tests.Listeners(ls) +: options },
 		testExecution <<= testExecutionTask(key),
-		testGrouping <<= testGrouping in TaskGlobal or ((definedTests, fork) map {
-			(tests, fork) => Seq(new Tests.Group("<default>", tests, if (fork) Tests.SubProcess(Seq()) else Tests.InProcess))
-		})
+		testGrouping <<= testGrouping or singleTestGroup(key)
 	) )
 	def testLogger(manager: Streams, baseKey: Scoped)(tdef: TestDefinition): Logger =
 	{
@@ -335,6 +333,10 @@ object Defaults extends BuildCommon
 		val mod = tdef.fingerprint match { case f: SubclassFingerprint => f.isModule; case f: AnnotatedFingerprint => f.isModule; case _ => false }
 		extra.put(name.key, tdef.name).put(isModule, mod)
 	}
+	def singleTestGroup(key: Scoped): Initialize[Task[Seq[Tests.Group]]] =
+		((definedTests in key, fork in key, javaOptions in key) map {
+			(tests, fork, javaOpts) => Seq(new Tests.Group("<default>", tests, if (fork) Tests.SubProcess(javaOpts) else Tests.InProcess))
+		})
 
 	def testExecutionTask(task: Scoped): Initialize[Task[Tests.Execution]] =
 			(testOptions in task, parallelExecution in task, fork in task, tags in task) map {

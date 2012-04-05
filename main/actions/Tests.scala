@@ -182,10 +182,10 @@ object Tests
 		}
 	}
 
-	sealed trait RunPolicy
-	case object InProcess extends RunPolicy
-	final case class SubProcess(javaOptions: Seq[String]) extends RunPolicy
+	sealed trait TestRunPolicy
+	case object InProcess extends TestRunPolicy
+	final case class SubProcess(javaOptions: Seq[String]) extends TestRunPolicy
 
-	final case class Group(name: String, tests: Seq[TestDefinition], runPolicy: RunPolicy)
+	final case class Group(name: String, tests: Seq[TestDefinition], runPolicy: TestRunPolicy)
 }
 
