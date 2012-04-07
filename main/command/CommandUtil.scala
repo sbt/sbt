@@ -45,7 +45,10 @@ object CommandUtil
 			case Some(exactDetail) =>exactDetail
 			case None =>
 				val details = searchHelp(selected, detailMap)
-				if(details.isEmpty) "No matches for regular expression '" + selected + "'." else layoutDetails(details)
+				if(details.isEmpty)
+					"No matches for regular expression '" + selected + "'."
+				else
+					layoutDetails(details)
 		}
 	def searchHelp(selected: String, detailMap: Map[String, String]): Map[String, String] =
 	{

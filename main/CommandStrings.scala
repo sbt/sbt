@@ -126,15 +126,21 @@ It does not list the scopes the %<s are defined in; use the 'inspect' command fo
 
 	def settingsBrief(label: String) = (label, "Displays the " + label + " defined for the current project.")
 	def settingsDetailed(label: String) = 
-"""%s [-(v|vv|...|V)] [filter]
+"""
+Syntax summary
+	%s [-(v|-vv|...|-V)] [<filter>]
 
-	Displays the %<s defined directly or indirectly for the current project. 
-	Additional %<s may be displayed by providing -v, -vv, ... or providing
-	-V to display all %<s.
+%<s
+	Displays the main %<s defined directly or indirectly for the current project. 
 
-	A filter may be given to restrict the %<s shown.  The names of %<s are searched for an exact match against the filter,  in which case only the description of the exact match is displayed.  Otherwise, the filter is interpreted as a regular expression and all %<s whose name or description match the regular expression are  displayed.
+-v
+	Displays additional tasks.  More 'v's increase the number of tasks displayed.
 
-	Note that this is an additional filter on top of the %<s  selected by the -v style switches, so you must specify -V to search all tasks.  Use the %s command to search all commands, tasks, and settings at once.
+-V
+	displays all %<s
+
+<filter>
+	Restricts the %<s that are displayed.  The names of %<s are searched for an exact match against the filter, in which case only the description of the exact match is displayed.  Otherwise, the filter is interpreted as a regular expression and all %<s whose name or description match the regular expression are displayed.  Note that this is an additional filter on top of the %<s  selected by the -v style switches, so you must specify -V to search all %<s.  Use the %s command to search all commands, tasks, and settings at once.
 """.format(label, BasicCommandStrings.HelpCommand)
 
 	def moreAvailableMessage(label: String, search: Boolean) =
@@ -154,6 +160,16 @@ ProjectCommand +
 
 	Changes to the project with the provided name.
 	This command fails if there is no project with the given name.
+
+""" + ProjectCommand + """ {uri}
+
+	Changes to the root project in the build defined by `uri`.
+	`uri` must have already been declared as part of the build, such as with Project.dependsOn.
+
+""" + ProjectCommand + """ {uri}name
+
+	Changes to the project `name` in the build defined by `uri`.
+	`uri` must have already been declared as part of the build, such as with Project.dependsOn.
 
 """ + ProjectCommand + """ /
 
