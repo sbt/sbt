@@ -27,14 +27,14 @@ object Load
 	import Locate.DefinesClass
 	
 	// note that there is State passed in but not pulled out
-	def defaultLoad(state: State, baseDirectory: File, log: Logger, isPlugin: Boolean = false): (() => Eval, BuildStructure) =
+	def defaultLoad(state: State, baseDirectory: File, log: Logger, isPlugin: Boolean = false, topLevelExtras: List[URI] = Nil): (() => Eval, BuildStructure) =
 	{
 		val globalBase = getGlobalBase(state)
 		val base = baseDirectory.getCanonicalFile
 		val definesClass = FileValueCache(Locate.definesClass _)
 		val rawConfig = defaultPreGlobal(state, base, definesClass.get, globalBase, log)
 		val config0 = defaultWithGlobal(state, base, rawConfig, globalBase, log)
-		val config = if(isPlugin) enableSbtPlugin(config0) else config0
+		val config = if(isPlugin) enableSbtPlugin(config0) else config0.copy(extraBuilds = topLevelExtras)
 		val result = apply(base, state, config)
 		definesClass.clear()
 		result
@@ -51,7 +51,8 @@ object Load
 		val delegates = defaultDelegates
 		val pluginMgmt = PluginManagement(loader)
 		val inject = InjectSettings(injectGlobal(state), Nil, const(Nil))
-		new LoadBuildConfiguration(stagingDirectory, classpath, loader, compilers, evalPluginDef, definesClass, delegates, EvaluateTask.injectStreams, pluginMgmt, inject, None, log)
+		new LoadBuildConfiguration(stagingDirectory, classpath, loader, compilers, evalPluginDef, definesClass, delegates,
+			EvaluateTask.injectStreams, pluginMgmt, inject, None, Nil, log)
 	}
 	def injectGlobal(state: State): Seq[Project.Setting[_]] =
 		(appConfiguration in GlobalScope :== state.configuration) +:
@@ -235,7 +236,7 @@ object Load
 		if(srcs.isEmpty) const(Nil) else EvaluateConfigurations(eval(), srcs, imports)
 
 	def load(file: File, s: State, config: LoadBuildConfiguration): PartBuild =
-		load(file, builtinLoader(s, config.copy(pluginManagement = config.pluginManagement.shift) ))
+		load(file, builtinLoader(s, config.copy(pluginManagement = config.pluginManagement.shift, extraBuilds = Nil)), config.extraBuilds.toList )
 	def builtinLoader(s: State, config: LoadBuildConfiguration): BuildLoader =
 	{
 		val fail = (uri: URI) => error("Invalid build URI (no handler available): " + uri)
@@ -244,11 +245,11 @@ object Load
 		val components = BuildLoader.components(resolver, build, full = BuildLoader.componentLoader)
 		BuildLoader(components, fail, s, config)
 	}
-	def load(file: File, loaders: BuildLoader): PartBuild = loadURI(IO.directoryURI(file), loaders)
-	def loadURI(uri: URI, loaders: BuildLoader): PartBuild =
+	def load(file: File, loaders: BuildLoader, extra: List[URI]): PartBuild = loadURI(IO.directoryURI(file), loaders, extra)
+	def loadURI(uri: URI, loaders: BuildLoader, extra: List[URI]): PartBuild =
 	{
 		IO.assertAbsolute(uri)
-		val (referenced, map, newLoaders) = loadAll(uri :: Nil, Map.empty, loaders, Map.empty)
+		val (referenced, map, newLoaders) = loadAll(uri :: extra, Map.empty, loaders, Map.empty)
 		checkAll(referenced, map)
 		val build = new PartBuild(uri, map)
 		newLoaders transformAll build
@@ -651,7 +652,8 @@ object Load
 	final case class LoadBuildConfiguration(stagingDirectory: File, classpath: Seq[Attributed[File]], loader: ClassLoader,
 		compilers: Compilers, evalPluginDef: (BuildStructure, State) => PluginData, definesClass: DefinesClass,
 		delegates: LoadedBuild => Scope => Seq[Scope], scopeLocal: ScopeLocal,
-		pluginManagement: PluginManagement, injectSettings: InjectSettings, globalPlugin: Option[GlobalPlugin], log: Logger)
+		pluginManagement: PluginManagement, injectSettings: InjectSettings, globalPlugin: Option[GlobalPlugin], extraBuilds: Seq[URI],
+		log: Logger)
 	{
 		lazy val (globalPluginClasspath, globalPluginLoader) = pluginDefinitionLoader(this, Load.globalPluginClasspath(globalPlugin))
 		lazy val globalPluginNames = if(globalPluginClasspath.isEmpty) Nil else getPluginNames(globalPluginClasspath, globalPluginLoader)

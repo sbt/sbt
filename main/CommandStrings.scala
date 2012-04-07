@@ -161,8 +161,20 @@ ProjectCommand +
 	Use n+1 dots to change to the nth parent.
 	For example, 'project ....' is equivalent to three consecutive 'project ..' commands."""
 
-	def projectsBrief = projectsDetailed
-	def projectsDetailed = "Displays the names of available projects."
+	def projectsBrief = "Displays the names of available projects or temporarily adds/removes extra builds to the session."
+	def projectsDetailed = 
+ProjectsCommand + """
+	Displays the names of available builds and the projects defined in those builds.
+
+""" + ProjectsCommand + """ add <URI>+
+	Adds the builds at the provided URIs to this session.
+	These builds may be selected using the """ + ProjectCommand + """ command.
+	Alternatively, tasks from these builds may be run using the explicit syntax {URI}project/task
+
+""" + ProjectsCommand + """ remove <URI>+
+	Removes extra builds from this session.
+	Builds explicitly listed in the build definition are not affected by this command.
+"""
 
 	def sbtrc = ".sbtrc"
 

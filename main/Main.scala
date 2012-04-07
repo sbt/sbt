@@ -7,6 +7,7 @@ package sbt
 	import compiler.EvalImports
 	import Types.{const,idFun}
 	import Aggregation.AnyKeys
+	import Project.LoadAction
 
 	import scala.annotation.tailrec
 	import Path._
@@ -317,13 +318,35 @@ object BuiltinCommands
 		else
 			Help.empty
 
-	def projects = Command.command(ProjectsCommand, projectsBrief, projectsDetailed ) { s =>
+	def projects = Command(ProjectsCommand, (ProjectsCommand, projectsBrief), projectsDetailed )(s => projectsParser(s).?) {
+		case (s, Some(modifyBuilds)) => transformExtraBuilds(s, modifyBuilds)
+		case (s, None) => showProjects(s); s
+	}
+	def showProjects(s: State)
+	{
 		val extracted = Project extract s
 		import extracted._
 		import currentRef.{build => curi, project => cid}
 		listBuild(curi, structure.units(curi), true, cid, s.log)
 		for( (uri, build) <- structure.units if curi != uri) listBuild(uri, build, false, cid, s.log)
-		s
+	}
+	def transformExtraBuilds(s: State, f: List[URI] => List[URI]): State =
+	{
+		val original = Project.extraBuilds(s)
+		val extraUpdated = Project.updateExtraBuilds(s, f)
+		try doLoadProject(extraUpdated, LoadAction.Current)
+		catch { case e: Exception =>
+			s.log.error("Project loading failed: reverting to previous state.")
+			Project.setExtraBuilds(s, original)
+		}
+	}
+
+	def projectsParser(s: State): Parser[List[URI] => List[URI]] =
+	{
+		val addBase = token(Space ~> "add") ~> token(Space ~> basicUri, "<build URI>").+
+		val removeBase = token(Space ~> "remove") ~> token(Space ~> Uri(Project.extraBuilds(s).toSet) ).+
+		addBase.map(toAdd => (xs: List[URI]) => (toAdd.toList ::: xs).removeDuplicates) |
+			removeBase.map(toRemove => (xs: List[URI]) => xs.filterNot(toRemove.toSet))
 	}
 
 	def project = Command.make(ProjectCommand, projectBrief, projectDetailed)(ProjectNavigation.command)
@@ -356,10 +379,12 @@ object BuiltinCommands
 	def loadProjectCommands(arg: String) = (OnFailure + " " + LoadFailed) :: (LoadProjectImpl + " " + arg).trim :: ClearOnFailure :: FailureWall :: Nil
 	def loadProject = Command(LoadProject, LoadProjectBrief, LoadProjectDetailed)(_ => matched(Project.loadActionParser)) { (s,arg) => loadProjectCommands(arg) ::: s }
 
-	def loadProjectImpl = Command(LoadProjectImpl)(_ => Project.loadActionParser) { (s0, action) =>
+	def loadProjectImpl = Command(LoadProjectImpl)(_ => Project.loadActionParser)( doLoadProject )
+	def doLoadProject(s0: State, action: LoadAction.Value): State =
+	{
 		val (s, base) = Project.loadAction(SessionVar.clear(s0), action)
 		IO.createDirectory(base)
-		val (eval, structure) = Load.defaultLoad(s, base, s.log, Project.inPluginProject(s))
+		val (eval, structure) = Load.defaultLoad(s, base, s.log, Project.inPluginProject(s), Project.extraBuilds(s))
 		val session = Load.initialSession(structure, eval, s0)
 		SessionSettings.checkSession(session, s)
 		Project.setProject(session, structure, s)
