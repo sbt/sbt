@@ -15,10 +15,6 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class ForkMain {
-	public static enum Tags {
-		Error, Warn, Info, Debug, Done;
-	}
-
 	static class SubclassFingerscan implements TestFingerprint, Serializable {
 		private boolean isModule;
 		private String superClassName;
@@ -102,10 +98,10 @@ public class ForkMain {
 			Logger[] loggers = {
 				new Logger() {
 					public boolean ansiCodesSupported() { return ansiCodesSupported; }
-					public void error(String s) { write(os, new Object[]{Tags.Error, s});  }
-					public void warn(String s) { write(os, new Object[]{Tags.Warn, s}); }
-					public void info(String s) { write(os, new Object[]{Tags.Info, s}); }
-					public void debug(String s) { write(os, new Object[]{Tags.Debug, s}); }
+					public void error(String s) { write(os, new Object[]{ForkTags.Error, s});  }
+					public void warn(String s) { write(os, new Object[]{ForkTags.Warn, s}); }
+					public void info(String s) { write(os, new Object[]{ForkTags.Info, s}); }
+					public void debug(String s) { write(os, new Object[]{ForkTags.Debug, s}); }
 					public void trace(Throwable t) { write(os, t); }
 				}
 			};
@@ -118,7 +114,7 @@ public class ForkMain {
 				try {
 					framework = (Framework) Class.forName(implClassName).newInstance();
 				} catch (ClassNotFoundException e) {
-					write(os, new Object[]{Tags.Error, "Framework implementation '" + implClassName + "' not present."});
+					write(os, new Object[]{ForkTags.Error, "Framework implementation '" + implClassName + "' not present."});
 					continue;
 				}
 
@@ -139,12 +135,12 @@ public class ForkMain {
 					} else if (test.fingerprint instanceof TestFingerprint) {
 						runner.run(test.name, (TestFingerprint) test.fingerprint, handler, frameworkArgs);
 					} else {
-						write(os, new Object[]{Tags.Error, "Framework '" + framework + "' does not support test '" + test.name + "'"});
+						write(os, new Object[]{ForkTags.Error, "Framework '" + framework + "' does not support test '" + test.name + "'"});
 					}
 					write(os, events.toArray(new ForkEvent[events.size()]));
 				}
 			}
-			write(os, Tags.Done);
+			write(os, ForkTags.Done);
 			is.readObject();
 		}
 	}

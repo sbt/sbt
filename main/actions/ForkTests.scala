@@ -42,7 +42,7 @@ private[sbt] object ForkTests {
 						val os = new ObjectOutputStream(socket.getOutputStream)
 						val is = new ObjectInputStream(socket.getInputStream)
 
-						import Tags._
+						import ForkTags._
 						@annotation.tailrec def react: Unit = is.readObject match {
 							case `Done` => os.writeObject(Done);
 							case Array(`Error`, s: String) => log.error(s); react
