@@ -68,8 +68,9 @@ object BuiltinCommands
 
 	def ConsoleCommands: Seq[Command] = Seq(ignore, exit, IvyConsole.command, act, nop)
 	def ScriptCommands: Seq[Command] = Seq(ignore, exit, Script.command, act, nop)
-	def DefaultCommands: Seq[Command] = Seq(ignore, help, about, reboot, read, history, continuous, exit, loadProject, loadProjectImpl, loadFailed, Cross.crossBuild, Cross.switchVersion,
-		projects, project, setOnFailure, clearOnFailure, ifLast, multi, shell, set, settingsCommand, tasks, inspect, eval, alias, append, last, lastGrep, boot, nop, sessionCommand, call, act)
+	def DefaultCommands: Seq[Command] = Seq(ignore, help, about, loadProject, settingsCommand, tasks,
+		projects, project, reboot, read, history, set, sessionCommand, inspect, loadProjectImpl, loadFailed, Cross.crossBuild, Cross.switchVersion,
+		setOnFailure, clearOnFailure, ifLast, multi, shell, continuous, eval, alias, append, last, lastGrep, boot, nop, call, exit, act)
 	def DefaultBootCommands: Seq[String] = LoadProject :: (IfLast + " " + Shell) :: Nil
 
 	def boot = Command.make(BootCommand)(bootParser)
@@ -187,7 +188,7 @@ object BuiltinCommands
 		/*"load-commands -base ~/.sbt/commands" :: */readLines( readable( sbtRCs(s) ) ) ::: s
 	}
 
-	def eval = Command.single(EvalCommand, evalBrief, evalDetailed) { (s, arg) =>
+	def eval = Command.single(EvalCommand, Help.more(EvalCommand, evalDetailed)) { (s, arg) =>
 		val extracted = Project extract s
 		import extracted._
 		val result = session.currentEval().eval(arg, srcName = "<eval>", imports = autoImports(extracted))

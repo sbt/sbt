@@ -18,7 +18,7 @@ object BasicCommandStrings
 	/** The command name to terminate the program.*/
 	val TerminateAction: String = Exit
 
-	def helpBrief = (HelpCommand + " [command]", "Displays this help message or prints detailed help on requested commands.")
+	def helpBrief = (HelpCommand, "Displays this help message or prints detailed help on requested commands (run 'help <command>').")
 	def helpDetailed = HelpCommand + """
 
 	Prints a help summary.
@@ -33,13 +33,12 @@ object BasicCommandStrings
 """
 
 	def HistoryHelpBrief = (HistoryCommands.Start -> "History command help.  Lists and describes all history commands.")
-	def historyHelp = Help(HistoryHelpBrief, (HistoryHelpBrief +: HistoryCommands.descriptions).toMap)
+	def historyHelp = Help(Nil, (HistoryHelpBrief +: HistoryCommands.descriptions).toMap, Set(HistoryCommands.Start))
 
 	def exitBrief = "Terminates the build."
 
 	def ReadCommand = "<"
 	def ReadFiles = " file1 file2 ..."
-	def ReadBrief = (ReadCommand + " <file>*", "Reads command lines from the provided files.")
 	def ReadDetailed =
 ReadCommand + ReadFiles + """
 
@@ -54,14 +53,15 @@ ReadCommand + ReadFiles + """
 	You probably need to escape this command if entering it at your shell."""
 
 	def ApplyCommand = "apply"
-	def ApplyBrief = (ApplyCommand + " <module-name>*", ApplyDetailed)
-	def ApplyDetailed = "Transforms the current State by calling <module-name>.apply(currentState) for each listed module name."
+	def ApplyDetailed = 
+ApplyCommand + """ <module-name>*
+	Transforms the current State by calling <module-name>.apply(currentState) for each listed module name.
+	Here, currentState is of type sbt.State.
+"""
 
 	def RebootCommand = "reboot"
-	def RebootSummary = RebootCommand + " [full]"
-	def RebootBrief = (RebootSummary, "Reboots sbt and then executes the remaining commands.")
 	def RebootDetailed =
-RebootSummary + """
+RebootCommand + """ [full]
 
 	This command is equivalent to exiting sbt, restarting, and running the
 	  remaining commands with the exception that the JVM is not shut down.
@@ -78,11 +78,12 @@ Multi + " command1 " + Multi + """ command2 ...
 	Runs the specified commands."""
 
 	def AppendCommand = "append"
-	def AppendLastBrief = (AppendCommand + " <command>", AppendLastDetailed)
-	def AppendLastDetailed = "Appends 'command' to list of commands to run."
+	def AppendLastDetailed =
+AppendCommand + """ <command>
+	Appends 'command' to list of commands to run.
+"""
 
 	val AliasCommand = "alias"
-	def AliasBrief = (AliasCommand, "Adds, removes, or prints command aliases.")
 	def AliasDetailed =
 AliasCommand + """
 
@@ -106,12 +107,10 @@ AliasCommand + """ name=
 	Removes the alias for `name`."""
 
 	def Shell = "shell"
-	def ShellBrief = ShellDetailed
 	def ShellDetailed = "Provides an interactive prompt from which commands can be run."
 
 	def ClearOnFailure = "--"
 	def OnFailure = "-"
-	def OnFailureBrief = (OnFailure + " command", "Registers 'command' to run if a command fails.")
 	def OnFailureDetailed =
 OnFailure + """ command
 
@@ -124,13 +123,13 @@ OnFailure + """ command
 	  again if desired."""
 
 	def IfLast = "iflast"
-	def IfLastBrief = (IfLast + " <command>", IfLastCommon)
 	def IfLastCommon = "If there are no more commands after this one, 'command' is run."
 	def IfLastDetailed =
-IfLast + """ command
+IfLast + """ <command>
 
 	""" + IfLastCommon
 
 	val ContinuousExecutePrefix = "~"
-	def continuousBriefHelp = (ContinuousExecutePrefix + " <command>", "Executes the specified command whenever source files change.")
+	def continuousDetail = "Executes the specified command whenever source files change."
+	def continuousBriefHelp = (ContinuousExecutePrefix + " <command>", continuousDetail)
 }
