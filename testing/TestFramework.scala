@@ -23,14 +23,13 @@ object TestFrameworks
 	val JUnit = new TestFramework("com.novocode.junit.JUnitFramework")
 }
 
-class TestFramework(val implClassName: String)
+case class TestFramework(val implClassName: String)
 {
 	def create(loader: ClassLoader, log: Logger): Option[Framework] =
 	{
 		try { Some(Class.forName(implClassName, true, loader).newInstance.asInstanceOf[Framework]) }
 		catch { case e: ClassNotFoundException => log.debug("Framework implementation '" + implClassName + "' not present."); None }
 	}
-	override def toString = "TestFramework(" + implClassName + ")"
 }
 final class TestDefinition(val name: String, val fingerprint: Fingerprint)
 {
@@ -130,7 +129,6 @@ object TestFramework
 	def testTasks(frameworks: Seq[Framework],
 		testLoader: ClassLoader,
 		tests: Seq[TestDefinition],
-		noTestsMessage: => String,
 		log: Logger,
 		listeners: Seq[TestReportListener],
 		testArgsByFramework: Map[Framework, Seq[String]]):
@@ -139,7 +137,7 @@ object TestFramework
 		val arguments = testArgsByFramework withDefaultValue Nil
 		val mappedTests = testMap(frameworks, tests, arguments)
 		if(mappedTests.isEmpty)
-			(() => (), Nil, _ => () => log.info(noTestsMessage) )
+			(() => (), Nil, _ => () => () )
 		else
 			createTestTasks(testLoader, mappedTests, log, listeners)
 	}

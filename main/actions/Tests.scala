@@ -13,7 +13,6 @@ package sbt
 
 	import org.scalatools.testing.{AnnotatedFingerprint, Fingerprint, Framework, SubclassFingerprint}
 
-	import collection.mutable
 	import java.io.File
 
 sealed trait TestOption
@@ -40,14 +39,11 @@ object Tests
 	// None means apply to all, Some(tf) means apply to a particular framework only.
 	final case class Argument(framework: Option[TestFramework], args: List[String]) extends TestOption
 
-	final class Execution(val options: Seq[TestOption], val parallel: Boolean, val tags: Seq[(Tag, Int)])
+	final case class Execution(options: Seq[TestOption], parallel: Boolean, tags: Seq[(Tag, Int)])
 
-	def apply(frameworks: Map[TestFramework, Framework], testLoader: ClassLoader, discovered: Seq[TestDefinition], options: Seq[TestOption], parallel: Boolean, noTestsMessage: => String, log: Logger): Task[Output] =	
-		apply(frameworks, testLoader, discovered, new Execution(options, parallel, Nil), noTestsMessage, log)
-
-	def apply(frameworks: Map[TestFramework, Framework], testLoader: ClassLoader, discovered: Seq[TestDefinition], config: Execution, noTestsMessage: => String, log: Logger): Task[Output] =
+	def apply(frameworks: Map[TestFramework, Framework], testLoader: ClassLoader, discovered: Seq[TestDefinition], config: Execution, log: Logger): Task[Output] =
 	{
-			import mutable.{HashSet, ListBuffer, Map, Set}
+			import collection.mutable.{HashSet, ListBuffer, Map, Set}
 		val testFilters = new ListBuffer[String => Boolean]
 		val excludeTestsSet = new HashSet[String]
 		val setup, cleanup = new ListBuffer[ClassLoader => Unit]
@@ -93,10 +89,10 @@ object Tests
 		def includeTest(test: TestDefinition) = !excludeTestsSet.contains(test.name) && testFilters.forall(filter => filter(test.name))
 		val tests = discovered.filter(includeTest).toSet.toSeq
 		val arguments = testArgsByFramework.map { case (k,v) => (k, v.toList) } toMap;
-		testTask(frameworks.values.toSeq, testLoader, tests, noTestsMessage, setup.readOnly, cleanup.readOnly, log, testListeners.readOnly, arguments, config)
+		testTask(frameworks.values.toSeq, testLoader, tests, setup.readOnly, cleanup.readOnly, log, testListeners.readOnly, arguments, config)
 	}
 
-	def testTask(frameworks: Seq[Framework], loader: ClassLoader, tests: Seq[TestDefinition], noTestsMessage: => String,
+	def testTask(frameworks: Seq[Framework], loader: ClassLoader, tests: Seq[TestDefinition],
 		userSetup: Iterable[ClassLoader => Unit], userCleanup: Iterable[ClassLoader => Unit],
 		log: Logger, testListeners: Seq[TestReportListener], arguments: Map[Framework, Seq[String]], config: Execution): Task[Output] =
 	{
@@ -104,7 +100,7 @@ object Tests
 		def partApp(actions: Iterable[ClassLoader => Unit]) = actions.toSeq map {a => () => a(loader) }
 
 		val (frameworkSetup, runnables, frameworkCleanup) =
-			TestFramework.testTasks(frameworks, loader, tests, noTestsMessage, log, testListeners, arguments)
+			TestFramework.testTasks(frameworks, loader, tests, log, testListeners, arguments)
 
 		val setupTasks = fj(partApp(userSetup) :+ frameworkSetup)
 		val mainTasks =
@@ -126,6 +122,10 @@ object Tests
 
 	def processResults(results: Iterable[(String, TestResult.Value)]): (TestResult.Value, Map[String, TestResult.Value]) =
 		(overall(results.map(_._2)), results.toMap)
+	def foldTasks(results: Seq[Task[Output]]): Task[Output] =
+		reduced(results.toIndexedSeq, {
+			case ((v1, m1), (v2, m2)) => (if (v1.id < v2.id) v2 else v1, m1 ++ m2)
+		})
 	def overall(results: Iterable[TestResult.Value]): TestResult.Value =
 		(TestResult.Passed /: results) { (acc, result) => if(acc.id < result.id) result else acc }
 	def discover(frameworks: Seq[Framework], analysis: Analysis, log: Logger): (Seq[TestDefinition], Set[String]) =
@@ -153,28 +153,39 @@ object Tests
 		(tests, mains.toSet)
 	}
 
-	def showResults(log: Logger, results: (TestResult.Value, Map[String, TestResult.Value])): Unit =
+	def showResults(log: Logger, results: (TestResult.Value, Map[String, TestResult.Value]), noTestsMessage: =>String): Unit =
 	{
+		if (results._2.isEmpty)
+			log.info(noTestsMessage)
+		else {
 			import TestResult.{Error, Failed, Passed}
 
-		def select(Tpe: TestResult.Value) = results._2 collect { case (name, Tpe) => name }
+			def select(Tpe: TestResult.Value) = results._2 collect { case (name, Tpe) => name }
 
-		val failures = select(Failed)
-		val errors = select(Error)
-		val passed = select(Passed)
+			val failures = select(Failed)
+			val errors = select(Error)
+			val passed = select(Passed)
 
-		def show(label: String, level: Level.Value, tests: Iterable[String]): Unit =
-			if(!tests.isEmpty)
-			{
-				log.log(level, label)
-				log.log(level, tests.mkString("\t", "\n\t", ""))
-			}
+			def show(label: String, level: Level.Value, tests: Iterable[String]): Unit =
+				if(!tests.isEmpty)
+					{
+						log.log(level, label)
+						log.log(level, tests.mkString("\t", "\n\t", ""))
+					}
 
-		show("Passed tests:", Level.Debug, passed )
-		show("Failed tests:", Level.Error, failures)
-		show("Error during tests:", Level.Error, errors)
+			show("Passed tests:", Level.Debug, passed )
+			show("Failed tests:", Level.Error, failures)
+			show("Error during tests:", Level.Error, errors)
 
-		if(!failures.isEmpty || !errors.isEmpty)
-			error("Tests unsuccessful")
+			if(!failures.isEmpty || !errors.isEmpty)
+				error("Tests unsuccessful")
+		}
 	}
+
+	sealed trait TestRunPolicy
+	case object InProcess extends TestRunPolicy
+	final case class SubProcess(javaOptions: Seq[String]) extends TestRunPolicy
+
+	final case class Group(name: String, tests: Seq[TestDefinition], runPolicy: TestRunPolicy)
 }
+

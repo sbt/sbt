@@ -117,10 +117,10 @@ object Defaults extends BuildCommon
 		excludeFilter :== (".*"  - ".") || HiddenFileFilter,
 		pomIncludeRepository :== Classpaths.defaultRepositoryFilter
 	))
-	def defaultTestTasks(key: Scoped): Seq[Setting[_]] = Seq(
-		tags in key := Seq(Tags.Test -> 1),
-		logBuffered in key := true
-	)
+	def defaultTestTasks(key: Scoped): Seq[Setting[_]] = inTask(key)(Seq(
+		tags := Seq(Tags.Test -> 1),
+		logBuffered := true
+	))
 	def projectCore: Seq[Setting[_]] = Seq(
 		name <<= thisProject(_.id),
 		logManager <<= extraLoggers(LogManager.defaults),
@@ -287,12 +287,24 @@ object Defaults extends BuildCommon
 		testOptions in GlobalScope :== Nil,
 		testFilter in testOnly :== (selectedFilter _),
 		testFilter in testQuick <<= testQuickFilter,
-		executeTests <<= (streams in test, loadedTestFrameworks, testExecution in test, testLoader, definedTests, resolvedScoped, state) flatMap {
-			(s, frameworkMap, config, loader, discovered, scoped, st) =>
-				implicit val display = Project.showContextKey(st)
-				Tests(frameworkMap, loader, discovered, config, noTestsMessage(ScopedKey(scoped.scope, test.key)), s.log)
+		executeTests <<= (streams in test, loadedTestFrameworks, testLoader, testGrouping in test, testExecution in test, fullClasspath in test, javaHome in test) flatMap {
+			(s, frameworkMap, loader, groups, config, cp, javaHome) =>
+				val tasks = groups map {
+					case Tests.Group(name, tests, runPolicy) =>
+						runPolicy match {
+							case Tests.SubProcess(javaOpts) =>
+								ForkTests(frameworkMap.keys.toSeq, tests.toList, config, cp.files, javaHome, javaOpts, s.log) tag Tags.ForkedTestGroup
+							case Tests.InProcess =>
+								Tests(frameworkMap, loader, tests, config, s.log)
+						}
+				}
+				Tests.foldTasks(tasks)
 		},
-		test <<= (executeTests, streams) map { (results, s) => Tests.showResults(s.log, results) },
+		test <<= (executeTests, streams, resolvedScoped, state) map { 
+			(results, s, scoped, st) =>
+				implicit val display = Project.showContextKey(st)
+				Tests.showResults(s.log, results, noTestsMessage(scoped))
+		},
 		testOnly <<= inputTests(testOnly),
 		testQuick <<= inputTests(testQuick)
 	)
@@ -306,7 +318,8 @@ object Defaults extends BuildCommon
 			TestLogger(s.log, testLogger(sm, test in sco.scope), buff) +: new TestStatusReporter(succeededFile(dir)) +: ls
 		},
 		testOptions <<= (testOptions in TaskGlobal, testListeners) map { (options, ls) => Tests.Listeners(ls) +: options },
-		testExecution <<= testExecutionTask(key)
+		testExecution <<= testExecutionTask(key),
+		testGrouping <<= testGrouping or singleTestGroup(key)
 	) )
 	def testLogger(manager: Streams, baseKey: Scoped)(tdef: TestDefinition): Logger =
 	{
@@ -321,9 +334,16 @@ object Defaults extends BuildCommon
 		val mod = tdef.fingerprint match { case f: SubclassFingerprint => f.isModule; case f: AnnotatedFingerprint => f.isModule; case _ => false }
 		extra.put(name.key, tdef.name).put(isModule, mod)
 	}
+	def singleTestGroup(key: Scoped): Initialize[Task[Seq[Tests.Group]]] =
+		((definedTests in key, fork in key, javaOptions in key) map {
+			(tests, fork, javaOpts) => Seq(new Tests.Group("<default>", tests, if (fork) Tests.SubProcess(javaOpts) else Tests.InProcess))
+		})
 
 	def testExecutionTask(task: Scoped): Initialize[Task[Tests.Execution]] =
-			(testOptions in task, parallelExecution in task, tags in task) map { (opts, par, ts) => new Tests.Execution(opts, par, ts) }
+			(testOptions in task, parallelExecution in task, fork in task, tags in task) map {
+				(opts, par, fork, ts) =>
+					new Tests.Execution(opts, par, ts)
+			}
 
 	def testQuickFilter: Initialize[Task[Seq[String] => String => Boolean]] =
 	  (fullClasspath in test, cacheDirectory) map {
@@ -355,17 +375,23 @@ object Defaults extends BuildCommon
 
 	def inputTests(key: InputKey[_]): Initialize[InputTask[Unit]] =
 		InputTask( loadForParser(definedTestNames)( (s, i) => testOnlyParser(s, i getOrElse Nil) ) ) { result =>
-			(streams, loadedTestFrameworks, testFilter in key, testExecution in key, testLoader, definedTests, resolvedScoped, result, state) flatMap {
-				case (s, frameworks, filter, config, loader, discovered, scoped, (tests, frameworkOptions), st) =>
-					val modifiedOpts = Tests.Filter(filter(tests)) +: Tests.Argument(frameworkOptions : _*) +: config.options
-					val newConfig = new Tests.Execution(modifiedOpts, config.parallel, config.tags)
+			(streams, loadedTestFrameworks, testFilter in key, testGrouping in key, testExecution in key, testLoader, resolvedScoped, result, fullClasspath in key, javaHome in key, state) flatMap {
+				case (s, frameworks, filter, groups, config, loader, scoped, (selected, frameworkOptions), cp, javaHome, st) =>
 					implicit val display = Project.showContextKey(st)
-					Tests(frameworks, loader, discovered, newConfig, noTestsMessage(scoped), s.log) map { results =>
-						Tests.showResults(s.log, results)
-				  }
+					val tasks = groups map {
+						case Tests.Group(name, tests, runPolicy) =>
+							val modifiedOpts = Tests.Filter(filter(selected)) +: Tests.Argument(frameworkOptions : _*) +: config.options
+							val newConfig = config.copy(options = modifiedOpts)
+							runPolicy match {
+								case Tests.SubProcess(javaOpts) =>
+									ForkTests(frameworks.keys.toSeq, tests.toList, newConfig, cp.files, javaHome, javaOpts, s.log) tag Tags.ForkedTestGroup
+								case Tests.InProcess =>
+									Tests(frameworks, loader, tests, newConfig, s.log)
+							}
+					}
+					Tests.foldTasks(tasks) map (Tests.showResults(s.log, _, noTestsMessage(scoped)))
 			}
 		}
-
 
 	def selectedFilter(args: Seq[String]): String => Boolean =
 	{
@@ -377,7 +403,7 @@ object Defaults extends BuildCommon
 	}
 	def defaultRestrictions: Initialize[Seq[Tags.Rule]] = parallelExecution { par =>
 		val max = EvaluateTask.SystemProcessors
-		Tags.limitAll(if(par) max else 1) :: Nil
+		Tags.limitAll(if(par) max else 1) :: Tags.limit(Tags.ForkedTestGroup, 1) :: Nil
 	}
 
 	lazy val packageBase: Seq[Setting[_]] = Seq(
@@ -504,12 +530,11 @@ object Defaults extends BuildCommon
 	def runnerTask = runner <<= runnerInit
 	def runnerInit: Initialize[Task[ScalaRun]] =
 		(taskTemporaryDirectory, scalaInstance, baseDirectory, javaOptions, outputStrategy, fork, javaHome, trapExit, connectInput) map {
-				(tmp, si, base, options, strategy, forkRun, javaHomeDir, trap, connectIn) =>
-			if(forkRun) {
-				new ForkRun( ForkOptions(scalaJars = si.jars, javaHome = javaHomeDir, connectInput = connectIn, outputStrategy = strategy,
-					runJVMOptions = options, workingDirectory = Some(base)) )
-			} else
-				new Run(si, trap, tmp)
+			(tmp, si, base, options, strategy, forkRun, javaHomeDir, trap, connectIn) =>
+				if(forkRun) {
+					new ForkRun( ForkOptions(scalaJars = si.jars, javaHome = javaHomeDir, connectInput = connectIn, outputStrategy = strategy, runJVMOptions = options, workingDirectory = Some(base)) )
+				} else
+					new Run(si, trap, tmp)
 		}
 
 	@deprecated("Use `docTaskSettings` instead", "0.12.0")
