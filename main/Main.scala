@@ -131,21 +131,26 @@ object BuiltinCommands
 	def tasks = showSettingLike(TasksCommand, tasksPreamble, KeyRanks.MainTaskCutoff, key => isTask(key.manifest) )
 
 	def showSettingLike(command: String, preamble: String, cutoff: Int, keep: AttributeKey[_] => Boolean) =
-		Command(command, settingsBrief(command), settingsDetailed(command))(const(verbosityParser)) { (s: State, verbosity: Int) =>
-			System.out.println(preamble)
-			val prominentOnly = verbosity <= 1
-			val verboseFilter = if(prominentOnly) highPass(cutoff) else topNRanked(25*verbosity)
-			System.out.println(tasksHelp(s, keys => verboseFilter(keys filter keep) ))
-			System.out.println()
-			if(prominentOnly) System.out.println(moreAvailableMessage(command))
-			s
+		Command(command, settingsBrief(command), settingsDetailed(command))(showSettingParser(keep)) {
+			case (s: State, (verbosity: Int, selected: Option[String])) =>
+				if(selected.isEmpty) System.out.println(preamble)
+				val prominentOnly = verbosity <= 1
+				val verboseFilter = if(prominentOnly) highPass(cutoff) else topNRanked(25*verbosity)
+				System.out.println(tasksHelp(s, keys => verboseFilter(keys filter keep), selected ))
+				System.out.println()
+				if(prominentOnly) System.out.println(moreAvailableMessage(command, selected.isDefined))
+				s
 		}
+	def showSettingParser(keepKeys: AttributeKey[_] => Boolean)(s: State): Parser[(Int, Option[String])] =
+		verbosityParser ~ selectedParser(s, keepKeys).?
+	def selectedParser(s: State, keepKeys: AttributeKey[_] => Boolean): Parser[String] =
+		singleArgument( allTaskAndSettingKeys(s).filter(keepKeys).map(_.label).toSet )
 	def verbosityParser: Parser[Int] = success(1) | ((Space ~ "-") ~> (
 		'v'.id.+.map(_.size + 1) |
 		("V" ^^^ Int.MaxValue)
 	)	)
-	def taskDetail(keys: Seq[AttributeKey[_]], filter: Seq[AttributeKey[_]] => Seq[AttributeKey[_]]): Seq[(String,String)] =
-		sortByLabel(filter(withDescription(keys))) flatMap taskStrings
+	def taskDetail(keys: Seq[AttributeKey[_]]): Seq[(String,String)] =
+		sortByLabel(withDescription(keys)) flatMap taskStrings
 
 	def allTaskAndSettingKeys(s: State): Seq[AttributeKey[_]] =
 	{
@@ -163,8 +168,14 @@ object BuiltinCommands
 	def topNRanked(n: Int) = (keys: Seq[AttributeKey[_]]) => sortByRank(keys).take(n)
 	def highPass(rankCutoff: Int) = (keys: Seq[AttributeKey[_]]) => sortByRank(keys).takeWhile(_.rank <= rankCutoff)
 
-	def tasksHelp(s: State, filter: Seq[AttributeKey[_]] => Seq[AttributeKey[_]]): String =
-		aligned("  ", "   ", taskDetail(allTaskAndSettingKeys(s), filter)) mkString("\n", "\n", "")
+	def tasksHelp(s: State, filter: Seq[AttributeKey[_]] => Seq[AttributeKey[_]], arg: Option[String]): String =
+	{
+		val commandAndDescription = taskDetail(filter(allTaskAndSettingKeys(s)))
+		arg match {
+			case Some(selected) =>detail(selected, commandAndDescription.toMap)
+			case None => aligned("  ", "   ", commandAndDescription) mkString("\n", "\n", "")
+		}
+	}
 
 	def taskStrings(key: AttributeKey[_]): Option[(String, String)]  =  key.description map { d => (key.label, d) }
 
@@ -314,7 +325,7 @@ object BuiltinCommands
 	def actHelp = (s: State) => CommandStrings.showHelp ++ keysHelp(s)
 	def keysHelp(s: State): Help =
 		if(Project.isProjectLoaded(s))
-			Help.detailOnly(taskDetail(allTaskAndSettingKeys(s), idFun))
+			Help.detailOnly(taskDetail(allTaskAndSettingKeys(s)))
 		else
 			Help.empty
 

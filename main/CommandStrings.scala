@@ -126,13 +126,19 @@ It does not list the scopes the %<s are defined in; use the 'inspect' command fo
 
 	def settingsBrief(label: String) = (label, "Displays the " + label + " defined for the current project.")
 	def settingsDetailed(label: String) = 
-"""%s -[v|vv|...|V]
+"""%s [-(v|vv|...|V)] [filter]
 
 	Displays the %<s defined directly or indirectly for the current project. 
-	Additional %<s may be displayed by providing -v, -vv, ... or -V for all %<s.
-""".format(label)
+	Additional %<s may be displayed by providing -v, -vv, ... or providing
+	-V to display all %<s.
 
-	def moreAvailableMessage(label: String) = "More " + label + " may be viewed by increasing verbosity.  See '" + BasicCommandStrings.HelpCommand + " " + label + "'.\n"
+	A filter may be given to restrict the %<s shown.  The names of %<s are searched for an exact match against the filter,  in which case only the description of the exact match is displayed.  Otherwise, the filter is interpreted as a regular expression and all %<s whose name or description match the regular expression are  displayed.
+
+	Note that this is an additional filter on top of the %<s  selected by the -v style switches, so you must specify -V to search all tasks.  Use the %s command to search all commands, tasks, and settings at once.
+""".format(label, BasicCommandStrings.HelpCommand)
+
+	def moreAvailableMessage(label: String, search: Boolean) =
+		"More %s may be %s by increasing verbosity.  See '%s %s'.\n".format(label, if(search) "searched" else "viewed", BasicCommandStrings.HelpCommand, label)
 
 	def aboutBrief = "Displays basic information about sbt and the build."
 	def aboutDetailed = aboutBrief

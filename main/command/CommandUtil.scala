@@ -1,6 +1,10 @@
 package sbt
 
 	import java.io.File
+	import java.util.regex.Pattern
+
+	import complete.Parser
+	import complete.DefaultParsers._
 
 object CommandUtil
 {
@@ -29,4 +33,37 @@ object CommandUtil
 			case None => s.log.error(ifMissing); s.fail
 			case Some(nav) => f(nav)
 		}
+
+	def singleArgument(exampleStrings: Set[String]): Parser[String] =
+	{
+		val arg = (NotSpaceClass ~ any.*) map { case (ns, s) => (ns +: s).mkString }
+		token(Space) ~> token( arg examples exampleStrings  )
+	}
+	def detail(selected: String, detailMap: Map[String, String]): String =
+		detailMap.get(selected) match
+		{
+			case Some(exactDetail) =>exactDetail
+			case None =>
+				val details = searchHelp(selected, detailMap)
+				if(details.isEmpty) "No matches for regular expression '" + selected + "'." else layoutDetails(details)
+		}
+	def searchHelp(selected: String, detailMap: Map[String, String]): Map[String, String] =
+	{
+		val pattern = Pattern.compile(selected, HelpPatternFlags)
+		detailMap flatMap { case (k,v) =>
+			val contentMatches = Highlight.showMatches(pattern)(v)
+			val keyMatches = Highlight.showMatches(pattern)(k)
+			val keyString = Highlight.bold(keyMatches getOrElse k)
+			val contentString = contentMatches getOrElse v
+			if(keyMatches.isDefined || contentMatches.isDefined)
+				(keyString, contentString) :: Nil
+			else
+				Nil
+		}
+	}
+	def layoutDetails(details: Map[String,String]): String =
+		details.map { case (k,v) => k + ":\n\n  " + v  } mkString("\n", "\n\n", "\n")
+
+	final val HelpPatternFlags = Pattern.CASE_INSENSITIVE | Pattern.UNICODE_CASE
+
 }

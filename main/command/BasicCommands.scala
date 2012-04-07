@@ -12,7 +12,6 @@ package sbt
 	import BasicKeys._
 
 	import java.io.File
-	import java.util.regex.Pattern
 
 object BasicCommands
 {
@@ -27,47 +26,18 @@ object BasicCommands
 	{
 		val h = (Help.empty /: s.definedCommands)(_ ++ _.help(s))
 		val helpCommands = h.detail.keySet
-		val arg = (NotSpaceClass ~ any.*) map { case (ns, s) => (ns +: s).mkString }
-		val spacedArg = (token(Space) ~> token( arg examples helpCommands  )).?
+		val spacedArg = singleArgument(helpCommands).?
 		applyEffect(spacedArg)(runHelp(s, h))
 	}
-
 	def runHelp(s: State, h: Help)(arg: Option[String]): State =
 	{
 		val message = arg match {
-			case None =>
-				aligned("  ", "   ", h.brief).mkString("\n", "\n", "\n")
-			case Some(x) =>
-				detail(x, h.detail)
+			case None => aligned("  ", "   ", h.brief).mkString("\n", "\n", "\n")
+			case Some(x) => detail(x, h.detail)
 		}
 		System.out.println(message)
 		s
 	}
-	def detail(selected: String, detailMap: Map[String, String]): String =
-		detailMap.get(selected) match
-		{
-			case Some(exactDetail) =>exactDetail
-			case None => layoutDetails(searchHelp(selected, detailMap))
-		}
-	def searchHelp(selected: String, detailMap: Map[String, String]): Map[String, String] =
-	{
-		val pattern = Pattern.compile(selected, HelpPatternFlags)
-		detailMap flatMap { case (k,v) =>
-			val contentMatches = Highlight.showMatches(pattern)(v)
-			val keyMatches = Highlight.showMatches(pattern)(k)
-			val keyString = Highlight.bold(keyMatches getOrElse k)
-			val contentString = contentMatches getOrElse v
-			if(keyMatches.isDefined || contentMatches.isDefined)
-				(keyString, contentString) :: Nil
-			else
-				Nil
-		}
-	}
-	def layoutDetails(details: Map[String,String]): String =
-		details.map { case (k,v) => k + ":\n\n  " + v  } mkString("\n", "\n\n", "\n")
-
-	final val HelpPatternFlags = Pattern.CASE_INSENSITIVE | Pattern.UNICODE_CASE
-
 	def multiParser(s: State): Parser[Seq[String]] =
 	{
 		val nonSemi = token(charClass(_ != ';').+, hide= const(true))
