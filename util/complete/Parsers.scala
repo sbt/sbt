@@ -96,7 +96,8 @@ trait Parsers
 	def flag[T](p: Parser[T]): Parser[Boolean] = (p ^^^ true) ?? false
 
 	def trimmed(p: Parser[String]) = p map { _.trim }
-	def Uri(ex: Set[URI]) = mapOrFail(URIClass)( uri => new URI(uri)) examples(ex.map(_.toString))
+	lazy val basicUri = mapOrFail(URIClass)( uri => new URI(uri))
+	def Uri(ex: Set[URI]) = basicUri examples(ex.map(_.toString))
 }
 object Parsers extends Parsers
 object DefaultParsers extends Parsers with ParserMain
