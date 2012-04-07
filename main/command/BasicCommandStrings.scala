@@ -32,7 +32,8 @@ object BasicCommandStrings
 	Searches the help according to the provided regular expression.
 """
 
-	def historyHelp = Help.briefDetail(HistoryCommands.descriptions)
+	def HistoryHelpBrief = (HistoryCommands.Start -> "History command help.  Lists and describes all history commands.")
+	def historyHelp = Help(HistoryHelpBrief, (HistoryHelpBrief +: HistoryCommands.descriptions).toMap)
 
 	def exitBrief = "Terminates the build."
 

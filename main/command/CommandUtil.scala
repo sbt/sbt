@@ -62,7 +62,7 @@ object CommandUtil
 		}
 	}
 	def layoutDetails(details: Map[String,String]): String =
-		details.map { case (k,v) => k + ":\n\n  " + v  } mkString("\n", "\n\n", "\n")
+		details.map { case (k,v) => k + "\n\n  " + v  } mkString("\n", "\n\n", "\n")
 
 	final val HelpPatternFlags = Pattern.CASE_INSENSITIVE | Pattern.UNICODE_CASE
 
