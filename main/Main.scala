@@ -7,6 +7,7 @@ package sbt
 	import compiler.EvalImports
 	import Types.{const,idFun}
 	import Aggregation.AnyKeys
+	import Project.LoadAction
 
 	import scala.annotation.tailrec
 	import Path._
@@ -67,8 +68,9 @@ object BuiltinCommands
 
 	def ConsoleCommands: Seq[Command] = Seq(ignore, exit, IvyConsole.command, act, nop)
 	def ScriptCommands: Seq[Command] = Seq(ignore, exit, Script.command, act, nop)
-	def DefaultCommands: Seq[Command] = Seq(ignore, help, about, reboot, read, history, continuous, exit, loadProject, loadProjectImpl, loadFailed, Cross.crossBuild, Cross.switchVersion,
-		projects, project, setOnFailure, clearOnFailure, ifLast, multi, shell, set, settingsCommand, tasks, inspect, eval, alias, append, last, lastGrep, boot, nop, sessionCommand, call, act)
+	def DefaultCommands: Seq[Command] = Seq(ignore, help, about, loadProject, settingsCommand, tasks,
+		projects, project, reboot, read, history, set, sessionCommand, inspect, loadProjectImpl, loadFailed, Cross.crossBuild, Cross.switchVersion,
+		setOnFailure, clearOnFailure, ifLast, multi, shell, continuous, eval, alias, append, last, lastGrep, boot, nop, call, exit, act)
 	def DefaultBootCommands: Seq[String] = LoadProject :: (IfLast + " " + Shell) :: Nil
 
 	def boot = Command.make(BootCommand)(bootParser)
@@ -130,21 +132,26 @@ object BuiltinCommands
 	def tasks = showSettingLike(TasksCommand, tasksPreamble, KeyRanks.MainTaskCutoff, key => isTask(key.manifest) )
 
 	def showSettingLike(command: String, preamble: String, cutoff: Int, keep: AttributeKey[_] => Boolean) =
-		Command(command, settingsBrief(command), settingsDetailed(command))(const(verbosityParser)) { (s: State, verbosity: Int) =>
-			System.out.println(preamble)
-			val prominentOnly = verbosity <= 1
-			val verboseFilter = if(prominentOnly) highPass(cutoff) else topNRanked(25*verbosity)
-			System.out.println(tasksHelp(s, keys => verboseFilter(keys filter keep) ))
-			System.out.println()
-			if(prominentOnly) System.out.println(moreAvailableMessage(command))
-			s
+		Command(command, settingsBrief(command), settingsDetailed(command))(showSettingParser(keep)) {
+			case (s: State, (verbosity: Int, selected: Option[String])) =>
+				if(selected.isEmpty) System.out.println(preamble)
+				val prominentOnly = verbosity <= 1
+				val verboseFilter = if(prominentOnly) highPass(cutoff) else topNRanked(25*verbosity)
+				System.out.println(tasksHelp(s, keys => verboseFilter(keys filter keep), selected ))
+				System.out.println()
+				if(prominentOnly) System.out.println(moreAvailableMessage(command, selected.isDefined))
+				s
 		}
+	def showSettingParser(keepKeys: AttributeKey[_] => Boolean)(s: State): Parser[(Int, Option[String])] =
+		verbosityParser ~ selectedParser(s, keepKeys).?
+	def selectedParser(s: State, keepKeys: AttributeKey[_] => Boolean): Parser[String] =
+		singleArgument( allTaskAndSettingKeys(s).filter(keepKeys).map(_.label).toSet )
 	def verbosityParser: Parser[Int] = success(1) | ((Space ~ "-") ~> (
 		'v'.id.+.map(_.size + 1) |
 		("V" ^^^ Int.MaxValue)
 	)	)
-	def taskDetail(keys: Seq[AttributeKey[_]], filter: Seq[AttributeKey[_]] => Seq[AttributeKey[_]]): Seq[(String,String)] =
-		sortByLabel(filter(withDescription(keys))) flatMap taskStrings
+	def taskDetail(keys: Seq[AttributeKey[_]]): Seq[(String,String)] =
+		sortByLabel(withDescription(keys)) flatMap taskStrings
 
 	def allTaskAndSettingKeys(s: State): Seq[AttributeKey[_]] =
 	{
@@ -162,8 +169,14 @@ object BuiltinCommands
 	def topNRanked(n: Int) = (keys: Seq[AttributeKey[_]]) => sortByRank(keys).take(n)
 	def highPass(rankCutoff: Int) = (keys: Seq[AttributeKey[_]]) => sortByRank(keys).takeWhile(_.rank <= rankCutoff)
 
-	def tasksHelp(s: State, filter: Seq[AttributeKey[_]] => Seq[AttributeKey[_]]): String =
-		aligned("  ", "   ", taskDetail(allTaskAndSettingKeys(s), filter)) mkString("\n", "\n", "")
+	def tasksHelp(s: State, filter: Seq[AttributeKey[_]] => Seq[AttributeKey[_]], arg: Option[String]): String =
+	{
+		val commandAndDescription = taskDetail(filter(allTaskAndSettingKeys(s)))
+		arg match {
+			case Some(selected) =>detail(selected, commandAndDescription.toMap)
+			case None => aligned("  ", "   ", commandAndDescription) mkString("\n", "\n", "")
+		}
+	}
 
 	def taskStrings(key: AttributeKey[_]): Option[(String, String)]  =  key.description map { d => (key.label, d) }
 
@@ -175,7 +188,7 @@ object BuiltinCommands
 		/*"load-commands -base ~/.sbt/commands" :: */readLines( readable( sbtRCs(s) ) ) ::: s
 	}
 
-	def eval = Command.single(EvalCommand, evalBrief, evalDetailed) { (s, arg) =>
+	def eval = Command.single(EvalCommand, Help.more(EvalCommand, evalDetailed)) { (s, arg) =>
 		val extracted = Project extract s
 		import extracted._
 		val result = session.currentEval().eval(arg, srcName = "<eval>", imports = autoImports(extracted))
@@ -313,17 +326,39 @@ object BuiltinCommands
 	def actHelp = (s: State) => CommandStrings.showHelp ++ keysHelp(s)
 	def keysHelp(s: State): Help =
 		if(Project.isProjectLoaded(s))
-			Help.detailOnly(taskDetail(allTaskAndSettingKeys(s), idFun))
+			Help.detailOnly(taskDetail(allTaskAndSettingKeys(s)))
 		else
 			Help.empty
 
-	def projects = Command.command(ProjectsCommand, projectsBrief, projectsDetailed ) { s =>
+	def projects = Command(ProjectsCommand, (ProjectsCommand, projectsBrief), projectsDetailed )(s => projectsParser(s).?) {
+		case (s, Some(modifyBuilds)) => transformExtraBuilds(s, modifyBuilds)
+		case (s, None) => showProjects(s); s
+	}
+	def showProjects(s: State)
+	{
 		val extracted = Project extract s
 		import extracted._
 		import currentRef.{build => curi, project => cid}
 		listBuild(curi, structure.units(curi), true, cid, s.log)
 		for( (uri, build) <- structure.units if curi != uri) listBuild(uri, build, false, cid, s.log)
-		s
+	}
+	def transformExtraBuilds(s: State, f: List[URI] => List[URI]): State =
+	{
+		val original = Project.extraBuilds(s)
+		val extraUpdated = Project.updateExtraBuilds(s, f)
+		try doLoadProject(extraUpdated, LoadAction.Current)
+		catch { case e: Exception =>
+			s.log.error("Project loading failed: reverting to previous state.")
+			Project.setExtraBuilds(s, original)
+		}
+	}
+
+	def projectsParser(s: State): Parser[List[URI] => List[URI]] =
+	{
+		val addBase = token(Space ~> "add") ~> token(Space ~> basicUri, "<build URI>").+
+		val removeBase = token(Space ~> "remove") ~> token(Space ~> Uri(Project.extraBuilds(s).toSet) ).+
+		addBase.map(toAdd => (xs: List[URI]) => (toAdd.toList ::: xs).removeDuplicates) |
+			removeBase.map(toRemove => (xs: List[URI]) => xs.filterNot(toRemove.toSet))
 	}
 
 	def project = Command.make(ProjectCommand, projectBrief, projectDetailed)(ProjectNavigation.command)
@@ -356,10 +391,12 @@ object BuiltinCommands
 	def loadProjectCommands(arg: String) = (OnFailure + " " + LoadFailed) :: (LoadProjectImpl + " " + arg).trim :: ClearOnFailure :: FailureWall :: Nil
 	def loadProject = Command(LoadProject, LoadProjectBrief, LoadProjectDetailed)(_ => matched(Project.loadActionParser)) { (s,arg) => loadProjectCommands(arg) ::: s }
 
-	def loadProjectImpl = Command(LoadProjectImpl)(_ => Project.loadActionParser) { (s0, action) =>
+	def loadProjectImpl = Command(LoadProjectImpl)(_ => Project.loadActionParser)( doLoadProject )
+	def doLoadProject(s0: State, action: LoadAction.Value): State =
+	{
 		val (s, base) = Project.loadAction(SessionVar.clear(s0), action)
 		IO.createDirectory(base)
-		val (eval, structure) = Load.defaultLoad(s, base, s.log, Project.inPluginProject(s))
+		val (eval, structure) = Load.defaultLoad(s, base, s.log, Project.inPluginProject(s), Project.extraBuilds(s))
 		val session = Load.initialSession(structure, eval, s0)
 		SessionSettings.checkSession(session, s)
 		Project.setProject(session, structure, s)

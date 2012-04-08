@@ -12,7 +12,6 @@ package sbt
 	import BasicKeys._
 
 	import java.io.File
-	import java.util.regex.Pattern
 
 object BasicCommands
 {
@@ -27,46 +26,26 @@ object BasicCommands
 	{
 		val h = (Help.empty /: s.definedCommands)(_ ++ _.help(s))
 		val helpCommands = h.detail.keySet
-		val arg = (NotSpaceClass ~ any.*) map { case (ns, s) => (ns +: s).mkString }
-		val spacedArg = (token(Space) ~> token( arg examples helpCommands  )).?
+		val spacedArg = singleArgument(helpCommands).?
 		applyEffect(spacedArg)(runHelp(s, h))
 	}
-
 	def runHelp(s: State, h: Help)(arg: Option[String]): State =
 	{
 		val message = arg match {
+			case Some(x) => detail(x, h.detail)
 			case None =>
-				aligned("  ", "   ", h.brief).mkString("\n", "\n", "\n")
-			case Some(x) =>
-				detail(x, h.detail)
+				val brief = aligned("  ", "   ", h.brief).mkString("\n", "\n", "\n")
+				val more = h.more.toSeq.sorted
+				if(more.isEmpty)
+					brief
+				else
+					brief + "\n" + moreHelp(more)
 		}
 		System.out.println(message)
 		s
 	}
-	def detail(selected: String, detailMap: Map[String, String]): String =
-		detailMap.get(selected) match
-		{
-			case Some(exactDetail) =>exactDetail
-			case None => layoutDetails(searchHelp(selected, detailMap))
-		}
-	def searchHelp(selected: String, detailMap: Map[String, String]): Map[String, String] =
-	{
-		val pattern = Pattern.compile(selected, HelpPatternFlags)
-		detailMap flatMap { case (k,v) =>
-			val contentMatches = Highlight.showMatches(pattern)(v)
-			val keyMatches = Highlight.showMatches(pattern)(k)
-			val keyString = Highlight.bold(keyMatches getOrElse k)
-			val contentString = contentMatches getOrElse v
-			if(keyMatches.isDefined || contentMatches.isDefined)
-				(keyString, contentString) :: Nil
-			else
-				Nil
-		}
-	}
-	def layoutDetails(details: Map[String,String]): String =
-		details.map { case (k,v) => k + ":\n\n  " + v  } mkString("\n", "\n\n", "\n")
-
-	final val HelpPatternFlags = Pattern.CASE_INSENSITIVE | Pattern.UNICODE_CASE
+	def moreHelp(more: Seq[String]): String = 
+		more.mkString("More command help available using 'help <command>' for:\n  ", ", ", "\n")
 
 	def multiParser(s: State): Parser[Seq[String]] =
 	{
@@ -83,24 +62,24 @@ object BasicCommands
 	def combinedLax(s: State, any: Parser[_]): Parser[String] = 
 		matched(s.combinedParser | token(any, hide= const(true)))
 
-	def ifLast = Command(IfLast, IfLastBrief, IfLastDetailed)(otherCommandParser) { (s, arg) =>
+	def ifLast = Command(IfLast, Help.more(IfLast, IfLastDetailed))(otherCommandParser) { (s, arg) =>
 		if(s.remainingCommands.isEmpty) arg :: s else s
 	}
-	def append = Command(AppendCommand, AppendLastBrief, AppendLastDetailed)(otherCommandParser) { (s, arg) =>
+	def append = Command(AppendCommand, Help.more(AppendCommand, AppendLastDetailed))(otherCommandParser) { (s, arg) =>
 		s.copy(remainingCommands = s.remainingCommands :+ arg)
 	}
 	
-	def setOnFailure = Command(OnFailure, OnFailureBrief, OnFailureDetailed)(otherCommandParser) { (s, arg) =>
+	def setOnFailure = Command(OnFailure, Help.more(OnFailure, OnFailureDetailed))(otherCommandParser) { (s, arg) =>
 		s.copy(onFailure = Some(arg))
 	}
 	def clearOnFailure = Command.command(ClearOnFailure)(s => s.copy(onFailure = None))
 
-	def reboot = Command(RebootCommand, RebootBrief, RebootDetailed)(rebootParser) { (s, full) =>
+	def reboot = Command(RebootCommand, Help.more(RebootCommand, RebootDetailed))(rebootParser) { (s, full) =>
 		s.reboot(full)
 	}
 	def rebootParser(s: State) = token(Space ~> "full" ^^^ true) ?? false
 
-	def call = Command(ApplyCommand, ApplyBrief, ApplyDetailed)(_ => spaceDelimited("<class name>")) { (state,args) =>
+	def call = Command(ApplyCommand, Help.more(ApplyCommand, ApplyDetailed))(_ => spaceDelimited("<class name>")) { (state,args) =>
 		val loader = getClass.getClassLoader
 		val loaded = 	args.map(arg => ModuleUtilities.getObject(arg, loader))
 		(state /: loaded) { case (s, obj: (State => State)) => obj(s) }
@@ -110,7 +89,7 @@ object BasicCommands
 
 
 	def continuous =
-		Command(ContinuousExecutePrefix, Help(continuousBriefHelp) )(otherCommandParser) { (s, arg) =>
+		Command(ContinuousExecutePrefix, continuousBriefHelp, continuousDetail)(otherCommandParser) { (s, arg) =>
 			withAttribute(s, Watched.Configuration, "Continuous execution not configured.") { w =>
 				val repeat = ContinuousExecutePrefix + (if(arg.startsWith(" ")) arg else " " + arg)
 				Watched.executeContinuously(w, s, arg, repeat)
@@ -132,7 +111,7 @@ object BasicCommands
 			}
 		}
 
-	def shell = Command.command(Shell, ShellBrief, ShellDetailed) { s =>
+	def shell = Command.command(Shell, Help.more(Shell, ShellDetailed)) { s =>
 		val history = (s get historyPath) getOrElse Some(new File(s.baseDir, ".history"))
 		val prompt = (s get shellPrompt) match { case Some(pf) => pf(s); case None => "> " }
 		val reader = new FullReader(history, s.combinedParser)
@@ -145,7 +124,7 @@ object BasicCommands
 		}
 	}
 
-	def read = Command.make(ReadCommand, ReadBrief, ReadDetailed)(s => applyEffect(readParser(s))(doRead(s)) )
+	def read = Command.make(ReadCommand, Help.more(ReadCommand, ReadDetailed))(s => applyEffect(readParser(s))(doRead(s)) )
 	def readParser(s: State) =
 	{
 		val files = (token(Space) ~> fileParser(s.baseDir)).+
@@ -186,7 +165,7 @@ object BasicCommands
 	}
 
 
-	def alias = Command.make(AliasCommand, AliasBrief, AliasDetailed) { s =>
+	def alias = Command.make(AliasCommand, Help.more(AliasCommand, AliasDetailed)) { s =>
 		val name = token(OpOrID.examples( aliasNames(s) : _*) )
 		val assign = token(OptSpace ~ '=' ~ OptSpace)
 		val sfree = removeAliases(s)

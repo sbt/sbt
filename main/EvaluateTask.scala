@@ -6,12 +6,13 @@ package sbt
 	import java.io.File
 	import Project.{ScopedKey, Setting}
 	import Keys.{streams, Streams, TaskStreams}
-	import Keys.{dummyRoots, dummyState, dummyStreamsManager, executionRoots, streamsManager, taskDefinitionKey, transformState}
+	import Keys.{dummyRoots, dummyState, dummyStreamsManager, executionRoots, pluginData, streamsManager, taskDefinitionKey, transformState}
 	import Scope.{GlobalScope, ThisScope}
 	import Types.const
 	import scala.Console.{RED, RESET}
 
 final case class EvaluateConfig(cancelable: Boolean, restrictions: Seq[Tags.Rule], checkCycles: Boolean = false)
+final case class PluginData(classpath: Seq[Attributed[File]], resolvers: Option[Seq[Resolver]])
 object EvaluateTask
 {
 	import Load.BuildStructure
@@ -60,13 +61,13 @@ object EvaluateTask
 		(executionRoots in GlobalScope) ::= dummyRoots
 	)
 
-	def evalPluginDef(log: Logger)(pluginDef: BuildStructure, state: State): Seq[Attributed[File]] =
+	def evalPluginDef(log: Logger)(pluginDef: BuildStructure, state: State): PluginData =
 	{
 		val root = ProjectRef(pluginDef.root, Load.getRootProject(pluginDef.units)(pluginDef.root))
-		val pluginKey = Keys.fullClasspath in Configurations.Runtime
+		val pluginKey = pluginData
 		val config = defaultConfig(Project.extract(state), pluginDef)
 		val evaluated = apply(pluginDef, ScopedKey(pluginKey.scope, pluginKey.key), state, root, config)
-		val (newS, result) = evaluated getOrElse error("Plugin classpath does not exist for plugin definition at " + pluginDef.root)
+		val (newS, result) = evaluated getOrElse error("Plugin data does not exist for plugin definition at " + pluginDef.root)
 		Project.runUnloadHooks(newS) // discard states
 		processResult(result, log)
 	}

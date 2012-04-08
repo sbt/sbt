@@ -23,7 +23,7 @@ trait TestReportListener
 trait TestsListener extends TestReportListener
 {
 	/** called once, at beginning. */
-  def doInit
+  def doInit()
 	/** called once, at end. */
   def doComplete(finalResult: TestResult.Value)
 }

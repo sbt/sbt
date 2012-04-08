@@ -124,11 +124,12 @@ trait Help
 {
 	def detail: Map[String, String]
 	def brief: Seq[(String, String)]
+	def more: Set[String]
 	def ++(o: Help): Help
 }
-private final class Help0(val brief: Seq[(String,String)], val detail: Map[String,String]) extends Help
+private final class Help0(val brief: Seq[(String,String)], val detail: Map[String,String], val more: Set[String]) extends Help
 {
-	def ++(h: Help): Help = new Help0(Help0.this.brief ++ h.brief, Help0.this.detail ++ h.detail)
+	def ++(h: Help): Help = new Help0(Help0.this.brief ++ h.brief, Help0.this.detail ++ h.detail, more ++ h.more)
 }
 object Help
 {
@@ -140,8 +141,11 @@ object Help
 		apply(briefHelp :: Nil, detailedHelp)
 
 	def apply(briefHelp: Seq[(String,String)], detailedHelp: Map[String,String]): Help =
-		new Help0(briefHelp, detailedHelp)
+		apply(briefHelp, detailedHelp, Set.empty[String])
+	def apply(briefHelp: Seq[(String,String)], detailedHelp: Map[String,String], more: Set[String]): Help =
+		new Help0(briefHelp, detailedHelp, more)
 
+	def more(name: String, detailedHelp: String): Help = apply(Nil, Map(name -> detailedHelp), Set(name))
 	def briefDetail(help: Seq[(String, String)]): Help = apply(help, help.toMap)
 	def briefOnly(help: Seq[(String, String)]): Help = apply(help, Map.empty[String,String])
 	def detailOnly(help: Seq[(String, String)]): Help = apply(Nil, help.toMap)

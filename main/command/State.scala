@@ -9,7 +9,7 @@ package sbt
 /**
 Data structure representing all command execution information.
 
-@param `configuration` provides access to the launcher environment, including the application configuration, Scala versions, jvm/filesystem wide locking, and the launcher itself
+@param configuration provides access to the launcher environment, including the application configuration, Scala versions, jvm/filesystem wide locking, and the launcher itself
 @param definedCommands the list of command definitions that evaluate command strings.  These may be modified to change the available commands.
 @param onFailure the command to execute when another command fails.  `onFailure` is cleared before the failure handling command is executed.
 @param remainingCommands the sequence of commands to execute.  This sequence may be modified to change the commands to be executed.  Typically, the `::` and `:::` methods are used to prepend new commands to run.

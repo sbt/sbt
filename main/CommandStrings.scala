@@ -30,7 +30,7 @@ object CommandStrings
 	val Quit = BasicCommandStrings.Quit
 
 	val EvalCommand = "eval"
-	val evalBrief = (EvalCommand + " <expression>", "Evaluates the given Scala expression and prints the result and type.")
+	val evalBrief = (EvalCommand + " <expression>", "Evaluates a Scala expression and prints the result and type.")
 	val evalDetailed =
 EvalCommand + """ <expression>
 
@@ -50,27 +50,29 @@ ShowCommand + """ <setting>
 	val LastCommand = "last"
 	val LastGrepCommand = "last-grep"
 
-	val lastGrepBrief = (LastGrepCommand + " <pattern> <key>", "Shows lines from the last output for 'key' that match 'pattern'.")
+	val lastGrepBrief = (LastGrepCommand, "Shows lines from the last output for 'key' that match 'pattern'.")
 	val lastGrepDetailed =
-LastGrepCommand + """ <pattern> [key]
+LastGrepCommand + """ <pattern>
+	Displays lines from the logging of previous commands that match `pattern`.
 
-	<pattern> is a regular expression interpreted by java.util.Pattern.
-	Lines that match 'pattern' from the last streams output associated with the key are displayed.
-	If no key is specified, the global streams output is used.
+""" + LastGrepCommand + """ <pattern> [key]
+	Displays lines from logging associated with `key` that match `pattern`.  The key typically refers to a task (for example, test:compile).  The logging that is displayed is restricted to the logging for that particular task.
 
+	<pattern> is a regular expression interpreted by java.util.Pattern.  Matching text is highlighted (when highlighting is supported and enabled).
 	See also '""" + LastCommand + "'."
 
-	val lastBrief = (LastCommand + " <key>", "Prints the last output associated with 'key'.")
+	val lastBrief = (LastCommand, "Displays output from a previous command or the output from a specific task.")
 	val lastDetailed =
-LastCommand + """ <key>
+LastCommand + """
+	Prints the logging for the previous command, typically at a more verbose level.
 
-	Redisplays the last streams output associated with the key (typically a task key).
-	If no key is specified, the global streams output is displayed.
+""" + LastCommand + """ <key>
+	Prints the logging associated with the provided key.  The key typically refers to a task (for example, test:compile).  The logging that is displayed is restricted to the logging for that particular task.
 
 	See also '""" + LastGrepCommand + "'."
 
 	val InspectCommand = "inspect"
-	val inspectBrief = (InspectCommand + " [tree] <key>", "Prints the value for 'key', the defining scope, delegates, related definitions, and dependencies.")
+	val inspectBrief = (InspectCommand, "Prints the value for 'key', the defining scope, delegates, related definitions, and dependencies.")
 	val inspectDetailed =
 InspectCommand + """ [tree] <key>
 
@@ -91,7 +93,7 @@ InspectCommand + """ [tree] <key>
 	"Related" shows all of the scopes in which the key is defined."""
 
 	val SetCommand = "set"
-	val setBrief = (SetCommand + " [every] <setting-expression>", "Evaluates the given Setting and applies it to the current project.")
+	val setBrief = (SetCommand, "Evaluates a Setting and applies it to the current project.")
 	val setDetailed =
 SetCommand + """ <setting-expression>
 
@@ -110,7 +112,7 @@ SetCommand + """ <setting-expression>
 """
 
 	def SessionCommand = "session"
-	def sessionBrief = (SessionCommand + " <session-command>", "Manipulates session settings.  For details, run 'help " + SessionCommand + "'.")
+	def sessionBrief = (SessionCommand, "Manipulates session settings.  For details, run 'help " + SessionCommand + "'.")
 
 	/** The command name to terminate the program.*/
 	@deprecated("Moved to BasicCommandStrings", "0.12.0")
@@ -124,20 +126,32 @@ Tasks produce values.  Use the 'show' command to run the task and print the resu
 This is a list of %s defined for the current project.
 It does not list the scopes the %<s are defined in; use the 'inspect' command for that.""".format(label)
 
-	def settingsBrief(label: String) = (label, "Displays the " + label + " defined for the current project.")
+	def settingsBrief(label: String) = (label, "Lists the " + label + " defined for the current project.")
 	def settingsDetailed(label: String) = 
-"""%s -[v|vv|...|V]
+"""
+Syntax summary
+	%s [-(v|-vv|...|-V)] [<filter>]
 
-	Displays the %<s defined directly or indirectly for the current project. 
-	Additional %<s may be displayed by providing -v, -vv, ... or -V for all %<s.
-""".format(label)
+%<s
+	Displays the main %<s defined directly or indirectly for the current project. 
 
-	def moreAvailableMessage(label: String) = "More " + label + " may be viewed by increasing verbosity.  See '" + BasicCommandStrings.HelpCommand + " " + label + "'.\n"
+-v
+	Displays additional tasks.  More 'v's increase the number of tasks displayed.
+
+-V
+	displays all %<s
+
+<filter>
+	Restricts the %<s that are displayed.  The names of %<s are searched for an exact match against the filter, in which case only the description of the exact match is displayed.  Otherwise, the filter is interpreted as a regular expression and all %<s whose name or description match the regular expression are displayed.  Note that this is an additional filter on top of the %<s selected by the -v style switches, so you must specify -V to search all %<s.  Use the %s command to search all commands, tasks, and settings at once.
+""".format(label, BasicCommandStrings.HelpCommand)
+
+	def moreAvailableMessage(label: String, search: Boolean) =
+		"More %s may be %s by increasing verbosity.  See '%s %s'.\n".format(label, if(search) "searched" else "viewed", BasicCommandStrings.HelpCommand, label)
 
 	def aboutBrief = "Displays basic information about sbt and the build."
 	def aboutDetailed = aboutBrief
 
-	def projectBrief = (ProjectCommand + " [project]", "Displays the current project or changes to the provided `project`.")
+	def projectBrief = (ProjectCommand, "Displays the current project or changes to the provided `project`.")
 	def projectDetailed =
 ProjectCommand +
 """
@@ -148,6 +162,16 @@ ProjectCommand +
 
 	Changes to the project with the provided name.
 	This command fails if there is no project with the given name.
+
+""" + ProjectCommand + """ {uri}
+
+	Changes to the root project in the build defined by `uri`.
+	`uri` must have already been declared as part of the build, such as with Project.dependsOn.
+
+""" + ProjectCommand + """ {uri}name
+
+	Changes to the project `name` in the build defined by `uri`.
+	`uri` must have already been declared as part of the build, such as with Project.dependsOn.
 
 """ + ProjectCommand + """ /
 
@@ -161,8 +185,20 @@ ProjectCommand +
 	Use n+1 dots to change to the nth parent.
 	For example, 'project ....' is equivalent to three consecutive 'project ..' commands."""
 
-	def projectsBrief = projectsDetailed
-	def projectsDetailed = "Displays the names of available projects."
+	def projectsBrief = "Lists the names of available projects or temporarily adds/removes extra builds to the session."
+	def projectsDetailed = 
+ProjectsCommand + """
+	List the names of available builds and the projects defined in those builds.
+
+""" + ProjectsCommand + """ add <URI>+
+	Adds the builds at the provided URIs to this session.
+	These builds may be selected using the """ + ProjectCommand + """ command.
+	Alternatively, tasks from these builds may be run using the explicit syntax {URI}project/task
+
+""" + ProjectsCommand + """ remove <URI>+
+	Removes extra builds from this session.
+	Builds explicitly listed in the build definition are not affected by this command.
+"""
 
 	def sbtrc = ".sbtrc"
 
@@ -192,7 +228,7 @@ ProjectCommand +
 	def LoadProjectImpl = "loadp"
 	def LoadProject = "reload"
 	def LoadProjectBrief = (LoadProject, LoadProjectDetailed)
-	def LoadProjectDetailed = "Loads the project in the current directory"
+	def LoadProjectDetailed = "(Re)loads the project in the current directory"
 
 	@deprecated("Moved to State", "0.12.0")
 	val FailureWall = State.FailureWall

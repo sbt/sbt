@@ -361,6 +361,14 @@ object Project extends Init[Scope] with ProjectExtra
 		extracted.session.appendRaw(settings flatMap { x => rescope(x) } )
 	}
 
+	val ExtraBuilds = AttributeKey[List[URI]]("extra-builds", "Extra build URIs to load in addition to the ones defined by the project.")
+	def extraBuilds(s: State): List[URI] = getOrNil(s, ExtraBuilds)
+	def getOrNil[T](s: State, key: AttributeKey[List[T]]): List[T] = s get key getOrElse Nil
+	def setExtraBuilds(s: State, extra: List[URI]): State = s.put(ExtraBuilds, extra)
+	def addExtraBuilds(s: State, extra: List[URI]): State = setExtraBuilds(s, extra ::: extraBuilds(s))
+	def removeExtraBuilds(s: State, remove: List[URI]): State = updateExtraBuilds(s, _.filterNot(remove.toSet))
+	def updateExtraBuilds(s: State, f: List[URI] => List[URI]): State = setExtraBuilds(s, f(extraBuilds(s)))
+
 	object LoadAction extends Enumeration {
 		val Return, Current, Plugins = Value
 	}
@@ -370,7 +378,7 @@ object Project extends Init[Scope] with ProjectExtra
 	val loadActionParser = token(Space ~> ("plugins" ^^^ Plugins | "return" ^^^ Return)) ?? Current
 	
 	val ProjectReturn = AttributeKey[List[File]]("project-return", "Maintains a stack of builds visited using reload.")
-	def projectReturn(s: State): List[File] = s get ProjectReturn getOrElse Nil
+	def projectReturn(s: State): List[File] = getOrNil(s, ProjectReturn)
 	def inPluginProject(s: State): Boolean = projectReturn(s).toList.length > 1
 	def setProjectReturn(s: State, pr: List[File]): State = s.copy(attributes = s.attributes.put( ProjectReturn, pr) )
 	def loadAction(s: State, action: LoadAction.Value) = action match {

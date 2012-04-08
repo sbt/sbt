@@ -16,6 +16,7 @@ object Boot
 			case _ =>
 				System.clearProperty("scala.home") // avoid errors from mixing Scala versions in the same JVM
 				CheckProxy()
+				initJansi()
 				run(args)
 		}
 	}
@@ -31,7 +32,7 @@ object Boot
 		catch
 		{
 			case b: BootException => errorAndExit(b.toString)
-			case r: xsbti.RetrieveException => errorAndExit("Error: " + r.getMessage) 
+			case r: xsbti.RetrieveException => errorAndExit("Error: " + r.getMessage)
 			case r: xsbti.FullReload => Some(r.arguments)
 			case e =>
 				e.printStackTrace
@@ -43,6 +44,18 @@ object Boot
 		System.out.println(msg)
 		exit(1)
 	}
-	private def exit(code: Int): Nothing = 
+	private def exit(code: Int): Nothing =
 		System.exit(code).asInstanceOf[Nothing]
+
+	private def initJansi() {
+		try {
+			val c = Class.forName("org.fusesource.jansi.AnsiConsole")
+			c.getMethod("systemInstall").invoke(null)
+			if (System.getProperty("sbt.log.format") eq null)
+				System.setProperty("sbt.log.format", "true")
+		} catch {
+			case ignore: ClassNotFoundException =>
+			case ex => println("Jansi found on class path but initialization failed: " + ex)
+		}
+	}
 }

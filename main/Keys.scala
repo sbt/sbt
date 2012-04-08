@@ -150,7 +150,7 @@ object Keys
 	val consoleProject = TaskKey[Unit]("console-project", "Starts the Scala interpreter with the sbt and the build definition on the classpath and useful imports.", AMinusTask)
 	val compile = TaskKey[Analysis]("compile", "Compiles sources.", APlusTask)
 	val compilers = TaskKey[Compiler.Compilers]("compilers", "Defines the Scala and Java compilers to use for compilation.", DTask)
-	val compileIncSetup = TaskKey[Compiler.IncSetup]("inc-compile-setup", "Configurations aspects of incremental compilation.", DTask)
+	val compileIncSetup = TaskKey[Compiler.IncSetup]("inc-compile-setup", "Configures aspects of incremental compilation.", DTask)
 	val definesClass = TaskKey[DefinesClass]("defines-class", "Internal use: provides a function that determines whether the provided file contains a given class.", Invisible)
 	val doc = TaskKey[File]("doc", "Generates API documentation.", AMinusTask)
 	val copyResources = TaskKey[Seq[(File,File)]]("copy-resources", "Copies resources to the output directory.", AMinusTask)
@@ -200,6 +200,7 @@ object Keys
 	val testListeners = TaskKey[Seq[TestReportListener]]("test-listeners", "Defines test listeners.", DTask)
 	val testExecution = TaskKey[Tests.Execution]("test-execution", "Settings controlling test execution", DTask)
 	val testFilter = TaskKey[Seq[String] => String => Boolean]("test-filter", "Filter controlling whether the test is executed", DTask)
+	val testGrouping = TaskKey[Seq[Tests.Group]]("test-grouping", "Collects discovered tests into groups. Whether to fork and the options for forking are configurable on a per-group basis.", BMinusTask)
 	val isModule = AttributeKey[Boolean]("is-module", "True if the target is a module.", DSetting)
 
 	// Classpath/Dependency Management Keys
@@ -240,7 +241,7 @@ object Keys
 	val updateConfiguration = SettingKey[UpdateConfiguration]("update-configuration", "Configuration for resolving and retrieving managed dependencies.", DSetting)
 	val ivySbt = TaskKey[IvySbt]("ivy-sbt", "Provides the sbt interface to Ivy.", CTask)
 	val ivyModule = TaskKey[IvySbt#Module]("ivy-module", "Provides the sbt interface to a configured Ivy module.", CTask)
-	val update = TaskKey[UpdateReport]("update", "Resolves and optionally retrieves dependencies, producing a report.", ASetting)
+	val update = TaskKey[UpdateReport]("update", "Resolves and optionally retrieves dependencies, producing a report.", ATask)
 	val transitiveUpdate = TaskKey[Seq[UpdateReport]]("transitive-update", "UpdateReports for the internal dependencies of this project.", DTask)
 	val updateClassifiers = TaskKey[UpdateReport]("update-classifiers", "Resolves and optionally retrieves classified artifacts, such as javadocs and sources, for dependency definitions, transitively.", BPlusTask, update)
 	val transitiveClassifiers = SettingKey[Seq[String]]("transitive-classifiers", "List of classifiers used for transitively obtaining extra artifacts for sbt or declared dependencies.", BSetting)
@@ -325,6 +326,7 @@ object Keys
 	val (state, dummyState) = dummy[State]("state", "Current build state.")
 	val (streamsManager, dummyStreamsManager) = dummy[Streams]("streams-manager", "Streams manager, which provides streams for different contexts.")
 	val resolvedScoped = SettingKey[ScopedKey[_]]("resolved-scoped", "The ScopedKey for the referencing setting or task.", DSetting)
+	val pluginData = TaskKey[PluginData]("plugin-data", "Information from the plugin build needed in the main build definition.", DTask)
 	private[sbt] val parseResult: TaskKey[Any] = TaskKey("$parse-result", "Internal: used to implement input tasks.", Invisible)
 
 	val triggeredBy = AttributeKey[Seq[Task[_]]]("triggered-by")
