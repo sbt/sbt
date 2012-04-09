@@ -14,7 +14,7 @@ package sbt
 	import complete._
 	import std.TaskExtra._
 	import inc.{FileValueCache, Locate}
-	import org.scalatools.testing.{AnnotatedFingerprint, SubclassFingerprint}
+	import org.scalatools.testing.{Framework, AnnotatedFingerprint, SubclassFingerprint}
 
 	import sys.error
 	import scala.xml.NodeSeq
@@ -287,19 +287,7 @@ object Defaults extends BuildCommon
 		testOptions in GlobalScope :== Nil,
 		testFilter in testOnly :== (selectedFilter _),
 		testFilter in testQuick <<= testQuickFilter,
-		executeTests <<= (streams in test, loadedTestFrameworks, testLoader, testGrouping in test, testExecution in test, fullClasspath in test, javaHome in test) flatMap {
-			(s, frameworkMap, loader, groups, config, cp, javaHome) =>
-				val tasks = groups map {
-					case Tests.Group(name, tests, runPolicy) =>
-						runPolicy match {
-							case Tests.SubProcess(javaOpts) =>
-								ForkTests(frameworkMap.keys.toSeq, tests.toList, config, cp.files, javaHome, javaOpts, s.log) tag Tags.ForkedTestGroup
-							case Tests.InProcess =>
-								Tests(frameworkMap, loader, tests, config, s.log)
-						}
-				}
-				Tests.foldTasks(tasks)
-		},
+		executeTests <<= (streams in test, loadedTestFrameworks, testLoader, testGrouping in test, testExecution in test, fullClasspath in test, javaHome in test) flatMap allTestGroupsTask,
 		test <<= (executeTests, streams, resolvedScoped, state) map { 
 			(results, s, scoped, st) =>
 				implicit val display = Project.showContextKey(st)
@@ -378,20 +366,24 @@ object Defaults extends BuildCommon
 			(streams, loadedTestFrameworks, testFilter in key, testGrouping in key, testExecution in key, testLoader, resolvedScoped, result, fullClasspath in key, javaHome in key, state) flatMap {
 				case (s, frameworks, filter, groups, config, loader, scoped, (selected, frameworkOptions), cp, javaHome, st) =>
 					implicit val display = Project.showContextKey(st)
-					val tasks = groups map {
-						case Tests.Group(name, tests, runPolicy) =>
-							val modifiedOpts = Tests.Filter(filter(selected)) +: Tests.Argument(frameworkOptions : _*) +: config.options
-							val newConfig = config.copy(options = modifiedOpts)
-							runPolicy match {
-								case Tests.SubProcess(javaOpts) =>
-									ForkTests(frameworks.keys.toSeq, tests.toList, newConfig, cp.files, javaHome, javaOpts, s.log) tag Tags.ForkedTestGroup
-								case Tests.InProcess =>
-									Tests(frameworks, loader, tests, newConfig, s.log)
-							}
-					}
-					Tests.foldTasks(tasks) map (Tests.showResults(s.log, _, noTestsMessage(scoped)))
+					val modifiedOpts = Tests.Filter(filter(selected)) +: Tests.Argument(frameworkOptions : _*) +: config.options
+					val newConfig = config.copy(options = modifiedOpts)
+					allTestGroupsTask(s, frameworks, loader, groups, newConfig, cp, javaHome) map (Tests.showResults(s.log, _, noTestsMessage(scoped)))
 			}
 		}
+
+	def allTestGroupsTask(s: TaskStreams, frameworks: Map[TestFramework,Framework], loader: ClassLoader, groups: Seq[Tests.Group], config: Tests.Execution,	cp: Classpath, javaHome: Option[File]): Task[Tests.Output] = {
+		val groupTasks = groups map {
+			case Tests.Group(name, tests, runPolicy) =>
+				runPolicy match {
+					case Tests.SubProcess(javaOpts) =>
+						ForkTests(frameworks.keys.toSeq, tests.toList, config, cp.files, javaHome, javaOpts, s.log) tag Tags.ForkedTestGroup
+					case Tests.InProcess =>
+						Tests(frameworks, loader, tests, config, s.log)
+				}
+		}
+		Tests.foldTasks(groupTasks)
+	}
 
 	def selectedFilter(args: Seq[String]): String => Boolean =
 	{
