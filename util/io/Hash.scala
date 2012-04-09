@@ -4,6 +4,7 @@
 package sbt
 
 import java.io.{ByteArrayInputStream, File, InputStream}
+import java.net.URL
 
 object Hash
 {
@@ -42,6 +43,8 @@ object Hash
 	def apply(as: Array[Byte]): Array[Byte] = apply(new ByteArrayInputStream(as))
 	/** Calculates the SHA-1 hash of the given file.*/
 	def apply(file: File): Array[Byte] = Using.fileInputStream(file)(apply)
+	/** Calculates the SHA-1 hash of the given resource.*/
+	def apply(url: URL): Array[Byte] = Using.urlInputStream(url)(apply)
 	/** Calculates the SHA-1 hash of the given stream, closing it when finished.*/
 	def apply(stream: InputStream): Array[Byte] =
 	{

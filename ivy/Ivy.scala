@@ -65,7 +65,7 @@ final class IvySbt(val configuration: IvyConfiguration)
 		CustomPomParser.registerDefault
 		configuration match
 		{
-			case e: ExternalIvyConfiguration => is.load(e.file)
+			case e: ExternalIvyConfiguration => is.load(e.url)
 			case i: InlineIvyConfiguration =>
 				is.setVariable("ivy.checksums", i.checksums mkString ",")
 				i.paths.ivyHome foreach is.setDefaultIvyUserDir
