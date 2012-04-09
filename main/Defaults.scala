@@ -1252,10 +1252,13 @@ trait BuildExtra extends BuildCommon
 	def seq(settings: Setting[_]*): SettingsDefinition = new Project.SettingList(settings)
 
 	def externalIvySettings(file: Initialize[File] = baseDirectory / "ivysettings.xml"): Setting[Task[IvyConfiguration]] =
+		externalIvySettingsUrl(file(_.toURI.toURL))
+	def externalIvySettings(url: URL): Setting[Task[IvyConfiguration]] = externalIvySettingsUrl(new Project.Value(() => url))
+	private def externalIvySettingsUrl(url: Initialize[URL]): Setting[Task[IvyConfiguration]] =
 	{
 		val other = (baseDirectory, appConfiguration, streams).identityMap
-		ivyConfiguration <<= (file zipWith other) { case (f, otherTask) =>
-			otherTask map { case (base, app, s) => new ExternalIvyConfiguration(base, f, Some(lock(app)), s.log) }
+		ivyConfiguration <<= (url zipWith other) { case (u, otherTask) =>
+			otherTask map { case (base, app, s) => new ExternalIvyConfiguration(base, u, Some(lock(app)), s.log) }
 		}
 	}
 	def externalIvyFile(file: Initialize[File] = baseDirectory / "ivy.xml", iScala: Initialize[Option[IvyScala]] = ivyScala): Setting[Task[ModuleSettings]] =
