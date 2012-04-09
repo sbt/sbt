@@ -4,6 +4,7 @@
 package sbt
 
 import java.io.File
+import java.net.URL
 import scala.xml.NodeSeq
 
 final class IvyPaths(val baseDirectory: File, val ivyHome: Option[File])
@@ -27,10 +28,14 @@ final class InlineIvyConfiguration(val paths: IvyPaths, val resolvers: Seq[Resol
 	def withBase(newBase: File) = new InlineIvyConfiguration(paths.withBase(newBase), resolvers, otherResolvers, moduleConfigurations, localOnly, lock, checksums, log)
 	def changeResolvers(newResolvers: Seq[Resolver]) = new InlineIvyConfiguration(paths, newResolvers, otherResolvers, moduleConfigurations, localOnly, lock, checksums, log)
 }
-final class ExternalIvyConfiguration(val baseDirectory: File, val file: File, val lock: Option[xsbti.GlobalLock], val log: Logger) extends IvyConfiguration
+final class ExternalIvyConfiguration(val baseDirectory: File, val url: URL, val lock: Option[xsbti.GlobalLock], val log: Logger) extends IvyConfiguration
 {
 	type This = ExternalIvyConfiguration
-	def withBase(newBase: File) = new ExternalIvyConfiguration(newBase, file, lock, log)
+	def withBase(newBase: File) = new ExternalIvyConfiguration(newBase, url, lock, log)
+}
+object ExternalIvyConfiguration
+{
+	def apply(baseDirectory: File, file: File, lock: Option[xsbti.GlobalLock], log: Logger) = new ExternalIvyConfiguration(baseDirectory, file.toURI.toURL, lock, log)
 }
 
 object IvyConfiguration
@@ -42,7 +47,7 @@ object IvyConfiguration
 		log.debug("Autodetecting configuration.")
 		val defaultIvyConfigFile = IvySbt.defaultIvyConfiguration(paths.baseDirectory)
 		if(defaultIvyConfigFile.canRead)
-			new ExternalIvyConfiguration(paths.baseDirectory, defaultIvyConfigFile, lock, log)
+			ExternalIvyConfiguration(paths.baseDirectory, defaultIvyConfigFile, lock, log)
 		else
 			new InlineIvyConfiguration(paths, Resolver.withDefaultResolvers(Nil), Nil, Nil, localOnly, lock, checksums, log)
 	}
