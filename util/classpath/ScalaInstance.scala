@@ -23,8 +23,16 @@ object ScalaInstance
 {
 	val VersionPrefix = "version "
 	
-	def apply(org: String, version: String, launcher: xsbti.Launcher): ScalaInstance =
+	def apply(org: String, version: String, launcher: xsbti.Launcher): ScalaInstance = {
+	  // launcher compatibility check	  
+	  val strClass = "".getClass
+	  if (launcher.getClass.getMethods.exists(m => 
+	    m.getName == "getScala" &&
+	    m.getParameterTypes.toSeq == Seq(strClass, strClass, strClass)))
 		apply(version, launcher.getScala(version, "", org))
+	  else
+	    error("Incompatible version of the xsbti.Launcher interface. Use sbt-0.12.x launcher instead.")
+	}
 	/** Creates a ScalaInstance using the given provider to obtain the jars and loader.*/
 	def apply(version: String, launcher: xsbti.Launcher): ScalaInstance =
 		apply(version, launcher.getScala(version))

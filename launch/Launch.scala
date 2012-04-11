@@ -77,14 +77,14 @@ object Launch
 }
 final class RunConfiguration(val scalaVersion: Option[String], val app: xsbti.ApplicationID, val workingDirectory: File, val arguments: List[String])
 
-import BootConfiguration.{appDirectoryName, baseDirectoryName, extractScalaVersion, scalaDirectoryName, TestLoadScalaClasses}
+import BootConfiguration.{appDirectoryName, baseDirectoryName, extractScalaVersion, ScalaDirectoryName, TestLoadScalaClasses, ScalaOrg}
 class Launch private[xsbt](val bootDirectory: File, val lockBoot: Boolean, val ivyOptions: IvyOptions) extends xsbti.Launcher
 {
 	import ivyOptions.{checksums => checksumsList, classifiers, repositories}
 	bootDirectory.mkdirs
 	private val scalaProviders = new Cache[(String, String), String, xsbti.ScalaProvider]((x, y) => getScalaProvider(x._1, x._2, y))
 	def getScala(version: String): xsbti.ScalaProvider = getScala(version, "")
-	def getScala(version: String, reason: String): xsbti.ScalaProvider = getScala(version, reason, BootConfiguration.ScalaOrg)
+	def getScala(version: String, reason: String): xsbti.ScalaProvider = getScala(version, reason, ScalaOrg)
 	def getScala(version: String, reason: String, scalaOrg: String) = scalaProviders((scalaOrg, version), reason)
 	def app(id: xsbti.ApplicationID, version: String): xsbti.AppProvider = app(id, Option(version))
     def app(id: xsbti.ApplicationID, scalaVersion: Option[String]): xsbti.AppProvider = 
@@ -103,8 +103,8 @@ class Launch private[xsbt](val bootDirectory: File, val lockBoot: Boolean, val i
 	def jnaLoader(parent: ClassLoader): ClassLoader =
 	{
 		val id = AppID("net.java.dev.jna", "jna", "3.2.3", "", toArray(Nil), false, array())
-		val configuration = makeConfiguration(None, None)
-		val jnaHome = appDirectory(new File(bootDirectory, baseDirectoryName(None)), id)
+		val configuration = makeConfiguration(ScalaOrg, None)
+		val jnaHome = appDirectory(new File(bootDirectory, baseDirectoryName(ScalaOrg, None)), id)
 		val module = appModule(id, None, false, "jna")
 		def makeLoader(): ClassLoader = {
 			val urls = toURLs(wrapNull(jnaHome.listFiles(JarFilter)))
@@ -130,7 +130,7 @@ class Launch private[xsbt](val bootDirectory: File, val lockBoot: Boolean, val i
 			module.retrieveCorrupt(missing)
 	}
 
-	private[this] def makeConfiguration(scalaOrg: Option[String], version: Option[String]): UpdateConfiguration =
+	private[this] def makeConfiguration(scalaOrg: String, version: Option[String]): UpdateConfiguration =
 		new UpdateConfiguration(bootDirectory, ivyOptions.ivyHome, scalaOrg, version, repositories, checksumsList)
 
 	final def getAppProvider(id: xsbti.ApplicationID, explicitScalaVersion: Option[String], forceAppUpdate: Boolean): xsbti.AppProvider =
@@ -143,13 +143,13 @@ class Launch private[xsbt](val bootDirectory: File, val lockBoot: Boolean, val i
 		def retrieve() = {
 			val sv = update(app, "")
 			val scalaVersion = strictOr(explicitScalaVersion, sv)
-			new RetrievedModule(true, app, sv, baseDirs(scalaHome(scalaVersion)))
+			new RetrievedModule(true, app, sv, baseDirs(scalaHome(ScalaOrg, scalaVersion)))
 		}
 		val retrievedApp =
 			if(forceAppUpdate)
 				retrieve()
 			else
-				existing(app, explicitScalaVersion, baseDirs) getOrElse retrieve()
+				existing(app, ScalaOrg, explicitScalaVersion, baseDirs) getOrElse retrieve()
  
 		val scalaVersion = getOrError(strictOr(explicitScalaVersion, retrievedApp.detectedScalaVersion), "No Scala version specified or detected")
 		val scalaProvider = getScala(scalaVersion, "(for " + id.name + ")")
@@ -162,8 +162,8 @@ class Launch private[xsbt](val bootDirectory: File, val lockBoot: Boolean, val i
 		else
 			getAppProvider0(id, explicitScalaVersion, true)
 	}
-	def scalaHome(scalaVersion: Option[String]): File = new File(bootDirectory, baseDirectoryName(scalaVersion))
-	def appHome(id: xsbti.ApplicationID, scalaVersion: Option[String]): File = appDirectory(scalaHome(scalaVersion), id)
+	def scalaHome(scalaOrg: String, scalaVersion: Option[String]): File = new File(bootDirectory, baseDirectoryName(scalaOrg, scalaVersion))
+	def appHome(id: xsbti.ApplicationID, scalaVersion: Option[String]): File = appDirectory(scalaHome(ScalaOrg, scalaVersion), id)
 	def checkedAppProvider(id: xsbti.ApplicationID, module: RetrievedModule, scalaProvider: xsbti.ScalaProvider): (Iterable[String], xsbti.AppProvider) =
 	{
 		val p = appProvider(id, module, scalaProvider, appHome(id, Some(scalaProvider.version)))
@@ -183,7 +183,7 @@ class Launch private[xsbt](val bootDirectory: File, val lockBoot: Boolean, val i
 			val p = scalaProvider(scalaVersion, retrieved, topLoader, lib)
 			checkLoader(p.loader, retrieved.definition, TestLoadScalaClasses, p)
 		}
-		existing(scalaM, Some(scalaVersion), _ => baseDirs) flatMap { mod =>
+		existing(scalaM, scalaOrg, Some(scalaVersion), _ => baseDirs) flatMap { mod =>
 			try Some(provider(mod))
 			catch { case e: Exception => None }
 		} getOrElse {
@@ -192,10 +192,10 @@ class Launch private[xsbt](val bootDirectory: File, val lockBoot: Boolean, val i
 		}
 	}
 
-	def existing(module: ModuleDefinition, explicitScalaVersion: Option[String], baseDirs: File => List[File]): Option[RetrievedModule] =
+	def existing(module: ModuleDefinition, scalaOrg: String, explicitScalaVersion: Option[String], baseDirs: File => List[File]): Option[RetrievedModule] =
 	{
 		val filter = new java.io.FileFilter {
-			val explicitName = explicitScalaVersion.map(sv => baseDirectoryName(Some(sv)))
+			val explicitName = explicitScalaVersion.map(sv => baseDirectoryName(scalaOrg, Some(sv)))
 			def accept(file: File) = file.isDirectory && explicitName.forall(_ == file.getName)
 		}
 		val retrieved = wrapNull(bootDirectory.listFiles(filter)) flatMap { scalaDir =>
@@ -222,8 +222,8 @@ class Launch private[xsbt](val bootDirectory: File, val lockBoot: Boolean, val i
 
 	def scalaDirs(module: ModuleDefinition, scalaOrg: String, scalaVersion: String): (File, File) =
 	{	
-		val scalaHome = new File(bootDirectory, baseDirectoryName(Some(scalaVersion)))
-		val libDirectory = new File(scalaHome, scalaDirectoryName(scalaOrg))
+		val scalaHome = new File(bootDirectory, baseDirectoryName(scalaOrg, Some(scalaVersion)))
+		val libDirectory = new File(scalaHome, ScalaDirectoryName)
 		(scalaHome, libDirectory)
 	}
 
@@ -258,13 +258,13 @@ class Launch private[xsbt](val bootDirectory: File, val lockBoot: Boolean, val i
 	}
 
 	def appModule(id: xsbti.ApplicationID, scalaVersion: Option[String], getClassifiers: Boolean, tpe: String): ModuleDefinition = new ModuleDefinition(
-		configuration = makeConfiguration(None, scalaVersion),
+		configuration = makeConfiguration(ScalaOrg, scalaVersion),
 		target = new UpdateApp(Application(id), if(getClassifiers) Value.get(classifiers.app) else Nil, tpe),
 		failLabel = id.name + " " + id.version,
 		extraClasspath = id.classpathExtra
 	)
 	def scalaModule(org: String, version: String): ModuleDefinition = new ModuleDefinition(
-		configuration = makeConfiguration(Some(org), Some(version)),
+		configuration = makeConfiguration(org, Some(version)),
 		target = new UpdateScala(Value.get(classifiers.forScala)),
 		failLabel = "Scala " + version,
 		extraClasspath = array()

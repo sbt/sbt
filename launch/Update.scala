@@ -33,12 +33,10 @@ sealed trait UpdateTarget { def tpe: String; def classifiers: List[String] }
 final class UpdateScala(val classifiers: List[String]) extends UpdateTarget { def tpe = "scala" }
 final class UpdateApp(val id: Application, val classifiers: List[String], val tpe: String) extends UpdateTarget
 
-final class UpdateConfiguration(val bootDirectory: File, val ivyHome: Option[File], val scalaOrg: Option[String],
+final class UpdateConfiguration(val bootDirectory: File, val ivyHome: Option[File], val scalaOrg: String,
     val scalaVersion: Option[String], val repositories: List[xsbti.Repository], val checksums: List[String]) {
 
-	def getScalaVersion = scalaVersion match { case Some(sv) => sv; case None => "" }
-	
-	def getScalaOrg = scalaOrg match { case Some(so) => so; case None => ScalaOrg }
+	def getScalaVersion = scalaVersion match { case Some(sv) => sv; case None => "" }		
 	
 }
 
@@ -47,7 +45,7 @@ final class UpdateResult(val success: Boolean, val scalaVersion: Option[String])
 /** Ensures that the Scala and application jars exist for the given versions or else downloads them.*/
 final class Update(config: UpdateConfiguration)
 {
-	import config.{bootDirectory, checksums, getScalaVersion, ivyHome, repositories, scalaVersion, getScalaOrg}
+	import config.{bootDirectory, checksums, getScalaVersion, ivyHome, repositories, scalaVersion, scalaOrg}
 	bootDirectory.mkdirs
 
 	private def logFile = new File(bootDirectory, UpdateLogName)
@@ -132,12 +130,11 @@ final class Update(config: UpdateConfiguration)
 		target match
 		{
 			case u: UpdateScala =>
-				val scalaVersion = getScalaVersion
-				val scalaOrg = getScalaOrg
+				val scalaVersion = getScalaVersion				
 				addDependency(moduleID, scalaOrg, CompilerModuleName, scalaVersion, "default;optional(default)", u.classifiers)
 				addDependency(moduleID, scalaOrg, LibraryModuleName, scalaVersion, "default", u.classifiers)
 				excludeJUnit(moduleID)
-				System.out.println("Getting Scala " + scalaVersion + " " + reason + "...")
+				System.out.println("Getting " + scalaOrg + " Scala " + scalaVersion + " " + reason + "...")
 			case u: UpdateApp =>
 				val app = u.id
 				val resolvedName = (app.crossVersioned, scalaVersion) match {
@@ -239,13 +236,13 @@ final class Update(config: UpdateConfiguration)
 		val (pattern, extraFilter) =
 			target match
 			{
-				case _: UpdateScala => (scalaRetrievePattern(getScalaOrg), const(true))
+				case _: UpdateScala => (scalaRetrievePattern, const(true))
 				case u: UpdateApp => (appRetrievePattern(u.id.toID), notCoreScala _)
 			}
 		val filter = (a: IArtifact) => retrieveType(a.getType) && a.getExtraAttribute("classifier") == null && extraFilter(a)
 		retrieveOptions.setArtifactFilter(new ArtifactFilter(filter))
 		val scalaV = strictOr(scalaVersion, autoScalaVersion)
-		retrieveEngine.retrieve(module.getModuleRevisionId, baseDirectoryName(scalaV) + "/" + pattern, retrieveOptions)
+		retrieveEngine.retrieve(module.getModuleRevisionId, baseDirectoryName(scalaOrg, scalaV) + "/" + pattern, retrieveOptions)
 	}
 	private[this] def notCoreScala(a: IArtifact) = a.getName match {
 		case LibraryModuleName | CompilerModuleName => false
