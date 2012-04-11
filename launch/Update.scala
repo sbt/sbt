@@ -134,7 +134,8 @@ final class Update(config: UpdateConfiguration)
 				addDependency(moduleID, scalaOrg, CompilerModuleName, scalaVersion, "default;optional(default)", u.classifiers)
 				addDependency(moduleID, scalaOrg, LibraryModuleName, scalaVersion, "default", u.classifiers)
 				excludeJUnit(moduleID)
-				System.out.println("Getting " + scalaOrg + " Scala " + scalaVersion + " " + reason + "...")
+				val scalaOrgString = if (scalaOrg != ScalaOrg) " " + scalaOrg else ""
+				System.out.println("Getting" + scalaOrgString + " Scala " + scalaVersion + " " + reason + "...")
 			case u: UpdateApp =>
 				val app = u.id
 				val resolvedName = (app.crossVersioned, scalaVersion) match {
