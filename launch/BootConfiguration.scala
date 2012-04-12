@@ -53,10 +53,11 @@ private object BootConfiguration
 
 	val DefaultIvyConfiguration = "default"
 
-	/** The name of the directory within the boot directory to retrieve scala to. */
 	val ScalaDirectoryName = "lib"
+	
 	/** The Ivy pattern to use for retrieving the scala compiler and library.  It is relative to the directory
-	* containing all jars for the requested version of scala. */
+	* containing all jars for the requested version of scala.
+	*/
 	val scalaRetrievePattern = ScalaDirectoryName + "/[artifact](-[classifier]).[ext]"
 	
 	def artifactType(classifier: String) =
@@ -71,19 +72,23 @@ private object BootConfiguration
 	* containing all jars for the requested version of scala. */
 	def appRetrievePattern(appID: xsbti.ApplicationID) = appDirectoryName(appID, "/") + "(/[component])/[artifact]-[revision](-[classifier]).[ext]"
 
-	val ScalaDirPrefix = "scala-"
+	val ScalaVersionPrefix = "scala-"
 
 	/** The name of the directory to retrieve the application and its dependencies to.*/
 	def appDirectoryName(appID: xsbti.ApplicationID, sep: String) = appID.groupID + sep + appID.name + sep + appID.version
 	/** The name of the directory in the boot directory to put all jars for the given version of scala in.*/
-	def baseDirectoryName(scalaVersion: Option[String]) = scalaVersion match {
+	def baseDirectoryName(scalaOrg: String, scalaVersion: Option[String]) = scalaVersion match {
 		case None => "other"
-		case Some(sv) => ScalaDirPrefix + sv
+		case Some(sv) => (if (scalaOrg == ScalaOrg) "" else scalaOrg + ".") + ScalaVersionPrefix + sv
 	}
+	
 	def extractScalaVersion(dir: File): Option[String] =
 	{
 		val name = dir.getName
-		if(name.startsWith(ScalaDirPrefix)) Some(name.substring(ScalaDirPrefix.length)) else None
+		if(name.contains(ScalaVersionPrefix))
+			Some(name.substring(name.lastIndexOf(ScalaVersionPrefix) + ScalaVersionPrefix.length))
+		else
+			None
 	}
 }
 private object ProxyProperties
