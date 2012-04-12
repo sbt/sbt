@@ -1,0 +1,13 @@
+<ivysettings>
+	<settings defaultResolver="multi-test-chain"/>
+	<include url="${ivy.default.settings.dir}/ivysettings-public.xml"/>
+	<include url="${ivy.default.settings.dir}/ivysettings-local.xml"/>
+	
+	<resolvers>
+		<chain name="multi-test-chain" returnFirst="true" checkmodified="false">
+			<resolver ref="inter-project"/>
+			<resolver ref="local"/>
+			<resolver ref="public"/>
+		</chain>
+	</resolvers>
+</ivysettings> 

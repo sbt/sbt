@@ -21,7 +21,7 @@ package sbt
 	import org.apache.ivy.core.module.{descriptor, id}
 	import descriptor.ModuleDescriptor, id.ModuleRevisionId
 	import java.io.File
-	import java.net.URL
+	import java.net.{URI,URL}
 	import java.util.concurrent.Callable
 	import sbinary.DefaultProtocol.StringFormat
 	import Cache.seqFormat
@@ -1251,14 +1251,17 @@ trait BuildExtra extends BuildCommon
 
 	def seq(settings: Setting[_]*): SettingsDefinition = new Project.SettingList(settings)
 
-	def externalIvySettings(file: Initialize[File] = baseDirectory / "ivysettings.xml"): Setting[Task[IvyConfiguration]] =
-		externalIvySettingsUrl(file(_.toURI.toURL))
-	def externalIvySettings(url: URL): Setting[Task[IvyConfiguration]] = externalIvySettingsUrl(new Project.Value(() => url))
-	private def externalIvySettingsUrl(url: Initialize[URL]): Setting[Task[IvyConfiguration]] =
+	def externalIvySettings(file: Initialize[File] = baseDirectory / "ivysettings.xml", addMultiResolver: Boolean = true): Setting[Task[IvyConfiguration]] =
+		externalIvySettingsURI(file(_.toURI), addMultiResolver)
+	def externalIvySettingsURL(url: URL, addMultiResolver: Boolean = true): Setting[Task[IvyConfiguration]] =
+		externalIvySettingsURI(Project.value(url.toURI), addMultiResolver)
+	def externalIvySettingsURI(uri: Initialize[URI], addMultiResolver: Boolean = true): Setting[Task[IvyConfiguration]] =
 	{
-		val other = (baseDirectory, appConfiguration, streams).identityMap
-		ivyConfiguration <<= (url zipWith other) { case (u, otherTask) =>
-			otherTask map { case (base, app, s) => new ExternalIvyConfiguration(base, u, Some(lock(app)), s.log) }
+		val other = (baseDirectory, appConfiguration, projectResolver, streams).identityMap
+		ivyConfiguration <<= (uri zipWith other) { case (u, otherTask) =>
+			otherTask map { case (base, app, pr, s) =>
+				val extraResolvers = if(addMultiResolver) pr :: Nil else Nil
+				new ExternalIvyConfiguration(base, u, Some(lock(app)), extraResolvers, s.log) }
 		}
 	}
 	def externalIvyFile(file: Initialize[File] = baseDirectory / "ivy.xml", iScala: Initialize[Option[IvyScala]] = ivyScala): Setting[Task[ModuleSettings]] =

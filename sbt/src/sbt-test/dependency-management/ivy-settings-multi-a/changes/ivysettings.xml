@@ -1,0 +1,11 @@
+<ivysettings>
+	<caches defaultCacheDir="${ivy.settings.dir}/target/use-cache" useOrigin="true"/>
+	<settings defaultResolver="test-chain"/>
+	<resolvers>
+		<ibiblio name="central" m2compatible="true"/>
+		<chain name="test-chain" returnFirst="true" checkmodified="true">
+			<resolver ref="inter-project"/>
+			<resolver ref="central"/>
+		</chain>
+	</resolvers>
+</ivysettings>

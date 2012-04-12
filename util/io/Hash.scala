@@ -4,7 +4,7 @@
 package sbt
 
 import java.io.{ByteArrayInputStream, File, InputStream}
-import java.net.URL
+import java.net.{URI,URL}
 
 object Hash
 {
@@ -45,6 +45,13 @@ object Hash
 	def apply(file: File): Array[Byte] = Using.fileInputStream(file)(apply)
 	/** Calculates the SHA-1 hash of the given resource.*/
 	def apply(url: URL): Array[Byte] = Using.urlInputStream(url)(apply)
+
+	/** If the URI represents a local file (the scheme is "file"),
+	*  this method calculates the SHA-1 hash of the contents of that file.
+	* Otherwise, this methods calculates the SHA-1 hash of the normalized string representation of the URI.*/
+	def contentsIfLocal(uri: URI): Array[Byte] =
+		if(uri.getScheme == "file") apply(uri.toURL) else apply(uri.normalize.toString)
+
 	/** Calculates the SHA-1 hash of the given stream, closing it when finished.*/
 	def apply(stream: InputStream): Array[Byte] =
 	{
