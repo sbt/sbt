@@ -15,14 +15,14 @@ final case class LaunchConfiguration(scalaVersion: Value[String], ivyConfigurati
 		val sv = Value.get(scalaVersion)
 		if(sv == "auto") None else Some(sv)
 	}
-	
+
 	def withScalaVersion(newScalaVersion: String) = LaunchConfiguration(new Explicit(newScalaVersion), ivyConfiguration, app, boot, logging, appProperties)
 	def withApp(app: Application) = LaunchConfiguration(scalaVersion, ivyConfiguration, app, boot, logging, appProperties)
 	def withAppVersion(newAppVersion: String) = LaunchConfiguration(scalaVersion, ivyConfiguration, app.withVersion(new Explicit(newAppVersion)), boot, logging, appProperties)
 	// TODO: withExplicit
 	def withVersions(newScalaVersion: String, newAppVersion: String, classifiers0: Classifiers) =
 		LaunchConfiguration(new Explicit(newScalaVersion), ivyConfiguration.copy(classifiers = classifiers0), app.withVersion(new Explicit(newAppVersion)), boot, logging, appProperties)
-	
+
 	def map(f: File => File) = LaunchConfiguration(scalaVersion, ivyConfiguration, app.map(f), boot.map(f), logging, appProperties)
 }
 final case class IvyOptions(ivyHome: Option[File], classifiers: Classifiers, repositories: List[xsbti.Repository], checksums: List[String])

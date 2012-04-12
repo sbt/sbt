@@ -23,7 +23,7 @@ object ScalaInstance
 {
 	val ScalaOrg = "org.scala-lang"
 	val VersionPrefix = "version "
-	
+
 	def apply(org: String, version: String, launcher: xsbti.Launcher): ScalaInstance =
 	  // Due to incompatibility with previous launchers if scalaOrg has default value revert to an existing method
 		if (org == ScalaOrg)

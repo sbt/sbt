@@ -6,11 +6,12 @@
 	import java.io.File
 
 // <boot.directory>
-//     scala-<scala.version>/    [baseDirectoryName]
+//     [<scala-org>.]scala-<scala.version>/    [baseDirectoryName]
 //          lib/    [ScalaDirectoryName]
 //          <app.name>-<app.version>/  [appDirectoryName]
 //
 // see also ProjectProperties for the set of constants that apply to the build.properties file in a project
+// The scala organization is used as a prefix in baseDirectoryName when a non-standard organization is used.
 private object BootConfiguration
 {
 	// these are the Scala module identifiers to resolve/retrieve
@@ -53,11 +54,11 @@ private object BootConfiguration
 
 	val DefaultIvyConfiguration = "default"
 
+	/** The name of the directory within the boot directory to retrieve scala to. */
 	val ScalaDirectoryName = "lib"
-	
+
 	/** The Ivy pattern to use for retrieving the scala compiler and library.  It is relative to the directory
-	* containing all jars for the requested version of scala.
-	*/
+	* containing all jars for the requested version of scala. */
 	val scalaRetrievePattern = ScalaDirectoryName + "/[artifact](-[classifier]).[ext]"
 	
 	def artifactType(classifier: String) =
@@ -81,7 +82,7 @@ private object BootConfiguration
 		case None => "other"
 		case Some(sv) => (if (scalaOrg == ScalaOrg) "" else scalaOrg + ".") + ScalaVersionPrefix + sv
 	}
-	
+
 	def extractScalaVersion(dir: File): Option[String] =
 	{
 		val name = dir.getName

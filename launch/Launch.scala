@@ -87,7 +87,7 @@ class Launch private[xsbt](val bootDirectory: File, val lockBoot: Boolean, val i
 	def getScala(version: String, reason: String): xsbti.ScalaProvider = getScala(version, reason, ScalaOrg)
 	def getScala(version: String, reason: String, scalaOrg: String) = scalaProviders((scalaOrg, version), reason)
 	def app(id: xsbti.ApplicationID, version: String): xsbti.AppProvider = app(id, Option(version))
-    def app(id: xsbti.ApplicationID, scalaVersion: Option[String]): xsbti.AppProvider = 
+    def app(id: xsbti.ApplicationID, scalaVersion: Option[String]): xsbti.AppProvider =
       getAppProvider(id, scalaVersion, false)
 
 	val bootLoader = new BootFilteredLoader(getClass.getClassLoader)
@@ -150,7 +150,7 @@ class Launch private[xsbt](val bootDirectory: File, val lockBoot: Boolean, val i
 				retrieve()
 			else
 				existing(app, ScalaOrg, explicitScalaVersion, baseDirs) getOrElse retrieve()
- 
+
 		val scalaVersion = getOrError(strictOr(explicitScalaVersion, retrievedApp.detectedScalaVersion), "No Scala version specified or detected")
 		val scalaProvider = getScala(scalaVersion, "(for " + id.name + ")")
 
@@ -174,7 +174,7 @@ class Launch private[xsbt](val bootDirectory: File, val lockBoot: Boolean, val i
 	def getScalaProvider(scalaOrg: String, scalaVersion: String, reason: String): xsbti.ScalaProvider =
 		locked(new Callable[xsbti.ScalaProvider] { def call = getScalaProvider0(scalaOrg, scalaVersion, reason) })
 
-	private[this] final def getScalaProvider0(scalaOrg: String, scalaVersion: String, reason: String) = 
+	private[this] final def getScalaProvider0(scalaOrg: String, scalaVersion: String, reason: String) =
 	{
 		val scalaM = scalaModule(scalaOrg, scalaVersion)
 		val (scalaHome, lib) = scalaDirs(scalaM, scalaOrg, scalaVersion)

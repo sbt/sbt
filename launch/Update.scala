@@ -36,8 +36,7 @@ final class UpdateApp(val id: Application, val classifiers: List[String], val tp
 final class UpdateConfiguration(val bootDirectory: File, val ivyHome: Option[File], val scalaOrg: String,
     val scalaVersion: Option[String], val repositories: List[xsbti.Repository], val checksums: List[String]) {
 
-	def getScalaVersion = scalaVersion match { case Some(sv) => sv; case None => "" }		
-	
+	def getScalaVersion = scalaVersion match { case Some(sv) => sv; case None => "" }
 }
 
 final class UpdateResult(val success: Boolean, val scalaVersion: Option[String])
@@ -130,7 +129,7 @@ final class Update(config: UpdateConfiguration)
 		target match
 		{
 			case u: UpdateScala =>
-				val scalaVersion = getScalaVersion				
+				val scalaVersion = getScalaVersion
 				addDependency(moduleID, scalaOrg, CompilerModuleName, scalaVersion, "default;optional(default)", u.classifiers)
 				addDependency(moduleID, scalaOrg, LibraryModuleName, scalaVersion, "default", u.classifiers)
 				excludeJUnit(moduleID)
