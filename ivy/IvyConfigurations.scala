@@ -4,7 +4,7 @@
 package sbt
 
 import java.io.File
-import java.net.URL
+import java.net.{URI,URL}
 import scala.xml.NodeSeq
 
 final class IvyPaths(val baseDirectory: File, val ivyHome: Option[File])
@@ -28,20 +28,21 @@ final class InlineIvyConfiguration(val paths: IvyPaths, val resolvers: Seq[Resol
 	def withBase(newBase: File) = new InlineIvyConfiguration(paths.withBase(newBase), resolvers, otherResolvers, moduleConfigurations, localOnly, lock, checksums, log)
 	def changeResolvers(newResolvers: Seq[Resolver]) = new InlineIvyConfiguration(paths, newResolvers, otherResolvers, moduleConfigurations, localOnly, lock, checksums, log)
 }
-final class ExternalIvyConfiguration(val baseDirectory: File, val url: URL, val lock: Option[xsbti.GlobalLock], val log: Logger) extends IvyConfiguration
+final class ExternalIvyConfiguration(val baseDirectory: File, val uri: URI, val lock: Option[xsbti.GlobalLock], val extraResolvers: Seq[Resolver], val log: Logger) extends IvyConfiguration
 {
 	type This = ExternalIvyConfiguration
-	def withBase(newBase: File) = new ExternalIvyConfiguration(newBase, url, lock, log)
+	def withBase(newBase: File) = new ExternalIvyConfiguration(newBase, uri, lock, extraResolvers, log)
 }
 object ExternalIvyConfiguration
 {
-	def apply(baseDirectory: File, file: File, lock: Option[xsbti.GlobalLock], log: Logger) = new ExternalIvyConfiguration(baseDirectory, file.toURI.toURL, lock, log)
+	def apply(baseDirectory: File, file: File, lock: Option[xsbti.GlobalLock], log: Logger) = new ExternalIvyConfiguration(baseDirectory, file.toURI, lock, Nil, log)
 }
 
 object IvyConfiguration
 {
 	/** Called to configure Ivy when inline resolvers are not specified.
 	* This will configure Ivy with an 'ivy-settings.xml' file if there is one or else use default resolvers.*/
+	@deprecated("Explicitly use either external or inline configuration.", "0.12.0")
 	def apply(paths: IvyPaths, lock: Option[xsbti.GlobalLock], localOnly: Boolean, checksums: Seq[String], log: Logger): IvyConfiguration =
 	{
 		log.debug("Autodetecting configuration.")

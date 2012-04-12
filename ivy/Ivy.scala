@@ -6,6 +6,7 @@ package sbt
 import Resolver.PluginPattern
 
 import java.io.File
+import java.net.URI
 import java.util.concurrent.Callable
 import java.util.{Collection, Collections => CS}
 import CS.singleton
@@ -65,7 +66,9 @@ final class IvySbt(val configuration: IvyConfiguration)
 		CustomPomParser.registerDefault
 		configuration match
 		{
-			case e: ExternalIvyConfiguration => is.load(e.url)
+			case e: ExternalIvyConfiguration =>
+				IvySbt.addResolvers(e.extraResolvers, is, configuration.log)
+				IvySbt.loadURI(is, e.uri)
 			case i: InlineIvyConfiguration =>
 				is.setVariable("ivy.checksums", i.checksums mkString ",")
 				i.paths.ivyHome foreach is.setDefaultIvyUserDir
@@ -198,6 +201,14 @@ private object IvySbt
 	def defaultIvyConfiguration(project: File) = new File(project, DefaultIvyConfigFilename)
 	def defaultPOM(project: File) = new File(project, DefaultMavenFilename)
 
+	def loadURI(is: IvySettings, uri: URI)
+	{
+		if(uri.getScheme == "file")
+			is.load(new File(uri)) // IVY-1114
+		else
+			is.load(uri.toURL)
+	}
+
 	/** Sets the resolvers for 'settings' to 'resolvers'.  This is done by creating a new chain and making it the default.
 	* 'other' is for resolvers that should be in a different chain.  These are typically used for publishing or other actions. */
 	private def setResolvers(settings: IvySettings, resolvers: Seq[Resolver], other: Seq[Resolver], localOnly: Boolean, log: Logger)
@@ -235,6 +246,13 @@ private object IvySbt
 			newDefault.add(ConvertResolver(sbtResolver)(settings, log))
 		}
 		newDefault
+	}
+	def addResolvers(resolvers: Seq[Resolver], settings: IvySettings, log: Logger)
+	{
+		for(r <- resolvers) {
+			log.debug("\t" + r)
+			settings.addResolver(ConvertResolver(r)(settings, log))
+		}
 	}
 	/** A hack to detect if the given artifact is an automatically generated request for a classifier,
 	* as opposed to a user-initiated declaration.  It relies on Ivy prefixing classifier with m:, while sbt uses e:.
