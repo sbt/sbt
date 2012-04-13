@@ -38,7 +38,9 @@ object ClasspathUtilities
 			val p = loader.getParent
 			if(p eq null) loader else parent(p)
 		}
-		parent(getClass.getClassLoader)
+		val systemLoader = ClassLoader.getSystemClassLoader
+		if (systemLoader ne null) parent(systemLoader)
+		else parent(getClass.getClassLoader)
 	}
 	
 	final val AppClassPath = "app.class.path"
