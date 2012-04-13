@@ -8,7 +8,7 @@ object Status
 	lazy val publishStatus = SettingKey[String]("publish-status")
 
 	def settings: Seq[Setting[_]] = Seq(
-		isSnapshot <<= version(v => v.contains("-") && !isMilestone(v)),
+		isSnapshot <<= version(v => v.contains("-") && snapshotQualifier(v)),
 		publishStatus <<= isSnapshot { snap => if(snap) "snapshots" else "releases" },
 		commands += stampVersion
 	)
@@ -26,5 +26,5 @@ object Status
 		format.format(new java.util.Date(time))
 	}
 	final val Snapshot = "-SNAPSHOT"
-	def isMilestone(v: String) = Pattern.matches(""".+-M\d+""", v)
+	def snapshotQualifier(v: String) = !Pattern.matches(""".+-(M|Alpha|Beta|RC)\d*""", v)
 }
