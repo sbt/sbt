@@ -1,4 +1,4 @@
-libraryDependencies += "org.scalatest" %% "scalatest" % "1.6.1" % "test"
+libraryDependencies += "org.scalatest" % "scalatest_2.9.1" % "1.6.1" % "test"
 
 
 testOptions in Configurations.Test ++= {

@@ -12,9 +12,9 @@ object ScalaProviderTest extends Specification
 	 def provide = addToSusVerb("provide")
 	"Launch" should provide {
 		"ClassLoader for Scala 2.8.0" in { checkScalaLoader("2.8.0") }
-		"ClassLoader for Scala 2.8.1" in { checkScalaLoader("2.8.1") }
-		"ClassLoader for Scala 2.9.0-1" in { checkScalaLoader("2.9.0-1") }
-		"ClassLoader for Scala 2.9.1" in { checkScalaLoader("2.9.1") }
+		"ClassLoader for Scala 2.8.2" in { checkScalaLoader("2.8.2") }
+		"ClassLoader for Scala 2.9.0" in { checkScalaLoader("2.9.0") }
+		"ClassLoader for Scala 2.9.2" in { checkScalaLoader("2.9.2") }
 	}
 
 	"Launch" should {
@@ -36,7 +36,7 @@ object ScalaProviderTest extends Specification
 		withTemporaryDirectory { currentDirectory =>
 			withLauncher { launcher =>
 				Launch.run(launcher)(
-					new RunConfiguration(Some(mapScalaVersion(LaunchTest.getScalaVersion)), LaunchTest.testApp(mainClassName, extra(currentDirectory)).toID, currentDirectory, arguments)
+					new RunConfiguration(Some(unmapScalaVersion(LaunchTest.getScalaVersion)), LaunchTest.testApp(mainClassName, extra(currentDirectory)).toID, currentDirectory, arguments)
 				)
 			}
 		}
@@ -48,7 +48,7 @@ object ScalaProviderTest extends Specification
 		testResources.foreach(resource => touch(new File(resourceDirectory, resource.replace('/', File.separatorChar))))
 		Array(resourceDirectory)
 	}
-	private def checkScalaLoader(version: String): Unit = withLauncher( checkLauncher(version, scalaVersionMap(version)) )
+	private def checkScalaLoader(version: String): Unit = withLauncher( checkLauncher(version, mapScalaVersion(version)) )
 	private def checkLauncher(version: String, versionValue: String)(launcher: Launcher): Unit =
 	{
 		val provider = launcher.getScala(version)
@@ -70,9 +70,8 @@ object LaunchTest
 			f(Launcher(bootDirectory, testRepositories))
 		}
 
-	def mapScalaVersion(versionNumber: String) = scalaVersionMap.find(_._2 == versionNumber).getOrElse {
-		error("Scala version number " + versionNumber + " from library.properties has no mapping")}._1
-	val scalaVersionMap = Map("2.9.0-1" -> "2.9.0.1") ++ List("2.8.0", "2.8.1", "2.9.1").map(v => (v, v + ".final"))
+	def unmapScalaVersion(versionNumber: String) = versionNumber.stripSuffix(".final") 
+	def mapScalaVersion(versionNumber: String) = versionNumber + ".final"
 	def getScalaVersion: String = getScalaVersion(getClass.getClassLoader)
 	def getScalaVersion(loader: ClassLoader): String = loadProperties(loader, "library.properties").getProperty("version.number")
 	lazy val AppVersion = loadProperties(getClass.getClassLoader, "xsbt.version.properties").getProperty("version")

@@ -12,5 +12,5 @@ object B extends Build
 				resolvers += ScalaToolsReleases
 			)
 
-	lazy val specs = "org.specs2" %% "specs2" % "1.7.1" % "it,test"
+	lazy val specs = "org.specs2" % "specs2_2.9.1" % "1.7.1" % "it,test"
 }
