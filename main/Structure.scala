@@ -617,6 +617,9 @@ object InputKey
 	def apply[T: Manifest](label: String, description: String = "", rank: Int = KeyRanks.DefaultInputRank): InputKey[T] =
 		apply( AttributeKey[InputTask[T]](label, description, rank) )
 
+	def apply[T: Manifest](label: String, description: String, extend1: Scoped, extendN: Scoped*): InputKey[T] =
+		apply(label, description, KeyRanks.DefaultInputRank, extend1, extendN : _*)
+
 	def apply[T: Manifest](label: String, description: String, rank: Int, extend1: Scoped, extendN: Scoped*): InputKey[T] =
 		apply( AttributeKey[InputTask[T]](label, description, extendScoped(extend1, extendN), rank) )
 
