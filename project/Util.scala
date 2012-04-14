@@ -73,7 +73,7 @@ object Util
 	def srcID = "compiler-interface-src"
 
 	def publishPomSettings: Seq[Setting[_]] = Seq(
-		publishArtifact in makePom := true,
+		publishArtifact in makePom := false,
 		pomPostProcess := cleanPom _
 	)
 
