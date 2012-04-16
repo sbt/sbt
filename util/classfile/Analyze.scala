@@ -53,28 +53,32 @@ private[sbt] object Analyze
 				{
 					trapAndLog(log)
 					{
-						for (url <- Option(loader.getResource(tpe.replace('.', '/') + ClassExt)); file <- IO.urlAsFile(url))
+						val loaded = load(tpe, Some("Problem processing dependencies of source " + source))
+						for(clazz <- loaded; file <- ErrorHandling.convert(IO.classLocationFile(clazz)).right)
 						{
-							val name = {
-								val lastDot = tpe.lastIndexOf('.')
-								if (lastDot < 0) tpe else tpe.substring(lastDot + 1)
-							}
-							if(url.getProtocol == "jar")
-								analysis.binaryDependency(file, name, source)
-							else
+							val name = clazz.getName
+							if(file.isDirectory)
 							{
-								assume(url.getProtocol == "file")
-								productToSource.get(file) match
+								val resolved = resolveClassFile(file, tpe)
+								assume(resolved.exists, "Resolved class file " + resolved + " from " + source + " did not exist")
+								if(file == outputDirectory)
 								{
-									case Some(dependsOn) => analysis.sourceDependency(dependsOn, source)
-									case None => analysis.binaryDependency(file, name, source)
+									productToSource.get(resolved) match
+									{
+										case Some(dependsOn) => analysis.sourceDependency(dependsOn, source)
+										case None => analysis.binaryDependency(resolved, clazz.getName, source)
+									}
 								}
+								else
+									analysis.binaryDependency(resolved, name, source)
 							}
+							else
+								analysis.binaryDependency(file, name, source)
 						}
 					}
 				}
 				
-				classFiles.flatMap(_.types).toSet.foreach(processDependency)
+				classFiles.flatMap(_.types).foreach(processDependency)
 				readAPI(source, classFiles.toSeq.flatMap(c => load(c.className, Some("Error reading API from class file") )))
 				analysis.endSource(source)
 			}
@@ -102,6 +106,7 @@ private[sbt] object Analyze
 	}
 	private final val ClassExt = ".class"
 	private def trimClassExt(name: String) = if(name.endsWith(ClassExt)) name.substring(0, name.length - ClassExt.length) else name
+	private def resolveClassFile(file: File, className: String): File = (file /: (className.replace('.','/') + ClassExt).split("/"))(new File(_, _))
 	private def guessSourcePath(sourceNameMap: Map[String, Set[File]], classFile: ClassFile, log: Logger) =
 	{
 		val classNameParts = classFile.className.split("""\.""")
