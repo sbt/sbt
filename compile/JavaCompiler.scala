@@ -23,17 +23,27 @@ object JavaCompiler
 {
 	type Fork = (JavacContract, Seq[String], Logger) => Int
 
+        private def pwClass          = classOf[PrintWriter]
+        private def arrayStringClass = classOf[Array[String]]
+        private def docletsClass     = "com.sun.tools.doclets.standard.Standard"
+
+        // The real performance gain comes if you can skip the indirection.
+        /* val javac = new JavacContract("javac", "com.sun.tools.javac.Main") {
+                def exec(args: Array[String], writer: PrintWriter): Int =
+                com.sun.tools.javac.Main.compile(args, writer)
+        } */
+
 	val javac = new JavacContract("javac", "com.sun.tools.javac.Main") {
-		def exec(args: Array[String], writer: PrintWriter) = {
-			val m = Class.forName(clazz).getDeclaredMethod("compile", classOf[Array[String]], classOf[PrintWriter])
-			m.invoke(null, args, writer).asInstanceOf[java.lang.Integer].intValue
+                private val execMethod = Class.forName(clazz).getDeclaredMethod("compile", arrayStringClass, pwClass)
+                def exec(args: Array[String], writer: PrintWriter) = {
+                        execMethod.invoke(null, args, writer).asInstanceOf[java.lang.Integer].intValue
 		}
 	}
 	val javadoc = new JavacContract("javadoc", "com.sun.tools.javadoc.Main") {
-		def exec(args: Array[String], writer: PrintWriter) = {
-			val m = Class.forName(clazz).getDeclaredMethod("execute", classOf[String], classOf[PrintWriter], classOf[PrintWriter], classOf[PrintWriter], classOf[String], classOf[Array[String]])
-			m.invoke(null, name, writer, writer, writer, "com.sun.tools.doclets.standard.Standard", args).asInstanceOf[java.lang.Integer].intValue
-		}
+                private val execMethod   = Class.forName(clazz).getDeclaredMethod("execute", classOf[String], pwClass, pwClass, pwClass, classOf[String], arrayStringClass)
+
+                def exec(args: Array[String], writer: PrintWriter) =
+                        execMethod.invoke(null, name, writer, writer, writer, docletsClass, args).asInstanceOf[java.lang.Integer].intValue
 	}
 
 	def construct(f: Fork, cp: ClasspathOptions, scalaInstance: ScalaInstance): JavaCompiler =
