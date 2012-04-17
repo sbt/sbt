@@ -5,7 +5,6 @@ package sbt
 package classfile
 
 import java.io.{DataInputStream, File, InputStream}
-import scala.annotation.switch
 
 // Translation of jdepend.framework.ClassFileParser by Mike Clark, Clarkware Consulting, Inc.
 // BSD Licensed
@@ -133,18 +132,17 @@ private[sbt] object Parser
 		pool
 	}
 
-        private def getConstant(in: DataInputStream): Constant =
-        {
+	private def getConstant(in: DataInputStream) =
+	{
 		val tag = in.readByte()
-
-                // No switch for byte scrutinees! Stupid compiler.
-                ((tag: Int): @switch) match {
-                        case ConstantClass | ConstantString => new Constant(tag, in.readUnsignedShort())
-                        case ConstantField | ConstantMethod | ConstantInterfaceMethod | ConstantNameAndType =>
-                                new Constant(tag, in.readUnsignedShort(), in.readUnsignedShort())
-                        case ConstantInteger => new Constant(tag, new java.lang.Integer(in.readInt()))
-                        case ConstantFloat => new Constant(tag, new java.lang.Float(in.readFloat()))
-                        case ConstantLong => new Constant(tag, new java.lang.Long(in.readLong()))
+		tag match
+		{
+			case ConstantClass | ConstantString => new Constant(tag, in.readUnsignedShort())
+			case ConstantField | ConstantMethod | ConstantInterfaceMethod | ConstantNameAndType =>
+				new Constant(tag, in.readUnsignedShort(), in.readUnsignedShort())
+			case ConstantInteger => new Constant(tag, new java.lang.Integer(in.readInt()))
+			case ConstantFloat => new Constant(tag, new java.lang.Float(in.readFloat()))
+			case ConstantLong => new Constant(tag, new java.lang.Long(in.readLong()))
 			case ConstantDouble => new Constant(tag, new java.lang.Double(in.readDouble()))
 			case ConstantUTF8 => new Constant(tag, in.readUTF())
 			case _ => error("Unknown constant: " + tag)
