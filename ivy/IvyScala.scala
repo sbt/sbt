@@ -14,14 +14,16 @@ import plugins.matcher.ExactPatternMatcher
 
 object ScalaArtifacts
 {
-	val Organization = "org.scala-lang"
-	val LibraryID = "scala-library"
-	val CompilerID = "scala-compiler"
+		import xsbti.ArtifactInfo._
+	val Organization = ScalaOrganization
+	val LibraryID = ScalaLibraryID
+	val CompilerID = ScalaCompilerID
 	def libraryDependency(version: String): ModuleID = ModuleID(Organization, LibraryID, version)
 }
 object SbtArtifacts
 {
-	val Organization = "org.scala-sbt"
+		import xsbti.ArtifactInfo._
+	val Organization = SbtOrganization
 }
 
 import ScalaArtifacts._
