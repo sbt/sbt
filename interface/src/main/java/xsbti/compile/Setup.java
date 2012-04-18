@@ -17,8 +17,8 @@ public interface Setup<Analysis>
 	/** If true, no sources are actually compiled and the Analysis from the previous compilation is returned.*/
 	boolean skip();
 
-	/** The directory used to cache information across compilations.
-	* This directory can be removed to force a full recompilation. 
-	* The directory should be unique and not shared between compilations. */
-	File cacheDirectory();
+	/** The file used to cache information across compilations.
+	* This file can be removed to force a full recompilation. 
+	* The file should be unique and not shared between compilations. */
+	File cacheFile();
 }
