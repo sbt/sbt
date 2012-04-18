@@ -104,6 +104,8 @@ object Sbt extends Build
 		// sbt-side interface to compiler.  Calls compiler-side interface reflectively
 	lazy val compilerSub = testedBaseProject(compilePath, "Compile") dependsOn(launchInterfaceSub, interfaceSub % "compile;test->test", ivySub, ioSub, classpathSub, 
 		logSub % "test->test", launchSub % "test->test", apiSub % "test") settings( compilerSettings : _*)
+	lazy val compilerIntegrationSub = baseProject(compilePath / "integration", "Compiler Integration") dependsOn(
+		compileIncrementalSub, compilerSub, compilePersistSub, apiSub, classfileSub)
 
 	lazy val scriptedBaseSub = baseProject(scriptedPath / "base", "Scripted Framework") dependsOn(ioSub, processSub)
 	lazy val scriptedSbtSub = baseProject(scriptedPath / "sbt", "Scripted sbt") dependsOn(ioSub, logSub, processSub, scriptedBaseSub, launchInterfaceSub % "provided")
@@ -112,7 +114,7 @@ object Sbt extends Build
 
 		// Implementation and support code for defining actions.
 	lazy val actionsSub = baseProject(mainPath / "actions", "Actions") dependsOn(
-		classfileSub, classpathSub, compileIncrementalSub, compilePersistSub, compilerSub, completeSub, apiSub,
+		classpathSub, completeSub, apiSub, compilerIntegrationSub,
 		interfaceSub, ioSub, ivySub, logSub, processSub, runSub, stdTaskSub, taskSub, trackingSub, testingSub)
 
 	lazy val commandSub = testedBaseProject(commandPath, "Command") dependsOn(interfaceSub, ioSub, launchInterfaceSub, logSub, completeSub, classpathSub)
