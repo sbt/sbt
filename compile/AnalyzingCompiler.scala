@@ -12,9 +12,9 @@ package compiler
 * provided by scalaInstance.  This class requires a ComponentManager in order to obtain the interface code to scalac and
 * the analysis plugin.  Because these call Scala code for a different Scala version than the one used for this class, they must
 * be compiled for the version of Scala being used.*/
-class AnalyzingCompiler(val scalaInstance: ScalaInstance, val manager: ComponentManager, val cp: ClasspathOptions, log: Logger)
+class AnalyzingCompiler(val scalaInstance: ScalaInstance, val provider: CompilerInterfaceProvider, val cp: ClasspathOptions, log: Logger)
 {
-	def this(scalaInstance: ScalaInstance, manager: ComponentManager, log: Logger) = this(scalaInstance, manager, ClasspathOptions.auto, log)
+	def this(scalaInstance: ScalaInstance, provider: CompilerInterfaceProvider, log: Logger) = this(scalaInstance, provider, ClasspathOptions.auto, log)
 	def apply(sources: Seq[File], classpath: Seq[File], outputDirectory: File, options: Seq[String], callback: AnalysisCallback, maximumErrors: Int, log: Logger)
 	{
 		val arguments = (new CompilerArguments(scalaInstance, cp))(sources, classpath, outputDirectory, options)
@@ -48,7 +48,7 @@ class AnalyzingCompiler(val scalaInstance: ScalaInstance, val manager: Component
 			classOf[Array[String]], classOf[String], classOf[String], classOf[String], classOf[String], classOf[ClassLoader], classOf[Array[String]], classOf[Array[Any]], classOf[xLogger])(
 			options.toArray[String]: Array[String], bootClasspath, classpathString, initialCommands, cleanupCommands, loader.orNull, names.toArray[String], values.toArray[Any], log)
 	}
-	def force(log: Logger): Unit = getInterfaceJar(log)
+	def force(log: Logger): Unit = provider(scalaInstance, log)
 	private def call(interfaceClassName: String, log: Logger)(argTypes: Class[_]*)(args: AnyRef*)
 	{
 		val interfaceClass = getInterfaceClass(interfaceClassName, log)
@@ -59,20 +59,12 @@ class AnalyzingCompiler(val scalaInstance: ScalaInstance, val manager: Component
 	}
 	private[this] def loader =
 	{
-		val interfaceJar = getInterfaceJar(log)
+		val interfaceJar = provider(scalaInstance, log)
 		// this goes to scalaInstance.loader for scala classes and the loader of this class for xsbti classes
 		val dual = createDualLoader(scalaInstance.loader, getClass.getClassLoader)
 		new URLClassLoader(Array(interfaceJar.toURI.toURL), dual)
 	}
 	private def getInterfaceClass(name: String, log: Logger) = Class.forName(name, true, loader)
-	private def getInterfaceJar(log: Logger) =
-	{
-		// this is the instance used to compile the interface component
-		val componentCompiler = newComponentCompiler(log)
-		log.debug("Getting " + ComponentCompiler.compilerInterfaceID + " from component compiler for Scala " + scalaInstance.version)
-		componentCompiler(ComponentCompiler.compilerInterfaceID)
-	}
-	def newComponentCompiler(log: Logger) = new ComponentCompiler(new RawCompiler(scalaInstance, ClasspathOptions.auto, log), manager)
 	protected def createDualLoader(scalaLoader: ClassLoader, sbtLoader: ClassLoader): ClassLoader =
 	{
 		val xsbtiFilter = (name: String) => name.startsWith("xsbti.")

@@ -2,11 +2,11 @@
  * Copyright 2010 Mark Harrah
  */
 package sbt
+package compiler
 
 import inc._
 
 	import java.io.File
-	import compiler.{AnalyzingCompiler, CompilerArguments, JavaCompiler}
 	import classpath.ClasspathUtilities
 	import classfile.Analyze
 	import xsbti.api.Source
@@ -108,7 +108,7 @@ class AggressiveCompile(cacheFile: File)
 	import AnalysisFormats._
 	val store = AggressiveCompile.staticCache(cacheFile, AnalysisStore.sync(AnalysisStore.cached(FileBasedStore(cacheFile))))
 }
-private object AggressiveCompile
+object AggressiveCompile
 {
 		import collection.mutable
 		import java.lang.ref.{Reference,SoftReference}
@@ -121,4 +121,53 @@ private object AggressiveCompile
 				b
 			}
 		}
+
+	def directOrFork(instance: ScalaInstance, cpOptions: ClasspathOptions, javaHome: Option[File]): JavaCompiler =
+		if(javaHome.isDefined)
+			JavaCompiler.fork(cpOptions, instance)(forkJavac(javaHome))
+		else
+			JavaCompiler.directOrFork(cpOptions, instance)(forkJavac(None))
+
+	def forkJavac(javaHome: Option[File]): JavaCompiler.Fork =
+	{
+		import Path._
+		def exec(jc: JavacContract) = javaHome match { case None => jc.name; case Some(jh) => (jh / "bin" / jc.name).absolutePath }
+		(contract: JavacContract, args: Seq[String], log: Logger) => {
+			log.debug("Forking " + contract.name + ": " + exec(contract) + " " + args.mkString(" "))
+			val javacLogger = new JavacLogger(log)
+			var exitCode = -1
+			try {
+				exitCode = Process(exec(contract), args) ! javacLogger
+			} finally {
+				javacLogger.flush(exitCode)
+			}
+			exitCode
+		}
+	}
+}
+
+private[sbt] class JavacLogger(log: Logger) extends ProcessLogger {
+  import scala.collection.mutable.ListBuffer
+  import Level.{Info, Warn, Error, Value => LogLevel}
+
+  private val msgs: ListBuffer[(LogLevel, String)] = new ListBuffer()
+
+  def info(s: => String): Unit =
+    synchronized { msgs += ((Info, s)) }
+
+  def error(s: => String): Unit =
+    synchronized { msgs += ((Error, s)) }
+
+  def buffer[T](f: => T): T = f
+
+  private def print(desiredLevel: LogLevel)(t: (LogLevel, String)) = t match {
+    case (Info, msg) => log.info(msg)
+    case (Error, msg) => log.log(desiredLevel, msg)
+  }
+
+  def flush(exitCode: Int): Unit = {
+    val level = if (exitCode == 0) Warn else Error
+    msgs foreach print(level)
+    msgs.clear()
+  }
 }
