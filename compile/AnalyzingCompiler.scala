@@ -12,7 +12,7 @@ package compiler
 * provided by scalaInstance.  This class requires a ComponentManager in order to obtain the interface code to scalac and
 * the analysis plugin.  Because these call Scala code for a different Scala version than the one used for this class, they must
 * be compiled for the version of Scala being used.*/
-class AnalyzingCompiler(val scalaInstance: ScalaInstance, val provider: CompilerInterfaceProvider, val cp: ClasspathOptions, log: Logger)
+class AnalyzingCompiler(val scalaInstance: xsbti.compile.ScalaInstance, val provider: CompilerInterfaceProvider, val cp: xsbti.compile.ClasspathOptions, log: Logger)
 {
 	def this(scalaInstance: ScalaInstance, provider: CompilerInterfaceProvider, log: Logger) = this(scalaInstance, provider, ClasspathOptions.auto, log)
 	def apply(sources: Seq[File], classpath: Seq[File], outputDirectory: File, options: Seq[String], callback: AnalysisCallback, maximumErrors: Int, log: Logger)
@@ -72,4 +72,35 @@ class AnalyzingCompiler(val scalaInstance: ScalaInstance, val provider: Compiler
 		new classpath.DualLoader(scalaLoader, notXsbtiFilter, x => true, sbtLoader, xsbtiFilter, x => false)
 	}
 	override def toString = "Analyzing compiler (Scala " + scalaInstance.actualVersion + ")"
+}
+object AnalyzingCompiler
+{
+	import sbt.IO.{copy, createDirectory, zip, jars, unzip, withTemporaryDirectory}
+
+	/** Extract sources from source jars, compile them with the xsbti interfaces on the classpath, and package the compiled classes and
+	* any resources from the source jars into a final jar.*/
+	def compileSources(sourceJars: Iterable[File], targetJar: File, xsbtiJars: Iterable[File], id: String, compiler: RawCompiler, log: Logger)
+	{
+		val isSource = (f: File) => isSourceName(f.getName)
+		def keepIfSource(files: Set[File]): Set[File] = if(files.exists(isSource)) files else Set()
+
+		withTemporaryDirectory { dir =>
+			val extractedSources = (Set[File]() /: sourceJars) { (extracted, sourceJar)=> extracted ++ keepIfSource(unzip(sourceJar, dir)) }
+			val (sourceFiles, resources) = extractedSources.partition(isSource)
+			withTemporaryDirectory { outputDirectory =>
+				log.info("'" + id + "' not yet compiled for Scala " + compiler.scalaInstance.actualVersion + ". Compiling...")
+				val start = System.currentTimeMillis
+				try
+				{
+					compiler(sourceFiles.toSeq, xsbtiJars.toSeq ++ sourceJars, outputDirectory, "-nowarn" :: Nil)
+					log.info("  Compilation completed in " + (System.currentTimeMillis - start) / 1000.0 + " s")
+				}
+				catch { case e: xsbti.CompileFailed => throw new CompileFailed(e.arguments, "Error compiling sbt component '" + id + "'") }
+				import sbt.Path._
+				copy(resources x rebase(dir, outputDirectory))
+				zip((outputDirectory ***) x_! relativeTo(outputDirectory), targetJar)
+			}
+		}
+	}
+	private def isSourceName(name: String): Boolean = name.endsWith(".scala") || name.endsWith(".java")
 }

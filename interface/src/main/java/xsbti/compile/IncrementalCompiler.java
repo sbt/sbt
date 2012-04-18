@@ -52,9 +52,10 @@ public interface IncrementalCompiler<Analysis, ScalaCompiler>
 	* to create a ScalaCompiler for incremental compilation.  It is the client's responsibility to manage compiled jars for
 	* different Scala versions.
 	*
+	* @param label A brief name describing the source component for use in error messages
 	* @param sourceJar The jar file containing the compiler interface sources.  These are published as sbt's compiler-interface-src module.
 	* @param targetJar Where to create the output jar file containing the compiled classes.
 	* @param instance The ScalaInstance to compile the compiler interface for.
 	* @param log The logger to use during compilation. */
-	void compileInterfaceJar(File sourceJar, File targetJar, ScalaInstance instance, Logger log);
+	void compileInterfaceJar(String label, File sourceJar, File targetJar, File interfaceJar, ScalaInstance instance, Logger log);
 }
