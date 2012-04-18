@@ -4,6 +4,7 @@
 package sbt
 package compiler
 
+	import xsbti.ArtifactInfo
 	import scala.util
 	import java.io.File
 	import CompilerArguments.{abs, absString, BootClasspathOption}
@@ -48,7 +49,7 @@ final class CompilerArguments(scalaInstance: ScalaInstance, cp: ClasspathOptions
 			originalBoot
 	}
 	def filterLibrary(classpath: Seq[File]) =
-		if(cp.filterLibrary) classpath.filterNot(_.getName contains ScalaArtifacts.LibraryID) else classpath
+		if(cp.filterLibrary) classpath.filterNot(_.getName contains ArtifactInfo.ScalaLibraryID) else classpath
 	def bootClasspathOption = if(cp.autoBoot) Seq(BootClasspathOption, createBootClasspath) else Nil
 	def bootClasspath = if(cp.autoBoot) IO.parseClasspath(createBootClasspath) else Nil
 }
