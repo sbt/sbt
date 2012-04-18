@@ -13,16 +13,6 @@ object Compiler
 {
 	val DefaultMaxErrors = 100
 
-	def allProblems(inc: Incomplete): Seq[Problem] =
-		allProblems(inc :: Nil)
-	def allProblems(incs: Seq[Incomplete]): Seq[Problem] =
-		problems(Incomplete.allExceptions(incs).toSeq)
-	def problems(es: Seq[Throwable]): Seq[Problem]  =
-		es flatMap {
-			case cf: xsbti.CompileFailed => cf.problems
-			case _ => Nil
-		}
-
 	final case class Inputs(compilers: Compilers, config: Options, incSetup: IncSetup)
 	final case class Options(classpath: Seq[File], sources: Seq[File], classesDirectory: File, options: Seq[String], javacOptions: Seq[String], maxErrors: Int, order: CompileOrder.Value)
 	final case class IncSetup(analysisMap: Map[File, Analysis], definesClass: DefinesClass, skip: Boolean, cacheFile: File)
