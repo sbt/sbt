@@ -375,7 +375,11 @@ object Load
 		val normBase = localBase.getCanonicalFile
 		val defDir = selectProjectDir(normBase)
 		val pluginDir = pluginDirectory(defDir)
-		val (plugs, defs) = if(pluginDir.exists) loadUnitOld(defDir, pluginDir, s, config) else loadUnitNew(defDir, s, config)
+		val (plugs, defs) = if(pluginDir.exists && pluginDir.isDirectory && pluginDir.list().length > 0) {
+			loadUnitOld(defDir, pluginDir, s, config)
+		} else {
+			loadUnitNew(defDir, s, config)
+		}
 		new BuildUnit(uri, normBase, defs, plugs)
 	}
 	def loadUnitNew(defDir: File, s: State, config: LoadBuildConfiguration): (LoadedPlugins, LoadedDefinitions) =
