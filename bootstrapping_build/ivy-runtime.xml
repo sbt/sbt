@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ivy-module version="2.0">
+    <info organisation="org.scala-tools.sbt" module=""/>
+    <dependencies>
+         <dependency org="org.scala-lang" name="scala-library" rev="[2.9.1,)"/>
+         <dependency org="org.scala-lang" name="scala-compiler" rev="[2.9.1,)"/>
+         <dependency org="net.java.dev.jna" name="jna" rev="[3.2.3,)"/>
+
+         <!--dependency org="" name="" rev=""/-->
+    </dependencies>
+</ivy-module>

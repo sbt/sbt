@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ivysettings>
+  <settings defaultResolver="chain" />
+  <property name="debian-maven-path" value="/usr/share/maven-repo"/>
+  <property name="Pattern" value="[organisation]/[module]/[revision]/[artifact]-[revision].[ext]" />
+
+  <resolvers>
+    <chain name="chain">
+      <filesystem name="debian-maven" m2compatible="true" local="true" force="true" >
+        <artifact pattern="${debian-maven-path}/${Pattern}" />
+      </filesystem>
+
+      <ibiblio name="maven2" m2compatible="true" />
+      <ibiblio name="scala-tools" m2compatible="true" root="http://scala-tools.org/repo-releases/"/>
+    </chain>
+  </resolvers>
+  <caches useOrigin="true">
+  </caches>
+</ivysettings>
+

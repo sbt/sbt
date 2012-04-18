@@ -1,0 +1,20 @@
+The standard way to build sbt is with sbt itself. This is called a circular
+dependency and poses problems for (linux) distributions that want to build all
+their packages from source.
+
+For this special purpose an alternative is provided. The Makefile in the project
+root dir compiles a minimal sbt that is then used to compile a full version of
+sbt.
+
+THIS IS STILL WORK IN PROGRESS AND DOES NOT YET WORK!
+
+The Makefile has a section of configuration variables at the top, that you may
+want to change.
+
+## Rationale ##
+
+* [Bootstrapable Debian][BootDebian]
+* [On distributing binaries][Binaries]
+
+[BootDebian]: http://penta.debconf.org/dc11_schedule/events/745.en.html
+[Binaries]: http://www.koch.ro/blog/index.php?/archives/153-On-distributing-binaries.html

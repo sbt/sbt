@@ -95,7 +95,7 @@ class Launch private[xsbt](val bootDirectory: File, val lockBoot: Boolean, val i
 
 	class JNAProvider extends Provider
 	{
-		lazy val id = new Application("net.java.dev.jna", "jna", new Explicit("3.2.3"), "", Nil, false, array())
+		lazy val id = new Application("net.java.dev.jna", "jna", new Explicit("3.2.7"), "", Nil, false, array())
 		lazy val configuration = new UpdateConfiguration(bootDirectory, ivyOptions.ivyHome, "", repositories, checksumsList)
 		lazy val libDirectory = new File(bootDirectory, baseDirectoryName(""))
 		def baseDirectories: List[File] = new File(libDirectory, appDirectoryName(id.toID, File.separator)) :: Nil
