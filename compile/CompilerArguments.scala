@@ -4,6 +4,7 @@
 package sbt
 package compiler
 
+	import xsbti.ArtifactInfo
 	import scala.util
 	import java.io.File
 	import CompilerArguments.{abs, absString, BootClasspathOption}
@@ -13,7 +14,7 @@ package compiler
 * order to add these jars to the boot classpath. The 'scala.home' property must be unset because Scala
 * puts jars in that directory on the bootclasspath.  Because we use multiple Scala versions,
 * this would lead to compiling against the wrong library jar.*/
-final class CompilerArguments(scalaInstance: ScalaInstance, cp: ClasspathOptions)
+final class CompilerArguments(scalaInstance: xsbti.compile.ScalaInstance, cp: xsbti.compile.ClasspathOptions)
 {
 	def apply(sources: Seq[File], classpath: Seq[File], outputDirectory: File, options: Seq[String]): Seq[String] =
 	{
@@ -27,7 +28,7 @@ final class CompilerArguments(scalaInstance: ScalaInstance, cp: ClasspathOptions
 		options ++ outputOption ++ bootClasspathOption ++ classpathOption ++ abs(sources)
 	}
 	def finishClasspath(classpath: Seq[File]): Seq[File] =
-		filterLibrary(classpath) ++ include(cp.compiler, scalaInstance.compilerJar) ++ include(cp.extra, scalaInstance.extraJars : _*)
+		filterLibrary(classpath) ++ include(cp.compiler, scalaInstance.compilerJar) ++ include(cp.extra, scalaInstance.otherJars : _*)
 	private def include(flag: Boolean, jars: File*) = if(flag) jars else Nil
 	protected def abs(files: Seq[File]) = files.map(_.getAbsolutePath).sortWith(_ < _)
 	protected def checkScalaHomeUnset()
@@ -48,7 +49,7 @@ final class CompilerArguments(scalaInstance: ScalaInstance, cp: ClasspathOptions
 			originalBoot
 	}
 	def filterLibrary(classpath: Seq[File]) =
-		if(cp.filterLibrary) classpath.filterNot(_.getName contains ScalaArtifacts.LibraryID) else classpath
+		if(cp.filterLibrary) classpath.filterNot(_.getName contains ArtifactInfo.ScalaLibraryID) else classpath
 	def bootClasspathOption = if(cp.autoBoot) Seq(BootClasspathOption, createBootClasspath) else Nil
 	def bootClasspath = if(cp.autoBoot) IO.parseClasspath(createBootClasspath) else Nil
 }

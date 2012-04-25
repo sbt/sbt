@@ -10,8 +10,12 @@ package sbt
 * for the compiler itself.
 * The 'version' field is the version used to obtain the Scala classes.  This is typically the version for the maven repository.
 * The 'actualVersion' field should be used to uniquely identify the compiler.  It is obtained from the compiler.properties file.*/
-final class ScalaInstance(val version: String, val loader: ClassLoader, val libraryJar: File, val compilerJar: File, val extraJars: Seq[File], val explicitActual: Option[String])
+final class ScalaInstance(val version: String, val loader: ClassLoader, val libraryJar: File, val compilerJar: File, val extraJars: Seq[File], val explicitActual: Option[String]) extends xsbti.compile.ScalaInstance
 {
+	// These are to implement xsbti.ScalaInstance
+	def otherJars: Array[File] = extraJars.toArray
+	def allJars: Array[File] = jars.toArray
+
 	require(version.indexOf(' ') < 0, "Version cannot contain spaces (was '" + version + "')")
 	def jars = libraryJar :: compilerJar :: extraJars.toList
 	/** Gets the version of Scala in the compiler.properties file from the loader.  This version may be different than that given by 'version'*/
