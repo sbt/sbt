@@ -1,0 +1,4 @@
+-> check
+$ copy-file changes/build.sbt build.sbt
+> reload
+> check
