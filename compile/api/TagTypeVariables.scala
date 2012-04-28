@@ -23,10 +23,12 @@ private class TagTypeVariables
 
 	def tag(s: SourceAPI): TypeVars =
 	{
-		s.definitions.foreach(tagDefinition)
+		tagDefinitions(s.definitions)
 		tags
 	}
-	def tagDefinitions(ds: Seq[Definition]) = ds.foreach(tagDefinition)
+	def tagDefinitions(ds: Seq[Definition], eachFresh: Boolean = false): Unit =
+		for(d <- ds) if(eachFresh) freshScope(tagDefinition(d)) else tagDefinition(d)
+
 	def tagDefinition(d: Definition)
 	{
 		d match
@@ -123,7 +125,7 @@ private class TagTypeVariables
 	{
 		tagTypes(structure.parents)
 		tagDefinitions(structure.declared)
-		tagDefinitions(structure.inherited)
+		tagDefinitions(structure.inherited, eachFresh=true)
 	}
 	def tagParameters(parameters: Seq[TypeParameter], base: Type): Unit =
 		scope {
@@ -136,10 +138,22 @@ private class TagTypeVariables
 		val saveIndex = index
 		index = 0
 		level += 1
-		
+
 		action
 		
 		level -= 1
+		index = saveIndex
+	}
+	def freshScope(action: => Unit)
+	{
+		val saveIndex = index
+		val saveLevel = level
+		index = 0
+		level = 0
+	
+		action
+
+		level = saveLevel
 		index = saveIndex
 	}
 	def recordTypeParameter(id: Int)
