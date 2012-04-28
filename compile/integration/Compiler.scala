@@ -4,7 +4,7 @@
 package sbt
 
 	import xsbti.{Logger => _,_}
-	import xsbti.compile.CompileOrder
+	import xsbti.compile.{CompileOrder,GlobalsCache}
 	import CompileOrder.{JavaThenScala, Mixed, ScalaThenJava}
 	import compiler._
 	import inc._
@@ -17,7 +17,7 @@ object Compiler
 
 	final case class Inputs(compilers: Compilers, config: Options, incSetup: IncSetup)
 	final case class Options(classpath: Seq[File], sources: Seq[File], classesDirectory: File, options: Seq[String], javacOptions: Seq[String], maxErrors: Int, order: CompileOrder)
-	final case class IncSetup(analysisMap: File => Option[Analysis], definesClass: DefinesClass, skip: Boolean, cacheFile: File)
+	final case class IncSetup(analysisMap: File => Option[Analysis], definesClass: DefinesClass, skip: Boolean, cacheFile: File, cache: GlobalsCache)
 	final case class Compilers(scalac: AnalyzingCompiler, javac: JavaTool)
 
 	@deprecated("Use the other inputs variant.", "0.12.0")
@@ -27,7 +27,7 @@ object Compiler
 		val classesDirectory = outputDirectory / "classes"
 		val cacheFile = outputDirectory / "cache_old_style"
 		val augClasspath = classesDirectory.asFile +: classpath
-		val incSetup = IncSetup(Map.empty, definesClass, false, cacheFile)
+		val incSetup = IncSetup(Map.empty, definesClass, false, cacheFile, CompilerCache.fresh)
 		inputs(augClasspath, sources, classesDirectory, options, javacOptions, maxErrors, order)(compilers, incSetup, log)
 	}
 	def inputs(classpath: Seq[File], sources: Seq[File], classesDirectory: File, options: Seq[String], javacOptions: Seq[String], maxErrors: Int, order: CompileOrder)(implicit compilers: Compilers, incSetup: IncSetup, log: Logger): Inputs =
@@ -76,6 +76,6 @@ object Compiler
 			import in.incSetup._
 
 		val agg = new AggressiveCompile(cacheFile)
-		agg(scalac, javac, sources, classpath, classesDirectory, options, javacOptions, analysisMap, definesClass, maxErrors, order, skip)(log)
+		agg(scalac, javac, sources, classpath, classesDirectory, cache, options, javacOptions, analysisMap, definesClass, maxErrors, order, skip)(log)
 	}
 }

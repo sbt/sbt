@@ -55,6 +55,7 @@ object Defaults extends BuildCommon
 		managedDirectory <<= baseDirectory(_ / "lib_managed")
 	))
 	def globalCore: Seq[Setting[_]] = inScope(GlobalScope)(defaultTestTasks(test) ++ defaultTestTasks(testOnly) ++ defaultTestTasks(testQuick) ++ Seq(
+		compilerCache <<= state map { _ get Keys.stateCompilerCache getOrElse compiler.CompilerCache.fresh },
 		crossVersion :== CrossVersion.Disabled,
 		scalaOrganization :== ScalaArtifacts.Organization,
 		buildDependencies <<= buildDependencies or Classpaths.constructBuildDependencies,
@@ -574,8 +575,8 @@ object Defaults extends BuildCommon
 
 	def compileTask = (compileInputs in compile, streams) map { (i,s) => Compiler(i,s.log) }
 	def compileIncSetupTask =
-		(dependencyClasspath, cacheDirectory, skip in compile, definesClass) map { (cp, cacheDir, skip, definesC) =>
-			Compiler.IncSetup(analysisMap(cp), definesC, skip, cacheDir / "inc_compile")
+		(dependencyClasspath, cacheDirectory, skip in compile, definesClass, compilerCache) map { (cp, cacheDir, skip, definesC, cache) =>
+			Compiler.IncSetup(analysisMap(cp), definesC, skip, cacheDir / "inc_compile", cache)
 		}
 	def compileInputsSettings: Seq[Setting[_]] = {
 		val optionsPair = TaskKey.local[(Seq[String], Seq[String])]

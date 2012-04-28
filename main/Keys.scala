@@ -10,7 +10,7 @@ package sbt
 	import inc.Analysis
 	import inc.Locate.DefinesClass
 	import std.TaskExtra._
-	import xsbti.compile.CompileOrder
+	import xsbti.compile.{CompileOrder, GlobalsCache}
 	import scala.xml.{Node => XNode, NodeSeq}
 	import org.apache.ivy.core.module.{descriptor, id}
 	import descriptor.ModuleDescriptor, id.ModuleRevisionId
@@ -153,6 +153,8 @@ object Keys
 	val compile = TaskKey[Analysis]("compile", "Compiles sources.", APlusTask)
 	val compilers = TaskKey[Compiler.Compilers]("compilers", "Defines the Scala and Java compilers to use for compilation.", DTask)
 	val compileIncSetup = TaskKey[Compiler.IncSetup]("inc-compile-setup", "Configures aspects of incremental compilation.", DTask)
+	val compilerCache = TaskKey[GlobalsCache]("compiler-cache", "Cache of scala.tools.nsc.Global instances.  This should typically be cached so that it isn't recreated every task run.", DTask)
+	val stateCompilerCache = AttributeKey[GlobalsCache]("compiler-cache", "Internal use: Global cache.")
 	val definesClass = TaskKey[DefinesClass]("defines-class", "Internal use: provides a function that determines whether the provided file contains a given class.", Invisible)
 	val doc = TaskKey[File]("doc", "Generates API documentation.", AMinusTask)
 	val copyResources = TaskKey[Seq[(File,File)]]("copy-resources", "Copies resources to the output directory.", AMinusTask)
