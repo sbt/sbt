@@ -4,7 +4,7 @@
 package sbt
 
 	import complete.{DefaultParsers, Parser}
-	import compiler.EvalImports
+	import compiler.{CompilerCache,EvalImports}
 	import Types.{const,idFun}
 	import Aggregation.AnyKeys
 	import Project.LoadAction
@@ -394,11 +394,27 @@ object BuiltinCommands
 	def loadProjectImpl = Command(LoadProjectImpl)(_ => Project.loadActionParser)( doLoadProject )
 	def doLoadProject(s0: State, action: LoadAction.Value): State =
 	{
-		val (s, base) = Project.loadAction(SessionVar.clear(s0), action)
+		val (s1, base) = Project.loadAction(SessionVar.clear(s0), action)
 		IO.createDirectory(base)
+		val s = if(s1 has Keys.stateCompilerCache) s1 else registerCompilerCache(s1)
 		val (eval, structure) = Load.defaultLoad(s, base, s.log, Project.inPluginProject(s), Project.extraBuilds(s))
 		val session = Load.initialSession(structure, eval, s0)
 		SessionSettings.checkSession(session, s)
 		Project.setProject(session, structure, s)
+	}
+	def registerCompilerCache(s: State): State =
+	{
+		val maxCompilers = System.getProperty("sbt.resident.limit")
+		val cache =
+			if(maxCompilers == null)
+				CompilerCache.fresh
+			else
+			{
+				val num = try maxCompilers.toInt catch {
+					case e: NumberFormatException => throw new RuntimeException("Resident compiler limit must be an integer.", e)
+				}
+				if(num <= 0) CompilerCache.fresh else CompilerCache(num)
+			}
+		s.put(Keys.stateCompilerCache, cache)
 	}
 }
