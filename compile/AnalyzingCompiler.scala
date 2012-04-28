@@ -5,6 +5,7 @@ package sbt
 package compiler
 
 	import xsbti.{AnalysisCallback, Logger => xLogger, Reporter}
+	import xsbti.compile.{CachedCompiler, CachedCompilerProvider, DependencyChanges, GlobalsCache}
 	import java.io.File
 	import java.net.{URL, URLClassLoader}
 
@@ -12,22 +13,37 @@ package compiler
 * provided by scalaInstance.  This class requires a ComponentManager in order to obtain the interface code to scalac and
 * the analysis plugin.  Because these call Scala code for a different Scala version than the one used for this class, they must
 * be compiled for the version of Scala being used.*/
-class AnalyzingCompiler(val scalaInstance: xsbti.compile.ScalaInstance, val provider: CompilerInterfaceProvider, val cp: xsbti.compile.ClasspathOptions, log: Logger)
+final class AnalyzingCompiler(val scalaInstance: xsbti.compile.ScalaInstance, val provider: CompilerInterfaceProvider, val cp: xsbti.compile.ClasspathOptions, log: Logger) extends CachedCompilerProvider
 {
 	def this(scalaInstance: ScalaInstance, provider: CompilerInterfaceProvider, log: Logger) = this(scalaInstance, provider, ClasspathOptions.auto, log)
-	def apply(sources: Seq[File], classpath: Seq[File], outputDirectory: File, options: Seq[String], callback: AnalysisCallback, maximumErrors: Int, log: Logger)
+	def apply(sources: Seq[File], changes: DependencyChanges, classpath: Seq[File], outputDirectory: File, options: Seq[String], callback: AnalysisCallback, maximumErrors: Int, cache: GlobalsCache, log: Logger)
 	{
-		val arguments = (new CompilerArguments(scalaInstance, cp))(sources, classpath, outputDirectory, options)
-		compile(arguments, callback, maximumErrors, log)
+		val arguments = (new CompilerArguments(scalaInstance, cp))(Nil, classpath, outputDirectory, options)
+		compile(sources, changes, arguments, callback, maximumErrors, cache, log)
 	}
 
-	def compile(arguments: Seq[String], callback: AnalysisCallback, maximumErrors: Int, log: Logger): Unit =
-		compile(arguments, callback, log, new LoggerReporter(maximumErrors, log))
-	def compile(arguments: Seq[String], callback: AnalysisCallback, log: Logger, reporter: Reporter)
+	def compile(sources: Seq[File], changes: DependencyChanges, options: Seq[String], callback: AnalysisCallback, maximumErrors: Int, cache: GlobalsCache, log: Logger): Unit =
 	{
-		call("xsbt.CompilerInterface", log)(
-			classOf[Array[String]], classOf[AnalysisCallback], classOf[xLogger], classOf[Reporter] ) (
-			arguments.toArray[String] : Array[String], callback, log, reporter )
+		val reporter = new LoggerReporter(maximumErrors, log)
+		val cached = cache(options.toArray, !changes.isEmpty, this, log, reporter)
+		compile(sources, changes, callback, log, reporter, cached)
+	}
+
+	def compile(sources: Seq[File], changes: DependencyChanges, callback: AnalysisCallback, log: Logger, reporter: Reporter, compiler: CachedCompiler)
+	{
+		call("xsbt.CompilerInterface", "run", log)(
+			classOf[Array[File]], classOf[DependencyChanges], classOf[AnalysisCallback], classOf[xLogger], classOf[Reporter], classOf[CachedCompiler]) (
+			sources.toArray, changes, callback, log, reporter, compiler )
+	}
+	def newCachedCompiler(arguments: Array[String], log: xLogger, reporter: Reporter): CachedCompiler =
+		newCachedCompiler(arguments: Seq[String], log, reporter)
+
+	def newCachedCompiler(arguments: Seq[String], log: xLogger, reporter: Reporter): CachedCompiler =
+	{
+		call("xsbt.CompilerInterface", "newCompiler", log)(
+			classOf[Array[String]], classOf[xLogger], classOf[Reporter] ) (
+			arguments.toArray[String] : Array[String], log, reporter ).
+			asInstanceOf[CachedCompiler]
 	}
 
 	def doc(sources: Seq[File], classpath: Seq[File], outputDirectory: File, options: Seq[String], maximumErrors: Int, log: Logger): Unit =
@@ -35,7 +51,7 @@ class AnalyzingCompiler(val scalaInstance: xsbti.compile.ScalaInstance, val prov
 	def doc(sources: Seq[File], classpath: Seq[File], outputDirectory: File, options: Seq[String], log: Logger, reporter: Reporter): Unit =
 	{
 		val arguments = (new CompilerArguments(scalaInstance, cp))(sources, classpath, outputDirectory, options)
-		call("xsbt.ScaladocInterface", log) (classOf[Array[String]], classOf[xLogger], classOf[Reporter]) (
+		call("xsbt.ScaladocInterface", "run", log) (classOf[Array[String]], classOf[xLogger], classOf[Reporter]) (
 			arguments.toArray[String] : Array[String], log, reporter)
 	}
 	def console(classpath: Seq[File], options: Seq[String], initialCommands: String, cleanupCommands: String, log: Logger)(loader: Option[ClassLoader] = None, bindings: Seq[(String, Any)] = Nil): Unit =
@@ -44,16 +60,16 @@ class AnalyzingCompiler(val scalaInstance: xsbti.compile.ScalaInstance, val prov
 		val classpathString = CompilerArguments.absString(arguments.finishClasspath(classpath))
 		val bootClasspath = if(cp.autoBoot) arguments.createBootClasspath else ""
 		val (names, values) = bindings.unzip
-		call("xsbt.ConsoleInterface", log)(
+		call("xsbt.ConsoleInterface", "run", log)(
 			classOf[Array[String]], classOf[String], classOf[String], classOf[String], classOf[String], classOf[ClassLoader], classOf[Array[String]], classOf[Array[Any]], classOf[xLogger])(
 			options.toArray[String]: Array[String], bootClasspath, classpathString, initialCommands, cleanupCommands, loader.orNull, names.toArray[String], values.toArray[Any], log)
 	}
 	def force(log: Logger): Unit = provider(scalaInstance, log)
-	private def call(interfaceClassName: String, log: Logger)(argTypes: Class[_]*)(args: AnyRef*)
+	private def call(interfaceClassName: String, methodName: String, log: Logger)(argTypes: Class[_]*)(args: AnyRef*): AnyRef =
 	{
 		val interfaceClass = getInterfaceClass(interfaceClassName, log)
 		val interface = interfaceClass.newInstance.asInstanceOf[AnyRef]
-		val method = interfaceClass.getMethod("run", argTypes : _*)
+		val method = interfaceClass.getMethod(methodName, argTypes : _*)
 		try { method.invoke(interface, args: _*) }
 		catch { case e: java.lang.reflect.InvocationTargetException => throw e.getCause }
 	}
