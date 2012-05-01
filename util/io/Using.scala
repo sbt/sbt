@@ -78,7 +78,7 @@ object Using
 	def bufferedInputStream = wrap( (in: InputStream) => new BufferedInputStream(in) )
 	def fileOutputStream(append: Boolean = false) = file(f => new BufferedOutputStream(new FileOutputStream(f, append)))
 	def fileInputStream = file(f => new BufferedInputStream(new FileInputStream(f)))
-	def urlInputStream = resource( (u: URL) => translate("Error opening " + u + ": ")(u.openStream))
+	def urlInputStream = resource( (u: URL) => translate("Error opening " + u + ": ")(new BufferedInputStream(u.openStream)))
 	def fileOutputChannel = file(f => new FileOutputStream(f).getChannel)
 	def fileInputChannel = file(f => new FileInputStream(f).getChannel)
 	def fileWriter(charset: Charset = IO.utf8, append: Boolean = false) =
