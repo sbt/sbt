@@ -447,7 +447,7 @@ private object IvySbt
 			{
 				for(conf <- dependencyDescriptor.getModuleConfigurations)
 				{
-					dependencyDescriptor.addExcludeRule(conf, IvyScala.excludeRule(excls.organization, excls.name, excls.configurations))
+					dependencyDescriptor.addExcludeRule(conf, IvyScala.excludeRule(excls.organization, excls.name, excls.configurations, "*"))
 				}
 			}
 			moduleID.addDependency(dependencyDescriptor)

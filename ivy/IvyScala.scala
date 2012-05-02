@@ -87,15 +87,15 @@ private object IvyScala
 			}
 		}
 		def excludeScalaJar(name: String): Unit =
-			module.addExcludeRule(excludeRule(Organization, name, configurationNames))
+			module.addExcludeRule(excludeRule(Organization, name, configurationNames, "jar"))
 		excludeScalaJar(LibraryID)
 		excludeScalaJar(CompilerID)
 	}
 	/** Creates an ExcludeRule that excludes artifacts with the given module organization and name for
 	* the given configurations. */
-	private[sbt] def excludeRule(organization: String, name: String, configurationNames: Iterable[String]): ExcludeRule =
+	private[sbt] def excludeRule(organization: String, name: String, configurationNames: Iterable[String], excludeTypePattern: String): ExcludeRule =
 	{
-		val artifact = new ArtifactId(ModuleId.newInstance(organization, name), "*", "*", "*")
+		val artifact = new ArtifactId(ModuleId.newInstance(organization, name), "*", excludeTypePattern, "*")
 		val rule = new DefaultExcludeRule(artifact, ExactPatternMatcher.INSTANCE, emptyMap[AnyRef,AnyRef])
 		configurationNames.foreach(rule.addConfiguration)
 		rule
