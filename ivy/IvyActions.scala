@@ -184,7 +184,7 @@ object IvyActions
 	{
 		val excluded = exclude getOrElse(restrictedCopy(m, false), Set.empty)
 		val included = classifiers filterNot excluded
-		if(included.isEmpty) None else Some(m.copy(explicitArtifacts = classifiedArtifacts(m.name, included) ))
+		if(included.isEmpty) None else Some(m.copy(isTransitive = false, explicitArtifacts = classifiedArtifacts(m.name, included) ))
 	}
 	def addExcluded(report: UpdateReport, classifiers: Seq[String], exclude: Map[ModuleID, Set[String]]): UpdateReport =
 		report.addMissing { id => classifiedArtifacts(id.name, classifiers filter getExcluded(id, exclude)) }
