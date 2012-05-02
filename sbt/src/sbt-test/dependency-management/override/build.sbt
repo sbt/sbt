@@ -12,3 +12,5 @@ InputKey[Unit]("check") <<= inputTask { args =>
 			report.allModules.forall(_.revision == expected)
 	}
 }
+
+scalaVersion := "2.9.1"
