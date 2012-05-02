@@ -19,8 +19,6 @@ private[sbt] object CustomXmlParser extends XmlModuleDescriptorParser
 	import XmlModuleDescriptorParser.Parser
 	class CustomParser(settings: IvySettings, defaultConfig: Option[String]) extends Parser(CustomXmlParser, settings)
 	{
-		if(defaultConfig.isDefined) setDefaultConfMapping("*->default(compile)")
-
 		def setSource(url: URL) =
 		{
 			super.setResource(new URLResource(url))
@@ -29,7 +27,11 @@ private[sbt] object CustomXmlParser extends XmlModuleDescriptorParser
 		def setInput(bytes: Array[Byte]) { setInput(new ByteArrayInputStream(bytes)) }
 		/** Overridden because the super implementation overwrites the module descriptor.*/
 		override def setResource(res: Resource) {}
-		override def setMd(md: DefaultModuleDescriptor) = super.setMd(md)
+		override def setMd(md: DefaultModuleDescriptor) =
+		{
+			super.setMd(md)
+			if(defaultConfig.isDefined) setDefaultConfMapping("*->default(compile)")
+		}
 		override def parseDepsConfs(confs: String, dd: DefaultDependencyDescriptor) = super.parseDepsConfs(confs, dd)
 		override def getDefaultConf = defaultConfig.getOrElse(super.getDefaultConf)
 	}
