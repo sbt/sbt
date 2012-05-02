@@ -52,9 +52,28 @@ object Tags
 
 	def getInt(m: TagMap, tag: Tag): Int = m.getOrElse(tag, 0)
 
+	/** Constructs a custom Rule from the predicate `f`. 
+	* The input represents the weighted tags of a set of tasks.
+	* The function `f` should return true if those tasks are allowed to execute concurrently and false if they are not.
+	*
+	* If there is only one task represented by the map, it must be allowed to execute.*/
 	def customLimit(f: TagMap => Boolean): Rule = new Custom(f)
+
+	/** Returns a Rule that limits the maximum number of concurrently executing tasks to `max`, regardless of tags. */
 	def limitAll(max: Int): Rule = limit(All, max)
+
+	/** Returns a Rule that limits the maximum number of concurrently executing tasks without a tag to `max`.  */
 	def limitUntagged(max: Int): Rule = limit(Untagged, max)
+
+	/** Returns a Rule that limits the maximum number of concurrent executings tasks tagged with `tag` to `max`.*/
 	def limit(tag: Tag, max: Int): Rule = new Single(tag, max)
+
 	def limitSum(max: Int, tags: Tag*): Rule = new Sum(tags, max)
+	/** Ensure that a task with the given tag always executes in isolation.*/
+	def exclusive(exclusiveTag: Tag): Rule = customLimit { (tags: Map[Tag,Int]) =>
+		// if there are no exclusive tasks in this group, this rule adds no restrictions
+		tags.getOrElse(exclusiveTag, 0) == 0 ||
+			// If there is only one task, allow it to execute.
+			tags.getOrElse(Tags.All, 0) == 1
+	}
 }
