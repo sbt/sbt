@@ -51,6 +51,7 @@ object BasicIO
 	private def processErrFully(log: ProcessLogger) = processFully(s => log.error(s))
 	private def processInfoFully(log: ProcessLogger) = processFully(s => log.info(s))
 
+	def ignoreOut = (i: OutputStream) => ()
 	def closeOut = (_: OutputStream).close()
 	final val BufferSize = 8192
 	final val Newline = System.getProperty("line.separator")
