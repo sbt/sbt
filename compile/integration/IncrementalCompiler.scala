@@ -1,5 +1,6 @@
 package sbt.compiler
 
+	import sbt.CompileSetup
 	import sbt.inc.Analysis
 	import xsbti.{Logger, Maybe}
 	import xsbti.compile._
@@ -28,5 +29,18 @@ object IC extends IncrementalCompiler[Analysis, AnalyzingCompiler]
 	{
 		val raw = new RawCompiler(instance, sbt.ClasspathOptions.auto, log)
 		AnalyzingCompiler.compileSources(sourceJar :: Nil, targetJar, interfaceJar :: Nil, label, raw, log)
+	}
+
+	def readCache(file: File): Option[(Analysis, CompileSetup)] =
+		try { Some(readCacheUncaught(file)) } catch { case _: Exception => None }
+
+	def readAnalysis(file: File): Analysis =
+		try { readCacheUncaught(file)._1 } catch { case _: Exception => Analysis.Empty }
+
+	def readCacheUncaught(file: File): (Analysis, CompileSetup) =
+	{
+		import sbinary.DefaultProtocol.{immutableMapFormat, immutableSetFormat, StringFormat, tuple2Format}
+		import sbt.inc.AnalysisFormats._
+		sbt.IO.gzipFileIn(file)( in => sbinary.Operations.read[(Analysis, CompileSetup)](in) )
 	}
 }
