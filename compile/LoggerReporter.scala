@@ -115,7 +115,7 @@ class LoggerReporter(maximumErrors: Int, log: Logger) extends xsbti.Reporter
 	
 	def log(pos: Position, msg: String, severity: Severity): Unit =
 	{
-		allProblems += problem(pos, msg, severity)
+		allProblems += problem("", pos, msg, severity)
 		severity match
 		{
 			case Warn | Error =>
