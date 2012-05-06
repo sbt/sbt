@@ -132,7 +132,7 @@ final class IvySbt(val configuration: IvyConfiguration)
 					case pc: PomConfiguration => configurePom(pc)
 					case ifc: IvyFileConfiguration => configureIvyFile(ifc)
 				}
-			moduleSettings.ivyScala.foreach(IvyScala.checkModule(baseModule, baseConfiguration))
+			moduleSettings.ivyScala.foreach(IvyScala.checkModule(baseModule, baseConfiguration, configuration.log))
 			IvySbt.addExtraNamespace(baseModule)
 			(baseModule, baseConfiguration)
 		}
