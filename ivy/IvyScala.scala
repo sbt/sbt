@@ -8,7 +8,7 @@ import scala.collection.mutable.HashSet
 
 import org.apache.ivy.{core, plugins}
 import core.module.descriptor.{DefaultExcludeRule, ExcludeRule}
-import core.module.descriptor.{DefaultModuleDescriptor, ModuleDescriptor, OverrideDependencyDescriptorMediator}
+import core.module.descriptor.{DependencyDescriptor, DefaultModuleDescriptor, ModuleDescriptor, OverrideDependencyDescriptorMediator}
 import core.module.id.{ArtifactId,ModuleId, ModuleRevisionId}
 import plugins.matcher.ExactPatternMatcher
 
@@ -59,15 +59,19 @@ private object IvyScala
 	private def checkDependencies(module: ModuleDescriptor, scalaBinaryVersion: String, configurations: Iterable[Configuration], log: Logger)
 	{
 		val configSet = if(configurations.isEmpty) (c: String) => true else configurationSet(configurations)
-		for(dep <- module.getDependencies.toList)
+		def binaryScalaWarning(dep: DependencyDescriptor): Option[String] =
 		{
 			val id = dep.getDependencyRevisionId
 			val depBinaryVersion = CrossVersion.binaryScalaVersion(id.getRevision)
-			if(id.getOrganisation == Organization && depBinaryVersion != scalaBinaryVersion && dep.getModuleConfigurations.exists(configSet))
-				log.warn("Binary version "  + " (" + depBinaryVersion + ") for dependency " + id +
+			val mismatched = id.getOrganisation == Organization && depBinaryVersion != scalaBinaryVersion && dep.getModuleConfigurations.exists(configSet)
+			if(mismatched)
+				Some("Binary version (" + depBinaryVersion + ") for dependency " + id +
 					"\n\tin " + module.getModuleRevisionId +
 					" differs from Scala binary version in project (" + scalaBinaryVersion + ").")
+			else
+				None
 		}
+		module.getDependencies.toList.flatMap(binaryScalaWarning).toSet foreach { (s: String) => log.warn(s) }
 	}
 	private def configurationSet(configurations: Iterable[Configuration]) = configurations.map(_.toString).toSet
 
