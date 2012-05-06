@@ -196,13 +196,13 @@ object Resolver
 	val SbtPluginRepositoryRoot = "http://scalasbt.artifactoryonline.com/scalasbt"
 	val SonatypeRepositoryRoot = "https://oss.sonatype.org/content/repositories"
 	@deprecated("Maven repository at scala-tools.org is being phased out, consider using an alternative resolver", "0.11.3")
-	val ScalaToolsReleasesName = "Scala-Tools Maven2 Repository"
+	val ScalaToolsReleasesName = "Sonatype OSS Releases"
 	@deprecated("Maven repository at scala-tools.org is being phased out, consider using an alternative resolver", "0.11.3")
-	val ScalaToolsSnapshotsName = "Scala-Tools Maven2 Snapshots Repository"
+	val ScalaToolsSnapshotsName = "Sonatype OSS Snapshots"
 	@deprecated("Maven repository at scala-tools.org is being phased out, consider using an alternative resolver", "0.11.3")
-	val ScalaToolsReleasesRoot = "http://scala-tools.org/repo-releases"
+	val ScalaToolsReleasesRoot = SonatypeRepositoryRoot + "/releases"
 	@deprecated("Maven repository at scala-tools.org is being phased out, consider using an alternative resolver", "0.11.3")
-	val ScalaToolsSnapshotsRoot = "http://scala-tools.org/repo-snapshots"
+	val ScalaToolsSnapshotsRoot = SonatypeRepositoryRoot + "/snapshots"
 	val JavaNet2RepositoryName = "java.net Maven2 Repository"
 	val JavaNet2RepositoryRoot = "http://download.java.net/maven/2"
 
