@@ -26,5 +26,5 @@ public interface AnalysisCallback
 	public void api(File sourceFile, xsbti.api.SourceAPI source);
 	/** Provides problems discovered during compilation.  These may be reported (logged) or unreported.
 	* Unreported problems are usually unreported because reporting was not enabled via a command line switch. */
-	public void problem(Position pos, String msg, Severity severity, boolean reported);
+	public void problem(String what, Position pos, String msg, Severity severity, boolean reported);
 }

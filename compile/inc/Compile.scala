@@ -63,11 +63,11 @@ private final class AnalysisCallback(internalMap: File => Option[File], external
 	private def add[A,B](map: Map[A,Set[B]], a: A, b: B): Unit =
 		map.getOrElseUpdate(a, new HashSet[B]) += b
 
-	def problem(pos: Position, msg: String, severity: Severity, reported: Boolean): Unit =
+	def problem(category: String, pos: Position, msg: String, severity: Severity, reported: Boolean): Unit =
 	{
 		for(source <- m2o(pos.sourceFile)) {
 			val map = if(reported) reporteds else unreporteds
-			map.getOrElseUpdate(source, ListBuffer.empty) += Logger.problem(pos, msg, severity)
+			map.getOrElseUpdate(source, ListBuffer.empty) += Logger.problem(category, pos, msg, severity)
 		}
 	}
 

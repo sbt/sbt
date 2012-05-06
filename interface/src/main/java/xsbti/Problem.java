@@ -5,6 +5,7 @@ package xsbti;
 
 public interface Problem
 {
+	String category();
 	Severity severity();
 	String message();
 	Position position();
