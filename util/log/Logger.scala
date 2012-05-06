@@ -79,9 +79,10 @@ object Logger
 			val sourceFile = o2m(sourceFile0)
 		}
 
-	def problem(pos: Position, msg: String, sev: Severity): Problem =
+	def problem(cat: String, pos: Position, msg: String, sev: Severity): Problem =
 		new Problem
 		{
+			val category = cat
 			val position = pos
 			val message = msg
 			val severity = sev
