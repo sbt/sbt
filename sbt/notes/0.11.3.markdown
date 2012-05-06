@@ -1,0 +1,3 @@
+sbt 0.11.3 is a bug fix release.  See [Changes](https://github.com/harrah/xsbt/wiki/Changes) for details.
+
+The main change is removing scala-tools.org.  It is no longer included as a default repository and sbt's organization has been renamed to org.scala-sbt (from org.scala-tools.sbt).  Other changes are bug fixes, including fixing the compiler interface to work with Scala 2.10.
