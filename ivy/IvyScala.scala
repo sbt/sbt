@@ -33,10 +33,10 @@ final case class IvyScala(scalaFullVersion: String, scalaBinaryVersion: String, 
 private object IvyScala
 {
 	/** Performs checks/adds filters on Scala dependencies (if enabled in IvyScala). */
-	def checkModule(module: DefaultModuleDescriptor, conf: String)(check: IvyScala)
+	def checkModule(module: DefaultModuleDescriptor, conf: String, log: Logger)(check: IvyScala)
 	{
 		if(check.checkExplicit)
-			checkDependencies(module, check.scalaBinaryVersion, check.configurations)
+			checkDependencies(module, check.scalaBinaryVersion, check.configurations, log)
 		if(check.filterImplicit)
 			excludeScalaJars(module, check.configurations)
 		if(check.overrideScalaVersion)
@@ -56,7 +56,7 @@ private object IvyScala
                 
 	/** Checks the immediate dependencies of module for dependencies on scala jars and verifies that the version on the
 	* dependencies matches scalaVersion. */
-	private def checkDependencies(module: ModuleDescriptor, scalaBinaryVersion: String, configurations: Iterable[Configuration])
+	private def checkDependencies(module: ModuleDescriptor, scalaBinaryVersion: String, configurations: Iterable[Configuration], log: Logger)
 	{
 		val configSet = if(configurations.isEmpty) (c: String) => true else configurationSet(configurations)
 		for(dep <- module.getDependencies.toList)
@@ -64,7 +64,9 @@ private object IvyScala
 			val id = dep.getDependencyRevisionId
 			val depBinaryVersion = CrossVersion.binaryScalaVersion(id.getRevision)
 			if(id.getOrganisation == Organization && depBinaryVersion != scalaBinaryVersion && dep.getModuleConfigurations.exists(configSet))
-				error("Binary version for dependency " + id + " (" + depBinaryVersion + ") differs from Scala binary version in project (" + scalaBinaryVersion + ").")
+				log.warn("Binary version "  + " (" + depBinaryVersion + ") for dependency " + id +
+					"\n\tin " + module.getModuleRevisionId +
+					" differs from Scala binary version in project (" + scalaBinaryVersion + ").")
 		}
 	}
 	private def configurationSet(configurations: Iterable[Configuration]) = configurations.map(_.toString).toSet
