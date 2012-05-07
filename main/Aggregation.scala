@@ -30,7 +30,7 @@ final object Aggregation
 		Command.applyEffect(seqParser(ps)) { ts =>
 			runTasks(s, structure, ts, Dummies(KNil, HNil), show)
 		}
-	def runTasks[HL <: HList, T](s: State, structure: Load.BuildStructure, ts: Values[Task[T]], extra: Dummies[HL], show: Boolean)(implicit display: Show[ScopedKey[_]]): State =
+	def runTasksWithResult[HL <: HList, T](s: State, structure: Load.BuildStructure, ts: Values[Task[T]], extra: Dummies[HL], show: Boolean)(implicit display: Show[ScopedKey[_]]): (State, Result[Seq[KeyValue[T]]]) =
 	{
 			import EvaluateTask._
 			import std.TaskExtra._
@@ -52,10 +52,15 @@ final object Aggregation
 		try { onResult(result, log) { results => if(show) printSettings(results, log) } }
 		finally { printSuccess(start, stop, extracted, success, log) }
 
-		newS
+		(newS, result)
 	}
 
-	def printSuccess(start: Long, stop: Long, extracted: Extracted, success: Boolean, log: Logger)
+  def runTasks[HL <: HList, T](s: State, structure: Load.BuildStructure, ts: Values[Task[T]], extra: Dummies[HL], show: Boolean)(implicit display: Show[ScopedKey[_]]): State = {
+    runTasksWithResult(s, structure, ts, extra, show)._1
+  }
+
+
+  def printSuccess(start: Long, stop: Long, extracted: Extracted, success: Boolean, log: Logger)
 	{
 		import extracted._
 		lazy val enabled = showSuccess in extracted.currentRef get extracted.structure.data getOrElse true
