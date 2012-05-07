@@ -18,7 +18,7 @@ object Packaging {
   def localWindowsPattern = "[organisation]/[module]/[revision]/[module].[ext]"
   
   val settings: Seq[Setting[_]] = packagerSettings ++ Seq(
-    sbtLaunchJarUrl <<= sbtVersion apply ("http://typesafe.artifactoryonline.com/typesafe/ivy-releases/org.scala-tools.sbt/sbt-launch/"+_+"/sbt-launch.jar"),
+    sbtLaunchJarUrl <<= sbtVersion apply ("http://repo.typesafe.com/typesafe/ivy-releases/org.scala-sbt/sbt-launch/"+_+"/sbt-launch.jar"),
     sbtLaunchJarLocation <<= target apply (_ / "sbt-launch.jar"),
     sbtLaunchJar <<= (sbtLaunchJarUrl, sbtLaunchJarLocation) map { (uri, file) =>
       import dispatch._
