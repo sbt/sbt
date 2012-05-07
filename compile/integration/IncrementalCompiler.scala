@@ -31,8 +31,8 @@ object IC extends IncrementalCompiler[Analysis, AnalyzingCompiler]
 		AnalyzingCompiler.compileSources(sourceJar :: Nil, targetJar, interfaceJar :: Nil, label, raw, log)
 	}
 
-	def readCache(file: File): Option[(Analysis, CompileSetup)] =
-		try { Some(readCacheUncaught(file)) } catch { case _: Exception => None }
+	def readCache(file: File): Maybe[(Analysis, CompileSetup)] =
+		try { Maybe.just(readCacheUncaught(file)) } catch { case _: Exception => Maybe.nothing() }
 
 	def readAnalysis(file: File): Analysis =
 		try { readCacheUncaught(file)._1 } catch { case _: Exception => Analysis.Empty }
