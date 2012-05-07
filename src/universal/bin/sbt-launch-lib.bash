@@ -7,9 +7,9 @@
 # TODO - Should we merge the main SBT script with this library?
 
 # TODO - Don't hardcode this.
-declare sbt_version="0.11.2"
-declare -r sbt_release_version=0.11.2
-declare -r sbt_snapshot_version=0.11.3-SNAPSHOT
+declare sbt_version="0.11.3"
+declare -r sbt_release_version=0.11.3
+declare -r sbt_snapshot_version=0.11.4-SNAPSHOT
 
 if test -z "$HOME"; then
   declare -r script_dir="$(dirname $script_path)"

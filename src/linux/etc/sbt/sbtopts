@@ -36,7 +36,7 @@
 #-offline
 
 # Sets the SBT version to use.
-#-sbt-version  0.11.2
+#-sbt-version  0.11.3
 
 # Scala version (default: latest release)
 #
