@@ -137,7 +137,7 @@ public class ForkMain {
 					} else {
 						write(os, new Object[]{ForkTags.Error, "Framework '" + framework + "' does not support test '" + test.name + "'"});
 					}
-					write(os, events.toArray(new ForkEvent[events.size()]));
+					write(os, new Object[]{test.name, events.toArray(new ForkEvent[events.size()])});
 				}
 			}
 			write(os, ForkTags.Done);
