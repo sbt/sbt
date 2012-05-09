@@ -192,17 +192,12 @@ download_url () {
   local url="$1"
   local jar="$2"
 
-  echo "Downloading sbt launcher $sbt_version:"
+  echo "Cannot find sbt launcher $sbt_version"
+  echo "Please download: "
   echo "  From  $url"
   echo "    To  $jar"
 
-  mkdir -p $(dirname "$jar") && {
-    if which curl >/dev/null; then
-      curl --silent "$url" --output "$jar"
-    elif which wget >/dev/null; then
-      wget --quiet -O "$jar" "$url"
-    fi
-  } && [[ -f "$jar" ]]
+  exit 1
 }
 
 acquire_sbt_jar () {
