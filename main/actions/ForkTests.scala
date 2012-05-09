@@ -50,15 +50,13 @@ private[sbt] object ForkTests {
 							case Array(`Info`, s: String) => log.info(s); react
 							case Array(`Debug`, s: String) => log.debug(s); react
 							case t: Throwable => log.trace(t); react
-							case tEvents: Array[Event] =>
-								for (first <- tEvents.headOption) listeners.foreach(_ startGroup first.testName)
+							case Array(group: String, tEvents: Array[Event]) =>
+								listeners.foreach(_ startGroup group)
 								val event = TestEvent(tEvents)
 								listeners.foreach(_ testEvent event)
-								for (first <- tEvents.headOption) {
-									val result = event.result getOrElse TestResult.Passed
-									results += first.testName -> result
-									listeners.foreach(_ endGroup (first.testName, result))
-								}
+								val result = event.result getOrElse TestResult.Passed
+								results += group -> result
+								listeners.foreach(_ endGroup (group, result))
 								react
 						}
 
@@ -89,7 +87,7 @@ private[sbt] object ForkTests {
 
 				val fullCp = classpath ++: Seq(IO.classLocationFile[ForkMain], IO.classLocationFile[Framework])
 				val options = javaOpts ++: Seq("-classpath", fullCp mkString File.pathSeparator, classOf[ForkMain].getCanonicalName, server.getLocalPort.toString)
-				val ec = Fork.java(javaHome, options, LoggedOutput(log))
+				val ec = Fork.java(javaHome, options, StdoutOutput)
 				if (ec != 0) log.error("Running java with options " + options.mkString(" ") + " failed with exit code " + ec)
 			} finally {
 				server.close()
