@@ -55,19 +55,15 @@ private[sbt] object Analyze
 					{
 						for (url <- Option(loader.getResource(tpe.replace('.', '/') + ClassExt)); file <- IO.urlAsFile(url))
 						{
-							val name = {
-								val lastDot = tpe.lastIndexOf('.')
-								if (lastDot < 0) tpe else tpe.substring(lastDot + 1)
-							}
 							if(url.getProtocol == "jar")
-								analysis.binaryDependency(file, name, source)
+								analysis.binaryDependency(file, tpe, source)
 							else
 							{
 								assume(url.getProtocol == "file")
 								productToSource.get(file) match
 								{
 									case Some(dependsOn) => analysis.sourceDependency(dependsOn, source)
-									case None => analysis.binaryDependency(file, name, source)
+									case None => analysis.binaryDependency(file, tpe, source)
 								}
 							}
 						}
