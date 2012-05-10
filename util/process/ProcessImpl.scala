@@ -379,7 +379,7 @@ private[sbt] class SimpleProcessBuilder(p: JProcessBuilder) extends AbstractProc
 {
 	override def run(io: ProcessIO): Process =
 	{
-		val (inherited, pp) = SimpleProcessBuilder.inheritInput(p)
+		val (inherited, pp) = InheritInput(p)
 		val process = pp.start() // start the external process
 		import io.{writeInput, processOutput, processError}
 		// spawn threads that process the input, output, and error streams using the functions defined in `io`
@@ -398,31 +398,10 @@ private[sbt] class SimpleProcessBuilder(p: JProcessBuilder) extends AbstractProc
 	override def canPipeTo = true
 }
 
-/** On java 7, inherit input on ProcessBuilder.
- * This doesn't work on Windows, where jline steals the input. */
-private[this] object SimpleProcessBuilder {
-	def inheritInput(p: JProcessBuilder): (Boolean, JProcessBuilder) = (redirectInput, inherit) match {
-		case (Some(m), Some(f)) if !isWindows => (true, m.invoke(p, f).asInstanceOf[JProcessBuilder])
-		case _ => (false, p)
-	}
-
-	private[this] val isWindows = System.getProperty("os.name").toLowerCase.indexOf("windows") >= 0
-
-	private[this]	val pbClass = Class.forName("java.lang.ProcessBuilder")
-	private[this] val redirectClass = pbClass.getClasses find (_.getSimpleName == "Redirect")
-
-	private[this] val redirectInput = redirectClass map (pbClass.getMethod("redirectInput", _))
-	private[this] val inherit = redirectClass map (_ getField "INHERIT" get null)
-}
-
 /** A thin wrapper around a java.lang.Process. `outputThreads` are the Threads created to read from the
 * output and error streams of the process.
 * The implementation of `exitValue` wait for the process to finish and then waits until the threads reading output and error streams die before
-<<<<<<< HEAD
 * returning. Note that the thread that reads the input stream cannot be interrupted, see https://github.com/harrah/xsbt/issues/327 and
-=======
-* returning. Note that the thread the reads the input stream cannot be interrupted, see https://github.com/harrah/xsbt/issues/327 and
->>>>>>> c3cb264b1d4a67934532d98c77ae41dac8fc57e4
 * http://bugs.sun.com/bugdatabase/view_bug.do?bug_id=4514257 */
 private class SimpleProcess(p: JProcess, outputThreads: List[Thread]) extends Process
 {
