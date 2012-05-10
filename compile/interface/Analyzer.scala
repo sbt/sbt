@@ -17,7 +17,7 @@ object Analyzer
 {
 	def name = "xsbt-analyzer"
 }
-final class Analyzer(val global: Global, val callback: AnalysisCallback) extends Compat
+final class Analyzer(val global: CallbackGlobal) extends Compat
 {
 	import global._
 
@@ -43,7 +43,8 @@ final class Analyzer(val global: Global, val callback: AnalysisCallback) extends
 					{
 						classFile(on) match
 						{
-							case Some((f,className)) =>
+							case Some((f,className,inOutDir)) =>
+								if(inOutDir && on.isJavaDefined) registerTopLevelSym(on)
 								f match
 								{
 									case ze: ZipArchive#Entry => for(zip <- ze.underlyingSource; zipFile <- Option(zip.file) ) binaryDependency(zipFile, className)
@@ -82,12 +83,11 @@ final class Analyzer(val global: Global, val callback: AnalysisCallback) extends
 	}
 
 	private[this] final val classSeparator = '.'
-	private[this] def findClass(name: String): Option[AbstractFile] = classPath.findClass(name).flatMap(_.binary.asInstanceOf[Option[AbstractFile]])
-	private[this] def classFile(sym: Symbol): Option[(AbstractFile, String)] =
+	private[this] def classFile(sym: Symbol): Option[(AbstractFile, String, Boolean)] =
 	{
 		import scala.tools.nsc.symtab.Flags
 		val name = flatname(sym, classSeparator) + moduleSuffix(sym)
-		findClass(name).map(file => (file, name))  orElse {
+		findClass(name).map { case (file,inOut) => (file, name,inOut) } orElse {
 			if(isTopLevelModule(sym))
 			{
 				val linked = sym.companionClass

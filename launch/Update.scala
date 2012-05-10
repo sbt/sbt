@@ -249,7 +249,7 @@ final class Update(config: UpdateConfiguration)
 		case _ => true
 	}
 	private def retrieveType(tpe: String): Boolean = tpe == "jar" || tpe == "bundle"
-	/** Add the scala tools repositories and a URL resolver to download sbt from the Google code project.*/
+	/** Add the Sonatype OSS repositories */
 	private def addResolvers(settings: IvySettings)
 	{
 		val newDefault = new ChainResolver {
@@ -296,7 +296,7 @@ final class Update(config: UpdateConfiguration)
 				case Local => localResolver(settings.getDefaultIvyUserDir.getAbsolutePath)
 				case MavenLocal => mavenLocal
 				case MavenCentral => mavenMainResolver
-				case ScalaToolsReleases => mavenResolver("Scala-Tools Maven2 Repository", "http://scala-tools.org/repo-releases")
+				case ScalaToolsReleases => mavenResolver("Sonatype Releases Repository", "https://oss.sonatype.org/content/repositories/releases")
 				case ScalaToolsSnapshots => scalaSnapshots(getScalaVersion)
 			}
 		}
@@ -354,16 +354,16 @@ final class Update(config: UpdateConfiguration)
 		if(m.matches)
 		{
 			val base = List(1,2,3).map(m.group).mkString(".")
-			val pattern = "http://scala-tools.org/repo-snapshots/[organization]/[module]/" + base + "-SNAPSHOT/[artifact]-[revision](-[classifier]).[ext]"
+			val pattern = "https://oss.sonatype.org/content/repositories/snapshots/[organization]/[module]/" + base + "-SNAPSHOT/[artifact]-[revision](-[classifier]).[ext]"
 
 			val resolver = new URLResolver
-			resolver.setName("Scala Tools Snapshots")
+			resolver.setName("Sonatype OSS Snapshots")
 			resolver.setM2compatible(true)
 			resolver.addArtifactPattern(pattern)
 			resolver
 		}
 		else
-			mavenResolver("Scala-Tools Maven2 Snapshots Repository", "http://scala-tools.org/repo-snapshots")
+			mavenResolver("Sonatype Snapshots Repository", "https://oss.sonatype.org/content/repositories/snapshots")
 	}
 	private def initializeBasic(resolver: BasicResolver) =
 	{

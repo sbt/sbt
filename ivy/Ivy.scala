@@ -132,7 +132,7 @@ final class IvySbt(val configuration: IvyConfiguration)
 					case pc: PomConfiguration => configurePom(pc)
 					case ifc: IvyFileConfiguration => configureIvyFile(ifc)
 				}
-			moduleSettings.ivyScala.foreach(IvyScala.checkModule(baseModule, baseConfiguration))
+			moduleSettings.ivyScala.foreach(IvyScala.checkModule(baseModule, baseConfiguration, configuration.log))
 			IvySbt.addExtraNamespace(baseModule)
 			(baseModule, baseConfiguration)
 		}
@@ -447,7 +447,7 @@ private object IvySbt
 			{
 				for(conf <- dependencyDescriptor.getModuleConfigurations)
 				{
-					dependencyDescriptor.addExcludeRule(conf, IvyScala.excludeRule(excls.organization, excls.name, excls.configurations))
+					dependencyDescriptor.addExcludeRule(conf, IvyScala.excludeRule(excls.organization, excls.name, excls.configurations, "*"))
 				}
 			}
 			moduleID.addDependency(dependencyDescriptor)

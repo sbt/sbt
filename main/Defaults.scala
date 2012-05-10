@@ -11,7 +11,7 @@ package sbt
 	import Load.LoadedBuild
 	import Artifact.{DocClassifier, SourceClassifier}
 	import Configurations.{Compile, CompilerPlugin, IntegrationTest, names, Provided, Runtime, Test}
-	import CrossVersion.{binarySbtVersion, binaryScalaVersion, isStable, selectVersion}
+	import CrossVersion.{binarySbtVersion, binaryScalaVersion}
 	import complete._
 	import std.TaskExtra._
 	import inc.{FileValueCache, Locate}
@@ -55,6 +55,7 @@ object Defaults extends BuildCommon
 		managedDirectory <<= baseDirectory(_ / "lib_managed")
 	))
 	def globalCore: Seq[Setting[_]] = inScope(GlobalScope)(defaultTestTasks(test) ++ defaultTestTasks(testOnly) ++ defaultTestTasks(testQuick) ++ Seq(
+		compilerCache <<= state map { _ get Keys.stateCompilerCache getOrElse compiler.CompilerCache.fresh },
 		crossVersion :== CrossVersion.Disabled,
 		scalaOrganization :== ScalaArtifacts.Organization,
 		buildDependencies <<= buildDependencies or Classpaths.constructBuildDependencies,
@@ -196,12 +197,7 @@ object Defaults extends BuildCommon
 		scalaInstance <<= scalaInstanceSetting,
 		scalaVersion in GlobalScope <<= appConfiguration( _.provider.scalaProvider.version),
 		scalaBinaryVersion in GlobalScope <<= scalaVersion apply binaryScalaVersion,
-		crossVersion <<= (crossPaths, scalaVersion) { (enabled, sv) =>
-			if(enabled)
-				if(isStable(sv)) CrossVersion.binary else CrossVersion.full
-			else
-				CrossVersion.Disabled
-		},
+		crossVersion <<= (crossPaths) { enabled => if(enabled) CrossVersion.binary else CrossVersion.Disabled },
 		crossScalaVersions in GlobalScope <<= Seq(scalaVersion).join,
 		crossTarget <<= (target, scalaBinaryVersion, sbtBinaryVersion, sbtPlugin, crossPaths)(makeCrossTarget)
 	)
@@ -574,8 +570,8 @@ object Defaults extends BuildCommon
 
 	def compileTask = (compileInputs in compile, streams) map { (i,s) => Compiler(i,s.log) }
 	def compileIncSetupTask =
-		(dependencyClasspath, cacheDirectory, skip in compile, definesClass) map { (cp, cacheDir, skip, definesC) =>
-			Compiler.IncSetup(analysisMap(cp), definesC, skip, cacheDir / "inc_compile")
+		(dependencyClasspath, cacheDirectory, skip in compile, definesClass, compilerCache) map { (cp, cacheDir, skip, definesC, cache) =>
+			Compiler.IncSetup(analysisMap(cp), definesC, skip, cacheDir / "inc_compile", cache)
 		}
 	def compileInputsSettings: Seq[Setting[_]] = {
 		val optionsPair = TaskKey.local[(Seq[String], Seq[String])]
@@ -866,7 +862,7 @@ object Classpaths
 			val id = app.provider.id
 			val scalaVersion = app.provider.scalaProvider.version
 			val binVersion = binaryScalaVersion(scalaVersion)
-			val cross = if(id.crossVersioned) if(isStable(scalaVersion)) CrossVersion.binary else CrossVersion.full else CrossVersion.Disabled
+			val cross = if(id.crossVersioned) CrossVersion.binary else CrossVersion.Disabled
 			val base = ModuleID(id.groupID, id.name, id.version, crossVersion = cross)
 			CrossVersion(scalaVersion, binVersion)(base).copy(crossVersion = CrossVersion.Disabled)
 		}
@@ -877,12 +873,9 @@ object Classpaths
 			log.warn("Multiple resolvers having different access mechanism configured with same name '" + name + "'. To avoid conflict, Remove duplicate project resolvers (`resolvers`) or rename publishing resolver (`publishTo`).")
 		}
 	}
-	def pluginProjectID: Initialize[ModuleID] = (sbtVersion in update, sbtBinaryVersion in update, scalaVersion in update, scalaBinaryVersion in update, projectID, sbtPlugin) {
-		(sbtV, sbtBV, scalaV, scalaBV, pid, isPlugin) =>
-			if(isPlugin)
-				sbtPluginExtra(pid, selectVersion(sbtV, sbtBV), selectVersion(scalaV, scalaBV))
-			else
-				pid
+	def pluginProjectID: Initialize[ModuleID] = (sbtBinaryVersion in update, scalaBinaryVersion in update, projectID, sbtPlugin) {
+		(sbtBV, scalaBV, pid, isPlugin) =>
+			if(isPlugin) sbtPluginExtra(pid, sbtBV, scalaBV) else pid
 	}
 	def ivySbt0: Initialize[Task[IvySbt]] =
 		(ivyConfiguration, credentials, streams) map { (conf, creds, s) =>

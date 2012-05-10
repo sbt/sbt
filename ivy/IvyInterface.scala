@@ -178,9 +178,9 @@ final case class SftpRepository(name: String, connection: SshConnection, pattern
 }
 
 import Resolver._
-@deprecated("Maven repository at scala-tools.org is being phased out, consider using an alternative resolver", "0.12.0")
+@deprecated("Maven repository at scala-tools.org is being phased out, consider using an alternative resolver", "0.11.3")
 object ScalaToolsReleases extends MavenRepository(ScalaToolsReleasesName, ScalaToolsReleasesRoot)
-@deprecated("Maven repository at scala-tools.org is being phased out, consider using an alternative resolver", "0.12.0")
+@deprecated("Maven repository at scala-tools.org is being phased out, consider using an alternative resolver", "0.11.3")
 object ScalaToolsSnapshots extends MavenRepository(ScalaToolsSnapshotsName, ScalaToolsSnapshotsRoot)
 object DefaultMavenRepository extends MavenRepository("public", IBiblioResolver.DEFAULT_M2_ROOT)
 object JavaNet2Repository extends MavenRepository(JavaNet2RepositoryName, JavaNet2RepositoryRoot)
@@ -195,14 +195,14 @@ object Resolver
 	val TypesafeRepositoryRoot = "http://repo.typesafe.com/typesafe"
 	val SbtPluginRepositoryRoot = "http://scalasbt.artifactoryonline.com/scalasbt"
 	val SonatypeRepositoryRoot = "https://oss.sonatype.org/content/repositories"
-	@deprecated("Maven repository at scala-tools.org is being phased out, consider using an alternative resolver", "0.12.0")
-	val ScalaToolsReleasesName = "Scala-Tools Maven2 Repository"
-	@deprecated("Maven repository at scala-tools.org is being phased out, consider using an alternative resolver", "0.12.0")
-	val ScalaToolsSnapshotsName = "Scala-Tools Maven2 Snapshots Repository"
-	@deprecated("Maven repository at scala-tools.org is being phased out, consider using an alternative resolver", "0.12.0")
-	val ScalaToolsReleasesRoot = "http://scala-tools.org/repo-releases"
-	@deprecated("Maven repository at scala-tools.org is being phased out, consider using an alternative resolver", "0.12.0")
-	val ScalaToolsSnapshotsRoot = "http://scala-tools.org/repo-snapshots"
+	@deprecated("Maven repository at scala-tools.org is being phased out, consider using an alternative resolver", "0.11.3")
+	val ScalaToolsReleasesName = "Sonatype OSS Releases"
+	@deprecated("Maven repository at scala-tools.org is being phased out, consider using an alternative resolver", "0.11.3")
+	val ScalaToolsSnapshotsName = "Sonatype OSS Snapshots"
+	@deprecated("Maven repository at scala-tools.org is being phased out, consider using an alternative resolver", "0.11.3")
+	val ScalaToolsReleasesRoot = SonatypeRepositoryRoot + "/releases"
+	@deprecated("Maven repository at scala-tools.org is being phased out, consider using an alternative resolver", "0.11.3")
+	val ScalaToolsSnapshotsRoot = SonatypeRepositoryRoot + "/snapshots"
 	val JavaNet2RepositoryName = "java.net Maven2 Repository"
 	val JavaNet2RepositoryRoot = "http://download.java.net/maven/2"
 
@@ -211,16 +211,12 @@ object Resolver
 	def sbtPluginRepo(status: String) = url("sbt-plugin-" + status, new URL(SbtPluginRepositoryRoot + "/sbt-plugin-" + status + "/"))(ivyStylePatterns)
 	def sonatypeRepo(status: String) = new MavenRepository("sonatype-" + status, SonatypeRepositoryRoot + "/" + status)
 
-	/** Add the local, Maven Central, and Scala Tools releases repositories to the user repositories.  */
+	/** Add the local and Maven Central repositories to the user repositories.  */
 	def withDefaultResolvers(userResolvers: Seq[Resolver]): Seq[Resolver] =
 		withDefaultResolvers(userResolvers, true)
-	/** Add the local Ivy and Maven Central repositories to the user repositories.  If `scalaTools` is true, add the Scala Tools releases repository as well.  */
-	def withDefaultResolvers(userResolvers: Seq[Resolver], scalaTools: Boolean): Seq[Resolver] =
-		withDefaultResolvers(userResolvers, true, scalaTools)
 	/** Add the local Ivy repository to the user repositories.
-	* If `scalaTools` is true, add the Scala Tools releases repository.
 	* If `mavenCentral` is true, add the Maven Central repository.  */
-	def withDefaultResolvers(userResolvers: Seq[Resolver], mavenCentral: Boolean, scalaTools: Boolean): Seq[Resolver] =
+	def withDefaultResolvers(userResolvers: Seq[Resolver], mavenCentral: Boolean): Seq[Resolver] =
 		Seq(Resolver.defaultLocal) ++
 		userResolvers ++
 		single(DefaultMavenRepository, mavenCentral)

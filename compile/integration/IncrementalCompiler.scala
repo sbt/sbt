@@ -1,5 +1,6 @@
 package sbt.compiler
 
+	import sbt.CompileSetup
 	import sbt.inc.Analysis
 	import xsbti.{Logger, Maybe}
 	import xsbti.compile._
@@ -16,7 +17,7 @@ object IC extends IncrementalCompiler[Analysis, AnalyzingCompiler]
 		val agg = new AggressiveCompile(setup.cacheFile)
 		val aMap = (f: File) => m2o(analysisMap(f))
 		val defClass = (f: File) => { val dc = definesClass(f); (name: String) => dc.apply(name) }
-		agg(scalac, javac, sources, classpath, classesDirectory, scalacOptions, javacOptions, aMap, defClass, maxErrors, order, skip)(log)
+		agg(scalac, javac, sources, classpath, classesDirectory, cache, scalacOptions, javacOptions, aMap, defClass, maxErrors, order, skip)(log)
 	}
 
 	private[this] def m2o[S](opt: Maybe[S]): Option[S] = if(opt.isEmpty) None else Some(opt.get)
@@ -28,5 +29,18 @@ object IC extends IncrementalCompiler[Analysis, AnalyzingCompiler]
 	{
 		val raw = new RawCompiler(instance, sbt.ClasspathOptions.auto, log)
 		AnalyzingCompiler.compileSources(sourceJar :: Nil, targetJar, interfaceJar :: Nil, label, raw, log)
+	}
+
+	def readCache(file: File): Maybe[(Analysis, CompileSetup)] =
+		try { Maybe.just(readCacheUncaught(file)) } catch { case _: Exception => Maybe.nothing() }
+
+	def readAnalysis(file: File): Analysis =
+		try { readCacheUncaught(file)._1 } catch { case _: Exception => Analysis.Empty }
+
+	def readCacheUncaught(file: File): (Analysis, CompileSetup) =
+	{
+		import sbinary.DefaultProtocol.{immutableMapFormat, immutableSetFormat, StringFormat, tuple2Format}
+		import sbt.inc.AnalysisFormats._
+		sbt.IO.gzipFileIn(file)( in => sbinary.Operations.read[(Analysis, CompileSetup)](in) )
 	}
 }

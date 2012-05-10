@@ -8,7 +8,7 @@ import scala.collection.mutable.HashSet
 
 import org.apache.ivy.{core, plugins}
 import core.module.descriptor.{DefaultExcludeRule, ExcludeRule}
-import core.module.descriptor.{DefaultModuleDescriptor, ModuleDescriptor, OverrideDependencyDescriptorMediator}
+import core.module.descriptor.{DependencyDescriptor, DefaultModuleDescriptor, ModuleDescriptor, OverrideDependencyDescriptorMediator}
 import core.module.id.{ArtifactId,ModuleId, ModuleRevisionId}
 import plugins.matcher.ExactPatternMatcher
 
@@ -33,10 +33,10 @@ final case class IvyScala(scalaFullVersion: String, scalaBinaryVersion: String, 
 private object IvyScala
 {
 	/** Performs checks/adds filters on Scala dependencies (if enabled in IvyScala). */
-	def checkModule(module: DefaultModuleDescriptor, conf: String)(check: IvyScala)
+	def checkModule(module: DefaultModuleDescriptor, conf: String, log: Logger)(check: IvyScala)
 	{
 		if(check.checkExplicit)
-			checkDependencies(module, check.scalaBinaryVersion, check.configurations)
+			checkDependencies(module, check.scalaBinaryVersion, check.configurations, log)
 		if(check.filterImplicit)
 			excludeScalaJars(module, check.configurations)
 		if(check.overrideScalaVersion)
@@ -56,16 +56,22 @@ private object IvyScala
                 
 	/** Checks the immediate dependencies of module for dependencies on scala jars and verifies that the version on the
 	* dependencies matches scalaVersion. */
-	private def checkDependencies(module: ModuleDescriptor, scalaBinaryVersion: String, configurations: Iterable[Configuration])
+	private def checkDependencies(module: ModuleDescriptor, scalaBinaryVersion: String, configurations: Iterable[Configuration], log: Logger)
 	{
 		val configSet = if(configurations.isEmpty) (c: String) => true else configurationSet(configurations)
-		for(dep <- module.getDependencies.toList)
+		def binaryScalaWarning(dep: DependencyDescriptor): Option[String] =
 		{
 			val id = dep.getDependencyRevisionId
 			val depBinaryVersion = CrossVersion.binaryScalaVersion(id.getRevision)
-			if(id.getOrganisation == Organization && depBinaryVersion != scalaBinaryVersion && dep.getModuleConfigurations.exists(configSet))
-				error("Binary version for dependency " + id + " (" + depBinaryVersion + ") differs from Scala binary version in project (" + scalaBinaryVersion + ").")
+			val mismatched = id.getOrganisation == Organization && depBinaryVersion != scalaBinaryVersion && dep.getModuleConfigurations.exists(configSet)
+			if(mismatched)
+				Some("Binary version (" + depBinaryVersion + ") for dependency " + id +
+					"\n\tin " + module.getModuleRevisionId +
+					" differs from Scala binary version in project (" + scalaBinaryVersion + ").")
+			else
+				None
 		}
+		module.getDependencies.toList.flatMap(binaryScalaWarning).toSet foreach { (s: String) => log.warn(s) }
 	}
 	private def configurationSet(configurations: Iterable[Configuration]) = configurations.map(_.toString).toSet
 
@@ -87,15 +93,15 @@ private object IvyScala
 			}
 		}
 		def excludeScalaJar(name: String): Unit =
-			module.addExcludeRule(excludeRule(Organization, name, configurationNames))
+			module.addExcludeRule(excludeRule(Organization, name, configurationNames, "jar"))
 		excludeScalaJar(LibraryID)
 		excludeScalaJar(CompilerID)
 	}
 	/** Creates an ExcludeRule that excludes artifacts with the given module organization and name for
 	* the given configurations. */
-	private[sbt] def excludeRule(organization: String, name: String, configurationNames: Iterable[String]): ExcludeRule =
+	private[sbt] def excludeRule(organization: String, name: String, configurationNames: Iterable[String], excludeTypePattern: String): ExcludeRule =
 	{
-		val artifact = new ArtifactId(ModuleId.newInstance(organization, name), "*", "jar", "*")
+		val artifact = new ArtifactId(ModuleId.newInstance(organization, name), "*", excludeTypePattern, "*")
 		val rule = new DefaultExcludeRule(artifact, ExactPatternMatcher.INSTANCE, emptyMap[AnyRef,AnyRef])
 		configurationNames.foreach(rule.addConfiguration)
 		rule

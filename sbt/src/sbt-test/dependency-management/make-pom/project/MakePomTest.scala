@@ -9,6 +9,7 @@ object MakePomTest extends Build
 		readPom <<= makePom map XML.loadFile,
 		TaskKey[Unit]("check-pom") <<= checkPom,
 		TaskKey[Unit]("check-extra") <<= checkExtra,
+		resolvers ++= Seq(ScalaToolsReleases, ScalaToolsSnapshots),
 		makePomConfiguration ~= { _.copy(extra = <extra-tag/>) }
 	)
 
