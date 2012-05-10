@@ -19,7 +19,7 @@ object Tags
 	val Network = Tag("network")
 	val Disk = Tag("disk")
 
-	val ForkedTestGroup = Tag("forked-test-group")
+	val TestGroup = Tag("test-group")
 
 	/** Describes a restriction on concurrently executing tasks.
 	* A Rule is constructed using one of the Tags.limit* methods. */

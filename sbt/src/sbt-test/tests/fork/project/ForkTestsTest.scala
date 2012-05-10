@@ -30,7 +30,7 @@ object ForkTestsTest extends Build {
 						f.delete()
 				}
 		},
-		concurrentRestrictions := Tags.limit(Tags.ForkedTestGroup, 2) :: Nil,
+		concurrentRestrictions := Tags.limit(Tags.TestGroup, 2) :: Nil,
 		libraryDependencies += "org.scalatest" % "scalatest_2.9.0" % "1.6.1" % "test"
 	))
 }

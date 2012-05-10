@@ -329,8 +329,8 @@ object Defaults extends BuildCommon
 		})
 
 	def testExecutionTask(task: Scoped): Initialize[Task[Tests.Execution]] =
-			(testOptions in task, parallelExecution in task, fork in task, tags in task) map {
-				(opts, par, fork, ts) =>
+			(testOptions in task, parallelExecution in task, tags in task) map {
+				(opts, par, ts) =>
 					new Tests.Execution(opts, par, ts)
 			}
 
@@ -376,12 +376,13 @@ object Defaults extends BuildCommon
 	def allTestGroupsTask(s: TaskStreams, frameworks: Map[TestFramework,Framework], loader: ClassLoader, groups: Seq[Tests.Group], config: Tests.Execution,	cp: Classpath, javaHome: Option[File]): Task[Tests.Output] = {
 		val groupTasks = groups map {
 			case Tests.Group(name, tests, runPolicy) =>
-				runPolicy match {
+				val task = runPolicy match {
 					case Tests.SubProcess(javaOpts) =>
-						ForkTests(frameworks.keys.toSeq, tests.toList, config, cp.files, javaHome, javaOpts, s.log) tag Tags.ForkedTestGroup
+						ForkTests(frameworks.keys.toSeq, tests.toList, config, cp.files, javaHome, javaOpts, s.log)
 					case Tests.InProcess =>
 						Tests(frameworks, loader, tests, config, s.log)
 				}
+				task tag Tags.TestGroup
 		}
 		Tests.foldTasks(groupTasks)
 	}
@@ -396,7 +397,7 @@ object Defaults extends BuildCommon
 	}
 	def defaultRestrictions: Initialize[Seq[Tags.Rule]] = parallelExecution { par =>
 		val max = EvaluateTask.SystemProcessors
-		Tags.limitAll(if(par) max else 1) :: Tags.limit(Tags.ForkedTestGroup, 1) :: Nil
+		Tags.limitAll(if(par) max else 1) :: Tags.limit(Tags.TestGroup, 1) :: Nil
 	}
 
 	lazy val packageBase: Seq[Setting[_]] = Seq(
