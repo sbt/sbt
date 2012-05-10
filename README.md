@@ -6,9 +6,9 @@
 [video of a demo]: http://vimeo.com/20263617
 [FAQ]: https://github.com/harrah/xsbt/wiki/FAQ
 
-# sbt 0.11
+# sbt 0.12
 
-This is the 0.11.x series of sbt (soon to be 0.12.x).
+This is the 0.12.x series of sbt.
 
  * [Setup]: Describes getting started with the latest binary release.  See below to build from source.
  * [FAQ]: Explains how to get help, how to report an issue, and how to contribute.
