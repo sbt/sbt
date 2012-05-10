@@ -15,7 +15,7 @@ object Sbt extends Build
 	override lazy val settings = super.settings ++ buildSettings ++ Status.settings
 	def buildSettings = Seq(
 		organization := "org.scala-sbt",
-		version := "0.12.0-Beta2",
+		version := "0.13.0-SNAPSHOT",
 		publishArtifact in packageDoc := false,
 		scalaVersion := "2.9.2",
 		publishMavenStyle := false,
@@ -58,7 +58,7 @@ object Sbt extends Build
 		// Path, IO (formerly FileUtilities), NameFilter and other I/O utility classes
 	lazy val ioSub = testedBaseProject(utilPath / "io", "IO") dependsOn(controlSub)
 		// Utilities related to reflection, managing Scala versions, and custom class loaders
-	lazy val classpathSub = baseProject(utilPath / "classpath", "Classpath") dependsOn(launchInterfaceSub, ioSub) settings(scalaCompiler)
+	lazy val classpathSub = baseProject(utilPath / "classpath", "Classpath") dependsOn(launchInterfaceSub, interfaceSub, ioSub) settings(scalaCompiler)
 		// Command line-related utilities.
 	lazy val completeSub = testedBaseProject(utilPath / "complete", "Completion") dependsOn(collectionSub, controlSub, ioSub) settings(jline)
 		// logging
@@ -102,10 +102,14 @@ object Sbt extends Build
 		// Persists the incremental data structures using SBinary
 	lazy val compilePersistSub = baseProject(compilePath / "persist", "Persist") dependsOn(compileIncrementalSub, apiSub) settings(sbinary)
 		// sbt-side interface to compiler.  Calls compiler-side interface reflectively
-	lazy val compilerSub = testedBaseProject(compilePath, "Compile") dependsOn(launchInterfaceSub, interfaceSub % "compile;test->test", ivySub, ioSub, classpathSub, 
+	lazy val compilerSub = testedBaseProject(compilePath, "Compile") dependsOn(launchInterfaceSub, interfaceSub % "compile;test->test", logSub, ioSub, classpathSub, 
 		logSub % "test->test", launchSub % "test->test", apiSub % "test") settings( compilerSettings : _*)
 	lazy val compilerIntegrationSub = baseProject(compilePath / "integration", "Compiler Integration") dependsOn(
 		compileIncrementalSub, compilerSub, compilePersistSub, apiSub, classfileSub)
+<<<<<<< HEAD
+=======
+	lazy val compilerIvySub = baseProject(compilePath / "ivy", "Compiler Ivy Integration") dependsOn(ivySub, compilerSub )
+>>>>>>> c3cb264b1d4a67934532d98c77ae41dac8fc57e4
 
 	lazy val scriptedBaseSub = baseProject(scriptedPath / "base", "Scripted Framework") dependsOn(ioSub, processSub)
 	lazy val scriptedSbtSub = baseProject(scriptedPath / "sbt", "Scripted sbt") dependsOn(ioSub, logSub, processSub, scriptedBaseSub, launchInterfaceSub % "provided")
@@ -114,7 +118,11 @@ object Sbt extends Build
 
 		// Implementation and support code for defining actions.
 	lazy val actionsSub = baseProject(mainPath / "actions", "Actions") dependsOn(
+<<<<<<< HEAD
 		classpathSub, completeSub, apiSub, compilerIntegrationSub,
+=======
+		classpathSub, completeSub, apiSub, compilerIntegrationSub, compilerIvySub,
+>>>>>>> c3cb264b1d4a67934532d98c77ae41dac8fc57e4
 		interfaceSub, ioSub, ivySub, logSub, processSub, runSub, stdTaskSub, taskSub, trackingSub, testingSub)
 
 	lazy val commandSub = testedBaseProject(commandPath, "Command") dependsOn(interfaceSub, ioSub, launchInterfaceSub, logSub, completeSub, classpathSub)

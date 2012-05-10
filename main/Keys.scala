@@ -10,6 +10,7 @@ package sbt
 	import inc.Analysis
 	import inc.Locate.DefinesClass
 	import std.TaskExtra._
+	import xsbti.compile.CompileOrder
 	import scala.xml.{Node => XNode, NodeSeq}
 	import org.apache.ivy.core.module.{descriptor, id}
 	import descriptor.ModuleDescriptor, id.ModuleRevisionId
@@ -129,7 +130,7 @@ object Keys
 	val scaladocOptions = TaskKey[Seq[String]]("scaladoc-options", "Options for Scaladoc.", DTask)
 	val scalacOptions = TaskKey[Seq[String]]("scalac-options", "Options for the Scala compiler.", BPlusTask)
 	val javacOptions = TaskKey[Seq[String]]("javac-options", "Options for the Java compiler.", BPlusTask)
-	val compileOrder = SettingKey[CompileOrder.Value]("compile-order", "Configures the order in which Java and sources within a single compilation are compiled.  Valid values are: JavaThenScala, ScalaThenJava, or Mixed.", BPlusSetting)
+	val compileOrder = SettingKey[CompileOrder]("compile-order", "Configures the order in which Java and sources within a single compilation are compiled.  Valid values are: JavaThenScala, ScalaThenJava, or Mixed.", BPlusSetting)
 	val initialCommands = SettingKey[String]("initial-commands", "Initial commands to execute when starting up the Scala interpreter.", AMinusSetting)
 	val cleanupCommands = SettingKey[String]("cleanup-commands", "Commands to execute before the Scala interpreter exits.", BMinusSetting)
 	val compileInputs = TaskKey[Compiler.Inputs]("compile-inputs", "Collects all inputs needed for compilation.", DTask)

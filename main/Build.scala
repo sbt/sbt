@@ -285,5 +285,5 @@ object BuildPaths
 	final val GlobalPluginsProperty = "sbt.global.plugins"
 	final val GlobalSettingsProperty = "sbt.global.settings"
 
-	def crossPath(base: File, instance: ScalaInstance): File = base / ("scala_" + instance.version)
+	def crossPath(base: File, instance: xsbti.compile.ScalaInstance): File = base / ("scala_" + instance.version)
 }

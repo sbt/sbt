@@ -418,7 +418,11 @@ private[this] object SimpleProcessBuilder {
 /** A thin wrapper around a java.lang.Process. `outputThreads` are the Threads created to read from the
 * output and error streams of the process.
 * The implementation of `exitValue` wait for the process to finish and then waits until the threads reading output and error streams die before
+<<<<<<< HEAD
 * returning. Note that the thread that reads the input stream cannot be interrupted, see https://github.com/harrah/xsbt/issues/327 and
+=======
+* returning. Note that the thread the reads the input stream cannot be interrupted, see https://github.com/harrah/xsbt/issues/327 and
+>>>>>>> c3cb264b1d4a67934532d98c77ae41dac8fc57e4
 * http://bugs.sun.com/bugdatabase/view_bug.do?bug_id=4514257 */
 private class SimpleProcess(p: JProcess, outputThreads: List[Thread]) extends Process
 {

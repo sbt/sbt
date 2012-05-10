@@ -41,16 +41,18 @@ This is the 0.11.x series of sbt (soon to be 0.12.x).
 
 		<xsbt>/target/sbt-launch-0.12.0-M2.jar
 
-	If using the 0.12 development branch, the launcher is at:
+	If using the 0.13 development branch, the launcher is at:
 
-		<xsbt>/target/sbt-launch-0.12.0-SNAPSHOT.jar
+		<xsbt>/target/sbt-launch-0.13.0-SNAPSHOT.jar
 
 ## Modifying sbt
 
-When developing sbt itself, there is no need to run `build-all`, since this generates documentation as well.  For the fastest turnaround time for checking compilation only, run `compile`.
+1. New development takes place on the 0.13 branch.  Fixes and improvements that are binary compatible with 0.12.0 can be get backported to the 0.12 branch.
 
-To use your modified version of sbt in a project locally, run `publish-local`.  If you have modified the launcher, also run `proguard`.
+2. When developing sbt itself, there is no need to run `build-all`, since this generates documentation as well.  For the fastest turnaround time for checking compilation only, run `compile`.
 
-After each `publish-local`, clean the `~/.sbt/boot/` directory.  Alternatively, if sbt is running and the launcher hasn't changed, run `reboot full` to have sbt do this for you.
+3. To use your modified version of sbt in a project locally, run `publish-local`.  If you have modified the launcher, also run `proguard`.
 
-If a project has `project/build.properties` defined, either delete the file or change `sbt.version` to `0.12.0-SNAPSHOT`.
+4. After each `publish-local`, clean the `~/.sbt/boot/` directory.  Alternatively, if sbt is running and the launcher hasn't changed, run `reboot full` to have sbt do this for you.
+
+5. If a project has `project/build.properties` defined, either delete the file or change `sbt.version` to `0.13.0-SNAPSHOT`.

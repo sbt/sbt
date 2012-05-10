@@ -12,9 +12,9 @@ package compiler
 * provided by scalaInstance.  This class requires a ComponentManager in order to obtain the interface code to scalac and
 * the analysis plugin.  Because these call Scala code for a different Scala version than the one used for this class, they must
 * be compiled for the version of Scala being used.*/
-class AnalyzingCompiler(val scalaInstance: ScalaInstance, val manager: ComponentManager, val cp: ClasspathOptions, log: Logger)
+class AnalyzingCompiler(val scalaInstance: xsbti.compile.ScalaInstance, val provider: CompilerInterfaceProvider, val cp: xsbti.compile.ClasspathOptions, log: Logger)
 {
-	def this(scalaInstance: ScalaInstance, manager: ComponentManager, log: Logger) = this(scalaInstance, manager, ClasspathOptions.auto, log)
+	def this(scalaInstance: ScalaInstance, provider: CompilerInterfaceProvider, log: Logger) = this(scalaInstance, provider, ClasspathOptions.auto, log)
 	def apply(sources: Seq[File], classpath: Seq[File], outputDirectory: File, options: Seq[String], callback: AnalysisCallback, maximumErrors: Int, log: Logger)
 	{
 		val arguments = (new CompilerArguments(scalaInstance, cp))(sources, classpath, outputDirectory, options)
@@ -48,7 +48,7 @@ class AnalyzingCompiler(val scalaInstance: ScalaInstance, val manager: Component
 			classOf[Array[String]], classOf[String], classOf[String], classOf[String], classOf[String], classOf[ClassLoader], classOf[Array[String]], classOf[Array[Any]], classOf[xLogger])(
 			options.toArray[String]: Array[String], bootClasspath, classpathString, initialCommands, cleanupCommands, loader.orNull, names.toArray[String], values.toArray[Any], log)
 	}
-	def force(log: Logger): Unit = getInterfaceJar(log)
+	def force(log: Logger): Unit = provider(scalaInstance, log)
 	private def call(interfaceClassName: String, log: Logger)(argTypes: Class[_]*)(args: AnyRef*)
 	{
 		val interfaceClass = getInterfaceClass(interfaceClassName, log)
@@ -59,20 +59,12 @@ class AnalyzingCompiler(val scalaInstance: ScalaInstance, val manager: Component
 	}
 	private[this] def loader =
 	{
-		val interfaceJar = getInterfaceJar(log)
+		val interfaceJar = provider(scalaInstance, log)
 		// this goes to scalaInstance.loader for scala classes and the loader of this class for xsbti classes
 		val dual = createDualLoader(scalaInstance.loader, getClass.getClassLoader)
 		new URLClassLoader(Array(interfaceJar.toURI.toURL), dual)
 	}
 	private def getInterfaceClass(name: String, log: Logger) = Class.forName(name, true, loader)
-	private def getInterfaceJar(log: Logger) =
-	{
-		// this is the instance used to compile the interface component
-		val componentCompiler = newComponentCompiler(log)
-		log.debug("Getting " + ComponentCompiler.compilerInterfaceID + " from component compiler for Scala " + scalaInstance.version)
-		componentCompiler(ComponentCompiler.compilerInterfaceID)
-	}
-	def newComponentCompiler(log: Logger) = new ComponentCompiler(new RawCompiler(scalaInstance, ClasspathOptions.auto, log), manager)
 	protected def createDualLoader(scalaLoader: ClassLoader, sbtLoader: ClassLoader): ClassLoader =
 	{
 		val xsbtiFilter = (name: String) => name.startsWith("xsbti.")
@@ -80,4 +72,35 @@ class AnalyzingCompiler(val scalaInstance: ScalaInstance, val manager: Component
 		new classpath.DualLoader(scalaLoader, notXsbtiFilter, x => true, sbtLoader, xsbtiFilter, x => false)
 	}
 	override def toString = "Analyzing compiler (Scala " + scalaInstance.actualVersion + ")"
+}
+object AnalyzingCompiler
+{
+	import sbt.IO.{copy, createDirectory, zip, jars, unzip, withTemporaryDirectory}
+
+	/** Extract sources from source jars, compile them with the xsbti interfaces on the classpath, and package the compiled classes and
+	* any resources from the source jars into a final jar.*/
+	def compileSources(sourceJars: Iterable[File], targetJar: File, xsbtiJars: Iterable[File], id: String, compiler: RawCompiler, log: Logger)
+	{
+		val isSource = (f: File) => isSourceName(f.getName)
+		def keepIfSource(files: Set[File]): Set[File] = if(files.exists(isSource)) files else Set()
+
+		withTemporaryDirectory { dir =>
+			val extractedSources = (Set[File]() /: sourceJars) { (extracted, sourceJar)=> extracted ++ keepIfSource(unzip(sourceJar, dir)) }
+			val (sourceFiles, resources) = extractedSources.partition(isSource)
+			withTemporaryDirectory { outputDirectory =>
+				log.info("'" + id + "' not yet compiled for Scala " + compiler.scalaInstance.actualVersion + ". Compiling...")
+				val start = System.currentTimeMillis
+				try
+				{
+					compiler(sourceFiles.toSeq, xsbtiJars.toSeq ++ sourceJars, outputDirectory, "-nowarn" :: Nil)
+					log.info("  Compilation completed in " + (System.currentTimeMillis - start) / 1000.0 + " s")
+				}
+				catch { case e: xsbti.CompileFailed => throw new CompileFailed(e.arguments, "Error compiling sbt component '" + id + "'") }
+				import sbt.Path._
+				copy(resources x rebase(dir, outputDirectory))
+				zip((outputDirectory ***) x_! relativeTo(outputDirectory), targetJar)
+			}
+		}
+	}
+	private def isSourceName(name: String): Boolean = name.endsWith(".scala") || name.endsWith(".java")
 }

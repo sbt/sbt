@@ -7,6 +7,7 @@ package sbt
 	import java.net.{URI,URL}
 	import compiler.{Eval,EvalImports}
 	import xsbt.api.{Discovered,Discovery}
+	import xsbti.compile.CompileOrder
 	import classpath.ClasspathUtilities
 	import scala.annotation.tailrec
 	import collection.mutable
