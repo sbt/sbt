@@ -383,7 +383,7 @@ object Defaults extends BuildCommon
 						Tests(frameworks, loader, tests, config, s.log)
 				}
 		}
-		Tests.foldTasks(groupTasks)
+		Tests.foldTasks(groupTasks, config.parallel)
 	}
 
 	def selectedFilter(args: Seq[String]): String => Boolean =
