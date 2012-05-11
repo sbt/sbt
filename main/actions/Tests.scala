@@ -122,10 +122,21 @@ object Tests
 
 	def processResults(results: Iterable[(String, TestResult.Value)]): (TestResult.Value, Map[String, TestResult.Value]) =
 		(overall(results.map(_._2)), results.toMap)
-	def foldTasks(results: Seq[Task[Output]]): Task[Output] =
-		reduced(results.toIndexedSeq, {
-			case ((v1, m1), (v2, m2)) => (if (v1.id < v2.id) v2 else v1, m1 ++ m2)
-		})
+	def foldTasks(results: Seq[Task[Output]], parallel: Boolean): Task[Output] =
+		if (parallel)
+			reduced(results.toIndexedSeq, {
+				case ((v1, m1), (v2, m2)) => (if (v1.id < v2.id) v2 else v1, m1 ++ m2)
+			})
+		else {
+			def sequence(tasks: List[Task[Output]], acc: List[Output]): Task[List[Output]] = tasks match {
+				case Nil => task(acc.reverse)
+				case hd::tl => hd flatMap { out => sequence(tl, out::acc) }
+			}
+			sequence(results.toList, List()) map { ress =>
+				val (rs, ms) = ress.unzip
+				(overall(rs), ms reduce (_ ++ _))
+			}
+		}
 	def overall(results: Iterable[TestResult.Value]): TestResult.Value =
 		(TestResult.Passed /: results) { (acc, result) => if(acc.id < result.id) result else acc }
 	def discover(frameworks: Seq[Framework], analysis: Analysis, log: Logger): (Seq[TestDefinition], Set[String]) =
