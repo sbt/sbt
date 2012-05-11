@@ -23,9 +23,20 @@ final case class LaunchConfiguration(scalaVersion: Value[String], ivyConfigurati
 	def withVersions(newScalaVersion: String, newAppVersion: String, classifiers0: Classifiers) =
 		LaunchConfiguration(new Explicit(newScalaVersion), ivyConfiguration.copy(classifiers = classifiers0), app.withVersion(new Explicit(newAppVersion)), boot, logging, appProperties)
 
+  def withProxyRepository(url: URL) =
+    withMavenProxyRepository(url).withIvyProxyRepository(url,Repository.defaultArtifactPattern,Repository.defaultArtifactPattern)
+  def withMavenProxyRepository(url: URL) =
+		copy(ivyConfiguration = ivyConfiguration withMavenProxyRepository url)
+  def withIvyProxyRepository(url: URL, ivyPattern: String, artifactPattern: String) =
+		copy(ivyConfiguration = ivyConfiguration.withIvyProxyRepository(url, ivyPattern, artifactPattern))
 	def map(f: File => File) = LaunchConfiguration(scalaVersion, ivyConfiguration, app.map(f), boot.map(f), logging, appProperties)
 }
-final case class IvyOptions(ivyHome: Option[File], classifiers: Classifiers, repositories: List[xsbti.Repository], checksums: List[String])
+final case class IvyOptions(ivyHome: Option[File], classifiers: Classifiers, repositories: List[xsbti.Repository], checksums: List[String]) {
+  def withMavenProxyRepository(url: URL): IvyOptions =
+    copy(repositories = Repository.Maven("proxy-maven", url) :: (repositories filterNot Repository.isMavenRemote))
+  def withIvyProxyRepository(url: URL, ivyPattern: String, artifactPattern: String): IvyOptions =
+    copy(repositories = Repository.Ivy("proxy-ivy", url, ivyPattern, artifactPattern) :: (repositories filterNot Repository.isIvyRemote))
+}
 
 sealed trait Value[T]
 final class Explicit[T](val value: T) extends Value[T] {
@@ -74,9 +85,35 @@ object Repository
 	object Predefined {
 		def apply(s: String): Predefined = Predefined(xsbti.Predefined.toValue(s))
 	}
-
-	def isMavenLocal(repo: xsbti.Repository) = repo match { case p: xsbti.PredefinedRepository => p.id == xsbti.Predefined.MavenLocal; case _ => false }
+	/** Returns true if the repository is a predefined local *or* has a file:// url. */
+	def isLocal(repo: xsbti.Repository) = repo match {
+		case p: xsbti.PredefinedRepository => 
+			(p.id == xsbti.Predefined.MavenLocal) || (p.id == xsbti.Predefined.Local)
+		case m: xsbti.MavenRepository => m.url.getProtocol == "file"
+		case i: xsbti.IvyRepository => i.url.getProtocol == "file"         
+		case _ => false
+	}
+	/** Returns true if the repository is a predefined maven repo or user customized one. */
+        def isMaven(repo: xsbti.Repository) = repo match {
+          case p: xsbti.PredefinedRepository => (p.id != xsbti.Predefined.Local)
+          case m: xsbti.MavenRepository => true
+          case _ => false
+        }
+	/** Returns true if the repository is a predefined ivy repo or user customized one. */
+        def isIvy(repo: xsbti.Repository) = repo match {
+          case p: xsbti.PredefinedRepository => (p.id == xsbti.Predefined.Local)
+          case m: xsbti.IvyRepository => true
+          case _ => false
+        }
+	/** Returns true if the repository is *the* predefined maven-local repository. */
+        def isMavenLocal(repo: xsbti.Repository) = repo match {
+	  case p: xsbti.PredefinedRepository => (p.id == xsbti.Predefined.MavenLocal)
+	  case _ => false
+        }
+	def isMavenRemote(repo: xsbti.Repository) = !isLocal(repo) && isMaven(repo)
+	def isIvyRemote(repo: xsbti.Repository) = !isLocal(repo) && isIvy(repo)
 	def defaults: List[xsbti.Repository] = xsbti.Predefined.values.map(Predefined.apply).toList
+	val defaultArtifactPattern = "[organization]/[module]/[revision]/[type]s/[artifact](-[classifier]).[ext]"
 }
 
 final case class Search(tpe: Search.Value, paths: List[File])
