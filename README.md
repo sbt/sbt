@@ -6,9 +6,9 @@
 [video of a demo]: http://vimeo.com/20263617
 [FAQ]: https://github.com/harrah/xsbt/wiki/FAQ
 
-# sbt 0.11
+# sbt 0.13
 
-This is the 0.11.x series of sbt (soon to be 0.12.x).
+This is the 0.13.x series of sbt.
 
  * [Setup]: Describes getting started with the latest binary release.  See below to build from source.
  * [FAQ]: Explains how to get help, how to report an issue, and how to contribute.
@@ -47,7 +47,7 @@ This is the 0.11.x series of sbt (soon to be 0.12.x).
 
 ## Modifying sbt
 
-1. New development takes place on the 0.13 branch.  Fixes and improvements that are binary compatible with 0.12.0 can be get backported to the 0.12 branch.
+1. New development takes place on the 0.13 branch.  Fixes and improvements that are binary compatible with 0.12.0 can be backported to the 0.12 branch.
 
 2. When developing sbt itself, there is no need to run `build-all`, since this generates documentation as well.  For the fastest turnaround time for checking compilation only, run `compile`.
 
