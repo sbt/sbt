@@ -329,8 +329,8 @@ object Defaults extends BuildCommon
 		})
 
 	def testExecutionTask(task: Scoped): Initialize[Task[Tests.Execution]] =
-			(testOptions in task, parallelExecution in task, fork in task, tags in task) map {
-				(opts, par, fork, ts) =>
+			(testOptions in task, parallelExecution in task, tags in task) map {
+				(opts, par, ts) =>
 					new Tests.Execution(opts, par, ts)
 			}
 
