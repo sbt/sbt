@@ -332,13 +332,12 @@ object IO
 	{
 		translate("Error deleting file " + file + ": ")
 		{
-			if(file.isDirectory)
+			val deleted = file.delete()
+			if(!deleted && file.isDirectory)
 			{
 				delete(listFiles(file))
 				file.delete
 			}
-			else if(file.exists)
-				file.delete
 		}
 	}
 
