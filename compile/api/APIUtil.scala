@@ -16,34 +16,6 @@ object APIUtil
 		new Modifiers( x(0), x(1), x(2), x(3), x(4), x(5), x(6) )
 	}
 
-	def verifyTypeParameters(s: SourceAPI): Boolean =
-	{
-		val check = new CheckTypeParameters
-		val invalid = check(s)
-		if(!invalid.isEmpty) println("References to undefined type parameters: " + invalid.mkString(", "))
-		invalid.isEmpty
-	}
-	private[this] class CheckTypeParameters extends Visit
-	{
-		private val defined = new HashSet[Int]
-		private val referenced = new HashSet[Int]
-		def apply(s: SourceAPI): List[Int] =
-		{
-			super.visitAPI(s)
-			(referenced filterNot defined).toList
-		}
-		override def visitTypeParameter(parameter: TypeParameter)
-		{
-			defined += parameter.id
-			super.visitTypeParameter(parameter)
-		}
-		override def visitParameterRef(ref: ParameterRef)
-		{
-			referenced += ref.id
-			super.visitParameterRef(ref)
-		}
-	}
-
 	def hasMacro(s: SourceAPI): Boolean =
 	{
 		val check = new HasMacro

@@ -6,21 +6,16 @@ package xsbt.api
 import scala.util
 import xsbti.api._
 import util.MurmurHash
-import TagTypeVariables.TypeVars
 import HashAPI.Hash
 
 object HashAPI
 {
 	type Hash = Int
 	def apply(a: SourceAPI): Hash =
-	{
-		/** de Bruijn levels for type parameters in source a and b*/
-		val tags = TagTypeVariables(a)
-		(new HashAPI(tags, false, true)).hashAPI(a)
-	}
+		(new HashAPI(false, true)).hashAPI(a)
 }
 
-final class HashAPI(tags: TypeVars, includePrivate: Boolean, includeParamNames: Boolean)
+final class HashAPI(includePrivate: Boolean, includeParamNames: Boolean)
 {
 	import scala.collection.mutable
 	import MurmurHash._
@@ -229,6 +224,7 @@ final class HashAPI(tags: TypeVars, includePrivate: Boolean, includeParamNames: 
 	def hashTypeParameters(parameters: Seq[TypeParameter]) = hashSeq(parameters, hashTypeParameter)
 	def hashTypeParameter(parameter: TypeParameter)
 	{
+		hashString(parameter.id)
 		extend(parameter.variance.ordinal)
 		hashTypeParameters(parameter.typeParameters)
 		hashType(parameter.lowerBound)
@@ -267,10 +263,7 @@ final class HashAPI(tags: TypeVars, includePrivate: Boolean, includeParamNames: 
 	def hashParameterRef(p: ParameterRef)
 	{
 		extend(ParameterRefHash)
-		tags.get(p.id) match {
-			case Some((a,b)) => extend(a); extend(b)
-			case None => extend(-1)
-		}
+		hashString(p.id)
 	}
 	def hashSingleton(s: Singleton)
 	{
