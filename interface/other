@@ -39,7 +39,7 @@ MethodParameter
 	modifier: ParameterModifier
 
 TypeParameter
-	id: Int
+	id: String
 	annotations: Annotation*
 	typeParameters : TypeParameter*
 	variance: Variance
