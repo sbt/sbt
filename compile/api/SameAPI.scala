@@ -39,7 +39,7 @@ object TopLevel
 	def definitions(i: Iterable[SourceAPI]) = SameAPI.separateDefinitions(i.toSeq.flatMap( _.definitions ))
 	def names(s: Iterable[Definition]): Set[String] = Set() ++ s.map(_.name)
 }
-	import TagTypeVariables.TypeVars
+
 /** Checks the API of two source files for equality.*/
 object SameAPI
 {
@@ -56,11 +56,7 @@ object SameAPI
 		println("\n=========== API #2 ================")
 		println(ShowAPI.show(b))*/
 
-		/** de Bruijn levels for type parameters in source a and b*/
-		val tagsA = TagTypeVariables(a)
-		val tagsB = TagTypeVariables(b)
-
-		val result = (new SameAPI(tagsA,tagsB, false, true)).check(a,b)
+		val result = (new SameAPI(false, true)).check(a,b)
 		val end = System.currentTimeMillis
 		//println(" API comparison took: " + (end - start) / 1000.0 + " s")
 		result
@@ -99,13 +95,11 @@ object SameAPI
 			case _ => true
 		}
 }
-/** Used to implement API equality.  All comparisons must be done between constructs in source files `a` and `b`.  For example, when doing:
-* `sameDefinitions(as, bs)`, `as` must be definitions from source file `a` and `bs` must be definitions from source file `b`.  This is in order
-* to properly handle type parameters, which must be computed for each source file and then referenced during comparison.
+/** Used to implement API equality.
 *
 * If `includePrivate` is true, `private` and `private[this]` members are included in the comparison.  Otherwise, those members are excluded.
 */
-class SameAPI(tagsA: TypeVars, tagsB: TypeVars, includePrivate: Boolean, includeParamNames: Boolean)
+class SameAPI(includePrivate: Boolean, includeParamNames: Boolean)
 {
 	import SameAPI._
 
@@ -304,13 +298,8 @@ class SameAPI(tagsA: TypeVars, tagsB: TypeVars, includePrivate: Boolean, include
 		debug(sameType(a.upperBound, b.upperBound), "Different upper bound") &&
 		sameTags(a.id, b.id)
 	}
-		// until dangling type parameter references are straightened out in API phase, approximate
-	def sameTags(a: Int, b: Int): Boolean =
-	{
-		val ta = tagsA.get(a)
-		val tb = tagsB.get(b)
-		debug(ta == tb, "Different type parameter bindings: " + ta + "(" + a + "), " + tb + "(" + b + ")")
-	}
+	def sameTags(a: String, b: String): Boolean =
+		debug(a == b, "Different type parameter bindings: " + a + ", " + b)
 
 	def sameType(a: Type, b: Type): Boolean =
 		samePending(a,b)(sameTypeDirect)

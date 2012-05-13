@@ -62,8 +62,8 @@ trait APIFormats extends FormatExtra
 	implicit def formatExistential(implicit t: Format[Type], tps: Format[Array[TypeParameter]]): Format[Existential] =
 		p2( (e: Existential) => (e.baseType, e.clause) )( new Existential(_,_) )(t,tps)
 
-	implicit def formatParameterRef(implicit i: Format[Int]): Format[ParameterRef] =
-		wrap[ParameterRef, Int](_.id, new ParameterRef(_))(i)
+	implicit def formatParameterRef(implicit i: Format[String]): Format[ParameterRef] =
+		wrap[ParameterRef, String](_.id, new ParameterRef(_))(i)
 
 	// cyclic with many formats
 	def formatType(implicit s: Format[SimpleType], a: Format[Annotated], st: Format[Structure], e: Format[Existential], po: Format[Polymorphic]): Format[Type] =
@@ -172,7 +172,7 @@ trait APIFormats extends FormatExtra
 	implicit def formatModifiers(implicit bf: Format[Byte]): Format[Modifiers] =
 		wrap[Modifiers, Byte]( modifiersToByte, byteToModifiers )
 
-	def formatTypeParameter(tps: Format[TypeParameter] => Format[Array[TypeParameter]])(implicit as: Format[Array[Annotation]], t: Format[Type], v: Format[Variance], i: Format[Int]): Format[TypeParameter] =
+	def formatTypeParameter(tps: Format[TypeParameter] => Format[Array[TypeParameter]])(implicit as: Format[Array[Annotation]], t: Format[Type], v: Format[Variance], i: Format[String]): Format[TypeParameter] =
 	{
 		lazy val ltps: Format[Array[TypeParameter]] = lazyFormat( tps(ltp) )
 		lazy val ltp = p6( (tp: TypeParameter) => (tp.id, tp.annotations, tp.typeParameters, tp.variance, tp.lowerBound, tp.upperBound))(new TypeParameter(_,_,_,_,_,_))(i, as, ltps, v, t, t)

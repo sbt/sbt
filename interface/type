@@ -5,7 +5,7 @@ Type
 			prefix : SimpleType
 			id: String
 		ParameterRef
-			id: Int
+			id: String
 		Singleton
 			path: Path
 		EmptyType

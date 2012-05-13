@@ -172,9 +172,8 @@ object ClassToAPI
 		new api.TypeParameter(typeVariable(tp), emptyAnnotationArray, emptyTypeParameterArray, api.Variance.Invariant, NothingRef, upperBounds(tp.getBounds))
 
 	// needs to be stable across compilations
-	//  preferably, it would be a proper unique id based on de Bruijn index
-	def typeVariable[T <: GenericDeclaration](tv: TypeVariable[T]): Int =
-		reduceHash((name(tv.getGenericDeclaration) + " " + tv.getName).getBytes)
+	def typeVariable[T <: GenericDeclaration](tv: TypeVariable[T]): String =
+		name(tv.getGenericDeclaration) + " " + tv.getName
 
 	def reduceHash(in: Array[Byte]): Int =
 		(0 /: in)( (acc, b) => (acc * 43) ^ b)
