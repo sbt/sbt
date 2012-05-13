@@ -20,5 +20,5 @@ class TestCallback extends AnalysisCallback
 	def endSource(source: File) { endedSources += source }
 
 	def api(source: File, sourceAPI: xsbti.api.SourceAPI) { apis += ((source, sourceAPI)) }
-	def problem(pos: xsbti.Position, message: String, severity: xsbti.Severity, reported: Boolean) {}
+	def problem(category: String, pos: xsbti.Position, message: String, severity: xsbti.Severity, reported: Boolean) {}
 }

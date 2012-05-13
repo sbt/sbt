@@ -30,10 +30,15 @@ object CompileTest extends Specification
 		WithFiles( new File("Test.scala") -> "object Test" ) { sources =>
 			withTemporaryDirectory { temp =>
 				val callback = new xsbti.TestCallback
-				compiler(sources, Nil, temp, Nil, callback, 10, log)
+				compiler(sources, noChanges, Nil, temp, Nil, callback, 10, CompilerCache.fresh, log)
 				(callback.beganSources) must haveTheSameElementsAs(sources)
 			}
 		}
+	}
+	val noChanges = new xsbti.compile.DependencyChanges {
+		def isEmpty = true
+		def modifiedBinaries = Array()
+		def modifiedClasses = Array()
 	}
 	
 	val UsingCompiler = "object Test { classOf[scala.tools.nsc.Global] }"
