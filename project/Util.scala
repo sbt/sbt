@@ -55,7 +55,12 @@ object Util
 		toError(run.run(mainClass, cp.files, args, s.log))
 		(out ** "*.java").get
 	}
-	def generateVersionFile(version: String, dir: File, s: TaskStreams): Seq[File] =
+	def lastCompilationTime(analysis: sbt.inc.Analysis): Long =
+	{
+		val times = analysis.apis.internal.values.map(_.compilation.startTime)
+		if(times.isEmpty) 0L else times.max
+	}
+	def generateVersionFile(version: String, dir: File, s: TaskStreams, analysis: sbt.inc.Analysis): Seq[File] =
 	{
 		import java.util.{Date, TimeZone}
 		val formatter = new java.text.SimpleDateFormat("yyyyMMdd'T'HHmmss")
@@ -63,7 +68,7 @@ object Util
 		val timestamp = formatter.format(new Date)
 		val content = "version=" + version + "\ntimestamp=" + timestamp
 		val f = dir / "xsbt.version.properties"
-		if(!f.exists) { // TODO: properly handle this
+		if(!f.exists || f.lastModified < lastCompilationTime(analysis)) {
 			s.log.info("Writing version information to " + f + " :\n" + content)
 			IO.write(f, content)
 		}

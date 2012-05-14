@@ -1,4 +1,3 @@
-// TODO(high): proper incremental xsbt.version.properties generation
 // TODO(low): proper generated API sources caching: doesn't detect output directory change
 
 	import sbt._
@@ -192,7 +191,7 @@ object Sbt extends Build
 		exportJars := true,
 		componentID := Some("xsbti"),
 		watchSources <++= apiDefinitions,
-		resourceGenerators in Compile <+= (version, resourceManaged, streams) map generateVersionFile,
+		resourceGenerators in Compile <+= (version, resourceManaged, streams, compile in Compile) map generateVersionFile,
 		apiDefinitions <<= baseDirectory map { base => (base / "definition") :: (base / "other") :: (base / "type") :: Nil },
 		sourceGenerators in Compile <+= (cacheDirectory, apiDefinitions, fullClasspath in Compile in datatypeSub, sourceManaged in Compile, mainClass in datatypeSub in Compile, runner, streams) map generateAPICached
 	)
