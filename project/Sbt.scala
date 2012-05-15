@@ -104,7 +104,7 @@ object Sbt extends Build
 	lazy val compilerSub = testedBaseProject(compilePath, "Compile") dependsOn(launchInterfaceSub, interfaceSub % "compile;test->test", logSub, ioSub, classpathSub, 
 		logSub % "test->test", launchSub % "test->test", apiSub % "test") settings( compilerSettings : _*)
 	lazy val compilerIntegrationSub = baseProject(compilePath / "integration", "Compiler Integration") dependsOn(
-		compileIncrementalSub, compilerSub, compilePersistSub, apiSub, classfileSub)
+		compileIncrementalSub, compilerIvySub, compilePersistSub, apiSub, classfileSub)
 	lazy val compilerIvySub = baseProject(compilePath / "ivy", "Compiler Ivy Integration") dependsOn(ivySub, compilerSub )
 
 	lazy val scriptedBaseSub = baseProject(scriptedPath / "base", "Scripted Framework") dependsOn(ioSub, processSub)
