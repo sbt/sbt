@@ -5,17 +5,14 @@ package sbt
 
 import java.lang.{ProcessBuilder => JProcessBuilder}
 
-/** On java 7, inherit input on ProcessBuilder.
- * This doesn't work on Windows, where jline steals the input. */
+/** On java 7, inherit System.in for a ProcessBuilder. */
 private[sbt] object InheritInput {
 	def apply(p: JProcessBuilder): (Boolean, JProcessBuilder) = (redirectInput, inherit) match {
-		case (Some(m), Some(f)) if !isWindows => (true, m.invoke(p, f).asInstanceOf[JProcessBuilder])
+		case (Some(m), Some(f)) => (true, m.invoke(p, f).asInstanceOf[JProcessBuilder])
 		case _ => (false, p)
 	}
 
-	private[this] val isWindows = System.getProperty("os.name").toLowerCase.indexOf("windows") >= 0
-
-	private[this]	val pbClass = Class.forName("java.lang.ProcessBuilder")
+	private[this] val pbClass = Class.forName("java.lang.ProcessBuilder")
 	private[this] val redirectClass = pbClass.getClasses find (_.getSimpleName == "Redirect")
 
 	private[this] val redirectInput = redirectClass map (pbClass.getMethod("redirectInput", _))
