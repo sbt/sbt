@@ -43,8 +43,8 @@ private object Future
 
 object BasicIO
 {
-	def apply(buffer: StringBuffer, log: Option[ProcessLogger], withIn: Boolean) = new ProcessIO(input(withIn), processFully(buffer), getErr(log))
-	def apply(log: ProcessLogger, withIn: Boolean) = new ProcessIO(input(withIn), processInfoFully(log), processErrFully(log))
+	def apply(buffer: StringBuffer, log: Option[ProcessLogger], withIn: Boolean) = new ProcessIO(input(withIn), processFully(buffer), getErr(log), inheritInput(withIn))
+	def apply(log: ProcessLogger, withIn: Boolean) = new ProcessIO(input(withIn), processInfoFully(log), processErrFully(log), inheritInput(withIn))
 
 	def getErr(log: Option[ProcessLogger]) = log match { case Some(lg) => processErrFully(lg); case None => toStdErr }
 
@@ -78,9 +78,9 @@ object BasicIO
 		readFully()
 	}
 	def connectToIn(o: OutputStream) { transferFully(Uncloseable protect System.in, o) }
-	def input(connect: Boolean): OutputStream => Unit = if(connect) connectToIn else closeOut
-	def standard(connectInput: Boolean): ProcessIO = standard(input(connectInput))
-	def standard(in: OutputStream => Unit): ProcessIO = new ProcessIO(in, toStdOut, toStdErr)
+	def input(connect: Boolean): OutputStream => Unit =	if(connect) connectToIn else closeOut
+	def standard(connectInput: Boolean): ProcessIO = standard(input(connectInput), inheritInput(connectInput))
+	def standard(in: OutputStream => Unit, inheritIn: JProcessBuilder => Option[JProcessBuilder]): ProcessIO = new ProcessIO(in, toStdOut, toStdErr, inheritIn)
 
 	def toStdErr = (in: InputStream) => transferFully(in, System.err)
 	def toStdOut = (in: InputStream) => transferFully(in, System.out)
@@ -113,6 +113,8 @@ object BasicIO
 		read
 		in.close()
 	}
+
+	def inheritInput(connect: Boolean) = { p: JProcessBuilder => if (connect) InheritInput(p) else None }
 }
 
 
@@ -154,7 +156,7 @@ private abstract class AbstractProcessBuilder extends ProcessBuilder with SinkPa
 	private[this] def lines(withInput: Boolean, nonZeroException: Boolean, log: Option[ProcessLogger]): Stream[String] =
 	{
 		val streamed = Streamed[String](nonZeroException)
-		val process = run(new ProcessIO(BasicIO.input(withInput), BasicIO.processFully(streamed.process), BasicIO.getErr(log)))
+		val process = run(new ProcessIO(BasicIO.input(withInput), BasicIO.processFully(streamed.process), BasicIO.getErr(log), BasicIO.inheritInput(withInput)))
 		Spawn { streamed.done(process.exitValue()) }
 		streamed.stream()
 	}
@@ -379,13 +381,14 @@ private[sbt] class SimpleProcessBuilder(p: JProcessBuilder) extends AbstractProc
 {
 	override def run(io: ProcessIO): Process =
 	{
-		val (inherited, pp) = InheritInput(p)
-		val process = pp.start() // start the external process
-		import io.{writeInput, processOutput, processError}
-		// spawn threads that process the input, output, and error streams using the functions defined in `io`
-		if(!inherited)
-			Spawn(writeInput(process.getOutputStream), true)
+		import io._
+		val process = inheritInput(p) map (_.start()) getOrElse {
+			val proc = p.start()
+			Spawn(writeInput(proc.getOutputStream))
+			proc
+		}
 
+		// spawn threads that process the output and error streams.
 		val outThread = Spawn(processOutput(process.getInputStream))
 		val errorThread =
 			if(!p.redirectErrorStream)
@@ -408,7 +411,13 @@ private class SimpleProcess(p: JProcess, outputThreads: List[Thread]) extends Pr
 	override def exitValue() =
 	{
 		def waitDone(): Unit =
-			try { p.waitFor() } catch { case _: InterruptedException => waitDone() }
+			try {
+				p.waitFor()
+			} catch {
+				case _: InterruptedException => 
+					// Guard against possible spurious wakeups, check thread interrupted status.
+					if(Thread.interrupted()) p.destroy() else waitDone()
+			}
 		waitDone()
 		outputThreads.foreach(_.join()) // this ensures that all output is complete before returning (waitFor does not ensure this)
 		p.exitValue()
