@@ -379,40 +379,41 @@ private[sbt] class SimpleProcessBuilder(p: JProcessBuilder) extends AbstractProc
 {
 	override def run(io: ProcessIO): Process =
 	{
-		val process = p.start() // start the external process
+		val (inherited, pp) = InheritInput(p)
+		val process = pp.start() // start the external process
 		import io.{writeInput, processOutput, processError}
 		// spawn threads that process the input, output, and error streams using the functions defined in `io`
-		val inThread = Spawn(writeInput(process.getOutputStream), true)
+		if(!inherited)
+			Spawn(writeInput(process.getOutputStream), true)
+
 		val outThread = Spawn(processOutput(process.getInputStream))
 		val errorThread =
 			if(!p.redirectErrorStream)
 				Spawn(processError(process.getErrorStream)) :: Nil
 			else
 				Nil
-		new SimpleProcess(process, inThread, outThread :: errorThread)
+		new SimpleProcess(process, outThread :: errorThread)
 	}
 	override def toString = p.command.toString
 	override def canPipeTo = true
 }
-/** A thin wrapper around a java.lang.Process.  `outputThreads` are the Threads created to read from the
-* output and error streams of the process.  `inputThread` is the Thread created to write to the input stream of
-* the process.
-* The implementation of `exitValue` interrupts `inputThread` and then waits until all I/O threads die before
-* returning. */
-private class SimpleProcess(p: JProcess, inputThread: Thread, outputThreads: List[Thread]) extends Process
+
+/** A thin wrapper around a java.lang.Process. `outputThreads` are the Threads created to read from the
+* output and error streams of the process.
+* The implementation of `exitValue` wait for the process to finish and then waits until the threads reading output and error streams die before
+* returning. Note that the thread that reads the input stream cannot be interrupted, see https://github.com/harrah/xsbt/issues/327 and
+* http://bugs.sun.com/bugdatabase/view_bug.do?bug_id=4514257 */
+private class SimpleProcess(p: JProcess, outputThreads: List[Thread]) extends Process
 {
 	override def exitValue() =
 	{
-		try { p.waitFor() }// wait for the process to terminate
-		finally { inputThread.interrupt() } // we interrupt the input thread to notify it that it can terminate
+		def waitDone(): Unit =
+			try { p.waitFor() } catch { case _: InterruptedException => waitDone() }
+		waitDone()
 		outputThreads.foreach(_.join()) // this ensures that all output is complete before returning (waitFor does not ensure this)
 		p.exitValue()
 	}
-	override def destroy() =
-	{
-		try { p.destroy() }
-		finally { inputThread.interrupt() }
-	}
+	override def destroy() = p.destroy()
 }
 
 private class FileOutput(file: File, append: Boolean) extends OutputStreamBuilder(new FileOutputStream(file, append), file.getAbsolutePath)
