@@ -99,7 +99,7 @@ object Defaults extends BuildCommon
 		javaOptions :== Nil,
 		sbtPlugin :== false,
 		crossPaths :== true,
-		classpathTypes :== Set("jar", "bundle"),
+		classpathTypes :== Set("jar", "bundle", "hk2-jar"),
 		aggregate :== true,
 		maxErrors :== 100,
 		showTiming :== true,
