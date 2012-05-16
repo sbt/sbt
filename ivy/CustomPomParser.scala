@@ -35,7 +35,7 @@ object CustomPomParser
 	val ExtraAttributesKey = "extraDependencyAttributes"
 
 		// packagings that should be jars, but that Ivy doesn't handle as jars
-	val JarPackagings = Set("eclipse-plugin")
+	val JarPackagings = Set("eclipse-plugin", "hk2-jar")
 	val default = new CustomPomParser(PomModuleDescriptorParser.getInstance, defaultTransform)
 
 		// Unfortunately, ModuleDescriptorParserRegistry is add-only and is a singleton instance.
