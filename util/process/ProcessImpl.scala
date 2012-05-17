@@ -80,7 +80,7 @@ object BasicIO
 	def connectToIn(o: OutputStream) { transferFully(Uncloseable protect System.in, o) }
 	def input(connect: Boolean): OutputStream => Unit =	if(connect) connectToIn else closeOut
 	def standard(connectInput: Boolean): ProcessIO = standard(input(connectInput), inheritInput(connectInput))
-	def standard(in: OutputStream => Unit, inheritIn: JProcessBuilder => Option[JProcessBuilder]): ProcessIO = new ProcessIO(in, toStdOut, toStdErr, inheritIn)
+	def standard(in: OutputStream => Unit, inheritIn: JProcessBuilder => Boolean): ProcessIO = new ProcessIO(in, toStdOut, toStdErr, inheritIn)
 
 	def toStdErr = (in: InputStream) => transferFully(in, System.err)
 	def toStdOut = (in: InputStream) => transferFully(in, System.out)
@@ -114,7 +114,7 @@ object BasicIO
 		in.close()
 	}
 
-	def inheritInput(connect: Boolean) = { p: JProcessBuilder => if (connect) InheritInput(p) else None }
+	def inheritInput(connect: Boolean) = { p: JProcessBuilder => if (connect) InheritInput(p) else false }
 }
 
 
@@ -382,13 +382,12 @@ private[sbt] class SimpleProcessBuilder(p: JProcessBuilder) extends AbstractProc
 	override def run(io: ProcessIO): Process =
 	{
 		import io._
-		val process = inheritInput(p) map (_.start()) getOrElse {
-			val proc = p.start()
-			Spawn(writeInput(proc.getOutputStream))
-			proc
-		}
+		val inherited = inheritInput(p)
+		val process = p.start()
 
-		// spawn threads that process the output and error streams.
+		// spawn threads that process the output and error streams, and also write input if not inherited.
+		if (!inherited)
+			Spawn(writeInput(process.getOutputStream))
 		val outThread = Spawn(processOutput(process.getInputStream))
 		val errorThread =
 			if(!p.redirectErrorStream)
@@ -410,15 +409,11 @@ private class SimpleProcess(p: JProcess, outputThreads: List[Thread]) extends Pr
 {
 	override def exitValue() =
 	{
-		def waitDone(): Unit =
-			try {
-				p.waitFor()
-			} catch {
-				case _: InterruptedException => 
-					// Guard against possible spurious wakeups, check thread interrupted status.
-					if(Thread.interrupted()) p.destroy() else waitDone()
-			}
-		waitDone()
+		try {
+			p.waitFor()
+		} catch {
+			case _: InterruptedException => p.destroy()
+		}
 		outputThreads.foreach(_.join()) // this ensures that all output is complete before returning (waitFor does not ensure this)
 		p.exitValue()
 	}
