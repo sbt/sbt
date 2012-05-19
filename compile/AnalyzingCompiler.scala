@@ -71,7 +71,12 @@ final class AnalyzingCompiler(val scalaInstance: xsbti.compile.ScalaInstance, va
 		val interface = interfaceClass.newInstance.asInstanceOf[AnyRef]
 		val method = interfaceClass.getMethod(methodName, argTypes : _*)
 		try { method.invoke(interface, args: _*) }
-		catch { case e: java.lang.reflect.InvocationTargetException => throw e.getCause }
+		catch { case e: java.lang.reflect.InvocationTargetException =>
+			e.getCause match {
+				case c: xsbti.CompileFailed => throw new CompileFailed(c.arguments, c.toString, c.problems)
+				case t => throw t
+			}
+		}
 	}
 	private[this] def loader =
 	{
@@ -111,7 +116,7 @@ object AnalyzingCompiler
 					compiler(sourceFiles.toSeq, xsbtiJars.toSeq ++ sourceJars, outputDirectory, "-nowarn" :: Nil)
 					log.info("  Compilation completed in " + (System.currentTimeMillis - start) / 1000.0 + " s")
 				}
-				catch { case e: xsbti.CompileFailed => throw new CompileFailed(e.arguments, "Error compiling sbt component '" + id + "'") }
+				catch { case e: xsbti.CompileFailed => throw new CompileFailed(e.arguments, "Error compiling sbt component '" + id + "'", e.problems) }
 				import sbt.Path._
 				copy(resources x rebase(dir, outputDirectory))
 				zip((outputDirectory ***) x_! relativeTo(outputDirectory), targetJar)

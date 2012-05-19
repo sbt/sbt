@@ -56,7 +56,7 @@ object JavaCompiler
 				log.debug("Calling " + contract.name.capitalize + " with arguments:\n\t" + arguments.mkString("\n\t"))
 				val code: Int = f(contract, arguments, log)
 				log.debug(contract.name + " returned exit code: " + code)
-				if( code != 0 ) throw new CompileFailed(arguments.toArray, contract.name + " returned nonzero exit code")
+				if( code != 0 ) throw new CompileFailed(arguments.toArray, contract.name + " returned nonzero exit code", Array())
 			}
 		}
 	def directOrFork(cp: ClasspathOptions, scalaInstance: ScalaInstance)(implicit doFork: Fork): JavaTool =
