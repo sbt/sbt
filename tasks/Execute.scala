@@ -15,7 +15,6 @@ object Execute
 {
 	trait Part1of2K[M[_[_], _], A[_]] { type Apply[T] = M[A, T] }
 	type NodeT[A[_]] = Part1of2K[Node, A]
-	type NodeView[A[_]] = A ~> NodeT[A]#Apply
 	
 	def idMap[A,B]: Map[A, B] = JavaConversions.asScalaMap(new java.util.IdentityHashMap[A,B])
 	def pMap[A[_], B[_]]: PMap[A,B] = new DelegatingPMap[A, B](idMap)
@@ -26,6 +25,11 @@ object Execute
 }
 sealed trait Completed {
 	def process(): Unit
+}
+trait NodeView[A[_]]
+{
+	def apply[T](a: A[T]): Node[A, T]
+	def inline[T](a: A[T]): Option[() => T]
 }
 final class Triggers[A[_]](val runBefore: collection.Map[A[_], Seq[A[_]]], val injectFor: collection.Map[A[_], Seq[A[_]]], val onComplete: RMap[A,Result] => RMap[A,Result])
 
@@ -39,6 +43,13 @@ final class Execute[A[_] <: AnyRef](checkCycles: Boolean, triggers: Triggers[A])
 	private[this] val state = idMap[A[_], State]
 	private[this] val viewCache = pMap[A, NodeT[A]#Apply]
 	private[this] val results = pMap[A, Result]
+
+	private[this] val getResult: A ~> Result = new (A ~> Result) {
+		def apply[T](a: A[T]): Result[T] = view.inline(a) match {
+			case Some(v) => Value(v())
+			case None => results(a)
+		}
+	}
 
 	private[this] type State = State.Value
 	private[this] object State extends Enumeration {
@@ -216,8 +227,8 @@ final class Execute[A[_] <: AnyRef](checkCycles: Boolean, triggers: Triggers[A])
 	def submit[T]( node: A[T] )(implicit strategy: Strategy)
 	{
 		val v = viewCache(node)
-		val rs = v.mixedIn transform results
-		val ud = v.uniformIn.map(results.apply[v.Uniform])
+		val rs = v.mixedIn transform getResult
+		val ud = v.uniformIn.map(getResult.apply[v.Uniform])
 		strategy.submit( node, () => work(node, v.work(rs, ud)) )
 	}
 	/** Evaluates the computation 'f' for 'node'.
@@ -243,7 +254,7 @@ final class Execute[A[_] <: AnyRef](checkCycles: Boolean, triggers: Triggers[A])
 	def addCaller[T](caller: A[T], target: A[T]): Unit = callers.getOrUpdate(target, IDSet.create[A[T]]) += caller
 
 	def dependencies(node: A[_]): Iterable[A[_]] = dependencies(viewCache(node))
-	def dependencies(v: Node[A, _]): Iterable[A[_]] = v.uniformIn ++ v.mixedIn.toList
+	def dependencies(v: Node[A, _]): Iterable[A[_]] = (v.uniformIn ++ v.mixedIn.toList).filter(dep => view.inline(dep).isEmpty)
 
 	def runBefore(node: A[_]): Seq[A[_]] = getSeq(triggers.runBefore, node)
 	def triggeredBy(node: A[_]): Seq[A[_]] = getSeq(triggers.injectFor, node)

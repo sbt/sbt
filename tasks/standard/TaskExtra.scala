@@ -86,7 +86,8 @@ trait TaskExtra
 	final implicit def actionToTask[T](a:  Action[T]): Task[T] = Task(Info(), a)
 	
 	final def task[T](f: => T): Task[T] = toTask(f _)
-	final implicit def toTask[T](f: () => T): Task[T] = new Pure(f)
+	final implicit def toTask[T](f: () => T): Task[T] = new Pure(f, false)
+	final def inlineTask[T](value: T): Task[T] = new Pure(() => value, true)
 
 	final implicit def upcastTask[A >: B, B](t: Task[B]): Task[A] = t map { x => x : B }
 	final implicit def toTasks[S](in: Seq[() => S]): Seq[Task[S]] = in.map(toTask)

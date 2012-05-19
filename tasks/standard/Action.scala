@@ -12,8 +12,10 @@ package sbt
 
 /** Defines a task compuation*/
 sealed trait Action[T]
-/** A direct computation of a value. */
-final case class Pure[T](f: () => T) extends Action[T]
+/** A direct computation of a value.
+* If `inline` is true, `f` will be evaluated on the scheduler thread without the overhead of normal scheduling when possible.
+* This is intended as an optimization for already evaluated values or very short computations. */
+final case class Pure[T](f: () => T, inline: Boolean) extends Action[T]
 /** Applies a function to the result of evaluating a heterogeneous list of other tasks.*/
 final case class Mapped[T, In <: HList](in: Tasks[In], f: Results[In] => T) extends Action[T]
 /** Computes another task to evaluate based on results from evaluating other tasks.*/

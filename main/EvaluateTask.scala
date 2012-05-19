@@ -120,17 +120,17 @@ object EvaluateTask
 		try { f(str) } finally { str.close() }
 	}
 	
-	def getTask[T](structure: BuildStructure, taskKey: ScopedKey[Task[T]], state: State, streams: Streams, ref: ProjectRef): Option[(Task[T], Execute.NodeView[Task])] =
+	def getTask[T](structure: BuildStructure, taskKey: ScopedKey[Task[T]], state: State, streams: Streams, ref: ProjectRef): Option[(Task[T], NodeView[Task])] =
 	{
 		val thisScope = Load.projectScope(ref)
 		val resolvedScope = Scope.replaceThis(thisScope)( taskKey.scope )
 		for( t <- structure.data.get(resolvedScope, taskKey.key)) yield
 			(t, nodeView(state, streams, taskKey :: Nil))
 	}
-	def nodeView[HL <: HList](state: State, streams: Streams, roots: Seq[ScopedKey[_]], extraDummies: KList[Task, HL] = KNil, extraValues: HL = HNil): Execute.NodeView[Task] =
+	def nodeView[HL <: HList](state: State, streams: Streams, roots: Seq[ScopedKey[_]], extraDummies: KList[Task, HL] = KNil, extraValues: HL = HNil): NodeView[Task] =
 		Transform(dummyRoots :^: dummyStreamsManager :^: KCons(dummyState, extraDummies), roots :+: streams :+: HCons(state, extraValues))
 
-	def runTask[T](root: Task[T], state: State, streams: Streams, triggers: Triggers[Task], config: EvaluateConfig)(implicit taskToNode: Execute.NodeView[Task]): (State, Result[T]) =
+	def runTask[T](root: Task[T], state: State, streams: Streams, triggers: Triggers[Task], config: EvaluateConfig)(implicit taskToNode: NodeView[Task]): (State, Result[T]) =
 	{
 			import ConcurrentRestrictions.{completionService, TagMap, Tag, tagged, tagsKey}
 	

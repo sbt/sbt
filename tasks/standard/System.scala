@@ -11,7 +11,7 @@ import Execute._
 
 object Transform
 {
-	def fromDummy[T](original: Task[T])(action: => T): Task[T] = Task(original.info, Pure(action _))
+	def fromDummy[T](original: Task[T])(action: => T): Task[T] = Task(original.info, Pure(action _, false))
 	def fromDummyStrict[T](original: Task[T], value: T): Task[T] = fromDummy(original)( value)
 
 	implicit def to_~>| [K[_], V[_]](map: RMap[K,V]) : K ~>| V = new (K ~>| V) { def apply[T](k: K[T]): Option[V[T]] = map.get(k) }
@@ -39,16 +39,20 @@ object Transform
 	def apply[HL <: HList, Key](dummies: KList[Task, HL], injected: HL) =
 	{
 		import System._
-		taskToNode ∙ getOrId(dummyMap(dummies)(injected))
+		taskToNode( getOrId(dummyMap(dummies)(injected)) )
 	}
 
-	def taskToNode = new (Task ~> NodeT[Task]#Apply) {
-		def apply[T](t: Task[T]): Node[Task, T] = t.work match {
-			case Pure(eval) => toNode(KNil)( _ => Right(eval()) )
+	def taskToNode(pre: Task ~> Task): NodeView[Task] = new NodeView[Task] {
+		def apply[T](t: Task[T]): Node[Task, T] = pre(t).work match {
+			case Pure(eval, _) => toNode(KNil)( _ => Right(eval()) )
 			case Mapped(in, f) => toNode(in)( right ∙ f  )
 			case FlatMapped(in, f) => toNode(in)( left ∙ f )
 			case DependsOn(in, deps) => toNode(KList.fromList(deps))( ((_:Any) => Left(in)) ∙ allM )
 			case Join(in, f) => uniform(in)(f)
+		}
+		def inline[T](t: Task[T]) = t.work match {
+			case Pure(eval, true) => Some(eval)
+			case _ => None
 		}
 	}
 		
