@@ -5,7 +5,6 @@ package sbt
 
 	import scala.annotation.tailrec
 	import java.io.{File, PrintWriter}
-	import java.lang.reflect.InvocationTargetException
 
 object MainLoop
 {
@@ -76,18 +75,16 @@ object MainLoop
 			case Left(t) => handleException(t, state)
 		}
 
+		import ExceptionCategory._
+
 	def handleException(e: Throwable, s: State): State =
 		handleException(e, s, s.log)
-	def handleException(e: Throwable, s: State, log: Logger): State =
+	def handleException(t: Throwable, s: State, log: Logger): State =
 	{
-		e match
-		{
-			case _: AlreadyHandledException | _: UnprintableException => ()
-			case ite: InvocationTargetException =>
-				val cause = ite.getCause
-				if(cause == null || cause == ite) logFullException(ite, log) else handleException(cause, s, log)
-			case _: MessageOnlyException => log.error(e.toString)
-			case _ => logFullException(e, log)
+		ExceptionCategory(t) match {
+			case AlreadyHandled => ()
+			case m: MessageOnly => log.error(m.message)
+			case f: Full => logFullException(f.exception, log)
 		}
 		s.fail
 	}

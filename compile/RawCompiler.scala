@@ -31,10 +31,7 @@ class RawCompiler(val scalaInstance: xsbti.compile.ScalaInstance, cp: ClasspathO
 	{
 		val reporter = mainClass.getMethod("reporter").invoke(null)
 		val failed = reporter.getClass.getMethod("hasErrors").invoke(reporter).asInstanceOf[Boolean]
-		if(failed) throw new CompileFailed(args, "Plain compile failed")
+		if(failed) throw new CompileFailed(args, "Plain compile failed", Array())
 	}
 }
-class CompileFailed(val arguments: Array[String], override val toString: String) extends xsbti.CompileFailed
-{
-	def problems = Array()
-}
+class CompileFailed(val arguments: Array[String], override val toString: String, val problems: Array[xsbti.Problem]) extends xsbti.CompileFailed with FeedbackProvidedException

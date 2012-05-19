@@ -9,7 +9,7 @@ package sbt
 	import Keys.{dummyRoots, dummyState, dummyStreamsManager, executionRoots, pluginData, streamsManager, taskDefinitionKey, transformState}
 	import Scope.{GlobalScope, ThisScope}
 	import Types.const
-	import scala.Console.{RED, RESET}
+	import scala.Console.RED
 
 final case class EvaluateConfig(cancelable: Boolean, restrictions: Seq[Tags.Rule], checkCycles: Boolean = false)
 final case class PluginData(classpath: Seq[Attributed[File]], resolvers: Option[Seq[Resolver]])
@@ -89,17 +89,29 @@ object EvaluateTask
 		val all = Incomplete linearize result
 		val keyed = for(Incomplete(Some(key: Project.ScopedKey[_]), _, msg, _, ex) <- all) yield (key, msg, ex)
 		val un = all.filter { i => i.node.isEmpty || i.message.isEmpty }
-		for( (key, _, Some(ex)) <- keyed)
-			getStreams(key, streams).log.trace(ex)
+
+			import ExceptionCategory._
+		for( (key, msg, Some(ex)) <- keyed) {
+			def log = getStreams(key, streams).log
+			ExceptionCategory(ex) match {
+				case AlreadyHandled => ()
+				case m: MessageOnly => if(msg.isEmpty) log.error(m.message)
+				case f: Full => log.trace(f.exception)
+			}
+		}
 
 		for( (key, msg, ex) <- keyed if(msg.isDefined || ex.isDefined) )
 		{
 			val msgString = (msg.toList ++ ex.toList.map(ErrorHandling.reducedToString)).mkString("\n\t")
 			val log = getStreams(key, streams).log
-			val display = Project.showContextKey(state, if(log.ansiCodesSupported) Some(scala.Console.RED) else None)
+			val display = contextDisplay(state, log.ansiCodesSupported)
 			log.error("(" + display(key) + ") " + msgString)
 		}
 	}
+	private[this] def contextDisplay(state: State, highlight: Boolean) = Project.showContextKey(state, if(highlight) Some(RED) else None)
+	def suppressedMessage(key: ScopedKey[_])(implicit display: Show[ScopedKey[_]]): String =
+		"Stack trace suppressed.  Run 'last %s' for the full log.".format(display(key))
+
 	def getStreams(key: ScopedKey[_], streams: Streams): TaskStreams =
 		streams(ScopedKey(Project.fillTaskAxis(key).scope, Keys.streams.key))
 	def withStreams[T](structure: BuildStructure, state: State)(f: Streams => T): T =

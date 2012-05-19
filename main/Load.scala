@@ -508,9 +508,7 @@ object Load
 	{
 		// TODO: make used of classpath metadata for recompilation
 		val inputs = Compiler.inputs(data(classpath), sources, target, Nil, Nil, definesClass, Compiler.DefaultMaxErrors, CompileOrder.Mixed)(compilers, log)
-		val analysis =
-			try { Compiler(inputs, log) }
-			catch { case _: xsbti.CompileFailed => throw new AlreadyHandledException } // compiler already logged errors
+		val analysis = Compiler(inputs, log)
 		(inputs, analysis)
 	}
 
