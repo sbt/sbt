@@ -142,7 +142,7 @@ object Sbt extends Build
 		normalizedName := "sbt"
 	)
 
-	def scriptedTask: Initialize[InputTask[Unit]] = inputTask { result =>
+	def scriptedTask: Initialize[InputTask[Unit]] = InputTask(scriptedSource(dir => (s: State) => scriptedParser(dir))) { result =>
 		(proguard in Proguard, fullClasspath in scriptedSbtSub in Test, scalaInstance in scriptedSbtSub, publishAll, version, scalaVersion, scriptedScalaVersion, scriptedSource, result) map {
 			(launcher, scriptedSbtClasspath, scriptedSbtInstance, _, v, sv, ssv, sourcePath, args) =>
 			val loader = classpath.ClasspathUtilities.toLoader(scriptedSbtClasspath.files, scriptedSbtInstance.loader)
@@ -152,6 +152,23 @@ object Sbt extends Build
 			try { r.invoke(m, sourcePath, true: java.lang.Boolean, v, sv, ssv, args.toArray[String], launcher, launcherVmOptions) }
 			catch { case ite: java.lang.reflect.InvocationTargetException => throw ite.getCause }
 		}
+	}
+
+		import sbt.complete._
+		import DefaultParsers._
+	def scriptedParser(scriptedBase: File): Parser[Seq[String]] =
+	{
+		val pairs = (scriptedBase * AllPassFilter * AllPassFilter * "test").get map { (f: File) =>
+			val p = f.getParentFile
+			(p.getParentFile.getName, p.getName)
+		};
+		val pairMap = pairs.groupBy(_._1).mapValues(_.map(_._2).toSet) ;
+
+		val id = charClass(c => !c.isWhitespace && c != '/').+.string
+		val groupP = token(id.examples(pairMap.keySet.toSet)) <~ token('/')
+		def nameP(group: String) = "*".id | id.examples(pairMap(group))
+		val testID = for( group <- groupP; name <- nameP(group) ) yield (group, name)
+		(token(Space) ~> matched(testID)).*
 	}
 
 	lazy val scriptedScalaVersion = SettingKey[String]("scripted-scala-version")
