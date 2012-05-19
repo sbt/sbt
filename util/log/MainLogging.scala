@@ -25,12 +25,14 @@ object MainLogging
 	}
 
 	def defaultMultiConfig(backing: AbstractLogger): MultiLoggerConfig =
-		new MultiLoggerConfig(defaultScreen, backing, Nil, Level.Info, Level.Debug, -1, Int.MaxValue)
+		new MultiLoggerConfig(defaultScreen(ConsoleLogger.noSuppressedMessage), backing, Nil, Level.Info, Level.Debug, -1, Int.MaxValue)
 
-	def defaultScreen: AbstractLogger = ConsoleLogger()
+	def defaultScreen(): AbstractLogger = ConsoleLogger()
+	def defaultScreen(suppressedMessage: SuppressedTraceContext => Option[String]): AbstractLogger = ConsoleLogger(suppressedMessage = suppressedMessage)
 	
 	def defaultBacked(useColor: Boolean = ConsoleLogger.formatEnabled): PrintWriter => ConsoleLogger =
 		to => ConsoleLogger(ConsoleLogger.printWriterOut(to), useColor = useColor) // TODO: should probably filter ANSI codes when useColor=false
 }
 
-final case class MultiLoggerConfig(console: AbstractLogger, backed: AbstractLogger, extra: List[AbstractLogger], screenLevel: Level.Value, backingLevel: Level.Value, screenTrace: Int, backingTrace: Int)
+final case class MultiLoggerConfig(console: AbstractLogger, backed: AbstractLogger, extra: List[AbstractLogger],
+	screenLevel: Level.Value, backingLevel: Level.Value, screenTrace: Int, backingTrace: Int)
