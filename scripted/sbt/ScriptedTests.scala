@@ -17,6 +17,7 @@ final class ScriptedTests(resourceBaseDirectory: File, bufferLog: Boolean, sbtVe
 	private val testResources = new Resources(resourceBaseDirectory)
 	
 	val ScriptFilename = "test"
+	val PendingScriptFilename = "pending"
 	
 	def scriptedTest(group: String, name: String, log: xsbti.Logger): Unit =
 		scriptedTest(group, name, Logger.xlog2Log(log))
@@ -49,33 +50,42 @@ final class ScriptedTests(resourceBaseDirectory: File, bufferLog: Boolean, sbtVe
 			val sbtHandler = new SbtHandler(testDirectory, launcher, buffered, server, launchOpts)
 			new TestScriptParser(Map('$' -> fileHandler, '>' -> sbtHandler, '#' -> CommentHandler))
 		}
+		val (file, pending) = {
+			val normal = new File(testDirectory, ScriptFilename)
+			val pending = new File(testDirectory, PendingScriptFilename)
+			if(pending.isFile) (pending, true) else (normal, false)
+		}
+		val pendingString = if(pending) " [PENDING]" else ""
+		
 		def runTest() =
 		{
 			val run = new ScriptRunner
 			val parser = createParser()
-			run(parser.parse(new File(testDirectory, ScriptFilename)))
+			run(parser.parse(file))
+		}
+		def testFailed() {
+			if(pending) buffered.clear() else buffered.stop()
+			buffered.error("x " + label + pendingString)
 		}
 
 		try
 		{
 			runTest()
-			buffered.info("+ " + label)
+			buffered.info("+ " + label + pendingString)
 		}
 		catch
 		{
 			case e: xsbt.test.TestException =>
-				buffered.stop()
-				buffered.error("x " + label)
+				testFailed()
 				e.getCause match
 				{
 					case null | _: java.net.SocketException => buffered.error("   " + e.getMessage)
 					case _ => e.printStackTrace
 				}
-				throw e
+				if(!pending) throw e
 			case e: Exception =>
-				buffered.stop()
-				buffered.error("x " + label)
-				throw e
+				testFailed()
+				if(!pending) throw e
 		}
 		finally { buffered.clear() }
 	}
