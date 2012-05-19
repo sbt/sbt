@@ -53,8 +53,9 @@ abstract class JLine extends LineReader
 }
 private object JLine
 {
-	def terminal = jline.Terminal.getTerminal
-	def resetTerminal() = withTerminal { _ => jline.Terminal.resetTerminal }
+	// When calling this, ensure that enableEcho has been or will be called.
+	//  getTerminal will initialize the terminal to disable echo.
+	private def terminal = jline.Terminal.getTerminal
 	private def withTerminal[T](f: jline.Terminal => T): T =
 		synchronized
 		{
