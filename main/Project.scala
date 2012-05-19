@@ -110,13 +110,24 @@ final case class ClasspathDependency(project: ProjectReference, configuration: O
 
 object Project extends Init[Scope] with ProjectExtra
 {
-	lazy val showFullKey: Show[ScopedKey[_]] = new Show[ScopedKey[_]] { def apply(key: ScopedKey[_]) = displayFull(key) }
+	lazy val showFullKey: Show[ScopedKey[_]] = showFullKey(None)
+	def showFullKey(keyNameColor: Option[String]): Show[ScopedKey[_]] =
+		new Show[ScopedKey[_]] { def apply(key: ScopedKey[_]) = displayFull(key, keyNameColor) }
 	def showContextKey(state: State): Show[ScopedKey[_]] =
-		if(isProjectLoaded(state)) showContextKey( session(state), structure(state) ) else showFullKey
-	def showContextKey(session: SessionSettings, structure: BuildStructure): Show[ScopedKey[_]] = showRelativeKey(session.current, structure.allProjects.size > 1)
-	def showLoadingKey(loaded: Load.LoadedBuild): Show[ScopedKey[_]] = showRelativeKey( ProjectRef(loaded.root, loaded.units(loaded.root).rootProjects.head), loaded.allProjectRefs.size > 1 )
-	def showRelativeKey(current: ProjectRef, multi: Boolean): Show[ScopedKey[_]] = new Show[ScopedKey[_]] {
-		def apply(key: ScopedKey[_]) = Scope.display(key.scope, key.key.label, ref => displayRelative(current, multi, ref))
+		showContextKey(state, None)
+
+	def showContextKey(state: State, keyNameColor: Option[String]): Show[ScopedKey[_]] =
+		if(isProjectLoaded(state)) showContextKey( session(state), structure(state), keyNameColor ) else showFullKey
+
+	def showContextKey(session: SessionSettings, structure: BuildStructure, keyNameColor: Option[String] = None): Show[ScopedKey[_]] =
+		showRelativeKey(session.current, structure.allProjects.size > 1, keyNameColor)
+
+	def showLoadingKey(loaded: Load.LoadedBuild, keyNameColor: Option[String] = None): Show[ScopedKey[_]] =
+		showRelativeKey( ProjectRef(loaded.root, loaded.units(loaded.root).rootProjects.head), loaded.allProjectRefs.size > 1, keyNameColor)
+
+	def showRelativeKey(current: ProjectRef, multi: Boolean, keyNameColor: Option[String] = None): Show[ScopedKey[_]] = new Show[ScopedKey[_]] {
+		def apply(key: ScopedKey[_]) =
+			Scope.display(key.scope, colored(key.key.label, keyNameColor), ref => displayRelative(current, multi, ref))
 	}
 	def displayRelative(current: ProjectRef, multi: Boolean, project: Reference): String = project match {
 		case BuildRef(current.build) => "{.}/"
@@ -215,7 +226,12 @@ object Project extends Init[Scope] with ProjectExtra
 	def equal(a: ScopedKey[_], b: ScopedKey[_], mask: ScopeMask): Boolean =
 		a.key == b.key && Scope.equal(a.scope, b.scope, mask)
 
-	def displayFull(scoped: ScopedKey[_]): String = Scope.display(scoped.scope, scoped.key.label)
+	def colored(s: String, color: Option[String]): String = color match {
+		case Some(c) => c + s + scala.Console.RESET
+		case None => s
+	}
+	def displayFull(scoped: ScopedKey[_]): String = displayFull(scoped, None)
+	def displayFull(scoped: ScopedKey[_], keyNameColor: Option[String]): String = Scope.display(scoped.scope, colored(scoped.key.label, keyNameColor))
 	def displayMasked(scoped: ScopedKey[_], mask: ScopeMask): String = Scope.displayMasked(scoped.scope, scoped.key.label, mask)
 	def display(ref: Reference): String =
 		ref match

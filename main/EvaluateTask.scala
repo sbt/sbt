@@ -83,8 +83,8 @@ object EvaluateTask
 			for( (task, toNode) <- getTask(structure, taskKey, state, str, ref) ) yield
 				runTask(task, state, str, structure.index.triggers, config)(toNode)
 		}
-	def logIncResult(result: Result[_], streams: Streams) = result match { case Inc(i) => logIncomplete(i, streams); case _ => () }
-	def logIncomplete(result: Incomplete, streams: Streams)
+	def logIncResult(result: Result[_], state: State, streams: Streams) = result match { case Inc(i) => logIncomplete(i, state, streams); case _ => () }
+	def logIncomplete(result: Incomplete, state: State, streams: Streams)
 	{
 		val all = Incomplete linearize result
 		val keyed = for(Incomplete(Some(key: Project.ScopedKey[_]), _, msg, _, ex) <- all) yield (key, msg, ex)
@@ -96,8 +96,8 @@ object EvaluateTask
 		{
 			val msgString = (msg.toList ++ ex.toList.map(ErrorHandling.reducedToString)).mkString("\n\t")
 			val log = getStreams(key, streams).log
-			val keyString = if(log.ansiCodesSupported) RED + key.key.label + RESET else key.key.label
-			log.error(Scope.display(key.scope, keyString) + ": " + msgString)
+			val display = Project.showContextKey(state, if(log.ansiCodesSupported) Some(scala.Console.RED) else None)
+			log.error("(" + display(key) + ") " + msgString)
 		}
 	}
 	def getStreams(key: ScopedKey[_], streams: Streams): TaskStreams =
@@ -134,7 +134,7 @@ object EvaluateTask
 				catch { case inc: Incomplete => (state, Inc(inc)) }
 				finally shutdown()
 			val replaced = transformInc(result)
-			logIncResult(replaced, streams)
+			logIncResult(replaced, state, streams)
 			(newState, replaced)
 		}
 		val cancel = () => {
