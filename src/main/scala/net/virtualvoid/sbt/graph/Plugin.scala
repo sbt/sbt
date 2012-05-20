@@ -28,7 +28,7 @@ object Plugin extends sbt.Plugin {
     "A task which returns the location of the ivy report file for a given configuration (default `compile`).")
 
   def graphSettings = Seq(
-    ivyReportF <<= (projectID, scalaVersion, appConfiguration) { (projectID, scalaVersion, config) =>
+    ivyReportF <<= (projectID, scalaVersion in update, appConfiguration) { (projectID, scalaVersion, config) =>
       val home = config.provider.scalaProvider.launcher.ivyHome
       (c: String) => file("%s/cache/%s-%s-%s.xml" format (home, projectID.organization, crossName(projectID, scalaVersion), c))
     },
