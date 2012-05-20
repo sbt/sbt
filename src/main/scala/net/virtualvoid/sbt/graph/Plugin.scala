@@ -45,7 +45,7 @@ object Plugin extends sbt.Plugin {
       IvyGraphMLDependencies.transform(report("compile").getAbsolutePath, resultFile.getAbsolutePath)
       streams.log.info("Wrote dependency graph to '%s'" format resultFile)
       resultFile
-    } dependsOn(deliverLocal)
+    } dependsOn(update)
   )
 
   def crossName(moduleId: ModuleID, scalaVersion: String) =
