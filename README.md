@@ -1,4 +1,4 @@
-sbt-dependency-graph
+sbt-dependency-graph ![Build status](https://buildhive.cloudbees.com/job/jrudolph/job/sbt-dependency-graph/badge/icon)
 ====================
 
 Create a graph (in graphml format) from your project's dependencies.
