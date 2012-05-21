@@ -38,8 +38,8 @@ object Plugin extends sbt.Plugin {
           report("compile")
         else
           report(args(0))
-      }
-    } dependsOn(update),
+      } dependsOn(update)
+    },
     dependencyGraphTask <<= (ivyReportF, target, streams) map { (report, target, streams) =>
       val resultFile = target / "dependencies.graphml"
       IvyGraphMLDependencies.transform(report("compile").getAbsolutePath, resultFile.getAbsolutePath)
