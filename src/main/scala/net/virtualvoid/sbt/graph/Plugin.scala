@@ -22,6 +22,10 @@ import Keys._
 object Plugin extends sbt.Plugin {
   val dependencyGraphTask = TaskKey[File]("dependency-graph",
     "Creates a graphml file containing the dependency-graph for a project")
+  val asciiGraph = TaskKey[String]("ascii-graph",
+    "Returns a string containing the ascii representation of the dependency graph for a project")
+  val printAsciiGraph = TaskKey[Unit]("print-ascii-graph",
+    "Prints the ascii graph to the console")
   val ivyReportF = TaskKey[String => File]("ivy-report-function",
     "A function which returns the file containing the ivy report from the ivy cache for a given configuration")
   val ivyReport = InputKey[File]("ivy-report",
@@ -46,7 +50,21 @@ object Plugin extends sbt.Plugin {
       streams.log.info("Wrote dependency graph to '%s'" format resultFile)
       resultFile
     }
-  )
+  ) ++ Seq(Compile, Test, Runtime, Provided, Optional).flatMap(asciiGraphSettings)
+
+  def asciiGraphSettings(config: Configuration) =
+    seq(
+      asciiGraph in config <<= asciiGraphTask(config),
+      printAsciiGraph in config <<= printAsciiGraphTask(config)
+    )
+
+  def asciiGraphTask(conf: Configuration) = (ivyReportF in conf) map { (report) =>
+    IvyGraphMLDependencies.ascii(report(conf.name).getAbsolutePath)
+  } dependsOn(deliverLocal)
+
+  def printAsciiGraphTask(conf: Configuration) = (asciiGraph in conf, streams in conf) map { (graph, streams) =>
+   streams.log.info(graph)
+  }
 
   def crossName(ivyModule: IvySbt#Module) =
     ivyModule.moduleSettings match {
