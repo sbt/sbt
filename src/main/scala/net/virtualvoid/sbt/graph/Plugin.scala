@@ -22,15 +22,15 @@ import Keys._
 object Plugin extends sbt.Plugin {
   val dependencyGraphTask = TaskKey[File]("dependency-graph",
     "Creates a graphml file containing the dependency-graph for a project")
-  val ivyReportF = SettingKey[String => File]("ivy-report-function",
+  val ivyReportF = TaskKey[String => File]("ivy-report-function",
     "A function which returns the file containing the ivy report from the ivy cache for a given configuration")
   val ivyReport = InputKey[File]("ivy-report",
     "A task which returns the location of the ivy report file for a given configuration (default `compile`).")
 
   def graphSettings = Seq(
-    ivyReportF <<= (projectID, scalaVersion in update, appConfiguration) { (projectID, scalaVersion, config) =>
+    ivyReportF <<= (projectID, ivyModule, appConfiguration) map { (projectID, ivyModule, config) =>
       val home = config.provider.scalaProvider.launcher.ivyHome
-      (c: String) => file("%s/cache/%s-%s-%s.xml" format (home, projectID.organization, crossName(projectID, scalaVersion), c))
+      (c: String) => file("%s/cache/%s-%s-%s.xml" format (home, projectID.organization, crossName(ivyModule), c))
     },
     ivyReport <<= inputTask { args =>
       (args, ivyReportF) map { (args, report) =>
@@ -48,11 +48,8 @@ object Plugin extends sbt.Plugin {
     }
   )
 
-  def crossName(moduleId: ModuleID, scalaVersion: String) =
-    moduleId.name + (
-      if (moduleId.crossVersion)
-        "_"+scalaVersion
-      else
-        ""
-    )
+  def crossName(ivyModule: IvySbt#Module) =
+    ivyModule.moduleSettings match {
+      case ic: InlineConfiguration => ic.module.name
+    }
 }
