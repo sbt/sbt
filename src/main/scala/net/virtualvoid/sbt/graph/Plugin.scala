@@ -31,7 +31,7 @@ object Plugin extends sbt.Plugin {
   val ivyReport = InputKey[File]("ivy-report",
     "A task which returns the location of the ivy report file for a given configuration (default `compile`).")
 
-  def graphSettings = Seq(
+  def graphSettings: Seq[Setting[_]] = seq(
     ivyReportF <<= (projectID, scalaVersion in update, appConfiguration) { (projectID, scalaVersion, config) =>
       val home = config.provider.scalaProvider.launcher.ivyHome
       (c: String) => file("%s/cache/%s-%s-%s.xml" format (home, projectID.organization, crossName(projectID, scalaVersion), c))
@@ -45,25 +45,19 @@ object Plugin extends sbt.Plugin {
       }
     },
 
-    asciiGraph in Compile <<= asciiGraphTask(Compile),
-    asciiGraph in Test <<= asciiGraphTask(Test),
-    asciiGraph in Runtime <<= asciiGraphTask(Runtime),
-    asciiGraph in Provided <<= asciiGraphTask(Provided),
-    asciiGraph in Optional <<= asciiGraphTask(Optional),
-
-    printAsciiGraph in Compile <<= printAsciiGraphTask(Compile),
-    printAsciiGraph in Test <<= printAsciiGraphTask(Test),
-    printAsciiGraph in Runtime <<= printAsciiGraphTask(Runtime),
-    printAsciiGraph in Provided <<= printAsciiGraphTask(Provided),
-    printAsciiGraph in Optional <<= printAsciiGraphTask(Optional),
-
     dependencyGraphTask <<= (ivyReportF, target, streams) map { (report, target, streams) =>
       val resultFile = target / "dependencies.graphml"
       IvyGraphMLDependencies.transform(report("compile").getAbsolutePath, resultFile.getAbsolutePath)
       streams.log.info("Wrote dependency graph to '%s'" format resultFile)
       resultFile
     } dependsOn(update)
-  )
+  ) ++ Seq(Compile, Test, Runtime, Provided, Optional).flatMap(asciiGraphSettings)
+
+  def asciiGraphSettings(config: Configuration) =
+    seq(
+      asciiGraph in config <<= asciiGraphTask(config),
+      printAsciiGraph in config <<= printAsciiGraphTask(config)
+    )
 
   def asciiGraphTask(conf: Configuration) = (ivyReportF in conf) map { (report) =>
     IvyGraphMLDependencies.ascii(report(conf.name).getAbsolutePath)
