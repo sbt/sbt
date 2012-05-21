@@ -39,13 +39,13 @@ object Plugin extends sbt.Plugin {
         else
           report(args(0))
       }
-    },
+    } dependsOn(update),
     dependencyGraphTask <<= (ivyReportF, target, streams) map { (report, target, streams) =>
       val resultFile = target / "dependencies.graphml"
       IvyGraphMLDependencies.transform(report("compile").getAbsolutePath, resultFile.getAbsolutePath)
       streams.log.info("Wrote dependency graph to '%s'" format resultFile)
       resultFile
-    } dependsOn(update)
+    }
   )
 
   def crossName(moduleId: ModuleID, scalaVersion: String) =
