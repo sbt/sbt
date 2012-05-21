@@ -1,2 +1,2 @@
-seq(lsSettings :_*)
+//seq(lsSettings :_*)
 
