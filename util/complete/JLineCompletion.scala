@@ -28,7 +28,12 @@ object JLineCompletion
 			val current = Some(bufferSnapshot(reader))
 			level = if(current == previous) level + 1 else 1
 			previous = current
-			completeImpl(reader, level)
+			try completeImpl(reader, level)
+			catch { case e: Exception =>
+				reader.printString("\nException occurred while determining completions.")
+				e.printStackTrace()
+				false
+			 }
 		}
 	}
 	
