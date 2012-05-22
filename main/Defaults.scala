@@ -136,7 +136,7 @@ object Defaults extends BuildCommon
 	def paths = Seq(
 		baseDirectory <<= thisProject(_.base),
 		target <<= baseDirectory / "target",
-		historyPath <<= target(t => Some(t / ".history")),
+		historyPath <<= historyPath or target(t => Some(t / ".history")),
 		sourceDirectory <<= baseDirectory / "src",
 		sourceManaged <<= crossTarget / "src_managed",
 		resourceManaged <<= crossTarget / "resource_managed",
