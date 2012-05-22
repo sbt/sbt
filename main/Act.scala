@@ -196,7 +196,7 @@ object Act
 	}
 	def resolvedReference(index: KeyIndex, currentBuild: URI, trailing: Parser[_]): Parser[ResolvedReference] =
 	{
-		def projectID(uri: URI) = token( examples(ID, index projects uri, "project ID") <~ trailing )
+		def projectID(uri: URI) = token( examplesStrict(ID, index projects uri, "project ID") <~ trailing )
 		def projectRef(uri: URI) = projectID(uri) map { id => ProjectRef(uri, id) }
 
 		val uris = index.buildURIs
