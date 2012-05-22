@@ -25,7 +25,7 @@ final class CompilerArguments(scalaInstance: xsbti.compile.ScalaInstance, cp: xs
 		val dummy = "dummy_" + Integer.toHexString(util.Random.nextInt)
 		val classpathOption = Seq("-classpath", if(cpWithCompiler.isEmpty) dummy else absString(cpWithCompiler))
 		val outputOption = Seq("-d", outputDirectory.getAbsolutePath)
-		options ++ outputOption ++ bootClasspathOption ++ classpathOption ++ abs(sources)
+		options ++ outputOption ++ bootClasspathOption(hasLibrary(classpath)) ++ classpathOption ++ abs(sources)
 	}
 	def finishClasspath(classpath: Seq[File]): Seq[File] =
 		filterLibrary(classpath) ++ include(cp.compiler, scalaInstance.compilerJar) ++ include(cp.extra, scalaInstance.otherJars : _*)
@@ -36,11 +36,13 @@ final class CompilerArguments(scalaInstance: xsbti.compile.ScalaInstance, cp: xs
 		val scalaHome = System.getProperty("scala.home")
 		assert((scalaHome eq null) || scalaHome.isEmpty, "'scala.home' should not be set (was " + scalaHome + ")")
 	}
-	/** Add the correct Scala library jar to the boot classpath.*/
-	def createBootClasspath =
+	def createBootClasspathFor(classpath: Seq[File]) = createBootClasspath(hasLibrary(classpath))
+
+	/** Add the correct Scala library jar to the boot classpath if `addLibrary` is true.*/
+	def createBootClasspath(addLibrary: Boolean) =
 	{
 		val originalBoot = System.getProperty("sun.boot.class.path", "")
-		if(cp.bootLibrary)
+		if(addLibrary)
 		{
 			val newBootPrefix = if(originalBoot.isEmpty) "" else originalBoot + File.pathSeparator
 			newBootPrefix + scalaInstance.libraryJar.getAbsolutePath
@@ -48,10 +50,15 @@ final class CompilerArguments(scalaInstance: xsbti.compile.ScalaInstance, cp: xs
 		else
 			originalBoot
 	}
-	def filterLibrary(classpath: Seq[File]) =
-		if(cp.filterLibrary) classpath.filterNot(_.getName contains ArtifactInfo.ScalaLibraryID) else classpath
-	def bootClasspathOption = if(cp.autoBoot) Seq(BootClasspathOption, createBootClasspath) else Nil
-	def bootClasspath = if(cp.autoBoot) IO.parseClasspath(createBootClasspath) else Nil
+	def filterLibrary(classpath: Seq[File]) = if(cp.filterLibrary) classpath filterNot isScalaLibrary else classpath
+	def hasLibrary(classpath: Seq[File]) = classpath exists isScalaLibrary
+	private[this] val isScalaLibrary: File => Boolean = file => {
+		val name = file.getName
+		(name contains ArtifactInfo.ScalaLibraryID) || file.getName == scalaInstance.libraryJar.getName
+	}
+	def bootClasspathOption(addLibrary: Boolean) = if(cp.autoBoot) Seq(BootClasspathOption, createBootClasspath(addLibrary)) else Nil
+	def bootClasspath(addLibrary: Boolean) = if(cp.autoBoot) IO.parseClasspath(createBootClasspath(addLibrary)) else Nil
+	def bootClasspathFor(classpath: Seq[File]) = bootClasspath(hasLibrary(classpath))
 }
 object CompilerArguments
 {

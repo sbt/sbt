@@ -58,7 +58,7 @@ final class AnalyzingCompiler(val scalaInstance: xsbti.compile.ScalaInstance, va
 	{
 		val arguments = new CompilerArguments(scalaInstance, cp)
 		val classpathString = CompilerArguments.absString(arguments.finishClasspath(classpath))
-		val bootClasspath = if(cp.autoBoot) arguments.createBootClasspath else ""
+		val bootClasspath = if(cp.autoBoot) arguments.createBootClasspathFor(classpath) else ""
 		val (names, values) = bindings.unzip
 		call("xsbt.ConsoleInterface", "run", log)(
 			classOf[Array[String]], classOf[String], classOf[String], classOf[String], classOf[String], classOf[ClassLoader], classOf[Array[String]], classOf[Array[Any]], classOf[xLogger])(

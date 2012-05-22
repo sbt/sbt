@@ -70,7 +70,7 @@ object CompileTest extends Specification
 			val noCompiler = compiler(true, false)
 			val fullExplicit = compiler(false, false)
 			
-			val fullBoot = "-bootclasspath" :: fullExplicit.compilerArguments.createBootClasspath :: Nil
+			val fullBoot = "-bootclasspath" :: fullExplicit.compilerArguments.createBootClasspath(true) :: Nil
 			val withCompiler = noCompiler.scalaInstance.compilerJar :: Nil
 			val withLibrary = noCompiler.scalaInstance.libraryJar :: Nil
 			val withLibraryCompiler = withLibrary ++ withCompiler
