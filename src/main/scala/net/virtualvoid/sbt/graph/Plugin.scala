@@ -20,6 +20,8 @@ import sbt._
 import Keys._
 
 object Plugin extends sbt.Plugin {
+  val dependencyGraphMLFile = SettingKey[File]("dependency-graph-ml-file",
+    "The location the graphml file should be generated at")
   val dependencyGraphML = TaskKey[File]("dependency-graph-ml",
     "Creates a graphml file containing the dependency-graph for a project")
   val asciiGraph = TaskKey[String]("dependency-graph-string",
@@ -42,7 +44,8 @@ object Plugin extends sbt.Plugin {
     ivyReport <<= ivyReportFunction map (_(config.toString)) dependsOn(update),
     asciiGraph <<= asciiGraphTask,
     dependencyGraph <<= printAsciiGraphTask,
-    dependencyGraphML <<= dependencyGraphMLTask(config)
+    dependencyGraphMLFile <<= target / "dependencies-%s.graphml".format(config.toString),
+    dependencyGraphML <<= dependencyGraphMLTask
   ))
 
   def asciiGraphTask = (ivyReport) map { report =>
@@ -52,9 +55,8 @@ object Plugin extends sbt.Plugin {
   def printAsciiGraphTask =
     (streams, asciiGraph) map (_.log.info(_))
 
-  def dependencyGraphMLTask(config: Configuration) =
-    (ivyReport, target, streams) map { (report, target, streams) =>
-      val resultFile = target / "dependencies-%s.graphml".format(config.toString)
+  def dependencyGraphMLTask =
+    (ivyReport, dependencyGraphMLFile, streams) map { (report, resultFile, streams) =>
       IvyGraphMLDependencies.transform(report.getAbsolutePath, resultFile.getAbsolutePath)
       streams.log.info("Wrote dependency graph to '%s'" format resultFile)
       resultFile
