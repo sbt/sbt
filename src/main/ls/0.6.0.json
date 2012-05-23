@@ -1,0 +1,17 @@
+{
+ "organization":"net.virtual-void",
+ "name":"sbt-dependency-graph",
+ "version":"0.6.0",
+ "description":"An sbt plugin to visualize dependencies of your build.",
+ "site":"http://github.com/jrudolph/sbt-dependency-graph",
+ "tags":["dependency","graph","sbt-plugin","sbt"],
+ "docs":"http://github.com/jrudolph/sbt-dependency-graph",
+ "licenses": [{
+   "name": "Apache License 2.0",
+   "url": "https://github.com/jrudolph/sbt-dependency-graph/raw/master/LICENSE"
+  }],
+ "resolvers": ["https://oss.sonatype.org/content/repositories/releases"],
+ "dependencies": [],
+ "scalas": ["2.9.1"],
+ "sbt": true
+}

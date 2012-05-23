@@ -15,4 +15,4 @@ licenses in GlobalScope += "Apache License 2.0" -> url("https://github.com/jrudo
 (LsKeys.docsUrl in LsKeys.lsync) <<= homepage
 
 (description in LsKeys.lsync) :=
-  "An sbt plugin which allows to create a graphml file from the dependencies of the project."
+  "An sbt plugin to visualize dependencies of your build."
