@@ -42,7 +42,7 @@ object Plugin extends sbt.Plugin {
     ivyReport <<= ivyReportFunction map (_(config.toString)) dependsOn(update),
     asciiGraph <<= asciiGraphTask,
     dependencyGraph <<= printAsciiGraphTask,
-    dependencyGraphML <<= dependencyGraphMLTask
+    dependencyGraphML <<= dependencyGraphMLTask(config)
   ))
 
   def asciiGraphTask = (ivyReport) map { report =>
@@ -52,9 +52,9 @@ object Plugin extends sbt.Plugin {
   def printAsciiGraphTask =
     (streams, asciiGraph) map (_.log.info(_))
 
-  def dependencyGraphMLTask =
+  def dependencyGraphMLTask(config: Configuration) =
     (ivyReport, target, streams) map { (report, target, streams) =>
-      val resultFile = target / "dependencies.graphml"
+      val resultFile = target / "dependencies-%s.graphml".format(config.toString)
       IvyGraphMLDependencies.transform(report.getAbsolutePath, resultFile.getAbsolutePath)
       streams.log.info("Wrote dependency graph to '%s'" format resultFile)
       resultFile
