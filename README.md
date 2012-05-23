@@ -1,7 +1,7 @@
 sbt-dependency-graph [![Build Status](https://buildhive.cloudbees.com/job/jrudolph/job/sbt-dependency-graph/badge/icon)](https://buildhive.cloudbees.com/job/jrudolph/job/sbt-dependency-graph/)
 ====================
 
-Create a graph (in graphml format) from your project's dependencies.
+Visualize your project's dependencies.
 
 Requirements
 ------------
@@ -26,7 +26,7 @@ import sbt._
 
 object Plugins extends Build {
   lazy val root = Project("root", file(".")) dependsOn(
-    uri("git://github.com/jrudolph/sbt-dependency-graph.git#v0.5.2") // or another tag/branch/revision
+    uri("git://github.com/jrudolph/sbt-dependency-graph.git#v0.6.0") // or another tag/branch/revision
   )
 }
 ```
@@ -71,6 +71,6 @@ sbt to call into Ivy to create graphs, I went with the easy way here)
 License
 -------
 
-Copyright (c) 2011 Johannes Rudolph
+Copyright (c) 2011, 2012 Johannes Rudolph
 
 Published under the [Apache License 2.0](http://en.wikipedia.org/wiki/Apache_license).
