@@ -63,5 +63,7 @@ object Plugin extends sbt.Plugin {
   def crossName(ivyModule: IvySbt#Module) =
     ivyModule.moduleSettings match {
       case ic: InlineConfiguration => ic.module.name
+      case _ =>
+        throw new IllegalStateException("sbt-dependency-graph plugin currently only supports InlineConfiguration of ivy settings (the default in sbt)")
     }
 }
