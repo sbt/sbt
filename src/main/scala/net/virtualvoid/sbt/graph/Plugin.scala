@@ -28,41 +28,38 @@ object Plugin extends sbt.Plugin {
     "Prints the ascii graph to the console")
   val ivyReportFunction = TaskKey[String => File]("ivy-report-function",
     "A function which returns the file containing the ivy report from the ivy cache for a given configuration")
-  val ivyReport = InputKey[File]("ivy-report",
+  val ivyReport = TaskKey[File]("ivy-report",
     "A task which returns the location of the ivy report file for a given configuration (default `compile`).")
 
-  def graphSettings = Seq(
+  def graphSettings = seq(
     ivyReportFunction <<= (projectID, ivyModule, appConfiguration) map { (projectID, ivyModule, config) =>
       val home = config.provider.scalaProvider.launcher.ivyHome
       (c: String) => file("%s/cache/%s-%s-%s.xml" format (home, projectID.organization, crossName(ivyModule), c))
-    },
-    ivyReport <<= inputTask { args =>
-      (args, ivyReportFunction) map { (args, report) =>
-        if (args.isEmpty)
-          report("compile")
-        else
-          report(args(0))
-      } dependsOn(update)
-    },
-    dependencyGraphML <<= (ivyReportFunction, target, streams) map { (report, target, streams) =>
+    }
+  ) ++ Seq(Compile, Test, Runtime, Provided, Optional).flatMap(ivyReportForConfig)
+
+  def ivyReportForConfig(config: Configuration) = inConfig(config)(seq(
+    ivyReport <<= ivyReportFunction map (_(config.toString)) dependsOn(update),
+    asciiGraph <<= asciiGraphTask,
+    dependencyGraph <<= printAsciiGraphTask,
+    dependencyGraphML <<= dependencyGraphMLTask
+  ))
+
+  def asciiGraphTask = (ivyReport) map { report =>
+    IvyGraphMLDependencies.ascii(report.getAbsolutePath)
+  }
+
+  def printAsciiGraphTask =
+    (streams, asciiGraph) map (_.log.info(_))
+
+  def dependencyGraphMLTask =
+    (ivyReport, target, streams) map { (report, target, streams) =>
       val resultFile = target / "dependencies.graphml"
-      IvyGraphMLDependencies.transform(report("compile").getAbsolutePath, resultFile.getAbsolutePath)
+      IvyGraphMLDependencies.transform(report.getAbsolutePath, resultFile.getAbsolutePath)
       streams.log.info("Wrote dependency graph to '%s'" format resultFile)
       resultFile
     }
-  ) ++ Seq(Compile, Test, Runtime, Provided, Optional).flatMap(asciiGraphSettings)
 
-  def asciiGraphSettings(config: Configuration) =
-    seq(
-      asciiGraph in config <<= asciiGraphTask(config),
-      dependencyGraph in config <<= printAsciiGraphTask(config)
-    )
-
-  def asciiGraphTask(conf: Configuration) = (ivyReportFunction in conf) map { (report) =>
-    IvyGraphMLDependencies.ascii(report(conf.name).getAbsolutePath)
-  } dependsOn(deliverLocal)
-
-  def printAsciiGraphTask(conf: Configuration) = (streams in conf, asciiGraph in conf) map (_.log.info(_))
   def crossName(ivyModule: IvySbt#Module) =
     ivyModule.moduleSettings match {
       case ic: InlineConfiguration => ic.module.name
