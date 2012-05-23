@@ -1,0 +1,12 @@
+New features in this version:
+
+  * `dependency-graph` task now prints the dependency graph to the console
+    (contributed by @gseitz)
+  * `dependency-graph-ml` contains now the old functionality of `dependency-graph`
+    which generates a `.graphml` file. Nodes contain the dependency version as well (contributed by @gseitz).
+  * The output filename of `dependency-graph-ml` has been changed to include the configuration name. It is now
+    configurable using the `dependency-graph-ml-file` setting.
+  * The common `scalaVersion in update` idiom to support Scala 2.9.1 libraries in a
+    Scala 2.9.2 broke the plugin in 0.5.2, because it wouldn't find the ivy report xml file
+    any more. This was fixed.
+  * All tasks are scoped by configuration.
