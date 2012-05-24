@@ -62,10 +62,16 @@ private object JLine
 			val t = terminal
 			t.synchronized { f(t) }
 		}
-	def createReader() =
+	/** For accessing the JLine Terminal object.
+	* This ensures synchronized access as well as re-enabling echo after getting the Terminal. */
+	def usingTerminal[T](f: jline.Terminal => T): T =
 		withTerminal { t =>
-			val cr = new ConsoleReader
 			t.enableEcho()
+			f(t)
+		}
+	def createReader() =
+		usingTerminal { t =>
+			val cr = new ConsoleReader
 			cr.setBellEnabled(false)
 			cr
 		}
