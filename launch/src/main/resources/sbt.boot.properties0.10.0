@@ -1,0 +1,23 @@
+[scala]
+  version: 2.8.1
+
+[app]
+  org: ${sbt.organization-org.scala-tools.sbt}
+  name: sbt
+  version: ${sbt.version-0.10.0}
+  class: ${sbt.main.class-sbt.xMain}
+  components: xsbti,extra
+  cross-versioned: ${sbt.cross.versioned-true}
+
+[repositories]
+  local
+  typesafe-ivy-releases: http://repo.typesafe.com/typesafe/ivy-releases/, [organization]/[module]/[revision]/[type]s/[artifact](-[classifier]).[ext]
+  maven-central
+  sonatype-snapshots: https://oss.sonatype.org/content/repositories/snapshots
+
+[boot]
+ directory: ${sbt.boot.directory-${sbt.global.base-${user.home}/.sbt}/boot/}
+
+[ivy]
+  ivy-home: ${sbt.ivy.home-${user.home}/.ivy2/}
+  checksums: ${sbt.checksums-sha1,md5}

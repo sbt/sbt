@@ -6,6 +6,7 @@ package xsbt.boot
 import Pre._
 import java.io.{File, FileInputStream, InputStreamReader}
 import java.net.{MalformedURLException, URI, URL}
+import java.util.regex.Pattern
 import scala.collection.immutable.List
 import annotation.tailrec
 
@@ -35,8 +36,9 @@ object Configuration
 	}
 	def configurationOnClasspath: URL =
 	{
-		resourcePaths.iterator.map(getClass.getResource).find(_ ne null) getOrElse
-			( multiPartError("Could not finder sbt launch configuration.  Searched classpath for:", resourcePaths))
+		val paths = resourcePaths(guessSbtVersion)
+		paths.iterator.map(getClass.getResource).find(neNull) getOrElse
+			( multiPartError("Could not finder sbt launch configuration.  Searched classpath for:", paths))
 	}
 	def directConfiguration(path: String, baseDirectory: File): URL =
 	{
@@ -59,11 +61,49 @@ object Configuration
 	}
 	def multiPartError[T](firstLine: String, lines: List[T]) = error( (firstLine :: lines).mkString("\n\t") )
 
+	def DefaultBuildProperties = "project/build.properties"
+	def SbtVersionProperty = "sbt.version"
 	val ConfigurationName = "sbt.boot.properties"
 	val JarBasePath = "/sbt/"
 	def userConfigurationPath = "/" + ConfigurationName
 	def defaultConfigurationPath = JarBasePath + ConfigurationName
-	def resourcePaths: List[String] = userConfigurationPath :: defaultConfigurationPath :: Nil
+	val baseResourcePaths: List[String] = userConfigurationPath :: defaultConfigurationPath :: Nil
+	def resourcePaths(sbtVersion: Option[String]): List[String] = 
+		versionParts(sbtVersion) flatMap { part =>
+			baseResourcePaths map { base =>
+				base + part
+			}
+		}
+	def fallbackParts: List[String] = "" :: Nil
+	def versionParts(version: Option[String]): List[String] =
+		version match {
+			case None => fallbackParts
+			case Some(v) => versionParts(v)
+		}
+	def versionParts(version: String): List[String] =
+	{
+		val pattern = Pattern.compile("""(\d+)\.(\d+)\.(\d+)(-.*)?""")
+		val m = pattern.matcher(version)
+		if(m.matches())
+			subPartsIndices map {_.map(m.group).filter(neNull).mkString(".") }
+		else
+			fallbackParts
+	}
+	private[this] def subPartsIndices = 
+		(1 :: 2 :: Nil) ::
+		(1 :: 2 :: 3 :: Nil) ::
+		(1 :: 2 :: 3 :: 4 :: Nil) ::
+		(Nil) ::
+		Nil
+	// the location of project/build.properties and the name of the property within that file 
+	//  that configures the sbt version is configured in sbt.boot.properties.
+	// We have to hard code them here in order to use them to determine the location of sbt.boot.properties itself
+	def guessSbtVersion: Option[String] =
+	{
+		val props = ResolveValues.readProperties(new File(DefaultBuildProperties))
+		Option(props.getProperty(SbtVersionProperty))
+	}
+
 	def resolveAgainst(baseDirectory: File): List[URI] = (baseDirectory toURI) :: (new File(System.getProperty("user.home")) toURI) ::
 		toDirectory(classLocation(getClass).toURI) :: Nil
 
@@ -81,4 +121,5 @@ object Configuration
 			newFile.toURI
 		}
 		catch { case _: Exception => uri }
+	private[this] def neNull: AnyRef => Boolean = _ ne null
 }
