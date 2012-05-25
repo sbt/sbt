@@ -113,7 +113,7 @@ object AnalyzingCompiler
 				val start = System.currentTimeMillis
 				try
 				{
-					compiler(sourceFiles.toSeq, xsbtiJars.toSeq ++ sourceJars, outputDirectory, "-nowarn" :: Nil)
+					compiler(sourceFiles.toSeq, compiler.scalaInstance.libraryJar +: (xsbtiJars.toSeq ++ sourceJars), outputDirectory, "-nowarn" :: Nil)
 					log.info("  Compilation completed in " + (System.currentTimeMillis - start) / 1000.0 + " s")
 				}
 				catch { case e: xsbti.CompileFailed => throw new CompileFailed(e.arguments, "Error compiling sbt component '" + id + "'", e.problems) }
