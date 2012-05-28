@@ -61,6 +61,8 @@ object Configuration
 	}
 	def multiPartError[T](firstLine: String, lines: List[T]) = error( (firstLine :: lines).mkString("\n\t") )
 
+	def UnspecifiedVersionPart = "Unspecified"
+	def DefaultVersionPart = "Default"
 	def DefaultBuildProperties = "project/build.properties"
 	def SbtVersionProperty = "sbt.version"
 	val ConfigurationName = "sbt.boot.properties"
@@ -77,7 +79,7 @@ object Configuration
 	def fallbackParts: List[String] = "" :: Nil
 	def versionParts(version: Option[String]): List[String] =
 		version match {
-			case None => fallbackParts
+			case None => UnspecifiedVersionPart :: fallbackParts
 			case Some(v) => versionParts(v)
 		}
 	def versionParts(version: String): List[String] =
@@ -87,7 +89,7 @@ object Configuration
 		if(m.matches())
 			subPartsIndices map {_.map(m.group).filter(neNull).mkString(".") }
 		else
-			fallbackParts
+			DefaultVersionPart :: fallbackParts
 	}
 	private[this] def subPartsIndices = 
 		(1 :: 2 :: Nil) ::
