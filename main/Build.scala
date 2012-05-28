@@ -10,8 +10,8 @@ package sbt
 	import complete.DefaultParsers.validID
 	import Compiler.Compilers
 	import Keys.{globalBaseDirectory, globalPluginsDirectory, globalSettingsDirectory, stagingDirectory, Streams}
+	import Keys.{name, organization, thisProject}
 	import Project.{ScopedKey, Setting}
-	import Keys.{globalBaseDirectory, Streams}
 	import Scope.GlobalScope
 	import scala.annotation.tailrec
 
@@ -39,7 +39,10 @@ object Build
 {
 	val default: Build = new Build { override def projectDefinitions(base: File) = defaultProject(base) :: Nil }
 	def defaultID(base: File): String = "default-" + Hash.trimHashString(base.getAbsolutePath, 6)
-	def defaultProject(base: File): Project = Project(defaultID(base), base).settings(Keys.organization := "default")
+	def defaultProject(base: File): Project = Project(defaultID(base), base).settings(
+		// if the user has overridden the name, use the normal organization that is derived from the name.
+		organization <<= (thisProject, organization, name) { (p, o, n) => if(p.id == n) "default" else o }
+	)
 
 	def data[T](in: Seq[Attributed[T]]): Seq[T] = in.map(_.data)
 	def analyzed(in: Seq[Attributed[_]]): Seq[inc.Analysis] = in.flatMap{ _.metadata.get(Keys.analysis) }
