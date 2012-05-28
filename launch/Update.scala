@@ -296,8 +296,8 @@ final class Update(config: UpdateConfiguration)
 				case Local => localResolver(settings.getDefaultIvyUserDir.getAbsolutePath)
 				case MavenLocal => mavenLocal
 				case MavenCentral => mavenMainResolver
-				case ScalaToolsReleases => mavenResolver("Sonatype Releases Repository", "https://oss.sonatype.org/content/repositories/releases")
-				case ScalaToolsSnapshots => scalaSnapshots(getScalaVersion)
+				case ScalaToolsReleases | SonatypeOSSReleases => mavenResolver("Sonatype Releases Repository", "https://oss.sonatype.org/content/repositories/releases")
+				case ScalaToolsSnapshots | SonatypeOSSSnapshots => scalaSnapshots(getScalaVersion)
 			}
 		}
 	}

@@ -5,8 +5,10 @@ public enum Predefined
 	Local("local"),
 	MavenLocal("maven-local"),
 	MavenCentral("maven-central"),
-	ScalaToolsReleases("sonatype-oss-releases"),
-	ScalaToolsSnapshots("sonatype-oss-snapshots");
+	ScalaToolsReleases("scala-tools-releases"),
+	ScalaToolsSnapshots("scala-tools-snapshots"),
+	SonatypeOSSReleases("sonatype-oss-releases"),
+	SonatypeOSSSnapshots("sonatype-oss-snapshots");
 
 	private final String label;
 	private Predefined(String label) { this.label = label; }
