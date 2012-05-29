@@ -17,8 +17,14 @@ object Packaging {
 
   def localWindowsPattern = "[organisation]/[module]/[revision]/[module].[ext]"
   
+  def downloadUrlForVersion(v: String) = (v split "[^\\d]" map (_.toInt)) match {
+    case Array(0, 11, x, _*) if x >= 3 => "http://repo.typesafe.com/typesafe/ivy-releases/org.scala-sbt/sbt-launch/"+v+"/sbt-launch.jar"
+    case Array(0, y, _*) if y >= 12    => "http://repo.typesafe.com/typesafe/ivy-releases/org.scala-sbt/sbt-launch/"+v+"/sbt-launch.jar"
+    case _                             => "http://repo.typesafe.com/typesafe/ivy-releases/org.scala-tools.sbt/sbt-launch/"+v+"/sbt-launch.jar"
+  }
+
   val settings: Seq[Setting[_]] = packagerSettings ++ Seq(
-    sbtLaunchJarUrl <<= sbtVersion apply ("http://repo.typesafe.com/typesafe/ivy-releases/org.scala-sbt/sbt-launch/"+_+"/sbt-launch.jar"),
+    sbtLaunchJarUrl <<= sbtVersion apply downloadUrlForVersion,
     sbtLaunchJarLocation <<= target apply (_ / "sbt-launch.jar"),
     sbtLaunchJar <<= (sbtLaunchJarUrl, sbtLaunchJarLocation) map { (uri, file) =>
       import dispatch._
@@ -88,9 +94,10 @@ object Packaging {
                      jar -> ("/usr/lib/sbt/"+v+"/sbt-launch.jar")) withPerms "0755"
     },
     // DEBIAN SPECIFIC    
-    name in Debian := "sbt",
-    version in Debian <<= (version, sbtVersion) apply { (v, sv) =>       
-      sv + "-build-" + (v split "\\." map (_.toInt) dropWhile (_ == 0) map ("%02d" format _) mkString "")
+    name in Debian <<= (sbtVersion) apply { (sv) => "sbt-" + (sv split "[^\\d]" take 3 mkString ".") },
+    version in Debian <<= (version, sbtVersion) apply { (v, sv) =>
+      val nums = (v split "[^\\d]")
+      "%s-build-%03d" format ((nums.init mkString "."), nums.last.toInt + 1)
     },
     debianPackageDependencies in Debian ++= Seq("curl", "java2-runtime", "bash (>= 2.05a-11)"),
     debianPackageRecommends in Debian += "git",
