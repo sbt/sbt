@@ -14,6 +14,17 @@ object ComponentCompiler
 	val compilerInterfaceID = "compiler-interface"
 	val compilerInterfaceSrcID = compilerInterfaceID + srcExtension
 	val javaVersion = System.getProperty("java.class.version")
+
+	def interfaceProvider(manager: ComponentManager): CompilerInterfaceProvider = new CompilerInterfaceProvider
+	{
+		def apply(scalaInstance: ScalaInstance, log: Logger): File =
+		{
+			// this is the instance used to compile the interface component
+			val componentCompiler = new ComponentCompiler(new RawCompiler(scalaInstance, ClasspathOptions.auto, log), manager)
+			log.debug("Getting " + compilerInterfaceID + " from component compiler for Scala " + scalaInstance.version)
+			componentCompiler(compilerInterfaceID)
+		}
+	}
 }
 /** This class provides source components compiled with the provided RawCompiler.
 * The compiled classes are cached using the provided component manager according

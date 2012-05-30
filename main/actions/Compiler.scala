@@ -46,7 +46,7 @@ object Compiler
 
 	def compilers(instance: ScalaInstance, cpOptions: ClasspathOptions, javaHome: Option[File])(implicit app: AppConfiguration, log: Logger): Compilers =
 	{
-		val javac = directOrFork(instance, cpOptions, javaHome)
+		val javac = AggressiveCompile.directOrFork(instance, cpOptions, javaHome)
 		compilers(instance, cpOptions, javac)
 	}
 	def compilers(instance: ScalaInstance, cpOptions: ClasspathOptions, javac: JavaCompiler.Fork)(implicit app: AppConfiguration, log: Logger): Compilers =
@@ -63,29 +63,8 @@ object Compiler
 	{
 		val launcher = app.provider.scalaProvider.launcher
 		val componentManager = new ComponentManager(launcher.globalLock, app.provider.components, Option(launcher.ivyHome), log)
-		new AnalyzingCompiler(instance, componentManager, cpOptions, log)
-	}
-	def directOrFork(instance: ScalaInstance, cpOptions: ClasspathOptions, javaHome: Option[File]): JavaCompiler =
-		if(javaHome.isDefined)
-			JavaCompiler.fork(cpOptions, instance)(forkJavac(javaHome))
-		else
-			JavaCompiler.directOrFork(cpOptions, instance)(forkJavac(None))
-
-	def forkJavac(javaHome: Option[File]): JavaCompiler.Fork =
-	{
-		import Path._
-		def exec(jc: JavacContract) = javaHome match { case None => jc.name; case Some(jh) => (jh / "bin" / jc.name).absolutePath }
-		(contract: JavacContract, args: Seq[String], log: Logger) => {
-			log.debug("Forking " + contract.name + ": " + exec(contract) + " " + args.mkString(" "))
-			val javacLogger = new JavacLogger(log)
-			var exitCode = -1
-			try {
-				exitCode = Process(exec(contract), args) ! javacLogger
-			} finally {
-				javacLogger.flush(exitCode)
-			}
-			exitCode
-		}
+		val provider = ComponentCompiler.interfaceProvider(componentManager)
+		new AnalyzingCompiler(instance, provider, cpOptions, log)
 	}
 
 	def apply(in: Inputs, log: Logger): Analysis =
@@ -97,30 +76,4 @@ object Compiler
 		val agg = new AggressiveCompile(cacheFile)
 		agg(scalac, javac, sources, classpath, classesDirectory, options, javacOptions, analysisMap, definesClass, maxErrors, order, skip)(log)
 	}
-}
-
-private[sbt] class JavacLogger(log: Logger) extends ProcessLogger {
-  import scala.collection.mutable.ListBuffer
-  import Level.{Info, Warn, Error, Value => LogLevel}
-
-  private val msgs: ListBuffer[(LogLevel, String)] = new ListBuffer()
-
-  def info(s: => String): Unit =
-    synchronized { msgs += ((Info, s)) }
-
-  def error(s: => String): Unit =
-    synchronized { msgs += ((Error, s)) }
-
-  def buffer[T](f: => T): T = f
-
-  private def print(desiredLevel: LogLevel)(t: (LogLevel, String)) = t match {
-    case (Info, msg) => log.info(msg)
-    case (Error, msg) => log.log(desiredLevel, msg)
-  }
-
-  def flush(exitCode: Int): Unit = {
-    val level = if (exitCode == 0) Warn else Error
-    msgs foreach print(level)
-    msgs.clear()
-  }
 }
