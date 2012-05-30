@@ -166,7 +166,7 @@ object Sbt extends Build
 
 		val id = charClass(c => !c.isWhitespace && c != '/').+.string
 		val groupP = token(id.examples(pairMap.keySet.toSet)) <~ token('/')
-		def nameP(group: String) = "*".id | id.examples(pairMap(group))
+		def nameP(group: String) = token("*".id | id.examples(pairMap(group)))
 		val testID = for( group <- groupP; name <- nameP(group) ) yield (group, name)
 		(token(Space) ~> matched(testID)).*
 	}
