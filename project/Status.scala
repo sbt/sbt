@@ -26,5 +26,5 @@ object Status
 		format.format(new java.util.Date(time))
 	}
 	final val Snapshot = "-SNAPSHOT"
-	def snapshotQualifier(v: String) = !Pattern.matches(""".+-(M|Alpha|Beta|RC)?\d+""", v)
+	def snapshotQualifier(v: String) = !Pattern.matches(""".+-(M|Alpha|Beta|RC)\d*""", v)
 }
