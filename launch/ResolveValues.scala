@@ -28,11 +28,10 @@ final class ResolveValues(conf: LaunchConfiguration)
 	private lazy val properties = readProperties(propertiesFile)
 	def apply(): LaunchConfiguration =
 	{
-		import conf._
 		val scalaVersion = resolve(conf.scalaVersion)
-		val appVersion = resolve(app.version)
-		val classifiers = resolveClassifiers(ivyConfiguration.classifiers)
-		withVersions(scalaVersion, appVersion, classifiers)
+		val appVersion = resolve(conf.app.version)
+		val classifiers = resolveClassifiers(conf.ivyConfiguration.classifiers)
+		resolveProxies(conf.withVersions(scalaVersion, appVersion, classifiers))
 	}
 	def resolveClassifiers(classifiers: Classifiers): Classifiers =
 	{
@@ -42,6 +41,36 @@ final class ResolveValues(conf: LaunchConfiguration)
 		val appClassifiers = "" :: resolve(classifiers.app)
 		Classifiers(new Explicit(scalaClassifiers), new Explicit(appClassifiers))
 	}
+  /** Resolves the proxy configuration and alters our launch configuration accordingly. */
+	def resolveProxies(config: LaunchConfiguration): LaunchConfiguration = {
+		import scala.util.control.Exception.catching
+		def resolveUrl(name: String): Option[java.net.URL] =
+			for {
+			  name <- deepResolve(name)
+			  url  <- catching(classOf[java.net.MalformedURLException]) opt new java.net.URL(name)
+			} yield url
+		// Pull the optional maven/ivy proxy configurations.
+		// TODO - Precedence of using global first ok?
+		val (maven, ivy) =
+			resolveUrl("sbt.repo.proxy.url") match {
+				case Some(url) =>  Some(url) -> Some(url)
+				case _         => resolveUrl("sbt.repo.proxy.maven.url") -> resolveUrl("sbt.repo.proxy.ivy.url")
+			}
+		def addMavenProxy(c: LaunchConfiguration) = maven map (url => c.withMavenProxyRepository(url)) getOrElse c
+		def addIvyProxy(c: LaunchConfiguration) = {
+			val artifactPattern = deepResolve("sbt.repo.proxy.ivy.url.pattern") getOrElse Repository.defaultArtifactPattern
+			val ivyPattern = deepResolve("sbt.repo.proxy.ivy.url.ivypattern") getOrElse artifactPattern
+			ivy map (url => c.withIvyProxyRepository(url, ivyPattern, artifactPattern)) getOrElse c
+		}
+		// Precedence:  Global config first, then maven/ivy specific can override.
+		addMavenProxy(addIvyProxy(config))
+	}
+  // TODO - We should resolve more this way, or make this some kind of canonical setting area that's accesible inside of defaults.scala....
+	def deepResolve(name: String): Option[String] = (
+	  trim(properties.getProperty(name)) orElse 
+	  trim(System.getProperty(name)) orElse
+	  trim(System.getenv(name))
+	)
 	def resolve[T](v: Value[T])(implicit read: String => T): T =
 		v match
 		{
