@@ -51,26 +51,35 @@ class ConfigurationParser
 	def apply(s: String): LaunchConfiguration = Using(new StringReader(s))(apply)
 	def apply(reader: Reader): LaunchConfiguration = Using(new BufferedReader(reader))(apply)
 	private def apply(in: BufferedReader): LaunchConfiguration =
-	{
-		def readLine(accum: List[Line], index: Int): List[Line] =
-		{
-			val line = in.readLine()
-			if(line eq null) accum.reverse else readLine(ParseLine(line, index) ::: accum, index+1)
+		processSections(processLines(readLine(in, Nil, 0)))
+	private final def readLine(in: BufferedReader, accum: List[Line], index: Int): List[Line] =
+		in.readLine match {
+			case null => accum.reverse
+			case line => readLine(in, ParseLine(line,index) ::: accum, index+1)
 		}
-		processSections(processLines(readLine(Nil, 0)))
-	}
+	def readRepositoriesConfig(file: File): List[xsbti.Repository] =
+		Using(new InputStreamReader(new FileInputStream(file), "UTF-8"))(readRepositoriesConfig)
+	def readRepositoriesConfig(reader: Reader): List[xsbti.Repository] = 
+		Using(new BufferedReader(reader))(readRepositoriesConfig)
+	private def readRepositoriesConfig(in: BufferedReader): List[xsbti.Repository] =
+		processRepositoriesConfig(processLines(readLine(in, Nil, 0)))
+	def processRepositoriesConfig(sections: SectionMap): List[xsbti.Repository] =
+		processSection(sections, "repositories", getRepositories) match {
+			case (repositories, _) => repositories
+		}
 	// section -> configuration instance  processing
 	def processSections(sections: SectionMap): LaunchConfiguration =
 	{
 		val ((scalaVersion, scalaClassifiers), m1) = processSection(sections, "scala", getScala)
 		val ((app, appClassifiers), m2) = processSection(m1, "app", getApplication)
-		val (repositories, m3) = processSection(m2, "repositories", getRepositories)
+		val (defaultRepositories, m3) = processSection(m2, "repositories", getRepositories)
 		val (boot, m4) = processSection(m3, "boot", getBoot)
 		val (logging, m5) = processSection(m4, "log", getLogging)
 		val (properties, m6) = processSection(m5, "app-properties", getAppProperties)
-		val ((ivyHome, checksums, isOverrideRepos), m7) = processSection(m6, "ivy", getIvy)
+		val ((ivyHome, checksums, isOverrideRepos, rConfigFile), m7) = processSection(m6, "ivy", getIvy)
 		check(m7, "section")
 		val classifiers = Classifiers(scalaClassifiers, appClassifiers)
+		val repositories = rConfigFile map readRepositoriesConfig getOrElse defaultRepositories
 		val ivyOptions = IvyOptions(ivyHome, classifiers, repositories, checksums, isOverrideRepos)
 		new LaunchConfiguration(scalaVersion, ivyOptions, app, boot, logging, properties)
 	}
@@ -120,15 +129,16 @@ class ConfigurationParser
 	def toFile(path: String): File = new File(substituteVariables(path).replace('/', File.separatorChar))// if the path is relative, it will be resolved by Launch later
 	def file(map: LabelMap, name: String, default: File): (File, LabelMap) =
 		(orElse(getOrNone(map, name).map(toFile), default), map - name)
-
-	def getIvy(m: LabelMap): (Option[File], List[String], Boolean) =
+	def optfile(map: LabelMap, name: String): (Option[File], LabelMap) =
+		(getOrNone(map, name).map(toFile), map - name)
+	def getIvy(m: LabelMap): (Option[File], List[String], Boolean, Option[File]) =
 	{
-		val (ivyHome, m1) = file(m, "ivy-home", null) // fix this later
+		val (ivyHome, m1) = optfile(m, "ivy-home")
 		val (checksums, m2) = ids(m1, "checksums", BootConfiguration.DefaultChecksums)
     val (overrideRepos, m3) = bool(m2, "override-build", false)
-		check(m3, "label")
-		val home = if(ivyHome eq null) None else Some(ivyHome)
-		(home, checksums, overrideRepos)
+		val (repoConfig, m4) = optfile(m3, "resolver-config")
+		check(m4, "label")
+		(ivyHome, checksums, overrideRepos, repoConfig filter (_.exists))
 	}
 	def getBoot(m: LabelMap): BootSetup =
 	{
