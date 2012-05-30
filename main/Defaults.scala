@@ -1228,9 +1228,13 @@ trait BuildExtra extends BuildCommon
 	def addSbtPlugin(dependency: ModuleID, sbtVersion: String, scalaVersion: String): Setting[Seq[ModuleID]] =
 		libraryDependencies += sbtPluginExtra(dependency, sbtVersion, scalaVersion)
 	def addSbtPlugin(dependency: ModuleID, sbtVersion: String): Setting[Seq[ModuleID]] =
-		libraryDependencies <+= (scalaBinaryVersion in update) { scalaV => sbtPluginExtra(dependency, sbtVersion, scalaV) }
+		libraryDependencies <+= (scalaVersion in update, scalaBinaryVersion in update) { (scalaV, scalaBV) =>
+			sbtPluginExtra(dependency, sbtVersion, selectVersion(scalaV, scalaBV))
+		}
 	def addSbtPlugin(dependency: ModuleID): Setting[Seq[ModuleID]] =
-		libraryDependencies <+= (sbtBinaryVersion in update,scalaBinaryVersion in update) { (sbtV, scalaV) => sbtPluginExtra(dependency, sbtV, scalaV) }
+		libraryDependencies <+= (sbtVersion in update, sbtBinaryVersion in update, scalaVersion in update, scalaBinaryVersion in update) { (sbtV, sbtBV, scalaV, scalaBV) =>
+			sbtPluginExtra(dependency, selectVersion(sbtV, sbtBV), selectVersion(scalaV, scalaBV))
+		}
 
 	def compilerPlugin(dependency: ModuleID): ModuleID =
 		dependency.copy(configurations = Some("plugin->default(compile)"))
