@@ -93,7 +93,7 @@ object Sbt extends Build
 		//   Includes API and Analyzer phases that extract source API and relationships.
 	lazy val compileInterfaceSub = baseProject(compilePath / "interface", "Compiler Interface") dependsOn(interfaceSub, ioSub % "test->test", logSub % "test->test", launchSub % "test->test") settings( compileInterfaceSettings : _*)
 	lazy val precompiled282 = precompiled("2.8.2")
-	lazy val precompiled2100 = precompiled("2.10.0-M2")
+	lazy val precompiled2100 = precompiled("2.10.0-M3")
 
 		// Implements the core functionality of detecting and propagating changes incrementally.
 		//   Defines the data structures for representing file fingerprints and relationships and the overall source analysis
