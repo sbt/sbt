@@ -25,8 +25,7 @@ final case class LaunchConfiguration(scalaVersion: Value[String], ivyConfigurati
 
 	def map(f: File => File) = LaunchConfiguration(scalaVersion, ivyConfiguration, app.map(f), boot.map(f), logging, appProperties)
 }
-final case class IvyOptions(ivyHome: Option[File], classifiers: Classifiers, repositories: List[xsbti.Repository], checksums: List[String])
-
+final case class IvyOptions(ivyHome: Option[File], classifiers: Classifiers, repositories: List[xsbti.Repository], checksums: List[String], isOverrideRepositories: Boolean)
 sealed trait Value[T]
 final class Explicit[T](val value: T) extends Value[T] {
 	override def toString = value.toString

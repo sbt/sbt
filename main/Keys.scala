@@ -273,6 +273,8 @@ object Keys
 	val isSnapshot = SettingKey[Boolean]("is-snapshot", "True if the the version of the project is a snapshot version.", BPlusSetting)
 	val moduleID = SettingKey[ModuleID]("module-id", "A dependency management descriptor.  This is currently used for associating a ModuleID with a classpath entry.", BPlusSetting)
 	val projectID = SettingKey[ModuleID]("project-id", "The dependency management descriptor for the current module.", BMinusSetting)
+	val overrideBuildResolvers = SettingKey[Boolean]("override-build-resolvers", "Whether or not all the build resolvers should be overriden with what's defined from the launcher.", BMinusSetting)
+	val bootResolvers = TaskKey[Option[Seq[Resolver]]]("boot-resolvers", "The resolvers used by the sbt launcher.", BMinusSetting)
 	val externalResolvers = TaskKey[Seq[Resolver]]("external-resolvers", "The external resolvers for automatically managed dependencies.", BMinusSetting)
 	val resolvers = SettingKey[Seq[Resolver]]("resolvers", "The user-defined additional resolvers for automatically managed dependencies.", BMinusTask)
 	val projectResolver = TaskKey[Resolver]("project-resolver", "Resolver that handles inter-project dependencies.", DTask)

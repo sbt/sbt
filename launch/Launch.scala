@@ -98,6 +98,7 @@ class Launch private[xsbt](val bootDirectory: File, val lockBoot: Boolean, val i
 	def globalLock: xsbti.GlobalLock = Locks
 	def ivyHome = orNull(ivyOptions.ivyHome)
 	def ivyRepositories = repositories.toArray
+	def isOverrideRepositories: Boolean = ivyOptions.isOverrideRepositories
 	def checksums = checksumsList.toArray[String]
 
 	def jnaLoader(parent: ClassLoader): ClassLoader =
@@ -278,7 +279,7 @@ class Launch private[xsbt](val bootDirectory: File, val lockBoot: Boolean, val i
 object Launcher
 {
 	def apply(bootDirectory: File, repositories: List[xsbti.Repository]): xsbti.Launcher =
-		apply(bootDirectory, IvyOptions(None, Classifiers(Nil, Nil), repositories, BootConfiguration.DefaultChecksums))
+		apply(bootDirectory, IvyOptions(None, Classifiers(Nil, Nil), repositories, BootConfiguration.DefaultChecksums, false))
 	def apply(bootDirectory: File, ivyOptions: IvyOptions): xsbti.Launcher =
 		apply(bootDirectory, ivyOptions, GetLocks.find)
 	def apply(bootDirectory: File, ivyOptions: IvyOptions, locks: xsbti.GlobalLock): xsbti.Launcher =

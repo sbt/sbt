@@ -68,10 +68,10 @@ class ConfigurationParser
 		val (boot, m4) = processSection(m3, "boot", getBoot)
 		val (logging, m5) = processSection(m4, "log", getLogging)
 		val (properties, m6) = processSection(m5, "app-properties", getAppProperties)
-		val ((ivyHome, checksums), m7) = processSection(m6, "ivy", getIvy)
+		val ((ivyHome, checksums, isOverrideRepos), m7) = processSection(m6, "ivy", getIvy)
 		check(m7, "section")
 		val classifiers = Classifiers(scalaClassifiers, appClassifiers)
-		val ivyOptions = IvyOptions(ivyHome, classifiers, repositories, checksums)
+		val ivyOptions = IvyOptions(ivyHome, classifiers, repositories, checksums, isOverrideRepos)
 		new LaunchConfiguration(scalaVersion, ivyOptions, app, boot, logging, properties)
 	}
 	def getScala(m: LabelMap) =
@@ -121,13 +121,14 @@ class ConfigurationParser
 	def file(map: LabelMap, name: String, default: File): (File, LabelMap) =
 		(orElse(getOrNone(map, name).map(toFile), default), map - name)
 
-	def getIvy(m: LabelMap): (Option[File], List[String]) =
+	def getIvy(m: LabelMap): (Option[File], List[String], Boolean) =
 	{
 		val (ivyHome, m1) = file(m, "ivy-home", null) // fix this later
 		val (checksums, m2) = ids(m1, "checksums", BootConfiguration.DefaultChecksums)
-		check(m2, "label")
+    val (overrideRepos, m3) = bool(m2, "override-build", false)
+		check(m3, "label")
 		val home = if(ivyHome eq null) None else Some(ivyHome)
-		(home, checksums)
+		(home, checksums, overrideRepos)
 	}
 	def getBoot(m: LabelMap): BootSetup =
 	{
