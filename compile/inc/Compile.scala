@@ -44,19 +44,21 @@ private final class AnalysisCallback(internalMap: File => Option[File], external
 
 	override def toString = ( List("APIs", "Binary deps", "Products", "Source deps") zip List(apis, binaryDeps, classes, sourceDeps)).map { case (label, map) => label + "\n\t" + map.mkString("\n\t") }.mkString("\n")
 	
-	import collection.mutable.{HashMap, HashSet, ListBuffer, Map, Set}
+	import collection.mutable.{HashMap, HashSet, ListBuffer, Map, Set, SynchronizedMap}
 	
-	private[this] val apis = new HashMap[File, (Int, SourceAPI)]
-	private[this] val unreporteds = new HashMap[File, ListBuffer[Problem]]
-	private[this] val reporteds = new HashMap[File, ListBuffer[Problem]]
-	private[this] val binaryDeps = new HashMap[File, Set[File]]
+	final class SyncMap[K,V] extends HashMap[K,V] with SynchronizedMap[K,V]
+
+	private[this] val apis = new SyncMap[File, (Int, SourceAPI)]
+	private[this] val unreporteds = new SyncMap[File, ListBuffer[Problem]]
+	private[this] val reporteds = new SyncMap[File, ListBuffer[Problem]]
+	private[this] val binaryDeps = new SyncMap[File, Set[File]]
 		 // source file to set of generated (class file, class name)
-	private[this] val classes = new HashMap[File, Set[(File, String)]]
+	private[this] val classes = new SyncMap[File, Set[(File, String)]]
 		 // generated class file to its source file
-	private[this] val classToSource = new HashMap[File, File]
-	private[this] val sourceDeps = new HashMap[File, Set[File]]
+	private[this] val classToSource = new SyncMap[File, File]
+	private[this] val sourceDeps = new SyncMap[File, Set[File]]
 	private[this] val extSrcDeps = new ListBuffer[(File, String, Source)]
-	private[this] val binaryClassName = new HashMap[File, String]
+	private[this] val binaryClassName = new SyncMap[File, String]
 		 // source files containing a macro def.
 	private[this] val macroSources = Set[File]()
 
@@ -77,7 +79,7 @@ private final class AnalysisCallback(internalMap: File => Option[File], external
 		binaryClassName.put(binary, className)
 		add(binaryDeps, source, binary)
 	}
-	def externalSourceDependency(triple: (File, String, Source)) =  extSrcDeps += triple
+	def externalSourceDependency(triple: (File, String, Source)) =  synchronized { extSrcDeps += triple }
 
 	def binaryDependency(classFile: File, name: String, source: File) =
 		internalMap(classFile) match
@@ -116,7 +118,7 @@ private final class AnalysisCallback(internalMap: File => Option[File], external
 	
 	def api(sourceFile: File, source: SourceAPI) {
 		import xsbt.api.{APIUtil, HashAPI}
-		if (APIUtil.hasMacro(source)) macroSources += sourceFile
+		if (APIUtil.hasMacro(source)) synchronized { macroSources += sourceFile }
 		apis(sourceFile) = (HashAPI(source), APIUtil.minimize(source))
 	}
 

@@ -3,8 +3,8 @@
  */
 package xsbt
 
-import xsbti.{AnalysisCallback,Logger,Problem,Reporter,Severity}
-import xsbti.compile.{CachedCompiler, DependencyChanges}
+import xsbti.{AnalysisCallback, Logger, Problem, Reporter, Severity}
+import xsbti.compile.{CachedCompiler, DependencyChanges, CompileProgress}
 import scala.tools.nsc.{io, reporters, util, Phase, Global, Settings, SubComponent}
 import util.{ClassPath,DirectoryClassPath,MergedClassPath,JavaClassPath}
 import ClassPath.{ClassPathContext,JavaContext}
@@ -18,8 +18,8 @@ final class CompilerInterface
 {
 	def newCompiler(options: Array[String], initialLog: Logger, initialDelegate: Reporter): CachedCompiler =
 		new CachedCompiler0(options, new WeakLog(initialLog, initialDelegate))
-	def run(sources: Array[File], changes: DependencyChanges, callback: AnalysisCallback, log: Logger, delegate: Reporter, cached: CachedCompiler): Unit =
-		cached.run(sources, changes, callback, log, delegate)
+	def run(sources: Array[File], changes: DependencyChanges, callback: AnalysisCallback, log: Logger, delegate: Reporter, progress: CompileProgress, cached: CachedCompiler): Unit =
+		cached.run(sources, changes, callback, log, delegate, progress)
 }
 sealed abstract class CallbackGlobal(settings: Settings, reporter: reporters.Reporter) extends Global(settings, reporter) {
 	def callback: AnalysisCallback
@@ -57,14 +57,14 @@ private final class CachedCompiler0(args: Array[String], initialLog: WeakLog) ex
 
 	def noErrors(dreporter: DelegatingReporter) = !dreporter.hasErrors && command.ok
 
-	def run(sources: Array[File], changes: DependencyChanges, callback: AnalysisCallback, log: Logger, delegate: Reporter): Unit = synchronized
+	def run(sources: Array[File], changes: DependencyChanges, callback: AnalysisCallback, log: Logger, delegate: Reporter, progress: CompileProgress): Unit = synchronized
 	{
 		debug(log, "Running cached compiler " + hashCode.toHexString + ", interfacing (CompilerInterface) with Scala compiler " + scala.tools.nsc.Properties.versionString)
 		val dreporter = DelegatingReporter(settings, delegate)
-		try { run(sources.toList, changes, callback, log, dreporter) }
+		try { run(sources.toList, changes, callback, log, dreporter, progress) }
 		finally { dreporter.dropDelegate() }
 	}
-	private[this] def run(sources: List[File], changes: DependencyChanges, callback: AnalysisCallback, log: Logger, dreporter: DelegatingReporter)
+	private[this] def run(sources: List[File], changes: DependencyChanges, callback: AnalysisCallback, log: Logger, dreporter: DelegatingReporter, compileProgress: CompileProgress)
 	{
 		if(command.shouldStopWithInfo)
 		{
@@ -76,7 +76,15 @@ private final class CachedCompiler0(args: Array[String], initialLog: WeakLog) ex
 			debug(log, args.mkString("Calling Scala compiler with arguments  (CompilerInterface):\n\t", "\n\t", ""))
 			compiler.set(callback, dreporter)
 			try {
-				val run = new compiler.Run
+				val run = new compiler.Run {
+					override def informUnitStarting(phase: Phase, unit: compiler.CompilationUnit) {
+ 						compileProgress.startUnit(phase.name, unit.source.path)
+        	}
+	        override def progress(current: Int, total: Int) {
+  	        if (!compileProgress.advance(current, total))
+    	        cancel
+      	  }
+				}
 				compiler.reload(changes)
 				val sortedSourceFiles = sources.map(_.getAbsolutePath).sortWith(_ < _)
 				run compile sortedSourceFiles
@@ -105,7 +113,7 @@ private final class CachedCompiler0(args: Array[String], initialLog: WeakLog) ex
 		if(!warnings.isEmpty)
 			compiler.logUnreportedWarnings(warnings.map(cw => ("" /*cw.what*/, cw.warnings.toList)))
 	}
-	object compiler extends CallbackGlobal(command.settings, dreporter)
+  object compiler extends CallbackGlobal(command.settings, dreporter)
 	{
 		object dummy // temporary fix for #4426
 		object sbtAnalyzer extends

@@ -5,7 +5,7 @@ package sbt
 package compiler
 
 	import xsbti.{AnalysisCallback, Logger => xLogger, Reporter}
-	import xsbti.compile.{CachedCompiler, CachedCompilerProvider, DependencyChanges, GlobalsCache}
+	import xsbti.compile.{CachedCompiler, CachedCompilerProvider, DependencyChanges, GlobalsCache, CompileProgress}
 	import java.io.File
 	import java.net.{URL, URLClassLoader}
 
@@ -22,18 +22,18 @@ final class AnalyzingCompiler(val scalaInstance: xsbti.compile.ScalaInstance, va
 		compile(sources, changes, arguments, callback, maximumErrors, cache, log)
 	}
 
-	def compile(sources: Seq[File], changes: DependencyChanges, options: Seq[String], callback: AnalysisCallback, maximumErrors: Int, cache: GlobalsCache, log: Logger): Unit =
+	def compile(sources: Seq[File], changes: DependencyChanges, options: Seq[String], callback: AnalysisCallback, maximumErrors: Int, cache: GlobalsCache, log: Logger, progress: CompileProgress = IgnoreProgress): Unit =
 	{
 		val reporter = new LoggerReporter(maximumErrors, log)
 		val cached = cache(options.toArray, !changes.isEmpty, this, log, reporter)
-		compile(sources, changes, callback, log, reporter, cached)
+		compile(sources, changes, callback, log, reporter, progress, cached)
 	}
 
-	def compile(sources: Seq[File], changes: DependencyChanges, callback: AnalysisCallback, log: Logger, reporter: Reporter, compiler: CachedCompiler)
+	def compile(sources: Seq[File], changes: DependencyChanges, callback: AnalysisCallback, log: Logger, reporter: Reporter, progress: CompileProgress, compiler: CachedCompiler)
 	{
 		call("xsbt.CompilerInterface", "run", log)(
-			classOf[Array[File]], classOf[DependencyChanges], classOf[AnalysisCallback], classOf[xLogger], classOf[Reporter], classOf[CachedCompiler]) (
-			sources.toArray, changes, callback, log, reporter, compiler )
+			classOf[Array[File]], classOf[DependencyChanges], classOf[AnalysisCallback], classOf[xLogger], classOf[Reporter], classOf[CompileProgress], classOf[CachedCompiler]) (
+			sources.toArray, changes, callback, log, reporter, progress, compiler )
 	}
 	def newCachedCompiler(arguments: Array[String], log: xLogger, reporter: Reporter): CachedCompiler =
 		newCachedCompiler(arguments: Seq[String], log, reporter)
@@ -124,4 +124,9 @@ object AnalyzingCompiler
 		}
 	}
 	private def isSourceName(name: String): Boolean = name.endsWith(".scala") || name.endsWith(".java")
+}
+
+private[this] object IgnoreProgress extends CompileProgress {
+	def startUnit(phase: String, unitPath: String) {}
+	def advance(current: Int, total: Int) = true
 }
