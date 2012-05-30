@@ -31,11 +31,12 @@ final case class LaunchConfiguration(scalaVersion: Value[String], ivyConfigurati
 		copy(ivyConfiguration = ivyConfiguration.withIvyProxyRepository(url, ivyPattern, artifactPattern))
 	def map(f: File => File) = LaunchConfiguration(scalaVersion, ivyConfiguration, app.map(f), boot.map(f), logging, appProperties)
 }
-final case class IvyOptions(ivyHome: Option[File], classifiers: Classifiers, repositories: List[xsbti.Repository], checksums: List[String]) {
+final case class IvyOptions(ivyHome: Option[File], classifiers: Classifiers, repositories: List[xsbti.Repository], checksums: List[String], isOverrideRepositories: Boolean = false) {
   def withMavenProxyRepository(url: URL): IvyOptions =
     copy(repositories = Repository.Maven("proxy-maven", url) :: (repositories filterNot Repository.isMavenRemote))
   def withIvyProxyRepository(url: URL, ivyPattern: String, artifactPattern: String): IvyOptions =
     copy(repositories = Repository.Ivy("proxy-ivy", url, ivyPattern, artifactPattern) :: (repositories filterNot Repository.isIvyRemote))
+	def withOverrideRepositories(value: Boolean): IvyOptions = copy(isOverrideRepositories = value)
 }
 
 sealed trait Value[T]

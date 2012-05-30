@@ -97,6 +97,7 @@ class Launch private[xsbt](val bootDirectory: File, val lockBoot: Boolean, val i
 
 	def globalLock: xsbti.GlobalLock = Locks
 	def ivyHome = orNull(ivyOptions.ivyHome)
+	def isOverrideRepositories: Boolean = ivyOptions.isOverrideRepositories
 	def ivyRepositories = repositories.toArray
 	def checksums = checksumsList.toArray[String]
 
