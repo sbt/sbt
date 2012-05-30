@@ -4,3 +4,9 @@ $ copy-file changes/Use.scala Use.scala
 
 $ copy-file changes/Define2.scala Define.scala
 > compile
+
+$ delete Define.scala
+-> compile
+
+$ copy-file changes/Define1.scala Define.scala
+> compile
