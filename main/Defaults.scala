@@ -786,10 +786,11 @@ object Classpaths
 		},
 		bootResolvers <<= appConfiguration map bootRepositories,
 		fullResolvers <<= (projectResolver,externalResolvers,sbtPlugin,sbtResolver,bootResolvers,overrideBuildResolvers) map { (proj,rs,isPlugin,sbtr, boot, overrideFlag) =>
-			if(overrideFlag && boot.isDefined) boot.get
-      else {
-				val base = if(isPlugin) sbtr +: sbtPluginReleases +: rs else rs
-				proj +: base
+			boot match {
+				case Some(repos) if overrideFlag => repos
+				case _ => 
+					val base = if(isPlugin) sbtr +: sbtPluginReleases +: rs else rs
+					proj +: base
 			}
 		},
 		offline in GlobalScope :== false,

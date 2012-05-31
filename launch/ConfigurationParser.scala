@@ -47,7 +47,7 @@ object ConfigurationParser
 }
 class ConfigurationParser
 {
-	def apply(file: File): LaunchConfiguration = Using(new InputStreamReader(new FileInputStream(file), "UTF-8"))(apply)
+	def apply(file: File): LaunchConfiguration = Using(newReader(file))(apply)
 	def apply(s: String): LaunchConfiguration = Using(new StringReader(s))(apply)
 	def apply(reader: Reader): LaunchConfiguration = Using(new BufferedReader(reader))(apply)
 	private def apply(in: BufferedReader): LaunchConfiguration =
@@ -57,16 +57,15 @@ class ConfigurationParser
 			case null => accum.reverse
 			case line => readLine(in, ParseLine(line,index) ::: accum, index+1)
 		}
+	private def newReader(file: File) = new InputStreamReader(new FileInputStream(file), "UTF-8")
 	def readRepositoriesConfig(file: File): List[xsbti.Repository] =
-		Using(new InputStreamReader(new FileInputStream(file), "UTF-8"))(readRepositoriesConfig)
+		Using(newReader(file))(readRepositoriesConfig)
 	def readRepositoriesConfig(reader: Reader): List[xsbti.Repository] = 
 		Using(new BufferedReader(reader))(readRepositoriesConfig)
 	private def readRepositoriesConfig(in: BufferedReader): List[xsbti.Repository] =
 		processRepositoriesConfig(processLines(readLine(in, Nil, 0)))
 	def processRepositoriesConfig(sections: SectionMap): List[xsbti.Repository] =
-		processSection(sections, "repositories", getRepositories) match {
-			case (repositories, _) => repositories
-		}
+		processSection(sections, "repositories", getRepositories)._1
 	// section -> configuration instance  processing
 	def processSections(sections: SectionMap): LaunchConfiguration =
 	{
@@ -135,8 +134,8 @@ class ConfigurationParser
 	{
 		val (ivyHome, m1) = optfile(m, "ivy-home")
 		val (checksums, m2) = ids(m1, "checksums", BootConfiguration.DefaultChecksums)
-    val (overrideRepos, m3) = bool(m2, "override-build", false)
-		val (repoConfig, m4) = optfile(m3, "resolver-config")
+    val (overrideRepos, m3) = bool(m2, "override-build-repos", false)
+		val (repoConfig, m4) = optfile(m3, "repository-config")
 		check(m4, "label")
 		(ivyHome, checksums, overrideRepos, repoConfig filter (_.exists))
 	}
