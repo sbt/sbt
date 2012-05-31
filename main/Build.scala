@@ -33,6 +33,9 @@ trait Plugin
 
 	/** Settings to be appended at the build scope. */
 	def buildSettings: Seq[Project.Setting[_]] = Nil
+
+	/** Settings to be appended at the global scope. */
+	def globalSettings: Seq[Project.Setting[_]] = Nil
 }
 
 object Build

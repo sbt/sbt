@@ -188,8 +188,10 @@ object Load
 
 	def isProjectThis(s: Setting[_]) = s.key.scope.project match { case This | Select(ThisProject) => true; case _ => false }
 	def buildConfigurations(loaded: LoadedBuild, rootProject: URI => String, rootEval: () => Eval, injectSettings: InjectSettings): Seq[Setting[_]] =
+	{
 		((loadedBuild in GlobalScope :== loaded) +:
 		transformProjectOnly(loaded.root, rootProject, injectSettings.global)) ++ 
+		inScope(GlobalScope)( pluginGlobalSettings(loaded) ) ++
 		loaded.units.toSeq.flatMap { case (uri, build) =>
 			val eval = if(uri == loaded.root) rootEval else lazyEval(build.unit)
 			val plugins = build.unit.plugins.plugins
@@ -213,6 +215,11 @@ object Load
 			val buildBase = baseDirectory :== build.localBase
 			val buildSettings = transformSettings(buildScope, uri, rootProject, pluginNotThis ++ pluginBuildSettings ++ (buildBase +: build.buildSettings))
 			buildSettings ++ projectSettings
+		}
+	}
+	def pluginGlobalSettings(loaded: LoadedBuild): Seq[Setting[_]] =
+		loaded.units.toSeq flatMap { case (_, build) =>
+			build.unit.plugins.plugins flatMap { _.globalSettings }
 		}
 	def extractSettings(plugins: Seq[Plugin]): (Seq[Setting[_]], Seq[Setting[_]], Seq[Setting[_]]) =
 		(plugins.flatMap(_.settings), plugins.flatMap(_.projectSettings), plugins.flatMap(_.buildSettings))
