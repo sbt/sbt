@@ -779,13 +779,19 @@ object Classpaths
 		organizationHomepage <<= organizationHomepage or homepage,
 		scmInfo in GlobalScope :== None,
 		projectInfo <<= (name, description, homepage, startYear, licenses, organizationName, organizationHomepage, scmInfo) apply ModuleInfo,
+		overrideBuildResolvers <<= appConfiguration(isOverrideRepositories),
 		externalResolvers <<= (externalResolvers.task.?, resolvers) {
 			case (Some(delegated), Seq()) => delegated
 			case (_, rs) => task { Resolver.withDefaultResolvers(rs) }
 		},
-		fullResolvers <<= (projectResolver,externalResolvers,sbtPlugin,sbtResolver) map { (proj,rs,isPlugin,sbtr) =>
-			val base = if(isPlugin) sbtr +: sbtPluginReleases +: rs else rs
-			proj +: base
+		bootResolvers <<= appConfiguration map bootRepositories,
+		fullResolvers <<= (projectResolver,externalResolvers,sbtPlugin,sbtResolver,bootResolvers,overrideBuildResolvers) map { (proj,rs,isPlugin,sbtr, boot, overrideFlag) =>
+			boot match {
+				case Some(repos) if overrideFlag => repos
+				case _ => 
+					val base = if(isPlugin) sbtr +: sbtPluginReleases +: rs else rs
+					proj +: base
+			}
 		},
 		offline in GlobalScope :== false,
 		moduleName <<= normalizedName,
@@ -1187,6 +1193,10 @@ object Classpaths
 	def bootChecksums(app: xsbti.AppConfiguration): Seq[String] =
 		try { app.provider.scalaProvider.launcher.checksums.toSeq }
 		catch { case _: NoSuchMethodError => IvySbt.DefaultChecksums }
+
+	def isOverrideRepositories(app: xsbti.AppConfiguration): Boolean =
+		try app.provider.scalaProvider.launcher.isOverrideRepositories
+		catch { case _: NoSuchMethodError => false }
 
 	def bootRepositories(app: xsbti.AppConfiguration): Option[Seq[Resolver]] =
 		try { Some(app.provider.scalaProvider.launcher.ivyRepositories.toSeq map bootRepository) }
