@@ -146,5 +146,8 @@ object Resolvers
 		file
 	}
 
-	def uniqueSubdirectoryFor(uri: URI, in: File) = new File(in, Hash.halfHashString(uri.normalize.toASCIIString))
+	def uniqueSubdirectoryFor(uri: URI, in: File) = {
+		in.mkdirs()
+		new File(in, Hash.halfHashString(uri.normalize.toASCIIString))
+	}
 }
