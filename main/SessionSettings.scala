@@ -152,7 +152,7 @@ object SessionSettings
 		}
 	def printSettings(settings: Seq[SessionSetting]): Unit =
 		for(((_,stringRep), index) <- settings.zipWithIndex)
-			println("  " + (index+1) + ". " + stringRep)
+			println("  " + (index+1) + ". " + stringRep.mkString("\n"))
 
 	def Help = """session <command>
 
