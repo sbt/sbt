@@ -3,8 +3,8 @@
  */
 package xsbt
 
-import xsbti.{AnalysisCallback, Logger, Problem, Reporter, Severity}
-import xsbti.compile.{CachedCompiler, DependencyChanges, CompileProgress}
+import xsbti.{AnalysisCallback, Logger, Problem, Reporter, Severity, Maybe}
+import xsbti.compile.{CachedCompiler, DependencyChanges, CompileProgress, OutputGroup}
 import scala.tools.nsc.{io, reporters, util, Phase, Global, Settings, SubComponent}
 import util.{ClassPath,DirectoryClassPath,MergedClassPath,JavaClassPath}
 import ClassPath.{ClassPathContext,JavaContext}
@@ -16,8 +16,8 @@ import java.io.File
 
 final class CompilerInterface
 {
-	def newCompiler(options: Array[String], initialLog: Logger, initialDelegate: Reporter): CachedCompiler =
-		new CachedCompiler0(options, new WeakLog(initialLog, initialDelegate))
+	def newCompiler(options: Array[String], initialLog: Logger, initialDelegate: Reporter, outputGroups: Array[OutputGroup] = Array()): CachedCompiler =
+		new CachedCompiler0(options, new WeakLog(initialLog, initialDelegate), outputGroups)
 	def run(sources: Array[File], changes: DependencyChanges, callback: AnalysisCallback, log: Logger, delegate: Reporter, progress: CompileProgress, cached: CachedCompiler): Unit =
 		cached.run(sources, changes, callback, log, delegate, progress)
 }
@@ -41,9 +41,15 @@ private final class WeakLog(private[this] var log: Logger, private[this] var del
 	}
 }
 
-private final class CachedCompiler0(args: Array[String], initialLog: WeakLog) extends CachedCompiler
+private final class CachedCompiler0(args: Array[String], initialLog: WeakLog, outputGroups: Array[OutputGroup]) extends CachedCompiler
 {
 	val settings = new Settings(s => initialLog(s))
+	if (!outputGroups.isEmpty) {
+		val outDirs = new settings.OutputDirs
+		for (g <- outputGroups)
+			outDirs.add(g.sourceDirectory.getCanonicalPath, g.outputDirectory.getCanonicalPath)
+		settings.OutputSetting(outDirs, "")
+	}
 	val command = Command(args.toList, settings)
 	private[this] val dreporter = DelegatingReporter(settings, initialLog.reporter)
 	try {
