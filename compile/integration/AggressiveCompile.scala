@@ -12,7 +12,6 @@ import inc._
 	import inc.Locate.DefinesClass
 	import CompileSetup._
 	import sbinary.DefaultProtocol.{ immutableMapFormat, immutableSetFormat, StringFormat }
-	import Types.const
 
 	import xsbti.AnalysisCallback
 	import xsbti.api.Source
@@ -25,7 +24,7 @@ final class CompileConfiguration(val sources: Seq[File], val classpath: Seq[File
 
 class AggressiveCompile(cacheFile: File)
 {
-	def apply(compiler: AnalyzingCompiler, javac: xsbti.compile.JavaCompiler, sources: Seq[File], classpath: Seq[File], outputDirectory: File, cache: GlobalsCache, options: Seq[String] = Nil, javacOptions: Seq[String] = Nil, analysisMap: File => Option[Analysis] = const(None), definesClass: DefinesClass = Locate.definesClass _, maxErrors: Int = 100, compileOrder: CompileOrder = Mixed, skip: Boolean = false)(implicit log: Logger): Analysis =
+	def apply(compiler: AnalyzingCompiler, javac: xsbti.compile.JavaCompiler, sources: Seq[File], classpath: Seq[File], outputDirectory: File, cache: GlobalsCache, options: Seq[String] = Nil, javacOptions: Seq[String] = Nil, analysisMap: File => Option[Analysis] = { _ => None }, definesClass: DefinesClass = Locate.definesClass _, maxErrors: Int = 100, compileOrder: CompileOrder = Mixed, skip: Boolean = false)(implicit log: Logger): Analysis =
 	{
 		val setup = new CompileSetup(outputDirectory, new CompileOptions(options, javacOptions), compiler.scalaInstance.actualVersion, compileOrder)
 		compile1(sources, classpath, setup, store, analysisMap, definesClass, compiler, javac, maxErrors, skip, cache)
@@ -91,8 +90,8 @@ class AggressiveCompile(cacheFile: File)
 	}
 	private[this] def logInputs(log: Logger, javaCount: Int, scalaCount: Int, out: File)
 	{
-		val scalaMsg = Util.counted("Scala source", "", "s", scalaCount)
-		val javaMsg = Util.counted("Java source", "", "s", javaCount)
+		val scalaMsg = Analysis.counted("Scala source", "", "s", scalaCount)
+		val javaMsg = Analysis.counted("Java source", "", "s", javaCount)
 		val combined = scalaMsg ++ javaMsg
 		if(!combined.isEmpty)
 			log.info(combined.mkString("Compiling ", " and ", " to " + out.getAbsolutePath + "..."))

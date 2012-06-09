@@ -62,6 +62,8 @@ object Sbt extends Build
 	lazy val completeSub = testedBaseProject(utilPath / "complete", "Completion") dependsOn(collectionSub, controlSub, ioSub) settings(jline)
 		// logging
 	lazy val logSub = testedBaseProject(utilPath / "log", "Logging") dependsOn(interfaceSub, processSub) settings(libraryDependencies += jlineDep % "optional")
+		// Relation
+	lazy val relationSub = testedBaseProject(utilPath / "relation", "Relation") dependsOn(interfaceSub, processSub)
 		// class file reader and analyzer
 	lazy val classfileSub = testedBaseProject(utilPath / "classfile", "Classfile") dependsOn(ioSub, interfaceSub, logSub)
 		// generates immutable or mutable Java data types according to a simple input format
@@ -97,7 +99,7 @@ object Sbt extends Build
 
 		// Implements the core functionality of detecting and propagating changes incrementally.
 		//   Defines the data structures for representing file fingerprints and relationships and the overall source analysis
-	lazy val compileIncrementalSub = testedBaseProject(compilePath / "inc", "Incremental Compiler") dependsOn(collectionSub, apiSub, ioSub, logSub, classpathSub)
+	lazy val compileIncrementalSub = testedBaseProject(compilePath / "inc", "Incremental Compiler") dependsOn(apiSub, ioSub, logSub, classpathSub, relationSub)
 		// Persists the incremental data structures using SBinary
 	lazy val compilePersistSub = baseProject(compilePath / "persist", "Persist") dependsOn(compileIncrementalSub, apiSub) settings(sbinary)
 		// sbt-side interface to compiler.  Calls compiler-side interface reflectively
@@ -115,7 +117,7 @@ object Sbt extends Build
 		// Implementation and support code for defining actions.
 	lazy val actionsSub = baseProject(mainPath / "actions", "Actions") dependsOn(
 		classpathSub, completeSub, apiSub, compilerIntegrationSub, compilerIvySub,
-		interfaceSub, ioSub, ivySub, logSub, processSub, runSub, stdTaskSub, taskSub, trackingSub, testingSub)
+		interfaceSub, ioSub, ivySub, logSub, processSub, runSub, relationSub, stdTaskSub, taskSub, trackingSub, testingSub)
 
 	lazy val commandSub = testedBaseProject(commandPath, "Command") dependsOn(interfaceSub, ioSub, launchInterfaceSub, logSub, completeSub, classpathSub)
 
