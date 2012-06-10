@@ -400,7 +400,7 @@ object Load
 		val normBase = localBase.getCanonicalFile
 		val defDir = selectProjectDir(normBase, config.log)
 		val pluginDir = pluginDirectory(defDir)
-		val oldStyleExists = pluginDir.exists
+		val oldStyleExists = pluginDir.exists && pluginDir.isDirectory
 		val newStyleExists = configurationSources(defDir).nonEmpty || projectStandard(defDir).exists
 		val (plugs, defs) =
 			if(newStyleExists || !oldStyleExists)
