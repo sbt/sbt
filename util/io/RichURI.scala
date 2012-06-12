@@ -15,24 +15,9 @@ class RichURI(uri: URI)
 
 	def hasFragment = uri.getFragment ne null
 
-	def withoutFragment =
-		if (hasFragment)
-			new URI(uri.getScheme, uri.getSchemeSpecificPart, null)
-		else
-			uri
+	def withoutFragment = copy(fragment = null)
 
-	def hasMarkerScheme = new URI(uri.getRawSchemeSpecificPart).getScheme ne null
-
-	def withoutMarkerScheme =
-	{
-		if (hasMarkerScheme)
-			if (hasFragment)
-				new URI(uri.getSchemeSpecificPart + "#" + uri.getFragment)
-			else
-				new URI(uri.getSchemeSpecificPart)
-		else
-			uri
-	}
+	def withoutMarkerScheme = copy(scheme = null)
 }
 
 object RichURI
