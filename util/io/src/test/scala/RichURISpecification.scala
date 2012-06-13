@@ -26,7 +26,10 @@ object RichURISpecification extends Properties("Rich URI") {
 					 path <- nullable(strGen);
 					 query <- nullable(strGen);
 					 fragment <- nullable(strGen))
-				 yield new URI(scheme, userInfo, host, port, "/" + path, query, fragment)
+				 yield {
+ 					 val pathSlashed = if (path eq null) null else "/" + path
+					 new URI(scheme, userInfo, host, port, pathSlashed, query, fragment)
+				 }
 		)
 
 	property("withoutFragment should drop fragment") = forAll {	(uri: URI) => 
