@@ -15,15 +15,17 @@ object RichURISpecification extends Properties("Rich URI") {
 		emptyGen map (_.trim) filter (!_.isEmpty)
 	}
 
+	def nullable[T >: Null](g: Gen[T]): Gen[T] = frequency((1, value(null)), (25, g))
+
 	implicit def arbitraryURI: Arbitrary[URI] =
 		Arbitrary(
-			for (scheme <- identifier;
-					 userInfo <- strGen;
+			for (scheme <- nullable(identifier);
+					 userInfo <- nullable(strGen);
 					 host <- identifier;
 					 port <- posNum[Int];
-					 path <- strGen;
-					 query <- strGen;
-					 fragment <- strGen)
+					 path <- nullable(strGen);
+					 query <- nullable(strGen);
+					 fragment <- nullable(strGen))
 				 yield new URI(scheme, userInfo, host, port, "/" + path, query, fragment)
 		)
 
@@ -37,7 +39,11 @@ object RichURISpecification extends Properties("Rich URI") {
 	}
 
 	property("withoutMarkerScheme should drop scheme") = forAll {	(uri: URI) =>
-		val uri1 = new URI(uri.getRawSchemeSpecificPart + "#" + uri.getRawFragment)
+		val uri1 =
+			if (uri.getRawFragment ne null)
+				new URI(uri.getRawSchemeSpecificPart + "#" + uri.getRawFragment)
+			else
+				new URI(uri.getRawSchemeSpecificPart)
 		new RichURI(uri).withoutMarkerScheme == uri1
 	}
 }
