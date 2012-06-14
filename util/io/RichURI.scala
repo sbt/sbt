@@ -27,9 +27,9 @@ class RichURI(uri: URI)
 	{
 		if (hasMarkerScheme)
 			if (hasFragment)
-				new URI(uri.getSchemeSpecificPart + "#" + uri.getFragment)
+				new URI(uri.getRawSchemeSpecificPart + "#" + uri.getRawFragment)
 			else
-				new URI(uri.getSchemeSpecificPart)
+				new URI(uri.getRawSchemeSpecificPart)
 		else
 			uri
 	}
