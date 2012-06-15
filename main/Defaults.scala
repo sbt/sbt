@@ -817,7 +817,7 @@ object Classpaths
 		moduleConfigurations in GlobalScope :== Nil,
 		publishTo in GlobalScope :== None,
 		artifactPath in makePom <<= artifactPathSetting(artifact in makePom),
-		publishArtifact in makePom <<= publishMavenStyle,
+		publishArtifact in makePom <<= (publishMavenStyle, publishArtifact).apply(_ && _) ,
 		artifact in makePom <<= moduleName(Artifact.pom),
 		projectID <<= (organization,moduleName,version,artifacts,crossVersion in projectID){ (org,module,version,as,cross) =>
 			ModuleID(org, module, version).cross(cross).artifacts(as : _*)
