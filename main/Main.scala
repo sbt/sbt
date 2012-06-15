@@ -68,7 +68,7 @@ object BuiltinCommands
 
 	def ConsoleCommands: Seq[Command] = Seq(ignore, exit, IvyConsole.command, act, nop)
 	def ScriptCommands: Seq[Command] = Seq(ignore, exit, Script.command, act, nop)
-	def DefaultCommands: Seq[Command] = Seq(ignore, help, about, loadProject, settingsCommand, tasks,
+	def DefaultCommands: Seq[Command] = Seq(ignore, help, about, tasks, settingsCommand, loadProject,
 		projects, project, reboot, read, history, set, sessionCommand, inspect, loadProjectImpl, loadFailed, Cross.crossBuild, Cross.switchVersion,
 		setOnFailure, clearOnFailure, ifLast, multi, shell, continuous, eval, alias, append, last, lastGrep, boot, nop, call, exit, act)
 	def DefaultBootCommands: Seq[String] = LoadProject :: (IfLast + " " + Shell) :: Nil
