@@ -35,14 +35,14 @@ final class AnalyzingCompiler(val scalaInstance: xsbti.compile.ScalaInstance, va
 			classOf[Array[File]], classOf[DependencyChanges], classOf[AnalysisCallback], classOf[xLogger], classOf[Reporter], classOf[CachedCompiler]) (
 			sources.toArray, changes, callback, log, reporter, compiler )
 	}
-	def newCachedCompiler(arguments: Array[String], log: xLogger, reporter: Reporter): CachedCompiler =
-		newCachedCompiler(arguments: Seq[String], log, reporter)
+	def newCachedCompiler(arguments: Array[String], log: xLogger, reporter: Reporter, resident: Boolean): CachedCompiler =
+		newCachedCompiler(arguments: Seq[String], log, reporter, resident)
 
-	def newCachedCompiler(arguments: Seq[String], log: xLogger, reporter: Reporter): CachedCompiler =
+	def newCachedCompiler(arguments: Seq[String], log: xLogger, reporter: Reporter, resident: Boolean): CachedCompiler =
 	{
 		call("xsbt.CompilerInterface", "newCompiler", log)(
-			classOf[Array[String]], classOf[xLogger], classOf[Reporter] ) (
-			arguments.toArray[String] : Array[String], log, reporter ).
+			classOf[Array[String]], classOf[xLogger], classOf[Reporter], classOf[Boolean] ) (
+			arguments.toArray[String] : Array[String], log, reporter, resident: java.lang.Boolean ).
 			asInstanceOf[CachedCompiler]
 	}
 
