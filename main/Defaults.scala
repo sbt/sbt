@@ -753,7 +753,7 @@ object Classpaths
 
 	val publishSettings: Seq[Setting[_]] = Seq(
 		publishMavenStyle in GlobalScope :== true,
-		publishArtifact in GlobalScope in Compile :== true,
+		publishArtifact in GlobalScope :== true,
 		publishArtifact in GlobalScope in Test:== false,
 		artifacts <<= artifactDefs(defaultArtifactTasks),
 		packagedArtifacts <<= packaged(defaultArtifactTasks),
