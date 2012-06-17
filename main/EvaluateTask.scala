@@ -12,7 +12,7 @@ package sbt
 	import scala.Console.RED
 
 final case class EvaluateConfig(cancelable: Boolean, restrictions: Seq[Tags.Rule], checkCycles: Boolean = false)
-final case class PluginData(classpath: Seq[Attributed[File]], resolvers: Option[Seq[Resolver]])
+final case class PluginData(classpath: Seq[Attributed[File]], resolvers: Option[Seq[Resolver]], report: Option[UpdateReport])
 object EvaluateTask
 {
 	import Load.BuildStructure

@@ -14,7 +14,7 @@ package sbt
 	import Compiler.{Compilers,Inputs}
 	import inc.{FileValueCache, Locate}
 	import Project.{inScope, ScopedKey, ScopeLocal, Setting}
-	import Keys.{appConfiguration, baseDirectory, configuration, fullResolvers, fullClasspath, pluginData, streams, Streams, thisProject, thisProjectRef}
+	import Keys.{appConfiguration, baseDirectory, configuration, fullResolvers, fullClasspath, pluginData, streams, Streams, thisProject, thisProjectRef, update}
 	import Keys.{isDummy, loadedBuild, parseResult, resolvedScoped, taskDefinitionKey}
 	import tools.nsc.reporters.ConsoleReporter
 	import Build.{analyzed, data}
@@ -446,7 +446,7 @@ object Load
 		}
 	val autoPluginSettings: Seq[Setting[_]] = inScope(GlobalScope in LocalRootProject)(Seq(
 		Keys.sbtPlugin :== true,
-		pluginData <<= (fullClasspath in Configurations.Runtime, fullResolvers) map ( (cp, rs) => PluginData(cp, Some(rs)) ),
+		pluginData <<= (fullClasspath in Configurations.Runtime, update, fullResolvers) map ( (cp, rep, rs) => PluginData(cp, Some(rs), Some(rep)) ),
 		Keys.onLoadMessage <<= Keys.baseDirectory("Loading project definition from " + _)
 	))
 	def enableSbtPlugin(config: LoadBuildConfiguration): LoadBuildConfiguration =
@@ -472,7 +472,7 @@ object Load
 		!(dir * -GlobFilter(DefaultTargetName)).get.isEmpty
 	}
 	def noPlugins(dir: File, config: LoadBuildConfiguration): LoadedPlugins =
-		loadPluginDefinition(dir, config, PluginData(config.globalPluginClasspath, None))
+		loadPluginDefinition(dir, config, PluginData(config.globalPluginClasspath, None, None))
 	def buildPlugins(dir: File, s: State, config: LoadBuildConfiguration): LoadedPlugins =
 		loadPluginDefinition(dir, config, buildPluginDefinition(dir, s, config))
 
@@ -523,9 +523,21 @@ object Load
 	{
 		val (pluginNames, plugins) = if(data.classpath.isEmpty) (Nil, Nil) else {
 			val names = getPluginNames(data.classpath, loader)
-			(names, loadPlugins(loader, names) )
+			val loaded =
+				try loadPlugins(loader, names)
+				catch { case e: LinkageError => incompatiblePlugins(data, e) }
+			(names, loaded)
 		}
 		new LoadedPlugins(dir, data, loader, plugins, pluginNames)
+	}
+	private[this] def incompatiblePlugins(data: PluginData, t: LinkageError): Nothing =
+	{
+		val evicted = data.report.toList.flatMap(_.configurations.flatMap(_.evicted))
+		val evictedModules = evicted map { id => (id.organization, id.name) } distinct ;
+		val evictedStrings = evictedModules map { case (o,n) => o + ":" + n }
+		val msgBase = "Binary incompatibility in plugins detected."
+		val msgExtra = if(evictedStrings.isEmpty) "" else "\nNote that conflicts were resolved for some dependencies:\n\t" + evictedStrings.mkString("\n\t")
+		throw new IncompatiblePluginsException(msgBase + msgExtra, t)
 	}
 	def getPluginNames(classpath: Seq[Attributed[File]], loader: ClassLoader): Seq[String] =
 		 ( binaryPlugins(Build.data(classpath), loader) ++ (analyzed(classpath) flatMap findPlugins) ).distinct
@@ -675,3 +687,4 @@ object Load
 		val aggregateKeyIndex: KeyIndex
 	)
 }
+final class IncompatiblePluginsException(msg: String, cause: Throwable) extends Exception(msg, cause)
