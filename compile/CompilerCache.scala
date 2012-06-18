@@ -20,7 +20,7 @@ private final class CompilerCache(val maxInstances: Int) extends GlobalsCache
 		cache.get(key) match {
 			case null =>
 				log.debug(f0("Compiler cache miss.  " + key.toString))
-				put(key, c.newCachedCompiler(args, log, reporter))
+				put(key, c.newCachedCompiler(args, log, reporter, /* resident = */ !forceNew))
 			case cc =>
 				log.debug(f0("Compiler cache hit (" + cc.hashCode.toHexString + ").  " + key.toString))
 				cc
@@ -47,6 +47,6 @@ object CompilerCache
 	val fresh: GlobalsCache = new GlobalsCache {
 		def clear() {}
 		def apply(args: Array[String], forceNew: Boolean, c: CachedCompilerProvider, log: xLogger, reporter: Reporter): CachedCompiler =
-			c.newCachedCompiler(args, log, reporter)
+			c.newCachedCompiler(args, log, reporter, /*resident = */ false)
 	}
 }

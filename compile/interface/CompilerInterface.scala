@@ -19,8 +19,9 @@ import java.io.File
 
 final class CompilerInterface
 {
-	def newCompiler(options: Array[String], initialLog: Logger, initialDelegate: Reporter): CachedCompiler =
-		new CachedCompiler0(options, new WeakLog(initialLog, initialDelegate))
+	def newCompiler(options: Array[String], initialLog: Logger, initialDelegate: Reporter, resident: Boolean): CachedCompiler =
+		new CachedCompiler0(options, new WeakLog(initialLog, initialDelegate), resident)
+
 	def run(sources: Array[File], changes: DependencyChanges, callback: AnalysisCallback, log: Logger, delegate: Reporter, cached: CachedCompiler): Unit =
 		cached.run(sources, changes, callback, log, delegate)
 }
@@ -48,7 +49,7 @@ private final class WeakLog(private[this] var log: Logger, private[this] var del
 	}
 }
 
-private final class CachedCompiler0(args: Array[String], initialLog: WeakLog) extends CachedCompiler
+private final class CachedCompiler0(args: Array[String], initialLog: WeakLog, resident: Boolean) extends CachedCompiler
 {
 	val settings = new Settings(s => initialLog(s))
 	val command = Command(args.toList, settings)
@@ -84,12 +85,12 @@ private final class CachedCompiler0(args: Array[String], initialLog: WeakLog) ex
 			compiler.set(callback, dreporter)
 			try {
 				val run = new compiler.Run
-				compiler.reload(changes)
+				if(resident) compiler.reload(changes)
 				val sortedSourceFiles = sources.map(_.getAbsolutePath).sortWith(_ < _)
 				run compile sortedSourceFiles
 				processUnreportedWarnings(run)
 			} finally {
-				compiler.clear()
+				if(resident) compiler.clear()
 			}
 			dreporter.problems foreach { p => callback.problem(p.category, p.position, p.message, p.severity, true) }
 		}
@@ -219,15 +220,24 @@ private final class CachedCompiler0(args: Array[String], initialLog: WeakLog) ex
 		private[this] var callback0: AnalysisCallback = null
 		def callback: AnalysisCallback = callback0
 
+		private[this] def defaultClasspath = new PathResolver(settings).result
+
 		// override defaults in order to inject a ClassPath that can change
 		override lazy val platform = new PlatformImpl
-		override lazy val classPath = new ClassPathCell(new PathResolver(settings).result)
+		override lazy val classPath = if(resident) classPathCell else defaultClasspath
+		private[this] lazy val classPathCell = new ClassPathCell(defaultClasspath)
+
 		final class PlatformImpl extends JavaPlatform
 		{
 			val global: compiler.type = compiler
-			// this is apparently never called except by rootLoader, so no need to implement it
-			override lazy val classPath = throw new RuntimeException("Unexpected reference to platform.classPath")
-			override def rootLoader = newPackageLoaderCompat(rootLoader)(compiler.classPath)
+			// This can't be overridden to provide a ClassPathCell, so we have to fix it to the initial classpath
+			// This is apparently never called except by rootLoader, so we can return the default and warn if someone tries to use it.
+			override lazy val classPath = {
+				if(resident)
+					compiler.warning("platform.classPath should not be called because it is incompatible with sbt's resident compilation.  Use Global.classPath")
+				defaultClasspath
+			}
+			override def rootLoader = if(resident) newPackageLoaderCompat(rootLoader)(compiler.classPath) else super.rootLoader
 		}
 
 		private[this] type PlatformClassPath = ClassPath[AbstractFile]
@@ -236,31 +246,31 @@ private final class CachedCompiler0(args: Array[String], initialLog: WeakLog) ex
 		// converted from Martin's new code in scalac for use in 2.8 and 2.9
 		private[this] def inv(path: String)
 		{
-			classPath.delegate match {
+			classPathCell.delegate match {
 				case cp: util.MergedClassPath[_] =>
 					val dir = AbstractFile getDirectory path
 					val canonical = dir.file.getCanonicalPath
-					def matchesCanonical(e: ClassPath[_]) = e.origin.exists { opath =>
+					def matchesCanonicalCompat(e: ClassPath[_]) = e.origin.exists { opath =>
 							(AbstractFile getDirectory opath).file.getCanonicalPath == canonical
 					}
 
-					cp.entries find matchesCanonical match {
+					cp.entries find matchesCanonicalCompat match {
 						case Some(oldEntry) =>
 							val newEntry = cp.context.newClassPath(dir)
-							classPath.updateClassPath(oldEntry, newEntry)
+							classPathCell.updateClassPath(oldEntry, newEntry)
 							reSyncCompat(definitions.RootClass, Some(classPath), Some(oldEntry), Some(newEntry))
 						case None =>
 							error("Cannot invalidate: no entry named " + path + " in classpath " + classPath)
 					}
 			}
 		}
-		private def reSyncCompat(root: ClassSymbol, allEntry: OptClassPath, oldEntry: OptClassPath, newEntry: OptClassPath)
+		private def reSyncCompat(root: ClassSymbol, allEntries: OptClassPath, oldEntry: OptClassPath, newEntry: OptClassPath)
 		{
 			val getName: PlatformClassPath => String = (_.name)
 			def hasClasses(cp: OptClassPath) = cp.exists(_.classes.nonEmpty)
 			def invalidateOrRemove(root: ClassSymbol) =
-				allEntry match {
-					case Some(cp) => root setInfo newPackageLoader[Type](cp)
+				allEntries match {
+					case Some(cp) => root setInfo newPackageLoader0[Type](cp)
 					case None => root.owner.info.decls unlink root.sourceModule
 				}
 
@@ -273,7 +283,7 @@ private final class CachedCompiler0(args: Array[String], initialLog: WeakLog) ex
 				invalidateOrRemove(root)
 			} else {
 				if (classesFound && root.isRoot)
-				invalidateOrRemove(definitions.EmptyPackageClass.asInstanceOf[ClassSymbol])
+					invalidateOrRemove(definitions.EmptyPackageClass.asInstanceOf[ClassSymbol])
 				(oldEntry, newEntry) match {
 					case (Some(oldcp) , Some(newcp)) =>
 						for (pstr <- packageNames(oldcp) ++ packageNames(newcp)) {
@@ -282,13 +292,11 @@ private final class CachedCompiler0(args: Array[String], initialLog: WeakLog) ex
 							if (pkg == NoSymbol) {
 								// package was created by external agent, create symbol to track it
 								assert(!subPackage(oldcp, pstr).isDefined)
-								pkg = root.newPackage(NoPosition, pname)
-								pkg.setInfo(pkg.moduleClass.tpe)
-								root.info.decls.enter(pkg)
+								pkg = enterPackageCompat(root, pname, newPackageLoader0[loaders.SymbolLoader](allEntries.get))
 							}
 							reSyncCompat(
 									pkg.moduleClass.asInstanceOf[ClassSymbol],
-									subPackage(allEntry.get, pstr), subPackage(oldcp, pstr), subPackage(newcp, pstr))
+									subPackage(allEntries.get, pstr), subPackage(oldcp, pstr), subPackage(newcp, pstr))
 						}
 					case (Some(oldcp), None) => invalidateOrRemove(root)
 					case (None, Some(newcp)) => invalidateOrRemove(root)
@@ -296,17 +304,25 @@ private final class CachedCompiler0(args: Array[String], initialLog: WeakLog) ex
 				}
 			}
 		}
+		private[this] def enterPackageCompat(root: ClassSymbol, pname: Name, completer: loaders.SymbolLoader): Symbol =
+		{
+			val pkg = root.newPackage(pname)
+			pkg.moduleClass.setInfo(completer)
+			pkg.setInfo(pkg.moduleClass.tpe)
+			root.info.decls.enter(pkg)
+			pkg
+		}
 
 		// type parameter T, `dummy` value for inference, and reflection are source compatibility hacks
 		//   to work around JavaPackageLoader and PackageLoader changes between 2.9 and 2.10 
 		//   and in particular not being able to say JavaPackageLoader in 2.10 in a compatible way (it no longer exists)
 		private[this] def newPackageLoaderCompat[T](dummy: => T)(classpath: ClassPath[AbstractFile])(implicit mf: ClassManifest[T]): T =
-			newPackageLoader[T](classpath)
+			newPackageLoader0[T](classpath)
 
-		private[this] def newPackageLoader[T](classpath: ClassPath[AbstractFile]): T =
-			loaderClass.getConstructor(classOf[SymbolLoaders], classOf[ClassPath[AbstractFile]]).newInstance(loaders, classpath).asInstanceOf[T]
+		private[this] def newPackageLoader0[T](classpath: ClassPath[AbstractFile]): T =
+			loaderClassCompat.getConstructor(classOf[SymbolLoaders], classOf[ClassPath[AbstractFile]]).newInstance(loaders, classpath).asInstanceOf[T]
 
-		private[this] lazy val loaderClass: Class[_] =
+		private[this] lazy val loaderClassCompat: Class[_] =
 			try Class.forName("scala.tools.nsc.symtab.SymbolLoaders$JavaPackageLoader")
 			catch { case e: Exception =>
 				Class.forName("scala.tools.nsc.symtab.SymbolLoaders$PackageLoader")

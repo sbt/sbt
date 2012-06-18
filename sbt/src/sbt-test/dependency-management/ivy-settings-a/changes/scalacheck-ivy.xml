@@ -2,6 +2,6 @@
 <ivy-module version="2.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation= "http://ant.apache.org/ivy/schemas/ivy.xsd">
 	<info organisation="org" module="ivy-settings-test"/>
 	<dependencies>
-		<dependency org="org.scala-tools.testing" name="scalacheck_2.9.1" rev="1.9"/>
+		<dependency org="org.scalacheck" name="scalacheck_2.9.1" rev="1.9"/>
 	</dependencies>
 </ivy-module>

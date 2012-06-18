@@ -60,7 +60,9 @@ object ScalaInstance
 		new ScalaInstance(version, scalaLoader(launcher, libraryJar :: compilerJar :: extraJars.toList), libraryJar, compilerJar, extraJars, explicitActual)
 
 	def extraJars(scalaHome: File): Seq[File] =
-		optScalaJar(scalaHome, "jline.jar") ++ optScalaJar(scalaHome, "fjbg.jar")
+		optScalaJar(scalaHome, "jline.jar") ++
+		optScalaJar(scalaHome, "fjbg.jar") ++
+		optScalaJar(scalaHome, "scala-reflect.jar")
 		
 	private def compilerJar(scalaHome: File) = scalaJar(scalaHome, "scala-compiler.jar")
 	private def libraryJar(scalaHome: File) = scalaJar(scalaHome, "scala-library.jar")

@@ -12,6 +12,7 @@ object ArtifactTest extends Build
 		artifact in (Compile, packageBin) := mainArtifact,
 		libraryDependencies <<= (libraryDependencies, baseDirectory) { (deps, base) => deps ++ (if(base / "retrieve" exists) publishedID :: Nil else Nil) },
 			// needed to add a jar with a different type to the managed classpath
+		unmanagedClasspath in Compile <+= scalaInstance.map(_.libraryJar), 
 		classpathTypes := Set(tpe),
 		check <<= checkTask(dependencyClasspath),
 		checkFull <<= checkTask(fullClasspath)

@@ -21,15 +21,15 @@ class RichURI(uri: URI)
 		else
 			uri
 
-	def hasMarkerScheme = new URI(uri.getSchemeSpecificPart).getScheme ne null
+	def hasMarkerScheme = new URI(uri.getRawSchemeSpecificPart).getScheme ne null
 
 	def withoutMarkerScheme =
 	{
 		if (hasMarkerScheme)
 			if (hasFragment)
-				new URI(uri.getSchemeSpecificPart + "#" + uri.getFragment)
+				new URI(uri.getRawSchemeSpecificPart + "#" + uri.getRawFragment)
 			else
-				new URI(uri.getSchemeSpecificPart)
+				new URI(uri.getRawSchemeSpecificPart)
 		else
 			uri
 	}
