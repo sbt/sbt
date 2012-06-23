@@ -118,9 +118,9 @@ object BasicCommands
 		val line = reader.readLine(prompt)
 		line match {
 			case Some(line) =>
-				val newState = s.copy(onFailure = Some(Shell), remainingCommands = line +: Shell +: s.remainingCommands)
+				val newState = s.copy(onFailure = Some(Shell), remainingCommands = line +: Shell +: s.remainingCommands).setInteractive(true)
 				if(line.trim.isEmpty) newState else newState.clearGlobalLog
-			case None => s
+			case None => s.setInteractive(false)
 		}
 	}
 

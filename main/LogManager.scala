@@ -39,11 +39,13 @@ object LogManager
 		def getOr[T](key: AttributeKey[T], default: T): T = data.get(scope, key) getOrElse default
 		val screenLevel = getOr(logLevel.key, Level.Info)
 		val backingLevel = getOr(persistLogLevel.key, Level.Debug)
-		val screenTrace = getOr(traceLevel.key, -1)
+		val screenTrace = getOr(traceLevel.key, defaultTraceLevel(state))
 		val backingTrace = getOr(persistTraceLevel.key, Int.MaxValue)
 		val extraBacked = state.globalLogging.backed :: Nil
 		multiLogger( new MultiLoggerConfig(console, backed, extraBacked ::: extra, screenLevel, backingLevel, screenTrace, backingTrace) )
 	}
+	def defaultTraceLevel(state: State): Int =
+		if(state.interactive) -1 else Int.MaxValue
 	def suppressedMessage(key: ScopedKey[_], state: State): SuppressedTraceContext => Option[String] =
 	{
 		lazy val display = Project.showContextKey(state)
