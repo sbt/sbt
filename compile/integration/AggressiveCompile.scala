@@ -67,7 +67,9 @@ class AggressiveCompile(cacheFile: File)
 				{
 					val sources = if(order == Mixed) incSrc else scalaSrcs
 					val arguments = cArgs(Nil, absClasspath, outputDirectory, options.options)
-					compiler.compile(sources, changes, arguments, callback, maxErrors, cache, log)
+					timed("Scala compilation", log) {
+						compiler.compile(sources, changes, arguments, callback, maxErrors, cache, log)
+					}
 				}
 			def compileJava() =
 				if(!javaSrcs.isEmpty)
@@ -75,8 +77,12 @@ class AggressiveCompile(cacheFile: File)
 					import Path._
 					val loader = ClasspathUtilities.toLoader(searchClasspath)
 					def readAPI(source: File, classes: Seq[Class[_]]) { callback.api(source, ClassToAPI(classes)) }
-					Analyze(outputDirectory, javaSrcs, log)(callback, loader, readAPI) {
-						javac.compile(javaSrcs.toArray, absClasspath.toArray, outputDirectory, options.javacOptions.toArray, maxErrors, log)
+					timed("Java compilation and analysis", log) {
+						Analyze(outputDirectory, javaSrcs, log)(callback, loader, readAPI) {
+							timed("Java compilation", log) {
+								javac.compile(javaSrcs.toArray, absClasspath.toArray, outputDirectory, options.javacOptions.toArray, maxErrors, log)
+							}
+						}
 					}
 				}
 			if(order == JavaThenScala) { compileJava(); compileScala() } else { compileScala(); compileJava() }
@@ -88,6 +94,14 @@ class AggressiveCompile(cacheFile: File)
 			case _ => Incremental.prune(sourcesSet, previousAnalysis)
 		}
 		IncrementalCompile(sourcesSet, entry, compile0, analysis, getAnalysis, outputDirectory, log)
+	}
+	private[this] def timed[T](label: String, log: Logger)(t: => T): T =
+	{
+		val start = System.nanoTime
+		val result = t
+		val elapsed = System.nanoTime - start
+		log.debug(label + " took " + (elapsed/1e9) + " s")
+		result
 	}
 	private[this] def logInputs(log: Logger, javaCount: Int, scalaCount: Int, out: File)
 	{
