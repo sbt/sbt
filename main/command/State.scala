@@ -38,6 +38,13 @@ trait Identity {
 	override final def toString = super.toString
 }
 
+/** StateOps methods to be merged at the next binary incompatible release. */
+private[sbt] trait NewStateOps
+{
+	def interactive: Boolean
+	def setInteractive(flag: Boolean): State
+}
+
 /** Convenience methods for State transformations and operations. */
 trait StateOps {
 	def process(f: (String, State) => State): State
@@ -149,6 +156,11 @@ object State
 	{
 		val app = state.configuration.provider
 		new Reboot(app.scalaProvider.version, state.remainingCommands, app.id, state.configuration.baseDirectory)
+	}
+
+	private[sbt] implicit def newStateOps(s: State): NewStateOps = new NewStateOps {
+		def interactive = s.get(BasicKeys.interactive).getOrElse(false)
+		def setInteractive(i: Boolean) = s.put(BasicKeys.interactive, i)
 	}
 
 	/** Provides operations and transformations on State. */
