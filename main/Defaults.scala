@@ -787,7 +787,7 @@ object Classpaths
 		bootResolvers <<= appConfiguration map bootRepositories,
 		fullResolvers <<= (projectResolver,externalResolvers,sbtPlugin,sbtResolver,bootResolvers,overrideBuildResolvers) map { (proj,rs,isPlugin,sbtr, boot, overrideFlag) =>
 			boot match {
-				case Some(repos) if overrideFlag => repos
+				case Some(repos) if overrideFlag => proj +: repos
 				case _ => 
 					val base = if(isPlugin) sbtr +: sbtPluginReleases +: rs else rs
 					proj +: base
