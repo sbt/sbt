@@ -23,6 +23,8 @@ import collection.mutable.MultiMap
 import collection.mutable.{Set => MSet}
 import sbt.Graph
 import xml.{Document, XML, Node}
+import com.github.mdr.ascii.layout
+import com.github.mdr.ascii.layout._
 
 object IvyGraphMLDependencies extends App {
   case class Module(organisation: String, name: String, version: String) {
@@ -44,8 +46,22 @@ object IvyGraphMLDependencies extends App {
     ModuleGraph(nodes, edges)
   }
 
-
-  def ascii(ivyReportFile: String): String = {
+  private def asciiGraph(moduleGraph: ModuleGraph): layout.Graph[String] = {
+    def renderVertex(module: Module): String = {
+      module.name + "\n" + module.organisation + "\n" + module.version
+    }
+    val vertices = moduleGraph.nodes.map(renderVertex).toList
+    val edges = moduleGraph.edges.toList.map { case (from, to) ⇒ (renderVertex(from), renderVertex(to)) }
+    layout.Graph(vertices, edges)
+  }
+  
+  def asciiGraph(ivyReportFile: String): String = {
+    val doc = buildDoc(ivyReportFile)
+    val graph = buildGraph(doc)
+    Layouter.renderGraph(asciiGraph(graph))
+  }
+  
+  def asciiTree(ivyReportFile: String): String = {
     val doc = buildDoc(ivyReportFile)
     val graph = buildGraph(doc)
     import graph._
