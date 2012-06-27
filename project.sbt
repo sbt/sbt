@@ -17,7 +17,4 @@ licenses in GlobalScope += "Apache License 2.0" -> url("https://github.com/jrudo
 (description in LsKeys.lsync) :=
   "An sbt plugin to visualize dependencies of your build."
 
-libraryDependencies += "com.github.mdr" %% "ascii-graphs" % "0.0.1-SNAPSHOT"
-
-resolvers += "Sonatype OSS Snapshots" at "https://oss.sonatype.org/content/repositories/snapshots"
-
+libraryDependencies += "com.github.mdr" %% "ascii-graphs" % "0.0.1"
