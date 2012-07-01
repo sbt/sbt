@@ -1,6 +1,7 @@
 package xsbt.boot
 
-import java.io.File
+import java.io.{File,InputStream}
+import java.net.URL
 import java.util.Properties
 import xsbti._
 import org.specs._
@@ -70,16 +71,18 @@ object LaunchTest
 			f(Launcher(bootDirectory, testRepositories))
 		}
 
+	val finalStyle = Set("2.9.1", "2.9.0-1", "2.9.0", "2.8.2", "2.8.1", "2.8.0")
 	def unmapScalaVersion(versionNumber: String) = versionNumber.stripSuffix(".final") 
-	def mapScalaVersion(versionNumber: String) = versionNumber + ".final"
+	def mapScalaVersion(versionNumber: String) = if(finalStyle(versionNumber)) versionNumber + ".final" else versionNumber
+	
 	def getScalaVersion: String = getScalaVersion(getClass.getClassLoader)
-	def getScalaVersion(loader: ClassLoader): String = loadProperties(loader, "library.properties").getProperty("version.number")
-	lazy val AppVersion = loadProperties(getClass.getClassLoader, "xsbt.version.properties").getProperty("version")
-	private def getProperty(loader: ClassLoader, res: String, key: String) =  loadProperties(loader, res).getProperty(key)
-	private def loadProperties(loader: ClassLoader, res: String): Properties =
+	def getScalaVersion(loader: ClassLoader): String = getProperty(loader, "library.properties", "version.number")
+	lazy val AppVersion = getProperty(getClass.getClassLoader, "xsbt.version.properties", "version")
+
+	private[this] def getProperty(loader: ClassLoader, res: String, prop: String) = loadProperties(loader.getResourceAsStream(res)).getProperty(prop)
+	private[this] def loadProperties(propertiesStream: InputStream): Properties =
 	{
-		val properties = new java.util.Properties
-		val propertiesStream = loader.getResourceAsStream(res)
+		val properties = new Properties
 		try { properties.load(propertiesStream) } finally { propertiesStream.close() }
 		properties
 	}
