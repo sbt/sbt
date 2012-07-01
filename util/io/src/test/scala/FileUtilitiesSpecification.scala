@@ -23,7 +23,7 @@ object WriteContentSpecification extends Properties("Write content")
 
 	private def largeUnzip() =
 	{
-		testUnzip[ScalaObject]
+		testUnzip[Product]
 		testUnzip[scala.tools.nsc.Global]
 		true
 	}

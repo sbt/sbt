@@ -12,7 +12,7 @@ class Foo {
 	val g = new GenericRunnerSettings(System.err.println)
 	val settings = new Settings()
 	settings.classpath.value = location(classOf[Holder])
-	settings.bootclasspath.value = settings.bootclasspath.value + / + location(classOf[ScalaObject]) + / + location(classOf[Settings])
+	settings.bootclasspath.value = settings.bootclasspath.value + / + location(classOf[Product]) + / + location(classOf[Settings])
 	val inter = new Interpreter(settings) {
 		override protected def parentClassLoader = Foo.this.getClass.getClassLoader
 	}

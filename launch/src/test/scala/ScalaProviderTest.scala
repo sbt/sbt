@@ -57,7 +57,7 @@ object ScalaProviderTest extends Specification
 		tryScala(loader)
 		getScalaVersion(loader) must beEqualTo(versionValue)
 	}
-	private def tryScala(loader: ClassLoader): Unit = Class.forName("scala.ScalaObject", false, loader).getClassLoader must be(loader)
+	private def tryScala(loader: ClassLoader): Unit = Class.forName("scala.Product", false, loader).getClassLoader must be(loader)
 }
 object LaunchTest
 {
