@@ -120,10 +120,12 @@ object Act
 	def configs(explicit: ParsedAxis[String], defaultConfigs: Option[ResolvedReference] => Seq[String], proj: Option[ResolvedReference], index: KeyIndex): Seq[Option[String]] =
 		explicit match
 		{
-			case Omitted => None +: defaultConfigs(proj).flatMap(nonEmptyConfig(index, proj))
+			case Omitted => None +: defaultConfigurations(proj, index, defaultConfigs).flatMap(nonEmptyConfig(index, proj))
 			case ParsedGlobal =>  None :: Nil
 			case pv: ParsedValue[String] => Some(pv.value) :: Nil
 		}
+	def defaultConfigurations(proj: Option[ResolvedReference], index: KeyIndex, defaultConfigs: Option[ResolvedReference] => Seq[String]): Seq[String] =
+		if(index exists proj) defaultConfigs(proj) else Nil
 	def nonEmptyConfig(index: KeyIndex, proj: Option[ResolvedReference]): String => Seq[Option[String]] = config =>
 		if(index.isEmpty(proj, Some(config))) Nil else Some(config) :: Nil
 
@@ -196,7 +198,7 @@ object Act
 	}
 	def resolvedReference(index: KeyIndex, currentBuild: URI, trailing: Parser[_]): Parser[ResolvedReference] =
 	{
-		def projectID(uri: URI) = token( examplesStrict(ID, index projects uri, "project ID") <~ trailing )
+		def projectID(uri: URI) = token( examples(ID, index projects uri, "project ID") <~ trailing )
 		def projectRef(uri: URI) = projectID(uri) map { id => ProjectRef(uri, id) }
 
 		val uris = index.buildURIs
