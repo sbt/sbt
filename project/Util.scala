@@ -4,6 +4,7 @@
 
 object Util
 {
+	val ExclusiveTest = Tags.Tag("exclusive-test")
 	lazy val componentID = SettingKey[Option[String]]("component-id")
 
 	def inAll(projects: => Seq[ProjectReference], key: ScopedSetting[Task[Unit]]): Project.Initialize[Task[Unit]] =
@@ -103,6 +104,15 @@ object Util
 	def excludePomDependency(node: scala.xml.Node) = node \ "artifactId" exists { n => excludePomArtifact(n.text) }
 
 	def excludePomArtifact(artifactId: String) = (artifactId == "compiler-interface") || (artifactId startsWith "precompiled")
+
+	val testExclusive = tags in test += ( (ExclusiveTest, 1) )
+
+	// TODO: replace with Tags.exclusive after 0.12.0
+	val testExclusiveRestriction = Tags.customLimit { (tags: Map[Tags.Tag,Int]) =>
+		val exclusive = tags.getOrElse(ExclusiveTest, 0)
+		val all = tags.getOrElse(Tags.All, 0)
+		exclusive == 0 || all == 1
+	}
 }
 object Common
 {
