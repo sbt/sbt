@@ -26,6 +26,7 @@ trait TypeFunctions
 	implicit def toFn1[A,B](f: A => B): Fn1[A,B] = new Fn1[A,B] {
 		def ∙[C](g: C => A) = f compose g
 	}
+	def idK[M[_]]: M ~> M = new (M ~> M) { def apply[T](m: M[T]): M[T] = m }
 	
 	type Endo[T] = T=>T
 	type ~>|[A[_],B[_]] = A ~> Compose[Option, B]#Apply

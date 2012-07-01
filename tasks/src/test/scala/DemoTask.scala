@@ -92,7 +92,8 @@ object Task
 		def dependsOn(tasks: Task[_]*): Task[S] = new DependsOn(in, tasks)
 	}
 
-	implicit val taskToNode = new (Task ~> NodeT[Task]#Apply) {
+	implicit val taskToNode = new NodeView[Task] {
+		def inline[T](a: Task[T]): Option[() => T] = None
 		def apply[T](t: Task[T]): Node[Task, T] = t match {
 			case Pure(eval) => toNode[T, HNil](KNil, _ => Right(eval()) )
 			case Mapped(in, f) => toNode(in, right ∙ f  )
@@ -138,7 +139,6 @@ object Task
 	def run[T](root: Task[T], checkCycles: Boolean, maxWorkers: Int): Result[T] =
 	{
 		val (service, shutdown) = CompletionService[Task[_], Completed](maxWorkers)
-		
 		val x = new Execute[Task](checkCycles, Execute.noTriggers)(taskToNode)
 		try { x.run(root)(service) } finally { shutdown() }
 	}
