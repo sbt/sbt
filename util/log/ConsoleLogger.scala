@@ -27,6 +27,53 @@ object ConsoleLogger
 		def println() = { out.newLine(); out.flush() }
 	}
 
+	/** Escape character, used to introduce an escape sequence. */
+	final val ESC = '\u001B'
+
+	/** An escape terminator is a character in the range `@` (decimal value 64) to `~` (decimal value 126). 
+	* It is the final character in an escape sequence. */
+	def isEscapeTerminator(c: Char): Boolean =
+		c >= '@' && c <= '~'
+
+	/** Returns true if the string contains the ESC character. */
+	def hasEscapeSequence(s: String): Boolean =
+		s.indexOf(ESC) >= 0
+
+	/** Returns the string `s` with escape sequences removed.
+	* An escape sequence starts with the ESC character (decimal value 27) and ends with an escape terminator.
+	* @see isEscapeTerminator
+	*/
+	def removeEscapeSequences(s: String): String =
+		if(s.isEmpty || !hasEscapeSequence(s))
+			s
+		else
+		{
+			val sb = new java.lang.StringBuilder
+			nextESC(s, 0, sb)
+			sb.toString
+		}
+	private[this] def nextESC(s: String, start: Int, sb: java.lang.StringBuilder)
+	{
+		val escIndex = s.indexOf(ESC, start)
+		if(escIndex < 0)
+			sb.append(s, start, s.length)
+		else {
+			sb.append(s, start, escIndex)
+			val next = skipESC(s, escIndex+1)
+			nextESC(s, next, sb)
+		}
+	}
+	
+
+	/** Skips the escape sequence starting at `i-1`.  `i` should be positioned at the character after the ESC that starts the sequence. */
+	private[this] def skipESC(s: String, i: Int): Int =
+		if(i >= s.length)
+			i
+		else if( isEscapeTerminator(s.charAt(i)) )
+			i+1
+		else
+			skipESC(s, i+1)
+
 	val formatEnabled =
 	{
 		import java.lang.Boolean.{getBoolean, parseBoolean}
