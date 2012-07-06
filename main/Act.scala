@@ -226,10 +226,17 @@ object Act
 	{
 		val extracted = Project extract state
 		import extracted.{showKey, structure}
+		import Aggregation.evaluatingParser
 		showParser.flatMap { show =>
-			aggregatedKeyParser(extracted) flatMap { kvs =>
-				Aggregation.evaluatingParser(state, structure, show)( keyValues(structure)(kvs) )
-			}
+			val akp = aggregatedKeyParser(extracted) 
+			def evaluate(kvs: Seq[ScopedKey[T]] forSome { type T}): Parser[() => State] = evaluatingParser(state, structure, show)( keyValues(structure)(kvs) )
+			def reconstruct(arg: String): String = ShowCommand + " " + arg
+			if(show)
+				( akp ~ (token(Space) ~> matched(akp)).* ) flatMap { case (kvs, tail) =>
+					evaluate(kvs) map { f => () => tail.map(reconstruct) ::: f() }
+				}
+			else
+				akp flatMap evaluate
 		}
 	}
 	def showParser = token( (ShowCommand ~ Space) ^^^ true) ?? false
