@@ -41,6 +41,7 @@ object JLineTest
 object ParserTest extends Properties("Completing Parser")
 {
 		import Parsers._
+		import DefaultParsers.matches
 
 	val nested = (token("a1") ~ token("b2")) ~ "c3"
 	val nestedDisplay = (token("a1", "<a1>") ~ token("b2", "<b2>")) ~ "c3"
@@ -54,13 +55,23 @@ object ParserTest extends Properties("Completing Parser")
 		( ("display '" + in + "'") |: checkOne(in, nestedDisplay, expectDisplay) )
 		
 	def checkOne(in: String, parser: Parser[_], expect: Completion): Prop =
-		p(completions(parser, in, 1)) == Completions.single(expect)
+		completions(parser, in, 1) == Completions.single(expect)
 
+	def checkAll(in: String, parser: Parser[_], expect: Completions): Prop =
+	{
+		val cs = completions(parser, in, 1)
+		("completions: " + cs) |: ("Expected: " + expect) |: ( (cs == expect): Prop)
+	}
+	
 	def checkInvalid(in: String) =
 		( ("token '" + in + "'") |: checkInv(in, nested) ) &&
 		( ("display '" + in + "'") |: checkInv(in, nestedDisplay) )
+
 	def checkInv(in: String, parser: Parser[_]): Prop =
-		p(completions(parser, in, 1)) == Completions.nil
+	{
+		val cs = completions(parser, in, 1)
+		("completions: " + cs) |: (( cs == Completions.nil): Prop)
+	}
 	
 	property("nested tokens a") = checkSingle("", Completion.tokenStrict("","a1") )( Completion.displayStrict("<a1>"))
 	property("nested tokens a1") = checkSingle("a", Completion.tokenStrict("a","1") )( Completion.displayStrict("<a1>"))
@@ -78,6 +89,26 @@ object ParserTest extends Properties("Completing Parser")
 	property("no suggest at token end") = checkOne("asdf", token("asdf"), Completion.suggestStrict(""))
 	property("empty suggest for examples") = checkOne("asdf", any.+.examples("asdf", "qwer"), Completion.suggestStrict(""))
 	property("empty suggest for examples token") = checkOne("asdf", token(any.+.examples("asdf", "qwer")), Completion.suggestStrict(""))
+
+	val colors = Set("blue", "green", "red")
+	val base = (seen: Seq[String]) => token( ID examples (colors -- seen) )
+	val sep = token( Space )
+	val repeat = repeatDep( base, sep)
+	def completionStrings(ss: Set[String]): Completions = Completions(ss.map { s => Completion.tokenStrict("", s) })
+
+	property("repeatDep no suggestions for bad input") = checkInv(".", repeat)
+	property("repeatDep suggest all") = checkAll("", repeat, completionStrings(colors))
+	property("repeatDep suggest remaining two") = {
+		val first = colors.toSeq.head
+		checkAll(first + " ", repeat, completionStrings(colors - first))
+	}
+	property("repeatDep suggest remaining one") = {
+		val take = colors.toSeq.take(2)
+		checkAll(take.mkString("", " ", " "), repeat, completionStrings(colors -- take))
+	}
+	property("repeatDep requires at least one token") = !matches(repeat, "")
+	property("repeatDep accepts one token") = matches(repeat, colors.toSeq.head)
+	property("repeatDep accepts two tokens") = matches(repeat, colors.toSeq.take(2).mkString(" "))
 }
 object ParserExample
 {
