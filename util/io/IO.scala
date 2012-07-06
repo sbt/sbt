@@ -525,11 +525,21 @@ object IO
 
 	def copyFile(sourceFile: File, targetFile: File, preserveLastModified: Boolean = false)
 	{
+		// NOTE: when modifying this code, test with larger values of CopySpec.MaxFileSizeBits than default
+
 		require(sourceFile.exists, "Source file '" + sourceFile.getAbsolutePath + "' does not exist.")
 		require(!sourceFile.isDirectory, "Source file '" + sourceFile.getAbsolutePath + "' is a directory.")
 		fileInputChannel(sourceFile) { in =>
 			fileOutputChannel(targetFile) { out =>
-				val copied = out.transferFrom(in, 0, in.size)
+				// maximum bytes per transfer according to  from http://dzone.com/snippets/java-filecopy-using-nio
+				val max = (64 * 1024 * 1024) - (32 * 1024)
+				val total = in.size
+				def loop(offset: Long): Long =
+					if(offset < total)
+						loop( offset + out.transferFrom(in, offset, max) )
+					else
+						offset
+				val copied = loop(0)
 				if(copied != in.size)
 					error("Could not copy '" + sourceFile + "' to '" + targetFile + "' (" + copied + "/" + in.size + " bytes copied)")
 			}
