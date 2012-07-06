@@ -95,6 +95,15 @@ trait Parsers
 
 	def flag[T](p: Parser[T]): Parser[Boolean] = (p ^^^ true) ?? false
 
+	def repeatDep[A](p: Seq[A] => Parser[A], sep: Parser[Any]): Parser[Seq[A]] =
+	{
+		def loop(acc: Seq[A]): Parser[Seq[A]] = {
+			val next = (sep ~> p(acc)) flatMap { result => loop(acc :+ result) }
+			next ?? acc
+		}
+		p(Vector()) flatMap { first => loop(Seq(first)) }
+	}
+
 	def trimmed(p: Parser[String]) = p map { _.trim }
 	lazy val basicUri = mapOrFail(URIClass)( uri => new URI(uri))
 	def Uri(ex: Set[URI]) = basicUri examples(ex.map(_.toString))
