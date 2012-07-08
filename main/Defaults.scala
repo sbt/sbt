@@ -119,7 +119,7 @@ object Defaults extends BuildCommon
 		pomAllRepositories :== false,
 		includeFilter :== NothingFilter,
 		includeFilter in unmanagedSources :== "*.java" | "*.scala",
-		includeFilter in unmanagedJars :== "*.jar" | "*.so" | "*.dll",
+		includeFilter in unmanagedJars :== "*.jar" | "*.so" | "*.dll" | "*.jnilib",
 		includeFilter in unmanagedResources :== AllPassFilter,
 		excludeFilter :== (".*"  - ".") || HiddenFileFilter,
 		pomIncludeRepository :== Classpaths.defaultRepositoryFilter
