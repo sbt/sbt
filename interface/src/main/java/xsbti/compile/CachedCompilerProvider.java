@@ -6,5 +6,5 @@ import xsbti.Reporter;
 public interface CachedCompilerProvider
 {
 	ScalaInstance scalaInstance();
-	CachedCompiler newCachedCompiler(String[] arguments, Logger log, Reporter reporter, boolean resident);
+	CachedCompiler newCachedCompiler(String[] arguments, Output output, Logger log, Reporter reporter, boolean resident);
 }
