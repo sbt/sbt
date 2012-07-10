@@ -49,11 +49,10 @@ object AnalysisFormats
 	implicit def infosFormat(implicit infoF: Format[Map[File, SourceInfo]]): Format[SourceInfos] =
 		wrap[SourceInfos, Map[File, SourceInfo]]( _.allInfos, SourceInfos.make _)
 
-	implicit def infoFormat(implicit infoF: Format[Problem]): Format[SourceInfo] =
+	implicit def infoFormat: Format[SourceInfo] =
 		wrap[SourceInfo, (Seq[Problem],Seq[Problem])](si => (si.reportedProblems, si.unreportedProblems), { case (a,b) => SourceInfos.makeInfo(a,b)})
 
-	implicit def problemFormat(implicit posF: Format[Position], msgF: Format[String], sevF: Format[Severity]): Format[Problem] =
-		asProduct4(problem _)( p => (p.category, p.position, p.message, p.severity))
+	implicit def problemFormat: Format[Problem] =	asProduct4(problem _)( p => (p.category, p.position, p.message, p.severity))
 
 	implicit def positionFormat: Format[Position] =
 		asProduct7( position _ )( p => (m2o(p.line), p.lineContent, m2o(p.offset), m2o(p.pointer), m2o(p.pointerSpace), m2o(p.sourcePath), m2o(p.sourceFile)))
