@@ -19,7 +19,7 @@ class RawCompiler(val scalaInstance: xsbti.compile.ScalaInstance, cp: ClasspathO
 			//   but should not be otherwise directly referenced
 			import scala.tools.nsc.Main.{process => _}
 
-		val arguments = compilerArguments(sources, classpath, outputDirectory, options)
+		val arguments = compilerArguments(sources, classpath, Some(outputDirectory), options)
 		log.debug("Plain interface to Scala compiler " + scalaInstance.actualVersion + "  with arguments: " + arguments.mkString("\n\t", "\n\t", ""))
 		val mainClass = Class.forName("scala.tools.nsc.Main", true, scalaInstance.loader)
 		val process = mainClass.getMethod("process", classOf[Array[String]])

@@ -4,23 +4,23 @@
 package sbt
 package inc
 
-import xsbti.api.{Source, SourceAPI}
-import xsbti.compile.DependencyChanges
+import xsbti.api.{Source, SourceAPI, Compilation, OutputSetting}
+import xsbti.compile.{DependencyChanges, Output, SingleOutput, MultipleOutput}
 import xsbti.{Position,Problem,Severity}
 import Logger.{m2o, problem}
 import java.io.File
 
 object IncrementalCompile
 {
-	def apply(sources: Set[File], entry: String => Option[File], compile: (Set[File], DependencyChanges, xsbti.AnalysisCallback) => Unit, previous: Analysis, forEntry: File => Option[Analysis], outputPath: File, log: Logger): (Boolean, Analysis) =
+	def apply(sources: Set[File], entry: String => Option[File], compile: (Set[File], DependencyChanges, xsbti.AnalysisCallback) => Unit, previous: Analysis, forEntry: File => Option[Analysis], output: Output, log: Logger): (Boolean, Analysis) =
 	{
 		val current = Stamps.initial(Stamp.exists, Stamp.hash, Stamp.lastModified)
 		val internalMap = (f: File) => previous.relations.produced(f).headOption
 		val externalAPI = getExternalAPI(entry, forEntry)
-		Incremental.compile(sources, entry, previous, current, forEntry, doCompile(compile, internalMap, externalAPI, current, outputPath), log)
+		Incremental.compile(sources, entry, previous, current, forEntry, doCompile(compile, internalMap, externalAPI, current, output), log)
 	}
-	def doCompile(compile: (Set[File], DependencyChanges, xsbti.AnalysisCallback) => Unit, internalMap: File => Option[File], externalAPI: (File, String) => Option[Source], current: ReadStamps, outputPath: File) = (srcs: Set[File], changes: DependencyChanges) => {
-		val callback = new AnalysisCallback(internalMap, externalAPI, current, outputPath)
+	def doCompile(compile: (Set[File], DependencyChanges, xsbti.AnalysisCallback) => Unit, internalMap: File => Option[File], externalAPI: (File, String) => Option[Source], current: ReadStamps, output: Output) = (srcs: Set[File], changes: DependencyChanges) => {
+		val callback = new AnalysisCallback(internalMap, externalAPI, current, output)
 		compile(srcs, changes, callback)
 		callback.get 
 	}
@@ -37,10 +37,16 @@ object IncrementalCompile
 					}
 			}
 }
-private final class AnalysisCallback(internalMap: File => Option[File], externalAPI: (File, String) => Option[Source], current: ReadStamps, outputPath: File) extends xsbti.AnalysisCallback
+private final class AnalysisCallback(internalMap: File => Option[File], externalAPI: (File, String) => Option[Source], current: ReadStamps, output: Output) extends xsbti.AnalysisCallback
 {
-	val time = System.currentTimeMillis
-	val compilation = new xsbti.api.Compilation(time, outputPath.getAbsolutePath)
+	val compilation = {
+		val outputSettings = output match {
+			case single: SingleOutput => Array(new OutputSetting("/", single.outputDirectory.getAbsolutePath))
+			case multi: MultipleOutput =>
+				multi.outputGroups.map(out => new OutputSetting(out.sourceDirectory.getAbsolutePath, out.outputDirectory.getAbsolutePath)).toArray
+		}
+		new Compilation(System.currentTimeMillis, outputSettings)
+	}
 
 	override def toString = ( List("APIs", "Binary deps", "Products", "Source deps") zip List(apis, binaryDeps, classes, sourceDeps)).map { case (label, map) => label + "\n\t" + map.mkString("\n\t") }.mkString("\n")
 	

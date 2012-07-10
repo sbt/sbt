@@ -6,10 +6,12 @@ package inc
 
 	import xsbti.api.Source
 	import xsbti.{Position,Problem,Severity}
-	import xsbti.compile.CompileOrder
+	import xsbti.compile.{CompileOrder, Output => APIOutput, SingleOutput, MultipleOutput}
+	import MultipleOutput.OutputGroup
 	import java.io.File
 	import sbinary._
 	import DefaultProtocol._
+	import DefaultProtocol.tuple2Format
 	import Logger.{m2o, position, problem}
 
 object AnalysisFormats
@@ -63,8 +65,22 @@ object AnalysisFormats
 		wrap[Severity, Byte]( _.ordinal.toByte, b => Severity.values.apply(b.toInt) )
 
 
-	implicit def setupFormat(implicit outDirF: Format[File], optionF: Format[CompileOptions], compilerVersion: Format[String], orderF: Format[CompileOrder]): Format[CompileSetup] =
-		asProduct4[CompileSetup, File, CompileOptions, String, CompileOrder]( (a,b,c,d) => new CompileSetup(a,b,c,d) )(s => (s.outputDirectory, s.options, s.compilerVersion, s.order))(outDirF, optionF, compilerVersion, orderF)
+	implicit def setupFormat(implicit outputF: Format[APIOutput], optionF: Format[CompileOptions], compilerVersion: Format[String], orderF: Format[CompileOrder]): Format[CompileSetup] =
+		asProduct4[CompileSetup, APIOutput, CompileOptions, String, CompileOrder]( (a,b,c,d) => new CompileSetup(a,b,c,d) )(s => (s.output, s.options, s.compilerVersion, s.order))(outputF, optionF, compilerVersion, orderF)
+
+	implicit val outputGroupFormat: Format[OutputGroup] =
+		asProduct2((a: File,b: File) => new OutputGroup{def sourceDirectory = a; def outputDirectory = b}) { out => (out.sourceDirectory, out.outputDirectory) }(fileFormat, fileFormat)
+	implicit val multipleOutputFormat: Format[MultipleOutput] =
+		wrap[MultipleOutput, Array[OutputGroup]](
+			(_.outputGroups),
+			{ groups => new MultipleOutput { def outputGroups = groups }	}
+		)
+	implicit val singleOutputFormat: Format[SingleOutput] =
+		wrap[SingleOutput, File](
+			(_.outputDirectory),
+			{out => new SingleOutput{def outputDirectory = out}}
+		)(fileFormat)
+	implicit val outputFormat: Format[APIOutput] = asUnion(singleOutputFormat, multipleOutputFormat)
 
 	implicit def stampsFormat(implicit prodF: Format[Map[File, Stamp]], srcF: Format[Map[File, Stamp]], binF: Format[Map[File, Stamp]], nameF: Format[Map[File, String]]): Format[Stamps] =
 		asProduct4( Stamps.apply _ )( s => (s.products, s.sources, s.binaries, s.classNames) )(prodF, srcF, binF, nameF)

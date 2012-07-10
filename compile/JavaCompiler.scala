@@ -13,8 +13,13 @@ trait JavaCompiler extends xsbti.compile.JavaCompiler
 {
 	def apply(sources: Seq[File], classpath: Seq[File], outputDirectory: File, options: Seq[String])(implicit log: Logger)
 
-	def compile(sources: Array[File], classpath: Array[File], outputDirectory: File, options: Array[String], maxErrors: Int, log: xsbti.Logger): Unit =
+	def compile(sources: Array[File], classpath: Array[File], output: xsbti.compile.Output, options: Array[String], maxErrors: Int, log: xsbti.Logger): Unit = {
+		val outputDirectory = output match {
+			case single: xsbti.compile.SingleOutput => single.outputDirectory
+			case _ => throw new RuntimeException("Javac doesn't support multiple output directories")
+		}
 		apply(sources, classpath, outputDirectory, options)(log)
+	}
 }
 trait Javadoc
 {
@@ -52,7 +57,7 @@ object JavaCompiler
 			def compile(contract: JavacContract, sources: Seq[File], classpath: Seq[File], outputDirectory: File, options: Seq[String])(implicit log: Logger) {
 				val augmentedClasspath = if(cp.autoBoot) classpath ++ Seq(scalaInstance.libraryJar) else classpath
 				val javaCp = ClasspathOptions.javac(cp.compiler)
-				val arguments = (new CompilerArguments(scalaInstance, javaCp))(sources, augmentedClasspath, outputDirectory, options)
+				val arguments = (new CompilerArguments(scalaInstance, javaCp))(sources, augmentedClasspath, Some(outputDirectory), options)
 				log.debug("Calling " + contract.name.capitalize + " with arguments:\n\t" + arguments.mkString("\n\t"))
 				val code: Int = f(contract, arguments, log)
 				log.debug(contract.name + " returned exit code: " + code)
