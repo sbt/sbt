@@ -16,7 +16,7 @@ package compiler
 * this would lead to compiling against the wrong library jar.*/
 final class CompilerArguments(scalaInstance: xsbti.compile.ScalaInstance, cp: xsbti.compile.ClasspathOptions)
 {
-	def apply(sources: Seq[File], classpath: Seq[File], outputDirectory: File, options: Seq[String]): Seq[String] =
+	def apply(sources: Seq[File], classpath: Seq[File], outputDirectory: Option[File], options: Seq[String]): Seq[String] =
 	{
 		checkScalaHomeUnset()
 		val cpWithCompiler = finishClasspath(classpath)
@@ -24,7 +24,7 @@ final class CompilerArguments(scalaInstance: xsbti.compile.ScalaInstance, cp: xs
 		// We append a random dummy element as workaround.
 		val dummy = "dummy_" + Integer.toHexString(util.Random.nextInt)
 		val classpathOption = Seq("-classpath", if(cpWithCompiler.isEmpty) dummy else absString(cpWithCompiler))
-		val outputOption = Seq("-d", outputDirectory.getAbsolutePath)
+		val outputOption = outputDirectory map {out => Seq("-d", out.getAbsolutePath)} getOrElse Seq()
 		options ++ outputOption ++ bootClasspathOption(hasLibrary(classpath)) ++ classpathOption ++ abs(sources)
 	}
 	def finishClasspath(classpath: Seq[File]): Seq[File] =

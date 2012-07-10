@@ -7,5 +7,5 @@ import java.io.File;
 
 public interface CachedCompiler
 {
-	public void run(File[] sources, DependencyChanges cpChanges, AnalysisCallback callback, Logger log, Reporter delegate);
+	public void run(File[] sources, DependencyChanges cpChanges, AnalysisCallback callback, Logger log, Reporter delegate, CompileProgress progress);
 }

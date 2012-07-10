@@ -5,7 +5,7 @@ package sbt
 package compiler
 
 	import xsbti.{AnalysisCallback, Logger => xLogger, Reporter}
-	import xsbti.compile.{CachedCompiler, CachedCompilerProvider, DependencyChanges, GlobalsCache}
+	import xsbti.compile.{CachedCompiler, CachedCompilerProvider, DependencyChanges, GlobalsCache, CompileProgress, Output}
 	import java.io.File
 	import java.net.{URL, URLClassLoader}
 
@@ -16,33 +16,35 @@ package compiler
 final class AnalyzingCompiler(val scalaInstance: xsbti.compile.ScalaInstance, val provider: CompilerInterfaceProvider, val cp: xsbti.compile.ClasspathOptions, log: Logger) extends CachedCompilerProvider
 {
 	def this(scalaInstance: ScalaInstance, provider: CompilerInterfaceProvider, log: Logger) = this(scalaInstance, provider, ClasspathOptions.auto, log)
-	def apply(sources: Seq[File], changes: DependencyChanges, classpath: Seq[File], outputDirectory: File, options: Seq[String], callback: AnalysisCallback, maximumErrors: Int, cache: GlobalsCache, log: Logger)
+	def apply(sources: Seq[File], changes: DependencyChanges, classpath: Seq[File], singleOutput: File, options: Seq[String], callback: AnalysisCallback, maximumErrors: Int, cache: GlobalsCache, log: Logger)
 	{
-		val arguments = (new CompilerArguments(scalaInstance, cp))(Nil, classpath, outputDirectory, options)
-		compile(sources, changes, arguments, callback, maximumErrors, cache, log)
+		val arguments = (new CompilerArguments(scalaInstance, cp))(Nil, classpath, None, options)
+		val output = CompileOutput(singleOutput)
+		compile(sources, changes, arguments, output, callback, maximumErrors, cache, log, None)
 	}
 
-	def compile(sources: Seq[File], changes: DependencyChanges, options: Seq[String], callback: AnalysisCallback, maximumErrors: Int, cache: GlobalsCache, log: Logger): Unit =
+	def compile(sources: Seq[File], changes: DependencyChanges, options: Seq[String], output: Output, callback: AnalysisCallback, maximumErrors: Int, cache: GlobalsCache, log: Logger, progressOpt: Option[CompileProgress]): Unit =
 	{
 		val reporter = new LoggerReporter(maximumErrors, log)
-		val cached = cache(options.toArray, !changes.isEmpty, this, log, reporter)
-		compile(sources, changes, callback, log, reporter, cached)
+		val cached = cache(options.toArray, output, !changes.isEmpty, this, log, reporter)
+		val progress = progressOpt getOrElse IgnoreProgress
+		compile(sources, changes, callback, log, reporter, progress, cached)
 	}
 
-	def compile(sources: Seq[File], changes: DependencyChanges, callback: AnalysisCallback, log: Logger, reporter: Reporter, compiler: CachedCompiler)
+	def compile(sources: Seq[File], changes: DependencyChanges, callback: AnalysisCallback, log: Logger, reporter: Reporter, progress: CompileProgress, compiler: CachedCompiler)
 	{
 		call("xsbt.CompilerInterface", "run", log)(
-			classOf[Array[File]], classOf[DependencyChanges], classOf[AnalysisCallback], classOf[xLogger], classOf[Reporter], classOf[CachedCompiler]) (
-			sources.toArray, changes, callback, log, reporter, compiler )
+			classOf[Array[File]], classOf[DependencyChanges], classOf[AnalysisCallback], classOf[xLogger], classOf[Reporter], classOf[CompileProgress], classOf[CachedCompiler]) (
+			sources.toArray, changes, callback, log, reporter, progress, compiler )
 	}
-	def newCachedCompiler(arguments: Array[String], log: xLogger, reporter: Reporter, resident: Boolean): CachedCompiler =
-		newCachedCompiler(arguments: Seq[String], log, reporter, resident)
+	def newCachedCompiler(arguments: Array[String], output: Output, log: xLogger, reporter: Reporter, resident: Boolean): CachedCompiler =
+		newCachedCompiler(arguments: Seq[String], output, log, reporter, resident)
 
-	def newCachedCompiler(arguments: Seq[String], log: xLogger, reporter: Reporter, resident: Boolean): CachedCompiler =
+	def newCachedCompiler(arguments: Seq[String], output: Output, log: xLogger, reporter: Reporter, resident: Boolean): CachedCompiler =
 	{
 		call("xsbt.CompilerInterface", "newCompiler", log)(
-			classOf[Array[String]], classOf[xLogger], classOf[Reporter], classOf[Boolean] ) (
-			arguments.toArray[String] : Array[String], log, reporter, resident: java.lang.Boolean ).
+			classOf[Array[String]], classOf[Output], classOf[xLogger], classOf[Reporter], classOf[Boolean] ) (
+			arguments.toArray[String] : Array[String], output, log, reporter, resident: java.lang.Boolean ).
 			asInstanceOf[CachedCompiler]
 	}
 
@@ -50,7 +52,7 @@ final class AnalyzingCompiler(val scalaInstance: xsbti.compile.ScalaInstance, va
 		doc(sources, classpath, outputDirectory, options, log, new LoggerReporter(maximumErrors, log))
 	def doc(sources: Seq[File], classpath: Seq[File], outputDirectory: File, options: Seq[String], log: Logger, reporter: Reporter): Unit =
 	{
-		val arguments = (new CompilerArguments(scalaInstance, cp))(sources, classpath, outputDirectory, options)
+		val arguments = (new CompilerArguments(scalaInstance, cp))(sources, classpath, Some(outputDirectory), options)
 		call("xsbt.ScaladocInterface", "run", log) (classOf[Array[String]], classOf[xLogger], classOf[Reporter]) (
 			arguments.toArray[String] : Array[String], log, reporter)
 	}
@@ -124,4 +126,9 @@ object AnalyzingCompiler
 		}
 	}
 	private def isSourceName(name: String): Boolean = name.endsWith(".scala") || name.endsWith(".java")
+}
+
+private[this] object IgnoreProgress extends CompileProgress {
+	def startUnit(phase: String, unitPath: String) {}
+	def advance(current: Int, total: Int) = true
 }

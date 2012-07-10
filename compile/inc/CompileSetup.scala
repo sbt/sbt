@@ -3,7 +3,7 @@
  */
 package sbt
 
-	import xsbti.compile.CompileOrder
+	import xsbti.compile.{ CompileOrder, Output, SingleOutput, MultipleOutput }
 	import java.io.File
 
 // this class exists because of Scala's restriction on implicit parameter search.
@@ -11,20 +11,31 @@ package sbt
 //    because complexity(Equiv[Seq[String]]) > complexity(Equiv[CompileSetup])
 //     (6 > 4)
 final class CompileOptions(val options: Seq[String], val javacOptions: Seq[String])
-final class CompileSetup(val outputDirectory: File, val options: CompileOptions, val compilerVersion: String, val order: CompileOrder)
+final class CompileSetup(val output: Output, val options: CompileOptions, val compilerVersion: String, val order: CompileOrder)
 
 object CompileSetup
 {
 	// Equiv[CompileOrder.Value] dominates Equiv[CompileSetup]
-	implicit def equivCompileSetup(implicit equivFile: Equiv[File], equivOpts: Equiv[CompileOptions], equivComp: Equiv[String]/*, equivOrder: Equiv[CompileOrder]*/): Equiv[CompileSetup] = new Equiv[CompileSetup] {
+	implicit def equivCompileSetup(implicit equivOutput: Equiv[Output], equivOpts: Equiv[CompileOptions], equivComp: Equiv[String]/*, equivOrder: Equiv[CompileOrder]*/): Equiv[CompileSetup] = new Equiv[CompileSetup] {
 		def equiv(a: CompileSetup, b: CompileSetup) =
-			equivFile.equiv(a.outputDirectory, b.outputDirectory) &&
+			equivOutput.equiv(a.output, b.output) &&
 			equivOpts.equiv(a.options, b.options) &&
 			equivComp.equiv(a.compilerVersion, b.compilerVersion) &&
 			a.order == b.order // equivOrder.equiv(a.order, b.order)
 	}
-	implicit val equivOutputDirectory: Equiv[File] = new Equiv[File] {
+	implicit val equivFile: Equiv[File] = new Equiv[File] {
 		def equiv(a: File, b: File) = a.getAbsoluteFile == b.getAbsoluteFile
+	}
+	implicit val equivOutput: Equiv[Output] = new Equiv[Output] {
+		def equiv(out1: Output, out2: Output) = (out1, out2) match {
+			case (m1: MultipleOutput, m2: MultipleOutput) =>
+				m1.outputGroups zip (m2.outputGroups) forall {
+					case (a,b) => 
+						equivFile.equiv(a.sourceDirectory, b.sourceDirectory) && equivFile.equiv(a.outputDirectory, b.outputDirectory)
+				}
+			case (s1: SingleOutput, s2: SingleOutput) => equivFile.equiv(s1.outputDirectory, s2.outputDirectory)
+			case _ => false
+		}
 	}
 	implicit val equivOpts: Equiv[CompileOptions] = new Equiv[CompileOptions] {
 		def equiv(a: CompileOptions, b: CompileOptions) =

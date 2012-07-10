@@ -23,4 +23,7 @@ public interface Setup<Analysis>
 	File cacheFile();
 
 	GlobalsCache cache();
+
+	/** If returned, the progress that should be used to report scala compilation to. */
+	Maybe<CompileProgress> progress();
 }
