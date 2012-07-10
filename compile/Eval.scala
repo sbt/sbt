@@ -115,9 +115,9 @@ final class Eval(optionsNoncp: Seq[String], classpath: Seq[File], mkReporter: Se
 			Block(List(Apply(Select(Super(This(emptyTypeName), emptyTypeName), nme.CONSTRUCTOR), Nil)), Literal(Constant(())))
 		)
 
-		def method = DefDef(NoMods, WrapValName, Nil, Nil, tpt, tree)
-		def moduleBody = Template(List(gen.scalaScalaObjectConstr), emptyValDef, List(emptyInit, method))
-		def moduleDef = ModuleDef(NoMods, objectName, moduleBody)
+		def method = DefDef(NoMods, newTermName(WrapValName), Nil, Nil, tpt, tree)
+		def moduleBody = Template(List(gen.scalaAnyRefConstr), emptyValDef, List(emptyInit, method))
+		def moduleDef = ModuleDef(NoMods, newTermName(objectName), moduleBody)
 		parser.makePackaging(0, emptyPkg, (imports :+ moduleDef).toList)
 	}
 

@@ -76,7 +76,7 @@ object Incremental
 		shortcutSameSource(a, b) || (!hasMacro && SameAPI(a,b))
 	}
 
-	def shortcutSameSource(a: Source, b: Source): Boolean  =  !a.hash.isEmpty && !b.hash.isEmpty && sameCompilation(a.compilation, b.compilation) && (a.hash deepEquals b.hash)
+	def shortcutSameSource(a: Source, b: Source): Boolean  =  !a.hash.isEmpty && !b.hash.isEmpty && sameCompilation(a.compilation, b.compilation) && (a.hash.deep equals b.hash.deep)
 	def sameCompilation(a: Compilation, b: Compilation): Boolean  =  a.startTime == b.startTime && a.target == b.target
 
 	def changedInitial(entry: String => Option[File], sources: Set[File], previousAnalysis: Analysis, current: ReadStamps, forEntry: File => Option[Analysis])(implicit equivS: Equiv[Stamp]): InitialChanges =
