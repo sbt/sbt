@@ -6,7 +6,6 @@ package inc
 
 import xsbti.api.Source
 import java.io.File
-import sbt.Util.counted
 
 trait Analysis
 {
@@ -46,6 +45,15 @@ object Analysis
 			counted("unreported warning", "", "s", unreportedCount)
 		sections.mkString("Analysis: ", ", ", "")
 	}
+
+	def counted(prefix: String, single: String, plural: String, count: Int): Option[String] =
+		count match
+		{
+			case 0 => None
+			case 1 => Some("1 " + prefix + single)
+			case x => Some(x.toString + " " + prefix + plural)
+		}
+
 }
 private class MAnalysis(val stamps: Stamps, val apis: APIs, val relations: Relations, val infos: SourceInfos) extends Analysis
 {

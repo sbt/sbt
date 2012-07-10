@@ -20,13 +20,6 @@ object Util
 			case Left(l) => (l +: acc._1, acc._2)
 			case Right(r) => (acc._1, r +: acc._2)
 		}
-	def counted(prefix: String, single: String, plural: String, count: Int): Option[String] =
-		count match
-		{
-			case 0 => None
-			case 1 => Some("1 " + prefix + single)
-			case x => Some(x.toString + " " + prefix + plural)
-		}
 
 	def pairID[A,B] = (a: A, b: B) => (a,b)
 }
