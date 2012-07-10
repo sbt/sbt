@@ -14,76 +14,64 @@ import java.lang.reflect.Modifier.{STATIC, PUBLIC, ABSTRACT}
 
 private[sbt] object Analyze
 {
-	def apply[T](outputDirectory: File, sources: Seq[File], log: Logger)(analysis: xsbti.AnalysisCallback, loader: ClassLoader, readAPI: (File,Seq[Class[_]]) => Unit)(compile: => Unit)
+	def apply[T](newClasses: Seq[File], sources: Seq[File], log: Logger)(analysis: xsbti.AnalysisCallback, loader: ClassLoader, readAPI: (File,Seq[Class[_]]) => Unit)
 	{
 		val sourceMap = sources.toSet[File].groupBy(_.getName)
-		val classesFinder = PathFinder(outputDirectory) ** "*.class"
-		val existingClasses = classesFinder.get
 
 		def load(tpe: String, errMsg: => Option[String]): Option[Class[_]] =
 			try { Some(Class.forName(tpe, false, loader)) }
 			catch { case e => errMsg.foreach(msg => log.warn(msg + " : " +e.toString)); None }
 
-		// runs after compilation
-		def analyze()
-		{
-			val allClasses = Set(classesFinder.get: _*)
-			val newClasses = allClasses -- existingClasses
-			
-			val productToSource = new mutable.HashMap[File, File]
-			val sourceToClassFiles = new mutable.HashMap[File, Buffer[ClassFile]]
+		val productToSource = new mutable.HashMap[File, File]
+		val sourceToClassFiles = new mutable.HashMap[File, Buffer[ClassFile]]
 
-			// parse class files and assign classes to sources.  This must be done before dependencies, since the information comes
-			// as class->class dependencies that must be mapped back to source->class dependencies using the source+class assignment
-			for(newClass <- newClasses;
-				classFile = Parser(newClass);
-				sourceFile <- classFile.sourceFile orElse guessSourceName(newClass.getName);
-				source <- guessSourcePath(sourceMap, classFile, log))
-			{
-				analysis.beginSource(source)
-				analysis.generatedClass(source, newClass, classFile.className)
-				productToSource(newClass) = source
-				sourceToClassFiles.getOrElseUpdate(source, new ArrayBuffer[ClassFile]) += classFile
-			}
+		// parse class files and assign classes to sources.  This must be done before dependencies, since the information comes
+		// as class->class dependencies that must be mapped back to source->class dependencies using the source+class assignment
+		for(newClass <- newClasses;
+			classFile = Parser(newClass);
+			sourceFile <- classFile.sourceFile orElse guessSourceName(newClass.getName);
+			source <- guessSourcePath(sourceMap, classFile, log))
+		{
+			analysis.beginSource(source)
+			analysis.generatedClass(source, newClass, classFile.className)
+			productToSource(newClass) = source
+			sourceToClassFiles.getOrElseUpdate(source, new ArrayBuffer[ClassFile]) += classFile
+		}
 			
-			// get class to class dependencies and map back to source to class dependencies
-			for( (source, classFiles) <- sourceToClassFiles )
+		// get class to class dependencies and map back to source to class dependencies
+		for( (source, classFiles) <- sourceToClassFiles )
+		{
+			def processDependency(tpe: String)
 			{
-				def processDependency(tpe: String)
+				trapAndLog(log)
 				{
-					trapAndLog(log)
+					for (url <- Option(loader.getResource(tpe.replace('.', '/') + ClassExt)); file <- IO.urlAsFile(url))
 					{
-						for (url <- Option(loader.getResource(tpe.replace('.', '/') + ClassExt)); file <- IO.urlAsFile(url))
+						if(url.getProtocol == "jar")
+							analysis.binaryDependency(file, tpe, source)
+						else
 						{
-							if(url.getProtocol == "jar")
-								analysis.binaryDependency(file, tpe, source)
-							else
+							assume(url.getProtocol == "file")
+							productToSource.get(file) match
 							{
-								assume(url.getProtocol == "file")
-								productToSource.get(file) match
-								{
-									case Some(dependsOn) => analysis.sourceDependency(dependsOn, source)
-									case None => analysis.binaryDependency(file, tpe, source)
-								}
+								case Some(dependsOn) => analysis.sourceDependency(dependsOn, source)
+								case None => analysis.binaryDependency(file, tpe, source)
 							}
 						}
 					}
 				}
+			}
 				
-				classFiles.flatMap(_.types).toSet.foreach(processDependency)
-				readAPI(source, classFiles.toSeq.flatMap(c => load(c.className, Some("Error reading API from class file") )))
-				analysis.endSource(source)
-			}
-
-			for( source <- sources filterNot sourceToClassFiles.keySet ) {
-				analysis.beginSource(source)
-				analysis.api(source, new xsbti.api.SourceAPI(Array(), Array()))
-				analysis.endSource(source)
-			}
+			classFiles.flatMap(_.types).toSet.foreach(processDependency)
+			readAPI(source, classFiles.toSeq.flatMap(c => load(c.className, Some("Error reading API from class file") )))
+			analysis.endSource(source)
 		}
-		
-		compile
-		analyze()
+
+		for( source <- sources filterNot sourceToClassFiles.keySet ) {
+			analysis.beginSource(source)
+			analysis.api(source, new xsbti.api.SourceAPI(Array(), Array()))
+			analysis.endSource(source)
+		}
 	}
 	private def trapAndLog(log: Logger)(execute: => Unit)
 	{

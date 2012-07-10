@@ -9,9 +9,13 @@ SourceAPI
 	packages : Package*
 	definitions: Definition*
 
+OutputSetting
+	sourceDirectory: String
+	outputDirectory: String
+
 Compilation
 	startTime: Long
-	target: String
+	outputs: OutputSetting*
 
 Package
 	name: String
