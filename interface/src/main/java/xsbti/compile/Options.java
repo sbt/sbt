@@ -22,9 +22,6 @@ public interface Options
 	/** The options to pass to the Java compiler other than the sources and classpath to use. */
 	String[] javacOptions();
 
-	/** The maximum number of errors that the Scala compiler should report.*/
-	int maxErrors();
-
 	/** Controls the order in which Java and Scala sources are compiled.*/
 	CompileOrder order();
 }

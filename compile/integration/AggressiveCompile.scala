@@ -14,33 +14,33 @@ import inc._
 	import CompileSetup._
 	import sbinary.DefaultProtocol.{ immutableMapFormat, immutableSetFormat, StringFormat }
 
-	import xsbti.AnalysisCallback
+	import xsbti.{ Reporter, AnalysisCallback }
 	import xsbti.api.Source
 	import xsbti.compile.{CompileOrder, DependencyChanges, GlobalsCache, Output, SingleOutput, MultipleOutput, CompileProgress}
 	import CompileOrder.{JavaThenScala, Mixed, ScalaThenJava}
 
 final class CompileConfiguration(val sources: Seq[File], val classpath: Seq[File],
 	val previousAnalysis: Analysis, val previousSetup: Option[CompileSetup], val currentSetup: CompileSetup, val progress: Option[CompileProgress], val getAnalysis: File => Option[Analysis], val definesClass: DefinesClass,
-	val maxErrors: Int, val compiler: AnalyzingCompiler, val javac: xsbti.compile.JavaCompiler, val cache: GlobalsCache)
+	val reporter: Reporter, val compiler: AnalyzingCompiler, val javac: xsbti.compile.JavaCompiler, val cache: GlobalsCache)
 
 class AggressiveCompile(cacheFile: File)
 {
-	def apply(compiler: AnalyzingCompiler, javac: xsbti.compile.JavaCompiler, sources: Seq[File], classpath: Seq[File], output: Output, cache: GlobalsCache, progress: Option[CompileProgress] = None, options: Seq[String] = Nil, javacOptions: Seq[String] = Nil, analysisMap: File => Option[Analysis] = { _ => None }, definesClass: DefinesClass = Locate.definesClass _, maxErrors: Int = 100, compileOrder: CompileOrder = Mixed, skip: Boolean = false)(implicit log: Logger): Analysis =
+	def apply(compiler: AnalyzingCompiler, javac: xsbti.compile.JavaCompiler, sources: Seq[File], classpath: Seq[File], output: Output, cache: GlobalsCache, progress: Option[CompileProgress] = None, options: Seq[String] = Nil, javacOptions: Seq[String] = Nil, analysisMap: File => Option[Analysis] = { _ => None }, definesClass: DefinesClass = Locate.definesClass _, reporter: Reporter, compileOrder: CompileOrder = Mixed, skip: Boolean = false)(implicit log: Logger): Analysis =
 	{
 		val setup = new CompileSetup(output, new CompileOptions(options, javacOptions), compiler.scalaInstance.actualVersion, compileOrder)
-		compile1(sources, classpath, setup, progress, store, analysisMap, definesClass, compiler, javac, maxErrors, skip, cache)
+		compile1(sources, classpath, setup, progress, store, analysisMap, definesClass, compiler, javac, reporter, skip, cache)
 	}
 
 	def withBootclasspath(args: CompilerArguments, classpath: Seq[File]): Seq[File] =
 		args.bootClasspathFor(classpath) ++ args.finishClasspath(classpath)
 
-	def compile1(sources: Seq[File], classpath: Seq[File], setup: CompileSetup, progress: Option[CompileProgress], store: AnalysisStore, analysis: File => Option[Analysis], definesClass: DefinesClass, compiler: AnalyzingCompiler, javac: xsbti.compile.JavaCompiler, maxErrors: Int, skip: Boolean, cache: GlobalsCache)(implicit log: Logger): Analysis =
+	def compile1(sources: Seq[File], classpath: Seq[File], setup: CompileSetup, progress: Option[CompileProgress], store: AnalysisStore, analysis: File => Option[Analysis], definesClass: DefinesClass, compiler: AnalyzingCompiler, javac: xsbti.compile.JavaCompiler, reporter: Reporter, skip: Boolean, cache: GlobalsCache)(implicit log: Logger): Analysis =
 	{
 		val (previousAnalysis, previousSetup) = extract(store.get())
 		if(skip)
 			previousAnalysis
 		else {
-			val config = new CompileConfiguration(sources, classpath, previousAnalysis, previousSetup, setup, progress, analysis, definesClass, maxErrors, compiler, javac, cache)
+			val config = new CompileConfiguration(sources, classpath, previousAnalysis, previousSetup, setup, progress, analysis, definesClass, reporter, compiler, javac, cache)
 			val (modified, result) = compile2(config)
 			if(modified)
 				store.set(result, setup)
@@ -69,7 +69,7 @@ class AggressiveCompile(cacheFile: File)
 					val sources = if(order == Mixed) incSrc else scalaSrcs
 					val arguments = cArgs(Nil, absClasspath, None, options.options)
 					timed("Scala compilation", log) {
-						compiler.compile(sources, changes, arguments, output, callback, maxErrors, cache, log, progress)
+						compiler.compile(sources, changes, arguments, output, callback, reporter, cache, log, progress)
 					}
 				}
 			def compileJava() =
@@ -97,7 +97,7 @@ class AggressiveCompile(cacheFile: File)
 
 					val loader = ClasspathUtilities.toLoader(searchClasspath)
 					timed("Java compilation", log) {
-						javac.compile(javaSrcs.toArray, absClasspath.toArray, output, options.javacOptions.toArray, maxErrors, log)
+						javac.compile(javaSrcs.toArray, absClasspath.toArray, output, options.javacOptions.toArray, log)
 					}
 
 					def readAPI(source: File, classes: Seq[Class[_]]) { callback.api(source, ClassToAPI(classes)) }

@@ -2,6 +2,7 @@ package xsbti.compile;
 
 import java.io.File;
 import xsbti.Maybe;
+import xsbti.Reporter;
 
 /** Configures incremental recompilation. */
 public interface Setup<Analysis>
@@ -26,4 +27,7 @@ public interface Setup<Analysis>
 
 	/** If returned, the progress that should be used to report scala compilation to. */
 	Maybe<CompileProgress> progress();
+
+	/** The reporter that should be used to report scala compilation to. */
+	Reporter reporter();
 }
