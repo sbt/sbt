@@ -9,7 +9,6 @@ import xsbti.Logger;
 public interface JavaCompiler
 {
 	/** Compiles Java sources using the provided classpath, output directory, and additional options.
-	* If supported, the number of reported errors should be limited to `maximumErrors`.
 	* Output should be sent to the provided logger.*/
-	void compile(File[] sources, File[] classpath, Output output, String[] options, int maximumErrors, Logger log);
+	void compile(File[] sources, File[] classpath, Output output, String[] options, Logger log);
 }
