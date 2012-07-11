@@ -13,7 +13,7 @@ trait JavaCompiler extends xsbti.compile.JavaCompiler
 {
 	def apply(sources: Seq[File], classpath: Seq[File], outputDirectory: File, options: Seq[String])(implicit log: Logger)
 
-	def compile(sources: Array[File], classpath: Array[File], output: xsbti.compile.Output, options: Array[String], maxErrors: Int, log: xsbti.Logger): Unit = {
+	def compile(sources: Array[File], classpath: Array[File], output: xsbti.compile.Output, options: Array[String], log: xsbti.Logger): Unit = {
 		val outputDirectory = output match {
 			case single: xsbti.compile.SingleOutput => single.outputDirectory
 			case _ => throw new RuntimeException("Javac doesn't support multiple output directories")
