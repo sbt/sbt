@@ -385,6 +385,7 @@ object KeyRanks
 
 	final val MainTaskCutoff = AMinusTask
 	final val MainSettingCutoff = AMinusSetting
+	final val MainCutoff = math.max(AMinusTask, AMinusSetting)
 
 	final val DefaultTaskRank = (ATask + BTask)/2
 	final val DefaultInputRank = ATask // input tasks are likely a main task
