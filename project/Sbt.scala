@@ -52,7 +52,7 @@ object Sbt extends Build
 	/* **** Utilities **** */
 
 	lazy val controlSub = baseProject(utilPath / "control", "Control")
-	lazy val collectionSub = testedBaseProject(utilPath / "collection", "Collections")
+	lazy val collectionSub = testedBaseProject(utilPath / "collection", "Collections") settings( Util.keywordsSettings: _* )
 		// The API for forking, combining, and doing I/O with system processes
 	lazy val processSub = baseProject(utilPath / "process", "Process") dependsOn(ioSub % "test->test")
 		// Path, IO (formerly FileUtilities), NameFilter and other I/O utility classes
