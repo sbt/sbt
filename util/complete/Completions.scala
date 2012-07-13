@@ -32,10 +32,12 @@ object Completions
 	/** Returns a strict Completions instance using the provided Completion Set. */
 	def strict(cs: Set[Completion]): Completions = apply(cs)
 
-	/** No suggested completions, not even the empty Completion.*/
+	/** No suggested completions, not even the empty Completion.
+	* This typically represents invalid input. */
 	val nil: Completions = strict(Set.empty)
 
-	/** Only includes an empty Suggestion */
+	/** Only includes an empty Suggestion.
+	* This typically represents valid input that either has no completions or accepts no further input. */
 	val empty: Completions = strict(Set.empty + Completion.empty)
 
 	/** Returns a strict Completions instance containing only the provided Completion.*/
@@ -78,17 +80,15 @@ final class DisplayOnly(val display: String) extends Completion
 	def append = ""
 	override def toString = "{" + display + "}"
 }
-final class Token(prepend0: String, append0: String) extends Completion
+final class Token(val display: String, val append: String) extends Completion
 {
-	lazy val prepend = prepend0
-	lazy val append = append0
-	def isEmpty = prepend.isEmpty && append.isEmpty
-	def display = prepend + append
-	override final def toString = "[" + prepend + "," + append +"]"
+	@deprecated("Retained only for compatibility.  All information is now in `display` and `append`.", "0.12.1")
+	lazy val prepend = display.stripSuffix(append)
+	def isEmpty = display.isEmpty && append.isEmpty
+	override final def toString = "[" + display + "]++" + append
 }
-final class Suggestion(append0: String) extends Completion
+final class Suggestion(val append: String) extends Completion
 {
-	lazy val append = append0
 	def isEmpty = append.isEmpty
 	def display = append
 	override def toString = append
@@ -116,7 +116,7 @@ object Completion
 		{
 			case (as: Suggestion, bs: Suggestion) => as.append == bs.append
 			case (ad: DisplayOnly, bd: DisplayOnly) => ad.display == bd.display
-			case (at: Token, bt: Token) => at.prepend == bt.prepend && at.append == bt.append
+			case (at: Token, bt: Token) => at.display == bt.display && at.append == bt.append
 			case _ => false
 		}
 
@@ -125,16 +125,27 @@ object Completion
 		{
 			case as: Suggestion => (0, as.append).hashCode
 			case ad: DisplayOnly => (1, ad.display).hashCode
-			case at: Token => (2, at.prepend, at.append).hashCode
+			case at: Token => (2, at.display, at.append).hashCode
 		}
 
-	val empty: Completion = suggestStrict("")
-	def single(c: Char): Completion = suggestStrict(c.toString)
+	val empty: Completion = suggestion("")
+	def single(c: Char): Completion = suggestion(c.toString)
 	
+	// TODO: make strict in 0.13.0 to match DisplayOnly
 	def displayOnly(value: => String): Completion = new DisplayOnly(value)
+	@deprecated("Use displayOnly.", "0.12.1")
 	def displayStrict(value: String): Completion = displayOnly(value)
-	def token(prepend: => String, append: => String): Completion = new Token(prepend, append)
+
+	// TODO: make strict in 0.13.0 to match Token
+	def token(prepend: => String, append: => String): Completion = new Token(prepend+append, append)
+	@deprecated("Use token.", "0.12.1")
 	def tokenStrict(prepend: String, append: String): Completion = token(prepend, append)
+
+	/** @since 0.12.1 */
+	def tokenDisplay(append: String, display: String): Completion = new Token(display, append)
+
+	// TODO: make strict in 0.13.0 to match Suggestion
 	def suggestion(value: => String): Completion = new Suggestion(value)
+	@deprecated("Use suggestion.", "0.12.1")
 	def suggestStrict(value: String): Completion = suggestion(value)
 }
