@@ -19,23 +19,19 @@ addSbtPlugin("net.virtual-void" % "sbt-dependency-graph" % "0.6.0")
 
 *Note*: The organization has recently been changed to `net.virtual-void`.
 
-or, alternatively, in `project/plugins/project/build.scala`:
-
-```scala
-import sbt._
-
-object Plugins extends Build {
-  lazy val root = Project("root", file(".")) dependsOn(
-    uri("git://github.com/jrudolph/sbt-dependency-graph.git#v0.6.0") // or another tag/branch/revision
-  )
-}
-```
-
-Then, add the following in your `build.sbt`:
+Then, add the following to your `build.sbt` as a standalone line:
 
 ```scala
 net.virtualvoid.sbt.graph.Plugin.graphSettings
 ```
+
+or if you use the full configuration, add 
+
+```scala
+.settings(net.virtualvoid.sbt.graph.Plugin.graphSettings: _*)
+```
+
+to your project definition.
 
 Tasks & Settings
 ----------------
