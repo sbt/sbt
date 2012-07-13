@@ -64,11 +64,11 @@ object JLineCompletion
 	{
 		val (insert, display) =
 			( (Set.empty[String], Set.empty[String]) /: cs) { case ( t @ (insert,display), comp) =>
-				if(comp.isEmpty) t else (insert + comp.append, appendNonEmpty(display, comp.display.trim))
+				if(comp.isEmpty) t else (insert + comp.append, appendNonEmpty(display, comp.display))
 			}
 		(insert.toSeq, display.toSeq.sorted)
 	}
-	def appendNonEmpty(set: Set[String], add: String) = if(add.isEmpty) set else set + add
+	def appendNonEmpty(set: Set[String], add: String) = if(add.trim.isEmpty) set else set + add
 
 	def customCompletor(f: (String, Int) => (Seq[String], Seq[String])): (ConsoleReader, Int) => Boolean =
 		(reader, level) => {
@@ -128,9 +128,10 @@ object JLineCompletion
 		val (lines, columns) = cs partition hasNewline
 		for(line <- lines) {
 			reader.printString(line)
-			reader.printNewline()
+			if(line.charAt(line.length - 1) != '\n')
+				reader.printNewline()
 		}
-		reader.printColumns(JavaConversions.asJavaList(columns))
+		reader.printColumns(JavaConversions.asJavaList(columns.map(_.trim)))
 	}
 	def hasNewline(s: String): Boolean = s.indexOf('\n') >= 0
 	def shouldPrint(cs: Seq[String], reader: ConsoleReader): Boolean =
