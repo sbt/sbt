@@ -74,14 +74,12 @@ LastCommand + """
 	val InspectCommand = "inspect"
 	val inspectBrief = (InspectCommand, "Prints the value for 'key', the defining scope, delegates, related definitions, and dependencies.")
 	val inspectDetailed =
-InspectCommand + """ [tree] <key>
+InspectCommand + """ <key>
 
 	For a plain setting, the value bound to the key argument is displayed using its toString method.
 	Otherwise, the type of task ("Task" or "Input task") is displayed.
 
 	"Dependencies" shows the settings that this setting depends on.
-	If 'tree' is specified, the bound value as well as the settings that this setting depends on
-	(and their bound values) are displayed as a tree structure.
 	
 	"Reverse dependencies" shows the settings that depend on this setting.
 
@@ -90,7 +88,25 @@ InspectCommand + """ [tree] <key>
 	"Delegates" shows the scopes that are searched for the key.
 	"Provided by" shows the scope that contained the value returned for the key.
 
-	"Related" shows all of the scopes in which the key is defined."""
+	"Related" shows all of the scopes in which the key is defined.
+
+""" + 
+InspectCommand + """ tree <key>
+
+	Displays `key` and its dependencies in a tree structure.
+	For settings, the value bound to the setting is displayed and for tasks, the type of the task is shown.
+
+""" +
+InspectCommand + """ uses <key>
+
+	Displays the settings and tasks that directly depend on `key`.
+
+""" +
+InspectCommand + """ definitions <key>
+
+	Displays the scopes in which `key` is defined.
+"""
+
 
 	val SetCommand = "set"
 	val setBrief = (SetCommand, "Evaluates a Setting and applies it to the current project.")
