@@ -22,4 +22,14 @@ object Util
 		}
 
 	def pairID[A,B] = (a: A, b: B) => (a,b)
+
+	private[this] lazy val Hypen = """-(\p{javaLowerCase})""".r
+	def hypenToCamel(s: String): String =
+		Hypen.replaceAllIn(s, _.group(1).toUpperCase)
+
+	private[this] lazy val Camel = """(\p{javaLowerCase})(\p{javaUpperCase})""".r
+	def camelToHypen(s: String): String =
+		Camel.replaceAllIn(s, m => m.group(1) + "-" + m.group(2).toLowerCase)
+
+	def quoteIfKeyword(s: String): String = if(ScalaKeywords.values(s)) '`' + s + '`' else s
 }
