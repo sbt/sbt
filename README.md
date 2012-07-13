@@ -19,7 +19,7 @@ addSbtPlugin("net.virtual-void" % "sbt-dependency-graph" % "0.6.0")
 
 *Note*: The organization has recently been changed to `net.virtual-void`.
 
-Then, add the following to your `build.sbt` as a standalone line:
+Then, add the following to your `<project-root>/build.sbt` (that's not `project/build.sbt`!) as a standalone line:
 
 ```scala
 net.virtualvoid.sbt.graph.Plugin.graphSettings
