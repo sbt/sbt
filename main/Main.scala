@@ -206,15 +206,14 @@ object BuiltinCommands
 		val extracted = Project extract s
 		import extracted._
 		val settings = EvaluateConfigurations.evaluateSetting(session.currentEval(), "<set>", imports(extracted), arg, LineRange(0,0))(currentLoader)
-		val newSession = if(all) Project.setAll(extracted, settings) else setThis(s, extracted, settings, arg)
-		reapply(newSession, structure, s)
+		val setResult = if(all) SettingCompletions.setAll(extracted, settings) else SettingCompletions.setThis(s, extracted, settings, arg)
+		s.log.info(setResult.quietSummary)
+		s.log.debug(setResult.verboseSummary)
+		reapply(setResult.session, structure, s)
 	}
+	// @deprecated("Use SettingCompletions.setThis", "0.13.0")
 	def setThis(s: State, extracted: Extracted, settings: Seq[Project.Setting[_]], arg: String) =
-	{
-		import extracted._
-		val append = Load.transformSettings(Load.projectScope(currentRef), currentRef.build, rootProject, settings)
-		session.appendSettings( append map (a => (a, arg.split('\n').toList)))
-	}
+		SettingCompletions.setThis(s, extracted, settings, arg)
 	def inspect = Command(InspectCommand, inspectBrief, inspectDetailed)(inspectParser) { case (s, (option, sk)) =>
 		s.log.info(inspectOutput(s, option, sk))
 		s

@@ -356,26 +356,9 @@ object Project extends Init[Scope] with ProjectExtra
 	def reverseDependencies(cMap: Map[ScopedKey[_],Flattened], scoped: ScopedKey[_]): Iterable[ScopedKey[_]] =
 		for( (key,compiled) <- cMap; dep <- compiled.dependencies if dep == scoped)  yield  key
 
-	def setAll(extracted: Extracted, settings: Seq[Setting[_]]) =
-	{
-			import extracted._
-		val allDefs = relation(extracted.structure, true)._1s.toSeq
-		val projectScope = Load.projectScope(currentRef)
-		def resolve(s: Setting[_]): Seq[Setting[_]] = Load.transformSettings(projectScope, currentRef.build, rootProject, s :: Nil)
-		def rescope[T](setting: Setting[T]): Seq[Setting[_]] =
-		{
-			val akey = setting.key.key
-			val global = ScopedKey(Global, akey)
-			val globalSetting = resolve( Project.setting(global, setting.init, setting.pos) )
-			globalSetting ++ allDefs.flatMap { d =>
-				if(d.key == akey)
-					Seq( SettingKey(akey) in d.scope <<= global)
-				else
-					Nil
-			}
-		}
-		extracted.session.appendRaw(settings flatMap { x => rescope(x) } )
-	}
+	//@deprecated("Use SettingCompletions.setAll when available.", "0.13.0")
+	def setAll(extracted: Extracted, settings: Seq[Setting[_]]): SessionSettings =
+		SettingCompletions.setAll(extracted, settings).session
 
 	val ExtraBuilds = AttributeKey[List[URI]]("extra-builds", "Extra build URIs to load in addition to the ones defined by the project.")
 	def extraBuilds(s: State): List[URI] = getOrNil(s, ExtraBuilds)
