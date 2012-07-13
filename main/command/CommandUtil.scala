@@ -24,7 +24,7 @@ object CommandUtil
 	def aligned(pre: String, sep: String, in: Seq[(String, String)]): Seq[String] =
 	{
 		val width = in.map(_._1.length).max
-		in.map { case (a, b) => ("  " + fill(a, width) + sep + b) }
+		in.map { case (a, b) => (pre + fill(a, width) + sep + b) }
 	}
 	def fill(s: String, size: Int)  =  s + " " * math.max(size - s.length, 0)
 
