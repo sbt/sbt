@@ -346,12 +346,39 @@ trait ParserMain
 					success(seen.mkString)
 		}
 
-	def token[T](t: Parser[T]): Parser[T] = token(t, "", true, const(false))
-	def token[T](t: Parser[T], hide: Int => Boolean): Parser[T] = token(t, "", true, hide)
-	def token[T](t: Parser[T], description: String): Parser[T] = token(t, description, false, const(false))
+	/** Establishes delegate parser `t` as a single token of tab completion.
+	* When tab completion of part of this token is requested, the completions provided by the delegate `t` or a later derivative are appended to 
+	* the prefix String already seen by this parser. */
+	def token[T](t: Parser[T]): Parser[T] = token(t, TokenCompletions.default)
+
+	/** Establishes delegate parser `t` as a single token of tab completion.
+	* When tab completion of part of this token is requested, no completions are returned if `hide` returns true for the current tab completion level.
+	* Otherwise, the completions provided by the delegate `t` or a later derivative are appended to the prefix String already seen by this parser.*/
+	def token[T](t: Parser[T], hide: Int => Boolean): Parser[T] = token(t, TokenCompletions.default.hideWhen(hide))
+
+	/** Establishes delegate parser `t` as a single token of tab completion.
+	* When tab completion of part of this token is requested, `description` is displayed for suggestions and no completions are ever performed. */
+	def token[T](t: Parser[T], description: String): Parser[T] = token(t, TokenCompletions.displayOnly(description))
+
+	/** Establishes delegate parser `t` as a single token of tab completion.
+	* When tab completion of part of this token is requested, `display` is used as the printed suggestion, but the completions from the delegate
+	* parser `t` are used to complete if unambiguous. */
+	def tokenDisplay[T](t: Parser[T], display: String): Parser[T] =
+		token(t, TokenCompletions.overrideDisplay(display))
+
+	def token[T](t: Parser[T], complete: TokenCompletions): Parser[T] =
+		mkToken(t, "", complete)
+
+	@deprecated("Use a different `token` overload.", "0.12.1")
 	def token[T](t: Parser[T], seen: String, track: Boolean, hide: Int => Boolean): Parser[T] =
+	{
+		val base = if(track) TokenCompletions.default else TokenCompletions.displayOnly(seen)
+		token(t, base.hideWhen(hide))
+	}
+
+	private[sbt] def mkToken[T](t: Parser[T], seen: String, complete: TokenCompletions): Parser[T] =
 		if(t.valid && !t.isTokenStart)
-			if(t.result.isEmpty) new TokenStart(t, seen, track, hide) else t
+			if(t.result.isEmpty) new TokenStart(t, seen, complete) else t
 		else
 			t
 
@@ -512,23 +539,17 @@ private final class MatchedString(delegate: Parser[_], seenV: Vector[Char], part
 	override def isTokenStart = delegate.isTokenStart
 	override def toString = "matched(" + partial + ", " + seen + ", " + delegate + ")"
 }
-private final class TokenStart[T](delegate: Parser[T], seen: String, track: Boolean, hide: Int => Boolean) extends ValidParser[T]
+private final class TokenStart[T](delegate: Parser[T], seen: String, complete: TokenCompletions) extends ValidParser[T]
 {
-	def derive(c: Char) = token( delegate derive c, if(track) seen + c else seen, track, hide)
-	def completions(level: Int) =
-		if(hide(level)) Completions.nil
-		else if(track)
-		{
-			val dcs = delegate.completions(level)
-			Completions( for(c <- dcs.get) yield Completion.token(seen, c.append) )
-		}
-		else
-			Completions.single(Completion.displayStrict(seen))
-
+	def derive(c: Char) = mkToken( delegate derive c, seen + c, complete)
+	def completions(level: Int) = complete match {
+		case dc: TokenCompletions.Delegating => dc.completions(seen, level, delegate.completions(level))
+		case fc: TokenCompletions.Fixed => fc.completions(seen, level)
+	}
 	def result = delegate.result
 	def resultEmpty = delegate.resultEmpty
 	override def isTokenStart = true
-	override def toString = "token('" + seen + "', " + track + ", " + delegate + ")"
+	override def toString = "token('" + complete + ", " + delegate + ")"
 }
 private final class And[T](a: Parser[T], b: Parser[_]) extends ValidParser[T]
 {
