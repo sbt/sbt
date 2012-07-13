@@ -250,7 +250,12 @@ object BuiltinCommands
 		(ext.structure, Select(ext.currentRef), ext.showKey)
 	}
 
-	def setParser = (s: State) => token(Space ~> flag("every" ~ Space)) ~ token(any.+.string)
+	def setParser = (s: State) => {
+		val extracted = Project.extract(s)
+		import extracted._
+		token(Space ~> flag("every" ~ Space)) ~
+			SettingCompletions.settingParser(structure.data, structure.index.keyMap, currentProject )
+	}
 
 		import InspectOption._
 	def inspectParser = (s: State) => spacedInspectOptionParser(s) flatMap {
