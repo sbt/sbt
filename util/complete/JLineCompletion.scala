@@ -110,17 +110,41 @@ object JLineCompletion
 		reader.redrawLine()
 	}
 
+	/** `display` is assumed to be the exact strings requested to be displayed.
+	* In particular, duplicates should have been removed already. */
 	def showCompletions(display: Seq[String], reader: ConsoleReader)
 	{
 		printCompletions(display, reader)
 		reader.drawLine()
 	}
-	def printCompletions(cs: Seq[String], reader: ConsoleReader): Unit =
+	def printCompletions(cs: Seq[String], reader: ConsoleReader)
 	{
-		// CandidateListCompletionHandler doesn't print a new line before the prompt
-		if(cs.size > reader.getAutoprintThreshhold)
+		val print = shouldPrint(cs, reader)
+		reader.printNewline()
+		if(print) printLinesAndColumns(cs, reader)
+	}
+	def printLinesAndColumns(cs: Seq[String], reader: ConsoleReader)
+	{
+		val (lines, columns) = cs partition hasNewline
+		for(line <- lines) {
+			reader.printString(line)
 			reader.printNewline()
-		CandidateListCompletionHandler.printCandidates(reader, JavaConversions.asJavaList(cs), true)
+		}
+		reader.printColumns(JavaConversions.asJavaList(columns))
+	}
+	def hasNewline(s: String): Boolean = s.indexOf('\n') >= 0
+	def shouldPrint(cs: Seq[String], reader: ConsoleReader): Boolean =
+	{
+		val size = cs.size
+		(size <= reader.getAutoprintThreshhold) || 
+			confirm("Display all %d possibilities? (y or n) ".format(size), 'y', 'n', reader)
+	}
+	def confirm(prompt: String, trueC: Char, falseC: Char, reader: ConsoleReader): Boolean =
+	{
+		reader.printNewline()
+		reader.printString(prompt)
+		reader.flushConsole()
+		reader.readCharacter( Array(trueC, falseC) ) == trueC
 	}
 
 	def commonPrefix(s: Seq[String]): String = if(s.isEmpty) "" else s reduceLeft commonPrefix
