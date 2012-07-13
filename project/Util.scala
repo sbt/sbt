@@ -6,6 +6,8 @@ object Util
 {
 	val ExclusiveTest = Tags.Tag("exclusive-test")
 	lazy val componentID = SettingKey[Option[String]]("component-id")
+	lazy val scalaKeywords = TaskKey[Set[String]]("scala-keywords")
+	lazy val generateKeywords = TaskKey[File]("generateKeywords")
 
 	def inAll(projects: => Seq[ProjectReference], key: ScopedSetting[Task[Unit]]): Project.Initialize[Task[Unit]] =
 		inAllProjects(projects, key) { deps => nop dependsOn( deps : _*) }
@@ -16,7 +18,6 @@ object Util
 			val refs = projects flatMap { base => Defaults.transitiveDependencies(resolve(base.project), lb, includeRoot=true, classpath=true, aggregate=true) }
 			refs map ( ref => (key in ref).? ) joinWith(_ flatMap { x => x})
 		}
-
 
 	def noPublish(p: Project) = p.copy(settings = noRemotePublish(p.settings))
 	def noRemotePublish(in: Seq[Setting[_]]) = in filterNot { s => s.key == deliver || s.key == publish }
@@ -113,6 +114,30 @@ object Util
 		val all = tags.getOrElse(Tags.All, 0)
 		exclusive == 0 || all == 1
 	}
+
+	def getScalaKeywords: Set[String] =
+	{
+		val g = new scala.tools.nsc.Global(new scala.tools.nsc.Settings)
+		g.nme.keywords.map(_.toString)
+	}
+	def writeScalaKeywords(base: File, keywords: Set[String]): File =
+	{
+		val init = keywords.map(tn => '"' + tn + '"').mkString("Set(", ", ", ")")
+		val ObjectName = "ScalaKeywords"
+		val keywordsSrc = 
+"""package sbt
+object %s {
+	val values = %s
+}""".format(ObjectName, init)
+		val out = base / (ObjectName + ".scala")
+		IO.write(out, keywordsSrc)
+		out
+	}
+	def keywordsSettings: Seq[Setting[_]] = inConfig(Compile)(Seq(
+		scalaKeywords := getScalaKeywords,
+		generateKeywords <<= (sourceManaged, scalaKeywords) map writeScalaKeywords,
+		sourceGenerators <+= generateKeywords map (x => Seq(x))
+	))
 }
 object Common
 {

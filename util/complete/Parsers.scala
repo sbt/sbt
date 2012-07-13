@@ -22,10 +22,16 @@ trait Parsers
 	lazy val Letter = charClass(_.isLetter, "letter")
 	def IDStart = Letter
 	lazy val IDChar = charClass(isIDChar, "ID character")
-	lazy val ID = IDStart ~ IDChar.* map { case x ~ xs => (x +: xs).mkString }
+	lazy val ID = identifier(IDStart, IDChar)
 	lazy val OpChar = charClass(isOpChar, "symbol")
 	lazy val Op = OpChar.+.string
 	lazy val OpOrID = ID | Op
+
+	lazy val ScalaIDChar = charClass(isScalaIDChar, "Scala identifier character")
+	lazy val ScalaID = identifier(IDStart, ScalaIDChar)
+
+	def identifier(start: Parser[Char], rep: Parser[Char]): Parser[String] =
+		start ~ rep.* map { case x ~ xs => (x +: xs).mkString }
 
 	def opOrIDSpaced(s: String): Parser[Char] =
 		if(DefaultParsers.matches(ID, s))
@@ -37,7 +43,8 @@ trait Parsers
 
 	def isOpChar(c: Char) = !isDelimiter(c) && isOpType(getType(c))
 	def isOpType(cat: Int) = cat match { case MATH_SYMBOL | OTHER_SYMBOL | DASH_PUNCTUATION | OTHER_PUNCTUATION | MODIFIER_SYMBOL | CURRENCY_SYMBOL => true; case _ => false }
-	def isIDChar(c: Char) = c.isLetterOrDigit || c == '-' || c == '_'
+	def isIDChar(c: Char) = isScalaIDChar(c) || c == '-'
+	def isScalaIDChar(c: Char) = c.isLetterOrDigit || c == '_'
 	def isDelimiter(c: Char) = c match { case '`' | '\'' | '\"' | /*';' | */',' | '.' => true ; case _ => false }
 	
 	lazy val NotSpaceClass = charClass(!_.isWhitespace, "non-whitespace character")
