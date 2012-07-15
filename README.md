@@ -1,4 +1,4 @@
-sbt-dependency-graph [![Build Status](https://buildhive.cloudbees.com/job/jrudolph/job/sbt-dependency-graph/badge/icon)](https://buildhive.cloudbees.com/job/jrudolph/job/sbt-dependency-graph/)
+sbt-dependency-graph
 ====================
 
 Visualize your project's dependencies.
