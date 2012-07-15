@@ -25,13 +25,25 @@ Then, add the following to your `<project-root>/build.sbt` (that's not `project/
 net.virtualvoid.sbt.graph.Plugin.graphSettings
 ```
 
-or if you use the full configuration, add 
+OR, alternatively, if you use the full configuration, i.e. you define your build definition in `project/build.scala`, for example, 
+to define a multi-module project, you should add 
 
 ```scala
 .settings(net.virtualvoid.sbt.graph.Plugin.graphSettings: _*)
 ```
 
-to your project definition.
+to each of the project definitions for which you want to use the plugin. The definition of your project should then
+look approximately this way:
+
+```scala
+object MyBuild extends Build {
+  val proj = 
+    Project("my-project", file("base"))
+      .settings(net.virtualvoid.sbt.graph.Plugin.graphSettings: _*)
+}
+```
+
+Check out the [example project] for a skeleton build setup.
 
 Tasks & Settings
 ----------------
@@ -70,3 +82,5 @@ License
 Copyright (c) 2011, 2012 Johannes Rudolph
 
 Published under the [Apache License 2.0](http://en.wikipedia.org/wiki/Apache_license).
+
+[example project]: https://gist.github.com/3106492
