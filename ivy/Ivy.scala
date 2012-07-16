@@ -335,7 +335,7 @@ private object IvySbt
 			case _ => m
 		}
 	}
-		
+
 	private def toIvyArtifact(moduleID: ModuleDescriptor, a: Artifact, configurations: Iterable[String]): MDArtifact =
 	{
 		val artifact = new MDArtifact(moduleID, a.name, a.`type`, a.extension, null, extra(a, false))
@@ -447,7 +447,7 @@ private object IvySbt
 			{
 				for(conf <- dependencyDescriptor.getModuleConfigurations)
 				{
-					dependencyDescriptor.addExcludeRule(conf, IvyScala.excludeRule(excls.organization, excls.name, excls.configurations, "*"))
+					dependencyDescriptor.addExcludeRule(conf, IvyScala.excludeRule(excls.organization, excls.name, excls.configurations, excls.artifact))
 				}
 			}
 			moduleID.addDependency(dependencyDescriptor)
@@ -462,7 +462,7 @@ private object IvySbt
 		moduleID.addDependencyDescriptorMediator(overrideID, matcher, overrideWith)
 	}
 	/** It is necessary to explicitly modify direct dependencies because Ivy gives
-	* "IllegalStateException: impossible to get artifacts when data has not been loaded." 
+	* "IllegalStateException: impossible to get artifacts when data has not been loaded."
 	* when a direct dependency is overridden with a newer version."*/
 	def overrideDirect(dependencies: Seq[ModuleID], overrides: Set[ModuleID]): Seq[ModuleID] =
 	{
