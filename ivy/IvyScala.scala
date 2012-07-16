@@ -4,13 +4,15 @@
 package sbt
 
 import java.util.Collections.emptyMap
-import scala.collection.mutable.HashSet
+import java.util.regex.Pattern
+import scala.collection.mutable.{HashMap, HashSet}
+import scala.util.matching.Regex
 
 import org.apache.ivy.{core, plugins}
 import core.module.descriptor.{DefaultExcludeRule, ExcludeRule}
 import core.module.descriptor.{DependencyDescriptor, DefaultModuleDescriptor, ModuleDescriptor, OverrideDependencyDescriptorMediator}
 import core.module.id.{ArtifactId,ModuleId, ModuleRevisionId}
-import plugins.matcher.ExactPatternMatcher
+import plugins.matcher.{Matcher, PatternMatcher, ExactPatternMatcher}
 
 object ScalaArtifacts
 {
@@ -53,7 +55,7 @@ private object IvyScala
 		val over = new OverrideDependencyDescriptorMediator(null, version)
 		module.addDependencyDescriptorMediator(id, ExactPatternMatcher.INSTANCE, over)
 	}
-                
+
 	/** Checks the immediate dependencies of module for dependencies on scala jars and verifies that the version on the
 	* dependencies matches scalaVersion. */
 	private def checkDependencies(module: ModuleDescriptor, scalaBinaryVersion: String, configurations: Iterable[Configuration], log: Logger)
@@ -97,12 +99,29 @@ private object IvyScala
 		excludeScalaJar(LibraryID)
 		excludeScalaJar(CompilerID)
 	}
+
+  private val matchers = HashMap[String, Matcher]()
+
+  private object RegexPatternMatcher extends PatternMatcher
+  {
+    def getName() = "SbtRegexPatternMatcher"
+    def getMatcher(expression: String): Matcher =
+    {
+      if (expression == null) throw new NullPointerException()
+      matchers.getOrElseUpdate(expression, new Matcher {
+        val regex = expression.r.pattern
+        def matches(input: String): Boolean = regex.matcher(input).matches
+        def isExact = false
+      })
+    }
+  }
+
 	/** Creates an ExcludeRule that excludes artifacts with the given module organization and name for
 	* the given configurations. */
 	private[sbt] def excludeRule(organization: String, name: String, configurationNames: Iterable[String], excludeTypePattern: String): ExcludeRule =
-	{
-		val artifact = new ArtifactId(ModuleId.newInstance(organization, name), "*", excludeTypePattern, "*")
-		val rule = new DefaultExcludeRule(artifact, ExactPatternMatcher.INSTANCE, emptyMap[AnyRef,AnyRef])
+  {
+		val artifact = new ArtifactId(ModuleId.newInstance(organization, name), ".*", excludeTypePattern, ".*")
+		val rule = new DefaultExcludeRule(artifact, RegexPatternMatcher, emptyMap[AnyRef,AnyRef])
 		configurationNames.foreach(rule.addConfiguration)
 		rule
 	}

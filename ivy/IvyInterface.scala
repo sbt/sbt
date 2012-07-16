@@ -59,7 +59,7 @@ case class ModuleInfo(nameFormal: String, description: String = "", homepage: Op
 /** Basic SCM information for a project module */
 case class ScmInfo(browseUrl: URL, connection: String, devConnection: Option[String] = None)
 /** Rule to exclude unwanted dependencies pulled in transitively by a module. */
-case class ExclusionRule(organization: String = "*", name: String = "*", artifact: String = "*", configurations: Seq[String] = Nil)
+case class ExclusionRule(organization: String = ".*", name: String = ".*", artifact: String = ".*", configurations: Seq[String] = Nil)
 sealed trait Resolver
 {
 	def name: String
