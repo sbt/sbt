@@ -925,7 +925,7 @@ object Classpaths
 		} tag(Tags.Publish, Tags.Network)
 
 		import Cache._
-		import CacheIvy.{classpathFormat, /*publishIC,*/ updateIC, updateReportF, excludeMap}
+		import CacheIvy.{classpathFormat, /*publishIC,*/ updateIC, updateReportFormat, excludeMap}
 
 	def withExcludes(out: File, classifiers: Seq[String], lock: xsbti.GlobalLock)(f: Map[ModuleID, Set[String]] => UpdateReport): UpdateReport =
 	{
@@ -943,7 +943,7 @@ object Classpaths
 	def cachedUpdate(cacheFile: File, label: String, module: IvySbt#Module, config: UpdateConfiguration, scalaInstance: Option[ScalaInstance], skip: Boolean, force: Boolean, depsUpdated: Boolean, log: Logger): UpdateReport =
 	{
 		implicit val updateCache = updateIC
-		implicit val updateReport = updateReportF
+		implicit val updateReport = updateReportFormat
 		type In = IvyConfiguration :+: ModuleSettings :+: UpdateConfiguration :+: HNil
 		def work = (_:  In) match { case conf :+: settings :+: config :+: HNil =>
 			log.info("Updating " + label + "...")
