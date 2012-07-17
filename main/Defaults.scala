@@ -538,14 +538,14 @@ object Defaults extends BuildCommon
 		target <<= docDirectory, // deprecate docDirectory in favor of 'target in doc'; remove when docDirectory is removed
 		scalacOptions <<= scaladocOptions or scalacOptions, // deprecate scaladocOptions in favor of 'scalacOptions in doc'; remove when scaladocOptions is removed
 		key in TaskGlobal <<= (cacheDirectory, compileInputs, target, configuration, streams) map { (cache, in, out, config, s) =>
-			// For Scala/Java hybrid projects, the output docs are rebased to `scala` or `java` sub-directory accordingly. We do hybrid
-			// mode iff both *.scala and *.java files exist -- other doc resources (package.html, *.jpg etc.) don't influence the decision.
 			val srcs = in.config.sources
-			val hybrid = srcs.exists(_.name.endsWith(".scala")) && srcs.exists(_.name.endsWith(".java"))
-			val (scalaOut, javaOut) = if (hybrid) (out / "scala", out / "java") else (out, out)
+			val hasScala = srcs.exists(_.name.endsWith(".scala"))
+			val hasJava = srcs.exists(_.name.endsWith(".java"))
 			val cp = in.config.classpath.toList - in.config.classesDirectory
-			Doc(in.config.maxErrors, in.compilers.scalac).cached(cache / "scala", nameForSrc(config.name), srcs, cp, scalaOut, in.config.options, s.log)
-			Doc(in.config.maxErrors, in.compilers.javac).cached(cache / "java", nameForSrc(config.name), srcs, cp, javaOut, in.config.javacOptions, s.log)
+			if(hasScala)
+				Doc(in.config.maxErrors, in.compilers.scalac).cached(cache / "scala", nameForSrc(config.name), srcs, cp, out, in.config.options, s.log)
+			else if(hasJava)
+				Doc(in.config.maxErrors, in.compilers.javac).cached(cache / "java", nameForSrc(config.name), srcs, cp, out, in.config.javacOptions, s.log)
 			out
 		}
 	))

@@ -6,10 +6,11 @@
 
 > 'set sources in (Compile, doc) <<= sources in Compile map { _.filterNot(_.getName contains "B") }'
 
-# hybrid project, scaladoc and javadoc in respective directories
+# hybrid project, only scaladoc run
 > doc
-$ exists "target/api/scala"
-$ exists "target/api/java"
+$ exists "target/api/index.js"
+$ absent "target/api/scala"
+$ absent "target/api/java"
 
 > 'set sources in (Compile, doc) <<= sources in (Compile, doc) map { _.filterNot(_.getName endsWith ".java") }'
 
@@ -30,5 +31,7 @@ $ absent "target/api/java"
 # pure java project, only javadoc at top level
 $ exists "target/api/package-list"
 $ absent "target/api/index.js"
-$ absent "target/api/scala"
-$ absent "target/api/java"
+
+# pending 
+# $ absent "target/api/scala"
+#$ absent "target/api/java"
