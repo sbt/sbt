@@ -10,8 +10,7 @@ package sbt
 	import java.net.URL
 	import Types.{:+:, idFun}
 	import scala.xml.NodeSeq
-	import sbinary.{DefaultProtocol,Format}
-	import DefaultProtocol.{immutableMapFormat, optionsAreFormat}
+	import sbinary.{DefaultProtocol, Format}
 	import RepositoryHelpers._
 	import Ordering._
 
@@ -57,30 +56,25 @@ object CacheIvy
 /*	def deliverIC: InputCache[IvyConfiguration :+: ModuleSettings :+: DeliverConfiguration :+: HNil] = implicitly
 	def publishIC: InputCache[IvyConfiguration :+: ModuleSettings :+: PublishConfiguration :+: HNil] = implicitly*/
 
-	lazy val updateReportF: Format[UpdateReport] =
+	implicit lazy val updateReportFormat: Format[UpdateReport] =
 	{
-		import DefaultProtocol.{BooleanFormat, FileFormat, StringFormat}
-		updateReportFormat
-	}
-	implicit def updateReportFormat(implicit m: Format[String], cr: Format[ConfigurationReport], us: Format[UpdateStats]): Format[UpdateReport] =
-	{
-		import DefaultProtocol.FileFormat
+		import DefaultProtocol.{StringFormat, FileFormat}
 		wrap[UpdateReport, (File, Seq[ConfigurationReport], UpdateStats)](rep => (rep.cachedDescriptor, rep.configurations, rep.stats), { case (cd, cs, stats) => new UpdateReport(cd, cs, stats) })
 	}
 	implicit def updateStatsFormat: Format[UpdateStats] =
 		wrap[UpdateStats, (Long,Long,Long)]( us => (us.resolveTime, us.downloadTime, us.downloadSize), { case (rt, dt, ds) => new UpdateStats(rt, dt, ds, true) })
-	implicit def confReportFormat(implicit mf: Format[ModuleID], mr: Format[ModuleReport]): Format[ConfigurationReport] =
+	implicit def confReportFormat(implicit m: Format[String], mr: Format[Seq[ModuleReport]], mi: Format[Seq[ModuleID]]): Format[ConfigurationReport] =
 		wrap[ConfigurationReport, (String,Seq[ModuleReport],Seq[ModuleID])]( r => (r.configuration, r.modules, r.evicted), { case (c,m,v) => new ConfigurationReport(c,m,v) })
-	implicit def moduleReportFormat(implicit f: Format[Artifact], ff: Format[File], mid: Format[ModuleID]): Format[ModuleReport] =
+	implicit def moduleReportFormat(implicit ff: Format[File]): Format[ModuleReport] =
 		wrap[ModuleReport, (ModuleID, Seq[(Artifact, File)], Seq[Artifact])]( m => (m.module, m.artifacts, m.missingArtifacts), { case (m, as, ms) => new ModuleReport(m, as,ms) })
-	implicit def artifactFormat(implicit sf: Format[String], of: Format[Seq[Configuration]], cf: Format[Configuration], uf: Format[Option[URL]]): Format[Artifact] =
+	implicit def artifactFormat(implicit sf: Format[String], uf: Format[Option[URL]]): Format[Artifact] = {
 		wrap[Artifact, (String,String,String,Option[String],Seq[Configuration],Option[URL],Map[String,String])](
 			a => (a.name, a.`type`, a.extension, a.classifier, a.configurations.toSeq, a.url, a.extraAttributes),
 			{ case (n,t,x,c,cs,u,e) => Artifact(n,t,x,c,cs,u,e) }
 		)
+	}
 	implicit def exclusionRuleFormat(implicit sf: Format[String]): Format[ExclusionRule] =
 		wrap[ExclusionRule, (String, String, String, Seq[String])]( e => (e.organization, e.name, e.artifact, e.configurations), { case (o,n,a,cs) => ExclusionRule(o,n,a,cs) })
-
 	implicit def crossVersionFormat: Format[CrossVersion] = wrap(crossToInt, crossFromInt)
 
 	private[this] final val DisabledValue = 0
@@ -91,7 +85,7 @@ object CacheIvy
 	private[this] val crossFromInt = (i: Int) => i match { case BinaryValue => new Binary(idFun); case FullValue => new Full(idFun); case _ => Disabled }
 	private[this] val crossToInt = (c: CrossVersion) => c match { case Disabled => 0; case b: Binary => BinaryValue; case f: Full => FullValue }
 
-	implicit def moduleIDFormat(implicit sf: Format[String], af: Format[Artifact], bf: Format[Boolean], ef: Format[ExclusionRule]): Format[ModuleID] =
+	implicit def moduleIDFormat(implicit sf: Format[String], bf: Format[Boolean]): Format[ModuleID] =
 		wrap[ModuleID, ((String,String,String,Option[String]),(Boolean,Boolean,Boolean,Seq[Artifact],Seq[ExclusionRule],Map[String,String],CrossVersion))](
 			m => ((m.organization,m.name,m.revision,m.configurations), (m.isChanging, m.isTransitive, m.isForce, m.explicitArtifacts, m.exclusions, m.extraAttributes, m.crossVersion)),
 			{ case ((o,n,r,cs),(ch,t,f,as,excl,x,cv)) => ModuleID(o,n,r,cs,ch,t,f,as,excl,x,cv) }

@@ -11,15 +11,15 @@ trait Dag[Node <: Dag[Node]]{
 }
 object Dag
 {
-	import scala.collection.{mutable, JavaConversions};
-	import JavaConversions.{asIterable, asSet}
+	import scala.collection.{mutable, JavaConverters}
+	import JavaConverters.asScalaSetConverter
 
 	def topologicalSort[T](root: T)(dependencies: T => Iterable[T]): List[T] = topologicalSort(root :: Nil)(dependencies)
 	
 	def topologicalSort[T](nodes: Iterable[T])(dependencies: T => Iterable[T]): List[T] =
 	{
 		val discovered = new mutable.HashSet[T]
-		val finished = asSet(new java.util.LinkedHashSet[T])
+		val finished = (new java.util.LinkedHashSet[T]).asScala
 
 		def visitAll(nodes: Iterable[T]) = nodes foreach visit
 		def visit(node : T){
