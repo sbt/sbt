@@ -6,11 +6,6 @@
 
 # TODO - Should we merge the main SBT script with this library?
 
-# TODO - Don't hardcode this.
-declare sbt_version="0.11.3"
-declare -r sbt_release_version=0.11.3
-declare -r sbt_snapshot_version=0.11.4-SNAPSHOT
-
 if test -z "$HOME"; then
   declare -r script_dir="$(dirname $script_path)"
 else
@@ -33,58 +28,17 @@ dlog () {
   [[ $debug ]] && echoerr "$@"
 }
 
-sbtjar_release_url () {
-  echo "http://typesafe.artifactoryonline.com/typesafe/ivy-releases/org.scala-tools.sbt/sbt-launch/$sbt_version/sbt-launch.jar"
-}
-
-sbtjar_snapshot_url () {
-  local ver="$sbt_version"
-  if [[ "$sbt_version" = *-SNAPSHOT ]]; then
-    ver=$(sbt_snapshot_actual_version -SNAPSHOT)
-    echoerr "sbt snapshot is $ver"
-  elif [[ "$sbt_version" = *-SNAPSHOT ]]; then
-    ver=$(sbt_snapshot_actual_version -RC)
-    echoerr "sbt rc is $ver"
-  fi
-
-  echo "${sbt_snapshot_baseurl}${ver}/sbt-launch.jar"
-}
-
-jar_url () {
-  case $sbt_version in
- *-SNAPSHOT*) sbtjar_snapshot_url ;;
-       *-RC*) sbtjar_snapshot_url ;;
-           *) sbtjar_release_url ;;
-  esac
-}
-
 jar_file () {
-  if [[ -f "/usr/lib/sbt/$1/sbt-launch.jar" ]]; then
-    echo "/usr/lib/sbt/$1/sbt-launch.jar"
-  else
-    echo "$script_dir/.lib/$1/sbt-launch.jar"
-  fi
-}
-
-download_url () {
-  local url="$1"
-  local jar="$2"
-
-  echo "Cannot find sbt launcher $sbt_version"
-  echo "Please download: "
-  echo "  From  $url"
-  echo "    To  $jar"
-
-  exit 1
+  echo "@@LAUNCH-JAR-LOCATION@@"
 }
 
 acquire_sbt_jar () {
-  local sbt_version="$1"
+  sbt_jar="$(jar_file)"
 
-  sbt_url="$(jar_url)"
-  sbt_jar="$(jar_file $sbt_version)"
-
-  [[ -f "$sbt_jar" ]] || download_url "$sbt_url" "$sbt_jar"
+  if [[ ! -f "$sbt_jar" ]]; then
+    echoerr "Could not find launcher jar: $sbt_jar"
+    exit 2
+  fi
 }
 
 execRunner () {
@@ -131,22 +85,25 @@ get_mem_opts () {
   echo "-Xms${mem}m -Xmx${mem}m -XX:MaxPermSize=${perm}m -XX:ReservedCodeCacheSize=${codecache}m"
 }
 
-process_args () {
-  require_arg () {
-    local type="$1"
-    local opt="$2"
-    local arg="$3"
+require_arg () {
+  local type="$1"
+  local opt="$2"
+  local arg="$3"
+  if [[ -z "$arg" ]] || [[ "${arg:0:1}" == "-" ]]; then
+    die "$opt requires <$type> argument"
+  fi
+}
 
-    if [[ -z "$arg" ]] || [[ "${arg:0:1}" == "-" ]]; then
-      die "$opt requires <$type> argument"
-    fi
-  }
+is_function_defined() {
+  declare -f "$1" > /dev/null
+}
+
+process_args () {
   while [[ $# -gt 0 ]]; do
     case "$1" in
        -h|-help) usage; exit 1 ;;
     -v|-verbose) verbose=1 && shift ;;
       -d|-debug) debug=1 && shift ;;
-    # -u|-upgrade) addSbt 'set sbt.version 0.7.7' ; addSbt reload  && shift ;;
 
            -ivy) require_arg path "$1" "$2" && addJava "-Dsbt.ivy.home=$2" && shift 2 ;;
            -mem) require_arg integer "$1" "$2" && sbt_mem="$2" && shift 2 ;;
@@ -162,6 +119,12 @@ process_args () {
               *) addResidual "$1" && shift ;;
     esac
   done
+  
+  is_function_defined process_my_args && {
+    myargs=("${residual_args[@]}")
+    residual_args=()
+    process_my_args "${myargs[@]}"
+  }
 }
 
 run() {

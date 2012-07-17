@@ -1,4 +1,10 @@
 
+sbt (0.12.0-build-0100)
+
+  * No need for different launcher jar files now
+
+ -- Joshua Suereth <joshua.suereth@typesafe.com>  2012-07-2012
+ 
 sbt (0.11.2-build-0100)
 
   * First debian package release
