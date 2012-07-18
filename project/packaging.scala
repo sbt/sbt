@@ -134,7 +134,7 @@ object Packaging {
     
     // RPM SPECIFIC
     name in Rpm := "sbt",
-    version in Rpm <<= sbtVersion.identity,
+    version in Rpm <<= sbtVersion apply { sv => (sv split "[^\\d]" filterNot (_.isEmpty) mkString ".") },
     rpmRelease := "1",
     rpmVendor := "typesafe",
     rpmUrl := Some("http://github.com/paulp/sbt-extras"),
