@@ -57,7 +57,7 @@ process_my_args () {
     case "$1" in
      -no-colors) addJava "-Dsbt.log.noformat=true" && shift ;;
       -no-share) addJava "$noshare_opts" && shift ;;
-     -no-global) addJava "-Dsbt.global.base=project/.sbtboot" && shift ;;
+     -no-global) addJava "-Dsbt.global.base=$(pwd)/project/.sbtboot" && shift ;;
       -sbt-boot) require_arg path "$1" "$2" && addJava "-Dsbt.boot.directory=$2" && shift 2 ;;
        -sbt-dir) require_arg path "$1" "$2" && addJava "-Dsbt.global.base=$2" && shift 2 ;;
      -debug-inc) addJava "-Dxsbt.inc.debug=true" && shift ;;
@@ -68,6 +68,9 @@ process_my_args () {
               *) addResidual "$1" && shift ;;
     esac
   done
+  
+  # Now, ensure sbt version is used.
+  [[ "${sbt_version}XXX" != "XXX" ]] && addJava "-Dsbt.version=$sbt_version" 
 }
 
 loadConfigFile() {

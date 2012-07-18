@@ -13,8 +13,6 @@ object Packaging {
   val jansiJarLocation = SettingKey[File]("jansi-jar-location")  
   val jansiJar = TaskKey[File]("jansi-jar", "Resolves Jansi jar")
 
-  val winowsReleaseUrl = "http://typesafe.artifactoryonline.com/typesafe/windows-releases"
-    
   val fixedScriptDir = SettingKey[File]("fixed-script-dir")
   val fixedLinuxScriptDir = SettingKey[File]("fixed-linux-script-dir")
   val fixedUniversalScriptDir = SettingKey[File]("fixed-universal-script-dir")
@@ -22,8 +20,11 @@ object Packaging {
   val universalFixedScripts = TaskKey[File]("universal-fixed-scripts")
 
   def localWindowsPattern = "[organisation]/[module]/[revision]/[module].[ext]"
-  
-  def downloadUrlForVersion(v: String) = (v split "[^\\d]" map (_.toInt)) match {
+
+  import util.control.Exception.catching  
+
+  def downloadUrlForVersion(v: String) = (v split "[^\\d]" flatMap (i => catching(classOf[Exception]) opt (i.toInt))) match {
+    case Array(0, 11, 3, _*)           => "http://repo.typesafe.com/typesafe/ivy-releases/org.scala-sbt/sbt-launch/0.11.3-2/sbt-launch.jar"
     case Array(0, 11, x, _*) if x >= 3 => "http://repo.typesafe.com/typesafe/ivy-releases/org.scala-sbt/sbt-launch/"+v+"/sbt-launch.jar"
     case Array(0, y, _*) if y >= 12    => "http://repo.typesafe.com/typesafe/ivy-releases/org.scala-sbt/sbt-launch/"+v+"/sbt-launch.jar"
     case _                             => "http://repo.typesafe.com/typesafe/ivy-releases/org.scala-tools.sbt/sbt-launch/"+v+"/sbt-launch.jar"
@@ -43,7 +44,7 @@ object Packaging {
     target
   }
   
-  val settings: Seq[Setting[_]] = packagerSettings ++ Seq(
+  val settings: Seq[Setting[_]] = packagerSettings ++ deploymentSettings ++ Seq(
     fixedScriptDir <<= sourceDirectory / "scripts",
     fixedLinuxScriptDir <<= target / "linux-scripts",
     fixedUniversalScriptDir <<= target / "universal-scripts",
@@ -118,10 +119,10 @@ object Packaging {
                      jar -> ("/usr/lib/sbt/sbt-launch.jar")) withPerms "0755"
     },
     // DEBIAN SPECIFIC    
-    name in Debian <<= (sbtVersion) apply { (sv) => "sbt-" + (sv split "[^\\d]" take 3 mkString ".") },
+    name in Debian <<= (sbtVersion) apply { (sv) => "sbt" /* + "-" + (sv split "[^\\d]" take 3 mkString ".")*/ },
     version in Debian <<= (version, sbtVersion) apply { (v, sv) =>
       val nums = (v split "[^\\d]")
-      "%s-build-%03d" format ((nums.init mkString "."), nums.last.toInt + 1)
+      "%s-%s-build-%03d" format (sv, (nums.init mkString "."), nums.last.toInt + 1)
     },
     debianPackageDependencies in Debian ++= Seq("curl", "java2-runtime", "bash (>= 2.05a-11)"),
     debianPackageRecommends in Debian += "git",
@@ -178,8 +179,14 @@ object Packaging {
     mappings in Universal <+= (compile in Compile, classDirectory in Compile) map { (c, d) =>
       compile; 
       (d / "SbtJansiLaunch.class") -> "bin/classes/SbtJansiLaunch.class" 
-    }
+    },
     // TODO - Adapt global `sbt`/`sbt-launch-lib` scripts for universal install...
+    
+    // Misccelaneous publishing stuff...
+    projectID in Debian    <<= (organization, sbtVersion) apply { (o,v) => ModuleID(o,"sbt",v) },
+    projectID in Windows   <<= (organization, sbtVersion) apply { (o,v) => ModuleID(o,"sbt",v) },
+    projectID in Rpm       <<= (organization, sbtVersion) apply { (o,v) => ModuleID(o,"sbt",v) },
+    projectID in Universal <<= (organization, sbtVersion) apply { (o,v) => ModuleID(o,"sbt",v) }
   )
   
   def makeWindowsXml(sbtVersion: String, sourceDir: File): scala.xml.Node = {
