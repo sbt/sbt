@@ -8,70 +8,12 @@ package sbt
 	import java.io.File
 	import java.net.URI
 
-	import complete.Parser
 	import ConcurrentRestrictions.Tag
 	import Def.{Initialize, KeyedInitialize, ScopedKey, Setting, setting}
 	import Path._
 	import std.TaskExtra.{task => mktask, _}
 	import Task._
 	import Types._
-
-/** Parses input and produces a task to run.  Constructed using the companion object. */
-sealed trait InputTask[T] {
-	def mapTask[S](f: Task[T] => Task[S]): InputTask[S]
-}
-private final class InputStatic[T](val parser: State => Parser[Task[T]]) extends InputTask[T] {
-	def mapTask[S](f: Task[T] => Task[S]) = new InputStatic(s => parser(s) map f)
-}
-private sealed trait InputDynamic[T] extends InputTask[T]
-{ outer =>
-	type Result
-	def parser: State => Parser[Result]
-	def defined: ScopedKey[_]
-	def task: Task[T]
-	def mapTask[S](f: Task[T] => Task[S]) = new InputDynamic[S] {
-		type Result = outer.Result
-		def parser = outer.parser
-		def task = f(outer.task)
-		def defined = outer.defined
-	}
-}
-object InputTask
-{
-	def static[T](p: Parser[Task[T]]): InputTask[T] = free(_ => p)
-	def static[I,T](p: Parser[I])(c: I => Task[T]): InputTask[T] = static(p map c)
-
-	def free[T](p: State => Parser[Task[T]]): InputTask[T] = new InputStatic[T](p)
-	def free[I,T](p: State => Parser[I])(c: I => Task[T]): InputTask[T] = free(s => p(s) map c)
-
-	def separate[I,T](p: State => Parser[I])(action: Initialize[I => Task[T]]): Initialize[InputTask[T]] =
-		separate(Def value p)(action)
-	def separate[I,T](p: Initialize[State => Parser[I]])(action: Initialize[I => Task[T]]): Initialize[InputTask[T]] =
-		p.zipWith(action)((parser, act) => free(parser)(act))
-		
-	private[sbt] lazy val inputMap: Task[Map[AnyRef,Any]] = mktask { error("Internal sbt error: input map not substituted.") }
-
-	// This interface allows the Parser to be constructed using other Settings, but not Tasks (which is desired).
-	// The action can be constructed using Settings and Tasks and with the parse result injected into a Task.
-	// This is the ugly part, requiring hooks in Load.finalTransforms and Aggregation.applyDynamicTasks
-	//  to handle the dummy task for the parse result.
-	// However, this results in a minimal interface to the full capabilities of an InputTask for users
-	def apply[I,T](p: Initialize[State => Parser[I]])(action: TaskKey[I] => Initialize[Task[T]]): Initialize[InputTask[T]] =
-	{
-		val key: TaskKey[I] = Def.parseResult.asInstanceOf[TaskKey[I]]
-		(p zip Def.resolvedScoped zipWith action(key)) { case ((parserF, scoped), act) =>
-			new InputDynamic[T]
-			{
-				type Result = I
-				def parser = parserF
-				def task = act
-				def defined = scoped
-			}
-		}
-	}
-	def apply[I,T](p: State => Parser[I])(action: TaskKey[I] => Initialize[Task[T]]): Initialize[InputTask[T]] =
-		apply(Def.value(p))(action)
-}
 
 sealed trait Scoped { def scope: Scope; val key: AttributeKey[_] }
 
@@ -394,22 +336,6 @@ object Scoped
 		type Fun[M[_],Ret] = (M[A], M[B], M[C], M[D], M[E], M[F], M[G], M[H], M[I], M[J], M[K], M[L], M[N], M[O], M[P]) => Ret
 		def identityMap = map(mkTuple15)
 		protected def convert[M[_],R](z: Fun[M,R]) = z.tupled
-	}*/
-
-	// this doesn't actually work for mixed KLists because the compiler crashes trying to infer the bound when constructing the KList
-/*	implicit def richTaskableKeys[KL <: KList[ScopedTaskable]](in: KList): RichTaskableKeys[KL] = new RichTaskableKeys[KL](in)
-	final class RichTaskableKeys[KL <: KList[ScopedTaskable]](keys: KL)
-	{
-		type App[T] = Initialize[Task[T]]
-		private[this] def inputs: keys.Transform[App] = keys.transform( new (ScopedTaskable ~> App) { def apply[T](in: ScopedTaskable[T]): App[T] = in.toTask })
-
-		def identity: App[In] = map(idFun)
-		def flatMap[T](f: keys.Transform[Id] => Task[T]): App[T] = flatMapR(f compose allM)
-		def flatMapR[T](f: keys.Transform[Result] => Task[T]): App[T] = red.combine(Combine.flatMapR, f)
-		def map[T](f: In => T): App[T] = mapR(f compose allM)
-		def mapR[T](f: Results[In] => T): App[T] = red.combine[Id,T](Combine.mapR, f)
-		def flatFailure[T](f: Seq[Incomplete] => Task[T]): App[T] = flatMapR(f compose anyFailM)
-		def mapFailure[T](f: Seq[Incomplete] => T): App[T] = mapR(f compose anyFailM)
 	}*/
 
 	implicit def t2ToApp2[A,B](t2: (Initialize[A], Initialize[B]) ): Apply2[A,B] = new Apply2(t2)
