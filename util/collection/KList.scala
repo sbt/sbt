@@ -11,9 +11,16 @@ sealed trait KList[+M[_]]
 	/** Apply the natural transformation `f` to each element. */
 	def transform[N[_]](f: M ~> N): Transform[N]
 
+	/** Folds this list using a function that operates on the homogeneous type of the elements of this list. */
 	def foldr[T](f: (M[_], T) => T, init: T): T = init // had trouble defining it in KNil
+
+	/** Applies `f` to the elements of this list in the applicative functor defined by `ap`. */
 	def apply[N[x] >: M[x], Z](f: Transform[Id] => Z)(implicit ap: Applicative[N]): N[Z]
+
+	/** Equivalent to `transform(f) . apply(x => x)`, this is the essence of the iterator at the level of natural transformations.*/
 	def traverse[N[_], P[_]](f: M ~> (N ∙ P)#l)(implicit np: Applicative[N]): N[Transform[P]]
+
+	/** Discards the heterogeneous type information and constructs a plain List from this KList's elements. */
 	def toList: List[M[_]]
 }
 final case class KCons[H, +T <: KList[M], +M[_]](head: M[H], tail: T) extends KList[M]

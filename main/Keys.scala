@@ -320,7 +320,7 @@ object Keys
 	val tags = SettingKey[Seq[(Tags.Tag,Int)]]("tags", ConcurrentRestrictions.tagsKey.label, BSetting)
 	val concurrentRestrictions = SettingKey[Seq[Tags.Rule]]("concurrent-restrictions", "Rules describing restrictions on concurrent task execution.", BSetting)
 	val cancelable = SettingKey[Boolean]("cancelable", "Enables (true) or disables (false) the ability to interrupt task execution with CTRL+C.", BMinusSetting)
-	val settingsData = TaskKey[Settings[Scope]]("settings-data", "Provides access to the project data for the build.", DTask)
+	val settingsData = std.FullInstance.settingsData
 	@deprecated("Use Keys.settingsData.", "0.12.0")
 	val settings = settingsData
 	val streams = TaskKey[TaskStreams]("streams", "Provides streams for logging and persisting data.", DTask)

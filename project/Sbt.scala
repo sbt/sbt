@@ -16,7 +16,7 @@ object Sbt extends Build
 		organization := "org.scala-sbt",
 		version := "0.13.0-SNAPSHOT",
 		publishArtifact in packageDoc := false,
-		scalaVersion := "2.10.0-M5",
+		scalaVersion := "2.10.0-M6",
 		publishMavenStyle := false,
 		componentID := None,
 		crossPaths := false,
@@ -53,6 +53,7 @@ object Sbt extends Build
 
 	lazy val controlSub = baseProject(utilPath / "control", "Control")
 	lazy val collectionSub = testedBaseProject(utilPath / "collection", "Collections") settings( Util.keywordsSettings: _* )
+	lazy val applyMacroSub = testedBaseProject(utilPath / "appmacro", "Apply Macro") dependsOn(collectionSub) settings(scalaCompiler)
 		// The API for forking, combining, and doing I/O with system processes
 	lazy val processSub = baseProject(utilPath / "process", "Process") dependsOn(ioSub % "test->test")
 		// Path, IO (formerly FileUtilities), NameFilter and other I/O utility classes
@@ -121,13 +122,13 @@ object Sbt extends Build
 		interfaceSub, ioSub, ivySub, logSub, processSub, runSub, relationSub, stdTaskSub, taskSub, trackingSub, testingSub)
 
 		// General command support and core commands not specific to a build system
-	lazy val commandSub = testedBaseProject(commandPath, "Command") dependsOn(interfaceSub, ioSub, launchInterfaceSub, logSub, completeSub, classpathSub)
+	lazy val commandSub = testedBaseProject(mainPath / "command", "Command") dependsOn(interfaceSub, ioSub, launchInterfaceSub, logSub, completeSub, classpathSub)
 		// Fixes scope=Scope for Setting (core defined in collectionSub) to define the settings system used in build definitions
-	lazy val settingsSub = testedBaseProject(settingsPath, "Settings") dependsOn(interfaceSub, ivySub, relationSub, logSub, ioSub, commandSub, completeSub,
-		classpathSub, stdTaskSub, processSub) settings( sbinary )
+	lazy val mainSettingsSub = testedBaseProject(mainPath / "settings", "Main Settings") dependsOn(applyMacroSub, interfaceSub, ivySub, relationSub, logSub, ioSub, commandSub,
+		completeSub, classpathSub, stdTaskSub, processSub) settings( sbinary )
 
 		// The main integration project for sbt.  It brings all of the subsystems together, configures them, and provides for overriding conventions.
-	lazy val mainSub = testedBaseProject(mainPath, "Main") dependsOn(actionsSub, settingsSub, interfaceSub, ioSub, ivySub, launchInterfaceSub, logSub, processSub, runSub, commandSub)
+	lazy val mainSub = testedBaseProject(mainPath, "Main") dependsOn(actionsSub, mainSettingsSub, interfaceSub, ioSub, ivySub, launchInterfaceSub, logSub, processSub, runSub, commandSub)
 
 		// Strictly for bringing implicits and aliases from subsystems into the top-level sbt namespace through a single package object
 		//  technically, we need a dependency on all of mainSub's dependencies, but we don't do that since this is strictly an integration project
@@ -142,8 +143,6 @@ object Sbt extends Build
 	def utilPath = file("util")
 	def compilePath = file("compile")
 	def mainPath = file("main")
-	def commandPath = mainPath / "command"
-	def settingsPath = mainPath / "settings"
 	def scriptedPath = file("scripted")
 
 	def sbtSettings = Seq(

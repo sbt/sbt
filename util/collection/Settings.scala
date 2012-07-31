@@ -59,7 +59,9 @@ trait Init[Scope]
 	type MapConstant = ScopedKey ~> Option
 
 	def setting[T](key: ScopedKey[T], init: Initialize[T], pos: SourcePosition = NoPosition): Setting[T] = new Setting[T](key, init, pos)
-	def value[T](value: => T): Initialize[T] = new Value(value _)
+	def valueStrict[T](value: T): Initialize[T] = pure(() => value)
+	def value[T](value: => T): Initialize[T] = pure(value _)
+	def pure[T](value: () => T): Initialize[T] = new Value(value)
 	def optional[T,U](i: Initialize[T])(f: Option[T] => U): Initialize[U] = new Optional(Some(i), f)
 	def update[T](key: ScopedKey[T])(f: T => T): Setting[T] = new Setting[T](key, map(key)(f), NoPosition)
 	def bind[S,T](in: Initialize[S])(f: S => Initialize[T]): Initialize[T] = new Bind(f, in)

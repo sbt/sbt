@@ -2,6 +2,7 @@ package sbt
 
 	import java.io.File
 
+/** A concrete settings system that uses `sbt.Scope` for the scope type. */
 object Def extends Init[Scope]
 {
 	type Classpath = Seq[Attributed[File]]
@@ -9,7 +10,6 @@ object Def extends Init[Scope]
 	val triggeredBy = AttributeKey[Seq[Task[_]]]("triggered-by")
 	val runBefore = AttributeKey[Seq[Task[_]]]("run-before")
 	private[sbt] val parseResult: TaskKey[Any] = TaskKey("$parse-result", "Internal: used to implement input tasks.", KeyRanks.Invisible)
-	// TODO: move back to Keys
 	val resolvedScoped = SettingKey[ScopedKey[_]]("resolved-scoped", "The ScopedKey for the referencing setting or task.", KeyRanks.DSetting)
 
 	lazy val showFullKey: Show[ScopedKey[_]] = showFullKey(None)
@@ -34,4 +34,16 @@ object Def extends Init[Scope]
 		case Some(c) => c + s + scala.Console.RESET
 		case None => s
 	}
+
+	/** Lifts the result of a setting initialization into a Task. */
+	def toITask[T](i: Initialize[T]): Initialize[Task[T]] = map(i)(std.TaskExtra.inlineTask)
+
+	// The following conversions enable the types Initialize[T], Initialize[Task[T]], and Task[T] to
+	//  be used in task and setting macros as inputs with an ultimate result of type T
+
+		import language.experimental.macros
+		import std.TaskMacro.MacroValue
+	implicit def macroValueI[T](in: Initialize[T]): MacroValue[T] = ???
+	implicit def macroValueIT[T](in: Initialize[Task[T]]): MacroValue[T] = ???
+	implicit def macroValueT[T](in: Task[T]): MacroValue[T] = ???
 }

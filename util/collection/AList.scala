@@ -3,8 +3,9 @@ package sbt
 	import Classes.Applicative
 	import Types._
 
-/** An abstraction over (* -> *) -> * with the purpose of abstracting over arity abstractions like KList and TupleN
-* as well as homogeneous sequences Seq[M[T]]. */
+/** An abstraction over a higher-order type constructor `K[x[y]]` with the purpose of abstracting
+* over heterogeneous sequences like `KList` and `TupleN` with elements with a common type
+* constructor as well as homogeneous sequences `Seq[M[T]]`. */
 trait AList[K[L[x]] ]
 {
 	def transform[M[_], N[_]](value: K[M], f: M ~> N): K[N]
@@ -18,6 +19,7 @@ trait AList[K[L[x]] ]
 object AList
 {
 	type Empty = AList[({ type l[L[x]] = Unit})#l]
+	/** AList for Unit, which represents a sequence that is always empty.*/
 	val empty: Empty = new Empty {
 		def transform[M[_], N[_]](in: Unit, f: M ~> N) = ()
 		def foldr[M[_], T](in: Unit, f: (M[_], T) => T, init: T) = init
@@ -26,6 +28,7 @@ object AList
 	}
 
 	type SeqList[T] = AList[({ type l[L[x]] = List[L[T]] })#l]
+	/** AList for a homogeneous sequence. */
 	def seq[T]: SeqList[T] = new SeqList[T]
 	{
 		def transform[M[_], N[_]](s: List[M[T]], f: M ~> N) = s.map(f.fn[T])
@@ -44,6 +47,7 @@ object AList
 		def traverse[M[_], N[_], P[_]](s: List[M[T]], f: M ~> (N ∙ P)#l)(implicit np: Applicative[N]): N[List[P[T]]] = ???
 	}
 
+	/** AList for the abitrary arity data structure KList. */
 	def klist[KL[M[_]] <: KList[M] { type Transform[N[_]] = KL[N] }]: AList[KL] = new AList[KL] {
 		def transform[M[_], N[_]](k: KL[M], f: M ~> N) = k.transform(f)
 		def foldr[M[_], T](k: KL[M], f: (M[_], T) => T, init: T): T = k.foldr(f, init)
@@ -51,6 +55,7 @@ object AList
 		def traverse[M[_], N[_], P[_]](k: KL[M], f: M ~> (N ∙ P)#l)(implicit np: Applicative[N]): N[KL[P]] = k.traverse[N,P](f)(np)
 	}
 
+	/** AList for a single value. */
 	type Single[A] = AList[({ type l[L[x]] = L[A]})#l]
 	def single[A]: Single[A] = new Single[A] {
 		def transform[M[_], N[_]](a: M[A], f: M ~> N) = f(a)
@@ -58,8 +63,8 @@ object AList
 		def traverse[M[_], N[_], P[_]](a: M[A], f: M ~> (N ∙ P)#l)(implicit np: Applicative[N]): N[P[A]] = f(a)
 	}
 
-
    type ASplit[K[L[x]], B[x]] = AList[ ({ type l[L[x]] = K[ (L ∙ B)#l] })#l ]
+	/** AList that operates on the outer type constructor `A` of a composition `[x] A[B[x]]` for type constructors `A` and `B`*/
    def asplit[ K[L[x]], B[x] ](base: AList[K]): ASplit[K,B] = new ASplit[K, B]
    {
       type Split[ L[x] ] = K[ (L ∙ B)#l ]

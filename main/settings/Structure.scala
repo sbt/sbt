@@ -15,6 +15,8 @@ package sbt
 	import Task._
 	import Types._
 
+	import language.experimental.macros
+
 sealed trait Scoped { def scope: Scope; val key: AttributeKey[_] }
 
 /** A common type for SettingKey and TaskKey so that both can be used as inputs to tasks.*/
@@ -26,12 +28,17 @@ sealed trait ScopedTaskable[T] extends Scoped {
 * The scope is represented by a value of type Scope.
 * The name and the type are represented by a value of type AttributeKey[T].
 * Instances are constructed using the companion object. */
-sealed trait SettingKey[T] extends ScopedTaskable[T] with KeyedInitialize[T] with Scoped.ScopingSetting[SettingKey[T]] with Scoped.DefinableSetting[T] with Scoped.ListSetting[T, Id]
+sealed trait SettingKey[T] extends ScopedTaskable[T] with KeyedInitialize[T] with Scoped.ScopingSetting[SettingKey[T]] with Scoped.DefinableSetting[T]
 {
 	val key: AttributeKey[T]
 	def toTask: Initialize[Task[T]] = this apply inlineTask
 	def scopedKey: ScopedKey[T] = ScopedKey(scope, key)
 	def in(scope: Scope): SettingKey[T] = Scoped.scopedSetting(Scope.replaceThis(this.scope)(scope), this.key)
+
+	def +=[U](v: U)(implicit a: Append.Value[T, U]): Setting[T]  =  macro std.TaskMacro.settingAppend1Impl[T,U]
+	def ++=[U](vs: U)(implicit a: Append.Values[T, U]): Setting[T]  =  macro std.TaskMacro.settingAppendNImpl[T,U]
+	def <+= [V](value: Initialize[V])(implicit a: Append.Value[T, V]): Setting[T]  =  make(value)(a.appendValue)
+	def <++= [V](values: Initialize[V])(implicit a: Append.Values[T, V]): Setting[T]  =  make(values)(a.appendValues)
 
 	protected[this] def make[S](other: Initialize[S])(f: (T, S) => T): Setting[T] = this <<= (this, other)(f)
 }
@@ -40,14 +47,19 @@ sealed trait SettingKey[T] extends ScopedTaskable[T] with KeyedInitialize[T] wit
 * The scope is represented by a value of type Scope.
 * The name and the type are represented by a value of type AttributeKey[Task[T]].
 * Instances are constructed using the companion object. */
-sealed trait TaskKey[T] extends ScopedTaskable[T] with KeyedInitialize[Task[T]] with Scoped.ScopingSetting[TaskKey[T]] with Scoped.ListSetting[T, Task] with Scoped.DefinableTask[T]
+sealed trait TaskKey[T] extends ScopedTaskable[T] with KeyedInitialize[Task[T]] with Scoped.ScopingSetting[TaskKey[T]] with Scoped.DefinableTask[T]
 {
 	val key: AttributeKey[Task[T]]
 	def toTask: Initialize[Task[T]] = this
 	def scopedKey: ScopedKey[Task[T]] = ScopedKey(scope, key)
 	def in(scope: Scope): TaskKey[T] = Scoped.scopedTask(Scope.replaceThis(this.scope)(scope), this.key)
 
-	protected[this] def make[S](other: Initialize[Task[S]])(f: (T, S) => T): Setting[Task[T]] = this <<= (this, other) { (a,b) => (a,b) map f.tupled }
+	def +=[U](v: U)(implicit a: Append.Value[T, U]): Setting[Task[T]]  =  macro std.TaskMacro.taskAppend1Impl[T,U]
+	def ++=[U](vs: U)(implicit a: Append.Values[T, U]): Setting[Task[T]]  =  macro std.TaskMacro.taskAppendNImpl[T,U]
+	def <+= [V](v: Initialize[Task[V]])(implicit a: Append.Value[T, V]): Setting[Task[T]]  =  make(v)(a.appendValue)
+	def <++= [V](vs: Initialize[Task[V]])(implicit a: Append.Values[T, V]): Setting[Task[T]]  =  make(vs)(a.appendValues)
+
+	private[this] def make[S](other: Initialize[Task[S]])(f: (T, S) => T): Setting[Task[T]] = this <<= (this, other) { (a,b) => (a,b) map f.tupled }
 }
 
 /** Identifies an input task.  An input task parses input and produces a task to run.
@@ -86,24 +98,15 @@ object Scoped
 	def scopedInput[T](s: Scope, k: AttributeKey[InputTask[T]]): InputKey[T]  =  new InputKey[T] { val scope = s; val key = k }
 	def scopedTask[T](s: Scope, k: AttributeKey[Task[T]]): TaskKey[T]  =  new TaskKey[T] { val scope = s; val key = k }
 
-	sealed trait ListSetting[S, M[_]]
-	{
-		protected[this] def make[T](other: Initialize[M[T]])(f: (S, T) => S): Setting[M[S]]
-		protected[this] def ~=(f: S => S): Setting[M[S]]
-
-		def <+= [V](value: Initialize[M[V]])(implicit a: Append.Value[S, V]): Setting[M[S]]  =  make(value)(a.appendValue)
-		def <++= [V](values: Initialize[M[V]])(implicit a: Append.Values[S, V]): Setting[M[S]]  =  make(values)(a.appendValues)
-		def += [U](value: => U)(implicit a: Append.Value[S, U]): Setting[M[S]]  =  this ~= ( v => a.appendValue(v, value) )
-		def ++=[U](values: => U)(implicit a: Append.Values[S, U]): Setting[M[S]]  =  this ~= ( v => a.appendValues(v, values) )
-	}
 	sealed trait DefinableSetting[S]
 	{
 		def scopedKey: ScopedKey[S]
 
-		private[sbt] final def :==(value: S): Setting[S]  =  :=(value)
-		final def := (value: => S): Setting[S]  =  setting(scopedKey, Def.value(value))
+		private[sbt] final def :==(value: S): Setting[S]  =  setting(scopedKey, Def.valueStrict(value))
+		final def := (v: S): Setting[S]  =  macro std.TaskMacro.settingAssignMacroImpl[S]
 		final def ~= (f: S => S): Setting[S]  =  Def.update(scopedKey)(f)
-		final def <<= (app: Initialize[S]): Setting[S]  =  setting(scopedKey, app)
+		final def <<= (app: Initialize[S]): Setting[S]  =  set(app)
+		final def set (app: Initialize[S]): Setting[S]  =  setting(scopedKey, app)
 		final def get(settings: Settings[Scope]): Option[S] = settings.get(scopedKey.scope, scopedKey.key)
 		final def ? : Initialize[Option[S]] = Def.optional(scopedKey)(idFun)
 		final def or[T >: S](i: Initialize[T]): Initialize[T] = (this.?, i)(_ getOrElse _ )
@@ -111,27 +114,23 @@ object Scoped
 	}
 	final class RichInitialize[S](init: Initialize[S])
 	{
-		@deprecated("A call to 'identity' is no longer necessary and can be removed.", "0.11.0")
-		final def identity: Initialize[S] = init
 		def map[T](f: S => T): Initialize[Task[T]] = init(s => mktask(f(s)) )
 		def flatMap[T](f: S => Task[T]): Initialize[Task[T]] = init(f)
 	}
 	sealed trait DefinableTask[S]
 	{ self: TaskKey[S] =>
 
-		private[sbt] def :==(value: S): Setting[Task[S]]  =  :=(value)
-		private[sbt] def ::=(value: Task[S]): Setting[Task[S]]  =  Def.setting(scopedKey, Def.value( value ))
-		def := (value: => S): Setting[Task[S]]  =  ::=(mktask(value))
+		private[sbt] def :==(v: S): Setting[Task[S]]  =  ::=(constant(v))
+		private[sbt] def ::=(value: Task[S]): Setting[Task[S]]  =  Def.setting(scopedKey, Def.valueStrict( value ))
+		def := (v: S): Setting[Task[S]]  =  macro std.TaskMacro.taskAssignMacroImpl[S] //::=(mktask(value))
 		private[sbt] def :== (v: SettingKey[S]): Setting[Task[S]] = <<=( v(constant))
 		def ~= (f: S => S): Setting[Task[S]]  =  Def.update(scopedKey)( _ map f )
 
-		def <<= (app: Initialize[Task[S]]): Setting[Task[S]]  =  Def.setting(scopedKey, app)
+		def <<= (app: Initialize[Task[S]]): Setting[Task[S]]  =  set(app)
+		def set(app: Initialize[Task[S]]): Setting[Task[S]]  =  Def.setting(scopedKey, app)
 
 		def task: SettingKey[Task[S]] = scopedSetting(scope, key)
 		def get(settings: Settings[Scope]): Option[Task[S]] = settings.get(scope, key)
-
-		@deprecated("A call to 'identity' is no longer necessary and can be removed.", "0.11.0")
-		def identity: Initialize[Task[S]] = this
 
 		def ? : Initialize[Task[Option[S]]] = Def.optional(scopedKey) { case None => mktask { None }; case Some(t) => t map some.fn }
 		def ??[T >: S](or: => T): Initialize[Task[T]] = Def.optional(scopedKey)( _ getOrElse mktask(or) )
@@ -246,7 +245,6 @@ object Scoped
 		def flatFailure[T](f: Seq[Incomplete] => Task[T]): App[T] = onTasks(_ flatFailure f)
 		def mapFailure[T](f: Seq[Incomplete] => T): App[T] = onTasks(_ mapFailure f)
 	}
-	type :@:[H, T <: KList[ScopedTaskable]] = KCons[H, T, ScopedTaskable]
 	type ST[X] = ScopedTaskable[X]
 	final class RichTaskable2[A,B](t2: (ST[A], ST[B])) extends RichTaskables[ AList.T2K[A,B]#l ](t2)(AList.tuple2[A,B])
 	{
