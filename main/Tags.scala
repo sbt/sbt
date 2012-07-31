@@ -32,10 +32,12 @@ object Tags
 	private[this] final class Single(tag: Tag, max: Int) extends Rule {
 		checkMax(max)
 		def apply(m: TagMap) = getInt(m, tag) <= max
+		override def toString = "Limit " + tag.name + " to " + max
 	}
 	private[this] final class Sum(tags: Seq[Tag], max: Int) extends Rule {
 		checkMax(max)
-		def apply(m: TagMap) = (0 /: tags)((sum, t) => sum + getInt(m, t)) <= max		
+		def apply(m: TagMap) = (0 /: tags)((sum, t) => sum + getInt(m, t)) <= max
+		override def toString = tags.mkString("Limit sum of ", ", ", " to " + max)
 	}
 	private[this] def checkMax(max: Int): Unit = assert(max >= 1, "Limit must be at least 1.")
 
