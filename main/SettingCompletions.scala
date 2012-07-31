@@ -3,8 +3,8 @@ package sbt
 	import java.io.File
 	import java.net.URI
 	import Project._
+	import Def.{ScopedKey, Setting}
 	import Scope.{GlobalScope,ThisScope}
-	import Load.BuildStructure
 	import Types.{const, idFun, Id}
 	import complete._
 	import DefaultParsers._
@@ -31,7 +31,7 @@ private[sbt] object SettingCompletions
 		{
 			val akey = setting.key.key
 			val global = ScopedKey(Global, akey)
-			val globalSetting = resolve( Project.setting(global, setting.init, setting.pos) )
+			val globalSetting = resolve( Def.setting(global, setting.init, setting.pos) )
 			globalSetting ++ allDefs.flatMap { d =>
 				if(d.key == akey)
 					Seq( SettingKey(akey) in d.scope <<= global)
@@ -45,7 +45,7 @@ private[sbt] object SettingCompletions
 	}
 
 	/** Implementation of the `set` command that will reload the current project with `settings` appended to the current settings. */
-	def setThis(s: State, extracted: Extracted, settings: Seq[Project.Setting[_]], arg: String): SetResult =
+	def setThis(s: State, extracted: Extracted, settings: Seq[Def.Setting[_]], arg: String): SetResult =
 	{
 		import extracted._
 		val append = Load.transformSettings(Load.projectScope(currentRef), currentRef.build, rootProject, settings)

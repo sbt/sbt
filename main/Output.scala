@@ -6,7 +6,7 @@ package sbt
 	import java.util.regex.Pattern
 	import java.io.File
 	import Keys.{Streams, TaskStreams}
-	import Project.ScopedKey
+	import Def.ScopedKey
 	import Aggregation.{KeyValue, Values}
 	import Types.idFun
 	import Highlight.{bold, showMatches}

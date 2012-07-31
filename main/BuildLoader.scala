@@ -5,7 +5,6 @@ package sbt
 
 	import java.io.File
 	import java.net.URI
-	import Load.{BuildUnit, LoadBuildConfiguration, PartBuild}
 	import BuildLoader._
 	import Alternatives._
 	import Types.{const,idFun}

@@ -1,7 +1,7 @@
 package sbt
 
 	import Load._
-	import Project._
+	import Def.{ScopedKey,Setting}
 	import Scoped._
 	import Keys._
 	import Configurations.{Compile,Runtime}
@@ -64,7 +64,7 @@ object GlobalPlugin
 			(newS, processResult(result, newS.log))
 		}
 	}
-	val globalPluginSettings = inScope(Scope.GlobalScope in LocalRootProject)(Seq(
+	val globalPluginSettings = Project.inScope(Scope.GlobalScope in LocalRootProject)(Seq(
 		organization := SbtArtifacts.Organization,
 		onLoadMessage <<= Keys.baseDirectory("Loading global plugins from " + _),
 		name := "global-plugin",

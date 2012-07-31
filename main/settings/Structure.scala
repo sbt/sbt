@@ -5,14 +5,16 @@ package sbt
 
 /** An abstraction on top of Settings for build configuration and task definition. */
 
-	import Types._
-	import std.TaskExtra.{task => mktask, _}
-	import Task._
-	import Project.{Initialize, KeyedInitialize, ScopedKey, Setting, setting}
-	import complete.Parser
 	import java.io.File
 	import java.net.URI
+
+	import complete.Parser
+	import ConcurrentRestrictions.Tag
+	import Def.{Initialize, KeyedInitialize, ScopedKey, Setting, setting}
 	import Path._
+	import std.TaskExtra.{task => mktask, _}
+	import Task._
+	import Types._
 
 /** Parses input and produces a task to run.  Constructed using the companion object. */
 sealed trait InputTask[T] {
@@ -43,7 +45,7 @@ object InputTask
 	def free[I,T](p: State => Parser[I])(c: I => Task[T]): InputTask[T] = free(s => p(s) map c)
 
 	def separate[I,T](p: State => Parser[I])(action: Initialize[I => Task[T]]): Initialize[InputTask[T]] =
-		separate(Project value p)(action)
+		separate(Def value p)(action)
 	def separate[I,T](p: Initialize[State => Parser[I]])(action: Initialize[I => Task[T]]): Initialize[InputTask[T]] =
 		p.zipWith(action)((parser, act) => free(parser)(act))
 		
@@ -56,8 +58,8 @@ object InputTask
 	// However, this results in a minimal interface to the full capabilities of an InputTask for users
 	def apply[I,T](p: Initialize[State => Parser[I]])(action: TaskKey[I] => Initialize[Task[T]]): Initialize[InputTask[T]] =
 	{
-		val key: TaskKey[I] = Keys.parseResult.asInstanceOf[TaskKey[I]]
-		(p zip Keys.resolvedScoped zipWith action(key)) { case ((parserF, scoped), act) =>
+		val key: TaskKey[I] = Def.parseResult.asInstanceOf[TaskKey[I]]
+		(p zip Def.resolvedScoped zipWith action(key)) { case ((parserF, scoped), act) =>
 			new InputDynamic[T]
 			{
 				type Result = I
@@ -68,7 +70,7 @@ object InputTask
 		}
 	}
 	def apply[I,T](p: State => Parser[I])(action: TaskKey[I] => Initialize[Task[T]]): Initialize[InputTask[T]] =
-		apply(Project.value(p))(action)
+		apply(Def.value(p))(action)
 }
 
 sealed trait Scoped { def scope: Scope; val key: AttributeKey[_] }
@@ -153,13 +155,13 @@ object Scoped
 		def scopedKey: ScopedKey[S]
 
 		private[sbt] final def :==(value: S): Setting[S]  =  :=(value)
-		final def := (value: => S): Setting[S]  =  setting(scopedKey, Project.value(value))
-		final def ~= (f: S => S): Setting[S]  =  Project.update(scopedKey)(f)
+		final def := (value: => S): Setting[S]  =  setting(scopedKey, Def.value(value))
+		final def ~= (f: S => S): Setting[S]  =  Def.update(scopedKey)(f)
 		final def <<= (app: Initialize[S]): Setting[S]  =  setting(scopedKey, app)
 		final def get(settings: Settings[Scope]): Option[S] = settings.get(scopedKey.scope, scopedKey.key)
-		final def ? : Initialize[Option[S]] = Project.optional(scopedKey)(idFun)
+		final def ? : Initialize[Option[S]] = Def.optional(scopedKey)(idFun)
 		final def or[T >: S](i: Initialize[T]): Initialize[T] = (this.?, i)(_ getOrElse _ )
-		final def ??[T >: S](or: => T): Initialize[T] = Project.optional(scopedKey)(_ getOrElse or )
+		final def ??[T >: S](or: => T): Initialize[T] = Def.optional(scopedKey)(_ getOrElse or )
 	}
 	final class RichInitialize[S](init: Initialize[S])
 	{
@@ -172,12 +174,12 @@ object Scoped
 	{ self: TaskKey[S] =>
 
 		private[sbt] def :==(value: S): Setting[Task[S]]  =  :=(value)
-		private[sbt] def ::=(value: Task[S]): Setting[Task[S]]  =  Project.setting(scopedKey, Project.value( value ))
+		private[sbt] def ::=(value: Task[S]): Setting[Task[S]]  =  Def.setting(scopedKey, Def.value( value ))
 		def := (value: => S): Setting[Task[S]]  =  ::=(mktask(value))
 		private[sbt] def :== (v: SettingKey[S]): Setting[Task[S]] = <<=( v(constant))
-		def ~= (f: S => S): Setting[Task[S]]  =  Project.update(scopedKey)( _ map f )
+		def ~= (f: S => S): Setting[Task[S]]  =  Def.update(scopedKey)( _ map f )
 
-		def <<= (app: Initialize[Task[S]]): Setting[Task[S]]  =  Project.setting(scopedKey, app)
+		def <<= (app: Initialize[Task[S]]): Setting[Task[S]]  =  Def.setting(scopedKey, app)
 
 		def task: SettingKey[Task[S]] = scopedSetting(scope, key)
 		def get(settings: Settings[Scope]): Option[Task[S]] = settings.get(scope, key)
@@ -185,8 +187,8 @@ object Scoped
 		@deprecated("A call to 'identity' is no longer necessary and can be removed.", "0.11.0")
 		def identity: Initialize[Task[S]] = this
 
-		def ? : Initialize[Task[Option[S]]] = Project.optional(scopedKey) { case None => mktask { None }; case Some(t) => t map some.fn }
-		def ??[T >: S](or: => T): Initialize[Task[T]] = Project.optional(scopedKey)( _ getOrElse mktask(or) )
+		def ? : Initialize[Task[Option[S]]] = Def.optional(scopedKey) { case None => mktask { None }; case Some(t) => t map some.fn }
+		def ??[T >: S](or: => T): Initialize[Task[T]] = Def.optional(scopedKey)( _ getOrElse mktask(or) )
 		def or[T >: S](i: Initialize[Task[T]]): Initialize[Task[T]] = (this.? zipWith i)( (x,y) => (x :^: y :^: KNil) map hf2( _ getOrElse _ ))
 	}
 	final class RichInitializeTask[S](i: Initialize[Task[S]]) extends RichInitTaskBase[S, Task]
@@ -195,17 +197,8 @@ object Scoped
 
 		def dependsOn(tasks: AnyInitTask*): Initialize[Task[S]] = (i, Initialize.joinAny(tasks)) { (thisTask, deps) => thisTask.dependsOn(deps : _*) }
 
-			import SessionVar.{persistAndSet, resolveContext, set, transform}
-
-		def updateState(f: (State, S) => State): Initialize[Task[S]] = onTask(t => transform(t, f))
-		def storeAs(key: TaskKey[S])(implicit f: sbinary.Format[S]): Initialize[Task[S]] = (Keys.resolvedScoped, i) { (scoped, task) =>
-			transform(task, (state, value) => persistAndSet( resolveContext(key, scoped.scope, state), state, value)(f))
-		}
-		def keepAs(key: TaskKey[S]): Initialize[Task[S]] =
-			(i, Keys.resolvedScoped)( (t,scoped) => transform(t, (state,value) => set(resolveContext(key, scoped.scope, state), state, value) ) )
-
-		def triggeredBy(tasks: AnyInitTask*): Initialize[Task[S]] = nonLocal(tasks, Keys.triggeredBy)
-		def runBefore(tasks: AnyInitTask*): Initialize[Task[S]] = nonLocal(tasks, Keys.runBefore)
+		def triggeredBy(tasks: AnyInitTask*): Initialize[Task[S]] = nonLocal(tasks, Def.triggeredBy)
+		def runBefore(tasks: AnyInitTask*): Initialize[Task[S]] = nonLocal(tasks, Def.runBefore)
 		private[this] def nonLocal(tasks: Seq[AnyInitTask], key: AttributeKey[Seq[Task[_]]]): Initialize[Task[S]] =
 			(Initialize.joinAny(tasks), i) { (ts, i) => i.copy(info = i.info.set(key, ts)) }
 	}
@@ -231,8 +224,8 @@ object Scoped
 		def || [T >: S](alt: Task[T]): Initialize[R[T]]  =  onTask(_ || alt)
 		def && [T](alt: Task[T]): Initialize[R[T]]  =  onTask(_ && alt)
 
-		def tag(tags: Tags.Tag*): Initialize[R[S]] = onTask(_.tag(tags: _*))
-		def tagw(tags: (Tags.Tag, Int)*): Initialize[R[S]] = onTask(_.tagw(tags : _*))
+		def tag(tags: Tag*): Initialize[R[S]] = onTask(_.tag(tags: _*))
+		def tagw(tags: (Tag, Int)*): Initialize[R[S]] = onTask(_.tagw(tags : _*))
 	}
 
 	type AnyInitTask = Initialize[Task[T]] forSome { type T }
@@ -308,7 +301,7 @@ object Scoped
 			}
 
 		def combine[D[_],S](c: Combine[D], f: Results[HLv] => D[S]): Initialize[Task[S]] =
-			Project.app(settings)(hls => c(tasks(hls))(hlt => f(expand(hls, hlt))) )
+			Def.app(settings)(hls => c(tasks(hls))(hlt => f(expand(hls, hlt))) )
 	}
 	type RedHL[HL <: HList] = Reduced[_,_,HL]
 	def reduced[HL <: HList](settings: KList[ScopedTaskable, HL]): Reduced[_,_,HL] =
@@ -519,59 +512,59 @@ object Scoped
      def mkTuple15[A,B,C,D,E,F,G,H,I,J,K,L,N,O,P] = (a:A,b:B,c:C,d:D,e:E,f:F,g:G,h:H,i:I,j:J,k:K,l:L,n:N,o:O,p:P) => (a,b,c,d,e,f,g,h,i,j,k,l,n,o,p)
 
 	final class Apply2[A,B](t2: (Initialize[A], Initialize[B])) {
-		def apply[T](z: (A,B) => T) = Project.app( k2(t2) )( hf2(z) )
+		def apply[T](z: (A,B) => T) = Def.app( k2(t2) )( hf2(z) )
 		def identity = apply(mkTuple2)
 	}
 	final class Apply3[A,B,C](t3: (Initialize[A], Initialize[B], Initialize[C])) {
-		def apply[T](z: (A,B,C) => T) = Project.app( k3(t3) )( hf3(z) )
+		def apply[T](z: (A,B,C) => T) = Def.app( k3(t3) )( hf3(z) )
 		def identity = apply(mkTuple3)
 	}
 	final class Apply4[A,B,C,D](t4: (Initialize[A], Initialize[B], Initialize[C], Initialize[D])) {
-		def apply[T](z: (A,B,C,D) => T) = Project.app( k4(t4) )( hf4(z) )
+		def apply[T](z: (A,B,C,D) => T) = Def.app( k4(t4) )( hf4(z) )
 		def identity = apply(mkTuple4)
 	}
 	final class Apply5[A,B,C,D,E](t5: (Initialize[A], Initialize[B], Initialize[C], Initialize[D], Initialize[E])) {
-		def apply[T](z: (A,B,C,D,E) => T) = Project.app( k5(t5) )( hf5(z) )
+		def apply[T](z: (A,B,C,D,E) => T) = Def.app( k5(t5) )( hf5(z) )
 		def identity = apply(mkTuple5)
 	}
 	final class Apply6[A,B,C,D,E,F](t6: (Initialize[A], Initialize[B], Initialize[C], Initialize[D], Initialize[E], Initialize[F])) {
-		def apply[T](z: (A,B,C,D,E,F) => T) = Project.app( k6(t6) )( hf6(z) )
+		def apply[T](z: (A,B,C,D,E,F) => T) = Def.app( k6(t6) )( hf6(z) )
 		def identity = apply(mkTuple6)
 	}
 	final class Apply7[A,B,C,D,E,F,G](t7: (Initialize[A], Initialize[B], Initialize[C], Initialize[D], Initialize[E], Initialize[F], Initialize[G])) {
-		def apply[T](z: (A,B,C,D,E,F,G) => T) = Project.app( k7(t7) )( hf7(z) )
+		def apply[T](z: (A,B,C,D,E,F,G) => T) = Def.app( k7(t7) )( hf7(z) )
 		def identity = apply(mkTuple7)
 	}
 	final class Apply8[A,B,C,D,E,F,G,H](t8: (Initialize[A], Initialize[B], Initialize[C], Initialize[D], Initialize[E], Initialize[F], Initialize[G], Initialize[H])) {
-		def apply[T](z: (A,B,C,D,E,F,G,H) => T) = Project.app( k8(t8) )( hf8(z) )
+		def apply[T](z: (A,B,C,D,E,F,G,H) => T) = Def.app( k8(t8) )( hf8(z) )
 		def identity = apply(mkTuple8)
 	}
 	final class Apply9[A,B,C,D,E,F,G,H,I](t9: (Initialize[A], Initialize[B], Initialize[C], Initialize[D], Initialize[E], Initialize[F], Initialize[G], Initialize[H], Initialize[I])) {
-		def apply[T](z: (A,B,C,D,E,F,G,H,I) => T) = Project.app( k9(t9) )( hf9(z) )
+		def apply[T](z: (A,B,C,D,E,F,G,H,I) => T) = Def.app( k9(t9) )( hf9(z) )
 		def identity = apply(mkTuple9)
 	}
     final class Apply10[A,B,C,D,E,F,G,H,I,J](t10: (Initialize[A], Initialize[B], Initialize[C], Initialize[D], Initialize[E], Initialize[F], Initialize[G], Initialize[H], Initialize[I], Initialize[J])) {
-        def apply[T](z: (A,B,C,D,E,F,G,H,I,J) => T) = Project.app( k10(t10) )( hf10(z) )
+        def apply[T](z: (A,B,C,D,E,F,G,H,I,J) => T) = Def.app( k10(t10) )( hf10(z) )
         def identity = apply(mkTuple10)
     }
     final class Apply11[A,B,C,D,E,F,G,H,I,J,K](t11: (Initialize[A], Initialize[B], Initialize[C], Initialize[D], Initialize[E], Initialize[F], Initialize[G], Initialize[H], Initialize[I], Initialize[J], Initialize[K])) {
-        def apply[T](z: (A,B,C,D,E,F,G,H,I,J,K) => T) = Project.app( k11(t11) )( hf11(z) )
+        def apply[T](z: (A,B,C,D,E,F,G,H,I,J,K) => T) = Def.app( k11(t11) )( hf11(z) )
         def identity = apply(mkTuple11)
     }
     final class Apply12[A,B,C,D,E,F,G,H,I,J,K,L](t12: (Initialize[A], Initialize[B], Initialize[C], Initialize[D], Initialize[E], Initialize[F], Initialize[G], Initialize[H], Initialize[I], Initialize[J], Initialize[K], Initialize[L])) {
-        def apply[T](z: (A,B,C,D,E,F,G,H,I,J,K,L) => T) = Project.app( k12(t12) )( hf12(z) )
+        def apply[T](z: (A,B,C,D,E,F,G,H,I,J,K,L) => T) = Def.app( k12(t12) )( hf12(z) )
         def identity = apply(mkTuple12)
     }
     final class Apply13[A,B,C,D,E,F,G,H,I,J,K,L,N](t13: (Initialize[A], Initialize[B], Initialize[C], Initialize[D], Initialize[E], Initialize[F], Initialize[G], Initialize[H], Initialize[I], Initialize[J], Initialize[K], Initialize[L], Initialize[N])) {
-        def apply[T](z: (A,B,C,D,E,F,G,H,I,J,K,L,N) => T) = Project.app( k13(t13) )( hf13(z) )
+        def apply[T](z: (A,B,C,D,E,F,G,H,I,J,K,L,N) => T) = Def.app( k13(t13) )( hf13(z) )
         def identity = apply(mkTuple13)
     }
     final class Apply14[A,B,C,D,E,F,G,H,I,J,K,L,N,O](t14: (Initialize[A], Initialize[B], Initialize[C], Initialize[D], Initialize[E], Initialize[F], Initialize[G], Initialize[H], Initialize[I], Initialize[J], Initialize[K], Initialize[L], Initialize[N], Initialize[O])) {
-        def apply[T](z: (A,B,C,D,E,F,G,H,I,J,K,L,N,O) => T) = Project.app( k14(t14) )( hf14(z) )
+        def apply[T](z: (A,B,C,D,E,F,G,H,I,J,K,L,N,O) => T) = Def.app( k14(t14) )( hf14(z) )
         def identity = apply(mkTuple14)
     }
     final class Apply15[A,B,C,D,E,F,G,H,I,J,K,L,N,O,P](t15: (Initialize[A], Initialize[B], Initialize[C], Initialize[D], Initialize[E], Initialize[F], Initialize[G], Initialize[H], Initialize[I], Initialize[J], Initialize[K], Initialize[L], Initialize[N], Initialize[O], Initialize[P])) {
-        def apply[T](z: (A,B,C,D,E,F,G,H,I,J,K,L,N,O,P) => T) = Project.app( k15(t15) )( hf15(z) )
+        def apply[T](z: (A,B,C,D,E,F,G,H,I,J,K,L,N,O,P) => T) = Def.app( k15(t15) )( hf15(z) )
         def identity = apply(mkTuple15)
     }
 

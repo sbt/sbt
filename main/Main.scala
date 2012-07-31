@@ -94,7 +94,7 @@ object BuiltinCommands
 		if(Project.isProjectLoaded(s))
 		{
 			val e = Project.extract(s)
-			val current = "The current project is " + Project.display(e.currentRef) + "\n"
+			val current = "The current project is " + Reference.display(e.currentRef) + "\n"
 			val sc = aboutScala(s, e)
 			val built = if(sc.isEmpty) "" else "The current project is built against " + sc + "\n"
 			current + built + aboutPlugins(e)
@@ -199,7 +199,7 @@ object BuiltinCommands
 		s
 	}
 	def sessionCommand = Command.make(SessionCommand, sessionBrief, SessionSettings.Help)(SessionSettings.command)
-	def reapply(newSession: SessionSettings, structure: Load.BuildStructure, s: State): State =
+	def reapply(newSession: SessionSettings, structure: BuildStructure, s: State): State =
 	{
 		s.log.info("Reapplying settings...")
 		val newStructure = Load.reapply(newSession.mergeSettings, structure)( Project.showContextKey(newSession, structure) )
@@ -215,13 +215,13 @@ object BuiltinCommands
 		reapply(setResult.session, structure, s)
 	}
 	// @deprecated("Use SettingCompletions.setThis", "0.13.0")
-	def setThis(s: State, extracted: Extracted, settings: Seq[Project.Setting[_]], arg: String) =
+	def setThis(s: State, extracted: Extracted, settings: Seq[Def.Setting[_]], arg: String) =
 		SettingCompletions.setThis(s, extracted, settings, arg)
 	def inspect = Command(InspectCommand, inspectBrief, inspectDetailed)(inspectParser) { case (s, (option, sk)) =>
 		s.log.info(inspectOutput(s, option, sk))
 		s
 	}
-	def inspectOutput(s: State, option: InspectOption, sk: Project.ScopedKey[_]): String =
+	def inspectOutput(s: State, option: InspectOption, sk: Def.ScopedKey[_]): String =
 	{
 		val extracted = Project.extract(s)
 			import extracted._
@@ -262,7 +262,7 @@ object BuiltinCommands
 
 		import InspectOption._
 	def inspectParser = (s: State) => spacedInspectOptionParser(s) flatMap {
-		case opt @ (Uses | Definitions) => allKeyParser(s).map(key => (opt, Project.ScopedKey(Global, key)))
+		case opt @ (Uses | Definitions) => allKeyParser(s).map(key => (opt, Def.ScopedKey(Global, key)))
 		case opt @ (DependencyTree | Details(_)) => spacedKeyParser(s).map(key => (opt, key))
 	}
 	val spacedInspectOptionParser: (State => Parser[InspectOption]) = (s: State) => {
@@ -322,7 +322,7 @@ object BuiltinCommands
 		extracted.structure.units(curi).imports.map(s => (s, -1))
 	}
 
-	def listBuild(uri: URI, build: Load.LoadedBuildUnit, current: Boolean, currentID: String, log: Logger) =
+	def listBuild(uri: URI, build: LoadedBuildUnit, current: Boolean, currentID: String, log: Logger) =
 	{
 		log.info("In " + uri)
 		def prefix(id: String) = if(currentID != id) "   " else if(current) " * " else "(*)"

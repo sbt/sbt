@@ -1,6 +1,6 @@
 package sbt
 
-import java.net.URI
+	import java.net.URI
 
 final class BuildUtil[Proj](
 	val keyIndex: KeyIndex,
@@ -37,4 +37,44 @@ final class BuildUtil[Proj](
 
 	val configurationsForAxis: Option[ResolvedReference] => Seq[String] = 
 		refOpt => configurations(projectForAxis(refOpt)).map(_.name)
+}
+object BuildUtil
+{
+	def apply(root: URI, units: Map[URI, LoadedBuildUnit], keyIndex: KeyIndex, data: Settings[Scope]): BuildUtil[ResolvedProject] =
+	{
+		val getp = (build: URI, project: String) => Load.getProject(units, build, project)
+		val configs = (_: ResolvedProject).configurations.map(c => ConfigKey(c.name))
+		val aggregates = aggregationRelation(units)
+		new BuildUtil(keyIndex, data, root, Load getRootProject units, getp, configs, aggregates)
+	}
+
+	def checkCycles(units: Map[URI, LoadedBuildUnit])
+	{
+		def getRef(pref: ProjectRef) = units(pref.build).defined(pref.project)
+		def deps(proj: ResolvedProject)(base: ResolvedProject => Seq[ProjectRef]): Seq[ResolvedProject]  =  Dag.topologicalSort(proj)(p => base(p) map getRef)
+		 // check for cycles
+		for( (_, lbu) <- units; proj <- lbu.defined.values) {
+			deps(proj)(_.dependencies.map(_.project))
+			deps(proj)(_.delegates)
+			deps(proj)(_.aggregate)
+		}
+	}
+	def baseImports = "import sbt._, Process._, Keys._" :: Nil
+	def getImports(unit: BuildUnit) = baseImports ++ importAllRoot(unit.plugins.pluginNames ++ unit.definitions.buildNames)
+	def importAll(values: Seq[String]) = if(values.isEmpty) Nil else values.map( _ + "._" ).mkString("import ", ", ", "") :: Nil
+	def importAllRoot(values: Seq[String]) = importAll(values map rootedName)
+	def rootedName(s: String) = if(s contains '.') "_root_." + s else s
+
+	def aggregationRelation(units: Map[URI, LoadedBuildUnit]): Relation[ProjectRef, ProjectRef] =
+	{
+		val depPairs =
+			for {
+				(uri, unit) <- units.toIterable
+				project <- unit.defined.values
+				ref = ProjectRef(uri, project.id)
+				agg <- project.aggregate
+			} yield
+				(ref, agg)
+		Relation.empty ++ depPairs
+	}
 }

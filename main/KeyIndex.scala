@@ -4,8 +4,7 @@
 package sbt
 
 	import java.net.URI
-	import Project.ScopedKey
-	import Load.BuildStructure
+	import Def.ScopedKey
 	import complete.DefaultParsers.validID
 	import Types.{idFun, some}
 

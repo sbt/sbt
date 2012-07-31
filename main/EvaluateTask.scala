@@ -4,9 +4,10 @@
 package sbt
 
 	import java.io.File
-	import Project.{ScopedKey, Setting}
+	import Def.{displayFull, ScopedKey, Setting}
 	import Keys.{streams, Streams, TaskStreams}
 	import Keys.{dummyRoots, dummyState, dummyStreamsManager, executionRoots, pluginData, streamsManager, taskDefinitionKey, transformState}
+	import Project.richInitializeTask
 	import Scope.{GlobalScope, ThisScope}
 	import Types.const
 	import scala.Console.RED
@@ -25,8 +26,6 @@ object PluginData
 
 object EvaluateTask
 {
-	import Load.BuildStructure
-	import Project.display
 	import std.{TaskExtra,Transform}
 	import TaskExtra._
 	import Keys.state
@@ -34,7 +33,7 @@ object EvaluateTask
 	val SystemProcessors = Runtime.getRuntime.availableProcessors
 	def defaultConfig(state: State): EvaluateConfig =
 		EvaluateConfig(false, restrictions(state))
-	def defaultConfig(extracted: Extracted, structure: Load.BuildStructure) =
+	def defaultConfig(extracted: Extracted, structure: BuildStructure) =
 		EvaluateConfig(false, restrictions(extracted, structure))
 
 	def extractedConfig(extracted: Extracted, structure: BuildStructure): EvaluateConfig =
@@ -45,7 +44,7 @@ object EvaluateTask
 	}
 
 	def defaultRestrictions(maxWorkers: Int) = Tags.limitAll(maxWorkers) :: Nil
-	def defaultRestrictions(extracted: Extracted, structure: Load.BuildStructure): Seq[Tags.Rule] =
+	def defaultRestrictions(extracted: Extracted, structure: BuildStructure): Seq[Tags.Rule] =
 		Tags.limitAll(maxWorkers(extracted, structure)) :: Nil
 
 	def restrictions(state: State): Seq[Tags.Rule] =
@@ -53,16 +52,16 @@ object EvaluateTask
 		val extracted = Project.extract(state)
 		restrictions(extracted, extracted.structure)
 	}
-	def restrictions(extracted: Extracted, structure: Load.BuildStructure): Seq[Tags.Rule] =
+	def restrictions(extracted: Extracted, structure: BuildStructure): Seq[Tags.Rule] =
 		getSetting(Keys.concurrentRestrictions, defaultRestrictions(extracted, structure), extracted, structure)
-	def maxWorkers(extracted: Extracted, structure: Load.BuildStructure): Int =
+	def maxWorkers(extracted: Extracted, structure: BuildStructure): Int =
 		if(getSetting(Keys.parallelExecution, true, extracted, structure))
 			SystemProcessors
 		else
 			1
-	def cancelable(extracted: Extracted, structure: Load.BuildStructure): Boolean =
+	def cancelable(extracted: Extracted, structure: BuildStructure): Boolean =
 		getSetting(Keys.cancelable, false, extracted, structure)
-	def getSetting[T](key: SettingKey[T], default: T, extracted: Extracted, structure: Load.BuildStructure): T =
+	def getSetting[T](key: SettingKey[T], default: T, extracted: Extracted, structure: BuildStructure): T =
 		key in extracted.currentRef get structure.data getOrElse default
 
 	def injectSettings: Seq[Setting[_]] = Seq(
@@ -97,7 +96,7 @@ object EvaluateTask
 	def logIncomplete(result: Incomplete, state: State, streams: Streams)
 	{
 		val all = Incomplete linearize result
-		val keyed = for(Incomplete(Some(key: Project.ScopedKey[_]), _, msg, _, ex) <- all) yield (key, msg, ex)
+		val keyed = for(Incomplete(Some(key: ScopedKey[_]), _, msg, _, ex) <- all) yield (key, msg, ex)
 		val un = all.filter { i => i.node.isEmpty || i.message.isEmpty }
 
 			import ExceptionCategory._
@@ -199,7 +198,7 @@ object EvaluateTask
 			case _ => c.toString
 		}
 	def name(node: Task[_]): String =
-		node.info.name orElse transformNode(node).map(Project.displayFull) getOrElse ("<anon-" + System.identityHashCode(node).toHexString + ">")
+		node.info.name orElse transformNode(node).map(displayFull) getOrElse ("<anon-" + System.identityHashCode(node).toHexString + ">")
 	def liftAnonymous: Incomplete => Incomplete = {
 		case i @ Incomplete(node, tpe, None, causes, None) =>
 			causes.find( inc => !inc.node.isDefined && (inc.message.isDefined || inc.directCause.isDefined)) match {

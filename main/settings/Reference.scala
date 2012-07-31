@@ -64,6 +64,29 @@ object Reference
 		}
 	}
 
+	def display(ref: Reference): String =
+		ref match
+		{
+			case pr: ProjectReference => display(pr)
+			case br: BuildReference => display(br)
+		}
+
+	def display(ref: BuildReference): String =
+		ref match
+		{
+			case ThisBuild => "{<this>}"
+			case BuildRef(uri) => "{" + uri + "}"
+		}
+	def display(ref: ProjectReference): String =
+		ref match
+		{
+			case ThisProject => "{<this>}<this>"
+			case LocalRootProject => "{<this>}<root>"
+			case LocalProject(id) => "{<this>}" + id
+			case RootProject(uri) => "{" + uri + " }<root>"
+			case ProjectRef(uri, id) => "{" + uri + "}" + id
+		}
+
 	def buildURI(ref: ResolvedReference): URI = ref match {
 		case BuildRef(b) => b
 		case ProjectRef(b, _) => b
@@ -78,5 +101,4 @@ object Reference
 	implicit def uriToRef(u: URI): ProjectReference = RootProject(u)
 	implicit def fileToRef(f: File): ProjectReference = RootProject(f)
 	implicit def stringToReference(s: String): ProjectReference = LocalProject(s)
-	implicit def projectToRef(p: Project): ProjectReference = LocalProject(p.id)
 }

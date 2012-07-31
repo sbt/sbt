@@ -3,8 +3,7 @@
  */
 package sbt
 
-	import Project.ScopedKey
-	import Load.{BuildStructure,LoadedBuildUnit}
+	import Def.ScopedKey
 	import Keys.{aggregate, showSuccess, showTiming, timingFormat}
 	import sbt.complete.Parser
 	import java.net.URI
@@ -30,7 +29,7 @@ final object Aggregation
 		Command.applyEffect(seqParser(ps)) { ts =>
 			runTasks(s, structure, ts, Dummies(KNil, HNil), show)
 		}
-	def runTasksWithResult[HL <: HList, T](s: State, structure: Load.BuildStructure, ts: Values[Task[T]], extra: Dummies[HL], show: Boolean)(implicit display: Show[ScopedKey[_]]): (State, Result[Seq[KeyValue[T]]]) =
+	def runTasksWithResult[HL <: HList, T](s: State, structure: BuildStructure, ts: Values[Task[T]], extra: Dummies[HL], show: Boolean)(implicit display: Show[ScopedKey[_]]): (State, Result[Seq[KeyValue[T]]]) =
 	{
 			import EvaluateTask._
 			import std.TaskExtra._
@@ -55,7 +54,7 @@ final object Aggregation
 		(newS, result)
 	}
 
-  def runTasks[HL <: HList, T](s: State, structure: Load.BuildStructure, ts: Values[Task[T]], extra: Dummies[HL], show: Boolean)(implicit display: Show[ScopedKey[_]]): State = {
+  def runTasks[HL <: HList, T](s: State, structure: BuildStructure, ts: Values[Task[T]], extra: Dummies[HL], show: Boolean)(implicit display: Show[ScopedKey[_]]): State = {
     runTasksWithResult(s, structure, ts, extra, show)._1
   }
 
@@ -157,16 +156,7 @@ final object Aggregation
 	def aggregationEnabled(key: ScopedKey[_], data: Settings[Scope]): Boolean =
 		Keys.aggregate in Scope.fillTaskAxis(key.scope, key.key) get data getOrElse true
 
+	@deprecated("Use BuildUtil.aggregationRelation", "0.13.0")
 	def relation(units: Map[URI, LoadedBuildUnit]): Relation[ProjectRef, ProjectRef] =
-	{
-		val depPairs =
-			for {
-				(uri, unit) <- units.toIterable
-				project <- unit.defined.values
-				ref = ProjectRef(uri, project.id)
-				agg <- project.aggregate
-			} yield
-				(ref, agg)
-		Relation.empty ++ depPairs
-	}
+		BuildUtil.aggregationRelation(units)
 }

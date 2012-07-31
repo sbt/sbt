@@ -6,6 +6,7 @@ package sbt
 	import java.io.File
 	import Attributed.blankSeq
 	import Configurations.Compile
+	import Def.Setting
 	import Keys._
 
 object IvyConsole
@@ -22,7 +23,7 @@ object IvyConsole
 			val extracted = Project.extract(session, structure)
 				import extracted._
 
-			val depSettings: Seq[Project.Setting[_]] = Seq(
+			val depSettings: Seq[Setting[_]] = Seq(
 				libraryDependencies ++= managed.reverse,
 				resolvers ++= repos.reverse,
 				unmanagedJars in Compile ++= Attributed blankSeq unmanaged.reverse,

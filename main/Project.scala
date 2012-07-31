@@ -6,10 +6,10 @@ package sbt
 	import java.io.File
 	import java.net.URI
 	import Project._
-	import Keys.{appConfiguration, stateBuildStructure, commands, configuration, historyPath, projectCommand, sessionSettings, sessionVars, shellPrompt, thisProject, thisProjectRef, watch}
+	import Keys.{appConfiguration, stateBuildStructure, commands, configuration, historyPath, projectCommand, sessionSettings, shellPrompt, thisProject, thisProjectRef, watch}
 	import Scope.{GlobalScope,ThisScope}
-	import Load.BuildStructure
-	import Types.{idFun, Id}
+	import Def.{Flattened, Initialize, ScopedKey, Setting}
+	import Types.idFun
 	import complete.DefaultParsers
 
 sealed trait ProjectDefinition[PR <: ProjectReference]
@@ -17,7 +17,7 @@ sealed trait ProjectDefinition[PR <: ProjectReference]
 	def id: String
 	def base: File
 	def configurations: Seq[Configuration]
-	def settings: Seq[Project.Setting[_]]
+	def settings: Seq[Setting[_]]
 	def aggregate: Seq[PR]
 	@deprecated("Delegation between projects should be replaced by directly sharing settings.", "0.13.0")
 	def delegates: Seq[PR]
@@ -36,7 +36,7 @@ sealed trait ProjectDefinition[PR <: ProjectReference]
 sealed trait Project extends ProjectDefinition[ProjectReference]
 {
 	def copy(id: String = id, base: File = base, aggregate: => Seq[ProjectReference] = aggregate, dependencies: => Seq[ClasspathDep[ProjectReference]] = dependencies,
-		delegates: => Seq[ProjectReference] = delegates, settings: => Seq[Project.Setting[_]] = settings, configurations: Seq[Configuration] = configurations,
+		delegates: => Seq[ProjectReference] = delegates, settings: => Seq[Setting[_]] = settings, configurations: Seq[Configuration] = configurations,
 		auto: AddSettings = auto): Project =
 			Project(id, base, aggregate = aggregate, dependencies = dependencies, delegates = delegates, settings, configurations, auto)
 
@@ -61,85 +61,28 @@ sealed trait Project extends ProjectDefinition[ProjectReference]
 	def delegateTo(from: ProjectReference*): Project = copy(delegates = delegates ++ from)
 	def aggregate(refs: ProjectReference*): Project = copy(aggregate = (aggregate: Seq[ProjectReference]) ++ refs)
 	def configs(cs: Configuration*): Project = copy(configurations = configurations ++ cs)
-	def settings(ss: Project.Setting[_]*): Project = copy(settings = (settings: Seq[Project.Setting[_]]) ++ ss)
+	def settings(ss: Setting[_]*): Project = copy(settings = (settings: Seq[Setting[_]]) ++ ss)
 	def autoSettings(select: AddSettings*): Project = copy(auto = AddSettings.seq(select : _*))
 }
 sealed trait ResolvedProject extends ProjectDefinition[ProjectRef]
-
-final case class Extracted(structure: BuildStructure, session: SessionSettings, currentRef: ProjectRef)(implicit val showKey: Show[ScopedKey[_]])
-{
-	def rootProject = structure.rootProject
-	lazy val currentUnit = structure units currentRef.build
-	lazy val currentProject = currentUnit defined currentRef.project
-	lazy val currentLoader: ClassLoader = currentUnit.loader
-	def get[T](key: TaskKey[T]): Task[T] = get(key.task)
-	def get[T](key: SettingKey[T]) = getOrError(inCurrent(key), key.key)
-	def getOpt[T](key: SettingKey[T]): Option[T] = structure.data.get(inCurrent(key), key.key)
-	private[this] def inCurrent[T](key: SettingKey[T]): Scope  =  if(key.scope.project == This) key.scope.copy(project = Select(currentRef)) else key.scope
-	@deprecated("This method does not apply state changes requested during task execution.  Use 'runTask' instead, which does.", "0.11.1")
-	def evalTask[T](key: TaskKey[T], state: State): T = runTask(key, state)._2
-	def runTask[T](key: TaskKey[T], state: State): (State, T) =
-	{
-			import EvaluateTask._
-		val rkey = resolve(key.scopedKey)
-		val config = extractedConfig(this, structure)
-		val value: Option[(State, Result[T])] = apply(structure, key.task.scopedKey, state, currentRef, config)
-		val (newS, result) = getOrError(rkey.scope, rkey.key, value)
-		(newS, processResult(result, newS.log))
-	}
-	def runAggregated[T](key: TaskKey[T], state: State): State =
-	{
-		val rkey = resolve(key.scopedKey)
-		val keys = Aggregation.aggregate(rkey, ScopeMask(), structure.extra)
-		val tasks = Act.keyValues(structure)(keys)
-		Aggregation.runTasks(state, structure, tasks, Aggregation.Dummies(KNil, HNil), show = false )(showKey)
-	}
-	private[this] def resolve[T](key: ScopedKey[T]): ScopedKey[T] =
-		Project.mapScope(Scope.resolveScope(GlobalScope, currentRef.build, rootProject) )( key.scopedKey )
-	private def getOrError[T](scope: Scope, key: AttributeKey[_], value: Option[T])(implicit display: Show[ScopedKey[_]]): T =
-		value getOrElse error(display(ScopedKey(scope, key)) + " is undefined.")
-	private def getOrError[T](scope: Scope, key: AttributeKey[T])(implicit display: Show[ScopedKey[_]]): T =
-		structure.data.get(scope, key) getOrElse error(display(ScopedKey(scope, key)) + " is undefined.")
-
-	def append(settings: Seq[Setting[_]], state: State): State =
-	{
-		val appendSettings = Load.transformSettings(Load.projectScope(currentRef), currentRef.build, rootProject, settings)
-		val newStructure = Load.reapply(session.original ++ appendSettings, structure)
-		Project.setProject(session, newStructure, state)
-	}
-}
 
 sealed trait ClasspathDep[PR <: ProjectReference] { def project: PR; def configuration: Option[String] }
 final case class ResolvedClasspathDependency(project: ProjectRef, configuration: Option[String]) extends ClasspathDep[ProjectRef]
 final case class ClasspathDependency(project: ProjectReference, configuration: Option[String]) extends ClasspathDep[ProjectReference]
 
-object Project extends Init[Scope] with ProjectExtra
+object Project extends ProjectExtra
 {
-	lazy val showFullKey: Show[ScopedKey[_]] = showFullKey(None)
-	def showFullKey(keyNameColor: Option[String]): Show[ScopedKey[_]] =
-		new Show[ScopedKey[_]] { def apply(key: ScopedKey[_]) = displayFull(key, keyNameColor) }
 	def showContextKey(state: State): Show[ScopedKey[_]] =
 		showContextKey(state, None)
 
 	def showContextKey(state: State, keyNameColor: Option[String]): Show[ScopedKey[_]] =
-		if(isProjectLoaded(state)) showContextKey( session(state), structure(state), keyNameColor ) else showFullKey
+		if(isProjectLoaded(state)) showContextKey( session(state), structure(state), keyNameColor ) else Def.showFullKey
 
 	def showContextKey(session: SessionSettings, structure: BuildStructure, keyNameColor: Option[String] = None): Show[ScopedKey[_]] =
-		showRelativeKey(session.current, structure.allProjects.size > 1, keyNameColor)
+		Def.showRelativeKey(session.current, structure.allProjects.size > 1, keyNameColor)
 
-	def showLoadingKey(loaded: Load.LoadedBuild, keyNameColor: Option[String] = None): Show[ScopedKey[_]] =
-		showRelativeKey( ProjectRef(loaded.root, loaded.units(loaded.root).rootProjects.head), loaded.allProjectRefs.size > 1, keyNameColor)
-
-	def showRelativeKey(current: ProjectRef, multi: Boolean, keyNameColor: Option[String] = None): Show[ScopedKey[_]] = new Show[ScopedKey[_]] {
-		def apply(key: ScopedKey[_]) =
-			Scope.display(key.scope, colored(key.key.label, keyNameColor), ref => displayRelative(current, multi, ref))
-	}
-	def displayRelative(current: ProjectRef, multi: Boolean, project: Reference): String = project match {
-		case BuildRef(current.build) => "{.}/"
-		case `current` => if(multi) current.project + "/" else ""
-		case ProjectRef(current.build, x) => x + "/"
-		case _ => display(project) + "/"
-	}
+	def showLoadingKey(loaded: LoadedBuild, keyNameColor: Option[String] = None): Show[ScopedKey[_]] =
+		Def.showRelativeKey( ProjectRef(loaded.root, loaded.units(loaded.root).rootProjects.head), loaded.allProjectRefs.size > 1, keyNameColor)
 
 	private abstract class ProjectDef[PR <: ProjectReference](val id: String, val base: File, aggregate0: => Seq[PR], dependencies0: => Seq[ClasspathDep[PR]],
 		delegates0: => Seq[PR], settings0: => Seq[Setting[_]], val configurations: Seq[Configuration], val auto: AddSettings) extends ProjectDefinition[PR]
@@ -183,8 +126,8 @@ object Project extends Init[Scope] with ProjectExtra
 	def getProjectForReference(ref: Reference, structure: BuildStructure): Option[ResolvedProject] =
 		ref match { case pr: ProjectRef => getProject(pr, structure); case _ => None }
 	def getProject(ref: ProjectRef, structure: BuildStructure): Option[ResolvedProject] = getProject(ref, structure.units)
-	def getProject(ref: ProjectRef, structure: Load.LoadedBuild): Option[ResolvedProject] = getProject(ref, structure.units)
-	def getProject(ref: ProjectRef, units: Map[URI, Load.LoadedBuildUnit]): Option[ResolvedProject] =
+	def getProject(ref: ProjectRef, structure: LoadedBuild): Option[ResolvedProject] = getProject(ref, structure.units)
+	def getProject(ref: ProjectRef, units: Map[URI, LoadedBuildUnit]): Option[ResolvedProject] =
 		(units get ref.build).flatMap(_.defined get ref.project)
 
 	def runUnloadHooks(s: State): State =
@@ -227,39 +170,10 @@ object Project extends Init[Scope] with ProjectExtra
 	def setCond[T](key: AttributeKey[T], vopt: Option[T], attributes: AttributeMap): AttributeMap =
 		vopt match { case Some(v) => attributes.put(key, v); case None => attributes.remove(key) }
 	def makeSettings(settings: Seq[Setting[_]], delegates: Scope => Seq[Scope], scopeLocal: ScopedKey[_] => Seq[Setting[_]])(implicit display: Show[ScopedKey[_]]) =
-		make(settings)(delegates, scopeLocal, display)
+		Def.make(settings)(delegates, scopeLocal, display)
 
 	def equal(a: ScopedKey[_], b: ScopedKey[_], mask: ScopeMask): Boolean =
 		a.key == b.key && Scope.equal(a.scope, b.scope, mask)
-
-	def colored(s: String, color: Option[String]): String = color match {
-		case Some(c) => c + s + scala.Console.RESET
-		case None => s
-	}
-	def displayFull(scoped: ScopedKey[_]): String = displayFull(scoped, None)
-	def displayFull(scoped: ScopedKey[_], keyNameColor: Option[String]): String = Scope.display(scoped.scope, colored(scoped.key.label, keyNameColor))
-	def displayMasked(scoped: ScopedKey[_], mask: ScopeMask): String = Scope.displayMasked(scoped.scope, scoped.key.label, mask)
-	def display(ref: Reference): String =
-		ref match
-		{
-			case pr: ProjectReference => display(pr)
-			case br: BuildReference => display(br)
-		}
-	def display(ref: BuildReference) =
-		ref match
-		{
-			case ThisBuild => "{<this>}"
-			case BuildRef(uri) => "{" + uri + "}"
-		}
-	def display(ref: ProjectReference) =
-		ref match
-		{
-			case ThisProject => "{<this>}<this>"
-			case LocalRootProject => "{<this>}<root>"
-			case LocalProject(id) => "{<this>}" + id
-			case RootProject(uri) => "{" + uri + " }<root>"
-			case ProjectRef(uri, id) => "{" + uri + "}" + id
-		}
 
 	def fillTaskAxis(scoped: ScopedKey[_]): ScopedKey[_] =
 		ScopedKey(Scope.fillTaskAxis(scoped.scope, scoped.key), scoped.key)
@@ -294,7 +208,7 @@ object Project extends Init[Scope] with ProjectExtra
 			case Some(sc) => "Provided by:\n\t" + Scope.display(sc, key.label) + "\n"
 			case None => ""
 		}
-		val comp = compiled(structure.settings, actual)(structure.delegates, structure.scopeLocal, display)
+		val comp = Def.compiled(structure.settings, actual)(structure.delegates, structure.scopeLocal, display)
 		val definedAt = comp get scoped map { c =>
 			def fmt(s: Setting[_]) = s.pos match {
 				case pos: FilePosition => Some(pos.path + ":" + pos.startLine)
@@ -309,7 +223,7 @@ object Project extends Init[Scope] with ProjectExtra
     } getOrElse ""
 
 
-		val cMap = flattenLocals(comp)
+		val cMap = Def.flattenLocals(comp)
 		val related = cMap.keys.filter(k => k.key == key && k.scope != scope)
 		val depends = cMap.get(scoped) match { case Some(c) => c.dependencies.toSet; case None => Set.empty }
 
@@ -343,7 +257,7 @@ object Project extends Init[Scope] with ProjectExtra
 	def relation(structure: BuildStructure, actual: Boolean)(implicit display: Show[ScopedKey[_]]) =
 	{
 		type Rel = Relation[ScopedKey[_], ScopedKey[_]]
-		val cMap = flattenLocals(compiled(structure.settings, actual)(structure.delegates, structure.scopeLocal, display))
+		val cMap = Def.flattenLocals(Def.compiled(structure.settings, actual)(structure.delegates, structure.scopeLocal, display))
 		((Relation.empty: Rel) /: cMap) { case (r, (key, value)) =>
 			r + (key, value.dependencies)
 		}
@@ -412,26 +326,25 @@ object Project extends Init[Scope] with ProjectExtra
 		val extracted = Project.extract(state)
 		EvaluateTask(extracted.structure, taskKey, state, extracted.currentRef, config)
 	}
-	// this is here instead of Scoped so that it is considered without need for import (because of Project.Initialize)
-	implicit def richInitializeTask[T](init: Initialize[Task[T]]): Scoped.RichInitializeTask[T] = new Scoped.RichInitializeTask(init)
-	implicit def richInitializeInputTask[T](init: Initialize[InputTask[T]]): Scoped.RichInitializeInputTask[T] = new Scoped.RichInitializeInputTask(init)
-	implicit def richInitialize[T](i: Initialize[T]): Scoped.RichInitialize[T] = new Scoped.RichInitialize[T](i)
-}
 
-final case class ScopedKeyData[A](scoped: ScopedKey[A], value: Any)
-{
-	import Types.const
-	val key = scoped.key
-	val scope = scoped.scope
-	def typeName: String = fold(fmtMf("Task[%s]"), fmtMf("InputTask[%s]"), key.manifest.toString)
-	def settingValue: Option[Any] = fold(const(None), const(None), Some(value))
-	def description: String = fold(fmtMf("Task: %s"), fmtMf("Input task: %s"),
-		"Setting: %s = %s" format (key.manifest.toString, value.toString))
-	def fold[A](targ: OptManifest[_] => A, itarg: OptManifest[_] => A, s: => A): A =
-		if (key.manifest.erasure == classOf[Task[_]]) targ(key.manifest.typeArguments.head)
-		else if (key.manifest.erasure == classOf[InputTask[_]]) itarg(key.manifest.typeArguments.head)
-		else s
-	def fmtMf(s: String): OptManifest[_] => String = s format _
+	/** Many methods were moved to Def in 0.13.  This implicit makes those methods still available on Project for the transition. */
+	@inline
+	@deprecated("Use Def directly", "0.13.0")
+	implicit def projectToDef(p: Project.type): Def.type = Def
+
+	implicit def projectToRef(p: Project): ProjectReference = LocalProject(p.id)
+
+	final class RichTaskSessionVar[S](i: Initialize[Task[S]])
+	{
+			import SessionVar.{persistAndSet, resolveContext, set, transform => tx}
+
+		def updateState(f: (State, S) => State): Initialize[Task[S]] = i(t => tx(t, f))
+		def storeAs(key: TaskKey[S])(implicit f: sbinary.Format[S]): Initialize[Task[S]] = (Keys.resolvedScoped, i) { (scoped, task) =>
+			tx(task, (state, value) => persistAndSet( resolveContext(key, scoped.scope, state), state, value)(f))
+		}
+		def keepAs(key: TaskKey[S]): Initialize[Task[S]] =
+			(i, Keys.resolvedScoped)( (t,scoped) => tx(t, (state,value) => set(resolveContext(key, scoped.scope, state), state, value) ) )
+	}
 }
 
 trait ProjectExtra
@@ -439,76 +352,18 @@ trait ProjectExtra
 	implicit def configDependencyConstructor[T <% ProjectReference](p: T): Constructor = new Constructor(p)
 	implicit def classpathDependency[T <% ProjectReference](p: T): ClasspathDependency = new ClasspathDependency(p, None)
 
+	// These used to be in Project so that they didn't need to get imported (due to Initialize being nested in Project).
+	// Moving Initialize and other settings types to Def and decoupling Project, Def, and Structure means these go here for now
+	implicit def richInitializeTask[T](init: Initialize[Task[T]]): Scoped.RichInitializeTask[T] = new Scoped.RichInitializeTask(init)
+	implicit def richInitializeInputTask[T](init: Initialize[InputTask[T]]): Scoped.RichInitializeInputTask[T] = new Scoped.RichInitializeInputTask(init)
+	implicit def richInitialize[T](i: Initialize[T]): Scoped.RichInitialize[T] = new Scoped.RichInitialize[T](i)
+
+	implicit def richTaskSessionVar[T](init: Initialize[Task[T]]): Project.RichTaskSessionVar[T] = new Project.RichTaskSessionVar(init)
+
 	def inConfig(conf: Configuration)(ss: Seq[Setting[_]]): Seq[Setting[_]] =
 		inScope(ThisScope.copy(config = Select(conf)) )( (configuration :== conf) +: ss)
 	def inTask(t: Scoped)(ss: Seq[Setting[_]]): Seq[Setting[_]] =
 		inScope(ThisScope.copy(task = Select(t.key)) )( ss )
 	def inScope(scope: Scope)(ss: Seq[Setting[_]]): Seq[Setting[_]] =
 		Project.transform(Scope.replaceThis(scope), ss)
-}
-
-	import sbinary.{Format, Operations}
-object SessionVar
-{
-	val DefaultDataID = "data"
-
-	// these are required because of inference+manifest limitations
-	final case class Key[T](key: ScopedKey[Task[T]])
-	final case class Map(map: IMap[Key, Id]) {
-		def get[T](k: ScopedKey[Task[T]]): Option[T] = map get Key(k)
-		def put[T](k: ScopedKey[Task[T]], v: T): Map = Map(map put (Key(k), v))
-	}
-	def emptyMap = Map(IMap.empty)
-
-	def persistAndSet[T](key: ScopedKey[Task[T]], state: State, value: T)(implicit f: sbinary.Format[T]): State =
-	{
-		persist(key, state, value)(f)
-		set(key, state, value)
-	}
-
-	def persist[T](key: ScopedKey[Task[T]], state: State, value: T)(implicit f: sbinary.Format[T]): Unit =
-		Project.structure(state).streams(state).use(key)( s =>
-			Operations.write(s.binary(DefaultDataID), value)(f)
-		)
-
-	def clear(s: State): State  =  s.put(sessionVars, SessionVar.emptyMap)
-
-	def get[T](key: ScopedKey[Task[T]], state: State): Option[T] = orEmpty(state get sessionVars) get key
-
-	def set[T](key: ScopedKey[Task[T]], state: State, value: T): State = state.update(sessionVars)(om => orEmpty(om) put (key, value))
-
-	def orEmpty(opt: Option[Map]) = opt getOrElse emptyMap
-
-	def transform[S](task: Task[S], f: (State, S) => State): Task[S] =
-	{
-		val g = (s: S, map: AttributeMap) => map.put(Keys.transformState, (state: State) => f(state, s))
-		task.copy(info = task.info.postTransform(g))
-	}
-
-	def resolveContext[T](key: ScopedKey[Task[T]], context: Scope, state: State): ScopedKey[Task[T]] =
-	{
-		val subScope = Scope.replaceThis(context)(key.scope)
-		val scope = Project.structure(state).data.definingScope(subScope, key.key) getOrElse subScope
-		ScopedKey(scope, key.key)
-	}
-
-	def read[T](key: ScopedKey[Task[T]], state: State)(implicit f: Format[T]): Option[T] =
-		Project.structure(state).streams(state).use(key) { s =>
-			try { Some(Operations.read(s.readBinary(key, DefaultDataID))) }
-			catch { case e: Exception => None }
-		}
-
-	def load[T](key: ScopedKey[Task[T]], state: State)(implicit f: Format[T]): Option[T] =
-		get(key, state) orElse read(key, state)(f)
-
-	def loadAndSet[T](key: ScopedKey[Task[T]], state: State, setIfUnset: Boolean = true)(implicit f: Format[T]): (State, Option[T]) =
-		get(key, state) match {
-			case s: Some[T] => (state, s)
-			case None => read(key, state)(f) match {
-				case s @ Some(t) =>
-					val newState = if(setIfUnset && get(key, state).isDefined) state else set(key, state, t)
-					(newState, s)
-				case None => (state, None)
-			}
-		}
 }

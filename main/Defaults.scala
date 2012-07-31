@@ -7,8 +7,8 @@ package sbt
 	import Scope.{fillTaskAxis, GlobalScope, ThisScope}
 	import xsbt.api.Discovery
 	import xsbti.compile.CompileOrder
-	import Project.{inConfig, Initialize, inScope, inTask, ScopedKey, Setting, SettingsDefinition}
-	import Load.LoadedBuild
+	import Project.{inConfig, inScope, inTask, richInitialize, richInitializeTask, richTaskSessionVar}
+	import Def.{Initialize, ScopedKey, Setting, SettingsDefinition}
 	import Artifact.{DocClassifier, SourceClassifier}
 	import Configurations.{Compile, CompilerPlugin, IntegrationTest, names, Provided, Runtime, Test}
 	import CrossVersion.{binarySbtVersion, binaryScalaVersion}
@@ -263,7 +263,7 @@ object Defaults extends BuildCommon
 			override def watchPaths(s: State) = EvaluateTask.evaluateTask(Project structure s, key, s, base) match {
 				case Some(Value(ps)) => ps
 				case Some(Inc(i)) => throw i
-				case None => error("key not found: " + Project.displayFull(key))
+				case None => error("key not found: " + Def.displayFull(key))
 			}
 		}
 	}
@@ -657,7 +657,7 @@ object Defaults extends BuildCommon
 		forDependencies[T,T](ref => (key in ref) ?? default(ref), includeRoot, classpath, aggregate)
 
 	def forDependencies[T,V](init: ProjectRef => Initialize[V], includeRoot: Boolean = true, classpath: Boolean = true, aggregate: Boolean = false): Initialize[Seq[V]] =
-		Project.bind( (loadedBuild, thisProjectRef).identity ) { case (lb, base) =>
+		Def.bind( (loadedBuild, thisProjectRef).identity ) { case (lb, base) =>
 			transitiveDependencies(base, lb, includeRoot, classpath, aggregate) map init join ;
 		}
 
@@ -773,7 +773,7 @@ object Classpaths
 	)
 	val baseSettings: Seq[Setting[_]] = sbtClassifiersTasks ++ Seq(
 		conflictWarning in GlobalScope :== ConflictWarning.default("global"),
-		conflictWarning <<= (thisProjectRef, conflictWarning) { (ref, cw) => cw.copy(label = Project.display(ref)) },
+		conflictWarning <<= (thisProjectRef, conflictWarning) { (ref, cw) => cw.copy(label = Reference.display(ref)) },
 		unmanagedBase <<= baseDirectory / "lib",
 		normalizedName <<= name(StringUtilities.normalize),
 		isSnapshot <<= isSnapshot or version(_ endsWith "-SNAPSHOT"),
@@ -859,7 +859,7 @@ object Classpaths
 			(module, ref, config, cacheDirectory, si, reports, roots, resolved, skip, s) =>
 				val depsUpdated = reports.exists(!_.stats.cached)
 				val isRoot = roots contains resolved
-				cachedUpdate(cacheDirectory / "update", Project.display(ref), module, config, Some(si), skip = skip, force = isRoot, depsUpdated = depsUpdated, log = s.log)
+				cachedUpdate(cacheDirectory / "update", Reference.display(ref), module, config, Some(si), skip = skip, force = isRoot, depsUpdated = depsUpdated, log = s.log)
 		} tag(Tags.Update, Tags.Network),
 		update <<= (conflictWarning, update, streams) map { (config, report, s) => ConflictWarning(config, report, s.log); report },
 		transitiveClassifiers in GlobalScope :== Seq(SourceClassifier, DocClassifier),
@@ -1277,12 +1277,12 @@ trait BuildExtra extends BuildCommon
 		seq( artLocal <<= artifact, taskLocal <<= taskDef, art, pkgd )
 	}
 
-	def seq(settings: Setting[_]*): SettingsDefinition = new Project.SettingList(settings)
+	def seq(settings: Setting[_]*): SettingsDefinition = new Def.SettingList(settings)
 
 	def externalIvySettings(file: Initialize[File] = baseDirectory / "ivysettings.xml", addMultiResolver: Boolean = true): Setting[Task[IvyConfiguration]] =
 		externalIvySettingsURI(file(_.toURI), addMultiResolver)
 	def externalIvySettingsURL(url: URL, addMultiResolver: Boolean = true): Setting[Task[IvyConfiguration]] =
-		externalIvySettingsURI(Project.value(url.toURI), addMultiResolver)
+		externalIvySettingsURI(Def.value(url.toURI), addMultiResolver)
 	def externalIvySettingsURI(uri: Initialize[URI], addMultiResolver: Boolean = true): Setting[Task[IvyConfiguration]] =
 	{
 		val other = (baseDirectory, appConfiguration, projectResolver, streams).identityMap
@@ -1375,12 +1375,12 @@ trait BuildCommon
 
 		// intended for use in constructing InputTasks
 	def loadForParser[P,T](task: TaskKey[T])(f: (State, Option[T]) => Parser[P])(implicit format: sbinary.Format[T]): Initialize[State => Parser[P]] =
-		loadForParserI(task)(Project value f)(format)
+		loadForParserI(task)(Def value f)(format)
 	def loadForParserI[P,T](task: TaskKey[T])(init: Initialize[(State, Option[T]) => Parser[P]])(implicit format: sbinary.Format[T]): Initialize[State => Parser[P]] =
 		(resolvedScoped, init)( (ctx, f) => (s: State) => f( s, loadFromContext(task, ctx, s)(format)) )
 
 	def getForParser[P,T](task: TaskKey[T])(init: (State, Option[T]) => Parser[P]): Initialize[State => Parser[P]] =
-		getForParserI(task)(Project value init)
+		getForParserI(task)(Def value init)
 	def getForParserI[P,T](task: TaskKey[T])(init: Initialize[(State, Option[T]) => Parser[P]]): Initialize[State => Parser[P]] =
 		(resolvedScoped, init)( (ctx, f) => (s: State) => f(s, getFromContext(task, ctx, s)) )
 

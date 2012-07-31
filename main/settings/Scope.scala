@@ -5,7 +5,6 @@ package sbt
 
 	import java.io.File
 	import java.net.URI
-	import Types.some
 
 final case class Scope(project: ScopeAxis[Reference], config: ScopeAxis[ConfigKey], task: ScopeAxis[AttributeKey[_]], extra: ScopeAxis[AttributeMap])
 {
@@ -121,7 +120,7 @@ object Scope
 		(!mask.extra || a.extra == b.extra)
 
 	def projectPrefix(project: ScopeAxis[Reference], show: Reference => String = showProject): String = project.foldStrict(show, "*/", "./")
-	def showProject = (ref: Reference) => Project.display(ref) + "/"
+	def showProject = (ref: Reference) => Reference.display(ref) + "/"
 
 	def parseScopedKey(command: String): (Scope, String) =
 	{
@@ -231,68 +230,3 @@ object Scope
 		else
 			for( c <- withGlobalAxis(scope.config); t <- withGlobalAxis(scope.task); e <- withGlobalAxis(scope.extra) ) yield Scope(Global, c, t, e)
 }
-
-
-sealed trait ScopeAxis[+S] {
-	def foldStrict[T](f: S => T, ifGlobal: T, ifThis: T): T = fold(f, ifGlobal, ifThis)
-	def fold[T](f: S => T, ifGlobal: => T, ifThis: => T): T = this match {
-		case This => ifThis
-		case Global => ifGlobal
-		case Select(s) => f(s)
-	}
-	def toOption: Option[S] = foldStrict(some.fn, None, None)
-	def map[T](f: S => T): ScopeAxis[T] = foldStrict(s => Select(f(s)), Global, This)
-	def isSelect: Boolean = false
-}
-case object This extends ScopeAxis[Nothing]
-case object Global extends ScopeAxis[Nothing]
-final case class Select[S](s: S) extends ScopeAxis[S] {
-	override def isSelect = true
-}
-object ScopeAxis
-{
-	implicit def scopeAxisToScope(axis: ScopeAxis[Nothing]): Scope =
-		Scope(axis, axis, axis, axis)
-	def fromOption[T](o: Option[T]): ScopeAxis[T] = o match {
-		case Some(v) => Select(v)
-		case None => Global
-	}
-}
-/** Specifies the Scope axes that should be used for an operation.  `true` indicates an axis should be used. */
-final case class ScopeMask(project: Boolean = true, config: Boolean = true, task: Boolean = true, extra: Boolean = true)
-{
-	def concatShow(p: String, c: String, t: String, sep: String, x: String): String =
-	{
-		val sb = new StringBuilder
-		if(project) sb.append(p)
-		if(config) sb.append(c)
-		if(task) sb.append(t)
-		sb.append(sep)
-		if(extra) sb.append(x)
-		sb.toString
-	}
-}
-
-final case class ConfigKey(name: String)
-object ConfigKey
-{
-	implicit def configurationToKey(c: Configuration): ConfigKey = ConfigKey(c.name)
-}
-
-sealed trait DelegateIndex
-{
-	def project(ref: ProjectRef): Seq[ScopeAxis[ResolvedReference]]
-	def config(ref: ProjectRef, conf: ConfigKey): Seq[ScopeAxis[ConfigKey]]
-//	def task(ref: ProjectRef, task: ScopedKey[_]): Seq[ScopeAxis[ScopedKey[_]]]
-//	def extra(ref: ProjectRef, e: AttributeMap): Seq[ScopeAxis[AttributeMap]]
-}
-private final class DelegateIndex0(refs: Map[ProjectRef, ProjectDelegates]) extends DelegateIndex
-{
-	def project(ref: ProjectRef): Seq[ScopeAxis[ResolvedReference]] = refs.get(ref) match { case Some(pd) => pd.refs; case None => Nil }
-	def config(ref: ProjectRef, conf: ConfigKey): Seq[ScopeAxis[ConfigKey]] =
-		refs.get(ref) match {
-			case Some(pd) => pd.confs.get(conf) match { case Some(cs) => cs; case None => Select(conf) :: Global :: Nil }
-			case None => Select(conf) :: Global :: Nil
-		}
-}
-private final class ProjectDelegates(val ref: ProjectRef, val refs: Seq[ScopeAxis[ResolvedReference]], val confs: Map[ConfigKey, Seq[ScopeAxis[ConfigKey]]])

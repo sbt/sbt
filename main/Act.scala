@@ -3,9 +3,9 @@
  */
 package sbt
 
-	import Project.{ScopedKey, showContextKey}
+	import Def.{showRelativeKey, ScopedKey}
+	import Project.showContextKey
 	import Keys.{sessionSettings, thisProject}
-	import Load.BuildStructure
 	import complete.{DefaultParsers, Parser}
 	import Aggregation.{KeyValue,Values}
 	import DefaultParsers._
@@ -31,7 +31,7 @@ object Act
 	def scopedKeySelected(index: KeyIndex, current: ProjectRef, defaultConfigs: Option[ResolvedReference] => Seq[String],
 		keyMap: Map[String, AttributeKey[_]], data: Settings[Scope]): Parser[ParsedKey] =
 			scopedKeyFull(index, current, defaultConfigs, keyMap) flatMap { choices =>
-				select(choices, data)( Project.showRelativeKey(current, index.buildURIs.size > 1) )
+				select(choices, data)( showRelativeKey(current, index.buildURIs.size > 1) )
 			}
 
 	def scopedKeyFull(index: KeyIndex, current: ProjectRef, defaultConfigs: Option[ResolvedReference] => Seq[String], keyMap: Map[String, AttributeKey[_]]): Parser[Seq[Parser[ParsedKey]]] =

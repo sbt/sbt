@@ -5,6 +5,7 @@ package sbt
 
 	import java.io.File
 	import java.net.URI
+	import Def.{ScopedKey,Setting}
 	import Project._
 	import Types.Endo
 	import compiler.Eval
@@ -89,7 +90,7 @@ object SessionSettings
       val newSession = session.copy(append = newAppend.toMap, original = newOriginal.flatten.toSeq)
 			reapply(newSession.copy(original = newSession.mergeSettings, append = Map.empty), s)
 		}
-	def writeSettings(pref: ProjectRef, settings: List[SessionSetting], original: Seq[Setting[_]], structure: Load.BuildStructure): (Seq[SessionSetting], Seq[Setting[_]]) =
+	def writeSettings(pref: ProjectRef, settings: List[SessionSetting], original: Seq[Setting[_]], structure: BuildStructure): (Seq[SessionSetting], Seq[Setting[_]]) =
 	{
 		val project = Project.getProject(pref, structure).getOrElse(error("Invalid project reference " + pref))
 		val writeTo: File = BuildPaths.configurationSources(project.base).headOption.getOrElse(new File(project.base, "build.sbt"))
@@ -140,7 +141,7 @@ object SessionSettings
 	def printAllSettings(s: State): State =
 		withSettings(s){ session =>
 			for( (ref, settings) <- session.append if !settings.isEmpty) {
-				println("In " + Project.display(ref))
+				println("In " + Reference.display(ref))
 				printSettings(settings)
 			}
 			s

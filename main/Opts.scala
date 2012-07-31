@@ -33,7 +33,8 @@ object DefaultOptions {
 	import Opts._
 	import Path._
 	import BuildPaths.{getGlobalBase, getGlobalSettingsDirectory}
-	import Project.{Setting, extract}
+	import Project.{extract, richInitializeTask}
+	import Def.Setting
 
 	def javac: Seq[String] = compile.encoding("UTF-8")
 	def scalac: Seq[String] = compile.encoding("UTF-8")

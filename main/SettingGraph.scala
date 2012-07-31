@@ -5,8 +5,7 @@ package sbt
 
 	import java.net.URI
 	import java.io.File
-	import Project.{ScopedKey, flattenLocals, compiled}
-	import Load.BuildStructure
+	import Def.{compiled,flattenLocals,ScopedKey}
 	import Predef.{any2stringadd => _, _}
 
 object SettingGraph

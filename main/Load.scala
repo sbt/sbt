@@ -13,20 +13,20 @@ package sbt
 	import collection.mutable
 	import Compiler.{Compilers,Inputs}
 	import inc.{FileValueCache, Locate}
-	import Project.{inScope, ScopedKey, ScopeLocal, Setting}
-	import Keys.{appConfiguration, baseDirectory, configuration, fullResolvers, fullClasspath, pluginData, streams, Streams, thisProject, thisProjectRef, update}
-	import Keys.{exportedProducts, isDummy, loadedBuild, parseResult, resolvedScoped, taskDefinitionKey}
+	import Project.{inScope,makeSettings}
+	import Def.{parseResult, ScopedKey, ScopeLocal, Setting}
+	import Keys.{appConfiguration, baseDirectory, configuration, fullResolvers, fullClasspath, pluginData, streams, thisProject, thisProjectRef, update}
+	import Keys.{exportedProducts, isDummy, loadedBuild, resolvedScoped, taskDefinitionKey}
 	import tools.nsc.reporters.ConsoleReporter
 	import Build.{analyzed, data}
 	import Scope.{GlobalScope, ThisScope}
 	import Types.const
-
-object Load
-{
 	import BuildPaths._
 	import BuildStreams._
 	import Locate.DefinesClass
-	
+
+object Load
+{
 	// note that there is State passed in but not pulled out
 	def defaultLoad(state: State, baseDirectory: File, log: Logger, isPlugin: Boolean = false, topLevelExtras: List[URI] = Nil): (() => Eval, BuildStructure) =
 	{
@@ -55,7 +55,7 @@ object Load
 		new LoadBuildConfiguration(stagingDirectory, classpath, loader, compilers, evalPluginDef, definesClass, delegates,
 			EvaluateTask.injectStreams, pluginMgmt, inject, None, Nil, log)
 	}
-	def injectGlobal(state: State): Seq[Project.Setting[_]] =
+	def injectGlobal(state: State): Seq[Setting[_]] =
 		(appConfiguration in GlobalScope :== state.configuration) +:
 		EvaluateTask.injectSettings
 	def defaultWithGlobal(state: State, base: File, rawConfig: LoadBuildConfiguration, globalBase: File, log: Logger): LoadBuildConfiguration =
@@ -126,7 +126,7 @@ object Load
 		lazy val rootEval = lazyEval(loaded.units(loaded.root).unit)
 		val settings = finalTransforms(buildConfigurations(loaded, getRootProject(projects), rootEval, config.injectSettings))
 		val delegates = config.delegates(loaded)
-		val data = Project.makeSettings(settings, delegates, config.scopeLocal)( Project.showLoadingKey( loaded ) )
+		val data = makeSettings(settings, delegates, config.scopeLocal)( Project.showLoadingKey( loaded ) )
 		val index = structureIndex(data, settings, loaded.extra(data))
 		val streams = mkStreams(projects, loaded.root, data)
 		(rootEval, new BuildStructure(projects, loaded.root, settings, data, index, streams, delegates, config.scopeLocal))
@@ -156,7 +156,7 @@ object Load
 				case resolvedScoped.key => Some(defining.asInstanceOf[T])
 				case parseResult.key =>
 						import std.TaskExtra._
-					val getResult = InputTask.inputMap map { m => m get defining getOrElse error("No parsed value for " + Project.displayFull(defining) + "\n" + m) }
+					val getResult = InputTask.inputMap map { m => m get defining getOrElse error("No parsed value for " + Def.displayFull(defining) + "\n" + m) }
 					Some(getResult.asInstanceOf[T])
 				case _ => None
 			}
@@ -180,7 +180,7 @@ object Load
 	def reapply(newSettings: Seq[Setting[_]], structure: BuildStructure)(implicit display: Show[ScopedKey[_]]): BuildStructure =
 	{
 		val transformed = finalTransforms(newSettings)
-		val newData = Project.makeSettings(transformed, structure.delegates, structure.scopeLocal)
+		val newData = makeSettings(transformed, structure.delegates, structure.scopeLocal)
 		val newIndex = structureIndex(newData, transformed, index => buildUtil(structure.root, structure.units, index, newData))
 		val newStreams = mkStreams(structure.units, structure.root, newData)
 		new BuildStructure(units = structure.units, root = structure.root, settings = transformed, data = newData, index = newIndex, streams = newStreams, delegates = structure.delegates, scopeLocal = structure.scopeLocal)
@@ -439,7 +439,7 @@ object Load
 			"Put .sbt plugin definitions directly in project/,\n  .scala plugin definitions in project/project/,\n  and remove the project/plugins/ directory.")
 		val plugs = plugins(pluginDir, s, config)
 		val defs = definitionSources(defDir)
-		val target = buildOutputDirectory(defDir, config.compilers)
+		val target = buildOutputDirectory(defDir, config.compilers.scalac.scalaInstance)
 		IO.createDirectory(target)
 		val loadedDefs =
 			if(defs.isEmpty)
@@ -594,10 +594,6 @@ object Load
 	def loadPlugin(pluginName: String, loader: ClassLoader): Plugin =
 		ModuleUtilities.getObject(pluginName, loader).asInstanceOf[Plugin]
 
-	def importAll(values: Seq[String]) = if(values.isEmpty) Nil else values.map( _ + "._" ).mkString("import ", ", ", "") :: Nil
-	def importAllRoot(values: Seq[String]) = importAll(values map rootedName)
-	def rootedName(s: String) = if(s contains '.') "_root_." + s else s
-		
 	def findPlugins(analysis: inc.Analysis): Seq[String]  =  discover(analysis, "sbt.Plugin")
 	def findDefinitions(analysis: inc.Analysis): Seq[String]  =  discover(analysis, "sbt.Build")
 	def discover(analysis: inc.Analysis, subclasses: String*): Seq[String] =
@@ -634,93 +630,65 @@ object Load
 	}
 
 	def defaultEvalOptions: Seq[String] = Nil
-	def baseImports = "import sbt._, Process._, Keys._" :: Nil
 
-	final class EvaluatedConfigurations(val eval: Eval, val settings: Seq[Setting[_]])
-	final class LoadedDefinitions(val base: File, val target: Seq[File], val loader: ClassLoader, val builds: Seq[Build], val buildNames: Seq[String])
-	final class LoadedPlugins(val base: File, val pluginData: PluginData, val loader: ClassLoader, val plugins: Seq[Plugin], val pluginNames: Seq[String])
-	{
-		def fullClasspath: Seq[Attributed[File]] = pluginData.classpath
-		def classpath: Seq[File] = data(fullClasspath)
-	}
-	final class BuildUnit(val uri: URI, val localBase: File, val definitions: LoadedDefinitions, val plugins: LoadedPlugins)
-	{
-		override def toString = if(uri.getScheme == "file") localBase.toString else (uri + " (locally: " + localBase +")")
-	}
-	
-	final class LoadedBuild(val root: URI, val units: Map[URI, LoadedBuildUnit])
-	{
-		checkCycles(units)
-		def allProjectRefs: Seq[(ProjectRef, ResolvedProject)] = for( (uri, unit) <- units.toSeq; (id, proj) <- unit.defined ) yield ProjectRef(uri, id) -> proj
-		def extra(data: Settings[Scope])(keyIndex: KeyIndex): BuildUtil[ResolvedProject] = buildUtil(root, units, keyIndex, data)
-	}
-	def checkCycles(units: Map[URI, LoadedBuildUnit])
-	{
-		def getRef(pref: ProjectRef) = units(pref.build).defined(pref.project)
-		def deps(proj: ResolvedProject)(base: ResolvedProject => Seq[ProjectRef]): Seq[ResolvedProject]  =  Dag.topologicalSort(proj)(p => base(p) map getRef)
-		 // check for cycles
-		for( (_, lbu) <- units; proj <- lbu.defined.values) {
-			deps(proj)(_.dependencies.map(_.project))
-			deps(proj)(_.delegates)
-			deps(proj)(_.aggregate)
-		}
-	}
-	final class PartBuild(val root: URI, val units: Map[URI, PartBuildUnit])
-	sealed trait BuildUnitBase { def rootProjects: Seq[String]; def buildSettings: Seq[Setting[_]] }
-	final class PartBuildUnit(val unit: BuildUnit, val defined: Map[String, Project], val rootProjects: Seq[String], val buildSettings: Seq[Setting[_]]) extends BuildUnitBase
-	{
-		def resolve(f: Project => ResolvedProject): LoadedBuildUnit = new LoadedBuildUnit(unit, defined mapValues f toMap, rootProjects, buildSettings)
-		def resolveRefs(f: ProjectReference => ProjectRef): LoadedBuildUnit = resolve(_ resolve f)
-	}
-	final class LoadedBuildUnit(val unit: BuildUnit, val defined: Map[String, ResolvedProject], val rootProjects: Seq[String], val buildSettings: Seq[Setting[_]]) extends BuildUnitBase
-	{
-		assert(!rootProjects.isEmpty, "No root projects defined for build unit " + unit)
-		val root = rootProjects.head
-		def localBase = unit.localBase
-		def classpath: Seq[File] = unit.definitions.target ++ unit.plugins.classpath
-		def loader = unit.definitions.loader
-		def imports = getImports(unit)
-		override def toString = unit.toString
-	}
-	def getImports(unit: BuildUnit) = baseImports ++ importAllRoot(unit.plugins.pluginNames ++ unit.definitions.buildNames)
+	@deprecated("Use BuildUtil.baseImports", "0.13.0")
+	def baseImports = BuildUtil.baseImports
+	@deprecated("Use BuildUtil.checkCycles", "0.13.0")
+	def checkCycles(units: Map[URI, LoadedBuildUnit]): Unit = BuildUtil.checkCycles(units)
+	@deprecated("Use BuildUtil.importAll", "0.13.0")
+	def importAll(values: Seq[String]): Seq[String] = BuildUtil.importAll(values)
+	@deprecated("Use BuildUtil.importAllRoot", "0.13.0")
+	def importAllRoot(values: Seq[String]): Seq[String] = BuildUtil.importAllRoot(values)
+	@deprecated("Use BuildUtil.rootedNames", "0.13.0")
+	def rootedName(s: String): String = BuildUtil.rootedName(s)
+	@deprecated("Use BuildUtil.getImports", "0.13.0")
+	def getImports(unit: BuildUnit): Seq[String] = BuildUtil.getImports(unit)
 
 	def referenced[PR <: ProjectReference](definitions: Seq[ProjectDefinition[PR]]): Seq[PR] = definitions flatMap { _.referenced }
 	
-	final class BuildStructure(val units: Map[URI, LoadedBuildUnit], val root: URI, val settings: Seq[Setting[_]], val data: Settings[Scope], val index: StructureIndex, val streams: State => Streams, val delegates: Scope => Seq[Scope], val scopeLocal: ScopeLocal)
-	{
-		val rootProject: URI => String = Load getRootProject units
-		def allProjects: Seq[ResolvedProject] = units.values.flatMap(_.defined.values).toSeq
-		def allProjects(build: URI): Seq[ResolvedProject] = units.get(build).toList.flatMap(_.defined.values)
-		def allProjectRefs: Seq[ProjectRef] = units.toSeq flatMap { case (build, unit) => refs(build, unit.defined.values.toSeq) }
-		def allProjectRefs(build: URI): Seq[ProjectRef] = refs(build, allProjects(build))
-		val extra: BuildUtil[ResolvedProject] = buildUtil(root, units, index.keyIndex, data)
-		private[this] def refs(build: URI, projects: Seq[ResolvedProject]): Seq[ProjectRef] = projects.map { p => ProjectRef(build, p.id) }
-	}
-	def buildUtil(root: URI, units: Map[URI, LoadedBuildUnit], keyIndex: KeyIndex, data: Settings[Scope]): BuildUtil[ResolvedProject] =
-	{
-		val getp = (build: URI, project: String) => Load.getProject(units, build, project)
-		val configs = (_: ResolvedProject).configurations.map(c => ConfigKey(c.name))
-		val aggregates = Aggregation.relation(units)
-		new BuildUtil(keyIndex, data, root, Load getRootProject units, getp, configs, aggregates)
-	}
-	final case class LoadBuildConfiguration(stagingDirectory: File, classpath: Seq[Attributed[File]], loader: ClassLoader,
-		compilers: Compilers, evalPluginDef: (BuildStructure, State) => PluginData, definesClass: DefinesClass,
-		delegates: LoadedBuild => Scope => Seq[Scope], scopeLocal: ScopeLocal,
-		pluginManagement: PluginManagement, injectSettings: InjectSettings, globalPlugin: Option[GlobalPlugin], extraBuilds: Seq[URI],
-		log: Logger)
-	{
-		lazy val (globalPluginClasspath, globalPluginLoader) = pluginDefinitionLoader(this, Load.globalPluginClasspath(globalPlugin))
-		lazy val globalPluginNames = if(globalPluginClasspath.isEmpty) Nil else getPluginNames(globalPluginClasspath, globalPluginLoader)
-	}
+	@deprecated("LoadedBuildUnit is now top-level", "0.13.0")
+	type LoadedBuildUnit = sbt.LoadedBuildUnit
+
+	@deprecated("BuildStructure is now top-level", "0.13.0")
+	type BuildStructure = sbt.BuildStructure
+
+	@deprecated("StructureIndex is now top-level", "0.13.0")
+	type StructureIndex = sbt.StructureIndex
+
+	@deprecated("LoadBuildConfiguration is now top-level", "0.13.0")
+	type LoadBuildConfiguration = sbt.LoadBuildConfiguration
+	@deprecated("LoadBuildConfiguration is now top-level", "0.13.0")	
+	val LoadBuildConfiguration = sbt.LoadBuildConfiguration
+
+	final class EvaluatedConfigurations(val eval: Eval, val settings: Seq[Setting[_]])
 	final case class InjectSettings(global: Seq[Setting[_]], project: Seq[Setting[_]], projectLoaded: ClassLoader => Seq[Setting[_]])
 
-	// information that is not original, but can be reconstructed from the rest of BuildStructure
-	final class StructureIndex(
-		val keyMap: Map[String, AttributeKey[_]],
-		val taskToKey: Map[Task[_], ScopedKey[Task[_]]],
-		val triggers: Triggers[Task],
-		val keyIndex: KeyIndex,
-		val aggregateKeyIndex: KeyIndex
-	)
+	@deprecated("LoadedDefinitions is now top-level", "0.13.0")
+	type LoadedDefinitions = sbt.LoadedDefinitions
+	@deprecated("LoadedPlugins is now top-level", "0.13.0")
+	type LoadedPlugins = sbt.LoadedPlugins
+	@deprecated("BuildUnit is now top-level", "0.13.0")
+	type BuildUnit = sbt.BuildUnit
+	@deprecated("LoadedBuild is now top-level", "0.13.0")
+	type LoadedBuild = sbt.LoadedBuild
+	@deprecated("PartBuild is now top-level", "0.13.0")
+	type PartBuild = sbt.PartBuild
+	@deprecated("BuildUnitBase is now top-level", "0.13.0")
+	type BuildUnitBase = sbt.BuildUnitBase
+	@deprecated("PartBuildUnit is now top-level", "0.13.0")
+	type PartBuildUnit = sbt.PartBuildUnit
+	@deprecated("Use BuildUtil.apply", "0.13.0")
+	def buildUtil(root: URI, units: Map[URI, LoadedBuildUnit], keyIndex: KeyIndex, data: Settings[Scope]): BuildUtil[ResolvedProject] = BuildUtil(root, units, keyIndex, data)
 }
+
+final case class LoadBuildConfiguration(stagingDirectory: File, classpath: Seq[Attributed[File]], loader: ClassLoader,
+	compilers: Compilers, evalPluginDef: (BuildStructure, State) => PluginData, definesClass: DefinesClass,
+	delegates: LoadedBuild => Scope => Seq[Scope], scopeLocal: ScopeLocal,
+	pluginManagement: PluginManagement, injectSettings: Load.InjectSettings, globalPlugin: Option[GlobalPlugin], extraBuilds: Seq[URI],
+	log: Logger)
+{
+	lazy val (globalPluginClasspath, globalPluginLoader) = Load.pluginDefinitionLoader(this, Load.globalPluginClasspath(globalPlugin))
+	lazy val globalPluginNames = if(globalPluginClasspath.isEmpty) Nil else Load.getPluginNames(globalPluginClasspath, globalPluginLoader)
+}
+
 final class IncompatiblePluginsException(msg: String, cause: Throwable) extends Exception(msg, cause)

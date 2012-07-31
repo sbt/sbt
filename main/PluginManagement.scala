@@ -1,7 +1,7 @@
 package sbt
 
 	import Keys.Classpath
-	import Project.Setting
+	import Def.Setting
 	import PluginManagement._
 
 	import java.net.{URL,URLClassLoader}

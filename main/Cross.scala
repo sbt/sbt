@@ -6,7 +6,7 @@ package sbt
 	import Keys._
 	import complete.{DefaultParsers, Parser}
 	import DefaultParsers._
-	import Project.{ScopedKey, Setting}
+	import Def.{ScopedKey, Setting}
 	import Scope.GlobalScope
 
 object Cross

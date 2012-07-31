@@ -7,7 +7,7 @@ package sbt
 	import java.io.File
 	import LogManager._
 	import std.Transform
-	import Project.ScopedKey
+	import Def.ScopedKey
 	import Scope.GlobalScope
 	import MainLogging._
 	import Keys.{logLevel, logManager, persistLogLevel, persistTraceLevel, state, traceLevel}
