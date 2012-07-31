@@ -1,0 +1,16 @@
+package sbt
+package appmacro
+
+	import scala.reflect._
+	import makro._
+
+/** A builder that uses `TupleN` as the representation for small numbers of inputs (up to `TupleNBuilder.MaxInputs`) 
+* and `KList` for larger numbers of inputs. This builder cannot handle fewer than 2 inputs.*/
+object MixedBuilder extends TupleBuilder
+{
+	def make(c: Context)(mt: c.Type, inputs: Inputs[c.universe.type]): BuilderResult[c.type] =
+	{
+		val delegate = if(inputs.size > TupleNBuilder.MaxInputs) KListBuilder else TupleNBuilder
+		delegate.make(c)(mt, inputs)
+	}
+}
