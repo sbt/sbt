@@ -9,6 +9,7 @@ package sbt
 	import java.net.URI
 	import Parser._
 	import collection.mutable
+	import std.Transform.{DummyTaskMap, TaskAndValue}
 
 sealed trait Aggregation
 final object Aggregation
@@ -27,9 +28,9 @@ final object Aggregation
 
 	def applyTasks[T](s: State, structure: BuildStructure, ps: Values[Parser[Task[T]]], show: Boolean)(implicit display: Show[ScopedKey[_]]): Parser[() => State] =
 		Command.applyEffect(seqParser(ps)) { ts =>
-			runTasks(s, structure, ts, Dummies(KNil, HNil), show)
+			runTasks(s, structure, ts, DummyTaskMap(Nil), show)
 		}
-	def runTasksWithResult[HL <: HList, T](s: State, structure: BuildStructure, ts: Values[Task[T]], extra: Dummies[HL], show: Boolean)(implicit display: Show[ScopedKey[_]]): (State, Result[Seq[KeyValue[T]]]) =
+	def runTasksWithResult[T](s: State, structure: BuildStructure, ts: Values[Task[T]], extra: DummyTaskMap, show: Boolean)(implicit display: Show[ScopedKey[_]]): (State, Result[Seq[KeyValue[T]]]) =
 	{
 			import EvaluateTask._
 			import std.TaskExtra._
@@ -41,7 +42,7 @@ final object Aggregation
 
 		val start = System.currentTimeMillis
 		val (newS, result) = withStreams(structure, s){ str =>
-			val transform = nodeView(s, str, roots, extra.tasks, extra.values)
+			val transform = nodeView(s, str, roots, extra)
 			runTask(toRun, s,str, structure.index.triggers, config)(transform)
 		}
 		val stop = System.currentTimeMillis
@@ -54,7 +55,7 @@ final object Aggregation
 		(newS, result)
 	}
 
-  def runTasks[HL <: HList, T](s: State, structure: BuildStructure, ts: Values[Task[T]], extra: Dummies[HL], show: Boolean)(implicit display: Show[ScopedKey[_]]): State = {
+  def runTasks[HL <: HList, T](s: State, structure: BuildStructure, ts: Values[Task[T]], extra: DummyTaskMap, show: Boolean)(implicit display: Show[ScopedKey[_]]): State = {
     runTasksWithResult(s, structure, ts, extra, show)._1
   }
 
@@ -92,14 +93,13 @@ final object Aggregation
 		DateFormat.getDateTimeInstance(DateFormat.MEDIUM, DateFormat.MEDIUM)
 	}
 
-	final case class Dummies[HL <: HList](tasks: KList[Task,HL], values: HL)
 	def applyDynamicTasks[I](s: State, structure: BuildStructure, inputs: Values[InputDynamic[I]], show: Boolean)(implicit display: Show[ScopedKey[_]]): Parser[() => State] =
 	{
 		val parsers = inputs.map { case KeyValue(k,t) => KeyValue(k, t parser s) }
 		Command.applyEffect(seqParser(parsers)) { parseds =>
 			import EvaluateTask._
 			val inputMap = (Map.empty[AnyRef,Any] /: (inputs zip parseds)) { case (im, (id, v)) => im + ((id.value.defined, v.value)) }
-			val dummies = Dummies( InputTask.inputMap :^: KNil, inputMap :+: HNil)
+			val dummies = DummyTaskMap(new TaskAndValue(InputTask.inputMap, inputMap) :: Nil)
 			val roots = inputs.map { case KeyValue(k,t) => KeyValue(k,t.task) }
 			runTasks(s, structure, roots, dummies, show)
 		}

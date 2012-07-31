@@ -6,7 +6,7 @@ package std
 
 import Types._
 import Task._
-import TaskExtra.allM
+import TaskExtra.{all,existToAny}
 import Execute._
 
 object Transform
@@ -16,17 +16,15 @@ object Transform
 
 	implicit def to_~>| [K[_], V[_]](map: RMap[K,V]) : K ~>| V = new (K ~>| V) { def apply[T](k: K[T]): Option[V[T]] = map.get(k) }
 
-	def dummyMap[HL <: HList](dummies: KList[Task, HL])(inject: HL): Task ~>| Task =
+	final case class DummyTaskMap(mappings: List[TaskAndValue[_]]) {
+		def ::[T](tav: (Task[T], T)): DummyTaskMap = DummyTaskMap(new TaskAndValue(tav._1, tav._2) :: mappings)
+	}
+	final class TaskAndValue[T](val task: Task[T], val value: T)
+	def dummyMap(dummyMap: DummyTaskMap): Task ~>| Task =
 	{
 		val pmap = new DelegatingPMap[Task, Task](new collection.mutable.ListMap)
-		def loop[HL <: HList](ds: KList[Task, HL], vs: HL): Unit =
-			(ds, vs) match {
-				case (KCons(dh, dt), vh :+: vt) =>
-					pmap(dh) = fromDummyStrict(dh, vh)
-					loop(dt, vt)
-				case _ => ()
-			}
-		loop(dummies, inject)
+		def add[T](dummy: TaskAndValue[T]) { pmap(dummy.task) = fromDummyStrict(dummy.task, dummy.value) }
+		dummyMap.mappings.foreach(x => add(x))
 		pmap
 	}
 
@@ -36,18 +34,18 @@ object Transform
 			def apply[T](in: Task[T]): Task[T]  =  map(in).getOrElse(in)
 		}
 
-	def apply[HL <: HList, Key](dummies: KList[Task, HL], injected: HL) =
+	def apply(dummies: DummyTaskMap) =
 	{
 		import System._
-		taskToNode( getOrId(dummyMap(dummies)(injected)) )
+		taskToNode( getOrId(dummyMap(dummies)) )
 	}
 
 	def taskToNode(pre: Task ~> Task): NodeView[Task] = new NodeView[Task] {
 		def apply[T](t: Task[T]): Node[Task, T] = pre(t).work match {
-			case Pure(eval, _) => toNode(KNil)( _ => Right(eval()) )
-			case Mapped(in, f) => toNode(in)( right ∙ f  )
-			case FlatMapped(in, f) => toNode(in)( left ∙ f )
-			case DependsOn(in, deps) => toNode(KList.fromList(deps))( ((_:Any) => Left(in)) ∙ allM )
+			case Pure(eval, _) => uniform(Nil)( _ => Right(eval()) )
+			case m: Mapped[t, k] => toNode[t,k](m.in)( right ∙ m.f  )( m.alist )
+			case m: FlatMapped[t, k] => toNode[t,k](m.in)( left ∙ m.f )( m.alist )
+			case DependsOn(in, deps) => uniform( existToAny(deps) )( const(Left(in)) ∙ all )
 			case Join(in, f) => uniform(in)(f)
 		}
 		def inline[T](t: Task[T]) = t.work match {
@@ -56,18 +54,13 @@ object Transform
 		}
 	}
 		
-	def uniform[T, D](tasks: Seq[Task[D]])(f: Seq[Result[D]] => Either[Task[T], T]): Node[Task, T] = new Node[Task, T] {
-		type Mixed = HNil
-		val mixedIn = KNil
-		type Uniform = D
-		val uniformIn = tasks
-		def work(mixed: Results[HNil], uniform: Seq[Result[Uniform]]) = f(uniform)
-	}
-	def toNode[T, In <: HList](in: Tasks[In])(f: Results[In] => Either[Task[T], T]): Node[Task, T] = new Node[Task, T] {
-		type Mixed = In
-		val mixedIn = in
-		type Uniform = Nothing
-		val uniformIn = Nil
-		def work(results: Results[In], units: Seq[Result[Uniform]]) = f(results)
+	def uniform[T, D](tasks: Seq[Task[D]])(f: Seq[Result[D]] => Either[Task[T], T]): Node[Task, T] =
+		toNode[T, ({ type l[L[x]] = List[L[D]] })#l]( tasks.toList )( f )( AList.seq[D] )
+
+	def toNode[T, k[L[x]]](inputs: k[Task])(f: k[Result] => Either[Task[T], T])(implicit a: AList[k]): Node[Task, T] = new Node[Task, T] {
+		type K[L[x]] = k[L]
+		val in = inputs
+		val alist = a
+		def work(results: K[Result]) = f(results)
 	}
 }

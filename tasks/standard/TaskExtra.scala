@@ -8,15 +8,16 @@ package std
 	import Task._
 	import java.io.{BufferedInputStream, BufferedReader, File, InputStream}
 
-sealed trait MultiInTask[In <: HList]
+sealed trait MultiInTask[K[L[x]]]
 {
-	def flatMap[T](f: In => Task[T]): Task[T]
-	def flatMapR[T](f: Results[In] => Task[T]): Task[T]
-	def map[T](f: In => T): Task[T]
-	def mapR[T](f: Results[In] => T): Task[T]
+	def flatMap[T](f: K[Id] => Task[T]): Task[T]
+	def flatMapR[T](f: K[Result] => Task[T]): Task[T]
+	def map[T](f: K[Id] => T): Task[T]
+	def mapR[T](f: K[Result] => T): Task[T]
 	def flatFailure[T](f: Seq[Incomplete] => Task[T]): Task[T]
 	def mapFailure[T](f: Seq[Incomplete] => T): Task[T]
 }
+
 sealed trait SingleInTask[S]
 {
 	def flatMapR[T](f: Result[S] => Task[T]): Task[T]
@@ -77,49 +78,45 @@ trait TaskExtra
 	final def nop: Task[Unit] = constant( () )
 	final def constant[T](t: T): Task[T] = task(t)
 
-	final implicit def t2ToMulti[A,B](t: (Task[A],Task[B])) = multInputTask(t._1 :^: t._2 :^: KNil)
-	final implicit def f2ToHfun[A,B,R](f: (A,B) => R): (A :+: B :+: HNil => R) = { case a :+: b :+: HNil => f(a,b) }
-	
-	final implicit def t3ToMulti[A,B,C](t: (Task[A],Task[B],Task[C])) = multInputTask(t._1 :^: t._2 :^: t._3 :^: KNil)
-	final implicit def f3ToHfun[A,B,C,R](f: (A,B,C) => R): (A :+: B :+: C :+: HNil => R) = { case a :+: b :+: c :+: HNil => f(a,b,c) }
-	
 	final implicit def actionToTask[T](a:  Action[T]): Task[T] = Task(Info(), a)
 	
 	final def task[T](f: => T): Task[T] = toTask(f _)
 	final implicit def toTask[T](f: () => T): Task[T] = new Pure(f, false)
 	final def inlineTask[T](value: T): Task[T] = new Pure(() => value, true)
 
-	final implicit def upcastTask[A >: B, B](t: Task[B]): Task[A] = t map { x => x : B }
+	final implicit def upcastTask[A >: B, B](t: Task[B]): Task[A] = t map { x => x : A }
 	final implicit def toTasks[S](in: Seq[() => S]): Seq[Task[S]] = in.map(toTask)
 	final implicit def iterableTask[S](in: Seq[S]): ForkTask[S, Seq] = new ForkTask[S, Seq] {
 		def fork[T](f: S => T): Seq[Task[T]] = in.map(x => task(f(x)))
 		def tasks: Seq[Task[S]] = fork(idFun)
 	}
 
-	final implicit def joinAnyTasks(in: Seq[Task[_]]): JoinTask[Any, Seq] = joinTasks[Any](in map (x => x: Task[Any]))
+		import TaskExtra.{allM, anyFailM, existToAny, failM, successM}
+
+	final implicit def joinAnyTasks(in: Seq[Task[_]]): JoinTask[Any, Seq] = joinTasks[Any]( existToAny(in) )
 	final implicit def joinTasks[S](in: Seq[Task[S]]): JoinTask[S, Seq] = new JoinTask[S, Seq] {
 		def join: Task[Seq[S]] = new Join(in, (s: Seq[Result[S]]) => Right(TaskExtra.all(s)) )
 		def reduced(f: (S,S) => S): Task[S] = TaskExtra.reduced(in.toIndexedSeq, f)
 	}
-	
-		import TaskExtra.{allM, anyFailM, failM, successM}	
-	final implicit def multInputTask[In <: HList](tasks: Tasks[In]): MultiInTask[In] = new MultiInTask[In] {
-		def flatMapR[T](f: Results[In] => Task[T]): Task[T] = new FlatMapped(tasks, f)
-		def flatMap[T](f: In => Task[T]): Task[T] = flatMapR(f compose allM)
-		def flatFailure[T](f: Seq[Incomplete] => Task[T]): Task[T] = flatMapR(f compose anyFailM)
 
-		def mapR[T](f: Results[In] => T): Task[T] = new Mapped(tasks, f)
-		def map[T](f: In => T): Task[T] = mapR(f compose allM)
-		def mapFailure[T](f: Seq[Incomplete] => T): Task[T] = mapR(f compose anyFailM)
+	final implicit def multT2Task[A,B](in: (Task[A], Task[B])) = multInputTask[({ type l[L[x]] = (L[A], L[B]) })#l](in)(AList.tuple2[A,B])
+
+	final implicit def multInputTask[K[L[X]]](tasks: K[Task])(implicit a: AList[K]): MultiInTask[K] = new MultiInTask[K] {
+		def flatMapR[T](f: K[Result] => Task[T]): Task[T] = new FlatMapped[T,K](tasks, f, a)
+		def flatMap[T](f: K[Id] => Task[T]): Task[T] = new FlatMapped[T, K](tasks, f compose allM, a)
+		def flatFailure[T](f: Seq[Incomplete] => Task[T]): Task[T] = new FlatMapped[T,K](tasks, f compose anyFailM, a)
+
+		def mapR[T](f: K[Result] => T): Task[T] = new Mapped[T,K](tasks, f, a)
+		def map[T](f: K[Id] => T): Task[T] = new Mapped[T,K](tasks, f compose allM, a)
+		def mapFailure[T](f: Seq[Incomplete] => T): Task[T] = new Mapped[T,K](tasks, f compose anyFailM, a)
 	}
 
 	final implicit def singleInputTask[S](in: Task[S]): SingleInTask[S] = new SingleInTask[S] {
-		type HL = S :+: HNil
-		private val ml = in :^: KNil
-		private def headM = (_: Results[HL]).combine.head
+		type K[L[x]] = L[S]
+		private def ml = AList.single[S]
 		
-		def flatMapR[T](f: Result[S] => Task[T]): Task[T] = new FlatMapped[T, HL](ml, f ∙ headM)
-		def mapR[T](f: Result[S] => T): Task[T] = new Mapped[T, HL](ml, f ∙ headM)
+		def flatMapR[T](f: Result[S] => Task[T]): Task[T] = new FlatMapped[T, K](in, f, ml)
+		def mapR[T](f: Result[S] => T): Task[T] = new Mapped[T, K](in, f, ml)
 		def dependsOn(tasks: Task[_]*): Task[S] = new DependsOn(in, tasks)
 		
 		def flatMap[T](f: S => Task[T]): Task[T] = flatMapR(f compose successM)
@@ -198,12 +195,13 @@ object TaskExtra extends TaskExtra
 				val (a, b) = i.splitAt(i.size / 2)
 				reducePair( reduced(a, f), reduced(b, f), f )
 		}
-	def reducePair[S](a: Task[S], b: Task[S], f: (S, S) => S): Task[S] =
-		(a :^: b :^: KNil) map { case x :+: y :+: HNil => f(x,y) }
 
-	def anyFailM[In <: HList]: Results[In] => Seq[Incomplete] = in =>
+	def reducePair[S](a: Task[S], b: Task[S], f: (S, S) => S): Task[S] =
+		multInputTask[({ type l[L[x]] = (L[S], L[S])})#l]((a,b))(AList.tuple2[S,S]) map f.tupled
+
+	def anyFailM[K[L[x]]](implicit a: AList[K]): K[Result] => Seq[Incomplete] = in =>
 	{
-		val incs = failuresM(in)
+		val incs = failuresM(a)(in)
 		if(incs.isEmpty) expectedFailure else incs
 	}
 	def failM[T]: Result[T] => Incomplete = { case Inc(i) => i; case x => expectedFailure }
@@ -211,12 +209,12 @@ object TaskExtra extends TaskExtra
 	def expectedFailure = throw Incomplete(None, message = Some("Expected dependency to fail."))
 
 	def successM[T]: Result[T] => T = { case Inc(i) => throw i; case Value(t) => t }
-	def allM[In <: HList]: Results[In] => In = in =>
+	def allM[K[L[x]]](implicit a: AList[K]): K[Result] => K[Id] = in =>
 	{
-		val incs = failuresM(in)
-		if(incs.isEmpty) in.down(Result.tryValue) else throw incompleteDeps(incs)
+		val incs = failuresM(a)(in)
+		if(incs.isEmpty) a.transform(in, Result.tryValue) else throw incompleteDeps(incs)
 	}
-	def failuresM[In <: HList]: Results[In] => Seq[Incomplete] = x => failures[Any](x.toList)
+	def failuresM[K[L[x]]](implicit a: AList[K]): K[Result] => Seq[Incomplete] = x => failures[Any](a.toList(x))
 
 	def all[D](in: Seq[Result[D]]) =
 	{
@@ -226,4 +224,6 @@ object TaskExtra extends TaskExtra
 	def failures[A](results: Seq[Result[A]]): Seq[Incomplete] = results.collect { case Inc(i) => i }
 
 	def incompleteDeps(incs: Seq[Incomplete]): Incomplete = Incomplete(None, causes = incs)
+
+	private[sbt] def existToAny(in: Seq[Task[_]]): Seq[Task[Any]] = in.asInstanceOf[Seq[Task[Any]]]
 }

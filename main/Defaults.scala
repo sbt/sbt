@@ -428,7 +428,7 @@ object Defaults extends BuildCommon
 	def packageSrcTask = packageSrcMappings
 
 	private type Mappings = Initialize[Task[Seq[(File, String)]]]
-	def concatMappings(as: Mappings, bs: Mappings) = (as zipWith bs)( (a,b) => (a :^: b :^: KNil) map { case a :+: b :+: HNil => a ++ b } )
+	def concatMappings(as: Mappings, bs: Mappings) = (as zipWith bs)( (a,b) => (a, b) map { case (a, b) => a ++ b } )
 
 	// drop base directories, since there are no valid mappings for these
 	def sourceMappings = (unmanagedSources, unmanagedSourceDirectories, baseDirectory) map { (srcs, sdirs, base) =>
@@ -542,7 +542,7 @@ object Defaults extends BuildCommon
 			val srcs = in.config.sources
 			val hasScala = srcs.exists(_.name.endsWith(".scala"))
 			val hasJava = srcs.exists(_.name.endsWith(".java"))
-			val cp = in.config.classpath.toList - in.config.classesDirectory
+			val cp = in.config.classpath.toList.filterNot(_ == in.config.classesDirectory)
 			val label = nameForSrc(config.name)
 			val (options, runDoc) = 
 				if(hasScala)
@@ -741,7 +741,7 @@ object Classpaths
 	lazy val defaultArtifactTasks: Seq[TaskKey[File]] = makePom +: defaultPackages
 
 	def findClasspathConfig(map: Configuration => Configuration, thisConfig: Configuration, delegate: Task[Option[Configuration]], up: Task[UpdateReport]): Task[Configuration] =
-		(delegate :^: up :^: KNil) map { case delegated :+: report :+: HNil =>
+		(delegate, up) map { case (delegated, report) =>
 			val defined = report.allConfigurations.toSet
 			val search = map(thisConfig) +: (delegated.toList ++ Seq(Compile, Configurations.Default))
 			def notFound = error("Configuration to use for managed classpath must be explicitly defined when default configurations are not present.")
@@ -950,7 +950,6 @@ object Classpaths
 	def cachedUpdate(cacheFile: File, label: String, module: IvySbt#Module, config: UpdateConfiguration, scalaInstance: Option[ScalaInstance], skip: Boolean, force: Boolean, depsUpdated: Boolean, log: Logger): UpdateReport =
 	{
 		implicit val updateCache = updateIC
-		implicit val updateReport = updateReportFormat
 		type In = IvyConfiguration :+: ModuleSettings :+: UpdateConfiguration :+: HNil
 		def work = (_:  In) match { case conf :+: settings :+: config :+: HNil =>
 			log.info("Updating " + label + "...")
@@ -1314,14 +1313,14 @@ trait BuildExtra extends BuildCommon
 	def fullRunInputTask(scoped: InputKey[Unit], config: Configuration, mainClass: String, baseArguments: String*): Setting[InputTask[Unit]] =
 		scoped <<= inputTask { result =>
 			( initScoped(scoped.scopedKey, runnerInit) zipWith (fullClasspath in config, streams, result).identityMap) { (rTask, t) =>
-				(t :^: rTask :^: KNil) map { case (cp, s, args) :+: r :+: HNil =>
+				(t, rTask) map { case ((cp, s, args), r) =>
 					toError(r.run(mainClass, data(cp), baseArguments ++ args, s.log))
 				}
 			}
 		}
 	def fullRunTask(scoped: TaskKey[Unit], config: Configuration, mainClass: String, arguments: String*): Setting[Task[Unit]] =
 		scoped <<= ( initScoped(scoped.scopedKey, runnerInit) zipWith (fullClasspath in config, streams).identityMap ) { case (rTask, t) =>
-			(t :^: rTask :^: KNil) map { case (cp, s) :+: r :+: HNil =>
+			(t, rTask) map { case ((cp, s), r) =>
 				toError(r.run(mainClass, data(cp), arguments, s.log))
 			}
 		}

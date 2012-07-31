@@ -327,11 +327,6 @@ object Project extends ProjectExtra
 		EvaluateTask(extracted.structure, taskKey, state, extracted.currentRef, config)
 	}
 
-	/** Many methods were moved to Def in 0.13.  This implicit makes those methods still available on Project for the transition. */
-	@inline
-	@deprecated("Use Def directly", "0.13.0")
-	implicit def projectToDef(p: Project.type): Def.type = Def
-
 	implicit def projectToRef(p: Project): ProjectReference = LocalProject(p.id)
 
 	final class RichTaskSessionVar[S](i: Initialize[Task[S]])

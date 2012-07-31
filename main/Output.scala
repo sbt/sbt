@@ -44,7 +44,7 @@ object Output
 
 	def lastLines(keys: Values[_], streams: Streams): Values[Seq[String]] =
 	{
-		val outputs = keys map { case KeyValue(key, value) => KeyValue(key, lastLines(key, streams)) }
+		val outputs = keys map { (kv: KeyValue[_]) => KeyValue(kv.key, lastLines(kv.key, streams)) }
 		outputs.filterNot(_.value.isEmpty)
 	}
 	def lastLines(key: ScopedKey[_], mgr: Streams): Seq[String]  =	 mgr.use(key) { s => IO.readLines(s.readText( Project.fillTaskAxis(key) )) }

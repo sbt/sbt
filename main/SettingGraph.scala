@@ -24,7 +24,7 @@ object SettingGraph
 		SettingGraph(display(scoped), definedIn,
 			Project.scopedKeyData(structure, scope, key),
 			key.description, basedir,
-			depends map { apply(structure, basedir, _, generation + 1) })
+			depends map { (x: ScopedKey[_]) => apply(structure, basedir, x, generation + 1) })
 	}
 }
 

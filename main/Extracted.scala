@@ -3,6 +3,7 @@ package sbt
 	import Project._
 	import Scope.GlobalScope
 	import Def.{ScopedKey, Setting}
+	import std.Transform.DummyTaskMap
 
 final case class Extracted(structure: BuildStructure, session: SessionSettings, currentRef: ProjectRef)(implicit val showKey: Show[ScopedKey[_]])
 {
@@ -30,7 +31,7 @@ final case class Extracted(structure: BuildStructure, session: SessionSettings, 
 		val rkey = resolve(key.scopedKey)
 		val keys = Aggregation.aggregate(rkey, ScopeMask(), structure.extra)
 		val tasks = Act.keyValues(structure)(keys)
-		Aggregation.runTasks(state, structure, tasks, Aggregation.Dummies(KNil, HNil), show = false )(showKey)
+		Aggregation.runTasks(state, structure, tasks, DummyTaskMap(Nil), show = false )(showKey)
 	}
 	private[this] def resolve[T](key: ScopedKey[T]): ScopedKey[T] =
 		Project.mapScope(Scope.resolveScope(GlobalScope, currentRef.build, rootProject) )( key.scopedKey )

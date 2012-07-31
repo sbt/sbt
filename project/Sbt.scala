@@ -16,7 +16,7 @@ object Sbt extends Build
 		organization := "org.scala-sbt",
 		version := "0.13.0-SNAPSHOT",
 		publishArtifact in packageDoc := false,
-		scalaVersion := "2.9.2",
+		scalaVersion := "2.10.0-M5",
 		publishMavenStyle := false,
 		componentID := None,
 		crossPaths := false,
@@ -96,7 +96,7 @@ object Sbt extends Build
 		//   Includes API and Analyzer phases that extract source API and relationships.
 	lazy val compileInterfaceSub = baseProject(compilePath / "interface", "Compiler Interface") dependsOn(interfaceSub, ioSub % "test->test", logSub % "test->test", launchSub % "test->test") settings( compileInterfaceSettings : _*)
 	lazy val precompiled282 = precompiled("2.8.2")
-	lazy val precompiled2100 = precompiled("2.10.0-RC2")
+	lazy val precompiled292 = precompiled("2.9.2")
 
 		// Implements the core functionality of detecting and propagating changes incrementally.
 		//   Defines the data structures for representing file fingerprints and relationships and the overall source analysis
@@ -132,7 +132,7 @@ object Sbt extends Build
 		// Strictly for bringing implicits and aliases from subsystems into the top-level sbt namespace through a single package object
 		//  technically, we need a dependency on all of mainSub's dependencies, but we don't do that since this is strictly an integration project
 		//  with the sole purpose of providing certain identifiers without qualification (with a package object)
-	lazy val sbtSub = baseProject(sbtPath, "Simple Build Tool") dependsOn(mainSub, compileInterfaceSub, precompiled282, precompiled2100, scriptedSbtSub % "test->test") settings(sbtSettings : _*)
+	lazy val sbtSub = baseProject(sbtPath, "Simple Build Tool") dependsOn(mainSub, compileInterfaceSub, precompiled282, precompiled292, scriptedSbtSub % "test->test") settings(sbtSettings : _*)
 
 		/* Nested subproject paths */
 	def sbtPath = file("sbt")
@@ -249,5 +249,10 @@ object Sbt extends Build
 		libraryDependencies <+= scalaVersion( "org.scala-lang" % "scala-compiler" % _ % "test"),
 		unmanagedJars in Test <<= (packageSrc in compileInterfaceSub in Compile).map(x => Seq(x).classpath)
 	)
-	def precompiled(scalav: String): Project = baseProject(compilePath / "interface", "Precompiled " + scalav.replace('.', '_')) dependsOn(interfaceSub) settings(scalaVersion := scalav) settings(precompiledSettings : _*)
+	def precompiled(scalav: String): Project = baseProject(compilePath / "interface", "Precompiled " + scalav.replace('.', '_')) dependsOn(interfaceSub) settings(precompiledSettings : _*) settings(
+		scalaVersion <<= (scalaVersion in ThisBuild) { sbtScalaV =>
+			assert(sbtScalaV != scalav, "Precompiled compiler interface cannot have the same Scala version (" + scalav + ") as sbt.")
+			scalav
+		}
+	)
 }

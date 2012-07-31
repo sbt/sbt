@@ -227,9 +227,8 @@ final class Execute[A[_] <: AnyRef](checkCycles: Boolean, triggers: Triggers[A])
 	def submit[T]( node: A[T] )(implicit strategy: Strategy)
 	{
 		val v = viewCache(node)
-		val rs = v.mixedIn transform getResult
-		val ud = v.uniformIn.map(getResult.apply[v.Uniform])
-		strategy.submit( node, () => work(node, v.work(rs, ud)) )
+		val rs = v.alist.transform(v.in, getResult)
+		strategy.submit( node, () => work(node, v.work(rs)) )
 	}
 	/** Evaluates the computation 'f' for 'node'.
 	* This returns a Completed instance, which contains the post-processing to perform after the result is retrieved from the Strategy.*/
@@ -254,7 +253,7 @@ final class Execute[A[_] <: AnyRef](checkCycles: Boolean, triggers: Triggers[A])
 	def addCaller[T](caller: A[T], target: A[T]): Unit = callers.getOrUpdate(target, IDSet.create[A[T]]) += caller
 
 	def dependencies(node: A[_]): Iterable[A[_]] = dependencies(viewCache(node))
-	def dependencies(v: Node[A, _]): Iterable[A[_]] = (v.uniformIn ++ v.mixedIn.toList).filter(dep => view.inline(dep).isEmpty)
+	def dependencies(v: Node[A, _]): Iterable[A[_]] = v.alist.toList(v.in).filter(dep => view.inline(dep).isEmpty)
 
 	def runBefore(node: A[_]): Seq[A[_]] = getSeq(triggers.runBefore, node)
 	def triggeredBy(node: A[_]): Seq[A[_]] = getSeq(triggers.injectFor, node)

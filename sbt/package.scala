@@ -14,9 +14,9 @@ package object sbt extends sbt.std.TaskExtra with sbt.Types with sbt.ProcessExtr
 	@deprecated("Use InputKey, which is a drop-in replacement.", "0.11.1")
 	type ScopedInput[T] = InputKey[T]
 
-	type Setting[T] = Project.Setting[T]
-	type ScopedKey[T] = Project.ScopedKey[T]
-	type SettingsDefinition = Project.SettingsDefinition
+	type Setting[T] = Def.Setting[T]
+	type ScopedKey[T] = Def.ScopedKey[T]
+	type SettingsDefinition = Def.SettingsDefinition
 	type File = java.io.File
 	type URI = java.net.URI
 	type URL = java.net.URL

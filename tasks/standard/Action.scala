@@ -12,25 +12,24 @@ package sbt
 
 /** Defines a task compuation*/
 sealed trait Action[T]
+
 /** A direct computation of a value.
 * If `inline` is true, `f` will be evaluated on the scheduler thread without the overhead of normal scheduling when possible.
 * This is intended as an optimization for already evaluated values or very short computations. */
 final case class Pure[T](f: () => T, inline: Boolean) extends Action[T]
+
 /** Applies a function to the result of evaluating a heterogeneous list of other tasks.*/
-final case class Mapped[T, In <: HList](in: Tasks[In], f: Results[In] => T) extends Action[T]
+final case class Mapped[T, K[L[x]]](in: K[Task], f: K[Result] => T, alist: AList[K]) extends Action[T]
+
 /** Computes another task to evaluate based on results from evaluating other tasks.*/
-final case class FlatMapped[T, In <: HList](in: Tasks[In], f: Results[In] => Task[T]) extends Action[T]
+final case class FlatMapped[T, K[L[x]]](in: K[Task], f: K[Result] => Task[T], alist: AList[K]) extends Action[T]
+
 /** A computation `in` that requires other tasks `deps` to be evaluated first.*/
 final case class DependsOn[T](in: Task[T], deps: Seq[Task[_]]) extends Action[T]
+
 /** A computation that operates on the results of a homogeneous list of other tasks. 
 * It can either return another task to be evaluated or the final value.*/
 final case class Join[T, U](in: Seq[Task[U]], f: Seq[Result[U]] => Either[Task[T], T]) extends Action[T]
-
-object Task
-{
-	type Tasks[HL <: HList] = KList[Task, HL]
-	type Results[HL <: HList] = KList[Result, HL]
-}
 
 /** Combines metadata `info` and a computation `work` to define a task. */
 final case class Task[T](info: Info[T], work: Action[T])
@@ -42,6 +41,7 @@ final case class Task[T](info: Info[T], work: Action[T])
 	def tagw(tags: (Tag, Int)*): Task[T] = copy(info = info.set(tagsKey, info.get(tagsKey).getOrElse(Map.empty) ++ tags ))
 	def tags: TagMap = info get tagsKey getOrElse Map.empty
 }
+
 /** Used to provide information about a task, such as the name, description, and tags for controlling concurrent execution.
 * @param attributes Arbitrary user-defined key/value pairs describing this task
 * @param post a transformation that takes the result of evaluating this task and produces user-defined key/value pairs. */

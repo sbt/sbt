@@ -61,10 +61,12 @@ trait Init[Scope]
 	def setting[T](key: ScopedKey[T], init: Initialize[T], pos: SourcePosition = NoPosition): Setting[T] = new Setting[T](key, init, pos)
 	def value[T](value: => T): Initialize[T] = new Value(value _)
 	def optional[T,U](i: Initialize[T])(f: Option[T] => U): Initialize[U] = new Optional(Some(i), f)
-	def update[T](key: ScopedKey[T])(f: T => T): Setting[T] = new Setting[T](key, app(key :^: KNil)(hl => f(hl.head)), NoPosition)
+	def update[T](key: ScopedKey[T])(f: T => T): Setting[T] = new Setting[T](key, map(key)(f), NoPosition)
 	def bind[S,T](in: Initialize[S])(f: S => Initialize[T]): Initialize[T] = new Bind(f, in)
-	def app[HL <: HList, T](inputs: KList[Initialize, HL])(f: HL => T): Initialize[T] = new Apply(f, inputs)
-	def uniform[S,T](inputs: Seq[Initialize[S]])(f: Seq[S] => T): Initialize[T] = new Uniform(f, inputs)
+	def map[S,T](in: Initialize[S])(f: S => T): Initialize[T] = new Apply[ ({ type l[L[x]] = L[S] })#l, T](f, in, AList.single[S])
+	def app[K[L[x]], T](inputs: K[Initialize])(f: K[Id] => T)(implicit alist: AList[K]): Initialize[T] = new Apply[K, T](f, inputs, alist)
+	def uniform[S,T](inputs: Seq[Initialize[S]])(f: Seq[S] => T): Initialize[T] =
+		new Apply[({ type l[L[x]] = List[L[S]] })#l, T](f, inputs.toList, AList.seq[S])
 
 	def empty(implicit delegates: Scope => Seq[Scope]): Settings[Scope] = new Settings0(Map.empty, delegates)
 	def asTransform(s: Settings[Scope]): ScopedKey ~> Id = new (ScopedKey ~> Id) {
@@ -219,11 +221,12 @@ trait Init[Scope]
 		def apply[S](g: T => S): Initialize[S]
 		def mapReferenced(g: MapScoped): Initialize[T]
 		def validateReferenced(g: ValidateRef): ValidatedInit[T]
-		def zip[S](o: Initialize[S]): Initialize[(T,S)] = zipWith(o)((x,y) => (x,y))
-		def zipWith[S,U](o: Initialize[S])(f: (T,S) => U): Initialize[U] =
-			new Apply[T :+: S :+: HNil, U]( { case t :+: s :+: HNil => f(t,s)}, this :^: o :^: KNil)
 		def mapConstant(g: MapConstant): Initialize[T]
 		def evaluate(map: Settings[Scope]): T
+		def zip[S](o: Initialize[S]): Initialize[(T,S)] = zipTupled(o)(idFun)
+		def zipWith[S,U](o: Initialize[S])(f: (T,S) => U): Initialize[U] = zipTupled(o)(f.tupled)
+		private[this] def zipTupled[S,U](o: Initialize[S])(f: ((T,S)) => U): Initialize[U] =
+			new Apply[({ type l[L[x]] = (L[T], L[S]) })#l, U](f, (this, o), AList.tuple2[T,S])
 	}
 	object Initialize
 	{
@@ -330,34 +333,21 @@ trait Init[Scope]
 		def mapConstant(g: MapConstant) = this
 		def evaluate(map: Settings[Scope]): T = value()
 	}
-	private[sbt] final class Apply[HL <: HList, T](val f: HL => T, val inputs: KList[Initialize, HL]) extends Initialize[T]
+	private[sbt] final class Apply[K[L[x]], T](val f: K[Id] => T, val inputs: K[Initialize], val alist: AList[K]) extends Initialize[T]
 	{
-		def dependencies = deps(inputs.toList)
+		def dependencies = deps(alist.toList(inputs))
 		def mapReferenced(g: MapScoped) = mapInputs( mapReferencedT(g) )
-		def apply[S](g: T => S) = new Apply(g compose f, inputs)
+		def apply[S](g: T => S) = new Apply(g compose f, inputs, alist)
 		def mapConstant(g: MapConstant) = mapInputs( mapConstantT(g) )
-		def mapInputs(g: Initialize ~> Initialize): Initialize[T] = new Apply(f, inputs transform g)
-		def evaluate(ss: Settings[Scope]) = f(inputs down evaluateT(ss))
+		def mapInputs(g: Initialize ~> Initialize): Initialize[T] = new Apply(f, alist.transform(inputs, g), alist)
+		def evaluate(ss: Settings[Scope]) = f(alist.transform(inputs, evaluateT(ss)))
 		def validateReferenced(g: ValidateRef) =
 		{
-			val tx = inputs transform validateReferencedT(g)
-			val undefs = tx.toList.flatMap(_.left.toSeq.flatten)
+			val tx = alist.transform(inputs, validateReferencedT(g))
+			val undefs = alist.toList(tx).flatMap(_.left.toSeq.flatten)
 			val get = new (ValidatedInit ~> Initialize) { def apply[T](vr: ValidatedInit[T]) = vr.right.get }
-			if(undefs.isEmpty) Right(new Apply(f, tx transform get)) else Left(undefs)
+			if(undefs.isEmpty) Right(new Apply(f, alist.transform(tx, get), alist)) else Left(undefs)
 		}
-	}
-	private[sbt] final class Uniform[S, T](val f: Seq[S] => T, val inputs: Seq[Initialize[S]]) extends Initialize[T]
-	{
-		def dependencies = deps(inputs)
-		def mapReferenced(g: MapScoped) = new Uniform(f, inputs map mapReferencedT(g).fn)
-		def validateReferenced(g: ValidateRef) =
-		{
-			val (undefs, ok) = Util.separateE(inputs map validateReferencedT(g).fn )
-			if(undefs.isEmpty) Right( new Uniform(f, ok) ) else Left(undefs.flatten)
-		}
-		def apply[S](g: T => S) = new Uniform(g compose f, inputs)
-		def mapConstant(g: MapConstant) = new Uniform(f, inputs map mapConstantT(g).fn)
-		def evaluate(ss: Settings[Scope]) = f(inputs map evaluateT(ss).fn )
 	}
 	private def remove[T](s: Seq[T], v: T) = s filterNot (_ == v)
 }

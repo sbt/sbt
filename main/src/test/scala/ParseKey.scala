@@ -1,6 +1,6 @@
 package sbt
 
-	import Project._
+	import Def.{displayFull,displayMasked,ScopedKey}
 	import java.net.URI
 	import TestBuild._
 	import complete._
@@ -10,7 +10,7 @@ package sbt
 	import Prop._
 	import Arbitrary.arbBool
 
-/** Tests that the scoped key parser in Act can correctly parse a ScopedKey converted by Project.show*Key.
+/** Tests that the scoped key parser in Act can correctly parse a ScopedKey converted by Def.show*Key.
 * This includes properly resolving omitted components.*/
 object ParseKey extends Properties("Key parser test") 
 {
@@ -24,9 +24,9 @@ object ParseKey extends Properties("Key parser test")
 				import skm.{structure, key, mask}
 	
 			val expected = resolve(structure, key, mask)
-			val string = Project.displayMasked(key, mask)
+			val string = displayMasked(key, mask)
 
-			("Key: " + Project.displayFull(key)) |:
+			("Key: " + displayFull(key)) |:
 			parseExpected(structure, string, expected, mask)
 		}
 
@@ -35,9 +35,9 @@ object ParseKey extends Properties("Key parser test")
 				import skm.{structure, key}
 
 			val mask = skm.mask.copy(project = false)
-			val string = Project.displayMasked(key, mask)
+			val string = displayMasked(key, mask)
 
-			("Key: " + Project.displayFull(key)) |:
+			("Key: " + displayFull(key)) |:
 			("Mask: " + mask) |:
 			("Current: " + structure.current) |:
 			parse(structure, string) {
@@ -50,9 +50,9 @@ object ParseKey extends Properties("Key parser test")
 		forAllNoShrink(structureDefinedKey) { (skm: StructureKeyMask) =>
 				import skm.{structure, key}
 			val mask = skm.mask.copy(task = false)
-			val string = Project.displayMasked(key, mask)
+			val string = displayMasked(key, mask)
 
-			("Key: " + Project.displayFull(key)) |:
+			("Key: " + displayFull(key)) |:
 			("Mask: " + mask) |:
 			parse(structure, string) {
 				case Left(err) => false
@@ -64,10 +64,10 @@ object ParseKey extends Properties("Key parser test")
 		forAllNoShrink(structureDefinedKey) { (skm: StructureKeyMask) =>
 				import skm.{structure, key}
 			val mask = ScopeMask(config = false)
-			val string = Project.displayMasked(key, mask)
+			val string = displayMasked(key, mask)
 			val resolvedConfig = Resolve.resolveConfig(structure.extra, key.key, mask)(key.scope).config
 
-			("Key: " + Project.displayFull(key)) |:
+			("Key: " + displayFull(key)) |:
 			("Mask: " + mask) |:
 			("Expected configuration: " + resolvedConfig.map(_.name)) |:
 			parse(structure, string) {
@@ -88,7 +88,7 @@ object ParseKey extends Properties("Key parser test")
 		ScopedKey(Resolve(structure.extra, Select(structure.current), key.key, mask)(key.scope), key.key)
 
 	def parseExpected(structure: Structure, s: String, expected: ScopedKey[_], mask: ScopeMask): Prop =
-		("Expected: " + Project.displayFull(expected)) |:
+		("Expected: " + displayFull(expected)) |:
 		("Mask: " + mask) |:
 		parse(structure, s) {
 			case Left(err) => false
@@ -99,7 +99,7 @@ object ParseKey extends Properties("Key parser test")
 	{
 		val parser = makeParser(structure)
 		val parsed = DefaultParsers.result(parser, s).left.map(_().toString)
-		val showParsed = parsed.right.map(Project.displayFull)
+		val showParsed = parsed.right.map(displayFull)
 		("Key string: '" + s + "'") |:
 		("Parsed: " + showParsed) |:
 		("Structure: " + structure) |:
@@ -108,7 +108,7 @@ object ParseKey extends Properties("Key parser test")
 
 	def genStructure(implicit genEnv: Gen[Env]): Gen[Structure] =
 		structureGenF { (scopes: Seq[Scope], env: Env, current: ProjectRef) =>
-			val settings = for(scope <- scopes; t <- env.tasks) yield Project.setting(ScopedKey(scope, t.key), Project.value(""))
+			val settings = for(scope <- scopes; t <- env.tasks) yield Def.setting(ScopedKey(scope, t.key), Def.value(""))
 			TestBuild.structure(env, settings, current)
 		}
 

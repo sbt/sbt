@@ -3,7 +3,7 @@ package sbt
 	import java.lang.Runnable
 	import java.util.concurrent.{atomic, Executor, LinkedBlockingQueue}
 	import atomic.{AtomicBoolean, AtomicInteger}
-	import Types.{:+:, Id}
+	import Types.{:+:, ConstK, Id}
 
 object EvaluationState extends Enumeration {
 	val New, Blocked, Ready, Calling, Evaluated = Value
@@ -24,8 +24,7 @@ abstract class EvaluateSettings[Scope]
 
 	private[this] val transform: Initialize ~> INode = new (Initialize ~> INode) { def apply[T](i: Initialize[T]): INode[T] = i match {
 		case k: Keyed[s, T] => single(getStatic(k.scopedKey), k.transform)
-		case a: Apply[hl,T] => new MixedNode(a.inputs transform transform, a.f)
-		case u: Uniform[s, T] => new UniformNode(u.inputs map transform.fn[s], u.f)
+		case a: Apply[k,T] => new MixedNode[k,T]( a.alist.transform[Initialize, INode](a.inputs, transform), a.f, a.alist)
 		case b: Bind[s,T] => new BindNode[s,T]( transform(b.in), x => transform(b.f(x)))
 		case v: Value[T] => constant(v.value)
 		case o: Optional[s,T] => o.a match {
@@ -155,8 +154,9 @@ abstract class EvaluateSettings[Scope]
 		protected def dependsOn: Seq[INode[_]]
 		protected def evaluate0(): Unit
 	}
-	private[this] def constant[T](f: () => T): INode[T] = new MixedNode[HNil, T](KNil, _ => f())
-	private[this] def single[S,T](in: INode[S], f: S => T): INode[T] = new MixedNode[S :+: HNil, T](in :^: KNil, hl => f(hl.head))
+
+	private[this] def constant[T](f: () => T): INode[T] = new MixedNode[ConstK[Unit]#l, T]((), _ => f(), AList.empty)
+	private[this] def single[S,T](in: INode[S], f: S => T): INode[T] = new MixedNode[ ({ type l[L[x]] = L[S] })#l, T](in, f, AList.single[S])
 	private[this] final class BindNode[S,T](in: INode[S], f: S => INode[T]) extends INode[T]
 	{
 		protected def dependsOn = in :: Nil
@@ -166,14 +166,9 @@ abstract class EvaluateSettings[Scope]
 			setValue(value)
 		}
 	}
-	private[this] final class UniformNode[S,T](in: Seq[INode[S]], f: Seq[S] => T) extends INode[T]
+	private[this] final class MixedNode[K[L[x]], T](in: K[INode], f: K[Id] => T, alist: AList[K]) extends INode[T]
 	{
-		protected def dependsOn = in
-		protected def evaluate0(): Unit = setValue( f(in.map(_.get)) )
-	}
-	private[this] final class MixedNode[HL <: HList, T](in: KList[INode, HL], f: HL => T) extends INode[T]
-	{
-		protected def dependsOn = in.toList
-		protected def evaluate0(): Unit = setValue( f( in down getValue ) )
+		protected def dependsOn = alist.toList(in)
+		protected def evaluate0(): Unit = setValue( f( alist.transform(in, getValue) ) )
 	}
 }

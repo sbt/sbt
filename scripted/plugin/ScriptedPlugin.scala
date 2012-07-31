@@ -3,7 +3,7 @@
  */
 package sbt
 
-import Project.Initialize
+import Def.Initialize
 import Keys._
 import classpath.ClasspathUtilities
 import java.lang.reflect.Method

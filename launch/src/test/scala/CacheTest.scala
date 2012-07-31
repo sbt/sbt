@@ -5,7 +5,7 @@ import Prop._
 
 object CacheTest extends Properties("Cache")
 {
-	implicit val functions: Arbitrary[Int => Int] = Arbitrary { Gen.elements(identity[Int], i => -i, i=>i/2, i => i+1) }
+	implicit val functions: Arbitrary[Int => Int] = Arbitrary { Gen.oneOf( Seq(identity[Int], i => -i, i=>i/2, i => i+1) ) }
 
 	property("Cache") = Prop.forAll { (key: Int, keys: List[Int], map: Int => Int) =>
 		val cache = new Cache( (i: Int, _: Unit) => map(i) )

@@ -11,26 +11,26 @@ object TaskRunnerCircularTest extends Properties("TaskRunner Circular")
 	property("Allows references to completed tasks") = forAllNoShrink(MaxTasksGen, MaxWorkersGen) { allowedReference _ }
 	final def allowedReference(intermediate: Int, workers: Int) =
 	{
-		val top = pure("top", intermediate)
-		def iterate(task: Task[Int]): Task[Int] =
-			task flatMap { t =>
+		val top = task(intermediate).named("top")
+		def iterate(tk: Task[Int]): Task[Int] =
+			tk flatMap { t =>
 				if(t <= 0)
 					top
 				else
-					iterate(pure((t-1).toString, t-1) )
+					iterate(task(t-1).named((t-1).toString) )
 			}
 		try { checkResult(tryRun(iterate(top), true, workers), intermediate) }
 		catch { case i: Incomplete if cyclic(i) => ("Unexpected cyclic exception: " + i) |: false }
 	}
 	final def checkCircularReferences(intermediate: Int, workers: Int) =
 	{
-		lazy val top = iterate(pure("bottom", intermediate), intermediate)
-		def iterate(task: Task[Int], i: Int): Task[Int] =
-			task flatMap { t =>
+		lazy val top = iterate(task(intermediate).named("bottom"), intermediate)
+		def iterate(tk: Task[Int], i: Int): Task[Int] =
+			tk flatMap { t =>
 				if(t <= 0)
 					top
 				else
-					iterate(pure((t-1).toString, t-1), i-1)
+					iterate(task(t-1).named((t-1).toString), i-1)
 			}
 		try { tryRun(top, true, workers); false }
 		catch { case i: Incomplete => cyclic(i) }

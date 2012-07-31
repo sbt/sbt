@@ -11,6 +11,7 @@ package sbt
 	import Scope.{GlobalScope, ThisScope}
 	import Types.const
 	import scala.Console.RED
+	import std.Transform.{DummyTaskMap,TaskAndValue}
 
 final case class EvaluateConfig(cancelable: Boolean, restrictions: Seq[Tags.Rule], checkCycles: Boolean = false)
 final case class PluginData(dependencyClasspath: Seq[Attributed[File]], definitionClasspath: Seq[Attributed[File]], resolvers: Option[Seq[Resolver]], report: Option[UpdateReport])
@@ -136,8 +137,8 @@ object EvaluateTask
 		for( t <- structure.data.get(resolvedScope, taskKey.key)) yield
 			(t, nodeView(state, streams, taskKey :: Nil))
 	}
-	def nodeView[HL <: HList](state: State, streams: Streams, roots: Seq[ScopedKey[_]], extraDummies: KList[Task, HL] = KNil, extraValues: HL = HNil): NodeView[Task] =
-		Transform(dummyRoots :^: dummyStreamsManager :^: KCons(dummyState, extraDummies), roots :+: streams :+: HCons(state, extraValues))
+	def nodeView[HL <: HList](state: State, streams: Streams, roots: Seq[ScopedKey[_]], dummies: DummyTaskMap = DummyTaskMap(Nil)): NodeView[Task] =
+		Transform((dummyRoots, roots) :: (dummyStreamsManager, streams) :: (dummyState, state) :: dummies )
 
 	def runTask[T](root: Task[T], state: State, streams: Streams, triggers: Triggers[Task], config: EvaluateConfig)(implicit taskToNode: NodeView[Task]): (State, Result[T]) =
 	{

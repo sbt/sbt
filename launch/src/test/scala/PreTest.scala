@@ -1,6 +1,7 @@
 package xsbt.boot
 
 import java.io.File
+import java.util.Arrays.equals
 import org.scalacheck._
 
 object PreTest extends Properties("Pre")
@@ -16,8 +17,8 @@ object PreTest extends Properties("Pre")
 	property("require true") = Prop.forAll { (s: String) => require(true, s); true }
 	property("error") = Prop.forAll( (s: String) => Prop.throws(error(s), classOf[BootException]) )
 	property("toBoolean") = Prop.forAll( (s: String) => trap(toBoolean(s)) == trap(java.lang.Boolean.parseBoolean(s)) )
-	property("toArray") = Prop.forAll( (list: List[Int]) => list.toArray deepEquals toArray(list) )
-	property("toArray") = Prop.forAll( (list: List[String]) => list.toArray deepEquals toArray(list) )
+	property("toArray") = Prop.forAll( (list: List[Int]) => equals(list.toArray, toArray(list)) )
+	property("toArray") = Prop.forAll( (list: List[String]) => equals(list.toArray, toArray(list)) )
 	property("concat") = Prop.forAll(genFiles, genFiles) { (a: Array[File], b: Array[File]) => (a ++ b) sameElements concat(a, b) }
 	property("array") = Prop.forAll(genFiles) { (a: Array[File]) => array(a.toList : _*) sameElements Array(a: _*) }
 

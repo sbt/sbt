@@ -24,11 +24,11 @@ object TaskRunnerCallTest extends Properties("TaskRunner Call")
 			(index, x1, x2) =>
 			{
 				if(index == i)
-					pure(x2)
+					task(x2)
 				else
 					iterate( (index+1, x2, x1+x2) )
 			}
-		def iterate(iteration: (Int,Int,Int)) = pure( iteration ) flatMap next.tupled
+		def iterate(iteration: (Int,Int,Int)) = task( iteration ) flatMap next.tupled
 		iterate( (1, 0, 1) )
 	}
 	final def fibDirect(i: Int): Int =
