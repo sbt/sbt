@@ -1,1 +1,1 @@
-libraryDependencies += "net.databinder" %% "dispatch-http" % "0.8.5"
+libraryDependencies += "net.databinder" %% "dispatch-http" % "0.8.8"

@@ -14,14 +14,14 @@ object Sbt extends Build
 	override lazy val settings = super.settings ++ buildSettings ++ Status.settings
 	def buildSettings = Seq(
 		organization := "org.scala-sbt",
-		version := "0.12.0-RC4",
+		version := "0.12.0",
 		publishArtifact in packageDoc := false,
 		scalaVersion := "2.9.2",
 		publishMavenStyle := false,
 		componentID := None,
 		crossPaths := false,
 		testOptions += Tests.Argument(TestFrameworks.ScalaCheck, "-w", "1"),
-		javacOptions in Compile ++= Seq("-target", "6", "-source", "6")
+		javacOptions in compile ++= Seq("-target", "6", "-source", "6")
 	)
 
 	lazy val myProvided = config("provided") intransitive;
@@ -197,6 +197,7 @@ object Sbt extends Build
 		compileInputs in (Compile,sxr) <<= (sources in sxr, compileInputs in sbtSub in Compile, fullClasspath in sxr) map { (srcs, in, cp) =>
 			in.copy(config = in.config.copy(sources = srcs, classpath = cp.files))
 		},
+		compileInputs in (Compile,doc) <<= (compileInputs in (Compile,sxr)).identity,
 		publishAll <<= inAll(nonRoots, publishLocal.task),
 		TaskKey[Unit]("build-all") <<= (publishAll, proguard in Proguard, sxr, doc) map { (_,_,_,_) => () }
 	)
