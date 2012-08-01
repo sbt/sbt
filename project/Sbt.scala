@@ -22,7 +22,7 @@ object Sbt extends Build
 		crossPaths := false,
 		concurrentRestrictions in Global += Util.testExclusiveRestriction,
 		testOptions += Tests.Argument(TestFrameworks.ScalaCheck, "-w", "1"),
-		javacOptions in Compile ++= Seq("-target", "6", "-source", "6")
+		javacOptions in compile ++= Seq("-target", "6", "-source", "6")
 	)
 
 	lazy val myProvided = config("provided") intransitive;
@@ -200,6 +200,7 @@ object Sbt extends Build
 		compileInputs in (Compile,sxr) <<= (sources in sxr, compileInputs in sbtSub in Compile, fullClasspath in sxr) map { (srcs, in, cp) =>
 			in.copy(config = in.config.copy(sources = srcs, classpath = cp.files))
 		},
+		compileInputs in (Compile,doc) <<= (compileInputs in (Compile,sxr)).identity,
 		publishAll <<= inAll(nonRoots, publishLocal.task),
 		TaskKey[Unit]("build-all") <<= (publishAll, proguard in Proguard, sxr, doc) map { (_,_,_,_) => () }
 	)
