@@ -84,10 +84,6 @@ object Instance
 		implicit tt: c.TypeTag[T], mt: c.TypeTag[i.M[T]], it: c.TypeTag[i.type]): c.Expr[i.M[T]] =
 	{
 			import c.universe.{Apply=>ApplyTree,_}
-
-			import scala.tools.nsc.Global
-			// Used to access compiler methods not yet exposed via the reflection/macro APIs
-		val global: Global = c.universe.asInstanceOf[Global]
 		
 		val util = ContextUtil[c.type](c)
 		val mTC: Type = util.extractTC(i, InstanceTCName)
@@ -113,19 +109,9 @@ object Instance
 
 		// constructs a ValDef with a parameter modifier, a unique name, with the provided Type and with an empty rhs
 		def freshMethodParameter(tpe: Type): ValDef =
-			ValDef(parameterModifiers, freshTermName("p"), typeTree(tpe), EmptyTree)
+			ValDef(parameterModifiers, freshTermName("p"), TypeTree(tpe), EmptyTree)
 
 		def freshTermName(prefix: String) = newTermName(c.fresh("$" + prefix))
-		def typeTree(tpe: Type) = TypeTree().setType(tpe)
-
-		// constructs a function that applies f to each subtree of the input tree
-		def visitor(f: Tree => Unit): Tree => Unit =
-		{
-			val v: Transformer = new Transformer {
-				override def transform(tree: Tree): Tree = { f(tree); super.transform(tree) }
-			}
-			(tree: Tree) => v.transform(tree)
-		}
 
 		/* Local definitions in the macro.  This is used to ensure
 		* references are to M instances defined outside of the macro call.*/
@@ -137,13 +123,13 @@ object Instance
 
 		// a function that checks the provided tree for illegal references to M instances defined in the
 		//  expression passed to the macro and for illegal dereferencing of M instances.
-		val checkQual = visitor {
+		val checkQual: Tree => Unit = {
 			case s @ ApplyTree(fun, qual :: Nil) => if(isWrapper(fun)) c.error(s.pos, DynamicDependencyError)
 			case id @ Ident(name) if illegalReference(id.symbol) => c.error(id.pos, DynamicReferenceError)
 			case _ => ()
 		}
 		// adds the symbols for all non-Ident subtrees to `defs`.
-		val defSearch = visitor {
+		val defSearch: Tree => Unit = {
 			case _: Ident => ()
 			case tree => if(tree.symbol ne null) defs += tree.symbol; 
 		}
@@ -160,7 +146,7 @@ object Instance
 		// no inputs, so construct M[T] via Instance.pure or pure+flatten
 		def pure(body: Tree): Tree =
 		{
-			val typeApplied = TypeApply(Select(instance, PureName), typeTree(treeType) :: Nil)
+			val typeApplied = TypeApply(Select(instance, PureName), TypeTree(treeType) :: Nil)
 			val p = ApplyTree(typeApplied, Function(Nil, body) :: Nil)
 			if(t.isLeft) p else flatten(p)
 		}
@@ -168,7 +154,7 @@ object Instance
 		// the returned Tree will have type M[T]
 		def flatten(m: Tree): Tree =
 		{
-			val typedFlatten = TypeApply(Select(instance, FlattenName), typeTree(tt.tpe) :: Nil)
+			val typedFlatten = TypeApply(Select(instance, FlattenName), TypeTree(tt.tpe) :: Nil)
 			ApplyTree(typedFlatten, m :: Nil)
 		}
 
@@ -177,7 +163,7 @@ object Instance
 		{
 			val variable = input.local
 			val param = ValDef(parameterModifiers, variable.name, variable.tpt, EmptyTree)
-			val typeApplied = TypeApply(Select(instance, MapName), variable.tpt :: typeTree(treeType) :: Nil)
+			val typeApplied = TypeApply(Select(instance, MapName), variable.tpt :: TypeTree(treeType) :: Nil)
 			val mapped = ApplyTree(typeApplied, input.expr :: Function(param :: Nil, body) :: Nil)
 			if(t.isLeft) mapped else flatten(mapped)
 		}
@@ -189,8 +175,8 @@ object Instance
 			val param = freshMethodParameter( appliedType(result.representationC, util.idTC :: Nil) )
 			val bindings = result.extract(param)
 			val f = Function(param :: Nil, Block(bindings, body))
-			val ttt = typeTree(treeType)
-			val typedApp = TypeApply(Select(instance, ApplyName), typeTree(result.representationC) :: ttt :: Nil)
+			val ttt = TypeTree(treeType)
+			val typedApp = TypeApply(Select(instance, ApplyName), TypeTree(result.representationC) :: ttt :: Nil)
 			val app = ApplyTree(ApplyTree(typedApp, result.input :: f :: Nil), result.alistInstance :: Nil)
 			if(t.isLeft) app else flatten(app)
 		}
@@ -202,7 +188,7 @@ object Instance
 		//  the bound value of the input
 		def addType(tpe: Type, qual: Tree): Tree =
 		{
-			checkQual(qual)
+			qual.foreach(checkQual)
 			val vd = util.freshValDef(tpe, qual.symbol)
 			inputs ::= new Input(tpe, qual, vd)
 			Ident(vd.name)
@@ -223,7 +209,7 @@ object Instance
 		}
 
 		// collects all definitions in the tree.  used for finding illegal references
-		defSearch(tree)
+		tree.foreach(defSearch)
 
 		// applies the transformation
 		//   resetting attributes: a) must be local b) must be done

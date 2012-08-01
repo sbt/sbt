@@ -35,7 +35,7 @@ object TupleNBuilder extends TupleBuilder
 		val input: Tree = mkTuple(inputs.map(_.expr))
 		val alistInstance: Tree = {
 			val select = Select(Ident(alist), TupleMethodName + inputs.size.toString)
-			TypeApply(select, inputs.map(in => typeTree(in.tpe)))
+			TypeApply(select, inputs.map(in => TypeTree(in.tpe)))
 		}
 		def extract(param: ValDef): List[ValDef] = bindTuple(param, Nil, inputs.map(_.local), 1)
 
