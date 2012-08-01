@@ -24,7 +24,7 @@ object KListBuilder extends TupleBuilder
 		val kconsTC: Type = kconsTpe.typeConstructor
 
 		/** This is the L in the type function [L[x]] ...  */
-		val tcVariable: Symbol = newTCVariable(NoSymbol)
+		val tcVariable: TypeSymbol = newTCVariable(NoSymbol)
 
 		/** Instantiates KCons[h, t <: KList[L], L], where L is the type constructor variable */
 		def kconsType(h: Type, t: Type): Type =
@@ -52,7 +52,7 @@ object KListBuilder extends TupleBuilder
 		val representationC = PolyType(tcVariable :: Nil, klistType)
 		val resultType = appliedType(representationC, idTC :: Nil)
 		val input = klist
-		val alistInstance = TypeApply(Select(Ident(alist), "klist"), typeTree(representationC) :: Nil)
+		val alistInstance = TypeApply(Select(Ident(alist), "klist"), TypeTree(representationC) :: Nil)
 		def extract(param: ValDef) = bindKList(param, Nil, inputs.map(_.local))
 	}
 }

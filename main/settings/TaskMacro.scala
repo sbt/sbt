@@ -1,3 +1,4 @@
+
 package sbt
 package std
 
@@ -144,16 +145,12 @@ object TaskMacro
 	{
 			import c.universe._
 		c.macroApplication match {
-			case Select(Apply(_, t :: Nil), _) => wrap[T](c)(t, implicitly[c.TypeTag[T]])
+			case Select(Apply(_, t :: Nil), _) => wrap[T](c)(t)
 			case x => unexpectedTree(x)
 		}
 	}
-	private[this] def wrap[T](c: Context)(t: c.Tree, tag: c.TypeTag[T]): c.Expr[T] =
+	private[this] def wrap[T: c.TypeTag](c: Context)(t: c.Tree): c.Expr[T] =
 	{
-		val rc = c.asInstanceOf[scala.reflect.makro.runtime.Context]
-		val tree = rc.universe.TypeTree().setType(tag.tpe.asInstanceOf[rc.universe.Type])
-		val cleaned = rc.callsiteTyper.packedType(tree, rc.universe.NoSymbol).asInstanceOf[c.universe.Type]
-		implicit val t1 = c.TypeTag[T](cleaned)
 		val ts = c.Expr[Any](t)
 		c.universe.reify { InputWrapper.wrap[T](ts.splice) }
 	}
@@ -165,10 +162,7 @@ object TaskConvert extends Convert
 {
 	def apply[T: c.TypeTag](c: Context)(in: c.Tree): c.Tree =
 		if(in.tpe <:< c.typeOf[Task[T]])
-		{
-			val i = c.Expr[Task[T]](in)
-			c.universe.reify( i.splice ).tree
-		}
+			in
 		else
 			c.abort(in.pos, "Unknown input type: " + in.tpe)
 }
