@@ -14,7 +14,7 @@ object ContextUtil {
 /** Utility methods for macros.  Several methods assume that the context's universe is a full compiler (`scala.tools.nsc.Global`).
 * This is not thread safe due to the underlying Context and related data structures not being thread safe.
 * Use `ContextUtil[c.type](c)` to construct. */
-final class ContextUtil[C <: Context with Singleton](val ctx: C) 
+final class ContextUtil[C <: Context](val ctx: C) 
 {
 		import ctx.universe.{Apply=>ApplyTree,_}
 
@@ -31,13 +31,11 @@ final class ContextUtil[C <: Context with Singleton](val ctx: C)
 	* (The current implementation uses Context.fresh, which increments*/
 	def freshTermName(prefix: String) = newTermName(ctx.fresh("$" + prefix))
 
-	def typeTree(tpe: Type) = TypeTree().setType(tpe)
-
 	/** Constructs a new, local ValDef with the given Type, a unique name, 
 	* the same position as `sym`, and an empty implementation (no rhs). */
 	def freshValDef(tpe: Type, sym: Symbol): ValDef =
 	{
-		val vd = localValDef(typeTree(tpe), EmptyTree)
+		val vd = localValDef(TypeTree(tpe), EmptyTree)
 		vd setPos getPos(sym)
 		vd
 	}
@@ -54,10 +52,10 @@ final class ContextUtil[C <: Context with Singleton](val ctx: C)
 	}
 
 	/** Creates a new, synthetic type variable with the specified `owner`. */
-	def newTypeVariable(owner: Symbol): Symbol =
+	def newTypeVariable(owner: Symbol, prefix: String = "T0"): TypeSymbol =
 	{
 		val global: Global = ctx.universe.asInstanceOf[Global]
-		owner.asInstanceOf[global.Symbol].newSyntheticTypeParam().asInstanceOf[ctx.universe.Symbol]
+		owner.asInstanceOf[global.Symbol].newSyntheticTypeParam(prefix, 0L).asInstanceOf[ctx.universe.TypeSymbol]
 	}
 	/** The type representing the type constructor `[X] X` */
 	val idTC: Type =
@@ -65,28 +63,27 @@ final class ContextUtil[C <: Context with Singleton](val ctx: C)
 		val tvar = newTypeVariable(NoSymbol)
 		polyType(tvar :: Nil, refVar(tvar))
 	}
+	/** A Type that references the given type variable. */
+	def refVar(variable: TypeSymbol): Type = variable.asTypeConstructor
 	/** Constructs a new, synthetic type variable that is a type constructor. For example, in type Y[L[x]], L is such a type variable. */
-	def newTCVariable(owner: Symbol): Symbol =
+	def newTCVariable(owner: Symbol): TypeSymbol =
 	{
-		val global: Global = ctx.universe.asInstanceOf[Global]
-		val tc = owner.asInstanceOf[global.Symbol].newSyntheticTypeParam()
-		val arg = tc.newSyntheticTypeParam("x", 0L)
-		tc.setInfo(global.PolyType(arg :: Nil, global.TypeBounds.empty)).asInstanceOf[ctx.universe.Symbol]
+		val tc = newTypeVariable(owner)
+		val arg = newTypeVariable(tc, "x")
+		tc.setTypeSignature(PolyType(arg :: Nil, emptyTypeBounds))
+		tc
 	}
+	def emptyTypeBounds: TypeBounds = TypeBounds(definitions.NothingClass.asType, definitions.AnyClass.asType)
+
 	/** Returns the Symbol that references the statically accessible singleton `i`. */
 	def singleton[T <: AnyRef with Singleton](i: T)(implicit it: ctx.TypeTag[i.type]): Symbol =
 		it.tpe match {
 			case SingleType(_, sym) if !sym.isFreeTerm && sym.isStatic => sym
 			case x => error("Instance must be static (was " + x + ").")
 		}
-	/** Constructs a Type that references the given type variable. */
-	def refVar(variable: Symbol): Type = typeRef(NoPrefix, variable, Nil)
 
 	/** Returns the symbol for the non-private method named `name` for the class/module `obj`. */
-	def method(obj: Symbol, name: String): Symbol = {
-		val global: Global = ctx.universe.asInstanceOf[Global]
-		obj.asInstanceOf[global.Symbol].info.nonPrivateMember(global.newTermName(name)).asInstanceOf[ctx.universe.Symbol]
-	}
+	def method(obj: Symbol, name: String): Symbol = obj.typeSignature.nonPrivateMember(newTermName(name))
 
 	/** Returns a Type representing the type constructor tcp.<name>.  For example, given
 	*  `object Demo { type M[x] = List[x] }`, the call `extractTC(Demo, "M")` will return a type representing
