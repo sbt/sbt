@@ -230,7 +230,7 @@ final class API(val global: CallbackGlobal) extends Compat
 
 	private def mkStructure(info: Type, s: Symbol, inherit: Boolean): xsbti.api.Structure =
 	{
-		val (declared, inherited) = info.members.reverse.partition(_.owner == s)
+		val (declared, inherited) = info.members.toList.reverse.partition(_.owner == s)
 		val baseTypes = info.baseClasses.tail.map(info.baseType)
 		val ds = if(s.isModuleClass) removeConstructors(declared) else declared
 		val is = if(inherit) removeConstructors(inherited) else Nil
