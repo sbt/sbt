@@ -1,7 +1,12 @@
 #!/bin/sh
 # sbt launcher script for Cygwin and MSYS
 
+if [ -z "$JAVA_HOME" ]; then
 JAVA_CMD=java
+else
+JAVA_CMD=$JAVA_HOME/bin/java
+fi
+
 JAVA_OPTS=-Xmx512M
 
 UDIR=`dirname "$0"`
