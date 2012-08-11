@@ -61,14 +61,14 @@ private[sbt] object ForkTests {
 						}
 
 						try {
-							os.writeBoolean(log.ansiCodesSupported)
+							os.writeObject(Boolean.box(log.ansiCodesSupported))
 							
 							val testsFiltered = tests.filter(test => filters.forall(_(test.name))).map{
 								t => new ForkTestDefinition(t.name, t.fingerprint)
 							}.toArray
 							os.writeObject(testsFiltered)
 
-							os.writeInt(frameworks.size)
+							os.writeObject(Int.box(frameworks.size))
 							for ((clazz, args) <- argMap) {
 								os.writeObject(clazz)
 								os.writeObject(args.toArray)
