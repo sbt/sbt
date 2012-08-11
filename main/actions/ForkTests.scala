@@ -37,7 +37,7 @@ private[sbt] object ForkTests {
 			object Acceptor extends Runnable {
 				val results = collection.mutable.Map.empty[String, TestResult.Value]
 				def output = (overall(results.values), results.toMap)
-  				def run = {
+				def run = {
 						val socket = server.accept()
 						val os = new ObjectOutputStream(socket.getOutputStream)
 						val is = new ObjectInputStream(socket.getInputStream)
@@ -61,14 +61,14 @@ private[sbt] object ForkTests {
 						}
 
 						try {
-							os.writeBoolean(log.ansiCodesSupported)
+							os.writeObject(Boolean.box(log.ansiCodesSupported))
 							
 							val testsFiltered = tests.filter(test => filters.forall(_(test.name))).map{
 								t => new ForkTestDefinition(t.name, t.fingerprint)
 							}.toArray
 							os.writeObject(testsFiltered)
 
-							os.writeInt(frameworks.size)
+							os.writeObject(Int.box(frameworks.size))
 							for ((clazz, args) <- argMap) {
 								os.writeObject(clazz)
 								os.writeObject(args.toArray)
@@ -81,20 +81,23 @@ private[sbt] object ForkTests {
 					}
 			}
 
-			try {
-				testListeners.foreach(_.doInit())
-				new Thread(Acceptor).start()
+			if (!tests.isEmpty) {
+				try {
+					testListeners.foreach(_.doInit())
+					new Thread(Acceptor).start()
 
-				val fullCp = classpath ++: Seq(IO.classLocationFile[ForkMain], IO.classLocationFile[Framework])
-				val options = javaOpts ++: Seq("-classpath", fullCp mkString File.pathSeparator, classOf[ForkMain].getCanonicalName, server.getLocalPort.toString)
-				val ec = Fork.java(javaHome, options, StdoutOutput)
-				if (ec != 0) log.error("Running java with options " + options.mkString(" ") + " failed with exit code " + ec)
-			} finally {
-				server.close()
-			}
-			val result = Acceptor.output
-			testListeners.foreach(_.doComplete(result._1))
-  		result
+					val fullCp = classpath ++: Seq(IO.classLocationFile[ForkMain], IO.classLocationFile[Framework])
+					val options = javaOpts ++: Seq("-classpath", fullCp mkString File.pathSeparator, classOf[ForkMain].getCanonicalName, server.getLocalPort.toString)
+					val ec = Fork.java(javaHome, options, StdoutOutput)
+					if (ec != 0) log.error("Running java with options " + options.mkString(" ") + " failed with exit code " + ec)
+				} finally {
+					server.close()
+				}
+				val result = Acceptor.output
+				testListeners.foreach(_.doComplete(result._1))
+				result
+			} else
+				(TestResult.Passed, Map.empty[String, TestResult.Value])
 		} tagw (config.tags: _*)
 	}
 }

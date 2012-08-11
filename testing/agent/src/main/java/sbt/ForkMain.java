@@ -94,7 +94,7 @@ public class ForkMain {
 			}
 		}
 		void run(ObjectInputStream is, final ObjectOutputStream os) throws Exception {
-			final boolean ansiCodesSupported = is.readBoolean();
+			final boolean ansiCodesSupported = ((Boolean)is.readObject()).booleanValue();
 			Logger[] loggers = {
 				new Logger() {
 					public boolean ansiCodesSupported() { return ansiCodesSupported; }
@@ -107,7 +107,7 @@ public class ForkMain {
 			};
 
 			final ForkTestDefinition[] tests = (ForkTestDefinition[]) is.readObject();
-			int nFrameworks = is.readInt();
+			int nFrameworks = ((Integer)is.readObject()).intValue();
 			for (int i = 0; i < nFrameworks; i++) {
 				final Framework framework;
 				final String implClassName = (String) is.readObject();
