@@ -89,6 +89,7 @@ public class ForkMain {
 		void write(ObjectOutputStream os, Object obj) {
 			try {
 				os.writeObject(obj);
+				os.flush();
 			} catch (IOException e) {
 				System.err.println("Cannot write to socket");
 			}
@@ -109,16 +110,16 @@ public class ForkMain {
 			final ForkTestDefinition[] tests = (ForkTestDefinition[]) is.readObject();
 			int nFrameworks = is.readInt();
 			for (int i = 0; i < nFrameworks; i++) {
-				final Framework framework;
 				final String implClassName = (String) is.readObject();
+				final String[] frameworkArgs = (String[]) is.readObject();
+
+				final Framework framework;
 				try {
 					framework = (Framework) Class.forName(implClassName).newInstance();
 				} catch (ClassNotFoundException e) {
 					write(os, new Object[]{ForkTags.Error, "Framework implementation '" + implClassName + "' not present."});
 					continue;
 				}
-
-				final String[] frameworkArgs = (String[]) is.readObject();
 
 				ArrayList<ForkTestDefinition> filteredTests = new ArrayList<ForkTestDefinition>();
 				for (Fingerprint testFingerprint : framework.tests()) {

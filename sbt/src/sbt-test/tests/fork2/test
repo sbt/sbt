@@ -1,0 +1,8 @@
+> test
+
+$ copy-file changes/Test.scala src/test/scala/Test.scala 
+
+> test
+
+> 'set javaOptions += "-Xno-opt"'
+-> test
