@@ -45,7 +45,7 @@ private[sbt] object ForkTests {
 
 						import ForkTags._
 						@annotation.tailrec def react: Unit = is.readObject match {
-							case `Done` => os.writeObject(Done);
+							case `Done` => os.writeObject(Done); os.flush()
 							case Array(`Error`, s: String) => log.error(s); react
 							case Array(`Warn`, s: String) => log.warn(s); react
 							case Array(`Info`, s: String) => log.info(s); react
@@ -74,6 +74,7 @@ private[sbt] object ForkTests {
 								os.writeObject(clazz)
 								os.writeObject(args.toArray)
 							}
+							os.flush()
 
 							react
 						} finally {
