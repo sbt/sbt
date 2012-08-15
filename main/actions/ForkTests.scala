@@ -33,18 +33,24 @@ private[sbt] object ForkTests {
 		}.toMap
 
 		std.TaskExtra.task {
-			val server = new ServerSocket(0)
-			object Acceptor extends Runnable {
-				val results = collection.mutable.Map.empty[String, TestResult.Value]
-				def output = (overall(results.values), results.toMap)
-  				def run = {
-						val socket = server.accept()
+			if (!tests.isEmpty) {
+				val server = new ServerSocket(0)
+				object Acceptor extends Runnable {
+					val resultsAcc = collection.mutable.Map.empty[String, TestResult.Value]
+					lazy val result = (overall(resultsAcc.values), resultsAcc.toMap)
+					def run: Unit = {
+						val socket =
+							try {
+								server.accept()
+							} catch {
+								case _: java.net.SocketException => return
+							}
 						val os = new ObjectOutputStream(socket.getOutputStream)
 						val is = new ObjectInputStream(socket.getInputStream)
 
 						import ForkTags._
 						@annotation.tailrec def react: Unit = is.readObject match {
-							case `Done` => os.writeObject(Done);
+							case `Done` => os.writeObject(Done); os.flush()
 							case Array(`Error`, s: String) => log.error(s); react
 							case Array(`Warn`, s: String) => log.warn(s); react
 							case Array(`Info`, s: String) => log.info(s); react
@@ -55,7 +61,7 @@ private[sbt] object ForkTests {
 								val event = TestEvent(tEvents)
 								listeners.foreach(_ testEvent event)
 								val result = event.result getOrElse TestResult.Passed
-								results += group -> result
+								resultsAcc += group -> result
 								listeners.foreach(_ endGroup (group, result))
 								react
 						}
@@ -73,28 +79,34 @@ private[sbt] object ForkTests {
 								os.writeObject(clazz)
 								os.writeObject(args.toArray)
 							}
+							os.flush()
 
 							react
 						} finally {
 							is.close();	os.close(); socket.close()
 						}
 					}
-			}
+				}
 
-			try {
-				testListeners.foreach(_.doInit())
-				new Thread(Acceptor).start()
+				try {
+					testListeners.foreach(_.doInit())
+					new Thread(Acceptor).start()
 
-				val fullCp = classpath ++: Seq(IO.classLocationFile[ForkMain], IO.classLocationFile[Framework])
-				val options = javaOpts ++: Seq("-classpath", fullCp mkString File.pathSeparator, classOf[ForkMain].getCanonicalName, server.getLocalPort.toString)
-				val ec = Fork.java(javaHome, options, StdoutOutput)
-				if (ec != 0) log.error("Running java with options " + options.mkString(" ") + " failed with exit code " + ec)
-			} finally {
-				server.close()
-			}
-			val result = Acceptor.output
-			testListeners.foreach(_.doComplete(result._1))
-  		result
+					val fullCp = classpath ++: Seq(IO.classLocationFile[ForkMain], IO.classLocationFile[Framework])
+					val options = javaOpts ++: Seq("-classpath", fullCp mkString File.pathSeparator, classOf[ForkMain].getCanonicalName, server.getLocalPort.toString)
+					val ec = Fork.java(javaHome, options, StdoutOutput)
+					val result =
+						if (ec != 0)
+							(TestResult.Error, Map("Running java with options " + options.mkString(" ") + " failed with exit code " + ec -> TestResult.Error))
+						else
+							Acceptor.result
+					testListeners.foreach(_.doComplete(result._1))
+					result
+				} finally {
+					server.close()
+				}
+			} else
+				(TestResult.Passed, Map.empty[String, TestResult.Value])
 		} tagw (config.tags: _*)
 	}
 }
