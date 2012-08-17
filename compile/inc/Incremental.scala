@@ -12,7 +12,6 @@ import java.io.File
 
 object Incremental
 {
-	def debug(s: => String) = if(java.lang.Boolean.getBoolean("xsbt.inc.debug")) println(s) else ()
 	def compile(sources: Set[File], entry: String => Option[File], previous: Analysis, current: ReadStamps, forEntry: File => Option[Analysis], doCompile: (Set[File], DependencyChanges) => Analysis, log: Logger)(implicit equivS: Equiv[Stamp]): (Boolean, Analysis) =
 	{
 		val initialChanges = changedInitial(entry, sources, previous, current, forEntry)
@@ -27,6 +26,7 @@ object Incremental
 		(!initialInv.isEmpty, analysis)
 	}
 
+	val incDebugProp = "xsbt.inc.debug"
 	// TODO: the Analysis for the last successful compilation should get returned + Boolean indicating success
 	// TODO: full external name changes, scopeInvalidations
 	def cycle(invalidated: Set[File], binaryChanges: DependencyChanges, previous: Analysis, doCompile: (Set[File], DependencyChanges) => Analysis, log: Logger): Analysis =
@@ -34,6 +34,7 @@ object Incremental
 			previous
 		else
 		{
+			def debug(s: => String) = if(java.lang.Boolean.getBoolean(incDebugProp)) log.debug(s) else ()
 			val pruned = prune(invalidated, previous)
 			debug("********* Pruned: \n" + pruned.relations + "\n*********")
 			val fresh = doCompile(invalidated, binaryChanges)
