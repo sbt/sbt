@@ -99,6 +99,8 @@ object AnalyzingCompiler
 {
 	import sbt.IO.{copy, createDirectory, zip, jars, unzip, withTemporaryDirectory}
 
+	// Note: The Scala build now depends on some details of this method: 
+	//   https://github.com/jsuereth/scala/commit/3431860048df8d2a381fb85a526097e00154eae0
 	/** Extract sources from source jars, compile them with the xsbti interfaces on the classpath, and package the compiled classes and
 	* any resources from the source jars into a final jar.*/
 	def compileSources(sourceJars: Iterable[File], targetJar: File, xsbtiJars: Iterable[File], id: String, compiler: RawCompiler, log: Logger)
