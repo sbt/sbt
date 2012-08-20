@@ -13,7 +13,8 @@ object PomTest extends Build
 			"d" % "d" % "1.0" % "test",
 			"e" % "e" % "1.0" % "custom",		
 			"f" % "f" % "1.0" % "custom,optional,runtime",
-			"g" % "g" % "1.0" % "custom,runtime" classifier "foo"
+			"g" % "g" % "1.0" % "custom,runtime" classifier "foo",
+			"h" % "h" % "1.0" % "custom,optional,runtime" classifier "foo"
 		)
 	)
 
@@ -27,21 +28,20 @@ object PomTest extends Build
 			("d", Some("test"), false, None),
 			("e", Some("custom"), false, None),
 			("f", Some("runtime"), true, None),
-			("g", Some("runtime"), false, Some("foo"))
+			("g", Some("runtime"), false, Some("foo")),
+			("h", Some("runtime"), true, Some("foo"))
 		)
 		val loaded = xml.XML.loadFile(pom)
 		val deps = loaded \\ "dependency"
 		expected foreach { case (id, scope, opt, classifier) =>
 			val dep = deps.find(d => (d \ "artifactId").text == id).getOrElse( error("Dependency '" + id + "' not written to pom:\n" + loaded))
-
 			val actualOpt = java.lang.Boolean.parseBoolean( (dep \\ "optional").text )
-			println("Actual: " + actualOpt + ", opt: " + opt)
-			assert(opt == actualOpt, "Invalid 'optional' section '" + (dep \\ "optional") + "', expected optional=" + opt)
+			assert(opt == actualOpt, "Invalid 'optional' section '" + (dep \\ "optional") + "' for " + id + ", expected optional=" + opt)
 
 			val actualScope = (dep \\ "scope") match { case Seq() => None; case x => Some(x.text) }
-			val acutalClassifier = (dep \\ "classifier") match { case Seq() => None; case x => Some(x.text) }
-			assert(actualScope == scope, "Invalid 'scope' section '" + (dep \\ "scope") + "', expected scope=" + scope)
-			assert(acutalClassifier == classifier, "Invalid 'classifier' section '" + (dep \\ "classifier") + "', expected classifier=" + classifier)
+			val actualClassifier = (dep \\ "classifier") match { case Seq() => None; case x => Some(x.text) }
+			assert(actualScope == scope, "Invalid 'scope' section '" + (dep \\ "scope") + "' for " + id + ", expected scope=" + scope)
+			assert(actualClassifier == classifier, "Invalid 'classifier' section '" + (dep \\ "classifier") + "' for " + id + ", expected classifier=" + classifier)
 		}
 	}
 }

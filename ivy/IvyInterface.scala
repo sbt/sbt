@@ -37,6 +37,7 @@ final case class ModuleID(organization: String, name: String, revision: String, 
 	def extra(attributes: (String,String)*) = copy(extraAttributes = this.extraAttributes ++ ModuleID.checkE(attributes))
 	def sources() = artifacts(Artifact.sources(name))
 	def javadoc() = artifacts(Artifact.javadoc(name))
+	def pomOnly() = artifacts(Artifact.pom(name))
 	def withSources() = jarIfEmpty.sources()
 	def withJavadoc() = jarIfEmpty.javadoc()
 	private def jarIfEmpty = if(explicitArtifacts.isEmpty) jar() else this
