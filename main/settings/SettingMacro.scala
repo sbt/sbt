@@ -15,16 +15,19 @@ object InitializeInstance extends MonadInstance
 }
 object InitializeConvert extends Convert
 {
-	def apply[T: c.TypeTag](c: reflect.makro.Context)(in: c.Tree): c.Tree =
-		if(in.tpe <:< c.typeOf[Initialize[Task[T]]] || in.tpe <:< c.typeOf[Task[T]])
+	def apply[T: c.AbsTypeTag](c: reflect.makro.Context)(in: c.Tree): c.Tree =
+	{
+		val u = appmacro.ContextUtil[c.type](c)
+		if(in.tpe <:< u.atypeOf[Initialize[Task[T]]] || in.tpe <:< u.atypeOf[Task[T]])
 			c.abort(in.pos, "A setting cannot depend on a task")
-		else if(in.tpe <:< c.typeOf[Initialize[T]])
+		else if(in.tpe <:< u.atypeOf[Initialize[T]])
 		{
 			val i = c.Expr[Initialize[T]](in)
 			c.universe.reify( i.splice ).tree
 		}
 		else
 			c.abort(in.pos, "Unknown input type: " + in.tpe)
+	}
 }
 
 	import language.experimental.macros
@@ -33,11 +36,9 @@ object InitializeConvert extends Convert
 
 object SettingMacro
 {
-	def setting[T](t: T): Initialize[T] = macro settingMacroImpl[T]
-	def settingMacroImpl[T: c.TypeTag](c: Context)(t: c.Expr[T]): c.Expr[Initialize[T]] =
+	def settingMacroImpl[T: c.AbsTypeTag](c: Context)(t: c.Expr[T]): c.Expr[Initialize[T]] =
 		Instance.contImpl[T](c, InitializeInstance, InitializeConvert, MixedBuilder)(Left(t))
 
-	def settingDyn[T](t: Initialize[T]): Initialize[T] = macro settingDynMacroImpl[T]
-	def settingDynMacroImpl[T: c.TypeTag](c: Context)(t: c.Expr[Initialize[T]]): c.Expr[Initialize[T]] = 
+	def settingDynMacroImpl[T: c.AbsTypeTag](c: Context)(t: c.Expr[Initialize[T]]): c.Expr[Initialize[T]] = 
 		Instance.contImpl[T](c, InitializeInstance, InitializeConvert, MixedBuilder)(Right(t))
 }

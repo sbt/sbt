@@ -38,11 +38,18 @@ object Def extends Init[Scope]
 	/** Lifts the result of a setting initialization into a Task. */
 	def toITask[T](i: Initialize[T]): Initialize[Task[T]] = map(i)(std.TaskExtra.inlineTask)
 
+		import language.experimental.macros
+		import std.TaskMacro.{MacroValue, taskDynMacroImpl, taskMacroImpl}
+		import std.SettingMacro.{settingDynMacroImpl,settingMacroImpl}
+
+	def task[T](t: T): Def.Initialize[Task[T]] = macro taskMacroImpl[T]
+	def taskDyn[T](t: Def.Initialize[Task[T]]): Def.Initialize[Task[T]] = macro taskDynMacroImpl[T]
+	def setting[T](t: T): Def.Initialize[T] = macro settingMacroImpl[T]
+	def settingDyn[T](t: Def.Initialize[T]): Def.Initialize[T] = macro settingDynMacroImpl[T]
+
 	// The following conversions enable the types Initialize[T], Initialize[Task[T]], and Task[T] to
 	//  be used in task and setting macros as inputs with an ultimate result of type T
 
-		import language.experimental.macros
-		import std.TaskMacro.MacroValue
 	implicit def macroValueI[T](in: Initialize[T]): MacroValue[T] = ???
 	implicit def macroValueIT[T](in: Initialize[Task[T]]): MacroValue[T] = ???
 	implicit def macroValueT[T](in: Task[T]): MacroValue[T] = ???

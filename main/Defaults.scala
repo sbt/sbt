@@ -723,29 +723,27 @@ object Classpaths
 		internalDependencyClasspath <<= internalDependencies,
 		unmanagedClasspath <<= unmanagedDependencies,
 		products <<= makeProducts,
-		productDirectories <<= compileInputs map (_.config.classesDirectory :: Nil),
+		productDirectories := compileInputs.value.config.classesDirectory :: Nil,
 		exportedProducts <<= exportProductsTask,
-		classpathConfiguration <<= (internalConfigurationMap, configuration, classpathConfiguration.?, update.task) apply findClasspathConfig,
-		managedClasspath <<= (classpathConfiguration, classpathTypes, update) map managedJars,
+		classpathConfiguration := findClasspathConfig(internalConfigurationMap.value, configuration.value, classpathConfiguration.?.value, update.value),
+		managedClasspath := managedJars(classpathConfiguration.value, classpathTypes.value, update.value),
 			// remove when defaultExcludes and classpathFilter are removed
 		excludeFilter in unmanagedJars <<= (defaultExcludes in unmanagedJars) or (excludeFilter in unmanagedJars),
 		includeFilter in unmanagedJars <<= classpathFilter or (includeFilter in unmanagedJars),
-		unmanagedJars <<= (configuration, unmanagedBase, includeFilter in unmanagedJars, excludeFilter in unmanagedJars) map { (config, base, filter, excl) =>
-			(base * (filter -- excl) +++ (base / config.name).descendantsExcept(filter, excl)).classpath
-		}
+		unmanagedJars := findUnmanagedJars(configuration.value, unmanagedBase.value, includeFilter in unmanagedJars value, excludeFilter in unmanagedJars value)
 	)
 	def defaultPackageKeys = Seq(packageBin, packageSrc, packageDoc)
 	lazy val defaultPackages: Seq[TaskKey[File]] =
 		for(task <- defaultPackageKeys; conf <- Seq(Compile, Test)) yield (task in conf)
 	lazy val defaultArtifactTasks: Seq[TaskKey[File]] = makePom +: defaultPackages
 
-	def findClasspathConfig(map: Configuration => Configuration, thisConfig: Configuration, delegate: Task[Option[Configuration]], up: Task[UpdateReport]): Task[Configuration] =
-		(delegate, up) map { case (delegated, report) =>
-			val defined = report.allConfigurations.toSet
-			val search = map(thisConfig) +: (delegated.toList ++ Seq(Compile, Configurations.Default))
-			def notFound = error("Configuration to use for managed classpath must be explicitly defined when default configurations are not present.")
-			search find { defined contains _.name } getOrElse notFound
-		}
+	def findClasspathConfig(map: Configuration => Configuration, thisConfig: Configuration, delegated: Option[Configuration], report: UpdateReport): Configuration =
+	{
+		val defined = report.allConfigurations.toSet
+		val search = map(thisConfig) +: (delegated.toList ++ Seq(Compile, Configurations.Default))
+		def notFound = error("Configuration to use for managed classpath must be explicitly defined when default configurations are not present.")
+		search find { defined contains _.name } getOrElse notFound
+	}
 
 	def packaged(pkgTasks: Seq[TaskKey[File]]): Initialize[Task[Map[Artifact, File]]] =
 		enabledOnly(packagedArtifact.task, pkgTasks) apply (_.join.map(_.toMap))
@@ -1168,6 +1166,10 @@ object Classpaths
 		up.filter( configurationFilter(config.name) && artifactFilter(`type` = jarTypes) ).toSeq.map { case (conf, module, art, file) =>
 			Attributed(file)(AttributeMap.empty.put(artifact.key, art).put(moduleID.key, module).put(configuration.key, config))
 		} distinct;
+
+	def findUnmanagedJars(config: Configuration, base: File, filter: FileFilter, excl: FileFilter): Classpath =
+		(base * (filter -- excl) +++ (base / config.name).descendantsExcept(filter, excl)).classpath
+
 
 	def autoPlugins(report: UpdateReport): Seq[String] =
 	{
