@@ -347,7 +347,7 @@ object Configurations
 	def default: Seq[Configuration] = defaultMavenConfigurations
 	def defaultMavenConfigurations: Seq[Configuration] = Seq(Compile, Runtime, Test, Provided, Optional)
 	def defaultInternal: Seq[Configuration] = Seq(CompileInternal, RuntimeInternal, TestInternal)
-	def auxiliary: Seq[Configuration] = Seq(Sources, Docs, Pom)
+	def auxiliary: Seq[Configuration] = Seq(Sources, Docs, Pom, ScalaTool)
 	def names(cs: Seq[Configuration]) = cs.map(_.name)
 
 	lazy val RuntimeInternal = optionalInternal(Runtime)
@@ -379,6 +379,7 @@ object Configurations
 	lazy val Optional = config("optional")
 	lazy val Pom = config("pom")
 
+	lazy val ScalaTool = config("scala-tool") hide
 	lazy val CompilerPlugin = config("plugin") hide
 
 	private[sbt] val DefaultMavenConfiguration = defaultConfiguration(true)
