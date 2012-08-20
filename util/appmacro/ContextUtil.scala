@@ -18,14 +18,16 @@ final class ContextUtil[C <: Context](val ctx: C)
 {
 		import ctx.universe.{Apply=>ApplyTree,_}
 
-	val alistType = ctx.typeOf[AList[KList]]
-	val alist: Symbol = alistType.typeSymbol.companionSymbol
-	val alistTC: Type = alistType.typeConstructor
+	lazy val alistType = ctx.typeOf[AList[KList]]
+	lazy val alist: Symbol = alistType.typeSymbol.companionSymbol
+	lazy val alistTC: Type = alistType.typeConstructor
 
 	/** Modifiers for a local val.*/
-	val localModifiers = Modifiers(NoFlags)
+	lazy val localModifiers = Modifiers(NoFlags)
 
 	def getPos(sym: Symbol) = if(sym eq null) NoPosition else sym.pos
+
+	def atypeOf[T](implicit att: AbsTypeTag[T]): Type = att.tpe
 
 	/** Constructs a unique term name with the given prefix within this Context.
 	* (The current implementation uses Context.fresh, which increments*/
@@ -58,7 +60,7 @@ final class ContextUtil[C <: Context](val ctx: C)
 		owner.asInstanceOf[global.Symbol].newSyntheticTypeParam(prefix, 0L).asInstanceOf[ctx.universe.TypeSymbol]
 	}
 	/** The type representing the type constructor `[X] X` */
-	val idTC: Type =
+	lazy val idTC: Type =
 	{
 		val tvar = newTypeVariable(NoSymbol)
 		polyType(tvar :: Nil, refVar(tvar))
