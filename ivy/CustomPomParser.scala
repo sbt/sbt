@@ -64,8 +64,11 @@ object CustomPomParser
 			// Fixes up the detected extension in some cases missed by Ivy.
 		val convertArtifacts = artifactExtIncorrect(md)
 
+			// Merges artifact sections for duplicate dependency definitions
+		val mergeDuplicates = IvySbt.hasDuplicateDependencies(md.getDependencies)
+
 		val unqualify = (filtered - ExtraAttributesKey) map { case (k,v) => ("e:" + k, v) }
-		if(unqualify.isEmpty && extraDepAttributes.isEmpty && !convertArtifacts)
+		if(unqualify.isEmpty && extraDepAttributes.isEmpty && !convertArtifacts && !mergeDuplicates)
 			md
 		else
 			addExtra(unqualify, extraDepAttributes, parser, md)
@@ -74,7 +77,6 @@ object CustomPomParser
 		md.getConfigurations.exists(conf => md.getArtifacts(conf.getName).exists(art => JarPackagings(art.getExt)))
 	private[this] def shouldBeUnqualified(m: Map[String, String]): Map[String, String] =
 		m.filter { case (SbtVersionKey | ScalaVersionKey | ExtraAttributesKey,_) => true; case _ => false }
-
 	
 	private[this] def condAddExtra(properties: Map[String, String], id: ModuleRevisionId): ModuleRevisionId =
 		if(properties.isEmpty) id else addExtra(properties, id)
@@ -169,7 +171,10 @@ object CustomPomParser
 		for( (key,value) <- md.getExtraInfo.asInstanceOf[java.util.Map[String,String]].asScala ) dmd.addExtraInfo(key, value)
 		for( (key, value) <- md.getExtraAttributesNamespaces.asInstanceOf[java.util.Map[String,String]].asScala ) dmd.addExtraAttributeNamespace(key, value)
 		IvySbt.addExtraNamespace(dmd)
-		for( dd <- md.getDependencies ) dmd.addDependency(addExtra(dd, dependencyExtra))
+
+		val withExtra = md.getDependencies map { dd => addExtra(dd, dependencyExtra) }
+		val unique = IvySbt.mergeDuplicateDefinitions(withExtra)
+		unique foreach dmd.addDependency
 
 		for( ed <- md.getInheritedDescriptors) dmd.addInheritedDescriptor( new DefaultExtendsDescriptor( mrid, resolvedMrid, ed.getLocation, ed.getExtendsTypes) )
 		for( conf <- md.getConfigurations) {
