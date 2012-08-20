@@ -10,13 +10,12 @@ package sbt
 import java.io.File
 // Node needs to be renamed to XNode because the task subproject contains a Node type that will shadow
 // scala.xml.Node when generating aggregated API documentation
-import scala.xml.{Node => XNode, NodeSeq, PrettyPrinter}
+import scala.xml.{Elem, Node => XNode, NodeSeq, PrettyPrinter}
 import Configurations.Optional
 
 import org.apache.ivy.{core, plugins, Ivy}
 import core.settings.IvySettings
-import core.module.descriptor
-import descriptor.{DependencyDescriptor, License, ModuleDescriptor, ExcludeRule}
+import core.module.descriptor.{DependencyArtifactDescriptor, DependencyDescriptor, License, ModuleDescriptor, ExcludeRule}
 import plugins.resolver.{ChainResolver, DependencyResolver, IBiblioResolver}
 
 class MakePom(val log: Logger)
@@ -147,37 +146,74 @@ class MakePom(val log: Logger)
 
 	def makeDependency(dependency: DependencyDescriptor, includeTypes: Set[String]): NodeSeq =
 	{
+		val artifacts = dependency.getAllDependencyArtifacts
+		val includeArtifacts = artifacts.filter(d => includeTypes(d.getType))
+		if(artifacts.isEmpty) {
+			val (scope, optional) = getScopeAndOptional(dependency.getModuleConfigurations)
+			makeDependencyElem(dependency, scope, optional, None, None)
+		}
+		else if(includeArtifacts.isEmpty)
+			NodeSeq.Empty
+		else
+			NodeSeq.fromSeq(artifacts.map( a => makeDependencyElem(dependency, a) ))
+	}
+
+	def makeDependencyElem(dependency: DependencyDescriptor, artifact: DependencyArtifactDescriptor): Elem =
+	{
+		val artifactConfigs = artifact.getConfigurations
+		val configs = if(artifactConfigs.isEmpty) dependency.getModuleConfigurations else artifactConfigs
+		val (scope, optional) = getScopeAndOptional(configs)
+		makeDependencyElem(dependency, scope, optional, artifactClassifier(artifact), artifactType(artifact))
+	}
+	def makeDependencyElem(dependency: DependencyDescriptor, scope: Option[String], optional: Boolean, classifier: Option[String], tpe: Option[String]): Elem =
+	{
 		val mrid = dependency.getDependencyRevisionId
 		<dependency>
 			<groupId>{mrid.getOrganisation}</groupId>
 			<artifactId>{mrid.getName}</artifactId>
 			<version>{mrid.getRevision}</version>
-			{ scopeAndOptional(dependency) }
-			{ classifier(dependency, includeTypes) }
+			{ scopeElem(scope) }
+			{ optionalElem(optional) }
+			{ classifierElem(classifier) }
+			{ typeElem(tpe) }
 			{ exclusions(dependency) }
 		</dependency>
 	}
 
+	@deprecated("No longer used and will be removed.", "0.12.1")
 	def classifier(dependency: DependencyDescriptor, includeTypes: Set[String]): NodeSeq =
 	{
 		val jarDep = dependency.getAllDependencyArtifacts.filter(d => includeTypes(d.getType)).headOption
 		jarDep match {
-			case Some(a) => {
-				val cl = a.getExtraAttribute("classifier")
-				if (cl != null) <classifier>{cl}</classifier> else NodeSeq.Empty
-			}
-			case _ => NodeSeq.Empty
+			case Some(a) => classifierElem(artifactClassifier(a))
+			case None => NodeSeq.Empty
 		}
 	}
+	def artifactType(artifact: DependencyArtifactDescriptor): Option[String] =
+		Option(artifact.getType).flatMap { tpe => if(tpe == "jar") None else Some(tpe) }
+	def typeElem(tpe: Option[String]): NodeSeq =
+		tpe match {
+			case Some(t) => <type>{t}</type>
+			case None => NodeSeq.Empty
+		}
+				
+	def artifactClassifier(artifact: DependencyArtifactDescriptor): Option[String] =
+		Option(artifact.getExtraAttribute("classifier"))
+	def classifierElem(classifier: Option[String]): NodeSeq =
+		classifier match {
+			case Some(c) => <classifier>{c}</classifier>
+			case None => NodeSeq.Empty
+		}
 
+	@deprecated("No longer used and will be removed.", "0.12.1")
 	def scopeAndOptional(dependency: DependencyDescriptor): NodeSeq  =
 	{
 		val (scope, opt) = getScopeAndOptional(dependency.getModuleConfigurations)
 		scopeElem(scope) ++ optionalElem(opt)
 	}
 	def scopeElem(scope: Option[String]): NodeSeq = scope match {
-		case Some(s) => <scope>{s}</scope>
 		case None => NodeSeq.Empty
+		case Some(s) => <scope>{s}</scope>
 	}
 	def optionalElem(opt: Boolean)  =  if(opt) <optional>true</optional> else NodeSeq.Empty
 	def moduleDescriptor(module: ModuleDescriptor) = module.getModuleRevisionId

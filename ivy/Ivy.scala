@@ -146,7 +146,8 @@ final class IvySbt(val configuration: IvyConfiguration)
 			val parser = IvySbt.parseIvyXML(ivy.getSettings, IvySbt.wrapped(module, ivyXML), moduleID, defaultConf.name, validate)
 			IvySbt.addMainArtifact(moduleID)
 			IvySbt.addOverrides(moduleID, overrides, ivy.getSettings.getMatcher(PatternMatcher.EXACT))
-			IvySbt.addDependencies(moduleID, IvySbt.overrideDirect(dependencies, overrides), parser)
+			val transformedDeps = IvySbt.overrideDirect(dependencies, overrides)
+			IvySbt.addDependencies(moduleID, transformedDeps, parser)
 			(moduleID, parser.getDefaultConf)
 		}
 		private def newConfiguredModuleID(module: ModuleID, moduleInfo: ModuleInfo, configurations: Iterable[Configuration]) =
@@ -423,36 +424,73 @@ private object IvySbt
 	}
 
 	/** This method is used to add inline dependencies to the provided module. */
-	def addDependencies(moduleID: DefaultModuleDescriptor, dependencies: Iterable[ModuleID], parser: CustomXmlParser.CustomParser)
+	def addDependencies(moduleID: DefaultModuleDescriptor, dependencies: Seq[ModuleID], parser: CustomXmlParser.CustomParser)
 	{
-		for(dependency <- dependencies)
-		{
-			val dependencyDescriptor = new DefaultDependencyDescriptor(moduleID, toID(dependency), dependency.isForce, dependency.isChanging, dependency.isTransitive)
-			dependency.configurations match
-			{
-				case None => // The configuration for this dependency was not explicitly specified, so use the default
-					parser.parseDepsConfs(parser.getDefaultConf, dependencyDescriptor)
-				case Some(confs) => // The configuration mapping (looks like: test->default) was specified for this dependency
-					parser.parseDepsConfs(confs, dependencyDescriptor)
-			}
-			for(artifact <- dependency.explicitArtifacts)
-			{
-				import artifact.{name, classifier, `type`, extension, url}
-				val extraMap = extra(artifact)
-				val ivyArtifact = new DefaultDependencyArtifactDescriptor(dependencyDescriptor, name, `type`, extension, url.getOrElse(null), extraMap)
-				for(conf <- dependencyDescriptor.getModuleConfigurations)
-					dependencyDescriptor.addDependencyArtifact(conf, ivyArtifact)
-			}
-			for(excls <- dependency.exclusions)
-			{
-				for(conf <- dependencyDescriptor.getModuleConfigurations)
-				{
-					dependencyDescriptor.addExcludeRule(conf, IvyScala.excludeRule(excls.organization, excls.name, excls.configurations, excls.artifact))
-				}
-			}
-			moduleID.addDependency(dependencyDescriptor)
-		}
+		val converted = dependencies map { dependency => convertDependency(moduleID, dependency, parser) }
+		val unique = if(hasDuplicateDependencies(converted)) mergeDuplicateDefinitions(converted) else converted
+		unique foreach moduleID.addDependency
 	}
+	/** Determines if there are multiple dependency definitions for the same dependency ID. */
+	def hasDuplicateDependencies(dependencies: Seq[DependencyDescriptor]): Boolean =
+	{
+		val ids = dependencies.map(_.getDependencyRevisionId)
+		ids.toSet.size != ids.size
+	}
+
+	/** Combines the artifacts, includes, and excludes of duplicate dependency definitions.
+	* This is somewhat fragile and is only intended to workaround Ivy (or sbt's use of Ivy) not handling this case properly.
+	* In particular, Ivy will create multiple dependency entries when converting a pom with a dependency on a classified artifact and a non-classified artifact:
+	*   https://github.com/harrah/xsbt/issues/468
+	* It will also allow users to declare dependencies on classified modules in different configurations:
+	*   https://groups.google.com/d/topic/simple-build-tool/H2MdAARz6e0/discussion
+	* as well as basic multi-classifier handling: #285, #419, #480.
+	* Multiple dependency definitions should otherwise be avoided as much as possible.
+	*/
+	def mergeDuplicateDefinitions(dependencies: Seq[DependencyDescriptor]): Seq[DependencyDescriptor] =
+	{
+		val deps = new java.util.LinkedHashMap[ModuleRevisionId, DependencyDescriptor]
+		for( dd <- dependencies )
+		{
+			val id = dd.getDependencyRevisionId
+			val updated = deps get id match {
+				case null => dd
+				case v => ivyint.MergeDescriptors(v, dd)
+			}
+			deps.put(id, updated)
+		}
+			import collection.JavaConverters._
+		deps.values.asScala.toSeq
+	}
+
+	/** Transforms an sbt ModuleID into an Ivy DefaultDependencyDescriptor.*/
+	def convertDependency(moduleID: DefaultModuleDescriptor, dependency: ModuleID, parser: CustomXmlParser.CustomParser): DefaultDependencyDescriptor =
+	{
+		val dependencyDescriptor = new DefaultDependencyDescriptor(moduleID, toID(dependency), dependency.isForce, dependency.isChanging, dependency.isTransitive)
+		dependency.configurations match
+		{
+			case None => // The configuration for this dependency was not explicitly specified, so use the default
+				parser.parseDepsConfs(parser.getDefaultConf, dependencyDescriptor)
+			case Some(confs) => // The configuration mapping (looks like: test->default) was specified for this dependency
+				parser.parseDepsConfs(confs, dependencyDescriptor)
+		}
+		for(artifact <- dependency.explicitArtifacts)
+		{
+			import artifact.{name, classifier, `type`, extension, url}
+			val extraMap = extra(artifact)
+			val ivyArtifact = new DefaultDependencyArtifactDescriptor(dependencyDescriptor, name, `type`, extension, url.getOrElse(null), extraMap)
+			for(conf <- dependencyDescriptor.getModuleConfigurations)
+				dependencyDescriptor.addDependencyArtifact(conf, ivyArtifact)
+		}
+		for(excls <- dependency.exclusions)
+		{
+			for(conf <- dependencyDescriptor.getModuleConfigurations)
+			{
+				dependencyDescriptor.addExcludeRule(conf, IvyScala.excludeRule(excls.organization, excls.name, excls.configurations, excls.artifact))
+			}
+		}
+		dependencyDescriptor
+	}
+
 	def addOverrides(moduleID: DefaultModuleDescriptor, overrides: Set[ModuleID], matcher: PatternMatcher): Unit =
 		overrides foreach addOverride(moduleID, matcher)
 	def addOverride(moduleID: DefaultModuleDescriptor, matcher: PatternMatcher)(overrideDef: ModuleID): Unit =
@@ -499,6 +537,7 @@ private object IvySbt
 			toIvyArtifact(moduleID, artifact, configurationStrings)
 		}
 	}
+
 
 	/** This code converts the given ModuleDescriptor to a DefaultModuleDescriptor by casting or generating an error.
 	* Ivy 2.0.0 always produces a DefaultModuleDescriptor. */

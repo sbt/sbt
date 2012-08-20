@@ -20,7 +20,7 @@ final class PublishConfiguration(val ivyFile: Option[File], val resolverName: St
 
 final class UpdateConfiguration(val retrieve: Option[RetrieveConfiguration], val missingOk: Boolean, val logging: UpdateLogging.Value)
 final class RetrieveConfiguration(val retrieveDirectory: File, val outputPattern: String)
-final case class MakePomConfiguration(file: File, moduleInfo: ModuleInfo, configurations: Option[Seq[Configuration]] = None, extra: NodeSeq = NodeSeq.Empty, process: XNode => XNode = n => n, filterRepositories: MavenRepository => Boolean = _ => true, allRepositories: Boolean, includeTypes: Set[String] = Set(Artifact.DefaultType))
+final case class MakePomConfiguration(file: File, moduleInfo: ModuleInfo, configurations: Option[Seq[Configuration]] = None, extra: NodeSeq = NodeSeq.Empty, process: XNode => XNode = n => n, filterRepositories: MavenRepository => Boolean = _ => true, allRepositories: Boolean, includeTypes: Set[String] = Set(Artifact.DefaultType, Artifact.PomType))
 	// exclude is a map on a restricted ModuleID
 final case class GetClassifiersConfiguration(module: GetClassifiersModule, exclude: Map[ModuleID, Set[String]], configuration: UpdateConfiguration, ivyScala: Option[IvyScala])
 final case class GetClassifiersModule(id: ModuleID, modules: Seq[ModuleID], configurations: Seq[Configuration], classifiers: Seq[String])
