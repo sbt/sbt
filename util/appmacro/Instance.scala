@@ -18,7 +18,7 @@ trait Instance
 }
 trait Convert
 {
-	def apply[T: c.TypeTag](c: scala.reflect.makro.Context)(in: c.Tree): c.Tree
+	def apply[T: c.AbsTypeTag](c: scala.reflect.makro.Context)(in: c.Tree): c.Tree
 }
 trait MonadInstance extends Instance
 {
@@ -80,18 +80,19 @@ object Instance
 	* If this is for multi-input flatMap (app followed by flatMap), 
 	*  this should be the argument wrapped in Right.
 	*/
-	def contImpl[T: c.TypeTag](c: Context, i: Instance with Singleton, convert: Convert, builder: TupleBuilder)(t: Either[c.Expr[T], c.Expr[i.M[T]]])(
-		implicit tt: c.TypeTag[T], mt: c.TypeTag[i.M[T]], it: c.TypeTag[i.type]): c.Expr[i.M[T]] =
+	def contImpl[T](c: Context, i: Instance with Singleton, convert: Convert, builder: TupleBuilder)(t: Either[c.Expr[T], c.Expr[i.M[T]]])(
+		implicit tt: c.AbsTypeTag[T], it: c.TypeTag[i.type]): c.Expr[i.M[T]] =
 	{
 			import c.universe.{Apply=>ApplyTree,_}
 		
 		val util = ContextUtil[c.type](c)
 		val mTC: Type = util.extractTC(i, InstanceTCName)
+		val mttpe: Type = appliedType(mTC, tt.tpe :: Nil).normalize
 
 		// the tree for the macro argument
 		val (tree, treeType) = t match {
 			case Left(l) => (l.tree, tt.tpe.normalize)
-			case Right(r) => (r.tree, mt.tpe.normalize)
+			case Right(r) => (r.tree, mttpe)
 		}
 
 		val instanceSym = util.singleton(i)
@@ -202,7 +203,7 @@ object Instance
 				tree match
 				{
 					case ApplyTree(TypeApply(fun, t :: Nil), qual :: Nil) if isWrapper(fun) =>
-						val tag = c.TypeTag(t.tpe)
+						val tag = c.AbsTypeTag(t.tpe)
 						addType(t.tpe, convert(c)(qual)(tag) )
 					case _ => super.transform(tree)
 				}
