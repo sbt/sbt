@@ -58,6 +58,9 @@ trait Init[Scope]
 	type ScopeLocal = ScopedKey[_] => Seq[Setting[_]]
 	type MapConstant = ScopedKey ~> Option
 
+	/** The result of this initialization is the composition of applied transformations.
+	* This can be useful when dealing with dynamic Initialize values. */
+	lazy val capturedTransformations: Initialize[Initialize ~> Initialize] = new TransformCapture(idK[Initialize])
 	def setting[T](key: ScopedKey[T], init: Initialize[T], pos: SourcePosition = NoPosition): Setting[T] = new Setting[T](key, init, pos)
 	def valueStrict[T](value: T): Initialize[T] = pure(() => value)
 	def value[T](value: => T): Initialize[T] = pure(value _)
@@ -264,6 +267,14 @@ trait Init[Scope]
 		override def toString = "setting(" + key + ") at " + pos
 	}
 
+	private[this] def handleUndefined[T](vr: ValidatedInit[T]): Initialize[T] = vr match {
+		case Left(undefs) => throw new RuntimeUndefined(undefs)
+		case Right(x) => x
+	}
+
+	private[this] lazy val getValidated =
+		new (ValidatedInit ~> Initialize) { def apply[T](v: ValidatedInit[T]) = handleUndefined[T](v)  }
+
 		// mainly for reducing generated class count
 	private[this] def validateReferencedT(g: ValidateRef) =
 		new (Initialize ~> ValidatedInit) { def apply[T](i: Initialize[T]) = i validateReferenced g }
@@ -302,6 +313,15 @@ trait Init[Scope]
 	trait KeyedInitialize[T] extends Keyed[T, T] {
 		final val transform = idFun[T]
 	}
+	private[sbt] final class TransformCapture(val f: Initialize ~> Initialize) extends Initialize[Initialize ~> Initialize]
+	{
+		def dependencies = Nil
+		def apply[Z](g2: (Initialize ~> Initialize) => Z): Initialize[Z] = map(this)(g2)
+		def evaluate(ss: Settings[Scope]): Initialize ~> Initialize = f
+		def mapReferenced(g: MapScoped) = new TransformCapture(mapReferencedT(g) ∙ f)
+		def mapConstant(g: MapConstant) = new TransformCapture(mapConstantT(g) ∙ f)
+		def validateReferenced(g: ValidateRef) = Right(new TransformCapture(getValidated ∙ validateReferencedT(g) ∙ f))
+	}
 	private[sbt] final class Bind[S,T](val f: S => Initialize[T], val in: Initialize[S]) extends Initialize[T]
 	{
 		def dependencies = in.dependencies
@@ -310,10 +330,6 @@ trait Init[Scope]
 		def mapReferenced(g: MapScoped) = new Bind[S,T](s => f(s) mapReferenced g, in mapReferenced g)
 		def validateReferenced(g: ValidateRef) = (in validateReferenced g).right.map { validIn =>
 			new Bind[S,T](s => handleUndefined( f(s) validateReferenced g), validIn)
-		}
-		def handleUndefined(vr: ValidatedInit[T]): Initialize[T] = vr match {
-			case Left(undefs) => throw new RuntimeUndefined(undefs)
-			case Right(x) => x
 		}
 		def mapConstant(g: MapConstant) = new Bind[S,T](s => f(s) mapConstant g, in mapConstant g)
 	}

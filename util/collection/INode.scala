@@ -27,6 +27,7 @@ abstract class EvaluateSettings[Scope]
 		case a: Apply[k,T] => new MixedNode[k,T]( a.alist.transform[Initialize, INode](a.inputs, transform), a.f, a.alist)
 		case b: Bind[s,T] => new BindNode[s,T]( transform(b.in), x => transform(b.f(x)))
 		case v: Value[T] => constant(v.value)
+		case t: TransformCapture => constant(() => t.f)
 		case o: Optional[s,T] => o.a match {
 			case None => constant( () => o.f(None) )
 			case Some(i) => single[s,T](transform(i), x => o.f(Some(x)))
