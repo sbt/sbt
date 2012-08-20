@@ -32,10 +32,10 @@ object FullInstance extends Instance.Composed[Initialize, Task](InitializeInstan
 	def flatten[T](in: Initialize[Task[Initialize[Task[T]]]]): Initialize[Task[T]] =
 	{
 			import Scoped._
-		(in,settingsData) apply{
-			(a: Task[Initialize[Task[T]]], data: Task[SS]) =>
+		(in,settingsData, Def.capturedTransformations) apply{
+			(a: Task[Initialize[Task[T]]], data: Task[SS], f) =>
 				import TaskExtra.multT2Task
-				(a, data) flatMap { case (a,d) => a evaluate d }
+				(a, data) flatMap { case (a,d) => f(a) evaluate d }
 		}
 	}
 }
