@@ -59,7 +59,7 @@ object Defaults extends BuildCommon
 		crossVersion :== CrossVersion.Disabled,
 		scalaOrganization :== ScalaArtifacts.Organization,
 		buildDependencies <<= buildDependencies or Classpaths.constructBuildDependencies,
-		taskTemporaryDirectory := IO.createTemporaryDirectory,
+		taskTemporaryDirectory := { val dir = IO.createTemporaryDirectory; dir.deleteOnExit(); dir },
 		onComplete <<= taskTemporaryDirectory { dir => () => IO.delete(dir); IO.createDirectory(dir) },
 		concurrentRestrictions <<= concurrentRestrictions or defaultRestrictions,
 		parallelExecution :== true,
