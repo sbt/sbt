@@ -38,11 +38,13 @@ trait Identity {
 	override final def toString = super.toString
 }
 
-/** StateOps methods to be merged at the next binary incompatible release. */
+/** StateOps methods to be merged at the next binary incompatible release (0.13.0). */
 private[sbt] trait NewStateOps
 {
 	def interactive: Boolean
 	def setInteractive(flag: Boolean): State
+	def classLoaderCache: classpath.ClassLoaderCache
+	def initializeClassLoaderCache: State
 }
 
 /** Convenience methods for State transformations and operations. */
@@ -161,6 +163,9 @@ object State
 	private[sbt] implicit def newStateOps(s: State): NewStateOps = new NewStateOps {
 		def interactive = s.get(BasicKeys.interactive).getOrElse(false)
 		def setInteractive(i: Boolean) = s.put(BasicKeys.interactive, i)
+		def classLoaderCache: classpath.ClassLoaderCache = s get BasicKeys.classLoaderCache getOrElse newClassLoaderCache
+		def initializeClassLoaderCache = s.put(BasicKeys.classLoaderCache, newClassLoaderCache)
+		private[this] def newClassLoaderCache = new classpath.ClassLoaderCache(s.configuration.provider.scalaProvider.launcher.topLoader)
 	}
 
 	/** Provides operations and transformations on State. */

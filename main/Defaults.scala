@@ -35,9 +35,16 @@ object Defaults extends BuildCommon
 {
 	final val CacheDirectoryName = "cache"
 
+	private[sbt] def scalaToolDependencies(org: String, version: String): Seq[ModuleID] = Seq(
+		scalaToolDependency(org, ScalaArtifacts.CompilerID, version),
+		scalaToolDependency(org, ScalaArtifacts.LibraryID, version)
+	)
+	private[this] def scalaToolDependency(org: String, id: String, version: String): ModuleID = 
+		ModuleID(org, id, version, Some(Configurations.ScalaTool.name + "->default,optional(default)") )
+
 	def configSrcSub(key: SettingKey[File]): Initialize[File] = (key in ThisScope.copy(config = Global), configuration) { (src, conf) => src / nameForSrc(conf.name) }
-	def nameForSrc(config: String) = if(config == "compile") "main" else config
-	def prefix(config: String) = if(config == "compile") "" else config + "-"
+	def nameForSrc(config: String) = if(config == Configurations.Compile.name) "main" else config
+	def prefix(config: String) = if(config == Configurations.Compile.name) "" else config + "-"
 
 	def lock(app: xsbti.AppConfiguration): xsbti.GlobalLock = app.provider.scalaProvider.launcher.globalLock
 
@@ -199,7 +206,7 @@ object Defaults extends BuildCommon
 		compilersSetting,
 		javacOptions in GlobalScope :== Nil,
 		scalacOptions in GlobalScope :== Nil,
-		scalaInstance <<= scalaInstanceSetting,
+		scalaInstance <<= scalaInstanceTask,
 		scalaVersion in GlobalScope := appConfiguration.value.provider.scalaProvider.version,
 		scalaBinaryVersion in GlobalScope := binaryScalaVersion(scalaVersion.value),
 		crossVersion := (if(crossPaths.value) CrossVersion.binary else CrossVersion.Disabled),
@@ -270,13 +277,37 @@ object Defaults extends BuildCommon
 			}
 		}
 	}
-	def scalaInstanceSetting = (appConfiguration, scalaOrganization, scalaVersion, scalaHome) map { (app, org, version, home) =>
-		val launcher = app.provider.scalaProvider.launcher
-		home match {
-			case None => ScalaInstance(org, version, launcher)
-			case Some(h) => ScalaInstance(h, launcher)
+	@deprecated("Use scalaInstanceTask.", "0.13.0")
+	def scalaInstanceSetting = scalaInstanceTask
+	def scalaInstanceTask: Initialize[Task[ScalaInstance]] = Def.taskDyn {
+		scalaHome.value match {
+			case Some(h) => scalaInstanceFromHome(h)
+			case None =>
+				val scalaProvider = appConfiguration.value.provider.scalaProvider
+				val version = scalaVersion.value
+				if(version == scalaProvider.version) // use the same class loader as the Scala classes used by sbt
+					Def.task( ScalaInstance(version, scalaProvider) )
+				else
+					scalaInstanceFromUpdate
 		}
 	}
+	def scalaInstanceFromUpdate: Initialize[Task[ScalaInstance]] = Def.task {
+		val toolReport = update.value.configuration(Configurations.ScalaTool.name) getOrElse error("Missing Scala tool configuration.")
+		def files(id: String) = 
+			for { m <- toolReport.modules if m.module.name == id;
+				(art, file) <- m.artifacts if art.`type` == Artifact.DefaultType }
+			yield file
+		def file(id: String) = files(id).headOption getOrElse error(s"Missing ${id}.jar")
+		val allFiles = toolReport.modules.flatMap(_.artifacts.map(_._2))
+		val libraryJar = file(ScalaArtifacts.LibraryID)
+		val compilerJar = file(ScalaArtifacts.CompilerID)
+		val otherJars = allFiles.filterNot(x => x ==  libraryJar || x == compilerJar)
+		ScalaInstance(scalaVersion.value, libraryJar, compilerJar, otherJars : _*)(makeClassLoader(state.value))
+	}
+	def scalaInstanceFromHome(dir: File): Initialize[Task[ScalaInstance]] = Def.task {
+		ScalaInstance(dir)(makeClassLoader(state.value))
+	}
+	private[this] def makeClassLoader(state: State) = state.classLoaderCache.apply _
 
 	lazy val testTasks: Seq[Setting[_]] = testTaskOptions(test) ++ testTaskOptions(testOnly) ++ testTaskOptions(testQuick) ++ Seq(
 		testLoader := TestFramework.createTestLoader(data(fullClasspath.value), scalaInstance.value, IO.createUniqueDirectory(taskTemporaryDirectory.value)),
@@ -807,16 +838,20 @@ object Classpaths
 		projectDependencies <<= projectDependenciesTask,
 		dependencyOverrides in GlobalScope :== Set.empty,
 		libraryDependencies in GlobalScope :== Nil,
-		libraryDependencies <++= (autoScalaLibrary, sbtPlugin, scalaVersion) apply autoLibraryDependency,
-		allDependencies <<= (projectDependencies,libraryDependencies,sbtPlugin,sbtDependency) map { (projDeps, libDeps, isPlugin, sbtDep) =>
-			val base = projDeps ++ libDeps
-			if(isPlugin) sbtDep.copy(configurations = Some(Provided.name)) +: base else base
+		libraryDependencies <++= (autoScalaLibrary, sbtPlugin, scalaOrganization, scalaVersion) apply autoLibraryDependency,
+		allDependencies := {
+			val base = projectDependencies.value ++ libraryDependencies.value
+			val pluginAdjust = if(sbtPlugin.value) sbtDependency.value.copy(configurations = Some(Provided.name)) +: base else base
+			if(scalaHome.value.isDefined)
+				pluginAdjust
+			else
+				Defaults.scalaToolDependencies(scalaOrganization.value, scalaVersion.value) ++ pluginAdjust
 		},
 		ivyLoggingLevel in GlobalScope :== UpdateLogging.DownloadOnly,
 		ivyXML in GlobalScope :== NodeSeq.Empty,
 		ivyValidate in GlobalScope :== false,
 		ivyScala <<= ivyScala or (scalaHome, scalaVersion in update, scalaBinaryVersion in update) { (sh,fv,bv) =>
-			Some(new IvyScala(fv, bv, Nil, filterImplicit = true, checkExplicit = true, overrideScalaVersion = sh.isEmpty))
+			Some(new IvyScala(fv, bv, Nil, filterImplicit = false, checkExplicit = true, overrideScalaVersion = sh.isEmpty))
 		},
 		moduleConfigurations in GlobalScope :== Nil,
 		publishTo in GlobalScope :== None,
@@ -852,11 +887,11 @@ object Classpaths
 		ivySbt <<= ivySbt0,
 		ivyModule <<= (ivySbt, moduleSettings) map { (ivySbt, settings) => new ivySbt.Module(settings) },
 		transitiveUpdate <<= transitiveUpdateTask,
-		update <<= (ivyModule, thisProjectRef, updateConfiguration, cacheDirectory, scalaInstance, transitiveUpdate, executionRoots, resolvedScoped, skip in update, streams) map {
-			(module, ref, config, cacheDirectory, si, reports, roots, resolved, skip, s) =>
+		update <<= (ivyModule, thisProjectRef, updateConfiguration, cacheDirectory, transitiveUpdate, executionRoots, resolvedScoped, skip in update, streams) map {
+			(module, ref, config, cacheDirectory, reports, roots, resolved, skip, s) =>
 				val depsUpdated = reports.exists(!_.stats.cached)
 				val isRoot = roots contains resolved
-				cachedUpdate(cacheDirectory / "update", Reference.display(ref), module, config, Some(si), skip = skip, force = isRoot, depsUpdated = depsUpdated, log = s.log)
+				cachedUpdate(cacheDirectory / "update", Reference.display(ref), module, config, None, skip = skip, force = isRoot, depsUpdated = depsUpdated, log = s.log)
 		} tag(Tags.Update, Tags.Network),
 		update <<= (conflictWarning, update, streams) map { (config, report, s) => ConflictWarning(config, report, s.log); report },
 		transitiveClassifiers in GlobalScope :== Seq(SourceClassifier, DocClassifier),
@@ -1155,9 +1190,16 @@ object Classpaths
 
 	def modifyForPlugin(plugin: Boolean, dep: ModuleID): ModuleID =
 		if(plugin) dep.copy(configurations = Some(Provided.name)) else dep
+
+	@deprecated("Explicitly specify the organization using the other variant.", "0.13.0")
 	def autoLibraryDependency(auto: Boolean, plugin: Boolean, version: String): Seq[ModuleID] =
 		if(auto)
 			modifyForPlugin(plugin, ScalaArtifacts.libraryDependency(version)) :: Nil
+		else
+			Nil
+	def autoLibraryDependency(auto: Boolean, plugin: Boolean, org: String, version: String): Seq[ModuleID] =
+		if(auto)
+			modifyForPlugin(plugin, ModuleID(org, ScalaArtifacts.LibraryID, version)) :: Nil
 		else
 			Nil
 
@@ -1183,6 +1225,7 @@ object Classpaths
 			if(autoCompilerPlugins.value) options ++ autoPlugins(update.value) else options
 		}
 	)
+	@deprecated("Doesn't properly handle non-standard Scala organizations.", "0.13.0")
 	def substituteScalaFiles(scalaInstance: ScalaInstance, report: UpdateReport): UpdateReport =
 		report.substitute { (configuration, module, arts) =>
 			import ScalaArtifacts._

@@ -63,7 +63,7 @@ object ClasspathUtilities
 
 	def makeLoader[T](classpath: Seq[File], parent: ClassLoader, instance: ScalaInstance, nativeTemp: File): ClassLoader =
 		toLoader(classpath, parent, createClasspathResources(classpath, instance), nativeTemp)
-	
+
 	private[sbt] def printSource(c: Class[_]) =
 		println(c.getName + " loader=" +c.getClassLoader + " location=" + IO.classLocationFile(c))
 	

@@ -54,7 +54,9 @@ object StandardMain
 	def initialState(configuration: xsbti.AppConfiguration, initialDefinitions: Seq[Command], preCommands: Seq[String]): State =
 	{
 		val commands = preCommands ++ configuration.arguments.map(_.trim)
-		State( configuration, initialDefinitions, Set.empty, None, commands, State.newHistory, BuiltinCommands.initialAttributes, initialGlobalLogging, State.Continue )
+		val initAttrs = BuiltinCommands.initialAttributes
+		val s = State( configuration, initialDefinitions, Set.empty, None, commands, State.newHistory, initAttrs, initialGlobalLogging, State.Continue )
+		s.initializeClassLoaderCache
 	}
 	def initialGlobalLogging: GlobalLogging =
 		GlobalLogging.initial((pw, glb) => MainLogging.globalDefault(pw,glb,console), File.createTempFile("sbt",".log"), console)
