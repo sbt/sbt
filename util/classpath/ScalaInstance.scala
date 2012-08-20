@@ -46,18 +46,27 @@ object ScalaInstance
 
 	def apply(scalaHome: File, launcher: xsbti.Launcher): ScalaInstance =
 		apply(libraryJar(scalaHome), compilerJar(scalaHome), launcher, extraJars(scalaHome): _*)
+	def apply(scalaHome: File)(classLoader: List[File] => ClassLoader): ScalaInstance =
+		apply(libraryJar(scalaHome), compilerJar(scalaHome), extraJars(scalaHome): _*)(classLoader)
+
 	def apply(version: String, scalaHome: File, launcher: xsbti.Launcher): ScalaInstance =
 		apply(version, libraryJar(scalaHome), compilerJar(scalaHome), launcher, extraJars(scalaHome) : _*)
 	def apply(libraryJar: File, compilerJar: File, launcher: xsbti.Launcher, extraJars: File*): ScalaInstance =
+		apply(libraryJar, compilerJar, extraJars : _*)( scalaLoader(launcher) )
+	def apply(libraryJar: File, compilerJar: File, extraJars: File*)(classLoader: List[File] => ClassLoader): ScalaInstance =
 	{
-		val loader = scalaLoader(launcher, libraryJar :: compilerJar :: extraJars.toList)
+		val loader = classLoader(libraryJar :: compilerJar :: extraJars.toList)
 		val version = actualVersion(loader)(" (library jar  " + libraryJar.getAbsolutePath + ")")
 		new ScalaInstance(version, loader, libraryJar, compilerJar, extraJars, None)
 	}
 	def apply(version: String, libraryJar: File, compilerJar: File, launcher: xsbti.Launcher, extraJars: File*): ScalaInstance =
 		apply(version, None, libraryJar, compilerJar, launcher, extraJars : _*)
+	def apply(version: String, libraryJar: File, compilerJar: File, extraJars: File*)(classLoader: List[File] => ClassLoader): ScalaInstance =
+		apply(version, None, libraryJar, compilerJar, extraJars : _*)(classLoader)
 	def apply(version: String, explicitActual: Option[String], libraryJar: File, compilerJar: File, launcher: xsbti.Launcher, extraJars: File*): ScalaInstance =
-		new ScalaInstance(version, scalaLoader(launcher, libraryJar :: compilerJar :: extraJars.toList), libraryJar, compilerJar, extraJars, explicitActual)
+		apply(version, explicitActual, libraryJar, compilerJar, extraJars : _*)( scalaLoader(launcher) )
+	def apply(version: String, explicitActual: Option[String], libraryJar: File, compilerJar: File, extraJars: File*)(classLoader: List[File] => ClassLoader): ScalaInstance =
+		new ScalaInstance(version, classLoader(libraryJar :: compilerJar :: extraJars.toList), libraryJar, compilerJar, extraJars, explicitActual)
 
 	def extraJars(scalaHome: File): Seq[File] =
 		optScalaJar(scalaHome, "jline.jar") ++
@@ -94,9 +103,8 @@ object ScalaInstance
 		}
 		finally stream.close()
 	}
-
 	import java.net.{URL, URLClassLoader}
-	private def scalaLoader(launcher: xsbti.Launcher, jars: Seq[File]): ClassLoader =
+	private def scalaLoader(launcher: xsbti.Launcher): Seq[File] => ClassLoader = jars =>
 		new URLClassLoader(jars.map(_.toURI.toURL).toArray[URL], launcher.topLoader)
 }
 class InvalidScalaInstance(message: String, cause: Throwable) extends RuntimeException(message, cause)
