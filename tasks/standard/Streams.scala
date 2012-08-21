@@ -77,7 +77,7 @@ object Streams
 				make(a, sid)(f => new BufferedInputStream(new FileInputStream(f)))
 	
 			def text(sid: String = default): PrintWriter =
-				make(a, sid)(f => new PrintWriter(new BufferedWriter(new OutputStreamWriter(new FileOutputStream(f), IO.defaultCharset))) )
+				make(a, sid)(f => new PrintWriter(new DeferredWriter(new BufferedWriter(new OutputStreamWriter(new FileOutputStream(f), IO.defaultCharset)))) )
 
 			def binary(sid: String = default): BufferedOutputStream =
 				make(a, sid)(f => new BufferedOutputStream(new FileOutputStream(f)))
