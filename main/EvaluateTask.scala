@@ -189,7 +189,8 @@ object EvaluateTask
 	}
 	type AnyCyclic = Execute[Task]#CyclicException[_]
 	def convertCyclicInc: Incomplete => Incomplete = {
-		case in @ Incomplete(_, _, _, _, Some(c: AnyCyclic)) => in.copy(directCause = Some(new RuntimeException(convertCyclic(c))) )
+		case in @ Incomplete(_, _, _, _, Some(c: AnyCyclic)) =>
+			in.copy(directCause = Some(new RuntimeException(convertCyclic(c))) )
 		case i => i
 	}
 	def convertCyclic(c: AnyCyclic): String =

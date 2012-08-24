@@ -4,7 +4,7 @@ package appmacro
 	import Types.Id
 	import scala.tools.nsc.Global
 	import scala.reflect._
-	import makro._
+	import macros._
 
 /** A builder that uses a TupleN as the tuple representation.
 * It is limited to tuples of size 2 to `MaxInputs`. */

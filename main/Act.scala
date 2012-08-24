@@ -122,7 +122,7 @@ object Act
 		{
 			case Omitted => None +: defaultConfigurations(proj, index, defaultConfigs).flatMap(nonEmptyConfig(index, proj))
 			case ParsedGlobal =>  None :: Nil
-			case pv: ParsedValue[String] => Some(pv.value) :: Nil
+			case pv: ParsedValue[x] => Some(pv.value) :: Nil
 		}
 	def defaultConfigurations(proj: Option[ResolvedReference], index: KeyIndex, defaultConfigs: Option[ResolvedReference] => Seq[String]): Seq[String] =
 		if(index exists proj) defaultConfigs(proj) else Nil
@@ -217,7 +217,7 @@ object Act
 		{
 			case Omitted => Some(current)
 			case ParsedGlobal =>  None
-			case pv: ParsedValue[ResolvedReference] => Some(pv.value)
+			case pv: ParsedValue[rr] => Some(pv.value)
 		}
 
 	def actParser(s: State): Parser[() => State] = requireSession(s, actParser0(s))

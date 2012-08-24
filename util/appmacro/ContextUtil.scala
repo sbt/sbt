@@ -2,7 +2,7 @@ package sbt
 package appmacro
 
 	import scala.reflect._
-	import makro._
+	import macros._
 	import scala.tools.nsc.Global
 
 object ContextUtil {
@@ -66,7 +66,7 @@ final class ContextUtil[C <: Context](val ctx: C)
 		polyType(tvar :: Nil, refVar(tvar))
 	}
 	/** A Type that references the given type variable. */
-	def refVar(variable: TypeSymbol): Type = variable.asTypeConstructor
+	def refVar(variable: TypeSymbol): Type = variable.toTypeConstructor
 	/** Constructs a new, synthetic type variable that is a type constructor. For example, in type Y[L[x]], L is such a type variable. */
 	def newTCVariable(owner: Symbol): TypeSymbol =
 	{
@@ -75,7 +75,7 @@ final class ContextUtil[C <: Context](val ctx: C)
 		tc.setTypeSignature(PolyType(arg :: Nil, emptyTypeBounds))
 		tc
 	}
-	def emptyTypeBounds: TypeBounds = TypeBounds(definitions.NothingClass.asType, definitions.AnyClass.asType)
+	def emptyTypeBounds: TypeBounds = TypeBounds(definitions.NothingClass.toType, definitions.AnyClass.toType)
 
 	/** Returns the Symbol that references the statically accessible singleton `i`. */
 	def singleton[T <: AnyRef with Singleton](i: T)(implicit it: ctx.TypeTag[i.type]): Symbol =
@@ -85,7 +85,12 @@ final class ContextUtil[C <: Context](val ctx: C)
 		}
 
 	/** Returns the symbol for the non-private method named `name` for the class/module `obj`. */
-	def method(obj: Symbol, name: String): Symbol = obj.typeSignature.nonPrivateMember(newTermName(name))
+	def method(obj: Symbol, name: String): Symbol = {
+		val global: Global = ctx.universe.asInstanceOf[Global]
+		val ts: Type = obj.typeSignature
+		val m: global.Symbol = ts.asInstanceOf[global.Type].nonPrivateMember(global.newTermName(name))
+		m.asInstanceOf[Symbol]
+	}
 
 	/** Returns a Type representing the type constructor tcp.<name>.  For example, given
 	*  `object Demo { type M[x] = List[x] }`, the call `extractTC(Demo, "M")` will return a type representing
@@ -97,7 +102,7 @@ final class ContextUtil[C <: Context](val ctx: C)
 		val itTpe = it.tpe.asInstanceOf[global.Type]
 		val m = itTpe.nonPrivateMember(global.newTypeName(name))
 		val tc = itTpe.memberInfo(m).asInstanceOf[ctx.universe.Type]
-		assert(tc != NoType && tc.isHigherKinded, "Invalid type constructor: " + tc)
+		assert(tc != NoType && tc.takesTypeArgs, "Invalid type constructor: " + tc)
 		tc
 	}
 }

@@ -15,7 +15,7 @@ object InitializeInstance extends MonadInstance
 }
 object InitializeConvert extends Convert
 {
-	def apply[T: c.AbsTypeTag](c: reflect.makro.Context)(in: c.Tree): c.Tree =
+	def apply[T: c.AbsTypeTag](c: reflect.macros.Context)(in: c.Tree): c.Tree =
 	{
 		val u = appmacro.ContextUtil[c.type](c)
 		if(in.tpe <:< u.atypeOf[Initialize[Task[T]]] || in.tpe <:< u.atypeOf[Task[T]])
@@ -32,7 +32,7 @@ object InitializeConvert extends Convert
 
 	import language.experimental.macros
 	import scala.reflect._
-	import makro._
+	import reflect.macros._
 
 object SettingMacro
 {

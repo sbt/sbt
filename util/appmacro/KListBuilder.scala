@@ -4,7 +4,7 @@ package appmacro
 	import Types.Id
 	import scala.tools.nsc.Global
 	import scala.reflect._
-	import makro._
+	import macros._
 
 /** A `TupleBuilder` that uses a KList as the tuple representation.*/
 object KListBuilder extends TupleBuilder

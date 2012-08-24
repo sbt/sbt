@@ -1,4 +1,3 @@
-
 package sbt
 package std
 
@@ -9,7 +8,7 @@ package std
 
 	import language.experimental.macros
 	import scala.reflect._
-	import makro._
+	import reflect.macros._
 
 /** Instance for the monad/applicative functor for plain Tasks. */
 object TaskInstance extends MonadInstance

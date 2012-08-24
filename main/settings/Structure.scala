@@ -140,17 +140,17 @@ object Scoped
 	{
 		protected def onTask[T](f: Task[S] => Task[T]): Initialize[Task[T]] = i apply f
 
-		def dependsOn(tasks: AnyInitTask*): Initialize[Task[S]] = (i, Initialize.joinAny(tasks)) { (thisTask, deps) => thisTask.dependsOn(deps : _*) }
+		def dependsOn(tasks: AnyInitTask*): Initialize[Task[S]] = (i, Initialize.joinAny[Task](tasks)) { (thisTask, deps) => thisTask.dependsOn(deps : _*) }
 
 		def triggeredBy(tasks: AnyInitTask*): Initialize[Task[S]] = nonLocal(tasks, Def.triggeredBy)
 		def runBefore(tasks: AnyInitTask*): Initialize[Task[S]] = nonLocal(tasks, Def.runBefore)
 		private[this] def nonLocal(tasks: Seq[AnyInitTask], key: AttributeKey[Seq[Task[_]]]): Initialize[Task[S]] =
-			(Initialize.joinAny(tasks), i) { (ts, i) => i.copy(info = i.info.set(key, ts)) }
+			(Initialize.joinAny[Task](tasks), i) { (ts, i) => i.copy(info = i.info.set(key, ts)) }
 	}
 	final class RichInitializeInputTask[S](i: Initialize[InputTask[S]]) extends RichInitTaskBase[S,InputTask]
 	{
 		protected def onTask[T](f: Task[S] => Task[T]): Initialize[InputTask[T]] = i(_ mapTask f)
-		def dependsOn(tasks: AnyInitTask*): Initialize[InputTask[S]] = (i, Initialize.joinAny(tasks)) { (thisTask, deps) => thisTask.mapTask(_.dependsOn(deps : _*)) }
+		def dependsOn(tasks: AnyInitTask*): Initialize[InputTask[S]] = (i, Initialize.joinAny[Task](tasks)) { (thisTask, deps) => thisTask.mapTask(_.dependsOn(deps : _*)) }
 	}
 
 	sealed abstract class RichInitTaskBase[S, R[_]]
@@ -184,7 +184,7 @@ object Scoped
 	implicit def richAnyTaskSeq(in: Seq[AnyInitTask]): RichAnyTaskSeq = new RichAnyTaskSeq(in)
 	final class RichAnyTaskSeq(keys: Seq[AnyInitTask])
 	{
-		def dependOn: Initialize[Task[Unit]]  =  Initialize.joinAny(keys).apply(deps => nop.dependsOn(deps : _*) )
+		def dependOn: Initialize[Task[Unit]]  =  Initialize.joinAny[Task](keys).apply(deps => nop.dependsOn(deps : _*) )
 	}
 
 

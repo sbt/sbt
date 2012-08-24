@@ -139,7 +139,7 @@ object Resolvers
 			try {
 				f
 			} catch {
-				case e =>
+				case e: Throwable =>
 					IO.delete(file)
 					throw e
 			}
