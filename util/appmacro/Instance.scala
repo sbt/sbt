@@ -18,7 +18,7 @@ trait Instance
 }
 trait Convert
 {
-	def apply[T: c.AbsTypeTag](c: scala.reflect.makro.Context)(in: c.Tree): c.Tree
+	def apply[T: c.AbsTypeTag](c: scala.reflect.macros.Context)(in: c.Tree): c.Tree
 }
 trait MonadInstance extends Instance
 {
@@ -30,7 +30,7 @@ object InputWrapper
 }
 
 	import scala.reflect._
-	import makro._
+	import macros._
 
 object Instance
 {

@@ -4,7 +4,7 @@ package appmacro
 	import Types.Id
 	import scala.tools.nsc.Global
 	import scala.reflect._
-	import makro._
+	import macros._
 
 /** 
 * A `TupleBuilder` abstracts the work of constructing a tuple data structure such as a `TupleN` or `KList`
