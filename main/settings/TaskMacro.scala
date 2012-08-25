@@ -118,16 +118,16 @@ object TaskMacro
 
 	private[this] def appendMacroImpl(c: Context)(init: c.Tree, append: c.Tree)(newName: String): c.Tree =
 	{
-			import c.universe.{Apply,newTermName,Select,TypeApply}
+			import c.universe.{Apply,ApplyTag,newTermName,Select,SelectTag,TypeApply,TypeApplyTag}
 		c.macroApplication match {
-			case Apply(Apply(TypeApply(Select(preT, nmeT), targs), _), a) =>	
+			case Apply(Apply(TypeApply(Select(preT, nmeT), targs), _), a) =>
 				Apply(Apply(TypeApply(Select(preT, newTermName(newName).encodedName), targs), init :: Nil), a)
 			case x => unexpectedTree(x)
 		}
 	}
 	private[this] def transformMacroImpl(c: Context)(init: c.Tree)(newName: String): c.Tree =
 	{
-			import c.universe.{Apply,newTermName,Select}
+			import c.universe.{Apply,ApplyTag,newTermName,Select,SelectTag}
 		val target = 
 			c.macroApplication match {
 				case Apply(Select(prefix, _), _) => prefix
