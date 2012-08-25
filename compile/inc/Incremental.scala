@@ -22,14 +22,14 @@ object Incremental
 		}
 		val initialInv = invalidateInitial(previous.relations, initialChanges, log)
 		log.debug("Initially invalidated: " + initialInv)
-		val analysis = cycle(initialInv, binaryChanges, previous, doCompile, log)
+		val analysis = cycle(initialInv, binaryChanges, previous, doCompile, 1, log)
 		(!initialInv.isEmpty, analysis)
 	}
 
 	val incDebugProp = "xsbt.inc.debug"
 	// TODO: the Analysis for the last successful compilation should get returned + Boolean indicating success
 	// TODO: full external name changes, scopeInvalidations
-	def cycle(invalidated: Set[File], binaryChanges: DependencyChanges, previous: Analysis, doCompile: (Set[File], DependencyChanges) => Analysis, log: Logger): Analysis =
+	def cycle(invalidated: Set[File], binaryChanges: DependencyChanges, previous: Analysis, doCompile: (Set[File], DependencyChanges) => Analysis, cycleNum: Int, log: Logger): Analysis =
 		if(invalidated.isEmpty)
 			previous
 		else
@@ -43,9 +43,8 @@ object Incremental
 			debug("********* Merged: \n" + merged.relations + "\n*********")
 			val incChanges = changedIncremental(invalidated, previous.apis.internalAPI _, merged.apis.internalAPI _)
 			debug("Changes:\n" + incChanges)
-			val incInv = invalidateIncremental(merged.relations, incChanges, invalidated, log)
-			log.debug("Incrementally invalidated: " + incInv)
-			cycle(incInv, emptyChanges, merged, doCompile, log)
+			val incInv = invalidateIncremental(merged.relations, incChanges, invalidated, cycleNum >= 2, log)
+			cycle(incInv, emptyChanges, merged, doCompile, cycleNum+1, log)
 		}
 	private[this] def emptyChanges: DependencyChanges = new DependencyChanges {
 		val modifiedBinaries = new Array[File](0)
@@ -104,13 +103,22 @@ object Incremental
 			val (changed, unmodified) = inBoth.partition(existingModified)
 		}
 
-	def invalidateIncremental(previous: Relations, changes: APIChanges[File], recompiledSources: Set[File], log: Logger): Set[File] =
+	def invalidateIncremental(previous: Relations, changes: APIChanges[File], recompiledSources: Set[File], transitive: Boolean, log: Logger): Set[File] =
 	{
-		val inv =
-			invalidateTransitive(previous.usesInternalSrc _,  changes.modified, log) ++
-			invalidateDuplicates(previous)
-			// ++ scopeInvalidations(previous.extAPI _, changes.modified, changes.names)
-		if((inv -- recompiledSources).isEmpty) Set.empty else inv
+		val dependsOnSrc = previous.usesInternalSrc _
+		val propagated =
+			if(transitive)
+				invalidateTransitive(dependsOnSrc, changes.modified, log)
+			else
+				invalidateStage2(dependsOnSrc, changes.modified, log)
+
+		val dups = invalidateDuplicates(previous)
+		if(dups.nonEmpty)
+			log.debug("Invalidated due to generated class file collision: " + dups)
+
+		val inv = propagated ++ dups // ++ scopeInvalidations(previous.extAPI _, changes.modified, changes.names)
+		val newlyInvalidated = inv -- recompiledSources
+		if(newlyInvalidated.isEmpty) Set.empty else inv
 	}
 
 	/** Invalidate all sources that claim to produce the same class file as another source file. */
@@ -130,6 +138,17 @@ object Incremental
 		val newInv = invalidateDirect(dependsOnSrc, modified)
 		log.debug("\tInvalidated direct: " + newInv)
 		if(newInv.isEmpty) modified else invalidateTransitive(dependsOnSrc, modified ++ newInv, log)
+	}
+
+	def invalidateStage2(dependsOnSrc: File => Set[File], initial: Set[File], log: Logger): Set[File] =
+	{
+		val initAndImmediate = initial ++ initial.flatMap(dependsOnSrc)
+		log.debug("Step 2 changed sources and immdediate dependencies:\n\t" + initAndImmediate)
+		val components = sbt.inc.StronglyConnected(initAndImmediate)(dependsOnSrc)
+		log.debug("Non-trivial strongly connected components: " + components.filter(_.size > 1).mkString("\n\t", "\n\t", ""))
+		val inv = components.filter(initAndImmediate.exists).flatten
+		log.debug("Step 2 invalidated sources:\n\t" + inv)
+		inv
 	}
 
 	/** Invalidates sources based on initially detected 'changes' to the sources, products, and dependencies.*/
