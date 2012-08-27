@@ -149,7 +149,7 @@ object Incremental
 		// include any file that depends on included files
 		def recheck(included: Set[File], process: Set[File], excluded: Set[File]): Set[File] =
 		{
-			val newIncludes = (process flatMap dependsOnSrc) ** excluded
+			val newIncludes = (process flatMap dependsOnSrc) intersect excluded
 			if(newIncludes.isEmpty)
 				included
 			else
