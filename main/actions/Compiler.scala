@@ -16,7 +16,7 @@ object Compiler
 	val DefaultMaxErrors = 100
 
 	final case class Inputs(compilers: Compilers, config: Options, incSetup: IncSetup)
-	final case class Options(classpath: Seq[File], sources: Seq[File], classesDirectory: File, options: Seq[String], javacOptions: Seq[String], maxErrors: Int, order: CompileOrder)
+	final case class Options(classpath: Seq[File], sources: Seq[File], classesDirectory: File, options: Seq[String], javacOptions: Seq[String], maxErrors: Int, sourcePositionMapper: Position => Position, order: CompileOrder)
 	final case class IncSetup(analysisMap: File => Option[Analysis], definesClass: DefinesClass, skip: Boolean, cacheFile: File, cache: GlobalsCache)
 	final case class Compilers(scalac: AnalyzingCompiler, javac: JavaTool)
 
@@ -28,12 +28,14 @@ object Compiler
 		val cacheFile = outputDirectory / "cache_old_style"
 		val augClasspath = classesDirectory.asFile +: classpath
 		val incSetup = IncSetup(Map.empty, definesClass, false, cacheFile, CompilerCache.fresh)
-		inputs(augClasspath, sources, classesDirectory, options, javacOptions, maxErrors, order)(compilers, incSetup, log)
+		inputs(augClasspath, sources, classesDirectory, options, javacOptions, maxErrors, Nil, order)(compilers, incSetup, log)
 	}
-	def inputs(classpath: Seq[File], sources: Seq[File], classesDirectory: File, options: Seq[String], javacOptions: Seq[String], maxErrors: Int, order: CompileOrder)(implicit compilers: Compilers, incSetup: IncSetup, log: Logger): Inputs =
+	def inputs(classpath: Seq[File], sources: Seq[File], classesDirectory: File, options: Seq[String], javacOptions: Seq[String], maxErrors: Int, sourcePositionMappers: Seq[Position => Option[Position]], order: CompileOrder)(implicit compilers: Compilers, incSetup: IncSetup, log: Logger): Inputs =
 		new Inputs(
 			compilers,
-			new Options(classpath, sources, classesDirectory, options, javacOptions, maxErrors, order),
+			new Options(classpath, sources, classesDirectory, options, javacOptions, maxErrors,
+				sourcePositionMappers.foldRight({p: Position => p}) { (mapper, mappers) => {p: Position => mapper(p).getOrElse(mappers(p))}},
+				order),
 			incSetup
 		)
 
@@ -76,6 +78,6 @@ object Compiler
 			import in.incSetup._
 
 		val agg = new AggressiveCompile(cacheFile)
-		agg(scalac, javac, sources, classpath, CompileOutput(classesDirectory), cache, None, options, javacOptions, analysisMap, definesClass, new LoggerReporter(maxErrors, log), order, skip)(log)
+		agg(scalac, javac, sources, classpath, CompileOutput(classesDirectory), cache, None, options, javacOptions, analysisMap, definesClass, new LoggerReporter(maxErrors, log, sourcePositionMapper), order, skip)(log)
 	}
 }

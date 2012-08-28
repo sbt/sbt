@@ -45,7 +45,7 @@ object LoggerReporter
 		}
 }
 	
-class LoggerReporter(maximumErrors: Int, log: Logger) extends xsbti.Reporter
+class LoggerReporter(maximumErrors: Int, log: Logger, sourcePositionMapper: Position => Position = {p => p}) extends xsbti.Reporter
 {
 	val positions = new mutable.HashMap[PositionKey, Severity]
 	val count = new EnumMap[Severity, Int](classOf[Severity])
@@ -115,15 +115,16 @@ class LoggerReporter(maximumErrors: Int, log: Logger) extends xsbti.Reporter
 	
 	def log(pos: Position, msg: String, severity: Severity): Unit =
 	{
-		allProblems += problem("", pos, msg, severity)
+		val mappedPos = sourcePositionMapper(pos)
+		allProblems += problem("", mappedPos, msg, severity)
 		severity match
 		{
 			case Warn | Error =>
 			{
-				if(!testAndLog(pos, severity))
-					display(pos, msg, severity)
+				if(!testAndLog(mappedPos, severity))
+					display(mappedPos, msg, severity)
 			}
-			case _ => display(pos, msg, severity)
+			case _ => display(mappedPos, msg, severity)
 		}
 	}
 

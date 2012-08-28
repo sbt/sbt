@@ -20,7 +20,7 @@ final class AnalyzingCompiler(val scalaInstance: xsbti.compile.ScalaInstance, va
 	{
 		val arguments = (new CompilerArguments(scalaInstance, cp))(Nil, classpath, None, options)
 		val output = CompileOutput(singleOutput)
-		compile(sources, changes, arguments, output, callback, new LoggerReporter(maximumErrors, log), cache, log, None)
+		compile(sources, changes, arguments, output, callback, new LoggerReporter(maximumErrors, log, p => p), cache, log, None)
 	}
 
 	def compile(sources: Seq[File], changes: DependencyChanges, options: Seq[String], output: Output, callback: AnalysisCallback, reporter: Reporter, cache: GlobalsCache, log: Logger, progressOpt: Option[CompileProgress]): Unit =

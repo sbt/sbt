@@ -103,6 +103,7 @@ object Defaults extends BuildCommon
 		classpathTypes :== Set("jar", "bundle", "hk2-jar", "orbit"),
 		aggregate :== true,
 		maxErrors :== 100,
+		sourcePositionMappers :== Nil,
 		showTiming :== true,
 		timingFormat :== Aggregation.defaultFormat,
 		showSuccess :== true,
@@ -577,15 +578,17 @@ object Defaults extends BuildCommon
 	def compileInputsSettings: Seq[Setting[_]] = {
 		val optionsPair = TaskKey.local[(Seq[String], Seq[String])]
 		Seq(optionsPair <<= (scalacOptions, javacOptions) map Util.pairID,
-		compileInputs <<= (dependencyClasspath, sources, compilers, optionsPair, classDirectory, compileOrder, compileIncSetup, maxErrors, streams) map {
-			(cp, srcs, cs, optsPair, classes, order, incSetup, maxErr, s) =>
-				Compiler.inputs(classes +: data(cp), srcs, classes, optsPair._1, optsPair._2, maxErr, order)(cs, incSetup, s.log)
+		compileInputs <<= (dependencyClasspath, sources, compilers, optionsPair, classDirectory, compileOrder, compileIncSetup, maxErrors, streams, sourcePositionMappers) map {
+			(cp, srcs, cs, optsPair, classes, order, incSetup, maxErr, s, spms) =>
+				Compiler.inputs(classes +: data(cp), srcs, classes, optsPair._1, optsPair._2, maxErr, spms, order)(cs, incSetup, s.log)
 			})
 	}
 	def printWarningsTask: Initialize[Task[Unit]] =
-		(streams, compile, maxErrors) map { (s, analysis, max) =>
+		(streams, compile, maxErrors, sourcePositionMappers) map { (s, analysis, max, spms) =>
 			val problems = analysis.infos.allInfos.values.flatMap(i =>  i.reportedProblems++ i.unreportedProblems)
-			val reporter = new LoggerReporter(max, s.log)
+			val reporter = new LoggerReporter(max, s.log,
+				spms.foldRight({p: xsbti.Position => p}) { (mapper, mappers) => {p: xsbti.Position => mapper(p).getOrElse(mappers(p))}}
+			)
 			problems foreach { p => reporter.display(p.position, p.message, p.severity) }
 		}
 
