@@ -201,7 +201,10 @@ object IvyActions
 	private[this] def resolve(logging: UpdateLogging.Value)(ivy: Ivy, module: DefaultModuleDescriptor, defaultConf: String): (ResolveReport, Option[ResolveException]) =
 	{
 		val resolveOptions = new ResolveOptions
+		val resolveId = ResolveOptions.getDefaultResolveId(module)
+		resolveOptions.setResolveId(resolveId)
 		resolveOptions.setLog(ivyLogLevel(logging))
+		IvySbt.cleanResolutionCache(module.getModuleRevisionId, resolveId, ivy.getSettings.getResolutionCacheManager)
 		val resolveReport = ivy.resolve(module, resolveOptions)
 		val err =
 			if(resolveReport.hasError)

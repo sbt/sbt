@@ -13,7 +13,7 @@ import CS.singleton
 
 import org.apache.ivy.{core, plugins, util, Ivy}
 import core.{IvyPatternHelper, LogOptions}
-import core.cache.{CacheMetadataOptions, DefaultRepositoryCacheManager}
+import core.cache.{CacheMetadataOptions, DefaultRepositoryCacheManager, ResolutionCacheManager}
 import core.module.descriptor.{Artifact => IArtifact, DefaultArtifact, DefaultDependencyArtifactDescriptor, MDArtifact}
 import core.module.descriptor.{DefaultDependencyDescriptor, DefaultModuleDescriptor, DependencyDescriptor, ModuleDescriptor, License}
 import core.module.descriptor.{OverrideDependencyDescriptorMediator}
@@ -72,7 +72,7 @@ final class IvySbt(val configuration: IvyConfiguration)
 			case i: InlineIvyConfiguration =>
 				is.setVariable("ivy.checksums", i.checksums mkString ",")
 				i.paths.ivyHome foreach is.setDefaultIvyUserDir
-				IvySbt.configureCache(is, i.localOnly)
+				IvySbt.configureCache(is, i.localOnly, i.resolutionCacheDir)
 				IvySbt.setResolvers(is, i.resolvers, i.otherResolvers, i.localOnly, configuration.log)
 				IvySbt.setModuleConfigurations(is, i.moduleConfigurations, configuration.log)
 		}
@@ -277,8 +277,17 @@ private object IvySbt
 			settings.addModuleConfiguration(attributes, settings.getMatcher(EXACT_OR_REGEXP), resolver.name, null, null, null)
 		}
 	}
-	private def configureCache(settings: IvySettings, localOnly: Boolean)
+	private[sbt] def cleanResolutionCache(mrid: ModuleRevisionId, resolveId: String, manager: ResolutionCacheManager)
 	{
+		val files =
+			Option(manager.getResolvedIvyFileInCache(mrid)).toList :::
+			Option(manager.getResolvedIvyPropertiesInCache(mrid)).toList :::
+			Option(manager.getConfigurationResolveReportsInCache(resolveId)).toList.flatten
+		IO.delete(files)
+	}
+	private def configureCache(settings: IvySettings, localOnly: Boolean, resCacheDir: Option[File])
+	{
+		resCacheDir foreach { dir => settings.setDefaultResolutionCacheBasedir(dir.getAbsolutePath) }
 		val cacheDir = settings.getDefaultRepositoryCacheBasedir()
 		val manager = new DefaultRepositoryCacheManager("default-cache", settings, cacheDir) {
 			override def findModuleInCache(dd: DependencyDescriptor, revId: ModuleRevisionId, options: CacheMetadataOptions, r: String) =
