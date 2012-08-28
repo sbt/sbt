@@ -160,6 +160,7 @@ object Keys
 	val doc = TaskKey[File]("doc", "Generates API documentation.", AMinusTask)
 	val copyResources = TaskKey[Seq[(File,File)]]("copy-resources", "Copies resources to the output directory.", AMinusTask)
 	val aggregate = SettingKey[Boolean]("aggregate", "Configures task aggregation.", BMinusSetting)
+	val sourcePositionMappers = TaskKey[Seq[xsbti.Position => Option[xsbti.Position]]]("source-position-mappers", "Maps positions in generated source files to the original source it was generated from", DTask)
 
 	// package keys
 	val packageBin = TaskKey[File]("package-bin", "Produces a main artifact, such as a binary jar.", ATask)
