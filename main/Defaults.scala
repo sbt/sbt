@@ -900,8 +900,9 @@ object Classpaths
 			val explicit = struct.units(ref.build).unit.plugins.pluginData.resolvers
 			explicit orElse bootRepositories(ac) getOrElse defaultRs
 		},
-		ivyConfiguration <<= (externalResolvers, ivyPaths, offline, checksums, appConfiguration, streams) map { (rs, paths, off, check, app, s) =>
-			new InlineIvyConfiguration(paths, rs, Nil, Nil, off, Option(lock(app)), check, s.log)
+		ivyConfiguration <<= (externalResolvers, ivyPaths, offline, checksums, appConfiguration, target, streams) map { (rs, paths, off, check, app, t, s) =>
+			val resCacheDir = t / "resolution-cache"
+			new InlineIvyConfiguration(paths, rs, Nil, Nil, off, Option(lock(app)), check, Some(resCacheDir), s.log)
 		},
 		ivySbt <<= ivySbt0,
 		classifiersModule <<= (projectID, sbtDependency, transitiveClassifiers, loadedBuild, thisProjectRef) map { ( pid, sbtDep, classifiers, lb, ref) =>
@@ -1042,9 +1043,10 @@ object Classpaths
 	def unmanagedDependencies: Initialize[Task[Classpath]] =
 		(thisProjectRef, configuration, settings, buildDependencies) flatMap unmanagedDependencies0
 	def mkIvyConfiguration: Initialize[Task[IvyConfiguration]] =
-		(fullResolvers, ivyPaths, otherResolvers, moduleConfigurations, offline, checksums in update, appConfiguration, streams) map { (rs, paths, other, moduleConfs, off, check, app, s) =>
+		(fullResolvers, ivyPaths, otherResolvers, moduleConfigurations, offline, checksums in update, appConfiguration, target, streams) map { (rs, paths, other, moduleConfs, off, check, app, t, s) =>
 			warnResolversConflict(rs ++: other, s.log)
-			new InlineIvyConfiguration(paths, rs, other, moduleConfs, off, Some(lock(app)), check, s.log)
+			val resCacheDir = t / "resolution-cache"
+			new InlineIvyConfiguration(paths, rs, other, moduleConfs, off, Some(lock(app)), check, Some(resCacheDir), s.log)
 		}
 
 		import java.util.LinkedHashSet
