@@ -212,7 +212,7 @@ class MakePom(val log: Logger)
 		scopeElem(scope) ++ optionalElem(opt)
 	}
 	def scopeElem(scope: Option[String]): NodeSeq = scope match {
-		case None => NodeSeq.Empty
+		case None | Some(Configurations.Compile.name) => NodeSeq.Empty
 		case Some(s) => <scope>{s}</scope>
 	}
 	def optionalElem(opt: Boolean)  =  if(opt) <optional>true</optional> else NodeSeq.Empty
