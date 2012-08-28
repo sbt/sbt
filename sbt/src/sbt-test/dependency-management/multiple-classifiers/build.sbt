@@ -18,12 +18,12 @@ TaskKey[Unit]("check-pom") <<= makePom map { file =>
 			<version>2.8.2</version>
 			<classifier>{classifier}</classifier>
 		</dependency>
-	val sections = depSection("natives-windows") ++ depSection("natives-linux") ++ depSection("natives-osx")
-	val expected = <dependencies xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns="http://maven.apache.org/POM/4.0.0" >
-		{sections}
-	</dependencies>
+	val sections = <d>
+{depSection("natives-windows") ++ depSection("natives-linux") ++ depSection("natives-osx")}
+</d>
+	def dropTopElem(s:String): String = s.split("""\n""").drop(1).dropRight(1).mkString("\n")
 	val pp = new xml.PrettyPrinter(Int.MaxValue, 0)
-	val expectedString = pp.format(expected)
-	val actualString = pp.formatNodes(actual)
+	val expectedString = dropTopElem(pp.formatNodes(sections))
+	val actualString = dropTopElem(pp.formatNodes(actual))
 	assert(expectedString == actualString, "Expected dependencies section:\n" + expectedString + "\n\nActual:\n" + actualString)
 }
