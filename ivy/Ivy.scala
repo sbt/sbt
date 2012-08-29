@@ -13,7 +13,7 @@ import CS.singleton
 
 import org.apache.ivy.{core, plugins, util, Ivy}
 import core.{IvyPatternHelper, LogOptions}
-import core.cache.{CacheMetadataOptions, DefaultRepositoryCacheManager, ResolutionCacheManager}
+import core.cache.{CacheMetadataOptions, DefaultRepositoryCacheManager}
 import core.module.descriptor.{Artifact => IArtifact, DefaultArtifact, DefaultDependencyArtifactDescriptor, MDArtifact}
 import core.module.descriptor.{DefaultDependencyDescriptor, DefaultModuleDescriptor, DependencyDescriptor, ModuleDescriptor, License}
 import core.module.descriptor.{OverrideDependencyDescriptorMediator}
@@ -277,17 +277,18 @@ private object IvySbt
 			settings.addModuleConfiguration(attributes, settings.getMatcher(EXACT_OR_REGEXP), resolver.name, null, null, null)
 		}
 	}
-	private[sbt] def cleanResolutionCache(mrid: ModuleRevisionId, resolveId: String, manager: ResolutionCacheManager)
-	{
-		val files =
-			Option(manager.getResolvedIvyFileInCache(mrid)).toList :::
-			Option(manager.getResolvedIvyPropertiesInCache(mrid)).toList :::
-			Option(manager.getConfigurationResolveReportsInCache(resolveId)).toList.flatten
-		IO.delete(files)
-	}
 	private def configureCache(settings: IvySettings, localOnly: Boolean, resCacheDir: Option[File])
 	{
-		resCacheDir foreach { dir => settings.setDefaultResolutionCacheBasedir(dir.getAbsolutePath) }
+		configureResolutionCache(settings, localOnly, resCacheDir)
+		configureRepositoryCache(settings, localOnly)
+	}
+	private[this] def configureResolutionCache(settings: IvySettings, localOnly: Boolean, resCacheDir: Option[File])
+	{
+		val base = resCacheDir getOrElse settings.getDefaultResolutionCacheBasedir
+		settings.setResolutionCacheManager(new ResolutionCache(base))
+	}
+	private[this] def configureRepositoryCache(settings: IvySettings, localOnly: Boolean)
+	{
 		val cacheDir = settings.getDefaultRepositoryCacheBasedir()
 		val manager = new DefaultRepositoryCacheManager("default-cache", settings, cacheDir) {
 			override def findModuleInCache(dd: DependencyDescriptor, revId: ModuleRevisionId, options: CacheMetadataOptions, r: String) =
