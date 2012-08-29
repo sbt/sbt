@@ -59,7 +59,7 @@ object CacheIvy
 	implicit lazy val updateReportFormat: Format[UpdateReport] =
 	{
 		import DefaultProtocol.{StringFormat, FileFormat}
-		wrap[UpdateReport, (File, Seq[ConfigurationReport], UpdateStats)](rep => (rep.cachedDescriptor, rep.configurations, rep.stats), { case (cd, cs, stats) => new UpdateReport(cd, cs, stats) })
+		wrap[UpdateReport, (File, Seq[ConfigurationReport], UpdateStats, Map[File,Long])](rep => (rep.cachedDescriptor, rep.configurations, rep.stats, rep.stamps), { case (cd, cs, stats, stamps) => new UpdateReport(cd, cs, stats, stamps) })
 	}
 	implicit def updateStatsFormat: Format[UpdateStats] =
 		wrap[UpdateStats, (Long,Long,Long)]( us => (us.resolveTime, us.downloadTime, us.downloadSize), { case (rt, dt, ds) => new UpdateStats(rt, dt, ds, true) })

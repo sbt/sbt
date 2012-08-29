@@ -22,7 +22,7 @@ object PomTest extends Build
 
 	def checkPom = makePom map { pom =>
 		val expected = Seq(
-			("a", Some("compile"), false, None),
+			("a", None, false, None),
 			("b", Some("runtime"), true, None),
 			("c", None, true, None),
 			("d", Some("test"), false, None),
