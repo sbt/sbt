@@ -54,7 +54,7 @@ private[sbt] object ResolutionCache
 	private val ReportFileName = "report.xml"
 
 		// base name (name except for extension) of resolution report file
-	private val ResolvedName = "resolved"
+	private val ResolvedName = "resolved.xml"
 
 		// Cache name
 	private val Name = "sbt-resolution-cache"

@@ -956,8 +956,8 @@ object Classpaths
 			!force &&
 			!depsUpdated &&
 			!inChanged &&
-			out.allFiles.forall(_.exists) &&
-			out.cachedDescriptor.exists
+			out.allFiles.forall(f => fileUptodate(f,out.stamps)) &&
+			fileUptodate(out.cachedDescriptor, out.stamps)
 
 		val outCacheFile = cacheFile / "output"
 		def skipWork: In => UpdateReport =
@@ -976,6 +976,8 @@ object Classpaths
 		val f = if(skip && !force) skipWork else doWork
 		f(module.owner.configuration :+: module.moduleSettings :+: config :+: HNil)
 	}
+	private[this] def fileUptodate(file: File, stamps: Map[File, Long]): Boolean =
+		stamps.get(file).forall(_ == file.lastModified)
 /*
 	// can't cache deliver/publish easily since files involved are hidden behind patterns.  publish will be difficult to verify target-side anyway
 	def cachedPublish(cacheFile: File)(g: (IvySbt#Module, PublishConfiguration) => Unit, module: IvySbt#Module, config: PublishConfiguration) => Unit =

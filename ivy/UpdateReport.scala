@@ -13,15 +13,19 @@ package sbt
 * @param stats information about the update that produced this report
 * @see sbt.RichUpdateReport
 */
-final class UpdateReport(val cachedDescriptor: File, val configurations: Seq[ConfigurationReport], val stats: UpdateStats)
+final class UpdateReport(val cachedDescriptor: File, val configurations: Seq[ConfigurationReport], val stats: UpdateStats, private[sbt] val stamps: Map[File,Long])
 {
+	@deprecated("Use the variant that provides timestamps of files.", "0.13.0")
+	def this(cachedDescriptor: File, configurations: Seq[ConfigurationReport], stats: UpdateStats) =
+		this(cachedDescriptor, configurations, stats, Map.empty)
+
 	override def toString = "Update report:\n\t" + stats + "\n" + configurations.mkString
 
 	/** All resolved modules in all configurations. */
 	def allModules: Seq[ModuleID] = configurations.flatMap(_.allModules).distinct
 
 	def retrieve(f: (String, ModuleID, Artifact, File) => File): UpdateReport =
-		new UpdateReport(cachedDescriptor, configurations map { _ retrieve f}, stats )
+		new UpdateReport(cachedDescriptor, configurations map { _ retrieve f}, stats, stamps )
 
 	/** Gets the report for the given configuration, or `None` if the configuration was not resolved.*/
 	def configuration(s: String) = configurations.find(_.configuration == s)
@@ -71,6 +75,13 @@ object UpdateReport
 	/** Provides extra methods for filtering the contents of an `UpdateReport` and for obtaining references to a selected subset of the underlying files. */
 	final class RichUpdateReport(report: UpdateReport)
 	{
+		def recomputeStamps(): UpdateReport =
+		{
+			val files = report.cachedDescriptor +: allFiles
+			val stamps = files.map(f => (f, f.lastModified)).toMap
+			new UpdateReport(report.cachedDescriptor, report.configurations, report.stats, stamps)
+		}
+
 			import DependencyFilter._
 		/** Obtains all successfully retrieved files in all configurations and modules. */
 		def allFiles: Seq[File] = matching(DependencyFilter.allPass)
@@ -123,7 +134,7 @@ object UpdateReport
 				val newModules = modules map { modReport => f(configuration, modReport) }
 				new ConfigurationReport(configuration, newModules, evicted)
 			}
-			new UpdateReport(report.cachedDescriptor, newConfigurations, report.stats)
+			new UpdateReport(report.cachedDescriptor, newConfigurations, report.stats, report.stamps)
 		}
 	}
 }
