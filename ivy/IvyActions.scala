@@ -204,7 +204,7 @@ object IvyActions
 		val resolveId = ResolveOptions.getDefaultResolveId(module)
 		resolveOptions.setResolveId(resolveId)
 		resolveOptions.setLog(ivyLogLevel(logging))
-		IvySbt.cleanResolutionCache(module.getModuleRevisionId, resolveId, ivy.getSettings.getResolutionCacheManager)
+		ResolutionCache.cleanModule(module.getModuleRevisionId, resolveId, ivy.getSettings.getResolutionCacheManager)
 		val resolveReport = ivy.resolve(module, resolveOptions)
 		val err =
 			if(resolveReport.hasError)
