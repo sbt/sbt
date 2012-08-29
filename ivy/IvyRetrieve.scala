@@ -48,7 +48,7 @@ object IvyRetrieve
 	}
 
 	def updateReport(report: ResolveReport, cachedDescriptor: File): UpdateReport =
-		new UpdateReport(cachedDescriptor, reports(report) map configurationReport, updateStats(report))
+		new UpdateReport(cachedDescriptor, reports(report) map configurationReport, updateStats(report), Map.empty) recomputeStamps()
 	def updateStats(report: ResolveReport): UpdateStats =
 		new UpdateStats(report.getResolveTime, report.getDownloadTime, report.getDownloadSize, false)
 	def configurationReport(confReport: ConfigurationResolveReport): ConfigurationReport =
