@@ -12,7 +12,17 @@ package sbt
 	import scala.Console.RED
 
 final case class EvaluateConfig(cancelable: Boolean, restrictions: Seq[Tags.Rule], checkCycles: Boolean = false)
-final case class PluginData(classpath: Seq[Attributed[File]], resolvers: Option[Seq[Resolver]], report: Option[UpdateReport])
+final case class PluginData(dependencyClasspath: Seq[Attributed[File]], definitionClasspath: Seq[Attributed[File]], resolvers: Option[Seq[Resolver]], report: Option[UpdateReport])
+{
+	val classpath: Seq[Attributed[File]] = definitionClasspath ++ dependencyClasspath
+}
+object PluginData
+{
+	@deprecated("Use the alternative that specifies the specific classpaths.", "0.13.0")
+	def apply(classpath: Seq[Attributed[File]], resolvers: Option[Seq[Resolver]], report: Option[UpdateReport]): PluginData =
+		PluginData(classpath, Nil, resolvers, report)
+}
+
 object EvaluateTask
 {
 	import Load.BuildStructure

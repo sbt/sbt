@@ -1,0 +1,5 @@
+# This test checks loading successfully.
+# There are two builds that define a Build with the same identifier.
+# If the build definitions are incorrectly in the same class loader, one will shadow the other.
+> {generator/}project/clean
+> project-runtime/clean
