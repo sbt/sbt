@@ -341,8 +341,10 @@ object Load
 		{
 			val ProjectRef(refURI, refID) = Scope.resolveProjectRef(uri, rootProject, ref)
 			val loadedUnit = builds(refURI)
-			if(! (loadedUnit.defined contains refID) )
-				error("No project '" + refID + "' in '" + refURI + "'")
+			if(! (loadedUnit.defined contains refID) ) {
+				val projectIDs = loadedUnit.defined.keys.toSeq.sorted
+				error("No project '" + refID + "' in '" + refURI + "'.\nValid project IDs: " + projectIDs.mkString(", "))
+			}
 		}
 	}
 
