@@ -5,7 +5,7 @@ package sbt
 package inc
 
 import java.io.File
-import java.util.zip.ZipFile
+import java.util.zip.{ZipException, ZipFile}
 import Function.const
 
 object Locate
@@ -58,7 +58,10 @@ object Locate
 	def jarDefinesClass(entry: File): String => Boolean =
 	{
 		import collection.JavaConversions._
-		val jar = new ZipFile(entry, ZipFile.OPEN_READ)
+		val jar = try { new ZipFile(entry, ZipFile.OPEN_READ) } catch {
+			// ZipException doesn't include the file name :(
+			case e: ZipException => throw new RuntimeException("Error opening zip file: " + entry.getName, e)
+		}
 		val entries = try { jar.entries.map(e => toClassName(e.getName)).toSet } finally { jar.close() }
 		entries.contains _
 	}
