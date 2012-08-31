@@ -33,9 +33,7 @@ object Compiler
 	def inputs(classpath: Seq[File], sources: Seq[File], classesDirectory: File, options: Seq[String], javacOptions: Seq[String], maxErrors: Int, sourcePositionMappers: Seq[Position => Option[Position]], order: CompileOrder)(implicit compilers: Compilers, incSetup: IncSetup, log: Logger): Inputs =
 		new Inputs(
 			compilers,
-			new Options(classpath, sources, classesDirectory, options, javacOptions, maxErrors,
-				sourcePositionMappers.foldRight({p: Position => p}) { (mapper, mappers) => {p: Position => mapper(p).getOrElse(mappers(p))}},
-				order),
+			new Options(classpath, sources, classesDirectory, options, javacOptions, maxErrors, foldMappers(sourcePositionMappers), order),
 			incSetup
 		)
 
@@ -80,4 +78,7 @@ object Compiler
 		val agg = new AggressiveCompile(cacheFile)
 		agg(scalac, javac, sources, classpath, CompileOutput(classesDirectory), cache, None, options, javacOptions, analysisMap, definesClass, new LoggerReporter(maxErrors, log, sourcePositionMapper), order, skip)(log)
 	}
+
+	private[sbt] def foldMappers[A](mappers: Seq[A => Option[A]]) =
+		mappers.foldRight({p: A => p}) { (mapper, mappers) => {p: A => mapper(p).getOrElse(mappers(p))}}
 }

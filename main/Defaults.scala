@@ -586,9 +586,7 @@ object Defaults extends BuildCommon
 	def printWarningsTask: Initialize[Task[Unit]] =
 		(streams, compile, maxErrors, sourcePositionMappers) map { (s, analysis, max, spms) =>
 			val problems = analysis.infos.allInfos.values.flatMap(i =>  i.reportedProblems++ i.unreportedProblems)
-			val reporter = new LoggerReporter(max, s.log,
-				spms.foldRight({p: xsbti.Position => p}) { (mapper, mappers) => {p: xsbti.Position => mapper(p).getOrElse(mappers(p))}}
-			)
+			val reporter = new LoggerReporter(max, s.log, Compiler.foldMappers(spms))
 			problems foreach { p => reporter.display(p.position, p.message, p.severity) }
 		}
 
