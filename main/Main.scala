@@ -48,13 +48,16 @@ final class ConsoleMain extends xsbti.AppMain
 
 object StandardMain
 {
+	/** The common interface to standard output, used for all built-in ConsoleLoggers. */
+	val console = ConsoleLogger.systemOutOverwrite(ConsoleLogger.overwriteContaining("Resolving "))
+
 	def initialState(configuration: xsbti.AppConfiguration, initialDefinitions: Seq[Command], preCommands: Seq[String]): State =
 	{
 		val commands = preCommands ++ configuration.arguments.map(_.trim)
 		State( configuration, initialDefinitions, Set.empty, None, commands, State.newHistory, BuiltinCommands.initialAttributes, initialGlobalLogging, State.Continue )
 	}
 	def initialGlobalLogging: GlobalLogging =
-		GlobalLogging.initial(MainLogging.globalDefault _, File.createTempFile("sbt",".log"))
+		GlobalLogging.initial((pw, glb) => MainLogging.globalDefault(pw,glb,console), File.createTempFile("sbt",".log"), console)
 }
 
 	import DefaultParsers._

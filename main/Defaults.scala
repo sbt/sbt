@@ -130,7 +130,7 @@ object Defaults extends BuildCommon
 	))
 	def projectCore: Seq[Setting[_]] = Seq(
 		name <<= thisProject(_.id),
-		logManager <<= extraLoggers(LogManager.defaults),
+		logManager <<= extraLoggers(extra => LogManager.defaults(extra, StandardMain.console)),
 		onLoadMessage <<= onLoadMessage or (name, thisProjectRef)("Set current project to " + _ + " (in build " + _.build +")"),
 		runnerTask
 	)
