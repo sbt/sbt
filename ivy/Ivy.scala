@@ -235,7 +235,7 @@ private object IvySbt
 			override def getDependency(dd: DependencyDescriptor, data: ResolveData) =
 			{
 				if(data.getOptions.getLog != LogOptions.LOG_QUIET)
-					log.info("Resolving " + dd.getDependencyRevisionId + " ...")
+					Message.info("Resolving " + dd.getDependencyRevisionId + " ...")
 				super.getDependency(dd, data)
 			}
 		}
