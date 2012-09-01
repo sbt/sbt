@@ -8,6 +8,29 @@ package sbt
 object ConsoleLogger
 {
 	def systemOut: ConsoleOut = printStreamOut(System.out)
+	def overwriteContaining(s: String): (String,String) => Boolean = (cur, prev) =>
+		cur.contains(s) && prev.contains(s)
+
+	/** ConsoleOut instance that is backed by System.out.  It overwrites the previously printed line
+	* if the function `f(lineToWrite, previousLine)` returns true.
+	*
+	* The ConsoleOut returned by this method assumes that the only newlines are from println calls
+	* and not in the String arguments. */
+	def systemOutOverwrite(f: (String,String) => Boolean): ConsoleOut = new ConsoleOut {
+		val lockObject = System.out
+		private[this] var last: Option[String] = None
+		private[this] var current = new java.lang.StringBuffer
+		def print(s: String): Unit = synchronized { current.append(s) }
+		def println(s: String): Unit = synchronized { current.append(s); println() }
+		def println(): Unit = synchronized {
+			val s = current.toString
+			if(formatEnabled && last.exists(lmsg => f(s, lmsg)))
+				System.out.print(OverwriteLine)
+			System.out.println(s)
+			last = Some(s)
+			current = new java.lang.StringBuffer
+		}
+	}
 	def printStreamOut(out: PrintStream): ConsoleOut = new ConsoleOut {
 		val lockObject = out
 		def print(s: String) = out.print(s)
@@ -29,6 +52,9 @@ object ConsoleLogger
 
 	/** Escape character, used to introduce an escape sequence. */
 	final val ESC = '\u001B'
+
+	/** Move to beginning of previous line and clear the line. */
+	private[sbt] final val OverwriteLine = "\r\u001BM\u001B[2K"
 
 	/** An escape terminator is a character in the range `@` (decimal value 64) to `~` (decimal value 126). 
 	* It is the final character in an escape sequence. */

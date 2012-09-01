@@ -19,9 +19,12 @@ object GlobalLogBacking
 }
 object GlobalLogging
 {
+	@deprecated("Explicitly specify standard out.", "0.13.0")
 	def initial(newLogger: (PrintWriter, GlobalLogBacking) => GlobalLogging, newBackingFile: => File): GlobalLogging =
+		initial(newLogger, newBackingFile, ConsoleLogger.systemOut)
+	def initial(newLogger: (PrintWriter, GlobalLogBacking) => GlobalLogging, newBackingFile: => File, console: ConsoleOut): GlobalLogging =
 	{
-		val log = ConsoleLogger()
+		val log = ConsoleLogger(console)
 		GlobalLogging(log, log, GlobalLogBacking(newLogger, newBackingFile))
 	}
 }
