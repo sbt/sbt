@@ -18,17 +18,29 @@ object MainLogging
 		multi: Logger
 	}
 	def globalDefault(writer: PrintWriter, backing: GlobalLogBacking): GlobalLogging =
+		globalDefault(writer, backing, ConsoleLogger.systemOut)
+	def globalDefault(writer: PrintWriter, backing: GlobalLogBacking, console: ConsoleOut): GlobalLogging =
 	{
 		val backed = defaultBacked()(writer)
-		val full = multiLogger(defaultMultiConfig( backed ) )
+		val full = multiLogger(defaultMultiConfig(console, backed ) )
 		GlobalLogging(full, backed, backing)
 	}
 
+	@deprecated("Explicitly specify the console output.", "0.13.0")
 	def defaultMultiConfig(backing: AbstractLogger): MultiLoggerConfig =
-		new MultiLoggerConfig(defaultScreen(ConsoleLogger.noSuppressedMessage), backing, Nil, Level.Info, Level.Debug, -1, Int.MaxValue)
+		defaultMultiConfig(ConsoleLogger.systemOut, backing)
+	def defaultMultiConfig(console: ConsoleOut, backing: AbstractLogger): MultiLoggerConfig =
+		new MultiLoggerConfig(defaultScreen(console, ConsoleLogger.noSuppressedMessage), backing, Nil, Level.Info, Level.Debug, -1, Int.MaxValue)
 
+	@deprecated("Explicitly specify the console output.", "0.13.0")
 	def defaultScreen(): AbstractLogger = ConsoleLogger()
+
+	@deprecated("Explicitly specify the console output.", "0.13.0")
 	def defaultScreen(suppressedMessage: SuppressedTraceContext => Option[String]): AbstractLogger = ConsoleLogger(suppressedMessage = suppressedMessage)
+
+	def defaultScreen(console: ConsoleOut): AbstractLogger = ConsoleLogger(console)
+	def defaultScreen(console: ConsoleOut, suppressedMessage: SuppressedTraceContext => Option[String]): AbstractLogger =
+		ConsoleLogger(console, suppressedMessage = suppressedMessage)
 	
 	def defaultBacked(useColor: Boolean = ConsoleLogger.formatEnabled): PrintWriter => ConsoleLogger =
 		to => ConsoleLogger(ConsoleLogger.printWriterOut(to), useColor = useColor)

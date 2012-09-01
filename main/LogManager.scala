@@ -17,18 +17,25 @@ object LogManager
 {
 	def construct(data: Settings[Scope], state: State) = (task: ScopedKey[_], to: PrintWriter) =>
 	{
-		val manager = logManager in task.scope get data getOrElse default
+		val manager = logManager in task.scope get data getOrElse defaultManager(StandardMain.console)
 		manager(data, state, task, to)
 	}
-	lazy val default: LogManager = withLoggers()
+	@deprecated("Use defaultManager to explicitly specify standard out.", "0.13.0")
+	lazy val default: LogManager = defaultManager(StandardMain.console)
 
-	def defaults(extra: ScopedKey[_] => Seq[AbstractLogger]): LogManager  =
-		withLoggers((task,state) => defaultScreen(suppressedMessage(task, state)), extra = extra)
+	def defaultManager(console: ConsoleOut): LogManager = withLoggers((sk,s) => defaultScreen(console))
+
+	@deprecated("Explicitly specify standard out.", "0.13.0")
+	def defaults(extra: ScopedKey[_] => Seq[AbstractLogger]): LogManager = defaults(extra, StandardMain.console)
+
+	def defaults(extra: ScopedKey[_] => Seq[AbstractLogger], console: ConsoleOut): LogManager  =
+		withLoggers((task,state) => defaultScreen(console, suppressedMessage(task, state)), extra = extra)
 
 	def withScreenLogger(mk: (ScopedKey[_], State) => AbstractLogger): LogManager = withLoggers(screen = mk)
 	
-	def withLoggers(screen: (ScopedKey[_], State) => AbstractLogger = (sk, s) => defaultScreen(), backed: PrintWriter => AbstractLogger = defaultBacked(), extra: ScopedKey[_] => Seq[AbstractLogger] = _ => Nil): LogManager =
-		new LogManager {
+	def withLoggers(screen: (ScopedKey[_], State) => AbstractLogger = (sk, s) => defaultScreen(StandardMain.console),
+		backed: PrintWriter => AbstractLogger = defaultBacked(),
+		extra: ScopedKey[_] => Seq[AbstractLogger] = _ => Nil): LogManager = new LogManager {
 			def apply(data: Settings[Scope], state: State, task: ScopedKey[_], to: PrintWriter): Logger =
 				defaultLogger(data, state, task, screen(task, state), backed(to), extra(task).toList)
 		}
