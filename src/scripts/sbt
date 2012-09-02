@@ -81,4 +81,4 @@ loadConfigFile() {
 [[ -f "$etc_sbt_opts_file" ]] && set -- $(loadConfigFile "$etc_sbt_opts_file") "$@"
 [[ -f "$sbt_opts_file" ]] && set -- $(loadConfigFile "$sbt_opts_file") "$@"
 
-run $@
+run "$@"
