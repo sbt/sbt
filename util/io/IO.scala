@@ -142,7 +142,7 @@ object IO
 			}
 		}
 	}
-	/** Gzips the InputStream 'in' and writes it to 'output'.  Neither stream is closed.*/
+	/** Gzips the InputStream 'input' and writes it to 'output'.  Neither stream is closed.*/
 	def gzip(input: InputStream, output: OutputStream): Unit =
 		gzipOutputStream(output) { gzStream => transfer(input, gzStream) }
 
@@ -156,9 +156,36 @@ object IO
 			}
 		}
 	}
+	/** Gunzips the InputStream 'input' and writes it to 'out' */
+	def gunzip(input: InputStream, out: File)
+	{
+		Using.fileOutputStream()(out) { outputStream =>
+			gunzip(input, outputStream)
+		}
+	}
 	/** Gunzips the InputStream 'input' and writes it to 'output'.  Neither stream is closed.*/
 	def gunzip(input: InputStream, output: OutputStream): Unit =
 		gzipInputStream(input) { gzStream => transfer(gzStream, output) }
+
+	/** Downloads and gunzips a gzipped file. Local filename is filename in URL minus the '.gz' */
+	def gunzipURL(from: URL, toDirectory: File)
+	{
+		val GzFile = """.*/(.*)\.gz$""".r
+		val toFilename = from.toString() match {
+			case GzFile(f) => f
+			case _ => error("Cannot extract gzipped filename from " + from)
+		}
+		gunzipURL(from, toDirectory, toFilename)
+	}
+	/** Downloads and gunzips a gzipped file, specifying local filename */
+	def gunzipURL(from: URL, toDirectory: File, toFilename: String)
+		Using.urlInputStream(from)(in => gunzipStream(in, toDirectory, toFilename))
+	/** Gunzips an InputStream 'from' to directory 'toDirectory' with name 'toFilename' */
+	def gunzipStream(from: InputStream, toDirectory: File, toFilename: String)
+	{
+		createDirectory(toDirectory)
+		gunzip(from, toDirectory / toFilename)
+	}
 
 	def unzip(from: File, toDirectory: File, filter: NameFilter = AllPassFilter, preserveLastModified: Boolean = true): Set[File] =
 		fileInputStream(from)(in => unzipStream(in, toDirectory, filter, preserveLastModified))
