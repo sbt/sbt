@@ -20,6 +20,7 @@ object KeyIndex
 	def combine(indices: Seq[KeyIndex]): KeyIndex = new KeyIndex {
 		def buildURIs = concat(_.buildURIs)
 		def projects(uri: URI) = concat(_.projects(uri))
+		def exists(project: Option[ResolvedReference]): Boolean = indices.exists(_ exists project)
 		def configs(proj: Option[ResolvedReference]) = concat(_.configs(proj))
 		def tasks(proj: Option[ResolvedReference], conf: Option[String]) = concat(_.tasks(proj, conf))
 		def tasks(proj: Option[ResolvedReference], conf: Option[String], key: String) = concat(_.tasks(proj, conf, key))
@@ -46,6 +47,7 @@ trait KeyIndex
 
 	def buildURIs: Set[URI]
 	def projects(uri: URI): Set[String]
+	def exists(project: Option[ResolvedReference]): Boolean
 	def configs(proj: Option[ResolvedReference]): Set[String]
 	def tasks(proj: Option[ResolvedReference], conf: Option[String]): Set[AttributeKey[_]]
 	def tasks(proj: Option[ResolvedReference], conf: Option[String], key: String): Set[AttributeKey[_]]
@@ -92,6 +94,11 @@ private final class KeyIndex0(val data: BuildIndex) extends ExtendableKeyIndex
 {
 	def buildURIs: Set[URI] = data.builds
 	def projects(uri: URI): Set[String] = data.projectIndex(Some(uri)).projects
+	def exists(proj: Option[ResolvedReference]): Boolean =
+	{
+		val (build, project) = parts(proj)
+		data.data.get(build).flatMap(_.data.get(project)).isDefined
+	}
 	def configs(project: Option[ResolvedReference]): Set[String] = confIndex(project).configs
 	def tasks(proj: Option[ResolvedReference], conf: Option[String]): Set[AttributeKey[_]] = keyIndex(proj, conf).tasks
 	def tasks(proj: Option[ResolvedReference], conf: Option[String], key: String): Set[AttributeKey[_]] = keyIndex(proj, conf).tasks(key)

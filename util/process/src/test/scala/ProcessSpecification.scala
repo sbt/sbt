@@ -82,7 +82,7 @@ private[this] object ProcessSpecification extends Properties("Process I/O")
 	{
 		val ignore = echo // just for the compile dependency so that this test is rerun when TestedProcess.scala changes, not used otherwise
 
-		val thisClasspath = List(getSource[ScalaObject], getSource[IO.type], getSource[SourceTag]).mkString(File.pathSeparator)
+		val thisClasspath = List(getSource[Product], getSource[IO.type], getSource[SourceTag]).mkString(File.pathSeparator)
 		"java -cp " + thisClasspath + " " + command
 	}
 	private def getSource[T : Manifest]: String =

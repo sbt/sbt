@@ -8,7 +8,10 @@ package sbt
 //   on the behavior of the delegates.
 class MultiLogger(delegates: List[AbstractLogger]) extends BasicLogger
 {
-	override lazy val ansiCodesSupported = delegates.forall(_.ansiCodesSupported)
+	override lazy val ansiCodesSupported = delegates exists supported
+	private[this] lazy val allSupportCodes = delegates forall supported
+	private[this] def supported = (_: AbstractLogger).ansiCodesSupported
+
 	override def setLevel(newLevel: Level.Value)
 	{
 		super.setLevel(newLevel)
@@ -29,5 +32,24 @@ class MultiLogger(delegates: List[AbstractLogger]) extends BasicLogger
 	def success(message: => String) { dispatch(new Success(message)) }
 	def logAll(events: Seq[LogEvent]) { delegates.foreach(_.logAll(events)) }
 	def control(event: ControlEvent.Value, message: => String) { delegates.foreach(_.control(event, message)) }
-	private def dispatch(event: LogEvent) { delegates.foreach(_.log(event)) }
+	private[this] def dispatch(event: LogEvent)
+	{
+		val plainEvent = if(allSupportCodes) event else removeEscapes(event)
+		for( d <- delegates)
+			if(d.ansiCodesSupported)
+				d.log(event)
+			else
+				d.log(plainEvent)
+	}
+
+	private[this] def removeEscapes(event: LogEvent): LogEvent =
+	{
+		import ConsoleLogger.{removeEscapeSequences => rm}
+		event match {
+			case s: Success => new Success(rm(s.msg))
+			case l: Log => new Log(l.level, rm(l.msg))
+			case ce: ControlEvent => new ControlEvent(ce.event, rm(ce.msg))
+			case _: Trace | _: SetLevel | _: SetTrace | _: SetSuccess => event
+		}
+	}
 }

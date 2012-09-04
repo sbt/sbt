@@ -20,6 +20,7 @@ object Sbt extends Build
 		publishMavenStyle := false,
 		componentID := None,
 		crossPaths := false,
+		concurrentRestrictions in Global += Util.testExclusiveRestriction,
 		testOptions += Tests.Argument(TestFrameworks.ScalaCheck, "-w", "1"),
 		javacOptions in compile ++= Seq("-target", "6", "-source", "6")
 	)
@@ -70,7 +71,7 @@ object Sbt extends Build
 	/* **** Intermediate-level Modules **** */
 
 		// Apache Ivy integration
-	lazy val ivySub = baseProject(file("ivy"), "Ivy") dependsOn(interfaceSub, launchInterfaceSub, logSub % "compile;test->test", ioSub % "compile;test->test", launchSub % "test->test") settings(ivy, jsch, httpclient)
+	lazy val ivySub = baseProject(file("ivy"), "Ivy") dependsOn(interfaceSub, launchInterfaceSub, logSub % "compile;test->test", ioSub % "compile;test->test", launchSub % "test->test") settings(ivy, jsch, httpclient, testExclusive)
 	  // Runner for uniform test interface
 	lazy val testingSub = baseProject(file("testing"), "Testing") dependsOn(ioSub, classpathSub, logSub, launchInterfaceSub, testAgentSub) settings(libraryDependencies += "org.scala-tools.testing" % "test-interface" % "0.5")
   	// Testing agent for running tests in a separate process.
@@ -81,7 +82,7 @@ object Sbt extends Build
 		// Basic task engine
 	lazy val taskSub = testedBaseProject(tasksPath, "Tasks") dependsOn(controlSub, collectionSub)
 		// Standard task system.  This provides map, flatMap, join, and more on top of the basic task model.
-	lazy val stdTaskSub = testedBaseProject(tasksPath / "standard", "Task System") dependsOn(taskSub % "compile;test->test", collectionSub, logSub, ioSub, processSub)
+	lazy val stdTaskSub = testedBaseProject(tasksPath / "standard", "Task System") dependsOn(taskSub % "compile;test->test", collectionSub, logSub, ioSub, processSub) settings( testExclusive )
 		// Persisted caching based on SBinary
 	lazy val cacheSub = baseProject(cachePath, "Cache") dependsOn(ioSub, collectionSub) settings(sbinary)
 		// Builds on cache to provide caching for filesystem-related operations

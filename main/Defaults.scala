@@ -70,6 +70,7 @@ object Defaults extends BuildCommon
 		logBuffered :== false,
 		connectInput :== false,
 		cancelable :== false,
+		sourcesInBase :== true,
 		autoScalaLibrary :== true,
 		onLoad <<= onLoad ?? idFun[State],
 		onUnload <<= (onUnload ?? idFun[State]),
@@ -99,7 +100,7 @@ object Defaults extends BuildCommon
 		javaOptions :== Nil,
 		sbtPlugin :== false,
 		crossPaths :== true,
-		classpathTypes :== Set("jar", "bundle", "hk2-jar"),
+		classpathTypes :== Set("jar", "bundle", "hk2-jar", "orbit"),
 		aggregate :== true,
 		maxErrors :== 100,
 		showTiming :== true,
@@ -118,7 +119,7 @@ object Defaults extends BuildCommon
 		pomAllRepositories :== false,
 		includeFilter :== NothingFilter,
 		includeFilter in unmanagedSources :== "*.java" | "*.scala",
-		includeFilter in unmanagedJars :== "*.jar" | "*.so" | "*.dll",
+		includeFilter in unmanagedJars :== "*.jar" | "*.so" | "*.dll" | "*.jnilib",
 		includeFilter in unmanagedResources :== AllPassFilter,
 		excludeFilter :== (".*"  - ".") || HiddenFileFilter,
 		pomIncludeRepository :== Classpaths.defaultRepositoryFilter
@@ -182,8 +183,8 @@ object Defaults extends BuildCommon
 		docDirectory <<= (crossTarget, configuration) { (outDir, conf) => outDir / (prefix(conf.name) + "api") }
 	)
 	def addBaseSources = Seq(
-		unmanagedSources <<= (unmanagedSources, baseDirectory, includeFilter in unmanagedSources, excludeFilter in unmanagedSources) map {
-			(srcs,b,f,excl) => (srcs +++ b * (f -- excl)).get
+		unmanagedSources <<= (unmanagedSources, baseDirectory, includeFilter in unmanagedSources, excludeFilter in unmanagedSources, sourcesInBase) map {
+			(srcs,b,f,excl,enable) => if(enable) (srcs +++ b * (f -- excl)).get else srcs
 		}
 	)
 

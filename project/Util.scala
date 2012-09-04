@@ -4,6 +4,7 @@
 
 object Util
 {
+	val ExclusiveTest = Tags.Tag("exclusive-test")
 	lazy val componentID = SettingKey[Option[String]]("component-id")
 
 	def inAll(projects: => Seq[ProjectReference], key: ScopedSetting[Task[Unit]]): Project.Initialize[Task[Unit]] =
@@ -66,14 +67,17 @@ object Util
 		val formatter = new java.text.SimpleDateFormat("yyyyMMdd'T'HHmmss")
 		formatter.setTimeZone(TimeZone.getTimeZone("GMT"))
 		val timestamp = formatter.format(new Date)
-		val content = "version=" + version + "\ntimestamp=" + timestamp
+		val content = versionLine(version) + "\ntimestamp=" + timestamp
 		val f = dir / "xsbt.version.properties"
-		if(!f.exists || f.lastModified < lastCompilationTime(analysis)) {
+		if(!f.exists || f.lastModified < lastCompilationTime(analysis) || !containsVersion(f, version)) {
 			s.log.info("Writing version information to " + f + " :\n" + content)
 			IO.write(f, content)
 		}
 		f :: Nil
 	}
+	def versionLine(version: String): String = "version=" + version
+	def containsVersion(propFile: File, version: String): Boolean = IO.read(propFile).contains(versionLine(version))
+
 	def binID = "compiler-interface-bin"
 	def srcID = "compiler-interface-src"
 
@@ -100,6 +104,15 @@ object Util
 	def excludePomDependency(node: scala.xml.Node) = node \ "artifactId" exists { n => excludePomArtifact(n.text) }
 
 	def excludePomArtifact(artifactId: String) = (artifactId == "compiler-interface") || (artifactId startsWith "precompiled")
+
+	val testExclusive = tags in test += ( (ExclusiveTest, 1) )
+
+	// TODO: replace with Tags.exclusive after 0.12.0
+	val testExclusiveRestriction = Tags.customLimit { (tags: Map[Tags.Tag,Int]) =>
+		val exclusive = tags.getOrElse(ExclusiveTest, 0)
+		val all = tags.getOrElse(Tags.All, 0)
+		exclusive == 0 || all == 1
+	}
 }
 object Common
 {
