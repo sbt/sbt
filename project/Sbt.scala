@@ -14,7 +14,7 @@ object Sbt extends Build
 	override lazy val settings = super.settings ++ buildSettings ++ Status.settings
 	def buildSettings = Seq(
 		organization := "org.scala-sbt",
-		version := "0.12.0",
+		version := "0.12.1-SNAPSHOT",
 		publishArtifact in packageDoc := false,
 		scalaVersion := "2.9.2",
 		publishMavenStyle := false,
