@@ -14,7 +14,7 @@ object Sbt extends Build
 	override lazy val settings = super.settings ++ buildSettings ++ Status.settings
 	def buildSettings = Seq(
 		organization := "org.scala-sbt",
-		version := "0.12.1-SNAPSHOT",
+		version := "0.12.1-RC1",
 		publishArtifact in packageDoc := false,
 		scalaVersion := "2.9.2",
 		publishMavenStyle := false,
@@ -94,7 +94,7 @@ object Sbt extends Build
 		//   Includes API and Analyzer phases that extract source API and relationships.
 	lazy val compileInterfaceSub = baseProject(compilePath / "interface", "Compiler Interface") dependsOn(interfaceSub, ioSub % "test->test", logSub % "test->test", launchSub % "test->test") settings( compileInterfaceSettings : _*)
 	lazy val precompiled282 = precompiled("2.8.2")
-	lazy val precompiled2100 = precompiled("2.10.0-M4")
+	lazy val precompiled2100 = precompiled("2.10.0-M7")
 
 		// Implements the core functionality of detecting and propagating changes incrementally.
 		//   Defines the data structures for representing file fingerprints and relationships and the overall source analysis
