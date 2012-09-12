@@ -48,19 +48,34 @@ public class ForkMain {
 			}
 		}
 	}
+	static class ForkError extends Exception implements Serializable {
+		private String originalMessage;
+		private StackTraceElement[] originalStackTrace;
+		private ForkError cause;
+		ForkError(Throwable t) {
+			originalMessage = t.getMessage();
+			originalStackTrace = t.getStackTrace();
+			if (t.getCause() != null) cause = new ForkError(t.getCause());
+		}
+		public String getMessage() { return originalMessage; }
+		public StackTraceElement[] getStackTrace() { return originalStackTrace; }
+		public Exception getCause() { return cause; }
+	}
 	static class ForkEvent implements Event, Serializable {
 		private String testName;
 		private String description;
 		private Result result;
+		private Throwable error;
 		ForkEvent(Event e) {
 			testName = e.testName();
 			description = e.description();
 			result = e.result();
+			if (e.error() != null) error = new ForkError(e.error());
 		}
 		public String testName() { return testName; }
 		public String description() { return description; }
-		public Result result() { return result;}
-		public Throwable error() { return null; }
+		public Result result() { return result; }
+		public Throwable error() { return error; }
 	}
 	public static void main(String[] args) throws Exception {
 		Socket socket = new Socket(InetAddress.getByName(null), Integer.valueOf(args[0]));
