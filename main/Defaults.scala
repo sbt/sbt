@@ -1002,7 +1002,9 @@ object Classpaths
 
 	def projectDependenciesTask: Initialize[Task[Seq[ModuleID]]] =
 		(thisProjectRef, settings, buildDependencies) map { (ref, data, deps) =>
-			deps.classpath(ref) flatMap { dep => (projectID in dep.project) get data map { _.copy(configurations = dep.configuration) } }
+			deps.classpath(ref) flatMap { dep => (projectID in dep.project) get data map { 
+				_.copy(configurations = dep.configuration, explicitArtifacts = Nil) } 
+			}
 		}
 
 	def depMap: Initialize[Task[Map[ModuleRevisionId, ModuleDescriptor]]] =
