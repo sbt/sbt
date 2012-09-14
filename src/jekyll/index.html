@@ -1,0 +1,374 @@
+---
+layout: none
+title: simple build tool
+tagline: is a minimally intrusive<br/> build tool for <a href="http://www.scala-lang.org/" class="scala" target="_blank">Scala</a> projects
+description: ''
+---
+
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta http-equiv="Content-Type" content="text/html"; charset="utf-8">
+    <title>simple build tool</title>
+     <link href='http://fonts.googleapis.com/css?family=Copse' rel='stylesheet' type='text/css'>
+     <link href='/resources/site.css' rel='stylesheet' type='text/css'>  <script type="text/javascript" src="https://ajax.googleapis.com/ajax/libs/jquery/1.6.2/jquery.min.js">
+       </script>
+     </head>
+     <body class="cf">
+
+        {% include topbar.txt %}
+
+       <div id="container" class="cf">
+
+         <div id="intro">
+           <div id="head" class="contained cf">
+             <div id="name" class="left">
+               <h1>sbt</h1>
+               <h2>simple build tool</h2>
+               <p id="what">
+                 is a minimally intrusive<br/> build tool for <a href="http://www.scala-lang.org/" class="scala" target="_blank">Scala</a> projects
+               </p>
+             </div>
+             <div class="left" id="vc">
+               <div id="start">Start <em>Building</em></div>
+               <div id="install-primary">
+                 <button class="btn download" data-jar="download.html" id="get-launcher-primary"><span>↬</span> Download</button> the latest version
+               </div>
+               <div id="install-extra">Click <a id="install-info-toggle" href="#">here</a> for install instructions</div>
+             </div>
+           </div>
+           <div id="install-info">
+             <div id="install-info-content">
+               Are you a <a href="#" id="show-nix">unix/osx</a> or a <a href="#" id="show-win">Windows</a> user?
+               <div id="nix">
+                 <p>
+                   If you are running an unix-based operating system, open your terminal shell and enable execute permisions on the <a href="https://raw.github.com/sbt/sbt-launcher-package/full-packaging/sbt">sbt script</a>
+                 </p>
+                 <pre><code>$ chmod u+x sbt</code></pre>
+                 <p>
+                   Then run the install command to get the latest
+                 </P>
+                 <pre><code>$ sbt</code></pre>
+                 <p>
+                   Afterwards you can run the sbt command in any directory to create a new project.
+                 </p>
+               </div>
+               <div id="win">
+                 If you're feeling adventurous, try our <a href="http://typesafe.artifactoryonline.com/typesafe/windows-releases/org/scalasbt/sbt/0.11.2/sbt.msi">MSI installer</a>.
+               </div>
+               <div class="controls"><button id="hide-install-info" class="btn">Hide this</button></div>
+             </div>
+           </div>
+           <div id="features" class="cf">
+             <div id="feature-list" class="contained">
+             <ul class="left">
+               <li>
+                 <a href="#repl">Fast, transparent REPL workflow</a>
+               </li>
+               <li>
+                 <a href="#scripted">Scala-scripted configuration</a>
+               </li>
+               <li>
+                 <a href="#plugins">Flexible plugin architecture</a>
+               </li>
+               <li>
+                 <a href="#compilation">Continuous incremental compilation</a>
+               </li>
+               <li>
+                 <a href="#trigger">Triggered task execution</a>
+               </li>
+             </ul>
+             <ul class="left">
+               <li>
+                 <a href="#cross-compile">Cross-Scala version compilation</a>
+               </li>
+               <li>
+                 <a href="#testing">Out of the box testing with ScalaCheck, Specs, and ScalaTest</a>
+               </li>
+               <li>
+                 <a href="#multi-project">Multi-module and external project support</a>
+               </li>
+               <li>
+                 <a href="#parallel">Parallel task and test execution</a>
+               </li>
+               <li>
+                 <a href="#dependency-man">Concise dependency management DSL</a>
+               </li>
+             </ul>
+             </div>
+           </div>
+         </div>
+
+         <div id="extra">
+
+           <ul id="examples">
+
+             <li id="repl" class="feature">
+               <h3>Say hi to the REPL.</h3>
+               <div class="more">
+                 <div class="line">
+                   <pre><code>$ sbt
+> hello_</code></pre>
+                 </div>
+                 <div class="line">
+                   <p>
+                     From the REPL you can execute project tasks and inspect settings
+                   </p>
+                 </div>
+                 <div class="line">
+                   <pre><code>> compile
+[info] Compiling 1 Scala source to ...
+[success] Total time: 1 s, completed Aug 21, 2011 7:34:52 PM</code></pre>
+                 </div>
+                 <div class="line">
+                   <p>
+                     All settings and commands are tab-completable for fast, easy access
+                   </p>
+                 </div>
+                 <div class="line">
+                   <pre><code>> show &lt;tab&gt;
+Display all 153 possibilities? (y or n) </code></pre>
+                 </div>
+               </div>
+               <div class="ita">
+                 <a href="#scripted" class="st">Is that all?</a>
+               </div>
+             </li>
+
+             <li id="scripted" class="feature">
+               <h3>Typesafety is a given.</h3>
+               <div class="more">
+                 <div class="line">
+                   <p>
+                     All project configuration is scripted in Scala providing out of the box modularity and all of the flexibility of the Scala programming language.
+                   </p>
+                 </div>
+                 <div class="line">
+                   <pre><code>override lazy val settings = super.settings :+
+    (shellPrompt := { s => Project.extract(s).cid + "> " })</code></pre>
+                 </div>
+                 <div class="line">
+                   <p>
+                     Simple projects will only require a simple configuration in <code>.sbt</code> format.
+                   </p>
+                 </div>
+                 <div class="line">
+                   <pre><code>organization := "com.your.domain"
+name := "your-module"
+version := "0.1.3"
+libraryDependencies += "com.other.domain" %% "other-module" % "1.0"
+</code></pre>
+                 </div>
+               </div>
+               <div class="ita">
+                 <a href="#plugins" class="st">Is that all?</a>
+               </div>
+             </li>
+
+             <li id="plugins" class="feature">
+               <h3>Simple Extensibility.</h3>
+               <div class="more">
+                 <div class="line">
+                   <p>
+                     Plugins provide a means of injecting and augmenting settings and commands. Since plugins are just Scala code, you can package and share plugins between projects.
+                   </p>
+                 </div>
+                 <div class="line">
+                   <pre><code>object MyPlugin extends Plugin {
+  val MyConf = config("my")
+  override def settings: Seq[Setting[_]] = inConfig(MyConf)(Seq(
+    // ...
+  ))
+}</code></pre>
+                 </div>
+               </div>
+               <div class="ita">
+                 <a href="#compilation" class="st">Is that all?</a>
+               </div>
+             </li>
+
+             <li id="compilation" class="feature">
+               <h3>Only what you need.</h3>
+               <div class="more">
+                 <div class="line">
+                   <p>
+                     Sbt will only compile source code that has changed and when necessary. Why wait around for something to be recompiled when you can be doing more productive work?
+                   </p>
+                 </div>
+                 <div class="line">
+                   <pre><code>> compile
+[info] Compiling 1 Scala source to ...
+[success] Total time: 1 s, completed Aug 21, 2011 7:34:52 PM
+> compile
+[success] Total time: 1 s, completed Aug 21, 2011 7:34:54 PM
+</code></pre>
+                 </div>
+               </div>
+               <div class="ita">
+                 <a href="#trigger" class="st">Is that all?</a>
+               </div>
+             </li>
+
+             <li id="trigger" class="feature">
+               <h3>Do repeat yourself.</h3>
+               <div class="more">
+                 <div class="line">
+                   <p>
+                     All build tasks and commands can be re-triggered when dependent source code changes by prepending the <code>~</code> modifier, leaving you free to focus on your craft and not on life-wasting repetition.
+                   </p>
+                 </div>
+                 <div class="line">
+                   <pre><code>> ~ test</code></pre>
+                 </div>
+               </div>
+               <div class="ita">
+                 <a href="#cross-compile" class="st">Is that all?</a>
+               </div>
+             </li>
+
+             <li id="cross-compile" class="feature">
+               <h3>Fluency in many dialects.</h3>
+               <div class="more">
+                 <div class="line">
+                   <p>
+                     Scala is a fast evolving and forward thinking language which, in the past, has led to binary incompatibility between versions. Sbt makes it simple to switch between and execute commands against your Scala source code over many versions of Scala with ease.
+                   </p>
+                 </div>
+                 <div class="line">
+                   <pre><code>> + compile</code></pre>
+                 </div>
+               </div>
+               <div class="ita">
+                 <a href="#testing" class="st">Is that all?</a>
+               </div<
+             </li>
+
+             <li id="testing" class="feature">
+               <h3>Many frameworks. One test interface.</h3>
+               <div class="more">
+                 <div class="line">
+                   <p>
+                     For some, testing is an afterthought. Sbt makes testing part of your normal workflow by providing a generic interface to validate your code against any supporting testing library.
+                   </p>
+                 </div>
+                 <div class="line">
+                   <pre><code>> test-only your.EasySpec</code></pre>
+                 </div>
+               </div>
+               <div class="ita">
+                 <a href="#multi-project" class="st">Is that all?</a>
+               </div>
+             </li>
+
+             <li id="multi-project" class="feature">
+               <h3>There's room for more in here.</h3>
+               <div class="more">
+                 <div class="line">
+                   <p>
+                     When it's time to make the split, Sbt makes it easy to coordinate multiple projects in one simple build file.
+                   </p>
+                 </div>
+                 <div class="line">
+                   <pre><code>object YourBuild extends Build {
+   lazy val root = Project(".", file("."), settings = Seq(..)) aggregate(a, b)
+   lazy val b = Project("b", file("b"))
+   lazy val c = Project("c", file("c")) dependsOn(b)
+}</code></pre>
+                 </div>
+               </div>
+               <div class="ita">
+                 <a href="#parallel" class="st">Is that all?</a>
+               </div>
+             </li>
+
+             <li id="parallel" class="feature">
+               <h3>Why wait?</h3>
+               <div class="more">
+                 <div class="line">
+                   <p>
+                     By default, build tasks that do not depend on one another execute in parallel. This also applies to your tests. Instead of sequentially executing your tests, Sbt will run them in parallel.
+                   ...something about parallel task execution...
+                   </p>
+                 </div>
+                 <div class="line">
+                   <pre><code>/* fill me in */</code></pre>
+                 </div>
+               </div>
+               <div class="ita">
+                 <a href="#dependency-man" class="st">Is that all?</a>
+               </div>
+             </li>
+
+             <li id="dependency-man" class="feature">
+               <h3>Simply dependable.</h3>
+               <div class="more">
+                 <div class="line">
+                   <p>
+                     Close your eyes. Now open them. You no longer have to manage your dependencies in XML. Use a simple declarative DSL to add dependencies and sbt takes care of the rest.
+                   </p>
+                 </div>
+                 <div class="line">
+                   <pre><code>libraryDependencies ++= Seq(
+  "com.scalaproject" %% "module-a" % "1.4.7",
+  "com.javaproject" % "module-b" % "2.1.0"
+)</code></pre>
+                 </div>
+               </div>
+               <div class="ita">
+                <a href="#intro" class="st">Is that all?</a>
+               </div>
+             </li>
+
+           </ul>
+           <div id="foot">
+             <div class="content"/>
+           </div>
+         </div>
+       </div>
+     <script type="text/javascript" src="jquery.scrollto.min.js"></script>
+     <script type="text/javascript">
+       (function($){ $(function(){
+         $('#more-hand').click(function() {
+             var self = $(this);
+           $('#info').slideToggle('fast', function() {
+               self.text('↬ ' + (/more/.test(self.text()) ? "less":"more"));
+           });
+         });
+         $("#top").click(function(){ $("#intro").ScrollTo(); })
+
+         var applyH = function() {
+           $("#intro, .feature").height($(window).height());
+         };
+         $(window).bind('resize', function() { applyH(); });
+         applyH();
+
+         $("#get-launcher-primary").bind('click', function(e) {
+             window.location.href= $(this).data()['jar'];
+         })
+
+         $('#features a, .st').click(function(e){
+             e.preventDefault();
+             var h = $(this).attr('href');
+             $(h).ScrollTo({
+                 callback:function(){ window.location.hash = h;}
+             });
+         });
+
+         $("#install-info-toggle, #hide-install-info").bind('click', function(){
+             $('#install-info-content').slideToggle('fast', function() {
+                 $('#nix, #win').hide();
+             });
+         });
+
+           $('#show-nix').bind('click', function(){
+               $('#win').hide();
+               $('#nix').show();
+           });
+           $('#show-win').bind('click', function(){
+               $('#nix').hide();
+               $('#win').show();
+           });
+       });})(jQuery);
+    </script>
+  </body>
+</html>
