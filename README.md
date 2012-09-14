@@ -56,3 +56,19 @@ This is the 0.13.x series of sbt.
 4. After each `publish-local`, clean the `~/.sbt/boot/` directory.  Alternatively, if sbt is running and the launcher hasn't changed, run `reboot full` to have sbt do this for you.
 
 5. If a project has `project/build.properties` defined, either delete the file or change `sbt.version` to `0.13.0-SNAPSHOT`.
+
+## Building Documentation
+
+Documentation is built using jekyll and sphinx and requires some external programs and libraries to be manually installed first:
+
+```text
+$ pip install pygments
+$ pip install sphinx
+$ pip install sphinxcontrib-issuetracker
+$ gem install rdiscount
+$ gem install jekyll
+```
+
+To build the full site, run the `make-site` task, which will generate the manual, API, SXR, and other site pages in `target/site/`.
+
+Individual pieces of the site may be generated using `xsbt/sphinx:mappings`, `xsbt/jekyll:mappings`, `xsbt/doc`, or `xsbt/sxr`.  The output directories will be under `target/`, such as `target/sphinx`.

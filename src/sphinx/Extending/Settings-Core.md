@@ -1,6 +1,6 @@
-[Global]: http://harrah.github.com/xsbt/latest/api/sbt/Global$.html
-[This]: http://harrah.github.com/xsbt/latest/api/sbt/This$.html
-[Select]: http://harrah.github.com/xsbt/latest/api/sbt/Select.html
+[Global]: ../../api/sbt/Global$.html
+[This]: ../../api/sbt/This$.html
+[Select]: ../../api/sbt/Select.html
 [main/Structure.scala]: https://github.com/harrah/xsbt/blob/0.12/main/Structure.scala
 
 # Settings Core
@@ -34,6 +34,7 @@ The first part of the example defines the custom settings system.  There are thr
 There is also a fourth, but its usage is likely to be specific to sbt at this time.  The example uses a trivial implementation for this part.
 
 `SettingsExample.scala`
+
 ```scala
   import sbt._
 
@@ -68,9 +69,10 @@ object SettingsExample extends Init[Scope]
 
 ### Example Usage
 
-This part shows how to use the system we just defined.  The end result is a `Settings[Scope]` value.  This type is basically a mapping `Scope -> AttributeKey[T] -> Option[T]`.  See the [Settings API documentation](http://harrah.github.com/xsbt/latest/api/sbt/Settings.html) for details.
+This part shows how to use the system we just defined.  The end result is a `Settings[Scope]` value.  This type is basically a mapping `Scope -> AttributeKey[T] -> Option[T]`.  See the [Settings API documentation](../../api/sbt/Settings.html) for details.
 
 `SettingsUsage.scala`
+
 ```scala
 /** Usage Example **/
 
