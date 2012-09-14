@@ -190,7 +190,9 @@ object Sbt extends Build
 
 		import Sxr.sxr
 	def releaseSettings = Release.settings(nonRoots, proguard in Proguard)
-	def rootSettings = releaseSettings ++ LaunchProguard.settings ++ LaunchProguard.specific(launchSub) ++ Sxr.settings ++ docSetting ++ Util.publishPomSettings ++ Seq(
+	def rootSettings = releaseSettings ++ Docs.settings ++ LaunchProguard.settings ++ LaunchProguard.specific(launchSub) ++ 
+		Sxr.settings ++ docSetting ++ Util.publishPomSettings ++ otherRootSettings
+	def otherRootSettings = Seq(
 		scriptedScalaVersion <<= scalaVersion.identity,
 		scripted <<= scriptedTask,
 		scriptedSource <<= (sourceDirectory in sbtSub) / "sbt-test",

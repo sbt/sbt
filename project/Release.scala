@@ -14,16 +14,8 @@ object Release extends Build
 	lazy val fullRelease = TaskKey[Unit]("full-release")
 	lazy val prerelease = TaskKey[Unit]("prerelease")
 
-	lazy val wikiRepository = SettingKey[File]("wiki-repository")
-	lazy val pagesRepository = SettingKey[File]("pages-repository")
-	lazy val updatedPagesRepository = TaskKey[File]("updated-pages-repository")
-	lazy val updatedWikiRepository = TaskKey[File]("updated-wiki-repository")
-	lazy val copyAPIDoc = TaskKey[File]("copy-api-doc")
-	lazy val pushAPIDoc = TaskKey[Unit]("push-api-doc")
 	lazy val pushWiki = TaskKey[Unit]("push-wiki")
 	lazy val pushMain = TaskKey[Unit]("push-main")
-	lazy val sbtRemoteRepo = SettingKey[String]("sbt-remote-repo")
-	lazy val wikiRemoteRepo = SettingKey[String]("wiki-remote-repo")
 
 	def settings(nonRoots: => Seq[ProjectReference], launcher: ScopedTask[File]): Seq[Setting[_]] =
 		(if(CredentialsFile.exists) releaseSettings(nonRoots, launcher) else Nil) ++
@@ -40,16 +32,9 @@ object Release extends Build
 		launcherRemotePath <<= (organization, version) { (org, v) => List(org, LaunchJarName, v, LaunchJarName + ".jar").mkString("/") }
 	)
 	def fullReleaseSettings: Seq[Setting[_]] = Seq(
-		pushAPIDoc <<= pushAPIDoc0,
-		copyAPIDoc <<= copyAPIDoc0,
-		pushWiki <<= pushWiki0,
 		pushMain <<= pushMain0,
 		prerelease := println(Prerelease),
-		fullRelease <<= fullRelease0,
-		sbtRemoteRepo := "git@github.com:harrah/xsbt.git",
-		wikiRemoteRepo := "git@github.com:harrah/xsbt.wiki.git",
-		updatedPagesRepository <<= updatedRepo(pagesRepository, sbtRemoteRepo, Some("gh-pages")),
-		updatedWikiRepository <<= updatedRepo(wikiRepository, wikiRemoteRepo, None)		
+		fullRelease <<= fullRelease0
 	)
 	def deployLauncher(launcher: ScopedTask[File]) =
 		(launcher, launcherRemotePath, credentials, remoteBase, streams) map { (launchJar, remotePath, creds, base, s) =>
@@ -71,16 +56,8 @@ object Release extends Build
 	def updatedRepo(repo: SettingKey[File], remote: SettingKey[String], branch: Option[String]) =
 		(repo, remote, streams) map { (local, uri, s) => updated(remote = uri, cwd = local, branch = branch, log = s.log); local }
 
-	def copyAPIDoc0 = (updatedPagesRepository, doc, Sxr.sxr, streams) map { (repo, newAPI, newSXR, s) =>
-		git("rm", "-r", "latest")(repo, s.log)
-		IO.copyDirectory(newAPI, repo / "latest" / "api")
-		IO.copyDirectory(newSXR, repo / "latest" / "sxr")
-		repo
-	}
-	def fullRelease0 = Seq(pushWiki, pushMain, pushAPIDoc, publishRelease).dependOn
+	def fullRelease0 = Seq(pushMain, publishRelease).dependOn
 	def pushMain0 = (baseDirectory, version, streams) map { (repo, v, s) => commitAndPush(v, tag = Some("v" + v))(repo, s.log) }
-	def pushWiki0 = (wikiRepository, streams) map { (repo, s) => commitAndPush("updated for release")(repo, s.log) }
-	def pushAPIDoc0 = (copyAPIDoc, streams) map { (repo, s) => commitAndPush("updated api and sxr documentation")(repo, s.log) }
 	def commitAndPush(msg: String, tag: Option[String] = None)(repo: File, log: Logger)
 	{
 		git("add", ".")(repo, log)
