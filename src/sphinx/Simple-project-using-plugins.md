@@ -1,0 +1,1 @@
+If you are looking for a sample project leveraging project, go to https://github.com/emcastro/sbt-sample, download it and run sbt on it.
