@@ -88,7 +88,10 @@ abstract class EvaluateSettings[Scope]
 		private[this] val calledBy = new collection.mutable.ListBuffer[BindNode[_, T]]
 
 		override def toString = getClass.getName + " (state=" + state + ",blockedOn=" + blockedOn + ",calledBy=" + calledBy.size + ",blocking=" + blocking.size + "): " +
-			( (static.toSeq.flatMap { case (key, value) => if(value eq this) key.toString :: Nil else Nil }).headOption getOrElse "non-static")
+			keyString
+
+		private[this] def keyString = 
+			(static.toSeq.flatMap { case (key, value) => if(value eq this) init.showFullKey(key) :: Nil else Nil }).headOption getOrElse "non-static"
 	
 		final def get: T = synchronized {
 			assert(value != null, toString + " not evaluated")
@@ -134,6 +137,7 @@ abstract class EvaluateSettings[Scope]
 		}
 		protected final def setValue(v: T) {
 			assert(state != Evaluated, "Already evaluated (trying to set value to " + v + "): " + toString)
+			if(v == null) error("Setting value cannot be null: " + keyString)
 			value = v
 			state = Evaluated
 			blocking foreach { _.unblocked() }
