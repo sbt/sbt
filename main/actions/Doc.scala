@@ -15,10 +15,23 @@ package sbt
 	import Tracked.{inputChanged, outputChanged}
 	import FilesInfo.{exists, hash, lastModified}
 
-object Doc {
+object Doc
+{
+		import RawCompileLike._
+	def scaladoc(label: String, cache: File, compiler: AnalyzingCompiler): Gen =
+		cached(cache, prepare(label + " Scala API documentation", compiler.doc))
+	def javadoc(label: String, cache: File, doc: sbt.compiler.Javadoc): Gen =
+		cached(cache, prepare(label + " Scala API documentation", filterSources(javaSourcesOnly, doc.doc)))
+
+	val javaSourcesOnly: File => Boolean = _.getName.endsWith(".java")
+
+	@deprecated("Use `scaladoc`", "0.13.0")
 	def apply(maximumErrors: Int, compiler: AnalyzingCompiler) = new Scaladoc(maximumErrors, compiler)
+
+	@deprecated("Use `javadoc`", "0.13.0")
 	def apply(maximumErrors: Int, compiler: sbt.compiler.Javadoc) = new Javadoc(maximumErrors, compiler)
 }
+@deprecated("No longer used.  See `Doc.javadoc` or `Doc.scaladoc`", "0.13.0")
 sealed trait Doc {
 	type Gen = (Seq[File], Seq[File], File, Seq[String], Int, Logger) => Unit
 
@@ -55,6 +68,7 @@ sealed trait Doc {
 		cachedDoc(inputs)(() => exists(outputDirectory.***.get.toSet))
 	}
 }
+@deprecated("No longer used.  See `Doc.scaladoc`", "0.13.0")
 final class Scaladoc(maximumErrors: Int, compiler: AnalyzingCompiler) extends Doc
 {
 	def apply(label: String, sources: Seq[File], classpath: Seq[File], outputDirectory: File, options: Seq[String], log: Logger)
@@ -62,6 +76,7 @@ final class Scaladoc(maximumErrors: Int, compiler: AnalyzingCompiler) extends Do
 		generate("Scala", label, compiler.doc, sources, classpath, outputDirectory, options, maximumErrors, log)
 	}
 }
+@deprecated("No longer used.  See `Doc.javadoc`", "0.13.0")
 final class Javadoc(maximumErrors: Int, doc: sbt.compiler.Javadoc) extends Doc
 {
 	def apply(label: String, sources: Seq[File], classpath: Seq[File], outputDirectory: File, options: Seq[String], log: Logger)

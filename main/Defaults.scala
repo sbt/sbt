@@ -543,10 +543,15 @@ object Defaults extends BuildCommon
 			val hasScala = srcs.exists(_.name.endsWith(".scala"))
 			val hasJava = srcs.exists(_.name.endsWith(".java"))
 			val cp = in.config.classpath.toList - in.config.classesDirectory
-			if(hasScala)
-				Doc(in.config.maxErrors, in.compilers.scalac).cached(cache / "scala", nameForSrc(config.name), srcs, cp, out, in.config.options, s.log)
-			else if(hasJava)
-				Doc(in.config.maxErrors, in.compilers.javac).cached(cache / "java", nameForSrc(config.name), srcs, cp, out, in.config.javacOptions, s.log)
+			val label = nameForSrc(config.name)
+			val (options, runDoc) = 
+				if(hasScala)
+					(in.config.options, Doc.scaladoc(label, cache / "scala", in.compilers.scalac))
+				else if(hasJava)
+					(in.config.javacOptions, Doc.javadoc(label, cache / "java", in.compilers.javac))
+				else
+					(Nil, RawCompileLike.nop)
+			runDoc(srcs, cp, out, options, in.config.maxErrors, s.log)
 			out
 		}
 	))
