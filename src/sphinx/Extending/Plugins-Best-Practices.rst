@@ -97,7 +97,7 @@ task-scoping described in this section, if your plugin makes heavy use
 of the shell. Using configuration-scoping the user could discover your
 tasks using tab completion:
 
-::
+.. code-block:: console
 
     coffee:[tab]
 
@@ -204,7 +204,7 @@ the raw settings may be reused:
 
 ::
 
-    seq(Project.inConfig(Test)(sbtObfuscate.Plugin.baseObfuscateSettings): _*) 
+    Project.inConfig(Test)(sbtObfuscate.Plugin.baseObfuscateSettings)
 
 Alternatively, one could provide a utility method to load settings in a
 given configuration:

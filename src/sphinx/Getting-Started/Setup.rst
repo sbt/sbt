@@ -22,30 +22,46 @@ Installing sbt
 ==============
 
 You need two files: `sbt-launch.jar`_ and a script to run it.
-
-*Note: Relevant information is moving to the `download
-page <http://www.scala-sbt.org/download.html>`_*
+The following sections describe how to accomplish this for different systems.
 
 Yum
 ---
 
 The sbt package is available from the |typesafe-yum-repo|_. Please install `this rpm`_ to add
 the typesafe yum repository to your list of approved sources. Then run:
-``text yum install sbt`` to grab the latest release of sbt.
 
-\*Note: please make sure to report any issues you may find to the |sbt-launcher-issues|_.
+.. code-block:: console
+
+   $ yum install sbt
+
+to grab the latest release of sbt.
+
+.. note::
+ 
+   Please make sure to report any issues you may find to the |sbt-launcher-issues|_.
 
 Apt
 ---
 
 The sbt package is available from the |typesafe-debian-repo|_. Please install `this deb`_ to add the
 typesafe debian repository to your list of approved sources. Then run:
-``text apt-get install sbt`` to grab the latest release of sbt.
 
+.. code-block: console
+
+    apt-get install sbt
+
+to grab the latest release of sbt.
 If sbt cannot be found, dont forget to update your list of repositories.
-To do so, run: ``text apt-get update``
+To do so, run:
 
-\*Note: please make sure to report any issues you may find to the |sbt-launcher-issues|_.
+.. code-block:: console
+
+    $ apt-get update
+
+.. note::
+ 
+   Please make sure to report any issues you may find to the |sbt-launcher-issues|_.
+
 
 Gentoo
 ------
@@ -55,57 +71,79 @@ merge sbt from binaries:
 https://github.com/whiter4bbit/overlays/tree/master/dev-java/sbt-bin. To
 merge sbt from this ebuilds you can do next:
 
-::
+.. code-block:: console
 
-    mkdir -p /usr/local/portage && cd /usr/local/portage
-    git clone git://github.com/whiter4bbit/overlays.git
-    echo "PORTDIR_OVERLAY=$PORTDIR_OVERLAY /usr/local/portage/overlays" >> /etc/make.conf
-    emerge sbt-bin
+    $ mkdir -p /usr/local/portage && cd /usr/local/portage
+    $ git clone git://github.com/whiter4bbit/overlays.git
+    $ echo "PORTDIR_OVERLAY=$PORTDIR_OVERLAY /usr/local/portage/overlays" >> /etc/make.conf
+    $ emerge sbt-bin
+
+.. note::
+
+   Please report any issues with the ebuild `here <https://github.com/whiter4bbit/overlays/issues>`_.
 
 Mac
 ---
 
 Use either `MacPorts <http://macports.org/>`_:
-``text $ sudo port install sbt``
+
+.. code-block:: console
+
+    $ port install sbt
 
 Or `HomeBrew <http://mxcl.github.com/homebrew/>`_:
-``text $ brew install sbt``
 
-There is no need to download the sbt-launch.jar separately with either
-approach.
+.. code-block:: console
+
+    $ brew install sbt
+
+.. note::
+ 
+   Please make sure to report any issues with these packages to the relevant maintainers.
+
+
+Windows MSI
+-----------
+
+Download and run the `msi`_.
+You should then be able to run ``sbt`` at the command prompt.
+
+
+.. note::
+ 
+   Please make sure to report any issues to the |sbt-launcher-issues|_.
+
+Manual Installation
+-------------------
 
 Windows
--------
-
-You can download the `msi`_
-
-*or*
+~~~~~~~
 
 Create a batch file ``sbt.bat``:
 
-::
+.. code-block:: console
 
-    set SCRIPT_DIR=%~dp0
-    java -Xmx512M -jar "%SCRIPT_DIR%sbt-launch.jar" %*
+    $ set SCRIPT_DIR=%~dp0
+    $ java -Xmx512M -jar "%SCRIPT_DIR%sbt-launch.jar" %*
 
 and put `sbt-launch.jar`_ in the same directory as the batch file. Put ``sbt.bat`` on your path so
 that you can launch ``sbt`` in any directory by typing ``sbt`` at the command prompt.
 
 Unix
-----
+~~~~
 
 Download `sbt-launch.jar`_ and place it in ``~/bin``.
 
 Create a script to run the jar, by placing this in a file called ``sbt``
 in your ``~/bin`` directory:
 
-::
+.. code-block:: console
 
-    java -Xms512M -Xmx1536M -Xss1M -XX:+CMSClassUnloadingEnabled -XX:MaxPermSize=384M -jar `dirname $0`/sbt-launch.jar "$@"
+    $ java -Xms512M -Xmx1536M -Xss1M -XX:+CMSClassUnloadingEnabled -XX:MaxPermSize=384M -jar `dirname $0`/sbt-launch.jar "$@"
 
 Make the script executable:
 
-::
+.. code-block:: console
 
     $ chmod u+x ~/bin/sbt
 

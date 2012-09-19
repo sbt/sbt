@@ -1,35 +1,17 @@
-.. toctree::
-    :maxdepth: 2
+===============
+Detailed Topics
+===============
 
-    Artifacts
-    Best-Practices
-    Classpaths
-    Command-Line-Reference
-    Compiler-Plugins
-    Console-Project
-    Cross-Build
-    Detailed-Topics
-    Forking
-    Global-Settings
-    Inspecting-Settings
-    Java-Sources
-    Launcher
-    Library-Management
-    Local-Scala
-    Mapping-Files
-    Migrating-from-sbt-0.7.x-to-0.10.x
-    Parallel-Execution
-    Parsing-Input
-    Paths
-    Process
-    Publishing
-    Resolvers
-    Running-Project-Code
-    Scripts
-    Setup-Notes
-    TaskInputs
-    Tasks
-    Testing
-    Triggered-Execution
-    Update-Report
-    
+This part of the documentation has pages documenting particular sbt topics in detail.
+Before reading anything in here, you will need the information in the
+:doc:`Getting Started Guide </Getting-Started/Welcome>` as a foundation.
+
+Other resources include the :doc:`Examples </Examples/index>` and
+:doc:`extending sbt </Extending/index>` areas on the wiki, and the 
+`API Documentation <../../api/index.html>`_
+
+.. toctree::
+   :maxdepth: 2
+   :glob:
+
+   *

@@ -114,11 +114,12 @@ which is implicitly added to a function of type ``A => Option[B]``. For
 example, to try to relativize a file against some base directories but
 fall back to flattening:
 
-\`\`\`scala import Path.relativeTo val files: Seq[File] =
-file("/a/b/C.scala") :: file("/zzz/D.scala") :: Nil val baseDirectories:
-Seq[File] = file("/a") :: Nil val mappings: Seq[(File,String)] = files x
-( relativeTo(baseDirectories) \| flat )
+::
 
-val expected = (file("/a/b/C.scala") -> "b/C.scala") ) ::
-(file("/zzz/D.scala") -> "D.scala") ) :: Nil assert( mappings ==
-expected ) \`\`\`
+    import Path.relativeTo
+    val files: Seq[File] = file("/a/b/C.scala") :: file("/zzz/D.scala") :: Nil
+    val baseDirectories: Seq[File] = file("/a") :: Nil
+    val mappings: Seq[(File,String)] = files x ( relativeTo(baseDirectories) | flat )
+
+    val expected = (file("/a/b/C.scala") -> "b/C.scala") ) :: (file("/zzz/D.scala") -> "D.scala") ) :: Nil
+    assert( mappings == expected )

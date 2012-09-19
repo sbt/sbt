@@ -8,7 +8,7 @@ Snippets of docs that need to move to another page
 Temporarily change the logging level and configure how stack traces are
 displayed by modifying the ``log-level`` or ``trace-level`` settings:
 
-::
+.. code-block:: console
 
     > set logLevel := Level.Warn
 
@@ -21,7 +21,7 @@ does not have to be listed in your build definition, but it does have to
 be available in a repository. You can also include the initial command
 to run after switching to that version. For example:
 
-::
+.. code-block:: console
 
     > ++2.9.1 console-quick
     ...
@@ -186,7 +186,7 @@ both the sbt launcher and by projects, by setting the system property
 
 For example:
 
-::
+.. code-block:: console
 
     java -Dsbt.ivy.home=/tmp/.ivy2/ ...
 

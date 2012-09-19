@@ -199,7 +199,7 @@ The repositories used by the launcher can be overridden by defining
 with the same format as the :doc:`Launcher` configuration file. For
 example:
 
-::
+.. code-block:: ini
 
     [repositories]
     local
@@ -366,7 +366,7 @@ both the sbt launcher and by projects, by setting the system property
 
 For example:
 
-::
+.. code-block:: text
 
     java -Dsbt.ivy.home=/tmp/.ivy2/ ...
 

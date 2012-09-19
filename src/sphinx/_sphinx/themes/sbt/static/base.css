@@ -1,0 +1,41 @@
+	body { background-image: url(dark-blue-bg.png); color: rgba(0, 0, 0, 0.6); }
+	.navbar { position: relative; z-index: 150; margin-bottom: 0px; border-bottom: solid 1px #427380; border-top: solid 1px #83b925;}
+	.navbar .nav { float: right; }
+	.navbar-logo { visibility: hidden; margin-bottom: -31px; }
+	.logo { margin-top: 30px; margin-bottom: 30px;}
+	.main { background: url(dark-blue-bg-main.jpg) no-repeat center top; height: 520px;}
+	.rel { position: relative; }
+	.box { font-family: 'Exo', sans-serif; font-size: 36px; font-weight: 400; color: rgba(255, 255, 255, 1); text-shadow:0 2px 0 #000000; line-height: 38px; margin-bottom: 20px;}
+	.small-box { font-size: 18px; line-height: 22px; font-weight: 300; color: #427380; text-shadow:0 2px 0 #0d262b;}
+	.bold { font-weight: 600; }
+	.hexagons { position: absolute; top: 60px; left: 490px; height: 385px; width: 252px; background: url('{{ site.baseurl }}/resources/images/hexagons.png') no-repeat center top; }
+	.light-strip { background: #f2f2eb; min-height: 200px;}
+	.under-main { background: #f2f2eb url('{{ site.baseurl }}/resources/images/bottom-main-bg.png') repeat-x; }
+	.darker-strip { background: #dfdfd9; min-height: 200px;}
+	.under-light-strip { background: #f2f2eb url('{{ site.baseurl }}/resources/images/bottom-light-strip-bg.png') repeat-x; height: 7px; }
+	.pad { padding-top: 40px; }
+	.normal { margin-left: 0px; padding-bottom: 30px;}
+	.normal h3 { color: #326a78; text-shadow:0 1px 0 rgba( 255, 255, 255, 0.8); font-family: 'Exo', sans-serif; font-size: 22px; font-weight: 400; padding-bottom: 12px;} /*#595050, green: rgba( 44, 166, 33, 0.3)*/
+	.no-margin { position: relative; margin-left: 0px; width: 460px; margin-right: 10px;}
+	.left p { margin-right: 30px; margin-top: 30px; }
+	.right p { margin-left: 30px; margin-top: 30px; }
+	hr { border: 0; height: 1px; background-image: -webkit-linear-gradient(left, rgba(0,0,0,0), rgba(89,80,80,.3), rgba(0,0,0,0)); background-image:    -moz-linear-gradient(left, rgba(0,0,0,0), rgba(89,80,80,.3), rgba(0,0,0,0)); background-image:     -ms-linear-gradient(left, rgba(0,0,0,0), rgba(89,80,80,.3), rgba(0,0,0,0)); background-image:      -o-linear-gradient(left, rgba(0,0,0,0), rgba(89,80,80,.3), rgba(0,0,0,0)); }
+pre { border: 0px solid #333; background-color: transparent;}
+.between-dark-strips { background: url('{{ site.baseurl }}/resources/images/between-dark-strips-bg.gif') repeat-x; height: 3px; margin-bottom: 20px; }
+.three-bars { padding-bottom: 30px; }
+.three-bars h2 { font-family: 'Exo', sans-serif; font-size: 28px; font-weight: 400; color: #595959; text-shadow:0 1px 0 #ffffff; line-height: 30px; margin-bottom: 8px; }
+.three-bars h2 a { color: #447281; }
+.three-bars h2 a:hover { color: #73a600; text-decoration: none; }
+
+.footer { padding-top: 15px; clear: both; background: url('footer-bg.png') repeat-x; width: 100%; color: rgba(255, 255, 255, 0.6); text-shadow: 0 -1px 0 rgba(0, 0, 0, 0.3); }	
+.footer ul { float: left; margin: 0; padding: 10px 2% 20px 0; -webkit-box-sizing: content-box; -moz-box-sizing: content-box; box-sizing: content-box; width: 22%; list-style: none; }
+.footer a {text-decoration: none;color: rgba(255, 255, 255, 0.7);font-size: 12px;}
+.footer a:hover {text-decoration: underline;}
+.footer ul:last-child { padding-right: 0; }
+.footer ul li a { text-decoration: none; color: rgba(255, 255, 255, 0.7); font-size: 12px; }
+.footer ul li a:hover { text-decoration: underline; }
+.footer ul li h5 { font-size: 12px; color: rgba(255, 255, 255, 0.8); text-shadow: 0 -1px 0 rgba(0, 0, 0, 0.5); margin-bottom: 10px; padding-top: 0; padding-bottom: 10px; line-height: 20px; border-bottom:1px solid rgba(103, 103, 103, 0.3); -webkit-box-shadow:0 1px 0 rgba(255, 255, 255, 0.5); -moz-box-shadow:0 1px 0 rgba(255, 255, 255, 0.5); box-shadow:0 1px 0 rgba(255, 255, 255, 0.5); }
+.footer ul li h5 a { font-size: 12px; padding-top: 0; line-height: 20px; opacity: 1;}
+.footer .copyright { font-size: 12px; border-top:1px solid rgba(103, 103, 103, 0.5); clear: both; padding: 10px 0 20px; }
+.footer .copyright p { padding: 0 }
+.footer .license { font-size: 12px; }

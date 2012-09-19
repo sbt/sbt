@@ -64,7 +64,7 @@ and ``hello/bar/build.sbt``. Now ``show version`` at the sbt interactive
 prompt. You should get something like this (with whatever versions you
 defined):
 
-::
+.. code-block:: console
 
     > show version
     [info] hello-foo/*:version

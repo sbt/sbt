@@ -162,4 +162,6 @@ in classpath.
 
 Or shorter:
 
-``scala unmanagedClasspath in Runtime <+= (baseDirectory) map { bd => Attributed.blank(bd / "config") }``
+::
+
+    unmanagedClasspath in Runtime <+= (baseDirectory) map { bd => Attributed.blank(bd / "config") }

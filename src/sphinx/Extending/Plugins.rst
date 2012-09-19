@@ -128,7 +128,7 @@ If sbt is running, do ``reload``.
 We can change to the plugins project in ``project/`` using
 ``reload plugins``.
 
-::
+.. code-block:: console
 
     $ xsbt
     > reload plugins
@@ -139,7 +139,7 @@ Then, we can add dependencies like usual and save them to
 ``project/plugins.sbt``. It is useful, but not required, to run
 ``update`` to verify that the dependencies are correct.
 
-::
+.. code-block:: console
 
     > set libraryDependencies += "org.clapper" %% "grizzled-scala" % "1.0.4"
     ...
@@ -150,7 +150,7 @@ Then, we can add dependencies like usual and save them to
 
 To switch back to the main project:
 
-::
+.. code-block:: console
 
     > reload return
     [info] Set current project to root (in build file:/Users/harrah/demo2/)
@@ -164,7 +164,15 @@ will be built from source and used on the classpath.
 
 Edit ``project/project/Build.scala``
 
-``scala import sbt._ object PluginDef extends Build {     override lazy val projects = Seq(root)     lazy val root = Project("plugins", file(".")) dependsOn( webPlugin )     lazy val webPlugin = uri("git://github.com/siasia/xsbt-web-plugin") }``
+::
+
+    import sbt._
+    object PluginDef extends Build {
+       override lazy val projects = Seq(root)
+       lazy val root = Project("plugins", file(".")) dependsOn( webPlugin )
+       lazy val webPlugin = uri("git://github.com/siasia/xsbt-web-plugin")
+    }
+
 If sbt is running, run ``reload``.
 
 Note that this approach can be useful used when developing a plugin. A
@@ -187,7 +195,7 @@ Grizzled Scala is ready to be used in build definitions. This includes
 the ``eval`` and ``set`` commands and ``.sbt`` and ``project/*.scala``
 files.
 
-::
+.. code-block:: console
 
     > eval grizzled.sys.os
 
@@ -282,7 +290,7 @@ A light build definition that uses the plugin might look like:
 
 ::
 
-    seq( MyPlugin.newSettings : _*)
+    MyPlugin.newSettings
 
     newSetting := "light"
 
@@ -349,7 +357,10 @@ Global plugins example
 The simplest global plugin definition is declaring a library or plugin
 in ``~/.sbt/plugins/build.sbt``:
 
-``scala libraryDependencies += "org.example" %% "example-plugin" % "0.1"``
+::
+
+    libraryDependencies += "org.example" %% "example-plugin" % "0.1"
+
 This plugin will be available for every sbt project for the current
 user.
 

@@ -51,7 +51,7 @@ list if you are interested in a specific topic.
 6. Implement enhanced 0.11-style warn/debug/info/error/trace commands.
    Currently, you set it like any other setting:
 
-::
+.. code-block:: console
 
       set logLevel := Level.Warn
      or
@@ -59,7 +59,7 @@ list if you are interested in a specific topic.
 
 You could make commands that wrap this, like:
 
-::
+.. code-block:: console
 
       warn test:run
 
@@ -73,7 +73,7 @@ replayed or inspected to try to find the cause.
 Documentation
 =============
 
-1. There's a lot to do with this wiki. If you check the wiki out from
+1. There's a lot to do with this documentation. If you check it out from
    git, there's a directory called Dormant with some content that needs
    going through.
 
@@ -84,7 +84,7 @@ Documentation
 3. the :doc:`/Dormant/Configurations` page is missing a list of the built-in
    configurations and the purpose of each.
 
-4. grep the wiki's git checkout for "Wiki Maintenance Note" and work on
+4. grep the documentation's git checkout for "Wiki Maintenance Note" and work on
    some of those
 
 5. API docs are much needed.

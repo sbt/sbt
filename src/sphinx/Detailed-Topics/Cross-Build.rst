@@ -71,7 +71,7 @@ version (no ``+`` prefix) and then cross-build (using ``+``)
 occasionally and when releasing. The ultimate purpose of ``+`` is to
 cross-publish your project. That is, by doing:
 
-::
+.. code-block:: console
 
     > + publish
 

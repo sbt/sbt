@@ -26,7 +26,7 @@ Setup with Conscript
 
 Install `conscript <https://github.com/n8han/conscript>`_.
 
-::
+.. code-block:: console
 
     cs harrah/xsbt --branch 0.12.0
 
@@ -43,14 +43,14 @@ whatever names you like).
 the main class, by adding the ``-Dsbt.main.class=sbt.ScriptMain``
 parameter to the ``java`` command. Its command line should look like:
 
-::
+.. code-block:: console
 
     java -Dsbt.main.class=sbt.ScriptMain -Dsbt.boot.directory=/home/user/.sbt/boot -jar sbt-launch.jar "$@"
 
 For the REPL runner ``screpl``, use ``sbt.ConsoleMain`` as the main
 class:
 
-::
+.. code-block:: console
 
     java -Dsbt.main.class=sbt.ConsoleMain -Dsbt.boot.directory=/home/user/.sbt/boot -jar sbt-launch.jar "$@"
 
@@ -78,7 +78,7 @@ run, the example should retrieve Scala, the required dependencies,
 compile the script, and run it directly. For example, if you name it
 ``dispatch_example.scala``, you would do on Unix:
 
-::
+.. code-block:: console
 
     chmod u+x dispatch_example.scala
     ./dispatch_example.scala
@@ -143,7 +143,7 @@ Example:
 To add the Sonatype snapshots repository and add Scalaz 7.0-SNAPSHOT to
 REPL classpath:
 
-::
+.. code-block:: console
 
     screpl "sonatype-releases at https://oss.sonatype.org/content/repositories/snapshots/" "org.scalaz%%scalaz-core%7.0-SNAPSHOT"
 

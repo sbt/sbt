@@ -65,7 +65,7 @@ definition.
 Recall that for a project ``hello``, its build definition project lives
 in ``hello/*.sbt`` and ``hello/project/*.scala``:
 
-::
+.. code-block:: text
 
 
        hello/                  # your project's base directory
@@ -169,7 +169,7 @@ and unpack it with ``jar xf``, you'll see that it contains a text file
 ``sbt/sbt.plugins``. In ``sbt/sbt.plugins`` there's an object name on
 each line like this:
 
-::
+.. code-block:: text
 
     com.typesafe.sbteclipse.SbtEclipsePlugin
 
@@ -199,8 +199,7 @@ object, you don't have to do anything to add them.
 However, plugins often avoid this because you could not control which
 projects in a :doc:`multi-project build <Multi-Project>` would use the plugin.
 
-sbt provides a method called ``seq`` which adds a whole batch of
-settings at once. So if a plugin has something like this:
+A whole batch of settings can be added by directly referencing the sequence of settings in a `build.sbt` file. So, if a plugin has something like this:
 
 ::
 
@@ -212,16 +211,7 @@ You could add all those settings in ``build.sbt`` with this syntax:
 
 ::
 
-    seq(myPluginSettings: _*)
-
-If you aren't familiar with the ``_*`` syntax:
-
--  ``seq`` is defined with a variable number of arguments:
-   ``def seq(settings: Setting[_]*)``
--  ``_*`` converts a sequence into a variable argument list
-
-Short version: ``seq(myPluginSettings: _*)`` in a ``build.sbt`` adds all
-the settings in ``myPluginSettings`` to the project.
+    myPluginSettings
 
 Creating a plugin
 -----------------
@@ -240,7 +230,7 @@ and :doc:`/Extending/Plugins-Best-Practices`.
 Available Plugins
 -----------------
 
-There's :doc:`a list of available plugins </Community/sbt-0.10-plugins-list>`.
+There's :doc:`a list of available plugins </Community/Community-Plugins>`.
 
 Some especially popular plugins are:
 
@@ -248,7 +238,7 @@ Some especially popular plugins are:
 -  those supporting web frameworks, such as
    `xsbt-web-plugin <https://github.com/siasia/xsbt-web-plugin>`_.
 
-:doc:`Check out the list. </Community/sbt-0.10-plugins-list>`
+:doc:`Check out the list</Community/Community-Plugins>`.
 
 Next
 ----

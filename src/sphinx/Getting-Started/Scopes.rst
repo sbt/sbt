@@ -132,7 +132,7 @@ Referring to scoped keys when running sbt
 On the command line and in interactive mode, sbt displays (and parses)
 scoped keys like this:
 
-::
+.. code-block:: text
 
     {<build-uri>}<project-id>/config:intask::key
 
@@ -188,7 +188,7 @@ Inspecting scopes
 In sbt's interactive mode, you can use the ``inspect`` command to
 understand keys and their scopes. Try ``inspect test:full-classpath``:
 
-::
+.. code-block:: text
 
     $ sbt
     > inspect test:full-classpath

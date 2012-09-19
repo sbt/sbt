@@ -73,55 +73,56 @@ by the following grammar. ``'nl'`` is a newline or end of file and
 ``'text'`` is plain text without newlines or the surrounding delimiters
 (such as parentheses or square brackets):
 
-::
-
-    configuration ::= scala app repositories boot log app-properties
-      scala ::= '[' 'scala' ']' nl version nl classifiers nl
-      app ::= '[' 'app' ']' nl org nl name nl version nl components nl class nl cross-versioned nl resources nl classifiers nl
-      repositories ::= '[' 'repositories' ']' nl (repository nl)*
-      boot ::= '[' 'boot' ']' nl directory nl bootProperties nl search nl promptCreate nl promptFill nl quickOption nl
-      log ::= '[' 'log' ']' nl logLevel nl
-      app-properties ::= '[' 'app-properties' ']' nl (property nl)*
-      ivy ::= '[' 'ivy' ']' nl homeDirectory nl checksums nl overrideRepos nl repoConfig nl
-
-        directory ::= 'directory' ':' path
-        bootProperties ::= 'properties' ':' path
-        search ::= 'search' ':' ('none'|'nearest'|'root-first'|'only') (',' path)*
-        logLevel ::= 'log-level' ':' ('debug' | 'info' | 'warn' | 'error')
-        promptCreate ::= 'prompt-create'  ':'  label
-        promptFill ::= 'prompt-fill'  ':'  boolean
-        quickOption ::= 'quick-option'  ':'  boolean
-     
-        version ::= 'version' ':' versionSpecification
-          versionSpecification ::= readProperty | fixedVersion
-            readProperty ::= 'read'  '(' propertyName ')'  '[' default ']'
-            fixedVersion ::= text
-
-        classifiers ::= 'classifiers' ':' text (',' text)*
-        homeDirectory ::= 'ivy-home' ':' path
-        checksums ::= 'checksums' ':' checksum (',' checksum)*
-        overrideRepos ::= 'override-build-repos' ':' boolean
-        repoConfig ::= 'repository-config' ':' path
-
-        org ::= 'org' ':' text
-        name ::= 'name' ':' text
-        class ::= 'class' ':' text
-        components ::= 'components' ':' component (',' component)*
-        cross-versioned ::= 'cross-versioned' ':'  boolean
-        resources ::= 'resources' ':' path (',' path)*
-
-        repository ::= ( predefinedRepository | customRepository ) nl
-          predefinedRepository ::= 'local' | 'maven-local' | 'maven-central'
-          customRepository ::= label ':' url [ [',' ivy-pattern] ',' artifact-pattern]
-
-        property ::= label ':' propertyDefinition (',' propertyDefinition)*
-          propertyDefinition ::= mode '=' (set | prompt)
-            mode ::= 'quick' | 'new' | 'fill'
-            set ::= 'set' '(' value ')'
-            prompt ::= 'prompt'  '(' label ')' ('[' default ']')?
-
-        boolean ::= 'true' | 'false'
-        path, propertyName, label, default, checksum ::= text
+.. productionlist::
+    configuration: `scala` `app` `repositories` `boot` `log` `appProperties`
+    scala: "[" "scala" "]" `nl` `version` `nl` `classifiers` `nl`
+    app: "[" "app" "]" `nl` `org` `nl` `name` `nl` `version` `nl` `components` `nl` `class` `nl` `crossVersioned` `nl` `resources` `nl` `classifiers` `nl`
+    repositories: "[" "repositories" "]" `nl` (`repository` `nl`)*
+    boot: "[" "boot" "]" `nl` `directory` `nl` `bootProperties` `nl` `search` `nl` `promptCreate` `nl` `promptFill` `nl` `quickOption` `nl`
+    log: "["' "log" "]" `nl` `logLevel` `nl`
+    appProperties: "[" "app-properties" "]" nl (property nl)*
+    ivy: "[" "ivy" "]" `nl` `homeDirectory` `nl` `checksums` `nl` `overrideRepos` `nl` `repoConfig` `nl`
+    directory: "directory" ":" `path`
+    bootProperties: "properties" ":" `path`
+    search: "search" ":" ("none" | "nearest" | "root-first" | "only" ) ("," `path`)*
+    logLevel: "log-level" ":" ("debug" | "info" | "warn" | "error")
+    promptCreate: "prompt-create"  ":"  `label`
+    promptFill: "prompt-fill" ":" `boolean`
+    quickOption: "quick-option" ":" `boolean`
+    version: "version" ":" `versionSpecification`
+    versionSpecification: `readProperty` | `fixedVersion`
+    readProperty: "read"  "(" `propertyName` ")"  "[" `default` "]"
+    fixedVersion: text
+    classifiers: "classifiers" ":" text ("," text)*
+    homeDirectory: "ivy-home" ":" `path`
+    checksums: "checksums" ":" `checksum` ("," `checksum`)*
+    overrideRepos: "override-uild-repos" ":" `boolean`
+    repoConfig: "repository-config" ":" `path`
+    org: "org" ":" text
+    name: "name" ":" text
+    class: "class" ":" text
+    components: "components" ":" `component` ("," `component`)*
+    crossVersioned: "cross-versioned" ":"  `boolean`
+    resources: "resources" ":" `path` ("," `path`)*
+    repository: ( `predefinedRepository` | `customRepository` ) `nl`
+    predefinedRepository: "local" | "maven-local" | "maven-central"
+    customRepository: `label` ":" `url` [ ["," `ivyPattern`] "," `artifactPattern`]
+    property: `label` ":" `propertyDefinition` ("," `propertyDefinition`)*
+    propertyDefinition: `mode` "=" (`set` | `prompt`)
+    mode: "quick" | "new" | "fill"
+    set: "set" "(" value ")"
+    prompt: "prompt"  "(" `label` ")" ("[" `default` "]")?
+    boolean: "true" | "false"
+    nl: "\r\n" | "\n" | "\r"
+    path: text
+    propertyName: text
+    label: text
+    default: text
+    checksum: text
+    ivyPattern: text
+    artifactPattern: text
+    url: text
+    component: text
 
 In addition to the grammar specified here, property values may include
 variable substitutions. A variable substitution has one of these forms:
@@ -141,7 +142,7 @@ Example
 
 The default configuration file for sbt looks like:
 
-::
+.. code-block:: ini
 
     [scala]
       version: ${sbt.scala.version-auto}
@@ -196,7 +197,7 @@ default, this is an absolute path that is shared by all launched
 instances on the machine. If multiple versions access it simultaneously.
 , you might see messages like:
 
-::
+.. code-block:: console
 
       Waiting for lock on <lock-file> to be available...
 
@@ -258,7 +259,7 @@ obtain the necessary jars to launch the application. The
 to. Locking is done on the directory, so it can be shared system-wide.
 The launcher retrieves the requested version of Scala to
 
-::
+.. code-block:: console
 
     ${boot.directory}/${scala.version}/lib/
 
@@ -268,7 +269,7 @@ downloaded. If the directory does not exist, the launcher uses Apache
 Ivy to resolve and retrieve the jars. A similar process occurs for the
 application itself. It and its dependencies are retrieved to
 
-::
+.. code-block:: console
 
     ${boot.directory}/${scala.version}/${app.org}/${app.name}/.
 
@@ -346,7 +347,7 @@ that uses some of the information:
 Next, define a configuration file for the launcher. For the above class,
 it might look like:
 
-::
+.. code-block:: ini
 
     [scala]
       version: 2.9.2
@@ -374,14 +375,12 @@ The second two require providing a configuration file for download.
 
 -  Replace the /sbt/sbt.boot.properties file in the launcher jar and
    distribute the modified jar. The user would need a script to run
-   'java -jar your-launcher.jar arg1 arg2 ...'.
+   ``java -jar your-launcher.jar arg1 arg2 ...``.
 -  The user downloads the launcher jar and you provide the configuration
    file.
 
-   -  The user needs to run 'java
-      -Dsbt.boot.properties=your.boot.properties -jar launcher.jar'.
+   -  The user needs to run ``java -Dsbt.boot.properties=your.boot.properties -jar launcher.jar``.
    -  The user already has a script to run the launcher (call it
-      'launch'). The user needs to run
-      ``launch @your.boot.properties your-arg-1 your-arg-2``
+      'launch'). The user needs to run ``launch @your.boot.properties your-arg-1 your-arg-2``
 
 

@@ -1,7 +1,8 @@
-Dormant Pages
-=============
+===============
+ Dormant Pages
+===============
 
-If you check out the wiki as a git repository, there's a ``Dormant``
+If you check out the documentation as a git repository, there's a ``Dormant``
 directory (this one) which contains:
 
 -  "redirect" pages (empty pages that point to some new page). If you
@@ -11,7 +12,7 @@ directory (this one) which contains:
    page into the ``Dormant`` directory.
 -  "clipboard" pages that contain some amount of useful text, that needs
    to be extracted and organized, maybe moved to existing pages or the
-   FAQ or maybe there's a new page that should exist. Basically content
+   :doc:`/faq` or maybe there's a new page that should exist. Basically content
    that may be good but needs massaging into the big picture.
 
 Ideally, pages in here have a note at the top pointing to alternative
@@ -19,10 +20,6 @@ content and explaining the status of the page.
 
 .. toctree::
    :maxdepth: 2
+   :glob:
 
-   Basic-Configuration
-   Configurations
-   Full-Configuration
-   Introduction-to-Full-Configurations
-   Needs-New-Home
-   Settings
+   *

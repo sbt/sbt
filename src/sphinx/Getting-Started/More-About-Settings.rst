@@ -183,7 +183,7 @@ a *dependency* on ``baseDirectory``. If you place the above in
 ``build.sbt`` and run the sbt interactive console, then type
 ``inspect name``, you should see (in part):
 
-::
+.. code-block:: text
 
     [info] Dependencies:
     [info]  *:base-directory

@@ -1,49 +1,63 @@
 	import sbt._
 	import Keys._
 	import Status.{isSnapshot, publishStatus}
-	import com.jsuereth.sbtsite.{SitePlugin, SiteKeys}
-	import SitePlugin.site
+	import com.typesafe.sbt.{SbtGhPages,SbtGit,SbtSite,site=>sbtsite}
+	import SbtSite.{site, SiteKeys}
+	import SbtGhPages.{ghpages, GhPagesKeys => ghkeys}
+	import SbtGit.{git, GitKeys}
+	import sbtsite.SphinxSupport
 	import SiteKeys.{makeSite,siteMappings}
 	import Sxr.sxr
 
 object Docs
 {
+	val cnameFile = SettingKey[File]("cname-file", "Location of the CNAME file for the website.")
+
 	def settings: Seq[Setting[_]] =
 		site.settings ++
-		site.sphinxSupport("manual") ++
-		site.jekyllSupport() ++
+		site.sphinxSupport("docs") ++
 		site.includeScaladoc("api") ++
-		siteIncludeSxr ++
-		sitePrefixVersion
+		siteIncludeSxr("sxr") ++
+		ghPagesSettings
 
-	def siteIncludeSxr = Seq(
-		mappings in sxr <<= sxr.map(dir => Path.allSubpaths(dir).toSeq),
-		site.addMappingsToSiteDir(mappings in sxr, "sxr")
+	def ghPagesSettings = ghpages.settings ++ Seq(
+		git.remoteRepo := "git@github.com:sbt/sbt.github.com.git",
+		ghkeys.synchLocal <<= synchLocalImpl,
+		cnameFile <<= (sourceDirectory in SphinxSupport.Sphinx) / "CNAME",
+		GitKeys.gitBranch in ghkeys.updatedRepository := Some("master")
 	)
 
-	def sitePrefixVersion = 
-		siteMappings <<= (siteMappings, version) map { (ms, v) =>
-			ms.map { case (src, path) => (src, v + "/" + path) }
-		}
+	def siteIncludeSxr(prefix: String) = Seq(
+		mappings in sxr <<= sxr.map(dir => Path.allSubpaths(dir).toSeq),
+		site.addMappingsToSiteDir(mappings in sxr, prefix)
+	)
 
-	def siteLinkLatest =
-		makeSite <<= (makeSite, version, streams, isSnapshot) map { (dir, v, s, snap) =>
-			linkSite(dir, v, if(snap) "snapshot" else "stable", s.log)
-			dir
-		}
+	def synchLocalImpl = (ghkeys.privateMappings, ghkeys.updatedRepository, version, isSnapshot, streams, cnameFile) map { (mappings, repo, v, snap, s, cname) =>
+		val versioned = repo / v
+		if(snap)
+			IO.delete(versioned)
+		else if(versioned.exists)
+			error("Site for " + v + " already exists: " + versioned.getAbsolutePath)
+		IO.copy(mappings map { case (file, target) => (file, versioned / target) })
+		IO.copyFile(cname, repo / cname.getName)
+		IO.touch(repo / ".nojekyll")
+		linkSite(repo, v, if(snap) "snapshot" else "release", s.log)
+		s.log.info("Copied site to " + versioned)
+		repo
+	}
 
 	def linkSite(base: File, to: String, from: String, log: Logger) {
 		val current = base / to
 		assert(current.isDirectory, "Versioned site not present at " + current.getAbsolutePath)
-		val symlinkFile = base / from
-		symlinkFile.delete()
-		symlink(to = current, from = symlinkFile, log = log)
+		val symlinkDir = base / from
+		symlinkDir.delete()
+		symlink(path = to, file = symlinkDir, log = log)
 	}
 
 	// TODO: platform independence/use symlink from Java 7
-	def symlink(to: File, from: File, log: Logger): Unit =
-		"ln" :: "-s" :: to.getAbsolutePath :: from.getAbsolutePath :: Nil ! log match {
+	def symlink(path: String, file: File, log: Logger): Unit =
+		"ln" :: "-s" :: path :: file.getAbsolutePath :: Nil ! log match {
 			case 0 => ()
-			case code => error("Could not create symbolic link from " + from + " to " + " to.")
+			case code => error("Could not create symbolic link '" + file.getAbsolutePath + "' with path " + path)
 		}
 }

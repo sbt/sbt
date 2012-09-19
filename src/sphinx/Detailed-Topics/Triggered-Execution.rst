@@ -24,7 +24,7 @@ Compile
 
 The original use-case was continuous compilation:
 
-::
+.. code-block:: console
 
     > ~ test:compile
 
@@ -40,7 +40,7 @@ mailing list.
 The following will poll for changes to your source code (main or test)
 and run ``test-only`` for the specified test.
 
-::
+.. code-block:: console
 
     > ~ test-only example.TestA
 
@@ -54,4 +54,6 @@ triggered.
 The following will poll for source changes and run ``clean`` and
 ``test``.
 
-``scala > ~; clean; test``
+.. code-block:: console
+
+    > ~ ;clean ;test

@@ -75,7 +75,7 @@ The second and better way is to load them from a file, for example:
 The credentials file is a properties file with keys ``realm``, ``host``,
 ``user``, and ``password``. For example:
 
-::
+.. code-block:: text
 
     realm=Sonatype Nexus Repository Manager
     host=nexus.scala-tools.org
