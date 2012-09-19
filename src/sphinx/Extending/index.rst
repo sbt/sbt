@@ -1,12 +1,14 @@
-.. toctree::
-    :maxdepth: 2
+=============
+Extending sbt
+=============
 
-    Build-Loaders
-    Build-State
-    Command-Line-Applications
-    Commands
-    Extending
-    Input-Tasks
-    Plugins-Best-Practices
-    Plugins
-    Settings-Core
+This part of the documentation has pages on how to extend sbt with plugins and commands.
+
+To understand the pages in here, you'll need the
+:doc:`Getting Started Guide </Getting-Started/Welcome>` as a foundation.
+
+.. toctree::
+   :maxdepth: 2
+   :glob:
+
+   *

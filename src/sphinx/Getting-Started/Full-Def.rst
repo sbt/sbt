@@ -24,7 +24,7 @@ build definition of the build definition project, by creating a
 
 Here's an illustration.
 
-::
+.. code-block:: text
 
 
        hello/                  # your project's base directory
@@ -63,7 +63,7 @@ also means that multiple files are allowed.
 ``.sbt`` files are merged into their sibling ``project`` directory.
 Looking back at the project layout:
 
-::
+.. code-block:: text
 
 
        hello/                  # your project's base directory
@@ -127,7 +127,7 @@ Now, create ``hello/build.sbt`` as follows:
 Start up the sbt interactive prompt. Type ``inspect sample-a`` and you
 should see (among other things):
 
-::
+.. code-block:: text
 
     [info] Setting: java.lang.String = A: in Build.settings in Build.scala
     [info] Provided by:
@@ -135,7 +135,7 @@ should see (among other things):
 
 and then ``inspect sample-c`` and you should see:
 
-::
+.. code-block:: text
 
     [info] Setting: java.lang.String = C: in build.sbt scoped to ThisBuild
     [info] Provided by:
@@ -149,7 +149,7 @@ definition.
 
 Now, ``inspect sample-b``:
 
-::
+.. code-block:: text
 
     [info] Setting: java.lang.String = B: in the root project settings in Build.scala
     [info] Provided by:
@@ -161,7 +161,7 @@ Note that ``sample-b`` is scoped to the project
 
 As you've probably guessed, ``inspect sample-d`` matches ``sample-b``:
 
-::
+.. code-block:: text
 
     [info] Setting: java.lang.String = D: in build.sbt
     [info] Provided by:
@@ -226,7 +226,7 @@ You can switch the sbt interactive prompt to have the build definition
 project in ``project/`` as the current project. To do so, type
 ``reload plugins``.
 
-::
+.. code-block:: text
 
     > reload plugins
     [info] Set current project to default-a0e8e4 (in build file:/home/hp/checkout/hello/project/)

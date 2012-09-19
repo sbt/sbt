@@ -34,7 +34,7 @@ Download sbt |version| as described on :doc:`the setup page </Getting-Started/Se
 
 You can run |version| the same way that you run 0.7.x, either simply:
 
-::
+.. code-block:: console
 
     java -jar sbt-launch.jar
 
@@ -75,7 +75,7 @@ looks like a property file, yet contains Scala code in a special format.
 
 A ``build.properties`` file like:
 
-::
+.. code-block:: text
 
     #Project properties
     #Fri Jan 07 15:34:00 GMT 2011
@@ -102,7 +102,7 @@ Now becomes part of your ``build.sbt`` file with lines like:
 Currently, a ``project/build.properties`` is still needed to explicitly
 select the sbt version. For example:
 
-::
+.. code-block:: text
 
     sbt.version=|release|
 

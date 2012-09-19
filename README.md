@@ -59,16 +59,13 @@ This is the 0.13.x series of sbt.
 
 ## Building Documentation
 
-Documentation is built using jekyll and sphinx and requires some external programs and libraries to be manually installed first:
+Documentation is built using sphinx and requires some external programs and libraries to be manually installed first:
 
 ```text
 $ pip install pygments
 $ pip install sphinx
 $ pip install sphinxcontrib-issuetracker
-$ gem install rdiscount
-$ gem install jekyll
 ```
 
 To build the full site, run the `make-site` task, which will generate the manual, API, SXR, and other site pages in `target/site/`.
-
-Individual pieces of the site may be generated using `xsbt/sphinx:mappings`, `xsbt/jekyll:mappings`, `xsbt/doc`, or `xsbt/sxr`.  The output directories will be under `target/`, such as `target/sphinx`.
+To only work on the site and not API or SXR, run `sphinx:mappings`.

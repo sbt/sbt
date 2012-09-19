@@ -1,8 +1,4 @@
-*Wiki Maintenance Note:* This page has been replaced a couple of times;
-first by
-[`Settings <../../sxr/Settings.scala.html>`_\ ]
-and most recently by [[Getting Started Basic Def]] and [[Getting Started
-More About Settings]]. It has some obsolete terminology:
+*Wiki Maintenance Note:* This page has been replaced most recently by :doc:`/Getting-Started/Basic-Def` and :doc:`/Getting-Started/More-About-Settings/`. It has some obsolete terminology:
 
 -  we now avoid referring to build definition as "configuration" to
    avoid confusion with compile configurations
@@ -100,25 +96,51 @@ Notes
    ``~=``, you do not need to use parentheses for either side of the
    method. Ok:
 
-``scala libraryDependencies += "junit" % "junit" % "4.8" % "test" libraryDependencies.+=("junit" % "junit" % "4.8" % "test") defaultExcludes ~= (_ || "*~") defaultExcludes ~= (filter => filter || "*~")``
+::
+
+    libraryDependencies += "junit" % "junit" % "4.8" % "test"
+
+    libraryDependencies.+=("junit" % "junit" % "4.8" % "test")
+
+    defaultExcludes ~= (_ || "*~")
+
+    defaultExcludes ~= (filter => filter || "*~")
+
 Error:
 
-\`\`\`console defaultExcludes ~= \_ \|\| "\*~"
+.. code-block:: console
 
-error: missing parameter type for expanded function
-((x\ :math:`1) => defaultExcludes.`\ colon$tilde(x\ :math:`1).`\ bar("*~"))
-defaultExcludes ~= \_ \|\| "*\ ~" ^ error: value \| is not a member of
-sbt.Project.Setting[sbt.FileFilter] defaultExcludes ~= \_ \|\| "*~" ^
-\`\`\`* A block is an expression, with the last statement in the block
-being the result. For example, the following is an expression:
+    error: missing parameter type for expanded function ((x$1) => defaultExcludes.colon$tilde(x$1).$bar("*~"))
+    defaultExcludes ~= _ || "*~"
+                       ^
+    error: value | is not a member of sbt.Project.Setting[sbt.FileFilter]
+    defaultExcludes ~= _ || "*~"
+                    ^
 
-``scala {     val x = 3     def y = 2     x + y }`` An example of using
-a block to construct a Setting:
+* A block is an expression, with the last statement in the block being the result. For example, the following is an expression:
 
-``scala version := {     // Define a regular expression to match the current branch     val current = """\*\s+(\w+)""".r     // Process the output of 'git branch' to get the current branch     val branch = "git branch --no-color".lines_!.collect { case current(name) => "-" + name }     // Append the current branch to the version.     "1.0" + branch.mkString }``
-\* Remember that blank lines are used to clearly delineate expressions.
-This happens before the expression is sent to the Scala compiler, so no
-blank lines are allowed within a block.
+::
+
+    {
+       val x = 3
+       def y = 2
+       x + y
+    }
+
+An example of using a block to construct a Setting:
+
+::
+
+    version := {
+       // Define a regular expression to match the current branch
+       val current = """\*\s+(\w+)""".r
+       // Process the output of 'git branch' to get the current branch
+       val branch = "git branch --no-color".lines_!.collect { case current(name) => "-" + name }
+       // Append the current branch to the version.
+      "1.0" + branch.mkString
+    }
+
+   - Remember that blank lines are used to clearly delineate expressions.  This happens before the expression is sent to the Scala compiler, so no blank lines are allowed within a block.
 
 More Information
 ----------------
@@ -146,13 +168,20 @@ More Information
    separated by blank lines, but each import must be on one line. For
    example,
 
-``scala import scala.xml.NodeSeq import math.{abs, pow}`` \* These
-imports are defined by default in a ``.sbt`` file:
+::
 
-\`\`\`scala
+    import scala.xml.NodeSeq
+    import math.{abs, pow}
 
-import sbt.\_ import Process.\_ import Keys.\_
-\`\`\ ``In addition, the contents of all public``\ Build\ ``and``\ Plugin\`
+- These imports are defined by default in a ``.sbt`` file:
+
+::
+
+    import sbt._
+    import Process._
+    import Keys._
+
+In addition, the contents of all public ``Build`` and ``Plugin``
 objects from the full definition are imported.
 
 sbt uses the blank lines to separate the expressions and then it sends

@@ -1,5 +1,5 @@
 *Wiki Maintenance Note:* This page has been *mostly* replaced by
-[[Getting Started Full Def]] and other pages. It has some obsolete
+:doc:`/Getting-Started/Full-Def` and other pages. It has some obsolete
 terminology:
 
 -  we now avoid referring to build definition as "configuration" to
@@ -84,12 +84,15 @@ An internal project is defined by constructing an instance of
 ``Project``. The minimum information for a new project is its ID string
 and base directory. For example:
 
-\`\`\`scala import sbt.\_
+::
 
-object MyBuild extends Build { lazy val projectA = Project("a",
-file("subA")) }
-\`\`\ ``This constructs a project definition for a project with ID 'a' and located in the``\ /subA\ ``directory. Here,``\ file(...)\ ``is equivalent to``\ new
-File(...)\` and is resolved relative to the build's base directory.
+    import sbt._
+
+    object MyBuild extends Build {
+      lazy val projectA = Project("a", file("subA"))
+    }
+
+This constructs a project definition for a project with ID 'a' and located in the ``subA/`` directory. Here, ``file(...)`` is equivalent to ``new File(...)`` and is resolved relative to the build's base directory.
 There are additional optional parameters to the Project constructor.
 These parameters configure the project and declare project
 relationships, as discussed in the next sections.
@@ -201,7 +204,11 @@ http/https. These are referred to as external builds and projects. You
 can reference the root project in an external build with
 ``RootProject``:
 
-``scala RootProject( file("/home/user/a-project") ) RootProject( uri("git://github.com/dragos/dupcheck.git") )``
+.. code-block:: text
+
+    RootProject( file("/home/user/a-project") )
+    RootProject( uri("git://github.com/dragos/dupcheck.git") )
+
 or a specific project within the external build can be referenced using
 a ``ProjectRef``:
 
@@ -261,7 +268,7 @@ aggregation is disabled for ``run``, ``console-quick``, ``console``, and
 ``console-project``. Re-enabling it from the command line for the
 current project for ``run`` would look like:
 
-::
+.. code-block:: console
 
     > set aggregate in run := true
 
@@ -269,7 +276,7 @@ current project for ``run`` would look like:
 to ``Implicit(true)`` and ``false`` translates to ``Implicit(false)``).
 Similarly, aggregation can be disabled for the current project using:
 
-::
+.. code-block:: console
 
     > set aggregate in clean := false
 
@@ -282,7 +289,7 @@ definition). For example, to declare that ``root/clean`` aggregates
 ``sub1/clean`` and ``sub2/clean`` intransitively (that is, excluding
 ``ext`` even though ``sub2`` aggregates it):
 
-::
+.. code-block:: scala
 
     > set aggregate in clean := Aggregation(Seq(sub1, sub2), transitive = false)
 
@@ -298,8 +305,12 @@ A classpath dependency declaration consists of a project reference and
 an optional configuration mapping. For example, to use project b's
 ``compile`` configuration from project a's ``test`` configuration:
 
-``scala lazy val a = Project(...) dependsOn(b % "test->compile") lazy val b = Project(...)``
-``"test->compile"`` may be shortened to ``"test"`` in this case. The
+::
+
+    lazy val a = Project(...) dependsOn(b % "test->compile")
+    lazy val b = Project(...) 
+
+"test->compile"`` may be shortened to ``"test"`` in this case. The
 ``%`` call may be omitted, in which case the mapping is
 ``"compile->compile"`` by default.
 

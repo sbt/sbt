@@ -144,17 +144,23 @@ Tasks without inputs
 
 A task that takes no arguments can be defined using ``:=``
 
-\`\`\`scala
+::
 
-intTask := 1 + 2
+    intTask := 1 + 2
 
-stringTask := System.getProperty("user.name")
+    stringTask := System.getProperty("user.name")
 
-sampleTask := { val sum = 1 + 2 println("sum: " + sum) sum }
-\`\`\ ``As mentioned in the introduction, a task is evaluated on demand. Each time``\ sample-task\ ``is invoked, for example, it will print the sum. If the username changes between runs,``\ string-task\`
-will take different values in those separate runs. (Within a run, each
-task is evaluated at most once.) In contrast, settings are evaluated
-once on project load and are fixed until the next reload.
+    sampleTask := {
+       val sum = 1 + 2
+       println("sum: " + sum)
+       sum
+    }
+
+As mentioned in the introduction, a task is evaluated on demand.
+Each time ``sample-task`` is invoked, for example, it will print the sum.
+If the username changes between runs, ``string-task`` will take different values in those separate runs.
+(Within a run, each task is evaluated at most once.)
+In contrast, settings are evaluated once on project load and are fixed until the next reload.
 
 Tasks with inputs
 ~~~~~~~~~~~~~~~~~
@@ -246,7 +252,12 @@ The examples in this section use the following key definitions, which
 would go in a ``Build`` object in a :doc:`Full Configuration </Getting-Started/Full-Def>`.
 Alternatively, the keys may be specified inline, as discussed above.
 
-``scala val unitTask = TaskKey[Unit]("unit-task") val intTask = TaskKey[Int]("int-task") val stringTask = TaskKey[String]("string-task")``
+::
+
+    val unitTask = TaskKey[Unit]("unit-task")
+    val intTask = TaskKey[Int]("int-task")
+    val stringTask = TaskKey[String]("string-task")
+
 The examples themselves are valid settings in a ``build.sbt`` file or as
 part of a sequence provided to ``Project.settings``.
 
@@ -360,7 +371,7 @@ You can scope logging settings by the specific task's scope:
 
 To obtain the last logging output from a task, use the ``last`` command:
 
-::
+.. code-block:: console
 
     $ last my-task
     [debug] Saying hi...
@@ -436,365 +447,46 @@ evaluates the provided function if it fails.
 
 For example:
 
-\`\`\`scala intTask := error("Failed.")
+::
 
-intTask <<= intTask mapFailure { (inc: Incomplete) => println("Ignoring
-failure: " + inc) 3 }
-\`\`\ ``This overrides the``\ int-task\ ``so that the original exception is printed and the constant``\ 3\`
-is returned.
+    intTask := error("Failed.")
+
+    intTask <<= intTask mapFailure { (inc: Incomplete) => 
+       println("Ignoring failure: " + inc)
+       3
+    }
+
+This overrides the ``int-task`` so that the original exception is printed and the constant ``3`` is returned.
 
 ``mapFailure`` does not prevent other tasks that depend on the target
 from failing. Consider the following example:
 
-\`\`\`scala intTask := if(shouldSucceed) 5 else error("Failed.")
-
-// return 3 if int-task fails. if it succeeds, this task will fail aTask
-<<= intTask mapFailure { (inc: Incomplete) => 3 }
-
-// a new task that increments the result of int-task bTask <<= intTask
-map { \_ + 1 }
-
-cTask <<= (aTask, bTask) map { (a,b) => a + b } \`\`\` The following
-table lists the results of each task depending on the initially invoked
-task:
-
-.. raw:: html
-
-   <table>
-    <th>
-
-invoked task
-
-.. raw:: html
-
-   </th> <th>
-
-int-task result
-
-.. raw:: html
-
-   </th> <th>
-
-a-task result
-
-.. raw:: html
-
-   </th> <th>
-
-b-task result
-
-.. raw:: html
-
-   </th> <th>
-
-c-task result
-
-.. raw:: html
-
-   </th> <th>
-
-overall result
-
-.. raw:: html
-
-   </th>
-   <tr><td>
-
-int-task
-
-.. raw:: html
-
-   </td> <td>
-
-failure
-
-.. raw:: html
-
-   </td> <td>
-
-not run
-
-.. raw:: html
-
-   </td> <td>
-
-not run
-
-.. raw:: html
-
-   </td> <td>
-
-not run
-
-.. raw:: html
-
-   </td> <td>
-
-failure
-
-.. raw:: html
-
-   </td></tr>
-     <tr><td>
-
-a-task
-
-.. raw:: html
-
-   </td> <td>
-
-failure
-
-.. raw:: html
-
-   </td> <td>
-
-success
-
-.. raw:: html
-
-   </td> <td>
-
-not run
-
-.. raw:: html
-
-   </td> <td>
-
-not run
-
-.. raw:: html
-
-   </td> <td>
-
-success
-
-.. raw:: html
-
-   </td></tr>
-     <tr><td>
-
-b-task
-
-.. raw:: html
-
-   </td> <td>
-
-failure
-
-.. raw:: html
-
-   </td> <td>
-
-not run
-
-.. raw:: html
-
-   </td> <td>
-
-failure
-
-.. raw:: html
-
-   </td> <td>
-
-not run
-
-.. raw:: html
-
-   </td> <td>
-
-failure
-
-.. raw:: html
-
-   </td></tr>
-     <tr><td>
-
-c-task
-
-.. raw:: html
-
-   </td> <td>
-
-failure
-
-.. raw:: html
-
-   </td> <td>
-
-success
-
-.. raw:: html
-
-   </td> <td>
-
-failure
-
-.. raw:: html
-
-   </td> <td>
-
-failure
-
-.. raw:: html
-
-   </td> <td>
-
-failure
-
-.. raw:: html
-
-   </td></tr>
-   <tr><td>
-
-int-task
-
-.. raw:: html
-
-   </td> <td>
-
-success
-
-.. raw:: html
-
-   </td> <td>
-
-not run
-
-.. raw:: html
-
-   </td> <td>
-
-not run
-
-.. raw:: html
-
-   </td> <td>
-
-not run
-
-.. raw:: html
-
-   </td> <td>
-
-success
-
-.. raw:: html
-
-   </td></tr>
-     <tr><td>
-
-a-task
-
-.. raw:: html
-
-   </td> <td>
-
-success
-
-.. raw:: html
-
-   </td> <td>
-
-failure
-
-.. raw:: html
-
-   </td> <td>
-
-not run
-
-.. raw:: html
-
-   </td> <td>
-
-not run
-
-.. raw:: html
-
-   </td> <td>
-
-failure
-
-.. raw:: html
-
-   </td></tr>
-     <tr><td>
-
-b-task
-
-.. raw:: html
-
-   </td> <td>
-
-success
-
-.. raw:: html
-
-   </td> <td>
-
-not run
-
-.. raw:: html
-
-   </td> <td>
-
-success
-
-.. raw:: html
-
-   </td> <td>
-
-not run
-
-.. raw:: html
-
-   </td> <td>
-
-success
-
-.. raw:: html
-
-   </td></tr>
-     <tr><td>
-
-c-task
-
-.. raw:: html
-
-   </td> <td>
-
-success
-
-.. raw:: html
-
-   </td> <td>
-
-failure
-
-.. raw:: html
-
-   </td> <td>
-
-success
-
-.. raw:: html
-
-   </td> <td>
-
-failure
-
-.. raw:: html
-
-   </td> <td>
-
-failure
-
-.. raw:: html
-
-   </td></tr>
-   </table>
+::
+
+    intTask := if(shouldSucceed) 5 else error("Failed.")
+
+    // return 3 if int-task fails. if it succeeds, this task will fail
+    aTask <<= intTask mapFailure { (inc: Incomplete) => 3 }
+
+    // a new task that increments the result of int-task
+    bTask <<= intTask map { \_ + 1 }
+
+    cTask <<= (aTask, bTask) map { (a,b) => a + b }
+
+The following table lists the results of each task depending on the initially invoked task:
+
+============== =============== ============= ============== ============== ==============
+invoked task   int-task result a-task result  b-task result c-task result 	overall result
+============== =============== ============= ============== ============== ==============
+int-task       failure         not run       not run        not run        failure
+a-task         failure         success       not run        not run        success
+b-task         failure         not run       failure        not run        failure
+c-task         failure         success       failure        failure        failure
+int-task       success         not run       not run        not run        success
+a-task         success         failure       not run        not run        failure
+b-task         success         not run       success        not run        success
+c-task         success         failure       success        failure        failure
+============== =============== ============= ============== ============== ==============
 
 The overall result is always the same as the root task (the directly
 invoked task). A ``mapFailure`` turns a success into a failure, and a
@@ -813,105 +505,15 @@ with the list of ``Incomplete``\ s. For example:
 The following table lists the results of invoking ``c-task``, depending
 on the success of ``aTask`` and ``bTask``:
 
-.. raw:: html
 
-   <table>
-    <th>
-
-a-task result
-
-.. raw:: html
-
-   </th> <th>
-
-b-task result
-
-.. raw:: html
-
-   </th> <th>
-
-c-task result
-
-.. raw:: html
-
-   </th>
-     <tr> <td>
-
-failure
-
-.. raw:: html
-
-   </td> <td>
-
-failure
-
-.. raw:: html
-
-   </td> <td>
-
-success
-
-.. raw:: html
-
-   </td> </tr>
-     <tr> <td>
-
-failure
-
-.. raw:: html
-
-   </td> <td>
-
-success
-
-.. raw:: html
-
-   </td> <td>
-
-success
-
-.. raw:: html
-
-   </td> </tr>
-     <tr> <td>
-
-success
-
-.. raw:: html
-
-   </td> <td>
-
-failure
-
-.. raw:: html
-
-   </td> <td>
-
-success
-
-.. raw:: html
-
-   </td> </tr>
-     <tr> <td>
-
-success
-
-.. raw:: html
-
-   </td> <td>
-
-success
-
-.. raw:: html
-
-   </td> <td>
-
-failure
-
-.. raw:: html
-
-   </td> </tr>
-   </table>
+=============  =============  =============
+a-task result  b-task result  c-task result
+=============  =============  =============
+failure        failure        success
+failure        success        success
+success        failure        success
+success        success        failure
+=============  =============  =============
 
 mapR
 ~~~~
@@ -932,10 +534,17 @@ succeeds or fails.
 
 For example:
 
-\`\`\`scala intTask := error("Failed.")
+::
 
-intTask <<= intTask mapR { case Inc(inc: Incomplete) =>
-println("Ignoring failure: " + inc) 3 case Value(v) => println("Using
-successful result: " + v) v }
-\`\`\ ``This overrides the original``\ int-task\ ``definition so that if the original task fails, the exception is printed and the constant``\ 3\`
-is returned. If it succeeds, the value is printed and returned.
+    intTask := error("Failed.")
+
+    intTask <<= intTask mapR {
+       case Inc(inc: Incomplete) =>
+          println("Ignoring failure: " + inc)
+          3
+       case Value(v) =>
+          println("Using successful result: " + v)
+          v
+    }
+
+This overrides the original ``int-task`` definition so that if the original task fails, the exception is printed and the constant ``3`` is returned. If it succeeds, the value is printed and returned.

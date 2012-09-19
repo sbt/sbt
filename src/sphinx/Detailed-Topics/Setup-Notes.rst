@@ -19,7 +19,7 @@ default encoding for your platform. In this case, you will need to add
 the option ``-Dfile.encoding=<encoding>`` in your ``sbt`` script to set
 the encoding, which might look like:
 
-::
+.. code-block:: console
 
     java -Dfile.encoding=UTF8
 
@@ -30,8 +30,12 @@ If you find yourself running out of permgen space or your workstation is
 low on memory, adjust the JVM configuration as you would for any
 application. For example a common set of memory-related options is:
 
-``text java -Xmx1536M -Xss1M -XX:+CMSClassUnloadingEnabled -XX:MaxPermSize=256m``
-## Boot directory
+.. code-block:: console
+
+    java -Xmx1536M -Xss1M -XX:+CMSClassUnloadingEnabled -XX:MaxPermSize=256m``
+
+Boot directory
+--------------
 
 ``sbt-launch.jar`` is just a bootstrap; the actual meat of sbt, and the
 Scala compiler and standard library, are downloaded to the shared
@@ -44,7 +48,7 @@ to avoid sharing the boot directory between projects. For example, the
 following uses the pre-0.11 style of putting the boot directory in
 ``project/boot/``:
 
-::
+.. code-block:: console
 
     java -Dsbt.boot.directory=project/boot/
 
@@ -56,14 +60,14 @@ On Unix, sbt will pick up any HTTP proxy settings from the
 authentication, your ``sbt`` script must also pass flags to set the
 ``http.proxyUser`` and ``http.proxyPassword`` properties:
 
-::
+.. code-block:: console
 
     java -Dhttp.proxyUser=username -Dhttp.proxyPassword=mypassword
 
 On Windows, your script should set properties for proxy host, port, and
 if applicable, username and password:
 
-::
+.. code-block:: console
 
     java -Dhttp.proxyHost=myproxy -Dhttp.proxyPort=8080 -Dhttp.proxyUser=username -Dhttp.proxyPassword=mypassword
 

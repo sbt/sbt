@@ -197,8 +197,8 @@ page) are actually convenience methods that translate to ``artifacts``:
 
 That is, the following two dependency declarations are equivalent:
 
-\`\`\`scala libraryDependencies += "org.testng" % "testng" % "5.7"
-classifier "jdk15"
+::
 
-libraryDependencies += "org.testng" % "testng" % "5.7" artifacts(
-Artifact("testng", "jdk15") ) \`\`\`
+    libraryDependencies += "org.testng" % "testng" % "5.7" classifier "jdk15"
+
+    libraryDependencies += "org.testng" % "testng" % "5.7" artifacts(Artifact("testng", "jdk15") )

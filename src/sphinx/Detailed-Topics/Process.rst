@@ -123,6 +123,9 @@ Search for uses of ``null`` in the source directory:
 
     "find src -name *.scala -exec grep null {} ;"  #|  "xargs test -z"  #&&  "echo null-free"  #||  "echo null detected"  !
 
-Use ``cat``:
+Use ``cat``::
 
-``scala val spde = url("http://technically.us/spde/About") val dispatch = url("http://databinder.net/dispatch/About") val build = file("project/build.properties") cat(spde, dispatch, build) #| "grep -i scala" !``
+    val spde = url("http://technically.us/spde/About")
+    val dispatch = url("http://databinder.net/dispatch/About")
+    val build = file("project/build.properties")
+    cat(spde, dispatch, build) #| "grep -i scala" !

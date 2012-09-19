@@ -21,7 +21,7 @@ Now from inside the ``hello`` directory, start sbt and type ``run`` at
 the sbt interactive console. On Linux or OS X the commands might look
 like this:
 
-::
+.. code-block:: text
 
       $ mkdir hello
       $ cd hello
@@ -79,11 +79,11 @@ Setting the sbt version
 You can force a particular version of sbt by creating a file
 ``hello/project/build.properties``. In this file, write:
 
-::
+.. code-block:: text
 
     sbt.version=0.12.0
 
-From 0.10 onwards, sbt is 99% source compatible from release to release.
+sbt is 99% source compatible from release to release.
 Still, setting the sbt version in ``project/build.properties`` avoids
 any potential confusion.
 

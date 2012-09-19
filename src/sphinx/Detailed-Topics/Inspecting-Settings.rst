@@ -14,7 +14,7 @@ Selecting commands, tasks, and settings
 
 A fully-qualified reference to a setting or task looks like:
 
-::
+.. code-block:: console
 
     {<build-uri>}<project-id>/config:inkey::key
 
@@ -42,7 +42,7 @@ selected, where order is determined by the project definition's
 For example, the following are equivalent when run in a project ``root``
 in the build in ``/home/user/sample/``:
 
-::
+.. code-block:: console
 
     > compile
     > compile:compile
@@ -57,7 +57,7 @@ for the ``test`` configuration, the configuration axis must be specified
 like ``test:run``. Some other examples that require the explicit
 ``test:`` axis:
 
-::
+.. code-block:: console
 
     > test:console-quick
     > test:console
@@ -78,7 +78,7 @@ This is done with the task axis, which selects the task to apply a
 setting to. For example, the following prints the output jar for the
 different package tasks.
 
-::
+.. code-block:: console
 
     > package::artifact-path
     [info] /home/user/sample/target/scala-2.8.1.final/demo_2.8.1-0.1.jar
@@ -111,7 +111,7 @@ task or the value and type of a setting. The following section of output
 is labeled "Provided by". This shows the actual scope where the setting
 is defined. For example,
 
-::
+.. code-block:: console
 
     > inspect library-dependencies
     [info] Setting: scala.collection.Seq[sbt.ModuleID] = List(org.scalaz:scalaz-core:6.0-SNAPSHOT, org.scala-tools.testing:scalacheck:1.8:test)
@@ -123,7 +123,7 @@ This shows that ``library-dependencies`` has been defined on the current
 project (``{file:/home/user/sample/}root``) in the global configuration
 (``*:``). For a task like ``update``, the output looks like:
 
-::
+.. code-block:: console
 
     > inspect update
     [info] Task: sbt.UpdateReport
@@ -137,7 +137,7 @@ Related Settings
 The "Related" section of ``inspect`` output lists all of the definitions
 of a key. For example,
 
-::
+.. code-block:: console
 
     > inspect compile
     ...
@@ -163,7 +163,7 @@ Requested Dependencies
 
 As an example, we'll look at ``console``:
 
-::
+.. code-block:: console
 
     > inspect console
     ...
@@ -191,7 +191,7 @@ tasks like ``compile`` and ``test``. For example, we can infer from the
 previous example how to add code to be run when the Scala interpreter
 starts up:
 
-::
+.. code-block:: console
 
     > set initialCommands in Compile in console := "import mypackage._"
     > console
@@ -219,7 +219,7 @@ exactly which scope is providing a value for a setting. Combining
 scopes that will affect a setting. Returning to the example in Requested
 Dependencies,
 
-::
+.. code-block:: console
 
     > inspect actual console
     ...
@@ -238,7 +238,7 @@ For ``initial-commands``, we see that it comes from the global scope
 (``*/*:``). Combining this with the relevant output from
 ``inspect console``:
 
-::
+.. code-block:: console
 
     compile:console::initial-commands
 
@@ -247,7 +247,7 @@ scope, as specific as the current project's ``console`` task scope, or
 anything in between. This means that we can, for example, set
 ``initial-commands`` for the whole project and will affect ``console``:
 
-::
+.. code-block:: console
 
     > set initialCommands := "import mypackage._"
     ...
@@ -256,7 +256,7 @@ The reason we might want to set it here this is that other console tasks
 will use this value now. We can see which ones use our new setting by
 looking at the reverse dependencies output of ``inspect actual``:
 
-::
+.. code-block:: console
 
     > inspect actual initial-commands
     ...
@@ -277,7 +277,7 @@ specific task axis:
 ``console > set initialCommands in console := "import mypackage._" > set initialCommands in consoleQuick := "import mypackage._"``
 or configuration axis:
 
-::
+.. code-block:: console
 
     > set initialCommands in Compile := "import mypackage._"
     > set initialCommands in Test := "import mypackage._"
@@ -297,7 +297,7 @@ requested key.
 
 As an example, consider the initial commands for ``console`` again:
 
-::
+.. code-block:: console
 
     > inspect console::initial-commands
     ...

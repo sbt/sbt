@@ -18,7 +18,9 @@ Error handling and tab completion make this picture more complicated,
 but we'll stick with Option for this discussion.
 
 The following examples assume the imports:
-``scala import sbt._ import complete.DefaultParsers._``
+
+    import sbt._
+    import complete.DefaultParsers._
 
 Basic parsers
 -------------

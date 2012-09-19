@@ -1,6 +1,9 @@
 # -*- coding: utf-8 -*-
 
-extensions = ['sphinxcontrib.issuetracker', 'sphinx.ext.extlinks']
+import sys, os
+
+sys.path.append(os.path.abspath('_sphinx/exts'))
+extensions = ['sphinxcontrib.issuetracker', 'sphinx.ext.extlinks', 'howto']
 
 # Project variables
 
@@ -13,12 +16,14 @@ release = '0.12.1'
 needs_sphinx = '1.1'
 nitpicky = True
 default_role = 'literal'
-master_doc = 'index'
+master_doc = 'home'
 highlight_language = 'scala'
 add_function_parentheses = False
 
 # HTML
 
+html_theme = 'sbt'
+html_theme_path = ['_sphinx/themes']
 html_title = 'sbt Documentation'
 html_domain_indices = False
 html_use_index = False

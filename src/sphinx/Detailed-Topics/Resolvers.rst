@@ -93,7 +93,7 @@ atomic.
 URL
 ^^^
 
-Define a URL repository at .\ ``"http://example.org/repo-releases/"``.
+Define a URL repository at ``"http://example.org/repo-releases/"``.
 
 ::
 

@@ -82,7 +82,7 @@ TAB at the beginning of a line and see what you get.
 
 The following commands work pretty much as in 0.7 out of the box:
 
-::
+.. code-block:: text
 
     reload
     update
@@ -174,16 +174,16 @@ Where did class/object X go since 0.7?
 ================================================================================================================================================================================================ =====================================================================================================================================================================================
 0.7                                                                                                                                                                                              |version|
 ================================================================================================================================================================================================ =====================================================================================================================================================================================
-| `FileUtilities <http://simple-build-tool.googlecode.com/svn/artifacts/latest/api/sbt/FileUtilities$object.html>`_                                                                              `IO <../../api/sbt/IO$.html>`_
-`Path class <http://simple-build-tool.googlecode.com/svn/artifacts/latest/api/sbt/Path.html>`_ and `object <http://simple-build-tool.googlecode.com/svn/artifacts/latest/api/sbt/Path$.html>`_   `Path object <../../api/sbt/Path$.html>`_, ``File``, `RichFile <../../api/sbt/RichFile.html>`_
-`PathFinder class <http://simple-build-tool.googlecode.com/svn/artifacts/latest/api/sbt/PathFinder.html>`_                                                                                       ``Seq[File]``, `PathFinder class <../../api/sbt/PathFinder.html>`_, `PathFinder object <../../api/sbt/PathFinder$.html>`_
+| `FileUtilities <http://simple-build-tool.googlecode.com/svn/artifacts/latest/api/sbt/FileUtilities$object.html>`_                                                                              `IO <../api/sbt/IO$.html>`_
+`Path class <http://simple-build-tool.googlecode.com/svn/artifacts/latest/api/sbt/Path.html>`_ and `object <http://simple-build-tool.googlecode.com/svn/artifacts/latest/api/sbt/Path$.html>`_   `Path object <../api/sbt/Path$.html>`_, ``File``, `RichFile <../api/sbt/RichFile.html>`_
+`PathFinder class <http://simple-build-tool.googlecode.com/svn/artifacts/latest/api/sbt/PathFinder.html>`_                                                                                       ``Seq[File]``, `PathFinder class <../api/sbt/PathFinder.html>`_, `PathFinder object <../api/sbt/PathFinder$.html>`_
 ================================================================================================================================================================================================ =====================================================================================================================================================================================
 
 
 Where can I find plugins for |version|?
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-See :doc:`/Community/sbt-0.10-plugins-list` for a list of currently available plugins.
+See :doc:`/Community/Community-Plugins` for a list of currently available plugins.
 
 Usage
 -----
@@ -200,7 +200,7 @@ want to view detailed output for. For example, if you find that your
 ``update`` fails to load all the dependencies as you expect you can
 enter:
 
-::
+.. code-block:: console
 
     > last update
 
@@ -213,7 +213,7 @@ How do I disable ansi codes in the output?
 Sometimes sbt doesn't detect that ansi codes aren't supported and you
 get output that looks like:
 
-::
+.. code-block:: text
 
       [0m[ [0minfo [0m]  [0mSet current project to root
 
@@ -221,9 +221,9 @@ or ansi codes are supported but you want to disable colored output. To
 completely disable ansi codes, set the ``sbt.log.noformat`` system
 property to ``true``. For example,
 
-::
+.. code-block :: console
 
-    sbt -Dsbt.log.noformat=true
+    $ sbt -Dsbt.log.noformat=true
 
 How can I start a Scala interpreter (REPL) with sbt project configuration (dependencies, etc.)?
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -366,7 +366,7 @@ or when the outputs haven't been generated yet. This support is
 primitive and subject to change.
 
 The relevant methods are two overloaded methods called
-`FileFunction.cached <../../api/sbt/FileFunction$.html>`_.
+`FileFunction.cached <../api/sbt/FileFunction$.html>`_.
 Each requires a directory in which to store cached data. Sample usage
 is:
 
@@ -393,12 +393,12 @@ file's last modified time, and the output tracking style is
 ``FilesInfo.exists``, based only on whether the file exists. The other
 available style is ``FilesInfo.hash``, which tracks a file based on a
 hash of its contents. See the `FilesInfo
-API <../../api/sbt/FilesInfo$.html>`_ for
+API <../api/sbt/FilesInfo$.html>`_ for
 details.
 
 A more advanced version of ``FileFunction.cached`` passes a data
 structure of type
-`ChangeReport <../../api/sbt/ChangeReport.html>`_
+`ChangeReport <../api/sbt/ChangeReport.html>`_
 describing the changes to input and output files since the last
 evaluation. This version of ``cached`` also expects the set of files
 generated as output to be the result of the evaluated function.
@@ -610,9 +610,9 @@ How would I change sbt's classpath dynamically?
 
 It is possible to register additional jars that will be placed on sbt's
 classpath (since version 0.10.1). Through
-`State <../../api/sbt/State$.html>`_, it
+`State <../api/sbt/State$.html>`_, it
 is possible to obtain a
-`xsbti.ComponentProvider <../../api/xsbti/ComponentProvider.html>`_,
+`xsbti.ComponentProvider <../api/xsbti/ComponentProvider.html>`_,
 which manages application components. Components are groups of files in
 the ``~/.sbt/boot/`` directory and, in this case, the application is
 sbt. In addition to the base classpath, components in the "extra"

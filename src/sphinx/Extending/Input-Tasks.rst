@@ -85,7 +85,7 @@ will produce one of the following values for a successful parse
 (assuming the current Scala version is 2.9.2, the current sbt version is
 0.12.0, and there are 3 commands left to run):
 
-::
+.. code-block:: text
 
     ("scala", "2.9.2")
     ("sbt", "0.12.0")

@@ -24,7 +24,7 @@ sbt uses the same directory structure as
 `Maven <http://maven.apache.org/>`_ for source files by default (all
 paths are relative to the base directory):
 
-::
+.. code-block:: text
 
       src/
         main/
@@ -55,7 +55,7 @@ sbt files appear in a ``project`` subdirectory.
 ``.sbt`` files to form the complete build definition.
 See :doc:`.scala build definitions <Full-Def>` for more.
 
-::
+.. code-block:: text
 
       build.sbt
       project/
@@ -79,7 +79,7 @@ Configuring version control
 Your ``.gitignore`` (or equivalent for other version control systems)
 should contain:
 
-::
+.. code-block:: text
 
       target/
 

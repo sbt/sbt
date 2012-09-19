@@ -37,7 +37,7 @@ the locations listed above and compile and run tests. The tasks for
 running tests are ``test`` and ``test-only``. The ``test`` task accepts
 no command line arguments and runs all tests:
 
-::
+.. code-block:: console
 
     > test
 
@@ -47,13 +47,18 @@ test-only
 The ``test-only`` task accepts a whitespace separated list of test names
 to run. For example:
 
-::
+.. code-block:: console
 
     > test-only org.example.MyTest1 org.example.MyTest2
 
 It supports wildcards as well:
 
-``text > test-only org.example.*Slow org.example.MyTest1`` ## test-quick
+.. code-block:: console
+
+    > test-only org.example.*Slow org.example.MyTest1
+
+test-quick
+----------
 
 The ``test-quick`` task, like ``test-only``, allows to filter the tests
 to run to specific tests or wildcards using the same syntax to indicate
@@ -108,7 +113,7 @@ Test Framework Arguments
 Arguments to the test framework may be provided on the command line to
 the ``test-only`` tasks following a ``--`` separator. For example:
 
-::
+.. code-block:: console
 
     > test-only org.example.MyTest -- -d -S
 
@@ -259,7 +264,7 @@ The standard source hierarchy is used:
 The standard testing tasks are available, but must be prefixed with
 ``it:``. For example,
 
-::
+.. code-block:: console
 
     > it:test-only org.example.AnIntegrationTest
 
@@ -340,7 +345,7 @@ The comments in the integration test section hold, except with
 
 Test tasks are run by prefixing them with ``fun:``
 
-::
+.. code-block:: console
 
     > fun:test
 
@@ -385,14 +390,14 @@ The key differences are:
 To run standard unit tests, run ``test`` (or equivalently,
 ``test:test``):
 
-::
+.. code-block:: console
 
     > test
 
 To run tests for the added configuration (here, ``"fun"``), prefix it
 with the configuration name as before:
 
-::
+.. code-block:: console
 
     > fun:test
     > fun:test-only org.example.AFunTest

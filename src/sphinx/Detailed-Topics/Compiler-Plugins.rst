@@ -55,10 +55,12 @@ Version-specific Compiler Plugin Example
 
 Adding a version-specific compiler plugin can be done as follows:
 
-\`\`\`scala autoCompilerPlugins := true
+::
 
-libraryDependencies <<= (scalaVersion, libraryDependencies) { (ver,
-deps) => deps :+ compilerPlugin("org.scala-lang.plugins" %
-"continuations" % ver) }
+    autoCompilerPlugins := true
 
-scalacOptions += "-P:continuations:enable" \`\`\`
+    libraryDependencies <<= (scalaVersion, libraryDependencies) { (ver, deps) =>
+        deps :+ compilerPlugin("org.scala-lang.plugins" % "continuations" % ver)
+    }
+
+    scalacOptions += "-P:continuations:enable"

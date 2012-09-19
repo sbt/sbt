@@ -107,7 +107,7 @@ application.
 
 ``hello.build.properties``
 
-::
+.. code-block:: ini
 
     [scala]
       version: 2.9.1

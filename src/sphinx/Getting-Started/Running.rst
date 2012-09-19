@@ -1,3 +1,4 @@
+
 =======
 Running
 =======
@@ -11,7 +12,7 @@ Interactive mode
 
 Run sbt in your project directory with no arguments:
 
-::
+.. code-block:: console
 
     $ sbt
 
@@ -21,7 +22,7 @@ history!).
 
 For example, you could type ``compile`` at the sbt prompt:
 
-::
+.. code-block:: console
 
     > compile
 
@@ -40,7 +41,7 @@ sbt commands as arguments. For sbt commands that take arguments, pass
 the command and arguments as one argument to ``sbt`` by enclosing them
 in quotes. For example,
 
-::
+.. code-block:: console
 
     $ sbt clean compile "test-only TestA TestB"
 
@@ -57,7 +58,7 @@ automatically recompile or run tests whenever you save a source file.
 Make a command run when one or more source files change by prefixing the
 command with ``~``. For example, in interactive mode try:
 
-::
+.. code-block:: console
 
     > ~ compile
 

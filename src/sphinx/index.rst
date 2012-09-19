@@ -1,59 +1,36 @@
-===
-sbt
-===
+========
+Contents
+========
 
-sbt is a build tool for Scala and Java projects that aims to do the
-basics well. It requires Java 1.6 or later.
+The table of contents for sbt documentation is listed below.
+To get started, *please read* the :doc:`Getting Started Guide </Getting-Started/Welcome>`.
+Further topics are presented in detail in the :doc:`Detailed Topics </Detailed-Topics/index>`,
+:doc:`Howto </Howto/index>`, and :doc:`Extending sbt </Extending/index>` sections.
 
-Install
--------
+See also the `API Documentation <../api/index.html>`_,
+`SXR Documentation <../sxr/index.html>`_, and
+the :doc:`index of names and types <Name-Index>`.
 
-See the :doc:`setup instructions </Getting-Started/Setup>`.
+.. toctree::
+   :maxdepth: 2
 
-Features
---------
+   Getting-Started/index
+   Detailed-Topics/index
+   Examples/index
+   Howto/index
+   faq
+   Community/index
+   Extending/index
+   Name-Index
 
--  Easy to set up for simple projects
--  :doc:`.sbt build definition </Getting-Started/Basic-Def>` uses a
-   Scala-based "domain-specific language" (DSL)
--  More advanced :doc:`.scala build definitions </Getting-Started/Full-Def>`
-   and :doc:`extensions </Getting-Started/Custom-Settings>` use the full
-   flexibility of unrestricted Scala code
--  Accurate incremental recompilation using information extracted from the compiler
--  Continuous compilation and testing with :doc:`triggered execution </Detailed-Topics/Triggered-Execution>`
--  Packages and publishes jars
--  Generates documentation with scaladoc
--  Supports mixed Scala/:doc:`Java </Detailed-Topics/Java-Sources>` projects
--  Supports :doc:`testing </Detailed-Topics/Testing>` with ScalaCheck, specs, and ScalaTest
-   (JUnit is supported by a plugin)
--  Starts the Scala REPL with project classes and dependencies on the
-   classpath
--  :doc:`Sub-project </Getting-Started/Multi-Project>` support (put multiple packages in one project)
--  External project support (list a git repository as a dependency!)
--  :doc:`Parallel task execution </Detailed-Topics/Parallel-Execution>`, including parallel test execution
--  :doc:`Library management support </Getting-Started/Library-Dependencies>`:
-   inline declarations, external Ivy or Maven configuration files, or
-   manual management
 
-Getting Started
----------------
+.. The following includes documents that are not important enough to be in a visible toctree
+   They are linked from other documents, which is enough.
 
-To get started, read the :doc:`Getting Started Guide </Getting-Started/Welcome>`.
+.. toctree::
+   :maxdepth: 0
+   :hidden:
 
-*Please read* the :doc:`Getting Started Guide </Getting-Started/Welcome>`.
-You will save yourself a *lot* of time if you have the right
-understanding of the big picture up-front.
-
-If you are familiar with 0.7.x, please see the :doc:`migration page </Detailed-Topics/Migrating-from-sbt-0.7.x-to-0.10.x>`.
-Documentation for 0.7.x is still available on the `Google Code
-Site <http://code.google.com/p/simple-build-tool/wiki/DocumentationHome>`_.
-This documentation applies to sbt |version|.
-
-The mailing list is at
-http://groups.google.com/group/simple-build-tool/topics. Please use it
-for questions and comments!
-
-This documentation can be forked `on
-GitHub <https://github.com/harrah/xsbt/tree/0.13/src/sphinx>`_. Feel
-free to make corrections and add documentation. Use the mailing list if
-you have questions or comments.
+   Dormant/Dormant
+   Community/ChangeSummary_0.12.0
+   Community/Repository-Rules
