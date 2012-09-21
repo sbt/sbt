@@ -18,7 +18,7 @@ trait Instance
 }
 trait Convert
 {
-	def apply[T: c.AbsTypeTag](c: scala.reflect.macros.Context)(in: c.Tree): c.Tree
+	def apply[T: c.WeakTypeTag](c: scala.reflect.macros.Context)(in: c.Tree): c.Tree
 }
 trait MonadInstance extends Instance
 {
@@ -81,7 +81,7 @@ object Instance
 	*  this should be the argument wrapped in Right.
 	*/
 	def contImpl[T](c: Context, i: Instance with Singleton, convert: Convert, builder: TupleBuilder)(t: Either[c.Expr[T], c.Expr[i.M[T]]])(
-		implicit tt: c.AbsTypeTag[T], it: c.TypeTag[i.type]): c.Expr[i.M[T]] =
+		implicit tt: c.WeakTypeTag[T], it: c.TypeTag[i.type]): c.Expr[i.M[T]] =
 	{
 			import c.universe.{Apply=>ApplyTree,_}
 		
@@ -203,7 +203,7 @@ object Instance
 				tree match
 				{
 					case ApplyTree(TypeApply(fun, t :: Nil), qual :: Nil) if isWrapper(fun) =>
-						val tag = c.AbsTypeTag(t.tpe)
+						val tag = c.WeakTypeTag(t.tpe)
 						addType(t.tpe, convert(c)(qual)(tag) )
 					case _ => super.transform(tree)
 				}
