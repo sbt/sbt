@@ -59,7 +59,7 @@ object Defaults extends BuildCommon
 
 	def buildCore: Seq[Setting[_]] = thisBuildCore ++ globalCore
 	def thisBuildCore: Seq[Setting[_]] = inScope(GlobalScope.copy(project = Select(ThisBuild)))(Seq(
-		managedDirectory <<= baseDirectory(_ / "lib_managed")
+		managedDirectory := baseDirectory.value / "lib_managed"
 	))
 	def globalCore: Seq[Setting[_]] = inScope(GlobalScope)(defaultTestTasks(test) ++ defaultTestTasks(testOnly) ++ defaultTestTasks(testQuick) ++ Seq(
 		compilerCache := state.value get Keys.stateCompilerCache getOrElse compiler.CompilerCache.fresh,
@@ -179,7 +179,7 @@ object Defaults extends BuildCommon
 			// remove when defaultExcludes are removed
 		excludeFilter in unmanagedResources <<= (defaultExcludes in unmanagedResources) or (excludeFilter in unmanagedResources),
 		unmanagedResources <<= collectFiles(unmanagedResourceDirectories, includeFilter in unmanagedResources, excludeFilter in unmanagedResources),
-		watchSources in ConfigGlobal <++= unmanagedResources,
+		watchSources in ConfigGlobal ++= unmanagedResources.value,
 		resourceGenerators :== Nil,
 		resourceGenerators <+= (definedSbtPlugins, resourceManaged) map writePluginsDescriptor,
 		managedResources <<= generate(resourceGenerators),
@@ -323,10 +323,9 @@ object Defaults extends BuildCommon
 		testFilter in testOnly :== (selectedFilter _),
 		testFilter in testQuick <<= testQuickFilter,
 		executeTests <<= (streams in test, loadedTestFrameworks, testLoader, testGrouping in test, testExecution in test, fullClasspath in test, javaHome in test) flatMap allTestGroupsTask,
-		test <<= (executeTests, streams, resolvedScoped, state) map { 
-			(results, s, scoped, st) =>
-				implicit val display = Project.showContextKey(st)
-				Tests.showResults(s.log, results, noTestsMessage(scoped))
+		test := {
+			implicit val display = Project.showContextKey(state.value)
+			Tests.showResults(streams.value.log, executeTests.value, noTestsMessage(resolvedScoped.value))
 		},
 		testOnly <<= inputTests(testOnly),
 		testQuick <<= inputTests(testQuick)
@@ -338,7 +337,9 @@ object Defaults extends BuildCommon
 	lazy val ConfigGlobal: Scope = ThisScope.copy(config = Global)
 	def testTaskOptions(key: Scoped): Seq[Setting[_]] = inTask(key)( Seq(
 		testListeners <<= (streams, resolvedScoped, streamsManager, logBuffered, cacheDirectory in test, testListeners in TaskGlobal) map { (s, sco, sm, buff, dir, ls) =>
-			TestLogger(s.log, testLogger(sm, test in sco.scope), buff) +: new TestStatusReporter(succeededFile(dir)) +: ls
+			TestLogger(streams.value.log, testLogger(streamsManager.value, test in resolvedScoped.value.scope), logBuffered.value) +:
+			new TestStatusReporter(succeededFile( cacheDirectory.in(test).value )) +:
+			testListeners.in(TaskGlobal).value
 		},
 		testOptions := Tests.Listeners(testListeners.value) +: (testOptions in TaskGlobal).value,
 		testExecution <<= testExecutionTask(key),
@@ -509,7 +510,7 @@ object Defaults extends BuildCommon
 			key in TaskGlobal <<= packageTask,
 			packageConfiguration <<= packageConfigurationTask,
 			mappings <<= mappingsTask,
-			packagedArtifact <<= (artifact, key) map Util.pairID,
+			packagedArtifact := (artifact.value, key.value),
 			artifact <<= artifactSetting,
 			perTaskCache(key),
 			artifactPath <<= artifactPathSetting(artifact)
@@ -568,7 +569,7 @@ object Defaults extends BuildCommon
 	def docSetting(key: TaskKey[File]) = docTaskSettings(key)
 	def docTaskSettings(key: TaskKey[File] = doc): Seq[Setting[_]] = inTask(key)(compileInputsSettings ++ Seq(
 		perTaskCache(key),
-		target <<= docDirectory, // deprecate docDirectory in favor of 'target in doc'; remove when docDirectory is removed
+		target := docDirectory.value, // deprecate docDirectory in favor of 'target in doc'; remove when docDirectory is removed
 		scalacOptions <<= scaladocOptions or scalacOptions, // deprecate scaladocOptions in favor of 'scalacOptions in doc'; remove when scaladocOptions is removed
 		key in TaskGlobal <<= (cacheDirectory, compileInputs, target, configuration, streams) map { (cache, in, out, config, s) =>
 			val srcs = in.config.sources
@@ -792,8 +793,8 @@ object Classpaths
 		publishArtifact in GlobalScope in Test:== false,
 		artifacts <<= artifactDefs(defaultArtifactTasks),
 		packagedArtifacts <<= packaged(defaultArtifactTasks),
-		makePom <<= (ivyModule, makePomConfiguration, streams) map { (module, config, s) => IvyActions.makePom(module, config, s.log); config.file },
-		packagedArtifact in makePom <<= (artifact in makePom, makePom) map Util.pairID,
+		makePom := { val config = makePomConfiguration.value; IvyActions.makePom(ivyModule.value, config, streams.value.log); config.file },
+		packagedArtifact in makePom := (artifact in makePom value, makePom value),
 		deliver <<= deliverTask(deliverConfiguration),
 		deliverLocal <<= deliverTask(deliverLocalConfiguration),
 		publish <<= publishTask(publishConfiguration, deliver),
@@ -801,9 +802,9 @@ object Classpaths
 	)
 	val baseSettings: Seq[Setting[_]] = sbtClassifiersTasks ++ Seq(
 		conflictWarning in GlobalScope :== ConflictWarning.default("global"),
-		conflictWarning <<= (thisProjectRef, conflictWarning) { (ref, cw) => cw.copy(label = Reference.display(ref)) },
-		unmanagedBase <<= baseDirectory / "lib",
-		normalizedName <<= name(StringUtilities.normalize),
+		conflictWarning := conflictWarning.value.copy(label = Reference.display(thisProjectRef.value)),
+		unmanagedBase := baseDirectory.value / "lib",
+		normalizedName := StringUtilities.normalize(name.value),
 		isSnapshot <<= isSnapshot or version(_ endsWith "-SNAPSHOT"),
 		description <<= description or name,
 		homepage in GlobalScope :== None,
@@ -832,13 +833,13 @@ object Classpaths
 		moduleName <<= normalizedName,
 		defaultConfiguration in GlobalScope :== Some(Configurations.Compile),
 		defaultConfigurationMapping in GlobalScope <<= defaultConfiguration{ case Some(d) => "*->" + d.name; case None => "*->*" },
-		ivyPaths <<= (baseDirectory, appConfiguration) { (base, app) => new IvyPaths(base, bootIvyHome(app)) },
-		otherResolvers <<= publishTo(_.toList),
+		ivyPaths := new IvyPaths(baseDirectory.value, bootIvyHome(appConfiguration.value)),
+		otherResolvers := publishTo.value.toList,
 		projectResolver <<= projectResolverTask,
 		projectDependencies <<= projectDependenciesTask,
 		dependencyOverrides in GlobalScope :== Set.empty,
 		libraryDependencies in GlobalScope :== Nil,
-		libraryDependencies <++= (autoScalaLibrary, sbtPlugin, scalaOrganization, scalaVersion) apply autoLibraryDependency,
+		libraryDependencies ++= autoLibraryDependency(autoScalaLibrary.value, sbtPlugin.value, scalaOrganization.value, scalaVersion.value),
 		allDependencies := {
 			val base = projectDependencies.value ++ libraryDependencies.value
 			val pluginAdjust = if(sbtPlugin.value) sbtDependency.value.copy(configurations = Some(Provided.name)) +: base else base
@@ -856,36 +857,29 @@ object Classpaths
 		moduleConfigurations in GlobalScope :== Nil,
 		publishTo in GlobalScope :== None,
 		artifactPath in makePom <<= artifactPathSetting(artifact in makePom),
-		publishArtifact in makePom <<= (publishMavenStyle, publishArtifact).apply(_ && _) ,
-		artifact in makePom <<= moduleName(Artifact.pom),
-		projectID <<= (organization,moduleName,version,artifacts,crossVersion in projectID){ (org,module,version,as,cross) =>
-			ModuleID(org, module, version).cross(cross).artifacts(as : _*)
-		},
+		publishArtifact in makePom := publishMavenStyle.value && publishArtifact.value,
+		artifact in makePom := Artifact.pom(moduleName.value),
+		projectID := ModuleID(organization.value, moduleName.value, version.value).cross(crossVersion in projectID value).artifacts(artifacts.value : _*),
 		projectID <<= pluginProjectID,
 		resolvers in GlobalScope :== Nil,
 		projectDescriptors <<= depMap,
 		retrievePattern in GlobalScope :== Resolver.defaultRetrievePattern,
-		updateConfiguration <<= (retrieveConfiguration, ivyLoggingLevel)((conf,level) => new UpdateConfiguration(conf, false, level) ),
-		retrieveConfiguration <<= (managedDirectory, retrievePattern, retrieveManaged) { (libm, pattern, enabled) => if(enabled) Some(new RetrieveConfiguration(libm, pattern)) else None },
+		updateConfiguration := new UpdateConfiguration(retrieveConfiguration.value, false, ivyLoggingLevel.value),
+		retrieveConfiguration := { if(retrieveManaged.value) Some(new RetrieveConfiguration(managedDirectory.value, retrievePattern.value)) else None },
 		ivyConfiguration <<= mkIvyConfiguration,
-		ivyConfigurations <<= (autoCompilerPlugins, internalConfigurationMap, thisProject) { (auto, internalMap, project) =>
-			(project.configurations ++ project.configurations.map(internalMap) ++ (if(auto) CompilerPlugin :: Nil else Nil)).distinct
+		ivyConfigurations := {
+			val confs = thisProject.value.configurations
+			(confs ++ confs.map(internalConfigurationMap.value) ++ (if(autoCompilerPlugins.value) CompilerPlugin :: Nil else Nil)).distinct
 		},
 		ivyConfigurations ++= Configurations.auxiliary,
 		moduleSettings <<= moduleSettings0,
-		makePomConfiguration <<= (artifactPath in makePom, projectInfo, pomExtra, pomPostProcess, pomIncludeRepository, pomAllRepositories) {
-			(file, minfo, extra, process, include, all) => new MakePomConfiguration(file, minfo, None, extra, process, include, all)
-		},
-		deliverLocalConfiguration <<= (crossTarget, isSnapshot, ivyLoggingLevel) map { (outDir, snapshot, level) => deliverConfig( outDir, status = if (snapshot) "integration" else "release", logging = level ) },
+		makePomConfiguration := new MakePomConfiguration(artifactPath in makePom value, projectInfo.value, None, pomExtra.value, pomPostProcess.value, pomIncludeRepository.value, pomAllRepositories.value),
+		deliverLocalConfiguration := deliverConfig(crossTarget.value, status = if (isSnapshot.value) "integration" else "release", logging = ivyLoggingLevel.value ),
 		deliverConfiguration <<= deliverLocalConfiguration,
-		publishConfiguration <<= (packagedArtifacts, publishTo, publishMavenStyle, deliver, checksums in publish, ivyLoggingLevel) map { (arts, publishTo, mavenStyle, ivyFile, checks, level) =>
-			publishConfig(arts, if(mavenStyle) None else Some(ivyFile), resolverName = getPublishTo(publishTo).name, checksums = checks, logging = level)
-		},
-		publishLocalConfiguration <<= (packagedArtifacts, deliverLocal, checksums in publishLocal, ivyLoggingLevel) map {
-			(arts, ivyFile, checks, level) => publishConfig(arts, Some(ivyFile), checks, logging = level )
-		},
+		publishConfiguration := publishConfig(packagedArtifacts.value, if(publishMavenStyle.value) None else Some(deliver.value), resolverName = getPublishTo(publishTo.value).name, checksums = checksums.in(publish).value, logging = ivyLoggingLevel.value),
+		publishLocalConfiguration := publishConfig(packagedArtifacts.value, Some(deliverLocal.value), checksums.in(publishLocal).value, logging = ivyLoggingLevel.value ),
 		ivySbt <<= ivySbt0,
-		ivyModule <<= (ivySbt, moduleSettings) map { (ivySbt, settings) => new ivySbt.Module(settings) },
+		ivyModule := { val is = ivySbt.value; new is.Module(moduleSettings.value) },
 		transitiveUpdate <<= transitiveUpdateTask,
 		update <<= (ivyModule, thisProjectRef, updateConfiguration, cacheDirectory, transitiveUpdate, executionRoots, resolvedScoped, skip in update, streams) map {
 			(module, ref, config, cacheDirectory, reports, roots, resolved, skip, s) =>
@@ -895,9 +889,7 @@ object Classpaths
 		} tag(Tags.Update, Tags.Network),
 		update <<= (conflictWarning, update, streams) map { (config, report, s) => ConflictWarning(config, report, s.log); report },
 		transitiveClassifiers in GlobalScope :== Seq(SourceClassifier, DocClassifier),
-		classifiersModule in updateClassifiers <<= (projectID, update, transitiveClassifiers in updateClassifiers, ivyConfigurations in updateClassifiers) map { ( pid, up, classifiers, confs) =>
-			GetClassifiersModule(pid, up.allModules, confs, classifiers)
-		},
+		classifiersModule in updateClassifiers := GetClassifiersModule(projectID.value, update.value.allModules, ivyConfigurations.in(updateClassifiers).value, transitiveClassifiers.in(updateClassifiers).value),
 		updateClassifiers <<= (ivySbt, classifiersModule in updateClassifiers, updateConfiguration, ivyScala, target in LocalRootProject, appConfiguration, streams) map { (is, mod, c, ivyScala, out, app, s) =>
 			withExcludes(out, mod.classifiers, lock(app)) { excludes =>
 				IvyActions.updateClassifiers(is, GetClassifiersConfiguration(mod, excludes, c, ivyScala), s.log)

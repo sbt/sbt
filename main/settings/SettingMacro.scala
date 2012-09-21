@@ -15,7 +15,7 @@ object InitializeInstance extends MonadInstance
 }
 object InitializeConvert extends Convert
 {
-	def apply[T: c.AbsTypeTag](c: reflect.macros.Context)(in: c.Tree): c.Tree =
+	def apply[T: c.WeakTypeTag](c: reflect.macros.Context)(in: c.Tree): c.Tree =
 	{
 		val u = appmacro.ContextUtil[c.type](c)
 		if(in.tpe <:< u.atypeOf[Initialize[Task[T]]] || in.tpe <:< u.atypeOf[Task[T]])
@@ -36,9 +36,9 @@ object InitializeConvert extends Convert
 
 object SettingMacro
 {
-	def settingMacroImpl[T: c.AbsTypeTag](c: Context)(t: c.Expr[T]): c.Expr[Initialize[T]] =
+	def settingMacroImpl[T: c.WeakTypeTag](c: Context)(t: c.Expr[T]): c.Expr[Initialize[T]] =
 		Instance.contImpl[T](c, InitializeInstance, InitializeConvert, MixedBuilder)(Left(t))
 
-	def settingDynMacroImpl[T: c.AbsTypeTag](c: Context)(t: c.Expr[Initialize[T]]): c.Expr[Initialize[T]] = 
+	def settingDynMacroImpl[T: c.WeakTypeTag](c: Context)(t: c.Expr[Initialize[T]]): c.Expr[Initialize[T]] = 
 		Instance.contImpl[T](c, InitializeInstance, InitializeConvert, MixedBuilder)(Right(t))
 }

@@ -16,7 +16,8 @@ object Sbt extends Build
 		organization := "org.scala-sbt",
 		version := "0.13.0-SNAPSHOT",
 		publishArtifact in packageDoc := false,
-		scalaVersion := "2.10.0-M7",
+		scalaVersion := "2.10.0-SNAPSHOT",
+		resolvers += ScalaToolsSnapshots,
 		publishMavenStyle := false,
 		componentID := None,
 		crossPaths := false,
@@ -249,6 +250,7 @@ object Sbt extends Build
 		unmanagedJars in Test <<= (packageSrc in compileInterfaceSub in Compile).map(x => Seq(x).classpath)
 	)
 	def precompiled(scalav: String): Project = baseProject(compilePath / "interface", "Precompiled " + scalav.replace('.', '_')) dependsOn(interfaceSub) settings(precompiledSettings : _*) settings(
+		scalaHome := None,
 		scalaVersion <<= (scalaVersion in ThisBuild) { sbtScalaV =>
 			assert(sbtScalaV != scalav, "Precompiled compiler interface cannot have the same Scala version (" + scalav + ") as sbt.")
 			scalav
