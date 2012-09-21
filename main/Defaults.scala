@@ -100,7 +100,7 @@ object Defaults extends BuildCommon
 		javaOptions :== Nil,
 		sbtPlugin :== false,
 		crossPaths :== true,
-		classpathTypes :== Set("jar", "bundle", "hk2-jar", "orbit"),
+		classpathTypes :== Set("jar", "bundle") ++ CustomPomParser.JarPackagings,
 		aggregate :== true,
 		maxErrors :== 100,
 		sourcePositionMappers :== Nil,
