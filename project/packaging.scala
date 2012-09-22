@@ -190,7 +190,7 @@ object Packaging {
   )
   
   def makeWindowsXml(sbtVersion: String, sourceDir: File): scala.xml.Node = {
-    val version = (sbtVersion split "\\.") match {
+    val version = (sbtVersion split "[^\\d]" filterNot (_.isEmpty)) match {
         case Array(major,minor,bugfix, _*) => Seq(major,minor,bugfix, "1") mkString "."
         case Array(major,minor) => Seq(major,minor,"0","1") mkString "."
         case Array(major) => Seq(major,"0","0","1") mkString "."
