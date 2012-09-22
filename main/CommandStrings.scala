@@ -111,7 +111,7 @@ InspectCommand + """ definitions <key>
 	val SetCommand = "set"
 	val setBrief = (SetCommand, "Evaluates a Setting and applies it to the current project.")
 	val setDetailed =
-SetCommand + """ <setting-expression>
+SetCommand + """ [every] <setting-expression>
 
 	Applies the given setting to the current project:
 	  1) Constructs the expression provided as an argument by compiling and loading it.
