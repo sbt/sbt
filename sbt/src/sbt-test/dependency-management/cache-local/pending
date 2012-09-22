@@ -1,0 +1,18 @@
+$ copy-file changes/def.sbt build.sbt
+$ copy-file changes/resolver.sbt resolver.sbt
+> reload
+> publish-local
+> publish
+
+$ delete build.sbt
+$ delete resolver.sbt
+$ copy-file changes/use.sbt build.sbt
+> reload
+> update
+
+$ delete target/.ivy2/local
+-> update
+
+$ copy-file changes/resolver.sbt resolver.sbt
+> reload
+> update
