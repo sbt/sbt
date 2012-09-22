@@ -143,7 +143,10 @@ object Packaging {
     
     // WINDOWS SPECIFIC
     name in Windows := "sbt",
-    lightOptions ++= Seq("-ext", "WixUIExtension", "-cultures:en-us"),
+    candleOptions ++= Seq("-ext", "WixUtilExtension"),
+    lightOptions ++= Seq("-ext", "WixUIExtension",
+                         "-ext", "WixUtilExtension",
+                         "-cultures:en-us"),
     wixConfig <<= (sbtVersion, sourceDirectory in Windows) map makeWindowsXml,
     //wixFile <<= sourceDirectory in Windows map (_ / "sbt.xml"),
     mappings in packageMsi in Windows <+= sbtLaunchJar map { f => f -> "sbt-launch.jar" },
@@ -151,6 +154,7 @@ object Packaging {
     mappings in packageMsi in Windows <++= sourceDirectory in Windows map { d => Seq(
       (d / "sbt.bat") -> "sbt.bat",
       (d / "sbt") -> "sbt",
+      (d / "sbtconfig.txt") -> "sbtconfig.txt",
       (d / "jansi-license.txt") -> "jansi-license.txt"
     )},
     mappings in packageMsi in Windows <+= (compile in Compile, classDirectory in Compile) map { (c, d) =>
@@ -196,7 +200,8 @@ object Packaging {
         case Array(major) => Seq(major,"0","0","1") mkString "."
       }
       (
-<Wix xmlns='http://schemas.microsoft.com/wix/2006/wi' xmlns:util='http://schemas.microsoft.com/wix/UtilExtension'>
+<Wix xmlns='http://schemas.microsoft.com/wix/2006/wi' 
+     xmlns:util='http://schemas.microsoft.com/wix/UtilExtension'>
   <Product Id='ce07be71-510d-414a-92d4-dff47631848a' 
             Name='Simple Build Tool' 
             Language='1033'
@@ -211,9 +216,18 @@ object Packaging {
                 Compressed='yes' />
  
       <Media Id='1' Cabinet='sbt.cab' EmbedCab='yes' />
+      
+      <Property Id='NOTEPADEXE'>
+        <DirectorySearch Id='NotePadContainer' Path='[SystemFolder]' Depth='0'>
+          <FileSearch Id='NotepadFile' Name='notepad.exe'/>
+        </DirectorySearch>
+      </Property>
  
       <Directory Id='TARGETDIR' Name='SourceDir'>
-         <Directory Id='ProgramFilesFolder' Name='PFiles'>
+        <Directory Id="ProgramMenuFolder">
+          <Directory Id="ApplicationProgramsFolder" Name="sbt"/>
+        </Directory>
+        <Directory Id='ProgramFilesFolder' Name='PFiles'>
             <Directory Id='INSTALLDIR' Name='sbt'>
                <Directory Id='classes_dir' Name='classes'>
                   <Component Id='JansiLaunch' Guid='*'>
@@ -222,11 +236,18 @@ object Packaging {
                </Directory>
                <Component Id='SbtLauncherScript' Guid='DE0A5B50-0792-40A9-AEE0-AB97E9F845F5'>
                   <File Id='sbt_bat' Name='sbt.bat' DiskId='1' Source='sbt.bat'>
-                     <!-- <util:PermissionEx User="Users" Domain="[LOCAL_MACHINE_NAME]" GenericRead="yes" Read="yes" GenericExecute="yes" ChangePermission="yes"/> -->
+                     <util:PermissionEx User="Administrators" GenericAll="yes" />
+                     <util:PermissionEx User="Users" GenericAll="yes" />
                   </File>
                   <File Id='sbt_sh' Name='sbt' DiskId='1' Source='sbt'>
                      <!-- <util:PermissionEx User="Users" Domain="[LOCAL_MACHINE_NAME]" GenericRead="yes" Read="yes" GenericExecute="yes" ChangePermission="yes"/> -->
                   </File>
+               </Component>
+               <Component Id='SbtConfigFile' Guid='*'>
+                 <File Id='sbtconfig_txt' Name='sbtconfig.txt' DiskId='1' Source='sbtconfig.txt'>
+                   <util:PermissionEx User="Administrators" GenericAll="yes" />
+                   <util:PermissionEx User="Users" GenericAll="yes" />
+                 </File>
                </Component>
                <Component Id='JansiJar' Guid='3370A26B-E8AB-4143-B837-CE9A8573BF60'>
                   <File Id='jansi_jar' Name='jansi.jar' DiskId='1' Source='jansi.jar' />
@@ -243,7 +264,19 @@ object Packaging {
              </Directory>
          </Directory>
       </Directory>
- 
+           <!-- Step 2: Add the shortcut to your installer package -->
+        <DirectoryRef Id="ApplicationProgramsFolder">
+            <Component Id="ConfigShortcut" Guid="3370A26B-E8AB-4143-B837-CE9A8573BF61">
+                <Shortcut Id="ConfigStartMenuShortcut"
+                          Name="sbt configuration"
+                          Description="Modify sbt configuration settings"
+                          Target="[INSTALLDIR]sbtconfig.txt"
+                          WorkingDirectory="INSTALLDIR"/>
+                <RemoveFolder Id="ApplicationProgramsFolder" On="uninstall"/>
+                <RegistryValue Root="HKCU" Key="Software\Typesafe\sbt" Name="installed" Type="integer" Value="1" KeyPath="yes"/>
+             </Component>
+        </DirectoryRef>
+        
       <Feature Id='Complete' Title='Simple Build Tool' Description='The windows installation of Simple Build Tool.'
          Display='expand' Level='1' ConfigurableDirectory='INSTALLDIR'>
         <Feature Id='SbtLauncher' Title='Sbt Launcher Script' Description='The application which downloads and launches SBT.' Level='1' Absent='disallow'>
@@ -251,9 +284,13 @@ object Packaging {
           <ComponentRef Id='SbtLauncherJar' />
           <ComponentRef Id='JansiLaunch' />
           <ComponentRef Id='JansiJar' />
+          <ComponentRef Id='SbtConfigFile' />
         </Feature>
-        <Feature Id='SbtLauncherPathF' Title='Add SBT to windows system PATH' Description='This will append SBT to your windows system path.' Level='1'>
+        <Feature Id='SbtLauncherPathF' Title='Add SBT to windows system PATH' Description='This will append SBT to your windows system path (Requires Restart).' Level='1'>
           <ComponentRef Id='SbtLauncherPath'/>
+        </Feature>
+        <Feature Id='SbtLauncherConfigF' Title='Add Menu Shortcuts' Description='This will add menu shortcuts for sbt configuration.' Level='1'>
+          <ComponentRef Id='ConfigShortcut'/>
         </Feature>
       </Feature>
       <!--<Property Id="JAVAVERSION">

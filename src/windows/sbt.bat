@@ -9,22 +9,19 @@
 @REM   ZOMG! We need delayed expansion to build up CFG_OPTS later 
 @setlocal enabledelayedexpansion
 
-@echo off
+@echo on
 set SBT_HOME=%~dp0
 set ERROR_CODE=0
 
 rem FIRST we load the config file of extra options.
-set FN=%SBT_HOME%/sbtconfig.txt
+set FN=%SBT_HOME%sbtconfig.txt
 set CFG_OPTS=
-FOR /F "tokens=* eol=#" %%i IN (%FN%) DO (
+FOR /F "tokens=* eol=# usebackq delims=" %%i IN ("%FN%") DO (
   set TMP=%%i
   rem ZOMG (Part #2) WE use !! here to delay the expansion of
   rem CFG_OPTS, otherwise it remains "" for this loop.
   set CFG_OPTS=!CFG_OPTS! !TMP!
 )
-
-echo CFG_OPTS = %CFG_OPTS%
-exit /B 1
 
 rem We use the value of the JAVACMD environment variable if defined
 set _JAVACMD=%JAVACMD%
