@@ -3,14 +3,17 @@
  */
 package sbt
 
-	import jline.{Completor, ConsoleReader, History}
-	import java.io.{File,PrintWriter}
+	import jline.{ConsoleReader, History}
+	import java.io.{File, InputStream, PrintWriter}
 	import complete.Parser
-	
+	import java.util.concurrent.atomic.AtomicBoolean
+
 abstract class JLine extends LineReader
 {
 	protected[this] val handleCONT: Boolean
 	protected[this] val reader: ConsoleReader
+	/** Is the input stream at EOF? Compensates for absent EOF detection in JLine's UnsupportedTerminal. */
+	protected[this] val inputEof = new AtomicBoolean(false)
 	protected[this] val historyPath: Option[File]
 
 	def readLine(prompt: String, mask: Option[Char] = None) = JLine.withJLine { unsynchronizedReadLine(prompt, mask) }
@@ -39,10 +42,14 @@ abstract class JLine extends LineReader
 		else
 			readLineDirectRaw(prompt, mask)
 	private[this] def readLineDirectRaw(prompt: String, mask: Option[Char]): String =
-		mask match {
+	{
+		val line = mask match {
 			case Some(m) => reader.readLine(prompt, m)
 			case None => reader.readLine(prompt)
 		}
+		if (inputEof.get) null else line
+	}
+
 	private[this] def resume()
 	{
 		jline.Terminal.resetTerminal
@@ -109,6 +116,16 @@ final class FullReader(val historyPath: Option[File], complete: Parser[_], val h
 	protected[this] val reader =
 	{
 		val cr = new ConsoleReader
+		if (!cr.getTerminal.isSupported) {
+			val input = cr.getInput
+			cr.setInput(new InputStream {
+				def read(): Int = {
+					val c = input.read()
+					if (c == -1) inputEof.set(true)
+					c
+				}
+			})
+		}
 		cr.setBellEnabled(false)
 		sbt.complete.JLineCompletion.installCustomCompletor(cr, complete)
 		cr
