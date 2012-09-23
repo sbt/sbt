@@ -9,6 +9,7 @@ $ delete resolver.sbt
 $ copy-file changes/use.sbt build.sbt
 > reload
 > update
+> update
 
 $ delete target/.ivy2/local
 -> update

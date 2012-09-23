@@ -18,7 +18,7 @@ import core.module.descriptor.{Artifact => IArtifact, DefaultArtifact, DefaultDe
 import core.module.descriptor.{DefaultDependencyDescriptor, DefaultModuleDescriptor, DependencyDescriptor, ModuleDescriptor, License}
 import core.module.descriptor.{OverrideDependencyDescriptorMediator}
 import core.module.id.{ArtifactId,ModuleId, ModuleRevisionId}
-import core.resolve.{IvyNode, ResolveData}
+import core.resolve.{IvyNode, ResolveData, ResolvedModuleRevision}
 import core.settings.IvySettings
 import plugins.conflict.{ConflictManager, LatestCompatibleConflictManager, LatestConflictManager}
 import plugins.latest.LatestRevisionStrategy
@@ -291,8 +291,24 @@ private object IvySbt
 	{
 		val cacheDir = settings.getDefaultRepositoryCacheBasedir()
 		val manager = new DefaultRepositoryCacheManager("default-cache", settings, cacheDir) {
-			override def findModuleInCache(dd: DependencyDescriptor, revId: ModuleRevisionId, options: CacheMetadataOptions, r: String) =
-				super.findModuleInCache(dd,revId,options,null)
+			override def findModuleInCache(dd: DependencyDescriptor, revId: ModuleRevisionId, options: CacheMetadataOptions, r: String) = {
+				// ignore the resolver- not ideal, but avoids thrashing.
+				val resolved = super.findModuleInCache(dd,revId,options,null)
+				// invalidate the cache if the artifact was removed from the local repository
+				if(resolved == null) null
+				else {
+					val origin = resolved.getReport.getArtifactOrigin
+					if(!origin.isLocal) resolved
+					else {
+						val file = new File(origin.getLocation)
+						if(file == null || file.exists) resolved
+						else {
+							resolved.getReport.getLocalFile.delete()
+							null
+						}
+					}
+				}
+			}
 		}
 		manager.setArtifactPattern(PluginPattern + manager.getArtifactPattern)
 		manager.setDataFilePattern(PluginPattern + manager.getDataFilePattern)
