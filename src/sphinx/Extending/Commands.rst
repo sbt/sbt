@@ -2,8 +2,16 @@
 Commands
 ========
 
+What is a "command"?
+====================
+
+A "command" looks similar to a task: it's a named operation that can be executed from the sbt console.
+
+However, a command's implementation takes as its parameter the entire state of the build (represented by :doc:`/Extending/Build-State`) and computes a new :doc:`/Extending/Build-State`. This means that a command can look at or modify other sbt settings, for example. Typically, you would resort to a command when you need to do something that's impossible in a regular task.
+
 Introduction
 ============
+
 
 There are three main aspects to commands:
 
