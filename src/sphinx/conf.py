@@ -8,8 +8,8 @@ extensions = ['sphinxcontrib.issuetracker', 'sphinx.ext.extlinks', 'howto']
 # Project variables
 
 project = 'sbt'
-version = '0.12'
-release = '0.12.1'
+version = '0.13'
+release = '0.13.0-SNAPSHOT'
 
 # General settings
 
