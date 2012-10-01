@@ -43,7 +43,7 @@ Getting Started
 
 To get started, *please read* the :doc:`Getting Started Guide </Getting-Started/Welcome>`.
 You will save yourself a *lot* of time if you have the right understanding of the big picture up-front.
-All documentation may be found via the `table of contents <index>`.
+All documentation may be found via the :doc:`table of contents <index>`.
 
 The mailing list is at http://groups.google.com/group/simple-build-tool/topics and should be used for discussions and questions.
 Questions may also be asked at `Stack Overflow <http://stackoverflow.com/tags/sbt>`_.
