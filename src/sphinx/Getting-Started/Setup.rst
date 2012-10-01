@@ -46,7 +46,7 @@ Apt
 The sbt package is available from the |typesafe-debian-repo|_. Please install `this deb`_ to add the
 typesafe debian repository to your list of approved sources. Then run:
 
-.. code-block: console
+.. code-block:: console
 
     apt-get install sbt
 
