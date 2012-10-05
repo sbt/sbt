@@ -325,7 +325,7 @@ class SameAPI(includePrivate: Boolean, includeParamNames: Boolean)
 		sameTypeParameters(a.parameters, b.parameters) &&
 		sameType(a.baseType, b.baseType)
 	def sameAnnotatedType(a: Annotated, b: Annotated): Boolean =
-		sameSimpleType(a.baseType, b.baseType) &&
+		sameType(a.baseType, b.baseType) &&
 		sameAnnotations(a.annotations, b.annotations)
 	def sameStructure(a: Structure, b: Structure): Boolean =
 		samePending(a,b)(sameStructureDirect)

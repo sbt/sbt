@@ -50,7 +50,7 @@ trait APIFormats extends FormatExtra
 	implicit def formatSource(implicit pa: Format[Array[Package]], da: Format[Array[Definition]]): Format[SourceAPI] =
 		p2( (s: SourceAPI) => (s.packages, s.definitions))( (p, d) => new SourceAPI(p, d) )(pa, da)
 
-	implicit def formatAnnotated(implicit t: Format[SimpleType], as: Format[Array[Annotation]]): Format[Annotated] =
+	implicit def formatAnnotated(implicit t: Format[Type], as: Format[Array[Annotation]]): Format[Annotated] =
 		p2( (a: Annotated) => (a.baseType,a.annotations))(new Annotated(_,_))(t,as)
 
 	implicit def formatPolymorphic(implicit t: Format[Type], tps: Format[Array[TypeParameter]]): Format[Polymorphic] =
