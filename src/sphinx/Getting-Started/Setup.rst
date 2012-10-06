@@ -61,16 +61,10 @@ typesafe debian repository to your list of approved sources. Then run:
 
 .. code-block:: console
 
-    apt-get update
-    apt-get install sbt
+    $ apt-get update
+    $ apt-get install sbt
 
 to grab the latest typesafe stack release of sbt.
-If sbt cannot be found, dont forget to update your list of repositories.
-To do so, run:
-
-.. code-block:: console
-
-    $ apt-get update
 
 .. note::
  
@@ -130,13 +124,13 @@ Create a batch file ``sbt.bat``:
     $ set SCRIPT_DIR=%~dp0
     $ java -Xmx512M -jar "%SCRIPT_DIR%sbt-launch.jar" %*
 
-and put sbt-launch.jar_ in the same directory as the batch file. Put ``sbt.bat`` on your path so
+and put `sbt-launch.jar`_ in the same directory as the batch file. Put ``sbt.bat`` on your path so
 that you can launch ``sbt`` in any directory by typing ``sbt`` at the command prompt.
 
 Unix
 ~~~~
 
-Download sbt-launch.jar_ and place it in ``~/bin``.
+Download `sbt-launch.jar`_ and place it in ``~/bin``.
 
 Create a script to run the jar, by placing this in a file called ``sbt``
 in your ``~/bin`` directory:
