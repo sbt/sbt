@@ -46,13 +46,18 @@ typesafe_ivy_snapshots = typesafe_base + 'ivy-snapshots/'
 typesafe_ivy_releases = typesafe_base + 'ivy-releases/'
 launcher_release_base = typesafe_ivy_releases + 'org.scala-sbt/sbt-launch/'
 launcher_snapshots_base = typesafe_ivy_snapshots + 'org.scala-sbt/sbt-launch/'
+sbt_native_package_base = 'http://scalasbt.artifactoryonline.com/scalasbt/sbt-native-packages/org/scala-sbt/sbt/'
 
 
 rst_epilog = """
 .. _typesafe-snapshots: %(typesafe_ivy_snapshots)s
 .. |typesafe-snapshots| replace:: Typesafe Snapshots
 .. _sbt-launch.jar: %(launcher_release_base)s/%(version)s/sbt-launch.jar
-.. _msi: %(launcher_release_base)s/%(version)s/sbt.msi
+.. _MSI: %(sbt_native_package_base)s/%(version)s/sbt.msi
+.. _TGZ: %(sbt_native_package_base)s/%(version)s/sbt.tgz
+.. _ZIP: %(sbt_native_package_base)s/%(version)s/sbt.zip
+.. _DEB: %(sbt_native_package_base)s/%(version)s/sbt.deb
+.. _RPM: %(sbt_native_package_base)s/%(version)s/sbt.rpm
 .. |nightly-launcher| replace:: <%(launcher_snapshots_base)s
 .. _mailing list: http://groups.google.com/group/simple-build-tool/topics
 .. _source code: http://github.com/harrah/xsbt
@@ -60,5 +65,7 @@ rst_epilog = """
    'launcher_release_base': launcher_release_base,
    'launcher_snapshots_base': launcher_snapshots_base,
    'version': release,
-   'typesafe_ivy_snapshots': typesafe_ivy_snapshots
+   'typesafe_ivy_snapshots': typesafe_ivy_snapshots,
+   'sbt_native_package_base': sbt_native_package_base
 }
+
