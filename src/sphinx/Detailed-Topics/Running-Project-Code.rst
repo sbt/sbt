@@ -5,9 +5,8 @@ Running Project Code
 The ``run`` and ``console`` actions provide a means for running user
 code in the same virtual machine as sbt. This page describes the
 problems with doing so, how sbt handles these problems, what types of
-code can use this feature, and what types of code must use a [[forked
-jvm\|Forking]]. Skip to User Code if you just want to see when you
-should use a [[forked jvm\|Forking]].
+code can use this feature, and what types of code must use a :doc:`forked jvm <Forking>`.
+Skip to User Code if you just want to see when you should use a :doc:`forked jvm <Forking>`.
 
 Problems
 ========
@@ -91,10 +90,9 @@ following situations must apply for user code to run in the same JVM:
 The requirements on threading and shutdown hooks are required because
 the JVM does not actually shut down. So, shutdown hooks cannot be run
 and threads are not terminated unless they stop when interrupted. If
-these requirements are not met, code must run in a [[forked
-jvm\|Forking]].
+these requirements are not met, code must run in a :doc:`forked jvm <Forking>`.
 
 The feature of allowing ``System.exit`` and multiple threads to be used
 cannot completely emulate the situation of running in a separate JVM and
 is intended for development. Program execution should be checked in a
-[[forked jvm\|Forking]] when using multiple threads or ``System.exit``.
+:doc:`forked jvm <Forking>` when using multiple threads or ``System.exit``.
