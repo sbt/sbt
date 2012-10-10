@@ -1,10 +1,10 @@
 [Google Code]: http://code.google.com/p/simple-build-tool
 [Northeast Scala Symposium]: http://www.nescala.org/2011/
 [Scala Days 2011]: http://days2011.scala-lang.org/node/138/285
-[documentation]: https://github.com/harrah/xsbt/wiki
-[Setup]: https://github.com/harrah/xsbt/wiki/Getting-Started-Setup
+[documentation]: http://www.scala-sbt.org/release/docs/
+[Setup]: http://www.scala-sbt.org/release/docs/Getting-Started/Setup
 [video of a demo]: http://vimeo.com/20263617
-[FAQ]: https://github.com/harrah/xsbt/wiki/FAQ
+[FAQ]: http://www.scala-sbt.org/release/docs/faq
 
 # sbt 0.13
 
@@ -37,7 +37,7 @@ This is the 0.13.x series of sbt.
 
 		$ sbt publish-local proguard sxr doc
 
-5. To use this locally built version of sbt, copy your stable ~/bin/sbt script to ~/bin/xsbt and change it to use the launcher jar in `<xsbt>/target/`.  For the v0.12.1 tag, the full location is:
+5. To use this locally built version of sbt, copy your stable `~/bin/sbt` script to `~/bin/xsbt` and change it to use the launcher jar in `<xsbt>/target/`.  For the v0.12.1 tag, the full location is:
 
 		<xsbt>/target/sbt-launch-0.12.1.jar
 
