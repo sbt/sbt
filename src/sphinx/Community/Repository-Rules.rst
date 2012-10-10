@@ -5,7 +5,7 @@
 The community repository has the following guideline for artifacts
 published to it:
 
-1. All pubished artifacts are the authors own work or have an
+1. All published artifacts are the authors own work or have an
    appropriate license which grants distribution rights.
 
 2. All published artifacts come from open source projects, that have an
