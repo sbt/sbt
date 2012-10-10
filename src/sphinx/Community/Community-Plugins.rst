@@ -32,7 +32,7 @@ You'll also need to add your credentials somewhere.  For example, you might use 
  
 Where ``@my encrypted password@`` is actually obtained using the following `instructions <http://wiki.jfrog.org/confluence/display/RTF/Centrally+Secure+Passwords>`_.
  
-*Note: Your code must abide by the* `repository polices <repository-rules>`_.
+*Note: Your code must abide by the* `repository polices <Repository-Rules>`_.
 
 To automatically deploy snapshot/release versions of your plugin use the following configuration:
 
