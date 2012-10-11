@@ -72,10 +72,13 @@ trait Relation[A,B]
 	def contains(a: A, b: B): Boolean
 	/** Returns a relation with only pairs (a,b) for which f(a,b) is true.*/
 	def filter(f: (A,B) => Boolean): Relation[A,B]
-	
+
+	/** Partitions this relation into a map of relations according to some discriminator function. */
+	def groupBy[K](f: ((A,B)) => K): Map[K, Relation[A,B]]
+
 	/** Returns all pairs in this relation.*/
 	def all: Traversable[(A,B)]
-	
+
 	def forwardMap: Map[A, Set[B]]
 	def reverseMap: Map[B, Set[A]]
 }
@@ -93,7 +96,7 @@ private final class MRelation[A,B](fwd: Map[A, Set[B]], rev: Map[B, Set[A]]) ext
 	def size = fwd.size
 	
 	def all: Traversable[(A,B)] = fwd.iterator.flatMap { case (a, bs) => bs.iterator.map( b => (a,b) ) }.toTraversable
-	
+
 	def +(pair: (A,B)) = this + (pair._1, Set(pair._2))
 	def +(from: A, to: B) = this + (from, to :: Nil)
 	def +(from: A, to: Traversable[B]) =
@@ -115,6 +118,8 @@ private final class MRelation[A,B](fwd: Map[A, Set[B]], rev: Map[B, Set[A]]) ext
 		}
 
 	def filter(f: (A,B) => Boolean): Relation[A,B] = Relation.empty[A,B] ++ all.filter(f.tupled)
+
+	def groupBy[K](f: ((A,B)) => K): Map[K, Relation[A,B]] = all.groupBy(f) mapValues { Relation.empty[A,B] ++ _ }
 
 	def contains(a: A, b: B): Boolean = forward(a)(b)
 

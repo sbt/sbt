@@ -23,6 +23,8 @@ trait Analysis
 	def addExternalDep(src: File, dep: String, api: Source): Analysis
 	def addProduct(src: File, product: File, stamp: Stamp, name: String): Analysis
 
+	def groupBy[K](f: (File => K)): Map[K, Analysis]
+
 	override lazy val toString = Analysis.summary(this)
 }
 
@@ -61,7 +63,7 @@ private class MAnalysis(val stamps: Stamps, val apis: APIs, val relations: Relat
 	def -- (sources: Iterable[File]): Analysis =
 	{
 		val newRelations = relations -- sources
-		def keep[T](f: (Relations, T) => Set[_]): T => Boolean = file => !f(newRelations, file).isEmpty
+		def keep[T](f: (Relations, T) => Set[_]): T => Boolean = keepFor(newRelations)(f)
 		
 		val newAPIs = apis.removeInternal(sources).filterExt( keep(_ usesExternal _) )
 		val newStamps = stamps.filter( keep(_ produced _), sources, keep(_ usesBinary _))
@@ -81,4 +83,31 @@ private class MAnalysis(val stamps: Stamps, val apis: APIs, val relations: Relat
 
 	def addProduct(src: File, product: File, stamp: Stamp, name: String): Analysis =
 		copy( stamps.markProduct(product, stamp), apis, relations.addProduct(src, product, name), infos )
+
+	def groupBy[K](f: File => K): Map[K, Analysis] =
+	{
+		def outerJoin(stampsMap: Map[K, Stamps], apisMap: Map[K, APIs], relationsMap: Map[K, Relations], infosMap: Map[K, SourceInfos]): Map[K, Analysis] =
+		{
+			def kAnalysis(k: K): Analysis =
+				new MAnalysis(
+					stampsMap.getOrElse(k, Stamps.empty),
+					apisMap.getOrElse(k, APIs.empty),
+					relationsMap.getOrElse(k, Relations.empty),
+					infosMap.getOrElse(k, SourceInfos.empty)
+				)
+			val keys = (stampsMap.keySet ++ apisMap.keySet ++ relationsMap.keySet ++ infosMap.keySet).toList
+			Map( keys map( (k: K) => (k, kAnalysis(k)) ) :_*)
+		}
+
+		val relationsMap: Map[K, Relations] = relations.groupBy(f)
+		def keepMap[T](f: (Relations, T) => Set[_]): Map[K, T => Boolean] =
+			relationsMap map { item => (item._1, keepFor(item._2)(f) ) }
+
+		val keepExternal: Map[K, String => Boolean] = keepMap(_ usesExternal _)
+		val keepProduced: Map[K, File => Boolean] = keepMap(_ produced _)
+		val keepBinary: Map[K, File => Boolean] = keepMap(_ usesBinary _)
+		outerJoin(stamps.groupBy(keepProduced, f, keepBinary), apis.groupBy(f, keepExternal), relationsMap, infos.groupBy(f))
+	}
+
+	private def keepFor[T](newRelations: Relations)(f: (Relations, T) => Set[_]): T => Boolean = file => !f(newRelations, file).isEmpty
 }
