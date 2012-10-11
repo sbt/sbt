@@ -85,7 +85,7 @@ public class ForkMain {
 			new Run().run(is, os);
 		} finally {
 			is.close();
-			os.close();	
+			os.close();
 		}
 	}
 	private static class Run {
@@ -101,16 +101,21 @@ public class ForkMain {
 			}
 			return false;
 		}
+		class RunAborted extends RuntimeException {
+			RunAborted(Exception e) { super(e); }
+		}
 		void write(ObjectOutputStream os, Object obj) {
 			try {
 				os.writeObject(obj);
 				os.flush();
 			} catch (IOException e) {
-				System.err.println("Cannot write to socket");
+				throw new RunAborted(e);
 			}
 		}
-		void run(ObjectInputStream is, final ObjectOutputStream os) throws Exception {
+		void runTests(ObjectInputStream is, final ObjectOutputStream os) throws Exception {
 			final boolean ansiCodesSupported = is.readBoolean();
+			final ForkTestDefinition[] tests = (ForkTestDefinition[]) is.readObject();
+			int nFrameworks = is.readInt();
 			Logger[] loggers = {
 				new Logger() {
 					public boolean ansiCodesSupported() { return ansiCodesSupported; }
@@ -122,8 +127,6 @@ public class ForkMain {
 				}
 			};
 
-			final ForkTestDefinition[] tests = (ForkTestDefinition[]) is.readObject();
-			int nFrameworks = is.readInt();
 			for (int i = 0; i < nFrameworks; i++) {
 				final String implClassName = (String) is.readObject();
 				final String[] frameworkArgs = (String[]) is.readObject();
@@ -158,6 +161,13 @@ public class ForkMain {
 			}
 			write(os, ForkTags.Done);
 			is.readObject();
+		}
+		void run(ObjectInputStream is, final ObjectOutputStream os) throws Exception {
+			try {
+				runTests(is, os);
+			} catch (RunAborted e) {
+				System.err.println("Internal error when running tests: " + e.getMessage());
+			}
 		}
 	}
 }
