@@ -26,49 +26,14 @@ sbt comes pre-built with several available packages for different operating syst
 Here's the available download packages:
   - ZIP_ or TGZ_ packages
   - MSI_ for Windows
-  - RPM_ or the Typesafe `Yum`_ repository
-  - DEB_ or the Typesafe `Apt`_ repository
+  - RPM_ package
+  - DEB_ package
   - Homebrew or Macports for `Mac`_
   - `Gentoo`_ emerge overlays
 
 Please report any issues to the sbt-launcher-package_ project.
 
 You may also try out the `Manual Installation`_.
-
-Yum
----
-
-The sbt package is available from the |typesafe-yum-repo|_. Please install `this rpm`_ to add
-the typesafe yum repository to your list of approved sources. Then run:
-
-.. code-block:: console
-
-   $ yum install sbt
-
-to grab the latest release of sbt.
-
-.. note::
- 
-   Please make sure to report any issues you may find to the |sbt-launcher-issues|_.
-
-
-
-Apt
----
-
-The sbt package is available from the |typesafe-debian-repo|_. Please install `this deb`_ to add the
-typesafe debian repository to your list of approved sources. Then run:
-
-.. code-block:: console
-
-    $ apt-get update
-    $ apt-get install sbt
-
-to grab the latest typesafe stack release of sbt.
-
-.. note::
- 
-   Please make sure to report any issues you may find to the |sbt-launcher-issues|_.
 
 
 Gentoo
