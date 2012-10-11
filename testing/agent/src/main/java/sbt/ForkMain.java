@@ -82,10 +82,14 @@ public class ForkMain {
 		final ObjectInputStream is = new ObjectInputStream(socket.getInputStream());
 		final ObjectOutputStream os = new ObjectOutputStream(socket.getOutputStream());
 		try {
-			new Run().run(is, os);
+			try {
+				new Run().run(is, os);
+			} finally {
+				is.close();
+				os.close();
+			}
 		} finally {
-			is.close();
-			os.close();
+			System.exit(0);
 		}
 	}
 	private static class Run {
