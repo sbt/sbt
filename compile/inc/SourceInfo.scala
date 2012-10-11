@@ -15,6 +15,7 @@ trait SourceInfos
 	def ++(o: SourceInfos): SourceInfos
 	def add(file: File, info: SourceInfo): SourceInfos
 	def --(files: Iterable[File]): SourceInfos
+	def groupBy[K](f: (File) => K): Map[K, SourceInfos]
 	def get(file: File): SourceInfo
 	def allInfos: Map[File, SourceInfo]
 }
@@ -31,6 +32,7 @@ private final class MSourceInfos(val allInfos: Map[File, SourceInfo]) extends So
 {
 	def ++(o: SourceInfos) = new MSourceInfos(allInfos ++ o.allInfos)
 	def --(sources: Iterable[File]) = new MSourceInfos(allInfos -- sources)
+	def groupBy[K](f: (File) => K): Map[K, SourceInfos] = allInfos.groupBy(item => f(item._1)) map { group => (group._1, new MSourceInfos(group._2)) }
 	def add(file: File, info: SourceInfo) = new MSourceInfos(allInfos + ((file, info)))
 	def get(file:File) = allInfos.getOrElse(file, SourceInfos.emptyInfo)
 }

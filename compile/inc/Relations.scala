@@ -39,6 +39,7 @@ trait Relations
 	
 	def ++ (o: Relations): Relations
 	def -- (sources: Iterable[File]): Relations
+	def groupBy[K](f: (File => K)): Map[K, Relations]
 	
 	def srcProd: Relation[File, File]
 	def binaryDep: Relation[File, File]
@@ -112,6 +113,29 @@ private class MRelations(val srcProd: Relation[File, File], val binaryDep: Relat
 		new MRelations(srcProd ++ o.srcProd, binaryDep ++ o.binaryDep, internalSrcDep ++ o.internalSrcDep, externalDep ++ o.externalDep, classes ++ o.classes)
 	def -- (sources: Iterable[File]) =
 		new MRelations(srcProd -- sources, binaryDep -- sources, internalSrcDep -- sources, externalDep -- sources, classes -- sources)
+		
+	def groupBy[K](f: (File => K)): Map[K, Relations] = {
+		def outerJoin(srcProdMap: Map[K, Relation[File, File]],
+									binaryDepMap: Map[K, Relation[File, File]],
+									internalSrcDepMap: Map[K, Relation[File, File]],
+									externalDepMap: Map[K, Relation[File, String]],
+									classesMap: Map[K, Relation[File, String]]): Map[K, Relations] = {
+			Map(
+				(srcProdMap.keySet ++ binaryDepMap.keySet ++ internalSrcDepMap.keySet ++ externalDepMap.keySet ++ classesMap.keySet).toList map({
+						k: K => (k, new MRelations(
+								srcProdMap.getOrElse(k, Relation.empty[File,File]),
+								binaryDepMap.getOrElse(k, Relation.empty[File,File]),
+								internalSrcDepMap.getOrElse(k, Relation.empty[File,File]),
+								externalDepMap.getOrElse(k, Relation.empty[File,String]),
+								classesMap.getOrElse(k, Relation.empty[File,String])
+						))
+				}): _*)
+		}
+		
+    def f1[B](item: (File, B)): K = f(item._1)
+    outerJoin(srcProd.groupBy(f1), binaryDep.groupBy(f1), internalSrcDep.groupBy(f1), externalDep.groupBy(f1), classes.groupBy(f1))
+  }
+
 
   /** Making large Relations a little readable. */
   private val userDir = sys.props("user.dir").stripSuffix("/") + "/"

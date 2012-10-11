@@ -27,6 +27,7 @@ trait APIs
 	
 	def removeInternal(remove: Iterable[File]): APIs
 	def filterExt(keep: String => Boolean): APIs
+	def groupBy[K](internal: (File) => K, keepExternal: Map[K, String => Boolean]): Map[K, APIs]
 	
 	def internal: Map[File, Source]
 	def external: Map[String, Source]
@@ -58,6 +59,9 @@ private class MAPIs(val internal: Map[File, Source], val external: Map[String, S
 	def removeInternal(remove: Iterable[File]): APIs = new MAPIs(internal -- remove, external)
 	def filterExt(keep: String => Boolean): APIs = new MAPIs(internal, external.filterKeys(keep))
 		
+	def groupBy[K](f: (File) => K, keepExternal: Map[K, String => Boolean]): Map[K, APIs] =
+		internal.groupBy(item => f(item._1)) map { group => (group._1, new MAPIs(group._2, external).filterExt(keepExternal.getOrElse(group._1, _ => false)))}
+	
 	def internalAPI(src: File) = getAPI(internal, src)
 	def externalAPI(ext: String) = getAPI(external, ext)
 	

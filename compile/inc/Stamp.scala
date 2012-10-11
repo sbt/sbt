@@ -38,6 +38,7 @@ trait Stamps extends ReadStamps
 	def filter(prod: File => Boolean, removeSources: Iterable[File], bin: File => Boolean): Stamps
 	
 	def ++ (o: Stamps): Stamps
+	def groupBy[K](prod: Map[K, File => Boolean], sourcesGrouping: File => K, bin: Map[K, File => Boolean]): Map[K, Stamps]
 }
 
 sealed trait Stamp
@@ -111,6 +112,19 @@ private class MStamps(val products: Map[File, Stamp], val sources: Map[File, Sta
 	def filter(prod: File => Boolean, removeSources: Iterable[File], bin: File => Boolean): Stamps =
 		new MStamps(products.filterKeys(prod), sources -- removeSources, binaries.filterKeys(bin), classNames.filterKeys(bin))
 	
+  def groupBy[K](prod: Map[K, File => Boolean], sourcesGrouping: File => K, bin: Map[K, File => Boolean]): Map[K, Stamps] = {
+		val sourcesMap: Map[K, Map[File, Stamp]] = sources.groupBy(item => sourcesGrouping(item._1))
+		Map(
+			(prod.keySet ++ sourcesMap.keySet ++ bin.keySet).toList map({
+				k: K => (k, new MStamps(
+					products.filterKeys(prod.getOrElse(k, _ => false)),
+					sourcesMap.getOrElse(k, Map.empty[File,Stamp]),
+					binaries.filterKeys(bin.getOrElse(k, _ => false)),
+					classNames.filterKeys(bin.getOrElse(k, _ => false))
+				))
+			}): _*)
+	}
+
 	def product(prod: File) = getStamp(products, prod)
 	def internalSource(src: File) = getStamp(sources, src)
 	def binary(bin: File) = getStamp(binaries, bin)

@@ -73,6 +73,9 @@ trait Relation[A,B]
 	/** Returns a relation with only pairs (a,b) for which f(a,b) is true.*/
 	def filter(f: (A,B) => Boolean): Relation[A,B]
 	
+	/** Partitions this relation into a map of relations according to some discriminator function. */
+	def groupBy[K](f: ((A,B)) => K): Map[K, Relation[A,B]]
+
 	/** Returns all pairs in this relation.*/
 	def all: Traversable[(A,B)]
 	
@@ -116,6 +119,8 @@ private final class MRelation[A,B](fwd: Map[A, Set[B]], rev: Map[B, Set[A]]) ext
 
 	def filter(f: (A,B) => Boolean): Relation[A,B] = Relation.empty[A,B] ++ all.filter(f.tupled)
 
+	def groupBy[K](f: ((A,B)) => K): Map[K, Relation[A,B]] = all.groupBy(f) mapValues { Relation.empty[A,B] ++ _ }
+	
 	def contains(a: A, b: B): Boolean = forward(a)(b)
 
 	override def toString = all.map { case (a,b) => a + " -> " + b }.mkString("Relation [", ", ", "]")
