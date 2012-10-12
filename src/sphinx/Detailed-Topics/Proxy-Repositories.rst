@@ -42,10 +42,9 @@ file, and the second is the launcher script.
 
 ``~/.sbt/repositories``
 ---------------------
-The repositories file is an external configuration for the
-:doc:`/Detailed-Topics/Launcher`.  The exact syntax for the
-configuration file is detailed in the :doc:`/Detailed-Topics/Blah`
-documentation.   
+The repositories file is an external configuration for the Launcher.  
+The exact syntax for the configuration file is detailed in the 
+:doc:`/Detailed-Topics/Launcher`.   
 
 Here's an example config:
 
