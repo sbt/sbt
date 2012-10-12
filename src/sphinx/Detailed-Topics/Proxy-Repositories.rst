@@ -29,7 +29,8 @@ the big three being (in alphabetical order):
 * Nexus_
 
 Once you have a proxy repository installed and configured,
-then it's time to configure SBT for your needs.
+then it's time to configure SBT for your needs.  Read the
+note at the bottom about proxy issues with ivy repositories.
 
 
 sbt Configuration
@@ -107,6 +108,23 @@ can modify the sbt start script directly with the following:
 This is only necessary if users do not already have their own default
 repository file.
 
+
+
+Proxying Ivy Repositories
+=========================
+The most common mistake made when setting up a proxy repository for
+sbt is the attempting to *merge* both *maven* and *ivy* repositories
+into the *same* proxy repository.   While some repository managers will
+allow this, it's not recommended to do so.
+
+Even if your company does not use ivy, sbt uses a custom layout to
+handle binary compatibility constraints of its own plugins.   To ensure
+that these are resolved correctly, simple set up two virtual/proxy 
+repositories,  one for maven and one for ivy.  
+
+Here's an example setup:
+
+.. image:: proxy-ivy-mvn-setup.png
 
 
 .. _Archiva: http://archiva.apache.org/
