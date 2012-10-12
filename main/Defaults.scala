@@ -336,7 +336,7 @@ object Defaults extends BuildCommon
 	lazy val TaskGlobal: Scope = ThisScope.copy(task = Global)
 	lazy val ConfigGlobal: Scope = ThisScope.copy(config = Global)
 	def testTaskOptions(key: Scoped): Seq[Setting[_]] = inTask(key)( Seq(
-		testListeners <<= (streams, resolvedScoped, streamsManager, logBuffered, cacheDirectory in test, testListeners in TaskGlobal) map { (s, sco, sm, buff, dir, ls) =>
+		testListeners := {
 			TestLogger(streams.value.log, testLogger(streamsManager.value, test in resolvedScoped.value.scope), logBuffered.value) +:
 			new TestStatusReporter(succeededFile( cacheDirectory.in(test).value )) +:
 			testListeners.in(TaskGlobal).value
