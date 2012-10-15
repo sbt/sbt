@@ -50,7 +50,7 @@ object Release extends Build
 	}
 	def snapshotPattern(version: String) = Resolver.localBasePattern.replaceAll("""\[revision\]""", version)
 	def publishResolver: Project.Initialize[Option[Resolver]] = (remoteID, remoteBase) { (id, base) =>
-		Some( Resolver.url(id, url(base))(Resolver.ivyStylePatterns) )
+		Some( Resolver.url("publish-" + id, url(base))(Resolver.ivyStylePatterns) )
 	}
 
 	def updatedRepo(repo: SettingKey[File], remote: SettingKey[String], branch: Option[String]) =
