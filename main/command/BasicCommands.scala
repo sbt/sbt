@@ -169,7 +169,7 @@ object BasicCommands
 		val name = token(OpOrID.examples( aliasNames(s) : _*) )
 		val assign = token(OptSpace ~ '=' ~ OptSpace)
 		val sfree = removeAliases(s)
-		val to = matched(sfree.combinedParser, partial = true) | any.+.string
+		val to = matched(sfree.combinedParser, partial = true).failOnException | any.+.string
 		val base = (OptSpace ~> (name ~ (assign ~> to.?).?).?)
 		applyEffect(base)(t => runAlias(s, t) )
 	}

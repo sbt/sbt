@@ -1,0 +1,1 @@
+alias info= set logLevel := Level.Info
