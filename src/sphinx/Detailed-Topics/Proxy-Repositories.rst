@@ -29,7 +29,7 @@ the big three being (in alphabetical order):
 * Nexus_
 
 Once you have a proxy repository installed and configured,
-then it's time to configure SBT for your needs.  Read the
+then it's time to configure sbt for your needs.  Read the
 note at the bottom about proxy issues with ivy repositories.
 
 
@@ -42,7 +42,7 @@ file, and the second is the launcher script.
 
 
 ``~/.sbt/repositories``
----------------------
+-----------------------
 The repositories file is an external configuration for the Launcher.  
 The exact syntax for the configuration file is detailed in the 
 :doc:`/Detailed-Topics/Launcher`.   
