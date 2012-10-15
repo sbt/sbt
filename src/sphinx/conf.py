@@ -31,6 +31,21 @@ html_show_sphinx = False
 htmlhelp_basename = 'sbtdoc'
 html_use_smartypants = False
 
+# if true:
+#  the Home link is to scala-sbt.org
+# if false:
+#  the Home link is to home.html for the current documentation version
+# TODO: pass this as an argument to sphinx
+home_site = True
+
+# Passed to Google as site:<site_search_base>
+# If empty, no search box is included
+# TODO: pass this as an argument to sphinx, use actual version instead of release 
+site_search_base = 'http://www.scala-sbt.org/release/docs'
+
+# passes variables to the template
+html_context = {'home_site': home_site, 'site_search_base': site_search_base}
+
 # Issues role
 
 issuetracker = 'github'

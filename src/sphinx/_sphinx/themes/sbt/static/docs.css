@@ -193,3 +193,18 @@ a.headerlink:hover {
 div.doc-howto-summary h3 {
     color: rgb(13, 36, 40);
 }
+
+.search-box {
+    float: right;
+    margin-bottom: -15px;
+    margin-top: -15px;
+}
+form#search {
+    margin: 0px;
+}
+input#submit-search {
+    display: none;
+}
+input#search-input {
+    margin: 0px;
+}
