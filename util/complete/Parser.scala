@@ -45,6 +45,9 @@ sealed trait RichParser[A]
 
 	/** Uses the specified message if the original Parser fails.*/
 	def !!!(msg: String): Parser[A]
+	/** If an exception is thrown by the original Parser,
+	* capture it and fail locally instead of allowing the exception to propagate up and terminate parsing.*/
+	def failOnException: Parser[A]
 	
 	def unary_- : Parser[Unit]
 	def & (o: Parser[_]): Parser[A]
@@ -173,6 +176,8 @@ object Parser extends ParserMain
 
 	def onFailure[T](delegate: Parser[T], msg: String): Parser[T] =
 		if(delegate.valid) new OnFailure(delegate, msg) else failure(msg)
+	def trapAndFail[T](delegate: Parser[T]): Parser[T] =
+		delegate.ifValid( new TrapAndFail(delegate) )
 
 	def zeroOrMore[T](p: Parser[T]): Parser[Seq[T]] = repeat(p, 0, Infinite)
 	def oneOrMore[T](p: Parser[T]): Parser[Seq[T]] = repeat(p, 1, Infinite)
@@ -233,6 +238,7 @@ trait ParserMain
 		def <~[B](b: Parser[B]): Parser[A] = (a ~ b) map { case av ~ _ => av }
 		def ~>[B](b: Parser[B]): Parser[B] = (a ~ b) map { case _ ~ bv => bv }
 		def !!!(msg: String): Parser[A] = onFailure(a, msg)
+		def failOnException: Parser[A] = trapAndFail(a)
 	
 		def unary_- = not(a)
 		def & (o: Parser[_]) = and(a, o)
@@ -425,6 +431,18 @@ private final case class Invalid(fail: Failure) extends Parser[Nothing]
 	def valid = false
 	def ifValid[S](p: => Parser[S]): Parser[S] = this
 }
+
+private final class TrapAndFail[A](a: Parser[A]) extends ValidParser[A]
+{
+	def result = try { a.result } catch { case e: Exception => None }
+	def resultEmpty = try { a.resultEmpty } catch { case e: Exception => fail(e) }
+	def derive(c: Char) = try { trapAndFail(a derive c) } catch { case e: Exception => Invalid(fail(e)) }
+	def completions(level: Int) = try { a.completions(level) } catch { case e: Exception => Completions.nil }
+	override def toString = "trap(" + a + ")"
+	override def isTokenStart = a.isTokenStart
+	private[this] def fail(e: Exception): Failure = mkFailure(e.toString)
+}
+
 private final class OnFailure[A](a: Parser[A], message: String) extends ValidParser[A]
 {
 	def result = a.result
