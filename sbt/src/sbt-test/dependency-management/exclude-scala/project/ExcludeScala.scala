@@ -9,7 +9,7 @@ object ExcludeScala extends Build
 		autoScalaLibrary <<= baseDirectory(base => !(base / "noscala").exists ),
 		scalaOverride <<= check("scala.App")
 	)
-	def check(className: String): Def.Initialize[Task[Unit]] = fullClasspath in Compile map { cp =>
+	def check(className: String): Project.Initialize[Task[Unit]] = fullClasspath in Compile map { cp =>
 		val existing = cp.files.filter(_.getName contains "scala-library")
 		println("Full classpath: " + cp.mkString("\n\t", "\n\t", ""))
 		println("scala-library.jar: " + existing.mkString("\n\t", "\n\t", ""))
@@ -17,7 +17,7 @@ object ExcludeScala extends Build
 		Class.forName(className, false, loader)
 	}
 
-	lazy val scalaOverride = taskKey[Unit]("Check that the proper version of Scala is on the classpath.")
+	lazy val scalaOverride = TaskKey[Unit]("scalaOverride", "Check that the proper version of Scala is on the classpath.")
 
 	def dependencies(base: File) =
 		if( ( base / "stm").exists )
