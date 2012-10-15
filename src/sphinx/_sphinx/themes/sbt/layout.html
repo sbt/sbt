@@ -22,7 +22,11 @@
     <div class="navbar-inner">
       <div class="container">
         <ul class="nav">
+          {%- if home_site is sameas True %}
+          <li><a href="http://www.scala-sbt.org/">Home</a></li>
+          {%- else %}
           <li><a href="{{ pathto('home') }}">Home</a></li>
+          {%- endif %}
           <li><a href="{{ pathto('index') }}">Documentation</a></li>
           <li><a href="{{ pathto('Getting-Started/Setup') }}">Download</a></li>
           <li><a href="http://groups.google.com/group/simple-build-tool">Mailing List</a></li>
@@ -35,6 +39,15 @@
   <div class="main">
     <div class="container">
       <div class="page-title">{{ title }}</div>
+      {%- if site_search_base %}
+      <div class="search-box">
+        <form method="get" action="http://www.google.com/search" id="search">
+          <input type="search" placeholder="Search {{release}} on Google" name="q" results="10" size="29" id="search-input">
+          <input type="hidden"  name="sitesearch" value="{{site_search_base}}/"> 
+          <input type="submit" id="submit-search">
+        </form>
+      </div>
+      {%- endif %}
     </div>
     <div class="main-container">
       <div class="container">
