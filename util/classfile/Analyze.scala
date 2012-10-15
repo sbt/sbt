@@ -11,6 +11,7 @@ import java.io.File
 import java.lang.annotation.Annotation
 import java.lang.reflect.Method
 import java.lang.reflect.Modifier.{STATIC, PUBLIC, ABSTRACT}
+import java.net.URL
 
 private[sbt] object Analyze
 {
@@ -45,7 +46,7 @@ private[sbt] object Analyze
 			{
 				trapAndLog(log)
 				{
-					for (url <- Option(loader.getResource(tpe.replace('.', '/') + ClassExt)); file <- IO.urlAsFile(url))
+					for (url <- Option(loader.getResource(tpe.replace('.', '/') + ClassExt)); file <- urlAsFile(url, log))
 					{
 						if(url.getProtocol == "jar")
 							analysis.binaryDependency(file, tpe, source)
@@ -73,6 +74,12 @@ private[sbt] object Analyze
 			analysis.endSource(source)
 		}
 	}
+	private[this] def urlAsFile(url: URL, log: Logger): Option[File] =
+		try IO.urlAsFile(url)
+		catch { case e: Exception =>
+			log.warn("Could not convert URL '" + url.toExternalForm + "' to File: " + e.toString)
+			None
+		}
 	private def trapAndLog(log: Logger)(execute: => Unit)
 	{
 		try { execute }
