@@ -43,18 +43,18 @@ $(document).ready(function() {
    //  but if it doesn't exist, go to the index for that version
    select.change(function() {
       var newV = $(this).val();
+      var newPath = newV + '/';
       var oldLoc = document.location.href;
 
       var changeVersion = function(oldPathname) {
-         var newPath = newV + '/';
          var changed = oldPathname.replace(selected + '/', newPath).replace(snapshotPath, newPath).replace(releasePath, newPath);
-         // This occurs for unversioned files, specifically /index.html.
-         // Redirect to the versioned path in this case (won't work when previewing on the local filesytem)
-         if (changed == oldPathname) changed = newPath + docsPath + changed;
+         // This occurs for the unversioned /index.html. Redirect to the versioned path in this case.
+         if (changed == oldPathname)
+             changed = oldPathname.replace('index.html', newPath + docsPath + 'home.html');
          return changed;
       };
-      var home = function(pathname) { return 'index.html'; };
+      var newVersionIndex = function(pathname) { return newPath + docsPath + 'index.html'; };
 
-      gotoIfExists( mapPath(oldLoc, changeVersion), mapPath(oldLoc, home));
+      gotoIfExists( mapPath(oldLoc, changeVersion), mapPath(oldLoc, newVersionIndex) );
    });
 });
