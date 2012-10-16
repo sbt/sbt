@@ -6,6 +6,8 @@
 
 {% extends "basic/layout.html" %}
 
+{% set script_files = script_files + ['../../versions.js'] %}
+{% set script_files = script_files + ['_static/set-versions.js'] %}
 
 {% set css_files = css_files + ['_static/base.css'] %}
 {% set css_files = css_files + ['_static/docs.css'] %}
@@ -73,7 +75,7 @@
                 {%- endif %}
               </li>
               <li>
-                Version {{ release|e }}
+                <select id="versions"><option selected value="{{release}}">Version {{ release|e }}</option></select>
               </li>
             </ul>         
           </div>
@@ -99,5 +101,3 @@
   </div>  
   {% block footer %}{% endblock %}
 {% endblock %}
-
-

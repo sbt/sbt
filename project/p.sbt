@@ -1,4 +1,7 @@
-libraryDependencies += "net.databinder" %% "dispatch-http" % "0.8.8"
+libraryDependencies ++= Seq(
+	"net.databinder" %% "dispatch-http" % "0.8.8",
+	"org.jsoup" % "jsoup" % "1.7.1"
+)
 
 addSbtPlugin("com.typesafe.sbt" % "sbt-site" % "0.6.0")
 

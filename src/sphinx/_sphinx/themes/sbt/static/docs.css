@@ -208,3 +208,15 @@ input#submit-search {
 input#search-input {
     margin: 0px;
 }
+.breadcrumb li select {
+    width: auto;
+    height: auto;
+    background-color: rgba(242, 242, 235, 0.1);
+    border: 1px solid rgba(204, 204, 204, 0.5);
+    padding: 1px;
+    margin: -2px 0px 0px;
+    font-weight: bold;
+}
+.breadcrumb li select option {
+    font-weight: normal;
+}
