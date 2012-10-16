@@ -431,7 +431,7 @@ or
 
 ::
 
-    externalIvySettings(url("your_url_here"))
+    externalIvySettingsURL(url("your_url_here"))
 
 Ivy file (dependency configuration)
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
