@@ -50,7 +50,7 @@ $(document).ready(function() {
          var changed = oldPathname.replace(selected + '/', newPath).replace(snapshotPath, newPath).replace(releasePath, newPath);
          // This occurs for the unversioned /index.html. Redirect to the versioned path in this case.
          if (changed == oldPathname)
-             changed = oldPathname.replace('index.html', newPath + docsPath + 'home.html');
+             changed = newPath + docsPath + 'home.html';
          return changed;
       };
       var newVersionIndex = function(pathname) { return newPath + docsPath + 'index.html'; };
