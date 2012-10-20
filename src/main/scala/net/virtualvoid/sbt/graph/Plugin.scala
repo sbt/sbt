@@ -18,6 +18,7 @@ package net.virtualvoid.sbt.graph
 
 import sbt._
 import Keys._
+import org.apache.ivy.core.resolve.ResolveOptions
 
 object Plugin extends sbt.Plugin {
   val dependencyGraphMLFile = SettingKey[File]("dependency-graph-ml-file",
@@ -34,9 +35,17 @@ object Plugin extends sbt.Plugin {
     "A task which returns the location of the ivy report file for a given configuration (default `compile`).")
 
   def graphSettings = seq(
-    ivyReportFunction <<= (projectID, ivyModule, appConfiguration) map { (projectID, ivyModule, config) =>
-      val home = config.provider.scalaProvider.launcher.ivyHome
-      (c: String) => file("%s/cache/%s-%s-%s.xml" format (home, projectID.organization, crossName(ivyModule), c))
+    ivyReportFunction <<= (sbtVersion, target, projectID, ivyModule, appConfiguration, streams) map { (sbtV, target, projectID, ivyModule, config, streams) =>
+      sbtV match {
+        case Version(0, min, fix) if min > 12 || (min == 12 && fix >= 1) =>
+          ivyModule.withModule(streams.log) { (i, moduleDesc, _) =>
+            val id = ResolveOptions.getDefaultResolveId(moduleDesc)
+            (c: String) => file("%s/resolution-cache/reports/%s/%s-resolved.xml" format (target, id,c))
+          }
+        case _ =>
+          val home = config.provider.scalaProvider.launcher.ivyHome
+          (c: String) => file("%s/cache/%s-%s-%s.xml" format (home, projectID.organization, crossName(ivyModule), c))
+      }
     }
   ) ++ Seq(Compile, Test, Runtime, Provided, Optional).flatMap(ivyReportForConfig)
 
@@ -68,4 +77,12 @@ object Plugin extends sbt.Plugin {
       case _ =>
         throw new IllegalStateException("sbt-dependency-graph plugin currently only supports InlineConfiguration of ivy settings (the default in sbt)")
     }
+
+  val VersionPattern = """(\d+)\.(\d+)\.(\d+)(?:-(.*))?""".r
+  object Version {
+    def unapplySeq(str: String): Option[(Int, Int, Int, Seq[String])] = str match {
+      case VersionPattern(major, minor, fix, appendix) => Some((major.toInt, minor.toInt, fix.toInt, Option(appendix).toSeq))
+      case _ => None
+    }
+  }
 }
