@@ -50,14 +50,14 @@ object IvyGraphMLDependencies extends App {
     val graph = buildGraph(doc)
     import graph._
     val deps = {
-      val m = new HashMap[Module, MSet[Module]] with MultiMap[Module, Module]
-      edges.foreach { case (from, to) => m.addBinding(from, to) }
+      val m = new HashMap[String, MSet[Module]] with MultiMap[String, Module]
+      edges.foreach { case (from, to) => m.addBinding(from.id, to) }
       m.toMap.mapValues(_.toSeq.sortBy(_.id))
     }
     // there should only be one root node (the project itself)
     val roots = nodes.filter(n => !edges.exists(_._2 == n)).sortBy(_.id)
     roots.map(root =>
-      Graph.toAscii[Module](root, node => deps.getOrElse(node, Seq.empty[Module]), _.id)
+      Graph.toAscii[Module](root, node => deps.getOrElse(node.id, Seq.empty[Module]), _.id)
     ).mkString("\n")
   }
 
