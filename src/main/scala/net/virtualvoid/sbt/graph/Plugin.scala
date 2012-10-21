@@ -67,6 +67,8 @@ object Plugin extends sbt.Plugin {
       (force, moduleGraph, streams) map  { (force, graph, streams) =>
         if (force || graph.nodes.size < 15) {
           streams.log.info(IvyGraphMLDependencies.asciiGraph(graph))
+          streams.log.info("\n\n")
+          streams.log.info("Note: The old tree layout is still available by using `dependency-tree`")
         } else {
           streams.log.info(IvyGraphMLDependencies.asciiTree(graph))
 
