@@ -33,6 +33,9 @@ object IvyGraphMLDependencies extends App {
 
   case class ModuleGraph(nodes: Seq[Module], edges: Seq[(Module, Module)])
 
+  def graph(ivyReportFile: String): ModuleGraph =
+    buildGraph(buildDoc(ivyReportFile))
+
   def buildGraph(doc: Document): ModuleGraph = {
     val edges = for {
       mod <- doc \ "dependencies" \ "module"
@@ -46,7 +49,23 @@ object IvyGraphMLDependencies extends App {
     ModuleGraph(nodes, edges)
   }
 
-  private def asciiGraph(moduleGraph: ModuleGraph): layout.Graph[String] = {
+  def asciiGraph(graph: ModuleGraph): String =
+    Layouter.renderGraph(buildAsciiGraph(graph))
+
+  def asciiTree(graph: ModuleGraph): String = {
+    val deps = {
+      val m = new HashMap[String, MSet[Module]] with MultiMap[String, Module]
+      graph.edges.foreach { case (from, to) => m.addBinding(from.id, to) }
+      m.toMap.mapValues(_.toSeq.sortBy(_.id))
+    }
+    // there should only be one root node (the project itself)
+    val roots = graph.nodes.filter(n => !graph.edges.exists(_._2 == n)).sortBy(_.id)
+    roots.map { root =>
+      Graph.toAscii[Module](root, node => deps.getOrElse(node.id, Seq.empty[Module]), x => x.id + x.error.map(" (error: "+_+")").getOrElse(""))
+    }.mkString("\n")
+  }
+
+  private def buildAsciiGraph(moduleGraph: ModuleGraph): layout.Graph[String] = {
     def renderVertex(module: Module): String = {
       module.name + "\n" + module.organisation + "\n" + module.version
     }
@@ -55,35 +74,9 @@ object IvyGraphMLDependencies extends App {
     layout.Graph(vertices, edges)
   }
 
-  def asciiGraph(ivyReportFile: String): String = {
-    val doc = buildDoc(ivyReportFile)
-    val graph = buildGraph(doc)
-    Layouter.renderGraph(asciiGraph(graph))
-  }
-
-  def asciiTree(ivyReportFile: String): String = {
-    val doc = buildDoc(ivyReportFile)
-    val graph = buildGraph(doc)
-    import graph._
-    val deps = {
-      val m = new HashMap[String, MSet[Module]] with MultiMap[String, Module]
-      edges.foreach { case (from, to) => m.addBinding(from.id, to) }
-      m.toMap.mapValues(_.toSeq.sortBy(_.id))
-    }
-    // there should only be one root node (the project itself)
-    val roots = nodes.filter(n => !edges.exists(_._2 == n)).sortBy(_.id)
-    roots.map(root =>
-      Graph.toAscii[Module](root, node => deps.getOrElse(node.id, Seq.empty[Module]), x => x.id + x.error.map(" (error: "+_+")").getOrElse(""))
-    ).mkString("\n")
-  }
-
-  def transform(ivyReportFile: String, outputFile: String) {
-    val doc = buildDoc(ivyReportFile)
-    val graph = buildGraph(doc)
-    import graph._
-
+  def saveAsGraphML(graph: ModuleGraph, outputFile: String) {
     val nodesXml =
-      for (n <- nodes)
+      for (n <- graph.nodes)
         yield
           <node id={n.id}><data key="d0">
             <y:ShapeNode>
@@ -92,7 +85,7 @@ object IvyGraphMLDependencies extends App {
           </data></node>
 
     val edgesXml =
-      for (e <- edges)
+      for (e <- graph.edges)
         yield <edge source={e._1.id} target={e._2.id} />
 
     val xml =
@@ -123,5 +116,5 @@ object IvyGraphMLDependencies extends App {
 
   val file = args.lift(0).filter(f => new File(f).exists).getOrElse(die(usage))
   val inputFile = args.lift(1).getOrElse(die(usage))
-  transform(file, inputFile)
+  saveAsGraphML(graph(file), inputFile)
 }

@@ -25,6 +25,8 @@ object Plugin extends sbt.Plugin {
     "The location the graphml file should be generated at")
   val dependencyGraphML = TaskKey[File]("dependency-graph-ml",
     "Creates a graphml file containing the dependency-graph for a project")
+  val moduleGraph = TaskKey[IvyGraphMLDependencies.ModuleGraph]("module-graph",
+    "The dependency graph for a project")
   val asciiGraph = TaskKey[String]("dependency-graph-string",
     "Returns a string containing the ascii representation of the dependency graph for a project")
   val dependencyGraph = TaskKey[Unit]("dependency-graph",
@@ -57,35 +59,30 @@ object Plugin extends sbt.Plugin {
 
   def ivyReportForConfig(config: Configuration) = inConfig(config)(seq(
     ivyReport <<= ivyReportFunction map (_(config.toString)) dependsOn(ignoreMissingUpdate),
-    asciiGraph <<= asciiGraphTask,
-    dependencyGraph <<= printAsciiGraphTask,
-    asciiTree <<= asciiTreeTask,
-    dependencyTree <<= printAsciiTreeTask,
+    moduleGraph <<= ivyReport map (absoluteReportPath.andThen(IvyGraphMLDependencies.graph)),
+    asciiGraph <<= moduleGraph map IvyGraphMLDependencies.asciiGraph,
+    dependencyGraph <<= print(asciiGraph),
+    asciiTree <<= moduleGraph map IvyGraphMLDependencies.asciiTree,
+    dependencyTree <<= print(asciiTree),
     dependencyGraphMLFile <<= target / "dependencies-%s.graphml".format(config.toString),
     dependencyGraphML <<= dependencyGraphMLTask,
     Compat.ignoreMissingUpdateT
   ))
 
-  def asciiGraphTask = (ivyReport) map { report =>
-    IvyGraphMLDependencies.asciiGraph(report.getAbsolutePath)
-  }
-
   def printAsciiGraphTask =
     (streams, asciiGraph) map (_.log.info(_))
 
   def dependencyGraphMLTask =
-    (ivyReport, dependencyGraphMLFile, streams) map { (report, resultFile, streams) =>
-      IvyGraphMLDependencies.transform(report.getAbsolutePath, resultFile.getAbsolutePath)
+    (moduleGraph, dependencyGraphMLFile, streams) map { (graph, resultFile, streams) =>
+      IvyGraphMLDependencies.saveAsGraphML(graph, resultFile.getAbsolutePath)
       streams.log.info("Wrote dependency graph to '%s'" format resultFile)
       resultFile
     }
 
-  def asciiTreeTask = (ivyReport) map { report =>
-    IvyGraphMLDependencies.asciiTree(report.getAbsolutePath)
-  }
+  def absoluteReportPath = (file: File) => file.getAbsolutePath
 
-  def printAsciiTreeTask =
-    (streams, asciiTree) map (_.log.info(_))
+  def print(key: TaskKey[String]) =
+    (streams, key) map (_.log.info(_))
 
   def crossName(ivyModule: IvySbt#Module) =
     ivyModule.moduleSettings match {
