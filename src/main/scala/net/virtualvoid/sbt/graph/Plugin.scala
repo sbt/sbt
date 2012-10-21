@@ -63,7 +63,7 @@ object Plugin extends sbt.Plugin {
     ivyReport <<= ivyReportFunction map (_(config.toString)) dependsOn(ignoreMissingUpdate),
     moduleGraph <<= ivyReport map (absoluteReportPath.andThen(IvyGraphMLDependencies.graph)),
     asciiGraph <<= moduleGraph map IvyGraphMLDependencies.asciiGraph,
-    dependencyGraph <<= InputTask(parser) { force =>
+    dependencyGraph <<= InputTask(shouldForceParser) { force =>
       (force, moduleGraph, streams) map  { (force, graph, streams) =>
         if (force || graph.nodes.size < 15) {
           streams.log.info(IvyGraphMLDependencies.asciiGraph(graph))
@@ -102,7 +102,7 @@ object Plugin extends sbt.Plugin {
     (streams, key) map (_.log.info(_))
 
   import Project._
-  val parser: State => Parser[Boolean] = { (state: State) =>
+  val shouldForceParser: State => Parser[Boolean] = { (state: State) =>
     import complete.DefaultParsers._
 
     (Space ~> token("--force")).?.map(_.isDefined)
