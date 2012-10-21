@@ -33,6 +33,8 @@ object Plugin extends sbt.Plugin {
     "A function which returns the file containing the ivy report from the ivy cache for a given configuration")
   val ivyReport = TaskKey[File]("ivy-report",
     "A task which returns the location of the ivy report file for a given configuration (default `compile`).")
+  val ignoreMissingUpdate = TaskKey[UpdateReport]("update-ignore-missing",
+    "A copy of the update task which ignores missing artifacts")
 
   def graphSettings = seq(
     ivyReportFunction <<= (sbtVersion, target, projectID, ivyModule, appConfiguration, streams) map { (sbtV, target, projectID, ivyModule, config, streams) =>
@@ -50,11 +52,12 @@ object Plugin extends sbt.Plugin {
   ) ++ Seq(Compile, Test, Runtime, Provided, Optional).flatMap(ivyReportForConfig)
 
   def ivyReportForConfig(config: Configuration) = inConfig(config)(seq(
-    ivyReport <<= ivyReportFunction map (_(config.toString)) dependsOn(update),
+    ivyReport <<= ivyReportFunction map (_(config.toString)) dependsOn(ignoreMissingUpdate),
     asciiGraph <<= asciiGraphTask,
     dependencyGraph <<= printAsciiGraphTask,
     dependencyGraphMLFile <<= target / "dependencies-%s.graphml".format(config.toString),
-    dependencyGraphML <<= dependencyGraphMLTask
+    dependencyGraphML <<= dependencyGraphMLTask,
+    Compat.ignoreMissingUpdateT
   ))
 
   def asciiGraphTask = (ivyReport) map { report =>

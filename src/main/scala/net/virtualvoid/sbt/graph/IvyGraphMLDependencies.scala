@@ -25,7 +25,7 @@ import sbt.Graph
 import xml.{Document, XML, Node}
 
 object IvyGraphMLDependencies extends App {
-  case class Module(organisation: String, name: String, version: String) {
+  case class Module(organisation: String, name: String, version: String, error: Option[String] = None) {
     def id: String = organisation+":"+name+":"+version
   }
 
@@ -36,7 +36,7 @@ object IvyGraphMLDependencies extends App {
       mod <- doc \ "dependencies" \ "module"
       caller <- mod \ "revision" \ "caller"
       callerModule = nodeFromElement(caller, caller.attribute("callerrev").get.text)
-      depModule = nodeFromElement(mod, caller.attribute("rev").get.text)
+      depModule = nodeFromElement(mod, caller.attribute("rev").get.text, (mod \ "revision").head.attribute("error").map(_.text))
     } yield (callerModule, depModule)
 
     val nodes = edges.flatMap(e => Seq(e._1, e._2)).distinct
@@ -57,7 +57,7 @@ object IvyGraphMLDependencies extends App {
     // there should only be one root node (the project itself)
     val roots = nodes.filter(n => !edges.exists(_._2 == n)).sortBy(_.id)
     roots.map(root =>
-      Graph.toAscii[Module](root, node => deps.getOrElse(node.id, Seq.empty[Module]), _.id)
+      Graph.toAscii[Module](root, node => deps.getOrElse(node.id, Seq.empty[Module]), x => x.id + x.error.map(" (error: "+_+")").getOrElse(""))
     ).mkString("\n")
   }
 
@@ -93,8 +93,8 @@ object IvyGraphMLDependencies extends App {
 
     XML.save(outputFile, xml)
   }
-  private def nodeFromElement(element: Node, version: String): Module =
-    Module(element.attribute("organisation").get.text, element.attribute("name").get.text, version)
+  private def nodeFromElement(element: Node, version: String, error: Option[String] = None): Module =
+    Module(element.attribute("organisation").get.text, element.attribute("name").get.text, version, error)
 
   private def buildDoc(ivyReportFile: String) = ConstructingParser.fromSource(io.Source.fromFile(ivyReportFile), false).document
 
