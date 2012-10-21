@@ -18,6 +18,8 @@ package net.virtualvoid.sbt.graph
 
 import sbt._
 import Keys._
+import complete.Parser
+
 import org.apache.ivy.core.resolve.ResolveOptions
 
 object Plugin extends sbt.Plugin {
@@ -29,7 +31,7 @@ object Plugin extends sbt.Plugin {
     "The dependency graph for a project")
   val asciiGraph = TaskKey[String]("dependency-graph-string",
     "Returns a string containing the ascii representation of the dependency graph for a project")
-  val dependencyGraph = TaskKey[Unit]("dependency-graph",
+  val dependencyGraph = InputKey[Unit]("dependency-graph",
     "Prints the ascii graph to the console")
   val asciiTree = TaskKey[String]("dependency-tree-string",
     "Returns a string containing an ascii tree representation of the dependency graph for a project")
@@ -61,7 +63,20 @@ object Plugin extends sbt.Plugin {
     ivyReport <<= ivyReportFunction map (_(config.toString)) dependsOn(ignoreMissingUpdate),
     moduleGraph <<= ivyReport map (absoluteReportPath.andThen(IvyGraphMLDependencies.graph)),
     asciiGraph <<= moduleGraph map IvyGraphMLDependencies.asciiGraph,
-    dependencyGraph <<= print(asciiGraph),
+    dependencyGraph <<= InputTask(parser) { force =>
+      (force, moduleGraph, streams) map  { (force, graph, streams) =>
+        if (force || graph.nodes.size < 15) {
+          streams.log.info(IvyGraphMLDependencies.asciiGraph(graph))
+        } else {
+          streams.log.info(IvyGraphMLDependencies.asciiTree(graph))
+
+          if (!force) {
+            streams.log.info("\n")
+            streams.log.info("Note: The graph was estimated to be too big to display (> 15 nodes). Use `dependency-graph --force` to force graph display.")
+          }
+        }
+      }
+    },
     asciiTree <<= moduleGraph map IvyGraphMLDependencies.asciiTree,
     dependencyTree <<= print(asciiTree),
     dependencyGraphMLFile <<= target / "dependencies-%s.graphml".format(config.toString),
@@ -83,6 +98,13 @@ object Plugin extends sbt.Plugin {
 
   def print(key: TaskKey[String]) =
     (streams, key) map (_.log.info(_))
+
+  import Project._
+  val parser: State => Parser[Boolean] = { (state: State) =>
+    import complete.DefaultParsers._
+
+    (Space ~> token("--force")).?.map(_.isDefined)
+  }
 
   def crossName(ivyModule: IvySbt#Module) =
     ivyModule.moduleSettings match {
