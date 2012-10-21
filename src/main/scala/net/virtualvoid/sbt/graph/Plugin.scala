@@ -29,6 +29,10 @@ object Plugin extends sbt.Plugin {
     "Returns a string containing the ascii representation of the dependency graph for a project")
   val dependencyGraph = TaskKey[Unit]("dependency-graph",
     "Prints the ascii graph to the console")
+  val asciiTree = TaskKey[String]("dependency-tree-string",
+    "Returns a string containing an ascii tree representation of the dependency graph for a project")
+  val dependencyTree = TaskKey[Unit]("dependency-tree",
+    "Prints the ascii tree to the console")
   val ivyReportFunction = TaskKey[String => File]("ivy-report-function",
     "A function which returns the file containing the ivy report from the ivy cache for a given configuration")
   val ivyReport = TaskKey[File]("ivy-report",
@@ -55,13 +59,15 @@ object Plugin extends sbt.Plugin {
     ivyReport <<= ivyReportFunction map (_(config.toString)) dependsOn(ignoreMissingUpdate),
     asciiGraph <<= asciiGraphTask,
     dependencyGraph <<= printAsciiGraphTask,
+    asciiTree <<= asciiTreeTask,
+    dependencyTree <<= printAsciiTreeTask,
     dependencyGraphMLFile <<= target / "dependencies-%s.graphml".format(config.toString),
     dependencyGraphML <<= dependencyGraphMLTask,
     Compat.ignoreMissingUpdateT
   ))
 
   def asciiGraphTask = (ivyReport) map { report =>
-    IvyGraphMLDependencies.ascii(report.getAbsolutePath)
+    IvyGraphMLDependencies.asciiGraph(report.getAbsolutePath)
   }
 
   def printAsciiGraphTask =
@@ -73,6 +79,13 @@ object Plugin extends sbt.Plugin {
       streams.log.info("Wrote dependency graph to '%s'" format resultFile)
       resultFile
     }
+
+  def asciiTreeTask = (ivyReport) map { report =>
+    IvyGraphMLDependencies.asciiTree(report.getAbsolutePath)
+  }
+
+  def printAsciiTreeTask =
+    (streams, asciiTree) map (_.log.info(_))
 
   def crossName(ivyModule: IvySbt#Module) =
     ivyModule.moduleSettings match {
