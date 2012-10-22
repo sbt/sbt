@@ -15,12 +15,12 @@ A side benefit to using the sbt organization for projects is that you can use gh
 Community Ivy Repository
 ========================
 
-`Typesafe, Inc. <http://www.typesafe.com>`_ has provided a freely available `Ivy Repository <http://scalasbt.artifactoryonline.com/scalasbt>`_ for sbt projects to use.
+`Typesafe, Inc. <http://www.typesafe.com>`_ has provided a freely available `Ivy Repository <http://repo.scala-sbt.org/scalasbt>`_ for sbt projects to use.
 If you would like to publish your project to this Ivy repository, first contact `sbt-repo-admins <http://groups.google.com/group/sbt-repo-admins?hl=en>`_ and request privileges (we have to verify code ownership, rights to publish, etc.).  After which, you can deploy your plugins using the following configuration:
 
 ::
 
-     publishTo := Some(Resolver.url("sbt-plugin-releases", new URL("http://scalasbt.artifactoryonline.com/scalasbt/sbt-plugin-releases/"))(Resolver.ivyStylePatterns))
+     publishTo := Some(Resolver.url("sbt-plugin-releases", new URL("http://repo.scala-sbt.org/scalasbt/sbt-plugin-releases/"))(Resolver.ivyStylePatterns))
      
      publishMavenStyle := false
  
@@ -28,7 +28,7 @@ You'll also need to add your credentials somewhere.  For example, you might use 
  
 ::
 
-     credentials += Credentials("Artifactory Realm", "scalasbt.artifactoryonline.com", "jsuereth", "@my encrypted password@")
+     credentials += Credentials("Artifactory Realm", "repo.scala-sbt.org", "jsuereth", "@my encrypted password@")
  
 Where ``@my encrypted password@`` is actually obtained using the following `instructions <http://wiki.jfrog.org/confluence/display/RTF/Centrally+Secure+Passwords>`_.
  
@@ -39,7 +39,7 @@ To automatically deploy snapshot/release versions of your plugin use the followi
 ::
 
     publishTo <<= (version) { version: String =>
-       val scalasbt = "http://scalasbt.artifactoryonline.com/scalasbt/"
+       val scalasbt = "http://repo.scala-sbt.org/scalasbt/"
        val (name, url) = if (version.contains("-SNAPSHOT"))
          ("sbt-plugin-snapshots", scalasbt+"sbt-plugin-snapshots")
        else
