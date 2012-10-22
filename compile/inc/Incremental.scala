@@ -214,7 +214,7 @@ object Incremental
 					e <- entry(name)
 				} yield {
 					val resolved = Locate.resolve(e, name)
-					(resolved != dependsOn) || !equivS.equiv(previous.binary(dependsOn), current.binary(resolved))
+					(resolved.getCanonicalPath != dependsOn.getCanonicalPath) || !equivS.equiv(previous.binary(dependsOn), current.binary(resolved))
 				}
 			)
 
