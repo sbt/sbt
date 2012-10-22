@@ -108,7 +108,7 @@ object IvyGraphMLDependencies extends App {
 
   private def buildAsciiGraph(moduleGraph: ModuleGraph): layout.Graph[String] = {
     def renderVertex(module: Module): String =
-      module.name + "\n" + module.organisation + "\n" + module.version
+      module.name + "\n" + module.organisation + "\n" + module.version + module.error.map("\nerror: "+_).getOrElse("")
 
     val vertices = moduleGraph.nodes.map(renderVertex).toList
     val edges = moduleGraph.edges.toList.map { case (from, to) ⇒ (renderVertex(from), renderVertex(to)) }
