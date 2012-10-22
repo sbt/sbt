@@ -161,9 +161,9 @@ object IvyGraphMLDependencies extends App {
   def usage: String =
     "Usage: <ivy-report-file> <output-file>"
 
-  val file = args.lift(0).filter(f => new File(f).exists).getOrElse(die(usage))
-  val inputFile = args.lift(1).getOrElse(die(usage))
-  saveAsGraphML(graph(file), inputFile)
+  val reportFile = args.lift(0).filter(f => new File(f).exists).getOrElse(die(usage))
+  val outputFile = args.lift(1).getOrElse(die(usage))
+  saveAsGraphML(graph(reportFile), outputFile)
 }
 
 object ModuleGraphProtocol extends DefaultProtocol {
