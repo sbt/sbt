@@ -21,6 +21,7 @@ import Keys._
 import complete.Parser
 
 import org.apache.ivy.core.resolve.ResolveOptions
+import net.virtualvoid.sbt.graph.IvyGraphMLDependencies.ModuleGraph
 
 object Plugin extends sbt.Plugin {
   val dependencyGraphMLFile = SettingKey[File]("dependency-graph-ml-file",
@@ -44,6 +45,12 @@ object Plugin extends sbt.Plugin {
   val ignoreMissingUpdate = TaskKey[UpdateReport]("update-ignore-missing",
     "A copy of the update task which ignores missing artifacts")
 
+  // internal
+  import ModuleGraphProtocol._
+  val moduleGraphStore = TaskKey[IvyGraphMLDependencies.ModuleGraph]("module-graph-store", "The stored module-graph from the last run")
+
+  val whatDependsOn = InputKey[Unit]("what-depends-on", "Shows information about what depends on the given module")
+
   def graphSettings = seq(
     ivyReportFunction <<= (sbtVersion, target, projectID, ivyModule, appConfiguration, streams) map { (sbtV, target, projectID, ivyModule, config, streams) =>
       sbtV match {
@@ -62,6 +69,7 @@ object Plugin extends sbt.Plugin {
   def ivyReportForConfig(config: Configuration) = inConfig(config)(seq(
     ivyReport <<= ivyReportFunction map (_(config.toString)) dependsOn(ignoreMissingUpdate),
     moduleGraph <<= ivyReport map (absoluteReportPath.andThen(IvyGraphMLDependencies.graph)),
+    moduleGraphStore <<= moduleGraph storeAs moduleGraphStore triggeredBy moduleGraph,
     asciiGraph <<= moduleGraph map IvyGraphMLDependencies.asciiGraph,
     dependencyGraph <<= InputTask(shouldForceParser) { force =>
       (force, moduleGraph, streams) map  { (force, graph, streams) =>
@@ -83,6 +91,11 @@ object Plugin extends sbt.Plugin {
     dependencyTree <<= print(asciiTree),
     dependencyGraphMLFile <<= target / "dependencies-%s.graphml".format(config.toString),
     dependencyGraphML <<= dependencyGraphMLTask,
+    whatDependsOn <<= InputTask(artifactIdParser) { module =>
+      (module, streams, moduleGraph) map { (module, streams, graph) =>
+        streams.log.info(IvyGraphMLDependencies.asciiTree(IvyGraphMLDependencies.reverseGraphStartingAt(graph, module)))
+      }
+    },
     Compat.ignoreMissingUpdateT
   ))
 
@@ -107,6 +120,29 @@ object Plugin extends sbt.Plugin {
 
     (Space ~> token("--force")).?.map(_.isDefined)
   }
+
+  import IvyGraphMLDependencies.Module
+
+  val artifactIdParser: Initialize[State => Parser[Module]] =
+    resolvedScoped { ctx => (state: State) =>
+      val graph =  loadFromContext(moduleGraphStore, ctx, state) getOrElse ModuleGraph(Nil, Nil)
+
+      import complete.DefaultParsers._
+
+      def moduleFrom(modules: Seq[Module]) =
+        modules.map { m =>
+          (token(m.name) ~ Space ~ token(m.version)).map(_ => m)
+        }.reduce(_ | _)
+
+      graph.nodes.groupBy(_.organisation).map {
+        case (org, modules) =>
+          Space ~ token(org) ~ Space ~> moduleFrom(modules)
+      }.reduceOption(_ | _).getOrElse {
+        (Space ~> token(StringBasic, "organization") ~ Space ~ token(StringBasic, "module") ~ Space ~ token(StringBasic, "version") ).map { case ((((org, _), mod), _), version) =>
+          Module(org, mod, version)
+        }
+      }
+    }
 
   def crossName(ivyModule: IvySbt#Module) =
     ivyModule.moduleSettings match {

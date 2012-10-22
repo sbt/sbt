@@ -25,13 +25,31 @@ import sbt.Graph
 import xml.{Document, XML, Node}
 import com.github.mdr.ascii.layout
 import layout._
+import sbinary.{CollectionTypes, Format, DefaultProtocol}
 
 object IvyGraphMLDependencies extends App {
   case class Module(organisation: String, name: String, version: String, error: Option[String] = None) {
     def id: String = organisation+":"+name+":"+version
+
+    override def hashCode(): Int = id.hashCode
+    override def equals(p1: Any): Boolean = p1 match {
+      case m: Module => id == m.id
+      case _ => false
+    }
   }
 
-  case class ModuleGraph(nodes: Seq[Module], edges: Seq[(Module, Module)])
+  case class ModuleGraph(nodes: Seq[Module], edges: Seq[(Module, Module)]) {
+    lazy val dependencyMap: Map[Module, Seq[Module]] = {
+      val m = new HashMap[Module, MSet[Module]] with MultiMap[Module, Module]
+      edges.foreach { case (from, to) => m.addBinding(from, to) }
+      m.toMap.mapValues(_.toSeq.sortBy(_.id))
+    }
+    lazy val reverseDependencyMap: Map[Module, Seq[Module]] = {
+      val m = new HashMap[Module, MSet[Module]] with MultiMap[Module, Module]
+      edges.foreach { case (from, to) => m.addBinding(to, from) }
+      m.toMap.mapValues(_.toSeq.sortBy(_.id))
+    }
+  }
 
   def graph(ivyReportFile: String): ModuleGraph =
     buildGraph(buildDoc(ivyReportFile))
@@ -49,19 +67,36 @@ object IvyGraphMLDependencies extends App {
     ModuleGraph(nodes, edges)
   }
 
+  def reverseGraphStartingAt(graph: ModuleGraph, root: Module): ModuleGraph = {
+    val deps = graph.reverseDependencyMap
+
+    def visit(module: Module, visited: Set[Module]): Seq[(Module, Module)] =
+      if (visited(module))
+        Nil
+      else
+        deps.get(module) match {
+          case Some(deps) =>
+            deps.flatMap { to =>
+              (module, to) +: visit(to, visited + module)
+            }
+          case None => Nil
+        }
+
+    val edges = visit(root, Set.empty)
+    val nodes = edges.foldLeft(Set.empty[Module])((set, edge) => set + edge._1 + edge._2)
+    ModuleGraph(nodes.toSeq, edges)
+  }
+
   def asciiGraph(graph: ModuleGraph): String =
     Layouter.renderGraph(buildAsciiGraph(graph))
 
   def asciiTree(graph: ModuleGraph): String = {
-    val deps = {
-      val m = new HashMap[String, MSet[Module]] with MultiMap[String, Module]
-      graph.edges.foreach { case (from, to) => m.addBinding(from.id, to) }
-      m.toMap.mapValues(_.toSeq.sortBy(_.id))
-    }
+    val deps = graph.dependencyMap
+
     // there should only be one root node (the project itself)
     val roots = graph.nodes.filter(n => !graph.edges.exists(_._2 == n)).sortBy(_.id)
     roots.map { root =>
-      Graph.toAscii[Module](root, node => deps.getOrElse(node.id, Seq.empty[Module]), x => x.id + x.error.map(" (error: "+_+")").getOrElse(""))
+      Graph.toAscii[Module](root, node => deps.getOrElse(node, Seq.empty[Module]), x => x.id + x.error.map(" (error: "+_+")").getOrElse(""))
     }.mkString("\n")
   }
 
@@ -117,4 +152,12 @@ object IvyGraphMLDependencies extends App {
   val file = args.lift(0).filter(f => new File(f).exists).getOrElse(die(usage))
   val inputFile = args.lift(1).getOrElse(die(usage))
   saveAsGraphML(graph(file), inputFile)
+}
+
+object ModuleGraphProtocol extends DefaultProtocol {
+  import IvyGraphMLDependencies._
+
+  implicit def seqFormat[T: Format]: Format[Seq[T]] = wrap[Seq[T], List[T]](_.toList, _.toSeq)
+  implicit val ModuleFormat: Format[Module] = asProduct4(Module)(Module.unapply(_).get)
+  implicit val ModuleGraphFormat: Format[ModuleGraph] = asProduct2(ModuleGraph)(ModuleGraph.unapply(_).get)
 }
