@@ -57,9 +57,10 @@ object IvyGraphMLDependencies extends App {
   def buildGraph(doc: Document): ModuleGraph = {
     val edges = for {
       mod <- doc \ "dependencies" \ "module"
-      caller <- mod \ "revision" \ "caller"
+      revision <- mod \ "revision"
+      caller <-  revision \ "caller"
       callerModule = nodeFromElement(caller, caller.attribute("callerrev").get.text)
-      depModule = nodeFromElement(mod, caller.attribute("rev").get.text, (mod \ "revision").head.attribute("error").map(_.text))
+      depModule = nodeFromElement(mod, revision.attribute("name").get.text, revision.attribute("error").map(_.text))
     } yield (callerModule, depModule)
 
     val nodes = edges.flatMap(e => Seq(e._1, e._2)).distinct
