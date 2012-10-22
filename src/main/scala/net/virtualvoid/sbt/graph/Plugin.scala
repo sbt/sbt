@@ -128,6 +128,7 @@ object Plugin extends sbt.Plugin {
       val graph =  loadFromContext(moduleGraphStore, ctx, state) getOrElse ModuleGraph(Nil, Nil)
 
       import complete.DefaultParsers._
+      import Compat._
 
       def moduleFrom(modules: Seq[Module]) =
         modules.map { m =>

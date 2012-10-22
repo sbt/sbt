@@ -17,4 +17,7 @@ object Compat {
 
 			Classpaths.cachedUpdate(cacheDirectory / "update", Project.display(ref), module, missingOkConfig, Some(si), depsUpdated, s.log)
 		}
+
+  import complete.DefaultParsers._
+  lazy val StringBasic = NotSpaceClass.*.string
 }
