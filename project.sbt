@@ -4,7 +4,7 @@ name := "sbt-dependency-graph"
 
 organization := "net.virtual-void"
 
-version := "0.6.1-SNAPSHOT"
+version := "0.7.0-RC1"
 
 homepage := Some(url("http://github.com/jrudolph/sbt-dependency-graph"))
 
