@@ -21,15 +21,17 @@ import java.io.File
 import collection.mutable.HashMap
 import collection.mutable.MultiMap
 import collection.mutable.{Set => MSet}
-import sbt.Graph
+import sbt.{ConsoleLogger, Graph}
 import xml.{Document, XML, Node}
 import com.github.mdr.ascii.layout
 import layout._
-import sbinary.{CollectionTypes, Format, DefaultProtocol}
+import sbinary.{Format, DefaultProtocol}
 
 object IvyGraphMLDependencies extends App {
   case class Module(organisation: String, name: String, version: String, error: Option[String] = None) {
     def id: String = organisation+":"+name+":"+version
+
+    def hadError: Boolean = error.isDefined
 
     override def hashCode(): Int = id.hashCode
     override def equals(p1: Any): Boolean = p1 match {
@@ -97,14 +99,17 @@ object IvyGraphMLDependencies extends App {
     // there should only be one root node (the project itself)
     val roots = graph.nodes.filter(n => !graph.edges.exists(_._2 == n)).sortBy(_.id)
     roots.map { root =>
-      Graph.toAscii[Module](root, node => deps.getOrElse(node, Seq.empty[Module]), x => x.id + x.error.map(" (error: "+_+")").getOrElse(""))
+      Graph.toAscii[Module](root, node => deps.getOrElse(node, Seq.empty[Module]), displayModule)
     }.mkString("\n")
   }
 
+  def displayModule(module: Module): String =
+    red(module.id + module.error.map(" (error: "+_+")").getOrElse(""), module.hadError)
+
   private def buildAsciiGraph(moduleGraph: ModuleGraph): layout.Graph[String] = {
-    def renderVertex(module: Module): String = {
+    def renderVertex(module: Module): String =
       module.name + "\n" + module.organisation + "\n" + module.version
-    }
+
     val vertices = moduleGraph.nodes.map(renderVertex).toList
     val edges = moduleGraph.edges.toList.map { case (from, to) ⇒ (renderVertex(from), renderVertex(to)) }
     layout.Graph(vertices, edges)
@@ -142,6 +147,12 @@ object IvyGraphMLDependencies extends App {
     Module(element.attribute("organisation").get.text, element.attribute("name").get.text, version, error)
 
   private def buildDoc(ivyReportFile: String) = ConstructingParser.fromSource(io.Source.fromFile(ivyReportFile), false).document
+
+  def red(str: String, doRed: Boolean): String =
+    if (ConsoleLogger.formatEnabled && doRed)
+      Console.RED + str + Console.RESET
+    else
+      str
 
   def die(msg: String): Nothing = {
     println(msg)
