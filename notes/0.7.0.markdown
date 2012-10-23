@@ -5,5 +5,6 @@ New features in this version:
   * The tree output from previous versions is now available with `dependency-tree`.
   * New task `what-depends-on` showing reverse dependency tree for a selected module (incl. tab-completion for modules)
   * Don't fail in cases of a missing dependency. Show errors directly in the output.
+  * Show info about evicted versions.
   * Works with sbt 0.12.1. The ivy report files were moved to a new location making an update necessary.
 

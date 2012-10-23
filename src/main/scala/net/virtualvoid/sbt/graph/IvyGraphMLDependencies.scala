@@ -22,34 +22,40 @@ import collection.mutable.HashMap
 import collection.mutable.MultiMap
 import collection.mutable.{Set => MSet}
 import sbt.{ConsoleLogger, Graph}
-import xml.{Document, XML, Node}
+import xml.{NodeSeq, Document, XML, Node}
 import com.github.mdr.ascii.layout
 import layout._
 import sbinary.{Format, DefaultProtocol}
 
 object IvyGraphMLDependencies extends App {
-  case class Module(organisation: String, name: String, version: String, error: Option[String] = None) {
-    def id: String = organisation+":"+name+":"+version
-
+  case class ModuleId(organisation: String,
+                       name: String,
+                       version: String) {
+    def idString: String = organisation+":"+name+":"+version
+  }
+  case class Module(id: ModuleId,
+                    evictedByVersion: Option[String] = None,
+                    error: Option[String] = None) {
     def hadError: Boolean = error.isDefined
-
-    override def hashCode(): Int = id.hashCode
-    override def equals(p1: Any): Boolean = p1 match {
-      case m: Module => id == m.id
-      case _ => false
-    }
   }
 
-  case class ModuleGraph(nodes: Seq[Module], edges: Seq[(Module, Module)]) {
-    lazy val dependencyMap: Map[Module, Seq[Module]] = {
-      val m = new HashMap[Module, MSet[Module]] with MultiMap[Module, Module]
-      edges.foreach { case (from, to) => m.addBinding(from, to) }
-      m.toMap.mapValues(_.toSeq.sortBy(_.id))
+  type Edge = (ModuleId, ModuleId)
+
+  case class ModuleGraph(nodes: Seq[Module], edges: Seq[Edge]) {
+    lazy val modules: Map[ModuleId, Module] =
+      nodes.map(n => (n.id, n)).toMap
+
+    def module(id: ModuleId): Module = modules(id)
+
+    lazy val dependencyMap: Map[ModuleId, Seq[Module]] = {
+      val m = new HashMap[ModuleId, MSet[Module]] with MultiMap[ModuleId, Module]
+      edges.foreach { case (from, to) => m.addBinding(from, module(to)) }
+      m.toMap.mapValues(_.toSeq.sortBy(_.id.idString))
     }
-    lazy val reverseDependencyMap: Map[Module, Seq[Module]] = {
-      val m = new HashMap[Module, MSet[Module]] with MultiMap[Module, Module]
-      edges.foreach { case (from, to) => m.addBinding(to, from) }
-      m.toMap.mapValues(_.toSeq.sortBy(_.id))
+    lazy val reverseDependencyMap: Map[ModuleId, Seq[Module]] = {
+      val m = new HashMap[ModuleId, MSet[Module]] with MultiMap[ModuleId, Module]
+      edges.foreach { case (from, to) => m.addBinding(to, module(from)) }
+      m.toMap.mapValues(_.toSeq.sortBy(_.id.idString))
     }
   }
 
@@ -57,36 +63,49 @@ object IvyGraphMLDependencies extends App {
     buildGraph(buildDoc(ivyReportFile))
 
   def buildGraph(doc: Document): ModuleGraph = {
-    val edges = for {
-      mod <- doc \ "dependencies" \ "module"
+    def edgesForModule(id: ModuleId, revision: NodeSeq, rev: String): Seq[Edge] =
+      for {
+        caller      <- revision \ "caller" if caller.attribute("rev").get.text == rev
+        callerModule = moduleIdFromElement(caller, caller.attribute("callerrev").get.text)
+      } yield (moduleIdFromElement(caller, caller.attribute("callerrev").get.text), id)
+
+    val moduleEdges: Seq[(Module, Seq[Edge])] = for {
+      mod      <- doc \ "dependencies" \ "module"
       revision <- mod \ "revision"
-      caller <-  revision \ "caller"
-      callerModule = nodeFromElement(caller, caller.attribute("callerrev").get.text)
-      depModule = nodeFromElement(mod, revision.attribute("name").get.text, revision.attribute("error").map(_.text))
-    } yield (callerModule, depModule)
+      rev       = revision.attribute("name").get.text
+      moduleId  = moduleIdFromElement(mod, rev)
+      module    = Module(moduleId,
+                         evictedByVersion = (revision \ "evicted-by").headOption.flatMap(_.attribute("rev").map(_.text)),
+                         error = revision.attribute("error").map(_.text))
+    } yield (module, edgesForModule(moduleId, revision, rev))
 
-    val nodes = edges.flatMap(e => Seq(e._1, e._2)).distinct
+    val (nodes, edges) = moduleEdges.unzip
 
-    ModuleGraph(nodes, edges)
+    val info = (doc \ "info").head
+    def infoAttr(name: String): String =
+      info.attribute(name).getOrElse(throw new IllegalArgumentException("Missing attribute "+name)).text
+    val rootModule = Module(ModuleId(infoAttr("organisation"), infoAttr("module"), infoAttr("revision")))
+
+    ModuleGraph(rootModule +: nodes, edges.flatten)
   }
 
-  def reverseGraphStartingAt(graph: ModuleGraph, root: Module): ModuleGraph = {
+  def reverseGraphStartingAt(graph: ModuleGraph, root: ModuleId): ModuleGraph = {
     val deps = graph.reverseDependencyMap
 
-    def visit(module: Module, visited: Set[Module]): Seq[(Module, Module)] =
+    def visit(module: ModuleId, visited: Set[ModuleId]): Seq[(ModuleId, ModuleId)] =
       if (visited(module))
         Nil
       else
         deps.get(module) match {
           case Some(deps) =>
             deps.flatMap { to =>
-              (module, to) +: visit(to, visited + module)
+              (module, to.id) +: visit(to.id, visited + module)
             }
           case None => Nil
         }
 
     val edges = visit(root, Set.empty)
-    val nodes = edges.foldLeft(Set.empty[Module])((set, edge) => set + edge._1 + edge._2)
+    val nodes = edges.foldLeft(Set.empty[ModuleId])((set, edge) => set + edge._1 + edge._2).map(graph.module)
     ModuleGraph(nodes.toSeq, edges)
   }
 
@@ -97,21 +116,27 @@ object IvyGraphMLDependencies extends App {
     val deps = graph.dependencyMap
 
     // there should only be one root node (the project itself)
-    val roots = graph.nodes.filter(n => !graph.edges.exists(_._2 == n)).sortBy(_.id)
+    val roots = graph.nodes.filter(n => !graph.edges.exists(_._2 == n.id)).sortBy(_.id.idString)
     roots.map { root =>
-      Graph.toAscii[Module](root, node => deps.getOrElse(node, Seq.empty[Module]), displayModule)
+      Graph.toAscii[Module](root, node => deps.getOrElse(node.id, Seq.empty[Module]), displayModule)
     }.mkString("\n")
   }
 
   def displayModule(module: Module): String =
-    red(module.id + module.error.map(" (error: "+_+")").getOrElse(""), module.hadError)
+    red(module.id.idString +
+        module.error.map(" (error: "+_+")").getOrElse("") +
+        module.evictedByVersion.map(_ formatted " (evicted by: %s)").getOrElse(""), module.hadError)
 
   private def buildAsciiGraph(moduleGraph: ModuleGraph): layout.Graph[String] = {
     def renderVertex(module: Module): String =
-      module.name + "\n" + module.organisation + "\n" + module.version + module.error.map("\nerror: "+_).getOrElse("")
+      module.id.name + "\n" +
+      module.id.organisation + "\n" +
+      module.id.version +
+      module.error.map("\nerror: "+_).getOrElse("") +
+      module.evictedByVersion.map(_ formatted "\nevicted by: %s").getOrElse("")
 
     val vertices = moduleGraph.nodes.map(renderVertex).toList
-    val edges = moduleGraph.edges.toList.map { case (from, to) ⇒ (renderVertex(from), renderVertex(to)) }
+    val edges = moduleGraph.edges.toList.map { case (from, to) ⇒ (renderVertex(moduleGraph.module(from)), renderVertex(moduleGraph.module(to))) }
     layout.Graph(vertices, edges)
   }
 
@@ -119,15 +144,15 @@ object IvyGraphMLDependencies extends App {
     val nodesXml =
       for (n <- graph.nodes)
         yield
-          <node id={n.id}><data key="d0">
+          <node id={n.id.idString}><data key="d0">
             <y:ShapeNode>
-              <y:NodeLabel>{n.id}</y:NodeLabel>
+              <y:NodeLabel>{n.id.idString}</y:NodeLabel>
             </y:ShapeNode>
           </data></node>
 
     val edgesXml =
       for (e <- graph.edges)
-        yield <edge source={e._1.id} target={e._2.id} />
+        yield <edge source={e._1.idString} target={e._2.idString} />
 
     val xml =
       <graphml xmlns="http://graphml.graphdrawing.org/xmlns"
@@ -143,8 +168,8 @@ object IvyGraphMLDependencies extends App {
 
     XML.save(outputFile, xml)
   }
-  private def nodeFromElement(element: Node, version: String, error: Option[String] = None): Module =
-    Module(element.attribute("organisation").get.text, element.attribute("name").get.text, version, error)
+  def moduleIdFromElement(element: Node, version: String): ModuleId =
+    ModuleId(element.attribute("organisation").get.text, element.attribute("name").get.text, version)
 
   private def buildDoc(ivyReportFile: String) = ConstructingParser.fromSource(io.Source.fromFile(ivyReportFile), false).document
 
@@ -170,6 +195,7 @@ object ModuleGraphProtocol extends DefaultProtocol {
   import IvyGraphMLDependencies._
 
   implicit def seqFormat[T: Format]: Format[Seq[T]] = wrap[Seq[T], List[T]](_.toList, _.toSeq)
-  implicit val ModuleFormat: Format[Module] = asProduct4(Module)(Module.unapply(_).get)
+  implicit val ModuleIdFormat: Format[ModuleId] = asProduct3(ModuleId)(ModuleId.unapply(_).get)
+  implicit val ModuleFormat: Format[Module] = asProduct3(Module)(Module.unapply(_).get)
   implicit val ModuleGraphFormat: Format[ModuleGraph] = asProduct2(ModuleGraph)(ModuleGraph.unapply(_).get)
 }

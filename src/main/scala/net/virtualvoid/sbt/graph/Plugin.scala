@@ -121,26 +121,26 @@ object Plugin extends sbt.Plugin {
     (Space ~> token("--force")).?.map(_.isDefined)
   }
 
-  import IvyGraphMLDependencies.Module
+  import IvyGraphMLDependencies.ModuleId
 
-  val artifactIdParser: Initialize[State => Parser[Module]] =
+  val artifactIdParser: Initialize[State => Parser[ModuleId]] =
     resolvedScoped { ctx => (state: State) =>
       val graph =  loadFromContext(moduleGraphStore, ctx, state) getOrElse ModuleGraph(Nil, Nil)
 
       import complete.DefaultParsers._
       import Compat._
 
-      def moduleFrom(modules: Seq[Module]) =
+      def moduleFrom(modules: Seq[ModuleId]) =
         modules.map { m =>
           (token(m.name) ~ Space ~ token(m.version)).map(_ => m)
         }.reduce(_ | _)
 
-      graph.nodes.groupBy(_.organisation).map {
+      graph.nodes.map(_.id).groupBy(_.organisation).map {
         case (org, modules) =>
           Space ~ token(org) ~ Space ~> moduleFrom(modules)
       }.reduceOption(_ | _).getOrElse {
         (Space ~> token(StringBasic, "organization") ~ Space ~ token(StringBasic, "module") ~ Space ~ token(StringBasic, "version") ).map { case ((((org, _), mod), _), version) =>
-          Module(org, mod, version)
+          ModuleId(org, mod, version)
         }
       }
     }
