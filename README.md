@@ -47,6 +47,9 @@ Tasks & Settings
  * `dependency-tree`: Shows an ASCII tree representation of the project's dependencies
  * `what-depends-on <organization> <module> <revision>`: Find out what depends on an artifact. Shows a reverse dependency
    tree for the selected module.
+ * `filter-scala-library`: Defines if the scala library should be excluded from the output of the dependency-* functions.
+   If `true`, instead of showing the dependency `"[S]"` is appended to the artifact name. Set to `false` if
+   you want the scala-library dependency to appear in the output. (default: true)
  * `dependency-graph-ml-file`: a setting which allows configuring the output path of `dependency-graph-ml`.
  * `ivy-report`: let's ivy generate the resolution report for you project. Use
    `show ivy-report` for the filename of the generated report

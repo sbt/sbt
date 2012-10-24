@@ -6,5 +6,7 @@ New features in this version:
   * New task `what-depends-on` showing reverse dependency tree for a selected module (incl. tab-completion for modules)
   * Don't fail in cases of a missing dependency. Show errors directly in the output.
   * Show info about evicted versions.
+  * By default, exclude scala-library dependency and append `[S]` to the artifact name instead. Set
+    `filter-scala-library` to `false` to disable this feature.
   * Works with sbt 0.12.1. The ivy report files were moved to a new location making an update necessary.
 

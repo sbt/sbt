@@ -34,6 +34,7 @@ object IvyGraphMLDependencies extends App {
     def idString: String = organisation+":"+name+":"+version
   }
   case class Module(id: ModuleId,
+                    extraInfo: String = "",
                     evictedByVersion: Option[String] = None,
                     error: Option[String] = None) {
     def hadError: Boolean = error.isDefined
@@ -113,6 +114,24 @@ object IvyGraphMLDependencies extends App {
     ModuleGraph(nodes.toSeq, edges)
   }
 
+  def ignoreScalaLibrary(scalaVersion: String, graph: ModuleGraph): ModuleGraph = {
+    val scalaLibraryId = ModuleId("org.scala-lang", "scala-library", scalaVersion)
+
+    def dependsOnScalaLibrary(m: Module): Boolean =
+      graph.dependencyMap(m.id).map(_.id).contains(scalaLibraryId)
+
+    def addScalaLibraryAnnotation(m: Module): Module = {
+      if (dependsOnScalaLibrary(m))
+        m.copy(extraInfo = m.extraInfo + " [S]")
+      else
+        m
+    }
+
+    val newNodes = graph.nodes.map(addScalaLibraryAnnotation).filterNot(_.id == scalaLibraryId)
+    val newEdges = graph.edges.filterNot(_._2 == scalaLibraryId)
+    ModuleGraph(newNodes, newEdges)
+  }
+
   def asciiGraph(graph: ModuleGraph): String =
     Layouter.renderGraph(buildAsciiGraph(graph))
 
@@ -128,12 +147,13 @@ object IvyGraphMLDependencies extends App {
 
   def displayModule(module: Module): String =
     red(module.id.idString +
+        module.extraInfo +
         module.error.map(" (error: "+_+")").getOrElse("") +
         module.evictedByVersion.map(_ formatted " (evicted by: %s)").getOrElse(""), module.hadError)
 
   private def buildAsciiGraph(moduleGraph: ModuleGraph): layout.Graph[String] = {
     def renderVertex(module: Module): String =
-      module.id.name + "\n" +
+      module.id.name + module.extraInfo + "\n" +
       module.id.organisation + "\n" +
       module.id.version +
       module.error.map("\nerror: "+_).getOrElse("") +
@@ -200,6 +220,6 @@ object ModuleGraphProtocol extends DefaultProtocol {
 
   implicit def seqFormat[T: Format]: Format[Seq[T]] = wrap[Seq[T], List[T]](_.toList, _.toSeq)
   implicit val ModuleIdFormat: Format[ModuleId] = asProduct3(ModuleId)(ModuleId.unapply(_).get)
-  implicit val ModuleFormat: Format[Module] = asProduct3(Module)(Module.unapply(_).get)
+  implicit val ModuleFormat: Format[Module] = asProduct4(Module)(Module.unapply(_).get)
   implicit val ModuleGraphFormat: Format[ModuleGraph] = asProduct2(ModuleGraph)(ModuleGraph.unapply(_).get)
 }

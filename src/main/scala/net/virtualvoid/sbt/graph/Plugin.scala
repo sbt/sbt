@@ -44,6 +44,9 @@ object Plugin extends sbt.Plugin {
     "A task which returns the location of the ivy report file for a given configuration (default `compile`).")
   val ignoreMissingUpdate = TaskKey[UpdateReport]("update-ignore-missing",
     "A copy of the update task which ignores missing artifacts")
+  val filterScalaLibrary = SettingKey[Boolean]("filter-scala-library",
+    "Specifies if scala dependency should be filtered in dependency-* output"
+  )
 
   // internal
   import ModuleGraphProtocol._
@@ -63,12 +66,19 @@ object Plugin extends sbt.Plugin {
           val home = config.provider.scalaProvider.launcher.ivyHome
           (c: String) => file("%s/cache/%s-%s-%s.xml" format (home, projectID.organization, crossName(ivyModule), c))
       }
-    }
+    },
+    filterScalaLibrary in Global := true
   ) ++ Seq(Compile, Test, Runtime, Provided, Optional).flatMap(ivyReportForConfig)
 
   def ivyReportForConfig(config: Configuration) = inConfig(config)(seq(
     ivyReport <<= ivyReportFunction map (_(config.toString)) dependsOn(ignoreMissingUpdate),
     moduleGraph <<= ivyReport map (absoluteReportPath.andThen(IvyGraphMLDependencies.graph)),
+    moduleGraph <<= (scalaVersion, moduleGraph, filterScalaLibrary) map { (scalaV, graph, filter) =>
+      if (filter)
+        IvyGraphMLDependencies.ignoreScalaLibrary(scalaV, graph)
+      else
+        graph
+    },
     moduleGraphStore <<= moduleGraph storeAs moduleGraphStore triggeredBy moduleGraph,
     asciiGraph <<= moduleGraph map IvyGraphMLDependencies.asciiGraph,
     dependencyGraph <<= InputTask(shouldForceParser) { force =>
