@@ -75,6 +75,12 @@ This project takes the report xml of your project and creates a graphml file out
 ivy can create graphml files itself, but since I didn't want to spend to much time getting
 sbt to call into Ivy to create graphs, I went with the easy way here)
 
+Known issues
+------------
+
+ * There's an unfixed bug with graph generation for particular layouts (#19). Workaround:
+   Use `dependency-tree` instead of `dependency-graph`.
+
 Credits
 -------
 
