@@ -47,14 +47,18 @@ object IvyGraphMLDependencies extends App {
 
     def module(id: ModuleId): Module = modules(id)
 
-    lazy val dependencyMap: Map[ModuleId, Seq[Module]] = {
+    lazy val dependencyMap: Map[ModuleId, Seq[Module]] =
+      createMap(identity)
+
+    lazy val reverseDependencyMap: Map[ModuleId, Seq[Module]] =
+      createMap { case (a, b) => (b, a) }
+
+    def createMap(bindingFor: ((ModuleId, ModuleId)) => (ModuleId, ModuleId)): Map[ModuleId, Seq[Module]] = {
       val m = new HashMap[ModuleId, MSet[Module]] with MultiMap[ModuleId, Module]
-      edges.foreach { case (from, to) => m.addBinding(from, module(to)) }
-      m.toMap.mapValues(_.toSeq.sortBy(_.id.idString))
-    }
-    lazy val reverseDependencyMap: Map[ModuleId, Seq[Module]] = {
-      val m = new HashMap[ModuleId, MSet[Module]] with MultiMap[ModuleId, Module]
-      edges.foreach { case (from, to) => m.addBinding(to, module(from)) }
+      edges.foreach { entry =>
+        val (f, t) = bindingFor(entry)
+        m.addBinding(f, module(t))
+      }
       m.toMap.mapValues(_.toSeq.sortBy(_.id.idString))
     }
   }
