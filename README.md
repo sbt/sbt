@@ -78,8 +78,9 @@ sbt to call into Ivy to create graphs, I went with the easy way here)
 Known issues
 ------------
 
- * There's an unfixed bug with graph generation for particular layouts (#19). Workaround:
+ * #19: There's an unfixed bug with graph generation for particular layouts. Workaround:
    Use `dependency-tree` instead of `dependency-graph`.
+ * #12: Excluded dependencies will be shown in the graph in sbt < 0.12, works with later versions
 
 Credits
 -------
