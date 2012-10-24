@@ -1,6 +1,6 @@
 New features in this version:
 
-  * `dependency-graph` now renders a real graph. Many thanks go to [Matt Russell](https://github.com/mdr/) for
+  * `dependency-graph` now renders a real graph. Thanks go to [Matt Russell](https://github.com/mdr/) for
     this added awesomeness.
   * The tree output from previous versions is now available with `dependency-tree`.
   * New task `what-depends-on` showing reverse dependency tree for a selected module (incl. tab-completion for modules)
