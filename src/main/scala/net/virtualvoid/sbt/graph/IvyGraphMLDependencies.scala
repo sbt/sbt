@@ -29,8 +29,8 @@ import sbinary.{Format, DefaultProtocol}
 
 object IvyGraphMLDependencies extends App {
   case class ModuleId(organisation: String,
-                       name: String,
-                       version: String) {
+                      name: String,
+                      version: String) {
     def idString: String = organisation+":"+name+":"+version
   }
   case class Module(id: ModuleId,
