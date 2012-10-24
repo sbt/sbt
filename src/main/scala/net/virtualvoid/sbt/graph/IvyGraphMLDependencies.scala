@@ -59,7 +59,7 @@ object IvyGraphMLDependencies extends App {
         val (f, t) = bindingFor(entry)
         m.addBinding(f, module(t))
       }
-      m.toMap.mapValues(_.toSeq.sortBy(_.id.idString))
+      m.toMap.mapValues(_.toSeq.sortBy(_.id.idString)).withDefaultValue(Nil)
     }
   }
 
