@@ -42,8 +42,7 @@ object Plugin extends sbt.Plugin {
     "A function which returns the file containing the ivy report from the ivy cache for a given configuration")
   val ivyReport = TaskKey[File]("ivy-report",
     "A task which returns the location of the ivy report file for a given configuration (default `compile`).")
-  val ignoreMissingUpdate = TaskKey[UpdateReport]("update-ignore-missing",
-    "A copy of the update task which ignores missing artifacts")
+  val ignoreMissingUpdate = update in ivyReport
   val filterScalaLibrary = SettingKey[Boolean]("filter-scala-library",
     "Specifies if scala dependency should be filtered in dependency-* output"
   )
@@ -67,6 +66,7 @@ object Plugin extends sbt.Plugin {
           (c: String) => file("%s/cache/%s-%s-%s.xml" format (home, projectID.organization, crossName(ivyModule), c))
       }
     },
+    Compat.ignoreMissingUpdateT,
     filterScalaLibrary in Global := true
   ) ++ Seq(Compile, Test, Runtime, Provided, Optional).flatMap(ivyReportForConfig)
 
@@ -105,8 +105,7 @@ object Plugin extends sbt.Plugin {
       (module, streams, moduleGraph) map { (module, streams, graph) =>
         streams.log.info(IvyGraphMLDependencies.asciiTree(IvyGraphMLDependencies.reverseGraphStartingAt(graph, module)))
       }
-    },
-    Compat.ignoreMissingUpdateT
+    }
   ))
 
   def printAsciiGraphTask =
