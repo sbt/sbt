@@ -1217,7 +1217,7 @@ object Classpaths
 		repo match
 		{
 			case m: xsbti.MavenRepository => MavenRepository(m.id, m.url.toString)
-			case i: xsbti.IvyRepository => Resolver.url(i.id, i.url)(Patterns(i.ivyPattern :: Nil, i.artifactPattern :: Nil, false))
+			case i: xsbti.IvyRepository => Resolver.url(i.id, i.url)(Patterns(i.ivyPattern :: Nil, i.artifactPattern :: Nil, i.mavenCompatible))
 			case p: xsbti.PredefinedRepository => p.id match {
 				case Predefined.Local => Resolver.defaultLocal
 				case Predefined.MavenLocal => Resolver.mavenLocal

@@ -8,4 +8,5 @@ public interface IvyRepository extends Repository
 	URL url();
 	String ivyPattern();
 	String artifactPattern();
+	boolean mavenCompatible();
 }

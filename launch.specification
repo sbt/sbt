@@ -66,7 +66,7 @@ configuration ::= scala app repositories boot log app-properties
 
     repository ::= ( predefinedRepository | customRepository ) nl
       predefinedRepository ::= 'local' | 'maven-local' | 'maven-central' | 'scala-tools-releases' | 'scala-tools-snapshots'
-      customRepository ::= label ':' url [',' pattern]
+      customRepository ::= label ':' url [[',' pattern] ',' pattern [',' 'mavenCompatible']]
 
     property ::= label ':' propertyDefinition (',' propertyDefinition)* nl
       propertyDefinition ::= mode '=' (set | prompt)

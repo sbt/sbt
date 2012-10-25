@@ -71,7 +71,7 @@ object Application
 object Repository
 {
 	final case class Maven(id: String, url: URL) extends xsbti.MavenRepository
-	final case class Ivy(id: String, url: URL, ivyPattern: String, artifactPattern: String) extends xsbti.IvyRepository
+	final case class Ivy(id: String, url: URL, ivyPattern: String, artifactPattern: String, mavenCompatible: Boolean) extends xsbti.IvyRepository
 	final case class Predefined(id: xsbti.Predefined) extends xsbti.PredefinedRepository
 	object Predefined {
 		def apply(s: String): Predefined = Predefined(xsbti.Predefined.toValue(s))

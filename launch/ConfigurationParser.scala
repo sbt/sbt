@@ -182,9 +182,16 @@ class ConfigurationParser
 		m.toList.map {
 			case (key, None) => Predefined(key)
 			case (key, Some(value)) =>
-				val r = trim(substituteVariables(value).split(",",3))
+				val r = trim(substituteVariables(value).split(",",4))
 				val url = try { new URL(r(0)) } catch { case e: MalformedURLException => error("Invalid URL specified for '" + key + "': " + e.getMessage) }
-				if(r.length == 3) Ivy(key, url, r(1), r(2)) else if(r.length == 2) Ivy(key, url, r(1), r(1)) else Maven(key, url)
+				r.tail match {
+					case both :: "mavenCompatible" :: Nil => Ivy(key, url, both, both, mavenCompatible=true)
+					case ivy :: art :: "mavenCompatible" :: Nil => Ivy(key, url, ivy, art, mavenCompatible=true)
+					case ivy :: art :: Nil => Ivy(key, url, ivy, art, mavenCompatible=false)
+					case both :: Nil => Ivy(key, url, both, both, mavenCompatible=false)
+                                        case Nil => Maven(key, url)
+					case _ => error("Could not parse %s: %s".format(key, value))
+				}
 		}
 	}
 	def getAppProperties(m: LabelMap): List[AppProperty] =

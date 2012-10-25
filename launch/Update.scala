@@ -291,7 +291,7 @@ final class Update(config: UpdateConfiguration)
 		repo match
 		{
 			case m: xsbti.MavenRepository => mavenResolver(m.id, m.url.toString)
-			case i: xsbti.IvyRepository => urlResolver(i.id, i.url.toString, i.ivyPattern, i.artifactPattern)
+			case i: xsbti.IvyRepository => urlResolver(i.id, i.url.toString, i.ivyPattern, i.artifactPattern, i.mavenCompatible)
 			case p: xsbti.PredefinedRepository => p.id match {
 				case Local => localResolver(settings.getDefaultIvyUserDir.getAbsolutePath)
 				case MavenLocal => mavenLocal
@@ -310,12 +310,13 @@ final class Update(config: UpdateConfiguration)
 		}
 	}
 	/** Uses the pattern defined in BuildConfiguration to download sbt from Google code.*/
-	private def urlResolver(id: String, base: String, ivyPattern: String, artifactPattern: String) =
+	private def urlResolver(id: String, base: String, ivyPattern: String, artifactPattern: String, mavenCompatible: Boolean) =
 	{
 		val resolver = new URLResolver
 		resolver.setName(id)
 		resolver.addIvyPattern(adjustPattern(base, ivyPattern))
 		resolver.addArtifactPattern(adjustPattern(base, artifactPattern))
+		resolver.setM2compatible(mavenCompatible)
 		resolver
 	}
 	private def adjustPattern(base: String, pattern: String): String =

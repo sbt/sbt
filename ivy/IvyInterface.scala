@@ -81,6 +81,15 @@ final class Patterns(val ivyPatterns: Seq[String], val artifactPatterns: Seq[Str
 	private[sbt] def mavenStyle(): Patterns = Patterns(ivyPatterns, artifactPatterns, true)
 	private[sbt] def withIvys(patterns: Seq[String]): Patterns = Patterns(patterns ++ ivyPatterns, artifactPatterns, isMavenCompatible)
 	private[sbt] def withArtifacts(patterns: Seq[String]): Patterns = Patterns(ivyPatterns, patterns ++ artifactPatterns, isMavenCompatible)
+	override def toString = "Patterns(ivyPatterns=%s, artifactPatterns=%s, isMavenCompatible=%s)".format(ivyPatterns, artifactPatterns, isMavenCompatible)
+	override def equals(obj: Any): Boolean = {
+		obj match {
+			case other: Patterns =>
+				ivyPatterns == other.ivyPatterns && artifactPatterns == other.artifactPatterns && isMavenCompatible == other.isMavenCompatible
+			case _ => false
+		}
+	}
+	override def hashCode: Int = 617 * ivyPatterns.## + 37 * artifactPatterns.## + isMavenCompatible.hashCode
 }
 object Patterns
 {
