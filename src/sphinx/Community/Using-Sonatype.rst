@@ -9,7 +9,7 @@ First - PGP Signatures
 
 You'll need to PGP sign your artifacts for the Sonatype repository.
 Don't worry, there's a `plugin for
-that <http://scala-sbt.org/xsbt-gpg-plugin>`_. Follow the instructions
+that <http://scala-sbt.org/sbt-pgp>`_. Follow the instructions
 for the plugin and you'll have PGP signed artifacts in no time.
 
 *Note: The plugin is a jvm-only solution to generate PGP keys and sign
