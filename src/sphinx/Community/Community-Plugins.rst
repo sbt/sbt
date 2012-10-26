@@ -130,8 +130,8 @@ Release plugins
    http://software.clapper.org/sbt-izpack/
 -  sbt-ghpages-plugin (publishes generated site and api):
    https://github.com/jsuereth/xsbt-ghpages-plugin
--  sbt-gpg-plugin (PGP signing plugin, can generate keys too):
-   https://github.com/sbt/xsbt-gpg-plugin
+-  sbt-pgp (PGP signing plugin, can generate keys too):
+   https://github.com/sbt/sbt-pgp
 -  sbt-release (customizable release process):
    https://github.com/gseitz/sbt-release
 -  sbt-unique-version (emulates unique snapshots):
