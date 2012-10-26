@@ -106,7 +106,7 @@ by the following grammar. ``'nl'`` is a newline or end of file and
     resources: "resources" ":" `path` ("," `path`)*
     repository: ( `predefinedRepository` | `customRepository` ) `nl`
     predefinedRepository: "local" | "maven-local" | "maven-central"
-    customRepository: `label` ":" `url` [ ["," `ivyPattern`] "," `artifactPattern`]
+    customRepository: `label` ":" `url` [ ["," `ivyPattern`] "," `artifactPattern` [", mavenCompatible"]]
     property: `label` ":" `propertyDefinition` ("," `propertyDefinition`)*
     propertyDefinition: `mode` "=" (`set` | `prompt`)
     mode: "quick" | "new" | "fill"
