@@ -34,10 +34,12 @@ object IvyGraphMLDependencies extends App {
     def idString: String = organisation+":"+name+":"+version
   }
   case class Module(id: ModuleId,
+                    license: Option[String] = None,
                     extraInfo: String = "",
                     evictedByVersion: Option[String] = None,
                     error: Option[String] = None) {
     def hadError: Boolean = error.isDefined
+    def isUsed: Boolean = !evictedByVersion.isDefined
   }
 
   type Edge = (ModuleId, ModuleId)
@@ -80,6 +82,7 @@ object IvyGraphMLDependencies extends App {
       rev       = revision.attribute("name").get.text
       moduleId  = moduleIdFromElement(mod, rev)
       module    = Module(moduleId,
+                         (revision \ "license").headOption.flatMap(_.attribute("name")).map(_.text),
                          evictedByVersion = (revision \ "evicted-by").headOption.flatMap(_.attribute("rev").map(_.text)),
                          error = revision.attribute("error").map(_.text))
     } yield (module, edgesForModule(moduleId, revision, rev))
@@ -220,6 +223,6 @@ object ModuleGraphProtocol extends DefaultProtocol {
 
   implicit def seqFormat[T: Format]: Format[Seq[T]] = wrap[Seq[T], List[T]](_.toList, _.toSeq)
   implicit val ModuleIdFormat: Format[ModuleId] = asProduct3(ModuleId)(ModuleId.unapply(_).get)
-  implicit val ModuleFormat: Format[Module] = asProduct4(Module)(Module.unapply(_).get)
+  implicit val ModuleFormat: Format[Module] = asProduct5(Module)(Module.unapply(_).get)
   implicit val ModuleGraphFormat: Format[ModuleGraph] = asProduct2(ModuleGraph)(ModuleGraph.unapply(_).get)
 }

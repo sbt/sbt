@@ -47,6 +47,9 @@ object Plugin extends sbt.Plugin {
     "Specifies if scala dependency should be filtered in dependency-* output"
   )
 
+  val licenseInfo = TaskKey[Unit]("dependency-license-info",
+    "Aggregates and shows information about the licenses of dependencies")
+
   // internal
   import ModuleGraphProtocol._
   val moduleGraphStore = TaskKey[IvyGraphMLDependencies.ModuleGraph]("module-graph-store", "The stored module-graph from the last run")
@@ -105,7 +108,8 @@ object Plugin extends sbt.Plugin {
       (module, streams, moduleGraph) map { (module, streams, graph) =>
         streams.log.info(IvyGraphMLDependencies.asciiTree(IvyGraphMLDependencies.reverseGraphStartingAt(graph, module)))
       }
-    }
+    },
+    licenseInfo <<= (moduleGraph, streams) map showLicenseInfo
   ))
 
   def printAsciiGraphTask =
@@ -122,6 +126,16 @@ object Plugin extends sbt.Plugin {
 
   def print(key: TaskKey[String]) =
     (streams, key) map (_.log.info(_))
+
+  def showLicenseInfo(graph: ModuleGraph, streams: TaskStreams) {
+    val output =
+      graph.nodes.filter(_.isUsed).groupBy(_.license).toSeq.sortBy(_._1).map {
+        case (license, modules) =>
+          license.getOrElse("No license specified")+"\n"+
+          modules.map(_.id.idString formatted "\t %s").mkString("\n")
+      }.mkString("\n\n")
+    streams.log.info(output)
+  }
 
   import Project._
   val shouldForceParser: State => Parser[Boolean] = { (state: State) =>

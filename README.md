@@ -47,6 +47,7 @@ Tasks & Settings
  * `dependency-tree`: Shows an ASCII tree representation of the project's dependencies
  * `what-depends-on <organization> <module> <revision>`: Find out what depends on an artifact. Shows a reverse dependency
    tree for the selected module.
+ * `dependency-license-info`: show dependencies grouped by declared license
  * `filter-scala-library`: Defines if the scala library should be excluded from the output of the dependency-* functions.
    If `true`, instead of showing the dependency `"[S]"` is appended to the artifact name. Set to `false` if
    you want the scala-library dependency to appear in the output. (default: true)

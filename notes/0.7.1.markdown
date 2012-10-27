@@ -1,0 +1,3 @@
+New features in this version:
+
+ * `dependency-license-info`: show dependencies grouped by declared license
