@@ -70,7 +70,7 @@ Inner Workings
 --------------
 
 sbt/Ivy's `update` task create ivy-report xml-files inside `.ivy2/cache` (in sbt 0.12.1:
-`<project-dir>/target/resolution-cache/reports/<project-id>`. You can
+`<project-dir>/target/resolution-cache/reports/<project-id>`). You can
 just open them with your browser to look at the dependency report for your project.
 This project takes the report xml of your project and creates a graphml file out of it. (BTW,
 ivy can create graphml files itself, but since I didn't want to spend to much time getting
