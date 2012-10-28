@@ -34,6 +34,12 @@ application. For example a common set of memory-related options is:
 
     java -Xmx1536M -Xss1M -XX:+CMSClassUnloadingEnabled -XX:MaxPermSize=256m``
 
+For JDK 7 (which doesn't default to the ConcurrentMarkSweep garbage collector):
+
+.. code-block:: console
+
+    java -Xmx1536M -Xss1M -XX:+UseConcMarkSweepGC -XX:+CMSClassUnloadingEnabled -XX:MaxPermSize=256m``
+
 Boot directory
 --------------
 
