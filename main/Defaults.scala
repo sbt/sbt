@@ -1211,13 +1211,18 @@ object Classpaths
 	def bootRepositories(app: xsbti.AppConfiguration): Option[Seq[Resolver]] =
 		try { Some(app.provider.scalaProvider.launcher.ivyRepositories.toSeq map bootRepository) }
 		catch { case _: NoSuchMethodError => None }
+	
+	private[this] def mavenCompatible(ivyRepo: xsbti.IvyRepository): Boolean =
+		try { ivyRepo.mavenCompatible }
+		catch { case _: NoSuchMethodError => false }
+		
 	private[this] def bootRepository(repo: xsbti.Repository): Resolver =
 	{
 		import xsbti.Predefined
 		repo match
 		{
 			case m: xsbti.MavenRepository => MavenRepository(m.id, m.url.toString)
-			case i: xsbti.IvyRepository => Resolver.url(i.id, i.url)(Patterns(i.ivyPattern :: Nil, i.artifactPattern :: Nil, i.mavenCompatible))
+			case i: xsbti.IvyRepository => Resolver.url(i.id, i.url)(Patterns(i.ivyPattern :: Nil, i.artifactPattern :: Nil, mavenCompatible(i)))
 			case p: xsbti.PredefinedRepository => p.id match {
 				case Predefined.Local => Resolver.defaultLocal
 				case Predefined.MavenLocal => Resolver.mavenLocal
