@@ -89,7 +89,7 @@ final class Patterns(val ivyPatterns: Seq[String], val artifactPatterns: Seq[Str
 			case _ => false
 		}
 	}
-	override def hashCode: Int = 617 * ivyPatterns.## + 37 * artifactPatterns.## + isMavenCompatible.hashCode
+	override def hashCode: Int = (ivyPatterns, artifactPatterns, isMavenCompatible).hashCode
 }
 object Patterns
 {
