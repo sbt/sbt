@@ -3,6 +3,7 @@
  */
 package sbt
 
+import scala.collection.mutable
 import org.scalatools.testing._
 import java.net.ServerSocket
 import java.io._
@@ -36,7 +37,7 @@ private[sbt] object ForkTests {
 			if (!tests.isEmpty) {
 				val server = new ServerSocket(0)
 				object Acceptor extends Runnable {
-					val resultsAcc = collection.mutable.Map.empty[String, TestResult.Value]
+					val resultsAcc = mutable.Map.empty[String, TestResult.Value]
 					lazy val result = (overall(resultsAcc.values), resultsAcc.toMap)
 					def run: Unit = {
 						val socket =
@@ -47,24 +48,6 @@ private[sbt] object ForkTests {
 							}
 						val os = new ObjectOutputStream(socket.getOutputStream)
 						val is = new ObjectInputStream(socket.getInputStream)
-
-						import ForkTags._
-						@annotation.tailrec def react: Unit = is.readObject match {
-							case `Done` => os.writeObject(Done); os.flush()
-							case Array(`Error`, s: String) => log.error(s); react
-							case Array(`Warn`, s: String) => log.warn(s); react
-							case Array(`Info`, s: String) => log.info(s); react
-							case Array(`Debug`, s: String) => log.debug(s); react
-							case t: Throwable => log.trace(t); react
-							case Array(group: String, tEvents: Array[Event]) =>
-								listeners.foreach(_ startGroup group)
-								val event = TestEvent(tEvents)
-								listeners.foreach(_ testEvent event)
-								val result = event.result getOrElse TestResult.Passed
-								resultsAcc += group -> result
-								listeners.foreach(_ endGroup (group, result))
-								react
-						}
 
 						try {
 							os.writeBoolean(log.ansiCodesSupported)
@@ -81,7 +64,7 @@ private[sbt] object ForkTests {
 							}
 							os.flush()
 
-							react
+							(new React(is, os, log, listeners, resultsAcc)).react()
 						} finally {
 							is.close();	os.close(); socket.close()
 						}
@@ -108,5 +91,25 @@ private[sbt] object ForkTests {
 			} else
 				(TestResult.Passed, Map.empty[String, TestResult.Value])
 		} tagw (config.tags: _*)
+	}
+}
+private final class React(is: ObjectInputStream, os: ObjectOutputStream, log: Logger, listeners: Seq[TestReportListener], results: mutable.Map[String, TestResult.Value])
+{
+	import ForkTags._
+	@annotation.tailrec def react(): Unit = is.readObject match {
+		case `Done` => os.writeObject(Done); os.flush()
+		case Array(`Error`, s: String) => log.error(s); react()
+		case Array(`Warn`, s: String) => log.warn(s); react()
+		case Array(`Info`, s: String) => log.info(s); react()
+		case Array(`Debug`, s: String) => log.debug(s); react()
+		case t: Throwable => log.trace(t); react()
+		case Array(group: String, tEvents: Array[Event]) =>
+			listeners.foreach(_ startGroup group)
+			val event = TestEvent(tEvents)
+			listeners.foreach(_ testEvent event)
+			val result = event.result getOrElse TestResult.Passed
+			results += group -> result
+			listeners.foreach(_ endGroup (group, result))
+			react()
 	}
 }
