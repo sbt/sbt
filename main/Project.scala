@@ -19,6 +19,7 @@ sealed trait ProjectDefinition[PR <: ProjectReference]
 	def configurations: Seq[Configuration]
 	def settings: Seq[Project.Setting[_]]
 	def aggregate: Seq[PR]
+	@deprecated("Delegation between projects should be replaced by directly sharing settings.", "0.13.0")
 	def delegates: Seq[PR]
 	def dependencies: Seq[ClasspathDep[PR]]
 	def uses: Seq[PR] = aggregate ++ dependencies.map(_.project)
@@ -29,7 +30,7 @@ sealed trait ProjectDefinition[PR <: ProjectReference]
 		case p: ProjectDefinition[_] => p.getClass == this.getClass && p.id == id && p.base == base
 		case _ => false
 	}
-	override def toString = "Project(id: " + id + ", base: " + base + ", aggregate: " + aggregate + ", dependencies: " + dependencies + ", delegates: " + delegates + ", configurations: " + configurations + ")"
+	override def toString = "Project(id: " + id + ", base: " + base + ", aggregate: " + aggregate + ", dependencies: " + dependencies + ", configurations: " + configurations + ")"
 }
 sealed trait Project extends ProjectDefinition[ProjectReference]
 {
@@ -54,6 +55,7 @@ sealed trait Project extends ProjectDefinition[ProjectReference]
 
 	def overrideConfigs(cs: Configuration*): Project = copy(configurations = Defaults.overrideConfigs(cs : _*)(configurations))
 	def dependsOn(deps: ClasspathDep[ProjectReference]*): Project = copy(dependencies = dependencies ++ deps)
+	@deprecated("Delegation between projects should be replaced by directly sharing settings.", "0.13.0")
 	def delegateTo(from: ProjectReference*): Project = copy(delegates = delegates ++ from)
 	def aggregate(refs: ProjectReference*): Project = copy(aggregate = (aggregate: Seq[ProjectReference]) ++ refs)
 	def configs(cs: Configuration*): Project = copy(configurations = configurations ++ cs)
