@@ -2,8 +2,8 @@
 Changes
 =======
 
-0.12.0 to 0.12.1 (unreleased)
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+0.12.0 to 0.12.1
+~~~~~~~~~~~~~~~~
 
 Dependency management fixes:
 
@@ -16,15 +16,16 @@ Dependency management fixes:
    and binary dependencies.
 -  Per-project resolution cache that deletes cached files before
    ``update``. Notes:
--  The resolution cache differs from the repository cache and does not
-   contain dependency metadata or artifacts.
--  The resolution cache contains the generated ivy files, properties,
-   and resolve reports for the project.
--  There will no longer be individual files directly in ``~/.ivy2/cache/``
--  Resolve reports are now in ``target/resolution-cache/reports/``, viewable with a browser.
--  Cache location includes extra attributes so that cross builds of a
-   plugin do not overwrite each other. Fixes gh-532.
 
+  -  The resolution cache differs from the repository cache and does not
+     contain dependency metadata or artifacts.
+  -  The resolution cache contains the generated ivy files, properties,
+     and resolve reports for the project.
+  -  There will no longer be individual files directly in ``~/.ivy2/cache/``
+  -  Resolve reports are now in ``target/resolution-cache/reports/``, viewable with a browser.
+  -  Cache location includes extra attributes so that cross builds of a
+     plugin do not overwrite each other. Fixes gh-532.
+  
 Three stage incremental compilation:
 
 -  As before, the first step recompiles sources that were edited (or
