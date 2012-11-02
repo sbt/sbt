@@ -2,7 +2,7 @@
  * Copyright 2010, 2011 Mark Harrah
  */
 package object sbt extends sbt.std.TaskExtra with sbt.Types with sbt.ProcessExtra with sbt.impl.DependencyBuilders
-	with sbt.PathExtra with sbt.ProjectExtra with sbt.DependencyFilterExtra with sbt.BuildExtra
+	with sbt.PathExtra with sbt.ProjectExtra with sbt.DependencyFilterExtra with sbt.BuildExtra with sbt.TaskMacroExtra
 {
 	@deprecated("Renamed to CommandStrings.", "0.12.0")
 	val CommandSupport = CommandStrings

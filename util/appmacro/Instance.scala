@@ -24,24 +24,45 @@ trait MonadInstance extends Instance
 {
 	def flatten[T](in: M[M[T]]): M[T]
 }
-object InputWrapper
-{
-	def wrap[T](in: Any): T = error("This method is an implementation detail and should not be referenced.")
-}
 
 	import scala.reflect._
 	import macros._
 
+object InputWrapper
+{
+	/** The name of the wrapper method should be obscure.
+	* Wrapper checking is based solely on this name, so it must not conflict with a user method name.
+	* The user should never see this method because it is compile-time only and only used internally by the task macro system.*/
+	final val WrapName = "wrap_\u2603\u2603"
+
+	// This method should be annotated as compile-time only when that feature is implemented
+	def wrap_\u2603\u2603[T](in: Any): T = error("This method is an implementation detail and should not be referenced.")
+
+	/** Wraps an arbitrary Tree in a call to the `wrap` method of this module for later processing by an enclosing macro.
+	* The resulting Tree is the manually constructed version of:
+	*
+	* `c.universe.reify { InputWrapper.<WrapName>[T](ts.splice) }`
+	*/
+	def wrapKey[T: c.WeakTypeTag](c: Context)(ts: c.Expr[Any]): c.Expr[T] =
+	{
+			import c.universe.{Apply=>ApplyTree,_}
+		val util = new ContextUtil[c.type](c)
+		val iw = util.singleton(InputWrapper)
+		val tpe = c.weakTypeOf[T]
+		val nme = newTermName(WrapName).encoded
+		val tree = ApplyTree(TypeApply(Select(Ident(iw), nme), TypeTree(tpe) :: Nil), ts.tree :: Nil)
+		tree.setPos(ts.tree.pos)
+		c.Expr[T](tree)
+	}
+}
+
 object Instance
 {
-	final val DynamicDependencyError = "Illegal dynamic dependency."
-	final val DynamicReferenceError = "Illegal dynamic reference."
 	final val ApplyName = "app"
 	final val FlattenName = "flatten"
 	final val PureName = "pure"
 	final val MapName = "map"
 	final val InstanceTCName = "M"
-	final val WrapName = "wrap"
 
 	final class Input[U <: Universe with Singleton](val tpe: U#Type, val expr: U#Tree, val local: U#ValDef)
 
@@ -99,41 +120,14 @@ object Instance
 		// A Tree that references the statically accessible Instance that provides the actual implementations of map, flatMap, ... 
 		val instance = Ident(instanceSym)
 
-		val parameterModifiers = Modifiers(Flag.PARAM)
-
-		val wrapperSym = util.singleton(InputWrapper)
-		val wrapMethodSymbol = util.method(wrapperSym, WrapName)
-		def isWrapper(fun: Tree) = fun.symbol == wrapMethodSymbol
+		val isWrapper: Tree => Boolean = util.isWrapper(InputWrapper.WrapName)
 
 		type In = Input[c.universe.type]
 		var inputs = List[In]()
 
-		// constructs a ValDef with a parameter modifier, a unique name, with the provided Type and with an empty rhs
-		def freshMethodParameter(tpe: Type): ValDef =
-			ValDef(parameterModifiers, freshTermName("p"), TypeTree(tpe), EmptyTree)
-
-		def freshTermName(prefix: String) = newTermName(c.fresh("$" + prefix))
-
-		/* Local definitions in the macro.  This is used to ensure
-		* references are to M instances defined outside of the macro call.*/
-		val defs = new collection.mutable.HashSet[Symbol]
-
-		// a reference is illegal if it is to an M instance defined within the scope of the macro call
-		def illegalReference(sym: Symbol): Boolean =
-			sym != null && sym != NoSymbol && defs.contains(sym)
-
-		// a function that checks the provided tree for illegal references to M instances defined in the
-		//  expression passed to the macro and for illegal dereferencing of M instances.
-		val checkQual: Tree => Unit = {
-			case s @ ApplyTree(fun, qual :: Nil) => if(isWrapper(fun)) c.error(s.pos, DynamicDependencyError)
-			case id @ Ident(name) if illegalReference(id.symbol) => c.error(id.pos, DynamicReferenceError)
-			case _ => ()
-		}
-		// adds the symbols for all non-Ident subtrees to `defs`.
-		val defSearch: Tree => Unit = {
-			case _: Ident => ()
-			case tree => if(tree.symbol ne null) defs += tree.symbol; 
-		}
+		// Local definitions in the macro.  This is used to ensure references are to M instances defined outside of the macro call.
+		val defs = util.collectDefs(tree, isWrapper)
+		val checkQual: Tree => Unit = util.checkReferences(defs, isWrapper)
 
 		// transforms the original tree into calls to the Instance functions pure, map, ...,
 		//  resulting in a value of type M[T]
@@ -163,7 +157,7 @@ object Instance
 		def single(body: Tree, input: In): Tree =
 		{
 			val variable = input.local
-			val param = ValDef(parameterModifiers, variable.name, variable.tpt, EmptyTree)
+			val param = ValDef(util.parameterModifiers, variable.name, variable.tpt, EmptyTree)
 			val typeApplied = TypeApply(Select(instance, MapName), variable.tpt :: TypeTree(treeType) :: Nil)
 			val mapped = ApplyTree(typeApplied, input.expr :: Function(param :: Nil, body) :: Nil)
 			if(t.isLeft) mapped else flatten(mapped)
@@ -173,7 +167,7 @@ object Instance
 		def arbArity(body: Tree, inputs: List[In]): Tree =
 		{
 			val result = builder.make(c)(mTC, inputs)
-			val param = freshMethodParameter( appliedType(result.representationC, util.idTC :: Nil) )
+			val param = util.freshMethodParameter( appliedType(result.representationC, util.idTC :: Nil) )
 			val bindings = result.extract(param)
 			val f = Function(param :: Nil, Block(bindings, body))
 			val ttt = TypeTree(treeType)
@@ -192,30 +186,17 @@ object Instance
 			qual.foreach(checkQual)
 			val vd = util.freshValDef(tpe, qual.symbol)
 			inputs ::= new Input(tpe, qual, vd)
-			Ident(vd.name)
+			util.refVal(vd)
 		}
-
-		// the main tree transformer that replaces calls to InputWrapper.wrap(x) with
-		//  plain Idents that reference the actual input value
-		object appTransformer extends Transformer
+		def sub(tpe: Type, qual: Tree): Tree =
 		{
-			override def transform(tree: Tree): Tree =
-				tree match
-				{
-					case ApplyTree(TypeApply(fun, t :: Nil), qual :: Nil) if isWrapper(fun) =>
-						val tag = c.WeakTypeTag(t.tpe)
-						addType(t.tpe, convert(c)(qual)(tag) )
-					case _ => super.transform(tree)
-				}
+			val tag = c.WeakTypeTag(tpe)
+			addType(tpe, convert(c)(qual)(tag) )
 		}
-
-		// collects all definitions in the tree.  used for finding illegal references
-		tree.foreach(defSearch)
 
 		// applies the transformation
-		//   resetting attributes: a) must be local b) must be done
-		//   on the transformed tree and not the wrapped tree or else there are obscure errors
-		val tr = makeApp( c.resetLocalAttrs(appTransformer.transform(tree)) )
+		// resetting attributes must be: a) local b) done here and not wider or else there are obscure errors
+		val tr = makeApp( c.resetLocalAttrs( util.transformWrappers(tree, isWrapper, (tpe, tr) => sub(tpe, tr)) ) ) 
 		c.Expr[i.M[T]](tr)
 	}
 

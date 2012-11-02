@@ -31,14 +31,15 @@ sealed trait ScopedTaskable[T] extends Scoped {
 sealed trait SettingKey[T] extends ScopedTaskable[T] with KeyedInitialize[T] with Scoped.ScopingSetting[SettingKey[T]] with Scoped.DefinableSetting[T]
 {
 	val key: AttributeKey[T]
-	def toTask: Initialize[Task[T]] = this apply inlineTask
-	def scopedKey: ScopedKey[T] = ScopedKey(scope, key)
-	def in(scope: Scope): SettingKey[T] = Scoped.scopedSetting(Scope.replaceThis(this.scope)(scope), this.key)
+	final def toTask: Initialize[Task[T]] = this apply inlineTask
+	final def scopedKey: ScopedKey[T] = ScopedKey(scope, key)
+	final def in(scope: Scope): SettingKey[T] = Scoped.scopedSetting(Scope.replaceThis(this.scope)(scope), this.key)
 
-	def +=[U](v: U)(implicit a: Append.Value[T, U]): Setting[T]  =  macro std.TaskMacro.settingAppend1Impl[T,U]
-	def ++=[U](vs: U)(implicit a: Append.Values[T, U]): Setting[T]  =  macro std.TaskMacro.settingAppendNImpl[T,U]
-	def <+= [V](value: Initialize[V])(implicit a: Append.Value[T, V]): Setting[T]  =  make(value)(a.appendValue)
-	def <++= [V](values: Initialize[V])(implicit a: Append.Values[T, V]): Setting[T]  =  make(values)(a.appendValues)
+	final def := (v: T): Setting[T]  =  macro std.TaskMacro.settingAssignMacroImpl[T]
+	final def +=[U](v: U)(implicit a: Append.Value[T, U]): Setting[T]  =  macro std.TaskMacro.settingAppend1Impl[T,U]
+	final def ++=[U](vs: U)(implicit a: Append.Values[T, U]): Setting[T]  =  macro std.TaskMacro.settingAppendNImpl[T,U]
+	final def <+= [V](value: Initialize[V])(implicit a: Append.Value[T, V]): Setting[T]  =  make(value)(a.appendValue)
+	final def <++= [V](values: Initialize[V])(implicit a: Append.Values[T, V]): Setting[T]  =  make(values)(a.appendValues)
 
 	protected[this] def make[S](other: Initialize[S])(f: (T, S) => T): Setting[T] = this <<= (this, other)(f)
 }
@@ -72,6 +73,8 @@ sealed trait InputKey[T] extends Scoped with KeyedInitialize[InputTask[T]] with 
 	val key: AttributeKey[InputTask[T]]
 	def scopedKey: ScopedKey[InputTask[T]] = ScopedKey(scope, key)
 	def in(scope: Scope): InputKey[T] = Scoped.scopedInput(Scope.replaceThis(this.scope)(scope), this.key)
+
+	def :=(v: T): Setting[InputTask[T]] = macro std.TaskMacro.inputTaskAssignMacroImpl[T]
 }
 
 /** Methods and types related to constructing settings, including keys, scopes, and initializations. */
@@ -103,7 +106,6 @@ object Scoped
 		def scopedKey: ScopedKey[S]
 
 		private[sbt] final def :==(value: S): Setting[S]  =  setting(scopedKey, Def.valueStrict(value))
-		final def := (v: S): Setting[S]  =  macro std.TaskMacro.settingAssignMacroImpl[S]
 		final def ~= (f: S => S): Setting[S]  =  Def.update(scopedKey)(f)
 		final def <<= (app: Initialize[S]): Setting[S]  =  set(app)
 		final def set (app: Initialize[S]): Setting[S]  =  setting(scopedKey, app)

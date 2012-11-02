@@ -397,16 +397,26 @@ object Defaults extends BuildCommon
 		}
 	def succeededFile(dir: File) = dir / "succeeded_tests"
 
-	def inputTests(key: InputKey[_]): Initialize[InputTask[Unit]] =
-		InputTask( loadForParser(definedTestNames)( (s, i) => testOnlyParser(s, i getOrElse Nil) ) ) { result =>
-			(streams, loadedTestFrameworks, testFilter in key, testGrouping in key, testExecution in key, testLoader, resolvedScoped, result, fullClasspath in key, javaHome in key, state) flatMap {
-				case (s, frameworks, filter, groups, config, loader, scoped, (selected, frameworkOptions), cp, javaHome, st) =>
-					implicit val display = Project.showContextKey(st)
-					val modifiedOpts = Tests.Filter(filter(selected)) +: Tests.Argument(frameworkOptions : _*) +: config.options
-					val newConfig = config.copy(options = modifiedOpts)
-					allTestGroupsTask(s, frameworks, loader, groups, newConfig, cp, javaHome) map (Tests.showResults(s.log, _, noTestsMessage(scoped)))
-			}
+	def inputTests(key: InputKey[_]): Initialize[InputTask[Unit]] = inputTests0.mapReferenced(Def.mapScope(_ in key.key))
+	private[this] lazy val inputTests0: Initialize[InputTask[Unit]] =
+	{
+		val parser = loadForParser(definedTestNames)( (s, i) => testOnlyParser(s, i getOrElse Nil) )
+		Def.inputTaskDyn {
+			val (selected, frameworkOptions) = parser.parsed
+			val s = streams.value
+			val filter = testFilter.value
+			val config = testExecution.value
+
+			implicit val display = Project.showContextKey(state.value)
+			val modifiedOpts = Tests.Filter(filter(selected)) +: Tests.Argument(frameworkOptions : _*) +: config.options
+			val newConfig = config.copy(options = modifiedOpts)
+			val groupsTask = allTestGroupsTask(s, loadedTestFrameworks.value, testLoader.value, testGrouping.value, newConfig, fullClasspath.value, javaHome.value)
+			val processed =
+				for(out <- groupsTask) yield
+					Tests.showResults(s.log, out, noTestsMessage(resolvedScoped.value))
+			Def.value(processed)
 		}
+	}
 
 	def allTestGroupsTask(s: TaskStreams, frameworks: Map[TestFramework,Framework], loader: ClassLoader, groups: Seq[Tests.Group], config: Tests.Execution,	cp: Classpath, javaHome: Option[File]): Task[Tests.Output] = {
 		val groupTasks = groups map {
@@ -537,23 +547,25 @@ object Defaults extends BuildCommon
 			IO.delete(clean)
 			IO.move(mappings.map(_.swap))
 		}
-	def runMainTask(classpath: TaskKey[Classpath], scalaRun: TaskKey[ScalaRun]): Initialize[InputTask[Unit]] =
+	def runMainTask(classpath: Initialize[Task[Classpath]], scalaRun: Initialize[Task[ScalaRun]]): Initialize[InputTask[Unit]] =
 	{
 		import DefaultParsers._
-		InputTask( loadForParser(discoveredMainClasses)( (s, names) => runMainParser(s, names getOrElse Nil) ) ) { result =>
-			(classpath, scalaRun, streams, result) map { case (cp, runner, s, (mainClass, args)) =>
-				toError(runner.run(mainClass, data(cp), args, s.log))
-			}
+		val parser = loadForParser(discoveredMainClasses)( (s, names) => runMainParser(s, names getOrElse Nil) )
+		Def.inputTask {
+			val (mainClass, args) = parser.parsed
+			toError(scalaRun.value.run(mainClass, data(classpath.value), args, streams.value.log))
 		}
 	}
 
-	def runTask(classpath: TaskKey[Classpath], mainClassTask: TaskKey[Option[String]], scalaRun: TaskKey[ScalaRun]): Initialize[InputTask[Unit]] =
-		inputTask { result =>
-			(classpath, mainClassTask, scalaRun, streams, result) map { (cp, main, runner, s, args) =>
-				val mainClass = main getOrElse error("No main class detected.")
-				toError(runner.run(mainClass, data(cp), args, s.log))
-			}
+	def runTask(classpath: Initialize[Task[Classpath]], mainClassTask: Initialize[Task[Option[String]]], scalaRun: Initialize[Task[ScalaRun]]): Initialize[InputTask[Unit]] =
+	{
+		import Def.parserToInput
+		val parser = Def.spaceDelimited()
+		Def.inputTask {
+			val mainClass = mainClassTask.value getOrElse error("No main class detected.")
+			toError(scalaRun.value.run(mainClass, data(classpath.value), parser.parsed, streams.value.log))
 		}
+	}
 
 	def runnerTask = runner <<= runnerInit
 	def runnerInit: Initialize[Task[ScalaRun]] =
@@ -1371,7 +1383,9 @@ trait BuildExtra extends BuildCommon
 }
 trait BuildCommon
 {
-	def inputTask[T](f: TaskKey[Seq[String]] => Initialize[Task[T]]): Initialize[InputTask[T]] = InputTask(_ => complete.Parsers.spaceDelimited("<arg>"))(f)
+	@deprecated("Use Def.inputTask with the `Def.spaceDelimited()` parser.", "0.13.0")
+	def inputTask[T](f: TaskKey[Seq[String]] => Initialize[Task[T]]): Initialize[InputTask[T]] =
+		InputTask.create(Def.value((s: State) => Def.spaceDelimited()))(f)
 
 	implicit def globFilter(expression: String): NameFilter = GlobFilter(expression)
 	implicit def richAttributed(s: Seq[Attributed[File]]): RichAttributed = new RichAttributed(s)

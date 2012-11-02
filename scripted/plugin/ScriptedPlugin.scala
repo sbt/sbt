@@ -37,12 +37,16 @@ object ScriptedPlugin extends Plugin {
 		m.getClass.getMethod("run", classOf[File], classOf[Boolean], classOf[String], classOf[String], classOf[String], classOf[Array[String]], classOf[File], classOf[Array[String]])
 	}
 
-	def scriptedTask: Initialize[InputTask[Unit]] = InputTask(_ => complete.Parsers.spaceDelimited("<arg>")) { result =>
-		(scriptedDependencies, scriptedTests, scriptedRun, sbtTestDirectory, scriptedBufferLog, scriptedSbt, scriptedScalas, sbtLauncher, scriptedLaunchOpts, result) map {
-			(deps, m, r, testdir, bufferlog, version, scriptedScalas, launcher, launchOpts, args) =>
-			try { r.invoke(m, testdir, bufferlog: java.lang.Boolean, version.toString, scriptedScalas.build, scriptedScalas.versions, args.toArray, launcher, launchOpts.toArray) }
-			catch { case e: java.lang.reflect.InvocationTargetException => throw e.getCause }
+	def scriptedTask: Initialize[InputTask[Unit]] = Def.inputTask {
+		val args = Def.spaceDelimited().parsed
+		val prereq: Unit = scriptedDependencies.value
+		try {
+			scriptedRun.value.invoke(
+				scriptedTests.value, sbtTestDirectory.value, scriptedBufferLog.value: java.lang.Boolean,
+				scriptedSbt.value.toString, scriptedScalas.value.build, scriptedScalas.value.versions,
+				args.toArray, sbtLauncher.value, scriptedLaunchOpts.value.toArray)
 		}
+		catch { case e: java.lang.reflect.InvocationTargetException => throw e.getCause }
 	}
 
 	val scriptedSettings = Seq(
