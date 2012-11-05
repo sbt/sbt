@@ -49,7 +49,7 @@ object Packaging {
     fixedLinuxScriptDir <<= target / "linux-scripts",
     fixedUniversalScriptDir <<= target / "universal-scripts",
     linuxFixedScripts <<= (fixedScriptDir, fixedLinuxScriptDir) map fixScripts("/usr/lib/sbt/sbt-launch.jar", "/usr/share/sbt/sbt-launch-lib.bash"),
-    universalFixedScripts <<= (fixedScriptDir, fixedUniversalScriptDir) map fixScripts("\\$(dirname \\$0)/sbt-launch.jar", "\\$(dirname \\$0)/sbt-launch-lib.bash"),
+    universalFixedScripts <<= (fixedScriptDir, fixedUniversalScriptDir) map fixScripts("\\$(dirname \\$(realpath \\$0))/sbt-launch.jar", "\\$(dirname \\$(realpath \\$0))/sbt-launch-lib.bash"),
     sbtLaunchJarUrl <<= sbtVersion apply downloadUrlForVersion,
     sbtLaunchJarLocation <<= target apply (_ / "sbt-launch.jar"),
     sbtLaunchJar <<= (sbtLaunchJarUrl, sbtLaunchJarLocation) map { (uri, file) =>
