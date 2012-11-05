@@ -12,6 +12,10 @@ import java.io.File
 
 object Incremental
 {
+	// to be configurable
+	final val TransitiveStep = 2
+	final val RecompileAllFraction = 0.5
+
 	def compile(sources: Set[File], entry: String => Option[File], previous: Analysis, current: ReadStamps, forEntry: File => Option[Analysis], doCompile: (Set[File], DependencyChanges) => Analysis, log: Logger)(implicit equivS: Equiv[Stamp]): (Boolean, Analysis) =
 	{
 		val initialChanges = changedInitial(entry, sources, previous, current, forEntry)
@@ -22,19 +26,20 @@ object Incremental
 		}
 		val initialInv = invalidateInitial(previous.relations, initialChanges, log)
 		log.debug("Initially invalidated: " + initialInv)
-		val analysis = cycle(initialInv, binaryChanges, previous, doCompile, 1, log)
+		val analysis = cycle(initialInv, sources, binaryChanges, previous, doCompile, 1, log)
 		(!initialInv.isEmpty, analysis)
 	}
 
 	val incDebugProp = "xsbt.inc.debug"
 	// TODO: the Analysis for the last successful compilation should get returned + Boolean indicating success
 	// TODO: full external name changes, scopeInvalidations
-	def cycle(invalidated: Set[File], binaryChanges: DependencyChanges, previous: Analysis, doCompile: (Set[File], DependencyChanges) => Analysis, cycleNum: Int, log: Logger): Analysis =
-		if(invalidated.isEmpty)
+	def cycle(invalidatedRaw: Set[File], allSources: Set[File], binaryChanges: DependencyChanges, previous: Analysis, doCompile: (Set[File], DependencyChanges) => Analysis, cycleNum: Int, log: Logger): Analysis =
+		if(invalidatedRaw.isEmpty)
 			previous
 		else
 		{
 			def debug(s: => String) = if(java.lang.Boolean.getBoolean(incDebugProp)) log.debug(s) else ()
+			val invalidated = expand(invalidatedRaw, allSources, log)
 			val pruned = prune(invalidated, previous)
 			debug("********* Pruned: \n" + pruned.relations + "\n*********")
 			val fresh = doCompile(invalidated, binaryChanges)
@@ -43,15 +48,20 @@ object Incremental
 			debug("********* Merged: \n" + merged.relations + "\n*********")
 			val incChanges = changedIncremental(invalidated, previous.apis.internalAPI _, merged.apis.internalAPI _)
 			debug("Changes:\n" + incChanges)
-			val incInv = invalidateIncremental(merged.relations, incChanges, invalidated, cycleNum >= 2, log)
-			cycle(incInv, emptyChanges, merged, doCompile, cycleNum+1, log)
+			val incInv = invalidateIncremental(merged.relations, incChanges, invalidated, cycleNum >= TransitiveStep, log)
+			cycle(incInv, allSources, emptyChanges, merged, doCompile, cycleNum+1, log)
 		}
 	private[this] def emptyChanges: DependencyChanges = new DependencyChanges {
 		val modifiedBinaries = new Array[File](0)
 		val modifiedClasses = new Array[String](0)
 		def isEmpty = true
 	}
-	
+	private[this] def expand(invalidated: Set[File], all: Set[File], log: Logger): Set[File] =
+		if(invalidated.size > all.size * RecompileAllFraction) {
+			log.debug("Recompiling all " + all.size + " sources: invalidated sources (" + invalidated.size + ") exceeded " + (RecompileAllFraction*100.0) + "% of all sources")
+			all
+		}
+		else invalidated
 
 	/**
 	* Accepts the sources that were recompiled during the last step and functions
