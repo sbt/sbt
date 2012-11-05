@@ -28,6 +28,8 @@ object IO
 	val temporaryDirectory = new File(System.getProperty("java.io.tmpdir"))
 	/** The size of the byte or char buffer used in various methods.*/
 	private val BufferSize = 8192
+	/** File scheme name */
+	private[this] val FileScheme = "file"
 
 	/** The newline string for this system, as obtained by the line.separator system property. */
 	val Newline = System.getProperty("line.separator")
@@ -70,13 +72,30 @@ object IO
 	def urlAsFile(url: URL): Option[File] =
 		url.getProtocol match
 		{
-			case "file" => Some(toFile(url))
+			case FileScheme => Some(toFile(url))
 			case "jar" =>
 				val path = url.getPath
 				val end = path.indexOf('!')
-				Some(new File(new URI(if(end == -1) path else path.substring(0, end))))
+				Some(uriToFile(if(end == -1) path else path.substring(0, end)))
 			case _ => None
 		}
+
+	private[this] def uriToFile(uriString: String): File =
+	{
+		val uri = new URI(uriString)
+		assert(uri.getProtocol == FileProtocol, "Expected protocol to be '" + FileScheme + "' in URI " + uri)
+		if(uri.getAuthority eq null)
+			new File(uri)
+		else {
+			/* https://github.com/harrah/xsbt/issues/564
+			* http://blogs.msdn.com/b/ie/archive/2006/12/06/file-uris-in-windows.aspx
+			* http://bugs.sun.com/bugdatabase/view_bug.do?bug_id=5086147
+			* The specific problem here is that `uri` will have a defined authority component for UNC names like //foo/bar/some/path.jar
+			* but the File constructor requires URIs with an undefined authority component.
+			*/
+			new File(uri.getSchemeSpecificPart)
+		}
+	}
 
 	def assertDirectory(file: File) { assert(file.isDirectory, (if(file.exists) "Not a directory: " else "Directory not found: ") + file) }
 	def assertDirectories(file: File*) { file.foreach(assertDirectory) }
@@ -698,7 +717,7 @@ object IO
 	{
 		if(!uri.isAbsolute) return uri;//assertAbsolute(uri)
 		val str = uri.toASCIIString
-		val dirStr = if(str.endsWith("/") || uri.getScheme != "file") str else str + "/"
+		val dirStr = if(str.endsWith("/") || uri.getScheme != FileScheme) str else str + "/"
 		(new URI(dirStr)).normalize
 	}
 	/** Converts the given File to a URI.  If the File is relative, the URI is relative, unlike File.toURI*/
