@@ -83,7 +83,7 @@ object IO
 	private[this] def uriToFile(uriString: String): File =
 	{
 		val uri = new URI(uriString)
-		assert(uri.getProtocol == FileProtocol, "Expected protocol to be '" + FileScheme + "' in URI " + uri)
+		assert(uri.getScheme == FileScheme, "Expected protocol to be '" + FileScheme + "' in URI " + uri)
 		if(uri.getAuthority eq null)
 			new File(uri)
 		else {
