@@ -129,7 +129,7 @@ private final class AnalysisCallback(internalMap: File => Option[File], external
 	def endSource(sourcePath: File): Unit =
 		assert(apis.contains(sourcePath))
 	
-	def get: Analysis = addExternals( addBinaries( addProducts( addSources(Analysis.Empty) ) ) )
+	def get: Analysis = addCompilation( addExternals( addBinaries( addProducts( addSources(Analysis.Empty) ) ) ) )
 	def addProducts(base: Analysis): Analysis = addAll(base, classes) { case (a, src, (prod, name)) => a.addProduct(src, prod, current product prod, name ) }
 	def addBinaries(base: Analysis): Analysis = addAll(base, binaryDeps)( (a, src, bin) => a.addBinaryDep(src, bin, binaryClassName(bin), current binary bin) )
 	def addSources(base: Analysis): Analysis =
@@ -144,6 +144,7 @@ private final class AnalysisCallback(internalMap: File => Option[File], external
 		}
 	def getOrNil[A,B](m: collection.Map[A, Seq[B]], a: A): Seq[B] = m.get(a).toList.flatten
 	def addExternals(base: Analysis): Analysis = (base /: extSrcDeps) { case (a, (source, name, api)) => a.addExternalDep(source, name, api) }
+	def addCompilation(base: Analysis): Analysis = base.copy(compilations = base.compilations.add(compilation))
 		
 	def addAll[A,B](base: Analysis, m: Map[A, Set[B]])( f: (Analysis, A, B) => Analysis): Analysis =
 		(base /: m) { case (outer, (a, bs)) =>
