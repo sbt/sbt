@@ -13,10 +13,13 @@ trait Analysis
 	val apis: APIs
 	val relations: Relations
 	val infos: SourceInfos
+	/** Information about compiler runs accumulated since `clean` command has been run. */
+	val compilations: Compilations
 	
 	def ++(other: Analysis): Analysis
 	def -- (sources: Iterable[File]): Analysis
-	def copy(stamps: Stamps = stamps, apis: APIs = apis, relations: Relations = relations, infos: SourceInfos = infos): Analysis
+	def copy(stamps: Stamps = stamps, apis: APIs = apis, relations: Relations = relations, infos: SourceInfos = infos,
+	    compilations: Compilations = compilations): Analysis
 	
 	def addSource(src: File, api: Source, stamp: Stamp, internalDeps: Iterable[File], info: SourceInfo): Analysis
 	def addBinaryDep(src: File, dep: File, className: String, stamp: Stamp): Analysis
@@ -30,7 +33,7 @@ trait Analysis
 
 object Analysis
 {
-	lazy val Empty: Analysis = new MAnalysis(Stamps.empty, APIs.empty, Relations.empty, SourceInfos.empty)
+	lazy val Empty: Analysis = new MAnalysis(Stamps.empty, APIs.empty, Relations.empty, SourceInfos.empty, Compilations.empty)
 	def summary(a: Analysis): String =
 	{
 		val (j, s) = a.apis.allInternalSources.partition(_.getName.endsWith(".java"))
@@ -57,9 +60,11 @@ object Analysis
 		}
 
 }
-private class MAnalysis(val stamps: Stamps, val apis: APIs, val relations: Relations, val infos: SourceInfos) extends Analysis
+private class MAnalysis(val stamps: Stamps, val apis: APIs, val relations: Relations, val infos: SourceInfos,
+    val compilations: Compilations) extends Analysis
 {
-	def ++ (o: Analysis): Analysis = new MAnalysis(stamps ++ o.stamps, apis ++ o.apis, relations ++ o.relations, infos ++ o.infos)
+	def ++ (o: Analysis): Analysis = new MAnalysis(stamps ++ o.stamps, apis ++ o.apis, relations ++ o.relations,
+	    infos ++ o.infos, compilations ++ o.compilations)
 	def -- (sources: Iterable[File]): Analysis =
 	{
 		val newRelations = relations -- sources
@@ -68,9 +73,10 @@ private class MAnalysis(val stamps: Stamps, val apis: APIs, val relations: Relat
 		val newAPIs = apis.removeInternal(sources).filterExt( keep(_ usesExternal _) )
 		val newStamps = stamps.filter( keep(_ produced _), sources, keep(_ usesBinary _))
 		val newInfos = infos -- sources
-		new MAnalysis(newStamps, newAPIs, newRelations, newInfos)
+		new MAnalysis(newStamps, newAPIs, newRelations, newInfos, compilations)
 	}
-	def copy(stamps: Stamps, apis: APIs, relations: Relations, infos: SourceInfos): Analysis = new MAnalysis(stamps, apis, relations, infos)
+	def copy(stamps: Stamps, apis: APIs, relations: Relations, infos: SourceInfos, compilations: Compilations = compilations): Analysis =
+	  new MAnalysis(stamps, apis, relations, infos, compilations)
 
 	def addSource(src: File, api: Source, stamp: Stamp, internalDeps: Iterable[File], info: SourceInfo): Analysis =
 		copy( stamps.markInternalSource(src, stamp), apis.markInternalSource(src, api), relations.addInternalSrcDeps(src, internalDeps), infos.add(src, info) )
@@ -93,7 +99,8 @@ private class MAnalysis(val stamps: Stamps, val apis: APIs, val relations: Relat
 					stampsMap.getOrElse(k, Stamps.empty),
 					apisMap.getOrElse(k, APIs.empty),
 					relationsMap.getOrElse(k, Relations.empty),
-					infosMap.getOrElse(k, SourceInfos.empty)
+					infosMap.getOrElse(k, SourceInfos.empty),
+					compilations
 				)
 			val keys = (stampsMap.keySet ++ apisMap.keySet ++ relationsMap.keySet ++ infosMap.keySet).toList
 			Map( keys map( (k: K) => (k, kAnalysis(k)) ) :_*)
