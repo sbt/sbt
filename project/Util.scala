@@ -124,12 +124,13 @@ object Util
 	{
 		val init = keywords.map(tn => '"' + tn + '"').mkString("Set(", ", ", ")")
 		val ObjectName = "ScalaKeywords"
+		val PackageName = "sbt"
 		val keywordsSrc = 
-"""package sbt
+"""package %s
 object %s {
 	val values = %s
-}""".format(ObjectName, init)
-		val out = base / (ObjectName + ".scala")
+}""".format(PackageName, ObjectName, init)
+		val out = base / PackageName.replace('.', '/') / (ObjectName + ".scala")
 		IO.write(out, keywordsSrc)
 		out
 	}
