@@ -4,7 +4,7 @@
 package sbt
 package inc
 
-	import xsbti.api.Source
+	import xsbti.api.{Source, Compilation}
 	import xsbti.{Position,Problem,Severity}
 	import xsbti.compile.{CompileOrder, Output => APIOutput, SingleOutput, MultipleOutput}
 	import MultipleOutput.OutputGroup
@@ -45,8 +45,9 @@ object AnalysisFormats
 		}
 	}
 
-	implicit def analysisFormat(implicit stampsF: Format[Stamps], apisF: Format[APIs], relationsF: Format[Relations], infosF: Format[SourceInfos]): Format[Analysis] =
-		asProduct4( Analysis.Empty.copy _)( a => (a.stamps, a.apis, a.relations, a.infos))(stampsF, apisF, relationsF, infosF)
+	implicit def analysisFormat(implicit stampsF: Format[Stamps], apisF: Format[APIs], relationsF: Format[Relations],
+	    infosF: Format[SourceInfos], compilationsF: Format[Compilations]): Format[Analysis] =
+		asProduct5( Analysis.Empty.copy _)( a => (a.stamps, a.apis, a.relations, a.infos, a.compilations))(stampsF, apisF, relationsF, infosF, compilationsF)
 
 	implicit def infosFormat(implicit infoF: Format[Map[File, SourceInfo]]): Format[SourceInfos] =
 		wrap[SourceInfos, Map[File, SourceInfo]]( _.allInfos, SourceInfos.make _)
@@ -55,6 +56,11 @@ object AnalysisFormats
 		wrap[SourceInfo, (Seq[Problem],Seq[Problem])](si => (si.reportedProblems, si.unreportedProblems), { case (a,b) => SourceInfos.makeInfo(a,b)})
 
 	implicit def problemFormat: Format[Problem] =	asProduct4(problem _)( p => (p.category, p.position, p.message, p.severity))
+
+	implicit def compilationsFormat: Format[Compilations] = {
+	  implicit val compilationSeqF = seqFormat(xsbt.api.CompilationFormat)
+	  wrap[Compilations, Seq[Compilation]](_.allCompilations, Compilations.make _)
+	}
 
 	implicit def positionFormat: Format[Position] =
 		asProduct7( position _ )( p => (m2o(p.line), p.lineContent, m2o(p.offset), m2o(p.pointer), m2o(p.pointerSpace), m2o(p.sourcePath), m2o(p.sourceFile)))
