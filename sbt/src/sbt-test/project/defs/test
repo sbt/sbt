@@ -1,0 +1,7 @@
+# This test verifies that defs and vals are allowed in .sbt files
+#  Initial load should succeed
+
+# Then, check that other .sbt files cannot see definitions
+# defined in another file
+$ copy-file changes/visibility.sbt visibility.sbt
+-> reload

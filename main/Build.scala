@@ -77,18 +77,39 @@ object RetrieveUnit
 		def unapply(uri: URI) = Option(uri.withoutMarkerScheme.getPath)
 	}
 }
+
 object EvaluateConfigurations
 {
+	private[this] final class ParsedFile(val imports: Seq[(String,Int)], val definitions: Seq[(String,LineRange)], val settings: Seq[(String,LineRange)])
+	private[this] final class Definitions(val loader: ClassLoader => ClassLoader, val moduleNames: Seq[String])
+
+	private[this] val DefinitionKeywords = Seq("lazy val ", "def ", "val ")
+
 	def apply(eval: Eval, srcs: Seq[File], imports: Seq[String]): ClassLoader => Seq[Setting[_]] =
 		flatten(srcs.sortBy(_.getName) map { src =>  evaluateConfiguration(eval, src, imports) })
 	def evaluateConfiguration(eval: Eval, src: File, imports: Seq[String]): ClassLoader => Seq[Setting[_]] =
 		evaluateConfiguration(eval, src.getPath, IO.readLines(src), imports, 0)
+
+	private[this] def parseConfiguration(lines: Seq[String], builtinImports: Seq[String], offset: Int): ParsedFile =
+	{
+		val (importStatements, settingsAndDefinitions) = splitExpressions(lines)
+		val allImports = builtinImports.map(s => (s, -1)) ++ addOffset(offset, importStatements)
+		val (definitions, settings) = splitSettingsDefinitions(addOffsetToRange(offset, settingsAndDefinitions))
+		new ParsedFile(allImports, definitions, settings)
+	}
+
 	def evaluateConfiguration(eval: Eval, name: String, lines: Seq[String], imports: Seq[String], offset: Int): ClassLoader => Seq[Setting[_]] =
 	{
-		val (importExpressions, settingExpressions) = splitExpressions(lines)
-		val settings = addOffsetToRange(offset, settingExpressions) map { case (settingExpression,range) =>
-			evaluateSetting(eval, name, (imports.map(s => (s, -1)) ++ addOffset(offset, importExpressions)), settingExpression, range)
+		val parsed = parseConfiguration(lines, imports, offset)
+		val importDefs = if(parsed.definitions.isEmpty) Nil else {
+			val definitions = evaluateDefinitions(eval, name, parsed.imports, parsed.definitions)
+			Load.importAllRoot(definitions.moduleNames).map(s => (s, -1))
 		}
+		val allImports = importDefs ++ parsed.imports
+		val settings = parsed.settings map { case (settingExpression,range) =>
+			evaluateSetting(eval, name, allImports, settingExpression, range)
+		}
+		eval.unlinkDeferred()
 		flatten(settings)
 	}
 	def flatten(mksettings: Seq[ClassLoader => Seq[Setting[_]]]): ClassLoader => Seq[Setting[_]] =
@@ -138,6 +159,19 @@ object EvaluateConfigurations
 				group0(tail, grouped)
 			}
 		group0(lines, Nil)
+	}
+	private[this] def splitSettingsDefinitions(lines: Seq[(String,LineRange)]): (Seq[(String,LineRange)], Seq[(String,LineRange)]) =
+		lines partition { case (line, range) => isDefinition(line) }
+	private[this] def isDefinition(line: String): Boolean =
+	{
+		val trimmed = line.trim
+		DefinitionKeywords.exists(trimmed startsWith _)
+	}
+	private[this] def evaluateDefinitions(eval: Eval, name: String, imports: Seq[(String,Int)], definitions: Seq[(String,LineRange)]): Definitions =
+	{
+		val convertedRanges = definitions.map { case (s, r) => (s, r.start to r.end) }
+		val res = eval.evalDefinitions(convertedRanges, new EvalImports(imports, name), name)
+		new Definitions(loader => res.getValue(loader).getClass.getClassLoader, res.enclosingModule :: Nil)
 	}
 }
 object Index
