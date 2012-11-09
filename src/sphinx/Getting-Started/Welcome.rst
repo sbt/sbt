@@ -30,6 +30,5 @@ Thanks for trying out sbt and *have fun*!
 Translations to other languages
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
--  `Japanese
-   日本語 <http://scalajp.github.com/sbt-getting-started-guide-ja/>`_
+-  `Japanese <http://scalajp.github.com/sbt-getting-started-guide-ja/>`_
 
