@@ -1,15 +1,8 @@
-========
-Contents
-========
-
-The table of contents for sbt documentation is listed below.
-To get started, *please read* the :doc:`Getting Started Guide </Getting-Started/Welcome>`.
+To get started, read the :doc:`Getting Started Guide </Getting-Started/Welcome>`.
 Further topics are presented in detail in the :doc:`Detailed Topics </Detailed-Topics/index>`,
 :doc:`Howto </Howto/index>`, and :doc:`Extending sbt </Extending/index>` sections.
 
-See also the `API Documentation <../api/index.html>`_,
-`SXR Documentation <../sxr/index.html>`_, and
-the :doc:`index of names and types <Name-Index>`.
+See also the :doc:`index of names and types <Name-Index>`.
 
 .. toctree::
    :maxdepth: 2
@@ -34,4 +27,3 @@ the :doc:`index of names and types <Name-Index>`.
    Dormant/Dormant
    Community/ChangeSummary_0.12.0
    Community/Repository-Rules
-   pdf_index

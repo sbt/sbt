@@ -46,6 +46,13 @@ site_search_base = 'http://www.scala-sbt.org/release/docs'
 # passes variables to the template
 html_context = {'home_site': home_site, 'site_search_base': site_search_base}
 
+# Latex (PDF)
+
+pdf_index = 'pdf_index'
+latex_documents = [
+  (pdf_index, 'sbt.tex', html_title, '', 'manual', True),
+]
+
 # Issues role
 
 issuetracker = 'github'

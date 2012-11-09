@@ -12,6 +12,7 @@
 object Docs
 {
 	val cnameFile = SettingKey[File]("cname-file", "Location of the CNAME file for the website.")
+
 	val SnapshotPath = "snapshot"
 	val ReleasePath = "release"
 	val DocsPath = "docs"
@@ -24,7 +25,11 @@ object Docs
 		site.sphinxSupport(DocsPath) ++
 		site.includeScaladoc("api") ++
 		siteIncludeSxr("sxr") ++
-		ghPagesSettings
+		ghPagesSettings ++
+		Seq(
+			SphinxSupport.sphinxIncremental in SphinxSupport.Sphinx := true,
+			SphinxSupport.enableOutput in SphinxSupport.generatePdf := true
+		)
 
 	def ghPagesSettings = ghpages.settings ++ Seq(
 		git.remoteRepo := "git@github.com:sbt/sbt.github.com.git",
