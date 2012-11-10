@@ -2,3 +2,4 @@ target/
 project/boot/
 .release.sbt
 __pycache__
+*.iml
