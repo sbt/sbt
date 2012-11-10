@@ -1,0 +1,4 @@
+# tests that a source file in $sbt.global.base/plugins/ is available to the build definition in project/
+
+# dummy to ensure project gets loaded
+> name
