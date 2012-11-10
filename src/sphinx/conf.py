@@ -48,9 +48,9 @@ html_context = {'home_site': home_site, 'site_search_base': site_search_base}
 
 # Latex (PDF)
 
-pdf_index = 'pdf_index'
 latex_documents = [
-  (pdf_index, 'sbt.tex', html_title, '', 'manual', True),
+  ('pdf_index', 'sbt.tex', html_title, '', 'manual', True),
+  ('Getting-Started/index', 'sbt-Getting-Started.tex', html_title, '', 'manual', True),
 ]
 
 # Issues role
