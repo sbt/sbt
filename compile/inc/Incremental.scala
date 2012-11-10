@@ -59,7 +59,7 @@ object Incremental
 	private[this] def expand(invalidated: Set[File], all: Set[File], log: Logger): Set[File] =
 		if(invalidated.size > all.size * RecompileAllFraction) {
 			log.debug("Recompiling all " + all.size + " sources: invalidated sources (" + invalidated.size + ") exceeded " + (RecompileAllFraction*100.0) + "% of all sources")
-			all
+			all ++ invalidated // need the union because all doesn't contain removed sources
 		}
 		else invalidated
 
