@@ -114,11 +114,12 @@ Defining Restrictions
 
 Once tasks are tagged, the ``concurrentRestrictions`` setting sets
 restrictions on the tasks that may be concurrently executed based on the
-weighted tags of those tasks. For example,
+weighted tags of those tasks.  This is necessarily a global set of rules,
+so it must be scoped `in Global`.  For example,
 
 ::
 
-    concurrentRestrictions := Seq(
+    concurrentRestrictions in Global := Seq(
       Tags.limit(Tags.CPU, 2),
       Tags.limit(Tags.Network, 10),
       Tags.limit(Tags.Test, 1),
@@ -230,7 +231,7 @@ The default rules provide the same behavior as previous versions of sbt:
 
 ::
 
-    concurrentRestrictions <<= parallelExecution { par =>
+    concurrentRestrictions in Global <<= parallelExecution { par =>
       val max = Runtime.getRuntime.availableProcessors
       Tags.limitAll(if(par) max else 1) :: Nil
     }
@@ -241,7 +242,7 @@ executing tests in all projects, use:
 
 ::
 
-    concurrentRestrictions += Tags.limit(Tags.Test, 1)
+    concurrentRestrictions in Global += Tags.limit(Tags.Test, 1)
 
 Custom Tags
 -----------
@@ -259,7 +260,7 @@ Then, use this tag as any other tag. For example:
 
     aCustomTask <<= aCustomTask.tag(Custom)
 
-    concurrentRestrictions += 
+    concurrentRestrictions in Global += 
       Tags.limit(Custom, 1)
 
 Future work
