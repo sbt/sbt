@@ -4,7 +4,7 @@ package sbt
 	import Project._
 	import Scoped._
 	import Keys._
-	import Configurations.Runtime
+	import Configurations.{Compile,Runtime}
 	import java.io.File
 	import org.apache.ivy.core.module.{descriptor, id}
 	import descriptor.ModuleDescriptor, id.ModuleRevisionId
@@ -19,8 +19,12 @@ object GlobalPlugin
 			projectDescriptors ~= { _ ++ gp.descriptors },
 			projectDependencies ++= gp.projectID +: gp.dependencies,
 			resolvers <<= resolvers { rs => (rs ++ gp.resolvers).distinct },
-			internalDependencyClasspath in Runtime ~= { prev => (prev ++ gp.internalClasspath).distinct }
+			// TODO: these shouldn't be required (but are): the project* settings above should take care of this
+			injectInternalClasspath(Runtime, gp.internalClasspath),
+			injectInternalClasspath(Compile, gp.internalClasspath)
 		)
+	private[this] def injectInternalClasspath(config: Configuration, cp: Seq[Attributed[File]]): Setting[_] =
+		internalDependencyClasspath in config ~= { prev => (prev ++ cp).distinct }
 	
 	def build(base: File, s: State, config: LoadBuildConfiguration): (BuildStructure, State) =
 	{
@@ -43,7 +47,7 @@ object GlobalPlugin
 		val taskInit = (projectID, projectDependencies, projectDescriptors, resolvers, fullClasspath in Runtime, internalDependencyClasspath in Runtime, exportedProducts in Runtime, ivyModule) map {
 			(pid, pdeps, pdescs, rs, cp, intcp, prods, mod) =>
 				val depMap = pdescs + mod.dependencyMapping(state.log)
-				GlobalPluginData(pid, pdeps, depMap, rs, cp, prods ++ intcp)
+				GlobalPluginData(pid, pdeps, depMap, rs, cp, (prods ++ intcp).distinct)
 		}
 		val resolvedTaskInit = taskInit mapReferenced Project.mapScope(Scope replaceThis p)
 		val task = resolvedTaskInit evaluate data
