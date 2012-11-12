@@ -474,18 +474,23 @@ private object IvySbt
 	*/
 	def mergeDuplicateDefinitions(dependencies: Seq[DependencyDescriptor]): Seq[DependencyDescriptor] =
 	{
-		val deps = new java.util.LinkedHashMap[ModuleRevisionId, DependencyDescriptor]
+		// need to preserve basic order of dependencies: can't use dependencies.groupBy 
+		val deps = new java.util.LinkedHashMap[ModuleRevisionId, List[DependencyDescriptor]]
 		for( dd <- dependencies )
 		{
 			val id = dd.getDependencyRevisionId
 			val updated = deps get id match {
-				case null => dd
-				case v => ivyint.MergeDescriptors(v, dd)
+				case null => dd :: Nil
+				case v => dd :: v
 			}
 			deps.put(id, updated)
 		}
+
 			import collection.JavaConverters._
-		deps.values.asScala.toSeq
+		deps.values.asScala.toSeq.flatMap { dds =>
+			val mergeable = (dds, dds.tail).zipped.forall( ivyint.MergeDescriptors.mergeable _)
+			if(mergeable) dds.reverse.reduceLeft(ivyint.MergeDescriptors.apply _) :: Nil else dds
+		}
 	}
 
 	/** Transforms an sbt ModuleID into an Ivy DefaultDependencyDescriptor.*/
