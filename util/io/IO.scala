@@ -331,7 +331,7 @@ object IO
 	def deleteFilesEmptyDirs(files: Iterable[File]): Unit =
 	{
 		def isEmptyDirectory(dir: File) = dir.isDirectory && listFiles(dir).isEmpty
-		def parents(fs: Set[File]) = fs.map(_.getParentFile)
+		def parents(fs: Set[File]) = fs flatMap { f => Option(f.getParentFile) }
 		def deleteEmpty(dirs: Set[File])
 		{
 			val empty = dirs filter isEmptyDirectory
