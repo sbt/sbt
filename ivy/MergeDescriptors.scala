@@ -15,20 +15,24 @@ import util.extendable.ExtendableItem
 
 private[sbt] object MergeDescriptors
 {
+	def mergeable(a: DependencyDescriptor, b: DependencyDescriptor): Boolean =
+		a.isForce == b.isForce &&
+		a.isChanging == b.isChanging &&
+		a.isTransitive == b.isTransitive &&
+		a.getParentRevisionId == b.getParentRevisionId &&
+		a.getNamespace == b.getNamespace && {
+			val amrid = a.getDependencyRevisionId
+			val bmrid = b.getDependencyRevisionId
+			amrid == bmrid
+		} && {
+			val adyn = a.getDynamicConstraintDependencyRevisionId
+			val bdyn = b.getDynamicConstraintDependencyRevisionId
+			adyn == bdyn
+		}
+
 	def apply(a: DependencyDescriptor, b: DependencyDescriptor): DependencyDescriptor =
 	{
-		assert(a.isForce == b.isForce)
-		assert(a.isChanging == b.isChanging)
-		assert(a.isTransitive == b.isTransitive)
-		assert(a.getParentRevisionId == b.getParentRevisionId)
-		val amrid = a.getDependencyRevisionId
-		val bmrid = b.getDependencyRevisionId
-		assert(amrid == bmrid)
-		val adyn = a.getDynamicConstraintDependencyRevisionId
-		val bdyn = b.getDynamicConstraintDependencyRevisionId
-		assert(adyn == bdyn)
-		assert(a.getNamespace == b.getNamespace)
-
+		assert(mergeable(a,b))
 		new MergedDescriptors(a,b)
 	}
 }
