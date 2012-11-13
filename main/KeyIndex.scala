@@ -62,7 +62,7 @@ trait ExtendableKeyIndex extends KeyIndex
 // task axis <-> key
 private final class AKeyIndex(val data: Relation[ Option[AttributeKey[_]], String])
 {
-	def add(task: Option[AttributeKey[_]], key: AttributeKey[_]): AKeyIndex  =  new AKeyIndex(data + (task, key.label))
+	def add(task: Option[AttributeKey[_]], key: AttributeKey[_]): AKeyIndex  =  new AKeyIndex(data + (task, key.rawLabel) + (task, key.label))
 	def keys(task: Option[AttributeKey[_]]): Set[String]  =  data.forward(task)
 	def allKeys: Set[String] = data._2s.toSet
 	def tasks: Set[AttributeKey[_]]  =  data._1s.flatten.toSet

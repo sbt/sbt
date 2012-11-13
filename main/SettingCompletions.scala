@@ -285,7 +285,7 @@ private[sbt] object SettingCompletions
 
 	/** Transforms the hypenated key label `k` into camel-case and quotes it with backticks if it is a Scala keyword.
 	* This is intended to be an estimate of the Scala identifier that may be used to reference the keyword in the default sbt context. */
-	def keyScalaID(k: String): String = Util.quoteIfKeyword(Util.hypenToCamel(k))
+	def keyScalaID(k: String): String = Util.quoteIfKeyword(Util.hyphenToCamel(k))
 
 	/** Transforms the configuration name `c` so that the first letter is capitalized and the name is quoted with backticks if it is a Scala keyword.
 	* This is intended to be an estimate of the Scala identifier that may be used to reference the keyword in the default sbt context. */

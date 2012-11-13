@@ -11,6 +11,8 @@ import scala.reflect.Manifest
 //  a single AttributeKey instance cannot conform to AttributeKey[T] for different Ts
 sealed trait AttributeKey[T] {
 	def manifest: Manifest[T]
+	@deprecated("Should only be used for compatibility during the transition from hyphenated labels to camelCase labels.", "0.13.0")
+	def rawLabel: String
 	def label: String
 	def description: Option[String]
 	def extend: Seq[AttributeKey[_]]
@@ -48,13 +50,15 @@ object AttributeKey
 
 	private[this] def make[T](name: String, description0: Option[String], extend0: Seq[AttributeKey[_]], rank0: Int)(implicit mf: Manifest[T]): AttributeKey[T] = new SharedAttributeKey[T] {
 		def manifest = mf
-		def label = name
+		def rawLabel = name
+		val label = Util.hyphenToCamel(name)
 		def description = description0
 		def extend = extend0
 		def rank = rank0
 	}
 	private[sbt] def local[T](implicit mf: Manifest[T]): AttributeKey[T] = new AttributeKey[T] {
 		def manifest = mf
+		def rawLabel = LocalLabel
 		def label = LocalLabel
 		def description = None
 		def extend = Nil

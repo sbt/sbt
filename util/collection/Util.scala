@@ -26,8 +26,14 @@ object Util
 	def pairID[A,B] = (a: A, b: B) => (a,b)
 
 	private[this] lazy val Hypen = """-(\p{javaLowerCase})""".r
-	def hypenToCamel(s: String): String =
-		Hypen.replaceAllIn(s, _.group(1).toUpperCase)
+	def hasHyphen(s: String): Boolean = s.indexOf('-') >= 0
+	@deprecated("Use the properly spelled version: hyphenToCamel", "0.13.0")
+	def hypenToCamel(s: String): String = hyphenToCamel(s)
+	def hyphenToCamel(s: String): String =
+		if(hasHyphen(s))
+			Hypen.replaceAllIn(s, _.group(1).toUpperCase)
+		else
+			s
 
 	private[this] lazy val Camel = """(\p{javaLowerCase})(\p{javaUpperCase})""".r
 	def camelToHypen(s: String): String =

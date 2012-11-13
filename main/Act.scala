@@ -131,8 +131,9 @@ object Act
 
 	def key(index: KeyIndex, proj: Option[ResolvedReference], conf: Option[String], task: Option[AttributeKey[_]], keyMap: Map[String,AttributeKey[_]]): Parser[AttributeKey[_]] =
 	{
+		def dropHyphenated(keys: Set[String]): Set[String] = keys.filterNot(Util.hasHyphen)
 		def keyParser(keys: Set[String]): Parser[AttributeKey[_]] =
-			token(ID !!! "Expected key" examples keys) flatMap { keyString=>
+			token(ID !!! "Expected key" examples dropHyphenated(keys)) flatMap { keyString=>
 				getKey(keyMap, keyString, idFun)
 			}
 		keyParser(index.keys(proj, conf, task))
@@ -155,9 +156,11 @@ object Act
 
 	def taskAxis(d: Option[String], tasks: Set[AttributeKey[_]], allKnown: Map[String, AttributeKey[_]]): Parser[ParsedAxis[AttributeKey[_]]] =
 	{
-		val knownKeys: Map[String, AttributeKey[_]] = tasks.toSeq.map(key => (key.label, key)).toMap
-		val valid = allKnown ++ knownKeys
-		val suggested = knownKeys.keySet
+		val taskSeq = tasks.toSeq
+		def taskKeys(f: AttributeKey[_] => String): Seq[(String, AttributeKey[_])] = taskSeq.map(key => (f(key), key))
+		val normKeys = taskKeys(_.label)
+		val valid = allKnown ++ normKeys ++ taskKeys(_.rawLabel)
+		val suggested = normKeys.map(_._1).toSet
 		val keyP = filterStrings(examples(ID, suggested, "key"), valid.keySet, "key") map valid
 		(token(value(keyP) | GlobalString ^^^ ParsedGlobal ) <~ token("::".id) ) ?? Omitted
 	}
