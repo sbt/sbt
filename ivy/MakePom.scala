@@ -237,7 +237,7 @@ class MakePom(val log: Logger)
 	def exclusions(dependency: DependencyDescriptor): NodeSeq =
 	{
 		val excl = dependency.getExcludeRules(dependency.getModuleConfigurations)
-		val (warns, excls) = List.separate(excl.map(makeExclusion))
+		val (warns, excls) = IvyUtil.separate(excl.map(makeExclusion))
 		if(!warns.isEmpty) log.warn(warns.mkString(IO.Newline))
 		if(!excls.isEmpty) <exclusions>{excls}</exclusions>
 		else NodeSeq.Empty
