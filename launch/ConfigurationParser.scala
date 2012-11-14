@@ -247,7 +247,7 @@ final class Section(val name: String) extends Line
 object Comment extends Line
 
 class ParseException(val content: String, val line: Int, val col: Int, val msg: String)
-	extends BootException( "[" + (line+1) + ", " + (col+1) + "]" + msg + "\n" + content + "\n" + List.make(col," ").mkString + "^" )
+	extends BootException( "[" + (line+1) + ", " + (col+1) + "]" + msg + "\n" + content + "\n" + List.fill(col)(" ").mkString + "^" )
 
 object ParseLine
 {

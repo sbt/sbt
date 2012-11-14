@@ -33,13 +33,14 @@ object Credentials
 			case Right(dc) => dc
 		}
 	}
+
 	def loadCredentials(path: File): Either[String, DirectCredentials] =
 		if(path.exists)
 		{
 			val properties = read(path)
 			def get(keys: List[String]) = keys.flatMap(properties.get).headOption.toRight(keys.head + " not specified in credentials file: " + path)
 
-			List.separate( List(RealmKeys, HostKeys, UserKeys, PasswordKeys).map(get) ) match
+			IvyUtil.separate( List(RealmKeys, HostKeys, UserKeys, PasswordKeys).map(get) ) match
 			{
 				case (Nil, List(realm, host, user, pass)) => Right( new DirectCredentials(realm, host, user, pass) )
 				case (errors, _) => Left(errors.mkString("\n"))

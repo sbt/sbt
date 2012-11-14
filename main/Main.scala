@@ -364,7 +364,7 @@ object BuiltinCommands
 	{
 		val addBase = token(Space ~> "add") ~> token(Space ~> basicUri, "<build URI>").+
 		val removeBase = token(Space ~> "remove") ~> token(Space ~> Uri(Project.extraBuilds(s).toSet) ).+
-		addBase.map(toAdd => (xs: List[URI]) => (toAdd.toList ::: xs).removeDuplicates) |
+		addBase.map(toAdd => (xs: List[URI]) => (toAdd.toList ::: xs).distinct) |
 			removeBase.map(toRemove => (xs: List[URI]) => xs.filterNot(toRemove.toSet))
 	}
 

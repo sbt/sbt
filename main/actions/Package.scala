@@ -37,7 +37,7 @@ object Package
 	def mergeManifests(manifest: Manifest, mergeManifest: Manifest)
 	{
 		mergeAttributes(manifest.getMainAttributes, mergeManifest.getMainAttributes)
-		val entryMap = asScalaMap(manifest.getEntries)
+		val entryMap = mapAsScalaMap(manifest.getEntries)
 		for((key, value) <- mergeManifest.getEntries)
 		{
 			entryMap.get(key) match

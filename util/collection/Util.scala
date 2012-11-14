@@ -5,6 +5,8 @@ package sbt
 
 object Util
 {
+	def makeList[T](size: Int, value: T): List[T] = List.fill(size)(value)
+
 	def separateE[A,B](ps: Seq[Either[A,B]]): (Seq[A], Seq[B]) =
 		separate(ps)(Types.idFun)
 

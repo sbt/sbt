@@ -382,7 +382,7 @@ private object IvySbt
 	private[sbt] def javaMap(m: Map[String,String], unqualify: Boolean = false) =
 	{
 		val map = if(unqualify) m map { case (k, v) => (k.stripPrefix("e:"), v) } else m
-		if(map.isEmpty) null else scala.collection.JavaConversions.asJavaMap(map)
+		if(map.isEmpty) null else scala.collection.JavaConversions.mapAsJavaMap(map)
 	}
 
 	private object javaMap

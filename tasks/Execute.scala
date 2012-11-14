@@ -16,7 +16,7 @@ object Execute
 	trait Part1of2K[M[_[_], _], A[_]] { type Apply[T] = M[A, T] }
 	type NodeT[A[_]] = Part1of2K[Node, A]
 	
-	def idMap[A,B]: Map[A, B] = JavaConversions.asScalaMap(new java.util.IdentityHashMap[A,B])
+	def idMap[A,B]: Map[A, B] = JavaConversions.mapAsScalaMap(new java.util.IdentityHashMap[A,B])
 	def pMap[A[_], B[_]]: PMap[A,B] = new DelegatingPMap[A, B](idMap)
 	private[sbt] def completed(p: => Unit): Completed = new Completed {
 		def process() { p }
