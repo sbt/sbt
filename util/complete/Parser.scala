@@ -5,7 +5,7 @@ package sbt.complete
 
 	import Parser._
 	import sbt.Types.{const, left, right, some}
-	import sbt.Util.separate
+	import sbt.Util.{makeList,separate}
 
 sealed trait Parser[+T]
 {
@@ -676,7 +676,7 @@ private final class Repeat[T](partial: Option[Parser[T]], repeated: Parser[T], m
 		else
 			// forced determinism
 			for(value <- repeated.resultEmpty) yield
-				List.make(min, value)
+				makeList(min, value)
 	}
 	override def toString = "repeat(" + min + "," + max +"," + partial + "," + repeated + ")"
 }

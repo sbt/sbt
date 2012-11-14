@@ -131,7 +131,7 @@ object JLineCompletion
 			if(line.charAt(line.length - 1) != '\n')
 				reader.printNewline()
 		}
-		reader.printColumns(JavaConversions.asJavaList(columns.map(_.trim)))
+		reader.printColumns(JavaConversions.seqAsJavaList(columns.map(_.trim)))
 	}
 	def hasNewline(s: String): Boolean = s.indexOf('\n') >= 0
 	def shouldPrint(cs: Seq[String], reader: ConsoleReader): Boolean =
