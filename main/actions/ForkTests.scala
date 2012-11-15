@@ -27,8 +27,7 @@ private[sbt] object ForkTests {
 		}
 		val argMap = frameworks.map {
 			f => f.implClassName -> opts.flatMap {
-				case Argument(None, args) =>  args
-				case Argument(Some(`f`), args) => args
+				case Argument(None | Some(`f`), args) => args
 				case _ => Nil
 			}
 		}.toMap
