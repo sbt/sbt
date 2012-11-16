@@ -24,6 +24,7 @@ sealed trait ProjectDefinition[PR <: ProjectReference]
 	def dependencies: Seq[ClasspathDep[PR]]
 	def uses: Seq[PR] = aggregate ++ dependencies.map(_.project)
 	def referenced: Seq[PR] = delegates ++ uses
+	def auto: AddSettings
 
 	override final def hashCode: Int = id.hashCode ^ base.hashCode ^ getClass.hashCode
 	override final def equals(o: Any) = o match {
@@ -34,23 +35,24 @@ sealed trait ProjectDefinition[PR <: ProjectReference]
 }
 sealed trait Project extends ProjectDefinition[ProjectReference]
 {
-	def copy(id: String = id, base: File = base, aggregate: => Seq[ProjectReference] = aggregate, dependencies: => Seq[ClasspathDep[ProjectReference]] = dependencies, delegates: => Seq[ProjectReference] = delegates,
-		settings: => Seq[Project.Setting[_]] = settings, configurations: Seq[Configuration] = configurations): Project =
-			Project(id, base, aggregate = aggregate, dependencies = dependencies, delegates = delegates, settings, configurations)
+	def copy(id: String = id, base: File = base, aggregate: => Seq[ProjectReference] = aggregate, dependencies: => Seq[ClasspathDep[ProjectReference]] = dependencies,
+		delegates: => Seq[ProjectReference] = delegates, settings: => Seq[Project.Setting[_]] = settings, configurations: Seq[Configuration] = configurations,
+		auto: AddSettings = auto): Project =
+			Project(id, base, aggregate = aggregate, dependencies = dependencies, delegates = delegates, settings, configurations, auto)
 
 	def resolve(resolveRef: ProjectReference => ProjectRef): ResolvedProject =
 	{
 		def resolveRefs(prs: Seq[ProjectReference]) = prs map resolveRef
 		def resolveDeps(ds: Seq[ClasspathDep[ProjectReference]]) = ds map resolveDep
 		def resolveDep(d: ClasspathDep[ProjectReference]) = ResolvedClasspathDependency(resolveRef(d.project), d.configuration)
-		resolved(id, base, aggregate = resolveRefs(aggregate), dependencies = resolveDeps(dependencies), delegates = resolveRefs(delegates), settings, configurations)
+		resolved(id, base, aggregate = resolveRefs(aggregate), dependencies = resolveDeps(dependencies), delegates = resolveRefs(delegates), settings, configurations, auto)
 	}
 	def resolveBuild(resolveRef: ProjectReference => ProjectReference): Project =
 	{
 		def resolveRefs(prs: Seq[ProjectReference]) = prs map resolveRef
 		def resolveDeps(ds: Seq[ClasspathDep[ProjectReference]]) = ds map resolveDep
 		def resolveDep(d: ClasspathDep[ProjectReference]) = ClasspathDependency(resolveRef(d.project), d.configuration)
-		apply(id, base, aggregate = resolveRefs(aggregate), dependencies = resolveDeps(dependencies), delegates = resolveRefs(delegates), settings, configurations)
+		apply(id, base, aggregate = resolveRefs(aggregate), dependencies = resolveDeps(dependencies), delegates = resolveRefs(delegates), settings, configurations, auto)
 	}
 
 	def overrideConfigs(cs: Configuration*): Project = copy(configurations = Defaults.overrideConfigs(cs : _*)(configurations))
@@ -60,6 +62,7 @@ sealed trait Project extends ProjectDefinition[ProjectReference]
 	def aggregate(refs: ProjectReference*): Project = copy(aggregate = (aggregate: Seq[ProjectReference]) ++ refs)
 	def configs(cs: Configuration*): Project = copy(configurations = configurations ++ cs)
 	def settings(ss: Project.Setting[_]*): Project = copy(settings = (settings: Seq[Project.Setting[_]]) ++ ss)
+	def autoSettings(select: AddSettings*): Project = copy(auto = AddSettings.seq(select : _*))
 }
 sealed trait ResolvedProject extends ProjectDefinition[ProjectRef]
 
@@ -138,8 +141,8 @@ object Project extends Init[Scope] with ProjectExtra
 		case _ => display(project) + "/"
 	}
 
-	private abstract class ProjectDef[PR <: ProjectReference](val id: String, val base: File, aggregate0: => Seq[PR], dependencies0: => Seq[ClasspathDep[PR]], delegates0: => Seq[PR],
-		settings0: => Seq[Setting[_]], val configurations: Seq[Configuration]) extends ProjectDefinition[PR]
+	private abstract class ProjectDef[PR <: ProjectReference](val id: String, val base: File, aggregate0: => Seq[PR], dependencies0: => Seq[ClasspathDep[PR]],
+		delegates0: => Seq[PR], settings0: => Seq[Setting[_]], val configurations: Seq[Configuration], val auto: AddSettings) extends ProjectDefinition[PR]
 	{
 		lazy val aggregate = aggregate0
 		lazy val dependencies = dependencies0
@@ -149,16 +152,17 @@ object Project extends Init[Scope] with ProjectExtra
 		Dag.topologicalSort(configurations)(_.extendsConfigs) // checks for cyclic references here instead of having to do it in Scope.delegates
 	}
 
-	def apply(id: String, base: File, aggregate: => Seq[ProjectReference] = Nil, dependencies: => Seq[ClasspathDep[ProjectReference]] = Nil, delegates: => Seq[ProjectReference] = Nil,
-		settings: => Seq[Setting[_]] = defaultSettings, configurations: Seq[Configuration] = Configurations.default): Project =
+	def apply(id: String, base: File, aggregate: => Seq[ProjectReference] = Nil, dependencies: => Seq[ClasspathDep[ProjectReference]] = Nil,
+		delegates: => Seq[ProjectReference] = Nil, settings: => Seq[Setting[_]] = defaultSettings, configurations: Seq[Configuration] = Configurations.default,
+		auto: AddSettings = AddSettings.allDefaults): Project =
 	{
 		DefaultParsers.parse(id, DefaultParsers.ID).left.foreach(errMsg => error("Invalid project ID: " + errMsg))
-		new ProjectDef[ProjectReference](id, base, aggregate, dependencies, delegates, settings, configurations) with Project
+		new ProjectDef[ProjectReference](id, base, aggregate, dependencies, delegates, settings, configurations, auto) with Project
 	}
 
 	def resolved(id: String, base: File, aggregate: => Seq[ProjectRef], dependencies: => Seq[ResolvedClasspathDependency], delegates: => Seq[ProjectRef],
-		settings: Seq[Setting[_]], configurations: Seq[Configuration]): ResolvedProject =
-			new ProjectDef[ProjectRef](id, base, aggregate, dependencies, delegates, settings, configurations) with ResolvedProject
+		settings: Seq[Setting[_]], configurations: Seq[Configuration], auto: AddSettings): ResolvedProject =
+			new ProjectDef[ProjectRef](id, base, aggregate, dependencies, delegates, settings, configurations, auto) with ResolvedProject
 
 	def defaultSettings: Seq[Setting[_]] = Defaults.defaultSettings
 

@@ -195,19 +195,25 @@ object Load
 		loaded.units.toSeq.flatMap { case (uri, build) =>
 			val eval = if(uri == loaded.root) rootEval else lazyEval(build.unit)
 			val plugins = build.unit.plugins.plugins
-			val (pluginSettings, pluginProjectSettings, pluginBuildSettings) = extractSettings(plugins)
-			val (pluginThisProject, pluginNotThis) = pluginSettings partition isProjectThis
+			val pluginBuildSettings = plugins.flatMap(_.buildSettings)
+			val pluginNotThis = plugins.flatMap(_.settings) filterNot isProjectThis
 			val projectSettings = build.defined flatMap { case (id, project) =>
-				val srcs = configurationSources(project.base)
-				val ref = ProjectRef(uri, id)
-				val defineConfig = for(c <- project.configurations) yield ( (configuration in (ref, ConfigKey(c.name))) :== c)
 				val loader = build.unit.definitions.loader
-				val settings =
-					(thisProject :== project) +:
-					(thisProjectRef :== ref) +:
-					(defineConfig ++ project.settings ++ injectSettings.projectLoaded(loader) ++ pluginThisProject ++
-						pluginProjectSettings ++ configurations(srcs, eval, build.imports)(loader) ++ injectSettings.project)
-				 
+				lazy val defaultSbtFiles = configurationSources(project.base)
+
+					import AddSettings.{User,SbtFiles,DefaultSbtFiles,Plugins,Sequence}
+				def expand(auto: AddSettings): Seq[Setting[_]] = auto match {
+					case User => injectSettings.projectLoaded(loader)
+					case sf: SbtFiles => configurations( sf.files.map(f => IO.resolve(project.base, f)), eval, build.imports )(loader)
+					case sf: DefaultSbtFiles => configurations( defaultSbtFiles.filter(sf.include), eval, build.imports )(loader)
+					case f: Plugins => plugins.filter(f.include).flatMap(p => p.settings.filter(isProjectThis) ++ p.projectSettings)
+					case q: Sequence => q.sequence.flatMap(expand)
+				}
+
+				val ref = ProjectRef(uri, id)
+				val defineConfig: Seq[Setting[_]] = for(c <- project.configurations) yield ( (configuration in (ref, ConfigKey(c.name))) :== c)
+				val builtin: Seq[Setting[_]] = (thisProject :== project) +: (thisProjectRef :== ref) +: defineConfig
+				val settings = builtin ++ project.settings ++ expand(project.auto) ++ injectSettings.project
 				// map This to thisScope, Select(p) to mapRef(uri, rootProject, p)
 				transformSettings(projectScope(ref), uri, rootProject, settings)
 			}
@@ -221,8 +227,11 @@ object Load
 		loaded.units.toSeq flatMap { case (_, build) =>
 			build.unit.plugins.plugins flatMap { _.globalSettings }
 		}
+
+	@deprecated("No longer used.", "0.13.0")
 	def extractSettings(plugins: Seq[Plugin]): (Seq[Setting[_]], Seq[Setting[_]], Seq[Setting[_]]) =
 		(plugins.flatMap(_.settings), plugins.flatMap(_.projectSettings), plugins.flatMap(_.buildSettings))
+
 	def transformProjectOnly(uri: URI, rootProject: URI => String, settings: Seq[Setting[_]]): Seq[Setting[_]] =
 		Project.transform(Scope.resolveProject(uri, rootProject), settings)
 	def transformSettings(thisScope: Scope, uri: URI, rootProject: URI => String, settings: Seq[Setting[_]]): Seq[Setting[_]] =
