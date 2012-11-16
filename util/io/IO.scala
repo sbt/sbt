@@ -566,7 +566,12 @@ object IO
 		if(preserveLastModified)
 			copyLastModified(sourceFile, targetFile)
 	}
-	def copyLastModified(sourceFile: File, targetFile: File) = targetFile.setLastModified( sourceFile.lastModified )
+	def copyLastModified(sourceFile: File, targetFile: File) = {
+		val last = sourceFile.lastModified
+		// lastModified can return a negative number, but setLastModified doesn't accept it
+		// see Java bug #6791812
+		targetFile.setLastModified( math.max(last, 0L) )
+	}
 	def defaultCharset = utf8
 
 	def write(file: File, content: String, charset: Charset = defaultCharset, append: Boolean = false): Unit =
