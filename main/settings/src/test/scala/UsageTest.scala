@@ -50,6 +50,8 @@ object Assign
 		bk ++= Seq(z.value)
 	)*/
 
+	val zz = Def.task { mk.value + tk.value + mk.value + tk.value + mk.value + tk.value + mk.value + tk.value + mk.value + tk.value + mk.value + tk.value }
+
 		import DefaultParsers._
 	val p = Def.setting { name.value ~> Space ~> ID }
 	val is = Seq(

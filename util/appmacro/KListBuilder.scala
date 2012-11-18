@@ -41,8 +41,16 @@ object KListBuilder extends TupleBuilder
 				case Nil => revBindings.reverse
 			}
 
+		private[this] def makeKList(revInputs: Inputs[c.universe.type], klist: Tree, klistType: Type): Tree =
+			revInputs match {
+				case in :: tail =>
+					val next = ApplyTree(TypeApply(Ident(kcons), TypeTree(in.tpe) :: TypeTree(klistType) :: TypeTree(mTC) :: Nil), in.expr :: klist :: Nil)
+					makeKList(tail, next, appliedType(kconsTC, in.tpe :: klistType :: mTC :: Nil))
+				case Nil => klist
+			}
+
 		/** The input trees combined in a KList */
-		val klist = (inputs :\ (knil: Tree))( (in, klist) => ApplyTree(kcons, in.expr, klist) )
+		val klist = makeKList(inputs.reverse, knil, knilType)
 
 		/** The input types combined in a KList type.  The main concern is tracking the heterogeneous types.
 		* The type constructor is tcVariable, so that it can be applied to [X] X or M later.  
