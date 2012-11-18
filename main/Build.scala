@@ -14,6 +14,9 @@ trait Build
 	def projects: Seq[Project] = ReflectUtilities.allVals[Project](this).values.toSeq
 	def settings: Seq[Setting[_]] = Defaults.buildCore
 	def buildLoaders: Seq[BuildLoader.Components] = Nil
+	/** Explicitly defines the root project.
+	* If None, the root project is the first project in the build's root directory or just the first project if none are in the root directory.*/
+	def rootProject: Option[Project] = None
 }
 trait Plugin
 {

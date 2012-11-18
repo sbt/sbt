@@ -294,9 +294,10 @@ object Load
 		def isRoot(p: Project) = p.base == unit.localBase
 
 		val externals = referenced(defined).toList
-		val projectsInRoot = defined.filter(isRoot).map(_.id)
-		val rootProjects = if(projectsInRoot.isEmpty) defined.head.id :: Nil else projectsInRoot
-		(new PartBuildUnit(unit, defined.map(d => (d.id, d)).toMap, rootProjects, buildSettings(unit)), externals)
+		val explicitRoots = unit.definitions.builds.flatMap(_.rootProject)
+		val projectsInRoot = if(explicitRoots.isEmpty) defined.filter(isRoot) else explicitRoots
+		val rootProjects = if(projectsInRoot.isEmpty) defined.head :: Nil else projectsInRoot
+		(new PartBuildUnit(unit, defined.map(d => (d.id, d)).toMap, rootProjects.map(_.id), buildSettings(unit)), externals)
 	}
 	def buildSettings(unit: BuildUnit): Seq[Setting[_]] =
 	{

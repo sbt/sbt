@@ -1,0 +1,11 @@
+$ copy-file changes/RootA.scala project/P.scala
+> reload
+> taskA
+-> taskB
+> b/taskB
+
+$ copy-file changes/RootD.scala project/P.scala
+> reload
+> taskD
+-> taskC
+> c/taskC
