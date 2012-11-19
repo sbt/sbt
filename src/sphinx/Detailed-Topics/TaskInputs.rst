@@ -54,8 +54,7 @@ The first point is like declaring a task dependency, the second is like
 two tasks modifying the same state (either project variables or files),
 and the third is a consequence of unsynchronized, shared state.
 
-In Scala, we have the built-in functionality to easily fix this:
-``lazy val``.
+In Scala, we have the built-in functionality to easily fix this: ``lazy val``.
 
 ::
 
@@ -83,25 +82,20 @@ The general form of a task definition looks like:
 
 ::
 
-    myTask <<= (aTask, bTask) map { (a: A, b: B) =>
+    myTask := {
+      val a: A = aTask.value
+      val b: B = bTask.value
       ... do something with a, b and generate a result ...
     }
 
 (This is only intended to be a discussion of the ideas behind tasks, so
 see the :doc:`sbt Tasks </Detailed-Topics/Tasks>` page
-for details on usage.) Basically, ``myTask`` is defined by declaring
-``aTask`` and ``bTask`` as inputs and by defining the function to apply
-to the results of these tasks. Here, ``aTask`` is assumed to produce a
+for details on usage.)  Here, ``aTask`` is assumed to produce a
 result of type ``A`` and ``bTask`` is assumed to produce a result of
 type ``B``.
 
 Application
 -----------
-
-Apply this in practice:
-
-1. Determine the tasks that produce the values you need
-2. ``map`` the tasks with the function that implements your task.
 
 As an example, consider generating a zip file containing the binary jar,
 source jar, and documentation jar for your project. First, determine
@@ -115,8 +109,11 @@ map on the zip task.
 
 ::
 
-    zip <<= (packageBin in Compile, packageSrc in Compile, packageDoc in Compile, zipPath) map { 
-      (bin: File, src: File, doc: File, out: File) =>
+    zip := {
+        val bin: File = (packageBin in Compile).value
+        val src: File = (packageSrc in Compile).value
+        val doc: File = (packageDoc in Compile).value
+        val out: File = zipPath.value
         val inputs: Seq[(File,String)] = Seq(bin, src, doc) x Path.flat
         IO.zip(inputs, out)
         out
@@ -131,8 +128,6 @@ the zip file. For example:
 
 ::
 
-    zipPath <<= target map {
-      (t: File) =>
-        t / "out.zip"
-    }
+    zipPath :=
+       target.value / "out.zip"
 

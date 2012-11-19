@@ -51,8 +51,8 @@ The details of this execution can be recalled by running ``last``:
     [debug]   Classpath:
     [debug] 	/tmp/e/target/scala-2.9.2/classes
     [debug] 	/tmp/e/.sbt/0.12.0/boot/scala-2.9.2/lib/scala-library.jar
-    [debug] Waiting for thread run-main to exit
-    [debug] 	Thread run-main exited.
+    [debug] Waiting for thread runMain to exit
+    [debug] 	Thread runMain exited.
     [debug] Interrupting remaining threads (should be all daemons).
     [debug] Sandboxed run complete..
     [debug] Exited with code 0
@@ -113,7 +113,7 @@ and:
    :title: Show warnings from the previous compilation
    :type: command
    
-   print-warnings
+   printWarnings
 
 The Scala compiler does not print the full details of warnings by default.
 Compiling code that uses the deprecated ``error`` method from Predef might generate the following output:
@@ -126,13 +126,13 @@ Compiling code that uses the deprecated ``error`` method from Predef might gener
     [warn] one warning found
 
 The details aren't provided, so it is necessary to add ``-deprecation`` to the options passed to the compiler (``scalacOptions``) and recompile.
-An alternative when using Scala 2.10 and later is to run ``print-warnings``.
+An alternative when using Scala 2.10 and later is to run ``printWarnings``.
 This task will display all warnings from the previous compilation.
 For example,
 
 .. code-block:: console
 
-    > print-warnings
+    > printWarnings
     [warn] A.scala:2: method error in object Predef is deprecated: Use sys.error(message) instead
     [warn] 	def x = error("Failed.")
     [warn] 	        ^
@@ -176,9 +176,9 @@ To enable debug logging for all tasks in the current project,
 A common scenario is that after running a task, you notice that you need more information than was shown by default.
 A ``logLevel`` based solution typically requires changing the logging level and running a task again.
 However, there are two cases where this is unnecessary.
-First, warnings from a previous compilation may be displayed using ``print-warnings`` for the main sources or ``test:print-warnings`` for test sources.
+First, warnings from a previous compilation may be displayed using ``printWarnings`` for the main sources or ``test:printWarnings`` for test sources.
 Second, output from the previous execution is available either for a single task or for in its entirety.
-See the section on `print-warnings <#printwarnings>`_ and the sections on `previous output <#last>`_.
+See the section on `printWarnings <#printwarnings>`_ and the sections on `previous output <#last>`_.
 
 
 .. howto::
@@ -252,10 +252,11 @@ The new function prepends our custom logger to the ones provided by the old func
    :title: Log messages in a task
 
 The special task ``streams`` provides per-task logging and I/O via a `Streams <../../api/#sbt.std.Streams>`_ instance.
-To log, a task maps the ``streams`` task and uses its ``log`` member:
+To log, a task uses the ``log`` member from the ``streams`` task:
 
 ::
 
-    myTask <<= (..., streams) map { (..., s) =>
-    	s.log.warn("A warning.")
+    myTask := {
+	   val log = streams.value.log
+    	log.warn("A warning.")
     }

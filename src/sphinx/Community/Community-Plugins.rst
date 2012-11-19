@@ -38,9 +38,9 @@ To automatically deploy snapshot/release versions of your plugin use the followi
 
 ::
 
-    publishTo <<= (version) { version: String =>
+    publishTo := {
        val scalasbt = "http://repo.scala-sbt.org/scalasbt/"
-       val (name, url) = if (version.contains("-SNAPSHOT"))
+       val (name, url) = if (version.value.contains("-SNAPSHOT"))
          ("sbt-plugin-snapshots", scalasbt+"sbt-plugin-snapshots")
        else
          ("sbt-plugin-releases", scalasbt+"sbt-plugin-releases")

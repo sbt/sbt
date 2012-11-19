@@ -26,9 +26,9 @@ beginning of the resolvers list:
 
 ::
 
-    resolvers <<= resolvers {rs =>
+    resolvers := {
       val localMaven = "Local Maven Repository" at "file://"+Path.userHome.absolutePath+"/.m2/repository"
-      localMaven +: rs
+      localMaven +: resolvers.value
     }
 
 1. Put settings specific to a user in a global ``.sbt`` file, such as
@@ -68,7 +68,7 @@ respect that. Instead, use the setting, like:
 
 ::
 
-    myDirectory <<= target(_ / "sub-directory")
+    myDirectory := target.value / "sub-directory"
 
 Don't "mutate" files
 ~~~~~~~~~~~~~~~~~~~~
@@ -92,7 +92,7 @@ For example:
 
 ::
 
-    lazy val makeFile = TaskKey[File]("make-file")
+    lazy val makeFile = TaskKey[File]("makeFile")
 
     // define a task that creates a file,
     //  writes some content, and returns the File
@@ -106,9 +106,8 @@ For example:
     // The result of makeFile is the constructed File,
     //   so useFile can map makeFile and simultaneously
     //   get the File and declare the dependency on makeFile
-    useFile <<= makeFile map { (f: File) =>
-        doSomething( f )
-    }
+    useFile := 
+        doSomething( makeFile.value )
 
 This arrangement is not always possible, but it should be the rule and
 not the exception.
@@ -135,7 +134,7 @@ directory.
 
 ::
 
-    myPath <<= baseDirectory(_ / "licenses")
+    myPath := baseDirectory.value / "licenses"
 
 In Java (and thus in Scala), a relative File is relative to the current
 working directory. The working directory is not always the same as the

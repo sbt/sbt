@@ -15,10 +15,7 @@ the base directory, and files ending in ``.scala``, located in the
 
 You can use either one exclusively, or use both. A good approach is to
 use ``.sbt`` files for most purposes, and use ``.scala`` files only to
-contain what can't be done in ``.sbt``:
-
--  to customize sbt (add new settings or tasks)
--  to define nested sub-projects
+contain what can't be done in ``.sbt``.
 
 This page discusses ``.sbt`` files. See :doc:`.scala build definition <Full-Def>` (later in Getting Started) for
 more on ``.scala`` files and how they relate to ``.sbt`` files.
@@ -87,11 +84,10 @@ Here's an example:
 
 A ``build.sbt`` file is a list of ``Setting``, separated by blank lines.
 Each ``Setting`` is defined with a Scala expression.
-
 The expressions in ``build.sbt`` are independent of one another, and
-they are expressions, rather than complete Scala statements. An
-implication of this is that you can't define a top-level ``val``,
-``object``, class, or method in ``build.sbt``.
+they are expressions, rather than complete Scala statements.  These
+expressions may be interspersed with ``val``s, ``lazy val``s, and ``def``s,
+but top-level ``object``s and classes are not allowed in ``build.sbt``.
 
 On the left, ``name``, ``version``, and ``scalaVersion`` are *keys*. A
 key is an instance of ``SettingKey[T]``, ``TaskKey[T]``, or
@@ -116,8 +112,11 @@ key in sbt's map, giving it the value ``"hello"``.
 
 If you use the wrong value type, the build definition will not compile:
 
-``scala name := 42  // will not compile`` ### Settings are separated by
-blank lines
+::
+
+     name := 42  // will not compile
+
+### Settings are separated by blank lines
 
 You can't write a ``build.sbt`` like this:
 
@@ -225,20 +224,8 @@ If you type the name of a setting key rather than a task key, the value
 of the setting key will be displayed. Typing a task key name executes
 the task but doesn't display the resulting value; to see a task's
 result, use ``show <task name>`` rather than plain ``<task name>``.
-
-In build definition files, keys are named with ``camelCase`` following
-Scala convention, but the sbt command line uses
-``hyphen-separated-words`` instead. The hyphen-separated string used in
-sbt comes from the definition of the key (see
-`Keys <../../sxr/Keys.scala.html>`_). For
-example, in ``Keys.scala``, there's this key:
-
-::
-
-    val scalacOptions = TaskKey[Seq[String]]("scalac-options", "Options for the Scala compiler.")
-
-In sbt you type ``scalac-options`` but in a build definition file you
-use ``scalacOptions``.
+The convention for keys names is to use ``camelCase`` so that the
+command line name and the Scala identifiers are the same.
 
 To learn more about any key, type ``inspect <keyname>`` at the sbt
 interactive prompt. Some of the information ``inspect`` displays won't

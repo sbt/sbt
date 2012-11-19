@@ -9,7 +9,7 @@
    
    ~ test
 
-You can make a command run when certain files change by prefixing the command with ``~``.  Monitoring is terminated when ``enter`` is pressed.  This triggered execution is configured by the ``watch`` setting, but typically the basic settings ``watch-sources`` and ``poll-interval`` are modified as described in later sections.
+You can make a command run when certain files change by prefixing the command with ``~``.  Monitoring is terminated when ``enter`` is pressed.  This triggered execution is configured by the ``watch`` setting, but typically the basic settings ``watchSources`` and ``pollInterval`` are modified as described in later sections.
 
 The original use-case for triggered execution was continuous compilation:
 
@@ -19,11 +19,11 @@ The original use-case for triggered execution was continuous compilation:
 
     > ~ compile
 
-You can use the triggered execution feature to run any command or task, however.  The following will poll for changes to your source code (main or test) and run ``test-only`` for the specified test.
+You can use the triggered execution feature to run any command or task, however.  The following will poll for changes to your source code (main or test) and run ``testOnly`` for the specified test.
 
 ::
 
-    > ~ test-only example.TestA
+    > ~ testOnly example.TestA
 
 .. howto::
    :id: multi
@@ -45,7 +45,7 @@ This runs ``a`` and then ``b`` when sources change.
    :title: Configure the sources that are checked for changes
    :type: setting
    
-   watchSources <+= baseDirectory { _ / "examples.txt" }
+   watchSources += baseDirectory.value / "examples.txt"
 
 * ``watchSources`` defines the files for a single project that are monitored for changes.  By default, a project watches resources and Scala and Java sources.
 * ``watchTransitiveSources`` then combines the ``watchSources`` for the current project and all execution and classpath dependencies (see :doc:`/Getting-Started/Full-Def` for details on inter-project dependencies).
@@ -54,7 +54,7 @@ To add the file ``demo/example.txt`` to the files to watch,
 
 ::
 
-    watchSources <+= baseDirectory { _ / "demo" / "examples.txt" }
+    watchSources += baseDirectory.value / "demo" / "examples.txt"
 
 .. howto::
    :id: interval

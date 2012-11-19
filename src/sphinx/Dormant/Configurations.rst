@@ -61,9 +61,7 @@ it in your jar by modifying ``resources``. For example:
 
     libraryDependencies += "jquery" % "jquery" % "1.3.2" % "js->default" from "http://jqueryjs.googlecode.com/files/jquery-1.3.2.min.js"
 
-    resources <<= (resources, update) { (rs, report) =>
-        rs ++ report.select( configurationFilter("js") )
-    }
+    resources ++= update.value.select( configurationFilter("js") )
 
 The ``config`` method defines a new configuration with name ``"js"`` and
 makes it private to the project so that it is not used for publishing.

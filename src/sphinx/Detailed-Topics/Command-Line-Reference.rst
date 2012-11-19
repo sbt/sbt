@@ -28,10 +28,10 @@ Project-level tasks
 -------------------
 
 -  ``clean`` Deletes all generated files (the ``target`` directory).
--  ``publish-local`` Publishes artifacts (such as jars) to the local Ivy
+-  ``publishLocal`` Publishes artifacts (such as jars) to the local Ivy
    repository as described in :doc:`Publishing`.
 -  ``publish`` Publishes artifacts (such as jars) to the repository
-   defined by the ``publish-to`` setting, described in :doc:`Publishing`.
+   defined by the ``publishTo`` setting, described in :doc:`Publishing`.
 -  ``update`` Resolves and retrieves external dependencies as described
    in :doc:`library dependencies </Getting-Started/Library-Dependencies>`.
 
@@ -54,14 +54,14 @@ equivalent in the ``test`` configuration that can be run using a
    libraries. To return to sbt, type ``:quit``, Ctrl+D (Unix), or Ctrl+Z
    (Windows). Similarly, ``test:console`` starts the interpreter with
    the test classes and classpath.
--  ``console-quick`` Starts the Scala interpreter with the project's
-   compile-time dependencies on the classpath. ``test:console-quick``
+-  ``consoleQuick`` Starts the Scala interpreter with the project's
+   compile-time dependencies on the classpath. ``test:consoleQuick``
    uses the test dependencies. This task differs from ``console`` in
    that it does not force compilation of the current project's sources.
--  ``console-project`` Enters an interactive session with sbt and the
+-  ``consoleProject`` Enters an interactive session with sbt and the
    build definition on the classpath. The build definition and related
    values are bound to variables and common packages and values are
-   imported. See the :doc:`console-project documentation <Console-Project>` for more information.
+   imported. See the :doc:`consoleProject documentation <Console-Project>` for more information.
 -  ``doc`` Generates API documentation for Scala source files in
    ``src/main/scala`` using scaladoc. ``test:doc`` generates API
    documentation for source files in ``src/test/scala``.
@@ -70,13 +70,13 @@ equivalent in the ``test`` configuration that can be run using a
    ``src/main/scala``. ``test:package`` creates a jar containing the
    files in ``src/test/resources`` and the class compiled from
    ``src/test/scala``.
--  ``package-doc`` Creates a jar file containing API documentation
+-  ``packageDoc`` Creates a jar file containing API documentation
    generated from Scala source files in ``src/main/scala``.
-   ``test:package-doc`` creates a jar containing API documentation for
+   ``test:packageDoc`` creates a jar containing API documentation for
    test sources files in ``src/test/scala``.
--  ``package-src``: Creates a jar file containing all main source files
+-  ``packageSrc``: Creates a jar file containing all main source files
    and resources. The packaged paths are relative to ``src/main/scala``
-   and ``src/main/resources``. Similarly, ``test:package-src`` operates
+   and ``src/main/resources``. Similarly, ``test:packageSrc`` operates
    on test source files and resources.
 -  ``run <argument>*`` Runs the main class for the project in the same
    virtual machine as ``sbt``. The main class is passed the
@@ -84,18 +84,18 @@ equivalent in the ``test`` configuration that can be run using a
    details on the use of ``System.exit`` and multithreading (including
    GUIs) in code run by this action. ``test:run`` runs a main class in
    the test code.
--  ``run-main <main-class> <argument>*`` Runs the specified main class
+-  ``runMain <main-class> <argument>*`` Runs the specified main class
    for the project in the same virtual machine as ``sbt``. The main
    class is passed the ``argument``\ s provided. Please see :doc:`Running-Project-Code`
    for details on the use of ``System.exit`` and
    multithreading (including GUIs) in code run by this action.
-   ``test:run-main`` runs the specified main class in the test code.
+   ``test:runMain`` runs the specified main class in the test code.
 -  ``test`` Runs all tests detected during test compilation. See
    :doc:`Testing` for details.
--  ``test-only <test>*`` Runs the tests provided as arguments. ``*``
+-  ``testOnly <test>*`` Runs the tests provided as arguments. ``*``
    (will be) interpreted as a wildcard in the test name. See :doc:`Testing`
    for details.
--  ``test-quick <test>*`` Runs the tests specified as arguments (or all
+-  ``testQuick <test>*`` Runs the tests specified as arguments (or all
    tests if no arguments are given) that:
 
    1. have not been run yet OR
@@ -130,7 +130,7 @@ General commands
    should be on its own line. Empty lines and lines beginning with '#'
    are ignored
 -  ``+ <command>`` Executes the project specified action or method for
-   all versions of Scala defined in the ``cross-scala-versions``
+   all versions of Scala defined in the ``crossScalaVersions``
    setting.
 -  ``++ <version> <command>`` Temporarily changes the version of Scala
    building the project and executes the provided command. ``<command>``

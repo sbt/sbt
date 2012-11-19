@@ -24,11 +24,11 @@ Some examples from `Keys <../../sxr/Keys.scala.html>`_:
 
 ::
 
-    val scalaVersion = SettingKey[String]("scala-version", "The version of Scala used for building.")
+    val scalaVersion = SettingKey[String]("scalaVersion", "The version of Scala used for building.")
     val clean = TaskKey[Unit]("clean", "Deletes files produced by the build, such as generated sources, compiled classes, and task caches.")
 
 The key constructors have two string parameters: the name of the key
-(``"scala-version"``) and a documentation string
+(``"scalaVersion"``) and a documentation string
 (``"The version of scala used for building."``).
 
 Remember from :doc:`.sbt build definition <Basic-Def>` that
@@ -66,8 +66,8 @@ code with the task key:
       sum
     }
 
-If the task has dependencies, you'd use ``<<=`` instead of course, as
-discussed in :doc:`more about settings <More-About-Settings>`.
+If the task has dependencies, you'd reference their value using
+`value`, as discussed in :doc:`more about settings <More-About-Settings>`.
 
 The hardest part about implementing tasks is often not sbt-specific;
 tasks are just Scala code. The hard part could be writing the "meat" of
@@ -78,21 +78,20 @@ and write code based on the HTML library, perhaps).
 
 sbt has some utility libraries and convenience functions, in particular
 you can often use the convenient APIs in
-`IO <../../api/index.html#sbt.IO$>`_ to
-manipulate files and directories.
+`IO <../../api/index.html#sbt.IO$>`_ to manipulate files and directories.
 
 Extending but not replacing a task
 ----------------------------------
 
 If you want to run an existing task while also taking another action,
-use ``~=`` or ``<<=`` to take the existing task as input (which will
+use ``:=`` or ``~=`` to take the existing task as input (which will
 imply running that task), and then do whatever else you like after the
 previous implementation completes.
 
 ::
 
     // These two settings are equivalent
-    intTask <<= intTask map { (value: Int) => value + 1 }
+    intTask := intTask.value + 1
     intTask ~= { (value: Int) => value + 1 }
 
 Use plugins!

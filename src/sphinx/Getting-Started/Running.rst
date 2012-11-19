@@ -43,7 +43,7 @@ in quotes. For example,
 
 .. code-block:: console
 
-    $ sbt clean compile "test-only TestA TestB"
+    $ sbt clean compile "testOnly TestA TestB"
 
 In this example, ``test-only`` has arguments, ``TestA`` and ``TestB``.
 The commands will be run in sequence (``clean``, ``compile``, then

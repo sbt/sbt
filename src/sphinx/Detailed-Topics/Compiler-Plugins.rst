@@ -3,7 +3,7 @@ Compiler Plugin Support
 =======================
 
 There is some special support for using compiler plugins. You can set
-``auto-compiler-plugins`` to ``true`` to enable this functionality.
+``autoCompilerPlugins`` to ``true`` to enable this functionality.
 
 ::
 
@@ -18,7 +18,7 @@ for specifying ``plugin`` as the configuration for a dependency:
 
     addCompilerPlugin("org.scala-tools.sxr" %% "sxr" % "0.2.7")
 
-The ``compile`` and ``test-compile`` actions will use any compiler
+The ``compile`` and ``testCompile`` actions will use any compiler
 plugins found in the ``lib`` directory or in the ``plugin``
 configuration. You are responsible for configuring the plugins as
 necessary. For example, Scala X-Ray requires the extra option:
@@ -26,9 +26,8 @@ necessary. For example, Scala X-Ray requires the extra option:
 ::
 
         // declare the main Scala source directory as the base directory
-    scalacOptions <<= (scalacOptions, scalaSource in Compile) { (options, base) =>
-        options :+ ("-Psxr:base-directory:" + base.getAbsolutePath)
-    }
+    scalacOptions :=
+        scalacOptions.value :+ ("-Psxr:base-directory:" + (scalaSource in Compile).value.getAbsolutePath)
 
 You can still specify compiler plugins manually. For example:
 
@@ -59,8 +58,7 @@ Adding a version-specific compiler plugin can be done as follows:
 
     autoCompilerPlugins := true
 
-    libraryDependencies <<= (scalaVersion, libraryDependencies) { (ver, deps) =>
-        deps :+ compilerPlugin("org.scala-lang.plugins" % "continuations" % ver)
-    }
+    libraryDependencies +=
+        compilerPlugin("org.scala-lang.plugins" % "continuations" % scalaVersion.value)
 
     scalacOptions += "-P:continuations:enable"

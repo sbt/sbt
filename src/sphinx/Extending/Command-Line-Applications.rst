@@ -27,7 +27,7 @@ There are three files in this example:
 To try out this example:
 
 1. Put the first two files in a new directory
-2. Run ``sbt publish-local`` in that directory
+2. Run ``sbt publishLocal`` in that directory
 3. Run ``sbt @path/to/hello.build.properties`` to run the application.
 
 Like for sbt itself, you can specify commands from the command line

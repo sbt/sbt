@@ -103,10 +103,10 @@ The following two files illustrate. First, if your project is in
 
     object HelloBuild extends Build {
 
-        val sampleKeyA = SettingKey[String]("sample-a", "demo key A")
-        val sampleKeyB = SettingKey[String]("sample-b", "demo key B")
-        val sampleKeyC = SettingKey[String]("sample-c", "demo key C")
-        val sampleKeyD = SettingKey[String]("sample-d", "demo key D")
+        val sampleKeyA = SettingKey[String]("sampleKeyA", "demo key A")
+        val sampleKeyB = SettingKey[String]("sampleKeyB", "demo key B")
+        val sampleKeyC = SettingKey[String]("sampleKeyC", "demo key C")
+        val sampleKeyD = SettingKey[String]("sampleKeyD", "demo key D")
 
         override lazy val settings = super.settings ++
             Seq(sampleKeyA := "A: in Build.settings in Build.scala", resolvers := Seq())
@@ -124,22 +124,22 @@ Now, create ``hello/build.sbt`` as follows:
 
     sampleKeyD := "D: in build.sbt"
 
-Start up the sbt interactive prompt. Type ``inspect sample-a`` and you
+Start up the sbt interactive prompt. Type ``inspect sampleKeyA`` and you
 should see (among other things):
 
 .. code-block:: text
 
     [info] Setting: java.lang.String = A: in Build.settings in Build.scala
     [info] Provided by:
-    [info]  {file:/home/hp/checkout/hello/}/*:sample-a
+    [info]  {file:/home/hp/checkout/hello/}/*:sampleKeyA
 
-and then ``inspect sample-c`` and you should see:
+and then ``inspect sampleKeyC`` and you should see:
 
 .. code-block:: text
 
     [info] Setting: java.lang.String = C: in build.sbt scoped to ThisBuild
     [info] Provided by:
-    [info]  {file:/home/hp/checkout/hello/}/*:sample-c
+    [info]  {file:/home/hp/checkout/hello/}/*:sampleKeyC
 
 Note that the "Provided by" shows the same scope for the two values.
 That is, ``sampleKeyC in ThisBuild`` in a ``.sbt`` file is equivalent to
@@ -147,30 +147,30 @@ placing a setting in the ``Build.settings`` list in a ``.scala`` file.
 sbt takes build-scoped settings from both places to create the build
 definition.
 
-Now, ``inspect sample-b``:
+Now, ``inspect sampleKeyB``:
 
 .. code-block:: text
 
     [info] Setting: java.lang.String = B: in the root project settings in Build.scala
     [info] Provided by:
-    [info]  {file:/home/hp/checkout/hello/}hello/*:sample-b
+    [info]  {file:/home/hp/checkout/hello/}hello/*:sampleKeyB
 
-Note that ``sample-b`` is scoped to the project
+Note that ``sampleKeyB`` is scoped to the project
 (``{file:/home/hp/checkout/hello/}hello``) rather than the entire build
 (``{file:/home/hp/checkout/hello/}``).
 
-As you've probably guessed, ``inspect sample-d`` matches ``sample-b``:
+As you've probably guessed, ``inspect sampleKeyD`` matches ``sampleKeyB``:
 
 .. code-block:: text
 
     [info] Setting: java.lang.String = D: in build.sbt
     [info] Provided by:
-    [info]  {file:/home/hp/checkout/hello/}hello/*:sample-d
+    [info]  {file:/home/hp/checkout/hello/}hello/*:sampleKeyD
 
 sbt *appends* the settings from ``.sbt`` files to the settings from
 ``Build.settings`` and ``Project.settings`` which means ``.sbt``
 settings take precedence. Try changing ``Build.scala`` so it sets key
-``sample-c`` or ``sample-d``, which are also set in ``build.sbt``. The
+``sampleC`` or ``sampleD``, which are also set in ``build.sbt``. The
 setting in ``build.sbt`` should "win" over the one in ``Build.scala``.
 
 One other thing you may have noticed: ``sampleKeyC`` and ``sampleKeyD``
@@ -194,18 +194,12 @@ In summary:
 When to use ``.scala`` files
 ----------------------------
 
-In ``.scala`` files, you are not limited to a series of settings
-expressions. You can write any Scala code including ``val``, ``object``,
+In ``.scala`` files, you can write any Scala code including ``val``, ``object``,
 and method definitions.
 
 *One recommended approach is to define settings in ``.sbt`` files, using
 ``.scala`` files when you need to factor out a ``val`` or ``object`` or
 method definition.*
-
-Because the ``.sbt`` format allows only single expressions, it doesn't
-give you a way to share code among expressions. When you need to share
-code, you need a ``.scala`` file so you can set common variables or
-define methods.
 
 There's one build definition, which is a nested project inside your main
 project. ``.sbt`` and ``.scala`` files are compiled together to create

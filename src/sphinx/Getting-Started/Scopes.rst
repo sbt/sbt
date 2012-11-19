@@ -21,9 +21,9 @@ Some concrete examples:
    have a different value in each project.
 -  the ``compile`` key may have a different value for your main sources
    and your test sources, if you want to compile them differently.
--  the ``package-options`` key (which contains options for creating jar
+-  the ``packageOptions`` key (which contains options for creating jar
    packages) may have different values when packaging class files
-   (``package-bin``) or packaging source code (``package-src``).
+   (``packageBin``) or packaging source code (``packageSrc``).
 
 *There is no single value for a given key name*, because the value may
 differ according to scope.
@@ -81,21 +81,21 @@ By default, all the keys associated with compiling, packaging, and
 running are scoped to a configuration and therefore may work differently
 in each configuration. The most obvious examples are the task keys
 ``compile``, ``package``, and ``run``; but all the keys which *affect*
-those keys (such as ``source-directories`` or ``scalac-options`` or
-``full-classpath``) are also scoped to the configuration.
+those keys (such as ``sourceDirectories`` or ``scalacOptions`` or
+``fullClasspath``) are also scoped to the configuration.
 
 Scoping by task axis
 ~~~~~~~~~~~~~~~~~~~~
 
-Settings can affect how a task works. For example, the ``package-src``
-task is affected by the ``package-options`` setting.
+Settings can affect how a task works. For example, the ``packageSrc``
+task is affected by the ``packageOptions`` setting.
 
-To support this, a task key (such as ``package-src``) can be a scope for
-another key (such as ``package-options``).
+To support this, a task key (such as ``packageSrc``) can be a scope for
+another key (such as ``packageOptions``).
 
-The various tasks that build a package (``package-src``,
-``package-bin``, ``package-doc``) can share keys related to packaging,
-such as ``artifact-name`` and ``package-options``. Those keys can have
+The various tasks that build a package (``packageSrc``,
+``packageBin``, ``packageDoc``) can share keys related to packaging,
+such as ``artifactName`` and ``packageOptions``. Those keys can have
 distinct values for each packaging task.
 
 Global scope
@@ -156,73 +156,73 @@ For more details, see :doc:`/Detailed-Topics/Inspecting-Settings`.
 Examples of scoped key notation
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
--  ``full-classpath``: just a key, so the default scopes are used:
+-  ``fullClasspath``: just a key, so the default scopes are used:
    current project, a key-dependent configuration, and global task
    scope.
--  ``test:full-classpath``: specifies the configuration, so this is
-   ``full-classpath`` in the ``test`` configuration, with defaults for
+-  ``test:fullClasspath``: specifies the configuration, so this is
+   ``fullClasspath`` in the ``test`` configuration, with defaults for
    the other two scope axes.
--  ``*:full-classpath``: specifies ``Global`` for the configuration,
+-  ``*:fullClasspath``: specifies ``Global`` for the configuration,
    rather than the default configuration.
--  ``doc::full-classpath``: specifies the ``full-classpath`` key scoped
+-  ``doc::fullClasspath``: specifies the ``fullClasspath`` key scoped
    to the ``doc`` task, with the defaults for the project and
    configuration axes.
--  ``{file:/home/hp/checkout/hello/}default-aea33a/test:full-classpath``
+-  ``{file:/home/hp/checkout/hello/}default-aea33a/test:fullClasspath``
    specifies a project,
    ``{file:/home/hp/checkout/hello/}default-aea33a``, where the project
    is identified with the build ``{file:/home/hp/checkout/hello/}`` and
    then a project id inside that build ``default-aea33a``. Also
    specifies configuration ``test``, but leaves the default task axis.
--  ``{file:/home/hp/checkout/hello/}/test:full-classpath`` sets the
+-  ``{file:/home/hp/checkout/hello/}/test:fullClasspath`` sets the
    project axis to "entire build" where the build is
    ``{file:/home/hp/checkout/hello/}``
--  ``{.}/test:full-classpath`` sets the project axis to "entire build"
+-  ``{.}/test:fullClasspath`` sets the project axis to "entire build"
    where the build is ``{.}``. ``{.}`` can be written ``ThisBuild`` in
    Scala code.
--  ``{file:/home/hp/checkout/hello/}/compile:doc::full-classpath`` sets
+-  ``{file:/home/hp/checkout/hello/}/compile:doc::fullClasspath`` sets
    all three scope axes.
 
 Inspecting scopes
 -----------------
 
 In sbt's interactive mode, you can use the ``inspect`` command to
-understand keys and their scopes. Try ``inspect test:full-classpath``:
+understand keys and their scopes. Try ``inspect test:fullClasspath``:
 
 .. code-block:: text
 
     $ sbt
-    > inspect test:full-classpath
+    > inspect test:fullClasspath
     [info] Task: scala.collection.Seq[sbt.Attributed[java.io.File]]
     [info] Description:
     [info]  The exported classpath, consisting of build products and unmanaged and managed, internal and external dependencies.
     [info] Provided by:
-    [info]  {file:/home/hp/checkout/hello/}default-aea33a/test:full-classpath
+    [info]  {file:/home/hp/checkout/hello/}default-aea33a/test:fullClasspath
     [info] Dependencies:
-    [info]  test:exported-products
-    [info]  test:dependency-classpath
+    [info]  test:exportedProducts
+    [info]  test:dependencyClasspath
     [info] Reverse dependencies:
-    [info]  test:run-main
+    [info]  test:runMain
     [info]  test:run
-    [info]  test:test-loader
+    [info]  test:testLoader
     [info]  test:console
     [info] Delegates:
-    [info]  test:full-classpath
-    [info]  runtime:full-classpath
-    [info]  compile:full-classpath
-    [info]  *:full-classpath
-    [info]  {.}/test:full-classpath
-    [info]  {.}/runtime:full-classpath
-    [info]  {.}/compile:full-classpath
-    [info]  {.}/*:full-classpath
-    [info]  */test:full-classpath
-    [info]  */runtime:full-classpath
-    [info]  */compile:full-classpath
-    [info]  */*:full-classpath
+    [info]  test:fullClasspath
+    [info]  runtime:fullClasspath
+    [info]  compile:fullClasspath
+    [info]  *:fullClasspath
+    [info]  {.}/test:fullClasspath
+    [info]  {.}/runtime:fullClasspath
+    [info]  {.}/compile:fullClasspath
+    [info]  {.}/*:fullClasspath
+    [info]  */test:fullClasspath
+    [info]  */runtime:fullClasspath
+    [info]  */compile:fullClasspath
+    [info]  */*:fullClasspath
     [info] Related:
-    [info]  compile:full-classpath
-    [info]  compile:full-classpath(for doc)
-    [info]  test:full-classpath(for doc)
-    [info]  runtime:full-classpath
+    [info]  compile:fullClasspath
+    [info]  compile:fullClasspath(for doc)
+    [info]  test:fullClasspath(for doc)
+    [info]  runtime:fullClasspath
 
 On the first line, you can see this is a task (as opposed to a setting,
 as explained in :doc:`.sbt build definition <Basic-Def>`).
@@ -231,8 +231,8 @@ The value resulting from the task will have type
 
 "Provided by" points you to the scoped key that defines the value, in
 this case
-``{file:/home/hp/checkout/hello/}default-aea33a/test:full-classpath``
-(which is the ``full-classpath`` key scoped to the ``test``
+``{file:/home/hp/checkout/hello/}default-aea33a/test:fullClasspath``
+(which is the ``fullClasspath`` key scoped to the ``test``
 configuration and the ``{file:/home/hp/checkout/hello/}default-aea33a``
 project).
 
@@ -241,33 +241,33 @@ project).
 You can also see the delegates; if the value were not defined, sbt would
 search through:
 
--  two other configurations (``runtime:full-classpath``,
-   ``compile:full-classpath``). In these scoped keys, the project is
+-  two other configurations (``runtime:fullClasspath``,
+   ``compile:fullClasspath``). In these scoped keys, the project is
    unspecified meaning "current project" and the task is unspecified
    meaning ``Global``
--  configuration set to ``Global`` (``*:full-classpath``), since project
+-  configuration set to ``Global`` (``*:fullClasspath``), since project
    is still unspecified it's "current project" and task is still
    unspecified so ``Global``
 -  project set to ``{.}`` or ``ThisBuild`` (meaning the entire build, no
    specific project)
--  project axis set to ``Global`` (``*/test:full-classpath``) (remember,
+-  project axis set to ``Global`` (``*/test:fullClasspath``) (remember,
    an unspecified project means current, so searching ``Global`` here is
    new; i.e. ``*`` and "no project shown" are different for the project
-   axis; i.e. ``*/test:full-classpath`` is not the same as
-   ``test:full-classpath``)
+   axis; i.e. ``*/test:fullClasspath`` is not the same as
+   ``test:fullClasspath``)
 -  both project and configuration set to ``Global``
-   (``*/*:full-classpath``) (remember that unspecified task means
-   ``Global`` already, so ``*/*:full-classpath`` uses ``Global`` for all
+   (``*/*:fullClasspath``) (remember that unspecified task means
+   ``Global`` already, so ``*/*:fullClasspath`` uses ``Global`` for all
    three axes)
 
-Try ``inspect full-classpath`` (as opposed to the above example,
-``inspect test:full-classpath``) to get a sense of the difference.
+Try ``inspect fullClasspath`` (as opposed to the above example,
+``inspect test:fullClasspath``) to get a sense of the difference.
 Because the configuration is omitted, it is autodetected as ``compile``.
-``inspect compile:full-classpath`` should therefore look the same as
-``inspect full-classpath``.
+``inspect compile:fullClasspath`` should therefore look the same as
+``inspect fullClasspath``.
 
-Try ``inspect *:full-classpath`` for another contrast.
-``full-classpath`` is not defined in the ``Global`` configuration by
+Try ``inspect *:fullClasspath`` for another contrast.
+``fullClasspath`` is not defined in the ``Global`` configuration by
 default.
 
 Again, for more details, see :doc:`/Detailed-Topics/Inspecting-Settings`.
@@ -302,7 +302,7 @@ name scoped to the ``Compile`` configuration:
 
     name in Compile := "hello"
 
-or you could set the name scoped to the ``package-bin`` task (pointless!
+or you could set the name scoped to the ``packageBin`` task (pointless!
 just an example):
 
 ::

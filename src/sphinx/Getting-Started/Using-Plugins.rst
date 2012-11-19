@@ -89,7 +89,7 @@ You could add this in ``hello/build.sbt``:
     libraryDependencies += "org.apache.derby" % "derby" % "10.4.1.3" % "test"
 
 If you add that and start up the sbt interactive mode and type
-``show dependency-classpath``, you should see the derby jar on your
+``show dependencyClasspath``, you should see the derby jar on your
 classpath.
 
 To add a plugin, do the same thing but recursed one level. We want the
@@ -109,7 +109,7 @@ For example, edit ``hello/project/build.sbt`` and add this line:
     libraryDependencies += "net.liftweb" % "lift-json" % "2.0"
 
 Now, at the sbt interactive prompt, ``reload plugins`` to enter the
-build definition project, and try ``show dependency-classpath``. You
+build definition project, and try ``show dependencyClasspath``. You
 should see the lift-json jar on the classpath. This means: you could use
 classes from lift-json in your ``Build.scala`` or ``build.sbt`` to
 implement a task. You could parse a JSON file and generate other files
@@ -130,14 +130,10 @@ which you'll have to clean up.)
 ::
 
     def addSbtPlugin(dependency: ModuleID): Setting[Seq[ModuleID]] =
-      libraryDependencies <+= (sbtVersion in update,scalaVersion) { (sbtV, scalaV) =>
-        sbtPluginExtra(dependency, sbtV, scalaV)
-      }
+      libraryDependencies +=
+        sbtPluginExtra(dependency, (sbtVersion in update).value, scalaVersion.value)
 
-Remember from :doc:`more about settings <More-About-Settings>` that
-``<+=`` combines ``<<=`` and ``+=``, so this builds a
-value based on other settings, and then appends it to
-``libraryDependencies``. The value is based on ``sbtVersion in update``
+The appended dependency is based on ``sbtVersion in update``
 (sbt's version scoped to the ``update`` task) and ``scalaVersion`` (the
 version of scala used to compile the project, in this case used to
 compile the build definition). ``sbtPluginExtra`` adds the sbt and Scala

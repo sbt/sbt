@@ -53,31 +53,23 @@ Tasks that produce managed files should be inserted as follows:
 
 ::
 
-    sourceGenerators in Compile <+= sourceManaged in Compile map { out =>
-        generate(out / "some_directory")
-    }
+    sourceGenerators in Compile +=
+        generate( (sourceManaged in Compile).value / "some_directory")
 
 In this example, ``generate`` is some function of type
-``File => Seq[File]`` that actually does the work. The ``<+=`` method is
-like ``+=``, but allows the right hand side to have inputs (like the
-difference between ``:=`` and ``<<=``). So, we are appending a new task
+``File => Seq[File]`` that actually does the work.  So, we are appending a new task
 to the list of main source generators (``sourceGenerators in Compile``).
 
 To insert a named task, which is the better approach for plugins:
 
 ::
-
-    sourceGenerators in Compile <+= (mySourceGenerator in Compile).task
-
-    mySourceGenerator in Compile <<= sourceManaged in Compile map { out =>
-        generate(out / "some_directory")
-    }
-
-where ``mySourceGenerator`` is defined as:
-
-::
-
     val mySourceGenerator = TaskKey[Seq[File]](...)
+
+    mySourceGenerator in Compile := 
+        generate( (sourceManaged in Compile).value / "some_directory")
+
+    sourceGenerators in Compile += (mySourceGenerator in Compile).task
+
 
 The ``task`` method is used to refer to the actual task instead of the
 result of the task.
@@ -115,33 +107,33 @@ Keys
 
 For classpaths, the relevant keys are:
 
--  ``unmanaged-classpath``
--  ``managed-classpath``
--  ``external-dependency-classpath``
--  ``internal-dependency-classpath``
+-  ``unmanagedClasspath``
+-  ``managedClasspath``
+-  ``externalDependencyClasspath``
+-  ``internalDependencyClasspath``
 
 For sources:
 
--  ``unmanaged-sources`` These are by default built up from
-   ``unmanaged-source-directories``, which consists of ``scala-source``
-   and ``java-source``.
--  ``managed-sources`` These are generated sources.
--  ``sources`` Combines ``managed-sources`` and ``unmanaged-sources``.
--  ``source-generators`` These are tasks that generate source files.
+-  ``unmanagedSources`` These are by default built up from
+   ``unmanagedSourceDirectories``, which consists of ``scalaSource``
+   and ``javaSource``.
+-  ``managedSources`` These are generated sources.
+-  ``sources`` Combines ``managedSources`` and ``unmanagedSources``.
+-  ``sourceGenerators`` These are tasks that generate source files.
    Typically, these tasks will put sources in the directory provided by
-   ``source-managed``.
+   ``sourceManaged``.
 
 For resources
 
--  ``unmanaged-resources`` These are by default built up from
-   ``unmanaged-resource-directories``, which by default is
-   ``resource-directory``, excluding files matched by
-   ``default-excludes``.
--  ``managed-resources`` By default, this is empty for standard
+-  ``unmanagedResources`` These are by default built up from
+   ``unmanagedResourceDirectories``, which by default is
+   ``resourceDirectory``, excluding files matched by
+   ``defaultExcludes``.
+-  ``managedResources`` By default, this is empty for standard
    projects. sbt plugins will have a generated descriptor file here.
--  ``resource-generators`` These are tasks that generate resource files.
+-  ``resourceGenerators`` These are tasks that generate resource files.
    Typically, these tasks will put resources in the directory provided
-   by ``resource-managed``.
+   by ``resourceManaged``.
 
 Use the :doc:`inspect command </Detailed-Topics/Inspecting-Settings>` for more details.
 
@@ -158,10 +150,4 @@ in classpath.
 
 ::
 
-    unmanagedClasspath in Runtime <<= (unmanagedClasspath in Runtime, baseDirectory) map { (cp, bd) => cp :+ Attributed.blank(bd / "config") }
-
-Or shorter:
-
-::
-
-    unmanagedClasspath in Runtime <+= (baseDirectory) map { bd => Attributed.blank(bd / "config") }
+    unmanagedClasspath in Runtime += baseDirectory.value / "config"

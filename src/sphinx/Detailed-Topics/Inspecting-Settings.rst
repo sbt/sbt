@@ -59,7 +59,7 @@ like ``test:run``. Some other examples that require the explicit
 
 .. code-block:: console
 
-    > test:console-quick
+    > test:consoleQuick
     > test:console
     > test:doc
     > test:package
@@ -68,8 +68,8 @@ Task-specific Settings
 ----------------------
 
 Some settings are defined per-task. This is used when there are several
-related tasks, such as ``package``, ``package-src``, and
-``package-doc``, in the same configuration (such as ``compile`` or
+related tasks, such as ``package``, ``packageSrc``, and
+``packageDoc``, in the same configuration (such as ``compile`` or
 ``test``). For package tasks, their settings are the files to package,
 the options to use, and the output file to produce. Each package task
 should be able to have different values for these settings.
@@ -80,16 +80,16 @@ different package tasks.
 
 .. code-block:: console
 
-    > package::artifact-path
+    > package::artifactPath
     [info] /home/user/sample/target/scala-2.8.1.final/demo_2.8.1-0.1.jar
 
-    > package-src::artifact-path
+    > packageSrc::artifactPath
     [info] /home/user/sample/target/scala-2.8.1.final/demo_2.8.1-0.1-src.jar
 
-    > package-doc::artifact-path
+    > packageDoc::artifactPath
     [info] /home/user/sample/target/scala-2.8.1.final/demo_2.8.1-0.1-doc.jar
 
-    > test:package::artifact-path
+    > test:package::artifactPath
     [info] /home/user/sample/target/scala-2.8.1.final/root_2.8.1-0.1-test.jar
 
 Note that a single colon ``:`` follows a configuration axis and a double
@@ -113,13 +113,13 @@ is defined. For example,
 
 .. code-block:: console
 
-    > inspect library-dependencies
+    > inspect libraryDependencies
     [info] Setting: scala.collection.Seq[sbt.ModuleID] = List(org.scalaz:scalaz-core:6.0-SNAPSHOT, org.scala-tools.testing:scalacheck:1.8:test)
     [info] Provided by:
-    [info]  {file:/home/user/sample/}root/*:library-dependencies
+    [info]  {file:/home/user/sample/}root/*:libraryDependencies
     ...
 
-This shows that ``library-dependencies`` has been defined on the current
+This shows that ``libraryDependencies`` has been defined on the current
 project (``{file:/home/user/sample/}root``) in the global configuration
 (``*:``). For a task like ``update``, the output looks like:
 
@@ -168,23 +168,23 @@ As an example, we'll look at ``console``:
     > inspect console
     ...
     [info] Dependencies:
-    [info]  compile:console::full-classpath
-    [info]  compile:console::scalac-options
-    [info]  compile:console::initial-commands
-    [info]  compile:console::cleanup-commands
+    [info]  compile:console::fullClasspath
+    [info]  compile:console::scalacOptions
+    [info]  compile:console::initialCommands
+    [info]  compile:console::cleanupCommands
     [info]  compile:console::compilers
-    [info]  compile:console::task-temporary-directory
-    [info]  compile:console::scala-instance
+    [info]  compile:console::taskTemporary-directory
+    [info]  compile:console::scalaInstance
     [info]  compile:console::streams
 
     ...
 
 This shows the inputs to the ``console`` task. We can see that it gets
-its classpath and options from ``full-classpath`` and
-``scalac-options(for console)``. The information provided by the
+its classpath and options from ``fullClasspath`` and
+``scalacOptions(for console)``. The information provided by the
 ``inspect`` command can thus assist in finding the right setting to
 change. The convention for keys, like ``console`` and
-``full-classpath``, is that the Scala identifier is camel case, while
+``fullClasspath``, is that the Scala identifier is camel case, while
 the String representation is lowercase and separated by dashes. The
 Scala identifier for a configuration is uppercase to distinguish it from
 tasks like ``compile`` and ``test``. For example, we can infer from the
@@ -200,12 +200,12 @@ starts up:
     ...
 
 ``inspect`` showed that ``console`` used the setting
-``compile:console::initial-commands``. Translating the
-``initial-commands`` string to the Scala identifier gives us
+``compile:console::initialCommands``. Translating the
+``initialCommands`` string to the Scala identifier gives us
 ``initialCommands``. ``compile`` indicates that this is for the main
 sources. ``console::`` indicates that the setting is specific to
 ``console``. Because of this, we can set the initial commands on the
-``console`` task without affecting the ``console-quick`` task, for
+``console`` task without affecting the ``consoleQuick`` task, for
 example.
 
 Actual Dependencies
@@ -224,28 +224,28 @@ Dependencies,
     > inspect actual console
     ...
     [info] Dependencies:
-    [info]  compile:scalac-options
-    [info]  compile:full-classpath
-    [info]  *:scala-instance
-    [info]  */*:initial-commands
-    [info]  */*:cleanup-commands
-    [info]  */*:task-temporary-directory
+    [info]  compile:scalacOptions
+    [info]  compile:fullClasspath
+    [info]  *:scalaInstance
+    [info]  */*:initialCommands
+    [info]  */*:cleanupCommands
+    [info]  */*:taskTemporaryDirectory
     [info]  *:console::compilers
     [info]  compile:console::streams
     ...
 
-For ``initial-commands``, we see that it comes from the global scope
+For ``initialCommands``, we see that it comes from the global scope
 (``*/*:``). Combining this with the relevant output from
 ``inspect console``:
 
 .. code-block:: console
 
-    compile:console::initial-commands
+    compile:console::initialCommands
 
-we know that we can set ``initial-commands`` as generally as the global
+we know that we can set ``initialCommands`` as generally as the global
 scope, as specific as the current project's ``console`` task scope, or
 anything in between. This means that we can, for example, set
-``initial-commands`` for the whole project and will affect ``console``:
+``initialCommands`` for the whole project and will affect ``console``:
 
 .. code-block:: console
 
@@ -258,19 +258,19 @@ looking at the reverse dependencies output of ``inspect actual``:
 
 .. code-block:: console
 
-    > inspect actual initial-commands
+    > inspect actual initialCommands
     ...
     [info] Reverse dependencies:
     [info]  test:console
-    [info]  compile:console-quick
+    [info]  compile:consoleQuick
     [info]  compile:console
-    [info]  test:console-quick
-    [info]  *:console-project
+    [info]  test:consoleQuick
+    [info]  *:consoleProject
     ...
 
-We now know that by setting ``initial-commands`` on the whole project,
+We now know that by setting ``initialCommands`` on the whole project,
 we affect all console tasks in all configurations in that project. If we
-didn't want the initial commands to apply for ``console-project``, which
+didn't want the initial commands to apply for ``consoleProject``, which
 doesn't have our project's classpath available, we could use the more
 specific task axis:
 
@@ -299,17 +299,17 @@ As an example, consider the initial commands for ``console`` again:
 
 .. code-block:: console
 
-    > inspect console::initial-commands
+    > inspect console::initialCommands
     ...
     [info] Delegates:
-    [info]  *:console::initial-commands
-    [info]  *:initial-commands
-    [info]  {.}/*:console::initial-commands
-    [info]  {.}/*:initial-commands
-    [info]  */*:console::initial-commands
-    [info]  */*:initial-commands
+    [info]  *:console::initialCommands
+    [info]  *:initialCommands
+    [info]  {.}/*:console::initialCommands
+    [info]  {.}/*:initialCommands
+    [info]  */*:console::initialCommands
+    [info]  */*:initialCommands
     ...
 
 This means that if there is no value specifically for
-``*:console::initial-commands``, the scopes listed under Delegates will
+``*:console::initialCommands``, the scopes listed under Delegates will
 be searched in order until a defined value is found.

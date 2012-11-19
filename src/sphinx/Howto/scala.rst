@@ -67,13 +67,13 @@ Defining the ``scalaHome`` setting with the path to the Scala home directory wil
 See :doc:`cross building </Detailed-Topics/Cross-Build>`.
 
 .. howto::
-   :id: console-quick
+   :id: consoleQuick
    :title: Enter the Scala REPL with a project's dependencies on the classpath, but not the compiled project classes
    :type: command
    
-   console-quick
+   consoleQuick
 
-The ``console-quick`` action retrieves dependencies and puts them on the classpath of the Scala REPL.  The project's sources are not compiled, but sources of any source dependencies are compiled.  To enter the REPL with test dependencies on the classpath but without compiling test sources, run ``test:console-quick``.  This will force compilation of main sources.
+The ``consoleQuick`` action retrieves dependencies and puts them on the classpath of the Scala REPL.  The project's sources are not compiled, but sources of any source dependencies are compiled.  To enter the REPL with test dependencies on the classpath but without compiling test sources, run ``test:consoleQuick``.  This will force compilation of main sources.
 
 .. howto::
    :id: console
@@ -85,17 +85,17 @@ The ``console-quick`` action retrieves dependencies and puts them on the classpa
 The ``console`` action retrieves dependencies and compiles sources and puts them on the classpath of the Scala REPL.  To enter the REPL with test dependencies and compiled test sources on the classpath, run ``test:console``.
 
 .. howto::
-   :id: console-project
+   :id: consoleProject
    :title: Enter the Scala REPL with plugins and the build definition on the classpath
    :type: command
    
-   console-project
+   consoleProject
 
 .. code-block:: console
 
-    > console-project
+    > consoleProject
 
-For details, see the :doc:`console-project </Detailed-Topics/Console-Project>` page.
+For details, see the :doc:`consoleProject </Detailed-Topics/Console-Project>` page.
 
 .. howto::
    :id: initial
@@ -104,20 +104,20 @@ For details, see the :doc:`console-project </Detailed-Topics/Console-Project>` p
    
    initialCommands in console := """println("Hi!")"""
 
-Set ``initialCommands in console`` to set the initial statements to evaluate when ``console`` and ``console-quick`` are run.  To configure ``console-quick`` separately, use ``initialCommands in consoleQuick``.
+Set ``initialCommands in console`` to set the initial statements to evaluate when ``console`` and ``consoleQuick`` are run.  To configure ``consoleQuick`` separately, use ``initialCommands in consoleQuick``.
 For example,
 
 ::
 
     initialCommands in console := """println("Hello from console")"""
 
-    initialCommands in consoleQuick := """println("Hello from console-quick")"""
+    initialCommands in consoleQuick := """println("Hello from consoleQuick")"""
 
-The ``console-project`` command is configured separately by ``initialCommands in consoleProject``.  It does not use the value from ``initialCommands in console`` by default.  For example,
+The ``consoleProject`` command is configured separately by ``initialCommands in consoleProject``.  It does not use the value from ``initialCommands in console`` by default.  For example,
 
 ::
 
-    initialCommands in consoleProject := """println("Hello from console-project")"""
+    initialCommands in consoleProject := """println("Hello from consoleProject")"""
 
 
 .. howto::

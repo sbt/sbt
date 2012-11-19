@@ -53,13 +53,13 @@ to be the "custom\_lib" directory in a project's base directory:
 
 ::
 
-    unmanagedBase <<= baseDirectory( (base: File) => base /"custom_lib" )
+    unmanagedBase := baseDirectory.value /"custom_lib"
 
 Or, more concisely:
 
 ::
 
-    unmanagedBase <<= baseDirectory( _ /"custom_lib" )
+    unmanagedBase := baseDirectory.value /"custom_lib"
 
 This setting sets the location of the shell history to be in the base
 directory of the build, irrespective of the project the setting is
@@ -67,7 +67,7 @@ defined in:
 
 ::
 
-    historyPath <<= (baseDirectory in ThisBuild)(t => Some(t / ".history")),
+    historyPath := Some( (baseDirectory in ThisBuild).value / ".history"),
 
 Path Finders
 ------------

@@ -19,8 +19,8 @@ The ``fork`` setting controls whether forking is enabled (true) or not
 (false). It can be set in the ``run`` scope to only fork ``run``
 commands or in the ``test`` scope to only fork ``test`` commands.
 
-To fork all test tasks (``test``, ``test-only``, and ``test-quick``) and
-run tasks (``run``, ``run-main``, ``test:run``, and ``test:run-main``),
+To fork all test tasks (``test``, ``testOnly``, and ``testQuick``) and
+run tasks (``run``, ``runMain``, ``test:run``, and ``test:runMain``),
 
 ::
 
@@ -33,14 +33,14 @@ To enable forking ``run`` tasks only, set ``fork`` to ``true`` in the
 
     fork in run := true
 
-To only fork ``test:run`` and ``test:run-main``:
+To only fork ``test:run`` and ``test:runMain``:
 
 ::
 
     fork in (Test,run) := true
 
 Similarly, set ``fork in (Compile,run) := true`` to only fork the main
-``run`` tasks. ``run`` and ``run-main`` share the same configuration and
+``run`` tasks. ``run`` and ``runMain`` share the same configuration and
 cannot be configured separately.
 
 To enable forking all ``test`` tasks only, set ``fork`` to ``true`` in
@@ -64,13 +64,13 @@ To change the working directory when forked, set
     // sets the working directory for all `run`-like tasks
     baseDirectory in run := file("/path/to/working/directory/")
 
-    // sets the working directory for `run` and `run-main` only
+    // sets the working directory for `run` and `runMain` only
     baseDirectory in (Compile,run) := file("/path/to/working/directory/")
 
-    // sets the working directory for `test:run` and `test:run-main` only
+    // sets the working directory for `test:run` and `test:runMain` only
     baseDirectory in (Test,run) := file("/path/to/working/directory/")
 
-    // sets the working directory for `test`, `test-quick`, and `test-only`
+    // sets the working directory for `test`, `testQuick`, and `testOnly`
     baseDirectory in test := file("/path/to/working/directory/")
 
 Forked JVM options
@@ -99,7 +99,7 @@ or only affect the ``test`` tasks:
 Java Home
 =========
 
-Select the Java installation to use by setting the ``java-home``
+Select the Java installation to use by setting the ``javaHome``
 directory:
 
 ::
@@ -122,7 +122,7 @@ Configuring output
 
 By default, forked output is sent to the Logger, with standard output
 logged at the ``Info`` level and standard error at the ``Error`` level.
-This can be configured with the ``output-strategy`` setting, which is of
+This can be configured with the ``outputStrategy`` setting, which is of
 type
 `OutputStrategy <../../api/sbt/OutputStrategy.html>`_.
 

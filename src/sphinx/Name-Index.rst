@@ -98,16 +98,13 @@ Settings and Tasks
 See the :doc:`Getting Started Guide </Getting-Started/Basic-Def>` for
 details.
 
--  ``:=``, ``<<=``, ``+=``, ``++=``, ``~=``, ``<+=``, ``<++=`` These
-   construct a
-   `Setting <../api/sbt/Init$Setting.html>`_,
+-  ``:=``, ``+=``, ``++=``, ``~=`` These
+   construct a `Setting <../api/sbt/Init$Setting.html>`_,
    which is the fundamental type in the :doc:`settings </Getting-Started/Basic-Def>` system.
--  ``map`` This defines a task initialization that uses other tasks or
-   settings. See :doc:`more about settings </Getting-Started/More-About-Settings>`.
-   It is a common name used for many other types in Scala, such as collections.
--  ``apply`` This defines a setting initialization using other settings.
-   It is not typically written out. See :doc:`more about settings </Getting-Started/More-About-Settings>`.
-   This is a common name in Scala.
+-  ``value`` This uses the value of another setting or task in the definition of a new setting or task.
+   This method is special (it is a macro) and cannot be used except in the argument of one of the setting
+   definition methods above (``:=``, ...) or in the standalone construction methods ``Def.setting`` and ``Def.task``.
+   See :doc:`more about settings </Getting-Started/More-About-Settings>` for details.
 -  ``in`` specifies the `Scope <../api/sbt/Scope.html>`_ or part of the
    `Scope <../api/sbt/Scope.html>`_ of a setting being referenced. See :doc:`scopes </Getting-Started/Scopes>`.
 

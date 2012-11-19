@@ -7,7 +7,7 @@
    :title: Pass arguments to a command or task in batch mode
    :type: batch
    
-   clean "test-only org.example.Test" "run-main demo.Main a b c"
+   clean "testOnly org.example.Test" "runMain demo.Main a b c"
 
 sbt interprets each command line argument provided to it as a command together with the command's arguments.
 Therefore, to run a command that takes arguments in batch mode, quote the command and its arguments.

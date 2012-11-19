@@ -123,7 +123,7 @@ other parts of the settings interface are defined. Some examples:
     // get name of current project
     val nameOpt: Option[String] = name in currentRef get structure.data
 
-    // get the package options for the `test:package-src` task or Nil if none are defined
+    // get the package options for the `test:packageSrc` task or Nil if none are defined
     val pkgOpts: Seq[PackageOption] = packageOptions in (currentRef, Test, packageSrc) get structure.data getOrElse Nil
 
 `BuildStructure <../../api/sbt/Load$$BuildStructure.html>`_ contains

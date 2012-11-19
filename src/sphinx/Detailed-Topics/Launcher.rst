@@ -307,7 +307,7 @@ definition would be:
 
       libraryDependencies += "org.scala-sbt" % "launcher-interface" % "0.12.0" % "provided"
 
-      resolvers <+= sbtResolver
+      resolvers += sbtResolver.value
 
 Make the entry point to your class implement 'xsbti.AppMain'. An example
 that uses some of the information:
@@ -363,7 +363,7 @@ it might look like:
     [boot]
      directory: ${user.home}/.myapp/boot
 
-Then, ``publish-local`` or ``+publish-local`` the application to make it
+Then, ``publishLocal`` or ``+publishLocal`` the application to make it
 available.
 
 Running an Application

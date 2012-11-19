@@ -30,27 +30,28 @@ project definition are required to use this method unless you would like
 to change the location of the directory you store the jars in.
 
 To change the directory jars are stored in, change the
-``unmanaged-base`` setting in your project definition. For example, to
+``unmanagedBase`` setting in your project definition. For example, to
 use ``custom_lib/``:
 
 ::
 
-    unmanagedBase <<= baseDirectory { base => base / "custom_lib" }
+    unmanagedBase := baseDirectory.value / "custom_lib"
 
 If you want more control and flexibility, override the
-``unmanaged-jars`` task, which ultimately provides the manual
+``unmanagedJars`` task, which ultimately provides the manual
 dependencies to sbt. The default implementation is roughly:
 
 ::
 
-    unmanagedJars in Compile <<= baseDirectory map { base => (base ** "*.jar").classpath }
+    unmanagedJars in Compile := (baseDirectory.value ** "*.jar").classpath
 
 If you want to add jars from multiple directories in addition to the
 default directory, you can do:
 
 ::
 
-    unmanagedJars in Compile <++= baseDirectory map { base =>
+    unmanagedJars in Compile ++= {
+	     val base = baseDirectory.value
         val baseDirectories = (base / "libA") +++ (base / "b" / "lib") +++ (base / "libC")
         val customJars = (baseDirectories ** "*.jar") +++ (base / "d" / "my.jar")
         customJars.classpath
@@ -162,8 +163,8 @@ Override default resolvers
 
 ``resolvers`` configures additional, inline user resolvers. By default,
 ``sbt`` combines these resolvers with default repositories (Maven
-Central and the local Ivy repository) to form ``external-resolvers``. To
-have more control over repositories, set ``external-resolvers``
+Central and the local Ivy repository) to form ``externalResolvers``. To
+have more control over repositories, set ``externalResolvers``
 directly. To only specify repositories in addition to the usual
 defaults, configure ``resolvers``.
 
@@ -178,9 +179,8 @@ To use the local repository, but not the Maven Central repository:
 
 ::
 
-    externalResolvers <<= resolvers map { rs =>
-      Resolver.withDefaultResolvers(rs, mavenCentral = false)
-    }
+    externalResolvers :=
+      Resolver.withDefaultResolvers(resolvers.value, mavenCentral = false)
 
 Override all resolvers for all builds
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -257,9 +257,9 @@ For multiple classifiers, use multiple ``classifier`` calls:
       "org.lwjgl.lwjgl" % "lwjgl-platform" % lwjglVersion classifier "natives-windows" classifier "natives-linux" classifier "natives-osx"
 
 To obtain particular classifiers for all dependencies transitively, run
-the ``update-classifiers`` task. By default, this resolves all artifacts
+the ``updateClassifiers`` task. By default, this resolves all artifacts
 with the ``sources`` or ``javadoc`` classifier. Select the classifiers
-to obtain by configuring the ``transitive-classifiers`` setting. For
+to obtain by configuring the ``transitiveClassifiers`` setting. For
 example, to only retrieve sources:
 
 ::
@@ -300,8 +300,8 @@ Download Sources
 ~~~~~~~~~~~~~~~~
 
 Downloading source and API documentation jars is usually handled by an
-IDE plugin. These plugins use the ``update-classifiers`` and
-``update-sbt-classifiers`` tasks, which produce an :doc:`Update-Report`
+IDE plugin. These plugins use the ``updateClassifiers`` and
+``updateSbtClassifiers`` tasks, which produce an :doc:`Update-Report`
 referencing these jars.
 
 To have sbt download the dependency's sources without using an IDE
@@ -333,7 +333,7 @@ To define extra attributes on the current project:
 
 ::
 
-    projectID <<= projectID { id =>
+    projectID ~= { id =>
         id extra("color" -> "blue", "component" -> "compiler-interface")
     }
 

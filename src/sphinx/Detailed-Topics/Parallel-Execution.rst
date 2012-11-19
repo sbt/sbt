@@ -28,7 +28,7 @@ declaration of the tasks would be:
       f
     }
 
-    read <<= write map { f => IO.read(f) }
+    read := IO.read(write.value)
 
 This establishes an ordering: ``read`` must run after ``write``. We've
 also guaranteed that ``read`` will read from the same file that
@@ -100,14 +100,18 @@ associates the ``CPU`` and ``Compile`` tags with the ``compile`` task
 
 ::
 
-    compile <<= myCompileTask tag(Tags.CPU, Tags.Compile)
+    def myCompileTask = Def.task { ... } tag(Tags.CPU, Tags.Compile)
+
+    compile := myCompileTask.value
 
 Different weights may be specified by passing tag/weight pairs to
 ``tagw``:
 
 ::
 
-    download <<= downloadImpl.tagw(Tags.Network -> 3)
+    def downloadImpl = Def.task { ... } tagw(Tags.Network -> 3)
+
+    download := downloadImpl.value
 
 Defining Restrictions
 ~~~~~~~~~~~~~~~~~~~~~
@@ -222,7 +226,7 @@ The tasks that are currently tagged by default are:
 -  ``compile``: ``Compile``, ``CPU``
 -  ``test``: ``Test``
 -  ``update``: ``Update``, ``Network``
--  ``publish``, ``publish-local``: ``Publish``, ``Network``
+-  ``publish``, ``publishLocal``: ``Publish``, ``Network``
 
 Of additional note is that the default ``test`` task will propagate its
 tags to each child task created for each test class.
@@ -231,9 +235,9 @@ The default rules provide the same behavior as previous versions of sbt:
 
 ::
 
-    concurrentRestrictions in Global <<= parallelExecution { par =>
+    concurrentRestrictions in Global := {
       val max = Runtime.getRuntime.availableProcessors
-      Tags.limitAll(if(par) max else 1) :: Nil
+      Tags.limitAll(if(parallelExecution.value) max else 1) :: Nil
     }
 
 As before, ``parallelExecution in Test`` controls whether tests are
@@ -258,7 +262,9 @@ Then, use this tag as any other tag. For example:
 
 ::
 
-    aCustomTask <<= aCustomTask.tag(Custom)
+    def aImpl = Def.task { ... } tag(Custom)
+
+    aCustomTask := aImpl.value 
 
     concurrentRestrictions in Global += 
       Tags.limit(Custom, 1)
@@ -278,7 +284,9 @@ tags applied to it. Only the first computation is labeled.
 
 ::
 
-    compile <<= myCompileTask tag(Tags.CPU, Tags.Compile)
+    def myCompileTask = Def.task { ... } tag(Tags.CPU, Tags.Compile)
+
+    compile := myCompileTask.value
 
     compile ~= { ... do some post processing ... }
 
@@ -305,16 +313,8 @@ Adjustments to Defaults
 
 Rules should be easier to remove or redefine, perhaps by giving them
 names. As it is, rules must be appended or all rules must be completely
-redefined.
-
-Redefining the tags of a task looks like:
-
-::
-
-    compile <<= compile.tag(Tags.Network)
-
-This will overwrite the previous weight if the tag (Network) was already
-defined.
+redefined.  Also, tags can only be defined for tasks at the original
+definition site when using the ``:=`` syntax.
 
 For removing tags, an implementation of ``removeTag`` should follow from
 the implementation of ``tag`` in a straightforward manner.

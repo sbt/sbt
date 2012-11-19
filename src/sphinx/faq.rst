@@ -88,8 +88,8 @@ The following commands work pretty much as in 0.7 out of the box:
     update
     compile
     test
-    test-only
-    publish-local
+    testOnly
+    publishLocal
     exit
 
 Why have the resolved dependencies in a multi-module project changed since 0.7?
@@ -233,7 +233,7 @@ You may run ``sbt console``.
 Build definitions
 -----------------
 
-What are the ``:=``, ``~=``, ``<<=``, ``+=``, ``++=``, ``<+=``, and ``<++=`` methods?
+What are the ``:=``, ``+=``, ``++=```, and ``~=`` methods?
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 These are methods on keys used to construct a ``Setting``. The Getting
@@ -255,34 +255,6 @@ To figure out an unknown type or method, have a look at the
 Also try the :doc:`index </Name-Index>` of commonly used methods, values, and types,
 the `API Documentation <../api/index>`_ and the
 `hyperlinked sources <../sxr/index>`_.
-
-How can one key depend on multiple other keys?
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-See :doc:`More About Settings </Getting-Started/More-About-Settings/>` in the
-Getting Started Guide, scroll down to the discussion of ``<<=`` with
-multiple keys.
-
-Briefly: You need to use a tuple rather than a single key by itself.
-Scala's syntax for a tuple is with parentheses, like ``(a, b, c)``.
-
-If you're creating a value for a task key, then you'll use ``map``:
-
-::
-
-    packageBin in Compile <<= (name, organization, version) map { (n, o, v) => file(o + "-" + n + "-" + v + ".jar") }
-
-If you're creating a value for a setting key, then you'll use ``apply``:
-
-::
-
-    name <<= (name, organization, version) apply { (n, o, v) => "project " + n + " from " + o + " version " + v }
-
-Typing ``apply`` is optional in that code, since Scala treats any object
-with an ``apply`` method as a function. See :doc:`More About Settings </Getting-Started/More-About-Settings>`
-for a longer explanation.
-
-To learn about task keys vs. setting keys, read :doc:`.sbt build definition </Getting-Started/Basic-Def>`.
 
 How do I add files to a jar package?
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -326,15 +298,15 @@ basic structure looks like:
 
 ::
 
-    sourceGenerators in Compile <+= <your Task[Seq[File]] here>
+    sourceGenerators in Compile += <your Task[Seq[File]] here>
 
 For example, assuming a method
 ``def makeSomeSources(base: File): Seq[File]``,
 
 ::
 
-    sourceGenerators in Compile <+= sourceManaged in Compile map { outDir: File =>
-      makeSomeSources(outDir / "demo")
+    sourceGenerators in Compile += Def.task {
+      makeSomeSources( (sourceManaged in Compile).value / "demo")
     }
 
 As a specific example, the following generates a hello world source
@@ -342,8 +314,8 @@ file:
 
 ::
 
-    sourceGenerators in Compile <+= sourceManaged in Compile map { dir =>
-      val file = dir / "demo" / "Test.scala"
+    sourceGenerators in Compile += Def.task {
+      val file = (sourceManaged in Compile) / "demo" / "Test.scala"
       IO.write(file, """object Test extends App { println("Hi") }""")
       Seq(file)
     }
@@ -374,16 +346,15 @@ is:
 
     // define a task that takes some inputs
     //   and generates files in an output directory
-    myTask <<= (cacheDirectory, inputs, target) map {
-      (cache: File, inFiles: Seq[File], outDir: File) =>
+    myTask := {
         // wraps a function taskImpl in an uptodate check
         //   taskImpl takes the input files, the output directory,
         //   generates the output files and returns the set of generated files
-        val cachedFun = FileFunction.cached(cache / "my-task") { (in: Set[File]) =>
-          taskImpl(in, outDir) : Set[File]
+        val cachedFun = FileFunction.cached(cacheDirectory.value / "my-task") { (in: Set[File]) =>
+          taskImpl(in, target.value) : Set[File]
         }
         // Applies the cached function to the inputs files
-        cachedFun(inFiles)
+        cachedFun(inputs.value)
     }
 
 There are two additional arguments for the first parameter list that
@@ -435,50 +406,16 @@ to ``samples``:
 ::
 
     samples:run
-    samples:run-main
+    samples:runMain
     samples:compile
     samples:console
-    samples:console-quick
-    samples:scalac-options
-    samples:full-classpath
+    samples:consoleQuick
+    samples:scalacOptions
+    samples:fullClasspath
     samples:package
-    samples:package-src
+    samples:packageSrc
     ...
 
-Example of adding a new configuration
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-
-``project/Sample.scala``
-
-::
-
-    import sbt._
-    import Keys._
-
-    object Sample extends Build {
-         // defines a new configuration "samples" that will delegate to "compile"
-       lazy val Samples = config("samples") extend(Compile)
-
-         // defines the project to have the "samples" configuration
-       lazy val p = Project("p", file("."))
-          .configs(Samples)
-          .settings(sampleSettings : _*)
-
-       def sampleSettings =
-            // adds the default compile/run/... tasks in "samples"
-          inConfig(Samples)(Defaults.configSettings) ++
-          Seq(
-            // (optional) makes "test:compile" depend on "samples:compile"
-             compile in Test <<= compile in Test dependsOn (compile in Samples)
-          ) ++
-            // (optional) declare that the samples binary and
-            // source jars should be published
-          publishArtifact(packageBin) ++
-          publishArtifact(packageSrc)
-
-       def publishArtifact(task: TaskKey[File]): Seq[Setting[_]] =
-          addArtifact(artifact in (Samples, task), task in Samples).settings
-    }
 
 How do I add a test configuration?
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -498,7 +435,7 @@ A basic run task is created by:
 ::
 
       // this lazy val has to go in a full configuration
-      lazy val myRunTask = TaskKey[Unit]("my-run-task")
+      lazy val myRunTask = TaskKey[Unit]("myRunTask")
 
       // this can go either in a `build.sbt` or the settings member
       //   of a Project in a full configuration
@@ -509,7 +446,7 @@ file):
 
 ::
 
-       fullRunTask(TaskKey[Unit]("my-run-task"), Test, "foo.Foo", "arg1", "arg2")
+       fullRunTask(TaskKey[Unit]("myRunTask"), Test, "foo.Foo", "arg1", "arg2")
 
 If you want to be able to supply arguments on the command line, replace
 ``TaskKey`` with ``InputKey`` and ``fullRunTask`` with
@@ -537,10 +474,10 @@ delegate to ``aRun``
 
 ::
 
-    val aRun = TaskKey[Unit]("a-run", "A run task.")
+    val aRun = TaskKey[Unit]("aRun", "A run task.")
 
     //   The last parameter to TaskKey.apply here is a repeated one
-    val myRun = TaskKey[Unit]("my-run", "Custom run task.", aRun)
+    val myRun = TaskKey[Unit]("myRun", "Custom run task.", aRun)
 
 In use, this looks like:
 
@@ -593,16 +530,16 @@ the following are settings that implement #2-#4:
        "net.sf.proguard" % "proguard" % "4.4" % ProguardConfig.name
 
     // Extract the dependencies from the UpdateReport.
-    managedClasspath in proguard <<=
-       (classpathTypes in proguard, update) map { (ct, report) =>
-         Classpaths.managedJars(proguardConfig, ct, report)
-       }
+    managedClasspath in proguard :=
+        Classpaths.managedJars(proguardConfig, (classpathTypes in proguard).value, update.value)
+    }
 
     // Use the dependencies in a task, typically by putting them
     //  in a ClassLoader and reflectively calling an appropriate
     //  method.
-    proguard <<= managedClasspath in proguard { (cp: Seq[File] =>
-      // ... do something with 'cp', which includes proguard ...
+    proguard := {
+	    val cp: Seq[File] = (managedClasspath in proguard).value
+      // ... do something with , which includes proguard ...
     }
 
 How would I change sbt's classpath dynamically?
@@ -684,7 +621,7 @@ has been loaded and prints that number:
 
     {
       // the key for the current count
-      val key = AttributeKey[Int]("load-count")
+      val key = AttributeKey[Int]("loadCount")
       // the State transformer
       val f = (s: State) => {
         val previous = s get key getOrElse 0
@@ -697,113 +634,12 @@ has been loaded and prints that number:
 Errors
 ------
 
-Type error, found: ``Initialize[Task[String]]``, required: ``Initialize[String]`` or found: ``TaskKey[String]`` required: ``Initialize[String]``
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-This means that you are trying to supply a task when defining a setting
-key. See :doc:`.sbt build definition </Getting-Started/Basic-Def>` for the
-difference between task and setting keys, and
-:doc:`more about settings </Getting-Started/More-About-Settings>`
-for more on how to define one key in terms of other keys.
-
-Setting keys are only evaluated once, on project load, while tasks are
-evaluated repeatedly. Defining a setting in terms of a task does not
-make sense because tasks must be re-evaluated every time.
-
-One way to get a task when you didn't want one is to use the ``map``
-method instead of the ``apply`` method.
-:doc:`More about settings </Getting-Started/More-About-Settings>` covers this topic as well.
-
-Suppose we define these keys, in ``./project/Build.scala`` (For details,
-see :doc:/`.scala build definition </Getting-Started/Full-Def>`).
-
-::
-
-    val baseSetting = SettingKey[String]("base-setting")
-    val derivedSetting = SettingKey[String]("derived-setting")
-    val baseTask = TaskKey[Long]("base-task")
-    val derivedTask = TaskKey[String]("derived-task")
-
-Let's define an initialization for ``base-setting`` and ``base-task``.
-We will then use these as inputs to other setting and task
-initializations.
-
-::
-
-    baseSetting := "base setting"
-
-    baseTask := { System.currentTimeMillis() }
-
-Then this will not work:
-
-::
-
-    // error: found: Initialize[Task[String]], required: Initialize[String]
-    derivedSetting <<= baseSetting.map(_.toString),
-    derivedSetting <<= baseTask.map(_.toString),
-    derivedSetting <<= (baseSetting, baseTask).map((a, b) => a.toString + b.toString),
-
-One or more settings can be used as inputs to initialize another
-setting, using the ``apply`` method.
-
-::
-
-    derivedSetting <<= baseSetting.apply(_.toString)
-
-    derivedSetting <<= baseSetting(_.toString)
-
-    derivedSetting <<= (baseSetting, baseSetting)((a, b) => a.toString + b.toString)
-
-Both settings and tasks can be used to initialize a task, using the
-``map`` method.
-
-::
-
-    derivedTask <<= baseSetting.map(_.toString)
-
-    derivedTask <<= baseTask.map(_.toString)
-
-    derivedTask <<= (baseSetting, baseTask).map((a, b) => a.toString + b.toString)
-
-But, it is a compile time error to use ``map`` to initialize a setting:
-
-::
-
-    // error: found: Initialize[Task[String]], required: Initialize[String]
-    derivedSetting <<= baseSetting.map(_.toString),
-    derivedSetting <<= baseTask.map(_.toString),
-    derivedSetting <<= (baseSetting, baseTask).map((a, b) => a.toString + b.toString),
-
-It is not allowed to use a task as input to a settings initialization
-with ``apply``:
-
-::
-
-    // error: value apply is not a member of TaskKey[Long]
-    derivedSetting <<= baseTask.apply(_.toString)
-
-    // error: value apply is not a member of TaskKey[Long]
-    derivedTask <<= baseTask.apply(_.toString)
-
-    // error: value apply is not a member of (sbt.SettingKey[String], sbt.TaskKey[Long])
-    derivedTask <<= (baseSetting, baseTask).apply((a, b) => a.toString + b.toString)
-
-Finally, it is not directly possible to use ``apply`` to initialize a
-task.
-
-::
-
-    // error: found String, required Task[String]
-    derivedTask <<= baseSetting.apply(_.toString)
-
 On project load, "Reference to uninitialized setting"
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 Setting initializers are executed in order. If the initialization of a
 setting depends on other settings that has not been initialized, sbt
-will stop loading. This can happen using ``+=``, ``++=``, ``<<=``,
-``<+=``, ``<++=``, and ``~=``. (To understand those methods,
-:doc:`read this </Getting-Started/More-About-Settings>`.)
+will stop loading.
 
 In this example, we try to append a library to ``libraryDependencies``
 before it is initialized with an empty sequence.
@@ -837,13 +673,13 @@ A more subtle variation of this error occurs when using :doc:`scoped settings </
       fullClasspath ~= (_.filterNot(_.data.name.contains("commons-io")))
     )
 
-Generally, all of the update operators can be expressed in terms of
-``<<=``. To better understand the error, we can rewrite the setting as:
+Generally, all of the setting definition methods can be expressed in terms of
+``:=``. To better understand the error, we can rewrite the setting as:
 
 ::
 
     // error: Reference to uninitialized setting
-    fullClasspath <<= (fullClasspath).map(_.filterNot(_.data.name.contains("commons-io")))
+    fullClasspath := fullClasspath.value.filterNot(_.data.name.contains("commons-io"))
 
 This setting varies between the test and compile scopes. The solution is
 use the scoped setting, both as the input to the initializer, and the
@@ -851,7 +687,7 @@ setting that we update.
 
 ::
 
-    fullClasspath in Compile <<= (fullClasspath in Compile).map(_.filterNot(_.data.name.contains("commons-io")))
+    fullClasspath in Compile := (fullClasspath in Compile).value.filterNot(_.data.name.contains("commons-io"))
 
     // or equivalently
     fullClasspath in Compile ~= (_.filterNot(_.data.name.contains("commons-io")))

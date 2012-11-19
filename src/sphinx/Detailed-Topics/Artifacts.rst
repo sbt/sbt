@@ -46,7 +46,7 @@ Modifying default artifacts
 ===========================
 
 Each built-in artifact has several configurable settings in addition to
-``publish-artifact``. The basic ones are ``artifact`` (of type
+``publishArtifact``. The basic ones are ``artifact`` (of type
 ``SettingKey[Artifact]``), ``mappings`` (of type
 ``TaskKey[(File,String)]``), and ``artifactPath`` (of type
 ``SettingKey[File]``). They are scoped by ``(<config>, <task>)`` as
@@ -60,7 +60,7 @@ To modify the type of the main artifact, for example:
       art.copy(`type` = "bundle")
     }
 
-The generated artifact name is determined by the ``artifact-name``
+The generated artifact name is determined by the ``artifactName``
 setting. This setting is of type
 ``(ScalaVersion, ModuleID, Artifact) => String``. The ScalaVersion
 argument provides the full Scala version String and the binary
@@ -83,9 +83,9 @@ path:
 (Note that in practice you rarely want to drop the classifier.)
 
 Finally, you can get the ``(Artifact, File)`` pair for the artifact by
-mapping the ``packaged-artifact`` task. Note that if you don't need the
+mapping the ``packagedArtifact`` task. Note that if you don't need the
 ``Artifact``, you can get just the File from the package task
-(``package``, ``package-doc``, or ``package-src``). In both cases,
+(``package``, ``packageDoc``, or ``packageSrc``). In both cases,
 mapping the task to get the file ensures that the artifact is generated
 first and so the file is guaranteed to be up-to-date.
 
@@ -93,7 +93,8 @@ For example:
 
 ::
 
-    myTask <<= packagedArtifact in (Compile, packageBin) map { case (art: Artifact, file: File) =>
+    myTask :=  {
+      val (art, file) = packagedArtifact.in(Compile, packageBin).value
       println("Artifact definition: " + art)
       println("Packaged file: " + file.getAbsolutePath)
     }

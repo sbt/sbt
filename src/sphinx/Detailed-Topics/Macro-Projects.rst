@@ -29,7 +29,7 @@ This configuration is shown in the following build definition:
     object MacroBuild extends Build {
        lazy val main = Project("main", file(".")) dependsOn(macroSub)
        lazy val macroSub = Project("macro", file("macro")) settings(
-          libraryDependencies <+= scalaVersion("org.scala-lang" % "scala-compiler" % _)
+          libraryDependencies += "org.scala-lang" % "scala-compiler" % scalaVersion.value
        )
     }
     
@@ -119,7 +119,7 @@ For example, the project definitions from above would look like:
 
    lazy val main = Project("main", file(".")) dependsOn(macroSub, commonSub)
    lazy val macroSub = Project("macro", file("macro")) dependsOn(commonSub) settings(
-       libraryDependencies <+= scalaVersion("org.scala-lang" % "scala-compiler" % _)
+       libraryDependencies += "org.scala-lang" % "scala-compiler" % scalaVersion.value
    )
    lazy val commonSub = Project("common", file("common"))
 

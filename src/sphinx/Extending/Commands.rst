@@ -109,8 +109,8 @@ commands to a project. To try it out:
 1. Copy the following build definition into ``project/Build.scala`` for
    a new project.
 2. Run sbt on the project.
-3. Try out the ``hello``, ``hello-all``, ``fail-if-true``, ``color``,
-   and ``print-state`` commands.
+3. Try out the ``hello``, ``helloAll``, ``failIfTrue``, ``color``,
+   and ``printState`` commands.
 4. Use tab-completion and the code below as guidance.
 
 ::
@@ -139,14 +139,14 @@ commands to a project. To try it out:
 
         // A simple, multiple-argument command that prints "Hi" followed by the arguments.
         //   Again, it leaves the current state unchanged.
-        def helloAll = Command.args("hello-all", "<name>") { (state, args) =>
+        def helloAll = Command.args("helloAll", "<name>") { (state, args) =>
             println("Hi " + args.mkString(" "))
             state
         }
 
 
         // A command that demonstrates failing or succeeding based on the input
-        def failIfTrue = Command.single("fail-if-true") {
+        def failIfTrue = Command.single("failIfTrue") {
             case (state, "true") => state.fail
             case (state, _) => state
         }
@@ -168,7 +168,7 @@ commands to a project. To try it out:
 
 
         // A command that demonstrates getting information out of State.
-        def printState = Command.command("print-state") { state =>
+        def printState = Command.command("printState") { state =>
             import state._
             println(definedCommands.size + " registered commands")
             println("commands to run: " + show(remainingCommands))

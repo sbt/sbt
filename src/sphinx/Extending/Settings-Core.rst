@@ -24,9 +24,9 @@ build.sbt file:
 
 ::
 
-    libraryDependencies <+= sbtVersion("org.scala-sbt" %% "collections" % _)
+    libraryDependencies += "org.scala-sbt" %% "collections" % sbtVersion.value
 
-    resolvers <+= sbtResolver
+    resolvers += sbtResolver.value
 
 Then, put the following examples in source files
 ``SettingsExample.scala`` and ``SettingsUsage.scala``. Finally, run sbt

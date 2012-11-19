@@ -34,33 +34,33 @@ to use your library.
 
 With the library dependency defined, you can then add test sources in
 the locations listed above and compile and run tests. The tasks for
-running tests are ``test`` and ``test-only``. The ``test`` task accepts
+running tests are ``test`` and ``testOnly``. The ``test`` task accepts
 no command line arguments and runs all tests:
 
 .. code-block:: console
 
     > test
 
-test-only
+testOnly
 ---------
 
-The ``test-only`` task accepts a whitespace separated list of test names
+The ``testOnly`` task accepts a whitespace separated list of test names
 to run. For example:
 
 .. code-block:: console
 
-    > test-only org.example.MyTest1 org.example.MyTest2
+    > testOnly org.example.MyTest1 org.example.MyTest2
 
 It supports wildcards as well:
 
 .. code-block:: console
 
-    > test-only org.example.*Slow org.example.MyTest1
+    > testOnly org.example.*Slow org.example.MyTest1
 
-test-quick
+testQuick
 ----------
 
-The ``test-quick`` task, like ``test-only``, allows to filter the tests
+The ``testQuick`` task, like ``testOnly``, allows to filter the tests
 to run to specific tests or wildcards using the same syntax to indicate
 the filters. In addition to the explicit filter, only the tests that
 satisfy one of the following conditions are run:
@@ -77,7 +77,7 @@ Tab completion is provided for test names based on the results of the
 last ``test:compile``. This means that a new sources aren't available
 for tab completion until they are compiled and deleted sources won't be
 removed from tab completion until a recompile. A new test source can
-still be manually written out and run using ``test-only``.
+still be manually written out and run using ``testOnly``.
 
 Other tasks
 -----------
@@ -88,9 +88,9 @@ are referenced in Scala code with ``in Test``. These tasks include:
 
 -  ``test:compile``
 -  ``test:console``
--  ``test:console-quick``
+-  ``test:consoleQuick``
 -  ``test:run``
--  ``test:run-main``
+-  ``test:runMain``
 
 See :doc:`Running </Getting-Started/Running>` for details on these tasks.
 
@@ -111,11 +111,11 @@ Test Framework Arguments
 ------------------------
 
 Arguments to the test framework may be provided on the command line to
-the ``test-only`` tasks following a ``--`` separator. For example:
+the ``testOnly`` tasks following a ``--`` separator. For example:
 
 .. code-block:: console
 
-    > test-only org.example.MyTest -- -d -S
+    > testOnly org.example.MyTest -- -d -S
 
 To specify test framework arguments as part of the build, add options
 constructed by ``Tests.Argument``:
@@ -196,7 +196,7 @@ available with ``testGrouping`` key. For example:
         tests groupBy (_.name(0)) map {
           case (letter, tests) => new Group(letter.toString, tests, SubProcess(Seq("-Dfirst.letter"+letter)))
         } toSeq;
-      testGrouping <<= definedTests in Test map groupByFirst
+      testGrouping := groupByFirst( (definedTests in Test).value )
     }
 
 The tests in a single group are run sequentially. Controlling the number
@@ -266,7 +266,7 @@ The standard testing tasks are available, but must be prefixed with
 
 .. code-block:: console
 
-    > it:test-only org.example.AnIntegrationTest
+    > it:testOnly org.example.AnIntegrationTest
 
 Similarly the standard settings may be configured for the
 ``IntegrationTest`` configuration. If not specified directly, most
@@ -400,7 +400,7 @@ with the configuration name as before:
 .. code-block:: console
 
     > fun:test
-    > fun:test-only org.example.AFunTest
+    > fun:testOnly org.example.AFunTest
 
 Application to parallel execution
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

@@ -24,10 +24,10 @@ setting is otherwise a normal Scala expression with expected type
     scalaVersion := "2.9.0-SNAPSHOT"
 
     // set the main Scala source directory to be <base>/src
-    scalaSource in Compile <<= baseDirectory(_ / "src")
+    scalaSource in Compile := baseDirectory.value / "src"
 
     // set the Scala test source directory to be <base>/test
-    scalaSource in Test <<= baseDirectory(_ / "test")
+    scalaSource in Test := baseDirectory.value / "test"
 
     // add a test dependency on ScalaCheck
     libraryDependencies += "org.scala-tools.testing" %% "scalacheck" % "1.8" % "test"
@@ -56,7 +56,7 @@ setting is otherwise a normal Scala expression with expected type
     // append -deprecation to the options passed to the Scala compiler
     scalacOptions += "-deprecation"
 
-    // define the statements initially evaluated when entering 'console', 'console-quick', or 'console-project'
+    // define the statements initially evaluated when entering 'console', 'consoleQuick', or 'consoleProject'
     initialCommands := """
       import System.{currentTimeMillis => now}
       def time[T](f: => T): T = {
@@ -65,7 +65,7 @@ setting is otherwise a normal Scala expression with expected type
       }
     """
 
-    // set the initial commands when entering 'console' or 'console-quick', but not 'console-project'
+    // set the initial commands when entering 'console' or 'consoleQuick', but not 'consoleProject'
     initialCommands in console := "import myproject._"
 
     // set the main class for packaging the main jar
@@ -78,7 +78,7 @@ setting is otherwise a normal Scala expression with expected type
     mainClass in (Compile, run) := Some("myproject.MyMain")
 
     // add <base>/input to the files that '~' triggers on
-    watchSources <+= baseDirectory map { _ / "input" }
+    watchSources += baseDirectory.value / "input"
 
     // add a maven-style repository
     resolvers += "name" at "url"

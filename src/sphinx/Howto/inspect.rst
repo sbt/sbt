@@ -75,15 +75,15 @@ the dependencies of a task/setting as well as the tasks/settings that depend on 
     > inspect test:compile
     ...
     [info] Dependencies:
-    [info] 	test:compile::compile-inputs
+    [info] 	test:compile::compileInputs
     [info] 	test:compile::streams
     [info] Reverse dependencies:
-    [info] 	test:defined-test-names
-    [info] 	test:defined-sbt-plugins
-    [info] 	test:print-warnings
-    [info] 	test:discovered-main-classes
-    [info] 	test:defined-tests
-    [info] 	test:exported-products
+    [info] 	test:definedTestNames
+    [info] 	test:definedSbtPlugins
+    [info] 	test:printWarnings
+    [info] 	test:discoveredMainClasses
+    [info] 	test:definedTests
+    [info] 	test:exportedProducts
     [info] 	test:products
     ...
 
@@ -104,13 +104,13 @@ For example,
     
     > inspect tree clean
     [info] *:clean = Task[Unit]
-    [info]   +-*:clean-files = List(<project>/lib_managed, <project>/target)
-    [info]   | +-{.}/*:managed-directory = lib_managed
+    [info]   +-*:cleanFiles = List(<project>/lib_managed, <project>/target)
+    [info]   | +-{.}/*:managedDirectory = lib_managed
     [info]   | +-*:target = target
-    [info]   |   +-*:base-directory = <project>
-    [info]   |     +-*:this-project = Project(id: demo, base: <project>, ...
+    [info]   |   +-*:baseDirectory = <project>
+    [info]   |     +-*:thisProject = Project(id: demo, base: <project>, ...
     [info]   |     
-    [info]   +-*:clean-keep-files = List(<project>/target/.history)
+    [info]   +-*:cleanKeepFiles = List(<project>/target/.history)
     [info]     +-*:history = Some(<project>/target/.history)
     ...
 
@@ -140,7 +140,7 @@ For example:
 
 .. code-block:: console
 
-    > inspect scala-version
+    > inspect scalaVersion
     [info] Setting: java.lang.String = 2.9.2
     [info] Description:
     [info] 	The version of Scala used for building.
@@ -170,13 +170,13 @@ for testing and API documentation generation.
 
 .. code-block:: console
 
-    > inspect scalac-options
+    > inspect scalacOptions
     ...
     [info] Related:
-    [info] 	compile:doc::scalac-options
-    [info] 	test:scalac-options
-    [info] 	*/*:scalac-options
-    [info] 	test:doc::scalac-options
+    [info] 	compile:doc::scalacOptions
+    [info] 	test:scalacOptions
+    [info] 	*/*:scalacOptions
+    [info] 	test:doc::scalacOptions
 
 See the :doc:`/Detailed-Topics/Inspecting-Settings` page for details.
 
@@ -277,11 +277,11 @@ which does not execute a task and thus can only display its type and not its gen
    :title: Show the classpath used for compilation or testing
    :type: command
    
-   show compile:dependency-classpath
+   show compile:dependencyClasspath
 
 .. code-block:: console
 
-    > show compile:dependency-classpath
+    > show compile:dependencyClasspath
     ...
     [info] ArrayBuffer(Attributed(~/.sbt/0.12.0/boot/scala-2.9.2/lib/scala-library.jar))
     
@@ -289,7 +289,7 @@ For the test classpath,
 
 .. code-block:: console
 
-    > show test:dependency-classpath
+    > show test:dependencyClasspath
     ...
     [info] ArrayBuffer(Attributed(~/code/sbt.github.com/target/scala-2.9.2/classes), Attributed(~/.sbt/0.12.0/boot/scala-2.9.2/lib/scala-library.jar), Attributed(~/.ivy2/cache/junit/junit/jars/junit-4.8.2.jar))
 
@@ -298,15 +298,15 @@ For the test classpath,
    :title: Show the main classes detected in a project
    :type: command
    
-   show compile:discovered-main-classes
+   show compile:discoveredMainClasses
 
-sbt detects the classes with public, static main methods for use by the ``run`` method and to tab-complete the ``run-main`` method.
-The ``discovered-main-classes`` task does this discovery and provides as its result the list of class names.
+sbt detects the classes with public, static main methods for use by the ``run`` method and to tab-complete the ``runMain`` method.
+The ``discoveredMainClasses`` task does this discovery and provides as its result the list of class names.
 For example, the following shows the main classes discovered in the main sources:
 
 .. code-block:: console
     
-    > show compile:discovered-main-classes
+    > show compile:discoveredMainClasses
     ... <runs compile if out of date> ...
     [info] List(org.example.Main)
 
@@ -315,14 +315,14 @@ For example, the following shows the main classes discovered in the main sources
    :title: Show the test classes detected in a project
    :type: command
    
-   show defined-test-names
+   show definedTestNames
 
 sbt detects tests according to fingerprints provided by test frameworks.
-The ``defined-test-names`` task provides as its result the list of test names detected in this way.
+The ``definedTestNames`` task provides as its result the list of test names detected in this way.
 For example,
 
 .. code-block:: console
     
-    > show test:defined-test-names
+    > show test:definedTestNames
     ... < runs test:compile if out of date > ...
     [info] List(org.example.TestA, org.example.TestB)

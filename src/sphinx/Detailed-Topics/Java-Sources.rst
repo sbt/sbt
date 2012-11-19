@@ -11,10 +11,10 @@ Usage
 
 -  ``compile`` will compile the sources under ``src/main/java`` by
    default.
--  ``test-compile`` will compile the sources under ``src/test/java`` by
+-  ``testCompile`` will compile the sources under ``src/test/java`` by
    default.
 
-Pass options to the Java compiler by setting ``javac-options``:
+Pass options to the Java compiler by setting ``javacOptions``:
 
 ::
 
@@ -28,7 +28,7 @@ sbt. Multi-element options, such as ``-source 1.5``, are specified like:
     javacOptions ++= Seq("-source", "1.5")
 
 You can specify the order in which Scala and Java sources are built with
-the ``compile-order`` setting. Possible values are from the
+the ``compileOrder`` setting. Possible values are from the
 ``CompileOrder`` enumeration: ``Mixed``, ``JavaThenScala``, and
 ``ScalaThenJava``. If you have circular dependencies between Scala and
 Java sources, you need the default, ``Mixed``, which passes both Java
@@ -68,10 +68,10 @@ unnecessary Scala directories can be ignored by modifying
 ::
 
     // Include only src/main/java in the compile configuration
-    unmanagedSourceDirectories in Compile <<= Seq(javaSource in Compile).join
+    unmanagedSourceDirectories in Compile := (javaSource in Compile).value :: Nil
 
     // Include only src/test/java in the test configuration
-    unmanagedSourceDirectories in Test <<= Seq(javaSource in Test).join
+    unmanagedSourceDirectories in Test := (javaSource in Test).value :: Nil
 
 However, there should not be any harm in leaving the Scala directories
 if they are empty.

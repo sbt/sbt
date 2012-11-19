@@ -9,7 +9,7 @@ By default, sbt's interactive mode is started when no commands are provided on t
    :title: Use tab completion
    :type: command
    
-   test-only <TAB>
+   testOnly <TAB>
 
 As the name suggests, tab completion is invoked by hitting the tab key.
 Suggestions are provided that can complete the text entered to the left of the current cursor position.
@@ -33,14 +33,14 @@ To get further completions, hit tab again:
 .. code-block:: console
 
     > test<TAB>
-    test-frameworks   test-listeners    test-loader       test-only         test-options      test:
+    testFrameworks   testListeners    testLoader       testOnly         testOptions      test:
 
 Now, there is more than one possibility for the next character, so sbt prints the available options.
-We will select ``test-only`` and get more suggestions by entering the rest of the command and hitting tab twice:
+We will select ``testOnly`` and get more suggestions by entering the rest of the command and hitting tab twice:
 
 .. code-block:: console
 
-    > test-only<TAB><TAB>
+    > testOnly<TAB><TAB>
     --                      sbt.DagSpecification    sbt.EmptyRelationTest   sbt.KeyTest             sbt.RelationTest        sbt.SettingsTest
 
 The first tab inserts an unambiguous space and the second suggests names of tests to run.
@@ -64,14 +64,14 @@ Some commands have different levels of completion.  Hitting tab multiple times i
    :title: Show JLine keybindings
    :type: commands
    
-   > console-quick
+   > consoleQuick
    scala> :keybindings
 
-Both the Scala and sbt command prompts use JLine for interaction.  The Scala REPL contains a ``:keybindings`` command to show many of the keybindings used for JLine.  For sbt, this can be used by running one of the ``console`` commands (``console``, ``console-quick``, or ``console-project``) and then running ``:keybindings``.  For example:
+Both the Scala and sbt command prompts use JLine for interaction.  The Scala REPL contains a ``:keybindings`` command to show many of the keybindings used for JLine.  For sbt, this can be used by running one of the ``console`` commands (``console``, ``consoleQuick``, or ``consoleProject``) and then running ``:keybindings``.  For example:
 
 .. code-block:: console
 
-    > console-project
+    > consoleProject
     [info] Starting scala interpreter...
     ...
     scala> :keybindings
@@ -140,7 +140,7 @@ search history backwards.  The following commands are supported:
    :title: Change the location of the interactive history file
    :type: setting
    
-   historyPath <<= baseDirectory(t => Some(t / ".history"))
+   historyPath := Some( baseDirectory.value / ".history" )
 
 By default, interactive history is stored in the ``target/`` directory for the current project (but is not removed by a ``clean``).
 History is thus separate for each subproject.
@@ -149,7 +149,7 @@ For example, history can be stored in the root directory for the project instead
 
 ::
 
-    historyPath <<= baseDirectory(t => Some(t / ".history"))
+    historyPath := Some(baseDirectory.value / ".history")
 
 The history path needs to be set for each project, since sbt will use the value of ``historyPath`` for the current project (as selected by the ``project`` command).
 
@@ -159,7 +159,7 @@ The history path needs to be set for each project, since sbt will use the value 
    :title: Use the same history for all projects
    :type: setting
    
-   historyPath <<= (target in LocalRootProject) { t => Some(t / ".history") }
+   historyPath := Some( (target in LocalRootProject).value / ".history" )
 
 The previous section describes how to configure the location of the history file.
 This setting can be used to share the interactive history among all projects in a build instead of using a different history for each project.
@@ -167,10 +167,8 @@ The way this is done is to set ``historyPath`` to be the same file, such as a fi
 
 ::
 
-    historyPath <<=
-      (target in LocalRootProject) { t =>
-        Some(t / ".history")
-      }
+    historyPath :=
+        Some( (target in LocalRootProject).value / ".history")
 
 The ``in LocalRootProject`` part means to get the output directory for the root project for the build.
 

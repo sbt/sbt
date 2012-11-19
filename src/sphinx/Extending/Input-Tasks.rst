@@ -18,88 +18,95 @@ represents a task. Define a new input task key using the
 
 ::
 
-      // goes in <base>/project/Build.scala
+      // goes in <base>/project/Build.scala or in <base>/build.sbt
       val demo = InputKey[Unit]("demo")
+
+The definition of an input task is similar to that of a normal task, but it can
+also use the result of a `Parser </Detailed-Topics/Parsing-Input>`_ applied to
+user input.  Just as the special ``value`` method gets the value of a
+setting or task, the special ``parsed`` method gets the result of a ``Parser``.
 
 Basic Input Task Definition
 ===========================
 
 The simplest input task accepts a space-delimited sequence of arguments.
-It does not provide useful tab completion and parsing is basic. Such a
-task may be defined using the ``inputTask`` method, which accepts a
-single function of type ``TaskKey[Seq[String]] => Initialize[Task[O]]``
-for some parse result type ``O``. The input to this function is a
-``TaskKey`` for a task that will provide the parsed ``Seq[String]``. The
-function should return a task that uses that parsed input. For example:
+It does not provide useful tab completion and parsing is basic.  The built-in
+parser for space-delimited arguments is constructed via the ``spaceDelimited``
+method, which accepts as its only argument the label to present to the user
+during tab completion.
+
+For example, the following task prints the current Scala version and then echoes
+the arguments passed to it on their own line.
 
 ::
 
-    demo <<= inputTask { (argTask: TaskKey[Seq[String]]) =>
-        // Here, we map the argument task `argTask`
-        // and a normal setting `scalaVersion`
-      (argTask, scalaVersion) map { (args: Seq[String], sv: String) =>
-        println("The current Scala version is " + sv)
-        println("The arguments to demo were:")
-        args foreach println
-      }
+    demo := {
+        // get the result of parsing
+      val args: Seq[String] = spaceDelimited("<arg>").parsed
+        // Here, we also use the value of the `scalaVersion` setting
+      println("The current Scala version is " + scalaVersion.value)
+      println("The arguments to demo were:")
+      args foreach println
     }
 
 Input Task using Parsers
 ========================
 
-The ``inputTask`` method does not provide any flexibility in defining
-the input syntax. To use an arbitrary ``Parser`` described on the
-:doc:`/Detailed-Topics/Parsing-Input` page for parsing your input
-task's command line, use the more advanced
-`InputTask.apply <../../api/sbt/InputTask$.html>`_ factory method. This
-method accepts two arguments, which will be described in the following
-two sections.
+The Parser provided by the ``spaceDelimited`` method does not provide
+any flexibility in defining the input syntax.  , but using a custom parser
+is just a matter of defining your own ``Parser`` as described on the
+:doc:`/Detailed-Topics/Parsing-Input` page.
 
 Constructing the Parser
 -----------------------
 
 The first step is to construct the actual ``Parser`` by defining a value
-of type ``Initialize[State => Parser[I]]`` for some parse result type
-``I`` that you decide on. ``Initialize`` is the type that results from
-using other settings and the ``State => Parser[I]`` function provides
-access to the :doc:`Build-State` when constructing the parser. As an
-example, the following defines a contrived ``Parser`` that uses the
-project's Scala and sbt version settings as well as the state.
+of one of the following types:
+
+* ``Parser[I]``: a basic parser that does not use any settings
+* ``Initialize[Parser[I]]``: a parser whose definition depends on one or more settings
+* ``Initialize[State => Parser[I]]``: a parser that is defined using both settings and the current :doc:`state <Build-State>`
+
+We already saw an example of the first case with ``spaceDelimited``, which doesn't use any settings in its definition.
+As an example of the third case, the following defines a contrived ``Parser`` that uses the
+project's Scala and sbt version settings as well as the state.  To use these settings, we
+need to wrap the Parser construction in ``Def.setting`` and get the setting values with the
+special ``value`` method:
 
 ::
 
       import complete.DefaultParsers._
 
     val parser: Initialize[State => Parser[(String,String)]] =
-     (scalaVersion, sbtVersion) { (scalaV: String, sbtV: String) =>
+     Def.setting {
       (state: State) =>
-        ( token("scala" <~ Space) ~ token(scalaV) ) |
-        ( token("sbt" <~ Space) ~ token(sbtV) ) |
+        ( token("scala" <~ Space) ~ token(scalaVersion.value) ) |
+        ( token("sbt" <~ Space) ~ token(sbtVersion.value) ) |
         ( token("commands" <~ Space) ~
             token(state.remainingCommands.size.toString) )
-    }
+     }
 
 This Parser definition will produce a value of type ``(String,String)``.
-The input syntax isn't very flexible; it is just a demonstration. It
+The input syntax defined isn't very flexible; it is just a demonstration. It
 will produce one of the following values for a successful parse
-(assuming the current Scala version is 2.9.2, the current sbt version is
-0.12.0, and there are 3 commands left to run):
+(assuming the current Scala version is 2.10.0, the current sbt version is
+0.13.0, and there are 3 commands left to run):
 
 .. code-block:: text
 
-    ("scala", "2.9.2")
-    ("sbt", "0.12.0")
+    ("scala", "2.10.0")
+    ("sbt", "0.13.0")
     ("commands", "3")
+
+Again, we were able to access the current Scala and sbt version for the project because
+they are settings.  Tasks cannot be used to define the parser.
 
 Constructing the Task
 ---------------------
 
 Next, we construct the actual task to execute from the result of the
-``Parser``. For this, we construct a value of type
-``TaskKey[I] => Initialize[Task[O]]``, where ``I`` is the type returned
-by the ``Parser`` we just defined and ``O`` is the type of the ``Task``
-we will produce. The ``TaskKey[I]`` provides a task that will provide
-the result of parsing.
+``Parser``. For this, we define a task as usual, but we can access the
+result of parsing via the special ``parsed`` method on ``Parser``.
 
 The following contrived example uses the previous example's output (of
 type ``(String,String)``) and the result of the ``package`` task to
@@ -107,23 +114,9 @@ print some information to the screen.
 
 ::
 
-    val taskDef = (parsedTask: TaskKey[(String,String)]) => {
-        // we are making a task, so use 'map'
-      (parsedTask, packageBin) map { case ( (tpe: String, value: String), pkg: File) =>
+    demo := {
+        val (tpe, value) = parser.parsed
         println("Type: " + tpe)
         println("Value: " + value)
-        println("Packaged: " + pkg.getAbsolutePath)
-      }
+        println("Packaged: " + packageBin.value.getAbsolutePath)
     }
-
-Putting it together
--------------------
-
-To construct the input task, combine the key, the parser, and the task
-definition in a setting that goes in ``build.sbt`` or in the
-``settings`` member of a ``Project`` in ``project/Build.scala``:
-
-::
-
-    demo <<= InputTask(parser)(taskDef)
-

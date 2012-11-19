@@ -35,23 +35,23 @@ filter some entries out, and return a new classpath value. See :doc:`more about 
 for details of ``~=``.
 
 There's nothing to add to ``build.sbt`` to use unmanaged dependencies,
-though you could change the ``unmanaged-base`` key if you'd like to use
+though you could change the ``unmanagedBase`` key if you'd like to use
 a different directory rather than ``lib``.
 
 To use ``custom_lib`` instead of ``lib``:
 
 ::
 
-    unmanagedBase <<= baseDirectory { base => base / "custom_lib" }
+    unmanagedBase := baseDirectory.value / "custom_lib"
 
 ``baseDirectory`` is the project's root directory, so here you're
-changing ``unmanagedBase`` depending on ``baseDirectory``, using ``<<=``
-as explained in :doc:`more about settings <More-About-Settings>`.
+changing ``unmanagedBase`` depending on ``baseDirectory`` using the
+special ``value`` method as explained in :doc:`more about settings <More-About-Settings>`.
 
-There's also an ``unmanaged-jars`` task which lists the jars from the
-``unmanaged-base`` directory. If you wanted to use multiple directories
+There's also an ``unmanagedJars`` task which lists the jars from the
+``unmanagedBase`` directory. If you wanted to use multiple directories
 or do something else complex, you might need to replace the whole
-``unmanaged-jars`` task with one that does something else.
+``unmanagedJars`` task with one that does something else.
 
 Managed Dependencies
 --------------------
@@ -114,8 +114,7 @@ once:
         groupID % otherID % otherRevision
     )
 
-And in rare cases you might find reasons to use ``:=``, ``<<=``,
-``<+=``, etc. with ``libraryDependencies`` as well.
+In rare cases you might find reasons to use ``:=`` with ``libraryDependencies`` as well.
 
 Getting the right Scala version with ``%%``
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -206,10 +205,10 @@ Overriding default resolvers
 ones added by your build definition.
 
 ``sbt`` combines ``resolvers`` with some default repositories to form
-``external-resolvers``.
+``externalResolvers``.
 
 Therefore, to change or remove the default resolvers, you would need to
-override ``external-resolvers`` instead of ``resolvers``.
+override ``externalResolvers`` instead of ``resolvers``.
 
 Per-configuration dependencies
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -225,9 +224,9 @@ If you want a dependency to show up in the classpath only for the
 
     libraryDependencies += "org.apache.derby" % "derby" % "10.4.1.3" % "test"
 
-Now, if you type ``show compile:dependency-classpath`` at the sbt
+Now, if you type ``show compile:dependencyClasspath`` at the sbt
 interactive prompt, you should not see derby. But if you type
-``show test:dependency-classpath``, you should see the derby jar in the
+``show test:dependencyClasspath``, you should see the derby jar in the
 list.
 
 Typically, test-related dependencies such as

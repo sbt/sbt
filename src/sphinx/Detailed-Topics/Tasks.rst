@@ -21,7 +21,6 @@ differences between them:
    demand, often in response to a command from the user.
 2. At the beginning of project loading, settings and their dependencies
    are fixed. Tasks can introduce new tasks during execution, however.
-   (Tasks have flatMap, but Settings do not.)
 
 Features
 ========
@@ -34,13 +33,11 @@ There are several features of the task system:
    :doc:`parser combinators <Parsing-Input>` to define the syntax for their
    arguments. This allows flexible syntax and tab-completions in the
    same way as :doc:`/Extending/Commands`.
-3. Tasks produce values. Other tasks can access a task's value with the
-   ``map`` and ``flatMap`` methods.
-4. The ``flatMap`` method allows dynamically changing the structure of
-   the task graph. Tasks can be injected into the execution graph based
-   on the result of another task.
-5. There are ways to handle task failure, similar to
-   ``try/catch/finally``.
+3. Tasks produce values. Other tasks can access a task's value by calling
+   ``value`` on it within a task definition.
+4. Dynamically changing the structure of the task graph is possible.
+   Tasks can be injected into the execution graph based on the result of another task.
+5. There are ways to handle task failure, similar to ``try/catch/finally``.
 6. Each task has access to its own Logger that by default persists the
    logging for that task at a more verbose level than is initially
    printed to the screen.
@@ -60,8 +57,9 @@ build.sbt
 
 ::
 
+    val hello = TaskKey[Unit]("hello", "Prints 'Hello World'")
 
-    TaskKey[Unit]("hello") := println("hello world!")
+    hello := println("hello world!")
 
 Hello World example (scala)
 ---------------------------
@@ -101,17 +99,16 @@ see this task listed.
 Define the key
 --------------
 
-To declare a new task, define a ``TaskKey`` in your
-:doc:`Full Configuration </Getting-Started/Full-Def>`:
+To declare a new task, define a val of type ``TaskKey``, either in ``.sbt`` or ``.scala`:
 
 ::
 
-    val sampleTask = TaskKey[Int]("sample-task")
+    val sampleTask = TaskKey[Int]("sampleTask")
 
 The name of the ``val`` is used when referring to the task in Scala
 code. The string passed to the ``TaskKey`` method is used at runtime,
-such as at the command line. By convention, the Scala identifier is
-camelCase and the runtime identifier uses hyphens. The type parameter
+such as at the command line. By convention, both the Scala identifier
+and the runtime identifier are camelCase. The type parameter
 passed to ``TaskKey`` (here, ``Int``) is the type of value produced by
 the task.
 
@@ -119,8 +116,8 @@ We'll define a couple of other of tasks for the examples:
 
 ::
 
-    val intTask = TaskKey[Int]("int-task")
-    val stringTask = TaskKey[String]("string-task")
+    val intTask = TaskKey[Int]("intTask")
+    val stringTask = TaskKey[String]("stringTask")
 
 The examples themselves are valid entries in a ``build.sbt`` or can be
 provided as part of a sequence to ``Project.settings`` (see
@@ -134,15 +131,15 @@ defined:
 
 1. Determine the settings and other tasks needed by the task. They are
    the task's inputs.
-2. Define a function that takes these inputs and produces a value.
+2. Define the code that implements the task in terms of these inputs.
 3. Determine the scope the task will go in.
 
 These parts are then combined like the parts of a setting are combined.
 
-Tasks without inputs
-~~~~~~~~~~~~~~~~~~~~
+Defining a basic task
+~~~~~~~~~~~~~~~~~~~~~
 
-A task that takes no arguments can be defined using ``:=``
+A task is defined using ``:=``
 
 ::
 
@@ -157,35 +154,29 @@ A task that takes no arguments can be defined using ``:=``
     }
 
 As mentioned in the introduction, a task is evaluated on demand.
-Each time ``sample-task`` is invoked, for example, it will print the sum.
-If the username changes between runs, ``string-task`` will take different values in those separate runs.
+Each time ``sampleTask`` is invoked, for example, it will print the sum.
+If the username changes between runs, ``stringTask`` will take different values in those separate runs.
 (Within a run, each task is evaluated at most once.)
 In contrast, settings are evaluated once on project load and are fixed until the next reload.
 
 Tasks with inputs
 ~~~~~~~~~~~~~~~~~
 
-Tasks with other tasks or settings as inputs are defined using ``<<=``.
-The right hand side will typically call ``map`` or ``flatMap`` on other
-settings or tasks. (Contrast this with the ``apply`` method that is used
-for settings.) The function argument to ``map`` or ``flatMap`` is the
-task body. The following are equivalent ways of defining a task that
-adds one to value produced by ``int-task`` and returns the result.
+Tasks with other tasks or settings as inputs are also defined using ``:=``.
+The values of the inputs are referenced by the ``value`` method.  This method
+is special syntax and can only be called when defining a task, such as in the
+argument to ``:=``.  The following defines a task that adds one to the value
+produced by ``intTask`` and returns the result.
 
 ::
 
-    sampleTask <<= intTask map { (count: Int) => count + 1 }
+    sampleTask := intTask.value + 1
 
-    sampleTask <<= intTask map { _ + 1 }
-
-Multiple inputs are handled as with settings. The ``map`` and
-``flatMap`` are done on a tuple of inputs:
+Multiple settings are handled similarly:
 
 ::
 
-    stringTask <<= (sampleTask, intTask) map { (sample: Int, intValue: Int) =>
-        "Sample: " + sample + ", int: " + intValue
-    }
+    stringTask := "Sample: " + sampleTask.value + ", int: " + intValue.value
 
 Task Scope
 ~~~~~~~~~~
@@ -193,36 +184,16 @@ Task Scope
 As with settings, tasks can be defined in a specific scope. For example,
 there are separate ``compile`` tasks for the ``compile`` and ``test``
 scopes. The scope of a task is defined the same as for a setting. In the
-following example, ``test:sample-task`` uses the result of
-``compile:int-task``.
+following example, ``test:sampleTask`` uses the result of
+``compile:intTask``.
 
 ::
 
-    sampleTask.in(Test) <<= intTask.in(Compile).map { (intValue: Int) => 
-        intValue * 3
-    }
+    sampleTask.in(Test) := 
+        intTask.in(Compile).value * 3
 
-    // more succinctly:
-    sampleTask in Test <<= intTask in Compile map { _ * 3 }
-
-Inline task keys
-~~~~~~~~~~~~~~~~
-
-Although generally not recommended, it is possible to specify the task
-key inline:
-
-::
-
-    TaskKey[Int]("sample-task") in Test <<= TaskKey[Int]("int-task") in Compile map { _ * 3 }
-
-The type argument to ``TaskKey`` must be explicitly specified because of
-``SI-4653``. It is not recommended because:
-
-1. Tasks are no longer referenced by Scala identifiers (like
-   ``sampleTask``), but by Strings (like ``"sample-task"``)
-2. The type information must be repeated.
-3. Keys should come with a description, which would need to be repeated
-   as well.
+    // with a different punctuation style
+    sampleTask in Test := (intTask in Compile).value * 3
 
 On precedence
 ~~~~~~~~~~~~~
@@ -243,20 +214,19 @@ the following:
 
 ::
 
-    (sampleTask in Test) <<= (intTask in Compile map { _ * 3 })
+    (sampleTask in Test) := ( (intTask in Compile).value * 3 )
 
 Modifying an Existing Task
 ==========================
 
 The examples in this section use the following key definitions, which
-would go in a ``Build`` object in a :doc:`Full Configuration </Getting-Started/Full-Def>`.
-Alternatively, the keys may be specified inline, as discussed above.
+would go in a ``Build`` object in a ``.scala`` file or directly in a ``.sbt`` file.
 
 ::
 
-    val unitTask = TaskKey[Unit]("unit-task")
-    val intTask = TaskKey[Int]("int-task")
-    val stringTask = TaskKey[String]("string-task")
+    val unitTask = TaskKey[Unit]("unitTask")
+    val intTask = TaskKey[Int]("intTask")
+    val stringTask = TaskKey[String]("stringTask")
 
 The examples themselves are valid settings in a ``build.sbt`` file or as
 part of a sequence provided to ``Project.settings``.
@@ -270,11 +240,11 @@ input.
     intTask := 3
 
     // overriding definition that references the previous definition
-    intTask <<= intTask map { (value: Int) => value + 1 }
+    intTask := intTask.value + 1
 
 Completely override a task by not declaring the previous task as an
 input. Each of the definitions in the following example completely
-overrides the previous one. That is, when ``int-task`` is run, it will
+overrides the previous one. That is, when ``intTask`` is run, it will
 only print ``#3``.
 
 ::
@@ -289,9 +259,9 @@ only print ``#3``.
         5
     }
 
-    intTask <<= sampleTask map { (value: Int) => 
+    intTask :=  {
         println("#3")
-        value - 3
+        sampleTask.value - 3
     }
 
 To apply a transformation to a single task, without using additional
@@ -305,36 +275,63 @@ task's result:
     // increment the value returned by intTask
     intTask ~= { (x: Int) => x + 1 }
 
-Task Operations
-===============
+Advanced Task Operations
+========================
 
-The previous sections used the ``map`` method to define a task in terms
-of the results of other tasks. This is the most common method, but there
-are several others. The examples in this section use the task keys
-defined in the previous section.
+The previous sections demonstrated the most common way to define a task.
+Advanced task definitions require the implementation to be separate from the binding.
+For example, a basic separate definition looks like:
+
+::
+
+    // Define a new, standalone task implemention
+    val intTaskImpl: Initialize[Task[Int]] = Def.task { sampleTask.value - 3 }
+
+    // Bind the implementation to a specific key
+    intTask := intTaskImpl.value
+
+Note that whenever ``.value`` is used, it must be within a task definition, such as
+within ``Def.task`` above or as an argument to ``:=``.
+
+The examples in this section use the task keys defined in the previous section.
 
 Dependencies
 ------------
 
 To depend on the side effect of some tasks without using their values
 and without doing additional work, use ``dependOn`` on a sequence of
-tasks. The defining task key (the part on the left side of ``<<=``) must
+tasks. The defining task key (the part on the left side of ``:=``) must
 be of type ``Unit``, since no value is returned.
 
 ::
 
-    unitTask <<= Seq(stringTask, sampleTask).dependOn
+    val unitTaskImpl: Initialize[Task[Unit]] = Seq(stringTask, sampleTask).dependOn
+
+    unitTask := unitTaskImpl.value
 
 To add dependencies to an existing task without using their values, call
 ``dependsOn`` on the task and provide the tasks to depend on. For
 example, the second task definition here modifies the original to
-require that ``string-task`` and ``sample-task`` run first:
+require that ``stringTask`` and ``sampleTask`` run first:
 
 ::
 
     intTask := 4
 
-    intTask <<= intTask.dependsOn(stringTask, sampleTask)
+    val intTaskImpl = intTask.dependsOn(stringTask, sampleTask)
+
+    intTask := intTaskImpl.value
+
+Note that you can sometimes use the usual syntax:
+
+::
+
+    intTask := 4
+
+    intTask := {
+       val ignore = (stringTask.value, sampleTask.value)
+       intTask.value // use the original result
+    }
 
 Streams: Per-task logging
 -------------------------
@@ -345,7 +342,7 @@ the verbosity of stack traces and logging individually for tasks as well
 as recalling the last logging for a task. Tasks also have access to
 their own persisted binary or text data.
 
-To use Streams, ``map`` or ``flatMap`` the ``streams`` task. This is a
+To use Streams, get the value of the ``streams`` task. This is a
 special task that provides an instance of
 `TaskStreams <../../api/sbt/std/TaskStreams.html>`_
 for the defining task. This type provides access to named binary and
@@ -356,7 +353,8 @@ method:
 
 ::
 
-    myTask <<= streams map { (s: TaskStreams) =>
+    myTask := {
+	   val s: TaskStreams = streams.value
       s.log.debug("Saying hi...")
       s.log.info("Hello!")
     }
@@ -373,12 +371,12 @@ To obtain the last logging output from a task, use the ``last`` command:
 
 .. code-block:: console
 
-    $ last my-task
+    $ last myTask
     [debug] Saying hi...
     [info] Hello!
 
 The verbosity with which logging is persisted is controlled using the
-``persist-log-level`` and ``persist-trace-level`` settings. The ``last``
+``persistLogLevel`` and ``persistTraceLevel`` settings. The ``last``
 command displays what was logged according to these levels. The levels
 do not affect already logged information.
 
@@ -400,7 +398,9 @@ For example:
 
     intTask := error("I didn't succeed.")
 
-    intTask <<= intTask andFinally { println("andFinally") }
+    val intTaskImpl = intTask andFinally { println("andFinally") }
+
+    intTask := intTaskImpl.value
 
 This modifies the original ``intTask`` to always print "andFinally" even
 if the task fails.
@@ -414,18 +414,20 @@ a task like in the previous example. For example, consider this code:
 
     intTask := error("I didn't succeed.")
 
-    otherIntTask <<= intTask andFinally { println("andFinally") }
+    val intTaskImpl = intTask andFinally { println("andFinally") }
 
-If ``int-task`` is run directly, ``other-int-task`` is never involved in
+    otherIntTask := intTaskImpl.value
+
+If ``intTask`` is run directly, ``otherIntTask`` is never involved in
 execution. This case is similar to the following plain Scala code:
 
 ::
 
-    def intTask: Int =
+    def intTask(): Int =
       error("I didn't succeed.")
 
-    def otherIntTask: Int =
-      try { intTask }
+    def otherIntTask(): Int =
+      try { intTask() }
       finally { println("finally") }
 
     intTask()
@@ -451,12 +453,14 @@ For example:
 
     intTask := error("Failed.")
 
-    intTask <<= intTask mapFailure { (inc: Incomplete) => 
+    val intTaskImpl = intTask mapFailure { (inc: Incomplete) => 
        println("Ignoring failure: " + inc)
        3
     }
 
-This overrides the ``int-task`` so that the original exception is printed and the constant ``3`` is returned.
+    intTask := intTaskImpl.value
+
+This overrides the ``intTask`` so that the original exception is printed and the constant ``3`` is returned.
 
 ``mapFailure`` does not prevent other tasks that depend on the target
 from failing. Consider the following example:
@@ -465,33 +469,37 @@ from failing. Consider the following example:
 
     intTask := if(shouldSucceed) 5 else error("Failed.")
 
-    // return 3 if int-task fails. if it succeeds, this task will fail
-    aTask <<= intTask mapFailure { (inc: Incomplete) => 3 }
 
-    // a new task that increments the result of int-task
-    bTask <<= intTask map { \_ + 1 }
 
-    cTask <<= (aTask, bTask) map { (a,b) => a + b }
+    // return 3 if intTask fails. if it succeeds, this task will fail
+    val aTaskImpl = intTask mapFailure { (inc: Incomplete) => 3 }
+
+    aTask := aTaskImpl.value
+
+    // a new task that increments the result of intTask
+    bTask := intTask.value + 1
+
+    cTask := aTask.value + bTask.value
 
 The following table lists the results of each task depending on the initially invoked task:
 
 ============== =============== ============= ============== ============== ==============
-invoked task   int-task result a-task result  b-task result c-task result 	overall result
+invoked task   intTask result  aTask result  bTask result   cTask result 	overall result
 ============== =============== ============= ============== ============== ==============
-int-task       failure         not run       not run        not run        failure
-a-task         failure         success       not run        not run        success
-b-task         failure         not run       failure        not run        failure
-c-task         failure         success       failure        failure        failure
-int-task       success         not run       not run        not run        success
-a-task         success         failure       not run        not run        failure
-b-task         success         not run       success        not run        success
-c-task         success         failure       success        failure        failure
+intTask        failure         not run       not run        not run        failure
+aTask          failure         success       not run        not run        success
+bTask          failure         not run       failure        not run        failure
+cTask          failure         success       failure        failure        failure
+intTask        success         not run       not run        not run        success
+aTask          success         failure       not run        not run        failure
+bTask          success         not run       success        not run        success
+cTask          success         failure       success        failure        failure
 ============== =============== ============= ============== ============== ==============
 
 The overall result is always the same as the root task (the directly
 invoked task). A ``mapFailure`` turns a success into a failure, and a
 failure into whatever the result of evaluating the supplied function is.
-A ``map`` fails when the input fails and applies the supplied function
+A normal task definition fails when the input fails and applies the supplied function
 to a successfully completed input.
 
 In the case of more than one input, ``mapFailure`` fails if all inputs
@@ -500,14 +508,16 @@ with the list of ``Incomplete``\ s. For example:
 
 ::
 
-    cTask <<= (aTask, bTask) mapFailure { (incs: Seq[Incomplete]) => 3 }
+    val cTaskImpl = (aTask, bTask) mapFailure { (incs: Seq[Incomplete]) => 3 }
 
-The following table lists the results of invoking ``c-task``, depending
+    cTask := cTaskImpl.value
+
+The following table lists the results of invoking ``cTask``, depending
 on the success of ``aTask`` and ``bTask``:
 
 
 =============  =============  =============
-a-task result  b-task result  c-task result
+aTask result   bTask result   cTask result
 =============  =============  =============
 failure        failure        success
 failure        success        success
@@ -538,7 +548,7 @@ For example:
 
     intTask := error("Failed.")
 
-    intTask <<= intTask mapR {
+    val intTaskImpl = intTask mapR {
        case Inc(inc: Incomplete) =>
           println("Ignoring failure: " + inc)
           3
@@ -547,4 +557,6 @@ For example:
           v
     }
 
-This overrides the original ``int-task`` definition so that if the original task fails, the exception is printed and the constant ``3`` is returned. If it succeeds, the value is printed and returned.
+    intTask := intTaskImpl.value
+
+This overrides the original ``intTask`` definition so that if the original task fails, the exception is printed and the constant ``3`` is returned. If it succeeds, the value is printed and returned.

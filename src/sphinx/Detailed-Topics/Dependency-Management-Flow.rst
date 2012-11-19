@@ -63,7 +63,7 @@ B. If a file cannot be
    
 C. ``last update`` contains more information about the most recent
    resolution and download. The amount of debugging output from Ivy is
-   high, so you may want to use ``last-grep`` (run ``help last-grep`` for
+   high, so you may want to use ``lastGrep`` (run ``help lastGrep`` for
    usage).
    
 D. Run ``clean`` and then ``update``. If this works, it could

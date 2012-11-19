@@ -177,7 +177,7 @@ If sbt is running, run ``reload``.
 
 Note that this approach can be useful used when developing a plugin. A
 project that uses the plugin will rebuild the plugin on ``reload``. This
-saves the intermediate steps of ``publish-local`` and ``clean-plugins``
+saves the intermediate steps of ``publishLocal`` and ``cleanPlugins``
 required in 0.7. It can also be used to work with the development
 version of a plugin from its repository.
 
@@ -269,14 +269,14 @@ An example of a typical plugin:
     {
         // configuration points, like the built in `version`, `libraryDependencies`, or `compile`
         // by implementing Plugin, these are automatically imported in a user's `build.sbt`
-        val newTask = TaskKey[Unit]("new-task")
-        val newSetting = SettingKey[String]("new-setting")
+        val newTask = TaskKey[Unit]("newTask")
+        val newSetting = SettingKey[String]("newSetting")
 
         // a group of settings ready to be added to a Project
         // to automatically add them, do 
         val newSettings = Seq(
             newSetting := "test",
-            newTask <<= newSetting map { str => println(str) }
+            newTask := println(newSetting.value)
         )
 
         // alternatively, by overriding `settings`, they could be automatically added to a Project
@@ -382,7 +382,7 @@ In addition:
    3. sbt will rebuild the plugin and use it for the project.
       Additionally, the plugin will be available in other projects on
       the machine without recompiling again. This approach skips the
-      overhead of ``publish-local`` and cleaning the plugins directory
+      overhead of ``publishLocal`` and cleaning the plugins directory
       of the project using the plugin.
 
 These are all consequences of ``~/.sbt/plugins/`` being a standard

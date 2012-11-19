@@ -39,7 +39,7 @@ Where possible, reuse them in your plugin. For instance, don't define:
 
 ::
 
-    val sourceFiles = SettingKey[Seq[File]]("source-files")
+    val sourceFiles = SettingKey[Seq[File]]("sourceFiles")
 
 Instead, simply reuse SBT's existing ``sources`` key.
 
@@ -58,7 +58,7 @@ Just use a ``val`` prefix
 
     package sbtobfuscate
     object Plugin extends sbt.Plugin {
-      val obfuscateStylesheet = SettingKey[File]("obfuscate-stylesheet")
+      val obfuscateStylesheet = SettingKey[File]("obfuscateStylesheet")
     }
 
 In this approach, every ``val`` starts with ``obfuscate``. A user of the
@@ -66,7 +66,7 @@ plugin would refer to the settings like this:
 
 ::
 
-    obfuscateStylesheet <<= ...
+    obfuscateStylesheet := ...
 
 Use a nested object
 ~~~~~~~~~~~~~~~~~~~
@@ -76,7 +76,7 @@ Use a nested object
     package sbtobfuscate
     object Plugin extends sbt.Plugin {
       object ObfuscateKeys {
-        val stylesheet = SettingKey[File]("obfuscate-stylesheet")
+        val stylesheet = SettingKey[File]("obfuscateStylesheet")
       }
     }
 
@@ -87,7 +87,7 @@ of the plugin would refer to the settings like this:
 
     import ObfuscateKeys._ // place this at the top of build.sbt
 
-    stylesheet <<= ...
+    stylesheet := ...
 
 Configuration Advice
 --------------------
@@ -118,15 +118,15 @@ the same *key*, but they represent distinct *values*. So, in a user's
 
 ::
 
-    target in PDFPlugin <<= baseDirectory(_ / "mytarget" / "pdf")
-    target in Compile <<= baseDirectory(_ / "mytarget")
+    target in PDFPlugin := baseDirectory.value / "mytarget" / "pdf"
+    target in Compile := baseDirectory.value / "mytarget"
 
 In the PDF plugin, this is achieved with an ``inConfig`` definition:
 
 ::
 
     val settings: Seq[sbt.Project.Setting[_]] = inConfig(LWM)(Seq(
-      target <<= baseDirectory(_ / "target" / "docs") # the default value
+      target := baseDirectory.value / "target" / "docs" # the default value
     ))
 
 When *not* to define your own configuration.
@@ -139,10 +139,10 @@ task (see below).
 ::
 
     val akka = config("akka")  // This isn't needed.
-    val akkaStartCluster = TaskKey[Unit]("akka-start-cluster")
+    val akkaStartCluster = TaskKey[Unit]("akkaStartCluster")
 
-    target in akkaStartCluster <<= ... // This is ok.
-    akkaStartCluster in akka <<= ...   // BAD.  No need for a Config for plugin-specific task.
+    target in akkaStartCluster := ... // This is ok.
+    akkaStartCluster in akka := ...   // BAD.  No need for a Config for plugin-specific task.
 
 Configuration Cat says "Configuration is for configuration"
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -168,8 +168,8 @@ Configurations should *not* be used to namespace keys for a plugin. e.g.
 ::
 
     val Config = config("my-plugin")
-    val pluginKey = SettingKey[String]("plugin-specific-key")
-    val settings = plugin-key in Config  // DON'T DO THIS!
+    val pluginKey = SettingKey[String]("pluginSpecificKey")
+    val settings = pluginKey in Config  // DON'T DO THIS!
 
 Playing nice with configurations
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -191,8 +191,8 @@ Split your settings by the configuration axis like so:
     val obfuscate = TaskKey[Seq[File]]("obfuscate")
     val obfuscateSettings = inConfig(Compile)(baseObfuscateSettings)
     val baseObfuscateSettings: Seq[Setting[_]] = Seq(
-      obfuscate <<= (sources in obfuscate) map { s => ... },
-      sources in obfuscate <<= (sources).identity
+      obfuscate := ... (sources in obfuscate).value ...,
+      sources in obfuscate := sources.value
     )
 
 The ``baseObfuscateSettings`` value provides base configuration for the
@@ -232,8 +232,8 @@ task itself.
     val obfuscate = TaskKey[Seq[File]]("obfuscate")
     val obfuscateSettings = inConfig(Compile)(baseObfuscateSettings)
     val baseObfuscateSettings: Seq[Setting[_]] = Seq(
-      obfuscate <<= (sources in obfuscate) map { s => ... },
-      sources in obfuscate <<= (sources).identity
+      obfuscate := ... (sources in obfuscate).value ...,
+      sources in obfuscate := sources.value
     )
 
 In the above example, ``sources in obfuscate`` is scoped under the main
@@ -245,7 +245,7 @@ Mucking with Global build state
 There may be times when you need to muck with global build state. The
 general rule is *be careful what you touch*.
 
-First, make sure your user do not include global build configuration in
+First, make sure your user does not include global build configuration in
 *every* project but rather in the build itself. e.g.
 
 ::
@@ -266,8 +266,8 @@ removed.
 
     object MyPlugin extends Plugin {
        val globalSettigns: Seq[Setting[_]] = Seq(
-         onLoad in Global <<= onLoad in Global apply (_ andThen { state =>
+         onLoad in Global := (onLoad in Global).value andThen { state =>
              ... return new state ...
-         })
+         }
        )
      }

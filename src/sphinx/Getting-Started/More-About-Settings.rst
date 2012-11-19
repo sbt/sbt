@@ -15,8 +15,7 @@ transformation with sbt's earlier map as input and a new map as output.
 The new map becomes sbt's new state.
 
 Different settings transform the map in different ways.
-:doc:`Earlier <Basic-Def>`, you read about the ``:=``
-method.
+:doc:`Earlier <Basic-Def>`, you read about the ``:=`` method.
 
 The ``Setting`` which ``:=`` creates puts a fixed, constant value in the
 new, transformed map. For example, if you transform a map with the
@@ -110,75 +109,44 @@ The function you pass to the ``~=`` method will always have type
 ``T => T``, if the key has type ``SettingKey[T]`` or ``TaskKey[T]``. The
 function transforms the key's value into another value of the same type.
 
-Computing a value based on other keys' values: ``<<=``
-------------------------------------------------------
+Computing a value based on other keys' values
+---------------------------------------------
 
 ``~=`` defines a new value in terms of a key's previously-associated
 value. But what if you want to define a value in terms of *other* keys'
-values?
+values?  Reference the value of another task or setting by calling ``value``
+on the key for the task or setting.  The ``value`` method is special and may
+only be called in the argument to ``:=``, ``+=``, or ``++=``.
 
--  ``<<=`` lets you compute a new value using the value(s) of arbitrary
-   other keys.
-
-``<<=`` has one argument, of type ``Initialize[T]``. An
-``Initialize[T]`` instance is a computation which takes the values
-associated with a set of keys as input, and returns a value of type
-``T`` based on those other values. It initializes a value of type ``T``.
-
-Given an ``Initialize[T]``, ``<<=`` returns a ``Setting[T]``, of course
-(just like ``:=``, ``+=``, ``~=``, etc.).
-
-Trivial ``Initialize[T]``: depending on one other key with ``<<=``
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-All keys extend the ``Initialize`` trait already. So the simplest
-``Initialize`` is just a key:
-
-::
-
-    // useless but valid
-    name <<= name
-
-When treated as an ``Initialize[T]``, a ``SettingKey[T]`` computes its
-current value. So ``name <<= name`` sets the value of ``name`` to the
-value that ``name`` already had.
-
-It gets a little more useful if you set a key to a *different* key. The
-keys must have identical value types, though.
+As a first example, consider defining the project organization to be the same as the project name.
 
 ::
 
     // name our organization after our project (both are SettingKey[String])
-    organization <<= name
+    organization := name.value
 
-(Note: this is how you alias one key to another.)
-
-If the value types are not identical, you'll need to convert from
-``Initialize[T]`` to another type, like ``Initialize[S]``. This is done
-with the ``apply`` method on ``Initialize``, like this:
+Or, set the name to the name of the project's directory:
 
 ::
 
     // name is a Key[String], baseDirectory is a Key[File]
     // name the project after the directory it's inside
-    name <<= baseDirectory.apply(_.getName)
+    name := baseDirectory.value.getName
 
-``apply`` is special in Scala and means you can invoke the object with
-function syntax; so you could also write this:
+This transforms the value of ``baseDirectory`` using the standard ``getName`` method of ``java.io.File``.
+
+Using multiple inputs is similar.  For example,
 
 ::
 
-    name <<= baseDirectory(_.getName)
+    name := "project " + name.value + " from " + organization.value + " version " + version.value
 
-That transforms the value of ``baseDirectory`` using the function
-``_.getName``, where the function ``_.getName`` takes a ``File`` and
-returns a ``String``. ``getName`` is a method on the standard
-``java.io.File`` object.
+This sets the name in terms of its previous value as well as the organization and version settings.
 
 Settings with dependencies
 ~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-In the setting ``name <<= baseDirectory(_.getName)``, ``name`` will have
+In the setting ``name := baseDirectory.value.getName``, ``name`` will have
 a *dependency* on ``baseDirectory``. If you place the above in
 ``build.sbt`` and run the sbt interactive console, then type
 ``inspect name``, you should see (in part):
@@ -186,14 +154,14 @@ a *dependency* on ``baseDirectory``. If you place the above in
 .. code-block:: text
 
     [info] Dependencies:
-    [info]  *:base-directory
+    [info]  *:baseDirectory
 
 This is how sbt knows which settings depend on which other settings.
 Remember that some settings describe tasks, so this approach also
 creates dependencies between tasks.
 
 For example, if you ``inspect compile`` you'll see it depends on another
-key ``compile-inputs``, and if you inspect ``compile-inputs`` it in turn
+key ``compileInputs``, and if you inspect ``compileInputs`` it in turn
 depends on other keys. Keep following the dependency chains and magic
 happens. When you type ``compile`` sbt automatically performs an
 ``update``, for example. It Just Works because the values required as
@@ -204,83 +172,11 @@ In this way, all build dependencies in sbt are *automatic* rather than
 explicitly declared. If you use a key's value in another computation,
 then the computation depends on that key. It just works!
 
-Complex ``Initialize[T]``: depending on multiple keys with ``<<=``
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-To support dependencies on multiple other keys, sbt adds ``apply`` and
-``identity`` methods to tuples of ``Initialize`` objects. In Scala, you
-write a tuple like ``(1, "a")`` (that one has type ``(Int, String)``).
-
-So say you have a tuple of three ``Initialize`` objects; its type would
-be ``(Initialize[A], Initialize[B], Initialize[C])``. The ``Initialize``
-objects could be keys, since all ``SettingKey[T]`` are also instances of
-``Initialize[T]``.
-
-Here's a simple example, in this case all three keys are strings:
-
-::
-
-    // a tuple of three SettingKey[String], also a tuple of three Initialize[String]
-    (name, organization, version)
-
-The ``apply`` method on a tuple of ``Initialize`` takes a function as
-its argument. Using each ``Initialize`` in the tuple, sbt computes a
-corresponding value (the current value of the key). These values are
-passed in to the function. The function then returns *one* value, which
-is wrapped up in a new ``Initialize``. If you wrote it out with explicit
-types (Scala does not require this), it would look like:
-
-::
-
-    val tuple: (Initialize[String], Initialize[String], Initialize[String]) = (name, organization, version)
-    val combined: Initialize[String] = tuple.apply({ (n, o, v) =>
-        "project " + n + " from " + o + " version " + v })
-    val setting: Setting[String] = name <<= combined
-
-So each key is already an ``Initialize``; but you can combine up to nine
-simple ``Initialize`` (such as keys) into one composite ``Initialize``
-by placing them in tuples, and invoking the ``apply`` method.
-
-The ``<<=`` method on ``SettingKey[T]`` is expecting an
-``Initialize[T]``, so you can use this technique to create an
-``Initialize[T]`` with multiple dependencies on arbitrary keys.
-
-Because function syntax in Scala just calls the ``apply`` method, you
-could write the code like this, omitting the explicit ``.apply`` and
-just treating ``tuple`` as a function:
-
-::
-
-    val tuple: (Initialize[String], Initialize[String], Initialize[String]) = (name, organization, version)
-    val combined: Initialize[String] = tuple({ (n, o, v) =>
-        "project " + n + " from " + o + " version " + v })
-    val setting: Setting[String] = name <<= combined
-
-In a ``build.sbt``, this code using intermediate ``val`` will not work,
-since you can only write single expressions in a ``.sbt`` file, not
-multiple statements.
-
-You can use a more concise syntax in ``build.sbt``, like this:
-
-::
-
-    name <<= (name, organization, version) { (n, o, v) => "project " + n + " from " + o + " version " + v }
-
-Here the tuple of ``Initialize`` (also a tuple of ``SettingKey``) works
-as a function, taking the anonymous function delimited by ``{}`` as its
-argument, and returning an ``Initialize[T]`` where ``T`` is the result
-type of the anonymous function.
-
-Tuples of ``Initialize`` have one other method, ``identity``, which
-simply returns an ``Initialize`` with a tuple value.
-``(a: Initialize[A], b: Initialize[B]).identity`` would result in a
-value of type ``Initialize[(A, B)]``. ``identity`` combines two
-``Initialize`` into one, without losing or modifying any of the values.
 
 When settings are undefined
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-Whenever a setting uses ``~=`` or ``<<=`` to create a dependency on
+Whenever a setting uses ``~=`` or ``:=`` to create a dependency on
 itself or another key's value, the value it depends on must exist. If it
 does not, sbt will complain. It might say *"Reference to undefined
 setting"*, for example. When this happens, be sure you're using the key
@@ -294,12 +190,8 @@ Tasks with dependencies
 
 As noted in :doc:`.sbt build definition <Basic-Def>`, task
 keys create a ``Setting[Task[T]]`` rather than a ``Setting[T]`` when you
-build a setting with ``:=``, ``<<=``, etc. Similarly, task keys are
-instances of ``Initialize[Task[T]]`` rather than ``Initialize[T]``, and
-``<<=`` on a task key takes an ``Initialize[Task[T]]`` parameter.
-
-The practical importance of this is that you can't have tasks as
-dependencies for a non-task setting.
+build a setting with ``:=``, etc.  Tasks can use settings as inputs, but
+settings cannot use tasks as inputs.
 
 Take these two keys (from `Keys <../../sxr/Keys.scala.html>`_):
 
@@ -311,122 +203,35 @@ Take these two keys (from `Keys <../../sxr/Keys.scala.html>`_):
 (``scalacOptions`` and ``checksums`` have nothing to do with each other,
 they are just two keys with the same value type, where one is a task.)
 
-You cannot compile a ``build.sbt`` that tries to alias one of these to
-the other like this:
+It is possible to compile a ``build.sbt`` that aliases ``scalacOptions`` to ``checksums``, but not the other way.
+For example, this is allowed:
 
 ::
+    // The scalacOptions task may be defined in terms of the checksums setting
+    scalacOptions := checksums.value
 
-    scalacOptions <<= checksums
-
-    checksums <<= scalacOptions
-
-The issue is that ``scalacOptions.<<=`` expects an
-``Initialize[Task[Seq[String]]]`` and ``checksums.<<=`` expects an
-``Initialize[Seq[String]]``. There is, however, a way to convert an
-``Initialize[T]`` to an ``Initialize[Task[T]]``, called ``map``:
-
-::
-
-    scalacOptions <<= checksums map identity
-
-(``identity`` is a standard Scala function that returns its input as its
-result.)
-
-There is no way to go the *other* direction, that is, a setting key
+There is no way to go the *other* direction.  That is, a setting key
 can't depend on a task key. That's because a setting key is only
 computed once on project load, so the task would not be re-run every
 time, and tasks expect to re-run every time.
 
-A task can depend on both settings and other tasks, though, just use
-``map`` rather than ``apply`` to build an ``Initialize[Task[T]]`` rather
-than an ``Initialize[T]``. Remember the usage of ``apply`` with a
-non-task setting looks like this:
-
 ::
 
-    name <<= (name, organization, version) { (n, o, v) => "project " + n + " from " + o + " version " + v }
+    // The checksums setting may not be defined in terms of the scalacOptions task
+    checksums := scalacOptions.value
 
-(``(name, organization, version)`` has an apply method and is thus a
-function, taking the anonymous function in ``{}`` braces as a
-parameter.)
 
-To create an ``Initialize[Task[T]]`` you need a ``map`` in there rather
-than ``apply``:
-
-::
-
-    // this WON'T compile because name (on the left of <<=) is not a task and we used map
-    name <<= (name, organization, version) map { (n, o, v) => "project " + n + " from " + o + " version " + v }
-
-    // this WILL compile because packageBin is a task and we used map
-    packageBin in Compile <<= (name, organization, version) map { (n, o, v) => file(o + "-" + n + "-" + v + ".jar") }
-
-    // this WILL compile because name is not a task and we used apply
-    name <<= (name, organization, version) { (n, o, v) => "project " + n + " from " + o + " version " + v }
-
-    // this WON'T compile because packageBin is a task and we used apply
-    packageBin in Compile <<= (name, organization, version) { (n, o, v) => file(o + "-" + n + "-" + v + ".jar") }
-
-*Bottom line:* when converting a tuple of keys into an
-``Initialize[Task[T]]``, use ``map``; when converting a tuple of keys
-into an ``Initialize[T]`` use ``apply``; and you need the
-``Initialize[Task[T]]`` if the key on the left side of ``<<=`` is a
-``TaskKey[T]`` rather than a ``SettingKey[T]``.
-
-Remember, aliases use ``<<=`` not ``:=``
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-If you want one key to be an alias for another, you might be tempted to
-use ``:=`` to create the following nonsense alias:
-
-::
-
-    // doesn't work, and not useful
-    packageBin in Compile := packageDoc in Compile
-
-The problem is that ``:=``'s argument must be a value (or for tasks, a
-function returning a value). For ``packageBin`` which is a
-``TaskKey[File]``, it must be a ``File`` or a function ``=> File``.
-``packageDoc`` is not a ``File``, it's a key.
-
-The proper way to do this is with ``<<=``, which takes a key (really an
-``Initialize``, but keys are instances of ``Initialize``):
-
-::
-
-    // works, still not useful
-    packageBin in Compile <<= packageDoc in Compile
-
-Here, ``<<=`` expects an ``Initialize[Task[File]]``, which is a
-computation that will return a file later, when sbt runs the task. Which
-is what you want: you want to alias a task by making it run another
-task, not by setting it one time when sbt loads the project.
-
-(By the way: the ``in Compile`` scope is needed to avoid "undefined"
-errors, because the packaging tasks like ``packageBin`` are
-per-configuration, not global.)
-
-Appending with dependencies: ``<+=`` and ``<++=``
+Appending with dependencies: ``+=`` and ``++=``
 -------------------------------------------------
 
-There are a couple more methods for appending to lists, which combine
-``+=`` and ``++=`` with ``<<=``. That is, they let you compute a new
-list element or new list to concatenate, using dependencies on other
-keys in order to do so.
-
-These methods work exactly like ``<<=``, but for ``<++=``, the function
-you write to convert the dependencies' values into a new value should
-create a ``Seq[T]`` instead of a ``T``.
-
-Unlike ``<<=`` of course, ``<+=`` and ``<++=`` will append to the
-previous value of the key on the left, rather than replacing it.
+Other keys can be used when appending to an existing setting or task, just like they can for assigning with ``:=``.
 
 For example, say you have a coverage report named after the project, and
 you want to add it to the files removed by ``clean``:
 
 ::
 
-    cleanFiles <+= (name) { n => file("coverage-report-" + n + ".txt") }
+    cleanFiles += file("coverage-report-" + name.value + ".txt")
 
 Next
 ----

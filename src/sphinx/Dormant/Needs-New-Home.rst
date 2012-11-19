@@ -52,7 +52,7 @@ use ``custom_lib/``:
 
 ::
 
-    unmanagedBase <<= baseDirectory { base => base / "custom_lib" }
+    unmanagedBase := baseDirectory.value / "custom_lib"
 
 If you want more control and flexibility, override the
 ``unmanaged-jars`` task, which ultimately provides the manual
@@ -60,14 +60,15 @@ dependencies to sbt. The default implementation is roughly:
 
 ::
 
-    unmanagedJars in Compile <<= baseDirectory map { base => (base ** "*.jar").classpath }
+    unmanagedJars in Compile := (baseDirectory.value ** "*.jar").classpath
 
 If you want to add jars from multiple directories in addition to the
 default directory, you can do:
 
 ::
 
-    unmanagedJars in Compile <++= baseDirectory map { base =>
+    unmanagedJars in Compile ++= {
+        val base = baseDirectory.value
         val baseDirectories = (base / "libA") +++ (base / "b" / "lib") +++ (base / "libC")
         val customJars = (baseDirectories ** "*.jar") +++ (base / "d" / "my.jar")
         customJars.classpath
@@ -83,9 +84,8 @@ releases repository:
 
 ::
 
-    externalResolvers <<= resolvers map { rs =>
-      Resolver.withDefaultResolvers(rs, mavenCentral = true, scalaTools = false)
-    }
+    externalResolvers :=
+      Resolver.withDefaultResolvers(resolvers.value, mavenCentral = true, scalaTools = false)
 
 Explicit URL
 ~~~~~~~~~~~~
@@ -153,7 +153,7 @@ To define extra attributes on the current project:
 
 ::
 
-    projectID <<= projectID { id =>
+    projectID ~= { id =>
         id extra("color" -> "blue", "component" -> "compiler-interface")
     }
 
