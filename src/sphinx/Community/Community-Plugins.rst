@@ -136,6 +136,8 @@ Release plugins
    https://github.com/gseitz/sbt-release
 -  sbt-unique-version (emulates unique snapshots):
    https://github.com/sbt/sbt-unique-version
+-  sbt-pack (generates paackages with dependent jars and launch scripts):
+   https://github.com/xerial/sbt-pack
 
 System plugins
 ~~~~~~~~~~~~~~
