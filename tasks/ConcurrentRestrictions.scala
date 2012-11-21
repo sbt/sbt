@@ -91,8 +91,9 @@ object ConcurrentRestrictions
 
 	private[this] def merge[A](m: TagMap, a: A, get: A => TagMap)(f: (Int,Int) => Int): TagMap =
 	{
-		val base = merge(m, get(a))(f)
-		val un = if(base.isEmpty) update(base, Untagged, 1)(f) else base
+		val aTags = get(a)
+		val base = merge(m, aTags)(f)
+		val un = if(aTags.isEmpty) update(base, Untagged, 1)(f) else base
 		update(un, All, 1)(f)
 	}
 
