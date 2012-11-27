@@ -1,0 +1,7 @@
+# Tests for bug when sbt would introduce dependency on non-existing
+# class files corresponding to packages
+
+> compile
+# verifies that there's no dependency on a class file corresponding
+# to a package
+> verify-binary-deps
