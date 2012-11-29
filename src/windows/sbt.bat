@@ -3,13 +3,25 @@
 @REM Envioronment:
 @REM JAVA_HOME - location of a JDK home dir (mandatory)
 @REM SBT_OPTS  - JVM options (optional)
+@REM Configuration:
+@REM sbtconfig.txt found in the SBT_HOME.
 
-
-@setlocal
+@REM   ZOMG! We need delayed expansion to build up CFG_OPTS later 
+@setlocal enabledelayedexpansion
 
 @echo off
 set SBT_HOME=%~dp0
 set ERROR_CODE=0
+
+rem FIRST we load the config file of extra options.
+set FN=%SBT_HOME%sbtconfig.txt
+set CFG_OPTS=
+FOR /F "tokens=* eol=# usebackq delims=" %%i IN ("%FN%") DO (
+  set DO_NOT_REUSE_ME=%%i
+  rem ZOMG (Part #2) WE use !! here to delay the expansion of
+  rem CFG_OPTS, otherwise it remains "" for this loop.
+  set CFG_OPTS=!CFG_OPTS! !DO_NOT_REUSE_ME!
+)
 
 rem We use the value of the JAVACMD environment variable if defined
 set _JAVACMD=%JAVACMD%
@@ -22,9 +34,9 @@ if "%_JAVACMD%"=="" (
 
 if "%_JAVACMD%"=="" set _JAVACMD=java
 
-rem We use the value of the JAVA_OPTS environment variable if defined
+rem We use the value of the JAVA_OPTS environment variable if defined, rather than the config.
 set _JAVA_OPTS=%JAVA_OPTS%
-if "%_JAVA_OPTS%"=="" set _JAVA_OPTS=-Xmx512M -XX:MaxPermSize=256m -XX:ReservedCodeCacheSize=128m -Dsbt.log.format=true
+if "%_JAVA_OPTS%"=="" set _JAVA_OPTS=%CFG_OPTS%
 
 :run
 
