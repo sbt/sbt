@@ -6,6 +6,7 @@ package xsbt
 import xsbti.{AnalysisCallback,Logger,Problem,Reporter,Severity}
 import xsbti.compile.{CachedCompiler, DependencyChanges}
 import scala.tools.nsc.{backend, io, reporters, symtab, util, Phase, Global, Settings, SubComponent}
+import scala.tools.nsc.interactive.RangePositions
 import backend.JavaPlatform
 import scala.tools.util.PathResolver
 import symtab.SymbolLoaders
@@ -55,7 +56,6 @@ private final class CachedCompiler0(args: Array[String], initialLog: WeakLog, re
 	val command = Command(args.toList, settings)
 	private[this] val dreporter = DelegatingReporter(settings, initialLog.reporter)
 	try {
-		compiler // force compiler internal structures
 		if(!noErrors(dreporter)) {
 			dreporter.printSummary()
 			handleErrors(dreporter, initialLog.logger)
@@ -113,12 +113,18 @@ private final class CachedCompiler0(args: Array[String], initialLog: WeakLog, re
 		if(!warnings.isEmpty)
 			compiler.logUnreportedWarnings(warnings.map(cw => ("" /*cw.what*/, cw.warnings.toList)))
 	}
-	object compiler extends CallbackGlobal(command.settings, dreporter)
+	val compiler: Compiler = {
+		if (command.settings.Yrangepos.value)
+			new Compiler() with RangePositions
+		else
+			new Compiler()
+	}
+	class Compiler extends CallbackGlobal(command.settings, dreporter)
 	{
 		object dummy // temporary fix for #4426
 		object sbtAnalyzer extends
 		{
-			val global: compiler.type = compiler
+			val global: Compiler.this.type = Compiler.this
 			val phaseName = Analyzer.name
 			val runsAfter = List("jvm")
 			override val runsBefore = List("terminal")
@@ -132,7 +138,7 @@ private final class CachedCompiler0(args: Array[String], initialLog: WeakLog, re
 		}
 		object apiExtractor extends
 		{
-			val global: compiler.type = compiler
+			val global: Compiler.this.type = Compiler.this
 			val phaseName = API.name
 			val runsAfter = List("typer")
 			override val runsBefore = List("erasure")
@@ -229,7 +235,7 @@ private final class CachedCompiler0(args: Array[String], initialLog: WeakLog, re
 
 		final class PlatformImpl extends JavaPlatform
 		{
-			val global: compiler.type = compiler
+			val global: Compiler.this.type = Compiler.this
 			// This can't be overridden to provide a ClassPathCell, so we have to fix it to the initial classpath
 			// This is apparently never called except by rootLoader, so we can return the default and warn if someone tries to use it.
 			override lazy val classPath = {
