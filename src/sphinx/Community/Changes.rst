@@ -246,7 +246,7 @@ Some of the more visible changes:
 -  More aggressive incremental recompilation for both Java and Scala sources
 -  Merged plugins and processors into improved plugins system:
    :doc:`/Extending/Plugins`
--  `Web application <https://github.com/siasia/xsbt-web-plugin>`_ and
+-  `Web application <https://github.com/JamesEarlDouglas/xsbt-web-plugin>`_ and
    webstart support moved to plugins instead of core features
 -  Fixed all of the issues in (Google Code) issue #44
 -  Managed dependencies automatically updated when configuration changes
