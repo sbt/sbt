@@ -170,7 +170,7 @@ Edit ``project/project/Build.scala``
     object PluginDef extends Build {
        override lazy val projects = Seq(root)
        lazy val root = Project("plugins", file(".")) dependsOn( webPlugin )
-       lazy val webPlugin = uri("git://github.com/siasia/xsbt-web-plugin")
+       lazy val webPlugin = uri("git://github.com/JamesEarlDouglas/xsbt-web-plugin")
     }
 
 If sbt is running, run ``reload``.
@@ -186,7 +186,7 @@ it to the repository as a fragment:
 
 ::
 
-    lazy val webPlugin = uri("git://github.com/siasia/xsbt-web-plugin#0.9.7")
+    lazy val webPlugin = uri("git://github.com/JamesEarlDouglas/xsbt-web-plugin#0.9.7")
 
 2) Use the library
 ~~~~~~~~~~~~~~~~~~
