@@ -236,7 +236,7 @@ Some especially popular plugins are:
 
 -  those for IDEs (to import an sbt project into your IDE)
 -  those supporting web frameworks, such as
-   `xsbt-web-plugin <https://github.com/siasia/xsbt-web-plugin>`_.
+   `xsbt-web-plugin <https://github.com/JamesEarlDouglas/xsbt-web-plugin>`_.
 
 :doc:`Check out the list</Community/Community-Plugins>`.
 

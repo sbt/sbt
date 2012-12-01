@@ -68,7 +68,7 @@ Plugins for IDEs:
 Web Plugins
 ~~~~~~~~~~~
 
--  xsbt-web-plugin: https://github.com/siasia/xsbt-web-plugin
+-  xsbt-web-plugin: https://github.com/JamesEarlDouglas/xsbt-web-plugin
 -  xsbt-webstart: https://github.com/ritschwumm/xsbt-webstart
 -  sbt-appengine: https://github.com/sbt/sbt-appengine
 -  sbt-gwt-plugin: https://github.com/thunderklaus/sbt-gwt-plugin
