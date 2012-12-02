@@ -38,11 +38,11 @@ sealed abstract class SettingKey[T] extends ScopedTaskable[T] with KeyedInitiali
 	final def := (v: T): Setting[T]  =  macro std.TaskMacro.settingAssignMacroImpl[T]
 	final def +=[U](v: U)(implicit a: Append.Value[T, U]): Setting[T]  =  macro std.TaskMacro.settingAppend1Impl[T,U]
 	final def ++=[U](vs: U)(implicit a: Append.Values[T, U]): Setting[T]  =  macro std.TaskMacro.settingAppendNImpl[T,U]
-	final def <+= [V](value: Initialize[V])(implicit a: Append.Value[T, V]): Setting[T]  =  make(value, NoPosition)(a.appendValue)
-	final def <++= [V](values: Initialize[V])(implicit a: Append.Values[T, V]): Setting[T]  =  make(values, NoPosition)(a.appendValues)
+	final def <+= [V](v: Initialize[V])(implicit a: Append.Value[T, V]): Setting[T]  =  macro std.TaskMacro.settingAppend1Position[T,V] 
+	final def <++= [V](vs: Initialize[V])(implicit a: Append.Values[T, V]): Setting[T]  =  macro std.TaskMacro.settingAppendNPosition[T,V]
 
-	final def append1[V](value: Initialize[V], source: SourcePosition)(implicit a: Append.Value[T, V]): Setting[T]  =  make(value, source)(a.appendValue)
-	final def appendN[V](values: Initialize[V], source: SourcePosition)(implicit a: Append.Values[T, V]): Setting[T]  =  make(values, source)(a.appendValues)
+	final def append1[V](v: Initialize[V], source: SourcePosition)(implicit a: Append.Value[T, V]): Setting[T]  =  make(v, source)(a.appendValue)
+	final def appendN[V](vs: Initialize[V], source: SourcePosition)(implicit a: Append.Values[T, V]): Setting[T]  =  make(vs, source)(a.appendValues)
 
 	protected[this] def make[S](other: Initialize[S], source: SourcePosition)(f: (T, S) => T): Setting[T] = this.set( (this, other)(f), source)
 }
@@ -60,8 +60,8 @@ sealed abstract class TaskKey[T] extends ScopedTaskable[T] with KeyedInitialize[
 
 	def +=[U](v: U)(implicit a: Append.Value[T, U]): Setting[Task[T]]  =  macro std.TaskMacro.taskAppend1Impl[T,U]
 	def ++=[U](vs: U)(implicit a: Append.Values[T, U]): Setting[Task[T]]  =  macro std.TaskMacro.taskAppendNImpl[T,U]
-	def <+= [V](v: Initialize[Task[V]])(implicit a: Append.Value[T, V]): Setting[Task[T]]  =  make(v, NoPosition)(a.appendValue)
-	def <++= [V](vs: Initialize[Task[V]])(implicit a: Append.Values[T, V]): Setting[Task[T]]  =  make(vs, NoPosition)(a.appendValues)
+	def <+= [V](v: Initialize[Task[V]])(implicit a: Append.Value[T, V]): Setting[Task[T]]  =  macro std.TaskMacro.taskAppend1Position[T,V]
+	def <++= [V](vs: Initialize[Task[V]])(implicit a: Append.Values[T, V]): Setting[Task[T]]  =  macro std.TaskMacro.taskAppendNPosition[T,V]
 
 	def append1[V](v: Initialize[Task[V]], source: SourcePosition)(implicit a: Append.Value[T, V]): Setting[Task[T]]  =  make(v, source)(a.appendValue)
 	def appendN[V](vs: Initialize[Task[V]], source: SourcePosition)(implicit a: Append.Values[T, V]): Setting[Task[T]]  =  make(vs, source)(a.appendValues)
@@ -112,10 +112,11 @@ object Scoped
 	{
 		def scopedKey: ScopedKey[S]
 
-		private[sbt] final def :==(value: S): Setting[S]  =  setting(scopedKey, Def.valueStrict(value))
-		final def ~= (f: S => S): Setting[S]  =  Def.update(scopedKey)(f)
-		final def <<= (app: Initialize[S]): Setting[S]  =  set(app, NoPosition)
+		private[sbt] final def :==(app: S): Setting[S]  =  macro std.TaskMacro.settingAssignPure[S]
+		final def ~= (f: S => S): Setting[S]  =  macro std.TaskMacro.settingTransformPosition[S]
+		final def <<= (app: Initialize[S]): Setting[S]  =  macro std.TaskMacro.settingAssignPosition[S]
 		final def set (app: Initialize[S], source: SourcePosition): Setting[S]  =  setting(scopedKey, app, source)
+		final def transform(f: S => S, source: SourcePosition): Setting[S]  =  set( scopedKey(f), source )
 		final def get(settings: Settings[Scope]): Option[S] = settings.get(scopedKey.scope, scopedKey.key)
 		final def ? : Initialize[Option[S]] = Def.optional(scopedKey)(idFun)
 		final def or[T >: S](i: Initialize[T]): Initialize[T] = (this.?, i)(_ getOrElse _ )
@@ -129,14 +130,14 @@ object Scoped
 	sealed trait DefinableTask[S]
 	{ self: TaskKey[S] =>
 
-		private[sbt] def :==(v: S): Setting[Task[S]]  =  ::=(constant(v))
-		private[sbt] def ::=(value: Task[S]): Setting[Task[S]]  =  Def.setting(scopedKey, Def.valueStrict( value ))
-		def := (v: S): Setting[Task[S]]  =  macro std.TaskMacro.taskAssignMacroImpl[S] //::=(mktask(value))
-		private[sbt] def :== (v: SettingKey[S]): Setting[Task[S]] = <<=( v(constant))
-		def ~= (f: S => S): Setting[Task[S]]  =  Def.update(scopedKey)( _ map f )
+		private[sbt] def :==(app: S): Setting[Task[S]]  =  macro std.TaskMacro.taskAssignPositionPure[S]
+		private[sbt] def ::=(app: Task[S]): Setting[Task[S]]  =  macro std.TaskMacro.taskAssignPositionT[S]
+		def := (v: S): Setting[Task[S]]  =  macro std.TaskMacro.taskAssignMacroImpl[S]
+		def ~= (f: S => S): Setting[Task[S]]  =  macro std.TaskMacro.taskTransformPosition[S]
 
-		def <<= (app: Initialize[Task[S]]): Setting[Task[S]]  =  set(app, NoPosition)
+		def <<= (app: Initialize[Task[S]]): Setting[Task[S]]  =  macro std.TaskMacro.itaskAssignPosition[S]
 		def set(app: Initialize[Task[S]], source: SourcePosition): Setting[Task[S]]  =  Def.setting(scopedKey, app, source)
+		def transform(f: S => S, source: SourcePosition): Setting[Task[S]]  =  set( scopedKey(_ map f), source)
 
 		def task: SettingKey[Task[S]] = scopedSetting(scope, key)
 		def get(settings: Settings[Scope]): Option[Task[S]] = settings.get(scope, key)

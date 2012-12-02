@@ -210,21 +210,23 @@ object Project extends ProjectExtra
 		val data = scopedKeyData(structure, scope, key) map {_.description} getOrElse {"No entry for key."}
 		val description = key.description match { case Some(desc) => "Description:\n\t" + desc + "\n"; case None => "" }
 
-		val providedBy = structure.data.definingScope(scope, key) match {
+		val definingScope = structure.data.definingScope(scope, key)
+		val providedBy = definingScope match {
 			case Some(sc) => "Provided by:\n\t" + Scope.display(sc, key.label) + "\n"
 			case None => ""
 		}
+		val definingScoped = definingScope match { case Some(sc) => ScopedKey(sc, key); case None => scoped }
 		val comp = Def.compiled(structure.settings, actual)(structure.delegates, structure.scopeLocal, display)
-		val definedAt = comp get scoped map { c =>
+		val definedAt = comp get definingScoped map { c =>
 			def fmt(s: Setting[_]) = s.pos match {
-				case pos: FilePosition => Some(pos.path + ":" + pos.startLine)
-				case NoPosition => None
+				case pos: FilePosition => (pos.path + ":" + pos.startLine) :: Nil
+				case NoPosition => Nil
 			}
-			val posDefined = c.settings.map(fmt).flatten
+			val posDefined = c.settings.flatMap(fmt)
 			if (posDefined.size > 0) {
 				val header = if (posDefined.size == c.settings.size) "Defined at:" else
 					"Some of the defining occurrences:"
-				header + (posDefined mkString ("\n\t", "\n\t", "\n"))
+				header + (posDefined.distinct mkString ("\n\t", "\n\t", "\n"))
 			} else ""
     } getOrElse ""
 
