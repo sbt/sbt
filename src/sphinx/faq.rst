@@ -137,7 +137,7 @@ What happened to the web development and Web Start support since 0.7?
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 Web application support was split out into a plugin. See the
-`xsbt-web-plugin <https://github.com/siasia/xsbt-web-plugin>`_ project.
+`xsbt-web-plugin <https://github.com/JamesEarlDouglas/xsbt-web-plugin>`_ project.
 
 For an early version of an xsbt Web Start plugin, visit the
 `xsbt-webstart <https://github.com/ritschwumm/xsbt-webstart>`_ project.
