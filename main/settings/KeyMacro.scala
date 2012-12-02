@@ -32,12 +32,13 @@ object KeyMacro
 	{
 		import c.universe.{Apply=>ApplyTree,_}
 		val methodName = c.macroApplication.symbol.name.decoded
-		val enclosingTrees = c.asInstanceOf[reflect.macros.runtime.Context].callsiteTyper.context.enclosingContextChain.map(_.tree.asInstanceOf[Tree])
-		enclosingTrees match {
+		enclosingTrees(c) match {
 			case vd @ ValDef(_, name, _, _) :: ts => name.decoded
 			case _ =>
 				c.error(c.enclosingPosition, s"""$methodName must be directly assigned to a val, such as `val x = $methodName[Int]("description")`.""")
 				"<error>"
 		}
 	}
+	def enclosingTrees(c: Context): Seq[c.Tree] =
+		c.asInstanceOf[reflect.macros.runtime.Context].callsiteTyper.context.enclosingContextChain.map(_.tree.asInstanceOf[c.Tree])
 }
