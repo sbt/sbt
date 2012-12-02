@@ -86,8 +86,15 @@ object EvaluateTask
 	def evaluateTask[T](structure: BuildStructure, taskKey: ScopedKey[Task[T]], state: State, ref: ProjectRef, checkCycles: Boolean = false, maxWorkers: Int = SystemProcessors): Option[Result[T]] =
 		apply(structure, taskKey, state, ref, EvaluateConfig(false, defaultRestrictions(maxWorkers), checkCycles)).map(_._2)
 
+	/** Evaluates `taskKey` and returns the new State and the result of the task wrapped in Some.
+	* If the task is not defined, None is returned.  The provided task key is resolved against the current project `ref`.
+	* Task execution is configured according to settings defined in the loaded project.*/
 	def apply[T](structure: BuildStructure, taskKey: ScopedKey[Task[T]], state: State, ref: ProjectRef): Option[(State, Result[T])] =
 		apply[T](structure, taskKey, state, ref, defaultConfig(Project.extract(state), structure))
+
+	/** Evaluates `taskKey` and returns the new State and the result of the task wrapped in Some.
+	* If the task is not defined, None is returned.  The provided task key is resolved against the current project `ref`.
+	* `config` configures concurrency and canceling of task execution.  */
 	def apply[T](structure: BuildStructure, taskKey: ScopedKey[Task[T]], state: State, ref: ProjectRef, config: EvaluateConfig): Option[(State, Result[T])] =
 		withStreams(structure, state) { str =>
 			for( (task, toNode) <- getTask(structure, taskKey, state, str, ref) ) yield
