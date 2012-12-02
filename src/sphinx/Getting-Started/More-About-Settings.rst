@@ -207,6 +207,7 @@ It is possible to compile a ``build.sbt`` that aliases ``scalacOptions`` to ``ch
 For example, this is allowed:
 
 ::
+
     // The scalacOptions task may be defined in terms of the checksums setting
     scalacOptions := checksums.value
 

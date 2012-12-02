@@ -18,7 +18,7 @@ Introduction
 ------------
 
 A build definition is written in Scala. There are two types of
-definitions: light and full. A :doc:`light definition <Basic-Configuration>`
+definitions: light and full. A light definition
 is a quick way of configuring a build, consisting of a list of Scala
 expressions describing project settings. A :doc:`full definition <Full-Configuration>` is
 made up of one or more Scala source files that describe relationships

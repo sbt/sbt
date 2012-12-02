@@ -99,7 +99,7 @@ see this task listed.
 Define the key
 --------------
 
-To declare a new task, define a val of type ``TaskKey``, either in ``.sbt`` or ``.scala`:
+To declare a new task, define a val of type ``TaskKey``, either in ``.sbt`` or ``.scala``:
 
 ::
 
