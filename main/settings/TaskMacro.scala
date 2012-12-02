@@ -64,9 +64,9 @@ object FullConvert extends Convert
 
 object TaskMacro
 {
-	final val AssignInitName = "<<="
-	final val Append1InitName = "<+="
-	final val AppendNInitName = "<++="
+	final val AssignInitName = "set"
+	final val Append1InitName = "append1"
+	final val AppendNInitName = "appendN"
 	final val InputTaskCreateName = "create"
 
 	def taskMacroImpl[T: c.WeakTypeTag](c: Context)(t: c.Expr[T]): c.Expr[Initialize[Task[T]]] = 
@@ -130,7 +130,7 @@ object TaskMacro
 			import c.universe.{Apply,ApplyTag,newTermName,Select,SelectTag,TypeApply,TypeApplyTag}
 		c.macroApplication match {
 			case Apply(Apply(TypeApply(Select(preT, nmeT), targs), _), a) =>
-				Apply(Apply(TypeApply(Select(preT, newTermName(newName).encodedName), targs), init :: Nil), a)
+				Apply(Apply(TypeApply(Select(preT, newTermName(newName).encodedName), targs), init :: sourcePosition(c).tree :: Nil), a)
 			case x => ContextUtil.unexpectedTree(x)
 		}
 	}
@@ -142,7 +142,23 @@ object TaskMacro
 				case Apply(Select(prefix, _), _) => prefix
 				case x => ContextUtil.unexpectedTree(x)
 			}
-		Apply.apply(Select(target, newTermName(newName).encodedName), init :: Nil)
+		Apply.apply(Select(target, newTermName(newName).encodedName), init :: sourcePosition(c).tree :: Nil)
+	}
+	private[this] def sourcePosition(c: Context): c.Expr[SourcePosition] =
+	{
+			import c.universe._
+		val pos = c.enclosingPosition
+		if(pos.isDefined && pos.line >= 0 && pos.source != null) {
+			val name = constant[String](c, pos.source.file.name)
+			val line = constant[Int](c, pos.line)
+			reify { sbt.LinePosition(name.splice, line.splice) }
+		}
+		else
+			reify{ sbt.NoPosition }
+	}
+	private[this] def constant[T: c.TypeTag](c: Context, t: T): c.Expr[T] = {
+		import c.universe._
+		c.Expr[T](Literal(Constant(t)))
 	}
 
 	sealed abstract class MacroValue[T] {
