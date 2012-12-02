@@ -149,13 +149,27 @@ object TaskMacro
 			import c.universe._
 		val pos = c.enclosingPosition
 		if(pos.isDefined && pos.line >= 0 && pos.source != null) {
-			val name = constant[String](c, pos.source.file.name)
+			val f = pos.source.file
+			val name = constant[String](c, settingSource(c, f.path, f.name))
 			val line = constant[Int](c, pos.line)
 			reify { sbt.LinePosition(name.splice, line.splice) }
 		}
 		else
 			reify{ sbt.NoPosition }
 	}
+	private[this] def settingSource(c: Context, path: String, name: String): String =
+	{
+		val ec = c.enclosingClass.symbol
+		def inEmptyPackage(s: c.Symbol): Boolean =
+			s != c.universe.NoSymbol && (s.owner == c.mirror.EmptyPackage || s.owner == c.mirror.EmptyPackageClass || inEmptyPackage(s.owner))
+		if(!ec.isStatic)
+			name
+		else if(inEmptyPackage(ec))
+			path
+		else
+			s"(${ec.fullName}) $name"
+	}
+
 	private[this] def constant[T: c.TypeTag](c: Context, t: T): c.Expr[T] = {
 		import c.universe._
 		c.Expr[T](Literal(Constant(t)))
