@@ -24,19 +24,19 @@ object Assign
 	import Def.{Initialize,macroValueT,parserToInput}
 //	import UseTask.{x,y,z,a,set,plain}
 
-	val ak = TaskKey[Int]("a")
-	val bk = TaskKey[Seq[Int]]("b")
-	val ck = SettingKey[File]("c")
-	val sk = TaskKey[Set[_]]("s")
+	val ak = taskKey[Int]("a")
+	val bk = taskKey[Seq[Int]]("b")
+	val ck = settingKey[File]("c")
+	val sk = taskKey[Set[_]]("s")
 
-	val ik = InputKey[Int]("i")
-	val isk = InputKey[String]("is")
-	val mk = SettingKey[Int]("m")
-	val tk = TaskKey[Int]("t")
-	val name = SettingKey[String]("name")
-	val dummyt = TaskKey[complete.Parser[String]]("dummyt")
-	val dummys = SettingKey[complete.Parser[String]]("dummys")
-	val dummy3 = SettingKey[complete.Parser[(String,Int)]]("dummy3")
+	val ik = inputKey[Int]("i")
+	val isk = inputKey[String]("is")
+	val mk = settingKey[Int]("m")
+	val tk = taskKey[Int]("t")
+	val name = settingKey[String]("name")
+	val dummyt = taskKey[complete.Parser[String]]("dummyt")
+	val dummys = settingKey[complete.Parser[String]]("dummys")
+	val dummy3 = settingKey[complete.Parser[(String,Int)]]("dummy3")
 	val tsk: complete.Parser[TaskKey[String]] = ???
 
 /*	def azy = sk.value

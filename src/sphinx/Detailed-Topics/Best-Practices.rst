@@ -92,11 +92,10 @@ For example:
 
 ::
 
-    lazy val makeFile = TaskKey[File]("makeFile")
+    lazy val makeFile = taskKey[File]("Creates a file with some content.")
 
     // define a task that creates a file,
     //  writes some content, and returns the File
-    // The write is completely 
     makeFile := {
         val f: File = file("/tmp/data.txt")
         IO.write(f, "Some content")

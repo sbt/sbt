@@ -269,8 +269,8 @@ An example of a typical plugin:
     {
         // configuration points, like the built in `version`, `libraryDependencies`, or `compile`
         // by implementing Plugin, these are automatically imported in a user's `build.sbt`
-        val newTask = TaskKey[Unit]("newTask")
-        val newSetting = SettingKey[String]("newSetting")
+        val newTask = taskKey[Unit]("A new task.")
+        val newSetting = settingKey[String]("A new setting.")
 
         // a group of settings ready to be added to a Project
         // to automatically add them, do 

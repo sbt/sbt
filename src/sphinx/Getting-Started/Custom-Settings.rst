@@ -24,8 +24,8 @@ Some examples from `Keys <../../sxr/Keys.scala.html>`_:
 
 ::
 
-    val scalaVersion = SettingKey[String]("scalaVersion", "The version of Scala used for building.")
-    val clean = TaskKey[Unit]("clean", "Deletes files produced by the build, such as generated sources, compiled classes, and task caches.")
+    val scalaVersion = settingKey[String]("The version of Scala used for building.")
+    val clean = taskKey[Unit]("Deletes files produced by the build, such as generated sources, compiled classes, and task caches.")
 
 The key constructors have two string parameters: the name of the key
 (``"scalaVersion"``) and a documentation string

@@ -57,7 +57,7 @@ build.sbt
 
 ::
 
-    val hello = TaskKey[Unit]("hello", "Prints 'Hello World'")
+    val hello = taskKey[Unit]("Prints 'Hello World'")
 
     hello := println("hello world!")
 
@@ -80,7 +80,7 @@ project/Build.scala
         scalaVersion := "2.9.0-1"
       )
 
-      val hello = TaskKey[Unit]("hello", "Prints 'Hello World'")
+      val hello = taskKey[Unit]("Prints 'Hello World'")
 
       val helloTask = hello := {
         println("Hello World")
@@ -103,21 +103,17 @@ To declare a new task, define a val of type ``TaskKey``, either in ``.sbt`` or `
 
 ::
 
-    val sampleTask = TaskKey[Int]("sampleTask")
+    val sampleTask = taskKey[Int]("A sample task.")
 
 The name of the ``val`` is used when referring to the task in Scala
-code. The string passed to the ``TaskKey`` method is used at runtime,
-such as at the command line. By convention, both the Scala identifier
-and the runtime identifier are camelCase. The type parameter
-passed to ``TaskKey`` (here, ``Int``) is the type of value produced by
-the task.
+code and at the command line. The string passed to the ``TaskKey`` method is a description of the task.  The type parameter passed to ``TaskKey`` (here, ``Int``) is the type of value produced by the task.
 
 We'll define a couple of other of tasks for the examples:
 
 ::
 
-    val intTask = TaskKey[Int]("intTask")
-    val stringTask = TaskKey[String]("stringTask")
+    val intTask = taskKey[Int]("An int task")
+    val stringTask = taskKey[String]("A string task")
 
 The examples themselves are valid entries in a ``build.sbt`` or can be
 provided as part of a sequence to ``Project.settings`` (see
@@ -224,9 +220,9 @@ would go in a ``Build`` object in a ``.scala`` file or directly in a ``.sbt`` fi
 
 ::
 
-    val unitTask = TaskKey[Unit]("unitTask")
-    val intTask = TaskKey[Int]("intTask")
-    val stringTask = TaskKey[String]("stringTask")
+    val unitTask = taskKey[Unit]("A side-effecting task.")
+    val intTask = taskKey[Int]("A task that returns an integer.")
+    val stringTask = taskKey[String]("A task that returns String")
 
 The examples themselves are valid settings in a ``build.sbt`` file or as
 part of a sequence provided to ``Project.settings``.

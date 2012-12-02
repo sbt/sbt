@@ -63,7 +63,7 @@ to the list of main source generators (``sourceGenerators in Compile``).
 To insert a named task, which is the better approach for plugins:
 
 ::
-    val mySourceGenerator = TaskKey[Seq[File]](...)
+    val mySourceGenerator = taskKey[Seq[File]](...)
 
     mySourceGenerator in Compile := 
         generate( (sourceManaged in Compile).value / "some_directory")

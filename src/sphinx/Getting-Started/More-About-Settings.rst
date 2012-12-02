@@ -197,8 +197,8 @@ Take these two keys (from `Keys <../../sxr/Keys.scala.html>`_):
 
 ::
 
-    val scalacOptions = TaskKey[Seq[String]]("scalac-options", "Options for the Scala compiler.")
-    val checksums = SettingKey[Seq[String]]("checksums", "The list of checksums to generate and to verify for dependencies.")
+    val scalacOptions = taskKey[Seq[String]]("Options for the Scala compiler.")
+    val checksums = settingKey[Seq[String]]("The list of checksums to generate and to verify for dependencies.")
 
 (``scalacOptions`` and ``checksums`` have nothing to do with each other,
 they are just two keys with the same value type, where one is a task.)

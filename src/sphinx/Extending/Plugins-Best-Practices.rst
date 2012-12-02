@@ -39,7 +39,7 @@ Where possible, reuse them in your plugin. For instance, don't define:
 
 ::
 
-    val sourceFiles = SettingKey[Seq[File]]("sourceFiles")
+    val sourceFiles = settingKey[Seq[File]]("Some source files")
 
 Instead, simply reuse SBT's existing ``sources`` key.
 
@@ -58,7 +58,7 @@ Just use a ``val`` prefix
 
     package sbtobfuscate
     object Plugin extends sbt.Plugin {
-      val obfuscateStylesheet = SettingKey[File]("obfuscateStylesheet")
+      val obfuscateStylesheet = settingKey[File]("Obfuscate stylesheet")
     }
 
 In this approach, every ``val`` starts with ``obfuscate``. A user of the
@@ -168,7 +168,7 @@ Configurations should *not* be used to namespace keys for a plugin. e.g.
 ::
 
     val Config = config("my-plugin")
-    val pluginKey = SettingKey[String]("pluginSpecificKey")
+    val pluginKey = settingKey[String]("A plugin specific key")
     val settings = pluginKey in Config  // DON'T DO THIS!
 
 Playing nice with configurations

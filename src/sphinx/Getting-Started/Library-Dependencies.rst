@@ -86,7 +86,7 @@ or like this, where ``configuration`` is also a string:
 
 ::
 
-    val libraryDependencies = SettingKey[Seq[ModuleID]]("library-dependencies", "Declares managed dependencies.")
+    val libraryDependencies = settingKey[Seq[ModuleID]]("Declares managed dependencies.")
 
 The ``%`` methods create ``ModuleID`` objects from strings, then you add
 those ``ModuleID`` to ``libraryDependencies``.
@@ -185,7 +185,7 @@ this:
 
 ::
 
-    val resolvers = SettingKey[Seq[Resolver]]("resolvers", "The user-defined additional resolvers for automatically managed dependencies.")
+    val resolvers = settingKey[Seq[Resolver]]("The user-defined additional resolvers for automatically managed dependencies.")
 
 The ``at`` method creates a ``Resolver`` object from two strings.
 

@@ -434,19 +434,11 @@ A basic run task is created by:
 
 ::
 
-      // this lazy val has to go in a full configuration
-      lazy val myRunTask = TaskKey[Unit]("myRunTask")
+      lazy val myRunTask = taskKey[Unit]("A custom run task.")
 
       // this can go either in a `build.sbt` or the settings member
       //   of a Project in a full configuration
       fullRunTask(myRunTask, Test, "foo.Foo", "arg1", "arg2")
-
-or, if you really want to define it inline (as in a basic ``build.sbt``
-file):
-
-::
-
-       fullRunTask(TaskKey[Unit]("myRunTask"), Test, "foo.Foo", "arg1", "arg2")
 
 If you want to be able to supply arguments on the command line, replace
 ``TaskKey`` with ``InputKey`` and ``fullRunTask`` with
@@ -462,42 +454,6 @@ in the scope. For example:
     fork in myRunTask := true
 
     javaOptions in myRunTask += "-Xmx6144m"
-
-How can I delegate settings from one task to another task?
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-Settings :doc:`scoped </Getting-Started/Scopes>` to one task can fall back to
-another task if undefined in the first task. This is called delegation.
-
-The following key definitions specify that settings for ``myRun``
-delegate to ``aRun``
-
-::
-
-    val aRun = TaskKey[Unit]("aRun", "A run task.")
-
-    //   The last parameter to TaskKey.apply here is a repeated one
-    val myRun = TaskKey[Unit]("myRun", "Custom run task.", aRun)
-
-In use, this looks like:
-
-::
-
-    // Make the run task as before.
-    fullRunTask(myRun, Compile, "pkg.Main", "arg1", "arg2")
-
-    // If fork in myRun is not explicitly set,
-    //   then this also configures myRun to fork.
-    // If fork in myRun is set, it overrides this setting
-    //   because it is more specific.
-    fork in aRun := true
-
-    // Appends "-Xmx2G" to the current options for myRun.
-    //   Because we haven't defined them explicitly,
-    //   the current options are delegated to aRun.
-    //   So, this says to use the same options as aRun
-    //   plus -Xmx2G.
-    javaOptions in myRun += "-Xmx2G"
 
 How should I express a dependency on an outside tool such as proguard?
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

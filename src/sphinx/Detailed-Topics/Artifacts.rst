@@ -93,13 +93,13 @@ For example:
 
 ::
 
+    val myTask = taskKey[Unit]("My task.")
+
     myTask :=  {
       val (art, file) = packagedArtifact.in(Compile, packageBin).value
       println("Artifact definition: " + art)
       println("Packaged file: " + file.getAbsolutePath)
     }
-
-where ``val myTask = TaskKey[Unit]``.
 
 Defining custom artifacts
 =========================
@@ -138,14 +138,14 @@ generates the artifact:
 
 ::
 
+    val myImageTask = taskKey[File](...)
+
     myImageTask := {
       val artifact: File = makeArtifact(...)
       artifact
     }
 
     addArtifact( Artifact("myproject", "image", "jpg"), myImageTask )
-
-where ``val myImageTask = TaskKey[File](...)``.
 
 ``addArtifact`` returns a sequence of settings (wrapped in a
 `SettingsDefinition <../../api/#sbt.Init$SettingsDefinition>`_).

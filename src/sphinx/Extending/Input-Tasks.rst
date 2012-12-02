@@ -14,12 +14,12 @@ Input Keys
 A key for an input task is of type ``InputKey`` and represents the input
 task like a ``SettingKey`` represents a setting or a ``TaskKey``
 represents a task. Define a new input task key using the
-``InputKey.apply`` factory method:
+``inputKey.apply`` factory method:
 
 ::
 
       // goes in <base>/project/Build.scala or in <base>/build.sbt
-      val demo = InputKey[Unit]("demo")
+      val demo = inputKey[Unit]("A demo input task.")
 
 The definition of an input task is similar to that of a normal task, but it can
 also use the result of a `Parser </Detailed-Topics/Parsing-Input>`_ applied to

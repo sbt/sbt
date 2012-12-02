@@ -103,10 +103,10 @@ The following two files illustrate. First, if your project is in
 
     object HelloBuild extends Build {
 
-        val sampleKeyA = SettingKey[String]("sampleKeyA", "demo key A")
-        val sampleKeyB = SettingKey[String]("sampleKeyB", "demo key B")
-        val sampleKeyC = SettingKey[String]("sampleKeyC", "demo key C")
-        val sampleKeyD = SettingKey[String]("sampleKeyD", "demo key D")
+        val sampleKeyA = settingKey[String]("demo key A")
+        val sampleKeyB = settingKey[String]("demo key B")
+        val sampleKeyC = settingKey[String]("demo key C")
+        val sampleKeyD = settingKey[String]("demo key D")
 
         override lazy val settings = super.settings ++
             Seq(sampleKeyA := "A: in Build.settings in Build.scala", resolvers := Seq())
