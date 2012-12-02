@@ -28,7 +28,7 @@ sealed trait ScopedTaskable[T] extends Scoped {
 * The scope is represented by a value of type Scope.
 * The name and the type are represented by a value of type AttributeKey[T].
 * Instances are constructed using the companion object. */
-sealed trait SettingKey[T] extends ScopedTaskable[T] with KeyedInitialize[T] with Scoped.ScopingSetting[SettingKey[T]] with Scoped.DefinableSetting[T]
+sealed abstract class SettingKey[T] extends ScopedTaskable[T] with KeyedInitialize[T] with Scoped.ScopingSetting[SettingKey[T]] with Scoped.DefinableSetting[T]
 {
 	val key: AttributeKey[T]
 	final def toTask: Initialize[Task[T]] = this apply inlineTask
@@ -48,7 +48,7 @@ sealed trait SettingKey[T] extends ScopedTaskable[T] with KeyedInitialize[T] wit
 * The scope is represented by a value of type Scope.
 * The name and the type are represented by a value of type AttributeKey[Task[T]].
 * Instances are constructed using the companion object. */
-sealed trait TaskKey[T] extends ScopedTaskable[T] with KeyedInitialize[Task[T]] with Scoped.ScopingSetting[TaskKey[T]] with Scoped.DefinableTask[T]
+sealed abstract class TaskKey[T] extends ScopedTaskable[T] with KeyedInitialize[Task[T]] with Scoped.ScopingSetting[TaskKey[T]] with Scoped.DefinableTask[T]
 {
 	val key: AttributeKey[Task[T]]
 	def toTask: Initialize[Task[T]] = this
@@ -144,6 +144,9 @@ object Scoped
 
 		def dependsOn(tasks: AnyInitTask*): Initialize[Task[S]] = (i, Initialize.joinAny[Task](tasks)) { (thisTask, deps) => thisTask.dependsOn(deps : _*) }
 
+		def failure: Initialize[Task[Incomplete]] = i(_.failure)
+		def result: Initialize[Task[Result[S]]] = i(_.result)
+
 		def triggeredBy(tasks: AnyInitTask*): Initialize[Task[S]] = nonLocal(tasks, Def.triggeredBy)
 		def runBefore(tasks: AnyInitTask*): Initialize[Task[S]] = nonLocal(tasks, Def.runBefore)
 		private[this] def nonLocal(tasks: Seq[AnyInitTask], key: AttributeKey[Seq[Task[_]]]): Initialize[Task[S]] =
@@ -159,12 +162,8 @@ object Scoped
 	{
 		protected def onTask[T](f: Task[S] => Task[T]): Initialize[R[T]]
 
-		def flatMapR[T](f: Result[S] => Task[T]): Initialize[R[T]] = onTask(_ flatMapR f)
 		def flatMap[T](f: S => Task[T]): Initialize[R[T]] = flatMapR(f compose successM)
 		def map[T](f: S => T): Initialize[R[T]] = mapR(f compose successM)
-		def mapR[T](f: Result[S] => T): Initialize[R[T]] = onTask(_ mapR f)
-		def flatFailure[T](f: Incomplete => Task[T]): Initialize[R[T]] = flatMapR(f compose failM)
-		def mapFailure[T](f: Incomplete => T): Initialize[R[T]] = mapR(f compose failM)
 		def andFinally(fin: => Unit): Initialize[R[S]] = onTask(_ andFinally fin)
 		def doFinally(t: Task[Unit]): Initialize[R[S]] = onTask(_ doFinally t)
 
@@ -173,6 +172,18 @@ object Scoped
 
 		def tag(tags: Tag*): Initialize[R[S]] = onTask(_.tag(tags: _*))
 		def tagw(tags: (Tag, Int)*): Initialize[R[S]] = onTask(_.tagw(tags : _*))
+
+		@deprecated("Use the `result` method to create a task that returns the full Result of this task.  Then, call `flatMap` on the new task.", "0.13.0")
+		def flatMapR[T](f: Result[S] => Task[T]): Initialize[R[T]] = onTask(_ flatMapR f)
+
+		@deprecated("Use the `result` method to create a task that returns the full Result of this task.  Then, call `map` on the new task.", "0.13.0")
+		def mapR[T](f: Result[S] => T): Initialize[R[T]] = onTask(_ mapR f)
+
+		@deprecated("Use the `failure` method to create a task that returns Incomplete when this task fails and then call `flatMap` on the new task.", "0.13.0")
+		def flatFailure[T](f: Incomplete => Task[T]): Initialize[R[T]] = flatMapR(f compose failM)
+
+		@deprecated("Use the `failure` method to create a task that returns Incomplete when this task fails and then call `map` on the new task.", "0.13.0")
+		def mapFailure[T](f: Incomplete => T): Initialize[R[T]] = mapR(f compose failM)
 	}
 
 	type AnyInitTask = Initialize[Task[T]] forSome { type T }

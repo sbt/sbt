@@ -20,18 +20,29 @@ sealed trait MultiInTask[K[L[x]]]
 
 sealed trait SingleInTask[S]
 {
-	def flatMapR[T](f: Result[S] => Task[T]): Task[T]
 	def flatMap[T](f: S => Task[T]): Task[T]
 	def map[T](f: S => T): Task[T]
-	def mapR[T](f: Result[S] => T): Task[T]
-	def flatFailure[T](f: Incomplete => Task[T]): Task[T]
-	def mapFailure[T](f: Incomplete => T): Task[T]
 	def dependsOn(tasks: Task[_]*): Task[S]
 	def andFinally(fin: => Unit): Task[S]
 	def doFinally(t: Task[Unit]): Task[S]
 
 	def || [T >: S](alt: Task[T]): Task[T]
 	def && [T](alt: Task[T]): Task[T]
+
+	def failure: Task[Incomplete]
+	def result: Task[Result[S]]
+
+	@deprecated("Use the `result` method to create a task that returns the full Result of this task.  Then, call `map` on the new task.", "0.13.0")
+	def mapR[T](f: Result[S] => T): Task[T]
+
+	@deprecated("Use the `failure` method to create a task that returns Incomplete when this task fails and then call `flatMap` on the new task.", "0.13.0")
+	def flatFailure[T](f: Incomplete => Task[T]): Task[T]
+
+	@deprecated("Use the `failure` method to create a task that returns Incomplete when this task fails and then call `mapFailure` on the new task.", "0.13.0")
+	def mapFailure[T](f: Incomplete => T): Task[T]
+
+	@deprecated("Use the `result` method to create a task that returns the full Result of this task.  Then, call `flatMap` on the new task.", "0.13.0")
+	def flatMapR[T](f: Result[S] => Task[T]): Task[T]
 }
 sealed trait TaskInfo[S]
 {
@@ -114,6 +125,9 @@ trait TaskExtra
 	final implicit def singleInputTask[S](in: Task[S]): SingleInTask[S] = new SingleInTask[S] {
 		type K[L[x]] = L[S]
 		private def ml = AList.single[S]
+
+		def failure: Task[Incomplete] = mapFailure(idFun)
+		def result: Task[Result[S]] = mapR(idFun)
 		
 		def flatMapR[T](f: Result[S] => Task[T]): Task[T] = new FlatMapped[T, K](in, f, ml)
 		def mapR[T](f: Result[S] => T): Task[T] = new Mapped[T, K](in, f, ml)

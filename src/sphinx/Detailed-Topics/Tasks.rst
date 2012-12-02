@@ -383,8 +383,96 @@ do not affect already logged information.
 Handling Failure
 ----------------
 
-This section discusses the ``andFinally``, ``mapFailure``, and ``mapR``
+This section discusses the ``failure``, ``result``, and ``andFinally``
 methods, which are used to handle failure of other tasks.
+
+``failure``
+~~~~~~~~~~~
+
+The ``failure`` method creates a new task that returns the ``Incomplete`` value
+when the original task fails to complete normally.  If the original task succeeds,
+the new task fails.
+`Incomplete <https://github.com/harrah/xsbt/latest/api/sbt/Incomplete.html>`_
+is an exception with information about any tasks that caused the failure
+and any underlying exceptions thrown during task execution. 
+
+For example:
+
+::
+
+    intTask := error("Failed.")
+
+    val intTask := {
+       println("Ignoring failure: " + intTask.failure.value)
+       3
+    }
+
+This overrides the ``intTask`` so that the original exception is printed and the constant ``3`` is returned.
+
+``failure`` does not prevent other tasks that depend on the target
+from failing. Consider the following example:
+
+::
+
+    intTask := if(shouldSucceed) 5 else error("Failed.")
+
+    // Return 3 if intTask fails. If intTask succeeds, this task will fail.
+    aTask := intTask.failure.value - 2
+
+    // A new task that increments the result of intTask.
+    bTask := intTask.value + 1
+
+    cTask := aTask.value + bTask.value
+
+The following table lists the results of each task depending on the initially invoked task:
+
+============== =============== ============= ============== ============== ==============
+invoked task   intTask result  aTask result  bTask result   cTask result 	overall result
+============== =============== ============= ============== ============== ==============
+intTask        failure         not run       not run        not run        failure
+aTask          failure         success       not run        not run        success
+bTask          failure         not run       failure        not run        failure
+cTask          failure         success       failure        failure        failure
+intTask        success         not run       not run        not run        success
+aTask          success         failure       not run        not run        failure
+bTask          success         not run       success        not run        success
+cTask          success         failure       success        failure        failure
+============== =============== ============= ============== ============== ==============
+
+The overall result is always the same as the root task (the directly
+invoked task). A ``failure`` turns a success into a failure, and a failure into an ``Incomplete``.
+A normal task definition fails when any of its inputs fail and computes its value otherwise.
+
+``result``
+~~~~~~~~~~
+
+The ``result`` method creates a new task that returns the full ``Result[T]`` value for the original task.
+`Result <https://github.com/harrah/xsbt/latest/api/sbt/Result.html>`_
+has the same structure as ``Either[Incomplete, T]`` for a task result of
+type ``T``. That is, it has two subtypes:
+
+-  ``Inc``, which wraps ``Incomplete`` in case of failure
+-  ``Value``, which wraps a task's result in case of success.
+
+Thus, the task created by ``result`` executes whether or not the original task succeeds or fails.
+
+For example:
+
+::
+
+    intTask := error("Failed.")
+
+    intTask := intTask.result.value match {
+       case Inc(inc: Incomplete) =>
+          println("Ignoring failure: " + inc)
+          3
+       case Value(v) =>
+          println("Using successful result: " + v)
+          v
+    }
+
+This overrides the original ``intTask`` definition so that if the original task fails, the exception is printed and the constant ``3`` is returned. If it succeeds, the value is printed and returned.
+
 
 andFinally
 ~~~~~~~~~~
@@ -434,129 +522,3 @@ execution. This case is similar to the following plain Scala code:
 
 It is obvious here that calling intTask() will never result in "finally"
 being printed.
-
-mapFailure
-~~~~~~~~~~
-
-``mapFailure`` accepts a function of type ``Incomplete => T``, where
-``T`` is a type parameter. In the case of multiple inputs, the function
-has type ``Seq[Incomplete] => T``.
-`Incomplete <https://github.com/harrah/xsbt/latest/api/sbt/Incomplete.html>`_
-is an exception with information about any tasks that caused the failure
-and any underlying exceptions thrown during task execution. The
-resulting task defined by ``mapFailure`` fails if its input succeeds and
-evaluates the provided function if it fails.
-
-For example:
-
-::
-
-    intTask := error("Failed.")
-
-    val intTaskImpl = intTask mapFailure { (inc: Incomplete) => 
-       println("Ignoring failure: " + inc)
-       3
-    }
-
-    intTask := intTaskImpl.value
-
-This overrides the ``intTask`` so that the original exception is printed and the constant ``3`` is returned.
-
-``mapFailure`` does not prevent other tasks that depend on the target
-from failing. Consider the following example:
-
-::
-
-    intTask := if(shouldSucceed) 5 else error("Failed.")
-
-
-
-    // return 3 if intTask fails. if it succeeds, this task will fail
-    val aTaskImpl = intTask mapFailure { (inc: Incomplete) => 3 }
-
-    aTask := aTaskImpl.value
-
-    // a new task that increments the result of intTask
-    bTask := intTask.value + 1
-
-    cTask := aTask.value + bTask.value
-
-The following table lists the results of each task depending on the initially invoked task:
-
-============== =============== ============= ============== ============== ==============
-invoked task   intTask result  aTask result  bTask result   cTask result 	overall result
-============== =============== ============= ============== ============== ==============
-intTask        failure         not run       not run        not run        failure
-aTask          failure         success       not run        not run        success
-bTask          failure         not run       failure        not run        failure
-cTask          failure         success       failure        failure        failure
-intTask        success         not run       not run        not run        success
-aTask          success         failure       not run        not run        failure
-bTask          success         not run       success        not run        success
-cTask          success         failure       success        failure        failure
-============== =============== ============= ============== ============== ==============
-
-The overall result is always the same as the root task (the directly
-invoked task). A ``mapFailure`` turns a success into a failure, and a
-failure into whatever the result of evaluating the supplied function is.
-A normal task definition fails when the input fails and applies the supplied function
-to a successfully completed input.
-
-In the case of more than one input, ``mapFailure`` fails if all inputs
-succeed. If at least one input fails, the supplied function is provided
-with the list of ``Incomplete``\ s. For example:
-
-::
-
-    val cTaskImpl = (aTask, bTask) mapFailure { (incs: Seq[Incomplete]) => 3 }
-
-    cTask := cTaskImpl.value
-
-The following table lists the results of invoking ``cTask``, depending
-on the success of ``aTask`` and ``bTask``:
-
-
-=============  =============  =============
-aTask result   bTask result   cTask result
-=============  =============  =============
-failure        failure        success
-failure        success        success
-success        failure        success
-success        success        failure
-=============  =============  =============
-
-mapR
-~~~~
-
-``mapR`` accepts a function of type ``Result[S] => T``, where ``S`` is
-the type of the task being mapped and ``T`` is a type parameter. In the
-case of multiple inputs, the function has type
-``(Result[A], Result[B], ...) => T``.
-`Result <https://github.com/harrah/xsbt/latest/api/sbt/Result.html>`_
-has the same structure as ``Either[Incomplete, S]`` for a task result of
-type ``S``. That is, it has two subtypes:
-
--  ``Inc``, which wraps ``Incomplete`` in case of failure
--  ``Value``, which wraps a task's result in case of success.
-
-Thus, ``mapR`` is always invoked whether or not the original task
-succeeds or fails.
-
-For example:
-
-::
-
-    intTask := error("Failed.")
-
-    val intTaskImpl = intTask mapR {
-       case Inc(inc: Incomplete) =>
-          println("Ignoring failure: " + inc)
-          3
-       case Value(v) =>
-          println("Using successful result: " + v)
-          v
-    }
-
-    intTask := intTaskImpl.value
-
-This overrides the original ``intTask`` definition so that if the original task fails, the exception is printed and the constant ``3`` is returned. If it succeeds, the value is printed and returned.

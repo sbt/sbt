@@ -78,4 +78,22 @@ object Tags
 			// If there is only one task, allow it to execute.
 			tags.getOrElse(Tags.All, 0) == 1
 	}
+
+	/** Ensure that a task with the given tag only executes with tasks also tagged with the given tag.*/
+	def exclusiveGroup(exclusiveTag: Tag): Rule = customLimit { (tags: Map[Tag,Int]) =>
+		val exclusiveCount = tags.getOrElse(exclusiveTag, 0)
+		val allCount = tags.getOrElse(Tags.All, 0)
+		// If there are no exclusive tasks in this group, this rule adds no restrictions.
+		exclusiveCount == 0 ||
+			// If all tasks have this tag, allow them to execute.
+			exclusiveCount == allCount ||
+			// Always allow a group containing only one task to execute (fallthrough case).
+			allCount == 1
+	}
+
+	/** A task tagged with one of `exclusiveTags` will not execute with another task with any of the other tags in `exclusiveTags`.*/
+	def exclusiveGroups(exclusiveTags: Tag*): Rule = customLimit { (tags: Map[Tag,Int]) =>
+		val groups = exclusiveTags.count(tag => tags.getOrElse(tag, 0) > 0)
+		groups <= 1
+	}
 }
