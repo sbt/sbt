@@ -93,7 +93,7 @@ object Defaults extends BuildCommon
 		traceLevel in consoleProject :== Int.MaxValue,
 		autoCompilerPlugins :== true,
 		internalConfigurationMap :== Configurations.internalMap _,
-		initialize :== (),
+		initialize :== {},
 		credentials :== Nil,
 		scalaHome :== None,
 		javaHome :== None,
