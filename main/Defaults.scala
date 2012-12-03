@@ -727,7 +727,7 @@ object Defaults extends BuildCommon
 
 	val CompletionsID = "completions"
 
-	def noAggregation: Seq[Scoped] = Seq(run, console, consoleQuick, consoleProject)
+	def noAggregation: Seq[Scoped] = Seq(run, runMain, console, consoleQuick, consoleProject)
 	lazy val disableAggregation = noAggregation map disableAggregate
 	def disableAggregate(k: Scoped) =
 		aggregate in Scope.GlobalScope.copy(task = Select(k.key)) :== false
