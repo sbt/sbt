@@ -216,3 +216,12 @@ For getting the test classpath of a specific project, use this key:
     val taskKey: Task[Seq[Attributed[File]]] =
       Keys.fullClasspath in (projectRef, Test)
 
+Using State in a task
+---------------------
+
+To access the current State from a task, use `state` task as an input.
+For example,
+
+::
+
+    myTask := ... state.value ...
