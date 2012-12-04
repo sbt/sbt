@@ -4,30 +4,30 @@ import java.io.{File,InputStream}
 import java.net.URL
 import java.util.Properties
 import xsbti._
-import org.specs._
+import org.specs2._
+import mutable.Specification
 import LaunchTest._
 import sbt.IO.{createDirectory, touch,withTemporaryDirectory}
 
 object ScalaProviderTest extends Specification
 {
-	 def provide = addToSusVerb("provide")
-	"Launch" should provide {
-		"ClassLoader for Scala 2.8.0" in { checkScalaLoader("2.8.0") }
-		"ClassLoader for Scala 2.8.2" in { checkScalaLoader("2.8.2") }
-		"ClassLoader for Scala 2.9.0" in { checkScalaLoader("2.9.0") }
-		"ClassLoader for Scala 2.9.2" in { checkScalaLoader("2.9.2") }
+	"Launch" should {
+		"provide ClassLoader for Scala 2.8.0" in { checkScalaLoader("2.8.0") }
+		"provide ClassLoader for Scala 2.8.2" in { checkScalaLoader("2.8.2") }
+		"provide ClassLoader for Scala 2.9.0" in { checkScalaLoader("2.9.0") }
+		"provide ClassLoader for Scala 2.9.2" in { checkScalaLoader("2.9.2") }
 	}
 
 	"Launch" should {
 		"Successfully load an application from local repository and run it with correct arguments" in {
-			checkLoad(List("test"), "xsbt.boot.test.ArgumentTest").asInstanceOf[Exit].code must be(0)
+			checkLoad(List("test"), "xsbt.boot.test.ArgumentTest").asInstanceOf[Exit].code must equalTo(0)
 			checkLoad(List(), "xsbt.boot.test.ArgumentTest") must throwA[RuntimeException]
 		}
 		"Successfully load an application from local repository and run it with correct sbt version" in {
-			checkLoad(List(AppVersion), "xsbt.boot.test.AppVersionTest").asInstanceOf[Exit].code must be(0)
+			checkLoad(List(AppVersion), "xsbt.boot.test.AppVersionTest").asInstanceOf[Exit].code must equalTo(0)
 		}
 		"Add extra resources to the classpath" in {
-			checkLoad(testResources, "xsbt.boot.test.ExtraTest", createExtra).asInstanceOf[Exit].code must be(0)
+			checkLoad(testResources, "xsbt.boot.test.ExtraTest", createExtra).asInstanceOf[Exit].code must equalTo(0)
 		}
 	}
 
@@ -65,7 +65,7 @@ object LaunchTest
 	def testApp(main: String): Application = testApp(main, Array[File]())
 	def testApp(main: String, extra: Array[File]): Application = Application("org.scala-sbt", "launch-test", new Explicit(AppVersion), main, Nil, false, extra)
 	import Predefined._
-	def testRepositories = List(Local, ScalaToolsReleases, ScalaToolsSnapshots).map(Repository.Predefined.apply)
+	def testRepositories = List(Local, ScalaToolsReleases, ScalaToolsSnapshots).map(Repository.Predefined(_))
 	def withLauncher[T](f: xsbti.Launcher => T): T =
 		withTemporaryDirectory { bootDirectory =>
 			f(Launcher(bootDirectory, testRepositories))
