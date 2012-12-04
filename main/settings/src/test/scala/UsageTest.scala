@@ -71,9 +71,9 @@ object Assign
 		"lit"
 	}
 	// should not compile because getting the value from a parser involves getting the value from a task
-	val it3: Initialize[InputTask[String]] = Def.inputTask[String] {
+/*	val it3: Initialize[InputTask[String]] = Def.inputTask[String] {
 		tsk.parsed.value
-	}
+	}*/
 /*	// should not compile: cannot use a task to define the parser
 	val it4 = Def.inputTask {
 		dummyt.value.parsed
