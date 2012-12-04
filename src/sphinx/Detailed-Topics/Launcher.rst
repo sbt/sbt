@@ -106,7 +106,7 @@ by the following grammar. ``'nl'`` is a newline or end of file and
     resources: "resources" ":" `path` ("," `path`)*
     repository: ( `predefinedRepository` | `customRepository` ) `nl`
     predefinedRepository: "local" | "maven-local" | "maven-central"
-    customRepository: `label` ":" `url` [ ["," `ivyPattern`] "," `artifactPattern` [", mavenCompatible"]]
+    customRepository: `label` ":" `url` [ ["," `ivyPattern`] ["," `artifactPattern`] [", mavenCompatible"] [", bootOnly"]]
     property: `label` ":" `propertyDefinition` ("," `propertyDefinition`)*
     propertyDefinition: `mode` "=" (`set` | `prompt`)
     mode: "quick" | "new" | "fill"
@@ -157,7 +157,7 @@ The default configuration file for sbt looks like:
 
     [repositories]
       local
-      typesafe-ivy-releases: http://repo.typesafe.com/typesafe/ivy-releases/, [organization]/[module]/[revision]/[type]s/[artifact](-[classifier]).[ext]
+      typesafe-ivy-releases: http://repo.typesafe.com/typesafe/ivy-releases/, [organization]/[module]/[revision]/[type]s/[artifact](-[classifier]).[ext], bootOnly
       maven-central
       sonatype-snapshots: https://oss.sonatype.org/content/repositories/snapshots
 

@@ -38,6 +38,11 @@ public interface Launcher
 	 *  are the same ones used to load the launcher.
 	 */
 	public xsbti.Repository[] ivyRepositories();
+	/** These are the repositories configured by this launcher
+	 * which should be used by the application when resolving
+	 * further artifacts.
+	 */
+	public xsbti.Repository[] appRepositories();
 	/** The user has configured the launcher with the only repositories
 	 * it wants to use for this applciation.
 	 */

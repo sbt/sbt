@@ -58,13 +58,15 @@ class ConfigurationParser
 			case line => readLine(in, ParseLine(line,index) ::: accum, index+1)
 		}
 	private def newReader(file: File) = new InputStreamReader(new FileInputStream(file), "UTF-8")
-	def readRepositoriesConfig(file: File): List[xsbti.Repository] =
+	def readRepositoriesConfig(file: File): List[Repository.Repository] =
 		Using(newReader(file))(readRepositoriesConfig)
-	def readRepositoriesConfig(reader: Reader): List[xsbti.Repository] = 
+	def readRepositoriesConfig(reader: Reader): List[Repository.Repository] =
 		Using(new BufferedReader(reader))(readRepositoriesConfig)
-	private def readRepositoriesConfig(in: BufferedReader): List[xsbti.Repository] =
+	def readRepositoriesConfig(s: String): List[Repository.Repository] =
+		Using(new StringReader(s))(readRepositoriesConfig)
+	private def readRepositoriesConfig(in: BufferedReader): List[Repository.Repository] =
 		processRepositoriesConfig(processLines(readLine(in, Nil, 0)))
-	def processRepositoriesConfig(sections: SectionMap): List[xsbti.Repository] =
+	def processRepositoriesConfig(sections: SectionMap): List[Repository.Repository] =
 		processSection(sections, "repositories", getRepositories)._1
 	// section -> configuration instance  processing
 	def processSections(sections: SectionMap): LaunchConfiguration =
@@ -176,21 +178,32 @@ class ConfigurationParser
 		val app = new Application(org, name, rev, main, components, toBoolean(crossVersioned), classpathExtra)
 		(app, classifiers)
 	}
-	def getRepositories(m: LabelMap): List[xsbti.Repository] =
+	def getRepositories(m: LabelMap): List[Repository.Repository] =
 	{
 		import Repository.{Ivy, Maven, Predefined}
+		val BootOnly = "bootOnly"
+		val MvnComp = "mavenCompatible"
 		m.toList.map {
 			case (key, None) => Predefined(key)
+			case (key, Some(BootOnly)) => Predefined(key, true)
 			case (key, Some(value)) =>
-				val r = trim(substituteVariables(value).split(",",4))
+				val r = trim(substituteVariables(value).split(",",5))
 				val url = try { new URL(r(0)) } catch { case e: MalformedURLException => error("Invalid URL specified for '" + key + "': " + e.getMessage) }
+				// TODO - Clean this up a lot.
 				r.tail match {
-					case both :: "mavenCompatible" :: Nil => Ivy(key, url, both, both, mavenCompatible=true)
-					case ivy :: art :: "mavenCompatible" :: Nil => Ivy(key, url, ivy, art, mavenCompatible=true)
-					case ivy :: art :: Nil => Ivy(key, url, ivy, art, mavenCompatible=false)
-					case both :: Nil => Ivy(key, url, both, both, mavenCompatible=false)
-                                        case Nil => Maven(key, url)
-					case _ => error("Could not parse %s: %s".format(key, value))
+					case both :: MvnComp  :: BootOnly :: Nil       => Ivy(key, url, both, both, mavenCompatible=true, bootOnly=true)
+					case both :: BootOnly :: MvnComp  :: Nil       => Ivy(key, url, both, both, mavenCompatible=true, bootOnly=true)
+					case both :: MvnComp  :: Nil                   => Ivy(key, url, both, both, mavenCompatible=true, bootOnly=false)
+					case both :: BootOnly :: Nil                   => Ivy(key, url, both, both, mavenCompatible=false, bootOnly=true)
+					case ivy :: art :: MvnComp :: BootOnly :: Nil  => Ivy(key, url, ivy,  art, mavenCompatible=true, bootOnly=true)
+					case ivy :: art :: BootOnly :: MvnComp :: Nil  => Ivy(key, url, ivy,  art, mavenCompatible=true, bootOnly=true)
+					case ivy :: art :: MvnComp  :: Nil             => Ivy(key, url, ivy,  art, mavenCompatible=true, bootOnly=false)
+					case ivy :: art :: BootOnly :: Nil             => Ivy(key, url, ivy,  art, mavenCompatible=false, bootOnly=true)
+					case ivy :: art :: Nil                         => Ivy(key, url, ivy,  art, mavenCompatible=false, bootOnly=false)
+					case BootOnly :: Nil                           => Maven(key, url, bootOnly=true)
+					case both :: Nil                               => Ivy(key, url, both, both, mavenCompatible=false, bootOnly=false)
+					case Nil                                       => Maven(key, url)
+					case _                                         => error("Could not parse %s: %s".format(key, value))
 				}
 		}
 	}
