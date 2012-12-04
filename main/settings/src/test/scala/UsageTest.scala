@@ -21,6 +21,7 @@ package std
 object Assign
 {
 	import java.io.File
+	import Def.{inputKey,settingKey,taskKey}
 	import Def.{Initialize,macroValueT,parserToInput}
 //	import UseTask.{x,y,z,a,set,plain}
 

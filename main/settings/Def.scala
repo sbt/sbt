@@ -64,6 +64,11 @@ object Def extends Init[Scope] with TaskMacroExtra
 	//  be used in the inputTask macro as an input with an ultimate result of type T
 	implicit def parserInitToInput[T](p: Initialize[Parser[T]]): InitParserInput[T] = ???
 	implicit def parserInitStateToInput[T](p: Initialize[State => Parser[T]]): StateParserInput[T] = ???
+
+		import language.experimental.macros
+	def settingKey[T](description: String): SettingKey[T] = macro std.KeyMacro.settingKeyImpl[T]
+	def taskKey[T](description: String): TaskKey[T] = macro std.KeyMacro.taskKeyImpl[T]
+	def inputKey[T](description: String): TaskKey[T] = macro std.KeyMacro.taskKeyImpl[T]
 }
 // these need to be mixed into the sbt package object because the target doesn't involve Initialize or anything in Def
 trait TaskMacroExtra 

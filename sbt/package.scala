@@ -50,4 +50,9 @@ package object sbt extends sbt.std.TaskExtra with sbt.Types with sbt.ProcessExtr
 //	final val System = C.System
 	final val Optional = C.Optional
 	def config(s: String): Configuration = Configurations.config(s)
+
+		import language.experimental.macros
+	def settingKey[T](description: String): SettingKey[T] = macro std.KeyMacro.settingKeyImpl[T]
+	def taskKey[T](description: String): TaskKey[T] = macro std.KeyMacro.taskKeyImpl[T]
+	def inputKey[T](description: String): TaskKey[T] = macro std.KeyMacro.taskKeyImpl[T]
 }

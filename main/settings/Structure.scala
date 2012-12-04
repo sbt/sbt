@@ -500,16 +500,3 @@ object SettingKey
 
 	def local[T: Manifest]: SettingKey[T] = apply[T](AttributeKey.local[T])
 }
-
-object settingKey
-{
-	def apply[T](description: String): SettingKey[T] = macro std.KeyMacro.settingKeyImpl[T]
-}
-object taskKey
-{
-	def apply[T](description: String): TaskKey[T] = macro std.KeyMacro.taskKeyImpl[T]
-}
-object inputKey
-{
-	def apply[T](description: String): TaskKey[T] = macro std.KeyMacro.taskKeyImpl[T]
-}
