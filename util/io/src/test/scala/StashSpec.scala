@@ -3,7 +3,8 @@
 
 package sbt
 
-import org.specs._
+import org.specs2._
+import mutable.Specification
 
 import IO._
 import java.io.File
@@ -62,7 +63,7 @@ object CheckStash extends Specification
 	def correct(check: File, ref: (File, String)) =
 	{
 		check.exists must beTrue
-		read(check) must beEqual(ref._2)
+		read(check) must equalTo(ref._2)
 	}
 	def noneExist(s: Seq[File]) = s.forall(!_.exists) must beTrue
 	

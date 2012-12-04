@@ -1,7 +1,8 @@
 package sbt
 
 import java.io.File
-import org.specs._
+import org.specs2._
+import mutable.Specification
 import IO.{createDirectory, delete, touch, withTemporaryDirectory}
 import org.apache.ivy.util.ChecksumHelper
 import IfMissing.Fail
