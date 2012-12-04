@@ -25,7 +25,7 @@ final case class LaunchConfiguration(scalaVersion: Value[String], ivyConfigurati
 
 	def map(f: File => File) = LaunchConfiguration(scalaVersion, ivyConfiguration.map(f), app.map(f), boot.map(f), logging, appProperties)
 }
-final case class IvyOptions(ivyHome: Option[File], classifiers: Classifiers, repositories: List[xsbti.Repository], checksums: List[String], isOverrideRepositories: Boolean)
+final case class IvyOptions(ivyHome: Option[File], classifiers: Classifiers, repositories: List[Repository.Repository], checksums: List[String], isOverrideRepositories: Boolean)
 {
 	def map(f: File => File) = IvyOptions(ivyHome.map(f), classifiers, repositories, checksums, isOverrideRepositories)
 }
@@ -70,15 +70,19 @@ object Application
 
 object Repository
 {
-	final case class Maven(id: String, url: URL) extends xsbti.MavenRepository
-	final case class Ivy(id: String, url: URL, ivyPattern: String, artifactPattern: String, mavenCompatible: Boolean) extends xsbti.IvyRepository
-	final case class Predefined(id: xsbti.Predefined) extends xsbti.PredefinedRepository
+	trait Repository extends xsbti.Repository {
+		def bootOnly: Boolean
+	}
+	final case class Maven(id: String, url: URL, bootOnly: Boolean = false) extends xsbti.MavenRepository with Repository
+	final case class Ivy(id: String, url: URL, ivyPattern: String, artifactPattern: String, mavenCompatible: Boolean, bootOnly: Boolean = false) extends xsbti.IvyRepository with Repository
+	final case class Predefined(id: xsbti.Predefined, bootOnly: Boolean = false) extends xsbti.PredefinedRepository with Repository
 	object Predefined {
-		def apply(s: String): Predefined = Predefined(xsbti.Predefined.toValue(s))
+		def apply(s: String): Predefined = new Predefined(xsbti.Predefined.toValue(s), false)
+		def apply(s: String, bootOnly: Boolean): Predefined = new Predefined(xsbti.Predefined.toValue(s), bootOnly)
 	}
 
 	def isMavenLocal(repo: xsbti.Repository) = repo match { case p: xsbti.PredefinedRepository => p.id == xsbti.Predefined.MavenLocal; case _ => false }
-	def defaults: List[xsbti.Repository] = xsbti.Predefined.values.map(Predefined.apply).toList
+	def defaults: List[xsbti.Repository] = xsbti.Predefined.values.map(x => Predefined(x, false)).toList
 }
 
 final case class Search(tpe: Search.Value, paths: List[File])
