@@ -828,10 +828,12 @@ object Classpaths
 		scmInfo in GlobalScope :== None,
 		projectInfo <<= (name, description, homepage, startYear, licenses, organizationName, organizationHomepage, scmInfo) apply ModuleInfo,
 		overrideBuildResolvers <<= appConfiguration(isOverrideRepositories),
-		externalResolvers <<= (externalResolvers.task.?, resolvers) {
-			case (Some(delegated), Seq()) => delegated
-			case (_, rs) => task { Resolver.withDefaultResolvers(rs) }
+		externalResolvers <<= (externalResolvers.task.?, resolvers, appResolvers) {
+			case (Some(delegated), Seq(), _) => delegated
+			case (_, rs, Some(ars)) => task { ars ++ rs }  // TODO - Do we need to filter out duplicates?
+			case (_, rs, _) => task { Resolver.withDefaultResolvers(rs) }
 		},
+		appResolvers <<= appConfiguration apply appRepositories,
 		bootResolvers <<= appConfiguration map bootRepositories,
 		fullResolvers <<= (projectResolver,externalResolvers,sbtPlugin,sbtResolver,bootResolvers,overrideBuildResolvers) map { (proj,rs,isPlugin,sbtr, boot, overrideFlag) =>
 			boot match {
@@ -1253,6 +1255,11 @@ object Classpaths
 	def isOverrideRepositories(app: xsbti.AppConfiguration): Boolean =
 		try app.provider.scalaProvider.launcher.isOverrideRepositories
 		catch { case _: NoSuchMethodError => false }
+
+	/** Loads the `appRepositories` configured for this launcher, if supported. */
+	def appRepositories(app: xsbti.AppConfiguration): Option[Seq[Resolver]] =
+		try { Some(app.provider.scalaProvider.launcher.appRepositories.toSeq map bootRepository) }
+		catch { case _: NoSuchMethodError => None }
 
 	def bootRepositories(app: xsbti.AppConfiguration): Option[Seq[Resolver]] =
 		try { Some(app.provider.scalaProvider.launcher.ivyRepositories.toSeq map bootRepository) }
