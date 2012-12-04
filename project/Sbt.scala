@@ -56,7 +56,7 @@ object Sbt extends Build
 		// The API for forking, combining, and doing I/O with system processes
 	lazy val processSub = baseProject(utilPath / "process", "Process") dependsOn(ioSub % "test->test")
 		// Path, IO (formerly FileUtilities), NameFilter and other I/O utility classes
-	lazy val ioSub = testedBaseProject(utilPath / "io", "IO") dependsOn(controlSub)
+	lazy val ioSub = testedBaseProject(utilPath / "io", "IO") dependsOn(controlSub) settings(ioSettings : _ *)
 		// Utilities related to reflection, managing Scala versions, and custom class loaders
 	lazy val classpathSub = baseProject(utilPath / "classpath", "Classpath") dependsOn(launchInterfaceSub, interfaceSub, ioSub) settings(scalaCompiler)
 		// Command line-related utilities.
@@ -242,5 +242,14 @@ object Sbt extends Build
 		libraryDependencies <+= scalaVersion( "org.scala-lang" % "scala-compiler" % _ % "test"),
 		unmanagedJars in Test <<= (packageSrc in compileInterfaceSub in Compile).map(x => Seq(x).classpath)
 	)
-	def precompiled(scalav: String): Project = baseProject(compilePath / "interface", "Precompiled " + scalav.replace('.', '_')) dependsOn(interfaceSub) settings(scalaVersion := scalav) settings(precompiledSettings : _*)
+	def precompiled(scalav: String): Project = baseProject(compilePath / "interface", "Precompiled " + scalav.replace('.', '_')) dependsOn(interfaceSub) settings(precompiledSettings : _*) settings(
+		scalaHome := None,
+		scalaVersion <<= (scalaVersion in ThisBuild) { sbtScalaV =>
+			assert(sbtScalaV != scalav, "Precompiled compiler interface cannot have the same Scala version (" + scalav + ") as sbt.")
+			scalav
+		}
+	)
+	def ioSettings: Seq[Setting[_]] = Seq(
+		libraryDependencies <+= scalaVersion("org.scala-lang" % "scala-compiler" % _ % "test")
+	)
 }
