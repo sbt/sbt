@@ -1,0 +1,11 @@
+# compiles a new State => State instance
+> compile
+# puts the classes in a stable location (out/)
+> copyOutputDir
+
+# checks that `apply` can load from a specific classpath
+> apply -cp out demo.AddNewCommand
+
+# check that AddNewCommand was actually run
+# If it was, it should have registered `newCommand`
+> newCommand

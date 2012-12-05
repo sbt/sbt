@@ -1,6 +1,7 @@
 package sbt
 
 	import complete.{DefaultParsers, HistoryCommands, Parser}
+	import classpath.ClasspathUtilities.toLoader
 	import DefaultParsers._
 	import Types.{const,idFun}
 	import Function.tupled
@@ -79,11 +80,22 @@ object BasicCommands
 	}
 	def rebootParser(s: State) = token(Space ~> "full" ^^^ true) ?? false
 
-	def call = Command(ApplyCommand, Help.more(ApplyCommand, ApplyDetailed))(_ => spaceDelimited("<class name>")) { (state,args) =>
-		val loader = getClass.getClassLoader
+	def call = Command(ApplyCommand, Help.more(ApplyCommand, ApplyDetailed))(_ => callParser) { case (state,(cp,args)) =>
+		val parentLoader = getClass.getClassLoader
+		state.log.info("Applying State transformations " + args.mkString(", ") + (if(cp.isEmpty) "" else " from " + cp.mkString(File.separator)))
+		val loader = if(cp.isEmpty) parentLoader else toLoader(cp.map(f => new File(f)), parentLoader)
 		val loaded = 	args.map(arg => ModuleUtilities.getObject(arg, loader))
 		(state /: loaded) { case (s, obj: (State => State)) => obj(s) }
 	}
+	def callParser: Parser[(Seq[String], Seq[String])] = token(Space) ~> ((classpathOptionParser ?? Nil) ~ rep1sep(className, token(Space)))
+	private[this] def className: Parser[String] = 
+		token(StringBasic.filter(s => !s.contains("-"), const("- not allowed in class name")), "<class name>")
+	private[this] def classpathOptionParser: Parser[Seq[String]] =
+		token( ("-cp" | "-classpath") ~> Space ) ~> rep1sep(classpathString, token(File.separatorChar)) <~ token(Space)
+	private[this] def classpathString: Parser[String] =
+		token(charClass(entryClass).+.string, "<classpath-entry>")
+	private[this] def entryClass(c: Char): Boolean = 
+		c != File.separatorChar && !java.lang.Character.isWhitespace(c)
 
 	def exit = Command.command(TerminateAction, exitBrief, exitBrief ) ( _ exit true )
 
