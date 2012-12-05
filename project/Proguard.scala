@@ -18,7 +18,7 @@ object LaunchProguard
 	lazy val settings: Seq[Setting[_]] =
 		inScope(GlobalScope)(inConfig(Proguard)(globalSettings)) ++
 		inConfig(Proguard)( baseSettings ) :+
-		(libraryDependencies += "net.sf.proguard" % "proguard" % "4.4" % Proguard.name)
+		(libraryDependencies += "net.sf.proguard" % "proguard" % "4.6" % Proguard.name)
 
 	def globalSettings = Seq(
 		optimizePasses := 2,
@@ -124,7 +124,7 @@ object LaunchProguard
 		"org/apache/ivy/plugins/report/ivy-report-*" ::
 		Nil
 
-	private def libraryFilter = "(!META-INF/**,!*.properties,!scala/actors/**.!scala/util/parsing/*.class,!scala/xml/**.class,!scala/package$.class,**.class)"
+	private def libraryFilter = "(!META-INF/**,!*.properties,!scala/actors/**.!scala/util/parsing/*.class,**.class)"
 	private def jlineFilter = "(!META-INF/**)"
 	private def generalFilter = "(!META-INF/**,!*.properties)"
 
