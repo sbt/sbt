@@ -1,7 +1,7 @@
 package xsbt.boot
 
 import java.io.File
-import java.util.Arrays.equals
+import java.util.Arrays.{equals => arrEquals}
 import org.scalacheck._
 
 object PreTest extends Properties("Pre")
@@ -17,8 +17,8 @@ object PreTest extends Properties("Pre")
 	property("require true") = Prop.forAll { (s: String) => require(true, s); true }
 	property("error") = Prop.forAll( (s: String) => Prop.throws(error(s), classOf[BootException]) )
 	property("toBoolean") = Prop.forAll( (s: String) => trap(toBoolean(s)) == trap(java.lang.Boolean.parseBoolean(s)) )
-	property("toArray") = Prop.forAll( (list: List[Int]) => equals(list.toArray, toArray(list)) )
-	property("toArray") = Prop.forAll( (list: List[String]) => equals(list.toArray, toArray(list)) )
+	property("toArray") = Prop.forAll( (list: List[Int]) => arrEquals(list.toArray, toArray(list)) )
+	property("toArray") = Prop.forAll( (list: List[String]) => objArrEquals(list.toArray, toArray(list)) )
 	property("concat") = Prop.forAll(genFiles, genFiles) { (a: Array[File], b: Array[File]) => (a ++ b) sameElements concat(a, b) }
 	property("array") = Prop.forAll(genFiles) { (a: Array[File]) => array(a.toList : _*) sameElements Array(a: _*) }
 
@@ -26,4 +26,7 @@ object PreTest extends Properties("Pre")
 	implicit lazy val genFiles: Gen[Array[File]] = Arbitrary.arbitrary[Array[File]]
 
 	def trap[T](t: => T): Option[T] = try { Some(t) } catch { case e: Exception => None }
+
+	private[this] def objArrEquals[T <: AnyRef](a: Array[T], b: Array[T]): Boolean =
+		arrEquals(a.asInstanceOf[Array[AnyRef]], b.asInstanceOf[Array[AnyRef]])
 }
