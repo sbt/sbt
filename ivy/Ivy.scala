@@ -168,6 +168,11 @@ final class IvySbt(val configuration: IvyConfiguration)
 			val md = PomModuleDescriptorParser.getInstance.parseDescriptor(settings, toURL(pc.file), pc.validate)
 			val dmd = IvySbt.toDefaultModuleDescriptor(md)
 			IvySbt.addConfigurations(dmd, Configurations.defaultInternal)
+			for( is <- pc.ivyScala) {
+				val confParser = new CustomXmlParser.CustomParser(settings, Some(Configurations.DefaultMavenConfiguration.name))
+				confParser.setMd(dmd)
+				addScalaToolDependencies(dmd, confParser, is)
+			}
 			(dmd, "compile")
 		}
 		/** Parses the Ivy file 'ivyFile' from the given `IvyFileConfiguration`.*/
@@ -177,8 +182,14 @@ final class IvySbt(val configuration: IvyConfiguration)
 			parser.setValidate(ifc.validate)
 			parser.setSource(toURL(ifc.file))
 			parser.parse()
-			val md = parser.getModuleDescriptor()
-			(IvySbt.toDefaultModuleDescriptor(md), parser.getDefaultConf)
+			val dmd = IvySbt.toDefaultModuleDescriptor(parser.getModuleDescriptor())
+			for( is <- ifc.ivyScala )
+				addScalaToolDependencies(dmd, parser, is)
+			(dmd, parser.getDefaultConf)
+		}
+		private def addScalaToolDependencies(dmd: DefaultModuleDescriptor, parser: CustomXmlParser.CustomParser, is: IvyScala) {
+			IvySbt.addConfigurations(dmd, Configurations.ScalaTool :: Nil)
+			IvySbt.addDependencies(dmd, ScalaArtifacts.toolDependencies(is.scalaOrganization, is.scalaFullVersion), parser)
 		}
 		private def toURL(file: File) = file.toURI.toURL
 		private def configureEmpty(ec: EmptyConfiguration) =

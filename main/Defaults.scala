@@ -35,13 +35,6 @@ object Defaults extends BuildCommon
 {
 	final val CacheDirectoryName = "cache"
 
-	private[sbt] def scalaToolDependencies(org: String, version: String): Seq[ModuleID] = Seq(
-		scalaToolDependency(org, ScalaArtifacts.CompilerID, version),
-		scalaToolDependency(org, ScalaArtifacts.LibraryID, version)
-	)
-	private[this] def scalaToolDependency(org: String, id: String, version: String): ModuleID = 
-		ModuleID(org, id, version, Some(Configurations.ScalaTool.name + "->default,optional(default)") )
-
 	def configSrcSub(key: SettingKey[File]): Initialize[File] = (key in ThisScope.copy(config = Global), configuration) { (src, conf) => src / nameForSrc(conf.name) }
 	def nameForSrc(config: String) = if(config == Configurations.Compile.name) "main" else config
 	def prefix(config: String) = if(config == Configurations.Compile.name) "" else config + "-"
@@ -857,16 +850,16 @@ object Classpaths
 		allDependencies := {
 			val base = projectDependencies.value ++ libraryDependencies.value
 			val pluginAdjust = if(sbtPlugin.value) sbtDependency.value.copy(configurations = Some(Provided.name)) +: base else base
-			if(scalaHome.value.isDefined)
+			if(scalaHome.value.isDefined || ivyScala.value.isEmpty)
 				pluginAdjust
 			else
-				Defaults.scalaToolDependencies(scalaOrganization.value, scalaVersion.value) ++ pluginAdjust
+				ScalaArtifacts.toolDependencies(scalaOrganization.value, scalaVersion.value) ++ pluginAdjust
 		},
 		ivyLoggingLevel in GlobalScope :== UpdateLogging.DownloadOnly,
 		ivyXML in GlobalScope :== NodeSeq.Empty,
 		ivyValidate in GlobalScope :== false,
-		ivyScala <<= ivyScala or (scalaHome, scalaVersion in update, scalaBinaryVersion in update) { (sh,fv,bv) =>
-			Some(new IvyScala(fv, bv, Nil, filterImplicit = false, checkExplicit = true, overrideScalaVersion = sh.isEmpty))
+		ivyScala <<= ivyScala or (scalaHome, scalaVersion in update, scalaBinaryVersion in update, scalaOrganization) { (sh,fv,bv,so) =>
+			Some(new IvyScala(fv, bv, Nil, filterImplicit = false, checkExplicit = true, overrideScalaVersion = sh.isEmpty, scalaOrganization = so))
 		},
 		moduleConfigurations in GlobalScope :== Nil,
 		publishTo in GlobalScope :== None,

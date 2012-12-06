@@ -19,6 +19,13 @@ object ScalaArtifacts
 	val LibraryID = ScalaLibraryID
 	val CompilerID = ScalaCompilerID
 	def libraryDependency(version: String): ModuleID = ModuleID(Organization, LibraryID, version)
+
+	private[sbt] def toolDependencies(org: String, version: String): Seq[ModuleID] = Seq(
+		scalaToolDependency(org, ScalaArtifacts.CompilerID, version),
+		scalaToolDependency(org, ScalaArtifacts.LibraryID, version)
+	)
+	private[this] def scalaToolDependency(org: String, id: String, version: String): ModuleID = 
+		ModuleID(org, id, version, Some(Configurations.ScalaTool.name + "->default,optional(default)") )
 }
 object SbtArtifacts
 {
@@ -28,7 +35,7 @@ object SbtArtifacts
 
 import ScalaArtifacts._
 
-final case class IvyScala(scalaFullVersion: String, scalaBinaryVersion: String, configurations: Iterable[Configuration], checkExplicit: Boolean, filterImplicit: Boolean, overrideScalaVersion: Boolean)
+final case class IvyScala(scalaFullVersion: String, scalaBinaryVersion: String, configurations: Iterable[Configuration], checkExplicit: Boolean, filterImplicit: Boolean, overrideScalaVersion: Boolean, scalaOrganization: String = ScalaArtifacts.Organization)
 
 private object IvyScala
 {
