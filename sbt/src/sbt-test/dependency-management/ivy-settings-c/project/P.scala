@@ -23,6 +23,7 @@ object B extends Build
 	)
 	lazy val baseSettings = Seq(
 		autoScalaLibrary := false,
+		ivyScala := None,
 		unmanagedJars in Compile <++= scalaInstance map (_.jars),
 		publishArtifact in packageSrc := false,
 		publishArtifact in packageDoc := false,

@@ -1,13 +1,13 @@
-> scala-override
+> scalaOverride
 
-$ touch sbinary
+$ touch stm
 > reload
-> scala-override
+> scalaOverride
 
 $ touch noscala
 > reload
-> scala-override
+> scalaOverride
 
-$ delete sbinary
+$ delete stm
 > reload
--> scala-override
+-> scalaOverride

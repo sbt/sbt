@@ -1,3 +1,3 @@
-> check test scalatest scala-library.jar servlet-api
+> check test scalatest scala-library servlet-api
 > check runtime scala-library
 > check compile scala-library servlet-api

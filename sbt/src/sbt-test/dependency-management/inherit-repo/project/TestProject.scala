@@ -3,10 +3,12 @@
 
 object TestProject extends Build
 {
-	override lazy val settings = super.settings :+
-		(externalResolvers := Nil) :+
-		(autoScalaLibrary := false) :+
-		( ivyPaths <<= baseDirectory( dir => new IvyPaths(dir, Some(dir / "ivy-home"))) )
+	override lazy val settings = super.settings ++ Seq(
+		externalResolvers := Nil,
+		autoScalaLibrary := false,
+		ivyScala := None,
+		ivyPaths <<= baseDirectory( dir => new IvyPaths(dir, Some(dir / "ivy-home")))
+	)
 
 	lazy val root = Project("root", file(".")) aggregate(a, b)
 
