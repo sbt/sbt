@@ -79,6 +79,7 @@ final case class InlineConfiguration(module: ModuleID, moduleInfo: ModuleInfo, d
 	def withConfigurations(configurations: Seq[Configuration]) =  copy(configurations = configurations)
 	def noScala = copy(ivyScala = None)
 }
+@deprecated("Define a module using inline Scala (InlineConfiguration), a pom.xml (PomConfiguration), or an ivy.xml (IvyFileConfiguration).", "0.13.0")
 final case class EmptyConfiguration(module: ModuleID, moduleInfo: ModuleInfo, ivyScala: Option[IvyScala], validate: Boolean) extends ModuleSettings
 {
 	def noScala = copy(ivyScala = None)
@@ -100,6 +101,7 @@ object InlineConfiguration
 }
 object ModuleSettings
 {
+	@deprecated("Explicitly select configuration from pom.xml, ivy.xml, or inline Scala.", "0.13.0")
 	def apply(ivyScala: Option[IvyScala], validate: Boolean, module: => ModuleID, moduleInfo: => ModuleInfo)(baseDirectory: File, log: Logger): ModuleSettings =
 	{
 		log.debug("Autodetecting dependencies.")
