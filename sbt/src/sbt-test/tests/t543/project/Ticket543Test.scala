@@ -10,6 +10,7 @@ object Ticket543Test extends Build {
 
 	lazy val root = Project("root", file("."), settings = defaultSettings ++  Seq(
 		libraryDependencies += "org.scalatest" %% "scalatest" % "1.8" % "test",
+		scalaVersion := "2.9.2",
 		fork := true,
 		testListeners += new TestReportListener {
 		  def testEvent(event: TestEvent) {

@@ -13,9 +13,10 @@ object ForkTestsTest extends Build {
 	def groupPrefix(idx: Int) = groupId(idx) + "_file_"
 
 	lazy val root = Project("root", file("."), settings = defaultSettings ++  Seq(
+		scalaVersion := "2.9.2",
 		testGrouping <<= definedTests in Test map { tests =>
 			assert(tests.size == 1)
-			val groups = Stream const tests(0) take totalFiles grouped groupSize
+			val groups = Stream continually tests(0) take totalFiles grouped groupSize
 			for ((ts, idx) <- groups.toSeq.zipWithIndex)	yield {
 				new Group(groupId(idx), ts, SubProcess(Seq("-Dgroup.prefix=" + groupPrefix(idx), "-Dgroup.size=" + ts.size)))
 			}
@@ -31,6 +32,6 @@ object ForkTestsTest extends Build {
 				}
 		},
 		concurrentRestrictions := Tags.limit(Tags.ForkedTestGroup, 2) :: Nil,
-		libraryDependencies += "org.scalatest" % "scalatest_2.9.0" % "1.6.1" % "test"
+		libraryDependencies += "org.scalatest" %% "scalatest" % "1.8" % "test"
 	))
 }
