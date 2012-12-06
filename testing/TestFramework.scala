@@ -158,7 +158,17 @@ object TestFramework
 		}
 		if(!frameworks.isEmpty)
 			assignTests()
-		map.toMap transform { (framework, tests) => (tests.toSet, args(framework)) };
+		map.toMap transform { (framework, tests) => ( mergeDuplicates(framework, tests.toSeq), args(framework)) };
+	}
+	private[this] def mergeDuplicates(framework: Framework, tests: Seq[TestDefinition]): Set[TestDefinition] =
+	{
+		val frameworkPrints = framework.tests.reverse
+		def pickOne(prints: Seq[Fingerprint]): Fingerprint =
+			frameworkPrints.find(prints.toSet) getOrElse prints.head
+		val uniqueDefs =
+			for( (name, defs) <- tests.groupBy(_.name) ) yield
+				new TestDefinition(name, pickOne(defs.map(_.fingerprint)))
+		uniqueDefs.toSet
 	}
 		
 	private def createTestTasks(loader: ClassLoader, tests: Map[Framework, (Set[TestDefinition], Seq[String])], log: Logger, listeners: Seq[TestReportListener]) =
