@@ -36,25 +36,6 @@ Please report any issues to the sbt-launcher-package_ project.
 You may also try out the `Manual Installation`_.
 
 
-Gentoo
-------
-
-In official tree there is no ebuild for sbt. But there are ebuilds to
-merge sbt from binaries:
-https://github.com/whiter4bbit/overlays/tree/master/dev-java/sbt-bin. To
-merge sbt from this ebuilds you can do next:
-
-.. code-block:: console
-
-    $ mkdir -p /usr/local/portage && cd /usr/local/portage
-    $ git clone git://github.com/whiter4bbit/overlays.git
-    $ echo "PORTDIR_OVERLAY=$PORTDIR_OVERLAY /usr/local/portage/overlays" >> /etc/make.conf
-    $ emerge sbt-bin
-
-.. note::
-
-   Please report any issues with the ebuild `here <https://github.com/whiter4bbit/overlays/issues>`_.
-
 Mac
 ---
 
@@ -73,6 +54,26 @@ Or `HomeBrew <http://mxcl.github.com/homebrew/>`_:
 .. note::
  
    Please make sure to report any issues with these packages to the relevant maintainers.
+
+
+Gentoo
+------
+
+In official tree there is no ebuild for sbt. But there are ebuilds to
+merge sbt from binaries:
+https://github.com/whiter4bbit/overlays/tree/master/dev-java/sbt-bin. To
+merge sbt from this ebuilds you can do next:
+
+.. code-block:: console
+
+    $ mkdir -p /usr/local/portage && cd /usr/local/portage
+    $ git clone git://github.com/whiter4bbit/overlays.git
+    $ echo "PORTDIR_OVERLAY=$PORTDIR_OVERLAY /usr/local/portage/overlays" >> /etc/make.conf
+    $ emerge sbt-bin
+
+.. note::
+
+   Please report any issues with the ebuild `here <https://github.com/whiter4bbit/overlays/issues>`_.
 
 Manual Installation
 -------------------
@@ -115,12 +116,6 @@ Tips and Notes
 
 If you have any trouble running ``sbt``, see :doc:`/Detailed-Topics/Setup-Notes` on terminal
 encodings, HTTP proxies, and JVM options.
-
-To install sbt, you could also use this fairly elaborated shell script:
-https://github.com/paulp/sbt-extras (see sbt file in the root dir). It
-has the same purpose as the simple shell script above but it will
-install sbt if necessary. It knows all recent versions of sbt and it
-also comes with a lot of useful command line options.
 
 Next
 ----

@@ -83,7 +83,7 @@ You can force a particular version of sbt by creating a file
 
     sbt.version=0.13.0
 
-sbt is 99% source compatible from release to release.
+to force the use of sbt 0.13.0.  sbt is 99% source compatible from release to release.
 Still, setting the sbt version in ``project/build.properties`` avoids
 any potential confusion.
 

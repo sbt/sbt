@@ -35,8 +35,7 @@ of your project.
 *Build definition files do not affect sbt's map directly.*
 
 Instead, the build definition creates a huge list of objects with type
-``Setting[T]`` where ``T`` is the type of the value in the map. (Scala's
-``Setting[T]`` is like ``Setting<T>`` in Java.) A ``Setting`` describes
+``Setting[T]`` where ``T`` is the type of the value in the map.  A ``Setting`` describes
 a *transformation to the map*, such as adding a new key-value pair or
 appending to an existing value. (In the spirit of functional
 programming, a transformation returns a new map, it does not update the
@@ -88,6 +87,7 @@ The expressions in ``build.sbt`` are independent of one another, and
 they are expressions, rather than complete Scala statements.  These
 expressions may be interspersed with ``val``s, ``lazy val``s, and ``def``s,
 but top-level ``object``s and classes are not allowed in ``build.sbt``.
+Those should go in the ``project/`` directory as full Scala source files.
 
 On the left, ``name``, ``version``, and ``scalaVersion`` are *keys*. A
 key is an instance of ``SettingKey[T]``, ``TaskKey[T]``, or
@@ -116,7 +116,8 @@ If you use the wrong value type, the build definition will not compile:
 
      name := 42  // will not compile
 
-### Settings are separated by blank lines
+Settings are separated by blank lines
+-------------------------------------
 
 You can't write a ``build.sbt`` like this:
 
