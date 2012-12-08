@@ -85,6 +85,10 @@ Test plugins
    https://github.com/guardian/sbt-teamcity-test-reporting-plugin
 -  xsbt-cucumber-plugin:
    https://github.com/skipoleschris/xsbt-cucumber-plugin
+-  sbt-multi-jvm:
+   https://github.com/typesafehub/sbt-multi-jvm
+-  schoir (Distributed testing plugin):
+   https://github.com/typesafehub/schoir
 
 Static Code Analysis plugins
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -101,6 +105,8 @@ One jar plugins
 -  xsbt-proguard-plugin: https://github.com/siasia/xsbt-proguard-plugin
 -  sbt-deploy: https://github.com/reaktor/sbt-deploy
 -  sbt-appbundle (os x standalone): https://github.com/sbt/sbt-appbundle
+-  sbt-onejar (Packages your project using One-JAR™):
+   https://github.com/sbt/sbt-onejar
 
 Frontend development plugins
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -133,11 +139,15 @@ Release plugins
 -  sbt-pgp (PGP signing plugin, can generate keys too):
    https://github.com/sbt/sbt-pgp
 -  sbt-release (customizable release process):
-   https://github.com/gseitz/sbt-release
+   https://github.com/sbt/sbt-release
 -  sbt-unique-version (emulates unique snapshots):
    https://github.com/sbt/sbt-unique-version
 -  sbt-pack (generates packages with dependent jars and launch scripts):
    https://github.com/xerial/sbt-pack
+-  sbt-start-script:
+   https://github.com/sbt/sbt-start-script
+-  sbt-native-packager:
+   https://github.com/sbt/sbt-native-packager
 
 System plugins
 ~~~~~~~~~~~~~~
@@ -146,8 +156,12 @@ System plugins
    https://github.com/steppenwells/sbt-sh
 -  cronish-sbt (interval sbt / shell command execution):
    https://github.com/philcali/cronish-sbt
--  git (executes git commands): https://github.com/sbt/sbt-git-plugin
+-  git (executes git commands): https://github.com/sbt/sbt-git
 -  svn (execute svn commands): https://github.com/xuwei-k/sbtsvn
+-  sbt-groll (sbt plugin to navigate the Git history):
+   https://github.com/sbt/sbt-groll
+-  sbt-twt (twitter processor for sbt):
+   https://github.com/sbt/sbt-twt
 
 Code generator plugins
 ~~~~~~~~~~~~~~~~~~~~~~
@@ -157,10 +171,10 @@ Code generator plugins
 -  sbt-scalaxb (XSD and WSDL binding):
    https://github.com/eed3si9n/scalaxb
 -  sbt-protobuf (Google Protocol Buffers):
-   https://github.com/gseitz/sbt-protobuf
+   https://github.com/sbt/sbt-protobuf
 -  sbt-avro (Apache Avro): https://github.com/cavorite/sbt-avro
 -  sbt-xjc (XSD binding, using `JAXB XJC <http://download.oracle.com/javase/6/docs/technotes/tools/share/xjc.html>`_):
-   https://github.com/retronym/sbt-xjc
+   https://github.com/sbt/sbt-xjc
 -  xsbt-scalate-generate (Generate/Precompile Scalate Templates):
    https://github.com/backchatio/xsbt-scalate-generate
 -  sbt-antlr (Generate Java source code based on ANTLR3 grammars):
@@ -179,6 +193,8 @@ Code generator plugins
 -  sbtend (Generate Java source code from
    `xtend <http://www.eclipse.org/xtend/>`_ ):
    https://github.com/xuwei-k/sbtend
+-  sbt-boilerplate (generating scala.Tuple/Function related boilerplate code):
+   https://github.com/sbt/sbt-boilerplate
 
 Database plugins
 ~~~~~~~~~~~~~~~~
@@ -193,6 +209,8 @@ Documentation plugins
 
 -  sbt-lwm (Convert lightweight markup files, e.g., Markdown and
    Textile, to HTML): http://software.clapper.org/sbt-lwm/
+-  sbt-site (Site generation for SBT):
+   https://github.com/sbt/sbt-site
 
 Utility plugins
 ~~~~~~~~~~~~~~~
@@ -220,6 +238,14 @@ Utility plugins
 -  sbt-man (Looks up scaladoc): https://github.com/sbt/sbt-man
 -  sbt-taglist (Looks for TODO-tags in the sources):
    https://github.com/johanandren/sbt-taglist
+-  migration-manager:
+   https://github.com/typesafehub/migration-manager
+-  sbt-scalariform (adding support for source code formatting using Scalariform):
+   https://github.com/sbt/sbt-scalariform
+-  sbt-aspectj:
+   https://github.com/sbt/sbt-aspectj
+-  sbt-properties:
+   https://github.com/sbt/sbt-properties
 
 Code coverage plugins
 ~~~~~~~~~~~~~~~~~~~~~
