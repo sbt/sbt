@@ -36,6 +36,7 @@ trait Plugin
 object Build
 {
 	val default: Build = new Build { override def projectDefinitions(base: File) = defaultProject(base) :: Nil }
+
 	def defaultID(base: File): String = "default-" + Hash.trimHashString(base.getAbsolutePath, 6)
 	def defaultProject(base: File): Project = Project(defaultID(base), base).settings(
 		// if the user has overridden the name, use the normal organization that is derived from the name.

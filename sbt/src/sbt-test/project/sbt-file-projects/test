@@ -1,0 +1,29 @@
+# nothing in project/
+> g
+-> root/compile
+> a/compile
+> a/aa
+> b/compile
+> b/h
+> c/compile
+
+$ copy-file changes/Basic.scala project/Build.scala
+> reload
+> g
+> root/compile
+> a/compile
+> a/aa
+> b/compile
+> b/h
+> c/compile
+
+$ copy-file changes/Restricted.scala project/Build.scala
+> reload
+> root/compile
+-> g
+-> h
+-> a/compile
+-> a/aa
+-> b/compile
+-> b/h
+> c/compile

@@ -43,7 +43,7 @@ final class LoadedBuildUnit(val unit: BuildUnit, val defined: Map[String, Resolv
 	override def toString = unit.toString
 }
 
-final class LoadedDefinitions(val base: File, val target: Seq[File], val loader: ClassLoader, val builds: Seq[Build], val buildNames: Seq[String])
+final class LoadedDefinitions(val base: File, val target: Seq[File], val loader: ClassLoader, val builds: Seq[Build], val projects: Seq[Project], val buildNames: Seq[String])
 final class LoadedPlugins(val base: File, val pluginData: PluginData, val loader: ClassLoader, val plugins: Seq[Plugin], val pluginNames: Seq[String])
 {
 	def fullClasspath: Seq[Attributed[File]] = pluginData.classpath

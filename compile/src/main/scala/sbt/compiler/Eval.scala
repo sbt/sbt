@@ -12,11 +12,33 @@ import Tokens.{EOF, NEWLINE, NEWLINES, SEMI}
 import java.io.File
 import java.nio.ByteBuffer
 import java.net.URLClassLoader
+import Eval.{getModule, getValue, WrapValName}
 
 // TODO: provide a way to cleanup backing directory
 
 final class EvalImports(val strings: Seq[(String,Int)], val srcName: String)
+
+/** The result of evaluating a Scala expression.  The inferred type of the expression is given by `tpe`. 
+* The value may be obtained from `getValue` by providing a parent class loader that provides the classes from the classpath 
+* this expression was compiled against.  Each call to `getValue` constructs a new class loader and loads
+* the module from that class loader.  `generated` contains the compiled classes and cache files related
+* to the expression.  The name of the auto-generated module wrapping the expression is `enclosingModule`. */
 final class EvalResult(val tpe: String, val getValue: ClassLoader => Any, val generated: Seq[File], val enclosingModule: String)
+
+/** The result of evaluating a group of Scala definitions.  The definitions are wrapped in an auto-generated,
+* top-level module named `enclosingModule`.  `generated` contains the compiled classes and cache files related to the definitions.
+* A new class loader containing the module may be obtained from `loader` by passing the parent class loader providing the classes
+* from the classpath that the definitions were compiled against.  The list of vals with the requested types is `valNames`.
+* The values for these may be obtained by providing the parent class loader to `values` as is done with `loader`.*/
+final class EvalDefinitions(val loader: ClassLoader => ClassLoader, val generated: Seq[File], val enclosingModule: String, val valNames: Seq[String])
+{
+	def values(parent: ClassLoader): Seq[Any] = {
+		val module = getModule(enclosingModule, loader(parent))
+		for(n <- valNames) yield
+			module.getClass.getMethod(n).invoke(module)
+	}
+}
+
 final class EvalException(msg: String) extends RuntimeException(msg)
 // not thread safe, since it reuses a Global instance
 final class Eval(optionsNoncp: Seq[String], classpath: Seq[File], mkReporter: Settings => Reporter, backing: Option[File])
@@ -46,39 +68,49 @@ final class Eval(optionsNoncp: Seq[String], classpath: Seq[File], mkReporter: Se
 
 	private[this] var toUnlinkLater = List[Symbol]()
 	private[this] def unlink(sym: Symbol) = sym.owner.info.decls.unlink(sym)
-	
+
 	def eval(expression: String, imports: EvalImports = noImports, tpeName: Option[String] = None, srcName: String = "<setting>", line: Int = DefaultStartLine): EvalResult =
 	{
-		val ev = new EvalType {
+		val ev = new EvalType[String] {
 			def makeUnit = mkUnit(srcName, line, expression)
 			def unlink = true
-			def load(moduleName: String, loader: ClassLoader): Any = getValue[Any](moduleName, loader)
 			def unitBody(unit: CompilationUnit, importTrees: Seq[Tree], moduleName: String): Tree = {
 				val (parser, tree) = parse(unit, settingErrorStrings, _.expr())
 				val tpt: Tree = expectedType(tpeName)
 				augment(parser, importTrees, tree, tpt, moduleName)
 			}
+			def extra(run: Run, unit: CompilationUnit) = atPhase(run.typerPhase.next) { (new TypeExtractor).getType(unit.body) }
+			def read(file: File) = IO.read(file)
+			def write(value: String, f: File) = IO.write(f, value)
 		}
-		evalCommon(expression :: Nil, imports, tpeName, ev)
+		val i = evalCommon(expression :: Nil, imports, tpeName, ev)
+		val value = (cl: ClassLoader) => getValue[Any](i.enclosingModule, i.loader(cl))
+		new EvalResult(i.extra, value, i.generated, i.enclosingModule)
 	}
-	private[sbt] def evalDefinitions(definitions: Seq[(String,Range)], imports: EvalImports, srcName: String): EvalResult =
+	def evalDefinitions(definitions: Seq[(String,Range)], imports: EvalImports, srcName: String, valTypes: Seq[String]): EvalDefinitions =
 	{
 		require(definitions.nonEmpty, "Definitions to evaluate cannot be empty.")
-		val ev = new EvalType {
+		val ev = new EvalType[Seq[String]] {
 			lazy val (fullUnit, defUnits) = mkDefsUnit(srcName, definitions)
 			def makeUnit = fullUnit
 			def unlink = false
-			def load(moduleName: String, loader: ClassLoader): Any = getModule(moduleName, loader)
 			def unitBody(unit: CompilationUnit, importTrees: Seq[Tree], moduleName: String): Tree = {
 				val fullParser = new syntaxAnalyzer.UnitParser(unit)
 				val trees = defUnits flatMap parseDefinitions
 				syntheticModule(fullParser, importTrees, trees.toList, moduleName)
 			}
+			def extra(run: Run, unit: CompilationUnit) = {
+				val tpes = valTypes.map(tpe => rootMirror.getRequiredClass(tpe).tpe)
+				atPhase(run.typerPhase.next) { (new ValExtractor(tpes)).getVals(unit.body) }
+			}
+			def read(file: File) = IO.readLines(file)
+			def write(value: Seq[String], file: File) = IO.writeLines(file, value)
 		}
-		evalCommon(definitions.map(_._1), imports, Some(""), ev)
+		val i = evalCommon(definitions.map(_._1), imports, Some(""), ev)
+		new EvalDefinitions(i.loader, i.generated, i.enclosingModule, i.extra)
 	}
 
-	private[this] def evalCommon(content: Seq[String], imports: EvalImports, tpeName: Option[String], ev: EvalType): EvalResult =
+	private[this] def evalCommon[T](content: Seq[String], imports: EvalImports, tpeName: Option[String], ev: EvalType[T]): EvalIntermediate[T] =
 	{
 			import Eval._
 		val hash = Hash.toHex(Hash(bytes( stringSeqBytes(content) :: optBytes(backing)(fileExistsBytes) :: stringSeqBytes(options) ::
@@ -94,21 +126,22 @@ final class Eval(optionsNoncp: Seq[String], classpath: Seq[File], mkReporter: Se
 		}
 		def unlinkAll(): Unit = for( (sym, _) <- run.symSource ) if(ev.unlink) unlink(sym) else toUnlinkLater ::= sym
 
-		val (tpe, value) =
-			(tpeName, backing) match {
-				case (Some(tpe), Some(back)) if classExists(back, moduleName) =>
-					val loader = (parent: ClassLoader) => ev.load(moduleName, new URLClassLoader(Array(back.toURI.toURL), parent))
-					(tpe, loader)
-				case _ =>
-					try { compileAndLoad(run, unit, imports, backing, moduleName, ev) }
-					finally { unlinkAll() }
-			}
+		val (extra, loader) = backing match {
+			case Some(back) if classExists(back, moduleName) =>
+				val loader = (parent: ClassLoader) => new URLClassLoader(Array(back.toURI.toURL), parent)
+				val extra = ev.read(cacheFile(back,moduleName))
+				(extra, loader)
+			case _ =>
+				try { compileAndLoad(run, unit, imports, backing, moduleName, ev) }
+				finally { unlinkAll() }
+		}
 
 		val classFiles = getClassFiles(backing, moduleName)
-		new EvalResult(tpe, value, classFiles, moduleName)
+		new EvalIntermediate(extra, loader, classFiles, moduleName)
 	}
-
-	private[this] def compileAndLoad(run: Run, unit: CompilationUnit, imports: EvalImports, backing: Option[File], moduleName: String, ev: EvalType): (String, ClassLoader => Any) =
+	// location of the cached type or definition information
+	private[this] def cacheFile(base: File, moduleName: String): File = new File(base, moduleName + ".cache")
+	private[this] def compileAndLoad[T](run: Run, unit: CompilationUnit, imports: EvalImports, backing: Option[File], moduleName: String, ev: EvalType[T]): (T, ClassLoader => ClassLoader) =
 	{
 		val dir = outputDirectory(backing)
 		settings.outputDirs setSingleOutput dir
@@ -130,10 +163,11 @@ final class Eval(optionsNoncp: Seq[String], classpath: Seq[File], mkReporter: Se
 
 		compile(run.namerPhase)
 		checkError("Type error in expression")
-		val tpe = atPhase(run.typerPhase.next) { (new TypeExtractor).getType(unit.body) }
-		val loader = (parent: ClassLoader) => ev.load(moduleName, new AbstractFileClassLoader(dir, parent))
 
-		(tpe, loader)
+		val extra = ev.extra(run, unit)
+		for(f <- backing) ev.write(extra, cacheFile(f, moduleName))
+		val loader = (parent: ClassLoader) => new AbstractFileClassLoader(dir, parent)
+		(extra, loader)
 	}
 
 	private[this] def expectedType(tpeName: Option[String]): Tree = 
@@ -148,7 +182,6 @@ final class Eval(optionsNoncp: Seq[String], classpath: Seq[File], mkReporter: Se
 	def load(dir: AbstractFile, moduleName: String): ClassLoader => Any  = parent => getValue[Any](moduleName, new AbstractFileClassLoader(dir, parent))
 	def loadPlain(dir: File, moduleName: String): ClassLoader => Any  = parent => getValue[Any](moduleName, new URLClassLoader(Array(dir.toURI.toURL), parent))
 
-	val WrapValName = "$sbtdef"
 		//wrap tree in object objectName { def WrapValName = <tree> }
 	def augment(parser: global.syntaxAnalyzer.UnitParser, imports: Seq[Tree], tree: Tree, tpt: Tree, objectName: String): Tree =
 	{
@@ -173,20 +206,7 @@ final class Eval(optionsNoncp: Seq[String], classpath: Seq[File], mkReporter: Se
 		parser.makePackaging(0, emptyPkg, (imports :+ moduleDef).toList)
 	}
 
-	def getValue[T](objectName: String, loader: ClassLoader): T =
-	{
-		val module = getModule(objectName, loader)
-		val accessor = module.getClass.getMethod(WrapValName)
-		val value = accessor.invoke(module)
-		value.asInstanceOf[T]
-	}
-	private[this] def getModule(moduleName: String, loader: ClassLoader): Any =
-	{
-		val clazz = Class.forName(moduleName + "$", true, loader)
-		clazz.getField("MODULE$").get(null)
-	}
-
-	final class TypeExtractor extends Traverser {
+	private[this] final class TypeExtractor extends Traverser {
 		private[this] var result = ""
 		def getType(t: Tree) = { result = ""; traverse(t); result }
 		override def traverse(tree: Tree): Unit = tree match {
@@ -194,6 +214,18 @@ final class Eval(optionsNoncp: Seq[String], classpath: Seq[File], mkReporter: Se
 			case _ => super.traverse(tree)
 		}
 	}
+	/** Tree traverser that obtains the names of vals in a top-level module whose type is a subtype of one of `types`.*/
+	private[this] final class ValExtractor(types: Seq[Type]) extends Traverser {
+		private[this] var vals = List[String]()
+		def getVals(t: Tree): List[String] = { vals = Nil; traverse(t); vals }
+		override def traverse(tree: Tree): Unit = tree match {
+			case ValDef(_, n, actualTpe, _) if  tree.symbol.owner.isTopLevelModule && types.exists(_ <:< actualTpe.tpe) =>
+				vals ::= nme.localToGetter(n).encoded
+			case _ => super.traverse(tree)
+		}
+	}
+	private[this] final class EvalIntermediate[T](val extra: T, val loader: ClassLoader => ClassLoader, val generated: Seq[File], val enclosingModule: String)
+
 	private[this] def classExists(dir: File, name: String) = (new File(dir, name + ".class")).exists
 	// TODO: use the code from Analyzer
 	private[this] def getClassFiles(backing: Option[File], moduleName: String): Seq[File] =
@@ -276,7 +308,17 @@ final class Eval(optionsNoncp: Seq[String], classpath: Seq[File], mkReporter: Se
 		defs
 	}
 
-	private[this] trait EvalType {
+	private[this] trait EvalType[T]
+	{
+		/** Extracts additional information after the compilation unit is evaluated.*/
+		def extra(run: Run, unit: CompilationUnit): T
+
+		/** Deserializes the extra information for unchanged inputs from a cache file.*/
+		def read(file: File): T
+
+		/** Serializes the extra information to a cache file, where it can be `read` back if inputs haven't changed.*/
+		def write(value: T, file: File): Unit
+	
 		/** Constructs the full compilation unit for this evaluation.
 		* This is used for error reporting during compilation.
 		* The `unitBody` method actually does the parsing and may parse the Tree from another source. */
@@ -284,10 +326,6 @@ final class Eval(optionsNoncp: Seq[String], classpath: Seq[File], mkReporter: Se
 	
 		/** If true, all top-level symbols from this evaluation will be unlinked.*/
 		def unlink: Boolean
-	
-		/** Gets the value for this evaluation.
-		* The enclosing `moduleName` and the `parent` class loader containing classes on the classpath are provided. */
-		def load(moduleName: String, parent: ClassLoader): Any
 
 		/** Constructs the Tree to be compiled.  The full compilation `unit` from `makeUnit` is provided along with the
 		* parsed imports `importTrees` to be used.  `moduleName` should be name of the enclosing module.
@@ -365,6 +403,26 @@ private object Eval
 		val buffer = ByteBuffer.allocate(4)
 		buffer.putInt(i)
 		buffer.array
+	}
+
+	/** The name of the synthetic val in the synthetic module that an expression is assigned to. */
+	final val WrapValName = "$sbtdef"
+
+	/** Gets the value of the expression wrapped in module `objectName`, which is accessible via `loader`.
+	* The module name should not include the trailing `$`. */
+	def getValue[T](objectName: String, loader: ClassLoader): T =
+	{
+		val module = getModule(objectName, loader)
+		val accessor = module.getClass.getMethod(WrapValName)
+		val value = accessor.invoke(module)
+		value.asInstanceOf[T]
+	}
+
+	/** Gets the top-level module `moduleName` from the provided class `loader`.  The module name should not include the trailing `$`.*/
+	def getModule(moduleName: String, loader: ClassLoader): Any =
+	{
+		val clazz = Class.forName(moduleName + "$", true, loader)
+		clazz.getField("MODULE$").get(null)
 	}
 
 	private val classDirFilter: FileFilter = DirectoryFilter || GlobFilter("*.class")

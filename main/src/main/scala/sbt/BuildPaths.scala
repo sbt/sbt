@@ -39,13 +39,11 @@ object BuildPaths
 	private[this] def defaultStaging(globalBase: File) = globalBase / "staging"
 	private[this] def defaultGlobalPlugins(globalBase: File) = globalBase / PluginsDirectoryName
 	
-	def definitionSources(base: File): Seq[File] = (base * "*.scala").get
 	def configurationSources(base: File): Seq[File] = (base * (GlobFilter("*.sbt") - ".sbt")).get
 	def pluginDirectory(definitionBase: File) = definitionBase / PluginsDirectoryName
 
 	def evalOutputDirectory(base: File) = outputDirectory(base) / "config-classes"
 	def outputDirectory(base: File) = base / DefaultTargetName
-	def buildOutputDirectory(base: File, scalaInstance: xsbti.compile.ScalaInstance) = crossPath(outputDirectory(base), scalaInstance)
 
 	def projectStandard(base: File) = base / "project"
 	def projectHidden(base: File) = base / ConfigDirectoryName

@@ -1,3 +1,2 @@
-libraryDependencies <<= (libraryDependencies, appConfiguration) { (deps, conf) =>
-	deps :+ ("org.scala-sbt" % "sbt" % conf.provider.id.version)
-}
+libraryDependencies +=
+	"org.scala-sbt" % "sbt" % appConfiguration.value.provider.id.version

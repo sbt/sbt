@@ -14,14 +14,17 @@ package sbt
 object EvaluateConfigurations
 {
 	private[this] final class ParsedFile(val imports: Seq[(String,Int)], val definitions: Seq[(String,LineRange)], val settings: Seq[(String,LineRange)])
-	private[this] final class Definitions(val loader: ClassLoader => ClassLoader, val moduleNames: Seq[String])
 
 	private[this] val DefinitionKeywords = Seq("lazy val ", "def ", "val ")
 
-	def apply(eval: Eval, srcs: Seq[File], imports: Seq[String]): ClassLoader => Seq[Setting[_]] =
-		flatten(srcs.sortBy(_.getName) map { src =>  evaluateConfiguration(eval, src, imports) })
+	def apply(eval: Eval, srcs: Seq[File], imports: Seq[String]): ClassLoader => LoadedSbtFile =
+	{
+		val loadFiles = srcs.sortBy(_.getName) map { src =>  evaluateSbtFile(eval, src, IO.readLines(src), imports, 0) }
+		loader => (LoadedSbtFile.empty /: loadFiles) { (loaded, load) => loaded merge load(loader) }
+	}
+
 	def evaluateConfiguration(eval: Eval, src: File, imports: Seq[String]): ClassLoader => Seq[Setting[_]] =
-		evaluateConfiguration(eval, src.getPath, IO.readLines(src), imports, 0)
+		evaluateConfiguration(eval, src, IO.readLines(src), imports, 0)
 
 	private[this] def parseConfiguration(lines: Seq[String], builtinImports: Seq[String], offset: Int): ParsedFile =
 	{
@@ -31,20 +34,31 @@ object EvaluateConfigurations
 		new ParsedFile(allImports, definitions, settings)
 	}
 
-	def evaluateConfiguration(eval: Eval, name: String, lines: Seq[String], imports: Seq[String], offset: Int): ClassLoader => Seq[Setting[_]] =
+	def evaluateConfiguration(eval: Eval, file: File, lines: Seq[String], imports: Seq[String], offset: Int): ClassLoader => Seq[Setting[_]] =
 	{
+		val l = evaluateSbtFile(eval, file, lines, imports, offset)
+		loader => l(loader).settings
+	}
+
+	private[this] def evaluateSbtFile(eval: Eval, file: File, lines: Seq[String], imports: Seq[String], offset: Int): ClassLoader => LoadedSbtFile =
+	{
+		val name = file.getPath
 		val parsed = parseConfiguration(lines, imports, offset)
-		val importDefs = if(parsed.definitions.isEmpty) Nil else {
+		val (importDefs, projects) = if(parsed.definitions.isEmpty) (Nil, (l: ClassLoader) => Nil) else {
 			val definitions = evaluateDefinitions(eval, name, parsed.imports, parsed.definitions)
-			Load.importAllRoot(definitions.moduleNames).map(s => (s, -1))
+			val imp = Load.importAllRoot(definitions.enclosingModule :: Nil)
+			val projs = (loader: ClassLoader) => definitions.values(loader).map(p => resolveBase(file.getParentFile, p.asInstanceOf[Project]))
+			(imp, projs)
 		}
-		val allImports = importDefs ++ parsed.imports
+		val allImports = importDefs.map(s => (s, -1)) ++ parsed.imports
 		val settings = parsed.settings map { case (settingExpression,range) =>
 			evaluateSetting(eval, name, allImports, settingExpression, range)
 		}
 		eval.unlinkDeferred()
-		flatten(settings)
+		val loadSettings = flatten(settings)
+		loader => new LoadedSbtFile(loadSettings(loader), projects(loader), importDefs)
 	}
+	private[this] def resolveBase(f: File, p: Project) = p.copy(base = IO.resolve(f, p.base))
 	def flatten(mksettings: Seq[ClassLoader => Seq[Setting[_]]]): ClassLoader => Seq[Setting[_]] =
 		loader => mksettings.flatMap(_ apply loader)
 	def addOffset(offset: Int, lines: Seq[(String,Int)]): Seq[(String,Int)] =
@@ -53,7 +67,7 @@ object EvaluateConfigurations
 		ranges.map { case (s, r) => (s, r shift offset) }
 
 	val SettingsDefinitionName = {
-		val _ = classOf[SettingsDefinition] // this line exists to try to provide a compile-time error when the following line needs to be changed
+		val _ = classOf[sbt.Def.SettingsDefinition] // this line exists to try to provide a compile-time error when the following line needs to be changed
 		"sbt.Def.SettingsDefinition"
 	}
 	def evaluateSetting(eval: Eval, name: String, imports: Seq[(String,Int)], expression: String, range: LineRange): ClassLoader => Seq[Setting[_]] =
@@ -104,11 +118,11 @@ object EvaluateConfigurations
 		val trimmed = line.trim
 		DefinitionKeywords.exists(trimmed startsWith _)
 	}
-	private[this] def evaluateDefinitions(eval: Eval, name: String, imports: Seq[(String,Int)], definitions: Seq[(String,LineRange)]): Definitions =
+	private[this] def evaluateDefinitions(eval: Eval, name: String, imports: Seq[(String,Int)], definitions: Seq[(String,LineRange)]) =
 	{
 		val convertedRanges = definitions.map { case (s, r) => (s, r.start to r.end) }
-		val res = eval.evalDefinitions(convertedRanges, new EvalImports(imports, name), name)
-		new Definitions(loader => res.getValue(loader).getClass.getClassLoader, res.enclosingModule :: Nil)
+		val findTypes = (classOf[Project] :: /*classOf[Build] :: */ Nil).map(_.getName)
+		eval.evalDefinitions(convertedRanges, new EvalImports(imports, name), name, findTypes)
 	}
 }
 object Index

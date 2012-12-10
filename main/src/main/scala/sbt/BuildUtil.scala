@@ -59,11 +59,12 @@ object BuildUtil
 			deps(proj)(_.aggregate)
 		}
 	}
-	def baseImports = "import sbt._, Process._, Keys._" :: Nil
-	def getImports(unit: BuildUnit) = baseImports ++ importAllRoot(unit.plugins.pluginNames ++ unit.definitions.buildNames)
-	def importAll(values: Seq[String]) = if(values.isEmpty) Nil else values.map( _ + "._" ).mkString("import ", ", ", "") :: Nil
-	def importAllRoot(values: Seq[String]) = importAll(values map rootedName)
-	def rootedName(s: String) = if(s contains '.') "_root_." + s else s
+	def baseImports: Seq[String] = "import sbt._, Process._, Keys._" :: Nil
+	def getImports(unit: BuildUnit): Seq[String] = getImports(unit.plugins.pluginNames, unit.definitions.buildNames)
+	def getImports(pluginNames: Seq[String], buildNames: Seq[String]): Seq[String] = baseImports ++ importAllRoot(pluginNames ++ buildNames)
+	def importAll(values: Seq[String]): Seq[String] = if(values.isEmpty) Nil else values.map( _ + "._" ).mkString("import ", ", ", "") :: Nil
+	def importAllRoot(values: Seq[String]): Seq[String] = importAll(values map rootedName)
+	def rootedName(s: String): String = if(s contains '.') "_root_." + s else s
 
 	def aggregationRelation(units: Map[URI, LoadedBuildUnit]): Relation[ProjectRef, ProjectRef] =
 	{
