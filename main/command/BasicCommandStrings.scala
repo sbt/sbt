@@ -54,9 +54,10 @@ ReadCommand + ReadFiles + """
 
 	def ApplyCommand = "apply"
 	def ApplyDetailed = 
-ApplyCommand + """ <module-name>*
+ApplyCommand + """ [-cp|-classpath <classpath>] <module-name>*
 	Transforms the current State by calling <module-name>.apply(currentState) for each listed module name.
 	Here, currentState is of type sbt.State.
+   If a classpath is provided, modules are loaded from a new class loader for this classpath.
 """
 
 	def RebootCommand = "reboot"
