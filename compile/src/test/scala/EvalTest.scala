@@ -43,6 +43,27 @@ object EvalTest extends Properties("eval")
 		}
 	}
 
+	val ValTestNames = Set("x", "a")
+	val ValTestContent = """
+val x: Int = {
+  val y: Int = 4
+  y
+}
+val z: Double = 3.0
+val a = 9
+val p = {
+   object B { val i = 3 }
+   class C { val j = 4 }
+   "asdf"
+}
+"""
+
+	property("val test") = secure {
+		val defs = (ValTestContent, 1 to 7) :: Nil
+		val res = eval.evalDefinitions(defs, new EvalImports(Nil, ""), "<defs>", "scala.Int" :: Nil)
+		label("Val names", res.valNames) |: (res.valNames.toSet == ValTestNames)
+	}
+
 
 	property("explicit import") = forAll(testImport("import math.abs" :: Nil))
 	property("wildcard import") = forAll(testImport("import math._" :: Nil))
@@ -53,7 +74,7 @@ object EvalTest extends Properties("eval")
 		value(eval.eval("abs("+i+")", new EvalImports(imports.zipWithIndex, "imp"))) == math.abs(i)
 
 	private[this] def local(i: Int) = "{ class ETest(val i: Int); new ETest(" + i + ") }"
-	val LocalType = "java.lang.Object with ScalaObject{val i: Int}"
+	val LocalType = "Object{val i: Int}"
 
 	private[this] def value(r: EvalResult) = r.getValue(getClass.getClassLoader)
 	private[this] def hasErrors(line: Int, src: String) =
