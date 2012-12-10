@@ -36,7 +36,7 @@ final class CompilerArguments(scalaInstance: xsbti.compile.ScalaInstance, cp: xs
 		val scalaHome = System.getProperty("scala.home")
 		assert((scalaHome eq null) || scalaHome.isEmpty, "'scala.home' should not be set (was " + scalaHome + ")")
 	}
-	def createBootClasspathFor(classpath: Seq[File]) = createBootClasspath(hasLibrary(classpath))
+	def createBootClasspathFor(classpath: Seq[File]) = createBootClasspath(hasLibrary(classpath) || cp.compiler || cp.extra)
 
 	/** Add the correct Scala library jar to the boot classpath if `addLibrary` is true.*/
 	def createBootClasspath(addLibrary: Boolean) =
