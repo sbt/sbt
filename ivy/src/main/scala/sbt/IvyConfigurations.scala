@@ -66,11 +66,11 @@ sealed trait ModuleSettings
 	def ivyScala: Option[IvyScala]
 	def noScala: ModuleSettings
 }
-final case class IvyFileConfiguration(file: File, ivyScala: Option[IvyScala], validate: Boolean) extends ModuleSettings
+final case class IvyFileConfiguration(file: File, ivyScala: Option[IvyScala], validate: Boolean, autoScalaTools: Boolean = true) extends ModuleSettings
 {
 	def noScala = copy(ivyScala = None)
 }
-final case class PomConfiguration(file: File, ivyScala: Option[IvyScala], validate: Boolean) extends ModuleSettings
+final case class PomConfiguration(file: File, ivyScala: Option[IvyScala], validate: Boolean, autoScalaTools: Boolean = true) extends ModuleSettings
 {
 	def noScala = copy(ivyScala = None)
 }
@@ -107,12 +107,12 @@ object ModuleSettings
 		log.debug("Autodetecting dependencies.")
 		val defaultPOMFile = IvySbt.defaultPOM(baseDirectory)
 		if(defaultPOMFile.canRead)
-			new PomConfiguration(defaultPOMFile, ivyScala, validate)
+			new PomConfiguration(defaultPOMFile, ivyScala, validate, true)
 		else
 		{
 			val defaultIvy = IvySbt.defaultIvyFile(baseDirectory)
 			if(defaultIvy.canRead)
-				new IvyFileConfiguration(defaultIvy, ivyScala, validate)
+				new IvyFileConfiguration(defaultIvy, ivyScala, validate, true)
 			else
 			{
 				log.warn("No dependency configuration found, using defaults.")

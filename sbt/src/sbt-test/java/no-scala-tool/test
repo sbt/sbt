@@ -1,0 +1,14 @@
+# test that a pure Java project can be compiled without a dependency on Scala library
+> compile
+
+# It can use the Scala REPL for the version of Scala that sbt runs with
+> console
+
+# A different version of Scala needs to be resolved, but we don't have any resolvers configured
+> ++2.8.2
+-> console
+
+# With an explicit scalaInstance, the Scala tools configuration won't be resolved
+$ copy-file changes/explicitInstance.sbt explicitInstance.sbt
+> reload
+> console

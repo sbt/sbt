@@ -72,6 +72,7 @@ object Defaults extends BuildCommon
 		cancelable :== false,
 		sourcesInBase :== true,
 		autoScalaLibrary :== true,
+		managedScalaInstance :== true,
 		onLoad <<= onLoad ?? idFun[State],
 		onUnload <<= (onUnload ?? idFun[State]),
 		onUnload := { s => try onUnload.value(s) finally IO.delete(taskTemporaryDirectory.value) },
@@ -284,8 +285,20 @@ object Defaults extends BuildCommon
 					scalaInstanceFromUpdate
 		}
 	}
+	private[this] def noToolConfiguration(autoInstance: Boolean): String =
+	{
+		val pre = "Missing Scala tool configuration from the 'update' report.  "
+		val post =
+			if(autoInstance)
+				"'scala-tool' is normally added automatically, so this may indicate a bug in sbt or you may be removing it from ivyConfigurations, for example."
+			else
+				"Explicitly define scalaInstance or scalaHome or include Scala dependencies in the 'scala-tool' configuration."
+		pre + post
+	}
+
 	def scalaInstanceFromUpdate: Initialize[Task[ScalaInstance]] = Def.task {
-		val toolReport = update.value.configuration(Configurations.ScalaTool.name) getOrElse error("Missing Scala tool configuration.")
+		val toolReport = update.value.configuration(Configurations.ScalaTool.name) getOrElse
+			error(noToolConfiguration(managedScalaInstance.value))
 		def files(id: String) = 
 			for { m <- toolReport.modules if m.module.name == id;
 				(art, file) <- m.artifacts if art.`type` == Artifact.DefaultType }
@@ -730,7 +743,7 @@ object Defaults extends BuildCommon
 	lazy val baseClasspaths: Seq[Setting[_]] = Classpaths.publishSettings ++ Classpaths.baseSettings
 	lazy val configSettings: Seq[Setting[_]] = Classpaths.configSettings ++ configTasks ++ configPaths ++ packageConfig ++ Classpaths.compilerPluginConfig
 
-	lazy val compileSettings: Seq[Setting[_]] = configSettings ++ (mainRunMainTask +: mainRunTask +: addBaseSources)
+	lazy val compileSettings: Seq[Setting[_]] = configSettings ++ (mainRunMainTask +: mainRunTask +: addBaseSources) ++ Classpaths.addUnmanagedLibrary
 	lazy val testSettings: Seq[Setting[_]] = configSettings ++ testTasks
 
 	lazy val itSettings: Seq[Setting[_]] = inConfig(IntegrationTest)(testSettings)
@@ -846,11 +859,11 @@ object Classpaths
 		projectDependencies <<= projectDependenciesTask,
 		dependencyOverrides in GlobalScope :== Set.empty,
 		libraryDependencies in GlobalScope :== Nil,
-		libraryDependencies ++= autoLibraryDependency(autoScalaLibrary.value, sbtPlugin.value, scalaOrganization.value, scalaVersion.value),
+		libraryDependencies ++= autoLibraryDependency(autoScalaLibrary.value && !scalaHome.value.isDefined && managedScalaInstance.value, sbtPlugin.value, scalaOrganization.value, scalaVersion.value),
 		allDependencies := {
 			val base = projectDependencies.value ++ libraryDependencies.value
 			val pluginAdjust = if(sbtPlugin.value) sbtDependency.value.copy(configurations = Some(Provided.name)) +: base else base
-			if(scalaHome.value.isDefined || ivyScala.value.isEmpty)
+			if(scalaHome.value.isDefined || ivyScala.value.isEmpty || !managedScalaInstance.value)
 				pluginAdjust
 			else
 				ScalaArtifacts.toolDependencies(scalaOrganization.value, scalaVersion.value) ++ pluginAdjust
@@ -879,6 +892,7 @@ object Classpaths
 			(confs ++ confs.map(internalConfigurationMap.value) ++ (if(autoCompilerPlugins.value) CompilerPlugin :: Nil else Nil)).distinct
 		},
 		ivyConfigurations ++= Configurations.auxiliary,
+		ivyConfigurations ++= { if(managedScalaInstance.value && !scalaHome.value.isDefined) Configurations.ScalaTool :: Nil else Nil },
 		moduleSettings <<= moduleSettings0,
 		makePomConfiguration := new MakePomConfiguration(artifactPath in makePom value, projectInfo.value, None, pomExtra.value, pomPostProcess.value, pomIncludeRepository.value, pomAllRepositories.value),
 		deliverLocalConfiguration := deliverConfig(crossTarget.value, status = if (isSnapshot.value) "integration" else "release", logging = ivyLoggingLevel.value ),
@@ -927,10 +941,9 @@ object Classpaths
 			Credentials.register(creds, s.log)
 			new IvySbt(conf)
 		}
-	def moduleSettings0: Initialize[Task[ModuleSettings]] =
-		(projectID, allDependencies, dependencyOverrides, ivyXML, ivyConfigurations, defaultConfiguration, ivyScala, ivyValidate, projectInfo) map {
-			(pid, deps, over, ivyXML, confs, defaultConf, ivyS, validate, pinfo) => new InlineConfiguration(pid, pinfo, deps, over, ivyXML, confs, defaultConf, ivyS, validate)
-		}
+	def moduleSettings0: Initialize[Task[ModuleSettings]] = Def.task {
+		new InlineConfiguration(projectID.value, projectInfo.value, allDependencies.value, dependencyOverrides.value, ivyXML.value, ivyConfigurations.value, defaultConfiguration.value, ivyScala.value, ivyValidate.value)
+	}
 
 	def sbtClassifiersTasks = inTask(updateSbtClassifiers)(Seq(
 		transitiveClassifiers in GlobalScope in updateSbtClassifiers ~= ( _.filter(_ != DocClassifier) ),
@@ -1201,6 +1214,16 @@ object Classpaths
 			modifyForPlugin(plugin, ModuleID(org, ScalaArtifacts.LibraryID, version)) :: Nil
 		else
 			Nil
+	def addUnmanagedLibrary: Seq[Setting[_]] = Seq(
+		unmanagedJars in Compile <++= unmanagedScalaLibrary
+	)
+	def unmanagedScalaLibrary: Initialize[Task[Seq[File]]] =
+		Def.taskDyn {
+			if(autoScalaLibrary.value && scalaHome.value.isDefined)
+				Def.task { scalaInstance.value.libraryJar :: Nil }
+			else
+				Def.task { Nil }
+		}
 
 		import DependencyFilter._
 	def managedJars(config: Configuration, jarTypes: Set[String], up: UpdateReport): Classpath =
@@ -1339,12 +1362,9 @@ trait BuildExtra extends BuildCommon
 		}
 	}
 	def externalIvyFile(file: Initialize[File] = baseDirectory / "ivy.xml", iScala: Initialize[Option[IvyScala]] = ivyScala): Setting[Task[ModuleSettings]] =
-		external(file, iScala)( (f, is, v) => new IvyFileConfiguration(f, is, v) )
+		moduleSettings := new IvyFileConfiguration(file.value, iScala.value, ivyValidate.value, managedScalaInstance.value)
 	def externalPom(file: Initialize[File] = baseDirectory / "pom.xml", iScala: Initialize[Option[IvyScala]] = ivyScala): Setting[Task[ModuleSettings]] =
-		external(file, iScala)( (f, is, v) => new PomConfiguration(f, is, v) )
-
-	private[this] def external(file: Initialize[File], iScala: Initialize[Option[IvyScala]])(make: (File, Option[IvyScala], Boolean) => ModuleSettings): Setting[Task[ModuleSettings]] =
-		moduleSettings <<= ((file zip iScala) zipWith ivyValidate) { case ((f, is), v) => task { make(f, is, v) } }
+		moduleSettings := new PomConfiguration(file.value, ivyScala.value, ivyValidate.value, managedScalaInstance.value)
 
 	def runInputTask(config: Configuration, mainClass: String, baseArguments: String*): Initialize[InputTask[Unit]] =
 		inputTask { result =>

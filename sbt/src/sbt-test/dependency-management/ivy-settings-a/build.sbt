@@ -1,6 +1,6 @@
 seq(externalIvySettings(), externalIvyFile())
 
-TaskKey[Unit]("check") <<= (baseDirectory, update) map { (base, report) =>
-	val files = report.matching( moduleFilter(organization = "org.scalacheck", name = "scalacheck*", revision = "1.9") )
+TaskKey[Unit]("check") := {
+	val files = update.value.matching( moduleFilter(organization = "org.scalacheck", name = "scalacheck*", revision = "1.9") )
 	assert(!files.isEmpty, "ScalaCheck module not found in update report")
 }

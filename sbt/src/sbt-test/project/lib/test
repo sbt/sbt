@@ -2,13 +2,13 @@
 > package
 
 $ delete build.sbt
-$ copy-file target/definition-lib-test-1.0.jar project/plugins/lib/test.jar
+$ copy-file target/definition-lib-test-1.0.jar project/lib/test.jar
 $ copy-file changes/build2.sbt build.sbt
 
 # the copied project definition depends on the Test module in test.jar and will
-# fail to compile if sbt did not put the jar in project/plugins/lib/ on the compile classpath
+# fail to compile if sbt did not put the jar in project/lib/ on the compile classpath
 > reload
 
 # The project definition uses the class in test.jar and will fail here if sbt did not put the
-# jar in project/plugins/lib on the runtime classpath
+# jar in project/lib on the runtime classpath
 > use-jar

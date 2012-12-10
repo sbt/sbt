@@ -1,4 +1,7 @@
 > update
+# works because scalaVersion is the same as sbtScalaVersion
+> compile
+$ delete auto-instance.sbt
 
 $ copy-file changes/scalacheck-ivy.xml ivy.xml
 -> update

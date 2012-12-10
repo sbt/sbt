@@ -309,6 +309,7 @@ object Keys
 	val classifiersModule = TaskKey[GetClassifiersModule]("classifiers-module", rank = CTask)
 	val conflictWarning = SettingKey[ConflictWarning]("conflict-warning", "Configures warnings for conflicts in dependency management.", CSetting)
 	val autoScalaLibrary = SettingKey[Boolean]("auto-scala-library", "Adds a dependency on scala-library if true.", ASetting)
+	val managedScalaInstance = SettingKey[Boolean]("managed-scala-instance", "Automatically obtains Scala tools as managed dependencies if true.", BSetting)
 	val sbtResolver = SettingKey[Resolver]("sbt-resolver", "Provides a resolver for obtaining sbt as a dependency.", BMinusSetting)
 	val sbtDependency = SettingKey[ModuleID]("sbt-dependency", "Provides a definition for declaring the current version of sbt.", BMinusSetting)
 	val sbtVersion = SettingKey[String]("sbt-version", "Provides the version of sbt.  This setting should be not be modified.", AMinusSetting)
