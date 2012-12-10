@@ -1,8 +1,11 @@
 import complete.DefaultParsers._
 
-InputKey[Unit]("check") <<= InputTask(_ => Space ~> IntBasic) { result => 
-   (result, maxErrors) map { (expected, actual) =>
-      assert(expected == actual, "Expected " + expected + ", got " + actual)
-   }
+val check = inputKey[Unit]("Check that the value of maxErrors is as expected")
+val parser = Space ~> IntBasic
+
+check := {
+	val expected = parser.parsed
+	val actual = maxErrors.value
+	assert(expected == actual, "Expected " + expected + ", got " + actual)
 }
 
