@@ -156,7 +156,7 @@ System plugins
    https://github.com/steppenwells/sbt-sh
 -  cronish-sbt (interval sbt / shell command execution):
    https://github.com/philcali/cronish-sbt
--  git (executes git commands): https://github.com/sbt/sbt-git-plugin
+-  git (executes git commands): https://github.com/sbt/sbt-git
 -  svn (execute svn commands): https://github.com/xuwei-k/sbtsvn
 -  sbt-groll (sbt plugin to navigate the Git history):
    https://github.com/sbt/sbt-groll
