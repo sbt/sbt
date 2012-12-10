@@ -2,6 +2,28 @@
 Changes
 =======
 
+0.12.1 to 0.12.2
+~~~~~~~~~~~~~~~~
+
+- Support -Yrangepos. (Lex S., gh-607)
+- Only make one call to test frameworks per test name.  (gh-520)
+- Add ``-cp`` option to the ``apply`` method to make adding commands from an external program easier.
+- Stable representation of refinement typerefs.  This fixes unnecessary recompilations in some cases. (Adriaan M., gh-610)
+- Disable aggregation for ``run-main``. (gh-606)
+- Concurrent restrictions: Untagged should be set based on the task's tags, not the tags of all tasks.
+- When preserving the last modified time of files, convert negative values to 0
+- Use ``java.lang.Throwable.setStackTrace`` when sending exceptions back from forked tests. (Eugene V., gh-543)
+- Don't merge dependencies with mismatched transitive/force/changing values. (gh-582)
+- Filter out null parent files when deleting empty directories. (Eugene V., gh-589)
+- Work around File constructor not accepting URIs for UNC paths.  (gh-564)
+- Split ForkTests react() out to workaround SI-6526 (avoids a stackoverflow in some forked test situations)
+- Maven-style ivy repo support in the launcher config (Eric B., gh-585)
+- Compare external binaries with canonical files (nau, gh-584)
+- Call System.exit after the main thread is finished. (Eugene V., gh-565)
+- Abort running tests on the first failure to communicate results back to the main process. (Eugene V., gh-557)
+- Don't let rhs of alias fail the parse.  (gh-572)
+- API extraction: handle any type that is annotated, not just the spec'd simple type.  (gh-559)
+
 0.12.0 to 0.12.1
 ~~~~~~~~~~~~~~~~
 
