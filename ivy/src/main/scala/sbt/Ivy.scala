@@ -168,12 +168,13 @@ final class IvySbt(val configuration: IvyConfiguration)
 			val md = PomModuleDescriptorParser.getInstance.parseDescriptor(settings, toURL(pc.file), pc.validate)
 			val dmd = IvySbt.toDefaultModuleDescriptor(md)
 			IvySbt.addConfigurations(dmd, Configurations.defaultInternal)
-			for( is <- pc.ivyScala) {
-				val confParser = new CustomXmlParser.CustomParser(settings, Some(Configurations.DefaultMavenConfiguration.name))
+			val defaultConf = Configurations.DefaultMavenConfiguration.name
+			for( is <- pc.ivyScala) if(pc.autoScalaTools) {
+				val confParser = new CustomXmlParser.CustomParser(settings, Some(defaultConf))
 				confParser.setMd(dmd)
 				addScalaToolDependencies(dmd, confParser, is)
 			}
-			(dmd, "compile")
+			(dmd, defaultConf)
 		}
 		/** Parses the Ivy file 'ivyFile' from the given `IvyFileConfiguration`.*/
 		private def configureIvyFile(ifc: IvyFileConfiguration) =
@@ -183,7 +184,7 @@ final class IvySbt(val configuration: IvyConfiguration)
 			parser.setSource(toURL(ifc.file))
 			parser.parse()
 			val dmd = IvySbt.toDefaultModuleDescriptor(parser.getModuleDescriptor())
-			for( is <- ifc.ivyScala )
+			for( is <- ifc.ivyScala ) if(ifc.autoScalaTools)
 				addScalaToolDependencies(dmd, parser, is)
 			(dmd, parser.getDefaultConf)
 		}
