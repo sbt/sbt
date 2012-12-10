@@ -1,0 +1,14 @@
+# Tests if refinement types are pickled correctly so they
+# do not introduce unnecessary compile iterations
+# See https://issues.scala-lang.org/browse/SI-6596,
+#     https://github.com/harrah/xsbt/issues/610
+
+# introduces first compile iteration
+> compile
+# this change is local to method and does not change api so introduces
+# only one additional compile iteration
+$ copy-file changes/Impl1.scala src/main/scala/Impl.scala
+# second iteration
+> compile
+# check if there are only two compile iterations performed
+> check-number-of-compiler-iterations 2
