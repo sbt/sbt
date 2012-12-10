@@ -54,5 +54,5 @@ package object sbt extends sbt.std.TaskExtra with sbt.Types with sbt.ProcessExtr
 		import language.experimental.macros
 	def settingKey[T](description: String): SettingKey[T] = macro std.KeyMacro.settingKeyImpl[T]
 	def taskKey[T](description: String): TaskKey[T] = macro std.KeyMacro.taskKeyImpl[T]
-	def inputKey[T](description: String): TaskKey[T] = macro std.KeyMacro.taskKeyImpl[T]
+	def inputKey[T](description: String): InputKey[T] = macro std.KeyMacro.inputKeyImpl[T]
 }

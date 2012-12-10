@@ -68,7 +68,7 @@ object Def extends Init[Scope] with TaskMacroExtra
 		import language.experimental.macros
 	def settingKey[T](description: String): SettingKey[T] = macro std.KeyMacro.settingKeyImpl[T]
 	def taskKey[T](description: String): TaskKey[T] = macro std.KeyMacro.taskKeyImpl[T]
-	def inputKey[T](description: String): TaskKey[T] = macro std.KeyMacro.taskKeyImpl[T]
+	def inputKey[T](description: String): InputKey[T] = macro std.KeyMacro.inputKeyImpl[T]
 }
 // these need to be mixed into the sbt package object because the target doesn't involve Initialize or anything in Def
 trait TaskMacroExtra 
