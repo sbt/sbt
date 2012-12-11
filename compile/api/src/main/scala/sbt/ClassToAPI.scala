@@ -7,7 +7,6 @@ import xsbti.api
 import xsbti.SafeLazy
 import SafeLazy.strict
 import collection.mutable
-import scala.reflect.ClassTag
 
 object ClassToAPI
 {
@@ -19,7 +18,7 @@ object ClassToAPI
 	}
 
 	// Avoiding implicit allocation.
-	private def arrayMap[T <: AnyRef, U <: AnyRef : ClassTag](xs: Array[T])(f: T => U): Array[U] = {
+	private def arrayMap[T <: AnyRef, U <: AnyRef : ClassManifest](xs: Array[T])(f: T => U): Array[U] = {
 	  val len = xs.length
 	  var i = 0
 	  val res = new Array[U](len)
