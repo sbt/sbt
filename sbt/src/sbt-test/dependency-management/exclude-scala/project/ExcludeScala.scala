@@ -5,20 +5,23 @@ object ExcludeScala extends Build
 {
 	lazy val root = Project("root", file(".")) settings(
 		libraryDependencies <++= baseDirectory(dependencies),
-		scalaVersion := "2.8.1",
+		scalaVersion := "2.9.2",
 		autoScalaLibrary <<= baseDirectory(base => !(base / "noscala").exists ),
-		scalaOverride <<= fullClasspath in Compile map { cp =>
-			val existing = cp.files.filter(_.getName contains "scala-library")
-			val loader = classpath.ClasspathUtilities.toLoader(existing)
-			// check that the 2.8.1 scala-library is on the classpath and not 2.7.7
-			Class.forName("scala.collection.immutable.List", false, loader)
-		}
+		scalaOverride <<= check("scala.App")
 	)
-	lazy val scalaOverride = TaskKey[Unit]("scala-override")
+	def check(className: String): Def.Initialize[Task[Unit]] = fullClasspath in Compile map { cp =>
+		val existing = cp.files.filter(_.getName contains "scala-library")
+		println("Full classpath: " + cp.mkString("\n\t", "\n\t", ""))
+		println("scala-library.jar: " + existing.mkString("\n\t", "\n\t", ""))
+		val loader = classpath.ClasspathUtilities.toLoader(existing)
+		Class.forName(className, false, loader)
+	}
+
+	lazy val scalaOverride = taskKey[Unit]("Check that the proper version of Scala is on the classpath.")
 
 	def dependencies(base: File) =
-		if( ( base / "sbinary").exists )
-			("org.scala-tools.sbinary" % "sbinary_2.7.7" % "0.3") :: Nil
+		if( ( base / "stm").exists )
+			("org.scala-tools" % "scala-stm_2.8.2" % "0.6") :: Nil
 		else
 			Nil
 }

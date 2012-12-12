@@ -7,7 +7,7 @@ object InfoTest extends Build
 	lazy val root = Project("root", file(".")) settings(
 		ivyPaths <<= (baseDirectory, target)( (dir, t) => new IvyPaths(dir, Some(t / "ivy-cache"))),
 		ivyXML <<= (customInfo, organization, moduleName, version) apply inlineXML,
-		scalaVersion := "2.9.0",
+		scalaVersion := "2.9.1",
 		projectID ~= (_ cross false),
 		customInfo <<= baseDirectory{_ / "info" exists },
 		TaskKey[Unit]("check-download") <<= checkDownload,
@@ -25,9 +25,9 @@ object InfoTest extends Build
 					ScalaQuery is a type-safe database query API for Scala.
 				</description>
 			</info>
-			<dependency org="org.scala-tools.testing" name="scalacheck_2.9.0" rev="1.9"/>)
+			<dependency org="org.scala-tools.testing" name="scalacheck_2.9.1" rev="1.9"/>)
 		else
-			<dependency org="org.scala-tools.testing" name="scalacheck_2.9.0" rev="1.9"/>
+			<dependency org="org.scala-tools.testing" name="scalacheck_2.9.1" rev="1.9"/>
 
 	def checkDownload = (dependencyClasspath in Compile) map { cp => if(cp.isEmpty) error("Dependency not downloaded"); () }
 	def checkInfo = (customInfo, delivered) map { (addInfo, d) =>
