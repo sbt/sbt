@@ -22,7 +22,6 @@ Changes
 - Call System.exit after the main thread is finished. (Eugene V., gh-565)
 - Abort running tests on the first failure to communicate results back to the main process. (Eugene V., gh-557)
 - Don't let rhs of alias fail the parse.  (gh-572)
-- API extraction: handle any type that is annotated, not just the spec'd simple type.  (gh-559)
 
 0.12.0 to 0.12.1
 ~~~~~~~~~~~~~~~~
