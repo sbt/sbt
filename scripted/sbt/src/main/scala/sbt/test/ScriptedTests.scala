@@ -12,7 +12,7 @@ import xsbt.IPC
 import xsbt.test.{CommentHandler, FileCommands, ScriptRunner, TestScriptParser}
 import IO.wrapNull
 
-final class ScriptedTests(resourceBaseDirectory: File, bufferLog: Boolean, sbtVersion: String, defScalaVersion: String, buildScalaVersions: String, launcher: File, launchOpts: Seq[String])
+final class ScriptedTests(resourceBaseDirectory: File, bufferLog: Boolean, launcher: File, launchOpts: Seq[String])
 {
 	private val testResources = new Resources(resourceBaseDirectory)
 	
@@ -102,14 +102,14 @@ object ScriptedTests
 		val bootProperties = new File(args(5))
 		val tests = args.drop(6)
 		val logger = ConsoleLogger()
-		run(directory, buffer, sbtVersion, defScalaVersion, buildScalaVersions, tests, logger, bootProperties, Array())
+		run(directory, buffer, tests, logger, bootProperties, Array())
 	}
-	def run(resourceBaseDirectory: File, bufferLog: Boolean, sbtVersion: String, defScalaVersion: String, buildScalaVersions: String, tests: Array[String], bootProperties: File, launchOpts: Array[String]): Unit =
-		run(resourceBaseDirectory, bufferLog, sbtVersion, defScalaVersion, buildScalaVersions, tests, ConsoleLogger(), bootProperties, launchOpts)//new FullLogger(Logger.xlog2Log(log)))
+	def run(resourceBaseDirectory: File, bufferLog: Boolean, tests: Array[String], bootProperties: File, launchOpts: Array[String]): Unit =
+		run(resourceBaseDirectory, bufferLog, tests, ConsoleLogger(), bootProperties, launchOpts)//new FullLogger(Logger.xlog2Log(log)))
 
-	def run(resourceBaseDirectory: File, bufferLog: Boolean, sbtVersion: String, defScalaVersion: String, buildScalaVersions: String, tests: Array[String], logger: AbstractLogger, bootProperties: File, launchOpts: Array[String])
+	def run(resourceBaseDirectory: File, bufferLog: Boolean, tests: Array[String], logger: AbstractLogger, bootProperties: File, launchOpts: Array[String])
 	{
-		val runner = new ScriptedTests(resourceBaseDirectory, bufferLog, sbtVersion, defScalaVersion, buildScalaVersions, bootProperties, launchOpts)
+		val runner = new ScriptedTests(resourceBaseDirectory, bufferLog, bootProperties, launchOpts)
 		for( ScriptedTest(group, name) <- get(tests, resourceBaseDirectory, logger) )
 			runner.scriptedTest(group, name, logger)
 	}
