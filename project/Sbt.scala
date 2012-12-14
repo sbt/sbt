@@ -150,13 +150,13 @@ object Sbt extends Build
 	)
 
 	def scriptedTask: Initialize[InputTask[Unit]] = InputTask(scriptedSource(dir => (s: State) => scriptedParser(dir))) { result =>
-		(proguard in Proguard, fullClasspath in scriptedSbtSub in Test, scalaInstance in scriptedSbtSub, publishAll, version, scalaVersion, scriptedScalaVersion, scriptedSource, result) map {
-			(launcher, scriptedSbtClasspath, scriptedSbtInstance, _, v, sv, ssv, sourcePath, args) =>
+		(proguard in Proguard, fullClasspath in scriptedSbtSub in Test, scalaInstance in scriptedSbtSub, publishAll, scriptedSource, result) map {
+			(launcher, scriptedSbtClasspath, scriptedSbtInstance, _, sourcePath, args) =>
 			val loader = classpath.ClasspathUtilities.toLoader(scriptedSbtClasspath.files, scriptedSbtInstance.loader)
 			val m = ModuleUtilities.getObject("sbt.test.ScriptedTests", loader)
-			val r = m.getClass.getMethod("run", classOf[File], classOf[Boolean], classOf[String], classOf[String], classOf[String], classOf[Array[String]], classOf[File], classOf[Array[String]])
+			val r = m.getClass.getMethod("run", classOf[File], classOf[Boolean], classOf[Array[String]], classOf[File], classOf[Array[String]])
 			val launcherVmOptions = Array("-XX:MaxPermSize=256M") // increased after a failure in scripted source-dependencies/macro
-			try { r.invoke(m, sourcePath, true: java.lang.Boolean, v, sv, ssv, args.toArray[String], launcher, launcherVmOptions) }
+			try { r.invoke(m, sourcePath, true: java.lang.Boolean, args.toArray[String], launcher, launcherVmOptions) }
 			catch { case ite: java.lang.reflect.InvocationTargetException => throw ite.getCause }
 		}
 	}
@@ -178,7 +178,6 @@ object Sbt extends Build
 		(token(Space) ~> matched(testID)).*
 	}
 
-	lazy val scriptedScalaVersion = SettingKey[String]("scripted-scala-version")
 	lazy val scripted = InputKey[Unit]("scripted")
 	lazy val scriptedSource = SettingKey[File]("scripted-source")
 	lazy val publishAll = TaskKey[Unit]("publish-all")
@@ -197,7 +196,6 @@ object Sbt extends Build
 	def rootSettings = releaseSettings ++ Docs.settings ++ LaunchProguard.settings ++ LaunchProguard.specific(launchSub) ++ 
 		Sxr.settings ++ docSetting ++ Util.publishPomSettings ++ otherRootSettings
 	def otherRootSettings = Seq(
-		scriptedScalaVersion <<= scalaVersion.identity,
 		scripted <<= scriptedTask,
 		scriptedSource <<= (sourceDirectory in sbtSub) / "sbt-test",
 		sources in sxr <<= deepTasks(sources in Compile),

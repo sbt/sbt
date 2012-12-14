@@ -16,8 +16,6 @@ object ScriptedPlugin extends Plugin {
 	val sbtLauncher = SettingKey[File]("sbt-launcher")
 	val sbtTestDirectory = SettingKey[File]("sbt-test-directory")
 	val scriptedBufferLog = SettingKey[Boolean]("scripted-buffer-log")
-	final case class ScriptedScalas(build: String, versions: String)
-	val scriptedScalas = SettingKey[ScriptedScalas]("scripted-scalas")
 
 	val scriptedClasspath = TaskKey[PathFinder]("scripted-classpath")
 	val scriptedTests = TaskKey[AnyRef]("scripted-tests")
@@ -43,7 +41,6 @@ object ScriptedPlugin extends Plugin {
 		try {
 			scriptedRun.value.invoke(
 				scriptedTests.value, sbtTestDirectory.value, scriptedBufferLog.value: java.lang.Boolean,
-				scriptedSbt.value.toString, scriptedScalas.value.build, scriptedScalas.value.versions,
 				args.toArray, sbtLauncher.value, scriptedLaunchOpts.value.toArray)
 		}
 		catch { case e: java.lang.reflect.InvocationTargetException => throw e.getCause }
@@ -52,7 +49,6 @@ object ScriptedPlugin extends Plugin {
 	val scriptedSettings = Seq(
 		ivyConfigurations += scriptedConf,
 		scriptedSbt <<= (appConfiguration)(_.provider.id.version),
-		scriptedScalas <<= (scalaVersion) { (scala) => ScriptedScalas(scala, scala) },
 		libraryDependencies <<= (libraryDependencies, scriptedSbt) {(deps, version) => deps :+ "org.scala-sbt" % "scripted-sbt" % version % scriptedConf.toString },
 		sbtLauncher <<= (appConfiguration)(app => IO.classLocationFile(app.provider.scalaProvider.launcher.getClass)),
 		sbtTestDirectory <<= sourceDirectory / "sbt-test",
