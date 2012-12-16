@@ -33,7 +33,7 @@ object SettingsTest extends Properties("settings")
 					iterate(value(t-1) )
 			}
 		try { evaluate( setting(chk, iterate(top)) :: Nil); true }
-		catch { case e: Exception => ("Unexpected exception: " + e) |: false }
+		catch { case e: java.lang.Exception => ("Unexpected exception: " + e) |: false }
 	}
 
 // Circular (dynamic) references currently loop infinitely.
@@ -45,7 +45,7 @@ object SettingsTest extends Properties("settings")
 	{
 		val ccr = new CCR(intermediate)
 		try { evaluate( setting(chk, ccr.top) :: Nil); false }
-		catch { case e: Exception => true }
+		catch { case e: java.lang.Exception => true }
 	}
 
 	def tests = 
