@@ -3,7 +3,7 @@
  */
 package sbt
 
-	import xsbti.compile.{ CompileOrder, Output, SingleOutput, MultipleOutput }
+	import xsbti.compile.{ CompileOrder, Output => APIOutput, SingleOutput, MultipleOutput}
 	import java.io.File
 
 // this class exists because of Scala's restriction on implicit parameter search.
@@ -11,12 +11,12 @@ package sbt
 //    because complexity(Equiv[Seq[String]]) > complexity(Equiv[CompileSetup])
 //     (6 > 4)
 final class CompileOptions(val options: Seq[String], val javacOptions: Seq[String])
-final class CompileSetup(val output: Output, val options: CompileOptions, val compilerVersion: String, val order: CompileOrder)
+final class CompileSetup(val output: APIOutput, val options: CompileOptions, val compilerVersion: String, val order: CompileOrder)
 
 object CompileSetup
 {
 	// Equiv[CompileOrder.Value] dominates Equiv[CompileSetup]
-	implicit def equivCompileSetup(implicit equivOutput: Equiv[Output], equivOpts: Equiv[CompileOptions], equivComp: Equiv[String]/*, equivOrder: Equiv[CompileOrder]*/): Equiv[CompileSetup] = new Equiv[CompileSetup] {
+	implicit def equivCompileSetup(implicit equivOutput: Equiv[APIOutput], equivOpts: Equiv[CompileOptions], equivComp: Equiv[String]/*, equivOrder: Equiv[CompileOrder]*/): Equiv[CompileSetup] = new Equiv[CompileSetup] {
 		def equiv(a: CompileSetup, b: CompileSetup) =
 			equivOutput.equiv(a.output, b.output) &&
 			equivOpts.equiv(a.options, b.options) &&
@@ -26,8 +26,8 @@ object CompileSetup
 	implicit val equivFile: Equiv[File] = new Equiv[File] {
 		def equiv(a: File, b: File) = a.getAbsoluteFile == b.getAbsoluteFile
 	}
-	implicit val equivOutput: Equiv[Output] = new Equiv[Output] {
-		def equiv(out1: Output, out2: Output) = (out1, out2) match {
+	implicit val equivOutput: Equiv[APIOutput] = new Equiv[APIOutput] {
+		def equiv(out1: APIOutput, out2: APIOutput) = (out1, out2) match {
 			case (m1: MultipleOutput, m2: MultipleOutput) =>
 				m1.outputGroups zip (m2.outputGroups) forall {
 					case (a,b) => 

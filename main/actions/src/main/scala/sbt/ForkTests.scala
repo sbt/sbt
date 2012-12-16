@@ -7,11 +7,11 @@ import scala.collection.mutable
 import org.scalatools.testing._
 import java.net.ServerSocket
 import java.io._
-import Tests._
+import Tests.{Output => TestOutput, _}
 import ForkMain._
 
 private[sbt] object ForkTests {
-	def apply(frameworks: Seq[TestFramework], tests: List[TestDefinition], config: Execution, classpath: Seq[File], javaHome: Option[File], javaOpts: Seq[String], log: Logger): Task[Output]  = {
+	def apply(frameworks: Seq[TestFramework], tests: List[TestDefinition], config: Execution, classpath: Seq[File], javaHome: Option[File], javaOpts: Seq[String], log: Logger): Task[TestOutput]  = {
 		val opts = config.options.toList
 		val listeners = opts flatMap {
 			case Listeners(ls) => ls
