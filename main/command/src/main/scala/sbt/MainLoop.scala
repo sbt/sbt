@@ -35,7 +35,7 @@ object MainLoop
 			case e: xsbti.FullReload =>
 				deleteLastLog(logBacking)
 				throw e // pass along a reboot request
-			case e =>
+			case e: Throwable =>
 				System.err.println("sbt appears to be exiting abnormally.\n  The log file for this session is at " + logBacking.file)
 				deleteLastLog(logBacking)
 				throw e

@@ -82,7 +82,7 @@ object SettingsTest extends Properties("settings")
 
 	def evaluate(settings: Seq[Setting[_]]): Settings[Scope] =
 		try { make(settings)(delegates, scopeLocal, showFullKey) }
-		catch { case e => e.printStackTrace; throw e }
+		catch { case e: Throwable => e.printStackTrace; throw e }
 }
 // This setup is a workaround for module synchronization issues 
 final class CCR(intermediate: Int)

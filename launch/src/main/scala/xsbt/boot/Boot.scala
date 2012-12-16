@@ -34,7 +34,7 @@ object Boot
 			case b: BootException => errorAndExit(b.toString)
 			case r: xsbti.RetrieveException => errorAndExit("Error: " + r.getMessage)
 			case r: xsbti.FullReload => Some(r.arguments)
-			case e =>
+			case e: Throwable =>
 				e.printStackTrace
 				errorAndExit(Pre.prefixError(e.toString))
 		}
@@ -55,7 +55,12 @@ object Boot
 				System.setProperty("sbt.log.format", "true")
 		} catch {
 			case ignore: ClassNotFoundException =>
-			case ex => println("Jansi found on class path but initialization failed: " + ex)
+                        /* The below code intentionally traps everything. It technically shouldn't trap the
+                         * non-StackOverflowError VirtualMachineErrors and AWTError would be weird, but this is PermGen
+                         * mitigation code that should not render sbt completely unusable if jansi initialization fails.
+                         * [From Mark Harrah, https://github.com/sbt/sbt/pull/633#issuecomment-11957578].
+                         */
+			case ex: Throwable => println("Jansi found on class path but initialization failed: " + ex)
 		}
 	}
 }
