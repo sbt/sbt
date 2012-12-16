@@ -34,7 +34,7 @@ object TrapExit
 			catch
 			{
 				case e: TrapExitSecurityException => throw e
-				case x =>
+				case x: Throwable =>
 					code.set(1) //exceptions in the main thread cause the exit code to be 1
 					throw x
 			}

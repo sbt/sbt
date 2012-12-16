@@ -33,7 +33,7 @@ class BufferedLogger(delegate: AbstractLogger) extends BasicLogger
 			clear()
 			result
 		}
-		catch { case e => stopQuietly(); throw e }
+		catch { case e: Throwable => stopQuietly(); throw e }
 	}
 	def stopQuietly() = synchronized { try { stop() } catch { case e: Exception => () } }
 

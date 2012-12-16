@@ -20,7 +20,7 @@ object ErrorHandling
 		{
 			case ex @ (_: Exception | _: StackOverflowError) => Left(ex)
 			case err @ (_: ThreadDeath | _: VirtualMachineError) => throw err
-			case x => Left(x)
+			case x: Throwable => Left(x)
 		}
 
 	def convert[T](f: => T): Either[Exception, T] =
