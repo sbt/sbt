@@ -4,6 +4,7 @@ package sbt;
 	import org.apache.ivy.plugins.resolver.DependencyResolver;
 
 // implements the methods with raw types
+@SuppressWarnings("rawtypes")
 public abstract class ResolverAdapter implements DependencyResolver
 {
     public String[] listTokenValues(String token, Map otherTokenValues) { return new String[0]; }
