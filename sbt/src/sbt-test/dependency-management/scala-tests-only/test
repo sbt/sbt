@@ -1,0 +1,9 @@
+$ copy-file changes/B.java B.java
+> compile
+
+$ copy-file changes/A.scala A.scala
+-> compile
+
+$ delete A.scala
+$ copy-file changes/A.scala src/test/scala/A.scala
+> compile

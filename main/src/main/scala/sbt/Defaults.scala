@@ -271,9 +271,12 @@ object Defaults extends BuildCommon
 			}
 		}
 	}
+
 	@deprecated("Use scalaInstanceTask.", "0.13.0")
 	def scalaInstanceSetting = scalaInstanceTask
 	def scalaInstanceTask: Initialize[Task[ScalaInstance]] = Def.taskDyn {
+		// if this logic changes, ensure that `unmanagedScalaInstanceOnly` and `update` are changed
+		//  appropriately to avoid cycles
 		scalaHome.value match {
 			case Some(h) => scalaInstanceFromHome(h)
 			case None =>
@@ -285,6 +288,12 @@ object Defaults extends BuildCommon
 					scalaInstanceFromUpdate
 		}
 	}
+	// Returns the ScalaInstance only if it was not constructed via `update`
+	//  This is necessary to prevent cycles between `update` and `scalaInstance`
+	private[sbt] def unmanagedScalaInstanceOnly: Initialize[Task[Option[ScalaInstance]]] = Def.taskDyn {
+		if(scalaHome.value.isDefined) Def.task(Some(scalaInstance.value)) else Def.task(None)
+	}
+
 	private[this] def noToolConfiguration(autoInstance: Boolean): String =
 	{
 		val pre = "Missing Scala tool configuration from the 'update' report.  "
@@ -902,13 +911,8 @@ object Classpaths
 		ivySbt <<= ivySbt0,
 		ivyModule := { val is = ivySbt.value; new is.Module(moduleSettings.value) },
 		transitiveUpdate <<= transitiveUpdateTask,
-		update <<= (ivyModule, thisProjectRef, updateConfiguration, cacheDirectory, transitiveUpdate, executionRoots, resolvedScoped, skip in update, streams) map {
-			(module, ref, config, cacheDirectory, reports, roots, resolved, skip, s) =>
-				val depsUpdated = reports.exists(!_.stats.cached)
-				val isRoot = roots contains resolved
-				cachedUpdate(cacheDirectory / "update", Reference.display(ref), module, config, None, skip = skip, force = isRoot, depsUpdated = depsUpdated, log = s.log)
-		} tag(Tags.Update, Tags.Network),
-		update <<= (conflictWarning, update, streams) map { (config, report, s) => ConflictWarning(config, report, s.log); report },
+		update <<= updateTask tag(Tags.Update, Tags.Network),
+		update := { val report = update.value; ConflictWarning(conflictWarning.value, report, streams.value.log); report },
 		transitiveClassifiers in GlobalScope :== Seq(SourceClassifier, DocClassifier),
 		classifiersModule in updateClassifiers := GetClassifiersModule(projectID.value, update.value.allModules, ivyConfigurations.in(updateClassifiers).value, transitiveClassifiers.in(updateClassifiers).value),
 		updateClassifiers <<= (ivySbt, classifiersModule in updateClassifiers, updateConfiguration, ivyScala, target in LocalRootProject, appConfiguration, streams) map { (is, mod, c, ivyScala, out, app, s) =>
@@ -989,7 +993,17 @@ object Classpaths
 		}})
 	}
 
-	def cachedUpdate(cacheFile: File, label: String, module: IvySbt#Module, config: UpdateConfiguration, scalaInstance: Option[ScalaInstance], skip: Boolean, force: Boolean, depsUpdated: Boolean, log: Logger): UpdateReport =
+	def updateTask: Initialize[Task[UpdateReport]] = Def.task {
+		val depsUpdated = transitiveUpdate.value.exists(!_.stats.cached)
+		val isRoot = executionRoots.value contains resolvedScoped.value
+		val log = streams.value.log
+		val si = Defaults.unmanagedScalaInstanceOnly.value.map(si => (si, scalaOrganization.value))
+		val show = Reference.display(thisProjectRef.value)
+		val cache = cacheDirectory.value / "update"
+		cachedUpdate(cache, show, ivyModule.value, updateConfiguration.value, si, skip = (skip in update).value, force = isRoot, depsUpdated = depsUpdated, log = log)
+	} 
+
+	def cachedUpdate(cacheFile: File, label: String, module: IvySbt#Module, config: UpdateConfiguration, scalaInstance: Option[(ScalaInstance, String)], skip: Boolean, force: Boolean, depsUpdated: Boolean, log: Logger): UpdateReport =
 	{
 		implicit val updateCache = updateIC
 		type In = IvyConfiguration :+: ModuleSettings :+: UpdateConfiguration :+: HNil
@@ -997,7 +1011,7 @@ object Classpaths
 			log.info("Updating " + label + "...")
 			val r = IvyActions.update(module, config, log)
 			log.info("Done updating.")
-			scalaInstance match { case Some(si) => substituteScalaFiles(si, r); case None => r }
+			scalaInstance match { case Some((si,scalaOrg)) => substituteScalaFiles(si, scalaOrg, r); case None => r }
 		}
 		def uptodate(inChanged: Boolean, out: UpdateReport): Boolean =
 			!force &&
@@ -1249,15 +1263,24 @@ object Classpaths
 	)
 	@deprecated("Doesn't properly handle non-standard Scala organizations.", "0.13.0")
 	def substituteScalaFiles(scalaInstance: ScalaInstance, report: UpdateReport): UpdateReport =
+		substituteScalaFiles(scalaInstance, ScalaArtifacts.Organization, report)
+	def substituteScalaFiles(scalaInstance: ScalaInstance, ScalaOrg: String, report: UpdateReport): UpdateReport =
+	{
+		val scalaJars = scalaInstance.jars
 		report.substitute { (configuration, module, arts) =>
 			import ScalaArtifacts._
 			(module.organization, module.name) match
 			{
-				case (Organization, LibraryID) => (Artifact(LibraryID), scalaInstance.libraryJar) :: Nil
-				case (Organization, CompilerID) => (Artifact(CompilerID), scalaInstance.compilerJar) :: Nil
+				case (ScalaOrg, LibraryID) => (Artifact(LibraryID), scalaInstance.libraryJar) :: Nil
+				case (ScalaOrg, CompilerID) => (Artifact(CompilerID), scalaInstance.compilerJar) :: Nil
+				case (ScalaOrg, id) =>
+					val jarName = id + ".jar"
+					val replaceWith = scalaJars.filter(_.getName == jarName).map(f => (Artifact(f.getName), f))
+					if(replaceWith.isEmpty) arts else replaceWith
 				case _ => arts
 			}
 		}
+	}
 
 		// try/catch for supporting earlier launchers
 	def bootIvyHome(app: xsbti.AppConfiguration): Option[File] =

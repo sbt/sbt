@@ -10,6 +10,8 @@ extensions = ['sphinxcontrib.issuetracker', 'sphinx.ext.extlinks', 'howto']
 project = 'sbt'
 version = '0.13'
 release = '0.13.0-SNAPSHOT'
+scalaVersion = "2.10"
+scalaRelease = "2.10.0"
 
 # General settings
 
@@ -72,6 +74,8 @@ sbt_native_package_base = 'http://scalasbt.artifactoryonline.com/scalasbt/sbt-na
 
 
 rst_epilog = """
+.. |scalaVersion| replace:: %(scalaVersion)s
+.. |scalaRelease| replace:: %(scalaRelease)s
 .. _typesafe-snapshots: %(typesafe_ivy_snapshots)s
 .. |typesafe-snapshots| replace:: Typesafe Snapshots
 .. _sbt-launch.jar: %(launcher_release_base)s/%(version)s/sbt-launch.jar
@@ -88,6 +92,8 @@ rst_epilog = """
    'launcher_snapshots_base': launcher_snapshots_base,
    'version': release,
    'typesafe_ivy_snapshots': typesafe_ivy_snapshots,
-   'sbt_native_package_base': sbt_native_package_base
+   'sbt_native_package_base': sbt_native_package_base,
+   'scalaRelease': scalaRelease,
+   'scalaVersion': scalaVersion
 }
 
