@@ -59,7 +59,7 @@ Configuring Scala tool dependencies
 In order to compile Scala code, run scaladoc, and provide a Scala REPL, sbt needs the ``scala-compiler`` jar.
 This should not be a normal dependency of the project, so sbt adds a dependency on ``scala-compiler`` in the special, private ``scala-tool`` configuration.
 It may be desirable to have more control over this in some situations.
-Disable this automatic behavior with the ``autoScalaInstance`` key:
+Disable this automatic behavior with the ``managedScalaInstance`` key:
 
 ::
 
