@@ -177,7 +177,7 @@ object Plugin extends sbt.Plugin {
 
   val VersionPattern = """(\d+)\.(\d+)\.(\d+)(?:-(.*))?""".r
   object Version {
-    def unapplySeq(str: String): Option[(Int, Int, Int, Seq[String])] = str match {
+    def unapply(str: String): Option[(Int, Int, Int, Seq[String])] = str match {
       case VersionPattern(major, minor, fix, appendix) => Some((major.toInt, minor.toInt, fix.toInt, Option(appendix).toSeq))
       case _ => None
     }
