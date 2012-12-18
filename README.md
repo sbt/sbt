@@ -44,6 +44,8 @@ Tasks & Settings
  * `dependency-graph`: Shows an ASCII graph of the project's dependencies on the sbt console
  * `dependency-graph-ml`: Generates a .graphml file with the project's dependencies to `target/dependencies-<config>.graphml`.
    Use e.g. [yEd](http://www.yworks.com/en/products_yed_about.html) to format the graph to your needs.
+ * `dependency-dot`: Generates a .dot file with the project's dependencies to `target/dependencies-<config>.dot`.
+    Use [graphviz](http://www.graphviz.org/) to render it to your preferred graphic format.
  * `dependency-tree`: Shows an ASCII tree representation of the project's dependencies
  * `what-depends-on <organization> <module> <revision>`: Find out what depends on an artifact. Shows a reverse dependency
    tree for the selected module.
@@ -52,6 +54,7 @@ Tasks & Settings
    If `true`, instead of showing the dependency `"[S]"` is appended to the artifact name. Set to `false` if
    you want the scala-library dependency to appear in the output. (default: true)
  * `dependency-graph-ml-file`: a setting which allows configuring the output path of `dependency-graph-ml`.
+ * `dependency-dot-file`: a setting which allows configuring the output path of `dependency-dot`.
  * `ivy-report`: let's ivy generate the resolution report for you project. Use
    `show ivy-report` for the filename of the generated report
 
