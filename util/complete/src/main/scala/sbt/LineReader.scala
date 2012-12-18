@@ -43,11 +43,20 @@ abstract class JLine extends LineReader
 			readLineDirectRaw(prompt, mask)
 	private[this] def readLineDirectRaw(prompt: String, mask: Option[Char]): String =
 	{
+		val newprompt = handleMultilinePrompt(prompt)
 		val line = mask match {
-			case Some(m) => reader.readLine(prompt, m)
-			case None => reader.readLine(prompt)
+			case Some(m) => reader.readLine(newprompt, m)
+			case None => reader.readLine(newprompt)
 		}
 		if (inputEof.get) null else line
+	}
+
+	private[this] def handleMultilinePrompt(prompt: String): String = {
+		var lines = """\r?\n""".r.split(prompt)
+		lines.size match {
+			case 0 | 1 => prompt
+			case _ => reader.printString(lines.init.mkString("\n") + "\n"); lines.last;
+		}
 	}
 
 	private[this] def resume()
