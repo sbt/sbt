@@ -79,6 +79,9 @@ definition project like a normal project. ``reload return`` changes back
 to the original build. Any session settings for the plugin definition
 project that have not been saved are dropped.
 
+*Note*: At runtime, all plugins for all builds are loaded in a separate, parent class loader of the class loaders for builds.
+This means that plugins will not see classes or resources from build definitions.
+
 Global plugins
 --------------
 
