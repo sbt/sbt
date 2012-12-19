@@ -112,7 +112,7 @@ object BuiltinCommands
 	{
 		val scalaVersion = e.getOpt(Keys.scalaVersion)
 		val scalaHome = e.getOpt(Keys.scalaHome).flatMap(idFun)
-		val instance = e.getOpt(Keys.scalaInstance.task).flatMap(_ => quiet(e.evalTask(Keys.scalaInstance, s)))
+		val instance = e.getOpt(Keys.scalaInstance.task).flatMap(_ => quiet(e.runTask(Keys.scalaInstance, s)._2))
 		(scalaVersion, scalaHome, instance) match {
 			case (sv, Some(home), Some(si)) => "local Scala version " + selectScalaVersion(sv, si) + " at " + home.getAbsolutePath
 			case (_, Some(home), None) => "a local Scala build at " + home.getAbsolutePath

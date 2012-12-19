@@ -24,8 +24,6 @@ final case class Extracted(structure: BuildStructure, session: SessionSettings, 
 	def getOpt[T](key: SettingKey[T]): Option[T] = structure.data.get(inCurrent(key), key.key)
 
 	private[this] def inCurrent[T](key: SettingKey[T]): Scope  =  if(key.scope.project == This) key.scope.copy(project = Select(currentRef)) else key.scope
-	@deprecated("This method does not apply state changes requested during task execution.  Use 'runTask' instead, which does.", "0.11.1")
-	def evalTask[T](key: TaskKey[T], state: State): T = runTask(key, state)._2
 
 	/** Runs the task specified by `key` and returns the transformed State and the resulting value of the task.
 	* If the project axis is not defined for the key, it is resolved to be the current project.
