@@ -117,7 +117,7 @@ object Sbt extends Build
 
 
 		// Implementation and support code for defining actions.
-	lazy val actionsSub = baseProject(mainPath / "actions", "Actions") dependsOn(
+	lazy val actionsSub = testedBaseProject(mainPath / "actions", "Actions") dependsOn(
 		classpathSub, completeSub, apiSub, compilerIntegrationSub, compilerIvySub,
 		interfaceSub, ioSub, ivySub, logSub, processSub, runSub, relationSub, stdTaskSub, taskSub, trackingSub, testingSub)
 
