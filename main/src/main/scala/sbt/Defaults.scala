@@ -557,9 +557,11 @@ object Defaults extends BuildCommon
 
 	def doClean(clean: Seq[File], preserve: Seq[File]): Unit =
 		IO.withTemporaryDirectory { temp =>
-			val mappings = preserve.filter(_.exists).zipWithIndex map { case (f, i) => (f, new File(temp, i.toHexString)) }
+			val (dirs, files) = preserve.filter(_.exists).flatMap(_.***.get).partition(_.isDirectory)
+			val mappings = files.zipWithIndex map { case (f, i) => (f, new File(temp, i.toHexString)) }
 			IO.move(mappings)
 			IO.delete(clean)
+			IO.createDirectories(dirs) // recreate empty directories
 			IO.move(mappings.map(_.swap))
 		}
 	def runMainTask(classpath: Initialize[Task[Classpath]], scalaRun: Initialize[Task[ScalaRun]]): Initialize[InputTask[Unit]] =
