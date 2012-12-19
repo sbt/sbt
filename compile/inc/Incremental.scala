@@ -39,7 +39,8 @@ object Incremental
 		else
 		{
 			def debug(s: => String) = if(java.lang.Boolean.getBoolean(incDebugProp)) log.debug(s) else ()
-			val invalidated = expand(invalidatedRaw, allSources, log)
+			val withPackageObjects = invalidatedRaw ++ invalidatedPackageObjects(invalidatedRaw, previous.relations)
+			val invalidated = expand(withPackageObjects, allSources, log)
 			val pruned = prune(invalidated, previous)
 			debug("********* Pruned: \n" + pruned.relations + "\n*********")
 			val fresh = doCompile(invalidated, binaryChanges)
@@ -62,6 +63,11 @@ object Incremental
 			all ++ invalidated // need the union because all doesn't contain removed sources
 		}
 		else invalidated
+
+	// Package objects are fragile: if they depend on an invalidated source, get "class file needed by package is missing" error
+	//  This might be too conservative: we probably only need package objects for packages of invalidated sources.
+	private[this] def invalidatedPackageObjects(invalidated: Set[File], relations: Relations): Set[File] =
+		invalidated flatMap relations.usesInternalSrc filter { _.getName == "package.scala" }
 
 	/**
 	* Accepts the sources that were recompiled during the last step and functions
