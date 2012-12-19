@@ -56,7 +56,7 @@ The name will be picked up from the val identifier by the implementation of the 
 New task/setting syntax
 -------------------
 
-First, the old syntax is still supported with the intention of allowing conversion to the new syntax at your leisure.  There may be some incompatibilities and some may be unavoidable, but please report any issues you have with an existing build.  One known unavoidable incompatibility is input tasks, which need to be changed.
+First, the old syntax is still supported with the intention of allowing conversion to the new syntax at your leisure.  There may be some incompatibilities and some may be unavoidable, but please report any issues you have with an existing build.
 
 The new syntax is implemented by making ``:=``, ``+=``, and ``++=`` macros and making these the only required assignment methods.  To refer to the value of other settings or tasks, use the ``value`` method on settings and tasks.  This method is a stub that is removed at compile time by the macro, which will translate the implementation of the task/setting to the old syntax.
 
