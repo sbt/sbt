@@ -21,8 +21,9 @@ Changes
 - Compare external binaries with canonical files (nau, gh-584)
 - Call System.exit after the main thread is finished. (Eugene V., gh-565)
 - Abort running tests on the first failure to communicate results back to the main process. (Eugene V., gh-557)
-- Don't let rhs of alias fail the parse.  (gh-572)
+- Don't let the right side of the alias command fail the parse.  (gh-572)
 - API extraction: handle any type that is annotated, not just the spec'd simple type.  (gh-559)
+- Don't try to look up the class file for a package.  (gh-620)
 
 0.12.0 to 0.12.1
 ~~~~~~~~~~~~~~~~
