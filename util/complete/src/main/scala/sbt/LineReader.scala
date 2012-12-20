@@ -52,7 +52,7 @@ abstract class JLine extends LineReader
 	}
 
 	private[this] def handleMultilinePrompt(prompt: String): String = {
-		var lines = """\r?\n""".r.split(prompt)
+		val lines = """\r?\n""".r.split(prompt)
 		lines.size match {
 			case 0 | 1 => prompt
 			case _ => reader.printString(lines.init.mkString("\n") + "\n"); lines.last;
