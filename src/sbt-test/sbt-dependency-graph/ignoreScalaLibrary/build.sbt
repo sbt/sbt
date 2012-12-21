@@ -6,8 +6,8 @@ scalaVersion := "2.9.2"
 
 libraryDependencies ++= Seq(
   "org.slf4j" % "slf4j-api" % "1.7.2",
-  "ch.qos.logback" % "logback-classic" % "1.0.7",
-  "com.typesafe.akka" % "akka-actor" % "2.0.3")
+  "ch.qos.logback" % "logback-classic" % "1.0.7"
+  )
 
 TaskKey[Unit]("check") <<= (ivyReport in Test, asciiTree in Test) map { (report, graph) =>
   def sanitize(str: String): String = str.split('\n').drop(1).map(_.trim).mkString("\n")
@@ -16,9 +16,6 @@ TaskKey[Unit]("check") <<= (ivyReport in Test, asciiTree in Test) map { (report,
       |  +-ch.qos.logback:logback-classic:1.0.7
       |  | +-ch.qos.logback:logback-core:1.0.7
       |  | +-org.slf4j:slf4j-api:1.6.6 (evicted by: 1.7.2)
-      |  |
-      |  +-com.typesafe.akka:akka-actor:2.0.3 [S]
-      |  | +-com.typesafe:config:0.3.1
       |  |
       |  +-org.slf4j:slf4j-api:1.7.2
       |  """.stripMargin
