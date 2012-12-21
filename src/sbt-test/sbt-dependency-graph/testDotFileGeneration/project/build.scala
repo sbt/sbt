@@ -35,26 +35,29 @@ object Build extends sbt.Build {
           resolvers += "Typesafe Repository" at "http://repo.typesafe.com/typesafe/releases/",
 
           TaskKey[Unit]("check") <<= (dependencyDot in Compile) map { (dotFile) =>
-            def sanitize(str: String): String = str.split('\n').drop(1).mkString("\n")
-              val expectedGraph =
-                """digraph "dependency-graph" {
-                  |    graph[rankdir="LR"]
-                  |    node [
-                  |        shape="record"
-                  |    ]
-                  |    edge [
-                  |        arrowtail="none"
-                  |    ]
-                  |    "test-dot-file-generation:test-dot-file-generation_2.9.2:0.1-SNAPSHOT" -> "just-a-transitive-dependency:just-a-transitive-dependency_2.9.2:0.1-SNAPSHOT"
-                  |    "just-a-transitive-dependency:just-a-transitive-dependency_2.9.2:0.1-SNAPSHOT" -> "just-a-transitive-dependency-endpoint:just-a-transitive-dependency-endpoint_2.9.2:0.1-SNAPSHOT"
-                  |    "test-dot-file-generation:test-dot-file-generation_2.9.2:0.1-SNAPSHOT" -> "just-a-dependency:just-a-dependency_2.9.2:0.1-SNAPSHOT"
-                  |}
-                """.stripMargin
+            val expectedGraph =
+              """digraph "dependency-graph" {
+                |    graph[rankdir="LR"]
+                |    node [
+                |        shape="record"
+                |    ]
+                |    edge [
+                |        arrowtail="none"
+                |    ]
+                |    "test-dot-file-generation:test-dot-file-generation_2.9.2:0.1-SNAPSHOT"[label=<test-dot-file-generation<BR/><B>test-dot-file-generation_2.9.2</B><BR/>0.1-SNAPSHOT>]
+                |    "just-a-transitive-dependency:just-a-transitive-dependency_2.9.2:0.1-SNAPSHOT"[label=<just-a-transitive-dependency<BR/><B>just-a-transitive-dependency_2.9.2</B><BR/>0.1-SNAPSHOT>]
+                |    "just-a-transitive-dependency-endpoint:just-a-transitive-dependency-endpoint_2.9.2:0.1-SNAPSHOT"[label=<just-a-transitive-dependency-endpoint<BR/><B>just-a-transitive-dependency-endpoint_2.9.2</B><BR/>0.1-SNAPSHOT>]
+                |    "just-a-dependency:just-a-dependency_2.9.2:0.1-SNAPSHOT"[label=<just-a-dependency<BR/><B>just-a-dependency_2.9.2</B><BR/>0.1-SNAPSHOT>]
+                |    "test-dot-file-generation:test-dot-file-generation_2.9.2:0.1-SNAPSHOT" -> "just-a-transitive-dependency:just-a-transitive-dependency_2.9.2:0.1-SNAPSHOT"
+                |    "just-a-transitive-dependency:just-a-transitive-dependency_2.9.2:0.1-SNAPSHOT" -> "just-a-transitive-dependency-endpoint:just-a-transitive-dependency-endpoint_2.9.2:0.1-SNAPSHOT"
+                |    "test-dot-file-generation:test-dot-file-generation_2.9.2:0.1-SNAPSHOT" -> "just-a-dependency:just-a-dependency_2.9.2:0.1-SNAPSHOT"
+                |}
+              """.stripMargin
 
-              val graph : String = scala.io.Source.fromFile(dotFile.getAbsolutePath).mkString
-              val errors = compareByLine(graph, expectedGraph)
-              require(errors.isEmpty , errors.mkString("\n"))
-              ()
+            val graph : String = scala.io.Source.fromFile(dotFile.getAbsolutePath).mkString
+            val errors = compareByLine(graph, expectedGraph)
+            require(errors.isEmpty , errors.mkString("\n"))
+            ()
           }
         )
     ).dependsOn(justADependencyProject, justATransitiveDependencyProject)

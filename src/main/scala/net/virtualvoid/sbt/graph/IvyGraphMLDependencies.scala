@@ -195,7 +195,17 @@ object IvyGraphMLDependencies extends App {
 
     XML.save(outputFile, xml)
   }
-  def saveAsDot(graph : ModuleGraph, outputFile: File) : File = {
+  def saveAsDot(graph : ModuleGraph,
+                dotHead : String,
+                nodeFormation : Function3[String,String,String,String],
+                outputFile: File
+  ) : File = {
+    val nodes = {
+      for (n <- graph.nodes)
+        yield
+          """    "%s"[label=%s]""".format(n.id.idString,
+            nodeFormation(n.id.organisation, n.id.name, n.id.version))
+    }.mkString("\n")
 
     val edges = {
       for ( e <- graph.edges)
@@ -203,16 +213,7 @@ object IvyGraphMLDependencies extends App {
          """    "%s" -> "%s"""".format(e._1.idString, e._2.idString)
     }.mkString("\n")
 
-    val dot =
-      """digraph "dependency-graph" {
-        |    graph[rankdir="LR"]
-        |    node [
-        |        shape="record"
-        |    ]
-        |    edge [
-        |        arrowtail="none"
-        |    ]
-        |""".stripMargin + edges + "\n}"
+    val dot = "%s\n%s\n%s\n}".format(dotHead, nodes, edges)
 
     sbt.IO.write(outputFile, dot)
     outputFile

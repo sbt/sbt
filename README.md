@@ -55,6 +55,9 @@ Tasks & Settings
    you want the scala-library dependency to appear in the output. (default: true)
  * `dependency-graph-ml-file`: a setting which allows configuring the output path of `dependency-graph-ml`.
  * `dependency-dot-file`: a setting which allows configuring the output path of `dependency-dot`.
+ * `dependency-dot-head`: a setting to customize the head of the dot file. (e.g. to set your preferred node shapes)
+ * `dependency-dot-nodes-label`: defines the formation of a node label
+   (default set to `[organisation]<BR/><B>[name]</B><BR/>[version]`)
  * `ivy-report`: let's ivy generate the resolution report for you project. Use
    `show ivy-report` for the filename of the generated report
 
