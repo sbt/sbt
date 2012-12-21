@@ -200,10 +200,19 @@ object IvyGraphMLDependencies extends App {
     val edges = {
       for ( e <- graph.edges)
         yield
-         "\t\"" + e._1.idString + "\" -> \"" + e._2.idString + "\""
+         """    "%s" -> "%s"""".format(e._1.idString, e._2.idString)
     }.mkString("\n")
 
-    val dot = "digraph \"dependency-graph\" {\n" + edges + "\n}"
+    val dot =
+      """digraph "dependency-graph" {
+        |    graph[rankdir="LR"]
+        |    node [
+        |        shape="record"
+        |    ]
+        |    edge [
+        |        arrowtail="none"
+        |    ]
+        |""".stripMargin + edges + "\n}"
 
     sbt.IO.write(outputFile, dot)
     outputFile
