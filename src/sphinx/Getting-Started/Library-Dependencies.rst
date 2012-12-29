@@ -157,7 +157,7 @@ be a single fixed version. Ivy can select the latest revision of a
 module according to constraints you specify. Instead of a fixed revision
 like ``"1.6.1"``, you specify ``"latest.integration"``, ``"2.9.+"``, or
 ``"[1.0,)"``. See the `Ivy
-revisions <http://ant.apache.org/ivy/history/2.2.0/ivyfile/dependency.html#revision>`_
+revisions <http://ant.apache.org/ivy/history/2.3.0-rc1/ivyfile/dependency.html#revision>`_
 documentation for details.
 
 Resolvers
