@@ -21,7 +21,7 @@ Configurations
 Ivy configurations are a useful feature for your build when you use
 managed dependencies. They are essentially named sets of dependencies.
 You can read the `Ivy
-documentation <http://ant.apache.org/ivy/history/2.2.0/tutorial/conf.html>`_
+documentation <http://ant.apache.org/ivy/history/2.3.0-rc1/tutorial/conf.html>`_
 for details. Their use in sbt is described on this page.
 
 Usage
@@ -46,7 +46,7 @@ your dependency definition:
 
 This says that your project's ``test`` configuration uses
 ``ScalaTest``'s ``default`` configuration. Again, see the `Ivy
-documentation <http://ant.apache.org/ivy/history/2.2.0/tutorial/conf.html>`_
+documentation <http://ant.apache.org/ivy/history/2.3.0-rc1/tutorial/conf.html>`_
 for more advanced mappings. Most projects published to Maven
 repositories will use the ``default`` or ``compile`` configuration.
 
