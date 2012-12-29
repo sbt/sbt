@@ -127,7 +127,7 @@ For example:
     Artifact("myproject", "jdk15")
 
 See the `Ivy
-documentation <http://ant.apache.org/ivy/history/2.2.0/ivyfile/dependency-artifact.html>`_
+documentation <http://ant.apache.org/ivy/history/2.3.0-rc1/ivyfile/dependency-artifact.html>`_
 for more details on artifacts. See the `Artifact
 API <../../api/sbt/Artifact$.html>`_ for
 combining the parameters above and specifying [Configurations] and extra
