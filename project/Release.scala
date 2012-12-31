@@ -17,15 +17,19 @@ object Release extends Build
 	lazy val pushWiki = TaskKey[Unit]("push-wiki")
 	lazy val pushMain = TaskKey[Unit]("push-main")
 
+	val PublishRepoHost = "typesafe.artifactoryonline.com"
+
 	def settings(nonRoots: => Seq[ProjectReference], launcher: ScopedTask[File]): Seq[Setting[_]] =
-		(if(CredentialsFile.exists) releaseSettings(nonRoots, launcher) else Nil) ++
-		(if(file(".release.sbt") exists) fullReleaseSettings else Nil)
+		if(CredentialsFile.exists)
+			releaseSettings(nonRoots, launcher) /* ++ fullReleaseSettings */
+		else
+			Nil
 
 	def releaseSettings(nonRoots: => Seq[ProjectReference], launcher: ScopedTask[File]): Seq[Setting[_]] = Seq(
 		publishTo in ThisBuild <<= publishResolver,
 		remoteID <<= publishStatus("typesafe-ivy-" + _),
-		credentials in Global += Credentials(CredentialsFile),
-		remoteBase <<= publishStatus( "https://typesafe.artifactoryonline.com/typesafe/ivy-" + _ ),
+		credentials in ThisBuild += Credentials(CredentialsFile),
+		remoteBase <<= publishStatus( "https://" + PublishRepoHost + "/typesafe/ivy-" + _ ),
 		publishAllArtifacts <<= Util.inAll(nonRoots, publish.task),
 		publishLauncher <<= deployLauncher(launcher),
 		publishRelease <<= Seq(publishLauncher, publishAllArtifacts).dependOn,
@@ -45,8 +49,10 @@ object Release extends Build
 		}
 	def getCredentials(cs: Seq[Credentials], log: Logger): (String, String) =
 	{
-		val Some(creds) = Credentials.forHost(cs, "typesafe.artifactoryonline.com")
-		(creds.userName, creds.passwd)
+		Credentials.forHost(cs, PublishRepoHost) match {
+			case Some(creds) => (creds.userName, creds.passwd)
+			case None => error("No credentials defined for " + PublishRepoHost)
+		}
 	}
 	def snapshotPattern(version: String) = Resolver.localBasePattern.replaceAll("""\[revision\]""", version)
 	def publishResolver: Project.Initialize[Option[Resolver]] = (remoteID, remoteBase) { (id, base) =>
