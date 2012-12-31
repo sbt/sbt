@@ -30,8 +30,8 @@ object Util
 	lazy val base: Seq[Setting[_]] = Seq(scalacOptions ++= Seq("-Xelide-below", "0"), projectComponent) ++ Licensed.settings
 	
 	def testDependencies = libraryDependencies ++= Seq(
-		"org.scalacheck" % "scalacheck_2.10.0-RC3" % "1.10.0" % "test",
-		"org.specs2" % "specs2_2.10.0-RC3" % "1.12.3" % "test"
+		"org.scalacheck" %% "scalacheck" % "1.10.0" % "test",
+		"org.specs2" %% "specs2" % "1.12.3" % "test"
 	)
 
 	lazy val minimalSettings: Seq[Setting[_]] = Defaults.paths ++ Seq[Setting[_]](crossTarget <<= target.identity, name <<= thisProject(_.id))
