@@ -23,12 +23,13 @@ object Docs
 	def settings: Seq[Setting[_]] =
 		site.settings ++
 		site.sphinxSupport(DocsPath) ++
-		site.includeScaladoc("api") ++
-		siteIncludeSxr("sxr") ++
+//		site.includeScaladoc("api") ++
+//		siteIncludeSxr("sxr") ++
 		ghPagesSettings ++
 		Seq(
 			SphinxSupport.sphinxIncremental in SphinxSupport.Sphinx := true,
-			SphinxSupport.enableOutput in SphinxSupport.generatePdf := true
+			// TODO: set to true with newer sphinx plugin release
+			SphinxSupport.enableOutput in SphinxSupport.generatePdf := false
 		)
 
 	def ghPagesSettings = ghpages.settings ++ Seq(
