@@ -20,6 +20,7 @@ object Sbt extends Build
 		publishMavenStyle := false,
 		componentID := None,
 		crossPaths := false,
+		resolvers += Resolver.typesafeIvyRepo("releases"),
 		concurrentRestrictions in Global += Util.testExclusiveRestriction,
 		testOptions += Tests.Argument(TestFrameworks.ScalaCheck, "-w", "1"),
 		javacOptions in compile ++= Seq("-target", "6", "-source", "6")
@@ -87,7 +88,7 @@ object Sbt extends Build
 		// Standard task system.  This provides map, flatMap, join, and more on top of the basic task model.
 	lazy val stdTaskSub = testedBaseProject(tasksPath / "standard", "Task System") dependsOn(taskSub % "compile;test->test", collectionSub, logSub, ioSub, processSub) settings( testExclusive )
 		// Persisted caching based on SBinary
-	lazy val cacheSub = baseProject(cachePath, "Cache") dependsOn(ioSub, collectionSub, sbinary) // settings(sbinary)
+	lazy val cacheSub = baseProject(cachePath, "Cache") dependsOn(ioSub, collectionSub) settings(sbinary)
 		// Builds on cache to provide caching for filesystem-related operations
 	lazy val trackingSub = baseProject(cachePath / "tracking", "Tracking") dependsOn(cacheSub, ioSub)
 		// Embedded Scala code runner
@@ -103,7 +104,7 @@ object Sbt extends Build
 		//   Defines the data structures for representing file fingerprints and relationships and the overall source analysis
 	lazy val compileIncrementalSub = testedBaseProject(compilePath / "inc", "Incremental Compiler") dependsOn(apiSub, ioSub, logSub, classpathSub, relationSub)
 		// Persists the incremental data structures using SBinary
-	lazy val compilePersistSub = baseProject(compilePath / "persist", "Persist") dependsOn(compileIncrementalSub, apiSub, sbinary) // settings(sbinary)
+	lazy val compilePersistSub = baseProject(compilePath / "persist", "Persist") dependsOn(compileIncrementalSub, apiSub) settings(sbinary)
 		// sbt-side interface to compiler.  Calls compiler-side interface reflectively
 	lazy val compilerSub = testedBaseProject(compilePath, "Compile") dependsOn(launchInterfaceSub, interfaceSub % "compile;test->test", logSub, ioSub, classpathSub, 
 		logSub % "test->test", launchSub % "test->test", apiSub % "test") settings( compilerSettings : _*)
@@ -125,7 +126,7 @@ object Sbt extends Build
 	lazy val commandSub = testedBaseProject(mainPath / "command", "Command") dependsOn(interfaceSub, ioSub, launchInterfaceSub, logSub, completeSub, classpathSub)
 		// Fixes scope=Scope for Setting (core defined in collectionSub) to define the settings system used in build definitions
 	lazy val mainSettingsSub = testedBaseProject(mainPath / "settings", "Main Settings") dependsOn(applyMacroSub, interfaceSub, ivySub, relationSub, logSub, ioSub, commandSub,
-		completeSub, classpathSub, stdTaskSub, processSub, sbinary) //settings( sbinary )
+		completeSub, classpathSub, stdTaskSub, processSub) settings( sbinary )
 
 		// The main integration project for sbt.  It brings all of the subsystems together, configures them, and provides for overriding conventions.
 	lazy val mainSub = testedBaseProject(mainPath, "Main") dependsOn(actionsSub, mainSettingsSub, interfaceSub, ioSub, ivySub, launchInterfaceSub, logSub, processSub, runSub, commandSub)

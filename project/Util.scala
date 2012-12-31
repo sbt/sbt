@@ -148,7 +148,7 @@ object Common
 	lazy val ivy = lib("org.apache.ivy" % "ivy" % "2.3.0-rc1")
 	lazy val httpclient = lib("commons-httpclient" % "commons-httpclient" % "3.1")
 	lazy val jsch = lib("com.jcraft" % "jsch" % "0.1.46" intransitive() )
-	lazy val sbinary = ProjectRef(uri("git://github.com/harrah/sbinary.git"), "core") //lib("org.scala-tools.sbinary" % "sbinary_2.10" % "0.4.0" )
+	lazy val sbinary = lib("org.scala-tools.sbinary" %% "sbinary" % "0.4.1" )
 	lazy val scalaCompiler = libraryDependencies <+= scalaVersion("org.scala-lang" % "scala-compiler" % _ )
 }
 object Licensed
