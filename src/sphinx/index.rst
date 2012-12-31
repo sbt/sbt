@@ -33,5 +33,6 @@ the :doc:`index of names and types <Name-Index>`.
 
    Dormant/Dormant
    Community/ChangeSummary_0.12.0
+   Community/ChangeSummary_0.13.0
    Community/Repository-Rules
    pdf_index

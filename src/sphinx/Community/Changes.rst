@@ -2,6 +2,13 @@
 Changes
 =======
 
+0.12.2 to 0.13.0
+~~~~~~~~~~~~~~~~
+
+The changes for 0.13.0 are listed on a separate page. See
+:doc:`ChangeSummary_0.13.0`.
+
+
 0.12.1 to 0.12.2
 ~~~~~~~~~~~~~~~~
 

@@ -54,7 +54,7 @@ There are new methods that help avoid duplicating key names by declaring keys as
 The name will be picked up from the val identifier by the implementation of the taskKey macro so there is no reflection needed or runtime overhead.  Note that a description is mandatory and the method ``taskKey`` begins with a lowercase ``t``.  Similar methods exist for keys for settings and input tasks: ``settingKey`` and ``inputKey``.
 
 New task/setting syntax
--------------------
+-----------------------
 
 First, the old syntax is still supported with the intention of allowing conversion to the new syntax at your leisure.  There may be some incompatibilities and some may be unavoidable, but please report any issues you have with an existing build.
 
