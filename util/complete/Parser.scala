@@ -49,9 +49,13 @@ sealed trait RichParser[A]
 	* capture it and fail locally instead of allowing the exception to propagate up and terminate parsing.*/
 	def failOnException: Parser[A]
 	
+	@deprecated("Use `not` and explicitly provide the failure message", "0.13.0")
 	def unary_- : Parser[Unit]
 	def & (o: Parser[_]): Parser[A]
+
+	@deprecated("Use `and` and `not` and explicitly provide the failure message", "0.13.0")
 	def - (o: Parser[_]): Parser[A]
+
 	/** Explicitly defines the completions for the original Parser.*/
 	def examples(s: String*): Parser[A]
 	/** Explicitly defines the completions for the original Parser.*/
@@ -216,6 +220,7 @@ object Parser extends ParserMain
 		}
 	}
 
+	@deprecated("Explicitly call `and` and `not` to provide the failure message.", "0.13.0")
 	def sub[T](a: Parser[T], b: Parser[_]): Parser[T]  =  and(a, not(b))
 
 	def and[T](a: Parser[T], b: Parser[_]): Parser[T]  =  a.ifValid( b.ifValid( new And(a, b) ))
@@ -239,7 +244,7 @@ trait ParserMain
 		def ~>[B](b: Parser[B]): Parser[B] = (a ~ b) map { case _ ~ bv => bv }
 		def !!!(msg: String): Parser[A] = onFailure(a, msg)
 		def failOnException: Parser[A] = trapAndFail(a)
-	
+
 		def unary_- = not(a)
 		def & (o: Parser[_]) = and(a, o)
 		def - (o: Parser[_]) = sub(a, o)
@@ -394,9 +399,12 @@ trait ParserMain
 		else
 			b
 
-	def not(p: Parser[_]): Parser[Unit] = p.result match {
-		case None => new Not(p)
-		case Some(_) => failure("Excluded.")
+	@deprecated("Explicitly specify the failure message.", "0.13.0")
+	def not(p: Parser[_]): Parser[Unit] = not(p, "Excluded.")
+
+	def not(p: Parser[_], failMessage: String): Parser[Unit] = p.result match {
+		case None => new Not(p, failMessage)
+		case Some(_) => failure(failMessage)
 	}
 
 	def oneOf[T](p: Seq[Parser[T]]): Parser[T] = p.reduceLeft(_ | _)
@@ -575,17 +583,19 @@ private final class And[T](a: Parser[T], b: Parser[_]) extends ValidParser[T]
 	def derive(c: Char) = (a derive c) & (b derive c)
 	def completions(level: Int) = a.completions(level).filterS(s => apply(b)(s).resultEmpty.isValid )
 	lazy val resultEmpty = a.resultEmpty && b.resultEmpty
+	override def toString = s"($a) && ($b)"
 }
 
-private final class Not(delegate: Parser[_]) extends ValidParser[Unit]
+private final class Not(delegate: Parser[_], failMessage: String) extends ValidParser[Unit]
 {
-	def derive(c: Char) = if(delegate.valid) not(delegate derive c) else this
+	def derive(c: Char) = if(delegate.valid) not(delegate derive c, failMessage) else this
 	def completions(level: Int) = Completions.empty
 	def result = None
 	lazy val resultEmpty = delegate.resultEmpty match {
 		case f: Failure => Value(())
-		case v: Value[_] => mkFailure("Excluded.")
+		case v: Value[_] => mkFailure(failMessage)
 	}
+	override def toString = s" -($delegate)"
 }
 private final class Examples[T](delegate: Parser[T], fixed: Set[String]) extends ValidParser[T]
 {
