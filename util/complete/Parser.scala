@@ -49,11 +49,11 @@ sealed trait RichParser[A]
 	* capture it and fail locally instead of allowing the exception to propagate up and terminate parsing.*/
 	def failOnException: Parser[A]
 	
-	@deprecated("Use `not` and explicitly provide the failure message", "0.13.0")
+	@deprecated("Use `not` and explicitly provide the failure message", "0.12.2")
 	def unary_- : Parser[Unit]
 	def & (o: Parser[_]): Parser[A]
 
-	@deprecated("Use `and` and `not` and explicitly provide the failure message", "0.13.0")
+	@deprecated("Use `and` and `not` and explicitly provide the failure message", "0.12.2")
 	def - (o: Parser[_]): Parser[A]
 
 	/** Explicitly defines the completions for the original Parser.*/
@@ -220,7 +220,7 @@ object Parser extends ParserMain
 		}
 	}
 
-	@deprecated("Explicitly call `and` and `not` to provide the failure message.", "0.13.0")
+	@deprecated("Explicitly call `and` and `not` to provide the failure message.", "0.12.2")
 	def sub[T](a: Parser[T], b: Parser[_]): Parser[T]  =  and(a, not(b))
 
 	def and[T](a: Parser[T], b: Parser[_]): Parser[T]  =  a.ifValid( b.ifValid( new And(a, b) ))
@@ -399,7 +399,7 @@ trait ParserMain
 		else
 			b
 
-	@deprecated("Explicitly specify the failure message.", "0.13.0")
+	@deprecated("Explicitly specify the failure message.", "0.12.2")
 	def not(p: Parser[_]): Parser[Unit] = not(p, "Excluded.")
 
 	def not(p: Parser[_], failMessage: String): Parser[Unit] = p.result match {
@@ -583,7 +583,7 @@ private final class And[T](a: Parser[T], b: Parser[_]) extends ValidParser[T]
 	def derive(c: Char) = (a derive c) & (b derive c)
 	def completions(level: Int) = a.completions(level).filterS(s => apply(b)(s).resultEmpty.isValid )
 	lazy val resultEmpty = a.resultEmpty && b.resultEmpty
-	override def toString = s"($a) && ($b)"
+	override def toString = "(%s) && (%s)".format(a,b)
 }
 
 private final class Not(delegate: Parser[_], failMessage: String) extends ValidParser[Unit]
@@ -595,7 +595,7 @@ private final class Not(delegate: Parser[_], failMessage: String) extends ValidP
 		case f: Failure => Value(())
 		case v: Value[_] => mkFailure(failMessage)
 	}
-	override def toString = s" -($delegate)"
+	override def toString = " -(%s)".format(delegate)
 }
 private final class Examples[T](delegate: Parser[T], fixed: Set[String]) extends ValidParser[T]
 {
