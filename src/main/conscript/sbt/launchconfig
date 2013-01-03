@@ -4,7 +4,7 @@
 [app]
   org: org.scala-sbt
   name: sbt
-  version: read(sbt.version)[0.12.1]
+  version: read(sbt.version)[0.12.2-RC2]
   class: ${sbt.main.class-sbt.xMain}
   components: xsbti
   cross-versioned: true
