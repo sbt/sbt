@@ -5,8 +5,6 @@ package sbt
 
 	import java.io.File
 	import java.net.URI
-	import compiler.Eval
-	import inc.Locate
 	import Def.{displayFull, ScopedKey, ScopeLocal, Setting}
 	import Attributed.data
 	import BuildPaths.outputDirectory
