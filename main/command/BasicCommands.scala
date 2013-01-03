@@ -1,6 +1,6 @@
 package sbt
 
-	import complete.{DefaultParsers, HistoryCommands, Parser}
+	import complete.{Completion, Completions, DefaultParsers, HistoryCommands, Parser, TokenCompletions}
 	import classpath.ClasspathUtilities.toLoader
 	import DefaultParsers._
 	import Types.{const,idFun}
@@ -82,20 +82,25 @@ object BasicCommands
 
 	def call = Command(ApplyCommand, Help.more(ApplyCommand, ApplyDetailed))(_ => callParser) { case (state,(cp,args)) =>
 		val parentLoader = getClass.getClassLoader
-		state.log.info("Applying State transformations " + args.mkString(", ") + (if(cp.isEmpty) "" else " from " + cp.mkString(File.separator)))
+		state.log.info("Applying State transformations " + args.mkString(", ") + (if(cp.isEmpty) "" else " from " + cp.mkString(File.pathSeparator)))
 		val loader = if(cp.isEmpty) parentLoader else toLoader(cp.map(f => new File(f)), parentLoader)
 		val loaded = 	args.map(arg => ModuleUtilities.getObject(arg, loader))
 		(state /: loaded) { case (s, obj: (State => State)) => obj(s) }
 	}
 	def callParser: Parser[(Seq[String], Seq[String])] = token(Space) ~> ((classpathOptionParser ?? Nil) ~ rep1sep(className, token(Space)))
-	private[this] def className: Parser[String] = 
-		token(StringBasic.filter(s => !s.contains("-"), const("- not allowed in class name")), "<class name>")
+	private[this] def className: Parser[String] =
+	{
+		val base = StringBasic & not('-' ~> any.*, "Class name cannot start with '-'.")
+		def single(s: String) = Completions.single(Completion.displayStrict(s))
+		val compl = TokenCompletions.fixed( (seen,level) => if(seen.startsWith("-")) Completions.nil else single("<class name>"))
+		token(base, compl)
+	}
 	private[this] def classpathOptionParser: Parser[Seq[String]] =
-		token( ("-cp" | "-classpath") ~> Space ) ~> rep1sep(classpathString, token(File.separatorChar)) <~ token(Space)
+		token( ("-cp" | "-classpath") ~> Space ) ~> rep1sep(classpathString, token(File.pathSeparatorChar)) <~ token(Space)
 	private[this] def classpathString: Parser[String] =
-		token(charClass(entryClass).+.string, "<classpath-entry>")
+		token(charClass(entryClass, "<classpath-entry>").+.string, "<classpath-entry>")
 	private[this] def entryClass(c: Char): Boolean = 
-		c != File.separatorChar && !java.lang.Character.isWhitespace(c)
+		c != File.pathSeparatorChar && !java.lang.Character.isWhitespace(c)
 
 	def exit = Command.command(TerminateAction, exitBrief, exitBrief ) ( _ exit true )
 
