@@ -52,7 +52,6 @@ This documentation can be forked `on GitHub <https://github.com/harrah/xsbt/>`_.
 Feel free to make corrections and add documentation.
 
 If you are familiar with 0.7.x, please see the :doc:`migration page </Detailed-Topics/Migrating-from-sbt-0.7.x-to-0.10.x>`.
-Documentation for 0.7.x is still available on the `Google Code
-Site <http://code.google.com/p/simple-build-tool/wiki/DocumentationHome>`_.
+Documentation for 0.7.x has been `archived here <http://www.scala-sbt.org/0.7.7/docs/home.html>`_. 
 This documentation applies to sbt |version|.
 
