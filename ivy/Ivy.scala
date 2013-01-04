@@ -466,7 +466,7 @@ private object IvySbt
 	/** Combines the artifacts, includes, and excludes of duplicate dependency definitions.
 	* This is somewhat fragile and is only intended to workaround Ivy (or sbt's use of Ivy) not handling this case properly.
 	* In particular, Ivy will create multiple dependency entries when converting a pom with a dependency on a classified artifact and a non-classified artifact:
-	*   https://github.com/harrah/xsbt/issues/468
+	*   https://github.com/sbt/sbt/issues/468
 	* It will also allow users to declare dependencies on classified modules in different configurations:
 	*   https://groups.google.com/d/topic/simple-build-tool/H2MdAARz6e0/discussion
 	* as well as basic multi-classifier handling: #285, #419, #480.

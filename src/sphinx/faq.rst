@@ -20,7 +20,7 @@ Please use the `mailing list`_ for questions, comments, and discussions.
 How do I report a bug?
 ~~~~~~~~~~~~~~~~~~~~~~
 
-Please use the `issue tracker <https://github.com/harrah/xsbt/issues>`_
+Please use the `issue tracker <https://github.com/sbt/sbt/issues>`_
 to report confirmed bugs. Do not use it to ask questions. If you are
 uncertain whether something is a bug, please ask on the `mailing list`_ first.
 
@@ -28,7 +28,7 @@ How can I help?
 ~~~~~~~~~~~~~~~
 
 -  Fix mistakes that you notice on the wiki.
--  Make `bug reports <https://github.com/harrah/xsbt/issues>`_ that are
+-  Make `bug reports <https://github.com/sbt/sbt/issues>`_ that are
    clear and reproducible.
 -  Answer questions on the `mailing list`_.
 -  Fix issues that affect you. `Fork, fix, and submit a pull

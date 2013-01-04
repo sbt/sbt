@@ -49,7 +49,7 @@ html_context = {'home_site': home_site, 'site_search_base': site_search_base}
 # Issues role
 
 issuetracker = 'github'
-issuetracker_project = 'harrah/xsbt'
+issuetracker_project = 'sbt/sbt'
 issuetracker_plaintext_issues = True
 issuetracker_issue_pattern = r'\bgh-(\d+)\b'
 issuetracker_title_template = '#{issue.id}'
@@ -75,7 +75,7 @@ rst_epilog = """
 .. _RPM: %(sbt_native_package_base)s/%(version)s/sbt.rpm
 .. |nightly-launcher| replace:: <%(launcher_snapshots_base)s
 .. _mailing list: http://groups.google.com/group/simple-build-tool/topics
-.. _source code: http://github.com/harrah/xsbt
+.. _source code: http://github.com/sbt/sbt
 """ % {
    'launcher_release_base': launcher_release_base,
    'launcher_snapshots_base': launcher_snapshots_base,

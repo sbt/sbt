@@ -439,7 +439,7 @@ mapFailure
 ``mapFailure`` accepts a function of type ``Incomplete => T``, where
 ``T`` is a type parameter. In the case of multiple inputs, the function
 has type ``Seq[Incomplete] => T``.
-`Incomplete <https://github.com/harrah/xsbt/latest/api/sbt/Incomplete.html>`_
+`Incomplete <../../api/sbt/Incomplete.html>`_
 is an exception with information about any tasks that caused the failure
 and any underlying exceptions thrown during task execution. The
 resulting task defined by ``mapFailure`` fails if its input succeeds and

@@ -130,7 +130,7 @@ We can change to the plugins project in ``project/`` using
 
 .. code-block:: console
 
-    $ xsbt
+    $ sbt
     > reload plugins
     [info] Set current project to default (in build file:/Users/harrah/demo2/project/)
     >
