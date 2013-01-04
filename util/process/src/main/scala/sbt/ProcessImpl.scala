@@ -403,7 +403,7 @@ private[sbt] class SimpleProcessBuilder(p: JProcessBuilder) extends AbstractProc
 /** A thin wrapper around a java.lang.Process. `outputThreads` are the Threads created to read from the
 * output and error streams of the process.
 * The implementation of `exitValue` wait for the process to finish and then waits until the threads reading output and error streams die before
-* returning. Note that the thread that reads the input stream cannot be interrupted, see https://github.com/harrah/xsbt/issues/327 and
+* returning. Note that the thread that reads the input stream cannot be interrupted, see https://github.com/sbt/sbt/issues/327 and
 * http://bugs.sun.com/bugdatabase/view_bug.do?bug_id=4514257 */
 private class SimpleProcess(p: JProcess, outputThreads: List[Thread]) extends Process
 {
