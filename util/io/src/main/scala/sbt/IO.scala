@@ -87,7 +87,7 @@ object IO
 		if(uri.getAuthority eq null)
 			new File(uri)
 		else {
-			/* https://github.com/harrah/xsbt/issues/564
+			/* https://github.com/sbt/sbt/issues/564
 			* http://blogs.msdn.com/b/ie/archive/2006/12/06/file-uris-in-windows.aspx
 			* http://bugs.sun.com/bugdatabase/view_bug.do?bug_id=5086147
 			* The specific problem here is that `uri` will have a defined authority component for UNC names like //foo/bar/some/path.jar

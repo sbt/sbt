@@ -28,7 +28,7 @@ Install `conscript <https://github.com/n8han/conscript>`_.
 
 .. code-block:: console
 
-    cs harrah/xsbt --branch 0.12.0
+    cs sbt/sbt --branch 0.12.0
 
 This will create two scripts: ``screpl`` and ``scalas``.
 

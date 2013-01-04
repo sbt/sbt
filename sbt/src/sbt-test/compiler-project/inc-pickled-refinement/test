@@ -1,7 +1,7 @@
 # Tests if refinement types are pickled correctly so they
 # do not introduce unnecessary compile iterations
 # See https://issues.scala-lang.org/browse/SI-6596,
-#     https://github.com/harrah/xsbt/issues/610
+#     https://github.com/sbt/sbt/issues/610
 
 # introduces first compile iteration
 > compile

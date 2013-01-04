@@ -388,7 +388,7 @@ methods, which are used to handle failure of other tasks.
 The ``failure`` method creates a new task that returns the ``Incomplete`` value
 when the original task fails to complete normally.  If the original task succeeds,
 the new task fails.
-`Incomplete <https://github.com/harrah/xsbt/latest/api/sbt/Incomplete.html>`_
+`Incomplete <../../api/sbt/Incomplete.html>`_
 is an exception with information about any tasks that caused the failure
 and any underlying exceptions thrown during task execution. 
 
@@ -443,7 +443,7 @@ A normal task definition fails when any of its inputs fail and computes its valu
 ~~~~~~~~~~
 
 The ``result`` method creates a new task that returns the full ``Result[T]`` value for the original task.
-`Result <https://github.com/harrah/xsbt/latest/api/sbt/Result.html>`_
+`Result <../../api/sbt/Result.html>`_
 has the same structure as ``Either[Incomplete, T]`` for a task result of
 type ``T``. That is, it has two subtypes:
 
