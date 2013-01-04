@@ -52,7 +52,7 @@ To automatically deploy snapshot/release versions of your plugin use the followi
 Available Plugins
 =================
 
-Please feel free to `submit a pull request <https://github.com/harrah/xsbt/pulls>`_ that adds your plugin to the list.
+Please feel free to `submit a pull request <https://github.com/sbt/sbt/pulls>`_ that adds your plugin to the list.
 
 Plugins for IDEs:
 ~~~~~~~~~~~~~~~~~

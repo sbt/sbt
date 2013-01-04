@@ -15,7 +15,7 @@ list if you are interested in a specific topic.
       -  Inter-project source dependencies
       -  Binary dependencies (jars + class files)
       -  data structure representing the
-         `API <https://github.com/harrah/xsbt/tree/0.13/interface>`_ of
+         `API <https://github.com/sbt/sbt/tree/0.13/interface>`_ of
          the source code There is some code already for generating dot
          files that isn't hooked up, but graphing dependencies and
          inheritance relationships is a general area of work.

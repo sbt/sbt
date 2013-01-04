@@ -48,7 +48,7 @@ All documentation may be found via the :doc:`table of contents <index>`.
 The mailing list is at http://groups.google.com/group/simple-build-tool/topics and should be used for discussions and questions.
 Questions may also be asked at `Stack Overflow <http://stackoverflow.com/tags/sbt>`_.
 
-This documentation can be forked `on GitHub <https://github.com/harrah/xsbt/>`_.
+This documentation can be forked `on GitHub <https://github.com/sbt/sbt/>`_.
 Feel free to make corrections and add documentation.
 
 If you are familiar with 0.7.x, please see the :doc:`migration page </Detailed-Topics/Migrating-from-sbt-0.7.x-to-0.10.x>`.

@@ -251,7 +251,11 @@ Further references
 ------------------
 
 The incremental compilation logic is implemented in
+<<<<<<< HEAD
 https://github.com/sbt/sbt/blob/0.13/compile/inc/src/main/scala/inc/Incremental.scala.
+=======
+https://github.com/sbt/sbt/blob/0.13/compile/inc/Incremental.scala.
+>>>>>>> 7c58191... Convert references to harrah/xsbt to sbt/sbt
 Some related documentation for SBT 0.7 is available at:
 https://code.google.com/p/simple-build-tool/wiki/ChangeDetectionAndTesting.
 Some discussion on the incremental recompilation policies is available

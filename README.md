@@ -20,8 +20,8 @@ This is the 0.13.x series of sbt.
 1. Install the current stable binary release of sbt (see [Setup]), which will be used to build sbt from source.
 2. Get the source code.
 
-		$ git clone git://github.com/harrah/xsbt.git
-		$ cd xsbt
+		$ git clone git://github.com/sbt/sbt.git
+		$ cd sbt
 
 3. The initial branch is the development branch 0.13, which contains the latest code for the next major sbt release.  To build a specific release or commit, switch to the associated tag.  The tag for the latest stable release is v0.12.1:
 
@@ -43,7 +43,7 @@ This is the 0.13.x series of sbt.
 
 	If using the 0.13 development branch, the launcher is at:
 
-		<xsbt>/target/sbt-launch-0.13.0-SNAPSHOT.jar
+		<sbt>/target/sbt-launch-0.13.0-SNAPSHOT.jar
 
 ## Modifying sbt
 
