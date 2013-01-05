@@ -22,6 +22,11 @@ master_doc = 'home'
 highlight_language = 'scala'
 add_function_parentheses = False
 
+# TODO: make this an argument
+#  pdf_index should be excluded when generating html
+#  index.rst should be excluded when generating a pdf
+exclude_patterns = [ 'pdf_index.rst' ]
+
 # HTML
 
 html_theme = 'sbt'
@@ -50,10 +55,10 @@ html_context = {'home_site': home_site, 'site_search_base': site_search_base}
 
 # Latex (PDF)
 
-latex_documents = [
-  ('pdf_index', 'sbt.tex', html_title, '', 'manual', True),
-  ('Getting-Started/index', 'sbt-Getting-Started.tex', html_title, '', 'manual', True),
-]
+#latex_documents = [
+#  ('pdf_index', 'sbt.tex', html_title, '', 'manual', True),
+#  ('Getting-Started/index', 'sbt-Getting-Started.tex', html_title, '', 'manual', True),
+#]
 
 # Issues role
 
