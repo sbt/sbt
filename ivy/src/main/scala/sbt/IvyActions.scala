@@ -258,7 +258,7 @@ object IvyActions
 				resolver.publish(artifact, file, overwrite)
 			resolver.commitPublishTransaction()
 		} catch {
-			case e =>
+			case e: Throwable =>
 				try { resolver.abortPublishTransaction() }
 				finally { throw e }
 		}
