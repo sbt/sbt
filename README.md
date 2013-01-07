@@ -1,5 +1,6 @@
 [Google Code]: http://code.google.com/p/simple-build-tool
 [Scala Days 2011]: http://days2011.scala-lang.org/node/138/285
+[CONTRIBUTING]: https://github.com/sbt/sbt/blob/0.13/CONTRIBUTING.md
 [documentation]: http://www.scala-sbt.org/release/docs/
 [Setup]: http://www.scala-sbt.org/release/docs/Getting-Started/Setup
 [video of a demo]: http://vimeo.com/20263617
