@@ -83,7 +83,7 @@ final class TestRunner(framework: Framework, loader: ClassLoader, listeners: Seq
 		}
 		catch
 		{
-			case e =>
+			case e: Throwable =>
 				safeListenersCall(_.endGroup(name, e))
 				TestResult.Error
 		}

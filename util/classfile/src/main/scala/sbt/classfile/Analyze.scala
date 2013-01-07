@@ -21,7 +21,7 @@ private[sbt] object Analyze
 
 		def load(tpe: String, errMsg: => Option[String]): Option[Class[_]] =
 			try { Some(Class.forName(tpe, false, loader)) }
-			catch { case e => errMsg.foreach(msg => log.warn(msg + " : " +e.toString)); None }
+			catch { case e: Throwable => errMsg.foreach(msg => log.warn(msg + " : " +e.toString)); None }
 
 		val productToSource = new mutable.HashMap[File, File]
 		val sourceToClassFiles = new mutable.HashMap[File, Buffer[ClassFile]]
