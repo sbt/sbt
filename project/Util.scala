@@ -27,7 +27,8 @@ object Util
 	def testedBaseProject(path: File, nameString: String) = baseProject(path, nameString) settings( testDependencies : _*)
 	
 	lazy val javaOnly = Seq[Setting[_]](/*crossPaths := false, */compileOrder := CompileOrder.JavaThenScala, unmanagedSourceDirectories in Compile <<= Seq(javaSource in Compile).join)
-	lazy val base: Seq[Setting[_]] = Seq(scalacOptions ++= Seq("-Xelide-below", "0"), projectComponent) ++ Licensed.settings
+	lazy val base: Seq[Setting[_]] = Seq(scalacOptions ++= Seq("-Xelide-below", "0", "-feature", "-language:implicitConversions", "-language:postfixOps",
+                    "-language:higherKinds", "-language:existentials"), projectComponent) ++ Licensed.settings
 	
 	def testDependencies = libraryDependencies ++= Seq(
 		"org.scalacheck" %% "scalacheck" % "1.10.0" % "test",
