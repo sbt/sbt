@@ -70,7 +70,7 @@ abstract class EvaluateSettings[Scope]
 	}
 	private[this] def run0(work: => Unit): Unit =
 	{
-		try { work } catch { case e => complete.put( Some(e) ) }
+		try { work } catch { case e: Throwable => complete.put( Some(e) ) }
 		workComplete()
 	}
 
