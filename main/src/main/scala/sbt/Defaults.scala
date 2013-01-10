@@ -916,7 +916,8 @@ object Classpaths
 		update := { val report = update.value; ConflictWarning(conflictWarning.value, report, streams.value.log); report },
 		transitiveClassifiers in GlobalScope :== Seq(SourceClassifier, DocClassifier),
 		classifiersModule in updateClassifiers := GetClassifiersModule(projectID.value, update.value.allModules, ivyConfigurations.in(updateClassifiers).value, transitiveClassifiers.in(updateClassifiers).value),
-		updateClassifiers <<= (ivySbt, classifiersModule in updateClassifiers, updateConfiguration, ivyScala, target in LocalRootProject, appConfiguration, streams) map { (is, mod, c, ivyScala, out, app, s) =>
+		updateClassifiers <<= (ivySbt, classifiersModule in updateClassifiers, updateConfiguration, ivyScala, appConfiguration, streams) map { (is, mod, c, ivyScala, app, s) =>
+			val out = is.withIvy(s.log)(_.getSettings.getDefaultIvyUserDir)
 			withExcludes(out, mod.classifiers, lock(app)) { excludes =>
 				IvyActions.updateClassifiers(is, GetClassifiersConfiguration(mod, excludes, c, ivyScala), s.log)
 			}
@@ -962,8 +963,9 @@ object Classpaths
 			val pluginIDs: Seq[ModuleID] = lb.units(ref.build).unit.plugins.fullClasspath.flatMap(_ get moduleID.key)
 			GetClassifiersModule(pid, sbtDep +: pluginIDs, Configurations.Default :: Nil, classifiers)
 		},
-		updateSbtClassifiers in TaskGlobal <<= (ivySbt, classifiersModule, updateConfiguration, ivyScala, target in LocalRootProject, appConfiguration, streams) map {
-				(is, mod, c, ivyScala, out, app, s) =>
+		updateSbtClassifiers in TaskGlobal <<= (ivySbt, classifiersModule, updateConfiguration, ivyScala, appConfiguration, streams) map {
+				(is, mod, c, ivyScala, app, s) =>
+			val out = is.withIvy(s.log)(_.getSettings.getDefaultIvyUserDir)
 			withExcludes(out, mod.classifiers, lock(app)) { excludes =>
 				val noExplicitCheck = ivyScala.map(_.copy(checkExplicit=false))
 				IvyActions.transitiveScratch(is, "sbt", GetClassifiersConfiguration(mod, excludes, c, noExplicitCheck), s.log)
