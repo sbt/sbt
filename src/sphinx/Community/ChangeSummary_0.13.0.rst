@@ -2,8 +2,12 @@
 0.13.0 Changes
 ==============
 
+Overview
+========
+
 Features, fixes, changes with compatibility implications (incomplete, please help)
-==================================================================================
+----------------------------------------------------------------------------------
+
 
 - Moved to Scala 2.10 for sbt and build definitions.
 - Support for plugin configuration in ``project/plugins/`` has been removed.  It was deprecated since 0.11.2.
@@ -34,8 +38,8 @@ Other
 
 - The source layout for the sbt project itself follows the package name to accommodate to Eclipse users. (Grzegorz K., gh-613)
 
-Details of major changes from 0.12.x to 0.13.0
-==============================================
+Details of major changes
+========================
 
 camelCase Key names
 -------------------
