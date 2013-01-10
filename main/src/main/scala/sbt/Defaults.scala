@@ -353,7 +353,7 @@ object Defaults extends BuildCommon
 	def testTaskOptions(key: Scoped): Seq[Setting[_]] = inTask(key)( Seq(
 		testListeners := {
 			TestLogger(streams.value.log, testLogger(streamsManager.value, test in resolvedScoped.value.scope), logBuffered.value) +:
-			new TestStatusReporter(succeededFile( cacheDirectory.in(test).value )) +:
+			new TestStatusReporter(succeededFile( streams.in(test).value.cacheDirectory )) +:
 			testListeners.in(TaskGlobal).value
 		},
 		testOptions := Tests.Listeners(testListeners.value) +: (testOptions in TaskGlobal).value,
@@ -385,10 +385,10 @@ object Defaults extends BuildCommon
 			}
 
 	def testQuickFilter: Initialize[Task[Seq[String] => String => Boolean]] =
-	  (fullClasspath in test, cacheDirectory) map {
-			(cp, dir) =>
+	  (fullClasspath in test, streams in test) map {
+			(cp, s) =>
 				val ans = cp.flatMap(_.metadata get Keys.analysis)
-				val succeeded = TestStatus.read(succeededFile(dir))
+				val succeeded = TestStatus.read(succeededFile( s.cacheDirectory ))
 				val stamps = collection.mutable.Map.empty[File, Long]
 				def stamp(dep: String): Long = {
 					val stamps = for (a <- ans; f <- a.relations.definesClass(dep)) yield intlStamp(f, a, Set.empty)
@@ -525,6 +525,7 @@ object Defaults extends BuildCommon
 	@deprecated("Use `Util.pairID` instead", "0.12.0")
 	def pairID = Util.pairID
 
+	@deprecated("Use the cacheDirectory val on streams.", "0.13.0")
 	def perTaskCache(key: TaskKey[_]): Setting[File] =
 		cacheDirectory ~= { _ / ("for_" + key.key.label) }
 
@@ -537,12 +538,11 @@ object Defaults extends BuildCommon
 			mappings <<= mappingsTask,
 			packagedArtifact := (artifact.value, key.value),
 			artifact <<= artifactSetting,
-			perTaskCache(key),
 			artifactPath <<= artifactPathSetting(artifact)
 		))
 	def packageTask: Initialize[Task[File]] =
-		(packageConfiguration, cacheDirectory, streams) map { (config, cacheDir, s) =>
-			Package(config, cacheDir, s.log)
+		(packageConfiguration, streams) map { (config, s) =>
+			Package(config, s.cacheDirectory, s.log)
 			config.jar
 		}
 	def packageConfigurationTask: Initialize[Task[Package.Configuration]] =
@@ -597,10 +597,9 @@ object Defaults extends BuildCommon
 	@deprecated("Use `docTaskSettings` instead", "0.12.0")
 	def docSetting(key: TaskKey[File]) = docTaskSettings(key)
 	def docTaskSettings(key: TaskKey[File] = doc): Seq[Setting[_]] = inTask(key)(compileInputsSettings ++ Seq(
-		perTaskCache(key),
 		target := docDirectory.value, // deprecate docDirectory in favor of 'target in doc'; remove when docDirectory is removed
 		scalacOptions <<= scaladocOptions or scalacOptions, // deprecate scaladocOptions in favor of 'scalacOptions in doc'; remove when scaladocOptions is removed
-		key in TaskGlobal <<= (cacheDirectory, compileInputs, target, configuration, streams) map { (cache, in, out, config, s) =>
+		key in TaskGlobal <<= (compileInputs, target, configuration, streams) map { (in, out, config, s) =>
 			val srcs = in.config.sources
 			val hasScala = srcs.exists(_.name.endsWith(".scala"))
 			val hasJava = srcs.exists(_.name.endsWith(".java"))
@@ -608,9 +607,9 @@ object Defaults extends BuildCommon
 			val label = nameForSrc(config.name)
 			val (options, runDoc) = 
 				if(hasScala)
-					(in.config.options, Doc.scaladoc(label, cache / "scala", in.compilers.scalac))
+					(in.config.options, Doc.scaladoc(label, s.cacheDirectory / "scala", in.compilers.scalac))
 				else if(hasJava)
-					(in.config.javacOptions, Doc.javadoc(label, cache / "java", in.compilers.javac))
+					(in.config.javacOptions, Doc.javadoc(label, s.cacheDirectory / "java", in.compilers.javac))
 				else
 					(Nil, RawCompileLike.nop)
 			runDoc(srcs, cp, out, options, in.config.maxErrors, s.log)
@@ -639,8 +638,8 @@ object Defaults extends BuildCommon
 
 	def compileTask = (compileInputs in compile, streams) map { (i,s) => Compiler(i,s.log) }
 	def compileIncSetupTask =
-		(dependencyClasspath, cacheDirectory, skip in compile, definesClass, compilerCache) map { (cp, cacheDir, skip, definesC, cache) =>
-			Compiler.IncSetup(analysisMap(cp), definesC, skip, cacheDir / "inc_compile", cache)
+		(dependencyClasspath, skip in compile, definesClass, compilerCache, streams) map { (cp, skip, definesC, cache, s) =>
+			Compiler.IncSetup(analysisMap(cp), definesC, skip, s.cacheDirectory / "inc_compile", cache)
 		}
 	def compileInputsSettings: Seq[Setting[_]] =
 		Seq(compileInputs := {
@@ -680,8 +679,8 @@ object Defaults extends BuildCommon
 	}
 
 	def copyResourcesTask =
-	(classDirectory, cacheDirectory, resources, resourceDirectories, streams) map { (target, cache, resrcs, dirs, s) =>
-		val cacheFile = cache / "copy-resources"
+	(classDirectory, resources, resourceDirectories, streams) map { (target, resrcs, dirs, s) =>
+		val cacheFile = s.cacheDirectory / "copy-resources"
 		val mappings = (resrcs --- dirs) pair (rebase(dirs, target) | flat(target))
 		s.log.debug("Copy resource mappings: " + mappings.mkString("\n\t","\n\t",""))
 		Sync(cacheFile)( mappings )
@@ -998,11 +997,10 @@ object Classpaths
 	def updateTask: Initialize[Task[UpdateReport]] = Def.task {
 		val depsUpdated = transitiveUpdate.value.exists(!_.stats.cached)
 		val isRoot = executionRoots.value contains resolvedScoped.value
-		val log = streams.value.log
+		val s = streams.value
 		val si = Defaults.unmanagedScalaInstanceOnly.value.map(si => (si, scalaOrganization.value))
 		val show = Reference.display(thisProjectRef.value)
-		val cache = cacheDirectory.value / "update"
-		cachedUpdate(cache, show, ivyModule.value, updateConfiguration.value, si, skip = (skip in update).value, force = isRoot, depsUpdated = depsUpdated, log = log)
+		cachedUpdate(s.cacheDirectory, show, ivyModule.value, updateConfiguration.value, si, skip = (skip in update).value, force = isRoot, depsUpdated = depsUpdated, log = s.log)
 	} 
 
 	def cachedUpdate(cacheFile: File, label: String, module: IvySbt#Module, config: UpdateConfiguration, scalaInstance: Option[(ScalaInstance, String)], skip: Boolean, force: Boolean, depsUpdated: Boolean, log: Logger): UpdateReport =

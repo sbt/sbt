@@ -26,6 +26,7 @@ sealed trait TaskStreams[Key]
 	def key: Key
 	def text(sid: String = default): PrintWriter
 	def binary(sid: String = default): BufferedOutputStream
+	def cacheDirectory: File
 
 	// default logger
 	final lazy val log: Logger = log(default)
@@ -81,6 +82,12 @@ object Streams
 
 			def binary(sid: String = default): BufferedOutputStream =
 				make(a, sid)(f => new BufferedOutputStream(new FileOutputStream(f)))
+
+			lazy val cacheDirectory: File = {
+				val dir = taskDirectory(a)
+				IO.createDirectory(dir)
+				dir
+			}
 
 			def log(sid: String): Logger = mkLogger(a, text(sid))
 

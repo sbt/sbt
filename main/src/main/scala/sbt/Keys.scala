@@ -110,6 +110,7 @@ object Keys
 	val classDirectory = SettingKey[File]("class-directory", "Directory for compiled classes and copied resources.", AMinusSetting)
 	@deprecated("Use `target`, scoped by the doc task.  For example, `target in Compile in doc`", "0.11.0")
 	val docDirectory = SettingKey[File]("doc-directory", "Directory for generated documentation.", DSetting)
+	@deprecated("Use the cacheDirectory provided by streams.", "0.13.0")
 	val cacheDirectory = SettingKey[File]("cache-directory", "Directory used for caching task data.", BMinusSetting)
 	val cleanFiles = SettingKey[Seq[File]]("clean-files", "The files to recursively delete during a clean.", BSetting)
 	val cleanKeepFiles = SettingKey[Seq[File]]("clean-keep-files", "Files to keep during a clean.", CSetting)
