@@ -138,7 +138,7 @@ object IvyActions
 
 	def processUnresolved(err: ResolveException, log: Logger)
 	{
-		val withExtra = err.failed.filter(!_.extraAttributes.isEmpty)
+		val withExtra = err.failed.filter(!_.extraDependencyAttributes.isEmpty)
 		if(!withExtra.isEmpty)
 		{
 			log.warn("\n\tNote: Some unresolved dependencies have extra attributes.  Check that these dependencies exist with the requested attributes.")

@@ -11,11 +11,16 @@ import org.apache.ivy.util.url.CredentialsStore
 
 final case class ModuleID(organization: String, name: String, revision: String, configurations: Option[String] = None, isChanging: Boolean = false, isTransitive: Boolean = true, isForce: Boolean = false, explicitArtifacts: Seq[Artifact] = Nil, exclusions: Seq[ExclusionRule] = Nil, extraAttributes: Map[String,String] = Map.empty, crossVersion: CrossVersion = CrossVersion.Disabled)
 {
-	override def toString =
+	override def toString: String =
 		organization + ":" + name + ":" + revision +
 		(configurations match { case Some(s) => ":" + s; case None => "" }) +
 		(if(extraAttributes.isEmpty) "" else " " + extraString)
-	def extraString = extraAttributes.map { case (k,v) => k + "=" + v } mkString("(",", ",")")
+
+	/** String representation of the extra attributes, excluding any information only attributes. */
+	def extraString: String = extraDependencyAttributes.map { case (k,v) => k + "=" + v } mkString("(",", ",")")
+
+	/** Returns the extra attributes except for ones marked as information only (ones that typically would not be used for dependency resolution). */
+	def extraDependencyAttributes: Map[String,String] = extraAttributes.filterKeys(!_.startsWith(CustomPomParser.InfoKeyPrefix))
 
 	@deprecated("Use `cross(CrossVersion)`, the variant accepting a CrossVersion value constructed by a member of the CrossVersion object instead.", "0.12.0")
 	def cross(v: Boolean): ModuleID = cross(if(v) CrossVersion.binary else CrossVersion.Disabled)
