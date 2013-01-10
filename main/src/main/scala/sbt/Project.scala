@@ -55,13 +55,26 @@ sealed trait Project extends ProjectDefinition[ProjectReference]
 		apply(id, base, aggregate = resolveRefs(aggregate), dependencies = resolveDeps(dependencies), delegates = resolveRefs(delegates), settings, configurations, auto)
 	}
 
+	/** Adds configurations to this project.  Added configurations replace existing configurations with the same name.*/
 	def overrideConfigs(cs: Configuration*): Project = copy(configurations = Defaults.overrideConfigs(cs : _*)(configurations))
+
+	/** Adds new configurations directly to this project.  To override an existing configuration, use `overrideConfigs`. */
+	def configs(cs: Configuration*): Project = copy(configurations = configurations ++ cs)
+
+	/** Adds classpath dependencies on internal or external projects. */
 	def dependsOn(deps: ClasspathDep[ProjectReference]*): Project = copy(dependencies = dependencies ++ deps)
+
 	@deprecated("Delegation between projects should be replaced by directly sharing settings.", "0.13.0")
 	def delegateTo(from: ProjectReference*): Project = copy(delegates = delegates ++ from)
+
+	/** Adds projects to be aggregated.  When a user requests a task to run on this project from the command line,
+	* the task will also be run in aggregated projects. */
 	def aggregate(refs: ProjectReference*): Project = copy(aggregate = (aggregate: Seq[ProjectReference]) ++ refs)
-	def configs(cs: Configuration*): Project = copy(configurations = configurations ++ cs)
+
+	/** Appends settings to the current settings sequence for this project. */
 	def settings(ss: Setting[_]*): Project = copy(settings = (settings: Seq[Setting[_]]) ++ ss)
+
+	/** Configures how settings from other sources, such as .sbt files, are appended to the explicitly specified settings for this project. */
 	def autoSettings(select: AddSettings*): Project = copy(auto = AddSettings.seq(select : _*))
 }
 sealed trait ResolvedProject extends ProjectDefinition[ProjectRef]
