@@ -12,6 +12,8 @@ package sbt
 	import Types.idFun
 	import complete.DefaultParsers
 
+	import language.experimental.macros
+
 sealed trait ProjectDefinition[PR <: ProjectReference]
 {
 	def id: String
@@ -364,6 +366,17 @@ object Project extends ProjectExtra
 		def keepAs(key: TaskKey[S]): Initialize[Task[S]] =
 			(i, Keys.resolvedScoped)( (t,scoped) => tx(t, (state,value) => set(resolveContext(key, scoped.scope, state), state, value) ) )
 	}
+
+		import scala.reflect._
+		import reflect.macros._
+
+	def projectMacroImpl(c: Context): c.Expr[Project] =
+	{
+		import c.universe._
+		val enclosingValName = std.KeyMacro.definingValName(c, methodName => s"""$methodName must be directly assigned to a val, such as `val x = $methodName`.""")
+		val name = c.Expr[String]( Literal(Constant(enclosingValName)) )
+		reify { Project(name.splice, new File(name.splice)) }
+	}
 }
 
 trait ProjectExtra
@@ -385,4 +398,8 @@ trait ProjectExtra
 		inScope(ThisScope.copy(task = Select(t.key)) )( ss )
 	def inScope(scope: Scope)(ss: Seq[Setting[_]]): Seq[Setting[_]] =
 		Project.transform(Scope.replaceThis(scope), ss)
+
+	/** Creates a new Project.  This is a macro that expects to be assigned directly to a val.
+	* The name of the val is used as the project ID and the name of the base directory of the project. */
+	def project: Project = macro Project.projectMacroImpl
 }
