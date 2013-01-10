@@ -21,6 +21,7 @@ Features
 - Support vals and defs in .sbt files.  Details below.
 - Support defining Projects in .sbt files: vals of type Project are added to the Build.  Details below.
 - New syntax for settings, tasks, and input tasks.  Details below.
+- Automatically link to external API scaladocs of dependencies by setting `autoAPIMappings := true`.  This requires at least Scala 2.10.1 and for dependencies to define `apiURL` for their scaladoc location.  Mappings may be manually added to the `apiMappings` task as well.
 
 Fixes
 -----
@@ -32,6 +33,7 @@ Improvements
 - Run the API extraction phase after the compiler's ``pickler`` phase instead of ``typer`` to allow compiler plugins after ``typer``.
 - Record defining source position of settings.  ``inspect`` shows the definition location of all settings contributing to a defined value.
 - Allow the root project to be specified explicitly in ``Build.rootProject``.
+- Tasks that need a directory for storing cache information can now use the `cacheDirectory` method on `streams`.  This supersedes the `cacheDirectory` setting.
 
 Other
 -----
@@ -112,6 +114,7 @@ vals and defs are now allowed in .sbt files.  They must follow the same rules as
 
 All definitions are compiled before settings, but it will probably be best practice to put definitions together.
 Currently, the visibility of definitions is restricted to the .sbt file it is defined in.
+They are not visible in ``consoleProject`` or the ``set`` command at this time, either.
 Use Scala files in ``project/`` for visibility in all .sbt files.
 
 vals of type ``Project`` are added to the ``Build`` so that multi-project builds can be defined entirely in .sbt files now.
@@ -121,11 +124,27 @@ For example,
 
     lazy val a = Project("a", file("a")).dependsOn(b)
 
-    lazy val b = Project("b", file("b")).settings(
+    lazy val b = Project("b", file("sub")).settings(
        version := "1.0"
     )
 
 Currently, it only makes sense to defines these in the root project's .sbt files.
+
+A shorthand for defining Projects is provided by a new macro called `project`.
+This requires the constructed Project to be directly assigned to a `val`.
+The name of this val is used for the project ID and base directory.
+The base directory can be changed with the `in` method.
+The previous example can also be written as:
+
+::
+
+    lazy val a = project.dependsOn(b)
+
+    lazy val b = project in file("sub") settings(
+      version := "1.0"
+    )
+
+This macro is also available for use in Scala files.
 
 Control over automatically added settings
 -----------------------------------------
