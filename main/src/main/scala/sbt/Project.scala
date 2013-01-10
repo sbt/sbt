@@ -57,6 +57,11 @@ sealed trait Project extends ProjectDefinition[ProjectReference]
 		apply(id, base, aggregate = resolveRefs(aggregate), dependencies = resolveDeps(dependencies), delegates = resolveRefs(delegates), settings, configurations, auto)
 	}
 
+	/** Applies the given functions to this Project.
+	* The second function is applied to the result of applying the first to this Project and so on.
+	* The intended use is a convenience for applying default configuration provided by a plugin. */
+	def configure(transforms: (Project => Project)*): Project = Function.chain(transforms)(this)
+
 	/** Sets the base directory for this project.*/
 	def in(dir: File): Project = copy(base = dir)
 
