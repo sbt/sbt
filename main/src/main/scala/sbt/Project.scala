@@ -55,6 +55,9 @@ sealed trait Project extends ProjectDefinition[ProjectReference]
 		apply(id, base, aggregate = resolveRefs(aggregate), dependencies = resolveDeps(dependencies), delegates = resolveRefs(delegates), settings, configurations, auto)
 	}
 
+	/** Sets the base directory for this project.*/
+	def in(dir: File): Project = copy(base = dir)
+
 	/** Adds configurations to this project.  Added configurations replace existing configurations with the same name.*/
 	def overrideConfigs(cs: Configuration*): Project = copy(configurations = Defaults.overrideConfigs(cs : _*)(configurations))
 
