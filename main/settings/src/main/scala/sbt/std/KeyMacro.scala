@@ -5,7 +5,7 @@ package std
 	import scala.reflect._
 	import reflect.macros._
 
-object KeyMacro
+private[sbt] object KeyMacro
 {
 	def settingKeyImpl[T: c.WeakTypeTag](c: Context)(description: c.Expr[String]): c.Expr[SettingKey[T]] =
 		keyImpl[T, SettingKey[T]](c) { (name, mf) =>
@@ -23,21 +23,24 @@ object KeyMacro
 	def keyImpl[T: c.WeakTypeTag, S: c.WeakTypeTag](c: Context)(f: (c.Expr[String], c.Expr[Manifest[T]]) => c.Expr[S]): c.Expr[S] =
 	{
 		import c.universe.{Apply=>ApplyTree,_}
-		val enclosingValName = definingValName(c)
+		val enclosingValName = definingValName(c, methodName => s"""$methodName must be directly assigned to a val, such as `val x = $methodName[Int]("description")`.""")
 		val name = c.Expr[String]( Literal(Constant(enclosingValName)) )
 		val mf = c.Expr[Manifest[T]](c.inferImplicitValue( weakTypeOf[Manifest[T]] ) )
 		f(name, mf)
 	}
-	def definingValName(c: Context): String =
+	def definingValName(c: Context, invalidEnclosingTree: String => String): String =
 	{
 		import c.universe.{Apply=>ApplyTree,_}
 		val methodName = c.macroApplication.symbol.name.decoded
-		enclosingTrees(c) match {
-			case vd @ ValDef(_, name, _, _) :: ts => name.decoded
-			case _ =>
-				c.error(c.enclosingPosition, s"""$methodName must be directly assigned to a val, such as `val x = $methodName[Int]("description")`.""")
-				"<error>"
-		}
+		def enclosingVal(trees: List[c.Tree]): String =
+			trees match {
+				case vd @ ValDef(_, name, _, _) :: ts => name.decoded
+				case (_: ApplyTree | _: Select | _: TypeApply) :: xs => enclosingVal(xs)
+				case _ =>
+					c.error(c.enclosingPosition, invalidEnclosingTree(methodName))
+					"<error>"
+			}
+		enclosingVal(enclosingTrees(c).toList)
 	}
 	def enclosingTrees(c: Context): Seq[c.Tree] =
 		c.asInstanceOf[reflect.macros.runtime.Context].callsiteTyper.context.enclosingContextChain.map(_.tree.asInstanceOf[c.Tree])
