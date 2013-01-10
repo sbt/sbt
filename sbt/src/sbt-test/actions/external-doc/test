@@ -1,0 +1,11 @@
+# Project A publishes as a pom to test that the API URL is properly handled from poms
+> a/publish
+
+# Project B publishes as ivy.xml to test that format
+> b/publish
+
+# Project C is an internal dependency to test that unpublished internal dependencies
+#   have their URL properly set
+# Project D uses all three projects as well as an unmanaged dependency
+#   Here, verify that the API mappings have been properly gathered
+> d/checkApiMappings

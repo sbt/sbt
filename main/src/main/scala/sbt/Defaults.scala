@@ -22,7 +22,7 @@ package sbt
 	import org.apache.ivy.core.module.{descriptor, id}
 	import descriptor.ModuleDescriptor, id.ModuleRevisionId
 	import java.io.File
-	import java.net.{URI,URL}
+	import java.net.{URI,URL,MalformedURLException}
 	import java.util.concurrent.Callable
 	import sbinary.DefaultProtocol.StringFormat
 	import Cache.seqFormat
@@ -71,6 +71,8 @@ object Defaults extends BuildCommon
 		connectInput :== false,
 		cancelable :== false,
 		sourcesInBase :== true,
+		autoAPIMappings := false,
+		apiMappings := Map.empty,
 		autoScalaLibrary :== true,
 		managedScalaInstance :== true,
 		onLoad <<= onLoad ?? idFun[State],
@@ -90,6 +92,7 @@ object Defaults extends BuildCommon
 		initialize :== {},
 		credentials :== Nil,
 		scalaHome :== None,
+		apiURL := None,
 		javaHome :== None,
 		extraLoggers :== { _ => Nil },
 		skip :== false,
@@ -599,7 +602,8 @@ object Defaults extends BuildCommon
 	def docTaskSettings(key: TaskKey[File] = doc): Seq[Setting[_]] = inTask(key)(compileInputsSettings ++ Seq(
 		target := docDirectory.value, // deprecate docDirectory in favor of 'target in doc'; remove when docDirectory is removed
 		scalacOptions <<= scaladocOptions or scalacOptions, // deprecate scaladocOptions in favor of 'scalacOptions in doc'; remove when scaladocOptions is removed
-		key in TaskGlobal <<= (compileInputs, target, configuration, streams) map { (in, out, config, s) =>
+		apiMappings ++= { if(autoAPIMappings.value) APIMappings.extract(dependencyClasspath.value, streams.value.log).toMap else Map.empty[File,URL] },
+		key in TaskGlobal <<= (compileInputs, target, configuration, apiMappings, streams) map { (in, out, config, xapis, s) =>
 			val srcs = in.config.sources
 			val hasScala = srcs.exists(_.name.endsWith(".scala"))
 			val hasJava = srcs.exists(_.name.endsWith(".java"))
@@ -607,7 +611,7 @@ object Defaults extends BuildCommon
 			val label = nameForSrc(config.name)
 			val (options, runDoc) = 
 				if(hasScala)
-					(in.config.options, Doc.scaladoc(label, s.cacheDirectory / "scala", in.compilers.scalac))
+					(in.config.options ++ Opts.doc.externalAPI(xapis), Doc.scaladoc(label, s.cacheDirectory / "scala", in.compilers.scalac))
 				else if(hasJava)
 					(in.config.javacOptions, Doc.javadoc(label, s.cacheDirectory / "java", in.compilers.javac))
 				else
@@ -889,7 +893,7 @@ object Classpaths
 		artifactPath in makePom <<= artifactPathSetting(artifact in makePom),
 		publishArtifact in makePom := publishMavenStyle.value && publishArtifact.value,
 		artifact in makePom := Artifact.pom(moduleName.value),
-		projectID := ModuleID(organization.value, moduleName.value, version.value).cross(crossVersion in projectID value).artifacts(artifacts.value : _*),
+		projectID <<= defaultProjectID,
 		projectID <<= pluginProjectID,
 		resolvers in GlobalScope :== Nil,
 		projectDescriptors <<= depMap,
@@ -938,6 +942,15 @@ object Classpaths
 			log.warn("Multiple resolvers having different access mechanism configured with same name '" + name + "'. To avoid conflict, Remove duplicate project resolvers (`resolvers`) or rename publishing resolver (`publishTo`).")
 		}
 	}
+
+	private[sbt] def defaultProjectID: Initialize[ModuleID] = Def.setting {
+		val base = ModuleID(organization.value, moduleName.value, version.value).cross(crossVersion in projectID value).artifacts(artifacts.value : _*)
+		apiURL.value match {
+			case Some(u) if autoAPIMappings.value => base.extra(CustomPomParser.ApiURLKey -> u.toExternalForm)
+			case _ => base
+		}
+	}
+
 	def pluginProjectID: Initialize[ModuleID] = (sbtBinaryVersion in update, scalaBinaryVersion in update, projectID, sbtPlugin) {
 		(sbtBV, scalaBV, pid, isPlugin) =>
 			if(isPlugin) sbtPluginExtra(pid, sbtBV, scalaBV) else pid
@@ -1088,8 +1101,8 @@ object Classpaths
 	def makeProducts: Initialize[Task[Seq[File]]] =
 		(compile, compileInputs, copyResources) map { (_, i, _) => i.config.classesDirectory :: Nil }
 	def exportProductsTask: Initialize[Task[Classpath]] =
-		(products.task, packageBin.task, exportJars, compile) flatMap { (psTask, pkgTask, useJars, analysis) =>
-			(if(useJars) Seq(pkgTask).join else psTask) map { _ map { f => analyzed(f, analysis) } }
+		(products.task, packageBin.task, exportJars, compile, apiURL) flatMap { (psTask, pkgTask, useJars, analysis, u) =>
+			(if(useJars) Seq(pkgTask).join else psTask) map { _ map { f => APIMappings.store(analyzed(f, analysis), u) } }
 		}
 
 	def constructBuildDependencies: Initialize[BuildDependencies] =

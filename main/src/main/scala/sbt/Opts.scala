@@ -3,6 +3,9 @@
  */
 package sbt
 
+import java.io.File
+import java.net.URL
+
 /** Options for well-known tasks. */
 object Opts {
 	object compile {
@@ -15,10 +18,12 @@ object Opts {
 		val verbose = "-verbose"
 	}
 	object doc {
-		def generator(g: String) = Seq("-doc-generator", g)
-		def sourceUrl(u: String) = Seq("-doc-source-url", u)
-		def title(t: String) = Seq("-doc-title", t)
-		def version(v: String) = Seq("-doc-version", v)
+		def generator(g: String): Seq[String] = Seq("-doc-generator", g)
+		def sourceUrl(u: String): Seq[String] = Seq("-doc-source-url", u)
+		def title(t: String): Seq[String] = Seq("-doc-title", t)
+		def version(v: String): Seq[String] = Seq("-doc-version", v)
+		def externalAPI(mappings: Iterable[(File,URL)]): Seq[String] = if(mappings.isEmpty) Nil else
+			mappings.map{ case (f,u) => s"${f.getAbsolutePath}#${u.toExternalForm}"}.mkString("-doc-external-doc:", ",", "") :: Nil
 	}
 	object resolver {
 		import Path._

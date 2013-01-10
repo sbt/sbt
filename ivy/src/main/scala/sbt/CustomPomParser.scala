@@ -30,9 +30,14 @@ final class CustomPomParser(delegate: ModuleDescriptorParser, transform: (Module
 }
 object CustomPomParser
 {
+	/** The key prefix that indicates that this is used only to store extra information and is not intended for dependency resolution.*/
+	val InfoKeyPrefix = "info."
+	val ApiURLKey = "info.apiURL"
+
 	val SbtVersionKey = "sbtVersion"
 	val ScalaVersionKey = "scalaVersion"
 	val ExtraAttributesKey = "extraDependencyAttributes"
+	private[this] val unqualifiedKeys = Set(SbtVersionKey, ScalaVersionKey, ExtraAttributesKey, ApiURLKey)
 
 		// packagings that should be jars, but that Ivy doesn't handle as jars
 	val JarPackagings = Set("eclipse-plugin", "hk2-jar", "orbit")
@@ -75,8 +80,7 @@ object CustomPomParser
 	}
 	private[this] def artifactExtIncorrect(md: ModuleDescriptor): Boolean =
 		md.getConfigurations.exists(conf => md.getArtifacts(conf.getName).exists(art => JarPackagings(art.getExt)))
-	private[this] def shouldBeUnqualified(m: Map[String, String]): Map[String, String] =
-		m.filter { case (SbtVersionKey | ScalaVersionKey | ExtraAttributesKey,_) => true; case _ => false }
+	private[this] def shouldBeUnqualified(m: Map[String, String]): Map[String, String] = m.filterKeys(unqualifiedKeys)
 	
 	private[this] def condAddExtra(properties: Map[String, String], id: ModuleRevisionId): ModuleRevisionId =
 		if(properties.isEmpty) id else addExtra(properties, id)
