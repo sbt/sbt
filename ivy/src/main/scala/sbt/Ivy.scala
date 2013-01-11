@@ -20,7 +20,6 @@ import core.module.descriptor.{OverrideDependencyDescriptorMediator}
 import core.module.id.{ArtifactId,ModuleId, ModuleRevisionId}
 import core.resolve.{IvyNode, ResolveData, ResolvedModuleRevision}
 import core.settings.IvySettings
-import plugins.conflict.{ConflictManager, LatestCompatibleConflictManager, LatestConflictManager}
 import plugins.latest.LatestRevisionStrategy
 import plugins.matcher.PatternMatcher
 import plugins.parser.m2.PomModuleDescriptorParser
@@ -140,6 +139,7 @@ final class IvySbt(val configuration: IvyConfiguration)
 		{
 			import ic._
 			val moduleID = newConfiguredModuleID(module, moduleInfo, configurations)
+			IvySbt.setConflictManager(moduleID, conflictManager, ivy.getSettings)
 			val defaultConf = defaultConfiguration getOrElse Configurations.config(ModuleDescriptor.DEFAULT_CONFIGURATION)
 			log.debug("Using inline dependencies specified in Scala" + (if(ivyXML.isEmpty) "." else " and XML."))
 
@@ -359,6 +359,14 @@ private object IvySbt
 		moduleID.setModuleArtifact(artifact)
 		moduleID.check()
 	}
+	private def setConflictManager(moduleID: DefaultModuleDescriptor, conflict: ConflictManager, is: IvySettings)
+	{
+		val mid = ModuleId.newInstance(conflict.organization, conflict.module)
+		val matcher = is.getMatcher(PatternMatcher.EXACT_OR_REGEXP)
+		val manager = is.getConflictManager(conflict.name)
+		moduleID.addConflictManager(mid, matcher, manager)
+	}
+
 	/** Converts the given sbt module id into an Ivy ModuleRevisionId.*/
 	def toID(m: ModuleID) =
 	{
