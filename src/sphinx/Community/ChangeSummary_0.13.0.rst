@@ -13,7 +13,7 @@ Features, fixes, changes with compatibility implications (incomplete, please hel
 - Support for plugin configuration in ``project/plugins/`` has been removed.  It was deprecated since 0.11.2.
 - Dropped support for tab completing the right side of a setting for the ``set`` command.  The new task macros make this tab completion obsolete.
 - The convention for keys is now camelCase only.  Details below.
-- sbt no longer looks for main artifacts for poms with `packaging="pom"`.  For details, see the :ref:`relevant Library Management section <packaging-pom>` and gh-636.
+- sbt no longer looks for main artifacts for poms with ``packaging="pom"``.  For details, see the :ref:`relevant Library Management section <packaging-pom>` and gh-636.
 
 Features
 --------
@@ -22,7 +22,7 @@ Features
 - Support vals and defs in .sbt files.  Details below.
 - Support defining Projects in .sbt files: vals of type Project are added to the Build.  Details below.
 - New syntax for settings, tasks, and input tasks.  Details below.
-- Automatically link to external API scaladocs of dependencies by setting `autoAPIMappings := true`.  This requires at least Scala 2.10.1 and for dependencies to define `apiURL` for their scaladoc location.  Mappings may be manually added to the `apiMappings` task as well.
+- Automatically link to external API scaladocs of dependencies by setting ``autoAPIMappings := true``.  This requires at least Scala 2.10.1 and for dependencies to define ``apiURL`` for their scaladoc location.  Mappings may be manually added to the ``apiMappings`` task as well.
 
 Fixes
 -----
@@ -34,7 +34,7 @@ Improvements
 - Run the API extraction phase after the compiler's ``pickler`` phase instead of ``typer`` to allow compiler plugins after ``typer``.
 - Record defining source position of settings.  ``inspect`` shows the definition location of all settings contributing to a defined value.
 - Allow the root project to be specified explicitly in ``Build.rootProject``.
-- Tasks that need a directory for storing cache information can now use the `cacheDirectory` method on `streams`.  This supersedes the `cacheDirectory` setting.
+- Tasks that need a directory for storing cache information can now use the ``cacheDirectory`` method on ``streams``.  This supersedes the ``cacheDirectory`` setting.
 
 Other
 -----
