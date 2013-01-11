@@ -10,7 +10,7 @@ import org.apache.ivy.plugins.resolver.{DependencyResolver, IBiblioResolver}
 import org.apache.ivy.util.url.CredentialsStore
 
 /** Additional information about a project module */
-case class ModuleInfo(nameFormal: String, description: String = "", homepage: Option[URL] = None, startYear: Option[Int] = None, licenses: Seq[(String, URL)] = Nil, organizationName: String = "", organizationHomepage: Option[URL] = None, scmInfo: Option[ScmInfo] = None)
+final case class ModuleInfo(nameFormal: String, description: String = "", homepage: Option[URL] = None, startYear: Option[Int] = None, licenses: Seq[(String, URL)] = Nil, organizationName: String = "", organizationHomepage: Option[URL] = None, scmInfo: Option[ScmInfo] = None)
 {
 	def formally(name: String) = copy(nameFormal = name)
 	def describing(desc: String, home: Option[URL]) = copy(description = desc, homepage = home)
@@ -19,14 +19,26 @@ case class ModuleInfo(nameFormal: String, description: String = "", homepage: Op
 }
 
 /** Basic SCM information for a project module */
-case class ScmInfo(browseUrl: URL, connection: String, devConnection: Option[String] = None)
+final case class ScmInfo(browseUrl: URL, connection: String, devConnection: Option[String] = None)
 
 /** Rule to exclude unwanted dependencies pulled in transitively by a module. */
-case class ExclusionRule(organization: String = "*", name: String = "*", artifact: String = "*", configurations: Seq[String] = Nil)
+final case class ExclusionRule(organization: String = "*", name: String = "*", artifact: String = "*", configurations: Seq[String] = Nil)
 
 final case class ModuleConfiguration(organization: String, name: String, revision: String, resolver: Resolver)
 object ModuleConfiguration
 {
 	def apply(org: String, resolver: Resolver): ModuleConfiguration = apply(org, "*", "*", resolver)
 	def apply(org: String, name: String, resolver: Resolver): ModuleConfiguration = ModuleConfiguration(org, name, "*", resolver)
+}
+
+final case class ConflictManager(name: String, organization: String = "*", module: String = "*")
+
+/** See http://ant.apache.org/ivy/history/latest-milestone/settings/conflict-managers.html for details of the different conflict managers.*/
+object ConflictManager {
+	val all = ConflictManager("all")
+	val latestTime = ConflictManager("latest-time")
+	val latestRevision = ConflictManager("latest-revision")
+	val latestCompatible = ConflictManager("latest-compatible")
+	val strict = ConflictManager("strict")
+	val default = latestRevision
 }

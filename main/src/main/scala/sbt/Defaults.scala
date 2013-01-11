@@ -119,6 +119,7 @@ object Defaults extends BuildCommon
 		artifactClassifier in packageSrc :== Some(SourceClassifier),
 		artifactClassifier in packageDoc :== Some(DocClassifier),
 		checksums := Classpaths.bootChecksums(appConfiguration.value),
+		conflictManager := ConflictManager.default,
 		pomExtra :== NodeSeq.Empty,
 		pomPostProcess :== idFun,
 		pomAllRepositories :== false,
@@ -961,7 +962,7 @@ object Classpaths
 			new IvySbt(conf)
 		}
 	def moduleSettings0: Initialize[Task[ModuleSettings]] = Def.task {
-		new InlineConfiguration(projectID.value, projectInfo.value, allDependencies.value, dependencyOverrides.value, ivyXML.value, ivyConfigurations.value, defaultConfiguration.value, ivyScala.value, ivyValidate.value)
+		new InlineConfiguration(projectID.value, projectInfo.value, allDependencies.value, dependencyOverrides.value, ivyXML.value, ivyConfigurations.value, defaultConfiguration.value, ivyScala.value, ivyValidate.value, conflictManager.value)
 	}
 
 	def sbtClassifiersTasks = inTask(updateSbtClassifiers)(Seq(

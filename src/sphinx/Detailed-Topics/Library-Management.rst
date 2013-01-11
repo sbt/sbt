@@ -399,6 +399,119 @@ The default value is:
 
     checksums := Seq("sha1", "md5")
 
+Conflict Management
+~~~~~~~~~~~~~~~~~~~
+
+The conflict manager decides what to do when  dependency resolution brings in different versions of the same library.
+By default, the latest revision is selected.
+This can be changed by setting ``conflictManager``, which has type `ConflictManager <../../api/sbt/ConflictManager.html>`_.
+See the `Ivy documentation <http://ant.apache.org/ivy/history/latest-milestone/settings/conflict-managers.html>`_ for details on the different conflict managers.
+For example, to specify that no conflicts are allowed,
+
+::
+
+    conflictManager := ConflictManager.strict
+
+With this set, any conflicts will generate an error.
+To resolve a conflict, 
+
+  * configure a dependency override if the conflict is for a transitive dependency
+  * force the revision if it is a direct dependency
+
+Both are explained in the following sections.
+
+Forcing a revision
+~~~~~~~~~~~~~~~~~~
+
+The following direct dependencies will introduce a conflict on the log4j version because spark requires log4j 1.2.16.
+
+::
+
+    libraryDependencies ++= Seq(
+      "org.spark-project" %% "spark-core" % "0.5.1",
+      "log4j" % "log4j" % "1.2.14"
+    )
+
+The default conflict manager will select the newer version of log4j, 1.2.16.
+This can be confirmed in the output of `show update`, which shows the newer version as being selected and the older version as not selected:
+
+::
+
+    > show update
+    [info] compile:
+    [info] 		log4j:log4j:1.2.16: ...
+    ...
+    [info] 		(EVICTED) log4j:log4j:1.2.14
+    ...
+
+To say that we prefer the version we've specified over the version from indirect dependencies, use ``force()``:
+
+::
+
+    libraryDependencies ++= Seq(
+      "org.spark-project" %% "spark-core" % "0.5.1",
+      "log4j" % "log4j" % "1.2.14" force()
+    )
+
+The output of ``show update`` is now reversed:
+
+::
+
+    > show update
+    [info] compile:
+    [info] 		log4j:log4j:1.2.14: ...
+    ...
+    [info] 		(EVICTED) log4j:log4j:1.2.16
+    ...
+
+**Note:** this is an Ivy-only feature and cannot be included in a published pom.xml.
+
+
+Forcing a revision without introducing a dependency
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Use of the ``force()`` method described in the previous section requires having a direct dependency.
+However, it may be desirable to force a revision without introducing that direct dependency.
+Ivy provides overrides for this and in sbt, overrides are configured in sbt with the ``dependencyOverrides`` setting, which is a set of ``ModuleID``s.
+For example, the following dependency definitions conflict because spark uses log4j 1.2.16 and scalaxb uses log4j 1.2.17:
+
+::
+
+    libraryDependencies ++= Seq(
+       "org.spark-project" %% "spark-core" % "0.5.1",
+       "org.scalaxb" %% "scalaxb" % "1.0.0"
+    )
+
+The default conflict manager chooses the latest revision of log4j, 1.2.17:
+
+::
+
+    > show update
+    [info] compile:
+    [info] 		log4j:log4j:1.2.17: ...
+    ...
+    [info] 		(EVICTED) log4j:log4j:1.2.16
+    ...
+
+To change the version selected, add an override:
+
+::
+
+    dependencyOverrides += "log4j" % "log4j" % "1.2.16"
+
+This will not add a direct dependency on log4j, but will force the revision to be 1.2.16.
+This is confirmed by the output of ``show update``:
+
+::
+
+    > show update
+    [info] compile:
+    [info] 		log4j:log4j:1.2.16
+    ...
+
+**Note:** this is an Ivy-only feature and will not be included in a published pom.xml.
+
+
 .. _packaging-pom:
 
 packaging="pom"

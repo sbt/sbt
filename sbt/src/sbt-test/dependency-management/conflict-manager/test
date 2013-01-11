@@ -1,0 +1,3 @@
+> update
+> set conflictManager := ConflictManager.strict
+-> update
