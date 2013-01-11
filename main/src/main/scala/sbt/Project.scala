@@ -16,16 +16,37 @@ package sbt
 
 sealed trait ProjectDefinition[PR <: ProjectReference]
 {
+	/** The project ID is used to uniquely identify a project within a build.
+	* It is used to refer to a project from the command line and in the scope of keys. */
 	def id: String
+
+	/** The base directory for the project.*/
 	def base: File
+
+	/** The configurations for this project.  These are groups of related tasks and the main reason
+	* to list them here is when one configuration extends another.  In this case, a setting lookup
+	* in one configuration will fall back to the configurations it extends configuration if the setting doesn't exist. */
 	def configurations: Seq[Configuration]
+
+	/** The explicitly defined sequence of settings that configure this project.
+	* These do not include the automatically appended settings as configured by `auto`. */
 	def settings: Seq[Setting[_]]
+
+	/** The references to projects that are aggregated by this project.
+	* When a task is run on this project, it will also be run on aggregated projects. */
 	def aggregate: Seq[PR]
+
 	@deprecated("Delegation between projects should be replaced by directly sharing settings.", "0.13.0")
 	def delegates: Seq[PR]
+
+	/** The references to projects that are classpath dependencies of this project. */
 	def dependencies: Seq[ClasspathDep[PR]]
+
+	/** The references to projects that are aggregate and classpath dependencies of this project. */
 	def uses: Seq[PR] = aggregate ++ dependencies.map(_.project)
 	def referenced: Seq[PR] = delegates ++ uses
+
+	/** Configures the sources of automatically appended settings.*/
 	def auto: AddSettings
 
 	override final def hashCode: Int = id.hashCode ^ base.hashCode ^ getClass.hashCode
