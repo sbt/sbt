@@ -5,7 +5,7 @@ Library Management
 There's now a :doc:`getting started page </Getting-Started/Library-Dependencies>`
 about library management, which you may want to read first.
 
-*Wiki Maintenance Note:* it would be nice to remove the overlap between
+*Documentation Maintenance Note:* it would be nice to remove the overlap between
 this page and the getting started page, leaving this page with the more
 advanced topics such as checksums and external Ivy files.
 
@@ -398,6 +398,22 @@ The default value is:
 ::
 
     checksums := Seq("sha1", "md5")
+
+.. _packaging-pom:
+
+packaging="pom"
+~~~~~~~~~~~~~~~
+
+A pom.xml that has `packaging="pom"` is not supposed to have artifacts.
+However, some published poms have an associated main artifact, so Ivy checks if one exists.
+This check can be time consuming to the point of taking most of the time for `update` on larger projects.
+Therefore, sbt disables this check and requires you to explicitly request the main jar.
+
+For example,
+
+::
+
+    libraryDependencies += "org.apache.velocity" % "velocity" % "1.5" jar()
 
 Publishing
 ~~~~~~~~~~

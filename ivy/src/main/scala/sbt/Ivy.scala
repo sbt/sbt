@@ -242,8 +242,14 @@ private object IvySbt
 			// Technically, this should be applied to module configurations.
 			// That would require custom subclasses of all resolver types in ConvertResolver (a delegation approach does not work).
 			// It would be better to get proper support into Ivy.
-			override def locate(artifact: IArtifact) =
-				if(hasImplicitClassifier(artifact)) null else super.locate(artifact)
+			//
+			// This method is only used by the pom parsing code in Ivy to find artifacts it doesn't know about.
+			// In particular, a) it looks up source and javadoc classifiers b) it looks up a main artifact for packaging="pom"
+			// sbt now provides the update-classifiers or requires explicitly specifying classifiers explicitly
+			// Providing a main artifact for packaging="pom" does not seem to be correct and the lookup can be expensive, so
+ 			// sbt now requires this artifact to be explicitly declared.
+			override def locate(artifact: IArtifact) = null
+//				if(hasImplicitClassifier(artifact)) null else super.locate(artifact)
 			override def getDependency(dd: DependencyDescriptor, data: ResolveData) =
 			{
 				if(data.getOptions.getLog != LogOptions.LOG_QUIET)

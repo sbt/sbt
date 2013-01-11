@@ -1,0 +1,1 @@
+libraryDependencies += "org.apache.velocity" % "velocity" % "1.5" intransitive()

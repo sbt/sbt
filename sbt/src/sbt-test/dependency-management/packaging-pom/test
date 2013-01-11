@@ -1,0 +1,16 @@
+# velocity 1.5, packaging=pom, but has a main jar
+#  this verifies that sbt does not retrieve it by default
+$ copy-file changes/pkgpom.sbt dep.sbt
+> reload
+-> compile
+
+# with an explicit jar(), sbt should know about it without
+#  needing to ping the repository
+$ copy-file changes/pkgpom-explicit.sbt dep.sbt
+> reload
+> compile
+
+# velocity 1.7, packaging=jar, so this should pull in a main jar as usual
+$ copy-file changes/pkgjar.sbt dep.sbt
+> reload
+> compile
