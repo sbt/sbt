@@ -107,6 +107,14 @@ sealed trait Project extends ProjectDefinition[ProjectReference]
 
 	/** Configures how settings from other sources, such as .sbt files, are appended to the explicitly specified settings for this project. */
 	def autoSettings(select: AddSettings*): Project = copy(auto = AddSettings.seq(select : _*))
+
+	/** Adds a list of .sbt files whose settings will be appended to the settings of this project.
+	* They will be appended after the explicit settings and already defined automatic settings sources. */
+	def addSbtFiles(files: File*): Project = copy(auto = AddSettings.append(auto, AddSettings.sbtFiles(files: _*)) )
+
+	/** Sets the list of .sbt files to parse for settings to be appended to this project's settings.
+	* Any configured .sbt files are removed from this project's list.*/
+	def setSbtFiles(files: File*): Project = copy(auto = AddSettings.append( AddSettings.clearSbtFiles(auto), AddSettings.sbtFiles(files: _*)) )
 }
 sealed trait ResolvedProject extends ProjectDefinition[ProjectRef]
 

@@ -34,5 +34,28 @@ object AddSettings
 	def seq(autos: AddSettings*): AddSettings = new Sequence(autos)
 
 	val allDefaults: AddSettings = seq(userSettings, allPlugins, defaultSbtFiles)
+
+	/** Combines two automatic setting configurations. */
+	def append(a: AddSettings, b: AddSettings): AddSettings = (a,b) match {
+		case (sa: Sequence, sb: Sequence) => seq(sa.sequence ++ sb.sequence : _*)
+		case (sa: Sequence, _) => seq(sa.sequence :+ b : _*)
+		case (_, sb: Sequence) => seq(a +: sb.sequence : _*)
+		case _ => seq(a,b)
+	}
+
+	def clearSbtFiles(a: AddSettings): AddSettings = tx(a) {
+		case _: DefaultSbtFiles | _: SbtFiles => None
+		case x => Some(x)
+	} getOrElse seq()
+
+	private[sbt] def tx(a: AddSettings)(f: AddSettings => Option[AddSettings]): Option[AddSettings] = a match {
+		case s: Sequence =>
+			s.sequence.flatMap { b => tx(b)(f) } match {
+				case Seq() => None
+				case Seq(x) => Some(x)
+				case ss => Some(new Sequence(ss))
+			}
+		case x => f(x)
+	}
 }
 
