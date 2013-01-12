@@ -39,7 +39,7 @@ Duplicate your standard ``sbt`` script, which was set up according to
 :doc:`Setup </Getting-Started/Setup>`, as ``scalas`` and ``screpl`` (or
 whatever names you like).
 
-``scalas`` is the script runner and should use ``sbt.ConsoleMain`` as
+``scalas`` is the script runner and should use ``sbt.ScriptMain`` as
 the main class, by adding the ``-Dsbt.main.class=sbt.ScriptMain``
 parameter to the ``java`` command. Its command line should look like:
 
