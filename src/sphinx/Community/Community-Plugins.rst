@@ -97,6 +97,7 @@ Static Code Analysis plugins
    works for Scala, too)
 -  findbugs4sbt: https://bitbucket.org/jmhofer/findbugs4sbt (FindBugs
    only supports Java projects atm)
+-  scalastyle: https://github.com/scalastyle/scalastyle-sbt-plugin (Scalastyle - static code checker for Scala)
 
 One jar plugins
 ~~~~~~~~~~~~~~~
