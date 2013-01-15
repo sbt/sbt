@@ -1,0 +1,12 @@
+> a/publish
+
+$ copy-file changes/B.scala b/B.scala
+> b/update
+-> b/test:compile
+
+$ copy-file changes/A.scala a/src/test/scala/A.scala
+> a/publish
+
+-> b/test:compile
+> b/update
+> b/test:compile
