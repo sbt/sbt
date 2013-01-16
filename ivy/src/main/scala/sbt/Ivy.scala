@@ -339,7 +339,7 @@ private object IvySbt
 				val mrid = moduleArtifact.getModuleRevisionId
 				// only handle changing modules whose metadata actually changed.
 				// Typically, the publication date in the metadata has to change to get here.
-				if(rmr.getReport != null && rmr.getReport.isSearched && isChanging(dd, mrid)) {
+				if(rmr != null && rmr.getReport != null && rmr.getReport.isSearched && isChanging(dd, mrid)) {
 					// this is the locally cached metadata as originally retrieved (e.g. the pom)
 					val original = rmr.getReport.getOriginalLocalFile
 					if(original != null) {
