@@ -19,7 +19,7 @@ class FileCommands(baseDirectory: File) extends BasicStatementHandler
 			"absent" nonEmpty absent _,
 //			"sync" twoArg("Two directory paths", sync _),
 			"newer" twoArg("Two paths", newer _),
-			"pause" noArg { readLine("Press enter to continue. "); println() },
+			"pause" noArg { println("Pausing in " + baseDirectory); readLine("Press enter to continue. "); println() },
 			"sleep" oneArg("Time in milliseconds",  time => Thread.sleep(time.toLong) ),
 			"exec" nonEmpty(execute _ ),
 			"copy" copy (to => rebase(baseDirectory, to)),
