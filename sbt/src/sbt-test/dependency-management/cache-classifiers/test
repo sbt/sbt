@@ -4,6 +4,9 @@ $ copy-file changes/B.scala b/B.scala
 > b/update
 -> b/test:compile
 
+# Need to sleep 3s because the check depends on last modified time and typical resolution is 1s.
+$ sleep 3000
+
 $ copy-file changes/A.scala a/src/test/scala/A.scala
 > a/publish
 

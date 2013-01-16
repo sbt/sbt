@@ -6,4 +6,4 @@ version := "1.0.0-SNAPSHOT"
 
 publishArtifact in (Test,packageBin) := true
 
-publishTo := Some(Resolver.file("demo", (baseDirectory in ThisBuild).value / "demo-repo"))
+publishTo <<= (baseDirectory in ThisBuild) { base => Some(Resolver.file("demo", base / "demo-repo")) }
