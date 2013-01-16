@@ -26,7 +26,7 @@ object PomTest extends Build
 			("b", Some("runtime"), true, None),
 			("c", None, true, None),
 			("d", Some("test"), false, None),
-			("e", Some("custom"), false, None),
+			("e", None, false, None),
 			("f", Some("runtime"), true, None),
 			("g", Some("runtime"), false, Some("foo")),
 			("h", Some("runtime"), true, Some("foo"))
