@@ -37,6 +37,7 @@ html_use_index = False
 html_show_sphinx = False
 htmlhelp_basename = 'sbtdoc'
 html_use_smartypants = False
+html_copy_source = False
 
 # if true:
 #  the Home link is to scala-sbt.org
