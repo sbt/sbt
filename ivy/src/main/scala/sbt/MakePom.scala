@@ -160,8 +160,10 @@ class MakePom(val log: Logger)
 
 	def makeDependencyElem(dependency: DependencyDescriptor, artifact: DependencyArtifactDescriptor): Elem =
 	{
-		val artifactConfigs = artifact.getConfigurations
-		val configs = if(artifactConfigs.isEmpty) dependency.getModuleConfigurations else artifactConfigs
+		val configs = artifact.getConfigurations.toList match {
+			case Nil | "*" :: Nil => dependency.getModuleConfigurations
+			case x => x.toArray
+		}
 		val (scope, optional) = getScopeAndOptional(configs)
 		makeDependencyElem(dependency, scope, optional, artifactClassifier(artifact), artifactType(artifact))
 	}
@@ -222,15 +224,7 @@ class MakePom(val log: Logger)
 	{
 		val (opt, notOptional) = confs.partition(_ == Optional.name)
 		val defaultNotOptional = Configurations.defaultMavenConfigurations.find(notOptional contains _.name)
-		val scope = defaultNotOptional match
-		{
-			case Some(conf) => Some(conf.name)
-			case None =>
-				if(notOptional.isEmpty || notOptional(0) == Configurations.Default.name)
-					None
-				else
-					Option(notOptional(0))
-		}
+		val scope = defaultNotOptional.map(_.name)
 		(scope, !opt.isEmpty)
 	}
 
