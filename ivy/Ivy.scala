@@ -394,7 +394,7 @@ private object IvySbt
 	private def toIvyArtifact(moduleID: ModuleDescriptor, a: Artifact, configurations: Iterable[String]): MDArtifact =
 	{
 		val artifact = new MDArtifact(moduleID, a.name, a.`type`, a.extension, null, extra(a, false))
-		configurations.foreach(artifact.addConfiguration)
+		copyConfigurations(a, artifact.addConfiguration)
 		artifact
 	}
 	def getExtraAttributes(revID: ExtendableItem): Map[String,String] =
@@ -537,6 +537,7 @@ private object IvySbt
 			import artifact.{name, classifier, `type`, extension, url}
 			val extraMap = extra(artifact)
 			val ivyArtifact = new DefaultDependencyArtifactDescriptor(dependencyDescriptor, name, `type`, extension, url.getOrElse(null), extraMap)
+			copyConfigurations(artifact, ivyArtifact.addConfiguration)
 			for(conf <- dependencyDescriptor.getModuleConfigurations)
 				dependencyDescriptor.addDependencyArtifact(conf, ivyArtifact)
 		}
@@ -549,6 +550,11 @@ private object IvySbt
 		}
 		dependencyDescriptor
 	}
+	def copyConfigurations(artifact: Artifact, addConfiguration: String => Unit): Unit =
+		if(artifact.configurations.isEmpty)
+			addConfiguration("*")
+		else
+			artifact.configurations.foreach(c => addConfiguration(c.name))
 
 	def addOverrides(moduleID: DefaultModuleDescriptor, overrides: Set[ModuleID], matcher: PatternMatcher): Unit =
 		overrides foreach addOverride(moduleID, matcher)
@@ -575,8 +581,9 @@ private object IvySbt
 
 	/** This method is used to add inline artifacts to the provided module. */
 	def addArtifacts(moduleID: DefaultModuleDescriptor, artifacts: Iterable[Artifact]): Unit =
-		for(art <- mapArtifacts(moduleID, artifacts.toSeq); c <- art.getConfigurations)
+		for(art <- mapArtifacts(moduleID, artifacts.toSeq); c <- art.getConfigurations if c != "*")
 			moduleID.addArtifact(c, art)
+
 	def addConfigurations(mod: DefaultModuleDescriptor, configurations: Iterable[Configuration]): Unit =
 			configurations.foreach(config => mod.addConfiguration(toIvyConfiguration(config)))
 
