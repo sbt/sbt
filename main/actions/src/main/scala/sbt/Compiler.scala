@@ -76,7 +76,8 @@ object Compiler
 			import in.incSetup._
 
 		val agg = new AggressiveCompile(cacheFile)
-		agg(scalac, javac, sources, classpath, CompileOutput(classesDirectory), cache, None, options, javacOptions, analysisMap, definesClass, new LoggerReporter(maxErrors, log, sourcePositionMapper), order, skip)(log)
+		agg(scalac, javac, sources, classpath, CompileOutput(classesDirectory), cache, None, options, javacOptions,
+		    analysisMap, definesClass, new LoggerReporter(maxErrors, log, sourcePositionMapper), order, skip)(log)
 	}
 
 	private[sbt] def foldMappers[A](mappers: Seq[A => Option[A]]) =
