@@ -25,22 +25,45 @@ final class CompileConfiguration(val sources: Seq[File], val classpath: Seq[File
 
 class AggressiveCompile(cacheFile: File)
 {
-	def apply(compiler: AnalyzingCompiler, javac: xsbti.compile.JavaCompiler, sources: Seq[File], classpath: Seq[File], output: Output, cache: GlobalsCache, progress: Option[CompileProgress] = None, options: Seq[String] = Nil, javacOptions: Seq[String] = Nil, analysisMap: File => Option[Analysis] = { _ => None }, definesClass: DefinesClass = Locate.definesClass _, reporter: Reporter, compileOrder: CompileOrder = Mixed, skip: Boolean = false)(implicit log: Logger): Analysis =
+	def apply(compiler: AnalyzingCompiler,
+	    javac: xsbti.compile.JavaCompiler,
+	    sources: Seq[File], classpath: Seq[File],
+	    output: Output,
+	    cache: GlobalsCache,
+	    progress: Option[CompileProgress] = None,
+	    options: Seq[String] = Nil,
+	    javacOptions: Seq[String] = Nil,
+	    analysisMap: File => Option[Analysis] = { _ => None },
+	    definesClass: DefinesClass = Locate.definesClass _,
+	    reporter: Reporter,
+	    compileOrder: CompileOrder = Mixed,
+	    skip: Boolean = false)(implicit log: Logger): Analysis =
 	{
 		val setup = new CompileSetup(output, new CompileOptions(options, javacOptions), compiler.scalaInstance.actualVersion, compileOrder)
-		compile1(sources, classpath, setup, progress, store, analysisMap, definesClass, compiler, javac, reporter, skip, cache)
+		compile1(sources, classpath, setup, progress, store, analysisMap, definesClass,
+		    compiler, javac, reporter, skip, cache)
 	}
 
 	def withBootclasspath(args: CompilerArguments, classpath: Seq[File]): Seq[File] =
 		args.bootClasspathFor(classpath) ++ args.finishClasspath(classpath)
 
-	def compile1(sources: Seq[File], classpath: Seq[File], setup: CompileSetup, progress: Option[CompileProgress], store: AnalysisStore, analysis: File => Option[Analysis], definesClass: DefinesClass, compiler: AnalyzingCompiler, javac: xsbti.compile.JavaCompiler, reporter: Reporter, skip: Boolean, cache: GlobalsCache)(implicit log: Logger): Analysis =
+	def compile1(sources: Seq[File],
+	    classpath: Seq[File],
+	    setup: CompileSetup, progress: Option[CompileProgress],
+		store: AnalysisStore,
+		analysis: File => Option[Analysis],
+		definesClass: DefinesClass,
+		compiler: AnalyzingCompiler,
+		javac: xsbti.compile.JavaCompiler,
+		reporter: Reporter, skip: Boolean,
+		cache: GlobalsCache)(implicit log: Logger): Analysis =
 	{
 		val (previousAnalysis, previousSetup) = extract(store.get())
 		if(skip)
 			previousAnalysis
 		else {
-			val config = new CompileConfiguration(sources, classpath, previousAnalysis, previousSetup, setup, progress, analysis, definesClass, reporter, compiler, javac, cache)
+			val config = new CompileConfiguration(sources, classpath, previousAnalysis, previousSetup, setup,
+			    progress, analysis, definesClass, reporter, compiler, javac, cache)
 			val (modified, result) = compile2(config)
 			if(modified)
 				store.set(result, setup)

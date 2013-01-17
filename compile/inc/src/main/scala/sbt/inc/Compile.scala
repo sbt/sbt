@@ -12,7 +12,11 @@ import java.io.File
 
 object IncrementalCompile
 {
-	def apply(sources: Set[File], entry: String => Option[File], compile: (Set[File], DependencyChanges, xsbti.AnalysisCallback) => Unit, previous: Analysis, forEntry: File => Option[Analysis], output: Output, log: Logger): (Boolean, Analysis) =
+	def apply(sources: Set[File], entry: String => Option[File],
+	    compile: (Set[File], DependencyChanges, xsbti.AnalysisCallback) => Unit,
+	    previous: Analysis,
+	    forEntry: File => Option[Analysis],
+	    output: Output, log: Logger): (Boolean, Analysis) =
 	{
 		val current = Stamps.initial(Stamp.exists, Stamp.hash, Stamp.lastModified)
 		val internalMap = (f: File) => previous.relations.produced(f).headOption
