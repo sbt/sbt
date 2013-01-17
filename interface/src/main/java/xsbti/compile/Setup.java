@@ -19,7 +19,7 @@ public interface Setup<Analysis>
 	boolean skip();
 
 	/** The file used to cache information across compilations.
-	* This file can be removed to force a full recompilation. 
+	* This file can be removed to force a full recompilation.
 	* The file should be unique and not shared between compilations. */
 	File cacheFile();
 
