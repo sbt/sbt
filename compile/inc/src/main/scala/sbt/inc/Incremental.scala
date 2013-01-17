@@ -16,7 +16,13 @@ object Incremental
 	final val TransitiveStep = 2
 	final val RecompileAllFraction = 0.5
 
-	def compile(sources: Set[File], entry: String => Option[File], previous: Analysis, current: ReadStamps, forEntry: File => Option[Analysis], doCompile: (Set[File], DependencyChanges) => Analysis, log: Logger)(implicit equivS: Equiv[Stamp]): (Boolean, Analysis) =
+	def compile(sources: Set[File],
+	    entry: String => Option[File],
+	    previous: Analysis,
+	    current: ReadStamps,
+	    forEntry: File => Option[Analysis],
+	    doCompile: (Set[File], DependencyChanges) => Analysis,
+	    log: Logger)(implicit equivS: Equiv[Stamp]): (Boolean, Analysis) =
 	{
 		val initialChanges = changedInitial(entry, sources, previous, current, forEntry)
 		val binaryChanges = new DependencyChanges {
@@ -33,7 +39,8 @@ object Incremental
 	val incDebugProp = "xsbt.inc.debug"
 	// TODO: the Analysis for the last successful compilation should get returned + Boolean indicating success
 	// TODO: full external name changes, scopeInvalidations
-	def cycle(invalidatedRaw: Set[File], allSources: Set[File], binaryChanges: DependencyChanges, previous: Analysis, doCompile: (Set[File], DependencyChanges) => Analysis, cycleNum: Int, log: Logger): Analysis =
+	def cycle(invalidatedRaw: Set[File], allSources: Set[File], binaryChanges: DependencyChanges, previous: Analysis,
+	    doCompile: (Set[File], DependencyChanges) => Analysis, cycleNum: Int, log: Logger): Analysis =
 		if(invalidatedRaw.isEmpty)
 			previous
 		else
