@@ -312,7 +312,7 @@ object Defaults extends BuildCommon
 	def scalaInstanceFromUpdate: Initialize[Task[ScalaInstance]] = Def.task {
 		val toolReport = update.value.configuration(Configurations.ScalaTool.name) getOrElse
 			error(noToolConfiguration(managedScalaInstance.value))
-		def files(id: String) = 
+		def files(id: String) =
 			for { m <- toolReport.modules if m.module.name == id;
 				(art, file) <- m.artifacts if art.`type` == Artifact.DefaultType }
 			yield file
@@ -610,7 +610,7 @@ object Defaults extends BuildCommon
 			val hasJava = srcs.exists(_.name.endsWith(".java"))
 			val cp = in.config.classpath.toList.filterNot(_ == in.config.classesDirectory)
 			val label = nameForSrc(config.name)
-			val (options, runDoc) = 
+			val (options, runDoc) =
 				if(hasScala)
 					(in.config.options ++ Opts.doc.externalAPI(xapis), Doc.scaladoc(label, s.cacheDirectory / "scala", in.compilers.scalac))
 				else if(hasJava)
@@ -859,7 +859,7 @@ object Classpaths
 		fullResolvers <<= (projectResolver,externalResolvers,sbtPlugin,sbtResolver,bootResolvers,overrideBuildResolvers) map { (proj,rs,isPlugin,sbtr, boot, overrideFlag) =>
 			boot match {
 				case Some(repos) if overrideFlag => proj +: repos
-				case _ => 
+				case _ =>
 					val base = if(isPlugin) sbtr +: sbtPluginReleases +: rs else rs
 					proj +: base
 			}
@@ -1079,7 +1079,7 @@ object Classpaths
 	def projectDependenciesTask: Initialize[Task[Seq[ModuleID]]] =
 		(thisProjectRef, settings, buildDependencies) map { (ref, data, deps) =>
 			deps.classpath(ref) flatMap { dep => (projectID in dep.project) get data map {
-				_.copy(configurations = dep.configuration, explicitArtifacts = Nil) } 
+				_.copy(configurations = dep.configuration, explicitArtifacts = Nil) }
 			}
 	}
 
@@ -1319,11 +1319,11 @@ object Classpaths
 	def bootRepositories(app: xsbti.AppConfiguration): Option[Seq[Resolver]] =
 		try { Some(app.provider.scalaProvider.launcher.ivyRepositories.toSeq map bootRepository) }
 		catch { case _: NoSuchMethodError => None }
-	
+
 	private[this] def mavenCompatible(ivyRepo: xsbti.IvyRepository): Boolean =
 		try { ivyRepo.mavenCompatible }
 		catch { case _: NoSuchMethodError => false }
-		
+
 	private[this] def bootRepository(repo: xsbti.Repository): Resolver =
 	{
 		import xsbti.Predefined
