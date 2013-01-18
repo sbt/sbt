@@ -8,6 +8,7 @@ object Util
 	lazy val componentID = SettingKey[Option[String]]("component-id")
 	lazy val scalaKeywords = TaskKey[Set[String]]("scala-keywords")
 	lazy val generateKeywords = TaskKey[File]("generateKeywords")
+	lazy val includeTestDependencies = SettingKey[Boolean]("includeTestDependencies", "Doesn't declare test dependencies.")
 
 	def inAll(projects: => Seq[ProjectReference], key: ScopedSetting[Task[Unit]]): Project.Initialize[Task[Unit]] =
 		inAllProjects(projects, key) { deps => nop dependsOn( deps : _*) }
@@ -24,15 +25,18 @@ object Util
 
 	def project(path: File, nameString: String) = Project(normalize(nameString), path) settings( Seq(name := nameString) ++ publishPomSettings : _* )
 	def baseProject(path: File, nameString: String) = project(path, nameString) settings( base : _*)
-	def testedBaseProject(path: File, nameString: String) = baseProject(path, nameString) settings( testDependencies : _*)
+	def testedBaseProject(path: File, nameString: String) = baseProject(path, nameString) settings(includeTestDependencies := true, testDependencies)
 	
 	lazy val javaOnly = Seq[Setting[_]](/*crossPaths := false, */compileOrder := CompileOrder.JavaThenScala, unmanagedSourceDirectories in Compile <<= Seq(javaSource in Compile).join)
 	lazy val base: Seq[Setting[_]] = Seq(scalacOptions ++= Seq("-Xelide-below", "0"), projectComponent) ++ Licensed.settings
 	
-	def testDependencies = libraryDependencies ++= Seq(
-		"org.scalacheck" %% "scalacheck" % "1.10.0" % "test",
-		"org.specs2" %% "specs2" % "1.12.3" % "test"
-	)
+	def testDependencies = libraryDependencies <++= includeTestDependencies { incl =>
+		if(incl) Seq(
+			"org.scalacheck" %% "scalacheck" % "1.10.0" % "test",
+			"org.specs2" %% "specs2" % "1.12.3" % "test"
+		)
+		else Seq()
+	}
 
 	lazy val minimalSettings: Seq[Setting[_]] = Defaults.paths ++ Seq[Setting[_]](crossTarget <<= target.identity, name <<= thisProject(_.id))
 
