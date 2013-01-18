@@ -272,8 +272,9 @@ object TaskMacro
 		val ttree = t match { case Left(l) => l.tree; case Right(r) => r.tree }
 		val defs = util.collectDefs(ttree, isAnyWrapper)
 		val checkQual = util.checkReferences(defs, isAnyWrapper)
-		val unitTask = c.typeOf[TaskKey[Unit]]
-		val taskKeyC = unitTask.typeConstructor
+		val unitInitTask = c.typeOf[Initialize[Task[Unit]]]
+		val initKeyC = c.typeOf[Initialize[Unit]].typeConstructor
+		val taskKeyC = c.typeOf[Task[Unit]].typeConstructor
 
 		var result: Option[(Tree, Type, ValDef)] = None
 
@@ -286,8 +287,8 @@ object TaskMacro
 			else
 			{
 				qual.foreach(checkQual)
-				val keyType = appliedType(taskKeyC, tpe :: Nil) // TaskKey[<tpe>]
-				val vd = util.freshValDef(keyType, qual.symbol) // val $x: TaskKey[<tpe>]
+				val itType = appliedType(initKeyC, appliedType(taskKeyC, tpe :: Nil) :: Nil) // Initialize[Task[<tpe>]]
+				val vd = util.freshValDef(itType, qual.symbol) // val $x: Initialize[Task[<tpe>]]
 				result = Some( (qual, tpe, vd) )
 				val tree = util.refVal(vd) // $x
 				tree.setPos(qual.pos) // position needs to be set so that wrapKey passes the position onto the wrapper
@@ -296,7 +297,7 @@ object TaskMacro
 				wrapped.tree.setType(tpe)
 			}
 		// Tree for InputTask.create[<tpeA>, <tpeB>](arg1)(arg2)
-		def inputTaskApply(tpeA: Type, tpeB: Type, arg1: Tree, arg2: Tree) =
+		def inputTaskCreate(tpeA: Type, tpeB: Type, arg1: Tree, arg2: Tree) =
 		{
 			val typedApp = TypeApply(Select(it, InputTaskCreateName), TypeTree(tpeA) :: TypeTree(tpeB) :: Nil)
 			val app = ApplyTree( ApplyTree(typedApp, arg1 :: Nil), arg2 :: Nil)
@@ -313,15 +314,15 @@ object TaskMacro
 		result match {
 			case Some((p, tpe, param)) =>
 				val f = Function(param :: Nil, body)
-				inputTaskApply(tpe, tag.tpe, p, f)
+				inputTaskCreate(tpe, tag.tpe, p, f)
 			case None =>
 				// SI-6591 prevents the more direct version using reify:
 				// reify { InputTask[Unit,T].create(TaskMacro.emptyParser)(Types.const(body.splice)) }
 				val initType = c.weakTypeOf[Initialize[Task[T]]]
 				val tt = Ident(util.singleton(Types))
-				val f = ApplyTree(TypeApply(Select(tt, "const"), TypeTree(unitTask) :: TypeTree(initType) :: Nil), body :: Nil)
+				val f = ApplyTree(TypeApply(Select(tt, "const"), TypeTree(unitInitTask) :: TypeTree(initType) :: Nil), body :: Nil)
 				val p = reify { InputTask.emptyParser }
-				inputTaskApply(c.typeOf[Unit], tag.tpe, p.tree, f)
+				inputTaskCreate(c.typeOf[Unit], tag.tpe, p.tree, f)
 		}
 	}
 }

@@ -93,14 +93,19 @@ final object Aggregation
 		DateFormat.getDateTimeInstance(DateFormat.MEDIUM, DateFormat.MEDIUM)
 	}
 
-	def applyDynamicTasks[I](s: State, structure: BuildStructure, inputs: Values[InputDynamic[I]], show: Boolean)(implicit display: Show[ScopedKey[_]]): Parser[() => State] =
+	def applyDynamicTasks[I](s: State, structure: BuildStructure, inputs: Values[InputTask[I]], show: Boolean)(implicit display: Show[ScopedKey[_]]): Parser[() => State] =
 	{
-		val parsers = inputs.map { case KeyValue(k,t) => KeyValue(k, t parser s) }
-		Command.applyEffect(seqParser(parsers)) { parseds =>
+		final class Parsed[T](val input: InputTask[_] { type Result = T }, val value: T) {
+			def addTo(im: AttributeMap): AttributeMap = im.put(input.defined, value)
+		}
+		val parsers: Seq[Parser[Parsed[_]]] = for( KeyValue(k,t) <- inputs ) yield
+			t.parser(s).map( v => new Parsed[t.Result](t, v) )
+
+		Command.applyEffect(seq(parsers)) { parseds =>
 			import EvaluateTask._
-			val inputMap = (Map.empty[AnyRef,Any] /: (inputs zip parseds)) { case (im, (id, v)) => im + ((id.value.defined, v.value)) }
+			val inputMap = (AttributeMap.empty /: parseds) { (im, p) => p.addTo(im) }
 			val dummies = DummyTaskMap(new TaskAndValue(InputTask.inputMap, inputMap) :: Nil)
-			val roots = inputs.map { case KeyValue(k,t) => KeyValue(k,t.task) }
+			val roots = maps(inputs)(_.task)
 			runTasks(s, structure, roots, dummies, show)
 		}
 	}
@@ -109,8 +114,7 @@ final object Aggregation
 		keys.toList match
 		{
 			case Nil => failure("No such setting/task")
-			case xs @ KeyValue(_, _: InputStatic[t]) :: _ => applyTasks(s, structure, maps(xs.asInstanceOf[Values[InputStatic[t]]])(_.parser(s)), show)
-			case xs @ KeyValue(_, _: InputDynamic[t]) :: _ => applyDynamicTasks(s, structure, xs.asInstanceOf[Values[InputDynamic[t]]], show)
+			case xs @ KeyValue(_, _: InputTask[t]) :: _ => applyDynamicTasks(s, structure, xs.asInstanceOf[Values[InputTask[t]]], show)
 			case xs @ KeyValue(_, _: Task[t]) :: _ => applyTasks(s, structure, maps(xs.asInstanceOf[Values[Task[t]]])(x => success(x)), show)
 			case xs => success(() => { printSettings(xs, s.log); s} )
 		}

@@ -14,7 +14,7 @@ package sbt
 	import Compiler.{Compilers,Inputs}
 	import inc.{FileValueCache, Locate}
 	import Project.{inScope,makeSettings}
-	import Def.{parseResult, ScopedKey, ScopeLocal, Setting}
+	import Def.{ScopedKey, ScopeLocal, Setting}
 	import Keys.{appConfiguration, baseDirectory, configuration, fullResolvers, fullClasspath, pluginData, streams, thisProject, thisProjectRef, update}
 	import Keys.{exportedProducts, isDummy, loadedBuild, resolvedScoped, taskDefinitionKey}
 	import tools.nsc.reporters.ConsoleReporter
@@ -136,7 +136,6 @@ object Load
 	// 1. the scope of 'streams' is the same as the defining key and has the task axis set to the defining key
 	// 2. the defining key is stored on constructed tasks
 	// 3. resolvedScoped is replaced with the defining key as a value
-	// 4. parseResult is replaced with a task that provides the result of parsing for the defined InputTask
 	// Note: this must be idempotent.
 	def finalTransforms(ss: Seq[Setting[_]]): Seq[Setting[_]] =
 	{
@@ -154,10 +153,6 @@ object Load
 			key.key match
 			{
 				case resolvedScoped.key => Some(defining.asInstanceOf[T])
-				case parseResult.key =>
-						import std.TaskExtra._
-					val getResult = InputTask.inputMap map { m => m get defining getOrElse error("No parsed value for " + Def.displayFull(defining) + "\n" + m) }
-					Some(getResult.asInstanceOf[T])
 				case _ => None
 			}
 		}

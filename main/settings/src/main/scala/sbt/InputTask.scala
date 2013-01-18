@@ -7,25 +7,21 @@ package sbt
 	import Types._
 
 /** Parses input and produces a task to run.  Constructed using the companion object. */
-sealed trait InputTask[T] {
-	def mapTask[S](f: Task[T] => Task[S]): InputTask[S]
-}
-private final class InputStatic[T](val parser: State => Parser[Task[T]]) extends InputTask[T] {
-	def mapTask[S](f: Task[T] => Task[S]) = new InputStatic(s => parser(s) map f)
-}
-private sealed trait InputDynamic[T] extends InputTask[T]
+sealed trait InputTask[T]
 { outer =>
-	type Result
-	def parser: State => Parser[Result]
-	def defined: ScopedKey[_]
-	def task: Task[T]
-	def mapTask[S](f: Task[T] => Task[S]) = new InputDynamic[S] {
+	private[sbt] type Result
+	private[sbt] def parser: State => Parser[Result]
+	private[sbt] def defined: AttributeKey[Result]
+	private[sbt] def task: Task[T]
+
+	def mapTask[S](f: Task[T] => Task[S]) = new InputTask[S] {
 		type Result = outer.Result
 		def parser = outer.parser
 		def task = f(outer.task)
 		def defined = outer.defined
 	}
 }
+
 object InputTask
 {
 	@deprecated("Use `create` or the `Def.inputTask` macro.", "0.13.0")
@@ -35,7 +31,15 @@ object InputTask
 	def static[I,T](p: Parser[I])(c: I => Task[T]): InputTask[T] = static(p map c)
 
 	@deprecated("Use `create` or the `Def.inputTask` macro.", "0.13.0")
-	def free[T](p: State => Parser[Task[T]]): InputTask[T] = new InputStatic[T](p)
+	def free[T](p: State => Parser[Task[T]]): InputTask[T] = {
+		val key = localKey[Task[T]]
+		new InputTask[T] {
+			type Result = Task[T]
+			def parser = p
+			def defined = key
+			def task = getResult(key)
+		}
+	}
 
 	@deprecated("Use `create` or the `Def.inputTask` macro.", "0.13.0")
 	def free[I,T](p: State => Parser[I])(c: I => Task[T]): InputTask[T] = free(s => p(s) map c)
@@ -48,27 +52,56 @@ object InputTask
 	def separate[I,T](p: Initialize[State => Parser[I]])(action: Initialize[I => Task[T]]): Initialize[InputTask[T]] =
 		p.zipWith(action)((parser, act) => free(parser)(act))
 
-	private[sbt] lazy val inputMap: Task[Map[AnyRef,Any]] = mktask { error("Internal sbt error: input map not substituted.") }
-
-	@deprecated("Use the non-overloaded `create` or the `Def.inputTask` macro.", "0.13.0")
+	@deprecated("Use `create` or the `Def.inputTask` macro.", "0.13.0")
 	def apply[I,T](p: Initialize[State => Parser[I]])(action: TaskKey[I] => Initialize[Task[T]]): Initialize[InputTask[T]] =
-		create(p)(action)
+	{
+		create(p){ it =>
+			val dummy = TaskKey(localKey[Task[I]])
+			action(dummy) mapConstant subResultForDummy(dummy)
+		}
+	}
+
+	@deprecated("Use `create` or the `Def.inputTask` macro.", "0.13.0")
+	def apply[I,T](p: State => Parser[I])(action: TaskKey[I] => Initialize[Task[T]]): Initialize[InputTask[T]] =
+		apply(Def.value(p))(action)
+
+	// dummy task that will get replaced with the actual mappings from InputTasks to parse results
+	private[sbt] lazy val inputMap: Task[AttributeMap] = mktask { error("Internal sbt error: input map not substituted.") }
+	private[this] def getResult[T](key: AttributeKey[Task[T]]): Task[T] = inputMap flatMap { im =>
+		im get key getOrElse error("Internal sbt error: could not get parser result.")
+	}
+	/** The proper solution is to have a Manifest context bound and accept slight source incompatibility,
+	* The affected InputTask construction methods are all deprecated and so it is better to keep complete
+	* compatibility.  Because the AttributeKey is local, it uses object equality and the manifest is not used. */
+	private[this] def localKey[T]: AttributeKey[T] = AttributeKey.local[Unit].asInstanceOf[AttributeKey[T]]
+
+	private[this] def subResultForDummy[I](dummy: TaskKey[I]) = 
+		new (ScopedKey ~> Option) { def apply[T](sk: ScopedKey[T]) =
+			if(sk.key eq dummy.key) {
+				// sk.key: AttributeKey[T], dummy.key: AttributeKey[Task[I]]
+				// (sk.key eq dummy.key) ==> T == Task[I] because AttributeKey is invariant
+				Some(getResult(dummy.key).asInstanceOf[T])
+			} else
+				None
+		}
 
 	// This interface allows the Parser to be constructed using other Settings, but not Tasks (which is desired).
 	// The action can be constructed using Settings and Tasks and with the parse result injected into a Task.
-	// This is the ugly part, requiring hooks in Load.finalTransforms and Aggregation.applyDynamicTasks
-	//  to handle the dummy task for the parse result.
-	// However, this results in a minimal interface to the full capabilities of an InputTask for users
-	def create[I,T](p: Initialize[State => Parser[I]])(action: TaskKey[I] => Initialize[Task[T]]): Initialize[InputTask[T]] =
+	// This requires Aggregation.applyDynamicTasks to inject an AttributeMap with the parse results.
+	def create[I,T](p: Initialize[State => Parser[I]])(action: Initialize[Task[I]] => Initialize[Task[T]]): Initialize[InputTask[T]] =
 	{
-		val key: TaskKey[I] = Def.parseResult.asInstanceOf[TaskKey[I]]
-		(p zip Def.resolvedScoped zipWith action(key)) { case ((parserF, scoped), act) =>
-			new InputDynamic[T]
+		val key = localKey[I] // TODO: AttributeKey.local[I]
+		val result: Initialize[Task[I]] = (Def.resolvedScoped zipWith Def.valueStrict(InputTask.inputMap)){(scoped, imTask) =>
+			imTask map { im => im get key getOrElse error("No parsed value for " + Def.displayFull(scoped) + "\n" + im) }
+		}
+
+		(p zipWith action(result)) { (parserF, act) =>
+			new InputTask[T]
 			{
 				type Result = I
 				def parser = parserF
 				def task = act
-				def defined = scoped
+				def defined = key
 			}
 		}
 	}
@@ -81,8 +114,5 @@ object InputTask
 
 	/** Implementation detail that is public because it is used y a macro.*/
 	def initParserAsInput[T](i: Initialize[Parser[T]]): Initialize[State => Parser[T]] = i(Types.const)
-
-	@deprecated("Use `create` or the `Def.inputTask` macro.", "0.13.0")
-	def apply[I,T](p: State => Parser[I])(action: TaskKey[I] => Initialize[Task[T]]): Initialize[InputTask[T]] =
-		apply(Def.value(p))(action)
 }
+

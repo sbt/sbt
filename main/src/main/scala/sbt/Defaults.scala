@@ -1444,7 +1444,7 @@ trait BuildCommon
 {
 	@deprecated("Use Def.inputTask with the `Def.spaceDelimited()` parser.", "0.13.0")
 	def inputTask[T](f: TaskKey[Seq[String]] => Initialize[Task[T]]): Initialize[InputTask[T]] =
-		InputTask.create(Def.value((s: State) => Def.spaceDelimited()))(f)
+		InputTask.apply(Def.value((s: State) => Def.spaceDelimited()))(f)
 
 	implicit def globFilter(expression: String): NameFilter = GlobFilter(expression)
 	implicit def richAttributed(s: Seq[Attributed[File]]): RichAttributed = new RichAttributed(s)

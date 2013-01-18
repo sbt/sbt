@@ -10,7 +10,6 @@ object Def extends Init[Scope] with TaskMacroExtra
 
 	val triggeredBy = AttributeKey[Seq[Task[_]]]("triggered-by")
 	val runBefore = AttributeKey[Seq[Task[_]]]("run-before")
-	private[sbt] val parseResult: TaskKey[Any] = TaskKey("$parse-result", "Internal: used to implement input tasks.", KeyRanks.Invisible)
 	val resolvedScoped = SettingKey[ScopedKey[_]]("resolved-scoped", "The ScopedKey for the referencing setting or task.", KeyRanks.DSetting)
 
 	lazy val showFullKey: Show[ScopedKey[_]] = showFullKey(None)
