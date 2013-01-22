@@ -28,8 +28,17 @@ object Util
 	def testedBaseProject(path: File, nameString: String) = baseProject(path, nameString) settings(includeTestDependencies := true, testDependencies)
 	
 	lazy val javaOnly = Seq[Setting[_]](/*crossPaths := false, */compileOrder := CompileOrder.JavaThenScala, unmanagedSourceDirectories in Compile <<= Seq(javaSource in Compile).join)
-	lazy val base: Seq[Setting[_]] = Seq(scalacOptions ++= Seq("-Xelide-below", "0", "-feature", "-language:implicitConversions", "-language:postfixOps",
-                    "-language:higherKinds", "-language:existentials"), projectComponent) ++ Licensed.settings
+	lazy val baseScalacOptions: Setting[_] = scalacOptions <++= scalaVersion map { (sv: String) =>
+		val versionDependent: Seq[String] = {
+			if (sv.startsWith("2.10") || sv.startsWith("2.11"))
+				// those scalac options are available in Scala 2.10+ only and we need to support 2.9 for now
+				Seq("-feature", "-language:implicitConversions", "-language:postfixOps", "-language:higherKinds", "-language:existentials")
+			else
+				Seq.empty
+		}
+		Seq("-Xelide-below", "0") ++ versionDependent
+	}
+	lazy val base: Seq[Setting[_]] = Seq(baseScalacOptions, projectComponent) ++ Licensed.settings
 	
 	def testDependencies = libraryDependencies <++= includeTestDependencies { incl =>
 		if(incl) Seq(
