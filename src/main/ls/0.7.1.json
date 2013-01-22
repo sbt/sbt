@@ -1,0 +1,29 @@
+{
+  "organization" : "net.virtual-void",
+  "name" : "sbt-dependency-graph",
+  "version" : "0.7.1",
+  "description" : "An sbt plugin to visualize dependencies of your build.",
+  "site" : "http://github.com/jrudolph/sbt-dependency-graph",
+  "tags" : [ "dependency", "graph", "sbt-plugin", "sbt" ],
+  "docs" : "http://github.com/jrudolph/sbt-dependency-graph",
+  "resolvers" : [ "https://oss.sonatype.org/content/repositories/releases" ],
+  "dependencies" : [ {
+    "organization" : "org.scala-sbt",
+    "name" : "scripted-sbt",
+    "version" : "0.12.0"
+  }, {
+    "organization" : "org.scala-sbt",
+    "name" : "sbt-launch",
+    "version" : "0.12.0"
+  }, {
+    "organization" : "com.github.mdr",
+    "name" : "ascii-graphs",
+    "version" : "0.0.2"
+  } ],
+  "scalas" : [ "2.9.2" ],
+  "licenses" : [ {
+    "name" : "Apache License 2.0",
+    "url" : "https://github.com/jrudolph/sbt-dependency-graph/raw/master/LICENSE"
+  } ],
+  "sbt" : true
+}

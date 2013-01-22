@@ -93,6 +93,7 @@ Credits
 -------
 
  * Matt Russell (@mdr) for contributing the ASCII graph layout.
+ * berleon (@berleon) for contributing rendering to dot.
 
 License
 -------

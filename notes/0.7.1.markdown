@@ -1,3 +1,5 @@
 New features in this version:
 
  * `dependency-license-info`: show dependencies grouped by declared license
+ * `dependency-dot`: create dot file from dependency graph. Contributed by
+    [berleon](https://github.com/berleon).
