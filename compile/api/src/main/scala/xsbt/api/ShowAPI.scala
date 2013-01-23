@@ -210,9 +210,11 @@ trait ShowTypes
 {
 	implicit def showStructure(implicit t: Show[Type], d: Show[Definition]): Show[Structure] =
 		new Show[Structure] {
-			def show(s: Structure) =
-				// don't show inherited to avoid dealing with cycles
-				concat(s.parents, t, " with ") + "\n{\n" + lines(s.declared, d) + "\n}"
+			def show(s: Structure) = {
+				// don't show inherited class like definitions to avoid dealing with cycles
+				val safeInherited = s.inherited.filterNot(_.isInstanceOf[ClassLike])
+				concat(s.parents, t, " with ") + "\n{\n" + lines(safeInherited ++ s.declared, d) + "\n}"
+			}
 		}
 	implicit def showAnnotated(implicit as: Show[Annotation], t: Show[Type]): Show[Annotated] = 
 		new Show[Annotated] { def show(a: Annotated) = spaced(a.annotations, as) + " " + t.show(a.baseType) }
