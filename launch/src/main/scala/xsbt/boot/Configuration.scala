@@ -84,19 +84,24 @@ object Configuration
 		}
 	def versionParts(version: String): List[String] =
 	{
-		val pattern = Pattern.compile("""(\d+)\.(\d+)\.(\d+)(-.*)?""")
+		val pattern = Pattern.compile("""(\d+)(\.\d+)(\.\d+)(-.*)?""")
 		val m = pattern.matcher(version)
 		if(m.matches())
-			subPartsIndices map {_.map(m.group).filter(neNull).mkString(".") }
+			subPartsIndices flatMap { is => fullMatchOnly(is.map(m.group)) }
 		else
-			DefaultVersionPart :: fallbackParts
+			noMatchParts
 	}
+	def noMatchParts: List[String] = DefaultVersionPart :: fallbackParts
+	private[this] def fullMatchOnly(groups: List[String]): Option[String] =
+		if(groups.forall(neNull)) Some(groups.mkString) else None
+
 	private[this] def subPartsIndices = 
-		(1 :: 2 :: Nil) ::
-		(1 :: 2 :: 3 :: Nil) ::
 		(1 :: 2 :: 3 :: 4 :: Nil) ::
+		(1 :: 2 :: 3 :: Nil) ::
+		(1 :: 2 :: Nil) ::
 		(Nil) ::
 		Nil
+
 	// the location of project/build.properties and the name of the property within that file 
 	//  that configures the sbt version is configured in sbt.boot.properties.
 	// We have to hard code them here in order to use them to determine the location of sbt.boot.properties itself
