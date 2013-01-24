@@ -213,7 +213,10 @@ trait ShowTypes
 			def show(s: Structure) = {
 				// don't show inherited class like definitions to avoid dealing with cycles
 				val safeInherited = s.inherited.filterNot(_.isInstanceOf[ClassLike])
-				concat(s.parents, t, " with ") + "\n{\n" + lines(safeInherited ++ s.declared, d) + "\n}"
+				val showInherited: Show[Definition] = new Show[Definition] {
+				  def show(deff: Definition): String = "^inherited^ " + d.show(deff)
+				}
+				concat(s.parents, t, " with ") + "\n{\n" + lines(safeInherited, showInherited) + "\n" + lines(s.declared, d) + "\n}"
 			}
 		}
 	implicit def showAnnotated(implicit as: Show[Annotation], t: Show[Type]): Show[Annotated] = 
