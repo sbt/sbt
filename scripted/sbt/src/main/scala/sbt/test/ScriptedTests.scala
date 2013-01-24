@@ -19,22 +19,24 @@ final class ScriptedTests(resourceBaseDirectory: File, bufferLog: Boolean, launc
 	val ScriptFilename = "test"
 	val PendingScriptFilename = "pending"
 	
-	def scriptedTest(group: String, name: String, log: xsbti.Logger): Unit =
+	def scriptedTest(group: String, name: String, log: xsbti.Logger): Seq[() => Option[String]] =
 		scriptedTest(group, name, Logger.xlog2Log(log))
-	def scriptedTest(group: String, name: String, log: Logger): Unit = {
+	def scriptedTest(group: String, name: String, log: Logger): Seq[() => Option[String]] = {
 			import Path._
 			import GlobFilter._
 		var failed = false
-		for(groupDir <- (resourceBaseDirectory * group).get; nme <- (groupDir * name).get ) {
+		for(groupDir <- (resourceBaseDirectory * group).get; nme <- (groupDir * name).get ) yield {
 			val g = groupDir.getName
 			val n = nme.getName
-			println("Running " + g + " / " + n)
-			testResources.readWriteResourceDirectory(g, n) { testDirectory =>
-				try { scriptedTest(g + " / " + n, testDirectory, log) }
-				catch { case e: xsbt.test.TestException => failed = true }
+			val str = s"$g / $n"
+			() => {
+				println("Running " + str)
+				testResources.readWriteResourceDirectory(g, n) { testDirectory =>
+					try { scriptedTest(str, testDirectory, log); None }
+					catch { case e: xsbt.test.TestException => Some(str) }
+				}
 			}
 		}
-		if(failed) error(group + " / " + name + " failed")
 	}
 	private def scriptedTest(label: String, testDirectory: File, log: Logger): Unit =
 		IPC.pullServer( scriptedTest0(label, testDirectory, log) )
@@ -110,8 +112,16 @@ object ScriptedTests
 	def run(resourceBaseDirectory: File, bufferLog: Boolean, tests: Array[String], logger: AbstractLogger, bootProperties: File, launchOpts: Array[String])
 	{
 		val runner = new ScriptedTests(resourceBaseDirectory, bufferLog, bootProperties, launchOpts)
-		for( ScriptedTest(group, name) <- get(tests, resourceBaseDirectory, logger) )
+		val allTests = get(tests, resourceBaseDirectory, logger) flatMap { case ScriptedTest(group, name) =>
 			runner.scriptedTest(group, name, logger)
+		}
+		runAll(allTests)
+	}
+	def runAll(tests: Seq[() => Option[String]])
+	{
+		val errors = for(test <- tests; err <- test()) yield err
+		if(errors.nonEmpty)
+			error(errors.mkString("Failed tests:\n\t", "\n\t", "\n"))
 	}
 	def get(tests: Seq[String], baseDirectory: File, log: Logger): Seq[ScriptedTest] =
 		if(tests.isEmpty) listTests(baseDirectory, log) else parseTests(tests)
