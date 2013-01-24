@@ -67,9 +67,9 @@ object CrossVersion
 			m
 	}
 
-	// @deprecated("Use CrossVersion.isScalaApiCompatible or CrossVersion.isSbtApiCompatible", "0.13.0")
+	@deprecated("Use CrossVersion.isScalaApiCompatible or CrossVersion.isSbtApiCompatible", "0.13.0")
 	def isStable(v: String): Boolean = isScalaApiCompatible(v)
-	// @deprecated("Use CrossVersion.scalaApiVersion or CrossVersion.sbtApiVersion", "0.13.0")
+	@deprecated("Use CrossVersion.scalaApiVersion or CrossVersion.sbtApiVersion", "0.13.0")
 	def selectVersion(full: String, binary: String): String = if(isStable(full)) binary else full
 	def isSbtApiCompatible(v: String): Boolean = sbtApiVersion(v).isDefined
 	/** Returns sbt binary interface x.y API compatible with the given version string v. 
@@ -113,6 +113,7 @@ object CrossVersion
 	
 	def binaryScalaVersion(full: String): String = binaryVersionWithApi(full, TransitionScalaVersion)(scalaApiVersion)
 	def binarySbtVersion(full: String): String = binaryVersionWithApi(full, TransitionSbtVersion)(sbtApiVersion)
+	@deprecated("Use CrossVersion.scalaApiVersion or CrossVersion.sbtApiVersion", "0.13.0")
 	def binaryVersion(full: String, cutoff: String): String = binaryVersionWithApi(full, cutoff)(scalaApiVersion)
 	private[this] def binaryVersionWithApi(full: String, cutoff: String)(apiVersion: String => Option[(Int,Int)]): String =
 	{
