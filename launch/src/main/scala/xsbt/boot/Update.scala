@@ -138,7 +138,8 @@ final class Update(config: UpdateConfiguration)
 			case u: UpdateApp =>
 				val app = u.id
 				val resolvedName = (app.crossVersioned, scalaVersion) match {
-					case (true, Some(sv)) => app.name + "_" + sv
+					case (xsbti.CrossValue.Full, Some(sv)) => app.name + "_" + sv
+					case (xsbti.CrossValue.Binary, Some(sv)) => app.name + "_" + CrossVersionUtil.binaryScalaVersion(sv)
 					case _ => app.name
 				}
 				addDependency(moduleID, app.groupID, resolvedName, app.getVersion, "default(compile)", u.classifiers)
