@@ -3,6 +3,12 @@
 
 object Transform
 {
+	lazy val transformSources = TaskKey[Seq[File]]("transform-sources")
+	lazy val inputSourceDirectories = SettingKey[Seq[File]]("input-source-directories")
+	lazy val inputSourceDirectory = SettingKey[File]("input-source-directory")
+	lazy val inputSources = TaskKey[Seq[File]]("input-sources")
+	lazy val sourceProperties = TaskKey[Map[String,String]]("source-properties")
+
 	lazy val transformResources = TaskKey[Seq[File]]("transform-resources")
 	lazy val inputResourceDirectories = SettingKey[Seq[File]]("input-resource-directories")
 	lazy val inputResourceDirectory = SettingKey[File]("input-resource-directory")
@@ -11,24 +17,40 @@ object Transform
 	// to be replace by 0.10.1's fileMappings
 	lazy val fileMappings = TaskKey[Seq[(File,File)]]("file-mappings")
 
-	def configSettings = Seq(
+	def crossGenSettings = transSourceSettings ++ seq(
+		sourceProperties := Map("cross.package0" -> "sbt", "cross.package1" -> "cross")
+	)
+	def transSourceSettings = seq(
+		inputSourceDirectory <<= sourceDirectory / "input_sources",
+		inputSourceDirectories <<= Seq(inputSourceDirectory).join,
+		inputSources <<= inputSourceDirectories.map(dirs => (dirs ** (-DirectoryFilter)).get ),
+		fileMappings in transformSources <<= transformSourceMappings,
+		transformSources <<= (fileMappings in transformSources, sourceProperties) map { (rs, props) =>
+			rs map { case (in, out) => transform(in, out, props) }
+		},
+		sourceGenerators <+= transformSources
+	)
+	def transformSourceMappings = (inputSources, inputSourceDirectories, sourceManaged) map { (ss, sdirs, sm) =>
+		(ss --- sdirs) x (rebase(sdirs, sm)|flat(sm)) toSeq
+	}
+	def configSettings = transResourceSettings ++ seq(
+		resourceProperties <<= (organization, version, scalaVersion, Status.isSnapshot) map { (org, v, sv, isSnapshot) =>
+			Map("org" -> org, "sbt.version" -> v, "scala.version" -> sv, "repositories" -> repositories(isSnapshot).mkString(IO.Newline))
+		}
+	)
+	def transResourceSettings = seq(
 		inputResourceDirectory <<= sourceDirectory / "input_resources",
 		inputResourceDirectories <<= Seq(inputResourceDirectory).join,
 		inputResources <<= inputResourceDirectories.map(dirs => (dirs ** (-DirectoryFilter)).get ),
-		resourceProperties <<= defineProperties,
-		fileMappings in transformResources <<= transformMappings,
+		fileMappings in transformResources <<= transformResourceMappings,
 		transformResources <<= (fileMappings in transformResources, resourceProperties) map { (rs, props) =>
 			rs map { case (in, out) => transform(in, out, props) }
 		},
 		resourceGenerators <+= transformResources
 	)
-	def transformMappings = (inputResources, inputResourceDirectories, resourceManaged) map { (rs, rdirs, rm) =>
+	def transformResourceMappings = (inputResources, inputResourceDirectories, resourceManaged) map { (rs, rdirs, rm) =>
 		(rs --- rdirs) x (rebase(rdirs, rm)|flat(rm)) toSeq
 	}
-	def defineProperties = 
-		 (organization, version, scalaVersion, Status.isSnapshot) map { (org, v, sv, isSnapshot) =>
-		 	Map("org" -> org, "sbt.version" -> v, "scala.version" -> sv, "repositories" -> repositories(isSnapshot).mkString(IO.Newline))
-		}
 
 	def transform(in: File, out: File, map: Map[String, String]): File =
 	{

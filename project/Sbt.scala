@@ -71,11 +71,13 @@ object Sbt extends Build
 	lazy val classfileSub = testedBaseProject(utilPath / "classfile", "Classfile") dependsOn(ioSub, interfaceSub, logSub)
 		// generates immutable or mutable Java data types according to a simple input format
 	lazy val datatypeSub = baseProject(utilPath /"datatype", "Datatype Generator") dependsOn(ioSub)
+		// cross versioning
+	lazy val crossSub = baseProject(utilPath / "cross", "Cross") settings(inConfig(Compile)(Transform.crossGenSettings): _*)
 
 	/* **** Intermediate-level Modules **** */
 
 		// Apache Ivy integration
-	lazy val ivySub = baseProject(file("ivy"), "Ivy") dependsOn(interfaceSub, launchInterfaceSub, logSub % "compile;test->test", ioSub % "compile;test->test", launchSub % "test->test") settings(ivy, jsch, httpclient, testExclusive)
+	lazy val ivySub = baseProject(file("ivy"), "Ivy") dependsOn(interfaceSub, launchInterfaceSub, crossSub, logSub % "compile;test->test", ioSub % "compile;test->test", launchSub % "test->test") settings(ivy, jsch, httpclient, testExclusive)
 	  // Runner for uniform test interface
 	lazy val testingSub = baseProject(file("testing"), "Testing") dependsOn(ioSub, classpathSub, logSub, launchInterfaceSub, testAgentSub) settings(libraryDependencies += "org.scala-tools.testing" % "test-interface" % "0.5")
   	// Testing agent for running tests in a separate process.
@@ -123,7 +125,7 @@ object Sbt extends Build
 		interfaceSub, ioSub, ivySub, logSub, processSub, runSub, relationSub, stdTaskSub, taskSub, trackingSub, testingSub)
 
 		// General command support and core commands not specific to a build system
-	lazy val commandSub = testedBaseProject(mainPath / "command", "Command") dependsOn(interfaceSub, ioSub, launchInterfaceSub, logSub, completeSub, classpathSub)
+	lazy val commandSub = testedBaseProject(mainPath / "command", "Command") dependsOn(interfaceSub, ioSub, launchInterfaceSub, logSub, completeSub, classpathSub, crossSub)
 		// Fixes scope=Scope for Setting (core defined in collectionSub) to define the settings system used in build definitions
 	lazy val mainSettingsSub = testedBaseProject(mainPath / "settings", "Main Settings") dependsOn(applyMacroSub, interfaceSub, ivySub, relationSub, logSub, ioSub, commandSub,
 		completeSub, classpathSub, stdTaskSub, processSub) settings( sbinary )
@@ -187,10 +189,16 @@ object Sbt extends Build
 	def deep[T](scoped: ScopedSetting[T]): Initialize[Seq[T]] =
 		Util.inAllProjects(projects filterNot Set(root, sbtSub, scriptedBaseSub, scriptedSbtSub, scriptedPluginSub) map { p => LocalProject(p.id) }, scoped)
 
-	def launchSettings = inConfig(Compile)(Transform.configSettings) ++ Seq(jline, ivy, crossPaths := false,
-		compile in Test <<= compile in Test dependsOn(publishLocal in interfaceSub, publishLocal in testSamples, publishLocal in launchInterfaceSub)
-//		mappings in (Compile, packageBin) <++= (mappings in (launchInterfaceSub, Compile, packageBin) ).identity
-	)
+	def launchSettings =
+		Seq(jline, ivy, crossPaths := false,
+			compile in Test <<= compile in Test dependsOn(publishLocal in interfaceSub, publishLocal in testSamples, publishLocal in launchInterfaceSub)
+	//		mappings in (Compile, packageBin) <++= (mappings in (launchInterfaceSub, Compile, packageBin) ).identity
+		) ++
+		inConfig(Compile)(Transform.configSettings) ++
+		inConfig(Compile)(Transform.transSourceSettings ++ Seq(
+			Transform.inputSourceDirectory <<= (sourceDirectory in crossSub) / "input_sources",
+			Transform.sourceProperties := Map("cross.package0" -> "xsbt", "cross.package1" -> "boot")
+		))
 
 		import Sxr.sxr
 	def releaseSettings = Release.settings(nonRoots, proguard in Proguard)

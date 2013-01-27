@@ -50,21 +50,35 @@ object Classifiers {
 	def apply(forScala: List[String], app: List[String]):Classifiers = Classifiers(new Explicit(forScala), new Explicit(app))
 }
 
-final case class Application(groupID: String, name: String, version: Value[String], main: String, components: List[String], crossVersioned: Boolean, classpathExtra: Array[File])
+object LaunchCrossVersion
+{
+	def apply(s: String): xsbti.CrossValue =
+		s match {
+			case x if CrossVersionUtil.isFull(s) => xsbti.CrossValue.Full
+			case x if CrossVersionUtil.isBinary(s) => xsbti.CrossValue.Binary
+			case x if CrossVersionUtil.isDisabled(s) => xsbti.CrossValue.Disabled
+			case x => error("Unknown value '" + x + "' for property 'cross-versioned'")
+		}
+}
+
+final case class Application(groupID: String, name: String, version: Value[String], main: String, components: List[String], crossVersioned: xsbti.CrossValue, classpathExtra: Array[File])
 {
 	def getVersion = Value.get(version)
 	def withVersion(newVersion: Value[String]) = Application(groupID, name, newVersion, main, components, crossVersioned, classpathExtra)
 	def toID = AppID(groupID, name, getVersion, main, toArray(components), crossVersioned, classpathExtra)
 	def map(f: File => File) = Application(groupID, name, version, main, components, crossVersioned, classpathExtra.map(f))
 }
-final case class AppID(groupID: String, name: String, version: String, mainClass: String, mainComponents: Array[String], crossVersioned: Boolean, classpathExtra: Array[File]) extends xsbti.ApplicationID
+final case class AppID(groupID: String, name: String, version: String, mainClass: String, mainComponents: Array[String], crossVersionedValue: xsbti.CrossValue, classpathExtra: Array[File]) extends xsbti.ApplicationID
+{
+	def crossVersioned: Boolean = crossVersionedValue != xsbti.CrossValue.Disabled
+}
 
 object Application
 {
 	def apply(id: xsbti.ApplicationID): Application =
 	{
 		import id._
-		Application(groupID, name, new Explicit(version), mainClass, mainComponents.toList, crossVersioned, classpathExtra)
+		Application(groupID, name, new Explicit(version), mainClass, mainComponents.toList, crossVersionedValue, classpathExtra)
 	}
 }
 

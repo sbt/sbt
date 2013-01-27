@@ -104,7 +104,7 @@ class Launch private[xsbt](val bootDirectory: File, val lockBoot: Boolean, val i
 
 	def jnaLoader(parent: ClassLoader): ClassLoader =
 	{
-		val id = AppID("net.java.dev.jna", "jna", "3.2.3", "", toArray(Nil), false, array())
+		val id = AppID("net.java.dev.jna", "jna", "3.2.3", "", toArray(Nil), xsbti.CrossValue.Disabled, array())
 		val configuration = makeConfiguration(ScalaOrg, None)
 		val jnaHome = appDirectory(new File(bootDirectory, baseDirectoryName(ScalaOrg, None)), id)
 		val module = appModule(id, None, false, "jna")
