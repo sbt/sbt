@@ -48,8 +48,6 @@ final class ContextUtil[C <: Context](val ctx: C)
 
 	def getPos(sym: Symbol) = if(sym eq null) NoPosition else sym.pos
 
-	def atypeOf[T](implicit att: WeakTypeTag[T]): Type = att.tpe
-
 	/** Constructs a unique term name with the given prefix within this Context.
 	* (The current implementation uses Context.fresh, which increments*/
 	def freshTermName(prefix: String) = newTermName(ctx.fresh("$" + prefix))
