@@ -95,18 +95,10 @@ final object Aggregation
 
 	def applyDynamicTasks[I](s: State, structure: BuildStructure, inputs: Values[InputTask[I]], show: Boolean)(implicit display: Show[ScopedKey[_]]): Parser[() => State] =
 	{
-		final class Parsed[T](val input: InputTask[_] { type Result = T }, val value: T) {
-			def addTo(im: AttributeMap): AttributeMap = im.put(input.defined, value)
-		}
-		val parsers: Seq[Parser[Parsed[_]]] = for( KeyValue(k,t) <- inputs ) yield
-			t.parser(s).map( v => new Parsed[t.Result](t, v) )
-
-		Command.applyEffect(seq(parsers)) { parseds =>
+		val parsers = for(KeyValue(k,it) <- inputs) yield it.parser(s).map(v => KeyValue(k,v))
+		Command.applyEffect(seq(parsers)) { roots =>
 			import EvaluateTask._
-			val inputMap = (AttributeMap.empty /: parseds) { (im, p) => p.addTo(im) }
-			val dummies = DummyTaskMap(new TaskAndValue(InputTask.inputMap, inputMap) :: Nil)
-			val roots = maps(inputs)(_.task)
-			runTasks(s, structure, roots, dummies, show)
+			runTasks(s, structure, roots, DummyTaskMap(Nil), show)
 		}
 	}
 

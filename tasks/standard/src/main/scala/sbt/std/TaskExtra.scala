@@ -89,11 +89,9 @@ trait TaskExtra
 	final def nop: Task[Unit] = constant( () )
 	final def constant[T](t: T): Task[T] = task(t)
 
-	final implicit def actionToTask[T](a:  Action[T]): Task[T] = Task(Info(), a)
-	
 	final def task[T](f: => T): Task[T] = toTask(f _)
-	final implicit def toTask[T](f: () => T): Task[T] = new Pure(f, false)
-	final def inlineTask[T](value: T): Task[T] = new Pure(() => value, true)
+	final implicit def toTask[T](f: () => T): Task[T] = Task(Info(), new Pure(f, false))
+	final def inlineTask[T](value: T): Task[T] = Task(Info(), new Pure(() => value, true))
 
 	final implicit def upcastTask[A >: B, B](t: Task[B]): Task[A] = t map { x => x : A }
 	final implicit def toTasks[S](in: Seq[() => S]): Seq[Task[S]] = in.map(toTask)
@@ -106,20 +104,20 @@ trait TaskExtra
 
 	final implicit def joinAnyTasks(in: Seq[Task[_]]): JoinTask[Any, Seq] = joinTasks[Any]( existToAny(in) )
 	final implicit def joinTasks[S](in: Seq[Task[S]]): JoinTask[S, Seq] = new JoinTask[S, Seq] {
-		def join: Task[Seq[S]] = new Join(in, (s: Seq[Result[S]]) => Right(TaskExtra.all(s)) )
+		def join: Task[Seq[S]] = Task[Seq[S]](Info(), new Join(in, (s: Seq[Result[S]]) => Right(TaskExtra.all(s)) ))
 		def reduced(f: (S,S) => S): Task[S] = TaskExtra.reduced(in.toIndexedSeq, f)
 	}
 
 	final implicit def multT2Task[A,B](in: (Task[A], Task[B])) = multInputTask[({ type l[L[x]] = (L[A], L[B]) })#l](in)(AList.tuple2[A,B])
 
 	final implicit def multInputTask[K[L[X]]](tasks: K[Task])(implicit a: AList[K]): MultiInTask[K] = new MultiInTask[K] {
-		def flatMapR[T](f: K[Result] => Task[T]): Task[T] = new FlatMapped[T,K](tasks, f, a)
-		def flatMap[T](f: K[Id] => Task[T]): Task[T] = new FlatMapped[T, K](tasks, f compose allM, a)
-		def flatFailure[T](f: Seq[Incomplete] => Task[T]): Task[T] = new FlatMapped[T,K](tasks, f compose anyFailM, a)
+		def flatMapR[T](f: K[Result] => Task[T]): Task[T] = Task(Info(), new FlatMapped[T,K](tasks, f, a))
+		def flatMap[T](f: K[Id] => Task[T]): Task[T] = Task(Info(), new FlatMapped[T, K](tasks, f compose allM, a))
+		def flatFailure[T](f: Seq[Incomplete] => Task[T]): Task[T] = Task(Info(), new FlatMapped[T,K](tasks, f compose anyFailM, a))
 
-		def mapR[T](f: K[Result] => T): Task[T] = new Mapped[T,K](tasks, f, a)
-		def map[T](f: K[Id] => T): Task[T] = new Mapped[T,K](tasks, f compose allM, a)
-		def mapFailure[T](f: Seq[Incomplete] => T): Task[T] = new Mapped[T,K](tasks, f compose anyFailM, a)
+		def mapR[T](f: K[Result] => T): Task[T] = Task(Info(), new Mapped[T,K](tasks, f, a))
+		def map[T](f: K[Id] => T): Task[T] = Task(Info(), new Mapped[T,K](tasks, f compose allM, a))
+		def mapFailure[T](f: Seq[Incomplete] => T): Task[T] = Task(Info(), new Mapped[T,K](tasks, f compose anyFailM, a))
 	}
 
 	final implicit def singleInputTask[S](in: Task[S]): SingleInTask[S] = new SingleInTask[S] {
@@ -129,9 +127,9 @@ trait TaskExtra
 		def failure: Task[Incomplete] = mapFailure(idFun)
 		def result: Task[Result[S]] = mapR(idFun)
 		
-		def flatMapR[T](f: Result[S] => Task[T]): Task[T] = new FlatMapped[T, K](in, f, ml)
-		def mapR[T](f: Result[S] => T): Task[T] = new Mapped[T, K](in, f, ml)
-		def dependsOn(tasks: Task[_]*): Task[S] = new DependsOn(in, tasks)
+		def flatMapR[T](f: Result[S] => Task[T]): Task[T] = Task(Info(), new FlatMapped[T, K](in, f, ml))
+		def mapR[T](f: Result[S] => T): Task[T] = Task(Info(), new Mapped[T, K](in, f, ml))
+		def dependsOn(tasks: Task[_]*): Task[S] = Task(Info(), new DependsOn(in, tasks))
 		
 		def flatMap[T](f: S => Task[T]): Task[T] = flatMapR(f compose successM)
 		def flatFailure[T](f: Incomplete => Task[T]): Task[T] = flatMapR(f compose failM)
@@ -230,7 +228,7 @@ object TaskExtra extends TaskExtra
 	}
 	def failuresM[K[L[x]]](implicit a: AList[K]): K[Result] => Seq[Incomplete] = x => failures[Any](a.toList(x))
 
-	def all[D](in: Seq[Result[D]]) =
+	def all[D](in: Seq[Result[D]]): Seq[D] =
 	{
 		val incs = failures(in)
 		if(incs.isEmpty) in.map(Result.tryValue.fn[D]) else throw incompleteDeps(incs)

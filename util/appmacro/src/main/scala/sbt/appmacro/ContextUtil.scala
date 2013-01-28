@@ -143,6 +143,13 @@ final class ContextUtil[C <: Context](val ctx: C)
 	/** >: Nothing <: Any */
 	def emptyTypeBounds: TypeBounds = TypeBounds(definitions.NothingClass.toType, definitions.AnyClass.toType)
 
+	def functionType(args: List[Type], result: Type): Type =
+	{
+		val global: Global = ctx.universe.asInstanceOf[Global]
+		val tpe = global.definitions.functionType(args.asInstanceOf[List[global.Type]], result.asInstanceOf[global.Type])
+		tpe.asInstanceOf[Type]
+	}
+
 	/** Create a Tree that references the `val` represented by `vd`. */
 	def refVal(vd: ValDef): Tree =
 	{

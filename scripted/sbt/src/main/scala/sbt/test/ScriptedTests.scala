@@ -119,7 +119,7 @@ object ScriptedTests
 	}
 	def runAll(tests: Seq[() => Option[String]])
 	{
-		val errors = for(test <- tests; err <- test()) yield err
+		val errors = for(test <- tests.par; err <- test()) yield err
 		if(errors.nonEmpty)
 			error(errors.mkString("Failed tests:\n\t", "\n\t", "\n"))
 	}
