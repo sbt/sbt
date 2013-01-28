@@ -52,23 +52,20 @@ object FullInstance extends Instance.Composed[Initialize, Task](InitializeInstan
 object FullConvert extends Convert
 {
 	def apply[T: c.WeakTypeTag](c: Context)(in: c.Tree): c.Tree =
-	{
-		val util = appmacro.ContextUtil[c.type](c)
-		if(in.tpe <:< util.atypeOf[Initialize[Task[T]]])
+		if(in.tpe <:< c.weakTypeOf[Initialize[Task[T]]])
 			in
-		else if(in.tpe <:< util.atypeOf[Initialize[T]])
+		else if(in.tpe <:< c.weakTypeOf[Initialize[T]])
 		{
 			val i = c.Expr[Initialize[T]](in)
 			c.universe.reify( Def.toITask(i.splice) ).tree
 		}
-		else if(in.tpe <:< util.atypeOf[Task[T]])
+		else if(in.tpe <:< c.weakTypeOf[Task[T]])
 		{
 			val i = c.Expr[Task[T]](in)
 			c.universe.reify( Def.valueStrict[Task[T]](i.splice) ).tree
 		}
 		else
 			c.abort(in.pos, "Unknown input type: " + in.tpe)
-	}
 }
 
 object TaskMacro
@@ -348,7 +345,7 @@ object TaskConvert extends Convert
 	def apply[T: c.WeakTypeTag](c: Context)(in: c.Tree): c.Tree =
 	{
 		val u = appmacro.ContextUtil[c.type](c)
-		if(in.tpe <:< u.atypeOf[Task[T]])
+		if(in.tpe <:< c.weakTypeOf[Task[T]])
 			in
 		else
 			c.abort(in.pos, "Unknown input type: " + in.tpe)

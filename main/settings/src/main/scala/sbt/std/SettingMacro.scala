@@ -17,10 +17,9 @@ object InitializeConvert extends Convert
 {
 	def apply[T: c.WeakTypeTag](c: reflect.macros.Context)(in: c.Tree): c.Tree =
 	{
-		val u = appmacro.ContextUtil[c.type](c)
-		if(in.tpe <:< u.atypeOf[Initialize[Task[T]]] || in.tpe <:< u.atypeOf[Task[T]])
+		if(in.tpe <:< c.weakTypeOf[Initialize[Task[T]]] || in.tpe <:< c.weakTypeOf[Task[T]])
 			c.abort(in.pos, "A setting cannot depend on a task")
-		else if(in.tpe <:< u.atypeOf[Initialize[T]])
+		else if(in.tpe <:< c.weakTypeOf[Initialize[T]])
 		{
 			val i = c.Expr[Initialize[T]](in)
 			c.universe.reify( i.splice ).tree
