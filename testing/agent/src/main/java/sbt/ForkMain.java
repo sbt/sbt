@@ -114,6 +114,12 @@ public class ForkMain {
 				throw new RunAborted(e);
 			}
 		}
+		void logError(ObjectOutputStream os, String message) {
+			write(os, new Object[]{ForkTags.Error, message});
+		}
+		void writeEvents(ObjectOutputStream os, ForkTestDefinition test, ForkEvent[] events) {
+			write(os, new Object[]{test.name, events});
+		}
 		void runTests(ObjectInputStream is, final ObjectOutputStream os) throws Exception {
 			final boolean ansiCodesSupported = is.readBoolean();
 			final ForkTestDefinition[] tests = (ForkTestDefinition[]) is.readObject();
@@ -121,7 +127,7 @@ public class ForkMain {
 			Logger[] loggers = {
 				new Logger() {
 					public boolean ansiCodesSupported() { return ansiCodesSupported; }
-					public void error(String s) { write(os, new Object[]{ForkTags.Error, s});  }
+					public void error(String s) { logError(os, s); }
 					public void warn(String s) { write(os, new Object[]{ForkTags.Warn, s}); }
 					public void info(String s) { write(os, new Object[]{ForkTags.Info, s}); }
 					public void debug(String s) { write(os, new Object[]{ForkTags.Debug, s}); }
@@ -137,7 +143,7 @@ public class ForkMain {
 				try {
 					framework = (Framework) Class.forName(implClassName).newInstance();
 				} catch (ClassNotFoundException e) {
-					write(os, new Object[]{ForkTags.Error, "Framework implementation '" + implClassName + "' not present."});
+					logError(os, "Framework implementation '" + implClassName + "' not present.");
 					continue;
 				}
 
@@ -148,28 +154,66 @@ public class ForkMain {
 					}
 				}
 				final org.scalatools.testing.Runner runner = framework.testRunner(getClass().getClassLoader(), loggers);
-				for (ForkTestDefinition test : filteredTests) {
-					final List<ForkEvent> events = new ArrayList<ForkEvent>();
-					EventHandler handler = new EventHandler() { public void handle(Event e){ events.add(new ForkEvent(e)); } };
-					if (runner instanceof Runner2) {
-						((Runner2) runner).run(test.name, test.fingerprint, handler, frameworkArgs);
-					} else if (test.fingerprint instanceof TestFingerprint) {
-						runner.run(test.name, (TestFingerprint) test.fingerprint, handler, frameworkArgs);
-					} else {
-						write(os, new Object[]{ForkTags.Error, "Framework '" + framework + "' does not support test '" + test.name + "'"});
-					}
-					write(os, new Object[]{test.name, events.toArray(new ForkEvent[events.size()])});
-				}
+				for (ForkTestDefinition test : filteredTests)
+					runTestSafe(test, runner, framework, frameworkArgs, os);
 			}
 			write(os, ForkTags.Done);
 			is.readObject();
 		}
-		void run(ObjectInputStream is, final ObjectOutputStream os) throws Exception {
+		void runTestSafe(ForkTestDefinition test, org.scalatools.testing.Runner runner, Framework framework, String[] frameworkArgs, ObjectOutputStream os) {
+			ForkEvent[] events;
+			try {
+				events = runTest(test, runner, framework, frameworkArgs, os);
+			} catch (Throwable t) {
+				events = new ForkEvent[] { testError(os, test, "Uncaught exception when running " + test.name + ": " + t.toString(), t) };
+			}
+			writeEvents(os, test, events);
+		}
+		ForkEvent[] runTest(ForkTestDefinition test, org.scalatools.testing.Runner runner, Framework framework, String[] frameworkArgs, ObjectOutputStream os) {
+			final List<ForkEvent> events = new ArrayList<ForkEvent>();
+			EventHandler handler = new EventHandler() { public void handle(Event e){ events.add(new ForkEvent(e)); } };
+			if (runner instanceof Runner2) {
+				((Runner2) runner).run(test.name, test.fingerprint, handler, frameworkArgs);
+			} else if (test.fingerprint instanceof TestFingerprint) {
+				runner.run(test.name, (TestFingerprint) test.fingerprint, handler, frameworkArgs);
+			} else {
+				events.add(testError(os, test, "Framework '" + framework + "' does not support test '" + test.name + "'"));
+			}
+			return events.toArray(new ForkEvent[events.size()]);
+		}
+		void run(ObjectInputStream is, ObjectOutputStream os) throws Exception {
 			try {
 				runTests(is, os);
 			} catch (RunAborted e) {
-				System.err.println("Internal error when running tests: " + e.getMessage());
+				internalError(e);
+			} catch (Throwable t) {
+				try {
+					logError(os, "Uncaught exception when running tests: " + t.toString());
+					write(os, t);
+				} catch (Throwable t2) {
+					internalError(t2);
+				}
 			}
+		}
+		void internalError(Throwable t) {
+			System.err.println("Internal error when running tests: " + t.toString());
+		}
+		ForkEvent testEvent(final String name, final String desc, final Result r, final Throwable err) {
+			return new ForkEvent(new Event() {
+				public String testName() { return name; }
+				public String description() { return desc; }
+				public Result result() { return r; }
+				public Throwable error() { return err; }
+			});
+		}
+		ForkEvent testError(ObjectOutputStream os, ForkTestDefinition test, String message) {
+			logError(os, message);
+			return testEvent(test.name, message, Result.Error, null);
+		}
+		ForkEvent testError(ObjectOutputStream os, ForkTestDefinition test, String message, Throwable t) {
+			logError(os, message);
+			write(os, t);
+			return testEvent(test.name, message, Result.Error, t);
 		}
 	}
 }

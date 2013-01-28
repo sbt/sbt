@@ -1,0 +1,3 @@
+> test
+> 'set javaOptions in Test += "-Dtest.init.fail=true"'
+-> test
