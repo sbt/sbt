@@ -132,13 +132,13 @@ General commands
 -  ``+ <command>`` Executes the project specified action or method for
    all versions of Scala defined in the ``crossScalaVersions``
    setting.
--  ``++ <version> <command>`` Temporarily changes the version of Scala
+-  ``++ <version|home-directory> <command>`` Temporarily changes the version of Scala
    building the project and executes the provided command. ``<command>``
    is optional. The specified version of Scala is used until the project
    is reloaded, settings are modified (such as by the ``set`` or
    ``session`` commands), or ``++`` is run again. ``<version>`` does not
    need to be listed in the build definition, but it must be available
-   in a repository.
+   in a repository.  Alternatively, specify the path to a Scala installation.
 -  ``; A ; B`` Execute A and if it succeeds, run B. Note that the
    leading semicolon is required.
 -  ``eval <Scala-expression>`` Evaluates the given Scala expression and

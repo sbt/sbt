@@ -8,6 +8,7 @@ package sbt
 	import DefaultParsers._
 	import Def.{ScopedKey, Setting}
 	import Scope.GlobalScope
+	import java.io.File
 
 object Cross
 {
@@ -16,25 +17,49 @@ object Cross
 
 	def switchParser(state: State): Parser[(String, String)] =
 	{
-		val knownVersions = crossVersions(state)
-		lazy val switchArgs = token(NotSpace.examples(knownVersions : _*)) ~ (token(Space ~> matched(state.combinedParser)) ?? "")
-		lazy val nextSpaced = spacedFirst(Switch)
-		token(Switch ~ OptSpace) flatMap { _ => switchArgs & nextSpaced }
+		def versionAndCommand(spacePresent: Boolean) = {
+			val knownVersions = crossVersions(state)
+			val version = token(StringBasic.examples(knownVersions : _*))
+			val spacedVersion = if(spacePresent) version else version & spacedFirst(Switch)
+			val optionalCommand = token(Space ~> matched(state.combinedParser)) ?? ""
+			spacedVersion ~ optionalCommand
+		}
+		token(Switch ~> OptSpace) flatMap { sp => versionAndCommand(!sp.isEmpty) }
 	}
 	def spacedFirst(name: String) = opOrIDSpaced(name) ~ any.+
 
 	lazy val switchVersion = Command.arb(requireSession(switchParser)) { case (state, (version, command)) =>
 		val x = Project.extract(state)
 			import x._
-		println("Setting version to " + version)
-		val add = (scalaVersion in GlobalScope :== version) :: (scalaHome in GlobalScope :== None) :: Nil
-		val cleared = session.mergeSettings.filterNot( crossExclude )
+		val home = IO.resolve(x.currentProject.base, new File(version))
+		val (add, exclude) = 
+			if(home.exists) {
+				val instance = ScalaInstance(home)(state.classLoaderCache.apply _)
+				state.log.info("Setting Scala home to " + home + " with actual version " + instance.actualVersion)
+				val settings = Seq(
+					scalaVersion in GlobalScope :== instance.actualVersion,
+					scalaHome in GlobalScope :== Some(home),
+					scalaInstance in GlobalScope :== instance
+				)
+				(settings, excludeKeys(Set(scalaVersion.key, scalaHome.key, scalaInstance.key)))
+			} else {
+				state.log.info("Setting version to " + version)
+				val settings = Seq(
+					scalaVersion in GlobalScope :== version,
+					scalaHome in GlobalScope :== None
+				)
+				(settings, excludeKeys(Set(scalaVersion.key, scalaHome.key)))
+			}
+		val cleared = session.mergeSettings.filterNot( exclude )
 		val newStructure = Load.reapply(add ++ cleared, structure)
 		Project.setProject(session, newStructure, command :: state)
 	}
-	def crossExclude(s: Setting[_]): Boolean =
-		s.key match {
-			case ScopedKey( Scope(_, Global, Global, _), scalaHome.key | scalaVersion.key) => true
+	@deprecated("No longer used.", "0.13.0")
+	def crossExclude(s: Setting[_]): Boolean = excludeKeys(Set(scalaVersion.key, scalaHome.key))(s)
+
+	private[this] def excludeKeys(keys: Set[AttributeKey[_]]): Setting[_] => Boolean =
+		_.key match {
+			case ScopedKey( Scope(_, Global, Global, _), key) if keys.contains(key) => true
 			case _ => false
 		}
 
