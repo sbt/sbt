@@ -112,6 +112,9 @@ object TaskMacro
 		c.Expr[Setting[Task[S]]]( transformMacroImpl(c)( f.tree )( TransformInitName ) )
 	def settingTransformPosition[S: c.WeakTypeTag](c: Context)(f: c.Expr[S => S]): c.Expr[Setting[S]] =
 		c.Expr[Setting[S]]( transformMacroImpl(c)( f.tree )( TransformInitName ) )
+	def itaskTransformPosition[S: c.WeakTypeTag](c: Context)(f: c.Expr[S => S]): c.Expr[Setting[S]] =
+		c.Expr[Setting[S]]( transformMacroImpl(c)( f.tree )( TransformInitName ) )
+
 
 	def taskAppendNPosition[S: c.WeakTypeTag, V: c.WeakTypeTag](c: Context)(vs: c.Expr[Initialize[Task[V]]])(a: c.Expr[Append.Values[S, V]]): c.Expr[Setting[Task[S]]] =
 		c.Expr[Setting[Task[S]]]( appendMacroImpl(c)( vs.tree, a.tree )( AppendNInitName ) )
