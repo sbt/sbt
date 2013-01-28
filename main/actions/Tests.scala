@@ -189,7 +189,7 @@ object Tests
 			show("Error during tests:", Level.Error, errors)
 
 			if(!failures.isEmpty || !errors.isEmpty)
-				error("Tests unsuccessful")
+				throw new TestsFailedException
 		}
 	}
 
@@ -200,3 +200,4 @@ object Tests
 	final case class Group(name: String, tests: Seq[TestDefinition], runPolicy: TestRunPolicy)
 }
 
+final class TestsFailedException extends RuntimeException("Tests unsuccessful") with FeedbackProvidedException
