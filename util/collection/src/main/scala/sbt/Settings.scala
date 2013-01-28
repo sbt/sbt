@@ -309,8 +309,6 @@ trait Init[Scope]
 			case None => this
 			case Some(const) => new Value(() => transform(const))
 		}
-		@deprecated("Use scopedKey.")
-		def scoped = scopedKey
 	}
 	private[this] final class GetValue[S,T](val scopedKey: ScopedKey[S], val transform: S => T) extends Keyed[S, T]
 	trait KeyedInitialize[T] extends Keyed[T, T] {
