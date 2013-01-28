@@ -1,3 +1,3 @@
 fork := true
 
-libraryDependencies += "org.scalatest" % "scalatest_2.9.2" % "1.8" % "test"
+libraryDependencies += "org.scalatest" %% "scalatest" % "1.9" % "test"
