@@ -13,9 +13,6 @@ import mutable.Map
 
 object Execute
 {
-	trait Part1of2K[M[_[_], _], A[_]] { type Apply[T] = M[A, T] }
-	type NodeT[A[_]] = Part1of2K[Node, A]
-	
 	def idMap[A,B]: Map[A, B] = JavaConversions.mapAsScalaMap(new java.util.IdentityHashMap[A,B])
 	def pMap[A[_], B[_]]: PMap[A,B] = new DelegatingPMap[A, B](idMap)
 	private[sbt] def completed(p: => Unit): Completed = new Completed {
@@ -41,7 +38,7 @@ final class Execute[A[_] <: AnyRef](checkCycles: Boolean, triggers: Triggers[A])
 	private[this] val reverse = idMap[A[_], Iterable[A[_]] ]
 	private[this] val callers = pMap[A, Compose[IDSet,A]#Apply ]
 	private[this] val state = idMap[A[_], State]
-	private[this] val viewCache = pMap[A, NodeT[A]#Apply]
+	private[this] val viewCache = pMap[A, ({type l[t] = Node[A, t] })#l ]
 	private[this] val results = pMap[A, Result]
 
 	private[this] val getResult: A ~> Result = new (A ~> Result) {
