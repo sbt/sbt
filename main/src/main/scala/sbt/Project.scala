@@ -371,9 +371,11 @@ object Project extends ProjectExtra
 			val base = s.configuration.baseDirectory
 			projectReturn(s) match { case Nil => (setProjectReturn(s, base :: Nil), base); case x :: xs => (s, x) }
 		case Plugins =>
-			val extracted = Project.extract(s)
-			val newBase = extracted.currentUnit.unit.plugins.base
-			val newS = setProjectReturn(s, newBase :: projectReturn(s))
+			val (newBase, oldStack) = if(Project.isProjectLoaded(s))
+					(Project.extract(s).currentUnit.unit.plugins.base, projectReturn(s))
+				else // support changing to the definition project if it fails to load
+					(BuildPaths.projectStandard(s.baseDir), s.baseDir :: Nil)
+			val newS = setProjectReturn(s, newBase :: oldStack)
 			(newS, newBase)
 	}
 	@deprecated("This method does not apply state changes requested during task execution.  Use 'runTask' instead, which does.", "0.11.1")
