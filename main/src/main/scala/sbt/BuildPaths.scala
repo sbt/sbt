@@ -46,18 +46,11 @@ object BuildPaths
 	def outputDirectory(base: File) = base / DefaultTargetName
 
 	def projectStandard(base: File) = base / "project"
-	def projectHidden(base: File) = base / ConfigDirectoryName
-	def selectProjectDir(base: File, log: Logger) =
-	{
-		val a = projectHidden(base)
-		val b = projectStandard(base)
-		if(a.exists)
-		{
-			log.warn("Alternative project directory " + ConfigDirectoryName + " (" + a + ") has been deprecated since sbt 0.12.0.\n  Please use the standard location: " + b)
-			a
-		}
-		else b
-	}
+
+	@deprecated("Use projectStandard.  The alternative project directory location has been removed.", "0.13.0")
+	def projectHidden(base: File) = projectStandard(base)
+	@deprecated("Use projectStandard.  The alternative project directory location has been removed.", "0.13.0")
+	def selectProjectDir(base: File, log: Logger) = projectStandard(base)
 
 	final val PluginsDirectoryName = "plugins"
 	final val DefaultTargetName = "target"

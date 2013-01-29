@@ -392,7 +392,7 @@ object Load
 	def loadUnit(uri: URI, localBase: File, s: State, config: LoadBuildConfiguration): BuildUnit =
 	{
 		val normBase = localBase.getCanonicalFile
-		val defDir = selectProjectDir(normBase, config.log)
+		val defDir = projectStandard(normBase)
 
 		val plugs = plugins(defDir, s, config)
 		val defNames = analyzed(plugs.fullClasspath) flatMap findDefinitions
