@@ -194,11 +194,22 @@ object BuiltinCommands
 	}
 
 	def eval = Command.single(EvalCommand, Help.more(EvalCommand, evalDetailed)) { (s, arg) =>
+		if(Project.isProjectLoaded(s)) loadedEval(s, arg) else rawEval(s, arg)
+		s
+	}
+	private[this] def loadedEval(s: State, arg: String)
+	{
 		val extracted = Project extract s
 		import extracted._
 		val result = session.currentEval().eval(arg, srcName = "<eval>", imports = autoImports(extracted))
-		s.log.info("ans: " + result.tpe + " = " + result.getValue(currentLoader))
-		s
+		s.log.info(s"ans: ${result.tpe} = ${result.getValue(currentLoader)}")
+	}
+	private[this] def rawEval(s: State, arg: String)
+	{
+		val app = s.configuration.provider
+		val classpath = app.mainClasspath ++ app.scalaProvider.jars
+		val result = Load.mkEval(classpath, s.baseDir, Nil).eval(arg, srcName = "<eval>", imports = new EvalImports(Nil, ""))
+		s.log.info(s"ans: ${result.tpe} = ${result.getValue(app.loader)}")
 	}
 	def sessionCommand = Command.make(SessionCommand, sessionBrief, SessionSettings.Help)(SessionSettings.command)
 	def reapply(newSession: SessionSettings, structure: BuildStructure, s: State): State =
