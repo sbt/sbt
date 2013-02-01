@@ -74,15 +74,25 @@ object Load
 	}
 	def buildGlobalSettings(base: File, files: Seq[File], config: LoadBuildConfiguration): ClassLoader => Seq[Setting[_]] =
 	{	
-		val eval = mkEval(data(config.globalPluginClasspath), base, defaultEvalOptions)
+		val eval = mkEval(data(config.classpath), base, defaultEvalOptions)
 		val imports = baseImports ++ importAllRoot(config.globalPluginNames)
 		loader => EvaluateConfigurations(eval, files, imports)(loader).settings
 	}
 	def loadGlobal(state: State, base: File, global: File, config: LoadBuildConfiguration): LoadBuildConfiguration =
-		if(base != global && global.exists)
-			config.copy(globalPlugin = Some(GlobalPlugin.load(global, state, config)))
-		else
+		if(base != global && global.exists) {
+			val gp = GlobalPlugin.load(global, state, config)
+			val pm = setGlobalPluginLoader(gp, config.pluginManagement)
+			val cp = (gp.data.fullClasspath ++ config.classpath).distinct
+			config.copy(globalPlugin = Some(gp), pluginManagement = pm, classpath = cp)
+		} else
 			config
+
+	private[this] def setGlobalPluginLoader(gp: GlobalPlugin, pm: PluginManagement): PluginManagement =
+	{
+		val newLoader = ClasspathUtilities.toLoader(Build.data(gp.data.fullClasspath), pm.initialLoader)
+		pm.copy(initialLoader = newLoader)
+	}
+
 	def defaultDelegates: LoadedBuild => Scope => Seq[Scope] = (lb: LoadedBuild) => {
 		val rootProject = getRootProject(lb.units)
 		def resolveRef(project: Reference): ResolvedReference = Scope.resolveReference(lb.root, rootProject, project)
@@ -441,6 +451,7 @@ object Load
 		expand(auto)
 	}
 
+	@deprecated("No longer used.", "0.13.0")
 	def globalPluginClasspath(globalPlugin: Option[GlobalPlugin]): Seq[Attributed[File]] =
 		globalPlugin match
 		{
@@ -483,7 +494,7 @@ object Load
 		!(dir * -GlobFilter(DefaultTargetName)).get.isEmpty
 	}
 	def noPlugins(dir: File, config: LoadBuildConfiguration): LoadedPlugins =
-		loadPluginDefinition(dir, config, PluginData(config.globalPluginClasspath, None, None))
+		loadPluginDefinition(dir, config, PluginData(config.classpath, None, None))
 	def buildPlugins(dir: File, s: State, config: LoadBuildConfiguration): LoadedPlugins =
 		loadPluginDefinition(dir, config, buildPluginDefinition(dir, s, config))
 
@@ -661,8 +672,11 @@ final case class LoadBuildConfiguration(stagingDirectory: File, classpath: Seq[A
 	pluginManagement: PluginManagement, injectSettings: Load.InjectSettings, globalPlugin: Option[GlobalPlugin], extraBuilds: Seq[URI],
 	log: Logger)
 {
-	lazy val (globalPluginClasspath, globalPluginLoader) = Load.pluginDefinitionLoader(this, Load.globalPluginClasspath(globalPlugin))
-	lazy val globalPluginNames = if(globalPluginClasspath.isEmpty) Nil else Load.getPluginNames(globalPluginClasspath, globalPluginLoader)
+	@deprecated("Use `classpath`.", "0.13.0")
+	lazy val globalPluginClasspath = classpath
+	@deprecated("Use `pluginManagement.initialLoader`.", "0.13.0")
+	lazy val globalPluginLoader = pluginManagement.initialLoader
+	lazy val globalPluginNames = if(classpath.isEmpty) Nil else Load.getPluginNames(classpath, pluginManagement.initialLoader)
 }
 
 final class IncompatiblePluginsException(msg: String, cause: Throwable) extends Exception(msg, cause)

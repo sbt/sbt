@@ -1,4 +1,17 @@
-# tests that a source file in $sbt.global.base/plugins/ is available to the build definition in project/
+$ copy-file changes/Build.scala project/Build.scala
+> reload
 
-# dummy to ensure project gets loaded
-> name
+# ensure that a new global dependency gets picked up
+$ copy-file changes/global-plugins.sbt global/plugins/plugins.sbt
+> reload
+
+# check that the class can be loaded
+> eval Class.forName("org.junit.Test")
+
+# check that it is on the classpath
+> eval (x => ()) : (org.junit.Test => Unit)
+
+# ensure that the global plugin version overrides the local version
+$ copy-file changes/plugins.sbt project/plugins.sbt
+> reload
+> check
