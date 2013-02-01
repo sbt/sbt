@@ -4,7 +4,7 @@ package sbt
 	import Project.Setting
 	import PluginManagement._
 
-	import java.net.{URL,URLClassLoader}
+	import java.net.{URI,URL,URLClassLoader}
 
 final case class PluginManagement(overrides: Set[ModuleID], applyOverrides: Set[ModuleID], loader: PluginClassLoader, initialLoader: ClassLoader)
 {
@@ -33,6 +33,11 @@ object PluginManagement
 		ModuleID(m.organization, m.name, m.revision, crossVersion = m.crossVersion)
 
 	final class PluginClassLoader(p: ClassLoader) extends URLClassLoader(Array(), p) {
-		def add(urls: Seq[URL]): Unit = synchronized { urls foreach addURL }
+		private[this] val urlSet = new collection.mutable.HashSet[URI] // remember: don't use hashCode/equals on URL
+		def add(urls: Seq[URL]): Unit = synchronized {
+			for(url <- urls)
+				if(urlSet.add(url.toURI))
+					addURL(url)
+		}
 	}
 }
