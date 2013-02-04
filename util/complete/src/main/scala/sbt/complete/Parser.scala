@@ -130,7 +130,7 @@ object Parser extends ParserMain
 		if(!bad.isEmpty) error("Invalid example completions: " + bad.mkString("'", "', '", "'"))
 	}
 	def tuple[A,B](a: Option[A], b: Option[B]): Option[(A,B)] =
-		(a,b) match { case (Some(av), Some(bv)) => Some(av, bv); case _ => None }
+		(a,b) match { case (Some(av), Some(bv)) => Some((av, bv)); case _ => None }
 
 	def mapParser[A,B](a: Parser[A], f: A => B): Parser[B] =
 		a.ifValid {

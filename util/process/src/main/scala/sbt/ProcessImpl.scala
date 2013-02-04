@@ -28,7 +28,7 @@ private object Future
 	def apply[T](f: => T): () => T =
 	{
 		val result = new SyncVar[Either[Throwable, T]]
-		def run: Unit =
+		def run(): Unit =
 			try { result.set(Right(f)) }
 			catch { case e: Exception => result.set(Left(e)) }
 		Spawn(run)
@@ -100,7 +100,7 @@ object BasicIO
 	{
 		val continueCount = 1//if(in.isInstanceOf[PipedInputStream]) 1 else 0
 		val buffer = new Array[Byte](BufferSize)
-		def read
+		def read()
 		{
 			val byteCount = in.read(buffer)
 			if(byteCount >= continueCount)

@@ -77,11 +77,11 @@ object Tracked
 trait Tracked
 {
 	/** Cleans outputs and clears the cache.*/
-	def clean: Unit
+	def clean(): Unit
 }
 class Timestamp(val cacheFile: File, useStartTime: Boolean) extends Tracked
 {
-	def clean = delete(cacheFile)
+	def clean() = delete(cacheFile)
 	/** Reads the previous timestamp, evaluates the provided function,
 	* and then updates the timestamp if the function completes normally.*/
 	def apply[T](f: Long => T): T =
@@ -99,7 +99,7 @@ class Timestamp(val cacheFile: File, useStartTime: Boolean) extends Tracked
 
 class Changed[O](val cacheFile: File)(implicit equiv: Equiv[O], format: Format[O]) extends Tracked
 {
-	def clean = delete(cacheFile)
+	def clean() = delete(cacheFile)
 	def apply[O2](ifChanged: O => O2, ifUnchanged: O => O2): O => O2 = value =>
 	{
 		if(uptodate(value))
@@ -136,7 +136,7 @@ object Difference
 }
 class Difference(val cache: File, val style: FilesInfo.Style, val defineClean: Boolean, val filesAreOutputs: Boolean) extends Tracked
 {
-	def clean =
+	def clean() =
 	{
 		if(defineClean) delete(raw(cachedFilesInfo)) else ()
 		clearCache()
