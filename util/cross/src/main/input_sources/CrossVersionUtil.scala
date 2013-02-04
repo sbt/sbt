@@ -49,7 +49,7 @@ object CrossVersionUtil
 	private[${{cross.package0}}] val PartialVersion = """(\d+)\.(\d+)(?:\..+)?""".r
 	private[${{cross.package0}}] def partialVersion(s: String): Option[(Int,Int)] =
 		s match {
-			case PartialVersion(major, minor) => Some(major.toInt, minor.toInt)
+			case PartialVersion(major, minor) => Some((major.toInt, minor.toInt))
 			case _ => None
 		}
 	def binaryScalaVersion(full: String): String = binaryVersionWithApi(full, TransitionScalaVersion)(scalaApiVersion)
