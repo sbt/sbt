@@ -23,7 +23,8 @@ object Sbt extends Build
 		resolvers += Resolver.typesafeIvyRepo("releases"),
 		concurrentRestrictions in Global += Util.testExclusiveRestriction,
 		testOptions += Tests.Argument(TestFrameworks.ScalaCheck, "-w", "1"),
-		javacOptions in compile ++= Seq("-target", "6", "-source", "6", "-Xlint", "-Xlint:-serial")
+		javacOptions in compile ++= Seq("-target", "6", "-source", "6", "-Xlint", "-Xlint:-serial"),
+		scalacOptions += "-Xlint"
 	)
 
 	lazy val myProvided = config("provided") intransitive;

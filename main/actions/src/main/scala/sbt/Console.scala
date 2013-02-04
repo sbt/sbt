@@ -20,7 +20,7 @@ final class Console(compiler: AnalyzingCompiler)
 	
 	def apply(classpath: Seq[File], options: Seq[String], initialCommands: String, cleanupCommands: String)(loader: Option[ClassLoader], bindings: Seq[(String, Any)])(implicit log: Logger): Option[String] =
 	{
-		def console0 = compiler.console(classpath, options, initialCommands, cleanupCommands, log)(loader, bindings)
+		def console0() = compiler.console(classpath, options, initialCommands, cleanupCommands, log)(loader, bindings)
 		JLine.withJLine( Run.executeTrapExit(console0, log) )
 	}
 }

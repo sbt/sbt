@@ -29,7 +29,7 @@ object TrapExit
 		* the threads that were created by 'execute'.*/
 		val originalThreads = allThreads
 		val code = new ExitCode
-		def executeMain =
+		def executeMain() =
 			try { execute }
 			catch
 			{
@@ -235,7 +235,7 @@ private final class TrapExitSecurityManager(delegateManager: SecurityManager, gr
 private final class TrapExitSecurityException(val exitCode: Int) extends SecurityException
 {
 	private var accessAllowed = false
-	def allowAccess
+	def allowAccess()
 	{
 		accessAllowed = true
 	}
