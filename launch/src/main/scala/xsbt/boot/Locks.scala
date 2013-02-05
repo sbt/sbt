@@ -3,10 +3,11 @@
  */
 package xsbt.boot
 
-import java.io.{File, FileOutputStream}
+import java.io.{File, FileOutputStream, IOException}
 import java.nio.channels.FileChannel
 import java.util.concurrent.Callable
 import scala.collection.immutable.List
+import scala.annotation.tailrec
 
 object GetLocks
 {
@@ -48,10 +49,32 @@ object Locks extends xsbti.GlobalLock
 				else
 				{
 					fileLocked = true
-					try { withFileLock(run) }
+					try { ignoringDeadlockAvoided(run) }
 					finally { fileLocked = false }
 				}
 			}
+
+		// https://github.com/sbt/sbt/issues/650
+		// This approach means a real deadlock won't be detected
+		@tailrec private[this] def ignoringDeadlockAvoided[T](run: Callable[T]): T =
+		{
+			val result =
+				try { Some(withFileLock(run)) }
+				catch { case i: IOException if isDeadlockAvoided(i) =>
+					// there should be a timeout to the deadlock avoidance, so this is just a backup
+					Thread.sleep(200)
+					None
+				}
+			result match { // workaround for no tailrec optimization in the above try/catch
+				case Some(t) => t
+				case None => ignoringDeadlockAvoided(run)
+			}
+		}
+
+		// The actual message is not specified by FileChannel.lock, so this may need to be adjusted for different JVMs
+		private[this] def isDeadlockAvoided(i: IOException): Boolean =
+			i.getMessage == "Resource deadlock avoided"
+
 		private[this] def withFileLock[T](run: Callable[T]): T =
 		{
 			def withChannelRetries(retries: Int)(channel: FileChannel): T =
