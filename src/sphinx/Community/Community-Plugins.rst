@@ -64,6 +64,7 @@ Plugins for IDEs:
    https://github.com/orfjackal/idea-sbt-plugin
 -  Netbeans: https://github.com/remeniuk/sbt-netbeans-plugin
 -  Eclipse: https://github.com/typesafehub/sbteclipse
+-  Sublime Text: https://github.com/orrsella/sbt-sublime
 
 Web Plugins
 ~~~~~~~~~~~
