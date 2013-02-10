@@ -141,7 +141,7 @@ type
     outputStrategy := Some(BufferedOutput(log: Logger))
 
 As with other settings, this can be configured individually for main or
-test ``run`` tasks or for ``test`` tasks.
+test ``run`` tasks.
 
 Configuring Input
 =================
