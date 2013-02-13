@@ -185,7 +185,7 @@ object Sbt extends Build
 	lazy val scriptedSource = SettingKey[File]("scripted-source")
 	lazy val publishAll = TaskKey[Unit]("publish-all")
 
-	def deepTasks[T](scoped: ScopedTask[Seq[T]]): Initialize[Task[Seq[T]]] = deep(scoped.task) { _.join.map(_.flatten) }
+	def deepTasks[T](scoped: ScopedTask[Seq[T]]): Initialize[Task[Seq[T]]] = deep(scoped.task) { _.join.map(_.flatten.distinct) }
 	def deep[T](scoped: ScopedSetting[T]): Initialize[Seq[T]] =
 		Util.inAllProjects(projects filterNot Set(root, sbtSub, scriptedBaseSub, scriptedSbtSub, scriptedPluginSub) map { p => LocalProject(p.id) }, scoped)
 
@@ -210,10 +210,12 @@ object Sbt extends Build
 		sources in sxr <<= deepTasks(sources in Compile),
 		Sxr.sourceDirectories <<= deep(sourceDirectories in Compile).map(_.flatten),
 		fullClasspath in sxr <<= (externalDependencyClasspath in Compile in sbtSub),
-		compileInputs in (Compile,sxr) <<= (sources in sxr, compileInputs in sbtSub in Compile, fullClasspath in sxr) map { (srcs, in, cp) =>
+		compileInputs in (Compile,sxr) <<= (sources in sxr, compileInputs in sbtSub in Compile, fullClasspath in sxr, scalacOptions) map { (srcs, in, cp, opts) =>
 			in.copy(config = in.config.copy(sources = srcs, classpath = cp.files))
 		},
-		compileInputs in (Compile,doc) <<= (compileInputs in (Compile,sxr)).identity,
+		compileInputs in (Compile,doc) <<= (compileInputs in (Compile,sxr), scalacOptions in doc) map { (ci, opts) =>
+			ci.copy(config = ci.config.copy(options = opts))
+		},
 		publishAll <<= inAll(nonRoots, publishLocal.task),
 		TaskKey[Unit]("build-all") <<= (publishAll, proguard in Proguard, sxr, doc) map { (_,_,_,_) => () }
 	)

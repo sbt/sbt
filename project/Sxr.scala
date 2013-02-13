@@ -17,12 +17,13 @@ object Sxr
 		managedClasspath <<= update map { _.matching( configurationFilter(sxrConf.name) ).classpath },
 		scalacOptions <+= sourceDirectories map { "-P:sxr:base-directory:" + _.absString },
 		scalacOptions <+= managedClasspath map { "-Xplugin:" + _.files.absString },
+		scalacOptions in doc += "-Ymacro-no-expand",
 		scaladocOptions <<= scalacOptions,
 		target <<= target in taskGlobal apply { _ / "browse" },
 		sxr in taskGlobal <<= sxrTask
 	)
 	def taskGlobal = ThisScope.copy(task = Global)
-	def sxrTask = (sources, cacheDirectory, target, scalacOptions, classpathOptions, scalaInstance, fullClasspath in sxr, streams) map { (srcs, cache, out, opts, cpOpts, si, cp, s) =>
+	def sxrTask = (sources, cacheDirectory, target, scalacOptions in sxr, classpathOptions, scalaInstance, fullClasspath in sxr, streams) map { (srcs, cache, out, opts, cpOpts, si, cp, s) =>
 		val outputDir = out.getParentFile / (out.getName + ".sxr")
 		val f = FileFunction.cached(cache / "sxr", FilesInfo.hash) { in =>
 			s.log.info("Generating sxr output in " + outputDir.getAbsolutePath + "...")

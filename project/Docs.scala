@@ -23,7 +23,7 @@ object Docs
 	def settings: Seq[Setting[_]] =
 		site.settings ++
 		site.sphinxSupport(DocsPath) ++
-//		site.includeScaladoc("api") ++
+		site.includeScaladoc("api") ++
 //		siteIncludeSxr("sxr") ++
 		ghPagesSettings ++
 		Seq(
