@@ -1,0 +1,2 @@
+-> test-only A B
+> test-only B A

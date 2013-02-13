@@ -30,6 +30,8 @@ object Tests
 	final case class Exclude(tests: Iterable[String]) extends TestOption
 	final case class Listeners(listeners: Iterable[TestReportListener]) extends TestOption
 	final case class Filter(filterTest: String => Boolean) extends TestOption
+	/** Test execution will be ordered by the position of the matching filter. */
+	final case class Filters(filterTest: Seq[String => Boolean]) extends TestOption
 
 	// args for all frameworks
 	def Argument(args: String*): Argument = Argument(None, args.toList)
@@ -45,6 +47,7 @@ object Tests
 	{
 			import collection.mutable.{HashSet, ListBuffer, Map, Set}
 		val testFilters = new ListBuffer[String => Boolean]
+		var orderedFilters = Seq[String => Boolean]()
 		val excludeTestsSet = new HashSet[String]
 		val setup, cleanup = new ListBuffer[ClassLoader => Unit]
 		val testListeners = new ListBuffer[TestReportListener]
@@ -63,6 +66,7 @@ object Tests
 			option match
 			{
 				case Filter(include) => testFilters += include
+				case Filters(includes) => if(!orderedFilters.isEmpty) error("Cannot define multiple ordered test filters.") else orderedFilters = includes
 				case Exclude(exclude) => excludeTestsSet ++= exclude
 				case Listeners(listeners) => testListeners ++= listeners
 				case Setup(setupFunction) => setup += setupFunction
@@ -87,7 +91,8 @@ object Tests
 			log.warn("Arguments defined for test frameworks that are not present:\n\t" + undefinedFrameworks.mkString("\n\t"))
 
 		def includeTest(test: TestDefinition) = !excludeTestsSet.contains(test.name) && testFilters.forall(filter => filter(test.name))
-		val tests = discovered.filter(includeTest).toSet.toSeq
+		val filtered0 = discovered.filter(includeTest).distinct
+		val tests = if(orderedFilters.isEmpty) filtered0 else orderedFilters.flatMap(f => filtered0.filter(d => f(d.name))).distinct
 		val arguments = testArgsByFramework.map { case (k,v) => (k, v.toList) } toMap;
 		testTask(frameworks.values.toSeq, testLoader, tests, setup.readOnly, cleanup.readOnly, log, testListeners.readOnly, arguments, config)
 	}
@@ -117,7 +122,7 @@ object Tests
 	type TestRunnable = (String, () => TestResult.Value)
 	def makeParallel(runnables: Iterable[TestRunnable], setupTasks: Task[Unit], tags: Seq[(Tag,Int)]) =
 		runnables map { case (name, test) => task { (name, test()) } dependsOn setupTasks named name tagw(tags : _*) }
-	def makeSerial(runnables: Iterable[TestRunnable], setupTasks: Task[Unit], tags: Seq[(Tag,Int)]) =
+	def makeSerial(runnables: Seq[TestRunnable], setupTasks: Task[Unit], tags: Seq[(Tag,Int)]) =
 		task { runnables map { case (name, test) => (name, test()) } } dependsOn(setupTasks)
 
 	def processResults(results: Iterable[(String, TestResult.Value)]): (TestResult.Value, Map[String, TestResult.Value]) =

@@ -132,17 +132,20 @@ object TestFramework
 		log: Logger,
 		listeners: Seq[TestReportListener],
 		testArgsByFramework: Map[Framework, Seq[String]]):
-			(() => Unit, Iterable[(String, () => TestResult.Value)], TestResult.Value => () => Unit) =
+			(() => Unit, Seq[(String, () => TestResult.Value)], TestResult.Value => () => Unit) =
 	{
 		val arguments = testArgsByFramework withDefaultValue Nil
 		val mappedTests = testMap(frameworks, tests, arguments)
 		if(mappedTests.isEmpty)
 			(() => (), Nil, _ => () => () )
 		else
-			createTestTasks(testLoader, mappedTests, log, listeners)
+			createTestTasks(testLoader, mappedTests, tests, log, listeners)
 	}
 
-	private def testMap(frameworks: Seq[Framework], tests: Seq[TestDefinition], args: Map[Framework, Seq[String]]):
+	private[this] def order(mapped: Map[String, () => TestResult.Value], inputs: Seq[TestDefinition]): Seq[(String, () => TestResult.Value)] =
+		for( d <- inputs; act <- mapped.get(d.name) ) yield (d.name, act)
+
+	private[this] def testMap(frameworks: Seq[Framework], tests: Seq[TestDefinition], args: Map[Framework, Seq[String]]):
 		Map[Framework, (Set[TestDefinition], Seq[String])] =
 	{
 		import scala.collection.mutable.{HashMap, HashSet, Set}
@@ -171,7 +174,7 @@ object TestFramework
 		uniqueDefs.toSet
 	}
 		
-	private def createTestTasks(loader: ClassLoader, tests: Map[Framework, (Set[TestDefinition], Seq[String])], log: Logger, listeners: Seq[TestReportListener]) =
+	private def createTestTasks(loader: ClassLoader, tests: Map[Framework, (Set[TestDefinition], Seq[String])], ordered: Seq[TestDefinition], log: Logger, listeners: Seq[TestReportListener]) =
 	{
 		val testsListeners = listeners collect { case tl: TestsListener => tl }
 		def foreachListenerSafe(f: TestsListener => Unit): () => Unit = () => safeForeach(testsListeners, log)(f)
@@ -180,7 +183,7 @@ object TestFramework
 
 		val startTask = foreachListenerSafe(_.doInit)
 		val testTasks =
-			tests.view flatMap { case (framework, (testDefinitions, testArgs)) =>
+			tests flatMap { case (framework, (testDefinitions, testArgs)) =>
 			
 					val runner = new TestRunner(framework, loader, listeners, log)
 					for(testDefinition <- testDefinitions) yield
@@ -191,7 +194,7 @@ object TestFramework
 			}
 
 		val endTask = (result: TestResult.Value) => foreachListenerSafe(_.doComplete(result))
-		(startTask, testTasks.toList, endTask)
+		(startTask, order(testTasks, ordered), endTask)
 	}
 	private[this] def withContextLoader[T](loader: ClassLoader)(eval: => T): T =
 	{

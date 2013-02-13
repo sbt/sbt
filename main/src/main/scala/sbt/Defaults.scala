@@ -388,7 +388,7 @@ object Defaults extends BuildCommon
 					new Tests.Execution(opts, par, ts)
 			}
 
-	def testQuickFilter: Initialize[Task[Seq[String] => String => Boolean]] =
+	def testQuickFilter: Initialize[Task[Seq[String] => Seq[String => Boolean]]] =
 	  (fullClasspath in test, streams in test) map {
 			(cp, s) =>
 				val ans = cp.flatMap(_.metadata get Keys.analysis)
@@ -407,12 +407,13 @@ object Defaults extends BuildCommon
 							apis.internal(f).compilation.startTime
 						}.max)
 				}
-				args => test => selectedFilter(args)(test) && {
-					succeeded.get(test) match {
-						case None => true
-						case Some(ts) => stamp(test) > ts
-					}
+				def noSuccessYet(test: String) = succeeded.get(test) match {
+					case None => true
+					case Some(ts) => stamp(test) > ts
 				}
+
+				args => for(filter <- selectedFilter(args)) yield
+					(test: String) => filter(test) && noSuccessYet(test)
 		}
 	def succeededFile(dir: File) = dir / "succeeded_tests"
 
@@ -429,7 +430,7 @@ object Defaults extends BuildCommon
 			val config = testExecution.value
 
 			implicit val display = Project.showContextKey(state.value)
-			val modifiedOpts = Tests.Filter(filter(selected)) +: Tests.Argument(frameworkOptions : _*) +: config.options
+			val modifiedOpts = Tests.Filters(filter(selected)) +: Tests.Argument(frameworkOptions : _*) +: config.options
 			val newConfig = config.copy(options = modifiedOpts)
 			val groupsTask = allTestGroupsTask(s, loadedTestFrameworks.value, testLoader.value, testGrouping.value, newConfig, fullClasspath.value, javaHome.value)
 			val processed =
@@ -452,10 +453,13 @@ object Defaults extends BuildCommon
 		Tests.foldTasks(groupTasks, config.parallel)
 	}
 
-	def selectedFilter(args: Seq[String]): String => Boolean =
+	def selectedFilter(args: Seq[String]): Seq[String => Boolean] =
 	{
 		val filters = args map GlobFilter.apply
-		s => filters.isEmpty || filters.exists { _ accept s }
+		if(filters.isEmpty)
+			Seq(const(true))
+		else
+			filters.map { f => (s: String) => f accept s }
 	}
 	def detectTests: Initialize[Task[Seq[TestDefinition]]] = (loadedTestFrameworks, compile, streams) map { (frameworkMap, analysis, s) =>
 		Tests.discover(frameworkMap.values.toSeq, analysis, s.log)._1
