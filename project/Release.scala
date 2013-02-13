@@ -43,8 +43,8 @@ object Release extends Build
 	def deployLauncher(launcher: ScopedTask[File]) =
 		(launcher, launcherRemotePath, credentials, remoteBase, streams) map { (launchJar, remotePath, creds, base, s) =>
 			val (uname, pwd) = getCredentials(creds, s.log)
-			val request = dispatch.url(base) / remotePath <<< (launchJar, BinaryType) as (uname, pwd)
-			val http = new dispatch.Http
+			val request = dispatch.classic.url(base) / remotePath <<< (launchJar, BinaryType) as (uname, pwd)
+			val http = new dispatch.classic.Http
 			try { http(request.as_str) } finally { http.shutdown() }
 		}
 	def getCredentials(cs: Seq[Credentials], log: Logger): (String, String) =
