@@ -606,7 +606,6 @@ object Defaults extends BuildCommon
 	def docSetting(key: TaskKey[File]) = docTaskSettings(key)
 	def docTaskSettings(key: TaskKey[File] = doc): Seq[Setting[_]] = inTask(key)(compileInputsSettings ++ Seq(
 		target := docDirectory.value, // deprecate docDirectory in favor of 'target in doc'; remove when docDirectory is removed
-		scalacOptions <<= scaladocOptions or scalacOptions, // deprecate scaladocOptions in favor of 'scalacOptions in doc'; remove when scaladocOptions is removed
 		apiMappings ++= { if(autoAPIMappings.value) APIMappings.extract(dependencyClasspath.value, streams.value.log).toMap else Map.empty[File,URL] },
 		key in TaskGlobal <<= (compileInputs, target, configuration, apiMappings, streams) map { (in, out, config, xapis, s) =>
 			val srcs = in.config.sources

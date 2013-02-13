@@ -124,8 +124,6 @@ object Keys
 	// compile/doc keys
 	val autoCompilerPlugins = SettingKey[Boolean]("auto-compiler-plugins", "If true, enables automatically generating -Xplugin arguments to the compiler based on the classpath for the " + CompilerPlugin.name + " configuration.", AMinusSetting)
 	val maxErrors = SettingKey[Int]("max-errors", "The maximum number of errors, such as compile errors, to list.", ASetting)
-	@deprecated("Use `scalacOptions`, scoped by the doc task.  For example, `scalacOptions in Compile in doc`", "0.11.0")
-	val scaladocOptions = TaskKey[Seq[String]]("scaladoc-options", "Options for Scaladoc.", DTask)
 	val scalacOptions = TaskKey[Seq[String]]("scalac-options", "Options for the Scala compiler.", BPlusTask)
 	val javacOptions = TaskKey[Seq[String]]("javac-options", "Options for the Java compiler.", BPlusTask)
 	val compileOrder = SettingKey[CompileOrder]("compile-order", "Configures the order in which Java and sources within a single compilation are compiled.  Valid values are: JavaThenScala, ScalaThenJava, or Mixed.", BPlusSetting)
