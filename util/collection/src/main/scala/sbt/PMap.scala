@@ -3,7 +3,6 @@
  */
 package sbt
 
-	import Types._
 	import collection.mutable
 
 trait RMap[K[_], V[_]]
@@ -12,7 +11,7 @@ trait RMap[K[_], V[_]]
 	def get[T](k: K[T]): Option[V[T]]
 	def contains[T](k: K[T]): Boolean
 	def toSeq: Seq[(K[_], V[_])]
-	def toTypedSeq = toSeq.map{ case (k: K[t],v) => TPair[t](k,v.asInstanceOf[V[t]]) }
+	def toTypedSeq: Seq[TPair[_]] = toSeq.map{ case (k: K[t],v) => TPair[t](k,v.asInstanceOf[V[t]]) }
 	def keys: Iterable[K[_]]
 	def values: Iterable[V[_]]
 	def isEmpty: Boolean
