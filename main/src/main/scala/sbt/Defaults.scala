@@ -421,7 +421,9 @@ object Defaults extends BuildCommon
 	{
 		val parser = loadForParser(definedTestNames)( (s, i) => testOnlyParser(s, i getOrElse Nil) )
 		Def.inputTaskDyn {
-			val (selected, frameworkOptions) = parser.parsed
+			val res = parser.parsed
+			val selected = res._1
+			val frameworkOptions = res._2
 			val s = streams.value
 			val filter = testFilter.value
 			val config = testExecution.value
@@ -573,7 +575,9 @@ object Defaults extends BuildCommon
 		import DefaultParsers._
 		val parser = loadForParser(discoveredMainClasses)( (s, names) => runMainParser(s, names getOrElse Nil) )
 		Def.inputTask {
-			val (mainClass, args) = parser.parsed
+			val res = parser.parsed
+			val mainClass = res._1
+			val args = res._2
 			toError(scalaRun.value.run(mainClass, data(classpath.value), args, streams.value.log))
 		}
 	}
