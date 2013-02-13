@@ -161,7 +161,7 @@ The configurable settings are per-user settings (from ~/.sbt, for example), sett
 The order in which these instances are provided to ``autoSettings`` determines the order in which they are appended to the settings explicitly provided in ``Project.settings``.
 
 For .sbt files, ``AddSettings.defaultSbtFiles`` adds the settings from all .sbt files in the project's base directory as usual.
-The alternative method ``AddSettings.sbtFiles`` accepts a sequence of ``File``s that will be loaded according to the standard .sbt format.
+The alternative method ``AddSettings.sbtFiles`` accepts a sequence of ``Files`` that will be loaded according to the standard .sbt format.
 Relative files are resolved against the project's base directory.
 
 Plugin settings may be included on a per-Plugin basis by using the ``AddSettings.plugins`` method and passing a ``Plugin => Boolean``.

@@ -472,7 +472,7 @@ Forcing a revision without introducing a dependency
 
 Use of the ``force()`` method described in the previous section requires having a direct dependency.
 However, it may be desirable to force a revision without introducing that direct dependency.
-Ivy provides overrides for this and in sbt, overrides are configured in sbt with the ``dependencyOverrides`` setting, which is a set of ``ModuleID``s.
+Ivy provides overrides for this and in sbt, overrides are configured in sbt with the ``dependencyOverrides`` setting, which is a set of ``ModuleIDs``.
 For example, the following dependency definitions conflict because spark uses log4j 1.2.16 and scalaxb uses log4j 1.2.17:
 
 ::
