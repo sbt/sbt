@@ -149,6 +149,8 @@ Release plugins
    https://github.com/sbt/sbt-start-script
 -  sbt-native-packager:
    https://github.com/sbt/sbt-native-packager
+-  tl-os-sbt-plugins:
+   https://github.com/trafficland/tl-os-sbt-plugins
 
 System plugins
 ~~~~~~~~~~~~~~
@@ -247,6 +249,8 @@ Utility plugins
    https://github.com/sbt/sbt-aspectj
 -  sbt-properties:
    https://github.com/sbt/sbt-properties
+-  tl-os-sbt-plugins:
+   https://github.com/trafficland/tl-os-sbt-plugins
 
 Code coverage plugins
 ~~~~~~~~~~~~~~~~~~~~~
@@ -269,4 +273,24 @@ OSGi plugin
 ~~~~~~~~~~~
 
 -  sbtosgi: https://github.com/typesafehub/sbtosgi
+
+Play20 plugins
+~~~~~~~~~~~~~~
+
+-  tl-os-sbt-plugins:
+   https://github.com/trafficland/tl-os-sbt-plugins
+
+Version Management plugins
+~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+-  tl-os-sbt-plugins:
+   https://github.com/trafficland/tl-os-sbt-plugins
+
+Git plugins
+~~~~~~~~~~~
+
+-  tl-os-sbt-plugins:
+   https://github.com/trafficland/tl-os-sbt-plugins
+
+
 
