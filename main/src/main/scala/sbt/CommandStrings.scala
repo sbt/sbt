@@ -241,4 +241,32 @@ load-commands -base ~/.sbt/commands
 		(Path.userHome / sbtrc) ::
 		(s.baseDir / sbtrc asFile) ::
 		Nil
+
+	val CrossCommand = "+"
+	val SwitchCommand = "++"
+
+	def crossHelp: Help = Help.more(CrossCommand, CrossDetailed)
+	def switchHelp: Help = Help.more(SwitchCommand, SwitchDetailed)
+	
+	def CrossDetailed = 
+s"""$CrossCommand <command>
+	Runs <command> for each Scala version specified for cross-building.
+
+	For each string in `crossScalaVersions` in the current project, this command sets the
+	`scalaVersion` of all projects to that version, reloads the build, and
+	executes <command>.  When finished, it reloads the build with the original
+	Scala version.
+
+	See also `help $SwitchCommand`
+"""
+
+	def SwitchDetailed =
+s"""$SwitchCommand <scala-version> [<command>]
+	Changes the Scala version and runs a command.
+
+	Sets the `scalaVersion` of all projects to <scala-version> and reloads the build.
+	If <command> is provided, it is then executed.
+
+	See also `help $CrossCommand`
+"""
 }

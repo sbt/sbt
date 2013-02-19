@@ -8,12 +8,16 @@ package sbt
 	import DefaultParsers._
 	import Def.{ScopedKey, Setting}
 	import Scope.GlobalScope
+	import CommandStrings.{CrossCommand,crossHelp,SwitchCommand,switchHelp}
 	import java.io.File
 
 object Cross
 {
-	final val Switch = "++"
-	final val Cross = "+"
+	@deprecated("Moved to CommandStrings.Switch", "0.13.0")
+	final val Switch = CommandStrings.SwitchCommand
+
+	@deprecated("Moved to CommandStrings.Cross", "0.13.0")
+	final val Cross = CommandStrings.CrossCommand
 
 	def switchParser(state: State): Parser[(String, String)] =
 	{
@@ -24,11 +28,11 @@ object Cross
 			val optionalCommand = token(Space ~> matched(state.combinedParser)) ?? ""
 			spacedVersion ~ optionalCommand
 		}
-		token(Switch ~> OptSpace) flatMap { sp => versionAndCommand(!sp.isEmpty) }
+		token(SwitchCommand ~> OptSpace) flatMap { sp => versionAndCommand(!sp.isEmpty) }
 	}
 	def spacedFirst(name: String) = opOrIDSpaced(name) ~ any.+
 
-	lazy val switchVersion = Command.arb(requireSession(switchParser)) { case (state, (version, command)) =>
+	lazy val switchVersion = Command.arb(requireSession(switchParser), switchHelp) { case (state, (version, command)) =>
 		val x = Project.extract(state)
 			import x._
 		val home = IO.resolve(x.currentProject.base, new File(version))
@@ -64,14 +68,14 @@ object Cross
 		}
 
 	def crossParser(state: State): Parser[String] =
-		token(Cross <~ OptSpace) flatMap { _ => token(matched( state.combinedParser & spacedFirst(Cross) )) }
+		token(CrossCommand <~ OptSpace) flatMap { _ => token(matched( state.combinedParser & spacedFirst(CrossCommand) )) }
 
-	lazy val crossBuild = Command.arb(requireSession(crossParser)) { (state, command) =>
+	lazy val crossBuild = Command.arb(requireSession(crossParser), crossHelp) { (state, command) =>
 		val x = Project.extract(state)
 			import x._
 		val versions = crossVersions(state)
-		val current = scalaVersion in currentRef get structure.data map(Switch + " " + _) toList;
-		if(versions.isEmpty) command :: state else versions.map(Switch + " " + _ + " " + command) ::: current ::: state
+		val current = scalaVersion in currentRef get structure.data map(SwitchCommand + " " + _) toList;
+		if(versions.isEmpty) command :: state else versions.map(SwitchCommand + " " + _ + " " + command) ::: current ::: state
 	}
 	def crossVersions(state: State): Seq[String] =
 	{
