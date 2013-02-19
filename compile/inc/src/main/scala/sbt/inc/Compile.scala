@@ -22,10 +22,11 @@ object IncrementalCompile
 		val current = Stamps.initial(Stamp.exists, Stamp.hash, Stamp.lastModified)
 		val internalMap = (f: File) => previous.relations.produced(f).headOption
 		val externalAPI = getExternalAPI(entry, forEntry)
-		Incremental.compile(sources, entry, previous, current, forEntry, doCompile(compile, internalMap, externalAPI, current, output), log, options)
+		Incremental.compile(sources, entry, previous, current, forEntry, doCompile(compile, internalMap, externalAPI, current, output, options), log, options)
 	}
-	def doCompile(compile: (Set[File], DependencyChanges, xsbti.AnalysisCallback) => Unit, internalMap: File => Option[File], externalAPI: (File, String) => Option[Source], current: ReadStamps, output: Output) = (srcs: Set[File], changes: DependencyChanges) => {
-		val callback = new AnalysisCallback(internalMap, externalAPI, current, output)
+	def doCompile(compile: (Set[File], DependencyChanges, xsbti.AnalysisCallback) => Unit, internalMap: File => Option[File], externalAPI: (File, String) => Option[Source], current: ReadStamps, output: Output, options: IncOptions) =
+	  (srcs: Set[File], changes: DependencyChanges) => {
+		val callback = new AnalysisCallback(internalMap, externalAPI, current, output, options)
 		compile(srcs, changes, callback)
 		callback.get
 	}
@@ -42,7 +43,7 @@ object IncrementalCompile
 					}
 			}
 }
-private final class AnalysisCallback(internalMap: File => Option[File], externalAPI: (File, String) => Option[Source], current: ReadStamps, output: Output) extends xsbti.AnalysisCallback
+private final class AnalysisCallback(internalMap: File => Option[File], externalAPI: (File, String) => Option[Source], current: ReadStamps, output: Output, options: IncOptions) extends xsbti.AnalysisCallback
 {
 	val compilation = {
 		val outputSettings = output match {
@@ -128,7 +129,9 @@ private final class AnalysisCallback(internalMap: File => Option[File], external
 	def api(sourceFile: File, source: SourceAPI) {
 		import xsbt.api.{APIUtil, HashAPI}
 		if (APIUtil.hasMacro(source)) macroSources += sourceFile
-		apis(sourceFile) = (HashAPI(source), APIUtil.minimize(source))
+		val shouldMinimize = !Incremental.apiDebug(options)
+		val savedSource = if (shouldMinimize) APIUtil.minimize(source) else source
+		apis(sourceFile) = (HashAPI(source), savedSource)
 	}
 
 	def endSource(sourcePath: File): Unit =
