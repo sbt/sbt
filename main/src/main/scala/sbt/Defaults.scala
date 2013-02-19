@@ -204,6 +204,7 @@ object Defaults extends BuildCommon
 		compilersSetting,
 		javacOptions in GlobalScope :== Nil,
 		scalacOptions in GlobalScope :== Nil,
+		incOptions in GlobalScope :== sbt.inc.IncOptions.Default,
 		scalaInstance <<= scalaInstanceTask,
 		scalaVersion in GlobalScope := appConfiguration.value.provider.scalaProvider.version,
 		scalaBinaryVersion in GlobalScope := binaryScalaVersion(scalaVersion.value),
@@ -643,8 +644,8 @@ object Defaults extends BuildCommon
 
 	def compileTask = (compileInputs in compile, streams) map { (i,s) => Compiler(i,s.log) }
 	def compileIncSetupTask =
-		(dependencyClasspath, skip in compile, definesClass, compilerCache, streams) map { (cp, skip, definesC, cache, s) =>
-			Compiler.IncSetup(analysisMap(cp), definesC, skip, s.cacheDirectory / "inc_compile", cache)
+		(dependencyClasspath, skip in compile, definesClass, compilerCache, streams, incOptions) map { (cp, skip, definesC, cache, s, incOptions) =>
+			Compiler.IncSetup(analysisMap(cp), definesC, skip, s.cacheDirectory / "inc_compile", cache, incOptions)
 		}
 	def compileInputsSettings: Seq[Setting[_]] =
 		Seq(compileInputs := {
@@ -1017,7 +1018,7 @@ object Classpaths
 		val si = Defaults.unmanagedScalaInstanceOnly.value.map(si => (si, scalaOrganization.value))
 		val show = Reference.display(thisProjectRef.value)
 		cachedUpdate(s.cacheDirectory, show, ivyModule.value, updateConfiguration.value, si, skip = (skip in update).value, force = isRoot, depsUpdated = depsUpdated, log = s.log)
-	} 
+	}
 
 	def cachedUpdate(cacheFile: File, label: String, module: IvySbt#Module, config: UpdateConfiguration, scalaInstance: Option[(ScalaInstance, String)], skip: Boolean, force: Boolean, depsUpdated: Boolean, log: Logger): UpdateReport =
 	{

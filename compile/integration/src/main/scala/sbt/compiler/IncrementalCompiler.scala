@@ -1,7 +1,7 @@
 package sbt.compiler
 
 	import sbt.CompileSetup
-	import sbt.inc.Analysis
+	import sbt.inc.{Analysis, IncOptions}
 	import xsbti.{Logger, Maybe}
 	import xsbti.compile._
 
@@ -17,7 +17,9 @@ object IC extends IncrementalCompiler[Analysis, AnalyzingCompiler]
 		val agg = new AggressiveCompile(setup.cacheFile)
 		val aMap = (f: File) => m2o(analysisMap(f))
 		val defClass = (f: File) => { val dc = definesClass(f); (name: String) => dc.apply(name) }
-		agg(scalac, javac, sources, classpath, output, cache, m2o(progress), scalacOptions, javacOptions, aMap, defClass, reporter, order, skip)(log)
+		val incOptions = IncOptions.fromStringMap(incrementalCompilerOptions)
+		agg(scalac, javac, sources, classpath, output, cache, m2o(progress), scalacOptions, javacOptions, aMap,
+		    defClass, reporter, order, skip, incOptions)(log)
 	}
 
 	private[this] def m2o[S](opt: Maybe[S]): Option[S] = if(opt.isEmpty) None else Some(opt.get)
