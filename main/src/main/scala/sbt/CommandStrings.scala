@@ -5,12 +5,6 @@ package sbt
 
 object CommandStrings
 {
-	@deprecated("Use the `log` member of a State instance directly.", "0.12.0")
-	def logger(s: State) = s.log
-
-	@deprecated("Use the `globalLogging` member of a State instance directly.", "0.12.0")
-	def globalLogging(s: State) = s.globalLogging
-
 	/** The prefix used to identify a request to execute the remaining input on source changes.*/
 	val AboutCommand = "about"
 	val TasksCommand = "tasks"
@@ -19,15 +13,6 @@ object CommandStrings
 	val ProjectsCommand = "projects"
 	val ShowCommand = "show"
 	val BootCommand = "boot"
-
-	@deprecated("Moved to BasicCommandStrings", "0.12.0")
-	val ContinuousExecutePrefix = BasicCommandStrings.ContinuousExecutePrefix
-
-	@deprecated("Moved to BasicCommandStrings", "0.12.0")
-	val Exit = BasicCommandStrings.Exit
-
-	@deprecated("Moved to BasicCommandStrings", "0.12.0")
-	val Quit = BasicCommandStrings.Quit
 
 	val EvalCommand = "eval"
 	val evalBrief = (EvalCommand + " <expression>", "Evaluates a Scala expression and prints the result and type.")
@@ -130,10 +115,6 @@ SetCommand + """ [every] <setting-expression>
 	def SessionCommand = "session"
 	def sessionBrief = (SessionCommand, "Manipulates session settings.  For details, run 'help " + SessionCommand + "'.")
 
-	/** The command name to terminate the program.*/
-	@deprecated("Moved to BasicCommandStrings", "0.12.0")
-	val TerminateAction: String = BasicCommandStrings.TerminateAction
-
 	def settingsPreamble = commonPreamble("settings")
 	def tasksPreamble = commonPreamble("tasks") + """
 Tasks produce values.  Use the 'show' command to run the task and print the resulting value."""
@@ -218,21 +199,9 @@ ProjectsCommand + """
 
 	def sbtrc = ".sbtrc"
 
-	@deprecated("Moved to BasicCommandStrings", "0.12.0")
-	def ReadCommand = BasicCommandStrings.ReadCommand
-
 	def DefaultsCommand = "add-default-commands"
 	def DefaultsBrief = (DefaultsCommand, DefaultsDetailed)
 	def DefaultsDetailed = "Registers default built-in commands"
-
-	@deprecated("Moved to BasicCommandStrings", "0.12.0")
-	def RebootCommand = "reboot"
-
-	@deprecated("Moved to BasicCommandStrings", "0.12.0")
-	def Multi = ";"
-
-	@deprecated("Moved to BasicCommandStrings", "0.12.0")
-	def AppendCommand = "append"
 
 	def Load = "load"
 	def LoadLabel = "a project"
@@ -245,21 +214,6 @@ ProjectsCommand + """
 	def LoadProject = "reload"
 	def LoadProjectBrief = (LoadProject, LoadProjectDetailed)
 	def LoadProjectDetailed = "(Re)loads the project in the current directory"
-
-	@deprecated("Moved to State", "0.12.0")
-	val FailureWall = State.FailureWall
-
-	@deprecated("Moved to BasicCommandStrings", "0.12.0")
-	def Shell = BasicCommandStrings.Shell
-
-	@deprecated("Moved to BasicCommandStrings", "0.12.0")
-	def ClearOnFailure = "--"
-
-	@deprecated("Moved to BasicCommandStrings", "0.12.0")
-	def OnFailure = "-"
-
-	@deprecated("Moved to BasicCommandStrings", "0.12.0")
-	def IfLast = "iflast"
 
 	def InitCommand = "initialize"
 	def InitBrief = (InitCommand, "Initializes command processing.")

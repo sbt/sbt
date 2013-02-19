@@ -64,6 +64,7 @@ object StandardMain
 
 	import DefaultParsers._
 	import CommandStrings._
+	import BasicCommandStrings._
 	import BasicCommands._
 	import CommandUtil._
 
@@ -408,7 +409,7 @@ object BuiltinCommands
 		}
 	}
 
-	def loadProjectCommands(arg: String) = (OnFailure + " " + LoadFailed) :: (LoadProjectImpl + " " + arg).trim :: ClearOnFailure :: FailureWall :: Nil
+	def loadProjectCommands(arg: String) = (OnFailure + " " + LoadFailed) :: (LoadProjectImpl + " " + arg).trim :: ClearOnFailure :: State.FailureWall :: Nil
 	def loadProject = Command(LoadProject, LoadProjectBrief, LoadProjectDetailed)(_ => matched(Project.loadActionParser)) { (s,arg) => loadProjectCommands(arg) ::: s }
 
 	def loadProjectImpl = Command(LoadProjectImpl)(_ => Project.loadActionParser)( doLoadProject )
