@@ -20,11 +20,11 @@ object ContextUtil {
 	*
 	* Given `myImplicitConversion(someValue).extensionMethod`, where `extensionMethod` is a macro that uses this
 	* method, the result of this method is `f(<Tree of someValue>)`. */
-	def selectMacroImpl[T: c.WeakTypeTag, S: c.WeakTypeTag](c: Context)(f: c.Expr[S] => c.Expr[T]): c.Expr[T] =
+	def selectMacroImpl[T: c.WeakTypeTag, S: c.WeakTypeTag](c: Context)(f: (c.Expr[S], c.Position) => c.Expr[T]): c.Expr[T] =
 	{
 			import c.universe._
 		c.macroApplication match {
-			case Select(Apply(_, t :: Nil), _) => f( c.Expr[S](t) )
+			case s @ Select(Apply(_, t :: Nil), tp) => f( c.Expr[S](t), s.pos )
 			case x => unexpectedTree(x)
 		}
 	}

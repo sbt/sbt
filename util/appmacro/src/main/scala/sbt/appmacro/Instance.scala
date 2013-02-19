@@ -27,7 +27,9 @@ trait MonadInstance extends Instance
 
 	import scala.reflect._
 	import macros._
+	import reflect.internal.annotations.compileTimeOnly
 
+// This needs to be moved to main/settings
 object InputWrapper
 {
 	/** The name of the wrapper method should be obscure.
@@ -35,22 +37,26 @@ object InputWrapper
 	* The user should never see this method because it is compile-time only and only used internally by the task macro system.*/
 	final val WrapName = "wrap_\u2603\u2603"
 
-	// This method should be annotated as compile-time only when that feature is implemented
+	@compileTimeOnly("`value` can only be used within a task or setting macro, such as :=, +=, ++=, Def.task, or Def.setting.")
 	def wrap_\u2603\u2603[T](in: Any): T = error("This method is an implementation detail and should not be referenced.")
 
-	/** Wraps an arbitrary Tree in a call to the `wrap` method of this module for later processing by an enclosing macro.
+	def wrapKey[T: c.WeakTypeTag](c: Context)(ts: c.Expr[Any], pos: c.Position): c.Expr[T] = wrapImpl[T,InputWrapper.type](c, InputWrapper, WrapName)(ts, pos)
+
+	/** Wraps an arbitrary Tree in a call to the `<s>.<wrapName>` method of this module for later processing by an enclosing macro.
 	* The resulting Tree is the manually constructed version of:
 	*
-	* `c.universe.reify { InputWrapper.<WrapName>[T](ts.splice) }`
+	* `c.universe.reify { <s>.<wrapName>[T](ts.splice) }`
 	*/
-	def wrapKey[T: c.WeakTypeTag](c: Context)(ts: c.Expr[Any]): c.Expr[T] =
+	def wrapImpl[T: c.WeakTypeTag, S <: AnyRef with Singleton](c: Context, s: S, wrapName: String)(ts: c.Expr[Any], pos: c.Position)(implicit it: c.TypeTag[s.type]): c.Expr[T] =
 	{
 			import c.universe.{Apply=>ApplyTree,_}
 		val util = new ContextUtil[c.type](c)
-		val iw = util.singleton(InputWrapper)
+		val iw = util.singleton(s)
 		val tpe = c.weakTypeOf[T]
-		val nme = newTermName(WrapName).encoded
-		val tree = ApplyTree(TypeApply(Select(Ident(iw), nme), TypeTree(tpe) :: Nil), ts.tree :: Nil)
+		val nme = newTermName(wrapName).encoded
+		val sel = Select(Ident(iw), nme)
+		sel.setPos(pos) // need to set the position on Select, because that is where the compileTimeOnly check looks
+		val tree = ApplyTree(TypeApply(sel, TypeTree(tpe) :: Nil), ts.tree :: Nil)
 		tree.setPos(ts.tree.pos)
 		c.Expr[T](tree)
 	}
