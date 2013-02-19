@@ -16,12 +16,13 @@ object IncrementalCompile
 	    compile: (Set[File], DependencyChanges, xsbti.AnalysisCallback) => Unit,
 	    previous: Analysis,
 	    forEntry: File => Option[Analysis],
-	    output: Output, log: Logger): (Boolean, Analysis) =
+	    output: Output, log: Logger,
+	    options: IncOptions): (Boolean, Analysis) =
 	{
 		val current = Stamps.initial(Stamp.exists, Stamp.hash, Stamp.lastModified)
 		val internalMap = (f: File) => previous.relations.produced(f).headOption
 		val externalAPI = getExternalAPI(entry, forEntry)
-		Incremental.compile(sources, entry, previous, current, forEntry, doCompile(compile, internalMap, externalAPI, current, output), log)
+		Incremental.compile(sources, entry, previous, current, forEntry, doCompile(compile, internalMap, externalAPI, current, output), log, options)
 	}
 	def doCompile(compile: (Set[File], DependencyChanges, xsbti.AnalysisCallback) => Unit, internalMap: File => Option[File], externalAPI: (File, String) => Option[Source], current: ReadStamps, output: Output) = (srcs: Set[File], changes: DependencyChanges) => {
 		val callback = new AnalysisCallback(internalMap, externalAPI, current, output)

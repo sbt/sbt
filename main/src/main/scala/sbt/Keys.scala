@@ -126,6 +126,7 @@ object Keys
 	val maxErrors = SettingKey[Int]("max-errors", "The maximum number of errors, such as compile errors, to list.", ASetting)
 	val scalacOptions = TaskKey[Seq[String]]("scalac-options", "Options for the Scala compiler.", BPlusTask)
 	val javacOptions = TaskKey[Seq[String]]("javac-options", "Options for the Java compiler.", BPlusTask)
+	val incOptions = TaskKey[sbt.inc.IncOptions]("inc-options", "Options for the incremental compiler.", BTask)
 	val compileOrder = SettingKey[CompileOrder]("compile-order", "Configures the order in which Java and sources within a single compilation are compiled.  Valid values are: JavaThenScala, ScalaThenJava, or Mixed.", BPlusSetting)
 	val initialCommands = SettingKey[String]("initial-commands", "Initial commands to execute when starting up the Scala interpreter.", AMinusSetting)
 	val cleanupCommands = SettingKey[String]("cleanup-commands", "Commands to execute before the Scala interpreter exits.", BMinusSetting)

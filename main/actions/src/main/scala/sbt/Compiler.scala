@@ -17,7 +17,7 @@ object Compiler
 
 	final case class Inputs(compilers: Compilers, config: Options, incSetup: IncSetup)
 	final case class Options(classpath: Seq[File], sources: Seq[File], classesDirectory: File, options: Seq[String], javacOptions: Seq[String], maxErrors: Int, sourcePositionMapper: Position => Position, order: CompileOrder)
-	final case class IncSetup(analysisMap: File => Option[Analysis], definesClass: DefinesClass, skip: Boolean, cacheFile: File, cache: GlobalsCache)
+	final case class IncSetup(analysisMap: File => Option[Analysis], definesClass: DefinesClass, skip: Boolean, cacheFile: File, cache: GlobalsCache, incOptions: IncOptions)
 	final case class Compilers(scalac: AnalyzingCompiler, javac: JavaTool)
 
 	@deprecated("Use the other inputs variant.", "0.12.0")
@@ -27,7 +27,7 @@ object Compiler
 		val classesDirectory = outputDirectory / "classes"
 		val cacheFile = outputDirectory / "cache_old_style"
 		val augClasspath = classesDirectory.asFile +: classpath
-		val incSetup = IncSetup(Map.empty, definesClass, false, cacheFile, CompilerCache.fresh)
+		val incSetup = IncSetup(Map.empty, definesClass, false, cacheFile, CompilerCache.fresh, IncOptions.Default)
 		inputs(augClasspath, sources, classesDirectory, options, javacOptions, maxErrors, Nil, order)(compilers, incSetup, log)
 	}
 	def inputs(classpath: Seq[File], sources: Seq[File], classesDirectory: File, options: Seq[String], javacOptions: Seq[String], maxErrors: Int, sourcePositionMappers: Seq[Position => Option[Position]], order: CompileOrder)(implicit compilers: Compilers, incSetup: IncSetup, log: Logger): Inputs =
@@ -77,7 +77,7 @@ object Compiler
 
 		val agg = new AggressiveCompile(cacheFile)
 		agg(scalac, javac, sources, classpath, CompileOutput(classesDirectory), cache, None, options, javacOptions,
-		    analysisMap, definesClass, new LoggerReporter(maxErrors, log, sourcePositionMapper), order, skip)(log)
+		    analysisMap, definesClass, new LoggerReporter(maxErrors, log, sourcePositionMapper), order, skip, incOptions)(log)
 	}
 
 	private[sbt] def foldMappers[A](mappers: Seq[A => Option[A]]) =

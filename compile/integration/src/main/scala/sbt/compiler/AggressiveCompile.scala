@@ -11,6 +11,7 @@ import inc._
 	import classpath.ClasspathUtilities
 	import classfile.Analyze
 	import inc.Locate.DefinesClass
+	import inc.IncOptions
 	import CompileSetup._
 	import sbinary.DefaultProtocol.{ immutableMapFormat, immutableSetFormat, StringFormat }
 
@@ -21,7 +22,7 @@ import inc._
 
 final class CompileConfiguration(val sources: Seq[File], val classpath: Seq[File],
 	val previousAnalysis: Analysis, val previousSetup: Option[CompileSetup], val currentSetup: CompileSetup, val progress: Option[CompileProgress], val getAnalysis: File => Option[Analysis], val definesClass: DefinesClass,
-	val reporter: Reporter, val compiler: AnalyzingCompiler, val javac: xsbti.compile.JavaCompiler, val cache: GlobalsCache)
+	val reporter: Reporter, val compiler: AnalyzingCompiler, val javac: xsbti.compile.JavaCompiler, val cache: GlobalsCache, val incOptions: IncOptions)
 
 class AggressiveCompile(cacheFile: File)
 {
@@ -37,11 +38,12 @@ class AggressiveCompile(cacheFile: File)
 	    definesClass: DefinesClass = Locate.definesClass _,
 	    reporter: Reporter,
 	    compileOrder: CompileOrder = Mixed,
-	    skip: Boolean = false)(implicit log: Logger): Analysis =
+	    skip: Boolean = false,
+	    incrementalCompilerOptions: IncOptions)(implicit log: Logger): Analysis =
 	{
 		val setup = new CompileSetup(output, new CompileOptions(options, javacOptions), compiler.scalaInstance.actualVersion, compileOrder)
 		compile1(sources, classpath, setup, progress, store, analysisMap, definesClass,
-		    compiler, javac, reporter, skip, cache)
+		    compiler, javac, reporter, skip, cache, incrementalCompilerOptions)
 	}
 
 	def withBootclasspath(args: CompilerArguments, classpath: Seq[File]): Seq[File] =
@@ -56,14 +58,15 @@ class AggressiveCompile(cacheFile: File)
 		compiler: AnalyzingCompiler,
 		javac: xsbti.compile.JavaCompiler,
 		reporter: Reporter, skip: Boolean,
-		cache: GlobalsCache)(implicit log: Logger): Analysis =
+		cache: GlobalsCache,
+		incrementalCompilerOptions: IncOptions)(implicit log: Logger): Analysis =
 	{
 		val (previousAnalysis, previousSetup) = extract(store.get())
 		if(skip)
 			previousAnalysis
 		else {
 			val config = new CompileConfiguration(sources, classpath, previousAnalysis, previousSetup, setup,
-			    progress, analysis, definesClass, reporter, compiler, javac, cache)
+			    progress, analysis, definesClass, reporter, compiler, javac, cache, incrementalCompilerOptions)
 			val (modified, result) = compile2(config)
 			if(modified)
 				store.set(result, setup)
@@ -140,7 +143,7 @@ class AggressiveCompile(cacheFile: File)
 			case Some(previous) if equiv.equiv(previous, currentSetup) => previousAnalysis
 			case _ => Incremental.prune(sourcesSet, previousAnalysis)
 		}
-		IncrementalCompile(sourcesSet, entry, compile0, analysis, getAnalysis, output, log)
+		IncrementalCompile(sourcesSet, entry, compile0, analysis, getAnalysis, output, log, incOptions)
 	}
 	private[this] def outputDirectories(output: Output): Seq[File] = output match {
 		case single: SingleOutput => List(single.outputDirectory)
