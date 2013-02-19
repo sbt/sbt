@@ -1,7 +1,7 @@
 package sbt
 
 	import java.io.File
-	import java.util.regex.Pattern
+	import java.util.regex.{Pattern, PatternSyntaxException}
 
 	import complete.Parser
 	import complete.DefaultParsers._
@@ -42,13 +42,16 @@ object CommandUtil
 	def detail(selected: String, detailMap: Map[String, String]): String =
 		detailMap.get(selected) match
 		{
-			case Some(exactDetail) =>exactDetail
-			case None =>
+			case Some(exactDetail) => exactDetail
+			case None => try {
 				val details = searchHelp(selected, detailMap)
 				if(details.isEmpty)
 					"No matches for regular expression '" + selected + "'."
 				else
 					layoutDetails(details)
+			} catch {
+				case pse: PatternSyntaxException => error("Invalid regular expression (java.util.regex syntax).\n" + pse.getMessage)
+			}
 		}
 	def searchHelp(selected: String, detailMap: Map[String, String]): Map[String, String] =
 	{
