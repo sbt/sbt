@@ -105,7 +105,7 @@ One jar plugins
 ~~~~~~~~~~~~~~~
 
 -  sbt-assembly: https://github.com/sbt/sbt-assembly
--  xsbt-proguard-plugin: https://github.com/siasia/xsbt-proguard-plugin
+-  xsbt-proguard-plugin: https://github.com/adamw/xsbt-proguard-plugin
 -  sbt-deploy: https://github.com/reaktor/sbt-deploy
 -  sbt-appbundle (os x standalone): https://github.com/sbt/sbt-appbundle
 -  sbt-onejar (Packages your project using One-JAR™):
