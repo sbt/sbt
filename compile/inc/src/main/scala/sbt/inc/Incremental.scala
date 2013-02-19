@@ -12,10 +12,6 @@ import java.io.File
 
 object Incremental
 {
-	// to be configurable
-	final val TransitiveStep = 2
-	final val RecompileAllFraction = 0.5
-
 	def compile(sources: Set[File],
 	    entry: String => Option[File],
 	    previous: Analysis,
@@ -49,7 +45,7 @@ object Incremental
 		{
 			def debug(s: => String) = if (incDebug(options)) log.debug(s) else ()
 			val withPackageObjects = invalidatedRaw ++ invalidatedPackageObjects(invalidatedRaw, previous.relations)
-			val invalidated = expand(withPackageObjects, allSources, log)
+			val invalidated = expand(withPackageObjects, allSources, log, options)
 			val pruned = prune(invalidated, previous)
 			debug("********* Pruned: \n" + pruned.relations + "\n*********")
 			val fresh = doCompile(invalidated, binaryChanges)
@@ -58,7 +54,8 @@ object Incremental
 			debug("********* Merged: \n" + merged.relations + "\n*********")
 			val incChanges = changedIncremental(invalidated, previous.apis.internalAPI _, merged.apis.internalAPI _, options)
 			debug("Changes:\n" + incChanges)
-			val incInv = invalidateIncremental(merged.relations, incChanges, invalidated, cycleNum >= TransitiveStep, log)
+			val transitiveStep = options.transitiveStep
+			val incInv = invalidateIncremental(merged.relations, incChanges, invalidated, cycleNum >= transitiveStep, log)
 			cycle(incInv, allSources, emptyChanges, merged, doCompile, cycleNum+1, log, options)
 		}
 	private[this] def emptyChanges: DependencyChanges = new DependencyChanges {
@@ -66,12 +63,14 @@ object Incremental
 		val modifiedClasses = new Array[String](0)
 		def isEmpty = true
 	}
-	private[this] def expand(invalidated: Set[File], all: Set[File], log: Logger): Set[File] =
-		if(invalidated.size > all.size * RecompileAllFraction) {
-			log.debug("Recompiling all " + all.size + " sources: invalidated sources (" + invalidated.size + ") exceeded " + (RecompileAllFraction*100.0) + "% of all sources")
+	private[this] def expand(invalidated: Set[File], all: Set[File], log: Logger, options: IncOptions): Set[File] = {
+		val recompileAllFraction = options.recompileAllFraction
+		if(invalidated.size > all.size * recompileAllFraction) {
+			log.debug("Recompiling all " + all.size + " sources: invalidated sources (" + invalidated.size + ") exceeded " + (recompileAllFraction*100.0) + "% of all sources")
 			all ++ invalidated // need the union because all doesn't contain removed sources
 		}
 		else invalidated
+	}
 
 	// Package objects are fragile: if they depend on an invalidated source, get "class file needed by package is missing" error
 	//  This might be too conservative: we probably only need package objects for packages of invalidated sources.
