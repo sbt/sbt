@@ -16,6 +16,7 @@ package sbt
 	import Types._
 
 	import language.experimental.macros
+	import reflect.internal.annotations.compileTimeOnly
 
 sealed trait Scoped { def scope: Scope; val key: AttributeKey[_] }
 

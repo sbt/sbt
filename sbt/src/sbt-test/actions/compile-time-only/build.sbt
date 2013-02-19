@@ -1,0 +1,1 @@
+libraryDependencies += "org.scala-sbt" % "sbt" % sbtVersion.value

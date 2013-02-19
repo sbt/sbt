@@ -10,6 +10,7 @@ package std
 	import language.experimental.macros
 	import scala.reflect._
 	import reflect.macros._
+	import reflect.internal.annotations.compileTimeOnly
 
 /** Instance for the monad/applicative functor for plain Tasks. */
 object TaskInstance extends MonadInstance
@@ -220,39 +221,43 @@ object TaskMacro
 	}
 
 	sealed abstract class MacroValue[T] {
+		@compileTimeOnly("`value` can only be used within a task or setting macro, such as :=, +=, ++=, Def.task, or Def.setting.")
 		def value: T = macro std.TaskMacro.valueMacroImpl[T]
 	}
 
 	def valueMacroImpl[T: c.WeakTypeTag](c: Context): c.Expr[T] =
-		ContextUtil.selectMacroImpl[T,Any](c)( ts => InputWrapper.wrapKey[T](c)(ts) )
+		ContextUtil.selectMacroImpl[T,Any](c)( (ts,pos) => InputWrapper.wrapKey[T](c)(ts,pos) )
 
 	sealed abstract class RawParserInput[T] {
+		@compileTimeOnly("`parsed` can only be used within an input task macro, such as := or Def.inputTask.")
 		def parsed: T = macro std.TaskMacro.rawParserMacro[T]
 	}
 	sealed abstract class InitParserInput[T] {
+		@compileTimeOnly("`parsed` can only be used within an input task macro, such as := or Def.inputTask.")
 		def parsed: T = macro std.TaskMacro.initParserMacro[T]
 	}
 	sealed abstract class StateParserInput[T] {
+		@compileTimeOnly("`parsed` can only be used within an input task macro, such as := or Def.inputTask.")
 		def parsed: T = macro std.TaskMacro.stateParserMacro[T]
 	}
 
 	/** Implements `Parser[T].parsed` by wrapping the Parser with the ParserInput wrapper.*/
 	def rawParserMacro[T: c.WeakTypeTag](c: Context): c.Expr[T] =
-		ContextUtil.selectMacroImpl[T, Parser[T]](c) { p => c.universe.reify {
-			ParserInput.parser_\u2603\u2603[T](InputTask.parserAsInput(p.splice))
-		}}
+		ContextUtil.selectMacroImpl[T, Parser[T]](c) { (p,pos) =>
+			ParserInput.wrap[T](c)(c.universe.reify { InputTask.parserAsInput(p.splice) }, pos)
+		}
 
 	/** Implements the `Initialize[Parser[T]].parsed` macro by wrapping the input with the ParserInput wrapper.*/
 	def initParserMacro[T: c.WeakTypeTag](c: Context): c.Expr[T] =
-		ContextUtil.selectMacroImpl[T, Initialize[Parser[T]]](c) { t => c.universe.reify {
-			ParserInput.parser_\u2603\u2603[T](InputTask.initParserAsInput(t.splice))
-		}}
+		ContextUtil.selectMacroImpl[T, Initialize[Parser[T]]](c) { (t,pos) =>
+			ParserInput.wrap[T](c)(c.universe.reify { InputTask.initParserAsInput(t.splice) }, pos)
+		}
 
 	/** Implements the `Initialize[State => Parser[T]].parsed` macro by wrapping the input with the ParserInput wrapper.*/
 	def stateParserMacro[T: c.WeakTypeTag](c: Context): c.Expr[T] =
-		ContextUtil.selectMacroImpl[T, Initialize[State => Parser[T]]](c) { t => c.universe.reify {
-			ParserInput.parser_\u2603\u2603[T](t.splice)
-		}}
+		ContextUtil.selectMacroImpl[T, Initialize[State => Parser[T]]](c) { (t,pos) =>
+			ParserInput.wrap[T](c)(t, pos)
+		}
 
 	/** Implementation detail.  The method temporarily holds the input parser (as a Tree, at compile time) until the input task macro processes it. */
 	object ParserInput {
@@ -261,8 +266,11 @@ object TaskMacro
 		* The user should never see this method because it is compile-time only and only used internally by the task macros.*/
 		val WrapName = "parser_\u2603\u2603"
 
-		// This method should be annotated as compile-time only when that feature is implemented
+		@compileTimeOnly("`parsed` can only be used within an input task macro, such as := or Def.inputTask.")
 		def parser_\u2603\u2603[T](i: Initialize[State => Parser[T]]): T = error("This method is an implementation detail and should not be referenced.")
+
+		def wrap[T: c.WeakTypeTag](c: Context)(ts: c.Expr[Any], pos: c.Position): c.Expr[T] =
+			InputWrapper.wrapImpl[T,ParserInput.type](c, ParserInput, WrapName)(ts, pos)
 	}
 
 	def inputTaskMacroImpl[T: c.WeakTypeTag](c: Context)(t: c.Expr[T]): c.Expr[Initialize[InputTask[T]]] =

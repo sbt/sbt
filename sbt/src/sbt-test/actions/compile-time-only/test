@@ -1,0 +1,8 @@
+$ copy-file changes/A1.scala A.scala
+> compile
+
+$ copy-file changes/A2.scala A.scala
+-> compile
+
+$ copy-file changes/A3.scala A.scala
+-> compile
