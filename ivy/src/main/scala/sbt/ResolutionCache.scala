@@ -19,8 +19,7 @@ private[sbt] final class ResolutionCache(base: File) extends ResolutionCacheMana
 		val f = IvyPatternHelper.substitute(p, m.getOrganisation, m.getName, m.getBranch, m.getRevision, name, name, ext, null, null, m.getAttributes, null)
 		new File(base, f)
 	}
-	private[this] def reportBase(resolveId: String): File = 
-		new File(new File(base, ReportDirectory), resolveId)
+	private[this] val reportBase: File  =  new File(base, ReportDirectory)
 
 	def getResolutionCacheRoot: File = base
 	def clean() { IO.delete(base) }
@@ -30,10 +29,12 @@ private[sbt] final class ResolutionCache(base: File) extends ResolutionCacheMana
 		resolvedFileInCache(mrid, ResolvedName, "xml")
 	def getResolvedIvyPropertiesInCache(mrid: ModuleRevisionId): File =
 		resolvedFileInCache(mrid, ResolvedName, "properties")
+	// name needs to be the same as Ivy's default because the ivy-report.xsl stylesheet assumes this
+	//   when making links to reports for other configurations
 	def getConfigurationResolveReportInCache(resolveId: String, conf: String): File =
-		new File(reportBase(resolveId), "/" + conf + "-" + ResolvedName)
+		new File(reportBase, resolveId + "-" + conf + ".xml")
 	def getConfigurationResolveReportsInCache(resolveId: String): Array[File] =
-		IO.listFiles(reportBase(resolveId)).flatMap(d => IO.listFiles(d))
+		IO.listFiles(reportBase).filter(_.getName.startsWith(resolveId + "-"))
 }
 private[sbt] object ResolutionCache
 {
