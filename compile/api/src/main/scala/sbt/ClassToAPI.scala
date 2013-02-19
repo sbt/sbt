@@ -57,10 +57,10 @@ object ClassToAPI
 
 	def structure(c: Class[_], enclPkg: Option[String], cmap: ClassMap): (api.Structure, api.Structure) =
 	{
-		val methods = mergeMap(c, c.getMethods, c.getDeclaredMethods, methodToDef(enclPkg))
-		val fields = mergeMap(c, c.getFields, c.getDeclaredFields, fieldToDef(enclPkg))
-		val constructors = mergeMap(c, c.getConstructors, c.getDeclaredConstructors, constructorToDef(enclPkg))
-		val classes = merge[Class[_]](c, c.getClasses, c.getDeclaredClasses, toDefinitions(cmap), (_: Seq[Class[_]]).partition(isStatic), _.getEnclosingClass != c)
+		val methods = mergeMap(c, c.getDeclaredMethods, c.getMethods, methodToDef(enclPkg))
+		val fields = mergeMap(c, c.getDeclaredFields, c.getFields, fieldToDef(enclPkg))
+		val constructors = mergeMap(c, c.getDeclaredConstructors, c.getConstructors, constructorToDef(enclPkg))
+		val classes = merge[Class[_]](c, c.getDeclaredClasses, c.getClasses, toDefinitions(cmap), (_: Seq[Class[_]]).partition(isStatic), _.getEnclosingClass != c)
 		val all = (methods ++ fields ++ constructors ++ classes)
 		val parentTypes = parents(c)
 		val instanceStructure = new api.Structure(lzy(parentTypes.toArray), lzy(all.declared.toArray), lzy(all.inherited.toArray))
