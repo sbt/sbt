@@ -1,6 +1,8 @@
 package xsbti.compile;
 
 import java.io.File;
+import java.util.Map;
+
 import xsbti.Maybe;
 import xsbti.Reporter;
 
@@ -30,4 +32,16 @@ public interface Setup<Analysis>
 
 	/** The reporter that should be used to report scala compilation to. */
 	Reporter reporter();
+
+	/**
+	 * Returns incremental compiler options.
+	 *
+	 * @see sbt.inc.IncOptions for details
+	 *
+	 * You can get default options by calling <code>sbt.inc.IncOptions.toStringMap(sbt.inc.IncOptions.Default)</code>.
+	 *
+	 * In the future, we'll extend API in <code>xsbti</code> to provide factory methods that would allow to obtain
+	 * defaults values so one can depend on <code>xsbti</code> package only.
+	 **/
+	Map<String, String> incrementalCompilerOptions();
 }
