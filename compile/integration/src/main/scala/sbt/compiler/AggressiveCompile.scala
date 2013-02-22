@@ -47,7 +47,7 @@ class AggressiveCompile(cacheFile: File)
 	}
 
 	def withBootclasspath(args: CompilerArguments, classpath: Seq[File]): Seq[File] =
-		args.bootClasspathFor(classpath) ++ args.finishClasspath(classpath)
+		args.bootClasspathFor(classpath) ++ args.extClasspath ++ args.finishClasspath(classpath)
 
 	def compile1(sources: Seq[File],
 	    classpath: Seq[File],
