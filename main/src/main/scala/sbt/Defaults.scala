@@ -647,7 +647,7 @@ object Defaults extends BuildCommon
 	def consoleTask(classpath: TaskKey[Classpath], task: TaskKey[_]): Initialize[Task[Unit]] =
 		(compilers in task, classpath in task, scalacOptions in task, initialCommands in task, cleanupCommands in task, taskTemporaryDirectory in task, scalaInstance in task, streams) map {
 			(cs, cp, options, initCommands, cleanup, temp, si, s) =>
-				val loader = sbt.classpath.ClasspathUtilities.makeLoader(data(cp), si.loader, si, IO.createUniqueDirectory(temp))
+				val loader = sbt.classpath.ClasspathUtilities.makeLoader(data(cp), si, IO.createUniqueDirectory(temp))
 				(new Console(cs.scalac))(data(cp), options, loader, initCommands, cleanup)()(s.log).foreach(msg => error(msg))
 				println()
 		}

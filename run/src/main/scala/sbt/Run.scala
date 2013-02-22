@@ -59,7 +59,7 @@ class Run(instance: ScalaInstance, trapExit: Boolean, nativeTmp: File) extends S
 	private def run0(mainClassName: String, classpath: Seq[File], options: Seq[String], log: Logger)
 	{
 		log.debug("  Classpath:\n\t" + classpath.mkString("\n\t"))
-		val loader = ClasspathUtilities.makeLoader(classpath, instance.loader, instance, nativeTmp)
+		val loader = ClasspathUtilities.makeLoader(classpath, instance, nativeTmp)
 		val main = getMainMethod(mainClassName, loader)
 		invokeMain(loader, main, options)
 	}

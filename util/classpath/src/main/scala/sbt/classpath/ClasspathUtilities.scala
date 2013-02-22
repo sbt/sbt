@@ -42,12 +42,13 @@ object ClasspathUtilities
 		if (systemLoader ne null) parent(systemLoader)
 		else parent(getClass.getClassLoader)
 	}
+	lazy val xsbtiLoader = classOf[xsbti.Launcher].getClassLoader
 	
 	final val AppClassPath = "app.class.path"
 	final val BootClassPath = "boot.class.path"
 	
 	def createClasspathResources(classpath: Seq[File], instance: ScalaInstance): Map[String,String] =
-		createClasspathResources(classpath ++ instance.jars, instance.jars)
+		createClasspathResources(classpath, instance.jars)
 		
 	def createClasspathResources(appPaths: Seq[File], bootPaths: Seq[File]): Map[String, String] =
 	{
@@ -55,13 +56,19 @@ object ClasspathUtilities
 		Map( make(AppClassPath, appPaths), make(BootClassPath, bootPaths) )
 	}
 
-	def makeLoader[T](classpath: Seq[File], instance: ScalaInstance): ClassLoader =
-		makeLoader(classpath, instance.loader, instance)
+	private[sbt] def filterByClasspath(classpath: Seq[File], loader: ClassLoader): ClassLoader =
+		new ClasspathFilter(loader, xsbtiLoader, classpath.toSet)
 
-	def makeLoader[T](classpath: Seq[File], parent: ClassLoader, instance: ScalaInstance): ClassLoader =
+	def makeLoader(classpath: Seq[File], instance: ScalaInstance): ClassLoader =
+		filterByClasspath(classpath, makeLoader(classpath, instance.loader, instance))
+
+	def makeLoader(classpath: Seq[File], instance: ScalaInstance, nativeTemp: File): ClassLoader =
+		filterByClasspath(classpath, makeLoader(classpath, instance.loader, instance, nativeTemp))
+
+	def makeLoader(classpath: Seq[File], parent: ClassLoader, instance: ScalaInstance): ClassLoader =
 		toLoader(classpath, parent, createClasspathResources(classpath, instance))
 
-	def makeLoader[T](classpath: Seq[File], parent: ClassLoader, instance: ScalaInstance, nativeTemp: File): ClassLoader =
+	def makeLoader(classpath: Seq[File], parent: ClassLoader, instance: ScalaInstance, nativeTemp: File): ClassLoader =
 		toLoader(classpath, parent, createClasspathResources(classpath, instance), nativeTemp)
 
 	private[sbt] def printSource(c: Class[_]) =

@@ -5,7 +5,8 @@ package sbt
 package classpath
 
 import java.io.File
-import java.net.{URI, URL, URLClassLoader}
+import java.net.{URL, URLClassLoader}
+import annotation.tailrec
 
 /** This is a starting point for defining a custom ClassLoader.  Override 'doLoadClass' to define
 * loading a class that has not yet been loaded.*/
@@ -33,7 +34,7 @@ abstract class LoaderBase(urls: Seq[URL], parent: ClassLoader) extends URLClassL
 }
 
 /** Searches self first before delegating to the parent.*/
-class SelfFirstLoader(classpath: Seq[URL], parent: ClassLoader) extends LoaderBase(classpath, parent)
+final class SelfFirstLoader(classpath: Seq[URL], parent: ClassLoader) extends LoaderBase(classpath, parent)
 {
 	@throws(classOf[ClassNotFoundException])
 	override final def doLoadClass(className: String): Class[_] =
@@ -43,10 +44,51 @@ class SelfFirstLoader(classpath: Seq[URL], parent: ClassLoader) extends LoaderBa
 	}
 }
 
+/** Doesn't load any classes itself, but instead verifies that all classes loaded through `parent` either come from `root` or `classpath`.*/
+final class ClasspathFilter(parent: ClassLoader, root: ClassLoader, classpath: Set[File]) extends ClassLoader(parent)
+{
+	override def loadClass(className: String, resolve: Boolean): Class[_] =
+	{
+		val c = super.loadClass(className, resolve)
+		if(includeLoader(c.getClassLoader, root) || fromClasspath(c))
+			c
+		else
+			throw new ClassNotFoundException(className)
+	}
+	private[this] def fromClasspath(c: Class[_]): Boolean =
+		try { onClasspath(IO.classLocation(c)) }
+		catch { case e: RuntimeException => false }
+
+	private[this] def onClasspath(src: URL): Boolean =
+		(src eq null) || (
+			IO.urlAsFile(src) match {
+				case Some(f) => classpath(f)
+				case None => false
+			}
+		)
+
+	override def getResource(name: String): URL = {
+		val u = super.getResource(name)
+		if(onClasspath(u)) u else null
+	}
+
+	override def getResources(name: String): java.util.Enumeration[URL] =
+	{
+			import collection.convert.WrapAsScala.{enumerationAsScalaIterator => asIt}
+			import collection.convert.WrapAsJava.{asJavaEnumeration => asEn}
+		val us = super.getResources(name)
+		if(us ne null) asEn(asIt(us).filter(onClasspath)) else null
+	}
+
+	@tailrec private[this] def includeLoader(c: ClassLoader, base: ClassLoader): Boolean =
+		(base ne null) && (
+			(c eq base) || includeLoader(c, base.getParent)
+		)
+}
 
 /** Delegates class loading to `parent` for all classes included by `filter`.  An attempt to load classes excluded by `filter`
 * results in a `ClassNotFoundException`.*/
-class FilteredLoader(parent: ClassLoader, filter: ClassFilter) extends ClassLoader(parent)
+final class FilteredLoader(parent: ClassLoader, filter: ClassFilter) extends ClassLoader(parent)
 {
 	require(parent != null) // included because a null parent is legitimate in Java
 	def this(parent: ClassLoader, excludePackages: Iterable[String]) = this(parent, new ExcludePackagesFilter(excludePackages))
@@ -69,11 +111,11 @@ abstract class PackageFilter(packages: Iterable[String]) extends ClassFilter
 	require(packages.forall(_.endsWith(".")))
 	protected final def matches(className: String): Boolean = packages.exists(className.startsWith)
 }
-class ExcludePackagesFilter(exclude: Iterable[String]) extends PackageFilter(exclude)
+final class ExcludePackagesFilter(exclude: Iterable[String]) extends PackageFilter(exclude)
 {
 	def include(className: String): Boolean = !matches(className)
 }
-class IncludePackagesFilter(include: Iterable[String]) extends PackageFilter(include)
+final class IncludePackagesFilter(include: Iterable[String]) extends PackageFilter(include)
 {
 	def include(className: String): Boolean = matches(className)
 }
