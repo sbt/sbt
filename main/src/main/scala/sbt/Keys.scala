@@ -187,6 +187,7 @@ object Keys
 	val connectInput = SettingKey[Boolean]("connect-input", "If true, connects standard input when running a main class forked.", CSetting)
 	val javaHome = SettingKey[Option[File]]("java-home", "Selects the Java installation used for compiling and forking.  If None, uses the Java installation running the build.", ASetting)
 	val javaOptions = TaskKey[Seq[String]]("java-options", "Options passed to a new JVM when forking.", BPlusTask)
+	val envVars = TaskKey[Map[String,String]]("envVars", "Environment variables used when forking a new JVM", BTask)
 
 	// Test Keys
 	val testLoader = TaskKey[ClassLoader]("test-loader", "Provides the class loader used for testing.", DTask)

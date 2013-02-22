@@ -9,3 +9,10 @@ $ mkdir "forked"
 > run "forked"
 $ exists forked/flag
 $ absent flag
+$ delete forked/flag
+
+> 'set envVars += ("flag.name" -> "env.flag")'
+> run "forked"
+$ exists forked/env.flag
+$ absent flag
+$ absent forked/flag

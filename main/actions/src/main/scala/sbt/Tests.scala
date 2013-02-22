@@ -200,7 +200,11 @@ object Tests
 
 	sealed trait TestRunPolicy
 	case object InProcess extends TestRunPolicy
-	final case class SubProcess(javaOptions: Seq[String]) extends TestRunPolicy
+	final case class SubProcess(config: ForkOptions) extends TestRunPolicy
+	object SubProcess {
+		@deprecated("Construct SubProcess with a ForkOptions argument.", "0.13.0")
+		def apply(javaOptions: Seq[String]): SubProcess = SubProcess(ForkOptions(runJVMOptions = javaOptions))
+	}
 
 	final case class Group(name: String, tests: Seq[TestDefinition], runPolicy: TestRunPolicy)
 }

@@ -70,6 +70,7 @@ object Defaults extends BuildCommon
 		logBuffered :== false,
 		connectInput :== false,
 		cancelable :== false,
+		envVars :== Map.empty,
 		sourcesInBase :== true,
 		autoAPIMappings := false,
 		apiMappings := Map.empty,
@@ -378,10 +379,17 @@ object Defaults extends BuildCommon
 		val mod = tdef.fingerprint match { case f: SubclassFingerprint => f.isModule; case f: AnnotatedFingerprint => f.isModule; case _ => false }
 		extra.put(name.key, tdef.name).put(isModule, mod)
 	}
-	def singleTestGroup(key: Scoped): Initialize[Task[Seq[Tests.Group]]] =
-		((definedTests in key, fork in key, javaOptions in key) map {
-			(tests, fork, javaOpts) => Seq(new Tests.Group("<default>", tests, if (fork) Tests.SubProcess(javaOpts) else Tests.InProcess))
-		})
+	def singleTestGroup(key: Scoped): Initialize[Task[Seq[Tests.Group]]] = Def.task {
+		val tests = (definedTests in key).value
+		val fk = (fork in key).value
+		val opts = inTask(key, forkOptions).value
+		Seq(new Tests.Group("<default>", tests, if(fk) Tests.SubProcess(opts) else Tests.InProcess))
+	}
+	private[this] def forkOptions: Initialize[Task[ForkOptions]] = 
+		(baseDirectory, scalaInstance, javaOptions, outputStrategy, envVars, javaHome, connectInput) map {
+			(base, si, options, strategy, env, javaHomeDir, connectIn) =>
+				ForkOptions(scalaJars = si.jars, javaHome = javaHomeDir, connectInput = connectIn, outputStrategy = strategy, runJVMOptions = options, workingDirectory = Some(base), envVars = env)
+		}
 
 	def testExecutionTask(task: Scoped): Initialize[Task[Tests.Execution]] =
 			(testOptions in task, parallelExecution in task, tags in task) map {
@@ -445,8 +453,8 @@ object Defaults extends BuildCommon
 		val groupTasks = groups map {
 			case Tests.Group(name, tests, runPolicy) =>
 				runPolicy match {
-					case Tests.SubProcess(javaOpts) =>
-						ForkTests(frameworks.keys.toSeq, tests.toList, config, cp.files, javaHome, javaOpts, s.log) tag Tags.ForkedTestGroup
+					case Tests.SubProcess(opts) =>
+						ForkTests(frameworks.keys.toSeq, tests.toList, config, cp.files, opts, s.log) tag Tags.ForkedTestGroup
 					case Tests.InProcess =>
 						Tests(frameworks, loader, tests, config, s.log)
 				}
@@ -598,14 +606,11 @@ object Defaults extends BuildCommon
 	}
 
 	def runnerTask = runner <<= runnerInit
-	def runnerInit: Initialize[Task[ScalaRun]] =
-		(taskTemporaryDirectory, scalaInstance, baseDirectory, javaOptions, outputStrategy, fork, javaHome, trapExit, connectInput) map {
-			(tmp, si, base, options, strategy, forkRun, javaHomeDir, trap, connectIn) =>
-				if(forkRun) {
-					new ForkRun( ForkOptions(scalaJars = si.jars, javaHome = javaHomeDir, connectInput = connectIn, outputStrategy = strategy, runJVMOptions = options, workingDirectory = Some(base)) )
-				} else
-					new Run(si, trap, tmp)
-		}
+	def runnerInit: Initialize[Task[ScalaRun]] = Def.task {
+		val tmp = taskTemporaryDirectory.value
+		val si = scalaInstance.value
+		if(fork.value) new ForkRun(forkOptions.value) else new Run(si, trapExit.value, tmp)
+	}
 
 	@deprecated("Use `docTaskSettings` instead", "0.12.0")
 	def docSetting(key: TaskKey[File]) = docTaskSettings(key)

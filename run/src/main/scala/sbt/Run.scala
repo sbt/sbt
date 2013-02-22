@@ -13,15 +13,18 @@ trait ScalaRun
 {
 	def run(mainClass: String, classpath: Seq[File], options: Seq[String], log: Logger): Option[String]
 }
-class ForkRun(config: ForkScalaRun) extends ScalaRun
+class ForkRun(config: ForkOptions) extends ScalaRun
 {
+	@deprecated("Use the `ForkRun(ForkOptions) constructor`", "0.13.0")
+	def this(options: ForkScalaRun) = this(ForkOptions(options.javaHome, options.outputStrategy, options.scalaJars, options.workingDirectory, options.runJVMOptions, options.connectInput))
+
 	def run(mainClass: String, classpath: Seq[File], options: Seq[String], log: Logger): Option[String] =
 	{
 		log.info("Running " + mainClass + " " + options.mkString(" "))
 
 		val scalaOptions = classpathOption(classpath) ::: mainClass :: options.toList
-		val strategy = config.outputStrategy getOrElse LoggedOutput(log)
-		val process =  Fork.scala.fork(config.javaHome, config.runJVMOptions, config.scalaJars, scalaOptions, config.workingDirectory, config.connectInput, strategy)
+		val configLogged = if(config.outputStrategy.isDefined) config else config.copy(outputStrategy = Some(LoggedOutput(log)))
+		val process =  Fork.scala.fork(configLogged, scalaOptions)
 		def cancel() = {
 			log.warn("Run canceled.")
 			process.destroy()

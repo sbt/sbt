@@ -20,7 +20,7 @@ trait ForkScalaRun extends ForkScala
 	def workingDirectory: Option[File]
 	def runJVMOptions: Seq[String]
 }
-final case class ForkOptions(javaHome: Option[File] = None, outputStrategy: Option[OutputStrategy] = None, scalaJars: Iterable[File] = Nil, workingDirectory: Option[File] = None, runJVMOptions: Seq[String] = Nil, connectInput: Boolean = false) extends ForkScalaRun
+final case class ForkOptions(javaHome: Option[File] = None, outputStrategy: Option[OutputStrategy] = None, scalaJars: Iterable[File] = Nil, workingDirectory: Option[File] = None, runJVMOptions: Seq[String] = Nil, connectInput: Boolean = false, envVars: Map[String,String] = Map.empty) extends ForkScalaRun
 
 sealed abstract class OutputStrategy extends NotNull
 case object StdoutOutput extends OutputStrategy
@@ -45,16 +45,28 @@ object Fork
 		new File(new File(home, "bin"), name)
 	}
 
-	final class ForkJava(commandName: String) extends NotNull
+	final class ForkJava(commandName: String)
 	{
+		def apply(config: ForkOptions, arguments: Seq[String]): Int = fork(config, arguments).exitValue()
+		def fork(config: ForkOptions, arguments: Seq[String]): Process =
+			fork(config.javaHome, config.runJVMOptions ++ arguments, config.workingDirectory, config.envVars, config.connectInput, config.outputStrategy getOrElse StdoutOutput)
+		@deprecated("Use apply(ForkOptions, Seq[String])", "0.13.0")
 		def apply(javaHome: Option[File], options: Seq[String], log: Logger): Int =
 			apply(javaHome, options, BufferedOutput(log))
+
+		@deprecated("Use apply(ForkOptions, Seq[String])", "0.13.0")
 		def apply(javaHome: Option[File], options: Seq[String], outputStrategy: OutputStrategy): Int =
 			apply(javaHome, options, None, outputStrategy)
+
+		@deprecated("Use apply(ForkOptions, Seq[String])", "0.13.0")
 		def apply(javaHome: Option[File], options: Seq[String], workingDirectory: Option[File], log: Logger): Int =
 			apply(javaHome, options, workingDirectory, BufferedOutput(log))
+
+		@deprecated("Use apply(ForkOptions, Seq[String])", "0.13.0")
 		def apply(javaHome: Option[File], options: Seq[String], workingDirectory: Option[File], outputStrategy: OutputStrategy): Int =
 			apply(javaHome, options, workingDirectory, Map.empty, outputStrategy)
+
+		@deprecated("Use apply(ForkOptions, Seq[String])", "0.13.0")
 		def apply(javaHome: Option[File], options: Seq[String], workingDirectory: Option[File], env: Map[String, String], outputStrategy: OutputStrategy): Int =
 			fork(javaHome, options, workingDirectory, env, false, outputStrategy).exitValue
 		def fork(javaHome: Option[File], options: Seq[String], workingDirectory: Option[File], env: Map[String, String], connectInput: Boolean, outputStrategy: OutputStrategy): Process =
@@ -75,21 +87,35 @@ object Fork
 		}
 	}
 
-	final class ForkScala(mainClassName: String) extends NotNull
+	final class ForkScala(mainClassName: String)
 	{
+		def apply(options: ForkOptions, arguments: Seq[String]): Int = fork(options, arguments).exitValue()
+		def fork(options: ForkOptions, arguments: Seq[String]): Process =
+			fork(options.javaHome, options.runJVMOptions, options.scalaJars, arguments, options.workingDirectory, options.envVars, options.connectInput, options.outputStrategy getOrElse StdoutOutput)
+
+		@deprecated("Use apply(ForkOptions, Seq[String])", "0.13.0")
 		def apply(javaHome: Option[File], jvmOptions: Seq[String], scalaJars: Iterable[File], arguments: Seq[String], log: Logger): Int =
 			apply(javaHome, jvmOptions, scalaJars, arguments, None, BufferedOutput(log))
+
+		@deprecated("Use apply(ForkOptions, Seq[String])", "0.13.0")
 		def apply(javaHome: Option[File], jvmOptions: Seq[String], scalaJars: Iterable[File], arguments: Seq[String], workingDirectory: Option[File], log: Logger): Int =
 			apply(javaHome, jvmOptions, scalaJars, arguments, workingDirectory, BufferedOutput(log))
+
+		@deprecated("Use apply(ForkOptions, Seq[String])", "0.13.0")
 		def apply(javaHome: Option[File], jvmOptions: Seq[String], scalaJars: Iterable[File], arguments: Seq[String], workingDirectory: Option[File], outputStrategy: OutputStrategy): Int =
 			fork(javaHome, jvmOptions, scalaJars, arguments, workingDirectory, false, outputStrategy).exitValue()
+
+		@deprecated("Use fork(ForkOptions, Seq[String])", "0.13.0")
 		def fork(javaHome: Option[File], jvmOptions: Seq[String], scalaJars: Iterable[File], arguments: Seq[String], workingDirectory: Option[File], connectInput: Boolean, outputStrategy: OutputStrategy): Process =
+			fork(javaHome, jvmOptions, scalaJars, arguments, workingDirectory, connectInput, outputStrategy)
+
+		def fork(javaHome: Option[File], jvmOptions: Seq[String], scalaJars: Iterable[File], arguments: Seq[String], workingDirectory: Option[File], env: Map[String,String], connectInput: Boolean, outputStrategy: OutputStrategy): Process =
 		{
 			if(scalaJars.isEmpty) error("Scala jars not specified")
 			val scalaClasspathString = "-Xbootclasspath/a:" + scalaJars.map(_.getAbsolutePath).mkString(File.pathSeparator)
 			val mainClass = if(mainClassName.isEmpty) Nil else mainClassName :: Nil
 			val options = jvmOptions ++ (scalaClasspathString :: mainClass ::: arguments.toList)
-			Fork.java.fork(javaHome, options, workingDirectory, Map.empty, connectInput, outputStrategy)
+			Fork.java.fork(javaHome, options, workingDirectory, env, connectInput, outputStrategy)
 		}
 	}
 }

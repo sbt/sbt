@@ -11,7 +11,7 @@ import Tests.{Output => TestOutput, _}
 import ForkMain._
 
 private[sbt] object ForkTests {
-	def apply(frameworks: Seq[TestFramework], tests: List[TestDefinition], config: Execution, classpath: Seq[File], javaHome: Option[File], javaOpts: Seq[String], log: Logger): Task[TestOutput]  = {
+	def apply(frameworks: Seq[TestFramework], tests: List[TestDefinition], config: Execution, classpath: Seq[File], fork: ForkOptions, log: Logger): Task[TestOutput]  = {
 		val opts = config.options.toList
 		val listeners = opts flatMap {
 			case Listeners(ls) => ls
@@ -75,8 +75,8 @@ private[sbt] object ForkTests {
 					new Thread(Acceptor).start()
 
 					val fullCp = classpath ++: Seq(IO.classLocationFile[ForkMain], IO.classLocationFile[Framework])
-					val options = javaOpts ++: Seq("-classpath", fullCp mkString File.pathSeparator, classOf[ForkMain].getCanonicalName, server.getLocalPort.toString)
-					val ec = Fork.java(javaHome, options, StdoutOutput)
+					val options = Seq("-classpath", fullCp mkString File.pathSeparator, classOf[ForkMain].getCanonicalName, server.getLocalPort.toString)
+					val ec = Fork.java(fork, options)
 					val result =
 						if (ec != 0)
 							(TestResult.Error, Map("Running java with options " + options.mkString(" ") + " failed with exit code " + ec -> TestResult.Error))

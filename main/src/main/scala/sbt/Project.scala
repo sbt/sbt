@@ -435,6 +435,13 @@ trait ProjectExtra
 	def inScope(scope: Scope)(ss: Seq[Setting[_]]): Seq[Setting[_]] =
 		Project.transform(Scope.replaceThis(scope), ss)
 
+	private[sbt] def inConfig[T](conf: Configuration, i: Initialize[T]): Initialize[T] =
+		inScope(ThisScope.copy(config = Select(conf)), i)
+	private[sbt] def inTask[T](t: Scoped, i: Initialize[T]): Initialize[T] =
+		inScope(ThisScope.copy(task = Select(t.key)), i)
+	private[sbt] def inScope[T](scope: Scope, i: Initialize[T]): Initialize[T] =
+		i mapReferenced Project.mapScope(Scope.replaceThis(scope))
+
 	/** Creates a new Project.  This is a macro that expects to be assigned directly to a val.
 	* The name of the val is used as the project ID and the name of the base directory of the project. */
 	def project: Project = macro Project.projectMacroImpl
