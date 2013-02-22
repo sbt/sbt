@@ -256,9 +256,9 @@ object ClassToAPI
 	val ThisRef = new api.This
 
 	val Public = new api.Public
+	val Unqualified = new api.Unqualified
 	val Private = new api.Private(Unqualified)
 	val Protected = new api.Protected(Unqualified)
-	val Unqualified = new api.Unqualified
 	def packagePrivate(pkg: Option[String]): api.Access = new api.Private(new api.IdQualifier(pkg getOrElse ""))
 
 	val ArrayRef = reference("scala.Array")
