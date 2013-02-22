@@ -128,7 +128,7 @@ private final class AnalysisCallback(internalMap: File => Option[File], external
 
 	def api(sourceFile: File, source: SourceAPI) {
 		import xsbt.api.{APIUtil, HashAPI}
-		if (APIUtil.hasMacro(source)) macroSources += sourceFile
+		if (APIUtil.isScalaSourceName(sourceFile.getName) && APIUtil.hasMacro(source)) macroSources += sourceFile
 		val shouldMinimize = !Incremental.apiDebug(options)
 		val savedSource = if (shouldMinimize) APIUtil.minimize(source) else source
 		apis(sourceFile) = (HashAPI(source), savedSource)
