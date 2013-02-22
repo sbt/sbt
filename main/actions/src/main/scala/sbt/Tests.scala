@@ -91,8 +91,8 @@ object Tests
 			log.warn("Arguments defined for test frameworks that are not present:\n\t" + undefinedFrameworks.mkString("\n\t"))
 
 		def includeTest(test: TestDefinition) = !excludeTestsSet.contains(test.name) && testFilters.forall(filter => filter(test.name))
-		val filtered0 = discovered.filter(includeTest).distinct
-		val tests = if(orderedFilters.isEmpty) filtered0 else orderedFilters.flatMap(f => filtered0.filter(d => f(d.name))).distinct
+		val filtered0 = discovered.filter(includeTest).toList.distinct
+		val tests = if(orderedFilters.isEmpty) filtered0 else orderedFilters.flatMap(f => filtered0.filter(d => f(d.name))).toList.distinct
 		val arguments = testArgsByFramework.map { case (k,v) => (k, v.toList) } toMap;
 		testTask(frameworks.values.toSeq, testLoader, tests, setup.readOnly, cleanup.readOnly, log, testListeners.readOnly, arguments, config)
 	}
