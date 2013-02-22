@@ -13,8 +13,15 @@ public interface ScalaProvider
 	public ClassLoader loader();
 	/** Returns the scala-library.jar and scala-compiler.jar for this version of Scala. */
 	public File[] jars();
+
+	/**@deprecated Only `jars` can be reliably provided for modularized Scala. (Since 0.13.0) */
+	@Deprecated
 	public File libraryJar();
+
+	/**@deprecated Only `jars` can be reliably provided for modularized Scala. (Since 0.13.0) */
+	@Deprecated
 	public File compilerJar();
+
 	/** Creates an application provider that will use 'loader()' as the parent ClassLoader for
 	* the application given by 'id'.  This method will retrieve the application if it has not already
 	* been retrieved.*/

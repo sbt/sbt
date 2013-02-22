@@ -56,9 +56,11 @@ final class ClasspathFilter(parent: ClassLoader, root: ClassLoader, classpath: S
 			throw new ClassNotFoundException(className)
 	}
 	private[this] def fromClasspath(c: Class[_]): Boolean =
-		try { onClasspath(IO.classLocation(c)) }
-		catch { case e: RuntimeException => false }
-
+	{
+		val codeSource = c.getProtectionDomain.getCodeSource
+		(codeSource eq null) ||
+			onClasspath(codeSource.getLocation)
+	}
 	private[this] def onClasspath(src: URL): Boolean =
 		(src eq null) || (
 			IO.urlAsFile(src) match {

@@ -647,7 +647,8 @@ object Defaults extends BuildCommon
 	def consoleTask(classpath: TaskKey[Classpath], task: TaskKey[_]): Initialize[Task[Unit]] =
 		(compilers in task, classpath in task, scalacOptions in task, initialCommands in task, cleanupCommands in task, taskTemporaryDirectory in task, scalaInstance in task, streams) map {
 			(cs, cp, options, initCommands, cleanup, temp, si, s) =>
-				val loader = sbt.classpath.ClasspathUtilities.makeLoader(data(cp), si, IO.createUniqueDirectory(temp))
+				val fullcp = (data(cp) ++ si.jars).distinct
+				val loader = sbt.classpath.ClasspathUtilities.makeLoader(fullcp, si, IO.createUniqueDirectory(temp))
 				(new Console(cs.scalac))(data(cp), options, loader, initCommands, cleanup)()(s.log).foreach(msg => error(msg))
 				println()
 		}
@@ -1027,12 +1028,20 @@ object Classpaths
 		val depsUpdated = transitiveUpdate.value.exists(!_.stats.cached)
 		val isRoot = executionRoots.value contains resolvedScoped.value
 		val s = streams.value
-		val si = Defaults.unmanagedScalaInstanceOnly.value.map(si => (si, scalaOrganization.value))
+		val subScalaJars: Seq[File] = Defaults.unmanagedScalaInstanceOnly.value match {
+			case Some(si) => si.jars
+			case None =>
+				val scalaProvider = appConfiguration.value.provider.scalaProvider
+				// substitute the Scala jars from the provider so that when the provider's loader is used,
+				// the jars on the classpath match the jars used by the loader
+				if(scalaProvider.version == scalaVersion.value) scalaProvider.jars else Nil
+		}
+		val transform: UpdateReport => UpdateReport = if(subScalaJars.isEmpty) idFun else r => substituteScalaFiles(subScalaJars, scalaOrganization.value, r)
 		val show = Reference.display(thisProjectRef.value)
-		cachedUpdate(s.cacheDirectory, show, ivyModule.value, updateConfiguration.value, si, skip = (skip in update).value, force = isRoot, depsUpdated = depsUpdated, log = s.log)
+		cachedUpdate(s.cacheDirectory, show, ivyModule.value, updateConfiguration.value, transform, skip = (skip in update).value, force = isRoot, depsUpdated = depsUpdated, log = s.log)
 	}
 
-	def cachedUpdate(cacheFile: File, label: String, module: IvySbt#Module, config: UpdateConfiguration, scalaInstance: Option[(ScalaInstance, String)], skip: Boolean, force: Boolean, depsUpdated: Boolean, log: Logger): UpdateReport =
+	def cachedUpdate(cacheFile: File, label: String, module: IvySbt#Module, config: UpdateConfiguration, transform: UpdateReport=>UpdateReport, skip: Boolean, force: Boolean, depsUpdated: Boolean, log: Logger): UpdateReport =
 	{
 		implicit val updateCache = updateIC
 		type In = IvyConfiguration :+: ModuleSettings :+: UpdateConfiguration :+: HNil
@@ -1040,7 +1049,7 @@ object Classpaths
 			log.info("Updating " + label + "...")
 			val r = IvyActions.update(module, config, log)
 			log.info("Done updating.")
-			scalaInstance match { case Some((si,scalaOrg)) => substituteScalaFiles(si, scalaOrg, r); case None => r }
+			transform(r)
 		}
 		def uptodate(inChanged: Boolean, out: UpdateReport): Boolean =
 			!force &&
@@ -1263,6 +1272,7 @@ object Classpaths
 	def unmanagedScalaLibrary: Initialize[Task[Seq[File]]] =
 		Def.taskDyn {
 			if(autoScalaLibrary.value && scalaHome.value.isDefined)
+				// TODO: what goes here when Scala library is modularized?
 				Def.task { scalaInstance.value.libraryJar :: Nil }
 			else
 				Def.task { Nil }
@@ -1293,23 +1303,21 @@ object Classpaths
 	@deprecated("Doesn't properly handle non-standard Scala organizations.", "0.13.0")
 	def substituteScalaFiles(scalaInstance: ScalaInstance, report: UpdateReport): UpdateReport =
 		substituteScalaFiles(scalaInstance, ScalaArtifacts.Organization, report)
-	def substituteScalaFiles(scalaInstance: ScalaInstance, ScalaOrg: String, report: UpdateReport): UpdateReport =
-	{
-		val scalaJars = scalaInstance.jars
+
+	@deprecated("Directly provide the jar files.", "0.13.0")
+	def substituteScalaFiles(scalaInstance: ScalaInstance, scalaOrg: String, report: UpdateReport): UpdateReport =
+		substituteScalaFiles(scalaInstance.jars, scalaOrg, report)
+		
+	def substituteScalaFiles(scalaJars: Seq[File], scalaOrg: String, report: UpdateReport): UpdateReport =
 		report.substitute { (configuration, module, arts) =>
 			import ScalaArtifacts._
-			(module.organization, module.name) match
-			{
-				case (ScalaOrg, LibraryID) => (Artifact(LibraryID), scalaInstance.libraryJar) :: Nil
-				case (ScalaOrg, CompilerID) => (Artifact(CompilerID), scalaInstance.compilerJar) :: Nil
-				case (ScalaOrg, id) =>
-					val jarName = id + ".jar"
-					val replaceWith = scalaJars.filter(_.getName == jarName).map(f => (Artifact(f.getName), f))
-					if(replaceWith.isEmpty) arts else replaceWith
-				case _ => arts
-			}
+			if(module.organization == scalaOrg) {
+				val jarName = module.name + ".jar"
+				val replaceWith = scalaJars.filter(_.getName == jarName).map(f => (Artifact(f.getName.stripSuffix(".jar")), f))
+				if(replaceWith.isEmpty) arts else replaceWith
+			} else
+				arts
 		}
-	}
 
 		// try/catch for supporting earlier launchers
 	def bootIvyHome(app: xsbti.AppConfiguration): Option[File] =
