@@ -58,13 +58,8 @@ object DotGraph
 		IO.writeLines(file, lines)
 	}
 	def sourceToString(roots: Iterable[File], source: File) =
-	{
-		val rawName = relativized(roots, source).trim
-		if(rawName.endsWith(".scala"))
-			rawName.substring(0, rawName.length - ".scala".length)
-		else
-			rawName
-	}
+		relativized(roots, source).trim.stripSuffix(".scala").stripSuffix(".java")
+
 	private def relativized(roots: Iterable[File], path: File): String =
 	{
 		val relativized = roots.flatMap(root => Path.relativize(root, path))
