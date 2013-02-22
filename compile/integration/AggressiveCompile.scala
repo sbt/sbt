@@ -32,7 +32,7 @@ class AggressiveCompile(cacheFile: File)
 	}
 
 	def withBootclasspath(args: CompilerArguments, classpath: Seq[File]): Seq[File] =
-		args.bootClasspathFor(classpath) ++ args.finishClasspath(classpath)
+		args.bootClasspathFor(classpath) ++ args.extClasspath ++ args.finishClasspath(classpath)
 
 	def compile1(sources: Seq[File], classpath: Seq[File], setup: CompileSetup, store: AnalysisStore, analysis: File => Option[Analysis], definesClass: DefinesClass, compiler: AnalyzingCompiler, javac: xsbti.compile.JavaCompiler, maxErrors: Int, skip: Boolean, cache: GlobalsCache)(implicit log: Logger): Analysis =
 	{

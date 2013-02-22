@@ -29,9 +29,9 @@ final class CompilerArguments(scalaInstance: xsbti.compile.ScalaInstance, cp: xs
 	}
 	def finishClasspath(classpath: Seq[File]): Seq[File] =
 		filterLibrary(classpath) ++ include(cp.compiler, scalaInstance.compilerJar) ++ include(cp.extra, scalaInstance.otherJars : _*)
-	private def include(flag: Boolean, jars: File*) = if(flag) jars else Nil
-	protected def abs(files: Seq[File]) = files.map(_.getAbsolutePath).sortWith(_ < _)
-	protected def checkScalaHomeUnset()
+	private[this] def include(flag: Boolean, jars: File*) = if(flag) jars else Nil
+	private[this] def abs(files: Seq[File]) = files.map(_.getAbsolutePath).sortWith(_ < _)
+	private[this] def checkScalaHomeUnset()
 	{
 		val scalaHome = System.getProperty("scala.home")
 		assert((scalaHome eq null) || scalaHome.isEmpty, "'scala.home' should not be set (was " + scalaHome + ")")
@@ -59,6 +59,9 @@ final class CompilerArguments(scalaInstance: xsbti.compile.ScalaInstance, cp: xs
 	def bootClasspathOption(addLibrary: Boolean) = if(cp.autoBoot) Seq(BootClasspathOption, createBootClasspath(addLibrary)) else Nil
 	def bootClasspath(addLibrary: Boolean) = if(cp.autoBoot) IO.parseClasspath(createBootClasspath(addLibrary)) else Nil
 	def bootClasspathFor(classpath: Seq[File]) = bootClasspath(hasLibrary(classpath))
+
+		import Path._
+	def extClasspath: Seq[File] = ( IO.parseClasspath(System.getProperty("java.ext.dirs")) * "*.jar" ).get
 }
 object CompilerArguments
 {
