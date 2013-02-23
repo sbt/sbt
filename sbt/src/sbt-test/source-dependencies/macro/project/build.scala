@@ -3,8 +3,7 @@ import Keys._
 
 object build extends Build {
 	val defaultSettings = Seq(
-		scalaVersion := "2.10.0-M2",
-		scalacOptions += "-Xmacros"
+		libraryDependencies <+= scalaVersion("org.scala-lang" % "scala-reflect" % _ )
 	)
 
 	lazy val root = Project(
