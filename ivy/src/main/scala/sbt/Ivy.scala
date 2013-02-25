@@ -478,10 +478,10 @@ private object IvySbt
 		{
 			def check(found: NodeSeq, expected: String, label: String) =
 				if(found.isEmpty)
-					error("Missing " + label + " in inline Ivy XML.")
+					sys.error("Missing " + label + " in inline Ivy XML.")
 				else {
 					val str = found.text
-					if(str != expected) error("Inconsistent " + label + " in inline Ivy XML.  Expected '" + expected + "', got '" + str + "'")
+					if(str != expected) sys.error("Inconsistent " + label + " in inline Ivy XML.  Expected '" + expected + "', got '" + str + "'")
 				}
 			check(info \ "@organisation", module.organization, "organisation")
 			check(info \ "@module", module.name, "name")
@@ -637,7 +637,7 @@ private object IvySbt
 		md match
 		{
 			case dmd: DefaultModuleDescriptor => dmd
-			case _ => error("Unknown ModuleDescriptor type.")
+			case _ => sys.error("Unknown ModuleDescriptor type.")
 		}
 	def getConfigurations(module: ModuleDescriptor, configurations: Option[Iterable[Configuration]]) =
 		configurations match
