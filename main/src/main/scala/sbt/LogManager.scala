@@ -17,7 +17,7 @@ object LogManager
 {
 	def construct(data: Settings[Scope], state: State) = (task: ScopedKey[_], to: PrintWriter) =>
 	{
-		val manager = logManager in task.scope get data getOrElse defaultManager(StandardMain.console)
+		val manager = logManager in task.scope get data getOrElse defaultManager(state.globalLogging.console)
 		manager(data, state, task, to)
 	}
 	@deprecated("Use defaultManager to explicitly specify standard out.", "0.13.0")
@@ -33,7 +33,7 @@ object LogManager
 
 	def withScreenLogger(mk: (ScopedKey[_], State) => AbstractLogger): LogManager = withLoggers(screen = mk)
 	
-	def withLoggers(screen: (ScopedKey[_], State) => AbstractLogger = (sk, s) => defaultScreen(StandardMain.console),
+	def withLoggers(screen: (ScopedKey[_], State) => AbstractLogger = (sk, s) => defaultScreen(s.globalLogging.console),
 		backed: PrintWriter => AbstractLogger = defaultBacked(),
 		extra: ScopedKey[_] => Seq[AbstractLogger] = _ => Nil): LogManager = new LogManager {
 			def apply(data: Settings[Scope], state: State, task: ScopedKey[_], to: PrintWriter): Logger =

@@ -17,18 +17,21 @@ object MainLogging
 		backed setTrace backingTrace
 		multi: Logger
 	}
+
+	@deprecated("Explicitly specify the console output.", "0.13.0")	
 	def globalDefault(writer: PrintWriter, backing: GlobalLogBacking): GlobalLogging =
-		globalDefault(writer, backing, ConsoleLogger.systemOut)
+		globalDefault(writer, backing, ConsoleOut.systemOut)
+
 	def globalDefault(writer: PrintWriter, backing: GlobalLogBacking, console: ConsoleOut): GlobalLogging =
 	{
 		val backed = defaultBacked()(writer)
 		val full = multiLogger(defaultMultiConfig(console, backed ) )
-		GlobalLogging(full, backed, backing)
+		GlobalLogging(full, console, backed, backing)
 	}
 
 	@deprecated("Explicitly specify the console output.", "0.13.0")
 	def defaultMultiConfig(backing: AbstractLogger): MultiLoggerConfig =
-		defaultMultiConfig(ConsoleLogger.systemOut, backing)
+		defaultMultiConfig(ConsoleOut.systemOut, backing)
 	def defaultMultiConfig(console: ConsoleOut, backing: AbstractLogger): MultiLoggerConfig =
 		new MultiLoggerConfig(defaultScreen(console, ConsoleLogger.noSuppressedMessage), backing, Nil, Level.Info, Level.Debug, -1, Int.MaxValue)
 
@@ -43,7 +46,7 @@ object MainLogging
 		ConsoleLogger(console, suppressedMessage = suppressedMessage)
 	
 	def defaultBacked(useColor: Boolean = ConsoleLogger.formatEnabled): PrintWriter => ConsoleLogger =
-		to => ConsoleLogger(ConsoleLogger.printWriterOut(to), useColor = useColor)
+		to => ConsoleLogger(ConsoleOut.printWriterOut(to), useColor = useColor)
 }
 
 final case class MultiLoggerConfig(console: AbstractLogger, backed: AbstractLogger, extra: List[AbstractLogger],
