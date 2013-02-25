@@ -7,54 +7,26 @@ package sbt
 
 object ConsoleLogger
 {
-	def systemOut: ConsoleOut = printStreamOut(System.out)
-	def overwriteContaining(s: String): (String,String) => Boolean = (cur, prev) =>
-		cur.contains(s) && prev.contains(s)
+	@deprecated("Moved to ConsoleOut", "0.13.0")
+	def systemOut: ConsoleOut = ConsoleOut.systemOut
 
-	/** ConsoleOut instance that is backed by System.out.  It overwrites the previously printed line
-	* if the function `f(lineToWrite, previousLine)` returns true.
-	*
-	* The ConsoleOut returned by this method assumes that the only newlines are from println calls
-	* and not in the String arguments. */
-	def systemOutOverwrite(f: (String,String) => Boolean): ConsoleOut = new ConsoleOut {
-		val lockObject = System.out
-		private[this] var last: Option[String] = None
-		private[this] var current = new java.lang.StringBuffer
-		def print(s: String): Unit = synchronized { current.append(s) }
-		def println(s: String): Unit = synchronized { current.append(s); println() }
-		def println(): Unit = synchronized {
-			val s = current.toString
-			if(formatEnabled && last.exists(lmsg => f(s, lmsg)))
-				System.out.print(OverwriteLine)
-			System.out.println(s)
-			last = Some(s)
-			current = new java.lang.StringBuffer
-		}
-	}
-	def printStreamOut(out: PrintStream): ConsoleOut = new ConsoleOut {
-		val lockObject = out
-		def print(s: String) = out.print(s)
-		def println(s: String) = out.println(s)
-		def println() = out.println()
-	}
-	def printWriterOut(out: PrintWriter): ConsoleOut = new ConsoleOut {
-		val lockObject = out
-		def print(s: String) = out.print(s)
-		def println(s: String) = { out.println(s); out.flush() }
-		def println() = { out.println(); out.flush() }
-	}
-	def bufferedWriterOut(out: BufferedWriter): ConsoleOut = new ConsoleOut {
-		val lockObject = out
-		def print(s: String) = out.write(s)
-		def println(s: String) = { out.write(s); println() }
-		def println() = { out.newLine(); out.flush() }
-	}
+	@deprecated("Moved to ConsoleOut", "0.13.0")
+	def overwriteContaining(s: String): (String,String) => Boolean = ConsoleOut.overwriteContaining(s)
+
+	@deprecated("Moved to ConsoleOut", "0.13.0")
+	def systemOutOverwrite(f: (String,String) => Boolean): ConsoleOut = ConsoleOut.systemOutOverwrite(f)
+
+	@deprecated("Moved to ConsoleOut", "0.13.0")
+	def printStreamOut(out: PrintStream): ConsoleOut = ConsoleOut.printStreamOut(out)
+
+	@deprecated("Moved to ConsoleOut", "0.13.0")
+	def printWriterOut(out: PrintWriter): ConsoleOut = ConsoleOut.printWriterOut(out)
+
+	@deprecated("Moved to ConsoleOut", "0.13.0")
+	def bufferedWriterOut(out: BufferedWriter): ConsoleOut = bufferedWriterOut(out)
 
 	/** Escape character, used to introduce an escape sequence. */
 	final val ESC = '\u001B'
-
-	/** Move to beginning of previous line and clear the line. */
-	private[sbt] final val OverwriteLine = "\r\u001BM\u001B[2K"
 
 	/** An escape terminator is a character in the range `@` (decimal value 64) to `~` (decimal value 126). 
 	* It is the final character in an escape sequence. */
@@ -120,9 +92,9 @@ object ConsoleLogger
 	private[this] def os = System.getProperty("os.name")
 	private[this] def isWindows = os.toLowerCase.indexOf("windows") >= 0
 	
-	def apply(out: PrintStream): ConsoleLogger = apply(printStreamOut(out))
-	def apply(out: PrintWriter): ConsoleLogger = apply(printWriterOut(out))
-	def apply(out: ConsoleOut = systemOut, ansiCodesSupported: Boolean = formatEnabled,
+	def apply(out: PrintStream): ConsoleLogger = apply(ConsoleOut.printStreamOut(out))
+	def apply(out: PrintWriter): ConsoleLogger = apply(ConsoleOut.printWriterOut(out))
+	def apply(out: ConsoleOut = ConsoleOut.systemOut, ansiCodesSupported: Boolean = formatEnabled,
 		useColor: Boolean = formatEnabled, suppressedMessage: SuppressedTraceContext => Option[String] = noSuppressedMessage): ConsoleLogger =
 			new ConsoleLogger(out, ansiCodesSupported, useColor, suppressedMessage)
 
@@ -200,10 +172,3 @@ class ConsoleLogger private[ConsoleLogger](val out: ConsoleOut, override val ans
 		{ log(labelColor(Level.Info), Level.Info.toString, BLUE, message) }
 }
 final class SuppressedTraceContext(val traceLevel: Int, val useColor: Boolean)
-sealed trait ConsoleOut
-{
-	val lockObject: AnyRef
-	def print(s: String): Unit
-	def println(s: String): Unit
-	def println(): Unit
-}
