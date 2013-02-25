@@ -49,7 +49,7 @@ object MainLoop
 	def runWithNewLog(state: State, logBacking: GlobalLogBacking): RunNext =
 		Using.fileWriter(append = true)(logBacking.file) { writer =>
 			val out = new java.io.PrintWriter(writer)
-			val loggedState = state.copy(globalLogging = logBacking.newLogger(out, logBacking))
+			val loggedState = state.copy(globalLogging = state.globalLogging.newLogger(out, logBacking))
 			try run(loggedState) finally out.close()
 		}
 	sealed trait RunNext

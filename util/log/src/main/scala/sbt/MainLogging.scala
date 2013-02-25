@@ -18,15 +18,14 @@ object MainLogging
 		multi: Logger
 	}
 
-	@deprecated("Explicitly specify the console output.", "0.13.0")	
-	def globalDefault(writer: PrintWriter, backing: GlobalLogBacking): GlobalLogging =
-		globalDefault(writer, backing, ConsoleOut.systemOut)
-
-	def globalDefault(writer: PrintWriter, backing: GlobalLogBacking, console: ConsoleOut): GlobalLogging =
+	def globalDefault(console: ConsoleOut): (PrintWriter, GlobalLogBacking) => GlobalLogging =
 	{
-		val backed = defaultBacked()(writer)
-		val full = multiLogger(defaultMultiConfig(console, backed ) )
-		GlobalLogging(full, console, backed, backing)
+		lazy val f: (PrintWriter, GlobalLogBacking) => GlobalLogging = (writer, backing) => {
+			val backed = defaultBacked()(writer)
+			val full = multiLogger(defaultMultiConfig(console, backed ) )
+			GlobalLogging(full, console, backed, backing, f)
+		}
+		f
 	}
 
 	@deprecated("Explicitly specify the console output.", "0.13.0")

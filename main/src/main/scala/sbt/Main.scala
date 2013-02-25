@@ -52,7 +52,7 @@ object StandardMain
 	val console = ConsoleOut.systemOutOverwrite(ConsoleOut.overwriteContaining("Resolving "))
 
 	def initialGlobalLogging: GlobalLogging =
-		GlobalLogging.initial((pw, glb) => MainLogging.globalDefault(pw,glb,console), File.createTempFile("sbt",".log"), console)
+		GlobalLogging.initial(MainLogging.globalDefault(console), File.createTempFile("sbt",".log"), console)
 
 	def initialState(configuration: xsbti.AppConfiguration, initialDefinitions: Seq[Command], preCommands: Seq[String]): State =
 	{
