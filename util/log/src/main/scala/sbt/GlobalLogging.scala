@@ -9,9 +9,9 @@ package sbt
 *
 * `full` is the current global logger.  It should not be set directly because it is generated as needed from `backing.newLogger`.
 * `console` is where all logging from all ConsoleLoggers should go.
-* `backed` is the ConsoleLogger that other loggers should feed into.
+* `backed` is the Logger that other loggers should feed into.
 * `backing` tracks the files that persist the global logging. */
-final case class GlobalLogging(full: Logger, console: ConsoleOut, backed: ConsoleLogger, backing: GlobalLogBacking)
+final case class GlobalLogging(full: Logger, console: ConsoleOut, backed: AbstractLogger, backing: GlobalLogBacking)
 
 /** Tracks the files that persist the global logging. 
 * `file` is the current backing file.  `last` is the previous backing file, if there is one.
