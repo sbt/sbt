@@ -34,8 +34,8 @@ object KListBuilder extends TupleBuilder
 			params match
 			{
 				case ValDef(mods, name, tpt, _) :: xs =>
-					val head = ValDef(mods, name, tpt, Select(Ident(prev.name), "head"))
-					val tail = localValDef(TypeTree(), Select(Ident(prev.name), "tail"))
+					val head = ValDef(mods, name, tpt, select(Ident(prev.name), "head"))
+					val tail = localValDef(TypeTree(), select(Ident(prev.name), "tail"))
 					val base = head :: revBindings
 					bindKList(tail, if(xs.isEmpty) base else tail :: base, xs)
 				case Nil => revBindings.reverse
@@ -60,7 +60,7 @@ object KListBuilder extends TupleBuilder
 		val representationC = PolyType(tcVariable :: Nil, klistType)
 		val resultType = appliedType(representationC, idTC :: Nil)
 		val input = klist
-		val alistInstance = TypeApply(Select(Ident(alist), "klist"), TypeTree(representationC) :: Nil)
+		val alistInstance = TypeApply(select(Ident(alist), "klist"), TypeTree(representationC) :: Nil)
 		def extract(param: ValDef) = bindKList(param, Nil, inputs.map(_.local))
 	}
 }
