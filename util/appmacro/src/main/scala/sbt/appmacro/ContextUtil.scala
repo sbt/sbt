@@ -29,7 +29,7 @@ object ContextUtil {
 		}
 	}
 
-	def unexpectedTree[C <: Context](tree: C#Tree): Nothing = error("Unexpected macro application tree (" + tree.getClass + "): " + tree)
+	def unexpectedTree[C <: Context](tree: C#Tree): Nothing = sys.error("Unexpected macro application tree (" + tree.getClass + "): " + tree)
 }
 
 /** Utility methods for macros.  Several methods assume that the context's universe is a full compiler (`scala.tools.nsc.Global`).
@@ -161,8 +161,10 @@ final class ContextUtil[C <: Context](val ctx: C)
 	def singleton[T <: AnyRef with Singleton](i: T)(implicit it: ctx.TypeTag[i.type]): Symbol =
 		it.tpe match {
 			case SingleType(_, sym) if !sym.isFreeTerm && sym.isStatic => sym
-			case x => error("Instance must be static (was " + x + ").")
+			case x => sys.error("Instance must be static (was " + x + ").")
 		}
+
+	def select(t: Tree, name: String): Tree = Select(t, newTermName(name))
 
 	/** Returns the symbol for the non-private method named `name` for the class/module `obj`. */
 	def method(obj: Symbol, name: String): Symbol = {

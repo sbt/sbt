@@ -251,7 +251,7 @@ trait UnionImplicits
 		new UnionCache[H :+: T, UB]
 		{
 			val size = 1 + t.size
-			def c = mf.erasure
+			def c = mf.runtimeClass
 			def find(value: UB): Found[_] =
 				if(c.isInstance(value)) new Found[head.Internal](head, c, head.convert(value.asInstanceOf[H]), size - 1) else t.find(value)
 			def at(i: Int): (InputCache[_ <: UB], Class[_]) = if(size == i + 1) (head, c) else t.at(i)
@@ -259,8 +259,8 @@ trait UnionImplicits
 
 	implicit def unionNil[UB]: UnionCache[HNil, UB] = new UnionCache[HNil, UB] {
 		def size = 0
-		def find(value: UB) = error("No valid sum type for " + value)
-		def at(i: Int) = error("Invalid union index " + i)
+		def find(value: UB) = sys.error("No valid sum type for " + value)
+		def at(i: Int) = sys.error("Invalid union index " + i)
 	}
 
 	final class Found[I](val cache: InputCache[_] { type Internal = I }, val clazz: Class[_], val value: I, val index: Int)

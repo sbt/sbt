@@ -38,7 +38,7 @@ object InputWrapper
 	final val WrapName = "wrap_\u2603\u2603"
 
 	@compileTimeOnly("`value` can only be used within a task or setting macro, such as :=, +=, ++=, Def.task, or Def.setting.")
-	def wrap_\u2603\u2603[T](in: Any): T = error("This method is an implementation detail and should not be referenced.")
+	def wrap_\u2603\u2603[T](in: Any): T = sys.error("This method is an implementation detail and should not be referenced.")
 
 	def wrapKey[T: c.WeakTypeTag](c: Context)(ts: c.Expr[Any], pos: c.Position): c.Expr[T] = wrapImpl[T,InputWrapper.type](c, InputWrapper, WrapName)(ts, pos)
 
@@ -54,7 +54,7 @@ object InputWrapper
 		val iw = util.singleton(s)
 		val tpe = c.weakTypeOf[T]
 		val nme = newTermName(wrapName).encoded
-		val sel = Select(Ident(iw), nme)
+		val sel = util.select(Ident(iw), nme)
 		sel.setPos(pos) // need to set the position on Select, because that is where the compileTimeOnly check looks
 		val tree = ApplyTree(TypeApply(sel, TypeTree(tpe) :: Nil), ts.tree :: Nil)
 		tree.setPos(ts.tree.pos)
@@ -147,7 +147,7 @@ object Instance
 		// no inputs, so construct M[T] via Instance.pure or pure+flatten
 		def pure(body: Tree): Tree =
 		{
-			val typeApplied = TypeApply(Select(instance, PureName), TypeTree(treeType) :: Nil)
+			val typeApplied = TypeApply(util.select(instance, PureName), TypeTree(treeType) :: Nil)
 			val p = ApplyTree(typeApplied, Function(Nil, body) :: Nil)
 			if(t.isLeft) p else flatten(p)
 		}
@@ -155,7 +155,7 @@ object Instance
 		// the returned Tree will have type M[T]
 		def flatten(m: Tree): Tree =
 		{
-			val typedFlatten = TypeApply(Select(instance, FlattenName), TypeTree(tt.tpe) :: Nil)
+			val typedFlatten = TypeApply(util.select(instance, FlattenName), TypeTree(tt.tpe) :: Nil)
 			ApplyTree(typedFlatten, m :: Nil)
 		}
 
@@ -164,7 +164,7 @@ object Instance
 		{
 			val variable = input.local
 			val param = ValDef(util.parameterModifiers, variable.name, variable.tpt, EmptyTree)
-			val typeApplied = TypeApply(Select(instance, MapName), variable.tpt :: TypeTree(treeType) :: Nil)
+			val typeApplied = TypeApply(util.select(instance, MapName), variable.tpt :: TypeTree(treeType) :: Nil)
 			val mapped = ApplyTree(typeApplied, input.expr :: Function(param :: Nil, body) :: Nil)
 			if(t.isLeft) mapped else flatten(mapped)
 		}
@@ -177,7 +177,7 @@ object Instance
 			val bindings = result.extract(param)
 			val f = Function(param :: Nil, Block(bindings, body))
 			val ttt = TypeTree(treeType)
-			val typedApp = TypeApply(Select(instance, ApplyName), TypeTree(result.representationC) :: ttt :: Nil)
+			val typedApp = TypeApply(util.select(instance, ApplyName), TypeTree(result.representationC) :: ttt :: Nil)
 			val app = ApplyTree(ApplyTree(typedApp, result.input :: f :: Nil), result.alistInstance :: Nil)
 			if(t.isLeft) app else flatten(app)
 		}

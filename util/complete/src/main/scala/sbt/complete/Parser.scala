@@ -127,7 +127,7 @@ object Parser extends ParserMain
 	def checkMatches(a: Parser[_], completions: Seq[String])
 	{
 		val bad = completions.filter( apply(a)(_).resultEmpty.isFailure)
-		if(!bad.isEmpty) error("Invalid example completions: " + bad.mkString("'", "', '", "'"))
+		if(!bad.isEmpty) sys.error("Invalid example completions: " + bad.mkString("'", "', '", "'"))
 	}
 	def tuple[A,B](a: Option[A], b: Option[B]): Option[(A,B)] =
 		(a,b) match { case (Some(av), Some(bv)) => Some((av, bv)); case _ => None }
@@ -419,7 +419,7 @@ trait ParserMain
 	def stringLiteral(s: String, start: Int): Parser[String] =
 	{
 		val len = s.length
-		if(len == 0) error("String literal cannot be empty") else if(start >= len) success(s) else new StringLiteral(s, start)
+		if(len == 0) sys.error("String literal cannot be empty") else if(start >= len) success(s) else new StringLiteral(s, start)
 	}
 }
 sealed trait ValidParser[T] extends Parser[T]
@@ -433,7 +433,7 @@ private final case class Invalid(fail: Failure) extends Parser[Nothing]
 	def failure = Some(fail)
 	def result = None
 	def resultEmpty = fail
-	def derive(c: Char) = error("Invalid.")
+	def derive(c: Char) = sys.error("Invalid.")
 	def completions(level: Int) = Completions.nil
 	override def toString = fail.errors.mkString("; ")
 	def valid = false
