@@ -450,10 +450,9 @@ packaging the project as an sbt :doc:`Plugin </Extending/Plugins>`.
 Custom Test Framework
 ---------------------
 
-``sbt`` contains built-in support for the three main Scala testing
-libraries (specs 1 and 2, ScalaTest, and ScalaCheck). To add support for
-a different framework, implement the `uniform test
-interface <http://github.com/harrah/test-interface>`_.
+The main Scala testing libraries have built-in support for sbt.
+To add support for a different framework, implement the
+`uniform test interface <http://github.com/harrah/test-interface>`_.
 
 Custom Test Reporters
 ---------------------
