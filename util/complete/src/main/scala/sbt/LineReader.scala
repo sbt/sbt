@@ -3,7 +3,8 @@
  */
 package sbt
 
-	import jline.{ConsoleReader, History}
+	import jline.console.ConsoleReader
+	import jline.console.history.{FileHistory, MemoryHistory}
 	import java.io.{File, InputStream, PrintWriter}
 	import complete.Parser
 	import java.util.concurrent.atomic.AtomicBoolean
@@ -12,9 +13,6 @@ abstract class JLine extends LineReader
 {
 	protected[this] val handleCONT: Boolean
 	protected[this] val reader: ConsoleReader
-	/** Is the input stream at EOF? Compensates for absent EOF detection in JLine's UnsupportedTerminal. */
-	protected[this] val inputEof = new AtomicBoolean(false)
-	protected[this] val historyPath: Option[File]
 
 	def readLine(prompt: String, mask: Option[Char] = None) = JLine.withJLine { unsynchronizedReadLine(prompt, mask) }
 
@@ -26,14 +24,12 @@ abstract class JLine extends LineReader
 		}
 
 	private[this] def readLineWithHistory(prompt: String, mask: Option[Char]): String =
-		historyPath match
+		reader.getHistory match
 		{
-			case None => readLineDirect(prompt, mask)
-			case Some(file) =>
-				val h = reader.getHistory
-				JLine.loadHistory(h, file)
+			case fh: FileHistory =>
 				try { readLineDirect(prompt, mask) }
-				finally { JLine.saveHistory(h, file) }
+				finally { fh.flush() }
+			case _ => readLineDirect(prompt, mask)
 		}
 
 	private[this] def readLineDirect(prompt: String, mask: Option[Char]): String =
@@ -44,34 +40,33 @@ abstract class JLine extends LineReader
 	private[this] def readLineDirectRaw(prompt: String, mask: Option[Char]): String =
 	{
 		val newprompt = handleMultilinePrompt(prompt)
-		val line = mask match {
+		mask match {
 			case Some(m) => reader.readLine(newprompt, m)
 			case None => reader.readLine(newprompt)
 		}
-		if (inputEof.get) null else line
 	}
 
 	private[this] def handleMultilinePrompt(prompt: String): String = {
 		val lines = """\r?\n""".r.split(prompt)
 		lines.size match {
 			case 0 | 1 => prompt
-			case _ => reader.printString(lines.init.mkString("\n") + "\n"); lines.last;
+			case _ => reader.print(lines.init.mkString("\n") + "\n"); lines.last;
 		}
 	}
 
 	private[this] def resume()
 	{
-		jline.Terminal.resetTerminal
-		JLine.terminal.disableEcho()
+		jline.TerminalFactory.reset
+		JLine.terminal.setEchoEnabled(false)
 		reader.drawLine()
-		reader.flushConsole()
+		reader.flush()
 	}
 }
 private object JLine
 {
 	// When calling this, ensure that enableEcho has been or will be called.
-	//  getTerminal will initialize the terminal to disable echo.
-	private def terminal = jline.Terminal.getTerminal
+	// TerminalFactory.get will initialize the terminal to disable echo.
+	private def terminal = jline.TerminalFactory.get
 	private def withTerminal[T](f: jline.Terminal => T): T =
 		synchronized
 		{
@@ -82,33 +77,26 @@ private object JLine
 	* This ensures synchronized access as well as re-enabling echo after getting the Terminal. */
 	def usingTerminal[T](f: jline.Terminal => T): T =
 		withTerminal { t =>
-			t.enableEcho()
+			t.setEchoEnabled(true)
 			f(t)
 		}
-	def createReader() =
+	def createReader(historyPath: Option[File]) =
 		usingTerminal { t =>
 			val cr = new ConsoleReader
 			cr.setBellEnabled(false)
+			val h = historyPath match {
+				case None => new MemoryHistory
+				case Some(file) => new FileHistory(file)
+			}
+			h.setMaxSize(MaxHistorySize)
+			cr.setHistory(h)
 			cr
 		}
 	def withJLine[T](action: => T): T =
 		withTerminal { t =>
-			t.disableEcho()
+			t.setEchoEnabled(false)
 			try { action }
-			finally { t.enableEcho() }
-		}
-	private[sbt] def loadHistory(h: History, file: File)
-	{
-		h.setMaxSize(MaxHistorySize)
-		if(file.isFile) IO.reader(file)( h.load )
-	}
-	private[sbt] def saveHistory(h: History, file: File): Unit =
-		Using.fileWriter()(file) { writer =>
-			val out = new PrintWriter(writer, false)
-			h.setOutput(out)
-			h.flushBuffer()
-			out.close()
-			h.setOutput(null)
+			finally { t.setEchoEnabled(true) }
 		}
 
 	def simple(historyPath: Option[File], handleCONT: Boolean = HandleCONT): SimpleReader = new SimpleReader(historyPath, handleCONT)
@@ -120,30 +108,19 @@ trait LineReader
 {
 	def readLine(prompt: String, mask: Option[Char] = None): Option[String]
 }
-final class FullReader(val historyPath: Option[File], complete: Parser[_], val handleCONT: Boolean = JLine.HandleCONT) extends JLine
+final class FullReader(historyPath: Option[File], complete: Parser[_], val handleCONT: Boolean = JLine.HandleCONT) extends JLine
 {
 	protected[this] val reader =
 	{
-		val cr = new ConsoleReader
-		if (!cr.getTerminal.isSupported) {
-			val input = cr.getInput
-			cr.setInput(new InputStream {
-				def read(): Int = {
-					val c = input.read()
-					if (c == -1) inputEof.set(true)
-					c
-				}
-			})
-		}
-		cr.setBellEnabled(false)
+		val cr = JLine.createReader(historyPath)
 		sbt.complete.JLineCompletion.installCustomCompletor(cr, complete)
 		cr
 	}
 }
 
-class SimpleReader private[sbt] (val historyPath: Option[File], val handleCONT: Boolean) extends JLine
+class SimpleReader private[sbt] (historyPath: Option[File], val handleCONT: Boolean) extends JLine
 {
-	protected[this] val reader = JLine.createReader()
+	protected[this] val reader = JLine.createReader(historyPath)
 }
 object SimpleReader extends SimpleReader(None, JLine.HandleCONT)
 
