@@ -40,6 +40,7 @@ final class TestDefinition(val name: String, val fingerprint: Fingerprint)
 			case r: TestDefinition => name == r.name && TestFramework.matches(fingerprint, r.fingerprint)
 			case _ => false
 		}
+	override def hashCode: Int = (name.hashCode, TestFramework.hashCode(fingerprint)).hashCode
 }
 
 final class TestRunner(framework: Framework, loader: ClassLoader, listeners: Seq[TestReportListener], log: Logger)
@@ -111,6 +112,11 @@ object TestFramework
 	private[sbt] def safeForeach[T](it: Iterable[T], log: Logger)(f: T => Unit): Unit =
 		it.foreach(i => try f(i) catch { case e: Exception => log.trace(e); log.error(e.toString) })
 
+	private[sbt] def hashCode(f: Fingerprint): Int = f match {
+		case s: SubclassFingerprint => (s.isModule, s.superClassName).hashCode
+		case a: AnnotatedFingerprint => (a.isModule, a.annotationName).hashCode
+		case _ => 0
+	}
 	def matches(a: Fingerprint, b: Fingerprint) =
 		(a, b) match
 		{
