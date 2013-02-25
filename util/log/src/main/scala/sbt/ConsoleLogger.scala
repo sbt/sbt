@@ -109,9 +109,9 @@ object ConsoleLogger
 
 	private[this] def ansiSupported =
 		try {
-			val terminal = jline.Terminal.getTerminal
-			terminal.enableEcho() // #460
-			terminal.isANSISupported
+			val terminal = jline.TerminalFactory.get
+			terminal.setEchoEnabled(true) // #460
+			terminal.isAnsiSupported
 		} catch {
 			case e: Exception => !isWindows
 		}

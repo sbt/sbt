@@ -3,7 +3,7 @@
  */
 package xsbt.boot
 
-import jline.ConsoleReader
+import jline.console.ConsoleReader
 abstract class JLine
 {
 	protected[this] val reader: ConsoleReader
@@ -17,12 +17,12 @@ abstract class JLine
 }
 private object JLine
 {
-	def terminal = jline.Terminal.getTerminal
+	def terminal = jline.TerminalFactory.get
 	def createReader() =
 		terminal.synchronized
 		{
 			val cr = new ConsoleReader
-			terminal.enableEcho()
+			terminal.setEchoEnabled(true)
 			cr.setBellEnabled(false)
 			cr
 		}
@@ -31,9 +31,9 @@ private object JLine
 		val t = terminal
 		t.synchronized
 		{
-			t.disableEcho()
+			t.setEchoEnabled(false)
 			try { action }
-			finally { t.enableEcho() }
+			finally { t.setEchoEnabled(true) }
 		}
 	}
 }
