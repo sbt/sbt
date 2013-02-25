@@ -52,6 +52,6 @@ object ReflectUtilities
 		mappings
 	}
 	def allVals[T](self: AnyRef)(implicit mt: scala.reflect.Manifest[T]): immutable.SortedMap[String, T] =
-		allValsC(self, mt.erasure).asInstanceOf[immutable.SortedMap[String,T]]
+		allValsC(self, mt.runtimeClass).asInstanceOf[immutable.SortedMap[String,T]]
 }
 final class UninitializedVal(val valName: String, val className: String) extends RuntimeException("val " + valName + " in class " + className + " was null.\nThis is probably an initialization problem and a 'lazy val' should be used.")

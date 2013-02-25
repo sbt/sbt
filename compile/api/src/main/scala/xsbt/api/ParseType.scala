@@ -95,7 +95,7 @@ object New
 	def designator(p: List[String]): Projection =
 		p match
 		{
-			case Nil => error("Empty path")
+			case Nil => sys.error("Empty path")
 			case x :: Nil => projection( singleton(Nil), x)
 			case xs => projection( singleton(p.dropRight(1)), p.last )
 		}

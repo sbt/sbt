@@ -147,7 +147,7 @@ private[sbt] object Parser
                         case ConstantLong => new Constant(tag, new java.lang.Long(in.readLong()))
 			case ConstantDouble => new Constant(tag, new java.lang.Double(in.readDouble()))
 			case ConstantUTF8 => new Constant(tag, in.readUTF())
-			case _ => error("Unknown constant: " + tag)
+			case _ => sys.error("Unknown constant: " + tag)
 		}
 	}
 
