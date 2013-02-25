@@ -161,9 +161,6 @@ sealed abstract class PathFinder
 	* <code>descendantsExcept("*.jar", ".svn")</code>*/
 	def descendantsExcept(include: FileFilter, intermediateExclude: FileFilter): PathFinder =
 		(this ** include) --- (this ** intermediateExclude ** include)
-	@deprecated("Use `descendantsExcept` instead.", "0.12.0")
-	def descendentsExcept(include: FileFilter, intermediateExclude: FileFilter): PathFinder =
-		descendantsExcept(include, intermediateExclude)
 
 	/** Evaluates this finder and converts the results to a `Seq` of distinct `File`s.  The files returned by this method will reflect the underlying filesystem at the
 	* time of calling.  If the filesystem changes, two calls to this method might be different.*/
@@ -174,7 +171,7 @@ sealed abstract class PathFinder
 		addTo(pathSet)
 		pathSet.toSeq
 	}
-	@deprecated("Use `get`"/*, "0.9.7"*/) def getFiles: Seq[File] = get
+
 	/** Only keeps paths for which `f` returns true.  It is non-strict, so it is not evaluated until the returned finder is evaluated.*/
 	final def filter(f: File => Boolean): PathFinder = PathFinder(get filter f)
 	/* Non-strict flatMap: no evaluation occurs until the returned finder is evaluated.*/

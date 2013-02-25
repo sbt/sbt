@@ -42,7 +42,7 @@ object IO
 	def classLocation(cl: Class[_]): URL =
 	{
 		val codeSource = cl.getProtectionDomain.getCodeSource
-		if(codeSource == null) error("No class location for " + cl)
+		if(codeSource == null) sys.error("No class location for " + cl)
 		else codeSource.getLocation
 	}
 
@@ -54,12 +54,12 @@ object IO
 	/** Returns a URL for the directory or jar containing the class file for type `T` (as determined by an implicit Manifest).
 	* If the location cannot be determined, an error is generated.
 	* Note that Java standard library classes typically do not have a location associated with them.*/
-	def classLocation[T](implicit mf: SManifest[T]): URL = classLocation(mf.erasure)
+	def classLocation[T](implicit mf: SManifest[T]): URL = classLocation(mf.runtimeClass)
 
 	/** Returns the directory or jar file containing the the class file for type `T` (as determined by an implicit Manifest).
 	* If the location cannot be determined, an error is generated.
 	* Note that Java standard library classes typically do not have a location associated with them.*/
-	def classLocationFile[T](implicit mf: SManifest[T]): File = classLocationFile(mf.erasure)
+	def classLocationFile[T](implicit mf: SManifest[T]): File = classLocationFile(mf.runtimeClass)
 
 	/** Constructs a File corresponding to `url`, which must have a scheme of `file`.
 	* This method properly works around an issue with a simple conversion to URI and then to a File. */
@@ -68,7 +68,7 @@ object IO
 		catch { case _: URISyntaxException => new File(url.getPath) }
 
 	/** Converts the given URL to a File.  If the URL is for an entry in a jar, the File for the jar is returned. */
-	def asFile(url: URL): File = urlAsFile(url) getOrElse error("URL is not a file: " + url)
+	def asFile(url: URL): File = urlAsFile(url) getOrElse sys.error("URL is not a file: " + url)
 	def urlAsFile(url: URL): Option[File] =
 		url.getProtocol match
 		{
@@ -132,7 +132,7 @@ object IO
 		if(created || absFile.isDirectory)
 			()
 		else if(setModified && !absFile.setLastModified(System.currentTimeMillis))
-			error("Could not update last modified time for file " + absFile)
+			sys.error("Could not update last modified time for file " + absFile)
 	}
 	def createDirectories(dirs: Traversable[File]): Unit =
 		dirs.foreach(createDirectory)
@@ -145,10 +145,10 @@ object IO
 		if(dir.isDirectory)
 			()
 		else if(dir.exists) {
-			error(failBase + ": file exists and is not a directory.")
+			sys.error(failBase + ": file exists and is not a directory.")
 		}
 		else
-			error(failBase)
+			sys.error(failBase)
 	}
 
 	/** Gzips the file 'in' and writes it to 'out'.  'in' cannot be the same file as 'out'. */
@@ -291,7 +291,7 @@ object IO
 		def create(tries: Int): File =
 		{
 			if(tries > MaximumTries)
-				error("Could not create temporary directory.")
+				sys.error("Could not create temporary directory.")
 			else
 			{
 				val randomName = "sbt_" + java.lang.Integer.toHexString(random.nextInt)
@@ -392,7 +392,7 @@ object IO
 	private def archive(sources: Seq[(File,String)], outputFile: File, manifest: Option[Manifest])
 	{
 		if(outputFile.isDirectory)
-			error("Specified output file " + outputFile + " is a directory.")
+			sys.error("Specified output file " + outputFile + " is a directory.")
 		else
 		{
 			val outputDir = outputFile.getParentFile
@@ -560,7 +560,7 @@ object IO
 						offset
 				val copied = loop(0)
 				if(copied != in.size)
-					error("Could not copy '" + sourceFile + "' to '" + targetFile + "' (" + copied + "/" + in.size + " bytes copied)")
+					sys.error("Could not copy '" + sourceFile + "' to '" + targetFile + "' (" + copied + "/" + in.size + " bytes copied)")
 			}
 		}
 		if(preserveLastModified)
@@ -578,12 +578,10 @@ object IO
 		writer(file, content, charset, append) { _.write(content)  }
 
 	def writer[T](file: File, content: String, charset: Charset, append: Boolean = false)(f: BufferedWriter => T): T =
-	{
 		if(charset.newEncoder.canEncode(content))
 			fileWriter(charset, append)(file) { f }
 		else
-			error("String cannot be encoded by charset " + charset.name)
-	}
+			sys.error("String cannot be encoded by charset " + charset.name)
 
 	def reader[T](file: File, charset: Charset = defaultCharset)(f: BufferedReader => T): T =
 		fileReader(charset)(file) { f }

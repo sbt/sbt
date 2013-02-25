@@ -30,7 +30,7 @@ object IPC
 				try { new ServerSocket(nextPort, 1, loopback) }
 				catch { case _: Exception => createServer(attempts - 1) }
 			else
-				error("Could not connect to socket: maximum attempts exceeded")
+				sys.error("Could not connect to socket: maximum attempts exceeded")
 		createServer(10)
 	}
 	def server[T](f: IPC => Option[T]): T = serverImpl(makeServer, f)

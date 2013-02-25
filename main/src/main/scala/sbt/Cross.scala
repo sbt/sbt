@@ -24,7 +24,7 @@ object Cross
 		def versionAndCommand(spacePresent: Boolean) = {
 			val knownVersions = crossVersions(state)
 			val version = token(StringBasic.examples(knownVersions : _*))
-			val spacedVersion = if(spacePresent) version else version & spacedFirst(Switch)
+			val spacedVersion = if(spacePresent) version else version & spacedFirst(SwitchCommand)
 			val optionalCommand = token(Space ~> matched(state.combinedParser)) ?? ""
 			spacedVersion ~ optionalCommand
 		}

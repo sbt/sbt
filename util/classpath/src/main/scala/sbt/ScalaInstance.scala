@@ -47,7 +47,7 @@ object ScalaInstance
 		else try {
 			apply(version, launcher.getScala(version, "", org))
 		} catch {
-			case x: NoSuchMethodError => error("Incompatible version of the xsbti.Launcher interface. Use an sbt 0.12+ launcher instead.")
+			case x: NoSuchMethodError => sys.error("Incompatible version of the xsbti.Launcher interface. Use an sbt 0.12+ launcher instead.")
 		}
 
 	/** Creates a ScalaInstance using the given provider to obtain the jars and loader.*/

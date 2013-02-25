@@ -122,7 +122,7 @@ object ClasspathUtilities
 	private lazy val (extraJars, extraDirs) =
 	{
 		import scala.tools.nsc.GenericRunnerCommand
-		val settings = (new GenericRunnerCommand(Nil, message => error(message))).settings
+		val settings = (new GenericRunnerCommand(Nil, message => sys.error(message))).settings
 		val bootPaths = IO.pathSplit(settings.bootclasspath.value).map(p => new File(p)).toList
 		val (bootJars, bootDirs) = separate(bootPaths)
 		val extJars =
@@ -134,7 +134,7 @@ object ClasspathUtilities
 				for(dir <- dir.listFiles(DirectoryFilter))
 					findJars(dir)
 			}
-			for(path <- IO.pathSplit(settings.extdirs.value); val dir = new File(path) if dir.isDirectory)
+			for(path <- IO.pathSplit(settings.extdirs.value); dir = new File(path) if dir.isDirectory)
 				findJars(dir)
 			buffer.readOnly.map(_.getCanonicalFile)
 		}

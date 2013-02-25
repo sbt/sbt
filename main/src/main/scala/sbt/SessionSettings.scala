@@ -92,7 +92,7 @@ object SessionSettings
 		}
 	def writeSettings(pref: ProjectRef, settings: List[SessionSetting], original: Seq[Setting[_]], structure: BuildStructure): (Seq[SessionSetting], Seq[Setting[_]]) =
 	{
-		val project = Project.getProject(pref, structure).getOrElse(error("Invalid project reference " + pref))
+		val project = Project.getProject(pref, structure).getOrElse(sys.error("Invalid project reference " + pref))
 		val writeTo: File = BuildPaths.configurationSources(project.base).headOption.getOrElse(new File(project.base, "build.sbt"))
 		writeTo.createNewFile()
 

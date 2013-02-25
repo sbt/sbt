@@ -267,7 +267,7 @@ object TaskMacro
 		val WrapName = "parser_\u2603\u2603"
 
 		@compileTimeOnly("`parsed` can only be used within an input task macro, such as := or Def.inputTask.")
-		def parser_\u2603\u2603[T](i: Initialize[State => Parser[T]]): T = error("This method is an implementation detail and should not be referenced.")
+		def parser_\u2603\u2603[T](i: Initialize[State => Parser[T]]): T = sys.error("This method is an implementation detail and should not be referenced.")
 
 		def wrap[T: c.WeakTypeTag](c: Context)(ts: c.Expr[Any], pos: c.Position): c.Expr[T] =
 			InputWrapper.wrapImpl[T,ParserInput.type](c, ParserInput, WrapName)(ts, pos)
@@ -314,14 +314,14 @@ object TaskMacro
 		// Tree for InputTask.<name>[<tpeA>, <tpeB>](arg1)(arg2)
 		def inputTaskCreate(name: String, tpeA: Type, tpeB: Type, arg1: Tree, arg2: Tree) =
 		{
-			val typedApp = TypeApply(Select(it, name), TypeTree(tpeA) :: TypeTree(tpeB) :: Nil)
+			val typedApp = TypeApply(util.select(it, name), TypeTree(tpeA) :: TypeTree(tpeB) :: Nil)
 			val app = ApplyTree( ApplyTree(typedApp, arg1 :: Nil), arg2 :: Nil)
 			c.Expr[Initialize[InputTask[T]]](app)
 		}
 		// Tree for InputTask.createFree[<tpe>](arg1)
 		def inputTaskCreateFree(tpe: Type, arg: Tree) =
 		{
-			val typedApp = TypeApply(Select(it, InputTaskCreateFreeName), TypeTree(tpe) :: Nil)
+			val typedApp = TypeApply(util.select(it, InputTaskCreateFreeName), TypeTree(tpe) :: Nil)
 			val app = ApplyTree(typedApp, arg :: Nil)
 			c.Expr[Initialize[InputTask[T]]](app)
 		}

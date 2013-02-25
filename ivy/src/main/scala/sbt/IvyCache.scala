@@ -102,6 +102,6 @@ private class FileDownloader extends ResourceDownloader with NotNull
 		val part = new File(dest.getAbsolutePath + ".part")
 		FileUtil.copy(resource.openStream, part, null)
 		if(!part.renameTo(dest))
-			error("Could not move temporary file " + part + " to final location " + dest)
+			sys.error("Could not move temporary file " + part + " to final location " + dest)
 	}
 }

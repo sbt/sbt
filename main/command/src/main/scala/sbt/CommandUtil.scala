@@ -50,7 +50,7 @@ object CommandUtil
 				else
 					layoutDetails(details)
 			} catch {
-				case pse: PatternSyntaxException => error("Invalid regular expression (java.util.regex syntax).\n" + pse.getMessage)
+				case pse: PatternSyntaxException => sys.error("Invalid regular expression (java.util.regex syntax).\n" + pse.getMessage)
 			}
 		}
 	def searchHelp(selected: String, detailMap: Map[String, String]): Map[String, String] =

@@ -72,7 +72,7 @@ object SignJar
 	{
 		val exitCode = fork(CommandName, arguments)
 		if(exitCode != 0)
-			error("Error " + action + " jar (exit code was " + exitCode + ".)")
+			sys.error("Error " + action + " jar (exit code was " + exitCode + ".)")
 	}
 	
 	private val CommandName = "jarsigner"

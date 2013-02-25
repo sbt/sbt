@@ -34,8 +34,8 @@ object TupleNBuilder extends TupleBuilder
 
 		val input: Tree = mkTuple(inputs.map(_.expr))
 		val alistInstance: Tree = {
-			val select = Select(Ident(alist), TupleMethodName + inputs.size.toString)
-			TypeApply(select, inputs.map(in => TypeTree(in.tpe)))
+			val selectTree = select(Ident(alist), TupleMethodName + inputs.size.toString)
+			TypeApply(selectTree, inputs.map(in => TypeTree(in.tpe)))
 		}
 		def extract(param: ValDef): List[ValDef] = bindTuple(param, Nil, inputs.map(_.local), 1)
 
@@ -43,7 +43,7 @@ object TupleNBuilder extends TupleBuilder
 			params match
 			{
 				case ValDef(mods, name, tpt, _) :: xs =>
-					val x = ValDef(mods, name, tpt, Select(Ident(param.name), "_" + i.toString))
+					val x = ValDef(mods, name, tpt, select(Ident(param.name), "_" + i.toString))
 					bindTuple(param, x :: revBindings, xs, i+1)
 				case Nil => revBindings.reverse
 			}

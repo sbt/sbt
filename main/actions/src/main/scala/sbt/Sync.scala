@@ -64,7 +64,7 @@ object Sync
 			"\n\t" + target + "\nfrom\n\t" + srcs.mkString("\n\t\t")
 		}
 		if(!dups.isEmpty)
-			error("Duplicate mappings:" + dups.mkString)
+			sys.error("Duplicate mappings:" + dups.mkString)
 	}
 		
 		import java.io.{File, IOException}

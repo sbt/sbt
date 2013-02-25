@@ -93,7 +93,7 @@ object InputTask
 	private[this] def dummyTask[I]: (AttributeKey[Option[I]], Task[I]) =
 	{
 		val key = localKey[Option[I]]
-		val f: () => I = () => error(s"Internal sbt error: InputTask stub was not substituted properly.")
+		val f: () => I = () => sys.error(s"Internal sbt error: InputTask stub was not substituted properly.")
 		val t: Task[I] = Task(Info[I]().set(key, None), Pure(f, false))
 		(key, t)
 	}

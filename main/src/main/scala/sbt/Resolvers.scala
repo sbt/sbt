@@ -130,7 +130,7 @@ object Resolvers
 			cwd
 		) !;
 		if (result != 0)
-			error("Nonzero exit code (" + result + "): " + command.mkString(" "))
+			sys.error("Nonzero exit code (" + result + "): " + command.mkString(" "))
 	}
 
 	def creates(file: File)(f: => Unit) =

@@ -38,9 +38,9 @@ class TestScriptParser(handlers: Map[Char, StatementHandler]) extends RegexParse
 
 	import IO.read
 	if(handlers.keys.exists(isWhitespace))
-		error("Start characters cannot be whitespace")
+		sys.error("Start characters cannot be whitespace")
 	if(handlers.keys.exists(key => key == '+' || key == '-'))
-		error("Start characters cannot be '+' or '-'")
+		sys.error("Start characters cannot be '+' or '-'")
 
 	def parse(scriptFile: File): List[(StatementHandler, Statement)] = parse(read(scriptFile), Some(scriptFile.getCanonicalPath))
 	def parse(script: String): List[(StatementHandler, Statement)] = parse(script, None)
@@ -52,7 +52,7 @@ class TestScriptParser(handlers: Map[Char, StatementHandler]) extends RegexParse
 			case err: NoSuccess =>
 			{
 				val labelString = label.map("'" + _ + "' ").getOrElse("")
-				error("Could not parse test script, " + labelString + err.toString)
+				sys.error("Could not parse test script, " + labelString + err.toString)
 			}
 		}
 	}

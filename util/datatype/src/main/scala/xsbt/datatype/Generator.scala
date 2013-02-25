@@ -149,7 +149,7 @@ object Generator
 		if(duplicates.isEmpty)
 			ds.foreach(writeDefinition)
 		else
-			error("Duplicate names:\n\t" + duplicates.mkString("\n\t"))
+			sys.error("Duplicate names:\n\t" + duplicates.mkString("\n\t"))
 	}
 	def implName(name: String) = name + "0"
 }

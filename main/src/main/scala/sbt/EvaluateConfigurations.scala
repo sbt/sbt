@@ -46,7 +46,7 @@ object EvaluateConfigurations
 		val parsed = parseConfiguration(lines, imports, offset)
 		val (importDefs, projects) = if(parsed.definitions.isEmpty) (Nil, (l: ClassLoader) => Nil) else {
 			val definitions = evaluateDefinitions(eval, name, parsed.imports, parsed.definitions)
-			val imp = Load.importAllRoot(definitions.enclosingModule :: Nil)
+			val imp = BuildUtil.importAllRoot(definitions.enclosingModule :: Nil)
 			val projs = (loader: ClassLoader) => definitions.values(loader).map(p => resolveBase(file.getParentFile, p.asInstanceOf[Project]))
 			(imp, projs)
 		}
@@ -149,7 +149,7 @@ object Index
 		if(duplicates.isEmpty)
 			multiMap.collect { case (k, v) if validID(k) => (k, v.head) } toMap;
 		else
-			error(duplicates map { case (k, tps) => "'" + k + "' (" + tps.mkString(", ") + ")" } mkString("AttributeKey ID collisions detected for: ", ", ", ""))
+			sys.error(duplicates map { case (k, tps) => "'" + k + "' (" + tps.mkString(", ") + ")" } mkString("AttributeKey ID collisions detected for: ", ", ", ""))
 	}
 	private[this] type TriggerMap = collection.mutable.HashMap[Task[_], Seq[Task[_]]]
 	def triggers(ss: Settings[Scope]): Triggers[Task] =

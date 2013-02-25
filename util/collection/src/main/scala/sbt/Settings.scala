@@ -77,7 +77,7 @@ trait Init[Scope]
 	def asTransform(s: Settings[Scope]): ScopedKey ~> Id = new (ScopedKey ~> Id) {
 		def apply[T](k: ScopedKey[T]): T = getValue(s, k)
 	}
-	def getValue[T](s: Settings[Scope], k: ScopedKey[T]) = s.get(k.scope, k.key) getOrElse error("Internal settings error: invalid reference to " + showFullKey(k))
+	def getValue[T](s: Settings[Scope], k: ScopedKey[T]) = s.get(k.scope, k.key) getOrElse sys.error("Internal settings error: invalid reference to " + showFullKey(k))
 	def asFunction[T](s: Settings[Scope]): ScopedKey[T] => T = k => getValue(s, k)
 	def mapScope(f: Scope => Scope): MapScoped = new MapScoped {
 		def apply[T](k: ScopedKey[T]): ScopedKey[T] = k.copy(scope = f(k.scope))

@@ -56,7 +56,7 @@ final class TestRunner(framework: Framework, loader: ClassLoader, listeners: Seq
 		{
 			case (simple: TestFingerprint, _) => delegate.run(testDefinition.name, simple, handler, args)
 			case (basic, runner2: Runner2) => runner2.run(testDefinition.name, basic, handler, args)
-			case _ => error("Framework '" + framework + "' does not support test '" + testDefinition + "'")
+			case _ => sys.error("Framework '" + framework + "' does not support test '" + testDefinition + "'")
 		}
 
 	final def run(testDefinition: TestDefinition, args: Seq[String]): TestResult.Value =
@@ -100,7 +100,7 @@ object TestFramework
 		{
 			case newStyle: Array[Fingerprint] => newStyle.toList
 			case oldStyle: Array[TestFingerprint] => oldStyle.toList
-			case _ => error("Could not call 'tests' on framework " + framework)
+			case _ => sys.error("Could not call 'tests' on framework " + framework)
 		}
 
 	private val ScalaCompilerJarPackages = "scala.tools." :: "jline." :: "ch.epfl.lamp." :: Nil

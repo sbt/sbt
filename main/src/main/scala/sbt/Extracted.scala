@@ -55,9 +55,9 @@ final case class Extracted(structure: BuildStructure, session: SessionSettings, 
 	private[this] def resolve[T](key: ScopedKey[T]): ScopedKey[T] =
 		Project.mapScope(Scope.resolveScope(GlobalScope, currentRef.build, rootProject) )( key.scopedKey )
 	private def getOrError[T](scope: Scope, key: AttributeKey[_], value: Option[T])(implicit display: Show[ScopedKey[_]]): T =
-		value getOrElse error(display(ScopedKey(scope, key)) + " is undefined.")
+		value getOrElse sys.error(display(ScopedKey(scope, key)) + " is undefined.")
 	private def getOrError[T](scope: Scope, key: AttributeKey[T])(implicit display: Show[ScopedKey[_]]): T =
-		structure.data.get(scope, key) getOrElse error(display(ScopedKey(scope, key)) + " is undefined.")
+		structure.data.get(scope, key) getOrElse sys.error(display(ScopedKey(scope, key)) + " is undefined.")
 
 	def append(settings: Seq[Setting[_]], state: State): State =
 	{

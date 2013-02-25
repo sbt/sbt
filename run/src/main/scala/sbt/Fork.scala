@@ -111,7 +111,7 @@ object Fork
 
 		def fork(javaHome: Option[File], jvmOptions: Seq[String], scalaJars: Iterable[File], arguments: Seq[String], workingDirectory: Option[File], env: Map[String,String], connectInput: Boolean, outputStrategy: OutputStrategy): Process =
 		{
-			if(scalaJars.isEmpty) error("Scala jars not specified")
+			if(scalaJars.isEmpty) sys.error("Scala jars not specified")
 			val scalaClasspathString = "-Xbootclasspath/a:" + scalaJars.map(_.getAbsolutePath).mkString(File.pathSeparator)
 			val mainClass = if(mainClassName.isEmpty) Nil else mainClassName :: Nil
 			val options = jvmOptions ++ (scalaClasspathString :: mainClass ::: arguments.toList)

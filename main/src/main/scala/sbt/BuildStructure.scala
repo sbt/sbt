@@ -87,7 +87,7 @@ object BuildStreams
 		axis match
 		{
 			case Global => GlobalPath
-			case This => error("Unresolved This reference for " + label + " in " + displayFull(scoped))
+			case This => sys.error("Unresolved This reference for " + label + " in " + displayFull(scoped))
 			case Select(t) => show(t)
 		}
 	def nonProjectPath[T](scoped: ScopedKey[T]): Seq[String] =
@@ -106,8 +106,8 @@ object BuildStreams
 			case Global => refTarget(GlobalScope, units(root).localBase, data) / GlobalPath
 			case Select(br @ BuildRef(uri)) => refTarget(br, units(uri).localBase, data) / BuildUnitPath
 			case Select(pr @ ProjectRef(uri, id)) => refTarget(pr, units(uri).defined(id).base, data)
-			case Select(pr) => error("Unresolved project reference (" + pr + ") in " + displayFull(scoped))
-			case This => error("Unresolved project reference (This) in " + displayFull(scoped))
+			case Select(pr) => sys.error("Unresolved project reference (" + pr + ") in " + displayFull(scoped))
+			case This => sys.error("Unresolved project reference (This) in " + displayFull(scoped))
 		}
 		
 	def refTarget(ref: ResolvedReference, fallbackBase: File, data: Settings[Scope]): File =

@@ -30,7 +30,7 @@ abstract class Using[Source, T]
 import scala.reflect.{Manifest => SManifest}
 abstract class WrapUsing[Source, T](implicit srcMf: SManifest[Source], targetMf: SManifest[T]) extends Using[Source, T]
 {
-	protected def label[S](m: SManifest[S]) = m.erasure.getSimpleName
+	protected def label[S](m: SManifest[S]) = m.runtimeClass.getSimpleName
 	protected def openImpl(source: Source): T
 	protected final def open(source: Source): T =
 		translate("Error wrapping " + label(srcMf) + " in " + label(targetMf) + ": ") { openImpl(source) }

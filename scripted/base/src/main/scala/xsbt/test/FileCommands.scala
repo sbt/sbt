@@ -31,7 +31,7 @@ class FileCommands(baseDirectory: File) extends BasicStatementHandler
 	def apply(command: String, arguments: List[String]): Unit =
 		commands.get(command).map( _(arguments) ).getOrElse(scriptError("Unknown command " + command))
 	
-	def scriptError(message: String): Some[String] = error("Test script error: " + message)
+	def scriptError(message: String): Some[String] = sys.error("Test script error: " + message)
 	def spaced[T](l: Seq[T]) = l.mkString(" ")
 	def fromStrings(paths: List[String]) = paths.map(fromString)
 	def fromString(path: String) = new File(baseDirectory, path)
@@ -77,7 +77,7 @@ class FileCommands(baseDirectory: File) extends BasicStatementHandler
 		{
 			val exitValue = sbt.Process(command :: args, baseDirectory) ! ;
 			if(exitValue != 0)
-				error("Nonzero exit value (" + exitValue + ")")
+				sys.error("Nonzero exit value (" + exitValue + ")")
 		}
 	}
 

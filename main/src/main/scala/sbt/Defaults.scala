@@ -3,7 +3,7 @@
  */
 package sbt
 
-	import Build.data
+	import Attributed.data
 	import Scope.{fillTaskAxis, GlobalScope, ThisScope}
 	import xsbt.api.Discovery
 	import xsbti.compile.CompileOrder
@@ -115,7 +115,7 @@ object Defaults extends BuildCommon
 		commands :== Nil,
 		retrieveManaged :== false,
 		buildStructure := Project.structure(state.value),
-		settings := buildStructure.value.data,
+		settingsData := buildStructure.value.data,
 		artifactClassifier :== None,
 		artifactClassifier in packageSrc :== Some(SourceClassifier),
 		artifactClassifier in packageDoc :== Some(DocClassifier),
@@ -158,9 +158,6 @@ object Defaults extends BuildCommon
 		scalaSource := sourceDirectory.value / "scala",
 		javaSource := sourceDirectory.value / "java",
 		unmanagedSourceDirectories := Seq(scalaSource.value, javaSource.value),
-			// remove when sourceFilter, defaultExcludes are removed
-		includeFilter in unmanagedSources <<= (sourceFilter in unmanagedSources) or (includeFilter in unmanagedSources),
-		excludeFilter in unmanagedSources <<= (defaultExcludes in unmanagedSources) or (excludeFilter in unmanagedSources),
 		unmanagedSources <<= collectFiles(unmanagedSourceDirectories, includeFilter in unmanagedSources, excludeFilter in unmanagedSources),
 		watchSources in ConfigGlobal <++= unmanagedSources,
 		managedSourceDirectories := Seq(sourceManaged.value),
@@ -175,8 +172,6 @@ object Defaults extends BuildCommon
 		unmanagedResourceDirectories := Seq(resourceDirectory.value),
 		managedResourceDirectories := Seq(resourceManaged.value),
 		resourceDirectories <<= Classpaths.concatSettings(unmanagedResourceDirectories, managedResourceDirectories),
-			// remove when defaultExcludes are removed
-		excludeFilter in unmanagedResources <<= (defaultExcludes in unmanagedResources) or (excludeFilter in unmanagedResources),
 		unmanagedResources <<= collectFiles(unmanagedResourceDirectories, includeFilter in unmanagedResources, excludeFilter in unmanagedResources),
 		watchSources in ConfigGlobal ++= unmanagedResources.value,
 		resourceGenerators :== Nil,
@@ -187,7 +182,7 @@ object Defaults extends BuildCommon
 	lazy val outputConfigPaths = Seq(
 		cacheDirectory := crossTarget.value / CacheDirectoryName / thisProject.value.id / configuration.value.name,
 		classDirectory := crossTarget.value / (prefix(configuration.value.name) + "classes"),
-		docDirectory := crossTarget.value / (prefix(configuration.value.name) + "api")
+		target in doc := crossTarget.value / (prefix(configuration.value.name) + "api")
 	)
 	def addBaseSources = Seq(
 		unmanagedSources := {
@@ -615,7 +610,6 @@ object Defaults extends BuildCommon
 	@deprecated("Use `docTaskSettings` instead", "0.12.0")
 	def docSetting(key: TaskKey[File]) = docTaskSettings(key)
 	def docTaskSettings(key: TaskKey[File] = doc): Seq[Setting[_]] = inTask(key)(compileInputsSettings ++ Seq(
-		target := docDirectory.value, // deprecate docDirectory in favor of 'target in doc'; remove when docDirectory is removed
 		apiMappings ++= { if(autoAPIMappings.value) APIMappings.extract(dependencyClasspath.value, streams.value.log).toMap else Map.empty[File,URL] },
 		key in TaskGlobal <<= (compileInputs, target, configuration, apiMappings, streams) map { (in, out, config, xapis, s) =>
 			val srcs = in.config.sources
@@ -806,9 +800,6 @@ object Classpaths
 		exportedProducts <<= exportProductsTask,
 		classpathConfiguration := findClasspathConfig(internalConfigurationMap.value, configuration.value, classpathConfiguration.?.value, update.value),
 		managedClasspath := managedJars(classpathConfiguration.value, classpathTypes.value, update.value),
-			// remove when defaultExcludes and classpathFilter are removed
-		excludeFilter in unmanagedJars <<= (defaultExcludes in unmanagedJars) or (excludeFilter in unmanagedJars),
-		includeFilter in unmanagedJars <<= classpathFilter or (includeFilter in unmanagedJars),
 		unmanagedJars := findUnmanagedJars(configuration.value, unmanagedBase.value, includeFilter in unmanagedJars value, excludeFilter in unmanagedJars value)
 	)
 	def defaultPackageKeys = Seq(packageBin, packageSrc, packageDoc)
@@ -1099,14 +1090,14 @@ object Classpaths
 	def deliverPattern(outputPath: File): String  =  (outputPath / "[artifact]-[revision](-[classifier]).[ext]").absolutePath
 
 	def projectDependenciesTask: Initialize[Task[Seq[ModuleID]]] =
-		(thisProjectRef, settings, buildDependencies) map { (ref, data, deps) =>
+		(thisProjectRef, settingsData, buildDependencies) map { (ref, data, deps) =>
 			deps.classpath(ref) flatMap { dep => (projectID in dep.project) get data map {
 				_.copy(configurations = dep.configuration, explicitArtifacts = Nil) }
 			}
 	}
 
 	def depMap: Initialize[Task[Map[ModuleRevisionId, ModuleDescriptor]]] =
-		(thisProjectRef, settings, buildDependencies, streams) flatMap { (root, data, deps, s) =>
+		(thisProjectRef, settingsData, buildDependencies, streams) flatMap { (root, data, deps, s) =>
 			depMap(deps classpathTransitiveRefs root, data, s.log)
 		}
 
@@ -1142,9 +1133,9 @@ object Classpaths
 			BuildDependencies(cp.toMap, agg.toMap)
 		}
 	def internalDependencies: Initialize[Task[Classpath]] =
-		(thisProjectRef, classpathConfiguration, configuration, settings, buildDependencies) flatMap internalDependencies0
+		(thisProjectRef, classpathConfiguration, configuration, settingsData, buildDependencies) flatMap internalDependencies0
 	def unmanagedDependencies: Initialize[Task[Classpath]] =
-		(thisProjectRef, configuration, settings, buildDependencies) flatMap unmanagedDependencies0
+		(thisProjectRef, configuration, settingsData, buildDependencies) flatMap unmanagedDependencies0
 	def mkIvyConfiguration: Initialize[Task[IvyConfiguration]] =
 		(fullResolvers, ivyPaths, otherResolvers, moduleConfigurations, offline, checksums in update, appConfiguration, target, streams) map { (rs, paths, other, moduleConfs, off, check, app, t, s) =>
 			warnResolversConflict(rs ++: other, s.log)
@@ -1408,7 +1399,7 @@ trait BuildExtra extends BuildCommon
 
 	def seq(settings: Setting[_]*): SettingsDefinition = new Def.SettingList(settings)
 
-	def externalIvySettings(file: Initialize[File] = baseDirectory / "ivysettings.xml", addMultiResolver: Boolean = true): Setting[Task[IvyConfiguration]] =
+	def externalIvySettings(file: Initialize[File] = inBase("ivysettings.xml"), addMultiResolver: Boolean = true): Setting[Task[IvyConfiguration]] =
 		externalIvySettingsURI(file(_.toURI), addMultiResolver)
 	def externalIvySettingsURL(url: URL, addMultiResolver: Boolean = true): Setting[Task[IvyConfiguration]] =
 		externalIvySettingsURI(Def.value(url.toURI), addMultiResolver)
@@ -1421,9 +1412,11 @@ trait BuildExtra extends BuildCommon
 				new ExternalIvyConfiguration(base, u, Some(lock(app)), extraResolvers, s.log) }
 		}
 	}
-	def externalIvyFile(file: Initialize[File] = baseDirectory / "ivy.xml", iScala: Initialize[Option[IvyScala]] = ivyScala): Setting[Task[ModuleSettings]] =
+	private[this] def inBase(name: String): Initialize[File] = Def.setting { baseDirectory.value / name }
+	
+	def externalIvyFile(file: Initialize[File] = inBase("ivy.xml"), iScala: Initialize[Option[IvyScala]] = ivyScala): Setting[Task[ModuleSettings]] =
 		moduleSettings := new IvyFileConfiguration(file.value, iScala.value, ivyValidate.value, managedScalaInstance.value)
-	def externalPom(file: Initialize[File] = baseDirectory / "pom.xml", iScala: Initialize[Option[IvyScala]] = ivyScala): Setting[Task[ModuleSettings]] =
+	def externalPom(file: Initialize[File] = inBase("pom.xml"), iScala: Initialize[Option[IvyScala]] = ivyScala): Setting[Task[ModuleSettings]] =
 		moduleSettings := new PomConfiguration(file.value, ivyScala.value, ivyValidate.value, managedScalaInstance.value)
 
 	def runInputTask(config: Configuration, mainClass: String, baseArguments: String*): Initialize[InputTask[Unit]] =
@@ -1477,7 +1470,7 @@ trait BuildCommon
 	}
 	final class RichAttributed private[sbt](s: Seq[Attributed[File]])
 	{
-		def files: Seq[File] = Build data s
+		def files: Seq[File] = Attributed.data(s)
 	}
 	final class RichFiles private[sbt](s: Seq[File])
 	{

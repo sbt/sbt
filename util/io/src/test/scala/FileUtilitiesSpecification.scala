@@ -28,7 +28,7 @@ object WriteContentSpecification extends Properties("Write content")
 		true
 	}
 	private def testUnzip[T](implicit mf: scala.reflect.Manifest[T]) =
-		unzipFile(IO.classLocationFile(mf.erasure))
+		unzipFile(IO.classLocationFile(mf.runtimeClass))
 	private def unzipFile(jar: File) =
 		IO.withTemporaryDirectory { tmp =>
 			IO.unzip(jar, tmp)

@@ -20,7 +20,7 @@ abstract class EvaluateSettings[Scope]
 
 	private[this] val complete = new LinkedBlockingQueue[Option[Throwable]]
 	private[this] val static = PMap.empty[ScopedKey, INode]
-	private[this] def getStatic[T](key: ScopedKey[T]): INode[T] = static get key getOrElse error("Illegal reference to key " + key)
+	private[this] def getStatic[T](key: ScopedKey[T]): INode[T] = static get key getOrElse sys.error("Illegal reference to key " + key)
 
 	private[this] val transform: Initialize ~> INode = new (Initialize ~> INode) { def apply[T](i: Initialize[T]): INode[T] = i match {
 		case k: Keyed[s, T] => single(getStatic(k.scopedKey), k.transform)
@@ -137,7 +137,7 @@ abstract class EvaluateSettings[Scope]
 		}
 		protected final def setValue(v: T) {
 			assert(state != Evaluated, "Already evaluated (trying to set value to " + v + "): " + toString)
-			if(v == null) error("Setting value cannot be null: " + keyString)
+			if(v == null) sys.error("Setting value cannot be null: " + keyString)
 			value = v
 			state = Evaluated
 			blocking foreach { _.unblocked() }

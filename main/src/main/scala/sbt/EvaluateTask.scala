@@ -77,7 +77,7 @@ object EvaluateTask
 		val pluginKey = pluginData
 		val config = defaultConfig(Project.extract(state), pluginDef)
 		val evaluated = apply(pluginDef, ScopedKey(pluginKey.scope, pluginKey.key), state, root, config)
-		val (newS, result) = evaluated getOrElse error("Plugin data does not exist for plugin definition at " + pluginDef.root)
+		val (newS, result) = evaluated getOrElse sys.error("Plugin data does not exist for plugin definition at " + pluginDef.root)
 		Project.runUnloadHooks(newS) // discard states
 		processResult(result, log)
 	}

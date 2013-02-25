@@ -98,7 +98,7 @@ object TrapExit
 	*  If not, `notType` is called with the root cause.*/
 	private def withCause[CauseType <: Throwable, T](e: Throwable)(withType: CauseType => T)(notType: Throwable => T)(implicit mf: Manifest[CauseType]): T =
 	{
-		val clazz = mf.erasure
+		val clazz = mf.runtimeClass
 		if(clazz.isInstance(e))
 			withType(e.asInstanceOf[CauseType])
 		else

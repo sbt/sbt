@@ -270,9 +270,9 @@ private[sbt] object SettingCompletions
 	def keyType[S](key: AttributeKey[_])(onSetting: Manifest[_] => S, onTask: Manifest[_] => S, onInput: Manifest[_] => S)(implicit tm: Manifest[Task[_]], im: Manifest[InputTask[_]]): S =
 	{
 		def argTpe = key.manifest.typeArguments.head
-		val e = key.manifest.erasure
-		if(e == tm.erasure) onTask(argTpe)
-		else if(e == im.erasure) onInput(argTpe)
+		val e = key.manifest.runtimeClass
+		if(e == tm.runtimeClass) onTask(argTpe)
+		else if(e == im.runtimeClass) onInput(argTpe)
 		else onSetting(key.manifest)
 	}
 
@@ -299,7 +299,7 @@ private[sbt] object SettingCompletions
 	/** True if the `key` represents a setting or task that may be appended using an assignment method such as `+=`. */
 	def appendable(key: AttributeKey[_]): Boolean =
 	{
-		val underlying = keyUnderlyingType(key).erasure
+		val underlying = keyUnderlyingType(key).runtimeClass
 		appendableClasses.exists(_ isAssignableFrom underlying)
 	}
 

@@ -87,7 +87,7 @@ object BuildLoader
 		val cs = info.components
 		for {
 			resolve <- cs.resolver(new ResolveInfo(uri, staging, config, state))
-			val base = resolve()
+			base = resolve()
 			build <- cs.builder(new BuildInfo(uri, base, config, state))
 		} yield () => {
 			val unit = build()

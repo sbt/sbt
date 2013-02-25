@@ -172,7 +172,7 @@ object BuiltinCommands
 	def sortByRank(keys: Seq[AttributeKey[_]]): Seq[AttributeKey[_]] = keys.sortBy(_.rank)
 	def withDescription(keys: Seq[AttributeKey[_]]): Seq[AttributeKey[_]] = keys.filter(_.description.isDefined)
 	def isTask(mf: Manifest[_])(implicit taskMF: Manifest[Task[_]], inputMF: Manifest[InputTask[_]]): Boolean =
-		mf.erasure == taskMF.erasure || mf.erasure == inputMF.erasure
+		mf.runtimeClass == taskMF.runtimeClass || mf.runtimeClass == inputMF.runtimeClass
 	def topNRanked(n: Int) = (keys: Seq[AttributeKey[_]]) => sortByRank(keys).take(n)
 	def highPass(rankCutoff: Int) = (keys: Seq[AttributeKey[_]]) => sortByRank(keys).takeWhile(_.rank <= rankCutoff)
 

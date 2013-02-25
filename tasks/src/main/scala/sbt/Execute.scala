@@ -244,7 +244,7 @@ final class Execute[A[_] <: AnyRef](checkCycles: Boolean, triggers: Triggers[A])
 		}
 	}
 
-	def remove[K, V](map: Map[K, V], k: K): V = map.remove(k).getOrElse(error("Key '" + k + "' not in map :\n" + map))
+	def remove[K, V](map: Map[K, V], k: K): V = map.remove(k).getOrElse(sys.error("Key '" + k + "' not in map :\n" + map))
 
 	def addReverse(node: A[_], dependent: A[_]): Unit = reverse(node) ++= Seq(dependent)
 	def addCaller[T](caller: A[T], target: A[T]): Unit = callers.getOrUpdate(target, IDSet.create[A[T]]) += caller

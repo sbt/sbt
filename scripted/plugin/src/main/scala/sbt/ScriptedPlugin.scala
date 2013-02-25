@@ -48,12 +48,12 @@ object ScriptedPlugin extends Plugin {
 
 	val scriptedSettings = Seq(
 		ivyConfigurations += scriptedConf,
-		scriptedSbt <<= (appConfiguration)(_.provider.id.version),
-		libraryDependencies <<= (libraryDependencies, scriptedSbt) {(deps, version) => deps :+ "org.scala-sbt" % "scripted-sbt" % version % scriptedConf.toString },
-		sbtLauncher <<= (appConfiguration)(app => IO.classLocationFile(app.provider.scalaProvider.launcher.getClass)),
-		sbtTestDirectory <<= sourceDirectory / "sbt-test",
+		scriptedSbt := appConfiguration.value.provider.id.version,
+		libraryDependencies += "org.scala-sbt" % "scripted-sbt" % scriptedSbt.value % scriptedConf.toString ,
+		sbtLauncher := IO.classLocationFile(appConfiguration.value.provider.scalaProvider.launcher.getClass),
+		sbtTestDirectory := sourceDirectory.value / "sbt-test",
 		scriptedBufferLog := true,
-		scriptedClasspath <<= (classpathTypes, update) map { (ct, report) => PathFinder(Classpaths.managedJars(scriptedConf, ct, report).map(_.data)) },
+		scriptedClasspath := PathFinder(Classpaths.managedJars(scriptedConf, classpathTypes.value, update.value).map(_.data)),
 		scriptedTests <<= scriptedTestsTask,
 		scriptedRun <<= scriptedRunTask,
 		scriptedDependencies <<= (compile in Test, publishLocal) map { (analysis, pub) => Unit },

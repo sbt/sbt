@@ -275,7 +275,7 @@ class MakePom(val log: Logger)
 
 	def toID(name: String) = checkID(name.filter(isValidIDCharacter).mkString, name)
 	def isValidIDCharacter(c: Char) = c.isLetterOrDigit
-	private def checkID(id: String, name: String) = if(id.isEmpty) error("Could not convert '" + name + "' to an ID") else id
+	private def checkID(id: String, name: String) = if(id.isEmpty) sys.error("Could not convert '" + name + "' to an ID") else id
 	def mavenRepository(repo: MavenRepository): XNode =
 		mavenRepository(toID(repo.name), repo.name, repo.root)
 	def mavenRepository(id: String, name: String, root: String): XNode =

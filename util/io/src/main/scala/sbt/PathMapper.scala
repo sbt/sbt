@@ -31,7 +31,7 @@ trait Mapper
 				IO.relativize(oldBase, file).map(normNewBase + _)
 	}
 	/** A mapper that throws an exception for any input.  This is useful as the last mapper in a pipeline to ensure every input gets mapped.*/
-	def fail: Any => Nothing = f => error("No mapping for " + f)
+	def fail: Any => Nothing = f => sys.error("No mapping for " + f)
 
 	/** A path mapper that pairs a File with its name.  For example, `/x/y/z.txt` gets paired with `z.txt`.*/
 	val flat: PathMap = f => Some(f.getName)

@@ -5,7 +5,7 @@ package sbt
 
 	import java.io.File
 	import java.net.URI
-	import Project._
+	import Project.{Initialize => _, Setting => _, _}
 	import Keys.{appConfiguration, stateBuildStructure, commands, configuration, historyPath, projectCommand, sessionSettings, shellPrompt, thisProject, thisProjectRef, watch}
 	import Scope.{GlobalScope,ThisScope}
 	import Def.{Flattened, Initialize, ScopedKey, Setting}
@@ -143,7 +143,7 @@ object Project extends ProjectExtra
 		Def.showRelativeKey( ProjectRef(loaded.root, loaded.units(loaded.root).rootProjects.head), loaded.allProjectRefs.size > 1, keyNameColor)
 
 	private abstract class ProjectDef[PR <: ProjectReference](val id: String, val base: File, aggregate0: => Seq[PR], dependencies0: => Seq[ClasspathDep[PR]],
-		delegates0: => Seq[PR], settings0: => Seq[Setting[_]], val configurations: Seq[Configuration], val auto: AddSettings) extends ProjectDefinition[PR]
+		delegates0: => Seq[PR], settings0: => Seq[Def.Setting[_]], val configurations: Seq[Configuration], val auto: AddSettings) extends ProjectDefinition[PR]
 	{
 		lazy val aggregate = aggregate0
 		lazy val dependencies = dependencies0
@@ -154,18 +154,18 @@ object Project extends ProjectExtra
 	}
 
 	def apply(id: String, base: File, aggregate: => Seq[ProjectReference] = Nil, dependencies: => Seq[ClasspathDep[ProjectReference]] = Nil,
-		delegates: => Seq[ProjectReference] = Nil, settings: => Seq[Setting[_]] = defaultSettings, configurations: Seq[Configuration] = Configurations.default,
+		delegates: => Seq[ProjectReference] = Nil, settings: => Seq[Def.Setting[_]] = defaultSettings, configurations: Seq[Configuration] = Configurations.default,
 		auto: AddSettings = AddSettings.allDefaults): Project =
 	{
-		DefaultParsers.parse(id, DefaultParsers.ID).left.foreach(errMsg => error("Invalid project ID: " + errMsg))
+		DefaultParsers.parse(id, DefaultParsers.ID).left.foreach(errMsg => sys.error("Invalid project ID: " + errMsg))
 		new ProjectDef[ProjectReference](id, base, aggregate, dependencies, delegates, settings, configurations, auto) with Project
 	}
 
 	def resolved(id: String, base: File, aggregate: => Seq[ProjectRef], dependencies: => Seq[ResolvedClasspathDependency], delegates: => Seq[ProjectRef],
-		settings: Seq[Setting[_]], configurations: Seq[Configuration], auto: AddSettings): ResolvedProject =
+		settings: Seq[Def.Setting[_]], configurations: Seq[Configuration], auto: AddSettings): ResolvedProject =
 			new ProjectDef[ProjectRef](id, base, aggregate, dependencies, delegates, settings, configurations, auto) with ResolvedProject
 
-	def defaultSettings: Seq[Setting[_]] = Defaults.defaultSettings
+	def defaultSettings: Seq[Def.Setting[_]] = Defaults.defaultSettings
 
 	final class Constructor(p: ProjectReference) {
 		def %(conf: Configuration): ClasspathDependency = %(conf.name)
@@ -173,7 +173,7 @@ object Project extends ProjectExtra
 		def %(conf: String): ClasspathDependency = new ClasspathDependency(p, Some(conf))
 	}
 
-	def getOrError[T](state: State, key: AttributeKey[T], msg: String): T = state get key getOrElse error(msg)
+	def getOrError[T](state: State, key: AttributeKey[T], msg: String): T = state get key getOrElse sys.error(msg)
 	def structure(state: State): BuildStructure = getOrError(state, stateBuildStructure, "No build loaded.")
 	def session(state: State): SessionSettings = getOrError(state, sessionSettings, "Session not initialized.")
 	def isProjectLoaded(state: State): Boolean = (state has sessionSettings) && (state has stateBuildStructure)
@@ -227,7 +227,7 @@ object Project extends ProjectExtra
 	}
 	def setCond[T](key: AttributeKey[T], vopt: Option[T], attributes: AttributeMap): AttributeMap =
 		vopt match { case Some(v) => attributes.put(key, v); case None => attributes.remove(key) }
-	def makeSettings(settings: Seq[Setting[_]], delegates: Scope => Seq[Scope], scopeLocal: ScopedKey[_] => Seq[Setting[_]])(implicit display: Show[ScopedKey[_]]) =
+	def makeSettings(settings: Seq[Def.Setting[_]], delegates: Scope => Seq[Scope], scopeLocal: ScopedKey[_] => Seq[Def.Setting[_]])(implicit display: Show[ScopedKey[_]]) =
 		Def.make(settings)(delegates, scopeLocal, display)
 
 	def equal(a: ScopedKey[_], b: ScopedKey[_], mask: ScopeMask): Boolean =
@@ -240,11 +240,11 @@ object Project extends ProjectExtra
 		ScopedKey( f(key.scope), key.key)
 	}
 
-	def transform(g: Scope => Scope, ss: Seq[Setting[_]]): Seq[Setting[_]] = {
+	def transform(g: Scope => Scope, ss: Seq[Def.Setting[_]]): Seq[Def.Setting[_]] = {
 		val f = mapScope(g)
 		ss.map(_ mapKey f mapReferenced f)
 	}
-	def transformRef(g: Scope => Scope, ss: Seq[Setting[_]]): Seq[Setting[_]] = {
+	def transformRef(g: Scope => Scope, ss: Seq[Def.Setting[_]]): Seq[Def.Setting[_]] = {
 		val f = mapScope(g)
 		ss.map(_ mapReferenced f)
 	}
@@ -270,7 +270,7 @@ object Project extends ProjectExtra
 		val definingScoped = definingScope match { case Some(sc) => ScopedKey(sc, key); case None => scoped }
 		val comp = Def.compiled(structure.settings, actual)(structure.delegates, structure.scopeLocal, display)
 		val definedAt = comp get definingScoped map { c =>
-			def fmt(s: Setting[_]) = s.pos match {
+			def fmt(s: Def.Setting[_]) = s.pos match {
 				case pos: FilePosition => (pos.path + ":" + pos.startLine) :: Nil
 				case NoPosition => Nil
 			}
@@ -337,7 +337,7 @@ object Project extends ProjectExtra
 		for( (key,compiled) <- cMap; dep <- compiled.dependencies if dep == scoped)  yield  key
 
 	//@deprecated("Use SettingCompletions.setAll when available.", "0.13.0")
-	def setAll(extracted: Extracted, settings: Seq[Setting[_]]): SessionSettings =
+	def setAll(extracted: Extracted, settings: Seq[Def.Setting[_]]): SessionSettings =
 		SettingCompletions.setAll(extracted, settings).session
 
 	val ExtraBuilds = AttributeKey[List[URI]]("extra-builds", "Extra build URIs to load in addition to the ones defined by the project.")
@@ -365,7 +365,7 @@ object Project extends ProjectExtra
 			projectReturn(s) match
 			{
 				case current :: returnTo :: rest => (setProjectReturn(s, returnTo :: rest), returnTo)
-				case _ => error("Not currently in a plugin definition")
+				case _ => sys.error("Not currently in a plugin definition")
 			}
 		case Current =>
 			val base = s.configuration.baseDirectory
@@ -391,15 +391,15 @@ object Project extends ProjectExtra
 
 	implicit def projectToRef(p: Project): ProjectReference = LocalProject(p.id)
 
-	final class RichTaskSessionVar[S](i: Initialize[Task[S]])
+	final class RichTaskSessionVar[S](i: Def.Initialize[Task[S]])
 	{
 			import SessionVar.{persistAndSet, resolveContext, set, transform => tx}
 
-		def updateState(f: (State, S) => State): Initialize[Task[S]] = i(t => tx(t, f))
-		def storeAs(key: TaskKey[S])(implicit f: sbinary.Format[S]): Initialize[Task[S]] = (Keys.resolvedScoped, i) { (scoped, task) =>
+		def updateState(f: (State, S) => State): Def.Initialize[Task[S]] = i(t => tx(t, f))
+		def storeAs(key: TaskKey[S])(implicit f: sbinary.Format[S]): Def.Initialize[Task[S]] = (Keys.resolvedScoped, i) { (scoped, task) =>
 			tx(task, (state, value) => persistAndSet( resolveContext(key, scoped.scope, state), state, value)(f))
 		}
-		def keepAs(key: TaskKey[S]): Initialize[Task[S]] =
+		def keepAs(key: TaskKey[S]): Def.Initialize[Task[S]] =
 			(i, Keys.resolvedScoped)( (t,scoped) => tx(t, (state,value) => set(resolveContext(key, scoped.scope, state), state, value) ) )
 	}
 

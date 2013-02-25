@@ -18,7 +18,7 @@ object EditDistance {
    0 to n foreach (x => d(x)(0) = x)
    0 to m foreach (x => d(0)(x) = x)
 
-   for (i <- 1 to n ; val s_i = s(i - 1) ; j <- 1 to m) {
+   for (i <- 1 to n ; s_i = s(i - 1) ; j <- 1 to m) {
      val t_j   = t(j - 1)
      val cost  = if (s_i == t_j) matchCost else if(lower(s_i) == lower(t_j)) caseCost else subCost
      val tcost  = if (s_i == t_j) matchCost else transposeCost

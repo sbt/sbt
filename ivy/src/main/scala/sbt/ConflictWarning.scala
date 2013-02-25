@@ -32,7 +32,7 @@ object ConflictWarning
 			log.log(config.level, conflictMsgs.mkString(msg, "\n   ", ""))
 
 			if(config.failOnConflict)
-				error("Conflicts in " + conflicts.map(_._1).mkString(", ") )
+				sys.error("Conflicts in " + conflicts.map(_._1).mkString(", ") )
 		}
 	}
 	
@@ -51,7 +51,7 @@ object ConflictWarning
 			log.log(config.level, conflictMsgs.mkString(pre, "\n   ", ""))
 			if(config.failOnConflict) {
 				val summary = crossMismatches.map{ case ((org,raw),_) => idString(org,raw)}.mkString(", ")
-				error("Conflicting cross-version suffixes in: " + summary)
+				sys.error("Conflicting cross-version suffixes in: " + summary)
 			}
 		}
 	}

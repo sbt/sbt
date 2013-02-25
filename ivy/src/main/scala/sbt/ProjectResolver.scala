@@ -22,7 +22,7 @@ package sbt
 class ProjectResolver(name: String, map: Map[ModuleRevisionId, ModuleDescriptor]) extends ResolverAdapter
 {
 	def getName = name
-	def setName(name: String) = error("Setting name not supported by ProjectResolver")
+	def setName(name: String) = sys.error("Setting name not supported by ProjectResolver")
 	override def toString = "ProjectResolver(" + name + ", mapped: " + map.keys.mkString(", ") + ")"
 
 	def getDependency(dd: DependencyDescriptor, data: ResolveData): ResolvedModuleRevision =
@@ -59,7 +59,7 @@ class ProjectResolver(name: String, map: Map[ModuleRevisionId, ModuleDescriptor]
 	}
 
 	// doesn't support publishing
-	def publish(artifact: IArtifact, src: File, overwrite: Boolean) = error("Publish not supported by ProjectResolver")
+	def publish(artifact: IArtifact, src: File, overwrite: Boolean) = sys.error("Publish not supported by ProjectResolver")
 	def beginPublishTransaction(module: ModuleRevisionId, overwrite: Boolean) {}
 	def abortPublishTransaction() {}
 	def commitPublishTransaction() {}
@@ -77,5 +77,5 @@ class ProjectResolver(name: String, map: Map[ModuleRevisionId, ModuleDescriptor]
 
 	def dumpSettings() {}
 	def setSettings(settings: ResolverSettings) { this.settings = Some(settings) }
-	def getRepositoryCacheManager = settings match { case Some(s) => s.getDefaultRepositoryCacheManager; case None => error("No settings defined for ProjectResolver") }
+	def getRepositoryCacheManager = settings match { case Some(s) => s.getDefaultRepositoryCacheManager; case None => sys.error("No settings defined for ProjectResolver") }
 }

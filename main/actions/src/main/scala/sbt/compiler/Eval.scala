@@ -7,7 +7,7 @@ import interpreter.AbstractFileClassLoader
 import io.{AbstractFile, PlainFile, VirtualDirectory}
 import ast.parser.Tokens
 import reporters.{ConsoleReporter, Reporter}
-import util.BatchSourceFile
+import scala.reflect.internal.util.BatchSourceFile
 import Tokens.{EOF, NEWLINE, NEWLINES, SEMI}
 import java.io.File
 import java.nio.ByteBuffer

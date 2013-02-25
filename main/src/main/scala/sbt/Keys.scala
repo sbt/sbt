@@ -89,12 +89,6 @@ object Keys
 		// Filters
 	val includeFilter = SettingKey[FileFilter]("include-filter", "Filter for including sources and resources files from default directories.", CSetting)
 	val excludeFilter = SettingKey[FileFilter]("exclude-filter", "Filter for excluding sources and resources files from default directories.", CSetting)
-	@deprecated("Use `includeFilter`, scoped by respective classpath related task instead.  For example, `includeFilter in unmanagedJars`", "0.11.0")
-	val classpathFilter = SettingKey[FileFilter]("classpath-filter", "Filter for selecting unmanaged dependencies.", DSetting)
-	@deprecated("Use `includeFilter`, scoped by respective source related task instead.  For example, `includeFilter in unmanagedSources`", "0.11.0")
-	val sourceFilter = SettingKey[FileFilter]("source-filter", "Filter for selecting sources from default directories.", DSetting)
-	@deprecated("Use `excludeFilter`, scoped by respective task instead.  For example, `excludeFilter in unmanagedSources`", "0.11.0")
-	val defaultExcludes = SettingKey[FileFilter]("default-excludes", "Filter for excluding files, such as sources and resources, by default.", DSetting)
 
 		// Resource paths
 	val resourceDirectory = SettingKey[File]("resource-directory", "Default unmanaged resource directory, used for user-defined resources.", ASetting)
@@ -108,8 +102,6 @@ object Keys
 
 		// Output paths
 	val classDirectory = SettingKey[File]("class-directory", "Directory for compiled classes and copied resources.", AMinusSetting)
-	@deprecated("Use `target`, scoped by the doc task.  For example, `target in Compile in doc`", "0.11.0")
-	val docDirectory = SettingKey[File]("doc-directory", "Directory for generated documentation.", DSetting)
 	@deprecated("Use the cacheDirectory provided by streams.", "0.13.0")
 	val cacheDirectory = SettingKey[File]("cache-directory", "Directory used for caching task data.", BMinusSetting)
 	val cleanFiles = SettingKey[Seq[File]]("clean-files", "The files to recursively delete during a clean.", BSetting)
@@ -329,8 +321,6 @@ object Keys
 	val concurrentRestrictions = SettingKey[Seq[Tags.Rule]]("concurrent-restrictions", "Rules describing restrictions on concurrent task execution.", BSetting)
 	val cancelable = SettingKey[Boolean]("cancelable", "Enables (true) or disables (false) the ability to interrupt task execution with CTRL+C.", BMinusSetting)
 	val settingsData = std.FullInstance.settingsData
-	@deprecated("Use Keys.settingsData.", "0.12.0")
-	val settings = settingsData
 	val streams = TaskKey[TaskStreams]("streams", "Provides streams for logging and persisting data.", DTask)
 	val isDummyTask = AttributeKey[Boolean]("is-dummy-task", "Internal: used to identify dummy tasks.  sbt injects values for these tasks at the start of task execution.", Invisible)
 	val taskDefinitionKey = AttributeKey[ScopedKey[_]]("task-definition-key", "Internal: used to map a task back to its ScopedKey.", Invisible)
@@ -349,7 +339,7 @@ object Keys
 	def dummy[T: Manifest](name: String, description: String): (TaskKey[T], Task[T]) = (TaskKey[T](name, description, DTask), dummyTask(name))
 	def dummyTask[T](name: String): Task[T] =
 	{
-		val base: Task[T] = task( error("Dummy task '" + name + "' did not get converted to a full task.") ) named name
+		val base: Task[T] = task( sys.error("Dummy task '" + name + "' did not get converted to a full task.") ) named name
 		base.copy(info = base.info.set(isDummyTask, true))
 	}
 	def isDummy(t: Task[_]): Boolean = t.info.attributes.get(isDummyTask) getOrElse false

@@ -12,8 +12,8 @@ final case class ScopedKeyData[A](scoped: ScopedKey[A], value: Any)
 	def description: String = fold(fmtMf("Task: %s"), fmtMf("Input task: %s"),
 		"Setting: %s = %s" format (key.manifest.toString, value.toString))
 	def fold[A](targ: OptManifest[_] => A, itarg: OptManifest[_] => A, s: => A): A =
-		if (key.manifest.erasure == classOf[Task[_]]) targ(key.manifest.typeArguments.head)
-		else if (key.manifest.erasure == classOf[InputTask[_]]) itarg(key.manifest.typeArguments.head)
+		if (key.manifest.runtimeClass == classOf[Task[_]]) targ(key.manifest.typeArguments.head)
+		else if (key.manifest.runtimeClass == classOf[InputTask[_]]) itarg(key.manifest.typeArguments.head)
 		else s
 	def fmtMf(s: String): OptManifest[_] => String = s format _
 }

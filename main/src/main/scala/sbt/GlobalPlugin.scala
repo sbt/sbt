@@ -1,6 +1,6 @@
 package sbt
 
-	import Load._
+	import Load.{BuildStructure => _, _}
 	import Def.{ScopedKey,Setting}
 	import Scoped._
 	import Keys._

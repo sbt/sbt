@@ -121,7 +121,7 @@ object ScriptedTests
 	{
 		val errors = for(test <- tests.par; err <- test()) yield err
 		if(errors.nonEmpty)
-			error(errors.mkString("Failed tests:\n\t", "\n\t", "\n"))
+			sys.error(errors.mkString("Failed tests:\n\t", "\n\t", "\n"))
 	}
 	def get(tests: Seq[String], baseDirectory: File, log: Logger): Seq[ScriptedTest] =
 		if(tests.isEmpty) listTests(baseDirectory, log) else parseTests(tests)
