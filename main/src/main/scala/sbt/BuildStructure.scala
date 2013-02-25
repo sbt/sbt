@@ -75,7 +75,7 @@ object BuildStreams
 	final val StreamsDirectory = "streams"
 
 	def mkStreams(units: Map[URI, LoadedBuildUnit], root: URI, data: Settings[Scope]): State => Streams = s =>
-		std.Streams( path(units, root, data), displayFull, LogManager.construct(data, s) )
+		s get Keys.stateStreams getOrElse std.Streams( path(units, root, data), displayFull, LogManager.construct(data, s) )
 		
 	def path(units: Map[URI, LoadedBuildUnit], root: URI, data: Settings[Scope])(scoped: ScopedKey[_]): File =
 		resolvePath( projectPath(units, root, scoped, data), nonProjectPath(scoped) )

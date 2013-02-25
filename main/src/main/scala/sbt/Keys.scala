@@ -327,6 +327,7 @@ object Keys
 	val (executionRoots, dummyRoots)= dummy[Seq[ScopedKey[_]]]("execution-roots", "The list of root tasks for this task execution.  Roots are the top-level tasks that were directly requested to be run.")
 	val (state, dummyState) = dummy[State]("state", "Current build state.")
 	val (streamsManager, dummyStreamsManager) = dummy[Streams]("streams-manager", "Streams manager, which provides streams for different contexts.")
+	val stateStreams = AttributeKey[Streams]("streams-manager", "Streams manager, which provides streams for different contexts.  Setting this on State will override the default Streams implementation.")
 	val resolvedScoped = Def.resolvedScoped
 	val pluginData = TaskKey[PluginData]("plugin-data", "Information from the plugin build needed in the main build definition.", DTask)
 
