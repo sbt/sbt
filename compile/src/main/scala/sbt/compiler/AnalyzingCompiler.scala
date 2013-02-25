@@ -13,9 +13,16 @@ package compiler
 * provided by scalaInstance.  This class requires a ComponentManager in order to obtain the interface code to scalac and
 * the analysis plugin.  Because these call Scala code for a different Scala version than the one used for this class, they must
 * be compiled for the version of Scala being used.*/
-final class AnalyzingCompiler(val scalaInstance: xsbti.compile.ScalaInstance, val provider: CompilerInterfaceProvider, val cp: xsbti.compile.ClasspathOptions, log: Logger) extends CachedCompilerProvider
+final class AnalyzingCompiler(val scalaInstance: xsbti.compile.ScalaInstance, val provider: CompilerInterfaceProvider, val cp: xsbti.compile.ClasspathOptions) extends CachedCompilerProvider
 {
-	def this(scalaInstance: ScalaInstance, provider: CompilerInterfaceProvider, log: Logger) = this(scalaInstance, provider, ClasspathOptions.auto, log)
+	def this(scalaInstance: ScalaInstance, provider: CompilerInterfaceProvider) = this(scalaInstance, provider, ClasspathOptions.auto)
+
+	@deprecated("A Logger is no longer needed.", "0.13.0")
+	def this(scalaInstance: ScalaInstance, provider: CompilerInterfaceProvider, log: Logger) = this(scalaInstance, provider)
+
+	@deprecated("A Logger is no longer needed.", "0.13.0")
+	def this(scalaInstance: xsbti.compile.ScalaInstance, provider: CompilerInterfaceProvider, cp: xsbti.compile.ClasspathOptions, log: Logger) = this(scalaInstance, provider, cp)
+
 	def apply(sources: Seq[File], changes: DependencyChanges, classpath: Seq[File], singleOutput: File, options: Seq[String], callback: AnalysisCallback, maximumErrors: Int, cache: GlobalsCache, log: Logger)
 	{
 		val arguments = (new CompilerArguments(scalaInstance, cp))(Nil, classpath, None, options)
@@ -79,14 +86,14 @@ final class AnalyzingCompiler(val scalaInstance: xsbti.compile.ScalaInstance, va
 			}
 		}
 	}
-	private[this] def loader =
+	private[this] def loader(log: Logger) =
 	{
 		val interfaceJar = provider(scalaInstance, log)
 		// this goes to scalaInstance.loader for scala classes and the loader of this class for xsbti classes
 		val dual = createDualLoader(scalaInstance.loader, getClass.getClassLoader)
 		new URLClassLoader(Array(interfaceJar.toURI.toURL), dual)
 	}
-	private def getInterfaceClass(name: String, log: Logger) = Class.forName(name, true, loader)
+	private[this] def getInterfaceClass(name: String, log: Logger) = Class.forName(name, true, loader(log))
 	protected def createDualLoader(scalaLoader: ClassLoader, sbtLoader: ClassLoader): ClassLoader =
 	{
 		val xsbtiFilter = (name: String) => name.startsWith("xsbti.")

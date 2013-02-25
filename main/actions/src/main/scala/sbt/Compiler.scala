@@ -20,16 +20,6 @@ object Compiler
 	final case class IncSetup(analysisMap: File => Option[Analysis], definesClass: DefinesClass, skip: Boolean, cacheFile: File, cache: GlobalsCache, incOptions: IncOptions)
 	final case class Compilers(scalac: AnalyzingCompiler, javac: JavaTool)
 
-	@deprecated("Use the other inputs variant.", "0.12.0")
-	def inputs(classpath: Seq[File], sources: Seq[File], outputDirectory: File, options: Seq[String], javacOptions: Seq[String], definesClass: DefinesClass, maxErrors: Int, order: CompileOrder)(implicit compilers: Compilers, log: Logger): Inputs =
-	{
-		import Path._
-		val classesDirectory = outputDirectory / "classes"
-		val cacheFile = outputDirectory / "cache_old_style"
-		val augClasspath = classesDirectory.asFile +: classpath
-		val incSetup = IncSetup(Map.empty, definesClass, false, cacheFile, CompilerCache.fresh, IncOptions.Default)
-		inputs(augClasspath, sources, classesDirectory, options, javacOptions, maxErrors, Nil, order)(compilers, incSetup, log)
-	}
 	def inputs(classpath: Seq[File], sources: Seq[File], classesDirectory: File, options: Seq[String], javacOptions: Seq[String], maxErrors: Int, sourcePositionMappers: Seq[Position => Option[Position]], order: CompileOrder)(implicit compilers: Compilers, incSetup: IncSetup, log: Logger): Inputs =
 		new Inputs(
 			compilers,
