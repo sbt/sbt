@@ -9,6 +9,10 @@ package xsbt.boot
 
 object Pre
 {
+	def readLine(prompt: String): Option[String] = {
+		val c = System.console()
+		if(c eq null) None else Option(c.readLine(prompt))
+	}
 	def trimLeading(line: String) =
 	{
 		def newStart(i: Int): Int = if(i >= line.length || !Character.isWhitespace(line.charAt(i))) i else newStart(i+1)

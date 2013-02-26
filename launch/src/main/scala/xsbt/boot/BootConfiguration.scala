@@ -42,8 +42,6 @@ private object BootConfiguration
 	/** The class name prefix used to hide the launcher classes from the application.
 	* Note that access to xsbti classes are allowed.*/
 	final val SbtBootPackage = "xsbt.boot."
-	/** The prefix for JLine resources.*/
-	final val JLinePackagePath = "jline/"
 	/** The loader will check that these classes can be loaded and will assume that their presence indicates
 	* the Scala compiler and library have been downloaded.*/
 	val TestLoadScalaClasses = "scala.Option" :: "scala.tools.nsc.Global" :: Nil

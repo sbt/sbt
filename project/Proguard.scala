@@ -36,7 +36,7 @@ object LaunchProguard
 	)
 	
 	def specific(launchSub: Reference): Seq[Setting[_]] = inConfig(Proguard)(Seq(
-		keepFullClasses ++= "xsbti.**" :: "jline.**" :: Nil,
+		keepFullClasses ++= "xsbti.**" :: Nil,
 		keepClasses ++= "org.apache.ivy.plugins.resolver.URLResolver" :: "org.apache.ivy.plugins.resolver.IBiblioResolver" :: Nil,
 		artifactPath <<=  (target, version) { (out,v) => out / ("sbt-launch-" + v + ".jar") },
 		options <++= (dependencyClasspath in (launchSub, Compile), compile in (launchSub,Compile), streams) map { (cp, analysis, s) => mapJars(cp.files, analysis.relations.allBinaryDeps.toSeq, s.log) },
@@ -95,18 +95,15 @@ object LaunchProguard
 
 	def mapInJars(inJars: Seq[File], log: Logger): Seq[String] =
 	{
-		val (jlineJars, notJLine) = inJars partition isJarX("jline")
-		val (ivyJars, notIvy) = notJLine partition isJarX("ivy")
+		val (ivyJars, notIvy) = inJars partition isJarX("ivy")
 		val (libraryJar, remaining) = notIvy partition isJarX("scala-library")
 		val (compilerJar, otherJars) = remaining partition isJarX("scala-compiler")
 
 		log.debug("proguard configuration:")
-		log.debug("\tJLline jar location: " + jlineJars.mkString(", "))
 		log.debug("\tIvy jar location: " + ivyJars.mkString(", "))
 		log.debug("\tOther jars:\n\t" + otherJars.mkString("\n\t"))
 
 		((withJar(ivyJars.toSeq, "Ivy") + excludeString(excludeIvyResources)) ::
-		(withJar(jlineJars, "JLine") + jlineFilter ) ::
 		(withJar(libraryJar, "Scala library") + libraryFilter) ::
 		otherJars.map(jar => mkpath(jar) + generalFilter).toList) map { "-injars " + _ }
 	}
@@ -125,7 +122,6 @@ object LaunchProguard
 		Nil
 
 	private def libraryFilter = "(!META-INF/**,!*.properties,!scala/actors/**,!scala/util/parsing/*.class,**.class)"
-	private def jlineFilter = "(!META-INF/**)"
 	private def generalFilter = "(!META-INF/**,!*.properties)"
 
 	private def withJar[T](files: Seq[File], name: String) = mkpath(files.headOption getOrElse error(name + " not present") )

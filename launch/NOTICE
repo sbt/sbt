@@ -3,11 +3,8 @@ Copyright 2008, 2009, 2010  Mark Harrah, David MacIver
 Licensed under BSD-style license (see LICENSE)
 
 Classes from the Scala library are distributed with the launcher.
-Copyright 2002-2008 EPFL, Lausanne
+Copyright 2002-2013 EPFL, Lausanne
 Licensed under BSD-style license (see licenses/LICENSE_Scala)
-
-JLine is distributed with the launcher.
-It is licensed under a BSD-style license (see licenses/LICENSE_JLine)
 
 Classes from Apache Ivy, licensed under the Apache License, Version 2.0
 (see licenses/LICENSE_Apache) are distributed with the launcher.

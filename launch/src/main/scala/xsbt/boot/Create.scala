@@ -15,7 +15,7 @@ object Initialize
 	lazy val selectFill = (_: AppProperty).fill
 	def create(file: File, promptCreate: String, enableQuick: Boolean, spec: List[AppProperty])
 	{
-		SimpleReader.readLine(promptCreate + " (y/N" + (if(enableQuick) "/s" else "") + ") ") match
+		readLine(promptCreate + " (y/N" + (if(enableQuick) "/s" else "") + ") ") match
 		{
 			case None => declined("")
 			case Some(line) =>
@@ -52,7 +52,7 @@ object Initialize
 			case set: SetProperty => properties.setProperty(name, set.value)
 			case prompt: PromptProperty =>
 				def noValue = declined("No value provided for " + prompt.label)
-				SimpleReader.readLine(prompt.label + prompt.default.toList.map(" [" + _ + "]").mkString + ": ") match
+				readLine(prompt.label + prompt.default.toList.map(" [" + _ + "]").mkString + ": ") match
 				{
 					case None => noValue
 					case Some(line) =>

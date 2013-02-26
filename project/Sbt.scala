@@ -62,9 +62,9 @@ object Sbt extends Build
 		// Utilities related to reflection, managing Scala versions, and custom class loaders
 	lazy val classpathSub = baseProject(utilPath / "classpath", "Classpath") dependsOn(launchInterfaceSub, interfaceSub, ioSub) settings(scalaCompiler)
 		// Command line-related utilities.
-	lazy val completeSub = testedBaseProject(utilPath / "complete", "Completion") dependsOn(collectionSub, controlSub, ioSub) settings(jline)
+	lazy val completeSub = testedBaseProject(utilPath / "complete", "Completion") dependsOn(collectionSub, controlSub, ioSub) settings(jline : _*)
 		// logging
-	lazy val logSub = testedBaseProject(utilPath / "log", "Logging") dependsOn(interfaceSub, processSub) settings(libraryDependencies += jlineDep % "optional")
+	lazy val logSub = testedBaseProject(utilPath / "log", "Logging") dependsOn(interfaceSub, processSub) settings(jline : _*)
 		// Relation
 	lazy val relationSub = testedBaseProject(utilPath / "relation", "Relation") dependsOn(interfaceSub, processSub)
 		// class file reader and analyzer
@@ -155,7 +155,8 @@ object Sbt extends Build
 	def scriptedTask: Initialize[InputTask[Unit]] = InputTask(scriptedSource(dir => (s: State) => scriptedParser(dir))) { result =>
 		(proguard in Proguard, fullClasspath in scriptedSbtSub in Test, scalaInstance in scriptedSbtSub, publishAll, scriptedSource, result) map {
 			(launcher, scriptedSbtClasspath, scriptedSbtInstance, _, sourcePath, args) =>
-			val loader = classpath.ClasspathUtilities.toLoader(scriptedSbtClasspath.files, scriptedSbtInstance.loader)
+			val noJLine = new classpath.FilteredLoader(scriptedSbtInstance.loader, "jline." :: Nil)
+			val loader = classpath.ClasspathUtilities.toLoader(scriptedSbtClasspath.files, noJLine)
 			val m = ModuleUtilities.getObject("sbt.test.ScriptedTests", loader)
 			val r = m.getClass.getMethod("run", classOf[File], classOf[Boolean], classOf[Array[String]], classOf[File], classOf[Array[String]])
 			val launcherVmOptions = Array("-XX:MaxPermSize=256M") // increased after a failure in scripted source-dependencies/macro
@@ -190,7 +191,7 @@ object Sbt extends Build
 		Util.inAllProjects(projects filterNot Set(root, sbtSub, scriptedBaseSub, scriptedSbtSub, scriptedPluginSub) map { p => LocalProject(p.id) }, scoped)
 
 	def launchSettings =
-		Seq(jline, ivy, crossPaths := false,
+		Seq(ivy, crossPaths := false,
 			compile in Test <<= compile in Test dependsOn(publishLocal in interfaceSub, publishLocal in testSamples, publishLocal in launchInterfaceSub)
 	//		mappings in (Compile, packageBin) <++= (mappings in (launchInterfaceSub, Compile, packageBin) ).identity
 		) ++

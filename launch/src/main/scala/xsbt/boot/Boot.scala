@@ -15,12 +15,14 @@ object Boot
 				println("sbt launcher version " + Package.getPackage("xsbt.boot").getImplementationVersion)
 			case _ =>
 				System.clearProperty("scala.home") // avoid errors from mixing Scala versions in the same JVM
+				System.setProperty("jline.shutdownhook", "false")
 				CheckProxy()
 				initJansi()
+				setLogFormat()
 				run(args)
 		}
 	}
-	// this arrangement is because Scala 2.7.7 does not properly optimize away
+	// this arrangement is because Scala does not always properly optimize away
 	// the tail recursion in a catch statement
 	final def run(args: Array[String]): Unit = runImpl(args) match {
 		case Some(newArgs) => run(newArgs)
@@ -47,19 +49,21 @@ object Boot
 	private def exit(code: Int): Nothing =
 		System.exit(code).asInstanceOf[Nothing]
 
+	private[this] def setLogFormat() {
+		if(System.getProperty("sbt.log.format") eq null)
+			System.setProperty("sbt.log.format", "true")
+	}
 	private def initJansi() {
 		try {
 			val c = Class.forName("org.fusesource.jansi.AnsiConsole")
 			c.getMethod("systemInstall").invoke(null)
-			if (System.getProperty("sbt.log.format") eq null)
-				System.setProperty("sbt.log.format", "true")
 		} catch {
 			case ignore: ClassNotFoundException =>
-                        /* The below code intentionally traps everything. It technically shouldn't trap the
-                         * non-StackOverflowError VirtualMachineErrors and AWTError would be weird, but this is PermGen
-                         * mitigation code that should not render sbt completely unusable if jansi initialization fails.
-                         * [From Mark Harrah, https://github.com/sbt/sbt/pull/633#issuecomment-11957578].
-                         */
+				/* The below code intentionally traps everything. It technically shouldn't trap the
+				* non-StackOverflowError VirtualMachineErrors and AWTError would be weird, but this is PermGen
+				* mitigation code that should not render sbt completely unusable if jansi initialization fails.
+				* [From Mark Harrah, https://github.com/sbt/sbt/pull/633#issuecomment-11957578].
+				*/
 			case ex: Throwable => println("Jansi found on class path but initialization failed: " + ex)
 		}
 	}
