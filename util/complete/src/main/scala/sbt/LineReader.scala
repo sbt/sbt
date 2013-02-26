@@ -80,7 +80,8 @@ private object JLine
 			t.setEchoEnabled(true)
 			f(t)
 		}
-	def createReader(historyPath: Option[File]) =
+	def createReader(): ConsoleReader = createReader(None)
+	def createReader(historyPath: Option[File]): ConsoleReader =
 		usingTerminal { t =>
 			val cr = new ConsoleReader
 			cr.setBellEnabled(false)
