@@ -18,9 +18,10 @@ object JLineTest
 	val parsers = Map("1" -> one, "2" -> two, "3" -> three, "4" -> four, "5" -> five)
 	def main(args: Array[String])
 	{
-		import jline.{ConsoleReader,Terminal}
+		import jline.TerminalFactory
+		import jline.console.ConsoleReader
 		val reader = new ConsoleReader()
-		Terminal.getTerminal.disableEcho()
+		TerminalFactory.get.setEchoEnabled(false)
 
 		val parser = parsers(args(0))
 		JLineCompletion.installCustomCompletor(reader, parser)
