@@ -36,6 +36,7 @@ Improvements
 - Record defining source position of settings.  ``inspect`` shows the definition location of all settings contributing to a defined value.
 - Allow the root project to be specified explicitly in ``Build.rootProject``.
 - Tasks that need a directory for storing cache information can now use the ``cacheDirectory`` method on ``streams``.  This supersedes the ``cacheDirectory`` setting.
+- The environment variables used when forking ``run`` and ``test`` may be set via ``envVars``, which is a ``Task[Map[String,String]]``. (gh-665)
 
 Other
 -----
