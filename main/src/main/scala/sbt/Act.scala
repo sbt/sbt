@@ -232,7 +232,8 @@ object Act
 		import Aggregation.evaluatingParser
 		showParser.flatMap { show =>
 			val akp = aggregatedKeyParser(extracted) 
-			def evaluate(kvs: Seq[ScopedKey[T]] forSome { type T}): Parser[() => State] = evaluatingParser(state, structure, show)( keyValues(structure)(kvs) )
+			def evaluate(kvs: Seq[ScopedKey[T]] forSome { type T}): Parser[() => State] =
+				evaluatingParser(state, structure, Aggregation.defaultShow(state, show))( keyValues(structure)(kvs) )
 			def reconstruct(arg: String): String = ShowCommand + " " + arg
 			if(show)
 				( akp ~ (token(Space) ~> matched(akp)).* ) flatMap { case (kvs, tail) =>

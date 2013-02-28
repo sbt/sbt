@@ -57,15 +57,19 @@ LastCommand + """
 
 	See also '""" + LastGrepCommand + "'."
 
-	val exportBrief = (ExportCommand, "Displays the equivalent command line(s) for previously executed tasks.")
+	val exportBrief = (ExportCommand + " <tasks>+", "Executes tasks and displays the equivalent command lines.")
 	val exportDetailed =
-s"""$ExportCommand <task-key>+
-	Prints the approximate command line(s) for the previously executed tasks.
+s"""$ExportCommand [--last] <task>+
+	Runs the specified tasks and prints the equivalent command lines or other exportable information for those runs.
 
-	NOTE: These command lines are necessarily approximate.  Usually tasks do not actually
+	--last
+		Uses information from the previous execution
+
+	NOTES: These command lines are necessarily approximate.  Usually tasks do not actually
 	execute the command line and the actual command line program may not be installed or
-	on the PATH.  Incremental tasks will typically show the command line for the previous
-	incremental run and not for a full run.
+	on the PATH.  Incremental tasks will typically show the command line for an
+	incremental run and not for a full run.  Many tasks have no direct command line
+	equivalent and will show nothing at all.
 """
 
 	val InspectCommand = "inspect"

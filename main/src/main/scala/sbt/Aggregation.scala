@@ -14,23 +14,25 @@ package sbt
 sealed trait Aggregation
 final object Aggregation
 {
+	final case class ShowConfig(settingValues: Boolean, taskValues: Boolean, print: String => Unit)
 	final case class KeyValue[+T](key: ScopedKey[_], value: T)
 
-	def printSettings[T](xs: Seq[KeyValue[T]], log: Logger)(implicit display: Show[ScopedKey[_]]) =
+	def defaultShow(state: State, showTasks: Boolean): ShowConfig = ShowConfig(settingValues = true, taskValues = showTasks, s => state.log.info(s))
+	def printSettings[T](xs: Seq[KeyValue[T]], print: String => Unit)(implicit display: Show[ScopedKey[_]]) =
 		xs match
 		{
-			case KeyValue(_,x) :: Nil => log.info(x.toString)
-			case _ => xs foreach { case KeyValue(key, value) => log.info(display(key) + "\n\t" + value.toString) }
+			case KeyValue(_,x) :: Nil => print(x.toString)
+			case _ => xs foreach { case KeyValue(key, value) => print(display(key) + "\n\t" + value.toString) }
 		}
 	type Values[T] = Seq[KeyValue[T]]
 	type AnyKeys = Values[_]
 	def seqParser[T](ps: Values[Parser[T]]): Parser[Seq[KeyValue[T]]]  =  seq(ps.map { case KeyValue(k,p) => p.map(v => KeyValue(k,v) ) })
 
-	def applyTasks[T](s: State, structure: BuildStructure, ps: Values[Parser[Task[T]]], show: Boolean)(implicit display: Show[ScopedKey[_]]): Parser[() => State] =
+	def applyTasks[T](s: State, structure: BuildStructure, ps: Values[Parser[Task[T]]], show: ShowConfig)(implicit display: Show[ScopedKey[_]]): Parser[() => State] =
 		Command.applyEffect(seqParser(ps)) { ts =>
 			runTasks(s, structure, ts, DummyTaskMap(Nil), show)
 		}
-	def runTasksWithResult[T](s: State, structure: BuildStructure, ts: Values[Task[T]], extra: DummyTaskMap, show: Boolean)(implicit display: Show[ScopedKey[_]]): (State, Result[Seq[KeyValue[T]]]) =
+	def runTasksWithResult[T](s: State, structure: BuildStructure, ts: Values[Task[T]], extra: DummyTaskMap, show: ShowConfig)(implicit display: Show[ScopedKey[_]]): (State, Result[Seq[KeyValue[T]]]) =
 	{
 			import EvaluateTask._
 			import std.TaskExtra._
@@ -49,25 +51,24 @@ final object Aggregation
 		val log = newS.log
 
 		val success = result match { case Value(_) => true; case Inc(_) => false }
-		try { onResult(result, log) { results => if(show) printSettings(results, log) } }
+		try { onResult(result, log) { results => if(show.taskValues) printSettings(results, show.print) } }
 		finally { printSuccess(start, stop, extracted, success, log) }
 
 		(newS, result)
 	}
 
-  def runTasks[HL <: HList, T](s: State, structure: BuildStructure, ts: Values[Task[T]], extra: DummyTaskMap, show: Boolean)(implicit display: Show[ScopedKey[_]]): State = {
-    runTasksWithResult(s, structure, ts, extra, show)._1
-  }
+	def runTasks[HL <: HList, T](s: State, structure: BuildStructure, ts: Values[Task[T]], extra: DummyTaskMap, show: ShowConfig)(implicit display: Show[ScopedKey[_]]): State = {
+		runTasksWithResult(s, structure, ts, extra, show)._1
+	}
 
 
-  def printSuccess(start: Long, stop: Long, extracted: Extracted, success: Boolean, log: Logger)
+	def printSuccess(start: Long, stop: Long, extracted: Extracted, success: Boolean, log: Logger)
 	{
 		import extracted._
-		lazy val enabled = showSuccess in extracted.currentRef get extracted.structure.data getOrElse true
-		if(enabled)
+		def get(key: SettingKey[Boolean]): Boolean = key in currentRef get structure.data getOrElse true
+		if(get(showSuccess))
 		{
-			val timingEnabled = showTiming in currentRef get structure.data getOrElse true
-			if(timingEnabled)
+			if(get(showTiming))
 			{
 				val msg = timingString(start, stop, "", structure.data, currentRef, log)
 				if(success) log.success(msg) else log.error(msg)
@@ -93,7 +94,7 @@ final object Aggregation
 		DateFormat.getDateTimeInstance(DateFormat.MEDIUM, DateFormat.MEDIUM)
 	}
 
-	def applyDynamicTasks[I](s: State, structure: BuildStructure, inputs: Values[InputTask[I]], show: Boolean)(implicit display: Show[ScopedKey[_]]): Parser[() => State] =
+	def applyDynamicTasks[I](s: State, structure: BuildStructure, inputs: Values[InputTask[I]], show: ShowConfig)(implicit display: Show[ScopedKey[_]]): Parser[() => State] =
 	{
 		val parsers = for(KeyValue(k,it) <- inputs) yield it.parser(s).map(v => KeyValue(k,v))
 		Command.applyEffect(seq(parsers)) { roots =>
@@ -102,13 +103,13 @@ final object Aggregation
 		}
 	}
 
-	def evaluatingParser[T](s: State, structure: BuildStructure, show: Boolean)(keys: Seq[KeyValue[T]])(implicit display: Show[ScopedKey[_]]): Parser[() => State] =
+	def evaluatingParser[T](s: State, structure: BuildStructure, show: ShowConfig)(keys: Seq[KeyValue[T]])(implicit display: Show[ScopedKey[_]]): Parser[() => State] =
 		keys.toList match
 		{
 			case Nil => failure("No such setting/task")
 			case xs @ KeyValue(_, _: InputTask[t]) :: _ => applyDynamicTasks(s, structure, xs.asInstanceOf[Values[InputTask[t]]], show)
 			case xs @ KeyValue(_, _: Task[t]) :: _ => applyTasks(s, structure, maps(xs.asInstanceOf[Values[Task[t]]])(x => success(x)), show)
-			case xs => success(() => { printSettings(xs, s.log); s} )
+			case xs => success(() => { if(show.settingValues) printSettings(xs, show.print); s} )
 		}
 	private[this] def maps[T, S](vs: Values[T])(f: T => S): Values[S] =
 		vs map { case KeyValue(k,v) => KeyValue(k, f(v)) }

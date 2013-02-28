@@ -49,7 +49,7 @@ final case class Extracted(structure: BuildStructure, session: SessionSettings, 
 		val rkey = resolve(key.scopedKey)
 		val keys = Aggregation.aggregate(rkey, ScopeMask(), structure.extra)
 		val tasks = Act.keyValues(structure)(keys)
-		Aggregation.runTasks(state, structure, tasks, DummyTaskMap(Nil), show = false )(showKey)
+		Aggregation.runTasks(state, structure, tasks, DummyTaskMap(Nil), show = Aggregation.defaultShow(state,false) )(showKey)
 	}
 
 	private[this] def resolve[T](key: ScopedKey[T]): ScopedKey[T] =

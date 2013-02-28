@@ -295,8 +295,28 @@ object BuiltinCommands
 
 	val spacedKeyParser = (s: State) => Act.requireSession(s, token(Space) ~> Act.scopedKeyParser(s))
 	val spacedAggregatedParser = (s: State) => Act.requireSession(s, token(Space) ~> Act.aggregatedKeyParser(s))
-	val exportParser: State => Parser[AnyKeys] = (s: State) => spacedAggregatedParser(s).map(x => Act.keyValues(s)(x) )
-	val aggregatedKeyValueParser: State => Parser[Option[AnyKeys]] = s => exportParser(s).?
+	val aggregatedKeyValueParser: State => Parser[Option[AnyKeys]] = (s: State) => spacedAggregatedParser(s).map(x => Act.keyValues(s)(x) ).?
+
+	val exportParser: State => Parser[() => State] = (s: State) => Act.requireSession(s, token(Space) ~> exportParser0(s))
+	private[sbt] def exportParser0(s: State): Parser[() => State] =
+	{
+		val extracted = Project extract s
+		import extracted.{showKey, structure}
+		val keysParser = token(flag("--last" <~ Space)) ~ Act.aggregatedKeyParser(extracted)
+		val show = Aggregation.ShowConfig(settingValues = true, taskValues = false, print = println _)
+		for {
+			lastOnly_keys <- keysParser
+			kvs = Act.keyValues(structure)(lastOnly_keys._2)
+			f <- if(lastOnly_keys._1) success(() => s) else Aggregation.evaluatingParser(s, structure, show)(kvs)
+		} yield () => {
+			def export0(s: State): State = lastImpl(s, kvs, Some("export"))
+			val newS = try f() catch { case e: Exception =>
+				try export0(s)
+				finally { throw e }
+			}
+			export0(newS)
+		}
+	}
 
 	def lastGrepParser(s: State) = Act.requireSession(s, (token(Space) ~> token(NotSpace, "<pattern>")) ~ aggregatedKeyValueParser(s))
 	def last = Command(LastCommand, lastBrief, lastDetailed)(aggregatedKeyValueParser) {
@@ -306,9 +326,8 @@ object BuiltinCommands
 				Output.last( logFile, printLast(s) )
 			keepLastLog(s)
 	}
-	def export = Command(ExportCommand, exportBrief, exportDetailed)(exportParser) { (s, sks) =>
-		lastImpl(s, sks, Some("export"))
-	}
+	def export = Command(ExportCommand, exportBrief, exportDetailed)(exportParser)( (s,f) => f() )
+
 	private[this] def lastImpl(s: State, sks: AnyKeys, sid: Option[String]): State =
 	{
 		val (str, ref, display) = extractLast(s)
