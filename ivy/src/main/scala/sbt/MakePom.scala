@@ -10,7 +10,7 @@ package sbt
 import java.io.File
 // Node needs to be renamed to XNode because the task subproject contains a Node type that will shadow
 // scala.xml.Node when generating aggregated API documentation
-import scala.xml.{Elem, Node => XNode, NodeSeq, PrettyPrinter}
+import scala.xml.{Elem, Node => XNode, NodeSeq, PrettyPrinter, PrefixedAttribute}
 import Configurations.Optional
 
 import org.apache.ivy.{core, plugins, Ivy}
@@ -105,11 +105,20 @@ class MakePom(val log: Logger)
 		val allExtra = if(depExtra.isEmpty) extra else extra.updated(CustomPomParser.ExtraAttributesKey, depExtra)
 		if(allExtra.isEmpty) NodeSeq.Empty else makeProperties(allExtra)
 	}
-	def makeProperties(extra: Map[String,String]): NodeSeq =
+	def makeProperties(extra: Map[String,String]): NodeSeq = {
+		def _extraAttributes(k: String) = if (k == CustomPomParser.ExtraAttributesKey) xmlSpacePreserve else scala.xml.Null
 		<properties> {
 			for( (key,value) <- extra ) yield
-				(<x>{value}</x>).copy(label = key)
+				(<x>{value}</x>).copy(label = key, attributes = _extraAttributes(key))
 		} </properties>
+	}
+
+	/**
+	 * Attribute tag that PrettyPrinter won't ignore, saying "don't mess with my spaces"
+	 * Without this, PrettyPrinter will flatten multiple entries for ExtraDependencyAttributes and make them
+	 * unparseable. (e.g. a plugin that depends on multiple plugins will fail)
+	 */
+	def xmlSpacePreserve = new PrefixedAttribute("xml", "space", "preserve", scala.xml.Null)
 
 	def description(d: String) = if((d eq null) || d.isEmpty) NodeSeq.Empty else <description>{d}</description>
 	def licenses(ls: Array[License]) = if(ls == null || ls.isEmpty) NodeSeq.Empty else <licenses>{ls.map(license)}</licenses>
