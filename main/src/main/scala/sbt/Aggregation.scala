@@ -14,10 +14,11 @@ package sbt
 sealed trait Aggregation
 final object Aggregation
 {
-	final case class ShowConfig(settingValues: Boolean, taskValues: Boolean, print: String => Unit)
+	final case class ShowConfig(settingValues: Boolean, taskValues: Boolean, print: String => Unit, success: Boolean)
+	final case class Complete[T](start: Long, stop: Long, results: Result[Seq[KeyValue[T]]], state: State)
 	final case class KeyValue[+T](key: ScopedKey[_], value: T)
 
-	def defaultShow(state: State, showTasks: Boolean): ShowConfig = ShowConfig(settingValues = true, taskValues = showTasks, s => state.log.info(s))
+	def defaultShow(state: State, showTasks: Boolean): ShowConfig = ShowConfig(settingValues = true, taskValues = showTasks, s => state.log.info(s), success = true)
 	def printSettings[T](xs: Seq[KeyValue[T]], print: String => Unit)(implicit display: Show[ScopedKey[_]]) =
 		xs match
 		{
@@ -32,12 +33,30 @@ final object Aggregation
 		Command.applyEffect(seqParser(ps)) { ts =>
 			runTasks(s, structure, ts, DummyTaskMap(Nil), show)
 		}
+	
+	@deprecated("Use `timedRun` and `showRun` directly or use `runTasks`.", "0.13.0")
 	def runTasksWithResult[T](s: State, structure: BuildStructure, ts: Values[Task[T]], extra: DummyTaskMap, show: ShowConfig)(implicit display: Show[ScopedKey[_]]): (State, Result[Seq[KeyValue[T]]]) =
+	{
+		val complete = timedRun[T](s, ts, extra)
+		showRun(complete, show)
+		(complete.state, complete.results)
+	}
+	def showRun[T](complete: Complete[T], show: ShowConfig)(implicit display: Show[ScopedKey[_]])
+	{
+		import complete._
+		val log = state.log
+		val extracted = Project extract state
+		val success = results match { case Value(_) => true; case Inc(_) => false }
+		try { EvaluateTask.onResult(results, log) { results => if(show.taskValues) printSettings(results, show.print) } }
+		finally { if(show.success) printSuccess(start, stop, extracted, success, log) }
+	}
+	def timedRun[T](s: State, ts: Values[Task[T]], extra: DummyTaskMap): Complete[T] =
 	{
 			import EvaluateTask._
 			import std.TaskExtra._
 
 		val extracted = Project extract s
+		import extracted.structure
 		val toRun = ts map { case KeyValue(k,t) => t.map(v => KeyValue(k,v)) } join;
 		val roots = ts map { case KeyValue(k,_) => k }
 		val config = extractedConfig(extracted, structure)
@@ -48,19 +67,14 @@ final object Aggregation
 			runTask(toRun, s,str, structure.index.triggers, config)(transform)
 		}
 		val stop = System.currentTimeMillis
-		val log = newS.log
-
-		val success = result match { case Value(_) => true; case Inc(_) => false }
-		try { onResult(result, log) { results => if(show.taskValues) printSettings(results, show.print) } }
-		finally { printSuccess(start, stop, extracted, success, log) }
-
-		(newS, result)
+		Complete(start, stop, result, newS)
 	}
 
 	def runTasks[HL <: HList, T](s: State, structure: BuildStructure, ts: Values[Task[T]], extra: DummyTaskMap, show: ShowConfig)(implicit display: Show[ScopedKey[_]]): State = {
-		runTasksWithResult(s, structure, ts, extra, show)._1
+		val complete = timedRun[T](s, ts, extra)
+		showRun(complete, show)
+		complete.state
 	}
-
 
 	def printSuccess(start: Long, stop: Long, extracted: Extracted, success: Boolean, log: Logger)
 	{

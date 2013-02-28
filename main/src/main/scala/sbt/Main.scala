@@ -303,7 +303,7 @@ object BuiltinCommands
 		val extracted = Project extract s
 		import extracted.{showKey, structure}
 		val keysParser = token(flag("--last" <~ Space)) ~ Act.aggregatedKeyParser(extracted)
-		val show = Aggregation.ShowConfig(settingValues = true, taskValues = false, print = println _)
+		val show = Aggregation.ShowConfig(settingValues = true, taskValues = false, print = println _, success = false)
 		for {
 			lastOnly_keys <- keysParser
 			kvs = Act.keyValues(structure)(lastOnly_keys._2)
