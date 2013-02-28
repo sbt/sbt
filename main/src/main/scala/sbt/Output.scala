@@ -16,8 +16,12 @@ object Output
 {
 	final val DefaultTail = "> "
 
+	@deprecated("Explicitly provide None for the stream ID.", "0.13.0")
 	def last(keys: Values[_], streams: Streams, printLines: Seq[String] => Unit)(implicit display: Show[ScopedKey[_]]): Unit =
-		printLines( flatLines(lastLines(keys, streams))(idFun) )
+		last(keys, streams, printLines, None)(display)
+
+	def last(keys: Values[_], streams: Streams, printLines: Seq[String] => Unit, sid: Option[String])(implicit display: Show[ScopedKey[_]]): Unit =
+		printLines( flatLines(lastLines(keys, streams, sid))(idFun) )
 
 	def last(file: File, printLines: Seq[String] => Unit, tailDelim: String = DefaultTail): Unit =
 		printLines(tailLines(file, tailDelim))
@@ -42,13 +46,19 @@ object Output
 		}
 	}
 
-	def lastLines(keys: Values[_], streams: Streams): Values[Seq[String]] =
+	def lastLines(keys: Values[_], streams: Streams, sid: Option[String] = None): Values[Seq[String]] =
 	{
-		val outputs = keys map { (kv: KeyValue[_]) => KeyValue(kv.key, lastLines(kv.key, streams)) }
+		val outputs = keys map { (kv: KeyValue[_]) => KeyValue(kv.key, lastLines(kv.key, streams, sid)) }
 		outputs.filterNot(_.value.isEmpty)
 	}
-	def lastLines(key: ScopedKey[_], mgr: Streams): Seq[String]  =	 mgr.use(key) { s => IO.readLines(s.readText( Project.fillTaskAxis(key) )) }
+
+	@deprecated("Explicitly provide None for the stream ID.", "0.13.0")
+	def lastLines(key: ScopedKey[_], mgr: Streams): Seq[String] = lastLines(key, mgr, None)
+
+	def lastLines(key: ScopedKey[_], mgr: Streams, sid: Option[String]): Seq[String]  =	 mgr.use(key) { s => IO.readLines(s.readText( Project.fillTaskAxis(key), sid )) }
+
 	def tailLines(file: File, tailDelim: String): Seq[String]  =  headLines(IO.readLines(file).reverse, tailDelim).reverse
+
 	@tailrec def headLines(lines: Seq[String], tailDelim: String): Seq[String] =
 		if(lines.isEmpty)
 			lines

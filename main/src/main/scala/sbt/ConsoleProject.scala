@@ -4,7 +4,6 @@
 package sbt
 
 	import java.io.File
-	import compiler.AnalyzingCompiler
 
 object ConsoleProject
 {

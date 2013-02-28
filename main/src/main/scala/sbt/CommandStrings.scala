@@ -34,6 +34,7 @@ ShowCommand + """ <setting>
 
 	val LastCommand = "last"
 	val LastGrepCommand = "last-grep"
+	val ExportCommand = "export"
 
 	val lastGrepBrief = (LastGrepCommand, "Shows lines from the last output for 'key' that match 'pattern'.")
 	val lastGrepDetailed =
@@ -55,6 +56,17 @@ LastCommand + """
 	Prints the logging associated with the provided key.  The key typically refers to a task (for example, test:compile).  The logging that is displayed is restricted to the logging for that particular task.
 
 	See also '""" + LastGrepCommand + "'."
+
+	val exportBrief = (ExportCommand, "Displays the equivalent command line(s) for previously executed tasks.")
+	val exportDetailed =
+s"""$ExportCommand <task-key>+
+	Prints the approximate command line(s) for the previously executed tasks.
+
+	NOTE: These command lines are necessarily approximate.  Usually tasks do not actually
+	execute the command line and the actual command line program may not be installed or
+	on the PATH.  Incremental tasks will typically show the command line for the previous
+	incremental run and not for a full run.
+"""
 
 	val InspectCommand = "inspect"
 	val inspectBrief = (InspectCommand, "Prints the value for 'key', the defining scope, delegates, related definitions, and dependencies.")

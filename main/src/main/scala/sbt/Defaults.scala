@@ -21,7 +21,7 @@ package sbt
 	import scala.xml.NodeSeq
 	import org.apache.ivy.core.module.{descriptor, id}
 	import descriptor.ModuleDescriptor, id.ModuleRevisionId
-	import java.io.File
+	import java.io.{File, PrintWriter}
 	import java.net.{URI,URL,MalformedURLException}
 	import java.util.concurrent.Callable
 	import sbinary.DefaultProtocol.StringFormat
@@ -619,9 +619,11 @@ object Defaults extends BuildCommon
 			val label = nameForSrc(config.name)
 			val (options, runDoc) =
 				if(hasScala)
-					(in.config.options ++ Opts.doc.externalAPI(xapis), Doc.scaladoc(label, s.cacheDirectory / "scala", in.compilers.scalac))
+					(in.config.options ++ Opts.doc.externalAPI(xapis),
+						Doc.scaladoc(label, s.cacheDirectory / "scala", in.compilers.scalac.onArgs(exported(s, "scaladoc"))))
 				else if(hasJava)
-					(in.config.javacOptions, Doc.javadoc(label, s.cacheDirectory / "java", in.compilers.javac))
+					(in.config.javacOptions,
+						Doc.javadoc(label, s.cacheDirectory / "java", in.compilers.javac.onArgs(exported(s, "javadoc"))))
 				else
 					(Nil, RawCompileLike.nop)
 			runDoc(srcs, cp, out, options, in.config.maxErrors, s.log)
@@ -641,15 +643,29 @@ object Defaults extends BuildCommon
 	def consoleTask(classpath: TaskKey[Classpath], task: TaskKey[_]): Initialize[Task[Unit]] =
 		(compilers in task, classpath in task, scalacOptions in task, initialCommands in task, cleanupCommands in task, taskTemporaryDirectory in task, scalaInstance in task, streams) map {
 			(cs, cp, options, initCommands, cleanup, temp, si, s) =>
-				val fullcp = (data(cp) ++ si.jars).distinct
+				val cpFiles = data(cp)
+				val fullcp = (cpFiles ++ si.jars).distinct
 				val loader = sbt.classpath.ClasspathUtilities.makeLoader(fullcp, si, IO.createUniqueDirectory(temp))
-				(new Console(cs.scalac))(data(cp), options, loader, initCommands, cleanup)()(s.log).foreach(msg => error(msg))
+				val compiler = cs.scalac.onArgs(exported(s, "scala"))
+				(new Console(compiler))(cpFiles, options, loader, initCommands, cleanup)()(s.log).foreach(msg => error(msg))
 				println()
 		}
 
+	private[this] def exported(w: PrintWriter, command: String): Seq[String] => Unit = args =>
+		w.println( (command +: args).mkString(" ") )
+	private[this] def exported(s: TaskStreams, command: String): Seq[String] => Unit = args =>
+		exported(s.text("export"), command)
+
 	def compileTaskSettings: Seq[Setting[_]] = inTask(compile)(compileInputsSettings)
 
-	def compileTask = (compileInputs in compile, streams) map { (i,s) => Compiler(i,s.log) }
+	def compileTask: Initialize[Task[inc.Analysis]] = Def.task { compileTaskImpl(streams.value, (compileInputs in compile).value) }
+	private[this] def compileTaskImpl(s: TaskStreams, ci: Compiler.Inputs): inc.Analysis =
+	{
+		lazy val x = s.text("export")
+		def onArgs(cs: Compiler.Compilers) = cs.copy(scalac = cs.scalac.onArgs(exported(x, "scalac")), javac = cs.javac.onArgs(exported(x, "javac")))
+		val i = ci.copy(compilers = onArgs(ci.compilers))
+		Compiler(i,s.log)
+	}
 	def compileIncSetupTask =
 		(dependencyClasspath, skip in compile, definesClass, compilerCache, streams, incOptions) map { (cp, skip, definesC, cache, s, incOptions) =>
 			Compiler.IncSetup(analysisMap(cp), definesC, skip, s.cacheDirectory / "inc_compile", cache, incOptions)

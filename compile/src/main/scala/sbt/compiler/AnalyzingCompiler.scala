@@ -13,8 +13,10 @@ package compiler
 * provided by scalaInstance.  This class requires a ComponentManager in order to obtain the interface code to scalac and
 * the analysis plugin.  Because these call Scala code for a different Scala version than the one used for this class, they must
 * be compiled for the version of Scala being used.*/
-final class AnalyzingCompiler(val scalaInstance: xsbti.compile.ScalaInstance, val provider: CompilerInterfaceProvider, val cp: xsbti.compile.ClasspathOptions) extends CachedCompilerProvider
+final class AnalyzingCompiler private(val scalaInstance: xsbti.compile.ScalaInstance, val provider: CompilerInterfaceProvider, val cp: xsbti.compile.ClasspathOptions, onArgsF: Seq[String] => Unit) extends CachedCompilerProvider
 {
+	def this(scalaInstance: xsbti.compile.ScalaInstance, provider: CompilerInterfaceProvider, cp: xsbti.compile.ClasspathOptions) =
+		this(scalaInstance, provider, cp, _ => ())
 	def this(scalaInstance: ScalaInstance, provider: CompilerInterfaceProvider) = this(scalaInstance, provider, ClasspathOptions.auto)
 
 	@deprecated("A Logger is no longer needed.", "0.13.0")
@@ -22,6 +24,8 @@ final class AnalyzingCompiler(val scalaInstance: xsbti.compile.ScalaInstance, va
 
 	@deprecated("A Logger is no longer needed.", "0.13.0")
 	def this(scalaInstance: xsbti.compile.ScalaInstance, provider: CompilerInterfaceProvider, cp: xsbti.compile.ClasspathOptions, log: Logger) = this(scalaInstance, provider, cp)
+
+	def onArgs(f: Seq[String] => Unit): AnalyzingCompiler = new AnalyzingCompiler(scalaInstance, provider, cp, f)
 
 	def apply(sources: Seq[File], changes: DependencyChanges, classpath: Seq[File], singleOutput: File, options: Seq[String], callback: AnalysisCallback, maximumErrors: Int, cache: GlobalsCache, log: Logger)
 	{
@@ -39,6 +43,7 @@ final class AnalyzingCompiler(val scalaInstance: xsbti.compile.ScalaInstance, va
 
 	def compile(sources: Seq[File], changes: DependencyChanges, callback: AnalysisCallback, log: Logger, reporter: Reporter, progress: CompileProgress, compiler: CachedCompiler)
 	{
+		onArgsF(compiler.commandArguments(sources.toArray))
 		call("xsbt.CompilerInterface", "run", log)(
 			classOf[Array[File]], classOf[DependencyChanges], classOf[AnalysisCallback], classOf[xLogger], classOf[Reporter], classOf[CompileProgress], classOf[CachedCompiler]) (
 			sources.toArray, changes, callback, log, reporter, progress, compiler )
@@ -59,18 +64,34 @@ final class AnalyzingCompiler(val scalaInstance: xsbti.compile.ScalaInstance, va
 	def doc(sources: Seq[File], classpath: Seq[File], outputDirectory: File, options: Seq[String], log: Logger, reporter: Reporter): Unit =
 	{
 		val arguments = (new CompilerArguments(scalaInstance, cp))(sources, classpath, Some(outputDirectory), options)
+		onArgsF(arguments)
 		call("xsbt.ScaladocInterface", "run", log) (classOf[Array[String]], classOf[xLogger], classOf[Reporter]) (
 			arguments.toArray[String] : Array[String], log, reporter)
 	}
 	def console(classpath: Seq[File], options: Seq[String], initialCommands: String, cleanupCommands: String, log: Logger)(loader: Option[ClassLoader] = None, bindings: Seq[(String, Any)] = Nil): Unit =
 	{
-		val arguments = new CompilerArguments(scalaInstance, cp)
-		val classpathString = CompilerArguments.absString(arguments.finishClasspath(classpath))
-		val bootClasspath = if(cp.autoBoot) arguments.createBootClasspathFor(classpath) else ""
+		onArgsF(consoleCommandArguments(classpath, options, log))
+		val (classpathString, bootClasspath) = consoleClasspaths(classpath)
 		val (names, values) = bindings.unzip
 		call("xsbt.ConsoleInterface", "run", log)(
 			classOf[Array[String]], classOf[String], classOf[String], classOf[String], classOf[String], classOf[ClassLoader], classOf[Array[String]], classOf[Array[Any]], classOf[xLogger])(
 			options.toArray[String]: Array[String], bootClasspath, classpathString, initialCommands, cleanupCommands, loader.orNull, names.toArray[String], values.toArray[Any], log)
+	}
+
+	private[this] def consoleClasspaths(classpath: Seq[File]): (String, String) =
+	{
+		val arguments = new CompilerArguments(scalaInstance, cp)
+		val classpathString = CompilerArguments.absString(arguments.finishClasspath(classpath))
+		val bootClasspath = if(cp.autoBoot) arguments.createBootClasspathFor(classpath) else ""
+		(classpathString, bootClasspath)
+	}
+	def consoleCommandArguments(classpath: Seq[File], options: Seq[String], log: Logger): Seq[String] =
+	{
+		val (classpathString, bootClasspath) = consoleClasspaths(classpath)
+		val argsObj = call("xsbt.ConsoleInterface", "commandArguments", log)(
+			classOf[Array[String]], classOf[String], classOf[String], classOf[xLogger])(
+			options.toArray[String]: Array[String], bootClasspath, classpathString, log)
+		argsObj.asInstanceOf[Array[String]].toSeq
 	}
 	def force(log: Logger): Unit = provider(scalaInstance, log)
 	private def call(interfaceClassName: String, methodName: String, log: Logger)(argTypes: Class[_]*)(args: AnyRef*): AnyRef =

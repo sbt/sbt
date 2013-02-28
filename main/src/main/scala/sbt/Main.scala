@@ -77,7 +77,7 @@ object BuiltinCommands
 	def ScriptCommands: Seq[Command] = Seq(ignore, exit, Script.command, act, nop)
 	def DefaultCommands: Seq[Command] = Seq(ignore, help, about, tasks, settingsCommand, loadProject,
 		projects, project, reboot, read, history, set, sessionCommand, inspect, loadProjectImpl, loadFailed, Cross.crossBuild, Cross.switchVersion,
-		setOnFailure, clearOnFailure, ifLast, multi, shell, continuous, eval, alias, append, last, lastGrep, boot, nop, call, exit, act)
+		setOnFailure, clearOnFailure, ifLast, multi, shell, continuous, eval, alias, append, last, lastGrep, export, boot, nop, call, exit, act)
 	def DefaultBootCommands: Seq[String] = LoadProject :: (IfLast + " " + Shell) :: Nil
 
 	def boot = Command.make(BootCommand)(bootParser)
@@ -295,20 +295,26 @@ object BuiltinCommands
 
 	val spacedKeyParser = (s: State) => Act.requireSession(s, token(Space) ~> Act.scopedKeyParser(s))
 	val spacedAggregatedParser = (s: State) => Act.requireSession(s, token(Space) ~> Act.aggregatedKeyParser(s))
-	val aggregatedKeyValueParser: State => Parser[Option[AnyKeys]] =
-		(s: State) => spacedAggregatedParser(s).map(x => Act.keyValues(s)(x) ).?
+	val exportParser: State => Parser[AnyKeys] = (s: State) => spacedAggregatedParser(s).map(x => Act.keyValues(s)(x) )
+	val aggregatedKeyValueParser: State => Parser[Option[AnyKeys]] = s => exportParser(s).?
 
 	def lastGrepParser(s: State) = Act.requireSession(s, (token(Space) ~> token(NotSpace, "<pattern>")) ~ aggregatedKeyValueParser(s))
 	def last = Command(LastCommand, lastBrief, lastDetailed)(aggregatedKeyValueParser) {
-		case (s,Some(sks)) =>
-			val (str, ref, display) = extractLast(s)
-			Output.last(sks, str.streams(s), printLast(s))(display)
-			keepLastLog(s)
+		case (s,Some(sks)) => lastImpl(s, sks, None)
 		case (s, None) =>
 			for(logFile <- lastLogFile(s)) yield
 				Output.last( logFile, printLast(s) )
 			keepLastLog(s)
 	}
+	def export = Command(ExportCommand, exportBrief, exportDetailed)(exportParser) { (s, sks) =>
+		lastImpl(s, sks, Some("export"))
+	}
+	private[this] def lastImpl(s: State, sks: AnyKeys, sid: Option[String]): State =
+	{
+		val (str, ref, display) = extractLast(s)
+		Output.last(sks, str.streams(s), printLast(s), sid)(display)
+		keepLastLog(s)
+	}	
 
 	/** Determines the log file that last* commands should operate on.  See also isLastOnly. */
 	def lastLogFile(s: State) =

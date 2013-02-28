@@ -20,10 +20,14 @@ trait JavaCompiler extends xsbti.compile.JavaCompiler
 		}
 		apply(sources, classpath, outputDirectory, options)(log)
 	}
+
+	def onArgs(f: Seq[String] => Unit): JavaCompiler
 }
 trait Javadoc
 {
 	def doc(sources: Seq[File], classpath: Seq[File], outputDirectory: File, options: Seq[String], maximumErrors: Int, log: Logger)
+
+	def onArgs(f: Seq[String] => Unit): Javadoc
 }
 trait JavaTool extends Javadoc with JavaCompiler
 {
@@ -34,6 +38,8 @@ trait JavaTool extends Javadoc with JavaCompiler
 		compile(JavaCompiler.javadoc, sources, classpath, outputDirectory, options)(log)
 
 	def compile(contract: JavacContract, sources: Seq[File], classpath: Seq[File], outputDirectory: File, options: Seq[String])(implicit log: Logger): Unit
+
+	def onArgs(f: Seq[String] => Unit): JavaTool
 }
 object JavaCompiler
 {
@@ -52,18 +58,25 @@ object JavaCompiler
 		}
 	}
 
-	def construct(f: Fork, cp: ClasspathOptions, scalaInstance: ScalaInstance): JavaTool =
-		new JavaTool {
-			def compile(contract: JavacContract, sources: Seq[File], classpath: Seq[File], outputDirectory: File, options: Seq[String])(implicit log: Logger) {
-				val augmentedClasspath = if(cp.autoBoot) classpath ++ Seq(scalaInstance.libraryJar) else classpath
-				val javaCp = ClasspathOptions.javac(cp.compiler)
-				val arguments = (new CompilerArguments(scalaInstance, javaCp))(sources, augmentedClasspath, Some(outputDirectory), options)
-				log.debug("Calling " + contract.name.capitalize + " with arguments:\n\t" + arguments.mkString("\n\t"))
-				val code: Int = f(contract, arguments, log)
-				log.debug(contract.name + " returned exit code: " + code)
-				if( code != 0 ) throw new CompileFailed(arguments.toArray, contract.name + " returned nonzero exit code", Array())
-			}
+	def construct(f: Fork, cp: ClasspathOptions, scalaInstance: ScalaInstance): JavaTool = new JavaTool0(f, cp, scalaInstance, _ => ())
+
+	private[this] class JavaTool0(f: Fork, cp: ClasspathOptions, scalaInstance: ScalaInstance, onArgsF: Seq[String] => Unit) extends JavaTool
+	{
+		def onArgs(g: Seq[String] => Unit): JavaTool = new JavaTool0(f, cp, scalaInstance, g)
+		def commandArguments(sources: Seq[File], classpath: Seq[File], outputDirectory: File, options: Seq[String], log: Logger): Seq[String] =
+		{
+			val augmentedClasspath = if(cp.autoBoot) classpath ++ Seq(scalaInstance.libraryJar) else classpath
+			val javaCp = ClasspathOptions.javac(cp.compiler)
+			(new CompilerArguments(scalaInstance, javaCp))(sources, augmentedClasspath, Some(outputDirectory), options)
 		}
+		def compile(contract: JavacContract, sources: Seq[File], classpath: Seq[File], outputDirectory: File, options: Seq[String])(implicit log: Logger) {
+			val arguments = commandArguments(sources, classpath, outputDirectory, options, log)
+			onArgsF(arguments)
+			val code: Int = f(contract, arguments, log)
+			log.debug(contract.name + " returned exit code: " + code)
+			if( code != 0 ) throw new CompileFailed(arguments.toArray, contract.name + " returned nonzero exit code", Array())
+		}
+	}
 	def directOrFork(cp: ClasspathOptions, scalaInstance: ScalaInstance)(implicit doFork: Fork): JavaTool =
 		construct(directOrForkJavac, cp, scalaInstance)
 		

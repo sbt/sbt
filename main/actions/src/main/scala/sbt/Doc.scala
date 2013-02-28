@@ -3,7 +3,7 @@
  */
 package sbt
 
-	import java.io.File
+	import java.io.{File, PrintWriter}
 	import compiler.{AnalyzingCompiler, JavaCompiler}
 
 	import Predef.{conforms => _, _}
@@ -20,8 +20,9 @@ object Doc
 		import RawCompileLike._
 	def scaladoc(label: String, cache: File, compiler: AnalyzingCompiler): Gen =
 		cached(cache, prepare(label + " Scala API documentation", compiler.doc))
+
 	def javadoc(label: String, cache: File, doc: sbt.compiler.Javadoc): Gen =
-		cached(cache, prepare(label + " Scala API documentation", filterSources(javaSourcesOnly, doc.doc)))
+		cached(cache, prepare(label + " Java API documentation", filterSources(javaSourcesOnly, doc.doc)))
 
 	val javaSourcesOnly: File => Boolean = _.getName.endsWith(".java")
 
