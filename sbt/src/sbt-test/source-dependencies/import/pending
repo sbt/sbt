@@ -4,5 +4,5 @@
 $ copy-file changes/A.scala A.scala
 
 # 'import a.b' should now fail in B.scala
-# disabled because scalac doesn't track this dependency
-#-> compile
+# succeeds because scalac doesn't track this dependency
+-> compile
