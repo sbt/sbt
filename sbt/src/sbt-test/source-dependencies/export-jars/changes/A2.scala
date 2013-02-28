@@ -1,1 +1,1 @@
-object A { final val x = 2 }
+object A { val x = 2 }
