@@ -267,6 +267,7 @@ trait Init[Scope]
 		def mapInit(f: (ScopedKey[T], T) => T): Setting[T] = new Setting(key, init(t => f(key,t)), pos)
 		def mapConstant(g: MapConstant): Setting[T] = new Setting(key, init mapConstant g, pos)
 		def withPos(pos: SourcePosition) = new Setting(key, init, pos)
+		private[sbt] def mapInitialize(f: Initialize[T] => Initialize[T]): Setting[T] = new Setting(key, f(init), pos)
 		override def toString = "setting(" + key + ") at " + pos
 	}
 
