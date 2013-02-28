@@ -805,19 +805,30 @@ object Classpaths
 	def concat[T](a: ScopedTaskable[Seq[T]], b: ScopedTaskable[Seq[T]]): Initialize[Task[Seq[T]]] = (a,b) map ( _ ++ _)
 	def concatSettings[T](a: SettingKey[Seq[T]], b: SettingKey[Seq[T]]): Initialize[Seq[T]] = (a,b)(_ ++ _)
 
-	lazy val configSettings: Seq[Setting[_]] = Seq(
+	lazy val configSettings: Seq[Setting[_]] = classpaths ++ Seq(
+		products <<= makeProducts,
+		productDirectories := compileInputs.value.config.classesDirectory :: Nil,
+		classpathConfiguration := findClasspathConfig(internalConfigurationMap.value, configuration.value, classpathConfiguration.?.value, update.value)
+	)
+	private[this] def classpaths: Seq[Setting[_]] = Seq(
 		externalDependencyClasspath <<= concat(unmanagedClasspath, managedClasspath),
 		dependencyClasspath <<= concat(internalDependencyClasspath, externalDependencyClasspath),
 		fullClasspath <<= concatDistinct(exportedProducts, dependencyClasspath),
 		internalDependencyClasspath <<= internalDependencies,
 		unmanagedClasspath <<= unmanagedDependencies,
-		products <<= makeProducts,
-		productDirectories := compileInputs.value.config.classesDirectory :: Nil,
-		exportedProducts <<= exportProductsTask,
-		classpathConfiguration := findClasspathConfig(internalConfigurationMap.value, configuration.value, classpathConfiguration.?.value, update.value),
 		managedClasspath := managedJars(classpathConfiguration.value, classpathTypes.value, update.value),
+		exportedProducts <<= exportProductsTask,
 		unmanagedJars := findUnmanagedJars(configuration.value, unmanagedBase.value, includeFilter in unmanagedJars value, excludeFilter in unmanagedJars value)
-	)
+	).map(exportClasspath)
+
+	private[this] def exportClasspath(s: Setting[Task[Classpath]]): Setting[Task[Classpath]] =
+		s.mapInitialize(init => Def.task { exportClasspath(streams.value, init.value) })
+	private[this] def exportClasspath(s: TaskStreams, cp: Classpath): Classpath =
+	{
+		s.text("export").println(Path.makeString(data(cp)))
+		cp
+	}
+
 	def defaultPackageKeys = Seq(packageBin, packageSrc, packageDoc)
 	lazy val defaultPackages: Seq[TaskKey[File]] =
 		for(task <- defaultPackageKeys; conf <- Seq(Compile, Test)) yield (task in conf)
