@@ -272,3 +272,9 @@ OSGi plugin
 
 -  sbtosgi: https://github.com/typesafehub/sbtosgi
 
+Plugin bundles
+~~~~~~~~~~~
+
+-   tl-os-sbt-plugins (Version, Release, and Package Management, Play 2.0 and Git utilities) : 
+    https://github.com/trafficland/tl-os-sbt-plugins
+
