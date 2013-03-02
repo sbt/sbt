@@ -9,7 +9,7 @@ How To Use
 For sbt 0.11/0.12, add sbt-dependency-graph as a dependency in `project/plugins.sbt`:
 
 ```scala
-addSbtPlugin("net.virtual-void" % "sbt-dependency-graph" % "0.7.0")
+addSbtPlugin("net.virtual-void" % "sbt-dependency-graph" % "0.7.1")
 ```
 
 Then, add the following to your `<project-root>/build.sbt` (that's not `project/build.sbt`!) as a standalone line:
