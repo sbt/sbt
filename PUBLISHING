@@ -1,0 +1,15 @@
+Before publishing:
+
+ * update version in project.sbt
+
+ * update plugins.sbt in scripted tests
+ * run `^ scripted` to run all tests
+
+ * run `^ publish'
+
+After publishing:
+ * create tag (+ push)
+ * update infos in README
+ * update example project (+ push)
+ * use `ls-write-version`
+ * lsync
