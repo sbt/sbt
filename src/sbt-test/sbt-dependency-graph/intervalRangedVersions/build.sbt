@@ -5,20 +5,17 @@ graphSettings
 scalaVersion := "2.9.2"
 
 libraryDependencies ++= Seq(
-  "org.slf4j" % "slf4j-api" % "1.7.2",
-  "ch.qos.logback" % "logback-classic" % "1.0.7"
+  "com.codahale" % "jerkson_2.9.1" % "0.5.0"
 )
 
 TaskKey[Unit]("check") <<= (ivyReport in Test, asciiTree in Test) map { (report, graph) =>
   def sanitize(str: String): String = str.split('\n').drop(1).map(_.trim).mkString("\n")
   val expectedGraph =
-    """default:default-e95e05_2.9.2:0.1-SNAPSHOT [S]
-      |  +-ch.qos.logback:logback-classic:1.0.7
-      |  | +-ch.qos.logback:logback-core:1.0.7
-      |  | +-org.slf4j:slf4j-api:1.6.6 (evicted by: 1.7.2)
-      |  | +-org.slf4j:slf4j-api:1.7.2
-      |  |
-      |  +-org.slf4j:slf4j-api:1.7.2
+    """default:default-dbc48d_2.9.2:0.1-SNAPSHOT [S]
+      |  +-com.codahale:jerkson_2.9.1:0.5.0 [S]
+      |    +-org.codehaus.jackson:jackson-core-asl:1.9.12
+      |    +-org.codehaus.jackson:jackson-mapper-asl:1.9.12
+      |      +-org.codehaus.jackson:jackson-core-asl:1.9.12
       |  """.stripMargin
   IO.writeLines(file("/tmp/blib"), sanitize(graph).split("\n"))
   IO.writeLines(file("/tmp/blub"), sanitize(expectedGraph).split("\n"))

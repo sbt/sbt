@@ -70,9 +70,9 @@ object IvyGraphMLDependencies extends App {
     buildGraph(buildDoc(ivyReportFile))
 
   def buildGraph(doc: Document): ModuleGraph = {
-    def edgesForModule(id: ModuleId, revision: NodeSeq, rev: String): Seq[Edge] =
+    def edgesForModule(id: ModuleId, revision: NodeSeq): Seq[Edge] =
       for {
-        caller      <- revision \ "caller" if caller.attribute("rev").get.text == rev
+        caller      <- revision \ "caller"
         callerModule = moduleIdFromElement(caller, caller.attribute("callerrev").get.text)
       } yield (moduleIdFromElement(caller, caller.attribute("callerrev").get.text), id)
 
@@ -85,7 +85,7 @@ object IvyGraphMLDependencies extends App {
                          (revision \ "license").headOption.flatMap(_.attribute("name")).map(_.text),
                          evictedByVersion = (revision \ "evicted-by").headOption.flatMap(_.attribute("rev").map(_.text)),
                          error = revision.attribute("error").map(_.text))
-    } yield (module, edgesForModule(moduleId, revision, rev))
+    } yield (module, edgesForModule(moduleId, revision))
 
     val (nodes, edges) = moduleEdges.unzip
 
