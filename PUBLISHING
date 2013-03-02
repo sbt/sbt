@@ -9,7 +9,9 @@ Before publishing:
 
 After publishing:
  * create tag (+ push)
- * update infos in README
+ * update versions in README (2 occurences currently)
  * update example project (+ push)
  * use `ls-write-version`
  * lsync
+
+ * update to next snapshot version
