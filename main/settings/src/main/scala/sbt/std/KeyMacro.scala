@@ -31,15 +31,20 @@ private[sbt] object KeyMacro
 	def definingValName(c: Context, invalidEnclosingTree: String => String): String =
 	{
 		import c.universe.{Apply=>ApplyTree,_}
-		val methodName = c.macroApplication.symbol.name.decoded
+		val methodName = c.macroApplication.symbol.name
+		def processName(n: Name): String = n.decoded.trim // trim is not strictly correct, but macros don't expose the API necessary
 		def enclosingVal(trees: List[c.Tree]): String =
+		{
 			trees match {
-				case vd @ ValDef(_, name, _, _) :: ts => name.decoded
+				case vd @ ValDef(_, name, _, _) :: ts => processName(name)
 				case (_: ApplyTree | _: Select | _: TypeApply) :: xs => enclosingVal(xs)
+					// lazy val x: X = <methodName> has this form for some reason (only when the explicit type is present, though)
+				case Block(_, _) :: DefDef(mods, name, _, _, _, _) :: xs if mods.hasFlag(Flag.LAZY) => processName(name)
 				case _ =>
-					c.error(c.enclosingPosition, invalidEnclosingTree(methodName))
+					c.error(c.enclosingPosition, invalidEnclosingTree(methodName.decoded))
 					"<error>"
 			}
+		}
 		enclosingVal(enclosingTrees(c).toList)
 	}
 	def enclosingTrees(c: Context): Seq[c.Tree] =
