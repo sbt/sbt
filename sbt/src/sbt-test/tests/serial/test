@@ -1,0 +1,11 @@
+# This verifies that the tests would normally execute concurrently if not
+# for the restrictions defined later below.  However, it will only fail
+# if the tests are actually executed concurrently.  The default concurrent
+# restrictions limit the number of concurrent tasks to the number of processors,
+# so we set it to 2.
+> set concurrentRestrictions in Global := Seq(Tags.limitAll(2))
+-> test
+
+# this should prevent concurrent execution of tests
+> set concurrentRestrictions in Global += Tags.limit(Tags.Test, 1)
+> test

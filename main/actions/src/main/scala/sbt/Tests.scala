@@ -121,7 +121,7 @@ object Tests
 	}
 	type TestRunnable = (String, () => TestResult.Value)
 	def makeParallel(runnables: Iterable[TestRunnable], setupTasks: Task[Unit], tags: Seq[(Tag,Int)]) =
-		runnables map { case (name, test) => task { (name, test()) } dependsOn setupTasks named name tagw(tags : _*) }
+		runnables map { case (name, test) => task { (name, test()) } tagw(tags : _*) dependsOn setupTasks named name }
 	def makeSerial(runnables: Seq[TestRunnable], setupTasks: Task[Unit], tags: Seq[(Tag,Int)]) =
 		task { runnables map { case (name, test) => (name, test()) } } dependsOn(setupTasks)
 
