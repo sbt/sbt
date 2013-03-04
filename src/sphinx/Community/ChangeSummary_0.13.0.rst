@@ -36,11 +36,12 @@ Fixes
 Improvements
 ------------
 
-- Run the API extraction phase after the compiler's ``pickler`` phase instead of ``typer`` to allow compiler plugins after ``typer``.
+- Run the API extraction phase after the compiler's ``pickler`` phase instead of ``typer`` to allow compiler plugins after ``typer``. (Adriaan M., gh-609)
 - Record defining source position of settings.  ``inspect`` shows the definition location of all settings contributing to a defined value.
 - Allow the root project to be specified explicitly in ``Build.rootProject``.
 - Tasks that need a directory for storing cache information can now use the ``cacheDirectory`` method on ``streams``.  This supersedes the ``cacheDirectory`` setting.
 - The environment variables used when forking ``run`` and ``test`` may be set via ``envVars``, which is a ``Task[Map[String,String]]``. (gh-665)
+- Restore class files after an unsuccessful compilation.  This is useful when an error occurs in a later incremental step that requires a fix in the originally changed files.
 
 Other
 -----
