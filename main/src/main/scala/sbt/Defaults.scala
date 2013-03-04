@@ -200,7 +200,7 @@ object Defaults extends BuildCommon
 		compilersSetting,
 		javacOptions in GlobalScope :== Nil,
 		scalacOptions in GlobalScope :== Nil,
-		incOptions in GlobalScope :== sbt.inc.IncOptions.Default,
+		incOptions in GlobalScope := sbt.inc.IncOptions.defaultTransactional(crossTarget.value.getParentFile / "classes.bak"),
 		scalaInstance <<= scalaInstanceTask,
 		scalaVersion in GlobalScope := appConfiguration.value.provider.scalaProvider.version,
 		scalaBinaryVersion in GlobalScope := binaryScalaVersion(scalaVersion.value),
