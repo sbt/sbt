@@ -21,59 +21,28 @@ To create an sbt project, you'll need to take these steps:
 Installing sbt
 ==============
 
-sbt comes pre-built with several available packages for different operating systems.
+The latest development versions of 0.13.0 are available as nightly builds on |typesafe-snapshots|_.
 
-Here's the available download packages:
-  - ZIP_ or TGZ_ packages
-  - MSI_ for Windows
-  - RPM_ package
-  - DEB_ package
-  - Homebrew or Macports for `Mac`_
-  - `Gentoo`_ emerge overlays
+To use a nightly build, the instructions are the same for normal manual setup except:
 
-Please report any issues to the sbt-launcher-package_ project.
+1. Download the launcher jar from one of the subdirectories of |nightly-launcher|.
+   They should be listed in chronological order, so the most recent one will be last.
+2. The version number is the name of the subdirectory and is of the form
+   ``0.13.x-yyyyMMdd-HHmmss``. Use this in a ``build.properties`` file.
+3. Call your script something like ``sbt-nightly`` to retain access to a
+   stable ``sbt`` launcher.  The documentation will refer to the script as ``sbt``, however.
 
-You may also try out the `Manual Installation`_.
+Related to the third point, remember that an ``sbt.version`` setting in
+``<build-base>/project/build.properties`` determines the version of sbt
+to use in a project. If it is not present, the default version
+associated with the launcher is used. This means that you must set
+``sbt.version=yyyyMMdd-HHmmss`` in an existing
+``<build-base>/project/build.properties``. You can verify the right
+version of sbt is being used to build a project by running
+``sbtVersion``.
 
-
-Mac
----
-
-Use either `MacPorts <http://macports.org/>`_:
-
-.. code-block:: console
-
-    $ port install sbt
-
-Or `HomeBrew <http://mxcl.github.com/homebrew/>`_:
-
-.. code-block:: console
-
-    $ brew install sbt
-
-.. note::
- 
-   Please make sure to report any issues with these packages to the relevant maintainers.
-
-
-Gentoo
-------
-
-In official tree there is no ebuild for sbt. But there are ebuilds to
-merge sbt from binaries:
-https://github.com/whiter4bbit/overlays/tree/master/dev-java/sbt-bin. To
-merge sbt from this ebuilds you can do next:
-
-.. code-block:: console
-
-    $ mkdir -p /usr/local/portage && cd /usr/local/portage
-    $ git clone git://github.com/whiter4bbit/overlays.git
-    $ echo "PORTDIR_OVERLAY=$PORTDIR_OVERLAY /usr/local/portage/overlays" >> /etc/make.conf
-    $ emerge sbt-bin
-
-.. note::
-
-   Please report any issues with the ebuild `here <https://github.com/whiter4bbit/overlays/issues>`_.
+To reduce problems, it is recommended to not use a launcher jar for one
+nightly version to launch a different nightly version of sbt.
 
 Manual Installation
 -------------------
@@ -90,13 +59,13 @@ Create a batch file ``sbt.bat``:
     $ set SCRIPT_DIR=%~dp0
     $ java -Xmx512M -jar "%SCRIPT_DIR%sbt-launch.jar" %*
 
-and put `sbt-launch.jar`_ in the same directory as the batch file. Put ``sbt.bat`` on your path so
+and put sbt-launch.jar in the same directory as the batch file. Put ``sbt.bat`` on your path so
 that you can launch ``sbt`` in any directory by typing ``sbt`` at the command prompt.
 
 Unix
 ~~~~
 
-Download `sbt-launch.jar`_ and place it in ``~/bin``.
+Put sbt-launch.jar in ``~/bin``.
 
 Create a script to run the jar, by placing this in a file called ``sbt``
 in your ``~/bin`` directory:
@@ -114,22 +83,11 @@ Make the script executable:
 Tips and Notes
 --------------
 
-If you have any trouble running ``sbt``, see :doc:`/Detailed-Topics/Setup-Notes` on terminal
+If you have any trouble running sbt, see :doc:`/Detailed-Topics/Setup-Notes` on terminal
 encodings, HTTP proxies, and JVM options.
 
 Next
 ----
 
 Move on to :doc:`create a simple project <Hello>`.
-
-
-.. |sbt-launcher-issues| replace:: launcher package project
-.. _sbt-launcher-issues: https://github.com/sbt/sbt-launcher-package/issues
-.. |typesafe-yum-repo| replace:: Typesafe Yum Repository
-.. _typesafe-yum-repo: http://rpm.typesafe.com
-.. |typesafe-debian-repo| replace:: Typesafe Debian Repository
-.. _typesafe-debian-repo: http://apt.typesafe.com
-.. _this rpm: http://rpm.typesafe.com/typesafe-repo-2.0.0-1.noarch.rpm
-.. _this deb: http://apt.typesafe.com/repo-deb-build-0002.deb
-.. _sbt-launcher-package: https://github.com/sbt/sbt-launcher-package/issues
 
