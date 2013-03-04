@@ -1,0 +1,14 @@
+# compile and run for the first time to verify that everything works
+> run
+
+# introduce private var and refer to it in a trait that we inherit from
+# there'll be pair of getters and setters generated for private var that
+# has to be implemented by a class (where you can declare corresponding field)
+$ copy-file changes/A.scala A.scala
+
+# this fails with AbstractMethodError because getters and setters for
+# a private var are not generated because introduction of a private var
+# does not trigger recompilation of B
+# B is not recompiled because incremental compiler tracks only public
+# interace (members visible from outside of given trait/class)
+> run
