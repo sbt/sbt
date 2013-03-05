@@ -32,24 +32,33 @@ object Cross
 	}
 	def spacedFirst(name: String) = opOrIDSpaced(name) ~ any.+
 
-	lazy val switchVersion = Command.arb(requireSession(switchParser), switchHelp) { case (state, (version, command)) =>
+	lazy val switchVersion = Command.arb(requireSession(switchParser), switchHelp) { case (state, (arg, command)) =>
 		val x = Project.extract(state)
 			import x._
-		val home = IO.resolve(x.currentProject.base, new File(version))
+		
+		val (resolveVersion, homePath) = arg.split("=") match {
+			case Array(v, h) => (v, h)
+			case _ => ("", arg)
+		}
+		val home = IO.resolve(x.currentProject.base, new File(homePath))
 		val (add, exclude) = 
 			if(home.exists) {
 				val instance = ScalaInstance(home)(state.classLoaderCache.apply _)
 				state.log.info("Setting Scala home to " + home + " with actual version " + instance.actualVersion)
+				val version = if(resolveVersion.isEmpty) instance.actualVersion else resolveVersion
+				state.log.info("\tand using " + version + " for resolving dependencies.")
 				val settings = Seq(
-					scalaVersion in GlobalScope :== instance.actualVersion,
+					scalaVersion in GlobalScope :== version,
 					scalaHome in GlobalScope :== Some(home),
 					scalaInstance in GlobalScope :== instance
 				)
 				(settings, excludeKeys(Set(scalaVersion.key, scalaHome.key, scalaInstance.key)))
+			} else if(!resolveVersion.isEmpty) {
+				error("Scala home directory did not exist: " + home)
 			} else {
-				state.log.info("Setting version to " + version)
+				state.log.info("Setting version to " + arg)
 				val settings = Seq(
-					scalaVersion in GlobalScope :== version,
+					scalaVersion in GlobalScope :== arg,
 					scalaHome in GlobalScope :== None
 				)
 				(settings, excludeKeys(Set(scalaVersion.key, scalaHome.key)))

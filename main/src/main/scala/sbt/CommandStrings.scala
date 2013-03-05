@@ -283,6 +283,16 @@ s"""$SwitchCommand <scala-version> [<command>]
 	Sets the `scalaVersion` of all projects to <scala-version> and reloads the build.
 	If <command> is provided, it is then executed.
 
+$SwitchCommand [<scala-version>=]<scala-home> [<command>]
+	Uses the Scala installation at <scala-home> by configuring the scalaHome setting for
+	all projects.
+
+	If <scala-version> is specified, it is used as the value of the scalaVersion setting.
+	This is important when using managed dependencies.  This version will determine the
+	cross-version used as well as transitive dependencies.
+
+	If <command> is provided, it is then executed.
+
 	See also `help $CrossCommand`
 """
 }

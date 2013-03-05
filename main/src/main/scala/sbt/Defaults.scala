@@ -11,7 +11,7 @@ package sbt
 	import Def.{Initialize, ScopedKey, Setting, SettingsDefinition}
 	import Artifact.{DocClassifier, SourceClassifier}
 	import Configurations.{Compile, CompilerPlugin, IntegrationTest, names, Provided, Runtime, Test}
-	import CrossVersion.{binarySbtVersion, binaryScalaVersion}
+	import CrossVersion.{binarySbtVersion, binaryScalaVersion, partialVersion}
 	import complete._
 	import std.TaskExtra._
 	import inc.{FileValueCache, Locate}
@@ -919,7 +919,7 @@ object Classpaths
 		ivyXML in GlobalScope :== NodeSeq.Empty,
 		ivyValidate in GlobalScope :== false,
 		ivyScala <<= ivyScala or (scalaHome, scalaVersion in update, scalaBinaryVersion in update, scalaOrganization) { (sh,fv,bv,so) =>
-			Some(new IvyScala(fv, bv, Nil, filterImplicit = false, checkExplicit = true, overrideScalaVersion = sh.isEmpty, scalaOrganization = so))
+			Some(new IvyScala(fv, bv, Nil, filterImplicit = false, checkExplicit = true, overrideScalaVersion = false, scalaOrganization = so))
 		},
 		moduleConfigurations in GlobalScope :== Nil,
 		publishTo in GlobalScope :== None,
@@ -1046,15 +1046,23 @@ object Classpaths
 		val depsUpdated = transitiveUpdate.value.exists(!_.stats.cached)
 		val isRoot = executionRoots.value contains resolvedScoped.value
 		val s = streams.value
-		val subScalaJars: Seq[File] = Defaults.unmanagedScalaInstanceOnly.value match {
-			case Some(si) => si.jars
-			case None =>
-				val scalaProvider = appConfiguration.value.provider.scalaProvider
-				// substitute the Scala jars from the provider so that when the provider's loader is used,
-				// the jars on the classpath match the jars used by the loader
-				if(scalaProvider.version == scalaVersion.value) scalaProvider.jars else Nil
+		val scalaProvider = appConfiguration.value.provider.scalaProvider
+
+		// Only substitute unmanaged jars for managed jars when the major.minor parts of the versions the same for:
+		//   the resolved Scala version and the scalaHome version: compatible (weakly- no qualifier checked)
+		//   the resolved Scala version and the declared scalaVersion: assume the user intended scalaHome to override anything with scalaVersion
+		def subUnmanaged(subVersion: String, jars: Seq[File])  =  (sv: String) =>
+			(partialVersion(sv), partialVersion(subVersion), partialVersion(scalaVersion.value)) match {
+				case (Some(res), Some(sh), _) if res == sh => jars
+				case (Some(res), _, Some(decl)) if res == decl => jars
+				case _ => Nil
+			}
+		val subScalaJars: String => Seq[File] = Defaults.unmanagedScalaInstanceOnly.value match {
+			case Some(si) => subUnmanaged(si.version, si.jars)
+			case None => sv => if(scalaProvider.version == sv) scalaProvider.jars else Nil
 		}
-		val transform: UpdateReport => UpdateReport = if(subScalaJars.isEmpty) idFun else r => substituteScalaFiles(subScalaJars, scalaOrganization.value, r)
+		val transform: UpdateReport => UpdateReport = r => substituteScalaFiles(scalaOrganization.value, r)(subScalaJars)
+
 		val show = Reference.display(thisProjectRef.value)
 		cachedUpdate(s.cacheDirectory, show, ivyModule.value, updateConfiguration.value, transform, skip = (skip in update).value, force = isRoot, depsUpdated = depsUpdated, log = s.log)
 	}
@@ -1322,16 +1330,16 @@ object Classpaths
 	def substituteScalaFiles(scalaInstance: ScalaInstance, report: UpdateReport): UpdateReport =
 		substituteScalaFiles(scalaInstance, ScalaArtifacts.Organization, report)
 
-	@deprecated("Directly provide the jar files.", "0.13.0")
+	@deprecated("Directly provide the jar files per Scala version.", "0.13.0")
 	def substituteScalaFiles(scalaInstance: ScalaInstance, scalaOrg: String, report: UpdateReport): UpdateReport =
-		substituteScalaFiles(scalaInstance.jars, scalaOrg, report)
+		substituteScalaFiles(scalaOrg, report)(const(scalaInstance.jars))
 		
-	def substituteScalaFiles(scalaJars: Seq[File], scalaOrg: String, report: UpdateReport): UpdateReport =
+	def substituteScalaFiles(scalaOrg: String, report: UpdateReport)(scalaJars: String => Seq[File]): UpdateReport =
 		report.substitute { (configuration, module, arts) =>
 			import ScalaArtifacts._
 			if(module.organization == scalaOrg) {
 				val jarName = module.name + ".jar"
-				val replaceWith = scalaJars.filter(_.getName == jarName).map(f => (Artifact(f.getName.stripSuffix(".jar")), f))
+				val replaceWith = scalaJars(module.revision).filter(_.getName == jarName).map(f => (Artifact(f.getName.stripSuffix(".jar")), f))
 				if(replaceWith.isEmpty) arts else replaceWith
 			} else
 				arts

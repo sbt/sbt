@@ -23,7 +23,7 @@ Features
 - Support defining Projects in .sbt files: vals of type Project are added to the Build.  Details below.
 - New syntax for settings, tasks, and input tasks.  Details below.
 - Automatically link to external API scaladocs of dependencies by setting ``autoAPIMappings := true``.  This requires at least Scala 2.10.1 and for dependencies to define ``apiURL`` for their scaladoc location.  Mappings may be manually added to the ``apiMappings`` task as well.
-- Support setting Scala home directory temporary using the switch command: ``++ /path/to/scala/home``.
+- Support setting Scala home directory temporary using the switch command: ``++ scala-version=/path/to/scala/home``.  The scala-version part is optional, but is used as the version for any managed dependencies.
 - ``export`` command
 
     * For tasks, prints the contents of the 'export' stream.  By convention, this should be the equivalent command line(s) representation.  ``compile``, ``doc``, and ``console`` show the approximate command lines for their execution.  Classpath tasks print the classpath string suitable for passing as an option.
