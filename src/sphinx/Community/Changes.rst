@@ -8,6 +8,28 @@ Changes
 The changes for 0.13.0 are listed on a separate page. See
 :doc:`ChangeSummary_0.13.0`.
 
+0.12.2 to 0.12.3
+~~~~~~~~~~~~~~~~
+
+- Allow ``cleanKeepFiles`` to contain directories
+- Disable Ivy debug-level logging for performance. (gh-635)
+- Invalidate artifacts not recorded in the original metadata when a module marked as changing changes. (gh-637, gh-641)
+- Ivy Artifact needs wildcard configuration added if no explicit ones are defined. (gh-439)
+- Right precedence of sbt.boot.properties lookup, handle qualifier correctly. (gh-651)
+- Mark the tests failed exception as having already provided feedback.
+- Handle exceptions not caught by the test framework when forking. (gh-653)
+- Support ``reload plugins`` after ignoring a failure to load a project.
+- Workaround for os deadlock detection at the process level. (gh-650)
+- Fix for dependency on class file corresponding to a package. (Grzegorz K., gh-620)
+- Fix incremental compilation problem with package objects inheriting from invalidated sources in a subpackage.
+- Use Ivy's default name for the resolution report so that links to other configurations work.
+- Include jars from java.ext.dirs in incremental classpath. (gh-678)
+- Multi-line prompt text offset issue (Jibbers42, gh-625)
+- Added ``xml:space="preserve"`` attribute to extraDependencyAttributes XML Block for publishing poms for plugins dependent on other plugins (Brendan M., gh-645)
+- Tag the actual test task and not a later task.  (gh-692)
+- Make exclude-classifiers per-user instead of per-build. (gh-634)
+- Load global plugins in their own class loader and replace the base loader with that. (gh-272)
+
 
 0.12.1 to 0.12.2
 ~~~~~~~~~~~~~~~~
