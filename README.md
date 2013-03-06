@@ -27,7 +27,7 @@ This is the 0.13.x series of sbt.
 
 		$ git checkout v0.12.2
 
-	Note that sbt is always built with the previous release.  For example, the 0.12.2 branch is built with 0.12.1, the v0.11.2 tag is built with 0.11.1, and the v0.11.0 tag is built with 0.10.1.
+	Note that sbt is always built with the previous release.  For example, the 0.12.3 branch is built with 0.12.2, the v0.11.2 tag is built with 0.11.1, and the v0.11.0 tag is built with 0.10.1.
 
 4. To build the launcher, publish all components locally, and build API and SXR documentation:
 
