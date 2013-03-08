@@ -38,7 +38,8 @@ object Assign
 	val dummyt = taskKey[complete.Parser[String]]("dummyt")
 	val dummys = settingKey[complete.Parser[String]]("dummys")
 	val dummy3 = settingKey[complete.Parser[(String,Int)]]("dummy3")
-	val tsk: complete.Parser[TaskKey[String]] = ???
+	val tsk: complete.Parser[Task[String]] = ???
+	val itsk: Initialize[InputTask[Int]] = ???
 
 /*	def azy = sk.value
 
@@ -59,9 +60,8 @@ object Assign
 		mk := 3,
 		name := "asdf",
 		tk := (math.random*1000).toInt,
-		isk := tsk.parsed.value, // ParserInput.wrap[TaskKey[String]](tsk).value 
-//		isk := dummys.value.parsed , // should not compile: cannot use a task to define the parser
-		ik := { if( tsk.parsed.value == "blue") tk.value else mk.value }
+		isk := dummys.value.parsed // should not compile: cannot use a task to define the parser
+//		ik := { if( tsk.parsed.value == "blue") tk.value else mk.value }
 	)
 
 	val it1 = Def.inputTask {
@@ -70,12 +70,12 @@ object Assign
 	val it2 = Def.inputTask {
 		"lit"
 	}
-	// should not compile because getting the value from a parser involves getting the value from a task
-/*	val it3: Initialize[InputTask[String]] = Def.inputTask[String] {
-		tsk.parsed.value
-	}*/
-/*	// should not compile: cannot use a task to define the parser
-	val it4 = Def.inputTask {
+
+	val it3: Initialize[InputTask[String]] = Def.inputTask[String] {
+		tsk.parsed.value + itsk.parsed.value.toString + isk.value
+	}
+	// should not compile: cannot use a task to define the parser
+/*	val it4 = Def.inputTask {
 		dummyt.value.parsed
 	}*/
 	// should compile: can use a setting to define the parser
@@ -83,12 +83,17 @@ object Assign
 		dummys.parsed
 	}
 	val it6 = Def.inputTaskDyn {
-		val (x,i) = dummy3.parsed
+		val d3 = dummy3.parsed
+		val x = d3._1
+		val i = d3._2
 		Def.task { tk.value + i}
 	}
 
+	val it7 = Def.inputTask {
+		it5.parsed
+	}
 
-/*	def bool: Initialize[Boolean] = Def.setting { true }
+	def bool: Initialize[Boolean] = Def.setting { true }
 	def enabledOnly[T](key: Initialize[T]): Initialize[Seq[T]] = Def.setting {
 		val keys: Seq[T] = forallIn(key).value
 		val enabled: Seq[Boolean] = forallIn(bool).value
@@ -96,5 +101,5 @@ object Assign
 	}
 	def forallIn[T](key: Initialize[T]): Initialize[Seq[T]] = Def.setting {
 		key.value :: Nil
-	}*/
+	}
 }

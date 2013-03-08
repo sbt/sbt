@@ -20,11 +20,11 @@ object ContextUtil {
 	*
 	* Given `myImplicitConversion(someValue).extensionMethod`, where `extensionMethod` is a macro that uses this
 	* method, the result of this method is `f(<Tree of someValue>)`. */
-	def selectMacroImpl[T: c.WeakTypeTag, S: c.WeakTypeTag](c: Context)(f: (c.Expr[S], c.Position) => c.Expr[T]): c.Expr[T] =
+	def selectMacroImpl[T: c.WeakTypeTag](c: Context)(f: (c.Expr[Any], c.Position) => c.Expr[T]): c.Expr[T] =
 	{
 			import c.universe._
 		c.macroApplication match {
-			case s @ Select(Apply(_, t :: Nil), tp) => f( c.Expr[S](t), s.pos )
+			case s @ Select(Apply(_, t :: Nil), tp) => f( c.Expr[Any](t), s.pos )
 			case x => unexpectedTree(x)
 		}
 	}
@@ -61,24 +61,18 @@ final class ContextUtil[C <: Context](val ctx: C)
 		vd
 	}
 
-	/* Tests whether a Tree is a Select on `methodName`. */
-	def isWrapper(methodName: String): Tree => Boolean = {
-		case Select(_, nme) => nme.decoded == methodName
-		case _ => false
-	}
-
 	lazy val parameterModifiers = Modifiers(Flag.PARAM)
 
 	/** Collects all definitions in the tree for use in checkReferences.
 	* This excludes definitions in wrapped expressions because checkReferences won't allow nested dereferencing anyway. */
-	def collectDefs(tree: Tree, isWrapper: Tree => Boolean): collection.Set[Symbol] = 
+	def collectDefs(tree: Tree, isWrapper: (String, Type, Tree) => Boolean): collection.Set[Symbol] = 
 	{
 		val defs = new collection.mutable.HashSet[Symbol]
 		// adds the symbols for all non-Ident subtrees to `defs`.
 		val process = new Traverser {
 			override def traverse(t: Tree) = t match {
 				case _: Ident => ()
-				case ApplyTree(TypeApply(fun, tpe :: Nil), qual :: Nil) if isWrapper(fun) => ()
+				case ApplyTree(TypeApply(Select(_, nme), tpe :: Nil), qual :: Nil) if isWrapper(nme.decoded, tpe.tpe, qual) => ()
 				case tree =>
 					if(tree.symbol ne null) defs += tree.symbol;
 					super.traverse(tree)
@@ -95,8 +89,9 @@ final class ContextUtil[C <: Context](val ctx: C)
 
 	/** A function that checks the provided tree for illegal references to M instances defined in the
 	*  expression passed to the macro and for illegal dereferencing of M instances. */
-	def checkReferences(defs: collection.Set[Symbol], isWrapper: Tree => Boolean): Tree => Unit = {
-		case s @ ApplyTree(TypeApply(fun, tpe :: Nil), qual :: Nil) => if(isWrapper(fun)) ctx.error(s.pos, DynamicDependencyError)
+	def checkReferences(defs: collection.Set[Symbol], isWrapper: (String, Type, Tree) => Boolean): Tree => Unit = {
+		case s @ ApplyTree(TypeApply(Select(_, nme), tpe :: Nil), qual :: Nil) =>
+			if(isWrapper(nme.decoded, tpe.tpe, qual)) ctx.error(s.pos, DynamicDependencyError)
 		case id @ Ident(name) if illegalReference(defs, id.symbol) => ctx.error(id.pos, DynamicReferenceError + ": " + name)
 		case _ => ()
 	}
@@ -189,10 +184,10 @@ final class ContextUtil[C <: Context](val ctx: C)
 	}
 
 	/** Substitutes wrappers in tree `t` with the result of `subWrapper`.
-	* A wrapper is a Tree of the form `f[T](v)` for which isWrapper(<Tree of f>) returns true.
+	* A wrapper is a Tree of the form `f[T](v)` for which isWrapper(<Tree of f>, <Underlying Type>, <qual>.target) returns true.
 	* Typically, `f` is a `Select` or `Ident`.
 	* The wrapper is replaced with the result of `subWrapper(<Type of T>, <Tree of v>)` */
-	def transformWrappers(t: Tree, isWrapper: Tree => Boolean, subWrapper: (Type, Tree) => Tree): Tree =
+	def transformWrappers(t: Tree, subWrapper: (String, Type, Tree) => Converted[ctx.type]): Tree =
 	{
 		// the main tree transformer that replaces calls to InputWrapper.wrap(x) with
 		//  plain Idents that reference the actual input value
@@ -201,9 +196,11 @@ final class ContextUtil[C <: Context](val ctx: C)
 			override def transform(tree: Tree): Tree =
 				tree match
 				{
-					case ApplyTree(TypeApply(fun, targ :: Nil), qual :: Nil) if isWrapper(fun) =>
-						assert(qual.tpe != null, "Internal error: null type for wrapped tree with " + qual.getClass + "\n\t" + qual + "\n in " + t)
-						subWrapper(targ.tpe, qual)
+					case ApplyTree(TypeApply(Select(_, nme), targ :: Nil), qual :: Nil) => subWrapper(nme.decoded, targ.tpe, qual) match {
+						case Converted.Success(t, finalTx) => finalTx(t)
+						case Converted.Failure(p,m) => ctx.abort(p, m)
+						case _: Converted.NotApplicable[_] => super.transform(tree)
+					}
 					case _ => super.transform(tree)
 				}
 		}

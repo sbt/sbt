@@ -15,6 +15,9 @@ final class InputTask[T] private(val parser: State => Parser[Task[T]])
 
 object InputTask
 {
+	implicit def inputTaskParsed[T](in: InputTask[T]): std.ParserInputTask[T] = ???
+	implicit def inputTaskInitParsed[T](in: Initialize[InputTask[T]]): std.ParserInputTask[T] = ???
+
 	def make[T](p: State => Parser[Task[T]]): InputTask[T] = new InputTask[T](p)
 
 	def static[T](p: Parser[Task[T]]): InputTask[T] = free(_ => p)
@@ -34,15 +37,6 @@ object InputTask
 	/** Constructs an InputTask that accepts no user input. */
 	def createFree[T](action: Initialize[Task[T]]): Initialize[InputTask[T]] =
 		action { tsk => free(emptyParser)( const(tsk) ) }
-
-	/** Constructs an InputTask from:
-	*  a) a Parser constructed using other Settings, but not Tasks
-	*  b) an action constructed using Settings, Tasks, and the result of parsing */
-	def create[I,T](p: Initialize[State => Parser[I]])(action: Initialize[Task[I => T]]): Initialize[InputTask[T]] =
-	{
-		val act = action { (tf: Task[I => T]) => (i: I) => tf.map(f => f(i)) }
-		separate(p)(act)
-	}
 
 	/** Constructs an InputTask from:
 	*  a) a Parser constructed using other Settings, but not Tasks

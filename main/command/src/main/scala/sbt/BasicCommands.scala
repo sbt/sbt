@@ -84,8 +84,8 @@ object BasicCommands
 		val parentLoader = getClass.getClassLoader
 		state.log.info("Applying State transformations " + args.mkString(", ") + (if(cp.isEmpty) "" else " from " + cp.mkString(File.pathSeparator)))
 		val loader = if(cp.isEmpty) parentLoader else toLoader(cp.map(f => new File(f)), parentLoader)
-		val loaded = 	args.map(arg => ModuleUtilities.getObject(arg, loader))
-		(state /: loaded) { case (s, obj: (State => State)) => obj(s) }
+		val loaded = args.map(arg => ModuleUtilities.getObject(arg, loader).asInstanceOf[State => State])
+		(state /: loaded)((s, obj) => obj(s))
 	}
 	def callParser: Parser[(Seq[String], Seq[String])] = token(Space) ~> ((classpathOptionParser ?? Nil) ~ rep1sep(className, token(Space)))
 	private[this] def className: Parser[String] =

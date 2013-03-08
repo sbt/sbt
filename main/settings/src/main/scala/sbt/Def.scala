@@ -1,5 +1,6 @@
 package sbt
 
+	import Types.const
 	import complete.Parser
 	import java.io.File
 
@@ -42,9 +43,14 @@ object Def extends Init[Scope] with TaskMacroExtra
 	/** Lifts the result of a setting initialization into a Task. */
 	def toITask[T](i: Initialize[T]): Initialize[Task[T]] = map(i)(std.TaskExtra.inlineTask)
 
+	def toSParser[T](p: Parser[T]): State => Parser[T] = const(p)
+	def toISParser[T](p: Initialize[Parser[T]]): Initialize[State => Parser[T]] = p(toSParser)
+	def toIParser[T](p: Initialize[InputTask[T]]): Initialize[State => Parser[Task[T]]] = p(_.parser)
+
 		import language.experimental.macros
-		import std.TaskMacro.{InitParserInput, inputTaskMacroImpl, inputTaskDynMacroImpl, MacroValue, taskDynMacroImpl, taskMacroImpl, StateParserInput}
+		import std.TaskMacro.{inputTaskMacroImpl, inputTaskDynMacroImpl, taskDynMacroImpl, taskMacroImpl}
 		import std.SettingMacro.{settingDynMacroImpl,settingMacroImpl}
+		import std.{MacroValue, ParserInput}
 
 	def task[T](t: T): Def.Initialize[Task[T]] = macro taskMacroImpl[T]
 	def taskDyn[T](t: Def.Initialize[Task[T]]): Def.Initialize[Task[T]] = macro taskDynMacroImpl[T]
@@ -58,11 +64,12 @@ object Def extends Init[Scope] with TaskMacroExtra
 
 	implicit def macroValueI[T](in: Initialize[T]): MacroValue[T] = ???
 	implicit def macroValueIT[T](in: Initialize[Task[T]]): MacroValue[T] = ???
+	implicit def macroValueIInT[T](in: Initialize[InputTask[T]]): MacroValue[T] = ???
 
 	// The following conversions enable the types Parser[T], Initialize[Parser[T]], and Initialize[State => Parser[T]] to
 	//  be used in the inputTask macro as an input with an ultimate result of type T
-	implicit def parserInitToInput[T](p: Initialize[Parser[T]]): InitParserInput[T] = ???
-	implicit def parserInitStateToInput[T](p: Initialize[State => Parser[T]]): StateParserInput[T] = ???
+	implicit def parserInitToInput[T](p: Initialize[Parser[T]]): ParserInput[T] = ???
+	implicit def parserInitStateToInput[T](p: Initialize[State => Parser[T]]): ParserInput[T] = ???
 
 		import language.experimental.macros
 	def settingKey[T](description: String): SettingKey[T] = macro std.KeyMacro.settingKeyImpl[T]
@@ -72,6 +79,8 @@ object Def extends Init[Scope] with TaskMacroExtra
 // these need to be mixed into the sbt package object because the target doesn't involve Initialize or anything in Def
 trait TaskMacroExtra 
 {
-	implicit def macroValueT[T](in: Task[T]): std.TaskMacro.MacroValue[T] = ???
-	implicit def parserToInput[T](in: Parser[T]): std.TaskMacro.RawParserInput[T] = ???
+	implicit def macroValueT[T](in: Task[T]): std.MacroValue[T] = ???
+	implicit def macroValueIn[T](in: InputTask[T]): std.MacroValue[T] = ???
+	implicit def parserToInput[T](in: Parser[T]): std.ParserInput[T] = ???
+	implicit def stateParserToInput[T](in: State => Parser[T]): std.ParserInput[T] = ???
 }

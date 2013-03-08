@@ -16,10 +16,7 @@ trait Instance
 	def map[S,T](in: M[S], f: S => T): M[T]
 	def pure[T](t: () => T): M[T]
 }
-trait Convert
-{
-	def apply[T: c.WeakTypeTag](c: scala.reflect.macros.Context)(in: c.Tree): c.Tree
-}
+
 trait MonadInstance extends Instance
 {
 	def flatten[T](in: M[M[T]]): M[T]
@@ -28,39 +25,6 @@ trait MonadInstance extends Instance
 	import scala.reflect._
 	import macros._
 	import reflect.internal.annotations.compileTimeOnly
-
-// This needs to be moved to main/settings
-object InputWrapper
-{
-	/** The name of the wrapper method should be obscure.
-	* Wrapper checking is based solely on this name, so it must not conflict with a user method name.
-	* The user should never see this method because it is compile-time only and only used internally by the task macro system.*/
-	final val WrapName = "wrap_\u2603\u2603"
-
-	@compileTimeOnly("`value` can only be used within a task or setting macro, such as :=, +=, ++=, Def.task, or Def.setting.")
-	def wrap_\u2603\u2603[T](in: Any): T = sys.error("This method is an implementation detail and should not be referenced.")
-
-	def wrapKey[T: c.WeakTypeTag](c: Context)(ts: c.Expr[Any], pos: c.Position): c.Expr[T] = wrapImpl[T,InputWrapper.type](c, InputWrapper, WrapName)(ts, pos)
-
-	/** Wraps an arbitrary Tree in a call to the `<s>.<wrapName>` method of this module for later processing by an enclosing macro.
-	* The resulting Tree is the manually constructed version of:
-	*
-	* `c.universe.reify { <s>.<wrapName>[T](ts.splice) }`
-	*/
-	def wrapImpl[T: c.WeakTypeTag, S <: AnyRef with Singleton](c: Context, s: S, wrapName: String)(ts: c.Expr[Any], pos: c.Position)(implicit it: c.TypeTag[s.type]): c.Expr[T] =
-	{
-			import c.universe.{Apply=>ApplyTree,_}
-		val util = new ContextUtil[c.type](c)
-		val iw = util.singleton(s)
-		val tpe = c.weakTypeOf[T]
-		val nme = newTermName(wrapName).encoded
-		val sel = util.select(Ident(iw), nme)
-		sel.setPos(pos) // need to set the position on Select, because that is where the compileTimeOnly check looks
-		val tree = ApplyTree(TypeApply(sel, TypeTree(tpe) :: Nil), ts.tree :: Nil)
-		tree.setPos(ts.tree.pos)
-		c.Expr[T](tree)
-	}
-}
 
 object Instance
 {
@@ -71,11 +35,17 @@ object Instance
 	final val InstanceTCName = "M"
 
 	final class Input[U <: Universe with Singleton](val tpe: U#Type, val expr: U#Tree, val local: U#ValDef)
+	trait Transform[C <: Context with Singleton, N[_]] {
+		def apply(in: C#Tree): C#Tree
+	}
+	def idTransform[C <: Context with Singleton]: Transform[C,Id] = new Transform[C,Id] {
+		def apply(in: C#Tree): C#Tree = in
+	}
 
 	/** Implementation of a macro that provides a direct syntax for applicative functors and monads.
 	* It is intended to be used in conjunction with another macro that conditions the inputs.
 	*
-	* This method processes the Tree `t` to find inputs of the form `InputWrapper.wrap[T]( input )`
+	* This method processes the Tree `t` to find inputs of the form `wrap[T]( input )`
 	* This form is typically constructed by another macro that pretends to be able to get a value of type `T`
 	* from a value convertible to `M[T]`.  This `wrap(input)` form has two main purposes.
 	* First, it identifies the inputs that should be transformed.
@@ -85,7 +55,7 @@ object Instance
 	* allowing the original `Tree` and `Type` to be hidden behind the raw `T` type.  This method will remove the call to `wrap`
 	* so that it is not actually called at runtime.
 	*
-	* Each `input` in each expression of the form `InputWrapper.wrap[T]( input )` is transformed by `convert`.
+	* Each `input` in each expression of the form `wrap[T]( input )` is transformed by `convert`.
 	* This transformation converts the input Tree to a Tree of type `M[T]`.
 	* The original wrapped expression `wrap(input)` is replaced by a reference to a new local `val $x: T`, where `$x` is a fresh name.
 	* These converted inputs are passed to `builder` as well as the list of these synthetic `ValDef`s.
@@ -107,18 +77,18 @@ object Instance
 	* If this is for multi-input flatMap (app followed by flatMap), 
 	*  this should be the argument wrapped in Right.
 	*/
-	def contImpl[T](c: Context, i: Instance with Singleton, convert: Convert, builder: TupleBuilder)(t: Either[c.Expr[T], c.Expr[i.M[T]]])(
-		implicit tt: c.WeakTypeTag[T], it: c.TypeTag[i.type]): c.Expr[i.M[T]] =
+	def contImpl[T,N[_]](c: Context, i: Instance with Singleton, convert: Convert, builder: TupleBuilder)(t: Either[c.Expr[T], c.Expr[i.M[T]]], inner: Transform[c.type,N])(
+		implicit tt: c.WeakTypeTag[T], nt: c.WeakTypeTag[N[T]], it: c.TypeTag[i.type]): c.Expr[i.M[N[T]]] =
 	{
 			import c.universe.{Apply=>ApplyTree,_}
 		
 		val util = ContextUtil[c.type](c)
 		val mTC: Type = util.extractTC(i, InstanceTCName)
-		val mttpe: Type = appliedType(mTC, tt.tpe :: Nil).normalize
+		val mttpe: Type = appliedType(mTC, nt.tpe :: Nil).normalize
 
 		// the tree for the macro argument
 		val (tree, treeType) = t match {
-			case Left(l) => (l.tree, tt.tpe.normalize)
+			case Left(l) => (l.tree, nt.tpe.normalize)
 			case Right(r) => (r.tree, mttpe)
 		}
 
@@ -126,7 +96,7 @@ object Instance
 		// A Tree that references the statically accessible Instance that provides the actual implementations of map, flatMap, ... 
 		val instance = Ident(instanceSym)
 
-		val isWrapper: Tree => Boolean = util.isWrapper(InputWrapper.WrapName)
+		val isWrapper: (String, Type, Tree) => Boolean = convert.asPredicate(c)
 
 		type In = Input[c.universe.type]
 		var inputs = List[In]()
@@ -194,16 +164,19 @@ object Instance
 			inputs ::= new Input(tpe, qual, vd)
 			util.refVal(vd)
 		}
-		def sub(tpe: Type, qual: Tree): Tree =
+		def sub(name: String, tpe: Type, qual: Tree): Converted[c.type] =
 		{
-			val tag = c.WeakTypeTag(tpe)
-			addType(tpe, convert(c)(qual)(tag) )
+			val tag = c.WeakTypeTag[T](tpe)
+			convert[T](c)(name, qual)(tag) transform { tree =>
+				addType(tpe, tree)
+			}
 		}
 
 		// applies the transformation
+		val tx = util.transformWrappers(tree, (n,tpe,t) => sub(n,tpe,t))
 		// resetting attributes must be: a) local b) done here and not wider or else there are obscure errors
-		val tr = makeApp( c.resetLocalAttrs( util.transformWrappers(tree, isWrapper, (tpe, tr) => sub(tpe, tr)) ) ) 
-		c.Expr[i.M[T]](tr)
+		val tr = makeApp( c.resetLocalAttrs( inner(tx) ) ) 
+		c.Expr[i.M[N[T]]](tr)
 	}
 
 		import Types._

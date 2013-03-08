@@ -3,7 +3,7 @@ package std
 
 	import Def.{Initialize,Setting}
 	import Types.{idFun,Id}
-	import appmacro.{Convert, Instance, MixedBuilder, MonadInstance}
+	import appmacro.{Convert, Converted, Instance, MixedBuilder, MonadInstance}
 
 object InitializeInstance extends MonadInstance
 {
@@ -13,31 +13,31 @@ object InitializeInstance extends MonadInstance
 	def flatten[T](in: Initialize[Initialize[T]]): Initialize[T] = Def.bind(in)(idFun[Initialize[T]])
 	def pure[T](t: () => T): Initialize[T] = Def.pure(t)
 }
-object InitializeConvert extends Convert
-{
-	def apply[T: c.WeakTypeTag](c: reflect.macros.Context)(in: c.Tree): c.Tree =
-	{
-		if(in.tpe <:< c.weakTypeOf[Initialize[Task[T]]] || in.tpe <:< c.weakTypeOf[Task[T]])
-			c.abort(in.pos, "A setting cannot depend on a task")
-		else if(in.tpe <:< c.weakTypeOf[Initialize[T]])
-		{
-			val i = c.Expr[Initialize[T]](in)
-			c.universe.reify( i.splice ).tree
-		}
-		else
-			c.abort(in.pos, "Unknown input type: " + in.tpe)
-	}
-}
 
 	import language.experimental.macros
 	import scala.reflect._
 	import reflect.macros._
 
+object InitializeConvert extends Convert
+{
+	def apply[T: c.WeakTypeTag](c: Context)(nme: String, in: c.Tree): Converted[c.type] =
+		if(nme == InputWrapper.WrapInitName)
+		{
+			val i = c.Expr[Initialize[T]](in)
+			val t = c.universe.reify( i.splice ).tree
+			Converted.Success(t)
+		}
+		else if(nme == InputWrapper.WrapTaskName || nme == InputWrapper.WrapInitTaskName)
+			Converted.Failure(in.pos, "A setting cannot depend on a task")
+		else
+			Converted.NotApplicable
+}
+
 object SettingMacro
 {
 	def settingMacroImpl[T: c.WeakTypeTag](c: Context)(t: c.Expr[T]): c.Expr[Initialize[T]] =
-		Instance.contImpl[T](c, InitializeInstance, InitializeConvert, MixedBuilder)(Left(t))
+		Instance.contImpl[T, Id](c, InitializeInstance, InitializeConvert, MixedBuilder)(Left(t), Instance.idTransform[c.type])
 
 	def settingDynMacroImpl[T: c.WeakTypeTag](c: Context)(t: c.Expr[Initialize[T]]): c.Expr[Initialize[T]] = 
-		Instance.contImpl[T](c, InitializeInstance, InitializeConvert, MixedBuilder)(Right(t))
+		Instance.contImpl[T, Id](c, InitializeInstance, InitializeConvert, MixedBuilder)(Right(t), Instance.idTransform[c.type])
 }
