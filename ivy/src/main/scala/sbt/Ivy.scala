@@ -14,7 +14,7 @@ import CS.singleton
 
 import org.apache.ivy.{core, plugins, util, Ivy}
 import core.{IvyPatternHelper, LogOptions}
-import core.cache.{CacheMetadataOptions, DefaultRepositoryCacheManager}
+import core.cache.{CacheMetadataOptions, DefaultRepositoryCacheManager, ModuleDescriptorWriter}
 import core.module.descriptor.{Artifact => IArtifact, DefaultArtifact, DefaultDependencyArtifactDescriptor, MDArtifact}
 import core.module.descriptor.{DefaultDependencyDescriptor, DefaultModuleDescriptor, DependencyDescriptor, ModuleDescriptor, License}
 import core.module.descriptor.{OverrideDependencyDescriptorMediator}
@@ -335,7 +335,7 @@ private object IvySbt
 			@throws(classOf[ParseException])
 			override def cacheModuleDescriptor(resolver: DependencyResolver, mdRef: ResolvedResource, dd: DependencyDescriptor, moduleArtifact: IArtifact, downloader: ResourceDownloader, options: CacheMetadataOptions): ResolvedModuleRevision =
 			{
-				val rmr = super.cacheModuleDescriptor(resolver, mdRef, dd, moduleArtifact, downloader, options)
+				val rmr = super.cacheModuleDescriptor(null, mdRef, dd, moduleArtifact, downloader, options)
 				val mrid = moduleArtifact.getModuleRevisionId
 				// only handle changing modules whose metadata actually changed.
 				// Typically, the publication date in the metadata has to change to get here.
@@ -353,6 +353,9 @@ private object IvySbt
 				}
 				rmr
 			}
+			// ignore the original resolver wherever possible to avoid issues like #704
+			override def saveResolvers(descriptor: ModuleDescriptor, metadataResolverName: String, artifactResolverName: String) {}
+
 			def isChanging(dd: DependencyDescriptor, requestedRevisionId: ModuleRevisionId): Boolean =
 				dd.isChanging || requestedRevisionId.getRevision.contains("-SNAPSHOT")
 		}
