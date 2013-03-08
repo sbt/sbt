@@ -11,10 +11,27 @@ final class InputTask[T] private(val parser: State => Parser[Task[T]])
 {
 	def mapTask[S](f: Task[T] => Task[S]): InputTask[S] =
 		new InputTask[S](s => parser(s) map f)
+
+	def partialInput(in: String): InputTask[T] =
+		new InputTask[T](s => Parser(parser(s))(in) )
+
+	def fullInput(in: String): InputTask[T] = new InputTask[T]( s =>
+		Parser.parse(in, parser(s)) match {
+			case Right(v) => Parser.success(v)
+			case Left(msg) =>
+				val indented = msg.lines.map("   " + _).mkString("\n")
+				Parser.failure(s"Invalid programmatic input:\n$indented")
+		}
+	)
 }
 
 object InputTask
 {
+	implicit class InitializeInput[T](i: Initialize[InputTask[T]]) {
+		def partialInput(in: String): Initialize[InputTask[T]] = i(_ partialInput in)
+		def fullInput(in: String): Initialize[InputTask[T]] = i(_ fullInput in)
+	}
+
 	implicit def inputTaskParsed[T](in: InputTask[T]): std.ParserInputTask[T] = ???
 	implicit def inputTaskInitParsed[T](in: Initialize[InputTask[T]]): std.ParserInputTask[T] = ???
 
