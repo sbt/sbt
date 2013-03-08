@@ -18,7 +18,7 @@ represents a task. Define a new input task key using the
 
 ::
 
-      // goes in <base>/project/Build.scala or in <base>/build.sbt
+      // goes in project/Build.scala or in build.sbt
       val demo = inputKey[Unit]("A demo input task.")
 
 The definition of an input task is similar to that of a normal task, but it can
@@ -53,7 +53,7 @@ Input Task using Parsers
 ========================
 
 The Parser provided by the ``spaceDelimited`` method does not provide
-any flexibility in defining the input syntax.  , but using a custom parser
+any flexibility in defining the input syntax.  Using a custom parser
 is just a matter of defining your own ``Parser`` as described on the
 :doc:`/Detailed-Topics/Parsing-Input` page.
 
@@ -120,3 +120,126 @@ print some information to the screen.
         println("Value: " + value)
         println("Packaged: " + packageBin.value.getAbsolutePath)
     }
+
+The InputTask type
+==================
+
+It helps to look at the ``InputTask`` type to understand more advanced usage of input tasks.
+The core input task type is:
+
+::
+
+    class InputTask[T](val parser: State => Parser[Task[T]])
+
+Normally, an input task is assigned to a setting and you work with ``Initialize[InputTask[T]]``.
+
+Breaking this down,
+
+  1. You can use other settings (via ``Initialize``) to construct an input task.
+  2. You can use the current ``State`` to construct the parser.
+  3. The parser accepts user input and provides tab completion.
+  4. The parser produces the task to run.
+
+So, you can use settings or ``State`` to construct the parser that defines an input task's command line syntax.
+This was described in the previous section.
+You can then use settings, ``State``, or user input to construct the task to run.
+This is implicit in the input task syntax.
+
+
+
+Using other input tasks
+=======================
+
+The types involved in an input task are composable, so it is possible to reuse input tasks.
+The ``.parsed`` and ``.value`` methods are defined on InputTasks to make this more convenient in common situations:
+
+ * Call ``.parsed`` on an ``InputTask[T]`` or ``Initialize[InputTask[T]]`` to get the ``Task[T]`` created by that input task
+ * Call ``.value`` on an ``InputTask[T]`` or ``Initialize[InputTask[T]]`` to get the final value of type ``T`` for that input task
+
+In both situations, the underlying ``Parser`` is sequenced with other parsers in the input task definition.
+In the case of ``.value``, the generated task is evaluated.
+
+The following example applies the ``run`` input task, a literal separator parser ``--``, and ``run`` again.
+The parsers are sequenced in order of syntactic appearance,
+so that the arguments before ``--`` are passed to the first ``run`` and the ones after are passed to the second.
+
+::
+
+    val run2 = inputKey[Unit](
+	    "Runs the main class twice with different argument lists separated by ---")
+
+	 val separator: Parser[String] = "--"
+
+    run2 := {
+       val one = (run in Compile).value
+       val sep = separator.parsed
+       val two = (run in Compile).value
+    }
+
+For a main class Demo that echoes its arguments, this looks like:
+
+::
+
+    $ sbt
+    > run2 a b -- c d
+    [info] Running Demo c d
+    [info] Running Demo a b
+    c
+    d
+    a
+    b
+
+
+Preapplying input
+=================
+
+Because ``InputTasks`` are built from ``Parsers``, it is possible to generate a new ``InputTask`` by applying some input programmatically.
+Two convenience methods are provided on ``InputTask[T]`` and ``Initialize[InputTask[T]]`` that accept the String to apply.
+
+ * ``partialInput`` applies the input and allows further input, such as from the command line
+ * ``fullInput`` applies the input and terminates parsing, so that further input is not accepted
+
+In each case, the input is applied to the input task's parser.
+Because input tasks handle all input after the task name, they usually require initial whitespace to be provided in the input.
+
+Consider the example in the previous section.
+We can modify it so that we:
+
+ * Explicitly specify all of the arguments to the first ``run``.  We use ``name`` and ``version`` to show that settings can be used to define and modify parsers.
+ * Define the initial arguments passed to the second ``run``, but allow further input on the command line.
+
+NOTE: the current implementation of ``:=`` doesn't actually support applying input derived from settings yet.
+
+::
+
+    val run2 = inputKey[Unit]("Runs the main class twice: " +
+       "once with the project name and version as arguments"
+       "and once with command line arguments preceded by hard coded values.")
+
+    // The argument string for the first run task is ' <name> <version>'
+    val firstInput: Initialize[String] =
+       Def.setting(s" ${name.value} ${version.value}")
+
+    // Make the first arguments to the second run task ' red blue'
+    val secondInput: String = " red blue"
+
+    val separator: Parser[String] = "--"
+
+    run2 := {
+       val one = (run in Compile).fullInput(firstInput.value).value
+       val two = (run in Compile).partialInput(secondInput).value
+    }
+
+For a main class Demo that echoes its arguments, this looks like:
+
+::
+
+    $ sbt
+    > run2 green
+    [info] Running Demo demo 1.0
+    [info] Running Demo red blue green
+    demo
+    1.0
+    red
+    blue
+    green

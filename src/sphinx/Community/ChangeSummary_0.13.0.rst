@@ -102,6 +102,8 @@ A similar method ``parsed`` is defined on ``Parser[T]``, ``Initialize[Parser[T]]
        for(arg <- args) println("  " + arg)
     }
 
+For details, see :doc:`Extending/Input-Tasks`.
+
 To expect a task to fail and get the failing exception, use the ``failure`` method instead of ``value``.  This provides an ``Incomplete`` value, which wraps the exception.  To get the result of a task whether or not it succeeds, use ``result``, which provides a ``Result[T]``.
 
 Dynamic settings and tasks (``flatMap``) have been cleaned up.  Use the ``Def.taskDyn`` and ``Def.settingDyn`` methods to define them (better name suggestions welcome).  These methods expect the result to be a task and setting, respectively.
