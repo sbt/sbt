@@ -14,7 +14,7 @@ import CS.singleton
 
 import org.apache.ivy.{core, plugins, util, Ivy}
 import core.{IvyPatternHelper, LogOptions}
-import core.cache.{CacheMetadataOptions, DefaultRepositoryCacheManager}
+import core.cache.{CacheMetadataOptions, DefaultRepositoryCacheManager, ModuleDescriptorWriter}
 import core.module.descriptor.{Artifact => IArtifact, DefaultArtifact, DefaultDependencyArtifactDescriptor, MDArtifact}
 import core.module.descriptor.{DefaultDependencyDescriptor, DefaultModuleDescriptor, DependencyDescriptor, ModuleDescriptor, License}
 import core.module.descriptor.{OverrideDependencyDescriptorMediator}
@@ -352,6 +352,9 @@ private object IvySbt
 				}
 				rmr
 			}
+			// ignore the original resolver wherever possible to avoid issues like #704
+			override def saveResolvers(descriptor: ModuleDescriptor, metadataResolverName: String, artifactResolverName: String) {}
+
 			def isChanging(dd: DependencyDescriptor, requestedRevisionId: ModuleRevisionId): Boolean =
 				!localOnly && (dd.isChanging || requestedRevisionId.getRevision.contains("-SNAPSHOT"))
 		}
