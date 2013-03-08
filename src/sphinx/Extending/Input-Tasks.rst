@@ -151,13 +151,13 @@ Using other input tasks
 =======================
 
 The types involved in an input task are composable, so it is possible to reuse input tasks.
-The ``.parsed`` and ``.value`` methods are defined on InputTasks to make this more convenient in common situations:
+The ``.parsed`` and ``.`` methods are defined on InputTasks to make this more convenient in common situations:
 
- * Call ``.parsed`` on an ``InputTask[T]`` or ``Initialize[InputTask[T]]`` to get the ``Task[T]`` created by that input task
- * Call ``.value`` on an ``InputTask[T]`` or ``Initialize[InputTask[T]]`` to get the final value of type ``T`` for that input task
+ * Call ``.parsed`` on an ``InputTask[T]`` or ``Initialize[InputTask[T]]`` to get the ``Task[T]`` created after parsing the command line
+ * Call ``.evaluated`` on an ``InputTask[T]`` or ``Initialize[InputTask[T]]`` to get the value of type ``T`` from evaluating that task 
 
 In both situations, the underlying ``Parser`` is sequenced with other parsers in the input task definition.
-In the case of ``.value``, the generated task is evaluated.
+In the case of ``.evaluated``, the generated task is evaluated.
 
 The following example applies the ``run`` input task, a literal separator parser ``--``, and ``run`` again.
 The parsers are sequenced in order of syntactic appearance,
@@ -171,9 +171,9 @@ so that the arguments before ``--`` are passed to the first ``run`` and the ones
 	 val separator: Parser[String] = "--"
 
     run2 := {
-       val one = (run in Compile).value
+       val one = (run in Compile).evaluated
        val sep = separator.parsed
-       val two = (run in Compile).value
+       val two = (run in Compile).evaluated
     }
 
 For a main class Demo that echoes its arguments, this looks like:
@@ -226,8 +226,8 @@ NOTE: the current implementation of ``:=`` doesn't actually support applying inp
     val separator: Parser[String] = "--"
 
     run2 := {
-       val one = (run in Compile).fullInput(firstInput.value).value
-       val two = (run in Compile).partialInput(secondInput).value
+       val one = (run in Compile).fullInput(firstInput.value).evaluated
+       val two = (run in Compile).partialInput(secondInput).evaluated
     }
 
 For a main class Demo that echoes its arguments, this looks like:

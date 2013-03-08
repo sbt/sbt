@@ -98,6 +98,10 @@ sealed abstract class ParserInput[T] {
 	@compileTimeOnly("`parsed` can only be used within an input task macro, such as := or Def.inputTask.")
 	def parsed: T = macro ParserInput.parsedMacroImpl[T]
 }
+sealed abstract class InputEvaluated[T] {
+	@compileTimeOnly("`evaluated` can only be used within an input task macro, such as := or Def.inputTask.")
+	def evaluated: T = macro InputWrapper.valueMacroImpl[T]
+}
 sealed abstract class ParserInputTask[T] {
 	@compileTimeOnly("`parsed` can only be used within an input task macro, such as := or Def.inputTask.")
 	def parsed: Task[T] = macro ParserInput.parsedInputMacroImpl[T]

@@ -50,7 +50,7 @@ object Def extends Init[Scope] with TaskMacroExtra
 		import language.experimental.macros
 		import std.TaskMacro.{inputTaskMacroImpl, inputTaskDynMacroImpl, taskDynMacroImpl, taskMacroImpl}
 		import std.SettingMacro.{settingDynMacroImpl,settingMacroImpl}
-		import std.{MacroValue, ParserInput}
+		import std.{InputEvaluated, MacroValue, ParserInput}
 
 	def task[T](t: T): Def.Initialize[Task[T]] = macro taskMacroImpl[T]
 	def taskDyn[T](t: Def.Initialize[Task[T]]): Def.Initialize[Task[T]] = macro taskDynMacroImpl[T]
@@ -64,7 +64,7 @@ object Def extends Init[Scope] with TaskMacroExtra
 
 	implicit def macroValueI[T](in: Initialize[T]): MacroValue[T] = ???
 	implicit def macroValueIT[T](in: Initialize[Task[T]]): MacroValue[T] = ???
-	implicit def macroValueIInT[T](in: Initialize[InputTask[T]]): MacroValue[T] = ???
+	implicit def macroValueIInT[T](in: Initialize[InputTask[T]]): InputEvaluated[T] = ???
 
 	// The following conversions enable the types Parser[T], Initialize[Parser[T]], and Initialize[State => Parser[T]] to
 	//  be used in the inputTask macro as an input with an ultimate result of type T
@@ -80,7 +80,7 @@ object Def extends Init[Scope] with TaskMacroExtra
 trait TaskMacroExtra 
 {
 	implicit def macroValueT[T](in: Task[T]): std.MacroValue[T] = ???
-	implicit def macroValueIn[T](in: InputTask[T]): std.MacroValue[T] = ???
+	implicit def macroValueIn[T](in: InputTask[T]): std.InputEvaluated[T] = ???
 	implicit def parserToInput[T](in: Parser[T]): std.ParserInput[T] = ???
 	implicit def stateParserToInput[T](in: State => Parser[T]): std.ParserInput[T] = ???
 }
