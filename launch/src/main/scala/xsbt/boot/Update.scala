@@ -11,11 +11,11 @@ import java.util.Properties
 
 import org.apache.ivy.{core, plugins, util, Ivy}
 import core.LogOptions
-import core.cache.DefaultRepositoryCacheManager
+import core.cache.{CacheMetadataOptions, DefaultRepositoryCacheManager, DefaultResolutionCacheManager}
 import core.event.EventManager
 import core.module.id.{ArtifactId, ModuleId, ModuleRevisionId}
 import core.module.descriptor.{Configuration => IvyConfiguration, DefaultDependencyArtifactDescriptor, DefaultDependencyDescriptor, DefaultModuleDescriptor, ModuleDescriptor}
-import core.module.descriptor.{Artifact => IArtifact, DefaultExcludeRule, ExcludeRule}
+import core.module.descriptor.{Artifact => IArtifact, DefaultExcludeRule, DependencyDescriptor, ExcludeRule}
 import core.report.ResolveReport
 import core.resolve.{ResolveEngine, ResolveOptions}
 import core.retrieve.{RetrieveEngine, RetrieveOptions}
@@ -34,8 +34,8 @@ final class UpdateScala(val classifiers: List[String]) extends UpdateTarget { de
 final class UpdateApp(val id: Application, val classifiers: List[String], val tpe: String) extends UpdateTarget
 
 final class UpdateConfiguration(val bootDirectory: File, val ivyHome: Option[File], val scalaOrg: String,
-    val scalaVersion: Option[String], val repositories: List[xsbti.Repository], val checksums: List[String]) {
-
+	val scalaVersion: Option[String], val repositories: List[xsbti.Repository], val checksums: List[String]) {
+	val resolutionCacheBase = new File(bootDirectory, "resolution-cache")
 	def getScalaVersion = scalaVersion match { case Some(sv) => sv; case None => "" }
 }
 
@@ -44,7 +44,7 @@ final class UpdateResult(val success: Boolean, val scalaVersion: Option[String])
 /** Ensures that the Scala and application jars exist for the given versions or else downloads them.*/
 final class Update(config: UpdateConfiguration)
 {
-	import config.{bootDirectory, checksums, getScalaVersion, ivyHome, repositories, scalaVersion, scalaOrg}
+	import config.{bootDirectory, checksums, getScalaVersion, ivyHome, repositories, resolutionCacheBase, scalaVersion, scalaOrg}
 	bootDirectory.mkdirs
 
 	private def logFile = new File(bootDirectory, UpdateLogName)
@@ -115,6 +115,7 @@ final class Update(config: UpdateConfiguration)
 		{
 			logWriter.close()
 			ivy.popContext()
+			delete(resolutionCacheBase)
 		}
 	}
 	/** Runs update for the specified target (updates either the scala or appliciation jars for building the project) */
@@ -277,9 +278,25 @@ final class Update(config: UpdateConfiguration)
 	private[this] val Snapshot = "-SNAPSHOT"
 	private[this] val ChangingPattern = ".*" + Snapshot
 	private[this] val ChangingMatcher = PatternMatcher.REGEXP
-	private def configureCache(settings: IvySettings)
+	private[this] def configureCache(settings: IvySettings)
 	{
-		val manager = new DefaultRepositoryCacheManager("default-cache", settings, settings.getDefaultRepositoryCacheBasedir())
+		configureResolutionCache(settings)
+		configureRepositoryCache(settings)
+	}
+	private[this] def configureResolutionCache(settings: IvySettings)
+	{
+		resolutionCacheBase.mkdirs()
+		settings.setResolutionCacheManager(new DefaultResolutionCacheManager(resolutionCacheBase))
+	}
+	private[this] def configureRepositoryCache(settings: IvySettings)
+	{
+		val cacheDir = settings.getDefaultRepositoryCacheBasedir()
+		val manager = new DefaultRepositoryCacheManager("default-cache", settings, cacheDir) {
+			override def findModuleInCache(dd: DependencyDescriptor, revId: ModuleRevisionId, options: CacheMetadataOptions, r: String) = {
+				// ignore the resolver- not ideal, but avoids thrashing.
+				super.findModuleInCache(dd,revId,options,null)
+			}
+		}
 		manager.setUseOrigin(true)
 		manager.setChangingMatcher(ChangingMatcher)
 		manager.setChangingPattern(ChangingPattern)

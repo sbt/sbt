@@ -55,15 +55,6 @@ object Launch
 		try { main.run(appConfig) }
 		catch { case e: xsbti.FullReload => if(e.clean) delete(launcher.bootDirectory); throw e }
 	}
-	private[this] def delete(f: File)
-	{
-		if(f.isDirectory)
-		{
-			val fs = f.listFiles()
-			if(fs ne null) fs foreach delete
-		}
-		if(f.exists) f.delete()
-	}
 	final def launch(run: RunConfiguration => xsbti.MainResult)(config: RunConfiguration): Option[Int] =
 	{
 		run(config) match

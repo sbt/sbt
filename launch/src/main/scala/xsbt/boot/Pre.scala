@@ -69,4 +69,14 @@ object Pre
 		classes.toList.filter(classMissing)
 	}
 	def toURLs(files: Array[File]): Array[URL] = files.map(_.toURI.toURL)
+
+	def delete(f: File)
+	{
+		if(f.isDirectory)
+		{
+			val fs = f.listFiles()
+			if(fs ne null) fs foreach delete
+		}
+		if(f.exists) f.delete()
+	}
 }
