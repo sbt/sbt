@@ -292,8 +292,9 @@ final class Update(config: UpdateConfiguration)
 	{
 		val cacheDir = settings.getDefaultRepositoryCacheBasedir()
 		val manager = new DefaultRepositoryCacheManager("default-cache", settings, cacheDir) {
+				// ignore resolvers wherever possible- not ideal, but avoids issues like #704
+			override def saveResolvers(descriptor: ModuleDescriptor, metadataResolverName: String, artifactResolverName: String) {}
 			override def findModuleInCache(dd: DependencyDescriptor, revId: ModuleRevisionId, options: CacheMetadataOptions, r: String) = {
-				// ignore the resolver- not ideal, but avoids thrashing.
 				super.findModuleInCache(dd,revId,options,null)
 			}
 		}
