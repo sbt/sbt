@@ -11,7 +11,7 @@ final case class Artifact(name: String, `type`: String, extension: String, class
 	def extra(attributes: (String,String)*) = Artifact(name, `type`, extension, classifier, configurations, url, extraAttributes ++ ModuleID.checkE(attributes))
 }
 
-		import Configurations.{config, Docs, Optional, Pom, Sources}
+		import Configurations.{config, Docs, Optional, Pom, Sources, Test}
 
 object Artifact
 {
@@ -36,6 +36,7 @@ object Artifact
 	val DocType = "doc"
 	val SourceType = "src"
 	val PomType = "pom"
+	val TestsClassifier = "tests"
 
 	def extract(url: URL, default: String): String = extract(url.toString, default)
 	def extract(name: String, default: String): String =
@@ -64,8 +65,12 @@ object Artifact
 
 	val classifierConfMap = Map(SourceClassifier -> Sources, DocClassifier -> Docs)
 	val classifierTypeMap = Map(SourceClassifier -> SourceType, DocClassifier -> DocType)
-	def classifierConf(classifier: String): Configuration = classifierConfMap.getOrElse(classifier, Optional)
-	def classifierType(classifier: String): String = classifierTypeMap.getOrElse(classifier.stripPrefix("test-"), DefaultType)
+	def classifierConf(classifier: String): Configuration =
+		if(classifier.startsWith(TestsClassifier))
+			Test
+		else
+			classifierConfMap.getOrElse(classifier, Optional)
+	def classifierType(classifier: String): String = classifierTypeMap.getOrElse(classifier.stripPrefix(TestsClassifier + "-"), DefaultType)
 	def classified(name: String, classifier: String): Artifact =
 		Artifact(name, classifierType(classifier), DefaultExtension, Some(classifier), classifierConf(classifier) :: Nil, None)
 }
