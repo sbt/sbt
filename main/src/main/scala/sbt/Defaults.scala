@@ -520,7 +520,11 @@ object Defaults extends BuildCommon
 			t / toString(ScalaVersion(sv, sbv), module, a) asFile
 	}
 	def artifactSetting = ((artifact, artifactClassifier).identity zipWith configuration.?) { case ((a,classifier),cOpt) =>
-		val cPart = cOpt flatMap { c => if(c == Compile) None else Some(c.name) }
+		val cPart = cOpt flatMap {
+			case Compile => None
+			case Test => Some(Artifact.TestsClassifier)
+			case c => Some(c.name)
+		}
 		val combined = cPart.toList ++ classifier.toList
 		if(combined.isEmpty) a.copy(classifier = None, configurations = cOpt.toList) else {
 			val classifierString = combined mkString "-"
@@ -529,13 +533,11 @@ object Defaults extends BuildCommon
 		}
 	}
 	def artifactConfigurations(base: Artifact, scope: Configuration, classifier: Option[String]): Iterable[Configuration] =
-		if(base.configurations.isEmpty)
-			classifier match {
-				case Some(c) => Artifact.classifierConf(c) :: Nil
-				case None => scope :: Nil
-			}
-		else
-			base.configurations
+		classifier match {
+			case Some(c) => Artifact.classifierConf(c) :: Nil
+			case None => scope :: Nil
+		}
+
 	@deprecated("Use `Util.pairID` instead", "0.12.0")
 	def pairID = Util.pairID
 
