@@ -78,8 +78,18 @@ object Application
 	def apply(id: xsbti.ApplicationID): Application =
 	{
 		import id._
-		Application(groupID, name, new Explicit(version), mainClass, mainComponents.toList, crossVersionedValue, classpathExtra)
+		Application(groupID, name, new Explicit(version), mainClass, mainComponents.toList, safeCrossVersionedValue(id), classpathExtra)
 	}
+
+	private def safeCrossVersionedValue(id: xsbti.ApplicationID): xsbti.CrossValue =
+		try id.crossVersionedValue
+		catch {
+			case _: AbstractMethodError =>
+				// Before 0.13 this method did not exist on application, so we need to provide a default value
+				//in the event we're dealing with an older Application.
+				if(id.crossVersioned) xsbti.CrossValue.Binary
+				else xsbti.CrossValue.Disabled
+		}
 }
 
 object Repository
