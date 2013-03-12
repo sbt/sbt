@@ -232,27 +232,14 @@ object BuiltinCommands
 	// @deprecated("Use SettingCompletions.setThis", "0.13.0")
 	def setThis(s: State, extracted: Extracted, settings: Seq[Def.Setting[_]], arg: String) =
 		SettingCompletions.setThis(s, extracted, settings, arg)
-	def inspect = Command(InspectCommand, inspectBrief, inspectDetailed)(inspectParser) { case (s, (option, sk)) =>
-		s.log.info(inspectOutput(s, option, sk))
+	def inspect = Command(InspectCommand, inspectBrief, inspectDetailed)(Inspect.parser) { case (s, (option, sk)) =>
+		s.log.info(Inspect.output(s, option, sk))
 		s
 	}
-	def inspectOutput(s: State, option: InspectOption, sk: Def.ScopedKey[_]): String =
-	{
-		val extracted = Project.extract(s)
-			import extracted._
-		option match
-		{
-			case InspectOption.Details(actual) =>
-				Project.details(structure, actual, sk.scope, sk.key)
-			case InspectOption.DependencyTree =>
-				val basedir = new File(Project.session(s).current.build)
-				Project.settingGraph(structure, basedir, sk).dependsAscii
-			case InspectOption.Uses =>
-				Project.showUses(Project.usedBy(structure, true, sk.key))
-			case InspectOption.Definitions =>
-				Project.showDefinitions(sk.key, Project.definitions(structure, true, sk.key))
-		}
-	}
+	
+	@deprecated("Use Inspect.output", "0.13.0")
+	def inspectOutput(s: State, option: Inspect.Mode, sk: Def.ScopedKey[_]): String = Inspect.output(s, option, sk)
+
 	def lastGrep = Command(LastGrepCommand, lastGrepBrief, lastGrepDetailed)(lastGrepParser) {
 		case (s, (pattern,Some(sks))) =>
 			val (str, ref, display) = extractLast(s)
@@ -275,25 +262,18 @@ object BuiltinCommands
 			SettingCompletions.settingParser(structure.data, structure.index.keyMap, currentProject )
 	}
 
-		import InspectOption._
-	def inspectParser = (s: State) => spacedInspectOptionParser(s) flatMap {
-		case opt @ (Uses | Definitions) => allKeyParser(s).map(key => (opt, Def.ScopedKey(Global, key)))
-		case opt @ (DependencyTree | Details(_)) => spacedKeyParser(s).map(key => (opt, key))
-	}
-	val spacedInspectOptionParser: (State => Parser[InspectOption]) = (s: State) => {
-		val actual = "actual" ^^^ Details(true)
-		val tree = "tree" ^^^ DependencyTree
-		val uses = "uses" ^^^ Uses
-		val definitions = "definitions" ^^^ Definitions
-		token(Space ~> (tree | actual | uses | definitions)) ?? Details(false)
-	}
-	def allKeyParser(s: State): Parser[AttributeKey[_]] =
-	{
-		val keyMap = Project.structure(s).index.keyMap
-		token(Space ~> (ID !!! "Expected key" examples keyMap.keySet)) flatMap { key => Act.getKey(keyMap, key, idFun) }
-	}
+	@deprecated("Use Inspect.parser", "0.13.0")
+	def inspectParser: State => Parser[(Inspect.Mode, Def.ScopedKey[_])] = Inspect.parser
 
-	val spacedKeyParser = (s: State) => Act.requireSession(s, token(Space) ~> Act.scopedKeyParser(s))
+	@deprecated("Use Inspect.spacedModeParser", "0.13.0")
+	val spacedModeParser: State => Parser[Inspect.Mode] = Inspect.spacedModeParser
+
+	@deprecated("Use Inspect.allKeyParser", "0.13.0")
+	def allKeyParser(s: State): Parser[AttributeKey[_]] = Inspect.allKeyParser(s)
+
+	@deprecated("Use Inspect.spacedKeyParser", "0.13.0")
+	val spacedKeyParser: State => Parser[Def.ScopedKey[_]] = Inspect.spacedKeyParser
+
 	val spacedAggregatedParser = (s: State) => Act.requireSession(s, token(Space) ~> Act.aggregatedKeyParser(s))
 	val aggregatedKeyValueParser: State => Parser[Option[AnyKeys]] = (s: State) => spacedAggregatedParser(s).map(x => Act.keyValues(s)(x) ).?
 

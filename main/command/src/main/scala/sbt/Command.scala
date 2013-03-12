@@ -110,16 +110,6 @@ object Command
 		( (c & opOrIDSpaced(name)) ~ c.+) map { case (f, rem) => (f +: rem).mkString }
 }
 
-sealed trait InspectOption
-object InspectOption
-{
-	final case class Details(actual: Boolean) extends InspectOption
-	private[this] final class Opt(override val toString: String) extends InspectOption
-	val DependencyTree: InspectOption = new Opt("tree")
-	val Uses: InspectOption = new Opt("inspect")
-	val Definitions: InspectOption = new Opt("definitions")
-}
-
 trait Help
 {
 	def detail: Map[String, String]

@@ -280,7 +280,7 @@ object Project extends ProjectExtra
 					"Some of the defining occurrences:"
 				header + (posDefined.distinct mkString ("\n\t", "\n\t", "\n"))
 			} else ""
-    } getOrElse ""
+		} getOrElse ""
 
 
 		val cMap = Def.flattenLocals(comp)
@@ -288,8 +288,12 @@ object Project extends ProjectExtra
 		val depends = cMap.get(scoped) match { case Some(c) => c.dependencies.toSet; case None => Set.empty }
 
 		val reverse = reverseDependencies(cMap, scoped)
-		def printScopes(label: String, scopes: Iterable[ScopedKey[_]]) =
-			if(scopes.isEmpty) "" else scopes.map(display.apply).mkString(label + ":\n\t", "\n\t", "\n")
+		def printScopes(label: String, scopes: Iterable[ScopedKey[_]], max: Int = Int.MaxValue) =
+			if(scopes.isEmpty) ""
+			else {
+				val (limited, more) = if(scopes.size <= max) (scopes, "\n") else (scopes.take(max), "\n...\n")
+				limited.map(display.apply).mkString(label + ":\n\t", "\n\t", more)
+			}
 
 		data + "\n" +
 			description +
@@ -298,7 +302,7 @@ object Project extends ProjectExtra
 			printScopes("Dependencies", depends) +
 			printScopes("Reverse dependencies", reverse) +
 			printScopes("Delegates", delegates(structure, scope, key)) +
-			printScopes("Related", related)
+			printScopes("Related", related, 10)
 	}
 	def settingGraph(structure: BuildStructure, basedir: File, scoped: ScopedKey[_])(implicit display: Show[ScopedKey[_]]): SettingGraph =
 		SettingGraph(structure, basedir, scoped, 0)
@@ -324,15 +328,16 @@ object Project extends ProjectExtra
 	}
 
 	def showDefinitions(key: AttributeKey[_], defs: Seq[Scope])(implicit display: Show[ScopedKey[_]]): String =
-		defs.map(scope => display(ScopedKey(scope, key))).sorted.mkString("\n\t", "\n\t", "\n\n")
+		showKeys(defs.map(scope => ScopedKey(scope, key)))
 	def showUses(defs: Seq[ScopedKey[_]])(implicit display: Show[ScopedKey[_]]): String =
-		defs.map(display.apply).sorted.mkString("\n\t", "\n\t", "\n\n")
+		showKeys(defs)
+	private[this] def showKeys(s: Seq[ScopedKey[_]])(implicit display: Show[ScopedKey[_]]): String =
+		s.map(display.apply).sorted.mkString("\n\t", "\n\t", "\n\n")
 
 	def definitions(structure: BuildStructure, actual: Boolean, key: AttributeKey[_])(implicit display: Show[ScopedKey[_]]): Seq[Scope] =
 		relation(structure, actual)(display)._1s.toSeq flatMap { sk => if(sk.key == key) sk.scope :: Nil else Nil }
 	def usedBy(structure: BuildStructure, actual: Boolean, key: AttributeKey[_])(implicit display: Show[ScopedKey[_]]): Seq[ScopedKey[_]] =
 		relation(structure, actual)(display).all.toSeq flatMap { case (a,b) => if(b.key == key) List[ScopedKey[_]](a) else Nil }
-
 	def reverseDependencies(cMap: Map[ScopedKey[_],Flattened], scoped: ScopedKey[_]): Iterable[ScopedKey[_]] =
 		for( (key,compiled) <- cMap; dep <- compiled.dependencies if dep == scoped)  yield  key
 
