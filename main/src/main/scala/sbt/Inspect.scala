@@ -23,9 +23,8 @@ object Inspect
 		val actual = "actual" ^^^ Details(true)
 		val tree = "tree" ^^^ DependencyTree
 		val uses = "uses" ^^^ Uses
-		val related = "related" ^^^ Related
 		val definitions = "definitions" ^^^ Definitions
-		token(Space ~> (tree | actual | uses | related | definitions)) ?? Details(false)
+		token(Space ~> (tree | actual | uses | definitions)) ?? Details(false)
 	}
 
 	def allKeyParser(s: State): Parser[AttributeKey[_]] =
