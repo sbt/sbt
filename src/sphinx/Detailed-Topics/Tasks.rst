@@ -29,12 +29,9 @@ There are several features of the task system:
 
 1. By integrating with the settings system, tasks can be added, removed,
    and modified as easily and flexibly as settings.
-2. :doc:`Input Tasks <TaskInputs>`, the successor to method tasks, use
-   :doc:`parser combinators <Parsing-Input>` to define the syntax for their
-   arguments. This allows flexible syntax and tab-completions in the
-   same way as :doc:`/Extending/Commands`.
-3. Tasks produce values. Other tasks can access a task's value by calling
-   ``value`` on it within a task definition.
+2. :doc:`Input Tasks <TaskInputs>`, use :doc:`parser combinators <Parsing-Input>` to define the syntax for their arguments.
+   This allows flexible syntax and tab-completions in the same way as :doc:`/Extending/Commands`.
+3. Tasks produce values. Other tasks can access a task's value by calling ``value`` on it within a task definition.
 4. Dynamically changing the structure of the task graph is possible.
    Tasks can be injected into the execution graph based on the result of another task.
 5. There are ways to handle task failure, similar to ``try/catch/finally``.
@@ -61,52 +58,21 @@ build.sbt
 
     hello := println("hello world!")
 
-Hello World example (scala)
----------------------------
-
-project/Build.scala
-
-::
-
-
-    import sbt._
-    import Keys._
-
-    object HelloBuild extends Build {
-      val hwsettings = Defaults.defaultSettings ++ Seq(
-        organization := "hello",
-        name         := "world",
-        version      := "1.0-SNAPSHOT",
-        scalaVersion := "2.9.0-1"
-      )
-
-      val hello = taskKey[Unit]("Prints 'Hello World'")
-
-      val helloTask = hello := {
-        println("Hello World")
-      }
-
-      lazy val project = Project (
-        "project",
-        file ("."),
-        settings = hwsettings ++ Seq(helloTask)
-      )
-    }
-
 Run "sbt hello" from command line to invoke the task. Run "sbt tasks" to
 see this task listed.
 
 Define the key
 --------------
 
-To declare a new task, define a val of type ``TaskKey``, either in ``.sbt`` or ``.scala``:
+To declare a new task, define a val of type ``TaskKey``:
 
 ::
 
     val sampleTask = taskKey[Int]("A sample task.")
 
-The name of the ``val`` is used when referring to the task in Scala
-code and at the command line. The string passed to the ``TaskKey`` method is a description of the task.  The type parameter passed to ``TaskKey`` (here, ``Int``) is the type of value produced by the task.
+The name of the ``val`` is used when referring to the task in Scala code and at the command line.
+The string passed to the ``taskKey`` method is a description of the task.
+The type parameter passed to ``taskKey`` (here, ``Int``) is the type of value produced by the task.
 
 We'll define a couple of other of tasks for the examples:
 
@@ -260,22 +226,15 @@ only print ``#3``.
         sampleTask.value - 3
     }
 
-To apply a transformation to a single task, without using additional
-tasks as inputs, use ``~=``. This accepts the function to apply to the
-task's result:
-
-::
-
-    intTask := 3
-
-    // increment the value returned by intTask
-    intTask ~= { (x: Int) => x + 1 }
-
 Advanced Task Operations
 ========================
 
-The previous sections demonstrated the most common way to define a task.
-Advanced task definitions require the implementation to be separate from the binding.
+The examples in this section use the task keys defined in the previous section.
+
+Separating implementations
+--------------------------
+
+The implementation of a task can be separated from the binding.
 For example, a basic separate definition looks like:
 
 ::
@@ -288,46 +247,6 @@ For example, a basic separate definition looks like:
 
 Note that whenever ``.value`` is used, it must be within a task definition, such as
 within ``Def.task`` above or as an argument to ``:=``.
-
-The examples in this section use the task keys defined in the previous section.
-
-Dependencies
-------------
-
-To depend on the side effect of some tasks without using their values
-and without doing additional work, use ``dependOn`` on a sequence of
-tasks. The defining task key (the part on the left side of ``:=``) must
-be of type ``Unit``, since no value is returned.
-
-::
-
-    val unitTaskImpl: Initialize[Task[Unit]] = Seq(stringTask, sampleTask).dependOn
-
-    unitTask := unitTaskImpl.value
-
-To add dependencies to an existing task without using their values, call
-``dependsOn`` on the task and provide the tasks to depend on. For
-example, the second task definition here modifies the original to
-require that ``stringTask`` and ``sampleTask`` run first:
-
-::
-
-    intTask := 4
-
-    val intTaskImpl = intTask.dependsOn(stringTask, sampleTask)
-
-    intTask := intTaskImpl.value
-
-Note that you can sometimes use the usual syntax:
-
-::
-
-    intTask := 4
-
-    intTask := {
-       val ignore = (stringTask.value, sampleTask.value)
-       intTask.value // use the original result
-    }
 
 Streams: Per-task logging
 -------------------------

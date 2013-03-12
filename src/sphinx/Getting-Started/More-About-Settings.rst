@@ -30,7 +30,7 @@ creating a ``Setting`` without putting it where sbt will find it).
 Appending to previous values: ``+=`` and ``++=``
 ------------------------------------------------
 
-Replacement with ``:=`` is the simplest transformation, but keys have
+Assignment with ``:=`` is the simplest transformation, but keys have
 other methods as well. If the ``T`` in ``SettingKey[T]`` is a sequence,
 i.e. the key's value type is a sequence, you can append to the sequence
 rather than replacing it.
@@ -72,49 +72,10 @@ course:
 
     sourceDirectories in Compile := Seq(file("sources1"), file("sources2"))
 
-Transforming a value: ``~=``
-----------------------------
-
-What happens if you want to *prepend* to
-``sourceDirectories in Compile``, or filter out one of the default
-directories?
-
-You can create a ``Setting`` that depends on the previous value of a
-key.
-
--  ``~=`` applies a function to the setting's previous value, producing
-   a new value of the same type.
-
-To modify ``sourceDirectories in Compile``, you could use ``~=`` as
-follows:
-
-::
-
-    // filter out src/main/scala
-    sourceDirectories in Compile ~= { srcDirs => srcDirs filter(!_.getAbsolutePath.endsWith("src/main/scala")) }
-
-Here, ``srcDirs`` is a parameter to an anonymous function, and the old
-value of ``sourceDirectories in Compile`` gets passed in to the
-anonymous function. The result of this function becomes the new value of
-``sourceDirectories in Compile``.
-
-Or a simpler example:
-
-::
-
-    // make the project name upper case
-    name ~= { _.toUpperCase }
-
-The function you pass to the ``~=`` method will always have type
-``T => T``, if the key has type ``SettingKey[T]`` or ``TaskKey[T]``. The
-function transforms the key's value into another value of the same type.
-
 Computing a value based on other keys' values
 ---------------------------------------------
 
-``~=`` defines a new value in terms of a key's previously-associated
-value. But what if you want to define a value in terms of *other* keys'
-values?  Reference the value of another task or setting by calling ``value``
+Reference the value of another task or setting by calling ``value``
 on the key for the task or setting.  The ``value`` method is special and may
 only be called in the argument to ``:=``, ``+=``, or ``++=``.
 
@@ -176,7 +137,7 @@ then the computation depends on that key. It just works!
 When settings are undefined
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-Whenever a setting uses ``~=`` or ``:=`` to create a dependency on
+Whenever a setting uses ``:=``, ``+=``, or ``++=`` to create a dependency on
 itself or another key's value, the value it depends on must exist. If it
 does not, sbt will complain. It might say *"Reference to undefined
 setting"*, for example. When this happens, be sure you're using the key

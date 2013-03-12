@@ -52,8 +52,7 @@ Implementing a task
 
 Once you've defined a key, you'll need to use it in some task. You could
 be defining your own task, or you could be planning to redefine an
-existing task. Either way looks the same; if the task has no
-dependencies on other settings or tasks, use ``:=`` to associate some
+existing task. Either way looks the same; use ``:=`` to associate some
 code with the task key:
 
 ::
@@ -79,20 +78,6 @@ and write code based on the HTML library, perhaps).
 sbt has some utility libraries and convenience functions, in particular
 you can often use the convenient APIs in
 `IO <../../api/index.html#sbt.IO$>`_ to manipulate files and directories.
-
-Extending but not replacing a task
-----------------------------------
-
-If you want to run an existing task while also taking another action,
-use ``:=`` or ``~=`` to take the existing task as input (which will
-imply running that task), and then do whatever else you like after the
-previous implementation completes.
-
-::
-
-    // These two settings are equivalent
-    intTask := intTask.value + 1
-    intTask ~= { (value: Int) => value + 1 }
 
 Use plugins!
 ------------
