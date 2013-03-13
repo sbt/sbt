@@ -94,7 +94,8 @@ object Sbt extends Build
 		//   Includes API and Analyzer phases that extract source API and relationships.
 	lazy val compileInterfaceSub = baseProject(compilePath / "interface", "Compiler Interface") dependsOn(interfaceSub, ioSub % "test->test", logSub % "test->test", launchSub % "test->test") settings( compileInterfaceSettings : _*)
 	lazy val precompiled282 = precompiled("2.8.2")
-	lazy val precompiled2100 = precompiled("2.10.0")
+	lazy val precompiled2100 = precompiled("2.10.1")
+	lazy val precompiled293 = precompiled("2.9.3")
 
 		// Implements the core functionality of detecting and propagating changes incrementally.
 		//   Defines the data structures for representing file fingerprints and relationships and the overall source analysis
@@ -126,7 +127,7 @@ object Sbt extends Build
 		// Strictly for bringing implicits and aliases from subsystems into the top-level sbt namespace through a single package object
 		//  technically, we need a dependency on all of mainSub's dependencies, but we don't do that since this is strictly an integration project
 		//  with the sole purpose of providing certain identifiers without qualification (with a package object)
-	lazy val sbtSub = baseProject(sbtPath, "Simple Build Tool") dependsOn(mainSub, compileInterfaceSub, precompiled282, precompiled2100, scriptedSbtSub % "test->test") settings(sbtSettings : _*)
+	lazy val sbtSub = baseProject(sbtPath, "Simple Build Tool") dependsOn(mainSub, compileInterfaceSub, precompiled282, precompiled293, precompiled2100, scriptedSbtSub % "test->test") settings(sbtSettings : _*)
 
 		/* Nested subproject paths */
 	def sbtPath = file("sbt")
