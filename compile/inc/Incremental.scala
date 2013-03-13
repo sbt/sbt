@@ -18,14 +18,14 @@ object Incremental
 
 	def compile(sources: Set[File], entry: String => Option[File], previous: Analysis, current: ReadStamps, forEntry: File => Option[Analysis], doCompile: (Set[File], DependencyChanges) => Analysis, log: Logger)(implicit equivS: Equiv[Stamp]): (Boolean, Analysis) =
 	{
-		val initialChanges = changedInitial(entry, sources, previous, current, forEntry)
+		val initialChanges = changedInitial(entry, sources, previous, current, forEntry, log)
 		val binaryChanges = new DependencyChanges {
 			val modifiedBinaries = initialChanges.binaryDeps.toArray
 			val modifiedClasses = initialChanges.external.modified.toArray
 			def isEmpty = modifiedBinaries.isEmpty && modifiedClasses.isEmpty
 		}
 		val initialInv = invalidateInitial(previous.relations, initialChanges, log)
-		log.debug("Initially invalidated: " + initialInv)
+		log.debug("All initially invalidated sources: " + initialInv + "\n")
 		val analysis = cycle(initialInv, sources, binaryChanges, previous, doCompile, 1, log)
 		(!initialInv.isEmpty, analysis)
 	}
@@ -95,14 +95,18 @@ object Incremental
 	def shortcutSameSource(a: Source, b: Source): Boolean  =  !a.hash.isEmpty && !b.hash.isEmpty && sameCompilation(a.compilation, b.compilation) && (a.hash deepEquals b.hash)
 	def sameCompilation(a: Compilation, b: Compilation): Boolean  =  a.startTime == b.startTime && a.target == b.target
 
+	// for binary compatibility in 0.12.x
 	def changedInitial(entry: String => Option[File], sources: Set[File], previousAnalysis: Analysis, current: ReadStamps, forEntry: File => Option[Analysis])(implicit equivS: Equiv[Stamp]): InitialChanges =
+		changedInitial(entry, sources, previousAnalysis, current, forEntry, Logger.Null)(equivS)
+
+	def changedInitial(entry: String => Option[File], sources: Set[File], previousAnalysis: Analysis, current: ReadStamps, forEntry: File => Option[Analysis], log: Logger)(implicit equivS: Equiv[Stamp]): InitialChanges =
 	{
 		val previous = previousAnalysis.stamps
 		val previousAPIs = previousAnalysis.apis
 		
 		val srcChanges = changes(previous.allInternalSources.toSet, sources,  f => !equivS.equiv( previous.internalSource(f), current.internalSource(f) ) )
 		val removedProducts = previous.allProducts.filter( p => !equivS.equiv( previous.product(p), current.product(p) ) ).toSet
-		val binaryDepChanges = previous.allBinaries.filter( externalBinaryModified(entry, forEntry, previous, current)).toSet
+		val binaryDepChanges = previous.allBinaries.filter( externalBinaryModified(entry, forEntry, previous, current, log)).toSet
 		val extChanges = changedIncremental(previousAPIs.allExternals, previousAPIs.externalAPI _, currentExternalAPI(entry, forEntry))
 
 		InitialChanges(srcChanges, removedProducts, binaryDepChanges, extChanges )
@@ -219,18 +223,42 @@ object Incremental
 		previous -- invalidatedSrcs
 	}
 
+	// for binary compatibility in 0.12.x
 	def externalBinaryModified(entry: String => Option[File], analysis: File => Option[Analysis], previous: Stamps, current: ReadStamps)(implicit equivS: Equiv[Stamp]): File => Boolean =
+		externalBinaryModified(entry, analysis, previous, current, Logger.Null)(equivS)
+
+	def externalBinaryModified(entry: String => Option[File], analysis: File => Option[Analysis], previous: Stamps, current: ReadStamps, log: Logger)(implicit equivS: Equiv[Stamp]): File => Boolean =
 		dependsOn =>
-			analysis(dependsOn).isEmpty &&
-			orTrue(
-				for {
-					name <- previous.className(dependsOn)
-					e <- entry(name)
-				} yield {
-					val resolved = Locate.resolve(e, name)
-					(resolved.getCanonicalPath != dependsOn.getCanonicalPath) || !equivS.equiv(previous.binary(dependsOn), current.binary(resolved))
+		{
+			def inv(reason: String): Boolean = {
+				log.debug("Invalidating " + dependsOn.getCanonicalPath + ": " + reason)
+				true
+			}
+			def entryModified(className: String, classpathEntry: File): Boolean =
+			{
+				val resolved = Locate.resolve(classpathEntry, className)
+				if(resolved.getCanonicalPath != dependsOn.getCanonicalPath)
+					inv("class " + className + " now provided by " + resolved.getCanonicalPath)
+				else {
+					val previousStamp = previous.binary(dependsOn)
+					val resolvedStamp = current.binary(resolved)
+					if(equivS.equiv(previousStamp, resolvedStamp))
+						false
+					else
+						inv("stamp changed from " + previousStamp + " to " + resolvedStamp)
 				}
-			)
+			}
+
+			analysis(dependsOn).isEmpty && {
+				previous.className(dependsOn) match {
+					case None => inv("no class name was mapped for it.")
+					case Some(name) => entry(name) match {
+						case None => inv("could not find class " + name + " on the classpath.")
+						case Some(e) => entryModified(name, e)
+					}
+				}
+			}
+		}
 
 	def currentExternalAPI(entry: String => Option[File], forEntry: File => Option[Analysis]): String => Source =
 		className =>
