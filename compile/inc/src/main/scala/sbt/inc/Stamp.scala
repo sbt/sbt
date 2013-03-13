@@ -42,9 +42,15 @@ trait Stamps extends ReadStamps
 }
 
 sealed trait Stamp
-final class Hash(val value: Array[Byte]) extends Stamp
-final class LastModified(val value: Long) extends Stamp
-final class Exists(val value: Boolean) extends Stamp
+final class Hash(val value: Array[Byte]) extends Stamp {
+	override def toString: String = "hash(" + Hash.toHex(value) + ")"
+}
+final class LastModified(val value: Long) extends Stamp {
+	override def toString: String = "lastModified(" + value + ")"
+}
+final class Exists(val value: Boolean) extends Stamp {
+	override def toString: String = if(value) "exists" else "absent"
+}
 
 object Stamp
 {
