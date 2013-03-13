@@ -40,6 +40,21 @@ abstract class AbstractLogger extends Logger
 
 object Logger
 {
+	// make public in 0.13
+	private[sbt] val Null: AbstractLogger = new AbstractLogger {
+		def getLevel: Level.Value = Level.Error
+		def setLevel(newLevel: Level.Value) {}
+		def getTrace = 0
+		def setTrace(flag: Int) {}
+		def successEnabled = false
+		def setSuccessEnabled(flag: Boolean) {}
+		def control(event: ControlEvent.Value, message: => String) {}
+		def logAll(events: Seq[LogEvent]) {}
+		def trace(t: => Throwable) {}
+		def success(message: => String) {}
+		def log(level: Level.Value, message: => String) {}
+	}
+
 	implicit def absLog2PLog(log: AbstractLogger): ProcessLogger = new BufferedLogger(log) with ProcessLogger
 	implicit def log2PLog(log: Logger): ProcessLogger = absLog2PLog(new FullLogger(log))
 	implicit def xlog2Log(lg: xLogger): Logger = new Logger {
