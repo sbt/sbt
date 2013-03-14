@@ -768,7 +768,7 @@ object Classpaths
 		publishLocal <<= publishTask(publishLocalConfiguration, deliverLocal)
 	)
 	val baseSettings: Seq[Setting[_]] = sbtClassifiersTasks ++ Seq(
-		conflictWarning in GlobalScope :== ConflictWarning.default("global"),
+		conflictWarning in GlobalScope :== ConflictWarning.default("global").copy(level = Level.Debug),
 		conflictWarning <<= (thisProjectRef, conflictWarning) { (ref, cw) => cw.copy(label = Project.display(ref)) },
 		unmanagedBase <<= baseDirectory / "lib",
 		normalizedName <<= name(StringUtilities.normalize),
