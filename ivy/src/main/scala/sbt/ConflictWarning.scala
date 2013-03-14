@@ -2,46 +2,39 @@ package sbt
 
 	import DependencyFilter._
 
-final case class ConflictWarning(label: String, filter: ModuleFilter, group: ModuleID => String, level: Level.Value, failOnConflict: Boolean)
+final case class ConflictWarning(label: String, level: Level.Value, failOnConflict: Boolean)
+{
+	@deprecated("`filter` is no longer used", "0.13.0")
+	val filter: ModuleFilter = (_: ModuleID) => false
+	@deprecated("`group` is no longer used", "0.13.0")
+	val group: ModuleID => String = ConflictWarning.org
+}
 object ConflictWarning
 {
-	def disable: ConflictWarning = ConflictWarning("", (_: ModuleID) => false, org, Level.Warn, false)
+	@deprecated("`group` and `filter` are no longer used.  Use a standard Ivy conflict manager.", "0.13.0")
+	def apply(label: String, filter: ModuleFilter, group: ModuleID => String, level: Level.Value, failOnConflict: Boolean): ConflictWarning =
+		ConflictWarning(label, level, failOnConflict)
 
-	private[this] def org = (_: ModuleID).organization
+	def disable: ConflictWarning = ConflictWarning("", Level.Debug, false)
+
+	private def org = (_: ModuleID).organization
 	private[this] def idString(org: String, name: String) = s"$org:$name"
 
-	def default(label: String): ConflictWarning = ConflictWarning(label, moduleFilter(organization = GlobFilter(SbtArtifacts.Organization) | GlobFilter(ScalaArtifacts.Organization)), org, Level.Warn, false)
+	def default(label: String): ConflictWarning = ConflictWarning(label, Level.Error, true)
 
-	def strict(label: String): ConflictWarning = ConflictWarning(label, (id: ModuleID) => true, (id: ModuleID) => idString(id.organization, id.name), Level.Error, true)
+	@deprecated("Warning on evicted modules is no longer done, so this is the same as `default`.  Use a standard Ivy conflict manager.", "0.13.0")
+	def strict(label: String): ConflictWarning = ConflictWarning(label, Level.Error, true)
 
 	def apply(config: ConflictWarning, report: UpdateReport, log: Logger)
 	{
-		processEvicted(config, report, log)
 		processCrossVersioned(config, report, log)
 	}
-	private[this] def processEvicted(config: ConflictWarning, report: UpdateReport, log: Logger)
-	{
-		val conflicts = IvyActions.groupedConflicts(config.filter, config.group)(report)
-		if(!conflicts.isEmpty)
-		{
-			val prefix = if(config.failOnConflict) "Incompatible" else "Potentially incompatible"
-			val msg = s"$prefix versions of dependencies of ${config.label}:\n   "
-			val conflictMsgs =
-				for( (label, versions) <- conflicts ) yield
-					label + ": " + versions.mkString(", ")
-			log.log(config.level, conflictMsgs.mkString(msg, "\n   ", ""))
-
-			if(config.failOnConflict)
-				sys.error("Conflicts in " + conflicts.map(_._1).mkString(", ") )
-		}
-	}
-	
 	private[this] def processCrossVersioned(config: ConflictWarning, report: UpdateReport, log: Logger)
 	{
 		val crossMismatches = crossVersionMismatches(report)
 		if(!crossMismatches.isEmpty)
 		{
-			val pre = "Modules were resolved with conflicting cross-version suffixes:\n   "
+			val pre = s"Modules were resolved with conflicting cross-version suffixes in ${config.label}:\n   "
 			val conflictMsgs =
 				for( ((org,rawName), fullNames) <- crossMismatches ) yield
 				{
