@@ -32,6 +32,7 @@ Features
 Fixes
 -----
 
+- sbt no longer tries to warn on dependency conflicts.  Configure a :ref:`conflict manager <conflict-management>` instead.  (gh-709)
 
 Improvements
 ------------

@@ -399,6 +399,8 @@ The default value is:
 
     checksums := Seq("sha1", "md5")
 
+.. _conflict-management:
+
 Conflict Management
 ~~~~~~~~~~~~~~~~~~~
 

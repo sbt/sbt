@@ -29,6 +29,8 @@ The changes for 0.13.0 are listed on a separate page. See
 - Tag the actual test task and not a later task.  (gh-692)
 - Make exclude-classifiers per-user instead of per-build. (gh-634)
 - Load global plugins in their own class loader and replace the base loader with that. (gh-272)
+- Demote the default conflict warnings to the debug level.  These will be removed completely in 0.13. (gh-709)
+- Fix Ivy cache issues when multiple resolvers are involed. (gh-704)
 
 
 0.12.1 to 0.12.2
