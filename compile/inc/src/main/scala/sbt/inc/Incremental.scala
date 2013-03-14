@@ -51,6 +51,11 @@ object Incremental
 	val apiDebugProp = "xsbt.api.debug"
 	def apiDebug(options: IncOptions): Boolean =  options.apiDebug || java.lang.Boolean.getBoolean(apiDebugProp)
 
+	// setting the related system property to true will skip checking that the class name
+	// still comes from the same classpath entry.  This can workaround bugs in classpath construction,
+	// such as the currently problematic -javabootclasspath.  This is subject to removal at any time.
+	private[this] def skipClasspathLookup = java.lang.Boolean.getBoolean("xsbt.skip.cp.lookup")
+
 	// TODO: the Analysis for the last successful compilation should get returned + Boolean indicating success
 	// TODO: full external name changes, scopeInvalidations
 	@tailrec def cycle(invalidatedRaw: Set[File], allSources: Set[File], binaryChanges: DependencyChanges, previous: Analysis,
@@ -264,25 +269,30 @@ object Incremental
 				val resolved = Locate.resolve(classpathEntry, className)
 				if(resolved.getCanonicalPath != dependsOn.getCanonicalPath)
 					inv("class " + className + " now provided by " + resolved.getCanonicalPath)
-				else {
-					val previousStamp = previous.binary(dependsOn)
-					val resolvedStamp = current.binary(resolved)
-					if(equivS.equiv(previousStamp, resolvedStamp))
-						false
-					else
-						inv("stamp changed from " + previousStamp + " to " + resolvedStamp)
-				}
+				else
+					fileModified(dependsOn, resolved)
 			}
-
-			analysis(dependsOn).isEmpty && {
-				previous.className(dependsOn) match {
+			def fileModified(previousFile: File, currentFile: File): Boolean =
+			{
+				val previousStamp = previous.binary(previousFile)
+				val currentStamp = current.binary(currentFile)
+				if(equivS.equiv(previousStamp, currentStamp))
+					false
+				else
+					inv("stamp changed from " + previousStamp + " to " + currentStamp)
+			}
+			def dependencyModified(file: File): Boolean =
+				previous.className(file) match {
 					case None => inv("no class name was mapped for it.")
 					case Some(name) => entry(name) match {
 						case None => inv("could not find class " + name + " on the classpath.")
 						case Some(e) => entryModified(name, e)
 					}
 				}
-			}
+
+			analysis(dependsOn).isEmpty &&
+				(if(skipClasspathLookup) fileModified(dependsOn, dependsOn) else dependencyModified(dependsOn))
+
 		}
 
 	def currentExternalAPI(entry: String => Option[File], forEntry: File => Option[Analysis]): String => Source =
