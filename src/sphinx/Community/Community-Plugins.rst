@@ -170,8 +170,10 @@ System plugins
 Code generator plugins
 ~~~~~~~~~~~~~~~~~~~~~~
 
--  xsbt-fmpp-plugin (FreeMarker Scala/Java Templating):
-   https://github.com/aloiscochard/xsbt-fmpp-plugin
+-  sbt-scalabuff (Google Protocol Buffers with native scala suppport thru ScalaBuff):
+   https://github.com/sbt/sbt-scalabuff
+-  sbt-fmpp (FreeMarker Scala/Java Templating):
+   https://github.com/sbt/sbt-fmpp
 -  sbt-scalaxb (XSD and WSDL binding):
    https://github.com/eed3si9n/scalaxb
 -  sbt-protobuf (Google Protocol Buffers):
