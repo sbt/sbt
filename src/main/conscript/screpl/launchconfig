@@ -4,7 +4,7 @@
 [app]
   org: org.scala-sbt
   name: sbt
-  version: 0.12.3-RC1
+  version: 0.12.3-RC2
   class: sbt.ConsoleMain
   components: xsbti
   cross-versioned: true
