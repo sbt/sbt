@@ -35,11 +35,11 @@ See below for details on getting sbt sources and modifying the documentation.
 		$ git clone git://github.com/sbt/sbt.git
 		$ cd sbt
 
-3. The initial branch is the development branch 0.13, which contains the latest code for the next major sbt release.  To build a specific release or commit, switch to the associated tag.  The tag for the latest stable release is v0.12.1:
+3. The initial branch is the development branch 0.13, which contains the latest code for the next major sbt release.  To build a specific release or commit, switch to the associated tag.  The tag for the latest stable release is v0.12.2:
 
-		$ git checkout v0.12.1
+		$ git checkout v0.12.2
 
-	Note that sbt is always built with the previous stable release.  For example, the 0.13 branch is built with 0.12.1, the v0.11.2 tag is built with 0.11.1, and the v0.11.0 tag is built with 0.10.1.
+	Note that sbt is always built with the previous stable release.  For example, the 0.13 branch is built with 0.12.2, the v0.11.2 tag is built with 0.11.1, and the v0.11.0 tag is built with 0.10.1.
 
 4. To build the launcher, publish all components locally, and build documentation:
 
@@ -49,9 +49,9 @@ See below for details on getting sbt sources and modifying the documentation.
 
 		$ sbt publish-local proguard sxr doc sphinx:mappings
 
-5. To use this locally built version of sbt, copy your stable `~/bin/sbt` script to `~/bin/xsbt` and change it to use the launcher jar in `<sbt>/target/`.  For the v0.12.1 tag, the full location is:
+5. To use this locally built version of sbt, copy your stable `~/bin/sbt` script to `~/bin/xsbt` and change it to use the launcher jar in `<sbt>/target/`.  For the v0.12.2 tag, the full location is:
 
-		<sbt>/target/sbt-launch-0.12.1.jar
+		<sbt>/target/sbt-launch-0.12.2.jar
 
 	If using the 0.13 development branch, the launcher is at:
 
