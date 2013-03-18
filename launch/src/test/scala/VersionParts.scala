@@ -57,7 +57,7 @@ object VersionParts extends Properties("VersionParts")
 	private[this] def normS(s: String): String =
 	{
 		val filtered = s filter validChar
-		if(s.isEmpty) "q" else s
+		if(filtered.isEmpty) "q" else filtered
 	}
 
 	// strip whitespace and characters not supported by Pattern
