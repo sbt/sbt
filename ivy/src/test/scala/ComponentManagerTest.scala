@@ -50,16 +50,18 @@ object ComponentManagerTest extends Specification
 		}
 
 		"properly cache a file and then retrieve it to an unresolved component" in {
-			withManager { definingManager =>
-				val hash = defineFile(definingManager, TestID, "a")
-				try
-				{
-					definingManager.cache(TestID)
-					withManager { usingManager =>
-						checksum(usingManager.file(TestID)(Fail)) must beEqualTo(hash)
+			withTemporaryDirectory { ivyHome =>
+				withManagerHome(ivyHome) { definingManager =>
+					val hash = defineFile(definingManager, TestID, "a")
+					try
+					{
+						definingManager.cache(TestID)
+						withManagerHome(ivyHome) { usingManager =>
+							checksum(usingManager.file(TestID)(Fail)) must beEqualTo(hash)
+						}
 					}
+					finally { definingManager.clearCache(TestID) }
 				}
-				finally { definingManager.clearCache(TestID) }
 			}
 		}
 	}
@@ -78,5 +80,13 @@ object ComponentManagerTest extends Specification
 	private def writeRandomContent(file: File) = IO.write(file, randomString)
 	private def randomString = "asdf"
 	private def withManager[T](f: ComponentManager => T): T =
-		TestLogger( logger => withTemporaryDirectory { temp =>  f(new ComponentManager(xsbt.boot.Locks, new xsbt.boot.ComponentProvider(temp, true), None, logger)) } )
+		withTemporaryDirectory { ivyHome => withManagerHome(ivyHome)(f) }
+
+	private def withManagerHome[T](ivyHome: File)(f: ComponentManager => T): T =
+		TestLogger { logger =>
+			withTemporaryDirectory { temp =>
+				val mgr = new ComponentManager(xsbt.boot.Locks, new xsbt.boot.ComponentProvider(temp, true), Some(ivyHome), logger)
+				f(mgr)
+			}
+		}
 }
