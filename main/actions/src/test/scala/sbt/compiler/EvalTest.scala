@@ -1,6 +1,7 @@
 package sbt
 package compiler
 
+	import scala.language.reflectiveCalls
 	import org.scalacheck._
 	import Prop._
 	import scala.tools.nsc.reporters.StoreReporter
@@ -74,7 +75,7 @@ val p = {
 		value(eval.eval("abs("+i+")", new EvalImports(imports.zipWithIndex, "imp"))) == math.abs(i)
 
 	private[this] def local(i: Int) = "{ class ETest(val i: Int); new ETest(" + i + ") }"
-	val LocalType = "Object{val i: Int}"
+	val LocalType = "AnyRef{val i: Int}"
 
 	private[this] def value(r: EvalResult) = r.getValue(getClass.getClassLoader)
 	private[this] def hasErrors(line: Int, src: String) =
