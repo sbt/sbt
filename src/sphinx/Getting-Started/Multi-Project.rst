@@ -175,26 +175,6 @@ a task like ``compile``, it runs on the current project. So you don't
 necessarily have to compile the root project, you could compile only a
 subproject.
 
-Sharing settings
-----------------
-
-When having a single ``.scala`` file setting up the different projects,
-it's easy to use reuse settings across different projects. But even when
-using different ``build.sbt`` files, it's still easy to share settings
-across all projects from the main build, by using the ``ThisBuild``
-scope to make a setting apply globally. For instance, when a main
-project depends on a subproject, these two projects must typically be
-compiled with the same Scala version. To set it only once, it is enough
-to write, in the main ``build.sbt`` file, the following line:
-
-::
-
-    scalaVersion in ThisBuild := "2.10.0"
-
-replacing ``2.10.0`` with the desired Scala version. This setting will
-propagate across all subprojects. For more information on the
-``ThisBuild`` scope, go back to the :doc:`page on scopes <Scopes>`.
-
 Next
 ----
 
