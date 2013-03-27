@@ -221,6 +221,8 @@ only print ``#3``.
         sampleTask.value - 3
     }
 
+.. _multiple-scopes:
+
 Getting values from multiple scopes
 ===================================
 
