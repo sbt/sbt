@@ -2,19 +2,14 @@
 Tasks
 =====
 
-Tasks and settings are now introduced in the :doc:`getting started guide </Getting-Started/Basic-Def>`,
-which you may wish to read first.  This older page has some additional detail.
-
-*Wiki Maintenance Note:* This page should have its overlap with the
-getting started guide cleaned up, and just have any advanced or
-additional notes. It should maybe also be consolidated with
-:doc:`TaskInputs`.
+Tasks and settings are introduced in the :doc:`getting started guide </Getting-Started/Basic-Def>`,
+which you may wish to read first.
+This page has additional details and background and is intended more as a reference.
 
 Introduction
 ============
 
-sbt 0.10+ has a new task system that integrates with the new settings
-system. Both settings and tasks produce values, but there are two major
+Both settings and tasks produce values, but there are two major
 differences between them:
 
 1. Settings are evaluated at project load time. Tasks are executed on
@@ -29,7 +24,7 @@ There are several features of the task system:
 
 1. By integrating with the settings system, tasks can be added, removed,
    and modified as easily and flexibly as settings.
-2. :doc:`Input Tasks <TaskInputs>`, use :doc:`parser combinators <Parsing-Input>` to define the syntax for their arguments.
+2. :doc:`Input Tasks </Extending/Input-Tasks>` use :doc:`parser combinators <Parsing-Input>` to define the syntax for their arguments.
    This allows flexible syntax and tab-completions in the same way as :doc:`/Extending/Commands`.
 3. Tasks produce values. Other tasks can access a task's value by calling ``value`` on it within a task definition.
 4. Dynamically changing the structure of the task graph is possible.
@@ -39,13 +34,10 @@ There are several features of the task system:
    logging for that task at a more verbose level than is initially
    printed to the screen.
 
-These features are discussed in detail in the following sections. The
-context for the code snippets will be either the body of a ``Build``
-object in a :doc:`.scala file </Getting-Started/Full-Def>` or an expression
-in a :doc:`build.sbt </Getting-Started/Basic-Def>`.
+These features are discussed in detail in the following sections.
 
-Defining a New Task
-===================
+Defining a Task
+===============
 
 Hello World example (sbt)
 -------------------------
@@ -74,7 +66,7 @@ The name of the ``val`` is used when referring to the task in Scala code and at 
 The string passed to the ``taskKey`` method is a description of the task.
 The type parameter passed to ``taskKey`` (here, ``Int``) is the type of value produced by the task.
 
-We'll define a couple of other of tasks for the examples:
+We'll define a couple of other keys for the examples:
 
 ::
 
@@ -96,7 +88,7 @@ defined:
 2. Define the code that implements the task in terms of these inputs.
 3. Determine the scope the task will go in.
 
-These parts are then combined like the parts of a setting are combined.
+These parts are then combined just like the parts of a setting are combined.
 
 Defining a basic task
 ~~~~~~~~~~~~~~~~~~~~~
@@ -151,10 +143,6 @@ following example, ``test:sampleTask`` uses the result of
 
 ::
 
-    sampleTask.in(Test) := 
-        intTask.in(Compile).value * 3
-
-    // with a different punctuation style
     sampleTask in Test := (intTask in Compile).value * 3
 
 On precedence
@@ -171,27 +159,34 @@ As a reminder, method precedence is by the name of the method.
    according to the specific character it starts with. See the Scala
    specification for details.)
 
-Therefore, the second variant in the previous example is equivalent to
-the following:
+Therefore, the the previous example is equivalent to the following:
 
 ::
 
-    (sampleTask in Test) := ( (intTask in Compile).value * 3 )
+    (sampleTask in Test).:=( (intTask in Compile).value * 3 )
+
+
+Separating implementations
+--------------------------
+
+The implementation of a task can be separated from the binding.
+For example, a basic separate definition looks like:
+
+::
+
+    // Define a new, standalone task implemention
+    val intTaskImpl: Initialize[Task[Int]] =
+       Def.task { sampleTask.value - 3 }
+
+    // Bind the implementation to a specific key
+    intTask := intTaskImpl.value
+
+Note that whenever ``.value`` is used, it must be within a task definition, such as
+within ``Def.task`` above or as an argument to ``:=``.
+
 
 Modifying an Existing Task
-==========================
-
-The examples in this section use the following key definitions, which
-would go in a ``Build`` object in a ``.scala`` file or directly in a ``.sbt`` file.
-
-::
-
-    val unitTask = taskKey[Unit]("A side-effecting task.")
-    val intTask = taskKey[Int]("A task that returns an integer.")
-    val stringTask = taskKey[String]("A task that returns String")
-
-The examples themselves are valid settings in a ``build.sbt`` file or as
-part of a sequence provided to ``Project.settings``.
+--------------------------
 
 In the general case, modify a task by declaring the previous task as an
 input.
@@ -231,31 +226,13 @@ Advanced Task Operations
 
 The examples in this section use the task keys defined in the previous section.
 
-Separating implementations
---------------------------
-
-The implementation of a task can be separated from the binding.
-For example, a basic separate definition looks like:
-
-::
-
-    // Define a new, standalone task implemention
-    val intTaskImpl: Initialize[Task[Int]] = Def.task { sampleTask.value - 3 }
-
-    // Bind the implementation to a specific key
-    intTask := intTaskImpl.value
-
-Note that whenever ``.value`` is used, it must be within a task definition, such as
-within ``Def.task`` above or as an argument to ``:=``.
-
 Streams: Per-task logging
 -------------------------
 
-New in sbt 0.10+ are per-task loggers, which are part of a more general
-system for task-specific data called Streams. This allows controlling
-the verbosity of stack traces and logging individually for tasks as well
-as recalling the last logging for a task. Tasks also have access to
-their own persisted binary or text data.
+Per-task loggers are part of a more general system for task-specific data called Streams.
+This allows controlling the verbosity of stack traces and logging individually for tasks as well
+as recalling the last logging for a task.
+Tasks also have access to their own persisted binary or text data.
 
 To use Streams, get the value of the ``streams`` task. This is a
 special task that provides an instance of
@@ -269,7 +246,7 @@ method:
 ::
 
     myTask := {
-	   val s: TaskStreams = streams.value
+      val s: TaskStreams = streams.value
       s.log.debug("Saying hi...")
       s.log.info("Hello!")
     }
@@ -342,7 +319,7 @@ from failing. Consider the following example:
 The following table lists the results of each task depending on the initially invoked task:
 
 ============== =============== ============= ============== ============== ==============
-invoked task   intTask result  aTask result  bTask result   cTask result 	overall result
+invoked task   intTask result  aTask result  bTask result   cTask result   overall result
 ============== =============== ============= ============== ============== ==============
 intTask        failure         not run       not run        not run        failure
 aTask          failure         success       not run        not run        success
