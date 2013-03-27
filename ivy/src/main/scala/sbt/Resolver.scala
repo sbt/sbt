@@ -273,7 +273,9 @@ object Resolver
 	def defaultRetrievePattern = "[type]s/[organisation]/[module]/" + PluginPattern + "[artifact](-[revision])(-[classifier]).[ext]"
 	final val PluginPattern = "(scala_[scalaVersion]/)(sbt_[sbtVersion]/)"
 
-	def mavenLocal = MavenRepository("Maven2 Local", (new File(Path.userHome, ".m2/repository/")).toURI.toURL.toExternalForm)
+	private[this] def mavenLocalDir = new File(Path.userHome, ".m2/repository/")
+	def publishMavenLocal = Resolver.file("publish-m2-local", mavenLocalDir)
+	def mavenLocal = MavenRepository("Maven2 Local", mavenLocalDir.toURI.toString)
 	def defaultLocal = defaultUserFileRepository("local")
 	def defaultShared = defaultUserFileRepository("shared")
 	def defaultUserFileRepository(id: String) =

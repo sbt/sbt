@@ -865,7 +865,8 @@ object Classpaths
 		deliver <<= deliverTask(deliverConfiguration),
 		deliverLocal <<= deliverTask(deliverLocalConfiguration),
 		publish <<= publishTask(publishConfiguration, deliver),
-		publishLocal <<= publishTask(publishLocalConfiguration, deliverLocal)
+		publishLocal <<= publishTask(publishLocalConfiguration, deliverLocal),
+		publishM2 <<= publishTask(publishM2Configuration, deliverLocal)
 	)
 	val baseSettings: Seq[Setting[_]] = sbtClassifiersTasks ++ Seq(
 		conflictWarning in GlobalScope :== ConflictWarning.default("global"),
@@ -903,7 +904,7 @@ object Classpaths
 		defaultConfiguration in GlobalScope :== Some(Configurations.Compile),
 		defaultConfigurationMapping in GlobalScope <<= defaultConfiguration{ case Some(d) => "*->" + d.name; case None => "*->*" },
 		ivyPaths := new IvyPaths(baseDirectory.value, bootIvyHome(appConfiguration.value)),
-		otherResolvers := publishTo.value.toList,
+		otherResolvers := Resolver.publishMavenLocal :: publishTo.value.toList,
 		projectResolver <<= projectResolverTask,
 		projectDependencies <<= projectDependenciesTask,
 		dependencyOverrides in GlobalScope :== Set.empty,
@@ -948,6 +949,7 @@ object Classpaths
 		deliverConfiguration <<= deliverLocalConfiguration,
 		publishConfiguration := publishConfig(packagedArtifacts.value, if(publishMavenStyle.value) None else Some(deliver.value), resolverName = getPublishTo(publishTo.value).name, checksums = checksums.in(publish).value, logging = ivyLoggingLevel.value),
 		publishLocalConfiguration := publishConfig(packagedArtifacts.value, Some(deliverLocal.value), checksums.in(publishLocal).value, logging = ivyLoggingLevel.value ),
+		publishM2Configuration := publishConfig(packagedArtifacts.value, None, resolverName = Resolver.publishMavenLocal.name, checksums = checksums.in(publishM2).value, logging = ivyLoggingLevel.value),
 		ivySbt <<= ivySbt0,
 		ivyModule := { val is = ivySbt.value; new is.Module(moduleSettings.value) },
 		transitiveUpdate <<= transitiveUpdateTask,

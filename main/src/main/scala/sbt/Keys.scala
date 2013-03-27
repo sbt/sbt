@@ -247,7 +247,8 @@ object Keys
 	val updateSbtClassifiers = TaskKey[UpdateReport]("update-sbt-classifiers", "Resolves and optionally retrieves classifiers, such as javadocs and sources, for sbt, transitively.", BPlusTask, updateClassifiers)
 
 	val publishConfiguration = TaskKey[PublishConfiguration]("publish-configuration", "Configuration for publishing to a repository.", DTask)
-	val publishLocalConfiguration = TaskKey[PublishConfiguration]("publish-local-configuration", "Configuration for publishing to the local repository.", DTask)
+	val publishLocalConfiguration = TaskKey[PublishConfiguration]("publish-local-configuration", "Configuration for publishing to the local Ivy repository.", DTask)
+	val publishM2Configuration = TaskKey[PublishConfiguration]("publish-m2-configuration", "Configuration for publishing to the local Maven repository.", DTask)
 	val deliverConfiguration = TaskKey[DeliverConfiguration]("deliver-configuration", "Configuration for generating the finished Ivy file for publishing.", DTask)
 	val deliverLocalConfiguration = TaskKey[DeliverConfiguration]("deliver-local-configuration", "Configuration for generating the finished Ivy file for local publishing.", DTask)
 	val makePomConfiguration = SettingKey[MakePomConfiguration]("make-pom-configuration", "Configuration for generating a pom.", DSetting)
@@ -259,7 +260,8 @@ object Keys
 	val deliver = TaskKey[File]("deliver", "Generates the Ivy file for publishing to a repository.", BTask)
 	val deliverLocal = TaskKey[File]("deliver-local", "Generates the Ivy file for publishing to the local repository.", BTask)
 	val publish = TaskKey[Unit]("publish", "Publishes artifacts to a repository.", APlusTask)
-	val publishLocal = TaskKey[Unit]("publish-local", "Publishes artifacts to the local repository.", APlusTask)
+	val publishLocal = TaskKey[Unit]("publish-local", "Publishes artifacts to the local Ivy repository.", APlusTask)
+	val publishM2 = TaskKey[Unit]("publish-m2", "Publishes artifacts to the local Maven repository.", ATask)
 
 	val pomExtra = SettingKey[NodeSeq]("pom-extra", "Extra XML to insert into the generated POM.", BSetting)
 	val pomPostProcess = SettingKey[XNode => XNode]("pom-post-process", "Transforms the generated POM.", CSetting)
