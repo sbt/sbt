@@ -1,22 +1,18 @@
-========================
-Task Inputs/Dependencies
-========================
+==========================
+Tasks/Settings: Motivation
+==========================
 
-Tasks with dependencies are now introduced in the
-:doc:`getting started guide </Getting-Started/More-About-Settings>`,
-which you may wish to read first. This older page may have some additional detail.
+This page motivates the task and settings system.
+You should already know how to use tasks and settings, which are
+described in the :doc:`getting started guide </Getting-Started/More-About-Settings>`
+and on the :doc:`Tasks` page.
 
-*Wiki Maintenance Note:* This page should have its overlap with the
-getting started guide cleaned up, and just have any advanced or
-additional notes. It should maybe also be consolidated with :doc:`Tasks`.
-
-An important aspect of the task system introduced in sbt 0.10 is to
-combine two common, related steps in a build:
+An important aspect of the task system is to combine two common, related steps in a build:
 
 1. Ensure some other task is performed.
 2. Use some result from that task.
 
-Previous versions of sbt configured these steps separately using
+Earlier versions of sbt configured these steps separately using
 
 1. Dependency declarations
 2. Some form of shared state
