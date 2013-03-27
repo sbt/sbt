@@ -142,13 +142,13 @@ For example, the `main` Project definition above would now look like:
 
 
 You may wish to disable publishing the macro implementation.
-This is done by overriding `publish` and `deliver` to do nothing:
+This is done by overriding `publish` and `publishLocal` to do nothing:
 
 ::
 
     lazy val macroSub = Project("macro", file("macro")) settings(
         publish := {},
-        deliver := {}
+        publishLocal := {}
     )
 
 The techniques described here may also be used for the common interface described in the previous section.
