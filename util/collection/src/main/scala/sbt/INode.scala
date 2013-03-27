@@ -20,12 +20,14 @@ abstract class EvaluateSettings[Scope]
 
 	private[this] val complete = new LinkedBlockingQueue[Option[Throwable]]
 	private[this] val static = PMap.empty[ScopedKey, INode]
+	private[this] val allScopes: Set[Scope] = compiledSettings.map(_.key.scope).toSet
 	private[this] def getStatic[T](key: ScopedKey[T]): INode[T] = static get key getOrElse sys.error("Illegal reference to key " + key)
 
 	private[this] val transform: Initialize ~> INode = new (Initialize ~> INode) { def apply[T](i: Initialize[T]): INode[T] = i match {
 		case k: Keyed[s, T] => single(getStatic(k.scopedKey), k.transform)
 		case a: Apply[k,T] => new MixedNode[k,T]( a.alist.transform[Initialize, INode](a.inputs, transform), a.f, a.alist)
 		case b: Bind[s,T] => new BindNode[s,T]( transform(b.in), x => transform(b.f(x)))
+		case init.StaticScopes => constant(() => allScopes.asInstanceOf[T]) // can't convince scalac that StaticScopes => T == Set[Scope]
 		case v: Value[T] => constant(v.value)
 		case t: TransformCapture => constant(() => t.f)
 		case o: Optional[s,T] => o.a match {
@@ -33,7 +35,7 @@ abstract class EvaluateSettings[Scope]
 			case Some(i) => single[s,T](transform(i), x => o.f(Some(x)))
 		}
 	}}
-	private[this] val roots: Seq[INode[_]] = compiledSettings flatMap { cs =>
+	private[this] lazy val roots: Seq[INode[_]] = compiledSettings flatMap { cs =>
 		(cs.settings map { s =>
 			val t = transform(s.init)
 			static(s.key) = t
