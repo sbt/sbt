@@ -22,7 +22,7 @@ object CrossVersion
 	def fullMapped(remapVersion: String => String): CrossVersion = new Full(remapVersion)
 
 	def binary: CrossVersion = new Binary(idFun)
-	def binaryMapped(remapVersion: String => String): CrossVersion = new Full(remapVersion)
+	def binaryMapped(remapVersion: String => String): CrossVersion = new Binary(remapVersion)
 
 	private[this] def idFun[T]: T => T = x => x
 	def append(s: String): Option[String => String]  =  Some(x => crossName(x, s))
