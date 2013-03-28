@@ -45,6 +45,7 @@ object ScopeFilter
 		}
 	}
 
+	private[sbt] val Make = new Make {}
 	trait Make
 	{
 		/** Selects Scopes with a global task axis. */
@@ -132,7 +133,7 @@ object ScopeFilter
 		}
 
 	private def inProjects(projects: ProjectReference*): ProjectFilter =
-			inResolvedProjects( data => projects.map(data.resolve) )
+		inResolvedProjects( data => projects.map(data.resolve) )
 
 	private[this] def inResolvedProjects(projects: Data => Seq[ProjectRef]): ProjectFilter =
 		selectAxis(data => projects(data).toSet)

@@ -245,6 +245,7 @@ object Defaults extends BuildCommon
 
 	def generate(generators: SettingKey[Seq[Task[Seq[File]]]]): Initialize[Task[Seq[File]]] = generators {_.join.map(_.flatten) }
 
+	@deprecated("Use the new <key>.all(<ScopeFilter>) API", "0.13.0")
 	def inAllConfigurations[T](key: TaskKey[T]): Initialize[Task[Seq[T]]] = (state, thisProjectRef) flatMap { (state, ref) =>
 		val structure = Project structure state
 		val configurations = Project.getProject(ref, structure).toList.flatMap(_.configurations)
@@ -252,11 +253,19 @@ object Defaults extends BuildCommon
 			key in (ref, conf) get structure.data
 		} join
 	}
-	def watchTransitiveSourcesTask: Initialize[Task[Seq[File]]] =
-		inDependencies[Task[Seq[File]]](watchSources.task, const(std.TaskExtra.constant(Nil)), aggregate = true, includeRoot = true) apply { _.join.map(_.flatten) }
+	def watchTransitiveSourcesTask: Initialize[Task[Seq[File]]] = {
+			import ScopeFilter.Make.{inDependencies => inDeps, _}
+		val selectDeps = ScopeFilter(inAggregates(ThisProject) || inDeps(ThisProject))
+		val allWatched = (watchSources ?? Nil).all( selectDeps )
+		Def.task { allWatched.value.flatten }
+	}
 
-	def transitiveUpdateTask: Initialize[Task[Seq[UpdateReport]]] =
-		forDependencies(ref => (update.task in ref).?, aggregate = false, includeRoot = false) apply( _.flatten.join)
+	def transitiveUpdateTask: Initialize[Task[Seq[UpdateReport]]] = {
+			import ScopeFilter.Make.{inDependencies => inDeps, _}
+		val selectDeps = ScopeFilter(inDeps(ThisProject, includeRoot = false))
+		val allUpdates = update.?.all(selectDeps)
+		Def.task { allUpdates.value.flatten }
+	}
 
 	def watchSetting: Initialize[Watched] = (pollInterval, thisProjectRef, watchingMessage, triggeredMessage) { (interval, base, msg, trigMsg) =>
 		new Watched {
@@ -743,9 +752,11 @@ object Defaults extends BuildCommon
 		recurse ?? Nil
 	}
 
+	@deprecated("Use the new <key>.all(<ScopeFilter>) API", "0.13.0")
 	def inDependencies[T](key: SettingKey[T], default: ProjectRef => T, includeRoot: Boolean = true, classpath: Boolean = true, aggregate: Boolean = false): Initialize[Seq[T]] =
 		forDependencies[T,T](ref => (key in ref) ?? default(ref), includeRoot, classpath, aggregate)
 
+	@deprecated("Use the new <key>.all(<ScopeFilter>) API", "0.13.0")
 	def forDependencies[T,V](init: ProjectRef => Initialize[V], includeRoot: Boolean = true, classpath: Boolean = true, aggregate: Boolean = false): Initialize[Seq[V]] =
 		Def.bind( (loadedBuild, thisProjectRef).identity ) { case (lb, base) =>
 			transitiveDependencies(base, lb, includeRoot, classpath, aggregate) map init join ;
