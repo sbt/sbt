@@ -267,7 +267,7 @@ The next section describes various ways to construct a ScopeFilter.
 ScopeFilter
 -----------
 
-A basic `ScopeFilter <../../api/sbt/ScopeFilter.html>`_ is constructed by the ``ScopeFilter.apply`` method.
+A basic ``ScopeFilter`` is constructed by the ``ScopeFilter.apply`` method.
 This method makes a ``ScopeFilter`` from filters on the parts of a ``Scope``: a ``ProjectFilter``, ``ConfigurationFilter``, and ``TaskFilter``.
 The simplest case is explicitly specifying the values for the parts:
 
@@ -298,7 +298,7 @@ These methods can be organized into four groups:
 * Default filter (``inAnyProject``, ``inAnyConfiguration``, ``inAnyTask``)
 * Project relationships (``inAggregates``, ``inDependencies``)
 
-See the `API documentation <../../api/sbt/ScopeFilter.html#Make>`_ for details.
+See the `API documentation <../../api/sbt/ScopeFilter$$Make.html>`_ for details.
 
 Combining ScopeFilters
 ~~~~~~~~~~~~~~~~~~~~~~
