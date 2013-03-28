@@ -201,6 +201,7 @@ Code generator plugins
    https://github.com/xuwei-k/sbtend
 -  sbt-boilerplate (generating scala.Tuple/Function related boilerplate code):
    https://github.com/sbt/sbt-boilerplate
+-  sbt-fx (Generates controller classes for JavaFX FXML files): https://bitbucket.org/phdoerfler/sbt-fx
 
 Database plugins
 ~~~~~~~~~~~~~~~~
