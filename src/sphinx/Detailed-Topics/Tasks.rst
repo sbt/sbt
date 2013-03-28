@@ -311,7 +311,7 @@ a || b
     Selects scopes that match either ``a`` or ``b``
 a -- b
     Selects scopes that match ``a`` but not ``b``
--b
+\-b
     Selects scopes that do not match ``b``
 
 For example, the following selects the scope for the ``Compile`` and ``Test`` configurations of the ``core`` project
