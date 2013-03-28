@@ -99,12 +99,16 @@ object ScopeFilter
 		Def.setting {
 			val build = Keys.loadedBuild.value
 			val scopes = Def.StaticScopes.value
-			val current = Keys.thisProjectRef.?.value match {
+			val thisRef = Keys.thisProjectRef.?.value
+			val current = thisRef match {
 				case Some(ProjectRef(uri, _)) => uri
 				case None => build.root
 			}
 			val rootProject = Load.getRootProject(build.units)
-			val resolve: ProjectReference => ProjectRef = p => Scope.resolveProjectRef(current, rootProject, p)
+			val resolve: ProjectReference => ProjectRef = p => (p, thisRef) match {
+				case (ThisProject, Some(pref)) => pref
+				case _ => Scope.resolveProjectRef(current, rootProject, p)
+			}
 			new Data(build.units, resolve, scopes)
 		}
 
