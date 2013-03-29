@@ -13,6 +13,7 @@ import java.net.Socket;
 import java.net.InetAddress;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Arrays;
 
 public class ForkMain {
 	static class SubclassFingerscan implements SubclassFingerprint, Serializable {
@@ -225,21 +226,63 @@ public class ForkMain {
 			write(os, ForkTags.Done);
 			is.readObject();
 		}
+		class NestedTask {
+			private String parentName;
+			private Task task;
+			NestedTask(String parentName, Task task) {
+				this.parentName = parentName;
+				this.task = task;
+			}
+			public String getParentName() {
+				return parentName;
+			}
+			public Task getTask() {
+				return task;
+			}
+		}
 		void runTestSafe(ForkTestDefinition test, Runner runner, Logger[] loggers, ObjectOutputStream os) {
-			ForkEvent[] events;
 			try {
-				events = runTest(test, runner, loggers, os);
+				// TODO: To pass in correct explicitlySpecified and selectors
+				Task task = runner.task(test.name, test.fingerprint, false, new Selector[] { new SuiteSelector() });
+				
+				List<NestedTask> nestedTasks = new ArrayList<NestedTask>();
+				for (Task nt : runTest(test, task, loggers, os))
+					nestedTasks.add(new NestedTask(test.name, nt));
+				while (true) {
+					List<NestedTask> newNestedTasks = new ArrayList<NestedTask>();
+					int nestedTasksLength = nestedTasks.size();
+					for (int i = 0; i < nestedTasksLength; i++) {
+						NestedTask nestedTask = nestedTasks.get(i);
+						String nestedParentName = nestedTask.getParentName() + "-" + i;
+						for (Task nt : runTest(new ForkTestDefinition(nestedParentName, test.fingerprint), nestedTask.getTask(), loggers, os)) {
+							newNestedTasks.add(new NestedTask(nestedParentName, nt));
+						}
+					}
+					if (newNestedTasks.size() == 0)
+						break;
+					else {
+						nestedTasks = newNestedTasks;
+					}
+				}
 			} catch (Throwable t) {
+				writeEvents(os, test, new ForkEvent[] { testError(os, test, "Uncaught exception when running " + test.name + ": " + t.toString(), t) });
+			}
+		}
+		Task[] runTest(ForkTestDefinition test, Task task, Logger[] loggers, ObjectOutputStream os) {
+			ForkEvent[] events;
+			Task[] nestedTasks;
+			try {
+				final List<ForkEvent> eventList = new ArrayList<ForkEvent>();
+				EventHandler handler = new EventHandler() { public void handle(Event e){ eventList.add(new ForkEvent(e)); } };
+				nestedTasks = task.execute(handler, loggers);
+				events = eventList.toArray(new ForkEvent[eventList.size()]);
+			}
+			catch (Throwable t) {
+				nestedTasks = new Task[0];
 				events = new ForkEvent[] { testError(os, test, "Uncaught exception when running " + test.name + ": " + t.toString(), t) };
 			}
 			writeEvents(os, test, events);
-		}
-		ForkEvent[] runTest(ForkTestDefinition test, Runner runner, Logger[] loggers, ObjectOutputStream os) {
-			final List<ForkEvent> events = new ArrayList<ForkEvent>();
-			EventHandler handler = new EventHandler() { public void handle(Event e){ events.add(new ForkEvent(e)); } };
-			// TODO: To pass in correct explicitlySpecified and selectors
-			runner.task(test.name, test.fingerprint, false, new Selector[] { new SuiteSelector() }).execute(handler, loggers);
-			return events.toArray(new ForkEvent[events.size()]);
+			return nestedTasks;
 		}
 		void run(ObjectInputStream is, ObjectOutputStream os) throws Exception {
 			try {
