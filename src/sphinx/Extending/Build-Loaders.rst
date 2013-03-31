@@ -38,7 +38,7 @@ result:
     ...
     object Demo extends Build {
       ...
-      override def buildLoader =
+      override def buildLoaders =
         BuildLoader.resolve(demoResolver) ::
         Nil
 
@@ -128,7 +128,7 @@ will load the build when evaluated. Register a builder by passing it to
     ...
     object Demo extends Build {
       ...
-      override def buildLoader =
+      override def buildLoaders =
         BuildLoader.build(demoBuilder) ::
         Nil
 
@@ -161,7 +161,7 @@ project/ directory.
       lazy val root = Project("root", file(".")) dependsOn( file("basic-pom-project") )
 
       override def buildLoaders =
-        build(demoBuilder) ::
+        BuildLoader.build(demoBuilder) ::
         Nil
 
       def demoBuilder: BuildInfo => Option[() => BuildUnit] = info =>
@@ -208,7 +208,7 @@ overriding *Build.buildLoaders* with the result:
     ...
     object Demo extends Build {
       ...
-      override def buildLoader =
+      override def buildLoaders =
         BuildLoader.transform(demoTransformer) ::
         Nil
 
@@ -280,7 +280,7 @@ like a local directory.
       val newcp = 
         for( (proj, deps) <- deps.cp) yield
           (proj, deps map substitute)
-      new BuildDependencies(cp, deps.aggregate)
+      new BuildDependencies(newcp, deps.aggregate)
     }
 
 It is not limited to such basic translations, however. The configuration
