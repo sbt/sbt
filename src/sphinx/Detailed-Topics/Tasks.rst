@@ -227,7 +227,7 @@ The type argument to ``TaskKey`` must be explicitly specified because of
 On precedence
 ~~~~~~~~~~~~~
 
-As a reminder, method precedence is by the name of the method.
+As a reminder, infix method precedence is by the name of the method and postfix methods have lower precedence than infix methods.
 
 1. Assignment methods have the lowest precedence. These are methods with
    names ending in ``=``, except for ``!=``, ``<=``, ``>=``, and names
@@ -244,6 +244,15 @@ the following:
 ::
 
     (sampleTask in Test) <<= (intTask in Compile map { _ * 3 })
+
+Additionally, the braces in the following are necessary:
+
+::
+
+    helloTask := { "echo Hello" ! }
+
+Without them, Scala interprets the line as ``( helloTask.:=("echo Hello") ).!``
+instead of the desired ``helloTask.:=( "echo Hello".! )``.
 
 Modifying an Existing Task
 ==========================
