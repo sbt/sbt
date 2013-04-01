@@ -148,7 +148,7 @@ following example, ``test:sampleTask`` uses the result of
 On precedence
 ~~~~~~~~~~~~~
 
-As a reminder, method precedence is by the name of the method.
+As a reminder, infix method precedence is by the name of the method and postfix methods have lower precedence than infix methods.
 
 1. Assignment methods have the lowest precedence. These are methods with
    names ending in ``=``, except for ``!=``, ``<=``, ``>=``, and names
@@ -164,6 +164,15 @@ Therefore, the the previous example is equivalent to the following:
 ::
 
     (sampleTask in Test).:=( (intTask in Compile).value * 3 )
+
+Additionally, the braces in the following are necessary:
+
+::
+
+    helloTask := { "echo Hello" ! }
+
+Without them, Scala interprets the line as ``( helloTask.:=("echo Hello") ).!``
+instead of the desired ``helloTask.:=( "echo Hello".! )``.
 
 
 Separating implementations
