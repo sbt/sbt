@@ -3,7 +3,7 @@
  */
 package sbt;
 
-import org.scalatools.testing.*;
+import sbt.testing.*;
 
 import java.io.IOException;
 import java.io.ObjectInputStream;
@@ -15,15 +15,18 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class ForkMain {
-	static class SubclassFingerscan implements TestFingerprint, Serializable {
+	static class SubclassFingerscan implements SubclassFingerprint, Serializable {
 		private boolean isModule;
-		private String superClassName;
+		private String superclassName;
+		private boolean requireNoArgConstructor;
 		SubclassFingerscan(SubclassFingerprint print) {
 			isModule = print.isModule();
-			superClassName = print.superClassName();
+			superclassName = print.superclassName();
+			requireNoArgConstructor = print.requireNoArgConstructor();
 		}
 		public boolean isModule() { return isModule; }
-		public String superClassName() { return superClassName; }
+		public String superclassName() { return superclassName; }
+		public boolean requireNoArgConstructor() { return requireNoArgConstructor; }
 	}
 	static class AnnotatedFingerscan implements AnnotatedFingerprint, Serializable {
 		private boolean isModule;
@@ -59,21 +62,69 @@ public class ForkMain {
 		public String getMessage() { return originalMessage; }
 		public Exception getCause() { return cause; }
 	}
-	static class ForkEvent implements Event, Serializable {
+	static class ForkSelector extends Selector implements Serializable {}
+	static class ForkSuiteSelector extends ForkSelector {}
+	static class ForkTestSelector extends ForkSelector {
 		private String testName;
-		private String description;
-		private Result result;
-		private Throwable error;
-		ForkEvent(Event e) {
-			testName = e.testName();
-			description = e.description();
-			result = e.result();
-			if (e.error() != null) error = new ForkError(e.error());
+		ForkTestSelector(TestSelector testSelector) {
+			this.testName = testSelector.getTestName();
 		}
-		public String testName() { return testName; }
-		public String description() { return description; }
-		public Result result() { return result; }
-		public Throwable error() { return error; }
+		public String getTestName() {
+			return testName;
+		}
+	}
+	static class ForkNestedSuiteSelector extends ForkSelector {
+		private String suiteId;
+		ForkNestedSuiteSelector(NestedSuiteSelector nestedSuiteSelector) {
+			this.suiteId = nestedSuiteSelector.getSuiteId();
+		}
+		public String getSuiteId() {
+			return suiteId;
+		}
+	}
+	static class ForkNestedTestSelector extends ForkSelector {
+		private String suiteId;
+		private String testName;
+		ForkNestedTestSelector(NestedTestSelector nestedTestSelector) {
+			this.suiteId = nestedTestSelector.getSuiteId();
+			this.testName = nestedTestSelector.getTestName();
+		}
+		public String getSuiteId() {
+			return suiteId;
+		}
+		public String getTestName() {
+			return testName;
+		}
+	}
+	
+	static class ForkEvent implements Event, Serializable {
+		private String fullyQualifiedName;
+		private boolean isModule;
+		private ForkSelector selector;
+		private Status status;
+		private Throwable throwable;
+		ForkEvent(Event e) {
+			fullyQualifiedName = e.fullyQualifiedName();
+			isModule = e.isModule();
+			selector = forkSelector(e.selector());
+			status = e.status();
+			if (e.throwable() != null) throwable = new ForkError(e.throwable());
+		}
+		public String fullyQualifiedName() { return fullyQualifiedName; }
+		public boolean isModule() { return isModule; }
+		public Selector selector() { return selector; }
+		public Status status() { return status; }
+		public Throwable throwable() { return throwable; }
+		protected ForkSelector forkSelector(Selector selector) {
+			if (selector instanceof SuiteSelector)
+				return new ForkSuiteSelector();
+			else if (selector instanceof TestSelector)
+				return new ForkTestSelector((TestSelector) selector);
+			else if (selector instanceof NestedSuiteSelector)
+				return new ForkNestedSuiteSelector((NestedSuiteSelector) selector);
+			else
+				return new ForkNestedTestSelector((NestedTestSelector) selector);
+		}
 	}
 	public static void main(String[] args) throws Exception {
 		Socket socket = new Socket(InetAddress.getByName(null), Integer.valueOf(args[0]));
@@ -95,7 +146,7 @@ public class ForkMain {
 			if (f1 instanceof SubclassFingerprint && f2 instanceof SubclassFingerprint) {
 				final SubclassFingerprint sf1 = (SubclassFingerprint) f1;
 				final SubclassFingerprint sf2 = (SubclassFingerprint) f2;
-				return sf1.isModule() == sf2.isModule() && sf1.superClassName().equals(sf2.superClassName());
+				return sf1.isModule() == sf2.isModule() && sf1.superclassName().equals(sf2.superclassName());
 			} else if (f1 instanceof AnnotatedFingerprint && f2 instanceof AnnotatedFingerprint) {
 				AnnotatedFingerprint af1 = (AnnotatedFingerprint) f1;
 				AnnotatedFingerprint af2 = (AnnotatedFingerprint) f2;
@@ -141,44 +192,43 @@ public class ForkMain {
 
 				final Framework framework;
 				try {
-					framework = (Framework) Class.forName(implClassName).newInstance();
+					Object rawFramework = Class.forName(implClassName).newInstance();
+					if (rawFramework instanceof Framework)
+						framework = (Framework) rawFramework;
+					else
+						framework = new FrameworkWrapper((org.scalatools.testing.Framework) rawFramework);
 				} catch (ClassNotFoundException e) {
 					logError(os, "Framework implementation '" + implClassName + "' not present.");
 					continue;
 				}
 
 				ArrayList<ForkTestDefinition> filteredTests = new ArrayList<ForkTestDefinition>();
-				for (Fingerprint testFingerprint : framework.tests()) {
+				for (Fingerprint testFingerprint : framework.fingerprints()) {
 					for (ForkTestDefinition test : tests) {
 						if (matches(testFingerprint, test.fingerprint)) filteredTests.add(test);
 					}
 				}
-				final org.scalatools.testing.Runner runner = framework.testRunner(getClass().getClassLoader(), loggers);
+				final Runner runner = framework.runner(frameworkArgs, new String[0], getClass().getClassLoader());
 				for (ForkTestDefinition test : filteredTests)
-					runTestSafe(test, runner, framework, frameworkArgs, os);
+					runTestSafe(test, runner, loggers, os);
 			}
 			write(os, ForkTags.Done);
 			is.readObject();
 		}
-		void runTestSafe(ForkTestDefinition test, org.scalatools.testing.Runner runner, Framework framework, String[] frameworkArgs, ObjectOutputStream os) {
+		void runTestSafe(ForkTestDefinition test, Runner runner, Logger[] loggers, ObjectOutputStream os) {
 			ForkEvent[] events;
 			try {
-				events = runTest(test, runner, framework, frameworkArgs, os);
+				events = runTest(test, runner, loggers, os);
 			} catch (Throwable t) {
 				events = new ForkEvent[] { testError(os, test, "Uncaught exception when running " + test.name + ": " + t.toString(), t) };
 			}
 			writeEvents(os, test, events);
 		}
-		ForkEvent[] runTest(ForkTestDefinition test, org.scalatools.testing.Runner runner, Framework framework, String[] frameworkArgs, ObjectOutputStream os) {
+		ForkEvent[] runTest(ForkTestDefinition test, Runner runner, Logger[] loggers, ObjectOutputStream os) {
 			final List<ForkEvent> events = new ArrayList<ForkEvent>();
 			EventHandler handler = new EventHandler() { public void handle(Event e){ events.add(new ForkEvent(e)); } };
-			if (runner instanceof Runner2) {
-				((Runner2) runner).run(test.name, test.fingerprint, handler, frameworkArgs);
-			} else if (test.fingerprint instanceof TestFingerprint) {
-				runner.run(test.name, (TestFingerprint) test.fingerprint, handler, frameworkArgs);
-			} else {
-				events.add(testError(os, test, "Framework '" + framework + "' does not support test '" + test.name + "'"));
-			}
+			// TODO: To pass in correct explicitlySpecified and selectors
+			runner.task(test.name, test.fingerprint, false, new Selector[] { new SuiteSelector() }).execute(handler, loggers);
 			return events.toArray(new ForkEvent[events.size()]);
 		}
 		void run(ObjectInputStream is, ObjectOutputStream os) throws Exception {
@@ -198,22 +248,23 @@ public class ForkMain {
 		void internalError(Throwable t) {
 			System.err.println("Internal error when running tests: " + t.toString());
 		}
-		ForkEvent testEvent(final String name, final String desc, final Result r, final Throwable err) {
+		ForkEvent testEvent(final String fullyQualifiedName, final Fingerprint fingerprint, final Selector selector, final Status r, final Throwable err) {
 			return new ForkEvent(new Event() {
-				public String testName() { return name; }
-				public String description() { return desc; }
-				public Result result() { return r; }
-				public Throwable error() { return err; }
+				public String fullyQualifiedName() { return fullyQualifiedName; }
+				public boolean isModule() { return fingerprint instanceof SubclassFingerprint ? ((SubclassFingerprint) fingerprint).isModule() : ((AnnotatedFingerprint) fingerprint).isModule(); }
+				public Selector selector() { return selector; }
+				public Status status() { return r; }
+				public Throwable throwable() { return err; }
 			});
 		}
 		ForkEvent testError(ObjectOutputStream os, ForkTestDefinition test, String message) {
 			logError(os, message);
-			return testEvent(test.name, message, Result.Error, null);
+			return testEvent(test.name, test.fingerprint, new SuiteSelector(), Status.Error, null);
 		}
 		ForkEvent testError(ObjectOutputStream os, ForkTestDefinition test, String message, Throwable t) {
 			logError(os, message);
 			write(os, t);
-			return testEvent(test.name, message, Result.Error, t);
+			return testEvent(test.name, test.fingerprint, new SuiteSelector(), Status.Error, t);
 		}
 	}
 }

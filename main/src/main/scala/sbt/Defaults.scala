@@ -15,7 +15,7 @@ package sbt
 	import complete._
 	import std.TaskExtra._
 	import inc.{FileValueCache, Locate}
-	import org.scalatools.testing.{Framework, AnnotatedFingerprint, SubclassFingerprint}
+	import testing.{Framework, AnnotatedFingerprint, SubclassFingerprint}
 
 	import sys.error
 	import scala.xml.NodeSeq

@@ -4,7 +4,7 @@
 package sbt
 
 import scala.collection.mutable
-import org.scalatools.testing._
+import testing._
 import java.net.ServerSocket
 import java.io._
 import Tests.{Output => TestOutput, _}

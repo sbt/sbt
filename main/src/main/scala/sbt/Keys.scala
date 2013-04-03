@@ -14,7 +14,7 @@ package sbt
 	import scala.xml.{Node => XNode, NodeSeq}
 	import org.apache.ivy.core.module.{descriptor, id}
 	import descriptor.ModuleDescriptor, id.ModuleRevisionId
-	import org.scalatools.testing.Framework
+	import testing.Framework
 	import Configurations.CompilerPlugin
 	import Types.Id
 	import KeyRanks._

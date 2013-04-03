@@ -4,7 +4,7 @@
 
 package sbt
 
-	import org.scalatools.testing.{Logger => TLogger, Event => TEvent, Result => TResult}
+	import testing.{Logger => TLogger, Event => TEvent, Status => TStatus}
 
 trait TestReportListener
 {
@@ -38,9 +38,9 @@ object TestEvent
 	def apply(events: Seq[TEvent]): TestEvent =
 	{
 		val overallResult = (TestResult.Passed /: events) { (sum, event) =>
-			val result = event.result
-			if(sum == TestResult.Error || result == TResult.Error) TestResult.Error
-			else if(sum == TestResult.Failed || result == TResult.Failure) TestResult.Failed
+			val status = event.status
+			if(sum == TestResult.Error || status == TStatus.Error) TestResult.Error
+			else if(sum == TestResult.Failed || status == TStatus.Failure) TestResult.Failed
 			else TestResult.Passed
 		}
 		new TestEvent {
@@ -91,11 +91,11 @@ class TestLogger(val logging: TestLogging) extends TestsListener
 	def endGroup(name: String, result: TestResult.Value) {}
 	protected def count(event: TEvent): Unit =
 	{
-		val count = event.result match {
-			case TResult.Error => errorsCount
-			case TResult.Success => passedCount
-			case TResult.Failure => failuresCount
-			case TResult.Skipped => skippedCount
+		val count = event.status match {
+			case TStatus.Error => errorsCount
+			case TStatus.Success => passedCount
+			case TStatus.Failure => failuresCount
+			case TStatus.Skipped => skippedCount
 		}
 		count.incrementAndGet()
 	}
