@@ -1,0 +1,10 @@
+# compilation should succeed on the trivial source file in use/
+> use/compile
+
+# add the plugin
+$ copy-file changes/scalac-plugin.xml def/src/main/resources/scalac-plugin.xml
+$ copy-file changes/DemoPlugin.scala def/DemoPlugin.scala
+
+# if the plugin is successfully registered it will generate an error on construction
+> use/clean
+-> use/compile

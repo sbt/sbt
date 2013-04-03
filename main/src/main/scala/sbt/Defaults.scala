@@ -1329,16 +1329,24 @@ object Classpaths
 		(base * (filter -- excl) +++ (base / config.name).descendantsExcept(filter, excl)).classpath
 
 
-	def autoPlugins(report: UpdateReport): Seq[String] =
+	@deprecated("Specify the classpath that includes internal dependencies", "0.13.0")
+	def autoPlugins(report: UpdateReport): Seq[String] = autoPlugins(report, Nil)
+	def autoPlugins(report: UpdateReport, internalPluginClasspath: Seq[File]): Seq[String] =
 	{
-		val pluginClasspath = report matching configurationFilter(CompilerPlugin.name)
-		classpath.ClasspathUtilities.compilerPlugins(pluginClasspath).map("-Xplugin:" + _.getAbsolutePath).toSeq
+		val pluginClasspath = report.matching(configurationFilter(CompilerPlugin.name)) ++ internalPluginClasspath
+		val plugins = classpath.ClasspathUtilities.compilerPlugins(pluginClasspath)
+		plugins.map("-Xplugin:" + _.getAbsolutePath).toSeq
 	}
+
+	private[this] lazy val internalCompilerPluginClasspath: Initialize[Task[Classpath]] = 
+		(thisProjectRef, settingsData, buildDependencies) flatMap { (ref, data, deps) =>
+			internalDependencies0(ref, CompilerPlugin, CompilerPlugin, data, deps)
+		}
 
 	lazy val compilerPluginConfig = Seq(
 		scalacOptions := {
 			val options = scalacOptions.value
-			if(autoCompilerPlugins.value) options ++ autoPlugins(update.value) else options
+			if(autoCompilerPlugins.value) options ++ autoPlugins(update.value, internalCompilerPluginClasspath.value.files) else options
 		}
 	)
 	@deprecated("Doesn't properly handle non-standard Scala organizations.", "0.13.0")

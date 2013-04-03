@@ -44,6 +44,7 @@ Improvements
 - Tasks that need a directory for storing cache information can now use the ``cacheDirectory`` method on ``streams``.  This supersedes the ``cacheDirectory`` setting.
 - The environment variables used when forking ``run`` and ``test`` may be set via ``envVars``, which is a ``Task[Map[String,String]]``. (gh-665)
 - Restore class files after an unsuccessful compilation.  This is useful when an error occurs in a later incremental step that requires a fix in the originally changed files.
+- ``autoCompilerPlugins`` now supports compiler plugins defined in a internal dependency.  The plugin project must define ``exportJars := true``.  Depend on the plugin with ``...dependsOn(... % Configurations.CompilerPlugin)``.
 
 Other
 -----
