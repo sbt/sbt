@@ -11,7 +11,7 @@ import Tests.{Output => TestOutput, _}
 import ForkMain._
 
 private[sbt] object ForkTests {
-	def apply(frameworks: Seq[TestFramework], tests: List[TestDefinition], config: Execution, classpath: Seq[File], fork: ForkOptions, log: Logger): Task[TestOutput]  = {
+	def apply(runners: Map[TestFramework, Runner],  tests: List[TestDefinition], config: Execution, classpath: Seq[File], fork: ForkOptions, log: Logger): Task[TestOutput]  = {
 		val opts = config.options.toList
 		val listeners = opts flatMap {
 			case Listeners(ls) => ls
@@ -25,12 +25,6 @@ private[sbt] object ForkTests {
 			case Filter(f) => Some(f)
 			case _ => None
 		}
-		val argMap = frameworks.map {
-			f => f.implClassName -> opts.flatMap {
-				case Argument(None | Some(`f`), args) => args
-				case _ => Nil
-			}
-		}.toMap
 
 		std.TaskExtra.task {
 			if (!tests.isEmpty) {
@@ -56,10 +50,12 @@ private[sbt] object ForkTests {
 							}.toArray
 							os.writeObject(testsFiltered)
 
-							os.writeInt(frameworks.size)
-							for ((clazz, args) <- argMap) {
-								os.writeObject(clazz)
-								os.writeObject(args.toArray)
+							os.writeInt(runners.size)
+							for ((testFramework, mainRunner) <- runners) {
+								val remoteArgs = mainRunner.remoteArgs()
+								os.writeObject(testFramework.implClassName)
+								os.writeObject(mainRunner.args)
+								os.writeObject(remoteArgs)
 							}
 							os.flush()
 
@@ -86,6 +82,7 @@ private[sbt] object ForkTests {
 							acceptorThread.join()
 							Acceptor.result
 						}
+					
 					testListeners.foreach(_.doComplete(result._1))
 					result
 				} finally {

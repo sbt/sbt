@@ -54,8 +54,7 @@ final class TestDefinition(val name: String, val fingerprint: Fingerprint)
 	override def hashCode: Int = (name.hashCode, TestFramework.hashCode(fingerprint)).hashCode
 }
 
-final class TestRunner(framework: Framework, loader: ClassLoader, args: Array[String], listeners: Seq[TestReportListener], log: Logger) {
-	val delegate = framework.runner(args, Array.empty, loader)
+final class TestRunner(delegate: Runner, listeners: Seq[TestReportListener], log: Logger) {
 
 	final def run(testDefinition: TestDefinition): TestResult.Value =
 	{
@@ -133,7 +132,8 @@ object TestFramework
 			case _ => f.toString
 		}
 
-	def testTasks(frameworks: Seq[Framework],
+	def testTasks(frameworks: Map[TestFramework, Framework],
+		runners: Map[TestFramework, Runner], 
 		testLoader: ClassLoader,
 		tests: Seq[TestDefinition],
 		log: Logger,
@@ -142,11 +142,11 @@ object TestFramework
 			(() => Unit, Seq[(String, () => TestResult.Value)], TestResult.Value => () => Unit) =
 	{
 		val arguments = testArgsByFramework withDefaultValue Nil
-		val mappedTests = testMap(frameworks, tests, arguments)
+		val mappedTests = testMap(frameworks.values.toSeq, tests, arguments)
 		if(mappedTests.isEmpty)
 			(() => (), Nil, _ => () => () )
 		else
-			createTestTasks(testLoader, mappedTests, tests, log, listeners)
+			createTestTasks(testLoader, runners.map { case (tf, r) => (frameworks(tf), new TestRunner(r, listeners, log))}, mappedTests, tests, log, listeners)
 	}
 
 	private[this] def order(mapped: Map[String, () => TestResult.Value], inputs: Seq[TestDefinition]): Seq[(String, () => TestResult.Value)] =
@@ -180,24 +180,19 @@ object TestFramework
 				new TestDefinition(name, pickOne(defs.map(_.fingerprint)))
 		uniqueDefs.toSet
 	}
-		
-	private def createTestTasks(loader: ClassLoader, tests: Map[Framework, (Set[TestDefinition], Seq[String])], ordered: Seq[TestDefinition], log: Logger, listeners: Seq[TestReportListener]) =
+
+	private def createTestTasks(loader: ClassLoader, runners: Map[Framework, TestRunner], tests: Map[Framework, (Set[TestDefinition], Seq[String])], ordered: Seq[TestDefinition], log: Logger, listeners: Seq[TestReportListener]) =
 	{
 		val testsListeners = listeners collect { case tl: TestsListener => tl }
 
-		val runnerMap = 
-			tests map { case (framework, (testDefinitions, testArgs)) =>
-				(framework, new TestRunner(framework, loader, testArgs.toArray, listeners, log))
-			}
-		
 		def foreachListenerSafe(f: TestsListener => Unit): () => Unit = () => safeForeach(testsListeners, log)(f)
-		
-			import TestResult.{Error,Passed,Failed}
+
+		import TestResult.{Error,Passed,Failed}
 
 		val startTask = foreachListenerSafe(_.doInit)
 		val testTasks =
 			tests flatMap { case (framework, (testDefinitions, testArgs)) =>
-				val runner = runnerMap(framework)
+				val runner = runners(framework)
 				for(testDefinition <- testDefinitions) yield
 				{
 					val runTest = () => withContextLoader(loader) { runner.run(testDefinition) }

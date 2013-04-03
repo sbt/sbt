@@ -21,7 +21,6 @@ class CustomReporter extends Reporter {
 	def apply(event: Event) {
 		event match {
 			case runStarting: RunStarting => writeFile("target/RunStarting", "RunStarting")
-			case runCompleted: RunCompleted => writeFile("target/RunCompleted", "RunCompleted")
 			case _ =>
 		}
 	}

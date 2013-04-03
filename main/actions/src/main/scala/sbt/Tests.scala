@@ -11,7 +11,7 @@ package sbt
 	import xsbti.api.Definition
 	import ConcurrentRestrictions.Tag
 
-	import testing.{AnnotatedFingerprint, Fingerprint, Framework, SubclassFingerprint}
+	import testing.{AnnotatedFingerprint, Fingerprint, Framework, SubclassFingerprint, Runner}
 
 	import java.io.File
 
@@ -43,7 +43,7 @@ object Tests
 
 	final case class Execution(options: Seq[TestOption], parallel: Boolean, tags: Seq[(Tag, Int)])
 
-	def apply(frameworks: Map[TestFramework, Framework], testLoader: ClassLoader, discovered: Seq[TestDefinition], config: Execution, log: Logger): Task[Output] =
+	def apply(frameworks: Map[TestFramework, Framework], testLoader: ClassLoader, runners: Map[TestFramework, Runner], discovered: Seq[TestDefinition], config: Execution, log: Logger): Task[Output] =
 	{
 			import collection.mutable.{HashSet, ListBuffer, Map, Set}
 		val testFilters = new ListBuffer[String => Boolean]
@@ -94,10 +94,10 @@ object Tests
 		val filtered0 = discovered.filter(includeTest).toList.distinct
 		val tests = if(orderedFilters.isEmpty) filtered0 else orderedFilters.flatMap(f => filtered0.filter(d => f(d.name))).toList.distinct
 		val arguments = testArgsByFramework.map { case (k,v) => (k, v.toList) } toMap;
-		testTask(frameworks.values.toSeq, testLoader, tests, setup.readOnly, cleanup.readOnly, log, testListeners.readOnly, arguments, config)
+		testTask(testLoader, frameworks, runners, tests, setup.readOnly, cleanup.readOnly, log, testListeners.readOnly, arguments, config)
 	}
 
-	def testTask(frameworks: Seq[Framework], loader: ClassLoader, tests: Seq[TestDefinition],
+	def testTask(loader: ClassLoader, frameworks: Map[TestFramework, Framework], runners: Map[TestFramework, Runner], tests: Seq[TestDefinition],
 		userSetup: Iterable[ClassLoader => Unit], userCleanup: Iterable[ClassLoader => Unit],
 		log: Logger, testListeners: Seq[TestReportListener], arguments: Map[Framework, Seq[String]], config: Execution): Task[Output] =
 	{
@@ -105,7 +105,7 @@ object Tests
 		def partApp(actions: Iterable[ClassLoader => Unit]) = actions.toSeq map {a => () => a(loader) }
 
 		val (frameworkSetup, runnables, frameworkCleanup) =
-			TestFramework.testTasks(frameworks, loader, tests, log, testListeners, arguments)
+			TestFramework.testTasks(frameworks, runners, loader, tests, log, testListeners, arguments)
 
 		val setupTasks = fj(partApp(userSetup) :+ frameworkSetup)
 		val mainTasks =

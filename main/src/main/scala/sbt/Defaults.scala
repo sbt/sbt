@@ -454,14 +454,28 @@ object Defaults extends BuildCommon
 		}
 	}
 
+	def createTestRunners(frameworks: Map[TestFramework,Framework], loader: ClassLoader, config: Tests.Execution) = {
+		import Tests.Argument
+		val opts = config.options.toList
+		frameworks.map { case (tf, f) =>
+			val args = opts.flatMap {
+				case Argument(None | Some(`tf`), args) => args
+				case _ => Nil
+			}
+			val mainRunner = f.runner(args.toArray, Array.empty[String], loader)
+			tf -> mainRunner
+		}
+	}
+
 	def allTestGroupsTask(s: TaskStreams, frameworks: Map[TestFramework,Framework], loader: ClassLoader, groups: Seq[Tests.Group], config: Tests.Execution,	cp: Classpath, javaHome: Option[File]): Task[Tests.Output] = {
+		val runners = createTestRunners(frameworks, loader, config)
 		val groupTasks = groups map {
 			case Tests.Group(name, tests, runPolicy) =>
 				runPolicy match {
 					case Tests.SubProcess(opts) =>
-						ForkTests(frameworks.keys.toSeq, tests.toList, config, cp.files, opts, s.log) tag Tags.ForkedTestGroup
+						ForkTests(runners, tests.toList, config, cp.files, opts, s.log) tag Tags.ForkedTestGroup
 					case Tests.InProcess =>
-						Tests(frameworks, loader, tests, config, s.log)
+						Tests(frameworks, loader, runners, tests, config, s.log)
 				}
 		}
 		Tests.foldTasks(groupTasks, config.parallel)
