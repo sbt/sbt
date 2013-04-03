@@ -48,6 +48,9 @@ object ScopeFilter
 	private[sbt] val Make = new Make {}
 	trait Make
 	{
+		/** Selects the Scopes used in `<key>.all(<ScopeFilter>)`.*/
+		type ScopeFilter = Base[Scope]
+
 		/** Selects Scopes with a global task axis. */
 		def inGlobalTask: TaskFilter = globalAxis[AttributeKey[_]]
 		/** Selects Scopes with a global project axis. */
