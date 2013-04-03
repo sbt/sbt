@@ -112,7 +112,7 @@ object Tests
 		val setupTasks = fj(partApp(userSetup) :+ frameworkSetup)
 		val mainTasks =
 			if(config.parallel)
-				makeParallel(runnables, setupTasks, config.tags).toSeq.join
+				makeParallel(loader, runnables, setupTasks, config.tags)//.toSeq.join
 			else
 				makeSerial(loader, runnables, setupTasks, config.tags)
 		val taggedMainTasks = mainTasks.tagw(config.tags : _*)
@@ -122,8 +122,30 @@ object Tests
 		}
 	}
 	type TestRunnable = (String, TestFunction)
-	def makeParallel(runnables: Iterable[TestRunnable], setupTasks: Task[Unit], tags: Seq[(Tag,Int)]) =
-		runnables map { case (name, test) => task { (name, test.apply()._1) } tagw(tags : _*) tag(test.tags map (ConcurrentRestrictions.Tag(_)) : _*) dependsOn setupTasks named name }
+	
+	private def createNestedRunnables(name: String, loader: ClassLoader, testFun: TestFunction, nestedTasks: Seq[TestTask]): Seq[(String, TestFunction)] = 
+		nestedTasks.view.zipWithIndex map { case (nt, idx) =>
+			(name, TestFramework.createTestFunction(loader, new TestDefinition(testFun.testDefinition.name + "-" + idx, testFun.testDefinition.fingerprint), testFun.runner, nt))
+		}
+
+	def makeParallel(loader: ClassLoader, runnables: Iterable[TestRunnable], setupTasks: Task[Unit], tags: Seq[(Tag,Int)]): Task[Map[String,SuiteResult]] =
+		toTasks(loader, runnables.toSeq, tags).dependsOn(setupTasks)
+
+	def toTasks(loader: ClassLoader, runnables: Seq[TestRunnable], tags: Seq[(Tag,Int)]): Task[Map[String, SuiteResult]] = {
+		val tasks = runnables.map { case (name, test) => toTask(loader, name, test, tags) }
+		tasks.join.map( _.foldLeft(Map.empty[String, SuiteResult]) { case (sum, e) =>  
+			sum ++ e		  
+		} )
+	}
+
+	def toTask(loader: ClassLoader, name: String, fun: TestFunction, tags: Seq[(Tag,Int)]): Task[Map[String, SuiteResult]] = {
+		val base = task { (name, fun.apply()) }
+		val taggedBase = base.tagw(tags : _*).tag(fun.tags.map(ConcurrentRestrictions.Tag(_)) : _*)
+		taggedBase flatMap { case (name, (result, nested)) =>
+			val nestedRunnables = createNestedRunnables(fun.testDefinition.name, loader, fun, nested)
+			toTasks(loader, nestedRunnables, tags).map( _.updated(name, result) )
+		}
+	}
 
 	def makeSerial(loader: ClassLoader, runnables: Seq[TestRunnable], setupTasks: Task[Unit], tags: Seq[(Tag,Int)]): Task[List[(String, SuiteResult)]] = 
 	{
@@ -133,10 +155,7 @@ object Tests
 				case hd :: rst => 
 					val testFun = hd._2
 					val (result, nestedTasks) = testFun.apply()
-					val nestedRunnables = 
-						nestedTasks.view.zipWithIndex map { case (nt, idx) =>
-							(hd._1, TestFramework.createTestFunction(loader, new TestDefinition(testFun.testDefinition.name + "-" + idx, testFun.testDefinition.fingerprint), testFun.runner, nt))
-						}
+					val nestedRunnables = createNestedRunnables(testFun.testDefinition.name, loader, testFun, nestedTasks)
 					processRunnable(nestedRunnables.toList ::: rst, (hd._1, result) :: acc)
 				case Nil => acc
 			}

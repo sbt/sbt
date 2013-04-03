@@ -1,0 +1,48 @@
+#This test that the framework will execute ScalaTest nested suites as parallel nested task (InProcess) properly.
+#A CustomReporter is used to report expected ScalaTest's events by writing out to files in target/, 
+#it is then used to check for their existence, and if the expected event is fired > 1 (which is unexpected), 
+#a xxxx-2 file will be written, thus here we also check for 'absent' of such file.
+
+> clean
+
+> test
+
+$ exists target/SuiteStarting-NestedSpecs
+
+$ absent target/SuiteStarting-NestedSpecs-2
+
+$ exists target/SuiteCompleted-NestedSpecs
+
+$ absent target/SuiteCompleted-NestedSpecs-2
+
+$ exists target/SuiteStarting-TestSpec
+
+$ absent target/SuiteStarting-TestSpec-2
+
+$ exists target/SuiteCompleted-TestSpec
+
+$ absent target/SuiteCompleted-TestSpec-2
+
+$ exists target/TestStarting-TestSpec-test-1
+
+$ absent target/TestStarting-TestSpec-test-1-2
+
+$ exists target/TestSucceeded-TestSpec-test-1
+
+$ absent target/TestSucceeded-TestSpec-test-1-2
+
+$ exists target/TestStarting-TestSpec-test-2
+
+$ absent target/TestStarting-TestSpec-test-2-2
+
+$ exists target/TestSucceeded-TestSpec-test-2
+
+$ absent target/TestSucceeded-TestSpec-test-2-2
+
+$ exists target/TestStarting-TestSpec-test-3
+
+$ absent target/TestStarting-TestSpec-test-3-2
+
+$ exists target/TestSucceeded-TestSpec-test-3
+
+$ absent target/TestSucceeded-TestSpec-test-3-2
