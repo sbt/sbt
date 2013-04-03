@@ -58,7 +58,7 @@ object Tests
 		def frameworkArguments(framework: TestFramework, args: Seq[String]): Unit =
 			(frameworks get framework) match {
 				case Some(f) => frameworkArgs(f, args)
-				case None => undefinedFrameworks += framework.implClassName
+				case None => undefinedFrameworks ++= framework.implClassNames
 			}
 
 		for(option <- config.options)
