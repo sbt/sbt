@@ -446,9 +446,9 @@ object Defaults extends BuildCommon
 			implicit val display = Project.showContextKey(state.value)
 			val modifiedOpts = Tests.Filters(filter(selected)) +: Tests.Argument(frameworkOptions : _*) +: config.options
 			val newConfig = config.copy(options = modifiedOpts)
-			val groupsTask = allTestGroupsTask(s, loadedTestFrameworks.value, testLoader.value, testGrouping.value, newConfig, fullClasspath.value, javaHome.value)
+			val output = allTestGroupsTask(s, loadedTestFrameworks.value, testLoader.value, testGrouping.value, newConfig, fullClasspath.value, javaHome.value)
 			val processed =
-				for(out <- groupsTask) yield
+				for(out <- output) yield 
 					Tests.showResults(s.log, out, noTestsMessage(resolvedScoped.value))
 			Def.value(processed)
 		}
@@ -480,10 +480,11 @@ object Defaults extends BuildCommon
 		}
 		val output = Tests.foldTasks(groupTasks, config.parallel)
 		output map { out => 
-			runners foreach { case (tf, r) =>
-				r.done()
-			}
-			out
+			val summaries = 
+				runners map { case (tf, r) =>
+					Tests.Summary(frameworks(tf).name, r.done())
+				}
+			out.copy(summaries = summaries)
 		}
 	}
 

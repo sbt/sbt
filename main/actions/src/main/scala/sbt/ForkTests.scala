@@ -31,7 +31,7 @@ private[sbt] object ForkTests {
 				val server = new ServerSocket(0)
 				object Acceptor extends Runnable {
 					val resultsAcc = mutable.Map.empty[String, SuiteResult]
-					lazy val result = (overall(resultsAcc.values.map(_.result)), resultsAcc.toMap)
+					lazy val result = TestOutput(overall(resultsAcc.values.map(_.result)), resultsAcc.toMap, Iterable.empty)
 					def run: Unit = {
 						val socket =
 							try {
@@ -76,20 +76,20 @@ private[sbt] object ForkTests {
 					val ec = Fork.java(fork, options)
 					val result =
 						if (ec != 0)
-							(TestResult.Error, Map("Running java with options " + options.mkString(" ") + " failed with exit code " + ec -> SuiteResult.Error))
+							TestOutput(TestResult.Error, Map("Running java with options " + options.mkString(" ") + " failed with exit code " + ec -> SuiteResult.Error), Iterable.empty)
 						else {
 							// Need to wait acceptor thread to finish its business
 							acceptorThread.join()
 							Acceptor.result
 						}
 					
-					testListeners.foreach(_.doComplete(result._1))
+					testListeners.foreach(_.doComplete(result.overall))
 					result
 				} finally {
 					server.close()
 				}
 			} else
-				(TestResult.Passed, Map.empty[String, SuiteResult])
+				TestOutput(TestResult.Passed, Map.empty[String, SuiteResult], Iterable.empty)
 		} tagw (config.tags: _*)
 	}
 }
