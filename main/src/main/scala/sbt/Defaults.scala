@@ -15,7 +15,7 @@ package sbt
 	import complete._
 	import std.TaskExtra._
 	import inc.{FileValueCache, Locate}
-	import testing.{Framework, AnnotatedFingerprint, SubclassFingerprint}
+	import testing.{Framework, Runner, AnnotatedFingerprint, SubclassFingerprint}
 
 	import sys.error
 	import scala.xml.NodeSeq
@@ -478,7 +478,11 @@ object Defaults extends BuildCommon
 						Tests(frameworks, loader, runners, tests, config, s.log)
 				}
 		}
-		Tests.foldTasks(groupTasks, config.parallel)
+		val output = Tests.foldTasks(groupTasks, config.parallel)
+		runners foreach { case (tf, r) =>
+			r.done()
+		}
+		output
 	}
 
 	def selectedFilter(args: Seq[String]): Seq[String => Boolean] =
