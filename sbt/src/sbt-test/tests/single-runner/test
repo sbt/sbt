@@ -1,0 +1,13 @@
+#This test that the framework will only use a single runner instance to execute all tests.
+#Because ScalaTest's runner will report RunStarting when the run start, a CustomReporter is 
+#used to report expected ScalaTest's RunStarting event by writing out to target/, it is then 
+#used to check for their existence, and if the expected event is fired > 1 (which is unexpected), 
+#a xxxx-2 file will be written, thus here we also check for 'absent' of such file.
+
+> clean
+
+> test
+
+$ exists target/RunStarting
+
+$ absent target/RunStarting-2
