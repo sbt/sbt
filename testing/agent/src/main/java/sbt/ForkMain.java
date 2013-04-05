@@ -157,7 +157,7 @@ public class ForkMain {
 		class RunAborted extends RuntimeException {
 			RunAborted(Exception e) { super(e); }
 		}
-		void write(ObjectOutputStream os, Object obj) {
+		synchronized void write(ObjectOutputStream os, Object obj) {
 			try {
 				os.writeObject(obj);
 				os.flush();
