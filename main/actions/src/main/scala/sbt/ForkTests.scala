@@ -72,7 +72,8 @@ private[sbt] object ForkTests {
 
 				try {
 					testListeners.foreach(_.doInit())
-					new Thread(Acceptor).start()
+					val acceptorThread = new Thread(Acceptor)
+					acceptorThread.start()
 
 					val fullCp = classpath ++: Seq(IO.classLocationFile[ForkMain], IO.classLocationFile[Framework])
 					val options = Seq("-classpath", fullCp mkString File.pathSeparator, classOf[ForkMain].getCanonicalName, server.getLocalPort.toString)
@@ -80,8 +81,11 @@ private[sbt] object ForkTests {
 					val result =
 						if (ec != 0)
 							(TestResult.Error, Map("Running java with options " + options.mkString(" ") + " failed with exit code " + ec -> TestResult.Error))
-						else
+						else {
+							// Need to wait acceptor thread to finish its business
+							acceptorThread.join()
 							Acceptor.result
+						}
 					testListeners.foreach(_.doComplete(result._1))
 					result
 				} finally {
