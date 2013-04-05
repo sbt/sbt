@@ -390,9 +390,10 @@ object Defaults extends BuildCommon
 		Seq(new Tests.Group("<default>", tests, if(fk) Tests.SubProcess(opts) else Tests.InProcess))
 	}
 	private[this] def forkOptions: Initialize[Task[ForkOptions]] = 
-		(baseDirectory, scalaInstance, javaOptions, outputStrategy, envVars, javaHome, connectInput) map {
-			(base, si, options, strategy, env, javaHomeDir, connectIn) =>
-				ForkOptions(scalaJars = si.jars, javaHome = javaHomeDir, connectInput = connectIn, outputStrategy = strategy, runJVMOptions = options, workingDirectory = Some(base), envVars = env)
+		(baseDirectory, javaOptions, outputStrategy, envVars, javaHome, connectInput) map {
+			(base, options, strategy, env, javaHomeDir, connectIn) =>
+				// bootJars is empty by default because only jars on the user's classpath should be on the boot classpath
+				ForkOptions(bootJars = Nil, javaHome = javaHomeDir, connectInput = connectIn, outputStrategy = strategy, runJVMOptions = options, workingDirectory = Some(base), envVars = env)
 		}
 
 	def testExecutionTask(task: Scoped): Initialize[Task[Tests.Execution]] =
