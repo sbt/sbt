@@ -55,8 +55,8 @@ following uses the pre-0.11 style of putting the boot directory in
 HTTP Proxy
 ----------
 
-On Unix, sbt will pick up any HTTP proxy settings from the
-``http.proxy`` environment variable. If you are behind a proxy requiring
+On Unix, sbt will pick up any HTTP proxy settings from the standard
+``http_proxy`` environment variable. If you are behind a proxy requiring
 authentication, your ``sbt`` script must also pass flags to set the
 ``http.proxyUser`` and ``http.proxyPassword`` properties:
 
