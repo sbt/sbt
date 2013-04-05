@@ -24,7 +24,8 @@ class ForkRun(config: ForkOptions) extends ScalaRun
 
 		val scalaOptions = classpathOption(classpath) ::: mainClass :: options.toList
 		val configLogged = if(config.outputStrategy.isDefined) config else config.copy(outputStrategy = Some(LoggedOutput(log)))
-		val process =  Fork.scala.fork(configLogged, scalaOptions)
+		// fork with Java because Scala introduces an extra class loader (#702)
+		val process =  Fork.java.fork(configLogged, scalaOptions)
 		def cancel() = {
 			log.warn("Run canceled.")
 			process.destroy()

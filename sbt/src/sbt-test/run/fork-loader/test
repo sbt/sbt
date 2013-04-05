@@ -1,0 +1,6 @@
+# This test verifies that the forked code is loaded in the application class loader.
+-> run
+-> test
+> set fork := true
+> run
+> test
