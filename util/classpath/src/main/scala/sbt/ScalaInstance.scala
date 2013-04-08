@@ -7,16 +7,14 @@ package sbt
 	import xsbti.ArtifactInfo.{ScalaCompilerID, ScalaLibraryID, ScalaOrganization}
 
 /** Represents the source for Scala classes for a given version.  The reason both a ClassLoader and the jars are required
-* is that the compiler requires the location of the library/compiler jars on the (boot)classpath and the loader is used
+* is that the compiler requires the location of the library jar on the (boot)classpath and the loader is used
 * for the compiler itself.
 * The 'version' field is the version used to obtain the Scala classes.  This is typically the version for the maven repository.
 * The 'actualVersion' field should be used to uniquely identify the compiler.  It is obtained from the compiler.properties file.
 *
 * This should be constructed via the ScalaInstance.apply methods.  The primary constructor is deprecated.
 **/
-final class ScalaInstance(val version: String, val loader: ClassLoader, 
-	@deprecated("Only `allJars` and `jars` can be reliably provided for modularized Scala.", "0.13.0")
-	val libraryJar: File,
+final class ScalaInstance(val version: String, val loader: ClassLoader, val libraryJar: File,
 	@deprecated("Only `allJars` and `jars` can be reliably provided for modularized Scala.", "0.13.0")
 	val compilerJar: File, 
 	@deprecated("Only `allJars` and `jars` can be reliably provided for modularized Scala.", "0.13.0")
@@ -106,8 +104,7 @@ object ScalaInstance
 	private def compilerJar(scalaHome: File) = scalaJar(scalaHome, "scala-compiler.jar")
 	private def libraryJar(scalaHome: File) = scalaJar(scalaHome, "scala-library.jar")
 
-	@deprecated("No longer used.", "0.13.0")
-	def scalaJar(scalaHome: File, name: String)  =  new File(scalaHome, "lib" + File.separator + name)
+	def scalaJar(scalaHome: File, name: String) = new File(scalaLib(scalaHome), name)
 
 	@deprecated("No longer used.", "0.13.0")
 	def optScalaJar(scalaHome: File, name: String): List[File] =

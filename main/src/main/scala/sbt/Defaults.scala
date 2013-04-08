@@ -1314,7 +1314,6 @@ object Classpaths
 	def unmanagedScalaLibrary: Initialize[Task[Seq[File]]] =
 		Def.taskDyn {
 			if(autoScalaLibrary.value && scalaHome.value.isDefined)
-				// TODO: what goes here when Scala library is modularized?
 				Def.task { scalaInstance.value.libraryJar :: Nil }
 			else
 				Def.task { Nil }
