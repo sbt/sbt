@@ -11,7 +11,7 @@ Example:
 
 ::
 
-    scalaHome := Some(file("/path/to/scala"))``
+    scalaHome := Some(file("/path/to/scala"))
 
 Using a local Scala version will override the ``scalaVersion`` setting
 and will not work with :doc:`cross building <Cross-Build>`.

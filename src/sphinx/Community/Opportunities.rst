@@ -81,21 +81,18 @@ Documentation
    repo) but doesn't have anything to link to that explains how to use
    those.
 
-3. the :doc:`/Dormant/Configurations` page is missing a list of the built-in
-   configurations and the purpose of each.
-
-4. grep the documentation's git checkout for "Wiki Maintenance Note" and work on
+3. grep the documentation's git checkout for "Wiki Maintenance Note" and work on
    some of those
 
-5. API docs are much needed.
+4. API docs are much needed.
 
-6. Find useful answers or types/methods/values in the other docs, and
+5. Find useful answers or types/methods/values in the other docs, and
    pull references to them up into :doc:`/faq` or :doc:`/Name-Index` so people can
    find the docs. In general the :doc:`/faq` should feel a bit more like a
    bunch of pointers into the regular docs, rather than an alternative
    to the docs.
 
-7. A lot of the pages could probably have better names, and/or little
+6. A lot of the pages could probably have better names, and/or little
    2-4 word blurbs to the right of them in the sidebar.
 
 

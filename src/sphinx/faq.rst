@@ -462,7 +462,7 @@ Tool dependencies are used to implement a task and are not needed by
 project source code. These dependencies can be declared in their own
 configuration and classpaths. These are the steps:
 
-1. Define a new :doc:`configuration </Dormant/Configurations>`.
+1. Define a new :ref:`configuration <ivy-configurations>`.
 2. Declare the tool :doc:`dependencies </Detailed-Topics/Library-Management>` in that
    configuration.
 3. Define a classpath that pulls the dependencies from the :doc:`/Detailed-Topics/Update-Report` produced by ``update``.

@@ -210,6 +210,8 @@ ones added by your build definition.
 Therefore, to change or remove the default resolvers, you would need to
 override ``externalResolvers`` instead of ``resolvers``.
 
+.. _gsg-ivy-configurations:
+
 Per-configuration dependencies
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 

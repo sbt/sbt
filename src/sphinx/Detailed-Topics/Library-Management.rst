@@ -99,7 +99,7 @@ or
 
     libraryDependencies += groupID % artifactID % revision % configuration
 
-See :doc:`/Dormant/Configurations` for details on configuration mappings. Also,
+See :ref:`configurations <ivy-configurations>` for details on configuration mappings. Also,
 several dependencies can be declared together:
 
 ::
@@ -533,9 +533,71 @@ For example,
 Publishing
 ~~~~~~~~~~
 
-Finally, see :doc:`Publishing` for how to publish your project.
+See :doc:`Publishing` for how to publish your project.
+
+.. _ivy-configurations:
+
+Configurations
+~~~~~~~~~~~~~~
+
+Ivy configurations are a useful feature for your build when you need
+custom groups of dependencies, such as for a plugin. Ivy configurations
+are essentially named sets of dependencies.  You can read the
+`Ivy documentation <http://ant.apache.org/ivy/history/2.3.0-rc1/tutorial/conf.html>`_
+for details.
+
+The built-in use of configurations in sbt is similar to scopes in Maven.
+sbt adds dependencies to different classpaths by the configuration that
+they are defined in. See the description of `Maven
+Scopes <http://maven.apache.org/guides/introduction/introduction-to-dependency-mechanism.html#Dependency_Scope>`_
+for details.
+
+You put a dependency in a configuration by selecting one or more of its
+configurations to map to one or more of your project's configurations.
+The most common case is to have one of your configurations ``A`` use a
+dependency's configuration ``B``. The mapping for this looks like
+``"A->B"``. To apply this mapping to a dependency, add it to the end of
+your dependency definition:
+
+::
+
+    libraryDependencies += "org.scalatest" % "scalatest" % "1.2" % "test->compile"
+
+This says that your project's ``test`` configuration uses
+``ScalaTest``'s ``compile`` configuration. See the `Ivy
+documentation <http://ant.apache.org/ivy/history/2.3.0-rc1/tutorial/conf.html>`_
+for more advanced mappings. Most projects published to Maven
+repositories will use the ``compile`` configuration.
+
+A useful application of configurations is to group dependencies that are
+not used on normal classpaths. For example, your project might use a
+``"js"`` configuration to automatically download jQuery and then include
+it in your jar by modifying ``resources``. For example:
+
+::
+
+    ivyConfigurations += config("js") hide
+
+    libraryDependencies += "jquery" % "jquery" % "1.3.2" % "js->default" from "http://jqueryjs.googlecode.com/files/jquery-1.3.2.min.js"
+
+    resources ++= update.value.select( configurationFilter("js") )
+
+The ``config`` method defines a new configuration with name ``"js"`` and
+makes it private to the project so that it is not used for publishing.
+See :doc:`/Detailed-Topics/Update-Report` for more information on selecting managed
+artifacts.
+
+A configuration without a mapping (no ``"->"``) is mapped to ``default``
+or ``compile``. The ``->`` is only needed when mapping to a different
+configuration than those. The ScalaTest dependency above can then be
+shortened to:
+
+::
+
+    libraryDependencies += "org.scala-tools.testing" % "scalatest" % "1.0" % "test"
 
 .. _external-maven-ivy:
+
 
 Maven/Ivy
 ---------

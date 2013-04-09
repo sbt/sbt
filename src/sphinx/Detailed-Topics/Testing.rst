@@ -26,7 +26,7 @@ declaring it as a :doc:`managed dependency <Library-Management>`:
 
     libraryDependencies += "org.scala-tools.testing" %% "scalacheck" % "1.9" % "test"
 
-The fourth component ``"test"`` is the :doc:`configuration </Dormant/Configurations>`
+The fourth component ``"test"`` is the :ref:`configuration <gsg-ivy-configurations>`
 and means that ScalaCheck will only be on the test classpath and it
 isn't needed by the main sources. This is generally good practice for
 libraries because your users don't typically need your test dependencies

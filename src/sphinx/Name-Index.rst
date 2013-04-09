@@ -28,8 +28,8 @@ Dependency Management
 -  A
    `Configuration <../api/sbt/Configuration.html>`_
    is a useful Ivy construct for grouping dependencies. See
-   :doc:`/Dormant/Configurations`. It is also used for :doc:`scoping settings </Getting-Started/Scopes>`.
--  ``Compile``, ``Test``, ``Runtime``, ``Provided``, and ``Optional`` are predefined :doc:`/Dormant/Configurations`.
+   :ref:`ivy-configurations`. It is also used for :doc:`scoping settings </Getting-Started/Scopes>`.
+-  ``Compile``, ``Test``, ``Runtime``, ``Provided``, and ``Optional`` are predefined :ref:`configurations <ivy-configurations>`.
 
 Settings and Tasks
 ~~~~~~~~~~~~~~~~~~
