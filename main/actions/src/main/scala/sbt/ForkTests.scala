@@ -30,8 +30,8 @@ private[sbt] object ForkTests {
 			if (!tests.isEmpty) {
 				val server = new ServerSocket(0)
 				object Acceptor extends Runnable {
-					val resultsAcc = mutable.Map.empty[String, TestResult.Value]
-					lazy val result = (overall(resultsAcc.values), resultsAcc.toMap)
+					val resultsAcc = mutable.Map.empty[String, SuiteResult]
+					lazy val result = (overall(resultsAcc.values.map(_.result)), resultsAcc.toMap)
 					def run: Unit = {
 						val socket =
 							try {
@@ -76,7 +76,7 @@ private[sbt] object ForkTests {
 					val ec = Fork.java(fork, options)
 					val result =
 						if (ec != 0)
-							(TestResult.Error, Map("Running java with options " + options.mkString(" ") + " failed with exit code " + ec -> TestResult.Error))
+							(TestResult.Error, Map("Running java with options " + options.mkString(" ") + " failed with exit code " + ec -> SuiteResult.Error))
 						else {
 							// Need to wait acceptor thread to finish its business
 							acceptorThread.join()
@@ -89,11 +89,11 @@ private[sbt] object ForkTests {
 					server.close()
 				}
 			} else
-				(TestResult.Passed, Map.empty[String, TestResult.Value])
+				(TestResult.Passed, Map.empty[String, SuiteResult])
 		} tagw (config.tags: _*)
 	}
 }
-private final class React(is: ObjectInputStream, os: ObjectOutputStream, log: Logger, listeners: Seq[TestReportListener], results: mutable.Map[String, TestResult.Value])
+private final class React(is: ObjectInputStream, os: ObjectOutputStream, log: Logger, listeners: Seq[TestReportListener], results: mutable.Map[String, SuiteResult])
 {
 	import ForkTags._
 	@annotation.tailrec def react(): Unit = is.readObject match {
@@ -107,9 +107,9 @@ private final class React(is: ObjectInputStream, os: ObjectOutputStream, log: Lo
 			listeners.foreach(_ startGroup group)
 			val event = TestEvent(tEvents)
 			listeners.foreach(_ testEvent event)
-			val result = event.result getOrElse TestResult.Passed
-			results += group -> result
-			listeners.foreach(_ endGroup (group, result))
+			val suiteResult = SuiteResult(tEvents)
+			results += group -> suiteResult
+			listeners.foreach(_ endGroup (group, suiteResult.result))
 			react()
 	}
 }

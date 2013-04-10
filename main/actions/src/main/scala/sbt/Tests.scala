@@ -19,7 +19,7 @@ sealed trait TestOption
 object Tests
 {
 	// (overall result, individual results)
-	type Output = (TestResult.Value, Map[String,TestResult.Value])
+	type Output = (TestResult.Value, Map[String,SuiteResult])
 	
 	final case class Setup(setup: ClassLoader => Unit) extends TestOption
 	def Setup(setup: () => Unit) = new Setup(_ => setup())
@@ -119,14 +119,14 @@ object Tests
 			cleanupTasks map { _ => results }
 		}
 	}
-	type TestRunnable = (String, () => TestResult.Value)
+	type TestRunnable = (String, () => SuiteResult)
 	def makeParallel(runnables: Iterable[TestRunnable], setupTasks: Task[Unit], tags: Seq[(Tag,Int)]) =
 		runnables map { case (name, test) => task { (name, test()) } tagw(tags : _*) dependsOn setupTasks named name }
 	def makeSerial(runnables: Seq[TestRunnable], setupTasks: Task[Unit], tags: Seq[(Tag,Int)]) =
 		task { runnables map { case (name, test) => (name, test()) } } dependsOn(setupTasks)
 
-	def processResults(results: Iterable[(String, TestResult.Value)]): (TestResult.Value, Map[String, TestResult.Value]) =
-		(overall(results.map(_._2)), results.toMap)
+	def processResults(results: Iterable[(String, SuiteResult)]): (TestResult.Value, Map[String, SuiteResult]) =
+		(overall(results.map(_._2.result)), results.toMap)
 	def foldTasks(results: Seq[Task[Output]], parallel: Boolean): Task[Output] =
 		if (parallel)
 			reduced(results.toIndexedSeq, {
@@ -169,8 +169,21 @@ object Tests
 		(tests, mains.toSet)
 	}
 
-	def showResults(log: Logger, results: (TestResult.Value, Map[String, TestResult.Value]), noTestsMessage: =>String): Unit =
+	def showResults(log: Logger, results: (TestResult.Value, Map[String, SuiteResult]), noTestsMessage: =>String): Unit =
 	{
+		val (skipped, errors, passed, failures) = 
+			results._2.foldLeft((0, 0, 0, 0)) { case (acc, entry) =>
+				val suiteResult = entry._2
+				(acc._1 + suiteResult.skippedCount, acc._2 + suiteResult.errorCount, acc._3 + suiteResult.passedCount, acc._4 + suiteResult.failureCount)
+			}
+		val totalCount = failures + errors + skipped + passed
+		val postfix = "Total " + totalCount + ", Failed " + failures + ", Errors " + errors + ", Passed " + passed + ", Skipped " + skipped
+		results._1 match {
+			case TestResult.Error => log.error("Error: " + postfix)
+			case TestResult.Passed => log.info("Passed: " + postfix)
+			case TestResult.Failed => log.error("Failed: " + postfix)
+		}
+
 		if (results._2.isEmpty)
 			log.info(noTestsMessage)
 		else {
