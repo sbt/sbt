@@ -1,1 +1,0 @@
-[Simple Build Tool](http://code.google.com/p/simple-build-tool/) is a build tool for Scala projects that aims to do the basics well.
