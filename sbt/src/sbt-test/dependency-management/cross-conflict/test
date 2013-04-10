@@ -1,5 +1,5 @@
-> update
-$ copy-file changes/conflict-error.sbt conflict-error.sbt
+-> update
+$ copy-file changes/no-conflict-error.sbt no-conflict-error.sbt
 
 > reload
--> update
+> update

@@ -14,6 +14,7 @@ Features, fixes, changes with compatibility implications (incomplete, please hel
 - Dropped support for tab completing the right side of a setting for the ``set`` command.  The new task macros make this tab completion obsolete.
 - The convention for keys is now camelCase only.  Details below.
 - sbt no longer looks for main artifacts for poms with ``packaging="pom"``.  For details, see the :ref:`relevant Library Management section <packaging-pom>` and gh-636.
+- Fixed the default classifier for tests to be ``tests`` for proper Maven compatibility.
 
 Features
 --------

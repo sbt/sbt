@@ -6,7 +6,11 @@ $ touch stm
 
 $ touch noscala
 > reload
-> scalaOverride
+# before 0.13, the Scala version was overridden for dependency management,
+#  but now it is only introduced by a dependency on Scala
+#  when autoScalaLibrary is false, therefore, the resolved Scala version
+#  is determined by the dependency manager
+-> scalaOverride
 
 $ delete stm
 > reload
