@@ -50,7 +50,7 @@ object Locate
 	def definesClass(entry: File): String => Boolean =
 		if(entry.isDirectory)
 			directoryDefinesClass(entry)
-		else if(entry.exists && classpath.ClasspathUtilities.isArchive(entry))
+		else if(entry.exists && classpath.ClasspathUtilities.isArchive(entry, contentFallback=true))
 			jarDefinesClass(entry)
 		else
 			const(false)

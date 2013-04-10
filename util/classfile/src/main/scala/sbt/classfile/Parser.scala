@@ -16,7 +16,7 @@ import Constants._
 
 private[sbt] object Parser
 {
-	def apply(file: File): ClassFile = Using.fileInputStream(file)(parse(file.getCanonicalPath)).right.get
+	def apply(file: File): ClassFile = Using.fileInputStream(file)(parse(file.getAbsolutePath)).right.get
 	private def parse(fileName: String)(is: InputStream): Either[String, ClassFile] = Right(parseImpl(fileName, is))
 	private def parseImpl(filename: String, is: InputStream): ClassFile =
 	{
