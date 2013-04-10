@@ -1,3 +1,0 @@
-### Fixes
-* Fixed Jetty 7 support to work with JRebel
-* Fixed make-pom to generate valid repositories section
