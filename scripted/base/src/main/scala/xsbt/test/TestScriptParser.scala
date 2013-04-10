@@ -18,7 +18,7 @@ word ::= [^ \[\]]+
 comment ::= '#' \S* nl
 nl ::= '\r' \'n' | '\n' | '\r' | eof
 */
-final case class Statement(command: String, arguments: List[String], successExpected: Boolean, line: Int) extends NotNull
+final case class Statement(command: String, arguments: List[String], successExpected: Boolean, line: Int)
 {
 	def linePrefix = "{line " + line + "} "
 }
@@ -31,7 +31,7 @@ private object TestScriptParser
 }
 
 import TestScriptParser._
-class TestScriptParser(handlers: Map[Char, StatementHandler]) extends RegexParsers with NotNull
+class TestScriptParser(handlers: Map[Char, StatementHandler]) extends RegexParsers
 {
 	require(!handlers.isEmpty)
 	override def skipWhitespace = false
@@ -42,7 +42,7 @@ class TestScriptParser(handlers: Map[Char, StatementHandler]) extends RegexParse
 	if(handlers.keys.exists(key => key == '+' || key == '-'))
 		sys.error("Start characters cannot be '+' or '-'")
 
-	def parse(scriptFile: File): List[(StatementHandler, Statement)] = parse(read(scriptFile), Some(scriptFile.getCanonicalPath))
+	def parse(scriptFile: File): List[(StatementHandler, Statement)] = parse(read(scriptFile), Some(scriptFile.getAbsolutePath))
 	def parse(script: String): List[(StatementHandler, Statement)] = parse(script, None)
 	private def parse(script: String, label: Option[String]): List[(StatementHandler, Statement)] =
 	{

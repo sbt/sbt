@@ -261,7 +261,7 @@ object Incremental
 		dependsOn =>
 		{
 			def inv(reason: String): Boolean = {
-				log.debug("Invalidating " + dependsOn.getCanonicalPath + ": " + reason)
+				log.debug("Invalidating " + dependsOn + ": " + reason)
 				true
 			}
 			def entryModified(className: String, classpathEntry: File): Boolean =

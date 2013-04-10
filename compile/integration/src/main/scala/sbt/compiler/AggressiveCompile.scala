@@ -77,7 +77,7 @@ class AggressiveCompile(cacheFile: File)
 	{
 		import config._
 		import currentSetup._
-		val absClasspath = classpath.map(_.getCanonicalFile)
+		val absClasspath = classpath.map(_.getAbsoluteFile)
 		val apiOption = (api: Either[Boolean, Source]) => api.right.toOption
 		val cArgs = new CompilerArguments(compiler.scalaInstance, compiler.cp)
 		val searchClasspath = explicitBootClasspath(options.options) ++ withBootclasspath(cArgs, absClasspath)

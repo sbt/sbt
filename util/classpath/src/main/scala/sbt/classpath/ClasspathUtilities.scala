@@ -74,24 +74,19 @@ object ClasspathUtilities
 	private[sbt] def printSource(c: Class[_]) =
 		println(c.getName + " loader=" +c.getClassLoader + " location=" + IO.classLocationFile(c))
 	
-	def isArchive(file: File): Boolean = isArchiveName(file.getName)
+	def isArchive(file: File, contentFallback: Boolean = false): Boolean =
+		file.isFile && (isArchiveName(file.getName) || (contentFallback && hasZipContent(file)))
+
 	def isArchiveName(fileName: String) = fileName.endsWith(".jar") || fileName.endsWith(".zip")
-	// Partitions the given classpath into (jars, directories)
-	private[sbt] def separate(paths: Iterable[File]): (Iterable[File], Iterable[File]) = paths.partition(isArchive)
-	// Partitions the given classpath into (jars, directories)
-	private[sbt] def buildSearchPaths(classpath: Iterable[File]): (collection.Set[File], collection.Set[File]) =
-	{
-		val (jars, dirs) = separate(classpath)
-		(linkedSet(jars ++ extraJars), linkedSet(dirs ++ extraDirs))
-	}
-	private[sbt] def onClasspath(classpathJars: collection.Set[File], classpathDirectories: collection.Set[File], file: File): Boolean =
-	{
-		val f = file.getCanonicalFile
-		if(ClasspathUtilities.isArchive(f))
-			classpathJars(f)
-		else
-			classpathDirectories.toList.find(Path.relativize(_, f).isDefined).isDefined
-	}
+
+	def hasZipContent(file: File): Boolean = try {
+		Using.fileInputStream(file) { in =>
+			(in.read() == 0x50) &&
+			(in.read() == 0x4b) &&
+			(in.read() == 0x03) &&
+			(in.read() == 0x04)
+		}
+	} catch { case e: Exception => false }
 	
 	/** Returns all entries in 'classpath' that correspond to a compiler plugin.*/
 	private[sbt] def compilerPlugins(classpath: Seq[File]): Iterable[File] =
@@ -117,33 +112,5 @@ object ClasspathUtilities
 			}
 		}
 		catch { case e: Exception => Nil }
-	}
-	
-	private lazy val (extraJars, extraDirs) =
-	{
-		import scala.tools.nsc.GenericRunnerCommand
-		val settings = (new GenericRunnerCommand(Nil, message => sys.error(message))).settings
-		val bootPaths = IO.pathSplit(settings.bootclasspath.value).map(p => new File(p)).toList
-		val (bootJars, bootDirs) = separate(bootPaths)
-		val extJars =
-		{
-			val buffer = new ListBuffer[File]
-			def findJars(dir: File)
-			{
-				buffer ++= dir.listFiles(new SimpleFileFilter(isArchive))
-				for(dir <- dir.listFiles(DirectoryFilter))
-					findJars(dir)
-			}
-			for(path <- IO.pathSplit(settings.extdirs.value); dir = new File(path) if dir.isDirectory)
-				findJars(dir)
-			buffer.readOnly.map(_.getCanonicalFile)
-		}
-		(linkedSet(extJars ++ bootJars), linkedSet(bootDirs))
-	}
-	private def linkedSet[T](s: Iterable[T]): Set[T] =
-	{
-		val set: mutable.Set[T] = JavaConversions.asScalaSet(new java.util.LinkedHashSet[T])
-		set ++= s
-		set
 	}
 }
