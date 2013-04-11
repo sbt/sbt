@@ -407,32 +407,54 @@ object Load
 
 		val plugs = plugins(defDir, s, config)
 		val defNames = analyzed(plugs.fullClasspath) flatMap findDefinitions
-		val defs = if(defNames.isEmpty) Build.default :: Nil else loadDefinitions(plugs.loader, defNames)
+		val defsScala = if(defNames.isEmpty) Nil else loadDefinitions(plugs.loader, defNames)
 		val imports = BuildUtil.getImports(plugs.pluginNames, defNames)
 
 		lazy val eval = mkEval(plugs.classpath, defDir, Nil)
-		val initialProjects = defs.flatMap(_.projectDefinitions(normBase).map(resolveBase(normBase)))
+		val initialProjects = defsScala.flatMap(b => projectsFromBuild(b, normBase))
 
-		val loadedProjects = loadTransitive(initialProjects, imports, plugs, () => eval, config.injectSettings, Nil, new mutable.HashMap)
+		val memoSettings = new mutable.HashMap[File, LoadedSbtFile]
+		def loadProjects(ps: Seq[Project]) = loadTransitive(ps, normBase, imports, plugs, () => eval, config.injectSettings, Nil, memoSettings)
+		val loadedProjectsRaw = loadProjects(initialProjects)
+		val hasRoot = loadedProjectsRaw.exists(_.base == normBase) || defsScala.exists(_.rootProject.isDefined)
+		val (loadedProjects, defaultBuildIfNone) =
+			if(hasRoot)
+				(loadedProjectsRaw, Build.defaultEmpty)
+			else {
+				val b = Build.defaultAggregated(loadedProjectsRaw.map(p => ProjectRef(uri, p.id)))
+				val defaultProjects = loadProjects(projectsFromBuild(b, normBase))
+				(defaultProjects ++ loadedProjectsRaw, b)
+			}
+
+		val defs = if(defsScala.isEmpty) defaultBuildIfNone :: Nil else defsScala
 		val loadedDefs = new sbt.LoadedDefinitions(defDir, Nil, plugs.loader, defs, loadedProjects, defNames)
 		new sbt.BuildUnit(uri, normBase, loadedDefs, plugs)
 	}
+	private[this] def projectsFromBuild(b: Build, base: File): Seq[Project] = 
+		b.projectDefinitions(base).map(resolveBase(base))
 
-	private[this] def loadTransitive(newProjects: Seq[Project], imports: Seq[String], plugins: sbt.LoadedPlugins, eval: () => Eval, injectSettings: InjectSettings, acc: Seq[Project], memoSettings: mutable.Map[File, LoadedSbtFile]): Seq[Project] =
+	private[this] def loadTransitive(newProjects: Seq[Project], buildBase: File, imports: Seq[String], plugins: sbt.LoadedPlugins, eval: () => Eval, injectSettings: InjectSettings, acc: Seq[Project], memoSettings: mutable.Map[File, LoadedSbtFile]): Seq[Project] =
 	{
-		val loaded = newProjects map { project =>
-			val loadedSbtFiles = loadSettings(project.auto, project.base, imports, plugins, eval, injectSettings, memoSettings)
+		def loadSbtFiles(auto: AddSettings, base: File): LoadedSbtFile =
+			loadSettings(auto, base, imports, plugins, eval, injectSettings, memoSettings)
+		def loadForProjects = newProjects map { project =>
+			val loadedSbtFiles = loadSbtFiles(project.auto, project.base)
 			val transformed = project.copy(settings = (project.settings: Seq[Setting[_]]) ++ loadedSbtFiles.settings)
 			(transformed, loadedSbtFiles.projects)
 		}
-		val (transformed, np) = loaded.unzip
-		val nextProjects = np.flatten
-		val loadedProjects = transformed ++ acc
+		def defaultLoad = loadSbtFiles(AddSettings.defaultSbtFiles, buildBase).projects
+		val (nextProjects, loadedProjects) =
+			if(newProjects.isEmpty) // load the .sbt files in the root directory to look for Projects
+				(defaultLoad, acc)
+			else {
+				val (transformed, np) = loadForProjects.unzip
+				(np.flatten, transformed ++ acc)
+			}
 
 		if(nextProjects.isEmpty)
 			loadedProjects
 		else
-			loadTransitive(nextProjects, imports, plugins, eval, injectSettings, loadedProjects, memoSettings)
+			loadTransitive(nextProjects, buildBase, imports, plugins, eval, injectSettings, loadedProjects, memoSettings)
 	}
 		
 	private[this] def loadSettings(auto: AddSettings, projectBase: File, buildImports: Seq[String], loadedPlugins: sbt.LoadedPlugins, eval: ()=>Eval, injectSettings: InjectSettings, memoSettings: mutable.Map[File, LoadedSbtFile]): LoadedSbtFile =
