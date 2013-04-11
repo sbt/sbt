@@ -6,10 +6,10 @@ package sbt
 
 	import java.net.{URI,URL,URLClassLoader}
 
-final case class PluginManagement(overrides: Set[ModuleID], applyOverrides: Set[ModuleID], loader: PluginClassLoader, initialLoader: ClassLoader)
+final case class PluginManagement(overrides: Set[ModuleID], applyOverrides: Set[ModuleID], loader: PluginClassLoader, initialLoader: ClassLoader, context: Context)
 {
 	def shift: PluginManagement =
-		PluginManagement(Set.empty, overrides, new PluginClassLoader(initialLoader), initialLoader)
+		PluginManagement(Set.empty, overrides, new PluginClassLoader(initialLoader), initialLoader, context)
 
 	def addOverrides(os: Set[ModuleID]): PluginManagement =
 		copy(overrides = overrides ++ os)
@@ -20,11 +20,17 @@ final case class PluginManagement(overrides: Set[ModuleID], applyOverrides: Set[
 	def inject: Seq[Setting[_]] = Seq(
 		Keys.dependencyOverrides ++= overrides
 	)
+
+	def forGlobalPlugin: PluginManagement = copy(context = Context(globalPluginProject = true, pluginProjectDepth = 0))
+	def forPlugin: PluginManagement = copy(context = context.copy(pluginProjectDepth = context.pluginProjectDepth + 1))
 }
 object PluginManagement
 {
+	final case class Context private[sbt](globalPluginProject: Boolean, pluginProjectDepth: Int)
+	val emptyContext: Context = Context(false, 0)
+
 	def apply(initialLoader: ClassLoader): PluginManagement =
-		PluginManagement(Set.empty, Set.empty, new PluginClassLoader(initialLoader), initialLoader)
+		PluginManagement(Set.empty, Set.empty, new PluginClassLoader(initialLoader), initialLoader, emptyContext)
 
 	def extractOverrides(classpath: Classpath): Set[ModuleID] =
 		classpath flatMap { _.metadata get Keys.moduleID.key map keepOverrideInfo } toSet;

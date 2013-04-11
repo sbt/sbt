@@ -28,7 +28,8 @@ object GlobalPlugin
 	
 	def build(base: File, s: State, config: LoadBuildConfiguration): (BuildStructure, State) =
 	{
-		val globalConfig = config.copy(injectSettings = config.injectSettings.copy(global = config.injectSettings.global ++ globalPluginSettings))
+		val newInject = config.injectSettings.copy(global = config.injectSettings.global ++ globalPluginSettings)
+		val globalConfig = config.copy(injectSettings = newInject, pluginManagement = config.pluginManagement.forGlobalPlugin)
 		val (eval, structure) = Load(base, s, globalConfig)
 		val session = Load.initialSession(structure, eval)
 		(structure, Project.setProject(session, structure, s))

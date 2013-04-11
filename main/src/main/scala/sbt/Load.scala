@@ -51,6 +51,7 @@ object Load
 		val compilers = Compiler.compilers(ClasspathOptions.boot)(state.configuration, log)
 		val evalPluginDef = EvaluateTask.evalPluginDef(log) _
 		val delegates = defaultDelegates
+		val initialID = baseDirectory.getName
 		val pluginMgmt = PluginManagement(loader)
 		val inject = InjectSettings(injectGlobal(state), Nil, const(Nil))
 		new sbt.LoadBuildConfiguration(stagingDirectory, classpath, loader, compilers, evalPluginDef, definesClass, delegates,
@@ -405,7 +406,7 @@ object Load
 		val normBase = localBase.getCanonicalFile
 		val defDir = projectStandard(normBase)
 
-		val plugs = plugins(defDir, s, config)
+		val plugs = plugins(defDir, s, config.copy(pluginManagement = config.pluginManagement.forPlugin))
 		val defNames = analyzed(plugs.fullClasspath) flatMap findDefinitions
 		val defsScala = if(defNames.isEmpty) Nil else loadDefinitions(plugs.loader, defNames)
 		val imports = BuildUtil.getImports(plugs.pluginNames, defNames)
@@ -421,7 +422,10 @@ object Load
 			if(hasRoot)
 				(loadedProjectsRaw, Build.defaultEmpty)
 			else {
-				val b = Build.defaultAggregated(loadedProjectsRaw.map(p => ProjectRef(uri, p.id)))
+				val existingIDs = loadedProjectsRaw.map(_.id)
+				val refs = existingIDs.map(id => ProjectRef(uri, id))
+				val defaultID = autoID(normBase, config.pluginManagement.context, existingIDs)
+				val b = Build.defaultAggregated(defaultID, refs)
 				val defaultProjects = loadProjects(projectsFromBuild(b, normBase))
 				(defaultProjects ++ loadedProjectsRaw, b)
 			}
@@ -429,6 +433,17 @@ object Load
 		val defs = if(defsScala.isEmpty) defaultBuildIfNone :: Nil else defsScala
 		val loadedDefs = new sbt.LoadedDefinitions(defDir, Nil, plugs.loader, defs, loadedProjects, defNames)
 		new sbt.BuildUnit(uri, normBase, loadedDefs, plugs)
+	}
+	private[this] def autoID(localBase: File, context: PluginManagement.Context, existingIDs: Seq[String]): String = 
+	{
+		import StringUtilities.{normalize => norm}
+		def nthParentName(f: File, i: Int): String =
+			if(f eq null) Build.defaultID(localBase) else if(i <= 0) norm(f.getName) else nthParentName(f.getParentFile, i - 1)
+		val pluginDepth = context.pluginProjectDepth
+		val postfix = "-build" * pluginDepth
+		val idBase = if(context.globalPluginProject) "global-plugins" else nthParentName(localBase, pluginDepth)
+		val tryID = idBase + postfix
+		if(existingIDs.contains(tryID)) Build.defaultID(localBase) else tryID
 	}
 	private[this] def projectsFromBuild(b: Build, base: File): Seq[Project] = 
 		b.projectDefinitions(base).map(resolveBase(base))

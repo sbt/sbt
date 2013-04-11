@@ -5,7 +5,7 @@ package sbt
 
 object StringUtilities
 {
-	def normalize(s: String) = s.toLowerCase.replaceAll("""\s+""", "-")
+	def normalize(s: String) = s.toLowerCase.replaceAll("""\W+""", "-")
 	def nonEmpty(s: String, label: String)
 	{
 		require(s.trim.length > 0, label + " cannot be empty.")
