@@ -8,6 +8,7 @@ private[sbt] final class LoadedSbtFile(val settings: Seq[Setting[_]], val projec
 {
 	def merge(o: LoadedSbtFile): LoadedSbtFile =
 		new LoadedSbtFile(settings ++ o.settings, projects ++ o.projects, importedDefs ++ o.importedDefs)
+	def clearProjects = new LoadedSbtFile(settings, Nil, importedDefs)
 }
 private[sbt] object LoadedSbtFile
 {

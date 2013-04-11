@@ -413,15 +413,15 @@ object Load
 		lazy val eval = mkEval(plugs.classpath, defDir, Nil)
 		val initialProjects = defs.flatMap(_.projectDefinitions(normBase).map(resolveBase(normBase)))
 
-		val loadedProjects = loadTransitive(initialProjects, imports, plugs, () => eval, config.injectSettings, Nil)
+		val loadedProjects = loadTransitive(initialProjects, imports, plugs, () => eval, config.injectSettings, Nil, new mutable.HashMap)
 		val loadedDefs = new sbt.LoadedDefinitions(defDir, Nil, plugs.loader, defs, loadedProjects, defNames)
 		new sbt.BuildUnit(uri, normBase, loadedDefs, plugs)
 	}
 
-	private[this] def loadTransitive(newProjects: Seq[Project], imports: Seq[String], plugins: sbt.LoadedPlugins, eval: () => Eval, injectSettings: InjectSettings, acc: Seq[Project]): Seq[Project] =
+	private[this] def loadTransitive(newProjects: Seq[Project], imports: Seq[String], plugins: sbt.LoadedPlugins, eval: () => Eval, injectSettings: InjectSettings, acc: Seq[Project], memoSettings: mutable.Map[File, LoadedSbtFile]): Seq[Project] =
 	{
 		val loaded = newProjects map { project =>
-			val loadedSbtFiles = loadSettings(project.auto, project.base, imports, plugins, eval, injectSettings)
+			val loadedSbtFiles = loadSettings(project.auto, project.base, imports, plugins, eval, injectSettings, memoSettings)
 			val transformed = project.copy(settings = (project.settings: Seq[Setting[_]]) ++ loadedSbtFiles.settings)
 			(transformed, loadedSbtFiles.projects)
 		}
@@ -432,20 +432,31 @@ object Load
 		if(nextProjects.isEmpty)
 			loadedProjects
 		else
-			loadTransitive(nextProjects, imports, plugins, eval, injectSettings, loadedProjects)
+			loadTransitive(nextProjects, imports, plugins, eval, injectSettings, loadedProjects, memoSettings)
 	}
 		
-	private[this] def loadSettings(auto: AddSettings, projectBase: File, buildImports: Seq[String], loadedPlugins: sbt.LoadedPlugins, eval: ()=>Eval, injectSettings: InjectSettings): LoadedSbtFile =
+	private[this] def loadSettings(auto: AddSettings, projectBase: File, buildImports: Seq[String], loadedPlugins: sbt.LoadedPlugins, eval: ()=>Eval, injectSettings: InjectSettings, memoSettings: mutable.Map[File, LoadedSbtFile]): LoadedSbtFile =
 	{
 		lazy val defaultSbtFiles = configurationSources(projectBase)
 		def settings(ss: Seq[Setting[_]]) = new LoadedSbtFile(ss, Nil, Nil)
 		val loader = loadedPlugins.loader
 
-				import AddSettings.{User,SbtFiles,DefaultSbtFiles,Plugins,Sequence}
+		def merge(ls: Seq[LoadedSbtFile]): LoadedSbtFile = (LoadedSbtFile.empty /: ls) { _ merge _ }
+		def loadSettings(fs: Seq[File]): LoadedSbtFile =
+			merge( fs.sortBy(_.getName).map(memoLoadSettingsFile) )
+		def memoLoadSettingsFile(src: File): LoadedSbtFile = memoSettings.get(src) getOrElse {
+			val lf = loadSettingsFile(src)
+			memoSettings.put(src, lf.clearProjects) // don't load projects twice
+			lf
+		}
+		def loadSettingsFile(src: File): LoadedSbtFile =
+			EvaluateConfigurations.evaluateSbtFile(eval(), src, IO.readLines(src), buildImports, 0)(loader)
+
+			import AddSettings.{User,SbtFiles,DefaultSbtFiles,Plugins,Sequence}
 		def expand(auto: AddSettings): LoadedSbtFile = auto match {
 			case User => settings(injectSettings.projectLoaded(loader))
-			case sf: SbtFiles => configurations( sf.files.map(f => IO.resolve(projectBase, f)), eval, buildImports )(loader)
-			case sf: DefaultSbtFiles => configurations( defaultSbtFiles.filter(sf.include), eval, buildImports )(loader)
+			case sf: SbtFiles => loadSettings( sf.files.map(f => IO.resolve(projectBase, f)))
+			case sf: DefaultSbtFiles => loadSettings( defaultSbtFiles.filter(sf.include))
 			case f: Plugins => settings(loadedPlugins.plugins.filter(f.include).flatMap(p => p.settings.filter(isProjectThis) ++ p.projectSettings))
 			case q: Sequence => (LoadedSbtFile.empty /: q.sequence) { (b,add) => b.merge( expand(add) ) }
 		}

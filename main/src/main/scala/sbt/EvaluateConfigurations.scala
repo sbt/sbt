@@ -40,7 +40,7 @@ object EvaluateConfigurations
 		loader => l(loader).settings
 	}
 
-	private[this] def evaluateSbtFile(eval: Eval, file: File, lines: Seq[String], imports: Seq[String], offset: Int): ClassLoader => LoadedSbtFile =
+	private[sbt] def evaluateSbtFile(eval: Eval, file: File, lines: Seq[String], imports: Seq[String], offset: Int): ClassLoader => LoadedSbtFile =
 	{
 		val name = file.getPath
 		val parsed = parseConfiguration(lines, imports, offset)
