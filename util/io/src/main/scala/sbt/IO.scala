@@ -724,7 +724,9 @@ object IO
 		(new URI(dirStr)).normalize
 	}
 	/** Converts the given File to a URI.  If the File is relative, the URI is relative, unlike File.toURI*/
-	def toURI(f: File): URI  =  if(f.isAbsolute) f.toURI else new URI(normalizeName(f.getPath))
+	def toURI(f: File): URI  =  
+		// need to use the three argument URI constructor because the single argument version doesn't encode
+		if(f.isAbsolute) f.toURI else new URI(null, normalizeName(f.getPath), null)
 	def resolve(base: File, f: File): File  =
 	{
 		assertAbsolute(base)
