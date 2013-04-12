@@ -96,11 +96,9 @@ object BasicCommands
 		token(base, compl)
 	}
 	private[this] def classpathOptionParser: Parser[Seq[String]] =
-		token( ("-cp" | "-classpath") ~> Space ) ~> rep1sep(classpathString, token(File.pathSeparatorChar)) <~ token(Space)
-	private[this] def classpathString: Parser[String] =
-		token(charClass(entryClass, "<classpath-entry>").+.string, "<classpath-entry>")
-	private[this] def entryClass(c: Char): Boolean = 
-		c != File.pathSeparatorChar && !java.lang.Character.isWhitespace(c)
+		token( ("-cp" | "-classpath") ~> Space ) ~> classpathStrings <~ token(Space)
+	private[this] def classpathStrings: Parser[Seq[String]] =
+		token(StringBasic.map(s => IO.pathSplit(s).toSeq), "<classpath>")
 
 	def exit = Command.command(TerminateAction, exitBrief, exitBrief ) ( _ exit true )
 

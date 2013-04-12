@@ -1,10 +1,10 @@
 # compiles a new State => State instance
 > compile
-# puts the classes in a stable location (out/)
+# puts the classes in a stable location (out spaced/ to test escaping)
 > copyOutputDir
 
 # checks that `apply` can load from a specific classpath
-> apply -cp out demo.AddNewCommand
+> 'apply -cp """out spaced/""" demo.AddNewCommand'
 
 # check that AddNewCommand was actually run
 # If it was, it should have registered `newCommand`
