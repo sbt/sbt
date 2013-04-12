@@ -4,6 +4,6 @@ val copyOutputDir = taskKey[Unit]("Copies the compiled classes to a root-level d
 
 copyOutputDir := {
 	val cd = (classDirectory in Compile).value
-	val to = baseDirectory.value / "out"
+	val to = baseDirectory.value / "out spaced"
 	IO.copyDirectory(cd, to)
 }
