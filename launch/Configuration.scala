@@ -47,9 +47,10 @@ object Configuration
 	}
 	def configurationFromFile(path: String, baseDirectory: File): URL =
 	{
+		val pathURI = filePathURI(path)
 		def resolve(against: URI): Option[URL] =
 		{
-			val resolved = against.resolve(path)
+			val resolved = against.resolve(pathURI) // variant that accepts String doesn't properly escape (#725)
 			val exists = try { (new File(resolved)).exists } catch { case _: IllegalArgumentException => false }
 			if(exists) Some(resolved.toURL) else None
 		}
@@ -111,8 +112,11 @@ object Configuration
 		Option(props.getProperty(SbtVersionProperty))
 	}
 
-	def resolveAgainst(baseDirectory: File): List[URI] = (baseDirectory toURI) :: (new File(System.getProperty("user.home")) toURI) ::
-		toDirectory(classLocation(getClass).toURI) :: Nil
+	def resolveAgainst(baseDirectory: File): List[URI] = 
+		directoryURI(baseDirectory) ::
+		directoryURI(new File(System.getProperty("user.home"))) ::
+		toDirectory(classLocation(getClass).toURI) ::
+		Nil
 
 	def classLocation(cl: Class[_]): URL =
 	{
@@ -120,12 +124,26 @@ object Configuration
 		if(codeSource == null) error("No class location for " + cl)
 		else codeSource.getLocation
 	}
+	// single-arg constructor doesn't properly escape
+	def filePathURI(path: String): URI = {
+		val f = new File(path)
+		new URI(if(f.isAbsolute) "file" else null, path, null)
+	}
+	def directoryURI(dir: File): URI = directoryURI(dir.toURI)
+	def directoryURI(uri: URI): URI = 
+	{
+		assert(uri.isAbsolute)
+		val str = uri.toASCIIString
+		val dirStr = if(str.endsWith("/")) str else str + "/"
+		(new URI(dirStr)).normalize
+	}
+
 	def toDirectory(uri: URI): URI =
 		try
 		{
 			val file = new File(uri)
 			val newFile = if(file.isFile) file.getParentFile else file
-			newFile.toURI
+			directoryURI(newFile)
 		}
 		catch { case _: Exception => uri }
 	private[this] def neNull: AnyRef => Boolean = _ ne null
