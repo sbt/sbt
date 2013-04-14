@@ -259,6 +259,7 @@ Code coverage plugins
 
 -  sbt-scct: https://github.com/dvc94ch/sbt-scct
 -  jacoco4sbt: https://bitbucket.org/jmhofer/jacoco4sbt
+-  xsbt-coveralls-plugin: https://github.com/theon/xsbt-coveralls-plugin
 
 Android plugin
 ~~~~~~~~~~~~~~
