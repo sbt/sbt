@@ -469,14 +469,15 @@ configuration and classpaths. These are the steps:
 4. Use the classpath to implement the task.
 
 As an example, consider a ``proguard`` task. This task needs the
-ProGuard jars in order to run the tool. Assuming a new configuration
-defined in the full build definition (#1):
+ProGuard jars in order to run the tool. First, define and add the new configuration:
 
 ::
 
     val ProguardConfig = config("proguard") hide
 
-the following are settings that implement #2-#4:
+    ivyConfigurations += ProguardConfig
+
+Then, 
 
 ::
 
@@ -486,8 +487,10 @@ the following are settings that implement #2-#4:
        "net.sf.proguard" % "proguard" % "4.4" % ProguardConfig.name
 
     // Extract the dependencies from the UpdateReport.
-    managedClasspath in proguard :=
-        Classpaths.managedJars(proguardConfig, (classpathTypes in proguard).value, update.value)
+    managedClasspath in proguard := {
+        // these are the types of artifacts to include
+        val artifactTypes: Set[String] = (classpathTypes in proguard).value
+        Classpaths.managedJars(proguardConfig, artifactTypes, update.value)
     }
 
     // Use the dependencies in a task, typically by putting them
@@ -497,6 +500,21 @@ the following are settings that implement #2-#4:
 	    val cp: Seq[File] = (managedClasspath in proguard).value
       // ... do something with , which includes proguard ...
     }
+
+Defining the intermediate classpath is optional, but it can be useful for debugging or if it needs to
+be used by multiple tasks.
+It is also possible to specify artifact types inline.
+This alternative ``proguard`` task would look like:
+
+::
+
+    proguard := {
+       val artifactTypes = Set("jar")
+	    val cp: Seq[File] =
+          Classpaths.managedJars(proguardConfig, artifactTypes, update.value)
+      // ... do something with , which includes proguard ...
+    }
+
 
 How would I change sbt's classpath dynamically?
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
