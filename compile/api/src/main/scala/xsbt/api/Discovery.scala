@@ -63,7 +63,12 @@ object Discovery
 	def isStringArray(vp: IndexedSeq[ParameterList]): Boolean = vp.length == 1 && isStringArray(vp(0).parameters)
 	def isStringArray(params: Seq[MethodParameter]): Boolean = params.length == 1 && isStringArray(params(0))
 	def isStringArray(p: MethodParameter): Boolean = p.modifier == ParameterModifier.Plain && isStringArray(p.tpe)
-	def isStringArray(t: Type): Boolean = isParameterized(t, "scala.Array", "java.lang.String") // doesn't handle scala.this#Predef#String, should API phase dealias?
+	def isStringArray(t: Type): Boolean =
+		// API phase does not dealias types so we need to handle both `java.lang.String` and `scala.Predef.String` cases
+		// However, use could define it's own alias for String and (or Array) and this method would not work properly
+		// This particular piece of code is called from `hasMainMethod` and cares about bytecode types (erased types)
+		// and not Scala types so it should be rewritten to use byte code analysis instead of Scala types analysis
+		isParameterized(t, "scala.Array", "java.lang.String") || isParameterized(t, "scala.Array", "scala.Predef.String")
 
 	def isParameterized(t: Type, base: String, args: String*): Boolean = t match {
 		case p: Parameterized =>
@@ -79,6 +84,10 @@ object Discovery
 			p.prefix match {
 				case s: Singleton => pathName(s.path, p.id)
 				case e: EmptyType => Some( p.id )
+				// added this hack so we support `scala.Predef.String` type; this whole
+				// method looks like one giant hack so it doesn't hurt to add another
+				// odd case
+				case p2: Projection => simpleName(p2).map(_ + "." + p.id)
 				case _ => None
 			}
 		case _ => None
