@@ -135,11 +135,11 @@ Ivy to use the credentials.*
 Finally - Publish
 -----------------
 
-In sbt, run ``publish`` and you should see something like the following:
+In sbt, run ``publish-signed`` and you should see something like the following:
 
 .. code-block:: console
 
-    > publish
+    > publish-signed
     Please enter your PGP passphrase> ***********
     [info] Packaging /home/josh/projects/typesafe/scala-arm/target/scala-2.9.1/scala-arm_2.9.1-1.2.jar ...
     [info] Wrote /home/josh/projects/typesafe/scala-arm/target/scala-2.9.1/scala-arm_2.9.1-1.2.pom
