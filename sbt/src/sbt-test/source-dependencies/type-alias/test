@@ -1,0 +1,14 @@
+# Test for proper detection of structure change when two type aliases
+# that dealias to the same type are involved
+# See https://github.com/sbt/sbt/issues/736 for details
+
+# compile both `Foo.scala` and `Bar.scala`
+> compile
+# change return type of `Foo.foo` method from `Foo.S1` to
+# `Foo.S2`
+$ copy-file changes/Foo1.scala src/main/scala/Foo.scala
+# recompile
+#> compile
+# verify that change of the return type of `Foo.foo` triggered
+# recompilation of `Bar.scala`
+> verify-recompiled
