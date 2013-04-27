@@ -49,14 +49,14 @@ private[sbt] object Analyze
 					for (url <- Option(loader.getResource(tpe.replace('.', '/') + ClassExt)); file <- urlAsFile(url, log))
 					{
 						if(url.getProtocol == "jar")
-							analysis.binaryDependency(file, tpe, source)
+							analysis.binaryDependency(file, tpe, source, /*inherited = */ false) // TODO: properly handle inherited
 						else
 						{
 							assume(url.getProtocol == "file")
 							productToSource.get(file) match
 							{
-								case Some(dependsOn) => analysis.sourceDependency(dependsOn, source)
-								case None => analysis.binaryDependency(file, tpe, source)
+								case Some(dependsOn) => analysis.sourceDependency(dependsOn, source, /*inherited = */ false)
+								case None => analysis.binaryDependency(file, tpe, source, /*inherited = */ false)
 							}
 						}
 					}

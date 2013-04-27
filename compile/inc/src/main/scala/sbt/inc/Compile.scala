@@ -62,12 +62,17 @@ private final class AnalysisCallback(internalMap: File => Option[File], external
 	private[this] val unreporteds = new HashMap[File, ListBuffer[Problem]]
 	private[this] val reporteds = new HashMap[File, ListBuffer[Problem]]
 	private[this] val binaryDeps = new HashMap[File, Set[File]]
-		 // source file to set of generated (class file, class name)
+		// source file to set of generated (class file, class name)
 	private[this] val classes = new HashMap[File, Set[(File, String)]]
-		 // generated class file to its source file
+		// generated class file to its source file
 	private[this] val classToSource = new HashMap[File, File]
+		// all internal source depenencies, including direct and inherited
 	private[this] val sourceDeps = new HashMap[File, Set[File]]
-	private[this] val extSrcDeps = new ListBuffer[(File, String, Source)]
+		// inherited internal source dependencies
+	private[this] val inheritedSourceDeps = new HashMap[File, Set[File]]
+		// external source dependencies:
+		//   (internal source, external source depended on, API of external dependency, true if an inheritance dependency)
+	private[this] val extSrcDeps = new ListBuffer[(File, String, Source, Boolean)]
 	private[this] val binaryClassName = new HashMap[File, String]
 		 // source files containing a macro def.
 	private[this] val macroSources = Set[File]()
@@ -83,41 +88,45 @@ private final class AnalysisCallback(internalMap: File => Option[File], external
 		}
 	}
 
-	def sourceDependency(dependsOn: File, source: File) = if(source != dependsOn) add(sourceDeps, source, dependsOn)
-	def externalBinaryDependency(binary: File, className: String, source: File)
+	def sourceDependency(dependsOn: File, source: File, inherited: Boolean) =
+		if(source != dependsOn) {
+			add(sourceDeps, source, dependsOn)
+			if(inherited) add(inheritedSourceDeps, source, dependsOn)
+		}
+	def externalBinaryDependency(binary: File, className: String, source: File, inherited: Boolean)
 	{
 		binaryClassName.put(binary, className)
 		add(binaryDeps, source, binary)
 	}
-	def externalSourceDependency(triple: (File, String, Source)) =  extSrcDeps += triple
+	def externalSourceDependency(t4: (File, String, Source, Boolean)) =  extSrcDeps += t4
 
-	def binaryDependency(classFile: File, name: String, source: File) =
+	def binaryDependency(classFile: File, name: String, source: File, inherited: Boolean) =
 		internalMap(classFile) match
 		{
 			case Some(dependsOn) =>
 				 // dependency is a product of a source not included in this compilation
-				sourceDependency(dependsOn, source)
+				sourceDependency(dependsOn, source, inherited)
 			case None =>
 				classToSource.get(classFile) match
 				{
 					case Some(dependsOn) =>
 						// dependency is a product of a source in this compilation step,
 						//  but not in the same compiler run (as in javac v. scalac)
-						sourceDependency(dependsOn, source)
+						sourceDependency(dependsOn, source, inherited)
 					case None =>
-						externalDependency(classFile, name, source)
+						externalDependency(classFile, name, source, inherited)
 				}
 		}
 
-	private[this] def externalDependency(classFile: File, name: String, source: File): Unit =
+	private[this] def externalDependency(classFile: File, name: String, source: File, inherited: Boolean): Unit =
 		externalAPI(classFile, name) match
 		{
 			case Some(api) =>
 				// dependency is a product of a source in another project
-				externalSourceDependency( (source, name, api) )
+				externalSourceDependency( (source, name, api, inherited) )
 			case None =>
 				// dependency is some other binary on the classpath
-				externalBinaryDependency(classFile, name, source)
+				externalBinaryDependency(classFile, name, source, inherited)
 		}
 
 	def generatedClass(source: File, module: File, name: String) =
@@ -148,10 +157,12 @@ private final class AnalysisCallback(internalMap: File => Option[File], external
 			val hasMacro: Boolean = macroSources.contains(src)
 			val s = new xsbti.api.Source(compilation, hash, api._2, api._1, hasMacro)
 			val info = SourceInfos.makeInfo(getOrNil(reporteds, src), getOrNil(unreporteds, src))
-			a.addSource(src, s, stamp, sourceDeps.getOrElse(src, Nil: Iterable[File]), info)
+			val direct = sourceDeps.getOrElse(src, Nil: Iterable[File])
+			val publicInherited = inheritedSourceDeps.getOrElse(src, Nil: Iterable[File])
+			a.addSource(src, s, stamp, direct, publicInherited, info)
 		}
 	def getOrNil[A,B](m: collection.Map[A, Seq[B]], a: A): Seq[B] = m.get(a).toList.flatten
-	def addExternals(base: Analysis): Analysis = (base /: extSrcDeps) { case (a, (source, name, api)) => a.addExternalDep(source, name, api) }
+	def addExternals(base: Analysis): Analysis = (base /: extSrcDeps) { case (a, (source, name, api, inherited)) => a.addExternalDep(source, name, api, inherited) }
 	def addCompilation(base: Analysis): Analysis = base.copy(compilations = base.compilations.add(compilation))
 
 	def addAll[A,B](base: Analysis, m: Map[A, Set[B]])( f: (Analysis, A, B) => Analysis): Analysis =
