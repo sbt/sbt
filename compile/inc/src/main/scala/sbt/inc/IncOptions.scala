@@ -38,7 +38,10 @@ final case class IncOptions(
 
 object IncOptions {
 	val Default = IncOptions(
-		transitiveStep = 2,
+		//    1. recompile changed sources
+		// 2(3). recompile direct dependencies and transitive public inheritance dependencies of sources with API changes in 1(2).
+		//    4. further changes invalidate all dependencies transitively to avoid too many steps
+		transitiveStep = 3,
 		recompileAllFraction = 0.5,
 		relationsDebug = false,
 		apiDebug = false,
