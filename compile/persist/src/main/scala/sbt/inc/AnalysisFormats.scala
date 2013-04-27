@@ -13,6 +13,7 @@ package inc
 	import DefaultProtocol._
 	import DefaultProtocol.tuple2Format
 	import Logger.{m2o, position, problem}
+	import Relations.{Source => RSource}
 
 object AnalysisFormats
 {
@@ -97,8 +98,11 @@ object AnalysisFormats
 	implicit def apisFormat(implicit internalF: Format[Map[File, Source]], externalF: Format[Map[String, Source]]): Format[APIs] =
 		asProduct2( APIs.apply _)( as => (as.internal, as.external) )(internalF, externalF)
 
-	implicit def relationsFormat(implicit prodF: Format[RFF], binF: Format[RFF], intF: Format[RFF], extF: Format[RFS], csF: Format[RFS]): Format[Relations] =
-		asProduct5[Relations, RFF, RFF, RFF, RFS, RFS]( (a,b,c,d,e) => Relations.make(a,b,c,d,e) )( rs => (rs.srcProd, rs.binaryDep, rs.internalSrcDep, rs.externalDep, rs.classes) )(prodF, binF, intF, extF, csF)
+	implicit def relationsFormat(implicit prodF: Format[RFF], binF: Format[RFF], directF: Format[RSource], inheritedF: Format[RSource], csF: Format[RFS]): Format[Relations] =
+		asProduct5[Relations, RFF, RFF, RSource, RSource, RFS]( (a,b,c,d,e) => Relations.make(a,b,c,d,e) )( rs => (rs.srcProd, rs.binaryDep, rs.direct, rs.publicInherited, rs.classes) )(prodF, binF, directF, inheritedF, csF)
+
+	implicit def relationsSourceFormat(implicit internalFormat: Format[Relation[File, File]], externalFormat: Format[Relation[File,String]]): Format[RSource] =
+		asProduct2[RSource, RFF, RFS]( (a, b) => Relations.makeSource(a,b))( rs => (rs.internal, rs.external))
 
 	implicit def relationFormat[A,B](implicit af: Format[Map[A, Set[B]]], bf: Format[Map[B, Set[A]]]): Format[Relation[A,B]] =
 		asProduct2[Relation[A,B], Map[A, Set[B]], Map[B, Set[A]]]( Relation.make _ )( r => (r.forwardMap, r.reverseMap) )(af, bf)
