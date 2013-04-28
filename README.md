@@ -9,7 +9,7 @@ How To Use
 For sbt 0.11/0.12, add sbt-dependency-graph as a dependency in `project/plugins.sbt`:
 
 ```scala
-addSbtPlugin("net.virtual-void" % "sbt-dependency-graph" % "0.7.2")
+addSbtPlugin("net.virtual-void" % "sbt-dependency-graph" % "0.7.3")
 ```
 
 Then, add the following to your `<project-root>/build.sbt` (that's not `project/build.sbt`!) as a standalone line:
@@ -70,7 +70,7 @@ Standalone usage
 
 You can use the project without sbt as well by either depending on the library and calling
 `IvyGraphMLDependencies.saveAsGraphML(IvyGraphMLDependencies.graph(reportFile), outputFile)` or by just getting the binary
-and calling it like `scala sbt-dependency-graph-0.7.2.jar <ivy-report-xml-path> <target-path>`.
+and calling it like `scala sbt-dependency-graph-0.7.3.jar <ivy-report-xml-path> <target-path>`.
 
 Inner Workings
 --------------
