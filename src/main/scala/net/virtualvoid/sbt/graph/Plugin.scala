@@ -67,7 +67,9 @@ object Plugin extends sbt.Plugin {
   def graphSettings = seq(
     ivyReportFunction <<= (sbtVersion, target, projectID, ivyModule, appConfiguration, streams) map { (sbtV, target, projectID, ivyModule, config, streams) =>
       sbtV match {
-        case Version(0, min, fix, _) if min > 12 || (min == 12 && fix >= 1) =>
+        case Version(0, min, fix, _) if min > 12 || (min == 12 && fix >= 3) =>
+          (c: String) => file("%s/resolution-cache/reports/%s-%s-%s.xml".format(target, projectID.organization, crossName(ivyModule), c))
+        case Version(0, min, fix, _) if min == 12 && fix >= 1 && fix < 3 =>
           ivyModule.withModule(streams.log) { (i, moduleDesc, _) =>
             val id = ResolveOptions.getDefaultResolveId(moduleDesc)
             (c: String) => file("%s/resolution-cache/reports/%s/%s-resolved.xml" format (target, id,c))

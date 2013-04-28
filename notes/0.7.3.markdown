@@ -1,0 +1,1 @@
+This is a maintenance release which fixes issues with sbt 0.12.3. Thanks [ebowman](https://github.com/ebowman) for the fix.
