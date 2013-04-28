@@ -1,1 +1,7 @@
-This is a maintenance release which fixes issues with sbt 0.12.3. Thanks [ebowman](https://github.com/ebowman) for the fix.
+This is a maintenance release. Following issues have been fixed:
+
+  * [#27](https://github.com/jrudolph/sbt-dependency-graph/issues/27): A dependency configured with
+    a version range was not properly associated with its dependant.
+  * [#60](https://github.com/jrudolph/sbt-dependency-graph/issues/30) & [#31](https://github.com/jrudolph/sbt-dependency-graph/issues/31):
+    Make it work again with sbt 0.12.3. The path of the dependency resolution file changed in sbt 0.12.3.
+    Thanks [ebowman](https://github.com/ebowman) for the fix.
