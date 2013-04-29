@@ -9,7 +9,7 @@ extensions = ['sphinxcontrib.issuetracker', 'sphinx.ext.extlinks', 'howto']
 
 project = 'sbt'
 version = '0.12'
-release = '0.12.3'
+release = '0.12.4'
 
 # General settings
 
