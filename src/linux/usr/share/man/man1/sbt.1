@@ -16,28 +16,32 @@ Runs the Simple Build Tool using the currently installed
 .BR java (1)
 The current directory is assumed to be the project.
 .SH OPTIONS
-.IP -h
+.IP "-h, -help"
 Show help options.
-.IP "-verbose | -v"
+.IP "-v, -verbose"
 turn up the noise
-.IP "-debug or -d"
+.IP "-d, -debug"
 set sbt log level to debug
 .IP -no-colors
 disable ANSI color codes
 .IP -sbt-create
 start sbt even if current directory contains no sbt project
-.IP "-sbt-dir  <path>"  
+.IP "-sbt-dir <path>"
 path to global settings/plugins directory (default: ~/.sbt)
 .IP "-sbt-boot <path>"
 path to shared boot directory (default: ~/.sbt/boot in 0.11 series)
-.IP "-ivy      <path>"
+.IP "-ivy <path>"
 path to local Ivy repository (default: ~/.ivy2)
-.IP "-mem   <integer>"
+.IP "-mem <integer>"
 set memory options (default: $sbt_mem, which is $(get_mem_opts $sbt_mem))
 .IP "-no-share"
 use all local caches; no sharing
 .IP "-no-global"
 uses global caches, but does not use global ~/.sbt directory.
+.IP "-jvm-debug <port>"
+Turn on JVM debugging, open at the given port.
+.IP -batch
+Disable interactive mode
 .IP -offline
 put sbt in offline mode
 .SH SBT Version Options
@@ -48,23 +52,12 @@ The Simple Build Tool version to use.  This script will
 download necessary versions using the
 .BR curl (1)
 tool.
-.IP "-sbt-jar      <path>"
+.IP "-sbt-jar <path>"
 use the specified jar as the sbt launcher
 .IP "-sbt-rc"
 use an RC version of sbt
 .IP -sbt-snapshot
 use a snapshot version of sbt
-.SH Scala Options
-.IP -28
-use latest 2.8.x Scala release
-.IP -29
-use latest 2.9.x release
-.IP -210
-use latest 2.10.x release
-.IP "-scala-home <path>"
-use the scala build at the specified directory
-.IP "-scala-version <version>"
-use the specified version of scala
 .SH Java Options
 .IP "-java-home <path>"
 alternate JAVA_HOME
@@ -72,6 +65,8 @@ alternate JAVA_HOME
 pass -Dkey=val directly to the java runtime
 .IP -J-X
 pass option -X directly to the java runtime (-J is stripped)
+.IP -S-X
+add -X to sbt's scalacOptions (-S is stripped)
 .SH FILES
 .I ~/.sbt
 .RS
@@ -79,12 +74,16 @@ The user configuration file.
 .RE
 .I ".sbtopts"
 .RS
-If this file exists in the sbt root, it is prepended to the
+if this file exists in the current directory, it is prepended to the
 runner args.
+.RE
+.I "/etc/sbt/sbtopts"
+.RS
+if this file exists, it is prepended to the runner args
 .SH ENVIRONMENT
-.IP JAVAOPTS
+.IP JAVA_OPTS
 If non-null a set of arguments passed to java.
-.IP SBTOPTS
+.IP SBT_OPTS
 environment variable, if unset uses "$default_sbt_opts".
 .SH EXAMPLES
 Most users of this script will only have to call "sbt" on the command line.
