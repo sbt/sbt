@@ -16,7 +16,7 @@ package sbt
 
 object BasicCommands
 {
-	lazy val allBasicCommands = Seq(nop, ignore, help, multi, ifLast, append, setOnFailure, clearOnFailure, reboot, call, exit, continuous, history, shell, read, alias)
+	lazy val allBasicCommands = Seq(nop, ignore, help, multi, ifLast, append, setOnFailure, clearOnFailure, stashOnFailure, popOnFailure, reboot, call, exit, continuous, history, shell, read, alias)
 
 	def nop = Command.custom(s => success(() => s))
 	def ignore = Command.command(FailureWall)(idFun)
@@ -74,6 +74,12 @@ object BasicCommands
 		s.copy(onFailure = Some(arg))
 	}
 	def clearOnFailure = Command.command(ClearOnFailure)(s => s.copy(onFailure = None))
+	private[sbt] def stashOnFailure = Command.command(StashOnFailure)(s => s.copy(onFailure = None).update(OnFailureStack)(s.onFailure :: _.toList.flatten))
+	private[sbt] def popOnFailure = Command.command(PopOnFailure) { s =>
+		val stack = s.get(OnFailureStack).getOrElse(Nil)
+		val updated = if(stack.isEmpty) s.remove(OnFailureStack) else s.put(OnFailureStack, stack.tail)
+		updated.copy(onFailure = stack.headOption.flatMap(idFun))
+	}
 
 	def reboot = Command(RebootCommand, Help.more(RebootCommand, RebootDetailed))(rebootParser) { (s, full) =>
 		s.reboot(full)
