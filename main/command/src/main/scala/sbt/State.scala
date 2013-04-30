@@ -121,6 +121,7 @@ trait StateOps {
 
 object State
 {
+	/** Indicates where command execution should resume after a failure.*/
 	final val FailureWall = "---"
 
 	/** Represents the next action for the command processor.*/

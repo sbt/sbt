@@ -77,7 +77,8 @@ object BuiltinCommands
 	def ScriptCommands: Seq[Command] = Seq(ignore, exit, Script.command, act, nop)
 	def DefaultCommands: Seq[Command] = Seq(ignore, help, about, tasks, settingsCommand, loadProject,
 		projects, project, reboot, read, history, set, sessionCommand, inspect, loadProjectImpl, loadFailed, Cross.crossBuild, Cross.switchVersion,
-		setOnFailure, clearOnFailure, ifLast, multi, shell, continuous, eval, alias, append, last, lastGrep, export, boot, nop, call, exit, act)
+		setOnFailure, clearOnFailure, stashOnFailure, popOnFailure,
+		ifLast, multi, shell, continuous, eval, alias, append, last, lastGrep, export, boot, nop, call, exit, act)
 	def DefaultBootCommands: Seq[String] = LoadProject :: (IfLast + " " + Shell) :: Nil
 
 	def boot = Command.make(BootCommand)(bootParser)
@@ -415,7 +416,13 @@ object BuiltinCommands
 		}
 	}
 
-	def loadProjectCommands(arg: String) = (OnFailure + " " + LoadFailed) :: (LoadProjectImpl + " " + arg).trim :: ClearOnFailure :: State.FailureWall :: Nil
+	def loadProjectCommands(arg: String) =
+		StashOnFailure ::
+		(OnFailure + " " + LoadFailed) ::
+		(LoadProjectImpl + " " + arg).trim ::
+		PopOnFailure ::
+		State.FailureWall ::
+		Nil
 	def loadProject = Command(LoadProject, LoadProjectBrief, LoadProjectDetailed)(_ => matched(Project.loadActionParser)) { (s,arg) => loadProjectCommands(arg) ::: s }
 
 	def loadProjectImpl = Command(LoadProjectImpl)(_ => Project.loadActionParser)( doLoadProject )

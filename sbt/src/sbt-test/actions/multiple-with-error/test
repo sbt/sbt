@@ -1,0 +1,3 @@
+# Issue 732: reload followed by a command that results in an error exits in interactive mode
+-> ;reload;not-a-command
+> help
