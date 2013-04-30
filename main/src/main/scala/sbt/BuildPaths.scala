@@ -16,26 +16,46 @@ object BuildPaths
 
 	import Path._
 
-	def getGlobalBase(state: State): File =
-		getFileSetting(globalBaseDirectory, GlobalBaseProperty, defaultGlobalBase)(state)
+	def getGlobalBase(state: State): File = {
+		val default = defaultVersionedGlobalBase(binarySbtVersion(state))
+		def getDefault = { checkTransition(state, default); default }
+		getFileSetting(globalBaseDirectory, GlobalBaseProperty, getDefault)(state)
+	}
+	private[this] def checkTransition(state: State, versioned: File)
+	{
+		val unversioned = defaultGlobalBase
+		def globalDefined(base: File): Boolean =
+			getGlobalPluginsDirectory(state, base).exists ||
+			configurationSources(getGlobalSettingsDirectory(state, base)).exists(_.exists)
+		val warnTransition = !globalDefined(versioned) && globalDefined(unversioned)
+		if(warnTransition)
+			state.log.warn(globalDirTransitionWarning(unversioned, versioned))
+	}
 
 	def getStagingDirectory(state: State, globalBase: File): File =
-		 getFileSetting(stagingDirectory, StagingProperty, defaultStaging(globalBase))(state)
+		fileSetting(stagingDirectory, StagingProperty, defaultStaging(globalBase))(state)
 
 	def getGlobalPluginsDirectory(state: State, globalBase: File): File =
-		 getFileSetting(globalPluginsDirectory, GlobalPluginsProperty, defaultGlobalPlugins(globalBase))(state)
+		fileSetting(globalPluginsDirectory, GlobalPluginsProperty, defaultGlobalPlugins(globalBase))(state)
 
 	def getGlobalSettingsDirectory(state: State, globalBase: File): File =
-		 getFileSetting(globalSettingsDirectory, GlobalSettingsProperty, globalBase)(state)
+		fileSetting(globalSettingsDirectory, GlobalSettingsProperty, globalBase)(state)
 
-	def getFileSetting(stateKey: AttributeKey[File], property: String, default: File)(state: State): File =
+	private[this] def fileSetting(stateKey: AttributeKey[File], property: String, default: File)(state: State): File =
+		getFileSetting(stateKey, property, default)(state)
+
+	def getFileSetting(stateKey: AttributeKey[File], property: String, default: => File)(state: State): File =
 		state get stateKey orElse getFileProperty(property) getOrElse default
 
 	def getFileProperty(name: String): Option[File] = Option(System.getProperty(name)) flatMap { path =>
 		if(path.isEmpty) None else Some(new File(path))
 	}
-		
+
+	def defaultVersionedGlobalBase(sbtVersion: String): File = defaultGlobalBase / sbtVersion 
 	def defaultGlobalBase = Path.userHome / ConfigDirectoryName
+
+	private[this] def binarySbtVersion(state: State): String =
+		sbt.cross.CrossVersionUtil.binarySbtVersion(state.configuration.provider.id.version)
 	private[this] def defaultStaging(globalBase: File) = globalBase / "staging"
 	private[this] def defaultGlobalPlugins(globalBase: File) = globalBase / PluginsDirectoryName
 	
@@ -61,4 +81,10 @@ object BuildPaths
 	final val GlobalSettingsProperty = "sbt.global.settings"
 
 	def crossPath(base: File, instance: xsbti.compile.ScalaInstance): File = base / ("scala_" + instance.version)
+
+	private[this] def globalDirTransitionWarning(unversioned: File, versioned: File): String = 
+s"""The global sbt directory is now versioned and is located at $versioned.
+  You are seeing this warning because there is global configuration in $unversioned but not in $versioned.
+  The global sbt directory may be changed via the $GlobalBaseProperty system property.
+"""
 }
