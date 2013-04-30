@@ -4,14 +4,14 @@
 package sbt
 
 import scala.collection.mutable
-import org.scalatools.testing._
+import testing._
 import java.net.ServerSocket
 import java.io._
 import Tests.{Output => TestOutput, _}
 import ForkMain._
 
 private[sbt] object ForkTests {
-	def apply(frameworks: Seq[TestFramework], tests: List[TestDefinition], config: Execution, classpath: Seq[File], fork: ForkOptions, log: Logger): Task[TestOutput]  = {
+	def apply(runners: Map[TestFramework, Runner],  tests: List[TestDefinition], config: Execution, classpath: Seq[File], fork: ForkOptions, log: Logger): Task[TestOutput]  = {
 		val opts = config.options.toList
 		val listeners = opts flatMap {
 			case Listeners(ls) => ls
@@ -25,19 +25,13 @@ private[sbt] object ForkTests {
 			case Filter(f) => Some(f)
 			case _ => None
 		}
-		val argMap = frameworks.map {
-			f => f.implClassName -> opts.flatMap {
-				case Argument(None | Some(`f`), args) => args
-				case _ => Nil
-			}
-		}.toMap
 
 		std.TaskExtra.task {
 			if (!tests.isEmpty) {
 				val server = new ServerSocket(0)
 				object Acceptor extends Runnable {
-					val resultsAcc = mutable.Map.empty[String, TestResult.Value]
-					lazy val result = (overall(resultsAcc.values), resultsAcc.toMap)
+					val resultsAcc = mutable.Map.empty[String, SuiteResult]
+					lazy val result = TestOutput(overall(resultsAcc.values.map(_.result)), resultsAcc.toMap, Iterable.empty)
 					def run: Unit = {
 						val socket =
 							try {
@@ -56,10 +50,12 @@ private[sbt] object ForkTests {
 							}.toArray
 							os.writeObject(testsFiltered)
 
-							os.writeInt(frameworks.size)
-							for ((clazz, args) <- argMap) {
-								os.writeObject(clazz)
-								os.writeObject(args.toArray)
+							os.writeInt(runners.size)
+							for ((testFramework, mainRunner) <- runners) {
+								val remoteArgs = mainRunner.remoteArgs()
+								os.writeObject(testFramework.implClassNames.toArray)
+								os.writeObject(mainRunner.args)
+								os.writeObject(remoteArgs)
 							}
 							os.flush()
 
@@ -72,27 +68,32 @@ private[sbt] object ForkTests {
 
 				try {
 					testListeners.foreach(_.doInit())
-					new Thread(Acceptor).start()
+					val acceptorThread = new Thread(Acceptor)
+					acceptorThread.start()
 
 					val fullCp = classpath ++: Seq(IO.classLocationFile[ForkMain], IO.classLocationFile[Framework])
 					val options = Seq("-classpath", fullCp mkString File.pathSeparator, classOf[ForkMain].getCanonicalName, server.getLocalPort.toString)
 					val ec = Fork.java(fork, options)
 					val result =
 						if (ec != 0)
-							(TestResult.Error, Map("Running java with options " + options.mkString(" ") + " failed with exit code " + ec -> TestResult.Error))
-						else
+							TestOutput(TestResult.Error, Map("Running java with options " + options.mkString(" ") + " failed with exit code " + ec -> SuiteResult.Error), Iterable.empty)
+						else {
+							// Need to wait acceptor thread to finish its business
+							acceptorThread.join()
 							Acceptor.result
-					testListeners.foreach(_.doComplete(result._1))
+						}
+					
+					testListeners.foreach(_.doComplete(result.overall))
 					result
 				} finally {
 					server.close()
 				}
 			} else
-				(TestResult.Passed, Map.empty[String, TestResult.Value])
+				TestOutput(TestResult.Passed, Map.empty[String, SuiteResult], Iterable.empty)
 		} tagw (config.tags: _*)
 	}
 }
-private final class React(is: ObjectInputStream, os: ObjectOutputStream, log: Logger, listeners: Seq[TestReportListener], results: mutable.Map[String, TestResult.Value])
+private final class React(is: ObjectInputStream, os: ObjectOutputStream, log: Logger, listeners: Seq[TestReportListener], results: mutable.Map[String, SuiteResult])
 {
 	import ForkTags._
 	@annotation.tailrec def react(): Unit = is.readObject match {
@@ -106,9 +107,9 @@ private final class React(is: ObjectInputStream, os: ObjectOutputStream, log: Lo
 			listeners.foreach(_ startGroup group)
 			val event = TestEvent(tEvents)
 			listeners.foreach(_ testEvent event)
-			val result = event.result getOrElse TestResult.Passed
-			results += group -> result
-			listeners.foreach(_ endGroup (group, result))
+			val suiteResult = SuiteResult(tEvents)
+			results += group -> suiteResult
+			listeners.foreach(_ endGroup (group, suiteResult.result))
 			react()
 	}
 }

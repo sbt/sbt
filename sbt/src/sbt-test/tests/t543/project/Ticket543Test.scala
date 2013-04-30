@@ -14,10 +14,10 @@ object Ticket543Test extends Build {
 		fork := true,
 		testListeners += new TestReportListener {
 		  def testEvent(event: TestEvent) {
-				for (e <- event.detail.filter(_.result == org.scalatools.testing.Result.Failure)) {
-					if (e.error ne null) {
+				for (e <- event.detail.filter(_.status == sbt.testing.Status.Failure)) {
+					if (e.throwable ne null) {
 						val caw = new CharArrayWriter
-						e.error.printStackTrace(new PrintWriter(caw))
+						e.throwable.printStackTrace(new PrintWriter(caw))
 						if (caw.toString.contains("Test.scala:"))
 							marker.createNewFile()
 					}
