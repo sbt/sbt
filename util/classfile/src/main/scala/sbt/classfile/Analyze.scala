@@ -15,7 +15,7 @@ import java.net.URL
 
 private[sbt] object Analyze
 {
-	def apply[T](newClasses: Seq[File], sources: Seq[File], log: Logger)(analysis: xsbti.AnalysisCallback, loader: ClassLoader, readAPI: (File,Seq[Class[_]]) => Unit)
+	def apply[T](newClasses: Seq[File], sources: Seq[File], log: Logger)(analysis: xsbti.AnalysisCallback, loader: ClassLoader, readAPI: (File,Seq[Class[_]]) => Set[String])
 	{
 		val sourceMap = sources.toSet[File].groupBy(_.getName)
 
@@ -42,29 +42,33 @@ private[sbt] object Analyze
 		// get class to class dependencies and map back to source to class dependencies
 		for( (source, classFiles) <- sourceToClassFiles )
 		{
-			def processDependency(tpe: String)
+			val publicInherited = readAPI(source, classFiles.toSeq.flatMap(c => load(c.className, Some("Error reading API from class file") )))
+
+			def processDependency(tpe: String, inherited: Boolean)
 			{
 				trapAndLog(log)
 				{
 					for (url <- Option(loader.getResource(tpe.replace('.', '/') + ClassExt)); file <- urlAsFile(url, log))
 					{
 						if(url.getProtocol == "jar")
-							analysis.binaryDependency(file, tpe, source)
+							analysis.binaryDependency(file, tpe, source, inherited)
 						else
 						{
 							assume(url.getProtocol == "file")
 							productToSource.get(file) match
 							{
-								case Some(dependsOn) => analysis.sourceDependency(dependsOn, source)
-								case None => analysis.binaryDependency(file, tpe, source)
+								case Some(dependsOn) => analysis.sourceDependency(dependsOn, source, inherited)
+								case None => analysis.binaryDependency(file, tpe, source, inherited)
 							}
 						}
 					}
 				}
 			}
+			def processDependencies(tpes: Iterable[String], inherited: Boolean): Unit = tpes.foreach(tpe => processDependency(tpe, inherited))
 				
-			classFiles.flatMap(_.types).toSet.foreach(processDependency)
-			readAPI(source, classFiles.toSeq.flatMap(c => load(c.className, Some("Error reading API from class file") )))
+			val notInherited = classFiles.flatMap(_.types).toSet -- publicInherited
+			processDependencies(notInherited, false)
+			processDependencies(publicInherited, true)
 			analysis.endSource(source)
 		}
 
