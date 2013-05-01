@@ -126,7 +126,11 @@ class AggressiveCompile(cacheFile: File)
 						javac.compile(javaSrcs.toArray, absClasspath.toArray, output, options.javacOptions.toArray, log)
 					}
 
-					def readAPI(source: File, classes: Seq[Class[_]]) { callback.api(source, ClassToAPI(classes)) }
+					def readAPI(source: File, classes: Seq[Class[_]]): Set[String] = {
+						val (api, inherits) = ClassToAPI.process(classes)
+						callback.api(source, api)
+						inherits.map(_.getName)
+					}
 
 					timed("Java analysis", log) {
 						for ((classesFinder, oldClasses, srcs) <- memo) {
