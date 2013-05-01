@@ -18,7 +18,7 @@ package sbt
 */
 
 	import scala.util.parsing.combinator._
-	import org.scalatools.testing.{Fingerprint, AnnotatedFingerprint, TestFingerprint}
+	import testing.{Fingerprint, AnnotatedFingerprint, TestFingerprint}
 	import DiscoveredParser._
 
 sealed abstract class Discovered extends Fingerprint with NotNull

@@ -1,0 +1,19 @@
+#Test the framework will call Runner.done once.
+#Because ScalaTest's runner will report RunCompleted when the run completed, a CustomReporter is 
+#used to report expected ScalaTest's RunCompleted event by writing out to target/, it is then 
+#used to check for their existence, and if the expected event is fired > 1 (which is unexpected), 
+#a xxxx-2 file will be written, thus here we also check for 'absent' of such file.
+#ResourcefulReporter's dispose method will be called in Runner.done also, and it should be called 
+#once only.
+
+> clean
+
+> test
+
+$ exists target/RunCompleted
+
+$ absent target/RunCompleted-2
+
+$ exists target/dispose
+
+$ absent target/dispose2
