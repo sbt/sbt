@@ -10,11 +10,18 @@ import collection.mutable
 
 object ClassToAPI
 {
-	def apply(c: Seq[Class[_]]): api.SourceAPI =
+	def apply(c: Seq[Class[_]]): api.SourceAPI = process(c)._1
+
+	// (api, public inherited classes)
+	def process(c: Seq[Class[_]]): (api.SourceAPI, Set[Class[_]]) =
 	{
 		val pkgs = packages(c).map(p => new api.Package(p))
-		val defs = c.filter(isTopLevel).flatMap(toDefinitions(new mutable.HashMap))
-		new api.SourceAPI(pkgs.toArray, defs.toArray)
+		val cmap = emptyClassMap
+		val defs = c.filter(isTopLevel).flatMap(toDefinitions(cmap))
+		val source = new api.SourceAPI(pkgs.toArray, defs.toArray)
+		cmap.lz.foreach(_.get()) // force thunks to ensure all inherited dependencies are recorded
+		cmap.clear()
+		(source, cmap.inherited.toSet)
 	}
 
 	// Avoiding implicit allocation.
@@ -35,9 +42,13 @@ object ClassToAPI
 	def isTopLevel(c: Class[_]): Boolean =
 		c.getEnclosingClass eq null
 
-	type ClassMap = mutable.Map[String, Seq[api.ClassLike]]
+	final class ClassMap private[sbt](private[sbt] val memo: mutable.Map[String, Seq[api.ClassLike]], private[sbt] val inherited: mutable.Set[Class[_]], private[sbt] val lz: mutable.Buffer[xsbti.api.Lazy[_]]) {
+		def clear() { memo.clear(); inherited.clear(); lz.clear() }
+	}
+	def emptyClassMap: ClassMap = new ClassMap(new mutable.HashMap, new mutable.HashSet, new mutable.ListBuffer)
+
 	def toDefinitions(cmap: ClassMap)(c: Class[_]): Seq[api.ClassLike] =
-		cmap.getOrElseUpdate(c.getName, toDefinitions0(c, cmap))
+		cmap.memo.getOrElseUpdate(c.getName, toDefinitions0(c, cmap))
 	def toDefinitions0(c: Class[_], cmap: ClassMap): Seq[api.ClassLike] =
 	{
 			import api.DefinitionType.{ClassDef, Module, Trait}
@@ -48,13 +59,14 @@ object ClassToAPI
 		val name = c.getName
 		val tpe = if(Modifier.isInterface(c.getModifiers)) Trait else ClassDef
 		lazy val (static, instance) = structure(c, enclPkg, cmap)
-		val cls = new api.ClassLike(tpe, strict(Empty), lzy(instance), emptyStringArray, typeParameters(c.getTypeParameters), name, acc, mods, annots)
-		val stat = new api.ClassLike(Module, strict(Empty), lzy(static), emptyStringArray, emptyTypeParameterArray, name, acc, mods, annots)
+		val cls = new api.ClassLike(tpe, strict(Empty), lzy(instance, cmap), emptyStringArray, typeParameters(c.getTypeParameters), name, acc, mods, annots)
+		val stat = new api.ClassLike(Module, strict(Empty), lzy(static, cmap), emptyStringArray, emptyTypeParameterArray, name, acc, mods, annots)
 		val defs = cls :: stat :: Nil
-		cmap(c.getName) = defs
+		cmap.memo(c.getName) = defs
 		defs
 	}
 
+	/** Returns the (static structure, instance structure, inherited classes) for `c`. */
 	def structure(c: Class[_], enclPkg: Option[String], cmap: ClassMap): (api.Structure, api.Structure) =
 	{
 		val methods = mergeMap(c, c.getDeclaredMethods, c.getMethods, methodToDef(enclPkg))
@@ -62,20 +74,29 @@ object ClassToAPI
 		val constructors = mergeMap(c, c.getDeclaredConstructors, c.getConstructors, constructorToDef(enclPkg))
 		val classes = merge[Class[_]](c, c.getDeclaredClasses, c.getClasses, toDefinitions(cmap), (_: Seq[Class[_]]).partition(isStatic), _.getEnclosingClass != c)
 		val all = (methods ++ fields ++ constructors ++ classes)
-		val parentTypes = parents(c)
-		val instanceStructure = new api.Structure(lzy(parentTypes.toArray), lzy(all.declared.toArray), lzy(all.inherited.toArray))
-		val staticStructure = new api.Structure(lzyEmptyTpeArray, lzy(all.staticDeclared.toArray), lzy(all.staticInherited.toArray))
+		val parentJavaTypes = allSuperTypes(c)
+		if(!Modifier.isPrivate(c.getModifiers))
+			cmap.inherited ++= parentJavaTypes.collect { case c: Class[_] => c }
+		val parentTypes = types(parentJavaTypes)
+		val instanceStructure = new api.Structure(lzyS(parentTypes.toArray), lzyS(all.declared.toArray), lzyS(all.inherited.toArray))
+		val staticStructure = new api.Structure(lzyEmptyTpeArray, lzyS(all.staticDeclared.toArray), lzyS(all.staticInherited.toArray))
 		(staticStructure, instanceStructure)
 	}
+	private[this] def lzyS[T <: AnyRef](t: T): xsbti.api.Lazy[T] = lzy(t)
 	def lzy[T <: AnyRef](t: => T): xsbti.api.Lazy[T] = xsbti.SafeLazy(t)
+	private[this] def lzy[T <: AnyRef](t: => T, cmap: ClassMap): xsbti.api.Lazy[T] = {
+		val s = lzy(t)
+		cmap.lz += s
+		s
+	}
 
 	private val emptyStringArray = new Array[String](0)
 	private val emptyTypeArray = new Array[xsbti.api.Type](0)
 	private val emptyAnnotationArray = new Array[xsbti.api.Annotation](0)
 	private val emptyTypeParameterArray = new Array[xsbti.api.TypeParameter](0)
 	private val emptySimpleTypeArray = new Array[xsbti.api.SimpleType](0)
-	private val lzyEmptyTpeArray = lzy(emptyTypeArray)
-	private val lzyEmptyDefArray = lzy(new Array[xsbti.api.Definition](0))
+	private val lzyEmptyTpeArray = lzyS(emptyTypeArray)
+	private val lzyEmptyDefArray = lzyS(new Array[xsbti.api.Definition](0))
 
 	private def allSuperTypes(t: Type): Seq[Type] =
 	{
@@ -101,6 +122,7 @@ object ClassToAPI
 		accumulate(t).filterNot(_ == null).distinct
 	}
 
+	@deprecated("No longer used", "0.13.0")
 	def parents(c: Class[_]): Seq[api.Type] = types(allSuperTypes(c))
 	def types(ts: Seq[Type]): Array[api.Type] = ts filter (_ ne null) map reference toArray;
 	def upperBounds(ts: Array[Type]): api.Type =
