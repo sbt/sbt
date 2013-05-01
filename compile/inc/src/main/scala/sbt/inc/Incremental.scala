@@ -96,10 +96,10 @@ object Incremental
 		else invalidated
 	}
 
-	// Package objects are fragile: if they depend on an invalidated source, get "class file needed by package is missing" error
+	// Package objects are fragile: if they inherit from an invalidated source, get "class file needed by package is missing" error
 	//  This might be too conservative: we probably only need package objects for packages of invalidated sources.
 	private[this] def invalidatedPackageObjects(invalidated: Set[File], relations: Relations): Set[File] =
-		invalidated flatMap relations.usesInternalSrc filter { _.getName == "package.scala" }
+		invalidated flatMap relations.publicInherited.internal.reverse filter { _.getName == "package.scala" }
 
 	/**
 	* Accepts the sources that were recompiled during the last step and functions
