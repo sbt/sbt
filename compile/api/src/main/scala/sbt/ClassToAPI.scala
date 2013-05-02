@@ -20,8 +20,9 @@ object ClassToAPI
 		val defs = c.filter(isTopLevel).flatMap(toDefinitions(cmap))
 		val source = new api.SourceAPI(pkgs.toArray, defs.toArray)
 		cmap.lz.foreach(_.get()) // force thunks to ensure all inherited dependencies are recorded
+		val inDeps = cmap.inherited.toSet
 		cmap.clear()
-		(source, cmap.inherited.toSet)
+		(source, inDeps)
 	}
 
 	// Avoiding implicit allocation.
