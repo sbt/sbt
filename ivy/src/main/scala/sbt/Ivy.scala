@@ -357,7 +357,7 @@ private object IvySbt
 			override def saveResolvers(descriptor: ModuleDescriptor, metadataResolverName: String, artifactResolverName: String) {}
 
 			def isChanging(dd: DependencyDescriptor, requestedRevisionId: ModuleRevisionId): Boolean =
-				dd.isChanging || requestedRevisionId.getRevision.contains("-SNAPSHOT")
+				!localOnly && (dd.isChanging || requestedRevisionId.getRevision.contains("-SNAPSHOT"))
 		}
 		manager.setArtifactPattern(PluginPattern + manager.getArtifactPattern)
 		manager.setDataFilePattern(PluginPattern + manager.getDataFilePattern)
