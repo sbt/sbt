@@ -257,7 +257,8 @@ private object IvySbt
 			{
 				if(data.getOptions.getLog != LogOptions.LOG_QUIET)
 					Message.info("Resolving " + dd.getDependencyRevisionId + " ...")
-				super.getDependency(dd, data)
+				val gd = super.getDependency(dd, data)
+				resetArtifactResolver(gd)
 			}
 		}
 		newDefault.setName(name)
@@ -308,13 +309,24 @@ private object IvySbt
 		val base = resCacheDir getOrElse settings.getDefaultResolutionCacheBasedir
 		settings.setResolutionCacheManager(new ResolutionCache(base))
 	}
-	private[this] def configureRepositoryCache(settings: IvySettings, localOnly: Boolean)
+	// set the artifact resolver to be the main resolver.
+	// this is because sometimes the artifact resolver saved in the cache is not correct
+	// the common case is for resolved.getArtifactResolver to be inter-project from a different project's publish-local
+	// if there are problems with this, a less aggressive fix might be to only reset the artifact resolver when it is a ProjectResolver
+	// a possible problem is that fetching artifacts is slower, due to the full chain being the artifact resolver instead of the specific resolver
+	private[this] def resetArtifactResolver(resolved: ResolvedModuleRevision): ResolvedModuleRevision =
+		if(resolved eq null)
+			null
+		else
+			new ResolvedModuleRevision(resolved.getResolver, resolved.getResolver, resolved.getDescriptor, resolved.getReport, resolved.isForce)
+
+	private[this] def configureRepositoryCache(settings: IvySettings, localOnly: Boolean) //, artifactResolver: DependencyResolver)
 	{
 		val cacheDir = settings.getDefaultRepositoryCacheBasedir()
 		val manager = new DefaultRepositoryCacheManager("default-cache", settings, cacheDir) {
 			override def findModuleInCache(dd: DependencyDescriptor, revId: ModuleRevisionId, options: CacheMetadataOptions, r: String) = {
-				// ignore the resolver- not ideal, but avoids thrashing.
-				val resolved = super.findModuleInCache(dd,revId,options,null)
+				// ignore and reset the resolver- not ideal, but avoids thrashing.
+				val resolved = resetArtifactResolver(super.findModuleInCache(dd,revId,options,null))
 				// invalidate the cache if the artifact was removed from the local repository
 				if(resolved == null) null
 				else {
@@ -335,7 +347,8 @@ private object IvySbt
 			@throws(classOf[ParseException])
 			override def cacheModuleDescriptor(resolver: DependencyResolver, mdRef: ResolvedResource, dd: DependencyDescriptor, moduleArtifact: IArtifact, downloader: ResourceDownloader, options: CacheMetadataOptions): ResolvedModuleRevision =
 			{
-				val rmr = super.cacheModuleDescriptor(null, mdRef, dd, moduleArtifact, downloader, options)
+				val rmrRaw = super.cacheModuleDescriptor(null, mdRef, dd, moduleArtifact, downloader, options)
+				val rmr = resetArtifactResolver(rmrRaw)
 				val mrid = moduleArtifact.getModuleRevisionId
 				// only handle changing modules whose metadata actually changed.
 				// Typically, the publication date in the metadata has to change to get here.
