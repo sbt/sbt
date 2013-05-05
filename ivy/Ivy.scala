@@ -336,7 +336,7 @@ private object IvySbt
 				rmr
 			}
 			def isChanging(dd: DependencyDescriptor, requestedRevisionId: ModuleRevisionId): Boolean =
-				dd.isChanging || requestedRevisionId.getRevision.contains("-SNAPSHOT")
+				!localOnly && (dd.isChanging || requestedRevisionId.getRevision.contains("-SNAPSHOT"))
 		}
 		manager.setArtifactPattern(PluginPattern + manager.getArtifactPattern)
 		manager.setDataFilePattern(PluginPattern + manager.getDataFilePattern)
