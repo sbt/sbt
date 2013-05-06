@@ -9,9 +9,9 @@ extensions = ['sphinxcontrib.issuetracker', 'sphinx.ext.extlinks', 'howto']
 
 project = 'sbt'
 version = '0.13'
-release = '0.13.0-M1'
+release = '0.13.0-M2'
 scalaVersion = "2.10"
-scalaRelease = "2.10.0"
+scalaRelease = "2.10.1"
 
 # General settings
 
