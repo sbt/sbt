@@ -15,6 +15,8 @@ Features, fixes, changes with compatibility implications (incomplete, please hel
 - The convention for keys is now camelCase only.  Details below.
 - sbt no longer looks for main artifacts for poms with ``packaging="pom"``.  For details, see the :ref:`relevant Library Management section <packaging-pom>` and gh-636.
 - Fixed the default classifier for tests to be ``tests`` for proper Maven compatibility.
+- The global settings and plugins directories are now versioned.  Global settings go in ``~/.sbt/0.13/`` and global plugins in ``~/.sbt/0.13/plugins/`` by default.  Explicit overrides, such as via the ``sbt.global.base`` system property, are still respected.  (gh-735)
+- sbt no longer canonicalizes files passed to scalac.  (gh-723)
 
 Features
 --------
@@ -25,7 +27,10 @@ Features
 - New syntax for settings, tasks, and input tasks.  Details below.
 - Automatically link to external API scaladocs of dependencies by setting ``autoAPIMappings := true``.  This requires at least Scala 2.10.1 and for dependencies to define ``apiURL`` for their scaladoc location.  Mappings may be manually added to the ``apiMappings`` task as well.
 - Support setting Scala home directory temporary using the switch command: ``++ scala-version=/path/to/scala/home``.  The scala-version part is optional, but is used as the version for any managed dependencies.
+- Add ``publishM2`` task for publishing to ``~/.m2/repository``. (gh-485)
+- Use a default root project aggregating all projects if no root is defined.  (gh-697)
 - New API for getting tasks and settings from multiple projects and configurations.  See the new section :ref:`getting values from multiple scopes <multiple-scopes>`.
+- Enhanced test interface for better support of test framework features.  (Details pending.)
 - ``export`` command
 
     * For tasks, prints the contents of the 'export' stream.  By convention, this should be the equivalent command line(s) representation.  ``compile``, ``doc``, and ``console`` show the approximate command lines for their execution.  Classpath tasks print the classpath string suitable for passing as an option.
@@ -35,6 +40,8 @@ Fixes
 -----
 
 - sbt no longer tries to warn on dependency conflicts.  Configure a :ref:`conflict manager <conflict-management>` instead.  (gh-709)
+- Properly handle failure in a multi-command that includes ``reload``. (gh-732)
+- Do not normalize types in the api extraction phase.  (Grzegorz K., gh-736)
 
 Improvements
 ------------
@@ -45,6 +52,10 @@ Improvements
 - Tasks that need a directory for storing cache information can now use the ``cacheDirectory`` method on ``streams``.  This supersedes the ``cacheDirectory`` setting.
 - The environment variables used when forking ``run`` and ``test`` may be set via ``envVars``, which is a ``Task[Map[String,String]]``. (gh-665)
 - Restore class files after an unsuccessful compilation.  This is useful when an error occurs in a later incremental step that requires a fix in the originally changed files.
+- Better auto-generated IDs for default projects.  (gh-554)
+- Fork run directly with 'java' to avoid additional class loader from 'scala' command.  (gh-702)
+- Make autoCompilerPlugins support compiler plugins defined in a internal dependency (only if ``exportJars := true`` due to scalac limitations)
+- Track ancestors of non-private templates and use this information to require fewer, smaller intermediate incremental compilation steps.
 - ``autoCompilerPlugins`` now supports compiler plugins defined in a internal dependency.  The plugin project must define ``exportJars := true``.  Depend on the plugin with ``...dependsOn(... % Configurations.CompilerPlugin)``.
 
 Other
