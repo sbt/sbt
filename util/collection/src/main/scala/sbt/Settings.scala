@@ -73,12 +73,13 @@ trait Init[Scope]
 	def uniform[S,T](inputs: Seq[Initialize[S]])(f: Seq[S] => T): Initialize[T] =
 		new Apply[({ type l[L[x]] = List[L[S]] })#l, T](f, inputs.toList, AList.seq[S])
 
-	/** Constructs a derived setting that will be automatically defined in every scope where one of its dependencies is explicitly defined.
+	/** Constructs a derived setting that will be automatically defined in every scope where one of its dependencies 
+   * is explicitly defined and the where the scope matches `filter`.
 	* A setting initialized with dynamic dependencies is only allowed if `allowDynamic` is true.
-	* Only the static dependencies are tracked, however.  */
-	final def derive[T](s: Setting[T], allowDynamic: Boolean = false): Setting[T] = {
+	* Only the static dependencies are tracked, however. */
+	final def derive[T](s: Setting[T], allowDynamic: Boolean = false, filter: Scope => Boolean = const(true)): Setting[T] = {
 		deriveAllowed(s, allowDynamic) foreach error
-		new DerivedSetting[T](s.key, s.init, s.pos)
+		new DerivedSetting[T](s.key, s.init, s.pos, filter)
 	}
 	def deriveAllowed[T](s: Setting[T], allowDynamic: Boolean): Option[String] = s.init match {
 		case _: Bind[_,_] if !allowDynamic => Some("Cannot derive from dynamic dependencies.")
@@ -98,15 +99,15 @@ trait Init[Scope]
 	private[this] def derive(init: Seq[Setting[_]]): Seq[Setting[_]] =
 	{
 		import collection.mutable
-		val (derived, defs) = init.partition(_.isDerived)
-		final class Derived[T](val setting: Setting[T]) { val inScopes = new mutable.HashSet[Scope] }
+		val (derived, defs) = Util.separate[Setting[_],DerivedSetting[_],Setting[_]](init) { case d: DerivedSetting[_] => Left(d); case s => Right(s) }
+		final class Derived[T](val setting: DerivedSetting[T]) { val inScopes = new mutable.HashSet[Scope] }
 		val derivs = new mutable.HashMap[AttributeKey[_], mutable.ListBuffer[Derived[_]]]
 		for(s <- derived; d <- s.dependencies)
 			derivs.getOrElseUpdate(d.key, new mutable.ListBuffer) += new Derived(s)
 
 		val deriveFor = (sk: ScopedKey[_]) => {
 			val derivedForKey: List[Derived[_]] = derivs.get(sk.key).toList.flatten
-			derivedForKey.filter(_.inScopes add sk.scope).map(_.setting setScope sk.scope)
+			derivedForKey.filter(d => d.inScopes.add(sk.scope) && d.setting.filter(sk.scope)).map(_.setting setScope sk.scope)
 		}
 
 		val processed = new mutable.HashSet[ScopedKey[_]]
@@ -322,8 +323,8 @@ trait Init[Scope]
 		protected[sbt] def isDerived: Boolean = false
 		private[sbt] def setScope(s: Scope): Setting[T] = make(key.copy(scope = s), init.mapReferenced(mapScope(const(s))), pos)
 	}
-	private[Init] final class DerivedSetting[T](sk: ScopedKey[T], i: Initialize[T], p: SourcePosition) extends Setting[T](sk, i, p) {
-		override def make[T](key: ScopedKey[T], init: Initialize[T], pos: SourcePosition): Setting[T] = new DerivedSetting[T](key, init, pos)
+	private[Init] final class DerivedSetting[T](sk: ScopedKey[T], i: Initialize[T], p: SourcePosition, val filter: Scope => Boolean) extends Setting[T](sk, i, p) {
+		override def make[T](key: ScopedKey[T], init: Initialize[T], pos: SourcePosition): Setting[T] = new DerivedSetting[T](key, init, pos, filter)
 		protected[sbt] override def isDerived: Boolean = true
 	}
 	
