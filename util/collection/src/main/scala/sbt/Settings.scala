@@ -66,12 +66,21 @@ trait Init[Scope]
 	def value[T](value: => T): Initialize[T] = pure(value _)
 	def pure[T](value: () => T): Initialize[T] = new Value(value)
 	def optional[T,U](i: Initialize[T])(f: Option[T] => U): Initialize[U] = new Optional(Some(i), f)
-	def update[T](key: ScopedKey[T])(f: T => T): Setting[T] = new Setting[T](key, map(key)(f), NoPosition)
+	def update[T](key: ScopedKey[T])(f: T => T): Setting[T] = setting[T](key, map(key)(f), NoPosition)
 	def bind[S,T](in: Initialize[S])(f: S => Initialize[T]): Initialize[T] = new Bind(f, in)
 	def map[S,T](in: Initialize[S])(f: S => T): Initialize[T] = new Apply[ ({ type l[L[x]] = L[S] })#l, T](f, in, AList.single[S])
 	def app[K[L[x]], T](inputs: K[Initialize])(f: K[Id] => T)(implicit alist: AList[K]): Initialize[T] = new Apply[K, T](f, inputs, alist)
 	def uniform[S,T](inputs: Seq[Initialize[S]])(f: Seq[S] => T): Initialize[T] =
 		new Apply[({ type l[L[x]] = List[L[S]] })#l, T](f, inputs.toList, AList.seq[S])
+
+	def derive[T](s: Setting[T]): Setting[T] = {
+		deriveAllowed(s) foreach error
+		new DerivedSetting[T](s.key, s.init, s.pos)
+	}
+	def deriveAllowed[T](s: Setting[T]): Option[String] = s.init match {
+		case _: Bind[_,_] => Some("Cannot derive from dynamic dependencies.")
+		case _ => None
+	}
 
 	def empty(implicit delegates: Scope => Seq[Scope]): Settings[Scope] = new Settings0(Map.empty, delegates)
 	def asTransform(s: Settings[Scope]): ScopedKey ~> Id = new (ScopedKey ~> Id) {
@@ -83,10 +92,37 @@ trait Init[Scope]
 		def apply[T](k: ScopedKey[T]): ScopedKey[T] = k.copy(scope = f(k.scope))
 	}
 
+	private[this] def plain[T](s: Setting[T]): Setting[T] = if(s.isDerived) new Setting(s.key, s.init, s.pos) else s
+	private[this] def derive(init: Seq[Setting[_]]): Seq[Setting[_]] =
+	{
+		import collection.mutable
+		val (derived, defs) = init.partition(_.isDerived)
+		val derivs = new mutable.HashMap[AttributeKey[_], mutable.ListBuffer[Setting[_]]]
+		for(s <- derived; d <- s.dependencies)
+			derivs.getOrElseUpdate(d.key, new mutable.ListBuffer) += plain(s)
+
+		val deriveFor = (sk: ScopedKey[_]) =>
+			derivs.get(sk.key).toList.flatMap(_.toList).map(_.setScope(sk.scope))
+
+		val processed = new mutable.HashSet[ScopedKey[_]]
+		val out = new mutable.ListBuffer[Setting[_]]
+		def process(rem: List[Setting[_]]): Unit = rem match {
+			case s :: ss =>
+				val sk = s.key
+				val ds = if(processed.add(sk)) deriveFor(sk) else Nil
+				out ++= ds
+				process(ds ::: ss)
+			case Nil => 
+		}
+		process(defs.toList)
+		out.toList ++ defs
+	}
+		
 	def compiled(init: Seq[Setting[_]], actual: Boolean = true)(implicit delegates: Scope => Seq[Scope], scopeLocal: ScopeLocal, display: Show[ScopedKey[_]]): CompiledMap =
 	{
-		// prepend per-scope settings 
-		val withLocal = addLocal(init)(scopeLocal)
+		val derived = derive(init)
+		// prepend per-scope settings
+		val withLocal = addLocal(derived)(scopeLocal)
 		// group by Scope/Key, dropping dead initializations
 		val sMap: ScopedMap = grouped(withLocal)
 		// delegate references to undefined values according to 'delegates'
@@ -256,20 +292,33 @@ trait Init[Scope]
 		def settings: Seq[Setting[_]]
 	}
 	final class SettingList(val settings: Seq[Setting[_]]) extends SettingsDefinition
-	final class Setting[T](val key: ScopedKey[T], val init: Initialize[T], val pos: SourcePosition) extends SettingsDefinition
+	sealed class Setting[T] private[Init](val key: ScopedKey[T], val init: Initialize[T], val pos: SourcePosition) extends SettingsDefinition
 	{
 		def settings = this :: Nil
 		def definitive: Boolean = !init.dependencies.contains(key)
 		def dependencies: Seq[ScopedKey[_]] = remove(init.dependencies, key)
-		def mapReferenced(g: MapScoped): Setting[T] = new Setting(key, init mapReferenced g, pos)
-		def validateReferenced(g: ValidateRef): Either[Seq[Undefined], Setting[T]] = (init validateReferenced g).right.map(newI => new Setting(key, newI, pos))
-		def mapKey(g: MapScoped): Setting[T] = new Setting(g(key), init, pos)
-		def mapInit(f: (ScopedKey[T], T) => T): Setting[T] = new Setting(key, init(t => f(key,t)), pos)
-		def mapConstant(g: MapConstant): Setting[T] = new Setting(key, init mapConstant g, pos)
-		def withPos(pos: SourcePosition) = new Setting(key, init, pos)
-		private[sbt] def mapInitialize(f: Initialize[T] => Initialize[T]): Setting[T] = new Setting(key, f(init), pos)
+		def mapReferenced(g: MapScoped): Setting[T] = make(key, init mapReferenced g, pos)
+		def validateReferenced(g: ValidateRef): Either[Seq[Undefined], Setting[T]] = (init validateReferenced g).right.map(newI => make(key, newI, pos))
+		def mapKey(g: MapScoped): Setting[T] = make(g(key), init, pos)
+		def mapInit(f: (ScopedKey[T], T) => T): Setting[T] = make(key, init(t => f(key,t)), pos)
+		def mapConstant(g: MapConstant): Setting[T] = make(key, init mapConstant g, pos)
+		def withPos(pos: SourcePosition) = make(key, init, pos)
+		def positionString: Option[String] = pos match {
+			case pos: FilePosition => Some(pos.path + ":" + pos.startLine)
+			case NoPosition => None
+		}
+		private[sbt] def mapInitialize(f: Initialize[T] => Initialize[T]): Setting[T] = make(key, f(init), pos)
 		override def toString = "setting(" + key + ") at " + pos
+
+		protected[this] def make[T](key: ScopedKey[T], init: Initialize[T], pos: SourcePosition): Setting[T] = new Setting[T](key, init, pos)
+		protected[sbt] def isDerived: Boolean = false
+		private[sbt] def setScope(s: Scope): Setting[T] = make(key.copy(scope = s), init.mapReferenced(mapScope(const(s))), pos)
 	}
+	private[Init] final class DerivedSetting[T](sk: ScopedKey[T], i: Initialize[T], p: SourcePosition) extends Setting[T](sk, i, p) {
+		override def make[T](key: ScopedKey[T], init: Initialize[T], pos: SourcePosition): Setting[T] = new DerivedSetting[T](key, init, pos)
+		protected[sbt] override def isDerived: Boolean = true
+	}
+	
 
 	private[this] def handleUndefined[T](vr: ValidatedInit[T]): Initialize[T] = vr match {
 		case Left(undefs) => throw new RuntimeUndefined(undefs)

@@ -3,6 +3,7 @@ package sbt
 	import Types.const
 	import complete.Parser
 	import java.io.File
+	import Scope.ThisScope
 
 /** A concrete settings system that uses `sbt.Scope` for the scope type. */
 object Def extends Init[Scope] with TaskMacroExtra
@@ -35,6 +36,17 @@ object Def extends Init[Scope] with TaskMacroExtra
 		case Some(c) => c + s + scala.Console.RESET
 		case None => s
 	}
+		
+	override def deriveAllowed[T](s: Setting[T]): Option[String] = 
+		super.deriveAllowed(s) orElse
+		(if(s.key.scope != ThisScope) Some(s"Scope cannot be defined for ${definedSettingString(s)}") else None ) orElse
+		s.dependencies.find(k => k.scope != ThisScope).map(k => s"Scope cannot be defined for dependency ${k.key.label} of ${definedSettingString(s)}")
+
+	private[this] def definedSettingString(s: Setting[_]): String =
+		s"derived setting ${s.key.key.label}${positionString(s)}"
+	private[this] def positionString(s: Setting[_]): String =
+		s.positionString match { case None => ""; case Some(pos) => s" defined at $pos" }
+
 
 	/** A default Parser for splitting input into space-separated arguments.
 	* `argLabel` is an optional, fixed label shown for an argument during tab completion.*/

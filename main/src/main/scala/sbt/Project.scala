@@ -270,11 +270,7 @@ object Project extends ProjectExtra
 		val definingScoped = definingScope match { case Some(sc) => ScopedKey(sc, key); case None => scoped }
 		val comp = Def.compiled(structure.settings, actual)(structure.delegates, structure.scopeLocal, display)
 		val definedAt = comp get definingScoped map { c =>
-			def fmt(s: Def.Setting[_]) = s.pos match {
-				case pos: FilePosition => (pos.path + ":" + pos.startLine) :: Nil
-				case NoPosition => Nil
-			}
-			val posDefined = c.settings.flatMap(fmt)
+			val posDefined = c.settings.flatMap(_.positionString.toList)
 			if (posDefined.size > 0) {
 				val header = if (posDefined.size == c.settings.size) "Defined at:" else
 					"Some of the defining occurrences:"
