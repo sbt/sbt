@@ -1054,7 +1054,7 @@ object Classpaths
 		(fullResolvers, ivyPaths, otherResolvers, moduleConfigurations, offline, checksums in update, appConfiguration, target, streams) map { (rs, paths, other, moduleConfs, off, check, app, t, s) =>
 			warnResolversConflict(rs ++: other, s.log)
 			val resCacheDir = t / "resolution-cache"
-			new InlineIvyConfiguration(paths, rs, other, moduleConfs, off, Some(lock(app)), check, Some(resCacheDir), s.log)
+			new InlineIvyConfiguration(paths, rs, other, moduleConfs, off, Option(lock(app)), check, Some(resCacheDir), s.log)
 		}
 
 		import java.util.LinkedHashSet
@@ -1287,7 +1287,7 @@ trait BuildExtra extends BuildCommon
 		ivyConfiguration <<= (uri zipWith other) { case (u, otherTask) =>
 			otherTask map { case (base, app, pr, s) =>
 				val extraResolvers = if(addMultiResolver) pr :: Nil else Nil
-				new ExternalIvyConfiguration(base, u, Some(lock(app)), extraResolvers, s.log) }
+				new ExternalIvyConfiguration(base, u, Option(lock(app)), extraResolvers, s.log) }
 		}
 	}
 	def externalIvyFile(file: Initialize[File] = baseDirectory / "ivy.xml", iScala: Initialize[Option[IvyScala]] = ivyScala): Setting[Task[ModuleSettings]] =
