@@ -37,8 +37,8 @@ object Def extends Init[Scope] with TaskMacroExtra
 		case None => s
 	}
 		
-	override def deriveAllowed[T](s: Setting[T]): Option[String] = 
-		super.deriveAllowed(s) orElse
+	override def deriveAllowed[T](s: Setting[T], allowDynamic: Boolean): Option[String] = 
+		super.deriveAllowed(s, allowDynamic) orElse
 		(if(s.key.scope != ThisScope) Some(s"Scope cannot be defined for ${definedSettingString(s)}") else None ) orElse
 		s.dependencies.find(k => k.scope != ThisScope).map(k => s"Scope cannot be defined for dependency ${k.key.label} of ${definedSettingString(s)}")
 

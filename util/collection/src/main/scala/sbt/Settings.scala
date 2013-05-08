@@ -73,12 +73,15 @@ trait Init[Scope]
 	def uniform[S,T](inputs: Seq[Initialize[S]])(f: Seq[S] => T): Initialize[T] =
 		new Apply[({ type l[L[x]] = List[L[S]] })#l, T](f, inputs.toList, AList.seq[S])
 
-	def derive[T](s: Setting[T]): Setting[T] = {
-		deriveAllowed(s) foreach error
+	/** Constructs a derived setting that will be automatically defined in every scope where one of its dependencies is explicitly defined.
+	* A setting initialized with dynamic dependencies is only allowed if `allowDynamic` is true.
+	* Only the static dependencies are tracked, however.  */
+	final def derive[T](s: Setting[T], allowDynamic: Boolean = false): Setting[T] = {
+		deriveAllowed(s, allowDynamic) foreach error
 		new DerivedSetting[T](s.key, s.init, s.pos)
 	}
-	def deriveAllowed[T](s: Setting[T]): Option[String] = s.init match {
-		case _: Bind[_,_] => Some("Cannot derive from dynamic dependencies.")
+	def deriveAllowed[T](s: Setting[T], allowDynamic: Boolean): Option[String] = s.init match {
+		case _: Bind[_,_] if !allowDynamic => Some("Cannot derive from dynamic dependencies.")
 		case _ => None
 	}
 
