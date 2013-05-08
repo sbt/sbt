@@ -92,14 +92,13 @@ trait Init[Scope]
 		def apply[T](k: ScopedKey[T]): ScopedKey[T] = k.copy(scope = f(k.scope))
 	}
 
-	private[this] def plain[T](s: Setting[T]): Setting[T] = if(s.isDerived) new Setting(s.key, s.init, s.pos) else s
 	private[this] def derive(init: Seq[Setting[_]]): Seq[Setting[_]] =
 	{
 		import collection.mutable
 		val (derived, defs) = init.partition(_.isDerived)
 		val derivs = new mutable.HashMap[AttributeKey[_], mutable.ListBuffer[Setting[_]]]
 		for(s <- derived; d <- s.dependencies)
-			derivs.getOrElseUpdate(d.key, new mutable.ListBuffer) += plain(s)
+			derivs.getOrElseUpdate(d.key, new mutable.ListBuffer) += s
 
 		val deriveFor = (sk: ScopedKey[_]) =>
 			derivs.get(sk.key).toList.flatMap(_.toList).map(_.setScope(sk.scope))
@@ -117,7 +116,7 @@ trait Init[Scope]
 		process(defs.toList)
 		out.toList ++ defs
 	}
-		
+
 	def compiled(init: Seq[Setting[_]], actual: Boolean = true)(implicit delegates: Scope => Seq[Scope], scopeLocal: ScopeLocal, display: Show[ScopedKey[_]]): CompiledMap =
 	{
 		val derived = derive(init)
