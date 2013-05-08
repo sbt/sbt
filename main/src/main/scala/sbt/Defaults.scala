@@ -49,19 +49,20 @@ object Defaults extends BuildCommon
 		val m = (for(a <- cp; an <- a.metadata get Keys.analysis) yield (a.data, an) ).toMap
 		m.get _
 	}
+	private[this] def globalDefaults(ss: Seq[Setting[_]]): Seq[Setting[_]] = Def.defaultSettings(inScope(GlobalScope)(ss))
 
 	def buildCore: Seq[Setting[_]] = thisBuildCore ++ globalCore
 	def thisBuildCore: Seq[Setting[_]] = inScope(GlobalScope.copy(project = Select(ThisBuild)))(Seq(
 		managedDirectory := baseDirectory.value / "lib_managed"
 	))
-	def globalCore: Seq[Setting[_]] = inScope(GlobalScope)(defaultTestTasks(test) ++ defaultTestTasks(testOnly) ++ defaultTestTasks(testQuick) ++ Seq(
+	lazy val globalCore: Seq[Setting[_]] = globalDefaults(defaultTestTasks(test) ++ defaultTestTasks(testOnly) ++ defaultTestTasks(testQuick) ++ Seq(
 		compilerCache := state.value get Keys.stateCompilerCache getOrElse compiler.CompilerCache.fresh,
 		crossVersion :== CrossVersion.Disabled,
 		scalaOrganization :== ScalaArtifacts.Organization,
-		buildDependencies <<= buildDependencies or Classpaths.constructBuildDependencies,
+		buildDependencies <<= Classpaths.constructBuildDependencies,
 		taskTemporaryDirectory := { val dir = IO.createTemporaryDirectory; dir.deleteOnExit(); dir },
 		onComplete := { val dir = taskTemporaryDirectory.value; () => IO.delete(dir); IO.createDirectory(dir) },
-		concurrentRestrictions <<= concurrentRestrictions or defaultRestrictions,
+		concurrentRestrictions <<= defaultRestrictions,
 		parallelExecution :== true,
 		sbtVersion := appConfiguration.value.provider.id.version,
 		sbtBinaryVersion := binarySbtVersion(sbtVersion.value),
@@ -76,11 +77,11 @@ object Defaults extends BuildCommon
 		apiMappings := Map.empty,
 		autoScalaLibrary :== true,
 		managedScalaInstance :== true,
-		onLoad <<= onLoad ?? idFun[State],
-		onUnload <<= (onUnload ?? idFun[State]),
+		onLoad := idFun[State],
+		onUnload := idFun[State],
 		onUnload := { s => try onUnload.value(s) finally IO.delete(taskTemporaryDirectory.value) },
-		watchingMessage <<= watchingMessage ?? Watched.defaultWatchingMessage,
-		triggeredMessage <<= triggeredMessage ?? Watched.defaultTriggeredMessage,
+		watchingMessage := Watched.defaultWatchingMessage,
+		triggeredMessage := Watched.defaultTriggeredMessage,
 		definesClass :== FileValueCache(Locate.definesClass _ ).get,
 		trapExit :== false,
 		trapExit in run :== true,
@@ -193,21 +194,24 @@ object Defaults extends BuildCommon
 		}
 	)
 
-	def compileBase = inTask(console)(compilersSetting :: Nil) ++ Seq(
-		classpathOptions in GlobalScope :== ClasspathOptions.boot,
-		classpathOptions in GlobalScope in console :== ClasspathOptions.repl,
-		compileOrder in GlobalScope :== CompileOrder.Mixed,
+	def compileBase = inTask(console)(compilersSetting :: Nil) ++ compileBaseGlobal ++ Seq(
 		compilersSetting,
-		javacOptions in GlobalScope :== Nil,
-		scalacOptions in GlobalScope :== Nil,
 		incOptions in GlobalScope := sbt.inc.IncOptions.defaultTransactional(crossTarget.value.getParentFile / "classes.bak"),
 		scalaInstance <<= scalaInstanceTask,
-		scalaVersion in GlobalScope := appConfiguration.value.provider.scalaProvider.version,
-		scalaBinaryVersion in GlobalScope := binaryScalaVersion(scalaVersion.value),
 		crossVersion := (if(crossPaths.value) CrossVersion.binary else CrossVersion.Disabled),
-		crossScalaVersions in GlobalScope := Seq(scalaVersion.value),
 		crossTarget := makeCrossTarget(target.value, scalaBinaryVersion.value, sbtBinaryVersion.value, sbtPlugin.value, crossPaths.value)
 	)
+	// must be a val: duplication detected by object identity
+	private[this] lazy val compileBaseGlobal: Seq[Setting[_]] = globalDefaults(Seq(
+		classpathOptions :== ClasspathOptions.boot,
+		classpathOptions in console :== ClasspathOptions.repl,
+		compileOrder :== CompileOrder.Mixed,
+		javacOptions :== Nil,
+		scalacOptions :== Nil,
+		scalaVersion := appConfiguration.value.provider.scalaProvider.version,
+		scalaBinaryVersion := binaryScalaVersion(scalaVersion.value),
+		crossScalaVersions := Seq(scalaVersion.value)
+	))
 	def makeCrossTarget(t: File, sv: String, sbtv: String, plugin: Boolean, cross: Boolean): File =
 	{
 		val scalaBase = if(cross) t / ("scala-" + sv) else t
@@ -215,9 +219,7 @@ object Defaults extends BuildCommon
 	}
 	def compilersSetting = compilers := Compiler.compilers(scalaInstance.value, classpathOptions.value, javaHome.value)(appConfiguration.value, streams.value.log)
 
-	lazy val configTasks = docTaskSettings(doc) ++ compileTaskSettings ++ compileInputsSettings ++ Seq(
-		initialCommands in GlobalScope :== "",
-		cleanupCommands in GlobalScope :== "",
+	lazy val configTasks = docTaskSettings(doc) ++ compileTaskSettings ++ compileInputsSettings ++ configGlobal ++ Seq(
 		compile <<= compileTask tag(Tags.Compile, Tags.CPU),
 		printWarnings <<= printWarningsTask,
 		compileIncSetup <<= compileIncSetupTask,
@@ -233,6 +235,10 @@ object Defaults extends BuildCommon
 		runMain <<= runMainTask(fullClasspath, runner in run),
 		copyResources <<= copyResourcesTask
 	)
+	private[this] lazy val configGlobal = globalDefaults(Seq(
+		initialCommands :== "",
+		cleanupCommands :== ""
+	))
 
 	lazy val projectTasks: Seq[Setting[_]] = Seq(
 		cleanFiles := Seq(managedDirectory.value, target.value),
