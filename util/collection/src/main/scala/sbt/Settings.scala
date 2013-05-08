@@ -79,12 +79,21 @@ trait Init[Scope]
 	* Only the static dependencies are tracked, however. */
 	final def derive[T](s: Setting[T], allowDynamic: Boolean = false, filter: Scope => Boolean = const(true)): Setting[T] = {
 		deriveAllowed(s, allowDynamic) foreach error
-		new DerivedSetting[T](s.key, s.init, s.pos, filter)
+		new DerivedSetting[T](s.key, s.init, s.pos, filter, nextDefaultID())
 	}
 	def deriveAllowed[T](s: Setting[T], allowDynamic: Boolean): Option[String] = s.init match {
 		case _: Bind[_,_] if !allowDynamic => Some("Cannot derive from dynamic dependencies.")
 		case _ => None
 	}
+	// id is used for equality
+	private[sbt] final def defaultSetting[T](s: Setting[T]): Setting[T] = s match {
+		case _: DefaultSetting[_] | _: DerivedSetting[_] => s
+		case _ => new DefaultSetting[T](s.key, s.init, s.pos, nextDefaultID())
+	}
+	private[sbt] def defaultSettings(ss: Seq[Setting[_]]): Seq[Setting[_]] = ss.map(s => defaultSetting(s))
+	private[this] final val nextID = new java.util.concurrent.atomic.AtomicLong
+	private[this] final def nextDefaultID(): Long = nextID.incrementAndGet()
+
 
 	def empty(implicit delegates: Scope => Seq[Scope]): Settings[Scope] = new Settings0(Map.empty, delegates)
 	def asTransform(s: Settings[Scope]): ScopedKey ~> Id = new (ScopedKey ~> Id) {
@@ -123,11 +132,17 @@ trait Init[Scope]
 		process(defs.toList)
 		out.toList ++ defs
 	}
+	private[this] def applyDefaults(ss: Seq[Setting[_]]): Seq[Setting[_]] =
+	{
+		val (defaults, others) = Util.separate[Setting[_], DefaultSetting[_], Setting[_]](ss) { case u: DefaultSetting[_] => Left(u); case s => Right(s) }
+		defaults.distinct ++ others
+	}
 
 	def compiled(init: Seq[Setting[_]], actual: Boolean = true)(implicit delegates: Scope => Seq[Scope], scopeLocal: ScopeLocal, display: Show[ScopedKey[_]]): CompiledMap =
 	{
+		val initDefaults = applyDefaults(init)
 		// inject derived settings into scopes where their dependencies are directly defined
-		val derived = derive(init)
+		val derived = derive(initDefaults)
 		// prepend per-scope settings
 		val withLocal = addLocal(derived)(scopeLocal)
 		// group by Scope/Key, dropping dead initializations
@@ -323,9 +338,16 @@ trait Init[Scope]
 		protected[sbt] def isDerived: Boolean = false
 		private[sbt] def setScope(s: Scope): Setting[T] = make(key.copy(scope = s), init.mapReferenced(mapScope(const(s))), pos)
 	}
-	private[Init] final class DerivedSetting[T](sk: ScopedKey[T], i: Initialize[T], p: SourcePosition, val filter: Scope => Boolean) extends Setting[T](sk, i, p) {
-		override def make[T](key: ScopedKey[T], init: Initialize[T], pos: SourcePosition): Setting[T] = new DerivedSetting[T](key, init, pos, filter)
+	private[Init] final class DerivedSetting[T](sk: ScopedKey[T], i: Initialize[T], p: SourcePosition, val filter: Scope => Boolean, id: Long) extends DefaultSetting[T](sk, i, p, id) {
+		override def make[T](key: ScopedKey[T], init: Initialize[T], pos: SourcePosition): Setting[T] = new DerivedSetting[T](key, init, pos, filter, id)
 		protected[sbt] override def isDerived: Boolean = true
+	}
+	// Only keep the first occurence of this setting and move it to the front so that it has lower precedence than non-defaults.
+	//  This is intended for internal sbt use only, where alternatives like Plugin.globalSettings are not available.
+	private[Init] sealed class DefaultSetting[T](sk: ScopedKey[T], i: Initialize[T], p: SourcePosition, val id: Long) extends Setting[T](sk, i, p) {
+		override def make[T](key: ScopedKey[T], init: Initialize[T], pos: SourcePosition): Setting[T] = new DefaultSetting[T](key, init, pos, id)
+		override final def hashCode = id.hashCode
+		override final def equals(o: Any): Boolean = o match { case d: DefaultSetting[_] => d.id == id; case _ => false }
 	}
 	
 
