@@ -1,0 +1,6 @@
+> check
+
+# verify that 'set every' overrides derived settings
+> 'set every TaskKey[String]("customD") := "every"'
+
+> checkEvery
