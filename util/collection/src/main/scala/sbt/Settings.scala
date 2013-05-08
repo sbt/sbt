@@ -96,12 +96,15 @@ trait Init[Scope]
 	{
 		import collection.mutable
 		val (derived, defs) = init.partition(_.isDerived)
-		val derivs = new mutable.HashMap[AttributeKey[_], mutable.ListBuffer[Setting[_]]]
+		final class Derived[T](val setting: Setting[T]) { val inScopes = new mutable.HashSet[Scope] }
+		val derivs = new mutable.HashMap[AttributeKey[_], mutable.ListBuffer[Derived[_]]]
 		for(s <- derived; d <- s.dependencies)
-			derivs.getOrElseUpdate(d.key, new mutable.ListBuffer) += s
+			derivs.getOrElseUpdate(d.key, new mutable.ListBuffer) += new Derived(s)
 
-		val deriveFor = (sk: ScopedKey[_]) =>
-			derivs.get(sk.key).toList.flatMap(_.toList).map(_.setScope(sk.scope))
+		val deriveFor = (sk: ScopedKey[_]) => {
+			val derivedForKey: List[Derived[_]] = derivs.get(sk.key).toList.flatten
+			derivedForKey.filter(_.inScopes add sk.scope).map(_.setting setScope sk.scope)
+		}
 
 		val processed = new mutable.HashSet[ScopedKey[_]]
 		val out = new mutable.ListBuffer[Setting[_]]
@@ -119,6 +122,7 @@ trait Init[Scope]
 
 	def compiled(init: Seq[Setting[_]], actual: Boolean = true)(implicit delegates: Scope => Seq[Scope], scopeLocal: ScopeLocal, display: Show[ScopedKey[_]]): CompiledMap =
 	{
+		// inject derived settings into scopes where their dependencies are directly defined
 		val derived = derive(init)
 		// prepend per-scope settings
 		val withLocal = addLocal(derived)(scopeLocal)
