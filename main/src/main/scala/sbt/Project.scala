@@ -9,7 +9,7 @@ package sbt
 	import Keys.{appConfiguration, stateBuildStructure, commands, configuration, historyPath, projectCommand, sessionSettings, shellPrompt, thisProject, thisProjectRef, watch}
 	import Scope.{GlobalScope,ThisScope}
 	import Def.{Flattened, Initialize, ScopedKey, Setting}
-	import Types.idFun
+	import Types.{const,idFun}
 	import complete.DefaultParsers
 
 	import language.experimental.macros
@@ -281,22 +281,35 @@ object Project extends ProjectExtra
 
 		val cMap = Def.flattenLocals(comp)
 		val related = cMap.keys.filter(k => k.key == key && k.scope != scope)
+		def derivedDependencies(c: ScopedKey[_]): List[ScopedKey[_]] =
+			comp.get(c).map(_.settings.flatMap(s => if(s.isDerived) s.dependencies else Nil)).toList.flatten
+
 		val depends = cMap.get(scoped) match { case Some(c) => c.dependencies.toSet; case None => Set.empty }
+		val derivedDepends: Set[ScopedKey[_]] = derivedDependencies(definingScoped).toSet
 
 		val reverse = reverseDependencies(cMap, scoped)
-		def printScopes(label: String, scopes: Iterable[ScopedKey[_]], max: Int = Int.MaxValue) =
+		val derivedReverse = reverse.filter(r => derivedDependencies(r).contains(definingScoped) ).toSet
+
+		def printDepScopes(baseLabel: String, derivedLabel: String, scopes: Iterable[ScopedKey[_]], derived: Set[ScopedKey[_]]): String =
+		{
+			val label = s"$baseLabel${if(derived.isEmpty) "" else s" (D=$derivedLabel)"}"
+			val prefix: ScopedKey[_] => String = if(derived.isEmpty) const("") else sk => if(derived(sk)) "D " else "  "
+			printScopes(label, scopes, prefix=prefix)
+		}
+
+		def printScopes(label: String, scopes: Iterable[ScopedKey[_]], max: Int = Int.MaxValue, prefix: ScopedKey[_] => String = const("")) =
 			if(scopes.isEmpty) ""
 			else {
 				val (limited, more) = if(scopes.size <= max) (scopes, "\n") else (scopes.take(max), "\n...\n")
-				limited.map(display.apply).mkString(label + ":\n\t", "\n\t", more)
+				limited.map(sk => prefix(sk) + display(sk)).mkString(label + ":\n\t", "\n\t", more)
 			}
 
 		data + "\n" +
 			description +
 			providedBy +
 			definedAt +
-			printScopes("Dependencies", depends) +
-			printScopes("Reverse dependencies", reverse) +
+			printDepScopes("Dependencies", "derived from", depends, derivedDepends) +
+			printDepScopes("Reverse dependencies", "derives", reverse, derivedReverse) +
 			printScopes("Delegates", delegates(structure, scope, key)) +
 			printScopes("Related", related, 10)
 	}
