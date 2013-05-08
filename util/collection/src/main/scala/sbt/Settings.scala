@@ -168,12 +168,12 @@ trait Init[Scope]
 		
 	def delegate(sMap: ScopedMap)(implicit delegates: Scope => Seq[Scope], display: Show[ScopedKey[_]]): ScopedMap =
 	{
-		def refMap(refKey: ScopedKey[_], isFirst: Boolean) = new ValidateRef { def apply[T](k: ScopedKey[T]) =
-			delegateForKey(sMap, k, delegates(k.scope), refKey, isFirst)
+		def refMap(refKey: ScopedKey[_], isFirst: Boolean, derived: Boolean) = new ValidateRef { def apply[T](k: ScopedKey[T]) =
+			delegateForKey(sMap, k, delegates(k.scope), refKey, isFirst, derived)
 		}
 		type ValidatedSettings[T] = Either[Seq[Undefined], SettingSeq[T]]
 		val f = new (SettingSeq ~> ValidatedSettings) { def apply[T](ks: Seq[Setting[T]]) = {
-			val validated = ks.zipWithIndex map { case (s,i) => s validateReferenced refMap(s.key, i == 0) }
+			val validated = ks.zipWithIndex map { case (s,i) => s validateReferenced refMap(s.key, i == 0, s.isDerived) }
 			val (undefs, valid) = Util separateE validated
 			if(undefs.isEmpty) Right(valid) else Left(undefs.flatten)
 		}}
@@ -184,11 +184,11 @@ trait Init[Scope]
 		else
 			throw Uninitialized(sMap.keys.toSeq, delegates, undefineds.values.flatten.toList, false)
 	}
-	private[this] def delegateForKey[T](sMap: ScopedMap, k: ScopedKey[T], scopes: Seq[Scope], refKey: ScopedKey[_], isFirst: Boolean): Either[Undefined, ScopedKey[T]] = 
+	private[this] def delegateForKey[T](sMap: ScopedMap, k: ScopedKey[T], scopes: Seq[Scope], refKey: ScopedKey[_], isFirst: Boolean, derived: Boolean): Either[Undefined, ScopedKey[T]] = 
 	{
 		def resolve(search: Seq[Scope]): Either[Undefined, ScopedKey[T]] =
 			search match {
-				case Seq() => Left(Undefined(refKey, k))
+				case Seq() => Left(Undefined(refKey, k, derived))
 				case Seq(x, xs @ _*) =>
 					val sk = ScopedKey(x, k.key)
 					val definesKey = (refKey != sk || !isFirst) && (sMap contains sk)
@@ -213,7 +213,9 @@ trait Init[Scope]
 	def showUndefined(u: Undefined, validKeys: Seq[ScopedKey[_]], delegates: Scope => Seq[Scope])(implicit display: Show[ScopedKey[_]]): String =
 	{
 		val guessed = guessIntendedScope(validKeys, delegates, u.referencedKey)
-		display(u.referencedKey) + " from " + display(u.definingKey) + guessed.map(g => "\n     Did you mean " + display(g) + " ?").toList.mkString
+		val guessedString = if(u.derived) "" else guessed.map(g => "\n     Did you mean " + display(g) + " ?").toList.mkString
+		val derivedString = if(u.derived) ", which is a derived setting that needs this key to be defined in this scope." else ""
+		display(u.referencedKey) + " from " + display(u.definingKey) + derivedString + guessedString
 	}
 
 	def guessIntendedScope(validKeys: Seq[ScopedKey[_]], delegates: Scope => Seq[Scope], key: ScopedKey[_]): Option[ScopedKey[_]] =
@@ -230,9 +232,9 @@ trait Init[Scope]
 		}
 
 	final class Uninitialized(val undefined: Seq[Undefined], override val toString: String) extends Exception(toString)
-	final class Undefined(val definingKey: ScopedKey[_], val referencedKey: ScopedKey[_])
+	final class Undefined(val definingKey: ScopedKey[_], val referencedKey: ScopedKey[_], val derived: Boolean)
 	final class RuntimeUndefined(val undefined: Seq[Undefined]) extends RuntimeException("References to undefined settings at runtime.")
-	def Undefined(definingKey: ScopedKey[_], referencedKey: ScopedKey[_]): Undefined = new Undefined(definingKey, referencedKey)
+	def Undefined(definingKey: ScopedKey[_], referencedKey: ScopedKey[_], derived: Boolean): Undefined = new Undefined(definingKey, referencedKey, derived)
 	def Uninitialized(validKeys: Seq[ScopedKey[_]], delegates: Scope => Seq[Scope], keys: Seq[Undefined], runtime: Boolean)(implicit display: Show[ScopedKey[_]]): Uninitialized =
 	{
 		assert(!keys.isEmpty)
