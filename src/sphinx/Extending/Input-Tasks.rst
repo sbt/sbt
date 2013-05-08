@@ -151,7 +151,7 @@ Using other input tasks
 =======================
 
 The types involved in an input task are composable, so it is possible to reuse input tasks.
-The ``.parsed`` and ``.`` methods are defined on InputTasks to make this more convenient in common situations:
+The ``.parsed`` and ``.evaluated`` methods are defined on InputTasks to make this more convenient in common situations:
 
  * Call ``.parsed`` on an ``InputTask[T]`` or ``Initialize[InputTask[T]]`` to get the ``Task[T]`` created after parsing the command line
  * Call ``.evaluated`` on an ``InputTask[T]`` or ``Initialize[InputTask[T]]`` to get the value of type ``T`` from evaluating that task 
@@ -166,10 +166,10 @@ so that the arguments before ``--`` are passed to the first ``run`` and the ones
 ::
 
     val run2 = inputKey[Unit](
-	    "Runs the main class twice with different argument lists separated by ---")
-
-	 val separator: Parser[String] = "--"
-
+	    "Runs the main class twice with different argument lists separated by --")
+    
+    val separator: Parser[String] = "--"
+    
     run2 := {
        val one = (run in Compile).evaluated
        val sep = separator.parsed
