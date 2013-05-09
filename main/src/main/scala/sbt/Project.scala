@@ -269,15 +269,7 @@ object Project extends ProjectExtra
 		}
 		val definingScoped = definingScope match { case Some(sc) => ScopedKey(sc, key); case None => scoped }
 		val comp = Def.compiled(structure.settings, actual)(structure.delegates, structure.scopeLocal, display)
-		val definedAt = comp get definingScoped map { c =>
-			val posDefined = c.settings.flatMap(_.positionString.toList)
-			if (posDefined.size > 0) {
-				val header = if (posDefined.size == c.settings.size) "Defined at:" else
-					"Some of the defining occurrences:"
-				header + (posDefined.distinct mkString ("\n\t", "\n\t", "\n"))
-			} else ""
-		} getOrElse ""
-
+		val definedAt = comp get definingScoped map { c => Def.definedAtString(c.settings).capitalize } getOrElse ""
 
 		val cMap = Def.flattenLocals(comp)
 		val related = cMap.keys.filter(k => k.key == key && k.scope != scope)
