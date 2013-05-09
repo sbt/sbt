@@ -77,9 +77,9 @@ trait Init[Scope]
    * is explicitly defined and the where the scope matches `filter`.
 	* A setting initialized with dynamic dependencies is only allowed if `allowDynamic` is true.
 	* Only the static dependencies are tracked, however. */
-	final def derive[T](s: Setting[T], allowDynamic: Boolean = false, filter: Scope => Boolean = const(true)): Setting[T] = {
+	final def derive[T](s: Setting[T], allowDynamic: Boolean = false, filter: Scope => Boolean = const(true), trigger: AttributeKey[_] => Boolean = const(true)): Setting[T] = {
 		deriveAllowed(s, allowDynamic) foreach error
-		new DerivedSetting[T](s.key, s.init, s.pos, filter, nextDefaultID())
+		new DerivedSetting[T](s.key, s.init, s.pos, filter, trigger, nextDefaultID())
 	}
 	def deriveAllowed[T](s: Setting[T], allowDynamic: Boolean): Option[String] = s.init match {
 		case _: Bind[_,_] if !allowDynamic => Some("Cannot derive from dynamic dependencies.")
@@ -115,11 +115,10 @@ trait Init[Scope]
 	{
 		val initDefaults = applyDefaults(init)
 		// inject derived settings into scopes where their dependencies are directly defined
-		val derived = derive(initDefaults)
-		// prepend per-scope settings
-		val withLocal = addLocal(derived)(scopeLocal)
+		// and prepend per-scope settings
+		val derived = deriveAndLocal(initDefaults)
 		// group by Scope/Key, dropping dead initializations
-		val sMap: ScopedMap = grouped(withLocal)
+		val sMap: ScopedMap = grouped(derived)
 		// delegate references to undefined values according to 'delegates'
 		val dMap: ScopedMap = if(actual) delegate(sMap)(delegates, display) else sMap
 		// merge Seq[Setting[_]] into Compiled
@@ -266,12 +265,13 @@ trait Init[Scope]
 		} else ""
 	}
 
-	private[this] def derive(init: Seq[Setting[_]])(implicit delegates: Scope => Seq[Scope]): Seq[Setting[_]] =
+	private[this] def deriveAndLocal(init: Seq[Setting[_]])(implicit delegates: Scope => Seq[Scope], scopeLocal: ScopeLocal): Seq[Setting[_]] =
 	{
 			import collection.mutable
 
 		final class Derived(val setting: DerivedSetting[_]) {
 			val dependencies = setting.dependencies.map(_.key)
+			def triggeredBy = dependencies.filter(setting.trigger)
 			val inScopes = new mutable.HashSet[Scope]
 		}
 		final class Deriveds(val key: AttributeKey[_], val settings: mutable.ListBuffer[Derived]) {
@@ -281,7 +281,8 @@ trait Init[Scope]
 		}
 
 		// separate `derived` settings from normal settings (`defs`)
-		val (derived, defs) = Util.separate[Setting[_],Derived,Setting[_]](init) { case d: DerivedSetting[_] => Left(new Derived(d)); case s => Right(s) }
+		val (derived, rawDefs) = Util.separate[Setting[_],Derived,Setting[_]](init) { case d: DerivedSetting[_] => Left(new Derived(d)); case s => Right(s) }
+		val defs = addLocal(rawDefs)(scopeLocal)
 
 		// group derived settings by the key they define
 		val derivsByDef = new mutable.HashMap[AttributeKey[_], Deriveds]
@@ -297,7 +298,7 @@ trait Init[Scope]
 
 		// index derived settings by triggering key.  This maps a key to the list of settings potentially derived from it.
 		val derivedBy = new mutable.HashMap[AttributeKey[_], mutable.ListBuffer[Derived]]
-		for(s <- derived; d <- s.dependencies)
+		for(s <- derived; d <- s.triggeredBy)
 			derivedBy.getOrElseUpdate(d, new mutable.ListBuffer) += s
 
 		// set of defined scoped keys, used to ensure a derived setting is only added if all dependencies are present
@@ -310,19 +311,29 @@ trait Init[Scope]
 			delegates(scope).exists(s => defined.contains(ScopedKey(s, key)))
 
 		// true iff all dependencies of derived setting `d` have a value (potentially via delegation) in `scope`
-		def allDepsDefined(d: Derived, scope: Scope): Boolean = d.dependencies.forall(dep => isDefined(dep, scope))
+		def allDepsDefined(d: Derived, scope: Scope, local: Set[AttributeKey[_]]): Boolean =
+			d.dependencies.forall(dep => local(dep) || isDefined(dep, scope))
 
-		// list of injectable derived settings for `sk`.  A derived setting is injectable if:
-		// 1. it has not been previously injected into this scope
-		// 2. it applies to this scope (as determined by its `filter`)
-		// 3. all of its dependencies are defined for that scope (allowing for delegation)
+		// List of injectable derived settings and their local settings for `sk`.
+		//  A derived setting is injectable if:
+		//   1. it has not been previously injected into this scope
+		//   2. it applies to this scope (as determined by its `filter`)
+		//   3. all of its dependencies that match `trigger` are defined for that scope (allowing for delegation)
+		// This needs to handle local settings because a derived setting wouldn't be injected if it's local setting didn't exist yet.
 		val deriveFor = (sk: ScopedKey[_]) => {
 			val derivedForKey: List[Derived] = derivedBy.get(sk.key).toList.flatten
 			val scope = sk.scope
-			val filtered = derivedForKey.filter(d => d.inScopes.add(scope) && d.setting.filter(scope) && allDepsDefined(d, scope))
-			val scoped = filtered.map(_.setting setScope scope)
-			addDefs(scoped)
-			scoped
+			def localAndDerived(d: Derived): Seq[Setting[_]] =
+				if(d.inScopes.add(scope) && d.setting.filter(scope))
+				{
+					val local = d.dependencies.flatMap(dep => scopeLocal(ScopedKey(scope, dep)))
+					if(allDepsDefined(d, scope, local.map(_.key.key).toSet))
+						local :+ d.setting.setScope(scope)
+					else
+						Nil
+				}
+				else Nil
+			derivedForKey.flatMap(localAndDerived)
 		}
 
 		val processed = new mutable.HashSet[ScopedKey[_]]
@@ -335,6 +346,7 @@ trait Init[Scope]
 				val sk = s.key
 				val ds = if(processed.add(sk)) deriveFor(sk) else Nil
 				out ++= ds
+				addDefs(ds)
 				process(ds ::: ss)
 			case Nil => 
 		}
@@ -397,8 +409,8 @@ trait Init[Scope]
 		protected[sbt] def isDerived: Boolean = false
 		private[sbt] def setScope(s: Scope): Setting[T] = make(key.copy(scope = s), init.mapReferenced(mapScope(const(s))), pos)
 	}
-	private[Init] final class DerivedSetting[T](sk: ScopedKey[T], i: Initialize[T], p: SourcePosition, val filter: Scope => Boolean, id: Long) extends DefaultSetting[T](sk, i, p, id) {
-		override def make[T](key: ScopedKey[T], init: Initialize[T], pos: SourcePosition): Setting[T] = new DerivedSetting[T](key, init, pos, filter, id)
+	private[Init] final class DerivedSetting[T](sk: ScopedKey[T], i: Initialize[T], p: SourcePosition, val filter: Scope => Boolean, val trigger: AttributeKey[_] => Boolean, id: Long) extends DefaultSetting[T](sk, i, p, id) {
+		override def make[T](key: ScopedKey[T], init: Initialize[T], pos: SourcePosition): Setting[T] = new DerivedSetting[T](key, init, pos, filter, trigger, id)
 		protected[sbt] override def isDerived: Boolean = true
 	}
 	// Only keep the first occurence of this setting and move it to the front so that it has lower precedence than non-defaults.
