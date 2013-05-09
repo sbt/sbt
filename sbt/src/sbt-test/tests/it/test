@@ -18,3 +18,11 @@ $ copy-file changes/ClassSuccessModuleFail.scala src/it/scala/Test.scala
 $ delete src/
 $ copy-file changes/ClassSuccessModuleSuccess.scala src/it/scala/Test.scala
 > it:test
+
+# verify that a failing normal test fails when run directly
+$ copy-file changes/AlwaysFail.scala src/test/scala/AlwaysFail.scala
+-> test:test
+
+# but that it does not affect the result of it:test (#539)
+> it:test
+

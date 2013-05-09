@@ -220,6 +220,7 @@ object Keys
 	val defaultConfigurationMapping = SettingKey[String]("default-configuration-mapping", "Defines the mapping used for a simple, unmapped configuration definition.", CSetting)
 
 	val products = TaskKey[Seq[File]]("products", "Build products that get packaged.", BMinusTask)
+	@deprecated("This task is unused by the default project and will be removed.", "0.13.0")
 	val productDirectories = TaskKey[Seq[File]]("product-directories", "Base directories of build products.", CTask)
 	val exportJars = SettingKey[Boolean]("export-jars", "Determines whether the exported classpath for this project contains classes (false) or a packaged jar (true).", BSetting)
 	val exportedProducts = TaskKey[Classpath]("exported-products", "Build products that go on the exported classpath.", CTask)

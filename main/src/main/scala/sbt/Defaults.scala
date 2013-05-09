@@ -195,7 +195,6 @@ object Defaults extends BuildCommon
 	)
 
 	def compileBase = inTask(console)(compilersSetting :: Nil) ++ compileBaseGlobal ++ Seq(
-		compilersSetting,
 		incOptions in GlobalScope := sbt.inc.IncOptions.defaultTransactional(crossTarget.value.getParentFile / "classes.bak"),
 		scalaInstance <<= scalaInstanceTask,
 		crossVersion := (if(crossPaths.value) CrossVersion.binary else CrossVersion.Disabled),
@@ -209,9 +208,11 @@ object Defaults extends BuildCommon
 		javacOptions :== Nil,
 		scalacOptions :== Nil,
 		scalaVersion := appConfiguration.value.provider.scalaProvider.version,
-		scalaBinaryVersion := binaryScalaVersion(scalaVersion.value),
 		crossScalaVersions := Seq(scalaVersion.value)
-	))
+	)) ++ Seq(
+		derive(compilersSetting),
+		derive(scalaBinaryVersion := binaryScalaVersion(scalaVersion.value))
+	)
 	def makeCrossTarget(t: File, sv: String, sbtv: String, plugin: Boolean, cross: Boolean): File =
 	{
 		val scalaBase = if(cross) t / ("scala-" + sv) else t
@@ -219,7 +220,7 @@ object Defaults extends BuildCommon
 	}
 	def compilersSetting = compilers := Compiler.compilers(scalaInstance.value, classpathOptions.value, javaHome.value)(appConfiguration.value, streams.value.log)
 
-	lazy val configTasks = docTaskSettings(doc) ++ compileTaskSettings ++ compileInputsSettings ++ configGlobal ++ Seq(
+	lazy val configTasks = docTaskSettings(doc) ++ inTask(compile)(compileInputsSettings) ++ configGlobal ++ Seq(
 		compile <<= compileTask tag(Tags.Compile, Tags.CPU),
 		printWarnings <<= printWarningsTask,
 		compileIncSetup <<= compileIncSetupTask,
@@ -373,9 +374,10 @@ object Defaults extends BuildCommon
 			testListeners.in(TaskGlobal).value
 		},
 		testOptions := Tests.Listeners(testListeners.value) +: (testOptions in TaskGlobal).value,
-		testExecution <<= testExecutionTask(key),
-		testGrouping <<= testGrouping or singleTestGroup(key)
-	) )
+		testExecution <<= testExecutionTask(key)
+	) ) ++ Seq(
+		derive(testGrouping <<= singleTestGroupDefault)
+	)
 	def testLogger(manager: Streams, baseKey: Scoped)(tdef: TestDefinition): Logger =
 	{
 		val scope = baseKey.scope
@@ -389,10 +391,11 @@ object Defaults extends BuildCommon
 		val mod = tdef.fingerprint match { case f: SubclassFingerprint => f.isModule; case f: AnnotatedFingerprint => f.isModule; case _ => false }
 		extra.put(name.key, tdef.name).put(isModule, mod)
 	}
-	def singleTestGroup(key: Scoped): Initialize[Task[Seq[Tests.Group]]] = Def.task {
-		val tests = (definedTests in key).value
-		val fk = (fork in key).value
-		val opts = inTask(key, forkOptions).value
+	def singleTestGroup(key: Scoped): Initialize[Task[Seq[Tests.Group]]] = inTask(key, singleTestGroupDefault)
+	def singleTestGroupDefault: Initialize[Task[Seq[Tests.Group]]] = Def.task {
+		val tests = definedTests.value
+		val fk = fork.value
+		val opts = forkOptions.value
 		Seq(new Tests.Group("<default>", tests, if(fk) Tests.SubProcess(opts) else Tests.InProcess))
 	}
 	private[this] def forkOptions: Initialize[Task[ForkOptions]] = 
@@ -648,24 +651,30 @@ object Defaults extends BuildCommon
 
 	@deprecated("Use `docTaskSettings` instead", "0.12.0")
 	def docSetting(key: TaskKey[File]) = docTaskSettings(key)
-	def docTaskSettings(key: TaskKey[File] = doc): Seq[Setting[_]] = inTask(key)(compileInputsSettings ++ Seq(
+	def docTaskSettings(key: TaskKey[File] = doc): Seq[Setting[_]] = inTask(key)(Seq(
 		apiMappings ++= { if(autoAPIMappings.value) APIMappings.extract(dependencyClasspath.value, streams.value.log).toMap else Map.empty[File,URL] },
-		key in TaskGlobal <<= (compileInputs, target, configuration, apiMappings, streams) map { (in, out, config, xapis, s) =>
-			val srcs = in.config.sources
+		key in TaskGlobal := {
+			val s = streams.value
+			val cs = compilers.value
+			val srcs = sources.value
+			val out = target.value
+			val sOpts = scalacOptions.value
+			val jOpts = javacOptions.value
+			val xapis = apiMappings.value
 			val hasScala = srcs.exists(_.name.endsWith(".scala"))
 			val hasJava = srcs.exists(_.name.endsWith(".java"))
-			val cp = in.config.classpath.toList.filterNot(_ == in.config.classesDirectory)
-			val label = nameForSrc(config.name)
+			val cp = data(dependencyClasspath.value).toList
+			val label = nameForSrc(configuration.value.name)
 			val (options, runDoc) =
 				if(hasScala)
-					(in.config.options ++ Opts.doc.externalAPI(xapis),
-						Doc.scaladoc(label, s.cacheDirectory / "scala", in.compilers.scalac.onArgs(exported(s, "scaladoc"))))
+					(sOpts ++ Opts.doc.externalAPI(xapis), // can't put the .value calls directly here until 2.10.2
+						Doc.scaladoc(label, s.cacheDirectory / "scala", cs.scalac.onArgs(exported(s, "scaladoc"))))
 				else if(hasJava)
-					(in.config.javacOptions,
-						Doc.javadoc(label, s.cacheDirectory / "java", in.compilers.javac.onArgs(exported(s, "javadoc"))))
+					(jOpts,
+						Doc.javadoc(label, s.cacheDirectory / "java", cs.javac.onArgs(exported(s, "javadoc"))))
 				else
 					(Nil, RawCompileLike.nop)
-			runDoc(srcs, cp, out, options, in.config.maxErrors, s.log)
+			runDoc(srcs, cp, out, options, maxErrors.value, s.log)
 			out
 		}
 	))
@@ -695,6 +704,7 @@ object Defaults extends BuildCommon
 	private[this] def exported(s: TaskStreams, command: String): Seq[String] => Unit = args =>
 		exported(s.text("export"), command)
 
+	@deprecated("Use inTask(compile)(compileInputsSettings)", "0.13.0")
 	def compileTaskSettings: Seq[Setting[_]] = inTask(compile)(compileInputsSettings)
 
 	def compileTask: Initialize[Task[inc.Analysis]] = Def.task { compileTaskImpl(streams.value, (compileInputs in compile).value) }
@@ -848,7 +858,7 @@ object Classpaths
 
 	lazy val configSettings: Seq[Setting[_]] = classpaths ++ Seq(
 		products <<= makeProducts,
-		productDirectories := compileInputs.value.config.classesDirectory :: Nil,
+		productDirectories := classDirectory.value :: Nil,
 		classpathConfiguration := findClasspathConfig(internalConfigurationMap.value, configuration.value, classpathConfiguration.?.value, update.value)
 	)
 	private[this] def classpaths: Seq[Setting[_]] = Seq(
@@ -1190,8 +1200,11 @@ object Classpaths
 		}
 
 	def analyzed[T](data: T, analysis: inc.Analysis) = Attributed.blank(data).put(Keys.analysis, analysis)
-	def makeProducts: Initialize[Task[Seq[File]]] =
-		(compile, compileInputs, copyResources) map { (_, i, _) => i.config.classesDirectory :: Nil }
+	def makeProducts: Initialize[Task[Seq[File]]] = Def.task {
+		val x1 = compile.value
+		val x2 = copyResources.value
+		classDirectory.value :: Nil
+	}
 	def exportProductsTask: Initialize[Task[Classpath]] =
 		(products.task, packageBin.task, exportJars, compile, apiURL) flatMap { (psTask, pkgTask, useJars, analysis, u) =>
 			(if(useJars) Seq(pkgTask).join else psTask) map { _ map { f => APIMappings.store(analyzed(f, analysis), u) } }
@@ -1596,4 +1609,6 @@ trait BuildCommon
 
 	def getPrevious[T](task: TaskKey[T]): Initialize[Task[Option[T]]] =
 		(state, resolvedScoped) map { (s, ctx) => getFromContext(task, ctx, s) }
+
+	private[sbt] def derive[T](s: Setting[T]): Setting[T] = Def.derive(s, allowDynamic=true, trigger = _ != streams.key)
 }
