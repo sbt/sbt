@@ -256,6 +256,16 @@ trait Init[Scope]
 		}
 	}
 
+	def definedAtString(settings: Seq[Setting[_]]): String =
+	{
+		val posDefined = settings.flatMap(_.positionString.toList)
+		if (posDefined.size > 0) {
+			val header = if (posDefined.size == settings.size) "defined at:" else
+				"some of the defining occurrences:"
+			header + (posDefined.distinct mkString ("\n\t", "\n\t", "\n"))
+		} else ""
+	}
+
 	private[this] def derive(init: Seq[Setting[_]])(implicit delegates: Scope => Seq[Scope]): Seq[Setting[_]] =
 	{
 			import collection.mutable
@@ -266,7 +276,8 @@ trait Init[Scope]
 		}
 		final class Deriveds(val key: AttributeKey[_], val settings: mutable.ListBuffer[Derived]) {
 			def dependencies = settings.flatMap(_.dependencies)
-			override def toString = "Derived settings for " + key.label
+			// This is mainly for use in the cyclic reference error message
+			override def toString = s"Derived settings for ${key.label}, ${definedAtString(settings.map(_.setting))}"
 		}
 
 		// separate `derived` settings from normal settings (`defs`)
