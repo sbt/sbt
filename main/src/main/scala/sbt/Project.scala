@@ -319,10 +319,13 @@ object Project extends ProjectExtra
 		val keyToString = display.apply _
 		DotGraph.generateGraph(file, graphName, rel, keyToString, keyToString)
 	}
-	def relation(structure: BuildStructure, actual: Boolean)(implicit display: Show[ScopedKey[_]]) =
+	def relation(structure: BuildStructure, actual: Boolean)(implicit display: Show[ScopedKey[_]]): Relation[ScopedKey[_], ScopedKey[_]] =
+		relation(structure.settings, actual)(structure.delegates, structure.scopeLocal, display)
+
+	private[sbt] def relation(settings: Seq[Setting[_]], actual: Boolean)(implicit delegates: Scope => Seq[Scope], scopeLocal: Def.ScopeLocal, display: Show[ScopedKey[_]]): Relation[ScopedKey[_], ScopedKey[_]] =
 	{
 		type Rel = Relation[ScopedKey[_], ScopedKey[_]]
-		val cMap = Def.flattenLocals(Def.compiled(structure.settings, actual)(structure.delegates, structure.scopeLocal, display))
+		val cMap = Def.flattenLocals(Def.compiled(settings, actual))
 		((Relation.empty: Rel) /: cMap) { case (r, (key, value)) =>
 			r + (key, value.dependencies)
 		}
