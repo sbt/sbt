@@ -37,7 +37,7 @@ As a specific example, the following generates a hello world source file:
 
 Executing 'run' will print "Hi".  Change ``Compile`` to ``Test`` to make it a test source.  For efficiency, you would only want to generate sources when necessary and not every run.
 
-By default, generated sources are not included in the packaged source artifact.  To do so, add them as you would other mappings.  See ``Adding files to a package``.
+By default, generated sources are not included in the packaged source artifact.  To do so, add them as you would other mappings.  See :ref:`Adding files to a package <modify-package-contents>`.
 
 .. howto::
    :id: resources
@@ -73,4 +73,4 @@ As a specific example, the following generates a properties file containing the 
 
 Change ``Compile`` to ``Test`` to make it a test resource.  Normally, you would only want to generate resources when necessary and not every run.
 
-By default, generated resources are not included in the packaged source artifact.  To do so, add them as you would other mappings.  See the ``Adding files to a package`` section.
+By default, generated resources are not included in the packaged source artifact.  To do so, add them as you would other mappings.  See :ref:`Adding files to a package <modify-package-contents>`.

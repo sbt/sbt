@@ -56,7 +56,7 @@ clean up after a build and provides a single location to organize
 generated files. Any generated files that are specific to a Scala
 version should go in ``crossTarget`` for efficient cross-building.
 
-For generating sources and resources, see :ref:`the faq entry <generate-sources-resources>`.
+For generating sources and resources, see :doc:`/Howto/generatefiles`.
 
 Don't hard code
 ~~~~~~~~~~~~~~~

@@ -71,6 +71,8 @@ The ``artifactName`` setting controls the name of generated packages.  See the :
    mappings in (Compile, packageBin) +=
       { ( baseDirectory.value / "example.txt") -> "out/example.txt" }
 
+.. _modify-package-contents:
+
 The contents of a package are defined by the ``mappings`` task, of type ``Seq[(File,String)]``.  The ``mappings`` task is a sequence of mappings from a file to include in the package to the path in the package.  See :doc:`/Detailed-Topics/Mapping-Files` for convenience functions for generating these mappings.  For example, to add the file ``in/example.txt`` to the main binary jar with the path "out/example.txt",
 
 ::

@@ -282,53 +282,10 @@ to the ``managedSource`` directory, the mapping function would have to
 be adjusted to try relativizing against additional directories or
 something more appropriate for the generator.
 
-.. _generate-sources-resources:
-
 How can I generate source code or resources?
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-sbt provides standard hooks for adding source or resource generation
-tasks. A generation task should generate sources in a subdirectory of
-``sourceManaged`` for sources or ``resourceManaged`` for resources and
-return a sequence of files generated. The key to add the task to is
-called ``sourceGenerators`` for sources and ``resourceGenerators`` for
-resources. It should be scoped according to whether the generated files
-are main (``Compile``) or test (``Test``) sources or resources. This
-basic structure looks like:
-
-::
-
-    sourceGenerators in Compile += <your Task[Seq[File]] here>
-
-For example, assuming a method
-``def makeSomeSources(base: File): Seq[File]``,
-
-::
-
-    sourceGenerators in Compile += Def.task {
-      makeSomeSources( (sourceManaged in Compile).value / "demo")
-    }
-
-As a specific example, the following generates a hello world source
-file:
-
-::
-
-    sourceGenerators in Compile += Def.task {
-      val file = (sourceManaged in Compile) / "demo" / "Test.scala"
-      IO.write(file, """object Test extends App { println("Hi") }""")
-      Seq(file)
-    }
-
-Executing 'run' will print "Hi". Change ``Compile`` to ``Test`` to make
-it a test source. To generate resources, change ``sourceGenerators`` to
-``resourceGenerators`` and ``sourceManaged`` to ``resourceManaged``.
-Normally, you would only want to generate sources when necessary and not
-every run.
-
-By default, generated sources and resources are not included in the
-packaged source artifact. To do so, add them as you would other
-mappings. See the ``Adding files to a package`` section.
+See :doc:`/Howto/generatefiles`.
 
 How can a task avoid redoing work if the input files are unchanged?
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
