@@ -37,7 +37,7 @@ As a specific example, the following generates a hello world source file:
 
 Executing 'run' will print "Hi".  Change ``Compile`` to ``Test`` to make it a test source.  For efficiency, you would only want to generate sources when necessary and not every run.
 
-By default, generated sources are not included in the packaged source artifact.  To do so, add them as you would other mappings.  See :ref:`Adding files to a package <modify-package-contents>`.
+By default, generated sources are not included in the packaged source artifact.  To do so, add them as you would other mappings.  See :ref:`Adding files to a package <modify-package-contents>`.  A source generator can return both Java and Scala sources mixed together in the same sequence.  They will be distinguished by their extension later.
 
 .. howto::
    :id: resources
