@@ -212,12 +212,13 @@ object Tests
 		val multipleFrameworks = results.summaries.size > 1
 		def printSummary(name: String, message: String) 
 		{
-			if (multipleFrameworks)
-				log.info(name)
-			if (message.size > 0)
-				log.info(message)
+			if(message.isEmpty)
+				log.debug("Summary for " + name + " not available.")
 			else
-				log.info("Summary for " + name + " not available.")
+			{
+				if(multipleFrameworks) log.info(name)
+				log.info(message)
+			}
 		}
 
 		for (Summary(name, messages) <- results.summaries)
