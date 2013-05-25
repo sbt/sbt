@@ -1,0 +1,4 @@
+$ copy-file changes/Success.scala Success.scala
+> compile
+$ copy-file changes/Fail.scala Fail.scala
+-> compile

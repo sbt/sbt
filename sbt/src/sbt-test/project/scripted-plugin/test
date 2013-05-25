@@ -1,0 +1,6 @@
+$ copy-file changes/test src/sbt-test/group/demo/test
+$ copy-file changes/Fail.scala src/sbt-test/group/demo/changes/Fail.scala
+$ copy-file changes/Success.scala src/sbt-test/group/demo/changes/Success.scala
+$ copy-file changes/fail src/sbt-test/group/fail/test
+> scripted group/demo
+-> scripted group/fail
