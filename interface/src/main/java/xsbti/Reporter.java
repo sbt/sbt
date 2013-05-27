@@ -17,4 +17,6 @@ public interface Reporter
 	public Problem[] problems();
 	/** Logs a message.*/
 	public void log(Position pos, String msg, Severity sev);
+	/** Reports a comment. */
+	public void comment(Position pos, String msg);
 }
