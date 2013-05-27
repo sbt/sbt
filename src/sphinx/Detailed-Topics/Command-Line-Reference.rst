@@ -221,7 +221,7 @@ influence SBT execution. Also see :doc:`Launcher`.
        <tr>
          <td>
 
-``sbt.log.noformat``
+``sbt.log.format``
 
 .. raw:: html
 
@@ -235,15 +235,17 @@ Boolean
    </td>
          <td>
 
-false
+unset
 
 .. raw:: html
 
    </td>
          <td>
 
-If true, disable ANSI color codes. Useful on build servers or terminals
+If true, enable ANSI escape codes such as colors. 
+If false, disable them, which can be useful on build servers or terminals
 that don't support color.
+If unset, whether to use escape codes is automatically detected.
 
 .. raw:: html
 

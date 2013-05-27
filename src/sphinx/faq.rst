@@ -218,12 +218,12 @@ get output that looks like:
       [0m[ [0minfo [0m]  [0mSet current project to root
 
 or ansi codes are supported but you want to disable colored output. To
-completely disable ansi codes, set the ``sbt.log.noformat`` system
-property to ``true``. For example,
+completely disable ansi codes, set the ``sbt.log.format`` system
+property to ``false``. For example,
 
 .. code-block :: console
 
-    $ sbt -Dsbt.log.noformat=true
+    $ sbt -Dsbt.log.format=false
 
 How can I start a Scala interpreter (REPL) with sbt project configuration (dependencies, etc.)?
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
