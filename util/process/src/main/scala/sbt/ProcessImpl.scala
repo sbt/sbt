@@ -9,8 +9,6 @@ import java.io.{FilterInputStream, FilterOutputStream, PipedInputStream, PipedOu
 import java.io.{File, FileInputStream, FileOutputStream}
 import java.net.URL
 
-import scala.concurrent.SyncVar
-
 /** Runs provided code in a new Thread and returns the Thread instance. */
 private object Spawn
 {
