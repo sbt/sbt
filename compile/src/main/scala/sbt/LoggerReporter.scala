@@ -64,6 +64,7 @@ class LoggerReporter(maximumErrors: Int, log: Logger, sourcePositionMapper: Posi
 	def hasWarnings = count.get(Warn) > 0
 	def hasErrors = count.get(Error) > 0
 	def problems: Array[Problem] = allProblems.toArray
+	def comment(pos: Position, msg: String) {}
 
 	def printSummary()
 	{
