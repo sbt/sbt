@@ -18,7 +18,6 @@ object Boot
 				System.setProperty("jline.shutdownhook", "false")
 				CheckProxy()
 				initJansi()
-				setLogFormat()
 				run(args)
 		}
 	}
@@ -49,10 +48,6 @@ object Boot
 	private def exit(code: Int): Nothing =
 		System.exit(code).asInstanceOf[Nothing]
 
-	private[this] def setLogFormat() {
-		if(System.getProperty("sbt.log.format") eq null)
-			System.setProperty("sbt.log.format", "true")
-	}
 	private def initJansi() {
 		try {
 			val c = Class.forName("org.fusesource.jansi.AnsiConsole")
