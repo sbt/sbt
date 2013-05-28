@@ -1,0 +1,6 @@
+# should fail because the dependency is not in the default repositories
+-> update
+
+# add a repository with the dependency, which should then succeed
+> 'set resolvers += "Nuxeo" at "http://maven.nuxeo.org/nexus/content/groups/public/"'
+> update

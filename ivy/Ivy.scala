@@ -296,6 +296,7 @@ private object IvySbt
 	// the common case is for resolved.getArtifactResolver to be inter-project from a different project's publish-local
 	// if there are problems with this, a less aggressive fix might be to only reset the artifact resolver when it is a ProjectResolver
 	// a possible problem is that fetching artifacts is slower, due to the full chain being the artifact resolver instead of the specific resolver
+	// This also fixes #760, which occurs when metadata exists in a repository, but the artifact doesn't.
 	private[this] def resetArtifactResolver(resolved: ResolvedModuleRevision): ResolvedModuleRevision =
 		if(resolved eq null)
 			null
