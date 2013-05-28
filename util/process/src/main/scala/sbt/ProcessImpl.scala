@@ -27,8 +27,8 @@ private object Future
 	{
 		val result = new SyncVar[Either[Throwable, T]]
 		def run(): Unit =
-			try { result.set(Right(f)) }
-			catch { case e: Exception => result.set(Left(e)) }
+			try { result.put(Right(f)) }
+			catch { case e: Exception => result.put(Left(e)) }
 		Spawn(run)
 		() =>
 			result.get match
@@ -210,8 +210,8 @@ private abstract class CompoundProcess extends BasicProcess
 	protected lazy val (getExitValue, destroyer) =
 	{
 		val code = new SyncVar[Option[Int]]()
-		code.set(None)
-		val thread = Spawn(code.set(runAndExitValue()))
+		code.put(None)
+		val thread = Spawn(code.put(runAndExitValue()))
 		
 		(
 			Future { thread.join(); code.get },
@@ -331,11 +331,11 @@ private class PipeSource(currentSource: SyncVar[Option[InputStream]], pipe: Pipe
 				finally
 				{
 					BasicIO.close(source)
-					currentSource.unset()
+					currentSource.take()
 				}
 				run()
 			case None =>
-				currentSource.unset()
+				currentSource.take()
 				BasicIO.close(pipe)
 		}
 	}
@@ -352,11 +352,11 @@ private class PipeSink(pipe: PipedInputStream, currentSink: SyncVar[Option[Outpu
 				finally
 				{
 					BasicIO.close(sink)
-					currentSink.unset()
+					currentSink.take()
 				}
 				run()
 			case None =>
-				currentSink.unset()
+				currentSink.take()
 		}
 	}
 }
@@ -438,7 +438,7 @@ private abstract class ThreadProcessBuilder(override val toString: String, runIm
 	{
 		val success = new SyncVar[Boolean]
 		success.put(false)
-		new ThreadProcess(Spawn {runImpl(io); success.set(true) }, success)
+		new ThreadProcess(Spawn {runImpl(io); success.put(true) }, success)
 	}
 }
 private final class ThreadProcess(thread: Thread, success: SyncVar[Boolean]) extends Process
