@@ -1179,7 +1179,9 @@ object Classpaths
 
 	lazy val compilerPluginConfig = Seq(
 		scalacOptions <<= (scalacOptions, autoCompilerPlugins, update) map { (options, auto, report) =>
-			if(auto) options ++ autoPlugins(report) else options
+			val newPlugins = autoPlugins(report)
+			val existing = options.toSet
+			if(auto) options ++ newPlugins.filterNot(existing) else options
 		}
 	)
 	def substituteScalaFiles(scalaInstance: ScalaInstance, report: UpdateReport): UpdateReport =
