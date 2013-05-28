@@ -338,8 +338,11 @@ private object IvySbt
 					// this is the locally cached metadata as originally retrieved (e.g. the pom)
 					val original = rmr.getReport.getOriginalLocalFile
 					if(original != null) {
-						// delete all files in subdirectories that are older than the original metadata file
-						val lm = original.lastModified
+						// delete all files in subdirectories that are older than the original metadata file's publication date
+						//  The publication date is used because the metadata will be redownloaded for changing files,
+						//  so the last modified time changes, but the publication date doesn't
+						val pubDate = rmrRaw.getPublicationDate
+						val lm = if(pubDate eq null) original.lastModified else pubDate.getTime
 						val indirectFiles = PathFinder(original.getParentFile).*(DirectoryFilter).**(-DirectoryFilter).get.toList
 						val older = indirectFiles.filter(f => f.lastModified < lm).toList
 						Message.verbose("Deleting additional old artifacts from cache for changed module " + mrid + older.mkString(":\n\t", "\n\t", ""))
