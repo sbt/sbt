@@ -1386,7 +1386,9 @@ object Classpaths
 	lazy val compilerPluginConfig = Seq(
 		scalacOptions := {
 			val options = scalacOptions.value
-			if(autoCompilerPlugins.value) options ++ autoPlugins(update.value, internalCompilerPluginClasspath.value.files) else options
+			val newPlugins = autoPlugins(update.value, internalCompilerPluginClasspath.value.files)
+			val existing = options.toSet
+			if(autoCompilerPlugins.value) options ++ newPlugins.filterNot(existing) else options
 		}
 	)
 	@deprecated("Doesn't properly handle non-standard Scala organizations.", "0.13.0")
