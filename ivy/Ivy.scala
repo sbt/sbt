@@ -297,19 +297,31 @@ private object IvySbt
 			override def findModuleInCache(dd: DependencyDescriptor, revId: ModuleRevisionId, options: CacheMetadataOptions, r: String) = {
 				// ignore the resolver- not ideal, but avoids thrashing.
 				val resolved = super.findModuleInCache(dd,revId,options,null)
-				// invalidate the cache if the artifact was removed from the local repository
-				if(resolved == null) null
-				else {
+				if(resolved == null)
+					null
+				else
+				{
 					val origin = resolved.getReport.getArtifactOrigin
-					if(!origin.isLocal) resolved
-					else {
-						val file = new File(origin.getLocation)
-						if(file == null || file.exists) resolved
-						else {
+					/*
+					 * "resolved" may contain reference to ProjectResolver with inappropriate artifact
+					 */
+					resolved.getResolver match {
+						case invalidResolver: ProjectResolver if invalidResolver.getDependency(dd, null) == null =>
+							Message.verbose("Deleting cached artifact from cache for changed module " + dd)
 							resolved.getReport.getLocalFile.delete()
-							null
+							null // ProjectResolver hasn't any relation to DependencyDescriptor
+						case validResolver =>
+							// invalidate the cache if the artifact was removed from the local repository
+							if(!origin.isLocal) resolved
+							else {
+								val file = new File(origin.getLocation)
+								if(file == null || file.exists) resolved
+								else {
+									resolved.getReport.getLocalFile.delete()
+									null
+								}
+							}
 						}
-					}
 				}
 			}
 			/** This is overridden to delete outofdate artifacts of changing modules that are not listed in the metadata.
@@ -321,19 +333,42 @@ private object IvySbt
 				val mrid = moduleArtifact.getModuleRevisionId
 				// only handle changing modules whose metadata actually changed.
 				// Typically, the publication date in the metadata has to change to get here.
-				if(rmr != null && rmr.getReport != null && rmr.getReport.isSearched && isChanging(dd, mrid)) {
-					// this is the locally cached metadata as originally retrieved (e.g. the pom)
-					val original = rmr.getReport.getOriginalLocalFile
-					if(original != null) {
-						// delete all files in subdirectories that are older than the original metadata file
-						val lm = original.lastModified
-						val indirectFiles = PathFinder(original.getParentFile).*(DirectoryFilter).**(-DirectoryFilter).get.toList
-						val older = indirectFiles.filter(f => f.lastModified < lm).toList
-						Message.verbose("Deleting additional old artifacts from cache for changed module " + mrid + older.mkString(":\n\t", "\n\t", ""))
-						IO.delete(older)
+				if(rmr != null)
+				{
+					if(rmr.getReport != null && rmr.getReport.isSearched && isChanging(dd, mrid)) {
+						// this is the locally cached metadata as originally retrieved (e.g. the pom)
+						val original = rmr.getReport.getOriginalLocalFile
+						if(original != null) {
+							// delete all files in subdirectories that are older than the original metadata file
+							val lm = original.lastModified
+							val indirectFiles = PathFinder(original.getParentFile).*(DirectoryFilter).**(-DirectoryFilter).get.toList
+							val older = indirectFiles.filter(f => f.lastModified < lm).toList
+							Message.verbose("Deleting additional old artifacts from cache for changed module " + mrid + older.mkString(":\n\t", "\n\t", ""))
+							IO.delete(older)
+						}
+					}
+					rmr.getResolver match {
+						case invalidResolver: ProjectResolver if invalidResolver.getDependency(dd, null) == null =>
+							if (rmr.getReport != null) {
+								// invalid cached data
+								val original = rmr.getReport.getOriginalLocalFile
+								if(original != null) {
+									// delete all files in subdirectories that are older than the original metadata file
+									val lm = original.lastModified
+									val indirectFiles = PathFinder(original.getParentFile).*(DirectoryFilter).**(-DirectoryFilter).get.toList
+									val older = indirectFiles.filter(f => f.lastModified < lm).toList
+									Message.verbose("Deleting additional old artifacts from cache for changed module " + mrid + older.mkString(":\n\t", "\n\t", ""))
+									IO.delete(older)
+								}
+								original.delete
+							}
+							null // ProjectResolver hasn't any relation to DependencyDescriptor
+						case validResolver =>
+							rmr
 					}
 				}
-				rmr
+				else
+					null
 			}
 			def isChanging(dd: DependencyDescriptor, requestedRevisionId: ModuleRevisionId): Boolean =
 				dd.isChanging || requestedRevisionId.getRevision.contains("-SNAPSHOT")
