@@ -1018,7 +1018,7 @@ object Classpaths
 			val scalaVersion = app.provider.scalaProvider.version
 			val binVersion = binaryScalaVersion(scalaVersion)
 			val cross = if(id.crossVersioned) CrossVersion.binary else CrossVersion.Disabled
-			val base = ModuleID(id.groupID, id.name, id.version, crossVersion = cross)
+			val base = ModuleID(id.groupID, id.name, sbtVersion.value, crossVersion = cross)
 			CrossVersion(scalaVersion, binVersion)(base).copy(crossVersion = CrossVersion.Disabled)
 		}
 	)
