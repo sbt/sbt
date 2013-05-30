@@ -48,7 +48,9 @@ object IncOptions {
 		apiDumpDirectory = None,
 		newClassfileManager = ClassfileManager.deleteImmediately
 	)
-	def defaultTransactional(tempDir: File): IncOptions = Default.copy(newClassfileManager = ClassfileManager.transactional(tempDir))
+	def defaultTransactional(tempDir: File): IncOptions = setTransactional(Default, tempDir)
+	def setTransactional(opts: IncOptions, tempDir: File): IncOptions =
+		opts.copy(newClassfileManager = ClassfileManager.transactional(tempDir))
 
 	val transitiveStepKey       = "transitiveStep"
 	val recompileAllFractionKey = "recompileAllFraction"

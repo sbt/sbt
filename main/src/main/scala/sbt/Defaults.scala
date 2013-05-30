@@ -14,7 +14,7 @@ package sbt
 	import CrossVersion.{binarySbtVersion, binaryScalaVersion, partialVersion}
 	import complete._
 	import std.TaskExtra._
-	import inc.{FileValueCache, Locate}
+	import inc.{FileValueCache, IncOptions, Locate}
 	import testing.{Framework, Runner, AnnotatedFingerprint, SubclassFingerprint}
 
 	import sys.error
@@ -195,13 +195,14 @@ object Defaults extends BuildCommon
 	)
 
 	def compileBase = inTask(console)(compilersSetting :: Nil) ++ compileBaseGlobal ++ Seq(
-		incOptions in GlobalScope := sbt.inc.IncOptions.defaultTransactional(crossTarget.value.getParentFile / "classes.bak"),
+		incOptions := IncOptions.setTransactional(incOptions.value, crossTarget.value / "classes.bak"),
 		scalaInstance <<= scalaInstanceTask,
 		crossVersion := (if(crossPaths.value) CrossVersion.binary else CrossVersion.Disabled),
 		crossTarget := makeCrossTarget(target.value, scalaBinaryVersion.value, sbtBinaryVersion.value, sbtPlugin.value, crossPaths.value)
 	)
 	// must be a val: duplication detected by object identity
 	private[this] lazy val compileBaseGlobal: Seq[Setting[_]] = globalDefaults(Seq(
+		incOptions := IncOptions.Default,
 		classpathOptions :== ClasspathOptions.boot,
 		classpathOptions in console :== ClasspathOptions.repl,
 		compileOrder :== CompileOrder.Mixed,
@@ -218,6 +219,7 @@ object Defaults extends BuildCommon
 		val scalaBase = if(cross) t / ("scala-" + sv) else t
 		if(plugin) scalaBase / ("sbt-" + sbtv) else scalaBase
 	}
+
 	def compilersSetting = compilers := Compiler.compilers(scalaInstance.value, classpathOptions.value, javaHome.value)(appConfiguration.value, streams.value.log)
 
 	lazy val configTasks = docTaskSettings(doc) ++ inTask(compile)(compileInputsSettings) ++ configGlobal ++ Seq(
