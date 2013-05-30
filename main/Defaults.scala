@@ -868,12 +868,12 @@ object Classpaths
 				IvyActions.updateClassifiers(is, GetClassifiersConfiguration(mod, excludes, c, ivyScala), s.log)
 			}
 		} tag(Tags.Update, Tags.Network),
-		sbtDependency in GlobalScope <<= appConfiguration { app =>
+		sbtDependency in GlobalScope <<= (appConfiguration, sbtVersion) { (app, sbtV) =>
 			val id = app.provider.id
 			val scalaVersion = app.provider.scalaProvider.version
 			val binVersion = binaryScalaVersion(scalaVersion)
 			val cross = if(id.crossVersioned) CrossVersion.binary else CrossVersion.Disabled
-			val base = ModuleID(id.groupID, id.name, id.version, crossVersion = cross)
+			val base = ModuleID(id.groupID, id.name, sbtV, crossVersion = cross)
 			CrossVersion(scalaVersion, binVersion)(base).copy(crossVersion = CrossVersion.Disabled)
 		}
 	)
