@@ -2,11 +2,30 @@
 Changes
 =======
 
-0.12.2 to 0.13.0
+0.12.4 to 0.13.0
 ~~~~~~~~~~~~~~~~
 
 The changes for 0.13.0 are listed on a separate page. See
 :doc:`ChangeSummary_0.13.0`.
+
+0.12.3 to 0.12.4
+~~~~~~~~~~~~~~~~
+
+- Work around URI problems with encoding and resolving. (gh-725)
+- Allow -cp argument to ``apply`` command to be quoted.  (gh-724)
+- Make ``sbtBinaryVersion`` use the new approach for 0.13 and later to support cross-building plugins.
+- Pull ``sbtDependency`` version from ``sbtVersion`` to facilitate cross-building plugins.
+- Proper support for stashing on-failure handlers.  (gh-732)
+- Include files with zip extension in unmanaged jars.  (gh-750)
+- Only add automatically detected plugins to options once.  (gh-757)
+- Properly handle failure in a multi-command that includes ``reload``. (gh-732)
+- Incremental compiler: remove resident compiler code (wasn't used and was a compatibility liability)
+- Incremental compiler: properly track ``abstract override`` modifier.  (gh-726)
+- Incremental compiler: do not normalize types in the api extraction phase. (gh-736)
+- Ivy cache: account for ``localOnly`` when cache subclass overrides ``isChanging``
+- Ivy cache: fix corruption when developing sbt or sbt plugins. (gh-768)
+- Ivy cache: invalidate when artifact download fails to avoid locking into bad resolver. (gh-760)
+- Ivy cache: use publication date from metadata instead of original file's last modified time when deleting out of date artifacts.  (gh-764)
 
 0.12.2 to 0.12.3
 ~~~~~~~~~~~~~~~~

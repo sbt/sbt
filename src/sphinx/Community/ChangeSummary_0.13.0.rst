@@ -40,8 +40,6 @@ Fixes
 -----
 
 - sbt no longer tries to warn on dependency conflicts.  Configure a :ref:`conflict manager <conflict-management>` instead.  (gh-709)
-- Properly handle failure in a multi-command that includes ``reload``. (gh-732)
-- Do not normalize types in the api extraction phase.  (Grzegorz K., gh-736)
 
 Improvements
 ------------
