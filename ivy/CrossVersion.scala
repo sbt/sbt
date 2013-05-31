@@ -81,6 +81,30 @@ object CrossVersion
 	
 	def binaryScalaVersion(full: String): String = binaryVersion(full, TransitionScalaVersion)
 	def binarySbtVersion(full: String): String = binaryVersion(full, TransitionSbtVersion)
+
+	private[sbt] def binarySbtVersionFuture(full: String): String = sbtApiVersion(full) match {
+		case Some((x,y)) => x + "." + y
+		case None => full
+	}
+	private[this] def sbtApiVersion(v: String): Option[(Int, Int)] =
+	{
+		val ReleaseV = """(\d+)\.(\d+)\.(\d+)(-\d+)?""".r
+		val CandidateV = """(\d+)\.(\d+)\.(\d+)(-RC\d+)""".r
+		val NonReleaseV = """(\d+)\.(\d+)\.(\d+)(-\w+)""".r
+		v match {
+			// before 0.12, the full sbt version was used
+			case PartialVersion(x, y) if (x.toInt == 0 && y.toInt < 12)  => None
+			// 0.12 uses x.y always, regardless of release status
+			case PartialVersion(x, y) if (x.toInt == 0 && y.toInt == 12) => Some((x.toInt, y.toInt))
+			// 0.13 and later behavior
+			case ReleaseV(x, y, z, ht)    => Some((x.toInt, y.toInt))
+			case CandidateV(x, y, z, ht)  => Some((x.toInt, y.toInt))
+			case NonReleaseV(x, y, z, ht) if z.toInt > 0 => Some((x.toInt, y.toInt))
+			// otherwise, use the full version
+			case _ => None
+		}
+	}
+
 	def binaryVersion(full: String, cutoff: String): String =
 	{
 		def sub(major: Int, minor: Int) = major + "." + minor

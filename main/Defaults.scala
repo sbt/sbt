@@ -11,7 +11,7 @@ package sbt
 	import Load.LoadedBuild
 	import Artifact.{DocClassifier, SourceClassifier}
 	import Configurations.{Compile, CompilerPlugin, IntegrationTest, names, Provided, Runtime, Test}
-	import CrossVersion.{binarySbtVersion, binaryScalaVersion}
+	import CrossVersion.{binarySbtVersionFuture, binaryScalaVersion}
 	import complete._
 	import std.TaskExtra._
 	import inc.{FileValueCache, Locate}
@@ -64,7 +64,7 @@ object Defaults extends BuildCommon
 		concurrentRestrictions <<= concurrentRestrictions or defaultRestrictions,
 		parallelExecution :== true,
 		sbtVersion <<= appConfiguration { _.provider.id.version },
-		sbtBinaryVersion <<= sbtVersion apply binarySbtVersion,
+		sbtBinaryVersion <<= sbtVersion apply binarySbtVersionFuture,
 		sbtResolver <<= sbtVersion { sbtV => if(sbtV endsWith "-SNAPSHOT") Classpaths.typesafeSnapshots else Classpaths.typesafeReleases },
 		pollInterval :== 500,
 		logBuffered :== false,
