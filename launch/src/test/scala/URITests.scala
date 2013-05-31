@@ -23,10 +23,10 @@ object URITests extends Properties("URI Tests")
 		val encoded = "has%20spaces"
 		val fpURI = filePathURI(decoded)
 		val directURI = new URI(encoded)
-		s"filePathURI: $fpURI" |:
-		s"direct URI: $directURI" |:
-		s"getPath: ${fpURI.getPath}" |:
-		s"getRawPath: ${fpURI.getRawPath}" |:
+		("filePathURI: " +fpURI) |:
+		("direct URI: " + directURI) |:
+		("getPath: " + fpURI.getPath) |:
+		("getRawPath: " + fpURI.getRawPath) |:
 		(fpURI == directURI) &&
 		(fpURI.getPath == decoded) &&
 		(fpURI.getRawPath == encoded)
@@ -36,8 +36,8 @@ object URITests extends Properties("URI Tests")
 		val s = "/a/b'/has spaces"
 		val viaPath = filePathURI(s)
 		val viaFile = (new File(s)).toURI
-		s"via path: $viaPath" |:
-		s"via file: $viaFile" |:
+		("via path: " + viaPath) |:
+		("via file: " + viaFile) |:
 		(viaPath == viaFile)
 	}
 }
