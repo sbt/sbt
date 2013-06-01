@@ -64,6 +64,8 @@ final case class ModuleID(organization: String, name: String, revision: String, 
 	/** Excludes the dependency with organization `org` and `name` from being introduced by this dependency during resolution. */
 	def exclude(org: String, name: String) = excludeAll(ExclusionRule(org, name))
 
+	/** Adds extra attributes for this module.  All keys are prefixed with `e:` if they are not already so prefixed.
+	* This information will only be published in an ivy.xml and not in a pom.xml. */
 	def extra(attributes: (String,String)*) = copy(extraAttributes = this.extraAttributes ++ ModuleID.checkE(attributes))
 
 	/** Not recommended for new use.  This method is not deprecated, but the `update-classifiers` task is preferred
@@ -96,6 +98,7 @@ final case class ModuleID(organization: String, name: String, revision: String, 
 }
 object ModuleID
 {
+	/** Prefixes all keys with `e:` if they are not already so prefixed. */
 	def checkE(attributes: Seq[(String, String)]) =
 		for ( (key, value) <- attributes) yield
 			if(key.startsWith("e:")) (key, value) else ("e:" + key, value)
