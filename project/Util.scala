@@ -155,7 +155,7 @@ object %s {
 object Common
 {
 	def lib(m: ModuleID) = libraryDependencies += m
-	lazy val jlineDep = "jline" % "jline" % "2.10"
+	lazy val jlineDep = "jline" % "jline" % "2.11"
 	lazy val jansiDep = "org.fusesource.jansi" % "jansi" % "1.9" // jline pom doesn't explicitly declare it?
 	lazy val jline = Seq(lib(jlineDep), lib(jansiDep))
 	lazy val ivy = lib("org.apache.ivy" % "ivy" % "2.3.0-rc1")
