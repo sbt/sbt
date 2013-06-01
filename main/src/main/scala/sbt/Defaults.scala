@@ -1207,9 +1207,17 @@ object Classpaths
 		val x2 = copyResources.value
 		classDirectory.value :: Nil
 	}
-	def exportProductsTask: Initialize[Task[Classpath]] =
-		(products.task, packageBin.task, exportJars, compile, apiURL) flatMap { (psTask, pkgTask, useJars, analysis, u) =>
-			(if(useJars) Seq(pkgTask).join else psTask) map { _ map { f => APIMappings.store(analyzed(f, analysis), u) } }
+	def exportProductsTask: Initialize[Task[Classpath]] = Def.task {
+		val art = (artifact in packageBin).value
+		val module = projectID.value
+		val config= configuration.value
+		for(f <- productsImplTask.value) yield
+			APIMappings.store(analyzed(f, compile.value), apiURL.value).put(artifact.key, art).put(moduleID.key, module).put(configuration.key, config)
+	}
+
+	private[this] def productsImplTask: Initialize[Task[Seq[File]]] =
+		(products.task, packageBin.task, exportJars) flatMap { (psTask, pkgTask,  useJars) =>
+			if(useJars) Seq(pkgTask).join else psTask
 		}
 
 	def constructBuildDependencies: Initialize[BuildDependencies] =
