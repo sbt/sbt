@@ -19,7 +19,7 @@ object Status
 		if(v endsWith Snapshot)
 			(v stripSuffix Snapshot) + "-" + timestampString(System.currentTimeMillis)
 		else
-			v
+			error("Release version '" + v + "' cannot be stamped")
 	def timestampString(time: Long): String =
 	{
 		val format = new java.text.SimpleDateFormat("yyyyMMdd-HHmmss")
