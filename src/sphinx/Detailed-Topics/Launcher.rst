@@ -96,7 +96,7 @@ by the following grammar. ``'nl'`` is a newline or end of file and
     classifiers: "classifiers" ":" text ("," text)*
     homeDirectory: "ivy-home" ":" `path`
     checksums: "checksums" ":" `checksum` ("," `checksum`)*
-    overrideRepos: "override-uild-repos" ":" `boolean`
+    overrideRepos: "override-build-repos" ":" `boolean`
     repoConfig: "repository-config" ":" `path`
     org: "org" ":" text
     name: "name" ":" text
