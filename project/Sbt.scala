@@ -247,13 +247,12 @@ object Sbt extends Build
 		conflictWarning ~= { _.copy(filter = const(false)) },
 		exportedProducts in Compile := Nil,
 		exportedProducts in Test := Nil,
-		libraryDependencies <+= scalaVersion( "org.scala-lang" % "scala-compiler" % _ % "provided"),
-		libraryDependencies += jlineDep artifacts(Artifact("jline", Map("e:component" -> srcID)))
+		libraryDependencies <+= scalaVersion( "org.scala-lang" % "scala-compiler" % _ % "provided")
 	)
 	//
 	def compileInterfaceSettings: Seq[Setting[_]] = precompiledSettings ++ Seq(
 		exportJars := true,
-		artifact in (Compile, packageSrc) := Artifact(srcID) extra("e:component" -> srcID)
+		artifact in (Compile, packageSrc) := Artifact(srcID).copy(configurations = Compile :: Nil).extra("e:component" -> srcID)
 	)
 	def compilerSettings = Seq(
 		libraryDependencies <+= scalaVersion( "org.scala-lang" % "scala-compiler" % _ % "test"),
