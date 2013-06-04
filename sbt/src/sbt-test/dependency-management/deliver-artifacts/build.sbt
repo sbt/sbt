@@ -1,7 +1,9 @@
-// verifies that a can be published as an ivy.xml file and preserve the extra artifact information,
-//   such as a classifier
 lazy val a = project.settings(common: _*).settings(
-	libraryDependencies := Seq("net.sf.json-lib" % "json-lib" % "2.4" classifier "jdk15" intransitive())
+	// verifies that a can be published as an ivy.xml file and preserve the extra artifact information,
+	//   such as a classifier
+	libraryDependencies := Seq("net.sf.json-lib" % "json-lib" % "2.4" classifier "jdk15" intransitive()),
+	// verifies that an artifact without an explicit configuration gets published in all public configurations
+	artifact in (Compile,packageBin) := Artifact("demo")
 )
 
 lazy val b = project.settings(common: _*).settings(
