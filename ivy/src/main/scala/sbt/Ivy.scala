@@ -437,10 +437,10 @@ private object IvySbt
 		}
 	}
 
-	private def toIvyArtifact(moduleID: ModuleDescriptor, a: Artifact, configurations: Iterable[String]): MDArtifact =
+	private def toIvyArtifact(moduleID: ModuleDescriptor, a: Artifact, allConfigurations: Iterable[String]): MDArtifact =
 	{
 		val artifact = new MDArtifact(moduleID, a.name, a.`type`, a.extension, null, extra(a, false))
-		copyConfigurations(a, artifact.addConfiguration)
+		copyConfigurations(a, artifact.addConfiguration, allConfigurations)
 		artifact
 	}
 	def getExtraAttributes(revID: ExtendableItem): Map[String,String] =
@@ -597,10 +597,13 @@ private object IvySbt
 		dependencyDescriptor
 	}
 	def copyConfigurations(artifact: Artifact, addConfiguration: String => Unit): Unit =
-		if(artifact.configurations.isEmpty)
-			addConfiguration("*")
-		else
-			artifact.configurations.foreach(c => addConfiguration(c.name))
+		copyConfigurations(artifact, addConfiguration, "*" :: Nil)
+		
+	private[this] def copyConfigurations(artifact: Artifact, addConfiguration: String => Unit, allConfigurations: Iterable[String]): Unit =
+	{
+		val confs = if(artifact.configurations.isEmpty) allConfigurations else artifact.configurations.map(_.name)
+		confs foreach addConfiguration
+	}
 
 	def addOverrides(moduleID: DefaultModuleDescriptor, overrides: Set[ModuleID], matcher: PatternMatcher): Unit =
 		overrides foreach addOverride(moduleID, matcher)
@@ -627,7 +630,7 @@ private object IvySbt
 
 	/** This method is used to add inline artifacts to the provided module. */
 	def addArtifacts(moduleID: DefaultModuleDescriptor, artifacts: Iterable[Artifact]): Unit =
-		for(art <- mapArtifacts(moduleID, artifacts.toSeq); c <- art.getConfigurations if c != "*")
+		for(art <- mapArtifacts(moduleID, artifacts.toSeq); c <- art.getConfigurations)
 			moduleID.addArtifact(c, art)
 
 	def addConfigurations(mod: DefaultModuleDescriptor, configurations: Iterable[Configuration]): Unit =
@@ -637,17 +640,7 @@ private object IvySbt
 	{
 		lazy val allConfigurations = moduleID.getPublicConfigurationsNames
 		for(artifact <- artifacts) yield
-		{
-			val configurationStrings: Iterable[String] =
-			{
-				val artifactConfigurations = artifact.configurations
-				if(artifactConfigurations.isEmpty)
-					allConfigurations
-				else
-					artifactConfigurations.map(_.name)
-			}
-			toIvyArtifact(moduleID, artifact, configurationStrings)
-		}
+			toIvyArtifact(moduleID, artifact, allConfigurations)
 	}
 
 
