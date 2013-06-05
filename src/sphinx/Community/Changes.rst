@@ -20,6 +20,7 @@ Changes
 - Ivy cache: fix corruption when developing sbt or sbt plugins. (gh-768)
 - Ivy cache: invalidate when artifact download fails to avoid locking into bad resolver. (gh-760)
 - Ivy cache: use publication date from metadata instead of original file's last modified time when deleting out of date artifacts.  (gh-764)
+- Ivy: Fix regression in 0.12.3 where artifacts without an explicit configuration wouldn't be listed in ivy.xml.
 
 0.12.2 to 0.12.3
 ~~~~~~~~~~~~~~~~
