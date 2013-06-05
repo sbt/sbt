@@ -4,7 +4,7 @@
 [app]
   org: org.scala-sbt
   name: sbt
-  version: 0.13.0-Beta1
+  version: 0.13.0-Beta2
   class: sbt.ConsoleMain
   components: xsbti
   cross-versioned: true
