@@ -330,7 +330,10 @@ private object IvySbt
 				val resolved = resetArtifactResolver(super.findModuleInCache(dd,revId,options,null))
 				// invalidate the cache if the artifact was removed from the local repository
 				if(resolved == null) null
-				else {
+				else if(isProjectResolver(resolved.getResolver)) {
+					resolved.getReport.getLocalFile.delete()
+					null
+				} else {
 					val origin = resolved.getReport.getArtifactOrigin
 					if(!origin.isLocal) resolved
 					else {
@@ -343,6 +346,10 @@ private object IvySbt
 					}
 				}
 			}
+			private[this] def isProjectResolver(r: DependencyResolver): Boolean = r match {
+				case pr: ProjectResolver => true
+				case _ => false
+			}
 			/** This is overridden to delete outofdate artifacts of changing modules that are not listed in the metadata.
 			* This occurs for artifacts with classifiers, for example. */
 			@throws(classOf[ParseException])
@@ -351,9 +358,12 @@ private object IvySbt
 				val rmrRaw = super.cacheModuleDescriptor(null, mdRef, dd, moduleArtifact, downloader, options)
 				val rmr = resetArtifactResolver(rmrRaw)
 				val mrid = moduleArtifact.getModuleRevisionId
+				def shouldClear(): Boolean = rmr != null &&
+					( (rmr.getReport != null && rmr.getReport.isSearched && isChanging(dd, mrid)) ||
+						isProjectResolver(rmr.getResolver) )
 				// only handle changing modules whose metadata actually changed.
 				// Typically, the publication date in the metadata has to change to get here.
-				if(rmr != null && rmr.getReport != null && rmr.getReport.isSearched && isChanging(dd, mrid)) {
+				if(shouldClear()) {
 					// this is the locally cached metadata as originally retrieved (e.g. the pom)
 					val original = rmr.getReport.getOriginalLocalFile
 					if(original != null) {
