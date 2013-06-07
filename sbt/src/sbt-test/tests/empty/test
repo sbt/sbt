@@ -1,0 +1,3 @@
+# https://github.com/sbt/sbt/issues/777
+# throws an exception for custom groupings when no tests are defined
+> test
