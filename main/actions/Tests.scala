@@ -123,7 +123,9 @@ object Tests
 	def processResults(results: Iterable[(String, TestResult.Value)]): (TestResult.Value, Map[String, TestResult.Value]) =
 		(overall(results.map(_._2)), results.toMap)
 	def foldTasks(results: Seq[Task[Output]], parallel: Boolean): Task[Output] =
-		if (parallel)
+		if(results.isEmpty)
+			task { (TestResult.Passed, Map.empty) }
+		else if (parallel)
 			reduced(results.toIndexedSeq, {
 				case ((v1, m1), (v2, m2)) => (if (v1.id < v2.id) v2 else v1, m1 ++ m2)
 			})
