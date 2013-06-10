@@ -38,15 +38,26 @@ object ScriptedPlugin extends Plugin {
 	}
 
 	def scriptedRunTask: Initialize[Task[Method]] = (scriptedTests) map {
-		(m) =>
-		m.getClass.getMethod("run", classOf[File], classOf[Boolean], classOf[String], classOf[String], classOf[String], classOf[Array[String]], classOf[File], classOf[Array[String]])
+		(m) => try get012Method(m) catch { case e12: NoSuchMethodException =>
+			try get013Method(m) catch { case _: NoSuchMethodException => throw e12 }
+		}
 	}
+	private[this] def get012Method(m: AnyRef): Method =
+		m.getClass.getMethod("run", classOf[File], classOf[Boolean], classOf[String], classOf[String], classOf[String], classOf[Array[String]], classOf[File], classOf[Array[String]])
+	private[this] def get013Method(m: AnyRef): Method =
+		m.getClass.getMethod("run", classOf[File], classOf[Boolean], classOf[Array[String]], classOf[File], classOf[Array[String]])
+
 
 	def scriptedTask: Initialize[InputTask[Unit]] = InputTask(_ => complete.Parsers.spaceDelimited("<arg>")) { result =>
 		(scriptedDependencies, scriptedTests, scriptedRun, sbtTestDirectory, scriptedBufferLog, scriptedSbt, scriptedScalas, sbtLauncherTask, scriptedLaunchOpts, result) map {
 			(deps, m, r, testdir, bufferlog, version, scriptedScalas, launcher, launchOpts, args) =>
-			try { r.invoke(m, testdir, bufferlog: java.lang.Boolean, version.toString, scriptedScalas.build, scriptedScalas.versions, args.toArray, launcher, launchOpts.toArray) }
-			catch { case e: java.lang.reflect.InvocationTargetException => throw e.getCause }
+			def invoke12 = r.invoke(m, testdir, bufferlog: java.lang.Boolean, version.toString, scriptedScalas.build, scriptedScalas.versions, args.toArray, launcher, launchOpts.toArray)
+			def invoke13 = r.invoke(m, testdir, bufferlog: java.lang.Boolean, args.toArray, launcher, launchOpts.toArray)
+			try invoke12 catch {
+				case e: InvocationTargetException => throw e.getCause
+				case i: IllegalArgumentException =>
+					try invoke13 catch { case e: InvocationTargetException => throw e.getCause }
+			}
 		}
 	}
 
