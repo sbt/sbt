@@ -29,6 +29,19 @@ object ScopeFilter
 			}
 		}
 
+	def debug(delegate: ScopeFilter): ScopeFilter =
+		new ScopeFilter {
+			private[sbt] def apply(data: Data): Scope => Boolean =
+			{
+				val d = delegate(data)
+				scope => {
+					val accept = d(scope)
+					println( (if(accept) "ACCEPT " else "reject ") + scope)
+					accept
+				}
+			}
+		}
+
 	final class SettingKeyAll[T] private[sbt](i: Initialize[T]) {
 		/** Evaluates the initialization in all scopes selected by the filter.  These are dynamic dependencies, so
 		* static inspections will not show them. */
