@@ -32,7 +32,8 @@ object ScriptedPlugin extends Plugin {
 
 	def scriptedTestsTask: Initialize[Task[AnyRef]] = (scriptedClasspath, scalaInstance) map {
 		(classpath, scala) =>
-		val loader = ClasspathUtilities.toLoader(classpath, scala.loader)
+		val parent = new sbt.classpath.FilteredLoader(scala.loader, "jline." :: Nil)
+		val loader = ClasspathUtilities.toLoader(classpath, parent)
 		ModuleUtilities.getObject("sbt.test.ScriptedTests", loader)
 	}
 
