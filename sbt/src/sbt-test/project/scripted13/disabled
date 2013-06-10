@@ -1,0 +1,7 @@
+# This tests that this sbt scripted plugin can launch the next one
+# It is currently disabled because there is no next plugin version
+
+$ copy-file changes/A.scala src/sbt-test/a/b/A.scala
+> scripted
+$ copy-file changes/Fail.scala src/sbt-test/a/b/Fail.scala
+-> scripted
