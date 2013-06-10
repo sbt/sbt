@@ -6,14 +6,16 @@ package sbt
 import Def.Initialize
 import Keys._
 import classpath.ClasspathUtilities
-import java.lang.reflect.Method
+import java.lang.reflect.{InvocationTargetException,Method}
 import java.util.Properties
 
 object ScriptedPlugin extends Plugin {
 	def scriptedConf = config("scripted-sbt") hide
+	def scriptedLaunchConf = config("scripted-sbt-launch") hide
 
 	val scriptedSbt = SettingKey[String]("scripted-sbt")
-	val sbtLauncher = SettingKey[File]("sbt-launcher")
+	val sbtLauncher = TaskKey[File]("sbt-launcher")
+
 	val sbtTestDirectory = SettingKey[File]("sbt-test-directory")
 	val scriptedBufferLog = SettingKey[Boolean]("scripted-buffer-log")
 
@@ -47,17 +49,25 @@ object ScriptedPlugin extends Plugin {
 	}
 
 	val scriptedSettings = Seq(
-		ivyConfigurations += scriptedConf,
-		scriptedSbt := appConfiguration.value.provider.id.version,
-		libraryDependencies += "org.scala-sbt" % "scripted-sbt" % scriptedSbt.value % scriptedConf.toString ,
-		sbtLauncher := IO.classLocationFile(appConfiguration.value.provider.scalaProvider.launcher.getClass),
+		ivyConfigurations ++= Seq(scriptedConf, scriptedLaunchConf),
+		scriptedSbt := sbtVersion.value,
+		sbtLauncher <<= getJars(scriptedLaunchConf).map(_.get.head),
 		sbtTestDirectory := sourceDirectory.value / "sbt-test",
+		libraryDependencies ++= Seq(
+			"org.scala-sbt" % "scripted-sbt" % scriptedSbt.value % scriptedConf.toString,
+			"org.scala-sbt" % "sbt-launch" % scriptedSbt.value % scriptedLaunchConf.toString from launcherURL(scriptedSbt.value)
+		),
 		scriptedBufferLog := true,
-		scriptedClasspath := PathFinder(Classpaths.managedJars(scriptedConf, classpathTypes.value, update.value).map(_.data)),
+		scriptedClasspath := getJars(scriptedConf).value,
 		scriptedTests <<= scriptedTestsTask,
 		scriptedRun <<= scriptedRunTask,
 		scriptedDependencies <<= (compile in Test, publishLocal) map { (analysis, pub) => Unit },
 		scriptedLaunchOpts := Seq(),
 		scripted <<= scriptedTask
 	)
+	private[this] def getJars(config: Configuration): Initialize[Task[PathFinder]] = Def.task {
+		PathFinder(Classpaths.managedJars(config, classpathTypes.value, update.value).map(_.data))
+	}
+	private[this] def launcherURL(v: String): String =
+		"http://repo.typesafe.com/typesafe/ivy-releases/org.scala-sbt/sbt-launch/" + v + "/sbt-launch.jar"
 }
