@@ -1,0 +1,4 @@
+$ copy-file changes/A.scala src/sbt-test/a/b/A.scala
+> scripted
+$ copy-file changes/Fail.scala src/sbt-test/a/b/Fail.scala
+-> scripted
