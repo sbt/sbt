@@ -6,14 +6,18 @@ package sbt
 import Project.Initialize
 import Keys._
 import classpath.ClasspathUtilities
-import java.lang.reflect.Method
+import java.lang.reflect.{InvocationTargetException,Method}
 import java.util.Properties
 
 object ScriptedPlugin extends Plugin {
 	def scriptedConf = config("scripted-sbt") hide
+	private[this] def scriptedLaunchConf = config("scripted-sbt-launch") hide
 
 	val scriptedSbt = SettingKey[String]("scripted-sbt")
 	val sbtLauncher = SettingKey[File]("sbt-launcher")
+	// need to get the launcher from 'update', which requires a Task, but cannot break compatibility in 0.12
+	private[this] val sbtLauncherTask = TaskKey[File]("sbt-launcher-task")
+
 	val sbtTestDirectory = SettingKey[File]("sbt-test-directory")
 	val scriptedBufferLog = SettingKey[Boolean]("scripted-buffer-log")
 	final case class ScriptedScalas(build: String, versions: String)
@@ -38,7 +42,7 @@ object ScriptedPlugin extends Plugin {
 	}
 
 	def scriptedTask: Initialize[InputTask[Unit]] = InputTask(_ => complete.Parsers.spaceDelimited("<arg>")) { result =>
-		(scriptedDependencies, scriptedTests, scriptedRun, sbtTestDirectory, scriptedBufferLog, scriptedSbt, scriptedScalas, sbtLauncher, scriptedLaunchOpts, result) map {
+		(scriptedDependencies, scriptedTests, scriptedRun, sbtTestDirectory, scriptedBufferLog, scriptedSbt, scriptedScalas, sbtLauncherTask, scriptedLaunchOpts, result) map {
 			(deps, m, r, testdir, bufferlog, version, scriptedScalas, launcher, launchOpts, args) =>
 			try { r.invoke(m, testdir, bufferlog: java.lang.Boolean, version.toString, scriptedScalas.build, scriptedScalas.versions, args.toArray, launcher, launchOpts.toArray) }
 			catch { case e: java.lang.reflect.InvocationTargetException => throw e.getCause }
@@ -46,11 +50,18 @@ object ScriptedPlugin extends Plugin {
 	}
 
 	val scriptedSettings = Seq(
-		ivyConfigurations += scriptedConf,
-		scriptedSbt <<= (appConfiguration)(_.provider.id.version),
+		ivyConfigurations ++= Seq(scriptedConf, scriptedLaunchConf),
+		scriptedSbt <<= sbtVersion,
 		scriptedScalas <<= (scalaVersion) { (scala) => ScriptedScalas(scala, scala) },
-		libraryDependencies <<= (libraryDependencies, scriptedSbt) {(deps, version) => deps :+ "org.scala-sbt" % "scripted-sbt" % version % scriptedConf.toString },
+		libraryDependencies <<= (libraryDependencies, scriptedSbt) {(deps, version) =>
+			deps ++ Seq(
+				"org.scala-sbt" % "scripted-sbt" % version % scriptedConf.toString,
+				"org.scala-sbt" % "sbt-launch" % version % scriptedLaunchConf.toString from launcherURL(version)
+			)
+		},
+		scriptedClasspath <<= getJars(scriptedConf),
 		sbtLauncher <<= (appConfiguration)(app => IO.classLocationFile(app.provider.scalaProvider.launcher.getClass)),
+		sbtLauncherTask <<= getJars(scriptedLaunchConf).map(_.get.head),
 		sbtTestDirectory <<= sourceDirectory / "sbt-test",
 		scriptedBufferLog := true,
 		scriptedClasspath <<= (classpathTypes, update) map { (ct, report) => PathFinder(Classpaths.managedJars(scriptedConf, ct, report).map(_.data)) },
@@ -60,4 +71,8 @@ object ScriptedPlugin extends Plugin {
 		scriptedLaunchOpts := Seq(),
 		scripted <<= scriptedTask
 	)
+	private[this] def getJars(config: Configuration): Initialize[Task[PathFinder]] =
+		(classpathTypes, update) map { (ct, report) => PathFinder(Classpaths.managedJars(config, ct, report).map(_.data)) }
+	private[this] def launcherURL(v: String): String =
+		"http://repo.typesafe.com/typesafe/ivy-releases/org.scala-sbt/sbt-launch/" + v + "/sbt-launch.jar"
 }
