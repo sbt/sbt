@@ -148,6 +148,7 @@ object Defaults extends BuildCommon
 		historyPath <<= historyPath or target(t => Some(t / ".history")),
 		sourceDirectory := baseDirectory.value / "src",
 		sourceManaged := crossTarget.value / "src_managed",
+		javaSourceManaged := crossTarget.value / "java_src_managed",
 		resourceManaged := crossTarget.value / "resource_managed",
 		cacheDirectory := crossTarget.value / CacheDirectoryName / thisProject.value.id / "global"
 	)

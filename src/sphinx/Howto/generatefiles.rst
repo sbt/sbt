@@ -11,7 +11,7 @@ sbt provides standard hooks for adding source or resource generation tasks.
 
    sourceGenerators in Compile += <your Task[Seq[File]] here>
 
-A source generation task should generate sources in a subdirectory of ``sourceManaged`` and return a sequence of files generated.  The key to add the task to is called ``sourceGenerators``.  It should be scoped according to whether the generated files are main (``Compile``) or test (``Test``) sources.  This basic structure looks like:
+A source generation task should return a sequence of files generated. During compilation, all Scala and Java sources are mixed, and are re-separated by extension. Scala sources should be generated in a subdirectory of ``sourceManaged``. Java sources should be generated in a subdirectory of ``javaSourceManaged``. The key to add the generation task to is called ``sourceGenerators``.  It should be scoped according to whether the generated files are main (``Compile``) or test (``Test``) sources.  This basic structure looks like:
 
 ::
 
