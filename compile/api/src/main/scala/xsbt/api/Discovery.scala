@@ -62,7 +62,7 @@ object Discovery
 		}
 	def isStringArray(vp: IndexedSeq[ParameterList]): Boolean = vp.length == 1 && isStringArray(vp(0).parameters)
 	def isStringArray(params: Seq[MethodParameter]): Boolean = params.length == 1 && isStringArray(params(0))
-	def isStringArray(p: MethodParameter): Boolean = p.modifier == ParameterModifier.Plain && isStringArray(p.tpe)
+	def isStringArray(p: MethodParameter): Boolean = (p.modifier == ParameterModifier.Plain || p.modifier == ParameterModifier.Repeated) && isStringArray(p.tpe)
 	def isStringArray(t: Type): Boolean = isParameterized(t, "scala.Array", "java.lang.String") // doesn't handle scala.this#Predef#String, should API phase dealias?
 
 	def isParameterized(t: Type, base: String, args: String*): Boolean = t match {
