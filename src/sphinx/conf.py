@@ -92,6 +92,8 @@ rst_epilog = """
 .. _RPM: %(sbt_native_package_base)s/%(version)s/sbt.rpm
 .. |nightly-launcher| replace:: <%(launcher_snapshots_base)s
 .. _mailing list: http://groups.google.com/group/simple-build-tool/topics
+.. _adept: https://groups.google.com/group/adept-dev/topics
+.. _Stack Overflow: http://stackoverflow.com/tags/sbt
 .. _source code: http://github.com/sbt/sbt
 """ % {
    'launcher_release_base': launcher_release_base,

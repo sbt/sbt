@@ -3,8 +3,8 @@ Opportunites
 ============
 
 Below is a running list of potential areas of contribution. This list
-may become out of date quickly, so you may want to check on the mailing
-list if you are interested in a specific topic.
+may become out of date quickly, so you may want to check on the `mailing list`_
+if you are interested in a specific topic.
 
 1. There are plenty of possible visualization and analysis
    opportunities.
@@ -39,11 +39,7 @@ list if you are interested in a specific topic.
    the dependencies. It is also easy to extend this to other ways of
    retrieving projects. Support for svn and hg was a recent
    contribution, for example.
-3. Dependency management is a general area. Working on Apache Ivy itself
-   is another way to help. For example, I'm pretty sure Ivy is
-   fundamentally single threaded. Either a) it's not and you can fix sbt
-   to take advantage of this or b) make Ivy multi-threaded and faster at
-   resolving dependencies.
+3. Dependency management: see `adept`_
 4. If you like parsers, sbt commands and input tasks are written using
    custom parser combinators that provide tab completion and error
    handling. Among other things, the efficiency could be improved.
@@ -64,9 +60,11 @@ You could make commands that wrap this, like:
       warn test:run
 
 Also, trace is currently an integer, but should really be an abstract
-data type. 7. There is more aggressive incremental compilation in sbt
-0.12. I expect it to be more difficult to reproduce bugs. It would be
-helpful to have a mode that generates a diff between successive
+data type.
+
+7. Each sbt version has more aggressive incremental compilation and
+reproducing bugs can be difficult. It would be helpful to
+have a mode that generates a diff between successive
 compilations and records the options passed to scalac. This could be
 replayed or inspected to try to find the cause.
 
@@ -81,18 +79,15 @@ Documentation
    repo) but doesn't have anything to link to that explains how to use
    those.
 
-3. grep the documentation's git checkout for "Wiki Maintenance Note" and work on
-   some of those
+3. API docs are much needed.
 
-4. API docs are much needed.
-
-5. Find useful answers or types/methods/values in the other docs, and
+4. Find useful answers or types/methods/values in the other docs, and
    pull references to them up into :doc:`/faq` or :doc:`/Name-Index` so people can
    find the docs. In general the :doc:`/faq` should feel a bit more like a
    bunch of pointers into the regular docs, rather than an alternative
    to the docs.
 
-6. A lot of the pages could probably have better names, and/or little
+5. A lot of the pages could probably have better names, and/or little
    2-4 word blurbs to the right of them in the sidebar.
 
 

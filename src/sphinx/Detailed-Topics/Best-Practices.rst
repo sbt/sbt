@@ -2,12 +2,7 @@
 Best Practices
 ==============
 
-This page describes best practices for working with sbt. Nontrivial
-additions and changes should generally be discussed on the `mailing
-list <http://groups.google.com/group/simple-build-tool/topics>`_ first.
-(Because there isn't built-in support for discussing GitHub wiki edits
-like normal commits, a subpar suggestion can only be reverted in its
-entirety without comment.)
+This page describes best practices for working with sbt.
 
 ``project/`` vs. ``~/.sbt/``
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~

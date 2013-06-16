@@ -7,7 +7,7 @@ Project Information
 How do I get help?
 ~~~~~~~~~~~~~~~~~~
 
-Please use the `mailing list`_ for questions, comments, and discussions.
+Please use `Stack Overflow`_ for questions.  Use the `mailing list`_ for comments and discussions.
 
 -  Please state the problem or question clearly and provide enough
    context. Code examples and build transcripts are often useful when
@@ -36,154 +36,6 @@ How can I help?
 -  Implement features that are important to you. There is an
    :doc:`/Community/Opportunities` page for some ideas, but the most useful
    contributions are usually ones you want yourself.
-
-For more details on developing sbt, see
-`Developing.pdf <http://harrah.github.com/xsbt/Developing.pdf>`_
-
-0.7 to 0.10+ Migration
-----------------------
-
-How do I migrate from 0.7 to 0.10+?
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-See the :doc:`migration page </Detailed-Topics/Migrating-from-sbt-0.7.x-to-0.10.x>` first and
-then the following questions.
-
-Where has 0.7's ``lib_managed`` gone?
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-By default, sbt |version| loads managed libraries from your ivy cache without
-copying them to a ``lib_managed`` directory. This fixes some bugs with
-the previous solution and keeps your project directory small. If you
-want to insulate your builds from the ivy cache being cleared, set
-``retrieveManaged := true`` and the dependencies will be copied to
-``lib_managed`` as a build-local cache (while avoiding the issues of
-``lib_managed`` in 0.7.x).
-
-This does mean that existing solutions for sharing libraries with your
-favoured IDE may not work. There are |version| plugins for IDEs being
-developed:
-
--  IntelliJ IDEA: [[https://github.com/mpeltonen/sbt-idea]]
--  Netbeans: [[https://github.com/remeniuk/sbt-netbeans-plugin]]
--  Eclipse: [[https://github.com/typesafehub/sbteclipse]]
-
-What are the commands I can use in |version| vs. 0.7?
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-For a list of commands, run ``help``. For details on a specific command,
-run ``help <command>``. To view a list of tasks defined on the current
-project, run ``tasks``. Alternatively, see the :doc:`Running </Getting-Started/Running>`
-page in the Getting Started Guide for descriptions of common commands and tasks.
-
-If in doubt start by just trying the old command as it may just work.
-The built in TAB completion will also assist you, so you can just press
-TAB at the beginning of a line and see what you get.
-
-The following commands work pretty much as in 0.7 out of the box:
-
-.. code-block:: text
-
-    reload
-    update
-    compile
-    test
-    testOnly
-    publishLocal
-    exit
-
-Why have the resolved dependencies in a multi-module project changed since 0.7?
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-sbt 0.10 fixes a flaw in how dependencies get resolved in multi-module
-projects. This change ensures that only one version of a library appears
-on a classpath.
-
-Use ``last update`` to view the debugging output for the last ``update``
-run. Use ``show update`` to view a summary of files comprising managed
-classpaths.
-
-My tests all run really fast but some are broken that weren't in 0.7!
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-Be aware that compilation and tests run in parallel by default in sbt
-|version|. If your test code isn't thread-safe then you may want to change
-this behaviour by adding one of the following to your ``build.sbt``:
-
-::
-
-    // Execute tests in the current project serially.
-    // Tests from other projects may still run concurrently.
-    parallelExecution in Test := false
-
-    // Execute everything serially (including compilation and tests)
-    parallelExecution := false
-
-How do I set log levels in |version| vs. 0.7?
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-``warn``, ``info``, ``debug`` and ``error`` don't work any more.
-
-The new syntax in the sbt |version| shell is:
-``text > set logLevel := Level.Warn``
-
-Or in your ``build.sbt`` file write:
-
-::
-
-    logLevel := Level.Warn
-
-What happened to the web development and Web Start support since 0.7?
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-Web application support was split out into a plugin. See the
-`xsbt-web-plugin <https://github.com/JamesEarlDouglas/xsbt-web-plugin>`_ project.
-
-For an early version of an xsbt Web Start plugin, visit the
-`xsbt-webstart <https://github.com/ritschwumm/xsbt-webstart>`_ project.
-
-How are inter-project dependencies different in |version| vs. 0.7?
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-In |version|, there are three types of project dependencies (classpath,
-execution, and configuration) and they are independently defined. These
-were combined in a single dependency type in 0.7.x. A declaration like:
-
-::
-
-    lazy val a = project("a", "A")
-    lazy val b = project("b", "B", a)
-
-meant that the ``B`` project had a classpath and execution dependency on
-``A`` and ``A`` had a configuration dependency on ``B``. Specifically,
-in 0.7.x:
-
-1. Classpath: Classpaths for ``A`` were available on the appropriate
-   classpath for ``B``.
-2. Execution: A task executed on ``B`` would be executed on ``A`` first.
-3. Configuration: For some settings, if they were not overridden in
-   ``A``, they would default to the value provided in ``B``.
-
-In |version|, declare the specific type of dependency you want. Read about
-:doc:`multi-project builds </Getting-Started/Multi-Project>` in the Getting
-Started Guide for details.
-
-Where did class/object X go since 0.7?
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-================================================================================================================================================================================================ =====================================================================================================================================================================================
-0.7                                                                                                                                                                                              |version|
-================================================================================================================================================================================================ =====================================================================================================================================================================================
-| `FileUtilities <http://simple-build-tool.googlecode.com/svn/artifacts/latest/api/sbt/FileUtilities$object.html>`_                                                                              `IO <../api/sbt/IO$.html>`_
-`Path class <http://simple-build-tool.googlecode.com/svn/artifacts/latest/api/sbt/Path.html>`_ and `object <http://simple-build-tool.googlecode.com/svn/artifacts/latest/api/sbt/Path$.html>`_   `Path object <../api/sbt/Path$.html>`_, ``File``, `RichFile <../api/sbt/RichFile.html>`_
-`PathFinder class <http://simple-build-tool.googlecode.com/svn/artifacts/latest/api/sbt/PathFinder.html>`_                                                                                       ``Seq[File]``, `PathFinder class <../api/sbt/PathFinder.html>`_, `PathFinder object <../api/sbt/PathFinder$.html>`_
-================================================================================================================================================================================================ =====================================================================================================================================================================================
-
-
-Where can I find plugins for |version|?
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-See :doc:`/Community/Community-Plugins` for a list of currently available plugins.
 
 Usage
 -----
@@ -233,10 +85,10 @@ You may run ``sbt console``.
 Build definitions
 -----------------
 
-What are the ``:=``, ``+=``, ``++=```, and ``~=`` methods?
+What are the ``:=``, ``+=``, ``++=``, and ``~=`` methods?
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-These are methods on keys used to construct a ``Setting``. The Getting
+These are methods on keys used to construct a ``Setting`` or a ``Task``. The Getting
 Started Guide covers all these methods, see :doc:`.sbt build definition </Getting-Started/Basic-Def>`
 and :doc:`more about settings </Getting-Started/More-About-Settings>` for example.
 
@@ -269,11 +121,12 @@ For example, to add generated sources to the packaged source artifact:
 
 ::
 
-    mappings in (Compile, packageSrc) <++=
-      (sourceManaged in Compile, managedSources in Compile) map { (base, srcs) =>
+    mappings in (Compile, packageSrc) ++= {
           import Path.{flat, relativeTo}
-        srcs x (relativeTo(base) | flat)
-      }
+       val base = (sourceManaged in Compile).value
+       val srcs = (managedSources in Compile).value
+       srcs x (relativeTo(base) | flat)
+    }
 
 This takes sources from the ``managedSources`` task and relativizes them
 against the ``managedSource`` base directory, falling back to a
@@ -673,8 +526,10 @@ that files in ``~/.sbt/plugins`` are only to be used by sbt itself, not
 as part of the general build definition. If you define your plugins in a
 file under *that* directory, they won't foul up your cross-compilations.
 Any file name ending in ``.sbt`` will do, but most people use
-``~/.sbt/plugins/build.sbt`` or ``~/.sbt/plugins/plugins.sbt``. ##
+``~/.sbt/plugins/build.sbt`` or ``~/.sbt/plugins/plugins.sbt``. 
+
 Miscellaneous
+-------------
 
 How do I use the Scala interpreter in my code?
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -717,3 +572,148 @@ example:
         ILoop.breakIf[MyType](a != b, "a" -> a, "b" -> b )
       }
 
+
+0.7 to 0.10+ Migration
+----------------------
+
+How do I migrate from 0.7 to 0.10+?
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+See the :doc:`migration page </Detailed-Topics/Migrating-from-sbt-0.7.x-to-0.10.x>` first and
+then the following questions.
+
+Where has 0.7's ``lib_managed`` gone?
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+By default, sbt |version| loads managed libraries from your ivy cache without
+copying them to a ``lib_managed`` directory. This fixes some bugs with
+the previous solution and keeps your project directory small. If you
+want to insulate your builds from the ivy cache being cleared, set
+``retrieveManaged := true`` and the dependencies will be copied to
+``lib_managed`` as a build-local cache (while avoiding the issues of
+``lib_managed`` in 0.7.x).
+
+This does mean that existing solutions for sharing libraries with your
+favoured IDE may not work. There are |version| plugins for IDEs being
+developed:
+
+-  IntelliJ IDEA: `https://github.com/mpeltonen/sbt-idea`_
+-  Netbeans: `https://github.com/remeniuk/sbt-netbeans-plugin`_
+-  Eclipse: `https://github.com/typesafehub/sbteclipse`_
+
+What are the commands I can use in |version| vs. 0.7?
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+For a list of commands, run ``help``. For details on a specific command,
+run ``help <command>``. To view a list of tasks defined on the current
+project, run ``tasks``. Alternatively, see the :doc:`Running </Getting-Started/Running>`
+page in the Getting Started Guide for descriptions of common commands and tasks.
+
+If in doubt start by just trying the old command as it may just work.
+The built in TAB completion will also assist you, so you can just press
+TAB at the beginning of a line and see what you get.
+
+The following commands work pretty much as in 0.7 out of the box:
+
+.. code-block:: text
+
+    reload
+    update
+    compile
+    test
+    testOnly
+    publishLocal
+    exit
+
+Why have the resolved dependencies in a multi-module project changed since 0.7?
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+sbt 0.10 fixes a flaw in how dependencies get resolved in multi-module
+projects. This change ensures that only one version of a library appears
+on a classpath.
+
+Use ``last update`` to view the debugging output for the last ``update``
+run. Use ``show update`` to view a summary of files comprising managed
+classpaths.
+
+My tests all run really fast but some are broken that weren't in 0.7!
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Be aware that compilation and tests run in parallel by default in sbt
+|version|. If your test code isn't thread-safe then you may want to change
+this behaviour by adding one of the following to your ``build.sbt``:
+
+::
+
+    // Execute tests in the current project serially.
+    // Tests from other projects may still run concurrently.
+    parallelExecution in Test := false
+
+    // Execute everything serially (including compilation and tests)
+    parallelExecution := false
+
+How do I set log levels in |version| vs. 0.7?
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+``warn``, ``info``, ``debug`` and ``error`` don't work any more.
+
+The new syntax in the sbt |version| shell is:
+``text > set logLevel := Level.Warn``
+
+Or in your ``build.sbt`` file write:
+
+::
+
+    logLevel := Level.Warn
+
+What happened to the web development and Web Start support since 0.7?
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Web application support was split out into a plugin. See the
+`xsbt-web-plugin <https://github.com/JamesEarlDouglas/xsbt-web-plugin>`_ project.
+
+For an early version of an xsbt Web Start plugin, visit the
+`xsbt-webstart <https://github.com/ritschwumm/xsbt-webstart>`_ project.
+
+How are inter-project dependencies different in |version| vs. 0.7?
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+In |version|, there are three types of project dependencies (classpath,
+execution, and configuration) and they are independently defined. These
+were combined in a single dependency type in 0.7.x. A declaration like:
+
+::
+
+    lazy val a = project("a", "A")
+    lazy val b = project("b", "B", a)
+
+meant that the ``B`` project had a classpath and execution dependency on
+``A`` and ``A`` had a configuration dependency on ``B``. Specifically,
+in 0.7.x:
+
+1. Classpath: Classpaths for ``A`` were available on the appropriate
+   classpath for ``B``.
+2. Execution: A task executed on ``B`` would be executed on ``A`` first.
+3. Configuration: For some settings, if they were not overridden in
+   ``A``, they would default to the value provided in ``B``.
+
+In |version|, declare the specific type of dependency you want. Read about
+:doc:`multi-project builds </Getting-Started/Multi-Project>` in the Getting
+Started Guide for details.
+
+Where did class/object X go since 0.7?
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+================================================================================================================================================================================================ =====================================================================================================================================================================================
+0.7                                                                                                                                                                                              |version|
+================================================================================================================================================================================================ =====================================================================================================================================================================================
+| `FileUtilities <http://simple-build-tool.googlecode.com/svn/artifacts/latest/api/sbt/FileUtilities$object.html>`_                                                                              `IO <../api/sbt/IO$.html>`_
+`Path class <http://simple-build-tool.googlecode.com/svn/artifacts/latest/api/sbt/Path.html>`_ and `object <http://simple-build-tool.googlecode.com/svn/artifacts/latest/api/sbt/Path$.html>`_   `Path object <../api/sbt/Path$.html>`_, ``File``, `RichFile <../api/sbt/RichFile.html>`_
+`PathFinder class <http://simple-build-tool.googlecode.com/svn/artifacts/latest/api/sbt/PathFinder.html>`_                                                                                       ``Seq[File]``, `PathFinder class <../api/sbt/PathFinder.html>`_, `PathFinder object <../api/sbt/PathFinder$.html>`_
+================================================================================================================================================================================================ =====================================================================================================================================================================================
+
+
+Where can I find plugins for |version|?
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+See :doc:`/Community/Community-Plugins` for a list of currently available plugins.
