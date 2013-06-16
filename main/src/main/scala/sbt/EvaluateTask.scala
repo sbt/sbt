@@ -156,8 +156,13 @@ object EvaluateTask
 		val tags = tagged[Task[_]](_.info get tagsKey getOrElse Map.empty, Tags.predicate(config.restrictions))
 		val (service, shutdown) = completionService[Task[_], Completed](tags, (s: String) => log.warn(s))
 
+		// propagate the defining key for reporting the origin
+		def overwriteNode(i: Incomplete): Boolean = i.node match {
+			case Some(t: Task[_]) => transformNode(t).isEmpty
+			case _ => true
+		}
 		def run() = {
-			val x = new Execute[Task](config.checkCycles, triggers)(taskToNode)
+			val x = Execute[Task]( Execute.config(config.checkCycles, overwriteNode), triggers)(taskToNode)
 			val (newState, result) =
 				try applyResults(x.runKeep(root)(service), state, root)
 				catch { case inc: Incomplete => (state, Inc(inc)) }

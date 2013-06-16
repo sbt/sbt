@@ -146,7 +146,7 @@ object Load
 
 	// map dependencies on the special tasks:
 	// 1. the scope of 'streams' is the same as the defining key and has the task axis set to the defining key
-	// 2. the defining key is stored on constructed tasks
+	// 2. the defining key is stored on constructed tasks: used for error reporting among other things
 	// 3. resolvedScoped is replaced with the defining key as a value
 	// Note: this must be idempotent.
 	def finalTransforms(ss: Seq[Setting[_]]): Seq[Setting[_]] =

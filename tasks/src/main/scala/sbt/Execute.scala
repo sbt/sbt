@@ -19,6 +19,12 @@ object Execute
 		def process() { p }
 	}
 	def noTriggers[A[_]] = new Triggers[A](Map.empty, Map.empty, idFun)
+
+	def apply[A[_] <: AnyRef](config: Config, triggers: Triggers[A])(implicit view: NodeView[A]): Execute[A] =
+		new Execute(config, triggers)(view)
+
+	def config(checkCycles: Boolean, overwriteNode: Incomplete => Boolean = const(false)): Config = new Config(checkCycles, overwriteNode)
+	final class Config private[sbt](val checkCycles: Boolean, val overwriteNode: Incomplete => Boolean)
 }
 sealed trait Completed {
 	def process(): Unit
@@ -30,8 +36,11 @@ trait NodeView[A[_]]
 }
 final class Triggers[A[_]](val runBefore: collection.Map[A[_], Seq[A[_]]], val injectFor: collection.Map[A[_], Seq[A[_]]], val onComplete: RMap[A,Result] => RMap[A,Result])
 
-final class Execute[A[_] <: AnyRef](checkCycles: Boolean, triggers: Triggers[A])(implicit view: NodeView[A])
+final class Execute[A[_] <: AnyRef] private(config: Config, triggers: Triggers[A])(implicit view: NodeView[A])
 {
+	@deprecated("Use Execute.apply", "0.13.0")
+	def this(checkCycles: Boolean, triggers: Triggers[A])(implicit view: NodeView[A]) = this(Execute.config(checkCycles), triggers)(view)
+
 	type Strategy = CompletionService[A[_], Completed]
 
 	private[this] val forward = idMap[A[_], IDSet[A[_]] ]
@@ -93,7 +102,7 @@ final class Execute[A[_] <: AnyRef](checkCycles: Boolean, triggers: Triggers[A])
 
 	def call[T](node: A[T], target: A[T])(implicit strategy: Strategy)
 	{
-		if(checkCycles) cycleCheck(node, target)
+		if(config.checkCycles) cycleCheck(node, target)
 		pre {
 			assert( running(node) )
 			readyInv( node )
@@ -232,7 +241,7 @@ final class Execute[A[_] <: AnyRef](checkCycles: Boolean, triggers: Triggers[A])
 	def work[T](node: A[T], f: => Either[A[T], T])(implicit strategy: Strategy): Completed =
 	{
 		val result = wideConvert(f).left.map {
-			case i: Incomplete => if(i.node.isEmpty) i.copy(node = Some(node)) else i
+			case i: Incomplete => if(config.overwriteNode(i)) i.copy(node = Some(node)) else i
 			case e => Incomplete(Some(node), Incomplete.Error, directCause = Some(e))
 		}
 		completed {
