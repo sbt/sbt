@@ -504,7 +504,15 @@ trait Init[Scope]
 		def mapConstant(g: MapConstant) = this
 		def evaluate(map: Settings[Scope]): T = value()
 	}
-	private[sbt] final val StaticScopes: Initialize[Set[Scope]] = new Value(() => error("internal sbt error: GetScopes not substituted"))
+	private[sbt] final object StaticScopes extends Initialize[Set[Scope]]
+	{
+		def dependencies = Nil
+		def mapReferenced(g: MapScoped) = this
+		def validateReferenced(g: ValidateRef) = Right(this)
+		def apply[S](g: Set[Scope] => S) = map(this)(g)
+		def mapConstant(g: MapConstant) = this
+		def evaluate(map: Settings[Scope]) = map.scopes
+	}
 	private[sbt] final class Apply[K[L[x]], T](val f: K[Id] => T, val inputs: K[Initialize], val alist: AList[K]) extends Initialize[T]
 	{
 		def dependencies = deps(alist.toList(inputs))
