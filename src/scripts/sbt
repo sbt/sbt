@@ -94,7 +94,9 @@ process_my_args () {
 }
 
 loadConfigFile() {
-  cat "$1" | sed '/^\#/d'
+  for line in $(cat "$1" | sed '/^\#/d'); do
+    eval echo $line
+  done
 }
 
 # if sbtopts files exist, prepend their contents to $@ so it can be processed by this runner
