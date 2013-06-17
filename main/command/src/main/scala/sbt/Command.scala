@@ -13,7 +13,7 @@ sealed trait Command {
 	def tags: AttributeMap
 	def tag[T](key: AttributeKey[T], value: T): Command
 }
-private[sbt] final class SimpleCommand(val name: String, help0: Help, val parser: State => Parser[() => State], val tags: AttributeMap) extends Command {
+private[sbt] final class SimpleCommand(val name: String, private[sbt] val help0: Help, val parser: State => Parser[() => State], val tags: AttributeMap) extends Command {
 	assert(Command validID name, "'" + name + "' is not a valid command name." )
 	def tag[T](key: AttributeKey[T], value: T): SimpleCommand = new SimpleCommand(name, help0, parser, tags.put(key, value))
 	def help = const(help0)
@@ -72,7 +72,12 @@ object Command
 		b => () => f(a,b)
 
 	def simpleParser(cmds: Seq[SimpleCommand]): State => Parser[() => State] =
-		simpleParser(cmds.map(sc => (sc.name, sc.parser)).toMap )
+		simpleParser(cmds.map(sc => (sc.name, argParser(sc) )).toMap )
+	private[this] def argParser(sc: SimpleCommand): State => Parser[() => State] =
+	{
+		def usageError = s"${sc.name} usage:" + Help.message(sc.help0, None)
+		s => (Parser.softFailure(usageError, definitive = true): Parser[() => State]) | sc.parser(s)
+	}
 
 	def simpleParser(commandMap: Map[String, State => Parser[() => State]]): State => Parser[() => State] =
 		(state: State) => token(OpOrID examples commandMap.keys.toSet) flatMap { id =>
