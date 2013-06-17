@@ -30,23 +30,16 @@ object BasicCommands
 		val spacedArg = singleArgument(helpCommands).?
 		applyEffect(spacedArg)(runHelp(s, h))
 	}
+
 	def runHelp(s: State, h: Help)(arg: Option[String]): State =
 	{
-		val message = arg match {
-			case Some(x) => detail(x, h.detail)
-			case None =>
-				val brief = aligned("  ", "   ", h.brief).mkString("\n", "\n", "\n")
-				val more = h.more.toSeq.sorted
-				if(more.isEmpty)
-					brief
-				else
-					brief + "\n" + moreHelp(more)
-		}
+		val message = Help.message(h, arg)
 		System.out.println(message)
 		s
 	}
-	def moreHelp(more: Seq[String]): String = 
-		more.mkString("More command help available using 'help <command>' for:\n  ", ", ", "\n")
+	@deprecated("Use Help.moreMessage", "0.13.0")
+	def moreHelp(more: Seq[String]): String = Help.moreMessage(more)
+
 
 	def multiParser(s: State): Parser[Seq[String]] =
 	{

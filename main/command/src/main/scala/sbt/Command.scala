@@ -139,6 +139,22 @@ object Help
 	def briefDetail(help: Seq[(String, String)]): Help = apply(help, help.toMap)
 	def briefOnly(help: Seq[(String, String)]): Help = apply(help, Map.empty[String,String])
 	def detailOnly(help: Seq[(String, String)]): Help = apply(Nil, help.toMap)
+
+		import CommandUtil._
+
+	def message(h: Help, arg: Option[String]): String =
+		arg match {
+			case Some(x) => detail(x, h.detail)
+			case None =>
+				val brief = aligned("  ", "   ", h.brief).mkString("\n", "\n", "\n")
+				val more = h.more.toSeq.sorted
+				if(more.isEmpty)
+					brief
+				else
+					brief + "\n" + moreMessage(more)
+		}
+	def moreMessage(more: Seq[String]): String =
+		more.mkString("More command help available using 'help <command>' for:\n  ", ", ", "\n")
 }
 trait CommandDefinitions extends (State => State)
 {
