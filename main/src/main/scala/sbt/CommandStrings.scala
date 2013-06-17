@@ -73,7 +73,7 @@ s"""$ExportCommand [--last] <task>+
 """
 
 	val InspectCommand = "inspect"
-	val inspectBrief = (InspectCommand, "Prints the value for 'key', the defining scope, delegates, related definitions, and dependencies.")
+	val inspectBrief = (InspectCommand + " [uses|tree|definitions] <key>", "Prints the value for 'key', the defining scope, delegates, related definitions, and dependencies.")
 	val inspectDetailed =
 InspectCommand + """ <key>
 
@@ -110,7 +110,7 @@ InspectCommand + """ definitions <key>
 
 
 	val SetCommand = "set"
-	val setBrief = (SetCommand, "Evaluates a Setting and applies it to the current project.")
+	val setBrief = (s"$SetCommand [every] <setting>", "Evaluates a Setting and applies it to the current project.")
 	val setDetailed =
 SetCommand + """ [every] <setting-expression>
 
