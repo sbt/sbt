@@ -100,7 +100,7 @@ object Parser extends ParserMain
 		def filter(f: T => Boolean, msg: => String): Result[T] = if(f(value)) this else mkFailure(msg)
 		def toEither = Right(value)
 	}
-	final class Failure(mkErrors: => Seq[String]) extends Result[Nothing] {
+	final class Failure private[sbt](mkErrors: => Seq[String], val definitive: Boolean) extends Result[Nothing] {
 		lazy val errors: Seq[String] = mkErrors
 		def isFailure = true
 		def isValid = false
@@ -108,11 +108,11 @@ object Parser extends ParserMain
 		def flatMap[B](f: Nothing => Result[B]) = this
 		def or[B](b: => Result[B]): Result[B] = b match {
 			case v: Value[B] => v
-			case f: Failure => concatErrors(f)
+			case f: Failure => if(definitive) this else concatErrors(f)
 		}
 		def either[B](b: => Result[B]): Result[Either[Nothing,B]] = b match {
 			case Value(v) => Value(Right(v))
-			case f: Failure => concatErrors(f)
+			case f: Failure => if(definitive) this else concatErrors(f)
 		}
 		def filter(f: Nothing => Boolean, msg: => String) = this
 		def app[B,C](b: => Result[B])(f: (Nothing, B) => C): Result[C] = this
@@ -121,8 +121,8 @@ object Parser extends ParserMain
 
 		private[this] def concatErrors(f: Failure) = mkFailures(errors ++ f.errors)
 	}
-	def mkFailures(errors: => Seq[String]): Failure = new Failure(errors.distinct)
-	def mkFailure(error: => String): Failure = new Failure(error :: Nil)
+	def mkFailures(errors: => Seq[String], definitive: Boolean = false): Failure = new Failure(errors.distinct, definitive)
+	def mkFailure(error: => String, definitive: Boolean = false): Failure = new Failure(error :: Nil, definitive)
 
 	def checkMatches(a: Parser[_], completions: Seq[String])
 	{
