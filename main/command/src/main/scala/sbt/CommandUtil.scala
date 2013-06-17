@@ -21,7 +21,7 @@ object CommandUtil
 		try { state.configuration.provider.scalaProvider.launcher.bootDirectory }
 		catch { case e: NoSuchMethodError => new File(".").getAbsoluteFile }
 
-	def aligned(pre: String, sep: String, in: Seq[(String, String)]): Seq[String] =
+	def aligned(pre: String, sep: String, in: Seq[(String, String)]): Seq[String] = if(in.isEmpty) Nil else
 	{
 		val width = in.map(_._1.length).max
 		in.map { case (a, b) => (pre + fill(a, width) + sep + b) }
