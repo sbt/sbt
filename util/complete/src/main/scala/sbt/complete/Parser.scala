@@ -257,8 +257,8 @@ trait ParserMain
 	implicit def literalRichCharParser(c: Char): RichParser[Char] = richParser(c)
 	implicit def literalRichStringParser(s: String): RichParser[String] = richParser(s)
 
-	def invalid(msgs: => Seq[String]): Parser[Nothing] = Invalid(mkFailures(msgs))
-	def failure(msg: => String): Parser[Nothing] = invalid(msg :: Nil)
+	def invalid(msgs: => Seq[String], definitive: Boolean = false): Parser[Nothing] = Invalid(mkFailures(msgs, definitive))
+	def failure(msg: => String, definitive: Boolean = false): Parser[Nothing] = invalid(msg :: Nil, definitive)
 	def success[T](value: T): Parser[T] = new ValidParser[T] {
 		override def result = Some(value)
 		def resultEmpty = Value(value)
