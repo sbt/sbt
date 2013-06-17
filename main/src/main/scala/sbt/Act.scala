@@ -115,7 +115,10 @@ object Act
 		opt match { case Some(t) => Select(t); case None => ifNone }
 
 	def config(confs: Set[String]): Parser[ParsedAxis[String]] =
-		token( (GlobalString ^^^ ParsedGlobal | value(examples(ID, confs, "configuration")) ) <~ ':' ) ?? Omitted
+	{
+		val sep = ':' !!! "Expected ':' (if selecting a configuration)"
+		token( (GlobalString ^^^ ParsedGlobal | value(examples(ID, confs, "configuration")) ) <~ sep ) ?? Omitted
+	}
 
 	def configs(explicit: ParsedAxis[String], defaultConfigs: Option[ResolvedReference] => Seq[String], proj: Option[ResolvedReference], index: KeyIndex): Seq[Option[String]] =
 		explicit match
@@ -197,11 +200,12 @@ object Act
 	def projectRef(index: KeyIndex, currentBuild: URI): Parser[ParsedAxis[ResolvedReference]] =
 	{
 		val global = token(GlobalString ~ '/') ^^^ ParsedGlobal
-		global | value(resolvedReference(index, currentBuild, '/'))
+		val trailing = '/' !!! "Expected '/' (if selecting a project)"
+		global | value(resolvedReference(index, currentBuild, trailing))
 	}
 	def resolvedReference(index: KeyIndex, currentBuild: URI, trailing: Parser[_]): Parser[ResolvedReference] =
 	{
-		def projectID(uri: URI) = token( examples(ID, index projects uri, "project ID") <~ trailing )
+		def projectID(uri: URI) = token( examplesStrict(ID, index projects uri, "project ID") <~ trailing )
 		def projectRef(uri: URI) = projectID(uri) map { id => ProjectRef(uri, id) }
 
 		val uris = index.buildURIs
