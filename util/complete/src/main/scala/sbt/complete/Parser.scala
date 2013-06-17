@@ -257,6 +257,13 @@ trait ParserMain
 	implicit def literalRichCharParser(c: Char): RichParser[Char] = richParser(c)
 	implicit def literalRichStringParser(s: String): RichParser[String] = richParser(s)
 
+	/** Construct a parser that is valid, but has no valid result.  This is used as a way
+	* to provide a definitive Failure when a parser doesn't match empty input.  For example,
+	* in `softFailure(...) | p`, if `p` doesn't match the empty sequence, the failure will come 
+	* from the Parser constructed by the `softFailure` method. */
+	private[sbt] def softFailure(msg: => String, definitive: Boolean = false): Parser[Nothing] =
+		SoftInvalid( mkFailures(msg :: Nil, definitive) )
+	
 	def invalid(msgs: => Seq[String], definitive: Boolean = false): Parser[Nothing] = Invalid(mkFailures(msgs, definitive))
 	def failure(msg: => String, definitive: Boolean = false): Parser[Nothing] = invalid(msg :: Nil, definitive)
 	def success[T](value: T): Parser[T] = new ValidParser[T] {
@@ -439,6 +446,15 @@ private final case class Invalid(fail: Failure) extends Parser[Nothing]
 	override def toString = fail.errors.mkString("; ")
 	def valid = false
 	def ifValid[S](p: => Parser[S]): Parser[S] = this
+}
+
+private final case class SoftInvalid(fail: Failure) extends ValidParser[Nothing]
+{
+	def result = None
+	def resultEmpty = fail
+	def derive(c: Char) = Invalid(fail)
+	def completions(level: Int) = Completions.nil
+	override def toString = fail.errors.mkString("; ")
 }
 
 private final class TrapAndFail[A](a: Parser[A]) extends ValidParser[A]
