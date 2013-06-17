@@ -108,18 +108,18 @@ object Parser extends ParserMain
 		def flatMap[B](f: Nothing => Result[B]) = this
 		def or[B](b: => Result[B]): Result[B] = b match {
 			case v: Value[B] => v
-			case f: Failure => if(definitive) this else concatErrors(f)
+			case f: Failure => if(definitive) this else this ++ f
 		}
 		def either[B](b: => Result[B]): Result[Either[Nothing,B]] = b match {
 			case Value(v) => Value(Right(v))
-			case f: Failure => if(definitive) this else concatErrors(f)
+			case f: Failure => if(definitive) this else this ++ f
 		}
 		def filter(f: Nothing => Boolean, msg: => String) = this
 		def app[B,C](b: => Result[B])(f: (Nothing, B) => C): Result[C] = this
 		def &&(b: => Result[_]) = this
 		def toEither = Left(() => errors)
 
-		private[this] def concatErrors(f: Failure) = mkFailures(errors ++ f.errors)
+		private[sbt] def ++(f: Failure) = mkFailures(errors ++ f.errors)
 	}
 	def mkFailures(errors: => Seq[String], definitive: Boolean = false): Failure = new Failure(errors.distinct, definitive)
 	def mkFailure(error: => String, definitive: Boolean = false): Failure = new Failure(error :: Nil, definitive)
@@ -393,11 +393,12 @@ trait ParserMain
 		else
 			t
 
-	def homParser[A](a: Parser[A], b: Parser[A]): Parser[A] =
-		if(a.valid)
-			if(b.valid) new HomParser(a, b) else a
-		else
-			b
+	def homParser[A](a: Parser[A], b: Parser[A]): Parser[A] = (a,b) match {
+		case (Invalid(af), Invalid(bf)) => Invalid(af ++ bf)
+		case (Invalid(_), bv) => bv
+		case (av, Invalid(_)) => av
+		case (av, bv) => new HomParser(a, b)
+	}
 
 	@deprecated("Explicitly specify the failure message.", "0.12.2")
 	def not(p: Parser[_]): Parser[Unit] = not(p, "Excluded.")
