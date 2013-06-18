@@ -99,11 +99,12 @@ trait Init[Scope]
 	def asTransform(s: Settings[Scope]): ScopedKey ~> Id = new (ScopedKey ~> Id) {
 		def apply[T](k: ScopedKey[T]): T = getValue(s, k)
 	}
-	def getValue[T](s: Settings[Scope], k: ScopedKey[T]) = s.get(k.scope, k.key) getOrElse sys.error("Internal settings error: invalid reference to " + showFullKey(k))
+	def getValue[T](s: Settings[Scope], k: ScopedKey[T]) = s.get(k.scope, k.key) getOrElse( throw new InvalidReference(k) )
 	def asFunction[T](s: Settings[Scope]): ScopedKey[T] => T = k => getValue(s, k)
 	def mapScope(f: Scope => Scope): MapScoped = new MapScoped {
 		def apply[T](k: ScopedKey[T]): ScopedKey[T] = k.copy(scope = f(k.scope))
 	}
+	private final class InvalidReference(val key: ScopedKey[_]) extends RuntimeException("Internal settings error: invalid reference to " + showFullKey(key))
 
 	private[this] def applyDefaults(ss: Seq[Setting[_]]): Seq[Setting[_]] =
 	{
@@ -490,10 +491,12 @@ trait Init[Scope]
 	{
 		def dependencies = deps(a.toList)
 		def apply[Z](g: T => Z): Initialize[Z] = new Optional[S,Z](a, g compose f)
-		def evaluate(ss: Settings[Scope]): T = f(a map evaluateT(ss).fn)
 		def mapReferenced(g: MapScoped) = new Optional(a map mapReferencedT(g).fn, f)
 		def validateReferenced(g: ValidateRef) = Right( new Optional(a flatMap { _.validateReferenced(g).right.toOption }, f) )
 		def mapConstant(g: MapConstant): Initialize[T] = new Optional(a map mapConstantT(g).fn, f)
+		def evaluate(ss: Settings[Scope]): T = f( a.flatMap( i => trapBadRef(evaluateT(ss)(i)) ) )
+		// proper solution is for evaluate to be deprecated or for external use only and a new internal method returning Either be used
+		private[this] def trapBadRef[A](run: => A): Option[A] = try Some(run) catch { case e: InvalidReferenceException => None }
 	}
 	private[sbt] final class Value[T](val value: () => T) extends Initialize[T]
 	{
