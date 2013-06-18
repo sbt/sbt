@@ -227,8 +227,32 @@ object Project extends ProjectExtra
 	}
 	def setCond[T](key: AttributeKey[T], vopt: Option[T], attributes: AttributeMap): AttributeMap =
 		vopt match { case Some(v) => attributes.put(key, v); case None => attributes.remove(key) }
+	@deprecated("Use Def.make", "0.13.0")
 	def makeSettings(settings: Seq[Def.Setting[_]], delegates: Scope => Seq[Scope], scopeLocal: ScopedKey[_] => Seq[Def.Setting[_]])(implicit display: Show[ScopedKey[_]]) =
 		Def.make(settings)(delegates, scopeLocal, display)
+
+	private[sbt] def checkTargets(data: Settings[Scope]): Option[String] =
+	{
+		val dups = overlappingTargets(allTargets(data))
+		if(dups.isEmpty)
+			None
+		else {
+			val dupStrs = dups map { case (dir, scopes) =>
+				s"${dir.getAbsolutePath}:\n\t${scopes.mkString("\n\t")}"
+			}
+			Some( s"Overlapping output directories:${dupStrs.mkString}" )
+		}
+	}
+	private[this] def overlappingTargets(targets: Seq[(ProjectRef,File)]): Map[File, Seq[ProjectRef]] =
+		targets.groupBy(_._2).filter(_._2.size > 1).mapValues(_.map(_._1))
+
+	private[this] def allTargets(data: Settings[Scope]): Seq[(ProjectRef,File)] =
+	{
+		import ScopeFilter._
+		val allProjects = ScopeFilter(Make.inAnyProject)
+		val targetAndRef = Def.setting { (Keys.thisProjectRef.value, Keys.target.value) }
+		new SettingKeyAll(targetAndRef).all(allProjects) evaluate data
+	}
 
 	def equal(a: ScopedKey[_], b: ScopedKey[_], mask: ScopeMask): Boolean =
 		a.key == b.key && Scope.equal(a.scope, b.scope, mask)

@@ -496,7 +496,7 @@ trait Init[Scope]
 		def mapConstant(g: MapConstant): Initialize[T] = new Optional(a map mapConstantT(g).fn, f)
 		def evaluate(ss: Settings[Scope]): T = f( a.flatMap( i => trapBadRef(evaluateT(ss)(i)) ) )
 		// proper solution is for evaluate to be deprecated or for external use only and a new internal method returning Either be used
-		private[this] def trapBadRef[A](run: => A): Option[A] = try Some(run) catch { case e: InvalidReferenceException => None }
+		private[this] def trapBadRef[A](run: => A): Option[A] = try Some(run) catch { case e: InvalidReference => None }
 	}
 	private[sbt] final class Value[T](val value: () => T) extends Initialize[T]
 	{

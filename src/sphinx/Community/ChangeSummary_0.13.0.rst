@@ -17,6 +17,7 @@ Features, fixes, changes with compatibility implications (incomplete, please hel
 - Fixed the default classifier for tests to be ``tests`` for proper Maven compatibility.
 - The global settings and plugins directories are now versioned.  Global settings go in ``~/.sbt/0.13/`` and global plugins in ``~/.sbt/0.13/plugins/`` by default.  Explicit overrides, such as via the ``sbt.global.base`` system property, are still respected.  (gh-735)
 - sbt no longer canonicalizes files passed to scalac.  (gh-723)
+- sbt now enforces that each project must have a unique ``target`` directory.
 
 Features
 --------

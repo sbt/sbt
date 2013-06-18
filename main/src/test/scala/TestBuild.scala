@@ -185,7 +185,7 @@ object TestBuild
 	def structure(env: Env, settings: Seq[Setting[_]], current: ProjectRef): Structure =
 	{
 		implicit val display = Def.showRelativeKey(current, env.allProjects.size > 1)
-		val data = Project.makeSettings(settings, env.delegates, const(Nil))
+		val data = Def.make(settings)(env.delegates, const(Nil), display)
 		val keys = data.allKeys( (s, key) => ScopedKey(s, key))
 		val keyMap = keys.map(k => (k.key.label, k.key)).toMap[String, AttributeKey[_]]
 		new Structure(env, current, data, KeyIndex(keys), keyMap)

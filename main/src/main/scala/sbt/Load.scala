@@ -138,7 +138,8 @@ object Load
 		lazy val rootEval = lazyEval(loaded.units(loaded.root).unit)
 		val settings = finalTransforms(buildConfigurations(loaded, getRootProject(projects), config.injectSettings))
 		val delegates = config.delegates(loaded)
-		val data = makeSettings(settings, delegates, config.scopeLocal)( Project.showLoadingKey( loaded ) )
+		val data = Def.make(settings)(delegates, config.scopeLocal, Project.showLoadingKey( loaded ) )
+		Project.checkTargets(data) foreach error
 		val index = structureIndex(data, settings, loaded.extra(data))
 		val streams = mkStreams(projects, loaded.root, data)
 		(rootEval, new sbt.BuildStructure(projects, loaded.root, settings, data, index, streams, delegates, config.scopeLocal))
