@@ -1,0 +1,2 @@
+# verify that the class loader for Scala used for each project is the same
+> check-loaders
