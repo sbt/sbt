@@ -162,7 +162,7 @@ object Instance
 			qual.foreach(checkQual)
 			val vd = util.freshValDef(tpe, qual.symbol)
 			inputs ::= new Input(tpe, qual, vd)
-			util.refVal(vd)
+			util.refVal(vd, qual.pos)
 		}
 		def sub(name: String, tpe: Type, qual: Tree): Converted[c.type] =
 		{

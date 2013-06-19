@@ -144,11 +144,12 @@ final class ContextUtil[C <: Context](val ctx: C)
 	}
 
 	/** Create a Tree that references the `val` represented by `vd`. */
-	def refVal(vd: ValDef): Tree =
+	def refVal(vd: ValDef, pos: Position): Tree =
 	{
 		val t = Ident(vd.name)
 		assert(vd.tpt.tpe != null, "val type is null: " + vd + ", tpt: " + vd.tpt.tpe)
 		t.setType(vd.tpt.tpe)
+		t.setPos(pos)
 		t
 	}
 
