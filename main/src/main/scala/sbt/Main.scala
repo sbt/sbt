@@ -99,7 +99,8 @@ object BuiltinCommands
 		if(Project.isProjectLoaded(s))
 		{
 			val e = Project.extract(s)
-			val current = "The current project is " + Reference.display(e.currentRef) + "\n"
+			val version = e.getOpt(Keys.version) match { case None => ""; case Some(v) => " " + v }
+			val current = "The current project is " + Reference.display(e.currentRef) + version + "\n"
 			val sc = aboutScala(s, e)
 			val built = if(sc.isEmpty) "" else "The current project is built against " + sc + "\n"
 			current + built + aboutPlugins(e)
