@@ -135,10 +135,7 @@ final case class SftpRepository(name: String, connection: SshConnection, pattern
 }
 
 import Resolver._
-@deprecated("Maven repository at scala-tools.org is being phased out, consider using an alternative resolver", "0.11.3")
-object ScalaToolsReleases extends MavenRepository(ScalaToolsReleasesName, ScalaToolsReleasesRoot)
-@deprecated("Maven repository at scala-tools.org is being phased out, consider using an alternative resolver", "0.11.3")
-object ScalaToolsSnapshots extends MavenRepository(ScalaToolsSnapshotsName, ScalaToolsSnapshotsRoot)
+
 object DefaultMavenRepository extends MavenRepository("public", IBiblioResolver.DEFAULT_M2_ROOT)
 object JavaNet2Repository extends MavenRepository(JavaNet2RepositoryName, JavaNet2RepositoryRoot)
 object JavaNet1Repository extends JavaNet1Repository
@@ -152,14 +149,15 @@ object Resolver
 	val TypesafeRepositoryRoot = "http://repo.typesafe.com/typesafe"
 	val SbtPluginRepositoryRoot = "http://scalasbt.artifactoryonline.com/scalasbt"
 	val SonatypeRepositoryRoot = "https://oss.sonatype.org/content/repositories"
-	@deprecated("Maven repository at scala-tools.org is being phased out, consider using an alternative resolver", "0.11.3")
-	val ScalaToolsReleasesName = "Sonatype OSS Releases"
-	@deprecated("Maven repository at scala-tools.org is being phased out, consider using an alternative resolver", "0.11.3")
-	val ScalaToolsSnapshotsName = "Sonatype OSS Snapshots"
-	@deprecated("Maven repository at scala-tools.org is being phased out, consider using an alternative resolver", "0.11.3")
-	val ScalaToolsReleasesRoot = SonatypeRepositoryRoot + "/releases"
-	@deprecated("Maven repository at scala-tools.org is being phased out, consider using an alternative resolver", "0.11.3")
-	val ScalaToolsSnapshotsRoot = SonatypeRepositoryRoot + "/snapshots"
+
+	// obsolete: kept only for launcher compatibility
+	private[sbt] val ScalaToolsReleasesName = "Sonatype OSS Releases"
+	private[sbt] val ScalaToolsSnapshotsName = "Sonatype OSS Snapshots"
+	private[sbt] val ScalaToolsReleasesRoot = SonatypeRepositoryRoot + "/releases"
+	private[sbt] val ScalaToolsSnapshotsRoot = SonatypeRepositoryRoot + "/snapshots"
+	private[sbt] val ScalaToolsReleases = new MavenRepository(ScalaToolsReleasesName, ScalaToolsReleasesRoot)
+	private[sbt] val ScalaToolsSnapshots = new MavenRepository(ScalaToolsSnapshotsName, ScalaToolsSnapshotsRoot)
+
 	val JavaNet2RepositoryName = "java.net Maven2 Repository"
 	val JavaNet2RepositoryRoot = "http://download.java.net/maven/2"
 
