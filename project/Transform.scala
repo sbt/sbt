@@ -14,8 +14,6 @@ object Transform
 	lazy val inputResourceDirectory = SettingKey[File]("input-resource-directory")
 	lazy val inputResources = TaskKey[Seq[File]]("input-resources")
 	lazy val resourceProperties = TaskKey[Map[String,String]]("resource-properties")
-	// to be replace by 0.10.1's fileMappings
-	lazy val fileMappings = TaskKey[Seq[(File,File)]]("file-mappings")
 
 	def crossGenSettings = transSourceSettings ++ seq(
 		sourceProperties := Map("cross.package0" -> "sbt", "cross.package1" -> "cross")
