@@ -38,15 +38,6 @@ trait Identity {
 	override final def toString = super.toString
 }
 
-/** StateOps methods to be merged at the next binary incompatible release (0.13.0). */
-private[sbt] trait NewStateOps
-{
-	def interactive: Boolean
-	def setInteractive(flag: Boolean): State
-	def classLoaderCache: classpath.ClassLoaderCache
-	def initializeClassLoaderCache: State
-}
-
 /** Convenience methods for State transformations and operations. */
 trait StateOps {
 	def process(f: (String, State) => State): State
@@ -117,6 +108,17 @@ trait StateOps {
 	def runExitHooks(): State
 	/** Registers a new exit hook, which will run when sbt exits or restarts.*/
 	def addExitHook(f: => Unit): State
+
+	/** An advisory flag that is `true` if this application will execute commands based on user input.*/
+	def interactive: Boolean
+	/** Changes the advisory `interactive` flag. */
+	def setInteractive(flag: Boolean): State
+
+	/** Get the class loader cache for the application.*/
+	def classLoaderCache: classpath.ClassLoaderCache
+
+	/** Create and register a class loader cache.  This should be called once at the application entry-point.*/
+	def initializeClassLoaderCache: State
 }
 
 object State
@@ -159,14 +161,6 @@ object State
 	{
 		val app = state.configuration.provider
 		new Reboot(app.scalaProvider.version, state.remainingCommands, app.id, state.configuration.baseDirectory)
-	}
-
-	private[sbt] implicit def newStateOps(s: State): NewStateOps = new NewStateOps {
-		def interactive = s.get(BasicKeys.interactive).getOrElse(false)
-		def setInteractive(i: Boolean) = s.put(BasicKeys.interactive, i)
-		def classLoaderCache: classpath.ClassLoaderCache = s get BasicKeys.classLoaderCache getOrElse newClassLoaderCache
-		def initializeClassLoaderCache = s.put(BasicKeys.classLoaderCache, newClassLoaderCache)
-		private[this] def newClassLoaderCache = new classpath.ClassLoaderCache(s.configuration.provider.scalaProvider.launcher.topLoader)
 	}
 
 	/** Provides operations and transformations on State. */
@@ -219,5 +213,12 @@ object State
 		}
 		def locked[T](file: File)(t: => T): T =
 			s.configuration.provider.scalaProvider.launcher.globalLock.apply(file, new Callable[T] { def call = t })
+
+		def interactive = s.get(BasicKeys.interactive).getOrElse(false)
+		def setInteractive(i: Boolean) = s.put(BasicKeys.interactive, i)
+
+		def classLoaderCache: classpath.ClassLoaderCache = s get BasicKeys.classLoaderCache getOrElse newClassLoaderCache
+		def initializeClassLoaderCache = s.put(BasicKeys.classLoaderCache, newClassLoaderCache)
+		private[this] def newClassLoaderCache = new classpath.ClassLoaderCache(s.configuration.provider.scalaProvider.launcher.topLoader)
 	}
 }
