@@ -1457,8 +1457,8 @@ object Classpaths
 				case Predefined.Local => Resolver.defaultLocal
 				case Predefined.MavenLocal => Resolver.mavenLocal
 				case Predefined.MavenCentral => DefaultMavenRepository
-				case Predefined.ScalaToolsReleases => ScalaToolsReleases
-				case Predefined.ScalaToolsSnapshots => ScalaToolsSnapshots
+				case Predefined.ScalaToolsReleases => Resolver.ScalaToolsReleases
+				case Predefined.ScalaToolsSnapshots => Resolver.ScalaToolsSnapshots
 				case Predefined.SonatypeOSSReleases => Resolver.sonatypeRepo("releases")
 				case Predefined.SonatypeOSSSnapshots => Resolver.sonatypeRepo("snapshots")
 				case unknown => error("Unknown predefined resolver '" + unknown + "'.  This resolver may only be supported in newer sbt versions.")
