@@ -8,7 +8,11 @@ import java.util.HashMap
 private[sbt] final class ClassLoaderCache(val commonParent: ClassLoader)
 {
 	private[this] val delegate = new HashMap[List[File],Reference[CachedClassLoader]]
-	def apply(files: List[File]): ClassLoader =
+
+	/** Returns a ClassLoader with `commonParent` as a parent and that will load classes from classpath `files`.
+	* The returned ClassLoader may be cached from a previous call if the last modified time of all `files` is unchanged.
+	* This method is thread-safe.*/
+	def apply(files: List[File]): ClassLoader = synchronized
 	{
 		val tstamps = files.map(_.lastModified)
 		getFromReference(files, tstamps, delegate.get(files))

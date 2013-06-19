@@ -1,0 +1,7 @@
+# verify that the class loader for Scala used for each project is the same
+#  this test failed in 0.12.4-RC2 and earlier.  Even though 0.13.0-Beta2
+#  technically had a problem as well, it is harder to make 0.13 exhibit
+#  problems in practice due to the different approach that substantially
+#  reduces the probability of simultaneous access.  The better test for 0.13+
+#  is the unit test on ClassLoaderCache
+> check-loaders
