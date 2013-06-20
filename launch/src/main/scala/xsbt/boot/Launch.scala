@@ -52,7 +52,7 @@ object Launch
 		val appConfig: xsbti.AppConfiguration = new AppConfiguration(toArray(arguments), workingDirectory, appProvider)
 
 		val main = appProvider.newMain()
-		try { main.run(appConfig) }
+		try { withContextLoader(appProvider.loader)(main.run(appConfig)) }
 		catch { case e: xsbti.FullReload => if(e.clean) delete(launcher.bootDirectory); throw e }
 	}
 	final def launch(run: RunConfiguration => xsbti.MainResult)(config: RunConfiguration): Option[Int] =
@@ -64,6 +64,12 @@ object Launch
 			case r: xsbti.Reboot => launch(run)(new RunConfiguration(Option(r.scalaVersion), r.app, r.baseDirectory, r.arguments.toList))
 			case x => throw new BootException("Invalid main result: " + x + (if(x eq null) "" else " (class: " + x.getClass + ")"))
 		}
+	}
+	private[this] def withContextLoader[T](loader: ClassLoader)(eval: => T): T =
+	{
+		val oldLoader = Thread.currentThread.getContextClassLoader
+		Thread.currentThread.setContextClassLoader(loader)
+		try { eval } finally { Thread.currentThread.setContextClassLoader(oldLoader) }
 	}
 }
 final class RunConfiguration(val scalaVersion: Option[String], val app: xsbti.ApplicationID, val workingDirectory: File, val arguments: List[String])
