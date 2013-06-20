@@ -13,6 +13,7 @@ Changes
 - Include files with zip extension in unmanaged jars.  (gh-750)
 - Only add automatically detected plugins to options once.  (gh-757)
 - Properly handle failure in a multi-command that includes ``reload``. (gh-732)
+- Fix unsynchronized caching of Scala class loaders that could result in Scala classes being loaded in multiple class loaders.
 - Incremental compiler: remove resident compiler code (wasn't used and was a compatibility liability)
 - Incremental compiler: properly track ``abstract override`` modifier.  (gh-726)
 - Incremental compiler: do not normalize types in the api extraction phase. (gh-736)
