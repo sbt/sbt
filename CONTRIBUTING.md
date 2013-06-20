@@ -41,13 +41,18 @@ See below for details on getting sbt sources and modifying the documentation.
 
 	Note that sbt is always built with the previous stable release.  For example, the 0.13 branch is built with 0.12.4-RC1, the v0.11.2 tag is built with 0.11.1, and the v0.11.0 tag is built with 0.10.1.
 
-4. To build the launcher, publish all components locally, and build documentation:
+4. To build the launcher and publish all components locally,
 
-		$ sbt build-all
+		$ sbt
+		> publish-local
 
-	Alternatively, the individual commands run by `build-all` may be executed directly:
+	To build documentation, run `make-site` or the individual commands directly:
 
-		$ sbt publish-local proguard sxr doc sphinx:mappings
+		> doc
+		> sphinx:mappings
+		> sxr
+
+   (Note: sxr currently doesn't work for macros, so it doesn't work for sbt right now.)
 
 5. To use this locally built version of sbt, copy your stable `~/bin/sbt` script to `~/bin/xsbt` and change it to use the launcher jar in `<sbt>/target/`.  For the v0.12.3 tag, the full location is:
 
