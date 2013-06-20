@@ -28,7 +28,7 @@ object Sbt extends Build
 
 	lazy val myProvided = config("provided") intransitive;
 	override def projects = super.projects.map(p => p.copy(configurations = (p.configurations.filter(_ != Provided)) :+ myProvided))
-	lazy val root: Project = Project("xsbt", file("."), aggregate = nonRoots ) settings( rootSettings : _*) configs( Sxr.sxrConf, Proguard )
+	lazy val root: Project = Project("root", file("."), aggregate = nonRoots ) settings( rootSettings : _*) configs( Sxr.sxrConf, Proguard )
 	lazy val nonRoots = projects.filter(_ != root).map(p => LocalProject(p.id))
 
 	/* ** Subproject declarations ** */
@@ -186,6 +186,7 @@ object Sbt extends Build
 	lazy val scripted = InputKey[Unit]("scripted")
 	lazy val scriptedSource = SettingKey[File]("scripted-source")
 	lazy val publishAll = TaskKey[Unit]("publish-all")
+	lazy val publishLauncher = TaskKey[Unit]("publish-launcher")
 
 	def deepTasks[T](scoped: ScopedTask[Seq[T]]): Initialize[Task[Seq[T]]] = deep(scoped.task) { _.join.map(_.flatten.distinct) }
 	def deep[T](scoped: ScopedSetting[T]): Initialize[Seq[T]] =
@@ -194,7 +195,6 @@ object Sbt extends Build
 	def launchSettings =
 		Seq(ivy, crossPaths := false,
 			compile in Test <<= compile in Test dependsOn(publishLocal in interfaceSub, publishLocal in testSamples, publishLocal in launchInterfaceSub)
-	//		mappings in (Compile, packageBin) <++= (mappings in (launchInterfaceSub, Compile, packageBin) ).identity
 		) ++
 		inConfig(Compile)(Transform.configSettings) ++
 		inConfig(Compile)(Transform.transSourceSettings ++ Seq(
@@ -205,7 +205,7 @@ object Sbt extends Build
 		import Sxr.sxr
 	def releaseSettings = Release.settings(nonRoots, proguard in Proguard)
 	def rootSettings = releaseSettings ++ Docs.settings ++ LaunchProguard.settings ++ LaunchProguard.specific(launchSub) ++ 
-		Sxr.settings ++ docSetting ++ Util.publishPomSettings ++ otherRootSettings
+		Sxr.settings ++ docSetting ++ Util.publishPomSettings ++ otherRootSettings ++ proguardedLauncherSettings
 	def otherRootSettings = Seq(
 		scripted <<= scriptedTask,
 		scriptedSource <<= (sourceDirectory in sbtSub) / "sbt-test",
@@ -219,7 +219,18 @@ object Sbt extends Build
 			ci.copy(config = ci.config.copy(options = opts))
 		},
 		publishAll <<= inAll(nonRoots, publishLocal.task),
-		TaskKey[Unit]("build-all") <<= (publishAll, proguard in Proguard, sxr, doc) map { (_,_,_,_) => () }
+		publishAll <<= (publishAll, publishLocal).map((x,y)=> ()), // publish all normal deps as well as the sbt-launch jar
+		TaskKey[Unit]("build-all") <<= Seq(publishLocal, /*sxr,*/ doc).dependOn
+	)
+	// the launcher is published with metadata so that the scripted plugin can pull it in
+	// being proguarded, it shouldn't ever be on a classpath with other jars, however
+	def proguardedLauncherSettings = Seq(
+		publishArtifact in packageSrc := false,
+		moduleName := "sbt-launch",
+		autoScalaLibrary := false,
+		description := "sbt application launcher",
+		publishLauncher <<= publish,
+		packageBin in Compile <<= (proguard in Proguard).identity
 	)
 	def docSetting = inConfig(Compile)(inTask(sxr)(Defaults.docSetting(doc in ThisScope.copy(task = Global, config = Global))))
 

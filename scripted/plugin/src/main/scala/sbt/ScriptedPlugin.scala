@@ -55,7 +55,7 @@ object ScriptedPlugin extends Plugin {
 		sbtTestDirectory := sourceDirectory.value / "sbt-test",
 		libraryDependencies ++= Seq(
 			"org.scala-sbt" % "scripted-sbt" % scriptedSbt.value % scriptedConf.toString,
-			"org.scala-sbt" % "sbt-launch" % scriptedSbt.value % scriptedLaunchConf.toString from launcherURL(scriptedSbt.value)
+			"org.scala-sbt" % "sbt-launch" % scriptedSbt.value % scriptedLaunchConf.toString
 		),
 		scriptedBufferLog := true,
 		scriptedClasspath := getJars(scriptedConf).value,
@@ -68,6 +68,4 @@ object ScriptedPlugin extends Plugin {
 	private[this] def getJars(config: Configuration): Initialize[Task[PathFinder]] = Def.task {
 		PathFinder(Classpaths.managedJars(config, classpathTypes.value, update.value).map(_.data))
 	}
-	private[this] def launcherURL(v: String): String =
-		"http://repo.typesafe.com/typesafe/ivy-releases/org.scala-sbt/sbt-launch/" + v + "/sbt-launch.jar"
 }
