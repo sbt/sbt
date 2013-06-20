@@ -74,7 +74,9 @@ object ClasspathUtilities
 	private[sbt] def printSource(c: Class[_]) =
 		println(c.getName + " loader=" +c.getClassLoader + " location=" + IO.classLocationFile(c))
 	
-	def isArchive(file: File, contentFallback: Boolean = false): Boolean =
+	def isArchive(file: File): Boolean = isArchive(file, contentFallback = false)
+
+	def isArchive(file: File, contentFallback: Boolean): Boolean =
 		file.isFile && (isArchiveName(file.getName) || (contentFallback && hasZipContent(file)))
 
 	def isArchiveName(fileName: String) = fileName.endsWith(".jar") || fileName.endsWith(".zip")
