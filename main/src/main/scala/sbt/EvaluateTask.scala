@@ -14,7 +14,7 @@ package sbt
 	import std.Transform.{DummyTaskMap,TaskAndValue}
 	import TaskName._
 
-final case class EvaluateConfig(cancelable: Boolean, restrictions: Seq[Tags.Rule], checkCycles: Boolean = false)
+final case class EvaluateConfig(cancelable: Boolean, restrictions: Seq[Tags.Rule], checkCycles: Boolean = false, progress: ExecuteProgress[Task] = EvaluateTask.defaultProgress)
 final case class PluginData(dependencyClasspath: Seq[Attributed[File]], definitionClasspath: Seq[Attributed[File]], resolvers: Option[Seq[Resolver]], report: Option[UpdateReport])
 {
 	val classpath: Seq[Attributed[File]] = definitionClasspath ++ dependencyClasspath
@@ -32,17 +32,28 @@ object EvaluateTask
 	import TaskExtra._
 	import Keys.state
 	
+	private[sbt] def defaultProgress: ExecuteProgress[Task] = 
+		if(java.lang.Boolean.getBoolean("sbt.task.timings")) new TaskTimings else ExecuteProgress.empty[Task]
+
 	val SystemProcessors = Runtime.getRuntime.availableProcessors
-	def defaultConfig(state: State): EvaluateConfig =
-		EvaluateConfig(false, restrictions(state))
+
+	@deprecated("Use extractedConfig.", "0.13.0")
+	def defaultConfig(state: State): EvaluateConfig = 
+	{
+		val extracted = Project.extract(state)
+		defaultConfig(extracted, extracted.structure)
+	}
+
+	@deprecated("Use extractedConfig.", "0.13.0")
 	def defaultConfig(extracted: Extracted, structure: BuildStructure) =
-		EvaluateConfig(false, restrictions(extracted, structure))
+		EvaluateConfig(false, restrictions(extracted, structure), progress = executeProgress(extracted, structure))
 
 	def extractedConfig(extracted: Extracted, structure: BuildStructure): EvaluateConfig =
 	{
 		val workers = restrictions(extracted, structure)
 		val canCancel = cancelable(extracted, structure)
-		EvaluateConfig(cancelable = canCancel, restrictions = workers)
+		val progress = executeProgress(extracted, structure)
+		EvaluateConfig(cancelable = canCancel, restrictions = workers, progress = progress)
 	}
 
 	def defaultRestrictions(maxWorkers: Int) = Tags.limitAll(maxWorkers) :: Nil
@@ -63,6 +74,10 @@ object EvaluateTask
 			1
 	def cancelable(extracted: Extracted, structure: BuildStructure): Boolean =
 		getSetting(Keys.cancelable, false, extracted, structure)
+
+	private[sbt] def executeProgress(extracted: Extracted, structure: BuildStructure): ExecuteProgress[Task] =
+		getSetting(Keys.executeProgress, new Keys.TaskProgress(defaultProgress), extracted, structure).progress
+
 	def getSetting[T](key: SettingKey[T], default: T, extracted: Extracted, structure: BuildStructure): T =
 		key in extracted.currentRef get structure.data getOrElse default
 
@@ -76,7 +91,7 @@ object EvaluateTask
 	{
 		val root = ProjectRef(pluginDef.root, Load.getRootProject(pluginDef.units)(pluginDef.root))
 		val pluginKey = pluginData
-		val config = defaultConfig(Project.extract(state), pluginDef)
+		val config = extractedConfig(Project.extract(state), pluginDef)
 		val evaluated = apply(pluginDef, ScopedKey(pluginKey.scope, pluginKey.key), state, root, config)
 		val (newS, result) = evaluated getOrElse sys.error("Plugin data does not exist for plugin definition at " + pluginDef.root)
 		Project.runUnloadHooks(newS) // discard states
@@ -91,7 +106,7 @@ object EvaluateTask
 	* If the task is not defined, None is returned.  The provided task key is resolved against the current project `ref`.
 	* Task execution is configured according to settings defined in the loaded project.*/
 	def apply[T](structure: BuildStructure, taskKey: ScopedKey[Task[T]], state: State, ref: ProjectRef): Option[(State, Result[T])] =
-		apply[T](structure, taskKey, state, ref, defaultConfig(Project.extract(state), structure))
+		apply[T](structure, taskKey, state, ref, extractedConfig(Project.extract(state), structure))
 
 	/** Evaluates `taskKey` and returns the new State and the result of the task wrapped in Some.
 	* If the task is not defined, None is returned.  The provided task key is resolved against the current project `ref`.
@@ -163,8 +178,7 @@ object EvaluateTask
 			case _ => true
 		}
 		def run() = {
-			val progress = if(java.lang.Boolean.getBoolean("sbt.task.timings")) new TaskTimings else ExecuteProgress.empty[Task]
-			val x = new Execute[Task]( Execute.config(config.checkCycles, overwriteNode), triggers, progress)(taskToNode)
+			val x = new Execute[Task]( Execute.config(config.checkCycles, overwriteNode), triggers, config.progress)(taskToNode)
 			val (newState, result) =
 				try applyResults(x.runKeep(root)(service), state, root)
 				catch { case inc: Incomplete => (state, Inc(inc)) }

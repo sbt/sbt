@@ -334,6 +334,10 @@ object Keys
 	val resolvedScoped = Def.resolvedScoped
 	val pluginData = TaskKey[PluginData]("plugin-data", "Information from the plugin build needed in the main build definition.", DTask)
 
+	// wrapper to work around SI-2915
+	private[sbt] final class TaskProgress(val progress: ExecuteProgress[Task])
+	private[sbt] val executeProgress = SettingKey[TaskProgress]("executeProgress", "Experimental task execution listener.", DTask)
+
 	val triggeredBy = Def.triggeredBy
 	val runBefore = Def.runBefore
 
