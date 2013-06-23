@@ -12,6 +12,7 @@ trait IDSet[T]
 	def ++=(t: Iterable[T]): Unit
 	def -= (t: T): Boolean
 	def all: collection.Iterable[T]
+	def toList: List[T]
 	def isEmpty: Boolean
 	def foreach(f: T => Unit): Unit
 	def process[S](t: T)(ifSeen: S)(ifNew: => S): S
@@ -38,6 +39,7 @@ object IDSet
 		def ++=(t: Iterable[T]) = t foreach +=
 		def -= (t:T) = if(backing.remove(t) eq null) false else true
 		def all = collection.JavaConversions.collectionAsScalaIterable(backing.keySet)
+		def toList = all.toList
 		def isEmpty = backing.isEmpty
 		def process[S](t: T)(ifSeen: S)(ifNew: => S) = if(contains(t)) ifSeen else { this += t ; ifNew }
 		override def toString = backing.toString

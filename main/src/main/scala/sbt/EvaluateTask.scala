@@ -12,6 +12,7 @@ package sbt
 	import Types.const
 	import scala.Console.RED
 	import std.Transform.{DummyTaskMap,TaskAndValue}
+	import TaskName._
 
 final case class EvaluateConfig(cancelable: Boolean, restrictions: Seq[Tags.Rule], checkCycles: Boolean = false)
 final case class PluginData(dependencyClasspath: Seq[Attributed[File]], definitionClasspath: Seq[Attributed[File]], resolvers: Option[Seq[Resolver]], report: Option[UpdateReport])
@@ -162,7 +163,8 @@ object EvaluateTask
 			case _ => true
 		}
 		def run() = {
-			val x = Execute[Task]( Execute.config(config.checkCycles, overwriteNode), triggers)(taskToNode)
+			val progress = if(java.lang.Boolean.getBoolean("sbt.task.timings")) new TaskTimings else ExecuteProgress.empty[Task]
+			val x = new Execute[Task]( Execute.config(config.checkCycles, overwriteNode), triggers, progress)(taskToNode)
 			val (newState, result) =
 				try applyResults(x.runKeep(root)(service), state, root)
 				catch { case inc: Incomplete => (state, Inc(inc)) }
@@ -211,8 +213,7 @@ object EvaluateTask
 				c.toString + (if(caller eq target) "(task: " + name(caller) + ")" else "(caller: " + name(caller) + ", target: " + name(target) + ")" )
 			case _ => c.toString
 		}
-	def name(node: Task[_]): String =
-		node.info.name orElse transformNode(node).map(displayFull) getOrElse ("<anon-" + System.identityHashCode(node).toHexString + ">")
+
 	def liftAnonymous: Incomplete => Incomplete = {
 		case i @ Incomplete(node, tpe, None, causes, None) =>
 			causes.find( inc => !inc.node.isDefined && (inc.message.isDefined || inc.directCause.isDefined)) match {
@@ -221,8 +222,6 @@ object EvaluateTask
 			}
 		case i => i
 	}
-	def transformNode(node: Task[_]): Option[ScopedKey[_]] =
-		node.info.attributes get taskDefinitionKey
 
 	def processResult[T](result: Result[T], log: Logger, show: Boolean = false): T =
 		onResult(result, log) { v => if(show) println("Result: " + v); v }

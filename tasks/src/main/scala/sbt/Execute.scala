@@ -11,7 +11,7 @@ import scala.annotation.tailrec
 import scala.collection.{mutable, JavaConversions}
 import mutable.Map
 
-object Execute
+private[sbt] object Execute
 {
 	def idMap[A,B]: Map[A, B] = JavaConversions.mapAsScalaMap(new java.util.IdentityHashMap[A,B])
 	def pMap[A[_], B[_]]: PMap[A,B] = new DelegatingPMap[A, B](idMap)
@@ -20,27 +20,21 @@ object Execute
 	}
 	def noTriggers[A[_]] = new Triggers[A](Map.empty, Map.empty, idFun)
 
-	def apply[A[_] <: AnyRef](config: Config, triggers: Triggers[A])(implicit view: NodeView[A]): Execute[A] =
-		new Execute(config, triggers)(view)
-
 	def config(checkCycles: Boolean, overwriteNode: Incomplete => Boolean = const(false)): Config = new Config(checkCycles, overwriteNode)
 	final class Config private[sbt](val checkCycles: Boolean, val overwriteNode: Incomplete => Boolean)
 }
 sealed trait Completed {
 	def process(): Unit
 }
-trait NodeView[A[_]]
+private[sbt] trait NodeView[A[_]]
 {
 	def apply[T](a: A[T]): Node[A, T]
 	def inline[T](a: A[T]): Option[() => T]
 }
 final class Triggers[A[_]](val runBefore: collection.Map[A[_], Seq[A[_]]], val injectFor: collection.Map[A[_], Seq[A[_]]], val onComplete: RMap[A,Result] => RMap[A,Result])
 
-final class Execute[A[_] <: AnyRef] private(config: Config, triggers: Triggers[A])(implicit view: NodeView[A])
+private[sbt] final class Execute[A[_] <: AnyRef](config: Config, triggers: Triggers[A], progress: ExecuteProgress[A])(implicit view: NodeView[A])
 {
-	@deprecated("Use Execute.apply", "0.13.0")
-	def this(checkCycles: Boolean, triggers: Triggers[A])(implicit view: NodeView[A]) = this(Execute.config(checkCycles), triggers)(view)
-
 	type Strategy = CompletionService[A[_], Completed]
 
 	private[this] val forward = idMap[A[_], IDSet[A[_]] ]
@@ -56,6 +50,7 @@ final class Execute[A[_] <: AnyRef] private(config: Config, triggers: Triggers[A
 			case None => results(a)
 		}
 	}
+	private[this] var progressState: progress.S = progress.initial
 
 	private[this] type State = State.Value
 	private[this] object State extends Enumeration {
@@ -73,7 +68,9 @@ final class Execute[A[_] <: AnyRef] private(config: Config, triggers: Triggers[A
 		addNew(root)
 		processAll()
 		assert( results contains root, "No result for root node." )
-		triggers.onComplete(results)
+		val finalResults = triggers.onComplete(results)
+		progressState = progress.allCompleted(progressState, finalResults)
+		finalResults
 	}
 
 	def processAll()(implicit strategy: Strategy)
@@ -136,6 +133,7 @@ final class Execute[A[_] <: AnyRef] private(config: Config, triggers: Triggers[A
 
 		results(node) = result
 		state(node) = Done
+		progressState = progress.completed(progressState, node, result)
 		remove( reverse, node ) foreach { dep => notifyDone(node, dep) }
 		callers.remove( node ).toList.flatten.foreach { c => retire(c, callerResult(c, result)) }
 		triggeredBy( node ) foreach { t => addChecked(t) }
@@ -174,9 +172,9 @@ final class Execute[A[_] <: AnyRef] private(config: Config, triggers: Triggers[A
 		post { addedInv( node ) }
 	}
 	/** Adds a node that has not yet been registered with the system.
-	* If all of the node's dependencies have finished, the node's computation scheduled to run.
+	* If all of the node's dependencies have finished, the node's computation is scheduled to run.
 	* The node's dependencies will be added (transitively) if they are not already registered.
-	* */
+	*/
 	def addNew[T](node: A[T])(implicit strategy: Strategy)
 	{
 		pre { newPre(node) }
@@ -184,6 +182,7 @@ final class Execute[A[_] <: AnyRef] private(config: Config, triggers: Triggers[A
 		val v = register( node )
 		val deps = dependencies(v) ++ runBefore(node)
 		val active = IDSet[A[_]](deps filter notDone )
+		progressState = progress.registered(progressState, node, deps, active.toList /** active is mutable, so take a snapshot */)
 
 		if( active.isEmpty)
 			ready( node )
@@ -214,6 +213,7 @@ final class Execute[A[_] <: AnyRef] private(config: Config, triggers: Triggers[A
 		}
 
 		state(node) = Running
+		progressState = progress.ready(progressState, node)
 		submit(node)
 
 		post {
@@ -240,18 +240,26 @@ final class Execute[A[_] <: AnyRef] private(config: Config, triggers: Triggers[A
 	* This returns a Completed instance, which contains the post-processing to perform after the result is retrieved from the Strategy.*/
 	def work[T](node: A[T], f: => Either[A[T], T])(implicit strategy: Strategy): Completed =
 	{
-		val result = wideConvert(f).left.map {
+		progress.workStarting(node)
+		val rawResult = wideConvert(f).left.map {
 			case i: Incomplete => if(config.overwriteNode(i)) i.copy(node = Some(node)) else i
 			case e => Incomplete(Some(node), Incomplete.Error, directCause = Some(e))
 		}
+		val result = rewrap(rawResult)
+		progress.workFinished(node, result)
 		completed {
 			result match {
-				case Left(i) => retire(node, Inc(i))
-				case Right(Right(v)) => retire(node, Value(v))
-				case Right(Left(target)) => call(node, target)
+				case Right(v) => retire(node, v)
+				case Left(target) => call(node, target)
 			}
 		}
 	}
+	private[this] def rewrap[T](rawResult: Either[Incomplete, Either[A[T], T]]): Either[A[T], Result[T]] =
+		rawResult match {
+			case Left(i) => Right(Inc(i))
+			case Right(Right(v)) => Right(Value(v))
+			case Right(Left(target)) => Left(target)
+		}
 
 	def remove[K, V](map: Map[K, V], k: K): V = map.remove(k).getOrElse(sys.error("Key '" + k + "' not in map :\n" + map))
 
