@@ -148,6 +148,19 @@ object Resolvers
 
 	def uniqueSubdirectoryFor(uri: URI, in: File) = {
 		in.mkdirs()
-		new File(in, Hash.halfHashString(uri.normalize.toASCIIString))
+		val base = new File(in, Hash.halfHashString(uri.normalize.toASCIIString))
+		val last = shortName(uri) match { case Some(n) => normalizeDirectoryName(n); case None => "root" }
+		new File(base, last)
 	}
+
+	private[this] def shortName(uri: URI): Option[String] =
+		Option(uri.withoutMarkerScheme.getPath).flatMap {
+			_.split("/").map(_.trim).filterNot(_.isEmpty).lastOption
+		}
+	
+	private[this] def normalizeDirectoryName(name: String): String =
+		StringUtilities.normalize(dropExtensions(name))
+
+	private[this] def dropExtensions(name: String): String = name.takeWhile(_ != '.')
+
 }
