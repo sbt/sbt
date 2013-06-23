@@ -923,7 +923,7 @@ object Classpaths
 		conflictWarning in GlobalScope :== ConflictWarning.default("global"),
 		conflictWarning := conflictWarning.value.copy(label = Reference.display(thisProjectRef.value)),
 		unmanagedBase := baseDirectory.value / "lib",
-		normalizedName := StringUtilities.normalize(name.value),
+		normalizedName := Project.normalizeModuleID(name.value),
 		isSnapshot <<= isSnapshot or version(_ endsWith "-SNAPSHOT"),
 		description <<= description or name,
 		homepage in GlobalScope :== None,

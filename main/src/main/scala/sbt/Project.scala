@@ -157,9 +157,25 @@ object Project extends ProjectExtra
 		delegates: => Seq[ProjectReference] = Nil, settings: => Seq[Def.Setting[_]] = defaultSettings, configurations: Seq[Configuration] = Configurations.default,
 		auto: AddSettings = AddSettings.allDefaults): Project =
 	{
-		DefaultParsers.parse(id, DefaultParsers.ID).left.foreach(errMsg => sys.error("Invalid project ID: " + errMsg))
+		validProjectID(id).foreach(errMsg => sys.error("Invalid project ID: " + errMsg))
 		new ProjectDef[ProjectReference](id, base, aggregate, dependencies, delegates, settings, configurations, auto) with Project
 	}
+
+	/** Returns None if `id` is a valid Project ID or Some containing the parser error message if it is not.*/
+	def validProjectID(id: String): Option[String] = DefaultParsers.parse(id, DefaultParsers.ID).left.toOption
+
+
+	/** Constructs a valid Project ID based on `id` and returns it in Right or returns the error message in Left if one cannot be constructed.*/
+	def normalizeProjectID(id: String): Either[String, String] =
+	{
+		// TODO: better attempt
+		val attempt = id.toLowerCase.replaceAll("""\W+""", "-")
+		validProjectID(attempt).toLeft(attempt)
+	}
+
+	/** Normalize a String so that it is suitable for use as a dependency management module identifier.
+	* This is a best effort implementation, since valid characters are not documented or consistent.*/
+	def normalizeModuleID(id: String): String = id.toLowerCase.replaceAll("""\W+""", "-")
 
 	def resolved(id: String, base: File, aggregate: => Seq[ProjectRef], dependencies: => Seq[ResolvedClasspathDependency], delegates: => Seq[ProjectRef],
 		settings: Seq[Def.Setting[_]], configurations: Seq[Configuration], auto: AddSettings): ResolvedProject =

@@ -435,17 +435,26 @@ object Load
 		val loadedDefs = new sbt.LoadedDefinitions(defDir, Nil, plugs.loader, defs, loadedProjects, defNames)
 		new sbt.BuildUnit(uri, normBase, loadedDefs, plugs)
 	}
+
 	private[this] def autoID(localBase: File, context: PluginManagement.Context, existingIDs: Seq[String]): String = 
 	{
-		import StringUtilities.{normalize => norm}
+		def normalizeID(f: File) = Project.normalizeProjectID(f.getName) match {
+			case Right(id) => id
+			case Left(msg) => error(autoIDError(f, msg))
+		}
 		def nthParentName(f: File, i: Int): String =
-			if(f eq null) Build.defaultID(localBase) else if(i <= 0) norm(f.getName) else nthParentName(f.getParentFile, i - 1)
+			if(f eq null) Build.defaultID(localBase) else if(i <= 0) normalizeID(f) else nthParentName(f.getParentFile, i - 1)
 		val pluginDepth = context.pluginProjectDepth
 		val postfix = "-build" * pluginDepth
 		val idBase = if(context.globalPluginProject) "global-plugins" else nthParentName(localBase, pluginDepth)
 		val tryID = idBase + postfix
 		if(existingIDs.contains(tryID)) Build.defaultID(localBase) else tryID
 	}
+
+	private[this] def autoIDError(base: File, reason: String): String = 
+		"Could not derive root project ID from directory " + base.getAbsolutePath + ":\n" +
+			reason + "\nRename the directory or explicitly define a root project."
+
 	private[this] def projectsFromBuild(b: Build, base: File): Seq[Project] = 
 		b.projectDefinitions(base).map(resolveBase(base))
 

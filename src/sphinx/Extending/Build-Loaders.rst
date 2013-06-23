@@ -175,7 +175,7 @@ project/ directory.
         val pom = pomFile(info)
         val model = readPom(pom)
 
-        val n = StringUtilities.normalize(model.getName)
+        val n = Project.normalizeProjectID(model.getName)
         val base = Option(model.getProjectDirectory) getOrElse info.base
         val root = Project(n, base) settings( pomSettings(model) : _*)
         val build = new Build { override def projects = Seq(root) }

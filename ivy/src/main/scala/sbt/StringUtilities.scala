@@ -5,6 +5,7 @@ package sbt
 
 object StringUtilities
 {
+	@deprecated("Different use cases require different normalization.  Use Project.normalizeModuleID or normalizeProjectID instead.", "0.13.0")
 	def normalize(s: String) = s.toLowerCase.replaceAll("""\W+""", "-")
 	def nonEmpty(s: String, label: String)
 	{
