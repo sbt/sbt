@@ -21,6 +21,7 @@ val bResolver = Def.setting {
 
 val apiBaseSetting = apiURL := Some(apiBase(name.value))
 def apiBase(projectName: String) = url(s"http://example.org/${projectName}")
+def scalaLibraryBase(v: String) = url(s"http://www.scala-lang.org/api/$v/")
 def addDep(projectName: String) =
 	libraryDependencies += organization.value %% projectName % version.value
 
@@ -33,6 +34,7 @@ def expectedMappings = Def.task {
 			val n = a.name.stripSuffix("_" + scalaBinaryVersion.value)
 			n match {
 				case "a" | "b" | "c" => (f, apiBase(n)) :: Nil
+				case "scala-library" => (f, scalaLibraryBase(scalaVersion.value)) :: Nil
 				case _ => Nil
 			}
 		}

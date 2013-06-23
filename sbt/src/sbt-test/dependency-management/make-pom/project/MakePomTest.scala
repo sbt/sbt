@@ -5,11 +5,10 @@
 object MakePomTest extends Build
 {
 	lazy val root = Project("root", file(".")) settings(
-		resolvers += ScalaToolsReleases,
 		readPom <<= makePom map XML.loadFile,
 		TaskKey[Unit]("check-pom") <<= checkPom,
 		TaskKey[Unit]("check-extra") <<= checkExtra,
-		resolvers ++= Seq(ScalaToolsReleases, ScalaToolsSnapshots),
+		resolvers += Resolver.sonatypeRepo("snapshots"),
 		makePomConfiguration ~= { _.copy(extra = <extra-tag/>) }
 	)
 
