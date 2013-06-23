@@ -267,7 +267,7 @@ object Project extends ProjectExtra
 		import ScopeFilter._
 		val allProjects = ScopeFilter(Make.inAnyProject)
 		val targetAndRef = Def.setting { (Keys.thisProjectRef.value, Keys.target.value) }
-		new SettingKeyAll(targetAndRef).all(allProjects) evaluate data
+		new SettingKeyAll(Def.optional(targetAndRef)(idFun)).all(allProjects).evaluate(data).flatMap(x => x)
 	}
 
 	def equal(a: ScopedKey[_], b: ScopedKey[_], mask: ScopeMask): Boolean =
