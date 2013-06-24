@@ -18,6 +18,7 @@ Features, fixes, changes with compatibility implications (incomplete, please hel
 - The global settings and plugins directories are now versioned.  Global settings go in ``~/.sbt/0.13/`` and global plugins in ``~/.sbt/0.13/plugins/`` by default.  Explicit overrides, such as via the ``sbt.global.base`` system property, are still respected.  (gh-735)
 - sbt no longer canonicalizes files passed to scalac.  (gh-723)
 - sbt now enforces that each project must have a unique ``target`` directory.
+- sbt no longer overrides the Scala version in dependencies.  This allows independent configurations to depend on different Scala versions and treats Scala dependencies other than scala-library as normal dependencies.  However, it can result in resolved versions other than ``scalaVersion`` for those other Scala libraries.
 
 Features
 --------
