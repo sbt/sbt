@@ -14,6 +14,7 @@ trait ProcessExtra
 	implicit def builderToProcess(builder: JProcessBuilder): ProcessBuilder = apply(builder)
 	implicit def fileToProcess(file: File): FilePartialBuilder = apply(file)
 	implicit def urlToProcess(url: URL): URLPartialBuilder = apply(url)
+	@deprecated("Use string interpolation", "0.13.0")
 	implicit def xmlToProcess(command: scala.xml.Elem): ProcessBuilder = apply(command)
 	implicit def buildersToProcess[T](builders: Seq[T])(implicit convert: T => SourcePartialBuilder): Seq[SourcePartialBuilder] = applySeq(builders)
 
@@ -54,6 +55,7 @@ object Process extends ProcessExtra
 	def apply(builder: JProcessBuilder): ProcessBuilder = new SimpleProcessBuilder(builder)
 	def apply(file: File): FilePartialBuilder = new FileBuilder(file)
 	def apply(url: URL): URLPartialBuilder = new URLBuilder(url)
+	@deprecated("Use string interpolation", "0.13.0")
 	def apply(command: scala.xml.Elem): ProcessBuilder = apply(command.text.trim)
 	def applySeq[T](builders: Seq[T])(implicit convert: T => SourcePartialBuilder): Seq[SourcePartialBuilder] = builders.map(convert)
 
