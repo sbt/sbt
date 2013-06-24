@@ -39,7 +39,7 @@ See below for details on getting sbt sources and modifying the documentation.
 
 		$ git checkout v0.12.3
 
-	Note that sbt is always built with the previous stable release.  For example, the 0.13 branch is built with 0.12.4-RC1, the v0.11.2 tag is built with 0.11.1, and the v0.11.0 tag is built with 0.10.1.
+	Note that sbt is always built with the previous stable release.  For example, the 0.13 branch is built with 0.12.4-RC3, the v0.11.2 tag is built with 0.11.1, and the v0.11.0 tag is built with 0.10.1.
 
 4. To build the launcher and publish all components locally,
 
@@ -66,7 +66,7 @@ See below for details on getting sbt sources and modifying the documentation.
 
 1. When developing sbt itself, run `compile` when checking compilation only.
 
-2. To use your modified version of sbt in a project locally, run `publish-local`.  If you have modified the launcher, also run `proguard`.
+2. To use your modified version of sbt in a project locally, run `publish-local`.
 
 3. After each `publish-local`, clean the `~/.sbt/boot/` directory.  Alternatively, if sbt is running and the launcher hasn't changed, run `reboot full` to have sbt do this for you.
 
