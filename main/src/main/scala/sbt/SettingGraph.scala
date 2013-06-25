@@ -56,7 +56,8 @@ object Graph
 	// [info]   |
 	// [info]   +-quux
 	def toAscii[A](top: A, children: A => Seq[A], display: A => String): String = {
-		val maxColumn = JLine.usingTerminal(_.getWidth) - 8
+		val defaultWidth = 40
+		val maxColumn = math.min(JLine.usingTerminal(_.getWidth), defaultWidth) - 8
 		val twoSpaces = " " + " " // prevent accidentally being converted into a tab
 		def limitLine(s: String): String =
 			if (s.length > maxColumn) s.slice(0, maxColumn - 2) + ".."
