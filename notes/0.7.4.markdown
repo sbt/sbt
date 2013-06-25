@@ -1,0 +1,1 @@
+This is a maintenance release fixing an exception when generating graphs without a terminal [#32](https://github.com/jrudolph/sbt-dependency-graph/issues/32).

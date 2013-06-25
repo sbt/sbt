@@ -79,7 +79,7 @@ object Plugin extends sbt.Plugin {
           (c: String) => file("%s/cache/%s-%s-%s.xml" format (home, projectID.organization, crossName(ivyModule), c))
       }
     },
-    Compat.ignoreMissingUpdateT,
+    SbtDependencyGraphCompat.ignoreMissingUpdateT,
     filterScalaLibrary in Global := true
   ) ++ Seq(Compile, Test, Runtime, Provided, Optional).flatMap(ivyReportForConfig)
 
@@ -181,7 +181,7 @@ object Plugin extends sbt.Plugin {
       val graph =  loadFromContext(moduleGraphStore, ctx, state) getOrElse ModuleGraph(Nil, Nil)
 
       import complete.DefaultParsers._
-      import Compat._
+      import SbtDependencyGraphCompat._
 
       def moduleFrom(modules: Seq[ModuleId]) =
         modules.map { m =>

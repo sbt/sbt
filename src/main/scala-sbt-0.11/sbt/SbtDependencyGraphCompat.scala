@@ -1,11 +1,9 @@
-package net.virtualvoid.sbt.graph
+package sbt
 
-import sbt._
+import net.virtualvoid.sbt.graph.Plugin._
 import Keys._
 
-import Plugin.ignoreMissingUpdate
-
-object Compat {
+object SbtDependencyGraphCompat {
   /**
    * This is copied directly from sbt/main/Defaults.java and then changed to update the UpdateConfiguration
    * to ignore missing artifacts.
@@ -20,4 +18,6 @@ object Compat {
 
   import complete.DefaultParsers._
   lazy val StringBasic = NotSpaceClass.*.string
+
+  def getTerminalWidth: Int = jline.Terminal.getTerminal.getTerminalWidth
 }

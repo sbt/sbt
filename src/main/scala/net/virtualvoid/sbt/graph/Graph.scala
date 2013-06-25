@@ -3,7 +3,9 @@
  *
  * Copied from sbt 0.12 source code
  */
-package sbt
+package net.virtualvoid.sbt.graph
+
+import sbt.SbtDependencyGraphCompat
 
 object Graph
 {
@@ -12,8 +14,10 @@ object Graph
 	// [info]   | +-baz
 	// [info]   |
 	// [info]   +-quux
-	def toAscii[A](top: A, children: A => Seq[A], display: A => String): String = {
-		val maxColumn = jline.Terminal.getTerminal.getTerminalWidth - 8
+	def toAscii[A](top: A,
+                 children: A => Seq[A],
+                 display: A => String,
+                 maxColumn: Int = defaultColumnSize): String = {
 		val twoSpaces = " " + " " // prevent accidentally being converted into a tab
 		def limitLine(s: String): String =
 			if (s.length > maxColumn) s.slice(0, maxColumn - 2) + ".."
@@ -40,4 +44,10 @@ object Graph
 
 		toAsciiLines(top, 0).mkString("\n")
 	}
+
+  def defaultColumnSize: Int = {
+    val termWidth = SbtDependencyGraphCompat.getTerminalWidth
+    if (termWidth > 20) termWidth - 8
+    else 80 // ignore termWidth
+  }
 }

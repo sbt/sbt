@@ -21,7 +21,7 @@ import java.io.File
 import collection.mutable.HashMap
 import collection.mutable.MultiMap
 import collection.mutable.{Set => MSet}
-import sbt.{ConsoleLogger, Graph}
+import sbt.ConsoleLogger
 import xml.{NodeSeq, Document, XML, Node}
 import com.github.mdr.ascii.layout
 import layout._
