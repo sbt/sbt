@@ -19,7 +19,7 @@ import java.util.{List => JList}
  * @throws LinkageError
  * @throws ExceptionInInitializerError
  */
-class APIDiff {
+private[inc] class APIDiff {
 
 	import APIDiff._
 
@@ -59,7 +59,7 @@ class APIDiff {
 
 }
 
-object APIDiff {
+private[inc] object APIDiff {
 	private val diffUtilsClassName = "difflib.DiffUtils"
 	private val patchClassName = "difflib.Patch"
 	private val diffMethodName = "diff"
