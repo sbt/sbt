@@ -18,7 +18,7 @@ object ConfigurationParser
 	def trim(s: Array[String]) = s.map(_.trim).toList
 	def ids(value: String) = trim(substituteVariables(value).split(",")).filter(isNonEmpty)
 
-	private[this] lazy val VarPattern = Pattern.compile("""\$\{([\w.]+)(\-(.+))?\}""")
+	private[this] lazy val VarPattern = Pattern.compile("""\$\{([\w.]+)(\-(.*))?\}""")
 	def substituteVariables(s: String): String = if(s.indexOf('$') >= 0) substituteVariables0(s) else s
 	// scala.util.Regex brought in 30kB, so we code it explicitly
 	def substituteVariables0(s: String): String =
