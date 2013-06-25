@@ -76,7 +76,7 @@ object Incremental
 			val merged = pruned ++ fresh//.copy(relations = pruned.relations ++ fresh.relations, apis = pruned.apis ++ fresh.apis)
 			debug("********* Merged: \n" + merged.relations + "\n*********")
 
-			val incChanges = changedIncremental(invalidated, previous.apis.internalAPI _, merged.apis.internalAPI _, options)
+			val incChanges = changedIncremental(invalidated, previous.apis.internalAPI _, merged.apis.internalAPI _, log, options)
 			debug("\nChanges:\n" + incChanges)
 			val transitiveStep = options.transitiveStep
 			val incInv = invalidateIncremental(merged.relations, incChanges, invalidated, cycleNum >= transitiveStep, log)
@@ -102,15 +102,46 @@ object Incremental
 		invalidated flatMap relations.publicInherited.internal.reverse filter { _.getName == "package.scala" }
 
 	/**
+	 * Logs API changes using debug-level logging. The API are obtained using the APIDiff class.
+	 *
+	 * NOTE: This method creates a new APIDiff instance on every invocation.
+	 */
+	private def logApiChanges[T](changes: (collection.Set[T], Seq[Source], Seq[Source]), log: Logger,
+			options: IncOptions): Unit = {
+		val contextSize = 5
+		try {
+			val apiDiff = new APIDiff
+			changes.zipped foreach {
+				case (src, oldApi, newApi) =>
+					val apiUnifiedPatch = apiDiff.generateApiDiff(src.toString, oldApi.api, newApi.api, contextSize)
+					log.debug("Detected a change in a public API:\n" + apiUnifiedPatch)
+			}
+		} catch {
+			case e: ClassNotFoundException =>
+				log.error("You have api debugging enabled but DiffUtils library cannot be found on sbt's classpath")
+			case e: LinkageError =>
+				log.error("Encoutared linkage error while trying to load DiffUtils library.")
+				log.trace(e)
+			case e: Exception =>
+				log.error("An exception has been thrown while trying to dump an api diff.")
+				log.trace(e)
+		}
+	}
+
+	/**
 	* Accepts the sources that were recompiled during the last step and functions
 	* providing the API before and after the last step.  The functions should return
 	* an empty API if the file did not/does not exist.
 	*/
-	def changedIncremental[T](lastSources: collection.Set[T], oldAPI: T => Source, newAPI: T => Source, options: IncOptions): APIChanges[T] =
+	def changedIncremental[T](lastSources: collection.Set[T], oldAPI: T => Source, newAPI: T => Source, log: Logger, options: IncOptions): APIChanges[T] =
 	{
 		val oldApis = lastSources.toSeq map oldAPI
 		val newApis = lastSources.toSeq map newAPI
 		val changes = (lastSources, oldApis, newApis).zipped.filter { (src, oldApi, newApi) => !sameSource(oldApi, newApi) }
+
+		if (apiDebug(options) && changes.zipped.nonEmpty) {
+			logApiChanges(changes, log, options)
+		}
 
 		val changedNames = TopLevel.nameChanges(changes._3, changes._2 )
 
@@ -138,7 +169,7 @@ object Incremental
 		val srcChanges = changes(previous.allInternalSources.toSet, sources,  f => !equivS.equiv( previous.internalSource(f), current.internalSource(f) ) )
 		val removedProducts = previous.allProducts.filter( p => !equivS.equiv( previous.product(p), current.product(p) ) ).toSet
 		val binaryDepChanges = previous.allBinaries.filter( externalBinaryModified(entry, forEntry, previous, current, log)).toSet
-		val extChanges = changedIncremental(previousAPIs.allExternals, previousAPIs.externalAPI _, currentExternalAPI(entry, forEntry), options)
+		val extChanges = changedIncremental(previousAPIs.allExternals, previousAPIs.externalAPI _, currentExternalAPI(entry, forEntry), log, options)
 
 		InitialChanges(srcChanges, removedProducts, binaryDepChanges, extChanges )
 	}
@@ -229,7 +260,7 @@ object Incremental
 	/** Intermediate invalidation step: steps after the initial invalidation, but before the final transitive invalidation. */
 	def invalidateIntermediate(relations: Relations, modified: Set[File], log: Logger): Set[File] =
 	{
-		def reverse(r: Relations.Source) = r.internal.reverse _ 
+		def reverse(r: Relations.Source) = r.internal.reverse _
 		invalidateSources(reverse(relations.direct), reverse(relations.publicInherited), modified, log)
 	}
 	/** Invalidates inheritance dependencies, transitively.  Then, invalidates direct dependencies.  Finally, excludes initial dependencies not
