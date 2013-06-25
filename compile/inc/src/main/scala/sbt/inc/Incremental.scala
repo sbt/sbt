@@ -108,7 +108,7 @@ object Incremental
 	 */
 	private def logApiChanges[T](changes: (collection.Set[T], Seq[Source], Seq[Source]), log: Logger,
 			options: IncOptions): Unit = {
-		val contextSize = 5
+		val contextSize = options.apiDiffContextSize
 		try {
 			val apiDiff = new APIDiff
 			changes.zipped foreach {
