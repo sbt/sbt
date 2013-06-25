@@ -23,9 +23,17 @@ final case class IncOptions(
 	* Enable tools for debugging API changes. At the moment this option is unused but in the
 	* future it will enable for example:
 	*   - disabling API hashing and API minimization (potentially very memory consuming)
-	*   - dumping textual API representation into files
+	*   - diffing textual API representation which helps understanding what kind of changes
+	*     to APIs are visible to the incremental compiler
 	*/
 	apiDebug: Boolean,
+	/**
+	 * Controls context size (in lines) displayed when diffs are produced for textual API
+	 * representation.
+	 *
+	 * This option is used only when `apiDebug == true`.
+	 */
+	apiDiffContextSize: Int,
 	/**
 	* The directory where we dump textual representation of APIs. This method might be called
 	* only if apiDebug returns true. This is unused option at the moment as the needed functionality
@@ -45,6 +53,7 @@ object IncOptions {
 		recompileAllFraction = 0.5,
 		relationsDebug = false,
 		apiDebug = false,
+		apiDiffContextSize = 5,
 		apiDumpDirectory = None,
 		newClassfileManager = ClassfileManager.deleteImmediately
 	)
@@ -57,6 +66,7 @@ object IncOptions {
 	val relationsDebugKey       = "relationsDebug"
 	val apiDebugKey             = "apiDebug"
 	val apiDumpDirectoryKey     = "apiDumpDirectory"
+	val apiDiffContextSize      = "apiDiffContextSize"
 
 	def fromStringMap(m: java.util.Map[String, String]): IncOptions = {
 		// all the code below doesn't look like idiomatic Scala for a good reason: we are working with Java API
@@ -76,6 +86,10 @@ object IncOptions {
 			val k = apiDebugKey
 			if (m.containsKey(k)) m.get(k).toBoolean else Default.apiDebug
 		}
+		def getApiDiffContextSize: Int = {
+			val k = apiDiffContextSize
+			if (m.containsKey(k)) m.get(k).toInt else Default.apiDiffContextSize
+		}
 		def getApiDumpDirectory: Option[java.io.File] = {
 			val k = apiDumpDirectoryKey
 			if (m.containsKey(k))
@@ -83,7 +97,8 @@ object IncOptions {
 			else None
 		}
 
-		IncOptions(getTransitiveStep, getRecompileAllFraction, getRelationsDebug, getApiDebug, getApiDumpDirectory, ClassfileManager.deleteImmediately)
+		IncOptions(getTransitiveStep, getRecompileAllFraction, getRelationsDebug, getApiDebug, getApiDiffContextSize,
+			getApiDumpDirectory, ClassfileManager.deleteImmediately)
 	}
 
 	def toStringMap(o: IncOptions): java.util.Map[String, String] = {
@@ -93,6 +108,7 @@ object IncOptions {
 		m.put(relationsDebugKey, o.relationsDebug.toString)
 		m.put(apiDebugKey, o.apiDebug.toString)
 		o.apiDumpDirectory.foreach(f => m.put(apiDumpDirectoryKey, f.toString))
+		m.put(apiDiffContextSize, o.apiDiffContextSize.toString)
 		m
 	}
 }
