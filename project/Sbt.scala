@@ -214,7 +214,7 @@ object Sbt extends Build
 		autoScalaLibrary := false,
 		description := "sbt application launcher",
 		publishLauncher <<= publish,
-		packageBin in Compile <<= (proguard in Proguard).identity
+		packageBin in Compile <<= (proguard in Proguard).map(x => x)
 	)
 	def docSetting = inConfig(Compile)(inTask(sxr)(Defaults.docSetting(doc in ThisScope.copy(task = Global, config = Global))))
 
