@@ -182,325 +182,40 @@ System properties can be provided either as JVM options, or as SBT
 arguments, in both cases as ``-Dprop=value``. The following properties
 influence SBT execution. Also see :doc:`Launcher`.
 
-.. raw:: html
-
-   <table>
-     <thead>
-       <tr>
-         <td>
-
-*Property*
-
-.. raw:: html
-
-   </td>
-         <td>
-
-*Values*
-
-.. raw:: html
-
-   </td>
-         <td>
-
-*Default*
-
-.. raw:: html
-
-   </td>
-         <td>
-
-*Meaning*
-
-.. raw:: html
-
-   </td>
-       </tr>
-     </thead>
-     <tbody>
-       <tr>
-         <td>
-
-``sbt.log.format``
-
-.. raw:: html
-
-   </td>
-         <td>
-
-Boolean
-
-.. raw:: html
-
-   </td>
-         <td>
-
-unset
-
-.. raw:: html
-
-   </td>
-         <td>
-
-If true, enable ANSI escape codes such as colors. 
-If false, disable them, which can be useful on build servers or terminals
-that don't support color.
-If unset, whether to use escape codes is automatically detected.
-
-.. raw:: html
-
-   </td>
-       </tr>
-       <tr>
-         <td>
-
-``sbt.global.base``
-
-.. raw:: html
-
-   </td>
-         <td>
-
-Directory
-
-.. raw:: html
-
-   </td>
-         <td>
-
-``~/.sbt``
-
-.. raw:: html
-
-   </td>
-         <td>
-
-The directory containing global settings and plugins
-
-.. raw:: html
-
-   </td>
-       </tr>
-       <tr>
-         <td>
-
-``sbt.ivy.home``
-
-.. raw:: html
-
-   </td>
-         <td>
-
-Directory
-
-.. raw:: html
-
-   </td>
-         <td>
-
-``~/.ivy2``
-
-.. raw:: html
-
-   </td>
-         <td>
-
-The directory containing the local Ivy repository and artifact cache
-
-.. raw:: html
-
-   </td>
-       </tr>
-       <tr>
-         <td>
-
-``sbt.boot.directory``
-
-.. raw:: html
-
-   </td>
-         <td>
-
-Directory
-
-.. raw:: html
-
-   </td>
-         <td>
-
-``~/.sbt/boot``
-
-.. raw:: html
-
-   </td>
-         <td>
-
-Path to shared boot directory
-
-.. raw:: html
-
-   </td>
-       </tr>
-       <tr>
-         <td>
-
-``sbt.main.class``
-
-.. raw:: html
-
-   </td>
-         <td>
-
-String
-
-.. raw:: html
-
-   </td>
-         <td></td>
-         <td></td>
-       </tr>
-       <tr>
-         <td>
-
-``xsbt.inc.debug``
-
-.. raw:: html
-
-   </td>
-         <td>
-
-Boolean
-
-.. raw:: html
-
-   </td>
-         <td>
-
-false
-
-.. raw:: html
-
-   </td>
-         <td></td>
-       </tr>
-       <tr>
-         <td>
-
-``sbt.version``
-
-.. raw:: html
-
-   </td>
-         <td>
-
-Version
-
-.. raw:: html
-
-   </td>
-         <td>
-
-0.11.3
-
-.. raw:: html
-
-   </td>
-         <td>
-
-sbt version to use, usually taken from project/build.properties
-
-.. raw:: html
-
-   </td>
-       </tr>
-       <tr>
-         <td>
-
-``sbt.boot.properties``
-
-.. raw:: html
-
-   </td>
-         <td>
-
-File
-
-.. raw:: html
-
-   </td>
-         <td></td>
-         <td></td>
-       </tr>
-       <tr>
-         <td>
-
-``sbt.override.build.repos``
-
-.. raw:: html
-
-   </td>
-         <td>
-
-Boolean
-
-.. raw:: html
-
-   </td>
-         <td>
-
-false
-
-.. raw:: html
-
-   </td>
-         <td>
-
-If true, repositories configured in a build definition are ignored and
-the repositories configured for the launcher are used instead. See
-``sbt.repository.config`` and the :doc:`Launcher` documentation.
-
-.. raw:: html
-
-   </td>
-       </tr>
-       <tr>
-         <td>
-
-``sbt.repository.config``
-
-.. raw:: html
-
-   </td>
-         <td>
-
-File
-
-.. raw:: html
-
-   </td>
-         <td>
-
-~/.sbt/repositories
-
-.. raw:: html
-
-   </td>
-         <td>
-
-A file containing the repositories to use for the launcher. The format
-is the same as a ``[repositories]`` section for a :doc:`Launcher`
-configuration file. This setting is typically used in conjuction with
-setting ``sbt.override.build.repos`` to true (see previous row and the
-:doc:`Launcher` documentation).
-
-.. raw:: html
-
-   </td>
-       </tr>
-
-.. raw:: html
-
-   </tbody>
-
-
-
++------------------------------+-----------+---------------------+----------------------------------------------------+
+| Property                     | Values    | Default             | Meaning                                            |
++==============================+===========+=====================+====================================================+
+| ``sbt.log.noformat``         | Boolean   | false               | If true, disable ANSI color codes. Useful on build |
+|                              |           |                     | servers or terminals that don't support color.     |
++------------------------------+-----------+---------------------+----------------------------------------------------+
+| ``sbt.global.base``          | Directory | ~/.sbt              | The directory containing global settings and       |
+|                              |           |                     | plugins                                            |
++------------------------------+-----------+---------------------+----------------------------------------------------+
+| ``sbt.ivy.home``             | Directory | ~/.ivy2             | The directory containing the local Ivy repository  |
+|                              |           |                     | and artifact cache                                 |
++------------------------------+-----------+---------------------+----------------------------------------------------+
+| ``sbt.boot.directory``       | Directory | ~/.sbt/boot         | Path to shared boot directory                      |
++------------------------------+-----------+---------------------+----------------------------------------------------+
+| ``sbt.main.class``           | String    |                     |                                                    |
++------------------------------+-----------+---------------------+----------------------------------------------------+
+| ``xsbt.inc.debug``           | Boolean   | false               |                                                    |
++------------------------------+-----------+---------------------+----------------------------------------------------+
+| ``sbt.version``              | Version   | 0.11.3              | sbt version to use, usually taken from             |
+|                              |           |                     | project/build.properties                           |
++------------------------------+-----------+---------------------+----------------------------------------------------+
+| ``sbt.boot.properties``      | File      |                     |                                                    |
++------------------------------+-----------+---------------------+----------------------------------------------------+
+| ``sbt.override.build.repos`` | Boolean   | false               | If true, repositories configured in a build        |
+|                              |           |                     | definition are ignored and the repositories        |
+|                              |           |                     | configured for the launcher are used instead. See  |
+|                              |           |                     | ``sbt.repository.config`` and the :doc:`Launcher`  |
+|                              |           |                     | documentation.                                     |
++------------------------------+-----------+---------------------+----------------------------------------------------+
+| ``sbt.repository.config``    | File      | ~/.sbt/repositories | A file containing the repositories to use for the  |
+|                              |           |                     | launcher. The format is the same as a              |
+|                              |           |                     | ``[repositories]`` section for a :doc:`Launcher`   |
+|                              |           |                     | configuration file. This setting is typically used |
+|                              |           |                     | in conjuction with setting                         |
+|                              |           |                     | ``sbt.override.build.repos`` to true (see previous |
+|                              |           |                     | row and the :doc:`Launcher` documentation).        |
++------------------------------+-----------+---------------------+----------------------------------------------------+
