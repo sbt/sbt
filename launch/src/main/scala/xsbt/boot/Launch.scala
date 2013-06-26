@@ -4,7 +4,7 @@
 package xsbt.boot
 
 import Pre._
-import BootConfiguration.{CompilerModuleName, LibraryModuleName}
+import BootConfiguration.{CompilerModuleName, JAnsiVersion, LibraryModuleName}
 import java.io.File
 import java.net.{URL, URLClassLoader}
 import java.util.concurrent.Callable
@@ -51,9 +51,14 @@ object Launch
 		val appProvider: xsbti.AppProvider = launcher.app(app, orNull(scalaVersion)) // takes ~40 ms when no update is required
 		val appConfig: xsbti.AppConfiguration = new AppConfiguration(toArray(arguments), workingDirectory, appProvider)
 
-		val main = appProvider.newMain()
-		try { withContextLoader(appProvider.loader)(main.run(appConfig)) }
-		catch { case e: xsbti.FullReload => if(e.clean) delete(launcher.bootDirectory); throw e }
+		JAnsi.install(launcher.topLoader)
+		try {
+			val main = appProvider.newMain()
+			try { withContextLoader(appProvider.loader)(main.run(appConfig)) }
+			catch { case e: xsbti.FullReload => if(e.clean) delete(launcher.bootDirectory); throw e }
+		} finally {
+			JAnsi.uninstall(launcher.topLoader)
+		}
 	}
 	final def launch(run: RunConfiguration => xsbti.MainResult)(config: RunConfiguration): Option[Int] =
 	{
@@ -88,7 +93,7 @@ class Launch private[xsbt](val bootDirectory: File, val lockBoot: Boolean, val i
       getAppProvider(id, scalaVersion, false)
 
 	val bootLoader = new BootFilteredLoader(getClass.getClassLoader)
-	val topLoader = jnaLoader(bootLoader)
+	val topLoader = if(isWindows && !isCygwin) jansiLoader(bootLoader) else bootLoader
 
 	val updateLockFile = if(lockBoot) Some(new File(bootDirectory, "sbt.boot.lock")) else None
 
@@ -99,19 +104,20 @@ class Launch private[xsbt](val bootDirectory: File, val lockBoot: Boolean, val i
 	def isOverrideRepositories: Boolean = ivyOptions.isOverrideRepositories
 	def checksums = checksumsList.toArray[String]
 
-	def jnaLoader(parent: ClassLoader): ClassLoader =
+	// JAnsi needs to be shared between Scala and the application so there aren't two competing versions
+	def jansiLoader(parent: ClassLoader): ClassLoader =
 	{
-		val id = AppID("net.java.dev.jna", "jna", "3.2.3", "", toArray(Nil), xsbti.CrossValue.Disabled, array())
+		val id = AppID("org.fusesource.jansi", "jansi", JAnsiVersion, "", toArray(Nil), xsbti.CrossValue.Disabled, array())
 		val configuration = makeConfiguration(ScalaOrg, None)
-		val jnaHome = appDirectory(new File(bootDirectory, baseDirectoryName(ScalaOrg, None)), id)
-		val module = appModule(id, None, false, "jna")
+		val jansiHome = appDirectory(new File(bootDirectory, baseDirectoryName(ScalaOrg, None)), id)
+		val module = appModule(id, None, false, "jansi")
 		def makeLoader(): ClassLoader = {
-			val urls = toURLs(wrapNull(jnaHome.listFiles(JarFilter)))
+			val urls = toURLs(wrapNull(jansiHome.listFiles(JarFilter)))
 			val loader = new URLClassLoader(urls, bootLoader)
-			checkLoader(loader, module, "com.sun.jna.Function" :: Nil, loader)
+			checkLoader(loader, module, "org.fusesource.jansi.internal.WindowsSupport" :: Nil, loader)
 		}
 		val existingLoader =
-			if(jnaHome.exists)
+			if(jansiHome.exists)
 				try Some(makeLoader()) catch { case e: Exception => None }
 			else
 				None

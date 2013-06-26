@@ -79,4 +79,6 @@ object Pre
 		}
 		if(f.exists) f.delete()
 	}
+	final val isWindows: Boolean = System.getProperty("os.name").toLowerCase.contains("windows")
+	final val isCygwin: Boolean = isWindows && java.lang.Boolean.getBoolean("sbt.cygwin")
 }

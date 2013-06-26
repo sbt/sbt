@@ -17,7 +17,6 @@ object Boot
 				System.clearProperty("scala.home") // avoid errors from mixing Scala versions in the same JVM
 				System.setProperty("jline.shutdownhook", "false")
 				CheckProxy()
-				initJansi()
 				run(args)
 		}
 	}
@@ -47,19 +46,4 @@ object Boot
 	}
 	private def exit(code: Int): Nothing =
 		System.exit(code).asInstanceOf[Nothing]
-
-	private def initJansi() {
-		try {
-			val c = Class.forName("org.fusesource.jansi.AnsiConsole")
-			c.getMethod("systemInstall").invoke(null)
-		} catch {
-			case ignore: ClassNotFoundException =>
-				/* The below code intentionally traps everything. It technically shouldn't trap the
-				* non-StackOverflowError VirtualMachineErrors and AWTError would be weird, but this is PermGen
-				* mitigation code that should not render sbt completely unusable if jansi initialization fails.
-				* [From Mark Harrah, https://github.com/sbt/sbt/pull/633#issuecomment-11957578].
-				*/
-			case ex: Throwable => println("Jansi found on class path but initialization failed: " + ex)
-		}
-	}
 }

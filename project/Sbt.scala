@@ -62,9 +62,9 @@ object Sbt extends Build
 		// Utilities related to reflection, managing Scala versions, and custom class loaders
 	lazy val classpathSub = testedBaseProject(utilPath / "classpath", "Classpath") dependsOn(launchInterfaceSub, interfaceSub, ioSub) settings(scalaCompiler)
 		// Command line-related utilities.
-	lazy val completeSub = testedBaseProject(utilPath / "complete", "Completion") dependsOn(collectionSub, controlSub, ioSub) settings(jline : _*)
+	lazy val completeSub = testedBaseProject(utilPath / "complete", "Completion") dependsOn(collectionSub, controlSub, ioSub) settings(jline)
 		// logging
-	lazy val logSub = testedBaseProject(utilPath / "log", "Logging") dependsOn(interfaceSub, processSub) settings(jline : _*)
+	lazy val logSub = testedBaseProject(utilPath / "log", "Logging") dependsOn(interfaceSub, processSub) settings(jline)
 		// Relation
 	lazy val relationSub = testedBaseProject(utilPath / "relation", "Relation") dependsOn(interfaceSub, processSub)
 		// class file reader and analyzer
