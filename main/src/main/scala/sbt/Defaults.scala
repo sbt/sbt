@@ -484,7 +484,7 @@ object Defaults extends BuildCommon
 			case Tests.Group(name, tests, runPolicy) =>
 				runPolicy match {
 					case Tests.SubProcess(opts) =>
-						ForkTests(runners, tests.toList, config, cp.files, opts, s.log) tag Tags.ForkedTestGroup
+						ForkTests(runners, tests.toList, config, loader, cp.files, opts, s.log) tag Tags.ForkedTestGroup
 					case Tests.InProcess =>
 						Tests(frameworks, loader, runners, tests, config, s.log)
 				}

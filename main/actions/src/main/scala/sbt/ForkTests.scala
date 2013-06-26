@@ -11,7 +11,7 @@ import Tests.{Output => TestOutput, _}
 import ForkMain._
 
 private[sbt] object ForkTests {
-	def apply(runners: Map[TestFramework, Runner],  tests: List[TestDefinition], config: Execution, classpath: Seq[File], fork: ForkOptions, log: Logger): Task[TestOutput]  = {
+	def apply(runners: Map[TestFramework, Runner],  tests: List[TestDefinition], config: Execution, loader: ClassLoader, classpath: Seq[File], fork: ForkOptions, log: Logger): Task[TestOutput]  = {
 		val opts = config.options.toList
 		val listeners = opts flatMap {
 			case Listeners(ls) => ls
@@ -40,7 +40,22 @@ private[sbt] object ForkTests {
 								case _: java.net.SocketException => return
 							}
 						val os = new ObjectOutputStream(socket.getOutputStream)
-						val is = new ObjectInputStream(socket.getInputStream)
+						// Make sure that ObjectInputStream use the passed in class loader
+						// ObjectInputStream class loading seems to be confusing, some old but useful links for reference:
+						// https://forums.oracle.com/thread/1151865
+						// http://sourceforge.net/p/jpype/bugs/52/
+						// http://tech-tauk.blogspot.com/2010/05/thread-context-classlaoder-in.html
+						val is = new ObjectInputStream(socket.getInputStream) {
+							override protected def resolveClass(desc: ObjectStreamClass): Class[_] = {
+								try {
+									val name = desc.getName
+									Class.forName(name, false, loader)
+								}
+								catch {
+									case e: ClassNotFoundException => super.resolveClass(desc)
+								}
+							}
+						}
 
 						try {
 							os.writeBoolean(log.ansiCodesSupported)

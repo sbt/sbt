@@ -11,7 +11,7 @@ package sbt
 	import xsbti.api.Definition
 	import ConcurrentRestrictions.Tag
 
-	import testing.{AnnotatedFingerprint, Fingerprint, Framework, SubclassFingerprint, Runner, Task => TestTask}
+	import testing.{AnnotatedFingerprint, Fingerprint, Framework, SubclassFingerprint, Runner, TaskDef, SuiteSelector, Task => TestTask}
 	import scala.annotation.tailrec
 
 	import java.io.File
@@ -123,9 +123,10 @@ object Tests
 	}
 	type TestRunnable = (String, TestFunction)
 	
-	private def createNestedRunnables(name: String, loader: ClassLoader, testFun: TestFunction, nestedTasks: Seq[TestTask]): Seq[(String, TestFunction)] = 
+	private def createNestedRunnables(loader: ClassLoader, testFun: TestFunction, nestedTasks: Seq[TestTask]): Seq[(String, TestFunction)] = 
 		nestedTasks.view.zipWithIndex map { case (nt, idx) =>
-			(name, TestFramework.createTestFunction(loader, new TestDefinition(testFun.testDefinition.name + "-" + idx, testFun.testDefinition.fingerprint), testFun.runner, nt))
+			val testFunDef = testFun.taskDef
+			(testFunDef.fullyQualifiedName, TestFramework.createTestFunction(loader, new TaskDef(testFunDef.fullyQualifiedName + "-" + idx, testFunDef.fingerprint, testFunDef.explicitlySpecified, testFunDef.selectors), testFun.runner, nt))
 		}
 
 	def makeParallel(loader: ClassLoader, runnables: Iterable[TestRunnable], setupTasks: Task[Unit], tags: Seq[(Tag,Int)]): Task[Map[String,SuiteResult]] =
@@ -142,7 +143,7 @@ object Tests
 		val base = task { (name, fun.apply()) }
 		val taggedBase = base.tagw(tags : _*).tag(fun.tags.map(ConcurrentRestrictions.Tag(_)) : _*)
 		taggedBase flatMap { case (name, (result, nested)) =>
-			val nestedRunnables = createNestedRunnables(fun.testDefinition.name, loader, fun, nested)
+			val nestedRunnables = createNestedRunnables(loader, fun, nested)
 			toTasks(loader, nestedRunnables, tags).map( _.updated(name, result) )
 		}
 	}
@@ -155,7 +156,7 @@ object Tests
 				case hd :: rst => 
 					val testFun = hd._2
 					val (result, nestedTasks) = testFun.apply()
-					val nestedRunnables = createNestedRunnables(testFun.testDefinition.name, loader, testFun, nestedTasks)
+					val nestedRunnables = createNestedRunnables(loader, testFun, nestedTasks)
 					processRunnable(nestedRunnables.toList ::: rst, (hd._1, result) :: acc)
 				case Nil => acc
 			}
@@ -202,7 +203,8 @@ object Tests
 			defined(annotations, d.annotations, d.isModule)
 
 		val discovered = Discovery(firsts(subclasses), firsts(annotations))(definitions)
-		val tests = for( (df, di) <- discovered; fingerprint <- toFingerprints(di) ) yield new TestDefinition(df.name, fingerprint)
+		// TODO: To pass in correct explicitlySpecified and selectors
+		val tests = for( (df, di) <- discovered; fingerprint <- toFingerprints(di) ) yield new TestDefinition(df.name, fingerprint, false, Array(new SuiteSelector))
 		val mains = discovered collect { case (df, di) if di.hasMain => df.name }
 		(tests, mains.toSet)
 	}

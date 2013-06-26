@@ -88,16 +88,16 @@ class EventHandlerWrapper implements org.scalatools.testing.EventHandler {
 
 	private EventHandler newEventHandler;
 	private String fullyQualifiedName;
-	private boolean isModule;
+	private Fingerprint fingerprint;
 
-	public EventHandlerWrapper(EventHandler newEventHandler, String fullyQualifiedName, boolean isModule) {
+	public EventHandlerWrapper(EventHandler newEventHandler, String fullyQualifiedName, Fingerprint fingerprint) {
 		this.newEventHandler = newEventHandler;
 		this.fullyQualifiedName = fullyQualifiedName;
-		this.isModule = isModule;
+		this.fingerprint = fingerprint;
 	}
 
 	public void handle(org.scalatools.testing.Event oldEvent) {
-		newEventHandler.handle(new EventWrapper(oldEvent, fullyQualifiedName, isModule));
+		newEventHandler.handle(new EventWrapper(oldEvent, fullyQualifiedName, fingerprint));
 	}
 }
 
@@ -105,20 +105,26 @@ class EventWrapper implements Event {
 
 	private org.scalatools.testing.Event oldEvent;
 	private String className;
-	private boolean classIsModule;
+	private Fingerprint fingerprint;
+	private OptionalThrowable throwable;
 
-	public EventWrapper(org.scalatools.testing.Event oldEvent, String className, boolean classIsModule) {
+	public EventWrapper(org.scalatools.testing.Event oldEvent, String className, Fingerprint fingerprint) {
 		this.oldEvent = oldEvent;
 		this.className = className;
-		this.classIsModule = classIsModule;
+		this.fingerprint = fingerprint;
+		Throwable oldThrowable = oldEvent.error();
+		if (oldThrowable == null)
+			throwable = new OptionalThrowable();
+		else
+			throwable = new OptionalThrowable(oldThrowable);
 	}
 
 	public String fullyQualifiedName() {
 		return className;
 	}
 
-	public boolean isModule() {
-		return classIsModule; 
+	public Fingerprint fingerprint() {
+		return fingerprint; 
 	}
 
 	public Selector selector() {
@@ -140,10 +146,13 @@ class EventWrapper implements Event {
 		}
 	}
 
-	public Throwable throwable() {
-		return oldEvent.error();
+	public OptionalThrowable throwable() {
+		return throwable;
 	}
 
+	public long duration() {
+		return 0;  // Just return 0 as old event does not have duration.
+	}
 }
 
 class RunnerWrapper implements Runner {
@@ -157,8 +166,19 @@ class RunnerWrapper implements Runner {
 		this.testClassLoader = testClassLoader;
 		this.args = args;
 	}
+	
+	public Task[] tasks(TaskDef[] taskDefs) {
+		int length = taskDefs.length;
+		Task[] tasks = new Task[length];
+		for (int i = 0; i < length; i++) {
+			TaskDef taskDef = taskDefs[i];
+			tasks[i] = createTask(taskDef.fullyQualifiedName(), taskDef.fingerprint(), taskDef.explicitlySpecified(), taskDef.selectors());
+		}
+		return tasks;
+	}
 
-	public Task task(final String fullyQualifiedName, final Fingerprint fingerprint, boolean explicitlySpecified, Selector[] selectors) {
+	public Task createTask(final String fullyQualifiedName, final Fingerprint fingerprint, boolean explicitlySpecified, Selector[] selectors) {
+		final TaskDef taskDef = new TaskDef(fullyQualifiedName, fingerprint, explicitlySpecified, selectors);
 		return new Task() {
 			public String[] tags() {
 				return new String[0];  // Old framework does not support tags
@@ -183,19 +203,17 @@ class RunnerWrapper implements Runner {
 						public boolean isModule() { return subclassFingerprint.isModule(); }
 						public String superClassName() { return subclassFingerprint.superclassName(); }
 					};
-				runner.run(fullyQualifiedName, oldFingerprint, new EventHandlerWrapper(eventHandler, fullyQualifiedName, subclassFingerprint.isModule()), args);
+				runner.run(fullyQualifiedName, oldFingerprint, new EventHandlerWrapper(eventHandler, fullyQualifiedName, subclassFingerprint), args);
 			}
 			
 			private void runRunner2(org.scalatools.testing.Runner2 runner, Fingerprint fingerprint, EventHandler eventHandler) {
 				org.scalatools.testing.Fingerprint oldFingerprint = null;
-				boolean isModule = false;
 				if (fingerprint instanceof SubclassFingerprint) {
 					final SubclassFingerprint subclassFingerprint = (SubclassFingerprint) fingerprint;
 					oldFingerprint = new org.scalatools.testing.SubclassFingerprint() {
 						public boolean isModule() { return subclassFingerprint.isModule(); }
 						public String superClassName() { return subclassFingerprint.superclassName(); }
 					};
-					isModule = subclassFingerprint.isModule();
 				}
 				else {
 					final AnnotatedFingerprint annotatedFingerprint = (AnnotatedFingerprint) fingerprint;
@@ -203,9 +221,8 @@ class RunnerWrapper implements Runner {
 						public boolean isModule() { return annotatedFingerprint.isModule(); }
 						public String annotationName() { return annotatedFingerprint.annotationName(); }
 					};
-					isModule = annotatedFingerprint.isModule();
 				}
-				runner.run(fullyQualifiedName, oldFingerprint, new EventHandlerWrapper(eventHandler, fullyQualifiedName, isModule), args);
+				runner.run(fullyQualifiedName, oldFingerprint, new EventHandlerWrapper(eventHandler, fullyQualifiedName, fingerprint), args);
 			}
         
 			public Task[] execute(EventHandler eventHandler, Logger[] loggers) {
@@ -223,6 +240,10 @@ class RunnerWrapper implements Runner {
 					runRunner(runner, fingerprint, eventHandler);
 				}
 				return new Task[0];
+			}
+			
+			public TaskDef taskDef() {
+				return taskDef;
 			}
 		};
 	}

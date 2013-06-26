@@ -51,7 +51,7 @@ case class TestFramework(val implClassNames: String*)
 	def create(loader: ClassLoader, log: Logger): Option[Framework] =
 		createFramework(loader, log, implClassNames.toList)
 }
-final class TestDefinition(val name: String, val fingerprint: Fingerprint)
+final class TestDefinition(val name: String, val fingerprint: Fingerprint, val explicitlySpecified: Boolean, val selectors: Array[Selector])
 {
 	override def toString = "Test " + name + " : " + TestFramework.toString(fingerprint)
 	override def equals(t: Any) =
@@ -65,13 +65,15 @@ final class TestDefinition(val name: String, val fingerprint: Fingerprint)
 
 final class TestRunner(delegate: Runner, listeners: Seq[TestReportListener], log: Logger) {
 
-	final def task(testDefinition: TestDefinition): TestTask = 
-		delegate.task(testDefinition.name, testDefinition.fingerprint, false, Array(new SuiteSelector))  // TODO: To pass in correct explicitlySpecified and selectors
+    final def tasks(testDefs: Set[TestDefinition]): Array[TestTask] = 
+      delegate.tasks(testDefs.map(df => new TaskDef(df.name, df.fingerprint, df.explicitlySpecified, df.selectors)).toArray)
 
-	final def run(testDefinition: TestDefinition, testTask: TestTask): (SuiteResult, Seq[TestTask]) =
+	final def run(taskDef: TaskDef, testTask: TestTask): (SuiteResult, Seq[TestTask]) =
 	{
-		log.debug("Running " + testDefinition)
+        val testDefinition = new TestDefinition(taskDef.fullyQualifiedName, taskDef.fingerprint, taskDef.explicitlySpecified, taskDef.selectors)
+		log.debug("Running " + taskDef)
 		val name = testDefinition.name
+		
 		def runTest() =
 		{
 			// here we get the results! here is where we'd pass in the event listener
@@ -186,8 +188,8 @@ object TestFramework
 		def pickOne(prints: Seq[Fingerprint]): Fingerprint =
 			frameworkPrints.find(prints.toSet) getOrElse prints.head
 		val uniqueDefs =
-			for( (name, defs) <- tests.groupBy(_.name) ) yield
-				new TestDefinition(name, pickOne(defs.map(_.fingerprint)))
+			for( ((name, explicitlySpecified, selectors), defs) <- tests.groupBy(t => (t.name, t.explicitlySpecified, t.selectors)) ) yield
+				new TestDefinition(name, pickOne(defs.map(_.fingerprint)), explicitlySpecified, selectors)
 		uniqueDefs.toSet
 	}
 
@@ -203,11 +205,10 @@ object TestFramework
 		val testTasks =
 			tests flatMap { case (framework, (testDefinitions, testArgs)) =>
 				val runner = runners(framework)
-				for(testDefinition <- testDefinitions) yield
-				{
-					val testTask = withContextLoader(loader) { runner.task(testDefinition) }
-					val testFunction = createTestFunction(loader, testDefinition, runner, testTask)
-					(testDefinition.name, testFunction)
+				val testTasks = withContextLoader(loader) { runner.tasks(testDefinitions) }
+				for (testTask <- testTasks) yield {
+				  val taskDef = testTask.taskDef
+				  (taskDef.fullyQualifiedName, createTestFunction(loader, taskDef, runner, testTask))
 				}
 			}
 
@@ -229,11 +230,11 @@ object TestFramework
 		val main = ClasspathUtilities.makeLoader(classpath, dual, scalaInstance, tempDir)
 		ClasspathUtilities.filterByClasspath(interfaceJar +: classpath, main)
 	}
-	def createTestFunction(loader: ClassLoader, testDefinition: TestDefinition, runner:TestRunner, testTask: TestTask): TestFunction = 
-		new TestFunction(testDefinition, runner, (r: TestRunner) => withContextLoader(loader) { r.run(testDefinition, testTask) }) { def tags = testTask.tags }
+	def createTestFunction(loader: ClassLoader, taskDef: TaskDef, runner:TestRunner, testTask: TestTask): TestFunction = 
+		new TestFunction(taskDef, runner, (r: TestRunner) => withContextLoader(loader) { r.run(taskDef, testTask) }) { def tags = testTask.tags }
 }
 
-abstract class TestFunction(val testDefinition: TestDefinition, val runner: TestRunner, fun: (TestRunner) => (SuiteResult, Seq[TestTask])) {
+abstract class TestFunction(val taskDef: TaskDef, val runner: TestRunner, fun: (TestRunner) => (SuiteResult, Seq[TestTask])) {
 
 	def apply(): (SuiteResult, Seq[TestTask]) = fun(runner)
 
