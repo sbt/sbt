@@ -56,10 +56,62 @@ SBT heuristics
 SBT tracks source dependencies at the granularity of source files. For
 each source file, SBT tracks files which depend on it directly; if the
 **interface** of classes, objects or traits in a file changes, all files
-dependent on that source must be recompiled. In particular, this
-currently includes all transitive dependencies, that is, also
-dependencies of dependencies, dependencies of these and so on to
-arbitrary depth.
+dependent on that source must be recompiled. At the moment sbt uses the
+following algorithm to calculate source files dependent on a given source
+file:
+
+  - dependencies introduced through inheritance are included *transitively*;
+    a dependency is introduced through inheritance if a class/trait in one
+    file inherits from a trait/class in another file
+  - all other direct dependencies are included; other dependencies are also
+    called "meber reference" dependencies because they are introduced by
+    referring to a member (class, method, type, etc.) defined in some other
+    source file
+
+Here's an example illustrating the definition above:
+
+::
+
+   //A.scala
+   class A {
+     def foo: Int = 123
+   }
+
+   //B.scala
+   class B extends A
+
+   //C.scala
+   class C extends B
+
+   //D.scala
+   class D(a: A)
+
+   //E.scala
+   class E(d: D)
+
+There are the following dependencies through inheritance:
+
+::
+
+   B.scala -> A.scala
+   C.scala -> B.scala
+
+There are also the following member reference dependencies:
+
+::
+
+   D.scala -> A.scala
+   E.scala -> D.scala
+
+Now if the interface of ``A.scala`` is changed the following files
+will get invalidated: ``B.scala``, ``C.scala``, ``D.scala``. Both
+``B.scala`` and ``C.scala`` were included through transtive closure
+of inheritance dependencies. The ``E.scala`` was not included because
+``E.scala`` doesn't depend directly on ``A.scala``.
+
+The distinction between depdencies by inheritance or member reference
+is a new feature in sbt 0.13 and is responsible for improved recompilation
+times in many cases where deep inheritance chains are not used extensively.
 
 SBT does not instead track dependencies to source code at the
 granularity of individual output ``.class`` files, as one might hope.
