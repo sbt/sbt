@@ -200,6 +200,13 @@ influence SBT execution. Also see :doc:`Launcher`.
 +------------------------------+-----------+---------------------+----------------------------------------------------+
 | ``xsbt.inc.debug``           | Boolean   | false               |                                                    |
 +------------------------------+-----------+---------------------+----------------------------------------------------+
+| ``sbt.extraClasspath``       | Classpath |                     | A list of classpath entries (jar files or          |
+|                              | Entries   |                     | directories) that are added to sbt's classpath.    |
+|                              |           |                     | Note that the entries are deliminted by comma,     |
+|                              |           |                     | e.g.: ``entry1, entry2,..``. See also              |
+|                              |           |                     | ``resources`` in the :doc:`Launcher`               |
+|                              |           |                     | documentation.                                     |
++------------------------------+-----------+---------------------+----------------------------------------------------+
 | ``sbt.version``              | Version   | 0.11.3              | sbt version to use, usually taken from             |
 |                              |           |                     | project/build.properties                           |
 +------------------------------+-----------+---------------------+----------------------------------------------------+
