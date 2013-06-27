@@ -174,7 +174,7 @@ modify and recompile source code you need to do two things:
 
 .. warning:: Enabling the ``apiDebug`` option increases significantly
              memory consumption and degrades performance of the
-             incremental compiler. The underlaying reason is that in
+             incremental compiler. The underlying reason is that in
              order to produce meaningful debugging information about
              interface differences incremental compiler has to retain
              the full representation of the interface instead of just
