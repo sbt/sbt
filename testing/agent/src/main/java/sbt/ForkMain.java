@@ -42,14 +42,21 @@ public class ForkMain {
 	public static class ForkTestDefinition implements Serializable {
 		public String name;
 		public Fingerprint fingerprint;
+		public boolean explicitlySpecified;
+		public Selector[] selectors;
 
-		public ForkTestDefinition(String name, Fingerprint fingerprint) {
+		public ForkTestDefinition(String name, Fingerprint fingerprint, boolean explicitlySpecified, Selector[] selectors) {
 			this.name = name;
 			if (fingerprint instanceof SubclassFingerprint) {
 				this.fingerprint = new SubclassFingerscan((SubclassFingerprint) fingerprint);
 			} else {
 				this.fingerprint = new AnnotatedFingerscan((AnnotatedFingerprint) fingerprint);
 			}
+			this.explicitlySpecified = explicitlySpecified;
+			int length = selectors.length;
+			this.selectors = new Selector[length];
+			for (int i = 0; i < length; i++)
+				this.selectors[i] = forkSelector(selectors[i]);
 		}
 	}
 	static class ForkError extends Exception {
@@ -62,6 +69,13 @@ public class ForkMain {
 		}
 		public String getMessage() { return originalMessage; }
 		public Exception getCause() { return cause; }
+	}
+	
+	static Selector forkSelector(Selector selector) {
+		if (selector instanceof Serializable)
+			return selector;
+		else
+			throw new UnsupportedOperationException("Selector implementation must be Serializable, but " + selector.getClass().getName() + " is not.");
 	}
 	
 	static class ForkEvent implements Event, Serializable {
@@ -93,12 +107,6 @@ public class ForkMain {
 		public Status status() { return status; }
 		public OptionalThrowable throwable() { return throwable; }
 		public long duration() { return duration; }
-		protected Selector forkSelector(Selector selector) {
-			if (selector instanceof Serializable)
-				return selector;
-			else
-				throw new UnsupportedOperationException("Selector implementation must be Serializable.");
-		}
 	}
 	public static void main(String[] args) throws Exception {
 		Socket socket = new Socket(InetAddress.getByName(null), Integer.valueOf(args[0]));
@@ -190,7 +198,7 @@ public class ForkMain {
 					for (ForkTestDefinition test : tests) {
 						// TODO: To pass in correct explicitlySpecified and selectors
 						if (matches(testFingerprint, test.fingerprint)) 
-							filteredTests.add(new TaskDef(test.name, test.fingerprint, false, new Selector[] { new SuiteSelector() }));
+							filteredTests.add(new TaskDef(test.name, test.fingerprint, test.explicitlySpecified, test.selectors));
 					}
 				}
 				final Runner runner = framework.runner(frameworkArgs, remoteFrameworkArgs, getClass().getClassLoader());
