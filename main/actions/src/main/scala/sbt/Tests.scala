@@ -230,12 +230,14 @@ object Tests
 		// Print the standard one-liner statistic if no framework summary is defined, or when > 1 framework is in used.
 		if (printStandard)
 		{
-			val (skippedCount, errorsCount, passedCount, failuresCount) = 
-				results.events.foldLeft((0, 0, 0, 0)) { case (acc, (name, testEvent)) =>
-					(acc._1 + testEvent.skippedCount, acc._2 + testEvent.errorCount, acc._3 + testEvent.passedCount, acc._4 + testEvent.failureCount)
+			val (skippedCount, errorsCount, passedCount, failuresCount, ignoredCount, canceledCount, pendingCount) = 
+				results.events.foldLeft((0, 0, 0, 0, 0, 0, 0)) { case ((skippedAcc, errorAcc, passedAcc, failureAcc, ignoredAcc, canceledAcc, pendingAcc), (name, testEvent)) =>
+					(skippedAcc + testEvent.skippedCount, errorAcc + testEvent.errorCount, passedAcc + testEvent.passedCount, failureAcc + testEvent.failureCount, 
+					 ignoredAcc + testEvent.ignoredCount, canceledAcc + testEvent.canceledCount, pendingAcc + testEvent.pendingCount)
 				}
 			val totalCount = failuresCount + errorsCount + skippedCount + passedCount
-			val postfix = "Total " + totalCount + ", Failed " + failuresCount + ", Errors " + errorsCount + ", Passed " + passedCount + ", Skipped " + skippedCount
+			val postfix = "Total " + totalCount + ", Failed " + failuresCount + ", Errors " + errorsCount + ", Passed " + passedCount + ", Skipped " + skippedCount + 
+			              ", Ignored " + ignoredCount + ", Canceled " + canceledCount + ", Pending " + pendingCount
 			results.overall match {
 				case TestResult.Error => log.error("Error: " + postfix)
 				case TestResult.Passed => log.info("Passed: " + postfix)
