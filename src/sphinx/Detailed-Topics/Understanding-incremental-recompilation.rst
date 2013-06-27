@@ -56,10 +56,60 @@ SBT heuristics
 SBT tracks source dependencies at the granularity of source files. For
 each source file, SBT tracks files which depend on it directly; if the
 **interface** of classes, objects or traits in a file changes, all files
-dependent on that source must be recompiled. In particular, this
-currently includes all transitive dependencies, that is, also
-dependencies of dependencies, dependencies of these and so on to
-arbitrary depth.
+dependent on that source must be recompiled. At the moment sbt uses the
+following algorithm to calculate source files dependent on a given source
+file:
+
+  - dependencies introduced through inheritance are included *transitively*;
+    a dependency is introduced through inheritance if a class/trait in one
+    file inherits from a trait/class in another file
+  - all other direct dependencies are included; other dependencies are also
+    called "meber reference" dependencies because they are introduced by
+    referring to a member (class, method, type, etc.) defined in some other
+    source file
+
+Here's an example illustrating the definition above::
+
+   //A.scala
+   class A {
+     def foo: Int = 123
+   }
+
+   //B.scala
+   class B extends A
+
+   //C.scala
+   class C extends B
+
+   //D.scala
+   class D(a: A)
+
+   //E.scala
+   class E(d: D)
+
+There are the following dependencies through inheritance:
+
+.. code-block:: none
+
+   B.scala -> A.scala
+   C.scala -> B.scala
+
+There are also the following member reference dependencies:
+
+.. code-block:: none
+
+   D.scala -> A.scala
+   E.scala -> D.scala
+
+Now if the interface of ``A.scala`` is changed the following files
+will get invalidated: ``B.scala``, ``C.scala``, ``D.scala``. Both
+``B.scala`` and ``C.scala`` were included through transtive closure
+of inheritance dependencies. The ``E.scala`` was not included because
+``E.scala`` doesn't depend directly on ``A.scala``.
+
+The distinction between depdencies by inheritance or member reference
+is a new feature in sbt 0.13 and is responsible for improved recompilation
+times in many cases where deep inheritance chains are not used extensively.
 
 SBT does not instead track dependencies to source code at the
 granularity of individual output ``.class`` files, as one might hope.
@@ -106,6 +156,83 @@ just to illustrate the ideas; this list is not intended to be complete.
    dependencies cannot be easily tracked at the class level (see Scala
    issue `SI-2559 <https://issues.scala-lang.org/browse/SI-2559>`_ for
    an example.)
+
+Debugging an interface representation
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+If you see spurious incremental recompilations or you want understand
+what changes to an extracted interface cause incremental recompilation
+then sbt 0.13 has the right tools for that.
+
+In order to debug the interface representation and its changes as you
+modify and recompile source code you need to do two things:
+
+   1. Enable incremental compiler's ``apiDebug`` option.
+   2. Add `diff-utils library <https://code.google.com/p/java-diff-utils/>`_
+      to sbt's classpath. Check documentation of `sbt.extraClasspath`
+      system property in the :doc:`Command-Line-Reference`.
+
+.. warning:: Enabling the ``apiDebug`` option increases significantly
+             memory consumption and degrades performance of the
+             incremental compiler. The underlaying reason is that in
+             order to produce meaningful debugging information about
+             interface differences incremental compiler has to retain
+             the full representation of the interface instead of just
+             hash sum as it does by default.
+
+             Keep this option enabled when you are debugging incremental
+             compiler problem only.
+
+Below is complete transcript which shows how to enable interface debugging
+in your project. First, we download the ``diffutils`` jar and pass it
+to sbt:
+
+.. code-block:: none
+
+   curl -O https://java-diff-utils.googlecode.com/files/diffutils-1.2.1.jar
+   sbt -Dsbt.extraClasspath=diffutils-1.2.1.jar
+   [info] Loading project definition from /Users/grek/tmp/sbt-013/project
+   [info] Set current project to sbt-013 (in build file:/Users/grek/tmp/sbt-013/)
+   > set incOptions := incOptions.value.copy(apiDebug = true)
+   [info] Defining *:incOptions
+   [info] The new value will be used by compile:incCompileSetup, test:incCompileSetup
+   [info] Reapplying settings...
+   [info] Set current project to sbt-013 (in build file:/Users/grek/tmp/sbt-013/)
+
+Let's suppose you have the following source code in ``Test.scala``::
+
+   class A {
+      def b: Int = 123
+   }
+
+compile it and then change the ``Test.scala`` file so it looks like::
+
+   class A {
+      def b: String = "abc"
+   }
+
+and run `compile` task again. Now if you run `last compile` you should see
+the following lines in the debugging log
+
+.. code-block:: none
+
+   > last compile
+   [...]
+   [debug] Detected a change in a public API:
+   [debug] --- /Users/grek/tmp/sbt-013/Test.scala
+   [debug] +++ /Users/grek/tmp/sbt-013/Test.scala
+   [debug] @@ -23,7 +23,7 @@
+   [debug]  ^inherited^ final def ##(): scala.this#Int
+   [debug]  ^inherited^ final def synchronized[ java.lang.Object.T0 >: scala.this#Nothing <: scala.this#Any](x$1: <java.lang.Object.T0>): <java.lang.Object.T0>
+   [debug]  ^inherited^ final def $isInstanceOf[ java.lang.Object.T0 >: scala.this#Nothing <: scala.this#Any](): scala.this#Boolean
+   [debug]  ^inherited^ final def $asInstanceOf[ java.lang.Object.T0 >: scala.this#Nothing <: scala.this#Any](): <java.lang.Object.T0>
+   [debug]  def <init>(): this#A
+   [debug] -def b: scala.this#Int
+   [debug] +def b: java.lang.this#String
+   [debug]  }
+
+You can see an unified diff of two interface textual represetantions. As you can see,
+the incremental compiler detected a change to the return type of `b` method.
 
 How to take advantage of SBT heuristics
 ---------------------------------------
