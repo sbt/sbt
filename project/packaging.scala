@@ -1,7 +1,7 @@
 import sbt._
-import com.typesafe.packager.Keys._
+import com.typesafe.sbt.packager.Keys._
 import sbt.Keys._
-import com.typesafe.packager.PackagerPlugin._
+import com.typesafe.sbt.SbtNativePackager._
 
 object Packaging {
 
@@ -9,12 +9,6 @@ object Packaging {
   val sbtLaunchJarLocation = SettingKey[File]("sbt-launch-jar-location")  
   val sbtLaunchJar = TaskKey[File]("sbt-launch-jar", "Resolves SBT launch jar")
 
-  val fixedScriptDir = SettingKey[File]("fixed-script-dir")
-  val fixedLinuxScriptDir = SettingKey[File]("fixed-linux-script-dir")
-  val fixedUniversalScriptDir = SettingKey[File]("fixed-universal-script-dir")
-  val linuxFixedScripts = TaskKey[File]("linux-fixed-scripts")
-  val universalFixedScripts = TaskKey[File]("universal-fixed-scripts")
-  
   val stagingDirectory = SettingKey[File]("staging-directory")
   val stage = TaskKey[File]("stage")
 
@@ -29,26 +23,7 @@ object Packaging {
     case _                             => "http://repo.typesafe.com/typesafe/ivy-releases/org.scala-tools.sbt/sbt-launch/"+v+"/sbt-launch.jar"
   }
 
-  def fixScripts(launchJar: String, bashLib: String)(scriptDir: File, target: File): File = {
-    if(!target.exists) target.mkdirs()
-    for(file <- (scriptDir.*** --- scriptDir).get) {
-      val tfile = target / file.getName
-      // TODO - Speedier version
-      val lines =
-        for {
-          line <- IO.readLines(file).view
-        } yield line.replaceAll("@@BASH-LIB-LOCATION@@", bashLib).replaceAll("@@LAUNCH-JAR-LOCATION@@", launchJar)
-      IO.writeLines(tfile, lines)
-    }
-    target
-  }
-  
-  val settings: Seq[Setting[_]] = packagerSettings ++ deploymentSettings ++ Seq(
-    fixedScriptDir <<= sourceDirectory / "scripts",
-    fixedLinuxScriptDir <<= target / "linux-scripts",
-    fixedUniversalScriptDir <<= target / "universal-scripts",
-    linuxFixedScripts <<= (fixedScriptDir, fixedLinuxScriptDir) map fixScripts("/usr/lib/sbt/sbt-launch.jar", "/usr/share/sbt/sbt-launch-lib.bash"),
-    universalFixedScripts <<= (fixedScriptDir, fixedUniversalScriptDir) map fixScripts("\\$(dirname \\$(realpath \\$0))/sbt-launch.jar", "\\$(dirname \\$(realpath \\$0))/sbt-launch-lib.bash"),
+  val settings: Seq[Setting[_]] = packagerSettings ++ deploymentSettings ++ mapGenericFilesToLinux ++ Seq(
     sbtLaunchJarUrl <<= sbtVersion apply downloadUrlForVersion,
     sbtLaunchJarLocation <<= target apply (_ / "sbt-launch.jar"),
     sbtLaunchJar <<= (sbtLaunchJarUrl, sbtLaunchJarLocation) map { (uri, file) =>
@@ -68,40 +43,13 @@ object Packaging {
     packageSummary := "Simple Build Tool for Scala-driven builds",
     packageDescription := """This script provides a native way to run the Simple Build Tool,
   a build tool for Scala software, also called SBT.""",
-    linuxPackageMappings <+= (linuxFixedScripts) map { bd =>
-      (packageMapping((bd / "sbt") -> "/usr/bin/sbt",
-                      bd -> "/usr/share/sbt",
-                      (bd / "sbt-launch-lib.bash") -> "/usr/share/sbt/sbt-launch-lib.bash")
-       withUser "root" withGroup "root" withPerms "0755")
-    },
-    linuxPackageMappings <+= (sourceDirectory) map { bd =>
-      (packageMapping(
-        (bd / "linux" / "usr/share/man/man1/sbt.1") -> "/usr/share/man/man1/sbt.1.gz"
-      ) withPerms "0644" gzipped) asDocs()
-    },
-    linuxPackageMappings <+= (sourceDirectory in Linux) map { bd =>
-      packageMapping(
-        (bd / "usr/share/doc/sbt/copyright") -> "/usr/share/doc/sbt/copyright"
-      ) withPerms "0644" asDocs()
-    },   
-    linuxPackageMappings <+= (sourceDirectory in Linux) map { bd =>
-      packageMapping(
-        (bd / "usr/share/doc/sbt") -> "/usr/share/doc/sbt"
-      ) asDocs()
-    },
-    linuxPackageMappings <+= (sourceDirectory in Linux) map { bd =>
-      packageMapping(
-        (bd / "etc/sbt") -> "/etc/sbt"
-      ) withConfig()
-    },
-    linuxPackageMappings <+= (sourceDirectory in Linux) map { bd =>
-      packageMapping(
-        (bd / "etc/sbt/sbtopts") -> "/etc/sbt/sbtopts"
-      ) withPerms "0644" withConfig("noreplace")
-    },
-    linuxPackageMappings <+= (sbtLaunchJar, sourceDirectory in Linux, sbtVersion) map { (jar, dir, v) =>
-      packageMapping(dir -> "/usr/lib/sbt",
-                     jar -> ("/usr/lib/sbt/sbt-launch.jar")) withPerms "0755"
+    // Here we remove the jar file and launch lib from the symlinks:
+    linuxPackageSymlinks <<= linuxPackageSymlinks map { links =>
+      for { 
+        link <- links
+        if !(link.destination endsWith "sbt-launch-lib.bash")
+        if !(link.destination endsWith "sbt-launch.jar")
+      } yield link
     },
     // DEBIAN SPECIFIC    
     name in Debian <<= (sbtVersion) apply { (sv) => "sbt" /* + "-" + (sv split "[^\\d]" take 3 mkString ".")*/ },
@@ -137,7 +85,6 @@ object Packaging {
     mappings in packageMsi in Windows <+= sbtLaunchJar map { f => f -> "sbt-launch.jar" },
     mappings in packageMsi in Windows <++= sourceDirectory in Windows map { d => Seq(
       (d / "sbt.bat") -> "sbt.bat",
-      (d / "sbt") -> "sbt",
       (d / "sbtconfig.txt") -> "sbtconfig.txt"
     )},
     javacOptions := Seq("-source", "1.5", "-target", "1.5"),
@@ -145,16 +92,9 @@ object Packaging {
     // Universal ZIP download install.  TODO - Share the above windows code, here....
     name in Universal := "sbt",
     mappings in Universal <+= sbtLaunchJar map { _ -> "bin/sbt-launch.jar" },
-    mappings in Universal <++= universalFixedScripts map { d =>
-      Seq(
-        (d / "sbt") -> "bin/sbt",
-        (d / "sbt-launch-lib.bash") -> "bin/sbt-launch-lib.bash" 
-      )
+    mappings in Universal <+= sourceDirectory in Windows map { d => 
+      (d / "sbt.bat") -> "bin/sbt.bat"
     },
-    mappings in Universal <++= sourceDirectory in Windows map { d => Seq(
-      (d / "sbt.bat") -> "bin/sbt.bat",
-      (d / "sbt") -> "bin/win-sbt"
-    )},
     // TODO - Adapt global `sbt`/`sbt-launch-lib` scripts for universal install...
     
     // Misccelaneous publishing stuff...
