@@ -80,13 +80,6 @@ object Packaging {
     lightOptions ++= Seq("-ext", "WixUIExtension",
                          "-ext", "WixUtilExtension",
                          "-cultures:en-us"),
-    wixConfig <<= (sbtVersion, sourceDirectory in Windows) map makeWindowsXml,
-    //wixFile <<= sourceDirectory in Windows map (_ / "sbt.xml"),
-    mappings in packageMsi in Windows <+= sbtLaunchJar map { f => f -> "sbt-launch.jar" },
-    mappings in packageMsi in Windows <++= sourceDirectory in Windows map { d => Seq(
-      (d / "sbt.bat") -> "sbt.bat",
-      (d / "sbtconfig.txt") -> "sbtconfig.txt"
-    )},
     javacOptions := Seq("-source", "1.5", "-target", "1.5"),
 
     // Universal ZIP download install.  TODO - Share the above windows code, here....
@@ -96,6 +89,14 @@ object Packaging {
       (d / "sbt.bat") -> "bin/sbt.bat"
     },
     // TODO - Adapt global `sbt`/`sbt-launch-lib` scripts for universal install...
+    
+    // Windows customizations
+    mappings in Windows <++= mappings in Universal,
+    mappings in Windows <++= sourceDirectory in Windows map { d => Seq(
+      (d / "sbtconfig.txt") -> "conf/sbtconfig.txt"
+    )},
+    wixConfig <<= (sbtVersion, sourceDirectory in Windows) map makeWindowsXml,
+    wixConfig in Windows <<= wixConfig,
     
     // Misccelaneous publishing stuff...
     projectID in Debian    <<= (organization, sbtVersion) apply { (o,v) => ModuleID(o,"sbt",v) },
@@ -147,29 +148,36 @@ object Packaging {
         </Directory>
         <Directory Id='ProgramFilesFolder' Name='PFiles'>
             <Directory Id='INSTALLDIR' Name='sbt'>
+               <Directory Id='SbtBinDir' Name='sbt'>
                <Component Id='SbtLauncherScript' Guid='DE0A5B50-0792-40A9-AEE0-AB97E9F845F5'>
-                  <File Id='sbt_bat' Name='sbt.bat' DiskId='1' Source='sbt.bat'>
+                  <File Id='sbt_bat' Name='sbt.bat' DiskId='1' Source='bin\sbt.bat'>
                      <util:PermissionEx User="Administrators" GenericAll="yes" />
                      <util:PermissionEx User="Users" GenericAll="yes" />
                   </File>
-                  <File Id='sbt_sh' Name='sbt' DiskId='1' Source='sbt'>
+                  <File Id='sbt_sh' Name='sbt' DiskId='1' Source='bin\sbt'>
+                     <!-- <util:PermissionEx User="Users" Domain="[LOCAL_MACHINE_NAME]" GenericRead="yes" Read="yes" GenericExecute="yes" ChangePermission="yes"/> -->
+                  </File>
+                  <File Id='sbt_launch_lib_bash' Name='sbt-launch-lib.bash' DiskId='1' Source='bin\sbt-launch-lib.bash'>
                      <!-- <util:PermissionEx User="Users" Domain="[LOCAL_MACHINE_NAME]" GenericRead="yes" Read="yes" GenericExecute="yes" ChangePermission="yes"/> -->
                   </File>
                </Component>
+               <Component Id='SbtLauncherJar' Guid='*'>
+                  <File Id='sbt_launch_jar' Name='sbt-launch.jar' DiskId='1' Source='bin\sbt-launch.jar' />
+               </Component>               
+               <Component Id='SbtLauncherPath' Guid='17EA4092-3C70-11E1-8CD8-1BB54724019B'>
+                  <CreateFolder/>
+                  <Environment Id="PATH" Name="PATH" Value="[INSTALLDIR]\\bin" Permanent="no" Part="last" Action="set" System="yes" />
+                  <Environment Id="SBT_HOME" Name="SBT_HOME" Value="[INSTALLDIR]" Permanent="no" Action="set" System="yes" />
+               </Component>
+               </Directory>
+               <Directory Id='SbtConfigDir' Name='conf'>
                <Component Id='SbtConfigFile' Guid='*'>
-                 <File Id='sbtconfig_txt' Name='sbtconfig.txt' DiskId='1' Source='sbtconfig.txt'>
+                 <File Id='sbtconfig_txt' Name='sbtconfig.txt' DiskId='1' Source='conf\sbtconfig.txt'>
                    <util:PermissionEx User="Administrators" GenericAll="yes" />
                    <util:PermissionEx User="Users" GenericAll="yes" />
                  </File>
                </Component>
-               <Component Id='SbtLauncherJar' Guid='*'>
-                  <File Id='sbt_launch_jar' Name='sbt-launch.jar' DiskId='1' Source='sbt-launch.jar' />
-               </Component>               
-               <Component Id='SbtLauncherPath' Guid='17EA4092-3C70-11E1-8CD8-1BB54724019B'>
-                  <CreateFolder/>
-                  <Environment Id="PATH" Name="PATH" Value="[INSTALLDIR]" Permanent="no" Part="last" Action="set" System="yes" />
-                  <Environment Id="SBT_HOME" Name="SBT_HOME" Value="[INSTALLDIR]" Permanent="no" Action="set" System="yes" />
-               </Component>
+               </Directory>
              </Directory>
          </Directory>
       </Directory>
@@ -179,7 +187,7 @@ object Packaging {
                 <Shortcut Id="ConfigStartMenuShortcut"
                           Name="sbt configuration"
                           Description="Modify sbt configuration settings"
-                          Target="[INSTALLDIR]sbtconfig.txt"
+                          Target="[INSTALLDIR]\conf\sbtconfig.txt"
                           WorkingDirectory="INSTALLDIR"/>
                 <RemoveFolder Id="ApplicationProgramsFolder" On="uninstall"/>
                 <RegistryValue Root="HKCU" Key="Software\Typesafe\sbt" Name="installed" Type="integer" Value="1" KeyPath="yes"/>
