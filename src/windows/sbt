@@ -28,7 +28,7 @@ fi
 if [ "_$TERM" = "_xterm" ]; then
   # Let the terminal handle ANSI sequences
   stty -icanon min 1 -echo > /dev/null 2>&1
-  "$JAVA_CMD" $JAVA_OPTS -Djline.terminal=unix $SBT_OPTS -jar "$WDIR/sbt-launch.jar" "$@"
+  "$JAVA_CMD" $JAVA_OPTS -Djline.terminal=jline.UnixTerminal -Dsbt.cygwin=true $SBT_OPTS -jar "$WDIR/sbt-launch.jar" "$@"
   SCALA_STATUS=$?
   stty icanon echo > /dev/null 2>&1
   exit $SCALA_STATUS
