@@ -1061,7 +1061,9 @@ object Classpaths
 		ivyConfiguration := new InlineIvyConfiguration(ivyPaths.value, externalResolvers.value, Nil, Nil, offline.value, Option(lock(appConfiguration.value)), checksums.value, Some(target.value / "resolution-cache"), streams.value.log),
 		ivySbt <<= ivySbt0,
 		classifiersModule <<= (projectID, sbtDependency, transitiveClassifiers, loadedBuild, thisProjectRef) map { ( pid, sbtDep, classifiers, lb, ref) =>
-			val pluginIDs: Seq[ModuleID] = lb.units(ref.build).unit.plugins.fullClasspath.flatMap(_ get moduleID.key)
+			val pluginClasspath = lb.units(ref.build).unit.plugins.fullClasspath
+			val pluginJars = pluginClasspath.filter(_.data.isFile) // exclude directories: an approximation to whether they've been published
+			val pluginIDs: Seq[ModuleID] = pluginJars.flatMap(_ get moduleID.key)
 			GetClassifiersModule(pid, sbtDep +: pluginIDs, Configurations.Default :: Nil, classifiers)
 		},
 		updateSbtClassifiers in TaskGlobal <<= (ivySbt, classifiersModule, updateConfiguration, ivyScala, appConfiguration, streams) map {
