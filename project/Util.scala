@@ -162,7 +162,7 @@ object Common
 	lazy val jsch = lib("com.jcraft" % "jsch" % "0.1.46" intransitive() )
 	lazy val sbinary = lib("org.scala-tools.sbinary" %% "sbinary" % "0.4.1" )
 	lazy val scalaCompiler = libraryDependencies <+= scalaVersion("org.scala-lang" % "scala-compiler" % _ )
-	lazy val testInterface = lib("org.scalatest" % "test-interface" % "1.0-SNAP7")
+	lazy val testInterface = lib("org.scala-sbt" % "test-interface" % "1.0")
 }
 object Licensed
 {
