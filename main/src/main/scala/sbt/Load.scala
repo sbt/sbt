@@ -140,7 +140,7 @@ object Load
 		val delegates = config.delegates(loaded)
 		val data = Def.make(settings)(delegates, config.scopeLocal, Project.showLoadingKey( loaded ) )
 		Project.checkTargets(data) foreach error
-		val index = structureIndex(data, settings, loaded.extra(data))
+		val index = structureIndex(data, settings, loaded.extra(data), projects)
 		val streams = mkStreams(projects, loaded.root, data)
 		(rootEval, new sbt.BuildStructure(projects, loaded.root, settings, data, index, streams, delegates, config.scopeLocal))
 	}
@@ -174,13 +174,14 @@ object Load
 	def setDefinitionKey[T](tk: Task[T], key: ScopedKey[_]): Task[T] =
 		if(isDummy(tk)) tk else Task(tk.info.set(Keys.taskDefinitionKey, key), tk.work)
 
-	def structureIndex(data: Settings[Scope], settings: Seq[Setting[_]], extra: KeyIndex => BuildUtil[_]): sbt.StructureIndex =
+	def structureIndex(data: Settings[Scope], settings: Seq[Setting[_]], extra: KeyIndex => BuildUtil[_], projects: Map[URI, LoadedBuildUnit]): sbt.StructureIndex =
 	{
 		val keys = Index.allKeys(settings)
 		val attributeKeys = Index.attributeKeys(data) ++ keys.map(_.key)
 		val scopedKeys = keys ++ data.allKeys( (s,k) => ScopedKey(s,k))
-		val keyIndex = KeyIndex(scopedKeys)
-		val aggIndex = KeyIndex.aggregate(scopedKeys, extra(keyIndex))
+		val projectsMap = projects.mapValues(_.defined.keySet)
+		val keyIndex = KeyIndex(scopedKeys, projectsMap)
+		val aggIndex = KeyIndex.aggregate(scopedKeys, extra(keyIndex), projectsMap)
 		new sbt.StructureIndex(Index.stringToKeyMap(attributeKeys), Index.taskToKeyMap(data), Index.triggers(data), keyIndex, aggIndex)
 	}
 
@@ -189,7 +190,7 @@ object Load
 	{
 		val transformed = finalTransforms(newSettings)
 		val newData = makeSettings(transformed, structure.delegates, structure.scopeLocal)
-		val newIndex = structureIndex(newData, transformed, index => BuildUtil(structure.root, structure.units, index, newData))
+		val newIndex = structureIndex(newData, transformed, index => BuildUtil(structure.root, structure.units, index, newData), structure.units)
 		val newStreams = mkStreams(structure.units, structure.root, newData)
 		new sbt.BuildStructure(units = structure.units, root = structure.root, settings = transformed, data = newData, index = newIndex, streams = newStreams, delegates = structure.delegates, scopeLocal = structure.scopeLocal)
 	}

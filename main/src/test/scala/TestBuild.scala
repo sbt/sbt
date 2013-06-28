@@ -188,7 +188,8 @@ object TestBuild
 		val data = Def.make(settings)(env.delegates, const(Nil), display)
 		val keys = data.allKeys( (s, key) => ScopedKey(s, key))
 		val keyMap = keys.map(k => (k.key.label, k.key)).toMap[String, AttributeKey[_]]
-		new Structure(env, current, data, KeyIndex(keys), keyMap)
+		val projectsMap = env.builds.map(b => (b.uri, b.projects.map(_.id).toSet)).toMap
+		new Structure(env, current, data, KeyIndex(keys, projectsMap), keyMap)
 	}
 
 	implicit lazy val mkEnv: Gen[Env] =

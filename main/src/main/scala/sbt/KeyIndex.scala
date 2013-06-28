@@ -11,10 +11,19 @@ package sbt
 object KeyIndex
 {
 	def empty: ExtendableKeyIndex = new KeyIndex0(emptyBuildIndex)
-	def apply(known: Iterable[ScopedKey[_]]): ExtendableKeyIndex =
-		(empty /: known) { _ add _ }
-	def aggregate(known: Iterable[ScopedKey[_]], extra: BuildUtil[_]): ExtendableKeyIndex =
-		(empty /: known) { (index, key) => index.addAggregated(key, extra) }
+	def apply(known: Iterable[ScopedKey[_]], projects: Map[URI, Set[String]]): ExtendableKeyIndex =
+		(base(projects) /: known) { _ add _ }
+	def aggregate(known: Iterable[ScopedKey[_]], extra: BuildUtil[_], projects: Map[URI, Set[String]]): ExtendableKeyIndex =
+		(base(projects) /: known) { (index, key) => index.addAggregated(key, extra) }
+	private[this] def base(projects: Map[URI, Set[String]]): ExtendableKeyIndex =
+	{
+		val data = for( (uri, ids) <- projects) yield {
+			val data = ids.map(id => Option(id) -> new ConfigIndex(Map.empty))
+			Option(uri) -> new ProjectIndex(data.toMap)
+		}
+		new KeyIndex0(new BuildIndex(data.toMap))
+	}
+
 
 	def combine(indices: Seq[KeyIndex]): KeyIndex = new KeyIndex {
 		def buildURIs = concat(_.buildURIs)
