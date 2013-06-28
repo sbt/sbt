@@ -151,7 +151,7 @@ class EventWrapper implements Event {
 	}
 
 	public long duration() {
-		return 0;  // Just return 0 as old event does not have duration.
+		return -1;  // Just return -1 as old event does not have duration.
 	}
 }
 
