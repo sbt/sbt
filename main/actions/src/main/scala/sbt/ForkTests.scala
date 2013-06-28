@@ -40,22 +40,7 @@ private[sbt] object ForkTests {
 								case _: java.net.SocketException => return
 							}
 						val os = new ObjectOutputStream(socket.getOutputStream)
-						// Make sure that ObjectInputStream use the passed in class loader
-						// ObjectInputStream class loading seems to be confusing, some old but useful links for reference:
-						// https://forums.oracle.com/thread/1151865
-						// http://sourceforge.net/p/jpype/bugs/52/
-						// http://tech-tauk.blogspot.com/2010/05/thread-context-classlaoder-in.html
-						val is = new ObjectInputStream(socket.getInputStream) {
-							override protected def resolveClass(desc: ObjectStreamClass): Class[_] = {
-								try {
-									val name = desc.getName
-									Class.forName(name, false, loader)
-								}
-								catch {
-									case e: ClassNotFoundException => super.resolveClass(desc)
-								}
-							}
-						}
+						val is = new ObjectInputStream(socket.getInputStream)
 
 						try {
 							os.writeBoolean(log.ansiCodesSupported)
