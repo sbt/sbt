@@ -93,6 +93,7 @@ rst_epilog = """
 .. |nightly-launcher| replace:: <%(launcher_snapshots_base)s
 .. _mailing list: http://groups.google.com/group/simple-build-tool/topics
 .. _adept: https://groups.google.com/group/adept-dev/topics
+.. _sbt-launcher-package: https://github.com/sbt/sbt-launcher-package
 .. _Stack Overflow: http://stackoverflow.com/tags/sbt
 .. _source code: http://github.com/sbt/sbt
 """ % {

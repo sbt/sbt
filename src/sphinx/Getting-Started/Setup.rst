@@ -13,66 +13,91 @@ To create an sbt project, you'll need to take these steps:
    -  Create a project directory with source files in it.
    -  Create your build definition.
 
--  Move on to :doc:`running <Running>` to learn how to run
-   sbt.
+-  Move on to :doc:`running <Running>` to learn how to run sbt.
 -  Then move on to :doc:`.sbt build definition <Basic-Def>`
    to learn more about build definitions.
 
 Installing sbt
 ==============
 
-The latest development versions of 0.13.0 are available as nightly builds on |typesafe-snapshots|_.
+sbt provides several packages for different operating systems or you can do `Manual Installation`_.
 
-To use a nightly build, the instructions are the same for normal manual setup except:
+Officially supported packages:
+  - MSI_ for Windows
+  - ZIP_ or TGZ_ packages
+  - RPM_ package
+  - DEB_ package
 
-1. Download the launcher jar from one of the subdirectories of |nightly-launcher|.
-   They should be listed in chronological order, so the most recent one will be last.
-2. The version number is the name of the subdirectory and is of the form
-   ``0.13.x-yyyyMMdd-HHmmss``. Use this in a ``build.properties`` file.
-3. Call your script something like ``sbt-nightly`` to retain access to a
-   stable ``sbt`` launcher.  The documentation will refer to the script as ``sbt``, however.
+.. note::
 
-Related to the third point, remember that an ``sbt.version`` setting in
-``<build-base>/project/build.properties`` determines the version of sbt
-to use in a project. If it is not present, the default version
-associated with the launcher is used. This means that you must set
-``sbt.version=yyyyMMdd-HHmmss`` in an existing
-``<build-base>/project/build.properties``. You can verify the right
-version of sbt is being used to build a project by running
-``sbtVersion``.
+    Please report any issues with these to the `sbt-launcher-package`_ project.
 
-To reduce problems, it is recommended to not use a launcher jar for one
-nightly version to launch a different nightly version of sbt.
+**Third-party packages**:
+  - :ref:`Homebrew <homebrew_setup>` or :ref:`Macports <macports_setup>` for `Mac`_
+  - `Gentoo`_ emerge overlays
+
+.. note::
+
+   Third-party packages may not provide the latest version.
+   Please make sure to report any issues with these packages to the relevant maintainers.
+
+Mac
+---
+
+.. _macports_setup:
+
+`Macports <http://macports.org/>`_
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+.. code-block:: console
+
+    $ port install sbt
+
+.. _homebrew_setup:
+
+`Homebrew <http://mxcl.github.com/homebrew/>`_
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+.. code-block:: console
+
+    $ brew install sbt
+
+Gentoo
+------
+
+In the official tree there is no ebuild for sbt. But there are ebuilds to
+merge sbt from binaries:
+https://github.com/whiter4bbit/overlays/tree/master/dev-java/sbt-bin. To
+merge sbt from this ebuilds you can do:
+
+.. code-block:: console
+
+    $ mkdir -p /usr/local/portage && cd /usr/local/portage
+    $ git clone git://github.com/whiter4bbit/overlays.git
+    $ echo "PORTDIR_OVERLAY=$PORTDIR_OVERLAY /usr/local/portage/overlays" >> /etc/make.conf
+    $ emerge sbt-bin
+
+.. note::
+
+   Please report any issues with the ebuild `here <https://github.com/whiter4bbit/overlays/issues>`_.
+
+.. _manual installation:
 
 Manual Installation
 -------------------
 
-.. _manual installation:
-
-Windows
-~~~~~~~
-
-Create a batch file ``sbt.bat``:
-
-.. code-block:: console
-
-    $ set SCRIPT_DIR=%~dp0
-    $ java -Xmx512M -jar "%SCRIPT_DIR%sbt-launch.jar" %*
-
-and put sbt-launch.jar in the same directory as the batch file. Put ``sbt.bat`` on your path so
-that you can launch ``sbt`` in any directory by typing ``sbt`` at the command prompt.
 
 Unix
 ~~~~
 
 Put sbt-launch.jar in ``~/bin``.
 
-Create a script to run the jar, by placing this in a file called ``sbt``
-in your ``~/bin`` directory:
+Create a script to run the jar, by creating ``~/bin/sbt`` with these contents:
 
 .. code-block:: console
 
-    java -Xms512M -Xmx1536M -Xss1M -XX:+CMSClassUnloadingEnabled -XX:MaxPermSize=384M -jar `dirname $0`/sbt-launch.jar "$@"
+    $ SBT_OPTS="-Xms512M -Xmx1536M -Xss1M -XX:+CMSClassUnloadingEnabled -XX:MaxPermSize=256M"
+    $ java $SBT_OPTS -jar `dirname $0`/sbt-launch.jar "$@"
 
 Make the script executable:
 
@@ -80,14 +105,66 @@ Make the script executable:
 
     $ chmod u+x ~/bin/sbt
 
+Windows
+~~~~~~~
+
+Manual installation for Windows varies by terminal type and whether Cygwin is used.
+In all cases, put the batch file or script on the path so that you can launch ``sbt``
+in any directory by typing ``sbt`` at the command prompt.  Also, adjust JVM settings
+according to your machine if necessary.
+
+For **non-Cygwin users using the standard Windows terminal**, create a batch file ``sbt.bat``:
+
+.. code-block:: console
+
+    $ set SCRIPT_DIR=%~dp0
+    $ java -Xms512M -Xmx1536M -Xss1M -XX:+CMSClassUnloadingEnabled -XX:MaxPermSize=256M -jar "%SCRIPT_DIR%sbt-launch.jar" %*
+
+and put sbt-launch.jar in the same directory as the batch file.
+
+If using **Cygwin with the standard Windows terminal**, create a bash script ``~/bin/sbt``: 
+
+.. code-block:: console
+
+    $ SBT_OPTS="-Xms512M -Xmx1536M -Xss1M -XX:+CMSClassUnloadingEnabled -XX:MaxPermSize=256M"
+    $ java $SBT_OPTS -jar sbt-launch.jar "$@"
+
+Replace ``sbt-launch.jar`` with your path the the launcher jar and remember to use ``cygpath`` if necessary.
+Make the script executable:
+
+.. code-block:: console
+
+    $ chmod u+x ~/bin/sbt
+
+If using **Cygwin with an Ansi terminal** (supports Ansi escape sequences and is configurable via ``stty``), create a bash script ``~/bin/sbt``:
+
+.. code-block:: console
+
+    $ SBT_OPTS="-Xms512M -Xmx1536M -Xss1M -XX:+CMSClassUnloadingEnabled -XX:MaxPermSize=256M"
+    $ stty -icanon min 1 -echo > /dev/null 2>&1
+    $ java -Djline.terminal=jline.UnixTerminal -Dsbt.cygwin=true $SBT_OPTS -jar sbt-launch.jar "$@"
+    $ stty icanon echo > /dev/null 2>&1
+
+Replace ``sbt-launch.jar`` with your path the the launcher jar and remember to use ``cygpath`` if necessary.
+Then, make the script executable:
+
+.. code-block:: console
+
+    $ chmod u+x ~/bin/sbt
+
+.. note::
+
+    Other configurations are currently unsupported.
+    Please feel free to `submit a pull request <https://github.com/sbt/sbt/blob/0.13/CONTRIBUTING.md>`_ implementing or describing that support.
+
 Tips and Notes
---------------
+==============
 
 If you have any trouble running sbt, see :doc:`/Detailed-Topics/Setup-Notes` on terminal
 encodings, HTTP proxies, and JVM options.
 
 Next
-----
+====
 
 Move on to :doc:`create a simple project <Hello>`.
 

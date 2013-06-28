@@ -597,9 +597,9 @@ This does mean that existing solutions for sharing libraries with your
 favoured IDE may not work. There are |version| plugins for IDEs being
 developed:
 
--  IntelliJ IDEA: `https://github.com/mpeltonen/sbt-idea`_
--  Netbeans: `https://github.com/remeniuk/sbt-netbeans-plugin`_
--  Eclipse: `https://github.com/typesafehub/sbteclipse`_
+-  IntelliJ IDEA: `<https://github.com/mpeltonen/sbt-idea>`_
+-  Netbeans: `<https://github.com/remeniuk/sbt-netbeans-plugin>`_
+-  Eclipse: `<https://github.com/typesafehub/sbteclipse>`_
 
 What are the commands I can use in |version| vs. 0.7?
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
