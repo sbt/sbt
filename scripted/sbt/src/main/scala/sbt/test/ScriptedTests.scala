@@ -32,8 +32,14 @@ final class ScriptedTests(resourceBaseDirectory: File, bufferLog: Boolean, launc
 			() => {
 				println("Running " + str)
 				testResources.readWriteResourceDirectory(g, n) { testDirectory =>
-					try { scriptedTest(str, testDirectory, log); None }
-					catch { case e: xsbt.test.TestException => Some(str) }
+					val disabled = new File(testDirectory, "disabled").isFile
+					if(disabled) {
+						log.info("D " + str + " [DISABLED]")
+						None
+					} else {
+						try { scriptedTest(str, testDirectory, log); None }
+						catch { case e: xsbt.test.TestException => Some(str) }
+					}
 				}
 			}
 		}
