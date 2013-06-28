@@ -67,7 +67,7 @@ object TaskTest
 	{
 		val (service, shutdown) = completionService[Task[_],Completed](restrictions, (x: String) => System.err.println(x))
 		
-		val x = new Execute[Task](checkCycles, Execute.noTriggers)(taskToNode(idK[Task]))
+		val x = new Execute[Task](Execute.config(checkCycles), Execute.noTriggers, ExecuteProgress.empty[Task])(taskToNode(idK[Task]))
 		try { x.run(root)(service) } finally { shutdown() }
 	}
 	def tryRun[T](root: Task[T], checkCycles: Boolean, restrictions: ConcurrentRestrictions[Task[_]]): T =
