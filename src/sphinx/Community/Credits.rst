@@ -2,38 +2,25 @@
 Credits
 =======
 
-The following people have contributed ideas, documentation, or code to
-sbt:
+See the `sbt contributors on GitHub <https://github.com/sbt/sbt/graphs/contributors>`_ and `sbt GitHub organization members <https://github.com/sbt?tab=members>`_.
 
--  Trond Bjerkestrand
--  Steven Blundy
+Additionally, these people have contributed ideas, documentation, or code to sbt but are not recorded in either of the above:
+
 -  Josh Cough
 -  Nolan Darilek
--  Fred Dubois
 -  Nathan Hamblen
--  Mark Harrah
--  Joonas Javanainen
 -  Ismael Juma
 -  Viktor Klang
 -  David R. MacIver
 -  Ross McDonald
--  Simon Olofsson
--  Artyom Olshevskiy
 -  Andrew O'Malley
 -  Jorge Ortiz
 -  Mikko Peltonen
--  Paul Phillips
 -  Ray Racine
--  Indrajit Raychaudhuri
 -  Stuart Roebuck
 -  Harshad RJ
--  Sanjin Šehić
 -  Tony Sloane
--  Doug Tangren
 -  Seth Tisue
 -  Francisco Treacy
--  Aaron D. Valade
--  Eugene Vigdorchik
 -  Vesa Vilhonen
--  Jason Zaugg
 
