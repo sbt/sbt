@@ -202,7 +202,8 @@ class RunnerWrapper implements Runner {
 						public boolean isModule() { return subclassFingerprint.isModule(); }
 						public String superClassName() { return subclassFingerprint.superclassName(); }
 					};
-				runner.run(fullyQualifiedName, oldFingerprint, new EventHandlerWrapper(eventHandler, fullyQualifiedName, subclassFingerprint), args);
+				final String name = taskDef.fullyQualifiedName();
+				runner.run(name, oldFingerprint, new EventHandlerWrapper(eventHandler, name, subclassFingerprint), args);
 			}
 			
 			private void runRunner2(org.scalatools.testing.Runner2 runner, Fingerprint fingerprint, EventHandler eventHandler) {
@@ -221,7 +222,8 @@ class RunnerWrapper implements Runner {
 						public String annotationName() { return annotatedFingerprint.annotationName(); }
 					};
 				}
-				runner.run(fullyQualifiedName, oldFingerprint, new EventHandlerWrapper(eventHandler, fullyQualifiedName, fingerprint), args);
+				final String name = taskDef.fullyQualifiedName();
+				runner.run(name, oldFingerprint, new EventHandlerWrapper(eventHandler, name, fingerprint), args);
 			}
         
 			public Task[] execute(EventHandler eventHandler, Logger[] loggers) {
@@ -231,7 +233,8 @@ class RunnerWrapper implements Runner {
 					oldLoggers[i] = createOldLogger(loggers[i]);
 				}
 
-				org.scalatools.testing.Runner runner = oldFramework.testRunner(testClassLoader, oldLoggers); 
+				final org.scalatools.testing.Runner runner = oldFramework.testRunner(testClassLoader, oldLoggers);
+				final Fingerprint fingerprint = taskDef.fingerprint();
 				if (runner instanceof org.scalatools.testing.Runner2) {
 					runRunner2((org.scalatools.testing.Runner2) runner, fingerprint, eventHandler);
 				}

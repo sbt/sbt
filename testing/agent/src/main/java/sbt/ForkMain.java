@@ -39,26 +39,6 @@ public class ForkMain {
 		public boolean isModule() { return isModule; }
 		public String annotationName() { return annotationName; }
 	}
-	public static class ForkTestDefinition implements Serializable {
-		public String name;
-		public Fingerprint fingerprint;
-		public boolean explicitlySpecified;
-		public Selector[] selectors;
-
-		public ForkTestDefinition(String name, Fingerprint fingerprint, boolean explicitlySpecified, Selector[] selectors) {
-			this.name = name;
-			if (fingerprint instanceof SubclassFingerprint) {
-				this.fingerprint = new SubclassFingerscan((SubclassFingerprint) fingerprint);
-			} else {
-				this.fingerprint = new AnnotatedFingerscan((AnnotatedFingerprint) fingerprint);
-			}
-			this.explicitlySpecified = explicitlySpecified;
-			int length = selectors.length;
-			this.selectors = new Selector[length];
-			for (int i = 0; i < length; i++)
-				this.selectors[i] = forkSelector(selectors[i]);
-		}
-	}
 	static class ForkError extends Exception {
 		private String originalMessage;
 		private ForkError cause;
@@ -158,7 +138,7 @@ public class ForkMain {
 		}
 		void runTests(ObjectInputStream is, final ObjectOutputStream os) throws Exception {
 			final boolean ansiCodesSupported = is.readBoolean();
-			final ForkTestDefinition[] tests = (ForkTestDefinition[]) is.readObject();
+			final TaskDef[] tests = (TaskDef[]) is.readObject();
 			int nFrameworks = is.readInt();
 			Logger[] loggers = {
 				new Logger() {
@@ -195,10 +175,10 @@ public class ForkMain {
 
 				ArrayList<TaskDef> filteredTests = new ArrayList<TaskDef>();
 				for (Fingerprint testFingerprint : framework.fingerprints()) {
-					for (ForkTestDefinition test : tests) {
+					for (TaskDef test : tests) {
 						// TODO: To pass in correct explicitlySpecified and selectors
-						if (matches(testFingerprint, test.fingerprint)) 
-							filteredTests.add(new TaskDef(test.name, test.fingerprint, test.explicitlySpecified, test.selectors));
+						if (matches(testFingerprint, test.fingerprint())) 
+							filteredTests.add(new TaskDef(test.fullyQualifiedName(), test.fingerprint(), test.explicitlySpecified(), test.selectors()));
 					}
 				}
 				final Runner runner = framework.runner(frameworkArgs, remoteFrameworkArgs, getClass().getClassLoader());
