@@ -2,7 +2,7 @@ package sbt;
 
 import sbt.testing.*;
 
-public class FrameworkWrapper implements Framework {
+final class FrameworkWrapper implements Framework {
 
 	private org.scalatools.testing.Framework oldFramework;
 
@@ -21,7 +21,7 @@ public class FrameworkWrapper implements Framework {
 		for (int i=0; i < length; i++) {
 			org.scalatools.testing.Fingerprint oldFingerprint = oldFingerprints[i];
 			if (oldFingerprint instanceof org.scalatools.testing.TestFingerprint)
-				fingerprints[i] = new TestFingerprintWrapper((org.scalatools.testing.TestFingerprint) oldFingerprint);
+				fingerprints[i] = new SubclassFingerprintWrapper((org.scalatools.testing.TestFingerprint) oldFingerprint);
 			else if (oldFingerprint instanceof org.scalatools.testing.SubclassFingerprint)
 				fingerprints[i] = new SubclassFingerprintWrapper((org.scalatools.testing.SubclassFingerprint) oldFingerprint);
 			else
@@ -35,7 +35,7 @@ public class FrameworkWrapper implements Framework {
 	}
 }
 
-class SubclassFingerprintWrapper implements SubclassFingerprint {
+final class SubclassFingerprintWrapper implements SubclassFingerprint {
 	private String superclassName;
 	private boolean isModule;
 	private boolean requireNoArgConstructor;
@@ -59,7 +59,7 @@ class SubclassFingerprintWrapper implements SubclassFingerprint {
 	}
 }
 
-class AnnotatedFingerprintWrapper implements AnnotatedFingerprint {
+final class AnnotatedFingerprintWrapper implements AnnotatedFingerprint {
 	private String annotationName;
 	private boolean isModule;
 
@@ -77,14 +77,7 @@ class AnnotatedFingerprintWrapper implements AnnotatedFingerprint {
 	}
 }
 
-class TestFingerprintWrapper extends SubclassFingerprintWrapper {
-
-	public TestFingerprintWrapper(org.scalatools.testing.TestFingerprint oldFingerprint) {
-		super(oldFingerprint);
-	}
-}
-
-class EventHandlerWrapper implements org.scalatools.testing.EventHandler {
+final class EventHandlerWrapper implements org.scalatools.testing.EventHandler {
 
 	private EventHandler newEventHandler;
 	private String fullyQualifiedName;
@@ -101,7 +94,7 @@ class EventHandlerWrapper implements org.scalatools.testing.EventHandler {
 	}
 }
 
-class EventWrapper implements Event {
+final class EventWrapper implements Event {
 
 	private org.scalatools.testing.Event oldEvent;
 	private String className;
@@ -155,7 +148,7 @@ class EventWrapper implements Event {
 	}
 }
 
-class RunnerWrapper implements Runner {
+final class RunnerWrapper implements Runner {
 
 	private org.scalatools.testing.Framework oldFramework;
 	private ClassLoader testClassLoader;
