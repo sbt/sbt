@@ -210,10 +210,6 @@ the artefacts, you'll need to include @jsuereth's ``xsbt-gpg-plugin``:
 
 ::
 
-    resolvers += Resolver.url("sbt-plugin-releases", /* no new line */
-      new URL("http://scalasbt.artifactoryonline.com/scalasbt/sbt-plugin-releases")) /* no new line */
-      (Resolver.ivyStylePatterns)
-
     addSbtPlugin("com.jsuereth" % "xsbt-gpg-plugin" % "0.6")
 
 build.sbt
