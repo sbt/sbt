@@ -15,9 +15,9 @@ object Ticket543Test extends Build {
 		testListeners += new TestReportListener {
 		  def testEvent(event: TestEvent) {
 				for (e <- event.detail.filter(_.status == sbt.testing.Status.Failure)) {
-					if (e.throwable ne null) {
+					if (e.throwable != null && e.throwable.isDefined) {
 						val caw = new CharArrayWriter
-						e.throwable.printStackTrace(new PrintWriter(caw))
+						e.throwable.get.printStackTrace(new PrintWriter(caw))
 						if (caw.toString.contains("Test.scala:"))
 							marker.createNewFile()
 					}

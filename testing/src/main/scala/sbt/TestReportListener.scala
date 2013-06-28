@@ -28,7 +28,8 @@ trait TestsListener extends TestReportListener
   def doComplete(finalResult: TestResult.Value)
 }
 
-final class SuiteResult(val result: TestResult.Value, val passedCount: Int, val failureCount: Int, val errorCount: Int, val skippedCount: Int)
+final class SuiteResult(val result: TestResult.Value, val passedCount: Int, val failureCount: Int, val errorCount: Int, val skippedCount: Int, 
+                        val ignoredCount: Int, val canceledCount: Int, val pendingCount: Int)
 object SuiteResult
 {
 	def apply(events: Seq[TEvent]): SuiteResult =
@@ -40,10 +41,11 @@ object SuiteResult
 			else if(sum == TestResult.Failed || status == TStatus.Failure) TestResult.Failed
 			else TestResult.Passed
 		}
-		new SuiteResult (overallResult, count(TStatus.Success), count(TStatus.Failure), count(TStatus.Error), count(TStatus.Skipped))
+		new SuiteResult (overallResult, count(TStatus.Success), count(TStatus.Failure), count(TStatus.Error), count(TStatus.Skipped), 
+		                 count(TStatus.Ignored), count(TStatus.Canceled), count(TStatus.Pending))
 	}
-	val Error: SuiteResult = new SuiteResult(TestResult.Error, 0, 0, 0, 0)
-	val Empty: SuiteResult = new SuiteResult(TestResult.Passed, 0, 0, 0, 0)
+	val Error: SuiteResult = new SuiteResult(TestResult.Error, 0, 0, 0, 0, 0, 0, 0)
+	val Empty: SuiteResult = new SuiteResult(TestResult.Passed, 0, 0, 0, 0, 0, 0, 0)
 }
 
 abstract class TestEvent extends NotNull

@@ -42,14 +42,21 @@ public class ForkMain {
 	public static class ForkTestDefinition implements Serializable {
 		public String name;
 		public Fingerprint fingerprint;
+		public boolean explicitlySpecified;
+		public Selector[] selectors;
 
-		public ForkTestDefinition(String name, Fingerprint fingerprint) {
+		public ForkTestDefinition(String name, Fingerprint fingerprint, boolean explicitlySpecified, Selector[] selectors) {
 			this.name = name;
 			if (fingerprint instanceof SubclassFingerprint) {
 				this.fingerprint = new SubclassFingerscan((SubclassFingerprint) fingerprint);
 			} else {
 				this.fingerprint = new AnnotatedFingerscan((AnnotatedFingerprint) fingerprint);
 			}
+			this.explicitlySpecified = explicitlySpecified;
+			int length = selectors.length;
+			this.selectors = new Selector[length];
+			for (int i = 0; i < length; i++)
+				this.selectors[i] = forkSelector(selectors[i]);
 		}
 	}
 	static class ForkError extends Exception {
@@ -63,69 +70,43 @@ public class ForkMain {
 		public String getMessage() { return originalMessage; }
 		public Exception getCause() { return cause; }
 	}
-	static class ForkSelector extends Selector implements Serializable {}
-	static class ForkSuiteSelector extends ForkSelector {}
-	static class ForkTestSelector extends ForkSelector {
-		private String testName;
-		ForkTestSelector(TestSelector testSelector) {
-			this.testName = testSelector.getTestName();
-		}
-		public String getTestName() {
-			return testName;
-		}
-	}
-	static class ForkNestedSuiteSelector extends ForkSelector {
-		private String suiteId;
-		ForkNestedSuiteSelector(NestedSuiteSelector nestedSuiteSelector) {
-			this.suiteId = nestedSuiteSelector.getSuiteId();
-		}
-		public String getSuiteId() {
-			return suiteId;
-		}
-	}
-	static class ForkNestedTestSelector extends ForkSelector {
-		private String suiteId;
-		private String testName;
-		ForkNestedTestSelector(NestedTestSelector nestedTestSelector) {
-			this.suiteId = nestedTestSelector.getSuiteId();
-			this.testName = nestedTestSelector.getTestName();
-		}
-		public String getSuiteId() {
-			return suiteId;
-		}
-		public String getTestName() {
-			return testName;
-		}
+	
+	static Selector forkSelector(Selector selector) {
+		if (selector instanceof Serializable)
+			return selector;
+		else
+			throw new UnsupportedOperationException("Selector implementation must be Serializable, but " + selector.getClass().getName() + " is not.");
 	}
 	
 	static class ForkEvent implements Event, Serializable {
 		private String fullyQualifiedName;
-		private boolean isModule;
-		private ForkSelector selector;
+		private Fingerprint fingerprint;
+		private Selector selector;
 		private Status status;
-		private Throwable throwable;
+		private OptionalThrowable throwable;
+		private long duration;
 		ForkEvent(Event e) {
 			fullyQualifiedName = e.fullyQualifiedName();
-			isModule = e.isModule();
+			Fingerprint rawFingerprint = e.fingerprint();
+			if (rawFingerprint instanceof SubclassFingerprint) 
+				this.fingerprint = new SubclassFingerscan((SubclassFingerprint) rawFingerprint);
+			else 
+				this.fingerprint = new AnnotatedFingerscan((AnnotatedFingerprint) rawFingerprint);
 			selector = forkSelector(e.selector());
 			status = e.status();
-			if (e.throwable() != null) throwable = new ForkError(e.throwable());
+			OptionalThrowable originalThrowable = e.throwable();
+			if (originalThrowable.isDefined())
+				this.throwable = new OptionalThrowable(new ForkError(originalThrowable.get()));
+			else
+				this.throwable = originalThrowable;
+			this.duration = e.duration();
 		}
 		public String fullyQualifiedName() { return fullyQualifiedName; }
-		public boolean isModule() { return isModule; }
+		public Fingerprint fingerprint() { return fingerprint; }
 		public Selector selector() { return selector; }
 		public Status status() { return status; }
-		public Throwable throwable() { return throwable; }
-		protected ForkSelector forkSelector(Selector selector) {
-			if (selector instanceof SuiteSelector)
-				return new ForkSuiteSelector();
-			else if (selector instanceof TestSelector)
-				return new ForkTestSelector((TestSelector) selector);
-			else if (selector instanceof NestedSuiteSelector)
-				return new ForkNestedSuiteSelector((NestedSuiteSelector) selector);
-			else
-				return new ForkNestedTestSelector((NestedTestSelector) selector);
-		}
+		public OptionalThrowable throwable() { return throwable; }
+		public long duration() { return duration; }
 	}
 	public static void main(String[] args) throws Exception {
 		Socket socket = new Socket(InetAddress.getByName(null), Integer.valueOf(args[0]));
@@ -172,8 +153,8 @@ public class ForkMain {
 		void logDebug(ObjectOutputStream os, String message) {
 			write(os, new Object[]{ForkTags.Debug, message});
 		}
-		void writeEvents(ObjectOutputStream os, ForkTestDefinition test, ForkEvent[] events) {
-			write(os, new Object[]{test.name, events});
+		void writeEvents(ObjectOutputStream os, TaskDef taskDef, ForkEvent[] events) {
+			write(os, new Object[]{taskDef.fullyQualifiedName(), events});
 		}
 		void runTests(ObjectInputStream is, final ObjectOutputStream os) throws Exception {
 			final boolean ansiCodesSupported = is.readBoolean();
@@ -212,15 +193,18 @@ public class ForkMain {
 				if (framework == null)
 					continue;
 
-				ArrayList<ForkTestDefinition> filteredTests = new ArrayList<ForkTestDefinition>();
+				ArrayList<TaskDef> filteredTests = new ArrayList<TaskDef>();
 				for (Fingerprint testFingerprint : framework.fingerprints()) {
 					for (ForkTestDefinition test : tests) {
-						if (matches(testFingerprint, test.fingerprint)) filteredTests.add(test);
+						// TODO: To pass in correct explicitlySpecified and selectors
+						if (matches(testFingerprint, test.fingerprint)) 
+							filteredTests.add(new TaskDef(test.name, test.fingerprint, test.explicitlySpecified, test.selectors));
 					}
 				}
 				final Runner runner = framework.runner(frameworkArgs, remoteFrameworkArgs, getClass().getClassLoader());
-				for (ForkTestDefinition test : filteredTests)
-					runTestSafe(test, runner, loggers, os);
+				Task[] tasks = runner.tasks(filteredTests.toArray(new TaskDef[filteredTests.size()]));
+				for (Task task : tasks)
+					runTestSafe(task, runner, loggers, os);
 				runner.done();
 			}
 			write(os, ForkTags.Done);
@@ -240,21 +224,19 @@ public class ForkMain {
 				return task;
 			}
 		}
-		void runTestSafe(ForkTestDefinition test, Runner runner, Logger[] loggers, ObjectOutputStream os) {
+		void runTestSafe(Task task, Runner runner, Logger[] loggers, ObjectOutputStream os) {
+			TaskDef taskDef = task.taskDef();
 			try {
-				// TODO: To pass in correct explicitlySpecified and selectors
-				Task task = runner.task(test.name, test.fingerprint, false, new Selector[] { new SuiteSelector() });
-				
 				List<NestedTask> nestedTasks = new ArrayList<NestedTask>();
-				for (Task nt : runTest(test, task, loggers, os))
-					nestedTasks.add(new NestedTask(test.name, nt));
+				for (Task nt : runTest(taskDef, task, loggers, os))
+					nestedTasks.add(new NestedTask(taskDef.fullyQualifiedName(), nt));
 				while (true) {
 					List<NestedTask> newNestedTasks = new ArrayList<NestedTask>();
 					int nestedTasksLength = nestedTasks.size();
 					for (int i = 0; i < nestedTasksLength; i++) {
 						NestedTask nestedTask = nestedTasks.get(i);
 						String nestedParentName = nestedTask.getParentName() + "-" + i;
-						for (Task nt : runTest(new ForkTestDefinition(nestedParentName, test.fingerprint), nestedTask.getTask(), loggers, os)) {
+						for (Task nt : runTest(nestedTask.getTask().taskDef(), nestedTask.getTask(), loggers, os)) {
 							newNestedTasks.add(new NestedTask(nestedParentName, nt));
 						}
 					}
@@ -265,10 +247,10 @@ public class ForkMain {
 					}
 				}
 			} catch (Throwable t) {
-				writeEvents(os, test, new ForkEvent[] { testError(os, test, "Uncaught exception when running " + test.name + ": " + t.toString(), t) });
+				writeEvents(os, taskDef, new ForkEvent[] { testError(os, taskDef, "Uncaught exception when running " + taskDef.fullyQualifiedName() + ": " + t.toString(), t) });
 			}
 		}
-		Task[] runTest(ForkTestDefinition test, Task task, Logger[] loggers, ObjectOutputStream os) {
+		Task[] runTest(TaskDef taskDef, Task task, Logger[] loggers, ObjectOutputStream os) {
 			ForkEvent[] events;
 			Task[] nestedTasks;
 			try {
@@ -279,9 +261,9 @@ public class ForkMain {
 			}
 			catch (Throwable t) {
 				nestedTasks = new Task[0];
-				events = new ForkEvent[] { testError(os, test, "Uncaught exception when running " + test.name + ": " + t.toString(), t) };
+				events = new ForkEvent[] { testError(os, taskDef, "Uncaught exception when running " + taskDef.fullyQualifiedName() + ": " + t.toString(), t) };
 			}
-			writeEvents(os, test, events);
+			writeEvents(os, taskDef, events);
 			return nestedTasks;
 		}
 		void run(ObjectInputStream is, ObjectOutputStream os) throws Exception {
@@ -301,23 +283,33 @@ public class ForkMain {
 		void internalError(Throwable t) {
 			System.err.println("Internal error when running tests: " + t.toString());
 		}
-		ForkEvent testEvent(final String fullyQualifiedName, final Fingerprint fingerprint, final Selector selector, final Status r, final Throwable err) {
+		ForkEvent testEvent(final String fullyQualifiedName, final Fingerprint fingerprint, final Selector selector, final Status r, final Throwable err, final long duration) {
+			final OptionalThrowable throwable;
+			if (err == null)
+				throwable = new OptionalThrowable();
+			else
+				throwable = new OptionalThrowable(err);
 			return new ForkEvent(new Event() {
 				public String fullyQualifiedName() { return fullyQualifiedName; }
-				public boolean isModule() { return fingerprint instanceof SubclassFingerprint ? ((SubclassFingerprint) fingerprint).isModule() : ((AnnotatedFingerprint) fingerprint).isModule(); }
+				public Fingerprint fingerprint() { return fingerprint; }
 				public Selector selector() { return selector; }
 				public Status status() { return r; }
-				public Throwable throwable() { return err; }
+				public OptionalThrowable throwable() { 
+					return throwable; 
+				}
+				public long duration() {
+					return duration;
+				}
 			});
 		}
-		ForkEvent testError(ObjectOutputStream os, ForkTestDefinition test, String message) {
+		ForkEvent testError(ObjectOutputStream os, TaskDef taskDef, String message) {
 			logError(os, message);
-			return testEvent(test.name, test.fingerprint, new SuiteSelector(), Status.Error, null);
+			return testEvent(taskDef.fullyQualifiedName(), taskDef.fingerprint(), new SuiteSelector(), Status.Error, null, 0);
 		}
-		ForkEvent testError(ObjectOutputStream os, ForkTestDefinition test, String message, Throwable t) {
+		ForkEvent testError(ObjectOutputStream os, TaskDef taskDef, String message, Throwable t) {
 			logError(os, message);
 			write(os, t);
-			return testEvent(test.name, test.fingerprint, new SuiteSelector(), Status.Error, t);
+			return testEvent(taskDef.fullyQualifiedName(), taskDef.fingerprint(), new SuiteSelector(), Status.Error, t, 0);
 		}
 	}
 }
