@@ -172,13 +172,12 @@ class RunnerWrapper implements Runner {
 		Task[] tasks = new Task[length];
 		for (int i = 0; i < length; i++) {
 			TaskDef taskDef = taskDefs[i];
-			tasks[i] = createTask(taskDef.fullyQualifiedName(), taskDef.fingerprint(), taskDef.explicitlySpecified(), taskDef.selectors());
+			tasks[i] = createTask(taskDef);
 		}
 		return tasks;
 	}
 
-	public Task createTask(final String fullyQualifiedName, final Fingerprint fingerprint, boolean explicitlySpecified, Selector[] selectors) {
-		final TaskDef taskDef = new TaskDef(fullyQualifiedName, fingerprint, explicitlySpecified, selectors);
+	public Task createTask(final TaskDef taskDef) {
 		return new Task() {
 			public String[] tags() {
 				return new String[0];  // Old framework does not support tags
