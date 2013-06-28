@@ -236,8 +236,12 @@ object Tests
 					 ignoredAcc + testEvent.ignoredCount, canceledAcc + testEvent.canceledCount, pendingAcc + testEvent.pendingCount)
 				}
 			val totalCount = failuresCount + errorsCount + skippedCount + passedCount
-			val postfix = "Total " + totalCount + ", Failed " + failuresCount + ", Errors " + errorsCount + ", Passed " + passedCount + ", Skipped " + skippedCount + 
-			              ", Ignored " + ignoredCount + ", Canceled " + canceledCount + ", Pending " + pendingCount
+			val base = s"Total $totalCount, Failed $failuresCount, Errors $errorsCount, Passed $passedCount"
+
+			val otherCounts = Seq("Skipped" -> skippedCount, "Ignored" -> ignoredCount, "Canceled" -> canceledCount, "Pending" -> pendingCount)
+			val extra = otherCounts.filter(_._2 > 0).map{case(label,count) => s", $label $count" }
+
+			val postfix = base + extra.mkString
 			results.overall match {
 				case TestResult.Error => log.error("Error: " + postfix)
 				case TestResult.Passed => log.info("Passed: " + postfix)
