@@ -1,6 +1,7 @@
 package sbt;
 
 import sbt.testing.*;
+import java.io.Serializable;
 
 final class FrameworkWrapper implements Framework {
 

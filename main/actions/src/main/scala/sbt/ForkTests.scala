@@ -11,7 +11,7 @@ import Tests.{Output => TestOutput, _}
 import ForkMain._
 
 private[sbt] object ForkTests {
-	def apply(runners: Map[TestFramework, Runner],  tests: List[TestDefinition], config: Execution, loader: ClassLoader, classpath: Seq[File], fork: ForkOptions, log: Logger): Task[TestOutput]  = {
+	def apply(runners: Map[TestFramework, Runner],  tests: List[TestDefinition], config: Execution, classpath: Seq[File], fork: ForkOptions, log: Logger): Task[TestOutput]  = {
 		val opts = config.options.toList
 		val listeners = opts flatMap {
 			case Listeners(ls) => ls
@@ -46,7 +46,7 @@ private[sbt] object ForkTests {
 							os.writeBoolean(log.ansiCodesSupported)
 							
 							val testsFiltered = tests.filter(test => filters.forall(_(test.name))).map{
-								t => new TaskDef(t.name, t.fingerprint, t.explicitlySpecified, t.selectors)
+								t => new TaskDef(t.name, forkFingerprint(t.fingerprint), t.explicitlySpecified, t.selectors)
 							}.toArray
 							os.writeObject(testsFiltered)
 
@@ -92,6 +92,12 @@ private[sbt] object ForkTests {
 				TestOutput(TestResult.Passed, Map.empty[String, SuiteResult], Iterable.empty)
 		} tagw (config.tags: _*)
 	}
+	private[this] def forkFingerprint(f: Fingerprint): Fingerprint with Serializable =
+		f match {
+			case s: SubclassFingerprint => new ForkMain.SubclassFingerscan(s)
+			case a: AnnotatedFingerprint => new ForkMain.AnnotatedFingerscan(a)
+			case _ => error("Unknown fingerprint type: " + f.getClass)
+		}
 }
 private final class React(is: ObjectInputStream, os: ObjectOutputStream, log: Logger, listeners: Seq[TestReportListener], results: mutable.Map[String, SuiteResult])
 {

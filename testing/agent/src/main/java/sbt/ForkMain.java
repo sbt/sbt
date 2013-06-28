@@ -147,7 +147,7 @@ public class ForkMain {
 					public void warn(String s) { write(os, new Object[]{ForkTags.Warn, s}); }
 					public void info(String s) { write(os, new Object[]{ForkTags.Info, s}); }
 					public void debug(String s) { write(os, new Object[]{ForkTags.Debug, s}); }
-					public void trace(Throwable t) { write(os, t); }
+					public void trace(Throwable t) { write(os, new ForkError(t)); }
 				}
 			};
 
@@ -254,7 +254,7 @@ public class ForkMain {
 			} catch (Throwable t) {
 				try {
 					logError(os, "Uncaught exception when running tests: " + t.toString());
-					write(os, t);
+					write(os, new ForkError(t));
 				} catch (Throwable t2) {
 					internalError(t2);
 				}
@@ -263,7 +263,7 @@ public class ForkMain {
 		void internalError(Throwable t) {
 			System.err.println("Internal error when running tests: " + t.toString());
 		}
-		ForkEvent testEvent(final String fullyQualifiedName, final Fingerprint fingerprint, final Selector selector, final Status r, final Throwable err, final long duration) {
+		ForkEvent testEvent(final String fullyQualifiedName, final Fingerprint fingerprint, final Selector selector, final Status r, final ForkError err, final long duration) {
 			final OptionalThrowable throwable;
 			if (err == null)
 				throwable = new OptionalThrowable();
@@ -288,8 +288,9 @@ public class ForkMain {
 		}
 		ForkEvent testError(ObjectOutputStream os, TaskDef taskDef, String message, Throwable t) {
 			logError(os, message);
-			write(os, t);
-			return testEvent(taskDef.fullyQualifiedName(), taskDef.fingerprint(), new SuiteSelector(), Status.Error, t, 0);
+         ForkError fe = new ForkError(t);
+			write(os, fe);
+			return testEvent(taskDef.fullyQualifiedName(), taskDef.fingerprint(), new SuiteSelector(), Status.Error, fe, 0);
 		}
 	}
 }
