@@ -205,7 +205,8 @@ object Sbt extends Build
 		import Sxr.sxr
 	def releaseSettings = Release.settings(nonRoots, proguard in Proguard)
 	def rootSettings = releaseSettings ++ Docs.settings ++ LaunchProguard.settings ++ LaunchProguard.specific(launchSub) ++ 
-		Sxr.settings ++ docSetting ++ Util.publishPomSettings ++ otherRootSettings ++ proguardedLauncherSettings
+		Sxr.settings ++ docSetting ++ Util.publishPomSettings ++ otherRootSettings ++ proguardedLauncherSettings ++
+		Transform.conscriptSettings(launchSub)
 	def otherRootSettings = Seq(
 		scripted <<= scriptedTask,
 		scriptedSource <<= (sourceDirectory in sbtSub) / "sbt-test",
@@ -230,7 +231,7 @@ object Sbt extends Build
 		autoScalaLibrary := false,
 		description := "sbt application launcher",
 		publishLauncher <<= publish,
-		packageBin in Compile <<= (proguard in Proguard).map(x => x)
+		packageBin in Compile <<= (proguard in Proguard, Transform.conscriptConfigs).map( (x,y) => x)
 	)
 	def docSetting = inConfig(Compile)(inTask(sxr)(Defaults.docSetting(doc in ThisScope.copy(task = Global, config = Global))))
 
