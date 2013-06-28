@@ -2,6 +2,6 @@ name := "source-plugins"
 
 organization := "org.example"
 
-ProguardPlugin.proguardSettings
+proguardSettings
 
 useJGit

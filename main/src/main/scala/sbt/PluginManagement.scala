@@ -21,6 +21,7 @@ final case class PluginManagement(overrides: Set[ModuleID], applyOverrides: Set[
 		Keys.dependencyOverrides ++= overrides
 	)
 
+	def resetDepth: PluginManagement = copy(context = Context(globalPluginProject = false, pluginProjectDepth = 0))
 	def forGlobalPlugin: PluginManagement = copy(context = Context(globalPluginProject = true, pluginProjectDepth = 0))
 	def forPlugin: PluginManagement = copy(context = context.copy(pluginProjectDepth = context.pluginProjectDepth + 1))
 }

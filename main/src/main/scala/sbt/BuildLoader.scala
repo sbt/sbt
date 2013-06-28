@@ -122,12 +122,19 @@ final class BuildLoader(
 			full.setRoot(loaders.full),
 			loaders.transformAll andThen transformAll
 		)
+	def resetPluginDepth: BuildLoader = copyWithNewPM(config.pluginManagement.resetDepth)
+
 	def updatePluginManagement(overrides: Set[ModuleID]): BuildLoader =
 	{
 		val mgmt = config.pluginManagement
-		val newConfig = config.copy(pluginManagement = mgmt.copy(overrides = mgmt.overrides ++ overrides))
+		copyWithNewPM(mgmt.copy(overrides = mgmt.overrides ++ overrides))
+	}
+	private[this] def copyWithNewPM(newpm: PluginManagement): BuildLoader =
+	{
+		val newConfig = config.copy(pluginManagement = newpm)
 		new BuildLoader(fail, state, newConfig, resolvers, builders, transformer, full, transformAll)
 	}
+
 	def components = new Components(resolvers.applyFun, builders.applyFun, transformer, full.applyFun, transformAll)
 	def apply(uri: URI): BuildUnit =
 	{

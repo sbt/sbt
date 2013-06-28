@@ -312,7 +312,7 @@ object Load
 				{
 					val (loadedBuild, refs) = loaded(loaders(b))
 					checkBuildBase(loadedBuild.unit.localBase)
-					val newLoader = addOverrides(loadedBuild.unit, addResolvers(loadedBuild.unit, builds.isEmpty, loaders))
+					val newLoader = addOverrides(loadedBuild.unit, addResolvers(loadedBuild.unit, builds.isEmpty, loaders.resetPluginDepth))
 					// it is important to keep the load order stable, so we sort the remaining URIs
 					val remainingBases = (refs.flatMap(Reference.uri) reverse_::: bs).sorted
 					loadAll(remainingBases, references.updated(b, refs), newLoader, builds.updated(b, loadedBuild))
