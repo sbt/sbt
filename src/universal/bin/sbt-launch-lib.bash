@@ -17,6 +17,8 @@ declare -a java_args
 declare -a scalac_args
 declare -a sbt_commands
 declare java_cmd=java
+declare -r sbt_bin_dir="$(dirname "$(realpath "$0")")"
+declare -r sbt_home="$(dirname "$sbt_bin_dir")"
 
 echoerr () {
   echo 1>&2 "$@"
@@ -29,7 +31,8 @@ dlog () {
 }
 
 jar_file () {
-  echo "@@LAUNCH-JAR-LOCATION@@"
+  # TODO - Is this where we want the launch jar?
+  echo "${sbt_home}/bin/sbt-launch.jar"
 }
 
 acquire_sbt_jar () {
@@ -128,6 +131,31 @@ process_args () {
   }
 }
 
+# Detect that we have java installed.
+checkJava() {
+  local required_version="$1"
+  # Now check to see if it's a good enough version
+  declare -r java_version=$("$java_cmd" -version 2>&1 | awk -F '"' '/version/ {print $2}')
+  if [[ "$java_version" == "" ]]; then
+    echo
+    echo No java installations was detected.
+    echo Please go to http://www.java.com/getjava/ and download
+    echo
+    exit 1
+  elif [[ ! "$java_version" > "$required_version" ]]; then
+    echo
+    echo The java installation you have is not up to date
+    echo $script_name requires at least version $required_version+, you have
+    echo version $java_version
+    echo
+    echo Please go to http://www.java.com/getjava/ and download
+    echo a valid Java Runtime and install before running $script_name.
+    echo
+    exit 1
+  fi
+}
+
+
 run() {
   # no jar? download it.
   [[ -f "$sbt_jar" ]] || acquire_sbt_jar "$sbt_version" || {
@@ -141,6 +169,16 @@ run() {
   set -- "${residual_args[@]}"
   argumentCount=$#
 
+  # TODO - java check should be configurable...
+  checkJava "1.6"
+
+  #If we're in cygwin, we should use the windows config, and terminal hacks
+  if [[ "$CYGWIN_FLAG" == "true" ]]; then
+    stty -icanon min 1 -echo > /dev/null 2>&1
+    addJava "-Djline.terminal=jline.UnixTerminal"
+    addJava "-Dsbt.cygwin=true"
+  fi
+  
   # run sbt
   execRunner "$java_cmd" \
     ${SBT_OPTS:-$default_sbt_opts} \
@@ -150,6 +188,14 @@ run() {
     -jar "$sbt_jar" \
     "${sbt_commands[@]}" \
     "${residual_args[@]}"
+    
+  exit_code=$?
+
+  # Clean up the terminal from cygwin hacks.
+  if [[ "$IS_CYGWIN" == "true" ]]; then
+    stty icanon echo > /dev/null 2>&1
+  fi
+  exit $exit_code
 }
 
 runAlternateBoot() {

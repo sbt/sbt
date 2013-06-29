@@ -24,12 +24,15 @@ if [ -z "$JAVA_OPTS" ]; then
   JAVA_OPTS=$(cat "$WDIR/sbtconfig.txt" | sed -e 's/\r//g' -e 's/^#.*$//g' | sed ':a;N;$!ba;s/\n/ /g')
 fi
 
+# TODO - this check should detect cygwin terminal, not just xterm.
 if [ "_$TERM" = "_xterm" ]; then
   # Let the terminal handle ANSI sequences
   stty -icanon min 1 -echo > /dev/null 2>&1
-  "$JAVA_CMD" $JAVA_OPTS -Djline.terminal=jline.UnixTerminal $SBT_OPTS -jar "$WDIR/sbt-launch.jar" "$@"
+  "$JAVA_CMD" $JAVA_OPTS -Djline.terminal=jline.UnixTerminal -Dsbt.cygwin=true $SBT_OPTS -jar "$WDIR/sbt-launch.jar" "$@"
+  SCALA_STATUS=$?
   stty icanon echo > /dev/null 2>&1
+  exit $SCALA_STATUS
 else
   # Use Jansi to intercept ANSI sequences
-  "$JAVA_CMD" -Dsbt.log.format=true $JAVA_OPTS $SBT_OPTS -cp "$WDIR/jansi.jar;$WDIR/sbt-launch.jar;$WDIR/classes" SbtJansiLaunch "$@"
+  "$JAVA_CMD" -Dsbt.log.format=true $JAVA_OPTS $SBT_OPTS -cp "$WDIR/sbt-launch.jar" xsbt.boot.Boot "$@"
 fi

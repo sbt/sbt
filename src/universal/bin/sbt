@@ -1,31 +1,67 @@
 #!/usr/bin/env bash
 
+
+###  ------------------------------- ###
+###  Helper methods for BASH scripts ###
+###  ------------------------------- ###
+
 realpath () {
 (
-  TARGET_FILE=$1
+  TARGET_FILE="$1"
 
-  cd $(dirname $TARGET_FILE)
-  TARGET_FILE=$(basename $TARGET_FILE)
+  cd $(dirname "$TARGET_FILE")
+  TARGET_FILE=$(basename "$TARGET_FILE")
 
   COUNT=0
   while [ -L "$TARGET_FILE" -a $COUNT -lt 100 ]
   do
-      TARGET_FILE=$(readlink $TARGET_FILE)
-      cd $(dirname $TARGET_FILE)
-      TARGET_FILE=$(basename $TARGET_FILE)
+      TARGET_FILE=$(readlink "$TARGET_FILE")
+      cd $(dirname "$TARGET_FILE")
+      TARGET_FILE=$(basename "$TARGET_FILE")
       COUNT=$(($COUNT + 1))
   done
 
-  echo $(pwd -P)/$TARGET_FILE
+  # make sure we grab the actual windows path, instead of cygwin's path.
+  echo $(cygwinpath "$(pwd -P)/$TARGET_FILE")
 )
 }
 
-. @@BASH-LIB-LOCATION@@
+
+# Uses uname to detect if we're in the odd cygwin environment.
+is_cygwin() {
+  local os=$(uname -s)
+  case "$os" in
+    CYGWIN*) return 0 ;;
+    *)  return 1 ;;
+  esac
+}
+
+# TODO - Use nicer bash-isms here.
+CYGWIN_FLAG=$(if is_cygwin; then echo true; else echo false; fi)
+
+
+# This can fix cygwin style /cygdrive paths so we get the
+# windows style paths.
+cygwinpath() {
+  local file="$1"
+  if [[ "$CYGWIN_FLAG" == "true" ]]; then
+    echo $(cygpath -w $file)
+  else
+    echo $file
+  fi
+}
+
+if [[ "$CYGWIN_FLAG" == "true" ]]; then
+  . $(dirname "$(cygpath "$(realpath "$0")")")/sbt-launch-lib.bash
+else
+  . $(dirname "$(realpath "$0")")/sbt-launch-lib.bash
+fi
 
 
 declare -r noshare_opts="-Dsbt.global.base=project/.sbtboot -Dsbt.boot.directory=project/.boot -Dsbt.ivy.home=project/.ivy"
 declare -r sbt_opts_file=".sbtopts"
-declare -r etc_sbt_opts_file="/etc/sbt/sbtopts"
+declare -r etc_sbt_opts_file="${sbt_home}/conf/sbtopts"
+declare -r win_sbt_opts_file="${sbt_home}/conf/sbtconfig.txt"
 
 usage() {
  cat <<EOM
@@ -99,8 +135,16 @@ loadConfigFile() {
   done
 }
 
-# if sbtopts files exist, prepend their contents to $@ so it can be processed by this runner
+# TODO - Pull in config based on operating system... (MSYS + cygwin should pull in txt file).
+# Here we pull in the global settings configuration.
 [[ -f "$etc_sbt_opts_file" ]] && set -- $(loadConfigFile "$etc_sbt_opts_file") "$@"
+# -- Windows behavior stub'd
+# JAVA_OPTS=$(cat "$WDIR/sbtconfig.txt" | sed -e 's/\r//g' -e 's/^#.*$//g' | sed ':a;N;$!ba;s/\n/ /g')
+
+
+#  Pull in the project-level config file, if it exists.
 [[ -f "$sbt_opts_file" ]] && set -- $(loadConfigFile "$sbt_opts_file") "$@"
 
+
 run "$@"
+
