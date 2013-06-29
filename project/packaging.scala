@@ -93,13 +93,6 @@ object Packaging {
     // Universal ZIP download install.
     name in Universal := "sbt",
     mappings in Universal <+= sbtLaunchJar map { _ -> "bin/sbt-launch.jar" },
-    // TODO - move these into universal directory.
-    mappings in Universal <++= sourceDirectory in Windows map { d => 
-      Seq(
-        (d / "sbt.bat") -> "bin/sbt.bat",
-        (d / "sbtconfig.txt") -> "conf/sbtconfig.txt"
-      )
-    },
     
     // Misccelaneous publishing stuff...
     projectID in Debian    <<= (organization, sbtVersion) apply { (o,v) => ModuleID(o,"sbt",v) },
