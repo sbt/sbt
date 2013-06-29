@@ -51,7 +51,11 @@ cygwinpath() {
   fi
 }
 
-. $(dirname "$(realpath "$0")")/sbt-launch-lib.bash
+if [[ "$CYGWIN_FLAG" == "true" ]]; then
+  . $(dirname "$(cygpath "$(realpath "$0")")")/sbt-launch-lib.bash
+else
+  . $(dirname "$(realpath "$0")")/sbt-launch-lib.bash
+fi
 
 
 declare -r noshare_opts="-Dsbt.global.base=project/.sbtboot -Dsbt.boot.directory=project/.boot -Dsbt.ivy.home=project/.ivy"
@@ -129,14 +133,6 @@ loadConfigFile() {
   cat "$1" | sed '/^\#/d'
 }
 
-
-#If we're in cygwin, we should use the windows config, and terminal hacks
-if [[ "$CYGWIN_FLAG" == "true" ]]; then
-    stty -icanon min 1 -echo > /dev/null 2>&1
-    addJava "-Djline.terminal=jline.UnixTerminal"
-    addJava "-Dsbt.cygwin=true"
-fi
-
 # TODO - Pull in config based on operating system... (MSYS + cygwin should pull in txt file).
 # Here we pull in the global settings configuration.
 [[ -f "$etc_sbt_opts_file" ]] && set -- $(loadConfigFile "$etc_sbt_opts_file") "$@"
@@ -149,11 +145,4 @@ fi
 
 
 run "$@"
-exit_code=$?
-
-# Clean up the terminal from cygwin hacks.
-if [[ "$IS_CYGWIN" == "true" ]] then
-  stty icanon echo > /dev/null 2>&1
-fi
-exit $exit_code
 

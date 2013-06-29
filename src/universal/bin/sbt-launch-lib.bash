@@ -172,6 +172,13 @@ run() {
   # TODO - java check should be configurable...
   checkJava "1.6"
 
+  #If we're in cygwin, we should use the windows config, and terminal hacks
+  if [[ "$CYGWIN_FLAG" == "true" ]]; then
+    stty -icanon min 1 -echo > /dev/null 2>&1
+    addJava "-Djline.terminal=jline.UnixTerminal"
+    addJava "-Dsbt.cygwin=true"
+  fi
+  
   # run sbt
   execRunner "$java_cmd" \
     ${SBT_OPTS:-$default_sbt_opts} \
@@ -181,6 +188,14 @@ run() {
     -jar "$sbt_jar" \
     "${sbt_commands[@]}" \
     "${residual_args[@]}"
+    
+  exit_code=$?
+
+  # Clean up the terminal from cygwin hacks.
+  if [[ "$IS_CYGWIN" == "true" ]]; then
+    stty icanon echo > /dev/null 2>&1
+  fi
+  exit $exit_code
 }
 
 runAlternateBoot() {

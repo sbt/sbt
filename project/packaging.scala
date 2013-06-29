@@ -23,7 +23,7 @@ object Packaging {
     case _                             => "http://repo.typesafe.com/typesafe/ivy-releases/org.scala-tools.sbt/sbt-launch/"+v+"/sbt-launch.jar"
   }
 
-  val settings: Seq[Setting[_]] = packagerSettings ++ deploymentSettings ++ mapGenericFilesToLinux ++ Seq(
+  val settings: Seq[Setting[_]] = packagerSettings ++ deploymentSettings ++ mapGenericFilesToLinux ++ mapGenericFilesToWinows ++ Seq(
     sbtLaunchJarUrl <<= sbtVersion apply downloadUrlForVersion,
     sbtLaunchJarLocation <<= target apply (_ / "sbt-launch.jar"),
     sbtLaunchJar <<= (sbtLaunchJarUrl, sbtLaunchJarLocation) map { (uri, file) =>
@@ -76,27 +76,30 @@ object Packaging {
     
     // WINDOWS SPECIFIC
     name in Windows := "sbt",
-    candleOptions ++= Seq("-ext", "WixUtilExtension"),
-    lightOptions ++= Seq("-ext", "WixUIExtension",
-                         "-ext", "WixUtilExtension",
-                         "-cultures:en-us"),
+    version in Windows <<= (sbtVersion) apply { sv =>
+      (sv split "[^\\d]" filterNot (_.isEmpty)) match {
+        case Array(major,minor,bugfix, _*) => Seq(major,minor,bugfix, "1") mkString "."
+        case Array(major,minor) => Seq(major,minor,"0","1") mkString "."
+        case Array(major) => Seq(major,"0","0","1") mkString "."
+      }
+    },
+    maintainer in Windows := "Typesafe, Inc.",
+    packageSummary in Windows := "Simple Build Tool",
+    packageDescription in Windows := "THE reactive build tool.",
+    wixProductId := "ce07be71-510d-414a-92d4-dff47631848a",
+    wixProductUpgradeId := "4552fb0e-e257-4dbd-9ecb-dba9dbacf424",
     javacOptions := Seq("-source", "1.5", "-target", "1.5"),
 
-    // Universal ZIP download install.  TODO - Share the above windows code, here....
+    // Universal ZIP download install.
     name in Universal := "sbt",
     mappings in Universal <+= sbtLaunchJar map { _ -> "bin/sbt-launch.jar" },
-    mappings in Universal <+= sourceDirectory in Windows map { d => 
-      (d / "sbt.bat") -> "bin/sbt.bat"
+    // TODO - move these into universal directory.
+    mappings in Universal <++= sourceDirectory in Windows map { d => 
+      Seq(
+        (d / "sbt.bat") -> "bin/sbt.bat",
+        (d / "sbtconfig.txt") -> "conf/sbtconfig.txt"
+      )
     },
-    // TODO - Adapt global `sbt`/`sbt-launch-lib` scripts for universal install...
-    
-    // Windows customizations
-    mappings in Windows <++= mappings in Universal,
-    mappings in Windows <++= sourceDirectory in Windows map { d => Seq(
-      (d / "sbtconfig.txt") -> "conf/sbtconfig.txt"
-    )},
-    wixConfig <<= (sbtVersion, sourceDirectory in Windows) map makeWindowsXml,
-    wixConfig in Windows <<= wixConfig,
     
     // Misccelaneous publishing stuff...
     projectID in Debian    <<= (organization, sbtVersion) apply { (o,v) => ModuleID(o,"sbt",v) },
@@ -111,124 +114,4 @@ object Packaging {
       dir
     }
   )
-  
-  def makeWindowsXml(sbtVersion: String, sourceDir: File): scala.xml.Node = {
-    val version = (sbtVersion split "[^\\d]" filterNot (_.isEmpty)) match {
-        case Array(major,minor,bugfix, _*) => Seq(major,minor,bugfix, "1") mkString "."
-        case Array(major,minor) => Seq(major,minor,"0","1") mkString "."
-        case Array(major) => Seq(major,"0","0","1") mkString "."
-      }
-      (
-<Wix xmlns='http://schemas.microsoft.com/wix/2006/wi' 
-     xmlns:util='http://schemas.microsoft.com/wix/UtilExtension'>
-  <Product Id='ce07be71-510d-414a-92d4-dff47631848a' 
-            Name='Simple Build Tool' 
-            Language='1033'
-            Version={version}
-            Manufacturer='Typesafe, Inc.' 
-            UpgradeCode='4552fb0e-e257-4dbd-9ecb-dba9dbacf424'>
-      <Package Description='Simple Build Tool launcher script.'
-                Comments='First attempt to create an SBT windows installer, bear with me.'
-                Manufacturer='Typesafe, Inc.' 
-                InstallScope='perMachine'
-                InstallerVersion='200' 
-                Compressed='yes' />
- 
-      <Media Id='1' Cabinet='sbt.cab' EmbedCab='yes' />
-      
-      <Property Id='NOTEPADEXE'>
-        <DirectorySearch Id='NotePadContainer' Path='[SystemFolder]' Depth='0'>
-          <FileSearch Id='NotepadFile' Name='notepad.exe'/>
-        </DirectorySearch>
-      </Property>
- 
-      <Directory Id='TARGETDIR' Name='SourceDir'>
-        <Directory Id="ProgramMenuFolder">
-          <Directory Id="ApplicationProgramsFolder" Name="sbt"/>
-        </Directory>
-        <Directory Id='ProgramFilesFolder' Name='PFiles'>
-            <Directory Id='INSTALLDIR' Name='sbt'>
-               <Directory Id='SbtBinDir' Name='sbt'>
-               <Component Id='SbtLauncherScript' Guid='DE0A5B50-0792-40A9-AEE0-AB97E9F845F5'>
-                  <File Id='sbt_bat' Name='sbt.bat' DiskId='1' Source='bin\sbt.bat'>
-                     <util:PermissionEx User="Administrators" GenericAll="yes" />
-                     <util:PermissionEx User="Users" GenericAll="yes" />
-                  </File>
-                  <File Id='sbt_sh' Name='sbt' DiskId='1' Source='bin\sbt'>
-                     <!-- <util:PermissionEx User="Users" Domain="[LOCAL_MACHINE_NAME]" GenericRead="yes" Read="yes" GenericExecute="yes" ChangePermission="yes"/> -->
-                  </File>
-                  <File Id='sbt_launch_lib_bash' Name='sbt-launch-lib.bash' DiskId='1' Source='bin\sbt-launch-lib.bash'>
-                     <!-- <util:PermissionEx User="Users" Domain="[LOCAL_MACHINE_NAME]" GenericRead="yes" Read="yes" GenericExecute="yes" ChangePermission="yes"/> -->
-                  </File>
-               </Component>
-               <Component Id='SbtLauncherJar' Guid='*'>
-                  <File Id='sbt_launch_jar' Name='sbt-launch.jar' DiskId='1' Source='bin\sbt-launch.jar' />
-               </Component>               
-               <Component Id='SbtLauncherPath' Guid='17EA4092-3C70-11E1-8CD8-1BB54724019B'>
-                  <CreateFolder/>
-                  <Environment Id="PATH" Name="PATH" Value="[INSTALLDIR]\\bin" Permanent="no" Part="last" Action="set" System="yes" />
-                  <Environment Id="SBT_HOME" Name="SBT_HOME" Value="[INSTALLDIR]" Permanent="no" Action="set" System="yes" />
-               </Component>
-               </Directory>
-               <Directory Id='SbtConfigDir' Name='conf'>
-               <Component Id='SbtConfigFile' Guid='*'>
-                 <File Id='sbtconfig_txt' Name='sbtconfig.txt' DiskId='1' Source='conf\sbtconfig.txt'>
-                   <util:PermissionEx User="Administrators" GenericAll="yes" />
-                   <util:PermissionEx User="Users" GenericAll="yes" />
-                 </File>
-               </Component>
-               </Directory>
-             </Directory>
-         </Directory>
-      </Directory>
-           <!-- Step 2: Add the shortcut to your installer package -->
-        <DirectoryRef Id="ApplicationProgramsFolder">
-            <Component Id="ConfigShortcut" Guid="3370A26B-E8AB-4143-B837-CE9A8573BF61">
-                <Shortcut Id="ConfigStartMenuShortcut"
-                          Name="sbt configuration"
-                          Description="Modify sbt configuration settings"
-                          Target="[INSTALLDIR]\conf\sbtconfig.txt"
-                          WorkingDirectory="INSTALLDIR"/>
-                <RemoveFolder Id="ApplicationProgramsFolder" On="uninstall"/>
-                <RegistryValue Root="HKCU" Key="Software\Typesafe\sbt" Name="installed" Type="integer" Value="1" KeyPath="yes"/>
-             </Component>
-        </DirectoryRef>
-        
-      <Feature Id='Complete' Title='Simple Build Tool' Description='The windows installation of Simple Build Tool.'
-         Display='expand' Level='1' ConfigurableDirectory='INSTALLDIR'>
-        <Feature Id='SbtLauncher' Title='Sbt Launcher Script' Description='The application which downloads and launches SBT.' Level='1' Absent='disallow'>
-          <ComponentRef Id='SbtLauncherScript'/>
-          <ComponentRef Id='SbtLauncherJar' />
-          <ComponentRef Id='SbtConfigFile' />
-        </Feature>
-        <Feature Id='SbtLauncherPathF' Title='Add SBT to windows system PATH' Description='This will append SBT to your windows system path (Requires Restart).' Level='1'>
-          <ComponentRef Id='SbtLauncherPath'/>
-        </Feature>
-        <Feature Id='SbtLauncherConfigF' Title='Add Menu Shortcuts' Description='This will add menu shortcuts for sbt configuration.' Level='1'>
-          <ComponentRef Id='ConfigShortcut'/>
-        </Feature>
-      </Feature>
-      <!--<Property Id="JAVAVERSION">
-        <RegistrySearch Id="JavaVersion"
-                        Root="HKLM"
-                        Key="SOFTWARE\Javasoft\Java Runtime Environment"
-                        Name="CurrentVersion"
-                        Type="raw"/>
-      </Property>
-      <Condition Message="This application requires a JVM available.  Please install Java, then run this installer again.">
-        <![CDATA[Installed OR JAVAVERSION]]>
-      </Condition>-->
-      <MajorUpgrade 
-         AllowDowngrades="no" 
-         Schedule="afterInstallInitialize"
-         DowngradeErrorMessage="A later version of [ProductName] is already installed.  Setup will no exit."/>  
-      <UIRef Id="WixUI_FeatureTree"/>
-      <UIRef Id="WixUI_ErrorProgressText"/>
-      <Property Id="WIXUI_INSTALLDIR" Value="INSTALLDIR"/>
-      <WixVariable Id="WixUILicenseRtf" Value={sourceDir.getAbsolutePath + "\\License.rtf"} />
-      
-   </Product>
-</Wix>
-    )
-  }
 }

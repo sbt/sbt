@@ -14,7 +14,7 @@ set SBT_HOME=%~dp0
 set ERROR_CODE=0
 
 rem FIRST we load the config file of extra options.
-set FN=%SBT_HOME%sbtconfig.txt
+set FN=%SBT_HOME%\..\conf\sbtconfig.txt
 set CFG_OPTS=
 FOR /F "tokens=* eol=# usebackq delims=" %%i IN ("%FN%") DO (
   set DO_NOT_REUSE_ME=%%i
