@@ -130,7 +130,9 @@ process_my_args () {
 }
 
 loadConfigFile() {
-  cat "$1" | sed '/^\#/d'
+  for line in $(cat "$1" | sed '/^\#/d'); do
+    eval echo $line
+  done
 }
 
 # TODO - Pull in config based on operating system... (MSYS + cygwin should pull in txt file).
