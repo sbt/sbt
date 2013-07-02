@@ -2,25 +2,31 @@ lazy val verifyDeps = taskKey[Unit]("verify inherited dependencies are properly 
 
 verifyDeps := {
 	val a = compile.in(Compile).value
-	same(a.relations.publicInherited.internal.forwardMap, expectedDeps.forwardMap)
-}
-
-lazy val expected = Seq(
-	"A" -> Seq("C", "D", "E", "G", "J"),
-	"B" -> Seq(),
-	"C" -> Seq("D", "G", "J"),
-	"D" -> Seq("G", "J"),
-	"E" -> Seq(),
-	"F" -> Seq("C", "D", "G", "J"),
-	"G" -> Seq("J"),
-	"J" -> Seq()
-)
-lazy val pairs =
-	expected.map { case (from,tos) =>
-		(toFile(from), tos.map(toFile))
+	val baseDir = baseDirectory.value
+	def relative(f: java.io.File): java.io.File =  f.relativeTo(baseDir) getOrElse f
+	def toFile(s: String) = relative(baseDir / (s + ".scala"))
+	def inheritedDeps(name: String): Set[File] = {
+		val file = (baseDir / (name + ".scala")).getAbsoluteFile
+		val absoluteFiles = a.relations.publicInherited.internal.forward(file)
+		absoluteFiles.map(relative)
 	}
-lazy val expectedDeps = (Relation.empty[File,File] /: pairs) { case (r, (x,ys)) => r + (x,ys) }
-def toFile(s: String) = file(s + ".scala").getAbsoluteFile
+	val ADeps = Set("C", "D", "E", "G", "J").map(toFile)
+	same(inheritedDeps("A"), ADeps)
+	val BDeps = Set.empty[File]
+	same(inheritedDeps("B"), BDeps)
+	val CDeps = Set("D", "G", "J").map(toFile)
+	same(inheritedDeps("C"), CDeps)
+	val DDeps = Set("G", "J").map(toFile)
+	same(inheritedDeps("D"), DDeps)
+	val EDeps = Set.empty[File]
+	same(inheritedDeps("E"), EDeps)
+	val FDeps = Set("C", "D", "G", "J").map(toFile)
+	same(inheritedDeps("F"), FDeps)
+	val GDeps = Set("J").map(toFile)
+	same(inheritedDeps("G"), GDeps)
+	val JDeps = Set.empty[File]
+	same(inheritedDeps("J"), JDeps)
+}
 
 def same[T](x: T, y: T) {
 	assert(x == y, s"\nActual: $x, \nExpected: $y")
