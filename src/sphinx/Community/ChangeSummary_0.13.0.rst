@@ -19,6 +19,8 @@ Features, fixes, changes with compatibility implications (incomplete, please hel
 - sbt no longer canonicalizes files passed to scalac.  (gh-723)
 - sbt now enforces that each project must have a unique ``target`` directory.
 - sbt no longer overrides the Scala version in dependencies.  This allows independent configurations to depend on different Scala versions and treats Scala dependencies other than scala-library as normal dependencies.  However, it can result in resolved versions other than ``scalaVersion`` for those other Scala libraries.
+- JLine is now configured differently for Cygwin.  See :doc:`/Getting-Started/Setup`.
+- Jline and Ansi codes work better on Windows now.  CI servers might have to explictly disable Ansi codes via ``-Dsbt.log.format=false``.
 
 Features
 --------
