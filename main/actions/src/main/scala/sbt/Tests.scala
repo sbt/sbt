@@ -253,8 +253,12 @@ object Tests
 			log.info(noTestsMessage)
 		else {
 			import TestResult.{Error, Failed, Passed}
+			import scala.reflect.NameTransformer.decode
 
-			def select(Tpe: TestResult.Value) = results.events collect { case (name, Tpe) => name }
+			def select(resultTpe: TestResult.Value) = results.events collect {
+				case (name, tpe) if tpe.result == resultTpe =>
+					decode(name)
+			}
 
 			val failures = select(Failed)
 			val errors = select(Error)
