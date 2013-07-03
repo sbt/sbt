@@ -47,8 +47,8 @@ final object Aggregation
 		val log = state.log
 		val extracted = Project extract state
 		val success = results match { case Value(_) => true; case Inc(_) => false }
-		try { EvaluateTask.onResult(results, log) { results => if(show.taskValues) printSettings(results, show.print) } }
-		finally { if(show.success) printSuccess(start, stop, extracted, success, log) }
+		results.toEither.right.foreach { r => if(show.taskValues) printSettings(r, show.print) }
+		if(show.success) printSuccess(start, stop, extracted, success, log)
 	}
 	def timedRun[T](s: State, ts: Values[Task[T]], extra: DummyTaskMap): Complete[T] =
 	{
@@ -73,7 +73,10 @@ final object Aggregation
 	def runTasks[HL <: HList, T](s: State, structure: BuildStructure, ts: Values[Task[T]], extra: DummyTaskMap, show: ShowConfig)(implicit display: Show[ScopedKey[_]]): State = {
 		val complete = timedRun[T](s, ts, extra)
 		showRun(complete, show)
-		complete.state
+		complete.results match {
+			case Inc(i) => complete.state.handleError(i)
+			case Value(_) => complete.state
+		}
 	}
 
 	def printSuccess(start: Long, stop: Long, extracted: Extracted, success: Boolean, log: Logger)
