@@ -23,6 +23,7 @@ Features, fixes, changes with compatibility implications (incomplete, please hel
 - Jline and Ansi codes work better on Windows now.  CI servers might have to explictly disable Ansi codes via ``-Dsbt.log.format=false``.
 - Forked tests and runs now use the project's base directory as the current working directory.
 - ``compileInputs`` is now defined in ``(Compile,compile)`` instead of just ``Compile``
+- The result of running tests is now `Tests.Output <../../api/#sbt.Tests$$Output>`_.
 
 Features
 --------
