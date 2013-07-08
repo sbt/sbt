@@ -78,6 +78,7 @@ object ConsoleLogger
 		val value = System.getProperty("sbt.log.format")
 		if(value eq null) (ansiSupported && !getBoolean("sbt.log.noformat")) else parseBoolean(value)
 	}
+	private[this] def jline1to2CompatMsg = "Found class jline.Terminal, but interface was expected"
 
 	private[this] def ansiSupported =
 		try {
@@ -86,7 +87,15 @@ object ConsoleLogger
 			terminal.isAnsiSupported
 		} catch {
 			case e: Exception => !isWindows
+
+			// sbt 0.13 drops JLine 1.0 from the launcher and uses 2.x as a normal dependency
+			// when 0.13 is used with a 0.12 launcher or earlier, the JLine classes from the launcher get loaded
+			// this results in a linkage error as detected below.  The detection is likely jvm specific, but the priority
+			// is avoiding mistakenly identifying something as a launcher incompatibility when it is not
+			case e: IncompatibleClassChangeError if e.getMessage == jline1to2CompatMsg =>
+				throw new IncompatibleClassChangeError("JLine incompatibility detected.  Check that the sbt launcher is version 0.13.x or later.")
 		}
+
 	val noSuppressedMessage = (_: SuppressedTraceContext) => None
 
 	private[this] def os = System.getProperty("os.name")
