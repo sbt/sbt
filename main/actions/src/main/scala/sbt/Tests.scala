@@ -19,31 +19,91 @@ package sbt
 sealed trait TestOption
 object Tests
 {
-	// (overall result, individual results)
+	/** The result of a test run.
+	*
+	* @param overall The overall result of execution across all tests for all test frameworks in this test run.
+	* @param events The result of each test group (suite) executed during this test run.
+	* @param summaries Explicit summaries directly provided by test frameworks.  This may be empty, in which case a default summary will be generated.
+	*/
 	final case class Output(overall: TestResult.Value, events: Map[String,SuiteResult], summaries: Iterable[Summary])
+
+	/** Summarizes a test run.
+	*
+	* @param name The name of the test framework providing this summary.
+	* @param summaryText The summary message for tests run by the test framework.
+	*/
 	final case class Summary(name: String, summaryText: String)
 	
+	/** Defines a TestOption that will evaluate `setup` before any tests execute.
+	* The ClassLoader provided to `setup` is the loader containing the test classes that will be run.
+	* Setup is not currently performed for forked tests. */
 	final case class Setup(setup: ClassLoader => Unit) extends TestOption
+
+	/** Defines a TestOption that will evaluate `setup` before any tests execute.
+	* Setup is not currently performed for forked tests. */
 	def Setup(setup: () => Unit) = new Setup(_ => setup())
 
+	/** Defines a TestOption that will evaluate `cleanup` after all tests execute.
+	* The ClassLoader provided to `cleanup` is the loader containing the test classes that ran.
+	* Cleanup is not currently performed for forked tests. */
 	final case class Cleanup(cleanup: ClassLoader => Unit) extends TestOption
-	def Cleanup(setup: () => Unit) = new Cleanup(_ => setup())
 
+	/** Defines a TestOption that will evaluate `cleanup` after all tests execute.
+	* Cleanup is not currently performed for forked tests. */
+	def Cleanup(cleanup: () => Unit) = new Cleanup(_ => cleanup())
+
+	/** The names of tests to explicitly exclude from execution. */
 	final case class Exclude(tests: Iterable[String]) extends TestOption
+
 	final case class Listeners(listeners: Iterable[TestReportListener]) extends TestOption
+
+	/** Selects tests by name to run.  Only tests for which `filterTest` returns true will be run. */
 	final case class Filter(filterTest: String => Boolean) extends TestOption
+
 	/** Test execution will be ordered by the position of the matching filter. */
 	final case class Filters(filterTest: Seq[String => Boolean]) extends TestOption
 
-	// args for all frameworks
+	/** Defines a TestOption that passes arguments `args` to all test frameworks. */
 	def Argument(args: String*): Argument = Argument(None, args.toList)
-	// args for a particular test framework
+
+	/** Defines a TestOption that passes arguments `args` to only the test framework `tf`. */
 	def Argument(tf: TestFramework, args: String*): Argument = Argument(Some(tf), args.toList)
 
-	// None means apply to all, Some(tf) means apply to a particular framework only.
+	/** Defines arguments to pass to test frameworks.
+	*
+	* @param framework The test framework the arguments apply to if one is specified in Some.
+	*                  If None, the arguments will apply to all test frameworks.
+	* @param args The list of arguments to pass to the selected framework(s).
+	*/
 	final case class Argument(framework: Option[TestFramework], args: List[String]) extends TestOption
 
+	/** Configures test execution.
+	*
+	* @param options The options to apply to this execution, including test framework arguments, filters,
+	*                and setup and cleanup work.
+	* @param parallel If true, execute each unit of work returned by the test frameworks in separate sbt.Tasks.
+	*                 If false, execute all work in a single sbt.Task.
+	* @param tags The tags that should be added to each test task.  These can be used to apply restrictions on
+	*             concurrent execution.
+	*/
 	final case class Execution(options: Seq[TestOption], parallel: Boolean, tags: Seq[(Tag, Int)])
+
+
+	/** Configures whether a group of tests runs in the same JVM or are forked. */
+	sealed trait TestRunPolicy
+
+	/** Configures a group of tests to run in the same JVM. */
+	case object InProcess extends TestRunPolicy
+
+	/** Configures a group of tests to be forked in a new JVM with forking options specified by `config`. */
+	final case class SubProcess(config: ForkOptions) extends TestRunPolicy
+	object SubProcess {
+		@deprecated("Construct SubProcess with a ForkOptions argument.", "0.13.0")
+		def apply(javaOptions: Seq[String]): SubProcess = SubProcess(ForkOptions(runJVMOptions = javaOptions))
+	}
+
+	/** A named group of tests configured to run in the same JVM or be forked. */
+	final case class Group(name: String, tests: Seq[TestDefinition], runPolicy: TestRunPolicy)
 
 	def apply(frameworks: Map[TestFramework, Framework], testLoader: ClassLoader, runners: Map[TestFramework, Runner], discovered: Seq[TestDefinition], config: Execution, log: Logger): Task[Output] =
 	{
@@ -281,16 +341,6 @@ object Tests
 			case TestResult.Passed => 
 		}
 	}
-
-	sealed trait TestRunPolicy
-	case object InProcess extends TestRunPolicy
-	final case class SubProcess(config: ForkOptions) extends TestRunPolicy
-	object SubProcess {
-		@deprecated("Construct SubProcess with a ForkOptions argument.", "0.13.0")
-		def apply(javaOptions: Seq[String]): SubProcess = SubProcess(ForkOptions(runJVMOptions = javaOptions))
-	}
-
-	final case class Group(name: String, tests: Seq[TestDefinition], runPolicy: TestRunPolicy)
 }
 
 final class TestsFailedException extends RuntimeException("Tests unsuccessful") with FeedbackProvidedException

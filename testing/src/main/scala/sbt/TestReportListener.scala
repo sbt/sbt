@@ -28,27 +28,26 @@ trait TestsListener extends TestReportListener
   def doComplete(finalResult: TestResult.Value)
 }
 
-final class SuiteResult(val result: TestResult.Value, val passedCount: Int, val failureCount: Int, val errorCount: Int, val skippedCount: Int, 
-                        val ignoredCount: Int, val canceledCount: Int, val pendingCount: Int)
+/** Provides the overall `result` of a group of tests (a suite) and test counts for each result type. */
+final class SuiteResult(
+	val result: TestResult.Value,
+	val passedCount: Int, val failureCount: Int, val errorCount: Int,
+	val skippedCount: Int, val ignoredCount: Int, val canceledCount: Int, val pendingCount: Int)
+
 object SuiteResult
 {
+	/** Computes the overall result and counts for a suite with individual test results in `events`. */
 	def apply(events: Seq[TEvent]): SuiteResult =
 	{
 		def count(status: TStatus) = events.count(_.status == status)
-		val overallResult = (TestResult.Passed /: events) { (sum, event) =>
-			val status = event.status
-			if(sum == TestResult.Error || status == TStatus.Error) TestResult.Error
-			else if(sum == TestResult.Failed || status == TStatus.Failure) TestResult.Failed
-			else TestResult.Passed
-		}
-		new SuiteResult (overallResult, count(TStatus.Success), count(TStatus.Failure), count(TStatus.Error), count(TStatus.Skipped), 
-		                 count(TStatus.Ignored), count(TStatus.Canceled), count(TStatus.Pending))
+		new SuiteResult(TestEvent.overallResult(events), count(TStatus.Success), count(TStatus.Failure), count(TStatus.Error),
+			count(TStatus.Skipped), count(TStatus.Ignored), count(TStatus.Canceled), count(TStatus.Pending))
 	}
 	val Error: SuiteResult = new SuiteResult(TestResult.Error, 0, 0, 0, 0, 0, 0, 0)
 	val Empty: SuiteResult = new SuiteResult(TestResult.Passed, 0, 0, 0, 0, 0, 0, 0)
 }
 
-abstract class TestEvent extends NotNull
+abstract class TestEvent
 {
 	def result: Option[TestResult.Value]
 	def detail: Seq[TEvent] = Nil
@@ -56,18 +55,18 @@ abstract class TestEvent extends NotNull
 object TestEvent
 {
 	def apply(events: Seq[TEvent]): TestEvent =
-	{
-		val overallResult = (TestResult.Passed /: events) { (sum, event) =>
+		new TestEvent {
+			val result = Some(overallResult(events))
+			override val detail = events
+		}
+
+	private[sbt] def overallResult(events: Seq[TEvent]): TestResult.Value =
+		(TestResult.Passed /: events) { (sum, event) =>
 			val status = event.status
 			if(sum == TestResult.Error || status == TStatus.Error) TestResult.Error
 			else if(sum == TestResult.Failed || status == TStatus.Failure) TestResult.Failed
 			else TestResult.Passed
 		}
-		new TestEvent {
-			val result = Some(overallResult)
-			override val detail = events
-		}
-	}
 }
 
 object TestLogger
