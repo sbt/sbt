@@ -56,7 +56,7 @@ object Sbt extends Build
 	lazy val collectionSub = testedBaseProject(utilPath / "collection", "Collections") settings( Util.keywordsSettings: _* )
 	lazy val applyMacroSub = testedBaseProject(utilPath / "appmacro", "Apply Macro") dependsOn(collectionSub) settings(scalaCompiler)
 		// The API for forking, combining, and doing I/O with system processes
-	lazy val processSub = baseProject(utilPath / "process", "Process") dependsOn(ioSub % "test->test")
+	lazy val processSub = baseProject(utilPath / "process", "Process") dependsOn(ioSub % "test->test") settings(scalaXml)
 		// Path, IO (formerly FileUtilities), NameFilter and other I/O utility classes
 	lazy val ioSub = testedBaseProject(utilPath / "io", "IO") dependsOn(controlSub) settings(ioSettings : _ *)
 		// Utilities related to reflection, managing Scala versions, and custom class loaders
@@ -88,7 +88,7 @@ object Sbt extends Build
 		// Standard task system.  This provides map, flatMap, join, and more on top of the basic task model.
 	lazy val stdTaskSub = testedBaseProject(tasksPath / "standard", "Task System") dependsOn(taskSub % "compile;test->test", collectionSub, logSub, ioSub, processSub) settings( testExclusive )
 		// Persisted caching based on SBinary
-	lazy val cacheSub = baseProject(cachePath, "Cache") dependsOn(ioSub, collectionSub) settings(sbinary)
+	lazy val cacheSub = baseProject(cachePath, "Cache") dependsOn(ioSub, collectionSub) settings(sbinary, scalaXml)
 		// Builds on cache to provide caching for filesystem-related operations
 	lazy val trackingSub = baseProject(cachePath / "tracking", "Tracking") dependsOn(cacheSub, ioSub)
 		// Embedded Scala code runner
@@ -113,7 +113,7 @@ object Sbt extends Build
 		compileIncrementalSub, compilerSub, compilePersistSub, apiSub, classfileSub)
 	lazy val compilerIvySub = baseProject(compilePath / "ivy", "Compiler Ivy Integration") dependsOn(ivySub, compilerSub )
 
-	lazy val scriptedBaseSub = baseProject(scriptedPath / "base", "Scripted Framework") dependsOn(ioSub, processSub)
+	lazy val scriptedBaseSub = baseProject(scriptedPath / "base", "Scripted Framework") dependsOn(ioSub, processSub) settings(scalaParsers)
 	lazy val scriptedSbtSub = baseProject(scriptedPath / "sbt", "Scripted sbt") dependsOn(ioSub, logSub, processSub, scriptedBaseSub, launchInterfaceSub % "provided")
 	lazy val scriptedPluginSub = baseProject(scriptedPath / "plugin", "Scripted Plugin") dependsOn(sbtSub, classpathSub)
 
@@ -130,7 +130,7 @@ object Sbt extends Build
 		completeSub, classpathSub, stdTaskSub, processSub) settings( sbinary )
 
 		// The main integration project for sbt.  It brings all of the subsystems together, configures them, and provides for overriding conventions.
-	lazy val mainSub = testedBaseProject(mainPath, "Main") dependsOn(actionsSub, mainSettingsSub, interfaceSub, ioSub, ivySub, launchInterfaceSub, logSub, processSub, runSub, commandSub)
+	lazy val mainSub = testedBaseProject(mainPath, "Main") dependsOn(actionsSub, mainSettingsSub, interfaceSub, ioSub, ivySub, launchInterfaceSub, logSub, processSub, runSub, commandSub) settings(scalaXml)
 
 		// Strictly for bringing implicits and aliases from subsystems into the top-level sbt namespace through a single package object
 		//  technically, we need a dependency on all of mainSub's dependencies, but we don't do that since this is strictly an integration project
