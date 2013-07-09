@@ -253,6 +253,8 @@ Utility plugins
    https://github.com/sbt/sbt-aspectj
 -  sbt-properties:
    https://github.com/sbt/sbt-properties
+-  sbt-multi-publish (publish to more than one repository simultaneously):
+   https://github.com/davidharcombe/sbt-multi-publish
 
 Code coverage plugins
 ~~~~~~~~~~~~~~~~~~~~~
