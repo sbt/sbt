@@ -266,7 +266,7 @@ private object IvySbt
 		newDefault.setCheckmodified(false)
 		for(sbtResolver <- resolvers) {
 			log.debug("\t" + sbtResolver)
-			newDefault.add(ConvertResolver(sbtResolver)(settings, log))
+			newDefault.add(ConvertResolver(sbtResolver, settings, log))
 		}
 		newDefault
 	}
@@ -274,7 +274,7 @@ private object IvySbt
 	{
 		for(r <- resolvers) {
 			log.debug("\t" + r)
-			settings.addResolver(ConvertResolver(r)(settings, log))
+			settings.addResolver(ConvertResolver(r, settings, log))
 		}
 	}
 	/** A hack to detect if the given artifact is an automatically generated request for a classifier,
@@ -294,7 +294,7 @@ private object IvySbt
 			import IvyPatternHelper._
 			import PatternMatcher._
 			if(!existing.contains(resolver.name))
-				settings.addResolver(ConvertResolver(resolver)(settings, log))
+				settings.addResolver(ConvertResolver(resolver, settings, log))
 			val attributes = javaMap(Map(MODULE_KEY -> name, ORGANISATION_KEY -> organization, REVISION_KEY -> revision))
 			settings.addModuleConfiguration(attributes, settings.getMatcher(EXACT_OR_REGEXP), resolver.name, null, null, null)
 		}
