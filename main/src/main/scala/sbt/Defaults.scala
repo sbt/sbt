@@ -982,7 +982,6 @@ object Classpaths
 			}
 		},
 		moduleName <<= normalizedName,
-		defaultConfigurationMapping in GlobalScope <<= defaultConfiguration{ case Some(d) => "*->" + d.name; case None => "*->*" },
 		ivyPaths := new IvyPaths(baseDirectory.value, bootIvyHome(appConfiguration.value)),
 		otherResolvers := Resolver.publishMavenLocal :: publishTo.value.toList,
 		projectResolver <<= projectResolverTask,

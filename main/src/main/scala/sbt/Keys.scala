@@ -216,8 +216,7 @@ object Keys
 	val autoAPIMappings = SettingKey[Boolean]("auto-api-mappings", "If true, automatically manages mappings to the API doc URL.", BMinusSetting)
 	val scmInfo = SettingKey[Option[ScmInfo]]("scm-info", "Basic SCM information for the project.", BMinusSetting)
 	val projectInfo = SettingKey[ModuleInfo]("project-info", "Addition project information like formal name, homepage, licenses etc.", CSetting)
-	val defaultConfiguration = SettingKey[Option[Configuration]]("default-configuration", "Defines the configuration used when none is specified for a dependency.", CSetting)
-	val defaultConfigurationMapping = SettingKey[String]("default-configuration-mapping", "Defines the mapping used for a simple, unmapped configuration definition.", CSetting)
+	val defaultConfiguration = SettingKey[Option[Configuration]]("default-configuration", "Defines the configuration used when none is specified for a dependency in ivyXML.", CSetting)
 
 	val products = TaskKey[Seq[File]]("products", "Build products that get packaged.", BMinusTask)
 	@deprecated("This task is unused by the default project and will be removed.", "0.13.0")
