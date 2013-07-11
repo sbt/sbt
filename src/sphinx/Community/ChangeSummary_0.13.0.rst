@@ -13,7 +13,6 @@ Features, fixes, changes with compatibility implications (incomplete, please hel
 - Support for plugin configuration in ``project/plugins/`` has been removed.  It was deprecated since 0.11.2.
 - Dropped support for tab completing the right side of a setting for the ``set`` command.  The new task macros make this tab completion obsolete.
 - The convention for keys is now camelCase only.  Details below.
-- sbt no longer looks for main artifacts for poms with ``packaging="pom"``.  For details, see the :ref:`relevant Library Management section <packaging-pom>` and gh-636.
 - Fixed the default classifier for tests to be ``tests`` for proper Maven compatibility.
 - The global settings and plugins directories are now versioned.  Global settings go in ``~/.sbt/0.13/`` and global plugins in ``~/.sbt/0.13/plugins/`` by default.  Explicit overrides, such as via the ``sbt.global.base`` system property, are still respected.  (gh-735)
 - sbt no longer canonicalizes files passed to scalac.  (gh-723)
