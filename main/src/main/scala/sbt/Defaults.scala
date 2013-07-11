@@ -49,7 +49,7 @@ object Defaults extends BuildCommon
 		val m = (for(a <- cp; an <- a.metadata get Keys.analysis) yield (a.data, an) ).toMap
 		m.get _
 	}
-	private[this] def globalDefaults(ss: Seq[Setting[_]]): Seq[Setting[_]] = Def.defaultSettings(inScope(GlobalScope)(ss))
+	private[sbt] def globalDefaults(ss: Seq[Setting[_]]): Seq[Setting[_]] = Def.defaultSettings(inScope(GlobalScope)(ss))
 
 	def buildCore: Seq[Setting[_]] = thisBuildCore ++ globalCore
 	def thisBuildCore: Seq[Setting[_]] = inScope(GlobalScope.copy(project = Select(ThisBuild)))(Seq(
@@ -343,18 +343,20 @@ object Defaults extends BuildCommon
 	}
 	private[this] def makeClassLoader(state: State) = state.classLoaderCache.apply _
 
-	lazy val testTasks: Seq[Setting[_]] = testTaskOptions(test) ++ testTaskOptions(testOnly) ++ testTaskOptions(testQuick) ++ Seq(
-		testLoader := TestFramework.createTestLoader(data(fullClasspath.value), scalaInstance.value, IO.createUniqueDirectory(taskTemporaryDirectory.value)),
-		testFrameworks in GlobalScope :== {
+	private[this] def testDefaults = Defaults.globalDefaults(Seq(
+		testFrameworks :== {
 			import sbt.TestFrameworks._
 			Seq(ScalaCheck, Specs2, Specs, ScalaTest, JUnit)
 		},
+		testListeners :== Nil,
+		testOptions :== Nil,
+		testFilter in testOnly :== (selectedFilter _)
+	))
+	lazy val testTasks: Seq[Setting[_]] = testTaskOptions(test) ++ testTaskOptions(testOnly) ++ testTaskOptions(testQuick) ++ testDefaults ++ Seq(
+		testLoader := TestFramework.createTestLoader(data(fullClasspath.value), scalaInstance.value, IO.createUniqueDirectory(taskTemporaryDirectory.value)),
 		loadedTestFrameworks := testFrameworks.value.flatMap(f => f.create(testLoader.value, streams.value.log).map( x => (f,x)).toIterable).toMap,
 		definedTests <<= detectTests,
 		definedTestNames <<= definedTests map ( _.map(_.name).distinct) storeAs definedTestNames triggeredBy compile,
-		testListeners in GlobalScope :== Nil,
-		testOptions in GlobalScope :== Nil,
-		testFilter in testOnly :== (selectedFilter _),
 		testFilter in testQuick <<= testQuickFilter,
 		executeTests <<= (streams in test, loadedTestFrameworks, testLoader, testGrouping in test, testExecution in test, fullClasspath in test, javaHome in test) flatMap allTestGroupsTask,
 		test := {
@@ -516,10 +518,12 @@ object Defaults extends BuildCommon
 	}
 
 	lazy val packageBase: Seq[Setting[_]] = Seq(
-		artifact := Artifact(moduleName.value),
-		packageOptions in GlobalScope :== Nil,
-		artifactName in GlobalScope :== ( Artifact.artifactName _ )
-	)
+		artifact := Artifact(moduleName.value)
+	) ++ Defaults.globalDefaults(Seq(
+		packageOptions :== Nil,
+		artifactName :== ( Artifact.artifactName _ )
+	))
+
 	lazy val packageConfig: Seq[Setting[_]] =
 		inTask(packageBin)(Seq(
 			packageOptions <<= (name, version, homepage, organization, organizationName, mainClass, packageOptions) map { (name, ver, h, org, orgName, main, p) => Package.addSpecManifestAttributes(name, ver, orgName) +: Package.addImplManifestAttributes(name, ver, h, org, orgName) +: main.map(Package.MainClass.apply) ++: p })) ++
@@ -826,9 +830,8 @@ object Defaults extends BuildCommon
 	val CompletionsID = "completions"
 
 	def noAggregation: Seq[Scoped] = Seq(run, runMain, console, consoleQuick, consoleProject)
-	lazy val disableAggregation = noAggregation map disableAggregate
-	def disableAggregate(k: Scoped) =
-		aggregate in Scope.GlobalScope.copy(task = Select(k.key)) :== false
+	lazy val disableAggregation = Defaults.globalDefaults( noAggregation map disableAggregate )
+	def disableAggregate(k: Scoped) = aggregate in k :== false
 
 	lazy val baseTasks: Seq[Setting[_]] = projectTasks ++ packageBase
 
@@ -905,10 +908,13 @@ object Classpaths
 	def forallIn[T](key: SettingKey[T], pkgTasks: Seq[TaskKey[_]]): Initialize[Seq[T]] =
 		pkgTasks.map( pkg => key in pkg.scope in pkg ).join
 
-	val publishSettings: Seq[Setting[_]] = Seq(
-		publishMavenStyle in GlobalScope :== true,
-		publishArtifact in GlobalScope :== true,
-		publishArtifact in GlobalScope in Test:== false,
+	private[this] def publishGlobalDefaults = Defaults.globalDefaults(Seq(
+		publishMavenStyle :== true,
+		publishArtifact :== true,
+		publishArtifact in Test:== false
+	))
+
+	val publishSettings: Seq[Setting[_]] = publishGlobalDefaults ++ Seq(
 		artifacts <<= artifactDefs(defaultArtifactTasks),
 		packagedArtifacts <<= packaged(defaultArtifactTasks),
 		makePom := { val config = makePomConfiguration.value; IvyActions.makePom(ivyModule.value, config, streams.value.log); config.file },
@@ -919,20 +925,45 @@ object Classpaths
 		publishLocal <<= publishTask(publishLocalConfiguration, deliverLocal),
 		publishM2 <<= publishTask(publishM2Configuration, deliverLocal)
 	)
-	val baseSettings: Seq[Setting[_]] = sbtClassifiersTasks ++ Seq(
-		conflictWarning in GlobalScope :== ConflictWarning.default("global"),
+
+	private[this] def baseGlobalDefaults = Defaults.globalDefaults(Seq(
+		conflictWarning :== ConflictWarning.default("global"),
+		homepage :== None,
+		startYear :== None,
+		licenses :== Nil,
+		scmInfo :== None,
+		offline :== false,
+		defaultConfiguration :== Some(Configurations.Compile),
+		dependencyOverrides :== Set.empty,
+		libraryDependencies :== Nil,
+		ivyLoggingLevel :== UpdateLogging.DownloadOnly,
+		ivyXML :== NodeSeq.Empty,
+		ivyValidate :== false,
+		moduleConfigurations :== Nil,
+		publishTo :== None,
+		resolvers :== Nil,
+		retrievePattern :== Resolver.defaultRetrievePattern,
+		transitiveClassifiers :== Seq(SourceClassifier, DocClassifier),
+		sbtDependency := {
+			val app = appConfiguration.value
+			val id = app.provider.id
+			val scalaVersion = app.provider.scalaProvider.version
+			val binVersion = binaryScalaVersion(scalaVersion)
+			val cross = if(id.crossVersioned) CrossVersion.binary else CrossVersion.Disabled
+			val base = ModuleID(id.groupID, id.name, sbtVersion.value, crossVersion = cross)
+			CrossVersion(scalaVersion, binVersion)(base).copy(crossVersion = CrossVersion.Disabled)
+		}
+	))
+
+	val baseSettings: Seq[Setting[_]] = baseGlobalDefaults ++ sbtClassifiersTasks ++ Seq(
 		conflictWarning := conflictWarning.value.copy(label = Reference.display(thisProjectRef.value)),
 		unmanagedBase := baseDirectory.value / "lib",
 		normalizedName := Project.normalizeModuleID(name.value),
 		isSnapshot <<= isSnapshot or version(_ endsWith "-SNAPSHOT"),
 		description <<= description or name,
-		homepage in GlobalScope :== None,
-		startYear in GlobalScope :== None,
-		licenses in GlobalScope :== Nil,
 		organization <<= organization or normalizedName,
 		organizationName <<= organizationName or organization,
 		organizationHomepage <<= organizationHomepage or homepage,
-		scmInfo in GlobalScope :== None,
 		projectInfo <<= (name, description, homepage, startYear, licenses, organizationName, organizationHomepage, scmInfo) apply ModuleInfo,
 		overrideBuildResolvers <<= appConfiguration(isOverrideRepositories),
 		externalResolvers <<= (externalResolvers.task.?, resolvers, appResolvers) {
@@ -950,16 +981,12 @@ object Classpaths
 					proj +: base
 			}
 		},
-		offline in GlobalScope :== false,
 		moduleName <<= normalizedName,
-		defaultConfiguration in GlobalScope :== Some(Configurations.Compile),
 		defaultConfigurationMapping in GlobalScope <<= defaultConfiguration{ case Some(d) => "*->" + d.name; case None => "*->*" },
 		ivyPaths := new IvyPaths(baseDirectory.value, bootIvyHome(appConfiguration.value)),
 		otherResolvers := Resolver.publishMavenLocal :: publishTo.value.toList,
 		projectResolver <<= projectResolverTask,
 		projectDependencies <<= projectDependenciesTask,
-		dependencyOverrides in GlobalScope :== Set.empty,
-		libraryDependencies in GlobalScope :== Nil,
 		libraryDependencies ++= autoLibraryDependency(autoScalaLibrary.value && !scalaHome.value.isDefined && managedScalaInstance.value, sbtPlugin.value, scalaOrganization.value, scalaVersion.value),
 		allDependencies := {
 			val base = projectDependencies.value ++ libraryDependencies.value
@@ -969,22 +996,15 @@ object Classpaths
 			else
 				ScalaArtifacts.toolDependencies(scalaOrganization.value, scalaVersion.value) ++ pluginAdjust
 		},
-		ivyLoggingLevel in GlobalScope :== UpdateLogging.DownloadOnly,
-		ivyXML in GlobalScope :== NodeSeq.Empty,
-		ivyValidate in GlobalScope :== false,
 		ivyScala <<= ivyScala or (scalaHome, scalaVersion in update, scalaBinaryVersion in update, scalaOrganization) { (sh,fv,bv,so) =>
 			Some(new IvyScala(fv, bv, Nil, filterImplicit = false, checkExplicit = true, overrideScalaVersion = false, scalaOrganization = so))
 		},
-		moduleConfigurations in GlobalScope :== Nil,
-		publishTo in GlobalScope :== None,
 		artifactPath in makePom <<= artifactPathSetting(artifact in makePom),
 		publishArtifact in makePom := publishMavenStyle.value && publishArtifact.value,
 		artifact in makePom := Artifact.pom(moduleName.value),
 		projectID <<= defaultProjectID,
 		projectID <<= pluginProjectID,
-		resolvers in GlobalScope :== Nil,
 		projectDescriptors <<= depMap,
-		retrievePattern in GlobalScope :== Resolver.defaultRetrievePattern,
 		updateConfiguration := new UpdateConfiguration(retrieveConfiguration.value, false, ivyLoggingLevel.value),
 		retrieveConfiguration := { if(retrieveManaged.value) Some(new RetrieveConfiguration(managedDirectory.value, retrievePattern.value)) else None },
 		ivyConfiguration <<= mkIvyConfiguration,
@@ -1006,23 +1026,13 @@ object Classpaths
 		transitiveUpdate <<= transitiveUpdateTask,
 		update <<= updateTask tag(Tags.Update, Tags.Network),
 		update := { val report = update.value; ConflictWarning(conflictWarning.value, report, streams.value.log); report },
-		transitiveClassifiers in GlobalScope :== Seq(SourceClassifier, DocClassifier),
 		classifiersModule in updateClassifiers := GetClassifiersModule(projectID.value, update.value.allModules, ivyConfigurations.in(updateClassifiers).value, transitiveClassifiers.in(updateClassifiers).value),
 		updateClassifiers <<= (ivySbt, classifiersModule in updateClassifiers, updateConfiguration, ivyScala, appConfiguration, streams) map { (is, mod, c, ivyScala, app, s) =>
 			val out = is.withIvy(s.log)(_.getSettings.getDefaultIvyUserDir)
 			withExcludes(out, mod.classifiers, lock(app)) { excludes =>
 				IvyActions.updateClassifiers(is, GetClassifiersConfiguration(mod, excludes, c, ivyScala), s.log)
 			}
-		} tag(Tags.Update, Tags.Network),
-		sbtDependency in GlobalScope := {
-			val app = appConfiguration.value
-			val id = app.provider.id
-			val scalaVersion = app.provider.scalaProvider.version
-			val binVersion = binaryScalaVersion(scalaVersion)
-			val cross = if(id.crossVersioned) CrossVersion.binary else CrossVersion.Disabled
-			val base = ModuleID(id.groupID, id.name, sbtVersion.value, crossVersion = cross)
-			CrossVersion(scalaVersion, binVersion)(base).copy(crossVersion = CrossVersion.Disabled)
-		}
+		} tag(Tags.Update, Tags.Network)
 	)
 	def warnResolversConflict(ress: Seq[Resolver], log: Logger) {
 		val resset = ress.toSet
@@ -1052,8 +1062,10 @@ object Classpaths
 		new InlineConfiguration(projectID.value, projectInfo.value, allDependencies.value, dependencyOverrides.value, ivyXML.value, ivyConfigurations.value, defaultConfiguration.value, ivyScala.value, ivyValidate.value, conflictManager.value)
 	}
 
-	def sbtClassifiersTasks = inTask(updateSbtClassifiers)(Seq(
-		transitiveClassifiers in GlobalScope in updateSbtClassifiers ~= ( _.filter(_ != DocClassifier) ),
+	private[this] def sbtClassifiersGlobalDefaults = Defaults.globalDefaults(Seq(
+		transitiveClassifiers in updateSbtClassifiers ~= ( _.filter(_ != DocClassifier) )
+	))
+	def sbtClassifiersTasks = sbtClassifiersGlobalDefaults ++ inTask(updateSbtClassifiers)(Seq(
 		externalResolvers := {
 			val explicit = buildStructure.value.units(thisProjectRef.value.build).unit.plugins.pluginData.resolvers
 			explicit orElse bootRepositories(appConfiguration.value) getOrElse externalResolvers.value
