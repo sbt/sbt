@@ -149,12 +149,10 @@ object TestFramework
 		testLoader: ClassLoader,
 		tests: Seq[TestDefinition],
 		log: Logger,
-		listeners: Seq[TestReportListener],
-		testArgsByFramework: Map[Framework, Seq[String]]):
+		listeners: Seq[TestReportListener]):
 			(() => Unit, Seq[(String, TestFunction)], TestResult.Value => () => Unit) =
 	{
-		val arguments = testArgsByFramework withDefaultValue Nil
-		val mappedTests = testMap(frameworks.values.toSeq, tests, arguments)
+		val mappedTests = testMap(frameworks.values.toSeq, tests)
 		if(mappedTests.isEmpty)
 			(() => (), Nil, _ => () => () )
 		else
@@ -164,8 +162,7 @@ object TestFramework
 	private[this] def order(mapped: Map[String, TestFunction], inputs: Seq[TestDefinition]): Seq[(String, TestFunction)] =
 		for( d <- inputs; act <- mapped.get(d.name) ) yield (d.name, act)
 
-	private[this] def testMap(frameworks: Seq[Framework], tests: Seq[TestDefinition], args: Map[Framework, Seq[String]]):
-		Map[Framework, (Set[TestDefinition], Seq[String])] =
+	private[this] def testMap(frameworks: Seq[Framework], tests: Seq[TestDefinition]): Map[Framework, Set[TestDefinition]] =
 	{
 		import scala.collection.mutable.{HashMap, HashSet, Set}
 		val map = new HashMap[Framework, Set[TestDefinition]]
@@ -180,7 +177,7 @@ object TestFramework
 		}
 		if(!frameworks.isEmpty)
 			assignTests()
-		map.toMap transform { (framework, tests) => ( mergeDuplicates(framework, tests.toSeq), args(framework)) };
+		map.toMap transform { (framework, tests) => mergeDuplicates(framework, tests.toSeq) }
 	}
 	private[this] def mergeDuplicates(framework: Framework, tests: Seq[TestDefinition]): Set[TestDefinition] =
 	{
@@ -193,7 +190,7 @@ object TestFramework
 		uniqueDefs.toSet
 	}
 
-	private def createTestTasks(loader: ClassLoader, runners: Map[Framework, TestRunner], tests: Map[Framework, (Set[TestDefinition], Seq[String])], ordered: Seq[TestDefinition], log: Logger, listeners: Seq[TestReportListener]) =
+	private def createTestTasks(loader: ClassLoader, runners: Map[Framework, TestRunner], tests: Map[Framework, Set[TestDefinition]], ordered: Seq[TestDefinition], log: Logger, listeners: Seq[TestReportListener]) =
 	{
 		val testsListeners = listeners collect { case tl: TestsListener => tl }
 
@@ -203,7 +200,7 @@ object TestFramework
 
 		val startTask = foreachListenerSafe(_.doInit)
 		val testTasks =
-			tests flatMap { case (framework, (testDefinitions, testArgs)) =>
+			tests flatMap { case (framework, testDefinitions) =>
 				val runner = runners(framework)
 				val testTasks = withContextLoader(loader) { runner.tasks(testDefinitions) }
 				for (testTask <- testTasks) yield {

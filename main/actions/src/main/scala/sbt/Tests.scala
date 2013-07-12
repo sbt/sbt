@@ -113,15 +113,7 @@ object Tests
 		val excludeTestsSet = new HashSet[String]
 		val setup, cleanup = new ListBuffer[ClassLoader => Unit]
 		val testListeners = new ListBuffer[TestReportListener]
-		val testArgsByFramework = Map[Framework, ListBuffer[String]]()
 		val undefinedFrameworks = new ListBuffer[String]
-		def frameworkArgs(framework: Framework, args: Seq[String]): Unit =
-			testArgsByFramework.getOrElseUpdate(framework, new ListBuffer[String]) ++= args
-		def frameworkArguments(framework: TestFramework, args: Seq[String]): Unit =
-			(frameworks get framework) match {
-				case Some(f) => frameworkArgs(f, args)
-				case None => undefinedFrameworks ++= framework.implClassNames
-			}
 
 		for(option <- config.options)
 		{
@@ -142,8 +134,7 @@ object Tests
 					*   -- command line arguments (ex: test-only someClass -- someArg)
 					*      (currently, command line args must be passed to all frameworks)
 					*/
-				case Argument(Some(framework), args) => frameworkArguments(framework, args)
-				case Argument(None, args) => frameworks.values.foreach { f => frameworkArgs(f, args) }
+				case a: Argument => // now handled by whatever constructs `runners`
 			}
 		}
 
@@ -155,19 +146,18 @@ object Tests
 		def includeTest(test: TestDefinition) = !excludeTestsSet.contains(test.name) && testFilters.forall(filter => filter(test.name))
 		val filtered0 = discovered.filter(includeTest).toList.distinct
 		val tests = if(orderedFilters.isEmpty) filtered0 else orderedFilters.flatMap(f => filtered0.filter(d => f(d.name))).toList.distinct
-		val arguments = testArgsByFramework.map { case (k,v) => (k, v.toList) } toMap;
-		testTask(testLoader, frameworks, runners, tests, setup.readOnly, cleanup.readOnly, log, testListeners.readOnly, arguments, config)
+		testTask(testLoader, frameworks, runners, tests, setup.readOnly, cleanup.readOnly, log, testListeners.readOnly, config)
 	}
 
 	def testTask(loader: ClassLoader, frameworks: Map[TestFramework, Framework], runners: Map[TestFramework, Runner], tests: Seq[TestDefinition],
 		userSetup: Iterable[ClassLoader => Unit], userCleanup: Iterable[ClassLoader => Unit],
-		log: Logger, testListeners: Seq[TestReportListener], arguments: Map[Framework, Seq[String]], config: Execution): Task[Output] =
+		log: Logger, testListeners: Seq[TestReportListener], config: Execution): Task[Output] =
 	{
 		def fj(actions: Iterable[() => Unit]): Task[Unit] = nop.dependsOn( actions.toSeq.fork( _() ) : _*)
 		def partApp(actions: Iterable[ClassLoader => Unit]) = actions.toSeq map {a => () => a(loader) }
 
 		val (frameworkSetup, runnables, frameworkCleanup) =
-			TestFramework.testTasks(frameworks, runners, loader, tests, log, testListeners, arguments)
+			TestFramework.testTasks(frameworks, runners, loader, tests, log, testListeners)
 
 		val setupTasks = fj(partApp(userSetup) :+ frameworkSetup)
 		val mainTasks =
