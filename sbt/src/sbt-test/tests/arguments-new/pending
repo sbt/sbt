@@ -1,0 +1,26 @@
+# should fail because it should run all test:tests, some of which are expected to fail (1 and 4)
+-> test:test
+
+$ touch success1
+> test:test
+$ delete success1
+
+$ touch failure1
+-> test:test
+$ delete failure1
+
+$ touch success2
+> test:test
+$ delete success2
+
+$ touch failure2
+-> test:test
+$ delete failure2
+
+$ touch success3
+> test:test
+$ delete success3
+
+$ touch failure3
+-> test:test
+$ delete failure3
