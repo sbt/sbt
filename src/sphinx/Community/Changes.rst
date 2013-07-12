@@ -352,10 +352,10 @@ Some of the more visible changes:
 -  Scala 2.8.1 is the default version used when starting a new project.
 -  Updated to `Ivy 2.2.0 <http://ant.apache.org/ivy/history/2.2.0/release-notes.html>`_.
 -  Trond's patches that allow configuring
-   `jetty-env.xml <http://github.com/harrah/xsbt/commit/5e41a47f50e6>`_
+   `jetty-env.xml <http://github.com/sbt/sbt/commit/5e41a47f50e6>`_
    and
-   `webdefault.xml <http://github.com/harrah/xsbt/commit/030e2ee91bac0>`_
--  Doug's `patch <http://github.com/harrah/xsbt/commit/aa75ecf7055db>`_
+   `webdefault.xml <http://github.com/sbt/sbt/commit/030e2ee91bac0>`_
+-  Doug's `patch <http://github.com/sbt/sbt/commit/aa75ecf7055db>`_
    to make 'projects' command show an asterisk next to current project
 -  Fixed issue 122
 -  Implemented issue 118
