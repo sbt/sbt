@@ -1,4 +1,4 @@
-libraryDependencies += "org.scalatest" % "scalatest_2.10" % "2.0.M6-SNAP26" % "test"
+libraryDependencies += "org.scalatest" % "scalatest_2.10" % "2.0.M6-SNAP28" % "test"
 
 
 testOptions in Configurations.Test ++= {
