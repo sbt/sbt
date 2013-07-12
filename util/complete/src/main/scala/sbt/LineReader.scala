@@ -102,6 +102,7 @@ private object JLine
 	def createReader(historyPath: Option[File]): ConsoleReader =
 		usingTerminal { t =>
 			val cr = new ConsoleReader
+			cr.setExpandEvents(false) // https://issues.scala-lang.org/browse/SI-7650
 			cr.setBellEnabled(false)
 			val h = historyPath match {
 				case None => new MemoryHistory
