@@ -513,23 +513,6 @@ This is confirmed by the output of ``show update``:
 
 **Note:** this is an Ivy-only feature and will not be included in a published pom.xml.
 
-
-.. _packaging-pom:
-
-packaging="pom"
-~~~~~~~~~~~~~~~
-
-A pom.xml that has `packaging="pom"` is not supposed to have artifacts.
-However, some published poms have an associated main artifact, so Ivy checks if one exists.
-This check can be time consuming to the point of taking most of the time for `update` on larger projects.
-Therefore, sbt disables this check and requires you to explicitly request the main jar.
-
-For example,
-
-::
-
-    libraryDependencies += "org.apache.velocity" % "velocity" % "1.5" jar()
-
 Publishing
 ~~~~~~~~~~
 

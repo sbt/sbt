@@ -162,7 +162,7 @@ The default configuration file for sbt looks like:
       sonatype-snapshots: https://oss.sonatype.org/content/repositories/snapshots
 
     [boot]
-     directory: ${sbt.boot.directory-${sbt.global.base-${user.home}/.sbt}/boot/}
+      directory: ${sbt.boot.directory-${sbt.global.base-${user.home}/.sbt}/boot/}
 
     [ivy]
       ivy-home: ${sbt.ivy.home-${user.home}/.ivy2/}
@@ -182,8 +182,8 @@ classifiers, such as 'sources', of extra Scala artifacts to retrieve.
 The ``app.org``, ``app.name``, and ``app.version`` properties specify
 the organization, module ID, and version of the application,
 respectively. These are used to resolve and retrieve the application
-from the repositories listed in ``[repositories]``. If 
-``app.cross-versioned`` is ``binary``, the resolved module ID is 
+from the repositories listed in ``[repositories]``. If
+``app.cross-versioned`` is ``binary``, the resolved module ID is
 ``{app.name+'_'+CrossVersion.binaryScalaVersion(scala.version)}``.
 If ``app.cross-versioned`` is ``true`` or ``full``, the resolved module ID is
 ``{app.name+'_'+scala.version}``. The ``scala.version`` property must be
@@ -363,7 +363,7 @@ it might look like:
       local
       maven-central
     [boot]
-     directory: ${user.home}/.myapp/boot
+      directory: ${user.home}/.myapp/boot
 
 Then, ``publishLocal`` or ``+publishLocal`` the application to make it
 available.

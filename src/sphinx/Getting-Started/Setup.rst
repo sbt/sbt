@@ -86,11 +86,13 @@ merge sbt from this ebuilds you can do:
 Manual Installation
 -------------------
 
+Manual installation requires downloading `sbt-launch.jar`_ and creating a script to start it.
+
 
 Unix
 ~~~~
 
-Put sbt-launch.jar in ``~/bin``.
+Put `sbt-launch.jar`_ in ``~/bin``.
 
 Create a script to run the jar, by creating ``~/bin/sbt`` with these contents:
 
@@ -120,7 +122,7 @@ For **non-Cygwin users using the standard Windows terminal**, create a batch fil
     $ set SCRIPT_DIR=%~dp0
     $ java -Xms512M -Xmx1536M -Xss1M -XX:+CMSClassUnloadingEnabled -XX:MaxPermSize=256M -jar "%SCRIPT_DIR%sbt-launch.jar" %*
 
-and put sbt-launch.jar in the same directory as the batch file.
+and put the downloaded `sbt-launch.jar`_ in the same directory as the batch file.
 
 If using **Cygwin with the standard Windows terminal**, create a bash script ``~/bin/sbt``: 
 
@@ -129,7 +131,7 @@ If using **Cygwin with the standard Windows terminal**, create a bash script ``~
     $ SBT_OPTS="-Xms512M -Xmx1536M -Xss1M -XX:+CMSClassUnloadingEnabled -XX:MaxPermSize=256M"
     $ java $SBT_OPTS -jar sbt-launch.jar "$@"
 
-Replace ``sbt-launch.jar`` with your path the the launcher jar and remember to use ``cygpath`` if necessary.
+Replace ``sbt-launch.jar`` with the path to your downloaded `sbt-launch.jar`_ and remember to use ``cygpath`` if necessary.
 Make the script executable:
 
 .. code-block:: console
@@ -145,7 +147,7 @@ If using **Cygwin with an Ansi terminal** (supports Ansi escape sequences and is
     $ java -Djline.terminal=jline.UnixTerminal -Dsbt.cygwin=true $SBT_OPTS -jar sbt-launch.jar "$@"
     $ stty icanon echo > /dev/null 2>&1
 
-Replace ``sbt-launch.jar`` with your path the the launcher jar and remember to use ``cygpath`` if necessary.
+Replace ``sbt-launch.jar`` with the path to your downloaded `sbt-launch.jar`_ and remember to use ``cygpath`` if necessary.
 Then, make the script executable:
 
 .. code-block:: console
@@ -155,7 +157,7 @@ Then, make the script executable:
 .. note::
 
     Other configurations are currently unsupported.
-    Please feel free to `submit a pull request <https://github.com/sbt/sbt/blob/0.13/CONTRIBUTING.md>`_ implementing or describing that support.
+    Please `submit a pull request <https://github.com/sbt/sbt/blob/0.13/CONTRIBUTING.md>`_ implementing or describing that support.
 
 Tips and Notes
 ==============

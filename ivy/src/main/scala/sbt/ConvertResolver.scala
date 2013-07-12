@@ -15,7 +15,7 @@ import plugins.resolver.{AbstractPatternsBasedResolver, AbstractSshBasedResolver
 private object ConvertResolver
 {
 	/** Converts the given sbt resolver into an Ivy resolver..*/
-	def apply(r: Resolver)(implicit settings: IvySettings, log: Logger) =
+	def apply(r: Resolver, settings: IvySettings, log: Logger) =
 	{
 		r match
 		{
@@ -45,21 +45,21 @@ private object ConvertResolver
 			case repo: SshRepository =>
 			{
 				val resolver = new SshResolver with DescriptorRequired
-				initializeSSHResolver(resolver, repo)
+				initializeSSHResolver(resolver, repo, settings)
 				repo.publishPermissions.foreach(perm => resolver.setPublishPermissions(perm))
 				resolver
 			}
 			case repo: SftpRepository =>
 			{
 				val resolver = new SFTPResolver
-				initializeSSHResolver(resolver, repo)
+				initializeSSHResolver(resolver, repo, settings)
 				resolver
 			}
 			case repo: FileRepository =>
 			{
 				val resolver = new FileSystemResolver with DescriptorRequired
 				resolver.setName(repo.name)
-				initializePatterns(resolver, repo.patterns)
+				initializePatterns(resolver, repo.patterns, settings)
 				import repo.configuration.{isLocal, isTransactional}
 				resolver.setLocal(isLocal)
 				isTransactional.foreach(value => resolver.setTransactional(value.toString))
@@ -69,7 +69,7 @@ private object ConvertResolver
 			{
 				val resolver = new URLResolver with DescriptorRequired
 				resolver.setName(repo.name)
-				initializePatterns(resolver, repo.patterns)
+				initializePatterns(resolver, repo.patterns, settings)
 				resolver
 			}
 			case repo: ChainedResolver => IvySbt.resolverChain(repo.name, repo.resolvers, false, settings, log)
@@ -95,11 +95,11 @@ private object ConvertResolver
 		resolver.setM2compatible(true)
 		resolver.setRoot(root)
 	}
-	private def initializeSSHResolver(resolver: AbstractSshBasedResolver, repo: SshBasedRepository)(implicit settings: IvySettings)
+	private def initializeSSHResolver(resolver: AbstractSshBasedResolver, repo: SshBasedRepository, settings: IvySettings)
 	{
 		resolver.setName(repo.name)
 		resolver.setPassfile(null)
-		initializePatterns(resolver, repo.patterns)
+		initializePatterns(resolver, repo.patterns, settings)
 		initializeConnection(resolver, repo.connection)
 	}
 	private def initializeConnection(resolver: AbstractSshBasedResolver, connection: RepositoryHelpers.SshConnection)
@@ -119,7 +119,7 @@ private object ConvertResolver
 					setUser(user)
 			}
 	}
-	private def initializePatterns(resolver: AbstractPatternsBasedResolver, patterns: Patterns)(implicit settings: IvySettings)
+	private def initializePatterns(resolver: AbstractPatternsBasedResolver, patterns: Patterns, settings: IvySettings)
 	{
 		resolver.setM2compatible(patterns.isMavenCompatible)
 		patterns.ivyPatterns.foreach(p => resolver.addIvyPattern(settings substitute p))

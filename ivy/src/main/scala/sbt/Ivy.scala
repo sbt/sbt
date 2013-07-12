@@ -245,14 +245,17 @@ private object IvySbt
 			// Technically, this should be applied to module configurations.
 			// That would require custom subclasses of all resolver types in ConvertResolver (a delegation approach does not work).
 			// It would be better to get proper support into Ivy.
+			// A workaround is to configure the ModuleConfiguration resolver to be a ChainResolver.
 			//
 			// This method is only used by the pom parsing code in Ivy to find artifacts it doesn't know about.
 			// In particular, a) it looks up source and javadoc classifiers b) it looks up a main artifact for packaging="pom"
 			// sbt now provides the update-classifiers or requires explicitly specifying classifiers explicitly
-			// Providing a main artifact for packaging="pom" does not seem to be correct and the lookup can be expensive, so
- 			// sbt now requires this artifact to be explicitly declared.
-			override def locate(artifact: IArtifact) = null
-//				if(hasImplicitClassifier(artifact)) null else super.locate(artifact)
+			// Providing a main artifact for packaging="pom" does not seem to be correct and the lookup can be expensive.
+			// 
+			// Ideally this could just skip the lookup, but unfortunately several artifacts in practice do not follow the
+			// correct behavior for packaging="pom" and so it is only skipped for source/javadoc classifiers.
+			override def locate(artifact: IArtifact) = if(hasImplicitClassifier(artifact)) null else super.locate(artifact)
+
 			override def getDependency(dd: DependencyDescriptor, data: ResolveData) =
 			{
 				if(data.getOptions.getLog != LogOptions.LOG_QUIET)
@@ -266,7 +269,7 @@ private object IvySbt
 		newDefault.setCheckmodified(false)
 		for(sbtResolver <- resolvers) {
 			log.debug("\t" + sbtResolver)
-			newDefault.add(ConvertResolver(sbtResolver)(settings, log))
+			newDefault.add(ConvertResolver(sbtResolver, settings, log))
 		}
 		newDefault
 	}
@@ -274,7 +277,7 @@ private object IvySbt
 	{
 		for(r <- resolvers) {
 			log.debug("\t" + r)
-			settings.addResolver(ConvertResolver(r)(settings, log))
+			settings.addResolver(ConvertResolver(r, settings, log))
 		}
 	}
 	/** A hack to detect if the given artifact is an automatically generated request for a classifier,
@@ -294,7 +297,7 @@ private object IvySbt
 			import IvyPatternHelper._
 			import PatternMatcher._
 			if(!existing.contains(resolver.name))
-				settings.addResolver(ConvertResolver(resolver)(settings, log))
+				settings.addResolver(ConvertResolver(resolver, settings, log))
 			val attributes = javaMap(Map(MODULE_KEY -> name, ORGANISATION_KEY -> organization, REVISION_KEY -> revision))
 			settings.addModuleConfiguration(attributes, settings.getMatcher(EXACT_OR_REGEXP), resolver.name, null, null, null)
 		}

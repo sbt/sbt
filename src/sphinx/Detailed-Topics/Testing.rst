@@ -15,16 +15,16 @@ The resources may be accessed from tests by using the ``getResource``
 methods of ``java.lang.Class`` or ``java.lang.ClassLoader``.
 
 The main Scala testing frameworks
-(`specs2 <http://etorreborre.github.com/specs2/>`_,
-`ScalaCheck <http://code.google.com/p/scalacheck/>`_, and
-`ScalaTest <http://www.artima.com/scalatest/>`_) provide an
+(`specs2 <http://specs2.org/>`_,
+`ScalaCheck <http://scalacheck.org/>`_, and
+`ScalaTest <http://scalatest.org/>`_) provide an
 implementation of the common test interface and only need to be added to
 the classpath to work with sbt. For example, ScalaCheck may be used by
 declaring it as a :doc:`managed dependency <Library-Management>`:
 
 ::
 
-    libraryDependencies += "org.scala-tools.testing" %% "scalacheck" % "1.9" % "test"
+    libraryDependencies += "org.scalacheck" %% "scalacheck" % "1.9" % "test"
 
 The fourth component ``"test"`` is the :ref:`configuration <gsg-ivy-configurations>`
 and means that ScalaCheck will only be on the test classpath and it
@@ -241,7 +241,7 @@ The following full build configuration demonstrates integration tests.
           .settings( Defaults.itSettings : _*)
           .settings( libraryDependencies += specs )
 
-      lazy val specs = "org.scala-tools.testing" %% "specs" % "1.6.8" % "it,test"
+      lazy val specs = "org.specs2" %% "specs2" % "2.0" % "it,test"
     }
 
 -  ``configs(IntegrationTest)`` adds the predefined integration test
@@ -312,7 +312,7 @@ The previous example may be generalized to a custom test configuration.
           .settings( libraryDependencies += specs )
 
       lazy val FunTest = config("fun") extend(Test)
-      lazy val specs = "org.scala-tools.testing" %% "specs" % "1.6.8" % "fun"
+      lazy val specs = "org.specs2" %% "specs2" % "2.0" % "fun"
     }
 
 Instead of using the built-in configuration, we defined a new one:
@@ -368,16 +368,16 @@ However, different tests are run depending on the configuration.
           .configs( FunTest )
           .settings( inConfig(FunTest)(Defaults.testTasks) : _*)
           .settings(
-             libraryDependencies += specs,
-             testOptions in Test := Seq(Tests.Filter(itFilter)),
-             testOptions in FunTest := Seq(Tests.Filter(unitFilter))
-             )
+            libraryDependencies += specs,
+            testOptions in Test := Seq(Tests.Filter(itFilter)),
+            testOptions in FunTest := Seq(Tests.Filter(unitFilter))
+          )
 
       def itFilter(name: String): Boolean = name endsWith "ITest"
       def unitFilter(name: String): Boolean = (name endsWith "Test") && !itFilter(name)
 
       lazy val FunTest = config("fun") extend(Test)
-      lazy val specs = "org.scala-tools.testing" %% "specs" % "1.6.8" % "test"
+      lazy val specs = "org.specs2" %% "specs2" % "2.0" % "test"
     }
 
 The key differences are:
@@ -434,7 +434,7 @@ your project's main build.sbt file.
 
 ::
 
-    libraryDependencies += "com.novocode" % "junit-interface" % "0.8" % "test->default"
+    libraryDependencies += "com.novocode" % "junit-interface" % "0.9" % "test"
 
 Extensions
 ==========
@@ -452,7 +452,7 @@ Custom Test Framework
 
 The main Scala testing libraries have built-in support for sbt.
 To add support for a different framework, implement the
-`uniform test interface <http://github.com/harrah/test-interface>`_.
+`uniform test interface <http://github.com/sbt/test-interface>`_.
 
 Custom Test Reporters
 ---------------------

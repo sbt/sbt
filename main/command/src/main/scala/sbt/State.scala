@@ -79,6 +79,12 @@ trait StateOps {
 	/** Marks the currently executing command as failing.  This triggers failure handling by the command processor.  See also `State.onFailure`*/
 	def fail: State
 
+	/** Marks the currently executing command as failing due to the given exception.
+	* This displays the error appropriately and triggers failure handling by the command processor.
+	* Note that this does not throw an exception and returns normally.
+	* It is only once control is returned to the command processor that failure handling at the command level occurs. */
+	def handleError(t: Throwable): State
+
 	/** Schedules `newCommands` to be run after any remaining commands. */
 	def ++ (newCommands: Seq[Command]): State
 	/** Schedules `newCommand` to be run after any remaining commands. */
@@ -190,6 +196,7 @@ object State
 		def has(key: AttributeKey[_]) = s.attributes contains key
 		def remove(key: AttributeKey[_]) = s.copy(attributes = s.attributes remove key)
 		def log = s.globalLogging.full
+		def handleError(t: Throwable): State = handleException(t, s, log)
 		def fail =
 		{
 			val remaining = s.remainingCommands.dropWhile(_ != FailureWall)
@@ -204,6 +211,7 @@ object State
 				case Some(c) => s.copy(remainingCommands = c +: remaining, onFailure = None)
 				case None => noHandler
 			}
+
 
 		def addExitHook(act: => Unit): State =
 			s.copy(exitHooks = s.exitHooks + ExitHook(act))
@@ -220,5 +228,23 @@ object State
 		def classLoaderCache: classpath.ClassLoaderCache = s get BasicKeys.classLoaderCache getOrElse newClassLoaderCache
 		def initializeClassLoaderCache = s.put(BasicKeys.classLoaderCache, newClassLoaderCache)
 		private[this] def newClassLoaderCache = new classpath.ClassLoaderCache(s.configuration.provider.scalaProvider.launcher.topLoader)
+	}
+
+		import ExceptionCategory._
+
+	private[sbt] def handleException(t: Throwable, s: State, log: Logger): State =
+	{
+		ExceptionCategory(t) match {
+			case AlreadyHandled => ()
+			case m: MessageOnly => log.error(m.message)
+			case f: Full => logFullException(f.exception, log)
+		}
+		s.fail
+	}
+	private[sbt] def logFullException(e: Throwable, log: Logger)
+	{
+		log.trace(e)
+		log.error(ErrorHandling reducedToString e)
+		log.error("Use 'last' for the full log.")
 	}
 }

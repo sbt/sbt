@@ -1,0 +1,9 @@
+> check 0
+-> test-task
+> check 1
+-> test-task
+> check 2
+> b/test-task
+> check 3
+-> a/test-task
+> check 3

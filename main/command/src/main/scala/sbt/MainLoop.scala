@@ -75,23 +75,11 @@ object MainLoop
 			case Left(t) => handleException(t, state)
 		}
 
-		import ExceptionCategory._
+	@deprecated("Use State.handleError", "0.13.0")
+	def handleException(e: Throwable, s: State): State = s.handleError(e)
 
-	def handleException(e: Throwable, s: State): State =
-		handleException(e, s, s.log)
-	def handleException(t: Throwable, s: State, log: Logger): State =
-	{
-		ExceptionCategory(t) match {
-			case AlreadyHandled => ()
-			case m: MessageOnly => log.error(m.message)
-			case f: Full => logFullException(f.exception, log)
-		}
-		s.fail
-	}
-	def logFullException(e: Throwable, log: Logger)
-	{
-		log.trace(e)
-		log.error(ErrorHandling reducedToString e)
-		log.error("Use 'last' for the full log.")
-	}
+	@deprecated("Use State.handleError", "0.13.0")
+	def handleException(t: Throwable, s: State, log: Logger): State = State.handleException(t, s, log)
+
+	def logFullException(e: Throwable, log: Logger): Unit = State.logFullException(e, log)
 }

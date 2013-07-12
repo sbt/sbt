@@ -13,12 +13,16 @@ Features, fixes, changes with compatibility implications (incomplete, please hel
 - Support for plugin configuration in ``project/plugins/`` has been removed.  It was deprecated since 0.11.2.
 - Dropped support for tab completing the right side of a setting for the ``set`` command.  The new task macros make this tab completion obsolete.
 - The convention for keys is now camelCase only.  Details below.
-- sbt no longer looks for main artifacts for poms with ``packaging="pom"``.  For details, see the :ref:`relevant Library Management section <packaging-pom>` and gh-636.
 - Fixed the default classifier for tests to be ``tests`` for proper Maven compatibility.
 - The global settings and plugins directories are now versioned.  Global settings go in ``~/.sbt/0.13/`` and global plugins in ``~/.sbt/0.13/plugins/`` by default.  Explicit overrides, such as via the ``sbt.global.base`` system property, are still respected.  (gh-735)
 - sbt no longer canonicalizes files passed to scalac.  (gh-723)
 - sbt now enforces that each project must have a unique ``target`` directory.
 - sbt no longer overrides the Scala version in dependencies.  This allows independent configurations to depend on different Scala versions and treats Scala dependencies other than scala-library as normal dependencies.  However, it can result in resolved versions other than ``scalaVersion`` for those other Scala libraries.
+- JLine is now configured differently for Cygwin.  See :doc:`/Getting-Started/Setup`.
+- Jline and Ansi codes work better on Windows now.  CI servers might have to explictly disable Ansi codes via ``-Dsbt.log.format=false``.
+- Forked tests and runs now use the project's base directory as the current working directory.
+- ``compileInputs`` is now defined in ``(Compile,compile)`` instead of just ``Compile``
+- The result of running tests is now `Tests.Output <../../api/#sbt.Tests$$Output>`_.
 
 Features
 --------
