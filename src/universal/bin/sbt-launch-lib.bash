@@ -31,8 +31,7 @@ dlog () {
 }
 
 jar_file () {
-  # TODO - Is this where we want the launch jar?
-  echo "${sbt_home}/bin/sbt-launch.jar"
+  echo "$(cygwinpath "${sbt_home}/bin/sbt-launch.jar")"
 }
 
 acquire_sbt_jar () {

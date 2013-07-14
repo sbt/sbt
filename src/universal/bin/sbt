@@ -8,6 +8,7 @@
 realpath () {
 (
   TARGET_FILE="$1"
+  FIX_CYGPATH="$2"
 
   cd $(dirname "$TARGET_FILE")
   TARGET_FILE=$(basename "$TARGET_FILE")
@@ -22,7 +23,11 @@ realpath () {
   done
 
   # make sure we grab the actual windows path, instead of cygwin's path.
-  echo $(cygwinpath "$(pwd -P)/$TARGET_FILE")
+  if [[ "x$FIX_CYGPATH" != "x" ]]; then
+    echo "$(cygwinpath "$(pwd -P)/$TARGET_FILE")"
+  else
+    echo "$(pwd -P)/$TARGET_FILE"
+  fi
 )
 }
 
@@ -51,11 +56,7 @@ cygwinpath() {
   fi
 }
 
-if [[ "$CYGWIN_FLAG" == "true" ]]; then
-  . $(dirname "$(cygpath "$(realpath "$0")")")/sbt-launch-lib.bash
-else
-  . $(dirname "$(realpath "$0")")/sbt-launch-lib.bash
-fi
+. $(dirname "$(realpath "$0")")/sbt-launch-lib.bash
 
 
 declare -r noshare_opts="-Dsbt.global.base=project/.sbtboot -Dsbt.boot.directory=project/.boot -Dsbt.ivy.home=project/.ivy"
