@@ -8,7 +8,7 @@ object Packaging {
   val sbtLaunchJarUrl = SettingKey[String]("sbt-launch-jar-url")
   val sbtLaunchJarLocation = SettingKey[File]("sbt-launch-jar-location")  
   val sbtLaunchJar = TaskKey[File]("sbt-launch-jar", "Resolves SBT launch jar")
-
+  val moduleID = (organization, sbtVersion) apply { (o,v) => ModuleID(o,"sbt",v) }
   val stagingDirectory = SettingKey[File]("staging-directory")
   val stage = TaskKey[File]("stage")
 
@@ -95,10 +95,10 @@ object Packaging {
     mappings in Universal <+= sbtLaunchJar map { _ -> "bin/sbt-launch.jar" },
     
     // Misccelaneous publishing stuff...
-    projectID in Debian    <<= (organization, sbtVersion) apply { (o,v) => ModuleID(o,"sbt",v) },
-    projectID in Windows   <<= (organization, sbtVersion) apply { (o,v) => ModuleID(o,"sbt",v) },
-    projectID in Rpm       <<= (organization, sbtVersion) apply { (o,v) => ModuleID(o,"sbt",v) },
-    projectID in Universal <<= (organization, sbtVersion) apply { (o,v) => ModuleID(o,"sbt",v) },
+    projectID in Debian    <<= moduleID,
+    projectID in Windows   <<= moduleID,
+    projectID in Rpm       <<= moduleID,
+    projectID in Universal <<= moduleID,
     stagingDirectory <<= (target) apply { (t) => t / "stage" },
     stage <<= (stagingDirectory, mappings in Universal) map { (dir, m) =>
       val files = for((file, name) <- m)
