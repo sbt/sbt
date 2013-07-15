@@ -46,7 +46,7 @@ build.sbt
 
 ::
 
-    val hello = taskKey[Unit]("Prints 'Hello World'")
+    lazy val hello = taskKey[Unit]("Prints 'Hello World'")
 
     hello := println("hello world!")
 
@@ -56,11 +56,11 @@ see this task listed.
 Define the key
 --------------
 
-To declare a new task, define a val of type ``TaskKey``:
+To declare a new task, define a lazy val of type ``TaskKey``:
 
 ::
 
-    val sampleTask = taskKey[Int]("A sample task.")
+    lazy val sampleTask = taskKey[Int]("A sample task.")
 
 The name of the ``val`` is used when referring to the task in Scala code and at the command line.
 The string passed to the ``taskKey`` method is a description of the task.
@@ -70,8 +70,8 @@ We'll define a couple of other keys for the examples:
 
 ::
 
-    val intTask = taskKey[Int]("An int task")
-    val stringTask = taskKey[String]("A string task")
+    lazy val intTask = taskKey[Int]("An int task")
+    lazy val stringTask = taskKey[String]("A string task")
 
 The examples themselves are valid entries in a ``build.sbt`` or can be
 provided as part of a sequence to ``Project.settings`` (see
@@ -184,7 +184,7 @@ For example, a basic separate definition looks like:
 ::
 
     // Define a new, standalone task implemention
-    val intTaskImpl: Initialize[Task[Int]] =
+    lazy val intTaskImpl: Initialize[Task[Int]] =
        Def.task { sampleTask.value - 3 }
 
     // Bind the implementation to a specific key
@@ -257,11 +257,11 @@ This looks like:
 
 ::
 
-    val core = project
+    lazy val core = project
 
-    val util = project
+    lazy val util = project
 
-    val root = project.settings(
+    lazy val root = project.settings(
        sources := {
           val filter = ScopeFilter( inProjects(core, util), inConfigurations(Compile) )
           // each sources definition is of type Seq[File],
@@ -400,14 +400,14 @@ a fairly contrived example):
 ::
 
     // Select all configurations in the current project except for Compile
-    val filter: ScopeFilter = ScopeFilter(
+    lazy val filter: ScopeFilter = ScopeFilter(
        inProjects(ThisProject),
        inAnyConfiguration -- inConfigurations(Compile)
     )
 
     // Define a task that provides the name of the current configuration
     //   and the set of sbt plugins defined in the configuration
-    val pluginsWithConfig: Initialize[Task[ (String, Set[String]) ]] =
+    lazy val pluginsWithConfig: Initialize[Task[ (String, Set[String]) ]] =
        Def.task {
           ( configuration.value.name, definedSbtPlugins.value )
        }
@@ -494,7 +494,7 @@ For example:
 
     intTask := error("Failed.")
 
-    val intTask := {
+    lazy val intTask := {
        println("Ignoring failure: " + intTask.failure.value)
        3
     }
@@ -578,7 +578,7 @@ For example:
 
     intTask := error("I didn't succeed.")
 
-    val intTaskImpl = intTask andFinally { println("andFinally") }
+    lazy val intTaskImpl = intTask andFinally { println("andFinally") }
 
     intTask := intTaskImpl.value
 
@@ -594,7 +594,7 @@ a task like in the previous example. For example, consider this code:
 
     intTask := error("I didn't succeed.")
 
-    val intTaskImpl = intTask andFinally { println("andFinally") }
+    lazy val intTaskImpl = intTask andFinally { println("andFinally") }
 
     otherIntTask := intTaskImpl.value
 
