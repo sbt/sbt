@@ -1,0 +1,60 @@
+# check that we are starting clean
+$ absent setup
+$ absent tested
+$ absent cleanup
+
+# without Setup configured, the setup file won't exist and the test will fail
+-> test
+
+# check that we are starting clean
+$ absent setup
+$ exists tested
+$ delete tested
+$ absent cleanup
+
+
+$ copy-file changes/setup.sbt setup.sbt
+> reload
+> test
+
+# setup should have been deleted by the test
+$ absent setup
+# tested should have been deleted by the cleanup
+$ absent tested
+# cleanup should have been created by cleanup
+$ exists cleanup
+$ delete cleanup
+
+
+# Same test for forking
+
+
+$ delete setup.sbt
+$ copy-file changes/fork.sbt fork.sbt
+> reload
+
+# check that we are starting clean
+$ absent setup
+$ absent tested
+$ absent cleanup
+
+# without Setup configured, the setup file won't exist and the test will fail
+-> test
+
+# check that we are starting clean
+$ absent setup
+$ exists tested
+$ delete tested
+$ absent cleanup
+
+
+$ copy-file changes/setup.sbt setup.sbt
+> reload
+> test
+
+# setup should have been deleted by the test
+$ absent setup
+# tested should have been deleted by the cleanup
+$ absent tested
+# cleanup should have been created by cleanup
+$ exists cleanup
