@@ -12,17 +12,9 @@ import ForkMain._
 
 private[sbt] object ForkTests {
 	def apply(runners: Map[TestFramework, Runner],  tests: List[TestDefinition], config: Execution, classpath: Seq[File], fork: ForkOptions, log: Logger): Task[TestOutput]  = {
-		val opts = config.options.toList
-		val listeners = opts flatMap {
-			case Listeners(ls) => ls
-			case _ => Nil
-		}
-		val testListeners = listeners flatMap {
+		val opts = processOptions(config, tests, log)
+		val testListeners = opts.testListeners flatMap {
 			case tl: TestsListener => Some(tl)
-			case _ => None
-		}
-		val filters = opts flatMap {
-			case Filter(f) => Some(f)
 			case _ => None
 		}
 
@@ -45,7 +37,7 @@ private[sbt] object ForkTests {
 						try {
 							os.writeBoolean(log.ansiCodesSupported)
 							
-							val testsFiltered = tests.filter(test => filters.forall(_(test.name))).map{
+							val testsFiltered = opts.tests.map{
 								t => new TaskDef(t.name, forkFingerprint(t.fingerprint), t.explicitlySpecified, t.selectors)
 							}.toArray
 							os.writeObject(testsFiltered)
@@ -59,7 +51,7 @@ private[sbt] object ForkTests {
 							}
 							os.flush()
 
-							(new React(is, os, log, listeners, resultsAcc)).react()
+							(new React(is, os, log, opts.testListeners, resultsAcc)).react()
 						} finally {
 							is.close();	os.close(); socket.close()
 						}

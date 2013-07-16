@@ -105,7 +105,13 @@ object Tests
 	/** A named group of tests configured to run in the same JVM or be forked. */
 	final case class Group(name: String, tests: Seq[TestDefinition], runPolicy: TestRunPolicy)
 
-	def apply(frameworks: Map[TestFramework, Framework], testLoader: ClassLoader, runners: Map[TestFramework, Runner], discovered: Seq[TestDefinition], config: Execution, log: Logger): Task[Output] =
+	private[sbt] final class ProcessedOptions(
+		val tests: Seq[TestDefinition], 
+		val setup: Seq[ClassLoader => Unit],
+		val cleanup: Seq[ClassLoader => Unit],
+		val testListeners: Seq[TestReportListener]
+	)
+	private[sbt] def processOptions(config: Execution, discovered: Seq[TestDefinition], log: Logger): ProcessedOptions =
 	{
 			import collection.mutable.{HashSet, ListBuffer, Map, Set}
 		val testFilters = new ListBuffer[String => Boolean]
@@ -125,15 +131,6 @@ object Tests
 				case Listeners(listeners) => testListeners ++= listeners
 				case Setup(setupFunction) => setup += setupFunction
 				case Cleanup(cleanupFunction) => cleanup += cleanupFunction
-				/**
-					* There are two cases here.
-					* The first handles TestArguments in the project file, which
-					* might have a TestFramework specified.
-					* The second handles arguments to be applied to all test frameworks.
-					*   -- arguments from the project file that didnt have a framework specified
-					*   -- command line arguments (ex: test-only someClass -- someArg)
-					*      (currently, command line args must be passed to all frameworks)
-					*/
 				case a: Argument => // now handled by whatever constructs `runners`
 			}
 		}
@@ -146,7 +143,13 @@ object Tests
 		def includeTest(test: TestDefinition) = !excludeTestsSet.contains(test.name) && testFilters.forall(filter => filter(test.name))
 		val filtered0 = discovered.filter(includeTest).toList.distinct
 		val tests = if(orderedFilters.isEmpty) filtered0 else orderedFilters.flatMap(f => filtered0.filter(d => f(d.name))).toList.distinct
-		testTask(testLoader, frameworks, runners, tests, setup.readOnly, cleanup.readOnly, log, testListeners.readOnly, config)
+		new ProcessedOptions(tests, setup.toList, cleanup.toList, testListeners.toList)
+	}
+
+	def apply(frameworks: Map[TestFramework, Framework], testLoader: ClassLoader, runners: Map[TestFramework, Runner], discovered: Seq[TestDefinition], config: Execution, log: Logger): Task[Output] =
+	{
+		val o = processOptions(config, discovered, log)
+		testTask(testLoader, frameworks, runners, o.tests, o.setup, o.cleanup, log, o.testListeners, config)
 	}
 
 	def testTask(loader: ClassLoader, frameworks: Map[TestFramework, Framework], runners: Map[TestFramework, Runner], tests: Seq[TestDefinition],
