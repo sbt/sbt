@@ -24,7 +24,7 @@ declaring it as a :doc:`managed dependency <Library-Management>`:
 
 ::
 
-    libraryDependencies += "org.scalacheck" %% "scalacheck" % "1.9" % "test"
+    libraryDependencies += "org.scalacheck" %% "scalacheck" % "1.10.1" % "test"
 
 The fourth component ``"test"`` is the :ref:`configuration <gsg-ivy-configurations>`
 and means that ScalaCheck will only be on the test classpath and it
@@ -138,7 +138,12 @@ Specify setup and cleanup actions using ``Tests.Setup`` and
 or a function of type ``ClassLoader => Unit``. The variant that accepts
 a ClassLoader is passed the class loader that is (or was) used for
 running the tests. It provides access to the test classes as well as the
-test framework classes.
+test framework classes.  
+
+
+.. note::
+
+    When forking, the ClassLoader containing the test classes cannot be provided because it is in another JVM.  Only use the ``() => Unit`` variants in this case.
 
 Examples:
 
@@ -176,7 +181,7 @@ If you want to only run test classes whose name ends with "Test", use
 Forking tests
 -------------
 
-In version 0.12.0, the facility to run tests in a separate JVM was added. The setting
+The setting:
 
 ::
 
@@ -199,11 +204,11 @@ available with ``testGrouping`` key. For example:
       testGrouping := groupByFirst( (definedTests in Test).value )
     }
 
-The tests in a single group are run sequentially. Controlling the number
-of forked JVMs allowed to run at the same time is through setting the
-limit on ``Tags.ForkedTestGroup`` tag which has 1 as a default value.
-``Setup`` and ``Cleanup`` actions are not supported when a group is
-forked.
+The tests in a single group are run sequentially. Control the number
+of forked JVMs allowed to run at the same time by setting the
+limit on ``Tags.ForkedTestGroup`` tag, which is 1 by default.
+``Setup`` and ``Cleanup`` actions cannot be provided with the actual
+test class loader when a group is forked.
 
 Additional test configurations
 ==============================

@@ -46,6 +46,7 @@ Fixes
 -----
 
 - sbt no longer tries to warn on dependency conflicts.  Configure a :ref:`conflict manager <conflict-management>` instead.  (gh-709)
+- Run test Cleanup and Setup when forking.  The test ClassLoader is not available because it is in another jvm.
 
 Improvements
 ------------
