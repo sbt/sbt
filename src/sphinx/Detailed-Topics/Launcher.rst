@@ -150,7 +150,7 @@ The default configuration file for sbt looks like:
     [app]
       org: ${sbt.organization-org.scala-sbt}
       name: sbt
-      version: ${sbt.version-read(sbt.version)[0.12.0]}
+      version: ${sbt.version-read(sbt.version)[0.13.0]}
       class: ${sbt.main.class-sbt.xMain}
       components: xsbti,extra
       cross-versioned: ${sbt.cross.versioned-false}
@@ -307,7 +307,7 @@ definition would be:
 
 ::
 
-      libraryDependencies += "org.scala-sbt" % "launcher-interface" % "0.12.0" % "provided"
+      libraryDependencies += "org.scala-sbt" % "launcher-interface" % "0.13.0" % "provided"
 
       resolvers += sbtResolver.value
 
@@ -356,7 +356,7 @@ it might look like:
     [app]
       org: org.scala-sbt
       name: xsbt-test
-      version: 0.12.0
+      version: 0.13.0
       class: xsbt.test.Main
       cross-versioned: binary
     [repositories]
