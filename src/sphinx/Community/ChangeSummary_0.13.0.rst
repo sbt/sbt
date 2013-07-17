@@ -63,6 +63,7 @@ Improvements
 - Track ancestors of non-private templates and use this information to require fewer, smaller intermediate incremental compilation steps.
 - ``autoCompilerPlugins`` now supports compiler plugins defined in a internal dependency.  The plugin project must define ``exportJars := true``.  Depend on the plugin with ``...dependsOn(... % Configurations.CompilerPlugin)``.
 - Add utilities for debugging API representation extracted by the incremental compiler. (Grzegorz K., gh-677, gh-793)
+- ``consoleProject`` unifies the syntax for getting the value of a setting and executing a task.  See :doc:`/Detailed-Topics/Console-Project`.
 
 Other
 -----
