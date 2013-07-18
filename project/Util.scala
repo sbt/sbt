@@ -160,7 +160,7 @@ object Common
 	lazy val ivy = lib("org.apache.ivy" % "ivy" % "2.3.0-rc1")
 	lazy val httpclient = lib("commons-httpclient" % "commons-httpclient" % "3.1")
 	lazy val jsch = lib("com.jcraft" % "jsch" % "0.1.46" intransitive() )
-	lazy val sbinary = lib("org.scala-tools.sbinary" %% "sbinary" % "0.4.1" )
+	lazy val sbinary = lib("org.scala-tools.sbinary" %% "sbinary" % "0.4.2" )
 	lazy val scalaCompiler = libraryDependencies <+= scalaVersion("org.scala-lang" % "scala-compiler" % _ )
 	lazy val testInterface = lib("org.scala-sbt" % "test-interface" % "1.0")
 	def libModular(name: String) = libraryDependencies <++= (scalaVersion, scalaOrganization)( (sv,o) =>
