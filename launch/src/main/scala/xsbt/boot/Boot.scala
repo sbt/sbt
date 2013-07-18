@@ -15,7 +15,8 @@ object Boot
 				println("sbt launcher version " + Package.getPackage("xsbt.boot").getImplementationVersion)
 			case _ =>
 				System.clearProperty("scala.home") // avoid errors from mixing Scala versions in the same JVM
-				System.setProperty("jline.shutdownhook", "false")
+				System.setProperty("jline.shutdownhook", "false") // shutdown hooks cause class loader leaks
+				System.setProperty("jline.esc.timeout", "0") // starts up a thread otherwise
 				CheckProxy()
 				run(args)
 		}
