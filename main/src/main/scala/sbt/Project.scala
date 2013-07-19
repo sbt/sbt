@@ -127,6 +127,12 @@ object Project extends ProjectExtra
 	@deprecated("Use Def.Setting", "0.13.0")
 	type Setting[T] = Def.Setting[T]
 
+	@deprecated("Use Def.Setting", "0.13.0")
+	type SettingsDefinition = Def.SettingsDefinition
+
+	@deprecated("Use Def.Setting", "0.13.0")
+	val SettingsDefinition = Def.SettingsDefinition
+
 	@deprecated("Use Def.Initialize", "0.13.0")
 	type Initialize[T] = Def.Initialize[T]
 
