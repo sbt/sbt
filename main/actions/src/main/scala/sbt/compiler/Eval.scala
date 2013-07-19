@@ -58,7 +58,7 @@ final class Eval(optionsNoncp: Seq[String], classpath: Seq[File], mkReporter: Se
 	}
 	lazy val reporter = mkReporter(settings)
 	lazy val global: Global = new Global(settings, reporter)
-	import global._
+	import global.{Range => _, _}
 	import definitions._
 
 	private[sbt] def unlinkDeferred() {
