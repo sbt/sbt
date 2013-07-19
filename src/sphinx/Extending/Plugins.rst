@@ -222,7 +222,7 @@ Introduction
 ------------
 
 A minimal plugin is a Scala library that is built against the version of
-Scala that sbt runs (currently, 2.9.1) or a Java library. Nothing
+Scala that sbt runs (currently, 2.9.2) or a Java library. Nothing
 special needs to be done for this type of library, as shown in the
 previous section. A more typical plugin will provide sbt tasks,
 commands, or settings. This kind of plugin may provide these settings
