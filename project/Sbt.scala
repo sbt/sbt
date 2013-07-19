@@ -191,7 +191,7 @@ object Sbt extends Build
 		Util.inAllProjects(projects filterNot Set(root, sbtSub, scriptedBaseSub, scriptedSbtSub, scriptedPluginSub) map { p => LocalProject(p.id) }, scoped)
 
 	def launchSettings =
-		Seq(ivy, crossPaths := false,
+		Seq(ivy,
 			compile in Test <<= compile in Test dependsOn(publishLocal in interfaceSub, publishLocal in testSamples, publishLocal in launchInterfaceSub)
 		) ++
 		inConfig(Compile)(Transform.configSettings) ++
@@ -234,7 +234,6 @@ object Sbt extends Build
 	def docSetting = inConfig(Compile)(inTask(sxr)(Defaults.docSetting(doc in ThisScope.copy(task = Global, config = Global))))
 
 	def interfaceSettings = javaOnly ++ Seq(
-		crossPaths := false,
 		projectComponent,
 		exportJars := true,
 		componentID := Some("xsbti"),
@@ -252,7 +251,6 @@ object Sbt extends Build
 		},
 		target <<= (target, scalaVersion) { (base, sv) => base / ("precompiled_" + sv) },
 		scalacOptions := Nil,
-		crossPaths := false,
 		ivyScala ~= { _.map(_.copy(checkExplicit = false, overrideScalaVersion = false)) },
 		conflictWarning ~= { _.copy(filter = const(false)) },
 		exportedProducts in Compile := Nil,
@@ -260,7 +258,7 @@ object Sbt extends Build
 		libraryDependencies <+= scalaVersion( "org.scala-lang" % "scala-compiler" % _ % "provided")
 	)
 	//
-	def compileInterfaceSettings: Seq[Setting[_]] = precompiledSettings ++ Seq(
+	def compileInterfaceSettings: Seq[Setting[_]] = precompiledSettings ++ Seq[Setting[_]](
 		exportJars := true,
 		artifact in (Compile, packageSrc) := Artifact(srcID).copy(configurations = Compile :: Nil).extra("e:component" -> srcID)
 	)
