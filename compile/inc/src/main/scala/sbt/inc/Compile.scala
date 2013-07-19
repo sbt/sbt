@@ -22,7 +22,15 @@ object IncrementalCompile
 		val current = Stamps.initial(Stamp.exists, Stamp.hash, Stamp.lastModified)
 		val internalMap = (f: File) => previous.relations.produced(f).headOption
 		val externalAPI = getExternalAPI(entry, forEntry)
-		Incremental.compile(sources, entry, previous, current, forEntry, doCompile(compile, internalMap, externalAPI, current, output, options), log, options)
+		try {
+			Incremental.compile(sources, entry, previous, current, forEntry, doCompile(compile, internalMap, externalAPI, current, output, options), log, options)
+		} catch {
+			case e: xsbti.CompileCancelled =>
+				log.info("Compilation has been cancelled")
+				// in case compilation got cancelled potential partial compilation results (e.g. produced classs files) got rolled back
+				// and we can report back as there was no change (false) and return a previous Analysis which is still up-to-date
+				(false, previous)
+		}
 	}
 	def doCompile(compile: (Set[File], DependencyChanges, xsbti.AnalysisCallback) => Unit, internalMap: File => Option[File], externalAPI: (File, String) => Option[Source], current: ReadStamps, output: Output, options: IncOptions) =
 	  (srcs: Set[File], changes: DependencyChanges) => {
