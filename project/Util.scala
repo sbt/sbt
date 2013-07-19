@@ -8,6 +8,7 @@ object Util
 	lazy val componentID = SettingKey[Option[String]]("component-id")
 	lazy val scalaKeywords = TaskKey[Set[String]]("scala-keywords")
 	lazy val generateKeywords = TaskKey[File]("generateKeywords")
+	lazy val nightly211 = SettingKey[Boolean]("nightly-211")
 	lazy val includeTestDependencies = SettingKey[Boolean]("includeTestDependencies", "Doesn't declare test dependencies.")
 
 	def inAll(projects: => Seq[ProjectReference], key: ScopedSetting[Task[Unit]]): Project.Initialize[Task[Unit]] =
@@ -23,9 +24,17 @@ object Util
 	def noPublish(p: Project) = p.copy(settings = noRemotePublish(p.settings))
 	def noRemotePublish(in: Seq[Setting[_]]) = in filterNot { s => s.key == deliver || s.key == publish }
 
-	def project(path: File, nameString: String) = Project(normalize(nameString), path) settings( Seq(name := nameString) ++ publishPomSettings : _* )
+	def nightlySettings = Seq(
+		nightly211 <<= scalaVersion(_.startsWith("2.11.")),
+		includeTestDependencies <<= nightly211(x => !x)
+	)
+	def commonSettings(nameString: String) = Seq(
+		crossVersion in update <<= (crossVersion,nightly211) { (cv, n) => if(n) CrossVersion.full else cv },
+		name := nameString
+	)
+	def project(path: File, nameString: String) = Project(normalize(nameString), path) settings( commonSettings(nameString) ++ publishPomSettings : _* )
 	def baseProject(path: File, nameString: String) = project(path, nameString) settings( base : _*)
-	def testedBaseProject(path: File, nameString: String) = baseProject(path, nameString) settings(includeTestDependencies := true, testDependencies)
+	def testedBaseProject(path: File, nameString: String) = baseProject(path, nameString) settings(testDependencies)
 	
 	lazy val javaOnly = Seq[Setting[_]](/*crossPaths := false, */compileOrder := CompileOrder.JavaThenScala, unmanagedSourceDirectories in Compile <<= Seq(javaSource in Compile).join)
 	lazy val base: Seq[Setting[_]] = baseScalacOptions ++ Licensed.settings
@@ -160,7 +169,7 @@ object Common
 	lazy val ivy = lib("org.apache.ivy" % "ivy" % "2.3.0-rc1")
 	lazy val httpclient = lib("commons-httpclient" % "commons-httpclient" % "3.1")
 	lazy val jsch = lib("com.jcraft" % "jsch" % "0.1.46" intransitive() )
-	lazy val sbinary = lib("org.scala-tools.sbinary" %% "sbinary" % "0.4.2" )
+	lazy val sbinary = libraryDependencies <+= Util.nightly211(n => "org.scala-tools.sbinary" % "sbinary" % "0.4.2" cross(if(n) CrossVersion.full else CrossVersion.binary))
 	lazy val scalaCompiler = libraryDependencies <+= scalaVersion("org.scala-lang" % "scala-compiler" % _ )
 	lazy val testInterface = lib("org.scala-sbt" % "test-interface" % "1.0")
 	def libModular(name: String) = libraryDependencies <++= (scalaVersion, scalaOrganization)( (sv,o) =>
