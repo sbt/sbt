@@ -57,7 +57,7 @@ abstract class JLine extends LineReader
 	private[this] def resume()
 	{
 		jline.TerminalFactory.reset
-		JLine.terminal.setEchoEnabled(false)
+		JLine.terminal.init
 		reader.drawLine()
 		reader.flush()
 	}
@@ -95,7 +95,7 @@ private object JLine
 	* This ensures synchronized access as well as re-enabling echo after getting the Terminal. */
 	def usingTerminal[T](f: jline.Terminal => T): T =
 		withTerminal { t =>
-			t.setEchoEnabled(true)
+			t.restore
 			f(t)
 		}
 	def createReader(): ConsoleReader = createReader(None)
@@ -114,9 +114,9 @@ private object JLine
 		}
 	def withJLine[T](action: => T): T =
 		withTerminal { t =>
-			t.setEchoEnabled(false)
+			t.init
 			try { action }
-			finally { t.setEchoEnabled(true) }
+			finally { t.restore }
 		}
 
 	def simple(historyPath: Option[File], handleCONT: Boolean = HandleCONT): SimpleReader = new SimpleReader(historyPath, handleCONT)

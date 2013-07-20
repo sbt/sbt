@@ -17,6 +17,7 @@ started up with these commands already executed:
     import <your-project-definition>._
     import currentState._
     import extracted._
+    import cpHelpers._
 
 For example, running external processes with sbt's process library (to
 be included in the standard library in Scala 2.9):
@@ -34,11 +35,6 @@ in the same way that the Scala interpreter is normally used to explore
 writing code. Note that this gives you raw access to your build. Think
 about what you pass to ``IO.delete``, for example.
 
-This task was especially useful in prior versions of sbt for showing the
-value of settings. It is less useful for this now that
-``show <setting>`` prints the result of a setting or task and ``set``
-can define an anonymous task at the command line.
-
 Accessing settings
 ==================
 
@@ -46,35 +42,35 @@ To get a particular setting, use the form:
 
 .. code-block:: scala
 
-    > val value = get(<key> in <scope>)
+    > val value = (<key> in <scope>).eval
 
 Examples
 --------
 
 .. code-block:: scala
 
-    > IO.delete( get(classesDirectory in Compile) )
+    > IO.delete( (classesDirectory in Compile).eval )
 
 Show current compile options:
 
 .. code-block:: scala
 
-    > get(scalacOptions in Compile) foreach println
+    > (scalacOptions in Compile).eval foreach println
 
 Show additionally configured repositories.
 
 .. code-block:: scala
 
-    > get( resolvers ) foreach println
+    > resolvers.eval foreach println
 
 Evaluating tasks
 ================
 
-To evaluate a task, use the form:
+To evaluate a task (and its dependencies), use the same form:
 
 .. code-block:: scala
 
-    > val value = evalTask(<key> in <scope>, currentState)
+    > val value = (<key> in <scope>).eval
 
 Examples
 --------
@@ -83,14 +79,23 @@ Show all repositories, including defaults.
 
 .. code-block:: scala
 
-    > evalTask( fullResolvers, currentState ) foreach println
+    > fullResolvers.eval foreach println
 
 Show the classpaths used for compilation and testing:
 
 .. code-block:: scala
 
-    > evalTask( fullClasspath in Compile, currentState ).files foreach println
-    > evalTask( fullClasspath in Test, currentState ).files foreach println
+    > (fullClasspath in Compile).eval.files foreach println
+    > (fullClasspath in Test).eval.files foreach println
+
+State
+=====
+
+The current :doc:`build State </Extending/Build-State>` is available as ``currentState``.
+The contents of ``currentState`` are imported by default and can be used without qualification.
+
+Examples
+--------
 
 Show the remaining commands to be executed in the build (more
 interesting if you invoke ``consoleProject`` like

@@ -10,7 +10,7 @@ extensions = ['sphinxcontrib.issuetracker', 'sphinx.ext.extlinks', 'howto']
 project = 'sbt'
 version = '0.13'
 release = '0.13.0'
-uniqueVersion = '0.13.0-RC2'
+fullVersion = '0.13.0-RC2'
 scalaVersion = "2.10"
 scalaRelease = "2.10.2"
 
@@ -85,12 +85,12 @@ rst_epilog = """
 .. |scalaRelease| replace:: %(scalaRelease)s
 .. _typesafe-snapshots: %(typesafe_ivy_snapshots)s
 .. |typesafe-snapshots| replace:: Typesafe Snapshots
-.. _sbt-launch.jar: %(launcher_release_base)s%(uniqueVersion)s/sbt-launch.jar
-.. _MSI: %(sbt_native_package_base)s%(uniqueVersion)s/sbt.msi
-.. _TGZ: %(sbt_native_package_base)s%(uniqueVersion)s/sbt.tgz
-.. _ZIP: %(sbt_native_package_base)s%(uniqueVersion)s/sbt.zip
-.. _DEB: %(sbt_native_package_base)s%(uniqueVersion)s/sbt.deb
-.. _RPM: %(sbt_native_package_base)s%(uniqueVersion)s/sbt.rpm
+.. _sbt-launch.jar: %(launcher_release_base)s%(fullVersion)s/sbt-launch.jar
+.. _MSI: %(sbt_native_package_base)s%(fullVersion)s/sbt.msi
+.. _TGZ: %(sbt_native_package_base)s%(fullVersion)s/sbt.tgz
+.. _ZIP: %(sbt_native_package_base)s%(fullVersion)s/sbt.zip
+.. _DEB: %(sbt_native_package_base)s%(fullVersion)s/sbt.deb
+.. _RPM: %(sbt_native_package_base)s%(fullVersion)s/sbt.rpm
 .. |nightly-launcher| replace:: <%(launcher_snapshots_base)s
 .. _mailing list: http://groups.google.com/group/simple-build-tool/topics
 .. _adept: https://groups.google.com/group/adept-dev/topics
@@ -100,10 +100,11 @@ rst_epilog = """
 """ % {
    'launcher_release_base': launcher_release_base,
    'launcher_snapshots_base': launcher_snapshots_base,
-   'uniqueVersion': uniqueVersion,
+   'fullVersion': fullVersion,
    'typesafe_ivy_snapshots': typesafe_ivy_snapshots,
    'sbt_native_package_base': sbt_native_package_base,
    'scalaRelease': scalaRelease,
    'scalaVersion': scalaVersion
 }
+
 

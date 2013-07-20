@@ -10,88 +10,93 @@ import java.io._
 import Tests.{Output => TestOutput, _}
 import ForkMain._
 
-private[sbt] object ForkTests {
+private[sbt] object ForkTests
+{
 	def apply(runners: Map[TestFramework, Runner],  tests: List[TestDefinition], config: Execution, classpath: Seq[File], fork: ForkOptions, log: Logger): Task[TestOutput]  = {
-		val opts = config.options.toList
-		val listeners = opts flatMap {
-			case Listeners(ls) => ls
-			case _ => Nil
-		}
-		val testListeners = listeners flatMap {
-			case tl: TestsListener => Some(tl)
-			case _ => None
-		}
-		val filters = opts flatMap {
-			case Filter(f) => Some(f)
-			case _ => None
-		}
+		val opts = processOptions(config, tests, log)
 
-		std.TaskExtra.task {
-			if (!tests.isEmpty) {
-				val server = new ServerSocket(0)
-				object Acceptor extends Runnable {
-					val resultsAcc = mutable.Map.empty[String, SuiteResult]
-					lazy val result = TestOutput(overall(resultsAcc.values.map(_.result)), resultsAcc.toMap, Iterable.empty)
-					def run: Unit = {
-						val socket =
-							try {
-								server.accept()
-							} catch {
-								case _: java.net.SocketException => return
-							}
-						val os = new ObjectOutputStream(socket.getOutputStream)
-						val is = new ObjectInputStream(socket.getInputStream)
+			import std.TaskExtra._
+		val dummyLoader = this.getClass.getClassLoader // can't provide the loader for test classes, which is in another jvm
+		def all(work: Seq[ClassLoader => Unit]) = work.fork(f => f(dummyLoader))
 
+		val main =
+			if(opts.tests.isEmpty)
+				constant( TestOutput(TestResult.Passed, Map.empty[String, SuiteResult], Iterable.empty) )
+			else
+				mainTestTask(runners, opts, classpath, fork, log).tagw(config.tags: _*)
+		main.dependsOn( all(opts.setup) : _*) flatMap { results =>
+			all(opts.cleanup).join.map( _ => results)
+		}
+	}
+
+	private[this] def mainTestTask(runners: Map[TestFramework, Runner], opts: ProcessedOptions, classpath: Seq[File], fork: ForkOptions, log: Logger): Task[TestOutput] =
+		std.TaskExtra.task
+		{
+			val server = new ServerSocket(0)
+			val testListeners = opts.testListeners flatMap {
+				case tl: TestsListener => Some(tl)
+				case _ => None
+			}
+
+			object Acceptor extends Runnable {
+				val resultsAcc = mutable.Map.empty[String, SuiteResult]
+				lazy val result = TestOutput(overall(resultsAcc.values.map(_.result)), resultsAcc.toMap, Iterable.empty)
+				def run: Unit = {
+					val socket =
 						try {
-							os.writeBoolean(log.ansiCodesSupported)
-							
-							val testsFiltered = tests.filter(test => filters.forall(_(test.name))).map{
-								t => new TaskDef(t.name, forkFingerprint(t.fingerprint), t.explicitlySpecified, t.selectors)
-							}.toArray
-							os.writeObject(testsFiltered)
-
-							os.writeInt(runners.size)
-							for ((testFramework, mainRunner) <- runners) {
-								val remoteArgs = mainRunner.remoteArgs()
-								os.writeObject(testFramework.implClassNames.toArray)
-								os.writeObject(mainRunner.args)
-								os.writeObject(remoteArgs)
-							}
-							os.flush()
-
-							(new React(is, os, log, listeners, resultsAcc)).react()
-						} finally {
-							is.close();	os.close(); socket.close()
+							server.accept()
+						} catch {
+							case _: java.net.SocketException => return
 						}
+					val os = new ObjectOutputStream(socket.getOutputStream)
+					val is = new ObjectInputStream(socket.getInputStream)
+
+					try {
+						os.writeBoolean(log.ansiCodesSupported)
+						
+						val taskdefs = opts.tests.map(t => new TaskDef(t.name, forkFingerprint(t.fingerprint), t.explicitlySpecified, t.selectors))
+						os.writeObject(taskdefs.toArray)
+
+						os.writeInt(runners.size)
+						for ((testFramework, mainRunner) <- runners) {
+							val remoteArgs = mainRunner.remoteArgs()
+							os.writeObject(testFramework.implClassNames.toArray)
+							os.writeObject(mainRunner.args)
+							os.writeObject(remoteArgs)
+						}
+						os.flush()
+
+						(new React(is, os, log, opts.testListeners, resultsAcc)).react()
+					} finally {
+						is.close();	os.close(); socket.close()
 					}
 				}
+			}
 
-				try {
-					testListeners.foreach(_.doInit())
-					val acceptorThread = new Thread(Acceptor)
-					acceptorThread.start()
+			try {
+				testListeners.foreach(_.doInit())
+				val acceptorThread = new Thread(Acceptor)
+				acceptorThread.start()
 
-					val fullCp = classpath ++: Seq(IO.classLocationFile[ForkMain], IO.classLocationFile[Framework])
-					val options = Seq("-classpath", fullCp mkString File.pathSeparator, classOf[ForkMain].getCanonicalName, server.getLocalPort.toString)
-					val ec = Fork.java(fork, options)
-					val result =
-						if (ec != 0)
-							TestOutput(TestResult.Error, Map("Running java with options " + options.mkString(" ") + " failed with exit code " + ec -> SuiteResult.Error), Iterable.empty)
-						else {
-							// Need to wait acceptor thread to finish its business
-							acceptorThread.join()
-							Acceptor.result
-						}
-					
-					testListeners.foreach(_.doComplete(result.overall))
-					result
-				} finally {
-					server.close()
-				}
-			} else
-				TestOutput(TestResult.Passed, Map.empty[String, SuiteResult], Iterable.empty)
-		} tagw (config.tags: _*)
-	}
+				val fullCp = classpath ++: Seq(IO.classLocationFile[ForkMain], IO.classLocationFile[Framework])
+				val options = Seq("-classpath", fullCp mkString File.pathSeparator, classOf[ForkMain].getCanonicalName, server.getLocalPort.toString)
+				val ec = Fork.java(fork, options)
+				val result =
+					if (ec != 0)
+						TestOutput(TestResult.Error, Map("Running java with options " + options.mkString(" ") + " failed with exit code " + ec -> SuiteResult.Error), Iterable.empty)
+					else {
+						// Need to wait acceptor thread to finish its business
+						acceptorThread.join()
+						Acceptor.result
+					}
+				
+				testListeners.foreach(_.doComplete(result.overall))
+				result
+			} finally {
+				server.close()
+			}
+		}
+
 	private[this] def forkFingerprint(f: Fingerprint): Fingerprint with Serializable =
 		f match {
 			case s: SubclassFingerprint => new ForkMain.SubclassFingerscan(s)
