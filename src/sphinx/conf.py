@@ -10,7 +10,7 @@ extensions = ['sphinxcontrib.issuetracker', 'sphinx.ext.extlinks', 'howto']
 project = 'sbt'
 version = '0.13'
 release = '0.13.0'
-fullVersion = '0.13.0-RC2'
+fullVersion = "0.13.0-RC3"
 scalaVersion = "2.10"
 scalaRelease = "2.10.2"
 
