@@ -21,7 +21,7 @@ object JLineTest
 		import jline.TerminalFactory
 		import jline.console.ConsoleReader
 		val reader = new ConsoleReader()
-		TerminalFactory.get.setEchoEnabled(false)
+		TerminalFactory.get.init
 
 		val parser = parsers(args(0))
 		JLineCompletion.installCustomCompletor(reader, parser)
