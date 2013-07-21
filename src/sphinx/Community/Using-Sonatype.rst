@@ -33,8 +33,8 @@ the same URLs for everyone:
 
     publishTo := {
       val nexus = "https://oss.sonatype.org/"
-      if (version.value.trim.endsWith("SNAPSHOT")) 
-        Some("snapshots" at nexus + "content/repositories/snapshots") 
+      if (version.value.trim.endsWith("SNAPSHOT"))
+        Some("snapshots" at nexus + "content/repositories/snapshots")
       else
         Some("releases"  at nexus + "service/local/staging/deploy/maven2")
     }
@@ -122,8 +122,8 @@ following:
 
 ::
 
-    credentials += Credentials("Sonatype Nexus Repository Manager", 
-                               "oss.sonatype.org", 
+    credentials += Credentials("Sonatype Nexus Repository Manager",
+                               "oss.sonatype.org",
                                "<your username>",
                                "<your password>")
 
@@ -182,7 +182,7 @@ need to:
 
 -  Have GPG key pair, with published public key,
 -  An sbt file with your Sonatype credentials *that is not pushed to the VCS*,
--  Modify ``project/plugins.sbt`` to include the ``xsbt-gpg-plugin`` to sign the artefacts,
+-  Add the `sbt-pgp plugin <http://scala-sbt.org/sbt-pgp>`_ to sign the artefacts,
 -  Modify ``build.sbt`` with the required elements in the generated POM.
 
 Starting with a project that is not being published, you'll need to
@@ -202,15 +202,15 @@ settings:
                                "your-sonatype-username",
                                "your-sonatype-password")
 
-project/plugins.sbt
-^^^^^^^^^^^^^^^^^^^
+~/.sbt/plugins/gpg.sbt
+^^^^^^^^^^^^^^^^^^^^^^
 
-This file specifies the plugins for your project. If you intend to sign
-the artefacts, you'll need to include @jsuereth's ``xsbt-gpg-plugin``:
+The `sbt-pgp plugin <http://scala-sbt.org/sbt-pgp>`_ allows you to
+sign your artefacts by running ``publish-signed`` in sbt:
 
 ::
 
-    addSbtPlugin("com.jsuereth" % "xsbt-gpg-plugin" % "0.6")
+    addSbtPlugin("com.typesafe.sbt" % "sbt-pgp" % "0.8")
 
 build.sbt
 ^^^^^^^^^
