@@ -206,7 +206,7 @@ settings:
 ^^^^^^^^^^^^^^^^^^^^^^
 
 The `sbt-pgp plugin <http://scala-sbt.org/sbt-pgp>`_ allows you to
-sign your artefacts by running ``publish-signed`` in sbt:
+sign and publish your artefacts by running ``publish-signed`` in sbt:
 
 ::
 
