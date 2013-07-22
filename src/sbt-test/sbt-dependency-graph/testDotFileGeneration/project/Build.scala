@@ -10,20 +10,20 @@ object Build extends sbt.Build {
     seq(scalaVersion := "2.9.2")
 
   lazy val justATransiviteDependencyEndpointProject =
-    Project("just-a-transitive-dependency-endpoint", file("."))
+    Project("just-a-transitive-dependency-endpoint", file("a"))
       .settings(defaultSettings: _*)
 
   lazy val justATransitiveDependencyProject =
-    Project("just-a-transitive-dependency", file("."))
+    Project("just-a-transitive-dependency", file("b"))
       .settings(defaultSettings: _*)
       .dependsOn(justATransiviteDependencyEndpointProject)
 
   lazy val justADependencyProject =
-    Project("just-a-dependency", file("."))
+    Project("just-a-dependency", file("c"))
       .settings(defaultSettings: _*)
 
   lazy val test_project =
-    Project("test-dot-file-generation", file("."))
+    Project("test-dot-file-generation", file("d"))
       .settings(graphSettings: _*)
       .settings(defaultSettings: _*)
       .settings(
