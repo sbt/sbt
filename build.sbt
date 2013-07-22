@@ -6,4 +6,4 @@ crossBuildingSettings
 
 CrossBuilding.scriptedSettings
 
-libraryDependencies += "com.github.mdr" %% "ascii-graphs" % "0.0.2"
+libraryDependencies += "com.github.mdr" %% "ascii-graphs" % "0.0.3"
