@@ -9,11 +9,10 @@ object SbtDependencyGraphCompat {
    * to ignore missing artifacts.
    */
   def ignoreMissingUpdateT =
-    ignoreMissingUpdate <<= (ivyModule, thisProjectRef, updateConfiguration, cacheDirectory, scalaInstance, transitiveUpdate, streams) map { (module, ref, config, cacheDirectory, si, reports, s) =>
+    ignoreMissingUpdate <<= (ivyModule, thisProjectRef, updateConfiguration in ignoreMissingUpdate, cacheDirectory, scalaInstance, transitiveUpdate, streams) map { (module, ref, config, cacheDirectory, si, reports, s) =>
 			val depsUpdated = reports.exists(!_.stats.cached)
-      val missingOkConfig = new UpdateConfiguration(config.retrieve, true, config.logging)
 
-			Classpaths.cachedUpdate(cacheDirectory / "update", Project.display(ref), module, missingOkConfig, Some(si), depsUpdated, s.log)
+			Classpaths.cachedUpdate(cacheDirectory / "update", Project.display(ref), module, config, Some(si), depsUpdated, s.log)
 		}
 
   import complete.DefaultParsers._
