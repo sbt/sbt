@@ -219,11 +219,14 @@ final class Eval(optionsNoncp: Seq[String], classpath: Seq[File], mkReporter: Se
 		private[this] var vals = List[String]()
 		def getVals(t: Tree): List[String] = { vals = Nil; traverse(t); vals }
 		override def traverse(tree: Tree): Unit = tree match {
-			case ValDef(_, n, actualTpe, _) if  tree.symbol.owner.isTopLevelModule && types.exists(_ <:< actualTpe.tpe) =>
+			case ValDef(_, n, actualTpe, _) if isTopLevelModule(tree.symbol.owner) && types.exists(_ <:< actualTpe.tpe) =>
 				vals ::= nme.localToGetter(n).encoded
 			case _ => super.traverse(tree)
 		}
 	}
+	// inlined implemented of Symbol.isTopLevelModule that was removed in e5b050814deb2e7e1d6d05511d3a6cb6b013b549
+	private[this] def isTopLevelModule(s: Symbol): Boolean = s.hasFlag(reflect.internal.Flags.MODULE) && s.owner.isPackageClass
+
 	private[this] final class EvalIntermediate[T](val extra: T, val loader: ClassLoader => ClassLoader, val generated: Seq[File], val enclosingModule: String)
 
 	private[this] def classExists(dir: File, name: String) = (new File(dir, name + ".class")).exists
