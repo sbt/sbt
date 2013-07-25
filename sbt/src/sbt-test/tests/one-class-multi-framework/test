@@ -1,0 +1,8 @@
+# verify the test runs at all by having it fail
+$ absent succeed
+-> test
+
+# indicate to the test it should succeed
+# it will fail if run via junit and succeed if run via specs
+$ touch succeed
+> test
