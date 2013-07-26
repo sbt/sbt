@@ -49,8 +49,7 @@ home_site = True
 
 # Passed to Google as site:<site_search_base>
 # If empty, no search box is included
-# TODO: pass this as an argument to sphinx, use actual version instead of release 
-site_search_base = 'http://www.scala-sbt.org/release/docs'
+site_search_base = 'http://www.scala-sbt.org/' + release + '/docs'
 
 # passes variables to the template
 html_context = {'home_site': home_site, 'site_search_base': site_search_base}
