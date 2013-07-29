@@ -9,33 +9,33 @@ class files.
 Usage
 =====
 
--  ``compile`` will compile the sources under ``src/main/java`` by
+-  `compile` will compile the sources under `src/main/java` by
    default.
--  ``testCompile`` will compile the sources under ``src/test/java`` by
+-  `testCompile` will compile the sources under `src/test/java` by
    default.
 
-Pass options to the Java compiler by setting ``javacOptions``:
+Pass options to the Java compiler by setting `javacOptions`:
 
 ::
 
     javacOptions += "-g:none"
 
 As with options for the Scala compiler, the arguments are not parsed by
-sbt. Multi-element options, such as ``-source 1.5``, are specified like:
+sbt. Multi-element options, such as `-source 1.5`, are specified like:
 
 ::
 
     javacOptions ++= Seq("-source", "1.5")
 
 You can specify the order in which Scala and Java sources are built with
-the ``compileOrder`` setting. Possible values are from the
-``CompileOrder`` enumeration: ``Mixed``, ``JavaThenScala``, and
-``ScalaThenJava``. If you have circular dependencies between Scala and
-Java sources, you need the default, ``Mixed``, which passes both Java
-and Scala sources to ``scalac`` and then compiles the Java sources with
-``javac``. If you do not have circular dependencies, you can use one of
+the `compileOrder` setting. Possible values are from the
+`CompileOrder` enumeration: `Mixed`, `JavaThenScala`, and
+`ScalaThenJava`. If you have circular dependencies between Scala and
+Java sources, you need the default, `Mixed`, which passes both Java
+and Scala sources to `scalac` and then compiles the Java sources with
+`javac`. If you do not have circular dependencies, you can use one of
 the other two options to speed up your build by not passing the Java
-sources to ``scalac``. For example, if your Scala sources depend on your
+sources to `scalac`. For example, if your Scala sources depend on your
 Java sources, but your Java sources do not depend on your Scala sources,
 you can do:
 
@@ -60,10 +60,10 @@ they share the same output directory. So, previously compiled classes
 not involved in the current recompilation may be picked up. A clean
 compile will always provide full checking, however.
 
-By default, sbt includes ``src/main/scala`` and ``src/main/java`` in its
+By default, sbt includes `src/main/scala` and `src/main/java` in its
 list of unmanaged source directories. For Java-only projects, the
 unnecessary Scala directories can be ignored by modifying
-``unmanagedSourceDirectories``:
+`unmanagedSourceDirectories`:
 
 ::
 

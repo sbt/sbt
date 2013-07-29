@@ -27,8 +27,8 @@ There are three files in this example:
 To try out this example:
 
 1. Put the first two files in a new directory
-2. Run ``sbt publishLocal`` in that directory
-3. Run ``sbt @path/to/hello.build.properties`` to run the application.
+2. Run `sbt publishLocal` in that directory
+3. Run `sbt @path/to/hello.build.properties` to run the application.
 
 Like for sbt itself, you can specify commands from the command line
 (batch mode) or run them at an prompt (interactive mode).
@@ -38,8 +38,8 @@ Build Definition: build.sbt
 
 The build.sbt file should define the standard settings: name, version,
 and organization. To use the sbt command system, a dependency on the
-``command`` module is needed. To use the task system, add a dependency
-on the ``task-system`` module as well.
+`command` module is needed. To use the task system, add a dependency
+on the `task-system` module as well.
 
 ::
 
@@ -105,7 +105,7 @@ Launcher configuration file: hello.build.properties
 The launcher needs a configuration file in order to retrieve and run an
 application.
 
-``hello.build.properties``
+`hello.build.properties`
 
 .. code-block:: ini
 

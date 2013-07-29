@@ -21,12 +21,12 @@ if you are interested in a specific topic.
          inheritance relationships is a general area of work.
 
    -  'update' produces an :doc:`/Detailed-Topics/Update-Report` mapping
-      ``Configuration/ModuleID/Artifact`` to the retrieved ``File``
+      `Configuration/ModuleID/Artifact` to the retrieved `File`
    -  Ivy produces more detailed XML reports on dependencies. These come
       with an XSL stylesheet to view them, but this does not scale to
       large numbers of dependencies. Working on this is pretty
-      straightforward: the XML files are created in ``~/.ivy2`` and the
-      ``.xsl`` and ``.css`` are there as well, so you don't even need to
+      straightforward: the XML files are created in `~/.ivy2` and the
+      `.xsl` and `.css` are there as well, so you don't even need to
       work with sbt. Other approaches described in `the email
       thread <https://groups.google.com/group/simple-build-tool/browse_thread/thread/7761f8b2ce51f02c/129064ea836c9baf>`_
    -  Tasks are a combination of static and dynamic graphs and it would

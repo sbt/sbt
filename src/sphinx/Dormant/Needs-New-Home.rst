@@ -6,17 +6,17 @@ Snippets of docs that need to move to another page
 ==================================================
 
 Temporarily change the logging level and configure how stack traces are
-displayed by modifying the ``log-level`` or ``trace-level`` settings:
+displayed by modifying the `log-level` or `trace-level` settings:
 
 .. code-block:: console
 
     > set logLevel := Level.Warn
 
-Valid ``Level`` values are ``Debug, Info, Warn, Error``.
+Valid `Level` values are `Debug, Info, Warn, Error`.
 
 You can run an action for multiple versions of Scala by prefixing the
-action with ``+``. See [[Cross Build]] for details. You can temporarily
-switch to another version of Scala using ``++ <version>``. This version
+action with `+`. See [[Cross Build]] for details. You can temporarily
+switch to another version of Scala using `++ <version>`. This version
 does not have to be listed in your build definition, but it does have to
 be available in a repository. You can also include the initial command
 to run after switching to that version. For example:
@@ -39,7 +39,7 @@ Manual Dependency Management
 ============================
 
 Manually managing dependencies involves copying any jars that you want
-to use to the ``lib`` directory. sbt will put these jars on the
+to use to the `lib` directory. sbt will put these jars on the
 classpath during compilation, testing, running, and when using the
 interpreter. You are responsible for adding, removing, updating, and
 otherwise managing the jars in this directory. No modifications to your
@@ -47,15 +47,15 @@ project definition are required to use this method unless you would like
 to change the location of the directory you store the jars in.
 
 To change the directory jars are stored in, change the
-``unmanaged-base`` setting in your project definition. For example, to
-use ``custom_lib/``:
+`unmanaged-base` setting in your project definition. For example, to
+use `custom_lib/`:
 
 ::
 
     unmanagedBase := baseDirectory.value / "custom_lib"
 
 If you want more control and flexibility, override the
-``unmanaged-jars`` task, which ultimately provides the manual
+`unmanaged-jars` task, which ultimately provides the manual
 dependencies to sbt. The default implementation is roughly:
 
 ::
@@ -91,7 +91,7 @@ Explicit URL
 ~~~~~~~~~~~~
 
 If your project requires a dependency that is not present in a
-repository, a direct URL to its jar can be specified with the ``from``
+repository, a direct URL to its jar can be specified with the `from`
 method as follows:
 
 ::
@@ -111,7 +111,7 @@ downloads the dependencies of the dependencies you list.)
 
 In some instances, you may find that the dependencies listed for a
 project aren't necessary for it to build. Avoid fetching artifact
-dependencies with ``intransitive()``, as in this example:
+dependencies with `intransitive()`, as in this example:
 
 ::
 
@@ -120,7 +120,7 @@ dependencies with ``intransitive()``, as in this example:
 Classifiers
 ~~~~~~~~~~~
 
-You can specify the classifer for a dependency using the ``classifier``
+You can specify the classifer for a dependency using the `classifier`
 method. For example, to get the jdk15 version of TestNG:
 
 ::
@@ -128,9 +128,9 @@ method. For example, to get the jdk15 version of TestNG:
     libraryDependencies += "org.testng" % "testng" % "5.7" classifier "jdk15"
 
 To obtain particular classifiers for all dependencies transitively, run
-the ``update-classifiers`` task. By default, this resolves all artifacts
-with the ``sources`` or ``javadoc`` classifer. Select the classifiers to
-obtain by configuring the ``transitive-classifiers`` setting. For
+the `update-classifiers` task. By default, this resolves all artifacts
+with the `sources` or `javadoc` classifer. Select the classifiers to
+obtain by configuring the `transitive-classifiers` setting. For
 example, to only retrieve sources:
 
 ::
@@ -141,7 +141,7 @@ Extra Attributes
 ~~~~~~~~~~~~~~~~
 
 [Extra attributes] can be specified by passing key/value pairs to the
-``extra`` method.
+`extra` method.
 
 To select dependencies by extra attributes:
 
@@ -179,9 +179,9 @@ Ivy Home Directory
 ~~~~~~~~~~~~~~~~~~
 
 By default, sbt uses the standard Ivy home directory location
-``${user.home}/.ivy2/``. This can be configured machine-wide, for use by
+`${user.home}/.ivy2/`. This can be configured machine-wide, for use by
 both the sbt launcher and by projects, by setting the system property
-``sbt.ivy.home`` in the sbt startup script (described in
+`sbt.ivy.home` in the sbt startup script (described in
 [[Setup\|Getting Started Setup]]).
 
 For example:
@@ -226,7 +226,7 @@ Maven/Ivy
 ---------
 
 For this method, create the configuration files as you would for Maven
-(``pom.xml``) or Ivy (``ivy.xml`` and optionally ``ivysettings.xml``).
+(`pom.xml`) or Ivy (`ivy.xml` and optionally `ivysettings.xml`).
 External configuration is selected by using one of the following
 expressions.
 
@@ -281,7 +281,7 @@ or
 Full Ivy Example
 ~~~~~~~~~~~~~~~~
 
-For example, a ``build.sbt`` using external Ivy files might look like:
+For example, a `build.sbt` using external Ivy files might look like:
 
 ::
 
@@ -301,10 +301,10 @@ Known limitations
 Maven support is dependent on Ivy's support for Maven POMs. Known issues
 with this support:
 
--  Specifying ``relativePath`` in the ``parent`` section of a POM will
+-  Specifying `relativePath` in the `parent` section of a POM will
    produce an error.
 -  Ivy ignores repositories specified in the POM. A workaround is to
-   specify repositories inline or in an Ivy ``ivysettings.xml`` file.
+   specify repositories inline or in an Ivy `ivysettings.xml` file.
 
 Configuration dependencies
 ~~~~~~~~~~~~~~~~~~~~~~~~~~

@@ -15,8 +15,8 @@ following two tasks do not have an ordering specified:
 
     read := IO.read(file("/tmp/sample.txt"))
 
-sbt is free to execute ``write`` first and then ``read``, ``read`` first
-and then ``write``, or ``read`` and ``write`` simultaneously. Execution
+sbt is free to execute `write` first and then `read`, `read` first
+and then `write`, or `read` and `write` simultaneously. Execution
 of these tasks is non-deterministic because they share a file. A correct
 declaration of the tasks would be:
 
@@ -30,9 +30,9 @@ declaration of the tasks would be:
 
     read := IO.read(write.value)
 
-This establishes an ordering: ``read`` must run after ``write``. We've
-also guaranteed that ``read`` will read from the same file that
-``write`` created.
+This establishes an ordering: `read` must run after `write`. We've
+also guaranteed that `read` will read from the same file that
+`write` created.
 
 Practical constraints
 =====================
@@ -54,9 +54,9 @@ class is mapped to its own task to enable executing tests in parallel.
 Prior to sbt 0.12, user control over this process was restricted to:
 
 1. Enabling or disabling all parallel execution
-   (``parallelExecution := false``, for example).
+   (`parallelExecution := false`, for example).
 2. Enabling or disabling mapping tests to their own tasks
-   (``parallelExecution in Test := false``, for example).
+   (`parallelExecution in Test := false`, for example).
 
 (Although never exposed as a setting, the maximum number of tasks
 running at a given time was internally configurable as well.)
@@ -76,10 +76,10 @@ concurrency beyond the usual ordering declarations. There are two parts
 to these restrictions.
 
 1. A task is tagged in order to classify its purpose and resource
-   utilization. For example, the ``compile`` task may be tagged as
-   ``Tags.Compile`` and ``Tags.CPU``.
+   utilization. For example, the `compile` task may be tagged as
+   `Tags.Compile` and `Tags.CPU`.
 2. A list of rules restrict the tasks that may execute concurrently. For
-   example, ``Tags.limit(Tags.CPU, 4)`` would allow up to four
+   example, `Tags.limit(Tags.CPU, 4)` would allow up to four
    computation-heavy tasks to run at a time.
 
 The system is thus dependent on proper tagging of tasks and then on a
@@ -91,11 +91,11 @@ Tagging Tasks
 In general, a tag is associated with a weight that represents the task's
 relative utilization of the resource represented by the tag. Currently,
 this weight is an integer, but it may be a floating point in the future.
-``Initialize[Task[T]]`` defines two methods for tagging the constructed
-Task: ``tag`` and ``tagw``. The first method, ``tag``, fixes the weight
+`Initialize[Task[T]]` defines two methods for tagging the constructed
+Task: `tag` and `tagw`. The first method, `tag`, fixes the weight
 to be 1 for the tags provided to it as arguments. The second method,
-``tagw``, accepts pairs of tags and weights. For example, the following
-associates the ``CPU`` and ``Compile`` tags with the ``compile`` task
+`tagw`, accepts pairs of tags and weights. For example, the following
+associates the `CPU` and `Compile` tags with the `compile` task
 (with a weight of 1).
 
 ::
@@ -105,7 +105,7 @@ associates the ``CPU`` and ``Compile`` tags with the ``compile`` task
     compile := myCompileTask.value
 
 Different weights may be specified by passing tag/weight pairs to
-``tagw``:
+`tagw`:
 
 ::
 
@@ -116,7 +116,7 @@ Different weights may be specified by passing tag/weight pairs to
 Defining Restrictions
 ~~~~~~~~~~~~~~~~~~~~~
 
-Once tasks are tagged, the ``concurrentRestrictions`` setting sets
+Once tasks are tagged, the `concurrentRestrictions` setting sets
 restrictions on the tasks that may be concurrently executed based on the
 weighted tags of those tasks.  This is necessarily a global set of rules,
 so it must be scoped `in Global`.  For example,
@@ -143,8 +143,8 @@ able to be executed. sbt will generate an error if this condition is not
 met.
 
 Most tasks won't be tagged because they are very short-lived. These
-tasks are automatically assigned the label ``Untagged``. You may want to
-include these tasks in the CPU rule by using the ``limitSum`` method.
+tasks are automatically assigned the label `Untagged`. You may want to
+include these tasks in the CPU rule by using the `limitSum` method.
 For example:
 
 ::
@@ -156,12 +156,12 @@ For example:
 Note that the limit is the first argument so that tags can be provided
 as varargs.
 
-Another useful convenience function is ``Tags.exclusive``. This
+Another useful convenience function is `Tags.exclusive`. This
 specifies that a task with the given tag should execute in isolation. It
 starts executing only when no other tasks are running (even if they have
 the exclusive tag) and no other tasks may start execution until it
 completes. For example, a task could be tagged with a custom tag
-``Benchmark`` and a rule configured to ensure such a task is executed by
+`Benchmark` and a rule configured to ensure such a task is executed by
 itself:
 
 ::
@@ -171,11 +171,11 @@ itself:
       ...
 
 Finally, for the most flexibility, you can specify a custom function of
-type ``Map[Tag,Int] => Boolean``. The ``Map[Tag,Int]`` represents the
-weighted tags of a set of tasks. If the function returns ``true``, it
+type `Map[Tag,Int] => Boolean`. The `Map[Tag,Int]` represents the
+weighted tags of a set of tasks. If the function returns `true`, it
 indicates that the set of tasks is allowed to execute concurrently. If
-the return value is ``false``, the set of tasks will not be allowed to
-execute concurrently. For example, ``Tags.exclusive(Benchmark)`` is
+the return value is `false`, the set of tasks will not be allowed to
+execute concurrently. For example, `Tags.exclusive(Benchmark)` is
 equivalent to the following:
 
 ::
@@ -201,34 +201,34 @@ then execute the task anyway.
 Built-in Tags and Rules
 ~~~~~~~~~~~~~~~~~~~~~~~
 
-Built-in tags are defined in the ``Tags`` object. All tags listed below
-must be qualified by this object. For example, ``CPU`` refers to the
-``Tags.CPU`` value.
+Built-in tags are defined in the `Tags` object. All tags listed below
+must be qualified by this object. For example, `CPU` refers to the
+`Tags.CPU` value.
 
 The built-in semantic tags are:
 
--  ``Compile`` - describes a task that compiles sources.
--  ``Test`` - describes a task that performs a test.
--  ``Publish``
--  ``Update``
--  ``Untagged`` - automatically added when a task doesn't explicitly
+-  `Compile` - describes a task that compiles sources.
+-  `Test` - describes a task that performs a test.
+-  `Publish`
+-  `Update`
+-  `Untagged` - automatically added when a task doesn't explicitly
    define any tags.
--  ``All``- automatically added to every task.
+-  `All`- automatically added to every task.
 
 The built-in resource tags are:
 
--  ``Network`` - describes a task's network utilization.
--  ``Disk`` - describes a task's filesystem utilization.
--  ``CPU`` - describes a task's computational utilization.
+-  `Network` - describes a task's network utilization.
+-  `Disk` - describes a task's filesystem utilization.
+-  `CPU` - describes a task's computational utilization.
 
 The tasks that are currently tagged by default are:
 
--  ``compile``: ``Compile``, ``CPU``
--  ``test``: ``Test``
--  ``update``: ``Update``, ``Network``
--  ``publish``, ``publishLocal``: ``Publish``, ``Network``
+-  `compile`: `Compile`, `CPU`
+-  `test`: `Test`
+-  `update`: `Update`, `Network`
+-  `publish`, `publishLocal`: `Publish`, `Network`
 
-Of additional note is that the default ``test`` task will propagate its
+Of additional note is that the default `test` task will propagate its
 tags to each child task created for each test class.
 
 The default rules provide the same behavior as previous versions of sbt:
@@ -240,7 +240,7 @@ The default rules provide the same behavior as previous versions of sbt:
       Tags.limitAll(if(parallelExecution.value) max else 1) :: Nil
     }
 
-As before, ``parallelExecution in Test`` controls whether tests are
+As before, `parallelExecution in Test` controls whether tests are
 mapped to separate tasks. To restrict the number of concurrently
 executing tests in all projects, use:
 
@@ -251,7 +251,7 @@ executing tests in all projects, use:
 Custom Tags
 -----------
 
-To define a new tag, pass a String to the ``Tags.Tag`` method. For
+To define a new tag, pass a String to the `Tags.Tag` method. For
 example:
 
 ::
@@ -296,8 +296,8 @@ behavior?
 Fractional weighting
 ~~~~~~~~~~~~~~~~~~~~
 
-Weights are currently ``int``\ s, but could be changed to be
-``double``\ s if fractional weights would be useful. It is important to
+Weights are currently `int`\ s, but could be changed to be
+`double`\ s if fractional weights would be useful. It is important to
 preserve a consistent notion of what a weight of 1 means so that
 built-in and custom tasks share this definition and useful rules can be
 written.
@@ -314,10 +314,10 @@ Adjustments to Defaults
 Rules should be easier to remove or redefine, perhaps by giving them
 names. As it is, rules must be appended or all rules must be completely
 redefined.  Also, tags can only be defined for tasks at the original
-definition site when using the ``:=`` syntax.
+definition site when using the `:=` syntax.
 
-For removing tags, an implementation of ``removeTag`` should follow from
-the implementation of ``tag`` in a straightforward manner.
+For removing tags, an implementation of `removeTag` should follow from
+the implementation of `tag` in a straightforward manner.
 
 Other characteristics
 ~~~~~~~~~~~~~~~~~~~~~
@@ -326,12 +326,12 @@ The system of a tag with a weight was selected as being reasonably
 powerful and flexible without being too complicated. This selection is
 not fundamental and could be enhance, simplified, or replaced if
 necessary. The fundamental interface that describes the constraints the
-system must work within is ``sbt.ConcurrentRestrictions``. This
+system must work within is `sbt.ConcurrentRestrictions`. This
 interface is used to provide an intermediate scheduling queue between
-task execution (``sbt.Execute``) and the underlying thread-based
-parallel execution service (``java.util.concurrent.CompletionService``).
+task execution (`sbt.Execute`) and the underlying thread-based
+parallel execution service (`java.util.concurrent.CompletionService`).
 This intermediate queue restricts new tasks from being forwarded to the
-``j.u.c.CompletionService`` according to the
-``sbt.ConcurrentRestrictions`` implementation. See the
+`j.u.c.CompletionService` according to the
+`sbt.ConcurrentRestrictions` implementation. See the
 `sbt.ConcurrentRestrictions <https://github.com/sbt/sbt/blob/v0.12.0/tasks/ConcurrentRestrictions.scala>`_
 API documentation for details.

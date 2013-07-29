@@ -11,9 +11,9 @@ methods for controlling tab completion that are discussed at the end of
 the section.
 
 Parser combinators build up a parser from smaller parsers. A
-``Parser[T]`` in its most basic usage is a function
-``String => Option[T]``. It accepts a ``String`` to parse and produces a
-value wrapped in ``Some`` if parsing succeeds or ``None`` if it fails.
+`Parser[T]` in its most basic usage is a function
+`String => Option[T]`. It accepts a `String` to parse and produces a
+value wrapped in `Some` if parsing succeeds or `None` if it fails.
 Error handling and tab completion make this picture more complicated,
 but we'll stick with Option for this discussion.
 
@@ -37,9 +37,9 @@ The simplest parser combinators match exact inputs:
     //   and failing otherwise
     val litString: Parser[String] = "blue"
 
-In these examples, implicit conversions produce a literal ``Parser``
-from a ``Char`` or ``String``. Other basic parser constructors are the
-``charClass``, ``success`` and ``failure`` methods:
+In these examples, implicit conversions produce a literal `Parser`
+from a `Char` or `String`. Other basic parser constructors are the
+`charClass`, `success` and `failure` methods:
 
 ::
 
@@ -94,8 +94,8 @@ Transforming results
 
 A key aspect of parser combinators is transforming results along the way
 into more useful data structures. The fundamental methods for this are
-``map`` and ``flatMap``. Here are examples of ``map`` and some
-convenience methods implemented on top of ``map``.
+`map` and `flatMap`. Here are examples of `map` and some
+convenience methods implemented on top of `map`.
 
 ::
 
@@ -122,8 +122,8 @@ Controlling tab completion
 Most parsers have reasonable default tab completion behavior. For
 example, the string and character literal parsers will suggest the
 underlying literal for an empty input string. However, it is impractical
-to determine the valid completions for ``charClass``, since it accepts
-an arbitrary predicate. The ``examples`` method defines explicit
+to determine the valid completions for `charClass`, since it accepts
+an arbitrary predicate. The `examples` method defines explicit
 completions for such a parser:
 
 ::
@@ -131,7 +131,7 @@ completions for such a parser:
     val digit = charClass(_.isDigit, "digit").examples("0", "1", "2")
 
 Tab completion will use the examples as suggestions. The other method
-controlling tab completion is ``token``. The main purpose of ``token``
+controlling tab completion is `token`. The main purpose of `token`
 is to determine the boundaries for suggestions. For example, if your
 parser is:
 
@@ -140,7 +140,7 @@ parser is:
     ("fg" | "bg") ~ ' ' ~ ("green" | "blue")
 
 then the potential completions on empty input are:
-``console fg green fg blue bg green bg blue``
+`console fg green fg blue bg green bg blue`
 
 Typically, you want to suggest smaller segments or the number of
 suggestions becomes unmanageable. A better parser is:
@@ -150,9 +150,9 @@ suggestions becomes unmanageable. A better parser is:
     token( ("fg" | "bg") ~ ' ') ~ token("green" | "blue")
 
 Now, the initial suggestions would be (with \_ representing a space):
-``console fg_ bg_``
+`console fg_ bg_`
 
 Be careful not to overlap or nest tokens, as in
-``token("green" ~ token("blue"))``. The behavior is unspecified (and
+`token("green" ~ token("blue"))`. The behavior is unspecified (and
 should generate an error in the future), but typically the outer most
 token definition will be used.

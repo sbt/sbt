@@ -5,7 +5,7 @@ Advanced Command Example
 This is an advanced example showing some of the power of the new
 settings system. It shows how to temporarily modify all declared
 dependencies in the build, regardless of where they are defined. It
-directly operates on the final ``Seq[Setting[_]]`` produced from every
+directly operates on the final `Seq[Setting[_]]` produced from every
 setting involved in the build.
 
 The modifications are applied by running *canonicalize*. A *reload* or

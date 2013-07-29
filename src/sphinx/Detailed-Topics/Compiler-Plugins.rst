@@ -3,23 +3,23 @@ Compiler Plugin Support
 =======================
 
 There is some special support for using compiler plugins. You can set
-``autoCompilerPlugins`` to ``true`` to enable this functionality.
+`autoCompilerPlugins` to `true` to enable this functionality.
 
 ::
 
     autoCompilerPlugins := true
 
 To use a compiler plugin, you either put it in your unmanaged library
-directory (``lib/`` by default) or add it as managed dependency in the
-``plugin`` configuration. ``addCompilerPlugin`` is a convenience method
-for specifying ``plugin`` as the configuration for a dependency:
+directory (`lib/` by default) or add it as managed dependency in the
+`plugin` configuration. `addCompilerPlugin` is a convenience method
+for specifying `plugin` as the configuration for a dependency:
 
 ::
 
     addCompilerPlugin("org.scala-tools.sxr" %% "sxr" % "0.2.7")
 
-The ``compile`` and ``testCompile`` actions will use any compiler
-plugins found in the ``lib`` directory or in the ``plugin``
+The `compile` and `testCompile` actions will use any compiler
+plugins found in the `lib` directory or in the `plugin`
 configuration. You are responsible for configuring the plugins as
 necessary. For example, Scala X-Ray requires the extra option:
 

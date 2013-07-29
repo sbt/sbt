@@ -2,7 +2,7 @@
  Interactive mode
 =================
 
-By default, sbt's interactive mode is started when no commands are provided on the command line or when the ``shell`` command is invoked.
+By default, sbt's interactive mode is started when no commands are provided on the command line or when the `shell` command is invoked.
 
 .. howto::
    :id: basic_completion
@@ -16,13 +16,13 @@ Suggestions are provided that can complete the text entered to the left of the c
 Any part of the suggestion that is unambiguous is automatically appended to the current text.
 Commands typically support tab completion for most of their syntax.
 
-As an example, entering ``tes`` and hitting tab:
+As an example, entering `tes` and hitting tab:
 
 .. code-block:: console
 
     > tes<TAB>
  
-results in sbt appending a ``t``:
+results in sbt appending a `t`:
 
 .. code-block:: console
 
@@ -36,7 +36,7 @@ To get further completions, hit tab again:
     testFrameworks   testListeners    testLoader       testOnly         testOptions      test:
 
 Now, there is more than one possibility for the next character, so sbt prints the available options.
-We will select ``testOnly`` and get more suggestions by entering the rest of the command and hitting tab twice:
+We will select `testOnly` and get more suggestions by entering the rest of the command and hitting tab twice:
 
 .. code-block:: console
 
@@ -57,7 +57,7 @@ If tests have been added, renamed, or removed since the last test compilation, t
    
    Press tab multiple times.
 
-Some commands have different levels of completion.  Hitting tab multiple times increases the verbosity of completions.  (Presently, this feature is only used by the ``set`` command.)
+Some commands have different levels of completion.  Hitting tab multiple times increases the verbosity of completions.  (Presently, this feature is only used by the `set` command.)
 
 .. howto::
    :id: show_keybindings
@@ -67,7 +67,7 @@ Some commands have different levels of completion.  Hitting tab multiple times i
    > consoleQuick
    scala> :keybindings
 
-Both the Scala and sbt command prompts use JLine for interaction.  The Scala REPL contains a ``:keybindings`` command to show many of the keybindings used for JLine.  For sbt, this can be used by running one of the ``console`` commands (``console``, ``consoleQuick``, or ``consoleProject``) and then running ``:keybindings``.  For example:
+Both the Scala and sbt command prompts use JLine for interaction.  The Scala REPL contains a `:keybindings` command to show many of the keybindings used for JLine.  For sbt, this can be used by running one of the `console` commands (`console`, `consoleQuick`, or `consoleProject`) and then running `:keybindings`.  For example:
 
 .. code-block:: console
 
@@ -88,7 +88,7 @@ Both the Scala and sbt command prompts use JLine for interaction.  The Scala REP
    :title: Modify the default JLine keybindings
 
 JLine, used by both Scala and sbt, uses a configuration file for many of its keybindings.
-The location of this file can be changed with the system property ``jline.keybindings``.
+The location of this file can be changed with the system property `jline.keybindings`.
 The default keybindings file is included in the sbt launcher and may be used as a starting point for customization.
 
 
@@ -100,7 +100,7 @@ The default keybindings file is included in the sbt launcher and may be used as 
    shellPrompt := { (s: State) => System.getProperty("user.name") + "> " }
 
 By default, sbt only displays `> ` to prompt for a command.
-This can be changed through the ``shellPrompt`` setting, which has type ``State => String``.
+This can be changed through the `shellPrompt` setting, which has type `State => String`.
 :doc:`State </Extending/Build-State>` contains all state for sbt and thus provides access to all build information for use in the prompt string.
 
 Examples:
@@ -123,17 +123,17 @@ Examples:
 
 Interactive mode remembers history even if you exit sbt and restart it.
 The simplest way to access history is to press the up arrow key to cycle
-through previously entered commands.  Use ``Ctrl+r`` to incrementally
+through previously entered commands.  Use `Ctrl+r` to incrementally
 search history backwards.  The following commands are supported:
 
-* ``!`` Show history command help.
-* ``!!`` Execute the previous command again.
-* ``!:`` Show all previous commands.
-* ``!:n`` Show the last n commands.
-* ``!n`` Execute the command with index ``n``, as shown by the ``!:`` command.
-* ``!-n`` Execute the nth command before this one.
-* ``!string`` Execute the most recent command starting with 'string'
-* ``!?string`` Execute the most recent command containing 'string'
+* `!` Show history command help.
+* `!!` Execute the previous command again.
+* `!:` Show all previous commands.
+* `!:n` Show the last n commands.
+* `!n` Execute the command with index `n`, as shown by the `!:` command.
+* `!-n` Execute the nth command before this one.
+* `!string` Execute the most recent command starting with 'string'
+* `!?string` Execute the most recent command containing 'string'
 
 .. howto::
    :id: history_file
@@ -142,16 +142,16 @@ search history backwards.  The following commands are supported:
    
    historyPath := Some( baseDirectory.value / ".history" )
 
-By default, interactive history is stored in the ``target/`` directory for the current project (but is not removed by a ``clean``).
+By default, interactive history is stored in the `target/` directory for the current project (but is not removed by a `clean`).
 History is thus separate for each subproject.
-The location can be changed with the ``historyPath`` setting, which has type ``Option[File]``.
+The location can be changed with the `historyPath` setting, which has type `Option[File]`.
 For example, history can be stored in the root directory for the project instead of the output directory:
 
 ::
 
     historyPath := Some(baseDirectory.value / ".history")
 
-The history path needs to be set for each project, since sbt will use the value of ``historyPath`` for the current project (as selected by the ``project`` command).
+The history path needs to be set for each project, since sbt will use the value of `historyPath` for the current project (as selected by the `project` command).
 
 
 .. howto::
@@ -163,14 +163,14 @@ The history path needs to be set for each project, since sbt will use the value 
 
 The previous section describes how to configure the location of the history file.
 This setting can be used to share the interactive history among all projects in a build instead of using a different history for each project.
-The way this is done is to set ``historyPath`` to be the same file, such as a file in the root project's ``target/`` directory:
+The way this is done is to set `historyPath` to be the same file, such as a file in the root project's `target/` directory:
 
 ::
 
     historyPath :=
         Some( (target in LocalRootProject).value / ".history")
 
-The ``in LocalRootProject`` part means to get the output directory for the root project for the build.
+The `in LocalRootProject` part means to get the output directory for the root project for the build.
 
 .. howto::
    :id: disable_history
@@ -179,7 +179,7 @@ The ``in LocalRootProject`` part means to get the output directory for the root 
    
    historyPath := None
 
-If, for whatever reason, you want to disable history, set ``historyPath`` to ``None`` in each project it should be disabled in:
+If, for whatever reason, you want to disable history, set `historyPath` to `None` in each project it should be disabled in:
 
     historyPath := None
 
@@ -190,18 +190,18 @@ If, for whatever reason, you want to disable history, set ``historyPath`` to ``N
    
    clean compile shell
 
-Interactive mode is implemented by the ``shell`` command.
-By default, the ``shell`` command is run if no commands are provided to sbt on the command line.
-To run commands before entering interactive mode, specify them on the command line followed by ``shell``.
+Interactive mode is implemented by the `shell` command.
+By default, the `shell` command is run if no commands are provided to sbt on the command line.
+To run commands before entering interactive mode, specify them on the command line followed by `shell`.
 For example,
 
 .. code-block:: console
 
     $ sbt clean compile shell
 
-This runs ``clean`` and then ``compile`` before entering the interactive prompt.
-If either ``clean`` or ``compile`` fails, sbt will exit without going to the prompt.
-To enter the prompt whether or not these initial commands succeed, prepend `-shell`, which means to run ``shell`` if any command fails.
+This runs `clean` and then `compile` before entering the interactive prompt.
+If either `clean` or `compile` fails, sbt will exit without going to the prompt.
+To enter the prompt whether or not these initial commands succeed, prepend `-shell`, which means to run `shell` if any command fails.
 For example, 
 
 .. code-block:: console

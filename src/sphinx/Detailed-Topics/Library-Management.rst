@@ -16,13 +16,13 @@ There are two ways for you to manage libraries with sbt: manually or
 automatically. These two ways can be mixed as well. This page discusses
 the two approaches. All configurations shown here are settings that go
 either directly in a :doc:`.sbt file </Getting-Started/Basic-Def>` or are
-appended to the ``settings`` of a Project in a :doc:`.scala file </Getting-Started/Full-Def>`.
+appended to the `settings` of a Project in a :doc:`.scala file </Getting-Started/Full-Def>`.
 
 Manual Dependency Management
 ============================
 
 Manually managing dependencies involves copying any jars that you want
-to use to the ``lib`` directory. sbt will put these jars on the
+to use to the `lib` directory. sbt will put these jars on the
 classpath during compilation, testing, running, and when using the
 interpreter. You are responsible for adding, removing, updating, and
 otherwise managing the jars in this directory. No modifications to your
@@ -30,15 +30,15 @@ project definition are required to use this method unless you would like
 to change the location of the directory you store the jars in.
 
 To change the directory jars are stored in, change the
-``unmanagedBase`` setting in your project definition. For example, to
-use ``custom_lib/``:
+`unmanagedBase` setting in your project definition. For example, to
+use `custom_lib/`:
 
 ::
 
     unmanagedBase := baseDirectory.value / "custom_lib"
 
 If you want more control and flexibility, override the
-``unmanagedJars`` task, which ultimately provides the manual
+`unmanagedJars` task, which ultimately provides the manual
 dependencies to sbt. The default implementation is roughly:
 
 ::
@@ -110,7 +110,7 @@ several dependencies can be declared together:
     )
 
 If you are using a dependency that was built with sbt, double the first
-``%`` to be ``%%``:
+`%` to be `%%`:
 
 ::
 
@@ -122,8 +122,8 @@ this kind of dependency, that dependency probably wasn't published for
 the version of Scala you are using. See :doc:`Cross-Build` for details.
 
 Ivy can select the latest revision of a module according to constraints
-you specify. Instead of a fixed revision like ``"1.6.1"``, you specify
-``"latest.integration"``, ``"2.9.+"``, or ``"[1.0,)"``. See the `Ivy
+you specify. Instead of a fixed revision like `"1.6.1"`, you specify
+`"latest.integration"`, `"2.9.+"`, or `"[1.0,)"`. See the `Ivy
 revisions <http://ant.apache.org/ivy/history/2.3.0-rc1/ivyfile/dependency.html#revision>`_
 documentation for details.
 
@@ -161,12 +161,12 @@ See :doc:`Resolvers` for details on defining other types of repositories.
 Override default resolvers
 ~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-``resolvers`` configures additional, inline user resolvers. By default,
-``sbt`` combines these resolvers with default repositories (Maven
-Central and the local Ivy repository) to form ``externalResolvers``. To
-have more control over repositories, set ``externalResolvers``
+`resolvers` configures additional, inline user resolvers. By default,
+`sbt` combines these resolvers with default repositories (Maven
+Central and the local Ivy repository) to form `externalResolvers`. To
+have more control over repositories, set `externalResolvers`
 directly. To only specify repositories in addition to the usual
-defaults, configure ``resolvers``.
+defaults, configure `resolvers`.
 
 For example, to use the Sonatype OSS Snapshots repository in addition to
 the default repositories,
@@ -195,7 +195,7 @@ parts:
    definitions.
 
 The repositories used by the launcher can be overridden by defining
-``~/.sbt/repositories``, which must contain a ``[repositories]`` section
+`~/.sbt/repositories`, which must contain a `[repositories]` section
 with the same format as the :doc:`Launcher` configuration file. For
 example:
 
@@ -207,8 +207,8 @@ example:
     my-ivy-repo: http://example.org/ivy-repo/, [organization]/[module]/[revision]/[type]s/[artifact](-[classifier]).[ext]
 
 A different location for the repositories file may be specified by the
-``sbt.repository.config`` system property in the sbt startup script. The
-final step is to set ``sbt.override.build.repos`` to true to use these
+`sbt.repository.config` system property in the sbt startup script. The
+final step is to set `sbt.override.build.repos` to true to use these
 repositories for dependency resolution and retrieval.
 
 Explicit URL
@@ -233,7 +233,7 @@ transitively. In some instances, you may find that the dependencies
 listed for a project aren't necessary for it to build. Projects using
 the Felix OSGI framework, for instance, only explicitly require its main
 jar to compile and run. Avoid fetching artifact dependencies with either
-``intransitive()`` or ``notTransitive()``, as in this example:
+`intransitive()` or `notTransitive()`, as in this example:
 
 ::
 
@@ -242,14 +242,14 @@ jar to compile and run. Avoid fetching artifact dependencies with either
 Classifiers
 ~~~~~~~~~~~
 
-You can specify the classifier for a dependency using the ``classifier``
+You can specify the classifier for a dependency using the `classifier`
 method. For example, to get the jdk15 version of TestNG:
 
 ::
 
     libraryDependencies += "org.testng" % "testng" % "5.7" classifier "jdk15"
 
-For multiple classifiers, use multiple ``classifier`` calls:
+For multiple classifiers, use multiple `classifier` calls:
 
 ::
 
@@ -257,9 +257,9 @@ For multiple classifiers, use multiple ``classifier`` calls:
       "org.lwjgl.lwjgl" % "lwjgl-platform" % lwjglVersion classifier "natives-windows" classifier "natives-linux" classifier "natives-osx"
 
 To obtain particular classifiers for all dependencies transitively, run
-the ``updateClassifiers`` task. By default, this resolves all artifacts
-with the ``sources`` or ``javadoc`` classifier. Select the classifiers
-to obtain by configuring the ``transitiveClassifiers`` setting. For
+the `updateClassifiers` task. By default, this resolves all artifacts
+with the `sources` or `javadoc` classifier. Select the classifiers
+to obtain by configuring the `transitiveClassifiers` setting. For
 example, to only retrieve sources:
 
 ::
@@ -270,7 +270,7 @@ Exclude Transitive Dependencies
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 To exclude certain transitive dependencies of a dependency, use the
-``excludeAll`` or ``exclude`` methods. The ``exclude`` method should be
+`excludeAll` or `exclude` methods. The `exclude` method should be
 used when a pom will be published for the project. It requires the
 organization and module name to exclude. For example,
 
@@ -279,7 +279,7 @@ organization and module name to exclude. For example,
     libraryDependencies += 
       "log4j" % "log4j" % "1.2.15" exclude("javax.jms", "jms")
 
-The ``excludeAll`` method is more flexible, but because it cannot be
+The `excludeAll` method is more flexible, but because it cannot be
 represented in a pom.xml, it should only be used when a pom doesn't need
 to be generated. For example,
 
@@ -300,20 +300,20 @@ Download Sources
 ~~~~~~~~~~~~~~~~
 
 Downloading source and API documentation jars is usually handled by an
-IDE plugin. These plugins use the ``updateClassifiers`` and
-``updateSbtClassifiers`` tasks, which produce an :doc:`Update-Report`
+IDE plugin. These plugins use the `updateClassifiers` and
+`updateSbtClassifiers` tasks, which produce an :doc:`Update-Report`
 referencing these jars.
 
 To have sbt download the dependency's sources without using an IDE
-plugin, add ``withSources()`` to the dependency definition. For API
-jars, add ``withJavadoc()``. For example:
+plugin, add `withSources()` to the dependency definition. For API
+jars, add `withJavadoc()`. For example:
 
 ::
 
     libraryDependencies += 
       "org.apache.felix" % "org.apache.felix.framework" % "1.8.0" withSources() withJavadoc()
 
-Note that this is not transitive. Use the ``update-*classifiers`` tasks
+Note that this is not transitive. Use the `update-*classifiers` tasks
 for that.
 
 Extra Attributes
@@ -321,7 +321,7 @@ Extra Attributes
 
 `Extra
 attributes <http://ant.apache.org/ivy/history/2.3.0-rc1/concept.html#extra>`_
-can be specified by passing key/value pairs to the ``extra`` method.
+can be specified by passing key/value pairs to the `extra` method.
 
 To select dependencies by extra attributes:
 
@@ -359,9 +359,9 @@ Ivy Home Directory
 ~~~~~~~~~~~~~~~~~~
 
 By default, sbt uses the standard Ivy home directory location
-``${user.home}/.ivy2/``. This can be configured machine-wide, for use by
+`${user.home}/.ivy2/`. This can be configured machine-wide, for use by
 both the sbt launcher and by projects, by setting the system property
-``sbt.ivy.home`` in the sbt startup script (described in
+`sbt.ivy.home` in the sbt startup script (described in
 :doc:`Setup </Getting-Started/Setup>`).
 
 For example:
@@ -406,7 +406,7 @@ Conflict Management
 
 The conflict manager decides what to do when  dependency resolution brings in different versions of the same library.
 By default, the latest revision is selected.
-This can be changed by setting ``conflictManager``, which has type `ConflictManager <../../api/sbt/ConflictManager.html>`_.
+This can be changed by setting `conflictManager`, which has type `ConflictManager <../../api/sbt/ConflictManager.html>`_.
 See the `Ivy documentation <http://ant.apache.org/ivy/history/latest-milestone/settings/conflict-managers.html>`_ for details on the different conflict managers.
 For example, to specify that no conflicts are allowed,
 
@@ -446,7 +446,7 @@ This can be confirmed in the output of `show update`, which shows the newer vers
     [info] 		(EVICTED) log4j:log4j:1.2.14
     ...
 
-To say that we prefer the version we've specified over the version from indirect dependencies, use ``force()``:
+To say that we prefer the version we've specified over the version from indirect dependencies, use `force()`:
 
 ::
 
@@ -455,7 +455,7 @@ To say that we prefer the version we've specified over the version from indirect
       "log4j" % "log4j" % "1.2.14" force()
     )
 
-The output of ``show update`` is now reversed:
+The output of `show update` is now reversed:
 
 ::
 
@@ -472,9 +472,9 @@ The output of ``show update`` is now reversed:
 Forcing a revision without introducing a dependency
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-Use of the ``force()`` method described in the previous section requires having a direct dependency.
+Use of the `force()` method described in the previous section requires having a direct dependency.
 However, it may be desirable to force a revision without introducing that direct dependency.
-Ivy provides overrides for this and in sbt, overrides are configured in sbt with the ``dependencyOverrides`` setting, which is a set of ``ModuleIDs``.
+Ivy provides overrides for this and in sbt, overrides are configured in sbt with the `dependencyOverrides` setting, which is a set of `ModuleIDs`.
 For example, the following dependency definitions conflict because spark uses log4j 1.2.16 and scalaxb uses log4j 1.2.17:
 
 ::
@@ -502,7 +502,7 @@ To change the version selected, add an override:
     dependencyOverrides += "log4j" % "log4j" % "1.2.16"
 
 This will not add a direct dependency on log4j, but will force the revision to be 1.2.16.
-This is confirmed by the output of ``show update``:
+This is confirmed by the output of `show update`:
 
 ::
 
@@ -537,25 +537,25 @@ for details.
 
 You put a dependency in a configuration by selecting one or more of its
 configurations to map to one or more of your project's configurations.
-The most common case is to have one of your configurations ``A`` use a
-dependency's configuration ``B``. The mapping for this looks like
-``"A->B"``. To apply this mapping to a dependency, add it to the end of
+The most common case is to have one of your configurations `A` use a
+dependency's configuration `B`. The mapping for this looks like
+`"A->B"`. To apply this mapping to a dependency, add it to the end of
 your dependency definition:
 
 ::
 
     libraryDependencies += "org.scalatest" % "scalatest" % "1.2" % "test->compile"
 
-This says that your project's ``test`` configuration uses
-``ScalaTest``'s ``compile`` configuration. See the `Ivy
+This says that your project's `test` configuration uses
+`ScalaTest`'s `compile` configuration. See the `Ivy
 documentation <http://ant.apache.org/ivy/history/2.3.0-rc1/tutorial/conf.html>`_
 for more advanced mappings. Most projects published to Maven
-repositories will use the ``compile`` configuration.
+repositories will use the `compile` configuration.
 
 A useful application of configurations is to group dependencies that are
 not used on normal classpaths. For example, your project might use a
-``"js"`` configuration to automatically download jQuery and then include
-it in your jar by modifying ``resources``. For example:
+`"js"` configuration to automatically download jQuery and then include
+it in your jar by modifying `resources`. For example:
 
 ::
 
@@ -565,13 +565,13 @@ it in your jar by modifying ``resources``. For example:
 
     resources ++= update.value.select( configurationFilter("js") )
 
-The ``config`` method defines a new configuration with name ``"js"`` and
+The `config` method defines a new configuration with name `"js"` and
 makes it private to the project so that it is not used for publishing.
 See :doc:`/Detailed-Topics/Update-Report` for more information on selecting managed
 artifacts.
 
-A configuration without a mapping (no ``"->"``) is mapped to ``default``
-or ``compile``. The ``->`` is only needed when mapping to a different
+A configuration without a mapping (no `"->"`) is mapped to `default`
+or `compile`. The `->` is only needed when mapping to a different
 configuration than those. The ScalaTest dependency above can then be
 shortened to:
 
@@ -586,7 +586,7 @@ Maven/Ivy
 ---------
 
 For this method, create the configuration files as you would for Maven
-(``pom.xml``) or Ivy (``ivy.xml`` and optionally ``ivysettings.xml``).
+(`pom.xml`) or Ivy (`ivy.xml` and optionally `ivysettings.xml`).
 External configuration is selected by using one of the following
 expressions.
 
@@ -647,7 +647,7 @@ or
 Full Ivy Example
 ~~~~~~~~~~~~~~~~
 
-For example, a ``build.sbt`` using external Ivy files might look like:
+For example, a `build.sbt` using external Ivy files might look like:
 
 ::
 
@@ -667,8 +667,8 @@ Known limitations
 Maven support is dependent on Ivy's support for Maven POMs. Known issues
 with this support:
 
--  Specifying ``relativePath`` in the ``parent`` section of a POM will
+-  Specifying `relativePath` in the `parent` section of a POM will
    produce an error.
 -  Ivy ignores repositories specified in the POM. A workaround is to
-   specify repositories inline or in an Ivy ``ivysettings.xml`` file.
+   specify repositories inline or in an Ivy `ivysettings.xml` file.
 

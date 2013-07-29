@@ -10,9 +10,9 @@ Configure and use logging
    last
 
 When a command is run, more detailed logging output is sent to a file than to the screen (by default).
-This output can be recalled for the command just executed by running ``last``.
+This output can be recalled for the command just executed by running `last`.
 
-For example, the output of ``run`` when the sources are uptodate is:
+For example, the output of `run` when the sources are uptodate is:
 
 .. code-block:: console
 
@@ -22,7 +22,7 @@ For example, the output of ``run`` when the sources are uptodate is:
     [success] Total time: 0 s, completed Feb 25, 2012 1:00:00 PM
     
 
-The details of this execution can be recalled by running ``last``:
+The details of this execution can be recalled by running `last`:
 
 .. code-block:: console
 
@@ -68,8 +68,8 @@ Configuration of the logging level for the console and for the backing file are 
    last compile
 
 When a task is run, more detailed logging output is sent to a file than to the screen (by default).
-This output can be recalled for a specific task by running ``last <task>``.
-For example, the first time ``compile`` is run, output might look like:
+This output can be recalled for a specific task by running `last <task>`.
+For example, the first time `compile` is run, output might look like:
 
 .. code-block:: console
 
@@ -116,7 +116,7 @@ and:
    printWarnings
 
 The Scala compiler does not print the full details of warnings by default.
-Compiling code that uses the deprecated ``error`` method from Predef might generate the following output:
+Compiling code that uses the deprecated `error` method from Predef might generate the following output:
 
 .. code-block:: console
 
@@ -125,8 +125,8 @@ Compiling code that uses the deprecated ``error`` method from Predef might gener
     [warn] there were 1 deprecation warnings; re-run with -deprecation for details
     [warn] one warning found
 
-The details aren't provided, so it is necessary to add ``-deprecation`` to the options passed to the compiler (``scalacOptions``) and recompile.
-An alternative when using Scala 2.10 and later is to run ``printWarnings``.
+The details aren't provided, so it is necessary to add `-deprecation` to the options passed to the compiler (`scalacOptions`) and recompile.
+An alternative when using Scala 2.10 and later is to run `printWarnings`.
 This task will display all warnings from the previous compilation.
 For example,
 
@@ -144,9 +144,9 @@ For example,
    
    set every logLevel := Level.Debug
 
-The amount of logging is controlled by the ``logLevel`` setting, which takes values from the ``Level`` enumeration.
-Valid values are ``Error``, ``Warn``, ``Info``, and ``Debug`` in order of increasing verbosity.
-To change the global logging level, set ``logLevel in Global``.
+The amount of logging is controlled by the `logLevel` setting, which takes values from the `Level` enumeration.
+Valid values are `Error`, `Warn`, `Info`, and `Debug` in order of increasing verbosity.
+To change the global logging level, set `logLevel in Global`.
 For example, to set it temporarily from the sbt prompt,
 
 .. code-block:: console
@@ -158,8 +158,8 @@ For example, to set it temporarily from the sbt prompt,
    :title: Change the logging level for a specific task, configuration, or project
    setting: logLevel in compile := Level.Debug
 
-The amount of logging is controlled by the ``logLevel`` setting, which takes values from the ``Level`` enumeration.
-Valid values are ``Error``, ``Warn``, ``Info``, and ``Debug`` in order of increasing verbosity.
+The amount of logging is controlled by the `logLevel` setting, which takes values from the `Level` enumeration.
+Valid values are `Error`, `Warn`, `Info`, and `Debug` in order of increasing verbosity.
 The logging level may be configured globally, as described in the previous section, or it may be applied to a specific project, configuration, or task.
 For example, to change the logging level for compilation to only show warnings and errors:
 
@@ -174,9 +174,9 @@ To enable debug logging for all tasks in the current project,
     > set logLevel := Level.Warn
 
 A common scenario is that after running a task, you notice that you need more information than was shown by default.
-A ``logLevel`` based solution typically requires changing the logging level and running a task again.
+A `logLevel` based solution typically requires changing the logging level and running a task again.
 However, there are two cases where this is unnecessary.
-First, warnings from a previous compilation may be displayed using ``printWarnings`` for the main sources or ``test:printWarnings`` for test sources.
+First, warnings from a previous compilation may be displayed using `printWarnings` for the main sources or `test:printWarnings` for test sources.
 Second, output from the previous execution is available either for a single task or for in its entirety.
 See the section on `printWarnings <#printwarnings>`_ and the sections on `previous output <#last>`_.
 
@@ -192,8 +192,8 @@ By default, sbt hides the stack trace of most exceptions thrown during execution
 It prints a message that indicates how to display the exception.
 However, you may want to show more of stack traces by default.
 
-The setting to configure is ``traceLevel``, which is a setting with an Int value.
-When ``traceLevel`` is set to a negative value, no stack traces are shown.
+The setting to configure is `traceLevel`, which is a setting with an Int value.
+When `traceLevel` is set to a negative value, no stack traces are shown.
 When it is zero, the stack trace is displayed up to the first sbt stack frame.
 When positive, the stack trace is shown up to that many stack frames.
 
@@ -203,8 +203,8 @@ For example, the following configures sbt to show stack traces up to the first s
 
     > set every traceLevel := 0
 
-The ``every`` part means to override the setting in all scopes.
-To change the trace printing behavior for a single project, configuration, or task, scope ``traceLevel`` appropriately:
+The `every` part means to override the setting in all scopes.
+To change the trace printing behavior for a single project, configuration, or task, scope `traceLevel` appropriately:
 
 .. code-block:: console
 
@@ -221,7 +221,7 @@ To change the trace printing behavior for a single project, configuration, or ta
 
 By default, sbt buffers the logging output of a test until the whole class finishes.
 This is so that output does not get mixed up when executing in parallel.
-To disable buffering, set the ``logBuffered`` setting to false:
+To disable buffering, set the `logBuffered` setting to false:
 
 ::
 
@@ -231,9 +231,9 @@ To disable buffering, set the ``logBuffered`` setting to false:
    :id: custom
    :title: Add a custom logger
 
-The setting ``extraLoggers`` can be used to add custom loggers.
+The setting `extraLoggers` can be used to add custom loggers.
 A custom logger should implement [AbstractLogger].
-``extraLoggers`` is a function ``ScopedKey[_] => Seq[AbstractLogger]``.
+`extraLoggers` is a function `ScopedKey[_] => Seq[AbstractLogger]`.
 This means that it can provide different logging based on the task that requests the logger.
 
 ::
@@ -244,15 +244,15 @@ This means that it can provide different logging based on the task that requests
     	}
     }
 
-Here, we take the current function for the setting ``currentFunction`` and provide a new function.
+Here, we take the current function for the setting `currentFunction` and provide a new function.
 The new function prepends our custom logger to the ones provided by the old function.
 
 .. howto::
    :id: log
    :title: Log messages in a task
 
-The special task ``streams`` provides per-task logging and I/O via a `Streams <../../api/#sbt.std.Streams>`_ instance.
-To log, a task uses the ``log`` member from the ``streams`` task:
+The special task `streams` provides per-task logging and I/O via a `Streams <../../api/#sbt.std.Streams>`_ instance.
+To log, a task uses the `log` member from the `streams` task:
 
 ::
 

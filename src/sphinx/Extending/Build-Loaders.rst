@@ -112,14 +112,14 @@ Custom Builder
 --------------
 
 Once a project is resolved, it needs to be built and then presented to
-sbt as an instance of ``sbt.BuildUnit``. A custom builder has type:
+sbt as an instance of `sbt.BuildUnit`. A custom builder has type:
 
 ::
 
     BuildInfo => Option[() => BuildUnit] 
 
 A builder returns None if it does not want to handle the build
-identified by the ``BuildInfo``. Otherwise, it provides a function that
+identified by the `BuildInfo`. Otherwise, it provides a function that
 will load the build when evaluated. Register a builder by passing it to
 *BuildLoader.build* and overriding *Build.buildLoaders* with the result:
 
@@ -192,7 +192,7 @@ project/ directory.
 Custom Transformer
 ------------------
 
-Once a project has been loaded into an ``sbt.BuildUnit``, it is
+Once a project has been loaded into an `sbt.BuildUnit`, it is
 transformed by all registered transformers. A custom transformer has
 type:
 
@@ -228,36 +228,36 @@ Relevant API documentation for custom transformers:
 Manipulating Project Dependencies in Settings
 =============================================
 
-The ``buildDependencies`` setting, in the Global scope, defines the
+The `buildDependencies` setting, in the Global scope, defines the
 aggregation and classpath dependencies between projects. By default,
-this information comes from the dependencies defined by ``Project``
-instances by the ``aggregate`` and ``dependsOn`` methods. Because
-``buildDependencies`` is a setting and is used everywhere dependencies
+this information comes from the dependencies defined by `Project`
+instances by the `aggregate` and `dependsOn` methods. Because
+`buildDependencies` is a setting and is used everywhere dependencies
 need to be known (once all projects are loaded), plugins and build
 definitions can transform it to manipulate inter-project dependencies at
 setting evaluation time. The only requirement is that no new projects
 are introduced because all projects are loaded before settings get
 evaluated. That is, all Projects must have been declared directly in a
-Build or referenced as the argument to ``Project.aggregate`` or
-``Project.dependsOn``.
+Build or referenced as the argument to `Project.aggregate` or
+`Project.dependsOn`.
 
 The BuildDependencies type
 --------------------------
 
-The type of the ``buildDependencies`` setting is
+The type of the `buildDependencies` setting is
 `BuildDependencies </api/sbt/BuildDependencies.html>`_.
-``BuildDependencies`` provides mappings from a project to its aggregate
+`BuildDependencies` provides mappings from a project to its aggregate
 or classpath dependencies. For classpath dependencies, a dependency has
-type ``ClasspathDep[ProjectRef]``, which combines a ``ProjectRef`` with
+type `ClasspathDep[ProjectRef]`, which combines a `ProjectRef` with
 a configuration (see `ClasspathDep <../../api/sbt/ClasspathDep.html>`_
 and `ProjectRef <../../api/sbt/ProjectRef.html>`_). For aggregate
-dependencies, the type of a dependency is just ``ProjectRef``.
+dependencies, the type of a dependency is just `ProjectRef`.
 
-The API for ``BuildDependencies`` is not extensive, covering only a
+The API for `BuildDependencies` is not extensive, covering only a
 little more than the minimum required, and related APIs have more of an
 internal, unpolished feel. Most manipulations consist of modifying the
 relevant map (classpath or aggregate) manually and creating a new
-``BuildDependencies`` instance.
+`BuildDependencies` instance.
 
 Example
 ~~~~~~~
@@ -285,6 +285,6 @@ like a local directory.
 
 It is not limited to such basic translations, however. The configuration
 a dependency is defined in may be modified and dependencies may be added
-or removed. Modifying ``buildDependencies`` can be combined with
-modifying ``libraryDependencies`` to convert binary dependencies to and
+or removed. Modifying `buildDependencies` can be combined with
+modifying `libraryDependencies` to convert binary dependencies to and
 from source dependencies, for example.

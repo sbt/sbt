@@ -92,9 +92,9 @@ Manual installation requires downloading `sbt-launch.jar`_ and creating a script
 Unix
 ~~~~
 
-Put `sbt-launch.jar`_ in ``~/bin``.
+Put `sbt-launch.jar`_ in `~/bin`.
 
-Create a script to run the jar, by creating ``~/bin/sbt`` with these contents:
+Create a script to run the jar, by creating `~/bin/sbt` with these contents:
 
 .. code-block:: console
 
@@ -111,11 +111,11 @@ Windows
 ~~~~~~~
 
 Manual installation for Windows varies by terminal type and whether Cygwin is used.
-In all cases, put the batch file or script on the path so that you can launch ``sbt``
-in any directory by typing ``sbt`` at the command prompt.  Also, adjust JVM settings
+In all cases, put the batch file or script on the path so that you can launch `sbt`
+in any directory by typing `sbt` at the command prompt.  Also, adjust JVM settings
 according to your machine if necessary.
 
-For **non-Cygwin users using the standard Windows terminal**, create a batch file ``sbt.bat``:
+For **non-Cygwin users using the standard Windows terminal**, create a batch file `sbt.bat`:
 
 .. code-block:: console
 
@@ -124,21 +124,21 @@ For **non-Cygwin users using the standard Windows terminal**, create a batch fil
 
 and put the downloaded `sbt-launch.jar`_ in the same directory as the batch file.
 
-If using **Cygwin with the standard Windows terminal**, create a bash script ``~/bin/sbt``: 
+If using **Cygwin with the standard Windows terminal**, create a bash script `~/bin/sbt`: 
 
 .. code-block:: console
 
     $ SBT_OPTS="-Xms512M -Xmx1536M -Xss1M -XX:+CMSClassUnloadingEnabled -XX:MaxPermSize=256M"
     $ java $SBT_OPTS -jar sbt-launch.jar "$@"
 
-Replace ``sbt-launch.jar`` with the path to your downloaded `sbt-launch.jar`_ and remember to use ``cygpath`` if necessary.
+Replace `sbt-launch.jar` with the path to your downloaded `sbt-launch.jar`_ and remember to use `cygpath` if necessary.
 Make the script executable:
 
 .. code-block:: console
 
     $ chmod u+x ~/bin/sbt
 
-If using **Cygwin with an Ansi terminal** (supports Ansi escape sequences and is configurable via ``stty``), create a bash script ``~/bin/sbt``:
+If using **Cygwin with an Ansi terminal** (supports Ansi escape sequences and is configurable via `stty`), create a bash script `~/bin/sbt`:
 
 .. code-block:: console
 
@@ -147,7 +147,7 @@ If using **Cygwin with an Ansi terminal** (supports Ansi escape sequences and is
     $ java -Djline.terminal=jline.UnixTerminal -Dsbt.cygwin=true $SBT_OPTS -jar sbt-launch.jar "$@"
     $ stty icanon echo > /dev/null 2>&1
 
-Replace ``sbt-launch.jar`` with the path to your downloaded `sbt-launch.jar`_ and remember to use ``cygpath`` if necessary.
+Replace `sbt-launch.jar` with the path to your downloaded `sbt-launch.jar`_ and remember to use `cygpath` if necessary.
 Then, make the script executable:
 
 .. code-block:: console

@@ -15,7 +15,7 @@ A side benefit to using the sbt organization for projects is that you can use gh
 Community Ivy Repository
 ========================
 
-`Typesafe, Inc. <http://www.typesafe.com>`_ has provided a freely available `Ivy Repository <http://repo.scala-sbt.org/scalasbt>`_ for sbt projects to use.
+`Typesafe <http://www.typesafe.com>`_ has provided a freely available `Ivy Repository <http://repo.scala-sbt.org/scalasbt>`_ for sbt projects to use.
 If you would like to publish your project to this Ivy repository, first contact `sbt-repo-admins <http://groups.google.com/group/sbt-repo-admins?hl=en>`_ and request privileges (we have to verify code ownership, rights to publish, etc.).  After which, you can deploy your plugins using the following configuration:
 
 ::
@@ -24,14 +24,14 @@ If you would like to publish your project to this Ivy repository, first contact 
      
      publishMavenStyle := false
  
-You'll also need to add your credentials somewhere.  For example, you might use a ``~/.sbt/sbtpluginpublish.sbt`` file:
+You'll also need to add your credentials somewhere.  For example, you might use a `~/.sbt/pluginpublish.sbt` file:
  
 ::
 
      credentials += Credentials("Artifactory Realm", 
  "scalasbt.artifactoryonline.com", "@user name@", "@my encrypted password@")
  
-Where ``@my encrypted password@`` is actually obtained using the following `instructions <http://wiki.jfrog.org/confluence/display/RTF/Centrally+Secure+Passwords>`_.
+Where `@my encrypted password@` is actually obtained using the following `instructions <http://wiki.jfrog.org/confluence/display/RTF/Centrally+Secure+Passwords>`_.
  
 *Note: Your code must abide by the* `repository polices <Repository-Rules>`_.
 
@@ -194,7 +194,7 @@ Code generator plugins
    https://github.com/bigtoast/sbt-thrift
 -  xsbt-hginfo (Generate Scala source code for Mercurial repository
    information): https://bitbucket.org/lukas\_pustina/xsbt-hginfo
--  sbt-scalashim (Generate Scala shim like ``sys.error``):
+-  sbt-scalashim (Generate Scala shim like `sys.error`):
    https://github.com/sbt/sbt-scalashim
 -  sbtend (Generate Java source code from
    `xtend <http://www.eclipse.org/xtend/>`_ ):

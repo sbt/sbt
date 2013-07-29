@@ -29,9 +29,9 @@ build.sbt file:
     resolvers += sbtResolver.value
 
 Then, put the following examples in source files
-``SettingsExample.scala`` and ``SettingsUsage.scala``. Finally, run sbt
-and enter the REPL using ``console``. To see the output described below,
-enter ``SettingsUsage``.
+`SettingsExample.scala` and `SettingsUsage.scala`. Finally, run sbt
+and enter the REPL using `console`. To see the output described below,
+enter `SettingsUsage`.
 
 Example Settings System
 ~~~~~~~~~~~~~~~~~~~~~~~
@@ -48,7 +48,7 @@ are three main parts:
 There is also a fourth, but its usage is likely to be specific to sbt at
 this time. The example uses a trivial implementation for this part.
 
-``SettingsExample.scala``
+`SettingsExample.scala`
 
 ::
 
@@ -86,12 +86,12 @@ Example Usage
 ~~~~~~~~~~~~~
 
 This part shows how to use the system we just defined. The end result is
-a ``Settings[Scope]`` value. This type is basically a mapping
-``Scope -> AttributeKey[T] -> Option[T]``. See the `Settings API
+a `Settings[Scope]` value. This type is basically a mapping
+`Scope -> AttributeKey[T] -> Option[T]`. See the `Settings API
 documentation <../../api/sbt/Settings.html>`_
 for details.
 
-``SettingsUsage.scala``
+`SettingsUsage.scala`
 
 ::
 
@@ -132,8 +132,20 @@ for details.
           println( k.label + i + " = " + applied.get( Scope(i), k) )
        }
 
-This produces the following output when run:
-``a0 = None b0 = None a1 = None b1 = None a2 = None b2 = None a3 = Some(3) b3 = None a4 = Some(3) b4 = Some(9) a5 = Some(4) b5 = Some(9)``
+This produces the following output when run: ::
+
+    a0 = None
+    b0 = None
+    a1 = None
+    b1 = None
+    a2 = None
+    b2 = None
+    a3 = Some(3)
+    b3 = None
+    a4 = Some(3)
+    b4 = Some(9)
+    a5 = Some(4)
+    b5 = Some(9)
 
 -  For the None results, we never defined the value and there was no
    value to delegate to.
@@ -169,14 +181,14 @@ For example, in a project, a `This`_ project axis becomes a
 `Select`_ referring to the defining project. All other axes that are
 `This`_ are translated to `Global`_.
 Functions like inConfig and inTask transform This into a
-`Select`_ for a specific value. For example, ``inConfig(Compile)(someSettings)``
+`Select`_ for a specific value. For example, `inConfig(Compile)(someSettings)`
 translates the configuration axis for all settings in *someSettings* to
-be ``Select(Compile)`` if the axis value is `This`_.
+be `Select(Compile)` if the axis value is `This`_.
 
 So, from the example and from sbt's scopes, you can see that the core
 settings engine does not impose much on the structure of a scope. All it
-requires is a delegates function ``Scope => Seq[Scope]`` and a
-``display`` function. You can choose a scope type that makes sense for
+requires is a delegates function `Scope => Seq[Scope]` and a
+`display` function. You can choose a scope type that makes sense for
 your situation.
 
 Constructing settings
@@ -197,14 +209,14 @@ at the top-level, this requires only one level of duplication.
 
 Additionally, sbt uniformly integrates its task engine into the settings
 system. The underlying settings engine has no notion of tasks. This is
-why sbt uses a ``SettingKey`` type and a ``TaskKey`` type. Methods on an
-underlying ``TaskKey[T]`` are basically translated to operating on an
-underlying ``SettingKey[Task[T]]`` (and they both wrap an underlying
-``AttributeKey``).
+why sbt uses a `SettingKey` type and a `TaskKey` type. Methods on an
+underlying `TaskKey[T]` are basically translated to operating on an
+underlying `SettingKey[Task[T]]` (and they both wrap an underlying
+`AttributeKey`).
 
-For example, ``a := 3`` for a SettingKey *a* will very roughly translate
-to ``setting(a, value(3))``. For a TaskKey *a*, it will roughly
-translate to ``setting(a, value( task { 3 } ) )``. See
+For example, `a := 3` for a SettingKey *a* will very roughly translate
+to `setting(a, value(3))`. For a TaskKey *a*, it will roughly
+translate to `setting(a, value( task { 3 } ) )`. See
 `main/Structure.scala <../../sxr/Structure.scala>`_
 for details.
 
@@ -213,7 +225,7 @@ Settings definitions
 
 sbt also provides a way to define these settings in a file (build.sbt
 and Build.scala). This is done for build.sbt using basic parsing and
-then passing the resulting chunks of code to ``compile/Eval.scala``. For
+then passing the resulting chunks of code to `compile/Eval.scala`. For
 all definitions, sbt manages the classpaths and recompilation process to
 obtain the settings. It also provides a way for users to define project,
 task, and configuration delegation, which ends up being used by the
