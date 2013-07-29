@@ -5,16 +5,6 @@ package object sbt extends sbt.std.TaskExtra with sbt.Types with sbt.ProcessExtr
 	with sbt.PathExtra with sbt.ProjectExtra with sbt.DependencyFilterExtra with sbt.BuildExtra with sbt.TaskMacroExtra
 	with sbt.ScopeFilter.Make
 {
-	@deprecated("Renamed to CommandStrings.", "0.12.0")
-	val CommandSupport = CommandStrings
-
-	@deprecated("Use SettingKey, which is a drop-in replacement.", "0.11.1")
-	type ScopedSetting[T] = SettingKey[T]
-	@deprecated("Use TaskKey, which is a drop-in replacement.", "0.11.1")
-	type ScopedTask[T] = TaskKey[T]
-	@deprecated("Use InputKey, which is a drop-in replacement.", "0.11.1")
-	type ScopedInput[T] = InputKey[T]
-
 	type Setting[T] = Def.Setting[T]
 	type ScopedKey[T] = Def.ScopedKey[T]
 	type SettingsDefinition = Def.SettingsDefinition
