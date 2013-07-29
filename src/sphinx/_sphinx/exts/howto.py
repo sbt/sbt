@@ -136,7 +136,9 @@ def process_howto_nodes(app, doctree, fromdocname):
             doc['infos'].append(howto_info)
 
         content = []
-        for doc in howtos_by_doc.values():
+        sorted_names = sorted(howtos_by_doc.keys())
+        for docname in sorted_names:
+            doc = howtos_by_doc[docname]
             doc_link = doc['link']
             section = howto_section(doc['title'], doc_link, doctree)
             for howto_info in doc['infos']:
