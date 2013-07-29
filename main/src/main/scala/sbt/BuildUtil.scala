@@ -59,7 +59,7 @@ object BuildUtil
 			deps(proj)(_.aggregate)
 		}
 	}
-	def baseImports: Seq[String] = "import sbt._, Process._, Keys._" :: Nil
+	def baseImports: Seq[String] = "import sbt._, Keys._" :: Nil
 	def getImports(unit: BuildUnit): Seq[String] = getImports(unit.plugins.pluginNames, unit.definitions.buildNames)
 	def getImports(pluginNames: Seq[String], buildNames: Seq[String]): Seq[String] = baseImports ++ importAllRoot(pluginNames ++ buildNames)
 	def importAll(values: Seq[String]): Seq[String] = if(values.isEmpty) Nil else values.map( _ + "._" ).mkString("import ", ", ", "") :: Nil
