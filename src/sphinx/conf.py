@@ -3,7 +3,7 @@
 import sys, os
 
 sys.path.append(os.path.abspath('_sphinx/exts'))
-extensions = ['sphinxcontrib.issuetracker', 'sphinx.ext.extlinks', 'howto']
+extensions = ['sphinxcontrib.issuetracker', 'sphinx.ext.extlinks', 'howto', 'codeliteral']
 
 # Project variables
 
@@ -18,7 +18,7 @@ scalaRelease = "2.10.2"
 
 needs_sphinx = '1.1'
 nitpicky = True
-default_role = 'literal'
+default_role = 'codeliteral'
 master_doc = 'home'
 highlight_language = 'scala'
 add_function_parentheses = False
@@ -49,8 +49,7 @@ home_site = True
 
 # Passed to Google as site:<site_search_base>
 # If empty, no search box is included
-# TODO: pass this as an argument to sphinx, use actual version instead of release 
-site_search_base = 'http://www.scala-sbt.org/release/docs'
+site_search_base = 'http://www.scala-sbt.org/' + release + '/docs'
 
 # passes variables to the template
 html_context = {'home_site': home_site, 'site_search_base': site_search_base}

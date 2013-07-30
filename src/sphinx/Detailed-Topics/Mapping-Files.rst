@@ -2,30 +2,30 @@
 Mapping Files
 =============
 
-Tasks like ``package``, ``packageSrc``, and ``packageDoc`` accept
-mappings of type ``Seq[(File, String)]`` from an input file to the path
+Tasks like `package`, `packageSrc`, and `packageDoc` accept
+mappings of type `Seq[(File, String)]` from an input file to the path
 to use in the resulting artifact (jar). Similarly, tasks that copy files
-accept mappings of type ``Seq[(File, File)]`` from an input file to the
+accept mappings of type `Seq[(File, File)]` from an input file to the
 destination file. There are some methods on
 `PathFinder <../../api/sbt/PathFinder.html>`_
 and `Path <../../api/sbt/Path$.html>`_
-that can be useful for constructing the ``Seq[(File, String)]`` or
-``Seq[(File, File)]`` sequences.
+that can be useful for constructing the `Seq[(File, String)]` or
+`Seq[(File, File)]` sequences.
 
-A common way of making this sequence is to start with a ``PathFinder``
-or ``Seq[File]`` (which is implicitly convertible to ``PathFinder``) and
-then call the ``x`` method. See the
+A common way of making this sequence is to start with a `PathFinder`
+or `Seq[File]` (which is implicitly convertible to `PathFinder`) and
+then call the `x` method. See the
 `PathFinder <../../api/sbt/PathFinder.html>`_
 API for details, but essentially this method accepts a function
-``File => Option[String]`` or ``File => Option[File]`` that is used to
+`File => Option[String]` or `File => Option[File]` that is used to
 generate mappings.
 
 Relative to a directory
 -----------------------
 
-The ``Path.relativeTo`` method is used to map a ``File`` to its path
-``String`` relative to a base directory or directories. The
-``relativeTo`` method accepts a base directory or sequence of base
+The `Path.relativeTo` method is used to map a `File` to its path
+`String` relative to a base directory or directories. The
+`relativeTo` method accepts a base directory or sequence of base
 directories to relativize an input file against. The first directory
 that is an ancestor of the file is used in the case of a sequence of
 base directories.
@@ -45,14 +45,14 @@ For example:
 Rebase
 ------
 
-The ``Path.rebase`` method relativizes an input file against one or more
+The `Path.rebase` method relativizes an input file against one or more
 base directories (the first argument) and then prepends a base String or
-File (the second argument) to the result. As with ``relativeTo``, the
+File (the second argument) to the result. As with `relativeTo`, the
 first base directory that is an ancestor of the input file is used in
 the case of multiple base directories.
 
 For example, the following demonstrates building a
-``Seq[(File, String)]`` using ``rebase``:
+`Seq[(File, String)]` using `rebase`:
 
 ::
 
@@ -64,7 +64,7 @@ For example, the following demonstrates building a
     val expected = (file("/a/b/C.scala") -> "pre/b/C.scala" ) :: Nil
     assert( mappings == expected )
 
-Or, to build a ``Seq[(File, File)]``:
+Or, to build a `Seq[(File, File)]`:
 
 ::
 
@@ -80,7 +80,7 @@ Or, to build a ``Seq[(File, File)]``:
 Flatten
 -------
 
-The ``Path.flat`` method provides a function that maps a file to the
+The `Path.flat` method provides a function that maps a file to the
 last component of the path (its name). For a File to File mapping, the
 input file is mapped to a file with the same name in a given target
 directory. For example:
@@ -94,7 +94,7 @@ directory. For example:
     val expected = (file("/a/b/C.scala") -> "C.scala" ) :: Nil
     assert( mappings == expected )
 
-To build a ``Seq[(File, File)]`` using ``flat``:
+To build a `Seq[(File, File)]` using `flat`:
 
 ::
 
@@ -109,8 +109,8 @@ To build a ``Seq[(File, File)]`` using ``flat``:
 Alternatives
 ------------
 
-To try to apply several alternative mappings for a file, use ``|``,
-which is implicitly added to a function of type ``A => Option[B]``. For
+To try to apply several alternative mappings for a file, use `|`,
+which is implicitly added to a function of type `A => Option[B]`. For
 example, to try to relativize a file against some base directories but
 fall back to flattening:
 

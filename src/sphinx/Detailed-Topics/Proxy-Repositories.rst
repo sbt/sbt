@@ -37,11 +37,11 @@ sbt Configuration
 =================
 
 sbt requires configuration in two places to make use of a
-proxy repository.   The first is the ``~/.sbt/repositories``
+proxy repository.   The first is the `~/.sbt/repositories`
 file, and the second is the launcher script.
 
 
-``~/.sbt/repositories``
+`~/.sbt/repositories`
 -----------------------
 The repositories file is an external configuration for the Launcher.  
 The exact syntax for the configuration file is detailed in the 
@@ -58,16 +58,16 @@ Here's an example config:
 
 This example configuration has three repositories configured for sbt.
 
-The first resolver is ``local``, and is used so that artifacts pushed
-using ``publish-local`` will be seen in other sbt projects.
+The first resolver is `local`, and is used so that artifacts pushed
+using `publish-local` will be seen in other sbt projects.
 
-The second resolver is ``my-ivy-proxy-releases``.   This repository
+The second resolver is `my-ivy-proxy-releases`.   This repository
 is used to resolve sbt *itself* from the company proxy repository,
 as well as any sbt plugins that may be required.   Note that the
 ivy resolver pattern is important, make sure that yours matches the
 one shown or you may not be able to resolve sbt plugins.
 
-The final resolver is ``my-maven-proxy-releases``.  This repository
+The final resolver is `my-maven-proxy-releases`.  This repository
 is a proxy for all standard maven repositories, including
 maven central.
 
@@ -76,15 +76,15 @@ Launcher Script
 ---------------------
 The sbt launcher supports two configuration options that
 allow the usage of proxy repositories.  The first is the
-``sbt.override.build.repos`` setting and the second is the 
-``sbt.repository.config`` setting.
+`sbt.override.build.repos` setting and the second is the 
+`sbt.repository.config` setting.
 
-``sbt.override.build.repos``
+`sbt.override.build.repos`
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 This setting is used to specify that all sbt project added resolvers 
-should be ignored in favor of those configured in the ``repositories``
+should be ignored in favor of those configured in the `repositories`
 configuration.  Using this with a properly configured
-``~/.sbt/repositories`` file leads to only your proxy repository
+`~/.sbt/repositories` file leads to only your proxy repository
 used for builds.
 
 It is specified like so:
@@ -95,9 +95,9 @@ It is specified like so:
 
 
 
-``sbt.repository.config``
+`sbt.repository.config`
 ~~~~~~~~~~~~~~~~~~~~~~~~~
-If you are unable to create a ``~/.sbt/repositories`` file, due
+If you are unable to create a `~/.sbt/repositories` file, due
 to user permission errors or for convenience of developers, you
 can modify the sbt start script directly with the following:
 

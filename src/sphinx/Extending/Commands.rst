@@ -27,26 +27,26 @@ There are three main aspects to commands:
 In sbt, the syntax part, including tab completion, is specified with
 parser combinators. If you are familiar with the parser combinators in
 Scala's standard library, these are very similar. The action part is a
-function ``(State, T) => State``, where ``T`` is the data structure
+function `(State, T) => State`, where `T` is the data structure
 produced by the parser. See the :doc:`/Detailed-Topics/Parsing-Input`
 page for how to use the parser combinators.
 
 `State <../../api/sbt/State.html>`_ provides access to the build state,
-such as all registered ``Command``\ s, the remaining commands to
+such as all registered `Command`\ s, the remaining commands to
 execute, and all project-related information. See :doc:`Build-State`
 for details on State.
 
 Finally, basic help information may be provided that is used by the
-``help`` command to display command help.
+`help` command to display command help.
 
 Defining a Command
 ==================
 
-A command combines a function ``State => Parser[T]`` with an action
-``(State, T) => State``. The reason for ``State => Parser[T]`` and not
-simply ``Parser[T]`` is that often the current ``State`` is used to
+A command combines a function `State => Parser[T]` with an action
+`(State, T) => State`. The reason for `State => Parser[T]` and not
+simply `Parser[T]` is that often the current `State` is used to
 build the parser. For example, the currently loaded projects (provided
-by ``State``) determine valid completions for the ``project`` command.
+by `State`) determine valid completions for the `project` command.
 Examples for the general and specific cases are shown in the following
 sections.
 
@@ -103,14 +103,14 @@ multiple arguments separated by spaces.
 Full Example
 ============
 
-The following example is a valid ``project/Build.scala`` that adds
+The following example is a valid `project/Build.scala` that adds
 commands to a project. To try it out:
 
-1. Copy the following build definition into ``project/Build.scala`` for
+1. Copy the following build definition into `project/Build.scala` for
    a new project.
 2. Run sbt on the project.
-3. Try out the ``hello``, ``helloAll``, ``failIfTrue``, ``color``,
-   and ``printState`` commands.
+3. Try out the `hello`, `helloAll`, `failIfTrue`, `color`,
+   and `printState` commands.
 4. Use tab-completion and the code below as guidance.
 
 ::

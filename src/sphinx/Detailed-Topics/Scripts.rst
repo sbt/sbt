@@ -30,33 +30,33 @@ Install `conscript <https://github.com/n8han/conscript>`_.
 
     cs sbt/sbt --branch 0.12.0
 
-This will create two scripts: ``screpl`` and ``scalas``.
+This will create two scripts: `screpl` and `scalas`.
 
 Manual Setup
 ------------
 
-Duplicate your standard ``sbt`` script, which was set up according to
-:doc:`Setup </Getting-Started/Setup>`, as ``scalas`` and ``screpl`` (or
+Duplicate your standard `sbt` script, which was set up according to
+:doc:`Setup </Getting-Started/Setup>`, as `scalas` and `screpl` (or
 whatever names you like).
 
-``scalas`` is the script runner and should use ``sbt.ScriptMain`` as
-the main class, by adding the ``-Dsbt.main.class=sbt.ScriptMain``
-parameter to the ``java`` command. Its command line should look like:
+`scalas` is the script runner and should use `sbt.ScriptMain` as
+the main class, by adding the `-Dsbt.main.class=sbt.ScriptMain`
+parameter to the `java` command. Its command line should look like:
 
 .. code-block:: console
 
     java -Dsbt.main.class=sbt.ScriptMain -Dsbt.boot.directory=/home/user/.sbt/boot -jar sbt-launch.jar "$@"
 
-For the REPL runner ``screpl``, use ``sbt.ConsoleMain`` as the main
+For the REPL runner `screpl`, use `sbt.ConsoleMain` as the main
 class:
 
 .. code-block:: console
 
     java -Dsbt.main.class=sbt.ConsoleMain -Dsbt.boot.directory=/home/user/.sbt/boot -jar sbt-launch.jar "$@"
 
-In each case, ``/home/user/.sbt/boot`` should be replaced with wherever
+In each case, `/home/user/.sbt/boot` should be replaced with wherever
 you want sbt's boot directory to be; you might also need to give more
-memory to the JVM via ``-Xms512M -Xmx1536M`` or similar options, just
+memory to the JVM via `-Xms512M -Xmx1536M` or similar options, just
 like shown in :doc:`Setup </Getting-Started/Setup>`.
 
 Usage
@@ -67,7 +67,7 @@ sbt Script runner
 
 The script runner can run a standard Scala script, but with the
 additional ability to configure sbt. sbt settings may be embedded in the
-script in a comment block that opens with ``/***``.
+script in a comment block that opens with `/***`.
 
 Example
 ~~~~~~~
@@ -76,7 +76,7 @@ Copy the following script and make it executable. You may need to adjust
 the first line depending on your script name and operating system. When
 run, the example should retrieve Scala, the required dependencies,
 compile the script, and run it directly. For example, if you name it
-``dispatch_example.scala``, you would do on Unix:
+`dispatch_example.scala`, you would do on Unix:
 
 .. code-block:: console
 

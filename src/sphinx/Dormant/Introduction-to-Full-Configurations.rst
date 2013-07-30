@@ -4,24 +4,24 @@
 true) that everything in here is covered elsewhere, this page can be
 empty except for links to the new pages.
 
-There are two types of file for configuring a build: a ``build.sbt``
-file in you project root directory, or a ``Build.scala`` file in your
-``project/`` directory. The former is often referred to as a "light",
+There are two types of file for configuring a build: a `build.sbt`
+file in you project root directory, or a `Build.scala` file in your
+`project/` directory. The former is often referred to as a "light",
 "quick" or "basic" configuration and the latter is often referred to as
 "full" configuration. This page is about "full" configuration.
 
 Naming the Scala build file
 ===========================
 
-``Build.scala`` is the typical name for this build file but in reality
-it can be called anything that ends with ``.scala`` as it is a standard
+`Build.scala` is the typical name for this build file but in reality
+it can be called anything that ends with `.scala` as it is a standard
 Scala source file and sbt will detect and use it regardless of its name.
 
 Overview of what goes in the file
 =================================
 
 The most basic form of this file defines one object which extends
-``sbt.Build`` e.g.:
+`sbt.Build` e.g.:
 
 ::
 
@@ -34,7 +34,7 @@ The most basic form of this file defines one object which extends
         // Declarations go here
     }
 
-There needs to be at least one ``sbt.Project`` defined and in this case
+There needs to be at least one `sbt.Project` defined and in this case
 we are giving it an arbitrary name and saying that it can be found in
 the root of this project. In other words we are saying that this is a
 build file to build the current project.
@@ -57,7 +57,7 @@ example, the line:
 
     val apachenet = "commons-net" % "commons-net" % "2.0"
 
-defines a dependency and assigns it to the val ``apachenet`` but, unless
+defines a dependency and assigns it to the val `apachenet` but, unless
 you refer to that val again in the build file, the name of it is of no
 significance to sbt. sbt simply sees that the dependency object exists
 and uses it when it needs it.
@@ -65,16 +65,16 @@ and uses it when it needs it.
 Combining "light" and "full" configuration files
 ================================================
 
-It is worth noting at this stage that you can have both a ``build.sbt``
-file and a ``Build.scala`` file for the same project. If you do this,
-sbt will append the configurations in ``build.sbt`` to those in the
-``Build.scala`` file. In fact you can also have multiple ".sbt" files in
+It is worth noting at this stage that you can have both a `build.sbt`
+file and a `Build.scala` file for the same project. If you do this,
+sbt will append the configurations in `build.sbt` to those in the
+`Build.scala` file. In fact you can also have multiple ".sbt" files in
 your root directory and they are all appended together.
 
 A simple example comparing a "light" and "full" configuration of the same project
 =================================================================================
 
-Here is a short "light" ``build.sbt`` file which defines a build project
+Here is a short "light" `build.sbt` file which defines a build project
 with a single test dependency on "scalacheck":
 
 ::
@@ -89,7 +89,7 @@ with a single test dependency on "scalacheck":
 
     libraryDependencies += "org.scalatest" % "scalatest_2.9.0" % "1.4.1" % "test"
 
-Here is an equivalent "full" ``Build.scala`` file which defines exactly
+Here is an equivalent "full" `Build.scala` file which defines exactly
 the same thing:
 
 ::
@@ -116,7 +116,7 @@ have to explicitly append our settings to the default settings. All of
 this work is done for us when we use a "light" build file.
 
 To understand what is really going on you may find it helpful to see
-this ``Build.scala`` without the imports and associated implicit
+this `Build.scala` without the imports and associated implicit
 conversions:
 
 ::

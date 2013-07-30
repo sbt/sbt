@@ -20,12 +20,12 @@ sbt: The Core Concepts
    Scala <http://www.artima.com/shop/programming_in_scala_2ed>`_ written
    by the creator of Scala is a great introduction.
 -  :doc:`.sbt build definition <Basic-Def>`
--  your build definition is one big list of ``Setting`` objects, where a
-   ``Setting`` transforms the set of key-value pairs sbt uses to perform
+-  your build definition is one big list of `Setting` objects, where a
+   `Setting` transforms the set of key-value pairs sbt uses to perform
    tasks.
--  to create a ``Setting``, call one of a few methods on a key: ``:=``, ``+=``, ``++=``, or ``~=``.
+-  to create a `Setting`, call one of a few methods on a key: `:=`, `+=`, `++=`, or `~=`.
 -  there is no mutable state, only transformation; for example, a
-   ``Setting`` transforms sbt's collection of key-value pairs into a new
+   `Setting` transforms sbt's collection of key-value pairs into a new
    collection. It doesn't change anything in-place.
 -  each setting has a value of a particular type, determined by the key.
 -  *tasks* are special settings where the computation to produce the
@@ -37,19 +37,19 @@ sbt: The Core Concepts
 -  scoping allows you to have different behaviors per-project, per-task,
    or per-configuration.
 -  a configuration is a kind of build, such as the main one
-   (``Compile``) or the test one (``Test``).
+   (`Compile`) or the test one (`Test`).
 -  the per-project axis also supports "entire build" scope.
 -  scopes fall back to or *delegate* to more general scopes.
 -  :doc:`.sbt <Basic-Def>` vs. :doc:`.scala <Full-Def>` build definition
--  put most of your settings in ``build.sbt``, but use ``.scala`` build
+-  put most of your settings in `build.sbt`, but use `.scala` build
    definition files to :doc:`define multiple subprojects <Multi-Project>`
    , and to factor out common values, objects, and methods.
 -  the build definition is an sbt project in its own right, rooted in
-   the ``project`` directory.
+   the `project` directory.
 -  :doc:`Plugins <Using-Plugins>` are extensions to the
    build definition
--  add plugins with the ``addSbtPlugin`` method in ``project/build.sbt``
-   (NOT ``build.sbt`` in the project's base directory).
+-  add plugins with the `addSbtPlugin` method in `project/build.sbt`
+   (NOT `build.sbt` in the project's base directory).
 
 If any of this leaves you wondering rather than nodding, please ask for
 help on the `mailing list`_, go

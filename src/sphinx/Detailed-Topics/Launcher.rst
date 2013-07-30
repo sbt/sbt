@@ -11,17 +11,17 @@ Overview
 ========
 
 A user downloads the launcher jar and creates a script to run it. In
-this documentation, the script will be assumed to be called ``launch``.
+this documentation, the script will be assumed to be called `launch`.
 For unix, the script would look like:
-``java -jar sbt-launcher.jar "$@"``
+`java -jar sbt-launcher.jar "$@"`
 
 The user then downloads the configuration file for the application (call
-it ``my.app.configuration``) and creates a script to launch it (call it
-``myapp``): ``launch @my.app.configuration "$@"``
+it `my.app.configuration`) and creates a script to launch it (call it
+`myapp`): `launch @my.app.configuration "$@"`
 
-The user can then launch the application using ``myapp arg1 arg2 ...``
+The user can then launch the application using `myapp arg1 arg2 ...`
 
-Like the launcher used to distribute ``sbt``, the downloaded launcher
+Like the launcher used to distribute `sbt`, the downloaded launcher
 jar will retrieve Scala and the application according to the provided
 configuration file. The versions may be fixed or read from a different
 configuration file (the location of which is also configurable). The
@@ -35,7 +35,7 @@ information about how it was called: command line arguments, current
 working directory, Scala version, and application ID (organization,
 name, version). In addition, the application can ask the launcher to
 perform operations such as obtaining the Scala jars and a
-``ClassLoader`` for any version of Scala retrievable from the
+`ClassLoader` for any version of Scala retrievable from the
 repositories specified in the configuration file. It can request that
 other applications be downloaded and run. When the application
 completes, it can tell the launcher to exit with a specific exit code or
@@ -53,13 +53,13 @@ Configuration
 The launcher may be configured in one of the following ways in
 increasing order of precedence:
 
--  Replace the ``/sbt/sbt.boot.properties`` file in the jar
--  Put a configuration file named ``sbt.boot.properties`` on the
-   classpath. Put it in the classpath root without the ``/sbt`` prefix.
+-  Replace the `/sbt/sbt.boot.properties` file in the jar
+-  Put a configuration file named `sbt.boot.properties` on the
+   classpath. Put it in the classpath root without the `/sbt` prefix.
 -  Specify the location of an alternate configuration on the command
    line. This can be done by either specifying the location as the
-   system property ``sbt.boot.properties`` or as the first argument to
-   the launcher prefixed by ``'@'``. The system property has lower
+   system property `sbt.boot.properties` or as the first argument to
+   the launcher prefixed by `'@'`. The system property has lower
    precedence. Resolution of a relative path is first attempted against
    the current working directory, then against the user's home
    directory, and then against the directory containing the launcher
@@ -69,8 +69,8 @@ Syntax
 ~~~~~~
 
 The configuration file is line-based, read as UTF-8 encoded, and defined
-by the following grammar. ``'nl'`` is a newline or end of file and
-``'text'`` is plain text without newlines or the surrounding delimiters
+by the following grammar. `'nl'` is a newline or end of file and
+`'text'` is plain text without newlines or the surrounding delimiters
 (such as parentheses or square brackets):
 
 .. productionlist::
@@ -127,10 +127,10 @@ by the following grammar. ``'nl'`` is a newline or end of file and
 In addition to the grammar specified here, property values may include
 variable substitutions. A variable substitution has one of these forms:
 
--  ``${variable.name}``
--  ``${variable.name-default}``
+-  `${variable.name}`
+-  `${variable.name-default}`
 
-where ``variable.name`` is the name of a system property. If a system
+where `variable.name` is the name of a system property. If a system
 property by that name exists, the value is substituted. If it does not
 exists and a default is specified, the default is substituted after
 recursively substituting variables in it. If the system property does
@@ -142,7 +142,7 @@ Example
 
 The default configuration file for sbt looks like:
 
-.. code-block:: ini
+.. parsed-literal::
 
     [scala]
       version: ${sbt.scala.version-auto}
@@ -150,7 +150,7 @@ The default configuration file for sbt looks like:
     [app]
       org: ${sbt.organization-org.scala-sbt}
       name: sbt
-      version: ${sbt.version-read(sbt.version)[0.13.0]}
+      version: ${sbt.version-read(sbt.version)[\ |release|\ ]}
       class: ${sbt.main.class-sbt.xMain}
       components: xsbti,extra
       cross-versioned: ${sbt.cross.versioned-false}
@@ -173,28 +173,28 @@ The default configuration file for sbt looks like:
 Semantics
 ~~~~~~~~~
 
-The ``scala.version`` property specifies the version of Scala used to
+The `scala.version` property specifies the version of Scala used to
 run the application. If the application is not cross-built, this may be
-set to ``auto`` and it will be auto-detected from the application's
-dependencies. If specified, the ``scala.classifiers`` property defines
+set to `auto` and it will be auto-detected from the application's
+dependencies. If specified, the `scala.classifiers` property defines
 classifiers, such as 'sources', of extra Scala artifacts to retrieve.
 
-The ``app.org``, ``app.name``, and ``app.version`` properties specify
+The `app.org`, `app.name`, and `app.version` properties specify
 the organization, module ID, and version of the application,
 respectively. These are used to resolve and retrieve the application
-from the repositories listed in ``[repositories]``. If
-``app.cross-versioned`` is ``binary``, the resolved module ID is
-``{app.name+'_'+CrossVersion.binaryScalaVersion(scala.version)}``.
-If ``app.cross-versioned`` is ``true`` or ``full``, the resolved module ID is
-``{app.name+'_'+scala.version}``. The ``scala.version`` property must be
-specified and cannot be ``auto`` when cross-versioned. The paths given
-in ``app.resources`` are added to the application's classpath. If the
+from the repositories listed in `[repositories]`. If
+`app.cross-versioned` is `binary`, the resolved module ID is
+`{app.name+'_'+CrossVersion.binaryScalaVersion(scala.version)}`.
+If `app.cross-versioned` is `true` or `full`, the resolved module ID is
+`{app.name+'_'+scala.version}`. The `scala.version` property must be
+specified and cannot be `auto` when cross-versioned. The paths given
+in `app.resources` are added to the application's classpath. If the
 path is relative, it is resolved against the application's working
-directory. If specified, the ``app.classifiers`` property defines
+directory. If specified, the `app.classifiers` property defines
 classifiers, like 'sources', of extra artifacts to retrieve for the
 application.
 
-Jars are retrieved to the directory given by ``boot.directory``. By
+Jars are retrieved to the directory given by `boot.directory`. By
 default, this is an absolute path that is shared by all launched
 instances on the machine. If multiple versions access it simultaneously.
 , you might see messages like:
@@ -207,37 +207,37 @@ This boot directory may be relative to the current directory instead. In
 this case, the launched application will have a separate boot directory
 for each directory it is launched in.
 
-The ``boot.properties`` property specifies the location of the
-properties file to use if ``app.version`` or ``scala.version`` is
-specified as ``read``. The ``prompt-create``, ``prompt-fill``, and
-``quick-option`` properties together with the property definitions in
-``[app.properties]`` can be used to initialize the ``boot.properties``
+The `boot.properties` property specifies the location of the
+properties file to use if `app.version` or `scala.version` is
+specified as `read`. The `prompt-create`, `prompt-fill`, and
+`quick-option` properties together with the property definitions in
+`[app.properties]` can be used to initialize the `boot.properties`
 file.
 
 The app.class property specifies the name of the entry point to the
 application. An application entry point must be a public class with a
-no-argument constructor that implements ``xsbti.AppMain``. The
-``AppMain`` interface specifies the entry method signature 'run'. The
+no-argument constructor that implements `xsbti.AppMain`. The
+`AppMain` interface specifies the entry method signature 'run'. The
 run method is passed an instance of AppConfiguration, which provides
-access to the startup environment. ``AppConfiguration`` also provides an
+access to the startup environment. `AppConfiguration` also provides an
 interface to retrieve other versions of Scala or other applications.
-Finally, the return type of the run method is ``xsbti.MainResult``,
-which has two subtypes: ``xsbti.Reboot`` and ``xsbti.Exit``. To exit
-with a specific code, return an instance of ``xsbti.Exit`` with the
+Finally, the return type of the run method is `xsbti.MainResult`,
+which has two subtypes: `xsbti.Reboot` and `xsbti.Exit`. To exit
+with a specific code, return an instance of `xsbti.Exit` with the
 requested code. To restart the application, return an instance of
 Reboot. You can change some aspects of the configuration with a reboot,
 such as the version of Scala, the application ID, and the arguments.
 
-The ``ivy.cache-directory`` property provides an alternative location
+The `ivy.cache-directory` property provides an alternative location
 for the Ivy cache used by the launcher. This does not automatically set
 the Ivy cache for the application, but the application is provided this
-location through the AppConfiguration instance. The ``checksums``
+location through the AppConfiguration instance. The `checksums`
 property selects the checksum algorithms (sha1 or md5) that are used to
-verify artifacts downloaded by the launcher. ``override-build-repos`` is
+verify artifacts downloaded by the launcher. `override-build-repos` is
 a flag that can inform the application that the repositories configured
 for the launcher should be used in the application. If
-``repository-config`` is defined, the file it specifies should contain a
-``[repositories]`` section that is used in place of the section in the
+`repository-config` is defined, the file it specifies should contain a
+`[repositories]` section that is used in place of the section in the
 original configuration file.
 
 Execution
@@ -248,16 +248,16 @@ described in the Configuration section and then parses it. If either the
 Scala version or the application version are specified as 'read', the
 launcher determines them in the following manner. The file given by the
 'boot.properties' property is read as a Java properties file to obtain
-the version. The expected property names are ``${app.name}.version`` for
-the application version (where ``${app.name}`` is replaced with the
-value of the ``app.name`` property from the boot configuration file) and
-``scala.version`` for the Scala version. If the properties file does not
+the version. The expected property names are `${app.name}.version` for
+the application version (where `${app.name}` is replaced with the
+value of the `app.name` property from the boot configuration file) and
+`scala.version` for the Scala version. If the properties file does not
 exist, the default value provided is used. If no default was provided,
 an error is generated.
 
 Once the final configuration is resolved, the launcher proceeds to
 obtain the necessary jars to launch the application. The
-``boot.directory`` property is used as a base directory to retrieve jars
+`boot.directory` property is used as a base directory to retrieve jars
 to. Locking is done on the directory, so it can be shared system-wide.
 The launcher retrieves the requested version of Scala to
 
@@ -278,13 +278,13 @@ application itself. It and its dependencies are retrieved to
 Once all required code is downloaded, the class loaders are set up. The
 launcher creates a class loader for the requested version of Scala. It
 then creates a child class loader containing the jars for the requested
-'app.components' and with the paths specified in ``app.resources``. An
+'app.components' and with the paths specified in `app.resources`. An
 application that does not use components will have all of its jars in
 this class loader.
 
 The main class for the application is then instantiated. It must be a
 public class with a public no-argument constructor and must conform to
-xsbti.AppMain. The ``run`` method is invoked and execution passes to the
+xsbti.AppMain. The `run` method is invoked and execution passes to the
 application. The argument to the 'run' method provides configuration
 information and a callback to obtain a class loader for any version of
 Scala that can be obtained from a repository in [repositories]. The
@@ -305,16 +305,16 @@ interface class will be provided by the launcher, so it is only a
 compile-time dependency. If you are building with sbt, your dependency
 definition would be:
 
-::
+.. parsed-literal::
 
-      libraryDependencies += "org.scala-sbt" % "launcher-interface" % "0.13.0" % "provided"
+      libraryDependencies += "org.scala-sbt" % "launcher-interface" % "|release|" % "provided"
 
       resolvers += sbtResolver.value
 
 Make the entry point to your class implement 'xsbti.AppMain'. An example
 that uses some of the information:
 
-::
+.. code-block:: scala
 
     package xsbt.test
     class Main extends xsbti.AppMain
@@ -332,14 +332,14 @@ that uses some of the information:
             // and how to return the code to exit with
             scalaVersion match
             {
-                case "2.8.2" =>
+                case "2.9.3" =>
                     new xsbti.Reboot {
                         def arguments = configuration.arguments
                         def baseDirectory = configuration.baseDirectory
-                        def scalaVersion = "2.9.2
+                        def scalaVersion = "2.10.2
                         def app = configuration.provider.id
                     }
-                case "2.9.2" => new Exit(1)
+                case "2.10.2" => new Exit(1)
                 case _ => new Exit(0)
             }
         }
@@ -349,14 +349,14 @@ that uses some of the information:
 Next, define a configuration file for the launcher. For the above class,
 it might look like:
 
-.. code-block:: ini
+.. parsed-literal::
 
     [scala]
-      version: 2.9.2
+      version: |scalaRelease|
     [app]
       org: org.scala-sbt
       name: xsbt-test
-      version: 0.13.0
+      version: |release|
       class: xsbt.test.Main
       cross-versioned: binary
     [repositories]
@@ -365,7 +365,7 @@ it might look like:
     [boot]
       directory: ${user.home}/.myapp/boot
 
-Then, ``publishLocal`` or ``+publishLocal`` the application to make it
+Then, `publishLocal` or `+publishLocal` the application to make it
 available.
 
 Running an Application
@@ -377,12 +377,12 @@ The second two require providing a configuration file for download.
 
 -  Replace the /sbt/sbt.boot.properties file in the launcher jar and
    distribute the modified jar. The user would need a script to run
-   ``java -jar your-launcher.jar arg1 arg2 ...``.
+   `java -jar your-launcher.jar arg1 arg2 ...`.
 -  The user downloads the launcher jar and you provide the configuration
    file.
 
-   -  The user needs to run ``java -Dsbt.boot.properties=your.boot.properties -jar launcher.jar``.
+   -  The user needs to run `java -Dsbt.boot.properties=your.boot.properties -jar launcher.jar`.
    -  The user already has a script to run the launcher (call it
-      'launch'). The user needs to run ``launch @your.boot.properties your-arg-1 your-arg-2``
+      'launch'). The user needs to run `launch @your.boot.properties your-arg-1 your-arg-2`
 
 

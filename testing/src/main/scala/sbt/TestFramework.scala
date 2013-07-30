@@ -152,13 +152,19 @@ object TestFramework
 		listeners: Seq[TestReportListener]):
 			(() => Unit, Seq[(String, TestFunction)], TestResult.Value => () => Unit) =
 	{
-		val mappedTests = testMap(frameworks.values.toSeq, tests)
+		val unique = distinctBy(tests)(_.name)
+		val mappedTests = testMap(frameworks.values.toSeq, unique)
 		if(mappedTests.isEmpty)
 			(() => (), Nil, _ => () => () )
 		else
-			createTestTasks(testLoader, runners.map { case (tf, r) => (frameworks(tf), new TestRunner(r, listeners, log))}, mappedTests, tests, log, listeners)
+			createTestTasks(testLoader, runners.map { case (tf, r) => (frameworks(tf), new TestRunner(r, listeners, log))}, mappedTests, unique, log, listeners) 
 	}
 
+	private[this] def distinctBy[T, K](in: Seq[T])(f: T => K): Seq[T] =
+	{
+		val seen = new collection.mutable.HashSet[K]
+		in.filter(t => seen.add(f(t)))
+	}
 	private[this] def order(mapped: Map[String, TestFunction], inputs: Seq[TestDefinition]): Seq[(String, TestFunction)] =
 		for( d <- inputs; act <- mapped.get(d.name) ) yield (d.name, act)
 
@@ -166,28 +172,15 @@ object TestFramework
 	{
 		import scala.collection.mutable.{HashMap, HashSet, Set}
 		val map = new HashMap[Framework, Set[TestDefinition]]
-		def assignTests()
+ 		def assignTest(test: TestDefinition)
 		{
-			for(test <- tests if !map.values.exists(_.contains(test)))
-			{
-				def isTestForFramework(framework: Framework) = getFingerprints(framework).exists {t => matches(t, test.fingerprint) }
-				for(framework <- frameworks.find(isTestForFramework))
-					map.getOrElseUpdate(framework, new HashSet[TestDefinition]) += test
-			}
+			def isTestForFramework(framework: Framework) = getFingerprints(framework).exists {t => matches(t, test.fingerprint) }
+			for(framework <- frameworks.find(isTestForFramework))
+				map.getOrElseUpdate(framework, new HashSet[TestDefinition]) += test
 		}
 		if(!frameworks.isEmpty)
-			assignTests()
-		map.toMap transform { (framework, tests) => mergeDuplicates(framework, tests.toSeq) }
-	}
-	private[this] def mergeDuplicates(framework: Framework, tests: Seq[TestDefinition]): Set[TestDefinition] =
-	{
-		val frameworkPrints = framework.fingerprints.reverse
-		def pickOne(prints: Seq[Fingerprint]): Fingerprint =
-			frameworkPrints.find(prints.toSet) getOrElse prints.head
-		val uniqueDefs =
-			for( ((name, explicitlySpecified, selectors), defs) <- tests.groupBy(t => (t.name, t.explicitlySpecified, t.selectors)) ) yield
-				new TestDefinition(name, pickOne(defs.map(_.fingerprint)), explicitlySpecified, selectors)
-		uniqueDefs.toSet
+			for(test <- tests) assignTest(test)
+		map.toMap.mapValues(_.toSet)
 	}
 
 	private def createTestTasks(loader: ClassLoader, runners: Map[Framework, TestRunner], tests: Map[Framework, Set[TestDefinition]], ordered: Seq[TestDefinition], log: Logger, listeners: Seq[TestReportListener]) =

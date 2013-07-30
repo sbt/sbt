@@ -2,25 +2,25 @@
 Plugins Best Practices
 ======================
 
-*This page is intended primarily for SBT plugin authors.*
+*This page is intended primarily for sbt plugin authors.*
 
 A plugin developer should strive for consistency and ease of use.
 Specifically:
 
 -  Plugins should play well with other plugins. Avoiding namespace
-   clashes (in both SBT and Scala) is paramount.
+   clashes (in both sbt and Scala) is paramount.
 -  Plugins should follow consistent conventions. The experiences of an
-   SBT *user* should be consistent, no matter what plugins are pulled
+   sbt *user* should be consistent, no matter what plugins are pulled
    in.
 
 Here are some current plugin best practices. **NOTE:** Best practices
 are evolving, so check back frequently.
 
-Avoid overriding ``settings``
+Avoid overriding `settings`
 -----------------------------
 
-SBT will automatically load your plugin's ``settings`` into the build.
-Overriding ``val settings`` should only be done by plugins intending to
+sbt will automatically load your plugin's `settings` into the build.
+Overriding `val settings` should only be done by plugins intending to
 provide commands. Regular plugins defining tasks and settings should
 provide a sequence named after the plugin like so:
 
@@ -34,24 +34,24 @@ used. See later section for how the settings should be scoped.
 Reuse existing keys
 -------------------
 
-SBT has a number of `predefined keys <../../api/sbt/Keys%24.html>`_.
+sbt has a number of `predefined keys <../../api/sbt/Keys%24.html>`_.
 Where possible, reuse them in your plugin. For instance, don't define:
 
 ::
 
     val sourceFiles = settingKey[Seq[File]]("Some source files")
 
-Instead, simply reuse SBT's existing ``sources`` key.
+Instead, simply reuse sbt's existing `sources` key.
 
 Avoid namespace clashes
 -----------------------
 
-Sometimes, you need a new key, because there is no existing SBT key. In
+Sometimes, you need a new key, because there is no existing sbt key. In
 this case, use a plugin-specific prefix, both in the (string) key name
-used in the SBT namespace and in the Scala ``val``. There are two
+used in the sbt namespace and in the Scala `val`. There are two
 acceptable ways to accomplish this goal.
 
-Just use a ``val`` prefix
+Just use a `val` prefix
 ~~~~~~~~~~~~~~~~~~~~~~~~~
 
 ::
@@ -61,7 +61,7 @@ Just use a ``val`` prefix
       val obfuscateStylesheet = settingKey[File]("Obfuscate stylesheet")
     }
 
-In this approach, every ``val`` starts with ``obfuscate``. A user of the
+In this approach, every `val` starts with `obfuscate`. A user of the
 plugin would refer to the settings like this:
 
 ::
@@ -114,14 +114,14 @@ and your plugin defines a target directory to receive the resulting
 PDFs. That target directory is scoped in its own configuration, so it is
 distinct from other target directories. Thus, these two definitions use
 the same *key*, but they represent distinct *values*. So, in a user's
-``build.sbt``, we might see:
+`build.sbt`, we might see:
 
 ::
 
     target in PDFPlugin := baseDirectory.value / "mytarget" / "pdf"
     target in Compile := baseDirectory.value / "mytarget"
 
-In the PDF plugin, this is achieved with an ``inConfig`` definition:
+In the PDF plugin, this is achieved with an `inConfig` definition:
 
 ::
 
@@ -155,9 +155,9 @@ When defining a new type of configuration, e.g.
 
 should be used to create a "cross-task" configuration. The task
 definitions don't change in this case, but the default configuration
-does. For example, the ``profile`` configuration can extend the test
+does. For example, the `profile` configuration can extend the test
 configuration with additional settings and changes to allow profiling in
-SBT. Plugins should not create arbitrary Configurations, but utilize
+sbt. Plugins should not create arbitrary Configurations, but utilize
 them for specific purposes and builds.
 
 Configurations actually tie into dependency resolution (with Ivy) and
@@ -195,10 +195,10 @@ Split your settings by the configuration axis like so:
       sources in obfuscate := sources.value
     )
 
-The ``baseObfuscateSettings`` value provides base configuration for the
+The `baseObfuscateSettings` value provides base configuration for the
 plugin's tasks. This can be re-used in other configurations if projects
-require it. The ``obfuscateSettings`` value provides the default
-``Compile`` scoped settings for projects to use directly. This gives the
+require it. The `obfuscateSettings` value provides the default
+`Compile` scoped settings for projects to use directly. This gives the
 greatest flexibility in using features provided by a plugin. Here's how
 the raw settings may be reused:
 
@@ -236,8 +236,8 @@ task itself.
       sources in obfuscate := sources.value
     )
 
-In the above example, ``sources in obfuscate`` is scoped under the main
-task, ``obfuscate``.
+In the above example, `sources in obfuscate` is scoped under the main
+task, `obfuscate`.
 
 Mucking with Global build state
 -------------------------------
@@ -255,11 +255,11 @@ First, make sure your user does not include global build configuration in
       val main = project(file("."), "root") settings(MyPlugin.globalSettings:_*) // BAD!
     }
 
-Global settings should *not* be placed into a ``build.sbt`` file.
+Global settings should *not* be placed into a `build.sbt` file.
 
 When overriding global settings, care should be taken to ensure previous
 settings from other plugins are not ignored. e.g. when creating a new
-``onLoad`` handler, ensure that the previous ``onLoad`` handler is not
+`onLoad` handler, ensure that the previous `onLoad` handler is not
 removed.
 
 ::

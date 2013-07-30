@@ -12,12 +12,12 @@ Why move to |version|?
 
 1. Faster builds (because it is smarter at re-compiling only what it
    must)
-2. Easier configuration. For simple projects a single ``build.sbt`` file
+2. Easier configuration. For simple projects a single `build.sbt` file
    in your root directory is easier to create than
-   ``project/build/MyProject.scala`` was.
-3. No more ``lib_managed`` directory, reducing disk usage and avoiding
+   `project/build/MyProject.scala` was.
+3. No more `lib_managed` directory, reducing disk usage and avoiding
    backup and version control hassles.
-4. ``update`` is now much faster and it's invoked automatically by sbt.
+4. `update` is now much faster and it's invoked automatically by sbt.
 5. Terser output. (Yet you can ask for more details if something goes
    wrong.)
 
@@ -52,28 +52,28 @@ those with subprojects, are not suited for this technique, but if you
 learn how to transition a simple project it will help you do a more
 complex one next.
 
-Preserve ``project/`` for 0.7.x project
+Preserve `project/` for 0.7.x project
 ---------------------------------------
 
-Rename your ``project/`` directory to something like ``project-old``.
+Rename your `project/` directory to something like `project-old`.
 This will hide it from sbt |version| but keep it in case you want to switch
 back to 0.7.x.
 
-Create ``build.sbt`` for |version|
+Create `build.sbt` for |version|
 ----------------------------------
 
-Create a ``build.sbt`` file in the root directory of your project. See
+Create a `build.sbt` file in the root directory of your project. See
 :doc:`.sbt build definition </Getting-Started/Basic-Def>` in the Getting
 Started Guide, and for simple examples :doc:`/Examples/Quick-Configuration-Examples`.
 If you have a simple project then converting your existing project file
 to this format is largely a matter of re-writing your dependencies and
 maven archive declarations in a modified yet familiar syntax.
 
-This ``build.sbt`` file combines aspects of the old
-``project/build/ProjectName.scala`` and ``build.properties`` files. It
+This `build.sbt` file combines aspects of the old
+`project/build/ProjectName.scala` and `build.properties` files. It
 looks like a property file, yet contains Scala code in a special format.
 
-A ``build.properties`` file like:
+A `build.properties` file like:
 
 .. code-block:: text
 
@@ -87,7 +87,7 @@ A ``build.properties`` file like:
     build.scala.versions=2.8.1
     project.initialize=false
 
-Now becomes part of your ``build.sbt`` file with lines like:
+Now becomes part of your `build.sbt` file with lines like:
 
 ::
 
@@ -99,7 +99,7 @@ Now becomes part of your ``build.sbt`` file with lines like:
 
     scalaVersion := "2.9.2"
 
-Currently, a ``project/build.properties`` is still needed to explicitly
+Currently, a `project/build.properties` is still needed to explicitly
 select the sbt version. For example:
 
 .. code-block:: text
@@ -116,10 +116,10 @@ Switching back to sbt 0.7.x
 ---------------------------
 
 If you get stuck and want to switch back, you can leave your
-``build.sbt`` file alone. sbt 0.7.x will not understand or notice it.
-Just rename your |version| ``project`` directory to something like
-``project10`` and rename the backup of your old project from
-``project-old`` to ``project`` again.
+`build.sbt` file alone. sbt 0.7.x will not understand or notice it.
+Just rename your |version| `project` directory to something like
+`project10` and rename the backup of your old project from
+`project-old` to `project` again.
 
 FAQs
 ====

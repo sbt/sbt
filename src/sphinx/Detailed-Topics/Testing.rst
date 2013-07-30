@@ -7,12 +7,12 @@ Basics
 
 The standard source locations for testing are:
 
--  Scala sources in ``src/test/scala/``
--  Java sources in ``src/test/java/``
--  Resources for the test classpath in ``src/test/resources/``
+-  Scala sources in `src/test/scala/`
+-  Java sources in `src/test/java/`
+-  Resources for the test classpath in `src/test/resources/`
 
-The resources may be accessed from tests by using the ``getResource``
-methods of ``java.lang.Class`` or ``java.lang.ClassLoader``.
+The resources may be accessed from tests by using the `getResource`
+methods of `java.lang.Class` or `java.lang.ClassLoader`.
 
 The main Scala testing frameworks
 (`specs2 <http://specs2.org/>`_,
@@ -26,7 +26,7 @@ declaring it as a :doc:`managed dependency <Library-Management>`:
 
     libraryDependencies += "org.scalacheck" %% "scalacheck" % "1.10.1" % "test"
 
-The fourth component ``"test"`` is the :ref:`configuration <gsg-ivy-configurations>`
+The fourth component `"test"` is the :ref:`configuration <gsg-ivy-configurations>`
 and means that ScalaCheck will only be on the test classpath and it
 isn't needed by the main sources. This is generally good practice for
 libraries because your users don't typically need your test dependencies
@@ -34,7 +34,7 @@ to use your library.
 
 With the library dependency defined, you can then add test sources in
 the locations listed above and compile and run tests. The tasks for
-running tests are ``test`` and ``testOnly``. The ``test`` task accepts
+running tests are `test` and `testOnly`. The `test` task accepts
 no command line arguments and runs all tests:
 
 .. code-block:: console
@@ -44,7 +44,7 @@ no command line arguments and runs all tests:
 testOnly
 ---------
 
-The ``testOnly`` task accepts a whitespace separated list of test names
+The `testOnly` task accepts a whitespace separated list of test names
 to run. For example:
 
 .. code-block:: console
@@ -60,7 +60,7 @@ It supports wildcards as well:
 testQuick
 ----------
 
-The ``testQuick`` task, like ``testOnly``, allows to filter the tests
+The `testQuick` task, like `testOnly`, allows to filter the tests
 to run to specific tests or wildcards using the same syntax to indicate
 the filters. In addition to the explicit filter, only the tests that
 satisfy one of the following conditions are run:
@@ -74,23 +74,23 @@ Tab completion
 ~~~~~~~~~~~~~~
 
 Tab completion is provided for test names based on the results of the
-last ``test:compile``. This means that a new sources aren't available
+last `test:compile`. This means that a new sources aren't available
 for tab completion until they are compiled and deleted sources won't be
 removed from tab completion until a recompile. A new test source can
-still be manually written out and run using ``testOnly``.
+still be manually written out and run using `testOnly`.
 
 Other tasks
 -----------
 
 Tasks that are available for main sources are generally available for
-test sources, but are prefixed with ``test:`` on the command line and
-are referenced in Scala code with ``in Test``. These tasks include:
+test sources, but are prefixed with `test:` on the command line and
+are referenced in Scala code with `in Test`. These tasks include:
 
--  ``test:compile``
--  ``test:console``
--  ``test:consoleQuick``
--  ``test:run``
--  ``test:runMain``
+-  `test:compile`
+-  `test:console`
+-  `test:consoleQuick`
+-  `test:run`
+-  `test:runMain`
 
 See :doc:`Running </Getting-Started/Running>` for details on these tasks.
 
@@ -111,14 +111,14 @@ Test Framework Arguments
 ------------------------
 
 Arguments to the test framework may be provided on the command line to
-the ``testOnly`` tasks following a ``--`` separator. For example:
+the `testOnly` tasks following a `--` separator. For example:
 
 .. code-block:: console
 
     > testOnly org.example.MyTest -- -d -S
 
 To specify test framework arguments as part of the build, add options
-constructed by ``Tests.Argument``:
+constructed by `Tests.Argument`:
 
 ::
 
@@ -133,9 +133,9 @@ To specify them for a specific test framework only:
 Setup and Cleanup
 -----------------
 
-Specify setup and cleanup actions using ``Tests.Setup`` and
-``Tests.Cleanup``. These accept either a function of type ``() => Unit``
-or a function of type ``ClassLoader => Unit``. The variant that accepts
+Specify setup and cleanup actions using `Tests.Setup` and
+`Tests.Cleanup`. These accept either a function of type `() => Unit`
+or a function of type `ClassLoader => Unit`. The variant that accepts
 a ClassLoader is passed the class loader that is (or was) used for
 running the tests. It provides access to the test classes as well as the
 test framework classes.  
@@ -143,7 +143,7 @@ test framework classes.
 
 .. note::
 
-    When forking, the ClassLoader containing the test classes cannot be provided because it is in another JVM.  Only use the ``() => Unit`` variants in this case.
+    When forking, the ClassLoader containing the test classes cannot be provided because it is in another JVM.  Only use the `() => Unit` variants in this case.
 
 Examples:
 
@@ -164,15 +164,15 @@ By default, sbt runs all tasks in parallel. Because each test is mapped
 to a task, tests are also run in parallel by default. To make tests
 within a given project execute serially:
 
-``scala parallelExecution in Test := false`` ``Test`` can be replaced
-with ``IntegrationTest`` to only execute integration tests serially.
+`scala parallelExecution in Test := false` `Test` can be replaced
+with `IntegrationTest` to only execute integration tests serially.
 Note that tests from different projects may still execute concurrently.
 
 Filter classes
 --------------
 
 If you want to only run test classes whose name ends with "Test", use
-``Tests.Filter``:
+`Tests.Filter`:
 
 ::
 
@@ -190,7 +190,7 @@ The setting:
 specifies that all tests will be executed in a single external JVM. See
 :doc:`Forking` for configuring standard options for forking. More control
 over how tests are assigned to JVMs and what options to pass to those is
-available with ``testGrouping`` key. For example:
+available with `testGrouping` key. For example:
 
 ::
 
@@ -206,8 +206,8 @@ available with ``testGrouping`` key. For example:
 
 The tests in a single group are run sequentially. Control the number
 of forked JVMs allowed to run at the same time by setting the
-limit on ``Tags.ForkedTestGroup`` tag, which is 1 by default.
-``Setup`` and ``Cleanup`` actions cannot be provided with the actual
+limit on `Tags.ForkedTestGroup` tag, which is 1 by default.
+`Setup` and `Cleanup` actions cannot be provided with the actual
 test class loader when a group is forked.
 
 Additional test configurations
@@ -249,49 +249,49 @@ The following full build configuration demonstrates integration tests.
       lazy val specs = "org.specs2" %% "specs2" % "2.0" % "it,test"
     }
 
--  ``configs(IntegrationTest)`` adds the predefined integration test
-   configuration. This configuration is referred to by the name ``it``.
--  ``settings( Defaults.itSettings : _* )`` adds compilation, packaging,
-   and testing actions and settings in the ``IntegrationTest``
+-  `configs(IntegrationTest)` adds the predefined integration test
+   configuration. This configuration is referred to by the name `it`.
+-  `settings( Defaults.itSettings : _* )` adds compilation, packaging,
+   and testing actions and settings in the `IntegrationTest`
    configuration.
--  ``settings( libraryDependencies += specs )`` adds specs to both the
-   standard ``test`` configuration and the integration test
-   configuration ``it``. To define a dependency only for integration
-   tests, use ``"it"`` as the configuration instead of ``"it,test"``.
+-  `settings( libraryDependencies += specs )` adds specs to both the
+   standard `test` configuration and the integration test
+   configuration `it`. To define a dependency only for integration
+   tests, use `"it"` as the configuration instead of `"it,test"`.
 
 The standard source hierarchy is used:
 
--  ``src/it/scala`` for Scala sources
--  ``src/it/java`` for Java sources
--  ``src/it/resources`` for resources that should go on the integration
+-  `src/it/scala` for Scala sources
+-  `src/it/java` for Java sources
+-  `src/it/resources` for resources that should go on the integration
    test classpath
 
 The standard testing tasks are available, but must be prefixed with
-``it:``. For example,
+`it:`. For example,
 
 .. code-block:: console
 
     > it:testOnly org.example.AnIntegrationTest
 
 Similarly the standard settings may be configured for the
-``IntegrationTest`` configuration. If not specified directly, most
-``IntegrationTest`` settings delegate to ``Test`` settings by default.
+`IntegrationTest` configuration. If not specified directly, most
+`IntegrationTest` settings delegate to `Test` settings by default.
 For example, if test options are specified as:
 
 ::
 
     testOptions in Test += ...
 
-then these will be picked up by the ``Test`` configuration and in turn
-by the ``IntegrationTest`` configuration. Options can be added
+then these will be picked up by the `Test` configuration and in turn
+by the `IntegrationTest` configuration. Options can be added
 specifically for integration tests by putting them in the
-``IntegrationTest`` configuration:
+`IntegrationTest` configuration:
 
 ::
 
     testOptions in IntegrationTest += ...
 
-Or, use ``:=`` to overwrite any existing options, declaring these to be
+Or, use `:=` to overwrite any existing options, declaring these to be
 the definitive integration test options:
 
 ::
@@ -326,29 +326,29 @@ Instead of using the built-in configuration, we defined a new one:
 
     lazy val FunTest = config("fun") extend(Test)
 
-The ``extend(Test)`` part means to delegate to ``Test`` for undefined
-``CustomTest`` settings. The line that adds the tasks and settings for
+The `extend(Test)` part means to delegate to `Test` for undefined
+`CustomTest` settings. The line that adds the tasks and settings for
 the new test configuration is:
 
 ::
 
     settings( inConfig(FunTest)(Defaults.testSettings) : _*)
 
-This says to add test and settings tasks in the ``FunTest``
+This says to add test and settings tasks in the `FunTest`
 configuration. We could have done it this way for integration tests as
-well. In fact, ``Defaults.itSettings`` is a convenience definition:
-``val itSettings = inConfig(IntegrationTest)(Defaults.testSettings)``.
+well. In fact, `Defaults.itSettings` is a convenience definition:
+`val itSettings = inConfig(IntegrationTest)(Defaults.testSettings)`.
 
 The comments in the integration test section hold, except with
-``IntegrationTest`` replaced with ``FunTest`` and ``"it"`` replaced with
-``"fun"``. For example, test options can be configured specifically for
-``FunTest``:
+`IntegrationTest` replaced with `FunTest` and `"it"` replaced with
+`"fun"`. For example, test options can be configured specifically for
+`FunTest`:
 
 ::
 
     testOptions in FunTest += ...
 
-Test tasks are run by prefixing them with ``fun:``
+Test tasks are run by prefixing them with `fun:`
 
 .. code-block:: console
 
@@ -388,18 +388,18 @@ However, different tests are run depending on the configuration.
 The key differences are:
 
 -  We are now only adding the test tasks
-   (``inConfig(FunTest)(Defaults.testTasks)``) and not compilation and
+   (`inConfig(FunTest)(Defaults.testTasks)`) and not compilation and
    packaging tasks and settings.
 -  We filter the tests to be run for each configuration.
 
-To run standard unit tests, run ``test`` (or equivalently,
-``test:test``):
+To run standard unit tests, run `test` (or equivalently,
+`test:test`):
 
 .. code-block:: console
 
     > test
 
-To run tests for the added configuration (here, ``"fun"``), prefix it
+To run tests for the added configuration (here, `"fun"`), prefix it
 with the configuration name as before:
 
 .. code-block:: console
@@ -413,7 +413,7 @@ Application to parallel execution
 One use for this shared-source approach is to separate tests that can
 run in parallel from those that must execute serially. Apply the
 procedure described in this section for an additional configuration.
-Let's call the configuration ``serial``:
+Let's call the configuration `serial`:
 
 ::
 
@@ -426,8 +426,8 @@ using:
 
     parallelExecution in Serial := false
 
-The tests to run in parallel would be run with ``test`` and the ones to
-run in serial would be run with ``serial:test``.
+The tests to run in parallel would be run with `test` and the ones to
+run in serial would be run with `serial:test`.
 
 JUnit
 =====
@@ -445,7 +445,7 @@ Extensions
 ==========
 
 This page describes adding support for additional testing libraries and
-defining additional test reporters. You do this by implementing ``sbt``
+defining additional test reporters. You do this by implementing `sbt`
 interfaces (described below). If you are the author of the testing
 framework, you can depend on the test interface as a provided
 dependency. Alternatively, anyone can provide support for a test
@@ -473,17 +473,17 @@ Using Extensions
 
 To use your extensions in a project definition:
 
-Modify the ``testFrameworks``\ setting to reference your test framework:
+Modify the `testFrameworks` setting to reference your test framework:
 
 ::
 
     testFrameworks += new TestFramework("custom.framework.ClassName")
 
 Specify the test reporters you want to use by overriding the
-``testListeners`` method in your project definition.
+`testListeners` method in your project definition.
 
 ::
 
     testListeners += customTestListener
 
-where ``customTestListener`` is of type ``sbt.TestReportListener``.
+where `customTestListener` is of type `sbt.TestReportListener`.

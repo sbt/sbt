@@ -1414,6 +1414,7 @@ object Classpaths
 			if(autoCompilerPlugins.value) options ++ newPlugins.filterNot(existing) else options
 		}
 	)
+
 	@deprecated("Doesn't properly handle non-standard Scala organizations.", "0.13.0")
 	def substituteScalaFiles(scalaInstance: ScalaInstance, report: UpdateReport): UpdateReport =
 		substituteScalaFiles(scalaInstance, ScalaArtifacts.Organization, report)
@@ -1424,7 +1425,6 @@ object Classpaths
 		
 	def substituteScalaFiles(scalaOrg: String, report: UpdateReport)(scalaJars: String => Seq[File]): UpdateReport =
 		report.substitute { (configuration, module, arts) =>
-			import ScalaArtifacts._
 			if(module.organization == scalaOrg) {
 				val jarName = module.name + ".jar"
 				val replaceWith = scalaJars(module.revision).filter(_.getName == jarName).map(f => (Artifact(f.getName.stripSuffix(".jar")), f))

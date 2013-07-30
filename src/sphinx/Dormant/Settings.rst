@@ -23,7 +23,7 @@ is a quick way of configuring a build, consisting of a list of Scala
 expressions describing project settings. A :doc:`full definition <Full-Configuration>` is
 made up of one or more Scala source files that describe relationships
 between projects and introduce new configurations and settings. This
-page introduces the ``Setting`` type, which is used by light and full
+page introduces the `Setting` type, which is used by light and full
 definitions for general configuration.
 
 Introductory Examples
@@ -34,7 +34,7 @@ purpose of getting an idea of what they look like, not for full
 comprehension of details, which are described at :doc:`light definition <Basic-Configuration>`
 and :doc:`full definition <Full-Configuration>`.
 
-``<base>/build.sbt`` (light)
+`<base>/build.sbt` (light)
 
 ::
 
@@ -42,7 +42,7 @@ and :doc:`full definition <Full-Configuration>`.
 
     libraryDependencies += "junit" % "junit" % "4.8" % "test"
 
-``<base>/project/Build.scala`` (full)
+`<base>/project/Build.scala` (full)
 
 ::
 
@@ -61,12 +61,12 @@ and :doc:`full definition <Full-Configuration>`.
 Important Settings Background
 -----------------------------
 
-The fundamental type of a configurable in sbt is a ``Setting[T]``. Each
-line in the ``build.sbt`` example above is of this type. The arguments
-to the ``settings`` method in the ``Build.scala`` example are of type
-``Setting[T]``. Specifically, the ``name`` setting has type
-``Setting[String]`` and the ``libraryDependencies`` setting has type
-``Setting[Seq[ModuleID]]``, where ``ModuleID`` represents a dependency.
+The fundamental type of a configurable in sbt is a `Setting[T]`. Each
+line in the `build.sbt` example above is of this type. The arguments
+to the `settings` method in the `Build.scala` example are of type
+`Setting[T]`. Specifically, the `name` setting has type
+`Setting[String]` and the `libraryDependencies` setting has type
+`Setting[Seq[ModuleID]]`, where `ModuleID` represents a dependency.
 
 Throughout the documentation, many examples show a setting, such as:
 
@@ -75,22 +75,22 @@ Throughout the documentation, many examples show a setting, such as:
     libraryDependencies += "junit" % "junit" % "4.8" % "test"
 
 This setting expression either goes in a :doc:`light definition <Basic-Configuration>`
-``(build.sbt)`` as is or in the ``settings`` of a ``Project`` instance
+`(build.sbt)` as is or in the `settings` of a `Project` instance
 in a :doc:`full definition <Full-Configuration>`
-``(Build.scala)`` as shown in the example. This is an important point to
+`(Build.scala)` as shown in the example. This is an important point to
 understanding the context of examples in the documentation. (That is,
 you now know where to copy and paste examples now.)
 
-A ``Setting[T]`` describes how to initialize a setting of type ``T``.
+A `Setting[T]` describes how to initialize a setting of type `T`.
 The settings shown in the examples are expressions, not statements. In
 particular, there is no hidden mutable map that is being modified. Each
-``Setting[T]`` is a value that describes an update to a map. The actual
+`Setting[T]` is a value that describes an update to a map. The actual
 map is rarely directly referenced by user code. It is not the final map
 that is usually important, but the operations on the map.
 
-To emphasize this, the setting in the following ``Build.scala`` fragment
+To emphasize this, the setting in the following `Build.scala` fragment
 *is ignored* because it is a value that need to be included in the
-``settings`` of a ``Project``. (Unfortunately, Scala will discard
+`settings` of a `Project`. (Unfortunately, Scala will discard
 non-Unit values to get Unit, which is why there is no compile error.)
 
 ::
@@ -112,19 +112,19 @@ Declaring a Setting
 -------------------
 
 There is fundamentally one type of initialization, represented by the
-``<<=`` method. The other initialization methods ``:=``, ``+=``,
-``++=``, ``<+=``, ``<++=``, and ``~=`` are convenience methods that can
-be defined in terms of ``<<=``.
+`<<=` method. The other initialization methods `:=`, `+=`,
+`++=`, `<+=`, `<++=`, and `~=` are convenience methods that can
+be defined in terms of `<<=`.
 
 The motivation behind the method names is:
 
--  All methods end with ``=`` to obtain the lowest possible infix
+-  All methods end with `=` to obtain the lowest possible infix
    precedence.
--  A method starting with ``<`` indicates that the initialization uses
+-  A method starting with `<` indicates that the initialization uses
    other settings.
--  A single ``+`` means a single value is expected and will be appended
+-  A single `+` means a single value is expected and will be appended
    to the current sequence.
--  ``++`` means a ``Seq[T]`` is expected. The sequence will be appended
+-  `++` means a `Seq[T]` is expected. The sequence will be appended
    to the current sequence.
 
 The following sections include descriptions and examples of each
@@ -140,7 +140,7 @@ section.
 :=
 ~~
 
-``:=`` is used to define a setting that overwrites any previous value
+`:=` is used to define a setting that overwrites any previous value
 without referring to other settings. For example, the following defines
 a setting that will set *name* to "My Project" regardless of whether
 *name* has already been initialized.
@@ -154,7 +154,7 @@ No other settings are used. The value assigned is just a constant.
 += and ++=
 ~~~~~~~~~~
 
-``+=`` is used to define a setting that will append a single value to
+`+=` is used to define a setting that will append a single value to
 the current sequence without referring to other settings. For example,
 the following defines a setting that will append a JUnit dependency to
 *libraryDependencies*. No other settings are referenced.
@@ -163,10 +163,10 @@ the following defines a setting that will append a JUnit dependency to
 
     libraryDependencies += "junit" % "junit" % "4.8" % "test"
 
-The related method ``++=`` appends a sequence to the current sequence,
+The related method `++=` appends a sequence to the current sequence,
 also without using other settings. For example, the following defines a
 setting that will add dependencies on ScalaCheck and specs to the
-current list of dependencies. Because it will append a ``Seq``, it uses
+current list of dependencies. Because it will append a `Seq`, it uses
 ++= instead of +=.
 
 ::
@@ -188,8 +188,8 @@ for the provided instances.
 ~=
 ~~
 
-``~=`` is used to transform the current value of a setting. For example,
-the following defines a setting that will remove ``-Y`` compiler options
+`~=` is used to transform the current value of a setting. For example,
+the following defines a setting that will remove `-Y` compiler options
 from the current list of compiler options.
 
 ::
@@ -198,7 +198,7 @@ from the current list of compiler options.
        options filterNot ( _ startsWith "-Y" )
     }
 
-The earlier declaration of JUnit as a library dependency using ``+=``
+The earlier declaration of JUnit as a library dependency using `+=`
 could also be written as:
 
 ::
@@ -223,7 +223,7 @@ declaring JUnit as a dependency using <<= would look like:
     }
 
 This defines a setting that will apply the provided function to the
-previous value of *libraryDependencies*. ``apply`` and ``Seq[ModuleID]``
+previous value of *libraryDependencies*. `apply` and `Seq[ModuleID]`
 are explicit for demonstration only and may be omitted.
 
 <+= and <++=
@@ -278,12 +278,12 @@ This type has two parts: a key (of type
 `SettingKey <../../api/sbt/SettingKey.html>`_)
 and a scope (of type
 `Scope <../../api/sbt/Scope$.html>`_). An
-unspecified scope is like using ``this`` to refer to the current
+unspecified scope is like using `this` to refer to the current
 context. The previous examples on this page have not defined an explicit
 scope. See [[Inspecting Settings]] for details on the axes that make up
 scopes.
 
-The target (the value on the left) of a method like ``:=`` identifies
+The target (the value on the left) of a method like `:=` identifies
 one of the main constructs in sbt: a setting, a task, or an input task.
 It is not an actual setting or task, but a key representing a setting or
 task. A setting is a value assigned when a project is loaded. A task is
@@ -305,11 +305,11 @@ understanding of this page).
 
 To construct a
 `ScopedSetting <../../api/sbt/ScopedSetting.html>`_,
-select the key and then scope it using the ``in`` method (see the
+select the key and then scope it using the `in` method (see the
 `ScopedSetting <../../api/sbt/ScopedSetting.html>`_
 for API details). For example, the setting for compiler options for the
 test sources is referenced using the *scalacOptions* key and the
-``Test`` configuration in the current project.
+`Test` configuration in the current project.
 
 ::
 
@@ -337,14 +337,14 @@ The right hand side of a setting definition varies by the initialization
 method used. In the case of :=, +=, ++=, and ~=, the type of the
 argument is straightforward (see the
 `ScopedSetting <../../api/sbt/ScopedSetting.html>`_
-API). For <<=, <+=, and <++=, the type is ``Initialize[T]`` (for <<= and
-<+=) or ``Initialize[Seq[T]]`` (for <++=). This section discusses the
+API). For <<=, <+=, and <++=, the type is `Initialize[T]` (for <<= and
+<+=) or `Initialize[Seq[T]]` (for <++=). This section discusses the
 `Initialize <../../api/sbt/Init$Initialize.html>`_
 type.
 
-A value of type ``Initialize[T]`` represents a computation that takes
+A value of type `Initialize[T]` represents a computation that takes
 the values of other settings as inputs. For example, in the following
-setting, the argument to <<= is of type ``Initialize[File]``:
+setting, the argument to <<= is of type `Initialize[File]`:
 
 ::
 
@@ -362,8 +362,8 @@ This example can be written more explicitly as:
       key.<<=(init)
     }
 
-To construct a value of type ``Initialize``, construct a tuple of up to
-nine input ``ScopedSetting``\ s. Then, define the function that will
+To construct a value of type `Initialize`, construct a tuple of up to
+nine input `ScopedSetting`\ s. Then, define the function that will
 compute the value of the setting given the values for these input
 settings.
 
@@ -376,7 +376,7 @@ settings.
 
 This example takes the base directory, project name, and project version
 as inputs. The keys for these settings are defined in [sbt.Keys], along
-with all other built-in keys. The argument to the ``apply`` method is a
+with all other built-in keys. The argument to the `apply` method is a
 function that takes the values of those settings and computes a new
 value. In this case, that value is the path of a jar.
 
@@ -388,8 +388,8 @@ differences. First, the inputs are of type [ScopedTaskable]. The means
 that either settings
 (`ScopedSetting <../../api/sbt/ScopedSetting.html>`_)
 or tasks ([ScopedTask]) may be used as the input to a task. Second, the
-name of the method used is ``map`` instead of ``apply`` and the
-resulting value is of type ``Initialize[Task[T]]``. In the following
+name of the method used is `map` instead of `apply` and the
+resulting value is of type `Initialize[Task[T]]`. In the following
 example, the inputs are the [report\|Update-Report] produced by the
 *update* task and the context *configuration*. The function computes the
 locations of the dependencies for that configuration.
@@ -403,5 +403,5 @@ locations of the dependencies for that configuration.
 
 As before, *update* and *configuration* are defined in
 `Keys <../../sxr/Keys.scala.html>`_.
-*update* is of type ``TaskKey[UpdateReport]`` and *configuration* is of
-type ``SettingKey[Configuration]``.
+*update* is of type `TaskKey[UpdateReport]` and *configuration* is of
+type `SettingKey[Configuration]`.

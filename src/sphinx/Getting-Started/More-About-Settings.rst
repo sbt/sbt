@@ -2,70 +2,70 @@
 More Kinds of Setting
 =====================
 
-This page explains other ways to create a ``Setting``, beyond the basic
-``:=`` method. It assumes you've read :doc:`.sbt build definition <Basic-Def>` and :doc:`scopes <Scopes>`.
+This page explains other ways to create a `Setting`, beyond the basic
+`:=` method. It assumes you've read :doc:`.sbt build definition <Basic-Def>` and :doc:`scopes <Scopes>`.
 
 Refresher: Settings
 -------------------
 
 :doc:`Remember <Basic-Def>`, a build definition creates a
-list of ``Setting``, which is then used to transform sbt's description
-of the build (which is a map of key-value pairs). A ``Setting`` is a
+list of `Setting`, which is then used to transform sbt's description
+of the build (which is a map of key-value pairs). A `Setting` is a
 transformation with sbt's earlier map as input and a new map as output.
 The new map becomes sbt's new state.
 
 Different settings transform the map in different ways.
-:doc:`Earlier <Basic-Def>`, you read about the ``:=`` method.
+:doc:`Earlier <Basic-Def>`, you read about the `:=` method.
 
-The ``Setting`` which ``:=`` creates puts a fixed, constant value in the
+The `Setting` which `:=` creates puts a fixed, constant value in the
 new, transformed map. For example, if you transform a map with the
-setting ``name := "hello"`` the new map has the string ``"hello"``
-stored under the key ``name``.
+setting `name := "hello"` the new map has the string `"hello"`
+stored under the key `name`.
 
 Settings must end up in the master list of settings to do any good (all
-lines in a ``build.sbt`` automatically end up in the list, but in a
+lines in a `build.sbt` automatically end up in the list, but in a
 :doc:`.scala file <Full-Def>` you can get it wrong by
-creating a ``Setting`` without putting it where sbt will find it).
+creating a `Setting` without putting it where sbt will find it).
 
-Appending to previous values: ``+=`` and ``++=``
+Appending to previous values: `+=` and `++=`
 ------------------------------------------------
 
-Assignment with ``:=`` is the simplest transformation, but keys have
-other methods as well. If the ``T`` in ``SettingKey[T]`` is a sequence,
+Assignment with `:=` is the simplest transformation, but keys have
+other methods as well. If the `T` in `SettingKey[T]` is a sequence,
 i.e. the key's value type is a sequence, you can append to the sequence
 rather than replacing it.
 
--  ``+=`` will append a single element to the sequence.
--  ``++=`` will concatenate another sequence.
+-  `+=` will append a single element to the sequence.
+-  `++=` will concatenate another sequence.
 
-For example, the key ``sourceDirectories in Compile`` has a
-``Seq[File]`` as its value. By default this key's value would include
-``src/main/scala``. If you wanted to also compile source code in a
-directory called ``source`` (since you just have to be nonstandard), you
+For example, the key `sourceDirectories in Compile` has a
+`Seq[File]` as its value. By default this key's value would include
+`src/main/scala`. If you wanted to also compile source code in a
+directory called `source` (since you just have to be nonstandard), you
 could add that directory:
 
 ::
 
     sourceDirectories in Compile += new File("source")
 
-Or, using the ``file()`` function from the sbt package for convenience:
+Or, using the `file()` function from the sbt package for convenience:
 
 ::
 
     sourceDirectories in Compile += file("source")
 
-(``file()`` just creates a new ``File``.)
+(`file()` just creates a new `File`.)
 
-You could use ``++=`` to add more than one directory at a time:
+You could use `++=` to add more than one directory at a time:
 
 ::
 
     sourceDirectories in Compile ++= Seq(file("sources1"), file("sources2"))
 
-Where ``Seq(a, b, c, ...)`` is standard Scala syntax to construct a
+Where `Seq(a, b, c, ...)` is standard Scala syntax to construct a
 sequence.
 
-To replace the default source directories entirely, you use ``:=`` of
+To replace the default source directories entirely, you use `:=` of
 course:
 
 ::
@@ -75,9 +75,9 @@ course:
 Computing a value based on other keys' values
 ---------------------------------------------
 
-Reference the value of another task or setting by calling ``value``
-on the key for the task or setting.  The ``value`` method is special and may
-only be called in the argument to ``:=``, ``+=``, or ``++=``.
+Reference the value of another task or setting by calling `value`
+on the key for the task or setting.  The `value` method is special and may
+only be called in the argument to `:=`, `+=`, or `++=`.
 
 As a first example, consider defining the project organization to be the same as the project name.
 
@@ -94,7 +94,7 @@ Or, set the name to the name of the project's directory:
     // name the project after the directory it's inside
     name := baseDirectory.value.getName
 
-This transforms the value of ``baseDirectory`` using the standard ``getName`` method of ``java.io.File``.
+This transforms the value of `baseDirectory` using the standard `getName` method of `java.io.File`.
 
 Using multiple inputs is similar.  For example,
 
@@ -107,10 +107,10 @@ This sets the name in terms of its previous value as well as the organization an
 Settings with dependencies
 ~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-In the setting ``name := baseDirectory.value.getName``, ``name`` will have
-a *dependency* on ``baseDirectory``. If you place the above in
-``build.sbt`` and run the sbt interactive console, then type
-``inspect name``, you should see (in part):
+In the setting `name := baseDirectory.value.getName`, `name` will have
+a *dependency* on `baseDirectory`. If you place the above in
+`build.sbt` and run the sbt interactive console, then type
+`inspect name`, you should see (in part):
 
 .. code-block:: text
 
@@ -121,12 +121,12 @@ This is how sbt knows which settings depend on which other settings.
 Remember that some settings describe tasks, so this approach also
 creates dependencies between tasks.
 
-For example, if you ``inspect compile`` you'll see it depends on another
-key ``compileInputs``, and if you inspect ``compileInputs`` it in turn
+For example, if you `inspect compile` you'll see it depends on another
+key `compileInputs`, and if you inspect `compileInputs` it in turn
 depends on other keys. Keep following the dependency chains and magic
-happens. When you type ``compile`` sbt automatically performs an
-``update``, for example. It Just Works because the values required as
-inputs to the ``compile`` computation require sbt to do the ``update``
+happens. When you type `compile` sbt automatically performs an
+`update`, for example. It Just Works because the values required as
+inputs to the `compile` computation require sbt to do the `update`
 computation first.
 
 In this way, all build dependencies in sbt are *automatic* rather than
@@ -137,7 +137,7 @@ then the computation depends on that key. It just works!
 When settings are undefined
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-Whenever a setting uses ``:=``, ``+=``, or ``++=`` to create a dependency on
+Whenever a setting uses `:=`, `+=`, or `++=` to create a dependency on
 itself or another key's value, the value it depends on must exist. If it
 does not, sbt will complain. It might say *"Reference to undefined
 setting"*, for example. When this happens, be sure you're using the key
@@ -150,8 +150,8 @@ Tasks with dependencies
 ~~~~~~~~~~~~~~~~~~~~~~~
 
 As noted in :doc:`.sbt build definition <Basic-Def>`, task
-keys create a ``Setting[Task[T]]`` rather than a ``Setting[T]`` when you
-build a setting with ``:=``, etc.  Tasks can use settings as inputs, but
+keys create a `Setting[Task[T]]` rather than a `Setting[T]` when you
+build a setting with `:=`, etc.  Tasks can use settings as inputs, but
 settings cannot use tasks as inputs.
 
 Take these two keys (from `Keys <../../sxr/Keys.scala.html>`_):
@@ -161,10 +161,10 @@ Take these two keys (from `Keys <../../sxr/Keys.scala.html>`_):
     val scalacOptions = taskKey[Seq[String]]("Options for the Scala compiler.")
     val checksums = settingKey[Seq[String]]("The list of checksums to generate and to verify for dependencies.")
 
-(``scalacOptions`` and ``checksums`` have nothing to do with each other,
+(`scalacOptions` and `checksums` have nothing to do with each other,
 they are just two keys with the same value type, where one is a task.)
 
-It is possible to compile a ``build.sbt`` that aliases ``scalacOptions`` to ``checksums``, but not the other way.
+It is possible to compile a `build.sbt` that aliases `scalacOptions` to `checksums`, but not the other way.
 For example, this is allowed:
 
 ::
@@ -183,13 +183,13 @@ time, and tasks expect to re-run every time.
     checksums := scalacOptions.value
 
 
-Appending with dependencies: ``+=`` and ``++=``
+Appending with dependencies: `+=` and `++=`
 -------------------------------------------------
 
-Other keys can be used when appending to an existing setting or task, just like they can for assigning with ``:=``.
+Other keys can be used when appending to an existing setting or task, just like they can for assigning with `:=`.
 
 For example, say you have a coverage report named after the project, and
-you want to add it to the files removed by ``clean``:
+you want to add it to the files removed by `clean`:
 
 ::
 
@@ -199,5 +199,5 @@ Next
 ----
 
 At this point you know how to get things done with settings, so we can
-move on to a specific key that comes up often: ``libraryDependencies``.
+move on to a specific key that comes up often: `libraryDependencies`.
 :doc:`Learn about library dependencies <Library-Dependencies>`.

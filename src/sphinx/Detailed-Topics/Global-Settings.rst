@@ -5,13 +5,13 @@ Global Settings
 Basic global configuration file
 -------------------------------
 
-Settings that should be applied to all projects can go in
-``~/.sbt/global.sbt`` (or any file in ``~/.sbt/`` with a ``.sbt``
-extension). Plugins that are defined globally in ``~/.sbt/plugins`` are
+Settings that should be applied to all projects can go in `|globalSbtFile|`
+(or any file in `|globalBase|` with a `.sbt` extension).
+Plugins that are defined globally in `|globalPluginsBase|` are
 available to these settings. For example, to change the default
-``shellPrompt`` for your projects:
+`shellPrompt` for your projects:
 
-``~/.sbt/global.sbt``
+`|globalSbtFile|`
 
 ::
 
@@ -22,18 +22,18 @@ available to these settings. For example, to change the default
 Global Settings using a Global Plugin
 -------------------------------------
 
-The ``~/.sbt/plugins`` directory is a global plugin project. This can be
+The `|globalPluginsBase|` directory is a global plugin project. This can be
 used to provide global commands, plugins, or other code.
 
-To add a plugin globally, create ``~/.sbt/plugins/build.sbt`` containing
+To add a plugin globally, create `|globalPluginSbtFile|` containing
 the dependency definitions. For example:
 
 ::
 
     addSbtPlugin("org.example" % "plugin" % "1.0")
 
-To change the default ``shellPrompt`` for every project using this
-approach, create a local plugin ``~/.sbt/plugins/ShellPrompt.scala``:
+To change the default `shellPrompt` for every project using this
+approach, create a local plugin `|globalShellPromptScala|`:
 
 ::
 
@@ -47,9 +47,15 @@ approach, create a local plugin ``~/.sbt/plugins/ShellPrompt.scala``:
       )
     }
 
-The ``~/.sbt/plugins`` directory is a full project that is included as
+The `|globalPluginsBase|` directory is a full project that is included as
 an external dependency of every plugin project. In practice, settings
 and code defined here effectively work as if they were defined in a
-project's ``project/`` directory. This means that ``~/.sbt/plugins`` can
-be used to try out ideas for plugins such as shown in the shellPrompt
+project's `project/` directory. This means that `|globalPluginsBase|` can
+be used to try out ideas for plugins such as shown in the `shellPrompt`
 example.
+
+.. |globalBase| replace:: ~/.sbt/|version|/
+.. |globalPluginsBase| replace:: |globalBase|\ plugins/
+.. |globalSbtFile| replace:: |globalBase|\ global.sbt
+.. |globalPluginSbtFile| replace:: |globalPluginsBase|\ build.sbt
+.. |globalShellPromptScala| replace:: |globalPluginsBase|\ ShellPrompt.scala`

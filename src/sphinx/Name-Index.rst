@@ -29,7 +29,7 @@ Dependency Management
    `Configuration <../api/sbt/Configuration.html>`_
    is a useful Ivy construct for grouping dependencies. See
    :ref:`ivy-configurations`. It is also used for :doc:`scoping settings </Getting-Started/Scopes>`.
--  ``Compile``, ``Test``, ``Runtime``, ``Provided``, and ``Optional`` are predefined :ref:`configurations <ivy-configurations>`.
+-  `Compile`, `Test`, `Runtime`, `Provided`, and `Optional` are predefined :ref:`configurations <ivy-configurations>`.
 
 Settings and Tasks
 ~~~~~~~~~~~~~~~~~~
@@ -98,14 +98,14 @@ Settings and Tasks
 See the :doc:`Getting Started Guide </Getting-Started/Basic-Def>` for
 details.
 
--  ``:=``, ``+=``, ``++=``, ``~=`` These
+-  `:=`, `+=`, `++=`, `~=` These
    construct a `Setting <../api/sbt/Init$Setting.html>`_,
    which is the fundamental type in the :doc:`settings </Getting-Started/Basic-Def>` system.
--  ``value`` This uses the value of another setting or task in the definition of a new setting or task.
+-  `value` This uses the value of another setting or task in the definition of a new setting or task.
    This method is special (it is a macro) and cannot be used except in the argument of one of the setting
-   definition methods above (``:=``, ...) or in the standalone construction methods ``Def.setting`` and ``Def.task``.
+   definition methods above (`:=`, ...) or in the standalone construction methods `Def.setting` and `Def.task`.
    See :doc:`more about settings </Getting-Started/More-About-Settings>` for details.
--  ``in`` specifies the `Scope <../api/sbt/Scope.html>`_ or part of the
+-  `in` specifies the `Scope <../api/sbt/Scope.html>`_ or part of the
    `Scope <../api/sbt/Scope.html>`_ of a setting being referenced. See :doc:`scopes </Getting-Started/Scopes>`.
 
 File and IO
@@ -115,13 +115,13 @@ See `RichFile <../api/sbt/RichFile.html>`_,
 `PathFinder <../api/sbt/PathFinder.html>`_,
 and :doc:`/Detailed-Topics/Paths` for the full documentation.
 
--  ``/`` When called on a single File, this is ``new File(x,y)``. For
-   ``Seq[File]``, this is applied for each member of the sequence..
--  ``*`` and ``**`` are methods for selecting children (``*``) or
-   descendants (``**``) of a ``File`` or ``Seq[File]`` that match a
+-  `/` When called on a single File, this is `new File(x,y)`. For
+   `Seq[File]`, this is applied for each member of the sequence..
+-  `*` and `**` are methods for selecting children (`*`) or
+   descendants (`**`) of a `File` or `Seq[File]` that match a
    filter.
--  ``|``, ``||``, ``&&``, ``&``, ``-``, and ``--`` are methods for
-   combining filters, which are often used for selecting ``File``\ s.
+-  `|`, `||`, `&&`, `&`, `-`, and `--` are methods for
+   combining filters, which are often used for selecting `File`\ s.
    See
    `NameFilter <../api/sbt/NameFilter.html>`_
    and
@@ -130,29 +130,29 @@ and :doc:`/Detailed-Topics/Paths` for the full documentation.
    as collections (like \`Seq) and
    `Parser <../api/sbt/complete/Parser.html>`_
    (see :doc:`/Detailed-Topics/Parsing-Input`).
--  ``x`` Used to construct mappings from a ``File`` to another ``File``
-   or to a ``String``. See :doc:`/Detailed-Topics/Mapping-Files`.
--  ``get`` forces a `PathFinder <../api/sbt/PathFinder.html>`_
-   (a call-by-name data structure) to a strict ``Seq[File]``
+-  `x` Used to construct mappings from a `File` to another `File`
+   or to a `String`. See :doc:`/Detailed-Topics/Mapping-Files`.
+-  `get` forces a `PathFinder <../api/sbt/PathFinder.html>`_
+   (a call-by-name data structure) to a strict `Seq[File]`
    representation. This is a common name in Scala, used by types like
-   ``Option``.
+   `Option`.
 
 Dependency Management
 ~~~~~~~~~~~~~~~~~~~~~
 
 See :doc:`/Detailed-Topics/Library-Management` for full documentation.
 
--  ``%`` This is used to build up a
+-  `%` This is used to build up a
    `ModuleID <../api/sbt/ModuleID.html>`_.
--  ``%%`` This is similar to ``%`` except that it identifies a
+-  `%%` This is similar to `%` except that it identifies a
    dependency that has been :doc:`cross built </Detailed-Topics/Cross-Build>`.
--  ``from`` Used to specify the fallback URL for a dependency
--  ``classifier`` Used to specify the classifier for a dependency.
--  ``at`` Used to define a Maven-style resolver.
--  ``intransitive`` Marks a `dependency <../api/sbt/ModuleID.html>`_
+-  `from` Used to specify the fallback URL for a dependency
+-  `classifier` Used to specify the classifier for a dependency.
+-  `at` Used to define a Maven-style resolver.
+-  `intransitive` Marks a `dependency <../api/sbt/ModuleID.html>`_
    or `Configuration <../api/sbt/Configuration.html>`_
    as being intransitive.
--  ``hide`` Marks a
+-  `hide` Marks a
    `Configuration <../api/sbt/Configuration.html>`_
    as internal and not to be included in the published metadata.
 
@@ -165,22 +165,22 @@ They closely follow the names of the standard library's parser
 combinators. See :doc:`/Detailed-Topics/Parsing-Input` for the full documentation. These are
 used for :doc:`/Extending/Input-Tasks` and :doc:`/Extending/Commands`.
 
--  ``~``, ``~>``, ``<~`` Sequencing methods.
--  ``??``, ``?`` Methods for making a Parser optional. ``?`` is postfix.
--  ``id`` Used for turning a Char or String literal into a Parser. It is
+-  `~`, `~>`, `<~` Sequencing methods.
+-  `??`, `?` Methods for making a Parser optional. `?` is postfix.
+-  `id` Used for turning a Char or String literal into a Parser. It is
    generally used to trigger an implicit conversion to a Parser.
--  ``|``, ``||`` Choice methods. These are common method names in Scala.
--  ``^^^`` Produces a constant value when a Parser matches.
--  ``+``, ``*`` Postfix repetition methods. These are common method
+-  `|`, `||` Choice methods. These are common method names in Scala.
+-  `^^^` Produces a constant value when a Parser matches.
+-  `+`, `*` Postfix repetition methods. These are common method
    names in Scala.
--  ``map``, ``flatMap`` Transforms the result of a Parser. These are
+-  `map`, `flatMap` Transforms the result of a Parser. These are
    common method names in Scala.
--  ``filter`` Restricts the inputs that a Parser matches on. This is a
+-  `filter` Restricts the inputs that a Parser matches on. This is a
    common method name in Scala.
--  ``-`` Prefix negation. Only matches the input when the original
+-  `-` Prefix negation. Only matches the input when the original
    parser doesn't match the input.
--  ``examples``, ``token`` Tab completion
--  ``!!!`` Provides an error message to use when the original parser
+-  `examples`, `token` Tab completion
+-  `!!!` Provides an error message to use when the original parser
    doesn't match the input.
 
 Processes
@@ -192,15 +192,15 @@ version 2.9.
 `ProcessBuilder <../api/sbt/ProcessBuilder.html>`_
 is the builder type and `Process <../api/sbt/Process.html>`_
 is the type representing the actual forked process. The methods to
-combine processes start with ``#`` so that they share the same
+combine processes start with `#` so that they share the same
 precedence.
 
--  ``run``, ``!``, ``!!``, ``!<``, ``lines``, ``lines_!`` are different
-   ways to start a process once it has been defined. The ``lines``
-   variants produce a ``Stream[String]`` to obtain the output lines.
--  ``#<``, ``#<<``, ``#>`` are used to get input for a process from a
+-  `run`, `!`, `!!`, `!<`, `lines`, `lines_!` are different
+   ways to start a process once it has been defined. The `lines`
+   variants produce a `Stream[String]` to obtain the output lines.
+-  `#<`, `#<<`, `#>` are used to get input for a process from a
    source or send the output of a process to a sink.
--  ``#|`` is used to pipe output from one process into the input of
+-  `#|` is used to pipe output from one process into the input of
    another.
--  ``#||``, ``#&&``, ``###`` sequence processes in different ways.
+-  `#||`, `#&&`, `###` sequence processes in different ways.
 
