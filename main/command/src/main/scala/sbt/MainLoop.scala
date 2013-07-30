@@ -5,12 +5,28 @@ package sbt
 
 	import scala.annotation.tailrec
 	import java.io.{File, PrintWriter}
+  import jline.TerminalFactory
 
 object MainLoop
 {
 	/** Entry point to run the remaining commands in State with managed global logging.*/
-	def runLogged(state: State): xsbti.MainResult =
-		runLoggedLoop(state, state.globalLogging.backing)
+	def runLogged(state: State): xsbti.MainResult = {
+    // We've disabled jline shutdown hooks to prevent classloader leaks, and have been careful to always restore
+    // the jline terminal in finally blocks, but hitting ctrl+c prevents finally blocks from being executed, in that
+    // case the only way to restore the terminal is in a shutdown hook.
+    val shutdownHook = new Thread(new Runnable {
+      def run() {
+        TerminalFactory.get().restore()
+      }
+    })
+
+    try {
+      Runtime.getRuntime.addShutdownHook(shutdownHook)
+      runLoggedLoop(state, state.globalLogging.backing)
+    } finally {
+      Runtime.getRuntime.removeShutdownHook(shutdownHook)
+    }
+  }
 
 	/** Run loop that evaluates remaining commands and manages changes to global logging configuration.*/
 	@tailrec def runLoggedLoop(state: State, logBacking: GlobalLogBacking): xsbti.MainResult =
