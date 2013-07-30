@@ -191,7 +191,7 @@ run() {
   exit_code=$?
 
   # Clean up the terminal from cygwin hacks.
-  if [[ "$IS_CYGWIN" == "true" ]]; then
+  if [[ "$CYGWIN_FLAG" == "true" ]]; then
     stty icanon echo > /dev/null 2>&1
   fi
   exit $exit_code
