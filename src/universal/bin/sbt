@@ -10,14 +10,14 @@ realpath () {
   TARGET_FILE="$1"
   FIX_CYGPATH="$2"
 
-  cd $(dirname "$TARGET_FILE")
+  cd "$(dirname "$TARGET_FILE")"
   TARGET_FILE=$(basename "$TARGET_FILE")
 
   COUNT=0
   while [ -L "$TARGET_FILE" -a $COUNT -lt 100 ]
   do
       TARGET_FILE=$(readlink "$TARGET_FILE")
-      cd $(dirname "$TARGET_FILE")
+      cd "$(dirname "$TARGET_FILE")"
       TARGET_FILE=$(basename "$TARGET_FILE")
       COUNT=$(($COUNT + 1))
   done
@@ -56,7 +56,7 @@ cygwinpath() {
   fi
 }
 
-. $(dirname "$(realpath "$0")")/sbt-launch-lib.bash
+. "$(dirname "$(realpath "$0")")/sbt-launch-lib.bash"
 
 
 declare -r noshare_opts="-Dsbt.global.base=project/.sbtboot -Dsbt.boot.directory=project/.boot -Dsbt.ivy.home=project/.ivy"
