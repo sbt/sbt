@@ -56,7 +56,9 @@ execRunner () {
     echo ""
   }
 
-  exec "$@"
+  # THis used to be exec, but we loose the ability to re-hook stty then
+  # for cygwin...  Maybe we should flag the feature here...
+  "$@"
 }
 
 addJava () {
@@ -182,16 +184,16 @@ run() {
   execRunner "$java_cmd" \
     ${SBT_OPTS:-$default_sbt_opts} \
     $(get_mem_opts $sbt_mem) \
-    ${java_opts} \
+  	  ${java_opts} \
     ${java_args[@]} \
     -jar "$sbt_jar" \
     "${sbt_commands[@]}" \
-    "${residual_args[@]}"
-    
+    "${residual_args[@]}"  
+  
   exit_code=$?
 
   # Clean up the terminal from cygwin hacks.
-  if [[ "$IS_CYGWIN" == "true" ]]; then
+  if [[ "$CYGWIN_FLAG" == "true" ]]; then
     stty icanon echo > /dev/null 2>&1
   fi
   exit $exit_code

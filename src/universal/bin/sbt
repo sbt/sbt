@@ -56,6 +56,8 @@ cygwinpath() {
   fi
 }
 
+
+echo "Loading $(dirname "$(realpath "$0")")/sbt-launch-lib.bash"
 . "$(dirname "$(realpath "$0")")/sbt-launch-lib.bash"
 
 
