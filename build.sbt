@@ -13,4 +13,9 @@ libraryDependencies <++= scalaVersion { version =>
   else Nil
 }
 
+libraryDependencies <+= scalaVersion { version =>
+  if (version startsWith "2.9") "org.specs2" % "specs2_2.9.3" % "1.12.4.1" % "test"
+  else "org.specs2" %% "specs2" % "2.1.1" % "test"
+}
+
 scalacOptions ++= Seq("-deprecation", "-unchecked")

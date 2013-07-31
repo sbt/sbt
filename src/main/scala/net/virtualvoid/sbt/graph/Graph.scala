@@ -23,12 +23,14 @@ object Graph
 			if (s.length > maxColumn) s.slice(0, maxColumn - 2) + ".."
 			else s
 		def insertBar(s: String, at: Int): String =
-			s.slice(0, at) +
-			(s(at).toString match {
-				case " " => "|"
-				case x => x
-			}) +
-			s.slice(at + 1, s.length)
+      if (at < s.length)
+        s.slice(0, at) +
+        (s(at).toString match {
+          case " " => "|"
+          case x => x
+        }) +
+        s.slice(at + 1, s.length)
+      else s
 		def toAsciiLines(node: A, level: Int): Vector[String] = {
 			val line = limitLine((twoSpaces * level) + (if (level == 0) "" else "+-") + display(node))
 			val cs = Vector(children(node): _*)
