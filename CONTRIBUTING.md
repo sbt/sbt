@@ -10,8 +10,11 @@ If you are uncertain whether something is a bug, please ask on the mailing list 
 
 When opening a new issue,
 
- * Please state the problem clearly and provide enough context. Code examples and build transcripts are often useful when appropriately edited.
- * Include all relevant information needed to reproduce such as the version of sbt and Scala being used.
+ * Please state the problem clearly and provide enough context.
+  + Code examples and build transcripts are often useful when appropriately edited.
+  + Show error messages and stack traces if appropriate.
+ * Minimize the problem to reduce non-essential factors.  For example, dependencies or special environments.
+ * Include all relevant information needed to reproduce, such as the version of sbt and Scala being used.
 
 Finally, thank you for taking the time to report a problem.
 
