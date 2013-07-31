@@ -79,6 +79,7 @@ object Plugin extends sbt.Plugin {
           (c: String) => file("%s/cache/%s-%s-%s.xml" format (home, projectID.organization, crossName(ivyModule), c))
       }
     },
+    updateConfiguration in ignoreMissingUpdate <<= updateConfiguration(config => new UpdateConfiguration(config.retrieve, true, config.logging)),
     SbtDependencyGraphCompat.ignoreMissingUpdateT,
     filterScalaLibrary in Global := true
   ) ++ Seq(Compile, Test, Runtime, Provided, Optional).flatMap(ivyReportForConfig)

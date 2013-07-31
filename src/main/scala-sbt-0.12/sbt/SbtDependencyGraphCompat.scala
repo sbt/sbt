@@ -9,13 +9,12 @@ object SbtDependencyGraphCompat {
    * to ignore missing artifacts.
    */
   def ignoreMissingUpdateT =
-    ignoreMissingUpdate <<= (ivyModule, thisProjectRef, updateConfiguration, cacheDirectory, scalaInstance, transitiveUpdate, executionRoots, resolvedScoped, skip in update, streams) map {
+    ignoreMissingUpdate <<= (ivyModule, thisProjectRef, updateConfiguration in ignoreMissingUpdate, cacheDirectory, scalaInstance, transitiveUpdate, executionRoots, resolvedScoped, skip in update, streams) map {
 			(module, ref, config, cacheDirectory, si, reports, roots, resolved, skip, s) =>
 				val depsUpdated = reports.exists(!_.stats.cached)
 				val isRoot = roots contains resolved
-        val missingOkConfig = new UpdateConfiguration(config.retrieve, true, config.logging)
 
-				Classpaths.cachedUpdate(cacheDirectory / "update", Project.display(ref), module, missingOkConfig, Some(si), skip = skip, force = isRoot, depsUpdated = depsUpdated, log = s.log)
+				Classpaths.cachedUpdate(cacheDirectory / "update", Project.display(ref), module, config, Some(si), skip = skip, force = isRoot, depsUpdated = depsUpdated, log = s.log)
 		} tag(Tags.Update, Tags.Network)
 
   def getTerminalWidth: Int = JLine.usingTerminal(_.getTerminalWidth)
