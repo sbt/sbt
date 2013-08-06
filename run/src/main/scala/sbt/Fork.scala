@@ -177,7 +177,7 @@ object Fork
 
 		@deprecated("Use fork(ForkOptions, Seq[String])", "0.13.0")
 		def fork(javaHome: Option[File], jvmOptions: Seq[String], scalaJars: Iterable[File], arguments: Seq[String], workingDirectory: Option[File], connectInput: Boolean, outputStrategy: OutputStrategy): Process =
-			fork(javaHome, jvmOptions, scalaJars, arguments, workingDirectory, connectInput, outputStrategy)
+			fork(javaHome, jvmOptions, scalaJars, arguments, workingDirectory, Map.empty, connectInput, outputStrategy)
 
 		@deprecated("Use apply(ForkOptions, Seq[String])", "0.13.0")
 		def fork(javaHome: Option[File], jvmOptions: Seq[String], scalaJars: Iterable[File], arguments: Seq[String], workingDirectory: Option[File], env: Map[String,String], connectInput: Boolean, outputStrategy: OutputStrategy): Process =
