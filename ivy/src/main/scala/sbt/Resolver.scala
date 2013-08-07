@@ -147,7 +147,7 @@ sealed trait JavaNet1Repository extends Resolver
 object Resolver
 {
 	val TypesafeRepositoryRoot = "http://repo.typesafe.com/typesafe"
-	val SbtPluginRepositoryRoot = "http://scalasbt.artifactoryonline.com/scalasbt"
+	val SbtPluginRepositoryRoot = "http://repo.scala-sbt.org/scalasbt"
 	val SonatypeRepositoryRoot = "https://oss.sonatype.org/content/repositories"
 
 	// obsolete: kept only for launcher compatibility
