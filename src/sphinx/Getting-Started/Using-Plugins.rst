@@ -3,225 +3,66 @@ Using Plugins
 =============
 
 Please read the earlier pages in the Getting Started Guide first, in
-particular you need to understand :doc:`build.sbt <Basic-Def>`,
+particular you need to understand :doc:`build.sbt <Basic-Def>` and
 :doc:`library dependencies <Library-Dependencies>`,
-and :doc:`.scala build definition <Full-Def>` before reading
-this page.
+before reading this page.
 
 What is a plugin?
 -----------------
 
 A plugin extends the build definition, most commonly by adding new
 settings. The new settings could be new tasks. For example, a plugin
-could add a `code-coverage` task which would generate a test coverage
+could add a `codeCoverage` task which would generate a test coverage
 report.
 
-Adding a plugin
----------------
+Declaring a plugin
+------------------
 
-The short answer
-~~~~~~~~~~~~~~~~
+If your project is in directory `hello`, edit `hello/project/plugins.sbt` and declare the plugin dependency by passing the plugin's Ivy module ID to `addSbtPlugin`: ::
 
-If your project is in directory `hello`, edit
-`hello/project/build.sbt` and add the plugin location as a resolver,
-then call `addSbtPlugin` with the plugin's Ivy module ID:
+    addSbtPlugin("com.typesafe.sbt" % "sbt-site" % "0.7.0")
 
-::
+Not every plugin is located on one of the default repositories and a plugin's documentation may instruct you to also add the repository where it can be found: ::
 
-    resolvers += Classpaths.typesafeResolver
+    resolvers += ...
 
-    addSbtPlugin("com.typesafe.sbteclipse" % "sbteclipse-plugin" % "2.0.0")
+Plugins usually provide settings that get added to a project to enable the plugin's functionality.
+This is described in the next section.
 
-If the plugin were located on one of the default repositories, you
-wouldn't have to add a resolver, of course.
+
+Adding settings for a plugin
+----------------------------
+
+A plugin can declare that its settings be automatically added, in which case you don't have to do anything to add them.
+However, plugins often avoid this because you wouldn't control which projects in a :doc:`multi-project build <Multi-Project>` would use the plugin.
+The plugin documentation will indicate how to configure it, but typically it involves adding the base settings for the plugin and customizing as necessary.
+
+For example, for the sbt-site plugin, add ::
+
+    site.settings
+
+to a `build.sbt` to enable it for that project.
+
+If the build defines multiple projects, instead add it directly to the project: ::
+
+    // don't use the site plugin for the `util` project
+    lazy val util = project
+
+    // enable the site plugin for the `core` project
+    lazy val core = project.settings( site.settings : _*)
+
 
 Global plugins
-~~~~~~~~~~~~~~
+--------------
 
-Plugins can be installed for all your projects at once by dropping them
-in `~/.sbt/plugins/`. `~/.sbt/plugins/` is an sbt project whose
-classpath is exported to all sbt build definition projects. Roughly
-speaking, any `.sbt` files in `~/.sbt/plugins/` behave as if they
-were in the `project/` directory for all projects, and any `.scala`
-files in `~/.sbt/plugins/project/` behave as if they were in the
-`project/project/` directory for all projects.
+Plugins can be installed for all your projects at once by dropping them in :sublit:`|globalPluginsBase|`.
+:sublit:`|globalPluginsBase|` is an sbt project whose classpath is exported to all sbt build definition projects.
+Roughly speaking, any `.sbt` or `.scala` files in :sublit:`|globalPluginsBase|` behave as if they were in the `project/` directory for all projects.
 
-You can create `~/.sbt/plugins/build.sbt` and put `addSbtPlugin()`
+You can create :sublit:`|globalPluginsBase|\ build.sbt` and put `addSbtPlugin()`
 expressions in there to add plugins to all your projects at once.
-
-How it works
-~~~~~~~~~~~~
-
-Be sure you understand the :doc:`recursive nature of sbt projects <Full-Def>`
-described earlier and how to add a :doc:`managed dependency <Library-Dependencies>`.
-
-Dependencies for the build definition
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-
-Adding a plugin means *adding a library dependency to the build
-definition*. To do that, you edit the build definition for the build
-definition.
-
-Recall that for a project `hello`, its build definition project lives
-in `hello/*.sbt` and `hello/project/*.scala`:
-
-.. code-block:: text
-
-
-       hello/                  # your project's base directory
-
-           build.sbt           # build.sbt is part of the source code for the
-                               #   build definition project inside project/
-
-           project/            # base directory of the build definition project
-
-               Build.scala     # a source file in the project/ project,
-                               #   that is, a source file in the build definition
-
-If you wanted to add a managed dependency to project `hello`, you
-would add to the `libraryDependencies` setting either in
-`hello/*.sbt` or `hello/project/*.scala`.
-
-You could add this in `hello/build.sbt`:
-
-::
-
-    libraryDependencies += "org.apache.derby" % "derby" % "10.4.1.3" % "test"
-
-If you add that and start up the sbt interactive mode and type
-`show dependencyClasspath`, you should see the derby jar on your
-classpath.
-
-To add a plugin, do the same thing but recursed one level. We want the
-*build definition project* to have a new dependency. That means changing
-the `libraryDependencies` setting for the build definition of the
-build definition.
-
-The build definition of the build definition, if your project is
-`hello`, would be in `hello/project/*.sbt` and
-`hello/project/project/*.scala`.
-
-The simplest "plugin" has no special sbt support; it's just a jar file.
-For example, edit `hello/project/build.sbt` and add this line:
-
-::
-
-    libraryDependencies += "net.liftweb" % "lift-json" % "2.0"
-
-Now, at the sbt interactive prompt, `reload plugins` to enter the
-build definition project, and try `show dependencyClasspath`. You
-should see the lift-json jar on the classpath. This means: you could use
-classes from lift-json in your `Build.scala` or `build.sbt` to
-implement a task. You could parse a JSON file and generate other files
-based on it, for example. Remember, use `reload return` to leave the
-build definition project and go back to the parent project.
-
-(Stupid sbt trick: type `reload plugins` over and over. You'll find
-yourself in the project rooted in
-`project/project/project/project/project/project/`. Don't worry, it
-isn't useful. Also, it creates `target` directories all the way down,
-which you'll have to clean up.)
-
-`addSbtPlugin`
-^^^^^^^^^^^^^^^^
-
-`addSbtPlugin` is just a convenience method. Here's its definition:
-
-::
-
-    def addSbtPlugin(dependency: ModuleID): Setting[Seq[ModuleID]] =
-      libraryDependencies +=
-        sbtPluginExtra(dependency, (sbtVersion in update).value, scalaVersion.value)
-
-The appended dependency is based on `sbtVersion in update`
-(sbt's version scoped to the `update` task) and `scalaVersion` (the
-version of scala used to compile the project, in this case used to
-compile the build definition). `sbtPluginExtra` adds the sbt and Scala
-version information to the module ID.
-
-`plugins.sbt`
-^^^^^^^^^^^^^^^
-
-Some people like to list plugin dependencies (for a project `hello`)
-in `hello/project/plugins.sbt` to avoid confusion with
-`hello/build.sbt`. sbt does not care what `.sbt` files are called,
-so both `build.sbt` and `project/plugins.sbt` are conventions. sbt
-*does* of course care where the sbt files are *located*. `hello/*.sbt`
-would contain dependencies for `hello` and `hello/project/*.sbt`
-would contain dependencies for `hello`'s build definition.
-
-Plugins can add settings and imports automatically
---------------------------------------------------
-
-In one sense a plugin is just a jar added to `libraryDependencies` for
-the build definition; you can then use the jar from build definition
-code as in the lift-json example above.
-
-However, jars intended for use as sbt plugins can do more.
-
-If you download a plugin jar (`here's one for
-sbteclipse <http://repo.typesafe.com/typesafe/ivy-releases/com.typesafe.sbteclipse/sbteclipse/scala_2.9.1/sbt_0.11.0/1.4.0/jars/sbteclipse.jar>`_)
-and unpack it with `jar xf`, you'll see that it contains a text file
-`sbt/sbt.plugins`. In `sbt/sbt.plugins` there's an object name on
-each line like this:
-
-.. code-block:: text
-
-    com.typesafe.sbteclipse.SbtEclipsePlugin
-
-`com.typesafe.sbteclipse.SbtEclipsePlugin` is the name of an object
-that extends `sbt.Plugin`. The `sbt.Plugin` trait is very simple:
-
-::
-
-    trait Plugin {
-      def settings: Seq[Setting[_]] = Nil
-    }
-
-sbt looks for objects listed in `sbt/sbt.plugins`. When it finds
-`com.typesafe.sbteclipse.SbtEclipsePlugin`, it adds
-`com.typesafe.sbteclipse.SbtEclipsePlugin.settings` to the settings
-for the project. It also does
-`import com.typesafe.sbteclipse.SbtEclipsePlugin._` for any `.sbt`
-files, allowing a plugin to provide values, objects, and methods to
-`.sbt` files in the build definition.
-
-Adding settings manually from a plugin
---------------------------------------
-
-If a plugin defines settings in the `settings` field of a `Plugin`
-object, you don't have to do anything to add them.
-
-However, plugins often avoid this because you could not control which
-projects in a :doc:`multi-project build <Multi-Project>` would use the plugin.
-
-A whole batch of settings can be added by directly referencing the sequence of settings in a `build.sbt` file. So, if a plugin has something like this:
-
-::
-
-    object MyPlugin extends Plugin {
-       val myPluginSettings = Seq(settings in here)
-    }
-
-You could add all those settings in `build.sbt` with this syntax:
-
-::
-
-    myPluginSettings
-
-Creating a plugin
------------------
-
-After reading this far, you pretty much know how to *create* an sbt
-plugin as well. There's one trick to know; set `sbtPlugin := true` in
-`build.sbt`. If `sbtPlugin` is true, the project will scan its
-compiled classes for instances of `Plugin`, and list them in
-`sbt/sbt.plugins` when it packages a jar. `sbtPlugin := true` also
-adds sbt to the project's classpath, so you can use sbt APIs to
-implement your plugin.
-
-Learn more about creating a plugin at :doc:`/Extending/Plugins`
-and :doc:`/Extending/Plugins-Best-Practices`.
+This feature should be used sparingly, however.
+See :ref:`Best Practices <global-vs-local-plugins>`.
 
 Available Plugins
 -----------------
@@ -236,7 +77,32 @@ Some especially popular plugins are:
 
 :doc:`Check out the list</Community/Community-Plugins>`.
 
+
+Creating a Plugin
+-----------------
+
+A minimal plugin is a Scala library that is built against the version of Scala that sbt runs, which is currently |scalaVersion|.
+Nothing special needs to be done for this type of plugin.
+It can be published as a normal project and declared in `project/plugins.sbt` like a normal dependency (without `addSbtPlugin`).
+
+A more typical plugin will provide sbt tasks, commands, or settings. 
+This kind of plugin may provide these settings automatically or make them available for the user to explicitly integrate.
+To create an sbt plugin,
+
+  1. Create a new project for the plugin.
+  2. Set `sbtPlugin := true` for the project in `build.sbt`.  This adds a dependency on sbt and will detect and record Plugins that you define.
+  3. (optional) Define an `object` that extends `Plugin`.  The contents of this object will be automatically imported in `.sbt` files, so ensure it only contains important API definitions and types.
+  4. Define any custom tasks or settings (see the next section :doc:`Custom-Settings`).
+  5. Collect the default settings to apply to a project in a list for the user to add.  Optionally override one or more of Plugin's methods to have settings automatically added to user projects.
+  6. Publish the project.  There is a  :doc:`community repository </Community/Community-Plugins>` available for open source plugins.
+
+For more details, including ways of developing plugins, see :doc:`/Extending/Plugins`.
+For best practices, see :doc:`/Extending/Plugins-Best-Practices`.
+
 Next
 ----
 
-Move on to :doc:`multi-project builds <Multi-Project>`.
+Move on to create :doc:`custom settings <Custom-Settings>`.
+
+.. |globalBase| replace:: ~/.sbt/|version|/
+.. |globalPluginsBase| replace:: |globalBase|\ plugins/

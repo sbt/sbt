@@ -14,8 +14,8 @@ Getting Started
    Scopes
    More-About-Settings
    Library-Dependencies
-   Full-Def
-   Using-Plugins
    Multi-Project
+   Using-Plugins
    Custom-Settings
+   Full-Def
    Summary

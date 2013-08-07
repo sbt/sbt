@@ -4,6 +4,8 @@ Best Practices
 
 This page describes best practices for working with sbt.
 
+.. _global-vs-local-plugins:
+
 `project/` vs. `~/.sbt/`
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 

@@ -265,4 +265,4 @@ the build definition.
 Next
 ----
 
-Move on to :doc:`using plugins <Using-Plugins>`.
+You're at the end of Getting Started! There's a :doc:`brief recap <Summary>`.

@@ -245,4 +245,4 @@ dependencies :doc:`on this page </Detailed-Topics/Library-Management>`, if you d
 answer on this introductory page.
 
 If you're reading Getting Started in order, for now, you might move on
-to read :doc:`.scala build definition <Full-Def>`.
+to read :doc:`Multi-Project`.

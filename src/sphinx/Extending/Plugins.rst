@@ -12,9 +12,8 @@ example, you might use
 markdown processing task. A plugin can define a sequence of sbt Settings
 that are automatically added to all projects or that are explicitly
 declared for selected projects. For example, a plugin might add a
-'proguard' task and associated (overridable) settings. Because
-:doc:`Commands` can be added with the `commands` setting, a plugin can
-also fulfill the role that processors did in 0.7.x.
+`proguard` task and associated (overridable) settings.
+Also, :doc:`Commands` can be added with the `commands` setting
 
 The :doc:`Plugins-Best-Practices` page describes the
 currently evolving guidelines to writing sbt plugins. See also the
@@ -59,7 +58,7 @@ Specifically,
 3. Sources in the `project/` project are the build definition files
    and are compiled using the classpath built from the managed and
    unmanaged dependencies.
-4. Project dependencies can be declared in
+4. Project dependencies can be declared in `project/plugins.sbt` or
    `project/project/Build.scala` and will be available to the build
    definition sources. Think of `project/project/` as the build
    definition for the build definition.
@@ -85,14 +84,7 @@ This means that plugins will not see classes or resources from build definitions
 Global plugins
 --------------
 
-In sbt 0.7.x, a processor was a way to add new commands to sbt and
-distribute them to users. A key feature was the ability to have per-user
-processors so that once declared, it could be used in all projects for
-that user. In sbt 0.10+, plugins and processors are unified.
-Specifically, a plugin can add commands and plugins can be declared
-globally for a user.
-
-The `~/.sbt/plugins/` directory is treated as a global plugin
+The :sublit:`|globalPluginsBase|` directory is treated as a global plugin
 definition project. It is a normal sbt project whose classpath is
 available to all sbt project definitions for that user as described
 above for per-project plugins.
@@ -161,35 +153,28 @@ To switch back to the main project:
 1d) Project dependency
 ~~~~~~~~~~~~~~~~~~~~~~
 
-This variant shows how to use the external project support in sbt 0.10
-to declare a source dependency on a plugin. This means that the plugin
-will be built from source and used on the classpath.
+This variant shows how to use sbt's external project support to declare a source dependency on a plugin.
+This means that the plugin will be built from source and used on the classpath.
 
-Edit `project/project/Build.scala`
+Edit `project/plugins.sbt`
 
 ::
 
-    import sbt._
-    object PluginDef extends Build {
-       override lazy val projects = Seq(root)
-       lazy val root = Project("plugins", file(".")) dependsOn( webPlugin )
-       lazy val webPlugin = uri("git://github.com/JamesEarlDouglas/xsbt-web-plugin")
-    }
+    lazy val root = project.in( file(".") ).dependsOn( assemblyPlugin )
+    lazy val assemblyPlugin = uri("git://github.com/sbt/sbt-assembly")
 
 If sbt is running, run `reload`.
 
-Note that this approach can be useful used when developing a plugin. A
-project that uses the plugin will rebuild the plugin on `reload`. This
-saves the intermediate steps of `publishLocal` and `cleanPlugins`
-required in 0.7. It can also be used to work with the development
-version of a plugin from its repository.
+Note that this approach can be useful used when developing a plugin.
+A project that uses the plugin will rebuild the plugin on `reload`.
+This saves the intermediate steps of `publishLocal` and `update`.
+It can also be used to work with the development version of a plugin from its repository.
 
-It is recommended to explicitly specify the commit or tag by appending
-it to the repository as a fragment:
+It is recommended to explicitly specify the commit or tag by appending it to the repository as a fragment:
 
 ::
 
-    lazy val webPlugin = uri("git://github.com/JamesEarlDouglas/xsbt-web-plugin#0.9.7")
+    lazy val assemblyPlugin = uri("git://github.com/sbt/sbt-assembly#0.9.1")
 
 2) Use the library
 ~~~~~~~~~~~~~~~~~~
@@ -222,7 +207,7 @@ Introduction
 ------------
 
 A minimal plugin is a Scala library that is built against the version of
-Scala that sbt runs (currently, 2.9.1) or a Java library. Nothing
+Scala that sbt runs (currently, |scalaRelease|) or a Java library. Nothing
 special needs to be done for this type of library, as shown in the
 previous section. A more typical plugin will provide sbt tasks,
 commands, or settings. This kind of plugin may provide these settings
@@ -240,13 +225,18 @@ A plugin can implement `sbt.Plugin`. The contents of a Plugin
 singleton, declared like `object MyPlugin extends Plugin`, are
 wildcard imported in `set`, `eval`, and `.sbt` files. Typically,
 this is used to provide new keys (SettingKey, TaskKey, or InputKey) or
-core methods without requiring an import or qualification. In addition,
-the `settings` member of the `Plugin` is automatically appended to
-each project's settings. This allows a plugin to automatically provide
-new functionality or new defaults. One main use of this feature is to
-globally add commands, like a processor in sbt 0.7.x. These features
-should be used judiciously because the automatic activation removes
-control from the build author (the user of the plugin).
+core methods without requiring an import or qualification.
+
+In addition, a `Plugin` can implement `projectSettings`, `buildSettings`, and `globalSettings` as appropriate.
+The Plugin's `projectSettings` is automatically appended to each project's settings.
+The `buildSettings` is appended to each build's settings (that is, `in ThisBuild`).
+The `globalSettings` is appended once to the global settings (`in Global`).
+These allow a plugin to automatically provide new functionality or new defaults.
+One main use of this feature is to globally add commands, such as for IDE plugins.
+Use `globalSettings` to define the default value of a setting.
+
+These automatic features should be used judiciously because the automatic activation generally reduces control for the build author (the user of the plugin).
+Some control is returned to them via `Project.autoSettings`, which changes how automatically added settings are added and in what order.
 
 Example Plugin
 --------------
@@ -289,32 +279,15 @@ An example of a typical plugin:
 Usage example
 -------------
 
-A light build definition that uses the plugin might look like:
+A build definition that uses the plugin might look like:
+
+`build.sbt`
 
 ::
 
     MyPlugin.newSettings
 
-    newSetting := "light"
-
-A full build definition that uses this plugin might look like:
-
-::
-
-    object MyBuild extends Build
-    {
-        lazy val projects = Seq(root)
-        lazy val root = Project("root", file(".")) settings( MyPlugin.newSettings : _*) settings(
-            MyPlugin.newSetting := "full"
-        )
-    }
-
-Individual settings could be defined in `MyBuild.scala` above or in a
-`build.sbt` file:
-
-::
-
-    newSettings := "overridden"
+    newSetting := "example"
 
 Example command plugin
 ----------------------
@@ -358,7 +331,7 @@ Global plugins example
 ----------------------
 
 The simplest global plugin definition is declaring a library or plugin
-in `~/.sbt/plugins/build.sbt`:
+in :sublit:`|globalPluginsBase|\ build.sbt`:
 
 ::
 
@@ -369,14 +342,14 @@ user.
 
 In addition:
 
-1. Jars may be placed directly in `~/.sbt/plugins/lib/` and will be
+1. Jars may be placed directly in :sublit:`|globalPluginsBase|\ lib/` and will be
    available to every build definition for the current user.
 2. Dependencies on plugins built from source may be declared in
-   ~/.sbt/plugins/project/Build.scala\` as described at
+   :sublit:`|globalPluginsBase|\ project/Build.scala` as described at
    :doc:`/Getting-Started/Full-Def`.
 3. A Plugin may be directly defined in Scala source files in
-   `~/.sbt/plugins/`, such as `~/.sbt/plugins/MyPlugin.scala`.
-   `~/.sbt/plugins/build.sbt` should contain `sbtPlugin := true`.
+   :sublit:`|globalPluginsBase|`, such as :sublit:`|globalPluginsBase|\ MyPlugin.scala`.
+   :sublit:`|globalPluginsBase|\ /build.sbt` should contain `sbtPlugin := true`.
    This can be used for quicker turnaround when developing a plugin
    initially:
 
@@ -388,7 +361,7 @@ In addition:
       overhead of `publishLocal` and cleaning the plugins directory
       of the project using the plugin.
 
-These are all consequences of `~/.sbt/plugins/` being a standard
+These are all consequences of :sublit:`|globalPluginsBase|` being a standard
 project whose classpath is added to every sbt project's build
 definition.
 
@@ -398,3 +371,6 @@ Best Practices
 If you're a plugin writer, please consult the :doc:`Plugins-Best-Practices`
 page; it contains a set of guidelines to help you ensure that your
 plugin is consistent with and plays well with other plugins.
+
+.. |globalBase| replace:: ~/.sbt/|version|/
+.. |globalPluginsBase| replace:: |globalBase|\ plugins/

@@ -5,8 +5,8 @@ Multi-Project Builds
 This page introduces multiple projects in a single build.
 
 Please read the earlier pages in the Getting Started Guide first, in
-particular you need to understand :doc:`build.sbt <Basic-Def>` and
-:doc:`.scala build definition <Full-Def>` before reading this page.
+particular you need to understand :doc:`build.sbt <Basic-Def>` before
+reading this page.
 
 Multiple projects
 -----------------
@@ -15,38 +15,122 @@ It can be useful to keep multiple related projects in a single build,
 especially if they depend on one another and you tend to modify them
 together.
 
-Each sub-project in a build has its own `src/main/scala`, generates
+Each sub-project in a build has its own source directories, generates
 its own jar file when you run `package`, and in general works like any
 other project.
 
-Defining projects in a `.scala` file
---------------------------------------
+A project is defined by declaring a `lazy val` of type `Project <../../api/sbt/Project.html>`_.
+For example, ::
 
-To have multiple projects, you must declare each project and how they
-relate in a `.scala` file; there's no way to do it in a `.sbt` file.
-However, you can define settings for each project in `.sbt` files.
-Here's an example of a `.scala` file which defines a root project
-`hello`, where the root project aggregates two sub-projects,
-`hello-foo` and `hello-bar`:
+    lazy val util = project
+
+    lazy val core = project
+
+The name of the val is used as the project's ID and base directory name.
+The ID is used to refer to the project at the command line.
+The base directory may be changed from the default using the `in` method.
+For example, the following is a more explicit way to write the previous example: ::
+
+    lazy val util = project.in( file("util") )
+
+    lazy val core = project in file("core")
+
+Dependencies
+------------
+
+Projects in the build can be completely independent of one another, but usually
+they will be related to one another by some kind of dependency.  There are two
+types of dependencies: aggregate and classpath.
+
+
+Aggregation
+~~~~~~~~~~~
+
+Aggregation means that running a task on the aggregate project will also
+run it on the aggregated projects. For example, ::
+
+    lazy val root =
+	    project.in( file(".") )
+       .aggregate(util, core)
+
+    lazy val util = project
+
+    lazy val core = project
+
+
+In the above example, the root project aggregates `util` and `core`.
+Start up sbt with two subprojects as in the example, and try `compile`. 
+You should see that all three projects are compiled.
+
+*In the project doing the aggregating*, the `root` project in
+this case, you can control aggregation per-task.
+For example, to avoid aggregating the `update` task:
 
 ::
 
-    import sbt._
-    import Keys._
+    lazy val root =
+	    project.in( file(".") )
+       .aggregate(util, core)
+       .settings(
+         aggregate in update := false
+       )
 
-    object HelloBuild extends Build {
-        lazy val root = Project(id = "hello",
-                                base = file(".")) aggregate(foo, bar)
+    [...]
 
-        lazy val foo = Project(id = "hello-foo",
-                               base = file("foo"))
+`aggregate in update` is the `aggregate` key scoped to the `update` task.
+(See :doc:`scopes <Scopes>`.)
 
-        lazy val bar = Project(id = "hello-bar",
-                               base = file("bar"))
-    }
+Note: aggregation will run the aggregated tasks in parallel and with no
+defined ordering between them.
 
-sbt finds the list of `Project` objects using reflection, looking for
-fields with type `Project` in the `Build` object.
+Classpath dependencies
+~~~~~~~~~~~~~~~~~~~~~~
+
+A project may depend on code in another project. This is done by adding
+a `dependsOn` method call. For example, if `core` needed
+`util` on its classpath, you would define `core` as:
+
+::
+
+    lazy val core = project.dependsOn(util)
+
+Now code in `core` can use classes from `util`.
+This also creates an ordering between the projects when compiling them;
+`util` must be updated and compiled before `core` can be compiled.
+
+To depend on multiple projects, use multiple arguments to `dependsOn`,
+like `dependsOn(bar, baz)`.
+
+Per-configuration classpath dependencies
+++++++++++++++++++++++++++++++++++++++++
+
+`foo dependsOn(bar)` means that the `compile` configuration in
+`foo` depends on the `compile` configuration in `bar`. You could
+write this explicitly as `dependsOn(bar % "compile->compile")`.
+
+The `->` in `"compile->compile"` means "depends on" so
+`"test->compile"` means the `test` configuration in `foo` would
+depend on the `compile` configuration in `bar`.
+
+Omitting the `->config` part implies `->compile`, so
+`dependsOn(bar % "test")` means that the `test` configuration in
+`foo` depends on the `Compile` configuration in `bar`.
+
+A useful declaration is `"test->test"` which means `test` depends on `test`.
+This allows you to put utility code for testing in `bar/src/test/scala` and then use that code in `foo/src/test/scala`,
+for example.
+
+You can have multiple configurations for a dependency, separated by
+semicolons. For example,
+`dependsOn(bar % "test->test;compile->compile")`.
+
+
+Default root project
+--------------------
+
+If a project is not defined for the root directory in the build, sbt creates a default
+one that aggregates all other projects in the build.
+
 
 Because project `hello-foo` is defined with `base = file("foo")`, it
 will be contained in the subdirectory `foo`. Its sources could be
@@ -93,79 +177,6 @@ You may find it cleaner to put everything including settings in
 You cannot have a `project` subdirectory or `project/*.scala` files
 in the sub-projects. `foo/project/Build.scala` would be ignored.
 
-Aggregation
------------
-
-Projects in the build can be completely independent of one another, if
-you want.
-
-In the above example, however, you can see the method call
-`aggregate(foo, bar)`. This aggregates `hello-foo` and `hello-bar`
-underneath the root project.
-
-Aggregation means that running a task on the aggregate project will also
-run it on the aggregated projects. Start up sbt with two subprojects as
-in the example, and try `compile`. You should see that all three
-projects are compiled.
-
-*In the project doing the aggregating*, the root `hello` project in
-this case, you can control aggregation per-task. So for example in
-`hello/build.sbt` you could avoid aggregating the `update` task:
-
-::
-
-    aggregate in update := false
-
-`aggregate in update` is the `aggregate` key scoped to the
-`update` task, see :doc:`scopes <Scopes>`.
-
-Note: aggregation will run the aggregated tasks in parallel and with no
-defined ordering.
-
-Classpath dependencies
-----------------------
-
-A project may depend on code in another project. This is done by adding
-a `dependsOn` method call. For example, if `hello-foo` needed
-`hello-bar` on its classpath, you would write in your `Build.scala`:
-
-::
-
-        lazy val foo = Project(id = "hello-foo",
-                               base = file("foo")) dependsOn(bar)
-
-Now code in `hello-foo` can use classes from `hello-bar`. This also
-creates an ordering between the projects when compiling them;
-`hello-bar` must be updated and compiled before `hello-foo` can be
-compiled.
-
-To depend on multiple projects, use multiple arguments to `dependsOn`,
-like `dependsOn(bar, baz)`.
-
-Per-configuration classpath dependencies
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-`foo dependsOn(bar)` means that the `Compile` configuration in
-`foo` depends on the `Compile` configuration in `bar`. You could
-write this explicitly as `dependsOn(bar % "compile->compile")`.
-
-The `->` in `"compile->compile"` means "depends on" so
-`"test->compile"` means the `Test` configuration in `foo` would
-depend on the `Compile` configuration in `bar`.
-
-Omitting the `->config` part implies `->compile`, so
-`dependsOn(bar % "test")` means that the `Test` configuration in
-`foo` depends on the `Compile` configuration in `bar`.
-
-A useful declaration is `"test->test"` which means `Test` depends on
-`Test`. This allows you to put utility code for testing in
-`bar/src/test/scala` and then use that code in `foo/src/test/scala`,
-for example.
-
-You can have multiple configurations for a dependency, separated by
-semicolons. For example,
-`dependsOn(bar % "test->test;compile->compile")`.
-
 Navigating projects interactively
 ---------------------------------
 
@@ -175,7 +186,35 @@ a task like `compile`, it runs on the current project. So you don't
 necessarily have to compile the root project, you could compile only a
 subproject.
 
+You can run a task in another project by explicitly specifying the
+project ID, such as `subProjectID/compile`.
+
+Common code
+-----------
+
+The definitions in `.sbt` files are not visible in other `.sbt` files.
+In order to share code between `.sbt` files, define one or more Scala
+files in the `project/` directory of the build root.  This directory
+is also an sbt project, but for your build.
+
+For example:
+
+`<root>/project/Common.scala` ::
+
+    import sbt._
+    import Keys._
+
+    object Common {
+      def text = "org.example"
+    }
+
+`<root>`/build.sbt ::
+
+    organization := Common.text
+
+See :doc:`Full-Def` for details.
+
 Next
 ----
 
-Move on to create :doc:`custom settings <Custom-Settings>`.
+Move on to :doc:`using plugins <Using-Plugins>`.
