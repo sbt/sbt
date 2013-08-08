@@ -158,8 +158,6 @@ For example, to set it temporarily from the sbt prompt,
    :title: Change the logging level for a specific task, configuration, or project
    setting: logLevel in compile := Level.Debug
 
-The amount of logging is controlled by the `logLevel` setting, which takes values from the `Level` enumeration.
-Valid values are `Error`, `Warn`, `Info`, and `Debug` in order of increasing verbosity.
 The logging level may be configured globally, as described in the previous section, or it may be applied to a specific project, configuration, or task.
 For example, to change the logging level for compilation to only show warnings and errors:
 
