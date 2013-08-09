@@ -15,13 +15,18 @@ def process_node(node):
     else:
         node = nodes.inline('', '', node)
     node['classes'].append('pre')
-    print ("NODE: %s" % node)
     return node
 
 # This directive formats a string to be in a fixed width font.
-# Only substitions in the string are processed.  
-
+# The string is taken as a literal and is not processed for further inline formatting.
 def code_literal(name, rawtext, text, lineno, inliner, options={}, content=[]):
+    node = nodes.inline('', text)
+    node['classes'].append('pre')
+    return [node], []
+
+# This directive formats a string to be in a fixed width font.
+# It processes nested inline formatting, substitutions in particular.
+def sub_literal(name, rawtext, text, lineno, inliner, options={}, content=[]):
     memo = Struct(document=inliner.document,
                            reporter=inliner.reporter,
                            language=inliner.language,
@@ -33,4 +38,5 @@ def code_literal(name, rawtext, text, lineno, inliner, options={}, content=[]):
 
 # register the role
 def setup(app):
+    app.add_role('sublit', sub_literal)
     app.add_role('codeliteral', code_literal)

@@ -29,7 +29,7 @@ You'll also need to add your credentials somewhere.  For example, you might use 
 ::
 
      credentials += Credentials("Artifactory Realm", 
- "scalasbt.artifactoryonline.com", "@user name@", "@my encrypted password@")
+ "repo.scala-sbt.org", "@user name@", "@my encrypted password@")
  
 Where `@my encrypted password@` is actually obtained using the following `instructions <http://wiki.jfrog.org/confluence/display/RTF/Centrally+Secure+Passwords>`_.
  

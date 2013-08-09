@@ -20,6 +20,7 @@ Features, fixes, changes with compatibility implications (incomplete, please hel
 - sbt no longer overrides the Scala version in dependencies.  This allows independent configurations to depend on different Scala versions and treats Scala dependencies other than scala-library as normal dependencies.  However, it can result in resolved versions other than `scalaVersion` for those other Scala libraries.
 - JLine is now configured differently for Cygwin.  See :doc:`/Getting-Started/Setup`.
 - Jline and Ansi codes work better on Windows now.  CI servers might have to explictly disable Ansi codes via `-Dsbt.log.format=false`.
+- JLine now tries to respect `~/.inputrc`.
 - Forked tests and runs now use the project's base directory as the current working directory.
 - `compileInputs` is now defined in `(Compile,compile)` instead of just `Compile`
 - The result of running tests is now `Tests.Output <../../api/#sbt.Tests$$Output>`_.

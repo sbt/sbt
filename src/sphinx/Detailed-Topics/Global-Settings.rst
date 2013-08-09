@@ -5,13 +5,13 @@ Global Settings
 Basic global configuration file
 -------------------------------
 
-Settings that should be applied to all projects can go in `|globalSbtFile|`
-(or any file in `|globalBase|` with a `.sbt` extension).
-Plugins that are defined globally in `|globalPluginsBase|` are
+Settings that should be applied to all projects can go in :sublit:`|globalSbtFile|`
+(or any file in :sublit:`|globalBase|` with a `.sbt` extension).
+Plugins that are defined globally in :sublit:`|globalPluginsBase|` are
 available to these settings. For example, to change the default
 `shellPrompt` for your projects:
 
-`|globalSbtFile|`
+:sublit:`|globalSbtFile|`
 
 ::
 
@@ -22,10 +22,10 @@ available to these settings. For example, to change the default
 Global Settings using a Global Plugin
 -------------------------------------
 
-The `|globalPluginsBase|` directory is a global plugin project. This can be
+The :sublit:`|globalPluginsBase|` directory is a global plugin project. This can be
 used to provide global commands, plugins, or other code.
 
-To add a plugin globally, create `|globalPluginSbtFile|` containing
+To add a plugin globally, create :sublit:`|globalPluginSbtFile|` containing
 the dependency definitions. For example:
 
 ::
@@ -33,7 +33,7 @@ the dependency definitions. For example:
     addSbtPlugin("org.example" % "plugin" % "1.0")
 
 To change the default `shellPrompt` for every project using this
-approach, create a local plugin `|globalShellPromptScala|`:
+approach, create a local plugin :sublit:`|globalShellPromptScala|`:
 
 ::
 
@@ -47,10 +47,10 @@ approach, create a local plugin `|globalShellPromptScala|`:
       )
     }
 
-The `|globalPluginsBase|` directory is a full project that is included as
+The :sublit:`|globalPluginsBase|` directory is a full project that is included as
 an external dependency of every plugin project. In practice, settings
 and code defined here effectively work as if they were defined in a
-project's `project/` directory. This means that `|globalPluginsBase|` can
+project's `project/` directory. This means that :sublit:`|globalPluginsBase|` can
 be used to try out ideas for plugins such as shown in the `shellPrompt`
 example.
 

@@ -82,8 +82,8 @@ you can often use the convenient APIs in
 Use plugins!
 ------------
 
-If you find you have a lot of custom code in `.scala` files, consider
-moving it to a plugin for re-use across multiple projects.
+If you find you have a lot of custom code, consider
+moving it to a plugin for re-use across multiple builds.
 
 It's very easy to create a plugin, as :doc:`teased earlier <Using-Plugins>` and :doc:`discussed at more length here </Extending/Plugins>`.
 
@@ -93,4 +93,5 @@ Next
 This page has been a quick taste; there's much much more about custom
 tasks on the :doc:`/Detailed-Topics/Tasks` page.
 
-You're at the end of Getting Started! There's a :doc:`brief recap <Summary>`.
+Move on to :doc:`Full-Def`.
+

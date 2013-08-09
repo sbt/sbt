@@ -185,44 +185,44 @@ influence SBT execution. Also see :doc:`Launcher`.
 +------------------------------+-----------+---------------------+----------------------------------------------------+
 | Property                     | Values    | Default             | Meaning                                            |
 +==============================+===========+=====================+====================================================+
-| `sbt.log.noformat`         | Boolean   | false               | If true, disable ANSI color codes. Useful on build |
+| `sbt.log.noformat`           | Boolean   | false               | If true, disable ANSI color codes. Useful on build | 
 |                              |           |                     | servers or terminals that don't support color.     |
 +------------------------------+-----------+---------------------+----------------------------------------------------+
-| `sbt.global.base`          | Directory | ~/.sbt              | The directory containing global settings and       |
+| `sbt.global.base`            | Directory | ~/.sbt              | The directory containing global settings and       | 
 |                              |           |                     | plugins                                            |
 +------------------------------+-----------+---------------------+----------------------------------------------------+
-| `sbt.ivy.home`             | Directory | ~/.ivy2             | The directory containing the local Ivy repository  |
+| `sbt.ivy.home`               | Directory | ~/.ivy2             | The directory containing the local Ivy repository  | 
 |                              |           |                     | and artifact cache                                 |
 +------------------------------+-----------+---------------------+----------------------------------------------------+
-| `sbt.boot.directory`       | Directory | ~/.sbt/boot         | Path to shared boot directory                      |
+| `sbt.boot.directory`         | Directory | ~/.sbt/boot         | Path to shared boot directory                      |
 +------------------------------+-----------+---------------------+----------------------------------------------------+
-| `sbt.main.class`           | String    |                     |                                                    |
+| `sbt.main.class`             | String    |                     |                                                    |
 +------------------------------+-----------+---------------------+----------------------------------------------------+
-| `xsbt.inc.debug`           | Boolean   | false               |                                                    |
+| `xsbt.inc.debug`             | Boolean   | false               |                                                    |
 +------------------------------+-----------+---------------------+----------------------------------------------------+
-| `sbt.extraClasspath`       | Classpath |                     | A list of classpath entries (jar files or          |
+| `sbt.extraClasspath`         | Classpath |                     | A list of classpath entries (jar files or          | 
 |                              | Entries   |                     | directories) that are added to sbt's classpath.    |
 |                              |           |                     | Note that the entries are deliminted by comma,     |
-|                              |           |                     | e.g.: `entry1, entry2,..`. See also              |
-|                              |           |                     | `resources` in the :doc:`Launcher`               |
+|                              |           |                     | e.g.: `entry1, entry2,..`. See also                | 
+|                              |           |                     | `resources` in the :doc:`Launcher`                 | 
 |                              |           |                     | documentation.                                     |
 +------------------------------+-----------+---------------------+----------------------------------------------------+
-| `sbt.version`              | Version   | 0.11.3              | sbt version to use, usually taken from             |
+| `sbt.version`                | Version   | 0.11.3              | sbt version to use, usually taken from             | 
 |                              |           |                     | project/build.properties                           |
 +------------------------------+-----------+---------------------+----------------------------------------------------+
-| `sbt.boot.properties`      | File      |                     |                                                    |
+| `sbt.boot.properties`        | File      |                     |                                                    |
 +------------------------------+-----------+---------------------+----------------------------------------------------+
-| `sbt.override.build.repos` | Boolean   | false               | If true, repositories configured in a build        |
+| `sbt.override.build.repos`   | Boolean   | false               | If true, repositories configured in a build        | 
 |                              |           |                     | definition are ignored and the repositories        |
 |                              |           |                     | configured for the launcher are used instead. See  |
-|                              |           |                     | `sbt.repository.config` and the :doc:`Launcher`  |
+|                              |           |                     | `sbt.repository.config` and the :doc:`Launcher`    | 
 |                              |           |                     | documentation.                                     |
 +------------------------------+-----------+---------------------+----------------------------------------------------+
-| `sbt.repository.config`    | File      | ~/.sbt/repositories | A file containing the repositories to use for the  |
+| `sbt.repository.config`      | File      | ~/.sbt/repositories | A file containing the repositories to use for the  | 
 |                              |           |                     | launcher. The format is the same as a              |
-|                              |           |                     | `[repositories]` section for a :doc:`Launcher`   |
+|                              |           |                     | `[repositories]` section for a :doc:`Launcher`     | 
 |                              |           |                     | configuration file. This setting is typically used |
 |                              |           |                     | in conjuction with setting                         |
-|                              |           |                     | `sbt.override.build.repos` to true (see previous |
+|                              |           |                     | `sbt.override.build.repos` to true (see previous   | 
 |                              |           |                     | row and the :doc:`Launcher` documentation).        |
 +------------------------------+-----------+---------------------+----------------------------------------------------+

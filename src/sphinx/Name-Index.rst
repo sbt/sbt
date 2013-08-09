@@ -127,7 +127,7 @@ and :doc:`/Detailed-Topics/Paths` for the full documentation.
    and
    `FileFilter <../api/sbt/FileFilter.html>`_.
    Note that methods with these names also exist for other types, such
-   as collections (like \`Seq) and
+   as collections (like `Seq`) and
    `Parser <../api/sbt/complete/Parser.html>`_
    (see :doc:`/Detailed-Topics/Parsing-Input`).
 -  `x` Used to construct mappings from a `File` to another `File`
