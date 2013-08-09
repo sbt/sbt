@@ -9,8 +9,8 @@ extensions = ['sphinxcontrib.issuetracker', 'sphinx.ext.extlinks', 'howto', 'cod
 
 project = 'sbt'
 version = '0.13'
-release = '0.13.0'
-fullVersion = "0.13.0-SNAPSHOT"
+site_version = '0.13.0'
+release = "0.13.0-SNAPSHOT"
 scalaVersion = "2.10"
 scalaRelease = "2.10.2"
 
@@ -49,7 +49,7 @@ home_site = True
 
 # Passed to Google as site:<site_search_base>
 # If empty, no search box is included
-site_search_base = 'http://www.scala-sbt.org/' + release + '/docs'
+site_search_base = 'http://www.scala-sbt.org/' + site_version + '/docs'
 
 # passes variables to the template
 html_context = {'home_site': home_site, 'site_search_base': site_search_base}
@@ -84,12 +84,12 @@ rst_epilog = """
 .. |scalaRelease| replace:: %(scalaRelease)s
 .. _typesafe-snapshots: %(typesafe_ivy_snapshots)s
 .. |typesafe-snapshots| replace:: Typesafe Snapshots
-.. _sbt-launch.jar: %(launcher_release_base)s%(fullVersion)s/sbt-launch.jar
-.. _MSI: %(sbt_native_package_base)s%(fullVersion)s/sbt.msi
-.. _TGZ: %(sbt_native_package_base)s%(fullVersion)s/sbt.tgz
-.. _ZIP: %(sbt_native_package_base)s%(fullVersion)s/sbt.zip
-.. _DEB: %(sbt_native_package_base)s%(fullVersion)s/sbt.deb
-.. _RPM: %(sbt_native_package_base)s%(fullVersion)s/sbt.rpm
+.. _sbt-launch.jar: %(launcher_release_base)s%(release)s/sbt-launch.jar
+.. _MSI: %(sbt_native_package_base)s%(release)s/sbt.msi
+.. _TGZ: %(sbt_native_package_base)s%(release)s/sbt.tgz
+.. _ZIP: %(sbt_native_package_base)s%(release)s/sbt.zip
+.. _DEB: %(sbt_native_package_base)s%(release)s/sbt.deb
+.. _RPM: %(sbt_native_package_base)s%(release)s/sbt.rpm
 .. |nightly-launcher| replace:: <%(launcher_snapshots_base)s
 .. _mailing list: http://groups.google.com/group/simple-build-tool/topics
 .. _adept: https://groups.google.com/group/adept-dev/topics
@@ -99,11 +99,11 @@ rst_epilog = """
 """ % {
    'launcher_release_base': launcher_release_base,
    'launcher_snapshots_base': launcher_snapshots_base,
-   'fullVersion': fullVersion,
    'typesafe_ivy_snapshots': typesafe_ivy_snapshots,
    'sbt_native_package_base': sbt_native_package_base,
    'scalaRelease': scalaRelease,
-   'scalaVersion': scalaVersion
+   'scalaVersion': scalaVersion,
+   'release': release
 }
 
 
