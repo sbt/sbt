@@ -20,7 +20,7 @@ def process_node(node):
 # This directive formats a string to be in a fixed width font.
 # The string is taken as a literal and is not processed for further inline formatting.
 def code_literal(name, rawtext, text, lineno, inliner, options={}, content=[]):
-    node = nodes.Text(text, text)
+    node = nodes.inline('', text)
     node['classes'].append('pre')
     return [node], []
 
