@@ -183,26 +183,20 @@ class ConfigurationParser
 		import Repository.{Ivy, Maven, Predefined}
 		val BootOnly = "bootOnly"
 		val MvnComp = "mavenCompatible"
+		val OptSet = Set(BootOnly, MvnComp)
 		m.toList.map {
 			case (key, None) => Predefined(key)
 			case (key, Some(BootOnly)) => Predefined(key, true)
 			case (key, Some(value)) =>
-				val r = trim(substituteVariables(value).split(",",5))
+				val r = trim(substituteVariables(value).split(",",6))
 				val url = try { new URL(r(0)) } catch { case e: MalformedURLException => error("Invalid URL specified for '" + key + "': " + e.getMessage) }
-				// TODO - Clean this up a lot.
-				r.tail match {
-					case both :: MvnComp  :: BootOnly :: Nil       => Ivy(key, url, both, both, mavenCompatible=true, bootOnly=true)
-					case both :: BootOnly :: MvnComp  :: Nil       => Ivy(key, url, both, both, mavenCompatible=true, bootOnly=true)
-					case both :: MvnComp  :: Nil                   => Ivy(key, url, both, both, mavenCompatible=true, bootOnly=false)
-					case both :: BootOnly :: Nil                   => Ivy(key, url, both, both, mavenCompatible=false, bootOnly=true)
-					case ivy :: art :: MvnComp :: BootOnly :: Nil  => Ivy(key, url, ivy,  art, mavenCompatible=true, bootOnly=true)
-					case ivy :: art :: BootOnly :: MvnComp :: Nil  => Ivy(key, url, ivy,  art, mavenCompatible=true, bootOnly=true)
-					case ivy :: art :: MvnComp  :: Nil             => Ivy(key, url, ivy,  art, mavenCompatible=true, bootOnly=false)
-					case ivy :: art :: BootOnly :: Nil             => Ivy(key, url, ivy,  art, mavenCompatible=false, bootOnly=true)
-					case ivy :: art :: Nil                         => Ivy(key, url, ivy,  art, mavenCompatible=false, bootOnly=false)
-					case BootOnly :: Nil                           => Maven(key, url, bootOnly=true)
-					case both :: Nil                               => Ivy(key, url, both, both, mavenCompatible=false, bootOnly=false)
-					case Nil                                       => Maven(key, url)
+				val (optionPart, patterns) = r.tail.partition (OptSet.contains(_))
+				val options = (optionPart.contains(BootOnly), optionPart.contains(MvnComp))
+				(patterns, options) match {
+					case (both :: Nil, (bo, mc))          => Ivy(key, url, both, both, mavenCompatible=mc, bootOnly=bo)
+					case (ivy :: art :: Nil, (bo, mc))    => Ivy(key, url, ivy,  art, mavenCompatible=mc, bootOnly=bo)
+					case (Nil, (true, false))           => Maven(key, url, bootOnly=true)
+					case (Nil, (false, false))          => Maven(key, url)
 					case _                                         => error("Could not parse %s: %s".format(key, value))
 				}
 		}
