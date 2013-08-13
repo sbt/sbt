@@ -1462,13 +1462,21 @@ object Classpaths
 		try { ivyRepo.mavenCompatible }
 		catch { case _: NoSuchMethodError => false }
 
+	private[this] def skipConsistencyCheck(ivyRepo: xsbti.IvyRepository): Boolean =
+		try { ivyRepo.skipConsistencyCheck }
+		catch { case _: NoSuchMethodError => false }
+
+	private[this] def descriptorOptional(ivyRepo: xsbti.IvyRepository): Boolean =
+		try { ivyRepo.descriptorOptional }
+		catch { case _: NoSuchMethodError => false }
+
 	private[this] def bootRepository(repo: xsbti.Repository): Resolver =
 	{
 		import xsbti.Predefined
 		repo match
 		{
 			case m: xsbti.MavenRepository => MavenRepository(m.id, m.url.toString)
-			case i: xsbti.IvyRepository => Resolver.url(i.id, i.url)(Patterns(i.ivyPattern :: Nil, i.artifactPattern :: Nil, mavenCompatible(i)))
+			case i: xsbti.IvyRepository => Resolver.url(i.id, i.url)(Patterns(i.ivyPattern :: Nil, i.artifactPattern :: Nil, mavenCompatible(i), descriptorOptional(i), skipConsistencyCheck(i)))
 			case p: xsbti.PredefinedRepository => p.id match {
 				case Predefined.Local => Resolver.defaultLocal
 				case Predefined.MavenLocal => Resolver.mavenLocal

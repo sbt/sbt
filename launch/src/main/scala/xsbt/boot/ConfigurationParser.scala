@@ -183,20 +183,22 @@ class ConfigurationParser
 		import Repository.{Ivy, Maven, Predefined}
 		val BootOnly = "bootOnly"
 		val MvnComp = "mavenCompatible"
-		val OptSet = Set(BootOnly, MvnComp)
+		val DescriptorOptional = "descriptorOptional"
+		val DontCheckConsistency = "skipConsistencyCheck"
+		val OptSet = Set(BootOnly, MvnComp, DescriptorOptional, DontCheckConsistency)
 		m.toList.map {
 			case (key, None) => Predefined(key)
 			case (key, Some(BootOnly)) => Predefined(key, true)
 			case (key, Some(value)) =>
-				val r = trim(substituteVariables(value).split(",",6))
+				val r = trim(substituteVariables(value).split(",",7))
 				val url = try { new URL(r(0)) } catch { case e: MalformedURLException => error("Invalid URL specified for '" + key + "': " + e.getMessage) }
 				val (optionPart, patterns) = r.tail.partition (OptSet.contains(_))
-				val options = (optionPart.contains(BootOnly), optionPart.contains(MvnComp))
+				val options = (optionPart.contains(BootOnly), optionPart.contains(MvnComp), optionPart.contains(DescriptorOptional), optionPart.contains(DontCheckConsistency))
 				(patterns, options) match {
-					case (both :: Nil, (bo, mc))          => Ivy(key, url, both, both, mavenCompatible=mc, bootOnly=bo)
-					case (ivy :: art :: Nil, (bo, mc))    => Ivy(key, url, ivy,  art, mavenCompatible=mc, bootOnly=bo)
-					case (Nil, (true, false))           => Maven(key, url, bootOnly=true)
-					case (Nil, (false, false))          => Maven(key, url)
+					case (both :: Nil, (bo, mc, dso, cc))          => Ivy(key, url, both, both, mavenCompatible=mc, bootOnly=bo, descriptorOptional=dso, skipConsistencyCheck=cc)
+					case (ivy :: art :: Nil, (bo, mc, dso, cc))    => Ivy(key, url, ivy,  art, mavenCompatible=mc, bootOnly=bo, descriptorOptional=dso, skipConsistencyCheck=cc)
+					case (Nil, (true, false, false, cc))           => Maven(key, url, bootOnly=true)
+					case (Nil, (false, false, false, false))       => Maven(key, url)
 					case _                                         => error("Could not parse %s: %s".format(key, value))
 				}
 		}
