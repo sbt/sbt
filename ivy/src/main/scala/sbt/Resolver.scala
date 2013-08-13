@@ -23,20 +23,23 @@ sealed case class MavenRepository(name: String, root: String) extends Resolver
 	override def toString = name + ": " + root
 }
 
-final class Patterns(val ivyPatterns: Seq[String], val artifactPatterns: Seq[String], val isMavenCompatible: Boolean)
+final class Patterns(val ivyPatterns: Seq[String], val artifactPatterns: Seq[String], val isMavenCompatible: Boolean, val descriptorOptional: Boolean, val skipConsistencyCheck: Boolean)
 {
 	private[sbt] def mavenStyle(): Patterns = Patterns(ivyPatterns, artifactPatterns, true)
 	private[sbt] def withIvys(patterns: Seq[String]): Patterns = Patterns(patterns ++ ivyPatterns, artifactPatterns, isMavenCompatible)
 	private[sbt] def withArtifacts(patterns: Seq[String]): Patterns = Patterns(ivyPatterns, patterns ++ artifactPatterns, isMavenCompatible)
-	override def toString = "Patterns(ivyPatterns=%s, artifactPatterns=%s, isMavenCompatible=%s)".format(ivyPatterns, artifactPatterns, isMavenCompatible)
+	override def toString = "Patterns(ivyPatterns=%s, artifactPatterns=%s, isMavenCompatible=%s, descriptorOptional=%s, skipConsistencyCheck=%s)".format(ivyPatterns, artifactPatterns, isMavenCompatible, descriptorOptional, skipConsistencyCheck)
 	override def equals(obj: Any): Boolean = {
 		obj match {
 			case other: Patterns =>
-				ivyPatterns == other.ivyPatterns && artifactPatterns == other.artifactPatterns && isMavenCompatible == other.isMavenCompatible
+				ivyPatterns == other.ivyPatterns && artifactPatterns == other.artifactPatterns && isMavenCompatible == other.isMavenCompatible && descriptorOptional == other.descriptorOptional && skipConsistencyCheck == other.skipConsistencyCheck
 			case _ => false
 		}
 	}
-	override def hashCode: Int = (ivyPatterns, artifactPatterns, isMavenCompatible).hashCode
+	override def hashCode: Int = (ivyPatterns, artifactPatterns, isMavenCompatible, descriptorOptional, skipConsistencyCheck).hashCode
+
+	@deprecated
+        def this(ivyPatterns: Seq[String], artifactPatterns: Seq[String], isMavenCompatible: Boolean) = this(ivyPatterns, artifactPatterns, isMavenCompatible, false, false)
 }
 object Patterns
 {
@@ -44,7 +47,7 @@ object Patterns
 
 	def apply(artifactPatterns: String*): Patterns = Patterns(true, artifactPatterns : _*)
 	def apply(isMavenCompatible: Boolean, artifactPatterns: String*): Patterns = Patterns(artifactPatterns, artifactPatterns, isMavenCompatible)
-	def apply(ivyPatterns: Seq[String], artifactPatterns: Seq[String], isMavenCompatible: Boolean): Patterns = new Patterns(ivyPatterns, artifactPatterns, isMavenCompatible)
+	def apply(ivyPatterns: Seq[String], artifactPatterns: Seq[String], isMavenCompatible: Boolean, descriptorOptional: Boolean = false, skipConsistencyCheck: Boolean = false): Patterns = new Patterns(ivyPatterns, artifactPatterns, isMavenCompatible, descriptorOptional, skipConsistencyCheck)
 }
 object RepositoryHelpers
 {

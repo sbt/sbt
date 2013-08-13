@@ -9,4 +9,6 @@ public interface IvyRepository extends Repository
 	String ivyPattern();
 	String artifactPattern();
 	boolean mavenCompatible();
+	boolean skipConsistencyCheck();
+	boolean descriptorOptional();
 }

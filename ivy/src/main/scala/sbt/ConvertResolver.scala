@@ -76,6 +76,7 @@ private object ConvertResolver
 			case repo: RawRepository => repo.resolver
 		}
 	}
+    
 	private sealed trait DescriptorRequired extends BasicResolver
 	{
 		override def getDependency(dd: DependencyDescriptor, data: ResolveData) =
@@ -122,6 +123,8 @@ private object ConvertResolver
 	private def initializePatterns(resolver: AbstractPatternsBasedResolver, patterns: Patterns, settings: IvySettings)
 	{
 		resolver.setM2compatible(patterns.isMavenCompatible)
+		resolver.setDescriptor(if (patterns.descriptorOptional) BasicResolver.DESCRIPTOR_OPTIONAL else BasicResolver.DESCRIPTOR_REQUIRED)
+		resolver.setCheckconsistency(!patterns.skipConsistencyCheck)
 		patterns.ivyPatterns.foreach(p => resolver.addIvyPattern(settings substitute p))
 		patterns.artifactPatterns.foreach(p => resolver.addArtifactPattern(settings substitute p))
 	}
