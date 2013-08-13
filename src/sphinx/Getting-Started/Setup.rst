@@ -154,6 +154,9 @@ Then, make the script executable:
 
     $ chmod u+x ~/bin/sbt
 
+In order for backspace to work correctly in the scala console, you need to make sure your backspace key is sending the erase character as configured by stty.  
+For the default cygwin terminal (mintty) you can find a setting under Options -> Keys "Backspace sends ^H" which will need to be checked if your erase key is the cygwin default of ^H.
+
 .. note::
 
     Other configurations are currently unsupported.
