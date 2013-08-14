@@ -26,6 +26,8 @@ sealed case class MavenRepository(name: String, root: String) extends Resolver
 final class Patterns(val ivyPatterns: Seq[String], val artifactPatterns: Seq[String], val isMavenCompatible: Boolean, val descriptorOptional: Boolean, val skipConsistencyCheck: Boolean)
 {
 	private[sbt] def mavenStyle(): Patterns = Patterns(ivyPatterns, artifactPatterns, true)
+	private[sbt] def withDescriptorOptional(): Patterns = Patterns(ivyPatterns, artifactPatterns, isMavenCompatible, true, skipConsistencyCheck)
+	private[sbt] def withoutConsistencyCheck(): Patterns = Patterns(ivyPatterns, artifactPatterns, isMavenCompatible, descriptorOptional, true)
 	private[sbt] def withIvys(patterns: Seq[String]): Patterns = Patterns(patterns ++ ivyPatterns, artifactPatterns, isMavenCompatible)
 	private[sbt] def withArtifacts(patterns: Seq[String]): Patterns = Patterns(ivyPatterns, patterns ++ artifactPatterns, isMavenCompatible)
 	override def toString = "Patterns(ivyPatterns=%s, artifactPatterns=%s, isMavenCompatible=%s, descriptorOptional=%s, skipConsistencyCheck=%s)".format(ivyPatterns, artifactPatterns, isMavenCompatible, descriptorOptional, skipConsistencyCheck)
@@ -47,7 +49,8 @@ object Patterns
 
 	def apply(artifactPatterns: String*): Patterns = Patterns(true, artifactPatterns : _*)
 	def apply(isMavenCompatible: Boolean, artifactPatterns: String*): Patterns = Patterns(artifactPatterns, artifactPatterns, isMavenCompatible)
-	def apply(ivyPatterns: Seq[String], artifactPatterns: Seq[String], isMavenCompatible: Boolean, descriptorOptional: Boolean = false, skipConsistencyCheck: Boolean = false): Patterns = new Patterns(ivyPatterns, artifactPatterns, isMavenCompatible, descriptorOptional, skipConsistencyCheck)
+	def apply(ivyPatterns: Seq[String], artifactPatterns: Seq[String], isMavenCompatible: Boolean): Patterns = apply(ivyPatterns: Seq[String], artifactPatterns: Seq[String], isMavenCompatible: Boolean, false, false) 
+	def apply(ivyPatterns: Seq[String], artifactPatterns: Seq[String], isMavenCompatible: Boolean, descriptorOptional: Boolean, skipConsistencyCheck: Boolean): Patterns = new Patterns(ivyPatterns, artifactPatterns, isMavenCompatible, descriptorOptional, skipConsistencyCheck)
 }
 object RepositoryHelpers
 {
@@ -81,6 +84,13 @@ sealed abstract class PatternsBasedRepository extends Resolver
 
 	/** Enables maven 2 compatibility for this repository. */
 	def mavenStyle() = copy(patterns.mavenStyle())
+
+	/** Makes descriptor metadata optional for this repository. */
+	def descriptorOptional() = copy(patterns.withDescriptorOptional())
+
+	/** Disables consistency checking for this repository. */
+	def skipConsistencyCheck() = copy(patterns.withoutConsistencyCheck())
+
 	/** Adds the given patterns for resolving/publishing Ivy files.*/
 	def ivys(ivyPatterns: String*): RepositoryType = copy(patterns.withIvys(ivyPatterns))
 	/** Adds the given patterns for resolving/publishing artifacts.*/
