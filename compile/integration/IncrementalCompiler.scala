@@ -17,7 +17,8 @@ object IC extends IncrementalCompiler[Analysis, AnalyzingCompiler]
 		val agg = new AggressiveCompile(setup.cacheFile)
 		val aMap = (f: File) => m2o(analysisMap(f))
 		val defClass = (f: File) => { val dc = definesClass(f); (name: String) => dc.apply(name) }
-		agg(scalac, javac, sources, classpath, classesDirectory, cache, scalacOptions, javacOptions, aMap, defClass, maxErrors, order, skip)(log)
+		val explicitDeletes = false
+		agg(scalac, javac, sources, classpath, classesDirectory, cache, scalacOptions, javacOptions, aMap, defClass, maxErrors, explicitDeletes, order, skip)(log)
 	}
 
 	private[this] def m2o[S](opt: Maybe[S]): Option[S] = if(opt.isEmpty) None else Some(opt.get)

@@ -16,18 +16,28 @@ object Incremental
 	final val TransitiveStep = 2
 	final val RecompileAllFraction = 0.5
 
-	def compile(sources: Set[File], entry: String => Option[File], previous: Analysis, current: ReadStamps, forEntry: File => Option[Analysis], doCompile: (Set[File], DependencyChanges) => Analysis, log: Logger)(implicit equivS: Equiv[Stamp]): (Boolean, Analysis) =
+	def compile(sources: Set[File], deletedSources: Option[Set[File]], entry: String => Option[File], previous: Analysis, current: ReadStamps, forEntry: File => Option[Analysis], doCompile: (Set[File], DependencyChanges) => Analysis, log: Logger)(implicit equivS: Equiv[Stamp]): (Boolean, Analysis) =
 	{
-		val initialChanges = changedInitial(entry, sources, previous, current, forEntry, log)
+		val (residualPrevious, affectedPrevious) = deletedSources match {
+			case Some(deleted) => {
+				val affectedSources = sources ++ deleted
+				(previous -- affectedSources, previous -- (previous.stamps.allInternalSources.toSet -- affectedSources))
+			}
+			case None => (Analysis.Empty, previous)
+		}
+
+
+		val initialChanges = changedInitial(entry, sources, affectedPrevious, current, forEntry, log)
 		val binaryChanges = new DependencyChanges {
 			val modifiedBinaries = initialChanges.binaryDeps.toArray
 			val modifiedClasses = initialChanges.external.modified.toArray
 			def isEmpty = modifiedBinaries.isEmpty && modifiedClasses.isEmpty
 		}
-		val initialInv = invalidateInitial(previous.relations, initialChanges, log)
-		log.debug("All initially invalidated sources: " + initialInv + "\n")
-		val analysis = cycle(initialInv, sources, binaryChanges, previous, doCompile, 1, log)
-		(!initialInv.isEmpty, analysis)
+
+		val initialInv = invalidateInitial(affectedPrevious.relations, initialChanges, log)
+		log.debug("All initially invalidated: " + initialInv + "\n")
+		val analysis = cycle(initialInv, sources, binaryChanges, affectedPrevious, doCompile, 1, log)
+		(!initialInv.isEmpty, analysis ++ residualPrevious)
 	}
 
 	// setting the related system property to true will skip checking that the class name
