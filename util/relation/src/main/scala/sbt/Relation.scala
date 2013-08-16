@@ -9,7 +9,12 @@ object Relation
 {
 	/** Constructs a new immutable, finite relation that is initially empty. */
 	def empty[A,B]: Relation[A,B] = make(Map.empty, Map.empty)
+
+	/** Constructs a [[Relation]] from underlying `forward` and `reverse` representations, without checking that they are consistent.
+	* This is a low-level constructor and the alternatives [[empty]] and [[reconstruct]] should be preferred. */
 	def make[A,B](forward: Map[A,Set[B]], reverse: Map[B, Set[A]]): Relation[A,B] = new MRelation(forward, reverse)
+
+	/** Constructs a relation such that for every entry `_1 -> _2s` in `forward` and every `_2` in `_2s`, `(_1, _2)` is in the relation. */
 	def reconstruct[A,B](forward: Map[A, Set[B]]): Relation[A,B] =
 	{
 		val reversePairs = for( (a,bs) <- forward.view; b <- bs.view) yield (b, a)
@@ -39,47 +44,56 @@ object Relation
 /** Binary relation between A and B.  It is a set of pairs (_1, _2) for _1 in A, _2 in B.  */
 trait Relation[A,B]
 {
-	/** Returns the set of all _2s such that (_1, _2) is in this relation. */
+	/** Returns the set of all `_2`s such that `(_1, _2)` is in this relation. */
 	def forward(_1: A): Set[B]
-	/** Returns the set of all _1s such that (_1, _2) is in this relation. */
+	/** Returns the set of all `_1`s such that `(_1, _2)` is in this relation. */
 	def reverse(_2: B): Set[A]
-	/** Includes the relation given by `pair`. */
+	/** Includes `pair` in the relation. */
 	def +(pair: (A, B)): Relation[A,B]
-	/** Includes the relation (a, b). */
+	/** Includes `(a, b)` in the relation. */
 	def +(a: A, b: B): Relation[A,B]
-	/** Includes the relations (a, b) for all b in bs. */
+	/** Includes in the relation `(a, b)` for all `b` in `bs`. */
 	def +(a: A, bs: Traversable[B]): Relation[A,B]
-	/** Returns the union of the relation r with this relation. */
+	/** Returns the union of the relation `r` with this relation. */
 	def ++(r: Relation[A,B]): Relation[A,B]
-	/** Includes the given relations. */
+	/** Includes the given pairs in this relation. */
 	def ++(rs: Traversable[(A,B)]): Relation[A,B]
-	/** Removes all relations (_1, _2) for all _1 in _1s. */
+	/** Removes all elements `(_1, _2)` for all `_1` in `_1s` from this relation. */
 	def --(_1s: Traversable[A]): Relation[A,B]
 	/** Removes all `pairs` from this relation. */
 	def --(pairs: TraversableOnce[(A,B)]): Relation[A,B]
-	/** Removes all pairs (_1, _2) from this relation. */
+	/** Removes all pairs `(_1, _2)` from this relation. */
 	def -(_1: A): Relation[A,B]
 	/** Removes `pair` from this relation. */
 	def -(pair: (A,B)): Relation[A,B]
-	/** Returns the set of all _1s such that (_1, _2) is in this relation. */
+	/** Returns the set of all `_1`s such that `(_1, _2)` is in this relation. */
 	def _1s: collection.Set[A]
-	/** Returns the set of all _2s such that (_1, _2) is in this relation. */
+	/** Returns the set of all `_2`s such that `(_1, _2)` is in this relation. */
 	def _2s: collection.Set[B]
 	/** Returns the number of pairs in this relation */
 	def size: Int
 
-	/** Returns true iff (a,b) is in this relation*/
+	/** Returns true iff `(a,b)` is in this relation*/
 	def contains(a: A, b: B): Boolean
-	/** Returns a relation with only pairs (a,b) for which f(a,b) is true.*/
+	/** Returns a relation with only pairs `(a,b)` for which `f(a,b)` is true.*/
 	def filter(f: (A,B) => Boolean): Relation[A,B]
 
-	/** Partitions this relation into a map of relations according to some discriminator function. */
+	/** Partitions this relation into a map of relations according to some discriminator function `f`. */
 	def groupBy[K](f: ((A,B)) => K): Map[K, Relation[A,B]]
 
 	/** Returns all pairs in this relation.*/
 	def all: Traversable[(A,B)]
 
+	/** Represents this relation as a `Map` from a `_1` to the set of `_2`s such that `(_1, _2)` is in this relation.
+	*
+	* Specifically, there is one entry for each `_1` such that `(_1, _2)` is in this relation for some `_2`.
+	* The value associated with a given `_1` is the set of all `_2`s such that `(_1, _2)` is in this relation.*/
 	def forwardMap: Map[A, Set[B]]
+
+	/** Represents this relation as a `Map` from a `_2` to the set of `_1`s such that `(_1, _2)` is in this relation.
+	*
+	* Specifically, there is one entry for each `_2` such that `(_1, _2)` is in this relation for some `_1`.
+	* The value associated with a given `_2` is the set of all `_1`s such that `(_1, _2)` is in this relation.*/
 	def reverseMap: Map[B, Set[A]]
 }
 private final class MRelation[A,B](fwd: Map[A, Set[B]], rev: Map[B, Set[A]]) extends Relation[A,B]
