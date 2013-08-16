@@ -8,11 +8,11 @@ extensions = ['sphinxcontrib.issuetracker', 'sphinx.ext.extlinks', 'howto', 'cod
 # Project variables
 
 project = 'sbt'
-version = '0.13'
-site_version = '0.13.0'
-release = "0.13.0-SNAPSHOT"
-scalaVersion = "2.10"
-scalaRelease = "2.10.2"
+version = os.environ['sbt.partial.version']
+site_version = os.environ['sbt.site.version']
+release = os.environ['sbt.full.version']
+scalaVersion = os.environ['scala.binary.version']
+scalaRelease = os.environ['scala.full.version']
 
 # General settings
 
