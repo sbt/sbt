@@ -134,8 +134,12 @@ object IO
 		else if(setModified && !absFile.setLastModified(System.currentTimeMillis))
 			sys.error("Could not update last modified time for file " + absFile)
 	}
+
+	/** Creates directories `dirs` and all parent directories.  It tries to work around a race condition in `File.mkdirs()` by retrying up to a limit.*/
 	def createDirectories(dirs: Traversable[File]): Unit =
 		dirs.foreach(createDirectory)
+
+	/** Creates directory `dir` and all parent directories.  It tries to work around a race condition in `File.mkdirs()` by retrying up to a limit.*/
 	def createDirectory(dir: File): Unit =
 	{
 		def failBase = "Could not create directory " + dir
@@ -497,6 +501,9 @@ object IO
 			finally { zipOut.close }
 		}
 	}
+
+	/** Returns the path for `file` relative to directory `base` or None if `base` is not a parent of `file`.
+	* If `file` or `base` are not absolute, they are first resolved against the current working directory. */
 	def relativize(base: File, file: File): Option[String] =
 	{
 		val pathString = file.getAbsolutePath
@@ -523,8 +530,19 @@ object IO
 		else
 			None
 	}
+
+	/** For each pair in `sources`, copies the contents of the first File (the source) to the location of the second File (the target).
+	* 
+	* A source file is always copied if `overwrite` is true.
+	* If `overwrite` is false, the source is only copied if the target is missing or is older than the source file according to last modified times.
+	* If the source is a directory, the corresponding directory is created.
+	*
+	* If `preserveLastModified` is `true`, the last modified times are transferred as well.
+	* Any parent directories that do not exist are created.
+	* The set of all target files is returned, whether or not they were updated by this method.*/
 	def copy(sources: Traversable[(File,File)], overwrite: Boolean = false, preserveLastModified: Boolean = false): Set[File] =
 		sources.map( tupled(copyImpl(overwrite, preserveLastModified)) ).toSet
+
 	private def copyImpl(overwrite: Boolean, preserveLastModified: Boolean)(from: File, to: File): File =
 	{
 		if(overwrite || !to.exists || from.lastModified > to.lastModified)
@@ -539,9 +557,18 @@ object IO
 		}
 		to
 	}
+
+	/** Copies the contents of each file in the `source` directory to the corresponding file in the `target` directory.
+	* A source file is always copied if `overwrite` is true.
+	* If `overwrite` is false, the source is only copied if the target is missing or is older than the source file according to last modified times.
+	* Files in `target` without a corresponding file in `source` are left unmodified in any case.
+	* If `preserveLastModified` is `true`, the last modified times are transferred as well.
+	* Any parent directories that do not exist are created. */
 	def copyDirectory(source: File, target: File, overwrite: Boolean = false, preserveLastModified: Boolean = false): Unit =
 		copy( (PathFinder(source) ***) x Path.rebase(source, target), overwrite, preserveLastModified)
 
+	/** Copies the contents of `sourceFile` to the location of `targetFile`, overwriting any existing content.
+	* If `preserveLastModified` is `true`, the last modified time is transferred as well.*/
 	def copyFile(sourceFile: File, targetFile: File, preserveLastModified: Boolean = false)
 	{
 		// NOTE: when modifying this code, test with larger values of CopySpec.MaxFileSizeBits than default
@@ -566,14 +593,20 @@ object IO
 		if(preserveLastModified)
 			copyLastModified(sourceFile, targetFile)
 	}
+	/** Transfers the last modified time of `sourceFile` to `targetFile`. */
 	def copyLastModified(sourceFile: File, targetFile: File) = {
 		val last = sourceFile.lastModified
 		// lastModified can return a negative number, but setLastModified doesn't accept it
 		// see Java bug #6791812
 		targetFile.setLastModified( math.max(last, 0L) )
 	}
+	/** The default Charset used when not specified: UTF-8. */
 	def defaultCharset = utf8
 
+	/** Writes `content` to `file` using `charset` or UTF-8 if `charset` is not explicitly specified.
+	* If `append` is `false`, the existing contents of `file` are overwritten.
+	* If `append` is `true`, the new `content` is appended to the existing contents.
+	* If `file` or any parent directories do not exist, they are created. */
 	def write(file: File, content: String, charset: Charset = defaultCharset, append: Boolean = false): Unit =
 		writer(file, content, charset, append) { _.write(content)  }
 
@@ -586,21 +619,26 @@ object IO
 	def reader[T](file: File, charset: Charset = defaultCharset)(f: BufferedReader => T): T =
 		fileReader(charset)(file) { f }
 
+	/** Reads the full contents of `file` into a String using `charset` or UTF-8 if `charset` is not explicitly specified. */
 	def read(file: File, charset: Charset = defaultCharset): String =
 	{
 		val out = new ByteArrayOutputStream(file.length.toInt)
 		transfer(file, out)
 		out.toString(charset.name)
 	}
-	/** doesn't close the InputStream */
+
+	/** Reads the full contents of `in` into a byte array.  This method does not close `in`.*/
 	def readStream(in: InputStream, charset: Charset = defaultCharset): String =
 	{
 		val out = new ByteArrayOutputStream
 		transfer(in, out)
 		out.toString(charset.name)
 	}
+
+	/** Reads the full contents of `in` into a byte array. */
 	def readBytes(file: File): Array[Byte] = fileInputStream(file)(readBytes)
-	/** doesn't close the InputStream */
+
+	/** Reads the full contents of `in` into a byte array.  This method does not close `in`. */
 	def readBytes(in: InputStream): Array[Byte] =
 	{
 		val out = new ByteArrayOutputStream
@@ -608,28 +646,42 @@ object IO
 		out.toByteArray
 	}
 
+	/** Appends `content` to the existing contents of `file` using `charset` or UTF-8 if `charset` is not explicitly specified.
+	* If `file` does not exist, it is created, as are any parent directories. */
 	def append(file: File, content: String, charset: Charset = defaultCharset): Unit =
 		write(file, content, charset, true)
+
+	/** Appends `bytes` to the existing contents of `file`.
+	* If `file` does not exist, it is created, as are any parent directories. */
 	def append(file: File, bytes: Array[Byte]): Unit =
 		writeBytes(file, bytes, true)
 
+	/** Writes `bytes` to `file`, overwriting any existing content.
+	* If any parent directories do not exist, they are first created. */
 	def write(file: File, bytes: Array[Byte]): Unit =
 		writeBytes(file, bytes, false)
+
 	private def writeBytes(file: File, bytes: Array[Byte], append: Boolean): Unit =
 		fileOutputStream(append)(file) { _.write(bytes) }
 
+	/** Reads all of the lines from `url` using the provided `charset` or UTF-8 if `charset` is not explicitly specified. */
 	def readLinesURL(url: URL, charset: Charset = defaultCharset): List[String] =
 		urlReader(charset)(url)(readLines)
 
+	/** Reads all of the lines in `file` using the provided `charset` or UTF-8 if `charset` is not explicitly specified. */
 	def readLines(file: File, charset: Charset = defaultCharset): List[String] =
 		fileReader(charset)(file)(readLines)
-		
+
+	/** Reads all of the lines from `in`.  This method does not close `in`.*/
 	def readLines(in: BufferedReader): List[String] = 
 		foldLines[List[String]](in, Nil)( (accum, line) => line :: accum ).reverse
-	
+
+	/** Applies `f` to each line read from `in`. This method does not close `in`.*/	
 	def foreachLine(in: BufferedReader)(f: String => Unit): Unit =
 		foldLines(in, ())( (_, line) => f(line) )
-		
+	
+	/** Applies `f` to each line read from `in` and the accumulated value of type `T`, with initial value `init`.
+	* This method does not close `in`.*/
 	def foldLines[T](in: BufferedReader, init: T)(f: (T, String) => T): T =
 	{
 		def readLine(accum: T): T =
@@ -640,15 +692,26 @@ object IO
 		readLine(init)
 	}
 	
+	/** Writes `lines` to `file` using the given `charset` or UTF-8 if `charset` is not explicitly specified.
+	* If `append` is `false`, the contents of the file are overwritten.
+	* If `append` is `true`, the lines are appended to the file.
+	* A newline is written after each line and NOT before the first line.
+	* If any parent directories of `file` do not exist, they are first created. */
 	def writeLines(file: File, lines: Seq[String], charset: Charset = defaultCharset, append: Boolean = false): Unit =
 		writer(file, lines.headOption.getOrElse(""), charset, append) { w =>
 			lines.foreach { line => w.write(line); w.newLine() }
 		}
+
+	/** Writes `lines` to `writer` using `writer`'s `println` method. */
 	def writeLines(writer: PrintWriter, lines: Seq[String]): Unit =
 		lines foreach writer.println
-		
+	
+	/** Writes `properties` to the File `to`, using `label` as the comment on the first line.
+	* If any parent directories of `to` do not exist, they are first created. */
 	def write(properties: Properties, label: String, to: File) =
 		fileOutputStream()(to) { output => properties.store(output, label) }
+
+	/** Reads the properties in `from` into `properties`.  If `from` does not exist, `properties` is left unchanged.*/
 	def load(properties: Properties, from: File): Unit =
 		if(from.exists)
 			fileInputStream(from){ input => properties.load(input) }
@@ -656,7 +719,7 @@ object IO
 	/** A pattern used to split a String by path separator characters.*/
 	private val PathSeparatorPattern = java.util.regex.Pattern.compile(File.pathSeparator)
 
-	/** Splits a String around path separator characters. */
+	/** Splits a String around the platform's path separator characters. */
 	def pathSplit(s: String) = PathSeparatorPattern.split(s)
 
 	/** Move the provided files to a temporary location.
@@ -677,9 +740,16 @@ object IO
 		for( (file, index) <- files.zipWithIndex) yield
 			(file, new File(dir, index.toHexString))
 
+	// TODO: the reference to the other move overload does not resolve, probably due to a scaladoc bug
+	/** For each pair in `files`, moves the contents of the first File to the location of the second.
+	* See [[move(File,File)]] for the behavior of the individual move operations. */
 	def move(files: Traversable[(File, File)]): Unit =
 		files.foreach(Function.tupled(move))
-		
+	
+	/** Moves the contents of `a` to the location specified by `b`.
+	* This method deletes any content already at `b` and creates any parent directories of `b` if they do not exist.
+	* It will first try `File.renameTo` and if that fails, resort to copying and then deleting the original file.
+	* In either case, the original File will not exist on successful completion of this method.*/
 	def move(a: File, b: File): Unit =
 	{
 		if(b.exists)
@@ -692,11 +762,17 @@ object IO
 		}
 	}
 
+	/** Applies `f` to a buffered gzip `OutputStream` for `file`.
+	* The streams involved are opened before calling `f` and closed after it returns.
+	* The result is the result of `f`. */
 	def gzipFileOut[T](file: File)(f: OutputStream => T): T =
 		Using.fileOutputStream()(file) { fout =>
 		Using.gzipOutputStream(fout) { outg =>
 		Using.bufferedOutputStream(outg)(f) }}
 
+	/** Applies `f` to a buffered gzip `InputStream` for `file`.
+	* The streams involved are opened before calling `f` and closed after it returns.
+	* The result is the result of `f`. */
 	def gzipFileIn[T](file: File)(f: InputStream => T): T =
 		Using.fileInputStream(file) { fin =>
 		Using.gzipInputStream(fin) { ing =>
@@ -727,6 +803,10 @@ object IO
 	def toURI(f: File): URI  =  
 		// need to use the three argument URI constructor because the single argument version doesn't encode
 		if(f.isAbsolute) f.toURI else new URI(null, normalizeName(f.getPath), null)
+
+	/** Resolves `f` against `base`, which must be an absolute directory.
+	* The result is guaranteed to be absolute.
+	* If `f` is absolute, it is returned without changes.  */
 	def resolve(base: File, f: File): File  =
 	{
 		assertAbsolute(base)
@@ -737,8 +817,11 @@ object IO
 	def assertAbsolute(f: File) = assert(f.isAbsolute, "Not absolute: " + f)
 	def assertAbsolute(uri: URI) = assert(uri.isAbsolute, "Not absolute: " + uri)
 
+	/** Parses a classpath String into File entries according to the current platform's path separator.*/
 	def parseClasspath(s: String): Seq[File] = IO.pathSplit(s).map(new File(_)).toSeq
 
+	/** Constructs an `ObjectInputStream` on `wrapped` that uses `loader` to load classes.
+	* See also [[https://github.com/sbt/sbt/issues/136 issue 136]]. */
 	def objectInputStream(wrapped: InputStream, loader: ClassLoader): ObjectInputStream = new ObjectInputStream(wrapped)
 	{
 		override def resolveClass(osc: ObjectStreamClass): Class[_] =
