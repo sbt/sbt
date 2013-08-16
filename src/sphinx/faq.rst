@@ -12,7 +12,7 @@ Please use `Stack Overflow`_ for questions.  Use the `mailing list`_ for comment
 -  Please state the problem or question clearly and provide enough
    context. Code examples and build transcripts are often useful when
    appropriately edited.
--  Providing small, reproducible examples are a good way to get help
+-  Providing small, reproducible examples is a good way to get help
    quickly.
 -  Include relevant information such as the version of sbt and Scala
    being used.
