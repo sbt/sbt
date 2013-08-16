@@ -7,6 +7,11 @@ package sbt.complete
 	import sbt.Types.{const, left, right, some}
 	import sbt.Util.{makeList,separate}
 
+/** A String parser that provides semi-automatic tab completion.
+* A successful parse results in a value of type `T`.
+* The methods in this trait are what must be implemented to define a new Parser implementation, but are not typically useful for common usage.
+* Instead, most useful methods for combining smaller parsers into larger parsers are implicitly added by the [[RichParser]] type.
+*/
 sealed trait Parser[+T]
 {
 	def derive(i: Char): Parser[T]
@@ -20,37 +25,57 @@ sealed trait Parser[+T]
 }
 sealed trait RichParser[A]
 {
-	/** Produces a Parser that applies the original Parser and then applies `next` (in order).*/
+	/** Apply the original Parser and then apply `next` (in order).  The result of both is provides as a pair. */
 	def ~[B](next: Parser[B]): Parser[(A,B)]
-	/** Produces a Parser that applies the original Parser one or more times.*/
+
+	/** Apply the original Parser one or more times and provide the non-empty sequence of results.*/
 	def + : Parser[Seq[A]]
-	/** Produces a Parser that applies the original Parser zero or more times.*/
+
+	/** Apply the original Parser zero or more times and provide the (potentially empty) sequence of results.*/
 	def * : Parser[Seq[A]]
-	/** Produces a Parser that applies the original Parser zero or one times.*/
+
+	/** Apply the original Parser zero or one times, returning None if it was applied zero times or the result wrapped in Some if it was applied once.*/
 	def ? : Parser[Option[A]]
-	/** Produces a Parser that applies either the original Parser or `b`.*/
+
+	/** Apply either the original Parser or `b`.*/
 	def |[B >: A](b: Parser[B]): Parser[B]
-	/** Produces a Parser that applies either the original Parser or `b`.*/
+
+	/** Apply either the original Parser or `b`.*/
 	def ||[B](b: Parser[B]): Parser[Either[A,B]]
-	/** Produces a Parser that applies the original Parser to the input and then applies `f` to the result.*/
+
+	/** Apply the original Parser to the input and then apply `f` to the result.*/
 	def map[B](f: A => B): Parser[B]
+
 	/** Returns the original parser.  This is useful for converting literals to Parsers.
 	* For example, `'c'.id` or `"asdf".id`*/
 	def id: Parser[A]
 
+	/** Apply the original Parser, but provide `value` as the result if it succeeds. */
 	def ^^^[B](value: B): Parser[B]
+
+	/** Apply the original Parser, but provide `alt` as the result if it fails.*/
 	def ??[B >: A](alt: B): Parser[B]
+
+	/** Produces a Parser that applies the original Parser and then applies `next` (in order), discarding the result of `next`.
+	* (The arrow point in the direction of the retained result.)*/
 	def <~[B](b: Parser[B]): Parser[A]
+
+	/** Produces a Parser that applies the original Parser and then applies `next` (in order), discarding the result of the original parser.
+	* (The arrow point in the direction of the retained result.)*/
 	def ~>[B](b: Parser[B]): Parser[B]
 
 	/** Uses the specified message if the original Parser fails.*/
 	def !!!(msg: String): Parser[A]
+
 	/** If an exception is thrown by the original Parser,
 	* capture it and fail locally instead of allowing the exception to propagate up and terminate parsing.*/
 	def failOnException: Parser[A]
 	
 	@deprecated("Use `not` and explicitly provide the failure message", "0.12.2")
 	def unary_- : Parser[Unit]
+
+	/** Apply the original parser, but only succeed if `o` also succeeds.
+	* Note that `o` does not need to consume the same amount of input to satisfy this condition.*/
 	def & (o: Parser[_]): Parser[A]
 
 	@deprecated("Use `and` and `not` and explicitly provide the failure message", "0.12.2")
@@ -58,16 +83,23 @@ sealed trait RichParser[A]
 
 	/** Explicitly defines the completions for the original Parser.*/
 	def examples(s: String*): Parser[A]
+
 	/** Explicitly defines the completions for the original Parser.*/
 	def examples(s: Set[String], check: Boolean = false): Parser[A]
+
 	/** Converts a Parser returning a Char sequence to a Parser returning a String.*/
 	def string(implicit ev: A <:< Seq[Char]): Parser[String]
+
 	/** Produces a Parser that filters the original parser.
-	* If 'f' is not true when applied to the output of the original parser, the Parser returned by this method fails.*/
+	* If 'f' is not true when applied to the output of the original parser, the Parser returned by this method fails.
+	* The failure message is constructed by applying `msg` to the String that was successfully parsed by the original parser. */
 	def filter(f: A => Boolean, msg: String => String): Parser[A]
 
+	/** Applies the original parser, applies `f` to the result to get the next parser, and applies that parser and uses its result for the overall result. */
 	def flatMap[B](f: A => Parser[B]): Parser[B]
 }
+
+/** Contains Parser implementation helper methods not typically needed for using parsers. */
 object Parser extends ParserMain
 {
 	sealed abstract class Result[+T] {
@@ -129,8 +161,10 @@ object Parser extends ParserMain
 		val bad = completions.filter( apply(a)(_).resultEmpty.isFailure)
 		if(!bad.isEmpty) sys.error("Invalid example completions: " + bad.mkString("'", "', '", "'"))
 	}
+
 	def tuple[A,B](a: Option[A], b: Option[B]): Option[(A,B)] =
 		(a,b) match { case (Some(av), Some(bv)) => Some((av, bv)); case _ => None }
+
 
 	def mapParser[A,B](a: Parser[A], f: A => B): Parser[B] =
 		a.ifValid {
@@ -227,6 +261,7 @@ object Parser extends ParserMain
 }
 trait ParserMain
 {
+	/** Provides combinators for Parsers.*/
 	implicit def richParser[A](a: Parser[A]): RichParser[A] = new RichParser[A]
 	{
 		def ~[B](b: Parser[B]) = seqParser(a, b)
@@ -254,6 +289,7 @@ trait ParserMain
 		def string(implicit ev: A <:< Seq[Char]): Parser[String] = map(_.mkString)
 		def flatMap[B](f: A => Parser[B]) = bindParser(a, f)
 	}
+
 	implicit def literalRichCharParser(c: Char): RichParser[Char] = richParser(c)
 	implicit def literalRichStringParser(s: String): RichParser[String] = richParser(s)
 
@@ -263,9 +299,16 @@ trait ParserMain
 	* from the Parser constructed by the `softFailure` method. */
 	private[sbt] def softFailure(msg: => String, definitive: Boolean = false): Parser[Nothing] =
 		SoftInvalid( mkFailures(msg :: Nil, definitive) )
-	
+
+	/** Defines a parser that always fails on any input with messages `msgs`.
+	* If `definitive` is `true`, any failures by later alternatives are discarded.*/
 	def invalid(msgs: => Seq[String], definitive: Boolean = false): Parser[Nothing] = Invalid(mkFailures(msgs, definitive))
+
+	/** Defines a parser that always fails on any input with message `msg`.
+	* If `definitive` is `true`, any failures by later alternatives are discarded.*/
 	def failure(msg: => String, definitive: Boolean = false): Parser[Nothing] = invalid(msg :: Nil, definitive)
+
+	/** Defines a parser that always succeeds on empty input with the result `value`.*/
 	def success[T](value: T): Parser[T] = new ValidParser[T] {
 		override def result = Some(value)
 		def resultEmpty = Value(value)
@@ -274,15 +317,22 @@ trait ParserMain
 		override def toString = "success(" + value + ")"
 	}
 
+	/** Presents a Char range as a Parser.  A single Char is parsed only if it is in the given range.*/
 	implicit def range(r: collection.immutable.NumericRange[Char]): Parser[Char] =
 		charClass(r contains _).examples(r.map(_.toString) : _*)
+
+	/** Defines a Parser that parses a single character only if it is contained in `legal`.*/
 	def chars(legal: String): Parser[Char] =
 	{
 		val set = legal.toSet
 		charClass(set, "character in '" + legal + "'") examples(set.map(_.toString))
 	}
+
+	/** Defines a Parser that parses a single character only if the predicate `f` returns true for that character.
+	* If this parser fails, `label` is used as the failure message. */
 	def charClass(f: Char => Boolean, label: String = "<unspecified>"): Parser[Char] = new CharacterClass(f, label)
 
+	/** Presents a single Char `ch` as a Parser that only parses that exact character. */
 	implicit def literal(ch: Char): Parser[Char] = new ValidParser[Char] {
 		def result = None
 		def resultEmpty = mkFailure( "Expected '" + ch + "'" )
@@ -290,24 +340,44 @@ trait ParserMain
 		def completions(level: Int) = Completions.single(Completion.suggestStrict(ch.toString))
 		override def toString = "'" + ch + "'"
 	}
+	/** Presents a literal String `s` as a Parser that only parses that exact text and provides it as the result.*/
 	implicit def literal(s: String): Parser[String] = stringLiteral(s, 0)
+
+	/** See [[unapply]]. */
 	object ~ {
+		/** Convenience for destructuring a tuple that mirrors the `~` combinator.*/
 		def unapply[A,B](t: (A,B)): Some[(A,B)] = Some(t)
 	}
 
+	/** Parses input `str` using `parser`.  If successful, the result is provided wrapped in `Right`.  If unsuccesful, an error message is provided in `Left`.*/
 	def parse[T](str: String, parser: Parser[T]): Either[String, T] =
 		Parser.result(parser, str).left.map { failures =>
 			val (msgs,pos) = failures()
 			ProcessError(str, msgs, pos)
 		}
 
+	/** Convenience method to use when developing a parser.
+	* `parser` is applied to the input `str`.
+	* If `completions` is true, the available completions for the input are displayed.
+	* Otherwise, the result of parsing is printed using the result's `toString` method.
+	* If parsing fails, the error message is displayed.
+	*
+	* See also [[sampleParse]] and [[sampleCompletions]]. */
 	def sample(str: String, parser: Parser[_], completions: Boolean = false): Unit =
 		if(completions) sampleCompletions(str, parser) else sampleParse(str, parser)
+
+	/** Convenience method to use when developing a parser.
+	* `parser` is applied to the input `str` and the result of parsing is printed using the result's `toString` method.
+	* If parsing fails, the error message is displayed. */
 	def sampleParse(str: String, parser: Parser[_]): Unit =
 		parse(str, parser) match {
 			case Left(msg) => println(msg)
 			case Right(v) => println(v)
 		}
+
+	/** Convenience method to use when developing a parser.
+	* `parser` is applied to the input `str` and the available completions are displayed on separate lines.
+	* If parsing fails, the error message is displayed. */
 	def sampleCompletions(str: String, parser: Parser[_], level: Int = 1): Unit =
 		Parser.completions(parser, str, level).get foreach println
 
@@ -332,14 +402,21 @@ trait ParserMain
 		loop(-1, p)
 	}
 
+	/** Applies parser `p` to input `s`. */
 	def apply[T](p: Parser[T])(s: String): Parser[T] =
 		(p /: s)(derive1)
 
+	/** Applies parser `p` to a single character of input. */
 	def derive1[T](p: Parser[T], c: Char): Parser[T] =
 		if(p.valid) p.derive(c) else p
 
-	// The x Completions.empty removes any trailing token completions where append.isEmpty
-	def completions(p: Parser[_], s: String, level: Int): Completions = apply(p)(s).completions(level) x Completions.empty
+	/** Applies parser `p` to input `s` and returns the completions at verbosity `level`.
+	* The interpretation of `level` is up to parser definitions, but 0 is the default by convention,
+	* with increasing positive numbers corresponding to increasing verbosity.  Typically no more than
+	* a few levels are defined. */
+	def completions(p: Parser[_], s: String, level: Int): Completions =
+		// The x Completions.empty removes any trailing token completions where append.isEmpty
+		apply(p)(s).completions(level) x Completions.empty
 
 	def examples[A](a: Parser[A], completions: Set[String], check: Boolean = false): Parser[A] =
 		if(a.valid) {
