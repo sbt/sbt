@@ -502,6 +502,10 @@ object IO
 		}
 	}
 
+	/** Returns the relative file for `file` relative to directory `base` or None if `base` is not a parent of `file`.
+	* If `file` or `base` are not absolute, they are first resolved against the current working directory. */
+	def relativizeFile(base: File, file: File): Option[File] = relativize(base, file).map { path => new File(path) }
+
 	/** Returns the path for `file` relative to directory `base` or None if `base` is not a parent of `file`.
 	* If `file` or `base` are not absolute, they are first resolved against the current working directory. */
 	def relativize(base: File, file: File): Option[String] =
