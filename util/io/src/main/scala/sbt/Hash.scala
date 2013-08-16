@@ -9,6 +9,8 @@ import java.net.{URI,URL}
 object Hash
 {
 	private val BufferSize = 8192
+
+	/** Converts an array of `bytes` to a hexadecimal representation String.*/
 	def toHex(bytes: Array[Byte]): String =
 	{
 		val buffer = new StringBuilder(bytes.length * 2)
@@ -21,6 +23,9 @@ object Hash
 		}
 		buffer.toString
 	}
+
+	/** Converts the provided hexadecimal representation `hex` to an array of bytes.
+	* The hexadecimal representation must have an even number of characters in the range 0-9, a-f, or A-F. */
 	def fromHex(hex: String): Array[Byte] =
 	{
 		require((hex.length & 1) == 0, "Hex string must have length 2n.")
@@ -33,8 +38,14 @@ object Hash
 		}
 		array
 	}
+
+	/** Truncates the last half of `s` if the string has at least four characters.  Otherwise, the original string is returned. */
 	def halve(s: String): String = if(s.length > 3) s.substring(0, s.length / 2) else s
+
+	/** Computes the SHA-1 hash of `s` and returns the first `i` characters of the hexadecimal representation of the hash. */
 	def trimHashString(s: String, i: Int): String = toHex(apply(s)).take(i)
+
+	/** Computes the SHA-1 hash of `s` and truncates the hexadecimal representation of the hash via [[halve]]. */
 	def halfHashString(s: String): String = halve(toHex(apply(s)))
 
 	/** Calculates the SHA-1 hash of the given String.*/
