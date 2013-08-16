@@ -27,6 +27,7 @@ object Docs
 //		siteIncludeSxr("sxr") ++
 		ghPagesSettings ++
 		Seq(
+			SphinxSupport.sphinxEnv in SphinxSupport.Sphinx <<= sphinxEnvironmentVariables,
 			SphinxSupport.sphinxIncremental in SphinxSupport.Sphinx := true,
 			// TODO: set to true with newer sphinx plugin release
 			SphinxSupport.enableOutput in SphinxSupport.generatePdf := false
@@ -43,6 +44,23 @@ object Docs
 		mappings in sxr <<= sxr.map(dir => Path.allSubpaths(dir).toSeq),
 		site.addMappingsToSiteDir(mappings in sxr, prefix)
 	)
+
+	def sphinxEnvironmentVariables = (scalaVersion, version) map { (scalaV, sbtV) =>
+		// major.minor
+		def release(v: String): String = CrossVersion.partialVersion(v) match {
+			case Some((major,minor)) => major + "." + minor
+			case None => v
+		}
+		Map[String,String](
+			"sbt.full.version" -> sbtV,
+			"sbt.partial.version" -> release(sbtV),
+			"sbt.site.version" -> sbtV.takeWhile(_ != '-'),
+			"sbt.binary.version" -> CrossVersion.binarySbtVersion(sbtV),
+			"scala.full.version" -> scalaV,
+			"scala.partial.version" -> release(scalaV),
+			"scala.binary.version" -> CrossVersion.binaryScalaVersion(scalaV)
+		)
+	}
 
 	def synchLocalImpl = (ghkeys.privateMappings, ghkeys.updatedRepository, version, isSnapshot, streams, cnameFile) map { (mappings, repo, v, snap, s, cname) =>
 		val versioned = repo / v
