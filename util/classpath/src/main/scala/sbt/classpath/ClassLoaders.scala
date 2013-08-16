@@ -105,6 +105,8 @@ final class FilteredLoader(parent: ClassLoader, filter: ClassFilter) extends Cla
 			throw new ClassNotFoundException(className)
 	}
 }
+
+/** Defines a filter on class names. */
 trait ClassFilter
 {
 	def include(className: String): Boolean
@@ -114,18 +116,31 @@ abstract class PackageFilter(packages: Iterable[String]) extends ClassFilter
 	require(packages.forall(_.endsWith(".")))
 	protected final def matches(className: String): Boolean = packages.exists(className.startsWith)
 }
+/** Excludes class names that begin with one of the packages in `exclude`.
+* Each package name in `packages` must end with a `.` */
 final class ExcludePackagesFilter(exclude: Iterable[String]) extends PackageFilter(exclude)
 {
 	def include(className: String): Boolean = !matches(className)
 }
+
+/** Includes class names that begin with one of the packages in `include`.
+* Each package name in `include` must end with a `.` */
 final class IncludePackagesFilter(include: Iterable[String]) extends PackageFilter(include)
 {
 	def include(className: String): Boolean = matches(className)
 }
 
+/** Configures a [[NativeCopyLoader]].
+* The loader will provide native libraries listed in `explicitLibraries` and on `searchPaths` by copying them to `tempDirectory`.
+* If `tempDirectory` is unique to the class loader, this ensures that the class loader gets a unique path for
+* the native library and avoids the restriction on a native library being loaded by a single class loader. */
 final class NativeCopyConfig(val tempDirectory: File, val explicitLibraries: Seq[File], val searchPaths: Seq[File])
+
+/** Loads native libraries from a temporary location in order to work around the jvm native library uniqueness restriction.
+* See [[NativeCopyConfig]] for configuration details. */
 trait NativeCopyLoader extends ClassLoader
 {
+	/** Configures this loader.  See [[NativeCopyConfig]] for details. */
 	protected val config: NativeCopyConfig
 	import config._
 	
