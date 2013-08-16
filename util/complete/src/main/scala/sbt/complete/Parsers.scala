@@ -18,7 +18,8 @@ trait Parsers
 	lazy val DigitSet = Set("0","1","2","3","4","5","6","7","8","9")
 	lazy val Digit = charClass(_.isDigit, "digit") examples DigitSet
 	lazy val HexDigitSet = Set('0','1','2','3','4','5','6','7','8','9','A','B','C','D','E','F')
-	lazy val HexDigit = charClass(HexDigitSet, "hex") examples HexDigitSet.map(_.toString)
+	lazy val HexDigit = charClass(c => HexDigitSet(c.toUpper), "hex digit") examples HexDigitSet.map(_.toString)
+
 	lazy val Letter = charClass(_.isLetter, "letter")
 	def IDStart = Letter
 	lazy val IDChar = charClass(isIDChar, "ID character")
