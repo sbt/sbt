@@ -7,6 +7,7 @@ package classpath
 import java.net.URL
 import java.util.Enumeration
 
+/** A class loader that always fails to load classes and resources. */
 final class NullLoader extends ClassLoader
 {
 	override final def loadClass(className: String, resolve: Boolean): Class[_] = throw new ClassNotFoundException("No classes can be loaded from the null loader")
@@ -14,7 +15,20 @@ final class NullLoader extends ClassLoader
 	override def getResources(name: String): Enumeration[URL] = null
 }
 
+/** Exception thrown when `loaderA` and `loaderB` load a different Class for the same name. */
 class DifferentLoaders(message: String, val loaderA: ClassLoader, val loaderB: ClassLoader) extends ClassNotFoundException(message)
+
+/** A ClassLoader with two parents `parentA` and `parentB`.  The predicates direct lookups towards one parent or the other.
+*
+* If `aOnlyClasses` returns `true` for a class name, class lookup delegates to `parentA` only.
+* Otherwise, if `bOnlyClasses` returns `true` for a class name, class lookup delegates to `parentB` only.
+* If both `aOnlyClasses` and `bOnlyClasses` are `false` for a given class name, both class loaders must load the same Class or
+* a [[DifferentLoaders]] exception is thrown.
+*
+* If `aOnlyResources` is `true` for a resource path, lookup delegates to `parentA` only.
+* Otherwise, if `bOnlyResources` is `true` for a resource path, lookup delegates to `parentB` only.
+* If neither are `true` for a resource path and either `parentA` or `parentB` return a valid URL, that valid URL is returned.
+**/
 class DualLoader(parentA: ClassLoader, aOnlyClasses: String => Boolean, aOnlyResources: String => Boolean,
 	parentB: ClassLoader, bOnlyClasses: String => Boolean, bOnlyResources: String => Boolean) extends ClassLoader(new NullLoader)
 {
@@ -76,6 +90,7 @@ class DualLoader(parentA: ClassLoader, aOnlyClasses: String => Boolean, aOnlyRes
 	}
 }
 
+/** Concatenates `a` and `b` into a single `Enumeration`.*/
 final class DualEnumeration[T](a: Enumeration[T], b: Enumeration[T]) extends Enumeration[T]
 {
 	// invariant: current.hasMoreElements or current eq b
