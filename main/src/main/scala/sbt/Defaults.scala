@@ -659,6 +659,7 @@ object Defaults extends BuildCommon
 	def docSetting(key: TaskKey[File]) = docTaskSettings(key)
 	def docTaskSettings(key: TaskKey[File] = doc): Seq[Setting[_]] = inTask(key)(Seq(
 		apiMappings ++= { if(autoAPIMappings.value) APIMappings.extract(dependencyClasspath.value, streams.value.log).toMap else Map.empty[File,URL] },
+		fileInputOptions := Seq("-doc-root-content", "-diagrams-dot-path"),
 		key in TaskGlobal := {
 			val s = streams.value
 			val cs = compilers.value
@@ -671,13 +672,14 @@ object Defaults extends BuildCommon
 			val hasJava = srcs.exists(_.name.endsWith(".java"))
 			val cp = data(dependencyClasspath.value).toList
 			val label = nameForSrc(configuration.value.name)
+			val fiOpts = fileInputOptions.value
 			val (options, runDoc) =
 				if(hasScala)
 					(sOpts ++ Opts.doc.externalAPI(xapis), // can't put the .value calls directly here until 2.10.2
-						Doc.scaladoc(label, s.cacheDirectory / "scala", cs.scalac.onArgs(exported(s, "scaladoc"))))
+						Doc.scaladoc(label, s.cacheDirectory / "scala", cs.scalac.onArgs(exported(s, "scaladoc")), fiOpts))
 				else if(hasJava)
 					(jOpts,
-						Doc.javadoc(label, s.cacheDirectory / "java", cs.javac.onArgs(exported(s, "javadoc"))))
+						Doc.javadoc(label, s.cacheDirectory / "java", cs.javac.onArgs(exported(s, "javadoc")), fiOpts))
 				else
 					(Nil, RawCompileLike.nop)
 			runDoc(srcs, cp, out, options, maxErrors.value, s.log)
