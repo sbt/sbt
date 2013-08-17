@@ -17,12 +17,15 @@ package sbt
 
 object Doc
 {
-		import RawCompileLike._
+	import RawCompileLike._
 	def scaladoc(label: String, cache: File, compiler: AnalyzingCompiler): Gen =
-		cached(cache, prepare(label + " Scala API documentation", compiler.doc))
-
+		scaladoc(label, cache, compiler, Seq())
+	def scaladoc(label: String, cache: File, compiler: AnalyzingCompiler, fileInputOptions: Seq[String]): Gen =
+		cached(cache, fileInputOptions, prepare(label + " Scala API documentation", compiler.doc))
 	def javadoc(label: String, cache: File, doc: sbt.compiler.Javadoc): Gen =
-		cached(cache, prepare(label + " Java API documentation", filterSources(javaSourcesOnly, doc.doc)))
+		javadoc(label, cache, doc, Seq())
+	def javadoc(label: String, cache: File, doc: sbt.compiler.Javadoc, fileInputOptions: Seq[String]): Gen =
+		cached(cache, fileInputOptions, prepare(label + " Java API documentation", filterSources(javaSourcesOnly, doc.doc)))
 
 	val javaSourcesOnly: File => Boolean = _.getName.endsWith(".java")
 
