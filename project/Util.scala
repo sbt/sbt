@@ -174,11 +174,13 @@ object Common
 	lazy val sbinary = libraryDependencies <+= Util.nightly211(n => "org.scala-tools.sbinary" % "sbinary" % "0.4.2" cross(if(n) CrossVersion.full else CrossVersion.binary))
 	lazy val scalaCompiler = libraryDependencies <+= scalaVersion(sv => "org.scala-lang" % "scala-compiler" % sv)
 	lazy val testInterface = lib("org.scala-sbt" % "test-interface" % "1.0")
-	def libModular(name: String) = libraryDependencies <++= (scalaVersion, scalaOrganization)( (sv,o) =>
-		if(sv.startsWith("2.11.")) (o % name % sv) :: Nil else Nil
-	)
-	lazy val scalaXml = libModular("scala-xml")
-	lazy val scalaParsers = libModular("scala-parser-combinators")
+	private def scala211Module(name: String, moduleVersion: String) =
+		libraryDependencies <++= (scalaVersion)( scalaVersion =>
+			if (scalaVersion startsWith "2.11.") ("org.scala-lang.modules" %% name % moduleVersion) :: Nil
+			else Nil
+		)
+	lazy val scalaXml = scala211Module("scala-xml", "1.0-RC2")
+	lazy val scalaParsers = scala211Module("scala-parser-combinators", "1.0-RC1")
 }
 object Licensed
 {
