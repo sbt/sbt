@@ -59,7 +59,7 @@ sealed trait ProjectDefinition[PR <: ProjectReference]
 sealed trait Project extends ProjectDefinition[ProjectReference]
 {
 	def copy(id: String = id, base: File = base, aggregate: => Seq[ProjectReference] = aggregate, dependencies: => Seq[ClasspathDep[ProjectReference]] = dependencies,
-		delegates: => Seq[ProjectReference] = delegates, settings: => Seq[Setting[_]] = settings, configurations: Seq[Configuration] = configurations,
+		delegates: => Seq[ProjectReference] = delegates, settings: => Seq[Setting[_]] = settings: Seq[Setting[_]], configurations: Seq[Configuration] = configurations,
 		auto: AddSettings = auto): Project =
 			Project(id, base, aggregate = aggregate, dependencies = dependencies, delegates = delegates, settings, configurations, auto)
 

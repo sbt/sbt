@@ -262,10 +262,10 @@ object TaskMacro
 		}
 
 		def expand(nme: String, tpe: Type, tree: Tree): Converted[c.type] = nme match {
-			case WrapInitTaskName => Converted.Success(wrapInitTask(tree)(c.WeakTypeTag(tpe)))
-			case ParserInput.WrapInitName => Converted.Success(wrapInitParser(tree)(c.WeakTypeTag(tpe)))
-			case WrapInitInputName => Converted.Success(wrapInitInput(tree)(c.WeakTypeTag(tpe)))
-			case WrapInputName => Converted.Success(wrapInput(tree)(c.WeakTypeTag(tpe)))
+			case WrapInitTaskName => Converted.Success[c.type](wrapInitTask(tree)(c.WeakTypeTag(tpe)))
+			case ParserInput.WrapInitName => Converted.Success[c.type](wrapInitParser(tree)(c.WeakTypeTag(tpe)))
+			case WrapInitInputName => Converted.Success[c.type](wrapInitInput(tree)(c.WeakTypeTag(tpe)))
+			case WrapInputName => Converted.Success[c.type](wrapInput(tree)(c.WeakTypeTag(tpe)))
 			case _ => Converted.NotApplicable
 		}
 		val util = ContextUtil[c.type](c)

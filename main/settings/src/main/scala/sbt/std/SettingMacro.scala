@@ -25,10 +25,10 @@ object InitializeConvert extends Convert
 		{
 			val i = c.Expr[Initialize[T]](in)
 			val t = c.universe.reify( i.splice ).tree
-			Converted.Success(t)
+			Converted.Success[c.type](t)
 		}
 		else if(nme == InputWrapper.WrapTaskName || nme == InputWrapper.WrapInitTaskName)
-			Converted.Failure(in.pos, "A setting cannot depend on a task")
+			Converted.Failure[c.type](in.pos, "A setting cannot depend on a task")
 		else
 			Converted.NotApplicable
 }
