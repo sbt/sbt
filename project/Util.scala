@@ -50,7 +50,8 @@ object Util
 	def testDependencies = libraryDependencies <++= includeTestDependencies { incl =>
 		if(incl) Seq(
 			"org.scalacheck" %% "scalacheck" % "1.10.0" % "test",
-			"org.specs2" %% "specs2" % "1.12.3" % "test"
+			"org.specs2" %% "specs2" % "1.12.3" % "test",
+			"junit" % "junit" % "4.11" % "test"
 		)
 		else Seq()
 	}

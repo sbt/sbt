@@ -96,7 +96,7 @@ object Sbt extends Build
 
 		// Compiler-side interface to compiler that is compiled against the compiler being used either in advance or on the fly.
 		//   Includes API and Analyzer phases that extract source API and relationships.
-	lazy val compileInterfaceSub = baseProject(compilePath / "interface", "Compiler Interface") dependsOn(interfaceSub, ioSub % "test->test", logSub % "test->test", launchSub % "test->test") settings( compileInterfaceSettings : _*)
+	lazy val compileInterfaceSub = baseProject(compilePath / "interface", "Compiler Interface") dependsOn(interfaceSub, ioSub % "test->test", logSub % "test->test", launchSub % "test->test", apiSub % "test->test") settings( compileInterfaceSettings : _*)
 	lazy val precompiled282 = precompiled("2.8.2")
 	lazy val precompiled292 = precompiled("2.9.2")
 	lazy val precompiled293 = precompiled("2.9.3")
@@ -254,12 +254,15 @@ object Sbt extends Build
 		ivyScala ~= { _.map(_.copy(checkExplicit = false, overrideScalaVersion = false)) },
 		conflictWarning ~= { _.copy(filter = const(false)) },
 		exportedProducts in Compile := Nil,
-		exportedProducts in Test := Nil,
 		libraryDependencies <+= scalaVersion( "org.scala-lang" % "scala-compiler" % _ % "provided")
 	)
 	//
 	def compileInterfaceSettings: Seq[Setting[_]] = precompiledSettings ++ Seq[Setting[_]](
 		exportJars := true,
+		// we need to fork because in unit tests we set usejavacp = true which means
+		// we are expecting all of our dependencies to be on classpath so Scala compiler
+		// can use them while constructing its own classpath for compilation
+		fork in Test := true,
 		artifact in (Compile, packageSrc) := Artifact(srcID).copy(configurations = Compile :: Nil).extra("e:component" -> srcID)
 	)
 	def compilerSettings = Seq(
@@ -271,7 +274,10 @@ object Sbt extends Build
 		scalaVersion <<= (scalaVersion in ThisBuild) { sbtScalaV =>
 			assert(sbtScalaV != scalav, "Precompiled compiler interface cannot have the same Scala version (" + scalav + ") as sbt.")
 			scalav
-		}
+		},
+		// we disable compiling and running tests in precompiled subprojects of compiler interface
+		// so we do not need to worry about cross-versioning testing dependencies
+		sources in Test := Nil
 	)
 	def ioSettings: Seq[Setting[_]] = Seq(
 		libraryDependencies <+= scalaVersion("org.scala-lang" % "scala-compiler" % _ % "test")
