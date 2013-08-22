@@ -81,7 +81,7 @@ Some especially popular plugins are:
 Creating a Plugin
 -----------------
 
-A minimal plugin is a Scala library that is built against the version of Scala that sbt runs, which is currently |scalaVersion|.
+A minimal plugin is a Scala library that is built against the version of Scala for sbt itself, which is currently |scalaVersion|.
 Nothing special needs to be done for this type of plugin.
 It can be published as a normal project and declared in `project/plugins.sbt` like a normal dependency (without `addSbtPlugin`).
 

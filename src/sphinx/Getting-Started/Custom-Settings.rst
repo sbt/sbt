@@ -40,12 +40,9 @@ reload, while a task is re-computed for every "task execution" (every
 time someone types a command at the sbt interactive prompt or in batch
 mode).
 
-Keys may be defined in a `.scala` file (as described in :doc:`.scala build definition <Full-Def>`),
-or in a plugin (as described in
-:doc:`using plugins <Using-Plugins>`). Any `val` found in
-a `Build` object in your `.scala` build definition files, or any
-`val` found in a `Plugin` object from a plugin, will be imported
-automatically into your `.sbt` files.
+Keys may be defined in a `.sbt file <Basic-Def>` file, :doc:`.scala file <Full-Def>`, or in a :doc:`plugin <Using-Plugins>`.
+Any `val` found in a `Build` object in your `.scala` build definition files or any
+`val` found in a `Plugin` object from a plugin will be imported automatically into your `.sbt` files.
 
 Implementing a task
 -------------------

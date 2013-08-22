@@ -102,9 +102,9 @@ Now becomes part of your `build.sbt` file with lines like:
 Currently, a `project/build.properties` is still needed to explicitly
 select the sbt version. For example:
 
-.. code-block:: text
+.. parsed-literal::
 
-    sbt.version=|release|
+    sbt.version=\ |release|
 
 Run sbt |version|
 -----------------

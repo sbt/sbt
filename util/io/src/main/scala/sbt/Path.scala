@@ -74,33 +74,8 @@ object Path extends PathExtra
 	/** The separator character of the platform.*/
 	val sep = java.io.File.separatorChar
 
-	def relativizeFile(baseFile: File, file: File): Option[File] = relativize(baseFile, file).map { path => new File(path) }
-	private[sbt] def relativize(baseFile: File, file: File): Option[String] =
-	{
-		val pathString = file.getAbsolutePath
-		baseFileString(baseFile) flatMap
-		{
-			baseString =>
-			{
-				if(pathString.startsWith(baseString))
-					Some(pathString.substring(baseString.length))
-				else
-					None
-			}
-		}
-	}
-	private def baseFileString(baseFile: File): Option[String] =
-		if(baseFile.isDirectory)
-		{
-			val cp = baseFile.getAbsolutePath
-			assert(cp.length > 0)
-			if(cp.charAt(cp.length - 1) == File.separatorChar)
-				Some(cp)
-			else
-				Some(cp + File.separatorChar)
-		}
-		else
-			None
+	@deprecated("Use IO.relativizeFile", "0.13.1")
+	def relativizeFile(baseFile: File, file: File): Option[File] = IO.relativizeFile(baseFile, file)
 
 	def toURLs(files: Seq[File]): Array[URL] = files.map(_.toURI.toURL).toArray
 }

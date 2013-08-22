@@ -5,7 +5,10 @@ package sbt
 
 object ModuleUtilities
 {
-	def getObject(className: String, loader: ClassLoader) =
+	/** Reflectively loads and returns the companion object for top-level class `className` from `loader`.
+	* The class name should not include the `$` that scalac appends to the underlying jvm class for 
+	* a companion object. */
+	def getObject(className: String, loader: ClassLoader): AnyRef =
 	{
 		val obj = Class.forName(className + "$", true, loader)
 		val singletonField = obj.getField("MODULE$")
