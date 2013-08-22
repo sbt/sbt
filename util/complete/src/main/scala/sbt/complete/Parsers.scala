@@ -27,7 +27,7 @@ trait Parsers
 	lazy val HexDigitSet = Set('0','1','2','3','4','5','6','7','8','9','A','B','C','D','E','F')
 
 	/** Parses a single hexadecimal digit (0-9, a-f, A-F). */
-	lazy val HexDigit = charClass(c => HexDigitSet(c.toUpper), "hex digit") examples HexDigitSet.map(_.toString)
+	lazy val HexDigit = charClass(HexDigitSet, "hex") examples HexDigitSet.map(_.toString)
 
 	/** Parses a single letter, according to Char.isLetter, into a Char. */
 	lazy val Letter = charClass(_.isLetter, "letter")
