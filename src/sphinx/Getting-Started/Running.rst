@@ -45,9 +45,9 @@ in quotes. For example,
 
     $ sbt clean compile "testOnly TestA TestB"
 
-In this example, `test-only` has arguments, `TestA` and `TestB`.
+In this example, `testOnly` has arguments, `TestA` and `TestB`.
 The commands will be run in sequence (`clean`, `compile`, then
-`test-only`).
+`testOnly`).
 
 Continuous build and test
 -------------------------

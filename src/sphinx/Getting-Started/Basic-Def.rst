@@ -11,14 +11,11 @@ Getting Started Guide.
 
 An sbt build definition can contain files ending in `.sbt`, located in
 the base directory, and files ending in `.scala`, located in the
-`project` subdirectory of the base directory.
+`project/` subdirectory the base directory.
 
-You can use either one exclusively, or use both. A good approach is to
-use `.sbt` files for most purposes, and use `.scala` files only to
-contain what can't be done in `.sbt`.
-
-This page discusses `.sbt` files. See :doc:`.scala build definition <Full-Def>` (later in Getting Started) for
-more on `.scala` files and how they relate to `.sbt` files.
+This page discusses `.sbt` files, which are suitable for most cases.
+The `.scala` files are typically used for sharing code across `.sbt` files and for larger build definitions.
+See :doc:`.scala build definition <Full-Def>` (later in Getting Started) for more on `.scala` files.
 
 What is a build definition?
 ---------------------------
