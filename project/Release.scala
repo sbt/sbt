@@ -11,7 +11,7 @@ object Release extends Build
 	lazy val deployLauncher = TaskKey[Unit]("deploy-launcher", "Upload the launcher to its traditional location for compatibility with existing scripts.")
 
 
-	val PublishRepoHost = "typesafe.artifactoryonline.com"
+	val PublishRepoHost = "private-repo.typesafe.com"
 
 	def settings(nonRoots: => Seq[ProjectReference], launcher: ScopedTask[File]): Seq[Setting[_]] =
 		if(CredentialsFile.exists) releaseSettings(nonRoots, launcher) else Nil
