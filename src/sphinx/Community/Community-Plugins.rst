@@ -255,6 +255,8 @@ Utility plugins
    https://github.com/sbt/sbt-properties
 -  sbt-multi-publish (publish to more than one repository simultaneously):
    https://github.com/davidharcombe/sbt-multi-publish
+-  sbt-about-plugins (shows some details about plugins loaded):
+   https://github.com/jozic/sbt-about-plugins
 
 Code coverage plugins
 ~~~~~~~~~~~~~~~~~~~~~
