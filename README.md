@@ -38,8 +38,8 @@ object MyBuild extends Build {
 
 Check out the [example project] for a skeleton build setup.
 
-Tasks & Settings
-----------------
+Tasks
+-----
 
  * `dependency-graph`: Shows an ASCII graph of the project's dependencies on the sbt console
  * `dependency-graph-ml`: Generates a .graphml file with the project's dependencies to `target/dependencies-<config>.graphml`.
@@ -50,20 +50,33 @@ Tasks & Settings
  * `what-depends-on <organization> <module> <revision>`: Find out what depends on an artifact. Shows a reverse dependency
    tree for the selected module.
  * `dependency-license-info`: show dependencies grouped by declared license
- * `filter-scala-library`: Defines if the scala library should be excluded from the output of the dependency-* functions.
-   If `true`, instead of showing the dependency `"[S]"` is appended to the artifact name. Set to `false` if
-   you want the scala-library dependency to appear in the output. (default: true)
- * `dependency-graph-ml-file`: a setting which allows configuring the output path of `dependency-graph-ml`.
- * `dependency-dot-file`: a setting which allows configuring the output path of `dependency-dot`.
- * `dependency-dot-header`: a setting to customize the header of the dot file (e.g. to set your preferred node shapes).
- * `dependency-dot-nodes-label`: defines the formation of a node label
-   (default set to `[organisation]<BR/><B>[name]</B><BR/>[version]`)
  * `ivy-report`: let's ivy generate the resolution report for you project. Use
    `show ivy-report` for the filename of the generated report
 
 All tasks can be scoped to a configuration to get the report for a specific configuration. `test:dependency-graph`,
 for example, prints the dependencies in the `test` configuration. If you don't specify any configuration, `compile` is
 assumed as usual.
+
+
+Configuration settings
+----------------------
+ 
+ * `filterScalaLibrary`: Defines if the scala library should be excluded from the output of the dependency-* functions.
+   If `true`, instead of showing the dependency `"[S]"` is appended to the artifact name. Set to `false` if
+   you want the scala-library dependency to appear in the output. (default: true)
+ * `dependencyGraphMLFile`: a setting which allows configuring the output path of `dependency-graph-ml`.
+ * `dependencyDotFile`: a setting which allows configuring the output path of `dependency-dot`.
+ * `dependencyDotHeader`: a setting to customize the header of the dot file (e.g. to set your preferred node shapes).
+ * `dependencyDotNodeLabel`: defines the format of a node label
+   (default set to `[organisation]<BR/><B>[name]</B><BR/>[version]`)
+
+E.g. in `build.sbt` you can change configuration settings like this:
+
+```scala
+filterScalaLibrary := false // include scala library in output
+
+dependencyDotFile := file("dependencies.dot") //render dot file to `./dependencies.dot`
+```
 
 Standalone usage
 ----------------
