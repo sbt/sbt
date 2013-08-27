@@ -121,6 +121,29 @@ The `consoleProject` command is configured separately by `initialCommands in con
 
 
 .. howto::
+   :id: cleanup
+   :title: Define the commands evaluated when exiting the Scala REPL
+   :type: setting
+   
+   cleanupCommands in console := """println("Bye!")"""
+
+Set `cleanupCommands in console` to set the statements to evaluate after exiting the Scala REPL started by `console` and `consoleQuick`.  To configure `consoleQuick` separately, use `cleanupCommands in consoleQuick`.
+For example,
+
+::
+
+    cleanupCommands in console := """println("Bye from console")"""
+
+    cleanupCommands in consoleQuick := """println("Bye from consoleQuick")"""
+
+The `consoleProject` command is configured separately by `cleanupCommands in consoleProject`.  It does not use the value from `cleanupCommands in console` by default.  For example,
+
+::
+
+    cleanupCommands in consoleProject := """println("Bye from consoleProject")"""
+
+
+.. howto::
    :id: embed
    :title: Use the Scala REPL from project code
 
