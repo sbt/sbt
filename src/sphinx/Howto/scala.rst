@@ -2,8 +2,6 @@
  Configure and use Scala
 =========================
 
-By default, sbt's interactive mode is started when no commands are provided on the command line or when the `shell` command is invoked.
-
 .. howto::
    :id: version
    :title: Set the Scala version used for building the project
