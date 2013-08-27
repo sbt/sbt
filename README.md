@@ -6,7 +6,7 @@ Visualize your project's dependencies.
 How To Use
 ----------
 
-For sbt 0.11/0.12, add sbt-dependency-graph as a dependency in `project/plugins.sbt`:
+For sbt 0.11/0.12/0.13, add sbt-dependency-graph as a dependency in `project/plugins.sbt`:
 
 ```scala
 addSbtPlugin("net.virtual-void" % "sbt-dependency-graph" % "0.7.4")
