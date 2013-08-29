@@ -19,28 +19,35 @@ import inc._
 	import xsbti.compile.{CompileOrder, DependencyChanges, GlobalsCache}
 	import CompileOrder.{JavaThenScala, Mixed, ScalaThenJava}
 
-final class CompileConfiguration(val sources: Seq[File], val classpath: Seq[File],
+final class CompileConfiguration(val sources: Seq[File], val deletedSources: Option[Seq[File]], val classpath: Seq[File],
 	val previousAnalysis: Analysis, val previousSetup: Option[CompileSetup], val currentSetup: CompileSetup, val getAnalysis: File => Option[Analysis], val definesClass: DefinesClass,
 	val maxErrors: Int, val compiler: AnalyzingCompiler, val javac: xsbti.compile.JavaCompiler, val cache: GlobalsCache)
 
 class AggressiveCompile(cacheFile: File)
 {
-	def apply(compiler: AnalyzingCompiler, javac: xsbti.compile.JavaCompiler, sources: Seq[File], classpath: Seq[File], outputDirectory: File, cache: GlobalsCache, options: Seq[String] = Nil, javacOptions: Seq[String] = Nil, analysisMap: File => Option[Analysis] = const(None), definesClass: DefinesClass = Locate.definesClass _, maxErrors: Int = 100, compileOrder: CompileOrder = Mixed, skip: Boolean = false)(implicit log: Logger): Analysis =
+	def apply(compiler: AnalyzingCompiler, javac: xsbti.compile.JavaCompiler, sources: Seq[File], classpath: Seq[File], outputDirectory: File, cache: GlobalsCache, options: Seq[String] = Nil, javacOptions: Seq[String] = Nil, analysisMap: File => Option[Analysis] = const(None), definesClass: DefinesClass = Locate.definesClass _, maxErrors: Int = 100, explicitDeletes: Boolean = false, compileOrder: CompileOrder = Mixed, skip: Boolean = false)(implicit log: Logger): Analysis =
 	{
 		val setup = new CompileSetup(outputDirectory, new CompileOptions(options, javacOptions), compiler.scalaInstance.actualVersion, compileOrder)
-		compile1(sources, classpath, setup, store, analysisMap, definesClass, compiler, javac, maxErrors, skip, cache)
+		compile1(sources, classpath, setup, store, analysisMap, definesClass, compiler, javac, maxErrors, explicitDeletes, skip, cache)
 	}
 
 	def withBootclasspath(args: CompilerArguments, classpath: Seq[File]): Seq[File] =
 		args.bootClasspathFor(classpath) ++ args.extClasspath ++ args.finishClasspath(classpath)
 
-	def compile1(sources: Seq[File], classpath: Seq[File], setup: CompileSetup, store: AnalysisStore, analysis: File => Option[Analysis], definesClass: DefinesClass, compiler: AnalyzingCompiler, javac: xsbti.compile.JavaCompiler, maxErrors: Int, skip: Boolean, cache: GlobalsCache)(implicit log: Logger): Analysis =
+	def compile1(sources: Seq[File], classpath: Seq[File], setup: CompileSetup, store: AnalysisStore, analysis: File => Option[Analysis], definesClass: DefinesClass, compiler: AnalyzingCompiler, javac: xsbti.compile.JavaCompiler, maxErrors: Int, explicitDeletes: Boolean, skip: Boolean, cache: GlobalsCache)(implicit log: Logger): Analysis =
 	{
 		val (previousAnalysis, previousSetup) = extract(store.get())
 		if(skip)
 			previousAnalysis
 		else {
-			val config = new CompileConfiguration(sources, classpath, previousAnalysis, previousSetup, setup, analysis, definesClass, maxErrors, compiler, javac, cache)
+			val (existingSources, deletedSources) =
+				if (explicitDeletes) {
+					val (existing, deleted) = sources partition (_.exists)
+					(existing, Some(deleted))
+				} else {
+					(sources, None)
+				}
+			val config = new CompileConfiguration(existingSources, deletedSources, classpath, previousAnalysis, previousSetup, setup, analysis, definesClass, maxErrors, compiler, javac, cache)
 			val (modified, result) = compile2(config)
 			if(modified)
 				store.set(result, setup)
@@ -89,11 +96,12 @@ class AggressiveCompile(cacheFile: File)
 		}
 		
 		val sourcesSet = sources.toSet
+		val deletedSourcesSet = deletedSources map (_.toSet)
 		val analysis = previousSetup match {
 			case Some(previous) if equiv.equiv(previous, currentSetup) => previousAnalysis
 			case _ => Incremental.prune(sourcesSet, previousAnalysis)
 		}
-		IncrementalCompile(sourcesSet, entry, compile0, analysis, getAnalysis, outputDirectory, log)
+		IncrementalCompile(sourcesSet, deletedSourcesSet, entry, compile0, analysis, getAnalysis, outputDirectory, log)
 	}
 	private[this] def timed[T](label: String, log: Logger)(t: => T): T =
 	{

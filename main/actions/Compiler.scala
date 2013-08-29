@@ -76,6 +76,7 @@ object Compiler
 			import in.incSetup._
 
 		val agg = new AggressiveCompile(cacheFile)
-		agg(scalac, javac, sources, classpath, classesDirectory, cache, options, javacOptions, analysisMap, definesClass, maxErrors, order, skip)(log)
+		val explicitDeletes = false
+		agg(scalac, javac, sources, classpath, classesDirectory, cache, options, javacOptions, analysisMap, definesClass, maxErrors, explicitDeletes, order, skip)(log)
 	}
 }
