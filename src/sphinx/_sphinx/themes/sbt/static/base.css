@@ -8,7 +8,6 @@
 	.box { font-family: 'Exo', sans-serif; font-size: 36px; font-weight: 400; color: rgba(255, 255, 255, 1); text-shadow:0 2px 0 #000000; line-height: 38px; margin-bottom: 20px;}
 	.small-box { font-size: 18px; line-height: 22px; font-weight: 300; color: #427380; text-shadow:0 2px 0 #0d262b;}
 	.bold { font-weight: 600; }
-	.hexagons { position: absolute; top: 60px; left: 490px; height: 385px; width: 252px; background: url('{{ site.baseurl }}/resources/images/hexagons.png') no-repeat center top; }
 	.light-strip { background: #f2f2eb; min-height: 200px;}
 	.under-main { background: #f2f2eb url('{{ site.baseurl }}/resources/images/bottom-main-bg.png') repeat-x; }
 	.darker-strip { background: #dfdfd9; min-height: 200px;}
