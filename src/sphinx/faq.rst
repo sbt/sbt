@@ -86,7 +86,7 @@ You may run `sbt console`.
 Build definitions
 -----------------
 
-What are the `:=`, `+=`, `++=`, and `~=` methods?
+What are the `:=`, `+=`, and `++=` methods?
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 These are methods on keys used to construct a `Setting` or a `Task`. The Getting
@@ -393,7 +393,10 @@ basic structure of defining `onLoad`:
     // Compose our new function 'f' with the existing transformation.
     {
       val f: State => State = ...
-      onLoad in Global ~= (f compose _)
+      onLoad in Global := {
+        val previous = (onLoad in Global).value
+        f compose previous
+      }
     }
 
 Example of project load/unload hooks
@@ -413,7 +416,10 @@ has been loaded and prints that number:
         println("Project load count: " + previous)
         s.put(key, previous + 1)
       }
-      onLoad in Global ~= (f compose _)
+      onLoad in Global := {
+        val previous = (onLoad in Global).value
+        f compose previous
+      }
     }
 
 Errors
@@ -455,16 +461,8 @@ A more subtle variation of this error occurs when using :doc:`scoped settings </
     // error: Reference to uninitialized setting
     settings = Defaults.defaultSettings ++ Seq(
       libraryDependencies += "commons-io" % "commons-io" % "1.2" % "test",
-      fullClasspath ~= (_.filterNot(_.data.name.contains("commons-io")))
+      fullClasspath := fullClasspath.value.filterNot(_.data.name.contains("commons-io"))
     )
-
-Generally, all of the setting definition methods can be expressed in terms of
-`:=`. To better understand the error, we can rewrite the setting as:
-
-::
-
-    // error: Reference to uninitialized setting
-    fullClasspath := fullClasspath.value.filterNot(_.data.name.contains("commons-io"))
 
 This setting varies between the test and compile scopes. The solution is
 use the scoped setting, both as the input to the initializer, and the
@@ -473,9 +471,6 @@ setting that we update.
 ::
 
     fullClasspath in Compile := (fullClasspath in Compile).value.filterNot(_.data.name.contains("commons-io"))
-
-    // or equivalently
-    fullClasspath in Compile ~= (_.filterNot(_.data.name.contains("commons-io")))
 
 Dependency Management
 ---------------------

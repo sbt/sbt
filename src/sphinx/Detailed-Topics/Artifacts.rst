@@ -56,8 +56,9 @@ To modify the type of the main artifact, for example:
 
 ::
 
-    artifact in (Compile, packageBin) ~= { (art: Artifact) =>
-      art.copy(`type` = "bundle")
+    artifact in (Compile, packageBin) := {
+      val previous: Artifact = (artifact in (Compile, packageBin)).value
+      previous.copy(`type` = "bundle")
     }
 
 The generated artifact name is determined by the `artifactName`
@@ -170,8 +171,9 @@ instead of the `.jar` file.
     publishArtifact in (Compile, packageBin) := false 
 
     // create an Artifact for publishing the .war file 
-    artifact in (Compile, packageWar) ~= { (art: Artifact) => 
-      art.copy(`type` = "war", extension = "war") 
+    artifact in (Compile, packageWar) := {
+      val previous: Artifact = (artifact in (Compile, packageWar)).value
+      previous.copy(`type` = "war", extension = "war") 
     } 
 
     // add the .war file to what gets published 

@@ -269,7 +269,8 @@ like a local directory.
 
 ::
 
-    buildDependencies in Global ~= {  deps =>
+    buildDependencies in Global := {
+      val deps = (buildDependencies in Global).value
       val oldURI = uri("...") // the URI to replace
       val newURI = uri("...") // the URI replacing oldURI
       def substitute(dep: ClasspathDep[ProjectRef]): ClasspathDep[ProjectRef] =

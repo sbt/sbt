@@ -241,13 +241,14 @@ This means that it can provide different logging based on the task that requests
 
 ::
 
-    extraLoggers ~= { currentFunction =>
+    extraLoggers := {
+      val currentFunction = extraLoggers.value
     	(key: ScopedKey[_]) => {
     		myCustomLogger(key) +: currentFunction(key)
     	}
     }
 
-Here, we take the current function for the setting `currentFunction` and provide a new function.
+Here, we take the current function `currentFunction` for the setting and provide a new function.
 The new function prepends our custom logger to the ones provided by the old function.
 
 .. howto::

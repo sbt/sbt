@@ -30,9 +30,7 @@ Dependencies in `lib` go on all the classpaths (for `compile`,
 `test`, `run`, and `console`). If you wanted to change the
 classpath for just one of those, you would adjust
 `dependencyClasspath in Compile` or `dependencyClasspath in Runtime`
-for example. You could use `~=` to get the previous classpath value,
-filter some entries out, and return a new classpath value. See :doc:`more about settings <More-About-Settings>`
-for details of `~=`.
+for example.
 
 There's nothing to add to `build.sbt` to use unmanaged dependencies,
 though you could change the `unmanagedBase` key if you'd like to use

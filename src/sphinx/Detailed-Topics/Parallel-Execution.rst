@@ -288,7 +288,10 @@ tags applied to it. Only the first computation is labeled.
 
     compile := myCompileTask.value
 
-    compile ~= { ... do some post processing ... }
+    compile := { 
+      val result = compile.value
+      ... do some post processing ...
+    }
 
 Is this desirable? expected? If not, what is a better, alternative
 behavior?
