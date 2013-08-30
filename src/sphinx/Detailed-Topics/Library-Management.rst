@@ -333,8 +333,9 @@ To define extra attributes on the current project:
 
 ::
 
-    projectID ~= { id =>
-        id extra("color" -> "blue", "component" -> "compiler-interface")
+    projectID := {
+        val previous = projectID.value
+        previous.extra("color" -> "blue", "component" -> "compiler-interface")
     }
 
 Inline Ivy XML

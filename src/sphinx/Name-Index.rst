@@ -98,7 +98,7 @@ Settings and Tasks
 See the :doc:`Getting Started Guide </Getting-Started/Basic-Def>` for
 details.
 
--  `:=`, `+=`, `++=`, `~=` These
+-  `:=`, `+=`, `++=` These
    construct a `Setting <../api/sbt/Init$Setting.html>`_,
    which is the fundamental type in the :doc:`settings </Getting-Started/Basic-Def>` system.
 -  `value` This uses the value of another setting or task in the definition of a new setting or task.
