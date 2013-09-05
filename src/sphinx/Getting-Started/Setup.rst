@@ -98,8 +98,8 @@ Create a script to run the jar, by creating `~/bin/sbt` with these contents:
 
 .. code-block:: console
 
-    $ SBT_OPTS="-Xms512M -Xmx1536M -Xss1M -XX:+CMSClassUnloadingEnabled -XX:MaxPermSize=256M"
-    $ java $SBT_OPTS -jar `dirname $0`/sbt-launch.jar "$@"
+    SBT_OPTS="-Xms512M -Xmx1536M -Xss1M -XX:+CMSClassUnloadingEnabled -XX:MaxPermSize=256M"
+    java $SBT_OPTS -jar `dirname $0`/sbt-launch.jar "$@"
 
 Make the script executable:
 
@@ -119,8 +119,8 @@ For **non-Cygwin users using the standard Windows terminal**, create a batch fil
 
 .. code-block:: console
 
-    $ set SCRIPT_DIR=%~dp0
-    $ java -Xms512M -Xmx1536M -Xss1M -XX:+CMSClassUnloadingEnabled -XX:MaxPermSize=256M -jar "%SCRIPT_DIR%sbt-launch.jar" %*
+    set SCRIPT_DIR=%~dp0
+    java -Xms512M -Xmx1536M -Xss1M -XX:+CMSClassUnloadingEnabled -XX:MaxPermSize=256M -jar "%SCRIPT_DIR%sbt-launch.jar" %*
 
 and put the downloaded `sbt-launch.jar`_ in the same directory as the batch file.
 
@@ -128,8 +128,8 @@ If using **Cygwin with the standard Windows terminal**, create a bash script `~/
 
 .. code-block:: console
 
-    $ SBT_OPTS="-Xms512M -Xmx1536M -Xss1M -XX:+CMSClassUnloadingEnabled -XX:MaxPermSize=256M"
-    $ java $SBT_OPTS -jar sbt-launch.jar "$@"
+    SBT_OPTS="-Xms512M -Xmx1536M -Xss1M -XX:+CMSClassUnloadingEnabled -XX:MaxPermSize=256M"
+    java $SBT_OPTS -jar sbt-launch.jar "$@"
 
 Replace `sbt-launch.jar` with the path to your downloaded `sbt-launch.jar`_ and remember to use `cygpath` if necessary.
 Make the script executable:
@@ -142,10 +142,10 @@ If using **Cygwin with an Ansi terminal** (supports Ansi escape sequences and is
 
 .. code-block:: console
 
-    $ SBT_OPTS="-Xms512M -Xmx1536M -Xss1M -XX:+CMSClassUnloadingEnabled -XX:MaxPermSize=256M"
-    $ stty -icanon min 1 -echo > /dev/null 2>&1
-    $ java -Djline.terminal=jline.UnixTerminal -Dsbt.cygwin=true $SBT_OPTS -jar sbt-launch.jar "$@"
-    $ stty icanon echo > /dev/null 2>&1
+    SBT_OPTS="-Xms512M -Xmx1536M -Xss1M -XX:+CMSClassUnloadingEnabled -XX:MaxPermSize=256M"
+    stty -icanon min 1 -echo > /dev/null 2>&1
+    java -Djline.terminal=jline.UnixTerminal -Dsbt.cygwin=true $SBT_OPTS -jar sbt-launch.jar "$@"
+    stty icanon echo > /dev/null 2>&1
 
 Replace `sbt-launch.jar` with the path to your downloaded `sbt-launch.jar`_ and remember to use `cygpath` if necessary.
 Then, make the script executable:
