@@ -12,6 +12,10 @@
 object Docs
 {
 	val cnameFile = SettingKey[File]("cname-file", "Location of the CNAME file for the website.")
+	val latestRelease = SettingKey[Boolean]("latest-release")
+
+	val siteExcludes = Set(".buildinfo", "objects.inv")
+	def siteInclude(f: File) = !siteExcludes.contains(f.getName)
 
 	val SnapshotPath = "snapshot"
 	val ReleasePath = "release"
@@ -37,6 +41,8 @@ object Docs
 		git.remoteRepo := "git@github.com:sbt/sbt.github.com.git",
 		ghkeys.synchLocal <<= synchLocalImpl,
 		cnameFile <<= (sourceDirectory in SphinxSupport.Sphinx) / "CNAME",
+		latestRelease in ThisBuild := false,
+		commands += setLatestRelease,
 		GitKeys.gitBranch in ghkeys.updatedRepository := Some("master")
 	)
 
@@ -62,19 +68,19 @@ object Docs
 		)
 	}
 
-	def synchLocalImpl = (ghkeys.privateMappings, ghkeys.updatedRepository, version, isSnapshot, streams, cnameFile) map { (mappings, repo, v, snap, s, cname) =>
+	def synchLocalImpl = (ghkeys.privateMappings, ghkeys.updatedRepository, version, isSnapshot, latestRelease, streams, cnameFile) map {
+		(mappings, repo, v, snap, latest, s, cname) =>
 		val versioned = repo / v
-		if(snap)
-			IO.delete(versioned)
-		else if(versioned.exists)
-			error("Site for " + v + " already exists: " + versioned.getAbsolutePath)
-		IO.copy(mappings map { case (file, target) => (file, versioned / target) })
+		IO.delete(versioned)
+		val toCopy = for( (file, target) <- mappings if siteInclude(file) ) yield (file, versioned / target)
+		IO.copy(toCopy)
 		IO.copyFile(cname, repo / cname.getName)
 		IO.touch(repo / ".nojekyll")
 		IO.write(repo / "versions.js", versionsJs(sortVersions(collectVersions(repo))))
-		if(!snap)
+		if(!snap && latest)
 			RootIndex(versioned / DocsPath / "home.html", repo / IndexHtml)
-		linkSite(repo, v, if(snap) SnapshotPath else ReleasePath, s.log)
+		if(snap || latest)
+			linkSite(repo, v, if(snap) SnapshotPath else ReleasePath, s.log)
 		s.log.info("Copied site to " + versioned)
 		repo
 	}
@@ -105,6 +111,11 @@ object Docs
 			case 0 => ()
 			case code => error("Could not create symbolic link '" + file.getAbsolutePath + "' with path " + path)
 		}
+
+	def setLatestRelease = Command.command("latest-release-docs") { state =>
+		Project.extract(state).append((latestRelease in ThisBuild := true) :: Nil, state)
+	}
+
 }
 object RootIndex
 {
