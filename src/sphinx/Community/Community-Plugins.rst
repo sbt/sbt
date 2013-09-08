@@ -124,10 +124,11 @@ Frontend development plugins
 -  sbt-yui-compressor: https://github.com/indrajitr/sbt-yui-compressor
 -  sbt-requirejs: https://github.com/scalatra/sbt-requirejs
 
-LWJGL (Light Weight Java Game Library) Plugin
+Game development plugins
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
--  sbt-lwjgl-plugin: https://github.com/philcali/sbt-lwjgl-plugin
+-  sbt-lwjgl-plugin (Light Weight Java Game Library): https://github.com/philcali/sbt-lwjgl-plugin
+-  sbt-scage-plugin (Scala Game Engine): https://github.com/mvallerie/sbt-scage-plugin
 
 Release plugins
 ~~~~~~~~~~~~~~~
