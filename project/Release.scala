@@ -13,10 +13,10 @@ object Release extends Build
 
 	val PublishRepoHost = "private-repo.typesafe.com"
 
-	def settings(nonRoots: => Seq[ProjectReference], launcher: ScopedTask[File]): Seq[Setting[_]] =
+	def settings(nonRoots: => Seq[ProjectReference], launcher: TaskKey[File]): Seq[Setting[_]] =
 		if(CredentialsFile.exists) releaseSettings(nonRoots, launcher) else Nil
 
-	def releaseSettings(nonRoots: => Seq[ProjectReference], launcher: ScopedTask[File]): Seq[Setting[_]] = Seq(
+	def releaseSettings(nonRoots: => Seq[ProjectReference], launcher: TaskKey[File]): Seq[Setting[_]] = Seq(
 		publishTo in ThisBuild <<= publishResolver,
 		remoteID <<= publishStatus("typesafe-ivy-" + _),
 		credentials in ThisBuild += Credentials(CredentialsFile),
@@ -36,7 +36,7 @@ object Release extends Build
 	// this is no longer strictly necessary, since the launcher is now published as normal
 	// however, existing scripts expect the launcher to be in a certain place and normal publishing adds "jars/" 
 	// to the published path
-	def deployLauncher(launcher: ScopedTask[File]) =
+	def deployLauncher(launcher: TaskKey[File]) =
 		(launcher, launcherRemotePath, credentials, remoteBase, streams) map { (launchJar, remotePath, creds, base, s) =>
 			val (uname, pwd) = getCredentials(creds, s.log)
 			val request = dispatch.classic.url(base) / remotePath <<< (launchJar, "binary/octet-stream") as (uname, pwd)
