@@ -38,11 +38,11 @@ See below for details on getting sbt sources and modifying the documentation.
 		$ git clone git://github.com/sbt/sbt.git
 		$ cd sbt
 
-3. The initial branch is the development branch 0.13, which contains the latest code for the next major sbt release.  To build a specific release or commit, switch to the associated tag.  The tag for the latest stable release is v0.12.4:
+3. The initial branch is the development branch 0.13, which contains the latest code for the next major sbt release.  To build a specific release or commit, switch to the associated tag.  The tag for the latest stable release is v0.13.0:
 
-		$ git checkout v0.12.4
+		$ git checkout v0.13.0
 
-	Note that sbt is always built with the previous stable release.  For example, the 0.13 branch is built with 0.12.4 and the v0.11.2 tag is built with 0.11.1.
+	Note that sbt is always built with the previous stable release.  For example, the 0.13 branch is built with 0.13.0 and the v0.13.0 tag is built with 0.12.4.
 
 4. To build the launcher and publish all components locally,
 
@@ -57,9 +57,9 @@ See below for details on getting sbt sources and modifying the documentation.
 
    (Note: sxr currently doesn't work for macros, so it doesn't work for sbt right now.)
 
-5. To use this locally built version of sbt, copy your stable `~/bin/sbt` script to `~/bin/xsbt` and change it to use the launcher jar in `<sbt>/target/`.  For the v0.12.4 tag, the full location is:
+5. To use this locally built version of sbt, copy your stable `~/bin/sbt` script to `~/bin/xsbt` and change it to use the launcher jar in `<sbt>/target/`.  For the v0.13.0 tag, the full location is:
 
-		<sbt>/target/sbt-launch-0.12.4.jar
+		<sbt>/target/sbt-launch-0.13.0.jar
 
 	If using the 0.13 development branch, the launcher is at:
 
