@@ -11,18 +11,20 @@ object Util
 	lazy val nightly211 = SettingKey[Boolean]("nightly-211")
 	lazy val includeTestDependencies = SettingKey[Boolean]("includeTestDependencies", "Doesn't declare test dependencies.")
 
-	def inAll(projects: => Seq[ProjectReference], key: ScopedSetting[Task[Unit]]): Project.Initialize[Task[Unit]] =
+	def inAll(projects: => Seq[ProjectReference], key: SettingKey[Task[Unit]]): Project.Initialize[Task[Unit]] =
 		inAllProjects(projects, key) { deps => nop dependsOn( deps : _*) }
 
-	def inAllProjects[T](projects: => Seq[ProjectReference], key: ScopedSetting[T]): Project.Initialize[Seq[T]] =
-		Project.bind( (loadedBuild, thisProjectRef).identity ) { case (lb, pr) =>
+	def inAllProjects[T](projects: => Seq[ProjectReference], key: SettingKey[T]): Project.Initialize[Seq[T]] =
+		Def.settingDyn {
+			val lb = loadedBuild.value
+			val pr = thisProjectRef.value
 			def resolve(ref: ProjectReference): ProjectRef = Scope.resolveProjectRef(pr.build, Load.getRootProject(lb.units), ref)
 			val refs = projects flatMap { base => Defaults.transitiveDependencies(resolve(base.project), lb, includeRoot=true, classpath=true, aggregate=true) }
 			refs map ( ref => (key in ref).? ) joinWith(_ flatMap { x => x})
 		}
 
 	def noPublish(p: Project) = p.copy(settings = noRemotePublish(p.settings))
-	def noRemotePublish(in: Seq[Setting[_]]) = in filterNot { s => s.key == deliver || s.key == publish }
+	def noRemotePublish(in: Seq[Setting[_]]) = in filterNot { _.key.key == publish.key }
 
 	def nightlySettings = Seq(
 		nightly211 <<= scalaVersion(_.startsWith("2.11.")),
@@ -32,8 +34,8 @@ object Util
 		crossVersion in update <<= (crossVersion,nightly211) { (cv, n) => if(n) CrossVersion.full else cv },
 		name := nameString
 	)
-	def project(path: File, nameString: String) = Project(normalize(nameString), path) settings( commonSettings(nameString) ++ publishPomSettings : _* )
-	def baseProject(path: File, nameString: String) = project(path, nameString) settings( base : _*)
+	def minProject(path: File, nameString: String) = Project(normalize(nameString), path) settings( commonSettings(nameString) ++ publishPomSettings : _* )
+	def baseProject(path: File, nameString: String) = minProject(path, nameString) settings( base : _*)
 	def testedBaseProject(path: File, nameString: String) = baseProject(path, nameString) settings(testDependencies)
 	
 	lazy val javaOnly = Seq[Setting[_]](/*crossPaths := false, */compileOrder := CompileOrder.JavaThenScala, unmanagedSourceDirectories in Compile <<= Seq(javaSource in Compile).join)
@@ -55,7 +57,7 @@ object Util
 		else Seq()
 	}
 
-	lazy val minimalSettings: Seq[Setting[_]] = Defaults.paths ++ Seq[Setting[_]](crossTarget <<= target.identity, name <<= thisProject(_.id))
+	lazy val minimalSettings: Seq[Setting[_]] = Defaults.paths ++ Seq[Setting[_]](crossTarget := target.value, name <<= thisProject(_.id))
 
 	def projectComponent = projectID <<= (projectID, componentID) { (pid, cid) => 
 		cid match { case Some(id) => pid extra("e:component" -> id); case None => pid }

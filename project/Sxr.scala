@@ -18,7 +18,6 @@ object Sxr
 		scalacOptions <+= sourceDirectories map { "-P:sxr:base-directory:" + _.absString },
 		scalacOptions <+= managedClasspath map { "-Xplugin:" + _.files.absString },
 		scalacOptions in doc += "-Ymacro-no-expand",
-		scaladocOptions <<= scalacOptions,
 		target <<= target in taskGlobal apply { _ / "browse" },
 		sxr in taskGlobal <<= sxrTask
 	)
