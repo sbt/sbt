@@ -42,7 +42,7 @@ See below for details on getting sbt sources and modifying the documentation.
 
 		$ git checkout v0.13.0
 
-	Note that sbt is always built with the previous stable release.  For example, the 0.13 branch is built with 0.12.4 (changing to 0.13.0 shortly).
+	Note that sbt is always built with the previous stable release.  For example, the 0.13 branch is built with 0.13.0 and the v0.13.0 tag is built with 0.12.4.
 
 4. To build the launcher and publish all components locally,
 
