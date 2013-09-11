@@ -6,7 +6,7 @@
 
 Please use the issue tracker to report confirmed bugs.
 Do not use it to ask questions.
-If you are uncertain whether something is a bug, please ask on the mailing list first.
+If you are uncertain whether something is a bug, please ask on StackOverflow or the sbt-dev mailing list first.
 
 When opening a new issue,
 
