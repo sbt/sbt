@@ -92,7 +92,7 @@ object Sbt extends Build
 		// Builds on cache to provide caching for filesystem-related operations
 	lazy val trackingSub = baseProject(cachePath / "tracking", "Tracking") dependsOn(cacheSub, ioSub)
 		// Embedded Scala code runner
-	lazy val runSub = baseProject(file("run"), "Run") dependsOn(ioSub, logSub, classpathSub, processSub)
+	lazy val runSub = testedBaseProject(file("run"), "Run") dependsOn(ioSub, logSub % "compile;test->test", classpathSub, processSub % "compile;test->test")
 
 		// Compiler-side interface to compiler that is compiled against the compiler being used either in advance or on the fly.
 		//   Includes API and Analyzer phases that extract source API and relationships.
