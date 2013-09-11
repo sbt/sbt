@@ -50,9 +50,8 @@ sbt: The Core Concepts
 -  add plugins with the `addSbtPlugin` method in `project/plugins.sbt`
    (NOT `build.sbt` in the project's base directory).
 
-If any of this leaves you wondering rather than nodding, please ask for
-help on the `mailing list`_, go
-back and re-read, or try some experiments in sbt's interactive mode.
+If any of this leaves you wondering rather than nodding, please :ref:`ask for help <getting-help>`,
+go back and re-read, or try some experiments in sbt's interactive mode.
 
 Good luck!
 

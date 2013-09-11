@@ -41,8 +41,9 @@ To get started, *please read* the :doc:`Getting Started Guide </Getting-Started/
 You will save yourself a *lot* of time if you have the right understanding of the big picture up-front.
 All documentation may be found via the :doc:`table of contents <index>`.
 
-`Stack Overflow <http://stackoverflow.com/tags/sbt>`_ is preferred for questions.
-The `mailing list`_ can be used for comments, discussions, and questions.
+Use `Stack Overflow <http://stackoverflow.com/tags/sbt>`_ for questions.
+Use the `sbt-dev mailing list`_ for discussing sbt development.
+Use the #sbt irc channel for questions and discussions.
 
 This documentation can be forked `on GitHub <https://github.com/sbt/sbt/>`_.
 Feel free to make corrections and add documentation.

@@ -91,7 +91,7 @@ rst_epilog = """
 .. _DEB: %(sbt_native_package_base)s%(release)s/sbt.deb
 .. _RPM: %(sbt_native_package_base)s%(release)s/sbt.rpm
 .. |nightly-launcher| replace:: <%(launcher_snapshots_base)s
-.. _mailing list: http://groups.google.com/group/simple-build-tool/topics
+.. _sbt-dev mailing list: https://groups.google.com/forum/#!forum/sbt-dev
 .. _adept: https://groups.google.com/group/adept-dev/topics
 .. _sbt-launcher-package: https://github.com/sbt/sbt-launcher-package
 .. _Stack Overflow: http://stackoverflow.com/tags/sbt

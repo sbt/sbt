@@ -4,10 +4,12 @@ Frequently Asked Questions
 Project Information
 -------------------
 
+.. _getting-help:
+
 How do I get help?
 ~~~~~~~~~~~~~~~~~~
 
-Please use `Stack Overflow`_ for questions.  Use the `mailing list`_ for comments and discussions.
+Please use `Stack Overflow`_ for questions.  Use the `sbt-dev mailing list`_ for comments and discussions about sbt development.
 
 -  Please state the problem or question clearly and provide enough
    context. Code examples and build transcripts are often useful when
@@ -21,8 +23,8 @@ How do I report a bug?
 ~~~~~~~~~~~~~~~~~~~~~~
 
 Please use the `issue tracker <https://github.com/sbt/sbt/issues>`_
-to report confirmed bugs. Do not use it to ask questions. If you are
-uncertain whether something is a bug, please ask on the `mailing list`_ first.
+to report confirmed bugs. Do not use it to ask questions or to determine
+if something is a bug.  See :ref:`getting-help`.
 
 How can I help?
 ~~~~~~~~~~~~~~~
@@ -31,7 +33,7 @@ How can I help?
 -  Make `bug reports <https://github.com/sbt/sbt/issues>`_ that are
    clear and reproducible.
 -  Answer questions on `Stack Overflow`_.
--  Discuss development on the `mailing list`_.
+-  Discuss development on the `sbt-dev mailing list`_.
 -  Fix issues that affect you. `Fork, fix, and submit a pull
    request <http://help.github.com/fork-a-repo/>`_.
 -  Implement features that are important to you. There is an
