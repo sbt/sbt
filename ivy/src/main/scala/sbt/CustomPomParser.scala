@@ -48,12 +48,7 @@ object CustomPomParser
 
 	def defaultTransform(parser: ModuleDescriptorParser, md: ModuleDescriptor): ModuleDescriptor =
 	{
-		import collection.JavaConverters._
-			// The <properties> element of the pom is used to store additional metadata for sbt plugins.
-			// This is done because the pom XSD does not appear to allow extra metadata anywhere else.
-			// The pom.xml does not need to be readable by maven because these are only enabled for sbt plugins.
-			// However, the pom.xml needs to be valid because other tools, like repository managers may read the pom.xml.
-		val properties = PomModuleDescriptorBuilder.extractPomProperties(md.getExtraInfo).asInstanceOf[java.util.Map[String,String]].asScala.toMap
+		val properties = getPomProperties(md)
 
 			// Extracts extra attributes (currently, sbt and Scala versions) stored in the <properties> element of the pom.
 			// These are attached to the module itself.
@@ -72,12 +67,24 @@ object CustomPomParser
 			// Merges artifact sections for duplicate dependency definitions
 		val mergeDuplicates = IvySbt.hasDuplicateDependencies(md.getDependencies)
 
-		val unqualify = (filtered - ExtraAttributesKey) map { case (k,v) => ("e:" + k, v) }
+		val unqualify = toUnqualify(filtered)
 		if(unqualify.isEmpty && extraDepAttributes.isEmpty && !convertArtifacts && !mergeDuplicates)
 			md
 		else
 			addExtra(unqualify, extraDepAttributes, parser, md)
 	}
+		// The <properties> element of the pom is used to store additional metadata, such as for sbt plugins or for the base URL for API docs.
+		// This is done because the pom XSD does not appear to allow extra metadata anywhere else.
+		// The extra sbt plugin metadata in pom.xml does not need to be readable by maven, but the other information may be.
+		// However, the pom.xml needs to be valid in all cases because other tools like repository managers may read the pom.xml.
+	private[sbt] def getPomProperties(md: ModuleDescriptor): Map[String,String] =
+	{
+		import collection.JavaConverters._
+		PomModuleDescriptorBuilder.extractPomProperties(md.getExtraInfo).asInstanceOf[java.util.Map[String,String]].asScala.toMap
+	}
+	private[sbt] def toUnqualify(propertyAttributes: Map[String, String]): Map[String, String] =
+		(propertyAttributes - ExtraAttributesKey) map { case (k,v) => ("e:" + k, v) }
+
 	private[this] def artifactExtIncorrect(md: ModuleDescriptor): Boolean =
 		md.getConfigurations.exists(conf => md.getArtifacts(conf.getName).exists(art => JarPackagings(art.getExt)))
 	private[this] def shouldBeUnqualified(m: Map[String, String]): Map[String, String] = m.filterKeys(unqualifiedKeys)
