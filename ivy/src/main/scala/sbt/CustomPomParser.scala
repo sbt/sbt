@@ -43,10 +43,25 @@ object CustomPomParser
 	val JarPackagings = Set("eclipse-plugin", "hk2-jar", "orbit")
 	val default = new CustomPomParser(PomModuleDescriptorParser.getInstance, defaultTransform)
 
+	private[this] val TransformedHashKey = "sbtTransformHash"
+	// A hash of the parameters transformation is based on.
+	// If a descriptor has a different hash, we need to retransform it.
+	private[this] val TransformHash: String = hash((unqualifiedKeys ++ JarPackagings).toSeq.sorted)
+	private[this] def hash(ss: Seq[String]): String = Hash.toHex(Hash(ss.flatMap(_ getBytes "UTF-8").toArray))
+
 		// Unfortunately, ModuleDescriptorParserRegistry is add-only and is a singleton instance.
 	lazy val registerDefault: Unit = ModuleDescriptorParserRegistry.getInstance.addParser(default)
 
 	def defaultTransform(parser: ModuleDescriptorParser, md: ModuleDescriptor): ModuleDescriptor =
+		if(transformedByThisVersion(md)) md else defaultTransformImpl(parser, md)
+
+	private[this] def transformedByThisVersion(md: ModuleDescriptor): Boolean = 
+	{
+		val extraInfo = md.getExtraInfo
+		extraInfo != null && extraInfo.get(TransformedHashKey) == TransformHash
+	}
+
+	private[this] def defaultTransformImpl(parser: ModuleDescriptorParser, md: ModuleDescriptor): ModuleDescriptor =
 	{
 		val properties = getPomProperties(md)
 
@@ -180,6 +195,7 @@ object CustomPomParser
 
 		for(l <- md.getLicenses) dmd.addLicense(l)
 		for( (key,value) <- md.getExtraInfo.asInstanceOf[java.util.Map[String,String]].asScala ) dmd.addExtraInfo(key, value)
+		dmd.addExtraInfo(TransformedHashKey, TransformHash) // mark as transformed by this version, so we don't need to do it again
 		for( (key, value) <- md.getExtraAttributesNamespaces.asInstanceOf[java.util.Map[String,String]].asScala ) dmd.addExtraAttributeNamespace(key, value)
 		IvySbt.addExtraNamespace(dmd)
 
