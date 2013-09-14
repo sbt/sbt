@@ -321,8 +321,11 @@ private object IvySbt
 	private[this] def resetArtifactResolver(resolved: ResolvedModuleRevision): ResolvedModuleRevision =
 		if(resolved eq null)
 			null
-		else
-			new ResolvedModuleRevision(resolved.getResolver, resolved.getResolver, resolved.getDescriptor, resolved.getReport, resolved.isForce)
+		else {
+			val desc = resolved.getDescriptor
+			val updatedDescriptor = CustomPomParser.defaultTransform(desc.getParser, desc)
+			new ResolvedModuleRevision(resolved.getResolver, resolved.getResolver, updatedDescriptor, resolved.getReport, resolved.isForce)
+		}
 
 	private[this] def configureRepositoryCache(settings: IvySettings, localOnly: Boolean) //, artifactResolver: DependencyResolver)
 	{
