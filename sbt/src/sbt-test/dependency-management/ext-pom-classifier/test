@@ -1,0 +1,3 @@
+> export compile:dependencyClasspath
+> export test:dependencyClasspath
+> test:compile

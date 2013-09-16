@@ -168,7 +168,7 @@ final class IvySbt(val configuration: IvyConfiguration)
 		/** Parses the Maven pom 'pomFile' from the given `PomConfiguration`.*/
 		private def configurePom(pc: PomConfiguration) =
 		{
-			val md = PomModuleDescriptorParser.getInstance.parseDescriptor(settings, toURL(pc.file), pc.validate)
+			val md = CustomPomParser.default.parseDescriptor(settings, toURL(pc.file), pc.validate)
 			val dmd = IvySbt.toDefaultModuleDescriptor(md)
 			IvySbt.addConfigurations(dmd, Configurations.defaultInternal)
 			val defaultConf = Configurations.DefaultMavenConfiguration.name
