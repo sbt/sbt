@@ -6,7 +6,7 @@ import Prop._
 
 import Process._
 
-private[this] object ProcessSpecification extends Properties("Process I/O")
+object ProcessSpecification extends Properties("Process I/O")
 {
 	implicit val exitCodeArb: Arbitrary[Array[Byte]] = Arbitrary(Gen.choose(0, 10) flatMap { size => Gen.resize(size, Arbitrary.arbArray[Byte].arbitrary) })
 
@@ -15,8 +15,11 @@ private[this] object ProcessSpecification extends Properties("Process I/O")
 	property("#|| correct") = forAll( (exitCodes: Array[Byte]) => checkBinary(exitCodes)(_ #|| _)(_ || _))
 	property("### correct") = forAll( (exitCodes: Array[Byte]) => checkBinary(exitCodes)(_ ### _)( (x,latest) => latest))*/
 	property("Pipe to output file") = forAll( (data: Array[Byte]) => checkFileOut(data))
-	property("Pipe to input file") = forAll( (data: Array[Byte]) => checkFileIn(data))
+	property("Pipe from input file") = forAll( (data: Array[Byte]) => checkFileIn(data))
 	property("Pipe to process") = forAll( (data: Array[Byte]) => checkPipe(data))
+	property("Pipe to process ignores input exit code") = forAll( (data: Array[Byte], code: Byte) => checkPipeExit(data, code))
+	property("Pipe from input file to bad process preserves correct exit code.") = forAll( (data: Array[Byte], code: Byte) => checkFileInExit(data, code))
+	property("Pipe to output file from bad process preserves correct exit code.") = forAll( (data: Array[Byte], code: Byte) => checkFileOutExit(data, code))
 
 	private def checkBinary(codes: Array[Byte])(reduceProcesses: (ProcessBuilder, ProcessBuilder) => ProcessBuilder)(reduceExit: (Boolean, Boolean) => Boolean) =
 	{
@@ -55,29 +58,63 @@ private[this] object ProcessSpecification extends Properties("Process I/O")
 			temporaryFile #> catCommand #| catCommand #> temporaryFile2
 		}
 	}
+	private def checkPipeExit(data: Array[Byte], code: Byte) =
+		withTempFiles { (a,b) =>
+			IO.write(a, data)
+			val catCommand = process("sbt.cat")
+			val exitCommand = process(s"sbt.exit $code")
+			val exit = (a #> exitCommand #| catCommand #> b).!
+			(s"Exit code: $exit") |:
+			(s"Output file length: ${b.length}") |:
+				(exit == 0) &&
+				(b.length == 0)
+		}
+
+	private def checkFileOutExit(data: Array[Byte], exitCode: Byte) =
+		withTempFiles { (a,b) =>
+			IO.write(a, data)
+			val code = unsigned(exitCode)
+			val command = process(s"sbt.exit $code")
+			val exit = (a #> command #> b).!
+			(s"Exit code: $exit, expected: $code") |:
+			(s"Output file length: ${b.length}") |:
+				(exit == code) &&
+				(b.length == 0)
+		}
+
+	private def checkFileInExit(data: Array[Byte], exitCode: Byte) =
+		withTempFiles { (a,b) =>
+			IO.write(a, data)
+			val code = unsigned(exitCode)
+			val command = process(s"sbt.exit $code")
+			val exit = (a #> command).!
+			(s"Exit code: $exit, expected: $code") |:
+				(exit == code)
+		}
+
 	private def temp() = File.createTempFile("sbt", "")
 	private def withData(data: Array[Byte])(f: (File, File) => ProcessBuilder) =
+		withTempFiles { (a, b) =>
+			IO.write(a, data)
+			val process = f(a, b)
+			( process ! ) == 0 && sameFiles(a, b)
+		}
+	private def sameFiles(a: File, b: File) = 
+		IO.readBytes(a) sameElements IO.readBytes(b)
+
+	private def withTempFiles[T](f: (File, File) => T): T =
 	{
 		val temporaryFile1 = temp()
 		val temporaryFile2 = temp()
-		try
-		{
-			IO.write(temporaryFile1, data)
-			val process = f(temporaryFile1, temporaryFile2)
-			( process ! ) == 0 &&
-			{
-				val b1 = IO.readBytes(temporaryFile1)
-				val b2 = IO.readBytes(temporaryFile2)
-				b1 sameElements b2
-			}
-		}
+		try f(temporaryFile1, temporaryFile2)
 		finally
 		{
 			temporaryFile1.delete()
 			temporaryFile2.delete()
 		}
-	}
-	private def unsigned(b: Byte): Int = ((b: Int) +256) % 256
+	}	
+	private def unsigned(b: Int): Int = ((b: Int) +256) % 256
+	private def unsigned(b: Byte): Int = unsigned(b: Int)
 	private def process(command: String) =
 	{
 		val ignore = echo // just for the compile dependency so that this test is rerun when TestedProcess.scala changes, not used otherwise
