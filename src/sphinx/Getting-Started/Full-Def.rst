@@ -239,7 +239,7 @@ in this order:
 
 -  Settings from `Build.settings` and `Project.settings` in your
    `.scala` files.
--  Your user-global settings; for example in `~/.sbt/build.sbt` you
+-  Your user-global settings; for example in `~/.sbt/0.13/build.sbt` you
    can define settings affecting *all* your projects.
 -  Settings injected by plugins, see :doc:`using plugins <Using-Plugins>` coming up next.
 -  Settings from `.sbt` files in the project.
