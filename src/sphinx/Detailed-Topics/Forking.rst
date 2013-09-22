@@ -158,10 +158,24 @@ Direct Usage
 ============
 
 To fork a new Java process, use the `Fork
-API <../../api/sbt/Fork$.html>`_. The
-methods of interest are `Fork.java`, `Fork.javac`, `Fork.scala`,
-and `Fork.scalac`. See the
-`ForkJava <../../api/sbt/Fork$.ForkJava.html>`_
-and
-`ForkScala <../../api/sbt/Fork$.ForkScala.html>`_
-classes for the arguments and types.
+API <../../api/sbt/Fork$.html>`_.
+The values of interest are `Fork.java`, `Fork.javac`, `Fork.scala`, and `Fork.scalac`.
+These are of type `Fork <../../api/sbt/Fork.html>`_ and provide `apply` and `fork` methods.
+For example, to fork a new Java process, ::
+
+    val options = ForkOptions(...)
+    val arguments: Seq[String] = ...
+    val mainClass: String = ...
+    val exitCode: Int = Fork.java(options, mainClass +: arguments)
+
+
+`ForkOptions <../../api/sbt/ForkOptions.html>`_ defines the Java installation to use, the working directory, environment variables, and more.
+For example, ::
+
+    val cwd: File = ...
+    val javaDir: File = ...
+    val options = ForkOptions(
+       envVars = Map("KEY" -> "value"),
+       workingDirectory = Some(cwd),
+       javaHome = Some(javaDir)
+    )
