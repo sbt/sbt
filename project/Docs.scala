@@ -39,12 +39,20 @@ object Docs
 
 	def ghPagesSettings = ghpages.settings ++ Seq(
 		git.remoteRepo := "git@github.com:sbt/sbt.github.com.git",
+		localRepoDirectory,
 		ghkeys.synchLocal <<= synchLocalImpl,
 		cnameFile <<= (sourceDirectory in SphinxSupport.Sphinx) / "CNAME",
 		latestRelease in ThisBuild := false,
 		commands += setLatestRelease,
 		GitKeys.gitBranch in ghkeys.updatedRepository := Some("master")
 	)
+
+	def localRepoDirectory = ghkeys.repository := {
+		// distinguish between building to update the site or not so that CI jobs 
+		//  that don't commit+publish don't leave uncommitted changes in the working directory
+		val status = if(isSnapshot.value) "snapshot" else "public"
+		Path.userHome / ".sbt" / "ghpages" / status / organization.value / name.value
+	}
 
 	def siteIncludeSxr(prefix: String) = Seq(
 		mappings in sxr <<= sxr.map(dir => Path.allSubpaths(dir).toSeq),
