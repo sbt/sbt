@@ -39,6 +39,30 @@ class ExtractAPI[GlobalType <: CallbackGlobal](val global: GlobalType,
 
 	private[this] val emptyStringArray = new Array[String](0)
 
+	/**
+	 * Implements a work-around for https://github.com/sbt/sbt/issues/823
+	 *
+	 * The strategy is to rename all type variables bound by existential type to stable
+	 * names by reseting a counter used in name generation right after given existential
+	 * type is processed.
+	 *
+	 * We can reset the counter after each existential type is processed because the
+	 * scope of type variables by that type is just that type.
+	 */
+	private[this] object existentialRenamings {
+		import scala.collection.mutable.Map
+		private var renameTo: Map[Symbol, String] = Map.empty
+		def allocateRenamings(typeVariables: Seq[Symbol]): Unit = {
+			var counter: Int = 0
+			typeVariables foreach { tv =>
+				val newName = "existential" + counter
+				counter += 1
+				renameTo(tv) = newName
+			}
+		}
+		def renaming(symbol: Symbol): Option[String] = renameTo.get(symbol)
+	}
+
 	// call back to the xsbti.SafeLazy class in main sbt code to construct a SafeLazy instance
 	//   we pass a thunk, whose class is loaded by the interface class loader (this class's loader)
 	//   SafeLazy ensures that once the value is forced, the thunk is nulled out and so
@@ -346,12 +370,19 @@ class ExtractAPI[GlobalType <: CallbackGlobal](val global: GlobalType,
 			case SuperType(thistpe: Type, supertpe: Type) => warning("sbt-api: Super type (not implemented): this=" + thistpe + ", super=" + supertpe); Constants.emptyType
 			case at: AnnotatedType => annotatedType(in, at)
 			case rt: CompoundType => structure(rt)
-			case ExistentialType(tparams, result) => new xsbti.api.Existential(processType(in, result), typeParameters(in, tparams))
+			case t: ExistentialType => makeExistentialType(in, t)
 			case NoType => Constants.emptyType // this can happen when there is an error that will be reported by a later phase
 			case PolyType(typeParams, resultType) => new xsbti.api.Polymorphic(processType(in, resultType), typeParameters(in, typeParams))
 			case Nullary(resultType) => warning("sbt-api: Unexpected nullary method type " + in + " in " + in.owner); Constants.emptyType
 			case _ => warning("sbt-api: Unhandled type " + t.getClass + " : " + t); Constants.emptyType
 		}
+	}
+	private def makeExistentialType(in: Symbol, t: ExistentialType): xsbti.api.Existential = {
+		val ExistentialType(typeVariables, qualified) = t
+		existentialRenamings.allocateRenamings(typeVariables)
+		val typeVariablesConverted = typeParameters(in, typeVariables)
+		val qualifiedConverted = processType(in, qualified)
+		new xsbti.api.Existential(qualifiedConverted, typeVariablesConverted)
 	}
 	private def typeParameters(in: Symbol, s: Symbol): Array[xsbti.api.TypeParameter] = typeParameters(in, s.typeParams)
 	private def typeParameters(in: Symbol, s: List[Symbol]): Array[xsbti.api.TypeParameter] = s.map(typeParameter(in,_)).toArray[xsbti.api.TypeParameter]
@@ -368,7 +399,18 @@ class ExtractAPI[GlobalType <: CallbackGlobal](val global: GlobalType,
 			case x => error("Unknown type parameter info: " + x.getClass)
 		}
 	}
-	private def tparamID(s: Symbol) = s.fullName
+	private def tparamID(s: Symbol): String = {
+		val renameTo = existentialRenamings.renaming(s)
+		renameTo match {
+			case Some(rename) =>
+				// can't use debuglog because it doesn't exist in Scala 2.9.x
+				if (settings.debug.value)
+					log("Renaming existential type variable " + s.fullName + " to " + rename)
+				rename
+			case None =>
+				s.fullName
+		}
+	}
 	private def selfType(in: Symbol, s: Symbol): xsbti.api.Type  =  processType(in, s.thisSym.typeOfThis)
 
 	def classLike(in: Symbol, c: Symbol): ClassLike = classLikeCache.getOrElseUpdate( (in,c), mkClassLike(in, c))
