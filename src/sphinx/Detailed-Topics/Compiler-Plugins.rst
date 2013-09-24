@@ -16,7 +16,7 @@ for specifying `plugin` as the configuration for a dependency:
 
 ::
 
-    addCompilerPlugin("org.scala-tools.sxr" %% "sxr" % "0.2.7")
+    addCompilerPlugin("org.scala-tools.sxr" %% "sxr" % "0.3.0")
 
 The `compile` and `testCompile` actions will use any compiler
 plugins found in the `lib` directory or in the `plugin`
@@ -33,7 +33,7 @@ You can still specify compiler plugins manually. For example:
 
 ::
 
-    scalacOptions += "-Xplugin:<path-to-sxr>/sxr-0.2.7.jar"
+    scalacOptions += "-Xplugin:<path-to-sxr>/sxr-0.3.0.jar"
 
 Continuations Plugin Example
 ============================

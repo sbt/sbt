@@ -28,7 +28,7 @@ object Docs
 		site.settings ++
 		site.sphinxSupport(DocsPath) ++
 		site.includeScaladoc("api") ++
-//		siteIncludeSxr("sxr") ++
+		siteIncludeSxr("sxr") ++
 		ghPagesSettings ++
 		Seq(
 			SphinxSupport.sphinxEnv in SphinxSupport.Sphinx <<= sphinxEnvironmentVariables,

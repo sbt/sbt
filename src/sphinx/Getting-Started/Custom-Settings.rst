@@ -11,16 +11,16 @@ Getting Started Guide, especially :doc:`build.sbt <Basic-Def>` and :doc:`more ab
 Defining a key
 --------------
 
-`Keys <../../sxr/Keys.scala.html>`_ is
+`Keys <../../sxr/sbt/Keys.scala.html>`_ is
 packed with examples illustrating how to define keys. Most of the keys
 are implemented in
-`Defaults <../../sxr/Defaults.scala.html>`_.
+`Defaults <../../sxr/sbt/Defaults.scala.html>`_.
 
 Keys have one of three types. `SettingKey` and `TaskKey` are
 described in :doc:`.sbt build definition <Basic-Def>`. Read
 about `InputKey` on the :doc:`/Extending/Input-Tasks` page.
 
-Some examples from `Keys <../../sxr/Keys.scala.html>`_:
+Some examples from `Keys <../../sxr/sbt/Keys.scala.html>`_:
 
 ::
 

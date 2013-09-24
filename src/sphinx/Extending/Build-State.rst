@@ -111,7 +111,7 @@ define settings in `.sbt` files, for example.
 `Scope <../../api/sbt/Scope.html>`_ selects the scope the key is
 obtained for. There are convenience overloads of `in` that can be used
 to specify only the required scope axes. See
-`Structure.scala <../../sxr/Structure.scala.html>`_ for where `in` and
+`Structure.scala <../../sxr/sbt/Structure.scala.html>`_ for where `in` and
 other parts of the settings interface are defined. Some examples:
 
 ::

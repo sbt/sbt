@@ -154,7 +154,7 @@ keys create a `Setting[Task[T]]` rather than a `Setting[T]` when you
 build a setting with `:=`, etc.  Tasks can use settings as inputs, but
 settings cannot use tasks as inputs.
 
-Take these two keys (from `Keys <../../sxr/Keys.scala.html>`_):
+Take these two keys (from `Keys <../../sxr/sbt/Keys.scala.html>`_):
 
 ::
 

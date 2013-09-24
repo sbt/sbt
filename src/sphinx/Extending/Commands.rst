@@ -50,7 +50,7 @@ by `State`) determine valid completions for the `project` command.
 Examples for the general and specific cases are shown in the following
 sections.
 
-See `Command.scala <../../sxr/Command.scala.html#10761>`_ for the source
+See `Command.scala <../../sxr/sbt/Command.scala.html>`_ for the source
 API details for constructing commands.
 
 General commands
