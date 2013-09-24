@@ -402,6 +402,6 @@ locations of the dependencies for that configuration.
       )
 
 As before, *update* and *configuration* are defined in
-`Keys <../../sxr/Keys.scala.html>`_.
+`Keys <../../sxr/sbt/Keys.scala.html>`_.
 *update* is of type `TaskKey[UpdateReport]` and *configuration* is of
 type `SettingKey[Configuration]`.

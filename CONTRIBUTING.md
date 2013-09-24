@@ -47,15 +47,13 @@ See below for details on getting sbt sources and modifying the documentation.
 4. To build the launcher and publish all components locally,
 
 		$ sbt
-		> publish-local
+		> publishLocal
 
-	To build documentation, run `make-site` or the individual commands directly:
+	To build documentation, run `makeSite` or the individual commands directly:
 
 		> doc
 		> sphinx:mappings
 		> sxr
-
-   (Note: sxr currently doesn't work for macros, so it doesn't work for sbt right now.)
 
 5. To use this locally built version of sbt, copy your stable `~/bin/sbt` script to `~/bin/xsbt` and change it to use the launcher jar in `<sbt>/target/`.  For the v0.13.0 tag, the full location is:
 
@@ -69,9 +67,9 @@ See below for details on getting sbt sources and modifying the documentation.
 
 1. When developing sbt itself, run `compile` when checking compilation only.
 
-2. To use your modified version of sbt in a project locally, run `publish-local`.
+2. To use your modified version of sbt in a project locally, run `publishLocal`.
 
-3. After each `publish-local`, clean the `~/.sbt/boot/` directory.  Alternatively, if sbt is running and the launcher hasn't changed, run `reboot full` to have sbt do this for you.
+3. After each `publishLocal`, clean the `~/.sbt/boot/` directory.  Alternatively, if sbt is running and the launcher hasn't changed, run `reboot full` to have sbt do this for you.
 
 4. If a project has `project/build.properties` defined, either delete the file or change `sbt.version` to `0.13.1-SNAPSHOT`.
 

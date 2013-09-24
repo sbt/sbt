@@ -153,7 +153,7 @@ Built-in Keys
 ~~~~~~~~~~~~~
 
 The built-in keys are just fields in an object called
-`Keys <../../sxr/Keys.scala.html>`_. A
+`Keys <../../sxr/sbt/Keys.scala.html>`_. A
 `build.sbt` implicitly has an `import sbt.Keys._`, so
 `sbt.Keys.name` can be referred to as `name`.
 

@@ -135,7 +135,7 @@ object Sbt extends Build
 		// Strictly for bringing implicits and aliases from subsystems into the top-level sbt namespace through a single package object
 		//  technically, we need a dependency on all of mainSub's dependencies, but we don't do that since this is strictly an integration project
 		//  with the sole purpose of providing certain identifiers without qualification (with a package object)
-	lazy val sbtSub = baseProject(sbtPath, "Simple Build Tool") dependsOn(mainSub, compileInterfaceSub, precompiled282, precompiled292, precompiled293, scriptedSbtSub % "test->test") settings(sbtSettings : _*)
+	lazy val sbtSub = baseProject(sbtPath, "sbt") dependsOn(mainSub, compileInterfaceSub, precompiled282, precompiled292, precompiled293, scriptedSbtSub % "test->test") settings(sbtSettings : _*)
 
 		/* Nested subproject paths */
 	def sbtPath = file("sbt")
@@ -202,25 +202,24 @@ object Sbt extends Build
 
 		import Sxr.sxr
 	def releaseSettings = Release.settings(nonRoots, proguard in Proguard)
-	def rootSettings = releaseSettings ++ Docs.settings ++ LaunchProguard.settings ++ LaunchProguard.specific(launchSub) ++ 
-		Sxr.settings ++ docSetting ++ Util.publishPomSettings ++ otherRootSettings ++ proguardedLauncherSettings ++
+	def rootSettings = releaseSettings ++ fullDocSettings ++ LaunchProguard.settings ++ LaunchProguard.specific(launchSub) ++ 
+		Util.publishPomSettings ++ otherRootSettings ++ proguardedLauncherSettings ++
 		Transform.conscriptSettings(launchSub)
 	def otherRootSettings = Seq(
 		scripted <<= scriptedTask,
 		scriptedSource <<= (sourceDirectory in sbtSub) / "sbt-test",
-		sources in sxr <<= deepTasks(sources in Compile),
-		Sxr.sourceDirectories <<= deep(sourceDirectories in Compile).map(_.flatten),
-		fullClasspath in sxr <<= (externalDependencyClasspath in Compile in sbtSub),
-		compileInputs in (Compile,sxr) <<= (sources in sxr, compileInputs in (sbtSub, Compile, compile), fullClasspath in sxr, scalacOptions) map { (srcs, in, cp, opts) =>
-			in.copy(config = in.config.copy(sources = srcs, classpath = cp.files))
-		},
-		compileInputs in (Compile,doc) <<= (compileInputs in (Compile,sxr), scalacOptions in doc) map { (ci, opts) =>
-			ci.copy(config = ci.config.copy(options = opts))
-		},
 		publishAll <<= inAll(nonRoots, publishLocal.task),
-		publishAll <<= (publishAll, publishLocal).map((x,y)=> ()), // publish all normal deps as well as the sbt-launch jar
-		TaskKey[Unit]("build-all") <<= Seq(publishLocal, /*sxr,*/ doc).dependOn
+		publishAll <<= (publishAll, publishLocal).map((x,y)=> ()) // publish all normal deps as well as the sbt-launch jar
 	)
+	def fullDocSettings = Util.baseScalacOptions ++ Docs.settings ++ Sxr.settings ++ Seq(
+		scalacOptions += "-Ymacro-no-expand", // for both sxr and doc
+		sources in sxr <<= deepTasks(sources in Compile), //sxr
+		sources in Compile <<= sources in sxr, // doc
+		Sxr.sourceDirectories <<= deep(sourceDirectories in Compile).map(_.flatten), // to properly relativize the source paths
+		fullClasspath in sxr <<= (externalDependencyClasspath in Compile in sbtSub),
+		dependencyClasspath in (Compile,doc) <<= fullClasspath in sxr
+	)
+
 	// the launcher is published with metadata so that the scripted plugin can pull it in
 	// being proguarded, it shouldn't ever be on a classpath with other jars, however
 	def proguardedLauncherSettings = Seq(
@@ -231,7 +230,6 @@ object Sbt extends Build
 		publishLauncher <<= publish,
 		packageBin in Compile <<= (proguard in Proguard, Transform.conscriptConfigs).map( (x,y) => x)
 	)
-	def docSetting = inConfig(Compile)(inTask(sxr)(Defaults.docSetting(doc in ThisScope.copy(task = Global, config = Global))))
 
 	def interfaceSettings = javaOnly ++ Seq(
 		projectComponent,

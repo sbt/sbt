@@ -80,7 +80,7 @@ or like this, where `configuration` is also a string:
 
     libraryDependencies += groupID % artifactID % revision % configuration
 
-`libraryDependencies` is declared in `Keys <../../sxr/Keys.scala.html>`_ like this:
+`libraryDependencies` is declared in `Keys <../../sxr/sbt/Keys.scala.html#sbt.Keys.libraryDependencies>`_ like this:
 
 ::
 
@@ -178,7 +178,7 @@ For example:
     resolvers += "Sonatype OSS Snapshots" at "https://oss.sonatype.org/content/repositories/snapshots"
 
 The `resolvers` key is defined in
-`Keys <../../sxr/Keys.scala.html>`_ like
+`Keys <../../sxr/sbt/Keys.scala.html#sbt.Keys.resolvers>`_ like
 this:
 
 ::
