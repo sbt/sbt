@@ -6,6 +6,7 @@ package xsbt.boot
 	import scala.collection.immutable.List
 	import java.io.{File, FileFilter}
 	import java.net.{URL, URLClassLoader}
+	import java.util.Locale
 
 object Pre
 {
@@ -79,6 +80,6 @@ object Pre
 		}
 		if(f.exists) f.delete()
 	}
-	final val isWindows: Boolean = System.getProperty("os.name").toLowerCase.contains("windows")
+	final val isWindows: Boolean = System.getProperty("os.name").toLowerCase(Locale.ENGLISH).contains("windows")
 	final val isCygwin: Boolean = isWindows && java.lang.Boolean.getBoolean("sbt.cygwin")
 }

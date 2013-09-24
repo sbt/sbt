@@ -15,6 +15,7 @@ package sbt
 
 	import java.io.File
 	import java.net.URI
+	import java.util.Locale
 
 /** This class is the entry point for sbt.*/
 final class xMain extends xsbti.AppMain
@@ -394,7 +395,7 @@ object BuiltinCommands
 	def loadFailed = Command.command(LoadFailed)(handleLoadFailed)
 	@tailrec def handleLoadFailed(s: State): State =
 	{
-		val result = (SimpleReader.readLine("Project loading failed: (r)etry, (q)uit, (l)ast, or (i)gnore? ") getOrElse Quit).toLowerCase
+		val result = (SimpleReader.readLine("Project loading failed: (r)etry, (q)uit, (l)ast, or (i)gnore? ") getOrElse Quit).toLowerCase(Locale.ENGLISH)
 		def matches(s: String) = !result.isEmpty && (s startsWith result)
 
 		if(result.isEmpty || matches("retry"))

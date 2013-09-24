@@ -9,6 +9,7 @@ import sbt.Path
 import sbt.IO.write
 
 import Generator._
+import java.util.Locale
 
 abstract class GeneratorBase(val basePkgName: String, val baseDirectory: File) extends NotNull
 {
@@ -129,7 +130,7 @@ object Generator
 	def fieldToString(name: String, single: Boolean) = "\"" + name + ": \" + " + fieldString(name + "()", single)
 	def fieldString(arg: String, single: Boolean) = if(single) arg else "Arrays.toString(" + arg + ")"
 	def normalize(m: MemberDef): MemberDef =
-		m.mapType(tpe => if(primitives(tpe.toLowerCase)) tpe.toLowerCase else tpe)
+		m.mapType(tpe => if(primitives(tpe.toLowerCase(Locale.ENGLISH))) tpe.toLowerCase(Locale.ENGLISH) else tpe)
 	private val primitives = Set("int", "boolean", "float", "long", "short", "byte", "char", "double")
 
 	def toStringMethod(c: ClassDef): String =

@@ -4,6 +4,7 @@
 package xsbt.datatype
 
 import java.io.File
+import java.util.Locale
 
 /** Generates a datatype hierarchy from a definition file.*/
 object GenerateDatatypes
@@ -18,7 +19,7 @@ object GenerateDatatypes
 		}
 		else
 		{
-			val immutable = args(0).trim.toLowerCase == "immutable"
+			val immutable = args(0).trim.toLowerCase(Locale.ENGLISH) == "immutable"
 
 			val packageName = args(1).trim
 			require(!packageName.isEmpty)

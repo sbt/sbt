@@ -5,6 +5,7 @@ package sbt
 
 	import java.io.File
 	import java.net.URI
+	import java.util.Locale
 	import Project.{Initialize => _, Setting => _, _}
 	import Keys.{appConfiguration, stateBuildStructure, commands, configuration, historyPath, projectCommand, sessionSettings, shellPrompt, thisProject, thisProjectRef, watch}
 	import Scope.{GlobalScope,ThisScope}
@@ -178,7 +179,7 @@ object Project extends ProjectExtra
 		val refined = if(!validProjectIDStart(attempt.substring(0, 1)) ) "root-" + attempt else attempt
 		validProjectID(refined).toLeft(refined)
 	}
-	private[this] def normalizeBase(s: String) = s.toLowerCase.replaceAll("""\W+""", "-")
+	private[this] def normalizeBase(s: String) = s.toLowerCase(Locale.ENGLISH).replaceAll("""\W+""", "-")
 
 	/** Normalize a String so that it is suitable for use as a dependency management module identifier.
 	* This is a best effort implementation, since valid characters are not documented or consistent.*/

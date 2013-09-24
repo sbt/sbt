@@ -4,6 +4,7 @@
 package sbt
 
 import java.io.{File,OutputStream}
+import java.util.Locale
 
 @deprecated("Use ForkOptions", "0.13.0")
 trait ForkJava
@@ -131,7 +132,7 @@ object Fork
 	private[this] def optionsTooLong(options: Seq[String]): Boolean =
 		options.mkString(" ").length > MaxConcatenatedOptionLength
 
-	private[this] val isWindows: Boolean = System.getProperty("os.name").toLowerCase.contains("windows")
+	private[this] val isWindows: Boolean = System.getProperty("os.name").toLowerCase(Locale.ENGLISH).contains("windows")
 	private[this] def convertClasspathToEnv(options: Seq[String]): (Option[String], Seq[String]) =
 	{
 		val (preCP, cpAndPost) = options.span(opt => !isClasspathOption(opt))
