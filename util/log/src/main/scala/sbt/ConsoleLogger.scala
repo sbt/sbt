@@ -3,7 +3,8 @@
  */
 package sbt
 
-	import java.io.{BufferedWriter, PrintStream, PrintWriter}
+import java.io.{BufferedWriter, PrintStream, PrintWriter}
+import java.util.Locale
 
 object ConsoleLogger
 {
@@ -99,7 +100,7 @@ object ConsoleLogger
 	val noSuppressedMessage = (_: SuppressedTraceContext) => None
 
 	private[this] def os = System.getProperty("os.name")
-	private[this] def isWindows = os.toLowerCase.indexOf("windows") >= 0
+	private[this] def isWindows = os.toLowerCase(Locale.ENGLISH).indexOf("windows") >= 0
 	
 	def apply(out: PrintStream): ConsoleLogger = apply(ConsoleOut.printStreamOut(out))
 	def apply(out: PrintWriter): ConsoleLogger = apply(ConsoleOut.printWriterOut(out))

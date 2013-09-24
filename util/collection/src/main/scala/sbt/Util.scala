@@ -3,6 +3,8 @@
  */
 package sbt
 
+import java.util.Locale
+
 object Util
 {
 	def makeList[T](size: Int, value: T): List[T] = List.fill(size)(value)
@@ -31,13 +33,13 @@ object Util
 	def hypenToCamel(s: String): String = hyphenToCamel(s)
 	def hyphenToCamel(s: String): String =
 		if(hasHyphen(s))
-			Hypen.replaceAllIn(s, _.group(1).toUpperCase)
+			Hypen.replaceAllIn(s, _.group(1).toUpperCase(Locale.ENGLISH))
 		else
 			s
 
 	private[this] lazy val Camel = """(\p{javaLowerCase})(\p{javaUpperCase})""".r
 	def camelToHypen(s: String): String =
-		Camel.replaceAllIn(s, m => m.group(1) + "-" + m.group(2).toLowerCase)
+		Camel.replaceAllIn(s, m => m.group(1) + "-" + m.group(2).toLowerCase(Locale.ENGLISH))
 
 	def quoteIfKeyword(s: String): String = if(ScalaKeywords.values(s)) '`' + s + '`' else s
 }
