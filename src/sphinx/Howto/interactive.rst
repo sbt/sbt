@@ -99,7 +99,7 @@ The default keybindings file is included in the sbt launcher and may be used as 
    
    shellPrompt := { (s: State) => System.getProperty("user.name") + "> " }
 
-By default, sbt only displays `> ` to prompt for a command.
+By default, sbt only displays `>` to prompt for a command.
 This can be changed through the `shellPrompt` setting, which has type `State => String`.
 :doc:`State </Extending/Build-State>` contains all state for sbt and thus provides access to all build information for use in the prompt string.
 
