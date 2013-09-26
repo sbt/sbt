@@ -76,7 +76,7 @@ private[sbt] object Parser
 				new AttributeInfo(name, value)
 			}
 
-			def types = Set((fieldTypes ++ methodTypes ++ classConstantReferences) : _*)
+			def types = (classConstantReferences ++ fieldTypes ++ methodTypes).toSet
 
 			private def getTypes(fieldsOrMethods: Array[FieldOrMethodInfo]) =
 				fieldsOrMethods.flatMap { fieldOrMethod =>
@@ -114,8 +114,8 @@ private[sbt] object Parser
 				next(1, Nil)
 			}
 		}
-    }
-    private def array[T : scala.reflect.Manifest](size: Int)(f: => T) = Array.tabulate(size)(_ => f)
+	}
+	private def array[T : scala.reflect.Manifest](size: Int)(f: => T) = Array.tabulate(size)(_ => f)
 	private def parseConstantPool(in: DataInputStream) =
 	{
 		val constantPoolSize = in.readUnsignedShort()
@@ -133,20 +133,32 @@ private[sbt] object Parser
 		pool
 	}
 
-        private def getConstant(in: DataInputStream): Constant =
-        {
+	private def getConstant(in: DataInputStream): Constant =
+	{
 		val tag = in.readByte()
 
-                // No switch for byte scrutinees! Stupid compiler.
-                ((tag: Int): @switch) match {
-                        case ConstantClass | ConstantString => new Constant(tag, in.readUnsignedShort())
-                        case ConstantField | ConstantMethod | ConstantInterfaceMethod | ConstantNameAndType =>
-                                new Constant(tag, in.readUnsignedShort(), in.readUnsignedShort())
-                        case ConstantInteger => new Constant(tag, new java.lang.Integer(in.readInt()))
-                        case ConstantFloat => new Constant(tag, new java.lang.Float(in.readFloat()))
-                        case ConstantLong => new Constant(tag, new java.lang.Long(in.readLong()))
+		// No switch for byte scrutinees! Stupid compiler.
+		((tag: Int): @switch) match {
+			case ConstantClass | ConstantString => new Constant(tag, in.readUnsignedShort())
+			case ConstantField | ConstantMethod | ConstantInterfaceMethod | ConstantNameAndType =>
+				new Constant(tag, in.readUnsignedShort(), in.readUnsignedShort())
+			case ConstantInteger => new Constant(tag, new java.lang.Integer(in.readInt()))
+			case ConstantFloat => new Constant(tag, new java.lang.Float(in.readFloat()))
+			case ConstantLong => new Constant(tag, new java.lang.Long(in.readLong()))
 			case ConstantDouble => new Constant(tag, new java.lang.Double(in.readDouble()))
 			case ConstantUTF8 => new Constant(tag, in.readUTF())
+			// TODO: proper support
+			case ConstantMethodHandle =>
+				val kind = in.readByte()
+				val ref = in.readUnsignedShort()
+				new Constant(tag, -1, -1, None)
+			case ConstantMethodType =>
+				val descriptorIndex = in.readUnsignedShort()
+				new Constant(tag, -1, -1, None)
+			case ConstantInvokeDynamic =>
+				val bootstrapIndex = in.readUnsignedShort()
+				val nameAndTypeIndex = in.readUnsignedShort()
+				new Constant(tag, -1, -1, None)
 			case _ => sys.error("Unknown constant: " + tag)
 		}
 	}
