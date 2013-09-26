@@ -219,7 +219,7 @@ For getting the test classpath of a specific project, use this key:
 Using State in a task
 ---------------------
 
-To access the current State from a task, use `state` task as an input.
+To access the current State from a task, use the :key:`state` task as an input.
 For example,
 
 ::

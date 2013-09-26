@@ -30,7 +30,7 @@ build.sbt file:
 
 Then, put the following examples in source files
 `SettingsExample.scala` and `SettingsUsage.scala`. Finally, run sbt
-and enter the REPL using `console`. To see the output described below,
+and enter the REPL using :key:`console`. To see the output described below,
 enter `SettingsUsage`.
 
 Example Settings System

@@ -20,7 +20,7 @@ If there are any Scala sources, sbt will run `scaladoc`.
    
    scalacOptions in (Compile,doc) := Seq("-groups", "-implicits")
 
-Scope `scalacOptions` to the `doc` task to configure `scaladoc`.
+Scope :key:`scalacOptions` to the :key:`doc` task to configure `scaladoc`.
 Use `:=` to definitively set the options without appending to the options for `compile`.
 Scope to `Compile` for main sources or to `Test` for test sources.
 For example, ::
@@ -34,7 +34,7 @@ For example, ::
    
    scalacOptions in (Compile,doc) ++= Seq("-groups", "-implicits")
 
-Scope `scalacOptions` to the `doc` task to configure `scaladoc`.
+Scope :key:`scalacOptions` to the :key:`doc` task to configure `scaladoc`.
 Use `+=` or `++=` to append options to the base options.
 To append a single option, use `+=`.
 To append a `Seq[String]`, use `++=`.
@@ -50,7 +50,7 @@ For example, ::
    
    javacOptions in (Compile,doc) := Seq("-notimestamp", "-linksource")
 
-Scope `javacOptions` to the `doc` task to configure `javadoc`.
+Scope :key:`javacOptions` to the :key:`doc` task to configure `javadoc`.
 Use `:=` to definitively set the options without appending to the options for `compile`.
 Scope to `Compile` for main sources or to `Test` for test sources.
 
@@ -61,7 +61,7 @@ Scope to `Compile` for main sources or to `Test` for test sources.
    
    javacOptions in (Compile,doc) ++= Seq("-notimestamp", "-linksource")
 
-Scope `javacOptions` to the `doc` task to configure `javadoc`.
+Scope :key:`javacOptions` to the :key:`doc` task to configure `javadoc`.
 Use `+=` or `++=` to append options to the base options.
 To append a single option, use `+=`.
 To append a `Seq[String]`, use `++=`.
@@ -87,9 +87,9 @@ This requires that dependencies have this information in its metadata and you ar
    
    apiMappings += ( <File> -> <URL> )
 
-Add mappings of type `(File, URL)` to `apiMappings` to manually tell `scaladoc` where it can find the API documentation for dependencies.
+Add mappings of type `(File, URL)` to :key:`apiMappings` to manually tell `scaladoc` where it can find the API documentation for dependencies.
 (This requires `scaladoc` for Scala 2.10.2 or later.)
-These mappings are used in addition to `autoAPIMappings`, so this manual configuration is typically done for unmanaged dependencies.
+These mappings are used in addition to :key:`autoAPIMappings`, so this manual configuration is typically done for unmanaged dependencies.
 The `File` key is the location of the dependency as passed to the classpath.
 The `URL` value is the base URL of the API documentation for the dependency.
 For example, ::
@@ -106,8 +106,8 @@ For example, ::
    
    apiURL := Some(url("http://example.org/api/"))
 
-Set `apiURL` to define the base `URL` for the Scaladocs for your library.
-This will enable clients of your library to automatically link against the API documentation using `autoAPIMappings`.
+Set :key:`apiURL` to define the base `URL` for the Scaladocs for your library.
+This will enable clients of your library to automatically link against the API documentation using :key:`autoAPIMappings`.
 (This only works for Scala 2.10.2 and later.)
 For example, ::
 

@@ -96,7 +96,7 @@ Application
 As an example, consider generating a zip file containing the binary jar,
 source jar, and documentation jar for your project. First, determine
 what tasks produce the jars. In this case, the input tasks are
-`packageBin`, `packageSrc`, and `packageDoc` in the main
+:key:`packageBin`, :key:`packageSrc`, and :key:`packageDoc` in the main
 `Compile` scope. The result of each of these tasks is the File for the
 jar that they generated. Our zip file task is defined by mapping these
 package tasks and including their outputs in a zip file. As good

@@ -300,8 +300,8 @@ For the test classpath,
    
    show compile:discoveredMainClasses
 
-sbt detects the classes with public, static main methods for use by the `run` method and to tab-complete the `runMain` method.
-The `discoveredMainClasses` task does this discovery and provides as its result the list of class names.
+sbt detects the classes with public, static main methods for use by the :key:`run` method and to tab-complete the :key:`runMain` method.
+The :key:`discoveredMainClasses` task does this discovery and provides as its result the list of class names.
 For example, the following shows the main classes discovered in the main sources:
 
 .. code-block:: console
@@ -318,7 +318,7 @@ For example, the following shows the main classes discovered in the main sources
    show definedTestNames
 
 sbt detects tests according to fingerprints provided by test frameworks.
-The `definedTestNames` task provides as its result the list of test names detected in this way.
+The :key:`definedTestNames` task provides as its result the list of test names detected in this way.
 For example,
 
 .. code-block:: console

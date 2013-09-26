@@ -3,7 +3,7 @@
 import sys, os
 
 sys.path.append(os.path.abspath('_sphinx/exts'))
-extensions = ['sphinxcontrib.issuetracker', 'sphinx.ext.extlinks', 'howto', 'codeliteral']
+extensions = ['sphinxcontrib.issuetracker', 'sphinx.ext.extlinks', 'howto', 'codeliteral', 'key']
 
 # Project variables
 

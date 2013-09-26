@@ -13,7 +13,7 @@ markdown processing task. A plugin can define a sequence of sbt Settings
 that are automatically added to all projects or that are explicitly
 declared for selected projects. For example, a plugin might add a
 `proguard` task and associated (overridable) settings.
-Also, :doc:`Commands` can be added with the `commands` setting
+Also, :doc:`Commands` can be added with the :key:`commands` setting
 
 The :doc:`Plugins-Best-Practices` page describes the
 currently evolving guidelines to writing sbt plugins. See also the
@@ -132,7 +132,7 @@ We can change to the plugins project in `project/` using
 
 Then, we can add dependencies like usual and save them to
 `project/plugins.sbt`. It is useful, but not required, to run
-`update` to verify that the dependencies are correct.
+:key:`update` to verify that the dependencies are correct.
 
 .. code-block:: console
 
@@ -167,7 +167,7 @@ If sbt is running, run `reload`.
 
 Note that this approach can be useful used when developing a plugin.
 A project that uses the plugin will rebuild the plugin on `reload`.
-This saves the intermediate steps of `publishLocal` and `update`.
+This saves the intermediate steps of :key:`publishLocal` and :key:`update`.
 It can also be used to work with the development version of a plugin from its repository.
 
 It is recommended to explicitly specify the commit or tag by appending it to the repository as a fragment:
@@ -358,7 +358,7 @@ In addition:
    3. sbt will rebuild the plugin and use it for the project.
       Additionally, the plugin will be available in other projects on
       the machine without recompiling again. This approach skips the
-      overhead of `publishLocal` and cleaning the plugins directory
+      overhead of :key:`publishLocal` and cleaning the plugins directory
       of the project using the plugin.
 
 These are all consequences of :sublit:`|globalPluginsBase|` being a standard

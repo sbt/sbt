@@ -26,7 +26,7 @@ After examining a project and processing any build definition files, sbt
 will end up with an immutable map (set of key-value pairs) describing
 the build.
 
-For example, one key is `name` and it maps to a string value, the name
+For example, one key is :key:`name` and it maps to a string value, the name
 of your project.
 
 *Build definition files do not affect sbt's map directly.*
@@ -86,7 +86,7 @@ expressions may be interspersed with `val`s, `lazy val`s, and `def`s,
 but top-level `object`s and classes are not allowed in `build.sbt`.
 Those should go in the `project/` directory as full Scala source files.
 
-On the left, `name`, `version`, and `scalaVersion` are *keys*. A
+On the left, :key:`name`, :key:`version`, and :key:`scalaVersion` are *keys*. A
 key is an instance of `SettingKey[T]`, `TaskKey[T]`, or
 `InputKey[T]` where `T` is the expected value type. The kinds of key
 are explained more below.
@@ -101,10 +101,10 @@ could use a Java-like syntax to call the method:
 But Scala allows `name := "hello"` instead (in Scala, any method can
 use either syntax).
 
-The `:=` method on key `name` returns a `Setting`, specifically a
-`Setting[String]`. `String` also appears in the type of `name`
+The `:=` method on key :key:`name` returns a `Setting`, specifically a
+`Setting[String]`. `String` also appears in the type of :key:`name`
 itself, which is `SettingKey[String]`. In this case, the returned
-`Setting[String]` is a transformation to add or replace the `name`
+`Setting[String]` is a transformation to add or replace the :key:`name`
 key in sbt's map, giving it the value `"hello"`.
 
 If you use the wrong value type, the build definition will not compile:
@@ -155,7 +155,7 @@ Built-in Keys
 The built-in keys are just fields in an object called
 `Keys <../../sxr/sbt/Keys.scala.html>`_. A
 `build.sbt` implicitly has an `import sbt.Keys._`, so
-`sbt.Keys.name` can be referred to as `name`.
+`sbt.Keys.name` can be referred to as :key:`name`.
 
 Custom Keys
 ~~~~~~~~~~~
@@ -180,18 +180,18 @@ Task v. Setting keys
 ~~~~~~~~~~~~~~~~~~~~
 
 A `TaskKey[T]` is said to define a *task*. Tasks are operations such
-as `compile` or `package`. They may return `Unit` (`Unit` is
+as :key:`compile` or :key:`package`. They may return `Unit` (`Unit` is
 Scala for `void`), or they may return a value related to the task, for
-example `package` is a `TaskKey[File]` and its value is the jar file
+example :key:`package` is a `TaskKey[File]` and its value is the jar file
 it creates.
 
-Each time you start a task execution, for example by typing `compile`
+Each time you start a task execution, for example by typing :key:`compile`
 at the interactive sbt prompt, sbt will re-run any tasks involved
 exactly once.
 
 sbt's map describing the project can keep around a fixed string value
-for a setting such as `name`, but it has to keep around some
-executable code for a task such as `compile` -- even if that
+for a setting such as :key:`name`, but it has to keep around some
+executable code for a task such as :key:`compile` -- even if that
 executable code eventually returns a string, it has to be re-run every
 time.
 
@@ -235,8 +235,8 @@ Keys in sbt interactive mode
 ----------------------------
 
 In sbt's interactive mode, you can type the name of any task to execute
-that task. This is why typing `compile` runs the compile task.
-`compile` is a task key.
+that task. This is why typing :key:`compile` runs the compile task.
+:key:`compile` is a task key.
 
 If you type the name of a setting key rather than a task key, the value
 of the setting key will be displayed. Typing a task key name executes
@@ -283,7 +283,7 @@ add managed dependencies, which will look like this in `build.sbt`:
 This is how you add a managed dependency on the Apache Derby library,
 version 10.4.1.3.
 
-The `libraryDependencies` key involves two complexities: `+=` rather
+The :key:`libraryDependencies` key involves two complexities: `+=` rather
 than `:=`, and the `%` method. `+=` appends to the key's old value
 rather than replacing it, this is explained in
 :doc:`more about settings </Getting-Started/More-About-Settings>`.

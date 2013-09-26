@@ -28,7 +28,7 @@ Multiple commands can be scheduled at once by prefixing each command with a semi
 This is useful for specifying multiple commands where a single command string is accepted.
 For example, the syntax for triggered execution is `~ <command>`.
 To have more than one command run for each triggering, use semicolons.
-For example, the following runs `clean` and then `compile` each time a source file changes:
+For example, the following runs :key:`clean` and then :key:`compile` each time a source file changes:
 
 .. code-block:: console
 
@@ -85,4 +85,4 @@ For example,
     4: Int
 
 Variables defined by an `eval` are not visible to subsequent `eval`s, although changes to system properties persist and affect the JVM that is running sbt.
-Use the Scala REPL (`console` and related commands) for full support for evaluating Scala code interactively.
+Use the Scala REPL (:key:`console` and related commands) for full support for evaluating Scala code interactively.

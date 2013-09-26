@@ -3,7 +3,7 @@ Compiler Plugin Support
 =======================
 
 There is some special support for using compiler plugins. You can set
-`autoCompilerPlugins` to `true` to enable this functionality.
+:key:`autoCompilerPlugins` to `true` to enable this functionality.
 
 ::
 
@@ -18,14 +18,14 @@ for specifying `plugin` as the configuration for a dependency:
 
     addCompilerPlugin("org.scala-tools.sxr" %% "sxr" % "0.3.0")
 
-The `compile` and `testCompile` actions will use any compiler
+The :key:`compile` and :key:`testCompile` actions will use any compiler
 plugins found in the `lib` directory or in the `plugin`
 configuration. You are responsible for configuring the plugins as
 necessary. For example, Scala X-Ray requires the extra option:
 
 ::
 
-        // declare the main Scala source directory as the base directory
+    // declare the main Scala source directory as the base directory
     scalacOptions :=
         scalacOptions.value :+ ("-Psxr:base-directory:" + (scalaSource in Compile).value.getAbsolutePath)
 

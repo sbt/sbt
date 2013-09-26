@@ -3,9 +3,6 @@ from sphinx.util.nodes import set_source_info
 
 
 class Struct:
-
-    """Stores data attributes for dotted-attribute access."""
-
     def __init__(self, **keywordargs):
         self.__dict__.update(keywordargs)
 
@@ -17,14 +14,14 @@ def process_node(node):
     node['classes'].append('pre')
     return node
 
-# This directive formats a string to be in a fixed width font.
+# This role formats a string to be in a fixed width font.
 # The string is taken as a literal and is not processed for further inline formatting.
 def code_literal(name, rawtext, text, lineno, inliner, options={}, content=[]):
     node = nodes.inline('', text)
     node['classes'].append('pre')
     return [node], []
 
-# This directive formats a string to be in a fixed width font.
+# This role formats a string to be in a fixed width font.
 # It processes nested inline formatting, substitutions in particular.
 def sub_literal(name, rawtext, text, lineno, inliner, options={}, content=[]):
     memo = Struct(document=inliner.document,

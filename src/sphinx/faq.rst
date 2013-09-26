@@ -52,14 +52,14 @@ screen, but as a newcomer it can leave you lost for explanation. To see
 the previous output of a command at a higher verbosity, type
 `last <task>` where `<task>` is the task that failed or that you
 want to view detailed output for. For example, if you find that your
-`update` fails to load all the dependencies as you expect you can
+:key:`update` fails to load all the dependencies as you expect you can
 enter:
 
 .. code-block:: console
 
     > last update
 
-and it will display the full output from the last run of the `update`
+and it will display the full output from the last run of the :key:`update`
 command.
 
 How do I disable ansi codes in the output?
@@ -115,8 +115,8 @@ How do I add files to a jar package?
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 The files included in an artifact are configured by default by a task
-`mappings` that is scoped by the relevant package task. The
-`mappings` task returns a sequence `Seq[(File,String)]` of mappings
+:key:`mappings` that is scoped by the relevant package task. The
+:key:`mappings` task returns a sequence `Seq[(File,String)]` of mappings
 from the file to include to the path within the jar. See
 :doc:`/Detailed-Topics/Mapping-Files` for details on creating these mappings.
 
@@ -131,10 +131,10 @@ For example, to add generated sources to the packaged source artifact:
        srcs x (relativeTo(base) | flat)
     }
 
-This takes sources from the `managedSources` task and relativizes them
-against the `managedSource` base directory, falling back to a
+This takes sources from the :key:`managedSources` task and relativizes them
+against the :key:`managedSource` base directory, falling back to a
 flattened mapping. If a source generation task doesn't write the sources
-to the `managedSource` directory, the mapping function would have to
+to the :key:`managedSource` directory, the mapping function would have to
 be adjusted to try relativizing against additional directories or
 something more appropriate for the generator.
 
@@ -197,7 +197,7 @@ The following example demonstrates adding a new set of compilation
 settings and tasks to a new configuration called `samples`. The
 sources for this configuration go in `src/samples/scala/`. Unspecified
 settings delegate to those defined for the `compile` configuration.
-For example, if `scalacOptions` are not overridden for `samples`,
+For example, if :key:`scalacOptions` are not overridden for `samples`,
 the options for the main sources are used.
 
 Options specific to `samples` may be declared like:
@@ -278,7 +278,7 @@ configuration and classpaths. These are the steps:
 1. Define a new :ref:`configuration <ivy-configurations>`.
 2. Declare the tool :doc:`dependencies </Detailed-Topics/Library-Management>` in that
    configuration.
-3. Define a classpath that pulls the dependencies from the :doc:`/Detailed-Topics/Update-Report` produced by `update`.
+3. Define a classpath that pulls the dependencies from the :doc:`/Detailed-Topics/Update-Report` produced by :key:`update`.
 4. Use the classpath to implement the task.
 
 As an example, consider a `proguard` task. This task needs the
@@ -356,7 +356,7 @@ Example of dynamic classpath augmentation
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 The following code can be used where a `State => State` is required,
-such as in the `onLoad` setting (described below) or in a
+such as in the :key:`onLoad` setting (described below) or in a
 :doc:`command </Extending/Commands>`. It adds some files to the "extra" component and
 reloads sbt if they were not already added. Note that reloading will
 drop the user's session state.
@@ -381,14 +381,14 @@ drop the user's session state.
 How can I take action when the project is loaded or unloaded?
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-The single, global setting `onLoad` is of type `State => State` (see
+The single, global setting :key:`onLoad` is of type `State => State` (see
 :doc:`/Extending/Build-State`) and is executed once, after all projects are built and
-loaded. There is a similar hook `onUnload` for when a project is
+loaded. There is a similar hook :key:`onUnload` for when a project is
 unloaded. Project unloading typically occurs as a result of a `reload`
-command or a `set` command. Because the `onLoad` and `onUnload`
+command or a `set` command. Because the :key:`onLoad` and :key:`onUnload`
 hooks are global, modifying this setting typically involves composing a
 new function with the previous value. The following example shows the
-basic structure of defining `onLoad`:
+basic structure of defining :key:`onLoad`:
 
 ::
 
@@ -434,7 +434,7 @@ Setting initializers are executed in order. If the initialization of a
 setting depends on other settings that has not been initialized, sbt
 will stop loading.
 
-In this example, we try to append a library to `libraryDependencies`
+In this example, we try to append a library to :key:`libraryDependencies`
 before it is initialized with an empty sequence.
 
 ::
@@ -630,7 +630,7 @@ sbt 0.10 fixes a flaw in how dependencies get resolved in multi-module
 projects. This change ensures that only one version of a library appears
 on a classpath.
 
-Use `last update` to view the debugging output for the last `update`
+Use `last update` to view the debugging output for the last :key:`update`
 run. Use `show update` to view a summary of files comprising managed
 classpaths.
 

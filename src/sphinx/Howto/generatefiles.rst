@@ -11,7 +11,7 @@ sbt provides standard hooks for adding source or resource generation tasks.
 
    sourceGenerators in Compile += <your Task[Seq[File]] here>
 
-A source generation task should generate sources in a subdirectory of `sourceManaged` and return a sequence of files generated.  The key to add the task to is called `sourceGenerators`.  It should be scoped according to whether the generated files are main (`Compile`) or test (`Test`) sources.  This basic structure looks like:
+A source generation task should generate sources in a subdirectory of :key:`sourceManaged` and return a sequence of files generated.  The key to add the task to is called :key:`sourceGenerators`.  It should be scoped according to whether the generated files are main (`Compile`) or test (`Test`) sources.  This basic structure looks like:
 
 ::
 
@@ -46,7 +46,7 @@ By default, generated sources are not included in the packaged source artifact. 
 
    resourceGenerators in Compile += <your Task[Seq[File]] here>
 
-A resource generation task should generate resources in a subdirectory of `resourceManaged` and return a sequence of files generated.  The key to add the task to is called `resourceGenerators`.  It should be scoped according to whether the generated files are main (`Compile`) or test (`Test`) resources.  This basic structure looks like:
+A resource generation task should generate resources in a subdirectory of :key:`resourceManaged` and return a sequence of files generated.  The key to add the task to is called :key:`resourceGenerators`.  It should be scoped according to whether the generated files are main (`Compile`) or test (`Test`) resources.  This basic structure looks like:
 
 ::
 

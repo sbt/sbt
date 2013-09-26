@@ -2,7 +2,7 @@
 Update Report
 =============
 
-`update` and related tasks produce a value of type
+:key:`update` and related tasks produce a value of type
 `sbt.UpdateReport <../../api/sbt/UpdateReport.html>`_
 This data structure provides information about the resolved
 configurations, modules, and artifacts. At the top level,
@@ -12,9 +12,9 @@ each resolved configuration. A `ConfigurationReport` supplies reports
 configuration. Finally, a `ModuleReport` lists each successfully
 retrieved `Artifact` and the `File` it was retrieved to as well as
 the `Artifact`\ s that couldn't be downloaded. This missing
-`Arifact` list is always empty for `update`, which will fail if it is
-non-empty. However, it may be non-empty for `updateClassifiers` and
-`updateSbtClassifers`.
+`Arifact` list is always empty for :key:`update`, which will fail if it is
+non-empty. However, it may be non-empty for :key:`updateClassifiers` and
+:key:`updateSbtClassifers`.
 
 Filtering a Report and Getting Artifacts
 ========================================

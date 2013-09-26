@@ -142,7 +142,7 @@ For example, the `main` Project definition above would now look like:
 
 
 You may wish to disable publishing the macro implementation.
-This is done by overriding `publish` and `publishLocal` to do nothing:
+This is done by overriding :key:`publish` and :key:`publishLocal` to do nothing:
 
 ::
 

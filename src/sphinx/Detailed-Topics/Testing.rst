@@ -34,8 +34,8 @@ to use your library.
 
 With the library dependency defined, you can then add test sources in
 the locations listed above and compile and run tests. The tasks for
-running tests are `test` and `testOnly`. The `test` task accepts
-no command line arguments and runs all tests:
+running tests are :key:`test` and :key:`testOnly`. The :key:`test` task
+accepts no command line arguments and runs all tests:
 
 .. code-block:: console
 
@@ -44,7 +44,7 @@ no command line arguments and runs all tests:
 testOnly
 ---------
 
-The `testOnly` task accepts a whitespace separated list of test names
+The :key:`testOnly` task accepts a whitespace separated list of test names
 to run. For example:
 
 .. code-block:: console
@@ -60,7 +60,7 @@ It supports wildcards as well:
 testQuick
 ----------
 
-The `testQuick` task, like `testOnly`, allows to filter the tests
+The :key:`testQuick` task, like :key:`testOnly`, allows to filter the tests
 to run to specific tests or wildcards using the same syntax to indicate
 the filters. In addition to the explicit filter, only the tests that
 satisfy one of the following conditions are run:
@@ -77,7 +77,7 @@ Tab completion is provided for test names based on the results of the
 last `test:compile`. This means that a new sources aren't available
 for tab completion until they are compiled and deleted sources won't be
 removed from tab completion until a recompile. A new test source can
-still be manually written out and run using `testOnly`.
+still be manually written out and run using :key:`testOnly`.
 
 Other tasks
 -----------
@@ -98,7 +98,7 @@ Output
 ======
 
 By default, logging is buffered for each test source file until all
-tests for that file complete. This can be disabled with:
+tests for that file complete. This can be disabled by setting :key:`logBuffered`:
 
 ::
 
@@ -111,7 +111,7 @@ Test Framework Arguments
 ------------------------
 
 Arguments to the test framework may be provided on the command line to
-the `testOnly` tasks following a `--` separator. For example:
+the :key:`testOnly` tasks following a `--` separator. For example:
 
 .. code-block:: console
 
@@ -162,10 +162,11 @@ Disable Parallel Execution of Tests
 
 By default, sbt runs all tasks in parallel. Because each test is mapped
 to a task, tests are also run in parallel by default. To make tests
-within a given project execute serially:
+within a given project execute serially: ::
 
-`scala parallelExecution in Test := false` `Test` can be replaced
-with `IntegrationTest` to only execute integration tests serially.
+    parallelExecution in Test := false
+
+`Test` can be replaced with `IntegrationTest` to only execute integration tests serially.
 Note that tests from different projects may still execute concurrently.
 
 Filter classes
@@ -190,7 +191,7 @@ The setting:
 specifies that all tests will be executed in a single external JVM. See
 :doc:`Forking` for configuring standard options for forking. More control
 over how tests are assigned to JVMs and what options to pass to those is
-available with `testGrouping` key. For example:
+available with :key:`testGrouping` key. For example:
 
 ::
 
@@ -426,7 +427,7 @@ using:
 
     parallelExecution in Serial := false
 
-The tests to run in parallel would be run with `test` and the ones to
+The tests to run in parallel would be run with :key:`test` and the ones to
 run in serial would be run with `serial:test`.
 
 JUnit
@@ -473,14 +474,14 @@ Using Extensions
 
 To use your extensions in a project definition:
 
-Modify the `testFrameworks` setting to reference your test framework:
+Modify the :key:`testFrameworks` setting to reference your test framework:
 
 ::
 
     testFrameworks += new TestFramework("custom.framework.ClassName")
 
 Specify the test reporters you want to use by overriding the
-`testListeners` method in your project definition.
+:key:`testListeners` setting in your project definition.
 
 ::
 

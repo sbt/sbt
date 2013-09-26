@@ -2,7 +2,7 @@
 Mapping Files
 =============
 
-Tasks like `package`, `packageSrc`, and `packageDoc` accept
+Tasks like :key:`package`, :key:`packageSrc`, and :key:`packageDoc` accept
 mappings of type `Seq[(File, String)]` from an input file to the path
 to use in the resulting artifact (jar). Similarly, tasks that copy files
 accept mappings of type `Seq[(File, File)]` from an input file to the

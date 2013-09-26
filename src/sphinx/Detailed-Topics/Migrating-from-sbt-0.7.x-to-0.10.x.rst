@@ -17,7 +17,7 @@ Why move to |version|?
    `project/build/MyProject.scala` was.
 3. No more `lib_managed` directory, reducing disk usage and avoiding
    backup and version control hassles.
-4. `update` is now much faster and it's invoked automatically by sbt.
+4. :key:`update` is now much faster and it's invoked automatically by sbt.
 5. Terser output. (Yet you can ask for more details if something goes
    wrong.)
 
