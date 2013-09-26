@@ -214,7 +214,7 @@ object Sbt extends Build
 	def fullDocSettings = Util.baseScalacOptions ++ Docs.settings ++ Sxr.settings ++ Seq(
 		scalacOptions += "-Ymacro-no-expand", // for both sxr and doc
 		sources in sxr <<= deepTasks(sources in Compile), //sxr
-		sources in Compile <<= sources in sxr, // doc
+		sources in (Compile,doc) <<= sources in sxr, // doc
 		Sxr.sourceDirectories <<= deep(sourceDirectories in Compile).map(_.flatten), // to properly relativize the source paths
 		fullClasspath in sxr <<= (externalDependencyClasspath in Compile in sbtSub),
 		dependencyClasspath in (Compile,doc) <<= fullClasspath in sxr
