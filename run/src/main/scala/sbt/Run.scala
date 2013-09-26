@@ -76,6 +76,9 @@ class Run(instance: ScalaInstance, trapExit: Boolean, nativeTmp: File) extends S
 	{
 		val mainClass = Class.forName(mainClassName, true, loader)
 		val method = mainClass.getMethod("main", classOf[Array[String]])
+		// jvm allows the actual main class to be non-public and to run a method in the non-public class,
+		//  we need to make it accessible
+		method.setAccessible(true)
 		val modifiers = method.getModifiers
 		if(!isPublic(modifiers)) throw new NoSuchMethodException(mainClassName + ".main is not public")
 		if(!isStatic(modifiers)) throw new NoSuchMethodException(mainClassName + ".main is not static")
