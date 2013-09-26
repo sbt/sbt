@@ -14,7 +14,13 @@ class Discovery(baseClasses: Set[String], annotations: Set[String])
 	def apply(d: Definition): Discovered =
 		d match
 		{
-			case c: ClassLike if isPublic(c) && isConcrete(c.modifiers) => discover(c)
+			case c: ClassLike if isConcrete(c.modifiers) => 
+				if(isPublic(c))
+					discover(c)
+				else if(isModule(c) && hasMainMethod(c)) // jvm does not require a main class to be public
+					new Discovered(Set.empty, Set.empty, true, true)
+				else
+					Discovered.empty
 			case _ => Discovered.empty
 		}
 	def discover(c: ClassLike): Discovered =
@@ -24,6 +30,7 @@ class Discovery(baseClasses: Set[String], annotations: Set[String])
 		val module = isModule(c)
 		new Discovered( bases(c.name, c.structure.parents), onClass ++ onDefs, module && hasMainMethod(c), module )
 	}
+
 	def bases(own: String, c: Seq[Type]): Set[String] =
 		(own +: c.flatMap(simpleName)).filter(baseClasses).toSet
 
