@@ -136,7 +136,7 @@ Task Scope
 ~~~~~~~~~~
 
 As with settings, tasks can be defined in a specific scope. For example,
-there are separate `compile` tasks for the `compile` and `test`
+there are separate :key:`compile` tasks for the `compile` and `test`
 scopes. The scope of a task is defined the same as for a setting. In the
 following example, `test:sampleTask` uses the result of
 `compile:intTask`.
@@ -252,7 +252,7 @@ Example
 -------
 
 A common scenario is getting the sources for all subprojects for processing all at once, such as passing them to scaladoc.
-The task that we want to obtain values for is `sources` and we want to get the values in all non-root projects and in the `Compile` configuration.
+The task that we want to obtain values for is :key:`sources` and we want to get the values in all non-root projects and in the `Compile` configuration.
 This looks like:
 
 ::
@@ -384,13 +384,13 @@ The target of `all` is any task or setting, including anonymous ones.
 This means it is possible to get multiple values at once without defining a new task or setting in each scope.
 A common use case is to pair each value obtained with the project, configuration, or full scope it came from.
 
-`resolvedScoped`
+:key:`resolvedScoped`
     Provides the full enclosing `ScopedKey` (which is a `Scope` + `AttributeKey[_]`)
-`thisProject`
+:key:`thisProject`
     Provides the `Project` associated with this scope (undefined at the global and build levels)
-`thisProjectRef`
+:key:`thisProjectRef`
     Provides the `ProjectRef` for the context (undefined at the global and build levels)
-`configuration`
+:key:`configuration`
     Provides the `Configuration` for the context (undefined for the global configuration)
 
 For example, the following defines a task that prints non-Compile configurations that define
@@ -403,7 +403,7 @@ a fairly contrived example):
     lazy val filter: ScopeFilter = ScopeFilter(
        inProjects(ThisProject),
        inAnyConfiguration -- inConfigurations(Compile)
-    )
+   )
 
     // Define a task that provides the name of the current configuration
     //   and the set of sbt plugins defined in the configuration
@@ -434,7 +434,7 @@ This allows controlling the verbosity of stack traces and logging individually f
 as recalling the last logging for a task.
 Tasks also have access to their own persisted binary or text data.
 
-To use Streams, get the value of the `streams` task. This is a
+To use Streams, get the value of the :key:`streams` task. This is a
 special task that provides an instance of
 `TaskStreams <../../api/sbt/std/TaskStreams.html>`_
 for the defining task. This type provides access to named binary and
@@ -468,7 +468,7 @@ To obtain the last logging output from a task, use the `last` command:
     [info] Hello!
 
 The verbosity with which logging is persisted is controlled using the
-`persistLogLevel` and `persistTraceLevel` settings. The `last`
+:key:`persistLogLevel` and :key:`persistTraceLevel` settings. The `last`
 command displays what was logged according to these levels. The levels
 do not affect already logged information.
 

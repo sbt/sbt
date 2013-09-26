@@ -48,10 +48,10 @@ Generated files
 ~~~~~~~~~~~~~~~
 
 Write any generated files to a subdirectory of the output directory,
-which is specified by the `target` setting. This makes it easy to
+which is specified by the :key:`target` setting. This makes it easy to
 clean up after a build and provides a single location to organize
 generated files. Any generated files that are specific to a Scala
-version should go in `crossTarget` for efficient cross-building.
+version should go in :key:`crossTarget` for efficient cross-building.
 
 For generating sources and resources, see :doc:`/Howto/generatefiles`.
 
@@ -59,7 +59,7 @@ Don't hard code
 ~~~~~~~~~~~~~~~
 
 Don't hard code constants, like the output directory `target/`. This
-is especially important for plugins. A user might change the `target`
+is especially important for plugins. A user might change the :key:`target`
 setting to point to `build/`, for example, and the plugin needs to
 respect that. Instead, use the setting, like:
 
@@ -124,7 +124,7 @@ or construct the file from an absolute base:
     base / "A.scala"
 
 This is related to the no hard coding best practice because the proper
-way involves referencing the `baseDirectory` setting. For example, the
+way involves referencing the :key:`baseDirectory` setting. For example, the
 following defines the myPath setting to be the `<base>/licenses/`
 directory.
 

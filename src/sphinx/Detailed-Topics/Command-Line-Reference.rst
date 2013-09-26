@@ -21,60 +21,60 @@ Notes on the command line
    these values can be shown using `show <task>` to run the task
    instead of just `<task>`.
 -  In a multi-project build, execution dependencies and the
-   `aggregate` setting control which tasks from which projects are
+   :key:`aggregate` setting control which tasks from which projects are
    executed. See :doc:`multi-project builds </Getting-Started/Multi-Project>`.
 
 Project-level tasks
 -------------------
 
--  `clean` Deletes all generated files (the `target` directory).
--  `publishLocal` Publishes artifacts (such as jars) to the local Ivy
+-  :key:`clean` Deletes all generated files (the :key:`target` directory).
+-  :key:`publishLocal` Publishes artifacts (such as jars) to the local Ivy
    repository as described in :doc:`Publishing`.
--  `publish` Publishes artifacts (such as jars) to the repository
-   defined by the `publishTo` setting, described in :doc:`Publishing`.
--  `update` Resolves and retrieves external dependencies as described
+-  :key:`publish` Publishes artifacts (such as jars) to the repository
+   defined by the :key:`publishTo` setting, described in :doc:`Publishing`.
+-  :key:`update` Resolves and retrieves external dependencies as described
    in :doc:`library dependencies </Getting-Started/Library-Dependencies>`.
 
 Configuration-level tasks
 -------------------------
 
 Configuration-level tasks are tasks associated with a configuration. For
-example, `compile`, which is equivalent to `compile:compile`,
+example, :key:`compile`, which is equivalent to `compile:compile`,
 compiles the main source code (the `compile` configuration).
 `test:compile` compiles the test source code (test `test`
 configuration). Most tasks for the `compile` configuration have an
 equivalent in the `test` configuration that can be run using a
 `test:` prefix.
 
--  `compile` Compiles the main sources (in the `src/main/scala`
+-  :key:`compile` Compiles the main sources (in the `src/main/scala`
    directory). `test:compile` compiles test sources (in the
    `src/test/scala/` directory).
--  `console` Starts the Scala interpreter with a classpath including
+-  :key:`console` Starts the Scala interpreter with a classpath including
    the compiled sources, all jars in the `lib` directory, and managed
    libraries. To return to sbt, type `:quit`, Ctrl+D (Unix), or Ctrl+Z
    (Windows). Similarly, `test:console` starts the interpreter with
    the test classes and classpath.
--  `consoleQuick` Starts the Scala interpreter with the project's
+-  :key:`consoleQuick` Starts the Scala interpreter with the project's
    compile-time dependencies on the classpath. `test:consoleQuick`
-   uses the test dependencies. This task differs from `console` in
+   uses the test dependencies. This task differs from :key:`console` in
    that it does not force compilation of the current project's sources.
--  `consoleProject` Enters an interactive session with sbt and the
+-  :key:`consoleProject` Enters an interactive session with sbt and the
    build definition on the classpath. The build definition and related
    values are bound to variables and common packages and values are
    imported. See the :doc:`consoleProject documentation <Console-Project>` for more information.
--  `doc` Generates API documentation for Scala source files in
+-  :key:`doc` Generates API documentation for Scala source files in
    `src/main/scala` using scaladoc. `test:doc` generates API
    documentation for source files in `src/test/scala`.
--  `package` Creates a jar file containing the files in
+-  :key:`package` Creates a jar file containing the files in
    `src/main/resources` and the classes compiled from
-   `src/main/scala`. `test:package` creates a jar containing the
+   `src/main/scala`. :key:`test:package` creates a jar containing the
    files in `src/test/resources` and the class compiled from
    `src/test/scala`.
--  `packageDoc` Creates a jar file containing API documentation
+-  :key:`packageDoc` Creates a jar file containing API documentation
    generated from Scala source files in `src/main/scala`.
    `test:packageDoc` creates a jar containing API documentation for
    test sources files in `src/test/scala`.
--  `packageSrc`: Creates a jar file containing all main source files
+-  :key:`packageSrc`: Creates a jar file containing all main source files
    and resources. The packaged paths are relative to `src/main/scala`
    and `src/main/resources`. Similarly, `test:packageSrc` operates
    on test source files and resources.
@@ -90,7 +90,7 @@ equivalent in the `test` configuration that can be run using a
    for details on the use of `System.exit` and
    multithreading (including GUIs) in code run by this action.
    `test:runMain` runs the specified main class in the test code.
--  `test` Runs all tests detected during test compilation. See
+-  :key:`test` Runs all tests detected during test compilation. See
    :doc:`Testing` for details.
 -  `testOnly <test>*` Runs the tests provided as arguments. `*`
    (will be) interpreted as a wildcard in the test name. See :doc:`Testing`

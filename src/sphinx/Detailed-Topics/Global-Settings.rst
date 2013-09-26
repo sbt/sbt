@@ -9,7 +9,7 @@ Settings that should be applied to all projects can go in :sublit:`|globalSbtFil
 (or any file in :sublit:`|globalBase|` with a `.sbt` extension).
 Plugins that are defined globally in :sublit:`|globalPluginsBase|` are
 available to these settings. For example, to change the default
-`shellPrompt` for your projects:
+:key:`shellPrompt` for your projects:
 
 :sublit:`|globalSbtFile|`
 
@@ -32,7 +32,7 @@ the dependency definitions. For example:
 
     addSbtPlugin("org.example" % "plugin" % "1.0")
 
-To change the default `shellPrompt` for every project using this
+To change the default :key:`shellPrompt` for every project using this
 approach, create a local plugin :sublit:`|globalShellPromptScala|`:
 
 ::
@@ -51,7 +51,7 @@ The :sublit:`|globalPluginsBase|` directory is a full project that is included a
 an external dependency of every plugin project. In practice, settings
 and code defined here effectively work as if they were defined in a
 project's `project/` directory. This means that :sublit:`|globalPluginsBase|` can
-be used to try out ideas for plugins such as shown in the `shellPrompt`
+be used to try out ideas for plugins such as shown in the :key:`shellPrompt`
 example.
 
 .. |globalBase| replace:: ~/.sbt/|version|/

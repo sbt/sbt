@@ -2,7 +2,7 @@
 Running Project Code
 ====================
 
-The `run` and `console` actions provide a means for running user
+The :key:`run` and :key:`console` actions provide a means for running user
 code in the same virtual machine as sbt. This page describes the
 problems with doing so, how sbt handles these problems, what types of
 code can use this feature, and what types of code must use a :doc:`forked jvm <Forking>`.
@@ -15,7 +15,7 @@ System.exit
 -----------
 
 User code can call `System.exit`, which normally shuts down the JVM.
-Because the `run` and `console` actions run inside the same JVM as
+Because the :key:`run` and :key:`console` actions run inside the same JVM as
 sbt, this also ends the build and requires restarting sbt.
 
 Threads
@@ -47,7 +47,7 @@ User code is run with a custom `SecurityManager` that throws a custom
 `SecurityException` when `System.exit` is called. This exception is
 caught by sbt. sbt then disposes of all top-level windows, interrupts
 (not stops) all user-created threads, and handles the exit code. If the
-exit code is nonzero, `run` and `console` complete unsuccessfully.
+exit code is nonzero, :key:`run` and :key:`console` complete unsuccessfully.
 If the exit code is zero, they complete normally.
 
 Threads
@@ -70,8 +70,8 @@ thread(s).
 User Code
 =========
 
-Given the above, when can user code be run with the `run` and
-`console` actions?
+Given the above, when can user code be run with the :key:`run` and
+:key:`console` actions?
 
 The user code cannot rely on shutdown hooks and at least one of the
 following situations must apply for user code to run in the same JVM:

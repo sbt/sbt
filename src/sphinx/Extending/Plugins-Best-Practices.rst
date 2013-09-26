@@ -41,7 +41,7 @@ Where possible, reuse them in your plugin. For instance, don't define:
 
     val sourceFiles = settingKey[Seq[File]]("Some source files")
 
-Instead, simply reuse sbt's existing `sources` key.
+Instead, simply reuse sbt's existing :key:`sources` key.
 
 Avoid namespace clashes
 -----------------------
@@ -259,7 +259,7 @@ Global settings should *not* be placed into a `build.sbt` file.
 
 When overriding global settings, care should be taken to ensure previous
 settings from other plugins are not ignored. e.g. when creating a new
-`onLoad` handler, ensure that the previous `onLoad` handler is not
+:key:`onLoad` handler, ensure that the previous :key:`onLoad` handler is not
 removed.
 
 ::

@@ -5,7 +5,7 @@ Console Project
 Description
 ===========
 
-The `consoleProject` task starts the Scala interpreter with access to
+The :key:`consoleProject` task starts the Scala interpreter with access to
 your project definition and to `sbt`. Specifically, the interpreter is
 started up with these commands already executed:
 
@@ -30,7 +30,7 @@ be included in the standard library in Scala 2.9):
     > "grep -r null src" #|| "echo null-free" !
     > uri("http://databinder.net/dispatch/About").toURL #> file("About.html") !
 
-`consoleProject` can be useful for creating and modifying your build
+:key:`consoleProject` can be useful for creating and modifying your build
 in the same way that the Scala interpreter is normally used to explore
 writing code. Note that this gives you raw access to your build. Think
 about what you pass to `IO.delete`, for example.
@@ -98,7 +98,7 @@ Examples
 --------
 
 Show the remaining commands to be executed in the build (more
-interesting if you invoke `consoleProject` like
+interesting if you invoke :key:`consoleProject` like
 `; consoleProject ; clean ; compile`):
 
 .. code-block:: scala

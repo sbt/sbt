@@ -9,7 +9,7 @@ The whole story about keys
 --------------------------
 
 :doc:`Previously <Basic-Def>` we pretended that a key like
-`name` corresponded to one entry in sbt's map of key-value pairs. This
+:key:`name` corresponded to one entry in sbt's map of key-value pairs. This
 was a simplification.
 
 In truth, each key can have an associated value in more than one
@@ -19,11 +19,11 @@ Some concrete examples:
 
 -  if you have multiple projects in your build definition, a key can
    have a different value in each project.
--  the `compile` key may have a different value for your main sources
+-  the :key:`compile` key may have a different value for your main sources
    and your test sources, if you want to compile them differently.
--  the `packageOptions` key (which contains options for creating jar
+-  the :key:`packageOptions` key (which contains options for creating jar
    packages) may have different values when packaging class files
-   (`packageBin`) or packaging source code (`packageSrc`).
+   (:key:`packageBin`) or packaging source code (:key:`packageSrc`).
 
 *There is no single value for a given key name*, because the value may
 differ according to scope.
@@ -80,22 +80,22 @@ Some configurations you'll see in sbt:
 By default, all the keys associated with compiling, packaging, and
 running are scoped to a configuration and therefore may work differently
 in each configuration. The most obvious examples are the task keys
-`compile`, `package`, and `run`; but all the keys which *affect*
-those keys (such as `sourceDirectories` or `scalacOptions` or
-`fullClasspath`) are also scoped to the configuration.
+:key:`compile`, :key:`package`, and :key:`run`; but all the keys which *affect*
+those keys (such as :key:`sourceDirectories` or :key:`scalacOptions` or
+:key:`fullClasspath`) are also scoped to the configuration.
 
 Scoping by task axis
 ~~~~~~~~~~~~~~~~~~~~
 
-Settings can affect how a task works. For example, the `packageSrc`
-task is affected by the `packageOptions` setting.
+Settings can affect how a task works. For example, the :key:`packageSrc`
+task is affected by the :key:`packageOptions` setting.
 
-To support this, a task key (such as `packageSrc`) can be a scope for
-another key (such as `packageOptions`).
+To support this, a task key (such as :key:`packageSrc`) can be a scope for
+another key (such as :key:`packageOptions`).
 
-The various tasks that build a package (`packageSrc`,
-`packageBin`, `packageDoc`) can share keys related to packaging,
-such as `artifactName` and `packageOptions`. Those keys can have
+The various tasks that build a package (:key:`packageSrc`,
+:key:`packageBin`, :key:`packageDoc`) can share keys related to packaging,
+such as :key:`artifactName` and :key:`packageOptions`. Those keys can have
 distinct values for each packaging task.
 
 Global scope
@@ -156,15 +156,15 @@ For more details, see :doc:`/Detailed-Topics/Inspecting-Settings`.
 Examples of scoped key notation
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
--  `fullClasspath`: just a key, so the default scopes are used:
+-  :key:`fullClasspath`: just a key, so the default scopes are used:
    current project, a key-dependent configuration, and global task
    scope.
 -  `test:fullClasspath`: specifies the configuration, so this is
-   `fullClasspath` in the `test` configuration, with defaults for
+   :key:`fullClasspath` in the `test` configuration, with defaults for
    the other two scope axes.
 -  `*:fullClasspath`: specifies `Global` for the configuration,
    rather than the default configuration.
--  `doc::fullClasspath`: specifies the `fullClasspath` key scoped
+-  `doc::fullClasspath`: specifies the :key:`fullClasspath` key scoped
    to the `doc` task, with the defaults for the project and
    configuration axes.
 -  `{file:/home/hp/checkout/hello/}default-aea33a/test:fullClasspath`
@@ -232,7 +232,7 @@ The value resulting from the task will have type
 "Provided by" points you to the scoped key that defines the value, in
 this case
 `{file:/home/hp/checkout/hello/}default-aea33a/test:fullClasspath`
-(which is the `fullClasspath` key scoped to the `test`
+(which is the :key:`fullClasspath` key scoped to the `test`
 configuration and the `{file:/home/hp/checkout/hello/}default-aea33a`
 project).
 
@@ -267,7 +267,7 @@ Because the configuration is omitted, it is autodetected as `compile`.
 `inspect fullClasspath`.
 
 Try `inspect *:fullClasspath` for another contrast.
-`fullClasspath` is not defined in the `Global` configuration by
+:key:`fullClasspath` is not defined in the `Global` configuration by
 default.
 
 Again, for more details, see :doc:`/Detailed-Topics/Inspecting-Settings`.
@@ -302,7 +302,7 @@ name scoped to the `Compile` configuration:
 
     name in Compile := "hello"
 
-or you could set the name scoped to the `packageBin` task (pointless!
+or you could set the name scoped to the :key:`packageBin` task (pointless!
 just an example):
 
 ::
@@ -310,7 +310,7 @@ just an example):
     name in packageBin := "hello"
 
 or you could set the name with multiple scope axes, for example in the
-`packageBin` task in the `Compile` configuration:
+:key:`packageBin` task in the `Compile` configuration:
 
 ::
 
@@ -343,12 +343,12 @@ When to specify a scope
 -----------------------
 
 You need to specify the scope if the key in question is normally scoped.
-For example, the `compile` task, by default, is scoped to `Compile`
+For example, the :key:`compile` task, by default, is scoped to `Compile`
 and `Test` configurations, and does not exist outside of those scopes.
 
-To change the value associated with the `compile` key, you need to
+To change the value associated with the :key:`compile` key, you need to
 write `compile in Compile` or `compile in Test`. Using plain
-`compile` would define a new compile task scoped to the current
+:key:`compile` would define a new compile task scoped to the current
 project, rather than overriding the standard compile tasks which are
 scoped to a configuration.
 
@@ -362,7 +362,7 @@ One way to think of it is that a name is only *part* of a key. In
 reality, all keys consist of both a name, and a scope (where the scope
 has three axes). The entire expression
 `packageOptions in (Compile, packageBin)` is a key name, in other
-words. Simply `packageOptions` is also a key name, but a different one
+words. Simply :key:`packageOptions` is also a key name, but a different one
 (for keys with no `in`, a scope is implicitly assumed: current
 project, global config, global task).
 

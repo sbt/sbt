@@ -20,15 +20,15 @@ Running sbt with no command line arguments starts it in interactive
 mode. Interactive mode has a command prompt (with tab completion and
 history!).
 
-For example, you could type `compile` at the sbt prompt:
+For example, you could type :key:`compile` at the sbt prompt:
 
 .. code-block:: console
 
     > compile
 
-To `compile` again, press up arrow and then enter.
+To :key:`compile` again, press up arrow and then enter.
 
-To run your program, type `run`.
+To run your program, type :key:`run`.
 
 To leave interactive mode, type `exit` or use Ctrl+D (Unix) or Ctrl+Z
 (Windows).
@@ -45,9 +45,9 @@ in quotes. For example,
 
     $ sbt clean compile "testOnly TestA TestB"
 
-In this example, `testOnly` has arguments, `TestA` and `TestB`.
-The commands will be run in sequence (`clean`, `compile`, then
-`testOnly`).
+In this example, :key:`testOnly` has arguments, `TestA` and `TestB`.
+The commands will be run in sequence (:key:`clean`, :key:`compile`, then
+:key:`testOnly`).
 
 Continuous build and test
 -------------------------
@@ -74,16 +74,16 @@ Common commands
 Here are some of the most common sbt commands. For a more complete list,
 see :doc:`/Detailed-Topics/Command-Line-Reference`.
 
--  `clean` Deletes all generated files (in the `target` directory).
--  `compile` Compiles the main sources (in `src/main/scala` and
+-  :key:`clean` Deletes all generated files (in the :key:`target` directory).
+-  :key:`compile` Compiles the main sources (in `src/main/scala` and
    `src/main/java` directories).
--  `test` Compiles and runs all tests.
--  `console` Starts the Scala interpreter with a classpath including
+-  :key:`test` Compiles and runs all tests.
+-  :key:`console` Starts the Scala interpreter with a classpath including
    the compiled sources and all dependencies. To return to sbt, type
    `:quit`, Ctrl+D (Unix), or Ctrl+Z (Windows).
 -  `run <argument>*` Runs the main class for the project in the same
    virtual machine as `sbt`.
--  `package` Creates a jar file containing the files in
+-  :key:`package` Creates a jar file containing the files in
    `src/main/resources` and the classes compiled from
    `src/main/scala` and `src/main/java`.
 -  `help <command>` Displays detailed help for the specified command.

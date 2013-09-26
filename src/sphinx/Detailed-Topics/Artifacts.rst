@@ -46,9 +46,9 @@ Modifying default artifacts
 ===========================
 
 Each built-in artifact has several configurable settings in addition to
-`publishArtifact`. The basic ones are `artifact` (of type
-`SettingKey[Artifact]`), `mappings` (of type
-`TaskKey[(File,String)]`), and `artifactPath` (of type
+:key:`publishArtifact`. The basic ones are :key:`artifact` (of type
+`SettingKey[Artifact]`), :key:`mappings` (of type
+`TaskKey[(File,String)]`), and :key:`artifactPath` (of type
 `SettingKey[File]`). They are scoped by `(<config>, <task>)` as
 indicated in the previous section.
 
@@ -61,7 +61,7 @@ To modify the type of the main artifact, for example:
       previous.copy(`type` = "bundle")
     }
 
-The generated artifact name is determined by the `artifactName`
+The generated artifact name is determined by the :key:`artifactName`
 setting. This setting is of type
 `(ScalaVersion, ModuleID, Artifact) => String`. The ScalaVersion
 argument provides the full Scala version String and the binary
@@ -69,7 +69,7 @@ compatible part of the version String. The String result is the name of
 the file to produce. The default implementation is
 `Artifact.artifactName _`. The function may be modified to produce
 different local names for artifacts without affecting the published
-name, which is determined by the `artifact` definition combined with
+name, which is determined by the :key:`artifact` definition combined with
 the repository pattern.
 
 For example, to produce a minimal name without a classifier or cross
@@ -84,9 +84,9 @@ path:
 (Note that in practice you rarely want to drop the classifier.)
 
 Finally, you can get the `(Artifact, File)` pair for the artifact by
-mapping the `packagedArtifact` task. Note that if you don't need the
+mapping the :key:`packagedArtifact` task. Note that if you don't need the
 `Artifact`, you can get just the File from the package task
-(`package`, `packageDoc`, or `packageSrc`). In both cases,
+(:key:`package`, :key:`packageDoc`, or :key:`packageSrc`). In both cases,
 mapping the task to get the file ensures that the artifact is generated
 first and so the file is guaranteed to be up-to-date.
 
