@@ -66,6 +66,7 @@ Plugins for IDEs:
 -  Netbeans: https://github.com/remeniuk/sbt-netbeans-plugin
 -  Eclipse: https://github.com/typesafehub/sbteclipse
 -  Sublime Text: https://github.com/orrsella/sbt-sublime
+-  Ensime: https://github.com/aemoncannon/ensime-sbt-cmd
 
 Web Plugins
 ~~~~~~~~~~~
