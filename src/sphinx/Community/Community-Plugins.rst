@@ -220,25 +220,29 @@ Documentation plugins
 -  sbt-site (Site generation for SBT):
    https://github.com/sbt/sbt-site
 
+Library dependency plugins
+~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+-  ls-sbt (An sbt interface for ls.implicit.ly):
+   https://github.com/softprops/ls
+-  sbt-dependency-graph (Creates a graphml file of the dependency tree):
+   https://github.com/jrudolph/sbt-dependency-graph
+-  sbt-dirty-money (Cleans Ivy2 cache):
+   https://github.com/sbt/sbt-dirty-money
+-  sbt-updates (Checks Maven repos for dependency updates):
+   https://github.com/rtimush/sbt-updates
+
 Utility plugins
 ~~~~~~~~~~~~~~~
 
 -  jot (Write down your ideas lest you forget them)
    https://github.com/softprops/jot
--  ls-sbt (An sbt interface for ls.implicit.ly):
-   https://github.com/softprops/ls
 -  np (Dead simple new project directory generation):
    https://github.com/softprops/np
 -  sbt-editsource (A poor man's *sed*\ (1), for sbt):
    http://software.clapper.org/sbt-editsource/
--  sbt-dirty-money (Cleans Ivy2 cache):
-   https://github.com/sbt/sbt-dirty-money
--  sbt-dependency-graph (Creates a graphml file of the dependency tree):
-   https://github.com/jrudolph/sbt-dependency-graph
 -  sbt-cross-building (Simplifies building your plugins for multiple
    versions of sbt): https://github.com/jrudolph/sbt-cross-building
--  sbt-inspectr (Displays settings dependency tree):
-   https://github.com/eed3si9n/sbt-inspectr
 -  sbt-revolver (Triggered restart, hot reloading):
    https://github.com/spray/sbt-revolver
 -  sbt-scalaedit (Open and upgrade ScalaEdit (text editor)):
