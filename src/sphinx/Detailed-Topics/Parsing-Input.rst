@@ -15,9 +15,9 @@ Parser combinators build up a parser from smaller parsers. A
 `String => Option[T]`. It accepts a `String` to parse and produces a
 value wrapped in `Some` if parsing succeeds or `None` if it fails.
 Error handling and tab completion make this picture more complicated,
-but we'll stick with Option for this discussion.
+but we'll stick with `Option` for this discussion.
 
-The following examples assume the imports:
+The following examples assume the imports: ::
 
     import sbt._
     import complete.DefaultParsers._
@@ -53,6 +53,20 @@ from a `Char` or `String`. Other basic parser constructors are the
     // Represents failure (always returns None for an input String).
     //  The argument is the error message.
     val alwaysFail: Parser[Nothing] = failure("Invalid input.")
+
+Built-in parsers
+----------------
+
+sbt comes with several built-in parsers defined in `sbt.complete.DefaultParsers <../../api/sbt/complete/DefaultParsers$.html>`_.
+Some commonly used built-in parsers are:
+
+ * `Space`, `NotSpace`, `OptSpace`, and `OptNotSpace` for parsing spaces or non-spaces, required or not.
+ * `StringBasic` for parsing text that may be quoted.
+ * `IntBasic` for parsing a signed Int value.
+ * `Digit` and `HexDigit` for parsing a single decimal or hexadecimal digit.
+ * `Bool` for parsing a `Boolean` value
+
+See the `DefaultParsers API <../../api/sbt/complete/DefaultParsers$.html>`_ for details. 
 
 Combining parsers
 -----------------
