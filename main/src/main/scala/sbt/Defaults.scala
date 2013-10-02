@@ -128,7 +128,7 @@ object Defaults extends BuildCommon
 		includeFilter in unmanagedSources :== "*.java" | "*.scala",
 		includeFilter in unmanagedJars :== "*.jar" | "*.so" | "*.dll" | "*.jnilib" | "*.zip",
 		includeFilter in unmanagedResources :== AllPassFilter,
-		excludeFilter :== (".*"  - ".") || HiddenFileFilter,
+		excludeFilter :== HiddenFileFilter,
 		pomIncludeRepository :== Classpaths.defaultRepositoryFilter
 	))
 	def defaultTestTasks(key: Scoped): Seq[Setting[_]] = inTask(key)(Seq(
