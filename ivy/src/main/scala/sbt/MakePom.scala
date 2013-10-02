@@ -174,7 +174,13 @@ class MakePom(val log: Logger)
 			case x => x.toArray
 		}
 		val (scope, optional) = getScopeAndOptional(configs)
-		makeDependencyElem(dependency, scope, optional, artifactClassifier(artifact), artifactType(artifact))
+		val classifier = artifactClassifier(artifact)
+		val baseType = artifactType(artifact)
+		val tpe = (classifier, baseType) match {
+			case (Some(c), Some(tpe)) if Artifact.classifierType(c) == tpe => None
+			case _ => baseType
+		}
+		makeDependencyElem(dependency, scope, optional, classifier, tpe)
 	}
 	def makeDependencyElem(dependency: DependencyDescriptor, scope: Option[String], optional: Boolean, classifier: Option[String], tpe: Option[String]): Elem =
 	{
