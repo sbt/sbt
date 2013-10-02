@@ -1,0 +1,16 @@
+# Tests that TrapExit properly handles multiple `run` executions
+
+# The goal is to start run B, then run C, exit run B, and finally, exit run C.
+# By interleaving them, we test that TrapExit properly tracks the threads
+# created by each and doesn't interrupt/wait for threads from C when B is done.
+
+# b/run waits for c/started before starting the B application
+# c/run has no dependencies
+# c/run creates c/started on startup and then waits for b/finished to be created
+# this allows b/run to start the B application, which then exits
+# the b/run task creates b/finished when the B application finishes and verifies c/finished doesn't exist
+# c/run then exits, creating c/finished
+
+$ copy-file changes/B.scala b/B.scala
+$ copy-file changes/C.scala c/C.scala
+> runTest
