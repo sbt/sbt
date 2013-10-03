@@ -177,12 +177,13 @@ public class ForkMain {
 				for (Fingerprint testFingerprint : framework.fingerprints()) {
 					for (TaskDef test : tests) {
 						// TODO: To pass in correct explicitlySpecified and selectors
-						if (matches(testFingerprint, test.fingerprint())) 
+						if (matches(testFingerprint, test.fingerprint()))
 							filteredTests.add(new TaskDef(test.fullyQualifiedName(), test.fingerprint(), test.explicitlySpecified(), test.selectors()));
 					}
 				}
 				final Runner runner = framework.runner(frameworkArgs, remoteFrameworkArgs, getClass().getClassLoader());
 				Task[] tasks = runner.tasks(filteredTests.toArray(new TaskDef[filteredTests.size()]));
+				logDebug(os, "Runner for " + framework.getClass().getName() + " produced " + tasks.length + " initial tasks for " + filteredTests.size() + " tests.");
 				for (Task task : tasks)
 					runTestSafe(task, runner, loggers, os);
 				runner.done();
@@ -236,7 +237,10 @@ public class ForkMain {
 			try {
 				final List<ForkEvent> eventList = new ArrayList<ForkEvent>();
 				EventHandler handler = new EventHandler() { public void handle(Event e){ eventList.add(new ForkEvent(e)); } };
+				logDebug(os, "  Running " + taskDef);
 				nestedTasks = task.execute(handler, loggers);
+				if(nestedTasks.length > 0 || eventList.size() > 0)
+					logDebug(os, "    Produced " + nestedTasks.length + " nested tasks and " + eventList.size() + " events.");
 				events = eventList.toArray(new ForkEvent[eventList.size()]);
 			}
 			catch (Throwable t) {

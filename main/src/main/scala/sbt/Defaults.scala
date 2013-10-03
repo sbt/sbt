@@ -509,7 +509,7 @@ object Defaults extends BuildCommon
 			filters.map { f => (s: String) => f accept s }
 	}
 	def detectTests: Initialize[Task[Seq[TestDefinition]]] = (loadedTestFrameworks, compile, streams) map { (frameworkMap, analysis, s) =>
-		Tests.discover(frameworkMap.values.toSeq, analysis, s.log)._1
+		Tests.discover(frameworkMap.values.toList, analysis, s.log)._1
 	}
 	def defaultRestrictions: Initialize[Seq[Tags.Rule]] = parallelExecution { par =>
 		val max = EvaluateTask.SystemProcessors
