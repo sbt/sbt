@@ -5,6 +5,7 @@ $ mkdir stable snapshot
 $ copy-file changes/def.sbt def.sbt
 $ touch make-stable
 > reload
+> show stable
 > publish
 
 # resolve that release for use as a plugin
@@ -27,6 +28,7 @@ $ copy-file changes/def.sbt def.sbt
 $ copy-file changes/DefPlugin.scala DefPlugin.scala
 
 > reload
+> show stable
 > publish
 
 # resolve the latest.integration release, which should
