@@ -242,10 +242,11 @@ private final class TrapExit(delegateManager: SecurityManager) extends SecurityM
 				val t = tref.get
 				if( (t eq null) || isDone(t))
 					unregister(id)
-				else
+				else {
 					f(t)
-				if(isDone(t))
-					unregister(id)
+					if(isDone(t))
+						unregister(id)
+				}
 			}
 		}
 	}
