@@ -11,7 +11,7 @@ import sbt.IO.write
 import Generator._
 import java.util.Locale
 
-abstract class GeneratorBase(val basePkgName: String, val baseDirectory: File) extends NotNull
+abstract class GeneratorBase(val basePkgName: String, val baseDirectory: File)
 {
 	def writeDefinitions(ds: Iterable[Definition]) = Generator.writeDefinitions(ds)(writeDefinition)
 	def writeDefinition(d: Definition) = d match { case e: EnumDef => writeEnum(e); case c: ClassDef => writeClass(c) }
@@ -39,7 +39,7 @@ abstract class GeneratorBase(val basePkgName: String, val baseDirectory: File) e
 * A ClassDef is written as a class with an optional parent class.  The class has a single constructor with
 * parameters for all declared and inherited members.  Declared members are listed first in the constructor.
 * Inherited members are passed to the super constructor.  The value of each member is held in a private
-* final field and.is accessed by a method of the same name.
+* final field and is accessed by a method of the same name.
 *
 * A toString method is generated for debugging.
 * The classes implement java.io.Serializable.
@@ -80,47 +80,7 @@ class ImmutableGenerator(pkgName: String, baseDir: File) extends GeneratorBase(p
 	}
 
 }
-class MutableGenerator(pkgName: String, baseDir: File) extends GeneratorBase(pkgName, baseDir)
-{
-	def writeClass(c: ClassDef): Unit =
-	{
-		writeSource(c.name, basePkgName, interfaceContent(c))
-		writeSource(implName(c.name), basePkgName + ".mutable", implContent(c))
-	}
-	def interfaceContent(c: ClassDef): String =
-	{
-		val normalizedMembers = c.members.map(normalize)
-		val getters = normalizedMembers.map(m => "public " + m.asJavaDeclaration(true) + "();")
-		val setters = normalizedMembers.map(m => "public void " + m.name +  "(" + m.javaType(false) + " newValue);")
-		val extendsPhrase = c.parent.map(_.name).map(" extends " + _).getOrElse("")
 
-		("public interface " + c.name + extendsPhrase + "\n" +
-		"{\n\t" +
-			(setters ++ getters).mkString("\n\t") + "\n" +
-		"}\n")
-	}
-	def implContent(c: ClassDef): String =
-	{
-		val normalizedMembers = c.members.map(normalize)
-		val fields = normalizedMembers.map(m => "private " + m.asJavaDeclaration(false) + ";")
-		val getters = normalizedMembers.map(m => "public final " + m.asJavaDeclaration(true) + "()\n\t{\n\t\treturn " + m.asGet + ";\n\t}")
-		val setters = normalizedMembers.map(m => "public final void " + m.name + "(" + m.javaType(false) + " newValue)\n\t{\n\t\t" + m.name + " = newValue;\n\t}")
-		val extendsClass = c.parent.map(p => implName(p.name))
-		val serializable = if(c.parent.isDefined) Nil else "java.io.Serializable" :: Nil
-		val implements = c.name :: serializable
-		val extendsPhrase = extendsClass.map(" extends " + _).getOrElse("") + " implements " + implements.mkString(", ")
-
-		("import java.util.Arrays;\n" +
-		"import java.util.List;\n" +
-		"import " + pkgName + ".*;\n\n" +
-		"public class " + implName(c.name) + extendsPhrase + "\n" +
-		"{\n\t" +
-			(fields ++ getters ++ setters).mkString("\n\t") + "\n\t" +
-			toStringMethod(c) + "\n" +
-		"}\n")
-	}
-	
-}
 object Generator
 {
 	def methodSignature(modifiers: String, returnType: String, name: String, parameters: String) =
