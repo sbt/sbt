@@ -29,6 +29,8 @@ trait APIs
 
 	def removeInternal(remove: Iterable[File]): APIs
 	def filterExt(keep: String => Boolean): APIs
+	@deprecated("OK to remove in 0.14", "0.13.1")
+	def groupBy[K](internal: (File) => K, keepExternal: Map[K, String => Boolean]): Map[K, APIs]
 
 	def internal: Map[File, Source]
 	def external: Map[String, Source]
@@ -59,6 +61,10 @@ private class MAPIs(val internal: Map[File, Source], val external: Map[String, S
 	
 	def removeInternal(remove: Iterable[File]): APIs = new MAPIs(internal -- remove, external)
 	def filterExt(keep: String => Boolean): APIs = new MAPIs(internal, external.filterKeys(keep))
+	@deprecated("Broken implementation. OK to remove in 0.14", "0.13.1")
+	def groupBy[K](f: (File) => K, keepExternal: Map[K, String => Boolean]): Map[K, APIs] =
+		internal.groupBy(item => f(item._1)) map { group => (group._1, new MAPIs(group._2, external).filterExt(keepExternal.getOrElse(group._1, _ => false)))}
+
 	def internalAPI(src: File) = getAPI(internal, src)
 	def externalAPI(ext: String) = getAPI(external, ext)
 
@@ -73,10 +79,8 @@ private class MAPIs(val internal: Map[File, Source], val external: Map[String, S
 	}
 
 	override lazy val hashCode: Int = {
-		def hash[T](m: Map[T, Source])(implicit ord: math.Ordering[T]) = {
-			(17 /: (sorted(m) map { x => 37 * x._1.hashCode + x._2.apiHash })) { 37 * _ + _ }
-		}
-		37 * (37 * 17 + hash(internal)) + hash(external)
+		def hash[T](m: Map[T, Source])(implicit ord: math.Ordering[T]) = sorted(m).map(x => (x._1, x._2.apiHash).hashCode).hashCode
+		(hash(internal), hash(external)).hashCode
 	}
 
 	override def toString: String = "API(internal: %d, external: %d)".format(internal.size, external.size)
