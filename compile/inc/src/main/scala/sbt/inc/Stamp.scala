@@ -42,13 +42,23 @@ trait Stamps extends ReadStamps
 }
 
 sealed trait Stamp
+{
+	override def equals(other: Any): Boolean = other match {
+		case o: Stamp => Stamp.equivStamp.equiv(this, o)
+		case _ => false
+	}
+}
+
 final class Hash(val value: Array[Byte]) extends Stamp {
+	override lazy val hashCode: Int = java.util.Arrays.hashCode(value)
 	override def toString: String = "hash(" + Hash.toHex(value) + ")"
 }
 final class LastModified(val value: Long) extends Stamp {
+	override lazy val hashCode: Int = (value ^ (value >>> 32)).toInt
 	override def toString: String = "lastModified(" + value + ")"
 }
 final class Exists(val value: Boolean) extends Stamp {
+	override lazy val hashCode: Int = if(value) 0 else 1
 	override def toString: String = if(value) "exists" else "absent"
 }
 
@@ -95,6 +105,8 @@ object Stamps
 	}
 	def apply(products: Map[File, Stamp], sources: Map[File, Stamp], binaries: Map[File, Stamp], binaryClassNames: Map[File, String]): Stamps = 
 		new MStamps(products, sources, binaries, binaryClassNames)
+
+	def merge(stamps: Traversable[Stamps]): Stamps = (Stamps.empty /: stamps)(_ ++ _)
 }
 
 private class MStamps(val products: Map[File, Stamp], val sources: Map[File, Stamp], val binaries: Map[File, Stamp], val classNames: Map[File, String]) extends Stamps
@@ -118,9 +130,9 @@ private class MStamps(val products: Map[File, Stamp], val sources: Map[File, Sta
 	def filter(prod: File => Boolean, removeSources: Iterable[File], bin: File => Boolean): Stamps =
 		new MStamps(products.filterKeys(prod), sources -- removeSources, binaries.filterKeys(bin), classNames.filterKeys(bin))
 	
-	def groupBy[K](prod: Map[K, File => Boolean], sourcesGrouping: File => K, bin: Map[K, File => Boolean]): Map[K, Stamps] =
+	def groupBy[K](prod: Map[K, File => Boolean], f: File => K, bin: Map[K, File => Boolean]): Map[K, Stamps] = 
 	{
-		val sourcesMap: Map[K, Map[File, Stamp]] = sources.groupBy(item => sourcesGrouping(item._1))
+		val sourcesMap: Map[K, Map[File, Stamp]] = sources.groupBy(x => f(x._1))
 
 		val constFalse = (f: File) => false
 		def kStamps(k: K): Stamps = new MStamps(
@@ -130,15 +142,26 @@ private class MStamps(val products: Map[File, Stamp], val sources: Map[File, Sta
 			classNames.filterKeys(bin.getOrElse(k, constFalse))
 		)
 
-		val keys = (prod.keySet ++ sourcesMap.keySet ++ bin.keySet).toList
-		Map( keys.map( (k: K) => (k, kStamps(k)) ) : _*)
+		(for (k <- prod.keySet ++ sourcesMap.keySet ++ bin.keySet) yield (k, kStamps(k))).toMap
 	}
 
 	def product(prod: File) = getStamp(products, prod)
 	def internalSource(src: File) = getStamp(sources, src)
 	def binary(bin: File) = getStamp(binaries, bin)
 	def className(bin: File) = classNames get bin
+
+	override def equals(other: Any): Boolean = other match {
+		case o: MStamps => products == o.products && sources == o.sources && binaries == o.binaries && classNames == o.classNames
+		case _ => false
+	}
+
+	override def hashCode: Int = {
+		val hashCodes = (products :: sources :: binaries :: classNames :: Nil) map { _.hashCode() }
+		hashCodes.foldLeft(17)( 37 * _ + _)
+	}
 	
+	override def toString: String =
+		"Stamps for: %d products, %d sources, %d binaries, %d classNames".format(products.size, sources.size, binaries.size, classNames.size)
 }
 
 private class InitialStamps(prodStamp: File => Stamp, srcStamp: File => Stamp, binStamp: File => Stamp) extends ReadStamps
