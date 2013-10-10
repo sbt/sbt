@@ -20,7 +20,7 @@ trait Relations
 	/** All sources _with at least one product_ . */
 	def allSources: collection.Set[File]
 	
-	/** All products associates with sources. */
+	/** All products associated with sources. */
 	def allProducts: collection.Set[File]
 
 	/** All files that are recorded as a binary dependency of a source file.*/
@@ -32,10 +32,10 @@ trait Relations
 	/** All files in another compilation group (project) that are recorded as a source dependency of a source file in this group.*/
 	def allExternalDeps: collection.Set[String]
 
-	/** Fully qualified names of classes defined in source file `src`. */
+	/** Fully qualified names of classes generated from source file `src`. */
 	def classNames(src: File): Set[String]
 
-	/** Names of classes defined in source file `src`. */
+	/** Source files that generated a class with the given fully qualified `name`. */
 	def definesClass(name: String): Set[File]
 	
 	/** The classes that were generated for source file `src`. */
@@ -98,7 +98,7 @@ trait Relations
 	/** The inheritance dependency relations between sources.*/
 	def publicInherited: RSource
 
-	/** The relation between a source file and names of classes generated from it.*/
+	/** The relation between a source file and the fully qualified names of classes generated from it.*/
 	def classes: Relation[File, String]
 }
 
@@ -148,7 +148,7 @@ object Relations
 * `publicInherited` defines relations for internal and external source dependencies, only including dependencies
 *   introduced by inheritance.
 *
-* `classes` is a relation between a source file and its generated class names.
+* `classes` is a relation between a source file and its generated fully-qualified class names.
 */
 private class MRelations(val srcProd: Relation[File, File], val binaryDep: Relation[File, File],
 	// direct should include everything in inherited
