@@ -50,15 +50,15 @@ sealed trait Stamp
 }
 
 final class Hash(val value: Array[Byte]) extends Stamp {
-	override lazy val hashCode: Int = java.util.Arrays.hashCode(value)
+	override def hashCode: Int = java.util.Arrays.hashCode(value)
 	override def toString: String = "hash(" + Hash.toHex(value) + ")"
 }
 final class LastModified(val value: Long) extends Stamp {
-	override lazy val hashCode: Int = (value ^ (value >>> 32)).toInt
+	override def hashCode: Int = (value ^ (value >>> 32)).toInt
 	override def toString: String = "lastModified(" + value + ")"
 }
 final class Exists(val value: Boolean) extends Stamp {
-	override lazy val hashCode: Int = if(value) 0 else 1
+	override def hashCode: Int = if(value) 0 else 1
 	override def toString: String = if(value) "exists" else "absent"
 }
 
@@ -155,10 +155,7 @@ private class MStamps(val products: Map[File, Stamp], val sources: Map[File, Sta
 		case _ => false
 	}
 
-	override def hashCode: Int = {
-		val hashCodes = (products :: sources :: binaries :: classNames :: Nil) map { _.hashCode() }
-		hashCodes.foldLeft(17)( 37 * _ + _)
-	}
+	override lazy val hashCode: Int = (products :: sources :: binaries :: classNames :: Nil).hashCode
 	
 	override def toString: String =
 		"Stamps for: %d products, %d sources, %d binaries, %d classNames".format(products.size, sources.size, binaries.size, classNames.size)
