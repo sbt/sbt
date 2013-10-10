@@ -85,5 +85,5 @@ private class MAPIs(val internal: Map[File, Source], val external: Map[String, S
 
 	override def toString: String = "API(internal: %d, external: %d)".format(internal.size, external.size)
 
-	private[this] def sorted[T](m: Map[T, Source])(implicit ord: math.Ordering[T]): Array[(T, Source)] = Sorting.stableSort[(T, Source), T](m.toSeq, _._1)
+	private[this] def sorted[T](m: Map[T, Source]): Seq[(T, Source)] = m.toSeq.sortBy(_._1)
 }
