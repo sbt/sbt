@@ -217,12 +217,12 @@ private class MRelations(val srcProd: Relation[File, File], val binaryDep: Relat
 	def groupBy[K](f: File => K): Map[K, Relations] =
 	{
 		type MapRel[T] = Map[K, Relation[File, T]]
-		def outerJoin(srcProdMap: MapRel[File], binaryDepMap: MapRel[File], direct: Map[K, RSource], inherited: Map[K, RSource],
+		def outerJoin(srcProdMap: MapRel[File], binaryDepMap: MapRel[File], direct: Map[K, Source], inherited: Map[K, Source],
 									classesMap: MapRel[String]): Map[K, Relations] =
 		{
 			def kRelations(k: K): Relations = {
 				def get[T](m: Map[K, Relation[File, T]]) = Relations.getOrEmpty(m, k)
-				def getSrc(m: Map[K, RSource]): RSource = m.getOrElse(k, Relations.emptySource)
+				def getSrc(m: Map[K, Source]): Source = m.getOrElse(k, Relations.emptySource)
 				new MRelations( get(srcProdMap), get(binaryDepMap), getSrc(direct), getSrc(inherited), get(classesMap) )
 			}
 			val keys = (srcProdMap.keySet ++ binaryDepMap.keySet ++ direct.keySet ++ inherited.keySet ++ classesMap.keySet).toList
