@@ -1,0 +1,44 @@
+> library/publishM2
+
+# should fail because local Maven repository not added yet
+-> main/update
+
+# should succeed now that local Maven repository is added
+$ copy-file changes/mvnLocal.sbt main/build.sbt
+> reload
+> main/update
+
+# should succeed because 'main' doesn't actually use anything from the library yet
+> main/compile
+
+$ copy-file changes/mainB1.scala main/B.scala
+# should fail because there is nothing in the library jar and 'main' actually uses it now
+-> main/compile
+
+$ copy-file changes/libA.scala library/A.scala
+> library/publishM2
+# should succeed even without 'update' because Ivy should use the jar from the origin and not copy it to its cache
+> main/compile
+
+# should still succeed with an explicit 'update'
+> main/update
+> main/compile
+
+
+
+# update B.scala to depend on a dependency that 'library' doesn't declare yet
+$ delete main/B.scala
+$ copy-file changes/mainB2.scala main/B.scala
+
+# it should fail to compile because that dependency isn't declared
+-> main/compile
+
+
+# add a dependency to 'library' and use it from 'main'
+# this will require the metadata to be updated correctly and not just the artifact
+$ copy-file changes/libDeps.sbt library/build.sbt
+> reload
+> library/publishM2
+
+# should succeed now that the dependency is there
+> main/compile

@@ -29,7 +29,7 @@ object IO
 	/** The size of the byte or char buffer used in various methods.*/
 	private val BufferSize = 8192
 	/** File scheme name */
-	private[this] val FileScheme = "file"
+	private[sbt] val FileScheme = "file"
 
 	/** The newline string for this system, as obtained by the line.separator system property. */
 	val Newline = System.getProperty("line.separator")
