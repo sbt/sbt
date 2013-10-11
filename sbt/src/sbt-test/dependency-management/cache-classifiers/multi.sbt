@@ -1,3 +1,6 @@
-val b = project
+def localCache = 
+	ivyPaths := new IvyPaths(baseDirectory.value, Some((baseDirectory in ThisBuild).value / "ivy" / "cache"))
 
-val a = project
+val b = project.settings(localCache)
+
+val a = project.settings(localCache)
