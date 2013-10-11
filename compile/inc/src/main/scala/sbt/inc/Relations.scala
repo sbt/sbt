@@ -4,9 +4,8 @@
 package sbt
 package inc
 
-import xsbti.api.Source
 import java.io.File
-import Relations.{Source => RSource}
+import Relations.Source
 
 
 /** Provides mappings between source files, generated classes (products), and binaries.
@@ -35,7 +34,7 @@ trait Relations
 	/** Fully qualified names of classes generated from source file `src`. */
 	def classNames(src: File): Set[String]
 
-	/** Source files that generated a class with the given fully qualified `name`. */
+	/** Source files that generated a class with the given fully qualified `name`. This is typically a set containing a single file. */
 	def definesClass(name: String): Set[File]
 	
 	/** The classes that were generated for source file `src`. */
@@ -73,12 +72,14 @@ trait Relations
 	* and inheritance dependencies on `inheritedDependsOn`.  Everything in `inheritedDependsOn` must be included in `directDependsOn`;
 	* this method does not automatically record direct dependencies like `addExternalDep` does.*/
 	def addInternalSrcDeps(src: File, directDependsOn: Iterable[File], inheritedDependsOn: Iterable[File]): Relations
-	
+
+	/** Concatenates the two relations. Acts naively, i.e., doesn't internalize external deps on added files. */
 	def ++ (o: Relations): Relations
 
-	/** Drops all dependency mappings from `sources`.  This will not remove mappings to them (that is, mappings where they are dependencies).*/
+	/** Drops all dependency mappings a->b where a is in `sources`. Acts naively, i.e., doesn't externalize internal deps on removed files. */
 	def -- (sources: Iterable[File]): Relations
 
+	@deprecated("OK to remove in 0.14", "0.13.1")
 	def groupBy[K](f: (File => K)): Map[K, Relations]
 
 	/** The relation between internal sources and generated class files. */	
@@ -94,9 +95,10 @@ trait Relations
 	def externalDep: Relation[File, String]
 
 	/** The dependency relations between sources.  These include both direct and inherited dependencies.*/
-	def direct: RSource
+	def direct: Source
+
 	/** The inheritance dependency relations between sources.*/
-	def publicInherited: RSource
+	def publicInherited: Source
 
 	/** The relation between a source file and the fully qualified names of classes generated from it.*/
 	def classes: Relation[File, String]
@@ -109,16 +111,26 @@ object Relations
 	final class Source private[sbt](val internal: Relation[File,File], val external: Relation[File,String]) {
 		def addInternal(source: File, dependsOn: Iterable[File]): Source = new Source(internal + (source, dependsOn), external)
 		def addExternal(source: File, dependsOn: String): Source = new Source(internal, external + (source, dependsOn))
-		/** Drops all dependency mappings from `sources`.  This will not remove mappings to them (that is, where they are dependencies).*/
+		/** Drops all dependency mappings from `sources`. Acts naively, i.e., doesn't externalize internal deps on removed files.*/
 		def --(sources: Iterable[File]): Source = new Source(internal -- sources, external -- sources)
 		def ++(o: Source): Source = new Source(internal ++ o.internal, external ++ o.external)
+
+		@deprecated("Broken implementation. OK to remove in 0.14", "0.13.1")
 		def groupBySource[K](f: File => K): Map[K, Source] = {
+
 			val i = internal.groupBy { case (a,b) => f(a) }
 			val e = external.groupBy { case (a,b) => f(a) }
 			val pairs = for( k <- i.keySet ++ e.keySet ) yield
 				(k, new Source( getOrEmpty(i, k), getOrEmpty(e, k) ))
 			pairs.toMap
 		}
+
+		override def equals(other: Any) = other match {
+			case o: Source => internal == o.internal && external == o.external
+			case _ => false
+		}
+
+		override def hashCode = (internal, external).hashCode
 	}
 
 	private[sbt] def getOrEmpty[A,B,K](m: Map[K, Relation[A,B]], k: K): Relation[A,B] = m.getOrElse(k, Relation.empty)
@@ -152,7 +164,7 @@ object Relations
 */
 private class MRelations(val srcProd: Relation[File, File], val binaryDep: Relation[File, File],
 	// direct should include everything in inherited
-	val direct: RSource, val publicInherited: RSource, val classes: Relation[File, String]) extends Relations
+	val direct: Source, val publicInherited: Source, val classes: Relation[File, String]) extends Relations
 {
 	def internalSrcDep: Relation[File, File] = direct.internal
 	def externalDep: Relation[File, String] = direct.external
@@ -196,17 +208,17 @@ private class MRelations(val srcProd: Relation[File, File], val binaryDep: Relat
 
 	def addBinaryDep(src: File, dependsOn: File): Relations =
 		new MRelations( srcProd, binaryDep + (src, dependsOn), direct = direct, publicInherited = publicInherited, classes )
-	
 	def ++ (o: Relations): Relations =
 		new MRelations(srcProd ++ o.srcProd, binaryDep ++ o.binaryDep, direct = direct ++ o.direct, publicInherited = publicInherited ++ o.publicInherited, classes ++ o.classes)
 	def -- (sources: Iterable[File]) =
 		new MRelations(srcProd -- sources, binaryDep -- sources, direct = direct -- sources, publicInherited = publicInherited -- sources, classes -- sources)
 
+	@deprecated("Broken implementation. OK to remove in 0.14", "0.13.1")
 	def groupBy[K](f: File => K): Map[K, Relations] =
 	{
 		type MapRel[T] = Map[K, Relation[File, T]]
 		def outerJoin(srcProdMap: MapRel[File], binaryDepMap: MapRel[File], direct: Map[K, RSource], inherited: Map[K, RSource],
-			classesMap: MapRel[String]): Map[K, Relations] = 
+									classesMap: MapRel[String]): Map[K, Relations] =
 		{
 			def kRelations(k: K): Relations = {
 				def get[T](m: Map[K, Relation[File, T]]) = Relations.getOrEmpty(m, k)
@@ -219,8 +231,14 @@ private class MRelations(val srcProd: Relation[File, File], val binaryDep: Relat
 
 		def f1[B](item: (File, B)): K = f(item._1)
 		outerJoin(srcProd.groupBy(f1), binaryDep.groupBy(f1), direct.groupBySource(f), publicInherited.groupBySource(f), classes.groupBy(f1))
-  }
+	}
 
+	override def equals(other: Any) = other match {
+		case o: MRelations => srcProd == o.srcProd && binaryDep == o.binaryDep && direct == o.direct && publicInherited == o.publicInherited && classes == o.classes
+		case _ => false
+	}
+
+	override def hashCode = (srcProd :: binaryDep :: direct :: publicInherited :: classes :: Nil).hashCode
 
   /** Making large Relations a little readable. */
   private val userDir = sys.props("user.dir").stripSuffix("/") + "/"
