@@ -55,17 +55,19 @@ class DatatypeParser extends NotNull
 
 	def processLine(open: Array[ClassDef], definitions: List[Definition], line: Line): (Array[ClassDef], List[Definition]) =
 	{
+		def makeAbstract(x: ClassDef) = new ClassDef(x.name, x.parent, x.members, true)
+
 		line match
 		{
 			case w: WhitespaceLine => (open, definitions)
 			case e: EnumLine => (Array(), new EnumDef(e.name, e.members) :: open.toList ::: definitions)
 			case m: MemberLine =>
 				if(m.level == 0 || m.level > open.length) error(m, "Member must be declared in a class definition")
-				else withCurrent(open, definitions, m.level) { c => List( c + m) }
+				else withCurrent(open, definitions, m.level) { c => List(c + m) }
 			case c: ClassLine =>
-				if(c.level == 0) (Array( new ClassDef(c.name, None, Nil) ), open.toList ::: definitions)
+				if(c.level == 0) (Array( new ClassDef(c.name, None, Nil, false) ), open.toList ::: definitions)
 				else if(c.level > open.length) error(c, "Class must be declared as top level or as a subclass")
-				else withCurrent(open, definitions, c.level) { p => p :: new ClassDef(c.name, Some(p), Nil) :: Nil}
+				else withCurrent(open, definitions, c.level) { p => val p1 = makeAbstract(p); p1 :: new ClassDef(c.name, Some(p1), Nil, false) :: Nil}
 		}
 	}
 	private def withCurrent(open: Array[ClassDef], definitions: List[Definition], level: Int)(onCurrent: ClassDef => Seq[ClassDef]): (Array[ClassDef], List[Definition]) =
