@@ -3,6 +3,7 @@
  */
 package sbt
 
+import java.net.URL
 import java.util.Collections
 import org.apache.ivy.{core,plugins}
 import core.module.id.ModuleRevisionId
@@ -11,6 +12,8 @@ import core.resolve.ResolveData
 import core.settings.IvySettings
 import plugins.resolver.{BasicResolver, DependencyResolver, IBiblioResolver}
 import plugins.resolver.{AbstractPatternsBasedResolver, AbstractSshBasedResolver, FileSystemResolver, SFTPResolver, SshResolver, URLResolver}
+import plugins.repository.url.{URLRepository => URLRepo}
+import plugins.repository.file.{FileRepository => FileRepo, FileResource}
 
 private object ConvertResolver
 {
@@ -29,6 +32,7 @@ private object ConvertResolver
 					}
 				}
 				val resolver = new PluginCapableResolver
+				resolver.setRepository(new LocalIfFileRepo)
 				initializeMavenStyle(resolver, repo.name, repo.root)
 				resolver.setPatterns() // has to be done after initializeMavenStyle, which calls methods that overwrite the patterns
 				resolver
@@ -127,5 +131,17 @@ private object ConvertResolver
 		resolver.setCheckconsistency(!patterns.skipConsistencyCheck)
 		patterns.ivyPatterns.foreach(p => resolver.addIvyPattern(settings substitute p))
 		patterns.artifactPatterns.foreach(p => resolver.addArtifactPattern(settings substitute p))
+	}
+	/** A custom Ivy URLRepository that returns FileResources for file URLs.
+	* This allows using the artifacts from the Maven local repository instead of copying them to the Ivy cache. */
+	private[this] final class LocalIfFileRepo extends URLRepo {
+		private[this] val repo = new FileRepo
+		override def getResource(source: String) = {
+			val url = new URL(source)
+			if(url.getProtocol == IO.FileScheme)
+				new FileResource(repo, IO.toFile(url))
+			else
+				super.getResource(source)
+		}
 	}
 }
