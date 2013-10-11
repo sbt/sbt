@@ -116,11 +116,6 @@ object TestFramework
 			case _ => sys.error("Could not call 'fingerprints' on framework " + framework)
 		}
 
-	private val ScalaCompilerJarPackages = "scala.tools." :: "jline." :: "ch.epfl.lamp." :: Nil
-
-	private val TestStartName = "test-start"
-	private val TestFinishName = "test-finish"
-	
 	private[sbt] def safeForeach[T](it: Iterable[T], log: Logger)(f: T => Unit): Unit =
 		it.foreach(i => try f(i) catch { case e: Exception => log.trace(e); log.error(e.toString) })
 
