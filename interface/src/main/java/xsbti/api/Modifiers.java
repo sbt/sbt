@@ -68,6 +68,14 @@ public final class Modifiers implements java.io.Serializable
 	{
 		return flag(MacroBit);
 	}
+	public boolean equals(Object o)
+	{
+		return (o instanceof Modifiers) && flags == ((Modifiers)o).flags;
+	}
+	public int hashCode()
+	{
+		return flags;
+	}
 	public String toString()
 	{
 		return "Modifiers(" + "isAbstract: " + isAbstract() + ", " + "isOverride: " + isOverride() + ", " + "isFinal: " + isFinal() + ", " + "isSealed: " + isSealed() + ", " + "isImplicit: " + isImplicit() + ", " + "isLazy: " + isLazy() + ", " + "isMacro: " + isMacro()+ ")";
