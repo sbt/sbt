@@ -222,6 +222,8 @@ mappings from the input file to its (String) path in the jar or its
 
 Mappings are discussed in detail on the :doc:`Mapping-Files` page.
 
+.. _file-filter:
+
 File Filters
 ------------
 
