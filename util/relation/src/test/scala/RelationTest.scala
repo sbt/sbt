@@ -50,6 +50,16 @@ object RelationTest extends Properties("Relation")
 			("Reverse map does not contain removed" |: ( notIn(r.reverseMap, b, a) ) )
 		}
 	}
+
+	property("Groups correctly") = forAll { (entries: List[(Int, Double)], randomInt: Int) =>
+		val splitInto = randomInt % 10 + 1  // Split into 1-10 groups.
+		val rel = Relation.empty[Int, Double] ++ entries
+		val grouped = rel groupBy (_._1 % splitInto)
+		all(grouped.toSeq) {
+			case (k, rel_k) => rel_k._1s forall { _ % splitInto == k }
+		}
+	}
+
 	def all[T](s: Seq[T])(p: T => Prop): Prop =
 		if(s.isEmpty) true else s.map(p).reduceLeft(_ && _)
 }
