@@ -16,7 +16,7 @@ package sbt
 	import Project.{inScope,makeSettings}
 	import Def.{ScopedKey, ScopeLocal, Setting}
 	import Keys.{appConfiguration, baseDirectory, configuration, fullResolvers, fullClasspath, pluginData, streams, thisProject, thisProjectRef, update}
-	import Keys.{exportedProducts, isDummy, loadedBuild, resolvedScoped, taskDefinitionKey}
+	import Keys.{exportedProducts, isDummy, loadedBuild, onLoadMessage, resolvedScoped, sbtPlugin, scalacOptions, taskDefinitionKey}
 	import tools.nsc.reporters.ConsoleReporter
 	import Build.analyzed
 	import Attributed.data
@@ -239,7 +239,7 @@ object Load
 		lazy val eval = mkEval(unit)
 		() => eval
 	}
-	def mkEval(unit: sbt.BuildUnit): Eval = mkEval(unit.definitions, unit.plugins, Nil)
+	def mkEval(unit: sbt.BuildUnit): Eval = mkEval(unit.definitions, unit.plugins, unit.plugins.pluginData.scalacOptions)
 	def mkEval(defs: sbt.LoadedDefinitions, plugs: sbt.LoadedPlugins, options: Seq[String]): Eval =
 		mkEval(defs.target ++ plugs.classpath, defs.base, options)
 	def mkEval(classpath: Seq[File], base: File, options: Seq[String]): Eval =
@@ -413,7 +413,7 @@ object Load
 		val defsScala = if(defNames.isEmpty) Nil else loadDefinitions(plugs.loader, defNames)
 		val imports = BuildUtil.getImports(plugs.pluginNames, defNames)
 
-		lazy val eval = mkEval(plugs.classpath, defDir, Nil)
+		lazy val eval = mkEval(plugs.classpath, defDir, plugs.pluginData.scalacOptions)
 		val initialProjects = defsScala.flatMap(b => projectsFromBuild(b, normBase))
 
 		val memoSettings = new mutable.HashMap[File, LoadedSbtFile]
@@ -519,11 +519,14 @@ object Load
 			case None => Nil
 		}
 	val autoPluginSettings: Seq[Setting[_]] = inScope(GlobalScope in LocalRootProject)(Seq(
-		Keys.sbtPlugin :== true,
-		pluginData <<= (exportedProducts in Configurations.Runtime, fullClasspath in Configurations.Runtime, update, fullResolvers) map ( (prod, cp, rep, rs) =>
-			PluginData(removeEntries(cp, prod), prod, Some(rs), Some(rep))
-		),
-		Keys.onLoadMessage <<= Keys.baseDirectory("Loading project definition from " + _)
+		sbtPlugin :== true,
+		pluginData := {
+			val prod = (exportedProducts in Configurations.Runtime).value
+			val cp = (fullClasspath in Configurations.Runtime).value
+			val opts = (scalacOptions in Configurations.Compile).value
+			PluginData(removeEntries(cp, prod), prod, Some(fullResolvers.value), Some(update.value), opts)
+		},
+		onLoadMessage := ("Loading project definition from " + baseDirectory.value)
 	))
 	private[this] def removeEntries(cp: Seq[Attributed[File]], remove: Seq[Attributed[File]]): Seq[Attributed[File]] =
 	{
