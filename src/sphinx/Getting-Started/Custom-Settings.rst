@@ -46,12 +46,15 @@ Any `val` found in a `Build` object in your `.scala` build definition files or a
 Implementing a task
 -------------------
 
-Once you've defined a key, you'll need to use it in some task. You could
-be defining your own task, or you could be planning to redefine an
-existing task. Either way looks the same; use `:=` to associate some
-code with the task key:
+Once you've defined a key for your task, you'll need to complete it
+with a task definition. You could be defining your own task, or you
+could be planning to redefine an existing task. Either way looks the
+same; use `:=` to associate some code with the task key:
 
 ::
+    val sampleStringTask = settingKey[String]("A sample string task.")
+    
+    val sampleIntTask = settingKey[String]("A sample int task.")
 
     sampleStringTask := System.getProperty("user.home")
 
