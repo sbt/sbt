@@ -46,7 +46,8 @@ Use the `sbt-dev mailing list`_ for discussing sbt development.
 Use the #sbt irc channel for questions and discussions.
 
 This documentation can be forked `on GitHub <https://github.com/sbt/sbt/>`_.
-Feel free to make corrections and add documentation.
+Feel free to make corrections and add documentation.  The documentation source is located in the `src/sphinx`
+subdirectory of the GitHub project.
 
 Documentation for 0.7.x has been `archived here <http://www.scala-sbt.org/0.7.7/docs/home.html>`_. 
 This documentation applies to sbt |version|.
