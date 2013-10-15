@@ -28,11 +28,7 @@ class InternPool[T <: AnyRef](itemsArray: Array[T]) extends Serializable {
 		case Some(x) => x
 	}
 
-	def toItem(idx: Int): T = try {
-		items(idx)
-	} catch {
-		case e: IndexOutOfBoundsException => throw new RuntimeException("No such index in intern pool: %d".format(idx))
-	}
+	def toItem(idx: Int): T = if (idx >= 0 && idx < items.length) items(idx) else sys.error("No such index in intern pool: %d".format(idx))
 
 	def allItems: Array[T] = items
 
