@@ -1,6 +1,3 @@
-/* sbt -- Simple Build Tool
- * Copyright 2010 Mark Harrah
- */
 package sbt
 package inc
 
@@ -26,10 +23,9 @@ import xsbti.SafeLazy
  * entire pool in first when deserializing. The InternPool is immutable to enforce this.
  */
 class InternPool[T <: AnyRef](itemsArray: Array[T]) extends Serializable {
-	def toIdx(item: T): Int = try {
-		itemToIdx(item)
-	} catch {
-		case e: NoSuchElementException => throw new RuntimeException("No such item in intern pool: %s".format(item.toString))
+	def toIdx(item: T): Int = itemToIdx.get(item) match {
+		case None => sys.error("No such item in intern pool: %s".format(item.toString))
+		case Some(x) => x
 	}
 
 	def toItem(idx: Int): T = try {
