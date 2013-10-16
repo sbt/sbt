@@ -3,7 +3,7 @@
 import sys, os
 
 sys.path.append(os.path.abspath('_sphinx/exts'))
-extensions = ['sphinxcontrib.issuetracker', 'sphinx.ext.extlinks', 'howto', 'codeliteral', 'key']
+extensions = ['sphinxcontrib.issuetracker', 'sphinx.ext.extlinks', 'howto', 'codeliteral', 'key', 'srcref']
 
 # Project variables
 
@@ -78,7 +78,6 @@ launcher_release_base = typesafe_ivy_releases + 'org.scala-sbt/sbt-launch/'
 launcher_snapshots_base = typesafe_ivy_snapshots + 'org.scala-sbt/sbt-launch/'
 sbt_native_package_base = 'http://repo.scala-sbt.org/scalasbt/sbt-native-packages/org/scala-sbt/sbt/'
 
-
 rst_epilog = """
 .. |scalaVersion| replace:: %(scalaVersion)s
 .. |scalaRelease| replace:: %(scalaRelease)s
@@ -96,6 +95,8 @@ rst_epilog = """
 .. _sbt-launcher-package: https://github.com/sbt/sbt-launcher-package
 .. _Stack Overflow: http://stackoverflow.com/tags/sbt
 .. _source code: http://github.com/sbt/sbt
+
+:srcref:`ignored`
 """ % {
    'launcher_release_base': launcher_release_base,
    'launcher_snapshots_base': launcher_snapshots_base,
@@ -105,5 +106,3 @@ rst_epilog = """
    'scalaVersion': scalaVersion,
    'release': release
 }
-
-

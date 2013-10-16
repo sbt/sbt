@@ -59,16 +59,20 @@ object Docs
 		site.addMappingsToSiteDir(mappings in sxr, prefix)
 	)
 
-	def sphinxEnvironmentVariables = (scalaVersion, version) map { (scalaV, sbtV) =>
-		// major.minor
+	def sphinxEnvironmentVariables = (scalaVersion, version, isSnapshot) map { (scalaV, sbtV, snap) =>
+		// sphinx's terminology: major.minor
 		def release(v: String): String = CrossVersion.partialVersion(v) match {
 			case Some((major,minor)) => major + "." + minor
 			case None => v
 		}
+		val siteVersion = sbtV.takeWhile(_ != '-')
+		val siteSourceVersion = if(snap) release(siteVersion) else siteVersion
+		val siteSourceBase = s"https://github.com/sbt/sbt/raw/$siteSourceVersion/src/sphinx/"
 		Map[String,String](
 			"sbt.full.version" -> sbtV,
 			"sbt.partial.version" -> release(sbtV),
-			"sbt.site.version" -> sbtV.takeWhile(_ != '-'),
+			"sbt.site.version" -> siteVersion,
+			"sbt.site.source.base" -> siteSourceBase,
 			"sbt.binary.version" -> CrossVersion.binarySbtVersion(sbtV),
 			"scala.full.version" -> scalaV,
 			"scala.partial.version" -> release(scalaV),
