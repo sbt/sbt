@@ -108,8 +108,8 @@ What is `ModuleID`, `Project`, ...?
 To figure out an unknown type or method, have a look at the
 :doc:`Getting Started Guide </Getting-Started/Welcome>` if you have not.
 Also try the :doc:`index </Name-Index>` of commonly used methods, values, and types,
-the `API Documentation <../api/index>`_ and the
-`hyperlinked sources <../sxr/index>`_.
+the `API Documentation <../api/>`_ and the
+`hyperlinked sources <../sxr/>`_.
 
 How do I add files to a jar package?
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

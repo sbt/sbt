@@ -49,15 +49,14 @@ Implementing a task
 Once you've defined a key for your task, you'll need to complete it
 with a task definition. You could be defining your own task, or you
 could be planning to redefine an existing task. Either way looks the
-same; use `:=` to associate some code with the task key:
+same; use `:=` to associate some code with the task key:  ::
 
-::
     val sampleStringTask = settingKey[String]("A sample string task.")
     
     val sampleIntTask = settingKey[String]("A sample int task.")
-
+    
     sampleStringTask := System.getProperty("user.home")
-
+    
     sampleIntTask := {
       val sum = 1 + 2
       println("sum: " + sum)
@@ -93,4 +92,3 @@ This page has been a quick taste; there's much much more about custom
 tasks on the :doc:`/Detailed-Topics/Tasks` page.
 
 Move on to :doc:`Full-Def`.
-

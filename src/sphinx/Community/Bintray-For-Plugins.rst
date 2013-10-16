@@ -43,7 +43,7 @@ Tags
 Once this is done, you can begin to configure your sbt-plugins to publish to bintray.
 
 Add the bintray-sbt plugin to your build.
-========================================
+=========================================
 
 First, add the bintray-sbt to your plugin build.
 
