@@ -245,7 +245,7 @@ The BuildDependencies type
 --------------------------
 
 The type of the :key:`buildDependencies` setting is
-`BuildDependencies </api/sbt/BuildDependencies.html>`_.
+`BuildDependencies <../../api/sbt/BuildDependencies.html>`_.
 `BuildDependencies` provides mappings from a project to its aggregate
 or classpath dependencies. For classpath dependencies, a dependency has
 type `ClasspathDep[ProjectRef]`, which combines a `ProjectRef` with
