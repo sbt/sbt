@@ -220,3 +220,7 @@ input#search-input {
 .breadcrumb li select option {
     font-weight: normal;
 }
+.page-source {
+    margin-top: 20px;
+    text-align: center;
+}
