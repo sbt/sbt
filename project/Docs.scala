@@ -8,14 +8,17 @@
 	import sbtsite.SphinxSupport
 	import SiteKeys.{makeSite,siteMappings}
 	import Sxr.sxr
+	import SiteMap.Entry
 
 object Docs
 {
-	val cnameFile = SettingKey[File]("cname-file", "Location of the CNAME file for the website.")
+	val rootFiles = SettingKey[Seq[File]]("root-files", "Location of file that will be copied to the website root.")
 	val latestRelease = SettingKey[Boolean]("latest-release")
 
 	val siteExcludes = Set(".buildinfo", "objects.inv")
 	def siteInclude(f: File) = !siteExcludes.contains(f.getName)
+	def siteSourceBase(siteSourceVersion: String) = s"https://github.com/sbt/sbt/raw/$siteSourceVersion/src/sphinx/"
+	val sbtSiteBase = uri("http://www.scala-sbt.org/")
 
 	val SnapshotPath = "snapshot"
 	val ReleasePath = "release"
@@ -41,11 +44,15 @@ object Docs
 		git.remoteRepo := "git@github.com:sbt/sbt.github.com.git",
 		localRepoDirectory,
 		ghkeys.synchLocal <<= synchLocalImpl,
-		cnameFile <<= (sourceDirectory in SphinxSupport.Sphinx) / "CNAME",
+		rootFiles :=  {
+			val base = (sourceDirectory in SphinxSupport.Sphinx).value
+			Seq("CNAME", "robots.txt").map(base / _)
+		},
 		latestRelease in ThisBuild := false,
 		commands += setLatestRelease,
 		GitKeys.gitBranch in ghkeys.updatedRepository := Some("master")
 	)
+
 
 	def localRepoDirectory = ghkeys.repository := {
 		// distinguish between building to update the site or not so that CI jobs 
@@ -67,12 +74,11 @@ object Docs
 		}
 		val siteVersion = sbtV.takeWhile(_ != '-')
 		val siteSourceVersion = if(snap) release(siteVersion) else siteVersion
-		val siteSourceBase = s"https://github.com/sbt/sbt/raw/$siteSourceVersion/src/sphinx/"
 		Map[String,String](
 			"sbt.full.version" -> sbtV,
 			"sbt.partial.version" -> release(sbtV),
 			"sbt.site.version" -> siteVersion,
-			"sbt.site.source.base" -> siteSourceBase,
+			"sbt.site.source.base" -> siteSourceBase(siteSourceVersion),
 			"sbt.binary.version" -> CrossVersion.binarySbtVersion(sbtV),
 			"scala.full.version" -> scalaV,
 			"scala.partial.version" -> release(scalaV),
@@ -80,13 +86,14 @@ object Docs
 		)
 	}
 
-	def synchLocalImpl = (ghkeys.privateMappings, ghkeys.updatedRepository, version, isSnapshot, latestRelease, streams, cnameFile) map {
-		(mappings, repo, v, snap, latest, s, cname) =>
+	def synchLocalImpl = (ghkeys.privateMappings, ghkeys.updatedRepository, version, isSnapshot, latestRelease, streams, rootFiles) map {
+		(mappings, repo, v, snap, latest, s, roots) =>
 		val versioned = repo / v
 		IO.delete(versioned)
 		val toCopy = for( (file, target) <- mappings if siteInclude(file) ) yield (file, versioned / target)
 		IO.copy(toCopy)
-		IO.copyFile(cname, repo / cname.getName)
+		for(f <- roots)
+			IO.copyFile(f, repo / f.getName)
 		IO.touch(repo / ".nojekyll")
 		IO.write(repo / "versions.js", versionsJs(sortVersions(collectVersions(repo))))
 		if(!snap && latest)
@@ -94,8 +101,43 @@ object Docs
 		if(snap || latest)
 			linkSite(repo, v, if(snap) SnapshotPath else ReleasePath, s.log)
 		s.log.info("Copied site to " + versioned)
+
+		if(latest) {
+			val (index, siteMaps) = SiteMap.generate(repo, sbtSiteBase, gzip=true, siteEntry(v), s.log)
+			s.log.info(s"Generated site map index: $index")
+			s.log.debug(s"Generated site maps: ${siteMaps.mkString("\n\t", "\n\t", "")}")
+		}
+
 		repo
 	}
+	def siteEntry(CurrentVersion: String)(file: File, relPath: String): Option[Entry] =
+	{
+		val apiOrSxr = """([^/]+)/(api|sxr)/.*""".r
+		val docs = """([^/]+)/docs/.*""".r
+		val old077 = """0\.7\.7/.*""".r 
+		val manualRedirects = """[^/]+\.html""".r
+		val snapshot = """(.+-SNAPSHOT|snapshot)/.+/.*""".r
+			// highest priority is the home page
+			// X/docs/ are higher priority than X/(api|sxr)/
+			// release/ is slighty higher priority than <releaseVersion>/
+			// non-current releases are low priority
+			// 0.7.7 documentation is very low priority
+			// snapshots docs are very low priority
+			// the manual redirects from the old version of the site have no priority at all
+		relPath match {
+			case "index.html" => Some(Entry("weekly", 1.0))
+			case docs(ReleasePath) => Some( Entry("weekly", 0.9) )
+			case docs(CurrentVersion) => Some( Entry("weekly", 0.8) )
+			case apiOrSxr(ReleasePath, _) => Some( Entry("weekly", 0.6) )
+			case apiOrSxr(CurrentVersion, _) => Some( Entry("weekly", 0.5) )
+			case snapshot(_) => Some( Entry("weekly", 0.02) )
+			case old077() =>  Some( Entry("never", 0.01) )
+			case docs(_) => Some( Entry("never", 0.2) )
+			case apiOrSxr(_, _) => Some( Entry("never", 0.1) )
+			case x => Some( Entry("never", 0.0) )
+		}
+	}
+
 	def versionsJs(vs: Seq[String]): String = "var availableDocumentationVersions = " + vs.mkString("['", "', '", "']")
 	// names of all directories that are explicit versions
 	def collectVersions(base: File): Seq[String] = (base * versionFilter).get.map(_.getName)
