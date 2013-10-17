@@ -130,7 +130,7 @@ and :doc:`/Detailed-Topics/Paths` for the full documentation.
    as collections (like `Seq`) and
    `Parser <../api/sbt/complete/Parser.html>`_
    (see :doc:`/Detailed-Topics/Parsing-Input`).
--  `x` Used to construct mappings from a `File` to another `File`
+-  `pair` Used to construct mappings from a `File` to another `File`
    or to a `String`. See :doc:`/Detailed-Topics/Mapping-Files`.
 -  `get` forces a `PathFinder <../api/sbt/PathFinder.html>`_
    (a call-by-name data structure) to a strict `Seq[File]`

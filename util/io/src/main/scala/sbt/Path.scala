@@ -113,6 +113,7 @@ sealed abstract class PathFinder
 	* of paths selected by this finder.*/
 	final def \ (literal: String): PathFinder = this / literal
 
+	@deprecated("Use pair.", "0.13.1")
 	def x_![T](mapper: File => Option[T]): Traversable[(File,T)] = x(mapper, false)
 
 	/** Applies `mapper` to each path selected by this PathFinder and returns the path paired with the non-empty result.
@@ -124,6 +125,7 @@ sealed abstract class PathFinder
 	/** Applies `mapper` to each path selected by this PathFinder and returns the path paired with the non-empty result.
 	* If the result is empty (None) and `errorIfNone` is true, an exception is thrown.
 	* If `errorIfNone` is false, the path is dropped from the returned Traversable.*/
+	@deprecated("Use pair.", "0.13.1")
 	def x[T](mapper: File => Option[T], errorIfNone: Boolean = true): Seq[(File,T)] =
 	{
 		val apply = if(errorIfNone) mapper | fail else mapper

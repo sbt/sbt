@@ -14,7 +14,7 @@ that can be useful for constructing the `Seq[(File, String)]` or
 
 A common way of making this sequence is to start with a `PathFinder`
 or `Seq[File]` (which is implicitly convertible to `PathFinder`) and
-then call the `x` method. See the
+then call the `pair` method. See the
 `PathFinder <../../api/sbt/PathFinder.html>`_
 API for details, but essentially this method accepts a function
 `File => Option[String]` or `File => Option[File]` that is used to
@@ -37,7 +37,7 @@ For example:
       import Path.relativeTo
     val files: Seq[File] = file("/a/b/C.scala") :: Nil
     val baseDirectories: Seq[File] = file("/a") :: Nil
-    val mappings: Seq[(File,String)] = files x relativeTo(baseDirectories)
+    val mappings: Seq[(File,String)] = files pair relativeTo(baseDirectories)
 
     val expected = (file("/a/b/C.scala") -> "b/C.scala") :: Nil
     assert( mappings == expected )
@@ -59,7 +59,7 @@ For example, the following demonstrates building a
     import Path.rebase
     val files: Seq[File] = file("/a/b/C.scala") :: Nil
     val baseDirectories: Seq[File] = file("/a") :: Nil
-    val mappings: Seq[(File,String)] = files x rebase(baseDirectories, "pre/")
+    val mappings: Seq[(File,String)] = files pair rebase(baseDirectories, "pre/")
 
     val expected = (file("/a/b/C.scala") -> "pre/b/C.scala" ) :: Nil
     assert( mappings == expected )
@@ -72,7 +72,7 @@ Or, to build a `Seq[(File, File)]`:
     val files: Seq[File] = file("/a/b/C.scala") :: Nil
     val baseDirectories: Seq[File] = file("/a") :: Nil
     val newBase: File = file("/new/base")
-    val mappings: Seq[(File,File)] = files x rebase(baseDirectories, newBase)
+    val mappings: Seq[(File,File)] = files pair rebase(baseDirectories, newBase)
 
     val expected = (file("/a/b/C.scala") -> file("/new/base/b/C.scala") ) :: Nil
     assert( mappings == expected )
@@ -89,7 +89,7 @@ directory. For example:
 
     import Path.flat
     val files: Seq[File] = file("/a/b/C.scala") :: Nil
-    val mappings: Seq[(File,String)] = files x flat
+    val mappings: Seq[(File,String)] = files pair flat
 
     val expected = (file("/a/b/C.scala") -> "C.scala" ) :: Nil
     assert( mappings == expected )
@@ -101,7 +101,7 @@ To build a `Seq[(File, File)]` using `flat`:
     import Path.flat
     val files: Seq[File] = file("/a/b/C.scala") :: Nil
     val newBase: File = file("/new/base")
-    val mappings: Seq[(File,File)] = files x flat(newBase)
+    val mappings: Seq[(File,File)] = files pair flat(newBase)
 
     val expected = (file("/a/b/C.scala") -> file("/new/base/C.scala") ) :: Nil
     assert( mappings == expected )
@@ -119,7 +119,7 @@ fall back to flattening:
     import Path.relativeTo
     val files: Seq[File] = file("/a/b/C.scala") :: file("/zzz/D.scala") :: Nil
     val baseDirectories: Seq[File] = file("/a") :: Nil
-    val mappings: Seq[(File,String)] = files x ( relativeTo(baseDirectories) | flat )
+    val mappings: Seq[(File,String)] = files pair ( relativeTo(baseDirectories) | flat )
 
     val expected = (file("/a/b/C.scala") -> "b/C.scala") ) :: (file("/zzz/D.scala") -> "D.scala") ) :: Nil
     assert( mappings == expected )
