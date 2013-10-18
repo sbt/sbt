@@ -325,11 +325,17 @@ object Keys
 	val cancelable = SettingKey[Boolean]("cancelable", "Enables (true) or disables (false) the ability to interrupt task execution with CTRL+C.", BMinusSetting)
 	val settingsData = std.FullInstance.settingsData
 	val streams = TaskKey[TaskStreams]("streams", "Provides streams for logging and persisting data.", DTask)
-	val isDummyTask = AttributeKey[Boolean]("is-dummy-task", "Internal: used to identify dummy tasks.  sbt injects values for these tasks at the start of task execution.", Invisible)
 	val taskDefinitionKey = AttributeKey[ScopedKey[_]]("task-definition-key", "Internal: used to map a task back to its ScopedKey.", Invisible)
-	val (executionRoots, dummyRoots)= dummy[Seq[ScopedKey[_]]]("execution-roots", "The list of root tasks for this task execution.  Roots are the top-level tasks that were directly requested to be run.")
-	val (state, dummyState) = dummy[State]("state", "Current build state.")
-	val (streamsManager, dummyStreamsManager) = dummy[Streams]("streams-manager", "Streams manager, which provides streams for different contexts.")
+	val (executionRoots, dummyRoots)= Def.dummy[Seq[ScopedKey[_]]]("execution-roots", "The list of root tasks for this task execution.  Roots are the top-level tasks that were directly requested to be run.")
+
+	val state = Def.stateKey
+
+	@deprecated("Implementation detail.", "0.13.1")
+	val isDummyTask = Def.isDummyTask
+	@deprecated("Implementation detail.", "0.13.1")
+	val dummyState = Def.dummyState
+
+	val (streamsManager, dummyStreamsManager) = Def.dummy[Streams]("streams-manager", "Streams manager, which provides streams for different contexts.")
 	val stateStreams = AttributeKey[Streams]("streams-manager", "Streams manager, which provides streams for different contexts.  Setting this on State will override the default Streams implementation.")
 	val resolvedScoped = Def.resolvedScoped
 	val pluginData = TaskKey[PluginData]("plugin-data", "Information from the plugin build needed in the main build definition.", DTask)
@@ -344,11 +350,10 @@ object Keys
 	type Streams = std.Streams[ScopedKey[_]]
 	type TaskStreams = std.TaskStreams[ScopedKey[_]]
 
-	def dummy[T: Manifest](name: String, description: String): (TaskKey[T], Task[T]) = (TaskKey[T](name, description, DTask), dummyTask(name))
-	def dummyTask[T](name: String): Task[T] =
-	{
-		val base: Task[T] = task( sys.error("Dummy task '" + name + "' did not get converted to a full task.") ) named name
-		base.copy(info = base.info.set(isDummyTask, true))
-	}
-	def isDummy(t: Task[_]): Boolean = t.info.attributes.get(isDummyTask) getOrElse false
+	@deprecated("Implementation detail.", "0.13.1")
+	def dummy[T: Manifest](name: String, description: String): (TaskKey[T], Task[T]) = Def.dummy(name, description)
+	@deprecated("Implementation detail.", "0.13.1")
+	def dummyTask[T](name: String): Task[T] = Def.dummyTask(name)
+	@deprecated("Implementation detail.", "0.13.1")
+	def isDummy(t: Task[_]): Boolean = Def.isDummy(t)
 }

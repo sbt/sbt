@@ -4,6 +4,7 @@ package sbt
 	import complete.Parser
 	import java.io.File
 	import Scope.ThisScope
+	import KeyRanks.{DTask, Invisible}
 
 /** A concrete settings system that uses `sbt.Scope` for the scope type. */
 object Def extends Init[Scope] with TaskMacroExtra
@@ -87,6 +88,17 @@ object Def extends Init[Scope] with TaskMacroExtra
 	def settingKey[T](description: String): SettingKey[T] = macro std.KeyMacro.settingKeyImpl[T]
 	def taskKey[T](description: String): TaskKey[T] = macro std.KeyMacro.taskKeyImpl[T]
 	def inputKey[T](description: String): InputKey[T] = macro std.KeyMacro.inputKeyImpl[T]
+
+	private[sbt] def dummy[T: Manifest](name: String, description: String): (TaskKey[T], Task[T]) = (TaskKey[T](name, description, DTask), dummyTask(name))
+	private[sbt] def dummyTask[T](name: String): Task[T] =
+	{
+		import std.TaskExtra.{task => newTask, _}
+		val base: Task[T] = newTask( sys.error("Dummy task '" + name + "' did not get converted to a full task.") ) named name
+		base.copy(info = base.info.set(isDummyTask, true))
+	}
+	private[sbt] def isDummy(t: Task[_]): Boolean = t.info.attributes.get(isDummyTask) getOrElse false
+	private[sbt] val isDummyTask = AttributeKey[Boolean]("is-dummy-task", "Internal: used to identify dummy tasks.  sbt injects values for these tasks at the start of task execution.", Invisible)
+	private[sbt] val (stateKey, dummyState) = dummy[State]("state", "Current build state.")
 }
 // these need to be mixed into the sbt package object because the target doesn't involve Initialize or anything in Def
 trait TaskMacroExtra 

@@ -4,9 +4,9 @@
 package sbt
 
 	import java.io.File
-	import Def.{displayFull, ScopedKey, Setting}
+	import Def.{displayFull, dummyState, ScopedKey, Setting}
 	import Keys.{streams, Streams, TaskStreams}
-	import Keys.{dummyRoots, dummyState, dummyStreamsManager, executionRoots, pluginData, streamsManager, taskDefinitionKey, transformState}
+	import Keys.{dummyRoots, dummyStreamsManager, executionRoots, pluginData, streamsManager, taskDefinitionKey, transformState}
 	import Project.richInitializeTask
 	import Scope.{GlobalScope, ThisScope}
 	import Types.const

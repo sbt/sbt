@@ -194,6 +194,7 @@ Preapplying input
 =================
 
 Because `InputTasks` are built from `Parsers`, it is possible to generate a new `InputTask` by applying some input programmatically.
+(It is also possible to generate a `Task`, which is covered in the next section.)
 Two convenience methods are provided on `InputTask[T]` and `Initialize[InputTask[T]]` that accept the String to apply.
 
  * `partialInput` applies the input and allows further input, such as from the command line
@@ -212,18 +213,16 @@ NOTE: the current implementation of `:=` doesn't actually support applying input
 
 ::
 
-    val run2 = inputKey[Unit]("Runs the main class twice: " +
+    lazy val run2 = inputKey[Unit]("Runs the main class twice: " +
        "once with the project name and version as arguments"
        "and once with command line arguments preceded by hard coded values.")
 
     // The argument string for the first run task is ' <name> <version>'
-    val firstInput: Initialize[String] =
+    lazy val firstInput: Initialize[String] =
        Def.setting(s" ${name.value} ${version.value}")
 
     // Make the first arguments to the second run task ' red blue'
-    val secondInput: String = " red blue"
-
-    val separator: Parser[String] = "--"
+    lazy val secondInput: String = " red blue"
 
     run2 := {
        val one = (run in Compile).fullInput(firstInput.value).evaluated
@@ -243,3 +242,62 @@ For a main class Demo that echoes its arguments, this looks like:
     red
     blue
     green
+
+
+Get a Task from an InputTask
+============================
+
+The previous section showed how to derive a new `InputTask` by applying input.
+In this section, applying input produces a `Task`.
+The `toTask` method on `Initialize[InputTask[T]]` accepts the `String` input to apply and produces a task that can be used normally.
+For example, the following defines a plain task `runFixed` that can be used by other tasks or run directly without providing any input, ::
+
+    lazy val runFixed = taskKey[Unit]("A task that hard codes the values to `run`")
+
+    runFixed := {
+       val _ = (run in Compile).toTask(" blue green").value
+       println("Done!")
+    }
+
+
+For a main class Demo that echoes its arguments, running `runFixed` looks like:
+
+::
+
+    $ sbt
+    > runFixed
+    [info] Running Demo blue green
+    blue
+    green
+    Done!
+
+
+Each call to `toTask` generates a new task, but each task is configured the same as the original `InputTask` (in this case, `run`) but with different input applied.
+For example, ::
+
+    lazy val runFixed2 = taskKey[Unit]("A task that hard codes the values to `run`")
+
+    fork in run := true
+
+    runFixed2 := {
+       val x = (run in Compile).toTask(" blue green").value
+       val y = (run in Compile).toTask(" red orange").value
+       println("Done!")
+    }
+
+The different `toTask` calls define different tasks that each run the project's main class in a new jvm.
+That is, the `fork` setting configures both, each has the same classpath, and each run the same main class.
+However, each task passes different arguments to the main class.
+For a main class Demo that echoes its arguments, the output of running `runFixed2` might look like:
+
+::
+
+    $ sbt
+    > runFixed2
+    [info] Running Demo blue green
+    [info] Running Demo red orange
+    blue
+    green
+    red
+    orange
+    Done!
