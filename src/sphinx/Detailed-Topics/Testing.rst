@@ -375,8 +375,8 @@ However, different tests are run depending on the configuration.
           .settings( inConfig(FunTest)(Defaults.testTasks) : _*)
           .settings(
             libraryDependencies += specs,
-            testOptions in Test := Seq(Tests.Filter(itFilter)),
-            testOptions in FunTest := Seq(Tests.Filter(unitFilter))
+            testOptions in Test := Seq(Tests.Filter(unitFilter)),
+            testOptions in FunTest := Seq(Tests.Filter(itFilter))
           )
 
       def itFilter(name: String): Boolean = name endsWith "ITest"
