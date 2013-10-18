@@ -76,13 +76,12 @@ object AnalysisTest extends Properties("Analysis") {
 	}
 
 	// Compare two analyses with useful labelling when they aren't equal.
-	private[this] def compare(left: Analysis, right: Analysis) = {
-		val res = left == right
-		("UNEQUAL" |: res) ||
-		((" LEFT: " + left) |: false) ||
-		(("RIGHT: " + right) |: false) ||
-		(("STAMPS EQUAL: " + (left.stamps == right.stamps)) |: false) ||
-		(("APIS EQUAL: " + (left.apis == right.apis)) |: false) ||
-		(("RELATIONS EQUAL: " + (left.relations == right.relations)) |: false)
-	}
+	private[this] def compare(left: Analysis, right: Analysis): Prop =
+		s" LEFT: $left" |:
+		s"RIGHT: $right" |:
+		s"STAMPS EQUAL: ${left.stamps == right.stamps}" |:
+		s"APIS EQUAL: ${left.apis == right.apis}" |:
+		s"RELATIONS EQUAL: ${left.relations == right.relations}" |:
+		"UNEQUAL" |:
+		(left == right)
 }
