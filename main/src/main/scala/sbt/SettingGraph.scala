@@ -13,18 +13,22 @@ object SettingGraph
 	def apply(structure: BuildStructure, basedir: File, scoped: ScopedKey[_], generation: Int)
 					(implicit display: Show[ScopedKey[_]]): SettingGraph =
 	{
-		val key = scoped.key
-		val scope = scoped.scope
-		val definedIn = structure.data.definingScope(scope, key) map { sc => display(ScopedKey(sc, key)) }
 		val cMap = flattenLocals(compiled(structure.settings, false)(structure.delegates, structure.scopeLocal, display))
-		// val related = cMap.keys.filter(k => k.key == key && k.scope != scope)
-		val depends = cMap.get(scoped) match { case Some(c) => c.dependencies.toSet; case None => Set.empty }
-		// val reverse = reverseDependencies(cMap, scoped)
-	
-		SettingGraph(display(scoped), definedIn,
-			Project.scopedKeyData(structure, scope, key),
-			key.description, basedir,
-			depends map { (x: ScopedKey[_]) => apply(structure, basedir, x, generation + 1) })
+		def loop(scoped: ScopedKey[_], generation: Int): SettingGraph =
+		{
+			val key = scoped.key
+			val scope = scoped.scope
+			val definedIn = structure.data.definingScope(scope, key) map { sc => display(ScopedKey(sc, key)) }
+			val depends = cMap.get(scoped) match { case Some(c) => c.dependencies.toSet; case None => Set.empty }
+			// val related = cMap.keys.filter(k => k.key == key && k.scope != scope)
+			// val reverse = reverseDependencies(cMap, scoped)
+
+	 		SettingGraph(display(scoped), definedIn,
+				Project.scopedKeyData(structure, scope, key),
+				key.description, basedir,
+				depends map { (x: ScopedKey[_]) => loop(x, generation + 1) })
+		}
+		loop(scoped, generation)
 	}
 }
 
