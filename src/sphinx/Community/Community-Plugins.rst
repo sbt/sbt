@@ -90,15 +90,17 @@ Test plugins
    https://github.com/skipoleschris/xsbt-cucumber-plugin
 -  sbt-multi-jvm:
    https://github.com/typesafehub/sbt-multi-jvm
+-  sbt-testng-interface:
+   https://github.com/sbt/sbt-testng-interface
 -  schoir (Distributed testing plugin):
    https://github.com/typesafehub/schoir
 
 Static Code Analysis plugins
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
--  cpd4sbt: https://bitbucket.org/jmhofer/cpd4sbt (copy/paste detection,
+-  cpd4sbt: https://github.com/sbt/cpd4sbt (copy/paste detection,
    works for Scala, too)
--  findbugs4sbt: https://bitbucket.org/jmhofer/findbugs4sbt (FindBugs
+-  findbugs4sbt: https://github.com/sbt/findbugs4sbt (FindBugs
    only supports Java projects atm)
 -  scalastyle: https://github.com/scalastyle/scalastyle-sbt-plugin (Scalastyle - static code checker for Scala)
 -  sbt-stats: https://github.com/orrsella/sbt-stats (simple, extensible source code statistics)
@@ -268,7 +270,7 @@ Code coverage plugins
 ~~~~~~~~~~~~~~~~~~~~~
 
 -  sbt-scct: https://github.com/dvc94ch/sbt-scct
--  jacoco4sbt: https://bitbucket.org/jmhofer/jacoco4sbt
+-  jacoco4sbt: https://github.com/sbt/jacoco4sbt
 -  xsbt-coveralls-plugin: https://github.com/theon/xsbt-coveralls-plugin
 
 Android plugin
@@ -280,7 +282,7 @@ Android plugin
 Build interoperability plugins
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
--  ant4sbt: https://bitbucket.org/jmhofer/ant4sbt
+-  ant4sbt: https://github.com/sbt/ant4sbt
 
 OSGi plugin
 ~~~~~~~~~~~
