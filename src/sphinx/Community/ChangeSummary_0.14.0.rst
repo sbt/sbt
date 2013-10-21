@@ -30,7 +30,7 @@ Details of major changes
 
     gitHeadCommitSha in ThisBuild := proc"git rev-parse HEAD".lines.head
 
-Each expression embedded in `proc` strings are treated as an argument, so this could be used to pass strings with white spaces. One exception is expressions of type `Seq[Any]`, which is expanded into a list of arguments.
+Each expression embedded in `proc` strings is treated as an argument, so this could be used to pass strings with white spaces. One exception is an expression of type `Seq[Any]`, which is expanded into a list of arguments.
 
 ::
 
@@ -51,3 +51,19 @@ This is useful when implementing input tasks.
       val args: Seq[String] = spaceDelimited("<arg>").parsed
       proc"git ${args}".!
     }
+
+Note the embedded expression must appear in the beginning of a `proc` string or directly after a whitespace.
+
+::
+
+    val badGrepFoo = taskKey[Unit]("bad grep for def foo")
+
+    badGrepFoo := {
+      proc"grep def${" foo"} ${(sources in Compile).value}".!
+    }
+
+This will result in an error when the task is called:
+
+::
+
+    [error] (helloworld/*:badGrepFoo) proc found an expression but whitespace was expected:  foo

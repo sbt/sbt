@@ -65,19 +65,25 @@ object Process extends ProcessExtra
 
 	def apply(value: Boolean): ProcessBuilder = apply(value.toString, if(value) 0 else 1)
 	def apply(name: String, exitValue: => Int): ProcessBuilder = new DummyProcessBuilder(name, exitValue)
-	def apply(sc: StringContext, args: Any*): ProcessBuilder =
+	private[sbt] def apply(sc: StringContext, args: Any*): ProcessBuilder =
 	{
 		val strings = sc.parts.iterator
 		val expressions = args.iterator
 		val buf = new ArrayBuffer[String]()
 		def splitAndAppendAll(s: String): Unit = buf appendAll s.trim.split("""\s+""").filter(_ != "")
-		splitAndAppendAll(strings.next)
+		def endsWithWhiteSpace(s: String): Boolean = ("""\s+$""".r findFirstIn s).isDefined
+		val head = strings.next
+		splitAndAppendAll(head)
+		var expressionAllowed: Boolean = head.isEmpty || endsWithWhiteSpace(head)
 		while(strings.hasNext) {
+			if (!expressionAllowed) sys.error("proc found an expression but whitespace was expected: " + expressions.next.toString)
 			expressions.next match {
 				case xs: Seq[_] => buf appendAll xs.map(_.toString)
 				case x          => buf append x.toString
 			}
-			splitAndAppendAll(strings.next)
+			val n = strings.next
+			splitAndAppendAll(n)
+			expressionAllowed = endsWithWhiteSpace(n)
 		}
 		apply(buf.toArray)
 	}
