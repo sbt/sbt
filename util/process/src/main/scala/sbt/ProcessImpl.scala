@@ -149,13 +149,8 @@ private abstract class AbstractProcessBuilder extends ProcessBuilder with SinkPa
 	def !!(log: ProcessLogger) = getString(Some(log), false)
 	def !!< = getString(None, true)
 	def !!<(log: ProcessLogger) = getString(Some(log), true)
-
-	def lines: Stream[String] = lines(false, true, None)
-	def lines(log: ProcessLogger): Stream[String] = lines(false, true, Some(log))
-	def lines_! : Stream[String] = lines(false, false, None)
-	def lines_!(log: ProcessLogger): Stream[String] = lines(false, false, Some(log))
-
-	private[this] def lines(withInput: Boolean, nonZeroException: Boolean, log: Option[ProcessLogger]): Stream[String] =
+	
+	private[sbt] def outputLines(withInput: Boolean, nonZeroException: Boolean, log: Option[ProcessLogger]): Stream[String] =
 	{
 		val streamed = Streamed[String](nonZeroException)
 		val process = run(new ProcessIO(BasicIO.input(withInput), BasicIO.processFully(streamed.process), BasicIO.getErr(log), BasicIO.inheritInput(withInput)))
