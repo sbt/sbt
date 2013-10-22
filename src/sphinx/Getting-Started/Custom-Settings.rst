@@ -51,9 +51,9 @@ with a task definition. You could be defining your own task, or you
 could be planning to redefine an existing task. Either way looks the
 same; use `:=` to associate some code with the task key:  ::
 
-    val sampleStringTask = settingKey[String]("A sample string task.")
+    val sampleStringTask = taskKey[String]("A sample string task.")
     
-    val sampleIntTask = settingKey[String]("A sample int task.")
+    val sampleIntTask = taskKey[Int]("A sample int task.")
     
     sampleStringTask := System.getProperty("user.home")
     
