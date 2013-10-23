@@ -42,7 +42,8 @@ object IC extends IncrementalCompiler[Analysis, AnalyzingCompiler]
 	def readCacheUncaught(file: File): (Analysis, CompileSetup) =
 	{
 		import sbinary.DefaultProtocol.{immutableMapFormat, immutableSetFormat, StringFormat, tuple2Format}
-		import sbt.inc.AnalysisFormats._
+		val formats = new sbt.inc.InternedAnalysisFormats()
+		import formats._
 		sbt.IO.gzipFileIn(file)( in => sbinary.Operations.read[(Analysis, CompileSetup)](in) )
 	}
 }
