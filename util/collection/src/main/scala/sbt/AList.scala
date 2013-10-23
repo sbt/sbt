@@ -53,6 +53,7 @@ object AList
 		def foldr[M[_], T](k: KL[M], f: (M[_], T) => T, init: T): T = k.foldr(f, init)
 		override def apply[M[_], C](k: KL[M], f: KL[Id] => C)(implicit app: Applicative[M]): M[C] = k.apply(f)(app)
 		def traverse[M[_], N[_], P[_]](k: KL[M], f: M ~> (N ∙ P)#l)(implicit np: Applicative[N]): N[KL[P]] = k.traverse[N,P](f)(np)
+		override def toList[M[_]](k: KL[M]) = k.toList
 	}
 
 	/** AList for a single value. */
