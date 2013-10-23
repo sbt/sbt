@@ -19,7 +19,7 @@ import MultipleOutput.OutputGroup
  *
  * Has state, so cannot be an object. To use, wild-card import the implicits from an instance of this class.
  */
-class InternedAnalysisFormats
+private[sbt] final class InternedAnalysisFormats
 {
 	// Formats that reads/write internable objects directly (i.e., not via the intern pool).
 	// Note: Not implicit. We only want to use the full format explicitly, in specific places (such as when
@@ -31,7 +31,7 @@ class InternedAnalysisFormats
 	implicit val fileFormat = filePool.itemFormat
 
 	// A convenient wrapper class for pool serialization. We can add more pools here in the future if needed.
-	class Pools(var fileP: InternPool[File])
+	final class Pools(var fileP: InternPool[File])
 
 	def initPools(analysis: Analysis) = new Pools(
 		filePool.initPool(allFiles(analysis))
