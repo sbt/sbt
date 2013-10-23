@@ -162,8 +162,7 @@ trait Init[Scope]
 		}
 		type ValidatedSettings[T] = Either[Seq[Undefined], SettingSeq[T]]
 		val f = new (SettingSeq ~> ValidatedSettings) { def apply[T](ks: Seq[Setting[T]]) = {
-			val validated = ks.zipWithIndex map { case (s,i) => s validateReferenced refMap(s, i == 0) }
-			val (undefs, valid) = Util separateE validated
+			val (undefs, valid) = Util.separate(ks.zipWithIndex){ case (s,i) => s validateReferenced refMap(s, i == 0) }
 			if(undefs.isEmpty) Right(valid) else Left(undefs.flatten)
 		}}
 		type Undefs[_] = Seq[Undefined]
@@ -173,17 +172,11 @@ trait Init[Scope]
 		else
 			throw Uninitialized(sMap.keys.toSeq, delegates, undefineds.values.flatten.toList, false)
 	}
-	private[this] def delegateForKey[T](sMap: ScopedMap, k: ScopedKey[T], scopes: Seq[Scope], ref: Setting[_], isFirst: Boolean): Either[Undefined, ScopedKey[T]] = 
+	private[this] def delegateForKey[T](sMap: ScopedMap, k: ScopedKey[T], scopes: Seq[Scope], ref: Setting[_], isFirst: Boolean): Either[Undefined, ScopedKey[T]] =
 	{
-		def resolve(search: Seq[Scope]): Either[Undefined, ScopedKey[T]] =
-			search match {
-				case Seq() => Left(Undefined(ref, k))
-				case Seq(x, xs @ _*) =>
-					val sk = ScopedKey(x, k.key)
-					val definesKey = (ref.key != sk || !isFirst) && (sMap contains sk)
-					if(definesKey) Right(sk) else resolve(xs)
-			}
-		resolve(scopes)
+		val skeys = scopes.iterator.map(x => ScopedKey(x, k.key))
+		val definedAt = skeys.find( sk => (!isFirst || ref.key != sk) && (sMap contains sk))
+		definedAt.toRight(Undefined(ref, k))
 	}
 		
 	private[this] def applyInits(ordered: Seq[Compiled[_]])(implicit delegates: Scope => Seq[Scope]): Settings[Scope] =
@@ -515,7 +508,10 @@ trait Init[Scope]
 		def dependencies = deps(a.toList)
 		def apply[Z](g: T => Z): Initialize[Z] = new Optional[S,Z](a, g compose f)
 		def mapReferenced(g: MapScoped) = new Optional(a map mapReferencedT(g).fn, f)
-		def validateReferenced(g: ValidateRef) = Right( new Optional(a flatMap { _.validateReferenced(g).right.toOption }, f) )
+		def validateReferenced(g: ValidateRef) = a match {
+			case None => Right(this)
+			case Some(i) => Right( new Optional(i.validateReferenced(g).right.toOption, f) )
+		}
 		def mapConstant(g: MapConstant): Initialize[T] = new Optional(a map mapConstantT(g).fn, f)
 		def evaluate(ss: Settings[Scope]): T = f( a.flatMap( i => trapBadRef(evaluateT(ss)(i)) ) )
 		// proper solution is for evaluate to be deprecated or for external use only and a new internal method returning Either be used
