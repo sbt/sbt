@@ -62,7 +62,7 @@ object IMap
 
 		def mapSeparate[VL[_], VR[_]](f: V ~> ({type l[T] = Either[VL[T], VR[T]]})#l ) =
 		{
-			val mapped = backing.view.map { case (k,v) => f(v) match {
+			val mapped = backing.iterator.map { case (k,v) => f(v) match {
 				case Left(l) => Left((k, l))
 				case Right(r) => Right((k, r))
 			}}
