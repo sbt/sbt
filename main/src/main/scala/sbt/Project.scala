@@ -223,8 +223,9 @@ object Project extends ProjectExtra
 		val (onLoad, onUnload) = getHooks(structure.data)
 		val newAttrs = unloaded.attributes.put(stateBuildStructure, structure).put(sessionSettings, session).put(Keys.onUnload.key, onUnload)
 		val newState = unloaded.copy(attributes = newAttrs)
-		onLoad(updateCurrent( newState ))
+		onLoad(LogManager.setGlobalLogLevels(updateCurrent( newState ), structure.data))
 	}
+
 	def orIdentity[T](opt: Option[T => T]): T => T = opt getOrElse idFun
 	def getHook[T](key: SettingKey[T => T], data: Settings[Scope]): T => T  =  orIdentity(key in GlobalScope get data)
 	def getHooks(data: Settings[Scope]): (State => State, State => State)  =  (getHook(Keys.onLoad, data), getHook(Keys.onUnload, data))
