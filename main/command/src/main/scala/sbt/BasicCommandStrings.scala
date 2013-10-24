@@ -53,7 +53,7 @@ ReadCommand + ReadFiles + """
 	You probably need to escape this command if entering it at your shell."""
 
 	def ApplyCommand = "apply"
-	def ApplyDetailed = 
+	def ApplyDetailed =
 ApplyCommand + """ [-cp|-classpath <classpath>] <module-name>*
 	Transforms the current State by calling <module-name>.apply(currentState) for each listed module name.
 	Here, currentState is of type sbt.State.
@@ -113,8 +113,23 @@ AliasCommand + """ name=
 	def StashOnFailure = "sbtStashOnFailure"
 	def PopOnFailure = "sbtPopOnFailure"
 
-	def ClearOnFailure = "--"
-	def OnFailure = "-"
+	// commands with poor choices for names since they clash with the usual conventions for command line options
+	//   these are not documented and are mainly internal commands and can be removed without a full deprecation cycle
+	object Compat {
+		def OnFailure = "-"
+		def ClearOnFailure = "--"
+		def FailureWall = "---"
+		def OnFailureDeprecated = deprecatedAlias(OnFailure, BasicCommandStrings.OnFailure)
+		def ClearOnFailureDeprecated = deprecatedAlias(ClearOnFailure, BasicCommandStrings.ClearOnFailure)
+		def FailureWallDeprecated = deprecatedAlias(FailureWall, BasicCommandStrings.FailureWall)
+		private[this] def deprecatedAlias(oldName: String, newName: String): String =
+			s"The `$oldName` command is deprecated in favor of `$newName` and will be removed in 0.14.0"
+	}
+
+	def FailureWall = "resumeFromFailure"
+
+	def ClearOnFailure = "sbtClearOnFailure"
+	def OnFailure = "onFailure"
 	def OnFailureDetailed =
 OnFailure + """ command
 

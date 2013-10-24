@@ -130,7 +130,7 @@ trait StateOps {
 object State
 {
 	/** Indicates where command execution should resume after a failure.*/
-	final val FailureWall = "---"
+	val FailureWall = BasicCommandStrings.FailureWall
 
 	/** Represents the next action for the command processor.*/
 	sealed trait Next
@@ -199,7 +199,8 @@ object State
 		def handleError(t: Throwable): State = handleException(t, s, log)
 		def fail =
 		{
-			val remaining = s.remainingCommands.dropWhile(_ != FailureWall)
+				import BasicCommandStrings.Compat.{FailureWall => CompatFailureWall}
+			val remaining = s.remainingCommands.dropWhile(c => c != FailureWall && c != CompatFailureWall)
 			if(remaining.isEmpty)
 				applyOnFailure(s, Nil, exit(ok = false))
 			else

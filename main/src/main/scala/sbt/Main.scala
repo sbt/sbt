@@ -60,7 +60,7 @@ object StandardMain
 	val console = ConsoleOut.systemOutOverwrite(ConsoleOut.overwriteContaining("Resolving "))
 
 	def initialGlobalLogging: GlobalLogging = GlobalLogging.initial(MainLogging.globalDefault(console), File.createTempFile("sbt",".log"), console)
-	
+
 	def initialState(configuration: xsbti.AppConfiguration, initialDefinitions: Seq[Command], preCommands: Seq[String]): State =
 	{
 		val commands = preCommands ++ configuration.arguments.map(_.trim)
@@ -85,7 +85,8 @@ object BuiltinCommands
 	def DefaultCommands: Seq[Command] = Seq(ignore, help, about, tasks, settingsCommand, loadProject,
 		projects, project, reboot, read, history, set, sessionCommand, inspect, loadProjectImpl, loadFailed, Cross.crossBuild, Cross.switchVersion,
 		setOnFailure, clearOnFailure, stashOnFailure, popOnFailure,
-		ifLast, multi, shell, continuous, eval, alias, append, last, lastGrep, export, boot, nop, call, exit, act)
+		ifLast, multi, shell, continuous, eval, alias, append, last, lastGrep, export, boot, nop, call, exit, act) ++
+		compatCommands
 	def DefaultBootCommands: Seq[String] = LoadProject :: (IfLast + " " + Shell) :: Nil
 
 	def boot = Command.make(BootCommand)(bootParser)
@@ -245,7 +246,7 @@ object BuiltinCommands
 		s.log.info(Inspect.output(s, option, sk))
 		s
 	}
-	
+
 	@deprecated("Use Inspect.output", "0.13.0")
 	def inspectOutput(s: State, option: Inspect.Mode, sk: Def.ScopedKey[_]): String = Inspect.output(s, option, sk)
 
@@ -322,7 +323,7 @@ object BuiltinCommands
 		val (str, ref, display) = extractLast(s)
 		Output.last(sks, str.streams(s), printLast(s), sid)(display)
 		keepLastLog(s)
-	}	
+	}
 
 	/** Determines the log file that last* commands should operate on.  See also isLastOnly. */
 	def lastLogFile(s: State) =

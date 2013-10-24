@@ -6,7 +6,6 @@ package sbt
 	import Types.{const,idFun}
 	import Function.tupled
 	import Command.applyEffect
-	import State.FailureWall
 	import HistoryCommands.{Start => HistoryPrefix}
 	import BasicCommandStrings._
 	import CommandUtil._
@@ -16,7 +15,7 @@ package sbt
 
 object BasicCommands
 {
-	lazy val allBasicCommands = Seq(nop, ignore, help, multi, ifLast, append, setOnFailure, clearOnFailure, stashOnFailure, popOnFailure, reboot, call, exit, continuous, history, shell, read, alias)
+	lazy val allBasicCommands = Seq(nop, ignore, help, multi, ifLast, append, setOnFailure, clearOnFailure, stashOnFailure, popOnFailure, reboot, call, exit, continuous, history, shell, read, alias) ++ compatCommands
 
 	def nop = Command.custom(s => success(() => s))
 	def ignore = Command.command(FailureWall)(idFun)
@@ -47,13 +46,13 @@ object BasicCommands
 		( token(';' ~> OptSpace) flatMap { _ => matched((s.combinedParser&nonSemi) | nonSemi) <~ token(OptSpace) } map (_.trim) ).+
 	}
 
-	def multiApplied(s: State) = 
+	def multiApplied(s: State) =
 		Command.applyEffect( multiParser(s) )( _ ::: s )
 
 	def multi = Command.custom(multiApplied, Help(Multi, MultiBrief, MultiDetailed) )
-	
-	lazy val otherCommandParser = (s: State) => token(OptSpace ~> combinedLax(s, any.+) )
-	def combinedLax(s: State, any: Parser[_]): Parser[String] = 
+
+	lazy val otherCommandParser = (s: State) => token(OptSpace ~> combinedLax(s, NotSpaceClass ~ any.*) )
+	def combinedLax(s: State, any: Parser[_]): Parser[String] =
 		matched(s.combinedParser | token(any, hide= const(true)))
 
 	def ifLast = Command(IfLast, Help.more(IfLast, IfLastDetailed))(otherCommandParser) { (s, arg) =>
@@ -62,10 +61,25 @@ object BasicCommands
 	def append = Command(AppendCommand, Help.more(AppendCommand, AppendLastDetailed))(otherCommandParser) { (s, arg) =>
 		s.copy(remainingCommands = s.remainingCommands :+ arg)
 	}
-	
+
 	def setOnFailure = Command(OnFailure, Help.more(OnFailure, OnFailureDetailed))(otherCommandParser) { (s, arg) =>
 		s.copy(onFailure = Some(arg))
 	}
+	private[sbt] def compatCommands = Seq(
+		Command.command(Compat.ClearOnFailure) { s =>
+			s.log.warn(Compat.ClearOnFailureDeprecated)
+			s.copy(onFailure = None)
+		},
+		Command.arb(s => token(Compat.OnFailure, hide = const(true)).flatMap(x => otherCommandParser(s)) ){ (s, arg) =>
+			s.log.warn(Compat.OnFailureDeprecated)
+			s.copy(onFailure = Some(arg))
+		},
+		Command.command(Compat.FailureWall) { s =>
+			s.log.warn(Compat.FailureWallDeprecated)
+			s
+		}
+	)
+
 	def clearOnFailure = Command.command(ClearOnFailure)(s => s.copy(onFailure = None))
 	def stashOnFailure = Command.command(StashOnFailure)(s => s.copy(onFailure = None).update(OnFailureStack)(s.onFailure :: _.toList.flatten))
 	def popOnFailure = Command.command(PopOnFailure) { s =>
@@ -207,7 +221,7 @@ object BasicCommands
 
 	def removeAliases(s: State): State  =  removeTagged(s, CommandAliasKey)
 	def removeAlias(s: State, name: String): State  =  s.copy(definedCommands = s.definedCommands.filter(c => !isAliasNamed(name, c)) )
-	
+
 	def removeTagged(s: State, tag: AttributeKey[_]): State = s.copy(definedCommands = removeTagged(s.definedCommands, tag))
 	def removeTagged(as: Seq[Command], tag: AttributeKey[_]): Seq[Command] = as.filter(c => ! (c.tags contains tag))
 
@@ -237,5 +251,5 @@ object BasicCommands
 			case Some((n,v)) => aliasBody(n,v)(state)
 		}
 
-	val CommandAliasKey = AttributeKey[(String,String)]("is-command-alias", "Internal: marker for Commands created as aliases for another command.")	
+	val CommandAliasKey = AttributeKey[(String,String)]("is-command-alias", "Internal: marker for Commands created as aliases for another command.")
 }
