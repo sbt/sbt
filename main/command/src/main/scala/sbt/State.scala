@@ -85,9 +85,9 @@ trait StateOps {
 	* It is only once control is returned to the command processor that failure handling at the command level occurs. */
 	def handleError(t: Throwable): State
 
-	/** Schedules `newCommands` to be run after any remaining commands. */
+	/** Registers `newCommands` as available commands. */
 	def ++ (newCommands: Seq[Command]): State
-	/** Schedules `newCommand` to be run after any remaining commands. */
+	/** Registers `newCommand` as an available command. */
 	def + (newCommand: Command): State
 
 	/** Gets the value associated with `key` from the custom attributes map.*/
