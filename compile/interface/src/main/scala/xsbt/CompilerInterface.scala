@@ -176,6 +176,26 @@ private final class CachedCompiler0(args: Array[String], output: Output, initial
 			def newPhase(prev: Phase) = analyzer.newPhase(prev)
 			def name = phaseName
 		}
+
+		/** Phase that extracts dependency information */
+		object sbtDependency extends
+		{
+			val global: Compiler.this.type = Compiler.this
+			val phaseName = Dependency.name
+			val runsAfter = List(API.name)
+			override val runsBefore = List("refchecks")
+			// keep API and dependency close to each other
+			// we might want to merge them in the future and even if don't
+			// do that then it makes sense to run those phases next to each other
+			val runsRightAfter = Some(API.name)
+		}
+		with SubComponent
+		{
+			val dependency = new Dependency(global)
+			def newPhase(prev: Phase) = dependency.newPhase(prev)
+			def name = phaseName
+		}
+
 		/** This phase walks trees and constructs a representation of the public API, which is used for incremental recompilation.
 		 *
 		 * We extract the api after picklers, since that way we see the same symbol information/structure
@@ -202,6 +222,7 @@ private final class CachedCompiler0(args: Array[String], output: Output, initial
 		override lazy val phaseDescriptors =
 		{
 			phasesSet += sbtAnalyzer
+			phasesSet += sbtDependency
 			phasesSet += apiExtractor
 			superComputePhaseDescriptors
 		}
@@ -221,7 +242,7 @@ private final class CachedCompiler0(args: Array[String], output: Output, initial
 			for( (what, warnings) <- seq; (pos, msg) <- warnings) yield
 				callback.problem(what, drep.convert(pos), msg, Severity.Warn, false)
 		}
-		
+
 		def set(callback: AnalysisCallback, dreporter: DelegatingReporter)
 		{
 			this.callback0 = callback
