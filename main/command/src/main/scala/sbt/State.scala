@@ -222,7 +222,7 @@ object State
 		def locked[T](file: File)(t: => T): T =
 			s.configuration.provider.scalaProvider.launcher.globalLock.apply(file, new Callable[T] { def call = t })
 
-		def interactive = s.get(BasicKeys.interactive).getOrElse(false)
+		def interactive = getBoolean(s, BasicKeys.interactive, false)
 		def setInteractive(i: Boolean) = s.put(BasicKeys.interactive, i)
 
 		def classLoaderCache: classpath.ClassLoaderCache = s get BasicKeys.classLoaderCache getOrElse newClassLoaderCache
@@ -247,4 +247,6 @@ object State
 		log.error(ErrorHandling reducedToString e)
 		log.error("Use 'last' for the full log.")
 	}
+	private[sbt] def getBoolean(s: State, key: AttributeKey[Boolean], default: Boolean): Boolean =
+		s.get(key) getOrElse default
 }

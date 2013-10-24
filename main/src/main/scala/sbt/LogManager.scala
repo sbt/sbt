@@ -10,6 +10,7 @@ package sbt
 	import Def.ScopedKey
 	import Scope.GlobalScope
 	import MainLogging._
+	import BasicKeys.explicitGlobalLogLevels
 	import Keys.{logLevel, logManager, persistLogLevel, persistTraceLevel, state, traceLevel}
 	import scala.Console.{BLUE,RESET}
 
@@ -64,6 +65,11 @@ object LogManager
 		case Select(task) => ScopedKey(key.scope.copy(task = Global), task)
 		case _ => key // should never get here
 	}
+
+	private[this] def setExplicitGlobalLogLevels(s: State, flag: Boolean): State =
+		s.put(BasicKeys.explicitGlobalLogLevels, flag)
+	private[this] def hasExplicitGlobalLogLevels(s: State): Boolean =
+		State.getBoolean(s, BasicKeys.explicitGlobalLogLevels, default=false)
 }
 
 trait LogManager
