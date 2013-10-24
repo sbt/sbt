@@ -86,6 +86,14 @@ object LogManager
 			s
 		}
 
+	def setGlobalLogLevel(s: State, level: Level.Value): State = {
+		s.globalLogging.full match {
+			case a: AbstractLogger => a.setLevel(level)
+			case _ => ()
+		}
+		s.put(BasicKeys.explicitGlobalLogLevels, true).put(Keys.logLevel.key, level)
+	}
+
 	private[this] def setExplicitGlobalLogLevels(s: State, flag: Boolean): State =
 		s.put(BasicKeys.explicitGlobalLogLevels, flag)
 	private[this] def hasExplicitGlobalLogLevels(s: State): Boolean =

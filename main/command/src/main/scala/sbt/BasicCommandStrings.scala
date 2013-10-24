@@ -37,6 +37,29 @@ object BasicCommandStrings
 
 	def exitBrief = "Terminates the build."
 
+	def logLevelHelp =
+	{
+		val levels = Level.values.toSeq
+		val levelList = levels.mkString(", ")
+		val brief = ("<log-level>", "Sets the logging level to 'log-level'.  Valid levels: " + levelList)
+		val detailed = levels.map(l => (l.toString, logLevelDetail(l))).toMap
+		Help(brief, detailed)
+	}
+	private[this] def logLevelDetail(level: Level.Value): String =
+s"""$level
+
+	Sets the global logging level to $level.
+	This will be used as the default level for logging from commands, settings, and tasks.
+	Any explicit `logLevel` configuration in a project overrides this setting.
+
+${runEarly(level.toString)}
+
+	Sets the global logging level as described above, but does so before any other commands are executed on startup, including project loading.
+	This is useful as a startup option:
+		* it takes effect before any logging occurs
+		* if no other commands are passed, interactive mode is still entered
+"""
+
 	def runEarly(command: String) = {
 		val sep = if(command.isEmpty || Character.isLetter(command.charAt(0))) "" else " "
 		s"$EarlyCommand$sep$command"

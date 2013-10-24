@@ -85,11 +85,11 @@ object BuiltinCommands
 {
 	def initialAttributes = AttributeMap.empty
 
-	def ConsoleCommands: Seq[Command] = Seq(ignore, exit, IvyConsole.command, early, act, nop)
-	def ScriptCommands: Seq[Command] = Seq(ignore, exit, Script.command, early, act, nop)
+	def ConsoleCommands: Seq[Command] = Seq(ignore, exit, IvyConsole.command, setLogLevel, early, act, nop)
+	def ScriptCommands: Seq[Command] = Seq(ignore, exit, Script.command, setLogLevel, early, act, nop)
 	def DefaultCommands: Seq[Command] = Seq(ignore, help, about, tasks, settingsCommand, loadProject,
 		projects, project, reboot, read, history, set, sessionCommand, inspect, loadProjectImpl, loadFailed, Cross.crossBuild, Cross.switchVersion,
-		setOnFailure, clearOnFailure, stashOnFailure, popOnFailure,
+		setOnFailure, clearOnFailure, stashOnFailure, popOnFailure, setLogLevel,
 		ifLast, multi, shell, continuous, eval, alias, append, last, lastGrep, export, boot, nop, call, exit, early, initialize, act) ++
 		compatCommands
 	def DefaultBootCommands: Seq[String] = LoadProject :: (IfLast + " " + Shell) :: Nil
@@ -97,6 +97,9 @@ object BuiltinCommands
 	def boot = Command.make(BootCommand)(bootParser)
 
 	def about = Command.command(AboutCommand, aboutBrief, aboutDetailed) { s => s.log.info(aboutString(s)); s }
+
+	def setLogLevel = Command.arb(const(logLevelParser), logLevelHelp)(LogManager.setGlobalLogLevel)
+	private[this] def logLevelParser: Parser[Level.Value] = oneOf(Level.values.toSeq.map(v => v.toString ^^^ v))
 
 	// This parser schedules the default boot commands unless overridden by an alias
 	def bootParser(s: State) =
