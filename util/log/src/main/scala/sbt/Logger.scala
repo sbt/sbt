@@ -40,6 +40,11 @@ abstract class AbstractLogger extends Logger
 
 object Logger
 {
+	def transferLevels(oldLog: AbstractLogger, newLog: AbstractLogger) {
+		newLog.setLevel(oldLog.getLevel)
+		newLog.setTrace(oldLog.getTrace)
+	}
+
 	// make public in 0.13
 	private[sbt] val Null: AbstractLogger = new AbstractLogger {
 		def getLevel: Level.Value = Level.Error
