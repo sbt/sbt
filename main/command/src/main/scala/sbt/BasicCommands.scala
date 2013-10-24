@@ -15,10 +15,14 @@ package sbt
 
 object BasicCommands
 {
-	lazy val allBasicCommands = Seq(nop, ignore, help, multi, ifLast, append, setOnFailure, clearOnFailure, stashOnFailure, popOnFailure, reboot, call, exit, continuous, history, shell, read, alias) ++ compatCommands
+	lazy val allBasicCommands = Seq(nop, ignore, help, multi, ifLast, append, setOnFailure, clearOnFailure, stashOnFailure, popOnFailure, reboot, call, early, exit, continuous, history, shell, read, alias) ++ compatCommands
 
 	def nop = Command.custom(s => success(() => s))
 	def ignore = Command.command(FailureWall)(idFun)
+
+	def early = Command.arb(earlyParser, earlyHelp) { (s, other) => other :: s }
+	private[this] def earlyParser = (s: State) => token(EarlyCommand).flatMap(_ => otherCommandParser(s))
+	private[this] def earlyHelp = Help(EarlyCommand, EarlyCommandBrief, EarlyCommandDetailed)
 
 	def help = Command.make(HelpCommand, helpBrief, helpDetailed)(helpParser)
 

@@ -22,11 +22,13 @@ final class xMain extends xsbti.AppMain
 {
 	def run(configuration: xsbti.AppConfiguration): xsbti.MainResult =
 	{
+		import BasicCommands.early
+		import BasicCommandStrings.runEarly
 		import BuiltinCommands.{initialize, defaults}
 		import CommandStrings.{BootCommand, DefaultsCommand, InitCommand}
 		runManaged( initialState(configuration,
-			Seq(initialize, defaults),
-			DefaultsCommand :: InitCommand :: BootCommand :: Nil)
+			Seq(defaults, early),
+			runEarly(DefaultsCommand) :: runEarly(InitCommand) :: BootCommand :: Nil)
 		)
 	}
 }
@@ -63,7 +65,10 @@ object StandardMain
 
 	def initialState(configuration: xsbti.AppConfiguration, initialDefinitions: Seq[Command], preCommands: Seq[String]): State =
 	{
-		val commands = preCommands ++ configuration.arguments.map(_.trim)
+			import BasicCommandStrings.isEarlyCommand
+		val userCommands = configuration.arguments.map(_.trim)
+		val (earlyCommands, normalCommands) = (preCommands ++ userCommands).partition(isEarlyCommand)
+		val commands = earlyCommands ++ normalCommands
 		val initAttrs = BuiltinCommands.initialAttributes
 		val s = State( configuration, initialDefinitions, Set.empty, None, commands, State.newHistory, initAttrs, initialGlobalLogging, State.Continue )
 		s.initializeClassLoaderCache
@@ -80,12 +85,12 @@ object BuiltinCommands
 {
 	def initialAttributes = AttributeMap.empty
 
-	def ConsoleCommands: Seq[Command] = Seq(ignore, exit, IvyConsole.command, act, nop)
-	def ScriptCommands: Seq[Command] = Seq(ignore, exit, Script.command, act, nop)
+	def ConsoleCommands: Seq[Command] = Seq(ignore, exit, IvyConsole.command, early, act, nop)
+	def ScriptCommands: Seq[Command] = Seq(ignore, exit, Script.command, early, act, nop)
 	def DefaultCommands: Seq[Command] = Seq(ignore, help, about, tasks, settingsCommand, loadProject,
 		projects, project, reboot, read, history, set, sessionCommand, inspect, loadProjectImpl, loadFailed, Cross.crossBuild, Cross.switchVersion,
 		setOnFailure, clearOnFailure, stashOnFailure, popOnFailure,
-		ifLast, multi, shell, continuous, eval, alias, append, last, lastGrep, export, boot, nop, call, exit, act) ++
+		ifLast, multi, shell, continuous, eval, alias, append, last, lastGrep, export, boot, nop, call, exit, early, initialize, act) ++
 		compatCommands
 	def DefaultBootCommands: Seq[String] = LoadProject :: (IfLast + " " + Shell) :: Nil
 
@@ -198,7 +203,7 @@ object BuiltinCommands
 	def taskStrings(key: AttributeKey[_]): Option[(String, String)]  =  key.description map { d => (key.label, d) }
 
 	def defaults = Command.command(DefaultsCommand) { s =>
-		s ++ DefaultCommands
+		s.copy(definedCommands = DefaultCommands)
 	}
 
 	def initialize = Command.command(InitCommand) { s =>

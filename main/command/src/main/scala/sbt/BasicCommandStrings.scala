@@ -37,6 +37,23 @@ object BasicCommandStrings
 
 	def exitBrief = "Terminates the build."
 
+	def runEarly(command: String) = {
+		val sep = if(command.isEmpty || Character.isLetter(command.charAt(0))) "" else " "
+		s"$EarlyCommand$sep$command"
+	}
+	private[sbt] def isEarlyCommand(s: String): Boolean = {
+		s.startsWith(EarlyCommand) && s != Compat.FailureWall && s != Compat.ClearOnFailure
+	}
+
+	val EarlyCommand = "--"
+	val EarlyCommandBrief = (s"$EarlyCommand<command>", "Schedules a command to run before other commands on startup.")
+	val EarlyCommandDetailed =
+s"""$EarlyCommand<command>
+
+	Schedules an early command, which will be run before other commands on the command line.
+	The order is preserved between all early commands, so `sbt --a --b` executes `a` and `b` in order.
+"""
+
 	def ReadCommand = "<"
 	def ReadFiles = " file1 file2 ..."
 	def ReadDetailed =
