@@ -59,6 +59,7 @@ object Load
 	}
 	def injectGlobal(state: State): Seq[Setting[_]] =
 		(appConfiguration in GlobalScope :== state.configuration) +:
+		LogManager.settingsLogger(state) +:
 		EvaluateTask.injectSettings
 	def defaultWithGlobal(state: State, base: File, rawConfig: sbt.LoadBuildConfiguration, globalBase: File, log: Logger): sbt.LoadBuildConfiguration =
 	{

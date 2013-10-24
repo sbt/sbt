@@ -11,7 +11,7 @@ package sbt
 	import Scope.GlobalScope
 	import MainLogging._
 	import BasicKeys.explicitGlobalLogLevels
-	import Keys.{logLevel, logManager, persistLogLevel, persistTraceLevel, state, traceLevel}
+	import Keys.{logLevel, logManager, persistLogLevel, persistTraceLevel, sLog, state, traceLevel}
 	import scala.Console.{BLUE,RESET}
 
 object LogManager
@@ -33,7 +33,7 @@ object LogManager
 		withLoggers((task,state) => defaultScreen(console, suppressedMessage(task, state)), extra = extra)
 
 	def withScreenLogger(mk: (ScopedKey[_], State) => AbstractLogger): LogManager = withLoggers(screen = mk)
-	
+
 	def withLoggers(screen: (ScopedKey[_], State) => AbstractLogger = (sk, s) => defaultScreen(s.globalLogging.console),
 		backed: PrintWriter => AbstractLogger = defaultBacked(),
 		extra: ScopedKey[_] => Seq[AbstractLogger] = _ => Nil): LogManager = new LogManager {
@@ -90,6 +90,24 @@ object LogManager
 		s.put(BasicKeys.explicitGlobalLogLevels, flag)
 	private[this] def hasExplicitGlobalLogLevels(s: State): Boolean =
 		State.getBoolean(s, BasicKeys.explicitGlobalLogLevels, default=false)
+
+	private[sbt] def settingsLogger(state: State): Def.Setting[_]  =
+		// strict to avoid retaining a reference to `state`
+		sLog in GlobalScope :== globalWrapper(state)
+
+	// construct a Logger that delegates to the global logger, but only holds a weak reference
+	//  this is an approximation to the ideal that would invalidate the delegate after loading completes
+	private[this] def globalWrapper(s: State): Logger = {
+		val ref = new java.lang.ref.WeakReference(s.globalLogging.full)
+		new Logger {
+			private[this] def slog: Logger = Option(ref.get) getOrElse sys.error("Settings logger used after project was loaded.")
+
+			override val ansiCodesSupported = slog.ansiCodesSupported
+			override def trace(t: => Throwable) = slog.trace(t)
+			override def success(message: => String) = slog.success(message)
+			override def log(level: Level.Value, message: => String) = slog.log(level, message)
+		}
+	}
 }
 
 trait LogManager

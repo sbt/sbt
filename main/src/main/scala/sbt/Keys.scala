@@ -34,6 +34,7 @@ object Keys
 	val extraLoggers = SettingKey[ScopedKey[_] => Seq[AbstractLogger]]("extra-loggers", "A function that provides additional loggers for a given setting.", DSetting)
 	val logManager = SettingKey[LogManager]("log-manager", "The log manager, which creates Loggers for different contexts.", DSetting)
 	val logBuffered = SettingKey[Boolean]("log-buffered", "True if logging should be buffered until work completes.", CSetting)
+	val sLog = SettingKey[Logger]("setting-logger", "Logger usable by settings during project loading.", CSetting)
 
 	// Project keys
 	val projectCommand = AttributeKey[Boolean]("project-command", "Marks Commands that were registered for the current Project.", Invisible)
