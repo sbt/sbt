@@ -151,9 +151,6 @@ private final class AnalysisCallback(internalMap: File => Option[File], external
 		apis(sourceFile) = (HashAPI(source), savedSource)
 	}
 
-	def endSource(sourcePath: File): Unit =
-		assert(apis.contains(sourcePath))
-
 	def get: Analysis = addCompilation( addExternals( addBinaries( addProducts( addSources(Analysis.Empty) ) ) ) )
 	def addProducts(base: Analysis): Analysis = addAll(base, classes) { case (a, src, (prod, name)) => a.addProduct(src, prod, current product prod, name ) }
 	def addBinaries(base: Analysis): Analysis = addAll(base, binaryDeps)( (a, src, bin) => a.addBinaryDep(src, bin, binaryClassName(bin), current binary bin) )
@@ -178,6 +175,4 @@ private final class AnalysisCallback(internalMap: File => Option[File], external
 			(outer /: bs) { (inner, b) =>
 				f(inner, a, b)
 		} }
-
-	def beginSource(source: File) {}
 }
