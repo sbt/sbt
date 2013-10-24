@@ -44,7 +44,8 @@ object LogManager
 	def defaultLogger(data: Settings[Scope], state: State, task: ScopedKey[_], console: AbstractLogger, backed: AbstractLogger, extra: List[AbstractLogger]): Logger =
 	{
 		val scope = task.scope
-		def getOr[T](key: AttributeKey[T], default: T): T = data.get(scope, key) getOrElse default
+		// to change from global being the default to overriding, switch the order of state.get and data.get
+		def getOr[T](key: AttributeKey[T], default: T): T = data.get(scope, key) orElse state.get(key) getOrElse default
 		val screenLevel = getOr(logLevel.key, Level.Info)
 		val backingLevel = getOr(persistLogLevel.key, Level.Debug)
 		val screenTrace = getOr(traceLevel.key, defaultTraceLevel(state))
