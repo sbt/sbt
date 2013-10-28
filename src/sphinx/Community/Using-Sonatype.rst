@@ -121,6 +121,7 @@ Fourth - Adding credentials
 
 The credentials for your Sonatype OSSRH account need to be added
 somewhere. Common convention is a :sublit:`|globalBase|/sonatype.sbt` file with the
+
 following:
 
 ::
