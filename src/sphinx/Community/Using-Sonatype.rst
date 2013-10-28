@@ -117,7 +117,7 @@ Fourth - Adding credentials
 ---------------------------
 
 The credentials for your Sonatype OSSRH account need to be added
-somewhere. Common convention is a `~/.sbt/sonatype.sbt` file with the
+somewhere. Common convention is a `~/.sbt/<sbt version>/sonatype.sbt` file with the
 following:
 
 ::
