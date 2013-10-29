@@ -137,7 +137,7 @@ object Incremental
 	{
 		val oldApis = lastSources.toSeq map oldAPI
 		val newApis = lastSources.toSeq map newAPI
-		val changes = (lastSources, oldApis, newApis).zipped.filter { (src, oldApi, newApi) => !sameSource(oldApi, newApi) }
+		val changes = (lastSources, oldApis, newApis).zipped.filter { (src, oldApi, newApi) => !sameSource(src, oldApi, newApi, log) }
 
 		if (apiDebug(options) && changes.zipped.nonEmpty) {
 			logApiChanges(changes, log, options)
@@ -149,10 +149,15 @@ object Incremental
 
 		new APIChanges(modifiedAPIs, changedNames)
 	}
-	def sameSource(a: Source, b: Source): Boolean = {
+	def sameSource[T](src: T, a: Source, b: Source, log: Logger): Boolean = {
 		// Clients of a modified source file (ie, one that doesn't satisfy `shortcutSameSource`) containing macros must be recompiled.
 		val hasMacro = a.hasMacro || b.hasMacro
-		shortcutSameSource(a, b) || (!hasMacro && SameAPI(a,b))
+		shortcutSameSource(a, b) || {
+			if (hasMacro) {
+				log.debug("API is considered to be modified because the following source file contains a macro: " + src)
+				false
+			} else SameAPI(a,b)
+		}
 	}
 
 	def shortcutSameSource(a: Source, b: Source): Boolean  =  !a.hash.isEmpty && !b.hash.isEmpty && sameCompilation(a.compilation, b.compilation) && (a.hash.deep equals b.hash.deep)
@@ -198,6 +203,7 @@ object Incremental
 
 		val inv = propagated ++ dups // ++ scopeInvalidations(previous.extAPI _, changes.modified, changes.names)
 		val newlyInvalidated = inv -- recompiledSources
+		log.debug("All newly invalidated sources after taking into account (previously) recompiled sources:" + newlyInvalidated)
 		if(newlyInvalidated.isEmpty) Set.empty else inv
 	}
 
@@ -212,7 +218,7 @@ object Incremental
 	* if they are part of a cycle containing newly invalidated files . */
 	def transitiveDependencies(dependsOnSrc: File => Set[File], initial: Set[File], log: Logger): Set[File] =
 	{
-		val transitiveWithInitial = transitiveDeps(initial)(dependsOnSrc)
+		val transitiveWithInitial = transitiveDeps(initial, log)(dependsOnSrc)
 		val transitivePartial = includeInitialCond(initial, transitiveWithInitial, dependsOnSrc, log)
 		log.debug("Final step, transitive dependencies:\n\t" + transitivePartial)
 		transitivePartial
@@ -263,7 +269,7 @@ object Incremental
 		val externalInheritedR = relations.publicInherited.external
 		val byExternalInherited = external flatMap externalInheritedR.reverse
 		val internalInheritedR = relations.publicInherited.internal
-		val transitiveInherited = transitiveDeps(byExternalInherited)(internalInheritedR.reverse _)
+		val transitiveInherited = transitiveDeps(byExternalInherited, log)(internalInheritedR.reverse _)
 
 		// Get the direct dependencies of all sources transitively invalidated by inheritance
 		val directA = transitiveInherited flatMap relations.direct.internal.reverse
@@ -281,7 +287,8 @@ object Incremental
 	* included in a cycle with newly invalidated sources. */
 	private[this] def invalidateSources(directDeps: File => Set[File], publicInherited: File => Set[File], initial: Set[File], log: Logger): Set[File] =
 	{
-		val transitiveInherited = transitiveDeps(initial)(publicInherited)
+		log.debug("Invalidating by inheritance (transitively)...")
+		val transitiveInherited = transitiveDeps(initial, log)(publicInherited)
 		log.debug("Invalidated by transitive public inheritance: " + transitiveInherited)
 		val direct = transitiveInherited flatMap directDeps
 		log.debug("Invalidated by direct dependency: " + direct)
@@ -294,7 +301,7 @@ object Incremental
 	{
 		val newInv = currentInvalidations -- initial
 		log.debug("New invalidations:\n\t" + newInv)
-		val transitiveOfNew = transitiveDeps(newInv)(allDeps)
+		val transitiveOfNew = transitiveDeps(newInv, log)(allDeps)
 		val initialDependsOnNew = transitiveOfNew & initial
 		log.debug("Previously invalidated, but (transitively) depend on new invalidations:\n\t" + initialDependsOnNew)
 		newInv ++ initialDependsOnNew
@@ -361,16 +368,21 @@ object Incremental
 	def orEmpty(o: Option[Source]): Source = o getOrElse APIs.emptySource
 	def orTrue(o: Option[Boolean]): Boolean = o getOrElse true
 
-	private[this] def transitiveDeps[T](nodes: Iterable[T])(dependencies: T => Iterable[T]): Set[T] =
+	private[this] def transitiveDeps[T](nodes: Iterable[T], log: Logger)(dependencies: T => Iterable[T]): Set[T] =
 	{
 		val xs = new collection.mutable.HashSet[T]
-		def all(ns: Iterable[T]): Unit = ns.foreach(visit)
-		def visit(n: T): Unit =
-			if (!xs.contains(n)) {
-				xs += n
-				all(dependencies(n))
+		def all(from: T, tos: Iterable[T]): Unit = tos.foreach(to => visit(from, to))
+		def visit(from: T, to: T): Unit =
+			if (!xs.contains(to)) {
+				log.debug(s"Including $to by $from")
+				xs += to
+				all(to, dependencies(to))
 			}
-		all(nodes)
+		log.debug("Initial set of included nodes: " + nodes)
+		nodes foreach { start =>
+			xs += start
+			all(start, dependencies(start))
+		}
 		xs.toSet
 	}
 
