@@ -34,8 +34,8 @@ object ConsoleOut
 		def println(): Unit = synchronized {
 			val s = current.toString
 			if(ConsoleLogger.formatEnabled && last.exists(lmsg => f(s, lmsg)))
-				System.out.print(OverwriteLine)
-			System.out.println(s)
+				lockObject.print(OverwriteLine)
+			lockObject.println(s)
 			last = Some(s)
 			current = new java.lang.StringBuffer
 		}
