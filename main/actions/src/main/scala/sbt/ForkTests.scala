@@ -49,6 +49,8 @@ private[sbt] object ForkTests
 							case _: java.net.SocketException => return
 						}
 					val os = new ObjectOutputStream(socket.getOutputStream)
+					// Must flush the header that the constructor writes, otherwise the ObjectInputStream on the other end may block indefinitely
+					os.flush()
 					val is = new ObjectInputStream(socket.getInputStream)
 
 					try {
