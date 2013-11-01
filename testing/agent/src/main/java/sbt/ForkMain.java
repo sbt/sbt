@@ -92,6 +92,8 @@ public class ForkMain {
 		Socket socket = new Socket(InetAddress.getByName(null), Integer.valueOf(args[0]));
 		final ObjectInputStream is = new ObjectInputStream(socket.getInputStream());
 		final ObjectOutputStream os = new ObjectOutputStream(socket.getOutputStream());
+		// Must flush the header that the constructor writes, otherwise the ObjectInputStream on the other end may block indefinitely
+		os.flush();
 		try {
 			try {
 				new Run().run(is, os);
