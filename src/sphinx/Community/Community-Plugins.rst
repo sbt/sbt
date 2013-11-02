@@ -126,6 +126,7 @@ Frontend development plugins
 -  sbt-closure: https://github.com/eltimn/sbt-closure
 -  sbt-yui-compressor: https://github.com/indrajitr/sbt-yui-compressor
 -  sbt-requirejs: https://github.com/scalatra/sbt-requirejs
+-  sbt-vaadin-plugin: https://github.com/henrikerola/sbt-vaadin-plugin
 
 Game development plugins
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
