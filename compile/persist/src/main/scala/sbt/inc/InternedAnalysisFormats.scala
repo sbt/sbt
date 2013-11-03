@@ -19,7 +19,7 @@ import MultipleOutput.OutputGroup
  *
  * Has state, so cannot be an object. To use, wild-card import the implicits from an instance of this class.
  */
-private[sbt] final class InternedAnalysisFormats
+final class InternedAnalysisFormats
 {
 	// Formats that reads/write internable objects directly (i.e., not via the intern pool).
 	// Note: Not implicit. We only want to use the full format explicitly, in specific places (such as when
