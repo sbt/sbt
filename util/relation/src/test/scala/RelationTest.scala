@@ -60,6 +60,13 @@ object RelationTest extends Properties("Relation")
 		}
 	}
 
+  property("Computes size correctly") = forAll { (entries: List[(Int, Double)]) =>
+    val rel = Relation.empty[Int, Double] ++ entries
+    val expected = rel.all.size  // Note: not entries.length, as entries may have duplicates.
+    val computed = rel.size
+    "Expected size: %d. Computed size: %d.".format(expected, computed) |: expected == computed
+  }
+
 	def all[T](s: Seq[T])(p: T => Prop): Prop =
 		if(s.isEmpty) true else s.map(p).reduceLeft(_ && _)
 }
