@@ -46,7 +46,11 @@ private[sbt] object ForkTests
 						try {
 							server.accept()
 						} catch {
-							case _: java.net.SocketException => return
+							case e: java.net.SocketException =>
+                log.error("Could not accept connection from test agent: " + e.getClass + ": " + e.getMessage)
+                log.trace(e)
+                server.close()
+                return
 						}
 					val os = new ObjectOutputStream(socket.getOutputStream)
 					// Must flush the header that the constructor writes, otherwise the ObjectInputStream on the other end may block indefinitely
