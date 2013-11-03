@@ -46,7 +46,11 @@ private[sbt] object ForkTests
 						try {
 							server.accept()
 						} catch {
-							case _: java.net.SocketException => return
+							case e: java.net.SocketException =>
+							log.error("Could not accept connection from test agent: " + e.getClass + ": " + e.getMessage)
+							log.trace(e)
+							server.close()
+							return
 						}
 					val os = new ObjectOutputStream(socket.getOutputStream)
 					// Must flush the header that the constructor writes, otherwise the ObjectInputStream on the other end may block indefinitely
@@ -55,7 +59,7 @@ private[sbt] object ForkTests
 
 					try {
 						os.writeBoolean(log.ansiCodesSupported)
-						
+
 						val taskdefs = opts.tests.map(t => new TaskDef(t.name, forkFingerprint(t.fingerprint), t.explicitlySpecified, t.selectors))
 						os.writeObject(taskdefs.toArray)
 
@@ -91,7 +95,7 @@ private[sbt] object ForkTests
 						acceptorThread.join()
 						Acceptor.result
 					}
-				
+
 				testListeners.foreach(_.doComplete(result.overall))
 				result
 			} finally {
