@@ -22,7 +22,7 @@ object TestBuild
 	val MaxIDSize = 8
 	val MaxDeps = 8
 	val KeysPerEnv = 10
-	
+
 	val MaxTasksGen = chooseShrinkable(1, MaxTasks)
 	val MaxProjectsGen = chooseShrinkable(1, MaxProjects)
 	val MaxConfigsGen = chooseShrinkable(1, MaxConfigs)
@@ -53,7 +53,7 @@ object TestBuild
 					(Scope.display(scope, "<key>"), showKeys(map))
 			scopeStrings.toSeq.sorted.map(t => t._1 + t._2).mkString("\n\t")
 		}
-		val extra: BuildUtil[Proj] = 
+		val extra: BuildUtil[Proj] =
 		{
 			val getp = (build: URI, project: String) => env.buildMap(build).projectMap(project)
 			new BuildUtil(keyIndex, data, env.root.uri, env.rootProject, getp, _.configurations.map(c => ConfigKey(c.name)), Relation.empty)
@@ -148,7 +148,7 @@ object TestBuild
 	}
 	final class Taskk(val key: AttributeKey[String], val delegates: Seq[Taskk])
 	{
-		override def toString = key.label + " (delegates: " + delegates.map(_.key.label).mkString(", ")  + ")"	
+		override def toString = key.label + " (delegates: " + delegates.map(_.key.label).mkString(", ")  + ")"
 	}
 
 	def mapBy[K, T](s: Seq[T])(f: T => K): Map[K, T] = s map { t => (f(t), t) } toMap;
@@ -214,7 +214,7 @@ object TestBuild
 	implicit def envGen(implicit bGen: Gen[Build], tasks: Gen[Seq[Taskk]]): Gen[Env] =
 		for(i <- MaxBuildsGen; bs <- listOfN(i, bGen); ts <- tasks) yield new Env(bs, ts)
 	implicit def buildGen(implicit uGen: Gen[URI], pGen: URI => Gen[Seq[Proj]]): Gen[Build] = for(u <- uGen; ps <- pGen(u)) yield new Build(u, ps)
-	
+
 	def nGen[T](igen: Gen[Int])(implicit g: Gen[T]): Gen[List[T]] = igen flatMap { ig => listOfN(ig, g) }
 
 	implicit def genProjects(build: URI)(implicit genID: Gen[String], maxDeps: Gen[Int], count: Gen[Int], confs: Gen[Seq[Config]]): Gen[Seq[Proj]] =
@@ -262,8 +262,8 @@ object TestBuild
 				val next = for(depCount <- maxDeps; d <- pick(depCount min xs.size, xs) ) yield (x, d.toList)
 				genAcyclic(maxDeps, xs, next :: acc)
 		}
-	def sequence[T](gs: Seq[Gen[T]]): Gen[Seq[T]] = Gen { prms =>
- 		Some(gs map { g => g(prms) getOrElse error("failed generator") })
+	def sequence[T](gs: Seq[Gen[T]]): Gen[Seq[T]] = Gen.parameterized { prms =>
+		wrap( gs map { g => g(prms) getOrElse error("failed generator") } )
 	}
 	type Inputs[A,T] = (T, Seq[T], Seq[A] => A)
 }

@@ -37,7 +37,7 @@ object Util
 	def minProject(path: File, nameString: String) = Project(normalize(nameString), path) settings( commonSettings(nameString) ++ publishPomSettings : _* )
 	def baseProject(path: File, nameString: String) = minProject(path, nameString) settings( base : _*)
 	def testedBaseProject(path: File, nameString: String) = baseProject(path, nameString) settings(testDependencies)
-	
+
 	lazy val javaOnly = Seq[Setting[_]](/*crossPaths := false, */compileOrder := CompileOrder.JavaThenScala, unmanagedSourceDirectories in Compile <<= Seq(javaSource in Compile).join)
 	lazy val base: Seq[Setting[_]] = Seq(projectComponent) ++ baseScalacOptions ++ Licensed.settings
 	lazy val baseScalacOptions = Seq(
@@ -47,10 +47,10 @@ object Util
 			case _ => Seq("-feature", "-language:implicitConversions", "-language:postfixOps", "-language:higherKinds", "-language:existentials")
 		}
 	)
-	
+
 	def testDependencies = libraryDependencies <++= includeTestDependencies { incl =>
 		if(incl) Seq(
-			"org.scalacheck" %% "scalacheck" % "1.10.0" % "test",
+			"org.scalacheck" %% "scalacheck" % "1.11.0" % "test",
 			"org.specs2" %% "specs2" % "1.12.3" % "test"
 		)
 		else Seq()
@@ -58,7 +58,7 @@ object Util
 
 	lazy val minimalSettings: Seq[Setting[_]] = Defaults.paths ++ Seq[Setting[_]](crossTarget := target.value, name <<= thisProject(_.id))
 
-	def projectComponent = projectID <<= (projectID, componentID) { (pid, cid) => 
+	def projectComponent = projectID <<= (projectID, componentID) { (pid, cid) =>
 		cid match { case Some(id) => pid extra("e:component" -> id); case None => pid }
 	}
 
@@ -147,7 +147,7 @@ object Util
 		val init = keywords.map(tn => '"' + tn + '"').mkString("Set(", ", ", ")")
 		val ObjectName = "ScalaKeywords"
 		val PackageName = "sbt"
-		val keywordsSrc = 
+		val keywordsSrc =
 """package %s
 object %s {
 	val values = %s
@@ -187,7 +187,7 @@ object Licensed
 	lazy val seeRegex = """\(see (.*?)\)""".r
 	def licensePath(base: File, str: String): File = { val path = base / str; if(path.exists) path else error("Referenced license '" + str + "' not found at " + path) }
 	def seePaths(base: File, noticeString: String): Seq[File] = seeRegex.findAllIn(noticeString).matchData.map(d => licensePath(base, d.group(1))).toList
-	
+
 	def settings: Seq[Setting[_]] = Seq(
 		notice <<= baseDirectory(_ / "NOTICE"),
 		unmanagedResources in Compile <++= (notice, extractLicenses) map { _ +: _ },
