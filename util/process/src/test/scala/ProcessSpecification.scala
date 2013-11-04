@@ -8,7 +8,12 @@ import Process._
 
 object ProcessSpecification extends Properties("Process I/O")
 {
-	implicit val exitCodeArb: Arbitrary[Array[Byte]] = Arbitrary(Gen.choose(0, 10) flatMap { size => Gen.resize(size, Arbitrary.arbArray[Byte].arbitrary) })
+	implicit val exitCodeArb: Arbitrary[Array[Byte]] = Arbitrary(
+		for(size <- Gen.choose(0, 10);
+			l <- Gen.listOfN[Byte](size, Arbitrary.arbByte.arbitrary))
+		yield
+			l.toArray
+	)
 
 	/*property("Correct exit code") = forAll( (exitCode: Byte) => checkExit(exitCode))
 	property("#&& correct") = forAll( (exitCodes: Array[Byte]) => checkBinary(exitCodes)(_ #&& _)(_ && _))
@@ -99,7 +104,7 @@ object ProcessSpecification extends Properties("Process I/O")
 			val process = f(a, b)
 			( process ! ) == 0 && sameFiles(a, b)
 		}
-	private def sameFiles(a: File, b: File) = 
+	private def sameFiles(a: File, b: File) =
 		IO.readBytes(a) sameElements IO.readBytes(b)
 
 	private def withTempFiles[T](f: (File, File) => T): T =
@@ -112,7 +117,7 @@ object ProcessSpecification extends Properties("Process I/O")
 			temporaryFile1.delete()
 			temporaryFile2.delete()
 		}
-	}	
+	}
 	private def unsigned(b: Int): Int = ((b: Int) +256) % 256
 	private def unsigned(b: Byte): Int = unsigned(b: Int)
 	private def process(command: String) =
