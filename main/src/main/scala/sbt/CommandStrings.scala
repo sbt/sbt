@@ -35,6 +35,7 @@ $ShowCommand <task>
 	val LastCommand = "last"
 	val LastGrepCommand = "last-grep"
 	val ExportCommand = "export"
+	val ExportStream = "export"
 
 	val lastGrepBrief = (LastGrepCommand, "Shows lines from the last output for 'key' that match 'pattern'.")
 	val lastGrepDetailed =
