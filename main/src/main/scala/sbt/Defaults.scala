@@ -373,7 +373,7 @@ object Defaults extends BuildCommon
 	lazy val ConfigGlobal: Scope = ThisScope.copy(config = Global)
 	def testTaskOptions(key: Scoped): Seq[Setting[_]] = inTask(key)( Seq(
 		testListeners := {
-			TestLogger(streams.value.log, testLogger(streamsManager.value, test in resolvedScoped.value.scope), logBuffered.value) +:
+			TestLogger.make(streams.value.log, closeableTestLogger(streamsManager.value, test in resolvedScoped.value.scope, logBuffered.value)) +:
 			new TestStatusReporter(succeededFile( streams.in(test).value.cacheDirectory )) +:
 			testListeners.in(TaskGlobal).value
 		},
@@ -382,12 +382,21 @@ object Defaults extends BuildCommon
 	) ) ++ Seq(
 		derive(testGrouping <<= singleTestGroupDefault)
 	)
+	@deprecated("Doesn't provide for closing the underlying resources.", "0.13.1")
 	def testLogger(manager: Streams, baseKey: Scoped)(tdef: TestDefinition): Logger =
 	{
 		val scope = baseKey.scope
 		val extra = scope.extra match { case Select(x) => x; case _ => AttributeMap.empty }
 		val key = ScopedKey(scope.copy(extra = Select(testExtra(extra, tdef))), baseKey.key)
 		manager(key).log
+	}
+	private[this] def closeableTestLogger(manager: Streams, baseKey: Scoped, buffered: Boolean)(tdef: TestDefinition): TestLogger.PerTest =
+	{
+		val scope = baseKey.scope
+		val extra = scope.extra match { case Select(x) => x; case _ => AttributeMap.empty }
+		val key = ScopedKey(scope.copy(extra = Select(testExtra(extra, tdef))), baseKey.key)
+		val s = manager(key)
+		new TestLogger.PerTest(s.log, () => s.close(), buffered)
 	}
 	def buffered(log: Logger): Logger = new BufferedLogger(FullLogger(log))
 	def testExtra(extra: AttributeMap, tdef: TestDefinition): AttributeMap =
