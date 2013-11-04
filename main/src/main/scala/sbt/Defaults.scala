@@ -26,6 +26,7 @@ package sbt
 	import java.util.concurrent.Callable
 	import sbinary.DefaultProtocol.StringFormat
 	import Cache.seqFormat
+	import CommandStrings.ExportStream
 
 	import Types._
 	import Path._
@@ -401,7 +402,7 @@ object Defaults extends BuildCommon
 		val opts = forkOptions.value
 		Seq(new Tests.Group("<default>", tests, if(fk) Tests.SubProcess(opts) else Tests.InProcess))
 	}
-	private[this] def forkOptions: Initialize[Task[ForkOptions]] = 
+	private[this] def forkOptions: Initialize[Task[ForkOptions]] =
 		(baseDirectory, javaOptions, outputStrategy, envVars, javaHome, connectInput) map {
 			(base, options, strategy, env, javaHomeDir, connectIn) =>
 				// bootJars is empty by default because only jars on the user's classpath should be on the boot classpath
@@ -460,7 +461,7 @@ object Defaults extends BuildCommon
 			val newConfig = config.copy(options = modifiedOpts)
 			val output = allTestGroupsTask(s, loadedTestFrameworks.value, testLoader.value, testGrouping.value, newConfig, fullClasspath.value, javaHome.value)
 			val processed =
-				for(out <- output) yield 
+				for(out <- output) yield
 					Tests.showResults(s.log, out, noTestsMessage(resolvedScoped.value))
 			Def.value(processed)
 		}
@@ -491,8 +492,8 @@ object Defaults extends BuildCommon
 				}
 		}
 		val output = Tests.foldTasks(groupTasks, config.parallel)
-		output map { out => 
-			val summaries = 
+		output map { out =>
+			val summaries =
 				runners map { case (tf, r) =>
 					Tests.Summary(frameworks(tf).name, r.done())
 				}
@@ -708,8 +709,11 @@ object Defaults extends BuildCommon
 
 	private[this] def exported(w: PrintWriter, command: String): Seq[String] => Unit = args =>
 		w.println( (command +: args).mkString(" ") )
-	private[this] def exported(s: TaskStreams, command: String): Seq[String] => Unit = args =>
-		exported(s.text("export"), command)
+	private[this] def exported(s: TaskStreams, command: String): Seq[String] => Unit = args => {
+		val w = s.text(ExportStream)
+		try exported(w, command)
+		finally w.close() // workaround for #937
+	}
 
 	@deprecated("Use inTask(compile)(compileInputsSettings)", "0.13.0")
 	def compileTaskSettings: Seq[Setting[_]] = inTask(compile)(compileInputsSettings)
@@ -717,10 +721,11 @@ object Defaults extends BuildCommon
 	def compileTask: Initialize[Task[inc.Analysis]] = Def.task { compileTaskImpl(streams.value, (compileInputs in compile).value) }
 	private[this] def compileTaskImpl(s: TaskStreams, ci: Compiler.Inputs): inc.Analysis =
 	{
-		lazy val x = s.text("export")
+		lazy val x = s.text(ExportStream)
 		def onArgs(cs: Compiler.Compilers) = cs.copy(scalac = cs.scalac.onArgs(exported(x, "scalac")), javac = cs.javac.onArgs(exported(x, "javac")))
 		val i = ci.copy(compilers = onArgs(ci.compilers))
-		Compiler(i,s.log)
+		try Compiler(i,s.log)
+		finally x.close() // workaround for #937
 	}
 	def compileIncSetupTask =
 		(dependencyClasspath, skip in compile, definesClass, compilerCache, streams, incOptions) map { (cp, skip, definesC, cache, s, incOptions) =>
@@ -882,7 +887,9 @@ object Classpaths
 		s.mapInitialize(init => Def.task { exportClasspath(streams.value, init.value) })
 	private[this] def exportClasspath(s: TaskStreams, cp: Classpath): Classpath =
 	{
-		s.text("export").println(Path.makeString(data(cp)))
+		val w = s.text(ExportStream)
+		try w.println(Path.makeString(data(cp)))
+		finally w.close() // workaround for #937
 		cp
 	}
 
@@ -1403,7 +1410,7 @@ object Classpaths
 		plugins.map("-Xplugin:" + _.getAbsolutePath).toSeq
 	}
 
-	private[this] lazy val internalCompilerPluginClasspath: Initialize[Task[Classpath]] = 
+	private[this] lazy val internalCompilerPluginClasspath: Initialize[Task[Classpath]] =
 		(thisProjectRef, settingsData, buildDependencies) flatMap { (ref, data, deps) =>
 			internalDependencies0(ref, CompilerPlugin, CompilerPlugin, data, deps)
 		}
@@ -1564,7 +1571,7 @@ trait BuildExtra extends BuildCommon
 		}
 	}
 	private[this] def inBase(name: String): Initialize[File] = Def.setting { baseDirectory.value / name }
-	
+
 	def externalIvyFile(file: Initialize[File] = inBase("ivy.xml"), iScala: Initialize[Option[IvyScala]] = ivyScala): Setting[Task[ModuleSettings]] =
 		moduleSettings := new IvyFileConfiguration(file.value, iScala.value, ivyValidate.value, managedScalaInstance.value)
 	def externalPom(file: Initialize[File] = inBase("pom.xml"), iScala: Initialize[Option[IvyScala]] = ivyScala): Setting[Task[ModuleSettings]] =
