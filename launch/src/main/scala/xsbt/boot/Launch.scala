@@ -238,12 +238,20 @@ class Launch private[xsbt](val bootDirectory: File, val lockBoot: Boolean, val i
 		val id = appID
 		def mainClasspath = app.fullClasspath
 		lazy val loader = app.createLoader(scalaProvider.loader)
-		lazy val mainClass: Class[T] forSome { type T <: xsbti.AppMain } =
+		lazy val entryPoint: Class[T] forSome { type T } =
 		{
 			val c = Class.forName(id.mainClass, true, loader)
-			c.asSubclass(classOf[xsbti.AppMain])
+			if(classOf[xsbti.AppMain].isAssignableFrom(c)) c
+			else if(PlainApplication.isPlainApplication(c)) c
+			else sys.error(s"Class: ${c} is not an instance of xsbti.AppMain nor does it have one of these static methods:\n"+
+			                  " * void main(String[] args)\n * int main(String[] args)\n * xsbti.Exit main(String[] args)")
 		}
-		def newMain(): xsbti.AppMain = mainClass.newInstance
+		// Deprecated API.  Remove when we can.
+		def mainClass: Class[T] forSome { type T <: xsbti.AppMain } = entryPoint.asSubclass(classOf[xsbti.AppMain])
+		def newMain(): xsbti.AppMain = {
+		  if(PlainApplication.isPlainApplication(entryPoint)) PlainApplication(entryPoint)
+		  else mainClass.newInstance
+		}
 
 		lazy val components = componentProvider(appHome)
 	}

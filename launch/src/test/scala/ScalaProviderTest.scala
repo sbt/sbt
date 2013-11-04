@@ -23,12 +23,21 @@ object ScalaProviderTest extends Specification
 			checkLoad(List("test"), "xsbt.boot.test.ArgumentTest").asInstanceOf[Exit].code must equalTo(0)
 			checkLoad(List(), "xsbt.boot.test.ArgumentTest") must throwA[RuntimeException]
 		}
+		"Successfully load an plain application from local repository and run it with correct arguments" in {
+			checkLoad(List("test"), "xsbt.boot.test.PlainArgumentTest").asInstanceOf[Exit].code must equalTo(0)
+			checkLoad(List(), "xsbt.boot.test.PlainArgumentTest") must throwA[RuntimeException]
+		}
+		"Successfully load an plain application with int return from local repository and run it with correct arguments" in {
+			checkLoad(List("test"), "xsbt.boot.test.PlainArgumentTestWithReturn").asInstanceOf[Exit].code must equalTo(0)
+			checkLoad(List(), "xsbt.boot.test.PlainArgumentTestWithReturn").asInstanceOf[Exit].code must equalTo(1)
+		}
 		"Successfully load an application from local repository and run it with correct sbt version" in {
 			checkLoad(List(AppVersion), "xsbt.boot.test.AppVersionTest").asInstanceOf[Exit].code must equalTo(0)
 		}
 		"Add extra resources to the classpath" in {
 			checkLoad(testResources, "xsbt.boot.test.ExtraTest", createExtra).asInstanceOf[Exit].code must equalTo(0)
 		}
+		
 	}
 
 	def checkLoad(arguments: List[String], mainClassName: String): MainResult =
