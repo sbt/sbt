@@ -16,12 +16,12 @@ object ListMapProperties extends Properties("ListMap")
 		{ (map + (key, value) ).get(key)  == Some(value) }
 	}
 	property("remove") = Prop.forAll { (map: ListMap[Int,Int], key: Int) =>
-		{ Prop.throws((map - key)(key), classOf[Exception]) } &&
+		{ Prop.throws(classOf[Exception])((map - key)(key)) } &&
 		{ !(map - key).contains(key) } &&
 		{ (map - key).get(key).isEmpty }
 	}
 	property("empty") = Prop.forAll { (key: Int) =>
-		{ Prop.throws(ListMap.empty(key), classOf[Exception]) }
+		{ Prop.throws(classOf[Exception])(ListMap.empty(key)) }
 		{ !ListMap.empty.contains(key) } &&
 		{ ListMap.empty.get(key).isEmpty }
 	}
