@@ -49,8 +49,43 @@ final class IncOptions(
 	val newClassfileManager: () => ClassfileManager
 ) extends Product with Serializable {
 
+	def withTransitiveStep(transitiveStep: Int): IncOptions = {
+		new IncOptions(transitiveStep, recompileAllFraction, relationsDebug, apiDebug, apiDiffContextSize,
+			apiDumpDirectory, newClassfileManager)
+	}
+
+	def withRecompileAllFraction(recompileAllFraction: Double): IncOptions = {
+		new IncOptions(transitiveStep, recompileAllFraction, relationsDebug, apiDebug, apiDiffContextSize,
+			apiDumpDirectory, newClassfileManager)
+	}
+
+	def withRelationsDebug(relationsDebug: Boolean): IncOptions = {
+		new IncOptions(transitiveStep, recompileAllFraction, relationsDebug, apiDebug, apiDiffContextSize,
+			apiDumpDirectory, newClassfileManager)
+	}
+
+	def withApiDebug(apiDebug: Boolean): IncOptions = {
+		new IncOptions(transitiveStep, recompileAllFraction, relationsDebug, apiDebug, apiDiffContextSize,
+			apiDumpDirectory, newClassfileManager)
+	}
+
+	def withApiDiffContextSize(apiDiffContextSize: Int): IncOptions = {
+		new IncOptions(transitiveStep, recompileAllFraction, relationsDebug, apiDebug, apiDiffContextSize,
+			apiDumpDirectory, newClassfileManager)
+	}
+
+	def withApiDumpDirectory(apiDumpDirectory: Option[File]): IncOptions = {
+		new IncOptions(transitiveStep, recompileAllFraction, relationsDebug, apiDebug, apiDiffContextSize,
+			apiDumpDirectory, newClassfileManager)
+	}
+
+	def withNewClassfileManager(newClassfileManager: () => ClassfileManager): IncOptions = {
+		new IncOptions(transitiveStep, recompileAllFraction, relationsDebug, apiDebug, apiDiffContextSize,
+			apiDumpDirectory, newClassfileManager)
+	}
+
 	//- EXPANDED CASE CLASS METHOD BEGIN -//
-	@deprecated("Methods generated for case class will be removed in the future.", "0.13.2")
+	@deprecated("Use `with$nameOfTheField` copying methods instead.", "0.13.2")
 	def copy(transitiveStep: Int = this.transitiveStep, recompileAllFraction: Double = this.recompileAllFraction,
 			 relationsDebug: Boolean = this.relationsDebug, apiDebug: Boolean = this.apiDebug,
 			 apiDiffContextSize: Int = this.apiDiffContextSize,
