@@ -44,11 +44,34 @@ Similarly, set `fork in (Compile,run) := true` to only fork the main
 cannot be configured separately.
 
 To enable forking all :key:`test` tasks only, set :key:`fork` to `true` in
-the :key:`test` scope:
+the `Test` scope:
 
 ::
 
-    fork in test := true
+    fork in Test := true
+
+In doubt you can check uses of fork using `inspect uses` (here is an example with a test-project with 2 modules and jacoco4sbt plugin)
+
+::
+
+    > inspect uses fork
+    [info]
+    [info] 	moduleA/*:runner
+    [info] 	moduleA/compile:run::runner
+    [info] 	moduleA/jacoco:testGrouping
+    [info] 	moduleA/test:run::runner
+    [info] 	moduleA/test:testGrouping
+    [info] 	moduleB/*:runner
+    [info] 	moduleB/compile:run::runner
+    [info] 	moduleB/jacoco:testGrouping
+    [info] 	moduleB/test:run::runner
+    [info] 	moduleB/test:testGrouping
+    [info] 	test-project/*:runner
+    [info] 	test-project/compile:run::runner
+    [info] 	test-project/test:run::runner
+    [info] 	test-project/test:testGrouping
+
+This tells us for instance that fork is used in `test:run::runner`, which is the `runner` key in the `run` task in the `test` configuration.
 
 See :doc:`Testing` for more control over how tests are assigned to JVMs and
 what options to pass to each group.
