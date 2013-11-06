@@ -85,7 +85,7 @@ by the following grammar. `'nl'` is a newline or end of file and
     directory: "directory" ":" `path`
     bootProperties: "properties" ":" `path`
     search: "search" ":" ("none" | "nearest" | "root-first" | "only" ) ("," `path`)*
-    logLevel: "log-level" ":" ("debug" | "info" | "warn" | "error")
+    logLevel: "level" ":" ("debug" | "info" | "warn" | "error")
     promptCreate: "prompt-create"  ":"  `label`
     promptFill: "prompt-fill" ":" `boolean`
     quickOption: "quick-option" ":" `boolean`
@@ -384,5 +384,3 @@ The second two require providing a configuration file for download.
    -  The user needs to run `java -Dsbt.boot.properties=your.boot.properties -jar launcher.jar`.
    -  The user already has a script to run the launcher (call it
       'launch'). The user needs to run `launch @your.boot.properties your-arg-1 your-arg-2`
-
-
