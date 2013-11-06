@@ -1379,16 +1379,26 @@ object Classpaths
 		if(plugin) dep.copy(configurations = Some(Provided.name)) else dep
 
 	@deprecated("Explicitly specify the organization using the other variant.", "0.13.0")
-	def autoLibraryDependency(auto: Boolean, plugin: Boolean, version: String): Seq[ModuleID] =
+	def autoLibraryDependency(auto: Boolean, plugin: Boolean, version: String): Seq[ModuleID] = {
 		if(auto)
 			modifyForPlugin(plugin, ScalaArtifacts.libraryDependency(version)) :: Nil
 		else
 			Nil
-	def autoLibraryDependency(auto: Boolean, plugin: Boolean, org: String, version: String): Seq[ModuleID] =
-		if(auto)
-			modifyForPlugin(plugin, ModuleID(org, ScalaArtifacts.LibraryID, version)) :: Nil
-		else
-			Nil
+  }
+
+  def autoLibraryDependency(auto: Boolean, plugin: Boolean, org: String, version: String): Seq[ModuleID] = {
+    if(auto) {
+      // Scala-compiler and scala-library are intimately bound, they must have the same version.
+      // We add the compiler jar optionally to avoid a situation where a dependency needs the scala-compiler (and therefore the scala-library)
+      // for a version lower than `version`.
+      Seq(
+        modifyForPlugin(plugin, ModuleID(org, ScalaArtifacts.CompilerID, version, configurations = Some("optional"))),
+        modifyForPlugin(plugin, ModuleID(org, ScalaArtifacts.LibraryID, version)))
+    } else {
+      Nil
+    }
+  }
+
 	def addUnmanagedLibrary: Seq[Setting[_]] = Seq(
 		unmanagedJars in Compile <++= unmanagedScalaLibrary
 	)
