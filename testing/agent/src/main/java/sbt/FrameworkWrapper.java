@@ -1,8 +1,11 @@
 package sbt;
 
 import sbt.testing.*;
-import java.io.Serializable;
 
+/**
+ * Adapts the old {@link org.scalatools.testing.Framework} interface into the new
+ * {@link sbt.testing.Framework}
+ */
 final class FrameworkWrapper implements Framework {
 
 	private org.scalatools.testing.Framework oldFramework;
