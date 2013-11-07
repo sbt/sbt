@@ -40,4 +40,20 @@ object URITests extends Properties("URI Tests")
 		s"via file: $viaFile" |:
 		(viaPath == viaFile)
 	}
+
+	property("filePathURI supports URIs") =  secure {
+		val s = "file:///is/a/uri/with%20spaces"
+		val decoded = "/is/a/uri/with spaces"
+		val encoded = "/is/a/uri/with%20spaces"
+		val fpURI = filePathURI(s)
+		val directURI = new URI(s)
+		s"filePathURI: $fpURI" |:
+		s"direct URI: $directURI" |:
+		s"getPath: ${fpURI.getPath}" |:
+		s"getRawPath: ${fpURI.getRawPath}" |:
+		(fpURI == directURI) &&
+		(fpURI.getPath == decoded) &&
+		(fpURI.getRawPath == encoded)
+	}
+
 }

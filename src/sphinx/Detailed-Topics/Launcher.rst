@@ -57,13 +57,14 @@ increasing order of precedence:
 -  Put a configuration file named `sbt.boot.properties` on the
    classpath. Put it in the classpath root without the `/sbt` prefix.
 -  Specify the location of an alternate configuration on the command
-   line. This can be done by either specifying the location as the
-   system property `sbt.boot.properties` or as the first argument to
-   the launcher prefixed by `'@'`. The system property has lower
-   precedence. Resolution of a relative path is first attempted against
-   the current working directory, then against the user's home
-   directory, and then against the directory containing the launcher
-   jar. An error is generated if none of these attempts succeed.
+   line, either as a path or an absolute URI. This can be done by
+   either specifying the location as the system property
+   `sbt.boot.properties` or as the first argument to the launcher
+   prefixed by `'@'`. The system property has lower precedence.
+   Resolution of a relative path is first attempted against the current
+   working directory, then against the user's home directory, and then
+   against the directory containing the launcher jar. An error is
+   generated if none of these attempts succeed.
 
 Syntax
 ~~~~~~
