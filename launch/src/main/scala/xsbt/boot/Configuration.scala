@@ -126,8 +126,11 @@ object Configuration
 	}
 	// single-arg constructor doesn't properly escape
 	def filePathURI(path: String): URI = {
-		val f = new File(path)
-		new URI(if(f.isAbsolute) "file" else null, path, null)
+		if(path.startsWith("file:")) new URI(path)
+		else {
+			val f = new File(path)
+			new URI(if(f.isAbsolute) "file" else null, path, null)
+		}
 	}
 	def directoryURI(dir: File): URI = directoryURI(dir.toURI)
 	def directoryURI(uri: URI): URI = 

@@ -210,7 +210,11 @@ influence SBT execution. Also see :doc:`Launcher`.
 | `sbt.version`                | Version   | 0.11.3              | sbt version to use, usually taken from             | 
 |                              |           |                     | project/build.properties                           |
 +------------------------------+-----------+---------------------+----------------------------------------------------+
-| `sbt.boot.properties`        | File      |                     |                                                    |
+| `sbt.boot.properties`        | File      |                     | The path to find the SBT boot properties file.     |
+|                              |           |                     | This can be a relative path, relative to the SBT   |
+|                              |           |                     | base directory, the users home directory or the    |
+|                              |           |                     | location of the sbt jar file, or it can be an      |
+|                              |           |                     | absolute path, or it can be an absolute file URI.  |
 +------------------------------+-----------+---------------------+----------------------------------------------------+
 | `sbt.override.build.repos`   | Boolean   | false               | If true, repositories configured in a build        | 
 |                              |           |                     | definition are ignored and the repositories        |
