@@ -12,7 +12,9 @@ import java.io.Serializable;
 import java.net.Socket;
 import java.net.InetAddress;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
+import java.util.concurrent.*;
 
 public class ForkMain {
 
@@ -128,6 +130,21 @@ public class ForkMain {
 
     private static class Run {
 
+        void run(ObjectInputStream is, ObjectOutputStream os) throws Exception {
+            try {
+                runTests(is, os);
+            } catch (RunAborted e) {
+                internalError(e);
+            } catch (Throwable t) {
+                try {
+                    logError(os, "Uncaught exception when running tests: " + t.toString());
+                    write(os, new ForkError(t));
+                } catch (Throwable t2) {
+                    internalError(t2);
+                }
+            }
+        }
+
         boolean matches(Fingerprint f1, Fingerprint f2) {
             if (f1 instanceof SubclassFingerprint && f2 instanceof SubclassFingerprint) {
                 final SubclassFingerprint sf1 = (SubclassFingerprint) f1;
@@ -154,32 +171,46 @@ public class ForkMain {
             }
         }
 
-        void logError(ObjectOutputStream os, String message) {
-            write(os, new Object[]{ForkTags.Error, message});
+        void log(ObjectOutputStream os, String message, ForkTags level) {
+            write(os, new Object[]{level, message});
         }
 
-        void logDebug(ObjectOutputStream os, String message) {
-            write(os, new Object[]{ForkTags.Debug, message});
+        void logDebug(ObjectOutputStream os, String message) { log(os, message, ForkTags.Debug); }
+        void logInfo(ObjectOutputStream os, String message) { log(os, message, ForkTags.Info); }
+        void logWarn(ObjectOutputStream os, String message) { log(os, message, ForkTags.Warn); }
+        void logError(ObjectOutputStream os, String message) { log(os, message, ForkTags.Error); }
+
+        Logger remoteLogger(final boolean ansiCodesSupported, final ObjectOutputStream os) {
+            return new Logger() {
+                public boolean ansiCodesSupported() { return ansiCodesSupported; }
+                public void error(String s) { logError(os, s); }
+                public void warn(String s) { logWarn(os, s); }
+                public void info(String s) { logInfo(os, s); }
+                public void debug(String s) { logDebug(os, s); }
+                public void trace(Throwable t) { write(os, new ForkError(t)); }
+            };
         }
 
         void writeEvents(ObjectOutputStream os, TaskDef taskDef, ForkEvent[] events) {
             write(os, new Object[]{taskDef.fullyQualifiedName(), events});
         }
 
+        ExecutorService executorService(ForkConfiguration config) {
+            if( config.parallel ) {
+                // more options later...
+                // TODO we might want to configure the blocking queue with size #proc
+                return Executors.newFixedThreadPool(Runtime.getRuntime().availableProcessors());
+            } else {
+                return Executors.newSingleThreadExecutor();
+            }
+        }
+
         void runTests(ObjectInputStream is, final ObjectOutputStream os) throws Exception {
-            final boolean ansiCodesSupported = is.readBoolean();
+            final ForkConfiguration config = (ForkConfiguration) is.readObject();
+            ExecutorService executor = executorService(config);
             final TaskDef[] tests = (TaskDef[]) is.readObject();
             int nFrameworks = is.readInt();
-            Logger[] loggers = {
-                new Logger() {
-                    public boolean ansiCodesSupported() { return ansiCodesSupported; }
-                    public void error(String s) { logError(os, s); }
-                    public void warn(String s) { write(os, new Object[]{ForkTags.Warn, s}); }
-                    public void info(String s) { write(os, new Object[]{ForkTags.Info, s}); }
-                    public void debug(String s) { write(os, new Object[]{ForkTags.Debug, s}); }
-                    public void trace(Throwable t) { write(os, new ForkError(t)); }
-                }
-            };
+            Logger[] loggers = { remoteLogger(config.ansiCodesSupported, os) };
 
             for (int i = 0; i < nFrameworks; i++) {
                 final String[] implClassNames = (String[]) is.readObject();
@@ -214,89 +245,60 @@ public class ForkMain {
                 final Runner runner = framework.runner(frameworkArgs, remoteFrameworkArgs, getClass().getClassLoader());
                 Task[] tasks = runner.tasks(filteredTests.toArray(new TaskDef[filteredTests.size()]));
                 logDebug(os, "Runner for " + framework.getClass().getName() + " produced " + tasks.length + " initial tasks for " + filteredTests.size() + " tests.");
-                for (Task task : tasks)
-                    runTestSafe(task, runner, loggers, os);
+
+                runTestTasks(executor, tasks, loggers, os);
+
                 runner.done();
             }
             write(os, ForkTags.Done);
             is.readObject();
         }
 
-        class NestedTask {
-            private String parentName;
-            private Task task;
-            NestedTask(String parentName, Task task) {
-                this.parentName = parentName;
-                this.task = task;
-            }
-            public String getParentName() {
-                return parentName;
-            }
-            public Task getTask() {
-                return task;
-            }
-        }
+        void runTestTasks(ExecutorService executor, Task[] tasks, Logger[] loggers, ObjectOutputStream os) {
+            if( tasks.length > 0 ) {
+                List<Future<Task[]>> futureNestedTasks = new ArrayList<Future<Task[]>>();
+                for( Task task : tasks ) {
+                    futureNestedTasks.add(runTest(executor, task, loggers, os));
+                }
 
-        void runTestSafe(Task task, Runner runner, Logger[] loggers, ObjectOutputStream os) {
-            TaskDef taskDef = task.taskDef();
-            try {
-                List<NestedTask> nestedTasks = new ArrayList<NestedTask>();
-                for (Task nt : runTest(taskDef, task, loggers, os))
-                    nestedTasks.add(new NestedTask(taskDef.fullyQualifiedName(), nt));
-                while (true) {
-                    List<NestedTask> newNestedTasks = new ArrayList<NestedTask>();
-                    int nestedTasksLength = nestedTasks.size();
-                    for (int i = 0; i < nestedTasksLength; i++) {
-                        NestedTask nestedTask = nestedTasks.get(i);
-                        String nestedParentName = nestedTask.getParentName() + "-" + i;
-                        for (Task nt : runTest(nestedTask.getTask().taskDef(), nestedTask.getTask(), loggers, os)) {
-                            newNestedTasks.add(new NestedTask(nestedParentName, nt));
-                        }
-                    }
-                    if (newNestedTasks.size() == 0)
-                        break;
-                    else {
-                        nestedTasks = newNestedTasks;
+                // Note: this could be optimized further, we could have a callback once a test finishes that executes immediately the nested tasks
+                //       At the moment, I'm especially interested in JUnit, which doesn't have nested tasks.
+                List<Task> nestedTasks = new ArrayList<Task>();
+                for( Future<Task[]> futureNestedTask : futureNestedTasks ) {
+                    try {
+                        nestedTasks.addAll( Arrays.asList(futureNestedTask.get()));
+                    } catch (Exception e) {
+                        logError(os, "Failed to execute task " + futureNestedTask);
                     }
                 }
-            } catch (Throwable t) {
-                writeEvents(os, taskDef, new ForkEvent[] { testError(os, taskDef, "Uncaught exception when running " + taskDef.fullyQualifiedName() + ": " + t.toString(), t) });
+                runTestTasks(executor, nestedTasks.toArray(new Task[nestedTasks.size()]), loggers, os);
             }
         }
 
-        Task[] runTest(TaskDef taskDef, Task task, Logger[] loggers, ObjectOutputStream os) {
-            ForkEvent[] events;
-            Task[] nestedTasks;
-            try {
-                final List<ForkEvent> eventList = new ArrayList<ForkEvent>();
-                EventHandler handler = new EventHandler() { public void handle(Event e){ eventList.add(new ForkEvent(e)); } };
-                logDebug(os, "  Running " + taskDef);
-                nestedTasks = task.execute(handler, loggers);
-                if(nestedTasks.length > 0 || eventList.size() > 0)
-                    logDebug(os, "    Produced " + nestedTasks.length + " nested tasks and " + eventList.size() + " events.");
-                events = eventList.toArray(new ForkEvent[eventList.size()]);
-            }
-            catch (Throwable t) {
-                nestedTasks = new Task[0];
-                events = new ForkEvent[] { testError(os, taskDef, "Uncaught exception when running " + taskDef.fullyQualifiedName() + ": " + t.toString(), t) };
-            }
-            writeEvents(os, taskDef, events);
-            return nestedTasks;
-        }
-
-        void run(ObjectInputStream is, ObjectOutputStream os) throws Exception {
-            try {
-                runTests(is, os);
-            } catch (RunAborted e) {
-                internalError(e);
-            } catch (Throwable t) {
-                try {
-                    logError(os, "Uncaught exception when running tests: " + t.toString());
-                    write(os, new ForkError(t));
-                } catch (Throwable t2) {
-                    internalError(t2);
+        Future<Task[]> runTest(ExecutorService executor, final Task task, final Logger[] loggers, final ObjectOutputStream os) {
+            return executor.submit(new Callable<Task[]>() {
+                @Override
+                public Task[] call() {
+                    ForkEvent[] events;
+                    Task[] nestedTasks;
+                    TaskDef taskDef = task.taskDef();
+                    try {
+                        final List<ForkEvent> eventList = new ArrayList<ForkEvent>();
+                        EventHandler handler = new EventHandler() { public void handle(Event e){ eventList.add(new ForkEvent(e)); } };
+                        logDebug(os, "  Running " + taskDef);
+                        nestedTasks = task.execute(handler, loggers);
+                        if(nestedTasks.length > 0 || eventList.size() > 0)
+                            logDebug(os, "    Produced " + nestedTasks.length + " nested tasks and " + eventList.size() + " events.");
+                        events = eventList.toArray(new ForkEvent[eventList.size()]);
+                    }
+                    catch (Throwable t) {
+                        nestedTasks = new Task[0];
+                        events = new ForkEvent[] { testError(os, taskDef, "Uncaught exception when running " + taskDef.fullyQualifiedName() + ": " + t.toString(), t) };
+                    }
+                    writeEvents(os, taskDef, events);
+                    return nestedTasks;
                 }
-            }
+            });
         }
 
         void internalError(Throwable t) {

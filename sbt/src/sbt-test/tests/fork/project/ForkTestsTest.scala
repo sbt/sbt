@@ -26,7 +26,7 @@ object ForkTestsTest extends Build {
 			val (exist, absent) = files.partition(_.exists)
 			exist.foreach(_.delete())
 			if(absent.nonEmpty)
-				error("Files were not created:\n\t" + absent.mkString("\n\t"))
+				sys.error("Files were not created:\n\t" + absent.mkString("\n\t"))
 		},
 		concurrentRestrictions := Tags.limit(Tags.ForkedTestGroup, 2) :: Nil,
 		libraryDependencies += "org.scalatest" %% "scalatest" % "1.8" % "test"
