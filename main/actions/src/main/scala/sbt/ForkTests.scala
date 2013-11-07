@@ -42,7 +42,7 @@ private[sbt] object ForkTests
 				val resultsAcc = mutable.Map.empty[String, SuiteResult]
 				lazy val result = TestOutput(overall(resultsAcc.values.map(_.result)), resultsAcc.toMap, Iterable.empty)
 
-        def run() {
+				def run() {
 					val socket =
 						try {
 							server.accept()
@@ -59,7 +59,10 @@ private[sbt] object ForkTests
 					val is = new ObjectInputStream(socket.getInputStream)
 
 					try {
-						os.writeBoolean(log.ansiCodesSupported)
+						val config = new ForkConfiguration
+						config.ansiCodesSupported = log.ansiCodesSupported
+						config.parallel = true
+						os.writeObject(config)
 
 						val taskdefs = opts.tests.map(t => new TaskDef(t.name, forkFingerprint(t.fingerprint), t.explicitlySpecified, t.selectors))
 						os.writeObject(taskdefs.toArray)

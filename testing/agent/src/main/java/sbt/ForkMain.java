@@ -18,318 +18,318 @@ import java.util.concurrent.*;
 
 public class ForkMain {
 
-    // serializables
-    // -----------------------------------------------------------------------------
+	// serializables
+	// -----------------------------------------------------------------------------
 
-    static class SubclassFingerscan implements SubclassFingerprint, Serializable {
-        private boolean isModule;
-        private String superclassName;
-        private boolean requireNoArgConstructor;
-        SubclassFingerscan(SubclassFingerprint print) {
-            isModule = print.isModule();
-            superclassName = print.superclassName();
-            requireNoArgConstructor = print.requireNoArgConstructor();
-        }
-        public boolean isModule() { return isModule; }
-        public String superclassName() { return superclassName; }
-        public boolean requireNoArgConstructor() { return requireNoArgConstructor; }
-    }
+	static class SubclassFingerscan implements SubclassFingerprint, Serializable {
+		private boolean isModule;
+		private String superclassName;
+		private boolean requireNoArgConstructor;
+		SubclassFingerscan(SubclassFingerprint print) {
+			isModule = print.isModule();
+			superclassName = print.superclassName();
+			requireNoArgConstructor = print.requireNoArgConstructor();
+		}
+		public boolean isModule() { return isModule; }
+		public String superclassName() { return superclassName; }
+		public boolean requireNoArgConstructor() { return requireNoArgConstructor; }
+	}
 
-    static class AnnotatedFingerscan implements AnnotatedFingerprint, Serializable {
-        private boolean isModule;
-        private String annotationName;
-        AnnotatedFingerscan(AnnotatedFingerprint print) {
-            isModule = print.isModule();
-            annotationName = print.annotationName();
-        }
-        public boolean isModule() { return isModule; }
-        public String annotationName() { return annotationName; }
-    }
+	static class AnnotatedFingerscan implements AnnotatedFingerprint, Serializable {
+		private boolean isModule;
+		private String annotationName;
+		AnnotatedFingerscan(AnnotatedFingerprint print) {
+			isModule = print.isModule();
+			annotationName = print.annotationName();
+		}
+		public boolean isModule() { return isModule; }
+		public String annotationName() { return annotationName; }
+	}
 
-    static class ForkEvent implements Event, Serializable {
-        private String fullyQualifiedName;
-        private Fingerprint fingerprint;
-        private Selector selector;
-        private Status status;
-        private OptionalThrowable throwable;
-        private long duration;
+	static class ForkEvent implements Event, Serializable {
+		private String fullyQualifiedName;
+		private Fingerprint fingerprint;
+		private Selector selector;
+		private Status status;
+		private OptionalThrowable throwable;
+		private long duration;
 
-        ForkEvent(Event e) {
-            fullyQualifiedName = e.fullyQualifiedName();
-            Fingerprint rawFingerprint = e.fingerprint();
+		ForkEvent(Event e) {
+			fullyQualifiedName = e.fullyQualifiedName();
+			Fingerprint rawFingerprint = e.fingerprint();
 
-            if (rawFingerprint instanceof SubclassFingerprint)
-                this.fingerprint = new SubclassFingerscan((SubclassFingerprint) rawFingerprint);
-            else
-                this.fingerprint = new AnnotatedFingerscan((AnnotatedFingerprint) rawFingerprint);
+			if (rawFingerprint instanceof SubclassFingerprint)
+				this.fingerprint = new SubclassFingerscan((SubclassFingerprint) rawFingerprint);
+			else
+				this.fingerprint = new AnnotatedFingerscan((AnnotatedFingerprint) rawFingerprint);
 
-            selector = e.selector();
-            checkSerializableSelector(selector);
-            status = e.status();
-            OptionalThrowable originalThrowable = e.throwable();
+			selector = e.selector();
+			checkSerializableSelector(selector);
+			status = e.status();
+			OptionalThrowable originalThrowable = e.throwable();
 
-            if (originalThrowable.isDefined())
-                this.throwable = new OptionalThrowable(new ForkError(originalThrowable.get()));
-            else
-                this.throwable = originalThrowable;
+			if (originalThrowable.isDefined())
+				this.throwable = new OptionalThrowable(new ForkError(originalThrowable.get()));
+			else
+				this.throwable = originalThrowable;
 
-            this.duration = e.duration();
-        }
+			this.duration = e.duration();
+		}
 
-        public String fullyQualifiedName() { return fullyQualifiedName; }
-        public Fingerprint fingerprint() { return fingerprint; }
-        public Selector selector() { return selector; }
-        public Status status() { return status; }
-        public OptionalThrowable throwable() { return throwable; }
-        public long duration() { return duration; }
+		public String fullyQualifiedName() { return fullyQualifiedName; }
+		public Fingerprint fingerprint() { return fingerprint; }
+		public Selector selector() { return selector; }
+		public Status status() { return status; }
+		public OptionalThrowable throwable() { return throwable; }
+		public long duration() { return duration; }
 
-        static void checkSerializableSelector(Selector selector) {
-            if (! (selector instanceof Serializable)) {
-                throw new UnsupportedOperationException("Selector implementation must be Serializable, but " + selector.getClass().getName() + " is not.");
-            }
-        }
-    }
+		static void checkSerializableSelector(Selector selector) {
+			if (! (selector instanceof Serializable)) {
+				throw new UnsupportedOperationException("Selector implementation must be Serializable, but " + selector.getClass().getName() + " is not.");
+			}
+		}
+	}
 
-    // -----------------------------------------------------------------------------
-
-
-    static class ForkError extends Exception {
-        private String originalMessage;
-        private ForkError cause;
-        ForkError(Throwable t) {
-            originalMessage = t.getMessage();
-            setStackTrace(t.getStackTrace());
-            if (t.getCause() != null) cause = new ForkError(t.getCause());
-        }
-        public String getMessage() { return originalMessage; }
-        public Exception getCause() { return cause; }
-    }
+	// -----------------------------------------------------------------------------
 
 
-    // main
-    // ----------------------------------------------------------------------------------------------------------------
-
-    public static void main(String[] args) throws Exception {
-        Socket socket = new Socket(InetAddress.getByName(null), Integer.valueOf(args[0]));
-        final ObjectInputStream is = new ObjectInputStream(socket.getInputStream());
-        final ObjectOutputStream os = new ObjectOutputStream(socket.getOutputStream());
-        // Must flush the header that the constructor writes, otherwise the ObjectInputStream on the other end may block indefinitely
-        os.flush();
-
-        try {
-            new Run().run(is, os);
-        } finally {
-            is.close();
-            os.close();
-            System.exit(0);
-        }
-    }
-
-    // ----------------------------------------------------------------------------------------------------------------
+	static class ForkError extends Exception {
+		private String originalMessage;
+		private ForkError cause;
+		ForkError(Throwable t) {
+			originalMessage = t.getMessage();
+			setStackTrace(t.getStackTrace());
+			if (t.getCause() != null) cause = new ForkError(t.getCause());
+		}
+		public String getMessage() { return originalMessage; }
+		public Exception getCause() { return cause; }
+	}
 
 
-    private static class Run {
+	// main
+	// ----------------------------------------------------------------------------------------------------------------
 
-        void run(ObjectInputStream is, ObjectOutputStream os) throws Exception {
-            try {
-                runTests(is, os);
-            } catch (RunAborted e) {
-                internalError(e);
-            } catch (Throwable t) {
-                try {
-                    logError(os, "Uncaught exception when running tests: " + t.toString());
-                    write(os, new ForkError(t));
-                } catch (Throwable t2) {
-                    internalError(t2);
-                }
-            }
-        }
+	public static void main(String[] args) throws Exception {
+		Socket socket = new Socket(InetAddress.getByName(null), Integer.valueOf(args[0]));
+		final ObjectInputStream is = new ObjectInputStream(socket.getInputStream());
+		final ObjectOutputStream os = new ObjectOutputStream(socket.getOutputStream());
+		// Must flush the header that the constructor writes, otherwise the ObjectInputStream on the other end may block indefinitely
+		os.flush();
 
-        boolean matches(Fingerprint f1, Fingerprint f2) {
-            if (f1 instanceof SubclassFingerprint && f2 instanceof SubclassFingerprint) {
-                final SubclassFingerprint sf1 = (SubclassFingerprint) f1;
-                final SubclassFingerprint sf2 = (SubclassFingerprint) f2;
-                return sf1.isModule() == sf2.isModule() && sf1.superclassName().equals(sf2.superclassName());
-            } else if (f1 instanceof AnnotatedFingerprint && f2 instanceof AnnotatedFingerprint) {
-                AnnotatedFingerprint af1 = (AnnotatedFingerprint) f1;
-                AnnotatedFingerprint af2 = (AnnotatedFingerprint) f2;
-                return af1.isModule() == af2.isModule() && af1.annotationName().equals(af2.annotationName());
-            }
-            return false;
-        }
+		try {
+			new Run().run(is, os);
+		} finally {
+			is.close();
+			os.close();
+			System.exit(0);
+		}
+	}
 
-        class RunAborted extends RuntimeException {
-            RunAborted(Exception e) { super(e); }
-        }
+	// ----------------------------------------------------------------------------------------------------------------
 
-        synchronized void write(ObjectOutputStream os, Object obj) {
-            try {
-                os.writeObject(obj);
-                os.flush();
-            } catch (IOException e) {
-                throw new RunAborted(e);
-            }
-        }
 
-        void log(ObjectOutputStream os, String message, ForkTags level) {
-            write(os, new Object[]{level, message});
-        }
+	private static class Run {
 
-        void logDebug(ObjectOutputStream os, String message) { log(os, message, ForkTags.Debug); }
-        void logInfo(ObjectOutputStream os, String message) { log(os, message, ForkTags.Info); }
-        void logWarn(ObjectOutputStream os, String message) { log(os, message, ForkTags.Warn); }
-        void logError(ObjectOutputStream os, String message) { log(os, message, ForkTags.Error); }
+		void run(ObjectInputStream is, ObjectOutputStream os) throws Exception {
+			try {
+				runTests(is, os);
+			} catch (RunAborted e) {
+				internalError(e);
+			} catch (Throwable t) {
+				try {
+					logError(os, "Uncaught exception when running tests: " + t.toString());
+					write(os, new ForkError(t));
+				} catch (Throwable t2) {
+					internalError(t2);
+				}
+			}
+		}
 
-        Logger remoteLogger(final boolean ansiCodesSupported, final ObjectOutputStream os) {
-            return new Logger() {
-                public boolean ansiCodesSupported() { return ansiCodesSupported; }
-                public void error(String s) { logError(os, s); }
-                public void warn(String s) { logWarn(os, s); }
-                public void info(String s) { logInfo(os, s); }
-                public void debug(String s) { logDebug(os, s); }
-                public void trace(Throwable t) { write(os, new ForkError(t)); }
-            };
-        }
+		boolean matches(Fingerprint f1, Fingerprint f2) {
+			if (f1 instanceof SubclassFingerprint && f2 instanceof SubclassFingerprint) {
+				final SubclassFingerprint sf1 = (SubclassFingerprint) f1;
+				final SubclassFingerprint sf2 = (SubclassFingerprint) f2;
+				return sf1.isModule() == sf2.isModule() && sf1.superclassName().equals(sf2.superclassName());
+			} else if (f1 instanceof AnnotatedFingerprint && f2 instanceof AnnotatedFingerprint) {
+				AnnotatedFingerprint af1 = (AnnotatedFingerprint) f1;
+				AnnotatedFingerprint af2 = (AnnotatedFingerprint) f2;
+				return af1.isModule() == af2.isModule() && af1.annotationName().equals(af2.annotationName());
+			}
+			return false;
+		}
 
-        void writeEvents(ObjectOutputStream os, TaskDef taskDef, ForkEvent[] events) {
-            write(os, new Object[]{taskDef.fullyQualifiedName(), events});
-        }
+		class RunAborted extends RuntimeException {
+			RunAborted(Exception e) { super(e); }
+		}
 
-        ExecutorService executorService(ForkConfiguration config) {
-            if( config.parallel ) {
-                // more options later...
-                // TODO we might want to configure the blocking queue with size #proc
-                return Executors.newFixedThreadPool(Runtime.getRuntime().availableProcessors());
-            } else {
-                return Executors.newSingleThreadExecutor();
-            }
-        }
+		synchronized void write(ObjectOutputStream os, Object obj) {
+			try {
+				os.writeObject(obj);
+				os.flush();
+			} catch (IOException e) {
+				throw new RunAborted(e);
+			}
+		}
 
-        void runTests(ObjectInputStream is, final ObjectOutputStream os) throws Exception {
-            final ForkConfiguration config = (ForkConfiguration) is.readObject();
-            ExecutorService executor = executorService(config);
-            final TaskDef[] tests = (TaskDef[]) is.readObject();
-            int nFrameworks = is.readInt();
-            Logger[] loggers = { remoteLogger(config.ansiCodesSupported, os) };
+		void log(ObjectOutputStream os, String message, ForkTags level) {
+			write(os, new Object[]{level, message});
+		}
 
-            for (int i = 0; i < nFrameworks; i++) {
-                final String[] implClassNames = (String[]) is.readObject();
-                final String[] frameworkArgs = (String[]) is.readObject();
-                final String[] remoteFrameworkArgs = (String[]) is.readObject();
+		void logDebug(ObjectOutputStream os, String message) { log(os, message, ForkTags.Debug); }
+		void logInfo(ObjectOutputStream os, String message) { log(os, message, ForkTags.Info); }
+		void logWarn(ObjectOutputStream os, String message) { log(os, message, ForkTags.Warn); }
+		void logError(ObjectOutputStream os, String message) { log(os, message, ForkTags.Error); }
 
-                Framework framework = null;
-                for (String implClassName : implClassNames) {
-                    try {
-                        Object rawFramework = Class.forName(implClassName).newInstance();
-                        if (rawFramework instanceof Framework)
-                            framework = (Framework) rawFramework;
-                        else
-                            framework = new FrameworkAdapter((org.scalatools.testing.Framework) rawFramework);
-                        break;
-                    } catch (ClassNotFoundException e) {
-                        logDebug(os, "Framework implementation '" + implClassName + "' not present.");
-                    }
-                }
+		Logger remoteLogger(final boolean ansiCodesSupported, final ObjectOutputStream os) {
+			return new Logger() {
+				public boolean ansiCodesSupported() { return ansiCodesSupported; }
+				public void error(String s) { logError(os, s); }
+				public void warn(String s) { logWarn(os, s); }
+				public void info(String s) { logInfo(os, s); }
+				public void debug(String s) { logDebug(os, s); }
+				public void trace(Throwable t) { write(os, new ForkError(t)); }
+			};
+		}
 
-                if (framework == null)
-                    continue;
+		void writeEvents(ObjectOutputStream os, TaskDef taskDef, ForkEvent[] events) {
+			write(os, new Object[]{taskDef.fullyQualifiedName(), events});
+		}
 
-                ArrayList<TaskDef> filteredTests = new ArrayList<TaskDef>();
-                for (Fingerprint testFingerprint : framework.fingerprints()) {
-                    for (TaskDef test : tests) {
-                        // TODO: To pass in correct explicitlySpecified and selectors
-                        if (matches(testFingerprint, test.fingerprint()))
-                            filteredTests.add(new TaskDef(test.fullyQualifiedName(), test.fingerprint(), test.explicitlySpecified(), test.selectors()));
-                    }
-                }
-                final Runner runner = framework.runner(frameworkArgs, remoteFrameworkArgs, getClass().getClassLoader());
-                Task[] tasks = runner.tasks(filteredTests.toArray(new TaskDef[filteredTests.size()]));
-                logDebug(os, "Runner for " + framework.getClass().getName() + " produced " + tasks.length + " initial tasks for " + filteredTests.size() + " tests.");
+		ExecutorService executorService(ForkConfiguration config) {
+			if( config.parallel ) {
+				// more options later...
+				// TODO we might want to configure the blocking queue with size #proc
+				return Executors.newFixedThreadPool(Runtime.getRuntime().availableProcessors());
+			} else {
+				return Executors.newSingleThreadExecutor();
+			}
+		}
 
-                runTestTasks(executor, tasks, loggers, os);
+		void runTests(ObjectInputStream is, final ObjectOutputStream os) throws Exception {
+			final ForkConfiguration config = (ForkConfiguration) is.readObject();
+			ExecutorService executor = executorService(config);
+			final TaskDef[] tests = (TaskDef[]) is.readObject();
+			int nFrameworks = is.readInt();
+			Logger[] loggers = { remoteLogger(config.ansiCodesSupported, os) };
 
-                runner.done();
-            }
-            write(os, ForkTags.Done);
-            is.readObject();
-        }
+			for (int i = 0; i < nFrameworks; i++) {
+				final String[] implClassNames = (String[]) is.readObject();
+				final String[] frameworkArgs = (String[]) is.readObject();
+				final String[] remoteFrameworkArgs = (String[]) is.readObject();
 
-        void runTestTasks(ExecutorService executor, Task[] tasks, Logger[] loggers, ObjectOutputStream os) {
-            if( tasks.length > 0 ) {
-                List<Future<Task[]>> futureNestedTasks = new ArrayList<Future<Task[]>>();
-                for( Task task : tasks ) {
-                    futureNestedTasks.add(runTest(executor, task, loggers, os));
-                }
+				Framework framework = null;
+				for (String implClassName : implClassNames) {
+					try {
+						Object rawFramework = Class.forName(implClassName).newInstance();
+						if (rawFramework instanceof Framework)
+							framework = (Framework) rawFramework;
+						else
+							framework = new FrameworkAdapter((org.scalatools.testing.Framework) rawFramework);
+						break;
+					} catch (ClassNotFoundException e) {
+						logDebug(os, "Framework implementation '" + implClassName + "' not present.");
+					}
+				}
 
-                // Note: this could be optimized further, we could have a callback once a test finishes that executes immediately the nested tasks
-                //       At the moment, I'm especially interested in JUnit, which doesn't have nested tasks.
-                List<Task> nestedTasks = new ArrayList<Task>();
-                for( Future<Task[]> futureNestedTask : futureNestedTasks ) {
-                    try {
-                        nestedTasks.addAll( Arrays.asList(futureNestedTask.get()));
-                    } catch (Exception e) {
-                        logError(os, "Failed to execute task " + futureNestedTask);
-                    }
-                }
-                runTestTasks(executor, nestedTasks.toArray(new Task[nestedTasks.size()]), loggers, os);
-            }
-        }
+				if (framework == null)
+					continue;
 
-        Future<Task[]> runTest(ExecutorService executor, final Task task, final Logger[] loggers, final ObjectOutputStream os) {
-            return executor.submit(new Callable<Task[]>() {
-                @Override
-                public Task[] call() {
-                    ForkEvent[] events;
-                    Task[] nestedTasks;
-                    TaskDef taskDef = task.taskDef();
-                    try {
-                        final List<ForkEvent> eventList = new ArrayList<ForkEvent>();
-                        EventHandler handler = new EventHandler() { public void handle(Event e){ eventList.add(new ForkEvent(e)); } };
-                        logDebug(os, "  Running " + taskDef);
-                        nestedTasks = task.execute(handler, loggers);
-                        if(nestedTasks.length > 0 || eventList.size() > 0)
-                            logDebug(os, "    Produced " + nestedTasks.length + " nested tasks and " + eventList.size() + " events.");
-                        events = eventList.toArray(new ForkEvent[eventList.size()]);
-                    }
-                    catch (Throwable t) {
-                        nestedTasks = new Task[0];
-                        events = new ForkEvent[] { testError(os, taskDef, "Uncaught exception when running " + taskDef.fullyQualifiedName() + ": " + t.toString(), t) };
-                    }
-                    writeEvents(os, taskDef, events);
-                    return nestedTasks;
-                }
-            });
-        }
+				ArrayList<TaskDef> filteredTests = new ArrayList<TaskDef>();
+				for (Fingerprint testFingerprint : framework.fingerprints()) {
+					for (TaskDef test : tests) {
+						// TODO: To pass in correct explicitlySpecified and selectors
+						if (matches(testFingerprint, test.fingerprint()))
+							filteredTests.add(new TaskDef(test.fullyQualifiedName(), test.fingerprint(), test.explicitlySpecified(), test.selectors()));
+					}
+				}
+				final Runner runner = framework.runner(frameworkArgs, remoteFrameworkArgs, getClass().getClassLoader());
+				Task[] tasks = runner.tasks(filteredTests.toArray(new TaskDef[filteredTests.size()]));
+				logDebug(os, "Runner for " + framework.getClass().getName() + " produced " + tasks.length + " initial tasks for " + filteredTests.size() + " tests.");
 
-        void internalError(Throwable t) {
-            System.err.println("Internal error when running tests: " + t.toString());
-        }
+				runTestTasks(executor, tasks, loggers, os);
 
-        ForkEvent testEvent(final String fullyQualifiedName, final Fingerprint fingerprint, final Selector selector, final Status r, final ForkError err, final long duration) {
-            final OptionalThrowable throwable;
-            if (err == null)
-                throwable = new OptionalThrowable();
-            else
-                throwable = new OptionalThrowable(err);
-            return new ForkEvent(new Event() {
-                public String fullyQualifiedName() { return fullyQualifiedName; }
-                public Fingerprint fingerprint() { return fingerprint; }
-                public Selector selector() { return selector; }
-                public Status status() { return r; }
-                public OptionalThrowable throwable() {
-                    return throwable;
-                }
-                public long duration() {
-                    return duration;
-                }
-            });
-        }
+				runner.done();
+			}
+			write(os, ForkTags.Done);
+			is.readObject();
+		}
 
-        ForkEvent testError(ObjectOutputStream os, TaskDef taskDef, String message, Throwable t) {
-            logError(os, message);
-            ForkError fe = new ForkError(t);
-            write(os, fe);
-            return testEvent(taskDef.fullyQualifiedName(), taskDef.fingerprint(), new SuiteSelector(), Status.Error, fe, 0);
-        }
-    }
+		void runTestTasks(ExecutorService executor, Task[] tasks, Logger[] loggers, ObjectOutputStream os) {
+			if( tasks.length > 0 ) {
+				List<Future<Task[]>> futureNestedTasks = new ArrayList<Future<Task[]>>();
+				for( Task task : tasks ) {
+					futureNestedTasks.add(runTest(executor, task, loggers, os));
+				}
+
+				// Note: this could be optimized further, we could have a callback once a test finishes that executes immediately the nested tasks
+				//       At the moment, I'm especially interested in JUnit, which doesn't have nested tasks.
+				List<Task> nestedTasks = new ArrayList<Task>();
+				for( Future<Task[]> futureNestedTask : futureNestedTasks ) {
+					try {
+						nestedTasks.addAll( Arrays.asList(futureNestedTask.get()));
+					} catch (Exception e) {
+						logError(os, "Failed to execute task " + futureNestedTask);
+					}
+				}
+				runTestTasks(executor, nestedTasks.toArray(new Task[nestedTasks.size()]), loggers, os);
+			}
+		}
+
+		Future<Task[]> runTest(ExecutorService executor, final Task task, final Logger[] loggers, final ObjectOutputStream os) {
+			return executor.submit(new Callable<Task[]>() {
+				@Override
+				public Task[] call() {
+					ForkEvent[] events;
+					Task[] nestedTasks;
+					TaskDef taskDef = task.taskDef();
+					try {
+						final List<ForkEvent> eventList = new ArrayList<ForkEvent>();
+						EventHandler handler = new EventHandler() { public void handle(Event e){ eventList.add(new ForkEvent(e)); } };
+						logDebug(os, "  Running " + taskDef);
+						nestedTasks = task.execute(handler, loggers);
+						if(nestedTasks.length > 0 || eventList.size() > 0)
+							logDebug(os, "    Produced " + nestedTasks.length + " nested tasks and " + eventList.size() + " events.");
+						events = eventList.toArray(new ForkEvent[eventList.size()]);
+					}
+					catch (Throwable t) {
+						nestedTasks = new Task[0];
+						events = new ForkEvent[] { testError(os, taskDef, "Uncaught exception when running " + taskDef.fullyQualifiedName() + ": " + t.toString(), t) };
+					}
+					writeEvents(os, taskDef, events);
+					return nestedTasks;
+				}
+			});
+		}
+
+		void internalError(Throwable t) {
+			System.err.println("Internal error when running tests: " + t.toString());
+		}
+
+		ForkEvent testEvent(final String fullyQualifiedName, final Fingerprint fingerprint, final Selector selector, final Status r, final ForkError err, final long duration) {
+			final OptionalThrowable throwable;
+			if (err == null)
+				throwable = new OptionalThrowable();
+			else
+				throwable = new OptionalThrowable(err);
+			return new ForkEvent(new Event() {
+				public String fullyQualifiedName() { return fullyQualifiedName; }
+				public Fingerprint fingerprint() { return fingerprint; }
+				public Selector selector() { return selector; }
+				public Status status() { return r; }
+				public OptionalThrowable throwable() {
+					return throwable;
+				}
+				public long duration() {
+					return duration;
+				}
+			});
+		}
+
+		ForkEvent testError(ObjectOutputStream os, TaskDef taskDef, String message, Throwable t) {
+			logError(os, message);
+			ForkError fe = new ForkError(t);
+			write(os, fe);
+			return testEvent(taskDef.fullyQualifiedName(), taskDef.fingerprint(), new SuiteSelector(), Status.Error, fe, 0);
+		}
+	}
 }
