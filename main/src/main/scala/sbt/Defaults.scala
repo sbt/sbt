@@ -476,7 +476,7 @@ object Defaults extends BuildCommon
 		}
 	}
 
-	def createTestRunners(frameworks: Map[TestFramework,Framework], loader: ClassLoader, config: Tests.Execution) = {
+	def createTestRunners(frameworks: Map[TestFramework,Framework], loader: ClassLoader, config: Tests.Execution) : Map[TestFramework, Runner] = {
 		import Tests.Argument
 		val opts = config.options.toList
 		frameworks.map { case (tf, f) =>

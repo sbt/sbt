@@ -41,7 +41,8 @@ private[sbt] object ForkTests
 			object Acceptor extends Runnable {
 				val resultsAcc = mutable.Map.empty[String, SuiteResult]
 				lazy val result = TestOutput(overall(resultsAcc.values.map(_.result)), resultsAcc.toMap, Iterable.empty)
-				def run: Unit = {
+
+        def run() {
 					val socket =
 						try {
 							server.accept()
@@ -65,14 +66,13 @@ private[sbt] object ForkTests
 
 						os.writeInt(runners.size)
 						for ((testFramework, mainRunner) <- runners) {
-							val remoteArgs = mainRunner.remoteArgs()
 							os.writeObject(testFramework.implClassNames.toArray)
 							os.writeObject(mainRunner.args)
-							os.writeObject(remoteArgs)
+							os.writeObject(mainRunner.remoteArgs)
 						}
 						os.flush()
 
-						(new React(is, os, log, opts.testListeners, resultsAcc)).react()
+						new React(is, os, log, opts.testListeners, resultsAcc).react()
 					} finally {
 						is.close();	os.close(); socket.close()
 					}
