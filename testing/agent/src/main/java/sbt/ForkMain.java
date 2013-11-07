@@ -119,9 +119,12 @@ public class ForkMain {
 		try {
 			new Run().run(is, os);
 		} finally {
-			is.close();
-			os.close();
-			System.exit(0);
+			try {
+				is.close();
+				os.close();
+			} finally {
+				System.exit(0);
+			}
 		}
 	}
 
