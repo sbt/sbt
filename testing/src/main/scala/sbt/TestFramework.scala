@@ -34,7 +34,7 @@ case class TestFramework(val implClassNames: String*)
 				{
 					Some(Class.forName(head, true, loader).newInstance match {
 						case newFramework: Framework => newFramework
-						case oldFramework: OldFramework => new FrameworkWrapper(oldFramework)
+						case oldFramework: OldFramework => new FrameworkAdapter(oldFramework)
 					})
 				}
 				catch 
