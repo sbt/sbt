@@ -19,7 +19,7 @@ object IncrementalCompile
 	    output: Output, log: Logger,
 	    options: IncOptions): (Boolean, Analysis) =
 	{
-		val current = Stamps.initial(Stamp.exists, Stamp.hash, Stamp.lastModified)
+		val current = Stamps.initial(Stamp.lastModified, Stamp.hash, Stamp.lastModified)
 		val internalMap = (f: File) => previous.relations.produced(f).headOption
 		val externalAPI = getExternalAPI(entry, forEntry)
 		try {
