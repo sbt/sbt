@@ -1,0 +1,15 @@
+# with a single vm at most one file will be created
+> test
+-> check
+> clean
+> checkClean
+
+> set fork in Test := true
+> test
+-> check
+> clean
+> checkClean
+
+> set testNumberForkedJvm := 4
+> test
+> check

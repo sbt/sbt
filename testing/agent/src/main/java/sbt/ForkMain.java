@@ -9,12 +9,16 @@ import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 import java.io.Serializable;
-import java.net.Socket;
 import java.net.InetAddress;
+import java.net.Socket;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.List;
-import java.util.concurrent.*;
+import java.util.concurrent.Callable;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
 
 public class ForkMain {
 
@@ -118,6 +122,8 @@ public class ForkMain {
 
 		try {
 			new Run().run(is, os);
+		} catch( Throwable t ) {
+			t.printStackTrace();
 		} finally {
 			try {
 				is.close();
@@ -162,7 +168,7 @@ public class ForkMain {
 		}
 
 		class RunAborted extends RuntimeException {
-			RunAborted(Exception e) { super(e); }
+			RunAborted(String message, Throwable cause) { super(message, cause); }
 		}
 
 		synchronized void write(ObjectOutputStream os, Object obj) {
@@ -170,12 +176,16 @@ public class ForkMain {
 				os.writeObject(obj);
 				os.flush();
 			} catch (IOException e) {
-				throw new RunAborted(e);
+				throw new RunAborted("While writing " + obj, e);
 			}
 		}
 
 		void log(ObjectOutputStream os, String message, ForkTags level) {
-			write(os, new Object[]{level, message});
+			try {
+				write(os, new Object[]{level, message});
+			} catch( RunAborted e ) {
+				throw new RunAborted("While logging " + level + " level message >" + message + "<", e.getCause());
+			}
 		}
 
 		void logDebug(ObjectOutputStream os, String message) { log(os, message, ForkTags.Debug); }
@@ -194,8 +204,20 @@ public class ForkMain {
 			};
 		}
 
-		void writeEvents(ObjectOutputStream os, TaskDef taskDef, ForkEvent[] events) {
-			write(os, new Object[]{taskDef.fullyQualifiedName(), events});
+		void writeEndTest(ObjectOutputStream os, String suiteName, ForkEvent event) {
+			write(os, new Object[]{ForkTags.EndTest, suiteName, event});
+		}
+
+		void writeStartSuite(ObjectOutputStream os, String suiteName) {
+			write(os, new Object[]{ForkTags.StartSuite, suiteName});
+		}
+
+		void writeEndSuite(ObjectOutputStream os, String suiteName) {
+			write(os, new Object[]{ForkTags.EndSuite, suiteName});
+		}
+
+		void writeEndSuiteError(ObjectOutputStream os, String suiteName, Throwable t) {
+			write(os, new Object[]{ForkTags.EndSuiteError, suiteName, t});
 		}
 
 		ExecutorService executorService(ForkConfiguration config, ObjectOutputStream os) {
@@ -211,53 +233,58 @@ public class ForkMain {
 			}
 		}
 
+
 		void runTests(ObjectInputStream is, final ObjectOutputStream os) throws Exception {
 			final ForkConfiguration config = (ForkConfiguration) is.readObject();
+
 			ExecutorService executor = executorService(config, os);
-			final TaskDef[] tests = (TaskDef[]) is.readObject();
+
 			int nFrameworks = is.readInt();
 			Logger[] loggers = { remoteLogger(config.isAnsiCodesSupported(), os) };
+
+			FrameworkLoader loader = new FrameworkLoader() {
+				@Override
+				protected void logDebug(String message) {
+					Run.this.logDebug(os, message);
+				}
+			};
+
+			HashMap<String, Runner> runners = new HashMap<String,Runner>();
 
 			for (int i = 0; i < nFrameworks; i++) {
 				final String[] implClassNames = (String[]) is.readObject();
 				final String[] frameworkArgs = (String[]) is.readObject();
 				final String[] remoteFrameworkArgs = (String[]) is.readObject();
 
-				Framework framework = null;
-				for (String implClassName : implClassNames) {
-					try {
-						Object rawFramework = Class.forName(implClassName).newInstance();
-						if (rawFramework instanceof Framework)
-							framework = (Framework) rawFramework;
-						else
-							framework = new FrameworkWrapper((org.scalatools.testing.Framework) rawFramework);
-						break;
-					} catch (ClassNotFoundException e) {
-						logDebug(os, "Framework implementation '" + implClassName + "' not present.");
-					}
-				}
-
+				Framework framework = loader.loadFramework(implClassNames);
 				if (framework == null)
 					continue;
 
-				ArrayList<TaskDef> filteredTests = new ArrayList<TaskDef>();
-				for (Fingerprint testFingerprint : framework.fingerprints()) {
-					for (TaskDef test : tests) {
-						// TODO: To pass in correct explicitlySpecified and selectors
-						if (matches(testFingerprint, test.fingerprint()))
-							filteredTests.add(new TaskDef(test.fullyQualifiedName(), test.fingerprint(), test.explicitlySpecified(), test.selectors()));
-					}
-				}
-				final Runner runner = framework.runner(frameworkArgs, remoteFrameworkArgs, getClass().getClassLoader());
-				Task[] tasks = runner.tasks(filteredTests.toArray(new TaskDef[filteredTests.size()]));
-				logDebug(os, "Runner for " + framework.getClass().getName() + " produced " + tasks.length + " initial tasks for " + filteredTests.size() + " tests.");
-
-				runTestTasks(executor, tasks, loggers, os);
-
-				runner.done();
+				Runner runner = framework.runner(frameworkArgs, remoteFrameworkArgs, getClass().getClassLoader());
+				runners.put(framework.name(), runner);
 			}
-			write(os, ForkTags.Done);
-			is.readObject();
+
+			while(true) {
+				Object item = is.readObject();
+				if( item instanceof ForkSuites ) {
+					ForkSuites suites = (ForkSuites)item;
+					Runner runner = runners.get(suites.getFrameworkName());
+					if( runner == null ) {
+						logWarn(os, "Couldn't find a runner for framework " + suites.getFrameworkName());
+					} else {
+						Task[] tasks = runner.tasks(suites.getTaskDefs());
+						runTestTasks(executor, tasks, loggers, os);
+					}
+					write(os, ForkTags.Done);
+				} else {
+					logDebug(os, "Received " + item + " terminating forked runner.");
+					for (Runner runner : runners.values()) {
+						runner.done();
+					}
+					write(os, ForkTags.Done);
+					break;
+				}
+			}
 		}
 
 		void runTestTasks(ExecutorService executor, Task[] tasks, Logger[] loggers, ObjectOutputStream os) {
@@ -274,7 +301,7 @@ public class ForkMain {
 					try {
 						nestedTasks.addAll( Arrays.asList(futureNestedTask.get()));
 					} catch (Exception e) {
-						logError(os, "Failed to execute task " + futureNestedTask);
+						logError(os, "Failed to execute task " + futureNestedTask + ": " + e.getMessage());
 					}
 				}
 				runTestTasks(executor, nestedTasks.toArray(new Task[nestedTasks.size()]), loggers, os);
@@ -282,33 +309,40 @@ public class ForkMain {
 		}
 
 		Future<Task[]> runTest(ExecutorService executor, final Task task, final Logger[] loggers, final ObjectOutputStream os) {
+			// one thread per suite
 			return executor.submit(new Callable<Task[]>() {
 				@Override
 				public Task[] call() {
-					ForkEvent[] events;
 					Task[] nestedTasks;
-					TaskDef taskDef = task.taskDef();
+					final TaskDef taskDef = task.taskDef();
+					final String suiteName = taskDef.fullyQualifiedName();
+					writeStartSuite(os, suiteName);
+
 					try {
-						final List<ForkEvent> eventList = new ArrayList<ForkEvent>();
-						EventHandler handler = new EventHandler() { public void handle(Event e){ eventList.add(new ForkEvent(e)); } };
+						EventHandler handler = new EventHandler() {
+							public void handle(Event e){
+								ForkEvent event = new ForkEvent(e);
+								writeEndTest(os, suiteName, event);
+							}
+						};
 						logDebug(os, "  Running " + taskDef);
 						nestedTasks = task.execute(handler, loggers);
-						if(nestedTasks.length > 0 || eventList.size() > 0)
-							logDebug(os, "    Produced " + nestedTasks.length + " nested tasks and " + eventList.size() + " events.");
-						events = eventList.toArray(new ForkEvent[eventList.size()]);
+						if(nestedTasks.length > 0)
+							logDebug(os, "    Produced " + nestedTasks.length + " nested tasks");
+						writeEndSuite(os, suiteName);
 					}
 					catch (Throwable t) {
 						nestedTasks = new Task[0];
-						events = new ForkEvent[] { testError(os, taskDef, "Uncaught exception when running " + taskDef.fullyQualifiedName() + ": " + t.toString(), t) };
+						writeEndSuiteError(os, suiteName, t);
 					}
-					writeEvents(os, taskDef, events);
 					return nestedTasks;
 				}
 			});
 		}
 
 		void internalError(Throwable t) {
-			System.err.println("Internal error when running tests: " + t.toString());
+			System.err.println("Internal error when running tests:");
+			t.printStackTrace(System.err);
 		}
 
 		ForkEvent testEvent(final String fullyQualifiedName, final Fingerprint fingerprint, final Selector selector, final Status r, final ForkError err, final long duration) {

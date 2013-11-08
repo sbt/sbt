@@ -4,7 +4,7 @@
 package sbt
 package test
 
-	import java.io.{File, IOException}
+	import java.io.{File, IOException,FileWriter}
 	import xsbt.IPC
 	import xsbt.test.{StatementHandler, TestFailed}
 
@@ -64,7 +64,8 @@ final class SbtHandler(directory: File, launcher: File, log: Logger, launchOpts:
 		val launcherJar = launcher.getAbsolutePath
 		val globalBase = "-Dsbt.global.base=" + (new File(directory, "global")).getAbsolutePath
 		val args = "java" :: (launchOpts.toList ++ (globalBase :: "-jar" :: launcherJar :: ( "<" + server.port) :: Nil))
-		val io = BasicIO(log, false).withInput(_.close())
+		val dumpLogger = new DumpLogger( new File(directory, "stdout.dump"), log)
+		val io = BasicIO(dumpLogger, false).withInput(_.close())
 		val p = Process(args, directory) run( io )
 		Spawn { p.exitValue(); server.close() }
 		try { receive("Remote sbt initialization failed", server) }
@@ -75,4 +76,27 @@ final class SbtHandler(directory: File, launcher: File, log: Logger, launchOpts:
 	// if the argument contains spaces, enclose it in quotes, quoting backslashes and quotes
 	def escape(argument: String) =
 		if(argument.contains(" ")) "\"" + argument.replaceAll(q("""\"""), """\\""").replaceAll(q("\""), "\\\"") + "\"" else argument
+}
+
+final class DumpLogger(dumpFile: File, delegate: ProcessLogger) extends ProcessLogger {
+	private val fileWriter = new FileWriter(dumpFile, false)
+
+	private def writeFile(msg: String) {
+		fileWriter.write(msg)
+		fileWriter.flush()
+	}
+
+	def info(s: => String): Unit = {
+		val msg = s
+		writeFile(msg)
+		delegate.info(msg)
+	}
+
+	def error(s: => String): Unit = {
+		val msg = s
+		writeFile(msg)
+		delegate.error(msg)
+	}
+
+	def buffer[T](f: => T): T = delegate.buffer(f)
 }
