@@ -226,6 +226,7 @@ object Incremental
 		val byProduct = changes.removedProducts.flatMap(previous.produced)
 		val byBinaryDep = changes.binaryDeps.flatMap(previous.usesBinary)
 		val byExtSrcDep = invalidateByExternal(previous, changes.external.modified, log) //changes.external.modified.flatMap(previous.usesExternal) // ++ scopeInvalidations
+		checkAbsolute(srcChanges.added.toList)
 		log.debug(
 			"\nInitial source changes: \n\tremoved:" + srcChanges.removed + "\n\tadded: " + srcChanges.added + "\n\tmodified: " + srcChanges.changed +
 			"\nRemoved products: " + changes.removedProducts +
@@ -240,6 +241,19 @@ object Incremental
 
 		srcDirect ++ byProduct ++ byBinaryDep ++ byExtSrcDep
 	}
+	private[this] def checkAbsolute(addedSources: List[File]): Unit =
+		if(addedSources.nonEmpty) {
+			addedSources.filterNot(_.isAbsolute) match {
+				case first :: more =>
+					val fileStrings = more match {
+						case Nil => first.toString
+						case x :: Nil => s"$first and $x"
+						case _ => s"$first and ${more.size} others"
+					}
+					sys.error(s"The incremental compiler requires absolute sources, but some were relative: $fileStrings")
+				case Nil =>
+			}
+		}
 
 	/** Sources invalidated by `external` sources in other projects according to the previous `relations`. */
 	def invalidateByExternal(relations: Relations, external: Set[String], log: Logger): Set[File] =
