@@ -1,0 +1,4 @@
+$ copy-file changes/relative.sbt build.sbt
+-> compile
+$ copy-file changes/absolute.sbt build.sbt
+> compile
