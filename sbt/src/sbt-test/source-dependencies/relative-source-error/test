@@ -1,7 +1,12 @@
 $ copy-file changes/relative.sbt build.sbt
+<<<<<<< HEAD
 > reload
 -> compile
 
 $ copy-file changes/absolute.sbt build.sbt
 > reload
+=======
+-> compile
+$ copy-file changes/absolute.sbt build.sbt
+>>>>>>> 2f683ef... Generate an error when the incremental compiler is given relative source files.  Fixes #923.
 > compile
