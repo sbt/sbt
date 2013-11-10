@@ -9,8 +9,6 @@ A project should define :key:`name` and :key:`version`.  These will be used in v
    :type: setting
    :title: Set the project name
 
-   name := "demo"
-
 ::
 
     name := "Your project name"
@@ -22,16 +20,16 @@ For published projects, this name is normalized to be suitable for use as an art
    :type: setting
    :title: Set the project version
 
-   version := "1.0"
-
 ::
 
-   version := "1.0"
+   version := "1.0-SNAPSHOT"
 
 .. howto::
    :id: organization
    :type: setting
    :title: Set the project organization
+
+::
 
    organization := "org.example"
 
@@ -41,9 +39,9 @@ A full/formal name can be defined in the :key:`organizationName` setting.  This 
 
 ::
 
-    organization := "Example, Inc."
+    organizationName := "Example, Inc."
 
-    organizationHomepage := "org.example"
+    organizationHomepage := Some(url("http://example.org"))
 
 .. howto::
    :id: other
@@ -59,5 +57,5 @@ A full/formal name can be defined in the :key:`organizationName` setting.  This 
 
     description := "A build tool for Scala."
 
-    licenses += "GPLv2" -> "http://www.gnu.org/licenses/gpl-2.0.html"
+    licenses += "GPLv2" -> url("http://www.gnu.org/licenses/gpl-2.0.html")
 
