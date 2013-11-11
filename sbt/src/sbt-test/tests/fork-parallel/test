@@ -1,0 +1,7 @@
+> test
+-> check
+
+> clean
+> set testForkedParallel := true
+> test
+> check
