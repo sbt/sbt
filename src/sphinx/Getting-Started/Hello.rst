@@ -81,7 +81,7 @@ You can force a particular version of sbt by creating a file
 
 .. parsed-literal::
 
-    sbt.version=|release|
+    sbt.version=\ |release|
 
 to force the use of sbt |release|.  sbt is 99% source compatible from release to release.
 Still, setting the sbt version in `project/build.properties` avoids
