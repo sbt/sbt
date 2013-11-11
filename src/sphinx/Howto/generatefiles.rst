@@ -9,19 +9,19 @@ sbt provides standard hooks for adding source or resource generation tasks.
    :title: Generate sources
    :type: setting
 
-   sourceGenerators in Compile += <your Task[Seq[File]] here>
+   sourceGenerators in Compile <+= <your Task[Seq[File]] here>
 
 A source generation task should generate sources in a subdirectory of :key:`sourceManaged` and return a sequence of files generated.  The key to add the task to is called :key:`sourceGenerators`.  It should be scoped according to whether the generated files are main (`Compile`) or test (`Test`) sources.  This basic structure looks like:
 
 ::
 
-    sourceGenerators in Compile += <your Task[Seq[File]] here>
+    sourceGenerators in Compile <+= <your Task[Seq[File]] here>
 
 For example, assuming a method `def makeSomeSources(base: File): Seq[File]`,
 
 ::
 
-    sourceGenerators in Compile +=
+    sourceGenerators in Compile <+=
       Def.task { makeSomeSources( (sourceManaged in Compile).value / "demo" ) }
 
 
@@ -29,7 +29,7 @@ As a specific example, the following generates a hello world source file:
 
 ::
 
-    sourceGenerators in Compile += Def.task {
+    sourceGenerators in Compile <+= Def.task {
       val file = (sourceManaged in Compile).value / "demo" / "Test.scala"
       IO.write(file, """object Test extends App { println("Hi") }""")
       Seq(file)
@@ -44,19 +44,19 @@ By default, generated sources are not included in the packaged source artifact. 
    :title: Generate resources
    :type: setting
 
-   resourceGenerators in Compile += <your Task[Seq[File]] here>
+   resourceGenerators in Compile <+= <your Task[Seq[File]] here>
 
 A resource generation task should generate resources in a subdirectory of :key:`resourceManaged` and return a sequence of files generated.  The key to add the task to is called :key:`resourceGenerators`.  It should be scoped according to whether the generated files are main (`Compile`) or test (`Test`) resources.  This basic structure looks like:
 
 ::
 
-    resourceGenerators in Compile += <your Task[Seq[File]] here>
+    resourceGenerators in Compile <+= <your Task[Seq[File]] here>
 
 For example, assuming a method `def makeSomeResources(base: File): Seq[File]`,
 
 ::
 
-    resourceGenerators in Compile += Def.task {
+    resourceGenerators in Compile <+= Def.task {
       makeSomeResources( (resourceManaged in Compile).value / "demo")
     }
 
@@ -64,7 +64,7 @@ As a specific example, the following generates a properties file containing the 
 
 ::
 
-    resourceGenerators in Compile += {
+    resourceGenerators in Compile <+= {
         val file = (resourceManaged in Compile).value / "demo" / "myapp.properties"
         val contents = "name=%s\nversion=%s".format(name.value,version.value)
         IO.write(file, contents)
