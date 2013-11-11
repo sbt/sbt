@@ -34,7 +34,7 @@ case class TestFramework(val implClassNames: String*)
 				{
 					Some(Class.forName(head, true, loader).newInstance match {
 						case newFramework: Framework => newFramework
-						case oldFramework: OldFramework => new FrameworkWrapper(oldFramework)
+						case oldFramework: OldFramework => new FrameworkAdapter(oldFramework)
 					})
 				}
 				catch 
@@ -65,15 +65,15 @@ final class TestDefinition(val name: String, val fingerprint: Fingerprint, val e
 
 final class TestRunner(delegate: Runner, listeners: Seq[TestReportListener], log: Logger) {
 
-    final def tasks(testDefs: Set[TestDefinition]): Array[TestTask] = 
-      delegate.tasks(testDefs.map(df => new TaskDef(df.name, df.fingerprint, df.explicitlySpecified, df.selectors)).toArray)
+	final def tasks(testDefs: Set[TestDefinition]): Array[TestTask] =
+		delegate.tasks(testDefs.map(df => new TaskDef(df.name, df.fingerprint, df.explicitlySpecified, df.selectors)).toArray)
 
 	final def run(taskDef: TaskDef, testTask: TestTask): (SuiteResult, Seq[TestTask]) =
 	{
-        val testDefinition = new TestDefinition(taskDef.fullyQualifiedName, taskDef.fingerprint, taskDef.explicitlySpecified, taskDef.selectors)
+		val testDefinition = new TestDefinition(taskDef.fullyQualifiedName, taskDef.fingerprint, taskDef.explicitlySpecified, taskDef.selectors)
 		log.debug("Running " + taskDef)
 		val name = testDefinition.name
-		
+
 		def runTest() =
 		{
 			// here we get the results! here is where we'd pass in the event listener
@@ -167,7 +167,7 @@ object TestFramework
 	{
 		import scala.collection.mutable.{HashMap, HashSet, Set}
 		val map = new HashMap[Framework, Set[TestDefinition]]
- 		def assignTest(test: TestDefinition)
+		def assignTest(test: TestDefinition)
 		{
 			def isTestForFramework(framework: Framework) = getFingerprints(framework).exists {t => matches(t, test.fingerprint) }
 			for(framework <- frameworks.find(isTestForFramework))
@@ -192,8 +192,8 @@ object TestFramework
 				val runner = runners(framework)
 				val testTasks = withContextLoader(loader) { runner.tasks(testDefinitions) }
 				for (testTask <- testTasks) yield {
-				  val taskDef = testTask.taskDef
-				  (taskDef.fullyQualifiedName, createTestFunction(loader, taskDef, runner, testTask))
+					val taskDef = testTask.taskDef
+					(taskDef.fullyQualifiedName, createTestFunction(loader, taskDef, runner, testTask))
 				}
 			}
 

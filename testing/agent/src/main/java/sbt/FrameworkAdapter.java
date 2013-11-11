@@ -1,13 +1,16 @@
 package sbt;
 
 import sbt.testing.*;
-import java.io.Serializable;
 
-final class FrameworkWrapper implements Framework {
+/**
+ * Adapts the old {@link org.scalatools.testing.Framework} interface into the new
+ * {@link sbt.testing.Framework}
+ */
+final class FrameworkAdapter implements Framework {
 
 	private org.scalatools.testing.Framework oldFramework;
 
-	public FrameworkWrapper(org.scalatools.testing.Framework oldFramework) {
+	public FrameworkAdapter(org.scalatools.testing.Framework oldFramework) {
 		this.oldFramework = oldFramework;
 	}
 
@@ -22,26 +25,26 @@ final class FrameworkWrapper implements Framework {
 		for (int i=0; i < length; i++) {
 			org.scalatools.testing.Fingerprint oldFingerprint = oldFingerprints[i];
 			if (oldFingerprint instanceof org.scalatools.testing.TestFingerprint)
-				fingerprints[i] = new SubclassFingerprintWrapper((org.scalatools.testing.TestFingerprint) oldFingerprint);
+				fingerprints[i] = new SubclassFingerprintAdapter((org.scalatools.testing.TestFingerprint) oldFingerprint);
 			else if (oldFingerprint instanceof org.scalatools.testing.SubclassFingerprint)
-				fingerprints[i] = new SubclassFingerprintWrapper((org.scalatools.testing.SubclassFingerprint) oldFingerprint);
+				fingerprints[i] = new SubclassFingerprintAdapter((org.scalatools.testing.SubclassFingerprint) oldFingerprint);
 			else
-				fingerprints[i] = new AnnotatedFingerprintWrapper((org.scalatools.testing.AnnotatedFingerprint) oldFingerprint);
+				fingerprints[i] = new AnnotatedFingerprintAdapter((org.scalatools.testing.AnnotatedFingerprint) oldFingerprint);
 		}
 		return fingerprints;
 	}
 
 	public Runner runner(String[] args, String[] remoteArgs, ClassLoader testClassLoader) {
-		return new RunnerWrapper(oldFramework, testClassLoader, args);
+		return new RunnerAdapter(oldFramework, testClassLoader, args);
 	}
 }
 
-final class SubclassFingerprintWrapper implements SubclassFingerprint {
+final class SubclassFingerprintAdapter implements SubclassFingerprint {
 	private String superclassName;
 	private boolean isModule;
 	private boolean requireNoArgConstructor;
 
-	public SubclassFingerprintWrapper(org.scalatools.testing.SubclassFingerprint oldFingerprint) {
+	public SubclassFingerprintAdapter(org.scalatools.testing.SubclassFingerprint oldFingerprint) {
 		this.superclassName = oldFingerprint.superClassName();
 		this.isModule = oldFingerprint.isModule();
 		this.requireNoArgConstructor = false;  // Old framework SubclassFingerprint does not require no arg constructor
@@ -60,11 +63,11 @@ final class SubclassFingerprintWrapper implements SubclassFingerprint {
 	}
 }
 
-final class AnnotatedFingerprintWrapper implements AnnotatedFingerprint {
+final class AnnotatedFingerprintAdapter implements AnnotatedFingerprint {
 	private String annotationName;
 	private boolean isModule;
 
-	public AnnotatedFingerprintWrapper(org.scalatools.testing.AnnotatedFingerprint oldFingerprint) {
+	public AnnotatedFingerprintAdapter(org.scalatools.testing.AnnotatedFingerprint oldFingerprint) {
 		this.annotationName = oldFingerprint.annotationName();
 		this.isModule = oldFingerprint.isModule();
 	}
@@ -78,31 +81,31 @@ final class AnnotatedFingerprintWrapper implements AnnotatedFingerprint {
 	}
 }
 
-final class EventHandlerWrapper implements org.scalatools.testing.EventHandler {
+final class EventHandlerAdapter implements org.scalatools.testing.EventHandler {
 
 	private EventHandler newEventHandler;
 	private String fullyQualifiedName;
 	private Fingerprint fingerprint;
 
-	public EventHandlerWrapper(EventHandler newEventHandler, String fullyQualifiedName, Fingerprint fingerprint) {
+	public EventHandlerAdapter(EventHandler newEventHandler, String fullyQualifiedName, Fingerprint fingerprint) {
 		this.newEventHandler = newEventHandler;
 		this.fullyQualifiedName = fullyQualifiedName;
 		this.fingerprint = fingerprint;
 	}
 
 	public void handle(org.scalatools.testing.Event oldEvent) {
-		newEventHandler.handle(new EventWrapper(oldEvent, fullyQualifiedName, fingerprint));
+		newEventHandler.handle(new EventAdapter(oldEvent, fullyQualifiedName, fingerprint));
 	}
 }
 
-final class EventWrapper implements Event {
+final class EventAdapter implements Event {
 
 	private org.scalatools.testing.Event oldEvent;
 	private String className;
 	private Fingerprint fingerprint;
 	private OptionalThrowable throwable;
 
-	public EventWrapper(org.scalatools.testing.Event oldEvent, String className, Fingerprint fingerprint) {
+	public EventAdapter(org.scalatools.testing.Event oldEvent, String className, Fingerprint fingerprint) {
 		this.oldEvent = oldEvent;
 		this.className = className;
 		this.fingerprint = fingerprint;
@@ -149,13 +152,13 @@ final class EventWrapper implements Event {
 	}
 }
 
-final class RunnerWrapper implements Runner {
+final class RunnerAdapter implements Runner {
 
 	private org.scalatools.testing.Framework oldFramework;
 	private ClassLoader testClassLoader;
 	private String[] args;
 
-	public RunnerWrapper(org.scalatools.testing.Framework oldFramework, ClassLoader testClassLoader, String[] args) {
+	public RunnerAdapter(org.scalatools.testing.Framework oldFramework, ClassLoader testClassLoader, String[] args) {
 		this.oldFramework = oldFramework;
 		this.testClassLoader = testClassLoader;
 		this.args = args;
@@ -197,7 +200,7 @@ final class RunnerWrapper implements Runner {
 						public String superClassName() { return subclassFingerprint.superclassName(); }
 					};
 				final String name = taskDef.fullyQualifiedName();
-				runner.run(name, oldFingerprint, new EventHandlerWrapper(eventHandler, name, subclassFingerprint), args);
+				runner.run(name, oldFingerprint, new EventHandlerAdapter(eventHandler, name, subclassFingerprint), args);
 			}
 			
 			private void runRunner2(org.scalatools.testing.Runner2 runner, Fingerprint fingerprint, EventHandler eventHandler) {
@@ -217,7 +220,7 @@ final class RunnerWrapper implements Runner {
 					};
 				}
 				final String name = taskDef.fullyQualifiedName();
-				runner.run(name, oldFingerprint, new EventHandlerWrapper(eventHandler, name, fingerprint), args);
+				runner.run(name, oldFingerprint, new EventHandlerAdapter(eventHandler, name, fingerprint), args);
 			}
         
 			public Task[] execute(EventHandler eventHandler, Logger[] loggers) {
