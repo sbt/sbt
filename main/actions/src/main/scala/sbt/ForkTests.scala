@@ -12,7 +12,7 @@ import ForkMain._
 
 private[sbt] object ForkTests
 {
-	def apply(runners: Map[TestFramework, Runner],  tests: List[TestDefinition], config: Execution, classpath: Seq[File], fork: ForkOptions, log: Logger, parallel: Boolean): Task[TestOutput]  = {
+	def apply(runners: Map[TestFramework, Runner],  tests: List[TestDefinition], config: Execution, classpath: Seq[File], fork: ForkOptions, log: Logger): Task[TestOutput]  = {
 		val opts = processOptions(config, tests, log)
 
 			import std.TaskExtra._
@@ -23,7 +23,7 @@ private[sbt] object ForkTests
 			if(opts.tests.isEmpty)
 				constant( TestOutput(TestResult.Passed, Map.empty[String, SuiteResult], Iterable.empty) )
 			else
-				mainTestTask(runners, opts, classpath, fork, log, parallel).tagw(config.tags: _*)
+				mainTestTask(runners, opts, classpath, fork, log, config.parallel).tagw(config.tags: _*)
 		main.dependsOn( all(opts.setup) : _*) flatMap { results =>
 			all(opts.cleanup).join.map( _ => results)
 		}

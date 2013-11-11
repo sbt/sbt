@@ -198,19 +198,22 @@ public class ForkMain {
 			write(os, new Object[]{taskDef.fullyQualifiedName(), events});
 		}
 
-		ExecutorService executorService(ForkConfiguration config) {
+		ExecutorService executorService(ForkConfiguration config, ObjectOutputStream os) {
 			if(config.isParallel()) {
+				int nbThreads = Runtime.getRuntime().availableProcessors();
+				logDebug(os, "Create a test executor with a thread pool of " + nbThreads + " threads.");
 				// more options later...
 				// TODO we might want to configure the blocking queue with size #proc
-				return Executors.newFixedThreadPool(Runtime.getRuntime().availableProcessors());
+				return Executors.newFixedThreadPool(nbThreads);
 			} else {
+				logDebug(os, "Create a single-thread test executor");
 				return Executors.newSingleThreadExecutor();
 			}
 		}
 
 		void runTests(ObjectInputStream is, final ObjectOutputStream os) throws Exception {
 			final ForkConfiguration config = (ForkConfiguration) is.readObject();
-			ExecutorService executor = executorService(config);
+			ExecutorService executor = executorService(config, os);
 			final TaskDef[] tests = (TaskDef[]) is.readObject();
 			int nFrameworks = is.readInt();
 			Logger[] loggers = { remoteLogger(config.isAnsiCodesSupported(), os) };

@@ -359,7 +359,7 @@ object Defaults extends BuildCommon
 		definedTests <<= detectTests,
 		definedTestNames <<= definedTests map ( _.map(_.name).distinct) storeAs definedTestNames triggeredBy compile,
 		testFilter in testQuick <<= testQuickFilter,
-		executeTests <<= (streams in test, loadedTestFrameworks, testLoader, testGrouping in test, testExecution in test, fullClasspath in test, javaHome in test, parallelExecution in test, testForkedParallel) flatMap allTestGroupsTask,
+		executeTests <<= (streams in test, loadedTestFrameworks, testLoader, testGrouping in test, testExecution in test, fullClasspath in test, javaHome in test, testForkedParallel) flatMap allTestGroupsTask,
 		test := {
 			implicit val display = Project.showContextKey(state.value)
 			Tests.showResults(streams.value.log, executeTests.value, noTestsMessage(resolvedScoped.value))
@@ -469,7 +469,7 @@ object Defaults extends BuildCommon
 			implicit val display = Project.showContextKey(state.value)
 			val modifiedOpts = Tests.Filters(filter(selected)) +: Tests.Argument(frameworkOptions : _*) +: config.options
 			val newConfig = config.copy(options = modifiedOpts)
-			val output = allTestGroupsTask(s, loadedTestFrameworks.value, testLoader.value, testGrouping.value, newConfig, fullClasspath.value, javaHome.value, (parallelExecution in test).value, testForkedParallel.value)
+			val output = allTestGroupsTask(s, loadedTestFrameworks.value, testLoader.value, testGrouping.value, newConfig, fullClasspath.value, javaHome.value, testForkedParallel.value)
 			val processed =
 				for(out <- output) yield
 					Tests.showResults(s.log, out, noTestsMessage(resolvedScoped.value))
@@ -490,13 +490,19 @@ object Defaults extends BuildCommon
 		}
 	}
 
-	def allTestGroupsTask(s: TaskStreams, frameworks: Map[TestFramework,Framework], loader: ClassLoader, groups: Seq[Tests.Group], config: Tests.Execution,	cp: Classpath, javaHome: Option[File], parallelExecution: Boolean, forkedParallelExecution: Boolean): Task[Tests.Output] = {
+	def allTestGroupsTask(s: TaskStreams, frameworks: Map[TestFramework,Framework], loader: ClassLoader, groups: Seq[Tests.Group], config: Tests.Execution,	cp: Classpath, javaHome: Option[File]): Task[Tests.Output] = {
+		allTestGroupsTask(s,frameworks,loader, groups, config, cp, javaHome, forkedParallelExecution = false)
+	}
+
+	def allTestGroupsTask(s: TaskStreams, frameworks: Map[TestFramework,Framework], loader: ClassLoader, groups: Seq[Tests.Group], config: Tests.Execution,	cp: Classpath, javaHome: Option[File], forkedParallelExecution: Boolean): Task[Tests.Output] = {
 		val runners = createTestRunners(frameworks, loader, config)
 		val groupTasks = groups map {
 			case Tests.Group(name, tests, runPolicy) =>
 				runPolicy match {
 					case Tests.SubProcess(opts) =>
-						ForkTests(runners, tests.toList, config, cp.files, opts, s.log, parallelExecution && forkedParallelExecution) tag Tags.ForkedTestGroup
+						val forkedConfig = config.copy(parallel = config.parallel && forkedParallelExecution)
+						s.log.debug(s"Forking tests - parallelism = ${forkedConfig.parallel}")
+						ForkTests(runners, tests.toList, forkedConfig, cp.files, opts, s.log) tag Tags.ForkedTestGroup
 					case Tests.InProcess =>
 						Tests(frameworks, loader, runners, tests, config, s.log)
 				}
