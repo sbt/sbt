@@ -227,7 +227,7 @@ public class ForkMain {
 						if (rawFramework instanceof Framework)
 							framework = (Framework) rawFramework;
 						else
-							framework = new FrameworkAdapter((org.scalatools.testing.Framework) rawFramework);
+							framework = new FrameworkWrapper((org.scalatools.testing.Framework) rawFramework);
 						break;
 					} catch (ClassNotFoundException e) {
 						logDebug(os, "Framework implementation '" + implClassName + "' not present.");
