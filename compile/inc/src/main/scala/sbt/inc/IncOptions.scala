@@ -46,42 +46,62 @@ final class IncOptions(
 	*/
 	val apiDumpDirectory: Option[java.io.File],
 	/** Creates a new ClassfileManager that will handle class file deletion and addition during a single incremental compilation run. */
-	val newClassfileManager: () => ClassfileManager
+	val newClassfileManager: () => ClassfileManager,
+	/**
+	 * Determines whether incremental compiler should recompile all dependencies of a file
+	 * that contains a macro definition.
+	 */
+	val recompileOnMacroDef: Boolean
 ) extends Product with Serializable {
+
+	/**
+	 * Secondary constructor introduced to make IncOptions to be binary compatible with version that didn't have
+	 * `recompileOnMacroDef` filed defined.
+	 */
+	def this(transitiveStep: Int, recompileAllFraction: Double, relationsDebug: Boolean, apiDebug: Boolean,
+			 apiDiffContextSize: Int, apiDumpDirectory: Option[java.io.File], newClassfileManager: () => ClassfileManager) = {
+		this(transitiveStep, recompileAllFraction, relationsDebug, apiDebug, apiDiffContextSize,
+		     apiDumpDirectory, newClassfileManager, IncOptions.recompileOnMacroDefDefault)
+	}
 
 	def withTransitiveStep(transitiveStep: Int): IncOptions = {
 		new IncOptions(transitiveStep, recompileAllFraction, relationsDebug, apiDebug, apiDiffContextSize,
-			apiDumpDirectory, newClassfileManager)
+			apiDumpDirectory, newClassfileManager, recompileOnMacroDef)
 	}
 
 	def withRecompileAllFraction(recompileAllFraction: Double): IncOptions = {
 		new IncOptions(transitiveStep, recompileAllFraction, relationsDebug, apiDebug, apiDiffContextSize,
-			apiDumpDirectory, newClassfileManager)
+			apiDumpDirectory, newClassfileManager, recompileOnMacroDef)
 	}
 
 	def withRelationsDebug(relationsDebug: Boolean): IncOptions = {
 		new IncOptions(transitiveStep, recompileAllFraction, relationsDebug, apiDebug, apiDiffContextSize,
-			apiDumpDirectory, newClassfileManager)
+			apiDumpDirectory, newClassfileManager, recompileOnMacroDef)
 	}
 
 	def withApiDebug(apiDebug: Boolean): IncOptions = {
 		new IncOptions(transitiveStep, recompileAllFraction, relationsDebug, apiDebug, apiDiffContextSize,
-			apiDumpDirectory, newClassfileManager)
+			apiDumpDirectory, newClassfileManager, recompileOnMacroDef)
 	}
 
 	def withApiDiffContextSize(apiDiffContextSize: Int): IncOptions = {
 		new IncOptions(transitiveStep, recompileAllFraction, relationsDebug, apiDebug, apiDiffContextSize,
-			apiDumpDirectory, newClassfileManager)
+			apiDumpDirectory, newClassfileManager, recompileOnMacroDef)
 	}
 
 	def withApiDumpDirectory(apiDumpDirectory: Option[File]): IncOptions = {
 		new IncOptions(transitiveStep, recompileAllFraction, relationsDebug, apiDebug, apiDiffContextSize,
-			apiDumpDirectory, newClassfileManager)
+			apiDumpDirectory, newClassfileManager, recompileOnMacroDef)
 	}
 
 	def withNewClassfileManager(newClassfileManager: () => ClassfileManager): IncOptions = {
 		new IncOptions(transitiveStep, recompileAllFraction, relationsDebug, apiDebug, apiDiffContextSize,
-			apiDumpDirectory, newClassfileManager)
+			apiDumpDirectory, newClassfileManager, recompileOnMacroDef)
+	}
+
+	def withRecompileOnMacroDef(recompileOnMacroDef: Boolean): IncOptions = {
+		new IncOptions(transitiveStep, recompileAllFraction, relationsDebug, apiDebug, apiDiffContextSize,
+			apiDumpDirectory, newClassfileManager, recompileOnMacroDef)
 	}
 
 	//- EXPANDED CASE CLASS METHOD BEGIN -//
@@ -147,7 +167,8 @@ final class IncOptions(
 }
 
 object IncOptions extends Serializable {
-	val Default = new IncOptions(
+	private val recompileOnMacroDefDefault: Boolean = true
+	val Default = IncOptions(
 		//    1. recompile changed sources
 		// 2(3). recompile direct dependencies and transitive public inheritance dependencies of sources with API changes in 1(2).
 		//    4. further changes invalidate all dependencies transitively to avoid too many steps
@@ -157,17 +178,25 @@ object IncOptions extends Serializable {
 		apiDebug = false,
 		apiDiffContextSize = 5,
 		apiDumpDirectory = None,
-		newClassfileManager = ClassfileManager.deleteImmediately
+		newClassfileManager = ClassfileManager.deleteImmediately,
+		recompileOnMacroDef = recompileOnMacroDefDefault
 	)
 	//- EXPANDED CASE CLASS METHOD BEGIN -//
 	final override def toString(): String = "IncOptions"
+	@deprecated("Use overloaded variant of `apply` with complete list of arguments instead.", "0.13.2")
 	def apply(transitiveStep: Int, recompileAllFraction: Double, relationsDebug: Boolean, apiDebug: Boolean,
 			  apiDiffContextSize: Int, apiDumpDirectory: Option[java.io.File],
 			  newClassfileManager: () => ClassfileManager): IncOptions = {
 		new IncOptions(transitiveStep, recompileAllFraction, relationsDebug, apiDebug, apiDiffContextSize,
 			apiDumpDirectory, newClassfileManager)
 	}
-	@deprecated("Methods generated for case class will be removed in the future.", "0.13.2")
+	def apply(transitiveStep: Int, recompileAllFraction: Double, relationsDebug: Boolean, apiDebug: Boolean,
+			  apiDiffContextSize: Int, apiDumpDirectory: Option[java.io.File],
+			  newClassfileManager: () => ClassfileManager, recompileOnMacroDef: Boolean): IncOptions = {
+		new IncOptions(transitiveStep, recompileAllFraction, relationsDebug, apiDebug, apiDiffContextSize,
+			apiDumpDirectory, newClassfileManager, recompileOnMacroDef)
+	}
+    @deprecated("Methods generated for case class will be removed in the future.", "0.13.2")
 	def unapply(x$0: IncOptions): Option[(Int, Double, Boolean, Boolean, Int, Option[java.io.File], () => AnyRef)] = {
 	  if (x$0 == null) None
       else Some.apply[(Int, Double, Boolean, Boolean, Int, Option[java.io.File], () => AnyRef)](
@@ -187,7 +216,8 @@ object IncOptions extends Serializable {
 	val relationsDebugKey       = "relationsDebug"
 	val apiDebugKey             = "apiDebug"
 	val apiDumpDirectoryKey     = "apiDumpDirectory"
-	val apiDiffContextSize      = "apiDiffContextSize"
+	val apiDiffContextSizeKey   = "apiDiffContextSize"
+	val recompileOnMacroDefKey  = "recompileOnMacroDefKey"
 
 	def fromStringMap(m: java.util.Map[String, String]): IncOptions = {
 		// all the code below doesn't look like idiomatic Scala for a good reason: we are working with Java API
@@ -208,7 +238,7 @@ object IncOptions extends Serializable {
 			if (m.containsKey(k)) m.get(k).toBoolean else Default.apiDebug
 		}
 		def getApiDiffContextSize: Int = {
-			val k = apiDiffContextSize
+			val k = apiDiffContextSizeKey
 			if (m.containsKey(k)) m.get(k).toInt else Default.apiDiffContextSize
 		}
 		def getApiDumpDirectory: Option[java.io.File] = {
@@ -217,9 +247,13 @@ object IncOptions extends Serializable {
 				Some(new java.io.File(m.get(k)))
 			else None
 		}
+		def getRecompileOnMacroDef: Boolean = {
+			val k = recompileOnMacroDefKey
+			if (m.containsKey(k)) m.get(k).toBoolean else Default.recompileOnMacroDef
+		}
 
 		new IncOptions(getTransitiveStep, getRecompileAllFraction, getRelationsDebug, getApiDebug, getApiDiffContextSize,
-			getApiDumpDirectory, ClassfileManager.deleteImmediately)
+			getApiDumpDirectory, ClassfileManager.deleteImmediately, getRecompileOnMacroDef)
 	}
 
 	def toStringMap(o: IncOptions): java.util.Map[String, String] = {
@@ -229,7 +263,8 @@ object IncOptions extends Serializable {
 		m.put(relationsDebugKey, o.relationsDebug.toString)
 		m.put(apiDebugKey, o.apiDebug.toString)
 		o.apiDumpDirectory.foreach(f => m.put(apiDumpDirectoryKey, f.toString))
-		m.put(apiDiffContextSize, o.apiDiffContextSize.toString)
+		m.put(apiDiffContextSizeKey, o.apiDiffContextSize.toString)
+		m.put(recompileOnMacroDefKey, o.recompileOnMacroDef.toString)
 		m
 	}
 }
