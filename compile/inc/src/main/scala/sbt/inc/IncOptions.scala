@@ -211,13 +211,13 @@ object IncOptions extends Serializable {
 	def setTransactional(opts: IncOptions, tempDir: File): IncOptions =
 		opts.copy(newClassfileManager = ClassfileManager.transactional(tempDir))
 
-	val transitiveStepKey       = "transitiveStep"
-	val recompileAllFractionKey = "recompileAllFraction"
-	val relationsDebugKey       = "relationsDebug"
-	val apiDebugKey             = "apiDebug"
-	val apiDumpDirectoryKey     = "apiDumpDirectory"
-	val apiDiffContextSizeKey   = "apiDiffContextSize"
-	val recompileOnMacroDefKey  = "recompileOnMacroDefKey"
+	private val transitiveStepKey       = "transitiveStep"
+	private val recompileAllFractionKey = "recompileAllFraction"
+	private val relationsDebugKey       = "relationsDebug"
+	private val apiDebugKey             = "apiDebug"
+	private val apiDumpDirectoryKey     = "apiDumpDirectory"
+	private val apiDiffContextSizeKey   = "apiDiffContextSize"
+	private val recompileOnMacroDefKey  = "recompileOnMacroDefKey"
 
 	def fromStringMap(m: java.util.Map[String, String]): IncOptions = {
 		// all the code below doesn't look like idiomatic Scala for a good reason: we are working with Java API
