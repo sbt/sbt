@@ -142,7 +142,7 @@ object Incremental
 	{
 		val oldApis = lastSources.toSeq map oldAPI
 		val newApis = lastSources.toSeq map newAPI
-		val apiChanges = (lastSources, oldApis, newApis).zipped.flatMap { (src, oldApi, newApi) => sameSource(src, oldApi, newApi, log) }
+		val apiChanges = (lastSources, oldApis, newApis).zipped.flatMap { (src, oldApi, newApi) => sameSource(src, oldApi, newApi, log, options) }
 
 		if (apiDebug(options) && apiChanges.nonEmpty) {
 			logApiChanges(apiChanges, oldAPI, newAPI, log, options)
@@ -150,13 +150,13 @@ object Incremental
 
 		new APIChanges(apiChanges)
 	}
-	def sameSource[T](src: T, a: Source, b: Source, log: Logger): Option[APIChange[T]] = {
+	def sameSource[T](src: T, a: Source, b: Source, log: Logger, options: IncOptions): Option[APIChange[T]] = {
 		// Clients of a modified source file (ie, one that doesn't satisfy `shortcutSameSource`) containing macros must be recompiled.
 		val hasMacro = a.hasMacro || b.hasMacro
 		if (shortcutSameSource(a, b)) {
 			None
 		} else {
-			if (hasMacro) {
+			if (hasMacro && options.recompileOnMacroDef) {
 				Some(APIChangeDueToMacroDefinition(src))
 			} else sameAPI(src, a, b, log)
 		}
