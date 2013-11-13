@@ -12,6 +12,7 @@ import Path._
 object BasicCommandStrings
 {
 	val HelpCommand = "help"
+	val CompletionsCommand = "completions"
 	val Exit = "exit"
 	val Quit = "quit"
 
@@ -31,6 +32,9 @@ object BasicCommandStrings
 
 	Searches the help according to the provided regular expression.
 """
+
+  	def CompletionsDetailed = "Displays a list of completions for the given argument string (run 'completions <string>')."
+  	def CompletionsBrief = (CompletionsCommand, CompletionsDetailed)
 
 	def HistoryHelpBrief = (HistoryCommands.Start -> "History command help.  Lists and describes all history commands.")
 	def historyHelp = Help(Nil, (HistoryHelpBrief +: HistoryCommands.descriptions).toMap, Set(HistoryCommands.Start))

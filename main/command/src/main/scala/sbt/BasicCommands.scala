@@ -15,7 +15,7 @@ package sbt
 
 object BasicCommands
 {
-	lazy val allBasicCommands = Seq(nop, ignore, help, multi, ifLast, append, setOnFailure, clearOnFailure, stashOnFailure, popOnFailure, reboot, call, early, exit, continuous, history, shell, read, alias) ++ compatCommands
+	lazy val allBasicCommands = Seq(nop, ignore, help, completionsCommand, multi, ifLast, append, setOnFailure, clearOnFailure, stashOnFailure, popOnFailure, reboot, call, early, exit, continuous, history, shell, read, alias) ++ compatCommands
 
 	def nop = Command.custom(s => success(() => s))
 	def ignore = Command.command(FailureWall)(idFun)
@@ -42,6 +42,21 @@ object BasicCommands
 	}
 	@deprecated("Use Help.moreMessage", "0.13.0")
 	def moreHelp(more: Seq[String]): String = Help.moreMessage(more)
+
+	def completionsCommand = Command.make(CompletionsCommand, CompletionsBrief, CompletionsDetailed)(completionsParser)
+	def completionsParser(state: State) =
+	{
+		applyEffect(singleArgument(Set.empty).?)(runCompletions(state))
+	}
+	def runCompletions(state: State)(input: Option[String]): State = {
+		val str = input.getOrElse("")
+		Parser.completions(state.combinedParser, str, 9).get map {
+			c => if (c.isEmpty) str else str + c.append
+		} foreach { c =>
+			System.out.println("[completions] " + c.replaceAll("\n", " "))
+		}
+		state
+	}
 
 
 	def multiParser(s: State): Parser[Seq[String]] =
