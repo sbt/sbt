@@ -33,3 +33,13 @@ class ExtraTest extends xsbti.AppMain
 		new Exit(0)
 	}
 }
+object PlainArgumentTestWithReturn {
+  def main(args: Array[String]): Int =
+    if(args.length == 0) 1
+    else 0
+}
+object PlainArgumentTest {
+  def main(args: Array[String]): Unit =
+    if(args.length == 0) throw new MainException("Arguments were empty")
+    else ()
+}
