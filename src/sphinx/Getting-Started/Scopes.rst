@@ -156,15 +156,15 @@ For more details, see :doc:`/Detailed-Topics/Inspecting-Settings`.
 Examples of scoped key notation
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
--  :key:`fullClasspath`: just a key, so the default scopes are used:
+-  :key:`fullClasspath` specifies just a key, so the default scopes are used:
    current project, a key-dependent configuration, and global task
    scope.
--  `test:fullClasspath`: specifies the configuration, so this is
+-  `test:fullClasspath` specifies the configuration, so this is
    :key:`fullClasspath` in the `test` configuration, with defaults for
    the other two scope axes.
--  `*:fullClasspath`: specifies `Global` for the configuration,
+-  `*:fullClasspath` specifies `Global` for the configuration,
    rather than the default configuration.
--  `doc::fullClasspath`: specifies the :key:`fullClasspath` key scoped
+-  `doc::fullClasspath` specifies the :key:`fullClasspath` key scoped
    to the `doc` task, with the defaults for the project and
    configuration axes.
 -  `{file:/home/hp/checkout/hello/}default-aea33a/test:fullClasspath`
