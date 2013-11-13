@@ -151,9 +151,7 @@ object Sbt extends Build
 		normalizedName := "sbt"
 	)
 
-	def scriptedTask: Initialize[InputTask[Unit]] = InputTask(scriptedSource(dir => (s: State) => scriptedParser(dir))) { result =>
-		(proguard in Proguard, fullClasspath in scriptedSbtSub in Test, scalaInstance in scriptedSbtSub, publishAll, scriptedSource, result) map {
-			(launcher, scriptedSbtClasspath, scriptedSbtInstance, _, sourcePath, args) =>
+	private def doScripted(launcher : File, scriptedSbtClasspath : Seq[Attributed[File]], scriptedSbtInstance: ScalaInstance, sourcePath : File, args : Seq[String]) {
 			val noJLine = new classpath.FilteredLoader(scriptedSbtInstance.loader, "jline." :: Nil)
 			val loader = classpath.ClasspathUtilities.toLoader(scriptedSbtClasspath.files, noJLine)
 			val m = ModuleUtilities.getObject("sbt.test.ScriptedTests", loader)
@@ -161,7 +159,17 @@ object Sbt extends Build
 			val launcherVmOptions = Array("-XX:MaxPermSize=256M") // increased after a failure in scripted source-dependencies/macro
 			try { r.invoke(m, sourcePath, true: java.lang.Boolean, args.toArray[String], launcher, launcherVmOptions) }
 			catch { case ite: java.lang.reflect.InvocationTargetException => throw ite.getCause }
+	}
+
+	def scriptedTask: Initialize[InputTask[Unit]] = InputTask(scriptedSource(dir => (s: State) => scriptedParser(dir))) { result =>
+		(proguard in Proguard, fullClasspath in scriptedSbtSub in Test, scalaInstance in scriptedSbtSub, publishAll, scriptedSource, result) map {
+			(launcher, scriptedSbtClasspath, scriptedSbtInstance, _, sourcePath, args) =>
+				doScripted(launcher, scriptedSbtClasspath, scriptedSbtInstance, sourcePath, args)
 		}
+	}
+
+	def scriptedUnpublishedTask: Initialize[InputTask[Unit]] = InputTask(scriptedSource(dir => (s: State) => scriptedParser(dir))) { result =>
+		(proguard in Proguard, fullClasspath in scriptedSbtSub in Test, scalaInstance in scriptedSbtSub, scriptedSource, result) map doScripted
 	}
 
 		import sbt.complete._
@@ -182,6 +190,7 @@ object Sbt extends Build
 	}
 
 	lazy val scripted = InputKey[Unit]("scripted")
+	lazy val scriptedUnpublished = InputKey[Unit]("scripted-unpublished", "Execute scripted without publishing SBT first. Saves you some time when only your test has changed.")
 	lazy val scriptedSource = SettingKey[File]("scripted-source")
 	lazy val publishAll = TaskKey[Unit]("publish-all")
 	lazy val publishLauncher = TaskKey[Unit]("publish-launcher")
@@ -207,6 +216,7 @@ object Sbt extends Build
 		Transform.conscriptSettings(launchSub)
 	def otherRootSettings = Seq(
 		scripted <<= scriptedTask,
+		scriptedUnpublished <<= scriptedUnpublishedTask,
 		scriptedSource <<= (sourceDirectory in sbtSub) / "sbt-test",
 		publishAll <<= inAll(nonRoots, publishLocal.task),
 		publishAll <<= (publishAll, publishLocal).map((x,y)=> ()) // publish all normal deps as well as the sbt-launch jar
