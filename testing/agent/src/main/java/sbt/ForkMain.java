@@ -11,6 +11,7 @@ import java.io.ObjectOutputStream;
 import java.io.Serializable;
 import java.net.Socket;
 import java.net.InetAddress;
+import java.nio.charset.Charset;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -117,7 +118,13 @@ public class ForkMain {
 		os.flush();
 
 		try {
-			new Run().run(is, os);
+			// replacing System.out/err with the output capturer
+			OutputCapturer outputCapturer = new OutputCapturer(System.out, System.err, Charset.defaultCharset());
+			new OutputCapturerInstaller(new SystemOutErr()).install(outputCapturer);
+
+			new Run().run(is, os, outputCapturer);
+		} catch( Throwable t ) {
+			t.printStackTrace();
 		} finally {
 			try {
 				is.close();
@@ -133,9 +140,9 @@ public class ForkMain {
 
 	private static class Run {
 
-		void run(ObjectInputStream is, ObjectOutputStream os) throws Exception {
+		void run(ObjectInputStream is, ObjectOutputStream os, OutputCapturer outputCapturer) throws Exception {
 			try {
-				runTests(is, os);
+				runTests(is, os, outputCapturer);
 			} catch (RunAborted e) {
 				internalError(e);
 			} catch (Throwable t) {
@@ -194,8 +201,20 @@ public class ForkMain {
 			};
 		}
 
-		void writeEvents(ObjectOutputStream os, TaskDef taskDef, ForkEvent[] events) {
-			write(os, new Object[]{taskDef.fullyQualifiedName(), events});
+		void writeEndTest(ObjectOutputStream os, String suiteName, String stdout, ForkEvent event) {
+			write(os, new Object[]{ForkTags.EndTest, suiteName, stdout, event});
+		}
+
+		void writeStartSuite(ObjectOutputStream os, String suiteName) {
+			write(os, new Object[]{ForkTags.StartSuite, suiteName});
+		}
+
+		void writeEndSuite(ObjectOutputStream os, String suiteName) {
+			write(os, new Object[]{ForkTags.EndSuite, suiteName});
+		}
+
+		void writeEndSuiteError(ObjectOutputStream os, String suiteName, Throwable t) {
+			write(os, new Object[]{ForkTags.EndSuiteError, suiteName, t});
 		}
 
 		ExecutorService executorService(ForkConfiguration config, ObjectOutputStream os) {
@@ -211,7 +230,7 @@ public class ForkMain {
 			}
 		}
 
-		void runTests(ObjectInputStream is, final ObjectOutputStream os) throws Exception {
+		void runTests(ObjectInputStream is, final ObjectOutputStream os, OutputCapturer outputCapturer) throws Exception {
 			final ForkConfiguration config = (ForkConfiguration) is.readObject();
 			ExecutorService executor = executorService(config, os);
 			final TaskDef[] tests = (TaskDef[]) is.readObject();
@@ -252,7 +271,7 @@ public class ForkMain {
 				Task[] tasks = runner.tasks(filteredTests.toArray(new TaskDef[filteredTests.size()]));
 				logDebug(os, "Runner for " + framework.getClass().getName() + " produced " + tasks.length + " initial tasks for " + filteredTests.size() + " tests.");
 
-				runTestTasks(executor, tasks, loggers, os);
+				runTestTasks(executor, tasks, loggers, os, outputCapturer);
 
 				runner.done();
 			}
@@ -260,11 +279,11 @@ public class ForkMain {
 			is.readObject();
 		}
 
-		void runTestTasks(ExecutorService executor, Task[] tasks, Logger[] loggers, ObjectOutputStream os) {
+		void runTestTasks(ExecutorService executor, Task[] tasks, Logger[] loggers, ObjectOutputStream os, OutputCapturer outputCapturer) {
 			if( tasks.length > 0 ) {
 				List<Future<Task[]>> futureNestedTasks = new ArrayList<Future<Task[]>>();
 				for( Task task : tasks ) {
-					futureNestedTasks.add(runTest(executor, task, loggers, os));
+					futureNestedTasks.add(runTest(executor, task, loggers, os, outputCapturer));
 				}
 
 				// Note: this could be optimized further, we could have a callback once a test finishes that executes immediately the nested tasks
@@ -277,31 +296,40 @@ public class ForkMain {
 						logError(os, "Failed to execute task " + futureNestedTask);
 					}
 				}
-				runTestTasks(executor, nestedTasks.toArray(new Task[nestedTasks.size()]), loggers, os);
+				runTestTasks(executor, nestedTasks.toArray(new Task[nestedTasks.size()]), loggers, os, outputCapturer);
 			}
 		}
 
-		Future<Task[]> runTest(ExecutorService executor, final Task task, final Logger[] loggers, final ObjectOutputStream os) {
+		Future<Task[]> runTest(ExecutorService executor, final Task task, final Logger[] loggers, final ObjectOutputStream os, final OutputCapturer outputCapturer) {
+			// one thread per suite
 			return executor.submit(new Callable<Task[]>() {
 				@Override
 				public Task[] call() {
-					ForkEvent[] events;
 					Task[] nestedTasks;
-					TaskDef taskDef = task.taskDef();
+					final TaskDef taskDef = task.taskDef();
+					final String suiteName = taskDef.fullyQualifiedName();
+					writeStartSuite(os, suiteName);
+					final OutputStringBuilder outputCapture = new OutputStringBuilder();
+					outputCapturer.captureTo(outputCapture);
 					try {
-						final List<ForkEvent> eventList = new ArrayList<ForkEvent>();
-						EventHandler handler = new EventHandler() { public void handle(Event e){ eventList.add(new ForkEvent(e)); } };
+						EventHandler handler = new EventHandler() {
+							public void handle(Event e){
+								// note: we suppose the test-framework won't be executing tests of the same suite
+								//       concurrently. If it did, this output capture strategy would be invalid.
+								// TODO capture stderr
+								writeEndTest(os, suiteName, outputCapture.getOutAndReset(), new ForkEvent(e));
+							}
+						};
 						logDebug(os, "  Running " + taskDef);
 						nestedTasks = task.execute(handler, loggers);
-						if(nestedTasks.length > 0 || eventList.size() > 0)
-							logDebug(os, "    Produced " + nestedTasks.length + " nested tasks and " + eventList.size() + " events.");
-						events = eventList.toArray(new ForkEvent[eventList.size()]);
+						if(nestedTasks.length > 0)
+							logDebug(os, "    Produced " + nestedTasks.length + " nested tasks");
+						writeEndSuite(os, suiteName);
 					}
 					catch (Throwable t) {
 						nestedTasks = new Task[0];
-						events = new ForkEvent[] { testError(os, taskDef, "Uncaught exception when running " + taskDef.fullyQualifiedName() + ": " + t.toString(), t) };
+						writeEndSuiteError(os, suiteName, t);
 					}
-					writeEvents(os, taskDef, events);
 					return nestedTasks;
 				}
 			});

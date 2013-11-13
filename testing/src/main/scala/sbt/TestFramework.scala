@@ -13,6 +13,9 @@ package sbt
 object TestResult extends Enumeration
 {
 	val Passed, Failed, Error = Value
+
+	def overall(results: Iterable[TestResult.Value]): TestResult.Value =
+		results.foldLeft(Passed) { (acc, result) => if(acc.id < result.id) result else acc }
 }
 
 object TestFrameworks
@@ -77,28 +80,32 @@ final class TestRunner(delegate: Runner, listeners: Seq[TestReportListener], log
 		def runTest() =
 		{
 			// here we get the results! here is where we'd pass in the event listener
-			val results = new scala.collection.mutable.ListBuffer[Event]
-			val handler = new EventHandler { def handle(e:Event){ results += e } }
+			val testReports = new scala.collection.mutable.ListBuffer[TestReport]
+			val handler = new EventHandler {
+				def handle(e:Event) {
+					val testReport = TestReport("", e)  // TODO output capture
+					safeListenersCall( _.endTest(testReport) )
+					testReports += testReport
+				}
+			}
 			val loggers = listeners.flatMap(_.contentLogger(testDefinition))
 			val nestedTasks =
 				try testTask.execute(handler, loggers.map(_.log).toArray)
 				finally loggers.foreach( _.flush() ) 
-			val event = TestEvent(results)
-			safeListenersCall(_.testEvent( event ))
-			(SuiteResult(results), nestedTasks.toSeq)
+			(SuiteReport(testReports), nestedTasks.toSeq)
 		}
 
-		safeListenersCall(_.startGroup(name))
+		safeListenersCall(_.startSuite(name))
 		try
 		{
-			val (suiteResult, nestedTasks) = runTest()
-			safeListenersCall(_.endGroup(name, suiteResult.result))
-			(suiteResult, nestedTasks)
+			val (suiteReport, nestedTasks) = runTest()
+			safeListenersCall(_.endSuite(name, suiteReport))
+			(suiteReport.result, nestedTasks)
 		}
 		catch
 		{
 			case e: Throwable =>
-				safeListenersCall(_.endGroup(name, e))
+				safeListenersCall(_.endSuite(name, e, None))
 				(SuiteResult.Error, Seq.empty[TestTask])
 		}
 	}

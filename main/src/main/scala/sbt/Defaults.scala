@@ -506,6 +506,7 @@ object Defaults extends BuildCommon
 						s.log.debug(s"Forking tests - parallelism = ${forkedConfig.parallel}")
 						ForkTests(runners, tests.toList, forkedConfig, cp.files, opts, s.log) tag Tags.ForkedTestGroup
 					case Tests.InProcess =>
+						s.log.debug("Not forking tests")
 						Tests(frameworks, loader, runners, tests, config, s.log)
 				}
 		}

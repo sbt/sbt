@@ -9,6 +9,8 @@ import java.net.ServerSocket
 import java.io._
 import Tests.{Output => TestOutput, _}
 import ForkMain._
+import scala.util.control.NonFatal
+import net.sf.cglib.proxy.Callback
 
 private[sbt] object ForkTests
 {
@@ -39,8 +41,8 @@ private[sbt] object ForkTests
 			}
 
 			object Acceptor extends Runnable {
-				val resultsAcc = mutable.Map.empty[String, SuiteResult]
-				lazy val result = TestOutput(overall(resultsAcc.values.map(_.result)), resultsAcc.toMap, Iterable.empty)
+				val resultsAcc = mutable.Map.empty[String, SuiteReport]
+				lazy val result = TestOutput(TestResult.overall(resultsAcc.values.map(_.result.result)), resultsAcc.mapValues(_.result).toMap, Iterable.empty)
 
 				def run() {
 					val socket =
@@ -75,7 +77,11 @@ private[sbt] object ForkTests
 
 						new React(is, os, log, opts.testListeners, resultsAcc).react()
 					} finally {
-						is.close();	os.close(); socket.close()
+						try {
+							is.close();	os.close(); socket.close()
+						} catch {
+							case NonFatal(e) => // swallow, we don't want to hide potential exceptions from above.
+						}
 					}
 				}
 			}
@@ -85,9 +91,10 @@ private[sbt] object ForkTests
 				val acceptorThread = new Thread(Acceptor)
 				acceptorThread.start()
 
-				val fullCp = classpath ++: Seq(IO.classLocationFile[ForkMain], IO.classLocationFile[Framework])
+				val fullCp = classpath ++: Seq(IO.classLocationFile[ForkMain], IO.classLocationFile[Framework], IO.classLocationFile[Callback])
 				val options = Seq("-classpath", fullCp mkString File.pathSeparator, classOf[ForkMain].getCanonicalName, server.getLocalPort.toString)
 				val ec = Fork.java(fork, options)
+				log.debug(s"Forking tests: fork-options=$fork, extra-options=$options, parallel=$parallel")
 				val result =
 					if (ec != 0)
 						TestOutput(TestResult.Error, Map("Running java with options " + options.mkString(" ") + " failed with exit code " + ec -> SuiteResult.Error), Iterable.empty)
@@ -108,26 +115,65 @@ private[sbt] object ForkTests
 		f match {
 			case s: SubclassFingerprint => new ForkMain.SubclassFingerscan(s)
 			case a: AnnotatedFingerprint => new ForkMain.AnnotatedFingerscan(a)
-			case _ => error("Unknown fingerprint type: " + f.getClass)
+			case _ => sys.error("Unknown fingerprint type: " + f.getClass)
 		}
 }
-private final class React(is: ObjectInputStream, os: ObjectOutputStream, log: Logger, listeners: Seq[TestReportListener], results: mutable.Map[String, SuiteResult])
+
+// not thread-safe
+private final class React(is: ObjectInputStream, os: ObjectOutputStream, log: Logger, listeners: Seq[TestReportListener], results: mutable.Map[String, SuiteReport])
 {
+	/** @return the existing or newly created suite with name `name` */
+	private def getOrInitSuite(name: String) : SuiteReport = {
+		results.get(name) match {
+			case Some(existing) => existing
+			case None =>
+				val newSuite = SuiteReport.empty
+				results += name -> newSuite
+				newSuite
+		}
+	}
+	
+	private def updateSuite(name: String, update: SuiteReport => SuiteReport) {
+		val existing = getOrInitSuite(name)
+		val updated = update(existing)
+		results += name -> updated
+	}
+
 	import ForkTags._
 	@annotation.tailrec def react(): Unit = is.readObject match {
-		case `Done` => os.writeObject(Done); os.flush()
+		case `Done` =>
+			os.writeObject(Done)
+			os.flush()
+
 		case Array(`Error`, s: String) => log.error(s); react()
 		case Array(`Warn`, s: String) => log.warn(s); react()
 		case Array(`Info`, s: String) => log.info(s); react()
 		case Array(`Debug`, s: String) => log.debug(s); react()
-		case t: Throwable => log.trace(t); react()
-		case Array(group: String, tEvents: Array[Event]) =>
-			listeners.foreach(_ startGroup group)
-			val event = TestEvent(tEvents)
-			listeners.foreach(_ testEvent event)
-			val suiteResult = SuiteResult(tEvents)
-			results += group -> suiteResult
-			listeners.foreach(_ endGroup (group, suiteResult.result))
+
+		case Array(`StartSuite`, name: String) =>
+			getOrInitSuite(name)
+			listeners.foreach( _.startSuite(name) )
+			react()
+
+		case Array(`EndTest`, suiteName: String, stdout: String, event: Event) =>
+			log.debug("Received EndTest event with stdout: >" + stdout + "<")
+			val testReport = TestReport(stdout,event)
+			updateSuite(suiteName, _.addTest(testReport))
+			listeners.foreach(_.endTest(testReport))
+			react()
+			
+		case Array(`EndSuite`, name: String) =>
+			val suite = getOrInitSuite(name)
+			listeners.foreach(_.endSuite(name, suite))
+			react()
+
+		case Array(`EndSuiteError`, name: String, error: Throwable) =>
+			val suite = getOrInitSuite(name)
+			listeners.foreach(_.endSuite(name, error, Some(suite)))
+			react()
+
+		case t: Throwable =>
+			log.trace(t)
 			react()
 	}
 }
