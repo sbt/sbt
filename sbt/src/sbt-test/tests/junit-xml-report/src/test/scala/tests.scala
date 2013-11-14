@@ -37,13 +37,15 @@ package console.test.pkg {
 
 		@Test
 		def multiThreadedHello() {
-			for( i <- 1 to 5 ) {
+			val threads = for( i <- 1 to 15 ) yield {
 				new Thread("t-" + i) {
 					override def run() {
 						println("Hello from thread " + i)
 					}
-				}.start()
+				}
 			}
+			threads.foreach( _.start() )
+			threads.foreach( _.join() )
 		}
 	}
 }

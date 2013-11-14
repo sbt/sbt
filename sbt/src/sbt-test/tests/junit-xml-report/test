@@ -1,11 +1,36 @@
+# This test is twofold:
+#
+#  - it checks the junit xml report format (provided by `JUnitXmlTestsListener`)
+#
+#  - it checks the segregation of test output. When tests run concurrently things printed on the standard output
+#    get mixed up. SBT can tell the test output appart so that each test is reported with its own standard output.
+#
+# ------------------------------------------------------------------------------------------------------------
+
+# for now test output segregation works only in fork mode
+> set fork in Test := true
+
+# try parallel first (as it is more likely to fail than its serial counterpart)
+> set testForkedParallel := true
 -> test
 > checkReport
-
-# there might be discrepancies between the 'normal' and the 'forked' mode
 
 > clean
 > checkNoReport
 
-> set fork in Test := true
+> set testForkedParallel := false
 -> test
 > checkReport
+
+# TODO - check non-forked mode
+
+# there might be discrepancies between the 'normal' and the 'forked' mode
+
+# > set fork in Test := false
+# > clean
+# > checkNoReport
+
+# -> test
+# > checkReport
+
+## AND serial non-forked...
