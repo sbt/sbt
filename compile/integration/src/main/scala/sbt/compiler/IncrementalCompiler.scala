@@ -1,7 +1,7 @@
 package sbt.compiler
 
-	import java.io.{InputStreamReader, BufferedReader, File}
-	import sbt.CompileSetup
+	import java.io.File
+	import sbt.{CompileSetup, IO, Using}
 	import sbt.inc.{Analysis, IncOptions, TextAnalysisFormat}
 	import xsbti.{Logger, Maybe}
 	import xsbti.compile._
@@ -40,5 +40,5 @@ object IC extends IncrementalCompiler[Analysis, AnalyzingCompiler]
 		try { readCacheUncaught(file)._1 } catch { case _: Exception => Analysis.Empty }
 
 	def readCacheUncaught(file: File): (Analysis, CompileSetup) =
-		sbt.IO.gzipFileIn(file)( in => TextAnalysisFormat.read(new BufferedReader(new InputStreamReader(in))) )
+    Using.fileReader(IO.utf8)(file) { reader => TextAnalysisFormat.read(reader) }
 }
