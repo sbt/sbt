@@ -93,9 +93,10 @@ object TextAnalysisFormat {
 				// We sort for ease of debugging and for more efficient reconstruction when reading.
 				// Note that we don't share code with writeMap. Each is implemented more efficiently
 				// than the shared code would be, and the difference is measurable on large analyses.
-				rel._1s.toSeq.sorted foreach { k =>
-					rel.forward(k).toSeq.sorted foreach { v =>
-						out.write(k.toString); out.write(" -> "); out.write(v.toString); out.write("\n")
+        rel.forwardMap.toSeq.sortBy(_._1).foreach { case (k, vs) =>
+          val kStr = k.toString
+					vs.toSeq.sorted foreach { v =>
+						out.write(kStr); out.write(" -> "); out.write(v.toString); out.write("\n")
 					}
 				}
 			}
