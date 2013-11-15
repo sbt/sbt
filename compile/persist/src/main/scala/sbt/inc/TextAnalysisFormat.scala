@@ -274,12 +274,8 @@ object TextAnalysisFormat {
 	}
 
 	private[this] def expectHeader(in: BufferedReader, expectedHeader: String) {
-		try {
-			val header = in.readLine()
-			if (header != expectedHeader + ":") throw new ReadException(expectedHeader, header)
-		} catch {
-			case e: NullPointerException => throw new ReadException("Unexpected EOF.")
-		}
+    val header = in.readLine()
+    if (header != expectedHeader + ":") throw new ReadException(expectedHeader, if (header == null) "EOF" else header)
 	}
 
 	private[this] def writeSize(out: Writer, n: Int) {
@@ -291,6 +287,7 @@ object TextAnalysisFormat {
 		in.readLine() match {
 			case itemsPattern(nStr) => Integer.parseInt(nStr)
 			case s: String => throw new ReadException("\"<n> items\"", s)
+      case null => throw new ReadException("Unexpected EOF.")
 		}
 	}
 
@@ -308,6 +305,7 @@ object TextAnalysisFormat {
 
 	private[this] def readPairs[K, V](in: BufferedReader)(expectedHeader: String, s2k: String => K, s2v: String => V): Traversable[(K, V)] = {
 		def toPair(s: String): (K, V) = {
+      if (s == null) throw new ReadException("Unexpected EOF.")
 			val p = s.indexOf(" -> ")
 			val k = s2k(s.substring(0, p))
 			// Pair is either "a -> b" or "a -> \nb". This saves us a lot of substring munging when b is a large blob.
@@ -315,12 +313,8 @@ object TextAnalysisFormat {
 			(k, v)
 		}
 		expectHeader(in, expectedHeader)
-		try {
-			val n = readSize(in)
-			for (i <- 0 until n) yield toPair(in.readLine())
-		} catch {
-			case e: NullPointerException => throw new ReadException("Unexpected EOF.")
-		}
+    val n = readSize(in)
+    for (i <- 0 until n) yield toPair(in.readLine())
 	}
 
 	private[this] def readMap[K, V](in: BufferedReader)(expectedHeader: String, s2k: String => K, s2v: String => V): Map[K, V] = {
