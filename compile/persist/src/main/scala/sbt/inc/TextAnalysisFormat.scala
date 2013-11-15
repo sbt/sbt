@@ -40,6 +40,8 @@ class ReadException(s: String) extends Exception(s) {
 	def this(expected: String, found: String) = this("Expected: %s. Found: %s.".format(expected, found))
 }
 
+class EOFException extends ReadException("Unexpected EOF.")
+
 
 // A text-based serialization format for Analysis objects.
 // This code has been tuned for high performance, and therefore has non-idiomatic areas.
@@ -53,6 +55,7 @@ object TextAnalysisFormat {
 	implicit val compilationF = xsbt.api.CompilationFormat
 
 	def write(out: Writer, analysis: Analysis, setup: CompileSetup) {
+    VersionF.write(out)
 		// We start with relations because that's the part of greatest interest to external readers,
 		// who can abort reading early once they're read them.
 		FormatTimer.time("write relations") { RelationsF.write(out, analysis.relations) }
@@ -65,6 +68,7 @@ object TextAnalysisFormat {
 	}
 
 	def read(in: BufferedReader): (Analysis, CompileSetup) = {
+    VersionF.read(in)
 		val relations = FormatTimer.time("read relations") { RelationsF.read(in) }
 		val stamps = FormatTimer.time("read stamps") { StampsF.read(in) }
 		val apis = FormatTimer.time("read apis") { APIsF.read(in) }
@@ -74,6 +78,30 @@ object TextAnalysisFormat {
 
 		(Analysis.Empty.copy(stamps, apis, relations, infos, compilations), setup)
 	}
+
+  private[this] object VersionF {
+    val currentVersion = "1"
+
+    def write(out: Writer) {
+      out.write("format version: %s\n".format(currentVersion))
+    }
+
+    private val versionPattern = """format version: (\w+)""".r
+    def read(in: BufferedReader) {
+      in.readLine() match {
+        case versionPattern(version) => validateVersion(version)
+        case s: String => throw new ReadException("\"format version: <version>\"", s)
+        case null => throw new EOFException
+      }
+    }
+
+    def validateVersion(version: String) {
+      // TODO: Support backwards compatibility?
+      if (version != currentVersion) {
+        throw new ReadException("File uses format version %s, but we are compatible with version %s only.".format(version, currentVersion))
+      }
+    }
+  }
 
 	private[this] object RelationsF {
 		object Headers {
@@ -164,22 +192,11 @@ object TextAnalysisFormat {
 			doWriteMap(Headers.classNames, stamps.classNames)
 		}
 
-		private val hashPattern = """hash\((\w+)\)""".r
-		private val lastModifiedPattern = """lastModified\((\d+)\)""".r
-
 		def read(in: BufferedReader): Stamps = {
-			def parseStamp(s: String) = s match {
-				case "exists" => new Exists(true)
-				case "absent" => new Exists(false)
-				case hashPattern(value) => new Hash(Hash.fromHex(value))
-				case lastModifiedPattern(value) => new LastModified(java.lang.Long.parseLong(value))
-				case _ => throw new ReadException("<Stamp>", s)
-			}
-
 			def doReadMap[V](expectedHeader: String, s2v: String => V) = readMap(in)(expectedHeader, new File(_), s2v)
-			val products =   doReadMap(Headers.products, parseStamp)
-			val sources =    doReadMap(Headers.sources, parseStamp)
-			val binaries =   doReadMap(Headers.binaries, parseStamp)
+			val products =   doReadMap(Headers.products, Stamp.fromString)
+			val sources =    doReadMap(Headers.sources, Stamp.fromString)
+			val binaries =   doReadMap(Headers.binaries, Stamp.fromString)
 			val classNames = doReadMap(Headers.classNames, identity[String])
 
 			Stamps(products, sources, binaries, classNames)
@@ -288,7 +305,7 @@ object TextAnalysisFormat {
 		in.readLine() match {
 			case itemsPattern(nStr) => Integer.parseInt(nStr)
 			case s: String => throw new ReadException("\"<n> items\"", s)
-      case null => throw new ReadException("Unexpected EOF.")
+      case null => throw new EOFException
 		}
 	}
 
@@ -306,7 +323,7 @@ object TextAnalysisFormat {
 
 	private[this] def readPairs[K, V](in: BufferedReader)(expectedHeader: String, s2k: String => K, s2v: String => V): Traversable[(K, V)] = {
 		def toPair(s: String): (K, V) = {
-      if (s == null) throw new ReadException("Unexpected EOF.")
+      if (s == null) throw new EOFException
 			val p = s.indexOf(" -> ")
 			val k = s2k(s.substring(0, p))
 			// Pair is either "a -> b" or "a -> \nb". This saves us a lot of substring munging when b is a large blob.
