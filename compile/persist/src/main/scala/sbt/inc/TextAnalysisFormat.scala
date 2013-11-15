@@ -186,20 +186,25 @@ object TextAnalysisFormat {
 	}
 
 	private[this] object APIsF {
+    object Headers {
+      val internal = "internal apis"
+      val external = "external apis"
+    }
+
 		val stringToSource = ObjectStringifier.stringToObj[Source] _
 		val sourceToString = ObjectStringifier.objToString[Source] _
 
 		def write(out: Writer, apis: APIs) {
-			writeMap(out)("internal apis", apis.internal, sourceToString, inlineVals=false)
-			writeMap(out)("external apis", apis.external, sourceToString, inlineVals=false)
+			writeMap(out)(Headers.internal, apis.internal, sourceToString, inlineVals=false)
+			writeMap(out)(Headers.external, apis.external, sourceToString, inlineVals=false)
 			FormatTimer.close("bytes -> base64")
 			FormatTimer.close("byte copy")
 			FormatTimer.close("sbinary write")
 		}
 
 		def read(in: BufferedReader): APIs = {
-			val internal = readMap(in)("internal apis", new File(_), stringToSource)
-			val external = readMap(in)("external apis", identity[String], stringToSource)
+			val internal = readMap(in)(Headers.internal, new File(_), stringToSource)
+			val external = readMap(in)(Headers.external, identity[String], stringToSource)
 			FormatTimer.close("base64 -> bytes")
 			FormatTimer.close("sbinary read")
 			APIs(internal, external)
@@ -207,31 +212,43 @@ object TextAnalysisFormat {
 	}
 
 	private[this] object SourceInfosF {
+    object Headers {
+      val infos = "source infos"
+    }
+
 		val stringToSourceInfo = ObjectStringifier.stringToObj[SourceInfo] _
 		val sourceInfoToString = ObjectStringifier.objToString[SourceInfo] _
 
-		def write(out: Writer, infos: SourceInfos) { writeMap(out)("source infos", infos.allInfos, sourceInfoToString, inlineVals=false) }
-		def read(in: BufferedReader): SourceInfos = SourceInfos.make(readMap(in)("source infos", new File(_), stringToSourceInfo))
+		def write(out: Writer, infos: SourceInfos) { writeMap(out)(Headers.infos, infos.allInfos, sourceInfoToString, inlineVals=false) }
+		def read(in: BufferedReader): SourceInfos = SourceInfos.make(readMap(in)(Headers.infos, new File(_), stringToSourceInfo))
 	}
 
 	private[this] object CompilationsF {
+    object Headers {
+      val compilations = "compilations"
+    }
+
 		val stringToCompilation = ObjectStringifier.stringToObj[Compilation] _
 		val compilationToString = ObjectStringifier.objToString[Compilation] _
 
 		def write(out: Writer, compilations: Compilations) {
 			def toMapEntry(x: (Compilation, Int)): (String, Compilation) = "%03d".format(x._2) -> x._1
-			writeMap(out)("compilations", compilations.allCompilations.zipWithIndex.map(toMapEntry).toMap, compilationToString, inlineVals=false)
+			writeMap(out)(Headers.compilations, compilations.allCompilations.zipWithIndex.map(toMapEntry).toMap, compilationToString, inlineVals=false)
 		}
 		def read(in: BufferedReader): Compilations =
-			Compilations.make(readMap(in)("compilations", identity[String], stringToCompilation).values.toSeq)
+			Compilations.make(readMap(in)(Headers.compilations, identity[String], stringToCompilation).values.toSeq)
 	}
 
 	private[this] object CompileSetupF {
+    object Headers {
+      val setup = "compile setup"
+    }
+
 		val stringToSetup = ObjectStringifier.stringToObj[CompileSetup] _
 		val setupToString = ObjectStringifier.objToString[CompileSetup] _
 
-		def write(out: Writer, setup: CompileSetup) { writeMap(out)("compile setup", Map("1" -> setup), setupToString, inlineVals=false)}
-		def read(in: BufferedReader): CompileSetup = readMap(in)("compile setup", identity[String], stringToSetup).head._2
+		def write(out: Writer, setup: CompileSetup) { writeMap(out)(Headers.setup, Map("1" -> setup), setupToString, inlineVals=false)}
+		def read(in: BufferedReader): CompileSetup = readMap(in)(Headers.setup, identity[String], stringToSetup).head._2
 	}
 
 	private[this] object ObjectStringifier {
