@@ -310,7 +310,7 @@ object TextAnalysisFormat {
 		def toPair(s: String): (K, V) = {
 			val p = s.indexOf(" -> ")
 			val k = s2k(s.substring(0, p))
-			// Pair is either "a -> b" or "a ->\nb". This saves us a lot of substring munging when b is a large blob.
+			// Pair is either "a -> b" or "a -> \nb". This saves us a lot of substring munging when b is a large blob.
 			val v = s2v(if (p == s.length - 4)  in.readLine() else s.substring(p + 4))
 			(k, v)
 		}
