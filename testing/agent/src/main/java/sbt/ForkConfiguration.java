@@ -5,10 +5,12 @@ import java.io.Serializable;
 public final class ForkConfiguration implements Serializable {
 	private boolean ansiCodesSupported;
 	private boolean parallel;
+	private boolean hideStandardOutput;
 
-	public ForkConfiguration(boolean ansiCodesSupported, boolean parallel) {
+	public ForkConfiguration(boolean ansiCodesSupported, boolean parallel, boolean hideStandardOutput) {
 		this.ansiCodesSupported = ansiCodesSupported;
 		this.parallel = parallel;
+		this.hideStandardOutput = hideStandardOutput;
 	}
 
 	public boolean isAnsiCodesSupported() {
@@ -17,5 +19,9 @@ public final class ForkConfiguration implements Serializable {
 
 	public boolean isParallel() {
 		return parallel;
+	}
+
+	public boolean isHideStandardOutput() {
+		return hideStandardOutput;
 	}
 }

@@ -14,7 +14,7 @@ import net.sf.cglib.proxy.Callback
 
 private[sbt] object ForkTests
 {
-	def apply(runners: Map[TestFramework, Runner],  tests: List[TestDefinition], config: Execution, classpath: Seq[File], fork: ForkOptions, log: Logger): Task[TestOutput]  = {
+	def apply(runners: Map[TestFramework, Runner],  tests: List[TestDefinition], config: Execution, classpath: Seq[File], fork: ForkOptions, log: Logger, hideSuccessfulOutput: Boolean): Task[TestOutput]  = {
 		val opts = processOptions(config, tests, log)
 
 			import std.TaskExtra._
@@ -25,13 +25,13 @@ private[sbt] object ForkTests
 			if(opts.tests.isEmpty)
 				constant( TestOutput(TestResult.Passed, Map.empty[String, SuiteResult], Iterable.empty) )
 			else
-				mainTestTask(runners, opts, classpath, fork, log, config.parallel).tagw(config.tags: _*)
+				mainTestTask(runners, opts, classpath, fork, log, config.parallel, hideSuccessfulOutput).tagw(config.tags: _*)
 		main.dependsOn( all(opts.setup) : _*) flatMap { results =>
 			all(opts.cleanup).join.map( _ => results)
 		}
 	}
 
-	private[this] def mainTestTask(runners: Map[TestFramework, Runner], opts: ProcessedOptions, classpath: Seq[File], fork: ForkOptions, log: Logger, parallel: Boolean): Task[TestOutput] =
+	private[this] def mainTestTask(runners: Map[TestFramework, Runner], opts: ProcessedOptions, classpath: Seq[File], fork: ForkOptions, log: Logger, parallel: Boolean, hideSuccessfulOutput: Boolean): Task[TestOutput] =
 		std.TaskExtra.task
 		{
 			val server = new ServerSocket(0)
@@ -61,7 +61,7 @@ private[sbt] object ForkTests
 					val is = new ObjectInputStream(socket.getInputStream)
 
 					try {
-						val config = new ForkConfiguration(log.ansiCodesSupported, parallel)
+						val config = new ForkConfiguration(log.ansiCodesSupported, parallel, hideSuccessfulOutput)
 						os.writeObject(config)
 
 						val taskdefs = opts.tests.map(t => new TaskDef(t.name, forkFingerprint(t.fingerprint), t.explicitlySpecified, t.selectors))
@@ -94,7 +94,7 @@ private[sbt] object ForkTests
 				val fullCp = classpath ++: Seq(IO.classLocationFile[ForkMain], IO.classLocationFile[Framework], IO.classLocationFile[Callback])
 				val options = Seq("-classpath", fullCp mkString File.pathSeparator, classOf[ForkMain].getCanonicalName, server.getLocalPort.toString)
 				val ec = Fork.java(fork, options)
-				log.debug(s"Forking tests: fork-options=$fork, extra-options=$options, parallel=$parallel")
+				log.debug(s"Forking tests: fork-options=$fork, extra-options=$options, parallel=$parallel, hide-successful-output=$hideSuccessfulOutput")
 				val result =
 					if (ec != 0)
 						TestOutput(TestResult.Error, Map("Running java with options " + options.mkString(" ") + " failed with exit code " + ec -> SuiteResult.Error), Iterable.empty)

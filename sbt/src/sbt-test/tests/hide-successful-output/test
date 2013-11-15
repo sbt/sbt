@@ -1,0 +1,11 @@
+> set testHideSuccessfulOutput := true
+
+# parallel tests are more likely to fail at hiding the standard output
+> set testForkedParallel := true
+-> test
+> check
+
+> set testForkedParallel := false
+-> test
+> check
+

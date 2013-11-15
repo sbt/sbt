@@ -9,6 +9,7 @@ import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 import java.io.Serializable;
+import java.io.PrintStream;
 import java.net.Socket;
 import java.net.InetAddress;
 import java.nio.charset.Charset;
@@ -118,11 +119,7 @@ public class ForkMain {
 		os.flush();
 
 		try {
-			// replacing System.out/err with the output capturer
-			OutputCapturer outputCapturer = new OutputCapturer(System.out, System.err, Charset.defaultCharset());
-			new OutputCapturerInstaller(new SystemOutErr()).install(outputCapturer);
-
-			new Run().run(is, os, outputCapturer);
+			new Run().run(is, os);
 		} catch( Throwable t ) {
 			t.printStackTrace();
 		} finally {
@@ -140,9 +137,9 @@ public class ForkMain {
 
 	private static class Run {
 
-		void run(ObjectInputStream is, ObjectOutputStream os, OutputCapturer outputCapturer) throws Exception {
+		void run(ObjectInputStream is, ObjectOutputStream os) throws Exception {
 			try {
-				runTests(is, os, outputCapturer);
+				runTests(is, os);
 			} catch (RunAborted e) {
 				internalError(e);
 			} catch (Throwable t) {
@@ -230,8 +227,22 @@ public class ForkMain {
 			}
 		}
 
-		void runTests(ObjectInputStream is, final ObjectOutputStream os, OutputCapturer outputCapturer) throws Exception {
+		private OutputCapturer installOutputCapturer(ForkConfiguration config) {
+			OutputCapturer outputCapturer;
+			if( config.isHideStandardOutput() ) {
+				outputCapturer = new OutputCapturer(new NullOutputStream(), System.err, Charset.defaultCharset());
+			} else {
+				outputCapturer = new OutputCapturer(System.out, System.err, Charset.defaultCharset());
+			}
+			new OutputCapturerInstaller(new SystemOutErr()).install(outputCapturer);
+			return outputCapturer;
+		}
+
+		void runTests(ObjectInputStream is, final ObjectOutputStream os) throws Exception {
 			final ForkConfiguration config = (ForkConfiguration) is.readObject();
+			PrintStream originalStdout = System.out;
+			OutputCapturer outputCapturer = installOutputCapturer(config);
+
 			ExecutorService executor = executorService(config, os);
 			final TaskDef[] tests = (TaskDef[]) is.readObject();
 			int nFrameworks = is.readInt();
@@ -271,7 +282,7 @@ public class ForkMain {
 				Task[] tasks = runner.tasks(filteredTests.toArray(new TaskDef[filteredTests.size()]));
 				logDebug(os, "Runner for " + framework.getClass().getName() + " produced " + tasks.length + " initial tasks for " + filteredTests.size() + " tests.");
 
-				runTestTasks(executor, tasks, loggers, os, outputCapturer);
+				runTestTasks(executor, tasks, loggers, os, outputCapturer, config.isHideStandardOutput(), originalStdout);
 
 				runner.done();
 			}
@@ -279,11 +290,11 @@ public class ForkMain {
 			is.readObject();
 		}
 
-		void runTestTasks(ExecutorService executor, Task[] tasks, Logger[] loggers, ObjectOutputStream os, OutputCapturer outputCapturer) {
+		void runTestTasks(ExecutorService executor, Task[] tasks, Logger[] loggers, ObjectOutputStream os, OutputCapturer outputCapturer, final boolean printFailedStdout, final PrintStream originalStdout) {
 			if( tasks.length > 0 ) {
 				List<Future<Task[]>> futureNestedTasks = new ArrayList<Future<Task[]>>();
 				for( Task task : tasks ) {
-					futureNestedTasks.add(runTest(executor, task, loggers, os, outputCapturer));
+					futureNestedTasks.add(runTest(executor, task, loggers, os, outputCapturer, printFailedStdout, originalStdout));
 				}
 
 				// Note: this could be optimized further, we could have a callback once a test finishes that executes immediately the nested tasks
@@ -296,11 +307,11 @@ public class ForkMain {
 						logError(os, "Failed to execute task " + futureNestedTask);
 					}
 				}
-				runTestTasks(executor, nestedTasks.toArray(new Task[nestedTasks.size()]), loggers, os, outputCapturer);
+				runTestTasks(executor, nestedTasks.toArray(new Task[nestedTasks.size()]), loggers, os, outputCapturer, printFailedStdout, originalStdout);
 			}
 		}
 
-		Future<Task[]> runTest(ExecutorService executor, final Task task, final Logger[] loggers, final ObjectOutputStream os, final OutputCapturer outputCapturer) {
+		Future<Task[]> runTest(ExecutorService executor, final Task task, final Logger[] loggers, final ObjectOutputStream os, final OutputCapturer outputCapturer, final boolean printFailedStdout, final PrintStream originalStdout) {
 			// one thread per suite
 			return executor.submit(new Callable<Task[]>() {
 				@Override
@@ -317,7 +328,12 @@ public class ForkMain {
 								// note: we suppose the test-framework won't be executing tests of the same suite
 								//       concurrently. If it did, this output capture strategy would be invalid.
 								// TODO capture stderr
-								writeEndTest(os, suiteName, outputCapture.getOutAndReset(), new ForkEvent(e));
+								ForkEvent event = new ForkEvent(e);
+								String stdout = outputCapture.getOutAndReset();
+								if( (event.status == Status.Error || event.status == Status.Failure) && printFailedStdout) {
+									originalStdout.print(stdout);
+								}
+								writeEndTest(os, suiteName, stdout, event);
 							}
 						};
 						logDebug(os, "  Running " + taskDef);
@@ -336,7 +352,8 @@ public class ForkMain {
 		}
 
 		void internalError(Throwable t) {
-			System.err.println("Internal error when running tests: " + t.toString());
+			System.err.println("Internal error when running tests:");
+			t.printStackTrace(System.err);
 		}
 
 		ForkEvent testEvent(final String fullyQualifiedName, final Fingerprint fingerprint, final Selector selector, final Status r, final ForkError err, final long duration) {
