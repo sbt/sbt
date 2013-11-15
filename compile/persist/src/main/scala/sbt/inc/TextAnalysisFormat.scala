@@ -75,7 +75,7 @@ object TextAnalysisFormat {
 		(Analysis.Empty.copy(stamps, apis, relations, infos, compilations), setup)
 	}
 
-	object RelationsF {
+	private[this] object RelationsF {
 		object Headers {
 			val srcProd = "products"
 			val binaryDep = "binary dependencies"
@@ -146,7 +146,7 @@ object TextAnalysisFormat {
 		}
 	}
 
-	object StampsF {
+	private[this] object StampsF {
 		object Headers {
 			val products = "product stamps"
 			val sources = "source stamps"
@@ -185,7 +185,7 @@ object TextAnalysisFormat {
 		}
 	}
 
-	object APIsF {
+	private[this] object APIsF {
 		val stringToSource = ObjectStringifier.stringToObj[Source] _
 		val sourceToString = ObjectStringifier.objToString[Source] _
 
@@ -206,7 +206,7 @@ object TextAnalysisFormat {
 		}
 	}
 
-	object SourceInfosF {
+	private[this] object SourceInfosF {
 		val stringToSourceInfo = ObjectStringifier.stringToObj[SourceInfo] _
 		val sourceInfoToString = ObjectStringifier.objToString[SourceInfo] _
 
@@ -214,7 +214,7 @@ object TextAnalysisFormat {
 		def read(in: BufferedReader): SourceInfos = SourceInfos.make(readMap(in)("source infos", new File(_), stringToSourceInfo))
 	}
 
-	object CompilationsF {
+	private[this] object CompilationsF {
 		val stringToCompilation = ObjectStringifier.stringToObj[Compilation] _
 		val compilationToString = ObjectStringifier.objToString[Compilation] _
 
@@ -226,7 +226,7 @@ object TextAnalysisFormat {
 			Compilations.make(readMap(in)("compilations", identity[String], stringToCompilation).values.toSeq)
 	}
 
-	object CompileSetupF {
+	private[this] object CompileSetupF {
 		val stringToSetup = ObjectStringifier.stringToObj[CompileSetup] _
 		val setupToString = ObjectStringifier.objToString[CompileSetup] _
 
@@ -234,7 +234,7 @@ object TextAnalysisFormat {
 		def read(in: BufferedReader): CompileSetup = readMap(in)("compile setup", identity[String], stringToSetup).head._2
 	}
 
-	object ObjectStringifier {
+	private[this] object ObjectStringifier {
 		def objToString[T](o: T)(implicit fmt: sbinary.Format[T]) = {
 			val baos = new ByteArrayOutputStream()
 			val out = new sbinary.JavaOutput(baos)
