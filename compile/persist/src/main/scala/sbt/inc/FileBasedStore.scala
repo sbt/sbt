@@ -4,22 +4,18 @@
 package sbt
 package inc
 
-	import java.io.{File, IOException}
-	import sbinary._
-	import Operations.{read, write}
-	import DefaultProtocol._
+	import java.io.File
 
 object FileBasedStore
 {
-	def apply(file: File)(implicit analysisF: Format[Analysis], setupF: Format[CompileSetup]): AnalysisStore = new AnalysisStore {
-		def set(analysis: Analysis, setup: CompileSetup): Unit =
-			IO.gzipFileOut(file) { out =>
-				write[(Analysis, CompileSetup)](out, (analysis, setup) )
-			}
+	def apply(file: File): AnalysisStore = new AnalysisStore {
+		def set(analysis: Analysis, setup: CompileSetup) {
+			Using.fileWriter(IO.utf8)(file) { writer => TextAnalysisFormat.write(writer, analysis, setup) }
+    }
 
 		def get(): Option[(Analysis, CompileSetup)] =
 			try { Some(getUncaught()) } catch { case _: Exception => None }
 		def getUncaught(): (Analysis, CompileSetup) =
-			IO.gzipFileIn(file)( in => read[(Analysis, CompileSetup)](in) )
+			Using.fileReader(IO.utf8)(file) { reader => TextAnalysisFormat.read(reader) }
 	}
 }

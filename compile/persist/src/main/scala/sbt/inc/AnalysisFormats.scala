@@ -15,7 +15,7 @@ package inc
 	import Logger.{m2o, position, problem}
 	import Relations.{Source => RSource}
 
-@deprecated("Replaced by InternedAnalysisFormats. OK to remove in 0.14.", since="0.13.1")
+@deprecated("Replaced by TextAnalysisFormat. OK to remove in 0.14.", since="0.13.1")
 object AnalysisFormats
 {
 	type RFF = Relation[File, File]
