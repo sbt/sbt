@@ -6,6 +6,7 @@ package inc
 
 import java.io.{File, IOException}
 import Stamp.getStamp
+import scala.util.matching.Regex
 
 trait ReadStamps
 {
@@ -47,19 +48,18 @@ sealed trait Stamp
 		case o: Stamp => Stamp.equivStamp.equiv(this, o)
 		case _ => false
 	}
+
+  override def toString: String = Stamp.toString(this)
 }
 
 final class Hash(val value: Array[Byte]) extends Stamp {
 	override def hashCode: Int = java.util.Arrays.hashCode(value)
-	override def toString: String = "hash(" + Hash.toHex(value) + ")"
 }
 final class LastModified(val value: Long) extends Stamp {
 	override def hashCode: Int = (value ^ (value >>> 32)).toInt
-	override def toString: String = "lastModified(" + value + ")"
 }
 final class Exists(val value: Boolean) extends Stamp {
 	override def hashCode: Int = if(value) 0 else 1
-	override def toString: String = if(value) "exists" else "absent"
 }
 
 object Stamp
@@ -72,6 +72,26 @@ object Stamp
 			case _ => false
 		}
 	}
+
+  // NOTE: toString/fromString used for serialization, not just for debug prints.
+
+  def toString(s: Stamp): String = s match {
+    case e: Exists => if(e.value) "exists" else "absent"
+    case h: Hash => "hash(" + Hash.toHex(h.value) + ")"
+    case lm: LastModified => "lastModified(" + lm.value + ")"
+  }
+
+	private val hashPattern = """hash\((\w+)\)""".r
+	private val lastModifiedPattern = """lastModified\((\d+)\)""".r
+
+  def fromString(s: String): Stamp = s match {
+		case "exists" => new Exists(true)
+		case "absent" => new Exists(false)
+		case hashPattern(value) => new Hash(Hash.fromHex(value))
+		case lastModifiedPattern(value) => new LastModified(java.lang.Long.parseLong(value))
+		case _ => throw new IllegalArgumentException("Unrecognized Stamp string representation: " + s)
+	}
+
 	def show(s: Stamp): String = s match {
 		case h: Hash => "hash(" + Hash.toHex(h.value) + ")"
 		case e: Exists => if(e.value) "exists" else "does not exist"
