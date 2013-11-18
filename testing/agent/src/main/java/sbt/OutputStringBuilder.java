@@ -1,8 +1,9 @@
 package sbt;
 
 public class OutputStringBuilder implements OutputListener {
-	private StringBuilder outBuilder = new StringBuilder();
-	private StringBuilder errBuilder = new StringBuilder();
+
+	private final StringBuffer outBuilder = new StringBuffer();
+	private final StringBuffer errBuilder = new StringBuffer();
 
 	public void out(String text) {
 		outBuilder.append(text);
@@ -16,8 +17,10 @@ public class OutputStringBuilder implements OutputListener {
 	public String getErr() { return errBuilder.toString(); }
 
 	public String getOutAndReset() {
-		String out = getOut();
-		outBuilder.setLength(0); // reset
-		return out;
+		synchronized (outBuilder) {
+			String out = getOut();
+			outBuilder.setLength(0); // reset
+			return out;
+		}
 	}
 }
