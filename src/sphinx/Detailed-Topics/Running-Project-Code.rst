@@ -96,3 +96,6 @@ The feature of allowing `System.exit` and multiple threads to be used
 cannot completely emulate the situation of running in a separate JVM and
 is intended for development. Program execution should be checked in a
 :doc:`forked jvm <Forking>` when using multiple threads or `System.exit`.
+
+As of sbt 0.13.1, multiple `run` instances can be managed.  There can
+only be one application that uses AWT at a time, however.
