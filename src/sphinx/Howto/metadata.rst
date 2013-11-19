@@ -9,6 +9,8 @@ A project should define :key:`name` and :key:`version`.  These will be used in v
    :type: setting
    :title: Set the project name
 
+    name := "demo"
+
 ::
 
     name := "Your project name"
@@ -20,14 +22,18 @@ For published projects, this name is normalized to be suitable for use as an art
    :type: setting
    :title: Set the project version
 
+   version := "1.0"
+
 ::
 
-   version := "1.0-SNAPSHOT"
+   version := "1.0"
 
 .. howto::
    :id: organization
    :type: setting
    :title: Set the project organization
+
+   organization := "org.example"
 
 ::
 
