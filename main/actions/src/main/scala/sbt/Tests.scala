@@ -218,7 +218,7 @@ object Tests
 	}
 
 	def processResults(results: Iterable[(String, SuiteResult)]): Output =
-		Output(overall(results.map(_._2.result)), results.toMap, Iterable.empty)
+		Output(TestResult.overall(results.map(_._2.result)), results.toMap, Iterable.empty)
 	def foldTasks(results: Seq[Task[Output]], parallel: Boolean): Task[Output] = 
 		if (parallel)
 			reduced(results.toIndexedSeq, {
@@ -231,11 +231,10 @@ object Tests
 			}
 			sequence(results.toList, List()) map { ress =>
 				val (rs, ms) = ress.unzip { e => (e.overall, e.events) }
-				Output(overall(rs), ms reduce (_ ++ _), Iterable.empty)
+				Output(TestResult.overall(rs), ms reduce (_ ++ _), Iterable.empty)
 			}
 		}
-	def overall(results: Iterable[TestResult.Value]): TestResult.Value =
-		(TestResult.Passed /: results) { (acc, result) => if(acc.id < result.id) result else acc }
+
 	def discover(frameworks: Seq[Framework], analysis: Analysis, log: Logger): (Seq[TestDefinition], Set[String]) =
 		discover(frameworks flatMap TestFramework.getFingerprints, allDefs(analysis), log)
 

@@ -13,6 +13,9 @@ package sbt
 object TestResult extends Enumeration
 {
 	val Passed, Failed, Error = Value
+
+	def overall(results: Iterable[TestResult.Value]): TestResult.Value =
+		results.foldLeft(Passed) { (acc, result) => if(acc.id < result.id) result else acc }
 }
 
 object TestFrameworks
@@ -65,40 +68,44 @@ final class TestDefinition(val name: String, val fingerprint: Fingerprint, val e
 
 final class TestRunner(delegate: Runner, listeners: Seq[TestReportListener], log: Logger) {
 
-    final def tasks(testDefs: Set[TestDefinition]): Array[TestTask] = 
-      delegate.tasks(testDefs.map(df => new TaskDef(df.name, df.fingerprint, df.explicitlySpecified, df.selectors)).toArray)
+	final def tasks(testDefs: Set[TestDefinition]): Array[TestTask] =
+		delegate.tasks(testDefs.map(df => new TaskDef(df.name, df.fingerprint, df.explicitlySpecified, df.selectors)).toArray)
 
 	final def run(taskDef: TaskDef, testTask: TestTask): (SuiteResult, Seq[TestTask]) =
 	{
-        val testDefinition = new TestDefinition(taskDef.fullyQualifiedName, taskDef.fingerprint, taskDef.explicitlySpecified, taskDef.selectors)
+		val testDefinition = new TestDefinition(taskDef.fullyQualifiedName, taskDef.fingerprint, taskDef.explicitlySpecified, taskDef.selectors)
 		log.debug("Running " + taskDef)
 		val name = testDefinition.name
-		
+
 		def runTest() =
 		{
 			// here we get the results! here is where we'd pass in the event listener
-			val results = new scala.collection.mutable.ListBuffer[Event]
-			val handler = new EventHandler { def handle(e:Event){ results += e } }
+			val testReports = new scala.collection.mutable.ListBuffer[TestReport]
+			val handler = new EventHandler {
+				def handle(e:Event) {
+					val testReport = TestReport("", e)  // TODO output capture
+					safeListenersCall( _.endTest(testReport) )
+					testReports += testReport
+				}
+			}
 			val loggers = listeners.flatMap(_.contentLogger(testDefinition))
 			val nestedTasks =
 				try testTask.execute(handler, loggers.map(_.log).toArray)
 				finally loggers.foreach( _.flush() ) 
-			val event = TestEvent(results)
-			safeListenersCall(_.testEvent( event ))
-			(SuiteResult(results), nestedTasks.toSeq)
+			(SuiteReport(testReports), nestedTasks.toSeq)
 		}
 
-		safeListenersCall(_.startGroup(name))
+		safeListenersCall(_.startSuite(name))
 		try
 		{
-			val (suiteResult, nestedTasks) = runTest()
-			safeListenersCall(_.endGroup(name, suiteResult.result))
-			(suiteResult, nestedTasks)
+			val (suiteReport, nestedTasks) = runTest()
+			safeListenersCall(_.endSuite(name, suiteReport))
+			(suiteReport.result, nestedTasks)
 		}
 		catch
 		{
 			case e: Throwable =>
-				safeListenersCall(_.endGroup(name, e))
+				safeListenersCall(_.endSuite(name, e, None))
 				(SuiteResult.Error, Seq.empty[TestTask])
 		}
 	}
@@ -167,7 +174,7 @@ object TestFramework
 	{
 		import scala.collection.mutable.{HashMap, HashSet, Set}
 		val map = new HashMap[Framework, Set[TestDefinition]]
- 		def assignTest(test: TestDefinition)
+		def assignTest(test: TestDefinition)
 		{
 			def isTestForFramework(framework: Framework) = getFingerprints(framework).exists {t => matches(t, test.fingerprint) }
 			for(framework <- frameworks.find(isTestForFramework))
@@ -192,8 +199,8 @@ object TestFramework
 				val runner = runners(framework)
 				val testTasks = withContextLoader(loader) { runner.tasks(testDefinitions) }
 				for (testTask <- testTasks) yield {
-				  val taskDef = testTask.taskDef
-				  (taskDef.fullyQualifiedName, createTestFunction(loader, taskDef, runner, testTask))
+					val taskDef = testTask.taskDef
+					(taskDef.fullyQualifiedName, createTestFunction(loader, taskDef, runner, testTask))
 				}
 			}
 
