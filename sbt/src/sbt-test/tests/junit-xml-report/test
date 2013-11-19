@@ -1,0 +1,11 @@
+-> test
+> checkReport
+
+# there might be discrepancies between the 'normal' and the 'forked' mode
+
+> clean
+> checkNoReport
+
+> set fork in Test := true
+-> test
+> checkReport

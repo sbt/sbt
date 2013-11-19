@@ -349,6 +349,7 @@ object Defaults extends BuildCommon
 			Seq(ScalaCheck, Specs2, Specs, ScalaTest, JUnit)
 		},
 		testListeners :== Nil,
+		testReportJUnitXml :== false,
 		testOptions :== Nil,
 		testFilter in testOnly :== (selectedFilter _)
 	))
@@ -364,7 +365,8 @@ object Defaults extends BuildCommon
 			Tests.showResults(streams.value.log, executeTests.value, noTestsMessage(resolvedScoped.value))
 		},
 		testOnly <<= inputTests(testOnly),
-		testQuick <<= inputTests(testQuick)
+		testQuick <<= inputTests(testQuick),
+		testListeners ++= (if( testReportJUnitXml.value ) Seq(new JUnitXmlTestsListener(target.value.getAbsolutePath)) else Nil)
 	)
 	private[this] def noTestsMessage(scoped: ScopedKey[_])(implicit display: Show[ScopedKey[_]]): String =
 		"No tests to run for " + display(scoped)
