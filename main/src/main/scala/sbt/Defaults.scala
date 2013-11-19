@@ -103,6 +103,9 @@ object Defaults extends BuildCommon
 		outputStrategy :== None,
 		exportJars :== false,
 		fork :== false,
+		testForkedParallel :== false,
+		testHideSuccessfulOutput :== false,
+		testNumberForkedJvm :== 1,
 		javaOptions :== Nil,
 		sbtPlugin :== false,
 		crossPaths :== true,
@@ -349,6 +352,7 @@ object Defaults extends BuildCommon
 			Seq(ScalaCheck, Specs2, Specs, ScalaTest, JUnit)
 		},
 		testListeners :== Nil,
+		testReportJUnitXml :== false,
 		testOptions :== Nil,
 		testFilter in testOnly :== (selectedFilter _)
 	))
@@ -358,13 +362,14 @@ object Defaults extends BuildCommon
 		definedTests <<= detectTests,
 		definedTestNames <<= definedTests map ( _.map(_.name).distinct) storeAs definedTestNames triggeredBy compile,
 		testFilter in testQuick <<= testQuickFilter,
-		executeTests <<= (streams in test, loadedTestFrameworks, testLoader, testGrouping in test, testExecution in test, fullClasspath in test, javaHome in test) flatMap allTestGroupsTask,
+		executeTests <<= (streams in test, loadedTestFrameworks, testLoader, testGrouping in test, testExecution in test, fullClasspath in test, javaHome in test, testForkedParallel, testHideSuccessfulOutput, testNumberForkedJvm) flatMap allTestGroupsTask,
 		test := {
 			implicit val display = Project.showContextKey(state.value)
 			Tests.showResults(streams.value.log, executeTests.value, noTestsMessage(resolvedScoped.value))
 		},
 		testOnly <<= inputTests(testOnly),
-		testQuick <<= inputTests(testQuick)
+		testQuick <<= inputTests(testQuick),
+		testListeners ++= (if( testReportJUnitXml.value ) Seq(new JUnitXmlTestsListener(target.value.getAbsolutePath)) else Nil)
 	)
 	private[this] def noTestsMessage(scoped: ScopedKey[_])(implicit display: Show[ScopedKey[_]]): String =
 		"No tests to run for " + display(scoped)
@@ -468,7 +473,7 @@ object Defaults extends BuildCommon
 			implicit val display = Project.showContextKey(state.value)
 			val modifiedOpts = Tests.Filters(filter(selected)) +: Tests.Argument(frameworkOptions : _*) +: config.options
 			val newConfig = config.copy(options = modifiedOpts)
-			val output = allTestGroupsTask(s, loadedTestFrameworks.value, testLoader.value, testGrouping.value, newConfig, fullClasspath.value, javaHome.value)
+			val output = allTestGroupsTask(s, loadedTestFrameworks.value, testLoader.value, testGrouping.value, newConfig, fullClasspath.value, javaHome.value, testForkedParallel.value, testHideSuccessfulOutput.value, testNumberForkedJvm.value)
 			val processed =
 				for(out <- output) yield
 					Tests.showResults(s.log, out, noTestsMessage(resolvedScoped.value))
@@ -476,7 +481,7 @@ object Defaults extends BuildCommon
 		}
 	}
 
-	def createTestRunners(frameworks: Map[TestFramework,Framework], loader: ClassLoader, config: Tests.Execution) = {
+	def createTestRunners(frameworks: Map[TestFramework,Framework], loader: ClassLoader, config: Tests.Execution) : Map[TestFramework, Runner] = {
 		import Tests.Argument
 		val opts = config.options.toList
 		frameworks.map { case (tf, f) =>
@@ -490,13 +495,20 @@ object Defaults extends BuildCommon
 	}
 
 	def allTestGroupsTask(s: TaskStreams, frameworks: Map[TestFramework,Framework], loader: ClassLoader, groups: Seq[Tests.Group], config: Tests.Execution,	cp: Classpath, javaHome: Option[File]): Task[Tests.Output] = {
+		allTestGroupsTask(s,frameworks,loader, groups, config, cp, javaHome, forkedParallelExecution = false, hideSuccessfulOutput = false, noForkedVm = 1)
+	}
+
+	def allTestGroupsTask(s: TaskStreams, frameworks: Map[TestFramework,Framework], loader: ClassLoader, groups: Seq[Tests.Group], config: Tests.Execution,	cp: Classpath, javaHome: Option[File], forkedParallelExecution: Boolean, hideSuccessfulOutput: Boolean, noForkedVm: Int): Task[Tests.Output] = {
 		val runners = createTestRunners(frameworks, loader, config)
 		val groupTasks = groups map {
 			case Tests.Group(name, tests, runPolicy) =>
 				runPolicy match {
 					case Tests.SubProcess(opts) =>
-						ForkTests(runners, tests.toList, config, cp.files, opts, s.log) tag Tags.ForkedTestGroup
+						val forkedConfig = config.copy(parallel = config.parallel && forkedParallelExecution)
+						s.log.debug(s"Forking tests - parallelism=${forkedConfig.parallel}, hiding-successful-output=${hideSuccessfulOutput}")
+						ForkTests(frameworks, runners, tests.toList, forkedConfig, cp.files, opts, s.log, hideSuccessfulOutput, noForkedVm) tag Tags.ForkedTestGroup
 					case Tests.InProcess =>
+						s.log.debug("Not forking tests")
 						Tests(frameworks, loader, runners, tests, config, s.log)
 				}
 		}

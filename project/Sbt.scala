@@ -81,7 +81,7 @@ object Sbt extends Build
 	  // Runner for uniform test interface
 	lazy val testingSub = baseProject(file("testing"), "Testing") dependsOn(ioSub, classpathSub, logSub, launchInterfaceSub, testAgentSub) settings(testInterface)
   	// Testing agent for running tests in a separate process.
-	lazy val testAgentSub = minProject(file("testing/agent"), "Test Agent") settings(testInterface)
+	lazy val testAgentSub = minProject(file("testing/agent"), "Test Agent") settings(testInterface) settings(lib("cglib" % "cglib-nodep" % "2.2.2"))
 
 		// Basic task engine
 	lazy val taskSub = testedBaseProject(tasksPath, "Tasks") dependsOn(controlSub, collectionSub)
