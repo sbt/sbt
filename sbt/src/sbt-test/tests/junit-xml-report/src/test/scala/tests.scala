@@ -23,6 +23,20 @@ package another.pkg {
 			sys.error("fail2")
 		}
 	}
+
+	// junit doesn't blow up when a class fails during construction
+	// we'll use scalatest (which does blow up) to make sure
+	// the report contains that kind of error
+	import org.scalatest.{FunSpec, ShouldMatchers}
+	class FailUponConstructionTest extends FunSpec with ShouldMatchers {
+		sys.error("failed upon construction")
+
+		describe("5 should") {
+			it("always be 5") {
+				5 should equal (5)
+			}
+		}
+	}
 }
 
 package console.test.pkg {

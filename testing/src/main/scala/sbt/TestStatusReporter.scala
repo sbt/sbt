@@ -17,6 +17,7 @@ private[sbt] class TestStatusReporter(f: File) extends TestsListener
 		if(suite.result.result == TestResult.Passed)
 			succeeded(name) = System.currentTimeMillis
 	}
+
 	override def doComplete(finalResult: TestResult.Value) {
 		TestStatus.write(succeeded, "Successful Tests", f)
 	}

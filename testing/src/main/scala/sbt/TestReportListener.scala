@@ -14,9 +14,6 @@ trait TestReportListener
 	/** called for each test method or equivalent */
   def endTest(report: TestReport) {}
 
-	/** called if there was an error during test */
-  def endSuite(name: String, t: Throwable, suite: Option[SuiteReport]) {}
-
 	/** called if test completed */
   def endSuite(name: String, report: SuiteReport) {}
 
@@ -36,7 +33,12 @@ trait TestsListener extends TestReportListener
 final class SuiteResult(
 	val result: TestResult.Value,
 	val passedCount: Int, val failureCount: Int, val errorCount: Int,
-	val skippedCount: Int, val ignoredCount: Int, val canceledCount: Int, val pendingCount: Int)
+	val skippedCount: Int, val ignoredCount: Int, val canceledCount: Int, val pendingCount: Int) {
+
+	def error : SuiteResult = new SuiteResult(
+		TestResult.Error, passedCount, failureCount, errorCount,
+		skippedCount, ignoredCount, canceledCount, pendingCount)
+}
 
 object SuiteResult
 {
@@ -48,23 +50,35 @@ object SuiteResult
 		new SuiteResult(result, count(TStatus.Success), count(TStatus.Failure), count(TStatus.Error),
 			count(TStatus.Skipped), count(TStatus.Ignored), count(TStatus.Canceled), count(TStatus.Pending))
 	}
+
 	val Error: SuiteResult = new SuiteResult(TestResult.Error, 0, 0, 0, 0, 0, 0, 0)
 	val Empty: SuiteResult = new SuiteResult(TestResult.Passed, 0, 0, 0, 0, 0, 0, 0)
 }
 
 abstract class SuiteReport
-{
+{ outer =>
 	def result: SuiteResult
 
 	/**
 	 * @note it might happen that a class is flagged as a test suite but contains no tests, therefore
-	 *       producing a suite report with no test report.
+	 *       producing a suite report with no test report. The test suite might also fail while
+	 *       being constructed.
 	 * @return the test reports of this suite - can be empty
 	 */
-	def detail: Seq[TestReport] = Nil
+	def detail: Seq[TestReport]
+
+	/** defined if an error has interrupted the suite execution */
+	def errorCause: Option[Throwable]
 
 	def addTest(test: TestReport) : SuiteReport = {
 		SuiteReport(detail :+ test)
+	}
+
+	/** @return a copy of this suite report with result `Error` (result counts and details are preserved) */
+	def error(err: Throwable) : SuiteReport = new SuiteReport {
+		val result = outer.result.error
+		val errorCause = Some(err)
+		def detail = outer.detail
 	}
 
 	/** Duration of the Suite in milliseconds.
@@ -74,16 +88,17 @@ abstract class SuiteReport
 }
 object SuiteReport
 {
-	val Error : SuiteReport = new SuiteReport {
-		val result = SuiteResult.Error
-	}
-
 	val empty : SuiteReport = apply(Nil)
+
+	def apply(err: Throwable) : SuiteReport = {
+		empty.error(err)
+	}
 
 	def apply(events: Seq[TestReport]): SuiteReport =
 		new SuiteReport {
 			val result = SuiteResult(events)
-			override val detail = events
+			val detail = events
+			val errorCause = None
 		}
 }
 
@@ -158,10 +173,12 @@ class TestLogger(val logging: TestLogging) extends TestsListener
 {
 	import logging.{global => log, logTest}
 
-	override def endSuite(name: String, t: Throwable, suite: Option[SuiteReport])
+	override def endSuite(name: String, suite: SuiteReport)
 	{
-		log.trace(t)
-		log.error("Could not run test " + name + ": " + t.toString)
+		for( error <- suite.errorCause ) {
+			log.trace(error)
+			log.error("Could not run test " + name + ": " + error.toString)
+		}
 	}
 	override def contentLogger(test: TestDefinition): Option[ContentLogger] = Some(logTest(test))
 }

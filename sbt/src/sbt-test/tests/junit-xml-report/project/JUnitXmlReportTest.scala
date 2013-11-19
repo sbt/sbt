@@ -11,6 +11,7 @@ object JUnitXmlReportTest extends Build with AssertionMatchers with XmlMatchers 
 
 	private val oneSecondReportFile = "target/test-reports/a.pkg.OneSecondTest.xml"
 	private val failingReportFile = "target/test-reports/another.pkg.FailingTest.xml"
+	private val failUponConstructionReportFile = "target/test-reports/another.pkg.FailUponConstructionTest.xml"
 	private val consoleReportFile = "target/test-reports/console.test.pkg.ConsoleTests.xml"
 
 	def greaterThan(float: Float) : Matcher[String] = be("greater than " + float) {
@@ -19,7 +20,9 @@ object JUnitXmlReportTest extends Build with AssertionMatchers with XmlMatchers 
 
 	lazy val root = Project("root", file("."), settings = defaultSettings ++ Seq(
 		scalaVersion := "2.9.2",
-		libraryDependencies += "com.novocode" % "junit-interface" % "0.10" % "test",
+		libraryDependencies ++= Seq(
+			"com.novocode" % "junit-interface" % "0.10" % "test",
+			"org.scalatest" % "scalatest_2.9.2" % "2.0.M3" % "test" intransitive()),
 
 		testReportJUnitXml := true,
 
@@ -45,6 +48,12 @@ object JUnitXmlReportTest extends Build with AssertionMatchers with XmlMatchers 
 			failingReport must haveAttribute("name", equalTo("another.pkg.FailingTest"))
 			// TODO more checks -> the two test cases with time etc..
 
+			val failUponConstructionReport = XML.loadFile(failUponConstructionReportFile)
+			failUponConstructionReport must haveLabel("testsuite")
+			failUponConstructionReport must haveAttribute("errors", equalTo("1"))
+			(failUponConstructionReport \ "system-err").text must (contain("failed upon construction") and contain("RuntimeException"))
+			failUponConstructionReport \ "testcase" must haveSize(0)
+
 			val consoleReport = XML.loadFile(consoleReportFile)
 			consoleReport must haveLabel("testsuite")
 			consoleReport must haveAttribute("tests", equalTo("2"))
@@ -65,6 +74,7 @@ object JUnitXmlReportTest extends Build with AssertionMatchers with XmlMatchers 
 		checkNoReport := {
 			file(oneSecondReportFile) must not(exist)
 			file(failingReportFile) must not(exist)
+			file(failUponConstructionReportFile) must not(exist)
 			file(consoleReportFile) must not(exist)
 		}
 	))

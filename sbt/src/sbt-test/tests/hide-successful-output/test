@@ -5,6 +5,10 @@
 -> test
 > check
 
+> set testNumberForkedJvm := 4
+-> test
+> check
+
 > set testForkedParallel := false
 -> test
 > check

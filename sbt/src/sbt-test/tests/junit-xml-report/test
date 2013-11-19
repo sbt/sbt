@@ -1,12 +1,12 @@
 # This test is twofold:
-#
+# .
 #  - it checks the junit xml report format (provided by `JUnitXmlTestsListener`)
-#
+# .
 #  - it checks the segregation of test output. When tests run concurrently things printed on the standard output
 #    get mixed up. SBT can tell the test output appart so that each test is reported with its own standard output.
-#
+# .
 # ------------------------------------------------------------------------------------------------------------
-
+# .
 # for now test output segregation works only in fork mode
 > set fork in Test := true
 

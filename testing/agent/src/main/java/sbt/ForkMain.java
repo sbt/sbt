@@ -13,9 +13,7 @@ import java.io.PrintStream;
 import java.net.Socket;
 import java.net.InetAddress;
 import java.nio.charset.Charset;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
+import java.util.*;
 import java.util.concurrent.*;
 
 public class ForkMain {
@@ -166,7 +164,7 @@ public class ForkMain {
 		}
 
 		class RunAborted extends RuntimeException {
-			RunAborted(Exception e) { super(e); }
+			RunAborted(String message, Throwable cause) { super(message, cause); }
 		}
 
 		synchronized void write(ObjectOutputStream os, Object obj) {
@@ -174,12 +172,16 @@ public class ForkMain {
 				os.writeObject(obj);
 				os.flush();
 			} catch (IOException e) {
-				throw new RunAborted(e);
+				throw new RunAborted("While writing " + obj, e);
 			}
 		}
 
 		void log(ObjectOutputStream os, String message, ForkTags level) {
-			write(os, new Object[]{level, message});
+			try {
+				write(os, new Object[]{level, message});
+			} catch( RunAborted e ) {
+				throw new RunAborted("While logging " + level + " level message >" + message + "<", e.getCause());
+			}
 		}
 
 		void logDebug(ObjectOutputStream os, String message) { log(os, message, ForkTags.Debug); }
@@ -227,15 +229,20 @@ public class ForkMain {
 			}
 		}
 
+		/** @return null if stdout shouldn't be captured */
 		private OutputCapturer installOutputCapturer(ForkConfiguration config) {
-			OutputCapturer outputCapturer;
-			if( config.isHideStandardOutput() ) {
-				outputCapturer = new OutputCapturer(new NullOutputStream(), System.err, Charset.defaultCharset());
+			if( config.isCaptureStandardOutput() ) {
+				OutputCapturer outputCapturer;
+				if( config.isHideStandardOutput() ) {
+					outputCapturer = new OutputCapturer(new NullOutputStream(), System.err, Charset.defaultCharset());
+				} else {
+					outputCapturer = new OutputCapturer(System.out, System.err, Charset.defaultCharset());
+				}
+				new OutputCapturerInstaller(new SystemOutErr()).install(outputCapturer);
+				return outputCapturer;
 			} else {
-				outputCapturer = new OutputCapturer(System.out, System.err, Charset.defaultCharset());
+				return null;
 			}
-			new OutputCapturerInstaller(new SystemOutErr()).install(outputCapturer);
-			return outputCapturer;
 		}
 
 		void runTests(ObjectInputStream is, final ObjectOutputStream os) throws Exception {
@@ -244,50 +251,53 @@ public class ForkMain {
 			OutputCapturer outputCapturer = installOutputCapturer(config);
 
 			ExecutorService executor = executorService(config, os);
-			final TaskDef[] tests = (TaskDef[]) is.readObject();
+
 			int nFrameworks = is.readInt();
 			Logger[] loggers = { remoteLogger(config.isAnsiCodesSupported(), os) };
+
+			FrameworkLoader loader = new FrameworkLoader() {
+				@Override
+				protected void logDebug(String message) {
+					Run.this.logDebug(os, message);
+				}
+			};
+
+			HashMap<String, Runner> runners = new HashMap<String,Runner>();
 
 			for (int i = 0; i < nFrameworks; i++) {
 				final String[] implClassNames = (String[]) is.readObject();
 				final String[] frameworkArgs = (String[]) is.readObject();
 				final String[] remoteFrameworkArgs = (String[]) is.readObject();
 
-				Framework framework = null;
-				for (String implClassName : implClassNames) {
-					try {
-						Object rawFramework = Class.forName(implClassName).newInstance();
-						if (rawFramework instanceof Framework)
-							framework = (Framework) rawFramework;
-						else
-							framework = new FrameworkWrapper((org.scalatools.testing.Framework) rawFramework);
-						break;
-					} catch (ClassNotFoundException e) {
-						logDebug(os, "Framework implementation '" + implClassName + "' not present.");
-					}
-				}
-
+				Framework framework = loader.loadFramework(implClassNames);
 				if (framework == null)
 					continue;
 
-				ArrayList<TaskDef> filteredTests = new ArrayList<TaskDef>();
-				for (Fingerprint testFingerprint : framework.fingerprints()) {
-					for (TaskDef test : tests) {
-						// TODO: To pass in correct explicitlySpecified and selectors
-						if (matches(testFingerprint, test.fingerprint()))
-							filteredTests.add(new TaskDef(test.fullyQualifiedName(), test.fingerprint(), test.explicitlySpecified(), test.selectors()));
-					}
-				}
-				final Runner runner = framework.runner(frameworkArgs, remoteFrameworkArgs, getClass().getClassLoader());
-				Task[] tasks = runner.tasks(filteredTests.toArray(new TaskDef[filteredTests.size()]));
-				logDebug(os, "Runner for " + framework.getClass().getName() + " produced " + tasks.length + " initial tasks for " + filteredTests.size() + " tests.");
-
-				runTestTasks(executor, tasks, loggers, os, outputCapturer, config.isHideStandardOutput(), originalStdout);
-
-				runner.done();
+				Runner runner = framework.runner(frameworkArgs, remoteFrameworkArgs, getClass().getClassLoader());
+				runners.put(framework.name(), runner);
 			}
-			write(os, ForkTags.Done);
-			is.readObject();
+
+			while(true) {
+				Object item = is.readObject();
+				if( item instanceof ForkSuites ) {
+					ForkSuites suites = (ForkSuites)item;
+					Runner runner = runners.get(suites.getFrameworkName());
+					if( runner == null ) {
+						logWarn(os, "Couldn't find a runner for framework " + suites.getFrameworkName());
+					} else {
+						Task[] tasks = runner.tasks(suites.getTaskDefs());
+						runTestTasks(executor, tasks, loggers, os, outputCapturer, config.isHideStandardOutput(), originalStdout);
+					}
+					write(os, ForkTags.Done);
+				} else {
+					logDebug(os, "Received " + item + " terminating forked runner.");
+					for (Runner runner : runners.values()) {
+						runner.done();
+					}
+					write(os, ForkTags.Done);
+					break;
+				}
+			}
 		}
 
 		void runTestTasks(ExecutorService executor, Task[] tasks, Logger[] loggers, ObjectOutputStream os, OutputCapturer outputCapturer, final boolean printFailedStdout, final PrintStream originalStdout) {
@@ -304,7 +314,7 @@ public class ForkMain {
 					try {
 						nestedTasks.addAll( Arrays.asList(futureNestedTask.get()));
 					} catch (Exception e) {
-						logError(os, "Failed to execute task " + futureNestedTask);
+						logError(os, "Failed to execute task " + futureNestedTask + ": " + e.getMessage());
 					}
 				}
 				runTestTasks(executor, nestedTasks.toArray(new Task[nestedTasks.size()]), loggers, os, outputCapturer, printFailedStdout, originalStdout);
@@ -321,7 +331,10 @@ public class ForkMain {
 					final String suiteName = taskDef.fullyQualifiedName();
 					writeStartSuite(os, suiteName);
 					final OutputStringBuilder outputCapture = new OutputStringBuilder();
-					outputCapturer.captureTo(outputCapture);
+					if(outputCapturer != null ) {
+						outputCapturer.captureTo(outputCapture);
+					} // if no output capturer was defined then outputCapture will always return ""
+
 					try {
 						EventHandler handler = new EventHandler() {
 							public void handle(Event e){

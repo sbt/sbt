@@ -42,8 +42,8 @@ class JUnitXmlTestsListener(val outputDir:String) extends TestsListener
 			stringWriter.toString
 		}
 
-    def toXml(name:String, suite: SuiteReport, suiteError: Option[Throwable]) : Elem = {
-				val errors = if( suite.result.errorCount == 0 && suiteError.isDefined) 1 else suite.result.errorCount
+    def toXml(name:String, suite: SuiteReport) : Elem = {
+				val errors = if( suite.result.errorCount == 0 && suite.errorCause.isDefined) 1 else suite.result.errorCount
 
 				<testsuite hostname={hostname} name={name}
 											 tests={suite.detail.size + ""} errors={errors + ""} failures={suite.result.failureCount + ""}
@@ -79,16 +79,12 @@ class JUnitXmlTestsListener(val outputDir:String) extends TestsListener
 
 						}
 						<system-out><![CDATA[]]></system-out>
-						<system-err>{cdata(suiteError.map(stackTraceToString).getOrElse(""))}</system-err>
+						<system-err>{cdata(suite.errorCause.map(stackTraceToString).getOrElse(""))}</system-err>
 						</testsuite>
 
     }
 
     override def doInit() = {targetDir.mkdirs()}
-
-    override def endSuite(name: String, t: Throwable, suite: Option[SuiteReport]) = {
-        writeSuite(name, suite.getOrElse(SuiteReport.Error), Some(t))
-    }
 
     /** Ends the current suite, wraps up the result and writes it to an XML file
      *  in the output folder that is named after the suite.
@@ -97,10 +93,10 @@ class JUnitXmlTestsListener(val outputDir:String) extends TestsListener
         writeSuite(name, suite)
     }
 
-    private def writeSuite(name: String, suite: SuiteReport, suiteError: Option[Throwable] = None) = {
+    private def writeSuite(name: String, suite: SuiteReport) = {
       val file = new File(targetDir, name + ".xml").getAbsolutePath
       // TODO would be nice to have a logger and log this with level debug
       // System.err.println("Writing JUnit XML test report: " + file)
-      XML.save (file, toXml(name, suite, suiteError), "UTF-8", true, null)
+      XML.save (file, toXml(name, suite), "UTF-8", true, null)
     }
 }

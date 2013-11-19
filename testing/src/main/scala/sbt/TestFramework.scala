@@ -14,6 +14,7 @@ object TestResult extends Enumeration
 {
 	val Passed, Failed, Error = Value
 
+	/** `Passed` when empty */
 	def overall(results: Iterable[TestResult.Value]): TestResult.Value =
 		results.foldLeft(Passed) { (acc, result) => if(acc.id < result.id) result else acc }
 }
@@ -105,7 +106,7 @@ final class TestRunner(delegate: Runner, listeners: Seq[TestReportListener], log
 		catch
 		{
 			case e: Throwable =>
-				safeListenersCall(_.endSuite(name, e, None))
+				safeListenersCall(_.endSuite(name, SuiteReport(e)))
 				(SuiteResult.Error, Seq.empty[TestTask])
 		}
 	}
