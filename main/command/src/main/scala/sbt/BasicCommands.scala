@@ -46,12 +46,14 @@ object BasicCommands
 	def completionsCommand = Command.make(CompletionsCommand, CompletionsBrief, CompletionsDetailed)(completionsParser)
 	def completionsParser(state: State) =
 	{
-		applyEffect(singleArgument(Set.empty).?)(runCompletions(state))
+		val notQuoted = (NotQuoted ~ any.*) map {case (nq, s) => (nq +: s).mkString}
+		val quotedOrUnquotedSingleArgument = Space ~> (StringVerbatim | StringEscapable | notQuoted)
+
+		applyEffect(token(quotedOrUnquotedSingleArgument ?? "" examples("", " ")))(runCompletions(state))
 	}
-	def runCompletions(state: State)(input: Option[String]): State = {
-		val str = input.getOrElse("")
-		Parser.completions(state.combinedParser, str, 9).get map {
-			c => if (c.isEmpty) str else str + c.append
+	def runCompletions(state: State)(input: String): State = {
+		Parser.completions(state.combinedParser, input, 9).get map {
+			c => if (c.isEmpty) input else input + c.append
 		} foreach { c =>
 			System.out.println("[completions] " + c.replaceAll("\n", " "))
 		}
