@@ -151,6 +151,8 @@ private final class AnalysisCallback(internalMap: File => Option[File], external
 		apis(sourceFile) = (HashAPI(source), savedSource)
 	}
 
+	def memberRefAndInheritanceDeps: Boolean = false // TODO: define the flag in IncOptions which controls this
+
 	def get: Analysis = addCompilation( addExternals( addBinaries( addProducts( addSources(Analysis.Empty) ) ) ) )
 	def addProducts(base: Analysis): Analysis = addAll(base, classes) { case (a, src, (prod, name)) => a.addProduct(src, prod, current product prod, name ) }
 	def addBinaries(base: Analysis): Analysis = addAll(base, binaryDeps)( (a, src, bin) => a.addBinaryDep(src, bin, binaryClassName(bin), current binary bin) )
