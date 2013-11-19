@@ -89,6 +89,9 @@ private[sbt] object ForkTests
 		private var vmArgs : Seq[String] = Nil
 		private val thread = new Thread(this)
 
+		/** make sure we don't activate intra-vm parallelism when `usePipedProcessOutput` is enabled */
+		private val parallelSafe = parallel && !usePipedProcessOutput
+
 		/** a map of [SuiteName, SuiteReport] */
 		val results = mutable.Map.empty[String, SuiteReport]
 
@@ -117,7 +120,7 @@ private[sbt] object ForkTests
 				val fullCp = classpath ++: Seq(IO.classLocationFile[ForkMain], IO.classLocationFile[Framework], IO.classLocationFile[Callback])
 				vmArgs = Seq("-classpath", fullCp mkString File.pathSeparator, classOf[ForkMain].getCanonicalName, getLocalPort.toString)
 	
-				log.debug(s"Forking tests: fork-options=$forkOptions, vm-args=$vmArgs, parallel=$parallel, " +
+				log.debug(s"Forking tests: fork-options=$forkOptions, vm-args=$vmArgs, parallel=$parallelSafe, " +
 					s"hide-successful-output=$hideSuccessfulOutput, usePipedProcessOutput=$usePipedProcessOutput")
 
 				val newOptions = if( usePipedProcessOutput ) {
@@ -198,7 +201,7 @@ private[sbt] object ForkTests
 		private def writeConfig(os: ObjectOutputStream) {
 			val config = new ForkConfiguration(
 				log.ansiCodesSupported,
-				parallel && !usePipedProcessOutput, // disable parallelism when piped process output is used
+				parallelSafe,
 				hideSuccessfulOutput,
 				!usePipedProcessOutput)
 
