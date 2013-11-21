@@ -97,7 +97,7 @@ private final class AnalysisCallback(internalMap: File => Option[File], external
 	}
 
 	def sourceDependency(dependsOn: File, source: File, inherited: Boolean) =
-		if(source != dependsOn) {
+		{
 			add(sourceDeps, source, dependsOn)
 			if(inherited) add(inheritedSourceDeps, source, dependsOn)
 		}
