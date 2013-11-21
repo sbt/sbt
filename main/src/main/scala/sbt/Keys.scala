@@ -283,7 +283,7 @@ object Keys
 	val projectResolver = TaskKey[Resolver]("project-resolver", "Resolver that handles inter-project dependencies.", DTask)
 	val fullResolvers = TaskKey[Seq[Resolver]]("full-resolvers", "Combines the project resolver, default resolvers, and user-defined resolvers.", CTask)
 	val otherResolvers = SettingKey[Seq[Resolver]]("other-resolvers", "Resolvers not included in the main resolver chain, such as those in module configurations.", CSetting)
-	val moduleConfigurations = SettingKey[Seq[ModuleConfiguration]]("module-configurations", "Defines module configurations, which override resolvers on a per-module basis.", BMinusSetting)
+	val moduleConfigurations = TaskKey[Seq[ModuleConfiguration]]("module-configurations", "Defines module configurations, which override resolvers on a per-module basis.", BMinusTask)
 	val retrievePattern = SettingKey[String]("retrieve-pattern", "Pattern used to retrieve managed dependencies to the current build.", DSetting)
 	val retrieveConfiguration = SettingKey[Option[RetrieveConfiguration]]("retrieve-configuration", "Configures retrieving dependencies to the current build.", DSetting)
 	val offline = SettingKey[Boolean]("offline", "Configures sbt to work without a network connection where possible.", ASetting)
