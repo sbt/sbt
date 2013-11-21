@@ -87,6 +87,7 @@ final class InternedAnalysisFormats
 	implicit val sourceFormat = AnalysisFormats.sourceFormat
 	implicit val apisFormat = AnalysisFormats.apisFormat
 	implicit val relationsSourceFormat = AnalysisFormats.relationsSourceFormat
+	implicit val relationsSourceDependenciesFormat = AnalysisFormats.relationsSourceDependenciesFormat
 	implicit val relationsFormat = AnalysisFormats.relationsFormat
 	implicit val optsFormat = AnalysisFormats.optsFormat
 	implicit val hashStampFormat = AnalysisFormats.hashStampFormat

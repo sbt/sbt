@@ -13,7 +13,7 @@ package inc
 	import DefaultProtocol._
 	import DefaultProtocol.tuple2Format
 	import Logger.{m2o, position, problem}
-	import Relations.{Source => RSource}
+	import Relations.{Source => RSource, SourceDependencies => RSourceDependencies}
 
 @deprecated("Replaced by InternedAnalysisFormats. OK to remove in 0.14.", since="0.13.1")
 object AnalysisFormats
@@ -99,11 +99,33 @@ object AnalysisFormats
 	implicit def apisFormat(implicit internalF: Format[Map[File, Source]], externalF: Format[Map[String, Source]]): Format[APIs] =
 		asProduct2( APIs.apply _)( as => (as.internal, as.external) )(internalF, externalF)
 
-	implicit def relationsFormat(implicit prodF: Format[RFF], binF: Format[RFF], directF: Format[RSource], inheritedF: Format[RSource], csF: Format[RFS]): Format[Relations] =
-		asProduct5[Relations, RFF, RFF, RSource, RSource, RFS]( (a,b,c,d,e) => Relations.make(a,b,c,d,e) )( rs => (rs.srcProd, rs.binaryDep, rs.direct, rs.publicInherited, rs.classes) )(prodF, binF, directF, inheritedF, csF)
+	implicit def relationsFormat(implicit prodF: Format[RFF], binF: Format[RFF], directF: Format[RSource], inheritedF: Format[RSource], memberRefF: Format[RSourceDependencies], inheritanceF: Format[RSourceDependencies], csF: Format[RFS]): Format[Relations] =
+		{
+			def makeRelation(srcProd: RFF, binaryDep: RFF, direct: RSource, publicInherited: RSource,
+					memberRef: RSourceDependencies, inheritance: RSourceDependencies, classes: RFS,
+					memberRefAndInheritanceDeps: Boolean): Relations = if (memberRefAndInheritanceDeps) {
+				def isEmpty(sourceDependencies: RSource): Boolean =
+					sourceDependencies.internal.all.isEmpty &&  sourceDependencies.external.all.isEmpty
+				// we check direct dependencies only because publicInherited dependencies are subset of direct
+				assert(isEmpty(direct), "Direct dependencies are not empty but `memberRefAndInheritanceDeps` flag is enabled.")
+				Relations.make(srcProd, binaryDep, memberRef, inheritance, classes)
+			} else {
+				def isEmpty(sourceDependencies: RSourceDependencies): Boolean =
+					sourceDependencies.internal.all.isEmpty &&  sourceDependencies.external.all.isEmpty
+				// we check memberRef dependencies only because inheritance dependencies are subset of memberRef
+				assert(isEmpty(memberRef), "Direct dependencies are not empty but `memberRefAndInheritanceDeps` flag is enabled.")
+				Relations.make(srcProd, binaryDep, direct, publicInherited, classes)
+			}
+			asProduct8[Relations, RFF, RFF, RSource, RSource, RSourceDependencies, RSourceDependencies, RFS, Boolean]( (a,b,c,d,e,f,g,h) =>makeRelation(a,b,c,d,e,f,g,h) )(
+					rs => (rs.srcProd, rs.binaryDep, rs.direct, rs.publicInherited, rs.memberRef, rs.inheritance, rs.classes, rs.memberRefAndInheritanceDeps) )(
+							prodF, binF, directF, inheritedF, memberRefF, inheritanceF, csF, implicitly[Format[Boolean]])
+		}
 
 	implicit def relationsSourceFormat(implicit internalFormat: Format[Relation[File, File]], externalFormat: Format[Relation[File,String]]): Format[RSource] =
 		asProduct2[RSource, RFF, RFS]( (a, b) => Relations.makeSource(a,b))( rs => (rs.internal, rs.external))
+
+	implicit def relationsSourceDependenciesFormat(implicit internalFormat: Format[Relation[File, File]], externalFormat: Format[Relation[File,String]]): Format[RSourceDependencies] =
+		asProduct2[RSourceDependencies, RFF, RFS]( (a, b) => Relations.makeSourceDependencies(a,b))( rs => (rs.internal, rs.external))
 
 	implicit def relationFormat[A,B](implicit af: Format[Map[A, Set[B]]], bf: Format[Map[B, Set[A]]]): Format[Relation[A,B]] =
 		asProduct2[Relation[A,B], Map[A, Set[B]], Map[B, Set[A]]]( Relation.make _ )( r => (r.forwardMap, r.reverseMap) )(af, bf)
