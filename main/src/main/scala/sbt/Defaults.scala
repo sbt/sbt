@@ -62,7 +62,7 @@ object Defaults extends BuildCommon
 		scalaOrganization :== ScalaArtifacts.Organization,
 		buildDependencies <<= Classpaths.constructBuildDependencies,
 		taskTemporaryDirectory := { val dir = IO.createTemporaryDirectory; dir.deleteOnExit(); dir },
-		onComplete := { val dir = taskTemporaryDirectory.value; () => IO.delete(dir); IO.createDirectory(dir) },
+		onComplete := { val dir = taskTemporaryDirectory.value; () => {IO.delete(dir); IO.createDirectory(dir) }},
 		concurrentRestrictions <<= defaultRestrictions,
 		parallelExecution :== true,
 		sbtVersion := appConfiguration.value.provider.id.version,
@@ -459,9 +459,7 @@ object Defaults extends BuildCommon
 	{
 		val parser = loadForParser(definedTestNames)( (s, i) => testOnlyParser(s, i getOrElse Nil) )
 		Def.inputTaskDyn {
-			val res = parser.parsed
-			val selected = res._1
-			val frameworkOptions = res._2
+			val (selected, frameworkOptions) = parser.parsed
 			val s = streams.value
 			val filter = testFilter.value
 			val config = testExecution.value
@@ -647,9 +645,7 @@ object Defaults extends BuildCommon
 		import DefaultParsers._
 		val parser = loadForParser(discoveredMainClasses)( (s, names) => runMainParser(s, names getOrElse Nil) )
 		Def.inputTask {
-			val res = parser.parsed
-			val mainClass = res._1
-			val args = res._2
+			val (mainClass, args) = parser.parsed
 			toError(scalaRun.value.run(mainClass, data(classpath.value), args, streams.value.log))
 		}
 	}

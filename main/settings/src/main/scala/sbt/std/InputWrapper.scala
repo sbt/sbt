@@ -68,6 +68,7 @@ object InputWrapper
 		sel.setPos(pos) // need to set the position on Select, because that is where the compileTimeOnly check looks
 		val tree = ApplyTree(TypeApply(sel, TypeTree(tpe) :: Nil), ts.tree :: Nil)
 		tree.setPos(ts.tree.pos)
+		tree.setType(tpe)
 		c.Expr[T](tree)
 	}
 
