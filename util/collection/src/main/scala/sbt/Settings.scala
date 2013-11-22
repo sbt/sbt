@@ -342,12 +342,13 @@ trait Init[Scope]
 			val derivedForKey: List[Derived] = derivedBy.get(sk.key).toList.flatten
 			val scope = sk.scope
 			def localAndDerived(d: Derived): Seq[Setting[_]] =
-				if(d.inScopes.add(scope) && d.setting.filter(scope))
+				if(!d.inScopes.contains(scope) && d.setting.filter(scope))
 				{
 					val local = d.dependencies.flatMap(dep => scopeLocal(ScopedKey(scope, dep)))
-					if(allDepsDefined(d, scope, local.map(_.key.key).toSet))
+					if(allDepsDefined(d, scope, local.map(_.key.key).toSet)) {
+						d.inScopes.add(scope)
 						local :+ d.setting.setScope(scope)
-					else
+					} else
 						Nil
 				}
 				else Nil
