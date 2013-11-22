@@ -33,8 +33,10 @@ object KListBuilder extends TupleBuilder
 		def bindKList(prev: ValDef, revBindings: List[ValDef], params: List[ValDef]): List[ValDef] =
 			params match
 			{
-				case ValDef(mods, name, tpt, _) :: xs =>
-					val head = ValDef(mods, name, tpt, select(Ident(prev.name), "head"))
+				case (x @ ValDef(mods, name, tpt, _)) :: xs =>
+					val rhs = select(Ident(prev.name), "head")
+					val head = treeCopy.ValDef(x, mods, name, tpt, rhs)
+					util.setSymbol(head, x.symbol)
 					val tail = localValDef(TypeTree(), select(Ident(prev.name), "tail"))
 					val base = head :: revBindings
 					bindKList(tail, if(xs.isEmpty) base else tail :: base, xs)
@@ -53,7 +55,7 @@ object KListBuilder extends TupleBuilder
 		val klist = makeKList(inputs.reverse, knil, knilType)
 
 		/** The input types combined in a KList type.  The main concern is tracking the heterogeneous types.
-		* The type constructor is tcVariable, so that it can be applied to [X] X or M later.  
+		* The type constructor is tcVariable, so that it can be applied to [X] X or M later.
 		* When applied to `M`, this type gives the type of the `input` KList. */
 		val klistType: Type = (inputs :\ knilType)( (in, klist) => kconsType(in.tpe, klist) )
 
