@@ -6,7 +6,7 @@ Configure and use logging
    :id: last
    :title: View the logging output of the previously executed command
    :type: command
-   
+
    last
 
 When a command is run, more detailed logging output is sent to a file than to the screen (by default).
@@ -17,10 +17,10 @@ For example, the output of :key:`run` when the sources are uptodate is:
 .. code-block:: console
 
     > run
-    [info] Running A 
+    [info] Running A
     Hi!
     [success] Total time: 0 s, completed Feb 25, 2012 1:00:00 PM
-    
+
 
 The details of this execution can be recalled by running `last`:
 
@@ -28,8 +28,8 @@ The details of this execution can be recalled by running `last`:
 
     > last
     [debug] Running task... Cancelable: false, max worker threads: 4, check cycles: false
-    [debug] 
-    [debug] Initial source changes: 
+    [debug]
+    [debug] Initial source changes:
     [debug] 	removed:Set()
     [debug] 	added: Set()
     [debug] 	modified: Set()
@@ -37,15 +37,15 @@ The details of this execution can be recalled by running `last`:
     [debug] Modified external sources: Set()
     [debug] Modified binary dependencies: Set()
     [debug] Initial directly invalidated sources: Set()
-    [debug] 
+    [debug]
     [debug] Sources indirectly invalidated by:
     [debug] 	product: Set()
     [debug] 	binary dep: Set()
     [debug] 	external source: Set()
     [debug] Initially invalidated: Set()
-    [debug] Copy resource mappings: 
-    [debug] 	
-    [info] Running A 
+    [debug] Copy resource mappings:
+    [debug]
+    [info] Running A
     [debug] Starting sandboxed run...
     [debug] Waiting for threads to exit or System.exit to be called.
     [debug]   Classpath:
@@ -64,7 +64,7 @@ Configuration of the logging level for the console and for the backing file are 
    :id: tasklast
    :title: View the previous logging output of a specific task
    :type: command
-   
+
    last compile
 
 When a task is run, more detailed logging output is sent to a file than to the screen (by default).
@@ -87,8 +87,8 @@ For example,
 .. code-block:: console
 
     > last compile
-    [debug] 
-    [debug] Initial source changes: 
+    [debug]
+    [debug] Initial source changes:
     [debug] 	removed:Set()
     [debug] 	added: Set(/home/mark/tmp/a/b/A.scala)
     [debug] 	modified: Set()
@@ -112,7 +112,7 @@ and:
    :id: printwarnings
    :title: Show warnings from the previous compilation
    :type: command
-   
+
    printWarnings
 
 The Scala compiler does not print the full details of warnings by default.
@@ -136,23 +136,35 @@ For example,
     [warn] A.scala:2: method error in object Predef is deprecated: Use sys.error(message) instead
     [warn] 	def x = error("Failed.")
     [warn] 	        ^
-	 
+
 .. howto::
    :id: level
    :title: Change the logging level globally
    :type: command
-   
-   set every logLevel := Level.Debug
 
-The amount of logging is controlled by the :key:`logLevel` setting, which takes values from the `Level` enumeration.
-Valid values are `Error`, `Warn`, `Info`, and `Debug` in order of increasing verbosity.
-To change the global logging level, set `logLevel in Global`.
-For example, to set it temporarily from the sbt prompt,
+   warn
+
+The quickest way to change logging levels is by using the `error`, `warn`, `info`, or `debug` commands.
+These set the default logging level for commands and tasks.
+For example,
 
 .. code-block:: console
 
-    > set logLevel in Global := Level.Warn
+    > warn
 
+will by default show only warnings and errors.
+To set the logging level before any commands are executed on startup, use `--` before the logging level.  For example,
+
+.. code-block:: console
+
+    $ sbt --warn
+    > compile
+    [warn] there were 2 feature warning(s); re-run with -feature for details
+    [warn] one warning found
+    [success] Total time: 4 s, completed ...
+    >
+
+The logging level can be overridden at a finer granularity, which is described next.
 
 .. howto::
   :id: tasklevel
@@ -188,7 +200,7 @@ See the section on `printWarnings <#printwarnings>`_ and the sections on `previo
    :id: trace
    :title: Configure printing of stack traces
    :type: command
-   
+
    set every traceLevel := 5`
 
 By default, sbt hides the stack trace of most exceptions thrown during execution.
@@ -219,7 +231,7 @@ To change the trace printing behavior for a single project, configuration, or ta
    :id: nobuffer
    :title: Print the output of tests immediately instead of buffering
    :type: setting
-   
+
    logBuffered := false
 
 By default, sbt buffers the logging output of a test until the whole class finishes.
