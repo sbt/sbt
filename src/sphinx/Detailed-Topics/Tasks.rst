@@ -282,7 +282,7 @@ The simplest case is explicitly specifying the values for the parts:
 
 ::
 
-    val filter: ScopeFilter = 
+    val filter: ScopeFilter =
        ScopeFilter(
           inProjects( core, util ),
           inConfigurations( Compile, Test )
@@ -368,7 +368,7 @@ The following contrived example sets the maximum errors to be the maximum of all
 
     maxErrors := {
        // select the transitive aggregates for this project, but not the project itself
-       val filter: ScopeFilter = 
+       val filter: ScopeFilter =
           ScopeFilter( inAggregates(ThisProject, includeRoot=false) )
        // get the configured maximum errors in each selected scope,
        // using 0 if not defined in a scope
@@ -472,6 +472,49 @@ The verbosity with which logging is persisted is controlled using the
 command displays what was logged according to these levels. The levels
 do not affect already logged information.
 
+Dynamic Computations with `Def.taskDyn`
+---------------------------------------
+
+It can be useful to use the result of a task to determine the
+next tasks to evaluate.  This is done using `Def.taskDyn`.  The
+result of `taskDyn` is called a dynamic task because it introduces
+dependencies at runtime.  The `taskDyn` method supports the same
+syntax as `Def.task` and `:=` except that you return a task instead
+of a plain value.
+
+For example, ::
+
+    val dynamic = Def.taskDyn {
+       // decide what to evaluate based on the value of `stringTask`
+       if(stringTask.value == "dev")
+          // create the dev-mode task: this is only evaluated if the
+          //   value of stringTask is "dev"
+          Def.task {
+             3
+          }
+       else
+          // create the production task: only evaluated if the value
+          //    of the stringTask is not "dev"
+          Def.task {
+             intTask.value + 5
+          }
+    }
+
+
+    myTask := {
+       val num = dynamic.value
+		 println(s"Number selected was $num")
+	 }
+
+The only static dependency of `myTask` is `stringTask`.
+The dependency on `intTask` is only introduced in non-dev mode.
+
+.. note::
+
+   A dynamic task cannot refer to itself or a circular dependency will result.
+   In the example above, there would be a circular dependency if the code passed to `taskDyn` referenced `myTask`.
+
+
 Handling Failure
 ----------------
 
@@ -486,7 +529,7 @@ when the original task fails to complete normally.  If the original task succeed
 the new task fails.
 `Incomplete <../../api/sbt/Incomplete.html>`_
 is an exception with information about any tasks that caused the failure
-and any underlying exceptions thrown during task execution. 
+and any underlying exceptions thrown during task execution.
 
 For example:
 
@@ -494,7 +537,7 @@ For example:
 
     intTask := error("Failed.")
 
-    lazy val intTask := {
+    intTask := {
        println("Ignoring failure: " + intTask.failure.value)
        3
     }
