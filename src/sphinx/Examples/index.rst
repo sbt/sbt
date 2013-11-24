@@ -11,8 +11,7 @@ as a foundation for understanding the examples.
 .. toctree::
    :maxdepth: 1
 
-   Advanced-Command-Example
-   Advanced-Configurations-Example
-   Full-Configuration-Example
    Quick-Configuration-Examples
-
+   Full-Configuration-Example
+   Advanced-Configurations-Example
+   Advanced-Command-Example

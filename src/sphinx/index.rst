@@ -15,12 +15,11 @@ the :doc:`index of names and types <Name-Index>`.
    :maxdepth: 2
 
    Getting-Started/index
-   Detailed-Topics/index
-   Examples/index
    Howto/index
    faq
    Community/index
-   Extending/index
+   Detailed-Topics/index
+   Examples/index
    Name-Index
 
 
@@ -35,4 +34,5 @@ the :doc:`index of names and types <Name-Index>`.
    Community/ChangeSummary_0.12.0
    Community/ChangeSummary_0.13.0
    Community/Repository-Rules
+   Community/Bintray-For-Plugins
    pdf_index
