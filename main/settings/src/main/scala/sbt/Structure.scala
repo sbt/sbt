@@ -39,7 +39,7 @@ sealed abstract class SettingKey[T] extends ScopedTaskable[T] with KeyedInitiali
 	final def := (v: T): Setting[T]  =  macro std.TaskMacro.settingAssignMacroImpl[T]
 	final def +=[U](v: U)(implicit a: Append.Value[T, U]): Setting[T]  =  macro std.TaskMacro.settingAppend1Impl[T,U]
 	final def ++=[U](vs: U)(implicit a: Append.Values[T, U]): Setting[T]  =  macro std.TaskMacro.settingAppendNImpl[T,U]
-	final def <+= [V](v: Initialize[V])(implicit a: Append.Value[T, V]): Setting[T]  =  macro std.TaskMacro.settingAppend1Position[T,V] 
+	final def <+= [V](v: Initialize[V])(implicit a: Append.Value[T, V]): Setting[T]  =  macro std.TaskMacro.settingAppend1Position[T,V]
 	final def <++= [V](vs: Initialize[V])(implicit a: Append.Values[T, V]): Setting[T]  =  macro std.TaskMacro.settingAppendNPosition[T,V]
 	final def ~= (f: T => T): Setting[T]  =  macro std.TaskMacro.settingTransformPosition[T]
 	final def transform(f: T => T, source: SourcePosition): Setting[T]  =  set( scopedKey(f), source )
@@ -108,7 +108,7 @@ object Scoped
 		def in(p: Reference, c: ConfigKey, t: Scoped): Result  =  in(Select(p), Select(c), Select(t.key))
 		def in(p: ScopeAxis[Reference], c: ScopeAxis[ConfigKey], t: ScopeAxis[AttributeKey[_]]): Result = in( Scope(p, c, t, This) )
 	}
-	
+
 	def scopedSetting[T](s: Scope, k: AttributeKey[T]): SettingKey[T]  =  new SettingKey[T] { val scope = s; val key = k}
 	def scopedInput[T](s: Scope, k: AttributeKey[InputTask[T]]): InputKey[T]  =  new InputKey[T] { val scope = s; val key = k }
 	def scopedTask[T](s: Scope, k: AttributeKey[Task[T]]): TaskKey[T]  =  new TaskKey[T] { val scope = s; val key = k }
@@ -142,6 +142,7 @@ object Scoped
 		def set(app: Initialize[Task[S]], source: SourcePosition): Setting[Task[S]]  =  Def.setting(scopedKey, app, source)
 		def transform(f: S => S, source: SourcePosition): Setting[Task[S]]  =  set( scopedKey(_ map f), source)
 
+		@deprecated("No longer needed with new task syntax and SettingKey inheriting from Initialize.", "0.13.2")
 		def task: SettingKey[Task[S]] = scopedSetting(scope, key)
 		def get(settings: Settings[Scope]): Option[Task[S]] = settings.get(scope, key)
 
@@ -214,7 +215,7 @@ object Scoped
 
 	implicit def richFileSetting(s: SettingKey[File]): RichFileSetting = new RichFileSetting(s)
 	implicit def richFilesSetting(s: SettingKey[Seq[File]]): RichFilesSetting = new RichFilesSetting(s)
-	
+
 	final class RichFileSetting(s: SettingKey[File]) extends RichFileBase
 	{
 		@deprecated("Use a standard setting definition.", "0.13.0")
@@ -237,7 +238,7 @@ object Scoped
 		protected[this] def finder(f: PathFinder => PathFinder): Seq[File] => Seq[File] =
 			in => f(in).get
 	}
-	
+
 	// this is the least painful arrangement I came up with
 	implicit def t2ToTable2[A,B](t2: (ScopedTaskable[A], ScopedTaskable[B]) ): RichTaskable2[A,B] = new RichTaskable2(t2)
 	implicit def t3ToTable3[A,B,C](t3: (ScopedTaskable[A], ScopedTaskable[B], ScopedTaskable[C]) ): RichTaskable3[A,B,C] = new RichTaskable3(t3)
@@ -253,7 +254,7 @@ object Scoped
 	implicit def t13ToTable13[A,B,C,D,E,F,G,H,I,J,K,L,N](t13: (ScopedTaskable[A], ScopedTaskable[B], ScopedTaskable[C], ScopedTaskable[D], ScopedTaskable[E], ScopedTaskable[F], ScopedTaskable[G], ScopedTaskable[H], ScopedTaskable[I], ScopedTaskable[J], ScopedTaskable[K], ScopedTaskable[L], ScopedTaskable[N]) ): RichTaskable13[A,B,C,D,E,F,G,H,I,J,K,L,N] = new RichTaskable13(t13)
 	implicit def t14ToTable14[A,B,C,D,E,F,G,H,I,J,K,L,N,O](t14: (ScopedTaskable[A], ScopedTaskable[B], ScopedTaskable[C], ScopedTaskable[D], ScopedTaskable[E], ScopedTaskable[F], ScopedTaskable[G], ScopedTaskable[H], ScopedTaskable[I], ScopedTaskable[J], ScopedTaskable[K], ScopedTaskable[L], ScopedTaskable[N], ScopedTaskable[O]) ): RichTaskable14[A,B,C,D,E,F,G,H,I,J,K,L,N,O] = new RichTaskable14(t14)
 	implicit def t15ToTable15[A,B,C,D,E,F,G,H,I,J,K,L,N,O,P](t15: (ScopedTaskable[A], ScopedTaskable[B], ScopedTaskable[C], ScopedTaskable[D], ScopedTaskable[E], ScopedTaskable[F], ScopedTaskable[G], ScopedTaskable[H], ScopedTaskable[I], ScopedTaskable[J], ScopedTaskable[K], ScopedTaskable[L], ScopedTaskable[N], ScopedTaskable[O], ScopedTaskable[P]) ): RichTaskable15[A,B,C,D,E,F,G,H,I,J,K,L,N,O,P] = new RichTaskable15(t15)*/
-	
+
 	sealed abstract class RichTaskables[K[L[x]]](final val keys: K[ScopedTaskable])(implicit a: AList[K])
 	{
 		type App[T] = Initialize[Task[T]]
