@@ -173,8 +173,10 @@ object State
 	implicit def stateOps(s: State): StateOps = new StateOps {
 		def process(f: (String, State) => State): State =
 			s.remainingCommands match {
-				case Seq(x, xs @ _*) => f(x, s.copy(remainingCommands = xs, history = x :: s.history))
 				case Seq() => exit(true)
+				case Seq(x, xs @ _*) =>
+					log.debug(s"> $x")
+					f(x, s.copy(remainingCommands = xs, history = x :: s.history))
 			}
 			s.copy(remainingCommands = s.remainingCommands.drop(1))
 		def ::: (newCommands: Seq[String]): State = s.copy(remainingCommands = newCommands ++ s.remainingCommands)
