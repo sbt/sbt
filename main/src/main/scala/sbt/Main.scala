@@ -408,14 +408,19 @@ object BuiltinCommands
 
 	def project = Command.make(ProjectCommand, projectBrief, projectDetailed)(ProjectNavigation.command)
 
-	def loadFailed = Command.command(LoadFailed)(handleLoadFailed)
-	@tailrec def handleLoadFailed(s: State): State =
+	def loadFailed = Command(LoadFailed)(loadProjectParser)(doLoadFailed)
+
+	@deprecated("No longer used.", "0.13.2")
+	def handleLoadFailed(s: State): State = doLoadFailed(s, "")
+
+	@tailrec
+	private[this] def doLoadFailed(s: State, loadArg: String): State =
 	{
 		val result = (SimpleReader.readLine("Project loading failed: (r)etry, (q)uit, (l)ast, or (i)gnore? ") getOrElse Quit).toLowerCase(Locale.ENGLISH)
 		def matches(s: String) = !result.isEmpty && (s startsWith result)
 
 		if(result.isEmpty || matches("retry"))
-			LoadProject :: s.clearGlobalLog
+			loadProjectCommand(LoadProject, loadArg) :: s.clearGlobalLog
 		else if(matches(Quit))
 			s.exit(ok = false)
 		else if(matches("ignore"))
@@ -425,22 +430,24 @@ object BuiltinCommands
 			s
 		}
 		else if(matches("last"))
-			LastCommand :: LoadFailed :: s
+			LastCommand :: loadProjectCommand(LoadFailed, loadArg) :: s
 		else
 		{
 			println("Invalid response.")
-			handleLoadFailed(s)
+			doLoadFailed(s, loadArg)
 		}
 	}
 
 	def loadProjectCommands(arg: String) =
 		StashOnFailure ::
-		(OnFailure + " " + LoadFailed) ::
-		(LoadProjectImpl + " " + arg).trim ::
+		(OnFailure + " " + loadProjectCommand(LoadFailed, arg)) ::
+		loadProjectCommand(LoadProjectImpl, arg) ::
 		PopOnFailure ::
 		State.FailureWall ::
 		Nil
-	def loadProject = Command(LoadProject, LoadProjectBrief, LoadProjectDetailed)(_ => matched(Project.loadActionParser)) { (s,arg) => loadProjectCommands(arg) ::: s }
+	def loadProject = Command(LoadProject, LoadProjectBrief, LoadProjectDetailed)(loadProjectParser) { (s,arg) => loadProjectCommands(arg) ::: s }
+	private[this] def loadProjectParser = (s: State) => matched(Project.loadActionParser)
+	private[this] def loadProjectCommand(command: String, arg: String): String = s"$command $arg".trim
 
 	def loadProjectImpl = Command(LoadProjectImpl)(_ => Project.loadActionParser)( doLoadProject )
 	def doLoadProject(s0: State, action: LoadAction.Value): State =
