@@ -1,6 +1,6 @@
-==============
-Best Practices
-==============
+======================
+General Best Practices
+======================
 
 This page describes best practices for working with sbt.
 
@@ -102,7 +102,7 @@ For example:
     // The result of makeFile is the constructed File,
     //   so useFile can map makeFile and simultaneously
     //   get the File and declare the dependency on makeFile
-    useFile := 
+    useFile :=
         doSomething( makeFile.value )
 
 This arrangement is not always possible, but it should be the rule and
@@ -153,16 +153,14 @@ Parser combinators
 
 .. code-block:: scala
 
-    lazy val parser: Parser[Int] = 
+    lazy val parser: Parser[Int] =
       token(IntBasic) flatMap { i =>
         if(i <= 0)
           success(i)
         else
-          token(Space ~> parser) 
+          token(Space ~> parser)
       }
 
    This example defines a parser a whitespace-delimited list of
    integers, ending with a negative number, and returning that final,
    negative number.
-
-
