@@ -234,11 +234,13 @@ object BasicCommands
 	def addAlias(s: State, name: String, value: String): State =
 		if(Command validID name) {
 			val removed = removeAlias(s, name)
-			if(value.isEmpty) removed else removed.copy(definedCommands = newAlias(name, value) +: removed.definedCommands)
+			if(value.isEmpty) removed else addAlias0(removed, name, value)
 		} else {
 			System.err.println("Invalid alias name '" + name + "'.")
 			s.fail
 		}
+	private[this] def addAlias0(s: State, name: String, value: String): State =
+		s.copy(definedCommands = newAlias(name, value) +: s.definedCommands)
 
 	def removeAliases(s: State): State  =  removeTagged(s, CommandAliasKey)
 	def removeAlias(s: State, name: String): State  =  s.copy(definedCommands = s.definedCommands.filter(c => !isAliasNamed(name, c)) )
@@ -263,8 +265,14 @@ object BasicCommands
 
 	def newAlias(name: String, value: String): Command =
 		Command.make(name, (name, "'" + value + "'"), "Alias of '" + value + "'")(aliasBody(name, value)).tag(CommandAliasKey, (name, value))
-	def aliasBody(name: String, value: String)(state: State): Parser[() => State] =
-		OptSpace ~> Parser(Command.combine(removeAlias(state,name).definedCommands)(state))(value)
+	def aliasBody(name: String, value: String)(state: State): Parser[() => State] = {
+		val aliasRemoved = removeAlias(state,name)
+		// apply the alias value to the commands of `state` except for the alias to avoid recursion (#933)
+		val partiallyApplied = Parser(Command.combine(aliasRemoved.definedCommands)(aliasRemoved))(value)
+		val arg = matched( partiallyApplied & (success() | (SpaceClass ~ any.*)) )
+		// by scheduling the expanded alias instead of directly executing, we get errors on the expanded string (#598)
+		arg.map( str => () => (value + str) :: state)
+	}
 
 	def delegateToAlias(name: String, orElse: Parser[() => State])(state: State): Parser[() => State] =
 		aliases(state, (nme,_) => nme == name).headOption match {
