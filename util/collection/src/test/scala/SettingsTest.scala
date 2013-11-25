@@ -32,8 +32,7 @@ object SettingsTest extends Properties("settings")
 				else
 					iterate(value(t-1) )
 			}
-		try { evaluate( setting(chk, iterate(top)) :: Nil); true }
-		catch { case e: java.lang.Exception => ("Unexpected exception: " + e) |: false }
+		evaluate( setting(chk, iterate(top)) :: Nil); true
 	}
 
   property("Derived setting chain depending on (prev derived, normal setting)") = forAllNoShrink(Gen.choose(1, 100)) { derivedSettings }
