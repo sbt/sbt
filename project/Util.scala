@@ -26,14 +26,20 @@ object Util
 	def noPublish(p: Project) = p.copy(settings = noRemotePublish(p.settings))
 	def noRemotePublish(in: Seq[Setting[_]]) = in filterNot { _.key.key == publish.key }
 
+  // TODO - After M7 this can be removed, as we'll no longer have mismatched dependency metadata.
+  def excludeBadDepsIn211(m: ModuleID): ModuleID = {
+    m.exclude("org.scala-lang.modules", "scala-parser-combinators_2.11.0-M6").exclude("org.scala-lang.modules","scala-xml_2.11.0-M6")
+  }
+
 	def nightlySettings = Seq(
-		nightly211 <<= scalaVersion(_.startsWith("2.11.")),
-		includeTestDependencies <<= nightly211(x => !x)
+    // TODO - Only for snapshot builds?  
+		nightly211 := scalaVersion.value.startsWith("2.11."),
+		includeTestDependencies := !nightly211.value
 	)
 	def commonSettings(nameString: String) = Seq(
 		crossVersion in update <<= (crossVersion,nightly211) { (cv, n) => if(n) CrossVersion.full else cv },
 		name := nameString
-	)
+	) 
 	def minProject(path: File, nameString: String) = Project(normalize(nameString), path) settings( commonSettings(nameString) ++ publishPomSettings : _* )
 	def baseProject(path: File, nameString: String) = minProject(path, nameString) settings( base : _*)
 	def testedBaseProject(path: File, nameString: String) = baseProject(path, nameString) settings(testDependencies)
@@ -172,13 +178,25 @@ object Common
 	lazy val httpclient = lib("commons-httpclient" % "commons-httpclient" % "3.1")
 	lazy val jsch = lib("com.jcraft" % "jsch" % "0.1.46" intransitive() )
 	lazy val sbinary = libraryDependencies <+= Util.nightly211(n => "org.scala-tools.sbinary" % "sbinary" % "0.4.2" cross(if(n) CrossVersion.full else CrossVersion.binary))
-	lazy val scalaCompiler = libraryDependencies <+= scalaVersion("org.scala-lang" % "scala-compiler" % _ )
+  // TODO - If we're in 2.11, we have to hack this to *NOT* use the modularized parser/xml but instead 
+  lazy val scalaCompilerInit: Def.Initialize[ModuleID] = Def.setting {
+    val sv = scalaVersion.value
+    val lib = "org.scala-lang" % "scala-compiler" % sv
+    if(sv startsWith "2.11") Util.excludeBadDepsIn211(lib) else lib
+  }
+	lazy val scalaCompiler = libraryDependencies += {
+    scalaCompilerInit.value
+  }
 	lazy val testInterface = lib("org.scala-sbt" % "test-interface" % "1.0")
-	def libModular(name: String) = libraryDependencies <++= (scalaVersion, scalaOrganization)( (sv,o) =>
-		if(sv.startsWith("2.11.")) (o % name % sv) :: Nil else Nil
-	)
-	lazy val scalaXml = libModular("scala-xml")
-	lazy val scalaParsers = libModular("scala-parser-combinators")
+	def libModular(name: String, version: String): Setting[_] = libraryDependencies := {
+		if(scalaVersion.value.startsWith("2.11.")) {
+      // TODO - Here we need to figure out what milestone/scala version we want to use to build *or* we just rely on cross-versioning....
+      //  e.g. we should be using the 2.11.0-<latest milestone> cross-versions for these artifacts instead of -SNAPSHOT right now...
+      ("org.scala-lang.modules" %% name % version) :: Nil 
+    } else Nil
+	}
+	lazy val scalaXml = libModular("scala-xml", "1.0.0-RC7")
+	lazy val scalaParsers = libModular("scala-parser-combinators", "1.0.0-RC5")
 }
 object Licensed
 {
