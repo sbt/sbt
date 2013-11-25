@@ -27,7 +27,12 @@ object TestCaseGenerators {
 	// Ensure that we generate unique class names and file paths every time.
 	// Using repeated strings may lead to all sorts of undesirable interactions.
 	val used = scala.collection.mutable.Set.empty[String]
-	def unique[T](g: Gen[T]) = g suchThat { o: T => used.add(o.toString) }
+
+	def unique[T](g: Gen[T]) = g retryUntil { o: T => used.add(o.toString) }
+
+	def identifier: Gen[String] = sized { size =>
+		resize(Math.max(size, 3), Gen.identifier)
+	}
 
 	def genFilePathSegment: Gen[String] = for {
 		n <- choose(3, maxPathSegmentLen)  // Segments have at least 3 characters.
