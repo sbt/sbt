@@ -130,7 +130,7 @@ Multiple settings are handled similarly:
 
 ::
 
-    stringTask := "Sample: " + sampleTask.value + ", int: " + intValue.value
+    stringTask := "Sample: " + sampleTask.value + ", int: " + intTask.value
 
 Task Scope
 ~~~~~~~~~~
