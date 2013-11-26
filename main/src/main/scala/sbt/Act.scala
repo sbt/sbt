@@ -92,23 +92,23 @@ object Act
 		val (selects, globals) = ss.partition(_.key.scope.task.isSelect)
 		if(globals.nonEmpty) globals else selects
 	}
-			
+
 	def noValidKeys = failure("No such key.")
 
 	def showAmbiguous(keys: Seq[ScopedKey[_]])(implicit show: Show[ScopedKey[_]]): String =
 		keys.take(3).map(x => show(x)).mkString("", ", ", if(keys.size > 3) ", ..." else "")
-	
+
 	def isValid(data: Settings[Scope])(parsed: ParsedKey): Boolean =
 	{
 		val key = parsed.key
 		data.definingScope(key.scope, key.key) == Some(key.scope)
 	}
-	
+
 	def examples(p: Parser[String], exs: Set[String], label: String): Parser[String] =
 		p !!! ("Expected " + label) examples exs
 	def examplesStrict(p: Parser[String], exs: Set[String], label: String): Parser[String] =
 		filterStrings(examples(p, exs, label), exs, label)
-		
+
 	def optionalAxis[T](p: Parser[T], ifNone: ScopeAxis[T]): Parser[ScopeAxis[T]] =
 		p.? map { opt => toAxis(opt, ifNone) }
 	def toAxis[T](opt: Option[T], ifNone: ScopeAxis[T]): ScopeAxis[T] =
@@ -235,7 +235,7 @@ object Act
 		import extracted.{showKey, structure}
 		import Aggregation.evaluatingParser
 		showParser.flatMap { show =>
-			val akp = aggregatedKeyParser(extracted) 
+			val akp = aggregatedKeyParser(extracted)
 			def evaluate(kvs: Seq[ScopedKey[T]] forSome { type T}): Parser[() => State] =
 				evaluatingParser(state, structure, Aggregation.defaultShow(state, show))( keyValues(structure)(kvs) )
 			def reconstruct(arg: String): String = ShowCommand + " " + arg
@@ -263,10 +263,10 @@ object Act
 	def keyValues[T](extracted: Extracted)(keys: Seq[ScopedKey[T]]): Values[T] = keyValues(extracted.structure)(keys)
 	def keyValues[T](structure: BuildStructure)(keys: Seq[ScopedKey[T]]): Values[T] =
 		keys.flatMap { key =>
-			structure.data.get(key.scope, key.key) map { value =>
-				KeyValue(key, value)
-			}
+			getValue(structure.data, key.scope, key.key) map { value => KeyValue(key, value) }
 		}
+	private[this] def getValue[T](data: Settings[Scope], scope: Scope, key: AttributeKey[T]): Option[T] =
+		if(java.lang.Boolean.getBoolean("sbt.cli.nodelegation")) data.getDirect(scope, key) else data.get(scope, key)
 
 	def requireSession[T](s: State, p: => Parser[T]): Parser[T] =
 		if(s get sessionSettings isEmpty) failure("No project loaded") else p

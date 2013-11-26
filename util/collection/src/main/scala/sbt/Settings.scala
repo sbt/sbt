@@ -13,6 +13,7 @@ sealed trait Settings[Scope]
 	def definingScope(scope: Scope, key: AttributeKey[_]): Option[Scope]
 	def allKeys[T](f: (Scope, AttributeKey[_]) => T): Seq[T]
 	def get[T](scope: Scope, key: AttributeKey[T]): Option[T]
+	def getDirect[T](scope: Scope, key: AttributeKey[T]): Option[T]
 	def set[T](scope: Scope, key: AttributeKey[T], value: T): Settings[Scope]
 }
 
@@ -23,11 +24,11 @@ private final class Settings0[Scope](val data: Map[Scope, AttributeMap], val del
 	def allKeys[T](f: (Scope, AttributeKey[_]) => T): Seq[T] = data.flatMap { case (scope, map) => map.keys.map(k => f(scope, k)) } toSeq;
 
 	def get[T](scope: Scope, key: AttributeKey[T]): Option[T] =
-		delegates(scope).toStream.flatMap(sc => scopeLocal(sc, key) ).headOption
+		delegates(scope).toStream.flatMap(sc => getDirect(sc, key) ).headOption
 	def definingScope(scope: Scope, key: AttributeKey[_]): Option[Scope] =
-		delegates(scope).toStream.filter(sc => scopeLocal(sc, key).isDefined ).headOption
+		delegates(scope).toStream.filter(sc => getDirect(sc, key).isDefined ).headOption
 
-	private def scopeLocal[T](scope: Scope, key: AttributeKey[T]): Option[T] =
+	def getDirect[T](scope: Scope, key: AttributeKey[T]): Option[T] =
 		(data get scope).flatMap(_ get key)
 
 	def set[T](scope: Scope, key: AttributeKey[T], value: T): Settings[Scope] =
@@ -73,8 +74,8 @@ trait Init[Scope]
 	def uniform[S,T](inputs: Seq[Initialize[S]])(f: Seq[S] => T): Initialize[T] =
 		new Apply[({ type l[L[x]] = List[L[S]] })#l, T](f, inputs.toList, AList.seq[S])
 
-	/** Constructs a derived setting that will be automatically defined in every scope where one of its dependencies 
-   * is explicitly defined and the where the scope matches `filter`.
+	/** Constructs a derived setting that will be automatically defined in every scope where one of its dependencies
+	* is explicitly defined and the where the scope matches `filter`.
 	* A setting initialized with dynamic dependencies is only allowed if `allowDynamic` is true.
 	* Only the static dependencies are tracked, however. */
 	final def derive[T](s: Setting[T], allowDynamic: Boolean = false, filter: Scope => Boolean = const(true), trigger: AttributeKey[_] => Boolean = const(true)): Setting[T] = {
@@ -154,7 +155,7 @@ trait Init[Scope]
 
 	def addLocal(init: Seq[Setting[_]])(implicit scopeLocal: ScopeLocal): Seq[Setting[_]] =
 		init.flatMap( _.dependencies flatMap scopeLocal )  ++  init
-		
+
 	def delegate(sMap: ScopedMap)(implicit delegates: Scope => Seq[Scope], display: Show[ScopedKey[_]]): ScopedMap =
 	{
 		def refMap(ref: Setting[_], isFirst: Boolean) = new ValidateRef { def apply[T](k: ScopedKey[T]) =
@@ -178,7 +179,7 @@ trait Init[Scope]
 		val definedAt = skeys.find( sk => (!isFirst || ref.key != sk) && (sMap contains sk))
 		definedAt.toRight(Undefined(ref, k))
 	}
-		
+
 	private[this] def applyInits(ordered: Seq[Compiled[_]])(implicit delegates: Scope => Seq[Scope]): Settings[Scope] =
 	{
 		val x = java.util.concurrent.Executors.newFixedThreadPool(Runtime.getRuntime.availableProcessors)
@@ -253,7 +254,7 @@ trait Init[Scope]
 		override def toString = showFullKey(key)
 	}
 	final class Flattened(val key: ScopedKey[_], val dependencies: Iterable[ScopedKey[_]])
-	
+
 	def flattenLocals(compiled: CompiledMap): Map[ScopedKey[_],Flattened] =
 	{
 		import collection.breakOut
@@ -261,7 +262,7 @@ trait Init[Scope]
 		val ordered = Dag.topologicalSort(locals)(_.dependencies.flatMap(dep => if(dep.key.isLocal) Seq[Compiled[_]](compiled(dep)) else Nil))
 		def flatten(cmap: Map[ScopedKey[_],Flattened], key: ScopedKey[_], deps: Iterable[ScopedKey[_]]): Flattened =
 			new Flattened(key, deps.flatMap(dep => if(dep.key.isLocal) cmap(dep).dependencies else dep :: Nil))
-		
+
 		val empty = Map.empty[ScopedKey[_],Flattened]
 		val flattenedLocals = (empty /: ordered) { (cmap, c) => cmap.updated(c.key, flatten(cmap, c.key, c.dependencies)) }
 		compiled flatMap{ case (key, comp) =>
@@ -365,7 +366,7 @@ trait Init[Scope]
 				out ++= ds
 				addDefs(ds)
 				process(ds ::: ss)
-			case Nil => 
+			case Nil =>
 		}
 		process(defs.toList)
 		out.toList ++ defs
@@ -437,7 +438,7 @@ trait Init[Scope]
 		override final def hashCode = id.hashCode
 		override final def equals(o: Any): Boolean = o match { case d: DefaultSetting[_] => d.id == id; case _ => false }
 	}
-	
+
 
 	private[this] def handleUndefined[T](vr: ValidatedInit[T]): Initialize[T] = vr match {
 		case Left(undefs) => throw new RuntimeUndefined(undefs)
