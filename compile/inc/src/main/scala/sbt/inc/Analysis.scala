@@ -41,7 +41,7 @@ trait Analysis
 
 	def copy(stamps: Stamps = stamps, apis: APIs = apis, relations: Relations = relations, infos: SourceInfos = infos,
 	    compilations: Compilations = compilations): Analysis
-	
+
 	def addSource(src: File, api: Source, stamp: Stamp, directInternal: Iterable[File], inheritedInternal: Iterable[File], info: SourceInfo): Analysis
 	def addBinaryDep(src: File, dep: File, className: String, stamp: Stamp): Analysis
 	def addExternalDep(src: File, dep: String, api: Source, inherited: Boolean): Analysis
@@ -59,6 +59,10 @@ object Analysis
 
 	/** Merge multiple analysis objects into one. Deps will be internalized as needed. */
 	def merge(analyses: Traversable[Analysis]): Analysis = {
+		if (analyses.exists(_.relations.memberRefAndInheritanceDeps))
+			throw new IllegalArgumentException("Merging of Analyses that have" +
+				"`relations.memberRefAndInheritanceDeps` set to `true` is not supported.")
+
 		// Merge the Relations, internalizing deps as needed.
 		val mergedSrcProd = Relation.merge(analyses map { _.relations.srcProd })
 		val mergedBinaryDep = Relation.merge(analyses map { _.relations.binaryDep })
@@ -156,6 +160,10 @@ private class MAnalysis(val stamps: Stamps, val apis: APIs, val relations: Relat
 		copy( stamps.markProduct(product, stamp), apis, relations.addProduct(src, product, name), infos )
 
 	def groupBy[K](discriminator: File => K): Map[K, Analysis] = {
+		if (relations.memberRefAndInheritanceDeps)
+			throw new UnsupportedOperationException("Grouping of Analyses that have" +
+				"`relations.memberRefAndInheritanceDeps` set to `true` is not supported.")
+
 		def discriminator1(x: (File, _)) = discriminator(x._1)  // Apply the discriminator to the first coordinate.
 
 		val kSrcProd = relations.srcProd.groupBy(discriminator1)
