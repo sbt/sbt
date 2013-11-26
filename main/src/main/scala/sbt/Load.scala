@@ -610,7 +610,12 @@ object Load
 			val names = getPluginNames(data.classpath, loader)
 			val loaded =
 				try loadPlugins(loader, names)
-				catch { case e: LinkageError => incompatiblePlugins(data, e) }
+				catch {
+					case e: ExceptionInInitializerError =>
+						val cause = e.getCause
+						if(cause eq null) throw e else throw cause
+					case e: LinkageError => incompatiblePlugins(data, e)
+				}
 			(names, loaded)
 		}
 		new sbt.LoadedPlugins(dir, data, loader, plugins, pluginNames)
