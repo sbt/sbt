@@ -4,7 +4,7 @@ import java.io.File
 import scala.collection.mutable.ArrayBuffer
 import xsbti.api.SourceAPI
 
-class TestCallback extends AnalysisCallback
+class TestCallback(override val memberRefAndInheritanceDeps: Boolean = false) extends AnalysisCallback
 {
 	val sourceDependencies = new ArrayBuffer[(File, File, Boolean)]
 	val binaryDependencies = new ArrayBuffer[(File, String, File, Boolean)]

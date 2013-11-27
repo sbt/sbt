@@ -80,7 +80,7 @@ object TextAnalysisFormat {
 	}
 
   private[this] object VersionF {
-    val currentVersion = "1"
+    val currentVersion = "2"
 
     def write(out: Writer) {
       out.write("format version: %s\n".format(currentVersion))
@@ -107,11 +107,16 @@ object TextAnalysisFormat {
 		object Headers {
 			val srcProd = "products"
 			val binaryDep = "binary dependencies"
-			val internalSrcDep = "source dependencies"
-			val externalDep = "external dependencies"
+			val directSrcDep = "direct source dependencies"
+			val directExternalDep = "direct external dependencies"
 			val internalSrcDepPI = "public inherited source dependencies"
 			val externalDepPI = "public inherited external dependencies"
 			val classes = "class names"
+
+			val memberRefInternalDep = "member reference internal dependencies"
+			val memberRefExternalDep = "member reference external dependencies"
+			val inheritanceInternalDep = "inheritance internal dependencies"
+			val inheritanceExternalDep = "inheritance external dependencies"
 		}
 
 		def write(out: Writer, relations: Relations) {
@@ -129,12 +134,29 @@ object TextAnalysisFormat {
 				}
 			}
 
+			val memberRefAndInheritanceDeps = relations.memberRefAndInheritanceDeps
 			writeRelation(Headers.srcProd,          relations.srcProd)
 			writeRelation(Headers.binaryDep,        relations.binaryDep)
-			writeRelation(Headers.internalSrcDep,   relations.internalSrcDep)
-			writeRelation(Headers.externalDep,    relations.externalDep)
-			writeRelation(Headers.internalSrcDepPI, relations.publicInherited.internal)
-			writeRelation(Headers.externalDepPI,  relations.publicInherited.external)
+
+			val direct = if (memberRefAndInheritanceDeps) Relations.emptySource else relations.direct
+			val publicInherited = if (memberRefAndInheritanceDeps)
+				Relations.emptySource else relations.publicInherited
+
+			val memberRef = if (memberRefAndInheritanceDeps)
+				relations.memberRef else Relations.emptySourceDependencies
+			val inheritance = if (memberRefAndInheritanceDeps)
+				relations.inheritance else Relations.emptySourceDependencies
+
+			writeRelation(Headers.directSrcDep, direct.internal)
+			writeRelation(Headers.directExternalDep, direct.external)
+			writeRelation(Headers.internalSrcDepPI, publicInherited.internal)
+			writeRelation(Headers.externalDepPI, publicInherited.external)
+
+			writeRelation(Headers.memberRefInternalDep, memberRef.internal)
+			writeRelation(Headers.memberRefExternalDep, memberRef.external)
+			writeRelation(Headers.inheritanceInternalDep, inheritance.internal)
+			writeRelation(Headers.inheritanceExternalDep, inheritance.external)
+
 			writeRelation(Headers.classes,        relations.classes)
 		}
 
@@ -164,14 +186,40 @@ object TextAnalysisFormat {
 
 			val srcProd =          readFileRelation(Headers.srcProd)
 			val binaryDep =        readFileRelation(Headers.binaryDep)
-			val internalSrcDep =   readFileRelation(Headers.internalSrcDep)
-			val externalDep =      readStringRelation(Headers.externalDep)
-			val internalSrcDepPI = readFileRelation(Headers.internalSrcDepPI)
-			val externalDepPI =    readStringRelation(Headers.externalDepPI)
+
+			import sbt.inc.Relations.{Source, SourceDependencies, makeSourceDependencies, emptySource,
+				makeSource, emptySourceDependencies}
+			val directSrcDeps: Source = {
+				val internalSrcDep =   readFileRelation(Headers.directSrcDep)
+				val externalDep =      readStringRelation(Headers.directExternalDep)
+				makeSource(internalSrcDep, externalDep)
+			}
+			val publicInheritedSrcDeps: Source = {
+				val internalSrcDepPI = readFileRelation(Headers.internalSrcDepPI)
+				val externalDepPI =    readStringRelation(Headers.externalDepPI)
+				makeSource(internalSrcDepPI, externalDepPI)
+			}
+			val memberRefSrcDeps: SourceDependencies = {
+				val internalMemberRefDep = readFileRelation(Headers.memberRefInternalDep)
+				val externalMemberRefDep = readStringRelation(Headers.memberRefExternalDep)
+				makeSourceDependencies(internalMemberRefDep, externalMemberRefDep)
+			}
+			val inheritanceSrcDeps: SourceDependencies = {
+				val internalInheritanceDep = readFileRelation(Headers.inheritanceInternalDep)
+				val externalInheritanceDep = readStringRelation(Headers.inheritanceExternalDep)
+				makeSourceDependencies(internalInheritanceDep, externalInheritanceDep)
+			}
+			// we don't check for emptiness of publicInherited/inheritance relations because
+			// we assume that invariant that says they are subsets of direct/memberRef holds
+			assert((directSrcDeps == emptySource) || (memberRefSrcDeps == emptySourceDependencies),
+					"One mechanism is supported for tracking source dependencies at the time")
+			val memberRefAndInheritanceDeps = memberRefSrcDeps != emptySourceDependencies
 			val classes =          readStringRelation(Headers.classes)
 
-			Relations.make(srcProd, binaryDep, Relations.makeSource(internalSrcDep, externalDep),
-				Relations.makeSource(internalSrcDepPI, externalDepPI), classes)
+			if (memberRefAndInheritanceDeps)
+				Relations.make(srcProd, binaryDep, memberRefSrcDeps, inheritanceSrcDeps, classes)
+			else
+				Relations.make(srcProd, binaryDep, directSrcDeps, publicInheritedSrcDeps, classes)
 		}
 	}
 
