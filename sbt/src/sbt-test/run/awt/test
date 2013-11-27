@@ -1,0 +1,3 @@
+# in #997, creating an instance of an AWT class triggers a segfault
+#   this verifies that is fixed
+> run

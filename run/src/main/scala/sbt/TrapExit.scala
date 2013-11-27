@@ -73,7 +73,9 @@ object TrapExit
 	/** Computes an identifier for a Thread that has a high probability of being unique within a single JVM execution. */
 	private def computeID(t: Thread): ThreadID =
 		// can't use t.getId because when getAccess first sees a Thread, it hasn't been initialized yet
-		s"${hex(System.identityHashCode(t))}:${t.getName}"
+		// can't use t.getName because calling it on AWT thread in certain circumstances generates a segfault (#997):
+		//    Apple AWT: +[ThreadUtilities getJNIEnvUncached] attempting to attach current thread after JNFObtainEnv() failed
+		s"${hex(System.identityHashCode(t))}"
 
 	/** Waits for the given `thread` to terminate.  However, if the thread state is NEW, this method returns immediately. */
 	private def waitOnThread(thread: Thread, log: Logger)
