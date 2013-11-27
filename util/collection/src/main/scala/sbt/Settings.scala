@@ -74,7 +74,7 @@ trait Init[Scope]
 		new Apply[({ type l[L[x]] = List[L[S]] })#l, T](f, inputs.toList, AList.seq[S])
 
 	/** Constructs a derived setting that will be automatically defined in every scope where one of its dependencies 
-   * is explicitly defined and the where the scope matches `filter`.
+	 * is explicitly defined and the where the scope matches `filter`.
 	* A setting initialized with dynamic dependencies is only allowed if `allowDynamic` is true.
 	* Only the static dependencies are tracked, however. */
 	final def derive[T](s: Setting[T], allowDynamic: Boolean = false, filter: Scope => Boolean = const(true), trigger: AttributeKey[_] => Boolean = const(true)): Setting[T] = {
@@ -154,7 +154,7 @@ trait Init[Scope]
 
 	def addLocal(init: Seq[Setting[_]])(implicit scopeLocal: ScopeLocal): Seq[Setting[_]] =
 		init.flatMap( _.dependencies flatMap scopeLocal )  ++  init
-		
+
 	def delegate(sMap: ScopedMap)(implicit delegates: Scope => Seq[Scope], display: Show[ScopedKey[_]]): ScopedMap =
 	{
 		def refMap(ref: Setting[_], isFirst: Boolean) = new ValidateRef { def apply[T](k: ScopedKey[T]) =
@@ -185,7 +185,7 @@ trait Init[Scope]
 			}
 		resolve(scopes)
 	}
-		
+
 	private[this] def applyInits(ordered: Seq[Compiled[_]])(implicit delegates: Scope => Seq[Scope]): Settings[Scope] =
 	{
 		val x = java.util.concurrent.Executors.newFixedThreadPool(Runtime.getRuntime.availableProcessors)
@@ -260,7 +260,7 @@ trait Init[Scope]
 		override def toString = showFullKey(key)
 	}
 	final class Flattened(val key: ScopedKey[_], val dependencies: Iterable[ScopedKey[_]])
-	
+
 	def flattenLocals(compiled: CompiledMap): Map[ScopedKey[_],Flattened] =
 	{
 		import collection.breakOut
@@ -268,7 +268,7 @@ trait Init[Scope]
 		val ordered = Dag.topologicalSort(locals)(_.dependencies.flatMap(dep => if(dep.key.isLocal) Seq[Compiled[_]](compiled(dep)) else Nil))
 		def flatten(cmap: Map[ScopedKey[_],Flattened], key: ScopedKey[_], deps: Iterable[ScopedKey[_]]): Flattened =
 			new Flattened(key, deps.flatMap(dep => if(dep.key.isLocal) cmap(dep).dependencies else dep :: Nil))
-		
+
 		val empty = Map.empty[ScopedKey[_],Flattened]
 		val flattenedLocals = (empty /: ordered) { (cmap, c) => cmap.updated(c.key, flatten(cmap, c.key, c.dependencies)) }
 		compiled flatMap{ case (key, comp) =>
@@ -348,12 +348,13 @@ trait Init[Scope]
 			val derivedForKey: List[Derived] = derivedBy.get(sk.key).toList.flatten
 			val scope = sk.scope
 			def localAndDerived(d: Derived): Seq[Setting[_]] =
-				if(d.inScopes.add(scope) && d.setting.filter(scope))
+				if(!d.inScopes.contains(scope) && d.setting.filter(scope))
 				{
 					val local = d.dependencies.flatMap(dep => scopeLocal(ScopedKey(scope, dep)))
-					if(allDepsDefined(d, scope, local.map(_.key.key).toSet))
+					if(allDepsDefined(d, scope, local.map(_.key.key).toSet)) {
+						d.inScopes.add(scope)
 						local :+ d.setting.setScope(scope)
-					else
+					} else
 						Nil
 				}
 				else Nil
@@ -444,7 +445,7 @@ trait Init[Scope]
 		override final def hashCode = id.hashCode
 		override final def equals(o: Any): Boolean = o match { case d: DefaultSetting[_] => d.id == id; case _ => false }
 	}
-	
+
 
 	private[this] def handleUndefined[T](vr: ValidatedInit[T]): Initialize[T] = vr match {
 		case Left(undefs) => throw new RuntimeUndefined(undefs)
