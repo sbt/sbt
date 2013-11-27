@@ -12,6 +12,7 @@ object CommandStrings
 	val ProjectCommand = "project"
 	val ProjectsCommand = "projects"
 	val ShowCommand = "show"
+	val MultiTaskCommand = "all"
 	val BootCommand = "boot"
 
 	val EvalCommand = "eval"
@@ -21,10 +22,26 @@ EvalCommand + """ <expression>
 
 	Evaluates the given Scala expression and prints the result and type."""
 
+	@deprecated("Misnomer: was only for `show`.  Use showBrief.", "0.13.2")
+	def actBrief = showBrief
+	@deprecated("Misnomer: was only for `show`.  Use showDetailed.", "0.13.2")
+	def actDetailed = showDetailed
+
+	def actHelp = showHelp ++ multiTaskHelp
+
+	def multiTaskHelp = Help(MultiTaskCommand, (multiTaskSyntax, multiTaskBrief), multiTaskDetailed)
+	def multiTaskDetailed =
+s"""$multiTaskSyntax
+
+	$multiTaskBrief"""
+	def multiTaskSyntax = s"""$MultiTaskCommand <task>+"""
+	def multiTaskBrief = """Executes all of the specified tasks concurrently."""
+
+
 	def showHelp = Help(ShowCommand, (ShowCommand + " <key>", actBrief), actDetailed)
-	def actBrief = "Displays the result of evaluating the setting or task associated with 'key'."
-	def actDetailed =
-s"""ShowCommand <setting>
+	def showBrief = "Displays the result of evaluating the setting or task associated with 'key'."
+	def showDetailed =
+s"""$ShowCommand <setting>
 
 	Displays the value of the specified setting.
 
