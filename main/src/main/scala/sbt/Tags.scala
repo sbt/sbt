@@ -14,7 +14,7 @@ object Tags
 	val Test = Tag("test")
 	val Update = Tag("update")
 	val Publish = Tag("publish")
-	
+
 	val CPU = Tag("cpu")
 	val Network = Tag("network")
 	val Disk = Tag("disk")
@@ -23,8 +23,11 @@ object Tags
 
 	/** Describes a restriction on concurrently executing tasks.
 	* A Rule is constructed using one of the Tags.limit* methods. */
-	sealed trait Rule {
+	sealed trait Rule { // TODO: make this an abstract class for 0.14
 		def apply(m: TagMap): Boolean
+		def ||(r: Rule): Rule = new Or(this, r)
+		def &&(r: Rule): Rule = new And(this, r)
+		def unary_- : Rule = new Not(this)
 	}
 	private[this] final class Custom(f: TagMap => Boolean) extends Rule {
 		def apply(m: TagMap) = f(m)
@@ -39,6 +42,16 @@ object Tags
 		def apply(m: TagMap) = (0 /: tags)((sum, t) => sum + getInt(m, t)) <= max
 		override def toString = tags.mkString("Limit sum of ", ", ", " to " + max)
 	}
+	private[this] final class Or(a: Rule, b: Rule) extends Rule {
+		def apply(m: TagMap) = a(m) || b(m)
+	}
+	private[this] final class And(a: Rule, b: Rule) extends Rule {
+		def apply(m: TagMap) = a(m) && b(m)
+	}
+	private[this] final class Not(a: Rule) extends Rule {
+		def apply(m: TagMap) = !a(m)
+	}
+
 	private[this] def checkMax(max: Int): Unit = assert(max >= 1, "Limit must be at least 1.")
 
 	/** Converts a sequence of rules into a function that identifies whether a set of tasks are allowed to execute concurrently based on their merged tags. */
@@ -54,7 +67,7 @@ object Tags
 
 	def getInt(m: TagMap, tag: Tag): Int = m.getOrElse(tag, 0)
 
-	/** Constructs a custom Rule from the predicate `f`. 
+	/** Constructs a custom Rule from the predicate `f`.
 	* The input represents the weighted tags of a set of tasks.
 	* The function `f` should return true if those tasks are allowed to execute concurrently and false if they are not.
 	*
