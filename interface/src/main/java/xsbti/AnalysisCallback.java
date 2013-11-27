@@ -27,4 +27,16 @@ public interface AnalysisCallback
 	/** Provides problems discovered during compilation.  These may be reported (logged) or unreported.
 	* Unreported problems are usually unreported because reporting was not enabled via a command line switch. */
 	public void problem(String what, Position pos, String msg, Severity severity, boolean reported);
+	/**
+	 * Determines whether member reference and inheritance dependencies should be extracted in given compiler
+	 * run.
+	 *
+	 * As the signature suggests, this method's implementation is meant to be side-effect free. It's added
+	 * to AnalysisCallback because it indicates how other callback calls should be interpreted by both
+	 * implementation of AnalysisCallback and it's clients.
+	 *
+	 * NOTE: This method is an implementation detail and can be removed at any point without deprecation.
+	 *       Do not depend on it, please.
+	 */
+	public boolean memberRefAndInheritanceDeps();
 }

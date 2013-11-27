@@ -97,7 +97,7 @@ private final class AnalysisCallback(internalMap: File => Option[File], external
 	}
 
 	def sourceDependency(dependsOn: File, source: File, inherited: Boolean) =
-		if(source != dependsOn) {
+		{
 			add(sourceDeps, source, dependsOn)
 			if(inherited) add(inheritedSourceDeps, source, dependsOn)
 		}
@@ -150,6 +150,8 @@ private final class AnalysisCallback(internalMap: File => Option[File], external
 		val savedSource = if (shouldMinimize) APIUtil.minimize(source) else source
 		apis(sourceFile) = (HashAPI(source), savedSource)
 	}
+
+	def memberRefAndInheritanceDeps: Boolean = false // TODO: define the flag in IncOptions which controls this
 
 	def get: Analysis = addCompilation( addExternals( addBinaries( addProducts( addSources(Analysis.Empty) ) ) ) )
 	def addProducts(base: Analysis): Analysis = addAll(base, classes) { case (a, src, (prod, name)) => a.addProduct(src, prod, current product prod, name ) }
