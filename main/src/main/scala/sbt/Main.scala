@@ -368,7 +368,7 @@ object BuiltinCommands
 	}
 
 	def act = Command.customHelp(Act.actParser, actHelp)
-	def actHelp = (s: State) => CommandStrings.showHelp ++ keysHelp(s)
+	def actHelp = (s: State) => CommandStrings.showHelp ++ CommandStrings.multiTaskHelp ++ keysHelp(s)
 	def keysHelp(s: State): Help =
 		if(Project.isProjectLoaded(s))
 			Help.detailOnly(taskDetail(allTaskAndSettingKeys(s)))
