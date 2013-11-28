@@ -10,7 +10,7 @@ object Configurations {
   def default: Seq[Configuration] = defaultMavenConfigurations
   def defaultMavenConfigurations: Seq[Configuration] = Seq(Compile, Runtime, Test, Provided, Optional)
   def defaultInternal: Seq[Configuration] = Seq(CompileInternal, RuntimeInternal, TestInternal)
-  def auxiliary: Seq[Configuration] = Seq(Sources, Docs, Pom)
+  def auxiliary: Seq[Configuration] = Seq(Pom)
   def names(cs: Seq[Configuration]) = cs.map(_.name)
 
   lazy val RuntimeInternal = optionalInternal(Runtime)
@@ -34,10 +34,8 @@ object Configurations {
   lazy val Compile = config("compile")
   lazy val IntegrationTest = config("it") extend (Runtime)
   lazy val Provided = config("provided")
-  lazy val Docs = config("docs")
   lazy val Runtime = config("runtime") extend (Compile)
   lazy val Test = config("test") extend (Runtime)
-  lazy val Sources = config("sources")
   lazy val System = config("system")
   lazy val Optional = config("optional")
   lazy val Pom = config("pom")
