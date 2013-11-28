@@ -105,7 +105,7 @@ trait Relations
 	 * This relation properly accounts for that so the invariant that `memberRef` is a superset
 	 * of `inheritance` is preserved.
 	 */
-	def memberRef: SourceDependencies
+	private[inc] def memberRef: SourceDependencies
 
 	/**
 	 * The source dependency relation between source files introduced by inheritance.
@@ -135,7 +135,7 @@ trait Relations
 	 * resolved transitively. You should not rely on this behavior, though.
 	 *
 	 */
-	def inheritance: SourceDependencies
+	private[inc] def inheritance: SourceDependencies
 
 	/** The dependency relations between sources.  These include both direct and inherited dependencies.*/
 	def direct: Source
@@ -219,7 +219,7 @@ object Relations
 	def emptySource: Source = es
 	private[inc] lazy val emptySourceDependencies: SourceDependencies = new SourceDependencies(e, estr)
 	def empty: Relations = empty(nameHashing = false)
-	def empty(nameHashing: Boolean): Relations =
+	private[inc] def empty(nameHashing: Boolean): Relations =
 		if (nameHashing)
 			new MRelationsNameHashing(e, e, emptySourceDependencies, emptySourceDependencies, estr)
 		else
