@@ -28,8 +28,11 @@ public interface AnalysisCallback
 	* Unreported problems are usually unreported because reporting was not enabled via a command line switch. */
 	public void problem(String what, Position pos, String msg, Severity severity, boolean reported);
 	/**
-	 * Determines whether member reference and inheritance dependencies should be extracted in given compiler
-	 * run.
+	 * Determines whether method calls through this interface should be interpreted as serving
+	 * name hashing algorithm needs in given compiler run.
+	 *
+	 * In particular, it indicates whether member reference and inheritance dependencies should be
+	 * extracted.
 	 *
 	 * As the signature suggests, this method's implementation is meant to be side-effect free. It's added
 	 * to AnalysisCallback because it indicates how other callback calls should be interpreted by both
@@ -38,5 +41,5 @@ public interface AnalysisCallback
 	 * NOTE: This method is an implementation detail and can be removed at any point without deprecation.
 	 *       Do not depend on it, please.
 	 */
-	public boolean memberRefAndInheritanceDeps();
+	public boolean nameHashing();
 }

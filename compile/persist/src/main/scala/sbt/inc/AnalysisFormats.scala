@@ -103,21 +103,21 @@ object AnalysisFormats
 		{
 			def makeRelation(srcProd: RFF, binaryDep: RFF, direct: RSource, publicInherited: RSource,
 					memberRef: SourceDependencies, inheritance: SourceDependencies, classes: RFS,
-					memberRefAndInheritanceDeps: Boolean): Relations = if (memberRefAndInheritanceDeps) {
+					nameHashing: Boolean): Relations = if (nameHashing) {
 				def isEmpty(sourceDependencies: RSource): Boolean =
 					sourceDependencies.internal.all.isEmpty &&  sourceDependencies.external.all.isEmpty
 				// we check direct dependencies only because publicInherited dependencies are subset of direct
-				assert(isEmpty(direct), "Direct dependencies are not empty but `memberRefAndInheritanceDeps` flag is enabled.")
+				assert(isEmpty(direct), "Direct dependencies are not empty but `nameHashing` flag is enabled.")
 				Relations.make(srcProd, binaryDep, memberRef, inheritance, classes)
 			} else {
 				def isEmpty(sourceDependencies: SourceDependencies): Boolean =
 					sourceDependencies.internal.all.isEmpty &&  sourceDependencies.external.all.isEmpty
 				// we check memberRef dependencies only because inheritance dependencies are subset of memberRef
-				assert(isEmpty(memberRef), "Direct dependencies are not empty but `memberRefAndInheritanceDeps` flag is enabled.")
+				assert(isEmpty(memberRef), "Direct dependencies are not empty but `nameHashing` flag is enabled.")
 				Relations.make(srcProd, binaryDep, direct, publicInherited, classes)
 			}
 			asProduct8[Relations, RFF, RFF, RSource, RSource, SourceDependencies, SourceDependencies, RFS, Boolean]( (a,b,c,d,e,f,g,h) =>makeRelation(a,b,c,d,e,f,g,h) )(
-					rs => (rs.srcProd, rs.binaryDep, rs.direct, rs.publicInherited, rs.memberRef, rs.inheritance, rs.classes, rs.memberRefAndInheritanceDeps) )(
+					rs => (rs.srcProd, rs.binaryDep, rs.direct, rs.publicInherited, rs.memberRef, rs.inheritance, rs.classes, rs.nameHashing) )(
 							prodF, binF, directF, inheritedF, memberRefF, inheritanceF, csF, implicitly[Format[Boolean]])
 		}
 
