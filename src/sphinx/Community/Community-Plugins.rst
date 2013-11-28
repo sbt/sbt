@@ -190,6 +190,8 @@ Code generator plugins
    https://github.com/backchatio/xsbt-scalate-generate
 -  sbt-antlr (Generate Java source code based on ANTLR3 grammars):
    https://github.com/stefri/sbt-antlr
+-  sbt-antlr4 (Antlr4 runner for generating Java source code):
+   https://github.com/ihji/sbt-antlr4
 -  xsbt-reflect (Generate Scala source code for project name and
    version): https://github.com/ritschwumm/xsbt-reflect
 -  sbt-buildinfo (Generate Scala source for any settings):
