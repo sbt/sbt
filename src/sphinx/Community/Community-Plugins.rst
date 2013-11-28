@@ -225,6 +225,8 @@ Documentation plugins
    Textile, to HTML): http://software.clapper.org/sbt-lwm/
 -  sbt-site (Site generation for SBT):
    https://github.com/sbt/sbt-site
+-  literator-plugin (Converts sources into markdown documents):
+   https://github.com/laughedelic/literator
 
 Library dependency plugins
 ~~~~~~~~~~~~~~~~~~~~~~~~~~
