@@ -8,6 +8,8 @@ import java.net.{ URI, URL }
 import scala.xml.NodeSeq
 import org.apache.ivy.plugins.resolver.{ DependencyResolver, IBiblioResolver }
 import org.apache.ivy.util.url.CredentialsStore
+import org.apache.ivy.core.module.descriptor
+import org.apache.ivy.util.filter.{Filter => IvyFilter}
 import sbt.serialization._
 
 /** Additional information about a project module */
@@ -29,6 +31,25 @@ final case class Developer(id: String, name: String, email: String, url: URL)
 final case class ExclusionRule(organization: String = "*", name: String = "*", artifact: String = "*", configurations: Seq[String] = Nil)
 object ExclusionRule {
   implicit val pickler: Pickler[ExclusionRule] with Unpickler[ExclusionRule] = PicklerUnpickler.generate[ExclusionRule]
+}
+
+/** Work around the inadequacy of Ivy's ArtifactTypeFilter (that it cannot reverse a filter)
+  * @param types represents the artifact types that we should try to resolve for (as in the allowed values of
+  *              `artifact[type]` from a dependency `<publications>` section). One can use this to filter
+  *              source / doc artifacts.
+  * @param inverted whether to invert the types filter (i.e. allow only types NOT in the set) */
+case class ArtifactTypeFilter(types: Set[String], inverted: Boolean) {
+  def invert = copy(inverted = !inverted)
+  def apply(a: descriptor.Artifact): Boolean = (types contains a.getType) ^ inverted
+}
+
+object ArtifactTypeFilter {
+	def allow(types: Set[String])  = ArtifactTypeFilter(types, false)
+	def forbid(types: Set[String]) = ArtifactTypeFilter(types, true)
+
+	implicit def toIvyFilter(f: ArtifactTypeFilter): IvyFilter = new IvyFilter {
+		override def accept(o: Object): Boolean = Option(o) exists { case a: descriptor.Artifact => f.apply(a) }
+	}
 }
 
 final case class ModuleConfiguration(organization: String, name: String, revision: String, resolver: Resolver)
