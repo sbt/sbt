@@ -306,6 +306,8 @@ object Keys {
   val updateClassifiers = TaskKey[UpdateReport]("update-classifiers", "Resolves and optionally retrieves classified artifacts, such as javadocs and sources, for dependency definitions, transitively.", BPlusTask, update)
   val transitiveClassifiers = SettingKey[Seq[String]]("transitive-classifiers", "List of classifiers used for transitively obtaining extra artifacts for sbt or declared dependencies.", BSetting)
   val updateSbtClassifiers = TaskKey[UpdateReport]("update-sbt-classifiers", "Resolves and optionally retrieves classifiers, such as javadocs and sources, for sbt, transitively.", BPlusTask, updateClassifiers)
+  val sourceArtifactTypes = SettingKey[Set[String]]("source-artifact-types", "Ivy artifact types that correspond to source artifacts. Used by IDEs to resolve these resources.", BSetting)
+  val docArtifactTypes = SettingKey[Set[String]]("doc-artifact-types", "Ivy artifact types that correspond to javadoc artifacts. Used by IDEs to resolve these resources.", BSetting)
 
   val publishConfiguration = TaskKey[PublishConfiguration]("publish-configuration", "Configuration for publishing to a repository.", DTask)
   val publishLocalConfiguration = TaskKey[PublishConfiguration]("publish-local-configuration", "Configuration for publishing to the local Ivy repository.", DTask)

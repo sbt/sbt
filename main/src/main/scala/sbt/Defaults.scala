@@ -679,6 +679,7 @@ object Defaults extends BuildCommon {
         a.copy(classifier = Some(classifierString), `type` = Artifact.classifierType(classifierString), configurations = confs)
       }
   }
+  // TODO bad, remove. The configuration(s) should not be decided from the classifier.
   def artifactConfigurations(base: Artifact, scope: Configuration, classifier: Option[String]): Iterable[Configuration] =
     classifier match {
       case Some(c) => Artifact.classifierConf(c) :: Nil
@@ -1133,6 +1134,8 @@ object Classpaths {
     resolvers :== Nil,
     retrievePattern :== Resolver.defaultRetrievePattern,
     transitiveClassifiers :== Seq(SourceClassifier, DocClassifier),
+    sourceArtifactTypes :== Artifact.DefaultSourceTypes,
+    docArtifactTypes :== Artifact.DefaultDocTypes,
     sbtDependency := {
       val app = appConfiguration.value
       val id = app.provider.id
@@ -1194,7 +1197,12 @@ object Classpaths {
     projectID <<= defaultProjectID,
     projectID <<= pluginProjectID,
     projectDescriptors <<= depMap,
-    updateConfiguration := new UpdateConfiguration(retrieveConfiguration.value, false, ivyLoggingLevel.value),
+    updateConfiguration := {
+      // Tell the UpdateConfiguration which artifact types are special (for sources and javadocs)
+      val specialArtifactTypes = sourceArtifactTypes.value union docArtifactTypes.value
+      // By default, to retrieve all types *but* these (it's assumed that everything else is binary/resource)
+      new UpdateConfiguration(retrieveConfiguration.value, false, ivyLoggingLevel.value, ArtifactTypeFilter.forbid(specialArtifactTypes))
+    },
     updateOptions := (updateOptions in Global).value,
     retrieveConfiguration := { if (retrieveManaged.value) Some(new RetrieveConfiguration(managedDirectory.value, retrievePattern.value, retrieveManagedSync.value, configurationsToRetrieve.value)) else None },
     ivyConfiguration <<= mkIvyConfiguration,
@@ -1248,6 +1256,8 @@ object Classpaths {
       val mod = (classifiersModule in updateClassifiers).value
       val c = updateConfiguration.value
       val app = appConfiguration.value
+      val srcTypes = sourceArtifactTypes.value
+      val docTypes = docArtifactTypes.value
       val out = is.withIvy(s.log)(_.getSettings.getDefaultIvyUserDir)
       val uwConfig = (unresolvedWarningConfiguration in update).value
       val depDir = dependencyCacheDirectory.value
@@ -1255,7 +1265,7 @@ object Classpaths {
         val uwConfig = (unresolvedWarningConfiguration in update).value
         val logicalClock = LogicalClock(state.value.hashCode)
         val depDir = dependencyCacheDirectory.value
-        IvyActions.updateClassifiers(is, GetClassifiersConfiguration(mod, excludes, c, ivyScala.value), uwConfig, LogicalClock(state.value.hashCode), Some(depDir), s.log)
+        IvyActions.updateClassifiers(is, GetClassifiersConfiguration(mod, excludes, c.copy(artifactFilter = c.artifactFilter.invert), ivyScala.value, srcTypes, docTypes), uwConfig, LogicalClock(state.value.hashCode), Some(depDir), Vector.empty, s.log)
       }
     } tag (Tags.Update, Tags.Network)
   )
@@ -1327,12 +1337,14 @@ object Classpaths {
       val mod = classifiersModule.value
       val c = updateConfiguration.value
       val app = appConfiguration.value
+      val srcTypes = sourceArtifactTypes.value
+      val docTypes = docArtifactTypes.value
       val out = is.withIvy(s.log)(_.getSettings.getDefaultIvyUserDir)
       val uwConfig = (unresolvedWarningConfiguration in update).value
       val depDir = dependencyCacheDirectory.value
       withExcludes(out, mod.classifiers, lock(app)) { excludes =>
         val noExplicitCheck = ivyScala.value.map(_.copy(checkExplicit = false))
-        IvyActions.transitiveScratch(is, "sbt", GetClassifiersConfiguration(mod, excludes, c, noExplicitCheck), uwConfig, LogicalClock(state.value.hashCode), Some(depDir), s.log)
+        IvyActions.transitiveScratch(is, "sbt", GetClassifiersConfiguration(mod, excludes, c.copy(artifactFilter = c.artifactFilter.invert), noExplicitCheck, srcTypes, docTypes), uwConfig, LogicalClock(state.value.hashCode), Some(depDir), s.log)
       }
     } tag (Tags.Update, Tags.Network)
   )) ++ Seq(bootIvyConfiguration := (ivyConfiguration in updateSbtClassifiers).value)
