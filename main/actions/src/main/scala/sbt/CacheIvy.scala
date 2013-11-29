@@ -90,8 +90,8 @@ object CacheIvy {
   implicit def callerFormat: Format[Caller] =
     wrap[Caller, (ModuleID, Seq[String], Map[String, String], Boolean, Boolean, Boolean, Boolean)](c => (c.caller, c.callerConfigurations, c.callerExtraAttributes, c.isForceDependency, c.isChangingDependency, c.isTransitiveDependency, c.isDirectlyForceDependency),
       { case (c, cc, ea, fd, cd, td, df) => new Caller(c, cc, ea, fd, cd, td, df) })
-  implicit def exclusionRuleFormat(implicit sf: Format[String]): Format[ExclusionRule] =
-    wrap[ExclusionRule, (String, String, String, Seq[String])](e => (e.organization, e.name, e.artifact, e.configurations), { case (o, n, a, cs) => ExclusionRule(o, n, a, cs) })
+  implicit def exclusionRuleFormat(implicit sf: Format[String]): Format[InclExclRule] =
+    wrap[InclExclRule, (String, String, String, Seq[String])](e => (e.organization, e.name, e.artifact, e.configurations), { case (o, n, a, cs) => InclExclRule(o, n, a, cs) })
   implicit def crossVersionFormat: Format[CrossVersion] = wrap(crossToInt, crossFromInt)
   implicit def sourcePositionFormat: Format[SourcePosition] =
     wrap[SourcePosition, (Int, String, Int, Int)](
@@ -186,7 +186,7 @@ object CacheIvy {
     implicit def sshConnectionToHL = (s: SshConnection) => s.authentication :+: s.hostname :+: s.port :+: HNil
 
     implicit def artifactToHL = (a: Artifact) => a.name :+: a.`type` :+: a.extension :+: a.classifier :+: names(a.configurations) :+: a.url :+: a.extraAttributes :+: HNil
-    implicit def exclusionToHL = (e: ExclusionRule) => e.organization :+: e.name :+: e.artifact :+: e.configurations :+: HNil
+    implicit def inclExclToHL = (e: InclExclRule) => e.organization :+: e.name :+: e.artifact :+: e.configurations :+: HNil
     implicit def sbtExclusionToHL = (e: SbtExclusionRule) => e.organization :+: e.name :+: e.artifact :+: e.configurations :+: e.crossVersion :+: HNil
     implicit def crossToHL = (c: CrossVersion) => crossToInt(c) :+: HNil
 
@@ -200,7 +200,7 @@ object CacheIvy {
   implicit def ivyFileIC: InputCache[IvyFileConfiguration] = wrapIn
   implicit def connectionIC: InputCache[SshConnection] = wrapIn
   implicit def artifactIC: InputCache[Artifact] = wrapIn
-  implicit def exclusionIC: InputCache[ExclusionRule] = wrapIn
+  implicit def exclusionIC: InputCache[InclExclRule] = wrapIn
   implicit def sbtExclusionIC: InputCache[SbtExclusionRule] = wrapIn
   implicit def crossVersionIC: InputCache[CrossVersion] = wrapIn
   /*	implicit def publishConfIC: InputCache[PublishConfiguration] = wrapIn
