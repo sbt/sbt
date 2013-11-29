@@ -3,11 +3,9 @@
  */
 package sbt
 
-import java.io.File
-import java.net.{URI, URL}
-import scala.xml.NodeSeq
-import org.apache.ivy.plugins.resolver.{DependencyResolver, IBiblioResolver}
-import org.apache.ivy.util.url.CredentialsStore
+import java.net.URL
+import org.apache.ivy.core.module.descriptor
+import org.apache.ivy.util.filter.{Filter => IvyFilter}
 
 /** Additional information about a project module */
 final case class ModuleInfo(nameFormal: String, description: String = "", homepage: Option[URL] = None, startYear: Option[Int] = None, licenses: Seq[(String, URL)] = Nil, organizationName: String = "", organizationHomepage: Option[URL] = None, scmInfo: Option[ScmInfo] = None)
@@ -23,6 +21,26 @@ final case class ScmInfo(browseUrl: URL, connection: String, devConnection: Opti
 
 /** Rule to exclude unwanted dependencies pulled in transitively by a module. */
 final case class ExclusionRule(organization: String = "*", name: String = "*", artifact: String = "*", configurations: Seq[String] = Nil)
+
+/** Work around the inadequacy of Ivy's ArtifactTypeFilter (that it cannot reverse a filter)
+  * @param types represents the artifact types that we should try to resolve for (as in the allowed values of
+  *              `artifact[type]` from a dependency `<publications>` section). One can use this to filter
+  *              source / doc artifacts.
+  * @param inverted whether to invert the types filter (i.e. allow only types NOT in the set) */
+case class ArtifactTypeFilter(types: Set[String], inverted: Boolean) {
+	assert (!inverted || types.nonEmpty, "Won't invert an empty filter: please provide some artifact types")
+	def invert = copy(inverted = !inverted)
+	def apply(a: descriptor.Artifact): Boolean = (types contains a.getType) ^ inverted
+}
+
+object ArtifactTypeFilter {
+	def allow(types: Set[String])  = ArtifactTypeFilter(types, false)
+	def forbid(types: Set[String]) = ArtifactTypeFilter(types, true)
+
+	implicit def toIvyFilter(f: ArtifactTypeFilter): IvyFilter = new IvyFilter {
+		override def accept(o: Object): Boolean = Option(o) exists { case a: descriptor.Artifact => f.apply(a) }
+	}
+}
 
 final case class ModuleConfiguration(organization: String, name: String, revision: String, resolver: Resolver)
 object ModuleConfiguration
