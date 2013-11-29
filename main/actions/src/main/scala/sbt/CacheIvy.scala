@@ -115,9 +115,9 @@ object CacheIvy {
   private[this] val crossToInt = (c: CrossVersion) => c match { case Disabled => 0; case b: Binary => BinaryValue; case f: Full => FullValue }
 
   implicit def moduleIDFormat(implicit sf: Format[String], bf: Format[Boolean]): Format[ModuleID] =
-    wrap[ModuleID, ((String, String, String, Option[String]), (Boolean, Boolean, Boolean, Seq[Artifact], Seq[ExclusionRule], Map[String, String], CrossVersion))](
-      m => ((m.organization, m.name, m.revision, m.configurations), (m.isChanging, m.isTransitive, m.isForce, m.explicitArtifacts, m.exclusions, m.extraAttributes, m.crossVersion)),
-      { case ((o, n, r, cs), (ch, t, f, as, excl, x, cv)) => ModuleID(o, n, r, cs, ch, t, f, as, excl, x, cv) }
+    wrap[ModuleID, ((String, String, String, Option[String]), (Boolean, Boolean, Boolean, Seq[Artifact], Seq[ExclusionRule], Seq[InclusionRule], Map[String, String], CrossVersion))](
+      m => ((m.organization, m.name, m.revision, m.configurations), (m.isChanging, m.isTransitive, m.isForce, m.explicitArtifacts, m.exclusions, m.inclusions, m.extraAttributes, m.crossVersion)),
+      { case ((o, n, r, cs), (ch, t, f, as, excl, incl, x, cv)) => ModuleID(o, n, r, cs, ch, t, f, as, excl, incl, x, cv) }
     )
   // For some reason sbinary seems to detect unserialized instance Set[ModuleID] to be not equal. #1620
   implicit def moduleSetIC: InputCache[Set[ModuleID]] =
@@ -169,7 +169,7 @@ object CacheIvy {
     implicit def sftpRToHL = (s: SftpRepository) => s.name :+: s.connection :+: s.patterns :+: HNil
     implicit def rawRToHL = (r: RawRepository) => r.name :+: r.resolver.getClass.getName :+: HNil
     implicit def chainRToHL = (c: ChainedResolver) => c.name :+: c.resolvers :+: HNil
-    implicit def moduleToHL = (m: ModuleID) => m.organization :+: m.name :+: m.revision :+: m.configurations :+: m.isChanging :+: m.isTransitive :+: m.explicitArtifacts :+: m.exclusions :+: m.extraAttributes :+: m.crossVersion :+: HNil
+    implicit def moduleToHL = (m: ModuleID) => m.organization :+: m.name :+: m.revision :+: m.configurations :+: m.isChanging :+: m.isTransitive :+: m.explicitArtifacts :+: m.exclusions :+: m.inclusions :+: m.extraAttributes :+: m.crossVersion :+: HNil
   }
   import L3._
 
