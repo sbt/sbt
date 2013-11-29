@@ -27,10 +27,17 @@ final case class ScmInfo(browseUrl: URL, connection: String, devConnection: Opti
 
 final case class Developer(id: String, name: String, email: String, url: URL)
 
-/** Rule to exclude unwanted dependencies pulled in transitively by a module. */
-final case class ExclusionRule(organization: String = "*", name: String = "*", artifact: String = "*", configurations: Seq[String] = Nil)
-object ExclusionRule {
-  implicit val pickler: Pickler[ExclusionRule] with Unpickler[ExclusionRule] = PicklerUnpickler.generate[ExclusionRule]
+/** Rule to either:
+  * <ul>
+  * <li> exclude unwanted dependencies pulled in transitively by a module, or to</li>
+  * <li> include and merge artifacts coming from the ModuleDescriptor if "dependencyArtifacts" are also provided.</li>
+  * </ul>
+  * Which one depends on the parameter name which it is passed to, but the filter has the same fields in both cases. */
+final case class InclExclRule(organization: String = "*", name: String = "*", artifact: String = "*", configurations: Seq[String] = Nil)
+object InclExclRule {
+  def everything = InclExclRule("*", "*", "*", Nil)
+
+  implicit val pickler: Pickler[InclExclRule] with Unpickler[InclExclRule] = PicklerUnpickler.generate[InclExclRule]
 }
 
 /** Work around the inadequacy of Ivy's ArtifactTypeFilter (that it cannot reverse a filter)

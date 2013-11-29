@@ -70,10 +70,10 @@ final case class ModuleID(organization: String, name: String, revision: String, 
    * Applies the provided exclusions to dependencies of this module.  Note that only exclusions that specify
    * both the exact organization and name and nothing else will be included in a pom.xml.
    */
-  def excludeAll(rules: ExclusionRule*) = copy(exclusions = this.exclusions ++ rules)
+  def excludeAll(rules: InclExclRule*) = copy(exclusions = this.exclusions ++ rules)
 
   /** Excludes the dependency with organization `org` and `name` from being introduced by this dependency during resolution. */
-  def exclude(org: String, name: String) = excludeAll(ExclusionRule(org, name))
+  def exclude(org: String, name: String) = excludeAll(InclExclRule(org, name))
 
   /**
    * Adds extra attributes for this module.  All keys are prefixed with `e:` if they are not already so prefixed.
