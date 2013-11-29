@@ -250,7 +250,15 @@ object IvyActions {
   def updateClassifiers(ivySbt: IvySbt, config: GetClassifiersConfiguration, log: Logger): UpdateReport =
     updateClassifiers(ivySbt, config, UnresolvedWarningConfiguration(), LogicalClock.unknown, None, Vector(), log)
 
-  // artifacts can be obtained from calling toSeq on UpdateReport
+  /**
+	 * Creates explicit artifacts for each classifier in `config.module`, and then attempts to resolve them directly. This
+	 * is for Maven compatibility, where these artifacts are not "published" in the POM, so they don't end up in the Ivy
+	 * that sbt generates for them either.<br>
+  * Artifacts can be obtained from calling toSeq on UpdateReport.<br>
+	 * In addition, retrieves specific Ivy artifacts if they have one of the requested `config.configuration.types`.
+	 * @param config important to set `config.configuration.types` to only allow artifact types that can correspond to
+	 *               "classified" artifacts (sources and javadocs).
+	 */
   private[sbt] def updateClassifiers(ivySbt: IvySbt, config: GetClassifiersConfiguration,
     uwconfig: UnresolvedWarningConfiguration, logicalClock: LogicalClock, depDir: Option[File],
     artifacts: Vector[(String, ModuleID, Artifact, File)],
@@ -259,14 +267,27 @@ object IvyActions {
       import config.{ configuration => c, module => mod, _ }
       import mod.{ configurations => confs, _ }
       assert(classifiers.nonEmpty, "classifiers cannot be empty")
+      assert(c.artifactFilter.types.nonEmpty, "UpdateConfiguration must filter on some types")
       val baseModules = modules map { m => restrictedCopy(m, true) }
       // Adding list of explicit artifacts here.
       val deps = baseModules.distinct flatMap classifiedArtifacts(classifiers, exclude, artifacts)
       val base = restrictedCopy(id, true).copy(name = id.name + classifiers.mkString("$", "_", ""))
       val module = new ivySbt.Module(InlineConfigurationWithExcludes(base, ModuleInfo(base.name), deps).copy(ivyScala = ivyScala, configurations = confs))
-      val upConf = new UpdateConfiguration(c.retrieve, true, c.logging)
+      // c.copy ensures c.types is preserved too
+      val upConf = c.copy(missingOk = true)
       updateEither(module, upConf, uwconfig, logicalClock, depDir, log) match {
-        case Right(r) => r
+        case Right(r) =>
+          // The artifacts that came from Ivy don't have their classifier set, let's set it according to
+          // FIXME: this is only done because IDE plugins depend on `classifier` to determine type. They
+          val typeClassifierMap: Map[String, String] =
+            ((sourceArtifactTypes.toIterable map (_ -> Artifact.SourceClassifier))
+              :: (docArtifactTypes.toIterable map (_ -> Artifact.DocClassifier)) :: Nil).flatten.toMap
+          r.substitute { (conf, mid, artFileSeq) =>
+            artFileSeq map { case (art, f) =>
+              // Deduce the classifier from the type if no classifier is present already
+              art.copy(classifier = art.classifier orElse typeClassifierMap.get(art.`type`)) -> f
+            }
+          }
         case Left(w) =>
           throw w.resolveException
       }
@@ -282,7 +303,7 @@ object IvyActions {
       {
         val arts = (artifacts collect { case (_, x, art, _) if sameModule(m, x) && art.classifier.isDefined => art }).distinct
         if (arts.isEmpty) None
-        else Some(m.copy(isTransitive = false, explicitArtifacts = arts))
+        else Some(intransitiveModuleWithExplicitArts(m, arts))
       }
     def hardcodedArtifacts = classifiedArtifacts(classifiers, exclude)(m)
     explicitArtifacts orElse hardcodedArtifacts
@@ -291,8 +312,27 @@ object IvyActions {
     {
       val excluded = exclude getOrElse (restrictedCopy(m, false), Set.empty)
       val included = classifiers filterNot excluded
-      if (included.isEmpty) None else Some(m.copy(isTransitive = false, explicitArtifacts = classifiedArtifacts(m.name, included)))
+      if (included.isEmpty) None else {
+        Some(intransitiveModuleWithExplicitArts(module = m, arts = classifiedArtifacts(m.name, included)))
+      }
     }
+
+  /**
+    * Explicitly set an "include all" rule (the default) because otherwise, if we declare ANY explicitArtifacts,
+    * [[org.apache.ivy.core.resolve.IvyNode#getArtifacts]] (in Ivy 2.3.0-rc1) will not merge in the descriptor's
+    * artifacts and will only keep the explicitArtifacts.
+    * <br>
+    * Look for the comment saying {{{
+    *   // and now we filter according to include rules
+    * }}}
+    * in `IvyNode`, which iterates on `includes`, which will ordinarily be empty because higher up, in {{{
+    *   addAllIfNotNull(includes, usage.getDependencyIncludesSet(rootModuleConf));
+    * }}}
+    * `usage.getDependencyIncludesSet` returns null if there are no (explicit) include rules.
+    */
+  private def intransitiveModuleWithExplicitArts(module: ModuleID, arts: Seq[Artifact]): ModuleID =
+    module.copy(isTransitive = false, explicitArtifacts = arts, inclusions = InclExclRule.everything :: Nil)
+
   def addExcluded(report: UpdateReport, classifiers: Seq[String], exclude: Map[ModuleID, Set[String]]): UpdateReport =
     report.addMissing { id => classifiedArtifacts(id.name, classifiers filter getExcluded(id, exclude)) }
   def classifiedArtifacts(name: String, classifiers: Seq[String]): Seq[Artifact] =
