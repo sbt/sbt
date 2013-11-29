@@ -168,28 +168,64 @@ object IvyActions
 		val newConfig = config.copy(module = mod.copy(modules = report.allModules))
 		updateClassifiers(ivySbt, newConfig, log)
 	}
+
+	/**
+	 * Creates explicit artifacts for each classifier in `config.module`, and then attempts to resolve them directly. This
+	 * is for Maven compatibility, where these artifacts are not "published" in the POM, so they don't end up in the Ivy
+	 * that sbt generates for them either.<br>
+	 * In addition, retrieves specific Ivy artifacts if they have one of the requested `config.configuration.types`.
+	 * @param config important to set `config.configuration.types` to only allow artifact types that can correspond to
+	 *               "classified" artifacts (sources and javadocs).
+	 */
 	def updateClassifiers(ivySbt: IvySbt, config: GetClassifiersConfiguration, log: Logger): UpdateReport =
 	{
 		import config.{configuration => c, module => mod, _}
 		import mod.{configurations => confs, _}
 		assert(!classifiers.isEmpty, "classifiers cannot be empty")
-		val baseModules = modules map { m => restrictedCopy(m, true) }
-		val deps = baseModules.distinct flatMap classifiedArtifacts(classifiers, exclude)
+		assert(c.artifactFilter.types.nonEmpty, "UpdateConfiguration must filter on some types")
+		val baseModules = modules map { m => restrictedCopy(m, confs = true) }
+		val deps = baseModules.distinct
+		val classifiedDeps = deps flatMap classifiedArtifacts(classifiers, exclude)
 		val base = restrictedCopy(id, true).copy(name = id.name + classifiers.mkString("$","_",""))
-		val module = new ivySbt.Module(InlineConfiguration(base, ModuleInfo(base.name), deps).copy(ivyScala = ivyScala, configurations = confs))
-		val upConf = new UpdateConfiguration(c.retrieve, true, c.logging)
-		update(module, upConf, log)
+		val module = new ivySbt.Module(InlineConfiguration(base, ModuleInfo(base.name), classifiedDeps, ivyScala = ivyScala, configurations = confs))
+		// This includes c.types which should be passed in too
+		val upConf = c.copy(missingOk = true)
+		val report = update(module, upConf, log)
+		// The artifacts that came from Ivy don't have their classifier set, let's set it according to their types
+		// FIXME: this is only done because IDE plugins depend on `classifier` to determine type. They should now look at the type instead, in relation with (source|doc)ArtifactTypes
+		val typeClassifierMap: Map[String, String] =
+			((sourceArtifactTypes.toIterable map (_ -> Artifact.SourceClassifier))
+			 :: (docArtifactTypes.toIterable map (_ -> Artifact.DocClassifier)) :: Nil).flatten.toMap
+		report.substitute { (conf, mid, artFileSeq) =>
+			artFileSeq map { case (art, f) =>
+				// Deduce the classifier from the type if no classifier is present already
+				art.copy(classifier = art.classifier orElse typeClassifierMap.get(art.`type`)) -> f
+			}
+		}
 	}
+
 	def classifiedArtifacts(classifiers: Seq[String], exclude: Map[ModuleID, Set[String]])(m: ModuleID): Option[ModuleID] =
 	{
 		val excluded = exclude getOrElse(restrictedCopy(m, false), Set.empty)
 		val included = classifiers filterNot excluded
-		if(included.isEmpty) None else Some(m.copy(isTransitive = false, explicitArtifacts = classifiedArtifacts(m.name, included) ))
+
+		if (included.isEmpty)
+			Some(m.copy(isTransitive = false))
+		else {
+			val classifiedArts = classifiedArtifacts(m.name, included)
+			/** Explicitly set an "include all" rule (the default) because otherwise, if we declare ANY explicitArtifacts,
+			  * [[org.apache.ivy.core.resolve.IvyNode#getArtifacts]] (in Ivy 2.3.0-rc1) will not merge in the descriptor's
+			  * artifacts and will only keep the explicitArtifacts */
+			Some(m.copy(isTransitive = false, explicitArtifacts = classifiedArts, inclusions = InclExclRule.everything :: Nil))
+		}
 	}
+  
 	def addExcluded(report: UpdateReport, classifiers: Seq[String], exclude: Map[ModuleID, Set[String]]): UpdateReport =
 		report.addMissing { id => classifiedArtifacts(id.name, classifiers filter getExcluded(id, exclude)) }
+  
 	def classifiedArtifacts(name: String, classifiers: Seq[String]): Seq[Artifact] =
 		classifiers map { c => Artifact.classified(name, c) }
+  
 	private[this] def getExcluded(id: ModuleID, exclude: Map[ModuleID, Set[String]]): Set[String] =
 		exclude.getOrElse(restrictedCopy(id, false), Set.empty[String])
 
