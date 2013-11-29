@@ -19,8 +19,17 @@ final case class ModuleInfo(nameFormal: String, description: String = "", homepa
 /** Basic SCM information for a project module */
 final case class ScmInfo(browseUrl: URL, connection: String, devConnection: Option[String] = None)
 
-/** Rule to exclude unwanted dependencies pulled in transitively by a module. */
-final case class ExclusionRule(organization: String = "*", name: String = "*", artifact: String = "*", configurations: Seq[String] = Nil)
+/** Rule to either:
+  * <ul>
+  * <li> exclude unwanted dependencies pulled in transitively by a module, or to</li>
+  * <li> include and merge artifacts coming from the ModuleDescriptor if "dependencyArtifacts" are also provided.</li>
+  * </ul>
+  * Which one depends on the parameter name which it is passed to, but the filter has the same fields in both cases. */
+final case class InclExclRule(organization: String, name: String, artifact: String = "*", configurations: Seq[String] = Nil)
+
+object InclExclRule {
+	def everything = InclExclRule("*", "*", "*", Nil)
+}
 
 /** Work around the inadequacy of Ivy's ArtifactTypeFilter (that it cannot reverse a filter)
   * @param types represents the artifact types that we should try to resolve for (as in the allowed values of

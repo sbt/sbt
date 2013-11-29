@@ -73,8 +73,8 @@ object CacheIvy
 			{ case (n,t,x,c,cs,u,e) => Artifact(n,t,x,c,cs,u,e) }
 		)
 	}
-	implicit def exclusionRuleFormat(implicit sf: Format[String]): Format[ExclusionRule] =
-		wrap[ExclusionRule, (String, String, String, Seq[String])]( e => (e.organization, e.name, e.artifact, e.configurations), { case (o,n,a,cs) => ExclusionRule(o,n,a,cs) })
+	implicit def exclusionRuleFormat(implicit sf: Format[String]): Format[InclExclRule] =
+		wrap[InclExclRule, (String, String, String, Seq[String])]( e => (e.organization, e.name, e.artifact, e.configurations), { case (o,n,a,cs) => InclExclRule(o,n,a,cs) })
 	implicit def crossVersionFormat: Format[CrossVersion] = wrap(crossToInt, crossFromInt)
 
 	private[this] final val DisabledValue = 0
@@ -149,7 +149,7 @@ object CacheIvy
 		implicit def sshConnectionToHL = (s: SshConnection) => s.authentication :+: s.hostname :+: s.port :+: HNil
 
 		implicit def artifactToHL = (a: Artifact) => a.name :+: a.`type` :+: a.extension :+: a.classifier :+: names(a.configurations) :+: a.url :+: a.extraAttributes :+: HNil
-		implicit def exclusionToHL = (e: ExclusionRule) => e.organization :+: e.name :+: e.artifact :+: e.configurations :+: HNil
+		implicit def inclExclToHL = (e: InclExclRule) => e.organization :+: e.name :+: e.artifact :+: e.configurations :+: HNil
 		implicit def crossToHL = (c: CrossVersion) => crossToInt(c) :+: HNil
 
 /*		implicit def deliverConfToHL = (p: DeliverConfiguration) => p.deliverIvyPattern :+: p.status :+: p.configurations :+: HNil
@@ -162,7 +162,7 @@ object CacheIvy
 	implicit def ivyFileIC: InputCache[IvyFileConfiguration] = wrapIn
 	implicit def connectionIC: InputCache[SshConnection] = wrapIn
 	implicit def artifactIC: InputCache[Artifact] = wrapIn
-	implicit def exclusionIC: InputCache[ExclusionRule] = wrapIn
+	implicit def exclusionIC: InputCache[InclExclRule] = wrapIn
 	implicit def crossVersionIC: InputCache[CrossVersion] = wrapIn
 /*	implicit def publishConfIC: InputCache[PublishConfiguration] = wrapIn
 	implicit def deliverConfIC: InputCache[DeliverConfiguration] = wrapIn*/
