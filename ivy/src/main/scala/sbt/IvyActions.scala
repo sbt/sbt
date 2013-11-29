@@ -18,11 +18,11 @@ import plugins.resolver.{BasicResolver, DependencyResolver}
 final class DeliverConfiguration(val deliverIvyPattern: String, val status: String, val configurations: Option[Seq[Configuration]], val logging: UpdateLogging.Value)
 final class PublishConfiguration(val ivyFile: Option[File], val resolverName: String, val artifacts: Map[Artifact, File], val checksums: Seq[String], val logging: UpdateLogging.Value)
 
-final class UpdateConfiguration(val retrieve: Option[RetrieveConfiguration], val missingOk: Boolean, val logging: UpdateLogging.Value)
+final case class UpdateConfiguration(retrieve: Option[RetrieveConfiguration], missingOk: Boolean, logging: UpdateLogging.Value, artifactFilter: ArtifactTypeFilter)
 final class RetrieveConfiguration(val retrieveDirectory: File, val outputPattern: String)
 final case class MakePomConfiguration(file: File, moduleInfo: ModuleInfo, configurations: Option[Seq[Configuration]] = None, extra: NodeSeq = NodeSeq.Empty, process: XNode => XNode = n => n, filterRepositories: MavenRepository => Boolean = _ => true, allRepositories: Boolean, includeTypes: Set[String] = Set(Artifact.DefaultType, Artifact.PomType))
-	// exclude is a map on a restricted ModuleID
-final case class GetClassifiersConfiguration(module: GetClassifiersModule, exclude: Map[ModuleID, Set[String]], configuration: UpdateConfiguration, ivyScala: Option[IvyScala])
+/** @param exclude is a map from ModuleID to classifiers that were previously tried and failed, so should now be excluded */
+final case class GetClassifiersConfiguration(module: GetClassifiersModule, exclude: Map[ModuleID, Set[String]], configuration: UpdateConfiguration, ivyScala: Option[IvyScala], sourceArtifactTypes: Set[String], docArtifactTypes: Set[String])
 final case class GetClassifiersModule(id: ModuleID, modules: Seq[ModuleID], configurations: Seq[Configuration], classifiers: Seq[String])
 
 /** Configures logging during an 'update'.  `level` determines the amount of other information logged.
@@ -119,7 +119,8 @@ object IvyActions
 	* 'updateConfig' configures the actual resolution and retrieval process. */
 	def update(module: IvySbt#Module, configuration: UpdateConfiguration, log: Logger): UpdateReport =
 		module.withModule(log) { case (ivy, md, default) =>
-			val (report, err) = resolve(configuration.logging)(ivy, md, default)
+			val (report, err) = resolve(configuration.logging)(ivy, md, default, configuration.artifactFilter)
+
 			err match
 			{
 				case Some(x) if !configuration.missingOk =>
@@ -197,11 +198,14 @@ object IvyActions
 
 	private[this] def restrictedCopy(m: ModuleID, confs: Boolean) =
 		ModuleID(m.organization, m.name, m.revision, crossVersion = m.crossVersion, extraAttributes = m.extraAttributes, configurations = if(confs) m.configurations else None)
-	private[this] def resolve(logging: UpdateLogging.Value)(ivy: Ivy, module: DefaultModuleDescriptor, defaultConf: String): (ResolveReport, Option[ResolveException]) =
-	{
+
+	private[this] def resolve(logging: UpdateLogging.Value)(
+      ivy: Ivy, module: DefaultModuleDescriptor, defaultConf: String, filter: ArtifactTypeFilter): (ResolveReport, Option[ResolveException]) =
+	{  
 		val resolveOptions = new ResolveOptions
 		val resolveId = ResolveOptions.getDefaultResolveId(module)
 		resolveOptions.setResolveId(resolveId)
+		resolveOptions.setArtifactFilter(filter)
 		resolveOptions.setLog(ivyLogLevel(logging))
 		ResolutionCache.cleanModule(module.getModuleRevisionId, resolveId, ivy.getSettings.getResolutionCacheManager)
 		val resolveReport = ivy.resolve(module, resolveOptions)
