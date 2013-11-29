@@ -5,7 +5,7 @@ package sbt
 
 	import java.net.URL
 
-final case class ModuleID(organization: String, name: String, revision: String, configurations: Option[String] = None, isChanging: Boolean = false, isTransitive: Boolean = true, isForce: Boolean = false, explicitArtifacts: Seq[Artifact] = Nil, exclusions: Seq[ExclusionRule] = Nil, extraAttributes: Map[String,String] = Map.empty, crossVersion: CrossVersion = CrossVersion.Disabled)
+final case class ModuleID(organization: String, name: String, revision: String, configurations: Option[String] = None, isChanging: Boolean = false, isTransitive: Boolean = true, isForce: Boolean = false, explicitArtifacts: Seq[Artifact] = Nil, exclusions: Seq[InclExclRule] = Nil, inclusions: Seq[InclExclRule] = Nil, extraAttributes: Map[String,String] = Map.empty, crossVersion: CrossVersion = CrossVersion.Disabled)
 {
 	override def toString: String =
 		organization + ":" + name + ":" + revision +

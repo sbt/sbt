@@ -7,9 +7,8 @@ import java.util.Collections.emptyMap
 import scala.collection.mutable.HashSet
 
 import org.apache.ivy.{core, plugins}
-import core.module.descriptor.{DefaultExcludeRule, ExcludeRule}
-import core.module.descriptor.{DependencyDescriptor, DefaultModuleDescriptor, ModuleDescriptor, OverrideDependencyDescriptorMediator}
-import core.module.id.{ArtifactId,ModuleId, ModuleRevisionId}
+import org.apache.ivy.core.module.descriptor._
+import core.module.id.{ArtifactId,ModuleId}
 import plugins.matcher.ExactPatternMatcher
 
 object ScalaArtifacts
@@ -113,4 +112,12 @@ private object IvyScala
 		configurationNames.foreach(rule.addConfiguration)
 		rule
 	}
+
+  private[sbt] def includeRule(organization: String, name: String, configurationNames: Iterable[String], includeTypePattern: String): IncludeRule =
+  {
+    val artifact = new ArtifactId(ModuleId.newInstance(organization, name), "*", includeTypePattern, "*")
+    val rule = new DefaultIncludeRule(artifact, ExactPatternMatcher.INSTANCE, emptyMap[AnyRef,AnyRef])
+    configurationNames.foreach(rule.addConfiguration)
+    rule
+  }
 }
