@@ -1,0 +1,13 @@
+# a test to verify that a bad build definition doesn't hang scripted tests
+# and that scripted can recover when reload is expected to fail
+
+$ copy-file bad.sbt.disabled bad.sbt
+-> reload
+
+# removing the problematic build should allow the next command to continue
+$ delete bad.sbt
+
+# due to the previous reload failing, this will force the project to be reloaded first
+# and this should then succeed
+> help
+

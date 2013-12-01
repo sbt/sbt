@@ -76,7 +76,7 @@ concurrency beyond the usual ordering declarations. There are two parts
 to these restrictions.
 
 1. A task is tagged in order to classify its purpose and resource
-   utilization. For example, the `compile` task may be tagged as
+   utilization. For example, the :key:`compile` task may be tagged as
    `Tags.Compile` and `Tags.CPU`.
 2. A list of rules restrict the tasks that may execute concurrently. For
    example, `Tags.limit(Tags.CPU, 4)` would allow up to four
@@ -95,7 +95,7 @@ this weight is an integer, but it may be a floating point in the future.
 Task: `tag` and `tagw`. The first method, `tag`, fixes the weight
 to be 1 for the tags provided to it as arguments. The second method,
 `tagw`, accepts pairs of tags and weights. For example, the following
-associates the `CPU` and `Compile` tags with the `compile` task
+associates the `CPU` and `Compile` tags with the :key:`compile` task
 (with a weight of 1).
 
 ::
@@ -116,7 +116,7 @@ Different weights may be specified by passing tag/weight pairs to
 Defining Restrictions
 ~~~~~~~~~~~~~~~~~~~~~
 
-Once tasks are tagged, the `concurrentRestrictions` setting sets
+Once tasks are tagged, the :key:`concurrentRestrictions` setting sets
 restrictions on the tasks that may be concurrently executed based on the
 weighted tags of those tasks.  This is necessarily a global set of rules,
 so it must be scoped `in Global`.  For example,
@@ -223,12 +223,12 @@ The built-in resource tags are:
 
 The tasks that are currently tagged by default are:
 
--  `compile`: `Compile`, `CPU`
--  `test`: `Test`
--  `update`: `Update`, `Network`
--  `publish`, `publishLocal`: `Publish`, `Network`
+-  :key:`compile` : `Compile`, `CPU`
+-  :key:`test` : `Test`
+-  :key:`update` : `Update`, `Network`
+-  :key:`publish`, :key:`publishLocal` : `Publish`, `Network`
 
-Of additional note is that the default `test` task will propagate its
+Of additional note is that the default :key:`test` task will propagate its
 tags to each child task created for each test class.
 
 The default rules provide the same behavior as previous versions of sbt:
@@ -288,7 +288,10 @@ tags applied to it. Only the first computation is labeled.
 
     compile := myCompileTask.value
 
-    compile ~= { ... do some post processing ... }
+    compile := { 
+      val result = compile.value
+      ... do some post processing ...
+    }
 
 Is this desirable? expected? If not, what is a better, alternative
 behavior?

@@ -11,14 +11,11 @@ Getting Started Guide.
 
 An sbt build definition can contain files ending in `.sbt`, located in
 the base directory, and files ending in `.scala`, located in the
-`project` subdirectory of the base directory.
+`project/` subdirectory the base directory.
 
-You can use either one exclusively, or use both. A good approach is to
-use `.sbt` files for most purposes, and use `.scala` files only to
-contain what can't be done in `.sbt`.
-
-This page discusses `.sbt` files. See :doc:`.scala build definition <Full-Def>` (later in Getting Started) for
-more on `.scala` files and how they relate to `.sbt` files.
+This page discusses `.sbt` files, which are suitable for most cases.
+The `.scala` files are typically used for sharing code across `.sbt` files and for larger build definitions.
+See :doc:`.scala build definition <Full-Def>` (later in Getting Started) for more on `.scala` files.
 
 What is a build definition?
 ---------------------------
@@ -29,7 +26,7 @@ After examining a project and processing any build definition files, sbt
 will end up with an immutable map (set of key-value pairs) describing
 the build.
 
-For example, one key is `name` and it maps to a string value, the name
+For example, one key is :key:`name` and it maps to a string value, the name
 of your project.
 
 *Build definition files do not affect sbt's map directly.*
@@ -89,7 +86,7 @@ expressions may be interspersed with `val`s, `lazy val`s, and `def`s,
 but top-level `object`s and classes are not allowed in `build.sbt`.
 Those should go in the `project/` directory as full Scala source files.
 
-On the left, `name`, `version`, and `scalaVersion` are *keys*. A
+On the left, :key:`name`, :key:`version`, and :key:`scalaVersion` are *keys*. A
 key is an instance of `SettingKey[T]`, `TaskKey[T]`, or
 `InputKey[T]` where `T` is the expected value type. The kinds of key
 are explained more below.
@@ -104,10 +101,10 @@ could use a Java-like syntax to call the method:
 But Scala allows `name := "hello"` instead (in Scala, any method can
 use either syntax).
 
-The `:=` method on key `name` returns a `Setting`, specifically a
-`Setting[String]`. `String` also appears in the type of `name`
+The `:=` method on key :key:`name` returns a `Setting`, specifically a
+`Setting[String]`. `String` also appears in the type of :key:`name`
 itself, which is `SettingKey[String]`. In this case, the returned
-`Setting[String]` is a transformation to add or replace the `name`
+`Setting[String]` is a transformation to add or replace the :key:`name`
 key in sbt's map, giving it the value `"hello"`.
 
 If you use the wrong value type, the build definition will not compile:
@@ -135,58 +132,66 @@ the next begins.
 program. These expressions have to be split up and passed to the
 compiler individually.
 
-If you want a single Scala program, use :doc:`.scala files <Full-Def>`
-rather than `.sbt` files; `.sbt` files are optional.
-:doc:`Later on <Full-Def>` this guide explains how to use
-`.scala` files. (Preview: the same settings expressions found in a
-`.sbt` file can always be listed in a `Seq[Setting]` in a `.scala`
-file instead.)
+Keys
+----
 
-Keys are defined in the Keys object
------------------------------------
-
-The built-in keys are just fields in an object called
-`Keys <../../sxr/Keys.scala.html>`_. A
-`build.sbt` implicitly has an `import sbt.Keys._`, so
-`sbt.Keys.name` can be referred to as `name`.
-
-Custom keys may be defined in a :doc:`.scala file <Full-Def>` or a :doc:`plugin <Using-Plugins>`.
-
-Other ways to transform settings
---------------------------------
-
-Replacement with `:=` is the simplest transformation, but there are
-several others. For example you can append to a list value with `+=`.
-
-The other transformations require an understanding of :doc:`scopes <Scopes>`, so the :doc:`next page <Scopes>` is about
-scopes and the :doc:`page after that <More-About-Settings>` goes into more detail about settings.
-
-Task Keys
----------
+Types
+~~~~~
 
 There are three flavors of key:
 
--  `SettingKey[T]`: a key with a value computed once (the value is
+-  `SettingKey[T]`: a key for a value computed once (the value is
    computed one time when loading the project, and kept around).
--  `TaskKey[T]`: a key with a value that has to be recomputed each
-   time, potentially creating side effects.
--  `InputKey[T]`: a task key which has command line arguments as
+-  `TaskKey[T]`: a key for a value, called a *task*,
+   that has to be recomputed each time, potentially creating side effects.
+-  `InputKey[T]`: a key for a task that has command line arguments as
    input. The Getting Started Guide doesn't cover `InputKey`, but when
    you finish this guide, check out :doc:`/Extending/Input-Tasks` for more.
 
+
+Built-in Keys
+~~~~~~~~~~~~~
+
+The built-in keys are just fields in an object called
+`Keys <../../sxr/sbt/Keys.scala.html>`_. A
+`build.sbt` implicitly has an `import sbt.Keys._`, so
+`sbt.Keys.name` can be referred to as :key:`name`.
+
+Custom Keys
+~~~~~~~~~~~
+
+Custom keys may be defined with their respective creation methods: `settingKey`, `taskKey`, and `inputKey`.
+Each method expects the type of the value associated with the key as well as a description.
+The name of the key is taken from the `val` the key is assigned to.
+For example, to define a key for a new task called `hello`, ::
+
+    lazy val hello = taskKey[Unit]("An example task")
+
+Here we have used the fact that an `.sbt` file can contain `val`\ s and `def`\ s in addition to settings.
+All such definitions are evaluated before settings regardless of where they are defined in the file.
+`val`\ s and `def`\ s must be separated from settings by blank lines.
+
+.. note::
+
+    Typically, `lazy val`\ s are used instead of `val`\ s to avoid initialization order problems.
+
+
+Task v. Setting keys
+~~~~~~~~~~~~~~~~~~~~
+
 A `TaskKey[T]` is said to define a *task*. Tasks are operations such
-as `compile` or `package`. They may return `Unit` (`Unit` is
+as :key:`compile` or :key:`package`. They may return `Unit` (`Unit` is
 Scala for `void`), or they may return a value related to the task, for
-example `package` is a `TaskKey[File]` and its value is the jar file
+example :key:`package` is a `TaskKey[File]` and its value is the jar file
 it creates.
 
-Each time you start a task execution, for example by typing `compile`
+Each time you start a task execution, for example by typing :key:`compile`
 at the interactive sbt prompt, sbt will re-run any tasks involved
 exactly once.
 
 sbt's map describing the project can keep around a fixed string value
-for a setting such as `name`, but it has to keep around some
-executable code for a task such as `compile` -- even if that
+for a setting such as :key:`name`, but it has to keep around some
+executable code for a task such as :key:`compile` -- even if that
 executable code eventually returns a string, it has to be re-run every
 time.
 
@@ -194,12 +199,24 @@ time.
 is, "taskiness" (whether to re-run each time) is a property of the key,
 not the value.
 
-Using `:=`, you can assign a computation to a task, and that
-computation will be re-run each time:
 
-::
+Defining tasks and settings
+---------------------------
+
+Using `:=`, you can assign a value to a setting and a computation to a task.
+For a setting, the value will be computed once at project load time.
+For a task, the computation will be re-run each time the task is executed.
+
+For example, to implement the `hello` task from the previous section, ::
 
     hello := { println("Hello!") }
+
+We already saw an example of defining settings when we defined the project's name, ::
+
+    name := "hello"
+
+Types for tasks and settings
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 From a type-system perspective, the `Setting` created from a task key
 is slightly different from the one created from a setting key.
@@ -209,17 +226,17 @@ makes no difference; the task key still creates a value of type `T`
 when the task executes.
 
 The `T` vs. `Task[T]` type difference has this implication: a
-setting key can't depend on a task key, because a setting key is
-evaluated only once on project load, and not re-run. More on this in
-:doc:`more about settings <More-About-Settings>`, coming up
+setting can't depend on a task, because a setting is
+evaluated only once on project load and is not re-run.
+More on this in :doc:`more about settings <More-About-Settings>`, coming up
 soon.
 
 Keys in sbt interactive mode
 ----------------------------
 
 In sbt's interactive mode, you can type the name of any task to execute
-that task. This is why typing `compile` runs the compile task.
-`compile` is a task key.
+that task. This is why typing :key:`compile` runs the compile task.
+:key:`compile` is a task key.
 
 If you type the name of a setting key rather than a task key, the value
 of the setting key will be displayed. Typing a task key name executes
@@ -251,6 +268,7 @@ There are some implied default imports, as follows:
 the contents of any `Build` or `Plugin` objects in those files will
 be imported. More on that when we get to :doc:`.scala build definitions <Full-Def>`.)
 
+
 Adding library dependencies
 ---------------------------
 
@@ -265,7 +283,7 @@ add managed dependencies, which will look like this in `build.sbt`:
 This is how you add a managed dependency on the Apache Derby library,
 version 10.4.1.3.
 
-The `libraryDependencies` key involves two complexities: `+=` rather
+The :key:`libraryDependencies` key involves two complexities: `+=` rather
 than `:=`, and the `%` method. `+=` appends to the key's old value
 rather than replacing it, this is explained in
 :doc:`more about settings </Getting-Started/More-About-Settings>`.

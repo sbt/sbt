@@ -1,4 +1,3 @@
-
 =========================
 Custom Settings and Tasks
 =========================
@@ -11,16 +10,16 @@ Getting Started Guide, especially :doc:`build.sbt <Basic-Def>` and :doc:`more ab
 Defining a key
 --------------
 
-`Keys <../../sxr/Keys.scala.html>`_ is
+`Keys <../../sxr/sbt/Keys.scala.html>`_ is
 packed with examples illustrating how to define keys. Most of the keys
 are implemented in
-`Defaults <../../sxr/Defaults.scala.html>`_.
+`Defaults <../../sxr/sbt/Defaults.scala.html>`_.
 
 Keys have one of three types. `SettingKey` and `TaskKey` are
 described in :doc:`.sbt build definition <Basic-Def>`. Read
 about `InputKey` on the :doc:`/Extending/Input-Tasks` page.
 
-Some examples from `Keys <../../sxr/Keys.scala.html>`_:
+Some examples from `Keys <../../sxr/sbt/Keys.scala.html>`_:
 
 ::
 
@@ -40,25 +39,24 @@ reload, while a task is re-computed for every "task execution" (every
 time someone types a command at the sbt interactive prompt or in batch
 mode).
 
-Keys may be defined in a `.scala` file (as described in :doc:`.scala build definition <Full-Def>`),
-or in a plugin (as described in
-:doc:`using plugins <Using-Plugins>`). Any `val` found in
-a `Build` object in your `.scala` build definition files, or any
-`val` found in a `Plugin` object from a plugin, will be imported
-automatically into your `.sbt` files.
+Keys may be defined in a :doc:`.sbt file <Basic-Def>`, :doc:`.scala file <Full-Def>`, or in a :doc:`plugin <Using-Plugins>`.
+Any `val` found in a `Build` object in your `.scala` build definition files or any
+`val` found in a `Plugin` object from a plugin will be imported automatically into your `.sbt` files.
 
 Implementing a task
 -------------------
 
-Once you've defined a key, you'll need to use it in some task. You could
-be defining your own task, or you could be planning to redefine an
-existing task. Either way looks the same; use `:=` to associate some
-code with the task key:
+Once you've defined a key for your task, you'll need to complete it
+with a task definition. You could be defining your own task, or you
+could be planning to redefine an existing task. Either way looks the
+same; use `:=` to associate some code with the task key:  ::
 
-::
-
+    val sampleStringTask = taskKey[String]("A sample string task.")
+    
+    val sampleIntTask = taskKey[Int]("A sample int task.")
+    
     sampleStringTask := System.getProperty("user.home")
-
+    
     sampleIntTask := {
       val sum = 1 + 2
       println("sum: " + sum)
@@ -94,4 +92,3 @@ This page has been a quick taste; there's much much more about custom
 tasks on the :doc:`/Detailed-Topics/Tasks` page.
 
 Move on to :doc:`Full-Def`.
-

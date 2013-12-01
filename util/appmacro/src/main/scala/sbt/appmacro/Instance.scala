@@ -61,7 +61,7 @@ object Instance
 	* These converted inputs are passed to `builder` as well as the list of these synthetic `ValDef`s.
 	* The `TupleBuilder` instance constructs a tuple (Tree) from the inputs and defines the right hand side of the vals
 	* that unpacks the tuple containing the results of the inputs.
-	* 
+	*
 	* The constructed tuple of inputs and the code that unpacks the results of the inputs are then passed to the `i`,
 	* which is an implementation of `Instance` that is statically accessible.
 	* An Instance defines a applicative functor associated with a specific type constructor and, if it implements MonadInstance as well, a monad.
@@ -70,18 +70,18 @@ object Instance
 	*  while the full check for static accessibility is done at macro expansion time.
 	* Note: Ideally, the types would verify that `i: MonadInstance` when `t.isRight`.
 	* With the various dependent types involved, this is not worth it.
-	* 
+	*
 	* The `t` argument is the argument of the macro that will be transformed as described above.
 	* If the macro that calls this method is for a multi-input map (app followed by map),
 	* `t` should be the argument wrapped in Left.
-	* If this is for multi-input flatMap (app followed by flatMap), 
+	* If this is for multi-input flatMap (app followed by flatMap),
 	*  this should be the argument wrapped in Right.
 	*/
 	def contImpl[T,N[_]](c: Context, i: Instance with Singleton, convert: Convert, builder: TupleBuilder)(t: Either[c.Expr[T], c.Expr[i.M[T]]], inner: Transform[c.type,N])(
 		implicit tt: c.WeakTypeTag[T], nt: c.WeakTypeTag[N[T]], it: c.TypeTag[i.type]): c.Expr[i.M[N[T]]] =
 	{
 			import c.universe.{Apply=>ApplyTree,_}
-		
+
 		val util = ContextUtil[c.type](c)
 		val mTC: Type = util.extractTC(i, InstanceTCName)
 		val mttpe: Type = appliedType(mTC, nt.tpe :: Nil).normalize
@@ -91,19 +91,24 @@ object Instance
 			case Left(l) => (l.tree, nt.tpe.normalize)
 			case Right(r) => (r.tree, mttpe)
 		}
+		// the Symbol for the anonymous function passed to the appropriate Instance.map/flatMap/pure method
+		// this Symbol needs to be known up front so that it can be used as the owner of synthetic vals
+		val functionSym = util.functionSymbol(tree.pos)
 
 		val instanceSym = util.singleton(i)
-		// A Tree that references the statically accessible Instance that provides the actual implementations of map, flatMap, ... 
+		// A Tree that references the statically accessible Instance that provides the actual implementations of map, flatMap, ...
 		val instance = Ident(instanceSym)
 
 		val isWrapper: (String, Type, Tree) => Boolean = convert.asPredicate(c)
 
+		// Local definitions `defs` in the macro.  This is used to ensure references are to M instances defined outside of the macro call.
+		// Also `refCount` is the number of references, which is used to create the private, synthetic method containing the body
+		val defs = util.collectDefs(tree, isWrapper)
+		val checkQual: Tree => Unit = util.checkReferences(defs, isWrapper)
+
 		type In = Input[c.universe.type]
 		var inputs = List[In]()
 
-		// Local definitions in the macro.  This is used to ensure references are to M instances defined outside of the macro call.
-		val defs = util.collectDefs(tree, isWrapper)
-		val checkQual: Tree => Unit = util.checkReferences(defs, isWrapper)
 
 		// transforms the original tree into calls to the Instance functions pure, map, ...,
 		//  resulting in a value of type M[T]
@@ -118,7 +123,8 @@ object Instance
 		def pure(body: Tree): Tree =
 		{
 			val typeApplied = TypeApply(util.select(instance, PureName), TypeTree(treeType) :: Nil)
-			val p = ApplyTree(typeApplied, Function(Nil, body) :: Nil)
+			val f = util.createFunction(Nil, body, functionSym)
+			val p = ApplyTree(typeApplied, f :: Nil)
 			if(t.isLeft) p else flatten(p)
 		}
 		// m should have type M[M[T]]
@@ -133,9 +139,10 @@ object Instance
 		def single(body: Tree, input: In): Tree =
 		{
 			val variable = input.local
-			val param = ValDef(util.parameterModifiers, variable.name, variable.tpt, EmptyTree)
+			val param = treeCopy.ValDef(variable, util.parameterModifiers, variable.name, variable.tpt, EmptyTree)
 			val typeApplied = TypeApply(util.select(instance, MapName), variable.tpt :: TypeTree(treeType) :: Nil)
-			val mapped = ApplyTree(typeApplied, input.expr :: Function(param :: Nil, body) :: Nil)
+			val f = util.createFunction(param :: Nil, body, functionSym)
+			val mapped = ApplyTree(typeApplied, input.expr :: f :: Nil)
 			if(t.isLeft) mapped else flatten(mapped)
 		}
 
@@ -145,37 +152,37 @@ object Instance
 			val result = builder.make(c)(mTC, inputs)
 			val param = util.freshMethodParameter( appliedType(result.representationC, util.idTC :: Nil) )
 			val bindings = result.extract(param)
-			val f = Function(param :: Nil, Block(bindings, body))
+			val f = util.createFunction(param :: Nil, Block(bindings, body), functionSym)
 			val ttt = TypeTree(treeType)
 			val typedApp = TypeApply(util.select(instance, ApplyName), TypeTree(result.representationC) :: ttt :: Nil)
 			val app = ApplyTree(ApplyTree(typedApp, result.input :: f :: Nil), result.alistInstance :: Nil)
 			if(t.isLeft) app else flatten(app)
 		}
 
-		// called when transforming the tree to add an input
-		//  for `qual` of type M[A], and a selection qual.value,
+		// Called when transforming the tree to add an input.
+		//  For `qual` of type M[A], and a `selection` qual.value,
 		//  the call is addType(Type A, Tree qual)
-		// the result is a Tree representing a reference to
-		//  the bound value of the input
-		def addType(tpe: Type, qual: Tree): Tree =
+		// The result is a Tree representing a reference to
+		//  the bound value of the input.
+		def addType(tpe: Type, qual: Tree, selection: Tree): Tree =
 		{
 			qual.foreach(checkQual)
-			val vd = util.freshValDef(tpe, qual.symbol)
+			val vd = util.freshValDef(tpe, qual.symbol.pos, functionSym)
 			inputs ::= new Input(tpe, qual, vd)
-			util.refVal(vd, qual.pos)
+			util.refVal(selection, vd)
 		}
-		def sub(name: String, tpe: Type, qual: Tree): Converted[c.type] =
+		def sub(name: String, tpe: Type, qual: Tree, replace: Tree): Converted[c.type] =
 		{
 			val tag = c.WeakTypeTag[T](tpe)
 			convert[T](c)(name, qual)(tag) transform { tree =>
-				addType(tpe, tree)
+				addType(tpe, tree, replace)
 			}
 		}
 
 		// applies the transformation
-		val tx = util.transformWrappers(tree, (n,tpe,t) => sub(n,tpe,t))
+		val tx = util.transformWrappers(tree, (n,tpe,t,replace) => sub(n,tpe,t,replace))
 		// resetting attributes must be: a) local b) done here and not wider or else there are obscure errors
-		val tr = makeApp( c.resetLocalAttrs( inner(tx) ) ) 
+		val tr = makeApp( inner(tx) )
 		c.Expr[i.M[N[T]]](tr)
 	}
 

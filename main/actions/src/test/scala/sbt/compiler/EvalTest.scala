@@ -11,7 +11,7 @@ object EvalTest extends Properties("eval")
 	private[this] val reporter = new StoreReporter
 	import reporter.{ERROR,Info,Severity}
 	private[this] val eval = new Eval(_ => reporter, None)
-	
+
 	property("inferred integer") = forAll{ (i: Int) =>
 		val result = eval.eval(i.toString)
 		(label("Value", value(result)) |: (value(result) == i)) &&
@@ -25,11 +25,11 @@ object EvalTest extends Properties("eval")
 		(label("Type", result.tpe) |: (result.tpe == IntType)) &&
 		(label("Files", result.generated) |: (result.generated.isEmpty))
 	}
-	
+
 	property("type mismatch") = forAll{ (i: Int, l: Int) =>
 		val line = math.abs(l)
 		val src = "mismatch"
-		throws(eval.eval(i.toString, tpeName =Some(BooleanType), line = line, srcName = src), classOf[RuntimeException]) &&
+		throws(classOf[RuntimeException])(eval.eval(i.toString, tpeName =Some(BooleanType), line = line, srcName = src)) &&
 		hasErrors(line+1, src)
 	}
 

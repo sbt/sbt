@@ -9,6 +9,7 @@ import java.net.URI
 
 import BuildLoader.ResolveInfo
 import RichURI.fromURI
+import java.util.Locale
 
 object Resolvers
 {
@@ -112,8 +113,8 @@ object Resolvers
 
 	private lazy val onWindows = {
 		val os = System.getenv("OSTYPE")
-		val isCygwin = (os != null) && os.toLowerCase.contains("cygwin")
-		val isWindows = System.getProperty("os.name", "").toLowerCase.contains("windows")
+		val isCygwin = (os != null) && os.toLowerCase(Locale.ENGLISH).contains("cygwin")
+		val isWindows = System.getProperty("os.name", "").toLowerCase(Locale.ENGLISH).contains("windows")
 		isWindows && !isCygwin
 	}
 

@@ -18,7 +18,7 @@ object DagSpecification extends Properties("Dag")
 	private def dagGen(nodeCount: Int): Gen[TestDag] =
 	{
 		val nodes = new HashSet[TestDag]
-		def nonterminalGen(p: Gen.Params): Gen[TestDag] =
+		def nonterminalGen(p: Gen.Parameters): Gen[TestDag] =
 		{
 			for(i <- 0 until nodeCount; nextDeps <- Gen.someOf(nodes).apply(p))
 				nodes += new TestDag(i, nextDeps)
@@ -27,7 +27,7 @@ object DagSpecification extends Properties("Dag")
 		}
 		Gen.parameterized(nonterminalGen)
 	}
-	
+
 	private def isSet[T](c: Seq[T]) = Set(c: _*).size == c.size
 	private def dependenciesPrecedeNodes(sort: List[TestDag]) =
 	{

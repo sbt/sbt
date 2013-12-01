@@ -91,14 +91,28 @@ private object BootConfiguration
 			None
 	}
 }
+private final class ProxyProperties(
+	val envURL: String,
+	val envUser: String,
+	val envPassword: String,
+	val sysHost: String,
+	val sysPort: String,
+	val sysUser: String,
+	val sysPassword: String
+)
 private object ProxyProperties
 {
-	val HttpProxyEnv = "http_proxy"
-	val HttpProxyUser = "http_proxy_user"
-	val HttpProxyPassword = "http_proxy_pass"
+	val http = apply("http")
+	val https = apply("https")
+	val ftp = apply("ftp")
 
-	val ProxyHost = "http.proxyHost"
-	val ProxyPort = "http.proxyPort"
-	val ProxyUser = "http.proxyUser"
-	val ProxyPassword = "http.proxyPassword"
+	def apply(pre: String) = new ProxyProperties(
+		pre+"_proxy",
+		pre+"_proxy_user",
+		pre+"_proxy_pass",
+		pre+".proxyHost",
+		pre+".proxyPort",
+		pre+".proxyUser",
+		pre+".proxyPassword"
+	)
 }

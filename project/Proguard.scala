@@ -41,7 +41,7 @@ object LaunchProguard
 		artifactPath <<=  (target, version) { (out,v) => out / ("sbt-launch-" + v + ".jar") },
 		options <++= (dependencyClasspath in (launchSub, Compile), compile in (launchSub,Compile), streams) map { (cp, analysis, s) => mapJars(cp.files, analysis.relations.allBinaryDeps.toSeq, s.log) },
 		options <+= packageBin map { f => "-injars " + mkpath(f) },
-		packageBin <<= (packageBin in (launchSub, Compile)).identity,
+		packageBin := (packageBin in (launchSub, Compile)).value,
 		options <++= mainClass in (launchSub, Compile) map { _.toList map(s => keepMain.format(s)) },
 		options <+= artifactPath map { p => "-outjars " + mkpath(p) },
 		fullClasspath <<= (configuration, classpathTypes, update) map Classpaths.managedJars

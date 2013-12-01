@@ -15,24 +15,27 @@ package sbt
 
 	import java.io.File
 	import java.net.URI
+	import java.util.Locale
 
 /** This class is the entry point for sbt.*/
 final class xMain extends xsbti.AppMain
 {
 	def run(configuration: xsbti.AppConfiguration): xsbti.MainResult =
 	{
+		import BasicCommands.early
+		import BasicCommandStrings.runEarly
 		import BuiltinCommands.{initialize, defaults}
 		import CommandStrings.{BootCommand, DefaultsCommand, InitCommand}
-		MainLoop.runLogged( initialState(configuration,
-			Seq(initialize, defaults),
-			DefaultsCommand :: InitCommand :: BootCommand :: Nil)
+		runManaged( initialState(configuration,
+			Seq(defaults, early),
+			runEarly(DefaultsCommand) :: runEarly(InitCommand) :: BootCommand :: Nil)
 		)
 	}
 }
 final class ScriptMain extends xsbti.AppMain
 {
 	def run(configuration: xsbti.AppConfiguration): xsbti.MainResult =
-		MainLoop.runLogged( initialState(configuration,
+		runManaged( initialState(configuration,
 			BuiltinCommands.ScriptCommands,
 			Script.Name :: Nil)
 		)
@@ -40,7 +43,7 @@ final class ScriptMain extends xsbti.AppMain
 final class ConsoleMain extends xsbti.AppMain
 {
 	def run(configuration: xsbti.AppConfiguration): xsbti.MainResult =
-		MainLoop.runLogged( initialState(configuration,
+		runManaged( initialState(configuration,
 			BuiltinCommands.ConsoleCommands,
 			IvyConsole.Name :: Nil)
 		)
@@ -48,14 +51,24 @@ final class ConsoleMain extends xsbti.AppMain
 
 object StandardMain
 {
+	def runManaged(s: State): xsbti.MainResult =
+	{
+		val previous = TrapExit.installManager()
+		try MainLoop.runLogged(s)
+		finally TrapExit.uninstallManager(previous)
+	}
+
 	/** The common interface to standard output, used for all built-in ConsoleLoggers. */
 	val console = ConsoleOut.systemOutOverwrite(ConsoleOut.overwriteContaining("Resolving "))
 
 	def initialGlobalLogging: GlobalLogging = GlobalLogging.initial(MainLogging.globalDefault(console), File.createTempFile("sbt",".log"), console)
-	
+
 	def initialState(configuration: xsbti.AppConfiguration, initialDefinitions: Seq[Command], preCommands: Seq[String]): State =
 	{
-		val commands = preCommands ++ configuration.arguments.map(_.trim)
+			import BasicCommandStrings.isEarlyCommand
+		val userCommands = configuration.arguments.map(_.trim)
+		val (earlyCommands, normalCommands) = (preCommands ++ userCommands).partition(isEarlyCommand)
+		val commands = earlyCommands ++ normalCommands
 		val initAttrs = BuiltinCommands.initialAttributes
 		val s = State( configuration, initialDefinitions, Set.empty, None, commands, State.newHistory, initAttrs, initialGlobalLogging, State.Continue )
 		s.initializeClassLoaderCache
@@ -72,17 +85,21 @@ object BuiltinCommands
 {
 	def initialAttributes = AttributeMap.empty
 
-	def ConsoleCommands: Seq[Command] = Seq(ignore, exit, IvyConsole.command, act, nop)
-	def ScriptCommands: Seq[Command] = Seq(ignore, exit, Script.command, act, nop)
-	def DefaultCommands: Seq[Command] = Seq(ignore, help, about, tasks, settingsCommand, loadProject,
+	def ConsoleCommands: Seq[Command] = Seq(ignore, exit, IvyConsole.command, setLogLevel, early, act, nop)
+	def ScriptCommands: Seq[Command] = Seq(ignore, exit, Script.command, setLogLevel, early, act, nop)
+	def DefaultCommands: Seq[Command] = Seq(ignore, help, completionsCommand, about, tasks, settingsCommand, loadProject,
 		projects, project, reboot, read, history, set, sessionCommand, inspect, loadProjectImpl, loadFailed, Cross.crossBuild, Cross.switchVersion,
-		setOnFailure, clearOnFailure, stashOnFailure, popOnFailure,
-		ifLast, multi, shell, continuous, eval, alias, append, last, lastGrep, export, boot, nop, call, exit, act)
+		setOnFailure, clearOnFailure, stashOnFailure, popOnFailure, setLogLevel,
+		ifLast, multi, shell, continuous, eval, alias, append, last, lastGrep, export, boot, nop, call, exit, early, initialize, act) ++
+		compatCommands
 	def DefaultBootCommands: Seq[String] = LoadProject :: (IfLast + " " + Shell) :: Nil
 
 	def boot = Command.make(BootCommand)(bootParser)
 
 	def about = Command.command(AboutCommand, aboutBrief, aboutDetailed) { s => s.log.info(aboutString(s)); s }
+
+	def setLogLevel = Command.arb(const(logLevelParser), logLevelHelp)(LogManager.setGlobalLogLevel)
+	private[this] def logLevelParser: Parser[Level.Value] = oneOf(Level.values.toSeq.map(v => v.toString ^^^ v))
 
 	// This parser schedules the default boot commands unless overridden by an alias
 	def bootParser(s: State) =
@@ -189,7 +206,7 @@ object BuiltinCommands
 	def taskStrings(key: AttributeKey[_]): Option[(String, String)]  =  key.description map { d => (key.label, d) }
 
 	def defaults = Command.command(DefaultsCommand) { s =>
-		s ++ DefaultCommands
+		s.copy(definedCommands = DefaultCommands)
 	}
 
 	def initialize = Command.command(InitCommand) { s =>
@@ -237,7 +254,7 @@ object BuiltinCommands
 		s.log.info(Inspect.output(s, option, sk))
 		s
 	}
-	
+
 	@deprecated("Use Inspect.output", "0.13.0")
 	def inspectOutput(s: State, option: Inspect.Mode, sk: Def.ScopedKey[_]): String = Inspect.output(s, option, sk)
 
@@ -290,7 +307,7 @@ object BuiltinCommands
 			kvs = Act.keyValues(structure)(lastOnly_keys._2)
 			f <- if(lastOnly_keys._1) success(() => s) else Aggregation.evaluatingParser(s, structure, show)(kvs)
 		} yield () => {
-			def export0(s: State): State = lastImpl(s, kvs, Some("export"))
+			def export0(s: State): State = lastImpl(s, kvs, Some(ExportStream))
 			val newS = try f() catch { case e: Exception =>
 				try export0(s)
 				finally { throw e }
@@ -314,7 +331,7 @@ object BuiltinCommands
 		val (str, ref, display) = extractLast(s)
 		Output.last(sks, str.streams(s), printLast(s), sid)(display)
 		keepLastLog(s)
-	}	
+	}
 
 	/** Determines the log file that last* commands should operate on.  See also isLastOnly. */
 	def lastLogFile(s: State) =
@@ -351,7 +368,7 @@ object BuiltinCommands
 	}
 
 	def act = Command.customHelp(Act.actParser, actHelp)
-	def actHelp = (s: State) => CommandStrings.showHelp ++ keysHelp(s)
+	def actHelp = (s: State) => CommandStrings.showHelp ++ CommandStrings.multiTaskHelp ++ keysHelp(s)
 	def keysHelp(s: State): Help =
 		if(Project.isProjectLoaded(s))
 			Help.detailOnly(taskDetail(allTaskAndSettingKeys(s)))
@@ -391,14 +408,19 @@ object BuiltinCommands
 
 	def project = Command.make(ProjectCommand, projectBrief, projectDetailed)(ProjectNavigation.command)
 
-	def loadFailed = Command.command(LoadFailed)(handleLoadFailed)
-	@tailrec def handleLoadFailed(s: State): State =
+	def loadFailed = Command(LoadFailed)(loadProjectParser)(doLoadFailed)
+
+	@deprecated("No longer used.", "0.13.2")
+	def handleLoadFailed(s: State): State = doLoadFailed(s, "")
+
+	@tailrec
+	private[this] def doLoadFailed(s: State, loadArg: String): State =
 	{
-		val result = (SimpleReader.readLine("Project loading failed: (r)etry, (q)uit, (l)ast, or (i)gnore? ") getOrElse Quit).toLowerCase
+		val result = (SimpleReader.readLine("Project loading failed: (r)etry, (q)uit, (l)ast, or (i)gnore? ") getOrElse Quit).toLowerCase(Locale.ENGLISH)
 		def matches(s: String) = !result.isEmpty && (s startsWith result)
 
 		if(result.isEmpty || matches("retry"))
-			LoadProject :: s.clearGlobalLog
+			loadProjectCommand(LoadProject, loadArg) :: s.clearGlobalLog
 		else if(matches(Quit))
 			s.exit(ok = false)
 		else if(matches("ignore"))
@@ -408,22 +430,24 @@ object BuiltinCommands
 			s
 		}
 		else if(matches("last"))
-			LastCommand :: LoadFailed :: s
+			LastCommand :: loadProjectCommand(LoadFailed, loadArg) :: s
 		else
 		{
 			println("Invalid response.")
-			handleLoadFailed(s)
+			doLoadFailed(s, loadArg)
 		}
 	}
 
 	def loadProjectCommands(arg: String) =
 		StashOnFailure ::
-		(OnFailure + " " + LoadFailed) ::
-		(LoadProjectImpl + " " + arg).trim ::
+		(OnFailure + " " + loadProjectCommand(LoadFailed, arg)) ::
+		loadProjectCommand(LoadProjectImpl, arg) ::
 		PopOnFailure ::
 		State.FailureWall ::
 		Nil
-	def loadProject = Command(LoadProject, LoadProjectBrief, LoadProjectDetailed)(_ => matched(Project.loadActionParser)) { (s,arg) => loadProjectCommands(arg) ::: s }
+	def loadProject = Command(LoadProject, LoadProjectBrief, LoadProjectDetailed)(loadProjectParser) { (s,arg) => loadProjectCommands(arg) ::: s }
+	private[this] def loadProjectParser = (s: State) => matched(Project.loadActionParser)
+	private[this] def loadProjectCommand(command: String, arg: String): String = s"$command $arg".trim
 
 	def loadProjectImpl = Command(LoadProjectImpl)(_ => Project.loadActionParser)( doLoadProject )
 	def doLoadProject(s0: State, action: LoadAction.Value): State =

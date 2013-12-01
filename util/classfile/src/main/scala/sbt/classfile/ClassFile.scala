@@ -62,5 +62,8 @@ private[sbt] object Constants
 	final val ConstantMethod = 10
 	final val ConstantInterfaceMethod = 11
 	final val ConstantNameAndType = 12
+	final val ConstantMethodHandle = 15
+	final val ConstantMethodType = 16
+	final val ConstantInvokeDynamic = 18
 	final val ClassDescriptor = 'L'
 }

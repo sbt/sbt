@@ -2,6 +2,43 @@
 Changes
 =======
 
+0.13.0 to 0.13.1
+~~~~~~~~~~~~~~~~
+
+- The Scala version for sbt and sbt plugins is now 2.10.3.  This is a compatible version bump.
+- New method `toTask` on `Initialize[InputTask[T]]` to apply the full input and get a plain task out.
+- Improved performance of `inspect tree`
+- Work around various issues with Maven local repositories, including resolving -SNAPSHOTs from them.  (gh-321)
+- Better representation of no cross-version suffix in suffix conflict error message: now shows `<none>` instead of just `_`
+- `TrapExit` support for multiple, concurrent managed applications.  Now enabled by default for all `run`-like tasks.  (gh-831)
+- Add minimal support for class file formats 51.0, 52.0 in incremental compiler.  (gh-842)
+- Allow main class to be non-public.  (gh-883)
+- Convert `-classpath` to `CLASSPATH` when forking on Windows and length exceeds a heuristic maximum.  (gh-755)
+- `scalacOptions` for `.scala` build definitions are now also used for `.sbt` files
+- `error`, `warn`, `info`, `debug` commands to set log level and `--error`, ... to set the level before the project is loaded.  (gh-806)
+- `sLog` settings that provides a `Logger` for use by settings.  (gh-806)
+- Early commands: any command prefixed with `--` gets moved before other commands on startup and doesn't force sbt into batch mode.
+- Deprecate internal -, --, and --- commands in favor of `onFailure`, `sbtClearOnFailure`, and `resumeFromFailure`.
+- `makePom` no longer generates <type> elements for standard classifiers.  (gh-728)
+- Fix many instances of the Turkish i bug.
+- Read https+ftp proxy environment variables into system properties where Java will use them.  (gh-886)
+- The `Process` methods that are redirection-like no longer discard the exit code of the input.  This addresses an inconsistency with `Fork`, where using the `CustomOutput` `OutputStrategy` makes the exit code always zero.
+- Recover from failed `reload` command in the scripted sbt handler.
+- Parse external `pom.xml` with `CustomPomParser` to handle multiple definitions. (gh-758)
+- Improve key collision error message (gh-877)
+- Display the source position of an undefined setting.
+- Respect the `-nowarn` option when compiling Scala sources.
+- Improve forked test debugging by listing tests run by sbt in debug output.  (gh-868)
+- Fix scaladoc cache to track changes to `-doc-root-content` (gh-837)
+- Incremental compiler: Internal refactoring in preparation for name-hashing (gh-936)
+- Incremental compiler: improved cache loading/saving speed by internal file names (gh-931)
+- Docs: many contributed miscellaneous fixes and additions
+- Docs: link to page source now at the bottom of the page
+- Docs: sitemap now automatically generated
+- Docs: custom `:key:` role enables links from a key name in the docs to the val in `sxr/sbt/Keys.scala`
+- Docs: restore sxr support and fix links to sxr'd sources.  (gh-863)
+
+
 0.12.4 to 0.13.0
 ~~~~~~~~~~~~~~~~
 
@@ -99,7 +136,7 @@ Dependency management fixes:
   -  Resolve reports are now in `target/resolution-cache/reports/`, viewable with a browser.
   -  Cache location includes extra attributes so that cross builds of a
      plugin do not overwrite each other. Fixes gh-532.
-  
+
 Three stage incremental compilation:
 
 -  As before, the first step recompiles sources that were edited (or
@@ -1231,4 +1268,3 @@ Some of the more visible changes:
 
 -  Fixed handling of source files without a package
 -  Added easy project setup
-

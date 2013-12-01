@@ -1,11 +1,11 @@
 package sbt.compiler
 
-	import sbt.CompileSetup
-	import sbt.inc.{Analysis, IncOptions}
+	import java.io.File
+	import sbt.{CompileSetup, IO, Using}
+	import sbt.inc.{Analysis, IncOptions, TextAnalysisFormat}
 	import xsbti.{Logger, Maybe}
 	import xsbti.compile._
 
-	import java.io.File
 
 object IC extends IncrementalCompiler[Analysis, AnalyzingCompiler]
 {
@@ -40,9 +40,5 @@ object IC extends IncrementalCompiler[Analysis, AnalyzingCompiler]
 		try { readCacheUncaught(file)._1 } catch { case _: Exception => Analysis.Empty }
 
 	def readCacheUncaught(file: File): (Analysis, CompileSetup) =
-	{
-		import sbinary.DefaultProtocol.{immutableMapFormat, immutableSetFormat, StringFormat, tuple2Format}
-		import sbt.inc.AnalysisFormats._
-		sbt.IO.gzipFileIn(file)( in => sbinary.Operations.read[(Analysis, CompileSetup)](in) )
-	}
+    Using.fileReader(IO.utf8)(file) { reader => TextAnalysisFormat.read(reader) }
 }

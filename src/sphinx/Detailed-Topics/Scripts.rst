@@ -149,4 +149,4 @@ REPL classpath:
 
 This syntax was a quick hack. Feel free to improve it. The relevant
 class is
-`IvyConsole <../../sxr/IvyConsole.scala.html>`_.
+`IvyConsole <../../sxr/sbt/IvyConsole.scala.html>`_.

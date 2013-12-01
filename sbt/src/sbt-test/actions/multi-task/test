@@ -1,0 +1,3 @@
+$ absent a b
+> all a b
+$ exists a b

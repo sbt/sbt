@@ -1,6 +1,6 @@
-==============
-Best Practices
-==============
+======================
+General Best Practices
+======================
 
 This page describes best practices for working with sbt.
 
@@ -48,10 +48,10 @@ Generated files
 ~~~~~~~~~~~~~~~
 
 Write any generated files to a subdirectory of the output directory,
-which is specified by the `target` setting. This makes it easy to
+which is specified by the :key:`target` setting. This makes it easy to
 clean up after a build and provides a single location to organize
 generated files. Any generated files that are specific to a Scala
-version should go in `crossTarget` for efficient cross-building.
+version should go in :key:`crossTarget` for efficient cross-building.
 
 For generating sources and resources, see :doc:`/Howto/generatefiles`.
 
@@ -59,7 +59,7 @@ Don't hard code
 ~~~~~~~~~~~~~~~
 
 Don't hard code constants, like the output directory `target/`. This
-is especially important for plugins. A user might change the `target`
+is especially important for plugins. A user might change the :key:`target`
 setting to point to `build/`, for example, and the plugin needs to
 respect that. Instead, use the setting, like:
 
@@ -102,7 +102,7 @@ For example:
     // The result of makeFile is the constructed File,
     //   so useFile can map makeFile and simultaneously
     //   get the File and declare the dependency on makeFile
-    useFile := 
+    useFile :=
         doSomething( makeFile.value )
 
 This arrangement is not always possible, but it should be the rule and
@@ -124,7 +124,7 @@ or construct the file from an absolute base:
     base / "A.scala"
 
 This is related to the no hard coding best practice because the proper
-way involves referencing the `baseDirectory` setting. For example, the
+way involves referencing the :key:`baseDirectory` setting. For example, the
 following defines the myPath setting to be the `<base>/licenses/`
 directory.
 
@@ -153,16 +153,14 @@ Parser combinators
 
 .. code-block:: scala
 
-    lazy val parser: Parser[Int] = 
+    lazy val parser: Parser[Int] =
       token(IntBasic) flatMap { i =>
         if(i <= 0)
           success(i)
         else
-          token(Space ~> parser) 
+          token(Space ~> parser)
       }
 
    This example defines a parser a whitespace-delimited list of
    integers, ending with a negative number, and returning that final,
    negative number.
-
-

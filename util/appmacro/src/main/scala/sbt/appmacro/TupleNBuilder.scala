@@ -42,9 +42,11 @@ object TupleNBuilder extends TupleBuilder
 		def bindTuple(param: ValDef, revBindings: List[ValDef], params: List[ValDef], i: Int): List[ValDef] =
 			params match
 			{
-				case ValDef(mods, name, tpt, _) :: xs =>
-					val x = ValDef(mods, name, tpt, select(Ident(param.name), "_" + i.toString))
-					bindTuple(param, x :: revBindings, xs, i+1)
+				case (x @ ValDef(mods, name, tpt, _)) :: xs =>
+					val rhs = select(Ident(param.name), "_" + i.toString)
+					val newVal = treeCopy.ValDef(x, mods, name, tpt, rhs)
+					util.setSymbol(newVal, x.symbol)
+					bindTuple(param, newVal :: revBindings, xs, i+1)
 				case Nil => revBindings.reverse
 			}
 	}

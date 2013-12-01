@@ -45,7 +45,7 @@ Relative files should only be used when defining the base directory of a
     val root = Project("root", file("."))
 
 Elsewhere, files should be absolute or be built up from an absolute base
-`File`. The `baseDirectory` setting defines the base directory of
+`File`. The :key:`baseDirectory` setting defines the base directory of
 the build or project depending on the scope.
 
 For example, the following setting sets the unmanaged library directory
@@ -221,6 +221,8 @@ mappings from the input file to its (String) path in the jar or its
 (using the `##` method) from earlier versions of sbt.
 
 Mappings are discussed in detail on the :doc:`Mapping-Files` page.
+
+.. _file-filter:
 
 File Filters
 ------------

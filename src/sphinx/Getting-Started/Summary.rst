@@ -23,7 +23,7 @@ sbt: The Core Concepts
 -  your build definition is one big list of `Setting` objects, where a
    `Setting` transforms the set of key-value pairs sbt uses to perform
    tasks.
--  to create a `Setting`, call one of a few methods on a key: `:=`, `+=`, `++=`, or `~=`.
+-  to create a `Setting`, call one of a few methods on a key: `:=`, `+=`, or `++=`.
 -  there is no mutable state, only transformation; for example, a
    `Setting` transforms sbt's collection of key-value pairs into a new
    collection. It doesn't change anything in-place.
@@ -41,19 +41,17 @@ sbt: The Core Concepts
 -  the per-project axis also supports "entire build" scope.
 -  scopes fall back to or *delegate* to more general scopes.
 -  :doc:`.sbt <Basic-Def>` vs. :doc:`.scala <Full-Def>` build definition
--  put most of your settings in `build.sbt`, but use `.scala` build
-   definition files to :doc:`define multiple subprojects <Multi-Project>`
-   , and to factor out common values, objects, and methods.
+-  put most of your configuration in `build.sbt`, but use `.scala` build
+   definition files for defining classes and larger task implementations.
 -  the build definition is an sbt project in its own right, rooted in
    the `project` directory.
 -  :doc:`Plugins <Using-Plugins>` are extensions to the
    build definition
--  add plugins with the `addSbtPlugin` method in `project/build.sbt`
+-  add plugins with the `addSbtPlugin` method in `project/plugins.sbt`
    (NOT `build.sbt` in the project's base directory).
 
-If any of this leaves you wondering rather than nodding, please ask for
-help on the `mailing list`_, go
-back and re-read, or try some experiments in sbt's interactive mode.
+If any of this leaves you wondering rather than nodding, please :ref:`ask for help <getting-help>`,
+go back and re-read, or try some experiments in sbt's interactive mode.
 
 Good luck!
 

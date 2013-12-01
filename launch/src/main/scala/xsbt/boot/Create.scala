@@ -5,7 +5,7 @@ package xsbt.boot
 
 import Pre._
 import java.io.{File, FileInputStream, FileOutputStream}
-import java.util.Properties
+import java.util.{Locale, Properties}
 import scala.collection.immutable.List
 
 object Initialize
@@ -19,7 +19,7 @@ object Initialize
 		{
 			case None => declined("")
 			case Some(line) =>
-				line.toLowerCase match
+				line.toLowerCase(Locale.ENGLISH) match
 				{
 					case "y" | "yes" => process(file, spec, selectCreate)
 					case "s" => process(file, spec, selectQuick)

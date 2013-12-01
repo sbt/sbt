@@ -85,9 +85,9 @@ trait StateOps {
 	* It is only once control is returned to the command processor that failure handling at the command level occurs. */
 	def handleError(t: Throwable): State
 
-	/** Schedules `newCommands` to be run after any remaining commands. */
+	/** Registers `newCommands` as available commands. */
 	def ++ (newCommands: Seq[Command]): State
-	/** Schedules `newCommand` to be run after any remaining commands. */
+	/** Registers `newCommand` as an available command. */
 	def + (newCommand: Command): State
 
 	/** Gets the value associated with `key` from the custom attributes map.*/
@@ -130,7 +130,7 @@ trait StateOps {
 object State
 {
 	/** Indicates where command execution should resume after a failure.*/
-	final val FailureWall = "---"
+	val FailureWall = BasicCommandStrings.FailureWall
 
 	/** Represents the next action for the command processor.*/
 	sealed trait Next
@@ -173,8 +173,10 @@ object State
 	implicit def stateOps(s: State): StateOps = new StateOps {
 		def process(f: (String, State) => State): State =
 			s.remainingCommands match {
-				case Seq(x, xs @ _*) => f(x, s.copy(remainingCommands = xs, history = x :: s.history))
 				case Seq() => exit(true)
+				case Seq(x, xs @ _*) =>
+					log.debug(s"> $x")
+					f(x, s.copy(remainingCommands = xs, history = x :: s.history))
 			}
 			s.copy(remainingCommands = s.remainingCommands.drop(1))
 		def ::: (newCommands: Seq[String]): State = s.copy(remainingCommands = newCommands ++ s.remainingCommands)
@@ -199,7 +201,8 @@ object State
 		def handleError(t: Throwable): State = handleException(t, s, log)
 		def fail =
 		{
-			val remaining = s.remainingCommands.dropWhile(_ != FailureWall)
+				import BasicCommandStrings.Compat.{FailureWall => CompatFailureWall}
+			val remaining = s.remainingCommands.dropWhile(c => c != FailureWall && c != CompatFailureWall)
 			if(remaining.isEmpty)
 				applyOnFailure(s, Nil, exit(ok = false))
 			else
@@ -222,7 +225,7 @@ object State
 		def locked[T](file: File)(t: => T): T =
 			s.configuration.provider.scalaProvider.launcher.globalLock.apply(file, new Callable[T] { def call = t })
 
-		def interactive = s.get(BasicKeys.interactive).getOrElse(false)
+		def interactive = getBoolean(s, BasicKeys.interactive, false)
 		def setInteractive(i: Boolean) = s.put(BasicKeys.interactive, i)
 
 		def classLoaderCache: classpath.ClassLoaderCache = s get BasicKeys.classLoaderCache getOrElse newClassLoaderCache
@@ -247,4 +250,6 @@ object State
 		log.error(ErrorHandling reducedToString e)
 		log.error("Use 'last' for the full log.")
 	}
+	private[sbt] def getBoolean(s: State, key: AttributeKey[Boolean], default: Boolean): Boolean =
+		s.get(key) getOrElse default
 }

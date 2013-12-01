@@ -52,7 +52,7 @@ Cross-Building a Project
 ========================
 
 Define the versions of Scala to build against in the
-`cross-scala-versions` setting. Versions of Scala 2.8.0 or later are
+:key:`crossScalaVersions` setting. Versions of Scala 2.8.0 or later are
 allowed. For example, in a `.sbt` build definition:
 
 ::

@@ -16,7 +16,7 @@ especially if they depend on one another and you tend to modify them
 together.
 
 Each sub-project in a build has its own source directories, generates
-its own jar file when you run `package`, and in general works like any
+its own jar file when you run :key:`package`, and in general works like any
 other project.
 
 A project is defined by declaring a `lazy val` of type `Project <../../api/sbt/Project.html>`_.
@@ -59,12 +59,12 @@ run it on the aggregated projects. For example, ::
 
 
 In the above example, the root project aggregates `util` and `core`.
-Start up sbt with two subprojects as in the example, and try `compile`. 
+Start up sbt with two subprojects as in the example, and try :key:`compile`. 
 You should see that all three projects are compiled.
 
 *In the project doing the aggregating*, the `root` project in
 this case, you can control aggregation per-task.
-For example, to avoid aggregating the `update` task:
+For example, to avoid aggregating the :key:`update` task:
 
 ::
 
@@ -77,7 +77,7 @@ For example, to avoid aggregating the `update` task:
 
     [...]
 
-`aggregate in update` is the `aggregate` key scoped to the `update` task.
+`aggregate in update` is the :key:`aggregate` key scoped to the :key:`update` task.
 (See :doc:`scopes <Scopes>`.)
 
 Note: aggregation will run the aggregated tasks in parallel and with no
@@ -182,7 +182,7 @@ Navigating projects interactively
 
 At the sbt interactive prompt, type `projects` to list your projects
 and `project <projectname>` to select a current project. When you run
-a task like `compile`, it runs on the current project. So you don't
+a task like :key:`compile`, it runs on the current project. So you don't
 necessarily have to compile the root project, you could compile only a
 subproject.
 

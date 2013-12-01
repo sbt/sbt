@@ -180,7 +180,6 @@ class AggressiveCompile(cacheFile: File)
 	private[this] def explicitBootClasspath(options: Seq[String]): Seq[File] =
 		options.dropWhile(_ != CompilerArguments.BootClasspathOption).drop(1).take(1).headOption.toList.flatMap(IO.parseClasspath)
 
-	import AnalysisFormats._
 	val store = AggressiveCompile.staticCache(cacheFile, AnalysisStore.sync(AnalysisStore.cached(FileBasedStore(cacheFile))))
 }
 object AggressiveCompile

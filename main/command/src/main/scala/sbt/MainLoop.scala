@@ -65,9 +65,22 @@ object MainLoop
 	def runWithNewLog(state: State, logBacking: GlobalLogBacking): RunNext =
 		Using.fileWriter(append = true)(logBacking.file) { writer =>
 			val out = new java.io.PrintWriter(writer)
-			val loggedState = state.copy(globalLogging = state.globalLogging.newLogger(out, logBacking))
+			val newLogging = state.globalLogging.newLogger(out, logBacking)
+			transferLevels(state, newLogging)
+			val loggedState = state.copy(globalLogging = newLogging)
 			try run(loggedState) finally out.close()
 		}
+
+	/** Transfers logging and trace levels from the old global loggers to the new ones. */
+	private[this] def transferLevels(state: State, logging: GlobalLogging) {
+		val old = state.globalLogging
+		Logger.transferLevels(old.backed, logging.backed)
+		(old.full, logging.full) match { // well, this is a hack
+			case (oldLog: AbstractLogger, newLog: AbstractLogger) => Logger.transferLevels(oldLog, newLog)
+			case _ => ()
+		}
+	}
+
 	sealed trait RunNext
 	final class ClearGlobalLog(val state: State) extends RunNext
 	final class KeepGlobalLog(val state: State) extends RunNext

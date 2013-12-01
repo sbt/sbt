@@ -49,7 +49,7 @@ need Saxon. By depending only on the `scalate` configuration of
           classpathConfiguration in Common := CustomCompile,
             // Modify the default Ivy configurations.
             //   'overrideConfigs' ensures that Compile is replaced by CustomCompile
-          ivyConfigurations ~= overrideConfigs(Scalate, Saxon, Common, CustomCompile),
+          ivyConfigurations := overrideConfigs(Scalate, Saxon, Common, CustomCompile)(ivyConfigurations.value),
             // Put all dependencies without an explicit configuration into Common (optional)
           defaultConfiguration := Some(Common),
             // Declare dependencies in the appropriate configurations

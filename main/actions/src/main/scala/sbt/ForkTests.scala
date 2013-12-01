@@ -23,13 +23,13 @@ private[sbt] object ForkTests
 			if(opts.tests.isEmpty)
 				constant( TestOutput(TestResult.Passed, Map.empty[String, SuiteResult], Iterable.empty) )
 			else
-				mainTestTask(runners, opts, classpath, fork, log).tagw(config.tags: _*)
+				mainTestTask(runners, opts, classpath, fork, log, config.parallel).tagw(config.tags: _*)
 		main.dependsOn( all(opts.setup) : _*) flatMap { results =>
 			all(opts.cleanup).join.map( _ => results)
 		}
 	}
 
-	private[this] def mainTestTask(runners: Map[TestFramework, Runner], opts: ProcessedOptions, classpath: Seq[File], fork: ForkOptions, log: Logger): Task[TestOutput] =
+	private[this] def mainTestTask(runners: Map[TestFramework, Runner], opts: ProcessedOptions, classpath: Seq[File], fork: ForkOptions, log: Logger, parallel: Boolean): Task[TestOutput] =
 		std.TaskExtra.task
 		{
 			val server = new ServerSocket(0)
@@ -41,32 +41,39 @@ private[sbt] object ForkTests
 			object Acceptor extends Runnable {
 				val resultsAcc = mutable.Map.empty[String, SuiteResult]
 				lazy val result = TestOutput(overall(resultsAcc.values.map(_.result)), resultsAcc.toMap, Iterable.empty)
-				def run: Unit = {
+
+				def run() {
 					val socket =
 						try {
 							server.accept()
 						} catch {
-							case _: java.net.SocketException => return
+							case e: java.net.SocketException =>
+							log.error("Could not accept connection from test agent: " + e.getClass + ": " + e.getMessage)
+							log.trace(e)
+							server.close()
+							return
 						}
 					val os = new ObjectOutputStream(socket.getOutputStream)
+					// Must flush the header that the constructor writes, otherwise the ObjectInputStream on the other end may block indefinitely
+					os.flush()
 					val is = new ObjectInputStream(socket.getInputStream)
 
 					try {
-						os.writeBoolean(log.ansiCodesSupported)
-						
+						val config = new ForkConfiguration(log.ansiCodesSupported, parallel)
+						os.writeObject(config)
+
 						val taskdefs = opts.tests.map(t => new TaskDef(t.name, forkFingerprint(t.fingerprint), t.explicitlySpecified, t.selectors))
 						os.writeObject(taskdefs.toArray)
 
 						os.writeInt(runners.size)
 						for ((testFramework, mainRunner) <- runners) {
-							val remoteArgs = mainRunner.remoteArgs()
 							os.writeObject(testFramework.implClassNames.toArray)
 							os.writeObject(mainRunner.args)
-							os.writeObject(remoteArgs)
+							os.writeObject(mainRunner.remoteArgs)
 						}
 						os.flush()
 
-						(new React(is, os, log, opts.testListeners, resultsAcc)).react()
+						new React(is, os, log, opts.testListeners, resultsAcc).react()
 					} finally {
 						is.close();	os.close(); socket.close()
 					}
@@ -89,7 +96,7 @@ private[sbt] object ForkTests
 						acceptorThread.join()
 						Acceptor.result
 					}
-				
+
 				testListeners.foreach(_.doComplete(result.overall))
 				result
 			} finally {

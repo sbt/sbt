@@ -26,6 +26,7 @@ package sbt
 	import java.util.concurrent.Callable
 	import sbinary.DefaultProtocol.StringFormat
 	import Cache.seqFormat
+	import CommandStrings.ExportStream
 
 	import Types._
 	import Path._
@@ -61,7 +62,7 @@ object Defaults extends BuildCommon
 		scalaOrganization :== ScalaArtifacts.Organization,
 		buildDependencies <<= Classpaths.constructBuildDependencies,
 		taskTemporaryDirectory := { val dir = IO.createTemporaryDirectory; dir.deleteOnExit(); dir },
-		onComplete := { val dir = taskTemporaryDirectory.value; () => IO.delete(dir); IO.createDirectory(dir) },
+		onComplete := { val dir = taskTemporaryDirectory.value; () => {IO.delete(dir); IO.createDirectory(dir) }},
 		concurrentRestrictions <<= defaultRestrictions,
 		parallelExecution :== true,
 		sbtVersion := appConfiguration.value.provider.id.version,
@@ -83,8 +84,7 @@ object Defaults extends BuildCommon
 		watchingMessage := Watched.defaultWatchingMessage,
 		triggeredMessage := Watched.defaultTriggeredMessage,
 		definesClass :== FileValueCache(Locate.definesClass _ ).get,
-		trapExit :== false,
-		trapExit in run :== true,
+		trapExit :== true,
 		traceLevel in run :== 0,
 		traceLevel in runMain :== 0,
 		traceLevel in console :== Int.MaxValue,
@@ -103,6 +103,7 @@ object Defaults extends BuildCommon
 		outputStrategy :== None,
 		exportJars :== false,
 		fork :== false,
+		testForkedParallel :== false,
 		javaOptions :== Nil,
 		sbtPlugin :== false,
 		crossPaths :== true,
@@ -129,7 +130,7 @@ object Defaults extends BuildCommon
 		includeFilter in unmanagedSources :== "*.java" | "*.scala",
 		includeFilter in unmanagedJars :== "*.jar" | "*.so" | "*.dll" | "*.jnilib" | "*.zip",
 		includeFilter in unmanagedResources :== AllPassFilter,
-		excludeFilter :== (".*"  - ".") || HiddenFileFilter,
+		excludeFilter :== HiddenFileFilter,
 		pomIncludeRepository :== Classpaths.defaultRepositoryFilter
 	))
 	def defaultTestTasks(key: Scoped): Seq[Setting[_]] = inTask(key)(Seq(
@@ -358,7 +359,7 @@ object Defaults extends BuildCommon
 		definedTests <<= detectTests,
 		definedTestNames <<= definedTests map ( _.map(_.name).distinct) storeAs definedTestNames triggeredBy compile,
 		testFilter in testQuick <<= testQuickFilter,
-		executeTests <<= (streams in test, loadedTestFrameworks, testLoader, testGrouping in test, testExecution in test, fullClasspath in test, javaHome in test) flatMap allTestGroupsTask,
+		executeTests <<= (streams in test, loadedTestFrameworks, testLoader, testGrouping in test, testExecution in test, fullClasspath in test, javaHome in test, testForkedParallel) flatMap allTestGroupsTask,
 		test := {
 			implicit val display = Project.showContextKey(state.value)
 			Tests.showResults(streams.value.log, executeTests.value, noTestsMessage(resolvedScoped.value))
@@ -373,7 +374,7 @@ object Defaults extends BuildCommon
 	lazy val ConfigGlobal: Scope = ThisScope.copy(config = Global)
 	def testTaskOptions(key: Scoped): Seq[Setting[_]] = inTask(key)( Seq(
 		testListeners := {
-			TestLogger(streams.value.log, testLogger(streamsManager.value, test in resolvedScoped.value.scope), logBuffered.value) +:
+			TestLogger.make(streams.value.log, closeableTestLogger(streamsManager.value, test in resolvedScoped.value.scope, logBuffered.value)) +:
 			new TestStatusReporter(succeededFile( streams.in(test).value.cacheDirectory )) +:
 			testListeners.in(TaskGlobal).value
 		},
@@ -382,12 +383,21 @@ object Defaults extends BuildCommon
 	) ) ++ Seq(
 		derive(testGrouping <<= singleTestGroupDefault)
 	)
+	@deprecated("Doesn't provide for closing the underlying resources.", "0.13.1")
 	def testLogger(manager: Streams, baseKey: Scoped)(tdef: TestDefinition): Logger =
 	{
 		val scope = baseKey.scope
 		val extra = scope.extra match { case Select(x) => x; case _ => AttributeMap.empty }
 		val key = ScopedKey(scope.copy(extra = Select(testExtra(extra, tdef))), baseKey.key)
 		manager(key).log
+	}
+	private[this] def closeableTestLogger(manager: Streams, baseKey: Scoped, buffered: Boolean)(tdef: TestDefinition): TestLogger.PerTest =
+	{
+		val scope = baseKey.scope
+		val extra = scope.extra match { case Select(x) => x; case _ => AttributeMap.empty }
+		val key = ScopedKey(scope.copy(extra = Select(testExtra(extra, tdef))), baseKey.key)
+		val s = manager(key)
+		new TestLogger.PerTest(s.log, () => s.close(), buffered)
 	}
 	def buffered(log: Logger): Logger = new BufferedLogger(FullLogger(log))
 	def testExtra(extra: AttributeMap, tdef: TestDefinition): AttributeMap =
@@ -402,7 +412,7 @@ object Defaults extends BuildCommon
 		val opts = forkOptions.value
 		Seq(new Tests.Group("<default>", tests, if(fk) Tests.SubProcess(opts) else Tests.InProcess))
 	}
-	private[this] def forkOptions: Initialize[Task[ForkOptions]] = 
+	private[this] def forkOptions: Initialize[Task[ForkOptions]] =
 		(baseDirectory, javaOptions, outputStrategy, envVars, javaHome, connectInput) map {
 			(base, options, strategy, env, javaHomeDir, connectIn) =>
 				// bootJars is empty by default because only jars on the user's classpath should be on the boot classpath
@@ -449,9 +459,7 @@ object Defaults extends BuildCommon
 	{
 		val parser = loadForParser(definedTestNames)( (s, i) => testOnlyParser(s, i getOrElse Nil) )
 		Def.inputTaskDyn {
-			val res = parser.parsed
-			val selected = res._1
-			val frameworkOptions = res._2
+			val (selected, frameworkOptions) = parser.parsed
 			val s = streams.value
 			val filter = testFilter.value
 			val config = testExecution.value
@@ -459,15 +467,15 @@ object Defaults extends BuildCommon
 			implicit val display = Project.showContextKey(state.value)
 			val modifiedOpts = Tests.Filters(filter(selected)) +: Tests.Argument(frameworkOptions : _*) +: config.options
 			val newConfig = config.copy(options = modifiedOpts)
-			val output = allTestGroupsTask(s, loadedTestFrameworks.value, testLoader.value, testGrouping.value, newConfig, fullClasspath.value, javaHome.value)
+			val output = allTestGroupsTask(s, loadedTestFrameworks.value, testLoader.value, testGrouping.value, newConfig, fullClasspath.value, javaHome.value, testForkedParallel.value)
 			val processed =
-				for(out <- output) yield 
+				for(out <- output) yield
 					Tests.showResults(s.log, out, noTestsMessage(resolvedScoped.value))
 			Def.value(processed)
 		}
 	}
 
-	def createTestRunners(frameworks: Map[TestFramework,Framework], loader: ClassLoader, config: Tests.Execution) = {
+	def createTestRunners(frameworks: Map[TestFramework,Framework], loader: ClassLoader, config: Tests.Execution) : Map[TestFramework, Runner] = {
 		import Tests.Argument
 		val opts = config.options.toList
 		frameworks.map { case (tf, f) =>
@@ -481,19 +489,25 @@ object Defaults extends BuildCommon
 	}
 
 	def allTestGroupsTask(s: TaskStreams, frameworks: Map[TestFramework,Framework], loader: ClassLoader, groups: Seq[Tests.Group], config: Tests.Execution,	cp: Classpath, javaHome: Option[File]): Task[Tests.Output] = {
+		allTestGroupsTask(s,frameworks,loader, groups, config, cp, javaHome, forkedParallelExecution = false)
+	}
+
+	def allTestGroupsTask(s: TaskStreams, frameworks: Map[TestFramework,Framework], loader: ClassLoader, groups: Seq[Tests.Group], config: Tests.Execution,	cp: Classpath, javaHome: Option[File], forkedParallelExecution: Boolean): Task[Tests.Output] = {
 		val runners = createTestRunners(frameworks, loader, config)
 		val groupTasks = groups map {
 			case Tests.Group(name, tests, runPolicy) =>
 				runPolicy match {
 					case Tests.SubProcess(opts) =>
-						ForkTests(runners, tests.toList, config, cp.files, opts, s.log) tag Tags.ForkedTestGroup
+						val forkedConfig = config.copy(parallel = config.parallel && forkedParallelExecution)
+						s.log.debug(s"Forking tests - parallelism = ${forkedConfig.parallel}")
+						ForkTests(runners, tests.toList, forkedConfig, cp.files, opts, s.log) tag Tags.ForkedTestGroup
 					case Tests.InProcess =>
 						Tests(frameworks, loader, runners, tests, config, s.log)
 				}
 		}
 		val output = Tests.foldTasks(groupTasks, config.parallel)
-		output map { out => 
-			val summaries = 
+		output map { out =>
+			val summaries =
 				runners map { case (tf, r) =>
 					Tests.Summary(frameworks(tf).name, r.done())
 				}
@@ -510,7 +524,7 @@ object Defaults extends BuildCommon
 			filters.map { f => (s: String) => f accept s }
 	}
 	def detectTests: Initialize[Task[Seq[TestDefinition]]] = (loadedTestFrameworks, compile, streams) map { (frameworkMap, analysis, s) =>
-		Tests.discover(frameworkMap.values.toSeq, analysis, s.log)._1
+		Tests.discover(frameworkMap.values.toList, analysis, s.log)._1
 	}
 	def defaultRestrictions: Initialize[Seq[Tags.Rule]] = parallelExecution { par =>
 		val max = EvaluateTask.SystemProcessors
@@ -631,9 +645,7 @@ object Defaults extends BuildCommon
 		import DefaultParsers._
 		val parser = loadForParser(discoveredMainClasses)( (s, names) => runMainParser(s, names getOrElse Nil) )
 		Def.inputTask {
-			val res = parser.parsed
-			val mainClass = res._1
-			val args = res._2
+			val (mainClass, args) = parser.parsed
 			toError(scalaRun.value.run(mainClass, data(classpath.value), args, streams.value.log))
 		}
 	}
@@ -659,6 +671,7 @@ object Defaults extends BuildCommon
 	def docSetting(key: TaskKey[File]) = docTaskSettings(key)
 	def docTaskSettings(key: TaskKey[File] = doc): Seq[Setting[_]] = inTask(key)(Seq(
 		apiMappings ++= { if(autoAPIMappings.value) APIMappings.extract(dependencyClasspath.value, streams.value.log).toMap else Map.empty[File,URL] },
+		fileInputOptions := Seq("-doc-root-content", "-diagrams-dot-path"),
 		key in TaskGlobal := {
 			val s = streams.value
 			val cs = compilers.value
@@ -671,13 +684,14 @@ object Defaults extends BuildCommon
 			val hasJava = srcs.exists(_.name.endsWith(".java"))
 			val cp = data(dependencyClasspath.value).toList
 			val label = nameForSrc(configuration.value.name)
+			val fiOpts = fileInputOptions.value
 			val (options, runDoc) =
 				if(hasScala)
 					(sOpts ++ Opts.doc.externalAPI(xapis), // can't put the .value calls directly here until 2.10.2
-						Doc.scaladoc(label, s.cacheDirectory / "scala", cs.scalac.onArgs(exported(s, "scaladoc"))))
+						Doc.scaladoc(label, s.cacheDirectory / "scala", cs.scalac.onArgs(exported(s, "scaladoc")), fiOpts))
 				else if(hasJava)
 					(jOpts,
-						Doc.javadoc(label, s.cacheDirectory / "java", cs.javac.onArgs(exported(s, "javadoc"))))
+						Doc.javadoc(label, s.cacheDirectory / "java", cs.javac.onArgs(exported(s, "javadoc")), fiOpts))
 				else
 					(Nil, RawCompileLike.nop)
 			runDoc(srcs, cp, out, options, maxErrors.value, s.log)
@@ -707,8 +721,11 @@ object Defaults extends BuildCommon
 
 	private[this] def exported(w: PrintWriter, command: String): Seq[String] => Unit = args =>
 		w.println( (command +: args).mkString(" ") )
-	private[this] def exported(s: TaskStreams, command: String): Seq[String] => Unit = args =>
-		exported(s.text("export"), command)
+	private[this] def exported(s: TaskStreams, command: String): Seq[String] => Unit = args => {
+		val w = s.text(ExportStream)
+		try exported(w, command)
+		finally w.close() // workaround for #937
+	}
 
 	@deprecated("Use inTask(compile)(compileInputsSettings)", "0.13.0")
 	def compileTaskSettings: Seq[Setting[_]] = inTask(compile)(compileInputsSettings)
@@ -716,10 +733,11 @@ object Defaults extends BuildCommon
 	def compileTask: Initialize[Task[inc.Analysis]] = Def.task { compileTaskImpl(streams.value, (compileInputs in compile).value) }
 	private[this] def compileTaskImpl(s: TaskStreams, ci: Compiler.Inputs): inc.Analysis =
 	{
-		lazy val x = s.text("export")
+		lazy val x = s.text(ExportStream)
 		def onArgs(cs: Compiler.Compilers) = cs.copy(scalac = cs.scalac.onArgs(exported(x, "scalac")), javac = cs.javac.onArgs(exported(x, "javac")))
 		val i = ci.copy(compilers = onArgs(ci.compilers))
-		Compiler(i,s.log)
+		try Compiler(i,s.log)
+		finally x.close() // workaround for #937
 	}
 	def compileIncSetupTask =
 		(dependencyClasspath, skip in compile, definesClass, compilerCache, streams, incOptions) map { (cp, skip, definesC, cache, s, incOptions) =>
@@ -881,7 +899,9 @@ object Classpaths
 		s.mapInitialize(init => Def.task { exportClasspath(streams.value, init.value) })
 	private[this] def exportClasspath(s: TaskStreams, cp: Classpath): Classpath =
 	{
-		s.text("export").println(Path.makeString(data(cp)))
+		val w = s.text(ExportStream)
+		try w.println(Path.makeString(data(cp)))
+		finally w.close() // workaround for #937
 		cp
 	}
 
@@ -1402,7 +1422,7 @@ object Classpaths
 		plugins.map("-Xplugin:" + _.getAbsolutePath).toSeq
 	}
 
-	private[this] lazy val internalCompilerPluginClasspath: Initialize[Task[Classpath]] = 
+	private[this] lazy val internalCompilerPluginClasspath: Initialize[Task[Classpath]] =
 		(thisProjectRef, settingsData, buildDependencies) flatMap { (ref, data, deps) =>
 			internalDependencies0(ref, CompilerPlugin, CompilerPlugin, data, deps)
 		}
@@ -1460,13 +1480,21 @@ object Classpaths
 		try { ivyRepo.mavenCompatible }
 		catch { case _: NoSuchMethodError => false }
 
+	private[this] def skipConsistencyCheck(ivyRepo: xsbti.IvyRepository): Boolean =
+		try { ivyRepo.skipConsistencyCheck }
+		catch { case _: NoSuchMethodError => false }
+
+	private[this] def descriptorOptional(ivyRepo: xsbti.IvyRepository): Boolean =
+		try { ivyRepo.descriptorOptional }
+		catch { case _: NoSuchMethodError => false }
+
 	private[this] def bootRepository(repo: xsbti.Repository): Resolver =
 	{
 		import xsbti.Predefined
 		repo match
 		{
 			case m: xsbti.MavenRepository => MavenRepository(m.id, m.url.toString)
-			case i: xsbti.IvyRepository => Resolver.url(i.id, i.url)(Patterns(i.ivyPattern :: Nil, i.artifactPattern :: Nil, mavenCompatible(i)))
+			case i: xsbti.IvyRepository => Resolver.url(i.id, i.url)(Patterns(i.ivyPattern :: Nil, i.artifactPattern :: Nil, mavenCompatible(i), descriptorOptional(i), skipConsistencyCheck(i)))
 			case p: xsbti.PredefinedRepository => p.id match {
 				case Predefined.Local => Resolver.defaultLocal
 				case Predefined.MavenLocal => Resolver.mavenLocal
@@ -1555,7 +1583,7 @@ trait BuildExtra extends BuildCommon
 		}
 	}
 	private[this] def inBase(name: String): Initialize[File] = Def.setting { baseDirectory.value / name }
-	
+
 	def externalIvyFile(file: Initialize[File] = inBase("ivy.xml"), iScala: Initialize[Option[IvyScala]] = ivyScala): Setting[Task[ModuleSettings]] =
 		moduleSettings := new IvyFileConfiguration(file.value, iScala.value, ivyValidate.value, managedScalaInstance.value)
 	def externalPom(file: Initialize[File] = inBase("pom.xml"), iScala: Initialize[Option[IvyScala]] = ivyScala): Setting[Task[ModuleSettings]] =

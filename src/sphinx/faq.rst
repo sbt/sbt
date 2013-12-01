@@ -4,10 +4,12 @@ Frequently Asked Questions
 Project Information
 -------------------
 
+.. _getting-help:
+
 How do I get help?
 ~~~~~~~~~~~~~~~~~~
 
-Please use `Stack Overflow`_ for questions.  Use the `mailing list`_ for comments and discussions.
+Please use `Stack Overflow`_ for questions.  Use the `sbt-dev mailing list`_ for comments and discussions about sbt development.
 
 -  Please state the problem or question clearly and provide enough
    context. Code examples and build transcripts are often useful when
@@ -21,8 +23,8 @@ How do I report a bug?
 ~~~~~~~~~~~~~~~~~~~~~~
 
 Please use the `issue tracker <https://github.com/sbt/sbt/issues>`_
-to report confirmed bugs. Do not use it to ask questions. If you are
-uncertain whether something is a bug, please ask on the `mailing list`_ first.
+to report confirmed bugs. Do not use it to ask questions or to determine
+if something is a bug.  See :ref:`getting-help`.
 
 How can I help?
 ~~~~~~~~~~~~~~~
@@ -31,7 +33,7 @@ How can I help?
 -  Make `bug reports <https://github.com/sbt/sbt/issues>`_ that are
    clear and reproducible.
 -  Answer questions on `Stack Overflow`_.
--  Discuss development on the `mailing list`_.
+-  Discuss development on the `sbt-dev mailing list`_.
 -  Fix issues that affect you. `Fork, fix, and submit a pull
    request <http://help.github.com/fork-a-repo/>`_.
 -  Implement features that are important to you. There is an
@@ -50,14 +52,14 @@ screen, but as a newcomer it can leave you lost for explanation. To see
 the previous output of a command at a higher verbosity, type
 `last <task>` where `<task>` is the task that failed or that you
 want to view detailed output for. For example, if you find that your
-`update` fails to load all the dependencies as you expect you can
+:key:`update` fails to load all the dependencies as you expect you can
 enter:
 
 .. code-block:: console
 
     > last update
 
-and it will display the full output from the last run of the `update`
+and it will display the full output from the last run of the :key:`update`
 command.
 
 How do I disable ansi codes in the output?
@@ -86,7 +88,7 @@ You may run `sbt console`.
 Build definitions
 -----------------
 
-What are the `:=`, `+=`, `++=`, and `~=` methods?
+What are the `:=`, `+=`, and `++=` methods?
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 These are methods on keys used to construct a `Setting` or a `Task`. The Getting
@@ -106,15 +108,15 @@ What is `ModuleID`, `Project`, ...?
 To figure out an unknown type or method, have a look at the
 :doc:`Getting Started Guide </Getting-Started/Welcome>` if you have not.
 Also try the :doc:`index </Name-Index>` of commonly used methods, values, and types,
-the `API Documentation <../api/index>`_ and the
-`hyperlinked sources <../sxr/index>`_.
+the `API Documentation <../api/>`_ and the
+`hyperlinked sources <../sxr/>`_.
 
 How do I add files to a jar package?
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 The files included in an artifact are configured by default by a task
-`mappings` that is scoped by the relevant package task. The
-`mappings` task returns a sequence `Seq[(File,String)]` of mappings
+:key:`mappings` that is scoped by the relevant package task. The
+:key:`mappings` task returns a sequence `Seq[(File,String)]` of mappings
 from the file to include to the path within the jar. See
 :doc:`/Detailed-Topics/Mapping-Files` for details on creating these mappings.
 
@@ -129,10 +131,10 @@ For example, to add generated sources to the packaged source artifact:
        srcs x (relativeTo(base) | flat)
     }
 
-This takes sources from the `managedSources` task and relativizes them
-against the `managedSource` base directory, falling back to a
+This takes sources from the :key:`managedSources` task and relativizes them
+against the :key:`managedSource` base directory, falling back to a
 flattened mapping. If a source generation task doesn't write the sources
-to the `managedSource` directory, the mapping function would have to
+to the :key:`managedSource` directory, the mapping function would have to
 be adjusted to try relativizing against additional directories or
 something more appropriate for the generator.
 
@@ -195,7 +197,7 @@ The following example demonstrates adding a new set of compilation
 settings and tasks to a new configuration called `samples`. The
 sources for this configuration go in `src/samples/scala/`. Unspecified
 settings delegate to those defined for the `compile` configuration.
-For example, if `scalacOptions` are not overridden for `samples`,
+For example, if :key:`scalacOptions` are not overridden for `samples`,
 the options for the main sources are used.
 
 Options specific to `samples` may be declared like:
@@ -276,7 +278,7 @@ configuration and classpaths. These are the steps:
 1. Define a new :ref:`configuration <ivy-configurations>`.
 2. Declare the tool :doc:`dependencies </Detailed-Topics/Library-Management>` in that
    configuration.
-3. Define a classpath that pulls the dependencies from the :doc:`/Detailed-Topics/Update-Report` produced by `update`.
+3. Define a classpath that pulls the dependencies from the :doc:`/Detailed-Topics/Update-Report` produced by :key:`update`.
 4. Use the classpath to implement the task.
 
 As an example, consider a `proguard` task. This task needs the
@@ -288,7 +290,7 @@ ProGuard jars in order to run the tool. First, define and add the new configurat
 
     ivyConfigurations += ProguardConfig
 
-Then, 
+Then,
 
 ::
 
@@ -354,7 +356,7 @@ Example of dynamic classpath augmentation
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 The following code can be used where a `State => State` is required,
-such as in the `onLoad` setting (described below) or in a
+such as in the :key:`onLoad` setting (described below) or in a
 :doc:`command </Extending/Commands>`. It adds some files to the "extra" component and
 reloads sbt if they were not already added. Note that reloading will
 drop the user's session state.
@@ -379,21 +381,24 @@ drop the user's session state.
 How can I take action when the project is loaded or unloaded?
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-The single, global setting `onLoad` is of type `State => State` (see
+The single, global setting :key:`onLoad` is of type `State => State` (see
 :doc:`/Extending/Build-State`) and is executed once, after all projects are built and
-loaded. There is a similar hook `onUnload` for when a project is
+loaded. There is a similar hook :key:`onUnload` for when a project is
 unloaded. Project unloading typically occurs as a result of a `reload`
-command or a `set` command. Because the `onLoad` and `onUnload`
+command or a `set` command. Because the :key:`onLoad` and :key:`onUnload`
 hooks are global, modifying this setting typically involves composing a
 new function with the previous value. The following example shows the
-basic structure of defining `onLoad`:
+basic structure of defining :key:`onLoad`:
 
 ::
 
     // Compose our new function 'f' with the existing transformation.
     {
       val f: State => State = ...
-      onLoad in Global ~= (f compose _)
+      onLoad in Global := {
+        val previous = (onLoad in Global).value
+        f compose previous
+      }
     }
 
 Example of project load/unload hooks
@@ -413,7 +418,10 @@ has been loaded and prints that number:
         println("Project load count: " + previous)
         s.put(key, previous + 1)
       }
-      onLoad in Global ~= (f compose _)
+      onLoad in Global := {
+        val previous = (onLoad in Global).value
+        f compose previous
+      }
     }
 
 Errors
@@ -426,7 +434,7 @@ Setting initializers are executed in order. If the initialization of a
 setting depends on other settings that has not been initialized, sbt
 will stop loading.
 
-In this example, we try to append a library to `libraryDependencies`
+In this example, we try to append a library to :key:`libraryDependencies`
 before it is initialized with an empty sequence.
 
 ::
@@ -455,16 +463,8 @@ A more subtle variation of this error occurs when using :doc:`scoped settings </
     // error: Reference to uninitialized setting
     settings = Defaults.defaultSettings ++ Seq(
       libraryDependencies += "commons-io" % "commons-io" % "1.2" % "test",
-      fullClasspath ~= (_.filterNot(_.data.name.contains("commons-io")))
+      fullClasspath := fullClasspath.value.filterNot(_.data.name.contains("commons-io"))
     )
-
-Generally, all of the setting definition methods can be expressed in terms of
-`:=`. To better understand the error, we can rewrite the setting as:
-
-::
-
-    // error: Reference to uninitialized setting
-    fullClasspath := fullClasspath.value.filterNot(_.data.name.contains("commons-io"))
 
 This setting varies between the test and compile scopes. The solution is
 use the scoped setting, both as the input to the initializer, and the
@@ -473,9 +473,6 @@ setting that we update.
 ::
 
     fullClasspath in Compile := (fullClasspath in Compile).value.filterNot(_.data.name.contains("commons-io"))
-
-    // or equivalently
-    fullClasspath in Compile ~= (_.filterNot(_.data.name.contains("commons-io")))
 
 Dependency Management
 ---------------------
@@ -490,8 +487,8 @@ as a jar or pom.xml. An example of such an error is:
 ::
 
     [warn]  problem while downloading module descriptor:
-    http://repo1.maven.org/maven2/commons-fileupload/commons-fileupload/1.2.2/commons-fileupload-1.2.2.pom: 
-    invalid sha1: expected=ad3fda4adc95eb0d061341228cc94845ddb9a6fe computed=0ce5d4a03b07c8b00ab60252e5cacdc708a4e6d8 (1070ms) 
+    http://repo1.maven.org/maven2/commons-fileupload/commons-fileupload/1.2.2/commons-fileupload-1.2.2.pom:
+    invalid sha1: expected=ad3fda4adc95eb0d061341228cc94845ddb9a6fe computed=0ce5d4a03b07c8b00ab60252e5cacdc708a4e6d8 (1070ms)
 
 The invalid checksum should generally be reported to the repository
 owner (as `was done <https://issues.sonatype.org/browse/MVNCENTRAL-46>`_
@@ -527,7 +524,7 @@ that files in `~/.sbt/plugins` are only to be used by sbt itself, not
 as part of the general build definition. If you define your plugins in a
 file under *that* directory, they won't foul up your cross-compilations.
 Any file name ending in `.sbt` will do, but most people use
-`~/.sbt/plugins/build.sbt` or `~/.sbt/plugins/plugins.sbt`. 
+`~/.sbt/plugins/build.sbt` or `~/.sbt/plugins/plugins.sbt`.
 
 Miscellaneous
 -------------
@@ -633,7 +630,7 @@ sbt 0.10 fixes a flaw in how dependencies get resolved in multi-module
 projects. This change ensures that only one version of a library appears
 on a classpath.
 
-Use `last update` to view the debugging output for the last `update`
+Use `last update` to view the debugging output for the last :key:`update`
 run. Use `show update` to view a summary of files comprising managed
 classpaths.
 
@@ -652,21 +649,6 @@ this behaviour by adding one of the following to your `build.sbt`:
 
     // Execute everything serially (including compilation and tests)
     parallelExecution := false
-
-How do I set log levels in |version| vs. 0.7?
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-`warn`, `info`, `debug` and `error` don't work any more.
-
-The new syntax in the sbt |version| shell is: ::
-
-    > set logLevel := Level.Warn`
-
-Or in your `build.sbt` file write:
-
-::
-
-    logLevel := Level.Warn
 
 What happened to the web development and Web Start support since 0.7?
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

@@ -8,6 +8,7 @@ import xsbti.api._
 import Function.tupled
 import scala.collection.{immutable, mutable}
 
+@deprecated("This class is not used in incremental compiler and will be removed in next major version.", "0.13.2")
 class NameChanges(val newTypes: Set[String], val removedTypes: Set[String], val newTerms: Set[String], val removedTerms: Set[String])
 {
 	override def toString =
@@ -19,18 +20,20 @@ class NameChanges(val newTypes: Set[String], val removedTypes: Set[String], val 
 
 object TopLevel
 {
+	@deprecated("The NameChanges class is deprecated and will be removed in next major version.", "0.13.2")
 	def nameChanges(a: Iterable[Source], b: Iterable[Source]): NameChanges = {
 		val api = (_: Source).api
 		apiNameChanges(a map api, b map api)
 	}
 	/** Identifies removed and new top-level definitions by name. */
+	@deprecated("The NameChanges class is deprecated and will be removed in next major version.", "0.13.2")
 	def apiNameChanges(a: Iterable[SourceAPI], b: Iterable[SourceAPI]): NameChanges =
 	{
 		def changes(s: Set[String], t: Set[String]) = (s -- t, t -- s)
 
 		val (avalues, atypes) = definitions(a)
 		val (bvalues, btypes) = definitions(b)
-		
+
 		val (newTypes, removedTypes) = changes(names(atypes), names(btypes))
 		val (newTerms, removedTerms) = changes(names(avalues), names(bvalues))
 
@@ -46,10 +49,13 @@ object SameAPI
 	def apply(a: Source, b: Source): Boolean =
 		a.apiHash == b.apiHash && (a.hash.length > 0 && b.hash.length > 0) && apply(a.api, b.api)
 
+	def apply(a: Def, b: Def): Boolean =
+		(new SameAPI(false, true)).sameDefinitions(List(a), List(b), true)
+
 	def apply(a: SourceAPI, b: SourceAPI): Boolean =
 	{
 		val start = System.currentTimeMillis
-		
+
 		/*println("\n=========== API #1 ================")
 		import DefaultShowAPI._
 		println(ShowAPI.show(a))
@@ -219,7 +225,7 @@ class SameAPI(includePrivate: Boolean, includeParamNames: Boolean)
 		argumentMap(a) == argumentMap(b)
 	def argumentMap(a: Seq[AnnotationArgument]): Map[String,String] =
 		Map() ++ a.map(arg => (arg.name, arg.value))
-		
+
 	def sameDefinitionSpecificAPI(a: Definition, b: Definition): Boolean =
 		(a, b) match
 		{

@@ -29,7 +29,7 @@ object EnumerationTest extends Properties("Enumeration")
 	{
 		def invalid(s: String) =
 			("valueOf(" + s + ")") |:
-				Prop.throws(enum.toValue(s), classOf[Exception])
+				Prop.throws(classOf[Exception])(enum.toValue(s))
 		def valid(s: String, expected: Enumeration#Value) =
 			("valueOf(" + s + ")") |:
 			("Expected " + expected) |:

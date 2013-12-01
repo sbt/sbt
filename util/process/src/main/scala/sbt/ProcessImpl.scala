@@ -114,6 +114,10 @@ object BasicIO
 
 	def inheritInput(connect: Boolean) = { p: JProcessBuilder => if (connect) InheritInput(p) else false }
 }
+private[sbt] object ExitCodes {
+	def ignoreFirst: (Int, Int) => Int = (a,b) => b
+	def firstIfNonzero: (Int, Int) => Int = (a,b) => if(a != 0) a else b
+}
 
 
 private abstract class AbstractProcessBuilder extends ProcessBuilder with SinkPartialBuilder with SourcePartialBuilder
@@ -123,7 +127,7 @@ private abstract class AbstractProcessBuilder extends ProcessBuilder with SinkPa
 	def #|(other: ProcessBuilder): ProcessBuilder =
 	{
 		require(other.canPipeTo, "Piping to multiple processes is not supported.")
-		new PipedProcessBuilder(this, other, false)
+		new PipedProcessBuilder(this, other, false, exitCode = ExitCodes.ignoreFirst)
 	}
 	def ###(other: ProcessBuilder): ProcessBuilder = new SequenceProcessBuilder(this, other)
 	
@@ -181,7 +185,7 @@ private[sbt] class FileBuilder(base: File) extends FilePartialBuilder with SinkP
 	def #<<(f: File): ProcessBuilder = #<<(new FileInput(f))
 	def #<<(u: URL): ProcessBuilder = #<<(new URLInput(u))
 	def #<<(s: => InputStream): ProcessBuilder = #<<(new InputStreamBuilder(s))
-	def #<<(b: ProcessBuilder): ProcessBuilder = new PipedProcessBuilder(b, new FileOutput(base, true), false)
+	def #<<(b: ProcessBuilder): ProcessBuilder = new PipedProcessBuilder(b, new FileOutput(base, true), false, ExitCodes.firstIfNonzero)
 }
 
 private abstract class BasicBuilder extends AbstractProcessBuilder
@@ -235,9 +239,9 @@ private abstract class SequentialProcessBuilder(a: ProcessBuilder, b: ProcessBui
 	checkNotThis(b)
 	override def toString = " ( " + a + " " + operatorString + " " + b + " ) "
 }
-private class PipedProcessBuilder(first: ProcessBuilder, second: ProcessBuilder, toError: Boolean) extends SequentialProcessBuilder(first, second, if(toError) "#|!" else "#|")
+private class PipedProcessBuilder(first: ProcessBuilder, second: ProcessBuilder, toError: Boolean, exitCode: (Int,Int) => Int) extends SequentialProcessBuilder(first, second, if(toError) "#|!" else "#|")
 {
-	override def createProcess(io: ProcessIO) = new PipedProcesses(first, second, io, toError)
+	override def createProcess(io: ProcessIO) = new PipedProcesses(first, second, io, toError, exitCode)
 }
 private class AndProcessBuilder(first: ProcessBuilder, second: ProcessBuilder) extends SequentialProcessBuilder(first, second, "#&&")
 {
@@ -274,7 +278,7 @@ private class OrProcess(a: ProcessBuilder, b: ProcessBuilder, io: ProcessIO) ext
 private class ProcessSequence(a: ProcessBuilder, b: ProcessBuilder, io: ProcessIO) extends SequentialProcess(a, b, io, ignore => true)
 
 
-private class PipedProcesses(a: ProcessBuilder, b: ProcessBuilder, defaultIO: ProcessIO, toError: Boolean) extends CompoundProcess
+private class PipedProcesses(a: ProcessBuilder, b: ProcessBuilder, defaultIO: ProcessIO, toError: Boolean, exitCode: (Int, Int) => Int) extends CompoundProcess
 {
 	protected[this] override def runAndExitValue() =
 	{
@@ -302,11 +306,11 @@ private class PipedProcesses(a: ProcessBuilder, b: ProcessBuilder, defaultIO: Pr
 		try
 		{
 			runInterruptible {
-				first.exitValue
+				val firstResult = first.exitValue
 				currentSource.put(None)
 				currentSink.put(None)
-				val result = second.exitValue
-				result
+				val secondResult = second.exitValue
+				exitCode(firstResult, secondResult)
 			} {
 				first.destroy()
 				second.destroy()

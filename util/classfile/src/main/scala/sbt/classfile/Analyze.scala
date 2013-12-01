@@ -33,12 +33,11 @@ private[sbt] object Analyze
 			sourceFile <- classFile.sourceFile orElse guessSourceName(newClass.getName);
 			source <- guessSourcePath(sourceMap, classFile, log))
 		{
-			analysis.beginSource(source)
 			analysis.generatedClass(source, newClass, classFile.className)
 			productToSource(newClass) = source
 			sourceToClassFiles.getOrElseUpdate(source, new ArrayBuffer[ClassFile]) += classFile
 		}
-			
+
 		// get class to class dependencies and map back to source to class dependencies
 		for( (source, classFiles) <- sourceToClassFiles )
 		{
@@ -65,17 +64,14 @@ private[sbt] object Analyze
 				}
 			}
 			def processDependencies(tpes: Iterable[String], inherited: Boolean): Unit = tpes.foreach(tpe => processDependency(tpe, inherited))
-				
+
 			val notInherited = classFiles.flatMap(_.types).toSet -- publicInherited
 			processDependencies(notInherited, false)
 			processDependencies(publicInherited, true)
-			analysis.endSource(source)
 		}
 
 		for( source <- sources filterNot sourceToClassFiles.keySet ) {
-			analysis.beginSource(source)
 			analysis.api(source, new xsbti.api.SourceAPI(Array(), Array()))
-			analysis.endSource(source)
 		}
 	}
 	private[this] def urlAsFile(url: URL, log: Logger): Option[File] =
@@ -114,7 +110,7 @@ private[sbt] object Analyze
 	}
 	private def findSource(sourceNameMap: Map[String, Iterable[File]], pkg: List[String], sourceFileName: String): List[File] =
 		refine( (sourceNameMap get sourceFileName).toList.flatten.map { x => (x,x.getParentFile) }, pkg.reverse)
-	
+
 	@tailrec private def refine(sources: List[(File, File)], pkgRev: List[String]): List[File] =
 	{
 		def make = sources.map(_._1)
@@ -155,7 +151,7 @@ private[sbt] object Analyze
 		method.getReturnType == unit &&
 		method.getParameterTypes.toList == strArray
 	private def isMain(modifiers: Int): Boolean = (modifiers & mainModifiers) == mainModifiers && (modifiers & notMainModifiers) == 0
-	
+
 	private val mainModifiers = STATIC  | PUBLIC
 	private val notMainModifiers = ABSTRACT
 }

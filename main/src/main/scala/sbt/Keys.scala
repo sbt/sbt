@@ -34,6 +34,7 @@ object Keys
 	val extraLoggers = SettingKey[ScopedKey[_] => Seq[AbstractLogger]]("extra-loggers", "A function that provides additional loggers for a given setting.", DSetting)
 	val logManager = SettingKey[LogManager]("log-manager", "The log manager, which creates Loggers for different contexts.", DSetting)
 	val logBuffered = SettingKey[Boolean]("log-buffered", "True if logging should be buffered until work completes.", CSetting)
+	val sLog = SettingKey[Logger]("setting-logger", "Logger usable by settings during project loading.", CSetting)
 
 	// Project keys
 	val projectCommand = AttributeKey[Boolean]("project-command", "Marks Commands that were registered for the current Project.", Invisible)
@@ -134,6 +135,7 @@ object Keys
 	val definedSbtPlugins = TaskKey[Set[String]]("defined-sbt-plugins", "The set of names of Plugin implementations defined by this project.", CTask)
 	val sbtPlugin = SettingKey[Boolean]("sbt-plugin", "If true, enables adding sbt as a dependency and auto-generation of the plugin descriptor file.", BMinusSetting)
 	val printWarnings = TaskKey[Unit]("print-warnings", "Shows warnings from compilation, including ones that weren't printed initially.", BPlusTask)
+	val fileInputOptions = SettingKey[Seq[String]]("file-input-options", "Options that take file input, which may invalidate the cache.", CSetting)
 
 	val clean = TaskKey[Unit]("clean", "Deletes files produced by the build, such as generated sources, compiled classes, and task caches.", APlusTask)
 	val console = TaskKey[Unit]("console", "Starts the Scala interpreter with the project classes on the classpath.", APlusTask)
@@ -193,6 +195,7 @@ object Keys
 	val testOptions = TaskKey[Seq[TestOption]]("test-options", "Options for running tests.", BPlusTask)
 	val testFrameworks = SettingKey[Seq[TestFramework]]("test-frameworks", "Registered, although not necessarily present, test frameworks.", CTask)
 	val testListeners = TaskKey[Seq[TestReportListener]]("test-listeners", "Defines test listeners.", DTask)
+	val testForkedParallel = SettingKey[Boolean]("test-forked-parallel", "Whether forked tests should be executed in parallel", CTask)
 	val testExecution = TaskKey[Tests.Execution]("test-execution", "Settings controlling test execution", DTask)
 	val testFilter = TaskKey[Seq[String] => Seq[String => Boolean]]("test-filter", "Filter controlling whether the test is executed", DTask)
 	val testGrouping = TaskKey[Seq[Tests.Group]]("test-grouping", "Collects discovered tests into groups. Whether to fork and the options for forking are configurable on a per-group basis.", BMinusTask)
@@ -324,11 +327,17 @@ object Keys
 	val cancelable = SettingKey[Boolean]("cancelable", "Enables (true) or disables (false) the ability to interrupt task execution with CTRL+C.", BMinusSetting)
 	val settingsData = std.FullInstance.settingsData
 	val streams = TaskKey[TaskStreams]("streams", "Provides streams for logging and persisting data.", DTask)
-	val isDummyTask = AttributeKey[Boolean]("is-dummy-task", "Internal: used to identify dummy tasks.  sbt injects values for these tasks at the start of task execution.", Invisible)
 	val taskDefinitionKey = AttributeKey[ScopedKey[_]]("task-definition-key", "Internal: used to map a task back to its ScopedKey.", Invisible)
-	val (executionRoots, dummyRoots)= dummy[Seq[ScopedKey[_]]]("execution-roots", "The list of root tasks for this task execution.  Roots are the top-level tasks that were directly requested to be run.")
-	val (state, dummyState) = dummy[State]("state", "Current build state.")
-	val (streamsManager, dummyStreamsManager) = dummy[Streams]("streams-manager", "Streams manager, which provides streams for different contexts.")
+	val (executionRoots, dummyRoots)= Def.dummy[Seq[ScopedKey[_]]]("execution-roots", "The list of root tasks for this task execution.  Roots are the top-level tasks that were directly requested to be run.")
+
+	val state = Def.stateKey
+
+	@deprecated("Implementation detail.", "0.13.1")
+	val isDummyTask = Def.isDummyTask
+	@deprecated("Implementation detail.", "0.13.1")
+	val dummyState = Def.dummyState
+
+	val (streamsManager, dummyStreamsManager) = Def.dummy[Streams]("streams-manager", "Streams manager, which provides streams for different contexts.")
 	val stateStreams = AttributeKey[Streams]("streams-manager", "Streams manager, which provides streams for different contexts.  Setting this on State will override the default Streams implementation.")
 	val resolvedScoped = Def.resolvedScoped
 	val pluginData = TaskKey[PluginData]("plugin-data", "Information from the plugin build needed in the main build definition.", DTask)
@@ -343,11 +352,10 @@ object Keys
 	type Streams = std.Streams[ScopedKey[_]]
 	type TaskStreams = std.TaskStreams[ScopedKey[_]]
 
-	def dummy[T: Manifest](name: String, description: String): (TaskKey[T], Task[T]) = (TaskKey[T](name, description, DTask), dummyTask(name))
-	def dummyTask[T](name: String): Task[T] =
-	{
-		val base: Task[T] = task( sys.error("Dummy task '" + name + "' did not get converted to a full task.") ) named name
-		base.copy(info = base.info.set(isDummyTask, true))
-	}
-	def isDummy(t: Task[_]): Boolean = t.info.attributes.get(isDummyTask) getOrElse false
+	@deprecated("Implementation detail.", "0.13.1")
+	def dummy[T: Manifest](name: String, description: String): (TaskKey[T], Task[T]) = Def.dummy(name, description)
+	@deprecated("Implementation detail.", "0.13.1")
+	def dummyTask[T](name: String): Task[T] = Def.dummyTask(name)
+	@deprecated("Implementation detail.", "0.13.1")
+	def isDummy(t: Task[_]): Boolean = Def.isDummy(t)
 }

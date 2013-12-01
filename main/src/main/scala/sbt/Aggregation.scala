@@ -19,7 +19,7 @@ final object Aggregation
 	final case class KeyValue[+T](key: ScopedKey[_], value: T)
 
 	def defaultShow(state: State, showTasks: Boolean): ShowConfig = ShowConfig(settingValues = true, taskValues = showTasks, s => state.log.info(s), success = true)
-	def printSettings[T](xs: Seq[KeyValue[T]], print: String => Unit)(implicit display: Show[ScopedKey[_]]) =
+	def printSettings(xs: Seq[KeyValue[_]], print: String => Unit)(implicit display: Show[ScopedKey[_]]) =
 		xs match
 		{
 			case KeyValue(_,x) :: Nil => print(x.toString)
@@ -33,7 +33,7 @@ final object Aggregation
 		Command.applyEffect(seqParser(ps)) { ts =>
 			runTasks(s, structure, ts, DummyTaskMap(Nil), show)
 		}
-	
+
 	@deprecated("Use `timedRun` and `showRun` directly or use `runTasks`.", "0.13.0")
 	def runTasksWithResult[T](s: State, structure: BuildStructure, ts: Values[Task[T]], extra: DummyTaskMap, show: ShowConfig)(implicit display: Show[ScopedKey[_]]): (State, Result[Seq[KeyValue[T]]]) =
 	{
@@ -120,7 +120,7 @@ final object Aggregation
 		}
 	}
 
-	def evaluatingParser[T](s: State, structure: BuildStructure, show: ShowConfig)(keys: Seq[KeyValue[T]])(implicit display: Show[ScopedKey[_]]): Parser[() => State] =
+	def evaluatingParser(s: State, structure: BuildStructure, show: ShowConfig)(keys: Seq[KeyValue[_]])(implicit display: Show[ScopedKey[_]]): Parser[() => State] =
 		keys.toList match
 		{
 			case Nil => failure("No such setting/task")
@@ -166,7 +166,7 @@ final object Aggregation
 			val resolved = Resolve(extra, Global, key.key, mask)(toResolve)
 			ScopedKey(resolved, key.key)
 		}
-		
+
 	def aggregationEnabled(key: ScopedKey[_], data: Settings[Scope]): Boolean =
 		Keys.aggregate in Scope.fillTaskAxis(key.scope, key.key) get data getOrElse true
 

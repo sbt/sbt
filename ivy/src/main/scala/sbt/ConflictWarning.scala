@@ -38,7 +38,7 @@ object ConflictWarning
 			val conflictMsgs =
 				for( ((org,rawName), fullNames) <- crossMismatches ) yield
 				{
-					val suffixes = fullNames.map(n => "_" + getCrossSuffix(n)).mkString(", ")
+					val suffixes = fullNames.map(getCrossSuffix).mkString(", ")
 					s"${idString(org,rawName)} $suffixes"
 				}
 			log.log(config.level, conflictMsgs.mkString(pre, "\n   ", ""))
@@ -73,8 +73,8 @@ object ConflictWarning
 		case _ => s
 	}
 	private[this] def getCrossSuffix(s: String): String = s match {
-		case CrossSuffixPattern(_, v) => v
-		case _ => ""
+		case CrossSuffixPattern(_, v) => "_" + v
+		case _ => "<none>"
 	}
 
 }

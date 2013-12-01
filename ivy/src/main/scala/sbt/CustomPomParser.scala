@@ -43,17 +43,27 @@ object CustomPomParser
 	val JarPackagings = Set("eclipse-plugin", "hk2-jar", "orbit")
 	val default = new CustomPomParser(PomModuleDescriptorParser.getInstance, defaultTransform)
 
+	private[this] val TransformedHashKey = "sbtTransformHash"
+	// A hash of the parameters transformation is based on.
+	// If a descriptor has a different hash, we need to retransform it.
+	private[this] val TransformHash: String = hash((unqualifiedKeys ++ JarPackagings).toSeq.sorted)
+	private[this] def hash(ss: Seq[String]): String = Hash.toHex(Hash(ss.flatMap(_ getBytes "UTF-8").toArray))
+
 		// Unfortunately, ModuleDescriptorParserRegistry is add-only and is a singleton instance.
 	lazy val registerDefault: Unit = ModuleDescriptorParserRegistry.getInstance.addParser(default)
 
 	def defaultTransform(parser: ModuleDescriptorParser, md: ModuleDescriptor): ModuleDescriptor =
+		if(transformedByThisVersion(md)) md else defaultTransformImpl(parser, md)
+
+	private[this] def transformedByThisVersion(md: ModuleDescriptor): Boolean = 
 	{
-		import collection.JavaConverters._
-			// The <properties> element of the pom is used to store additional metadata for sbt plugins.
-			// This is done because the pom XSD does not appear to allow extra metadata anywhere else.
-			// The pom.xml does not need to be readable by maven because these are only enabled for sbt plugins.
-			// However, the pom.xml needs to be valid because other tools, like repository managers may read the pom.xml.
-		val properties = PomModuleDescriptorBuilder.extractPomProperties(md.getExtraInfo).asInstanceOf[java.util.Map[String,String]].asScala.toMap
+		val extraInfo = md.getExtraInfo
+		extraInfo != null && extraInfo.get(TransformedHashKey) == TransformHash
+	}
+
+	private[this] def defaultTransformImpl(parser: ModuleDescriptorParser, md: ModuleDescriptor): ModuleDescriptor =
+	{
+		val properties = getPomProperties(md)
 
 			// Extracts extra attributes (currently, sbt and Scala versions) stored in the <properties> element of the pom.
 			// These are attached to the module itself.
@@ -72,12 +82,24 @@ object CustomPomParser
 			// Merges artifact sections for duplicate dependency definitions
 		val mergeDuplicates = IvySbt.hasDuplicateDependencies(md.getDependencies)
 
-		val unqualify = (filtered - ExtraAttributesKey) map { case (k,v) => ("e:" + k, v) }
+		val unqualify = toUnqualify(filtered)
 		if(unqualify.isEmpty && extraDepAttributes.isEmpty && !convertArtifacts && !mergeDuplicates)
 			md
 		else
 			addExtra(unqualify, extraDepAttributes, parser, md)
 	}
+		// The <properties> element of the pom is used to store additional metadata, such as for sbt plugins or for the base URL for API docs.
+		// This is done because the pom XSD does not appear to allow extra metadata anywhere else.
+		// The extra sbt plugin metadata in pom.xml does not need to be readable by maven, but the other information may be.
+		// However, the pom.xml needs to be valid in all cases because other tools like repository managers may read the pom.xml.
+	private[sbt] def getPomProperties(md: ModuleDescriptor): Map[String,String] =
+	{
+		import collection.JavaConverters._
+		PomModuleDescriptorBuilder.extractPomProperties(md.getExtraInfo).asInstanceOf[java.util.Map[String,String]].asScala.toMap
+	}
+	private[sbt] def toUnqualify(propertyAttributes: Map[String, String]): Map[String, String] =
+		(propertyAttributes - ExtraAttributesKey) map { case (k,v) => ("e:" + k, v) }
+
 	private[this] def artifactExtIncorrect(md: ModuleDescriptor): Boolean =
 		md.getConfigurations.exists(conf => md.getArtifacts(conf.getName).exists(art => JarPackagings(art.getExt)))
 	private[this] def shouldBeUnqualified(m: Map[String, String]): Map[String, String] = m.filterKeys(unqualifiedKeys)
@@ -173,6 +195,7 @@ object CustomPomParser
 
 		for(l <- md.getLicenses) dmd.addLicense(l)
 		for( (key,value) <- md.getExtraInfo.asInstanceOf[java.util.Map[String,String]].asScala ) dmd.addExtraInfo(key, value)
+		dmd.addExtraInfo(TransformedHashKey, TransformHash) // mark as transformed by this version, so we don't need to do it again
 		for( (key, value) <- md.getExtraAttributesNamespaces.asInstanceOf[java.util.Map[String,String]].asScala ) dmd.addExtraAttributeNamespace(key, value)
 		IvySbt.addExtraNamespace(dmd)
 

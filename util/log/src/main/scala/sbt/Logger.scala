@@ -40,6 +40,11 @@ abstract class AbstractLogger extends Logger
 
 object Logger
 {
+	def transferLevels(oldLog: AbstractLogger, newLog: AbstractLogger) {
+		newLog.setLevel(oldLog.getLevel)
+		newLog.setTrace(oldLog.getTrace)
+	}
+
 	// make public in 0.13
 	private[sbt] val Null: AbstractLogger = new AbstractLogger {
 		def getLevel: Level.Value = Level.Error
@@ -57,7 +62,11 @@ object Logger
 
 	implicit def absLog2PLog(log: AbstractLogger): ProcessLogger = new BufferedLogger(log) with ProcessLogger
 	implicit def log2PLog(log: Logger): ProcessLogger = absLog2PLog(new FullLogger(log))
-	implicit def xlog2Log(lg: xLogger): Logger = new Logger {
+	implicit def xlog2Log(lg: xLogger): Logger = lg match {
+		case l: Logger => l
+		case _ => wrapXLogger(lg)
+	}
+	private[this] def wrapXLogger(lg: xLogger): Logger = new Logger {
 		override def debug(msg: F0[String]): Unit = lg.debug(msg)
 		override def warn(msg: F0[String]): Unit = lg.warn(msg)
 		override def info(msg: F0[String]): Unit = lg.info(msg)

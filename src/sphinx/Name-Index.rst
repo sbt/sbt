@@ -98,7 +98,7 @@ Settings and Tasks
 See the :doc:`Getting Started Guide </Getting-Started/Basic-Def>` for
 details.
 
--  `:=`, `+=`, `++=`, `~=` These
+-  `:=`, `+=`, `++=` These
    construct a `Setting <../api/sbt/Init$Setting.html>`_,
    which is the fundamental type in the :doc:`settings </Getting-Started/Basic-Def>` system.
 -  `value` This uses the value of another setting or task in the definition of a new setting or task.
@@ -130,7 +130,7 @@ and :doc:`/Detailed-Topics/Paths` for the full documentation.
    as collections (like `Seq`) and
    `Parser <../api/sbt/complete/Parser.html>`_
    (see :doc:`/Detailed-Topics/Parsing-Input`).
--  `x` Used to construct mappings from a `File` to another `File`
+-  `pair` Used to construct mappings from a `File` to another `File`
    or to a `String`. See :doc:`/Detailed-Topics/Mapping-Files`.
 -  `get` forces a `PathFinder <../api/sbt/PathFinder.html>`_
    (a call-by-name data structure) to a strict `Seq[File]`
