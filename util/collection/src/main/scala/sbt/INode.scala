@@ -25,7 +25,11 @@ abstract class EvaluateSettings[Scope]
 
 	private[this] val transform: Initialize ~> INode = new (Initialize ~> INode) { def apply[T](i: Initialize[T]): INode[T] = i match {
 		case k: Keyed[s, T] => single(getStatic(k.scopedKey), k.transform)
-		case a: Apply[k,T] => new MixedNode[k,T]( a.alist.transform[Initialize, INode](a.inputs, transform), a.f, a.alist)
+		case a: Apply[k,T] =>
+			new MixedNode[Any,T]( a.alist.transform[Initialize, INode](a.inputs, transform), a.f.asInstanceOf[Any => T], a.alist.asInstanceOf[AList[Any]]).asInstanceOf[INode[T]]
+			// WAS: new MixedNode[k,T]( a.alist.transform[Initialize, INode](a.inputs, transform), a.f, a.alist)
+			// Scala 2.11 now refchecks case bodies, which uncovers the fact that HK type variables are buggy.
+			// https://issues.scala-lang.org/browse/SI-8023
 		case b: Bind[s,T] => new BindNode[s,T]( transform(b.in), x => transform(b.f(x)))
 		case init.StaticScopes => constant(() => allScopes.asInstanceOf[T]) // can't convince scalac that StaticScopes => T == Set[Scope]
 		case v: Value[T] => constant(v.value)
