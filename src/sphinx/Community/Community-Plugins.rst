@@ -67,6 +67,7 @@ Plugins for IDEs:
 -  Eclipse: https://github.com/typesafehub/sbteclipse
 -  Sublime Text: https://github.com/orrsella/sbt-sublime
 -  Ensime: https://github.com/aemoncannon/ensime-sbt-cmd
+-  sbt-mode for Emacs: https://github.com/hvesalai/sbt-mode
 
 Web Plugins
 ~~~~~~~~~~~
