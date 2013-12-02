@@ -66,6 +66,7 @@ Plugins for IDEs:
 -  Netbeans: https://github.com/remeniuk/sbt-netbeans-plugin
 -  Eclipse: https://github.com/typesafehub/sbteclipse
 -  Sublime Text: https://github.com/orrsella/sbt-sublime
+-  Ensime: https://github.com/aemoncannon/ensime-sbt-cmd
 
 Web Plugins
 ~~~~~~~~~~~
@@ -89,15 +90,17 @@ Test plugins
    https://github.com/skipoleschris/xsbt-cucumber-plugin
 -  sbt-multi-jvm:
    https://github.com/typesafehub/sbt-multi-jvm
+-  sbt-testng-interface:
+   https://github.com/sbt/sbt-testng-interface
 -  schoir (Distributed testing plugin):
    https://github.com/typesafehub/schoir
 
 Static Code Analysis plugins
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
--  cpd4sbt: https://bitbucket.org/jmhofer/cpd4sbt (copy/paste detection,
+-  cpd4sbt: https://github.com/sbt/cpd4sbt (copy/paste detection,
    works for Scala, too)
--  findbugs4sbt: https://bitbucket.org/jmhofer/findbugs4sbt (FindBugs
+-  findbugs4sbt: https://github.com/sbt/findbugs4sbt (FindBugs
    only supports Java projects atm)
 -  scalastyle: https://github.com/scalastyle/scalastyle-sbt-plugin (Scalastyle - static code checker for Scala)
 -  sbt-stats: https://github.com/orrsella/sbt-stats (simple, extensible source code statistics)
@@ -123,11 +126,13 @@ Frontend development plugins
 -  sbt-closure: https://github.com/eltimn/sbt-closure
 -  sbt-yui-compressor: https://github.com/indrajitr/sbt-yui-compressor
 -  sbt-requirejs: https://github.com/scalatra/sbt-requirejs
+-  sbt-vaadin-plugin: https://github.com/henrikerola/sbt-vaadin-plugin
 
-LWJGL (Light Weight Java Game Library) Plugin
+Game development plugins
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
--  sbt-lwjgl-plugin: https://github.com/philcali/sbt-lwjgl-plugin
+-  sbt-lwjgl-plugin (Light Weight Java Game Library): https://github.com/philcali/sbt-lwjgl-plugin
+-  sbt-scage-plugin (Scala Game Engine): https://github.com/mvallerie/sbt-scage-plugin
 
 Release plugins
 ~~~~~~~~~~~~~~~
@@ -185,6 +190,8 @@ Code generator plugins
    https://github.com/backchatio/xsbt-scalate-generate
 -  sbt-antlr (Generate Java source code based on ANTLR3 grammars):
    https://github.com/stefri/sbt-antlr
+-  sbt-antlr4 (Antlr4 runner for generating Java source code):
+   https://github.com/ihji/sbt-antlr4
 -  xsbt-reflect (Generate Scala source code for project name and
    version): https://github.com/ritschwumm/xsbt-reflect
 -  sbt-buildinfo (Generate Scala source for any settings):
@@ -218,26 +225,32 @@ Documentation plugins
    Textile, to HTML): http://software.clapper.org/sbt-lwm/
 -  sbt-site (Site generation for SBT):
    https://github.com/sbt/sbt-site
+-  literator-plugin (Converts sources into markdown documents):
+   https://github.com/laughedelic/literator
+
+Library dependency plugins
+~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+-  ls-sbt (An sbt interface for ls.implicit.ly):
+   https://github.com/softprops/ls
+-  sbt-dependency-graph (Creates a graphml file of the dependency tree):
+   https://github.com/jrudolph/sbt-dependency-graph
+-  sbt-dirty-money (Cleans Ivy2 cache):
+   https://github.com/sbt/sbt-dirty-money
+-  sbt-updates (Checks Maven repos for dependency updates):
+   https://github.com/rtimush/sbt-updates
 
 Utility plugins
 ~~~~~~~~~~~~~~~
 
 -  jot (Write down your ideas lest you forget them)
    https://github.com/softprops/jot
--  ls-sbt (An sbt interface for ls.implicit.ly):
-   https://github.com/softprops/ls
 -  np (Dead simple new project directory generation):
    https://github.com/softprops/np
 -  sbt-editsource (A poor man's *sed*\ (1), for sbt):
    http://software.clapper.org/sbt-editsource/
--  sbt-dirty-money (Cleans Ivy2 cache):
-   https://github.com/sbt/sbt-dirty-money
--  sbt-dependency-graph (Creates a graphml file of the dependency tree):
-   https://github.com/jrudolph/sbt-dependency-graph
 -  sbt-cross-building (Simplifies building your plugins for multiple
    versions of sbt): https://github.com/jrudolph/sbt-cross-building
--  sbt-inspectr (Displays settings dependency tree):
-   https://github.com/eed3si9n/sbt-inspectr
 -  sbt-revolver (Triggered restart, hot reloading):
    https://github.com/spray/sbt-revolver
 -  sbt-scalaedit (Open and upgrade ScalaEdit (text editor)):
@@ -255,12 +268,14 @@ Utility plugins
    https://github.com/sbt/sbt-properties
 -  sbt-multi-publish (publish to more than one repository simultaneously):
    https://github.com/davidharcombe/sbt-multi-publish
+-  sbt-about-plugins (shows some details about plugins loaded):
+   https://github.com/jozic/sbt-about-plugins
 
 Code coverage plugins
 ~~~~~~~~~~~~~~~~~~~~~
 
 -  sbt-scct: https://github.com/dvc94ch/sbt-scct
--  jacoco4sbt: https://bitbucket.org/jmhofer/jacoco4sbt
+-  jacoco4sbt: https://github.com/sbt/jacoco4sbt
 -  xsbt-coveralls-plugin: https://github.com/theon/xsbt-coveralls-plugin
 
 Android plugin
@@ -272,7 +287,7 @@ Android plugin
 Build interoperability plugins
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
--  ant4sbt: https://bitbucket.org/jmhofer/ant4sbt
+-  ant4sbt: https://github.com/sbt/ant4sbt
 
 OSGi plugin
 ~~~~~~~~~~~

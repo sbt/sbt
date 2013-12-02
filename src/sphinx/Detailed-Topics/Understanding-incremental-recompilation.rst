@@ -211,7 +211,7 @@ compile it and then change the `Test.scala` file so it looks like::
       def b: String = "abc"
    }
 
-and run `compile` task again. Now if you run `last compile` you should see
+and run :key:`compile` task again. Now if you run `last compile` you should see
 the following lines in the debugging log
 
 .. code-block:: none

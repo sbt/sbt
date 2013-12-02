@@ -5,12 +5,12 @@ package xsbt
 package datatype
 
 import java.io.File
-import sbt.Path
 import sbt.IO.write
 
 import Generator._
+import java.util.Locale
 
-abstract class GeneratorBase(val basePkgName: String, val baseDirectory: File) extends NotNull
+abstract class GeneratorBase(val basePkgName: String, val baseDirectory: File)
 {
 	def writeDefinitions(ds: Iterable[Definition]) = Generator.writeDefinitions(ds)(writeDefinition)
 	def writeDefinition(d: Definition) = d match { case e: EnumDef => writeEnum(e); case c: ClassDef => writeClass(c) }
@@ -38,7 +38,7 @@ abstract class GeneratorBase(val basePkgName: String, val baseDirectory: File) e
 * A ClassDef is written as a class with an optional parent class.  The class has a single constructor with
 * parameters for all declared and inherited members.  Declared members are listed first in the constructor.
 * Inherited members are passed to the super constructor.  The value of each member is held in a private
-* final field and.is accessed by a method of the same name.
+* final field and is accessed by a method of the same name.
 *
 * A toString method is generated for debugging.
 * The classes implement java.io.Serializable.
@@ -50,7 +50,7 @@ class ImmutableGenerator(pkgName: String, baseDir: File) extends GeneratorBase(p
 	def writeClass(c: ClassDef): Unit = writeSource(c.name, basePkgName, classContent(c))
 	def classContent(c: ClassDef): String =
 	{
-		val hasParent = c.parent.isDefined
+		val abstractStr = if (c.isAbstract) "abstract " else "final "
 		val allMembers = c.allMembers.map(normalize)
 		val normalizedMembers = c.members.map(normalize)
 		val fields = normalizedMembers.map(m => "private final " + m.asJavaDeclaration(false) + ";")
@@ -70,73 +70,90 @@ class ImmutableGenerator(pkgName: String, baseDir: File) extends GeneratorBase(p
 		"}"
 		"import java.util.Arrays;\n" +
 		"import java.util.List;\n" +
-		"public class " + c.name + c.parent.map(" extends " + _.name + " ").getOrElse(" implements java.io.Serializable") + "\n" +
+		"public " + abstractStr + "class " + c.name + c.parent.map(" extends " + _.name + " ").getOrElse(" implements java.io.Serializable") + "\n" +
 		"{\n\t" +
 			constructor + "\n\t" + 
-			(fields ++ accessors).mkString("\n\t") + "\n\t" +
-			toStringMethod(c) + "\n" +
+			(fields ++ accessors).mkString("\n\t") + "\n" +
+			(if (!c.isAbstract) "\t" + equalsMethod(c) + "\n\t" + hashCodeMethod(c) + "\n\t" + toStringMethod(c) + "\n" else "") +
 		"}\n"
 	}
-
 }
-class MutableGenerator(pkgName: String, baseDir: File) extends GeneratorBase(pkgName, baseDir)
-{
-	def writeClass(c: ClassDef): Unit =
-	{
-		writeSource(c.name, basePkgName, interfaceContent(c))
-		writeSource(implName(c.name), basePkgName + ".mutable", implContent(c))
-	}
-	def interfaceContent(c: ClassDef): String =
-	{
-		val normalizedMembers = c.members.map(normalize)
-		val getters = normalizedMembers.map(m => "public " + m.asJavaDeclaration(true) + "();")
-		val setters = normalizedMembers.map(m => "public void " + m.name +  "(" + m.javaType(false) + " newValue);")
-		val extendsPhrase = c.parent.map(_.name).map(" extends " + _).getOrElse("")
 
-		("public interface " + c.name + extendsPhrase + "\n" +
-		"{\n\t" +
-			(setters ++ getters).mkString("\n\t") + "\n" +
-		"}\n")
-	}
-	def implContent(c: ClassDef): String =
-	{
-		val normalizedMembers = c.members.map(normalize)
-		val fields = normalizedMembers.map(m => "private " + m.asJavaDeclaration(false) + ";")
-		val getters = normalizedMembers.map(m => "public final " + m.asJavaDeclaration(true) + "()\n\t{\n\t\treturn " + m.asGet + ";\n\t}")
-		val setters = normalizedMembers.map(m => "public final void " + m.name + "(" + m.javaType(false) + " newValue)\n\t{\n\t\t" + m.name + " = newValue;\n\t}")
-		val extendsClass = c.parent.map(p => implName(p.name))
-		val serializable = if(c.parent.isDefined) Nil else "java.io.Serializable" :: Nil
-		val implements = c.name :: serializable
-		val extendsPhrase = extendsClass.map(" extends " + _).getOrElse("") + " implements " + implements.mkString(", ")
-
-		("import java.util.Arrays;\n" +
-		"import java.util.List;\n" +
-		"import " + pkgName + ".*;\n\n" +
-		"public class " + implName(c.name) + extendsPhrase + "\n" +
-		"{\n\t" +
-			(fields ++ getters ++ setters).mkString("\n\t") + "\n\t" +
-			toStringMethod(c) + "\n" +
-		"}\n")
-	}
-	
-}
 object Generator
 {
 	def methodSignature(modifiers: String, returnType: String, name: String, parameters: String) =
 		modifiers + " " + returnType + " " + name + "(" + parameters + ")"
-	def method(modifiers: String, returnType: String, name: String, parameters: String, content: String) =
-		methodSignature(modifiers, returnType, name, parameters) + "\n\t{\n\t\treturn " + content + ";\n\t}"
+	def method(modifiers: String, returnType: String, name: String, parameters: String, body: String) =
+		methodSignature(modifiers, returnType, name, parameters) + "\n\t{\n\t\t " + body + "\n\t}"
 	def fieldToString(name: String, single: Boolean) = "\"" + name + ": \" + " + fieldString(name + "()", single)
 	def fieldString(arg: String, single: Boolean) = if(single) arg else "Arrays.toString(" + arg + ")"
+	def fieldEquals(arg: String, single: Boolean, primitive: Boolean) = {
+		if(single) {
+			if (primitive) arg + " == o." + arg else arg + ".equals(o." + arg + ")"
+		} else {
+			"Arrays." + (if (primitive) "equals" else "deepEquals") + "(" + arg + ", o." + arg + ")"
+		}
+	}
 	def normalize(m: MemberDef): MemberDef =
-		m.mapType(tpe => if(primitives(tpe.toLowerCase)) tpe.toLowerCase else tpe)
+		m.mapType(tpe => if(isPrimitive(tpe)) tpe.toLowerCase(Locale.ENGLISH) else tpe)
+	def isPrimitive(tpe: String) = primitives(tpe.toLowerCase(Locale.ENGLISH))
 	private val primitives = Set("int", "boolean", "float", "long", "short", "byte", "char", "double")
+
+	def equalsMethod(c: ClassDef): String =
+	{
+		val content = if (c.hasLazyMembers) {
+			"return this == obj;  // We have lazy members, so use object identity to avoid circularity."
+		} else {
+			val allMembers = c.allMembers.map(normalize)
+			val memberComparisons = if (allMembers.isEmpty) "true" else allMembers.map(m => fieldEquals(m.name + "()", m.single, isPrimitive(m.tpe))).mkString(" && ")
+			"if (this == obj) {\n\t\t\t return true;\n\t\t} else if (!(obj instanceof " + c.name + ")) {\n\t\t\t return false;\n\t\t} else {\n\t\t\t" + c.name + " o = (" + c.name + ")obj;\n\t\t\treturn " + memberComparisons + ";\n\t\t}"
+		}
+		method("public", "boolean", "equals", "Object obj", content)
+	}
+
+	def hashCodeMethod(c: ClassDef): String =
+	{
+		def hashCodeExprForMember(m: MemberDef) =
+		{
+			val primitive = isPrimitive(m.tpe)
+			val f = m.name + "()"  // Assumes m has already been normalized.
+			if (m.single) {
+				if (primitive) {
+					m.tpe.toLowerCase match {
+						case "boolean" => "(" + f + " ? 0 : 1)"
+						case "long" => "(int)(" + f + " ^ (" + f + " >>> 32))"
+						case "float" => "Float.floatToIntBits(" + f + ")"
+						case "double" => "(int)(Double.doubleToLongBits(" + f + ") ^ (Double.doubleToLongBits(" + f + ") >>> 32))"
+						case "int" => f
+						case _ => "(int)" + f
+					}
+				} else {
+					f + ".hashCode()"
+				}
+			} else {
+				"Arrays." + (if (primitive) "hashCode" else "deepHashCode") + "(" + f + ")"
+			}
+		}
+		val hashCodeExpr = if (c.hasLazyMembers) {
+			"super.hashCode()"
+		} else {
+			val allMembers = c.allMembers.map(normalize)
+			val memberHashCodes = allMembers.map(hashCodeExprForMember)
+			("17" /: memberHashCodes){ "37 * (" + _ + ") + " + _ }
+		}
+		method("public", "int", "hashCode", "", "return " + hashCodeExpr + ";")
+	}
 
 	def toStringMethod(c: ClassDef): String =
 	{
-		val allMembers = c.allMembers.map(normalize)
-		val parametersString = if(allMembers.isEmpty) "\"\"" else allMembers.map(m => fieldToString(m.name, m.single)).mkString(" + \", \" + ")
-		method("public", "String", "toString", "", "\"" + c.name + "(\" + " + parametersString + "+ \")\"")
+		val content = if (c.hasLazyMembers) {
+			"return super.toString();"
+		} else {
+			val allMembers = c.allMembers.map(normalize)
+			val parametersString = if(allMembers.isEmpty) "\"\"" else allMembers.map(m => fieldToString(m.name, m.single)).mkString(" + \", \" + ")
+			"return \"" + c.name + "(\" + " + parametersString + " + \")\";"
+		}
+		method("public", "String", "toString", "", content)
 	}
 
 	def writeDefinitions(ds: Iterable[Definition])(writeDefinition: Definition => Unit)

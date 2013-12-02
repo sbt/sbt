@@ -3,16 +3,16 @@
 import sys, os
 
 sys.path.append(os.path.abspath('_sphinx/exts'))
-extensions = ['sphinxcontrib.issuetracker', 'sphinx.ext.extlinks', 'howto', 'codeliteral']
+extensions = ['sphinxcontrib.issuetracker', 'sphinx.ext.extlinks', 'howto', 'codeliteral', 'key', 'srcref']
 
 # Project variables
 
 project = 'sbt'
-version = '0.13'
-site_version = '0.13.0'
-release = "0.13.0-SNAPSHOT"
-scalaVersion = "2.10"
-scalaRelease = "2.10.2"
+version = os.environ['sbt.partial.version']
+site_version = os.environ['sbt.site.version']
+release = os.environ['sbt.full.version']
+scalaVersion = os.environ['scala.binary.version']
+scalaRelease = os.environ['scala.full.version']
 
 # General settings
 
@@ -78,7 +78,6 @@ launcher_release_base = typesafe_ivy_releases + 'org.scala-sbt/sbt-launch/'
 launcher_snapshots_base = typesafe_ivy_snapshots + 'org.scala-sbt/sbt-launch/'
 sbt_native_package_base = 'http://repo.scala-sbt.org/scalasbt/sbt-native-packages/org/scala-sbt/sbt/'
 
-
 rst_epilog = """
 .. |scalaVersion| replace:: %(scalaVersion)s
 .. |scalaRelease| replace:: %(scalaRelease)s
@@ -90,12 +89,14 @@ rst_epilog = """
 .. _ZIP: %(sbt_native_package_base)s%(release)s/sbt.zip
 .. _DEB: %(sbt_native_package_base)s%(release)s/sbt.deb
 .. _RPM: %(sbt_native_package_base)s%(release)s/sbt.rpm
-.. |nightly-launcher| replace:: <%(launcher_snapshots_base)s
-.. _mailing list: http://groups.google.com/group/simple-build-tool/topics
+.. |nightly-launcher| replace:: %(launcher_snapshots_base)s
+.. _sbt-dev mailing list: https://groups.google.com/forum/#!forum/sbt-dev
 .. _adept: https://groups.google.com/group/adept-dev/topics
 .. _sbt-launcher-package: https://github.com/sbt/sbt-launcher-package
 .. _Stack Overflow: http://stackoverflow.com/tags/sbt
 .. _source code: http://github.com/sbt/sbt
+
+:srcref:`ignored`
 """ % {
    'launcher_release_base': launcher_release_base,
    'launcher_snapshots_base': launcher_snapshots_base,
@@ -105,5 +106,3 @@ rst_epilog = """
    'scalaVersion': scalaVersion,
    'release': release
 }
-
-

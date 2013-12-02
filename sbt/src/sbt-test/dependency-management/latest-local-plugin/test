@@ -1,0 +1,42 @@
+$ mkdir stable snapshot
+
+# publish 1.0, stable release to local-stable/ repository
+
+$ copy-file changes/def.sbt def.sbt
+$ touch make-stable
+> reload
+> show stable
+> publish
+
+# resolve that release for use as a plugin
+# this should fail because build.sbt won't find aValue,
+# which isn't in this release
+
+$ delete make-stable
+$ delete def.sbt
+$ copy-file changes/use-plugins.sbt project/plugins.sbt
+$ copy-file changes/use-build.sbt build.sbt
+-> reload
+
+# publish 1.1-SNAPSHOT to local-snapshot/ repository
+# this time, include aValue
+
+$ delete project
+$ delete target
+$ delete build.sbt
+$ copy-file changes/def.sbt def.sbt
+$ copy-file changes/DefPlugin.scala DefPlugin.scala
+
+> reload
+> show stable
+> publish
+
+# resolve the latest.integration release, which should
+# get 1.1-SNAPSHOT and succeed because aValue is now available
+
+$ delete def.sbt
+$ delete DefPlugin.scala
+$ copy-file changes/use-plugins.sbt project/plugins.sbt
+$ copy-file changes/use-build.sbt build.sbt
+> reload
+

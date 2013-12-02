@@ -1,0 +1,11 @@
+> compile
+
+> assertWarning
+
+> 'set every scalacOptions := Seq("-nowarn")'
+
+> clean
+
+> compile
+
+> assertNoWarning

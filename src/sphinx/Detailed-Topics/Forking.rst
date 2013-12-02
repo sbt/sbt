@@ -2,32 +2,32 @@
 Forking
 =======
 
-By default, the `run` task runs in the same JVM as sbt. Forking is
+By default, the :key:`run` task runs in the same JVM as sbt. Forking is
 required under :doc:`certain circumstances <Running-Project-Code>`, however.
 Or, you might want to fork Java processes when implementing new tasks.
 
 By default, a forked process uses the same Java and Scala versions being
 used for the build and the working directory and JVM options of the
 current process. This page discusses how to enable and configure forking
-for both `run` and `test` tasks. Each kind of task may be configured
+for both :key:`run` and :key:`test` tasks. Each kind of task may be configured
 separately by scoping the relevant keys as explained below.
 
 Enable forking
 ==============
 
-The `fork` setting controls whether forking is enabled (true) or not
-(false). It can be set in the `run` scope to only fork `run`
-commands or in the `test` scope to only fork `test` commands.
+The :key:`fork` setting controls whether forking is enabled (true) or not
+(false). It can be set in the :key:`run` scope to only fork :key:`run`
+commands or in the :key:`test` scope to only fork :key:`test` commands.
 
-To fork all test tasks (`test`, `testOnly`, and `testQuick`) and
-run tasks (`run`, `runMain`, `test:run`, and `test:runMain`),
+To fork all test tasks (:key:`test`, :key:`testOnly`, and :key:`testQuick`) and
+run tasks (:key:`run`, :key:`runMain`, `test:run`, and `test:runMain`),
 
 ::
 
     fork := true
 
-To enable forking `run` tasks only, set `fork` to `true` in the
-`run` scope.
+To enable forking :key:`run` tasks only, set :key:`fork` to `true` in the
+:key:`run` scope.
 
 ::
 
@@ -40,11 +40,11 @@ To only fork `test:run` and `test:runMain`:
     fork in (Test,run) := true
 
 Similarly, set `fork in (Compile,run) := true` to only fork the main
-`run` tasks. `run` and `runMain` share the same configuration and
+:key:`run` tasks. :key:`run` and :key:`runMain` share the same configuration and
 cannot be configured separately.
 
-To enable forking all `test` tasks only, set `fork` to `true` in
-the `test` scope:
+To enable forking all :key:`test` tasks only, set :key:`fork` to `true` in
+the :key:`test` scope:
 
 ::
 
@@ -77,7 +77,7 @@ Forked JVM options
 ==================
 
 To specify options to be provided to the forked JVM, set
-`javaOptions`:
+:key:`javaOptions`:
 
 ::
 
@@ -90,7 +90,7 @@ tasks:
 
     javaOptions in (Test,run) += "-Xmx8G"
 
-or only affect the `test` tasks:
+or only affect the :key:`test` tasks:
 
 ::
 
@@ -99,7 +99,7 @@ or only affect the `test` tasks:
 Java Home
 =========
 
-Select the Java installation to use by setting the `javaHome`
+Select the Java installation to use by setting the :key:`javaHome`
 directory:
 
 ::
@@ -108,21 +108,21 @@ directory:
 
 Note that if this is set globally, it also sets the Java installation
 used to compile Java sources. You can restrict it to running only by
-setting it in the `run` scope:
+setting it in the :key:`run` scope:
 
 ::
 
     javaHome in run := file("/path/to/jre/")
 
 As with the other settings, you can specify the configuration to affect
-only the main or test `run` tasks or just the `test` tasks.
+only the main or test :key:`run` tasks or just the :key:`test` tasks.
 
 Configuring output
 ==================
 
 By default, forked output is sent to the Logger, with standard output
 logged at the `Info` level and standard error at the `Error` level.
-This can be configured with the `outputStrategy` setting, which is of
+This can be configured with the :key:`outputStrategy` setting, which is of
 type
 `OutputStrategy <../../api/sbt/OutputStrategy.html>`_.
 
@@ -141,13 +141,13 @@ type
     outputStrategy := Some(BufferedOutput(log: Logger))
 
 As with other settings, this can be configured individually for main or
-test `run` tasks or for `test` tasks.
+test :key:`run` tasks or for :key:`test` tasks.
 
 Configuring Input
 =================
 
 By default, the standard input of the sbt process is not forwarded to
-the forked process. To enable this, configure the `connectInput`
+the forked process. To enable this, configure the :key:`connectInput`
 setting:
 
 ::
@@ -158,10 +158,24 @@ Direct Usage
 ============
 
 To fork a new Java process, use the `Fork
-API <../../api/sbt/Fork$.html>`_. The
-methods of interest are `Fork.java`, `Fork.javac`, `Fork.scala`,
-and `Fork.scalac`. See the
-`ForkJava <../../api/sbt/Fork$.ForkJava.html>`_
-and
-`ForkScala <../../api/sbt/Fork$.ForkScala.html>`_
-classes for the arguments and types.
+API <../../api/sbt/Fork$.html>`_.
+The values of interest are `Fork.java`, `Fork.javac`, `Fork.scala`, and `Fork.scalac`.
+These are of type `Fork <../../api/sbt/Fork.html>`_ and provide `apply` and `fork` methods.
+For example, to fork a new Java process, ::
+
+    val options = ForkOptions(...)
+    val arguments: Seq[String] = ...
+    val mainClass: String = ...
+    val exitCode: Int = Fork.java(options, mainClass +: arguments)
+
+
+`ForkOptions <../../api/sbt/ForkOptions.html>`_ defines the Java installation to use, the working directory, environment variables, and more.
+For example, ::
+
+    val cwd: File = ...
+    val javaDir: File = ...
+    val options = ForkOptions(
+       envVars = Map("KEY" -> "value"),
+       workingDirectory = Some(cwd),
+       javaHome = Some(javaDir)
+    )

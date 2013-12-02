@@ -12,6 +12,7 @@ object CommandStrings
 	val ProjectCommand = "project"
 	val ProjectsCommand = "projects"
 	val ShowCommand = "show"
+	val MultiTaskCommand = "all"
 	val BootCommand = "boot"
 
 	val EvalCommand = "eval"
@@ -21,20 +22,37 @@ EvalCommand + """ <expression>
 
 	Evaluates the given Scala expression and prints the result and type."""
 
+	@deprecated("Misnomer: was only for `show`.  Use showBrief.", "0.13.2")
+	def actBrief = showBrief
+	@deprecated("Misnomer: was only for `show`.  Use showDetailed.", "0.13.2")
+	def actDetailed = showDetailed
+
+	def actHelp = showHelp ++ multiTaskHelp
+
+	def multiTaskHelp = Help(MultiTaskCommand, (multiTaskSyntax, multiTaskBrief), multiTaskDetailed)
+	def multiTaskDetailed =
+s"""$multiTaskSyntax
+
+	$multiTaskBrief"""
+	def multiTaskSyntax = s"""$MultiTaskCommand <task>+"""
+	def multiTaskBrief = """Executes all of the specified tasks concurrently."""
+
+
 	def showHelp = Help(ShowCommand, (ShowCommand + " <key>", actBrief), actDetailed)
-	def actBrief = "Displays the result of evaluating the setting or task associated with 'key'."
-	def actDetailed =
-ShowCommand + """ <setting>
+	def showBrief = "Displays the result of evaluating the setting or task associated with 'key'."
+	def showDetailed =
+s"""$ShowCommand <setting>
 
 	Displays the value of the specified setting.
 
-""" + ShowCommand + """ <task>
+$ShowCommand <task>
 
 	Evaluates the specified task and display the value returned by the task."""
 
 	val LastCommand = "last"
 	val LastGrepCommand = "last-grep"
 	val ExportCommand = "export"
+	val ExportStream = "export"
 
 	val lastGrepBrief = (LastGrepCommand, "Shows lines from the last output for 'key' that match 'pattern'.")
 	val lastGrepDetailed =
@@ -81,7 +99,7 @@ InspectCommand + """ <key>
 	Otherwise, the type of task ("Task" or "Input task") is displayed.
 
 	"Dependencies" shows the settings that this setting depends on.
-	
+
 	"Reverse dependencies" shows the settings that depend on this setting.
 
 	When a key is resolved to a value, it may not actually be defined in the requested scope.
@@ -91,7 +109,7 @@ InspectCommand + """ <key>
 
 	"Related" shows all of the scopes in which the key is defined.
 
-""" + 
+""" +
 InspectCommand + """ tree <key>
 
 	Displays `key` and its dependencies in a tree structure.
@@ -140,13 +158,13 @@ This is a list of %s defined for the current project.
 It does not list the scopes the %<s are defined in; use the 'inspect' command for that.""".format(label)
 
 	def settingsBrief(label: String) = (label, "Lists the " + label + " defined for the current project.")
-	def settingsDetailed(label: String) = 
+	def settingsDetailed(label: String) =
 """
 Syntax summary
 	%s [-(v|-vv|...|-V)] [<filter>]
 
 %<s
-	Displays the main %<s defined directly or indirectly for the current project. 
+	Displays the main %<s defined directly or indirectly for the current project.
 
 -v
 	Displays additional tasks.  More 'v's increase the number of tasks displayed.
@@ -199,7 +217,7 @@ ProjectCommand +
 	For example, 'project ....' is equivalent to three consecutive 'project ..' commands."""
 
 	def projectsBrief = "Lists the names of available projects or temporarily adds/removes extra builds to the session."
-	def projectsDetailed = 
+	def projectsDetailed =
 ProjectsCommand + """
 	List the names of available builds and the projects defined in those builds.
 
@@ -263,8 +281,8 @@ load-commands -base ~/.sbt/commands
 
 	def crossHelp: Help = Help.more(CrossCommand, CrossDetailed)
 	def switchHelp: Help = Help.more(SwitchCommand, SwitchDetailed)
-	
-	def CrossDetailed = 
+
+	def CrossDetailed =
 s"""$CrossCommand <command>
 	Runs <command> for each Scala version specified for cross-building.
 

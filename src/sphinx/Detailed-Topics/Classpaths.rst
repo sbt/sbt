@@ -3,7 +3,7 @@ Classpaths, sources, and resources
 ==================================
 
 This page discusses how sbt builds up classpaths for different actions,
-like `compile`, `run`, and `test` and how to override or augment
+like :key:`compile`, :key:`run`, and :key:`test` and how to override or augment
 these classpaths.
 
 Basics
@@ -74,8 +74,8 @@ To insert a named task, which is the better approach for plugins:
 The `task` method is used to refer to the actual task instead of the
 result of the task.
 
-For resources, there are similar keys `resourceGenerators` and
-`resourceManaged`.
+For resources, there are similar keys :key:`resourceGenerators` and
+:key:`resourceManaged`.
 
 Excluding source files by name
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -107,33 +107,33 @@ Keys
 
 For classpaths, the relevant keys are:
 
--  `unmanagedClasspath`
--  `managedClasspath`
--  `externalDependencyClasspath`
--  `internalDependencyClasspath`
+-  :key:`unmanagedClasspath`
+-  :key:`managedClasspath`
+-  :key:`externalDependencyClasspath`
+-  :key:`internalDependencyClasspath`
 
 For sources:
 
--  `unmanagedSources` These are by default built up from
-   `unmanagedSourceDirectories`, which consists of `scalaSource`
-   and `javaSource`.
--  `managedSources` These are generated sources.
--  `sources` Combines `managedSources` and `unmanagedSources`.
--  `sourceGenerators` These are tasks that generate source files.
+-  :key:`unmanagedSources` These are by default built up from
+   :key:`unmanagedSourceDirectories`, which consists of :key:`scalaSource`
+   and :key:`javaSource`.
+-  :key:`managedSources` These are generated sources.
+-  :key:`sources` Combines :key:`managedSources` and :key:`unmanagedSources`.
+-  :key:`sourceGenerators` These are tasks that generate source files.
    Typically, these tasks will put sources in the directory provided by
-   `sourceManaged`.
+   :key:`sourceManaged`.
 
 For resources
 
--  `unmanagedResources` These are by default built up from
-   `unmanagedResourceDirectories`, which by default is
-   `resourceDirectory`, excluding files matched by
-   `defaultExcludes`.
--  `managedResources` By default, this is empty for standard
+-  :key:`unmanagedResources` These are by default built up from
+   :key:`unmanagedResourceDirectories`, which by default is
+   :key:`resourceDirectory`, excluding files matched by
+   :key:`defaultExcludes`.
+-  :key:`managedResources` By default, this is empty for standard
    projects. sbt plugins will have a generated descriptor file here.
--  `resourceGenerators` These are tasks that generate resource files.
+-  :key:`resourceGenerators` These are tasks that generate resource files.
    Typically, these tasks will put resources in the directory provided
-   by `resourceManaged`.
+   by :key:`resourceManaged`.
 
 Use the :doc:`inspect command </Detailed-Topics/Inspecting-Settings>` for more details.
 

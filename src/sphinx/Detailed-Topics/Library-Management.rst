@@ -30,7 +30,7 @@ project definition are required to use this method unless you would like
 to change the location of the directory you store the jars in.
 
 To change the directory jars are stored in, change the
-`unmanagedBase` setting in your project definition. For example, to
+:key:`unmanagedBase` setting in your project definition. For example, to
 use `custom_lib/`:
 
 ::
@@ -38,7 +38,7 @@ use `custom_lib/`:
     unmanagedBase := baseDirectory.value / "custom_lib"
 
 If you want more control and flexibility, override the
-`unmanagedJars` task, which ultimately provides the manual
+:key:`unmanagedJars` task, which ultimately provides the manual
 dependencies to sbt. The default implementation is roughly:
 
 ::
@@ -161,12 +161,12 @@ See :doc:`Resolvers` for details on defining other types of repositories.
 Override default resolvers
 ~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-`resolvers` configures additional, inline user resolvers. By default,
+:key:`resolvers` configures additional, inline user resolvers. By default,
 `sbt` combines these resolvers with default repositories (Maven
-Central and the local Ivy repository) to form `externalResolvers`. To
-have more control over repositories, set `externalResolvers`
+Central and the local Ivy repository) to form :key:`externalResolvers`. To
+have more control over repositories, set :key:`externalResolvers`
 directly. To only specify repositories in addition to the usual
-defaults, configure `resolvers`.
+defaults, configure :key:`resolvers`.
 
 For example, to use the Sonatype OSS Snapshots repository in addition to
 the default repositories,
@@ -257,9 +257,9 @@ For multiple classifiers, use multiple `classifier` calls:
       "org.lwjgl.lwjgl" % "lwjgl-platform" % lwjglVersion classifier "natives-windows" classifier "natives-linux" classifier "natives-osx"
 
 To obtain particular classifiers for all dependencies transitively, run
-the `updateClassifiers` task. By default, this resolves all artifacts
+the :key:`updateClassifiers` task. By default, this resolves all artifacts
 with the `sources` or `javadoc` classifier. Select the classifiers
-to obtain by configuring the `transitiveClassifiers` setting. For
+to obtain by configuring the :key:`transitiveClassifiers` setting. For
 example, to only retrieve sources:
 
 ::
@@ -300,8 +300,8 @@ Download Sources
 ~~~~~~~~~~~~~~~~
 
 Downloading source and API documentation jars is usually handled by an
-IDE plugin. These plugins use the `updateClassifiers` and
-`updateSbtClassifiers` tasks, which produce an :doc:`Update-Report`
+IDE plugin. These plugins use the :key:`updateClassifiers` and
+:key:`updateSbtClassifiers` tasks, which produce an :doc:`Update-Report`
 referencing these jars.
 
 To have sbt download the dependency's sources without using an IDE
@@ -333,8 +333,9 @@ To define extra attributes on the current project:
 
 ::
 
-    projectID ~= { id =>
-        id extra("color" -> "blue", "component" -> "compiler-interface")
+    projectID := {
+        val previous = projectID.value
+        previous.extra("color" -> "blue", "component" -> "compiler-interface")
     }
 
 Inline Ivy XML
@@ -406,7 +407,7 @@ Conflict Management
 
 The conflict manager decides what to do when  dependency resolution brings in different versions of the same library.
 By default, the latest revision is selected.
-This can be changed by setting `conflictManager`, which has type `ConflictManager <../../api/sbt/ConflictManager.html>`_.
+This can be changed by setting :key:`conflictManager`, which has type `ConflictManager <../../api/sbt/ConflictManager.html>`_.
 See the `Ivy documentation <http://ant.apache.org/ivy/history/latest-milestone/settings/conflict-managers.html>`_ for details on the different conflict managers.
 For example, to specify that no conflicts are allowed,
 
@@ -546,16 +547,16 @@ your dependency definition:
 
     libraryDependencies += "org.scalatest" % "scalatest" % "1.2" % "test->compile"
 
-This says that your project's `test` configuration uses
-`ScalaTest`'s `compile` configuration. See the `Ivy
+This says that your project's `"test"` configuration uses
+`ScalaTest`'s `"compile"` configuration. See the `Ivy
 documentation <http://ant.apache.org/ivy/history/2.3.0-rc1/tutorial/conf.html>`_
 for more advanced mappings. Most projects published to Maven
-repositories will use the `compile` configuration.
+repositories will use the `"compile"` configuration.
 
 A useful application of configurations is to group dependencies that are
 not used on normal classpaths. For example, your project might use a
 `"js"` configuration to automatically download jQuery and then include
-it in your jar by modifying `resources`. For example:
+it in your jar by modifying :key:`resources`. For example:
 
 ::
 
@@ -570,8 +571,8 @@ makes it private to the project so that it is not used for publishing.
 See :doc:`/Detailed-Topics/Update-Report` for more information on selecting managed
 artifacts.
 
-A configuration without a mapping (no `"->"`) is mapped to `default`
-or `compile`. The `->` is only needed when mapping to a different
+A configuration without a mapping (no `"->"`) is mapped to `"default"`
+or `"compile"`. The `->` is only needed when mapping to a different
 configuration than those. The ScalaTest dependency above can then be
 shortened to:
 

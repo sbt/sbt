@@ -9,7 +9,7 @@
    
    ~ test
 
-You can make a command run when certain files change by prefixing the command with `~`.  Monitoring is terminated when `enter` is pressed.  This triggered execution is configured by the `watch` setting, but typically the basic settings `watchSources` and `pollInterval` are modified as described in later sections.
+You can make a command run when certain files change by prefixing the command with `~`.  Monitoring is terminated when `enter` is pressed.  This triggered execution is configured by the :key:`watch` setting, but typically the basic settings :key:`watchSources` and :key:`pollInterval` are modified as described in later sections.
 
 The original use-case for triggered execution was continuous compilation:
 
@@ -19,7 +19,7 @@ The original use-case for triggered execution was continuous compilation:
 
     > ~ compile
 
-You can use the triggered execution feature to run any command or task, however.  The following will poll for changes to your source code (main or test) and run `testOnly` for the specified test.
+You can use the triggered execution feature to run any command or task, however.  The following will poll for changes to your source code (main or test) and run :key:`testOnly` for the specified test.
 
 ::
 
@@ -47,8 +47,8 @@ This runs `a` and then `b` when sources change.
    
    watchSources += baseDirectory.value / "examples.txt"
 
-* `watchSources` defines the files for a single project that are monitored for changes.  By default, a project watches resources and Scala and Java sources.
-* `watchTransitiveSources` then combines the `watchSources` for the current project and all execution and classpath dependencies (see :doc:`/Getting-Started/Full-Def` for details on inter-project dependencies).
+* :key:`watchSources` defines the files for a single project that are monitored for changes.  By default, a project watches resources and Scala and Java sources.
+* :key:`watchTransitiveSources` then combines the :key:`watchSources` for the current project and all execution and classpath dependencies (see :doc:`/Getting-Started/Full-Def` for details on inter-project dependencies).
 
 To add the file `demo/example.txt` to the files to watch,
 
@@ -63,7 +63,7 @@ To add the file `demo/example.txt` to the files to watch,
    
    pollInterval := 1000 // in ms
 
-`pollInterval` selects the interval between polling for changes in milliseconds.  The default value is `500 ms`.  To change it to `1 s`,
+:key:`pollInterval` selects the interval between polling for changes in milliseconds.  The default value is `500 ms`.  To change it to `1 s`,
 
 ::
 

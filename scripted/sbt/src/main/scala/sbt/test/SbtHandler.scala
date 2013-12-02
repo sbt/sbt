@@ -10,31 +10,56 @@ package test
 
 	import Logger._
 
-final class SbtHandler(directory: File, launcher: File, log: Logger, server: IPC.Server, launchOpts: Seq[String] = Seq()) extends StatementHandler
+final case class SbtInstance(process: Process, server: IPC.Server)
+
+final class SbtHandler(directory: File, launcher: File, log: Logger, launchOpts: Seq[String] = Seq()) extends StatementHandler
 {
-	def this(directory: File, launcher: File, log: xsbti.Logger, server: IPC.Server, launchOpts: Seq[String]) = this(directory, launcher, log: Logger, server, launchOpts)
-	type State = Process
-	def initialState = newRemote
-	def apply(command: String, arguments: List[String], p: Process): Process =
-	{
-		send((command :: arguments.map(escape)).mkString(" "))
-		receive(command + " failed")
-		p
+	type State = Option[SbtInstance]
+	def initialState = None
+
+	def apply(command: String, arguments: List[String], i: Option[SbtInstance]): Option[SbtInstance] = onSbtInstance(i) { (process, server) =>
+		send((command :: arguments.map(escape)).mkString(" "), server)
+		receive(command + " failed", server)
 	}
-	def finish(state: Process) =
-		try {
-			server.connection { _.send("exit") }
-			state.exitValue()
-		} catch {
-			case e: IOException =>  state.destroy()
+	def onSbtInstance(i: Option[SbtInstance])(f: (Process, IPC.Server) => Unit): Option[SbtInstance] = i match {
+		case Some(ai @ SbtInstance(process, server)) if server.isClosed =>
+			finish(i)
+			onNewSbtInstance(f)
+		case Some(SbtInstance(process, server)) =>
+			f(process, server)
+			i
+		case None =>
+			onNewSbtInstance(f)
+	}
+	private[this] def onNewSbtInstance(f: (Process, IPC.Server) => Unit): Option[SbtInstance] = 
+	{
+		val server = IPC.unmanagedServer
+		val p = try newRemote(server) catch { case e: Throwable => server.close(); throw e }
+		val ai = Some(SbtInstance(p, server))
+		try f(p, server) catch { case e: Throwable =>
+			// TODO: closing is necessary only because StatementHandler uses exceptions for signaling errors
+			finish(ai); throw e
 		}
-	def send(message: String) = server.connection { _.send(message) }
-	def receive(errorMessage: String) =
+		ai
+	}
+
+	def finish(state: Option[SbtInstance]) = state match {
+		case Some(SbtInstance(process, server)) =>
+			try {
+				send("exit", server)
+				process.exitValue()
+			} catch {
+				case e: IOException =>  process.destroy()
+			}
+		case None =>
+	}
+	def send(message: String, server: IPC.Server) = server.connection { _.send(message) }
+	def receive(errorMessage: String, server: IPC.Server) =
 		server.connection { ipc =>
 			val resultMessage = ipc.receive
 			if(!resultMessage.toBoolean) throw new TestFailed(errorMessage)
 		}
-	def newRemote =
+	def newRemote(server: IPC.Server): Process =
 	{
 		val launcherJar = launcher.getAbsolutePath
 		val globalBase = "-Dsbt.global.base=" + (new File(directory, "global")).getAbsolutePath
@@ -42,8 +67,8 @@ final class SbtHandler(directory: File, launcher: File, log: Logger, server: IPC
 		val io = BasicIO(log, false).withInput(_.close())
 		val p = Process(args, directory) run( io )
 		Spawn { p.exitValue(); server.close() }
-		try { receive("Remote sbt initialization failed") }
-		catch { case e: java.net.SocketException => error("Remote sbt initialization failed") }
+		try { receive("Remote sbt initialization failed", server) }
+		catch { case e: java.net.SocketException => throw new TestFailed("Remote sbt initialization failed") }
 		p
 	}
 	import java.util.regex.Pattern.{quote => q}

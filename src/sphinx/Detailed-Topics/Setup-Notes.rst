@@ -52,22 +52,27 @@ following uses the pre-0.11 style of putting the boot directory in
 
     java -Dsbt.boot.directory=project/boot/
 
-HTTP Proxy
-----------
+HTTP/HTTPS/FTP Proxy
+--------------------
 
-On Unix, sbt will pick up any HTTP proxy settings from the standard
-`http_proxy` environment variable. If you are behind a proxy requiring
-authentication, your `sbt` script must also pass flags to set the
-`http.proxyUser` and `http.proxyPassword` properties:
+On Unix, sbt will pick up any HTTP, HTTPS, or FTP proxy settings from the standard
+`http_proxy`, `https_proxy`, and `ftp_proxy` environment variables. If you are behind
+a proxy requiring authentication, your `sbt` script must also pass flags to set the
+`http.proxyUser` and `http.proxyPassword` properties for HTTP,
+`ftp.proxyUser` and `ftp.proxyPassword` properties for FTP,
+or `https.proxyUser` and `https.proxyPassword` properties for HTTPS.
+
+For example,
 
 .. code-block:: console
 
     java -Dhttp.proxyUser=username -Dhttp.proxyPassword=mypassword
 
 On Windows, your script should set properties for proxy host, port, and
-if applicable, username and password:
+if applicable, username and password.  For example, for HTTP:
 
 .. code-block:: console
 
     java -Dhttp.proxyHost=myproxy -Dhttp.proxyPort=8080 -Dhttp.proxyUser=username -Dhttp.proxyPassword=mypassword
 
+Replace `http` with `https` or `ftp` in the above command line to configure HTTPS or FTP.

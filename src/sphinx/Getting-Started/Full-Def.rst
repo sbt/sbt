@@ -194,24 +194,11 @@ In summary:
 When to use `.scala` files
 ----------------------------
 
-In `.scala` files, you can write any Scala code including `val`, `object`,
-and method definitions.
+In `.scala` files, you can write any Scala code, including top-level classes and objects.
+Also, there are no restrictions on blank lines, since they are standard `.scala` files.
 
-*One recommended approach is to define settings in `.sbt` files, using
-`.scala` files when you need to factor out a `val` or `object` or
-method definition.*
-
-There's one build definition, which is a nested project inside your main
-project. `.sbt` and `.scala` files are compiled together to create
-that single definition.
-
-`.scala` files are also required to define multiple projects in a
-single build. More on that is coming up in :doc:`Multi-Project Builds <Multi-Project>`.
-
-(A disadvantage of using `.sbt` files in a :doc:`multi-project build <Multi-Project>` is that they'll be spread around
-in different directories; for that reason, some people prefer to put
-settings in their `.scala` files if they have sub-projects. This will
-be clearer after you see how :doc:`multi-project builds <Multi-Project>` work.)
+The recommended approach is to define most configuration in `.sbt` files, using
+`.scala` files for task implementations or to share values, such as keys, across `.sbt` files.
 
 The build definition project in interactive mode
 ------------------------------------------------
@@ -252,12 +239,12 @@ in this order:
 
 -  Settings from `Build.settings` and `Project.settings` in your
    `.scala` files.
--  Your user-global settings; for example in `~/.sbt/build.sbt` you
+-  Your user-global settings; for example in :sublit:`|globalSbtFile|` you
    can define settings affecting *all* your projects.
 -  Settings injected by plugins, see :doc:`using plugins <Using-Plugins>` coming up next.
 -  Settings from `.sbt` files in the project.
 -  Build definition projects (i.e. projects inside `project`) have
-   settings from global plugins (`~/.sbt/plugins`) added. :doc:`Using plugins <Using-Plugins>` explains this more.
+   settings from global plugins (:sublit:`|globalPluginsBase|`) added. :doc:`Using plugins <Using-Plugins>` explains this more.
 
 Later settings override earlier ones. The entire list of settings forms
 the build definition.
@@ -266,3 +253,7 @@ Next
 ----
 
 You're at the end of Getting Started! There's a :doc:`brief recap <Summary>`.
+
+.. |globalBase| replace:: ~/.sbt/|version|/
+.. |globalSbtFile| replace:: |globalBase|\ global.sbt
+.. |globalPluginsBase| replace:: |globalBase|\ plugins/

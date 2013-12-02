@@ -26,16 +26,14 @@ You can place test jars such as
 `specs <http://code.google.com/p/specs/>`_, and
 `ScalaTest <http://www.scalatest.org/>`_ in `lib` as well.
 
-Dependencies in `lib` go on all the classpaths (for `compile`,
-`test`, `run`, and `console`). If you wanted to change the
+Dependencies in `lib` go on all the classpaths (for :key:`compile`,
+:key:`test`, :key:`run`, and :key:`console`). If you wanted to change the
 classpath for just one of those, you would adjust
 `dependencyClasspath in Compile` or `dependencyClasspath in Runtime`
-for example. You could use `~=` to get the previous classpath value,
-filter some entries out, and return a new classpath value. See :doc:`more about settings <More-About-Settings>`
-for details of `~=`.
+for example.
 
 There's nothing to add to `build.sbt` to use unmanaged dependencies,
-though you could change the `unmanagedBase` key if you'd like to use
+though you could change the :key:`unmanagedBase` key if you'd like to use
 a different directory rather than `lib`.
 
 To use `custom_lib` instead of `lib`:
@@ -44,14 +42,14 @@ To use `custom_lib` instead of `lib`:
 
     unmanagedBase := baseDirectory.value / "custom_lib"
 
-`baseDirectory` is the project's root directory, so here you're
-changing `unmanagedBase` depending on `baseDirectory` using the
+:key:`baseDirectory` is the project's root directory, so here you're
+changing :key:`unmanagedBase` depending on :key:`baseDirectory` using the
 special `value` method as explained in :doc:`more about settings <More-About-Settings>`.
 
-There's also an `unmanagedJars` task which lists the jars from the
-`unmanagedBase` directory. If you wanted to use multiple directories
+There's also an :key:`unmanagedJars` task which lists the jars from the
+:key:`unmanagedBase` directory. If you wanted to use multiple directories
 or do something else complex, you might need to replace the whole
-`unmanagedJars` task with one that does something else.
+:key:`unmanagedJars` task with one that does something else.
 
 Managed Dependencies
 --------------------
@@ -64,7 +62,7 @@ The `libraryDependencies` key
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 Most of the time, you can simply list your dependencies in the setting
-`libraryDependencies`. It's also possible to write a Maven POM file or
+:key:`libraryDependencies`. It's also possible to write a Maven POM file or
 Ivy configuration file to externally configure your dependencies, and
 have sbt use those external configuration files. You can learn more
 about that :ref:`here <external-maven-ivy>`.
@@ -82,14 +80,14 @@ or like this, where `configuration` is also a string:
 
     libraryDependencies += groupID % artifactID % revision % configuration
 
-`libraryDependencies` is declared in `Keys <../../sxr/Keys.scala.html>`_ like this:
+:key:`libraryDependencies` is declared in `Keys <../../sxr/sbt/Keys.scala.html#sbt.Keys.libraryDependencies>`_ like this:
 
 ::
 
     val libraryDependencies = settingKey[Seq[ModuleID]]("Declares managed dependencies.")
 
 The `%` methods create `ModuleID` objects from strings, then you add
-those `ModuleID` to `libraryDependencies`.
+those `ModuleID` to :key:`libraryDependencies`.
 
 Of course, sbt (via Ivy) has to know where to download the module. If
 your module is in one of the default repositories sbt comes with, this
@@ -99,10 +97,10 @@ will just work. For example, Apache Derby is in a default repository:
 
     libraryDependencies += "org.apache.derby" % "derby" % "10.4.1.3"
 
-If you type that in `build.sbt` and then `update`, sbt should
+If you type that in `build.sbt` and then :key:`update`, sbt should
 download Derby to `~/.ivy2/cache/org.apache.derby/`. (By the way,
-`update` is a dependency of `compile` so there's no need to manually
-type `update` most of the time.)
+:key:`update` is a dependency of :key:`compile` so there's no need to manually
+type :key:`update` most of the time.)
 
 Of course, you can also use `++=` to add a list of dependencies all at
 once:
@@ -114,7 +112,7 @@ once:
         groupID % otherID % otherRevision
     )
 
-In rare cases you might find reasons to use `:=` with `libraryDependencies` as well.
+In rare cases you might find reasons to use `:=` with :key:`libraryDependencies` as well.
 
 Getting the right Scala version with `%%`
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -129,7 +127,7 @@ artifact name. This is just a shortcut. You could write this without the
 
     libraryDependencies += "org.scala-tools" % "scala-stm_2.9.1" % "0.3"
 
-Assuming the `scalaVersion` for your build is `2.9.1`, the following
+Assuming the :key:`scalaVersion` for your build is `2.9.1`, the following
 is identical:
 
 ::
@@ -179,8 +177,8 @@ For example:
 
     resolvers += "Sonatype OSS Snapshots" at "https://oss.sonatype.org/content/repositories/snapshots"
 
-The `resolvers` key is defined in
-`Keys <../../sxr/Keys.scala.html>`_ like
+The :key:`resolvers` key is defined in
+`Keys <../../sxr/sbt/Keys.scala.html#sbt.Keys.resolvers>`_ like
 this:
 
 ::
@@ -201,14 +199,14 @@ See :doc:`/Detailed-Topics/Resolvers` for details on defining other types of rep
 Overriding default resolvers
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-`resolvers` does not contain the default resolvers; only additional
+:key:`resolvers` does not contain the default resolvers; only additional
 ones added by your build definition.
 
-`sbt` combines `resolvers` with some default repositories to form
-`externalResolvers`.
+`sbt` combines :key:`resolvers` with some default repositories to form
+:key:`externalResolvers`.
 
 Therefore, to change or remove the default resolvers, you would need to
-override `externalResolvers` instead of `resolvers`.
+override :key:`externalResolvers` instead of :key:`resolvers`.
 
 .. _gsg-ivy-configurations:
 

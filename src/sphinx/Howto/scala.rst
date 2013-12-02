@@ -2,8 +2,6 @@
  Configure and use Scala
 =========================
 
-By default, sbt's interactive mode is started when no commands are provided on the command line or when the `shell` command is invoked.
-
 .. howto::
    :id: version
    :title: Set the Scala version used for building the project
@@ -11,7 +9,7 @@ By default, sbt's interactive mode is started when no commands are provided on t
    
    version := "1.0"
 
-The `scalaVersion` configures the version of Scala used for compilation.  By default, sbt also adds a dependency on the Scala library with this version.  See the next section for how to disable this automatic dependency.  If the Scala version is not specified, the version sbt was built against is used.  It is recommended to explicitly specify the version of Scala.
+The :key:`scalaVersion` configures the version of Scala used for compilation.  By default, sbt also adds a dependency on the Scala library with this version.  See the next section for how to disable this automatic dependency.  If the Scala version is not specified, the version sbt was built against is used.  It is recommended to explicitly specify the version of Scala.
 
 For example, to set the Scala version to "2.9.2",
 
@@ -26,7 +24,7 @@ For example, to set the Scala version to "2.9.2",
    
    autoScalaLibrary := false
 
-sbt adds a dependency on the Scala standard library by default.  To disable this behavior, set the `autoScalaLibrary` setting to false.
+sbt adds a dependency on the Scala standard library by default.  To disable this behavior, set the :key:`autoScalaLibrary` setting to false.
 
 ::
 
@@ -52,7 +50,7 @@ To set the Scala version in all scopes to a specific value, use the `++` command
    
    scalaHome := Some(file("/path/to/scala/home/"))
 
-Defining the `scalaHome` setting with the path to the Scala home directory will use that Scala installation.  sbt still requires `scalaVersion` to be set when a local Scala version is used.  For example,
+Defining the :key:`scalaHome` setting with the path to the Scala home directory will use that Scala installation.  sbt still requires :key:`scalaVersion` to be set when a local Scala version is used.  For example,
 
 ::
 
@@ -73,7 +71,7 @@ See :doc:`cross building </Detailed-Topics/Cross-Build>`.
    
    consoleQuick
 
-The `consoleQuick` action retrieves dependencies and puts them on the classpath of the Scala REPL.  The project's sources are not compiled, but sources of any source dependencies are compiled.  To enter the REPL with test dependencies on the classpath but without compiling test sources, run `test:consoleQuick`.  This will force compilation of main sources.
+The :key:`consoleQuick` action retrieves dependencies and puts them on the classpath of the Scala REPL.  The project's sources are not compiled, but sources of any source dependencies are compiled.  To enter the REPL with test dependencies on the classpath but without compiling test sources, run `test:consoleQuick`.  This will force compilation of main sources.
 
 .. howto::
    :id: console
@@ -82,7 +80,7 @@ The `consoleQuick` action retrieves dependencies and puts them on the classpath 
 
    console
 
-The `console` action retrieves dependencies and compiles sources and puts them on the classpath of the Scala REPL.  To enter the REPL with test dependencies and compiled test sources on the classpath, run `test:console`.
+The :key:`console` action retrieves dependencies and compiles sources and puts them on the classpath of the Scala REPL.  To enter the REPL with test dependencies and compiled test sources on the classpath, run `test:console`.
 
 .. howto::
    :id: consoleProject
@@ -104,7 +102,7 @@ For details, see the :doc:`consoleProject </Detailed-Topics/Console-Project>` pa
    
    initialCommands in console := """println("Hi!")"""
 
-Set `initialCommands in console` to set the initial statements to evaluate when `console` and `consoleQuick` are run.  To configure `consoleQuick` separately, use `initialCommands in consoleQuick`.
+Set `initialCommands in console` to set the initial statements to evaluate when :key:`console` and :key:`consoleQuick` are run.  To configure :key:`consoleQuick` separately, use `initialCommands in consoleQuick`.
 For example,
 
 ::
@@ -113,7 +111,7 @@ For example,
 
     initialCommands in consoleQuick := """println("Hello from consoleQuick")"""
 
-The `consoleProject` command is configured separately by `initialCommands in consoleProject`.  It does not use the value from `initialCommands in console` by default.  For example,
+The :key:`consoleProject` command is configured separately by `initialCommands in consoleProject`.  It does not use the value from `initialCommands in console` by default.  For example,
 
 ::
 
@@ -121,10 +119,33 @@ The `consoleProject` command is configured separately by `initialCommands in con
 
 
 .. howto::
+   :id: cleanup
+   :title: Define the commands evaluated when exiting the Scala REPL
+   :type: setting
+   
+   cleanupCommands in console := """println("Bye!")"""
+
+Set `cleanupCommands in console` to set the statements to evaluate after exiting the Scala REPL started by :key:`console` and :key:`consoleQuick`.  To configure :key:`consoleQuick` separately, use `cleanupCommands in consoleQuick`.
+For example,
+
+::
+
+    cleanupCommands in console := """println("Bye from console")"""
+
+    cleanupCommands in consoleQuick := """println("Bye from consoleQuick")"""
+
+The :key:`consoleProject` command is configured separately by `cleanupCommands in consoleProject`.  It does not use the value from `cleanupCommands in console` by default.  For example,
+
+::
+
+    cleanupCommands in consoleProject := """println("Bye from consoleProject")"""
+
+
+.. howto::
    :id: embed
    :title: Use the Scala REPL from project code
 
-sbt runs tests in the same JVM as sbt itself and Scala classes are not in the same class loader as the application classes.  This is also the case in `console` and when `run` is not forked. Therefore, when using the Scala interpreter, it is important to set it up properly to avoid an error message like:
+sbt runs tests in the same JVM as sbt itself and Scala classes are not in the same class loader as the application classes.  This is also the case in :key:`console` and when :key:`run` is not forked. Therefore, when using the Scala interpreter, it is important to set it up properly to avoid an error message like:
 
 .. code-block:: text
 

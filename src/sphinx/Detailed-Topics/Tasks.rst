@@ -130,13 +130,13 @@ Multiple settings are handled similarly:
 
 ::
 
-    stringTask := "Sample: " + sampleTask.value + ", int: " + intValue.value
+    stringTask := "Sample: " + sampleTask.value + ", int: " + intTask.value
 
 Task Scope
 ~~~~~~~~~~
 
 As with settings, tasks can be defined in a specific scope. For example,
-there are separate `compile` tasks for the `compile` and `test`
+there are separate :key:`compile` tasks for the `compile` and `test`
 scopes. The scope of a task is defined the same as for a setting. In the
 following example, `test:sampleTask` uses the result of
 `compile:intTask`.
@@ -252,7 +252,7 @@ Example
 -------
 
 A common scenario is getting the sources for all subprojects for processing all at once, such as passing them to scaladoc.
-The task that we want to obtain values for is `sources` and we want to get the values in all non-root projects and in the `Compile` configuration.
+The task that we want to obtain values for is :key:`sources` and we want to get the values in all non-root projects and in the `Compile` configuration.
 This looks like:
 
 ::
@@ -282,7 +282,7 @@ The simplest case is explicitly specifying the values for the parts:
 
 ::
 
-    val filter: ScopeFilter = 
+    val filter: ScopeFilter =
        ScopeFilter(
           inProjects( core, util ),
           inConfigurations( Compile, Test )
@@ -368,7 +368,7 @@ The following contrived example sets the maximum errors to be the maximum of all
 
     maxErrors := {
        // select the transitive aggregates for this project, but not the project itself
-       val filter: ScopeFilter = 
+       val filter: ScopeFilter =
           ScopeFilter( inAggregates(ThisProject, includeRoot=false) )
        // get the configured maximum errors in each selected scope,
        // using 0 if not defined in a scope
@@ -384,13 +384,13 @@ The target of `all` is any task or setting, including anonymous ones.
 This means it is possible to get multiple values at once without defining a new task or setting in each scope.
 A common use case is to pair each value obtained with the project, configuration, or full scope it came from.
 
-`resolvedScoped`
+:key:`resolvedScoped`
     Provides the full enclosing `ScopedKey` (which is a `Scope` + `AttributeKey[_]`)
-`thisProject`
+:key:`thisProject`
     Provides the `Project` associated with this scope (undefined at the global and build levels)
-`thisProjectRef`
+:key:`thisProjectRef`
     Provides the `ProjectRef` for the context (undefined at the global and build levels)
-`configuration`
+:key:`configuration`
     Provides the `Configuration` for the context (undefined for the global configuration)
 
 For example, the following defines a task that prints non-Compile configurations that define
@@ -403,7 +403,7 @@ a fairly contrived example):
     lazy val filter: ScopeFilter = ScopeFilter(
        inProjects(ThisProject),
        inAnyConfiguration -- inConfigurations(Compile)
-    )
+   )
 
     // Define a task that provides the name of the current configuration
     //   and the set of sbt plugins defined in the configuration
@@ -434,7 +434,7 @@ This allows controlling the verbosity of stack traces and logging individually f
 as recalling the last logging for a task.
 Tasks also have access to their own persisted binary or text data.
 
-To use Streams, get the value of the `streams` task. This is a
+To use Streams, get the value of the :key:`streams` task. This is a
 special task that provides an instance of
 `TaskStreams <../../api/sbt/std/TaskStreams.html>`_
 for the defining task. This type provides access to named binary and
@@ -468,9 +468,52 @@ To obtain the last logging output from a task, use the `last` command:
     [info] Hello!
 
 The verbosity with which logging is persisted is controlled using the
-`persistLogLevel` and `persistTraceLevel` settings. The `last`
+:key:`persistLogLevel` and :key:`persistTraceLevel` settings. The `last`
 command displays what was logged according to these levels. The levels
 do not affect already logged information.
+
+Dynamic Computations with `Def.taskDyn`
+---------------------------------------
+
+It can be useful to use the result of a task to determine the
+next tasks to evaluate.  This is done using `Def.taskDyn`.  The
+result of `taskDyn` is called a dynamic task because it introduces
+dependencies at runtime.  The `taskDyn` method supports the same
+syntax as `Def.task` and `:=` except that you return a task instead
+of a plain value.
+
+For example, ::
+
+    val dynamic = Def.taskDyn {
+       // decide what to evaluate based on the value of `stringTask`
+       if(stringTask.value == "dev")
+          // create the dev-mode task: this is only evaluated if the
+          //   value of stringTask is "dev"
+          Def.task {
+             3
+          }
+       else
+          // create the production task: only evaluated if the value
+          //    of the stringTask is not "dev"
+          Def.task {
+             intTask.value + 5
+          }
+    }
+
+
+    myTask := {
+       val num = dynamic.value
+		 println(s"Number selected was $num")
+	 }
+
+The only static dependency of `myTask` is `stringTask`.
+The dependency on `intTask` is only introduced in non-dev mode.
+
+.. note::
+
+   A dynamic task cannot refer to itself or a circular dependency will result.
+   In the example above, there would be a circular dependency if the code passed to `taskDyn` referenced `myTask`.
+
 
 Handling Failure
 ----------------
@@ -486,7 +529,7 @@ when the original task fails to complete normally.  If the original task succeed
 the new task fails.
 `Incomplete <../../api/sbt/Incomplete.html>`_
 is an exception with information about any tasks that caused the failure
-and any underlying exceptions thrown during task execution. 
+and any underlying exceptions thrown during task execution.
 
 For example:
 
@@ -494,7 +537,7 @@ For example:
 
     intTask := error("Failed.")
 
-    lazy val intTask := {
+    intTask := {
        println("Ignoring failure: " + intTask.failure.value)
        3
     }

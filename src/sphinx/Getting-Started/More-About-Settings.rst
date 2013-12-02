@@ -20,7 +20,7 @@ Different settings transform the map in different ways.
 The `Setting` which `:=` creates puts a fixed, constant value in the
 new, transformed map. For example, if you transform a map with the
 setting `name := "hello"` the new map has the string `"hello"`
-stored under the key `name`.
+stored under the key :key:`name`.
 
 Settings must end up in the master list of settings to do any good (all
 lines in a `build.sbt` automatically end up in the list, but in a
@@ -94,7 +94,7 @@ Or, set the name to the name of the project's directory:
     // name the project after the directory it's inside
     name := baseDirectory.value.getName
 
-This transforms the value of `baseDirectory` using the standard `getName` method of `java.io.File`.
+This transforms the value of :key:`baseDirectory` using the standard `getName` method of `java.io.File`.
 
 Using multiple inputs is similar.  For example,
 
@@ -107,8 +107,8 @@ This sets the name in terms of its previous value as well as the organization an
 Settings with dependencies
 ~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-In the setting `name := baseDirectory.value.getName`, `name` will have
-a *dependency* on `baseDirectory`. If you place the above in
+In the setting `name := baseDirectory.value.getName`, :key:`name` will have
+a *dependency* on :key:`baseDirectory`. If you place the above in
 `build.sbt` and run the sbt interactive console, then type
 `inspect name`, you should see (in part):
 
@@ -122,11 +122,11 @@ Remember that some settings describe tasks, so this approach also
 creates dependencies between tasks.
 
 For example, if you `inspect compile` you'll see it depends on another
-key `compileInputs`, and if you inspect `compileInputs` it in turn
+key :key:`compileInputs`, and if you inspect :key:`compileInputs` it in turn
 depends on other keys. Keep following the dependency chains and magic
-happens. When you type `compile` sbt automatically performs an
-`update`, for example. It Just Works because the values required as
-inputs to the `compile` computation require sbt to do the `update`
+happens. When you type :key:`compile` sbt automatically performs an
+:key:`update`, for example. It Just Works because the values required as
+inputs to the :key:`compile` computation require sbt to do the :key:`update`
 computation first.
 
 In this way, all build dependencies in sbt are *automatic* rather than
@@ -154,17 +154,17 @@ keys create a `Setting[Task[T]]` rather than a `Setting[T]` when you
 build a setting with `:=`, etc.  Tasks can use settings as inputs, but
 settings cannot use tasks as inputs.
 
-Take these two keys (from `Keys <../../sxr/Keys.scala.html>`_):
+Take these two keys (from `Keys <../../sxr/sbt/Keys.scala.html>`_):
 
 ::
 
     val scalacOptions = taskKey[Seq[String]]("Options for the Scala compiler.")
     val checksums = settingKey[Seq[String]]("The list of checksums to generate and to verify for dependencies.")
 
-(`scalacOptions` and `checksums` have nothing to do with each other,
+(:key:`scalacOptions` and :key:`checksums` have nothing to do with each other,
 they are just two keys with the same value type, where one is a task.)
 
-It is possible to compile a `build.sbt` that aliases `scalacOptions` to `checksums`, but not the other way.
+It is possible to compile a `build.sbt` that aliases :key:`scalacOptions` to :key:`checksums`, but not the other way.
 For example, this is allowed:
 
 ::
@@ -189,7 +189,7 @@ Appending with dependencies: `+=` and `++=`
 Other keys can be used when appending to an existing setting or task, just like they can for assigning with `:=`.
 
 For example, say you have a coverage report named after the project, and
-you want to add it to the files removed by `clean`:
+you want to add it to the files removed by :key:`clean`:
 
 ::
 
@@ -199,5 +199,5 @@ Next
 ----
 
 At this point you know how to get things done with settings, so we can
-move on to a specific key that comes up often: `libraryDependencies`.
+move on to a specific key that comes up often: :key:`libraryDependencies`.
 :doc:`Learn about library dependencies <Library-Dependencies>`.

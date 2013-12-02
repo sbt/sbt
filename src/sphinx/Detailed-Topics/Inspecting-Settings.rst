@@ -50,10 +50,10 @@ in the build in `/home/user/sample/`:
     > root/compile:compile
     > {file:/home/user/sample/}root/compile:compile
 
-As another example, `run` by itself refers to `compile:run` because
-there is no global `run` task and the first configuration searched,
-`compile`, defines a `run`. Therefore, to reference the `run` task
-for the `test` configuration, the configuration axis must be specified
+As another example, :key:`run` by itself refers to `compile:run` because
+there is no global :key:`run` task and the first configuration searched,
+:key:`compile`, defines a :key:`run`. Therefore, to reference the :key:`run` task
+for the `Test` configuration, the configuration axis must be specified
 like `test:run`. Some other examples that require the explicit
 `test:` axis:
 
@@ -68,9 +68,9 @@ Task-specific Settings
 ----------------------
 
 Some settings are defined per-task. This is used when there are several
-related tasks, such as `package`, `packageSrc`, and
-`packageDoc`, in the same configuration (such as `compile` or
-`test`). For package tasks, their settings are the files to package,
+related tasks, such as :key:`package`, :key:`packageSrc`, and
+:key:`packageDoc`, in the same configuration (such as :key:`compile` or
+:key:`test`). For package tasks, their settings are the files to package,
 the options to use, and the output file to produce. Each package task
 should be able to have different values for these settings.
 
@@ -119,9 +119,9 @@ is defined. For example,
     [info]  {file:/home/user/sample/}root/*:libraryDependencies
     ...
 
-This shows that `libraryDependencies` has been defined on the current
+This shows that :key:`libraryDependencies` has been defined on the current
 project (`{file:/home/user/sample/}root`) in the global configuration
-(`*:`). For a task like `update`, the output looks like:
+(`*:`). For a task like :key:`update`, the output looks like:
 
 .. code-block:: console
 
@@ -161,7 +161,7 @@ distinction is explained in more detail in the following sections.
 Requested Dependencies
 ~~~~~~~~~~~~~~~~~~~~~~
 
-As an example, we'll look at `console`:
+As an example, we'll look at :key:`console`:
 
 .. code-block:: console
 
@@ -179,15 +179,15 @@ As an example, we'll look at `console`:
 
     ...
 
-This shows the inputs to the `console` task. We can see that it gets
-its classpath and options from `fullClasspath` and
+This shows the inputs to the :key:`console` task. We can see that it gets
+its classpath and options from :key:`fullClasspath` and
 `scalacOptions(for console)`. The information provided by the
 `inspect` command can thus assist in finding the right setting to
-change. The convention for keys, like `console` and
-`fullClasspath`, is that the Scala identifier is camel case, while
+change. The convention for keys, like :key:`console` and
+:key:`fullClasspath`, is that the Scala identifier is camel case, while
 the String representation is lowercase and separated by dashes. The
 Scala identifier for a configuration is uppercase to distinguish it from
-tasks like `compile` and `test`. For example, we can infer from the
+tasks like :key:`compile` and :key:`test`. For example, we can infer from the
 previous example how to add code to be run when the Scala interpreter
 starts up:
 
@@ -199,13 +199,13 @@ starts up:
     import mypackage._
     ...
 
-`inspect` showed that `console` used the setting
+`inspect` showed that :key:`console` used the setting
 `compile:console::initialCommands`. Translating the
-`initialCommands` string to the Scala identifier gives us
-`initialCommands`. `compile` indicates that this is for the main
+:key:`initialCommands` string to the Scala identifier gives us
+:key:`initialCommands`. :key:`compile` indicates that this is for the main
 sources. `console::` indicates that the setting is specific to
-`console`. Because of this, we can set the initial commands on the
-`console` task without affecting the `consoleQuick` task, for
+:key:`console`. Because of this, we can set the initial commands on the
+:key:`console` task without affecting the :key:`consoleQuick` task, for
 example.
 
 Actual Dependencies
@@ -242,10 +242,10 @@ For `initialCommands`, we see that it comes from the global scope
 
     compile:console::initialCommands
 
-we know that we can set `initialCommands` as generally as the global
-scope, as specific as the current project's `console` task scope, or
+we know that we can set :key:`initialCommands` as generally as the global
+scope, as specific as the current project's :key:`console` task scope, or
 anything in between. This means that we can, for example, set
-`initialCommands` for the whole project and will affect `console`:
+:key:`initialCommands` for the whole project and will affect :key:`console`:
 
 .. code-block:: console
 
@@ -268,9 +268,9 @@ looking at the reverse dependencies output of `inspect actual`:
     [info]  *:consoleProject
     ...
 
-We now know that by setting `initialCommands` on the whole project,
+We now know that by setting :key:`initialCommands` on the whole project,
 we affect all console tasks in all configurations in that project. If we
-didn't want the initial commands to apply for `consoleProject`, which
+didn't want the initial commands to apply for :key:`consoleProject`, which
 doesn't have our project's classpath available, we could use the more
 specific task axis:
 
@@ -299,7 +299,7 @@ section of the `inspect` command. The Delegates section shows the
 order in which scopes are searched when a value is not defined for the
 requested key.
 
-As an example, consider the initial commands for `console` again:
+As an example, consider the initial commands for :key:`console` again:
 
 .. code-block:: console
 

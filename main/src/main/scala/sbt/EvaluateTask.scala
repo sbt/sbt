@@ -4,9 +4,9 @@
 package sbt
 
 	import java.io.File
-	import Def.{displayFull, ScopedKey, Setting}
+	import Def.{displayFull, dummyState, ScopedKey, Setting}
 	import Keys.{streams, Streams, TaskStreams}
-	import Keys.{dummyRoots, dummyState, dummyStreamsManager, executionRoots, pluginData, streamsManager, taskDefinitionKey, transformState}
+	import Keys.{dummyRoots, dummyStreamsManager, executionRoots, pluginData, streamsManager, taskDefinitionKey, transformState}
 	import Project.richInitializeTask
 	import Scope.{GlobalScope, ThisScope}
 	import Types.const
@@ -15,15 +15,18 @@ package sbt
 	import TaskName._
 
 final case class EvaluateConfig(cancelable: Boolean, restrictions: Seq[Tags.Rule], checkCycles: Boolean = false, progress: ExecuteProgress[Task] = EvaluateTask.defaultProgress)
-final case class PluginData(dependencyClasspath: Seq[Attributed[File]], definitionClasspath: Seq[Attributed[File]], resolvers: Option[Seq[Resolver]], report: Option[UpdateReport])
+final case class PluginData(dependencyClasspath: Seq[Attributed[File]], definitionClasspath: Seq[Attributed[File]], resolvers: Option[Seq[Resolver]], report: Option[UpdateReport], scalacOptions: Seq[String])
 {
 	val classpath: Seq[Attributed[File]] = definitionClasspath ++ dependencyClasspath
 }
 object PluginData
 {
+	@deprecated("Use the alternative that specifies the compiler options and specific classpaths.", "0.13.1")
+	def apply(dependencyClasspath: Seq[Attributed[File]], definitionClasspath: Seq[Attributed[File]], resolvers: Option[Seq[Resolver]], report: Option[UpdateReport]): PluginData =
+		PluginData(dependencyClasspath, definitionClasspath, resolvers, report, Nil)
 	@deprecated("Use the alternative that specifies the specific classpaths.", "0.13.0")
 	def apply(classpath: Seq[Attributed[File]], resolvers: Option[Seq[Resolver]], report: Option[UpdateReport]): PluginData =
-		PluginData(classpath, Nil, resolvers, report)
+		PluginData(classpath, Nil, resolvers, report, Nil)
 }
 
 object EvaluateTask

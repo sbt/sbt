@@ -68,6 +68,7 @@ object InputWrapper
 		sel.setPos(pos) // need to set the position on Select, because that is where the compileTimeOnly check looks
 		val tree = ApplyTree(TypeApply(sel, TypeTree(tpe) :: Nil), ts.tree :: Nil)
 		tree.setPos(ts.tree.pos)
+		tree.setType(tpe)
 		c.Expr[T](tree)
 	}
 
@@ -84,12 +85,23 @@ object InputWrapper
 				InputWrapper.wrapInputTask[T](c)(ts,pos)
 			else if(tpe <:< c.weakTypeOf[Initialize[InputTask[T]]])
 				InputWrapper.wrapInitInputTask[T](c)(ts,pos)
-
 			else
-				c.abort(pos, s"Internal sbt error. Unexpected type $tpe")
+				c.abort(pos, s"Internal sbt error. Unexpected type ${tpe.widen}")
+		}
+	def taskValueMacroImpl[T: c.WeakTypeTag](c: Context): c.Expr[Task[T]] =
+		ContextUtil.selectMacroImpl[Task[T]](c) { (ts, pos) =>
+			val tpe = ts.tree.tpe
+			if(tpe <:< c.weakTypeOf[Initialize[Task[T]]])
+				InputWrapper.wrapInit[Task[T]](c)(ts,pos)
+			else
+				c.abort(pos, s"Internal sbt error. Unexpected type ${tpe.widen}")
 		}
 }
 
+sealed abstract class MacroTaskValue[T] {
+	@compileTimeOnly("`taskValue` can only be used within a setting macro, such as :=, +=, ++=, or Def.setting.")
+	def taskValue: Task[T] = macro InputWrapper.taskValueMacroImpl[T]
+}
 sealed abstract class MacroValue[T] {
 	@compileTimeOnly("`value` can only be used within a task or setting macro, such as :=, +=, ++=, Def.task, or Def.setting.")
 	def value: T = macro InputWrapper.valueMacroImpl[T]

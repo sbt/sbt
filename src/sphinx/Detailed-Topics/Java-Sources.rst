@@ -9,12 +9,12 @@ class files.
 Usage
 =====
 
--  `compile` will compile the sources under `src/main/java` by
+-  :key:`compile` will compile the sources under `src/main/java` by
    default.
--  `testCompile` will compile the sources under `src/test/java` by
+-  :key:`testCompile` will compile the sources under `src/test/java` by
    default.
 
-Pass options to the Java compiler by setting `javacOptions`:
+Pass options to the Java compiler by setting :key:`javacOptions`:
 
 ::
 
@@ -28,7 +28,7 @@ sbt. Multi-element options, such as `-source 1.5`, are specified like:
     javacOptions ++= Seq("-source", "1.5")
 
 You can specify the order in which Scala and Java sources are built with
-the `compileOrder` setting. Possible values are from the
+the :key:`compileOrder` setting. Possible values are from the
 `CompileOrder` enumeration: `Mixed`, `JavaThenScala`, and
 `ScalaThenJava`. If you have circular dependencies between Scala and
 Java sources, you need the default, `Mixed`, which passes both Java
@@ -63,7 +63,7 @@ compile will always provide full checking, however.
 By default, sbt includes `src/main/scala` and `src/main/java` in its
 list of unmanaged source directories. For Java-only projects, the
 unnecessary Scala directories can be ignored by modifying
-`unmanagedSourceDirectories`:
+:key:`unmanagedSourceDirectories`:
 
 ::
 

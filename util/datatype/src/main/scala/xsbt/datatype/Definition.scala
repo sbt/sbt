@@ -7,11 +7,12 @@ sealed trait Definition extends NotNull
 {
 	val name: String
 }
-final class ClassDef(val name: String, val parent: Option[ClassDef], val members: Seq[MemberDef]) extends Definition
+final class ClassDef(val name: String, val parent: Option[ClassDef], val members: Seq[MemberDef], val isAbstract: Boolean) extends Definition
 {
 	def allMembers = members ++ inheritedMembers
 	def inheritedMembers: Seq[MemberDef] = parent.toList.flatMap(_.allMembers)
-	def + (m: MemberLine) = new ClassDef(name, parent, members ++ Seq(new MemberDef(m.name, m.tpe.stripPrefix("~"), m.single, m.tpe.startsWith("~"))) )
+	def hasLazyMembers = members exists (_.lzy)
+	def + (m: MemberLine) = new ClassDef(name, parent, members ++ Seq(new MemberDef(m.name, m.tpe.stripPrefix("~"), m.single, m.tpe.startsWith("~"))), isAbstract)
 }
 final class EnumDef(val name: String, val members: Seq[String]) extends Definition
 

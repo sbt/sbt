@@ -5,6 +5,7 @@ package sbt
 
 	import java.io.File
 	import java.net.URI
+	import java.util.Locale
 	import Project.{Initialize => _, Setting => _, _}
 	import Keys.{appConfiguration, stateBuildStructure, commands, configuration, historyPath, projectCommand, sessionSettings, shellPrompt, thisProject, thisProjectRef, watch}
 	import Scope.{GlobalScope,ThisScope}
@@ -59,7 +60,7 @@ sealed trait ProjectDefinition[PR <: ProjectReference]
 sealed trait Project extends ProjectDefinition[ProjectReference]
 {
 	def copy(id: String = id, base: File = base, aggregate: => Seq[ProjectReference] = aggregate, dependencies: => Seq[ClasspathDep[ProjectReference]] = dependencies,
-		delegates: => Seq[ProjectReference] = delegates, settings: => Seq[Setting[_]] = settings: Seq[Setting[_]], configurations: Seq[Configuration] = configurations,
+		delegates: => Seq[ProjectReference] = delegates, settings: => Seq[Setting[_]] = settings, configurations: Seq[Configuration] = configurations,
 		auto: AddSettings = auto): Project =
 			Project(id, base, aggregate = aggregate, dependencies = dependencies, delegates = delegates, settings, configurations, auto)
 
@@ -178,7 +179,7 @@ object Project extends ProjectExtra
 		val refined = if(!validProjectIDStart(attempt.substring(0, 1)) ) "root-" + attempt else attempt
 		validProjectID(refined).toLeft(refined)
 	}
-	private[this] def normalizeBase(s: String) = s.toLowerCase.replaceAll("""\W+""", "-")
+	private[this] def normalizeBase(s: String) = s.toLowerCase(Locale.ENGLISH).replaceAll("""\W+""", "-")
 
 	/** Normalize a String so that it is suitable for use as a dependency management module identifier.
 	* This is a best effort implementation, since valid characters are not documented or consistent.*/
@@ -222,8 +223,9 @@ object Project extends ProjectExtra
 		val (onLoad, onUnload) = getHooks(structure.data)
 		val newAttrs = unloaded.attributes.put(stateBuildStructure, structure).put(sessionSettings, session).put(Keys.onUnload.key, onUnload)
 		val newState = unloaded.copy(attributes = newAttrs)
-		onLoad(updateCurrent( newState ))
+		onLoad(LogManager.setGlobalLogLevels(updateCurrent( newState ), structure.data))
 	}
+
 	def orIdentity[T](opt: Option[T => T]): T => T = opt getOrElse idFun
 	def getHook[T](key: SettingKey[T => T], data: Settings[Scope]): T => T  =  orIdentity(key in GlobalScope get data)
 	def getHooks(data: Settings[Scope]): (State => State, State => State)  =  (getHook(Keys.onLoad, data), getHook(Keys.onUnload, data))

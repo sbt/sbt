@@ -80,7 +80,7 @@ trait SourcePartialBuilder extends NotNull
 	* argument is call-by-name, so the stream is recreated, written, and closed each
 	* time this process is executed. */
 	def #>(out: => OutputStream): ProcessBuilder = #> (new OutputStreamBuilder(out))
-	def #>(b: ProcessBuilder): ProcessBuilder = new PipedProcessBuilder(toSource, b, false)
+	def #>(b: ProcessBuilder): ProcessBuilder = new PipedProcessBuilder(toSource, b, false, ExitCodes.firstIfNonzero)
 	private def toFile(f: File, append: Boolean) = #> (new FileOutput(f, append))
 	def cat = toSource
 	protected def toSource: ProcessBuilder
@@ -95,7 +95,7 @@ trait SinkPartialBuilder extends NotNull
 	* argument is call-by-name, so the stream is recreated, read, and closed each
 	* time this process is executed. */
 	def #<(in: => InputStream): ProcessBuilder = #< (new InputStreamBuilder(in))
-	def #<(b: ProcessBuilder): ProcessBuilder = new PipedProcessBuilder(b, toSink, false)
+	def #<(b: ProcessBuilder): ProcessBuilder = new PipedProcessBuilder(b, toSink, false, ExitCodes.firstIfNonzero)
 	protected def toSink: ProcessBuilder
 }
 
@@ -174,7 +174,9 @@ trait ProcessBuilder extends SourcePartialBuilder with SinkPartialBuilder
 	def #&& (other: ProcessBuilder): ProcessBuilder
 	/** Constructs a command that runs this command first and then `other` if this command does not succeed.*/
 	def #|| (other: ProcessBuilder): ProcessBuilder
-	/** Constructs a command that will run this command and pipes the output to `other`.  `other` must be a simple command.*/
+	/** Constructs a command that will run this command and pipes the output to `other`.  
+	* `other` must be a simple command.
+	* The exit code will be that of `other` regardless of whether this command succeeds. */
 	def #| (other: ProcessBuilder): ProcessBuilder
 	/** Constructs a command that will run this command and then `other`.  The exit code will be the exit code of `other`.*/
 	def ### (other: ProcessBuilder): ProcessBuilder

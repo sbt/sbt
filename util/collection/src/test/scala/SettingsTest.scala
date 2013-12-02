@@ -21,7 +21,7 @@ object SettingsTest extends Properties("settings")
 		singleIntTest( chainBind(value(abs)), 0 )
 	}
 
-	property("Allows references to completed settings") = forAllNoShrink(30) { allowedReference _ }
+	property("Allows references to completed settings") = forAllNoShrink(30) { allowedReference }
 	final def allowedReference(intermediate: Int): Prop =
 	{
 		val top = value(intermediate)
@@ -32,9 +32,34 @@ object SettingsTest extends Properties("settings")
 				else
 					iterate(value(t-1) )
 			}
-		try { evaluate( setting(chk, iterate(top)) :: Nil); true }
-		catch { case e: java.lang.Exception => ("Unexpected exception: " + e) |: false }
+		evaluate( setting(chk, iterate(top)) :: Nil); true
 	}
+
+  property("Derived setting chain depending on (prev derived, normal setting)") = forAllNoShrink(Gen.choose(1, 100)) { derivedSettings }
+  final def derivedSettings(nr: Int): Prop =
+  {
+    val alphaStr = Gen.alphaStr
+    val genScopedKeys = {
+      val attrKeys = for {
+        list <- Gen.listOfN(nr, alphaStr) suchThat (l => l.size == l.distinct.size)
+        item <- list
+      } yield AttributeKey[Int](item)
+      attrKeys map (_ map (ak => ScopedKey(Scope(0), ak)))
+    }
+    forAll(genScopedKeys) { scopedKeys =>
+      val last = scopedKeys.last
+      val derivedSettings: Seq[Setting[Int]] = (
+        for {
+          List(scoped0, scoped1) <- chk :: scopedKeys sliding 2
+          nextInit = if (scoped0 == chk) chk
+                     else (scoped0 zipWith chk) { (p, _) => p + 1 }
+        } yield derive(setting(scoped1, nextInit))
+      ).toSeq
+
+      { checkKey(last, Some(nr-1), evaluate(setting(chk, value(0)) +: derivedSettings)) :| "Not derived?" } &&
+      { checkKey( last, None, evaluate(derivedSettings)) :| "Should not be derived" }
+    }
+  }
 
 // Circular (dynamic) references currently loop infinitely.
 //  This is the expected behavior (detecting dynamic cycles is expensive),

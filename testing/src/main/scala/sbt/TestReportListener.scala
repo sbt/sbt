@@ -71,15 +71,34 @@ object TestEvent
 
 object TestLogger
 {
+	@deprecated("Doesn't provide for underlying resources to be released.", "0.13.1")
 	def apply(logger: sbt.Logger, logTest: TestDefinition => sbt.Logger, buffered: Boolean): TestLogger =
 		new TestLogger(new TestLogging(wrap(logger), tdef => contentLogger(logTest(tdef), buffered)) )
 
+	@deprecated("Doesn't provide for underlying resources to be released.", "0.13.1")
 	def contentLogger(log: sbt.Logger, buffered: Boolean): ContentLogger =
 	{
 		val blog = new BufferedLogger(FullLogger(log))
 		if(buffered) blog.record()
 		new ContentLogger(wrap(blog), () => blog.stopQuietly())
 	}
+
+	final class PerTest private[sbt](val log: sbt.Logger, val flush: () => Unit, val buffered: Boolean)
+
+	def make(global: sbt.Logger, perTest: TestDefinition => PerTest): TestLogger =
+	{
+		def makePerTest(tdef: TestDefinition): ContentLogger =
+		{
+			val per = perTest(tdef)
+			val blog = new BufferedLogger(FullLogger(per.log))
+			if(per.buffered) blog.record()
+			new ContentLogger(wrap(blog), () => { blog.stopQuietly(); per.flush() })
+		}
+		val config = new TestLogging(wrap(global), makePerTest)
+		new TestLogger(config)
+	}
+
+
 	def wrap(logger: sbt.Logger): TLogger =
 		new TLogger
 		{
@@ -97,7 +116,7 @@ final class ContentLogger(val log: TLogger, val flush: () => Unit)
 class TestLogger(val logging: TestLogging) extends TestsListener
 {
 	import logging.{global => log, logTest}
-	
+
 	def startGroup(name: String) {}
 	def testEvent(event: TestEvent): Unit = {}
 	def endGroup(name: String, t: Throwable)

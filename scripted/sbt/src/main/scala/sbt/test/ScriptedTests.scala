@@ -45,8 +45,6 @@ final class ScriptedTests(resourceBaseDirectory: File, bufferLog: Boolean, launc
 		}
 	}
 	private def scriptedTest(label: String, testDirectory: File, log: Logger): Unit =
-		IPC.pullServer( scriptedTest0(label, testDirectory, log) )
-	private def scriptedTest0(label: String, testDirectory: File, log: Logger)(server: IPC.Server)
 	{
 		val buffered = new BufferedLogger(new FullLogger(log))
 		if(bufferLog)
@@ -55,7 +53,7 @@ final class ScriptedTests(resourceBaseDirectory: File, bufferLog: Boolean, launc
 		def createParser() =
 		{
 			val fileHandler = new FileCommands(testDirectory)
-			val sbtHandler = new SbtHandler(testDirectory, launcher, buffered, server, launchOpts)
+			val sbtHandler = new SbtHandler(testDirectory, launcher, buffered, launchOpts)
 			new TestScriptParser(Map('$' -> fileHandler, '>' -> sbtHandler, '#' -> CommentHandler))
 		}
 		val (file, pending) = {

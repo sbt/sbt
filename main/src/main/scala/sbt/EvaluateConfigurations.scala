@@ -149,7 +149,7 @@ object Index
 		if(duplicates.isEmpty)
 			multiMap.collect { case (k, v) if validID(k) => (k, v.head) } toMap;
 		else
-			sys.error(duplicates map { case (k, tps) => "'" + k + "' (" + tps.mkString(", ") + ")" } mkString("AttributeKey ID collisions detected for: ", ", ", ""))
+			sys.error(duplicates map { case (k, tps) => "'" + k + "' (" + tps.mkString(", ") + ")" } mkString("Some keys were defined with the same name but different types: ", ", ", ""))
 	}
 	private[this] type TriggerMap = collection.mutable.HashMap[Task[_], Seq[Task[_]]]
 	def triggers(ss: Settings[Scope]): Triggers[Task] =

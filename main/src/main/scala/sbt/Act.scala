@@ -11,7 +11,7 @@ package sbt
 	import DefaultParsers._
 	import Types.idFun
 	import java.net.URI
-	import CommandStrings.ShowCommand
+	import CommandStrings.{MultiTaskCommand, ShowCommand}
 
 final class ParsedKey(val key: ScopedKey[_], val mask: ScopeMask)
 object Act
@@ -92,23 +92,23 @@ object Act
 		val (selects, globals) = ss.partition(_.key.scope.task.isSelect)
 		if(globals.nonEmpty) globals else selects
 	}
-			
+
 	def noValidKeys = failure("No such key.")
 
 	def showAmbiguous(keys: Seq[ScopedKey[_]])(implicit show: Show[ScopedKey[_]]): String =
 		keys.take(3).map(x => show(x)).mkString("", ", ", if(keys.size > 3) ", ..." else "")
-	
+
 	def isValid(data: Settings[Scope])(parsed: ParsedKey): Boolean =
 	{
 		val key = parsed.key
 		data.definingScope(key.scope, key.key) == Some(key.scope)
 	}
-	
+
 	def examples(p: Parser[String], exs: Set[String], label: String): Parser[String] =
 		p !!! ("Expected " + label) examples exs
 	def examplesStrict(p: Parser[String], exs: Set[String], label: String): Parser[String] =
 		filterStrings(examples(p, exs, label), exs, label)
-		
+
 	def optionalAxis[T](p: Parser[T], ifNone: ScopeAxis[T]): Parser[ScopeAxis[T]] =
 		p.? map { opt => toAxis(opt, ifNone) }
 	def toAxis[T](opt: Option[T], ifNone: ScopeAxis[T]): ScopeAxis[T] =
@@ -234,20 +234,39 @@ object Act
 		val extracted = Project extract state
 		import extracted.{showKey, structure}
 		import Aggregation.evaluatingParser
-		showParser.flatMap { show =>
-			val akp = aggregatedKeyParser(extracted) 
-			def evaluate(kvs: Seq[ScopedKey[T]] forSome { type T}): Parser[() => State] =
-				evaluatingParser(state, structure, Aggregation.defaultShow(state, show))( keyValues(structure)(kvs) )
-			def reconstruct(arg: String): String = ShowCommand + " " + arg
-			if(show)
-				( akp ~ (token(Space) ~> matched(akp)).* ) flatMap { case (kvs, tail) =>
-					evaluate(kvs) map { f => () => tail.map(reconstruct) ::: f() }
+		actionParser.flatMap { action =>
+			val akp = aggregatedKeyParser(extracted)
+			def evaluate(kvs: Seq[ScopedKey[_]]): Parser[() => State] = {
+				val preparedPairs = anyKeyValues(structure, kvs)
+				val showConfig = Aggregation.defaultShow(state, showTasks = action == ShowAction)
+				evaluatingParser(state, structure, showConfig)(preparedPairs) map { evaluate =>
+					() => {
+						val keyStrings = preparedPairs.map(pp => showKey(pp.key)).mkString(", ")
+						state.log.debug("Evaluating tasks: " + keyStrings)
+						evaluate()
+					}
 				}
-			else
-				akp flatMap evaluate
+			}
+			action match {
+				case SingleAction => akp flatMap evaluate
+				case ShowAction | MultiAction =>
+					rep1sep(akp, token(Space)).flatMap( kvss => evaluate(kvss.flatten) )
+			}
 		}
 	}
+
+	private[this] final class ActAction
+	private[this] final val ShowAction, MultiAction, SingleAction = new ActAction
+
+	private[this] def actionParser: Parser[ActAction] =
+		token(
+			((ShowCommand ^^^ ShowAction) |
+			(MultiTaskCommand ^^^ MultiAction) ) <~ Space
+		) ?? SingleAction
+
+	@deprecated("No longer used.", "0.13.2")
 	def showParser = token( (ShowCommand ~ Space) ^^^ true) ?? false
+
 	def scopedKeyParser(state: State): Parser[ScopedKey[_]] = scopedKeyParser(Project extract state)
 	def scopedKeyParser(extracted: Extracted): Parser[ScopedKey[_]] = scopedKeyParser(extracted.structure, extracted.currentRef)
 	def scopedKeyParser(structure: BuildStructure, currentRef: ProjectRef): Parser[ScopedKey[_]] =
@@ -263,10 +282,15 @@ object Act
 	def keyValues[T](extracted: Extracted)(keys: Seq[ScopedKey[T]]): Values[T] = keyValues(extracted.structure)(keys)
 	def keyValues[T](structure: BuildStructure)(keys: Seq[ScopedKey[T]]): Values[T] =
 		keys.flatMap { key =>
-			structure.data.get(key.scope, key.key) map { value =>
-				KeyValue(key, value)
-			}
+			getValue(structure.data, key.scope, key.key) map { value => KeyValue(key, value) }
 		}
+	private[this] def anyKeyValues(structure: BuildStructure, keys: Seq[ScopedKey[_]]): Seq[KeyValue[_]] =
+		keys.flatMap { key =>
+			getValue(structure.data, key.scope, key.key) map { value => KeyValue(key, value) }
+		}
+
+	private[this] def getValue[T](data: Settings[Scope], scope: Scope, key: AttributeKey[T]): Option[T] =
+		if(java.lang.Boolean.getBoolean("sbt.cli.nodelegation")) data.getDirect(scope, key) else data.get(scope, key)
 
 	def requireSession[T](s: State, p: => Parser[T]): Parser[T] =
 		if(s get sessionSettings isEmpty) failure("No project loaded") else p

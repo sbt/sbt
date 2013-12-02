@@ -4,6 +4,7 @@
 package sbt
 
 import java.io.{File,OutputStream}
+import java.util.Locale
 
 @deprecated("Use ForkOptions", "0.13.0")
 trait ForkJava
@@ -81,13 +82,17 @@ sealed class Fork(val commandName: String, val runnerClass: Option[String])
 	{
 			import config.{envVars => env, _}
 		val executable = Fork.javaCommand(javaHome, commandName).getAbsolutePath
-		val options = makeOptions(runJVMOptions, bootJars, arguments)
+		val preOptions = makeOptions(runJVMOptions, bootJars, arguments)
+		val (classpathEnv, options) = Fork.fitClasspath(preOptions)
 		val command = (executable +: options).toArray
 		val builder = new JProcessBuilder(command : _*)
 		workingDirectory.foreach(wd => builder.directory(wd))
 		val environment = builder.environment
 		for( (key, value) <- env )
 			environment.put(key, value)
+		for( cpenv <- classpathEnv )
+			// overriding, not appending, is correct due to the specified priorities of -classpath and CLASSPATH
+			environment.put(Fork.ClasspathEnvKey, cpenv)
 		outputStrategy.getOrElse(StdoutOutput) match {
 			case StdoutOutput => Process(builder).run(connectInput)
 			case BufferedOutput(logger) => Process(builder).runBuffered(logger, connectInput)
@@ -111,6 +116,31 @@ object Fork
 	val javac = new ForkJava("javac")
 	val scala = new Fork(JavaCommandName, Some(ScalaMainClass))
 	val scalac = new Fork(JavaCommandName, Some(ScalacMainClass))
+
+	private val ClasspathEnvKey = "CLASSPATH"
+	private[this] val ClasspathOptionLong = "-classpath"
+	private[this] val ClasspathOptionShort = "-cp"
+	private[this] def isClasspathOption(s: String) = s == ClasspathOptionLong || s == ClasspathOptionShort
+	/** Maximum length of classpath string before passing the classpath in an environment variable instead of an option. */
+	private[this] val MaxConcatenatedOptionLength = 5000
+
+	private def fitClasspath(options: Seq[String]): (Option[String], Seq[String]) =
+		if(isWindows && optionsTooLong(options))
+			convertClasspathToEnv(options)
+		else
+			(None, options)
+	private[this] def optionsTooLong(options: Seq[String]): Boolean =
+		options.mkString(" ").length > MaxConcatenatedOptionLength
+
+	private[this] val isWindows: Boolean = System.getProperty("os.name").toLowerCase(Locale.ENGLISH).contains("windows")
+	private[this] def convertClasspathToEnv(options: Seq[String]): (Option[String], Seq[String]) =
+	{
+		val (preCP, cpAndPost) = options.span(opt => !isClasspathOption(opt))
+		val postCP = cpAndPost.drop(2)
+		val classpathOption = cpAndPost.drop(1).headOption
+		val newOptions = if(classpathOption.isDefined) preCP ++ postCP else options
+		(classpathOption, newOptions)
+	}
 
 	private def javaCommand(javaHome: Option[File], name: String): File =
 	{

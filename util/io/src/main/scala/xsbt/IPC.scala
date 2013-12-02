@@ -21,6 +21,7 @@ object IPC
 		try { f(new Server(server)) } 
 		finally { server.close() }
 	}
+	def unmanagedServer: Server = new Server(makeServer)
 	def makeServer: ServerSocket =
 	{
 		val random = new java.util.Random
@@ -58,6 +59,7 @@ object IPC
 	{
 		def port = s.getLocalPort
 		def close() = s.close()
+		def isClosed: Boolean = s.isClosed
 		def connection[T](f: IPC => T): T = IPC.ipc(s.accept())(f)
 	}
 }

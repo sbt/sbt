@@ -261,7 +261,7 @@ final class Update(config: UpdateConfiguration)
 		newDefault.setName("redefined-public")
 		if(repositories.isEmpty) error("No repositories defined.")
 		for(repo <- repositories if includeRepo(repo))
-			newDefault.add(initializeBasic(toIvyRepository(settings, repo)))
+			newDefault.add(toIvyRepository(settings, repo))
 		configureCache(settings)
 		settings.addResolver(newDefault)
 		settings.setDefaultResolver(newDefault.getName)
@@ -310,7 +310,7 @@ final class Update(config: UpdateConfiguration)
 		repo match
 		{
 			case m: xsbti.MavenRepository => mavenResolver(m.id, m.url.toString)
-			case i: xsbti.IvyRepository => urlResolver(i.id, i.url.toString, i.ivyPattern, i.artifactPattern, i.mavenCompatible)
+			case i: xsbti.IvyRepository => urlResolver(i.id, i.url.toString, i.ivyPattern, i.artifactPattern, i.mavenCompatible, i.descriptorOptional, i.skipConsistencyCheck)
 			case p: xsbti.PredefinedRepository => p.id match {
 				case Local => localResolver(settings.getDefaultIvyUserDir.getAbsolutePath)
 				case MavenLocal => mavenLocal
@@ -329,13 +329,15 @@ final class Update(config: UpdateConfiguration)
 		}
 	}
 	/** Uses the pattern defined in BuildConfiguration to download sbt from Google code.*/
-	private def urlResolver(id: String, base: String, ivyPattern: String, artifactPattern: String, mavenCompatible: Boolean) =
+	private def urlResolver(id: String, base: String, ivyPattern: String, artifactPattern: String, mavenCompatible: Boolean, descriptorOptional: Boolean, skipConsistencyCheck: Boolean) =
 	{
 		val resolver = new URLResolver
 		resolver.setName(id)
 		resolver.addIvyPattern(adjustPattern(base, ivyPattern))
 		resolver.addArtifactPattern(adjustPattern(base, artifactPattern))
 		resolver.setM2compatible(mavenCompatible)
+		resolver.setDescriptor(if (descriptorOptional) BasicResolver.DESCRIPTOR_OPTIONAL else BasicResolver.DESCRIPTOR_REQUIRED)
+		resolver.setCheckconsistency(!skipConsistencyCheck)
 		resolver
 	}
 	private def adjustPattern(base: String, pattern: String): String =
@@ -384,11 +386,6 @@ final class Update(config: UpdateConfiguration)
 		}
 		else
 			mavenResolver("Sonatype Snapshots Repository", "https://oss.sonatype.org/content/repositories/snapshots")
-	}
-	private def initializeBasic(resolver: BasicResolver) =
-	{
-		resolver.setDescriptor(BasicResolver.DESCRIPTOR_REQUIRED)
-		resolver
 	}
 
 	/** Logs the given message to a file and to the console. */

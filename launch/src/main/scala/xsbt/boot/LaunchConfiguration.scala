@@ -98,7 +98,7 @@ object Repository
 		def bootOnly: Boolean
 	}
 	final case class Maven(id: String, url: URL, bootOnly: Boolean = false) extends xsbti.MavenRepository with Repository
-	final case class Ivy(id: String, url: URL, ivyPattern: String, artifactPattern: String, mavenCompatible: Boolean, bootOnly: Boolean = false) extends xsbti.IvyRepository with Repository
+	final case class Ivy(id: String, url: URL, ivyPattern: String, artifactPattern: String, mavenCompatible: Boolean, bootOnly: Boolean = false, descriptorOptional: Boolean = false, skipConsistencyCheck: Boolean = false) extends xsbti.IvyRepository with Repository
 	final case class Predefined(id: xsbti.Predefined, bootOnly: Boolean = false) extends xsbti.PredefinedRepository with Repository
 	object Predefined {
 		def apply(s: String): Predefined = new Predefined(xsbti.Predefined.toValue(s), false)

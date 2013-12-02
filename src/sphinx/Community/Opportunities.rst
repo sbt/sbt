@@ -3,7 +3,7 @@ Opportunites
 ============
 
 Below is a running list of potential areas of contribution. This list
-may become out of date quickly, so you may want to check on the `mailing list`_
+may become out of date quickly, so you may want to check on the `sbt-dev mailing list`_
 if you are interested in a specific topic.
 
 1. There are plenty of possible visualization and analysis
