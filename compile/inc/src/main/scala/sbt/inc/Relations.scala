@@ -58,6 +58,8 @@ trait Relations
 	/** Internal source dependencies that depend on external source file `dep`.  This includes both direct and inherited dependencies.  */
 	def usesExternal(dep: String): Set[File]
 
+	private[inc] def usedNames(src: File): Set[String]
+
 	/** Records internal source file `src` as generating class file `prod` with top-level class `name`. */
 	def addProduct(src: File, prod: File, name: String): Relations
 
@@ -73,6 +75,8 @@ trait Relations
 	* and inheritance dependencies on `inheritedDependsOn`.  Everything in `inheritedDependsOn` must be included in `directDependsOn`;
 	* this method does not automatically record direct dependencies like `addExternalDep` does.*/
 	def addInternalSrcDeps(src: File, directDependsOn: Iterable[File], inheritedDependsOn: Iterable[File]): Relations
+
+	private[inc] def addUsedName(src: File, name: String): Relations
 
 	/** Concatenates the two relations. Acts naively, i.e., doesn't internalize external deps on added files. */
 	def ++ (o: Relations): Relations
@@ -163,6 +167,10 @@ trait Relations
 	 * relations is illegal and will cause runtime exception being thrown.
 	 */
 	private[inc] def nameHashing: Boolean
+	/**
+	 * Relation between source files and _unqualified_ term and type names used in given source file.
+	 */
+	private[inc] def names: Relation[File, String]
 }
 
 
@@ -221,7 +229,7 @@ object Relations
 	def empty: Relations = empty(nameHashing = false)
 	private[inc] def empty(nameHashing: Boolean): Relations =
 		if (nameHashing)
-			new MRelationsNameHashing(e, e, emptySourceDependencies, emptySourceDependencies, estr)
+			new MRelationsNameHashing(e, e, emptySourceDependencies, emptySourceDependencies, estr, estr)
 		else
 			new MRelationsDefaultImpl(e, e, es, es, estr)
 
@@ -229,8 +237,10 @@ object Relations
 		new MRelationsDefaultImpl(srcProd, binaryDep, direct = direct, publicInherited = publicInherited, classes)
 
 	private[inc] def make(srcProd: Relation[File, File], binaryDep: Relation[File, File],
-			memberRef: SourceDependencies, inheritance: SourceDependencies, classes: Relation[File, String]): Relations =
-		new MRelationsNameHashing(srcProd, binaryDep, memberRef = memberRef, inheritance = inheritance, classes)
+			memberRef: SourceDependencies, inheritance: SourceDependencies, classes: Relation[File, String],
+			names: Relation[File, String]): Relations =
+		new MRelationsNameHashing(srcProd, binaryDep, memberRef = memberRef, inheritance = inheritance,
+			classes, names)
 	def makeSource(internal: Relation[File,File], external: Relation[File,String]): Source = new Source(internal, external)
 	private[inc] def makeSourceDependencies(internal: Relation[File,File], external: Relation[File,String]): SourceDependencies = new SourceDependencies(internal, external)
 }
@@ -280,6 +290,8 @@ private abstract class MRelationsCommon(val srcProd: Relation[File, File], val b
 
 	def externalDeps(src: File): Set[String] = externalDep.forward(src)
 	def usesExternal(dep: String): Set[File] = externalDep.reverse(dep)
+
+	def usedNames(src: File): Set[String] = names.forward(src)
 
   /** Making large Relations a little readable. */
   private val userDir = sys.props("user.dir").stripSuffix("/") + "/"
@@ -348,6 +360,14 @@ private class MRelationsDefaultImpl(srcProd: Relation[File, File], binaryDep: Re
 			new MRelationsDefaultImpl( srcProd, binaryDep, direct = newD, publicInherited = newI, classes)
 		}
 
+	def names: Relation[File, String] =
+		throw new UnsupportedOperationException("Tracking of used names is not supported " +
+			"when `nameHashing` is disabled.")
+
+	def addUsedName(src: File, name: String): Relations =
+		throw new UnsupportedOperationException("Tracking of used names is not supported " +
+			"when `nameHashing` is disabled.")
+
 	def addBinaryDep(src: File, dependsOn: File): Relations =
 		new MRelationsDefaultImpl( srcProd, binaryDep + (src, dependsOn), direct = direct,
 			publicInherited = publicInherited, classes)
@@ -368,7 +388,8 @@ private class MRelationsDefaultImpl(srcProd: Relation[File, File], binaryDep: Re
 	{
 		type MapRel[T] = Map[K, Relation[File, T]]
 		def outerJoin(srcProdMap: MapRel[File], binaryDepMap: MapRel[File], direct: Map[K, Source],
-					  inherited: Map[K, Source], classesMap: MapRel[String]): Map[K, Relations] =
+					  inherited: Map[K, Source], classesMap: MapRel[String],
+					  namesMap: MapRel[String]): Map[K, Relations] =
 		{
 			def kRelations(k: K): Relations = {
 				def get[T](m: Map[K, Relation[File, T]]) = Relations.getOrEmpty(m, k)
@@ -385,7 +406,7 @@ private class MRelationsDefaultImpl(srcProd: Relation[File, File], binaryDep: Re
 		def f1[B](item: (File, B)): K = f(item._1)
 
 		outerJoin(srcProd.groupBy(f1), binaryDep.groupBy(f1), direct.groupBySource(f),
-				  publicInherited.groupBySource(f), classes.groupBy(f1))
+				  publicInherited.groupBySource(f), classes.groupBy(f1), names.groupBy(f1))
     }
 
 	override def equals(other: Any) = other match {
@@ -413,7 +434,8 @@ private class MRelationsDefaultImpl(srcProd: Relation[File, File], binaryDep: Re
 	  |  src deps: %s
 	  |  ext deps: %s
 	  |  class names: %s
-	  """.trim.stripMargin.format(List(srcProd, binaryDep, internalSrcDep, externalDep, classes) map relation_s : _*)
+	  |  used names: %s
+	  """.trim.stripMargin.format(List(srcProd, binaryDep, internalSrcDep, externalDep, classes, names) map relation_s : _*)
 	)
 }
 
@@ -425,7 +447,8 @@ private class MRelationsDefaultImpl(srcProd: Relation[File, File], binaryDep: Re
 private class MRelationsNameHashing(srcProd: Relation[File, File], binaryDep: Relation[File, File],
 	// memberRef should include everything in inherited
 	val memberRef: SourceDependencies, val inheritance: SourceDependencies,
-	classes: Relation[File, String]) extends MRelationsCommon(srcProd, binaryDep, classes)
+	classes: Relation[File, String],
+	val names: Relation[File, String]) extends MRelationsCommon(srcProd, binaryDep, classes)
 {
 	def direct: Source =
 		throw new UnsupportedOperationException("The `direct` source dependencies relation is not supported " +
@@ -441,23 +464,29 @@ private class MRelationsNameHashing(srcProd: Relation[File, File], binaryDep: Re
 
 	def addProduct(src: File, prod: File, name: String): Relations =
 		new MRelationsNameHashing(srcProd + (src, prod), binaryDep, memberRef = memberRef,
-			inheritance = inheritance, classes + (src, name))
+			inheritance = inheritance, classes + (src, name), names = names)
 
 	def addExternalDep(src: File, dependsOn: String, inherited: Boolean): Relations = {
 		val newIH = if(inherited) inheritance.addExternal(src, dependsOn) else inheritance
 		val newMR = memberRef.addExternal(src, dependsOn)
-		new MRelationsNameHashing( srcProd, binaryDep, memberRef = newMR, inheritance = newIH, classes)
+		new MRelationsNameHashing( srcProd, binaryDep, memberRef = newMR, inheritance = newIH, classes,
+			names = names)
 	}
 
 	def addInternalSrcDeps(src: File, dependsOn: Iterable[File], inherited: Iterable[File]): Relations = {
 		val newIH = inheritance.addInternal(src, inherited)
 		val newMR = memberRef.addInternal(src, dependsOn)
-		new MRelationsNameHashing( srcProd, binaryDep, memberRef = newMR, inheritance = newIH, classes)
+		new MRelationsNameHashing( srcProd, binaryDep, memberRef = newMR, inheritance = newIH, classes,
+			names = names)
 	}
+
+	def addUsedName(src: File, name: String): Relations =
+		new MRelationsNameHashing(srcProd, binaryDep, memberRef = memberRef,
+			inheritance = inheritance, classes, names = names + (src, name))
 
 	def addBinaryDep(src: File, dependsOn: File): Relations =
 		new MRelationsNameHashing(srcProd, binaryDep + (src, dependsOn), memberRef = memberRef,
-			inheritance = inheritance, classes)
+			inheritance = inheritance, classes, names = names)
 
 	def ++ (o: Relations): Relations = {
 		if (!o.nameHashing)
@@ -465,11 +494,12 @@ private class MRelationsNameHashing(srcProd: Relation[File, File], binaryDep: Re
 				"with different values of `nameHashing` flag.")
 		new MRelationsNameHashing(srcProd ++ o.srcProd, binaryDep ++ o.binaryDep,
 			memberRef = memberRef ++ o.memberRef, inheritance = inheritance ++ o.inheritance,
-			classes ++ o.classes)
+			classes ++ o.classes, names = names ++ o.names)
 	}
 	def -- (sources: Iterable[File]) =
 		new MRelationsNameHashing(srcProd -- sources, binaryDep -- sources,
-			memberRef = memberRef -- sources, inheritance = inheritance -- sources, classes -- sources)
+			memberRef = memberRef -- sources, inheritance = inheritance -- sources, classes -- sources,
+			names = names -- sources)
 
 	def groupBy[K](f: File => K): Map[K, Relations] = {
 		throw new UnsupportedOperationException("Merging of Analyses that have" +
