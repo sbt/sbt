@@ -9,12 +9,14 @@ class TestCallback(override val nameHashing: Boolean = false) extends AnalysisCa
 	val sourceDependencies = new ArrayBuffer[(File, File, Boolean)]
 	val binaryDependencies = new ArrayBuffer[(File, String, File, Boolean)]
 	val products = new ArrayBuffer[(File, File, String)]
+	val usedNames = scala.collection.mutable.Map.empty[File, Set[String]].withDefaultValue(Set.empty)
 	val apis: scala.collection.mutable.Map[File, SourceAPI] = scala.collection.mutable.Map.empty
 
 	def sourceDependency(dependsOn: File, source: File, inherited: Boolean) { sourceDependencies += ((dependsOn, source, inherited)) }
 	def binaryDependency(binary: File, name: String, source: File, inherited: Boolean) { binaryDependencies += ((binary, name, source, inherited)) }
 	def generatedClass(source: File, module: File, name: String) { products += ((source, module, name)) }
 
+	def usedName(source: File, name: String) { usedNames(source) += name }
 	def api(source: File, sourceAPI: SourceAPI): Unit = {
 		assert(!apis.contains(source), s"The `api` method should be called once per source file: $source")
 		apis(source) = sourceAPI
