@@ -117,6 +117,8 @@ object TextAnalysisFormat {
 			val memberRefExternalDep = "member reference external dependencies"
 			val inheritanceInternalDep = "inheritance internal dependencies"
 			val inheritanceExternalDep = "inheritance external dependencies"
+
+			val usedNames = "used names"
 		}
 
 		def write(out: Writer, relations: Relations) {
@@ -158,6 +160,7 @@ object TextAnalysisFormat {
 			writeRelation(Headers.inheritanceExternalDep, inheritance.external)
 
 			writeRelation(Headers.classes,        relations.classes)
+			writeRelation(Headers.usedNames, relations.names)
 		}
 
 		def read(in: BufferedReader): Relations = {
@@ -215,11 +218,15 @@ object TextAnalysisFormat {
 					"One mechanism is supported for tracking source dependencies at the time")
 			val nameHashing = memberRefSrcDeps != emptySourceDependencies
 			val classes =          readStringRelation(Headers.classes)
+			val names = readStringRelation(Headers.usedNames)
 
 			if (nameHashing)
-				Relations.make(srcProd, binaryDep, memberRefSrcDeps, inheritanceSrcDeps, classes)
-			else
+				Relations.make(srcProd, binaryDep, memberRefSrcDeps, inheritanceSrcDeps, classes, names)
+			else {
+				assert(names.all.isEmpty, s"When `nameHashing` is disabled `names` relation " +
+					"should be empty: $names")
 				Relations.make(srcProd, binaryDep, directSrcDeps, publicInheritedSrcDeps, classes)
+			}
 		}
 	}
 

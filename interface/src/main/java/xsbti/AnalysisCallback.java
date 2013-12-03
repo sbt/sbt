@@ -24,6 +24,7 @@ public interface AnalysisCallback
 	public void generatedClass(File source, File module, String name);
 	/** Called when the public API of a source file is extracted. */
 	public void api(File sourceFile, xsbti.api.SourceAPI source);
+	public void usedName(File sourceFile, String names);
 	/** Provides problems discovered during compilation.  These may be reported (logged) or unreported.
 	* Unreported problems are usually unreported because reporting was not enabled via a command line switch. */
 	public void problem(String what, Position pos, String msg, Severity severity, boolean reported);
