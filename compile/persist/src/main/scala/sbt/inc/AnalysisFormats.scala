@@ -99,26 +99,26 @@ object AnalysisFormats
 	implicit def apisFormat(implicit internalF: Format[Map[File, Source]], externalF: Format[Map[String, Source]]): Format[APIs] =
 		asProduct2( APIs.apply _)( as => (as.internal, as.external) )(internalF, externalF)
 
-	implicit def relationsFormat(implicit prodF: Format[RFF], binF: Format[RFF], directF: Format[RSource], inheritedF: Format[RSource], memberRefF: Format[SourceDependencies], inheritanceF: Format[SourceDependencies], csF: Format[RFS]): Format[Relations] =
+	implicit def relationsFormat(implicit prodF: Format[RFF], binF: Format[RFF], directF: Format[RSource], inheritedF: Format[RSource], memberRefF: Format[SourceDependencies], inheritanceF: Format[SourceDependencies], csF: Format[RFS], namesF: Format[RFS]): Format[Relations] =
 		{
 			def makeRelation(srcProd: RFF, binaryDep: RFF, direct: RSource, publicInherited: RSource,
 					memberRef: SourceDependencies, inheritance: SourceDependencies, classes: RFS,
-					memberRefAndInheritanceDeps: Boolean): Relations = if (memberRefAndInheritanceDeps) {
+					nameHashing: Boolean, names: RFS): Relations = if (nameHashing) {
 				def isEmpty(sourceDependencies: RSource): Boolean =
 					sourceDependencies.internal.all.isEmpty &&  sourceDependencies.external.all.isEmpty
 				// we check direct dependencies only because publicInherited dependencies are subset of direct
-				assert(isEmpty(direct), "Direct dependencies are not empty but `memberRefAndInheritanceDeps` flag is enabled.")
-				Relations.make(srcProd, binaryDep, memberRef, inheritance, classes)
+				assert(isEmpty(direct), "Direct dependencies are not empty but `nameHashing` flag is enabled.")
+				Relations.make(srcProd, binaryDep, memberRef, inheritance, classes, names)
 			} else {
 				def isEmpty(sourceDependencies: SourceDependencies): Boolean =
 					sourceDependencies.internal.all.isEmpty &&  sourceDependencies.external.all.isEmpty
 				// we check memberRef dependencies only because inheritance dependencies are subset of memberRef
-				assert(isEmpty(memberRef), "Direct dependencies are not empty but `memberRefAndInheritanceDeps` flag is enabled.")
+				assert(isEmpty(memberRef), "Direct dependencies are not empty but `nameHashing` flag is enabled.")
 				Relations.make(srcProd, binaryDep, direct, publicInherited, classes)
 			}
-			asProduct8[Relations, RFF, RFF, RSource, RSource, SourceDependencies, SourceDependencies, RFS, Boolean]( (a,b,c,d,e,f,g,h) =>makeRelation(a,b,c,d,e,f,g,h) )(
-					rs => (rs.srcProd, rs.binaryDep, rs.direct, rs.publicInherited, rs.memberRef, rs.inheritance, rs.classes, rs.memberRefAndInheritanceDeps) )(
-							prodF, binF, directF, inheritedF, memberRefF, inheritanceF, csF, implicitly[Format[Boolean]])
+			asProduct9[Relations, RFF, RFF, RSource, RSource, SourceDependencies, SourceDependencies, RFS, Boolean, RFS]( (a,b,c,d,e,f,g,h,i) =>makeRelation(a,b,c,d,e,f,g,h,i) )(
+					rs => (rs.srcProd, rs.binaryDep, rs.direct, rs.publicInherited, rs.memberRef, rs.inheritance, rs.classes, rs.nameHashing, rs.names) )(
+							prodF, binF, directF, inheritedF, memberRefF, inheritanceF, csF, implicitly[Format[Boolean]], namesF)
 		}
 
 	implicit def relationsSourceFormat(implicit internalFormat: Format[Relation[File, File]], externalFormat: Format[Relation[File,String]]): Format[RSource] =
