@@ -117,6 +117,8 @@ object TextAnalysisFormat {
 			val memberRefExternalDep = "member reference external dependencies"
 			val inheritanceInternalDep = "inheritance internal dependencies"
 			val inheritanceExternalDep = "inheritance external dependencies"
+
+			val usedNames = "used names"
 		}
 
 		def write(out: Writer, relations: Relations) {
@@ -134,17 +136,17 @@ object TextAnalysisFormat {
 				}
 			}
 
-			val memberRefAndInheritanceDeps = relations.memberRefAndInheritanceDeps
+			val nameHashing = relations.nameHashing
 			writeRelation(Headers.srcProd,          relations.srcProd)
 			writeRelation(Headers.binaryDep,        relations.binaryDep)
 
-			val direct = if (memberRefAndInheritanceDeps) Relations.emptySource else relations.direct
-			val publicInherited = if (memberRefAndInheritanceDeps)
+			val direct = if (nameHashing) Relations.emptySource else relations.direct
+			val publicInherited = if (nameHashing)
 				Relations.emptySource else relations.publicInherited
 
-			val memberRef = if (memberRefAndInheritanceDeps)
+			val memberRef = if (nameHashing)
 				relations.memberRef else Relations.emptySourceDependencies
-			val inheritance = if (memberRefAndInheritanceDeps)
+			val inheritance = if (nameHashing)
 				relations.inheritance else Relations.emptySourceDependencies
 
 			writeRelation(Headers.directSrcDep, direct.internal)
@@ -158,6 +160,7 @@ object TextAnalysisFormat {
 			writeRelation(Headers.inheritanceExternalDep, inheritance.external)
 
 			writeRelation(Headers.classes,        relations.classes)
+			writeRelation(Headers.usedNames, relations.names)
 		}
 
 		def read(in: BufferedReader): Relations = {
@@ -213,13 +216,17 @@ object TextAnalysisFormat {
 			// we assume that invariant that says they are subsets of direct/memberRef holds
 			assert((directSrcDeps == emptySource) || (memberRefSrcDeps == emptySourceDependencies),
 					"One mechanism is supported for tracking source dependencies at the time")
-			val memberRefAndInheritanceDeps = memberRefSrcDeps != emptySourceDependencies
+			val nameHashing = memberRefSrcDeps != emptySourceDependencies
 			val classes =          readStringRelation(Headers.classes)
+			val names = readStringRelation(Headers.usedNames)
 
-			if (memberRefAndInheritanceDeps)
-				Relations.make(srcProd, binaryDep, memberRefSrcDeps, inheritanceSrcDeps, classes)
-			else
+			if (nameHashing)
+				Relations.make(srcProd, binaryDep, memberRefSrcDeps, inheritanceSrcDeps, classes, names)
+			else {
+				assert(names.all.isEmpty, s"When `nameHashing` is disabled `names` relation " +
+					"should be empty: $names")
 				Relations.make(srcProd, binaryDep, directSrcDeps, publicInheritedSrcDeps, classes)
+			}
 		}
 	}
 

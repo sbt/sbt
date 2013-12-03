@@ -59,7 +59,7 @@ object Analysis
 
 	/** Merge multiple analysis objects into one. Deps will be internalized as needed. */
 	def merge(analyses: Traversable[Analysis]): Analysis = {
-		if (analyses.exists(_.relations.memberRefAndInheritanceDeps))
+		if (analyses.exists(_.relations.nameHashing))
 			throw new IllegalArgumentException("Merging of Analyses that have" +
 				"`relations.memberRefAndInheritanceDeps` set to `true` is not supported.")
 
@@ -160,7 +160,7 @@ private class MAnalysis(val stamps: Stamps, val apis: APIs, val relations: Relat
 		copy( stamps.markProduct(product, stamp), apis, relations.addProduct(src, product, name), infos )
 
 	def groupBy[K](discriminator: File => K): Map[K, Analysis] = {
-		if (relations.memberRefAndInheritanceDeps)
+		if (relations.nameHashing)
 			throw new UnsupportedOperationException("Grouping of Analyses that have" +
 				"`relations.memberRefAndInheritanceDeps` set to `true` is not supported.")
 
