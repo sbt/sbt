@@ -574,11 +574,11 @@ object Defaults extends BuildCommon
 		val combined = cPart.toList ++ classifier.toList
 		if(combined.isEmpty) a.copy(classifier = None, configurations = cOpt.toList) else {
 			val classifierString = combined mkString "-"
-			val confs = cOpt.toList flatMap { c => artifactConfigurations(a, c, classifier) }
-			a.copy(classifier = Some(classifierString), `type` = Artifact.classifierType(classifierString), configurations = confs)
+			a.copy(classifier = Some(classifierString), `type` = Artifact.classifierType(classifierString), configurations = cOpt.toList)
 		}
 	}
-	// TODO bad, remove. The configuration(s) should not be decided from the classifier.
+
+	@deprecated("The configuration(s) should not be decided based on the classifier.", "0.14.0")
 	def artifactConfigurations(base: Artifact, scope: Configuration, classifier: Option[String]): Iterable[Configuration] =
 		classifier match {
 			case Some(c) => Artifact.classifierConf(c) :: Nil
