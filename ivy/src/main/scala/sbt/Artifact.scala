@@ -11,7 +11,7 @@ final case class Artifact(name: String, `type`: String, extension: String, class
 	def extra(attributes: (String,String)*) = copy(extraAttributes = extraAttributes ++ ModuleID.checkE(attributes))
 }
 
-		import Configurations.{Runtime, Pom, Test}
+		import Configurations.{Compile, Pom, Test}
 
 object Artifact
 {
@@ -41,7 +41,7 @@ object Artifact
 	val TestsClassifier = "tests"
 	// Artifact types used when:
 	// * artifacts are explicitly created for Maven dependency resolution (see updateClassifiers)
-	// * declaring artifacts as part of publishing Ivy files.
+	// * declaring artifacts as part of creating Ivy files.
 	val DocType = "doc"
 	val SourceType = "src"
 	val PomType = "pom"
@@ -75,13 +75,19 @@ object Artifact
 	}
 
 	val classifierTypeMap = Map(SourceClassifier -> SourceType, DocClassifier -> DocType)
-	// TODO this function shouldn't exist. Configuration should not just be conjured up like that.
+
+	@deprecated("Configuration should not be decided from the classifier.", "0.14.0")
 	def classifierConf(classifier: String): Configuration =
 		if(classifier.startsWith(TestsClassifier))
 			Test
 		else
-			Runtime
+			Compile
+
 	def classifierType(classifier: String): String = classifierTypeMap.getOrElse(classifier.stripPrefix(TestsClassifier + "-"), DefaultType)
+
+	/** Create a classified explicit artifact, to be used when trying to resolve sources|javadocs from Maven. This is
+	  * necessary because those artifacts are not published in the Ivy generated from the Pom of the module in question.
+	  * The artifact is created under the default configuration. */
 	def classified(name: String, classifier: String): Artifact =
-		Artifact(name, classifierType(classifier), DefaultExtension, Some(classifier), classifierConf(classifier) :: Nil, None)
+		Artifact(name, classifierType(classifier), DefaultExtension, Some(classifier), Nil, None)
 }
