@@ -71,13 +71,38 @@ object TestCaseGenerators {
 
 	private [this] def lzy[T <: AnyRef](x: T) = SafeLazy.strict(x)
 
+	def genNameHash(defn: String): Gen[xsbti.api._internalOnly_NameHash] =
+        value(new xsbti.api._internalOnly_NameHash(defn, defn.hashCode()))
+
+	def genNameHashes(defns: Seq[String]): Gen[xsbti.api._internalOnly_NameHashes] = {
+	        def partitionAccordingToMask[T](mask: List[Boolean], xs: List[T]): (List[T], List[T]) = {
+	                val (p1, p2) = (mask zip xs).partition(_._1)
+	                (p1.map(_._2), p2.map(_._2))
+	        }
+	        val pairsOfGenerators = for (defn <- defns) yield {
+	                for {
+	                        isRegularMember <- arbitrary[Boolean]
+	                        nameHash <- genNameHash(defn)
+	                } yield (isRegularMember, nameHash)
+	        }
+	        val genNameHashesList = Gen.sequence[List, xsbti.api._internalOnly_NameHash](defns.map(genNameHash))
+	        val genTwoListOfNameHashes = for {
+	                nameHashesList <- genNameHashesList
+	                isRegularMemberList <- listOfN(nameHashesList.length, arbitrary[Boolean])
+	        } yield partitionAccordingToMask(isRegularMemberList, nameHashesList)
+	        for {
+	                (regularMemberNameHashes, implicitMemberNameHashes) <- genTwoListOfNameHashes
+	        } yield new xsbti.api._internalOnly_NameHashes(regularMemberNameHashes.toArray, implicitMemberNameHashes.toArray)
+	}
+
 	def genSource(defns: Seq[String]): Gen[Source] = for {
 		startTime <- arbitrary[Long]
 		hashLen <- choose(10, 20)  // Requred by SameAPI to be > 0.
 		hash <- Gen.containerOfN[Array,Byte](hashLen, arbitrary[Byte])
 		apiHash <- arbitrary[Int]
 		hasMacro <- arbitrary[Boolean]
-	} yield new Source(new Compilation(startTime, Array()), hash, new SourceAPI(Array(), Array(defns map makeDefinition:_*)), apiHash, hasMacro)
+		nameHashes <- genNameHashes(defns)
+	} yield new Source(new Compilation(startTime, Array()), hash, new SourceAPI(Array(), Array(defns map makeDefinition:_*)), apiHash, nameHashes, hasMacro)
 
 	def genSources(all_defns: Seq[Seq[String]]): Gen[Seq[Source]] = Gen.sequence[List, Source](all_defns.map(genSource))
 
