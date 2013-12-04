@@ -21,18 +21,31 @@ object Incremental
 		log: Logger,
 		options: IncOptions)(implicit equivS: Equiv[Stamp]): (Boolean, Analysis) =
 	{
-		val initialChanges = changedInitial(entry, sources, previous, current, forEntry, options, log)
+		val incremental = new Incremental
+		val initialChanges = incremental.changedInitial(entry, sources, previous, current, forEntry, options, log)
 		val binaryChanges = new DependencyChanges {
 			val modifiedBinaries = initialChanges.binaryDeps.toArray
 			val modifiedClasses = initialChanges.external.allModified.toArray
 			def isEmpty = modifiedBinaries.isEmpty && modifiedClasses.isEmpty
 		}
-		val initialInv = invalidateInitial(previous.relations, initialChanges, log)
+		val initialInv = incremental.invalidateInitial(previous.relations, initialChanges, log)
 		log.debug("All initially invalidated sources: " + initialInv + "\n")
 		val analysis = manageClassfiles(options) { classfileManager =>
-			cycle(initialInv, sources, binaryChanges, previous, doCompile, classfileManager, 1, log, options)
+			incremental.cycle(initialInv, sources, binaryChanges, previous, doCompile, classfileManager, 1, log, options)
 		}
 		(!initialInv.isEmpty, analysis)
+	}
+
+	private[inc] val apiDebugProp = "xsbt.api.debug"
+	private[inc] def apiDebug(options: IncOptions): Boolean =  options.apiDebug || java.lang.Boolean.getBoolean(apiDebugProp)
+
+	private[sbt] def prune(invalidatedSrcs: Set[File], previous: Analysis): Analysis =
+		prune(invalidatedSrcs, previous, ClassfileManager.deleteImmediately())
+
+	private[sbt] def prune(invalidatedSrcs: Set[File], previous: Analysis, classfileManager: ClassfileManager): Analysis =
+	{
+		classfileManager.delete( invalidatedSrcs.flatMap(previous.relations.products) )
+		previous -- invalidatedSrcs
 	}
 
 	private[this] def manageClassfiles[T](options: IncOptions)(run: ClassfileManager => T): T =
@@ -46,10 +59,13 @@ object Incremental
 		result
 	}
 
+}
+
+
+private class Incremental {
+
 	val incDebugProp = "xsbt.inc.debug"
 	private def incDebug(options: IncOptions): Boolean = options.relationsDebug || java.lang.Boolean.getBoolean(incDebugProp)
-	val apiDebugProp = "xsbt.api.debug"
-	def apiDebug(options: IncOptions): Boolean =  options.apiDebug || java.lang.Boolean.getBoolean(apiDebugProp)
 
 	// setting the related system property to true will skip checking that the class name
 	// still comes from the same classpath entry.  This can workaround bugs in classpath construction,
@@ -58,7 +74,7 @@ object Incremental
 
 	// TODO: the Analysis for the last successful compilation should get returned + Boolean indicating success
 	// TODO: full external name changes, scopeInvalidations
-	@tailrec def cycle(invalidatedRaw: Set[File], allSources: Set[File], binaryChanges: DependencyChanges, previous: Analysis,
+	@tailrec final def cycle(invalidatedRaw: Set[File], allSources: Set[File], binaryChanges: DependencyChanges, previous: Analysis,
 		doCompile: (Set[File], DependencyChanges) => Analysis, classfileManager: ClassfileManager, cycleNum: Int, log: Logger, options: IncOptions): Analysis =
 		if(invalidatedRaw.isEmpty)
 			previous
@@ -67,7 +83,7 @@ object Incremental
 			def debug(s: => String) = if (incDebug(options)) log.debug(s) else ()
 			val withPackageObjects = invalidatedRaw ++ invalidatedPackageObjects(invalidatedRaw, previous.relations)
 			val invalidated = expand(withPackageObjects, allSources, log, options)
-			val pruned = prune(invalidated, previous, classfileManager)
+			val pruned = Incremental.prune(invalidated, previous, classfileManager)
 			debug("********* Pruned: \n" + pruned.relations + "\n*********")
 
 			val fresh = doCompile(invalidated, binaryChanges)
@@ -144,7 +160,7 @@ object Incremental
 		val newApis = lastSources.toSeq map newAPI
 		val apiChanges = (lastSources, oldApis, newApis).zipped.flatMap { (src, oldApi, newApi) => sameSource(src, oldApi, newApi, log, options) }
 
-		if (apiDebug(options) && apiChanges.nonEmpty) {
+		if (Incremental.apiDebug(options) && apiChanges.nonEmpty) {
 			logApiChanges(apiChanges, oldAPI, newAPI, log, options)
 		}
 
@@ -319,15 +335,6 @@ object Incremental
 		val initialDependsOnNew = transitiveOfNew & initial
 		log.debug("Previously invalidated, but (transitively) depend on new invalidations:\n\t" + initialDependsOnNew)
 		newInv ++ initialDependsOnNew
-	}
-
-	def prune(invalidatedSrcs: Set[File], previous: Analysis): Analysis =
-		prune(invalidatedSrcs, previous, ClassfileManager.deleteImmediately())
-
-	def prune(invalidatedSrcs: Set[File], previous: Analysis, classfileManager: ClassfileManager): Analysis =
-	{
-		classfileManager.delete( invalidatedSrcs.flatMap(previous.relations.products) )
-		previous -- invalidatedSrcs
 	}
 
 	def externalBinaryModified(entry: String => Option[File], analysis: File => Option[Analysis], previous: Stamps, current: ReadStamps, log: Logger)(implicit equivS: Equiv[Stamp]): File => Boolean =
