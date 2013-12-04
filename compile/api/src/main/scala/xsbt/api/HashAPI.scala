@@ -46,7 +46,7 @@ final class HashAPI(includePrivate: Boolean, includeParamNames: Boolean, include
 	}
 
 	import scala.collection.mutable
-	import MurmurHash.{extendHash, finalizeHash, nextMagicA, nextMagicB, startHash, startMagicA, startMagicB, stringHash, symmetricHash}
+	import MurmurHash.{extendHash, nextMagicA, nextMagicB, startHash, startMagicA, startMagicB, stringHash, symmetricHash}
 
 	private[this] val visitedStructures = visitedMap[Structure]
 	private[this] val visitedClassLike = visitedMap[ClassLike]
