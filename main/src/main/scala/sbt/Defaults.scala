@@ -679,7 +679,7 @@ object Defaults extends BuildCommon {
         a.copy(classifier = Some(classifierString), `type` = Artifact.classifierType(classifierString), configurations = confs)
       }
   }
-  // TODO bad, remove. The configuration(s) should not be decided from the classifier.
+  @deprecated("The configuration(s) should not be decided based on the classifier.", "1.0")
   def artifactConfigurations(base: Artifact, scope: Configuration, classifier: Option[String]): Iterable[Configuration] =
     classifier match {
       case Some(c) => Artifact.classifierConf(c) :: Nil
