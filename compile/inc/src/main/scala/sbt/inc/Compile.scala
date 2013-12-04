@@ -4,11 +4,12 @@
 package sbt
 package inc
 
-import xsbti.api.{Source, SourceAPI, Compilation, OutputSetting}
+import xsbti.api.{Source, SourceAPI, Compilation, OutputSetting, _internalOnly_NameHashes}
 import xsbti.compile.{DependencyChanges, Output, SingleOutput, MultipleOutput}
 import xsbti.{Position,Problem,Severity}
 import Logger.{m2o, problem}
 import java.io.File
+import xsbti.api.Definition
 
 object IncrementalCompile
 {
@@ -68,6 +69,7 @@ private final class AnalysisCallback(internalMap: File => Option[File], external
 
 	private[this] val apis = new HashMap[File, (Int, SourceAPI)]
 	private[this] val usedNames = new HashMap[File, Set[String]]
+	private[this] val publicNameHashes = new HashMap[File, _internalOnly_NameHashes]
 	private[this] val unreporteds = new HashMap[File, ListBuffer[Problem]]
 	private[this] val reporteds = new HashMap[File, ListBuffer[Problem]]
 	private[this] val binaryDeps = new HashMap[File, Set[File]]
@@ -147,6 +149,7 @@ private final class AnalysisCallback(internalMap: File => Option[File], external
 	def api(sourceFile: File, source: SourceAPI) {
 		import xsbt.api.{APIUtil, HashAPI}
 		if (APIUtil.isScalaSourceName(sourceFile.getName) && APIUtil.hasMacro(source)) macroSources += sourceFile
+		publicNameHashes(sourceFile) = (new NameHashing).nameHashes(source)
 		val shouldMinimize = !Incremental.apiDebug(options)
 		val savedSource = if (shouldMinimize) APIUtil.minimize(source) else source
 		apis(sourceFile) = (HashAPI(source), savedSource)
@@ -165,7 +168,7 @@ private final class AnalysisCallback(internalMap: File => Option[File], external
 			val hash = stamp match { case h: Hash => h.value; case _ => new Array[Byte](0) }
 			// TODO store this in Relations, rather than Source.
 			val hasMacro: Boolean = macroSources.contains(src)
-			val s = new xsbti.api.Source(compilation, hash, api._2, api._1, hasMacro)
+			val s = new xsbti.api.Source(compilation, hash, api._2, api._1, publicNameHashes(src), hasMacro)
 			val info = SourceInfos.makeInfo(getOrNil(reporteds, src), getOrNil(unreporteds, src))
 			val direct = sourceDeps.getOrElse(src, Nil: Iterable[File])
 			val publicInherited = inheritedSourceDeps.getOrElse(src, Nil: Iterable[File])
