@@ -38,6 +38,13 @@ object HashAPI
  */
 final class HashAPI(includePrivate: Boolean, includeParamNames: Boolean, includeDefinitions: Boolean)
 {
+	// this constructor variant is for source and binary backwards compatibility with sbt 0.13.0
+	def this(includePrivate: Boolean, includeParamNames: Boolean) {
+		// in the old logic we used to always include definitions hence
+		// includeDefinitions=true
+		this(includePrivate, includeParamNames, includeDefinitions=true)
+	}
+
 	import scala.collection.mutable
 	import MurmurHash.{extendHash, finalizeHash, nextMagicA, nextMagicB, startHash, startMagicA, startMagicB, stringHash, symmetricHash}
 
