@@ -297,20 +297,10 @@ private abstract class MRelationsCommon(val srcProd: Relation[File, File], val b
   private val userDir = sys.props("user.dir").stripSuffix("/") + "/"
   private def nocwd(s: String)              = s stripPrefix userDir
   private def line_s(kv: (Any, Any))        = "    " + nocwd("" + kv._1) + " -> " + nocwd("" + kv._2) + "\n"
-  private def relation_s(r: Relation[_, _]) = (
+  protected def relation_s(r: Relation[_, _]) = (
     if (r.forwardMap.isEmpty) "Relation [ ]"
     else (r.all.toSeq map line_s sorted) mkString ("Relation [\n", "", "]")
   )
-	override def toString = (
-	  """
-	  |Relations:
-	  |  products: %s
-	  |  bin deps: %s
-	  |  src deps: %s
-	  |  ext deps: %s
-	  |  class names: %s
-	  """.trim.stripMargin.format(List(srcProd, binaryDep, internalSrcDep, externalDep, classes) map relation_s : _*)
-	)
 }
 
 
@@ -418,14 +408,6 @@ private class MRelationsDefaultImpl(srcProd: Relation[File, File], binaryDep: Re
 
 	override def hashCode = (srcProd :: binaryDep :: direct :: publicInherited :: classes :: Nil).hashCode
 
-  /** Making large Relations a little readable. */
-  private val userDir = sys.props("user.dir").stripSuffix("/") + "/"
-  private def nocwd(s: String)              = s stripPrefix userDir
-  private def line_s(kv: (Any, Any))        = "    " + nocwd("" + kv._1) + " -> " + nocwd("" + kv._2) + "\n"
-  private def relation_s(r: Relation[_, _]) = (
-    if (r.forwardMap.isEmpty) "Relation [ ]"
-    else (r.all.toSeq map line_s sorted) mkString ("Relation [\n", "", "]")
-  )
 	override def toString = (
 	  """
 	  |Relations:
@@ -434,8 +416,7 @@ private class MRelationsDefaultImpl(srcProd: Relation[File, File], binaryDep: Re
 	  |  src deps: %s
 	  |  ext deps: %s
 	  |  class names: %s
-	  |  used names: %s
-	  """.trim.stripMargin.format(List(srcProd, binaryDep, internalSrcDep, externalDep, classes, names) map relation_s : _*)
+	  """.trim.stripMargin.format(List(srcProd, binaryDep, internalSrcDep, externalDep, classes) map relation_s : _*)
 	)
 }
 
@@ -514,5 +495,17 @@ private class MRelationsNameHashing(srcProd: Relation[File, File], binaryDep: Re
 	}
 
 	override def hashCode = (srcProd :: binaryDep :: memberRef :: inheritance :: classes :: Nil).hashCode
+
+	override def toString = (
+	  """
+	  |Relations (with name hashing enabled):
+	  |  products: %s
+	  |  bin deps: %s
+	  |  src deps: %s
+	  |  ext deps: %s
+	  |  class names: %s
+	  |  used names: %s
+	  """.trim.stripMargin.format(List(srcProd, binaryDep, internalSrcDep, externalDep, classes, names) map relation_s : _*)
+	)
 
 }
