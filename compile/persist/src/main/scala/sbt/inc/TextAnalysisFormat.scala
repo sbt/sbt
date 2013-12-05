@@ -148,6 +148,7 @@ object TextAnalysisFormat {
 				relations.memberRef else Relations.emptySourceDependencies
 			val inheritance = if (nameHashing)
 				relations.inheritance else Relations.emptySourceDependencies
+			val names = if (nameHashing) relations.names else Relation.empty[File, String]
 
 			writeRelation(Headers.directSrcDep, direct.internal)
 			writeRelation(Headers.directExternalDep, direct.external)
@@ -160,7 +161,7 @@ object TextAnalysisFormat {
 			writeRelation(Headers.inheritanceExternalDep, inheritance.external)
 
 			writeRelation(Headers.classes,        relations.classes)
-			writeRelation(Headers.usedNames, relations.names)
+			writeRelation(Headers.usedNames, names)
 		}
 
 		def read(in: BufferedReader): Relations = {
