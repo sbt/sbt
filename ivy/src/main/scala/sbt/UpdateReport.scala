@@ -110,7 +110,7 @@ object UpdateReport
 		def substitute(f: (String, ModuleID, Seq[(Artifact, File)]) => Seq[(Artifact, File)]): UpdateReport =
 			moduleReportMap { (configuration, modReport) =>
 				val newArtifacts = f(configuration, modReport.module, modReport.artifacts)
-				new ModuleReport(modReport.module, newArtifacts, Nil)
+				new ModuleReport(modReport.module, newArtifacts, modReport.missingArtifacts)
 			}
 
 		def toSeq: Seq[(String, ModuleID, Artifact, File)] =
