@@ -21,7 +21,7 @@ object Incremental
 		log: Logger,
 		options: IncOptions)(implicit equivS: Equiv[Stamp]): (Boolean, Analysis) =
 	{
-		val incremental = new Incremental(log, options)
+		val incremental = new IncrementalDefaultImpl(log, options)
 		val initialChanges = incremental.changedInitial(entry, sources, previous, current, forEntry)
 		val binaryChanges = new DependencyChanges {
 			val modifiedBinaries = initialChanges.binaryDeps.toArray
@@ -62,7 +62,7 @@ object Incremental
 }
 
 
-private class Incremental(log: Logger, options: IncOptions) {
+private abstract class IncrementalCommon(log: Logger, options: IncOptions) {
 
 	val incDebugProp = "xsbt.inc.debug"
 	private def incDebug(options: IncOptions): Boolean = options.relationsDebug || java.lang.Boolean.getBoolean(incDebugProp)
@@ -449,3 +449,5 @@ private class Incremental(log: Logger, options: IncOptions) {
 	def properSubPkg(testParent: Seq[String], testSub: Seq[String]) = testParent.length < testSub.length && testSub.startsWith(testParent)
 	def pkgs(api: Source) = names(api :: Nil).map(pkg)*/
 }
+
+private final class IncrementalDefaultImpl(log: Logger, options: IncOptions) extends IncrementalCommon(log, options)
