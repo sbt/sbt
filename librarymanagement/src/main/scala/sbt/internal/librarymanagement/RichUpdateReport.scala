@@ -45,8 +45,8 @@ final class RichUpdateReport(report: UpdateReport) {
     moduleReportMap { (configuration, modReport) =>
       val newArtifacts = f(configuration, modReport.module, modReport.artifacts)
       modReport.copy(
-        artifacts = f(configuration, modReport.module, modReport.artifacts),
-        missingArtifacts = Nil
+        artifacts = newArtifacts,
+        missingArtifacts = modReport.missingArtifacts
       )
     }
 
