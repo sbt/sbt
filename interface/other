@@ -3,7 +3,16 @@ Source
 	hash: Byte*
 	api: SourceAPI
 	apiHash: Int
+	_internalOnly_nameHashes: _internalOnly_NameHashes
 	hasMacro: Boolean
+
+_internalOnly_NameHashes
+	regularMembers: _internalOnly_NameHash*
+	implicitMembers: _internalOnly_NameHash*
+
+_internalOnly_NameHash
+	name: String
+	hash: Int
 
 SourceAPI
 	packages : Package*
