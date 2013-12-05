@@ -308,21 +308,26 @@ private abstract class IncrementalCommon(log: Logger, options: IncOptions) {
 	/** Intermediate invalidation step: steps after the initial invalidation, but before the final transitive invalidation. */
 	def invalidateIntermediate(relations: Relations, changes: APIChanges[File]): Set[File] =
 	{
-		def reverse(r: Relations.Source) = r.internal.reverse _
-		invalidateSources(reverse(relations.direct), reverse(relations.publicInherited), changes)
+		invalidateSources(relations, changes)
 	}
 	/** Invalidates inheritance dependencies, transitively.  Then, invalidates direct dependencies.  Finally, excludes initial dependencies not
 	* included in a cycle with newly invalidated sources. */
-	private[this] def invalidateSources(directDeps: File => Set[File], publicInherited: File => Set[File], changes: APIChanges[File]): Set[File] =
+	private[this] def invalidateSources(relations: Relations, changes: APIChanges[File]): Set[File] =
 	{
 		val initial = changes.allModified.toSet
 		val all = (changes.apiChanges flatMap { change =>
-			invalidateSource(directDeps, publicInherited, change)
+			invalidateSource(relations, change)
 		}).toSet
-		includeInitialCond(initial, all, f => directDeps(f) ++ publicInherited(f))
+		includeInitialCond(initial, all, allDeps(relations))
 	}
 
-	private[this] def invalidateSource(directDeps: File => Set[File], publicInherited: File => Set[File], change: APIChange[File]): Set[File] = {
+	private[this] def allDeps(relations: Relations): File => Set[File] =
+		f => relations.direct.internal.reverse(f)
+
+	private[this] def invalidateSource(relations: Relations, change: APIChange[File]): Set[File] = {
+		def reverse(r: Relations.Source) = r.internal.reverse _
+		val directDeps: File => Set[File] = reverse(relations.direct)
+		val publicInherited: File => Set[File]  = reverse(relations.publicInherited)
 		log.debug("Invalidating by inheritance (transitively)...")
 		val transitiveInherited = transitiveDeps(Set(change.modified))(publicInherited)
 		log.debug("Invalidated by transitive public inheritance: " + transitiveInherited)
