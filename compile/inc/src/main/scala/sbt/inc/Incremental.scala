@@ -316,13 +316,20 @@ private abstract class IncrementalCommon(log: Logger, options: IncOptions) {
 	private[this] def invalidateSources(directDeps: File => Set[File], publicInherited: File => Set[File], changes: APIChanges[File]): Set[File] =
 	{
 		val initial = changes.allModified.toSet
+		val all = (changes.apiChanges flatMap { change =>
+			invalidateSource(directDeps, publicInherited, change)
+		}).toSet
+		includeInitialCond(initial, all, f => directDeps(f) ++ publicInherited(f))
+	}
+
+	private[this] def invalidateSource(directDeps: File => Set[File], publicInherited: File => Set[File], change: APIChange[File]): Set[File] = {
 		log.debug("Invalidating by inheritance (transitively)...")
-		val transitiveInherited = transitiveDeps(initial)(publicInherited)
+		val transitiveInherited = transitiveDeps(Set(change.modified))(publicInherited)
 		log.debug("Invalidated by transitive public inheritance: " + transitiveInherited)
 		val direct = transitiveInherited flatMap directDeps
 		log.debug("Invalidated by direct dependency: " + direct)
 		val all = transitiveInherited ++ direct
-		includeInitialCond(initial, all, f => directDeps(f) ++ publicInherited(f))
+		all
 	}
 
 	/** Conditionally include initial sources that are dependencies of newly invalidated sources.
