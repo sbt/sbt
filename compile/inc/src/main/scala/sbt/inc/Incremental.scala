@@ -258,13 +258,12 @@ private abstract class IncrementalCommon(log: Logger, options: IncOptions) {
 		val srcDirect = srcChanges.removed ++ srcChanges.removed.flatMap(previous.usesInternalSrc) ++ srcChanges.added ++ srcChanges.changed
 		val byProduct = changes.removedProducts.flatMap(previous.produced)
 		val byBinaryDep = changes.binaryDeps.flatMap(previous.usesBinary)
-		val externalModifiedSources = changes.external.allModified.toSet
-		val byExtSrcDep = invalidateByExternal(previous, externalModifiedSources) //changes.external.modified.flatMap(previous.usesExternal) // ++ scopeInvalidations
+		val byExtSrcDep = invalidateByAllExternal(previous, changes.external) //changes.external.modified.flatMap(previous.usesExternal) // ++ scopeInvalidations
 		checkAbsolute(srcChanges.added.toList)
 		log.debug(
 			"\nInitial source changes: \n\tremoved:" + srcChanges.removed + "\n\tadded: " + srcChanges.added + "\n\tmodified: " + srcChanges.changed +
 			"\nRemoved products: " + changes.removedProducts +
-			"\nModified external sources: " + externalModifiedSources +
+			"\nExternal API changes: " + changes.external +
 			"\nModified binary dependencies: " + changes.binaryDeps +
 			"\nInitial directly invalidated sources: " + srcDirect +
 			"\n\nSources indirectly invalidated by:" +
@@ -289,20 +288,26 @@ private abstract class IncrementalCommon(log: Logger, options: IncOptions) {
 			}
 		}
 
+	def invalidateByAllExternal(relations: Relations, externalAPIChanges: APIChanges[String]): Set[File] = {
+		(externalAPIChanges.apiChanges.flatMap { externalAPIChange =>
+			invalidateByExternal(relations, externalAPIChange)
+		}).toSet
+	}
+
 	/** Sources invalidated by `external` sources in other projects according to the previous `relations`. */
-	def invalidateByExternal(relations: Relations, external: Set[String]): Set[File] =
-	{
+	private def invalidateByExternal(relations: Relations, externalAPIChange: APIChange[String]): Set[File] = {
+		val modified = externalAPIChange.modified
 		// Propagate public inheritance dependencies transitively.
 		// This differs from normal because we need the initial crossing from externals to sources in this project.
 		val externalInheritedR = relations.publicInherited.external
-		val byExternalInherited = external flatMap externalInheritedR.reverse
+		val byExternalInherited = externalInheritedR.reverse(modified)
 		val internalInheritedR = relations.publicInherited.internal
 		val transitiveInherited = transitiveDeps(byExternalInherited)(internalInheritedR.reverse _)
 
 		// Get the direct dependencies of all sources transitively invalidated by inheritance
 		val directA = transitiveInherited flatMap relations.direct.internal.reverse
 		// Get the sources that directly depend on externals.  This includes non-inheritance dependencies and is not transitive.
-		val directB = external flatMap relations.direct.external.reverse
+		val directB = relations.direct.external.reverse(modified)
 		transitiveInherited ++ directA ++ directB
 	}
 	/** Intermediate invalidation step: steps after the initial invalidation, but before the final transitive invalidation. */
