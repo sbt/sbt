@@ -112,10 +112,7 @@ private abstract class IncrementalCommon(log: Logger, options: IncOptions) {
 		else invalidated
 	}
 
-	// Package objects are fragile: if they inherit from an invalidated source, get "class file needed by package is missing" error
-	//  This might be too conservative: we probably only need package objects for packages of invalidated sources.
-	private[this] def invalidatedPackageObjects(invalidated: Set[File], relations: Relations): Set[File] =
-		invalidated flatMap relations.publicInherited.internal.reverse filter { _.getName == "package.scala" }
+	protected def invalidatedPackageObjects(invalidated: Set[File], relations: Relations): Set[File]
 
 	/**
 	 * Logs API changes using debug-level logging. The API are obtained using the APIDiff class.
@@ -178,14 +175,7 @@ private abstract class IncrementalCommon(log: Logger, options: IncOptions) {
 		}
 	}
 
-	def sameAPI[T](src: T, a: Source, b: Source): Option[SourceAPIChange[T]] = {
-		if (SameAPI(a,b))
-			None
-		else {
-			val sourceApiChange = SourceAPIChange(src)
-			Some(sourceApiChange)
-		}
-	}
+	protected def sameAPI[T](src: T, a: Source, b: Source): Option[SourceAPIChange[T]]
 
 	def shortcutSameSource(a: Source, b: Source): Boolean  =  !a.hash.isEmpty && !b.hash.isEmpty && sameCompilation(a.compilation, b.compilation) && (a.hash.deep equals b.hash.deep)
 	def sameCompilation(a: Compilation, b: Compilation): Boolean  =  a.startTime == b.startTime && a.outputs.corresponds(b.outputs){
@@ -295,21 +285,8 @@ private abstract class IncrementalCommon(log: Logger, options: IncOptions) {
 	}
 
 	/** Sources invalidated by `external` sources in other projects according to the previous `relations`. */
-	private def invalidateByExternal(relations: Relations, externalAPIChange: APIChange[String]): Set[File] = {
-		val modified = externalAPIChange.modified
-		// Propagate public inheritance dependencies transitively.
-		// This differs from normal because we need the initial crossing from externals to sources in this project.
-		val externalInheritedR = relations.publicInherited.external
-		val byExternalInherited = externalInheritedR.reverse(modified)
-		val internalInheritedR = relations.publicInherited.internal
-		val transitiveInherited = transitiveDeps(byExternalInherited)(internalInheritedR.reverse _)
+	protected def invalidateByExternal(relations: Relations, externalAPIChange: APIChange[String]): Set[File]
 
-		// Get the direct dependencies of all sources transitively invalidated by inheritance
-		val directA = transitiveInherited flatMap relations.direct.internal.reverse
-		// Get the sources that directly depend on externals.  This includes non-inheritance dependencies and is not transitive.
-		val directB = relations.direct.external.reverse(modified)
-		transitiveInherited ++ directA ++ directB
-	}
 	/** Intermediate invalidation step: steps after the initial invalidation, but before the final transitive invalidation. */
 	def invalidateIntermediate(relations: Relations, changes: APIChanges[File]): Set[File] =
 	{
@@ -326,21 +303,9 @@ private abstract class IncrementalCommon(log: Logger, options: IncOptions) {
 		includeInitialCond(initial, all, allDeps(relations))
 	}
 
-	private[this] def allDeps(relations: Relations): File => Set[File] =
-		f => relations.direct.internal.reverse(f)
+	protected def allDeps(relations: Relations): File => Set[File]
 
-	private[this] def invalidateSource(relations: Relations, change: APIChange[File]): Set[File] = {
-		def reverse(r: Relations.Source) = r.internal.reverse _
-		val directDeps: File => Set[File] = reverse(relations.direct)
-		val publicInherited: File => Set[File]  = reverse(relations.publicInherited)
-		log.debug("Invalidating by inheritance (transitively)...")
-		val transitiveInherited = transitiveDeps(Set(change.modified))(publicInherited)
-		log.debug("Invalidated by transitive public inheritance: " + transitiveInherited)
-		val direct = transitiveInherited flatMap directDeps
-		log.debug("Invalidated by direct dependency: " + direct)
-		val all = transitiveInherited ++ direct
-		all
-	}
+	protected def invalidateSource(relations: Relations, change: APIChange[File]): Set[File]
 
 	/** Conditionally include initial sources that are dependencies of newly invalidated sources.
 	** Initial sources included in this step can be because of a cycle, but not always. */
@@ -406,7 +371,7 @@ private abstract class IncrementalCommon(log: Logger, options: IncOptions) {
 	def orEmpty(o: Option[Source]): Source = o getOrElse APIs.emptySource
 	def orTrue(o: Option[Boolean]): Boolean = o getOrElse true
 
-	private[this] def transitiveDeps[T](nodes: Iterable[T])(dependencies: T => Iterable[T]): Set[T] =
+	protected def transitiveDeps[T](nodes: Iterable[T])(dependencies: T => Iterable[T]): Set[T] =
 	{
 		val xs = new collection.mutable.HashSet[T]
 		def all(from: T, tos: Iterable[T]): Unit = tos.foreach(to => visit(from, to))
@@ -467,4 +432,53 @@ private abstract class IncrementalCommon(log: Logger, options: IncOptions) {
 	def pkgs(api: Source) = names(api :: Nil).map(pkg)*/
 }
 
-private final class IncrementalDefaultImpl(log: Logger, options: IncOptions) extends IncrementalCommon(log, options)
+private final class IncrementalDefaultImpl(log: Logger, options: IncOptions) extends IncrementalCommon(log, options) {
+
+	// Package objects are fragile: if they inherit from an invalidated source, get "class file needed by package is missing" error
+	//  This might be too conservative: we probably only need package objects for packages of invalidated sources.
+	override protected def invalidatedPackageObjects(invalidated: Set[File], relations: Relations): Set[File] =
+		invalidated flatMap relations.publicInherited.internal.reverse filter { _.getName == "package.scala" }
+
+	override protected def sameAPI[T](src: T, a: Source, b: Source): Option[SourceAPIChange[T]] = {
+		if (SameAPI(a,b))
+			None
+		else {
+			val sourceApiChange = SourceAPIChange(src)
+			Some(sourceApiChange)
+		}
+	}
+
+	/** Invalidates sources based on initially detected 'changes' to the sources, products, and dependencies.*/
+	override protected def invalidateByExternal(relations: Relations, externalAPIChange: APIChange[String]): Set[File] = {
+		val modified = externalAPIChange.modified
+		// Propagate public inheritance dependencies transitively.
+		// This differs from normal because we need the initial crossing from externals to sources in this project.
+		val externalInheritedR = relations.publicInherited.external
+		val byExternalInherited = externalInheritedR.reverse(modified)
+		val internalInheritedR = relations.publicInherited.internal
+		val transitiveInherited = transitiveDeps(byExternalInherited)(internalInheritedR.reverse _)
+
+		// Get the direct dependencies of all sources transitively invalidated by inheritance
+		val directA = transitiveInherited flatMap relations.direct.internal.reverse
+		// Get the sources that directly depend on externals.  This includes non-inheritance dependencies and is not transitive.
+		val directB = relations.direct.external.reverse(modified)
+		transitiveInherited ++ directA ++ directB
+	}
+
+	override protected def invalidateSource(relations: Relations, change: APIChange[File]): Set[File] = {
+		def reverse(r: Relations.Source) = r.internal.reverse _
+		val directDeps: File => Set[File] = reverse(relations.direct)
+		val publicInherited: File => Set[File]  = reverse(relations.publicInherited)
+		log.debug("Invalidating by inheritance (transitively)...")
+		val transitiveInherited = transitiveDeps(Set(change.modified))(publicInherited)
+		log.debug("Invalidated by transitive public inheritance: " + transitiveInherited)
+		val direct = transitiveInherited flatMap directDeps
+		log.debug("Invalidated by direct dependency: " + direct)
+		val all = transitiveInherited ++ direct
+		all
+	}
+
+	override protected def allDeps(relations: Relations): File => Set[File] =
+		f => relations.direct.internal.reverse(f)
+
+}
