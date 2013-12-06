@@ -112,14 +112,14 @@ final class IncOptions(
 			 apiDumpDirectory: Option[java.io.File] = this.apiDumpDirectory,
 			 newClassfileManager: () => ClassfileManager = this.newClassfileManager): IncOptions = {
 		new IncOptions(transitiveStep, recompileAllFraction, relationsDebug, apiDebug, apiDiffContextSize,
-			apiDumpDirectory, newClassfileManager)
+			apiDumpDirectory, newClassfileManager, recompileOnMacroDef)
 	}
 
 	@deprecated("Methods generated for case class will be removed in the future.", "0.13.2")
 	override def productPrefix: String = "IncOptions"
 
 	@deprecated("Methods generated for case class will be removed in the future.", "0.13.2")
-	def productArity: Int = 7
+	def productArity: Int = 8
 
 	@deprecated("Methods generated for case class will be removed in the future.", "0.13.2")
 	def productElement(x$1: Int): Any = x$1 match {
@@ -130,6 +130,7 @@ final class IncOptions(
 		case 4 => IncOptions.this.apiDiffContextSize
 		case 5 => IncOptions.this.apiDumpDirectory
 		case 6 => IncOptions.this.newClassfileManager
+		case 7 => IncOptions.this.recompileOnMacroDef
 		case _ => throw new IndexOutOfBoundsException(x$1.toString())
 	}
 
@@ -149,7 +150,8 @@ final class IncOptions(
       acc = Statics.mix(acc, apiDiffContextSize)
       acc = Statics.mix(acc, Statics.anyHash(apiDumpDirectory))
       acc = Statics.mix(acc, Statics.anyHash(newClassfileManager))
-      Statics.finalizeHash(acc, 7)
+      acc = Statics.mix(acc, if (recompileOnMacroDef) 1231 else 1237)
+      Statics.finalizeHash(acc, 8)
     }
 
    override def toString(): String = scala.runtime.ScalaRunTime._toString(IncOptions.this)
@@ -160,7 +162,8 @@ final class IncOptions(
         transitiveStep == IncOptions$1.transitiveStep && recompileAllFraction == IncOptions$1.recompileAllFraction &&
         relationsDebug == IncOptions$1.relationsDebug && apiDebug == IncOptions$1.apiDebug  &&
         apiDiffContextSize == IncOptions$1.apiDiffContextSize && apiDumpDirectory == IncOptions$1.apiDumpDirectory &&
-        newClassfileManager == IncOptions$1.newClassfileManager
+        newClassfileManager == IncOptions$1.newClassfileManager &&
+        recompileOnMacroDef == IncOptions$1.recompileOnMacroDef
       }))
     }
     //- EXPANDED CASE CLASS METHOD END -//
@@ -217,7 +220,7 @@ object IncOptions extends Serializable {
 	private val apiDebugKey             = "apiDebug"
 	private val apiDumpDirectoryKey     = "apiDumpDirectory"
 	private val apiDiffContextSizeKey   = "apiDiffContextSize"
-	private val recompileOnMacroDefKey  = "recompileOnMacroDefKey"
+	private val recompileOnMacroDefKey  = "recompileOnMacroDef"
 
 	def fromStringMap(m: java.util.Map[String, String]): IncOptions = {
 		// all the code below doesn't look like idiomatic Scala for a good reason: we are working with Java API
