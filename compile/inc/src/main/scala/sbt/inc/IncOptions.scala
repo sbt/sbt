@@ -51,57 +51,76 @@ final class IncOptions(
 	 * Determines whether incremental compiler should recompile all dependencies of a file
 	 * that contains a macro definition.
 	 */
-	val recompileOnMacroDef: Boolean
+	val recompileOnMacroDef: Boolean,
+	/**
+	 * Determines whether incremental compiler uses the new algorithm known as name hashing.
+	 *
+	 * This flag is disabled by default so incremental compiler's behavior is the same as in sbt 0.13.0.
+	 *
+	 * IMPLEMENTATION NOTE:
+	 * Enabling this flag enables a few additional functionalities that are needed by the name hashing algorithm:
+	 *
+	 *   1. New dependency source tracking is used. See `sbt.inc.Relations` for details.
+	 *   2. Used names extraction and tracking is enabled. See `sbt.inc.Relations` for details as well.
+	 *   3. Hashing of public names is enabled. See `sbt.inc.AnalysisCallback` for details.
+	 *
+	 */
+	val nameHashing: Boolean
 ) extends Product with Serializable {
 
 	/**
 	 * Secondary constructor introduced to make IncOptions to be binary compatible with version that didn't have
-	 * `recompileOnMacroDef` filed defined.
+	 * `recompileOnMacroDef` and `nameHashing` fields defined.
 	 */
 	def this(transitiveStep: Int, recompileAllFraction: Double, relationsDebug: Boolean, apiDebug: Boolean,
 			 apiDiffContextSize: Int, apiDumpDirectory: Option[java.io.File], newClassfileManager: () => ClassfileManager) = {
 		this(transitiveStep, recompileAllFraction, relationsDebug, apiDebug, apiDiffContextSize,
-		     apiDumpDirectory, newClassfileManager, IncOptions.recompileOnMacroDefDefault)
+		     apiDumpDirectory, newClassfileManager, IncOptions.recompileOnMacroDefDefault, IncOptions.nameHashingDefault)
 	}
 
 	def withTransitiveStep(transitiveStep: Int): IncOptions = {
 		new IncOptions(transitiveStep, recompileAllFraction, relationsDebug, apiDebug, apiDiffContextSize,
-			apiDumpDirectory, newClassfileManager, recompileOnMacroDef)
+			apiDumpDirectory, newClassfileManager, recompileOnMacroDef, nameHashing)
 	}
 
 	def withRecompileAllFraction(recompileAllFraction: Double): IncOptions = {
 		new IncOptions(transitiveStep, recompileAllFraction, relationsDebug, apiDebug, apiDiffContextSize,
-			apiDumpDirectory, newClassfileManager, recompileOnMacroDef)
+			apiDumpDirectory, newClassfileManager, recompileOnMacroDef, nameHashing)
 	}
 
 	def withRelationsDebug(relationsDebug: Boolean): IncOptions = {
 		new IncOptions(transitiveStep, recompileAllFraction, relationsDebug, apiDebug, apiDiffContextSize,
-			apiDumpDirectory, newClassfileManager, recompileOnMacroDef)
+			apiDumpDirectory, newClassfileManager, recompileOnMacroDef, nameHashing)
 	}
 
 	def withApiDebug(apiDebug: Boolean): IncOptions = {
 		new IncOptions(transitiveStep, recompileAllFraction, relationsDebug, apiDebug, apiDiffContextSize,
-			apiDumpDirectory, newClassfileManager, recompileOnMacroDef)
+			apiDumpDirectory, newClassfileManager, recompileOnMacroDef, nameHashing)
 	}
 
 	def withApiDiffContextSize(apiDiffContextSize: Int): IncOptions = {
 		new IncOptions(transitiveStep, recompileAllFraction, relationsDebug, apiDebug, apiDiffContextSize,
-			apiDumpDirectory, newClassfileManager, recompileOnMacroDef)
+			apiDumpDirectory, newClassfileManager, recompileOnMacroDef, nameHashing)
 	}
 
 	def withApiDumpDirectory(apiDumpDirectory: Option[File]): IncOptions = {
 		new IncOptions(transitiveStep, recompileAllFraction, relationsDebug, apiDebug, apiDiffContextSize,
-			apiDumpDirectory, newClassfileManager, recompileOnMacroDef)
+			apiDumpDirectory, newClassfileManager, recompileOnMacroDef, nameHashing)
 	}
 
 	def withNewClassfileManager(newClassfileManager: () => ClassfileManager): IncOptions = {
 		new IncOptions(transitiveStep, recompileAllFraction, relationsDebug, apiDebug, apiDiffContextSize,
-			apiDumpDirectory, newClassfileManager, recompileOnMacroDef)
+			apiDumpDirectory, newClassfileManager, recompileOnMacroDef, nameHashing)
 	}
 
 	def withRecompileOnMacroDef(recompileOnMacroDef: Boolean): IncOptions = {
 		new IncOptions(transitiveStep, recompileAllFraction, relationsDebug, apiDebug, apiDiffContextSize,
-			apiDumpDirectory, newClassfileManager, recompileOnMacroDef)
+			apiDumpDirectory, newClassfileManager, recompileOnMacroDef, nameHashing)
+	}
+
+	def withNameHashing(nameHashing: Boolean): IncOptions = {
+		new IncOptions(transitiveStep, recompileAllFraction, relationsDebug, apiDebug, apiDiffContextSize,
+			apiDumpDirectory, newClassfileManager, recompileOnMacroDef, nameHashing)
 	}
 
 	//- EXPANDED CASE CLASS METHOD BEGIN -//
@@ -112,14 +131,14 @@ final class IncOptions(
 			 apiDumpDirectory: Option[java.io.File] = this.apiDumpDirectory,
 			 newClassfileManager: () => ClassfileManager = this.newClassfileManager): IncOptions = {
 		new IncOptions(transitiveStep, recompileAllFraction, relationsDebug, apiDebug, apiDiffContextSize,
-			apiDumpDirectory, newClassfileManager, recompileOnMacroDef)
+			apiDumpDirectory, newClassfileManager, recompileOnMacroDef, nameHashing)
 	}
 
 	@deprecated("Methods generated for case class will be removed in the future.", "0.13.2")
 	override def productPrefix: String = "IncOptions"
 
 	@deprecated("Methods generated for case class will be removed in the future.", "0.13.2")
-	def productArity: Int = 8
+	def productArity: Int = 9
 
 	@deprecated("Methods generated for case class will be removed in the future.", "0.13.2")
 	def productElement(x$1: Int): Any = x$1 match {
@@ -131,6 +150,7 @@ final class IncOptions(
 		case 5 => IncOptions.this.apiDumpDirectory
 		case 6 => IncOptions.this.newClassfileManager
 		case 7 => IncOptions.this.recompileOnMacroDef
+		case 8 => IncOptions.this.nameHashing
 		case _ => throw new IndexOutOfBoundsException(x$1.toString())
 	}
 
@@ -151,7 +171,8 @@ final class IncOptions(
       acc = Statics.mix(acc, Statics.anyHash(apiDumpDirectory))
       acc = Statics.mix(acc, Statics.anyHash(newClassfileManager))
       acc = Statics.mix(acc, if (recompileOnMacroDef) 1231 else 1237)
-      Statics.finalizeHash(acc, 8)
+      acc = Statics.mix(acc, if (nameHashing) 1231 else 1237)
+      Statics.finalizeHash(acc, 9)
     }
 
    override def toString(): String = scala.runtime.ScalaRunTime._toString(IncOptions.this)
@@ -163,7 +184,7 @@ final class IncOptions(
         relationsDebug == IncOptions$1.relationsDebug && apiDebug == IncOptions$1.apiDebug  &&
         apiDiffContextSize == IncOptions$1.apiDiffContextSize && apiDumpDirectory == IncOptions$1.apiDumpDirectory &&
         newClassfileManager == IncOptions$1.newClassfileManager &&
-        recompileOnMacroDef == IncOptions$1.recompileOnMacroDef
+        recompileOnMacroDef == IncOptions$1.recompileOnMacroDef && nameHashing == IncOptions$1.nameHashing
       }))
     }
     //- EXPANDED CASE CLASS METHOD END -//
@@ -171,6 +192,7 @@ final class IncOptions(
 
 object IncOptions extends Serializable {
 	private val recompileOnMacroDefDefault: Boolean = true
+	private val nameHashingDefault: Boolean = false
 	val Default = IncOptions(
 		//    1. recompile changed sources
 		// 2(3). recompile direct dependencies and transitive public inheritance dependencies of sources with API changes in 1(2).
@@ -182,7 +204,8 @@ object IncOptions extends Serializable {
 		apiDiffContextSize = 5,
 		apiDumpDirectory = None,
 		newClassfileManager = ClassfileManager.deleteImmediately,
-		recompileOnMacroDef = recompileOnMacroDefDefault
+		recompileOnMacroDef = recompileOnMacroDefDefault,
+		nameHashing = nameHashingDefault
 	)
 	//- EXPANDED CASE CLASS METHOD BEGIN -//
 	final override def toString(): String = "IncOptions"
@@ -195,9 +218,10 @@ object IncOptions extends Serializable {
 	}
 	def apply(transitiveStep: Int, recompileAllFraction: Double, relationsDebug: Boolean, apiDebug: Boolean,
 			  apiDiffContextSize: Int, apiDumpDirectory: Option[java.io.File],
-			  newClassfileManager: () => ClassfileManager, recompileOnMacroDef: Boolean): IncOptions = {
+			  newClassfileManager: () => ClassfileManager, recompileOnMacroDef: Boolean,
+			  nameHashing: Boolean): IncOptions = {
 		new IncOptions(transitiveStep, recompileAllFraction, relationsDebug, apiDebug, apiDiffContextSize,
-			apiDumpDirectory, newClassfileManager, recompileOnMacroDef)
+			apiDumpDirectory, newClassfileManager, recompileOnMacroDef, nameHashing)
 	}
     @deprecated("Methods generated for case class will be removed in the future.", "0.13.2")
 	def unapply(x$0: IncOptions): Option[(Int, Double, Boolean, Boolean, Int, Option[java.io.File], () => AnyRef)] = {
@@ -221,6 +245,7 @@ object IncOptions extends Serializable {
 	private val apiDumpDirectoryKey     = "apiDumpDirectory"
 	private val apiDiffContextSizeKey   = "apiDiffContextSize"
 	private val recompileOnMacroDefKey  = "recompileOnMacroDef"
+	private val nameHashingKey          = "nameHashing"
 
 	def fromStringMap(m: java.util.Map[String, String]): IncOptions = {
 		// all the code below doesn't look like idiomatic Scala for a good reason: we are working with Java API
@@ -254,9 +279,13 @@ object IncOptions extends Serializable {
 			val k = recompileOnMacroDefKey
 			if (m.containsKey(k)) m.get(k).toBoolean else Default.recompileOnMacroDef
 		}
+		def getNameHashing: Boolean = {
+			val k = nameHashingKey
+			if (m.containsKey(k)) m.get(k).toBoolean else Default.nameHashing
+		}
 
 		new IncOptions(getTransitiveStep, getRecompileAllFraction, getRelationsDebug, getApiDebug, getApiDiffContextSize,
-			getApiDumpDirectory, ClassfileManager.deleteImmediately, getRecompileOnMacroDef)
+			getApiDumpDirectory, ClassfileManager.deleteImmediately, getRecompileOnMacroDef, getNameHashing)
 	}
 
 	def toStringMap(o: IncOptions): java.util.Map[String, String] = {
@@ -268,6 +297,7 @@ object IncOptions extends Serializable {
 		o.apiDumpDirectory.foreach(f => m.put(apiDumpDirectoryKey, f.toString))
 		m.put(apiDiffContextSizeKey, o.apiDiffContextSize.toString)
 		m.put(recompileOnMacroDefKey, o.recompileOnMacroDef.toString)
+		m.put(nameHashingKey, o.nameHashing.toString)
 		m
 	}
 }
