@@ -61,7 +61,7 @@ class AggressiveCompile(cacheFile: File)
 		cache: GlobalsCache,
 		incrementalCompilerOptions: IncOptions)(implicit log: Logger): Analysis =
 	{
-		val (previousAnalysis, previousSetup) = extract(store.get())
+		val (previousAnalysis, previousSetup) = extract(store.get(), incrementalCompilerOptions)
 		if(skip)
 			previousAnalysis
 		else {
@@ -169,11 +169,11 @@ class AggressiveCompile(cacheFile: File)
 		if(!combined.isEmpty)
 			log.info(combined.mkString("Compiling ", " and ", " to " + outputDirs.map(_.getAbsolutePath).mkString(",") + "..."))
 	}
-	private def extract(previous: Option[(Analysis, CompileSetup)]): (Analysis, Option[CompileSetup]) =
+	private def extract(previous: Option[(Analysis, CompileSetup)], incOptions: IncOptions): (Analysis, Option[CompileSetup]) =
 		previous match
 		{
 			case Some((an, setup)) => (an, Some(setup))
-			case None => (Analysis.Empty, None)
+			case None => (Analysis.empty(nameHashing = incOptions.nameHashing), None)
 		}
 	def javaOnly(f: File) = f.getName.endsWith(".java")
 

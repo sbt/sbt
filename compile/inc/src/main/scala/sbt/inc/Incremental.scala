@@ -21,6 +21,7 @@ object Incremental
 		log: Logger,
 		options: IncOptions)(implicit equivS: Equiv[Stamp]): (Boolean, Analysis) =
 	{
+		assert(!options.nameHashing, "We don't support name hashing algorithm yet.")
 		val incremental = new IncrementalDefaultImpl(log, options)
 		val initialChanges = incremental.changedInitial(entry, sources, previous, current, forEntry)
 		val binaryChanges = new DependencyChanges {

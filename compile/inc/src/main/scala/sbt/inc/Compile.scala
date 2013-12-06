@@ -157,9 +157,9 @@ private final class AnalysisCallback(internalMap: File => Option[File], external
 
 	def usedName(sourceFile: File, name: String) = add(usedNames, sourceFile, name)
 
-	def nameHashing: Boolean = false // TODO: define the flag in IncOptions which controls this
+	def nameHashing: Boolean = options.nameHashing
 
-	def get: Analysis = addUsedNames( addCompilation( addExternals( addBinaries( addProducts( addSources(Analysis.Empty) ) ) ) ) )
+	def get: Analysis = addUsedNames( addCompilation( addExternals( addBinaries( addProducts( addSources(Analysis.empty(nameHashing = nameHashing)) ) ) ) ) )
 	def addProducts(base: Analysis): Analysis = addAll(base, classes) { case (a, src, (prod, name)) => a.addProduct(src, prod, current product prod, name ) }
 	def addBinaries(base: Analysis): Analysis = addAll(base, binaryDeps)( (a, src, bin) => a.addBinaryDep(src, bin, binaryClassName(bin), current binary bin) )
 	def addSources(base: Analysis): Analysis =
