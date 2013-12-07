@@ -27,9 +27,10 @@ abstract class EvaluateSettings[Scope]
 		case k: Keyed[s, T] => single(getStatic(k.scopedKey), k.transform)
 		case a: Apply[k,T] => new MixedNode[k,T]( a.alist.transform[Initialize, INode](a.inputs, transform), a.f, a.alist)
 		case b: Bind[s,T] => new BindNode[s,T]( transform(b.in), x => transform(b.f(x)))
-		case init.StaticScopes => constant(() => allScopes.asInstanceOf[T]) // can't convince scalac that StaticScopes => T == Set[Scope]
+		case init.StaticScopes => strictConstant(allScopes.asInstanceOf[T]) // can't convince scalac that StaticScopes => T == Set[Scope]
 		case v: Value[T] => constant(v.value)
-		case t: TransformCapture => constant(() => t.f)
+		case v: ValidationCapture[T] => strictConstant(v.key)
+		case t: TransformCapture => strictConstant(t.f)
 		case o: Optional[s,T] => o.a match {
 			case None => constant( () => o.f(None) )
 			case Some(i) => single[s,T](transform(i), x => o.f(Some(x)))
@@ -80,7 +81,7 @@ abstract class EvaluateSettings[Scope]
 	private[this] def workComplete(): Unit =
 		if(running.decrementAndGet() == 0)
 			complete.put( None )
-	
+
 	private[this] sealed abstract class INode[T]
 	{
 		private[this] var state: EvaluationState = New
@@ -92,9 +93,9 @@ abstract class EvaluateSettings[Scope]
 		override def toString = getClass.getName + " (state=" + state + ",blockedOn=" + blockedOn + ",calledBy=" + calledBy.size + ",blocking=" + blocking.size + "): " +
 			keyString
 
-		private[this] def keyString = 
+		private[this] def keyString =
 			(static.toSeq.flatMap { case (key, value) => if(value eq this) init.showFullKey(key) :: Nil else Nil }).headOption getOrElse "non-static"
-	
+
 		final def get: T = synchronized {
 			assert(value != null, toString + " not evaluated")
 			value
@@ -103,7 +104,7 @@ abstract class EvaluateSettings[Scope]
 			val ready = state == Evaluated
 			if(!ready) blocking += from
 			registerIfNew()
-			ready	
+			ready
 		}
 		final def isDone: Boolean = synchronized { state == Evaluated }
 		final def isNew: Boolean = synchronized { state == New }
@@ -119,7 +120,7 @@ abstract class EvaluateSettings[Scope]
 			else
 				state = Blocked
 		}
-	
+
 		final def schedule(): Unit = synchronized {
 			assert(state == New || state == Blocked, "Invalid state for schedule() call: " + toString)
 			state = Ready
@@ -158,6 +159,7 @@ abstract class EvaluateSettings[Scope]
 		protected def evaluate0(): Unit
 	}
 
+	private[this] def strictConstant[T](v: T): INode[T] = constant(() => v)
 	private[this] def constant[T](f: () => T): INode[T] = new MixedNode[ConstK[Unit]#l, T]((), _ => f(), AList.empty)
 	private[this] def single[S,T](in: INode[S], f: S => T): INode[T] = new MixedNode[ ({ type l[L[x]] = L[S] })#l, T](in, f, AList.single[S])
 	private[this] final class BindNode[S,T](in: INode[S], f: S => INode[T]) extends INode[T]
