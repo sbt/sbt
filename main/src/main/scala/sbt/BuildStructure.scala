@@ -76,7 +76,7 @@ object BuildStreams
 
 	def mkStreams(units: Map[URI, LoadedBuildUnit], root: URI, data: Settings[Scope]): State => Streams = s =>
 		s get Keys.stateStreams getOrElse std.Streams( path(units, root, data), displayFull, LogManager.construct(data, s) )
-		
+
 	def path(units: Map[URI, LoadedBuildUnit], root: URI, data: Settings[Scope])(scoped: ScopedKey[_]): File =
 		resolvePath( projectPath(units, root, scoped, data), nonProjectPath(scoped) )
 
@@ -96,6 +96,7 @@ object BuildStreams
 		pathComponent(scope.config, scoped, "config")(_.name) ::
 		pathComponent(scope.task, scoped, "task")(_.label) ::
 		pathComponent(scope.extra, scoped, "extra")(showAMap) ::
+		scoped.key.label ::
 		Nil
 	}
 	def showAMap(a: AttributeMap): String =
@@ -109,7 +110,7 @@ object BuildStreams
 			case Select(pr) => sys.error("Unresolved project reference (" + pr + ") in " + displayFull(scoped))
 			case This => sys.error("Unresolved project reference (This) in " + displayFull(scoped))
 		}
-		
+
 	def refTarget(ref: ResolvedReference, fallbackBase: File, data: Settings[Scope]): File =
 		refTarget(GlobalScope.copy(project = Select(ref)), fallbackBase, data)
 	def refTarget(scope: Scope, fallbackBase: File, data: Settings[Scope]): File =

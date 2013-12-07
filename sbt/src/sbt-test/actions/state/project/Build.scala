@@ -11,13 +11,13 @@ object MyBuild extends Build
 	val persisted = TaskKey[Int]("persist")
 	val checkKeep = InputKey[Unit]("check-keep")
 	val checkPersisted = InputKey[Unit]("check-persist")
-	
+
 	val updateDemo = TaskKey[Int]("demo")
 	val check = InputKey[Unit]("check")
 	val sample = AttributeKey[Int]("demo-key")
 
 	def updateDemoInit = state map { s => (s get sample getOrElse 9) + 1 }
-	
+
 	lazy val root = Project("root", file(".")) settings(
 		updateDemo <<= updateDemoInit updateState demoState,
 		check <<= checkInit,
@@ -37,7 +37,7 @@ object MyBuild extends Build
 	}
 
 	def inMemorySetting = keep <<= getPrevious(keep) map { case None => 3; case Some(x) => x + 1} keepAs(keep)
-	def persistedSetting = persisted <<= loadPrevious(persisted) map { case None => 17; case Some(x) => x + 1} storeAs(keep)
+	def persistedSetting = persisted <<= loadPrevious(persisted) map { case None => 17; case Some(x) => x + 1} storeAs(persisted)
 
 	def inMemoryCheck = checkKeep <<= inputCheck( (ctx, s) => Space ~> str(getFromContext(keep, ctx, s)) )
 	def persistedCheck = checkPersisted <<= inputCheck( (ctx, s) => Space ~> str(loadFromContext(persisted, ctx, s)) )
