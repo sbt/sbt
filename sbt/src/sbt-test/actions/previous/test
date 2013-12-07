@@ -1,0 +1,12 @@
+> debug
+
+> checkNext 1 2
+> checkNext 2 3
+> checkNext 3 5
+> checkNext 5 8
+> clean
+> checkNext 1 2
+
+> checkScopes 0 0
+> all x compile:y::x runtime:y::x y
+> checkScopes 21 91

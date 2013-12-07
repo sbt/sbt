@@ -6,7 +6,7 @@ package std
 	import reflect.macros._
 	import reflect.internal.annotations.compileTimeOnly
 
-	import Def.Initialize
+	import Def.{Initialize, ScopedKey}
 	import appmacro.ContextUtil
 	import complete.Parser
 
@@ -22,6 +22,7 @@ object InputWrapper
 	private[std] final val WrapInitTaskName = "wrapInitTask_\u2603\u2603"
 	private[std] final val WrapInitInputName = "wrapInitInputTask_\u2603\u2603"
 	private[std] final val WrapInputName = "wrapInputTask_\u2603\u2603"
+	private[std] final val WrapPreviousName = "wrapPrevious_\u2603\u2603"
 
 	@compileTimeOnly("`value` can only be called on a task within a task definition macro, such as :=, +=, ++=, or Def.task.")
 	def wrapTask_\u2603\u2603[T](in: Any): T = implDetailError
@@ -38,6 +39,9 @@ object InputWrapper
 	@compileTimeOnly("`value` can only be called on an input task within a task definition macro, such as := or Def.inputTask.")
 	def wrapInitInputTask_\u2603\u2603[T](in: Any): T = implDetailError
 
+	@compileTimeOnly("`previous` can only be called on a task within a task or input task definition macro, such as :=, +=, ++=, Def.task, or Def.inputTask.")
+	def wrapPrevious_\u2603\u2603[T](in: Any): T = implDetailError
+
 	private[this] def implDetailError = error("This method is an implementation detail and should not be referenced.")
 
 	private[std] def wrapTask[T: c.WeakTypeTag](c: Context)(ts: c.Expr[Any], pos: c.Position): c.Expr[T] =
@@ -51,6 +55,9 @@ object InputWrapper
 		wrapImpl[T,InputWrapper.type](c, InputWrapper, WrapInitInputName)(ts, pos)
 	private[std] def wrapInputTask[T: c.WeakTypeTag](c: Context)(ts: c.Expr[Any], pos: c.Position): c.Expr[T] =
 		wrapImpl[T,InputWrapper.type](c, InputWrapper, WrapInputName)(ts, pos)
+
+	private[std] def wrapPrevious[T: c.WeakTypeTag](c: Context)(ts: c.Expr[Any], pos: c.Position): c.Expr[Option[T]] =
+		wrapImpl[Option[T],InputWrapper.type](c, InputWrapper, WrapPreviousName)(ts, pos)
 
 	/** Wraps an arbitrary Tree in a call to the `<s>.<wrapName>` method of this module for later processing by an enclosing macro.
 	* The resulting Tree is the manually constructed version of:
@@ -96,6 +103,22 @@ object InputWrapper
 			else
 				c.abort(pos, s"Internal sbt error. Unexpected type ${tpe.widen}")
 		}
+	/** Translates <task: TaskKey[T]>.previous(format) to Previous.runtime(<task>)(format).value*/
+	def previousMacroImpl[T: c.WeakTypeTag](c: Context)(format: c.Expr[sbinary.Format[T]]): c.Expr[Option[T]] =
+	{
+			import c.universe._
+		c.macroApplication match {
+			case a @ Apply(Select(Apply(_, t :: Nil), tp), fmt) =>
+				if(t.tpe <:< c.weakTypeOf[TaskKey[T]]) {
+					val tsTyped = c.Expr[TaskKey[T]](t)
+					val newTree = c.universe.reify { Previous.runtime[T](tsTyped.splice)(format.splice) }
+					wrapPrevious[T](c)(newTree, a.pos)
+				}
+				else
+					c.abort(a.pos, s"Internal sbt error. Unexpected type ${t.tpe.widen}")
+			case x => ContextUtil.unexpectedTree(x)
+		}
+	}
 }
 
 sealed abstract class MacroTaskValue[T] {
@@ -117,6 +140,10 @@ sealed abstract class InputEvaluated[T] {
 sealed abstract class ParserInputTask[T] {
 	@compileTimeOnly("`parsed` can only be used within an input task macro, such as := or Def.inputTask.")
 	def parsed: Task[T] = macro ParserInput.parsedInputMacroImpl[T]
+}
+sealed abstract class MacroPrevious[T] {
+	@compileTimeOnly("`previous` can only be used within a task macro, such as :=, +=, ++=, or Def.task.")
+	def previous(implicit format: sbinary.Format[T]): Option[T] = macro InputWrapper.previousMacroImpl[T]
 }
 
 /** Implementation detail.  The wrap method temporarily holds the input parser (as a Tree, at compile time) until the input task macro processes it. */

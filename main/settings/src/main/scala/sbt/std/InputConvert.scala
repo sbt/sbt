@@ -50,7 +50,7 @@ object FullConvert extends Convert
 {
 		import InputWrapper._
 	def apply[T: c.WeakTypeTag](c: Context)(nme: String, in: c.Tree): Converted[c.type] =
-		if(nme == WrapInitTaskName)
+		if(nme == WrapInitTaskName || nme == WrapPreviousName)
 			Converted.Success(in)
 		else if(nme == WrapInitName)
 		{
@@ -83,4 +83,3 @@ object InitParserConvert extends Convert
 		else
 			Converted.NotApplicable
 }
-

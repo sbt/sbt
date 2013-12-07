@@ -55,8 +55,6 @@ object Keys
 	val transformState = AttributeKey[State => State]("transform-state", "State transformation to apply after tasks run.", DSetting)
 
 	val onComplete = SettingKey[() => Unit]("on-complete", "Hook to run when task evaluation completes.  The type of this setting is subject to change, pending the resolution of SI-2915.", DSetting)
-// https://issues.scala-lang.org/browse/SI-2915
-//	val onComplete = SettingKey[RMap[Task,Result] => RMap[Task,Result]]("on-complete", "Transformation to apply to the final task result map.  This may also be used to register hooks to run when task evaluation completes.", DSetting)
 
 	// Command keys
 	val historyPath = SettingKey(BasicKeys.historyPath)
@@ -327,17 +325,19 @@ object Keys
 	val cancelable = SettingKey[Boolean]("cancelable", "Enables (true) or disables (false) the ability to interrupt task execution with CTRL+C.", BMinusSetting)
 	val settingsData = std.FullInstance.settingsData
 	val streams = TaskKey[TaskStreams]("streams", "Provides streams for logging and persisting data.", DTask)
-	val taskDefinitionKey = AttributeKey[ScopedKey[_]]("task-definition-key", "Internal: used to map a task back to its ScopedKey.", Invisible)
+	val taskDefinitionKey = Def.taskDefinitionKey
 	val (executionRoots, dummyRoots)= Def.dummy[Seq[ScopedKey[_]]]("execution-roots", "The list of root tasks for this task execution.  Roots are the top-level tasks that were directly requested to be run.")
 
 	val state = Def.stateKey
+	val streamsManager = Def.streamsManagerKey
 
 	@deprecated("Implementation detail.", "0.13.1")
 	val isDummyTask = Def.isDummyTask
 	@deprecated("Implementation detail.", "0.13.1")
 	val dummyState = Def.dummyState
+	@deprecated("Implementation detail.", "0.13.2")
+	val dummyStreamsManager = Def.dummyStreamsManager
 
-	val (streamsManager, dummyStreamsManager) = Def.dummy[Streams]("streams-manager", "Streams manager, which provides streams for different contexts.")
 	val stateStreams = AttributeKey[Streams]("streams-manager", "Streams manager, which provides streams for different contexts.  Setting this on State will override the default Streams implementation.")
 	val resolvedScoped = Def.resolvedScoped
 	val pluginData = TaskKey[PluginData]("plugin-data", "Information from the plugin build needed in the main build definition.", DTask)

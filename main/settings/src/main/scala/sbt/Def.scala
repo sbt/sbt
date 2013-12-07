@@ -14,6 +14,7 @@ object Def extends Init[Scope] with TaskMacroExtra
 	val triggeredBy = AttributeKey[Seq[Task[_]]]("triggered-by")
 	val runBefore = AttributeKey[Seq[Task[_]]]("run-before")
 	val resolvedScoped = SettingKey[ScopedKey[_]]("resolved-scoped", "The ScopedKey for the referencing setting or task.", KeyRanks.DSetting)
+	private[sbt] val taskDefinitionKey = AttributeKey[ScopedKey[_]]("task-definition-key", "Internal: used to map a task back to its ScopedKey.", Invisible)
 
 	lazy val showFullKey: Show[ScopedKey[_]] = showFullKey(None)
 	def showFullKey(keyNameColor: Option[String]): Show[ScopedKey[_]] =
@@ -63,7 +64,7 @@ object Def extends Init[Scope] with TaskMacroExtra
 		import language.experimental.macros
 		import std.TaskMacro.{inputTaskMacroImpl, inputTaskDynMacroImpl, taskDynMacroImpl, taskMacroImpl}
 		import std.SettingMacro.{settingDynMacroImpl,settingMacroImpl}
-		import std.{InputEvaluated, MacroValue, MacroTaskValue, ParserInput}
+		import std.{InputEvaluated, MacroPrevious, MacroValue, MacroTaskValue, ParserInput}
 
 	def task[T](t: T): Def.Initialize[Task[T]] = macro taskMacroImpl[T]
 	def taskDyn[T](t: Def.Initialize[Task[T]]): Def.Initialize[Task[T]] = macro taskDynMacroImpl[T]
@@ -79,6 +80,7 @@ object Def extends Init[Scope] with TaskMacroExtra
 	implicit def macroValueIT[T](in: Initialize[Task[T]]): MacroValue[T] = ???
 	implicit def macroValueIInT[T](in: Initialize[InputTask[T]]): InputEvaluated[T] = ???
 	implicit def taskMacroValueIT[T](in: Initialize[Task[T]]): MacroTaskValue[T] = ???
+	implicit def macroPrevious[T](in: TaskKey[T]): MacroPrevious[T] = ???
 
 	// The following conversions enable the types Parser[T], Initialize[Parser[T]], and Initialize[State => Parser[T]] to
 	//  be used in the inputTask macro as an input with an ultimate result of type T
@@ -100,6 +102,7 @@ object Def extends Init[Scope] with TaskMacroExtra
 	private[sbt] def isDummy(t: Task[_]): Boolean = t.info.attributes.get(isDummyTask) getOrElse false
 	private[sbt] val isDummyTask = AttributeKey[Boolean]("is-dummy-task", "Internal: used to identify dummy tasks.  sbt injects values for these tasks at the start of task execution.", Invisible)
 	private[sbt] val (stateKey, dummyState) = dummy[State]("state", "Current build state.")
+	private[sbt] val (streamsManagerKey, dummyStreamsManager) = Def.dummy[std.Streams[ScopedKey[_]]]("streams-manager", "Streams manager, which provides streams for different contexts.")
 }
 // these need to be mixed into the sbt package object because the target doesn't involve Initialize or anything in Def
 trait TaskMacroExtra
