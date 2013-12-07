@@ -34,14 +34,14 @@ object EvaluateTask
 	import std.{TaskExtra,Transform}
 	import TaskExtra._
 	import Keys.state
-	
-	private[sbt] def defaultProgress: ExecuteProgress[Task] = 
+
+	private[sbt] def defaultProgress: ExecuteProgress[Task] =
 		if(java.lang.Boolean.getBoolean("sbt.task.timings")) new TaskTimings else ExecuteProgress.empty[Task]
 
 	val SystemProcessors = Runtime.getRuntime.availableProcessors
 
 	@deprecated("Use extractedConfig.", "0.13.0")
-	def defaultConfig(state: State): EvaluateConfig = 
+	def defaultConfig(state: State): EvaluateConfig =
 	{
 		val extracted = Project.extract(state)
 		defaultConfig(extracted, extracted.structure)
@@ -155,7 +155,7 @@ object EvaluateTask
 		val str = std.Streams.closeable(structure.streams(state))
 		try { f(str) } finally { str.close() }
 	}
-	
+
 	def getTask[T](structure: BuildStructure, taskKey: ScopedKey[Task[T]], state: State, streams: Streams, ref: ProjectRef): Option[(Task[T], NodeView[Task])] =
 	{
 		val thisScope = Load.projectScope(ref)
@@ -169,7 +169,7 @@ object EvaluateTask
 	def runTask[T](root: Task[T], state: State, streams: Streams, triggers: Triggers[Task], config: EvaluateConfig)(implicit taskToNode: NodeView[Task]): (State, Result[T]) =
 	{
 			import ConcurrentRestrictions.{completionService, TagMap, Tag, tagged, tagsKey}
-	
+
 		val log = state.log
 		log.debug("Running task... Cancelable: " + config.cancelable + ", check cycles: " + config.checkCycles)
 		val tags = tagged[Task[_]](_.info get tagsKey getOrElse Map.empty, Tags.predicate(config.restrictions))
@@ -183,8 +183,11 @@ object EvaluateTask
 		def run() = {
 			val x = new Execute[Task]( Execute.config(config.checkCycles, overwriteNode), triggers, config.progress)(taskToNode)
 			val (newState, result) =
-				try applyResults(x.runKeep(root)(service), state, root)
-				catch { case inc: Incomplete => (state, Inc(inc)) }
+				try {
+					val results = x.runKeep(root)(service)
+					storeValuesForPrevious(results, state, streams)
+					applyResults(results, state, root)
+				} catch { case inc: Incomplete => (state, Inc(inc)) }
 				finally shutdown()
 			val replaced = transformInc(result)
 			logIncResult(replaced, state, streams)
@@ -201,6 +204,10 @@ object EvaluateTask
 			run()
 	}
 
+	private[this] def storeValuesForPrevious(results: RMap[Task, Result], state: State, streams: Streams): Unit =
+		for(referenced <- Previous.references in Global get Project.structure(state).data)
+			Previous.complete(referenced, results, streams)
+
 	def applyResults[T](results: RMap[Task, Result], state: State, root: Task[T]): (State, Result[T]) =
 		(stateTransform(results)(state), results(root))
 	def stateTransform(results: RMap[Task, Result]): State => State =
@@ -210,7 +217,7 @@ object EvaluateTask
 				case _ => Nil
 			}
 		)
-		
+
 	def transformInc[T](result: Result[T]): Result[T] =
 		// taskToKey needs to be before liftAnonymous.  liftA only lifts non-keyed (anonymous) Incompletes.
 		result.toEither.left.map { i => Incomplete.transformBU(i)(convertCyclicInc andThen taskToKey andThen liftAnonymous ) }

@@ -76,7 +76,7 @@ object Load
 		config.copy(injectSettings = config.injectSettings.copy(projectLoaded = compiled))
 	}
 	def buildGlobalSettings(base: File, files: Seq[File], config: sbt.LoadBuildConfiguration): ClassLoader => Seq[Setting[_]] =
-	{	
+	{
 		val eval = mkEval(data(config.classpath), base, defaultEvalOptions)
 		val imports = BuildUtil.baseImports ++ BuildUtil.importAllRoot(config.globalPluginNames)
 		loader => EvaluateConfigurations(eval, files, imports)(loader).settings
@@ -200,7 +200,7 @@ object Load
 	def buildConfigurations(loaded: sbt.LoadedBuild, rootProject: URI => String, injectSettings: InjectSettings): Seq[Setting[_]] =
 	{
 		((loadedBuild in GlobalScope :== loaded) +:
-		transformProjectOnly(loaded.root, rootProject, injectSettings.global)) ++ 
+		transformProjectOnly(loaded.root, rootProject, injectSettings.global)) ++
 		inScope(GlobalScope)( pluginGlobalSettings(loaded) ) ++
 		loaded.units.toSeq.flatMap { case (uri, build) =>
 			val plugins = build.unit.plugins.plugins
@@ -234,7 +234,7 @@ object Load
 	def transformSettings(thisScope: Scope, uri: URI, rootProject: URI => String, settings: Seq[Setting[_]]): Seq[Setting[_]] =
 		Project.transform(Scope.resolveScope(thisScope, uri, rootProject), settings)
 	def projectScope(project: Reference): Scope  =  Scope(Select(project), Global, Global, Global)
-	
+
 	def lazyEval(unit: sbt.BuildUnit): () => Eval =
 	{
 		lazy val eval = mkEval(unit)
@@ -438,7 +438,7 @@ object Load
 		new sbt.BuildUnit(uri, normBase, loadedDefs, plugs)
 	}
 
-	private[this] def autoID(localBase: File, context: PluginManagement.Context, existingIDs: Seq[String]): String = 
+	private[this] def autoID(localBase: File, context: PluginManagement.Context, existingIDs: Seq[String]): String =
 	{
 		def normalizeID(f: File) = Project.normalizeProjectID(f.getName) match {
 			case Right(id) => id
@@ -453,11 +453,11 @@ object Load
 		if(existingIDs.contains(tryID)) Build.defaultID(localBase) else tryID
 	}
 
-	private[this] def autoIDError(base: File, reason: String): String = 
+	private[this] def autoIDError(base: File, reason: String): String =
 		"Could not derive root project ID from directory " + base.getAbsolutePath + ":\n" +
 			reason + "\nRename the directory or explicitly define a root project."
 
-	private[this] def projectsFromBuild(b: Build, base: File): Seq[Project] = 
+	private[this] def projectsFromBuild(b: Build, base: File): Seq[Project] =
 		b.projectDefinitions(base).map(resolveBase(base))
 
 	private[this] def loadTransitive(newProjects: Seq[Project], buildBase: File, imports: Seq[String], plugins: sbt.LoadedPlugins, eval: () => Eval, injectSettings: InjectSettings, acc: Seq[Project], memoSettings: mutable.Map[File, LoadedSbtFile]): Seq[Project] =
@@ -483,7 +483,7 @@ object Load
 		else
 			loadTransitive(nextProjects, buildBase, imports, plugins, eval, injectSettings, loadedProjects, memoSettings)
 	}
-		
+
 	private[this] def loadSettings(auto: AddSettings, projectBase: File, buildImports: Seq[String], loadedPlugins: sbt.LoadedPlugins, eval: ()=>Eval, injectSettings: InjectSettings, memoSettings: mutable.Map[File, LoadedSbtFile]): LoadedSbtFile =
 	{
 		lazy val defaultSbtFiles = configurationSources(projectBase)
@@ -570,7 +570,7 @@ object Load
 	def pluginDefinitionLoader(config: sbt.LoadBuildConfiguration, dependencyClasspath: Seq[Attributed[File]]): (Seq[Attributed[File]], ClassLoader) =
 		pluginDefinitionLoader(config, dependencyClasspath, Nil)
 	def pluginDefinitionLoader(config: sbt.LoadBuildConfiguration, pluginData: PluginData): (Seq[Attributed[File]], ClassLoader) =
-		pluginDefinitionLoader(config, pluginData.dependencyClasspath, pluginData.definitionClasspath)	
+		pluginDefinitionLoader(config, pluginData.dependencyClasspath, pluginData.definitionClasspath)
 	def pluginDefinitionLoader(config: sbt.LoadBuildConfiguration, depcp: Seq[Attributed[File]], defcp: Seq[Attributed[File]]): (Seq[Attributed[File]], ClassLoader) =
 	{
 		val definitionClasspath =
@@ -670,7 +670,7 @@ object Load
 
 	def initialSession(structure: sbt.BuildStructure, rootEval: () => Eval): SessionSettings =
 		new SessionSettings(structure.root, projectMap(structure, Map.empty), structure.settings, Map.empty, Nil, rootEval)
-		
+
 	def projectMap(structure: sbt.BuildStructure, current: Map[URI, String]): Map[URI, String] =
 	{
 		val units = structure.units
@@ -699,7 +699,7 @@ object Load
 	def getImports(unit: sbt.BuildUnit): Seq[String] = BuildUtil.getImports(unit)
 
 	def referenced[PR <: ProjectReference](definitions: Seq[ProjectDefinition[PR]]): Seq[PR] = definitions flatMap { _.referenced }
-	
+
 	@deprecated("LoadedBuildUnit is now top-level", "0.13.0")
 	type LoadedBuildUnit = sbt.LoadedBuildUnit
 
@@ -711,7 +711,7 @@ object Load
 
 	@deprecated("LoadBuildConfiguration is now top-level", "0.13.0")
 	type LoadBuildConfiguration = sbt.LoadBuildConfiguration
-	@deprecated("LoadBuildConfiguration is now top-level", "0.13.0")	
+	@deprecated("LoadBuildConfiguration is now top-level", "0.13.0")
 	val LoadBuildConfiguration = sbt.LoadBuildConfiguration
 
 	final class EvaluatedConfigurations(val eval: Eval, val settings: Seq[Setting[_]])

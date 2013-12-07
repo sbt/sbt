@@ -63,6 +63,8 @@ object Defaults extends BuildCommon
 		buildDependencies <<= Classpaths.constructBuildDependencies,
 		taskTemporaryDirectory := { val dir = IO.createTemporaryDirectory; dir.deleteOnExit(); dir },
 		onComplete := { val dir = taskTemporaryDirectory.value; () => {IO.delete(dir); IO.createDirectory(dir) }},
+		Previous.cache <<= Previous.cacheSetting,
+		Previous.references :== new Previous.References,
 		concurrentRestrictions <<= defaultRestrictions,
 		parallelExecution :== true,
 		sbtVersion := appConfiguration.value.provider.id.version,

@@ -29,6 +29,8 @@ object InitializeConvert extends Convert
 		}
 		else if(nme == InputWrapper.WrapTaskName || nme == InputWrapper.WrapInitTaskName)
 			Converted.Failure(in.pos, "A setting cannot depend on a task")
+		else if(nme == InputWrapper.WrapPreviousName)
+			Converted.Failure(in.pos, "A setting cannot depend on a task's previous value.")
 		else
 			Converted.NotApplicable
 }
@@ -38,6 +40,6 @@ object SettingMacro
 	def settingMacroImpl[T: c.WeakTypeTag](c: Context)(t: c.Expr[T]): c.Expr[Initialize[T]] =
 		Instance.contImpl[T, Id](c, InitializeInstance, InitializeConvert, MixedBuilder)(Left(t), Instance.idTransform[c.type])
 
-	def settingDynMacroImpl[T: c.WeakTypeTag](c: Context)(t: c.Expr[Initialize[T]]): c.Expr[Initialize[T]] = 
+	def settingDynMacroImpl[T: c.WeakTypeTag](c: Context)(t: c.Expr[Initialize[T]]): c.Expr[Initialize[T]] =
 		Instance.contImpl[T, Id](c, InitializeInstance, InitializeConvert, MixedBuilder)(Right(t), Instance.idTransform[c.type])
 }
