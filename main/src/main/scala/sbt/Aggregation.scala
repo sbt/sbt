@@ -121,13 +121,51 @@ final object Aggregation
 	}
 
 	def evaluatingParser(s: State, structure: BuildStructure, show: ShowConfig)(keys: Seq[KeyValue[_]])(implicit display: Show[ScopedKey[_]]): Parser[() => State] =
-		keys.toList match
-		{
-			case Nil => failure("No such setting/task")
-			case xs @ KeyValue(_, _: InputTask[t]) :: _ => applyDynamicTasks(s, structure, xs.asInstanceOf[Values[InputTask[t]]], show)
-			case xs @ KeyValue(_, _: Task[t]) :: _ => applyTasks(s, structure, maps(xs.asInstanceOf[Values[Task[t]]])(x => success(x)), show)
-			case xs => success(() => { if(show.settingValues) printSettings(xs, show.print); s} )
+	{
+		// to make the call sites clearer
+		def separate[L](in: Seq[KeyValue[_]])(f: KeyValue[_] => Either[KeyValue[L], KeyValue[_]]): (Seq[KeyValue[L]], Seq[KeyValue[_]]) =
+			Util.separate(in)(f)
+
+		val kvs = keys.toList
+		if(kvs.isEmpty)
+			failure("No such setting/task")
+		else {
+			val (inputTasks, other) = separate[InputTask[_]](kvs) {
+				case KeyValue(k,v: InputTask[_]) => Left(KeyValue(k,v))
+				case kv => Right(kv)
+			}
+			val (tasks, settings) = separate[Task[_]](other) {
+				case KeyValue(k, v: Task[_]) => Left(KeyValue(k,v))
+				case kv => Right(kv)
+			}
+				// currently, disallow input tasks to be mixed with normal tasks.
+				// This occurs in `all` or `show`, which support multiple tasks.
+				// Previously, multiple tasks could be run in one execution, but they were all for the same key, just in different scopes.
+				// When `all` was added, it allowed different keys and thus opened the possibility for mixing settings,
+				//  tasks, and input tasks in the same call.  The code below allows settings and tasks to be mixed, but not input tasks.
+				// One problem with input tasks in `all` is that many input tasks consume all input and would need syntactic delimiters.
+				// Once that is addressed, the tasks constructed by the input tasks would need to be combined with the explicit tasks.
+			if(inputTasks.size > 0) {
+				if(other.size > 0) {
+					val inputStrings = inputTasks.map(_.key).mkString("Input task(s):\n\t", "\n\t", "\n")
+					val otherStrings = other.map(_.key).mkString("Task(s)/setting(s):\n\t", "\n\t", "\n")
+					failure(s"Cannot mix input tasks with plain tasks/settings.  $inputStrings $otherStrings")
+				} else
+					applyDynamicTasks(s, structure, maps(inputTasks)(castToAny), show)
+			} else {
+				val base = if(tasks.isEmpty) success( () => s ) else
+					applyTasks(s, structure, maps(tasks)(x => success( castToAny(x))), show)
+				base.map { res => () =>
+					val newState = res()
+					if(show.settingValues && !settings.isEmpty) printSettings(settings, show.print)
+					newState
+				}
+			}
 		}
+	}
+	// this is a hack to avoid duplicating method implementations
+	private[this] def castToAny[T[_]](t: T[_]): T[Any] = t.asInstanceOf[T[Any]]
+
 	private[this] def maps[T, S](vs: Values[T])(f: T => S): Values[S] =
 		vs map { case KeyValue(k,v) => KeyValue(k, f(v)) }
 

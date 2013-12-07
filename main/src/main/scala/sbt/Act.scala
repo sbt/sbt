@@ -14,6 +14,7 @@ package sbt
 	import CommandStrings.{MultiTaskCommand, ShowCommand}
 
 final class ParsedKey(val key: ScopedKey[_], val mask: ScopeMask)
+
 object Act
 {
 	val GlobalString = "*"
@@ -25,8 +26,8 @@ object Act
 
 	// the index should be an aggregated index for proper tab completion
 	def scopedKeyAggregated(current: ProjectRef, defaultConfigs: Option[ResolvedReference] => Seq[String], structure: BuildStructure): KeysParser =
-			for(selected <- scopedKeySelected(structure.index.aggregateKeyIndex, current, defaultConfigs, structure.index.keyMap, structure.data) ) yield
-				Aggregation.aggregate(selected.key, selected.mask, structure.extra)
+		for(selected <- scopedKeySelected(structure.index.aggregateKeyIndex, current, defaultConfigs, structure.index.keyMap, structure.data) ) yield
+			Aggregation.aggregate(selected.key, selected.mask, structure.extra)
 
 	def scopedKeySelected(index: KeyIndex, current: ProjectRef, defaultConfigs: Option[ResolvedReference] => Seq[String],
 		keyMap: Map[String, AttributeKey[_]], data: Settings[Scope]): Parser[ParsedKey] =
