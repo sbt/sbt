@@ -1070,7 +1070,7 @@ object Classpaths
 			val explicit = buildStructure.value.units(thisProjectRef.value.build).unit.plugins.pluginData.resolvers
 			explicit orElse bootRepositories(appConfiguration.value) getOrElse externalResolvers.value
 		},
-		ivyConfiguration := new InlineIvyConfiguration(ivyPaths.value, externalResolvers.value, Nil, Nil, offline.value, Option(lock(appConfiguration.value)), checksums.value, Some(target.value / "resolution-cache"), streams.value.log),
+		ivyConfiguration := new InlineIvyConfiguration(ivyPaths.value, externalResolvers.value, Nil, Nil, offline.value, Option(lock(appConfiguration.value)), checksums.value, Some(target.value / "resolution-cache"), Nil, streams.value.log),
 		ivySbt <<= ivySbt0,
 		classifiersModule <<= (projectID, sbtDependency, transitiveClassifiers, loadedBuild, thisProjectRef) map { ( pid, sbtDep, classifiers, lb, ref) =>
 			val pluginClasspath = lb.units(ref.build).unit.plugins.fullClasspath
@@ -1255,7 +1255,7 @@ object Classpaths
 		(fullResolvers, ivyPaths, otherResolvers, moduleConfigurations, offline, checksums in update, appConfiguration, target, streams) map { (rs, paths, other, moduleConfs, off, check, app, t, s) =>
 			warnResolversConflict(rs ++: other, s.log)
 			val resCacheDir = t / "resolution-cache"
-			new InlineIvyConfiguration(paths, rs, other, moduleConfs, off, Option(lock(app)), check, Some(resCacheDir), s.log)
+			new InlineIvyConfiguration(paths, rs, other, moduleConfs, off, Option(lock(app)), check, Some(resCacheDir), Nil, s.log)
 		}
 
 		import java.util.LinkedHashSet

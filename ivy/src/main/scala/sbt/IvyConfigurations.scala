@@ -6,6 +6,7 @@ package sbt
 import java.io.File
 import java.net.{URI,URL}
 import scala.xml.NodeSeq
+import org.apache.ivy.plugins.version.VersionMatcher
 
 final class IvyPaths(val baseDirectory: File, val ivyHome: Option[File])
 {
@@ -21,18 +22,20 @@ sealed trait IvyConfiguration
 }
 final class InlineIvyConfiguration(val paths: IvyPaths, val resolvers: Seq[Resolver], val otherResolvers: Seq[Resolver],
 	val moduleConfigurations: Seq[ModuleConfiguration], val localOnly: Boolean, val lock: Option[xsbti.GlobalLock],
-	val checksums: Seq[String], val resolutionCacheDir: Option[File], val log: Logger) extends IvyConfiguration
+	val checksums: Seq[String], val resolutionCacheDir: Option[File], val extraVersionMatchers: Seq[VersionMatcher],
+	val log: Logger) extends IvyConfiguration
 {
 	@deprecated("Use the variant that accepts the resolution cache location.", "0.13.0")
 	def this(paths: IvyPaths, resolvers: Seq[Resolver], otherResolvers: Seq[Resolver],
 		moduleConfigurations: Seq[ModuleConfiguration], localOnly: Boolean, lock: Option[xsbti.GlobalLock],
 		checksums: Seq[String], log: Logger) =
-			this(paths, resolvers, otherResolvers, moduleConfigurations, localOnly, lock, checksums, None, log)
+			this(paths, resolvers, otherResolvers, moduleConfigurations, localOnly, lock, checksums, None, Nil, log)
 
 	type This = InlineIvyConfiguration
 	def baseDirectory = paths.baseDirectory
-	def withBase(newBase: File) = new InlineIvyConfiguration(paths.withBase(newBase), resolvers, otherResolvers, moduleConfigurations, localOnly, lock, checksums, resolutionCacheDir, log)
-	def changeResolvers(newResolvers: Seq[Resolver]) = new InlineIvyConfiguration(paths, newResolvers, otherResolvers, moduleConfigurations, localOnly, lock, checksums, resolutionCacheDir, log)
+	def withBase(newBase: File) = new InlineIvyConfiguration(paths.withBase(newBase), resolvers, otherResolvers, moduleConfigurations, localOnly, lock, checksums, resolutionCacheDir, extraVersionMatchers, log)
+	def changeResolvers(newResolvers: Seq[Resolver]) = new InlineIvyConfiguration(paths, newResolvers, otherResolvers, moduleConfigurations, localOnly, lock, checksums, resolutionCacheDir, extraVersionMatchers, log)
+	def changeVersionMatchers(newExtraMatchers: Seq[VersionMatcher]) = new InlineIvyConfiguration(paths, resolvers, otherResolvers, moduleConfigurations, localOnly, lock, checksums, resolutionCacheDir, newExtraMatchers, log)
 }
 final class ExternalIvyConfiguration(val baseDirectory: File, val uri: URI, val lock: Option[xsbti.GlobalLock], val extraResolvers: Seq[Resolver], val log: Logger) extends IvyConfiguration
 {
@@ -56,7 +59,7 @@ object IvyConfiguration
 		if(defaultIvyConfigFile.canRead)
 			ExternalIvyConfiguration(paths.baseDirectory, defaultIvyConfigFile, lock, log)
 		else
-			new InlineIvyConfiguration(paths, Resolver.withDefaultResolvers(Nil), Nil, Nil, localOnly, lock, checksums, None, log)
+			new InlineIvyConfiguration(paths, Resolver.withDefaultResolvers(Nil), Nil, Nil, localOnly, lock, checksums, None, Nil, log)
 	}
 }
 

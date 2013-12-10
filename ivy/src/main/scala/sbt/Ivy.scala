@@ -31,6 +31,7 @@ import util.{Message, MessageLogger}
 import util.extendable.ExtendableItem
 
 import scala.xml.{NodeSeq, Text}
+import org.apache.ivy.plugins.version.VersionMatcher
 
 final class IvySbt(val configuration: IvyConfiguration)
 {
@@ -77,6 +78,8 @@ final class IvySbt(val configuration: IvyConfiguration)
 				IvySbt.configureCache(is, i.localOnly, i.resolutionCacheDir)
 				IvySbt.setResolvers(is, i.resolvers, i.otherResolvers, i.localOnly, configuration.log)
 				IvySbt.setModuleConfigurations(is, i.moduleConfigurations, configuration.log)
+				is.configureDefaultVersionMatcher()
+				IvySbt.addVersionMatchers(is, i.extraVersionMatchers)
 		}
 		is
 	}
@@ -301,6 +304,10 @@ private object IvySbt
 			val attributes = javaMap(Map(MODULE_KEY -> name, ORGANISATION_KEY -> organization, REVISION_KEY -> revision))
 			settings.addModuleConfiguration(attributes, settings.getMatcher(EXACT_OR_REGEXP), resolver.name, null, null, null)
 		}
+	}
+	private def addVersionMatchers(settings: IvySettings, versionMatchers: Seq[VersionMatcher])
+	{
+		versionMatchers foreach settings.addVersionMatcher
 	}
 	private def configureCache(settings: IvySettings, localOnly: Boolean, resCacheDir: Option[File])
 	{
