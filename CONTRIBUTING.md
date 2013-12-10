@@ -38,11 +38,11 @@ See below for details on getting sbt sources and modifying the documentation.
 		$ git clone git://github.com/sbt/sbt.git
 		$ cd sbt
 
-3. The initial branch is the development branch 0.13, which contains the latest code for the next major sbt release.  To build a specific release or commit, switch to the associated tag.  The tag for the latest stable release is v0.13.0:
+3. The initial branch is the development branch 0.13, which contains the latest code for the next major sbt release.  To build a specific release or commit, switch to the associated tag.  The tag for the latest stable release is v0.13.1:
 
-		$ git checkout v0.13.0
+		$ git checkout v0.13.1
 
-	Note that sbt is always built with the previous stable release.  For example, the 0.13 branch is built with 0.13.0 and the v0.13.0 tag is built with 0.12.4.
+	Note that sbt is always built with the previous stable release.  For example, the 0.13 branch is built with 0.13.1 and the v0.13.1 tag is built with 0.13.0.
 
 4. To build the launcher and publish all components locally,
 
@@ -55,13 +55,13 @@ See below for details on getting sbt sources and modifying the documentation.
 		> sphinx:mappings
 		> sxr
 
-5. To use this locally built version of sbt, copy your stable `~/bin/sbt` script to `~/bin/xsbt` and change it to use the launcher jar in `<sbt>/target/`.  For the v0.13.0 tag, the full location is:
+5. To use this locally built version of sbt, copy your stable `~/bin/sbt` script to `~/bin/xsbt` and change it to use the launcher jar in `<sbt>/target/`.  For the v0.13.1 tag, the full location is:
 
-		<sbt>/target/sbt-launch-0.13.0.jar
+		<sbt>/target/sbt-launch-0.13.1.jar
 
 	If using the 0.13 development branch, the launcher is at:
 
-		<sbt>/target/sbt-launch-0.13.1-SNAPSHOT.jar
+		<sbt>/target/sbt-launch-0.13.2-SNAPSHOT.jar
 
 ## Modifying sbt
 
@@ -71,7 +71,7 @@ See below for details on getting sbt sources and modifying the documentation.
 
 3. After each `publishLocal`, clean the `~/.sbt/boot/` directory.  Alternatively, if sbt is running and the launcher hasn't changed, run `reboot full` to have sbt do this for you.
 
-4. If a project has `project/build.properties` defined, either delete the file or change `sbt.version` to `0.13.1-SNAPSHOT`.
+4. If a project has `project/build.properties` defined, either delete the file or change `sbt.version` to `0.13.2-SNAPSHOT`.
 
 ## Building Documentation
 
