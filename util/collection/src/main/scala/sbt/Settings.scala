@@ -90,7 +90,7 @@ trait Init[Scope]
 	* Only the static dependencies are tracked, however.  Dependencies on previous values do not introduce a derived setting either. */
 	final def derive[T](s: Setting[T], allowDynamic: Boolean = false, filter: Scope => Boolean = const(true), trigger: AttributeKey[_] => Boolean = const(true)): Setting[T] = {
 		deriveAllowed(s, allowDynamic) foreach error
-		new DerivedSetting[T](s.key, s.init, s.pos, filter, trigger, nextDefaultID())
+		new DerivedSetting[T](s.key, s.init, s.pos, filter, trigger)
 	}
 	def deriveAllowed[T](s: Setting[T], allowDynamic: Boolean): Option[String] = s.init match {
 		case _: Bind[_,_] if !allowDynamic => Some("Cannot derive from dynamic dependencies.")
@@ -456,8 +456,8 @@ trait Init[Scope]
 		protected[sbt] def isDerived: Boolean = false
 		private[sbt] def setScope(s: Scope): Setting[T] = make(key.copy(scope = s), init.mapReferenced(mapScope(const(s))), pos)
 	}
-	private[Init] final class DerivedSetting[T](sk: ScopedKey[T], i: Initialize[T], p: SourcePosition, val filter: Scope => Boolean, val trigger: AttributeKey[_] => Boolean, id: Long) extends DefaultSetting[T](sk, i, p, id) {
-		override def make[T](key: ScopedKey[T], init: Initialize[T], pos: SourcePosition): Setting[T] = new DerivedSetting[T](key, init, pos, filter, trigger, id)
+	private[Init] final class DerivedSetting[T](sk: ScopedKey[T], i: Initialize[T], p: SourcePosition, val filter: Scope => Boolean, val trigger: AttributeKey[_] => Boolean) extends Setting[T](sk, i, p) {
+		override def make[T](key: ScopedKey[T], init: Initialize[T], pos: SourcePosition): Setting[T] = new DerivedSetting[T](key, init, pos, filter, trigger)
 		protected[sbt] override def isDerived: Boolean = true
 	}
 	// Only keep the first occurence of this setting and move it to the front so that it has lower precedence than non-defaults.
