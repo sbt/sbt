@@ -19,3 +19,4 @@ Other resources include the :doc:`Examples </Examples/index>` and
    Tasks-and-Commands
    Plugins-and-Best-Practices
    Advanced-Index
+   /Launcher/index

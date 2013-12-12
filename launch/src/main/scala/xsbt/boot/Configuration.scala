@@ -10,21 +10,34 @@ import java.util.regex.Pattern
 import scala.collection.immutable.List
 import annotation.tailrec
 
+object ConfigurationStorageState extends Enumeration {
+  val PropertiesFile = value("properties-file")
+  val SerializedFile = value("serialized-file")
+}
+
 object Configuration
 {
+	import ConfigurationStorageState._
 	final val SysPropPrefix = "-D"
 	def parse(file: URL, baseDirectory: File) = Using( new InputStreamReader(file.openStream, "utf8") )( (new ConfigurationParser).apply )
-	@tailrec def find(args: List[String], baseDirectory: File): (URL, List[String]) =
+	
+	/**
+	 * Finds the configuration location.  
+	 * 
+	 * Note:  Configuration may be previously serialized by a launcher.
+	 */
+	@tailrec def find(args: List[String], baseDirectory: File): (URL, List[String], ConfigurationStorageState.Value) =
 		args match
 		{
-			case head :: tail if head.startsWith("@") => (directConfiguration(head.substring(1), baseDirectory), tail)
+	        case head :: tail if head.startsWith("@load:") => (directConfiguration(head.substring(6), baseDirectory), tail, SerializedFile)
+			case head :: tail if head.startsWith("@") => (directConfiguration(head.substring(1), baseDirectory), tail, PropertiesFile)
 			case head :: tail if head.startsWith(SysPropPrefix) =>
 				setProperty(head stripPrefix SysPropPrefix)
 				find(tail, baseDirectory)
 			case _ =>
 				val propertyConfigured = System.getProperty("sbt.boot.properties")
 				val url = if(propertyConfigured == null) configurationOnClasspath else configurationFromFile(propertyConfigured, baseDirectory)
-				(url , args)
+				(url, args, PropertiesFile)
 		}
 	def setProperty(head: String)
 	{
@@ -108,7 +121,7 @@ object Configuration
 	// We have to hard code them here in order to use them to determine the location of sbt.boot.properties itself
 	def guessSbtVersion: Option[String] =
 	{
-		val props = ResolveValues.readProperties(new File(DefaultBuildProperties))
+		val props = Pre.readProperties(new File(DefaultBuildProperties))
 		Option(props.getProperty(SbtVersionProperty))
 	}
 

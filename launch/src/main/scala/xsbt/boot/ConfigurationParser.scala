@@ -78,11 +78,14 @@ class ConfigurationParser
 		val (logging, m5) = processSection(m4, "log", getLogging)
 		val (properties, m6) = processSection(m5, "app-properties", getAppProperties)
 		val ((ivyHome, checksums, isOverrideRepos, rConfigFile), m7) = processSection(m6, "ivy", getIvy)
-		check(m7, "section")
+		val (serverOptions, m8) = processSection(m7, "server", getServer)
+		check(m8, "section")
 		val classifiers = Classifiers(scalaClassifiers, appClassifiers)
 		val repositories = rConfigFile map readRepositoriesConfig getOrElse defaultRepositories
 		val ivyOptions = IvyOptions(ivyHome, classifiers, repositories, checksums, isOverrideRepos)
-		new LaunchConfiguration(scalaVersion, ivyOptions, app, boot, logging, properties)
+		
+		// TODO - Read server properties...
+		new LaunchConfiguration(scalaVersion, ivyOptions, app, boot, logging, properties, serverOptions)
 	}
 	def getScala(m: LabelMap) =
 	{
@@ -177,6 +180,16 @@ class ConfigurationParser
 		val classpathExtra = toArray(toFiles(resources))
 		val app = new Application(org, name, rev, main, components, LaunchCrossVersion(crossVersioned), classpathExtra)
 		(app, classifiers)
+	}
+	def getServer(m: LabelMap): (Option[ServerConfiguration]) =
+	{
+	  val (lock, m1) = optfile(m, "lock")
+	  // TODO - JVM args
+	  val (args, m2) = optfile(m1, "jvmargs")
+	  val (props, m3) = optfile(m2, "jvmprops")
+	  lock map { file =>
+	    ServerConfiguration(file, args, props)
+	  }
 	}
 	def getRepositories(m: LabelMap): List[Repository.Repository] =
 	{
