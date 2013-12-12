@@ -2,6 +2,11 @@ package xsbti;
 
 import java.io.File;
 
+/**
+ * This represents an interface that can generate applications.
+ * 
+ *  An application is somethign which will run and return an exit value.
+ */
 public interface AppProvider
 {
 	/** Returns the ScalaProvider that this AppProvider will use. */
@@ -34,5 +39,8 @@ public interface AppProvider
 	/** The classpath from which the main class is loaded, excluding Scala jars.*/
 	public File[] mainClasspath();
 
+	/** Returns a mechanism you can use to install/find/resolve components.  
+	 * A component is just a related group of files.
+	 */
 	public ComponentProvider components();
 }
