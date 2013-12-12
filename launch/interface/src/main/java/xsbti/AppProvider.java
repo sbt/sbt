@@ -3,9 +3,10 @@ package xsbti;
 import java.io.File;
 
 /**
- * This represents an interface that can generate applications.
+ * This represents an interface that can generate applications or servers.
  * 
- *  An application is somethign which will run and return an exit value.
+ * This provider grants access to launcher related features associated with
+ * the id.
  */
 public interface AppProvider
 {
@@ -33,6 +34,8 @@ public interface AppProvider
 	* It is NOT guaranteed that newMain().getClass() == mainClass().
 	* The sbt launcher can wrap generic static main methods. In this case, there will be a wrapper class,
 	* and you must use the `entryPoint` method.
+	* @throws IncompatibleClassChangeError if the configuration used for this Application does not
+	*                                         represent a launched application.
 	*/
 	public AppMain newMain();
 	

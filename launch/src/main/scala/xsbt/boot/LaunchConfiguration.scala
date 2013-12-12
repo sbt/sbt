@@ -9,27 +9,46 @@ import java.net.URL
 import scala.collection.immutable.List
 
 //TODO: use copy constructor, check size change
-final case class LaunchConfiguration(scalaVersion: Value[String], ivyConfiguration: IvyOptions, app: Application, boot: BootSetup, logging: Logging, appProperties: List[AppProperty])
+final case class LaunchConfiguration(scalaVersion: Value[String], ivyConfiguration: IvyOptions, app: Application, boot: BootSetup, logging: Logging, appProperties: List[AppProperty], serverConfig: Option[ServerConfiguration])
 {
+	def isServer: Boolean = serverConfig.isDefined
 	def getScalaVersion = {
 		val sv = Value.get(scalaVersion)
 		if(sv == "auto") None else Some(sv)
 	}
 
-	def withScalaVersion(newScalaVersion: String) = LaunchConfiguration(new Explicit(newScalaVersion), ivyConfiguration, app, boot, logging, appProperties)
-	def withApp(app: Application) = LaunchConfiguration(scalaVersion, ivyConfiguration, app, boot, logging, appProperties)
-	def withAppVersion(newAppVersion: String) = LaunchConfiguration(scalaVersion, ivyConfiguration, app.withVersion(new Explicit(newAppVersion)), boot, logging, appProperties)
+	def withScalaVersion(newScalaVersion: String) = LaunchConfiguration(new Explicit(newScalaVersion), ivyConfiguration, app, boot, logging, appProperties, serverConfig)
+	def withApp(app: Application) = LaunchConfiguration(scalaVersion, ivyConfiguration, app, boot, logging, appProperties, serverConfig)
+	def withAppVersion(newAppVersion: String) = LaunchConfiguration(scalaVersion, ivyConfiguration, app.withVersion(new Explicit(newAppVersion)), boot, logging, appProperties, serverConfig)
 	// TODO: withExplicit
 	def withVersions(newScalaVersion: String, newAppVersion: String, classifiers0: Classifiers) =
-		LaunchConfiguration(new Explicit(newScalaVersion), ivyConfiguration.copy(classifiers = classifiers0), app.withVersion(new Explicit(newAppVersion)), boot, logging, appProperties)
+		LaunchConfiguration(new Explicit(newScalaVersion), ivyConfiguration.copy(classifiers = classifiers0), app.withVersion(new Explicit(newAppVersion)), boot, logging, appProperties, serverConfig)
 
-	def map(f: File => File) = LaunchConfiguration(scalaVersion, ivyConfiguration.map(f), app.map(f), boot.map(f), logging, appProperties)
+	def map(f: File => File) = LaunchConfiguration(scalaVersion, ivyConfiguration.map(f), app.map(f), boot.map(f), logging, appProperties, serverConfig.map(_ map f))
+}
+object LaunchConfiguration {
+  // Saves a launch configuration into a file. This is only safe if it is loaded by the *same* launcher version.
+  def save(config: LaunchConfiguration, f: File): Unit = {
+    val out = new java.io.ObjectOutputStream(new java.io.FileOutputStream(f))
+    try out.writeObject(config)
+    finally out.close()
+  }
+  // Restores a launch configuration from a file. This is only safe if it is loaded by the *same* launcher version.  
+  def restore(url: URL): LaunchConfiguration = {
+    val in = new java.io.ObjectInputStream(url.openConnection.getInputStream)
+    try in.readObject.asInstanceOf[LaunchConfiguration]
+    finally in.close()
+  }
+}
+final case class ServerConfiguration(lockFile: File, jvmArgs: Option[File], jvmPropsFile: Option[File]) {
+  def map(f: File => File) =
+    ServerConfiguration(f(lockFile), jvmArgs map f, jvmPropsFile map f)
 }
 final case class IvyOptions(ivyHome: Option[File], classifiers: Classifiers, repositories: List[Repository.Repository], checksums: List[String], isOverrideRepositories: Boolean)
 {
 	def map(f: File => File) = IvyOptions(ivyHome.map(f), classifiers, repositories, checksums, isOverrideRepositories)
 }
-sealed trait Value[T]
+sealed trait Value[T] extends Serializable
 final class Explicit[T](val value: T) extends Value[T] {
 	override def toString = value.toString
 }
@@ -130,7 +149,7 @@ sealed trait PropertyInit
 final class SetProperty(val value: String) extends PropertyInit
 final class PromptProperty(val label: String, val default: Option[String]) extends PropertyInit
 
-final class Logging(level: LogLevel.Value)
+final class Logging(level: LogLevel.Value) extends Serializable
 {
 	def log(s: => String, at: LogLevel.Value) = if(level.id <= at.id) stream(at).println("[" + at + "] " + s)
 	def debug(s: => String) = log(s, LogLevel.Debug)

@@ -12,16 +12,9 @@ object ResolveValues
 	def apply(conf: LaunchConfiguration): LaunchConfiguration = (new ResolveValues(conf))()
 	private def trim(s: String) = if(s eq null) None else notEmpty(s.trim)
 	private def notEmpty(s: String) = if(isEmpty(s)) None else Some(s)
-	private[boot] def readProperties(propertiesFile: File) =
-	{
-		val properties = new Properties
-		if(propertiesFile.exists)
-			Using( new FileInputStream(propertiesFile) )( properties.load )
-		properties
-	}
 }
 
-import ResolveValues.{readProperties, trim}
+import ResolveValues.{trim}
 final class ResolveValues(conf: LaunchConfiguration)
 {
 	private def propertiesFile = conf.boot.properties
