@@ -15,42 +15,50 @@ object Launch
 {
 	def apply(arguments: List[String]): Option[Int] = apply( (new File("")).getAbsoluteFile , arguments )
 
-	def apply(currentDirectory: File, arguments: List[String]): Option[Int] =
-		Configuration.find(arguments, currentDirectory) match { case (configLocation, newArguments) => configured(currentDirectory, configLocation, newArguments) }
-
-	def configured(currentDirectory: File, configLocation: URL, arguments: List[String]): Option[Int] =
-	{
-		val config = Configuration.parse(configLocation, currentDirectory)
-		Find(config, currentDirectory) match { case (resolved, baseDirectory) => parsed(baseDirectory, resolved, arguments) }
+	def apply(currentDirectory: File, arguments: List[String]): Option[Int] = {
+		val (configLocation, newArguments) = Configuration.find(arguments, currentDirectory) 
+		val config = parseAndInitializeConfig(configLocation, currentDirectory)  
+		launch(run(Launcher(config)))(makeRunConfig(currentDirectory, config, newArguments))  
 	}
-	def parsed(currentDirectory: File, parsed: LaunchConfiguration, arguments: List[String]): Option[Int] =
+	/** Parses the configuration *and* runs the initialization code that will remove variable references. */
+	def parseAndInitializeConfig(configLocation: URL, currentDirectory: File): LaunchConfiguration =
 	{
+		val (parsed, bd) = parseConfiguration(configLocation, currentDirectory)
+		resolveConfig(parsed)
+	}
+	/** Parse configuration and return it and the baseDirectory of the launch. */
+	def parseConfiguration(configLocation: URL, currentDirectory: File): (LaunchConfiguration, File) =
+		Find(Configuration.parse(configLocation, currentDirectory), currentDirectory)
+	  
+	/** Setups the Initialize object so we can fill in system properties in the configuration */
+	def resolveConfig(parsed: LaunchConfiguration): LaunchConfiguration =
+	{
+		// Set up initialize.
 		val propertiesFile = parsed.boot.properties
 		import parsed.boot.{enableQuick, promptCreate, promptFill}
 		if(isNonEmpty(promptCreate) && !propertiesFile.exists)
 			Initialize.create(propertiesFile, promptCreate, enableQuick, parsed.appProperties)
 		else if(promptFill)
 			Initialize.fill(propertiesFile, parsed.appProperties)
-		initialized(currentDirectory, parsed, arguments)
-	}
-	def initialized(currentDirectory: File, parsed: LaunchConfiguration, arguments: List[String]): Option[Int] =
-	{
+
 		parsed.logging.debug("Parsed configuration: " + parsed)
 		val resolved = ResolveValues(parsed)
 		resolved.logging.debug("Resolved configuration: " + resolved)
-		explicit(currentDirectory, resolved, arguments)
+		resolved
 	}
 
-	def explicit(currentDirectory: File, explicit: LaunchConfiguration, arguments: List[String]): Option[Int] =
-		launch( run(Launcher(explicit)) ) (
-			new RunConfiguration(explicit.getScalaVersion, explicit.app.toID, currentDirectory, arguments) )
+	/** Create run configuration we'll use to launch the app. */
+	def makeRunConfig(currentDirectory: File, config: LaunchConfiguration, arguments: List[String]): RunConfiguration =
+		new RunConfiguration(config.getScalaVersion, config.app.toID, currentDirectory, arguments)
 
+	/** The actual mechanism used to run a launched application. */
 	def run(launcher: xsbti.Launcher)(config: RunConfiguration): xsbti.MainResult =
 	{
 		import config._
 		val appProvider: xsbti.AppProvider = launcher.app(app, orNull(scalaVersion)) // takes ~40 ms when no update is required
 		val appConfig: xsbti.AppConfiguration = new AppConfiguration(toArray(arguments), workingDirectory, appProvider)
 
+		// TODO - Jansi probably should be configurable via some other mechanism...
 		JAnsi.install(launcher.topLoader)
 		try {
 			val main = appProvider.newMain()
