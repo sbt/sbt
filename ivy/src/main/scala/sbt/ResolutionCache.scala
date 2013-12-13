@@ -1,24 +1,18 @@
 package sbt
 
 import java.io.File
-import java.io.FileInputStream
-import java.util.Properties
 import org.apache.ivy.core
-import org.apache.ivy.plugins.parser
 import core.IvyPatternHelper
-import core.settings.IvySettings
 import core.cache.{CacheMetadataOptions, DefaultRepositoryCacheManager, DefaultResolutionCacheManager, ResolutionCacheManager}
 import core.module.id.ModuleRevisionId
-import core.module.descriptor.ModuleDescriptor
 import ResolutionCache.{Name, ReportDirectory, ResolvedName, ResolvedPattern}
-import parser.xml.XmlModuleDescriptorParser
 
 /** Replaces the standard Ivy resolution cache in order to:
 * 1. Separate cached resolved Ivy files from resolution reports, making the resolution reports easier to find.
 * 2. Have them per-project for easier cleaning (possible with standard cache, but central to this custom one).
 * 3. Cache location includes extra attributes so that cross builds of a plugin do not overwrite each other.
 */
-private[sbt] final class ResolutionCache(base: File, settings: IvySettings) extends ResolutionCacheManager
+private[sbt] final class ResolutionCache(base: File) extends ResolutionCacheManager
 {
 	private[this] def resolvedFileInCache(m: ModuleRevisionId, name: String, ext: String): File = {
 		val p = ResolvedPattern
@@ -41,25 +35,6 @@ private[sbt] final class ResolutionCache(base: File, settings: IvySettings) exte
 		new File(reportBase, resolveId + "-" + conf + ".xml")
 	def getConfigurationResolveReportsInCache(resolveId: String): Array[File] =
 		IO.listFiles(reportBase).filter(_.getName.startsWith(resolveId + "-"))
-    
-        // XXX: this method is required by ResolutionCacheManager in Ivy 2.3.0 final,
-        // but it is apparently unused by Ivy as sbt uses Ivy.  Therefore, it is 
-        // unexercised in tests.  Note that the implementation of this method in Ivy 2.3.0's 
-        // DefaultResolutionCache also resolves parent properties for a given mrid
-    def getResolvedModuleDescriptor(mrid: ModuleRevisionId): ModuleDescriptor = {
-        val ivyFile = getResolvedIvyFileInCache(mrid)
-        if (!ivyFile.exists()) {
-            throw new IllegalStateException("Ivy file not found in cache for " + mrid + "!")
-        }
-        
-        return XmlModuleDescriptorParser.getInstance().parseDescriptor(settings, ivyFile.toURI().toURL(), false)
-    }
-    
-    def saveResolvedModuleDescriptor(md: ModuleDescriptor): Unit = {
-        val mrid = md.getResolvedModuleRevisionId
-        val cachedIvyFile = getResolvedIvyFileInCache(mrid)
-        md.toIvyFile(cachedIvyFile)
-    }
 }
 private[sbt] object ResolutionCache
 {

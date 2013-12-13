@@ -310,7 +310,7 @@ private object IvySbt
 	private[this] def configureResolutionCache(settings: IvySettings, localOnly: Boolean, resCacheDir: Option[File])
 	{
 		val base = resCacheDir getOrElse settings.getDefaultResolutionCacheBasedir
-		settings.setResolutionCacheManager(new ResolutionCache(base, settings))
+		settings.setResolutionCacheManager(new ResolutionCache(base))
 	}
 	// set the artifact resolver to be the main resolver.
 	// this is because sometimes the artifact resolver saved in the cache is not correct
