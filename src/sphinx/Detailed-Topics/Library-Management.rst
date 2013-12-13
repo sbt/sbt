@@ -124,7 +124,7 @@ the version of Scala you are using. See :doc:`Cross-Build` for details.
 Ivy can select the latest revision of a module according to constraints
 you specify. Instead of a fixed revision like `"1.6.1"`, you specify
 `"latest.integration"`, `"2.9.+"`, or `"[1.0,)"`. See the `Ivy
-revisions <http://ant.apache.org/ivy/history/2.3.0-rc1/ivyfile/dependency.html#revision>`_
+revisions <http://ant.apache.org/ivy/history/2.3.0/ivyfile/dependency.html#revision>`_
 documentation for details.
 
 Resolvers
@@ -320,7 +320,7 @@ Extra Attributes
 ~~~~~~~~~~~~~~~~
 
 `Extra
-attributes <http://ant.apache.org/ivy/history/2.3.0-rc1/concept.html#extra>`_
+attributes <http://ant.apache.org/ivy/history/2.3.0/concept.html#extra>`_
 can be specified by passing key/value pairs to the `extra` method.
 
 To select dependencies by extra attributes:
@@ -527,7 +527,7 @@ Configurations
 Ivy configurations are a useful feature for your build when you need
 custom groups of dependencies, such as for a plugin. Ivy configurations
 are essentially named sets of dependencies.  You can read the
-`Ivy documentation <http://ant.apache.org/ivy/history/2.3.0-rc1/tutorial/conf.html>`_
+`Ivy documentation <http://ant.apache.org/ivy/history/2.3.0/tutorial/conf.html>`_
 for details.
 
 The built-in use of configurations in sbt is similar to scopes in Maven.
@@ -549,7 +549,7 @@ your dependency definition:
 
 This says that your project's `"test"` configuration uses
 `ScalaTest`'s `"compile"` configuration. See the `Ivy
-documentation <http://ant.apache.org/ivy/history/2.3.0-rc1/tutorial/conf.html>`_
+documentation <http://ant.apache.org/ivy/history/2.3.0/tutorial/conf.html>`_
 for more advanced mappings. Most projects published to Maven
 repositories will use the `"compile"` configuration.
 
