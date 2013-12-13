@@ -564,6 +564,7 @@ object Defaults extends BuildCommon
 		(t, module, a, sv, sbv, toString) =>
 			t / toString(ScalaVersion(sv, sbv), module, a) asFile
 	}
+
 	def artifactSetting = ((artifact, artifactClassifier).identity zipWith configuration.?) { case ((a,classifier),cOpt) =>
 		val cPart = cOpt flatMap {
 			case Compile => None
@@ -573,10 +574,11 @@ object Defaults extends BuildCommon
 		val combined = cPart.toList ++ classifier.toList
 		if(combined.isEmpty) a.copy(classifier = None, configurations = cOpt.toList) else {
 			val classifierString = combined mkString "-"
-			val confs = cOpt.toList flatMap { c => artifactConfigurations(a, c, classifier) }
-			a.copy(classifier = Some(classifierString), `type` = Artifact.classifierType(classifierString), configurations = confs)
+			a.copy(classifier = Some(classifierString), `type` = Artifact.classifierType(classifierString), configurations = cOpt.toList)
 		}
 	}
+
+	@deprecated("The configuration(s) should not be decided based on the classifier.", "0.14.0")
 	def artifactConfigurations(base: Artifact, scope: Configuration, classifier: Option[String]): Iterable[Configuration] =
 		classifier match {
 			case Some(c) => Artifact.classifierConf(c) :: Nil
@@ -945,6 +947,8 @@ object Classpaths
 		resolvers :== Nil,
 		retrievePattern :== Resolver.defaultRetrievePattern,
 		transitiveClassifiers :== Seq(SourceClassifier, DocClassifier),
+		sourceArtifactTypes :== Artifact.DefaultSourceTypes,
+		docArtifactTypes :== Artifact.DefaultDocTypes,
 		sbtDependency := {
 			val app = appConfiguration.value
 			val id = app.provider.id
@@ -1005,7 +1009,14 @@ object Classpaths
 		projectID <<= defaultProjectID,
 		projectID <<= pluginProjectID,
 		projectDescriptors <<= depMap,
-		updateConfiguration := new UpdateConfiguration(retrieveConfiguration.value, false, ivyLoggingLevel.value),
+		updateConfiguration <<= {
+			// Tell the UpdateConfiguration which artifact types are special (for sources and javadocs)
+			val specialArtifactTypes = (sourceArtifactTypes, docArtifactTypes) { _ union _ }
+			// By default, to retrieve all types *but* these (it's assumed that everything else is binary/resource)
+			(retrieveConfiguration, ivyLoggingLevel, specialArtifactTypes) { (retrConf, loggingLevel, artTypes) =>
+				new UpdateConfiguration(retrConf, false, loggingLevel, ArtifactTypeFilter.forbid(artTypes))
+			}
+		},
 		retrieveConfiguration := { if(retrieveManaged.value) Some(new RetrieveConfiguration(managedDirectory.value, retrievePattern.value)) else None },
 		ivyConfiguration <<= mkIvyConfiguration,
 		ivyConfigurations := {
@@ -1027,12 +1038,15 @@ object Classpaths
 		update <<= updateTask tag(Tags.Update, Tags.Network),
 		update := { val report = update.value; ConflictWarning(conflictWarning.value, report, streams.value.log); report },
 		classifiersModule in updateClassifiers := GetClassifiersModule(projectID.value, update.value.allModules, ivyConfigurations.in(updateClassifiers).value, transitiveClassifiers.in(updateClassifiers).value),
-		updateClassifiers <<= (ivySbt, classifiersModule in updateClassifiers, updateConfiguration, ivyScala, appConfiguration, streams) map { (is, mod, c, ivyScala, app, s) =>
-			val out = is.withIvy(s.log)(_.getSettings.getDefaultIvyUserDir)
-			withExcludes(out, mod.classifiers, lock(app)) { excludes =>
-				IvyActions.updateClassifiers(is, GetClassifiersConfiguration(mod, excludes, c, ivyScala), s.log)
-			}
-		} tag(Tags.Update, Tags.Network)
+
+		updateClassifiers <<=
+			(ivySbt, classifiersModule in updateClassifiers, updateConfiguration, ivyScala, appConfiguration, sourceArtifactTypes, docArtifactTypes, streams) map {
+				(is, mod, c, ivyScala, app, srcTypes, docTypes, s) =>
+					val out = is.withIvy(s.log)(_.getSettings.getDefaultIvyUserDir)
+					withExcludes(out, mod.classifiers, lock(app)) { excludes =>
+						IvyActions.updateClassifiers(is, GetClassifiersConfiguration(mod, excludes, c.copy(artifactFilter=c.artifactFilter.invert), ivyScala, srcTypes, docTypes), s.log)
+					}
+			} tag(Tags.Update, Tags.Network)
 	)
 	def warnResolversConflict(ress: Seq[Resolver], log: Logger) {
 		val resset = ress.toSet
@@ -1078,12 +1092,12 @@ object Classpaths
 			val pluginIDs: Seq[ModuleID] = pluginJars.flatMap(_ get moduleID.key)
 			GetClassifiersModule(pid, sbtDep +: pluginIDs, Configurations.Default :: Nil, classifiers)
 		},
-		updateSbtClassifiers in TaskGlobal <<= (ivySbt, classifiersModule, updateConfiguration, ivyScala, appConfiguration, streams) map {
-				(is, mod, c, ivyScala, app, s) =>
+		updateSbtClassifiers in TaskGlobal <<= (ivySbt, classifiersModule, updateConfiguration, ivyScala, appConfiguration, sourceArtifactTypes, docArtifactTypes, streams) map {
+				(is, mod, c, ivyScala, app, srcTypes, docTypes, s) =>
 			val out = is.withIvy(s.log)(_.getSettings.getDefaultIvyUserDir)
 			withExcludes(out, mod.classifiers, lock(app)) { excludes =>
 				val noExplicitCheck = ivyScala.map(_.copy(checkExplicit=false))
-				IvyActions.transitiveScratch(is, "sbt", GetClassifiersConfiguration(mod, excludes, c, noExplicitCheck), s.log)
+				IvyActions.transitiveScratch(is, "sbt", GetClassifiersConfiguration(mod, excludes, c.copy(artifactFilter=c.artifactFilter.invert), noExplicitCheck, srcTypes, docTypes), s.log)
 			}
 		} tag(Tags.Update, Tags.Network)
 	))
