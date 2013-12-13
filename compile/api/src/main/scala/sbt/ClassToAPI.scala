@@ -60,7 +60,7 @@ object ClassToAPI
 		val name = c.getName
 		val tpe = if(Modifier.isInterface(c.getModifiers)) Trait else ClassDef
 		lazy val (static, instance) = structure(c, enclPkg, cmap)
-		val cls = new api.ClassLike(tpe, strict(Empty), lzy(instance, cmap), emptyStringArray, typeParameters(c.getTypeParameters), name, acc, mods, annots)
+		val cls = new api.ClassLike(tpe, strict(Empty), lzy(instance, cmap), emptyStringArray, typeParameters(typeParameterTypes(c)), name, acc, mods, annots)
 		val stat = new api.ClassLike(Module, strict(Empty), lzy(static, cmap), emptyStringArray, emptyTypeParameterArray, name, acc, mods, annots)
 		val defs = cls :: stat :: Nil
 		cmap.memo(c.getName) = defs
@@ -135,15 +135,15 @@ object ClassToAPI
 		val accs = access(f.getModifiers, enclPkg)
 		val mods = modifiers(f.getModifiers)
 		val annots = annotations(f.getDeclaredAnnotations)
-		val tpe = reference(f.getGenericType)
+		val tpe = reference(returnType(f))
 		if(mods.isFinal) new api.Val(tpe, name, accs, mods, annots) else new api.Var(tpe, name, accs, mods, annots)
 	}
 
 	def methodToDef(enclPkg: Option[String])(m: Method): api.Def =
-		defLike(m.getName, m.getModifiers, m.getDeclaredAnnotations, m.getTypeParameters, m.getParameterAnnotations, m.getGenericParameterTypes, Some(m.getGenericReturnType), m.getGenericExceptionTypes, m.isVarArgs, enclPkg)
+		defLike(m.getName, m.getModifiers, m.getDeclaredAnnotations, typeParameterTypes(m), m.getParameterAnnotations, parameterTypes(m), Some(returnType(m)), exceptionTypes(m), m.isVarArgs, enclPkg)
 
 	def constructorToDef(enclPkg: Option[String])(c: Constructor[_]): api.Def =
-		defLike("<init>", c.getModifiers, c.getDeclaredAnnotations, c.getTypeParameters, c.getParameterAnnotations, c.getGenericParameterTypes, None, c.getGenericExceptionTypes, c.isVarArgs, enclPkg)
+		defLike("<init>", c.getModifiers, c.getDeclaredAnnotations, typeParameterTypes(c), c.getParameterAnnotations, parameterTypes(c), None, exceptionTypes(c), c.isVarArgs, enclPkg)
 
 	def defLike[T <: GenericDeclaration](name: String, mods: Int, annots: Array[Annotation], tps: Array[TypeVariable[T]], paramAnnots: Array[Array[Annotation]], paramTypes: Array[Type], retType: Option[Type], exceptions: Array[Type], varArgs: Boolean, enclPkg: Option[String]): api.Def =
 	{
@@ -292,4 +292,45 @@ object ClassToAPI
 	private[this] def PrimitiveMap = PrimitiveNames.map( j => (j, j.capitalize)) :+ ("void" -> "Unit")
 	private[this] val PrimitiveRefs = PrimitiveMap.map { case (n, sn) => (n, reference("scala." + sn)) }.toMap
 	def primitive(name: String): api.SimpleType = PrimitiveRefs(name)
+
+	// Workarounds for https://github.com/sbt/sbt/issues/1035
+	//   these catch the GenericSignatureFormatError and return the erased type
+
+	private[this] def returnType(f: Field): Type = try f.getGenericType catch {
+		case _: GenericSignatureFormatError => f.getType
+	}
+	private[this] def parameterTypes(c: Constructor[_]): Array[Type] = try c.getGenericParameterTypes catch {
+		case _: GenericSignatureFormatError => convert(c.getParameterTypes)
+	}
+	private[this] def exceptionTypes(c: Constructor[_]): Array[Type] = try c.getGenericExceptionTypes catch {
+		case _: GenericSignatureFormatError => convert(c.getExceptionTypes)
+	}
+	private[this] def parameterTypes(m: Method): Array[Type] = try m.getGenericParameterTypes catch {
+		case _: GenericSignatureFormatError => convert(m.getParameterTypes)
+	}
+	private[this] def returnType(m: Method): Type = try m.getGenericReturnType catch {
+		case _: GenericSignatureFormatError => m.getReturnType
+	}
+	private[this] def exceptionTypes(m: Method): Array[Type] = try m.getGenericExceptionTypes catch {
+		case _: GenericSignatureFormatError => convert(m.getExceptionTypes)
+	}
+
+	private[this] def typeParameterTypes[T](m: Constructor[T]): Array[TypeVariable[Constructor[T]]] = try m.getTypeParameters catch {
+		case _: GenericSignatureFormatError => new Array(0)
+	}
+	private[this] def typeParameterTypes[T](m: Class[T]): Array[TypeVariable[Class[T]]] = try m.getTypeParameters catch {
+		case _: GenericSignatureFormatError => new Array(0)
+	}
+	private[this] def typeParameterTypes(m: Method): Array[TypeVariable[Method]] = try m.getTypeParameters catch {
+		case _: GenericSignatureFormatError => new Array(0)
+	}
+	private[this] def superclassType(c: Class[_]): Type = try c.getGenericSuperclass catch{
+		case _: GenericSignatureFormatError => c.getSuperclass
+	}
+	private[this] def interfaces(c: Class[_]): Array[Type] = try c.getGenericInterfaces catch{
+		case _: GenericSignatureFormatError => convert(c.getInterfaces)
+	}
+
+	private[this] def convert(classes: Array[Class[_]]): Array[Type] =
+		classes.asInstanceOf[Array[Type]] // ok: treat Arrays as read-only
 }
