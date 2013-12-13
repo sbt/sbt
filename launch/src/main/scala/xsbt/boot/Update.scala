@@ -286,7 +286,9 @@ final class Update(config: UpdateConfiguration)
 	private[this] def configureResolutionCache(settings: IvySettings)
 	{
 		resolutionCacheBase.mkdirs()
-		settings.setResolutionCacheManager(new DefaultResolutionCacheManager(resolutionCacheBase))
+		val drcm = new DefaultResolutionCacheManager(resolutionCacheBase)
+		drcm.setSettings(settings)
+		settings.setResolutionCacheManager(drcm)
 	}
 	private[this] def configureRepositoryCache(settings: IvySettings)
 	{

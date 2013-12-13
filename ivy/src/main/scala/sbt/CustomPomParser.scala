@@ -203,7 +203,7 @@ object CustomPomParser
 		val unique = IvySbt.mergeDuplicateDefinitions(withExtra)
 		unique foreach dmd.addDependency
 
-		for( ed <- md.getInheritedDescriptors) dmd.addInheritedDescriptor( new DefaultExtendsDescriptor( mrid, resolvedMrid, ed.getLocation, ed.getExtendsTypes) )
+		for( ed <- md.getInheritedDescriptors) dmd.addInheritedDescriptor( new DefaultExtendsDescriptor( md, ed.getLocation, ed.getExtendsTypes) )
 		for( conf <- md.getConfigurations) {
 			dmd.addConfiguration(conf)
 			for(art <- md.getArtifacts(conf.getName)) {
