@@ -1,5 +1,7 @@
 logLevel := Level.Debug
 
+incOptions := incOptions.value.withNameHashing(true)
+
 // disable sbt's heauristic which recompiles everything in case
 // some fraction (e.g. 50%) of files is scheduled to be recompiled
 // in this test we want precise information about recompiled files
@@ -24,13 +26,13 @@ TaskKey[Unit]("check-compilations") <<= (compile in Compile, scalaSource in Comp
     assert(recompiledFiles(iteration) == files, "%s != %s".format(recompiledFiles(iteration), files))
   }
   // Y.scala is compiled only at the beginning as changes to A.scala do not affect it
-  recompiledFilesInIteration(0, Set("Y.scala"))
+  recompiledFilesInIteration(0, Set("X.scala", "Y.scala"))
   // A.scala is changed and recompiled
   recompiledFilesInIteration(1, Set("A.scala"))
   // change in A.scala causes recompilation of B.scala, C.scala, D.scala which depend on transtiviely
   // and by inheritance on A.scala
   // X.scala is also recompiled because it depends by member reference on B.scala
   // Note that Y.scala is not recompiled because it depends just on X through member reference dependency
-  recompiledFilesInIteration(2, Set("B.scala", "C.scala", "D.scala", "X.scala"))
+  recompiledFilesInIteration(2, Set("B.scala", "C.scala", "D.scala"))
   assert(allCompilations.size == 3)
 }
