@@ -1,0 +1,13 @@
+> compile
+
+# replace macro with one that throws an error
+
+$ copy-file macro-provider/changes/Provider.scala macro-provider/Provider.scala
+
+> macro-provider/compile
+
+-> macro-client/compile
+
+> clean
+
+-> compile
