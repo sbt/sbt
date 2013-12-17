@@ -88,19 +88,17 @@ trait Init[Scope]
 	* is explicitly defined and the where the scope matches `filter`.
 	* A setting initialized with dynamic dependencies is only allowed if `allowDynamic` is true.
 	* Only the static dependencies are tracked, however.  Dependencies on previous values do not introduce a derived setting either. */
-	final def derive[T](s: Setting[T], allowDynamic: Boolean = false, filter: Scope => Boolean = const(true), trigger: AttributeKey[_] => Boolean = const(true)): Setting[T] = {
+	final def derive[T](s: Setting[T], allowDynamic: Boolean = false, filter: Scope => Boolean = const(true), trigger: AttributeKey[_] => Boolean = const(true), default: Boolean = false): Setting[T] = {
 		deriveAllowed(s, allowDynamic) foreach error
-		new DerivedSetting[T](s.key, s.init, s.pos, filter, trigger)
+		def d = new DerivedSetting[T](s.key, s.init, s.pos, filter, trigger)
+		if (default) d.default() else d
 	}
 	def deriveAllowed[T](s: Setting[T], allowDynamic: Boolean): Option[String] = s.init match {
 		case _: Bind[_,_] if !allowDynamic => Some("Cannot derive from dynamic dependencies.")
 		case _ => None
 	}
 	// id is used for equality
-	private[sbt] final def defaultSetting[T](s: Setting[T]): Setting[T] = s match {
-		case _: DefaultSetting[_] | _: DerivedSetting[_] => s
-		case _ => new DefaultSetting[T](s.key, s.init, s.pos, nextDefaultID())
-	}
+	private[sbt] final def defaultSetting[T](s: Setting[T]): Setting[T] = s.default()
 	private[sbt] def defaultSettings(ss: Seq[Setting[_]]): Seq[Setting[_]] = ss.map(s => defaultSetting(s))
 	private[this] final val nextID = new java.util.concurrent.atomic.AtomicLong
 	private[this] final def nextDefaultID(): Long = nextID.incrementAndGet()
@@ -473,17 +471,28 @@ trait Init[Scope]
 		protected[this] def make[T](key: ScopedKey[T], init: Initialize[T], pos: SourcePosition): Setting[T] = new Setting[T](key, init, pos)
 		protected[sbt] def isDerived: Boolean = false
 		private[sbt] def setScope(s: Scope): Setting[T] = make(key.copy(scope = s), init.mapReferenced(mapScope(const(s))), pos)
+		/** Turn this setting into a `DefaultSetting` if it's not already, otherwise returns `this` */
+		private[sbt] def default(id: => Long = nextDefaultID()): DefaultSetting[T] = DefaultSetting(key, init, pos, id)
 	}
-	private[Init] final class DerivedSetting[T](sk: ScopedKey[T], i: Initialize[T], p: SourcePosition, val filter: Scope => Boolean, val trigger: AttributeKey[_] => Boolean) extends Setting[T](sk, i, p) {
+	private[Init] sealed class DerivedSetting[T](sk: ScopedKey[T], i: Initialize[T], p: SourcePosition, val filter: Scope => Boolean, val trigger: AttributeKey[_] => Boolean) extends Setting[T](sk, i, p) {
 		override def make[T](key: ScopedKey[T], init: Initialize[T], pos: SourcePosition): Setting[T] = new DerivedSetting[T](key, init, pos, filter, trigger)
 		protected[sbt] override def isDerived: Boolean = true
+		override def default(_id: => Long): DefaultSetting[T] = new DerivedSetting[T](sk, i, p, filter, trigger) with DefaultSetting[T] { val id = _id }
+		override def toString = "derived " + super.toString
 	}
 	// Only keep the first occurence of this setting and move it to the front so that it has lower precedence than non-defaults.
 	//  This is intended for internal sbt use only, where alternatives like Plugin.globalSettings are not available.
-	private[Init] sealed class DefaultSetting[T](sk: ScopedKey[T], i: Initialize[T], p: SourcePosition, val id: Long) extends Setting[T](sk, i, p) {
-		override def make[T](key: ScopedKey[T], init: Initialize[T], pos: SourcePosition): Setting[T] = new DefaultSetting[T](key, init, pos, id)
+	private[Init] sealed trait DefaultSetting[T] extends Setting[T] {
+		val id: Long
+		override def make[T](key: ScopedKey[T], init: Initialize[T], pos: SourcePosition): Setting[T] = super.make(key, init, pos) default id
 		override final def hashCode = id.hashCode
 		override final def equals(o: Any): Boolean = o match { case d: DefaultSetting[_] => d.id == id; case _ => false }
+		override def toString = s"default($id) " + super.toString
+		override def default(id: => Long) = this
+	}
+
+	object DefaultSetting {
+		def apply[T](sk: ScopedKey[T], i: Initialize[T], p: SourcePosition, _id: Long) = new Setting[T](sk, i, p) with DefaultSetting[T] { val id = _id }
 	}
 
 

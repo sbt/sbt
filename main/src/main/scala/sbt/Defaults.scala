@@ -1741,5 +1741,5 @@ trait BuildCommon
 	def getPrevious[T](task: TaskKey[T]): Initialize[Task[Option[T]]] =
 		(state, resolvedScoped) map { (s, ctx) => getFromContext(task, ctx, s) }
 
-	private[sbt] def derive[T](s: Setting[T]): Setting[T] = Def.derive(s, allowDynamic=true, trigger = _ != streams.key)
+	private[sbt] def derive[T](s: Setting[T]): Setting[T] = Def.derive(s, allowDynamic=true, trigger = _ != streams.key, default = true)
 }
