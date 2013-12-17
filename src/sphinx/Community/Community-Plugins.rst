@@ -214,6 +214,8 @@ Code generator plugins
 Database plugins
 ~~~~~~~~~~~~~~~~
 
+-  flyway-sbt (Flyway - The agile database migration framework):
+   http://flywaydb.org/getstarted/firststeps/sbt.html
 -  sbt-liquibase (Liquibase RDBMS database migrations):
    https://github.com/bigtoast/sbt-liquibase
 -  sbt-dbdeploy (dbdeploy, a database change management tool):
