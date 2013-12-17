@@ -348,28 +348,37 @@ trait Init[Scope]
 		def allDepsDefined(d: Derived, scope: Scope, local: Set[AttributeKey[_]]): Boolean =
 			d.dependencies.forall(dep => local(dep) || isDefined(dep, scope))
 
-		// List of injectable derived settings and their local settings for `sk`.
+		// Returns the list of injectable derived settings and their local settings for `sk`.
+		// The settings are to be injected under `outputScope` = whichever scope is more specific of:
+		//   * the dependency's (`sk`) scope
+		//   * the DerivedSetting's scope in which it has been declared, `definingScope`
+		// provided that these two scopes intersect.
 		//  A derived setting is injectable if:
-		//   1. it has not been previously injected into this scope
-		//   2. it applies to this scope (as determined by its `filter`)
-		//   3. all of its dependencies that match `trigger` are defined for that scope (allowing for delegation)
+		//   1. it has not been previously injected into outputScope
+		//   2. it applies to outputScope (as determined by its `filter`)
+		//   3. all of its dependencies are defined for outputScope (allowing for delegation)
 		// This needs to handle local settings because a derived setting wouldn't be injected if it's local setting didn't exist yet.
 		val deriveFor = (sk: ScopedKey[_]) => {
 			val derivedForKey: List[Derived] = derivedBy.get(sk.key).toList.flatten
 			val scope = sk.scope
-			def localAndDerived(d: Derived): Seq[Setting[_]] =
-				if(!d.inScopes.contains(scope) && d.setting.filter(scope))
-				{
-					val local = d.dependencies.flatMap(dep => scopeLocal(ScopedKey(scope, dep)))
-					if(allDepsDefined(d, scope, local.map(_.key.key).toSet)) {
-						d.inScopes.add(scope)
-						val out = local :+ d.setting.setScope(scope)
+			def localAndDerived(d: Derived): Seq[Setting[_]] = {
+				def definingScope = d.setting.key.scope
+				def intersect(s1: Scope, s2: Scope): Option[Scope] =
+					if (delegates(s1).contains(s2))       Some(s1) // s1 is more specific
+					else if (delegates(s2).contains(s1))  Some(s2) // s2 is more specific
+					else None
+				val outputScope = intersect(scope, definingScope)
+				outputScope collect { case s if !d.inScopes.contains(s) && d.setting.filter(s) =>
+					val local = d.dependencies.flatMap(dep => scopeLocal(ScopedKey(s, dep)))
+					if(allDepsDefined(d, s, local.map(_.key.key).toSet)) {
+						d.inScopes.add(s)
+						val out = local :+ d.setting.setScope(s)
 						d.outputs ++= out
 						out
 					} else
 						Nil
-				}
-				else Nil
+				} getOrElse Nil
+			}
 			derivedForKey.flatMap(localAndDerived)
 		}
 
