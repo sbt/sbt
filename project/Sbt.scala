@@ -261,7 +261,7 @@ object Sbt extends Build
 		scalacOptions := Nil,
 		ivyScala ~= { _.map(_.copy(checkExplicit = false, overrideScalaVersion = false)) },
 		exportedProducts in Compile := Nil,
-		libraryDependencies <+= scalaVersion( "org.scala-lang" % "scala-compiler" % _ % "provided")
+    libraryDependencies += scalaCompilerInit.value % "provided"
 	)
 	//
 	def compileInterfaceSettings: Seq[Setting[_]] = precompiledSettings ++ Seq[Setting[_]](
@@ -276,7 +276,7 @@ object Sbt extends Build
 		artifact in (Compile, packageSrc) := Artifact(srcID).copy(configurations = Compile :: Nil).extra("e:component" -> srcID)
 	)
 	def compilerSettings = Seq(
-		libraryDependencies <+= scalaVersion( "org.scala-lang" % "scala-compiler" % _ % "test"),
+		libraryDependencies += scalaCompilerInit.value % "test",
 		unmanagedJars in Test <<= (packageSrc in compileInterfaceSub in Compile).map(x => Seq(x).classpath)
 	)
 	def precompiled(scalav: String): Project = baseProject(compilePath / "interface", "Precompiled " + scalav.replace('.', '_')) dependsOn(interfaceSub) settings(precompiledSettings : _*) settings(
@@ -290,6 +290,7 @@ object Sbt extends Build
 		sources in Test := Nil
 	)
 	def ioSettings: Seq[Setting[_]] = Seq(
-		libraryDependencies <+= scalaVersion("org.scala-lang" % "scala-compiler" % _ % "test")
+    // here we use the common scalaCompiler "fixed" depdendency, but in the test scope.
+		libraryDependencies += scalaCompilerInit.value % "test"
 	)
 }
