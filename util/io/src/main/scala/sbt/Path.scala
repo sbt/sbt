@@ -68,7 +68,11 @@ object Path extends PathExtra
 
 	def absolute(file: File): File = new File(file.toURI.normalize).getAbsoluteFile
 	def makeString(paths: Seq[File]): String = makeString(paths, pathSeparator)
-	def makeString(paths: Seq[File], sep: String): String = paths.map(_.getAbsolutePath).mkString(sep)
+	def makeString(paths: Seq[File], sep: String): String = {
+		val separated = paths.map(_.getAbsolutePath)
+		separated.find(_ contains sep).foreach( p => sys.error(s"Path '$p' contains separator '$sep'") )
+		separated.mkString(sep)
+	}
 	def newerThan(a: File, b: File): Boolean = a.exists && (!b.exists || a.lastModified > b.lastModified)
 
 	/** The separator character of the platform.*/
