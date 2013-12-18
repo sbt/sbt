@@ -3,7 +3,7 @@
  */
 package sbt
 
-	import Types._
+import Types._
 
 sealed trait Settings[Scope]
 {
@@ -291,6 +291,11 @@ trait Init[Scope]
 		} else ""
 	}
 
+	/**
+	 * Intersects two scopes, returning the more specific one if they intersect, or None otherwise.
+	 * Not implemented here because we want to optimise for Scope.GlobalScope which is inaccessible here. */
+	private[sbt] def intersect(s1: Scope, s2: Scope)(implicit delegates: Scope => Seq[Scope]): Option[Scope] = ???
+
 	private[this] def deriveAndLocal(init: Seq[Setting[_]])(implicit delegates: Scope => Seq[Scope], scopeLocal: ScopeLocal): Seq[Setting[_]] =
 	{
 			import collection.mutable
@@ -361,10 +366,6 @@ trait Init[Scope]
 			val scope = sk.scope
 			def localAndDerived(d: Derived): Seq[Setting[_]] = {
 				def definingScope = d.setting.key.scope
-				def intersect(s1: Scope, s2: Scope): Option[Scope] =
-					if (delegates(s1).contains(s2))       Some(s1) // s1 is more specific
-					else if (delegates(s2).contains(s1))  Some(s2) // s2 is more specific
-					else None
 				val outputScope = intersect(scope, definingScope)
 				outputScope collect { case s if !d.inScopes.contains(s) && d.setting.filter(s) =>
 					val local = d.dependencies.flatMap(dep => scopeLocal(ScopedKey(s, dep)))
