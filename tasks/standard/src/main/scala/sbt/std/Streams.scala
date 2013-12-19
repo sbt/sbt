@@ -11,25 +11,46 @@ import java.io.{Closeable, File, FileInputStream, FileOutputStream, InputStreamR
 import Path._
 
 // no longer specific to Tasks, so 'TaskStreams' should be renamed
+/** Represents a set of streams associated with a context.
+* In sbt, this is a named set of streams for a particular scoped key.
+* For example, logging for test:compile is by default sent to the "out" stream in the test:compile context. */
 sealed trait TaskStreams[Key]
 {
+	/** The default stream ID, used when an ID is not provided. */
 	def default = outID
+
 	def outID = "out"
 	def errorID = "err"
 
+	/** Provides a reader to read text from the stream `sid` for `key`.
+	* It is the caller's responsibility to coordinate writing to the stream.
+	* That is, no synchronization or ordering is provided and so this method should only be called when writing is complete. */
 	def readText(key: Key, sid: String = default): BufferedReader
+
+	/** Provides an output stream to read from the stream `sid` for `key`.
+	* It is the caller's responsibility to coordinate writing to the stream.
+	* That is, no synchronization or ordering is provided and so this method should only be called when writing is complete. */
 	def readBinary(a: Key, sid: String = default): BufferedInputStream
 
 	final def readText(a: Key, sid: Option[String]): BufferedReader  =  readText(a, getID(sid))
 	final def readBinary(a: Key, sid: Option[String]): BufferedInputStream  =  readBinary(a, getID(sid))
 
 	def key: Key
+
+	/** Provides a writer for writing text to the stream with the given ID. */
 	def text(sid: String = default): PrintWriter
+
+	/** Provides an output stream for writing to the stream with the given ID. */
 	def binary(sid: String = default): BufferedOutputStream
+
+	/** A cache directory that is unique to the context of this streams instance.*/
 	def cacheDirectory: File
 
 	// default logger
+	/** Obtains the default logger. */
 	final lazy val log: Logger = log(default)
+
+	/** Creates a Logger that logs to stream with ID `sid`.*/
 	def log(sid: String): Logger
 
 	private[this] def getID(s: Option[String]) = s getOrElse default
