@@ -128,7 +128,7 @@ object SessionSettings
 		}
 		val exist = tmpLines.reverse
 		val adjusted = if(!newSettings.isEmpty && needsTrailingBlank(exist)) exist :+ "" else exist
-		val lines = adjusted ++ newSettings.map(_._2).flatten.flatMap(_ :: "" :: Nil)
+		val lines = adjusted ++ newSettings.flatMap(_._2 ::: "" :: Nil)
 		IO.writeLines(writeTo, lines)
 		val (newWithPos, _) = ((List[SessionSetting](), adjusted.size + 1) /: newSettings) {
 			case ((acc, line), (s, newLines)) => 
