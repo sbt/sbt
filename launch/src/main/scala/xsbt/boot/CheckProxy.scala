@@ -34,7 +34,7 @@ object CheckProxy
 			catch
 			{
 				case e: MalformedURLException =>
-					System.out.println("Warning: could not parse http_proxy setting: " + e.toString)
+					System.out.println(s"Warning: could not parse $envURL setting: ${e.toString}")
 			}
 		}
 	}
