@@ -45,9 +45,10 @@ object Def extends Init[Scope] with TaskMacroExtra
 		s.dependencies.find(k => k.scope != ThisScope).map(k => s"Scope cannot be defined for dependency ${k.key.label} of ${definedSettingString(s)}")
 
 	override def intersect(s1: Scope, s2: Scope)(implicit delegates: Scope => Seq[Scope]): Option[Scope] =
-		if      (s2 == GlobalScope || delegates(s1).contains(s2))  Some(s1) // s1 is more specific
-		else if (s1 == GlobalScope || delegates(s2).contains(s1))  Some(s2) // s2 is more specific
-		else None
+		if      (s2 == GlobalScope)  Some(s1) // s1 is more specific
+		else if (s1 == GlobalScope)  Some(s2) // s2 is more specific
+		else super.intersect(s1, s2)
+
 
 	private[this] def definedSettingString(s: Setting[_]): String =
 		s"derived setting ${s.key.key.label}${positionString(s)}"

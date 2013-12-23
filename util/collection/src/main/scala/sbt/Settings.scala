@@ -90,7 +90,7 @@ trait Init[Scope]
 	* Only the static dependencies are tracked, however.  Dependencies on previous values do not introduce a derived setting either. */
 	final def derive[T](s: Setting[T], allowDynamic: Boolean = false, filter: Scope => Boolean = const(true), trigger: AttributeKey[_] => Boolean = const(true), default: Boolean = false): Setting[T] = {
 		deriveAllowed(s, allowDynamic) foreach error
-		def d = new DerivedSetting[T](s.key, s.init, s.pos, filter, trigger)
+		val d = new DerivedSetting[T](s.key, s.init, s.pos, filter, trigger)
 		if (default) d.default() else d
 	}
 	def deriveAllowed[T](s: Setting[T], allowDynamic: Boolean): Option[String] = s.init match {
@@ -293,8 +293,11 @@ trait Init[Scope]
 
 	/**
 	 * Intersects two scopes, returning the more specific one if they intersect, or None otherwise.
-	 * Not implemented here because we want to optimise for Scope.GlobalScope which is inaccessible here. */
-	private[sbt] def intersect(s1: Scope, s2: Scope)(implicit delegates: Scope => Seq[Scope]): Option[Scope] = ???
+	 */
+	private[sbt] def intersect(s1: Scope, s2: Scope)(implicit delegates: Scope => Seq[Scope]): Option[Scope] =
+		if      (delegates(s1).contains(s2))  Some(s1) // s1 is more specific
+		else if (delegates(s2).contains(s1))  Some(s2) // s2 is more specific
+		else None
 
 	private[this] def deriveAndLocal(init: Seq[Setting[_]])(implicit delegates: Scope => Seq[Scope], scopeLocal: ScopeLocal): Seq[Setting[_]] =
 	{
