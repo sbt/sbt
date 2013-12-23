@@ -15,9 +15,7 @@ import CS.singleton
 import org.apache.ivy.{core, plugins, util, Ivy}
 import core.{IvyPatternHelper, LogOptions}
 import core.cache.{CacheMetadataOptions, DefaultRepositoryCacheManager, ModuleDescriptorWriter}
-import core.module.descriptor.{Artifact => IArtifact, DefaultArtifact, DefaultDependencyArtifactDescriptor, MDArtifact}
-import core.module.descriptor.{DefaultDependencyDescriptor, DefaultModuleDescriptor, DependencyDescriptor, ModuleDescriptor, License}
-import core.module.descriptor.{OverrideDependencyDescriptorMediator}
+import org.apache.ivy.core.module.descriptor.{Artifact => IArtifact, _}
 import core.module.id.{ArtifactId,ModuleId, ModuleRevisionId}
 import core.resolve.{IvyNode, ResolveData, ResolvedModuleRevision}
 import core.settings.IvySettings
@@ -603,12 +601,19 @@ private object IvySbt
 			for(conf <- dependencyDescriptor.getModuleConfigurations)
 				dependencyDescriptor.addDependencyArtifact(conf, ivyArtifact)
 		}
-		for(excls <- dependency.exclusions)
+		for {
+			incls <- dependency.inclusions
+			conf <- dependencyDescriptor.getModuleConfigurations }
 		{
-			for(conf <- dependencyDescriptor.getModuleConfigurations)
-			{
-				dependencyDescriptor.addExcludeRule(conf, IvyScala.excludeRule(excls.organization, excls.name, excls.configurations, excls.artifact))
-			}
+			import incls._
+			dependencyDescriptor.addIncludeRule(conf, IvyScala.includeRule(organization, name, configurations, artifact))
+		}
+		for {
+			excls <- dependency.exclusions
+			conf <- dependencyDescriptor.getModuleConfigurations }
+		{
+			import excls._
+			dependencyDescriptor.addExcludeRule(conf, IvyScala.excludeRule(organization, name, configurations, artifact))
 		}
 		dependencyDescriptor
 	}

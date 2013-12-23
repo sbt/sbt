@@ -542,12 +542,13 @@ object IO
 	* If the source is a directory, the corresponding directory is created.
 	*
 	* If `preserveLastModified` is `true`, the last modified times are transferred as well.
+	* If `preserveExecutable` is `true`, the executable properties are transferred as well.
 	* Any parent directories that do not exist are created.
 	* The set of all target files is returned, whether or not they were updated by this method.*/
-	def copy(sources: Traversable[(File,File)], overwrite: Boolean = false, preserveLastModified: Boolean = false): Set[File] =
-		sources.map( tupled(copyImpl(overwrite, preserveLastModified)) ).toSet
+	def copy(sources: Traversable[(File,File)], overwrite: Boolean = false, preserveLastModified: Boolean = false, preserveExecutable: Boolean = true): Set[File] =
+		sources.map( tupled(copyImpl(overwrite, preserveLastModified, preserveExecutable)) ).toSet
 
-	private def copyImpl(overwrite: Boolean, preserveLastModified: Boolean)(from: File, to: File): File =
+	private def copyImpl(overwrite: Boolean, preserveLastModified: Boolean, preserveExecutable: Boolean)(from: File, to: File): File =
 	{
 		if(overwrite || !to.exists || from.lastModified > to.lastModified)
 		{
@@ -556,7 +557,7 @@ object IO
 			else
 			{
 				createDirectory(to.getParentFile)
-				copyFile(from, to, preserveLastModified)
+				copyFile(from, to, preserveLastModified, preserveExecutable)
 			}
 		}
 		to
@@ -567,13 +568,15 @@ object IO
 	* If `overwrite` is false, the source is only copied if the target is missing or is older than the source file according to last modified times.
 	* Files in `target` without a corresponding file in `source` are left unmodified in any case.
 	* If `preserveLastModified` is `true`, the last modified times are transferred as well.
+	* If `preserveExecutable` is `true`, the executable properties are transferred as well.
 	* Any parent directories that do not exist are created. */
-	def copyDirectory(source: File, target: File, overwrite: Boolean = false, preserveLastModified: Boolean = false): Unit =
-		copy( (PathFinder(source) ***) x Path.rebase(source, target), overwrite, preserveLastModified)
+	def copyDirectory(source: File, target: File, overwrite: Boolean = false, preserveLastModified: Boolean = false, preserveExecutable: Boolean = true): Unit =
+		copy( (PathFinder(source) ***) x Path.rebase(source, target), overwrite, preserveLastModified, preserveExecutable)
 
 	/** Copies the contents of `sourceFile` to the location of `targetFile`, overwriting any existing content.
-	* If `preserveLastModified` is `true`, the last modified time is transferred as well.*/
-	def copyFile(sourceFile: File, targetFile: File, preserveLastModified: Boolean = false)
+	* If `preserveLastModified` is `true`, the last modified time is transferred as well.
+	* If `preserveExecutable` is `true`, the executable property is transferred as well. */
+	def copyFile(sourceFile: File, targetFile: File, preserveLastModified: Boolean = false, preserveExecutable: Boolean = true)
 	{
 		// NOTE: when modifying this code, test with larger values of CopySpec.MaxFileSizeBits than default
 
@@ -596,6 +599,8 @@ object IO
 		}
 		if(preserveLastModified)
 			copyLastModified(sourceFile, targetFile)
+		if(preserveExecutable)
+			copyExecutable(sourceFile, targetFile)
 	}
 	/** Transfers the last modified time of `sourceFile` to `targetFile`. */
 	def copyLastModified(sourceFile: File, targetFile: File) = {
@@ -603,6 +608,11 @@ object IO
 		// lastModified can return a negative number, but setLastModified doesn't accept it
 		// see Java bug #6791812
 		targetFile.setLastModified( math.max(last, 0L) )
+	}
+	/** Transfers the executable property of `sourceFile` to `targetFile`. */
+	def copyExecutable(sourceFile: File, targetFile: File) = {
+		val executable = sourceFile.canExecute
+		if (executable) targetFile.setExecutable(true)
 	}
 	/** The default Charset used when not specified: UTF-8. */
 	def defaultCharset = utf8

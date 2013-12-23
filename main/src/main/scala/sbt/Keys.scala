@@ -246,6 +246,8 @@ object Keys
 	val updateClassifiers = TaskKey[UpdateReport]("update-classifiers", "Resolves and optionally retrieves classified artifacts, such as javadocs and sources, for dependency definitions, transitively.", BPlusTask, update)
 	val transitiveClassifiers = SettingKey[Seq[String]]("transitive-classifiers", "List of classifiers used for transitively obtaining extra artifacts for sbt or declared dependencies.", BSetting)
 	val updateSbtClassifiers = TaskKey[UpdateReport]("update-sbt-classifiers", "Resolves and optionally retrieves classifiers, such as javadocs and sources, for sbt, transitively.", BPlusTask, updateClassifiers)
+	val sourceArtifactTypes = SettingKey[Set[String]]("source-artifact-types", "Ivy artifact types that correspond to source artifacts. Used by IDEs to resolve these resources.", BSetting)
+	val docArtifactTypes = SettingKey[Set[String]]("doc-artifact-types", "Ivy artifact types that correspond to javadoc artifacts. Used by IDEs to resolve these resources.", BSetting)
 
 	val publishConfiguration = TaskKey[PublishConfiguration]("publish-configuration", "Configuration for publishing to a repository.", DTask)
 	val publishLocalConfiguration = TaskKey[PublishConfiguration]("publish-local-configuration", "Configuration for publishing to the local Ivy repository.", DTask)
@@ -282,7 +284,7 @@ object Keys
 	val projectResolver = TaskKey[Resolver]("project-resolver", "Resolver that handles inter-project dependencies.", DTask)
 	val fullResolvers = TaskKey[Seq[Resolver]]("full-resolvers", "Combines the project resolver, default resolvers, and user-defined resolvers.", CTask)
 	val otherResolvers = SettingKey[Seq[Resolver]]("other-resolvers", "Resolvers not included in the main resolver chain, such as those in module configurations.", CSetting)
-	val moduleConfigurations = SettingKey[Seq[ModuleConfiguration]]("module-configurations", "Defines module configurations, which override resolvers on a per-module basis.", BMinusSetting)
+	val moduleConfigurations = TaskKey[Seq[ModuleConfiguration]]("module-configurations", "Defines module configurations, which override resolvers on a per-module basis.", BMinusTask)
 	val retrievePattern = SettingKey[String]("retrieve-pattern", "Pattern used to retrieve managed dependencies to the current build.", DSetting)
 	val retrieveConfiguration = SettingKey[Option[RetrieveConfiguration]]("retrieve-configuration", "Configures retrieving dependencies to the current build.", DSetting)
 	val offline = SettingKey[Boolean]("offline", "Configures sbt to work without a network connection where possible.", ASetting)

@@ -7,6 +7,7 @@ import java.lang.{Process => JProcess, ProcessBuilder => JProcessBuilder}
 import java.io.{Closeable, File, IOException}
 import java.io.{BufferedReader, InputStream, InputStreamReader, OutputStream, PipedInputStream, PipedOutputStream}
 import java.net.URL
+import collection.mutable.ArrayBuffer
 
 trait ProcessExtra
 {
@@ -14,12 +15,15 @@ trait ProcessExtra
 	implicit def builderToProcess(builder: JProcessBuilder): ProcessBuilder = apply(builder)
 	implicit def fileToProcess(file: File): FilePartialBuilder = apply(file)
 	implicit def urlToProcess(url: URL): URLPartialBuilder = apply(url)
-	@deprecated("Use string interpolation", "0.13.0")
+	@deprecated("Use proc string interpolation", "0.13.0")
 	implicit def xmlToProcess(command: scala.xml.Elem): ProcessBuilder = apply(command)
 	implicit def buildersToProcess[T](builders: Seq[T])(implicit convert: T => SourcePartialBuilder): Seq[SourcePartialBuilder] = applySeq(builders)
-
+	@deprecated("Use proc string interpolation", "0.14.0")
 	implicit def stringToProcess(command: String): ProcessBuilder = apply(command)
+	@deprecated("Use proc string interpolation", "0.14.0")
 	implicit def stringSeqToProcess(command: Seq[String]): ProcessBuilder = apply(command)
+	implicit def stringContextToProcessString(sc: StringContext): ProcessString = new ProcessString(sc)
+	implicit def processBuilderToProcessBuilderLines(pb: ProcessBuilder): ProcessBuilderLines = new ProcessBuilderLines(pb)
 }
 
 /** Methods for constructing simple commands that can then be combined. */
@@ -61,6 +65,28 @@ object Process extends ProcessExtra
 
 	def apply(value: Boolean): ProcessBuilder = apply(value.toString, if(value) 0 else 1)
 	def apply(name: String, exitValue: => Int): ProcessBuilder = new DummyProcessBuilder(name, exitValue)
+	private[sbt] def apply(sc: StringContext, args: Any*): ProcessBuilder =
+	{
+		val strings = sc.parts.iterator
+		val expressions = args.iterator
+		val buf = new ArrayBuffer[String]()
+		def splitAndAppendAll(s: String): Unit = buf appendAll s.trim.split("""\s+""").filter(_ != "")
+		def endsWithWhiteSpace(s: String): Boolean = ("""\s+$""".r findFirstIn s).isDefined
+		val head = strings.next
+		splitAndAppendAll(head)
+		var expressionAllowed: Boolean = head.isEmpty || endsWithWhiteSpace(head)
+		while(strings.hasNext) {
+			if (!expressionAllowed) sys.error("proc found an expression but whitespace was expected: " + expressions.next.toString)
+			expressions.next match {
+				case xs: Seq[_] => buf appendAll xs.map(_.toString)
+				case x          => buf append x.toString
+			}
+			val n = strings.next
+			splitAndAppendAll(n)
+			expressionAllowed = endsWithWhiteSpace(n)
+		}
+		apply(buf.toArray)
+	}
 
 	def cat(file: SourcePartialBuilder, files: SourcePartialBuilder*): ProcessBuilder = cat(file :: files.toList)
 	def cat(files: Seq[SourcePartialBuilder]): ProcessBuilder =
@@ -126,22 +152,6 @@ trait ProcessBuilder extends SourcePartialBuilder with SinkPartialBuilder
 	/** Starts the process represented by this builder, blocks until it exits, and returns the output as a String.  Standard error is
 	* sent to the provided ProcessLogger.  If the exit code is non-zero, an exception is thrown.*/
 	def !!(log: ProcessLogger) : String
-	/** Starts the process represented by this builder.  The output is returned as a Stream that blocks when lines are not available
-	* but the process has not completed.  Standard error is sent to the console.  If the process exits with a non-zero value,
-	* the Stream will provide all lines up to termination and then throw an exception. */
-	def lines: Stream[String]
-	/** Starts the process represented by this builder.  The output is returned as a Stream that blocks when lines are not available
-	* but the process has not completed.  Standard error is sent to the provided ProcessLogger.  If the process exits with a non-zero value,
-	* the Stream will provide all lines up to termination but will not throw an exception. */
-	def lines(log: ProcessLogger): Stream[String]
-	/** Starts the process represented by this builder.  The output is returned as a Stream that blocks when lines are not available
-	* but the process has not completed.  Standard error is sent to the console. If the process exits with a non-zero value,
-	* the Stream will provide all lines up to termination but will not throw an exception. */
-	def lines_! : Stream[String]
-	/** Starts the process represented by this builder.  The output is returned as a Stream that blocks when lines are not available
-	* but the process has not completed.  Standard error is sent to the provided ProcessLogger. If the process exits with a non-zero value,
-	* the Stream will provide all lines up to termination but will not throw an exception. */
-	def lines_!(log: ProcessLogger): Stream[String]
 	/** Starts the process represented by this builder, blocks until it exits, and returns the exit code.  Standard output and error are
 	* sent to the console.*/
 	def ! : Int
@@ -182,6 +192,9 @@ trait ProcessBuilder extends SourcePartialBuilder with SinkPartialBuilder
 	def ### (other: ProcessBuilder): ProcessBuilder
 
 	def canPipeTo: Boolean
+
+	// Called by class ProcessBuilderLines
+	private[sbt] def outputLines(withInput: Boolean, nonZeroException: Boolean, log: Option[ProcessLogger]): Stream[String]
 }
 /** Each method will be called in a separate thread.*/
 final class ProcessIO(val writeInput: OutputStream => Unit, val processOutput: InputStream => Unit, val processError: InputStream => Unit, val inheritInput: JProcessBuilder => Boolean) extends NotNull
@@ -195,4 +208,27 @@ trait ProcessLogger
 	def info(s: => String): Unit
 	def error(s: => String): Unit
 	def buffer[T](f: => T): T
+}
+class ProcessString(sc: StringContext)
+{
+	def proc(args: Any*): ProcessBuilder = Process(sc, args.toSeq: _*)
+}
+class ProcessBuilderLines(pb: ProcessBuilder)
+{
+	/** Starts the process represented by this builder.  The output is returned as a Stream that blocks when lines are not available
+	* but the process has not completed.  Standard error is sent to the console.  If the process exits with a non-zero value,
+	* the Stream will provide all lines up to termination and then throw an exception. */
+	def lines: Stream[String] = pb.outputLines(false, true, None)
+	/** Starts the process represented by this builder.  The output is returned as a Stream that blocks when lines are not available
+	* but the process has not completed.  Standard error is sent to the provided ProcessLogger.  If the process exits with a non-zero value,
+	* the Stream will provide all lines up to termination but will not throw an exception. */
+	def lines(log: ProcessLogger): Stream[String] = pb.outputLines(false, true, Some(log))
+	/** Starts the process represented by this builder.  The output is returned as a Stream that blocks when lines are not available
+	* but the process has not completed.  Standard error is sent to the console. If the process exits with a non-zero value,
+	* the Stream will provide all lines up to termination but will not throw an exception. */
+	def lines_! : Stream[String] = pb.outputLines(false, false, None)
+	/** Starts the process represented by this builder.  The output is returned as a Stream that blocks when lines are not available
+	* but the process has not completed.  Standard error is sent to the provided ProcessLogger. If the process exits with a non-zero value,
+	* the Stream will provide all lines up to termination but will not throw an exception. */
+	def lines_!(log: ProcessLogger): Stream[String] = pb.outputLines(false, false, Some(log))
 }
