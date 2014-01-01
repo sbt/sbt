@@ -1,6 +1,6 @@
-============
-Opportunites
-============
+=============
+Opportunities
+=============
 
 Below is a running list of potential areas of contribution. This list
 may become out of date quickly, so you may want to check on the `sbt-dev mailing list`_
