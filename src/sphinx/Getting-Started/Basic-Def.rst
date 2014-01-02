@@ -4,30 +4,26 @@
 
 This page describes sbt build definitions, including some "theory" and
 the syntax of `build.sbt`. It assumes you know how to :doc:`use sbt <Running>` and have read the previous pages in the
-Getting Started Guide.
+:doc:`Getting Started Guide <index.html>`.
 
-`.sbt` vs. `.scala` Definition
+`.sbt` vs. `.scala` Build Definition
 ----------------------------------
 
 An sbt build definition can contain files ending in `.sbt`, located in
-the base directory, and files ending in `.scala`, located in the
-`project/` subdirectory the base directory.
+the base directory of a project, and files ending in `.scala`, located in the
+`project/` subdirectory of the base directory.
 
 This page discusses `.sbt` files, which are suitable for most cases.
-The `.scala` files are typically used for sharing code across `.sbt` files and for larger build definitions.
+The `.scala` files are typically used for sharing code across `.sbt` files and for more complex build definitions.
 See :doc:`.scala build definition <Full-Def>` (later in Getting Started) for more on `.scala` files.
 
-What is a build definition?
+What is a Build Definition?
 ---------------------------
 
-\*\* PLEASE READ THIS SECTION \*\*
+After examining a project and processing build definition files, sbt ends up
+with an immutable map (set of key-value pairs) describing the build.
 
-After examining a project and processing any build definition files, sbt
-will end up with an immutable map (set of key-value pairs) describing
-the build.
-
-For example, one key is :key:`name` and it maps to a string value, the name
-of your project.
+For example, one key is :key:`name` and it maps to a string value, the name of your project.
 
 *Build definition files do not affect sbt's map directly.*
 
@@ -35,8 +31,8 @@ Instead, the build definition creates a huge list of objects with type
 `Setting[T]` where `T` is the type of the value in the map.  A `Setting` describes
 a *transformation to the map*, such as adding a new key-value pair or
 appending to an existing value. (In the spirit of functional
-programming, a transformation returns a new map, it does not update the
-old map in-place.)
+programming with immutable data structures and values, a transformation returns a new map
+- it does not update the old map in-place.)
 
 In `build.sbt`, you might create a `Setting[String]` for the name of
 your project like this:
@@ -49,10 +45,10 @@ This `Setting[String]` transforms the map by adding (or replacing) the
 `name` key, giving it the value `"hello"`. The transformed map
 becomes sbt's new map.
 
-To create its map, sbt first sorts the list of settings so that all
+To create the map, sbt first sorts the list of settings so that all
 changes to the same key are made together, and values that depend on
 other keys are processed after the keys they depend on. Then sbt walks
-over the sorted list of `Setting` and applies each one to the map in
+over the sorted list of `Setting`s and applies each one to the map in
 turn.
 
 Summary: A build definition defines a list of `Setting[T]`, where a
@@ -76,20 +72,19 @@ Here's an example:
 
     version := "1.0"
 
-    scalaVersion := "2.9.2"
+    scalaVersion := "2.10.3"
 
-A `build.sbt` file is a list of `Setting`, separated by blank lines.
 Each `Setting` is defined with a Scala expression.
 The expressions in `build.sbt` are independent of one another, and
 they are expressions, rather than complete Scala statements.  These
-expressions may be interspersed with `val`s, `lazy val`s, and `def`s,
-but top-level `object`s and classes are not allowed in `build.sbt`.
+expressions may be interspersed with `val`s, `lazy val`s, and `def`s.
+Top-level `object`s and `class`es are not allowed in `build.sbt`.
 Those should go in the `project/` directory as full Scala source files.
 
 On the left, :key:`name`, :key:`version`, and :key:`scalaVersion` are *keys*. A
 key is an instance of `SettingKey[T]`, `TaskKey[T]`, or
 `InputKey[T]` where `T` is the expected value type. The kinds of key
-are explained more below.
+are explained below.
 
 Keys have a method called `:=`, which returns a `Setting[T]`. You
 could use a Java-like syntax to call the method:
@@ -98,7 +93,7 @@ could use a Java-like syntax to call the method:
 
     name.:=("hello")
 
-But Scala allows `name := "hello"` instead (in Scala, any method can
+But Scala allows `name := "hello"` instead (in Scala, a single-parameter method can
 use either syntax).
 
 The `:=` method on key :key:`name` returns a `Setting`, specifically a
@@ -113,17 +108,17 @@ If you use the wrong value type, the build definition will not compile:
 
      name := 42  // will not compile
 
-Settings are separated by blank lines
+Settings must be separated by blank lines
 -------------------------------------
 
 You can't write a `build.sbt` like this:
 
 ::
 
-    // will NOT work, no blank lines
+    // will NOT compile, no blank lines
     name := "hello"
     version := "1.0"
-    scalaVersion := "2.9.2"
+    scalaVersion := "2.10.3"
 
 sbt needs some kind of delimiter to tell where one expression stops and
 the next begins.
@@ -141,12 +136,11 @@ Types
 There are three flavors of key:
 
 -  `SettingKey[T]`: a key for a value computed once (the value is
-   computed one time when loading the project, and kept around).
+   computed when loading the project, and kept around).
 -  `TaskKey[T]`: a key for a value, called a *task*,
-   that has to be recomputed each time, potentially creating side effects.
+   that has to be recomputed each time, potentially with side effects.
 -  `InputKey[T]`: a key for a task that has command line arguments as
-   input. The Getting Started Guide doesn't cover `InputKey`, but when
-   you finish this guide, check out :doc:`/Extending/Input-Tasks` for more.
+   input. Check out :doc:`/Extending/Input-Tasks` for more details.
 
 
 Built-in Keys
