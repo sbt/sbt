@@ -81,7 +81,7 @@ object TextAnalysisFormat {
 	}
 
   private[this] object VersionF {
-		val currentVersion = "3"
+		val currentVersion = "4"
 
 		def write(out: Writer) {
 			out.write("format version: %s\n".format(currentVersion))
@@ -316,6 +316,7 @@ object TextAnalysisFormat {
 
 	private[this] object CompileSetupF {
 		object Headers {
+			val outputMode = "output mode"
 			val outputDir = "output directories"
 			val compileOptions = "compile options"
 			val javacOptions = "javac options"
@@ -323,16 +324,17 @@ object TextAnalysisFormat {
 			val compileOrder = "compile order"
 		}
 
-		// Dummy src file for when there's only a single output, so we can
-		// uniformly represent both SingleOutput and MultipleOutput as maps.
-		private[this] val singleOutput = new File("singleOutput")
+		private[this] val singleOutputMode = "single"
+		private[this] val multipleOutputMode = "multiple"
+		private[this] val singleOutputKey = new File("output dir")
 
 		def write(out: Writer, setup: CompileSetup) {
-			val outputAsMap = setup.output match {
-				case s: SingleOutput => Map(singleOutput -> s.outputDirectory)
-				case m: MultipleOutput => (m.outputGroups map { x => x.sourceDirectory -> x.outputDirectory }).toMap
+			val (mode, outputAsMap) = setup.output match {
+				case s: SingleOutput => (singleOutputMode, Map(singleOutputKey -> s.outputDirectory))
+				case m: MultipleOutput => (multipleOutputMode, (m.outputGroups map { x => x.sourceDirectory -> x.outputDirectory }).toMap)
 			}
 
+			writeSeq(out)(Headers.outputMode, mode :: Nil, identity[String])
 			writeMap(out)(Headers.outputDir, outputAsMap, { f: File => f.getPath })
 			writeSeq(out)(Headers.compileOptions, setup.options.options, identity[String])
 			writeSeq(out)(Headers.javacOptions, setup.options.javacOptions, identity[String])
@@ -342,25 +344,29 @@ object TextAnalysisFormat {
 
 		def read(in: BufferedReader): CompileSetup = {
 			def s2f(s: String) = new File(s)
+			val outputDirMode = readSeq(in)(Headers.outputMode, identity[String]).headOption
 			val outputAsMap = readMap(in)(Headers.outputDir, s2f, s2f)
 			val compileOptions = readSeq(in)(Headers.compileOptions, identity[String])
 			val javacOptions = readSeq(in)(Headers.javacOptions, identity[String])
 			val compilerVersion = readSeq(in)(Headers.compilerVersion, identity[String]).head
 			val compileOrder = readSeq(in)(Headers.compileOrder, identity[String]).head
 
-			val output = if (outputAsMap.contains(singleOutput)) {
-				new SingleOutput {
-					def outputDirectory = outputAsMap(singleOutput)
-				}
-			} else {
-				new MultipleOutput {
-					def outputGroups = outputAsMap.toArray.map {
-						case (src: File, out: File) => new MultipleOutput.OutputGroup {
-							def sourceDirectory = src
-							def outputDirectory = out
+			val output = outputDirMode match {
+				case Some(s) => s match {
+					case `singleOutputMode` => new SingleOutput {
+						def outputDirectory = outputAsMap(singleOutputKey)
+					}
+					case `multipleOutputMode` => new MultipleOutput {
+						def outputGroups = outputAsMap.toArray.map {
+							case (src: File, out: File) => new MultipleOutput.OutputGroup {
+								def sourceDirectory = src
+								def outputDirectory = out
+							}
 						}
 					}
+					case str: String => throw new ReadException("Unrecognized output mode: " + str)
 				}
+				case None => throw new ReadException("No output mode specified")
 			}
 
 			new CompileSetup(output, new CompileOptions(compileOptions, javacOptions), compilerVersion,
