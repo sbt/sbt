@@ -15,7 +15,7 @@ object Dag
 	import JavaConverters.asScalaSetConverter
 
 	def topologicalSort[T](root: T)(dependencies: T => Iterable[T]): List[T] = topologicalSort(root :: Nil)(dependencies)
-	
+
 	def topologicalSort[T](nodes: Iterable[T])(dependencies: T => Iterable[T]): List[T] =
 	{
 		val discovered = new mutable.HashSet[T]
@@ -24,7 +24,7 @@ object Dag
 		def visitAll(nodes: Iterable[T]) = nodes foreach visit
 		def visit(node : T){
 			if (!discovered(node)) {
-				discovered(node) = true; 
+				discovered(node) = true;
 				try { visitAll(dependencies(node)); } catch { case c: Cyclic => throw node :: c }
 				finished += node;
 			}
@@ -33,11 +33,13 @@ object Dag
 		}
 
 		visitAll(nodes);
-	
+
 		finished.toList;
 	}
 	// doesn't check for cycles
-	def topologicalSortUnchecked[T](node: T)(dependencies: T => Iterable[T]): List[T] =
+	def topologicalSortUnchecked[T](node: T)(dependencies: T => Iterable[T]): List[T] = topologicalSortUnchecked(node :: Nil)(dependencies)
+
+	def topologicalSortUnchecked[T](nodes: Iterable[T])(dependencies: T => Iterable[T]): List[T] =
 	{
 		val discovered = new mutable.HashSet[T]
 		var finished: List[T] = Nil
@@ -45,23 +47,23 @@ object Dag
 		def visitAll(nodes: Iterable[T]) = nodes foreach visit
 		def visit(node : T){
 			if (!discovered(node)) {
-				discovered(node) = true; 
+				discovered(node) = true;
 				visitAll(dependencies(node))
 				finished ::= node;
 			}
 		}
 
-		visit(node);
+		visitAll(nodes);
 		finished;
 	}
 	final class Cyclic(val value: Any, val all: List[Any], val complete: Boolean)
 		extends Exception( "Cyclic reference involving " +
-			(if(complete) all.mkString("\n   ", "\n   ", "") else value) 
+			(if(complete) all.mkString("\n   ", "\n   ", "") else value)
 		)
 	{
 		def this(value: Any) = this(value, value :: Nil, false)
 		override def toString = getMessage
-		def ::(a: Any): Cyclic = 
+		def ::(a: Any): Cyclic =
 			if(complete)
 				this
 			else if(a == value)
@@ -70,4 +72,3 @@ object Dag
 				new Cyclic(value, a :: all, false)
 	}
 }
-
