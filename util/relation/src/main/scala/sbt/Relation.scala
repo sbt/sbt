@@ -40,7 +40,7 @@ object Relation
 
 	private[sbt] def get[X,Y](map: M[X,Y], t: X): Set[Y] = map.getOrElse(t, Set.empty[Y])
 
-	private[sbt] type M[X,Y] = Map[X, Set[Y]]	
+	private[sbt] type M[X,Y] = Map[X, Set[Y]]
 }
 
 /** Binary relation between A and B.  It is a set of pairs (_1, _2) for _1 in A, _2 in B.  */
@@ -111,7 +111,7 @@ private final class MRelation[A,B](fwd: Map[A, Set[B]], rev: Map[B, Set[A]]) ext
 {
 	def forwardMap = fwd
 	def reverseMap = rev
-	
+
 	def forward(t: A) = get(fwd, t)
 	def reverse(t: B) = get(rev, t)
 
@@ -119,12 +119,12 @@ private final class MRelation[A,B](fwd: Map[A, Set[B]], rev: Map[B, Set[A]]) ext
 	def _2s = rev.keySet
 
 	def size = (fwd.valuesIterator map { _.size }).foldLeft(0)(_ + _)
-	
+
 	def all: Traversable[(A,B)] = fwd.iterator.flatMap { case (a, bs) => bs.iterator.map( b => (a,b) ) }.toTraversable
 
 	def +(pair: (A,B)) = this + (pair._1, Set(pair._2))
 	def +(from: A, to: B) = this + (from, to :: Nil)
-	def +(from: A, to: Traversable[B]) =
+	def +(from: A, to: Traversable[B]) = if(to.isEmpty) this else
 		new MRelation( add(fwd, from, to), (rev /: to) { (map, t) => add(map, t, from :: Nil) })
 
 	def ++(rs: Traversable[(A,B)]) = ((this: Relation[A,B]) /: rs) { _ + _ }
