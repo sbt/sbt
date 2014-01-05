@@ -167,7 +167,7 @@ Syntax summary
 	Displays the main %<s defined directly or indirectly for the current project.
 
 -v
-	Displays additional tasks.  More 'v's increase the number of tasks displayed.
+	Displays additional %<s.  More 'v's increase the number of %<s displayed.
 
 -V
 	displays all %<s
