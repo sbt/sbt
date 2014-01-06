@@ -38,7 +38,7 @@ s"""$multiTaskSyntax
 	def multiTaskBrief = """Executes all of the specified tasks concurrently."""
 
 
-	def showHelp = Help(ShowCommand, (ShowCommand + " <key>", actBrief), actDetailed)
+	def showHelp = Help(ShowCommand, (s"$ShowCommand <key>", showBrief), showDetailed)
 	def showBrief = "Displays the result of evaluating the setting or task associated with 'key'."
 	def showDetailed =
 s"""$ShowCommand <setting>
