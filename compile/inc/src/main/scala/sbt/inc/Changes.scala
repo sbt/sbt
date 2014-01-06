@@ -22,14 +22,14 @@ sealed abstract class APIChange[T](val modified: T)
  * api has changed. The reason is that there's no way to determine if changes to macros implementation
  * are affecting its users or not. Therefore we err on the side of caution.
  */
-case class APIChangeDueToMacroDefinition[T](modified0: T) extends APIChange(modified0)
-case class SourceAPIChange[T](modified0: T) extends APIChange(modified0)
+final case class APIChangeDueToMacroDefinition[T](modified0: T) extends APIChange(modified0)
+final case class SourceAPIChange[T](modified0: T) extends APIChange(modified0)
 /**
  * An APIChange that carries information about modified names.
  *
  * This class is used only when name hashing algorithm is enabled.
  */
-case class NamesChange[T](modified0: T, modifiedNames: ModifiedNames) extends APIChange(modified0)
+final case class NamesChange[T](modified0: T, modifiedNames: ModifiedNames) extends APIChange(modified0)
 
 /**
  * ModifiedNames are determined by comparing name hashes in two versions of an API representation.
@@ -39,7 +39,7 @@ case class NamesChange[T](modified0: T, modifiedNames: ModifiedNames) extends AP
  * on whether modified name is implicit or not. Implicit names are much more difficult to handle
  * due to difficulty of reasoning about the implicit scope.
  */
-case class ModifiedNames(regularNames: Set[String], implicitNames: Set[String]) {
+final case class ModifiedNames(regularNames: Set[String], implicitNames: Set[String]) {
 	override def toString: String =
 		s"ModifiedNames(regularNames = ${regularNames mkString ", "}, implicitNames = ${implicitNames mkString ", "})"
 }
