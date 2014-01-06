@@ -1,0 +1,6 @@
+> compile
+
+# modify A.scala so that it does not conform to the structural type in B.scala
+$ copy-file changes/A.scala A.scala
+
+-> compile
