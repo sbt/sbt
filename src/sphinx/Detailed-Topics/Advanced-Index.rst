@@ -9,7 +9,6 @@ Before reading anything in here, you will need the information in the
 .. toctree::
    :maxdepth: 2
 
-   Launcher
    Scripts
    TaskInputs
    Understanding-incremental-recompilation
