@@ -12,8 +12,7 @@ Overview
 
 A user downloads the launcher jar and creates a script to run it. In
 this documentation, the script will be assumed to be called `launch`.
-For unix, the script would look like:
-`java -jar sbt-launcher.jar "$@"`
+For Unix, the script would look like: `java -jar sbt-launcher.jar "$@"`
 
 The user then downloads the configuration file for the application (call
 it `my.app.configuration`) and creates a script to launch it (call it
@@ -60,7 +59,7 @@ increasing order of precedence:
    line, either as a path or an absolute URI. This can be done by
    either specifying the location as the system property
    `sbt.boot.properties` or as the first argument to the launcher
-   prefixed by `'@'`. The system property has lower precedence.
+   prefixed by `@`. The system property has lower precedence.
    Resolution of a relative path is first attempted against the current
    working directory, then against the user's home directory, and then
    against the directory containing the launcher jar. An error is
@@ -70,7 +69,7 @@ Syntax
 ~~~~~~
 
 The configuration file is line-based, read as UTF-8 encoded, and defined
-by the following grammar. `'nl'` is a newline or end of file and
+by the following grammar. `nl` is a newline or end of file and
 `'text'` is plain text without newlines or the surrounding delimiters
 (such as parentheses or square brackets):
 
@@ -81,7 +80,7 @@ by the following grammar. `'nl'` is a newline or end of file and
     repositories: "[" "repositories" "]" `nl` (`repository` `nl`)*
     boot: "[" "boot" "]" `nl` `directory` `nl` `bootProperties` `nl` `search` `nl` `promptCreate` `nl` `promptFill` `nl` `quickOption` `nl`
     log: "["' "log" "]" `nl` `logLevel` `nl`
-    appProperties: "[" "app-properties" "]" nl (property nl)*
+    appProperties: "[" "app-properties" "]" `nl` (property `nl`)*
     ivy: "[" "ivy" "]" `nl` `homeDirectory` `nl` `checksums` `nl` `overrideRepos` `nl` `repoConfig` `nl`
     directory: "directory" ":" `path`
     bootProperties: "properties" ":" `path`
@@ -197,8 +196,8 @@ application.
 
 Jars are retrieved to the directory given by `boot.directory`. By
 default, this is an absolute path that is shared by all launched
-instances on the machine. If multiple versions access it simultaneously.
-, you might see messages like:
+instances on the machine. If multiple versions access it simultaneously,
+you might see messages like:
 
 .. code-block:: console
 
@@ -215,29 +214,31 @@ specified as `read`. The `prompt-create`, `prompt-fill`, and
 `[app.properties]` can be used to initialize the `boot.properties`
 file.
 
-The app.class property specifies the name of the entry point to the
+The `app.class` property specifies the name of the entry point to the
 application. An application entry point must be a public class with a
 no-argument constructor that implements `xsbti.AppMain`. The
-`AppMain` interface specifies the entry method signature 'run'. The
-run method is passed an instance of AppConfiguration, which provides
+`AppMain` interface specifies the entry method signature `run(AppConfiguration configuration)`.
+The `run` method is passed an instance of `xsbti.AppConfiguration`, which provides
 access to the startup environment. `AppConfiguration` also provides an
 interface to retrieve other versions of Scala or other applications.
-Finally, the return type of the run method is `xsbti.MainResult`,
+Finally, the return type of the `run` method is `xsbti.MainResult`,
 which has two subtypes: `xsbti.Reboot` and `xsbti.Exit`. To exit
 with a specific code, return an instance of `xsbti.Exit` with the
-requested code. To restart the application, return an instance of
-Reboot. You can change some aspects of the configuration with a reboot,
+code. To restart the application, return an instance of
+`xsbti.Reboot`. You can change some aspects of the configuration with a reboot,
 such as the version of Scala, the application ID, and the arguments.
 
 The `ivy.cache-directory` property provides an alternative location
 for the Ivy cache used by the launcher. This does not automatically set
 the Ivy cache for the application, but the application is provided this
-location through the AppConfiguration instance. The `checksums`
-property selects the checksum algorithms (sha1 or md5) that are used to
-verify artifacts downloaded by the launcher. `override-build-repos` is
-a flag that can inform the application that the repositories configured
-for the launcher should be used in the application. If
-`repository-config` is defined, the file it specifies should contain a
+location through the `AppConfiguration` instance.
+
+The `checksums` property selects the checksum algorithms - `sha1` or `md5` -
+that are used to verify artifacts downloaded by the launcher.
+
+The `override-build-repos` is a flag that can inform the application that
+the repositories configured for the launcher should be used in the application.
+If `repository-config` is defined, the file it specifies should contain a
 `[repositories]` section that is used in place of the section in the
 original configuration file.
 
@@ -245,10 +246,10 @@ Execution
 ---------
 
 On startup, the launcher searches for its configuration in the order
-described in the Configuration section and then parses it. If either the
+described in the `Configuration` section and then parses it. If either the
 Scala version or the application version are specified as 'read', the
 launcher determines them in the following manner. The file given by the
-'boot.properties' property is read as a Java properties file to obtain
+`boot.properties` property is read as a Java properties file to obtain
 the version. The expected property names are `${app.name}.version` for
 the application version (where `${app.name}` is replaced with the
 value of the `app.name` property from the boot configuration file) and
@@ -274,31 +275,32 @@ application itself. It and its dependencies are retrieved to
 
 .. code-block:: console
 
-    ${boot.directory}/${scala.version}/${app.org}/${app.name}/.
+    ${boot.directory}/${scala.version}/${app.org}/${app.name}/${sbt.version}
 
 Once all required code is downloaded, the class loaders are set up. The
 launcher creates a class loader for the requested version of Scala. It
 then creates a child class loader containing the jars for the requested
-'app.components' and with the paths specified in `app.resources`. An
+`app.components` and with the paths specified in `app.resources`. An
 application that does not use components will have all of its jars in
 this class loader.
 
 The main class for the application is then instantiated. It must be a
 public class with a public no-argument constructor and must conform to
-xsbti.AppMain. The `run` method is invoked and execution passes to the
-application. The argument to the 'run' method provides configuration
+`xsbti.AppMain`. The `run` method is invoked and execution passes to the
+application. The argument to the `run` method provides configuration
 information and a callback to obtain a class loader for any version of
-Scala that can be obtained from a repository in [repositories]. The
-return value of the run method determines what is done after the
+Scala that can be obtained from a repository in `[repositories]`. The
+return value of the `run` method determines what is done after the
 application executes. It can specify that the launcher should restart
 the application or that it should exit with the provided exit code.
+See Semantics section above.
 
 Creating a Launched Application
 -------------------------------
 
 This section shows how to make an application that is launched by this
-launcher. First, declare a dependency on the launcher-interface. Do not
-declare a dependency on the launcher itself. The launcher interface
+launcher. First, declare a dependency on the `launcher-interface`. Do not
+declare a dependency on the `launcher` itself. The `launcher` interface
 consists strictly of Java interfaces in order to avoid binary
 incompatibility between the version of Scala used to compile the
 launcher and the version used to compile your application. The launcher
@@ -312,12 +314,15 @@ definition would be:
 
       resolvers += sbtResolver.value
 
-Make the entry point to your class implement 'xsbti.AppMain'. An example
+`sbtResolver` is a setting that provides a resolver for obtaining sbt as a dependency.
+
+Make the entry point to your class implement `xsbti.AppMain`. An example
 that uses some of the information:
 
 .. code-block:: scala
 
     package xsbt.test
+
     class Main extends xsbti.AppMain
     {
         def run(configuration: xsbti.AppConfiguration) =
@@ -326,7 +331,7 @@ that uses some of the information:
             val scalaVersion = configuration.provider.scalaProvider.version
 
             // Print a message and the arguments to the application
-            println("Hello world!  Running Scala " + scalaVersion)
+            println(s"Hello world!  Running Scala $scalaVersion.")
             configuration.arguments.foreach(println)
 
             // demonstrate the ability to reboot the application into different versions of Scala
@@ -337,7 +342,7 @@ that uses some of the information:
                     new xsbti.Reboot {
                         def arguments = configuration.arguments
                         def baseDirectory = configuration.baseDirectory
-                        def scalaVersion = "2.10.2
+                        def scalaVersion = "2.10.2"
                         def app = configuration.provider.id
                     }
                 case "2.10.2" => new Exit(1)
@@ -374,14 +379,14 @@ Running an Application
 
 As mentioned above, there are a few options to actually run the
 application. The first involves providing a modified jar for download.
-The second two require providing a configuration file for download.
+The second requires providing a configuration file for download.
 
--  Replace the /sbt/sbt.boot.properties file in the launcher jar and
+-  Replace the `/sbt/sbt.boot.properties` file in the launcher's jar and
    distribute the modified jar. The user would need a script to run
    `java -jar your-launcher.jar arg1 arg2 ...`.
--  The user downloads the launcher jar and you provide the configuration
+-  A user downloads the launcher's jar and you provide the configuration
    file.
 
    -  The user needs to run `java -Dsbt.boot.properties=your.boot.properties -jar launcher.jar`.
    -  The user already has a script to run the launcher (call it
-      'launch'). The user needs to run `launch @your.boot.properties your-arg-1 your-arg-2`
+      `launch`) so she needs to run `launch @your.boot.properties your-arg-1 your-arg-2`
