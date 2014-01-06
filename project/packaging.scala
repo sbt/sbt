@@ -10,7 +10,16 @@ object Packaging {
   val sbtLaunchJar = TaskKey[File]("sbt-launch-jar", "Resolves SBT launch jar")
   val moduleID = (organization, sbtVersion) apply { (o,v) => ModuleID(o,"sbt",v) }
 
-  def localWindowsPattern = "[organisation]/[module]/[revision]/[module].[ext]"
+  val bintrayLinuxPattern = "[module]/[revision]/[module]-[revision].[ext]"
+  val bintrayGenericPattern = "[module]/[revision]/[module]/[revision]/[module]-[revision].[ext]"
+  val bintrayDebianUrl = "https://api.bintray.com/content/sbt/debian/"
+  val bintrayRpmUrl = "https://api.bintray.com/content/sbt/rpm/"
+  val bintrayGenericPackagesUrl = "https://api.bintray.com/content/sbt/native-packages/"
+  val bintrayPublishAllStaged = TaskKey[Unit]("bintray-publish-all-staged", "Publish all staged artifacts on bintray.")
+    
+  // Note:  The legacy api.
+  //val genericNativeReleasesUrl = "http://scalasbt.artifactoryonline.com/scalasbt/sbt-native-packages"
+  //val genericNativeReleasesPattern = "[organisation]/[module]/[revision]/[module].[ext]"
 
   import util.control.Exception.catching  
 
@@ -20,8 +29,71 @@ object Packaging {
     case Array(0, y, _*) if y >= 12    => "http://repo.typesafe.com/typesafe/ivy-releases/org.scala-sbt/sbt-launch/"+v+"/sbt-launch.jar"
     case _                             => "http://repo.typesafe.com/typesafe/ivy-releases/org.scala-tools.sbt/sbt-launch/"+v+"/sbt-launch.jar"
   }
+  /** Returns an id, url and pattern for publishing based on the given configuration. */
+  def getPublishSettings(config: Configuration): (String, String, String) = 
+    config.name match {
+      case Debian.name => ("debian", bintrayDebianUrl, bintrayLinuxPattern)
+      case Rpm.name => ("rpm", bintrayRpmUrl, bintrayLinuxPattern)
+      case _ => ("native-packages", bintrayGenericPackagesUrl, bintrayGenericPattern)
+    }
+  
+  def makePublishTo(id: String, url: String, pattern: String): Setting[_] = {
+    publishTo := {
+      val resolver = Resolver.url(id, new URL(url))(Patterns(pattern))
+      Some(resolver)
+    }
+  }
+  
+  def makePublishToForConfig(config: Configuration) = {
+    val (id, url, pattern) = getPublishSettings(config)
 
-  val settings: Seq[Setting[_]] = packagerSettings ++ deploymentSettings ++ mapGenericFilesToLinux ++ mapGenericFilesToWindows ++ Seq(
+
+    // Add the publish to and ensure global resolvers has the resolver we just configured.
+    inConfig(config)(Seq(
+       makePublishTo(id, url, pattern),
+       bintrayPublishAllStaged <<= (credentials, version) map { (creds, version) =>
+         publishContent(id, version, creds)
+       },
+       // TODO - This is a little funky...
+       publish <<= (publish, credentials, version) apply { (publish, creds, version) =>
+         for {
+           pub <- publish
+           creds <- creds
+         } yield publishContent(id, version, creds)
+       }
+    )) ++ Seq(
+       resolvers <++= (publishTo in config) apply (_.toSeq)
+    )
+  }
+
+  def publishToSettings: Seq[Setting[_]] = 
+    Seq[Configuration](Debian, Universal, Windows, Rpm) flatMap makePublishToForConfig
+  
+  def bintrayCreds(creds: Seq[sbt.Credentials]): (String, String) = {
+    val matching = 
+      for {
+        c <- creds
+        if c.isInstanceOf[sbt.DirectCredentials]
+        val cred = c.asInstanceOf[sbt.DirectCredentials]
+        if cred.host == "api.bintray.com"
+      } yield cred.userName -> cred.passwd
+
+    matching.headOption getOrElse sys.error("Unable to find bintray credentials (api.bintray.com)")
+  }
+
+  def publishContent(repo: String, version: String, creds: Seq[sbt.Credentials]): Unit = {
+    val subject = "sbt" // Sbt org
+    val pkg = "sbt" // Sbt package
+    val uri = s"https://bintray.com/api/v1/content/$subject/$repo/$pkg/$version/publish"
+  
+    val (u,p) = bintrayCreds(creds)
+    import dispatch.classic._
+    // TODO - Log the output
+    Http(url(uri).POST.as(u,p).>|)
+  }
+
+  
+  val settings: Seq[Setting[_]] = packagerSettings ++ deploymentSettings ++ mapGenericFilesToLinux ++ mapGenericFilesToWindows ++ publishToSettings ++ Seq(
     sbtLaunchJarUrl <<= sbtVersion apply downloadUrlForVersion,
     sbtLaunchJarLocation <<= target apply (_ / "sbt-launch.jar"),
     sbtLaunchJar <<= (sbtLaunchJarUrl, sbtLaunchJarLocation) map { (uri, file) =>
@@ -90,6 +162,7 @@ object Packaging {
 
     // Universal ZIP download install.
     name in Universal := "sbt",
+    version in Universal <<= sbtVersion,
     mappings in Universal <+= sbtLaunchJar map { _ -> "bin/sbt-launch.jar" },
     
     // Misccelaneous publishing stuff...
