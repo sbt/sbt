@@ -9,8 +9,6 @@ object Packaging {
   val sbtLaunchJarLocation = SettingKey[File]("sbt-launch-jar-location")  
   val sbtLaunchJar = TaskKey[File]("sbt-launch-jar", "Resolves SBT launch jar")
   val moduleID = (organization, sbtVersion) apply { (o,v) => ModuleID(o,"sbt",v) }
-  val stagingDirectory = SettingKey[File]("staging-directory")
-  val stage = TaskKey[File]("stage")
 
   def localWindowsPattern = "[organisation]/[module]/[revision]/[module].[ext]"
 
@@ -23,11 +21,11 @@ object Packaging {
     case _                             => "http://repo.typesafe.com/typesafe/ivy-releases/org.scala-tools.sbt/sbt-launch/"+v+"/sbt-launch.jar"
   }
 
-  val settings: Seq[Setting[_]] = packagerSettings ++ deploymentSettings ++ mapGenericFilesToLinux ++ mapGenericFilesToWinows ++ Seq(
+  val settings: Seq[Setting[_]] = packagerSettings ++ deploymentSettings ++ mapGenericFilesToLinux ++ mapGenericFilesToWindows ++ Seq(
     sbtLaunchJarUrl <<= sbtVersion apply downloadUrlForVersion,
     sbtLaunchJarLocation <<= target apply (_ / "sbt-launch.jar"),
     sbtLaunchJar <<= (sbtLaunchJarUrl, sbtLaunchJarLocation) map { (uri, file) =>
-      import dispatch._
+      import dispatch.classic._
       if(!file.exists) {
          // oddly, some places require us to create the file before writing...
          IO.touch(file)
@@ -98,13 +96,6 @@ object Packaging {
     projectID in Debian    <<= moduleID,
     projectID in Windows   <<= moduleID,
     projectID in Rpm       <<= moduleID,
-    projectID in Universal <<= moduleID,
-    stagingDirectory <<= (target) apply { (t) => t / "stage" },
-    stage <<= (stagingDirectory, mappings in Universal) map { (dir, m) =>
-      val files = for((file, name) <- m)
-                  yield file -> (dir / name)
-      IO copy files
-      dir
-    }
+    projectID in Universal <<= moduleID
   )
 }
