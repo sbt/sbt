@@ -354,13 +354,13 @@ object TextAnalysisFormat {
 			val output = outputDirMode match {
 				case Some(s) => s match {
 					case `singleOutputMode` => new SingleOutput {
-						def outputDirectory = outputAsMap(singleOutputKey)
+						val outputDirectory = outputAsMap(singleOutputKey)
 					}
 					case `multipleOutputMode` => new MultipleOutput {
 						def outputGroups = outputAsMap.toArray.map {
 							case (src: File, out: File) => new MultipleOutput.OutputGroup {
-								def sourceDirectory = src
-								def outputDirectory = out
+								val sourceDirectory = src
+								val outputDirectory = out
 							}
 						}
 					}

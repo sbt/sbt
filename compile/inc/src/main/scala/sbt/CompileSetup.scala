@@ -27,7 +27,7 @@ object CompileSetup
 		def equiv(a: File, b: File) = a.getAbsoluteFile == b.getAbsoluteFile
 	}
 	implicit val equivOutput: Equiv[APIOutput] = new Equiv[APIOutput] {
-		implicit val outputGroupsOrdering = Ordering.by({ og: MultipleOutput.OutputGroup => og.sourceDirectory })
+		implicit val outputGroupsOrdering = Ordering.by((og: MultipleOutput.OutputGroup) => og.sourceDirectory)
 		def equiv(out1: APIOutput, out2: APIOutput) = (out1, out2) match {
 			case (m1: MultipleOutput, m2: MultipleOutput) =>
 				(m1.outputGroups.length == m2.outputGroups.length) &&
