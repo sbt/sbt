@@ -27,12 +27,14 @@ object CompileSetup
 		def equiv(a: File, b: File) = a.getAbsoluteFile == b.getAbsoluteFile
 	}
 	implicit val equivOutput: Equiv[APIOutput] = new Equiv[APIOutput] {
+		implicit val outputGroupsOrdering = Ordering.by((og: MultipleOutput.OutputGroup) => og.sourceDirectory)
 		def equiv(out1: APIOutput, out2: APIOutput) = (out1, out2) match {
 			case (m1: MultipleOutput, m2: MultipleOutput) =>
-				m1.outputGroups zip (m2.outputGroups) forall {
+				(m1.outputGroups.length == m2.outputGroups.length) &&
+				(m1.outputGroups.sorted zip m2.outputGroups.sorted forall {
 					case (a,b) => 
 						equivFile.equiv(a.sourceDirectory, b.sourceDirectory) && equivFile.equiv(a.outputDirectory, b.outputDirectory)
-				}
+				})
 			case (s1: SingleOutput, s2: SingleOutput) => equivFile.equiv(s1.outputDirectory, s2.outputDirectory)
 			case _ => false
 		}
