@@ -331,7 +331,7 @@ object TextAnalysisFormat {
 		def write(out: Writer, setup: CompileSetup) {
 			val (mode, outputAsMap) = setup.output match {
 				case s: SingleOutput => (singleOutputMode, Map(singleOutputKey -> s.outputDirectory))
-				case m: MultipleOutput => (multipleOutputMode, (m.outputGroups map { x => x.sourceDirectory -> x.outputDirectory }).toMap)
+				case m: MultipleOutput => (multipleOutputMode, m.outputGroups.map(x => x.sourceDirectory -> x.outputDirectory).toMap)
 			}
 
 			writeSeq(out)(Headers.outputMode, mode :: Nil, identity[String])
@@ -420,12 +420,12 @@ object TextAnalysisFormat {
 		val numDigits = if (n < 2) 1 else math.log10(n - 1).toInt + 1
 		val fmtStr = "%%0%dd".format(numDigits)
 		// We only use this for relatively short seqs, so creating this extra map won't be a performance hit.
-		val m: Map[String, T] = (s.zipWithIndex.map { x => fmtStr.format(x._2) -> x._1 }).toMap
+		val m: Map[String, T] = s.zipWithIndex.map(x => fmtStr.format(x._2) -> x._1).toMap
 		writeMap(out)(header, m, t2s)
 	}
 
 	private[this] def readSeq[T](in: BufferedReader)(expectedHeader: String, s2t: String => T): Seq[T] =
-		(readPairs(in)(expectedHeader, identity[String], s2t) map { _._2 }).toSeq
+		(readPairs(in)(expectedHeader, identity[String], s2t) map(_._2)).toSeq
 
 	private[this] def writeMap[K, V](out: Writer)(header: String, m: Map[K, V], v2s: V => String, inlineVals: Boolean=true)(implicit ord: Ordering[K]) {
 		writeHeader(out, header)
