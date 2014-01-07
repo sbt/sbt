@@ -4,6 +4,7 @@ package inc
 import java.io._
 import sbt.{CompileSetup, Relation}
 import xsbti.api.{Compilation, Source}
+import xsbti.compile.{MultipleOutput, SingleOutput}
 import javax.xml.bind.DatatypeConverter
 
 
@@ -55,7 +56,7 @@ object TextAnalysisFormat {
 	implicit val compilationF = xsbt.api.CompilationFormat
 
 	def write(out: Writer, analysis: Analysis, setup: CompileSetup) {
-    VersionF.write(out)
+		VersionF.write(out)
 		// We start with relations because that's the part of greatest interest to external readers,
 		// who can abort reading early once they're read them.
 		FormatTimer.time("write relations") { RelationsF.write(out, analysis.relations) }
@@ -68,7 +69,7 @@ object TextAnalysisFormat {
 	}
 
 	def read(in: BufferedReader): (Analysis, CompileSetup) = {
-    VersionF.read(in)
+		VersionF.read(in)
 		val relations = FormatTimer.time("read relations") { RelationsF.read(in) }
 		val stamps = FormatTimer.time("read stamps") { StampsF.read(in) }
 		val apis = FormatTimer.time("read apis") { APIsF.read(in) }
@@ -80,27 +81,27 @@ object TextAnalysisFormat {
 	}
 
   private[this] object VersionF {
-    val currentVersion = "2"
+		val currentVersion = "4"
 
-    def write(out: Writer) {
-      out.write("format version: %s\n".format(currentVersion))
-    }
+		def write(out: Writer) {
+			out.write("format version: %s\n".format(currentVersion))
+		}
 
-    private val versionPattern = """format version: (\w+)""".r
-    def read(in: BufferedReader) {
-      in.readLine() match {
-        case versionPattern(version) => validateVersion(version)
-        case s: String => throw new ReadException("\"format version: <version>\"", s)
-        case null => throw new EOFException
-      }
-    }
+		private val versionPattern = """format version: (\w+)""".r
+		def read(in: BufferedReader) {
+			in.readLine() match {
+				case versionPattern(version) => validateVersion(version)
+				case s: String => throw new ReadException("\"format version: <version>\"", s)
+				case null => throw new EOFException
+			}
+		}
 
-    def validateVersion(version: String) {
-      // TODO: Support backwards compatibility?
-      if (version != currentVersion) {
-        throw new ReadException("File uses format version %s, but we are compatible with version %s only.".format(version, currentVersion))
-      }
-    }
+		def validateVersion(version: String) {
+			// TODO: Support backwards compatibility?
+			if (version != currentVersion) {
+				throw new ReadException("File uses format version %s, but we are compatible with version %s only.".format(version, currentVersion))
+			}
+		}
   }
 
 	private[this] object RelationsF {
@@ -128,8 +129,8 @@ object TextAnalysisFormat {
 				// We sort for ease of debugging and for more efficient reconstruction when reading.
 				// Note that we don't share code with writeMap. Each is implemented more efficiently
 				// than the shared code would be, and the difference is measurable on large analyses.
-        rel.forwardMap.toSeq.sortBy(_._1).foreach { case (k, vs) =>
-          val kStr = k.toString
+				rel.forwardMap.toSeq.sortBy(_._1).foreach { case (k, vs) =>
+				  val kStr = k.toString
 					vs.toSeq.sorted foreach { v =>
 						out.write(kStr); out.write(" -> "); out.write(v.toString); out.write("\n")
 					}
@@ -137,8 +138,8 @@ object TextAnalysisFormat {
 			}
 
 			val nameHashing = relations.nameHashing
-			writeRelation(Headers.srcProd,          relations.srcProd)
-			writeRelation(Headers.binaryDep,        relations.binaryDep)
+			writeRelation(Headers.srcProd, relations.srcProd)
+			writeRelation(Headers.binaryDep, relations.binaryDep)
 
 			val direct = if (nameHashing) Relations.emptySource else relations.direct
 			val publicInherited = if (nameHashing)
@@ -160,7 +161,7 @@ object TextAnalysisFormat {
 			writeRelation(Headers.inheritanceInternalDep, inheritance.internal)
 			writeRelation(Headers.inheritanceExternalDep, inheritance.external)
 
-			writeRelation(Headers.classes,        relations.classes)
+			writeRelation(Headers.classes, relations.classes)
 			writeRelation(Headers.usedNames, names)
 		}
 
@@ -188,19 +189,19 @@ object TextAnalysisFormat {
 			def readFileRelation(expectedHeader: String) = readRelation(expectedHeader, { new File(_) })
 			def readStringRelation(expectedHeader: String) = readRelation(expectedHeader, identity[String])
 
-			val srcProd =          readFileRelation(Headers.srcProd)
-			val binaryDep =        readFileRelation(Headers.binaryDep)
+			val srcProd = readFileRelation(Headers.srcProd)
+			val binaryDep = readFileRelation(Headers.binaryDep)
 
 			import sbt.inc.Relations.{Source, SourceDependencies, makeSourceDependencies, emptySource,
 				makeSource, emptySourceDependencies}
 			val directSrcDeps: Source = {
-				val internalSrcDep =   readFileRelation(Headers.directSrcDep)
-				val externalDep =      readStringRelation(Headers.directExternalDep)
+				val internalSrcDep = readFileRelation(Headers.directSrcDep)
+				val externalDep = readStringRelation(Headers.directExternalDep)
 				makeSource(internalSrcDep, externalDep)
 			}
 			val publicInheritedSrcDeps: Source = {
 				val internalSrcDepPI = readFileRelation(Headers.internalSrcDepPI)
-				val externalDepPI =    readStringRelation(Headers.externalDepPI)
+				val externalDepPI = readStringRelation(Headers.externalDepPI)
 				makeSource(internalSrcDepPI, externalDepPI)
 			}
 			val memberRefSrcDeps: SourceDependencies = {
@@ -218,7 +219,7 @@ object TextAnalysisFormat {
 			assert((directSrcDeps == emptySource) || (memberRefSrcDeps == emptySourceDependencies),
 					"One mechanism is supported for tracking source dependencies at the time")
 			val nameHashing = memberRefSrcDeps != emptySourceDependencies
-			val classes =          readStringRelation(Headers.classes)
+			val classes = readStringRelation(Headers.classes)
 			val names = readStringRelation(Headers.usedNames)
 
 			if (nameHashing)
@@ -250,9 +251,9 @@ object TextAnalysisFormat {
 
 		def read(in: BufferedReader): Stamps = {
 			def doReadMap[V](expectedHeader: String, s2v: String => V) = readMap(in)(expectedHeader, new File(_), s2v)
-			val products =   doReadMap(Headers.products, Stamp.fromString)
-			val sources =    doReadMap(Headers.sources, Stamp.fromString)
-			val binaries =   doReadMap(Headers.binaries, Stamp.fromString)
+			val products = doReadMap(Headers.products, Stamp.fromString)
+			val sources = doReadMap(Headers.sources, Stamp.fromString)
+			val binaries = doReadMap(Headers.binaries, Stamp.fromString)
 			val classNames = doReadMap(Headers.classNames, identity[String])
 
 			Stamps(products, sources, binaries, classNames)
@@ -260,10 +261,10 @@ object TextAnalysisFormat {
 	}
 
 	private[this] object APIsF {
-    object Headers {
-      val internal = "internal apis"
-      val external = "external apis"
-    }
+		object Headers {
+			val internal = "internal apis"
+			val external = "external apis"
+		}
 
 		val stringToSource = ObjectStringifier.stringToObj[Source] _
 		val sourceToString = ObjectStringifier.objToString[Source] _
@@ -286,9 +287,9 @@ object TextAnalysisFormat {
 	}
 
 	private[this] object SourceInfosF {
-    object Headers {
-      val infos = "source infos"
-    }
+		object Headers {
+			val infos = "source infos"
+		}
 
 		val stringToSourceInfo = ObjectStringifier.stringToObj[SourceInfo] _
 		val sourceInfoToString = ObjectStringifier.objToString[SourceInfo] _
@@ -298,31 +299,79 @@ object TextAnalysisFormat {
 	}
 
 	private[this] object CompilationsF {
-    object Headers {
-      val compilations = "compilations"
-    }
+		object Headers {
+			val compilations = "compilations"
+		}
 
 		val stringToCompilation = ObjectStringifier.stringToObj[Compilation] _
 		val compilationToString = ObjectStringifier.objToString[Compilation] _
 
 		def write(out: Writer, compilations: Compilations) {
-			def toMapEntry(x: (Compilation, Int)): (String, Compilation) = "%03d".format(x._2) -> x._1
-			writeMap(out)(Headers.compilations, compilations.allCompilations.zipWithIndex.map(toMapEntry).toMap, compilationToString, inlineVals=false)
+			writeSeq(out)(Headers.compilations, compilations.allCompilations, compilationToString)
 		}
-		def read(in: BufferedReader): Compilations =
-			Compilations.make(readMap(in)(Headers.compilations, identity[String], stringToCompilation).values.toSeq)
+
+		def read(in: BufferedReader): Compilations = Compilations.make(
+			readSeq[Compilation](in)(Headers.compilations, stringToCompilation))
 	}
 
 	private[this] object CompileSetupF {
-    object Headers {
-      val setup = "compile setup"
-    }
+		object Headers {
+			val outputMode = "output mode"
+			val outputDir = "output directories"
+			val compileOptions = "compile options"
+			val javacOptions = "javac options"
+			val compilerVersion = "compiler version"
+			val compileOrder = "compile order"
+		}
 
-		val stringToSetup = ObjectStringifier.stringToObj[CompileSetup] _
-		val setupToString = ObjectStringifier.objToString[CompileSetup] _
+		private[this] val singleOutputMode = "single"
+		private[this] val multipleOutputMode = "multiple"
+		private[this] val singleOutputKey = new File("output dir")
 
-		def write(out: Writer, setup: CompileSetup) { writeMap(out)(Headers.setup, Map("1" -> setup), setupToString, inlineVals=false)}
-		def read(in: BufferedReader): CompileSetup = readMap(in)(Headers.setup, identity[String], stringToSetup).head._2
+		def write(out: Writer, setup: CompileSetup) {
+			val (mode, outputAsMap) = setup.output match {
+				case s: SingleOutput => (singleOutputMode, Map(singleOutputKey -> s.outputDirectory))
+				case m: MultipleOutput => (multipleOutputMode, m.outputGroups.map(x => x.sourceDirectory -> x.outputDirectory).toMap)
+			}
+
+			writeSeq(out)(Headers.outputMode, mode :: Nil, identity[String])
+			writeMap(out)(Headers.outputDir, outputAsMap, { f: File => f.getPath })
+			writeSeq(out)(Headers.compileOptions, setup.options.options, identity[String])
+			writeSeq(out)(Headers.javacOptions, setup.options.javacOptions, identity[String])
+			writeSeq(out)(Headers.compilerVersion, setup.compilerVersion :: Nil, identity[String])
+			writeSeq(out)(Headers.compileOrder, setup.order.name :: Nil, identity[String])
+		}
+
+		def read(in: BufferedReader): CompileSetup = {
+			def s2f(s: String) = new File(s)
+			val outputDirMode = readSeq(in)(Headers.outputMode, identity[String]).headOption
+			val outputAsMap = readMap(in)(Headers.outputDir, s2f, s2f)
+			val compileOptions = readSeq(in)(Headers.compileOptions, identity[String])
+			val javacOptions = readSeq(in)(Headers.javacOptions, identity[String])
+			val compilerVersion = readSeq(in)(Headers.compilerVersion, identity[String]).head
+			val compileOrder = readSeq(in)(Headers.compileOrder, identity[String]).head
+
+			val output = outputDirMode match {
+				case Some(s) => s match {
+					case `singleOutputMode` => new SingleOutput {
+						val outputDirectory = outputAsMap(singleOutputKey)
+					}
+					case `multipleOutputMode` => new MultipleOutput {
+						def outputGroups = outputAsMap.toArray.map {
+							case (src: File, out: File) => new MultipleOutput.OutputGroup {
+								val sourceDirectory = src
+								val outputDirectory = out
+							}
+						}
+					}
+					case str: String => throw new ReadException("Unrecognized output mode: " + str)
+				}
+				case None => throw new ReadException("No output mode specified")
+			}
+
+			new CompileSetup(output, new CompileOptions(compileOptions, javacOptions), compilerVersion,
+				xsbti.compile.CompileOrder.valueOf(compileOrder))
+		}
 	}
 
 	private[this] object ObjectStringifier {
@@ -348,8 +397,8 @@ object TextAnalysisFormat {
 	}
 
 	private[this] def expectHeader(in: BufferedReader, expectedHeader: String) {
-    val header = in.readLine()
-    if (header != expectedHeader + ":") throw new ReadException(expectedHeader, if (header == null) "EOF" else header)
+		val header = in.readLine()
+		if (header != expectedHeader + ":") throw new ReadException(expectedHeader, if (header == null) "EOF" else header)
 	}
 
 	private[this] def writeSize(out: Writer, n: Int) {
@@ -361,9 +410,22 @@ object TextAnalysisFormat {
 		in.readLine() match {
 			case itemsPattern(nStr) => Integer.parseInt(nStr)
 			case s: String => throw new ReadException("\"<n> items\"", s)
-      case null => throw new EOFException
+			case null => throw new EOFException
 		}
 	}
+
+	private[this] def writeSeq[T](out: Writer)(header: String, s: Seq[T], t2s: T => String) {
+		// We write sequences as idx -> element maps, for uniformity with maps/relations.
+		def n = s.length
+		val numDigits = if (n < 2) 1 else math.log10(n - 1).toInt + 1
+		val fmtStr = "%%0%dd".format(numDigits)
+		// We only use this for relatively short seqs, so creating this extra map won't be a performance hit.
+		val m: Map[String, T] = s.zipWithIndex.map(x => fmtStr.format(x._2) -> x._1).toMap
+		writeMap(out)(header, m, t2s)
+	}
+
+	private[this] def readSeq[T](in: BufferedReader)(expectedHeader: String, s2t: String => T): Seq[T] =
+		(readPairs(in)(expectedHeader, identity[String], s2t) map(_._2)).toSeq
 
 	private[this] def writeMap[K, V](out: Writer)(header: String, m: Map[K, V], v2s: V => String, inlineVals: Boolean=true)(implicit ord: Ordering[K]) {
 		writeHeader(out, header)
@@ -379,7 +441,7 @@ object TextAnalysisFormat {
 
 	private[this] def readPairs[K, V](in: BufferedReader)(expectedHeader: String, s2k: String => K, s2v: String => V): Traversable[(K, V)] = {
 		def toPair(s: String): (K, V) = {
-      if (s == null) throw new EOFException
+			if (s == null) throw new EOFException
 			val p = s.indexOf(" -> ")
 			val k = s2k(s.substring(0, p))
 			// Pair is either "a -> b" or "a -> \nb". This saves us a lot of substring munging when b is a large blob.
@@ -387,8 +449,8 @@ object TextAnalysisFormat {
 			(k, v)
 		}
 		expectHeader(in, expectedHeader)
-    val n = readSize(in)
-    for (i <- 0 until n) yield toPair(in.readLine())
+		val n = readSize(in)
+		for (i <- 0 until n) yield toPair(in.readLine())
 	}
 
 	private[this] def readMap[K, V](in: BufferedReader)(expectedHeader: String, s2k: String => K, s2v: String => V): Map[K, V] = {
