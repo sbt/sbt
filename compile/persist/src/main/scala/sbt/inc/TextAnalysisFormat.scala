@@ -357,7 +357,7 @@ object TextAnalysisFormat {
 						val outputDirectory = outputAsMap(singleOutputKey)
 					}
 					case `multipleOutputMode` => new MultipleOutput {
-						val outputGroups = outputAsMap.toArray.map {
+						val outputGroups: Array[MultipleOutput.OutputGroup] = outputAsMap.toArray.map {
 							case (src: File, out: File) => new MultipleOutput.OutputGroup {
 								val sourceDirectory = src
 								val outputDirectory = out
