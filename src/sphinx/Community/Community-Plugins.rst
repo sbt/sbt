@@ -228,6 +228,8 @@ Documentation plugins
    Textile, to HTML): http://software.clapper.org/sbt-lwm/
 -  sbt-site (Site generation for SBT):
    https://github.com/sbt/sbt-site
+-  Laika (Template-based site generation, Markdown, reStructuredText,
+   no external tools): http://planet42.github.io/Laika/
 -  literator-plugin (Converts sources into markdown documents):
    https://github.com/laughedelic/literator
 
