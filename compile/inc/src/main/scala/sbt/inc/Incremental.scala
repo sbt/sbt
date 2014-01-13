@@ -40,6 +40,13 @@ object Incremental
 		(!initialInv.isEmpty, analysis)
 	}
 
+	// the name of system property that was meant to enable debugging mode of incremental compiler but
+	// it ended up being used just to enable debugging of relations. That's why if you migrate to new
+	// API for configuring incremental compiler (IncOptions) it's enough to control value of `relationsDebug`
+	// flag to achieve the same effect as using `incDebugProp`.
+	@deprecated("Use `IncOptions.relationsDebug` flag to enable debugging of relations.", "0.13.2")
+	val incDebugProp = "xsbt.inc.debug"
+
 	private[inc] val apiDebugProp = "xsbt.api.debug"
 	private[inc] def apiDebug(options: IncOptions): Boolean =  options.apiDebug || java.lang.Boolean.getBoolean(apiDebugProp)
 
@@ -68,8 +75,7 @@ object Incremental
 
 private abstract class IncrementalCommon(log: Logger, options: IncOptions) {
 
-	val incDebugProp = "xsbt.inc.debug"
-	private def incDebug(options: IncOptions): Boolean = options.relationsDebug || java.lang.Boolean.getBoolean(incDebugProp)
+	private def incDebug(options: IncOptions): Boolean = options.relationsDebug || java.lang.Boolean.getBoolean(Incremental.incDebugProp)
 
 	// setting the related system property to true will skip checking that the class name
 	// still comes from the same classpath entry.  This can workaround bugs in classpath construction,
