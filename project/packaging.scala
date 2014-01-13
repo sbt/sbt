@@ -142,7 +142,7 @@ object Packaging {
     rpmVendor := "typesafe",
     rpmUrl := Some("http://github.com/paulp/sbt-extras"),
     rpmLicense := Some("BSD"),
-    rpmRequirements :=Seq("java","java-devel","jpackage-utils","jansi","jline","jline2"),
+    rpmRequirements :=Seq("java","java-devel","jpackage-utils"),
     rpmProvides := Seq("sbt"),
     
     
