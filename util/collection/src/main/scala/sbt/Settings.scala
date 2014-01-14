@@ -222,12 +222,18 @@ trait Init[Scope]
 		else
 			throw Uninitialized(sMap.keys.toSeq, delegates, undefineds.values.flatten.toList, false)
 	}
+	// this is a hot method: it is called for every single key reference
 	private[this] def delegateForKey[T](sMap: ScopedMap, k: ScopedKey[T], scopes: Seq[Scope], ref: Setting[_], isFirst: Boolean): Either[Undefined, ScopedKey[T]] =
-	{
-		val skeys = scopes.iterator.map(x => ScopedKey(x, k.key))
-		val definedAt = skeys.find( sk => (!isFirst || ref.key != sk) && (sMap contains sk))
-		definedAt.toRight(Undefined(ref, k))
-	}
+		if(scopes.isEmpty)
+			Left(Undefined(ref, k))
+		else {
+			val next = scopes.head
+			val sk = ScopedKey(next, k.key)
+			if( (!isFirst || ref.key != sk) && sMap.contains(sk) )
+				Right(sk)
+			else
+				delegateForKey(sMap, k, scopes.tail, ref, isFirst)
+		}
 
 	private[this] final class DirectSettings[Scope](ss: Map[Scope, AttributeMap]) extends SettingValues[Scope] {
 		def scopes = ss.keySet
