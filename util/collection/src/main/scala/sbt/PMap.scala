@@ -48,8 +48,10 @@ object IMap
 	*/
 	def empty[K[_], V[_]]: IMap[K,V] = new IMap0[K,V](Map.empty)
 
-	private[this] class IMap0[K[_], V[_]](backing: Map[K[_], V[_]]) extends AbstractRMap[K,V] with IMap[K,V]
+	private[this] class IMap0[K[_], V[_]](backing: Map[K[_], V[_]]) extends IMap[K,V]
 	{
+		def contains[T](k: K[T]): Boolean = backing.contains(k)
+		def apply[T](k: K[T]): V[T] = get(k).get
 		def get[T](k: K[T]): Option[V[T]] = ( backing get k ).asInstanceOf[Option[V[T]]]
 		def put[T](k: K[T], v: V[T]) = new IMap0[K,V]( backing.updated(k, v) )
 		def remove[T](k: K[T]) = new IMap0[K,V]( backing - k )
@@ -79,19 +81,15 @@ object IMap
 	}
 }
 
-abstract class AbstractRMap[K[_], V[_]] extends RMap[K,V]
-{
-	def apply[T](k: K[T]): V[T] = get(k).get
-	def contains[T](k: K[T]): Boolean = get(k).isDefined
-}
-
 /**
 * Only suitable for K that is invariant in its type parameter.
 * Option and List keys are not suitable, for example,
 *  because None &lt;:&lt; Option[String] and None &lt;: Option[Int].
 */
-class DelegatingPMap[K[_], V[_]](backing: mutable.Map[K[_], V[_]]) extends AbstractRMap[K,V] with PMap[K,V]
+final class DelegatingPMap[K[_], V[_]](backing: mutable.Map[K[_], V[_]]) extends PMap[K,V]
 {
+	def apply[T](k: K[T]): V[T] = get(k).get
+	def contains[T](k: K[T]): Boolean = backing.contains(k)
 	def get[T](k: K[T]): Option[V[T]] = cast[T]( backing.get(k) )
 	def update[T](k: K[T], v: V[T]) { backing(k) = v }
 	def remove[T](k: K[T]) = cast( backing.remove(k) )
