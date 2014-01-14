@@ -182,15 +182,11 @@ trait Init[Scope]
 
 	private[this] def applyInits(ordered: Seq[Compiled[_]])(implicit delegates: Scope => Seq[Scope]): Settings[Scope] =
 	{
-		val x = java.util.concurrent.Executors.newFixedThreadPool(Runtime.getRuntime.availableProcessors)
-		try {
-			val eval: EvaluateSettings[Scope] = new EvaluateSettings[Scope] {
-				override val init: Init.this.type = Init.this
-				def compiledSettings = ordered
-				def executor = x
-			}
-			eval.run
-		} finally { x.shutdown() }
+		val eval: EvaluateSettings[Scope] = new EvaluateSettings[Scope] {
+			override val init: Init.this.type = Init.this
+			def compiledSettings = ordered
+		}
+		eval.run
 	}
 
 	def showUndefined(u: Undefined, validKeys: Seq[ScopedKey[_]], delegates: Scope => Seq[Scope])(implicit display: Show[ScopedKey[_]]): String =
