@@ -62,13 +62,12 @@ object Def extends Init[Scope] with TaskMacroExtra
 
 		import language.experimental.macros
 		import std.TaskMacro.{inputTaskMacroImpl, inputTaskDynMacroImpl, taskDynMacroImpl, taskMacroImpl}
-		import std.SettingMacro.{settingDynMacroImpl,settingMacroImpl}
+		import std.SettingMacro.settingMacroImpl
 		import std.{InputEvaluated, MacroValue, MacroTaskValue, ParserInput}
 
 	def task[T](t: T): Def.Initialize[Task[T]] = macro taskMacroImpl[T]
 	def taskDyn[T](t: Def.Initialize[Task[T]]): Def.Initialize[Task[T]] = macro taskDynMacroImpl[T]
 	def setting[T](t: T): Def.Initialize[T] = macro settingMacroImpl[T]
-	def settingDyn[T](t: Def.Initialize[T]): Def.Initialize[T] = macro settingDynMacroImpl[T]
 	def inputTask[T](t: T): Def.Initialize[InputTask[T]] = macro inputTaskMacroImpl[T]
 	def inputTaskDyn[T](t: Def.Initialize[Task[T]]): Def.Initialize[InputTask[T]] = macro inputTaskDynMacroImpl[T]
 

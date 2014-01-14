@@ -45,14 +45,14 @@ object ScopeFilter
 	final class SettingKeyAll[T] private[sbt](i: Initialize[T]) {
 		/** Evaluates the initialization in all scopes selected by the filter.  These are dynamic dependencies, so
 		* static inspections will not show them. */
-		def all(sfilter: => ScopeFilter): Initialize[Seq[T]] = Def.bind(getData) { data =>
+		def all(sfilter: => ScopeFilter): Initialize[Seq[T]] = Def.early(getData) { data =>
 			data.allScopes.toSeq.filter(sfilter(data)).map(s => Project.inScope(s, i)).join
 		}
 	}
 	final class TaskKeyAll[T] private[sbt](i: Initialize[Task[T]]) {
 		/** Evaluates the task in all scopes selected by the filter.  These are dynamic dependencies, so
 		* static inspections will not show them. */
-		def all(sfilter: => ScopeFilter): Initialize[Task[Seq[T]]] = Def.bind(getData) { data =>
+		def all(sfilter: => ScopeFilter): Initialize[Task[Seq[T]]] = Def.early(getData) { data =>
 				import std.TaskExtra._
 			data.allScopes.toSeq.filter(sfilter(data)).map(s => Project.inScope(s, i)).join(_.join)
 		}

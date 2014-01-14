@@ -63,16 +63,18 @@ trait Init[Scope]
 	* This can be useful when dealing with dynamic Initialize values. */
 	lazy val capturedTransformations: Initialize[Initialize ~> Initialize] = new TransformCapture(idK[Initialize])
 	def setting[T](key: ScopedKey[T], init: Initialize[T], pos: SourcePosition = NoPosition): Setting[T] = new Setting[T](key, init, pos)
-	def valueStrict[T](value: T): Initialize[T] = pure(() => value)
+	def valueStrict[T](value: T): Initialize[T] = new Constant(value)
 	def value[T](value: => T): Initialize[T] = pure(value _)
 	def pure[T](value: () => T): Initialize[T] = new Value(value)
 	def optional[T,U](i: Initialize[T])(f: Option[T] => U): Initialize[U] = new Optional(Some(i), f)
 	def update[T](key: ScopedKey[T])(f: T => T): Setting[T] = setting[T](key, map(key)(f), NoPosition)
-	def bind[S,T](in: Initialize[S])(f: S => Initialize[T]): Initialize[T] = new Bind(f, in)
 	def map[S,T](in: Initialize[S])(f: S => T): Initialize[T] = new Apply[ ({ type l[L[x]] = L[S] })#l, T](f, in, AList.single[S])
 	def app[K[L[x]], T](inputs: K[Initialize])(f: K[Id] => T)(implicit alist: AList[K]): Initialize[T] = new Apply[K, T](f, inputs, alist)
 	def uniform[S,T](inputs: Seq[Initialize[S]])(f: Seq[S] => T): Initialize[T] =
 		new Apply[({ type l[L[x]] = List[L[S]] })#l, T](f, inputs.toList, AList.seq[S])
+
+	def early[T, S](i: Initialize[T])(f: T => Initialize[S]): Initialize[S] =
+		new Early(i, new TransformCapture(idK[Initialize]), f)
 
 	/** Constructs a derived setting that will be automatically defined in every scope where one of its dependencies
 	* is explicitly defined and the where the scope matches `filter`.
@@ -82,10 +84,8 @@ trait Init[Scope]
 		deriveAllowed(s, allowDynamic) foreach error
 		new DerivedSetting[T](s.key, s.init, s.pos, filter, trigger, nextDefaultID())
 	}
-	def deriveAllowed[T](s: Setting[T], allowDynamic: Boolean): Option[String] = s.init match {
-		case _: Bind[_,_] if !allowDynamic => Some("Cannot derive from dynamic dependencies.")
-		case _ => None
-	}
+	def deriveAllowed[T](s: Setting[T], allowDynamic: Boolean): Option[String] = None
+
 	// id is used for equality
 	private[sbt] final def defaultSetting[T](s: Setting[T]): Setting[T] = s match {
 		case _: DefaultSetting[_] | _: DerivedSetting[_] => s
@@ -117,11 +117,37 @@ trait Init[Scope]
 		val (defaults, others) = Util.separate[Setting[_], DefaultSetting[_], Setting[_]](ss) { case u: DefaultSetting[_] => Left(u); case s => Right(s) }
 		defaults.distinct ++ others
 	}
+	private[this] def expandEarly(settings: Seq[Setting[_]])(implicit delegates: Scope => Seq[Scope]): Seq[Setting[_]] =
+	{
+		def const[T](ss: Settings[Scope], s: Setting[T]): Settings[Scope] =
+			s.init.constantValue match {
+				case Some(v) => ss.set(s.key.scope, s.key.key, v)
+				case None => ss
+			}
+		val predef = (empty /: settings)( (ss, s) => const(ss, s))
+		val static = settings.map(_.key.scope).toSet
+
+		lazy val subStatic: Initialize ~> Initialize = new (Initialize ~> Initialize) {
+			def apply[T](i: Initialize[T]): Initialize[T] = i match {
+				case StaticScopes => new Constant(static)
+				case _ => i.mapInputs(subStatic)
+			}
+		}
+		lazy val me: Initialize ~> Initialize = new (Initialize ~> Initialize) {
+			def apply[T](i: Initialize[T]): Initialize[T] = i match {
+				case e: Early[s, T] => e.mapInputs(subStatic).getInit(predef)
+				case _ => i.mapInputs(me)
+			}
+		}
+		settings.map(_.mapInitialize(me.fn))
+	}
 
 	def compiled(init: Seq[Setting[_]], actual: Boolean = true)(implicit delegates: Scope => Seq[Scope], scopeLocal: ScopeLocal, display: Show[ScopedKey[_]]): CompiledMap =
 	{
 	Time.block("compiled")
-		val initDefaults = applyDefaults(init)
+		val earlyExpanded = expandEarly(init)
+	Time("expandedEarly")
+		val initDefaults = applyDefaults(earlyExpanded)
 	Time("appliedDefaults")
 		// inject derived settings into scopes where their dependencies are directly defined
 		// and prepend per-scope settings
@@ -394,9 +420,12 @@ trait Init[Scope]
 		def mapReferenced(g: MapScoped): Initialize[T]
 		def validateReferenced(g: ValidateRef): ValidatedInit[T]
 		def mapConstant(g: MapConstant): Initialize[T]
+		// applies `g` to immediate dependencies only
+		def mapInputs(g: Initialize ~> Initialize): Initialize[T]
 		def evaluate(map: Settings[Scope]): T
 		def zip[S](o: Initialize[S]): Initialize[(T,S)] = zipTupled(o)(idFun)
 		def zipWith[S,U](o: Initialize[S])(f: (T,S) => U): Initialize[U] = zipTupled(o)(f.tupled)
+		private[sbt] def constantValue: Option[T] = None
 		private[this] def zipTupled[S,U](o: Initialize[S])(f: ((T,S)) => U): Initialize[U] =
 			new Apply[({ type l[L[x]] = (L[T], L[S]) })#l, U](f, (this, o), AList.tuple2[T,S])
 	}
@@ -485,6 +514,7 @@ trait Init[Scope]
 		final def apply[Z](g: T => Z): Initialize[Z] = new GetValue(scopedKey, g compose transform)
 		final def evaluate(ss: Settings[Scope]): T = transform(getValue(ss, scopedKey))
 		final def mapReferenced(g: MapScoped): Initialize[T] = new GetValue( g(scopedKey), transform)
+		final def mapInputs(g: Initialize ~> Initialize): Initialize[T] = this
 		final def validateReferenced(g: ValidateRef): ValidatedInit[T] = g(scopedKey) match {
 			case Left(un) => Left(un :: Nil)
 			case Right(nk) => Right(new GetValue(nk, transform))
@@ -503,26 +533,38 @@ trait Init[Scope]
 		def dependencies = Nil
 		def apply[Z](g2: (Initialize ~> Initialize) => Z): Initialize[Z] = map(this)(g2)
 		def evaluate(ss: Settings[Scope]): Initialize ~> Initialize = f
+		def mapInputs(g: Initialize ~> Initialize) = this
 		def mapReferenced(g: MapScoped) = new TransformCapture(mapReferencedT(g) ∙ f)
 		def mapConstant(g: MapConstant) = new TransformCapture(mapConstantT(g) ∙ f)
 		def validateReferenced(g: ValidateRef) = Right(new TransformCapture(getValidated ∙ validateReferencedT(g) ∙ f))
 	}
-	private[sbt] final class Bind[S,T](val f: S => Initialize[T], val in: Initialize[S]) extends Initialize[T]
+	/** Computes an Initialize from constants.  This is a restricted form of flatMap.
+	* The only key references allowed in `captured` are to keys initialized by a constant.
+	* This allows the nested Initialize to be computed during setting processing.  This computed
+	* Initialize will then be available to static analysis, and sbt's inspect command, and static transformations.
+	*/
+	private[sbt] final class Early[T, S](wrapped: Initialize[T], captured: TransformCapture, f: T => Initialize[S]) extends Initialize[S]
 	{
-		def dependencies = in.dependencies
-		def apply[Z](g: T => Z): Initialize[Z] = new Bind[S,Z](s => f(s)(g), in)
-		def evaluate(ss: Settings[Scope]): T = f(in evaluate ss) evaluate ss
-		def mapReferenced(g: MapScoped) = new Bind[S,T](s => f(s) mapReferenced g, in mapReferenced g)
-		def validateReferenced(g: ValidateRef) = (in validateReferenced g).right.map { validIn =>
-			new Bind[S,T](s => handleUndefined( f(s) validateReferenced g), validIn)
-		}
-		def mapConstant(g: MapConstant) = new Bind[S,T](s => f(s) mapConstant g, in mapConstant g)
+		def dependencies = wrapped.dependencies
+		def mapReferenced(g: MapScoped) = new Early(wrapped mapReferenced g, captured mapReferenced g, f)
+		def apply[U](g: S => U) = map(this)(g)
+		def mapConstant(g: MapConstant) = new Early(wrapped mapConstant g, captured mapConstant g, f)
+		def mapInputs(g: Initialize ~> Initialize) = new Early(g(wrapped), captured, f)
+		def evaluate(ss: Settings[Scope]) = getInit(ss).evaluate(ss)
+		def getInit(predef: Settings[Scope]): Initialize[S] = captured.evaluate(predef)( f(wrapped.evaluate(predef)) )
+		def validateReferenced(g: ValidateRef) =
+			wrapped.validateReferenced(g).right.flatMap { init =>
+				captured.validateReferenced(g).right.map { cap =>
+					new Early(init, cap, f)
+				}
+			}
 	}
 	private[sbt] final class Optional[S,T](val a: Option[Initialize[S]], val f: Option[S] => T) extends Initialize[T]
 	{
 		def dependencies = deps(a.toList)
 		def apply[Z](g: T => Z): Initialize[Z] = new Optional[S,Z](a, g compose f)
 		def mapReferenced(g: MapScoped) = new Optional(a map mapReferencedT(g).fn, f)
+		def mapInputs(g: Initialize ~> Initialize) = new Optional(a map g.fn, f)
 		def validateReferenced(g: ValidateRef) = a match {
 			case None => Right(this)
 			case Some(i) => Right( new Optional(i.validateReferenced(g).right.toOption, f) )
@@ -532,18 +574,24 @@ trait Init[Scope]
 		// proper solution is for evaluate to be deprecated or for external use only and a new internal method returning Either be used
 		private[this] def trapBadRef[A](run: => A): Option[A] = try Some(run) catch { case e: InvalidReference => None }
 	}
-	private[sbt] final class Value[T](val value: () => T) extends Initialize[T]
+	private[sbt] sealed class Value[T](val value: () => T) extends Initialize[T]
 	{
 		def dependencies = Nil
 		def mapReferenced(g: MapScoped) = this
+		def mapInputs(g: Initialize ~> Initialize) = this
 		def validateReferenced(g: ValidateRef) = Right(this)
 		def apply[S](g: T => S) = new Value[S](() => g(value()))
 		def mapConstant(g: MapConstant) = this
 		def evaluate(map: Settings[Scope]): T = value()
 	}
+	private[sbt] final class Constant[T](const: T) extends Value(() => const) {
+		override def apply[S](g: T => S) = new Constant(g(const))
+		override def constantValue = Some(const)
+	}
 	private[sbt] final object StaticScopes extends Initialize[Set[Scope]]
 	{
 		def dependencies = Nil
+		def mapInputs(g: Initialize ~> Initialize) = this
 		def mapReferenced(g: MapScoped) = this
 		def validateReferenced(g: ValidateRef) = Right(this)
 		def apply[S](g: Set[Scope] => S) = map(this)(g)

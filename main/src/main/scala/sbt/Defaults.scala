@@ -814,16 +814,6 @@ object Defaults extends BuildCommon
 		recurse ?? Nil
 	}
 
-	@deprecated("Use the new <key>.all(<ScopeFilter>) API", "0.13.0")
-	def inDependencies[T](key: SettingKey[T], default: ProjectRef => T, includeRoot: Boolean = true, classpath: Boolean = true, aggregate: Boolean = false): Initialize[Seq[T]] =
-		forDependencies[T,T](ref => (key in ref) ?? default(ref), includeRoot, classpath, aggregate)
-
-	@deprecated("Use the new <key>.all(<ScopeFilter>) API", "0.13.0")
-	def forDependencies[T,V](init: ProjectRef => Initialize[V], includeRoot: Boolean = true, classpath: Boolean = true, aggregate: Boolean = false): Initialize[Seq[V]] =
-		Def.bind( (loadedBuild, thisProjectRef).identity ) { case (lb, base) =>
-			transitiveDependencies(base, lb, includeRoot, classpath, aggregate) map init join ;
-		}
-
 	def transitiveDependencies(base: ProjectRef, structure: LoadedBuild, includeRoot: Boolean, classpath: Boolean = true, aggregate: Boolean = false): Seq[ProjectRef] =
 	{
 		def tdeps(enabled: Boolean, f: ProjectRef => Seq[ProjectRef]): Seq[ProjectRef] =

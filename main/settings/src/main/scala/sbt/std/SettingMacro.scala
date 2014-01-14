@@ -5,12 +5,11 @@ package std
 	import Types.{idFun,Id}
 	import appmacro.{Convert, Converted, Instance, MixedBuilder, MonadInstance}
 
-object InitializeInstance extends MonadInstance
+object InitializeInstance extends Instance
 {
 	type M[x] = Initialize[x]
 	def app[K[L[x]], Z](in: K[Initialize], f: K[Id] => Z)(implicit a: AList[K]): Initialize[Z] = Def.app[K,Z](in)(f)(a)
 	def map[S,T](in: Initialize[S], f: S => T): Initialize[T] = Def.map(in)(f)
-	def flatten[T](in: Initialize[Initialize[T]]): Initialize[T] = Def.bind(in)(idFun[Initialize[T]])
 	def pure[T](t: () => T): Initialize[T] = Def.pure(t)
 }
 
@@ -37,7 +36,4 @@ object SettingMacro
 {
 	def settingMacroImpl[T: c.WeakTypeTag](c: Context)(t: c.Expr[T]): c.Expr[Initialize[T]] =
 		Instance.contImpl[T, Id](c, InitializeInstance, InitializeConvert, MixedBuilder)(Left(t), Instance.idTransform[c.type])
-
-	def settingDynMacroImpl[T: c.WeakTypeTag](c: Context)(t: c.Expr[Initialize[T]]): c.Expr[Initialize[T]] = 
-		Instance.contImpl[T, Id](c, InitializeInstance, InitializeConvert, MixedBuilder)(Right(t), Instance.idTransform[c.type])
 }
