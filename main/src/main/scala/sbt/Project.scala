@@ -37,15 +37,12 @@ sealed trait ProjectDefinition[PR <: ProjectReference]
 	* When a task is run on this project, it will also be run on aggregated projects. */
 	def aggregate: Seq[PR]
 
-	@deprecated("Delegation between projects should be replaced by directly sharing settings.", "0.13.0")
-	def delegates: Seq[PR]
-
 	/** The references to projects that are classpath dependencies of this project. */
 	def dependencies: Seq[ClasspathDep[PR]]
 
 	/** The references to projects that are aggregate and classpath dependencies of this project. */
 	def uses: Seq[PR] = aggregate ++ dependencies.map(_.project)
-	def referenced: Seq[PR] = delegates ++ uses
+	def referenced: Seq[PR] = uses
 
 	/** Configures the sources of automatically appended settings.*/
 	def auto: AddSettings
@@ -60,23 +57,23 @@ sealed trait ProjectDefinition[PR <: ProjectReference]
 sealed trait Project extends ProjectDefinition[ProjectReference]
 {
 	def copy(id: String = id, base: File = base, aggregate: => Seq[ProjectReference] = aggregate, dependencies: => Seq[ClasspathDep[ProjectReference]] = dependencies,
-		delegates: => Seq[ProjectReference] = delegates, settings: => Seq[Setting[_]] = settings, configurations: Seq[Configuration] = configurations,
+		settings: => Seq[Setting[_]] = settings, configurations: Seq[Configuration] = configurations,
 		auto: AddSettings = auto): Project =
-			Project(id, base, aggregate = aggregate, dependencies = dependencies, delegates = delegates, settings, configurations, auto)
+			Project(id, base, aggregate = aggregate, dependencies = dependencies, settings, configurations, auto)
 
 	def resolve(resolveRef: ProjectReference => ProjectRef): ResolvedProject =
 	{
 		def resolveRefs(prs: Seq[ProjectReference]) = prs map resolveRef
 		def resolveDeps(ds: Seq[ClasspathDep[ProjectReference]]) = ds map resolveDep
 		def resolveDep(d: ClasspathDep[ProjectReference]) = ResolvedClasspathDependency(resolveRef(d.project), d.configuration)
-		resolved(id, base, aggregate = resolveRefs(aggregate), dependencies = resolveDeps(dependencies), delegates = resolveRefs(delegates), settings, configurations, auto)
+		resolved(id, base, aggregate = resolveRefs(aggregate), dependencies = resolveDeps(dependencies), settings, configurations, auto)
 	}
 	def resolveBuild(resolveRef: ProjectReference => ProjectReference): Project =
 	{
 		def resolveRefs(prs: Seq[ProjectReference]) = prs map resolveRef
 		def resolveDeps(ds: Seq[ClasspathDep[ProjectReference]]) = ds map resolveDep
 		def resolveDep(d: ClasspathDep[ProjectReference]) = ClasspathDependency(resolveRef(d.project), d.configuration)
-		apply(id, base, aggregate = resolveRefs(aggregate), dependencies = resolveDeps(dependencies), delegates = resolveRefs(delegates), settings, configurations, auto)
+		apply(id, base, aggregate = resolveRefs(aggregate), dependencies = resolveDeps(dependencies), settings, configurations, auto)
 	}
 
 	/** Applies the given functions to this Project.
@@ -95,9 +92,6 @@ sealed trait Project extends ProjectDefinition[ProjectReference]
 
 	/** Adds classpath dependencies on internal or external projects. */
 	def dependsOn(deps: ClasspathDep[ProjectReference]*): Project = copy(dependencies = dependencies ++ deps)
-
-	@deprecated("Delegation between projects should be replaced by directly sharing settings.", "0.13.0")
-	def delegateTo(from: ProjectReference*): Project = copy(delegates = delegates ++ from)
 
 	/** Adds projects to be aggregated.  When a user requests a task to run on this project from the command line,
 	* the task will also be run in aggregated projects. */
@@ -150,22 +144,21 @@ object Project extends ProjectExtra
 		Def.showRelativeKey( ProjectRef(loaded.root, loaded.units(loaded.root).rootProjects.head), loaded.allProjectRefs.size > 1, keyNameColor)
 
 	private abstract class ProjectDef[PR <: ProjectReference](val id: String, val base: File, aggregate0: => Seq[PR], dependencies0: => Seq[ClasspathDep[PR]],
-		delegates0: => Seq[PR], settings0: => Seq[Def.Setting[_]], val configurations: Seq[Configuration], val auto: AddSettings) extends ProjectDefinition[PR]
+		settings0: => Seq[Def.Setting[_]], val configurations: Seq[Configuration], val auto: AddSettings) extends ProjectDefinition[PR]
 	{
 		lazy val aggregate = aggregate0
 		lazy val dependencies = dependencies0
-		lazy val delegates = delegates0
 		lazy val settings = settings0
-	
+
 		Dag.topologicalSort(configurations)(_.extendsConfigs) // checks for cyclic references here instead of having to do it in Scope.delegates
 	}
 
 	def apply(id: String, base: File, aggregate: => Seq[ProjectReference] = Nil, dependencies: => Seq[ClasspathDep[ProjectReference]] = Nil,
-		delegates: => Seq[ProjectReference] = Nil, settings: => Seq[Def.Setting[_]] = defaultSettings, configurations: Seq[Configuration] = Configurations.default,
+		settings: => Seq[Def.Setting[_]] = defaultSettings, configurations: Seq[Configuration] = Configurations.default,
 		auto: AddSettings = AddSettings.allDefaults): Project =
 	{
 		validProjectID(id).foreach(errMsg => sys.error("Invalid project ID: " + errMsg))
-		new ProjectDef[ProjectReference](id, base, aggregate, dependencies, delegates, settings, configurations, auto) with Project
+		new ProjectDef[ProjectReference](id, base, aggregate, dependencies, settings, configurations, auto) with Project
 	}
 
 	/** Returns None if `id` is a valid Project ID or Some containing the parser error message if it is not.*/
@@ -185,9 +178,9 @@ object Project extends ProjectExtra
 	* This is a best effort implementation, since valid characters are not documented or consistent.*/
 	def normalizeModuleID(id: String): String = normalizeBase(id)
 
-	def resolved(id: String, base: File, aggregate: => Seq[ProjectRef], dependencies: => Seq[ResolvedClasspathDependency], delegates: => Seq[ProjectRef],
+	def resolved(id: String, base: File, aggregate: => Seq[ProjectRef], dependencies: => Seq[ResolvedClasspathDependency],
 		settings: Seq[Def.Setting[_]], configurations: Seq[Configuration], auto: AddSettings): ResolvedProject =
-			new ProjectDef[ProjectRef](id, base, aggregate, dependencies, delegates, settings, configurations, auto) with ResolvedProject
+			new ProjectDef[ProjectRef](id, base, aggregate, dependencies, settings, configurations, auto) with ResolvedProject
 
 	def defaultSettings: Seq[Def.Setting[_]] = Defaults.defaultSettings
 
@@ -307,7 +300,7 @@ object Project extends ProjectExtra
 	def details(structure: BuildStructure, actual: Boolean, scope: Scope, key: AttributeKey[_])(implicit display: Show[ScopedKey[_]]): String =
 	{
 		val scoped = ScopedKey(scope,key)
-		
+
 		val data = scopedKeyData(structure, scope, key) map {_.description} getOrElse {"No entry for key."}
 		val description = key.description match { case Some(desc) => "Description:\n\t" + desc + "\n"; case None => "" }
 
@@ -413,7 +406,7 @@ object Project extends ProjectExtra
 	import DefaultParsers._
 
 	val loadActionParser = token(Space ~> ("plugins" ^^^ Plugins | "return" ^^^ Return)) ?? Current
-	
+
 	val ProjectReturn = AttributeKey[List[File]]("project-return", "Maintains a stack of builds visited using reload.")
 	def projectReturn(s: State): List[File] = getOrNil(s, ProjectReturn)
 	def inPluginProject(s: State): Boolean = projectReturn(s).toList.length > 1

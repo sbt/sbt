@@ -35,7 +35,7 @@ final class BuildUtil[Proj](
 		case _ => None
 	}
 
-	val configurationsForAxis: Option[ResolvedReference] => Seq[String] = 
+	val configurationsForAxis: Option[ResolvedReference] => Seq[String] =
 		refOpt => configurations(projectForAxis(refOpt)).map(_.name)
 }
 object BuildUtil
@@ -55,7 +55,6 @@ object BuildUtil
 		 // check for cycles
 		for( (_, lbu) <- units; proj <- lbu.defined.values) {
 			deps(proj)(_.dependencies.map(_.project))
-			deps(proj)(_.delegates)
 			deps(proj)(_.aggregate)
 		}
 	}
