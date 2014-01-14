@@ -44,7 +44,15 @@ object AList
 				}
 			loop(s, f)
 		}
-		def traverse[M[_], N[_], P[_]](s: List[M[T]], f: M ~> (N ∙ P)#l)(implicit np: Applicative[N]): N[List[P[T]]] = ???
+		def traverse[M[_], N[_], P[_]](s: List[M[T]], f: M ~> (N ∙ P)#l)(implicit np: Applicative[N]): N[List[P[T]]] =
+		{
+			def loop(list: List[M[T]], acc: N[List[P[T]]]): N[List[P[T]]] =
+				list match {
+					case Nil => np.map( (l: List[P[T]])=> l.reverse, acc)
+					case h :: t => loop(t, np.apply2(f(h), acc)(_ :: _))
+				}
+			loop(s, np.pure(Nil))
+		}
 	}
 
 	/** AList for the abitrary arity data structure KList. */
