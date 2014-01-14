@@ -51,6 +51,8 @@ final class ConsoleMain extends xsbti.AppMain
 
 object StandardMain
 {
+	Time.block("sbt")
+
 	def runManaged(s: State): xsbti.MainResult =
 	{
 		val previous = TrapExit.installManager()

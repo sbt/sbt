@@ -133,15 +133,20 @@ object Load
 		//  8) Evaluate settings
 	def apply(rootBase: File, s: State, config: sbt.LoadBuildConfiguration): (() => Eval, sbt.BuildStructure) =
 	{
+	Time(s"Load($rootBase)")
 		// load, which includes some resolution, but can't fill in project IDs yet, so follow with full resolution
 		val loaded = resolveProjects(load(rootBase, s, config))
+	Time(s"load+resolve")
 		val projects = loaded.units
 		lazy val rootEval = lazyEval(loaded.units(loaded.root).unit)
 		val settings = finalTransforms(buildConfigurations(loaded, getRootProject(projects), config.injectSettings))
+	Time(s"computed settings")
 		val delegates = config.delegates(loaded)
+	Time(s"computed delegates")
 		val data = Def.make(settings)(delegates, config.scopeLocal, Project.showLoadingKey( loaded ) )
 		Project.checkTargets(data) foreach error
 		val index = structureIndex(data, settings, loaded.extra(data), projects)
+	Time(s"computed index")
 		val streams = mkStreams(projects, loaded.root, data)
 		(rootEval, new sbt.BuildStructure(projects, loaded.root, settings, data, index, streams, delegates, config.scopeLocal))
 	}
@@ -406,6 +411,7 @@ object Load
 
 	def loadUnit(uri: URI, localBase: File, s: State, config: sbt.LoadBuildConfiguration): sbt.BuildUnit =
 	{
+Time.block(s"loadUnit($localBase)")
 		val normBase = localBase.getCanonicalFile
 		val defDir = projectStandard(normBase)
 
@@ -416,11 +422,14 @@ object Load
 
 		lazy val eval = mkEval(plugs.classpath, defDir, plugs.pluginData.scalacOptions)
 		val initialProjects = defsScala.flatMap(b => projectsFromBuild(b, normBase))
+Time("initialProjects")
 
 		val memoSettings = new mutable.HashMap[File, LoadedSbtFile]
 		def loadProjects(ps: Seq[Project]) = loadTransitive(ps, normBase, imports, plugs, () => eval, config.injectSettings, Nil, memoSettings)
 		val loadedProjectsRaw = loadProjects(initialProjects)
+Time("loadedRaw")
 		val hasRoot = loadedProjectsRaw.exists(_.base == normBase) || defsScala.exists(_.rootProject.isDefined)
+Time("hasRoot")
 		val (loadedProjects, defaultBuildIfNone) =
 			if(hasRoot)
 				(loadedProjectsRaw, Build.defaultEmpty)
@@ -432,9 +441,10 @@ object Load
 				val defaultProjects = loadProjects(projectsFromBuild(b, normBase))
 				(defaultProjects ++ loadedProjectsRaw, b)
 			}
-
 		val defs = if(defsScala.isEmpty) defaultBuildIfNone :: Nil else defsScala
 		val loadedDefs = new sbt.LoadedDefinitions(defDir, Nil, plugs.loader, defs, loadedProjects, defNames)
+Time.complete("default builds")
+
 		new sbt.BuildUnit(uri, normBase, loadedDefs, plugs)
 	}
 

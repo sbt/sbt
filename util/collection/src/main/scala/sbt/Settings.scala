@@ -120,25 +120,36 @@ trait Init[Scope]
 
 	def compiled(init: Seq[Setting[_]], actual: Boolean = true)(implicit delegates: Scope => Seq[Scope], scopeLocal: ScopeLocal, display: Show[ScopedKey[_]]): CompiledMap =
 	{
+	Time.block("compiled")
 		val initDefaults = applyDefaults(init)
+	Time("appliedDefaults")
 		// inject derived settings into scopes where their dependencies are directly defined
 		// and prepend per-scope settings
 		val derived = deriveAndLocal(initDefaults)
+	Time("derived")
 		// group by Scope/Key, dropping dead initializations
 		val sMap: ScopedMap = grouped(derived)
+	Time("grouped")
 		// delegate references to undefined values according to 'delegates'
 		val dMap: ScopedMap = if(actual) delegate(sMap)(delegates, display) else sMap
+	Time("delegate")
 		// merge Seq[Setting[_]] into Compiled
-		compile(dMap)
+		val out = compile(dMap)
+	Time.complete("compile")
+		out
 	}
 	def make(init: Seq[Setting[_]])(implicit delegates: Scope => Seq[Scope], scopeLocal: ScopeLocal, display: Show[ScopedKey[_]]): Settings[Scope] =
 	{
+	Time.block("make")
 		val cMap = compiled(init)(delegates, scopeLocal, display)
 		// order the initializations.  cyclic references are detected here.
 		val ordered: Seq[Compiled[_]] = sort(cMap)
+	Time("sorted")
 		// evaluation: apply the initializations.
-		try { applyInits(ordered) }
+		val result = try { applyInits(ordered) }
 		catch { case rru: RuntimeUndefined => throw Uninitialized(cMap.keys.toSeq, delegates, rru.undefined, true) }
+	Time.complete("evaluated")
+		result
 	}
 	def sort(cMap: CompiledMap): Seq[Compiled[_]] =
 		Dag.topologicalSort(cMap.values)(_.dependencies.map(cMap))
@@ -442,7 +453,6 @@ trait Init[Scope]
 		override final def hashCode = id.hashCode
 		override final def equals(o: Any): Boolean = o match { case d: DefaultSetting[_] => d.id == id; case _ => false }
 	}
-
 
 	private[this] def handleUndefined[T](vr: ValidatedInit[T]): Initialize[T] = vr match {
 		case Left(undefs) => throw new RuntimeUndefined(undefs)
