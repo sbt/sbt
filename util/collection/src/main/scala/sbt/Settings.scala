@@ -96,6 +96,11 @@ trait Init[Scope]
 	private[this] final def nextDefaultID(): Long = nextID.incrementAndGet()
 
 
+	def emptyScopes(scopes: Set[Scope])(implicit delegates: Scope => Seq[Scope]): Settings[Scope] =
+	{
+		val m = (Map.empty[Scope, AttributeMap] /: scopes) { case (m, s) => m.updated(s, AttributeMap.empty) }
+		new Settings0(m, delegates)
+	}
 	def empty(implicit delegates: Scope => Seq[Scope]): Settings[Scope] = new Settings0(Map.empty, delegates)
 	def asTransform(s: Settings[Scope]): ScopedKey ~> Id = new (ScopedKey ~> Id) {
 		def apply[T](k: ScopedKey[T]): T = getValue(s, k)
@@ -182,11 +187,14 @@ trait Init[Scope]
 
 	private[this] def applyInits(ordered: Seq[Compiled[_]])(implicit delegates: Scope => Seq[Scope]): Settings[Scope] =
 	{
-		val eval: EvaluateSettings[Scope] = new EvaluateSettings[Scope] {
-			override val init: Init.this.type = Init.this
-			def compiledSettings = ordered
+		val allScopes: Set[Scope] = ordered.map(_.key.scope).toSet
+
+		(emptyScopes(allScopes) /: ordered) { case (settings, ss) =>
+			(settings /: ss.settings) { case (intersettings, s) =>
+				val value = s.init.evaluate(intersettings)
+				intersettings.set(s.key.scope, s.key.key, value)
+			}
 		}
-		eval.run
 	}
 
 	def showUndefined(u: Undefined, validKeys: Seq[ScopedKey[_]], delegates: Scope => Seq[Scope])(implicit display: Show[ScopedKey[_]]): String =
