@@ -58,16 +58,21 @@ object Compiler
 		val provider = ComponentCompiler.interfaceProvider(componentManager)
 		new AnalyzingCompiler(instance, provider, cpOptions, log)
 	}
-
-	def apply(in: Inputs, log: Logger): Analysis =
+	def apply(in: Inputs, log: Logger): Analysis = 
 	{
-			import in.compilers._
-			import in.config._
-			import in.incSetup._
-
+		import in.compilers._
+		import in.config._
+		import in.incSetup._
+		apply(in, log, new LoggerReporter(maxErrors, log, sourcePositionMapper))
+	}
+	def apply(in: Inputs, log: Logger, reporter: xsbti.Reporter): Analysis =
+	{
+		import in.compilers._
+		import in.config._
+		import in.incSetup._
 		val agg = new AggressiveCompile(cacheFile)
 		agg(scalac, javac, sources, classpath, CompileOutput(classesDirectory), cache, None, options, javacOptions,
-		    analysisMap, definesClass, new LoggerReporter(maxErrors, log, sourcePositionMapper), order, skip, incOptions)(log)
+		    analysisMap, definesClass, reporter, order, skip, incOptions)(log)
 	}
 
 	private[sbt] def foldMappers[A](mappers: Seq[A => Option[A]]) =
