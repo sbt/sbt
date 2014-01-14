@@ -546,10 +546,9 @@ trait Init[Scope]
 		def evaluate(ss: Settings[Scope]) = f(alist.transform(inputs, evaluateT(ss)))
 		def validateReferenced(g: ValidateRef) =
 		{
-			val tx = alist.transform(inputs, validateReferencedT(g))
-			val undefs = alist.toList(tx).flatMap(_.left.toSeq.flatten)
-			val get = new (ValidatedInit ~> Initialize) { def apply[T](vr: ValidatedInit[T]) = vr.right.get }
-			if(undefs.isEmpty) Right(new Apply(f, alist.transform(tx, get), alist)) else Left(undefs)
+			type ER[x] = Either[Seq[Undefined], x]
+			val validatedInputs = alist.traverse[Initialize, ER, Initialize](inputs, validateReferencedT(g))(Classes.validationApp)
+			validatedInputs.right.map( in => new Apply(f, in, alist) )
 		}
 	}
 	private def remove[T](s: Seq[T], v: T) = s filterNot (_ == v)
