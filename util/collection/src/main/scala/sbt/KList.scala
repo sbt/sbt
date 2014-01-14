@@ -37,8 +37,7 @@ final case class KCons[H, +T <: KList[M], +M[_]](head: M[H], tail: T) extends KL
 	def traverse[N[_], P[_]](f: M ~> (N ∙ P)#l)(implicit np: Applicative[N]): N[Transform[P]] =
 	{
 		val tt: N[tail.Transform[P]] = tail.traverse[N,P](f)
-		val g = (t: tail.Transform[P]) => (h: P[H]) => KCons(h, t)
-		np.apply(np.map(g, tt), f(head))
+		np.apply2(f(head), tt)( (h,t) => KCons(h,t))
 	}
 	def :^:[A,N[x] >: M[x]](h: N[A]) = KCons(h, this)
 	override def foldr[T](f: (M[_], T) => T, init: T): T = f(head, tail.foldr(f, init))

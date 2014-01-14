@@ -28,7 +28,8 @@ object ParserInstance extends Instance
 {
 		import sbt.Classes.Applicative
 	private[this] implicit val parserApplicative: Applicative[M] = new Applicative[M]{
-		def apply[S,T](f: M[S => T], v: M[S]): M[T] = s => (f(s) ~ v(s)) map { case (a,b) => a(b) }
+		def apply[S,T](f: M[S => T], v: M[S]): M[T] = apply2(f,v)( (f,v) => f(v))
+		def apply2[S,T,U](m: M[S], n: M[T])(f: (S,T) => U): M[U] = s => (m(s) ~ n(s)) map { case (a,b) => f(a,b) }
 		def pure[S](s: => S) = const(Parser.success(s))
 		def map[S, T](f: S => T, v: M[S]) = s => v(s).map(f)
 	}
