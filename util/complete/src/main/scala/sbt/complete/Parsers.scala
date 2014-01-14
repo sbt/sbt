@@ -78,7 +78,7 @@ trait Parsers
 	def isScalaIDChar(c: Char) = c.isLetterOrDigit || c == '_'
 
 	def isDelimiter(c: Char) = c match { case '`' | '\'' | '\"' | /*';' | */',' | '.' => true ; case _ => false }
-	
+
 	/** Matches a single character that is not a whitespace character. */
 	lazy val NotSpaceClass = charClass(!_.isWhitespace, "non-whitespace character")
 
@@ -153,7 +153,7 @@ trait Parsers
 	/** Parses a verbatim quoted String value, discarding the quotes in the result.  This kind of quoted text starts with triple quotes `"""`
 	* and ends at the next triple quotes and may contain any character in between. */
 	lazy val StringVerbatim: Parser[String] = VerbatimDQuotes ~>
-		any.+.string.filter(!_.contains(VerbatimDQuotes), _ => "Invalid verbatim string") <~ 
+		any.+.string.filter(!_.contains(VerbatimDQuotes), _ => "Invalid verbatim string") <~
 		VerbatimDQuotes
 
 	/** Parses a string value, interpreting escapes and discarding the surrounding quotes in the result.
@@ -168,7 +168,7 @@ trait Parsers
 	  BackslashChar ~> ('b' ^^^ '\b' | 't' ^^^ '\t' | 'n' ^^^ '\n' | 'f' ^^^ '\f' | 'r' ^^^ '\r' |
 	  '\"' ^^^ '\"' | '\'' ^^^ '\'' | '\\' ^^^ '\\' | UnicodeEscape)
 
-	/** Parses a single unicode escape sequence into the represented Char. 
+	/** Parses a single unicode escape sequence into the represented Char.
 	* A unicode escape begins with a backslash, followed by a `u` and 4 hexadecimal digits representing the unicode value. */
 	lazy val UnicodeEscape: Parser[Char] =
 	  ("u" ~> repeat(HexDigit, 4, 4)) map { seq => Integer.parseInt(seq.mkString, 16).toChar }
@@ -234,6 +234,8 @@ object DefaultParsers extends Parsers with ParserMain
 	def matches(p: Parser[_], s: String): Boolean =
 		apply(p)(s).resultEmpty.isValid
 
+	private[this] val IDRegex = """\p{Alpha}[-_\p{Alnum}-]*""".r.pattern
+
 	/** Returns `true` if `s` parses successfully according to [[ID]].*/
-	def validID(s: String): Boolean = matches(ID, s)
+	def validID(s: String): Boolean = IDRegex.matcher(s).matches
 }
