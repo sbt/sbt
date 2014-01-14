@@ -182,13 +182,19 @@ object Load
 
 	def structureIndex(data: Settings[Scope], settings: Seq[Setting[_]], extra: KeyIndex => BuildUtil[_], projects: Map[URI, LoadedBuildUnit]): sbt.StructureIndex =
 	{
+	Time.block("structureIndex")
 		val keys = Index.allKeys(settings)
 		val attributeKeys = Index.attributeKeys(data) ++ keys.map(_.key)
 		val scopedKeys = keys ++ data.allKeys( (s,k) => ScopedKey(s,k))
 		val projectsMap = projects.mapValues(_.defined.keySet)
+	Time("initial")
 		val keyIndex = KeyIndex(scopedKeys, projectsMap)
+	Time("keyIndex")
 		val aggIndex = KeyIndex.aggregate(scopedKeys, extra(keyIndex), projectsMap)
-		new sbt.StructureIndex(Index.stringToKeyMap(attributeKeys), Index.taskToKeyMap(data), Index.triggers(data), keyIndex, aggIndex)
+	Time("aggIndex")
+		val si = new sbt.StructureIndex(Index.stringToKeyMap(attributeKeys), Index.taskToKeyMap(data), Index.triggers(data), keyIndex, aggIndex)
+	Time.complete("structureIndex")
+		si
 	}
 
 		// Reevaluates settings after modifying them.  Does not recompile or reload any build components.
