@@ -4,6 +4,9 @@ package sbt
 	import Def.Setting
 	import Natures._
 
+/** Marks a top-level object so that sbt will wildcard import it for .sbt files, `consoleProject`, and `set`. */
+trait AutoImport
+
 /**
 An AutoPlugin defines a group of settings and the conditions that the settings are automatically added to a build (called "activation").
 The `select` method defines the conditions,
@@ -59,15 +62,15 @@ abstract class AutoPlugin
 	def projectConfigurations: Seq[Configuration] = Nil
 
 	/** The [[Setting]]s to add in the scope of each project that activates this AutoPlugin. */
-   def projectSettings: Seq[Setting[_]] = Nil
+	def projectSettings: Seq[Setting[_]] = Nil
 
 	/** The [[Setting]]s to add to the build scope for each project that activates this AutoPlugin.
 	* The settings returned here are guaranteed to be added to a given build scope only once
 	* regardless of how many projects for that build activate this AutoPlugin. */
-   def buildSettings: Seq[Setting[_]] = Nil
+	def buildSettings: Seq[Setting[_]] = Nil
 
 	/** The [[Setting]]s to add to the global scope exactly once if any project activates this AutoPlugin. */
-   def globalSettings: Seq[Setting[_]] = Nil
+	def globalSettings: Seq[Setting[_]] = Nil
 
 	// TODO?: def commands: Seq[Command]
 }
@@ -82,19 +85,30 @@ sealed trait Natures {
 final case class Nature(label: String) extends Basic {
 	/** Constructs a Natures matcher that excludes this Nature. */
 	def unary_! : Basic = Exclude(this)
+	override def toString = label
 }
 
 object Natures
 {
 	// TODO: allow multiple AutoPlugins to provide the same Nature?
 	// TODO: translate error messages
-	/** Select the AutoPlugins to include according to the user-specified natures in `requested` and all discovered AutoPlugins in `defined`.*/
-	def evaluate(requested: Natures, defined: List[AutoPlugin]): Seq[AutoPlugin] =
-	{
-		val byAtom = defined.map(x => (Atom(x.provides.label), x)).toMap
-		val clauses = Clauses( defined.map(d => asClause(d)) )
-		val results = Logic.reduce(clauses, flatten(requested).toSet)
-		results.ordered.map(byAtom)
+	def compile(defined: List[AutoPlugin]): Natures => Seq[AutoPlugin] =
+		if(defined.isEmpty)
+			Types.const(Nil)
+		else
+		{
+			val byAtom = defined.map(x => (Atom(x.provides.label), x)).toMap
+			val clauses = Clauses( defined.map(d => asClause(d)) )
+			requestedNatures => {
+				val results = Logic.reduce(clauses, flatten(requestedNatures).toSet)
+				results.ordered.flatMap(a => byAtom.get(a).toList)
+			}
+		}
+
+	def empty: Natures = Empty
+	private[sbt] final object Empty extends Natures {
+		def &&(o: Basic): Natures = o
+		override def toString = "<none>"
 	}
 
 	/** An included or excluded Nature.  TODO: better name than Basic. */
@@ -103,9 +117,16 @@ object Natures
 	}
 	private[sbt] final case class Exclude(n: Nature) extends Basic  {
 		def unary_! : Nature = n
+		override def toString = s"!$n"
 	}
 	private[sbt] final case class And(natures: List[Basic]) extends Natures {
 		def &&(o: Basic): Natures = And(o :: natures)
+		override def toString = natures.mkString(", ")
+	}
+	private[sbt] def and(a: Natures, b: Natures) = b match {
+		case Empty => a
+		case And(ns) => (a /: ns)(_ && _)
+		case b: Basic => a && b
 	}
 
 	private[sbt] def asClause(ap: AutoPlugin): Clause =
@@ -114,11 +135,13 @@ object Natures
 	private[this] def flatten(n: Natures): Seq[Literal] = n match {
 		case And(ns) => convertAll(ns)
 		case b: Basic => convertBasic(b) :: Nil
+		case Empty => Nil
 	}
 
 	private[this] def convert(n: Natures): Formula = n match {
 		case And(ns) => convertAll(ns).reduce[Formula](_ && _)
 		case b: Basic => convertBasic(b)
+		case Empty => Formula.True
 	}
 	private[this] def convertBasic(b: Basic): Literal = b match {
 		case Exclude(n) => !convertBasic(n)

@@ -180,7 +180,7 @@ object Load
 		val keys = Index.allKeys(settings)
 		val attributeKeys = Index.attributeKeys(data) ++ keys.map(_.key)
 		val scopedKeys = keys ++ data.allKeys( (s,k) => ScopedKey(s,k))
-		val projectsMap = projects.mapValues(_.defined.keySet)
+		val projectsMap = projects.mapValues(_.defined.keySet).toMap
 		val keyIndex = KeyIndex(scopedKeys, projectsMap)
 		val aggIndex = KeyIndex.aggregate(scopedKeys, extra(keyIndex), projectsMap)
 		new sbt.StructureIndex(Index.stringToKeyMap(attributeKeys), Index.taskToKeyMap(data), Index.triggers(data), keyIndex, aggIndex)
@@ -201,10 +201,10 @@ object Load
 	{
 		((loadedBuild in GlobalScope :== loaded) +:
 		transformProjectOnly(loaded.root, rootProject, injectSettings.global)) ++
-		inScope(GlobalScope)( pluginGlobalSettings(loaded) ) ++
+		inScope(GlobalScope)( pluginGlobalSettings(loaded) ++ loaded.autos.globalSettings ) ++
 		loaded.units.toSeq.flatMap { case (uri, build) =>
-			val plugins = build.unit.plugins.plugins
-			val pluginBuildSettings = plugins.flatMap(_.buildSettings)
+			val plugins = build.unit.plugins.detected.plugins.values
+			val pluginBuildSettings = plugins.flatMap(_.buildSettings) ++ loaded.autos.buildSettings(uri)
 			val pluginNotThis = plugins.flatMap(_.settings) filterNot isProjectThis
 			val projectSettings = build.defined flatMap { case (id, project) =>
 				val ref = ProjectRef(uri, id)
@@ -220,9 +220,10 @@ object Load
 			buildSettings ++ projectSettings
 		}
 	}
+	@deprecated("Does not account for AutoPlugins and will be made private.", "0.13.2")
 	def pluginGlobalSettings(loaded: sbt.LoadedBuild): Seq[Setting[_]] =
 		loaded.units.toSeq flatMap { case (_, build) =>
-			build.unit.plugins.plugins flatMap { _.globalSettings }
+			build.unit.plugins.detected.plugins.values flatMap { _.globalSettings }
 		}
 
 	@deprecated("No longer used.", "0.13.0")
@@ -368,10 +369,11 @@ object Load
 	def resolveProjects(loaded: sbt.PartBuild): sbt.LoadedBuild =
 	{
 		val rootProject = getRootProject(loaded.units)
-		new sbt.LoadedBuild(loaded.root, loaded.units map { case (uri, unit) =>
+		val units = loaded.units map { case (uri, unit) =>
 			IO.assertAbsolute(uri)
 			(uri, resolveProjects(uri, unit, rootProject))
-		})
+		}
+		new sbt.LoadedBuild(loaded.root, units)
 	}
 	def resolveProjects(uri: URI, unit: sbt.PartBuildUnit, rootProject: URI => String): sbt.LoadedBuildUnit =
 	{
@@ -399,10 +401,10 @@ object Load
 	def getBuild[T](map: Map[URI, T], uri: URI): T =
 		map.getOrElse(uri, noBuild(uri))
 
-	def emptyBuild(uri: URI) = sys.error("No root project defined for build unit '" + uri + "'")
-	def noBuild(uri: URI) = sys.error("Build unit '" + uri + "' not defined.")
-	def noProject(uri: URI, id: String) = sys.error("No project '" + id + "' defined in '" + uri + "'.")
-	def noConfiguration(uri: URI, id: String, conf: String) = sys.error("No configuration '" + conf + "' defined in project '" + id + "' in '" + uri +"'")
+	def emptyBuild(uri: URI) = sys.error(s"No root project defined for build unit '$uri'")
+	def noBuild(uri: URI) = sys.error(s"Build unit '$uri' not defined.")
+	def noProject(uri: URI, id: String) = sys.error(s"No project '$id' defined in '$uri'.")
+	def noConfiguration(uri: URI, id: String, conf: String) = sys.error(s"No configuration '$conf' defined in project '$id' in '$uri'")
 
 	def loadUnit(uri: URI, localBase: File, s: State, config: sbt.LoadBuildConfiguration): sbt.BuildUnit =
 	{
@@ -410,15 +412,13 @@ object Load
 		val defDir = projectStandard(normBase)
 
 		val plugs = plugins(defDir, s, config.copy(pluginManagement = config.pluginManagement.forPlugin))
-		val defNames = analyzed(plugs.fullClasspath) flatMap findDefinitions
-		val defsScala = if(defNames.isEmpty) Nil else loadDefinitions(plugs.loader, defNames)
-		val imports = BuildUtil.getImports(plugs.pluginNames, defNames)
+		val defsScala = plugs.detected.builds.values
 
 		lazy val eval = mkEval(plugs.classpath, defDir, plugs.pluginData.scalacOptions)
 		val initialProjects = defsScala.flatMap(b => projectsFromBuild(b, normBase))
 
 		val memoSettings = new mutable.HashMap[File, LoadedSbtFile]
-		def loadProjects(ps: Seq[Project]) = loadTransitive(ps, normBase, imports, plugs, () => eval, config.injectSettings, Nil, memoSettings)
+		def loadProjects(ps: Seq[Project]) = loadTransitive(ps, normBase, plugs, () => eval, config.injectSettings, Nil, memoSettings)
 		val loadedProjectsRaw = loadProjects(initialProjects)
 		val hasRoot = loadedProjectsRaw.exists(_.base == normBase) || defsScala.exists(_.rootProject.isDefined)
 		val (loadedProjects, defaultBuildIfNone) =
@@ -434,7 +434,7 @@ object Load
 			}
 
 		val defs = if(defsScala.isEmpty) defaultBuildIfNone :: Nil else defsScala
-		val loadedDefs = new sbt.LoadedDefinitions(defDir, Nil, plugs.loader, defs, loadedProjects, defNames)
+		val loadedDefs = new sbt.LoadedDefinitions(defDir, Nil, plugs.loader, defs, loadedProjects, plugs.detected.builds.names)
 		new sbt.BuildUnit(uri, normBase, loadedDefs, plugs)
 	}
 
@@ -460,16 +460,19 @@ object Load
 	private[this] def projectsFromBuild(b: Build, base: File): Seq[Project] =
 		b.projectDefinitions(base).map(resolveBase(base))
 
-	private[this] def loadTransitive(newProjects: Seq[Project], buildBase: File, imports: Seq[String], plugins: sbt.LoadedPlugins, eval: () => Eval, injectSettings: InjectSettings, acc: Seq[Project], memoSettings: mutable.Map[File, LoadedSbtFile]): Seq[Project] =
+	private[this] def loadTransitive(newProjects: Seq[Project], buildBase: File, plugins: sbt.LoadedPlugins, eval: () => Eval, injectSettings: InjectSettings, acc: Seq[Project], memoSettings: mutable.Map[File, LoadedSbtFile]): Seq[Project] =
 	{
-		def loadSbtFiles(auto: AddSettings, base: File): LoadedSbtFile =
-			loadSettings(auto, base, imports, plugins, eval, injectSettings, memoSettings)
+		def loadSbtFiles(auto: AddSettings, base: File, autoPlugins: Seq[AutoPlugin]): LoadedSbtFile =
+			loadSettings(auto, base, plugins, eval, injectSettings, memoSettings, autoPlugins)
 		def loadForProjects = newProjects map { project =>
-			val loadedSbtFiles = loadSbtFiles(project.auto, project.base)
-			val transformed = project.copy(settings = (project.settings: Seq[Setting[_]]) ++ loadedSbtFiles.settings)
+			val autoPlugins = plugins.detected.compileNatures(project.natures)
+			val autoConfigs = autoPlugins.flatMap(_.projectConfigurations)
+			val loadedSbtFiles = loadSbtFiles(project.auto, project.base, autoPlugins)
+			val newSettings = (project.settings: Seq[Setting[_]]) ++ loadedSbtFiles.settings
+			val transformed = project.copy(settings = newSettings).setAutoPlugins(autoPlugins).overrideConfigs(autoConfigs : _*)
 			(transformed, loadedSbtFiles.projects)
 		}
-		def defaultLoad = loadSbtFiles(AddSettings.defaultSbtFiles, buildBase).projects
+		def defaultLoad = loadSbtFiles(AddSettings.defaultSbtFiles, buildBase, Nil).projects
 		val (nextProjects, loadedProjects) =
 			if(newProjects.isEmpty) // load the .sbt files in the root directory to look for Projects
 				(defaultLoad, acc)
@@ -481,10 +484,10 @@ object Load
 		if(nextProjects.isEmpty)
 			loadedProjects
 		else
-			loadTransitive(nextProjects, buildBase, imports, plugins, eval, injectSettings, loadedProjects, memoSettings)
+			loadTransitive(nextProjects, buildBase, plugins, eval, injectSettings, loadedProjects, memoSettings)
 	}
 
-	private[this] def loadSettings(auto: AddSettings, projectBase: File, buildImports: Seq[String], loadedPlugins: sbt.LoadedPlugins, eval: ()=>Eval, injectSettings: InjectSettings, memoSettings: mutable.Map[File, LoadedSbtFile]): LoadedSbtFile =
+	private[this] def loadSettings(auto: AddSettings, projectBase: File, loadedPlugins: sbt.LoadedPlugins, eval: ()=>Eval, injectSettings: InjectSettings, memoSettings: mutable.Map[File, LoadedSbtFile], autoPlugins: Seq[AutoPlugin]): LoadedSbtFile =
 	{
 		lazy val defaultSbtFiles = configurationSources(projectBase)
 		def settings(ss: Seq[Setting[_]]) = new LoadedSbtFile(ss, Nil, Nil)
@@ -499,14 +502,20 @@ object Load
 			lf
 		}
 		def loadSettingsFile(src: File): LoadedSbtFile =
-			EvaluateConfigurations.evaluateSbtFile(eval(), src, IO.readLines(src), buildImports, 0)(loader)
+			EvaluateConfigurations.evaluateSbtFile(eval(), src, IO.readLines(src), loadedPlugins.detected.imports, 0)(loader)
 
 			import AddSettings.{User,SbtFiles,DefaultSbtFiles,Plugins,Sequence}
+		def pluginSettings(f: Plugins) = {
+			val included = loadedPlugins.detected.plugins.values.filter(f.include) // don't apply the filter to AutoPlugins, only Plugins
+			val oldStyle = included.flatMap(p => p.settings.filter(isProjectThis) ++ p.projectSettings)
+			val autoStyle = autoPlugins.flatMap(_.projectSettings)
+			oldStyle ++ autoStyle
+		}
 		def expand(auto: AddSettings): LoadedSbtFile = auto match {
 			case User => settings(injectSettings.projectLoaded(loader))
 			case sf: SbtFiles => loadSettings( sf.files.map(f => IO.resolve(projectBase, f)))
 			case sf: DefaultSbtFiles => loadSettings( defaultSbtFiles.filter(sf.include))
-			case f: Plugins => settings(loadedPlugins.plugins.filter(f.include).flatMap(p => p.settings.filter(isProjectThis) ++ p.projectSettings))
+			case p: Plugins => settings(pluginSettings(p))
 			case q: Sequence => (LoadedSbtFile.empty /: q.sequence) { (b,add) => b.merge( expand(add) ) }
 		}
 		expand(auto)
@@ -599,27 +608,48 @@ object Load
 		config.evalPluginDef(pluginDef, pluginState)
 	}
 
+
+/*
+// TODO: UNCOMMENT BEFORE COMMIT
+	@deprecated("Use ModuleUtilities.getCheckedObjects[Build].", "0.13.2")
 	def loadDefinitions(loader: ClassLoader, defs: Seq[String]): Seq[Build] =
 		defs map { definition => loadDefinition(loader, definition) }
+
+	@deprecated("Use ModuleUtilities.getCheckedObject[Build].", "0.13.2")
 	def loadDefinition(loader: ClassLoader, definition: String): Build =
 		ModuleUtilities.getObject(definition, loader).asInstanceOf[Build]
+*/
 
 	def loadPlugins(dir: File, data: PluginData, loader: ClassLoader): sbt.LoadedPlugins =
 	{
-		val (pluginNames, plugins) = if(data.classpath.isEmpty) (Nil, Nil) else {
-			val names = getPluginNames(data.classpath, loader)
-			val loaded =
-				try loadPlugins(loader, names)
-				catch {
-					case e: ExceptionInInitializerError =>
-						val cause = e.getCause
-						if(cause eq null) throw e else throw cause
-					case e: LinkageError => incompatiblePlugins(data, e)
-				}
-			(names, loaded)
-		}
-		new sbt.LoadedPlugins(dir, data, loader, plugins, pluginNames)
+		// TODO: binary detection for builds, autoImports, autoPlugins
+		import AutoBinaryResource._
+		val plugins = detectModules[Plugin](data, loader, Plugins)
+		val builds = detectModules[Build](data, loader, Builds)
+		val autoImports = detectModules[AutoImport](data, loader, AutoImports)
+		val autoPlugins = detectModules[AutoPlugin](data, loader, AutoPlugins)
+		val detected = new DetectedPlugins(plugins, autoImports, autoPlugins, builds)
+		new sbt.LoadedPlugins(dir, data, loader, detected)
 	}
+	private[this] def detectModules[T](data: PluginData, loader: ClassLoader, resourceName: String)(implicit mf: reflect.ClassManifest[T]): DetectedModules[T] =
+	{
+		val classpath = data.classpath
+		val namesAndValues = if(classpath.isEmpty) Nil else {
+			val names = discoverModuleNames(classpath, loader, resourceName, mf.erasure.getName)
+			loadModules[T](data, names, loader)
+		}
+		new DetectedModules(namesAndValues)
+	}
+
+	private[this] def loadModules[T: ClassManifest](data: PluginData, names: Seq[String], loader: ClassLoader): Seq[(String,T)] =
+		try ModuleUtilities.getCheckedObjects[T](names, loader)
+		catch {
+			case e: ExceptionInInitializerError =>
+				val cause = e.getCause
+				if(cause eq null) throw e else throw cause
+			case e: LinkageError => incompatiblePlugins(data, e)
+		}
+
 	private[this] def incompatiblePlugins(data: PluginData, t: LinkageError): Nothing =
 	{
 		val evicted = data.report.toList.flatMap(_.configurations.flatMap(_.evicted))
@@ -629,26 +659,54 @@ object Load
 		val msgExtra = if(evictedStrings.isEmpty) "" else "\nNote that conflicts were resolved for some dependencies:\n\t" + evictedStrings.mkString("\n\t")
 		throw new IncompatiblePluginsException(msgBase + msgExtra, t)
 	}
-	def getPluginNames(classpath: Seq[Attributed[File]], loader: ClassLoader): Seq[String] =
-		 ( binaryPlugins(data(classpath), loader) ++ (analyzed(classpath) flatMap findPlugins) ).distinct
 
+	def discoverModuleNames(classpath: Seq[Attributed[File]], loader: ClassLoader, resourceName: String, moduleTypes: String*): Seq[String] =
+		(
+			binaryPlugins(data(classpath), loader, resourceName) ++
+			(analyzed(classpath) flatMap (a => discover(a, moduleTypes : _*)))
+		).distinct
+
+	@deprecated("Replaced by the more general discoverModuleNames and will be made private.", "0.13.2")
+	def getPluginNames(classpath: Seq[Attributed[File]], loader: ClassLoader): Seq[String] =
+		discoverModuleNames(classpath, loader, AutoBinaryResource.Plugins, classOf[Plugin].getName)
+
+/*
+TODO: UNCOMMENT BEFORE COMMIT
+	@deprecated("Explicitly specify the resource name.", "0.13.2")
 	def binaryPlugins(classpath: Seq[File], loader: ClassLoader): Seq[String] =
+		binaryPlugins(classpath, loader, AutoBinaryResource.Plugins)
+*/
+
+	object AutoBinaryResource {
+		final val AutoPlugins = "sbt/sbt.autoplugins"
+		final val Plugins = "sbt/sbt.plugins"
+		final val Builds = "sbt/sbt.builds"
+		final val AutoImports = "sbt/sbt.autoimports"
+	}
+	def binaryPlugins(classpath: Seq[File], loader: ClassLoader, resourceName: String): Seq[String] =
 	{
 		import collection.JavaConversions._
-		loader.getResources("sbt/sbt.plugins").toSeq.filter(onClasspath(classpath)) flatMap { u =>
+		loader.getResources(resourceName).toSeq.filter(onClasspath(classpath)) flatMap { u =>
 			IO.readLinesURL(u).map( _.trim).filter(!_.isEmpty)
 		}
 	}
 	def onClasspath(classpath: Seq[File])(url: URL): Boolean =
 		IO.urlAsFile(url) exists (classpath.contains _)
 
+/*
+// TODO: UNCOMMENT BEFORE COMMIT
+	@deprecated("Use ModuleUtilities.getCheckedObjects[Plugin].", "0.13.2")
 	def loadPlugins(loader: ClassLoader, pluginNames: Seq[String]): Seq[Plugin] =
-		pluginNames.map(pluginName => loadPlugin(pluginName, loader))
+		ModuleUtilities.getCheckedObjects[Plugin](loader, pluginNames)
 
+	@deprecated("Use ModuleUtilities.getCheckedObject[Plugin].", "0.13.2")
 	def loadPlugin(pluginName: String, loader: ClassLoader): Plugin =
-		ModuleUtilities.getObject(pluginName, loader).asInstanceOf[Plugin]
+		ModuleUtilities.getCheckedObject[Plugin](pluginName, loader)
 
+	@deprecated("No longer used.", "0.13.2")
 	def findPlugins(analysis: inc.Analysis): Seq[String]  =  discover(analysis, "sbt.Plugin")
+*/
+
 	def findDefinitions(analysis: inc.Analysis): Seq[String]  =  discover(analysis, "sbt.Build")
 	def discover(analysis: inc.Analysis, subclasses: String*): Seq[String] =
 	{

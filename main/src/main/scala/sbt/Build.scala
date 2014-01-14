@@ -18,6 +18,7 @@ trait Build
 	* If None, the root project is the first project in the build's root directory or just the first project if none are in the root directory.*/
 	def rootProject: Option[Project] = None
 }
+// TODO 0.14.0: decide if Plugin should be deprecated in favor of AutoPlugin
 trait Plugin
 {
 	@deprecated("Override projectSettings or buildSettings instead.", "0.12.0")

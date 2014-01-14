@@ -73,7 +73,7 @@ object Sbt extends Build
 	lazy val datatypeSub = baseProject(utilPath /"datatype", "Datatype Generator") dependsOn(ioSub)
 		// cross versioning
 	lazy val crossSub = baseProject(utilPath / "cross", "Cross") settings(inConfig(Compile)(Transform.crossGenSettings): _*)
-		// A monotonic logic that includes restricted negation as failure
+		// A logic with restricted negation as failure for a unique, stable model
 	lazy val logicSub = baseProject(utilPath / "logic", "Logic").dependsOn(collectionSub, relationSub)
 
 	/* **** Intermediate-level Modules **** */
