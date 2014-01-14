@@ -44,18 +44,25 @@ object EvaluateTask
 	def defaultConfig(state: State): EvaluateConfig =
 	{
 		val extracted = Project.extract(state)
-		defaultConfig(extracted, extracted.structure)
+		extractedConfig(extracted, extracted.structure, state)
 	}
 
 	@deprecated("Use extractedConfig.", "0.13.0")
 	def defaultConfig(extracted: Extracted, structure: BuildStructure) =
-		EvaluateConfig(false, restrictions(extracted, structure), progress = executeProgress(extracted, structure))
+		EvaluateConfig(false, restrictions(extracted, structure), progress = defaultProgress)
 
+  @deprecated("Use other extractedConfig", "0.13.2")
 	def extractedConfig(extracted: Extracted, structure: BuildStructure): EvaluateConfig =
 	{
 		val workers = restrictions(extracted, structure)
 		val canCancel = cancelable(extracted, structure)
-		val progress = executeProgress(extracted, structure)
+		EvaluateConfig(cancelable = canCancel, restrictions = workers, progress = defaultProgress)
+	}
+	def extractedConfig(extracted: Extracted, structure: BuildStructure, state: State): EvaluateConfig =
+	{
+		val workers = restrictions(extracted, structure)
+		val canCancel = cancelable(extracted, structure)
+		val progress = executeProgress(extracted, structure, state)
 		EvaluateConfig(cancelable = canCancel, restrictions = workers, progress = progress)
 	}
 
@@ -78,8 +85,11 @@ object EvaluateTask
 	def cancelable(extracted: Extracted, structure: BuildStructure): Boolean =
 		getSetting(Keys.cancelable, false, extracted, structure)
 
-	private[sbt] def executeProgress(extracted: Extracted, structure: BuildStructure): ExecuteProgress[Task] =
-		getSetting(Keys.executeProgress, new Keys.TaskProgress(defaultProgress), extracted, structure).progress
+	private[sbt] def executeProgress(extracted: Extracted, structure: BuildStructure, state: State): ExecuteProgress[Task] = {
+		import Types.const
+		 val maker: State => Keys.TaskProgress = getSetting(Keys.executeProgress, const(new Keys.TaskProgress(defaultProgress)), extracted, structure)
+		 maker(state).progress
+   }
 
 	def getSetting[T](key: SettingKey[T], default: T, extracted: Extracted, structure: BuildStructure): T =
 		key in extracted.currentRef get structure.data getOrElse default
@@ -94,7 +104,7 @@ object EvaluateTask
 	{
 		val root = ProjectRef(pluginDef.root, Load.getRootProject(pluginDef.units)(pluginDef.root))
 		val pluginKey = pluginData
-		val config = extractedConfig(Project.extract(state), pluginDef)
+		val config = extractedConfig(Project.extract(state), pluginDef, state)
 		val evaluated = apply(pluginDef, ScopedKey(pluginKey.scope, pluginKey.key), state, root, config)
 		val (newS, result) = evaluated getOrElse sys.error("Plugin data does not exist for plugin definition at " + pluginDef.root)
 		Project.runUnloadHooks(newS) // discard states

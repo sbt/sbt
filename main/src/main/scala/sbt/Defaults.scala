@@ -732,13 +732,16 @@ object Defaults extends BuildCommon
 	@deprecated("Use inTask(compile)(compileInputsSettings)", "0.13.0")
 	def compileTaskSettings: Seq[Setting[_]] = inTask(compile)(compileInputsSettings)
 
-	def compileTask: Initialize[Task[inc.Analysis]] = Def.task { compileTaskImpl(streams.value, (compileInputs in compile).value) }
-	private[this] def compileTaskImpl(s: TaskStreams, ci: Compiler.Inputs): inc.Analysis =
+	def compileTask: Initialize[Task[inc.Analysis]] = Def.task { compileTaskImpl(streams.value, (compileInputs in compile).value, (compilerReporter in compile).value) }
+	private[this] def compileTaskImpl(s: TaskStreams, ci: Compiler.Inputs, reporter: Option[xsbti.Reporter]): inc.Analysis =
 	{
 		lazy val x = s.text(ExportStream)
 		def onArgs(cs: Compiler.Compilers) = cs.copy(scalac = cs.scalac.onArgs(exported(x, "scalac")), javac = cs.javac.onArgs(exported(x, "javac")))
 		val i = ci.copy(compilers = onArgs(ci.compilers))
-		try Compiler(i,s.log)
+		try reporter match {
+			case Some(reporter) => Compiler(i, s.log, reporter)
+			case None => Compiler(i, s.log)
+		}
 		finally x.close() // workaround for #937
 	}
 	def compileIncSetupTask =
@@ -749,7 +752,8 @@ object Defaults extends BuildCommon
 		Seq(compileInputs := {
 			val cp = classDirectory.value +: data(dependencyClasspath.value)
 			Compiler.inputs(cp, sources.value, classDirectory.value, scalacOptions.value, javacOptions.value, maxErrors.value, sourcePositionMappers.value, compileOrder.value)(compilers.value, compileIncSetup.value, streams.value.log)
-		})
+		},
+		compilerReporter := None)
 
 	def printWarningsTask: Initialize[Task[Unit]] =
 		(streams, compile, maxErrors, sourcePositionMappers) map { (s, analysis, max, spms) =>

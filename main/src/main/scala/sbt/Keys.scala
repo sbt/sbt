@@ -344,8 +344,11 @@ object Keys
 
 	// wrapper to work around SI-2915
 	private[sbt] final class TaskProgress(val progress: ExecuteProgress[Task])
-	private[sbt] val executeProgress = SettingKey[TaskProgress]("executeProgress", "Experimental task execution listener.", DTask)
+	private[sbt] val executeProgress = SettingKey[State => TaskProgress]("executeProgress", "Experimental task execution listener.", DTask)
 
+	// Experimental in sbt 0.13.2 to enable grabing semantic compile failures.
+	private[sbt] val compilerReporter = TaskKey[Option[xsbti.Reporter]]("compilerReporter", "Experimental hook to listen (or send) compilation failure messages.", DTask)
+	
 	val triggeredBy = Def.triggeredBy
 	val runBefore = Def.runBefore
 
