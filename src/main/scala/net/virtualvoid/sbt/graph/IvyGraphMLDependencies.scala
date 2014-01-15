@@ -118,10 +118,11 @@ object IvyGraphMLDependencies extends App {
   }
 
   def ignoreScalaLibrary(scalaVersion: String, graph: ModuleGraph): ModuleGraph = {
-    val scalaLibraryId = ModuleId("org.scala-lang", "scala-library", scalaVersion)
+    def isScalaLibrary(m: Module) = isScalaLibraryId(m.id)
+    def isScalaLibraryId(id: ModuleId) = id.organisation == "org.scala-lang" && id.name == "scala-library"
 
     def dependsOnScalaLibrary(m: Module): Boolean =
-      graph.dependencyMap(m.id).map(_.id).contains(scalaLibraryId)
+      graph.dependencyMap(m.id).exists(isScalaLibrary)
 
     def addScalaLibraryAnnotation(m: Module): Module = {
       if (dependsOnScalaLibrary(m))
@@ -130,8 +131,8 @@ object IvyGraphMLDependencies extends App {
         m
     }
 
-    val newNodes = graph.nodes.map(addScalaLibraryAnnotation).filterNot(_.id == scalaLibraryId)
-    val newEdges = graph.edges.filterNot(_._2 == scalaLibraryId)
+    val newNodes = graph.nodes.map(addScalaLibraryAnnotation).filterNot(isScalaLibrary)
+    val newEdges = graph.edges.filterNot(e => isScalaLibraryId(e._2))
     ModuleGraph(newNodes, newEdges)
   }
 
