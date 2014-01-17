@@ -1043,9 +1043,9 @@ object Classpaths
 		makePomConfiguration := new MakePomConfiguration(artifactPath in makePom value, projectInfo.value, None, pomExtra.value, pomPostProcess.value, pomIncludeRepository.value, pomAllRepositories.value),
 		deliverLocalConfiguration := deliverConfig(crossTarget.value, status = if (isSnapshot.value) "integration" else "release", logging = ivyLoggingLevel.value ),
 		deliverConfiguration <<= deliverLocalConfiguration,
-		publishConfiguration := publishConfig(packagedArtifacts.in(publish).value, if(publishMavenStyle.value) None else Some(deliver.value), resolverName = getPublishTo(publishTo.value).name, checksums = checksums.in(publish).value, logging = ivyLoggingLevel.value),
-		publishLocalConfiguration := publishConfig(packagedArtifacts.in(publishLocal).value, Some(deliverLocal.value), checksums.in(publishLocal).value, logging = ivyLoggingLevel.value ),
-		publishM2Configuration := publishConfig(packagedArtifacts.in(publishM2).value, None, resolverName = Resolver.publishMavenLocal.name, checksums = checksums.in(publishM2).value, logging = ivyLoggingLevel.value),
+		publishConfiguration := publishConfig(packagedArtifacts.in(publish).value, if(publishMavenStyle.value) None else Some(deliver.value), resolverName = getPublishTo(publishTo.value).name, checksums = checksums.in(publish).value, logging = ivyLoggingLevel.value, overwrite = isSnapshot.value),
+		publishLocalConfiguration := publishConfig(packagedArtifacts.in(publishLocal).value, Some(deliverLocal.value), checksums.in(publishLocal).value, logging = ivyLoggingLevel.value, overwrite = isSnapshot.value),
+		publishM2Configuration := publishConfig(packagedArtifacts.in(publishM2).value, None, resolverName = Resolver.publishMavenLocal.name, checksums = checksums.in(publishM2).value, logging = ivyLoggingLevel.value, overwrite = isSnapshot.value),
 		ivySbt <<= ivySbt0,
 		ivyModule := { val is = ivySbt.value; new is.Module(moduleSettings.value) },
 		transitiveUpdate <<= transitiveUpdateTask,
@@ -1213,8 +1213,8 @@ object Classpaths
 
 	def deliverConfig(outputDirectory: File, status: String = "release", logging: UpdateLogging.Value = UpdateLogging.DownloadOnly) =
 	    new DeliverConfiguration(deliverPattern(outputDirectory), status, None, logging)
-	def publishConfig(artifacts: Map[Artifact, File], ivyFile: Option[File], checksums: Seq[String], resolverName: String = "local", logging: UpdateLogging.Value = UpdateLogging.DownloadOnly) =
-	    new PublishConfiguration(ivyFile, resolverName, artifacts, checksums, logging)
+	def publishConfig(artifacts: Map[Artifact, File], ivyFile: Option[File], checksums: Seq[String], resolverName: String = "local", logging: UpdateLogging.Value = UpdateLogging.DownloadOnly, overwrite: Boolean = false) =
+	    new PublishConfiguration(ivyFile, resolverName, artifacts, checksums, logging, overwrite)
 
 	def deliverPattern(outputPath: File): String  =  (outputPath / "[artifact]-[revision](-[classifier]).[ext]").absolutePath
 
