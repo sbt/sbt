@@ -158,6 +158,8 @@ Release plugins
    https://github.com/sbt/sbt-start-script
 -  sbt-native-packager:
    https://github.com/sbt/sbt-native-packager
+-  sbt-sonatype-plugin (releases to Sonatype Nexus repository)
+   https://github.com/xerial/sbt-sonatype
 
 System plugins
 ~~~~~~~~~~~~~~
