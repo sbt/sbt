@@ -8,3 +8,6 @@ jdk:
 notifications:
   email:
     - qbranch@typesafe.com
+before_install:
+ - sudo apt-get update -qq
+ - sudo apt-get install -qq rpm 
