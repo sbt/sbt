@@ -1,0 +1,10 @@
+language: scala
+script:
+  - sbt ++$TRAVIS_SCALA_VERSION rpm:packageBin debian:packageBin universal:packageBin
+scala:
+  - 2.10.3
+jdk:
+  - openjdk6
+notifications:
+  email:
+    - qbranch@typesafe.com
