@@ -1,0 +1,13 @@
+language: scala
+script:
+  - sbt ++$TRAVIS_SCALA_VERSION rpm:packageBin debian:packageBin universal:packageBin
+scala:
+  - 2.10.3
+jdk:
+  - openjdk6
+notifications:
+  email:
+    - qbranch@typesafe.com
+before_install:
+ - sudo apt-get update -qq
+ - sudo apt-get install -qq rpm 
