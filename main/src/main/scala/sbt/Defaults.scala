@@ -505,7 +505,13 @@ object Defaults extends BuildCommon
 				runPolicy match {
 					case Tests.SubProcess(opts) =>
 						val forkedConfig = config.copy(parallel = config.parallel && forkedParallelExecution)
-						s.log.debug(s"Forking tests - parallelism=${forkedConfig.parallel}, hiding-successful-output=${hideSuccessfulOutput}")
+
+						s.log.debug(
+						 s"""Forking tests
+								|  - parallelism=${forkedConfig.parallel}
+								|  - hiding-successful-output=$hideSuccessfulOutput
+								|  - noForkedVm=$noForkedVm""".stripMargin)
+
 						ForkTests(frameworks, runners, tests.toList, forkedConfig, cp.files, opts, s.log, hideSuccessfulOutput, noForkedVm) tag Tags.ForkedTestGroup
 					case Tests.InProcess =>
 						s.log.debug("Not forking tests")

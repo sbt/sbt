@@ -120,9 +120,6 @@ private[sbt] object ForkTests
 				val fullCp = classpath ++: Seq(IO.classLocationFile[ForkMain], IO.classLocationFile[Framework], IO.classLocationFile[Callback])
 				vmArgs = Seq("-classpath", fullCp mkString File.pathSeparator, classOf[ForkMain].getCanonicalName, getLocalPort.toString)
 	
-				log.debug(s"Forking tests: fork-options=$forkOptions, vm-args=$vmArgs, parallel=$parallelSafe, " +
-					s"hide-successful-output=$hideSuccessfulOutput, usePipedProcessOutput=$usePipedProcessOutput")
-
 				val newOptions = if( usePipedProcessOutput ) {
 					val outputStrategy = if( hideSuccessfulOutput ) {
 						BufferedOutput(outputBuffer)
@@ -133,6 +130,14 @@ private[sbt] object ForkTests
 				} else {
 					forkOptions
 				}
+
+				log.debug(
+				 s"""Creating a forked test runner:
+						|  - fork-options=$newOptions
+						|  - vm-args=$vmArgs,
+						|  - parallel=$parallelSafe,
+						|  - hide-successful-output=$hideSuccessfulOutput,
+						|  - usePipedProcessOutput=$usePipedProcessOutput""".stripMargin)
 
 				process = new Fork("java", None).fork(newOptions, vmArgs)
 			} catch {
@@ -405,12 +410,22 @@ private[sbt] object ForkTests
 			testListeners.foreach(_.doInit())
 
 			if( noForkedVm > 1 ) {
-				log.debug(s"Creating $noForkedVm forked test runners")
+				val noTests = opts.tests.size
+				val adjustedNoForkedVm = if( noTests > noForkedVm ) {
+					// note: if a test spawns new tests then this might be of a problem
+					//       we should ask the testing framework if it supports spawning of new tests
+					//       and disable this feature if it does
+					log.debug(s"Reducing the number of forked vm ($noForkedVm) as it exceeds the number of tests ($noTests)")
+					noTests
+				} else {
+					noForkedVm
+				}
+				log.debug(s"Creating $adjustedNoForkedVm forked test runners")
 				val suiteQueue = enqueueSuites(frameworks, opts, oneItemPerSuites = true)
 				var forkedVms : List[ForkedTestRunner] = Nil
 				var noVm = 0
 				try {
-					while( noVm < noForkedVm ) {
+					while( noVm < adjustedNoForkedVm ) {
 						// when we have multiple VMs we don't want the standard output to be captured within the process
 						// and sent over the socket, rather we'll get it through the piped standard output of the process
 						forkedVms ::= fork(suiteQueue, usePipedProcessOutput = true)
@@ -426,6 +441,7 @@ private[sbt] object ForkTests
 						}
 				}
 			} else {
+				log.debug(s"Creating a forked test runner")
 				val suiteQueue = enqueueSuites(frameworks, opts, oneItemPerSuites = false)
 				try {
 					awaitForkedVms(Seq(fork(suiteQueue, usePipedProcessOutput = false)))
