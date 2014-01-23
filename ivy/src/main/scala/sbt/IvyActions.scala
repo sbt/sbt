@@ -17,7 +17,10 @@ import plugins.resolver.{BasicResolver, DependencyResolver}
 
 final class DeliverConfiguration(val deliverIvyPattern: String, val status: String, val configurations: Option[Seq[Configuration]], val logging: UpdateLogging.Value)
 final class PublishConfiguration(val ivyFile: Option[File], val resolverName: String, val artifacts: Map[Artifact, File], val checksums: Seq[String], val logging: UpdateLogging.Value,
-                                 val overwrite: Boolean = false)
+                                 val overwrite: Boolean) {
+	def this(ivyFile: Option[File], resolverName: String, artifacts: Map[Artifact, File], checksums: Seq[String], logging: UpdateLogging.Value) =
+		this(ivyFile, resolverName, artifacts, checksums, logging, false)
+}
 
 final class UpdateConfiguration(val retrieve: Option[RetrieveConfiguration], val missingOk: Boolean, val logging: UpdateLogging.Value)
 final class RetrieveConfiguration(val retrieveDirectory: File, val outputPattern: String)

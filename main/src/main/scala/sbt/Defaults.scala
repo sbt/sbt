@@ -1213,8 +1213,11 @@ object Classpaths
 
 	def deliverConfig(outputDirectory: File, status: String = "release", logging: UpdateLogging.Value = UpdateLogging.DownloadOnly) =
 	    new DeliverConfiguration(deliverPattern(outputDirectory), status, None, logging)
+	def publishConfig(artifacts: Map[Artifact, File], ivyFile: Option[File], checksums: Seq[String], resolverName: String, logging: UpdateLogging.Value): PublishConfiguration =
+		publishConfig(artifacts, ivyFile, checksums, resolverName, logging, overwrite = false)
 	def publishConfig(artifacts: Map[Artifact, File], ivyFile: Option[File], checksums: Seq[String], resolverName: String = "local", logging: UpdateLogging.Value = UpdateLogging.DownloadOnly, overwrite: Boolean = false) =
-	    new PublishConfiguration(ivyFile, resolverName, artifacts, checksums, logging, overwrite)
+		new PublishConfiguration(ivyFile, resolverName, artifacts, checksums, logging, overwrite)
+
 
 	def deliverPattern(outputPath: File): String  =  (outputPath / "[artifact]-[revision](-[classifier]).[ext]").absolutePath
 
