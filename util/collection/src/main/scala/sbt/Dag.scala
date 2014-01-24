@@ -72,39 +72,52 @@ object Dag
 				new Cyclic(value, a :: all, false)
 	}
 
-	private[sbt] trait System[A] {
-		type B
-		def dependencies(t: A): List[B]
-		def isNegated(b: B): Boolean
-		def toA(b: B): A
+	/** A directed graph with edges labeled positive or negative. */
+	private[sbt] trait DirectedSignedGraph[Node]
+	{
+		/** Directed edge type that tracks the sign and target (head) vertex.
+		* The sign can be obtained via [[isNegative]] and the target vertex via [[head]]. */
+		type Arrow
+		/** List of initial nodes. */
+		def nodes: List[Arrow]
+		/** Outgoing edges for `n`. */
+		def dependencies(n: Node): List[Arrow]
+		/** `true` if the edge `a` is "negative", false if it is "positive". */
+		def isNegative(a: Arrow): Boolean
+		/** The target of the directed edge `a`. */
+		def head(a: Arrow): Node
 	}
-	private[sbt] def findNegativeCycle[T](system: System[T])(nodes: List[system.B]): List[system.B] =
+
+	/** Traverses a directed graph defined by `graph` looking for a cycle that includes a "negative" edge.
+	* The directed edges are weighted by the caller as "positive" or "negative".
+	* If a cycle containing a "negative" edge is detected, its member edges are returned in order.
+	* Otherwise, the empty list is returned. */
+	private[sbt] def findNegativeCycle[Node](graph: DirectedSignedGraph[Node]): List[graph.Arrow] =
 	{
 			import scala.annotation.tailrec
-			import system._
-		val finished = new mutable.HashSet[T]
-		val visited = new mutable.HashSet[T]
+			import graph._
+		val finished = new mutable.HashSet[Node]
+		val visited = new mutable.HashSet[Node]
 
-		def visit(nodes: List[B], stack: List[B]): List[B] = nodes match {
+		def visit(edges: List[Arrow], stack: List[Arrow]): List[Arrow] = edges match {
 			case Nil => Nil
-			case node :: tail =>
-				def indent = "\t" * stack.size
-				val atom = toA(node)
-				if(!visited(atom))
+			case edge :: tail =>
+				val node = head(edge)
+				if(!visited(node))
 				{
-					visited += atom
-					visit(dependencies(atom), node :: stack) match {
+					visited += node
+					visit(dependencies(node), edge :: stack) match {
 						case Nil =>
-							finished += atom
+							finished += node
 							visit(tail, stack)
 						case cycle => cycle
 					}
 				}
-				else if(!finished(atom))
+				else if(!finished(node))
 				{
-					// cycle. If negation is involved, it is an error.
-					val between = node :: stack.takeWhile(f => toA(f) != atom)
-					if(between exists isNegated)
+					// cycle. If a negative edge is involved, it is an error.
+					val between = edge :: stack.takeWhile(f => head(f) != node)
+					if(between exists isNegative)
 						between
 					else
 						visit(tail, stack)
@@ -113,7 +126,7 @@ object Dag
 					visit(tail, stack)
 		}
 
-		visit(nodes, Nil)
+		visit(graph.nodes, Nil)
 	}
 
 }

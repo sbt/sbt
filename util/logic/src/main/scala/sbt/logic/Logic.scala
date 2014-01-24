@@ -122,17 +122,18 @@ object Logic
 
 	private[this] def checkAcyclic(clauses: Clauses): Option[CyclicNegation] = {
 		val deps = dependencyMap(clauses)
-		val cycle = Dag.findNegativeCycle(system(deps))(deps.keys.toList)
+		val cycle = Dag.findNegativeCycle(graph(deps))
 		if(cycle.nonEmpty) Some(new CyclicNegation(cycle)) else None
 	}
-	private[this] def system(deps: Map[Atom, Set[Literal]]) = new Dag.System[Atom] {
-		type B = Literal
+	private[this] def graph(deps: Map[Atom, Set[Literal]]) = new Dag.DirectedSignedGraph[Atom] {
+		type Arrow = Literal
+		def nodes = deps.keys.toList
 		def dependencies(a: Atom) = deps.getOrElse(a, Set.empty).toList
-		def isNegated(b: Literal) = b match {
+		def isNegative(b: Literal) = b match {
 			case Negated(_) => true
 			case Atom(_) => false
 		}
-		def toA(b: Literal) = b.atom
+		def head(b: Literal) = b.atom
 	}
 
 	private[this] def dependencyMap(clauses: Clauses): Map[Atom, Set[Literal]] =
