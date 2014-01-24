@@ -1,7 +1,40 @@
 package sbt
 package logic
 
-object Test {
+	import org.scalacheck._
+	import Prop.secure
+	import Logic.{LogicException, Matched}
+
+object LogicTest extends Properties("Logic")
+{
+	import TestClauses._
+
+	property("Handles trivial resolution.") = secure( expect(trivial, Set(A) ) )
+	property("Handles less trivial resolution.") = secure( expect(lessTrivial, Set(B,A,D)) )
+	property("Handles cycles without negation") = secure( expect(cycles, Set(F,A,B)) )
+	property("Handles basic exclusion.") = secure( expect(excludedPos, Set()) )
+	property("Handles exclusion of head proved by negation.") = secure( expect(excludedNeg, Set()) )
+		// TODO: actually check ordering, probably as part of a check that dependencies are satisifed
+	property("Properly orders results.") = secure( expect(ordering, Set(B,A,C,E,F)))
+	property("Detects cyclic negation") = secure(
+		Logic.reduceAll(badClauses, Set()) match {
+			case Right(res) => false
+			case Left(err: Logic.CyclicNegation) => true
+			case Left(err) => error(s"Expected cyclic error, got: $err")
+		}
+	)
+
+	def expect(result: Either[LogicException, Matched], expected: Set[Atom]) = result match {
+		case Left(err) => false
+		case Right(res) =>
+			val actual = res.provenSet
+			(actual == expected) || error(s"Expected to prove $expected, but actually proved $actual")
+	}
+}
+
+object TestClauses
+{
+
 	val A = Atom("A")
 	val B = Atom("B")
 	val C = Atom("C")
