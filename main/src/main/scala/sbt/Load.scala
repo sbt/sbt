@@ -609,9 +609,6 @@ object Load
 		config.evalPluginDef(pluginDef, pluginState)
 	}
 
-
-/*
-// TODO: UNCOMMENT BEFORE COMMIT
 	@deprecated("Use ModuleUtilities.getCheckedObjects[Build].", "0.13.2")
 	def loadDefinitions(loader: ClassLoader, defs: Seq[String]): Seq[Build] =
 		defs map { definition => loadDefinition(loader, definition) }
@@ -619,7 +616,6 @@ object Load
 	@deprecated("Use ModuleUtilities.getCheckedObject[Build].", "0.13.2")
 	def loadDefinition(loader: ClassLoader, definition: String): Build =
 		ModuleUtilities.getObject(definition, loader).asInstanceOf[Build]
-*/
 
 	def loadPlugins(dir: File, data: PluginData, loader: ClassLoader): sbt.LoadedPlugins =
 		new sbt.LoadedPlugins(dir, data, loader, autoDetect(data, loader))
@@ -673,12 +669,9 @@ object Load
 	def getPluginNames(classpath: Seq[Attributed[File]], loader: ClassLoader): Seq[String] =
 		discoverModuleNames(classpath, loader, AutoBinaryResource.Plugins, classOf[Plugin].getName)
 
-/*
-TODO: UNCOMMENT BEFORE COMMIT
 	@deprecated("Explicitly specify the resource name.", "0.13.2")
 	def binaryPlugins(classpath: Seq[File], loader: ClassLoader): Seq[String] =
 		binaryPlugins(classpath, loader, AutoBinaryResource.Plugins)
-*/
 
 	/** Relative paths of resources that list top-level modules that are available.
 	* Normally, the classes for those modules will be in the same classpath entry as the resource. */
@@ -698,8 +691,6 @@ TODO: UNCOMMENT BEFORE COMMIT
 	def onClasspath(classpath: Seq[File])(url: URL): Boolean =
 		IO.urlAsFile(url) exists (classpath.contains _)
 
-/*
-// TODO: UNCOMMENT BEFORE COMMIT
 	@deprecated("Use ModuleUtilities.getCheckedObjects[Plugin].", "0.13.2")
 	def loadPlugins(loader: ClassLoader, pluginNames: Seq[String]): Seq[Plugin] =
 		ModuleUtilities.getCheckedObjects[Plugin](loader, pluginNames)
@@ -710,7 +701,6 @@ TODO: UNCOMMENT BEFORE COMMIT
 
 	@deprecated("No longer used.", "0.13.2")
 	def findPlugins(analysis: inc.Analysis): Seq[String]  =  discover(analysis, "sbt.Plugin")
-*/
 
 	def findDefinitions(analysis: inc.Analysis): Seq[String]  =  discover(analysis, "sbt.Build")
 	def discover(analysis: inc.Analysis, subclasses: String*): Seq[String] =

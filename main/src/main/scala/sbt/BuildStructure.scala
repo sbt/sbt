@@ -112,16 +112,16 @@ final class DetectedPlugins(val plugins: DetectedModules[Plugin], val autoImport
 */
 final class LoadedPlugins(val base: File, val pluginData: PluginData, val loader: ClassLoader, val detected: DetectedPlugins)
 {
-/*
-	// TODO: uncomment before COMMIT for compatibility
 	@deprecated("Use the primary constructor.", "0.13.2")
 	def this(base: File, pluginData: PluginData, loader: ClassLoader, plugins: Seq[Plugin], pluginNames: Seq[String]) =
-		this(base, pluginData, loader, DetectedPlugins(DetectedModules(pluginNames zip plugins), DetectedModules(Nil), DetectedModules(Nil), DetectedModules(Nil)))
+		this(base, pluginData, loader,
+			new DetectedPlugins(new DetectedModules(pluginNames zip plugins), new DetectedModules(Nil), new DetectedModules(Nil), new DetectedModules(Nil))
+		)
+
 	@deprecated("Use detected.plugins.values.", "0.13.2")
-	val plugins = detected.plugins.values
+	val plugins: Seq[Plugin] = detected.plugins.values
 	@deprecated("Use detected.plugins.names.", "0.13.2")
-	val pluginNames = detected.plugins.names
-*/
+	val pluginNames: Seq[String] = detected.plugins.names
 
 	def fullClasspath: Seq[Attributed[File]] = pluginData.classpath
 	def classpath = data(fullClasspath)
