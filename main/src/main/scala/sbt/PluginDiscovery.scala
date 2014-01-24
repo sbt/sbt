@@ -17,9 +17,12 @@ object PluginDiscovery
 		final val Builds = "sbt/sbt.builds"
 		final val AutoImports = "sbt/sbt.autoimports"
 	}
+	/** Names of top-level modules that subclass sbt plugin-related classes: [[Plugin]], [[AutoImport]], [[AutoPlugin]], and [[Build]]. */
 	final class DiscoveredNames(val plugins: Seq[String], val autoImports: Seq[String], val autoPlugins: Seq[String], val builds: Seq[String])
+
 	def emptyDiscoveredNames: DiscoveredNames = new DiscoveredNames(Nil, Nil, Nil, Nil)
 
+	/** Discovers and loads the sbt-plugin-related top-level modules from the classpath and source analysis in `data` and using the provided class `loader`. */
 	def discoverAll(data: PluginData, loader: ClassLoader): DetectedPlugins =
 	{
 		def discover[T](resource: String)(implicit mf: reflect.ClassManifest[T]) =
@@ -27,6 +30,8 @@ object PluginDiscovery
 		import Paths._
 		new DetectedPlugins(discover[Plugin](Plugins), discover[AutoImport](AutoImports), discover[AutoPlugin](AutoPlugins), discover[Build](Builds))
 	}
+
+	/** Discovers the sbt-plugin-related top-level modules from the provided source `analysis`. */
 	def discoverSourceAll(analysis: inc.Analysis): DiscoveredNames =
 	{
 		def discover[T](implicit mf: reflect.ClassManifest[T]): Seq[String] =
@@ -35,6 +40,7 @@ object PluginDiscovery
 	}
 
 	// TODO: for 0.14.0, consider consolidating into a single file, which would make the classpath search 4x faster
+	/** Writes discovered module `names` to zero or more files in `dir` as per [[writeDescriptor]] and returns the list of files written. */
 	def writeDescriptors(names: DiscoveredNames, dir: File): Seq[File] =
 	{
 		import Paths._
@@ -47,6 +53,7 @@ object PluginDiscovery
 		files.flatMap(_.toList)
 	}
 
+	/** Stores the module `names` in `dir / path`, one per line, unless `names` is empty and then the file is deleted and `None` returned. */
 	def writeDescriptor(names: Seq[String], dir: File, path: String): Option[File] =
 	{
 		val descriptor: File = new File(dir, path)
@@ -62,13 +69,15 @@ object PluginDiscovery
 		}
 	}
 
-
+	/** Discovers the names of top-level modules listed in resources named `resourceName` as per [[binaryModuleNames]] or
+	* available as analyzed source and extending from any of `subclasses` as per [[sourceModuleNames]]. */
 	def binarySourceModuleNames(classpath: Seq[Attributed[File]], loader: ClassLoader, resourceName: String, subclasses: String*): Seq[String] =
 		(
 			binaryModuleNames(data(classpath), loader, resourceName) ++
 			(analyzed(classpath) flatMap ( a => sourceModuleNames(a, subclasses : _*) ))
 		).distinct
 
+	/** Discovers top-level modules in `analysis` that inherit from any of `subclasses`. */
 	def sourceModuleNames(analysis: inc.Analysis, subclasses: String*): Seq[String] =
 	{
 		val subclassSet = subclasses.toSet
@@ -80,6 +89,9 @@ object PluginDiscovery
 		}
 	}
 
+	/** Obtains the list of modules identified in all resource files `resourceName` from `loader` that are on `classpath`.
+	* `classpath` and `loader` are both required to ensure that `loader`
+	* doesn't bring in any resources outside of the intended `classpath`, such as from parent loaders. */
 	def binaryModuleNames(classpath: Seq[File], loader: ClassLoader, resourceName: String): Seq[String] =
 	{
 		import collection.JavaConversions._
@@ -87,6 +99,8 @@ object PluginDiscovery
 			IO.readLinesURL(u).map( _.trim).filter(!_.isEmpty)
 		}
 	}
+
+	/** Returns `true` if `url` is an entry in `classpath`.*/
 	def onClasspath(classpath: Seq[File])(url: URL): Boolean =
 		IO.urlAsFile(url) exists (classpath.contains _)
 

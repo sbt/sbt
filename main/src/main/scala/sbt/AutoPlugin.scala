@@ -76,7 +76,11 @@ abstract class AutoPlugin
 	// TODO?: def commands: Seq[Command]
 }
 
-final class AutoPluginException(val origin: LogicException, prefix: String) extends RuntimeException(prefix + Natures.translateMessage(origin)) {
+/** An error that occurs when auto-plugins aren't configured properly.
+* It translates the error from the underlying logic system to be targeted at end users. */
+final class AutoPluginException(val origin: LogicException, prefix: String) extends RuntimeException(prefix + Natures.translateMessage(origin))
+{
+	/** Prepends `p` to the error message derived from `origin`. */
 	def withPrefix(p: String) = new AutoPluginException(origin, p)
 }
 
