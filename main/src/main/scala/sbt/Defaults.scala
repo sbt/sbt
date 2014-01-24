@@ -179,7 +179,7 @@ object Defaults extends BuildCommon
 		unmanagedResources <<= collectFiles(unmanagedResourceDirectories, includeFilter in unmanagedResources, excludeFilter in unmanagedResources),
 		watchSources in ConfigGlobal ++= unmanagedResources.value,
 		resourceGenerators :== Nil,
-		resourceGenerators <+= (definedSbtPlugins, resourceManaged) map writePluginsDescriptor,
+		resourceGenerators <+= (discoveredSbtPlugins, resourceManaged) map PluginDiscovery.writeDescriptors,
 		managedResources <<= generate(resourceGenerators),
 		resources <<= Classpaths.concat(managedResources, unmanagedResources)
 	)
@@ -233,6 +233,7 @@ object Defaults extends BuildCommon
 		consoleQuick <<= consoleQuickTask,
 		discoveredMainClasses <<= compile map discoverMainClasses storeAs discoveredMainClasses triggeredBy compile,
 		definedSbtPlugins <<= discoverPlugins,
+		discoveredSbtPlugins <<= discoverSbtPluginNames,
 		inTask(run)(runnerTask :: Nil).head,
 		selectMainClass := mainClass.value orElse selectRunMain(discoveredMainClasses.value),
 		mainClass in run := (selectMainClass in run).value,
@@ -764,27 +765,21 @@ object Defaults extends BuildCommon
 
 	def sbtPluginExtra(m: ModuleID, sbtV: String, scalaV: String): ModuleID =
 		m.extra(CustomPomParser.SbtVersionKey -> sbtV, CustomPomParser.ScalaVersionKey -> scalaV).copy(crossVersion = CrossVersion.Disabled)
+
+	@deprecated("Use PluginDiscovery.writeDescriptor.", "0.13.2")
 	def writePluginsDescriptor(plugins: Set[String], dir: File): Seq[File] =
-	{
-		val descriptor: File = dir / "sbt" / "sbt.plugins"
-		if(plugins.isEmpty)
-		{
-			IO.delete(descriptor)
-			Nil
-		}
-		else
-		{
-			IO.writeLines(descriptor, plugins.toSeq.sorted)
-			descriptor :: Nil
-		}
+		PluginDiscovery.writeDescriptor(plugins.toSeq, dir, PluginDiscovery.Paths.Plugins).toList
+
+	def discoverSbtPluginNames: Initialize[Task[PluginDiscovery.DiscoveredNames]] = Def.task {
+		if(sbtPlugin.value) PluginDiscovery.discoverSourceAll(compile.value) else PluginDiscovery.emptyDiscoveredNames
 	}
+
+	@deprecated("Use discoverSbtPluginNames.", "0.13.2")
 	def discoverPlugins: Initialize[Task[Set[String]]] = (compile, sbtPlugin, streams) map { (analysis, isPlugin, s) => if(isPlugin) discoverSbtPlugins(analysis, s.log) else Set.empty }
+
+	@deprecated("Use PluginDiscovery.sourceModuleNames[Plugin].", "0.13.2")
 	def discoverSbtPlugins(analysis: inc.Analysis, log: Logger): Set[String] =
-	{
-		val pluginClass = classOf[Plugin].getName
-		val discovery = Discovery(Set(pluginClass), Set.empty)( Tests allDefs analysis )
-		discovery collect { case (df, disc) if (disc.baseClasses contains pluginClass) && disc.isModule => df.name } toSet;
-	}
+		PluginDiscovery.sourceModuleNames(analysis, classOf[Plugin].getName).toSet
 
 	def copyResourcesTask =
 	(classDirectory, resources, resourceDirectories, streams) map { (target, resrcs, dirs, s) =>

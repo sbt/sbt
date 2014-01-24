@@ -6,7 +6,6 @@ package sbt
 	import java.io.File
 	import java.net.{URI,URL}
 	import compiler.{Eval,EvalImports}
-	import xsbt.api.{Discovered,Discovery}
 	import xsbti.compile.CompileOrder
 	import classpath.ClasspathUtilities
 	import scala.annotation.tailrec
@@ -18,7 +17,6 @@ package sbt
 	import Keys.{appConfiguration, baseDirectory, configuration, fullResolvers, fullClasspath, pluginData, streams, thisProject, thisProjectRef, update}
 	import Keys.{exportedProducts, loadedBuild, onLoadMessage, resolvedScoped, sbtPlugin, scalacOptions, taskDefinitionKey}
 	import tools.nsc.reporters.ConsoleReporter
-	import Build.analyzed
 	import Attributed.data
 	import Scope.{GlobalScope, ThisScope}
 	import Types.const
@@ -618,82 +616,23 @@ object Load
 		ModuleUtilities.getObject(definition, loader).asInstanceOf[Build]
 
 	def loadPlugins(dir: File, data: PluginData, loader: ClassLoader): sbt.LoadedPlugins =
-		new sbt.LoadedPlugins(dir, data, loader, autoDetect(data, loader))
+		new sbt.LoadedPlugins(dir, data, loader, PluginDiscovery.discoverAll(data, loader))
 
-	private[this] def autoDetect(data: PluginData, loader: ClassLoader): DetectedPlugins =
-	{
-		// TODO: binary detection for builds, autoImports, autoPlugins
-		import AutoBinaryResource._
-		val plugins = detectModules[Plugin](data, loader, Plugins)
-		val builds = detectModules[Build](data, loader, Builds)
-		val autoImports = detectModules[AutoImport](data, loader, AutoImports)
-		val autoPlugins = detectModules[AutoPlugin](data, loader, AutoPlugins)
-		new DetectedPlugins(plugins, autoImports, autoPlugins, builds)
-	}
-	private[this] def detectModules[T](data: PluginData, loader: ClassLoader, resourceName: String)(implicit mf: reflect.ClassManifest[T]): DetectedModules[T] =
-	{
-		val classpath = data.classpath
-		val namesAndValues = if(classpath.isEmpty) Nil else {
-			val names = discoverModuleNames(classpath, loader, resourceName, mf.erasure.getName)
-			loadModules[T](data, names, loader)
-		}
-		new DetectedModules(namesAndValues)
-	}
-
-	private[this] def loadModules[T: ClassManifest](data: PluginData, names: Seq[String], loader: ClassLoader): Seq[(String,T)] =
-		try ModuleUtilities.getCheckedObjects[T](names, loader)
-		catch {
-			case e: ExceptionInInitializerError =>
-				val cause = e.getCause
-				if(cause eq null) throw e else throw cause
-			case e: LinkageError => incompatiblePlugins(data, e)
-		}
-
-	private[this] def incompatiblePlugins(data: PluginData, t: LinkageError): Nothing =
-	{
-		val evicted = data.report.toList.flatMap(_.configurations.flatMap(_.evicted))
-		val evictedModules = evicted map { id => (id.organization, id.name) } distinct ;
-		val evictedStrings = evictedModules map { case (o,n) => o + ":" + n }
-		val msgBase = "Binary incompatibility in plugins detected."
-		val msgExtra = if(evictedStrings.isEmpty) "" else "\nNote that conflicts were resolved for some dependencies:\n\t" + evictedStrings.mkString("\n\t")
-		throw new IncompatiblePluginsException(msgBase + msgExtra, t)
-	}
-
-	def discoverModuleNames(classpath: Seq[Attributed[File]], loader: ClassLoader, resourceName: String, moduleTypes: String*): Seq[String] =
-		(
-			binaryPlugins(data(classpath), loader, resourceName) ++
-			(analyzed(classpath) flatMap (a => discover(a, moduleTypes : _*)))
-		).distinct
-
-	@deprecated("Replaced by the more general discoverModuleNames and will be made private.", "0.13.2")
+	@deprecated("Replaced by the more general PluginDiscovery.binarySourceModuleNames and will be made private.", "0.13.2")
 	def getPluginNames(classpath: Seq[Attributed[File]], loader: ClassLoader): Seq[String] =
-		discoverModuleNames(classpath, loader, AutoBinaryResource.Plugins, classOf[Plugin].getName)
+		PluginDiscovery.binarySourceModuleNames(classpath, loader, PluginDiscovery.Paths.Plugins, classOf[Plugin].getName)
 
-	@deprecated("Explicitly specify the resource name.", "0.13.2")
+	@deprecated("Use PluginDiscovery.binaryModuleNames.", "0.13.2")
 	def binaryPlugins(classpath: Seq[File], loader: ClassLoader): Seq[String] =
-		binaryPlugins(classpath, loader, AutoBinaryResource.Plugins)
+		PluginDiscovery.binaryModuleNames(classpath, loader, PluginDiscovery.Paths.Plugins)
 
-	/** Relative paths of resources that list top-level modules that are available.
-	* Normally, the classes for those modules will be in the same classpath entry as the resource. */
-	object AutoBinaryResource {
-		final val AutoPlugins = "sbt/sbt.autoplugins"
-		final val Plugins = "sbt/sbt.plugins"
-		final val Builds = "sbt/sbt.builds"
-		final val AutoImports = "sbt/sbt.autoimports"
-	}
-	def binaryPlugins(classpath: Seq[File], loader: ClassLoader, resourceName: String): Seq[String] =
-	{
-		import collection.JavaConversions._
-		loader.getResources(resourceName).toSeq.filter(onClasspath(classpath)) flatMap { u =>
-			IO.readLinesURL(u).map( _.trim).filter(!_.isEmpty)
-		}
-	}
+	@deprecated("Use PluginDiscovery.onClasspath", "0.13.2")
 	def onClasspath(classpath: Seq[File])(url: URL): Boolean =
-		IO.urlAsFile(url) exists (classpath.contains _)
+		PluginDiscovery.onClasspath(classpath)(url)
 
 	@deprecated("Use ModuleUtilities.getCheckedObjects[Plugin].", "0.13.2")
 	def loadPlugins(loader: ClassLoader, pluginNames: Seq[String]): Seq[Plugin] =
-		ModuleUtilities.getCheckedObjects[Plugin](loader, pluginNames)
+		ModuleUtilities.getCheckedObjects[Plugin](pluginNames, loader).map(_._2)
 
 	@deprecated("Use ModuleUtilities.getCheckedObject[Plugin].", "0.13.2")
 	def loadPlugin(pluginName: String, loader: ClassLoader): Plugin =
@@ -702,17 +641,12 @@ object Load
 	@deprecated("No longer used.", "0.13.2")
 	def findPlugins(analysis: inc.Analysis): Seq[String]  =  discover(analysis, "sbt.Plugin")
 
+	@deprecated("No longer used.", "0.13.2")
 	def findDefinitions(analysis: inc.Analysis): Seq[String]  =  discover(analysis, "sbt.Build")
+
+	@deprecated("Use PluginDiscovery.sourceModuleNames", "0.13.2")
 	def discover(analysis: inc.Analysis, subclasses: String*): Seq[String] =
-	{
-		val subclassSet = subclasses.toSet
-		val ds = Discovery(subclassSet, Set.empty)(Tests.allDefs(analysis))
-		ds.flatMap {
-			case (definition, Discovered(subs,_,_,true)) =>
-				if((subs & subclassSet).isEmpty) Nil else definition.name :: Nil
-			case _ => Nil
-		}
-	}
+		PluginDiscovery.sourceModuleNames(analysis, subclasses : _*)
 
 	def initialSession(structure: sbt.BuildStructure, rootEval: () => Eval, s: State): SessionSettings = {
 		val session = s get Keys.sessionSettings
