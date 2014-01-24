@@ -71,4 +71,48 @@ object Dag
 			else
 				new Cyclic(value, a :: all, false)
 	}
+
+	private[sbt] trait System[A] {
+		type B
+		def dependencies(t: A): List[B]
+		def isNegated(b: B): Boolean
+		def toA(b: B): A
+	}
+	private[sbt] def findNegativeCycle[T](system: System[T])(nodes: List[system.B]): List[system.B] =
+	{
+			import scala.annotation.tailrec
+			import system._
+		val finished = new mutable.HashSet[T]
+		val visited = new mutable.HashSet[T]
+
+		def visit(nodes: List[B], stack: List[B]): List[B] = nodes match {
+			case Nil => Nil
+			case node :: tail =>
+				val atom = toA(node)
+				if(!visited(atom))
+				{
+					visited += atom
+					visit(dependencies(atom), node :: stack) match {
+						case Nil =>
+							finished += atom
+							visit(tail, stack)
+						case cycle => cycle
+					}
+				}
+				else if(!finished(atom))
+				{
+					// cycle. If negation is involved, it is an error.
+					val between = stack.takeWhile(f => toA(f) != atom)
+					if(between exists isNegated)
+						between
+					else
+						visit(tail, stack)
+				}
+				else
+					visit(tail, stack)
+		}
+
+		visit(nodes, Nil)
+	}
+
 }

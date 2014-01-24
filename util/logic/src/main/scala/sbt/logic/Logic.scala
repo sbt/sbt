@@ -117,12 +117,31 @@ object Logic
 	}
 
 	def checkAcyclic(clauses: Clauses) {
-		// TODO
+		val deps = dependencyMap(clauses)
+		val cycle = Dag.findNegativeCycle(system(deps))(deps.keys.toList)
+		if(cycle.nonEmpty)
+			throw new CyclicNegation(cycle)
 	}
+	private[this] def system(deps: Map[Atom, Set[Literal]]) = new Dag.System[Atom] {
+		type B = Literal
+		def dependencies(a: Atom) = deps.getOrElse(a, Set.empty).toList
+		def isNegated(b: Literal) = b match {
+			case Negated(_) => true
+			case Atom(_) => false
+		}
+		def toA(b: Literal) = b.atom
+	}
+
+	private[this] def dependencyMap(clauses: Clauses): Map[Atom, Set[Literal]] =
+		(Map.empty[Atom, Set[Literal]] /: clauses.clauses) {
+			case (m, Clause(formula, heads)) =>
+				val deps = literals(formula)
+				(m /: heads) { (n, head) => n.updated(head, n.getOrElse(head, Set.empty) ++ deps) }
+		}
 
 	final class InitialContradictions(val literals: Set[Atom]) extends RuntimeException("Initial facts cannot be both true and false:\n\t" + literals.mkString("\n\t"))
 	final class InitialOverlap(val literals: Set[Atom]) extends RuntimeException("Initial positive facts cannot be implied by any clauses:\n\t" + literals.mkString("\n\t"))
-	final class CyclicNegation(val cycle: List[Atom]) extends RuntimeException("Negation may not be involved in a cycle:\n\t" + cycle.mkString("\n\t"))
+	final class CyclicNegation(val cycle: List[Literal]) extends RuntimeException("Negation may not be involved in a cycle:\n\t" + cycle.mkString("\n\t"))
 
 	/** Tracks proven atoms in the reverse order they were proved. */
 	final class Matched private(val provenSet: Set[Atom], reverseOrdered: List[Atom]) {
@@ -220,11 +239,15 @@ object Logic
 		}
 
 	/** Computes the `(positive, negative)` literals in `formula`. */
-	private[this] def directDeps(formula: Formula): (Seq[Atom], Seq[Atom]) = formula match {
-		case And(lits) => separate(lits.toSeq)
-		case Negated(a) => (Nil, a :: Nil)
-		case a: Atom => (a :: Nil, Nil)
-		case True => (Nil, Nil)
+	private[this] def directDeps(formula: Formula): (Seq[Atom], Seq[Atom]) =
+		Util.separate(literals(formula).toSeq) {
+			case Negated(a) => Right(a)
+			case a: Atom => Left(a)
+		}
+	private[this] def literals(formula: Formula): Set[Literal] = formula match {
+		case And(lits) => lits
+		case l: Literal => Set(l)
+		case True => Set.empty
 	}
 
 	/** Computes the atoms in the heads and bodies of the clauses in `clause`. */
